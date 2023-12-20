@@ -2520,3 +2520,42 @@ NimFunctor()(1)
 ```
 Notice we use the overload of `()` to have the same semantics in Nim, but on the `importcpp` we import the functor as a function. 
 This allows to easy interop with functions that accepts for example a `const` operator in its signature. 
+
+
+Injected symbols in generic procs
+=================================
+
+With the experimental option `genericsOpenSym`, captured symbols in generic
+routine bodies may be replaced by symbols injected locally by templates/macros
+at instantiation time. `bind` may be used to keep the captured symbols over
+the injected ones regardless of enabling the option.
+  
+Since this change may affect runtime behavior, the experimental switch
+`genericsOpenSym` needs to be enabled, and a warning is given in the case
+where an injected symbol would replace a captured symbol not bound by `bind`
+and the experimental switch isn't enabled.
+
+```nim
+const value = "captured"
+template foo(x: int, body: untyped) =
+  let value {.inject.} = "injected"
+  body
+
+proc old[T](): string =
+  foo(123):
+    return value # warning: a new `value` has been injected, use `bind` or turn on `experimental:genericsOpenSym`
+echo old[int]() # "captured"
+
+{.experimental: "genericsOpenSym".}
+
+proc bar[T](): string =
+  foo(123):
+    return value
+assert bar[int]() == "injected" # previously it would be "captured"
+
+proc baz[T](): string =
+  bind value
+  foo(123):
+    return value
+assert baz[int]() == "captured"
+```
