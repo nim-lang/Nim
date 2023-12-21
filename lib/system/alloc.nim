@@ -764,7 +764,6 @@ when defined(gcDestructors):
     # see also https://en.cppreference.com/w/cpp/atomic/atomic_compare_exchange
     when hasThreadSupport:
       while true:
-        sysAssert elem != nil, "elem must be not nil!"
         elem.next.storea head.loada
         if atomicCompareExchangeN(addr head, addr elem.next, elem, weak = true, ATOMIC_RELEASE, ATOMIC_RELAXED):
           break
@@ -820,11 +819,10 @@ proc rawAlloc(a: var MemRegion, requestedSize: int): pointer =
   var size = roundup(requestedSize, MemAlign)
   sysAssert(size >= sizeof(FreeCell), "rawAlloc: requested size too small")
   sysAssert(size >= requestedSize, "insufficient allocated size!")
-  c_fprintf(c_stdout, "alloc; size: %ld; %ld\n", requestedSize, size)
+  #c_fprintf(stdout, "alloc; size: %ld; %ld\n", requestedSize, size)
 
   if size <= SmallChunkSize-smallChunkOverhead():
     # allocate a small block: for small chunks, we use only its next pointer
-    c_fprintf(c_stdout, "alloc; size: %ld\n", size)
     let s = size div MemAlign
     var c = a.freeSmallChunks[s]
     if c == nil:
@@ -921,8 +919,6 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
     # `p` is within a small chunk:
     var c = cast[PSmallChunk](c)
     let s = c.size
-    c_fprintf(c_stdout, "dealloc; size: %ld\n", s)
-
     #       ^ We might access thread foreign storage here.
     # The other thread cannot possibly free this block as it's still alive.
     var f = cast[ptr FreeCell](p)
