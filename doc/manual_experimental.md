@@ -2520,3 +2520,38 @@ NimFunctor()(1)
 ```
 Notice we use the overload of `()` to have the same semantics in Nim, but on the `importcpp` we import the functor as a function. 
 This allows to easy interop with functions that accepts for example a `const` operator in its signature. 
+
+VTable for methods
+==================
+
+Methods now support implementations based on a VTable by using `--experimental:vtables`. Note that the option needs to enabled
+globally. The virtual method table is stored in the type info of
+an object, which is an array of function pointers.
+
+```nim
+method foo(x: Base, ...) {.base.}
+method foo(x: Derived, ...) {.base.}
+```
+
+It roughly generates a dispatcher like
+
+```nim
+proc foo_dispatch(x: Base, ...) =
+  x.typeinfo.vtable[method_index](x, ...) # method_index is the index of the sorted order of a method
+```
+
+Methods are required to be in the same module where their type has been defined.
+
+```nim
+# types.nim
+type
+  Base* = ref object
+```
+
+```nim
+import types
+
+method foo(x: Base) {.base.} = discard
+```
+
+It gives an error: method `foo` can be defined only in the same module with its type (Base).
