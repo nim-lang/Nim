@@ -2450,7 +2450,7 @@ main()
 
 Will produce: 
 
-```c++
+```cpp
 
 struct Test {
 	Foo foo; 
