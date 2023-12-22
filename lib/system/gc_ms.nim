@@ -188,6 +188,9 @@ proc nimGCunref(p: pointer) {.compilerproc.} =
     when withBitvectors: incl(gch.allocated, usrToCell(p))
     else: usrToCell(p).refcount = rcWhite
 
+proc nimGCrefcount(p: pointer): int {.compilerproc.} = 
+  internRefcount(p)
+
 when defined(nimGcRefLeak):
   proc writeLeaks() =
     for i in 0..gch.additionalRoots.len-1:

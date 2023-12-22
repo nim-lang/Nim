@@ -73,6 +73,7 @@ proc growObj(old: pointer, newsize: int): pointer =
 
 proc nimGCref(p: pointer) {.compilerproc, inline.} = discard
 proc nimGCunref(p: pointer) {.compilerproc, inline.} = discard
+proc nimGCrefcount(p: pointer): int {.compilerproc, inline.} = -1
 
 when not defined(gcDestructors):
   proc unsureAsgnRef(dest: PPointer, src: pointer) {.compilerproc, inline.} =

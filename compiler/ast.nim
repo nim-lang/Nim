@@ -661,7 +661,7 @@ type
     mNew, mNewFinalize, mNewSeq, mNewSeqOfCap,
     mLengthOpenArray, mLengthStr, mLengthArray, mLengthSeq,
     mIncl, mExcl, mCard, mChr,
-    mGCref, mGCunref,
+    mGCref, mGCunref, mGCrefcount,
     mAddI, mSubI, mMulI, mDivI, mModI,
     mSucc, mPred,
     mAddF64, mSubF64, mMulF64, mDivF64,

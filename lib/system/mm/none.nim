@@ -32,6 +32,7 @@ proc growObj(old: pointer, newsize: int): pointer =
 proc nimGC_setStackBottom(theStackBottom: pointer) = discard
 proc nimGCref(p: pointer) {.compilerproc, inline.} = discard
 proc nimGCunref(p: pointer) {.compilerproc, inline.} = discard
+proc nimGCrefcount(p: pointer): int {.compilerproc, inline.} = -1
 
 proc unsureAsgnRef(dest: PPointer, src: pointer) {.compilerproc, inline.} =
   dest[] = src

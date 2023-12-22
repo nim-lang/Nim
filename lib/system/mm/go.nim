@@ -130,6 +130,7 @@ proc growObj(old: pointer, newsize: int): pointer =
 
 proc nimGCref(p: pointer) {.compilerproc, inline.} = discard
 proc nimGCunref(p: pointer) {.compilerproc, inline.} = discard
+proc nimGCrefcount(p: pointer): int {.compilerproc, inline.} = -1
 proc nimGCunrefNoCycle(p: pointer) {.compilerproc, inline.} = discard
 proc nimGCunrefRC1(p: pointer) {.compilerproc, inline.} = discard
 proc nimGCvisit(d: pointer, op: int) {.compilerRtl.} = discard
