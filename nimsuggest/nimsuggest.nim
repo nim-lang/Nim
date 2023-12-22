@@ -984,10 +984,10 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
     graph.unmarkAllDirty()
 
   # these commands require partially compiled project
-  elif cmd in {ideSug, ideOutline, ideHighlight, ideDef, ideChkFile, ideType, ideDeclaration, ideExpand} and
-       (graph.needsCompilation(fileIndex) or cmd == ideSug):
+  elif cmd in {ideSug, ideCon, ideOutline, ideHighlight, ideDef, ideChkFile, ideType, ideDeclaration, ideExpand} and
+       (graph.needsCompilation(fileIndex) or cmd in {ideSug, ideCon}):
     # for ideSug use v2 implementation
-    if cmd == ideSug:
+    if cmd in {ideSug, ideCon}:
       conf.m.trackPos = newLineInfo(fileIndex, line, col)
       conf.m.trackPosAttached = false
     else:
@@ -1033,6 +1033,9 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
     # ideSug performs partial build of the file, thus mark it dirty for the
     # future calls.
     graph.markDirtyIfNeeded(file.string, fileIndex)
+  of ideCon:
+    graph.markDirty fileIndex
+    graph.markClientsDirty fileIndex
   of ideOutline:
     let n = parseFile(fileIndex, graph.cache, graph.config)
     graph.iterateOutlineNodes(n, graph.fileSymbols(fileIndex).deduplicateSymInfoPair)
