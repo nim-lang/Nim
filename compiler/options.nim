@@ -227,6 +227,7 @@ type
     strictDefs,
     strictCaseObjects,
     inferGenericTypes,
+    genericsOpenSym,
     vtables
 
   LegacyFeature* = enum

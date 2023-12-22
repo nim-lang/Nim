@@ -3076,8 +3076,18 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
         var o = s2.owner
         while o != nil:
           if o == c.p.owner:
-            result = semExpr(c, id, flags, expectedType)
-            return
+            if genericsOpenSym in c.features:
+              result = semExpr(c, id, flags, expectedType)
+              return
+            else:
+              message(c.config, n.info, warnGenericsIgnoredInjection,
+                "a new symbol '" & s.name.s & "' has been injected during " &
+                "instantiation of " & c.p.owner.name.s & ", " &
+                "however " & getSymRepr(c.config, s) & " captured at " &
+                "the proc declaration will be used instead; " &
+                "either enable --experimental:genericsOpenSym to use the " &
+                "injected symbol or `bind` this captured symbol explicitly")
+              break
           o = o.owner
     # because of the changed symbol binding, this does not mean that we
     # don't have to check the symbol for semantics here again!

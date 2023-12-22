@@ -56,6 +56,9 @@ template isMixedIn(sym): bool =
                                s.magic == mNone and
                                s.kind in OverloadableSyms)
 
+template canOpenSym(s): bool =
+  {withinMixin, withinConcept} * flags == {withinMixin} and s.id notin ctx.toBind
+
 proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
                           ctx: var GenericCtx; flags: TSemGenericFlags,
                           fromDotExpr=false): PNode =
@@ -69,7 +72,7 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
         result.transitionSonsKind(nkClosedSymChoice)
     else:
       result = symChoice(c, n, s, scOpen)
-      if {withinMixin, withinConcept} * flags == {withinMixin} and result.kind == nkSym:
+      if result.kind == nkSym and canOpenSym(result.sym):
         result.flags.incl nfOpenSym
         result.typ = nil
   case s.kind
@@ -99,7 +102,7 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
         result = n
     else:
       result = newSymNodeTypeDesc(s, c.idgen, n.info)
-      if {withinMixin, withinConcept} * flags == {withinMixin}:
+      if canOpenSym(result.sym):
         result.flags.incl nfOpenSym
         result.typ = nil
     onUse(n.info, s)
@@ -110,7 +113,7 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
     if (s.typ != nil) and
        (s.typ.flags * {tfGenericTypeParam, tfImplicitTypeParam} == {}):
       result = newSymNodeTypeDesc(s, c.idgen, n.info)
-      if {withinMixin, withinConcept} * flags == {withinMixin}:
+      if canOpenSym(result.sym):
         result.flags.incl nfOpenSym
         result.typ = nil
     else:
@@ -118,7 +121,7 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
     onUse(n.info, s)
   else:
     result = newSymNode(s, n.info)
-    if {withinMixin, withinConcept} * flags == {withinMixin}:
+    if canOpenSym(result.sym):
       result.flags.incl nfOpenSym
       result.typ = nil
     onUse(n.info, s)
