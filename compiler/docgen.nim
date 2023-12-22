@@ -1059,7 +1059,7 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags, nonEx
 
   # Obtain the plain rendered string for hyperlink titles.
   var r: TSrcGen = initTokRender(n, {renderNoBody, renderNoComments, renderDocComments,
-    renderNoPragmas, renderNoProcDefs, renderExpandUsing})
+    renderNoPragmas, renderNoProcDefs, renderExpandUsing, renderNoPostfix})
   while true:
     getNextTok(r, kind, literal)
     if kind == tkEof:
