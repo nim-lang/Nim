@@ -27,6 +27,41 @@ slots when enlarging a sequence.
 
 
 
+- An experimental option `genericsOpenSym` has been added to allow captured
+  symbols in generic routine bodies to be replaced by symbols injected locally
+  by templates/macros at instantiation time. `bind` may be used to keep the
+  captured symbols over the injected ones regardless of enabling the option.
+
+  Since this change may affect runtime behavior, the experimental switch
+  `genericsOpenSym` needs to be enabled, and a warning is given in the case
+  where an injected symbol would replace a captured symbol not bound by `bind`
+  and the experimental switch isn't enabled.
+
+  ```nim
+  const value = "captured"
+  template foo(x: int, body: untyped) =
+    let value {.inject.} = "injected"
+    body
+
+  proc old[T](): string =
+    foo(123):
+      return value # warning: a new `value` has been injected, use `bind` or turn on `experimental:genericsOpenSym`
+  echo old[int]() # "captured"
+
+  {.experimental: "genericsOpenSym".}
+
+  proc bar[T](): string =
+    foo(123):
+      return value
+  assert bar[int]() == "injected" # previously it would be "captured"
+
+  proc baz[T](): string =
+    bind value
+    foo(123):
+      return value
+  assert baz[int]() == "captured"
+  ```
+
 ## Compiler changes
 
 
