@@ -1334,14 +1334,20 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
     put(g, tkColon, ":")
     gsub(g, n, bodyPos)
   of nkIdentDefs:
-    # Skip if this is a property in a type and its not exported
-    # (While also not allowing rendering of non exported fields)
-    if ObjectDef in g.inside and (not n[0].isExported() and renderNonExportedFields notin g.flags):
-      return
+    var exclFlags: TRenderFlags = {}
+    if ObjectDef in g.inside:
+      if not n[0].isExported() and renderNonExportedFields notin g.flags:
+        # Skip if this is a property in a type and its not exported
+        # (While also not allowing rendering of non exported fields)
+        return
+      # render postfix for object fields:
+      exclFlags = g.flags * {renderNoPostfix}
     # We render the identDef without being inside the section incase we render something like
     # y: proc (x: string) # (We wouldn't want to check if x is exported)
     g.outside(ObjectDef):
+      g.flags.excl(exclFlags)
       gcomma(g, n, 0, -3)
+      g.flags.incl(exclFlags)
       if n.len >= 2 and n[^2].kind != nkEmpty:
         putWithSpace(g, tkColon, ":")
         gsub(g, n[^2], c)
