@@ -1031,7 +1031,7 @@ proc toLangSymbol(k: TSymKind, n: PNode, baseName: string): LangSymbol =
     if genNode != nil:
       var literal = ""
       var r: TSrcGen = initTokRender(genNode, {renderNoBody, renderNoComments,
-        renderNoPragmas, renderNoProcDefs, renderExpandUsing})
+        renderNoPragmas, renderNoProcDefs, renderExpandUsing, renderNoPostfix})
       var kind = tkEof
       while true:
         getNextTok(r, kind, literal)
@@ -1099,10 +1099,10 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags, nonEx
                priority = symbolPriority(k), info = lineinfo,
                module = addRstFileIndex(d, FileIndex d.module.position))
 
-  let renderFlags =
-    if nonExports: {renderNoBody, renderNoComments, renderDocComments, renderSyms,
-      renderExpandUsing, renderNonExportedFields}
-    else: {renderNoBody, renderNoComments, renderDocComments, renderSyms, renderExpandUsing}
+  var renderFlags = {renderNoBody, renderNoComments, renderDocComments,
+    renderSyms, renderExpandUsing, renderNoPostfix}
+  if nonExports:
+    renderFlags.incl renderNonExportedFields
   nodeToHighlightedHtml(d, n, result, renderFlags, symbolOrIdEnc)
 
   let seeSrc = genSeeSrc(d, toFullPath(d.conf, n.info), n.info.line.int)
@@ -1167,7 +1167,8 @@ proc genJsonItem(d: PDoc, n, nameNode: PNode, k: TSymKind, nonExports = false): 
     name = getNameEsc(d, nameNode)
     comm = genRecComment(d, n)
     r: TSrcGen
-    renderFlags = {renderNoBody, renderNoComments, renderDocComments, renderExpandUsing}
+    renderFlags = {renderNoBody, renderNoComments, renderDocComments,
+      renderExpandUsing, renderNoPostfix}
   if nonExports:
     renderFlags.incl renderNonExportedFields
   r = initTokRender(n, renderFlags)
