@@ -558,7 +558,7 @@ proc errorUseQualifier*(c: PContext; info: TLineInfo; s: PSym) =
   var amb: bool
   discard errorUseQualifier(c, info, s, amb)
 
-proc errorUseQualifier(c: PContext; info: TLineInfo; candidates: seq[PSym]; prefix = "use one of") =
+proc errorUseQualifier*(c: PContext; info: TLineInfo; candidates: seq[PSym]; prefix = "use one of") =
   var err = "ambiguous identifier: '" & candidates[0].name.s & "'"
   var i = 0
   for candidate in candidates:
@@ -621,31 +621,33 @@ type
   TLookupFlag* = enum
     checkAmbiguity, checkUndeclared, checkModule, checkPureEnumFields
 
-proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
+proc lookUpCandidates*(c: PContext, ident: PIdent): seq[PSym] =
   const allExceptModule = {low(TSymKind)..high(TSymKind)} - {skModule, skPackage}
+  result = searchInScopesFilterBy(c, ident, allExceptModule)
+  if result.len == 0:
+    result.add allPureEnumFields(c, ident)
+
+proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
   case n.kind
   of nkIdent, nkAccQuoted:
     var amb = false
     var ident = considerQuotedIdent(c, n)
     if checkModule in flags:
       result = searchInScopes(c, ident, amb)
+      if result == nil:
+        let candidates = allPureEnumFields(c, ident)
+        if candidates.len > 0:
+          result = candidates[0]
+          amb = candidates.len > 1
+          if amb and checkAmbiguity in flags:
+            errorUseQualifier(c, n.info, candidates)
     else:
-      let candidates = searchInScopesFilterBy(c, ident, allExceptModule)
+      let candidates = lookUpCandidates(c, ident)
       if candidates.len > 0:
         result = candidates[0]
         amb = candidates.len > 1
         if amb and checkAmbiguity in flags:
           errorUseQualifier(c, n.info, candidates)
-      else:
-        result = nil
-    if result == nil:
-      let candidates = allPureEnumFields(c, ident)
-      if candidates.len > 0:
-        result = candidates[0]
-        amb = candidates.len > 1
-        if amb and checkAmbiguity in flags:
-          errorUseQualifier(c, n.info, candidates)
-
     if result == nil and checkUndeclared in flags:
       result = errorUndeclaredIdentifierHint(c, n, ident)
     elif checkAmbiguity in flags and result != nil and amb:
