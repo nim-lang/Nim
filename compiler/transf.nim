@@ -194,6 +194,7 @@ proc transformVarSection(c: PTransf, v: PNode): PNode =
     elif it.kind == nkIdentDefs:
       var vn = it[0]
       if vn.kind == nkPragmaExpr: vn = vn[0]
+      if vn.kind == nkPostfix: vn = vn[1]
       if vn.kind == nkSym:
         internalAssert(c.graph.config, it.len == 3)
         let x = freshVar(c, vn.sym)
@@ -330,8 +331,10 @@ proc introduceNewLocalVars(c: PTransf, n: PNode): PNode =
     return n
   of nkProcDef: # todo optimize nosideeffects?
     result = newTransNode(n)
-    let x = newSymNode(copySym(n[namePos].sym, c.idgen))
-    c.transCon.mapping[n[namePos].sym.itemId] = x
+    var name = n[namePos]
+    if name.kind == nkPostfix: name = name[1]
+    let x = newSymNode(copySym(name.sym, c.idgen))
+    c.transCon.mapping[name.sym.itemId] = x
     result[namePos] = x # we have to copy proc definitions for iters
     for i in 1..<n.len:
       result[i] = introduceNewLocalVars(c, n[i])

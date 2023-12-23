@@ -926,12 +926,22 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         if importantComments(c.config):
           # keep documentation information:
           b.comment = a.comment
-        # postfix not generated here (to generate, get rid of it in transf)
         if a[j].kind == nkPragmaExpr:
-          var p = newNodeI(nkPragmaExpr, a.info)
-          p.add newSymNode(v)
+          var p = newNodeI(nkPragmaExpr, a[j].info)
+          if a[j][0].kind == nkPostfix:
+            var pf = newNodeI(nkPostfix, a[j][0].info)
+            pf.add a[j][0][0]
+            pf.add newSymNode(v)
+            p.add pf
+          else:
+            p.add newSymNode(v)
           p.add a[j][1]
           b.add p
+        elif a[j].kind == nkPostfix:
+          var pf = newNodeI(nkPostfix, a[j].info)
+          pf.add a[j][0]
+          pf.add newSymNode(v)
+          b.add pf
         else:
           b.add newSymNode(v)
         # keep type desc for doc generator
@@ -1039,12 +1049,22 @@ proc semConst(c: PContext, n: PNode): PNode =
           setVarType(c, v, typ)
         b = newNodeI(nkConstDef, a.info)
         if importantComments(c.config): b.comment = a.comment
-        # postfix not generated here (to generate, get rid of it in transf)
         if a[j].kind == nkPragmaExpr:
-          var p = newNodeI(nkPragmaExpr, a.info)
-          p.add newSymNode(v)
+          var p = newNodeI(nkPragmaExpr, a[j].info)
+          if a[j][0].kind == nkPostfix:
+            var pf = newNodeI(nkPostfix, a[j][0].info)
+            pf.add a[j][0][0]
+            pf.add newSymNode(v)
+            p.add pf
+          else:
+            p.add newSymNode(v)
           p.add a[j][1].copyTree
           b.add p
+        elif a[j].kind == nkPostfix:
+          var pf = newNodeI(nkPostfix, a[j].info)
+          pf.add a[j][0]
+          pf.add newSymNode(v)
+          b.add pf
         else:
           b.add newSymNode(v)
         b.add a[1]
@@ -2368,7 +2388,10 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     # name isn't changed (see taccent_highlight). We don't want to check if this is the
     # defintion yet since we are missing some info (comments, side effects)
     s = semIdentDef(c, n[namePos], kind, reportToNimsuggest=isHighlight)
-    n[namePos] = newSymNode(s)
+    if n[namePos].kind == nkPostfix:
+      n[namePos][1] = newSymNode(s)
+    else:
+      n[namePos] = newSymNode(s)
     when false:
       # disable for now
       if sfNoForward in c.module.flags and

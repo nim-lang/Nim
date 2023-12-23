@@ -895,6 +895,16 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
         fSym.sym.ast.flags.incl nfSkipFieldChecking
       if a.kind == nkEmpty: father.add fSym
       else: a.add fSym
+      if n[i].kind == nkPragmaExpr:
+        if n[i][0].kind == nkPostfix:
+          n[i][0][1] = fSym
+        else:
+          n[i][0] = fSym
+      else:
+        if n[i].kind == nkPostfix:
+          n[i][1] = fSym
+        else:
+          n[i] = fSym
       styleCheckDef(c, f)
       onDef(f.info, f)
     if a.kind != nkEmpty: father.add a
