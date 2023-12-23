@@ -1534,7 +1534,6 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
         indentNL(g)
         gsub(g, n[2])
         dedent(g)
-        putNL(g)
     else:
       put(g, tkObject, "object")
   of nkRecList:
