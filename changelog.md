@@ -14,6 +14,11 @@
   ```
   will no longer compile.
 
+- Typed AST of type, variable and routine declarations including symbol
+  implementations now retain the postfix export marker node on the name.
+  Macros that examine the name node of these declarations may now need to skip
+  `nnkPostfix` nodes. 
+
 ## Standard library additions and changes
 
 [//]: # "Changes:"
