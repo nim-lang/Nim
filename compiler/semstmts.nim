@@ -2539,8 +2539,9 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     n[genericParamsPos] = proto.ast[genericParamsPos]
     n[paramsPos] = proto.ast[paramsPos]
     n[pragmasPos] = proto.ast[pragmasPos]
-    if n[namePos].kind != nkSym: internalError(c.config, n.info, "semProcAux")
-    n[namePos].sym = proto
+    let name = skipPostfix(n[namePos])
+    if name.kind != nkSym: internalError(c.config, n.info, "semProcAux")
+    name.sym = proto
     if importantComments(c.config) and proto.ast.comment.len > 0:
       n.comment = proto.ast.comment
     proto.ast = n             # needed for code generation
@@ -2659,7 +2660,7 @@ proc semIterator(c: PContext, n: PNode): PNode =
   # nkIteratorDef aynmore, return. The iterator then might have been
   # sem'checked already. (Or not, if the macro skips it.)
   if result.kind != n.kind: return
-  var s = result[namePos].sym
+  let s = skipPostfix(result[namePos]).sym
   var t = s.typ
   if t.returnType == nil and s.typ.callConv != ccClosure:
     localError(c.config, n.info, "iterator needs a return type")
@@ -2693,7 +2694,7 @@ proc semMethod(c: PContext, n: PNode): PNode =
   # nkIteratorDef aynmore, return. The iterator then might have been
   # sem'checked already. (Or not, if the macro skips it.)
   if result.kind != nkMethodDef: return
-  var s = result[namePos].sym
+  let s = skipPostfix(result[namePos]).sym
   # we need to fix the 'auto' return type for the dispatcher here (see tautonotgeneric
   # test case):
   let disp = getDispatcher(s)
@@ -2714,7 +2715,7 @@ proc semConverterDef(c: PContext, n: PNode): PNode =
   # nkIteratorDef aynmore, return. The iterator then might have been
   # sem'checked already. (Or not, if the macro skips it.)
   if result.kind != nkConverterDef: return
-  var s = result[namePos].sym
+  let s = skipPostfix(result[namePos]).sym
   var t = s.typ
   if t.returnType == nil: localError(c.config, n.info, errXNeedsReturnType % "converter")
   if t.len != 2: localError(c.config, n.info, "a converter takes exactly one argument")
@@ -2728,7 +2729,7 @@ proc semMacroDef(c: PContext, n: PNode): PNode =
   # nkIteratorDef aynmore, return. The iterator then might have been
   # sem'checked already. (Or not, if the macro skips it.)
   if result.kind != nkMacroDef: return
-  var s = result[namePos].sym
+  let s = skipPostfix(result[namePos]).sym
   var t = s.typ
   var allUntyped = true
   var nullary = true
