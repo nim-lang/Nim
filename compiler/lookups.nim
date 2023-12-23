@@ -621,9 +621,10 @@ type
   TLookupFlag* = enum
     checkAmbiguity, checkUndeclared, checkModule, checkPureEnumFields
 
-proc lookUpCandidates*(c: PContext, ident: PIdent): seq[PSym] =
-  const allExceptModule = {low(TSymKind)..high(TSymKind)} - {skModule, skPackage}
-  result = searchInScopesFilterBy(c, ident, allExceptModule)
+const allExceptModule = {low(TSymKind)..high(TSymKind)} - {skModule, skPackage}
+
+proc lookUpCandidates*(c: PContext, ident: PIdent, filter: set[TSymKind]): seq[PSym] =
+  result = searchInScopesFilterBy(c, ident, filter)
   if result.len == 0:
     result.add allPureEnumFields(c, ident)
 
@@ -642,7 +643,7 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
           if amb and checkAmbiguity in flags:
             errorUseQualifier(c, n.info, candidates)
     else:
-      let candidates = lookUpCandidates(c, ident)
+      let candidates = lookUpCandidates(c, ident, allExceptModule)
       if candidates.len > 0:
         result = candidates[0]
         amb = candidates.len > 1

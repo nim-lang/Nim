@@ -3043,7 +3043,10 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
           s = f.sym
           break
     if s == nil:
-      let candidates = lookUpCandidates(c, ident)
+      var filter = {low(TSymKind)..high(TSymKind)}
+      if efNoEvaluateGeneric in flags:
+        filter.excl {skModule, skPackage}
+      let candidates = lookUpCandidates(c, ident, filter)
       if candidates.len == 0:
         s = errorUndeclaredIdentifierHint(c, n, ident)
       elif candidates.len == 1 or {efNoEvaluateGeneric, efInCall} * flags != {}:
@@ -3053,7 +3056,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
         # but type symbols cannot participate in symchoices
         var choice = newNodeIT(nkClosedSymChoice, n.info, newTypeS(tyNone, c))
         for c in candidates:
-          if c.kind != skType:
+          if c.kind notin {skType, skModule, skPackage}:
             choice.add newSymNode(c)
         if choice.len == 0:
           errorUseQualifier(c, n.info, candidates)
