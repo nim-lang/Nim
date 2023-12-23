@@ -36,16 +36,16 @@ jobs:
         CPU: amd64
         NIM_COMPILE_TO_CPP: true
       Windows_amd64_batch0_3:
-        vmImage: 'windows-2019'
+        vmImage: 'windows-2022'
         CPU: amd64
         # see also: `NIM_TEST_PACKAGES`
         NIM_TESTAMENT_BATCH: "0_3"
       Windows_amd64_batch1_3:
-        vmImage: 'windows-2019'
+        vmImage: 'windows-2022'
         CPU: amd64
         NIM_TESTAMENT_BATCH: "1_3"
       Windows_amd64_batch2_3:
-        vmImage: 'windows-2019'
+        vmImage: 'windows-2022'
         CPU: amd64
         NIM_TESTAMENT_BATCH: "2_3"
 
