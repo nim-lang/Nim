@@ -805,9 +805,7 @@ proc getAllRunnableExamples(d: PDoc, n: PNode, dest: var ItemPre) =
 proc isVisible(d: PDoc; n: PNode): bool =
   result = false
   if n.kind == nkPostfix:
-    if n.len == 2 and n[0].kind == nkIdent:
-      var v = n[0].ident
-      result = v.id == ord(wStar) or v.id == ord(wMinus)
+    result = isVisible(d, n[1])
   elif n.kind == nkSym:
     # we cannot generate code for forwarded symbols here as we have no
     # exception tracking information here. Instead we copy over the comment
