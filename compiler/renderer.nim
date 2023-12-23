@@ -86,7 +86,7 @@ proc isExported(n: PNode): bool =
   ## This is meant to be used with idents in nkIdentDefs.
   case n.kind
   of nkPostfix:
-    n[0].ident.s == "*" and n[1].kind == nkIdent
+    true
   of nkPragmaExpr:
     n[0].isExported()
   else: false
@@ -1436,7 +1436,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
       let s = n[1].sym
       var ret = renderDefinitionName(s)
       ret.genSymSuffix(s)
-      put(g, tkSymbol, ret)
+      put(g, tkSymbol, ret, if renderSyms in g.flags: s else: nil)
     else:
       gsub(g, n, 1)
     if renderNoPostfix notin g.flags:
