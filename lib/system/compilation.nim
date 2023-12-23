@@ -14,12 +14,6 @@ const
     ## is the patch number of Nim's version.
     ## Odd for devel, even for releases.
 
-{.push profiler: off.}
-let nimvm* {.magic: "Nimvm", compileTime.}: bool = false
-  ## May be used only in `when` expression.
-  ## It is true in Nim VM context and false otherwise.
-{.pop.}
-
 const
   isMainModule* {.magic: "IsMainModule".}: bool = false
     ## True only when accessed in the main module. This works thanks to
@@ -206,3 +200,18 @@ proc gorgeEx*(command: string, input = "", cache = ""): tuple[output: string,
   ## Similar to `gorge <#gorge,string,string,string>`_ but also returns the
   ## precious exit code.
   discard
+
+when defined(nimHasPragmaOption):
+  type PragmaOption* {.compilerproc.} = enum
+    off, on
+else:
+  const
+    on* = true    ## Alias for `true`.
+    off* = false  ## Alias for `false`.
+  type PragmaOption* {.compilerproc.} = bool
+
+{.push profiler: off.}
+let nimvm* {.magic: "Nimvm", compileTime.}: bool = false
+  ## May be used only in `when` expression.
+  ## It is true in Nim VM context and false otherwise.
+{.pop.}

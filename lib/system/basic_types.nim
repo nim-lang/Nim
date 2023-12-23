@@ -45,10 +45,6 @@ type # we need to start a new type section here, so that ``0`` can have a type
   bool* {.magic: "Bool".} = enum ## Built-in boolean type.
     false = 0, true = 1
 
-const
-  on* = true    ## Alias for `true`.
-  off* = false  ## Alias for `false`.
-
 type
   SomeSignedInt* = int|int8|int16|int32|int64
     ## Type class matching all signed integer types.
@@ -68,27 +64,3 @@ type
   SomeOrdinal* = int|int8|int16|int32|int64|bool|enum|uint|uint8|uint16|uint32|uint64
     ## Type class matching all ordinal types; however this includes enums with
     ## holes. See also `Ordinal`
-
-
-{.push warning[GcMem]: off, warning[Uninit]: off.}
-{.push hints: off.}
-
-proc `not`*(x: bool): bool {.magic: "Not", noSideEffect.}
-  ## Boolean not; returns true if `x == false`.
-
-proc `and`*(x, y: bool): bool {.magic: "And", noSideEffect.}
-  ## Boolean `and`; returns true if `x == y == true` (if both arguments
-  ## are true).
-  ##
-  ## Evaluation is lazy: if `x` is false, `y` will not even be evaluated.
-proc `or`*(x, y: bool): bool {.magic: "Or", noSideEffect.}
-  ## Boolean `or`; returns true if `not (not x and not y)` (if any of
-  ## the arguments is true).
-  ##
-  ## Evaluation is lazy: if `x` is true, `y` will not even be evaluated.
-proc `xor`*(x, y: bool): bool {.magic: "Xor", noSideEffect.}
-  ## Boolean `exclusive or`; returns true if `x != y` (if either argument
-  ## is true while the other is false).
-
-{.pop.}
-{.pop.}

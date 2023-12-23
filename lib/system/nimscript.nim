@@ -69,14 +69,20 @@ proc switch*(key: string, val="") =
   ## example `switch("checks", "on")`.
   builtin
 
-proc warning*(name: string; val: bool) =
+proc optionToString(val: PragmaOption): string =
+  when defined(nimHasPragmaOption):
+    $val
+  else:
+    if val: "on" else: "off"
+
+proc warning*(name: string; val: PragmaOption) =
   ## Disables or enables a specific warning.
-  let v = if val: "on" else: "off"
+  let v = optionToString(val)
   warningImpl(name & ":" & v, "warning:" & name & ":" & v)
 
-proc hint*(name: string; val: bool) =
+proc hint*(name: string; val: PragmaOption) =
   ## Disables or enables a specific hint.
-  let v = if val: "on" else: "off"
+  let v = optionToString(val)
   hintImpl(name & ":" & v, "hint:" & name & ":" & v)
 
 proc patchFile*(package, filename, replacement: string) =
