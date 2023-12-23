@@ -3043,10 +3043,6 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
           s = f.sym
           break
     if s == nil:
-      let checks = if efNoEvaluateGeneric in flags:
-          {checkUndeclared, checkPureEnumFields}
-        else:
-          {checkUndeclared, checkModule, checkPureEnumFields}
       let candidates = lookUpCandidates(c, ident)
       if candidates.len == 0:
         s = errorUndeclaredIdentifierHint(c, n, ident)
@@ -3065,6 +3061,8 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
           resolveSymChoice(c, choice, flags, expectedType)
           if choice.kind == nkSym:
             s = choice.sym
+          elif efAllowSymChoice in flags:
+            result = choice
           else:
             errorUseQualifier(c, n.info, candidates)
     if s == nil:

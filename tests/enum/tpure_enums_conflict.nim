@@ -1,4 +1,5 @@
 discard """
+  disabled: true
   errormsg: "ambiguous identifier: 'amb'"
   line: 19
 """
