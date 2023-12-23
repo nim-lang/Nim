@@ -1297,7 +1297,7 @@ proc exportSym(d: PDoc; s: PSym) =
                    symbolOrId])
 
 proc documentNewEffect(cache: IdentCache; n: PNode): PNode =
-  let s = n[namePos].sym
+  let s = skipPostfix(n[namePos]).sym
   if tfReturnsNew in s.typ.flags:
     result = newIdentNode(getIdent(cache, "new"), n.info)
   else:
@@ -1306,7 +1306,7 @@ proc documentNewEffect(cache: IdentCache; n: PNode): PNode =
 proc documentEffect(cache: IdentCache; n, x: PNode, effectType: TSpecialWord, idx: int): PNode =
   let spec = effectSpec(x, effectType)
   if isNil(spec):
-    let s = n[namePos].sym
+    let s = skipPostfix(n[namePos]).sym
 
     let actual = s.typ.n[0]
     if actual.len != effectListLen: return
@@ -1328,7 +1328,7 @@ proc documentEffect(cache: IdentCache; n, x: PNode, effectType: TSpecialWord, id
     result = nil
 
 proc documentWriteEffect(cache: IdentCache; n: PNode; flag: TSymFlag; pragmaName: string): PNode =
-  let s = n[namePos].sym
+  let s = skipPostfix(n[namePos]).sym
   let params = s.typ.n
 
   var effects = newNodeI(nkBracket, n.info)
@@ -1343,7 +1343,7 @@ proc documentWriteEffect(cache: IdentCache; n: PNode; flag: TSymFlag; pragmaName
     result = nil
 
 proc documentRaises*(cache: IdentCache; n: PNode) =
-  if n[namePos].kind != nkSym: return
+  if skipPostfix(n[namePos]).kind != nkSym: return
   let pragmas = n[pragmasPos]
   let p1 = documentEffect(cache, n, pragmas, wRaises, exceptionEffects)
   let p2 = documentEffect(cache, n, pragmas, wTags, tagEffects)

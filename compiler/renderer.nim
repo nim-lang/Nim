@@ -1432,7 +1432,13 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
       while i < n.len and n[i].kind notin postExprBlocks: i.inc
       postStatements(g, n, i, fromStmtList)
   of nkPostfix:
-    gsub(g, n, 1)
+    if n[1].kind == nkSym:
+      let s = n[1].sym
+      var ret = renderDefinitionName(s)
+      ret.genSymSuffix(s)
+      put(g, tkSymbol, ret)
+    else:
+      gsub(g, n, 1)
     if renderNoPostfix notin g.flags:
       gsub(g, n, 0)
   of nkRange:
