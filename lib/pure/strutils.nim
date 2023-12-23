@@ -1019,6 +1019,8 @@ func toHex*[T: SomeInteger](x: T): string =
     else:
       toHexImpl(BiggestUInt(x), 2*sizeof(T), x < 0)
 
+const HexChars = "0123456789ABCDEF"
+
 func toHex*(s: string): string {.rtl.} =
   ## Converts a bytes string to its hexadecimal representation.
   ##
@@ -1036,13 +1038,31 @@ func toHex*(s: string): string {.rtl.} =
     doAssert b.toHex() == "41"
     doAssert c.toHex() == "00FF"
 
-  const HexChars = "0123456789ABCDEF"
   result = newString(s.len * 2)
   for pos, c in s:
     var n = ord(c)
     result[pos * 2 + 1] = HexChars[n and 0xF]
     n = n shr 4
     result[pos * 2] = HexChars[n]
+
+func toHex*(data: openarray[byte]): string {.rtl.} =
+  ## Convert bytes to a hexadecimal representation.
+  ##
+  ## The output is twice the input long. No prefix like
+  ## `0x` is generated.
+  runnableExamples:
+    let
+      a = @[0x12'u8, 0x34]
+      b = [0x78'u8, 0x9a, 0xbc]
+      c = newSeq[byte]()
+    doAssert a.toHex() == "1234"
+    doAssert b.toHex() == "789ABC"
+    doAssert c.toHex() == ""
+
+  result = newString(data.len * 2)
+  for pos, b in data:
+    result[(pos shl 1)] = HexChars[b shr 4]
+    result[(pos shl 1) or 1] = HexChars[b and 0xF]
 
 func toOctal*(c: char): string {.rtl, extern: "nsuToOctal".} =
   ## Converts a character `c` to its octal representation.
