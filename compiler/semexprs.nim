@@ -3038,12 +3038,20 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
     if s == nil:
       let checks = if efNoEvaluateGeneric in flags:
           {checkUndeclared, checkPureEnumFields}
-        elif efInCall in flags:
-          {checkUndeclared, checkModule, checkPureEnumFields}
         else:
-          {checkUndeclared, checkModule, checkAmbiguity, checkPureEnumFields}
+          {checkUndeclared, checkModule, checkPureEnumFields}
+      c.isAmbiguous = false
       s = qualifiedLookUp(c, n, checks)
-      if s == nil:
+      if c.isAmbiguous and {efNoEvaluateGeneric, efInCall} * flags == {}:
+        # ambiguous symbols have 1 last chance as a symchoice,
+        # but type symbols cannot participate in symchoices
+        const kinds = {low(TSymKind)..high(TSymKind)} - {skModule, skPackage, skType}
+        let choice = newNodeIT(nkClosedSymChoice, n.info, newTypeS(tyNone, c))
+        let candidates = searchInScopesFilterBy(c, considerQuotedIdent(c, n), kinds)
+        for c in candidates:
+          choice.add newSymNode(c)
+        return semSymChoice(c, choice, flags, expectedType)
+      elif s == nil:
         return
     if c.matchedConcept == nil: semCaptureSym(s, c.p.owner)
     case s.kind
