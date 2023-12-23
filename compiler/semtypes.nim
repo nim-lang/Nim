@@ -1597,7 +1597,7 @@ proc containsGenericInvocationWithForward(n: PNode): bool =
       if p.kind == nkIdentDefs:
         let pTyp = p[^2]
         if pTyp.typ != nil and pTyp.typ.kind == tyGenericInvocation and
-            pTyp.kind == nkBracketExpr and pTyp[0].kind == nkSym and pTyp[0].typ.kind == tyForward:
+            pTyp.typ[0].kind == tyForward:
           return true
   return false
 
