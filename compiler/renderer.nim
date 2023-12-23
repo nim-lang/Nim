@@ -1531,17 +1531,17 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
         gsub(g, n[0])
         gsub(g, n[1])
         gcoms(g)
+        indentNL(g)
         gsub(g, n[2])
+        dedent(g)
+        putNL(g)
     else:
       put(g, tkObject, "object")
   of nkRecList:
-    indentNL(g)
     for i in 0..<n.len:
       optNL(g)
       gsub(g, n[i], c)
       gcoms(g)
-    dedent(g)
-    putNL(g)
   of nkOfInherit:
     putWithSpace(g, tkOf, "of")
     gsub(g, n, 0)
