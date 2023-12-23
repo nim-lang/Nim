@@ -1259,6 +1259,9 @@ proc typeSectionTypeName(c: PContext; n: PNode): PNode =
     result = n[0]
   else:
     result = n
+  if result.kind == nkPostfix:
+    if result.len != 2: illFormedAst(n, c.config)
+    result = result[1]
   if result.kind != nkSym: illFormedAst(n, c.config)
 
 proc typeDefLeftSidePass(c: PContext, typeSection: PNode, i: int) =
@@ -1326,9 +1329,15 @@ proc typeDefLeftSidePass(c: PContext, typeSection: PNode, i: int) =
     elif s.owner == nil: s.owner = getCurrOwner(c)
 
   if name.kind == nkPragmaExpr:
-    typeDef[0][0] = newSymNode(s)
+    if name[0].kind == nkPostfix:
+      typeDef[0][0][1] = newSymNode(s)
+    else:
+      typeDef[0][0] = newSymNode(s)
   else:
-    typeDef[0] = newSymNode(s)
+    if name.kind == nkPostfix:
+      typeDef[0][1] = newSymNode(s)
+    else:
+      typeDef[0] = newSymNode(s)
 
 proc typeSectionLeftSidePass(c: PContext, n: PNode) =
   # process the symbols on the left side for the whole type section, before
@@ -1538,8 +1547,15 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
       of nkSym: obj.ast[0] = symNode
       of nkPragmaExpr:
         obj.ast[0] = a[0].shallowCopy
-        obj.ast[0][0] = symNode
+        if a[0][0].kind == nkPostfix:
+          obj.ast[0][0] = a[0][0].shallowCopy
+          obj.ast[0][0][1] = symNode
+        else:
+          obj.ast[0][0] = symNode
         obj.ast[0][1] = a[0][1]
+      of nkPostfix:
+        obj.ast[0] = a[0].shallowCopy
+        obj.ast[0][1] = symNode
       else: assert(false)
       obj.ast[1] = a[1]
       obj.ast[2] = a[2][0]
