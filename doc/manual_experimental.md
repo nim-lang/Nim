@@ -2598,7 +2598,7 @@ It gives an error: method `foo` can be defined only in the same module with its 
 
 
 inlineAsmSyntax pragma
-=============
+======================
 
 `inlineAsmSyntax` pragma allowing specify target inline assembler syntax in `asm` stmt.
 
