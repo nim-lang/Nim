@@ -2165,6 +2165,7 @@ proc genVarSection(c: var ProcCon; n: PNode) =
     else:
       var vn = a[0]
       if vn.kind == nkPragmaExpr: vn = vn[0]
+      if vn.kind == nkPostfix: vn = vn[1]
       if vn.kind == nkSym:
         let s = vn.sym
         if s.kind == skConst:
