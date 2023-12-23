@@ -2497,8 +2497,8 @@ proc genProc(cOuter: var ProcCon; prc: PSym) =
   dec cOuter.m.inProc
 
 proc genProc(cOuter: var ProcCon; n: PNode) =
-  if n.len == 0 or n[namePos].kind != nkSym: return
-  let prc = n[namePos].sym
+  if n.len == 0 or skipPostfix(n[namePos]).kind != nkSym: return
+  let prc = skipPostfix(n[namePos]).sym
   if isGenericRoutineStrict(prc) or isCompileTimeProc(prc) or sfForward in prc.flags: return
   genProc cOuter, prc
 
