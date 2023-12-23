@@ -1126,7 +1126,7 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags, nonEx
 
   var attype = ""
   if k in routineKinds and symNameNode.kind == nkSym:
-    let att = attachToType(d, nameNode.sym)
+    let att = attachToType(d, symNameNode.sym)
     if att != nil:
       attype = esc(d.target, att.name.s)
   elif k == skType and symNameNode.kind == nkSym and

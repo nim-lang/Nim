@@ -1594,8 +1594,10 @@ proc trySemObjectTypeForInheritedGenericInst(c: PContext, n: PNode, t: PType): b
 proc containsGenericInvocationWithForward(n: PNode): bool =
   if n.kind == nkSym and n.sym.ast != nil and n.sym.ast.len > 1 and n.sym.ast[2].kind == nkObjectTy:
     for p in n.sym.ast[2][^1]:
-      if p.kind == nkIdentDefs and p[1].typ != nil and p[1].typ.kind == tyGenericInvocation and
-        p[1][0].kind == nkSym and p[1][0].typ.kind == tyForward:
+      if p.kind == nkIdentDefs:
+        let pTyp = p[^2]
+        if pTyp.typ != nil and pTyp.typ.kind == tyGenericInvocation and
+            pTyp.kind == nkBracketExpr and pTyp[0].kind == nkSym and pTyp[0].typ.kind == tyForward:
           return true
   return false
 
