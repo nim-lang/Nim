@@ -347,8 +347,7 @@ proc getTypeImpl*(n: NimNode): NimNode {.magic: "NGetType", noSideEffect.} =
       newLit(x.getTypeImpl.repr)
     let t = """
 object
-  arr: array[0 .. 3, float32]
-"""
+  arr: array[0 .. 3, float32]"""
     doAssert(dumpTypeImpl(a) == t)
     doAssert(dumpTypeImpl(b) == t)
     doAssert(dumpTypeImpl(c) == t)
