@@ -3057,17 +3057,21 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
         var choice = newNodeIT(nkClosedSymChoice, n.info, newTypeS(tyNone, c))
         for c in candidates:
           if c.kind notin {skType, skModule, skPackage}:
-            choice.add newSymNode(c)
+            choice.add newSymNode(c, n.info)
         if choice.len == 0:
           errorUseQualifier(c, n.info, candidates)
         else:
           resolveSymChoice(c, choice, flags, expectedType)
-          if choice.kind == nkSym:
-            s = choice.sym
-          elif efAllowSymChoice in flags:
-            result = choice
+          if isSymChoice(choice):
+            if efAllowSymChoice in flags:
+              result = choice
+            else:
+              errorUseQualifier(c, n.info, candidates)
           else:
-            errorUseQualifier(c, n.info, candidates)
+            if choice.kind == nkSym:
+              s = choice.sym
+            else: # nkHiddenStdConv etc
+              result = semExpr(c, choice, flags, expectedType)
     if s == nil:
       return
     if c.matchedConcept == nil: semCaptureSym(s, c.p.owner)
