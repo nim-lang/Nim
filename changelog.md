@@ -29,6 +29,7 @@
 slots when enlarging a sequence.
 - Added `hasDefaultValue` to `std/typetraits` to check if a type has a valid default value.
 - Added Viewport API for the JavaScript targets in the `dom` module.
+- Added `toSinglyLinkedRing` and `toDoublyLinkedRing` to `std/lists` to convert from `openArray`s.
 
 [//]: # "Deprecations:"
 
