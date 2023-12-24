@@ -153,7 +153,7 @@ proc semSymChoice(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: P
     # this only makes sense for semSymChoice
     result = result[0]
   if isSymChoice(result) and efAllowSymChoice notin flags:
-    var err = "ambiguous identifier '" & result[0].sym.name.s &
+    var err = "ambiguous identifier: '" & result[0].sym.name.s &
       "' -- use one of the following:\n"
     for child in n:
       let candidate = child.sym
