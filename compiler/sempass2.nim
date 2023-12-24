@@ -1430,7 +1430,7 @@ proc subtypeRelation(g: ModuleGraph; spec, real: PNode): bool =
   else:
     return safeInheritanceDiff(g.excType(real), spec.typ) <= 0
 
-proc checkRaisesSpec(g: ModuleGraph; emitWarnings: bool; spec, real: PNode, msg: string, hints: bool;
+proc checkRaisesSpec(g: ModuleGraph; emitWarnings: bool; spec, real: PNode, msg: string, hints: PragmaOption;
                      effectPredicate: proc (g: ModuleGraph; a, b: PNode): bool {.nimcall.};
                      hintsArg: PNode = nil; isForbids: bool = false) =
   # check that any real exception is listed in 'spec'; mark those as used;
@@ -1453,7 +1453,7 @@ proc checkRaisesSpec(g: ModuleGraph; emitWarnings: bool; spec, real: PNode, msg:
               renderTree(rr) & " " & msg & typeToString(r.typ))
       popInfoContext(g.config)
   # hint about unnecessarily listed exception types:
-  if hints:
+  if hints == on:
     for s in 0..<spec.len:
       if not used.contains(s):
         message(g.config, spec[s].info, hintXCannotRaiseY,
