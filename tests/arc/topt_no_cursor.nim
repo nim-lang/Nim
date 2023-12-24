@@ -91,7 +91,7 @@ try:
             `=copy`(lan_ip, splitted[1])
           echo [lan_ip]
           echo [splitted[1]]
-          {.push, overflowChecks: false.}
+          {.push, overflowChecks: off.}
           inc(i, 1)
           {.pop.}
         finally:
@@ -115,7 +115,7 @@ block :tmp:
       addInterfaceDecl(c):
         :tmpD = `=dup`(sym)
         :tmpD
-      {.push, overflowChecks: false.}
+      {.push, overflowChecks: off.}
       inc(i, 1)
       {.pop.}
 `=destroy`(shadowScope)

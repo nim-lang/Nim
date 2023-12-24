@@ -64,7 +64,7 @@ var
   explosions: seq[PAnimation] = @[]
   gameRunning = true
   frameRate = newClock()
-  showStars = off
+  showStars = false
   levelArea: TIntRect
   videoMode: TVideoMode
   window: PRenderWindow
