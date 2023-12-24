@@ -1539,7 +1539,7 @@ proc genAsmStmt(p: BProc, t: PNode) =
   var s = newRopeAppender()
 
   var inlineAsmSyntax = ""
-  if (let p = t[0]; p).kind == nkPragma:
+  if (let p = t[0]; p.kind == nkPragma):
     for i in p:
       if whichPragma(i) == wInlineAsmSyntax:
         inlineAsmSyntax = i[1].strVal
