@@ -1538,16 +1538,16 @@ proc genAsmStmt(p: BProc, t: PNode) =
   genLineDir(p, t)
   var s = newRopeAppender()
 
-  var inlineAsmSyntax = ""
+  var asmSyntax = ""
   if (let p = t[0]; p.kind == nkPragma):
     for i in p:
-      if whichPragma(i) == wInlineAsmSyntax:
-        inlineAsmSyntax = i[1].strVal
+      if whichPragma(i) == wAsmSyntax:
+        asmSyntax = i[1].strVal
 
-  if inlineAsmSyntax != "" and 
+  if asmSyntax != "" and 
      not (
-      inlineAsmSyntax == "gcc" and hasGnuAsm in CC[p.config.cCompiler].props or
-      inlineAsmSyntax == "vcc" and hasGnuAsm notin CC[p.config.cCompiler].props):
+      asmSyntax == "gcc" and hasGnuAsm in CC[p.config.cCompiler].props or
+      asmSyntax == "vcc" and hasGnuAsm notin CC[p.config.cCompiler].props):
     localError(
       p.config, t.info, 
       "Your compiler does not support the specified inline assembler")

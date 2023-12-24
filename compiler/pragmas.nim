@@ -304,7 +304,7 @@ proc pragmaAsm*(c: PContext, n: PNode): char =
         of wSubsChar:
           if it[1].kind == nkCharLit: result = chr(int(it[1].intVal))
           else: invalidPragma(c, it)
-        of wInlineAsmSyntax:
+        of wAsmSyntax:
           let s = expectStrLit(c, it)
           if s notin ["gcc", "vcc"]: invalidPragma(c, it)
         else: invalidPragma(c, it)
