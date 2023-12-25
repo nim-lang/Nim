@@ -81,7 +81,7 @@ proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule;
         # instead we allow standalone sym nodes to have nfPreferredSym
         # which acts like an open symchoice in initOverloadIter
         result.flags.incl nfPreferredSym
-        result = newTreeIT(nkOpenSymChoice, info, result.typ, result)
+        #result = newTreeIT(nkOpenSymChoice, info, result.typ, result)
         incl(s.flags, sfUsed)
         markOwnerModuleAsUsed(c, s)
     else:
