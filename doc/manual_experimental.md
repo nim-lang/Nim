@@ -2600,7 +2600,7 @@ It gives an error: method `foo` can be defined only in the same module with its 
 asmSyntax pragma
 ================
 
-`asmSyntax` pragma allowing specify target inline assembler syntax in `asm` stmt.
+The `asmSyntax` pragma is used to specify target inline assembler syntax in an `asm` statement.
 
 It prevents compiling code with different of the target CC inline asm syntax, i.e. it will not allow gcc inline asm code to be compiled with vcc.
 
@@ -2611,4 +2611,4 @@ proc nothing() =
   """
 ```
 
-The current C(C++) backend implementation cannot generate code for gcc and for vcc at the same time. For example, `{.asmSyntax: "vcc".}` with the ICC compiler will not generate code with intel asm syntax, even though ICC can use both gcc-like asm and vcc-like.
+The current C(C++) backend implementation cannot generate code for gcc and for vcc at the same time. For example, `{.asmSyntax: "vcc".}` with the ICC compiler will not generate code with intel asm syntax, even though ICC can use both gcc-like and vcc-like asm.
