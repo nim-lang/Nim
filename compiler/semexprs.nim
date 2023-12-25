@@ -132,7 +132,10 @@ proc isSymChoice(n: PNode): bool {.inline.} =
   result = n.kind in nkSymChoices
 
 proc resolveSymChoice(c: PContext, n: var PNode, flags: TExprFlags = {}, expectedType: PType = nil) =
+  ## Attempts to resolve a symchoice `n`, `n` remains a symchoice if
+  ## it cannot be resolved (this is the case even when `n.len == 1`).
   if expectedType != nil:
+    # resolve from type inference, see paramTypesMatch
     n = fitNode(c, expectedType, n, n.info)
   if isSymChoice(n) and efAllowSymChoice notin flags:
     # some contexts might want sym choices preserved for later disambiguation
@@ -150,7 +153,6 @@ proc semSymChoice(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: P
   result = n
   resolveSymChoice(c, result, flags, expectedType)
   if isSymChoice(result) and result.len == 1:
-    # this only makes sense for semSymChoice
     result = result[0]
   if isSymChoice(result) and efAllowSymChoice notin flags:
     var err = "ambiguous identifier: '" & result[0].sym.name.s &
@@ -3045,11 +3047,13 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
     if s == nil:
       var filter = {low(TSymKind)..high(TSymKind)}
       if efNoEvaluateGeneric in flags:
+        # `a[...]` where `a` is a module or package is not possible
         filter.excl {skModule, skPackage}
       let candidates = lookUpCandidates(c, ident, filter)
       if candidates.len == 0:
         s = errorUndeclaredIdentifierHint(c, n, ident)
       elif candidates.len == 1 or {efNoEvaluateGeneric, efInCall} * flags != {}:
+        # unambiguous, or we don't care about ambiguity
         s = candidates[0]
       else:
         # ambiguous symbols have 1 last chance as a symchoice,
@@ -3059,9 +3063,12 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
           if c.kind notin {skType, skModule, skPackage}:
             choice.add newSymNode(c, n.info)
         if choice.len == 0:
+          # we know candidates.len > 1, we just couldn't put any in a symchoice
           errorUseQualifier(c, n.info, candidates)
         else:
           resolveSymChoice(c, choice, flags, expectedType)
+          # choice.len == 1 can be true here but as long as it's a symchoice
+          # it's still not resolved
           if isSymChoice(choice):
             if efAllowSymChoice in flags:
               result = choice
@@ -3070,7 +3077,8 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
           else:
             if choice.kind == nkSym:
               s = choice.sym
-            else: # nkHiddenStdConv etc
+            else:
+              # resolution could have generated nkHiddenStdConv etc
               result = semExpr(c, choice, flags, expectedType)
     if s == nil:
       return

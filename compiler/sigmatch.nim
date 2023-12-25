@@ -2346,6 +2346,7 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
   if arg == nil or arg.kind notin nkSymChoices:
     result = paramTypesMatchAux(m, f, a, arg, argOrig)
   else:
+    # symbol kinds that don't participate in symchoice type disambiguation:
     let matchSet = {low(TSymKind)..high(TSymKind)} - {skModule, skPackage, skType}
     
     var best = -1
