@@ -333,7 +333,6 @@ type
     mode*: TOverloadIterMode
     symChoiceIndex*: int
     symChoiceLastPreferred: bool
-    fallback: PSym
     currentScope: PScope
     importIdx: int
     marked: IntSet
@@ -736,6 +735,8 @@ proc initOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
   of nkSym:
     result = n.sym
     if nfPreferredSym in n.flags:
+      # standalone sym node with nfPreferredSym acts like an open symchoice,
+      # see semtempl.symChoice for reasoning
       o.mode = oimSymChoiceLocalLookup
       o.symChoiceLastPreferred = true
       o.currentScope = c.currentScope
@@ -847,9 +848,6 @@ proc nextOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
         result = nextOverloadIterImports(o, c, n)
     else:
       result = nil
-    if result == nil and o.fallback != nil and o.fallback.id notin o.marked:
-      result = o.fallback
-      o.fallback = nil
   of oimSelfModule:
     result = nextIdentIter(o.it, c.topLevelScope.symbols)
   of oimOtherModule:

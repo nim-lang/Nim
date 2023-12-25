@@ -66,20 +66,22 @@ proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule;
     a = nextOverloadIter(o, c, n)
   let info = getCallLineInfo(n)
   if i <= 1 and r != scForceOpen:
-    # XXX this makes more sense but breaks bootstrapping for now:
-    # (s.kind notin routineKinds or s.magic != mNone):
-    # for instance 'nextTry' is both in tables.nim and astalgo.nim ...
     if not isField or sfGenSym notin s.flags:
       result = newSymNode(s, info)
       if r == scClosed or n.kind == nkDotExpr or
+          # also bind magic procs:
           (s.magic != mNone and s.kind in routineKinds):
         markUsed(c, info, s)
         onUse(info, s)
       else:
-        # could maybe instead generate a open symchoice with a preferred sym,
-        # which the logic for is in the top else branch
-        # XXX why have this then
+        # we need a node with a type here so things like default parameters,
+        # which use semGenericStmt, can infer the parameter type
+        # from expressions like `false`
+        # but symchoices having types can mislead the compiler
+        # instead we allow standalone sym nodes to have nfPreferredSym
+        # which acts like an open symchoice in initOverloadIter
         result.flags.incl nfPreferredSym
+        #result = newTreeIT(nkOpenSymChoice, info, result.typ, result)
         incl(s.flags, sfUsed)
         markOwnerModuleAsUsed(c, s)
     else:
