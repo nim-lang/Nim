@@ -3109,6 +3109,8 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
       result = semSymChoice(c, result, flags, expectedType)
   of nkClosedSymChoice, nkOpenSymChoice:
     result = semSymChoice(c, result, flags, expectedType)
+    if isSymChoice(result):
+      return # don't put nfSem
   of nkSym:
     let s = n.sym
     if nfOpenSym in n.flags:

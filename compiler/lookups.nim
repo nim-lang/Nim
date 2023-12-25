@@ -268,41 +268,6 @@ proc cmpScopes*(ctx: PContext, s: PSym): int =
   else:
     result = 1
 
-proc isAmbiguous*(c: PContext, s: PIdent, filter: TSymKinds, sym: var PSym): bool =
-  result = false
-  block outer:
-    for scope in allScopes(c.currentScope):
-      var ti: TIdentIter
-      var candidate = initIdentIter(ti, scope.symbols, s)
-      var scopeHasCandidate = false
-      while candidate != nil:
-        if candidate.kind in filter:
-          if scopeHasCandidate:
-            # 2 candidates in same scope, ambiguous
-            return true
-          else:
-            scopeHasCandidate = true
-            sym = candidate
-        candidate = nextIdentIter(ti, scope.symbols)
-      if scopeHasCandidate:
-        # scope had a candidate but wasn't ambiguous
-        return false
-
-  var importsHaveCandidate = false
-  var marked = initIntSet()
-  for im in c.imports.mitems:
-    for s in symbols(im, marked, s, c.graph):
-      if s.kind in filter:
-        if importsHaveCandidate:
-          # 2 candidates among imports, ambiguous
-          return true
-        else:
-          importsHaveCandidate = true
-          sym = s
-  if importsHaveCandidate:
-    # imports had a candidate but wasn't ambiguous
-    return false
-
 proc errorSym*(c: PContext, ident: PIdent, info: TLineInfo): PSym =
   ## creates an error symbol to avoid cascading errors (for IDE support)
   result = newSym(skError, ident, c.idgen, getCurrOwner(c), info, {})
