@@ -153,20 +153,6 @@ proc pragmaEnsures(c: PContext, n: PNode) =
     n[1] = c.semExpr(c, n[1])
     closeScope(c)
 
-proc pragmaAsm*(c: PContext, n: PNode): char =
-  result = '\0'
-  if n != nil:
-    for i in 0..<n.len:
-      let it = n[i]
-      if it.kind in nkPragmaCallKinds and it.len == 2 and it[0].kind == nkIdent:
-        case whichKeyword(it[0].ident)
-        of wSubsChar:
-          if it[1].kind == nkCharLit: result = chr(int(it[1].intVal))
-          else: invalidPragma(c, it)
-        else: invalidPragma(c, it)
-      else:
-        invalidPragma(c, it)
-
 proc setExternName(c: PContext; s: PSym, extname: string, info: TLineInfo) =
   # special cases to improve performance:
   if extname == "$1":
@@ -306,6 +292,24 @@ proc pragmaNoForward*(c: PContext, n: PNode; flag=sfNoForward) =
   message(c.config, n.info, warnDeprecated,
           "use {.experimental: \"codeReordering\".} instead; " &
           (if flag == sfNoForward: "{.noForward.}" else: "{.reorder.}") & " is deprecated")
+
+proc pragmaAsm*(c: PContext, n: PNode): char =
+  ## Checks asm pragmas and get's the asm subschar (default: '`').
+  result = '\0'
+  if n != nil:
+    for i in 0..<n.len:
+      let it = n[i]
+      if it.kind in nkPragmaCallKinds and it.len == 2 and it[0].kind == nkIdent:
+        case whichKeyword(it[0].ident)
+        of wSubsChar:
+          if it[1].kind == nkCharLit: result = chr(int(it[1].intVal))
+          else: invalidPragma(c, it)
+        of wAsmSyntax:
+          let s = expectStrLit(c, it)
+          if s notin ["gcc", "vcc"]: invalidPragma(c, it)
+        else: invalidPragma(c, it)
+      else:
+        invalidPragma(c, it)
 
 proc processCallConv(c: PContext, n: PNode) =
   if n.kind in nkPragmaCallKinds and n.len == 2 and n[1].kind == nkIdent:
