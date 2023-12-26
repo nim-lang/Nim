@@ -257,7 +257,7 @@ type
     tm_wday*: cint  ## Day of week [0,6] (Sunday =0).
     tm_yday*: cint  ## Day of year [0,365].
     tm_isdst*: cint ## Daylight Savings flag.
-  Itimerspec* {.importc: "struct itimerspec", header: "<time.h>",
+  ItimerSpec* {.importc: "struct itimerspec", header: "<time.h>",
                  final, pure.} = object ## struct itimerspec
     it_interval*: Timespec  ## Timer period.
     it_value*: Timespec     ## Timer expiration.
@@ -266,7 +266,7 @@ type
     ## Possibly volatile-qualified integer type of an object that can be
     ## accessed as an atomic entity, even in the presence of asynchronous
     ## interrupts.
-  Sigset* {.importc: "sigset_t", header: "<signal.h>", final, pure.} = object
+  SigSet* {.importc: "sigset_t", header: "<signal.h>", final, pure.} = object
 
   SigEvent* {.importc: "struct sigevent",
                header: "<signal.h>", final, pure.} = object ## struct sigevent
@@ -280,12 +280,12 @@ type
              header: "<signal.h>", final, pure.} = object ## struct sigval
     sival_ptr*: pointer ## pointer signal value;
                         ## integer signal value not defined!
-  Sigaction* {.importc: "struct sigaction",
+  SigAction* {.importc: "struct sigaction",
                 header: "<signal.h>", final, pure.} = object ## struct sigaction
     sa_handler*: proc (x: cint) {.noconv.}  ## Pointer to a signal-catching
                                             ## function or one of the macros
                                             ## SIG_IGN or SIG_DFL.
-    sa_mask*: Sigset ## Set of signals to be blocked during execution of
+    sa_mask*: SigSet ## Set of signals to be blocked during execution of
                       ## the signal handling function.
     sa_flags*: cint   ## Special flags.
     sa_sigaction*: proc (x: cint, y: ptr SigInfo, z: pointer) {.noconv.}
@@ -341,7 +341,7 @@ type
                final, pure.} = object ## ucontext_t
     uc_link*: ptr Ucontext  ## Pointer to the context that is resumed
                             ## when this context returns.
-    uc_sigmask*: Sigset     ## The set of signals that are blocked when this
+    uc_sigmask*: SigSet     ## The set of signals that are blocked when this
                             ## context is active.
     uc_stack*: Stack        ## The stack used by this context.
     uc_mcontext*: Mcontext  ## A machine-specific representation of the saved

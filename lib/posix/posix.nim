@@ -744,11 +744,11 @@ proc time*(a1: var Time): Time {.importc, header: "<time.h>", sideEffect.}
 proc timer_create*(a1: ClockId, a2: var SigEvent,
                a3: var Timer): cint {.importc, header: "<time.h>".}
 proc timer_delete*(a1: Timer): cint {.importc, header: "<time.h>".}
-proc timer_gettime*(a1: Timer, a2: var Itimerspec): cint {.
+proc timer_gettime*(a1: Timer, a2: var ItimerSpec): cint {.
   importc, header: "<time.h>".}
 proc timer_getoverrun*(a1: Timer): cint {.importc, header: "<time.h>".}
-proc timer_settime*(a1: Timer, a2: cint, a3: var Itimerspec,
-               a4: var Itimerspec): cint {.importc, header: "<time.h>".}
+proc timer_settime*(a1: Timer, a2: cint, a3: var ItimerSpec,
+               a4: var ItimerSpec): cint {.importc, header: "<time.h>".}
 proc tzset*() {.importc, header: "<time.h>".}
 
 
@@ -783,46 +783,46 @@ proc bsd_signal*(a1: cint, a2: proc (x: pointer) {.noconv.}) {.
 proc kill*(a1: Pid, a2: cint): cint {.importc, header: "<signal.h>", sideEffect.}
 proc killpg*(a1: Pid, a2: cint): cint {.importc, header: "<signal.h>", sideEffect.}
 proc pthread_kill*(a1: Pthread, a2: cint): cint {.importc, header: "<signal.h>".}
-proc pthread_sigmask*(a1: cint, a2, a3: var Sigset): cint {.
+proc pthread_sigmask*(a1: cint, a2, a3: var SigSet): cint {.
   importc, header: "<signal.h>".}
 proc `raise`*(a1: cint): cint {.importc, header: "<signal.h>".}
-proc sigaction*(a1: cint, a2, a3: var Sigaction): cint {.
+proc sigaction*(a1: cint, a2, a3: var SigAction): cint {.
   importc, header: "<signal.h>".}
 
-proc sigaction*(a1: cint, a2: var Sigaction; a3: ptr Sigaction = nil): cint {.
+proc sigaction*(a1: cint, a2: var SigAction; a3: ptr SigAction = nil): cint {.
   importc, header: "<signal.h>".}
 
-proc sigaddset*(a1: var Sigset, a2: cint): cint {.importc, header: "<signal.h>".}
+proc sigaddset*(a1: var SigSet, a2: cint): cint {.importc, header: "<signal.h>".}
 proc sigaltstack*(a1, a2: var Stack): cint {.importc, header: "<signal.h>".}
-proc sigdelset*(a1: var Sigset, a2: cint): cint {.importc, header: "<signal.h>".}
-proc sigemptyset*(a1: var Sigset): cint {.importc, header: "<signal.h>".}
-proc sigfillset*(a1: var Sigset): cint {.importc, header: "<signal.h>".}
+proc sigdelset*(a1: var SigSet, a2: cint): cint {.importc, header: "<signal.h>".}
+proc sigemptyset*(a1: var SigSet): cint {.importc, header: "<signal.h>".}
+proc sigfillset*(a1: var SigSet): cint {.importc, header: "<signal.h>".}
 proc sighold*(a1: cint): cint {.importc, header: "<signal.h>".}
 proc sigignore*(a1: cint): cint {.importc, header: "<signal.h>".}
 proc siginterrupt*(a1, a2: cint): cint {.importc, header: "<signal.h>".}
-proc sigismember*(a1: var Sigset, a2: cint): cint {.importc, header: "<signal.h>".}
+proc sigismember*(a1: var SigSet, a2: cint): cint {.importc, header: "<signal.h>".}
 proc signal*(a1: cint, a2: Sighandler) {.
   importc, header: "<signal.h>".}
 proc sigpause*(a1: cint): cint {.importc, header: "<signal.h>".}
-proc sigpending*(a1: var Sigset): cint {.importc, header: "<signal.h>".}
-proc sigprocmask*(a1: cint, a2, a3: var Sigset): cint {.
+proc sigpending*(a1: var SigSet): cint {.importc, header: "<signal.h>".}
+proc sigprocmask*(a1: cint, a2, a3: var SigSet): cint {.
   importc, header: "<signal.h>".}
 proc sigqueue*(a1: Pid, a2: cint, a3: SigVal): cint {.
   importc, header: "<signal.h>".}
 proc sigrelse*(a1: cint): cint {.importc, header: "<signal.h>".}
 proc sigset*(a1: int, a2: proc (x: cint) {.noconv.}) {.
   importc, header: "<signal.h>".}
-proc sigsuspend*(a1: var Sigset): cint {.importc, header: "<signal.h>".}
+proc sigsuspend*(a1: var SigSet): cint {.importc, header: "<signal.h>".}
 
 when defined(android):
   proc syscall(arg: clong): clong {.varargs, importc: "syscall", header: "<unistd.h>".}
   var NR_rt_sigtimedwait {.importc: "__NR_rt_sigtimedwait", header: "<sys/syscall.h>".}: clong
   var NSIGMAX {.importc: "NSIG", header: "<signal.h>".}: clong
 
-  proc sigtimedwait*(a1: var Sigset, a2: var SigInfo, a3: var Timespec): cint =
+  proc sigtimedwait*(a1: var SigSet, a2: var SigInfo, a3: var Timespec): cint =
     result = cint(syscall(NR_rt_sigtimedwait, addr(a1), addr(a2), addr(a3), NSIGMAX div 8))
 else:
-  proc sigtimedwait*(a1: var Sigset, a2: var SigInfo,
+  proc sigtimedwait*(a1: var SigSet, a2: var SigInfo,
                      a3: var Timespec): cint {.importc, header: "<signal.h>".}
 
 when defined(sunos) or defined(solaris):
@@ -832,9 +832,9 @@ when defined(sunos) or defined(solaris):
   # https://www.illumos.org/man/2/sigwait
   {.passc: "-D_POSIX_PTHREAD_SEMANTICS".}
 
-proc sigwait*(a1: var Sigset, a2: var cint): cint {.
+proc sigwait*(a1: var SigSet, a2: var cint): cint {.
   importc, header: "<signal.h>".}
-proc sigwaitinfo*(a1: var Sigset, a2: var SigInfo): cint {.
+proc sigwaitinfo*(a1: var SigSet, a2: var SigInfo): cint {.
   importc, header: "<signal.h>".}
 
 when not defined(nintendoswitch):
@@ -867,7 +867,7 @@ proc FD_SET*(a1: cint | SocketHandle, a2: var TFdSet) {.
 proc FD_ZERO*(a1: var TFdSet) {.importc, header: "<sys/select.h>".}
 
 proc pselect*(a1: cint, a2, a3, a4: ptr TFdSet, a5: ptr Timespec,
-         a6: var Sigset): cint  {.importc, header: "<sys/select.h>".}
+         a6: var SigSet): cint  {.importc, header: "<sys/select.h>".}
 proc select*(a1: cint | SocketHandle, a2, a3, a4: ptr TFdSet, a5: ptr Timeval): cint {.
              importc, header: "<sys/select.h>".}
 
@@ -890,7 +890,7 @@ when hasSpawnH:
   proc posix_spawnattr_destroy*(a1: var Tposix_spawnattr): cint {.
     importc, header: "<spawn.h>".}
   proc posix_spawnattr_getsigdefault*(a1: var Tposix_spawnattr,
-            a2: var Sigset): cint {.importc, header: "<spawn.h>".}
+            a2: var SigSet): cint {.importc, header: "<spawn.h>".}
   proc posix_spawnattr_getflags*(a1: var Tposix_spawnattr,
             a2: var cshort): cint {.importc, header: "<spawn.h>".}
   proc posix_spawnattr_getpgroup*(a1: var Tposix_spawnattr,
@@ -900,12 +900,12 @@ when hasSpawnH:
   proc posix_spawnattr_getschedpolicy*(a1: var Tposix_spawnattr,
             a2: var cint): cint {.importc, header: "<spawn.h>".}
   proc posix_spawnattr_getsigmask*(a1: var Tposix_spawnattr,
-            a2: var Sigset): cint {.importc, header: "<spawn.h>".}
+            a2: var SigSet): cint {.importc, header: "<spawn.h>".}
 
   proc posix_spawnattr_init*(a1: var Tposix_spawnattr): cint {.
     importc, header: "<spawn.h>".}
   proc posix_spawnattr_setsigdefault*(a1: var Tposix_spawnattr,
-            a2: var Sigset): cint {.importc, header: "<spawn.h>".}
+            a2: var SigSet): cint {.importc, header: "<spawn.h>".}
   proc posix_spawnattr_setflags*(a1: var Tposix_spawnattr, a2: cint): cint {.
     importc, header: "<spawn.h>".}
   proc posix_spawnattr_setpgroup*(a1: var Tposix_spawnattr, a2: Pid): cint {.
@@ -917,7 +917,7 @@ when hasSpawnH:
                                        a2: cint): cint {.
                                        importc, header: "<spawn.h>".}
   proc posix_spawnattr_setsigmask*(a1: var Tposix_spawnattr,
-            a2: var Sigset): cint {.importc, header: "<spawn.h>".}
+            a2: var SigSet): cint {.importc, header: "<spawn.h>".}
   proc posix_spawnp*(a1: var Pid, a2: cstring,
             a3: var Tposix_spawn_file_actions,
             a4: var Tposix_spawnattr,

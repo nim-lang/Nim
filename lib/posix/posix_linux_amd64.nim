@@ -276,7 +276,7 @@ type
     tm_gmtoff*: clong
     tm_zone*: cstring
 
-  Itimerspec* {.importc: "struct itimerspec", header: "<time.h>",
+  ItimerSpec* {.importc: "struct itimerspec", header: "<time.h>",
                  final, pure.} = object ## struct itimerspec
     it_interval*: Timespec  ## Timer period.
     it_value*: Timespec     ## Timer expiration.
@@ -285,7 +285,7 @@ type
     ## Possibly volatile-qualified integer type of an object that can be
     ## accessed as an atomic entity, even in the presence of asynchronous
     ## interrupts.
-  Sigset* {.importc: "sigset_t", header: "<signal.h>", final, pure.} = object
+  SigSet* {.importc: "sigset_t", header: "<signal.h>", final, pure.} = object
     abi: array[1024 div (8 * sizeof(culong)), culong]
 
   SigEvent* {.importc: "struct sigevent",
@@ -301,12 +301,12 @@ type
              header: "<signal.h>", final, pure.} = object ## struct sigval
     sival_ptr*: pointer ## pointer signal value;
                         ## integer signal value not defined!
-  Sigaction* {.importc: "struct sigaction",
+  SigAction* {.importc: "struct sigaction",
                 header: "<signal.h>", final, pure.} = object ## struct sigaction
     sa_handler*: proc (x: cint) {.noconv.}  ## Pointer to a signal-catching
                                             ## function or one of the macros
                                             ## SIG_IGN or SIG_DFL.
-    sa_mask*: Sigset ## Set of signals to be blocked during execution of
+    sa_mask*: SigSet ## Set of signals to be blocked during execution of
                       ## the signal handling function.
     sa_flags*: cint   ## Special flags.
     sa_restorer: proc() {.noconv.}   ## not intended for application use.
@@ -336,9 +336,9 @@ type
     si_value*: SigVal  ## Signal value.
     pad {.importc: "_pad".}: array[128 - 56, uint8]
 
-template sa_sigaction*(v: Sigaction): proc (x: cint, y: ptr SigInfo, z: pointer) {.noconv.} =
+template sa_sigaction*(v: SigAction): proc (x: cint, y: ptr SigInfo, z: pointer) {.noconv.} =
   cast[proc (x: cint, y: ptr SigInfo, z: pointer) {.noconv.}](v.sa_handler)
-proc `sa_sigaction=`*(v: var Sigaction, x: proc (x: cint, y: ptr SigInfo, z: pointer) {.noconv.}) =
+proc `sa_sigaction=`*(v: var SigAction, x: proc (x: cint, y: ptr SigInfo, z: pointer) {.noconv.}) =
   v.sa_handler = cast[proc (x: cint) {.noconv.}](x)
 
 type
@@ -372,7 +372,7 @@ type
     uc_stack*: Stack        ## The stack used by this context.
     uc_mcontext*: Mcontext  ## A machine-specific representation of the saved
                             ## context.
-    uc_sigmask*: Sigset     ## The set of signals that are blocked when this
+    uc_sigmask*: SigSet     ## The set of signals that are blocked when this
                             ## context is active.
     # todo fpregds_mem
 
@@ -400,8 +400,8 @@ when hasSpawnH:
                         header: "<spawn.h>", final, pure.} = object
       flags: cshort
       pgrp: Pid
-      sd: Sigset
-      ss: Sigset
+      sd: SigSet
+      ss: SigSet
       sp: Sched_param
       policy: cint
       pad: array[16, cint]
