@@ -216,7 +216,7 @@ else:
 
 when defined(js):
   var objectID = 0
-  proc getObjectId(x: pointer): int =
+  proc getObjectId*(x: pointer | proc): int =
     asm """
       if (typeof `x` == "object" || typeof `x` == "function") {
         if ("_NimID" in `x`)
@@ -539,11 +539,10 @@ proc hash*[T: tuple | object | proc | iterator {.closure.}](x: T): Hash =
       assert hash(fn2) != hash(fn1)
     outer()
 
-  when T is "closure":
-    when defined(js):
-      result = hash(rawProc(x))
-    else:
-      result = hash((rawProc(x), rawEnv(x)))
+  when defined(js) and (T is "closure" or T is proc):
+    result = hash(getObjectId(x))
+  elif T is "closure":
+    result = hash((rawProc(x), rawEnv(x)))
   elif T is (proc):
     result = hash(cast[pointer](x))
   else:

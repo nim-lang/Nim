@@ -2352,8 +2352,6 @@ when notJSnotNims:
     {.emit: """
     `result` = ((NI*) `x`.ClE_0)[1] < 0;
     """.}
-elif defined(js):
-  func rawProc*(prc: proc {.closure.}): pointer {.importjs: "[@, 0]".}
 
 from std/private/digitsutils import addInt
 export addInt
