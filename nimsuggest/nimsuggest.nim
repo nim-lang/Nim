@@ -68,6 +68,7 @@ Options:
   --info:X                information
     --info:nimVer           return the Nim compiler version that nimsuggest uses internally
     --info:protocolVer      return the newest protocol version that is supported
+    --info:capabilities     return the capabilities supported by nimsuggest
   --refresh               perform automatic refreshes to keep the analysis precise
   --maxresults:N          limit the number of suggestions to N
   --tester                implies --stdin and outputs a line
@@ -88,6 +89,9 @@ type
     msg: string
     sev: Severity
   CachedMsgs = seq[CachedMsg]
+  NimSuggestCapability = enum 
+  #List of currently supported capabilities. So lang servers/ides can iterate over and check for what's enabled
+    nsCon # current NimSuggest supports the `con` commmand
 
 var
   gPort = 6000.Port
@@ -688,6 +692,10 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string; conf: ConfigRef) =
           quit 0
         of "nimver":
           stdout.writeLine(system.NimVersion)
+          quit 0
+        of "capabilities":
+          let capabilities = $NimSuggestCapability.toSeq.mapIt($it).join(" ")
+          stdout.writeLine(capabilities)
           quit 0
         else:
           processSwitch(pass, p, conf)
