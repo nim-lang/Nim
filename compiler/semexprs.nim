@@ -2998,52 +2998,53 @@ proc semPragmaStmt(c: PContext; n: PNode) =
   else:
     pragma(c, c.p.owner, n, stmtPragmas, true)
 
-proc resolveIdent(c: PContext, ident: PIdent, s: var PSym, n: PNode,
-                  flags: TExprFlags, expectedType: PType): PNode =
-  result = nil
+proc resolveIdent(c: PContext, ident: PIdent, resultNode: var PNode,
+                  info: TLineInfo, flags: TExprFlags, expectedType: PType): PSym =
+  # result is nil if error or a node that can't produce a sym is resolved
   if expectedType != nil and (
       let expected = expectedType.skipTypes(abstractRange-{tyDistinct});
       expected.kind == tyEnum):
     let nameId = ident.id
     for f in expected.n:
       if f.kind == nkSym and f.sym.name.id == nameId:
-        s = f.sym
-        return
+        return f.sym
   var filter = {low(TSymKind)..high(TSymKind)}
   if efNoEvaluateGeneric in flags:
     # `a[...]` where `a` is a module or package is not possible
     filter.excl {skModule, skPackage}
   let candidates = lookUpCandidates(c, ident, filter)
   if candidates.len == 0:
-    s = errorUndeclaredIdentifierHint(c, n, ident)
+    result = errorUndeclaredIdentifierHint(c, ident, info)
   elif candidates.len == 1 or {efNoEvaluateGeneric, efInCall} * flags != {}:
     # unambiguous, or we don't care about ambiguity
-    s = candidates[0]
+    result = candidates[0]
   else:
     # ambiguous symbols have 1 last chance as a symchoice,
     # but type symbols cannot participate in symchoices
-    var choice = newNodeIT(nkClosedSymChoice, n.info, newTypeS(tyNone, c))
+    var choice = newNodeIT(nkClosedSymChoice, info, newTypeS(tyNone, c))
     for c in candidates:
       if c.kind notin {skType, skModule, skPackage}:
-        choice.add newSymNode(c, n.info)
+        choice.add newSymNode(c, info)
     if choice.len == 0:
       # we know candidates.len > 1, we just couldn't put any in a symchoice
-      errorUseQualifier(c, n.info, candidates)
-      return
+      errorUseQualifier(c, info, candidates)
+      return nil
     resolveSymChoice(c, choice, flags, expectedType)
     # choice.len == 1 can be true here but as long as it's a symchoice
     # it's still not resolved
     if isSymChoice(choice):
       if efAllowSymChoice in flags:
-        result = choice
+        resultNode = choice
+        result = nil
       else:
-        errorUseQualifier(c, n.info, candidates)
+        errorUseQualifier(c, info, candidates)
     else:
       if choice.kind == nkSym:
-        s = choice.sym
+        result = choice.sym
       else:
         # resolution could have generated nkHiddenStdConv etc
-        result = semExpr(c, choice, flags, expectedType)
+        resultNode = semExpr(c, choice, flags, expectedType)
+        result = nil
 
 proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType = nil): PNode =
   when defined(nimCompilerStacktraceHints):
@@ -3083,11 +3084,9 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
   case n.kind
   of nkIdent, nkAccQuoted:
     let ident = considerQuotedIdent(c, n)
-    var s: PSym = nil
-    let resolvedNode = resolveIdent(c, ident, s, n, flags, expectedType)
-    if resolvedNode != nil:
-      result = resolvedNode
+    let s = resolveIdent(c, ident, result, n.info, flags, expectedType)
     if s == nil:
+      # resolveIdent either errored or gave a result node
       return
     if c.matchedConcept == nil: semCaptureSym(s, c.p.owner)
     case s.kind
