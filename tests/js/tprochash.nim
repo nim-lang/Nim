@@ -1,4 +1,4 @@
-import std/sets
+import std/[sets, hashes]
 
 proc foo(x: int): proc (): int =
   result = proc (): int = x
@@ -13,10 +13,6 @@ let
 
 var all = initHashSet[proc (): int]()
 for p in procs:
+  assert p notin all
   all.incl p
   assert p in all
-
-
-
-
-

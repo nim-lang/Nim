@@ -216,7 +216,7 @@ else:
 
 when defined(js):
   var objectID = 0
-  proc getObjectId*(x: pointer | proc): int =
+  proc getObjectId(x: pointer | proc): int =
     asm """
       if (typeof `x` == "object" || typeof `x` == "function") {
         if ("_NimID" in `x`)
