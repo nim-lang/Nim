@@ -1,5 +1,5 @@
 discard """
-  disabled: true # pure enums behave like overloadable enums now which give a different error message
+  disabled: true # pure enums behave like overloaded enums on ambiguity now which gives a different error message
   errormsg: "ambiguous identifier: 'amb'"
   line: 19
 """
