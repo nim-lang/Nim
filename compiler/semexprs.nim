@@ -3033,9 +3033,9 @@ proc resolveIdent(c: PContext, ident: PIdent, resultNode: var PNode,
     # choice.len == 1 can be true here but as long as it's a symchoice
     # it's still not resolved
     if isSymChoice(choice):
+      result = nil
       if efAllowSymChoice in flags:
         resultNode = choice
-        result = nil
       else:
         errorUseQualifier(c, info, candidates)
     else:
