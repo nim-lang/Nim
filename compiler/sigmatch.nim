@@ -462,7 +462,7 @@ proc getObjectType(f: PType): PType =
     result = getObjectType(f.baseClass)
   of tyCompositeTypeClass, tyAlias:
     if not f.hasElementType or f.elementType == nil:
-      result = nil
+      result = f
     else:
       result = getObjectType(f.elementType)
   of tyGenericInst:
@@ -481,7 +481,7 @@ proc getObjectType(f: PType): PType =
     # This is not true "After a candidate type is selected"
     result = getObjectType(f.base)
   of tyTyped, tyUntyped, tyFromExpr:
-    result = nil
+    result = f
   of tyRange:
     result = f.elementType
   else:
