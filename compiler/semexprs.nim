@@ -2998,9 +2998,10 @@ proc semPragmaStmt(c: PContext; n: PNode) =
   else:
     pragma(c, c.p.owner, n, stmtPragmas, true)
 
-proc resolveIdent(c: PContext, ident: PIdent, resultNode: var PNode,
-                  info: TLineInfo, flags: TExprFlags, expectedType: PType): PSym =
-  # result is nil if error or a node that can't produce a sym is resolved
+proc resolveIdentToSym(c: PContext, n: PNode, resultNode: var PNode,
+                       flags: TExprFlags, expectedType: PType): PSym =
+  # result is nil on error or if a node that can't produce a sym is resolved
+  let ident = considerQuotedIdent(c, n)
   if expectedType != nil and (
       let expected = expectedType.skipTypes(abstractRange-{tyDistinct});
       expected.kind == tyEnum):
@@ -3014,20 +3015,20 @@ proc resolveIdent(c: PContext, ident: PIdent, resultNode: var PNode,
     filter.excl {skModule, skPackage}
   let candidates = lookUpCandidates(c, ident, filter)
   if candidates.len == 0:
-    result = errorUndeclaredIdentifierHint(c, ident, info)
+    result = errorUndeclaredIdentifierHint(c, ident, n.info)
   elif candidates.len == 1 or {efNoEvaluateGeneric, efInCall} * flags != {}:
     # unambiguous, or we don't care about ambiguity
     result = candidates[0]
   else:
     # ambiguous symbols have 1 last chance as a symchoice,
     # but type symbols cannot participate in symchoices
-    var choice = newNodeIT(nkClosedSymChoice, info, newTypeS(tyNone, c))
+    var choice = newNodeIT(nkClosedSymChoice, n.info, newTypeS(tyNone, c))
     for c in candidates:
       if c.kind notin {skType, skModule, skPackage}:
-        choice.add newSymNode(c, info)
+        choice.add newSymNode(c, n.info)
     if choice.len == 0:
       # we know candidates.len > 1, we just couldn't put any in a symchoice
-      errorUseQualifier(c, info, candidates)
+      errorUseQualifier(c, n.info, candidates)
       return nil
     resolveSymChoice(c, choice, flags, expectedType)
     # choice.len == 1 can be true here but as long as it's a symchoice
@@ -3037,7 +3038,7 @@ proc resolveIdent(c: PContext, ident: PIdent, resultNode: var PNode,
       if efAllowSymChoice in flags:
         resultNode = choice
       else:
-        errorUseQualifier(c, info, candidates)
+        errorUseQualifier(c, n.info, candidates)
     else:
       if choice.kind == nkSym:
         result = choice.sym
@@ -3083,10 +3084,9 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
   if nfSem in n.flags: return
   case n.kind
   of nkIdent, nkAccQuoted:
-    let ident = considerQuotedIdent(c, n)
-    let s = resolveIdent(c, ident, result, n.info, flags, expectedType)
+    let s = resolveIdentToSym(c, n, result, flags, expectedType)
     if s == nil:
-      # resolveIdent either errored or gave a result node
+      # resolveIdentToSym either errored or gave a result node
       return
     if c.matchedConcept == nil: semCaptureSym(s, c.p.owner)
     case s.kind
