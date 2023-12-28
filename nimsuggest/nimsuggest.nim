@@ -89,9 +89,6 @@ type
     msg: string
     sev: Severity
   CachedMsgs = seq[CachedMsg]
-  NimSuggestCapability = enum 
-  #List of currently supported capabilities. So lang servers/ides can iterate over and check for what's enabled
-    nsCon # current NimSuggest supports the `con` commmand
 
 var
   gPort = 6000.Port
@@ -128,6 +125,10 @@ const
          "type 'quit' to quit\n" &
          "type 'debug' to toggle debug mode on/off\n" &
          "type 'terse' to toggle terse mode on/off"
+  #List of currently supported capabilities. So lang servers/ides can iterate over and check for what's enabled
+  Capabilities = [
+    "con" #current NimSuggest supports the `con` commmand
+  ]
 
 proc parseQuoted(cmd: string; outp: var string; start: int): int =
   var i = start
@@ -694,8 +695,7 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string; conf: ConfigRef) =
           stdout.writeLine(system.NimVersion)
           quit 0
         of "capabilities":
-          let capabilities = $NimSuggestCapability.toSeq.mapIt($it).join(" ")
-          stdout.writeLine(capabilities)
+          stdout.writeLine(Capabilities.toSeq.mapIt($it).join(" "))
           quit 0
         else:
           processSwitch(pass, p, conf)
