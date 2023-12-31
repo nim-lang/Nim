@@ -10,7 +10,7 @@ proc dispatch(x: Base, params: ...) =
 ]#
   var base = methods[0].ast[dispatcherPos].sym
   result = base
-  var paramLen = base.typ.len
+  var paramLen = base.typ.signatureLen
   var body = newNodeI(nkStmtList, base.info)
 
   var disp = newNodeI(nkIfStmt, base.info)

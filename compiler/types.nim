@@ -566,8 +566,8 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
       result.add(']')
     of tyGenericBody:
       result = typeToString(t.typeBodyImpl) & '['
-      for needsComma, a in t.genericBodyParams:
-        if needsComma: result.add(", ")
+      for i, a in t.genericBodyParams:
+        if i > 0: result.add(", ")
         result.add(typeToString(a, preferTypeName))
       result.add(']')
     of tyTypeDesc:

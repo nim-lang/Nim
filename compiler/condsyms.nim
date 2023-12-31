@@ -157,6 +157,7 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimAllowNonVarDestructor")
   defineSymbol("nimHasQuirky")
   defineSymbol("nimHasEnsureMove")
+  defineSymbol("nimHasNoReturnError")
 
   defineSymbol("nimUseStrictDefs")
   defineSymbol("nimHasNolineTooLong")

@@ -1031,7 +1031,7 @@ proc toLangSymbol(k: TSymKind, n: PNode, baseName: string): LangSymbol =
     if genNode != nil:
       var literal = ""
       var r: TSrcGen = initTokRender(genNode, {renderNoBody, renderNoComments,
-        renderNoPragmas, renderNoProcDefs, renderExpandUsing})
+        renderNoPragmas, renderNoProcDefs, renderExpandUsing, renderNoPostfix})
       var kind = tkEof
       while true:
         getNextTok(r, kind, literal)
@@ -1059,7 +1059,7 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags, nonEx
 
   # Obtain the plain rendered string for hyperlink titles.
   var r: TSrcGen = initTokRender(n, {renderNoBody, renderNoComments, renderDocComments,
-    renderNoPragmas, renderNoProcDefs, renderExpandUsing})
+    renderNoPragmas, renderNoProcDefs, renderExpandUsing, renderNoPostfix})
   while true:
     getNextTok(r, kind, literal)
     if kind == tkEof:
@@ -1086,6 +1086,9 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags, nonEx
     symbolOrIdEnc = encodeUrl(symbolOrId, usePlus = false)
     deprecationMsg = genDeprecationMsg(d, pragmaNode)
     rstLangSymbol = toLangSymbol(k, n, cleanPlainSymbol)
+    symNameNode =
+      if nameNode.kind == nkPostfix: nameNode[1]
+      else: nameNode
 
   # we generate anchors automatically for subsequent use in doc comments
   let lineinfo = rstast.TLineInfo(
@@ -1096,10 +1099,10 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags, nonEx
                priority = symbolPriority(k), info = lineinfo,
                module = addRstFileIndex(d, FileIndex d.module.position))
 
-  let renderFlags =
-    if nonExports: {renderNoBody, renderNoComments, renderDocComments, renderSyms,
-      renderExpandUsing, renderNonExportedFields}
-    else: {renderNoBody, renderNoComments, renderDocComments, renderSyms, renderExpandUsing}
+  var renderFlags = {renderNoBody, renderNoComments, renderDocComments,
+    renderSyms, renderExpandUsing, renderNoPostfix}
+  if nonExports:
+    renderFlags.incl renderNonExportedFields
   nodeToHighlightedHtml(d, n, result, renderFlags, symbolOrIdEnc)
 
   let seeSrc = genSeeSrc(d, toFullPath(d.conf, n.info), n.info.line.int)
@@ -1122,18 +1125,19 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags, nonEx
   let external = d.destFile.AbsoluteFile.relativeTo(d.conf.outDir, '/').changeFileExt(HtmlExt).string
 
   var attype = ""
-  if k in routineKinds and nameNode.kind == nkSym:
+  if k in routineKinds and symNameNode.kind == nkSym:
     let att = attachToType(d, nameNode.sym)
     if att != nil:
       attype = esc(d.target, att.name.s)
-  elif k == skType and nameNode.kind == nkSym and nameNode.sym.typ.kind in {tyEnum, tyBool}:
-    let etyp = nameNode.sym.typ
+  elif k == skType and symNameNode.kind == nkSym and
+      symNameNode.sym.typ.kind in {tyEnum, tyBool}:
+    let etyp = symNameNode.sym.typ
     for e in etyp.n:
       if e.sym.kind != skEnumField: continue
       let plain = renderPlainSymbolName(e)
       let symbolOrId = d.newUniquePlainSymbol(plain)
       setIndexTerm(d[], ieNim, htmlFile = external, id = symbolOrId,
-                   term = plain, linkTitle = nameNode.sym.name.s & '.' & plain,
+                   term = plain, linkTitle = symNameNode.sym.name.s & '.' & plain,
                    linkDesc = xmltree.escape(getPlainDocstring(e).docstringSummary),
                    line = n.info.line.int)
 
@@ -1154,8 +1158,8 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags, nonEx
                linkTitle = detailedName,
                linkDesc = xmltree.escape(plainDocstring.docstringSummary),
                line = n.info.line.int)
-  if k == skType and nameNode.kind == nkSym:
-    d.types.strTableAdd nameNode.sym
+  if k == skType and symNameNode.kind == nkSym:
+    d.types.strTableAdd symNameNode.sym
 
 proc genJsonItem(d: PDoc, n, nameNode: PNode, k: TSymKind, nonExports = false): JsonItem =
   if not isVisible(d, nameNode): return
@@ -1163,7 +1167,8 @@ proc genJsonItem(d: PDoc, n, nameNode: PNode, k: TSymKind, nonExports = false): 
     name = getNameEsc(d, nameNode)
     comm = genRecComment(d, n)
     r: TSrcGen
-    renderFlags = {renderNoBody, renderNoComments, renderDocComments, renderExpandUsing}
+    renderFlags = {renderNoBody, renderNoComments, renderDocComments,
+      renderExpandUsing, renderNoPostfix}
   if nonExports:
     renderFlags.incl renderNonExportedFields
   r = initTokRender(n, renderFlags)

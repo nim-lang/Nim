@@ -581,7 +581,7 @@ proc inheritBindings(c: PContext, x: var TCandidate, expectedType: PType) =
   ## Helper proc to inherit bound generic parameters from expectedType into x.
   ## Does nothing if 'inferGenericTypes' isn't in c.features.
   if inferGenericTypes notin c.features: return
-  if expectedType == nil or x.callee[0] == nil: return # required for inference
+  if expectedType == nil or x.callee.returnType == nil: return # required for inference
 
   var
     flatUnbound: seq[PType] = @[]
@@ -593,14 +593,14 @@ proc inheritBindings(c: PContext, x: var TCandidate, expectedType: PType) =
     ## skips types and puts the skipped version on stack
     # It might make sense to skip here one by one. It's not part of the main
     #  type reduction because the right side normally won't be skipped
-    const toSkip = { tyVar, tyLent, tyStatic, tyCompositeTypeClass, tySink }
+    const toSkip = {tyVar, tyLent, tyStatic, tyCompositeTypeClass, tySink}
     let
       x = a.skipTypes(toSkip)
       y = if a.kind notin toSkip: b
           else: b.skipTypes(toSkip)
     typeStack.add((x, y))
 
-  stackPut(x.callee[0], expectedType)
+  stackPut(x.callee.returnType, expectedType)
 
   while typeStack.len() > 0:
     let (t, u) = typeStack.pop()
@@ -608,10 +608,11 @@ proc inheritBindings(c: PContext, x: var TCandidate, expectedType: PType) =
       continue
     case t.kind
     of ConcreteTypes, tyGenericInvocation, tyUncheckedArray:
+      # XXX This logic makes no sense for `tyUncheckedArray`
       # nested, add all the types to stack
       let
         startIdx = if u.kind in ConcreteTypes: 0 else: 1
-        endIdx = min(u.len() - startIdx, t.len())
+        endIdx = min(u.kidsLen() - startIdx, t.kidsLen())
 
       for i in startIdx ..< endIdx:
         # early exit with current impl
@@ -749,7 +750,7 @@ proc explicitGenericSym(c: PContext, n: PNode, s: PSym): PNode =
 proc setGenericParams(c: PContext, n, expectedParams: PNode) =
   ## sems generic params in subscript expression
   for i in 1..<n.len:
-    let 
+    let
       constraint =
         if expectedParams != nil and i <= expectedParams.len:
           expectedParams[i - 1].typ

@@ -63,7 +63,7 @@ proc searchObjCaseImpl(obj: PNode; field: PSym): PNode =
 
 proc searchObjCase(t: PType; field: PSym): PNode =
   result = searchObjCaseImpl(t.n, field)
-  if result == nil and t.len > 0:
+  if result == nil and t.baseClass != nil:
     result = searchObjCase(t.baseClass.skipTypes({tyAlias, tyGenericInst, tyRef, tyPtr}), field)
   doAssert result != nil
 

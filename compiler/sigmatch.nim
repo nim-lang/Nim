@@ -456,20 +456,11 @@ proc handleFloatRange(f, a: PType): TTypeRelation =
       else: result = isIntConv
     else: result = isNone
 
-proc skipTypeContainer(f: PType): PType=
+proc getObjectType(f: PType): PType =
   #[
-    Skips types that are structural containers and/or,
-    are subordinate to complete type definition.
-    Do not cross over a complete type definition boundy.
-    
-    ex.
-    A[object]        ... [object] -> object
-    A[T]=ref object  ... A -> ref object
-    B=object; A=B    ... A -> B
-    A[T: static int] ... T -> static int
-    
-    Use this when it is assumed that the effective root type node is a child of
-    the container
+    Returns a type that is f's effective typeclass. This is usually just one level deeper
+    in the hierarchy of generality for a type. `object`, `ref object`, `enum` and user defined
+    tyObjects are common return values.
   ]#
   case f.kind:
   of tyGenericParam:
@@ -477,47 +468,28 @@ proc skipTypeContainer(f: PType): PType=
       result = f
     else:
       result = skipTypeContainer(f.skipModifier)
-  of tyGenericInvocation, tyAlias:
-    if len(f.base) <= 0 or f.base == nil:
-      result = f
-    else:
-      result = skipTypeContainer(f.base)
-  of tyCompositeTypeClass:
+  of tyGenericInvocation:
+    result = getObjectType(f.baseClass)
+  of tyCompositeTypeClass, tyAlias:
     if not f.hasElementType or f.elementType == nil:
       result = f
     else:
-      result = skipTypeContainer(f.elementType)
+      result = getObjectType(f.elementType)
   of tyGenericInst:
-    result = skipTypeContainer(f.skipModifier)
+    result = getObjectType(f.skipModifier)
   of tyGenericBody:
-    result = skipTypeContainer(f.typeBodyImpl)
-  of tyOwned, tyLent, tySink, tyVar:
-    result = skipTypeContainer(f.base)
-  of tyInferred:
-    # This is not true "After a candidate type is selected"
-    result = skipTypeContainer(f.base)
-  else:
-    result = f
-
-proc getObjectTypeOrNil(t: PType): PType =
-  #[
-    Returns a type that is f's effective typeclass. This is usually just one level deeper
-    in the hierarchy of generality for a type. `object`, `ref object`, `enum` and user defined
-    tyObjects are common return values.
-  ]#
-  if t == nil: return nil
-  let f = skipTypeContainer(t)
-  case f.kind:
-  of tyGenericInvocation, tyAlias, tyCompositeTypeClass, tyInferred,
-     tyTyped, tyUntyped, tyFromExpr, tyOwned, tyLent, tySink:
-      result = nil  # handled in skipTypeContainer
+    result = getObjectType(f.typeBodyImpl)
+  
   of tyUserTypeClass:
     if f.isResolvedUserTypeClass:
       result = f.base  # ?? idk if this is right
     else:
       result = f.skipModifier
-  of tyStatic:
-    result = getObjectTypeOrNil(f.base)
+  of tyStatic, tyOwned, tyVar, tyLent, tySink:
+    result = getObjectType(f.base)
+  of tyInferred:
+    # This is not true "After a candidate type is selected"
+    result = getObjectType(f.base)
   of tyRange:
     result = f.elementType
   else:
@@ -1280,7 +1252,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       result = typeRel(c, f.base, aOrig, flags + {trNoCovariance})
     subtypeCheck()
   of tyArray:
-    a = skipTypeContainer(a)
+    a = getObjectType(a)
     case a.kind
     of tyArray:
       var fRange = f.indexType
@@ -1406,8 +1378,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     let effectiveArgType = if useTypeLoweringRuleInTypeClass:
         a
       else:
-        getObjectTypeOrNil(a)
-    if effectiveArgType == nil: return isNone
+        getObjectType(a)
     if effectiveArgType.kind == tyObject:
       if sameObjectTypes(f, effectiveArgType):
         result = isEqual
@@ -1437,7 +1408,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
             # set constructors are a bit special...
             result = isNone
   of tyPtr, tyRef:
-    a = skipTypeContainer(a)  # for tyCompositeTypeClass and other containers
+    a = getObjectType(a)
     if a.kind == f.kind:
       # ptr[R, T] can be passed to ptr[T], but not the other way round:
       if a.len < f.len: return isNone
@@ -1728,8 +1699,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     considerPreviousT:
       let target = f.genericHead
       let targetKind = target.kind
-      var effectiveArgType = a.getObjectTypeOrNil()
-      if effectiveArgType == nil: return isNone
+      var effectiveArgType = getObjectType(a)
       effectiveArgType = effectiveArgType.skipTypes({tyBuiltInTypeClass})
       if targetKind == effectiveArgType.kind:
         if effectiveArgType.isEmptyContainer:

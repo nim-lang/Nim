@@ -1925,6 +1925,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
                             proc (conf: ConfigRef; info: TLineInfo; msg: TMsgKind; arg: string) =
                               if error.len == 0 and msg <= errMax:
                                 error = formatMsg(conf, info, msg, arg))
+
+      regs[ra].node = newNode(nkEmpty)
       if error.len > 0:
         c.errorFlag = error
       elif ast.len != 1:
@@ -1942,6 +1944,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
                                 error = formatMsg(conf, info, msg, arg))
       if error.len > 0:
         c.errorFlag = error
+        regs[ra].node = newNode(nkEmpty)
       else:
         regs[ra].node = ast
     of opcQueryErrorFlag:
@@ -2486,12 +2489,12 @@ proc evalMacroCall*(module: PSym; idgen: IdGenerator; g: ModuleGraph; templInstC
   tos.slots[0] = TFullReg(kind: rkNode, node: newNodeI(nkEmpty, n.info))
 
   # setup parameters:
-  for i in 1..<sym.typ.len:
-    tos.slots[i] = setupMacroParam(n[i], sym.typ[i])
+  for i, param in paramTypes(sym.typ):
+    tos.slots[i-FirstParamAt+1] = setupMacroParam(n[i-FirstParamAt+1], param)
 
   let gp = sym.ast[genericParamsPos]
   for i in 0..<gp.len:
-    let idx = sym.typ.len + i
+    let idx = sym.typ.signatureLen + i
     if idx < n.len:
       tos.slots[idx] = setupMacroParam(n[idx], gp[i].sym.typ)
     else:
