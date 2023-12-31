@@ -467,7 +467,7 @@ proc getObjectType(f: PType): PType =
     if f.len <= 0 or f.skipModifier == nil:
       result = f
     else:
-      result = skipTypeContainer(f.skipModifier)
+      result = getObjectType(f.skipModifier)
   of tyGenericInvocation:
     result = getObjectType(f.baseClass)
   of tyCompositeTypeClass, tyAlias:
@@ -479,7 +479,6 @@ proc getObjectType(f: PType): PType =
     result = getObjectType(f.skipModifier)
   of tyGenericBody:
     result = getObjectType(f.typeBodyImpl)
-  
   of tyUserTypeClass:
     if f.isResolvedUserTypeClass:
       result = f.base  # ?? idk if this is right
@@ -1819,15 +1818,11 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
           a.sym.transitionGenericParamToType()
           a.flags.excl tfWildcard
         elif doBind:
-          # The mechanics of `doBind` denoting sig cmp via
-          # negation is problematic. `checkGeneric` sets `trDontDont` but it is
-          # NOT respected throughout the call graphs. I'm sure that the below 
-          # using `isNone` to validate a binding is not ideal. It makes the type relations
-          # defined by this proc not static (in fairness due to lack of information maybe?)
-          # and it's probably better to ensure bindings in a different proc. This example 
-          # demonstrates a conflict between these two responsibilities. We must know if we are
-          # doing bind validation (through the entire call graph) and/or simply comparing a 
-          # type (like a signature). The flag could work but its flimsy
+          # careful: `trDontDont` (set by `checkGeneric`) is not always respected in this call graph.
+          # typRel having two different modes (binding and non-binding) can make things harder to
+          # reason about and maintain. Refactoring typeRel to not be responsible for setting, or 
+          # at least validating, bindings can have multiple benefits. This is debatable. I'm not 100% sure.
+          # A design that allows a proper complexity analysis of types like `tyOr` would be ideal.
           concrete = concreteType(c, a, f)
           if concrete == nil:
             return isNone
@@ -2353,6 +2348,7 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
   else:
     let matchSet = {skProc, skFunc, skMethod, skConverter,skIterator, skMacro,
                     skTemplate, skEnumField}
+    
     var best = -1
     result = arg
     
