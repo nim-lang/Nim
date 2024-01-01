@@ -2986,7 +2986,7 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
       gen(p, n[0], r)
       r.res = "var _ = " & r.res
   of nkAsmStmt:
-    warningDeprecated(p.config, n.info, "'asm' stategment for js target is deprecated, use the 'emit' pragma")
+    warningDeprecated(p.config, n.info, "'asm' for the JS target is deprecated, use the 'emit' pragma")
     genAsmOrEmitStmt(p, n, true)
   of nkTryStmt, nkHiddenTryStmt: genTry(p, n, r)
   of nkRaiseStmt: genRaiseStmt(p, n)
