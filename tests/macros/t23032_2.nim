@@ -1,6 +1,6 @@
 discard """
   action: "reject"
-  errormsg: "ambiguous identifier '%*'"
+  errormsg: "ambiguous identifier: '%*'"
 """
 import std/macros
 
