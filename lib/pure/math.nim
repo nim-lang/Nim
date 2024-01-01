@@ -219,13 +219,13 @@ when defined(js):
     let a = newFloat64Array(buffer)
     let b = newUint32Array(buffer)
     a[0] = x
-    asm """
+    {.emit: """
     function updateBit(num, bitPos, bitVal) {
       return (num & ~(1 << bitPos)) | (bitVal << bitPos);
     }
     `b`[1] = updateBit(`b`[1], 31, `sgn`);
     `result` = `a`[0]
-    """
+    """.}
 
 proc signbit*(x: SomeFloat): bool {.inline, since: (1, 5, 1).} =
   ## Returns true if `x` is negative, false otherwise.

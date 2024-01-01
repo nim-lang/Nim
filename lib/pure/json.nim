@@ -991,9 +991,9 @@ when defined(js):
     else: assert false
 
   proc len(x: JsObject): int =
-    asm """
+    {.emit: """
       `result` = `x`.length;
-    """
+    """.}
 
   proc convertObject(x: JsObject): JsonNode =
     var isRawNumber = false
@@ -1004,14 +1004,15 @@ when defined(js):
         result.add(x[i].convertObject())
     of JObject:
       result = newJObject()
-      asm """for (var property in `x`) {
+      {.emit: """for (var property in `x`) {
         if (`x`.hasOwnProperty(property)) {
-      """
+      """.}
+      
       var nimProperty: cstring
       var nimValue: JsObject
-      asm "`nimProperty` = property; `nimValue` = `x`[property];"
+      {.emit: "`nimProperty` = property; `nimValue` = `x`[property];".}
       result[$nimProperty] = nimValue.convertObject()
-      asm "}}"
+      {.emit: "}}".}
     of JInt:
       result = newJInt(x.to(int))
     of JFloat:
