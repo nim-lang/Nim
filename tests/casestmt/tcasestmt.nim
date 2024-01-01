@@ -298,3 +298,17 @@ proc main(a: uint64) =
 static:
   main(10)
 main(10)
+
+block:
+  # Just needs to compile
+  proc bar(): int {.discardable.} = discard
+
+  proc foo() {.noreturn.} = discard
+
+  case "*"
+  of "*":
+    bar()
+  else:
+    # Make sure this noreturn doesn't
+    # cause the discardable to not discard
+    foo()
