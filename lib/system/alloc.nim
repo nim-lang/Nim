@@ -1072,8 +1072,41 @@ proc dealloc(allocator: var MemRegion, p: pointer) =
 
 proc realloc(allocator: var MemRegion, p: pointer, newsize: Natural): pointer =
   if newsize > 0:
-    result = alloc(allocator, newsize)
-    if p != nil:
+    if p == nil:
+      return alloc(allocator, newsize)
+    var c = pageAddr(p)
+    let oldsize = ptrSize(p)
+    # trim the block when it's smaller
+    if not isSmallChunk(c):
+      var ri = cast[PChunk](cast[int](c) +% c.size)
+      # sysAssert((cast[int](ri) and PageMask) == 0, "realloc 1")
+      let roundSize = roundup(newsize + bigChunkOverhead(), PageSize)
+      let newsizeWithOverhead = newsize + bigChunkOverhead()
+      if newsizeWithOverhead <= c.size:
+        result = p
+        if roundSize < c.size:
+          let rest = splitChunk2(allocator, cast[PBigChunk](c), roundSize)
+          allocator.freeMem.inc(rest.size)
+      elif isAccessible(allocator, ri) and chunkUnused(ri) and
+                not isSmallChunk(ri) and newsizeWithOverhead <= c.size + ri.size and
+                roundSize < MaxBigChunkSize:
+        let rightSize = ri.size
+        inc(c.size, ri.size)
+        removeChunkFromMatrix(allocator, cast[PBigChunk](ri))
+        excl(allocator.chunkStarts, pageIndex(ri))
+        if roundSize < c.size:
+          let rest = splitChunk2(allocator, cast[PBigChunk](c), roundSize)
+          addChunkToMatrix(allocator, rest)
+          allocator.freeMem.dec(rightSize - rest.size)
+        else:
+          allocator.freeMem.dec(rightSize)
+        result = p
+      else:
+        result = alloc(allocator, newsize)
+        copyMem(result, p, min(ptrSize(p), newsize))
+        dealloc(allocator, p)
+    else:
+      result = alloc(allocator, newsize)
       copyMem(result, p, min(ptrSize(p), newsize))
       dealloc(allocator, p)
   elif p != nil:
