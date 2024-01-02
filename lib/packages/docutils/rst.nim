@@ -1626,7 +1626,7 @@ proc parseMarkdownCodeblock(p: var RstParser): PRstNode =
     else:
       n.text.add(currentTok(p).symbol)
       inc p.idx
-    skipFirst = false
+    skipFirst = true
   result.sons[0] = args
   if result.sons[2] == nil:
     var lb = newRstNode(rnLiteralBlock)
