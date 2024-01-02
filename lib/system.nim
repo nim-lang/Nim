@@ -1871,14 +1871,14 @@ when defined(js) or defined(nimdoc):
       tmp.add(cstring("ab"))
       tmp.add(cstring("cd"))
       doAssert tmp == "abcd"
-    asm """
+    {.emit: """
       if (`x` === null) { `x` = []; }
       var off = `x`.length;
       `x`.length += `y`.length;
       for (var i = 0; i < `y`.length; ++i) {
         `x`[off+i] = `y`.charCodeAt(i);
       }
-    """
+    """.}
   proc add*(x: var cstring, y: cstring) {.magic: "AppendStrStr".} =
     ## Appends `y` to `x` in place.
     ## Only implemented for JS backend.
