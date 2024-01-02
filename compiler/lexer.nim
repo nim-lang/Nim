@@ -1359,7 +1359,7 @@ proc getIndentWidth*(fileIdx: FileIndex, inputstream: PLLStream;
   var prevToken = tkEof
   while tok.tokType != tkEof:
     rawGetTok(lex, tok)
-    if tok.indent > 0 and prevToken in {tkColon, tkEquals, tkType, tkConst, tkLet, tkVar, tkUsing, tyObject}:
+    if tok.indent > 0 and prevToken in {tkColon, tkEquals, tkType, tkConst, tkLet, tkVar, tkUsing, tkObject}:
       result = tok.indent
       if result > 0: break
     prevToken = tok.tokType
