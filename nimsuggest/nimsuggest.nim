@@ -68,6 +68,7 @@ Options:
   --info:X                information
     --info:nimVer           return the Nim compiler version that nimsuggest uses internally
     --info:protocolVer      return the newest protocol version that is supported
+    --info:capabilities     return the capabilities supported by nimsuggest
   --refresh               perform automatic refreshes to keep the analysis precise
   --maxresults:N          limit the number of suggestions to N
   --tester                implies --stdin and outputs a line
@@ -124,6 +125,10 @@ const
          "type 'quit' to quit\n" &
          "type 'debug' to toggle debug mode on/off\n" &
          "type 'terse' to toggle terse mode on/off"
+  #List of currently supported capabilities. So lang servers/ides can iterate over and check for what's enabled
+  Capabilities = [
+    "con" #current NimSuggest supports the `con` commmand
+  ]
 
 proc parseQuoted(cmd: string; outp: var string; start: int): int =
   var i = start
@@ -688,6 +693,9 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string; conf: ConfigRef) =
           quit 0
         of "nimver":
           stdout.writeLine(system.NimVersion)
+          quit 0
+        of "capabilities":
+          stdout.writeLine(Capabilities.toSeq.mapIt($it).join(" "))
           quit 0
         else:
           processSwitch(pass, p, conf)

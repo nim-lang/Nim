@@ -314,21 +314,21 @@ func capture*(a: Peg = Peg(kind: pkEmpty)): Peg {.rtl, extern: "npegsCapture".} 
 func backref*(index: range[1..MaxSubpatterns], reverse: bool = false): Peg {.
   rtl, extern: "npegs$1".} =
   ## constructs a back reference of the given `index`. `index` starts counting
-  ## from 1. `reverse` specifies wether indexing starts from the end of the
+  ## from 1. `reverse` specifies whether indexing starts from the end of the
   ## capture list.
   result = Peg(kind: pkBackRef, index: (if reverse: -index else: index - 1))
 
 func backrefIgnoreCase*(index: range[1..MaxSubpatterns], reverse: bool = false): Peg {.
   rtl, extern: "npegs$1".} =
   ## constructs a back reference of the given `index`. `index` starts counting
-  ## from 1. `reverse` specifies wether indexing starts from the end of the
+  ## from 1. `reverse` specifies whether indexing starts from the end of the
   ## capture list. Ignores case for matching.
   result = Peg(kind: pkBackRefIgnoreCase, index: (if reverse: -index else: index - 1))
 
 func backrefIgnoreStyle*(index: range[1..MaxSubpatterns], reverse: bool = false): Peg {.
   rtl, extern: "npegs$1".} =
   ## constructs a back reference of the given `index`. `index` starts counting
-  ## from 1. `reverse` specifies wether indexing starts from the end of the
+  ## from 1. `reverse` specifies whether indexing starts from the end of the
   ## capture list. Ignores style for matching.
   result = Peg(kind: pkBackRefIgnoreStyle, index: (if reverse: -index else: index - 1))
 
