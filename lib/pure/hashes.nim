@@ -215,18 +215,8 @@ else:
     hashWangYi1(uint64(ord(x)))
 
 when defined(js):
-  var objectID = 0
-  proc getObjectId(x: pointer | proc): int =
-    asm """
-      if (typeof `x` == "object" || typeof `x` == "function") {
-        if ("_NimID" in `x`)
-          `result` = `x`["_NimID"];
-        else {
-          `result` = ++`objectID`;
-          `x`["_NimID"] = `result`;
-        }
-      }
-    """
+  proc getObjectId(x: pointer | proc): int
+
 
 proc hash*(x: pointer): Hash {.inline.} =
   ## Efficient `hash` overload.
@@ -599,3 +589,17 @@ proc hash*[A](x: set[A]): Hash =
   for it in items(x):
     result = result !& hash(it)
   result = !$result
+
+when defined(js):
+  import std/jsffi
+
+  var objectID = 0
+  const idKey = "_NimID".cstring
+
+  proc getObjectId(x: pointer | proc): int =
+    var obj = x.toJS()
+    if jsTypeof(obj) in ["object".cstring, "function".cstring]:
+      if (idKey.toJS notin obj).to(bool):
+        objectID += 1
+        obj[idKey] = objectID
+      return obj[idKey].to(int)
