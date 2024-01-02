@@ -1136,10 +1136,14 @@ proc genBreakStmt(p: PProc, n: PNode) =
   p.blocks[idx].id = abs(p.blocks[idx].id) # label is used
   lineF(p, "break Label$1;$n", [rope(p.blocks[idx].id)])
 
-proc genAsmOrEmitStmt(p: PProc, n: PNode) =
+proc genAsmOrEmitStmt(p: PProc, n: PNode; isAsmStmt = false) =
   genLineDir(p, n)
   p.body.add p.indentLine("")
-  for i in 0..<n.len:
+  let offset =
+    if isAsmStmt: 1 # first son is pragmas
+    else: 0
+
+  for i in offset..<n.len:
     let it = n[i]
     case it.kind
     of nkStrLit..nkTripleStrLit:
@@ -2981,7 +2985,9 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
       genLineDir(p, n)
       gen(p, n[0], r)
       r.res = "var _ = " & r.res
-  of nkAsmStmt: genAsmOrEmitStmt(p, n)
+  of nkAsmStmt:
+    warningDeprecated(p.config, n.info, "'asm' for the JS target is deprecated, use the 'emit' pragma")
+    genAsmOrEmitStmt(p, n, true)
   of nkTryStmt, nkHiddenTryStmt: genTry(p, n, r)
   of nkRaiseStmt: genRaiseStmt(p, n)
   of nkTypeSection, nkCommentStmt, nkIncludeStmt,
