@@ -36,11 +36,14 @@ proc getModuleName*(conf: ConfigRef; n: PNode): string =
           localError(n.info, "only '/' supported with $package notation")
           result = ""
     else:
-      let modname = getModuleName(conf, n[2])
-      # hacky way to implement 'x / y /../ z':
-      result = getModuleName(conf, n1)
-      result.add renderTree(n0, {renderNoComments}).replace(" ")
-      result.add modname
+      if n0.kind == nkIdent and n0.ident.s[0] == '/':
+        let modname = getModuleName(conf, n[2])
+        # hacky way to implement 'x / y /../ z':
+        result = getModuleName(conf, n1)
+        result.add renderTree(n0, {renderNoComments}).replace(" ")
+        result.add modname
+      else:
+        result = ""
   of nkPrefix:
     when false:
       if n[0].kind == nkIdent and n[0].ident.s == "$":
