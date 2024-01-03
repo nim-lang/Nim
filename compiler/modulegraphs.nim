@@ -11,7 +11,7 @@
 ## represents a complete Nim project. Single modules can either be kept in RAM
 ## or stored in a rod-file.
 
-import std/[intsets, tables, hashes]
+import std/[intsets, tables, hashes, algorithm]
 import ../dist/checksums/src/checksums/md5
 import ast, astalgo, options, lineinfos,idents, btrees, ropes, msgs, pathutils, packages
 import ic / [packed_ast, ic]
@@ -55,7 +55,7 @@ type
     concreteTypes*: seq[FullId]
     inst*: PInstantiation
 
-  SymInfoPair* = object
+  SymInfoPair* = ref object
     sym*: PSym
     info*: TLineInfo
     isDecl*: bool
@@ -73,6 +73,12 @@ type
     Docgen2TexPass
     Docgen2JsonPass
     Docgen2Pass
+
+  SuggestFileSymbolDatabase* = object
+    items*: seq[SymInfoPair]
+    isSorted*: bool
+
+  SuggestSymbolDatabase* = Table[FileIndex, SuggestFileSymbolDatabase]
 
   ModuleGraph* {.acyclic.} = ref object
     ifaces*: seq[Iface]  ## indexed by int32 fileIdx
@@ -108,7 +114,7 @@ type
     doStopCompile*: proc(): bool {.closure.}
     usageSym*: PSym # for nimsuggest
     owners*: seq[PSym]
-    suggestSymbols*: Table[FileIndex, seq[SymInfoPair]]
+    suggestSymbols*: SuggestSymbolDatabase
     suggestErrors*: Table[FileIndex, seq[Suggest]]
     methods*: seq[tuple[methods: seq[PSym], dispatcher: PSym]] # needs serialization!
     bucketTable*: CountTable[ItemId]
@@ -493,6 +499,12 @@ proc initOperators*(g: ModuleGraph): Operators =
     opContains: createMagic(g, "contains", mInSet)
   )
 
+proc newSuggestFileSymbolDatabase*(): SuggestFileSymbolDatabase =
+  SuggestFileSymbolDatabase(
+    items: @[],
+    isSorted: true
+  )
+
 proc initModuleGraphFields(result: ModuleGraph) =
   # A module ID of -1 means that the symbol is not attached to a module at all,
   # but to the module graph:
@@ -504,7 +516,7 @@ proc initModuleGraphFields(result: ModuleGraph) =
   result.importStack = @[]
   result.inclToMod = initTable[FileIndex, FileIndex]()
   result.owners = @[]
-  result.suggestSymbols = initTable[FileIndex, seq[SymInfoPair]]()
+  result.suggestSymbols = initTable[FileIndex, newSuggestFileSymbolDatabase()]()
   result.suggestErrors = initTable[FileIndex, seq[Suggest]]()
   result.methods = @[]
   result.compilerprocs = initStrTable()
@@ -712,12 +724,43 @@ func belongsToStdlib*(graph: ModuleGraph, sym: PSym): bool =
 proc `==`*(a, b: SymInfoPair): bool =
   result = a.sym == b.sym and a.info.exactEquals(b.info)
 
+func cmp*(a: SymInfoPair; b: SymInfoPair): int =
+  result = cmp(int32(a.info.fileIndex), int32(b.info.fileIndex))
+  if result == 0:
+    result = cmp(a.info.line, b.info.line)
+  if result == 0:
+    result = cmp(a.info.col, b.info.col)
+  if result == 0:
+    result = cmp(a.isDecl, b.isDecl)
+proc sort*(s: var SuggestFileSymbolDatabase) =
+  s.items.sort(cmp)
+  s.isSorted = true
+
+proc add*(s: var SuggestFileSymbolDatabase; v: SymInfoPair) =
+  s.items.add(v)
+  s.isSorted = false
+
+proc add*(s: var SuggestSymbolDatabase; v: SymInfoPair) =
+  s.mgetOrPut(v.info.fileIndex, newSuggestFileSymbolDatabase()).add(v)
+
+proc findSymInfo*(s: var SuggestFileSymbolDatabase; li: TLineInfo): SymInfoPair =
+  if not s.isSorted:
+    s.sort()
+  var q = SymInfoPair(
+    info: li
+  )
+  var idx = binarySearch(s.items, q, cmp)
+  if idx != -1:
+    return s.items[idx]
+  else:
+    return nil
+
 proc fileSymbols*(graph: ModuleGraph, fileIdx: FileIndex): seq[SymInfoPair] =
-  result = graph.suggestSymbols.getOrDefault(fileIdx, @[])
+  result = graph.suggestSymbols.getOrDefault(fileIdx, newSuggestFileSymbolDatabase()).items
 
 iterator suggestSymbolsIter*(g: ModuleGraph): SymInfoPair =
   for xs in g.suggestSymbols.values:
-    for x in xs:
+    for x in xs.items:
       yield x
 
 iterator suggestErrorsIter*(g: ModuleGraph): Suggest =
