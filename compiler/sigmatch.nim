@@ -456,39 +456,40 @@ proc handleFloatRange(f, a: PType): TTypeRelation =
       else: result = isIntConv
     else: result = isNone
 
-proc getObjectType(f: PType): PType =
+proc reduceToBase(f: PType): PType =
   #[
-    Returns a type that is f's effective typeclass. This is usually just one level deeper
-    in the hierarchy of generality for a type. `object`, `ref object`, `enum` and user defined
-    tyObjects are common return values.
+    Returns the lowest order (most general) type that that is compatible with the input.
+    E.g.
+    A[T] = ptr object ... A -> ptr object
+    A[N: static[int]] = array[N, int] ... A -> array
   ]#
   case f.kind:
   of tyGenericParam:
     if f.len <= 0 or f.skipModifier == nil:
       result = f
     else:
-      result = getObjectType(f.skipModifier)
+      result = reduceToBase(f.skipModifier)
   of tyGenericInvocation:
-    result = getObjectType(f.baseClass)
+    result = reduceToBase(f.baseClass)
   of tyCompositeTypeClass, tyAlias:
     if not f.hasElementType or f.elementType == nil:
       result = f
     else:
-      result = getObjectType(f.elementType)
+      result = reduceToBase(f.elementType)
   of tyGenericInst:
-    result = getObjectType(f.skipModifier)
+    result = reduceToBase(f.skipModifier)
   of tyGenericBody:
-    result = getObjectType(f.typeBodyImpl)
+    result = reduceToBase(f.typeBodyImpl)
   of tyUserTypeClass:
     if f.isResolvedUserTypeClass:
       result = f.base  # ?? idk if this is right
     else:
       result = f.skipModifier
   of tyStatic, tyOwned, tyVar, tyLent, tySink:
-    result = getObjectType(f.base)
+    result = reduceToBase(f.base)
   of tyInferred:
     # This is not true "After a candidate type is selected"
-    result = getObjectType(f.base)
+    result = reduceToBase(f.base)
   of tyRange:
     result = f.elementType
   else:
@@ -1251,7 +1252,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       result = typeRel(c, f.base, aOrig, flags + {trNoCovariance})
     subtypeCheck()
   of tyArray:
-    a = getObjectType(a)
+    a = reduceToBase(a)
     case a.kind
     of tyArray:
       var fRange = f.indexType
@@ -1377,7 +1378,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     let effectiveArgType = if useTypeLoweringRuleInTypeClass:
         a
       else:
-        getObjectType(a)
+        reduceToBase(a)
     if effectiveArgType.kind == tyObject:
       if sameObjectTypes(f, effectiveArgType):
         result = isEqual
@@ -1407,7 +1408,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
             # set constructors are a bit special...
             result = isNone
   of tyPtr, tyRef:
-    a = getObjectType(a)
+    a = reduceToBase(a)
     if a.kind == f.kind:
       # ptr[R, T] can be passed to ptr[T], but not the other way round:
       if a.len < f.len: return isNone
@@ -1698,7 +1699,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     considerPreviousT:
       let target = f.genericHead
       let targetKind = target.kind
-      var effectiveArgType = getObjectType(a)
+      var effectiveArgType = reduceToBase(a)
       effectiveArgType = effectiveArgType.skipTypes({tyBuiltInTypeClass})
       if targetKind == effectiveArgType.kind:
         if effectiveArgType.isEmptyContainer:
