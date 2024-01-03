@@ -2633,22 +2633,19 @@ of the argument.
    range. Or:  `a` is a floating-point literal of value `v`
    and `f` is a floating-point type and `v` is in `f`'s
    range.
-3. Generic match: `f` is a generic type and `a` matches, for
+3. Generic or Subtype match: `f` is a generic type and `a` matches, for
    instance `a` is `int` and `f` is a generic (constrained) parameter
-   type (like in `[T]` or `[T: int|char]`).
-4. Subrange or subtype match: `a` is a `range[T]` and `T`
-   matches `f` exactly. Or: `a` is a subtype of `f`.
+   type (like in `[T]` or `[T: int|char]`). Or: `a` inherits from `f`
+4. Subrange: `a` is a `range[T]` and `T` matches `f` exactly.
 5. Integral conversion match: `a` is convertible to `f` and `f` and `a`
    is some integer or floating-point type.
 6. Conversion match: `a` is convertible to `f`, possibly via a user
    defined `converter`.
 
-
 There are two major methods of selecting the best matching candidate, namely
-counting and disambiguation. Counting takes precedence to disambiguation. In counting,
-each parameter is given a category and the number of parameters in each category is counted.
-The categories are listed above and are in order of precedence. For example, if
-a candidate with one exact match is compared to a candidate with multiple generic matches
+counting and disambiguation. Counting takes precedence to disambiguation. The categories
+listed above are in order of precedence.
+For example, if a candidate with one exact match is compared to a candidate with multiple generic matches
 and zero exact matches, the candidate with an exact match will win.
 
 In the following, `count(p, m)` counts the number of matches of the matching category `m`
@@ -2659,7 +2656,7 @@ algorithm returns true:
 
   ```nim
   for each matching category m in ["exact match", "literal match",
-                                  "generic match", "subtype match",
+                                  "generic or subtype match", "subrange match",
                                   "integral match", "conversion match"]:
     if count(p, m) > count(q, m): return true
     elif count(p, m) == count(q, m):

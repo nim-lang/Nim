@@ -284,24 +284,27 @@ proc writeMatches*(c: TCandidate) =
 proc cmpCandidates*(a, b: TCandidate, isFormal=true): int =
   result = a.exactMatches - b.exactMatches
   if result != 0: return
-  result = a.genericMatches - b.genericMatches
-  if result != 0: return
-  result = a.subtypeMatches - b.subtypeMatches
+  let subtypeDiff = a.subtypeMatches - b.subtypeMatches
+  let genericDiff = a.genericMatches - b.genericMatches
+  result = genericDiff + subtypeDiff
   if result != 0: return
   result = a.intConvMatches - b.intConvMatches
   if result != 0: return
   result = a.convMatches - b.convMatches
   if result != 0: return
-  # the other way round because of other semantics:
-  result = b.inheritancePenalty - a.inheritancePenalty
-  if result != 0: return
+  if subtypeDiff == 0:
+    # the other way round because of other semantics:
+    result = b.inheritancePenalty - a.inheritancePenalty
+    if result != 0: return
   if isFormal:
     # check for generic subclass relation
     result = checkGeneric(a, b)
     if result != 0: return
+    if subtypeDiff != 0:
+      return genericDiff
     # prefer more specialized generic over more general generic:
     result = complexDisambiguation(a.callee, b.callee)
-  if result != 0: return
+    if result != 0: return
   # only as a last resort, consider scoping:
   result = a.calleeScope - b.calleeScope
 
