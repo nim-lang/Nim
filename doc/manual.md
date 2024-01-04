@@ -6956,25 +6956,41 @@ All identifiers of a module are valid from the point of declaration until
 the end of the module. Identifiers from indirectly dependent modules are *not*
 available. The `system`:idx: module is automatically imported in every module.
 
-If a module imports an identifier by two different modules, each occurrence of
-the identifier has to be qualified unless it is an overloaded procedure or
-iterator in which case the overloading resolution takes place:
+If a module imports the same identifier from two different modules, the
+identifier must be disambiguated in one of the following ways:
+
+* Calling it as a routine, in which case overload resolution will take place
+  (but can still fail due to ambiguity).
+* Using type inference to match only one symbol against the expected type,
+  which can fail if multiple symbols match the expected type equally strongly.
+* Qualifying it in the form `module.identifier`.
 
   ```nim
   # Module A
   var x*: string
+  proc foo*(a: string) =
+    echo "A: ", a
   ```
 
   ```nim
   # Module B
   var x*: int
+  proc foo*(b: int) =
+    echo "B: ", b
   ```
 
   ```nim
   # Module C
   import A, B
+
+  foo("abc") # A: abc
+  foo(123) # B: 123
+
   write(stdout, x) # error: x is ambiguous
   write(stdout, A.x) # no error: qualifier used
+  
+  proc bar(a: int): int = a + 1
+  assert bar(x) == x + 1 # no error: only A.x of type int matches
 
   var x = 4
   write(stdout, x) # not ambiguous: uses the module C's x
