@@ -2619,13 +2619,20 @@ An expression `b` can be assigned to an expression `a` iff `a` is an
 Overload resolution
 ===================
 
-In a call `p(args)` the routine `p` that matches best is selected. If
-multiple routines match equally well, the ambiguity is reported during
-semantic analysis.
+In a call `p(args)` where `p` may refer to more than one
+candidate, it is said to be a symbol choice. Overload resolution will attempt to
+find the best candidate, thus transforming the symbol choice into a resolved symbol.
+The routine `p` that matches best is selected following a series of trials explained below. 
+In order: Catagory matching, Hierarchical Order Comparison, and finally, Complexity Analysis.
 
-Every arg in args needs to match. There are multiple different categories how an
-argument can match. Let `f` be the formal parameter's type and `a` the type
-of the argument.
+If multiple candidates match equally well after all trials have been tested, the ambiguity 
+is reported during semantic analysis.
+
+First Trial: Catagory matching
+--------------------------------
+
+Every arg in `args` needs to match and there are multiple different categories of matches.
+Let `f` be the formal parameter's type and `a` the type of the argument.
 
 1. Exact match: `a` and `f` are of the same type.
 2. Literal match: `a` is an integer literal of value `v`
@@ -2635,9 +2642,7 @@ of the argument.
    range.
 3. Generic match: `f` is a generic type and `a` matches, for
    instance `a` is `int` and `f` is a generic (constrained) parameter
-   type (like in `[T]` or `[T: int|char]`). Constraints given an alias (as in `T`)
-   shall be used to define `f`, when `f` is composed of `T`, following simple variable
-   substitution.
+   type (like in `[T]` or `[T: int|char]`).
 4. Subrange or subtype match: `a` is a `range[T]` and `T`
    matches `f` exactly. Or: `a` is a subtype of `f`.
 5. Integral conversion match: `a` is convertible to `f` and `f` and `a`
@@ -2645,15 +2650,16 @@ of the argument.
 6. Conversion match: `a` is convertible to `f`, possibly via a user
    defined `converter`.
 
+Each operand may fall into one of the categories above; the operand's
+highest priority category. The list above is in order or priority.
+If a candidate has more priority matches than all other candidates, it is selected as the
+resolved match.
 
-There are two major methods of selecting the best matching candidate, namely
-counting and disambiguation. Counting takes precedence to disambiguation. In counting,
-each parameter is given a category and the number of parameters in each category is counted.
 For example, if a candidate with one exact match is compared to a candidate with multiple
 generic matches and zero exact matches, the candidate with an exact match will win.
 
-In the following, `count(p, m)` counts the number of matches of the matching category `m`
-for the routine `p`.
+Below is a pseudocode interpretation of category matching, `count(p, m)` counts the number 
+of matches of the matching category `m` for the routine `p`.
 
 A routine `p` matches better than a routine `q` if the following
 algorithm returns true:
@@ -2670,15 +2676,50 @@ algorithm returns true:
   return "ambiguous"
   ```
 
-When counting is ambiguous, disambiguation begins. Disambiguation also has two stages, first a
-hierarchical type relation comparison, and if that is inconclusive, a complexity comparison.
-Where counting relates the type of the operand to the formal parameter, disambiguation relates the
-formal parameters with each other to find the most competitive choice.
-Parameters are iterated by position and these parameter pairs are compared for their type
-relation. The general goal of this comparison is to determine which parameter is least general.
+Second Trial: Hierarchical Order Comparison
+----------------------------------------------
 
+The hierarchical order of a type is analogous to its relative specificity. Consider the type defined:
 
-Some examples:
+```nim
+type A[T] = object
+```
+
+Matching formals for this type include `T`, `object`, `A`, `A[...]` and `A[C]` where `C` is a concrete type, `A[...]`
+is a generic typeclass composition and `T` is an unconstrained generic type variable. This list is in order of 
+specificity with respect to `A` as each subsequent category narrows the set of types that are members of their match set.
+
+In this trail, the formal parameters of candidates are compared in order (1st parameter, 2nd parameter, etc.) to search for
+a candidate that has an unrivaled specificity. If such a formal parameter is found, the candidate it belongs to is chosen 
+as the resolved match.
+
+Third Trial: Complexity Analysis
+----------------------------------
+
+A slight clarification: While category matching digests all the formal parameters of a candidate at once,
+specificity comparison and complexity analysis operate one after the other on each formal parameter. The following
+is the final trial to disambiguate a candidate when a pair of formal parameters have the same hierarchical order.
+
+The complexity of a type is essentially its number of modifiers and depth of shape. The definition with the *highest*
+complexity wins. Consider the following types:
+
+```nim
+type
+  A[T] = object
+  B[T, H] = object
+```
+
+Note: The below examples are not exhaustive.
+We shall say that:
+
+1. `A[T]` has a higher complexity than `A`
+2. `var A[T]` has a higher complexity than `A[T]`
+3. `A[A[T]]` has a higher complexity than `A[T]`
+4. `B[T, H]` has a higher complexity than `A[T]` (`A` and `B` are not compatible here, but versions of this exist that are more complex)
+5. `B[ptr T, H]` has a higher complexity than `B[T, H]`
+
+Some Examples
+---------------
 
   ```nim
   proc takesInt(x: int) = echo "int"
@@ -2749,7 +2790,7 @@ proc p[T: A](param: T)
 proc p[T: object](param: T)
 ```
 
-These signatures are not ambiguous for an instance of `A` even though the formal parameters match ("T" == "T").
+These signatures are not ambiguous for a concrete type of `A` even though the formal parameters match ("T" == "T").
 Instead `T` is treated as a variable in that (`T` ?= `T`) depending on the bound type of `T` at the time of
 overload resolution.
 
