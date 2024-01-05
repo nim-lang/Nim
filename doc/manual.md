@@ -2715,7 +2715,7 @@ We shall say that:
 1. `A[T]` has a higher complexity than `A`
 2. `var A[T]` has a higher complexity than `A[T]`
 3. `A[A[T]]` has a higher complexity than `A[T]`
-4. `B[T, H]` has a higher complexity than `A[T]` (`A` and `B` are not compatible here, but versions of this exist that are more complex)
+4. `B[T, H]` has a higher complexity than `A[T]` (`A` and `B` are not compatible here, but convoluted versions of this exist)
 5. `B[ptr T, H]` has a higher complexity than `B[T, H]`
 
 Some Examples
