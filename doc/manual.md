@@ -2751,7 +2751,7 @@ proc p[T: object](param: T)
 
 These signatures are not ambiguous for an instance of `A` even though the formal parameters match ("T" == "T").
 Instead `T` is treated as a variable in that (`T` ?= `T`) depending on the bound type of `T` at the time of
-overload resoliution.
+overload resolution.
 
 
 Overloading based on 'var T'
