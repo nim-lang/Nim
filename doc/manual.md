@@ -2653,7 +2653,7 @@ Let `f` be the formal parameter's type and `a` the type of the argument.
 Each operand may fall into one of the categories above; the operand's
 highest priority category. The list above is in order or priority.
 If a candidate has more priority matches than all other candidates, it is selected as the
-resolved match.
+resolved symbol.
 
 For example, if a candidate with one exact match is compared to a candidate with multiple
 generic matches and zero exact matches, the candidate with an exact match will win.
@@ -2691,14 +2691,14 @@ specificity with respect to `A` as each subsequent category narrows the set of t
 
 In this trail, the formal parameters of candidates are compared in order (1st parameter, 2nd parameter, etc.) to search for
 a candidate that has an unrivaled specificity. If such a formal parameter is found, the candidate it belongs to is chosen 
-as the resolved match.
+as the resolved symbol.
 
 Third Trial: Complexity Analysis
 ----------------------------------
 
 A slight clarification: While category matching digests all the formal parameters of a candidate at once,
 specificity comparison and complexity analysis operate one after the other on each formal parameter. The following
-is the final trial to disambiguate a candidate when a pair of formal parameters have the same hierarchical order.
+is the final trial to disambiguate a symbol choice when a pair of formal parameters have the same hierarchical order.
 
 The complexity of a type is essentially its number of modifiers and depth of shape. The definition with the *highest*
 complexity wins. Consider the following types:
