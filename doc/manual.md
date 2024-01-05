@@ -2710,6 +2710,7 @@ type
 ```
 
 Note: The below examples are not exhaustive.
+
 We shall say that:
 
 1. `A[T]` has a higher complexity than `A`
