@@ -19,3 +19,4 @@ doAssert bar(x) == x + 1 # no error: only A.x of type int matches
 
 var x = 4
 write(stdout, x) # not ambiguous: uses the module C's x
+write(stdout, '\n')
