@@ -2670,7 +2670,7 @@ algorithm returns true:
   return "ambiguous"
   ```
 
-When counting is ambiguous, disambiguation begins. Disamgiuation also has two stages, first a
+When counting is ambiguous, disambiguation begins. Disambiguation also has two stages, first a
 hierarchical type relation comparison, and if that is inconclusive, a complexity comparison.
 Where counting relates the type of the operand to the formal parameter, disambiguation relates the
 formal parameters with each other to find the most competitive choice.
