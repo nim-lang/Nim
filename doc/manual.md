@@ -2634,7 +2634,9 @@ of the argument.
    range.
 3. Generic match: `f` is a generic type and `a` matches, for
    instance `a` is `int` and `f` is a generic (constrained) parameter
-   type (like in `[T]` or `[T: int|char]`).
+   type (like in `[T]` or `[T: int|char]`). Constraints given an alias (as in `T`)
+   shall be used to define `f`, when `f` is composed of `T`, following simple variable
+   substitution.
 4. Subrange or subtype match: `a` is a `range[T]` and `T`
    matches `f` exactly. Or: `a` is a subtype of `f`.
 5. Integral conversion match: `a` is convertible to `f` and `f` and `a`
@@ -2646,9 +2648,8 @@ of the argument.
 There are two major methods of selecting the best matching candidate, namely
 counting and disambiguation. Counting takes precedence to disambiguation. In counting,
 each parameter is given a category and the number of parameters in each category is counted.
-The categories are listed above and are in order of precedence. For example, if
-a candidate with one exact match is compared to a candidate with multiple generic matches
-and zero exact matches, the candidate with an exact match will win.
+For example, if a candidate with one exact match is compared to a candidate with multiple
+generic matches and zero exact matches, the candidate with an exact match will win.
 
 In the following, `count(p, m)` counts the number of matches of the matching category `m`
 for the routine `p`.
@@ -2668,10 +2669,12 @@ algorithm returns true:
   return "ambiguous"
   ```
 
-When counting is ambiguous, disambiguation begins. Parameters are iterated
-by position and these parameter pairs are compared for their type relation. The general goal
-of this comparison is to determine which parameter is more specific. The types considered are
-not of the inputs from the callsite, but of the competing candidates' parameters.
+When counting is ambiguous, disambiguation begins. Disambiguation also has two stages, first a
+hierarchical type relation comparison, and if that is inconclusive, a complexity comparison.
+Where counting relates the type of the operand to the formal parameter, disambiguation relates the
+formal parameters with each other to find the most competitive choice.
+Parameters are iterated by position and these parameter pairs are compared for their type
+relation. The general goal of this comparison is to determine which parameter is least general.
 
 
 Some examples:
@@ -2691,7 +2694,6 @@ Some examples:
   ```
 
 
-If this algorithm returns "ambiguous" further disambiguation is performed:
 If the argument `a` matches both the parameter type `f` of `p`
 and `g` of `q` via a subtyping relation, the inheritance depth is taken
 into account:
@@ -2732,6 +2734,23 @@ matches) is preferred:
   var ri: ref int
   gen(ri) # "ref T"
   ```
+
+Type variables match
+----------------------
+
+When overload resolution is considering candidates, the type variable's definition
+is not overlooked as it is used to define the formal parameter's type via variable substitution.
+
+For example:
+```nim
+type A
+proc p[T: A](param: T)
+proc p[T: object](param: T)
+```
+
+These signatures are not ambiguous for an instance of `A` even though the formal parameters match ("T" == "T").
+Instead `T` is treated as a variable in that (`T` ?= `T`) depending on the bound type of `T` at the time of
+overload resolution.
 
 
 Overloading based on 'var T'
@@ -5421,6 +5440,7 @@ Generics
 Generics are Nim's means to parametrize procs, iterators or types with
 `type parameters`:idx:. Depending on the context, the brackets are used either to
 introduce type parameters or to instantiate a generic proc, iterator, or type.
+
 
 The following example shows how a generic binary tree can be modeled:
 

@@ -213,16 +213,17 @@ proc sumGeneric(t: PType): int =
     case t.kind
     of tyAlias, tySink, tyNot: t = t.lastSon
     of tyArray, tyRef, tyPtr, tyDistinct, tyUncheckedArray,
-        tyOpenArray, tyVarargs, tySet, tyRange, tySequence, tyGenericBody,
+        tyOpenArray, tyVarargs, tySet, tyRange, tySequence,
         tyLent, tyOwned, tyVar:
       t = t.lastSon
       inc result
     of tyBool, tyChar, tyEnum, tyObject, tyPointer, tyVoid,
         tyString, tyCstring, tyInt..tyInt64, tyFloat..tyFloat128,
-        tyUInt..tyUInt64, tyCompositeTypeClass, tyBuiltInTypeClass,
-        tyGenericParam:
+        tyUInt..tyUInt64, tyCompositeTypeClass, tyBuiltInTypeClass:
       inc result
       break
+    of tyGenericBody:
+      t = t.typeBodyImpl
     of tyGenericInst, tyStatic:
       t = t[0]
       inc result
@@ -237,6 +238,12 @@ proc sumGeneric(t: PType): int =
       t = t.lastSon
       if t.kind == tyEmpty: break
       inc result
+    of tyGenericParam:
+      if t.len > 0:
+        t = t.skipModifier
+      else:
+        inc result
+        break
     of tyUntyped, tyTyped: break
     of tyGenericInvocation, tyTuple, tyProc, tyAnd:
       result += ord(t.kind == tyAnd)
@@ -466,34 +473,40 @@ proc handleFloatRange(f, a: PType): TTypeRelation =
       else: result = isIntConv
     else: result = isNone
 
-proc getObjectType(f: PType): PType =
+proc reduceToBase(f: PType): PType =
   #[
-    Returns a type that is f's effective typeclass. This is usually just one level deeper
-    in the hierarchy of generality for a type. `object`, `ref object`, `enum` and user defined
-    tyObjects are common return values.
+    Returns the lowest order (most general) type that that is compatible with the input.
+    E.g.
+    A[T] = ptr object ... A -> ptr object
+    A[N: static[int]] = array[N, int] ... A -> array
   ]#
   case f.kind:
+  of tyGenericParam:
+    if f.len <= 0 or f.skipModifier == nil:
+      result = f
+    else:
+      result = reduceToBase(f.skipModifier)
   of tyGenericInvocation:
-    result = getObjectType(f[0])
+    result = reduceToBase(f.baseClass)
   of tyCompositeTypeClass, tyAlias:
     if f.len <= 0 or f[0] == nil:
       result = f
     else:
-      result = getObjectType(f[0])
-  of tyGenericBody, tyGenericInst:
-    result = getObjectType(f.lastSon)
+      result = reduceToBase(f.elementType)
+  of tyGenericInst:
+    result = reduceToBase(f.skipModifier)
+  of tyGenericBody:
+    result = reduceToBase(f.typeBodyImpl)
   of tyUserTypeClass:
     if f.isResolvedUserTypeClass:
       result = f.base  # ?? idk if this is right
     else:
       result = f.lastSon
   of tyStatic, tyOwned, tyVar, tyLent, tySink:
-    result = getObjectType(f.base)
+    result = reduceToBase(f.base)
   of tyInferred:
     # This is not true "After a candidate type is selected"
-    result = getObjectType(f.base)
-  of tyTyped, tyUntyped, tyFromExpr:
-    result = f
+    result = reduceToBase(f.base)
   of tyRange:
     result = f.lastSon
   else:
@@ -1269,7 +1282,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       result = typeRel(c, f.base, aOrig, flags + {trNoCovariance})
     subtypeCheck()
   of tyArray:
-    a = getObjectType(a)
+    a = reduceToBase(a)
     case a.kind
     of tyArray:
       var fRange = f[0]
@@ -1395,7 +1408,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     let effectiveArgType = if useTypeLoweringRuleInTypeClass:
         a
       else:
-        getObjectType(a)
+        reduceToBase(a)
     if effectiveArgType.kind == tyObject:
       if sameObjectTypes(f, effectiveArgType):
         c.inheritancePenalty = if tfFinal in f.flags: -1 else: 0
@@ -1426,7 +1439,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
             result = isNone
 
   of tyPtr, tyRef:
-    a = getObjectType(a)
+    a = reduceToBase(a)
     if a.kind == f.kind:
       # ptr[R, T] can be passed to ptr[T], but not the other way round:
       if a.len < f.len: return isNone
@@ -1728,7 +1741,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     considerPreviousT:
       let target = f[0]
       let targetKind = target.kind
-      var effectiveArgType = getObjectType(a)
+      var effectiveArgType = reduceToBase(a)
       effectiveArgType = effectiveArgType.skipTypes({tyBuiltInTypeClass})
       if targetKind == effectiveArgType.kind:
         if effectiveArgType.isEmptyContainer:
@@ -1846,10 +1859,11 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
           a.sym.transitionGenericParamToType()
           a.flags.excl tfWildcard
         elif doBind:
-          # The mechanics of `doBind` being a flag that also denotes sig cmp via
-          # negation is potentially problematic. `IsNone` is appropriate for
-          # preventing illegal bindings, but it is not necessarily appropriate
-          # before the bindings have been finalized.
+          # careful: `trDontDont` (set by `checkGeneric`) is not always respected in this call graph.
+          # typRel having two different modes (binding and non-binding) can make things harder to
+          # reason about and maintain. Refactoring typeRel to not be responsible for setting, or 
+          # at least validating, bindings can have multiple benefits. This is debatable. I'm not 100% sure.
+          # A design that allows a proper complexity analysis of types like `tyOr` would be ideal.
           concrete = concreteType(c, a, f)
           if concrete == nil:
             return isNone
@@ -2401,9 +2415,9 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
       # roll back the side effects of the unification algorithm.
       let c = m.c
       var
-        x = newCandidate(c, m.callee)
-        y = newCandidate(c, m.callee)
-        z = newCandidate(c, m.callee)
+        x = newCandidate(c, m.callee)  # potential "best"
+        y = newCandidate(c, m.callee)  # potential competitor with x
+        z = newCandidate(c, m.callee)  # buffer for copies of m
       x.calleeSym = m.calleeSym
       y.calleeSym = m.calleeSym
       z.calleeSym = m.calleeSym

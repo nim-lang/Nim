@@ -50,8 +50,6 @@ static:
     doAssert isSameOwner(poo, dummyproc) == false
   wrappedScope()
 
-#---------------------------------------------------------------
-
 macro check_gen_proc(ex: typed): (bool, bool) =
   let lenChoice = bindsym"len"
   var is_equal = false 

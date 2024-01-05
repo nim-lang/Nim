@@ -7,7 +7,6 @@ block: # PR #22261
   proc d(x: int | D[SomeInteger]):bool= true
   doAssert d(D[5]()) == false
 
-
 block: # bug #8568
 #[
   Since PR #22261 and amendment has been made. Since D is a subset of D | E but
