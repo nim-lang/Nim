@@ -2696,8 +2696,8 @@ as the resolved symbol.
 Third Trial: Complexity Analysis
 ----------------------------------
 
-A slight clarification: While category matching digests all the formal parameters of a candidate at once,
-specificity comparison and complexity analysis operate one after the other on each formal parameter. The following
+A slight clarification: While category matching digests all the formal parameters of a candidate at once (order doesn't matter),
+specificity comparison and complexity analysis operate on each formal parameter at a time. The following
 is the final trial to disambiguate a symbol choice when a pair of formal parameters have the same hierarchical order.
 
 The complexity of a type is essentially its number of modifiers and depth of shape. The definition with the *highest*
