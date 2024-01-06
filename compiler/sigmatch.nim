@@ -1710,7 +1710,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
           if tfExplicitCallConv in target.flags and
               target.callConv != effectiveArgType.callConv:
             return isNone
-        put(c, f, a)
+        if doBind: put(c, f, a)
         return isGeneric
       else:
         return isNone
