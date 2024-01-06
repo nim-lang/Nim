@@ -7020,7 +7020,7 @@ proc fb* = echo "buzz"
 import A/C
 import B/C
 
-C.fb() # Error: ambiguous identifier: 'fb'
+C.fb() # Error: ambiguous identifier: 'C'
 ```
 
 
