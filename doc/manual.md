@@ -6957,13 +6957,17 @@ the end of the module. Identifiers from indirectly dependent modules are *not*
 available. The `system`:idx: module is automatically imported in every module.
 
 If a module imports the same identifier from two different modules, the
-identifier must be disambiguated in one of the following ways:
+identifier is considered ambiguous, which is resolved in the following ways:
 
-* Calling it as a routine, in which case overload resolution will take place
-  (but can still fail due to ambiguity).
-* Using type inference to match only one symbol against the expected type,
-  which can fail if multiple symbols match the expected type equally strongly.
-* Qualifying it in the form `module.identifier`.
+* Qualifying the identifier as `module.identifier` resolves ambiguity
+  between modules. (See below for the case that the module name itself
+  is ambiguous.)
+* Calling the identifier as a routine makes overload resolution take place,
+  which resolves ambiguity in the case that one overload matches stronger
+  than the others.
+* Using the identifier in a context where the compiler can infer the type
+  of the identifier resolves ambiguity in the case that one definition
+  matches the type stronger than the others.
 
   ```nim
   # Module A
@@ -6985,6 +6989,8 @@ identifier must be disambiguated in one of the following ways:
 
   foo("abc") # A: abc
   foo(123) # B: 123
+  let inferred: proc (x: string) = foo
+  foo("def") # A: def
 
   write(stdout, x) # error: x is ambiguous
   write(stdout, A.x) # no error: qualifier used

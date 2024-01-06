@@ -2,6 +2,7 @@ discard """
   output: '''
 A: abc
 B: 123
+A: def
 4
 '''
 """
@@ -10,6 +11,8 @@ import mambsym3, mambsym4
 
 foo("abc") # A: abc
 foo(123) # B: 123
+let inferred: proc (x: string) = foo
+foo("def") # A: def
 
 doAssert not compiles(write(stdout, x)) # error: x is ambiguous
 write(stdout, mambsym3.x) # no error: qualifier used
