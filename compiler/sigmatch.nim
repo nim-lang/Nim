@@ -2173,14 +2173,10 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
     # XXX: duplicating this is ugly, but we cannot (!) move this
     # directly into typeRel using return-like templates
     incMatches(m, r)
-    if f.kind == tyTyped:
-      return arg
-    elif f.kind == tyTypeDesc:
+    if f.kind in {tyTyped, tyUntyped, tyTypeDesc}:
       return arg
     elif f.kind == tyStatic and arg.typ.n != nil:
       return arg.typ.n
-    else:
-      return argSemantized # argOrig
 
   # If r == isBothMetaConvertible then we rerun typeRel.
   # bothMetaCounter is for safety to avoid any infinite loop,
