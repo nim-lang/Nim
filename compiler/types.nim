@@ -1622,7 +1622,7 @@ proc skipHiddenSubConv*(n: PNode; g: ModuleGraph; idgen: IdGenerator): PNode =
   else:
     result = n
 
-proc getProcConvMismatch*(c: ConfigRef, f, a: PType, rel = isNone): (set[ProcConvMismatch], TTypeRelation) =
+proc getProcConvMismatch*(c: ConfigRef, f, a: PType, rel = isNone, explicitClosure = false): (set[ProcConvMismatch], TTypeRelation) =
   ## Returns a set of the reason of mismatch, and the relation for conversion.
   result[1] = rel
   if tfNoSideEffect in f.flags and tfNoSideEffect notin a.flags:
@@ -1644,11 +1644,14 @@ proc getProcConvMismatch*(c: ConfigRef, f, a: PType, rel = isNone): (set[ProcCon
   if f.callConv != a.callConv:
     # valid to pass a 'nimcall' thingie to 'closure':
     if f.callConv == ccClosure and a.callConv == ccNimCall:
-      case result[1]
-      of isInferred: result[1] = isInferredConvertible
-      of isBothMetaConvertible: result[1] = isBothMetaConvertible
-      elif result[1] != isNone: result[1] = isConvertible
-      else: result[0].incl pcmDifferentCallConv
+      if explicitClosure and tfExplicitCallConv notin f.flags:
+        discard
+      else:
+        case result[1]
+        of isInferred: result[1] = isInferredConvertible
+        of isBothMetaConvertible: result[1] = isBothMetaConvertible
+        elif result[1] != isNone: result[1] = isConvertible
+        else: result[0].incl pcmDifferentCallConv
     else:
       result[1] = isNone
       result[0].incl pcmDifferentCallConv

@@ -694,7 +694,7 @@ proc procTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
     elif a[0] != nil:
       return isNone
 
-    result = getProcConvMismatch(c.c.config, f, a, result)[1]
+    result = getProcConvMismatch(c.c.config, f, a, result, c.calleeSym != nil and c.calleeSym.kind in {skTemplate, skMacro})[1]
 
     when useEffectSystem:
       if compatibleEffects(f, a) != efCompat: return isNone
@@ -2172,7 +2172,8 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
     m.calleeSym.kind in {skMacro, skTemplate}:
     # XXX: duplicating this is ugly, but we cannot (!) move this
     # directly into typeRel using return-like templates
-    if f.kind in {tyTyped, tyUntyped, tyTypeDesc}:
+    if f.kind in {tyTyped, tyUntyped, tyTypeDesc,
+        tyVar, tyLent, tySink, tyOpenArray}:
       incMatches(m, r)
       return arg
     elif f.kind == tyStatic and arg.typ.n != nil:
