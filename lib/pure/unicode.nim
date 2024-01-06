@@ -81,7 +81,7 @@ proc runeLenAt*(s: openArray[char], i: Natural): int =
 
 const replRune = Rune(0xFFFD)
 
-template fastRuneAt*[I: Ordinal](s: openArray[char] or string, i: var I, result: untyped, doInc = true) =
+template fastRuneAt*(s: openArray[char] or string, i: typed, result: untyped, doInc = true) =
   ## Returns the rune ``s[i]`` in ``result``.
   ##
   ## If ``doInc == true`` (default), ``i`` is incremented by the number
