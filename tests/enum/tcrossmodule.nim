@@ -14,3 +14,5 @@ block: # account for scope
   doAssert x is set[MyEnum]
   proc foo[T](a: T): string = $a
   doAssert foo(Success) == "Success"
+  proc bar[T](): string = $Success
+  doAssert bar[int]() == "Success"

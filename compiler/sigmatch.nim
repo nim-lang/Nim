@@ -2469,13 +2469,6 @@ proc prepareOperand(c: PContext; a: PNode): PNode =
     result = a
     considerGenSyms(c, result)
 
-proc finishOperand(c: PContext; a: PNode): PNode =
-  if a.typ.isNil:
-    result = c.semExprWithType(c, a, {efOperand, efAllowSymChoice})
-  else:
-    result = a
-    considerGenSyms(c, result)
-
 proc prepareNamedParam(a: PNode; c: PContext) =
   if a[0].kind != nkIdent:
     var info = a[0].info
@@ -2717,7 +2710,7 @@ proc semFinishOperands*(c: PContext, n: PNode) =
   # this needs to be called to ensure that after overloading resolution every
   # argument has been sem'checked:
   for i in 1..<n.len:
-    n[i] = finishOperand(c, n[i])
+    n[i] = prepareOperand(c, n[i])
 
 proc partialMatch*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
   # for 'suggest' support:
