@@ -2172,10 +2172,11 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
     m.calleeSym.kind in {skMacro, skTemplate}:
     # XXX: duplicating this is ugly, but we cannot (!) move this
     # directly into typeRel using return-like templates
-    incMatches(m, r)
     if f.kind in {tyTyped, tyUntyped, tyTypeDesc}:
+      incMatches(m, r)
       return arg
     elif f.kind == tyStatic and arg.typ.n != nil:
+      incMatches(m, r)
       return arg.typ.n
 
   # If r == isBothMetaConvertible then we rerun typeRel.
