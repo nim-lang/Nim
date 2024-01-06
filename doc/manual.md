@@ -6957,7 +6957,7 @@ the end of the module. Identifiers from indirectly dependent modules are *not*
 available. The `system`:idx: module is automatically imported in every module.
 
 If a module imports the same identifier from two different modules, the
-identifier is considered ambiguous, which is resolved in the following ways:
+identifier is considered ambiguous, which can be resolved in the following ways:
 
 * Qualifying the identifier as `module.identifier` resolves ambiguity
   between modules. (See below for the case that the module name itself
