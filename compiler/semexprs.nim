@@ -3147,17 +3147,15 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
         # or: result = fitNode(c, expectedType, result, n.info)
   of nkIntLit:
     if result.typ == nil:
+      setIntLitType(c, result)
       if expectedType != nil and (
           let expected = expectedType.skipTypes(abstractRange-{tyDistinct});
           expected.kind in {tyInt..tyInt64,
             tyUInt..tyUInt64,
             tyFloat..tyFloat128}):
-        result.typ = expected
         if expected.kind in {tyFloat..tyFloat128}:
           n.transitionIntToFloatKind(nkFloatLit)
         changeType(c, result, expectedType, check=true)
-      else:
-        setIntLitType(c, result)
   of nkInt8Lit: directLiteral(tyInt8)
   of nkInt16Lit: directLiteral(tyInt16)
   of nkInt32Lit: directLiteral(tyInt32)
