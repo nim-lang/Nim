@@ -933,7 +933,7 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
         if n[0].len-1 != iterAfterVarLent.len:
           return localErrorNode(c, n, n[0].info, errWrongNumberOfVariables)
         elif n[1].typ.kind != tyTuple:
-          return localErrorNode(c, n, n[0].info, "Expect tuple type, but got: " & $n[1].typ)
+          return localErrorNode(c, n, n[0].info, "Expect a tuple type, but got: " & $n[1].typ)
 
         for i in 0..<n[0].len-1:
           var v = symForVar(c, n[0][i])
