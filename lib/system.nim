@@ -2926,4 +2926,5 @@ proc arrayWith*[T](y: T, size: static int): array[size, T] {.raises: [].} =
     when nimvm:
       result[i] = y
     else:
-      result[i] = `=dup`(y)
+      {.cast(raises: []).}:
+        result[i] = `=dup`(y)

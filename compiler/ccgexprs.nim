@@ -2587,6 +2587,8 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mTrace: discard "no code to generate"
   of mEnsureMove:
     expr(p, e[1], d)
+  of mDup:
+    expr(p, e[1], d)
   else:
     when defined(debugMagics):
       echo p.prc.name.s, " ", p.prc.id, " ", p.prc.flags, " ", p.prc.ast[genericParamsPos].kind

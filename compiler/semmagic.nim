@@ -635,6 +635,16 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     let op = getAttachedOp(c.graph, t, attachedTrace)
     if op != nil:
       result[0] = newSymNode(op)
+  of mDup:
+    result = n
+    let t = n[1].typ.skipTypes(abstractVar)
+    let op = getAttachedOp(c.graph, t, attachedDup)
+    if op != nil:
+      result[0] = newSymNode(op)
+      if op.typ.len == 3:
+        let boolLit = newIntLit(c.graph, n.info, 1)
+        boolLit.typ = getSysType(c.graph, n.info, tyBool)
+        result.add boolLit
   of mWasMoved:
     result = n
     let t = n[1].typ.skipTypes(abstractVar)
