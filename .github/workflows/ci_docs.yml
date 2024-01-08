@@ -47,7 +47,7 @@ jobs:
           - target: windows
             os: windows-2019
           - target: osx
-            os: macos-11
+            os: macos-12
 
     name: ${{ matrix.target }}
     runs-on: ${{ matrix.os }}
