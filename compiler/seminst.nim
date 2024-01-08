@@ -56,6 +56,9 @@ iterator instantiateGenericParamList(c: PContext, n: PNode, pt: TIdTable): PSym 
       elif t.kind in {tyGenericParam, tyConcept}:
         localError(c.config, a.info, errCannotInstantiateX % q.name.s)
         t = errorType(c)
+      elif isUnresolvedStatic(t):
+        localError(c.config, a.info, errCannotInstantiateX % q.name.s)
+        t = errorType(c)
       elif t.kind == tyGenericInvocation:
         #t = instGenericContainer(c, a, t)
         t = generateTypeInstance(c, pt, a, t)
