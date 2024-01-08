@@ -2281,18 +2281,31 @@ func replaceWord*(s, sub: string, by = ""): string {.rtl,
     add result, substr(s, i)
 
 func multiReplace*(s: string, replacements: varargs[(string, string)]): string =
-  ## Same as replace, but specialized for doing multiple replacements in a single
-  ## pass through the input string.
+  ## Same as `replace<#replace,string,string,string>`_, but specialized for
+  ## doing multiple replacements in a single pass through the input string.
   ##
-  ## `multiReplace` performs all replacements in a single pass, this means it
-  ## can be used to swap the occurrences of "a" and "b", for instance.
+  ## `multiReplace` scans the input string from left to right and replaces the
+  ## matching substrings in the same order as passed in the argument list.
+  ##
+  ## The implications of the order of scanning the string and matching the
+  ## replacements:
+  ##   - In case of multiple matches at a given position, the earliest
+  ##     replacement is applied.
+  ##   - Overlaps are not handled. After performing a replacement, the scan
+  ##     continues from the character after the matched substring. If the
+  ##     resulting string then contains a possible match starting in a newly
+  ##     placed substring, the additional replacement is not performed.
   ##
   ## If the resulting string is not longer than the original input string,
   ## only a single memory allocation is required.
   ##
-  ## Replacements are done left to right in the string. If at a given position
-  ## multiple replacements match, earlier replacements are preferred over
-  ## later replacements in the argument list.
+  runnableExamples:
+    # Swapping occurrences of 'a' and 'b':
+    doAssert multireplace("abba", [("a", "b"), ("b", "a")]) == "baab"
+
+    # The second replacement ("ab") is matched and performed first, the scan then
+    # continues from 'c', so the "bc" replacement is never matched and thus skipped.
+    doAssert multireplace("abc", [("bc", "x"), ("ab", "_b")]) == "_bc"
   result = newStringOfCap(s.len)
   var i = 0
   var fastChk: set[char] = {}
