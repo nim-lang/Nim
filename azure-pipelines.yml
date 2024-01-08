@@ -29,10 +29,10 @@ jobs:
 #         vmImage: 'ubuntu-18.04'
 #         CPU: i386
       OSX_amd64:
-        vmImage: 'macOS-11'
+        vmImage: 'macOS-12'
         CPU: amd64
       OSX_amd64_cpp:
-        vmImage: 'macOS-11'
+        vmImage: 'macOS-12'
         CPU: amd64
         NIM_COMPILE_TO_CPP: true
       Windows_amd64_batch0_3:
