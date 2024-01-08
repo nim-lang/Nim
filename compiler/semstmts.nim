@@ -930,11 +930,11 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
   if iterAfterVarLent.kind != tyTuple or n.len == 3:
     if n.len == 3:
       if n[0].kind == nkVarTuple:
-        if n[0].len-1 != iterAfterVarLent.len:
-          return localErrorNode(c, n, n[0].info, errWrongNumberOfVariables)
-        elif n[1].typ.skipTypes({tyVar, tyLent}).kind != tyTuple:
+        if iterAfterVarLent.kind != tyTuple:
           return localErrorNode(c, n, n[0].info, errTupleUnpackingTupleExpected %
               [typeToString(n[1].typ, preferDesc)])
+        elif n[0].len-1 != iterAfterVarLent.len:
+          return localErrorNode(c, n, n[0].info, errWrongNumberOfVariables)
 
         for i in 0..<n[0].len-1:
           var v = symForVar(c, n[0][i])
