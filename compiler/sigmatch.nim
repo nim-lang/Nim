@@ -2704,12 +2704,6 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
   m.firstMismatch.arg = a
   m.firstMismatch.formal = formal
 
-proc semFinishOperands*(c: PContext, n: PNode) =
-  # this needs to be called to ensure that after overloading resolution every
-  # argument has been sem'checked:
-  for i in 1..<n.len:
-    n[i] = prepareOperand(c, n[i])
-
 proc partialMatch*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
   # for 'suggest' support:
   var marker = initIntSet()

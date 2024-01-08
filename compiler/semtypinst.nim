@@ -374,6 +374,11 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
         if header == t: header = instCopyType(cl, t)
         header[i] = x
         propagateToOwner(header, x)
+    elif isUnresolvedStatic(x) and not (cl.allowMetaTypes or tfRetType in x.flags):
+      # copied from error for unbound generic param in lookupTypeVar in above branch
+      localError(cl.c.config, cl.info, "cannot instantiate: '" & typeToString(x) & "'")
+      header[i] = errorType(cl.c)
+      propagateToOwner(header, x)
     else:
       propagateToOwner(header, x)
 
