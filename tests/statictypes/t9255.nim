@@ -1,6 +1,6 @@
 discard """
   errormsg: '''
-type mismatch: got <proc (a0: int): string{.noSideEffect, gcsafe.}>
+type mismatch: got <proc (a0: int): string{.raises: <inferred> [], noSideEffect, gcsafe.}>
 '''
   line: 13
 """

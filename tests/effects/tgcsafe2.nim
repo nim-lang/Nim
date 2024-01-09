@@ -1,5 +1,5 @@
 discard """
-  errormsg: '''type mismatch: got <proc (s: string)>'''
+  errormsg: '''type mismatch: got <proc (s: string){.raises: <inferred> [].}>'''
   line: 11
 """
 #5620
