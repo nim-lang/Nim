@@ -8573,8 +8573,62 @@ Byref pragma
 The `byref` pragma can be applied to an object or tuple type or a proc param.
 When applied to a type it instructs the compiler to pass the type by reference
 (hidden pointer) to procs. When applied to a param it will take precedence, even
-if the the type was marked as `bycopy`. When using the Cpp backend, params marked
-as byref will translate to cpp references `&`.
+if the the type was marked as `bycopy`. When an `importc` type has a `byref` pragma or
+parameters are marked as `byref` in an `importc` proc, these params translate to pointers.
+When an `importcpp` type has a `byref` pragma, these params translate to
+C++ references `&`.
+
+  ```Nim
+  {.emit: """/*TYPESECTION*/
+  typedef struct {
+    int x;
+  } CStruct;
+  """.}
+
+  {.emit: """
+  #ifdef __cplusplus
+  extern "C"
+  #endif
+  int takesCStruct(CStruct* x) {
+    return x->x;
+  }
+  """.}
+
+  type
+    CStruct {.importc, byref.} = object
+      x: cint
+
+  proc takesCStruct(x: CStruct): cint {.importc.}
+  ```
+
+  or
+
+
+  ```Nim
+  type
+    CStruct {.importc.} = object
+      x: cint
+
+  proc takesCStruct(x {.byref.}: CStruct): cint {.importc.}
+  ```
+
+  ```Nim
+  {.emit: """/*TYPESECTION*/
+  struct CppStruct {
+    int x;
+
+    int takesCppStruct(CppStruct& y) {
+      return x + y.x;
+    }
+  };
+  """.}
+
+  type
+    CppStruct {.importcpp, byref.} = object
+      x: cint
+
+  proc takesCppStruct(x, y: CppStruct): cint {.importcpp.}
+  ```
 
 Varargs pragma
 --------------
