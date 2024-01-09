@@ -1289,6 +1289,9 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
   result = newProcType(c, n.info, prev)
   var check = initIntSet()
   var counter = 0
+  template isCurrentlyGeneric: bool =
+    # genericParams might update as implicit generic params are added
+    genericParams != nil and genericParams.len > 0
 
   for i in 1..<n.len:
     var a = n[i]
@@ -1309,7 +1312,10 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
       hasDefault = a[^1].kind != nkEmpty
 
     if hasType:
+      let isGeneric = isCurrentlyGeneric()
+      inc c.inGenericContext, ord(isGeneric)
       typ = semParamType(c, a[^2], constraint)
+      dec c.inGenericContext, ord(isGeneric)
       # TODO: Disallow typed/untyped in procs in the compiler/stdlib
       if kind in {skProc, skFunc} and (typ.kind == tyTyped or typ.kind == tyUntyped):
         if not isMagic(getCurrOwner(c)):
@@ -1330,7 +1336,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
         message(c.config, a.info, warnImplicitDefaultValue, msg)
       block determineType:
         var defTyp = typ
-        if genericParams != nil and genericParams.len > 0:
+        if isCurrentlyGeneric():
           defTyp = nil
           def = semGenericStmt(c, def)
           if hasUnresolvedArgs(c, def):
@@ -1409,11 +1415,12 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
       onDef(a[j].info, arg)
       a[j] = newSymNode(arg)
 
-  var r: PType =
-    if n[0].kind != nkEmpty:
-      semTypeNode(c, n[0], nil)
-    else:
-      nil
+  var r: PType = nil
+  if n[0].kind != nkEmpty:
+    let isGeneric = isCurrentlyGeneric()
+    inc c.inGenericContext, ord(isGeneric)
+    r = semTypeNode(c, n[0], nil)
+    dec c.inGenericContext, ord(isGeneric)
 
   if r != nil and kind in {skMacro, skTemplate} and r.kind == tyTyped:
     # XXX: To implement the proposed change in the warning, just
@@ -1465,7 +1472,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
           result.flags.excl tfHasMeta
       result.n.typ = r
 
-  if genericParams != nil and genericParams.len > 0:
+  if isCurrentlyGeneric():
     for n in genericParams:
       if {sfUsed, sfAnon} * n.sym.flags == {}:
         result.flags.incl tfUnresolved
