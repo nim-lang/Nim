@@ -1,6 +1,6 @@
 discard """
   errormsg: "cannot instantiate: 'T'"
-  line: 28
+  line: 19
 """
 
 type
