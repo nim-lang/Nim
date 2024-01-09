@@ -723,6 +723,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
       result.add(')')
       if t.returnType != nil: result.add(": " & typeToString(t.returnType))
       var prag = if t.callConv == ccNimCall and tfExplicitCallConv notin t.flags: "" else: $t.callConv
+      var hasImplicitRaises = false
       if not isNil(t.owner) and not isNil(t.owner.ast) and (t.owner.ast.len - 1) >= pragmasPos:
         let pragmasNode = t.owner.ast[pragmasPos]
         let raisesSpec = effectSpec(pragmasNode, wRaises)
@@ -730,6 +731,22 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
           addSep(prag)
           prag.add("raises: ")
           prag.add($raisesSpec)
+          hasImplicitRaises = true
+
+      if not hasImplicitRaises and not isNil(t.owner) and not isNil(t.owner.typ) and not isNil(t.owner.typ.n) and (t.owner.typ.n.len > 0):
+        let effects = t.owner.typ.n[0]
+        if effects.kind == nkEffectList and effects.len == effectListLen:
+          var inferredRaisesStr = ""
+          let effs = effects[exceptionEffects]
+          if not isNil(effs):
+            for eff in items(effs):
+              if not isNil(eff):
+                addSep(inferredRaisesStr)
+                inferredRaisesStr.add($eff.typ)
+          addSep(prag)
+          prag.add("raises: <inferred> [")
+          prag.add(inferredRaisesStr)
+          prag.add("]")
 
       if tfNoSideEffect in t.flags:
         addSep(prag)
