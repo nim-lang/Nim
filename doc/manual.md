@@ -8573,7 +8573,7 @@ Byref pragma
 The `byref` pragma can be applied to an object or tuple type or a proc param.
 When applied to a type it instructs the compiler to pass the type by reference
 (hidden pointer) to procs. When applied to a param it will take precedence, even
-if the the type was marked as `bycopy`. When a `importc` type has `byref` pragma or
+if the the type was marked as `bycopy`. When an `importc` type has a `byref` pragma or
 params are marked as `byref` in `importc` proc, these params will translate to pointers.
 When a `importcpp` type has `byref` pragma, these params will translate to
 cpp references `&`.
