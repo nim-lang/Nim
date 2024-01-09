@@ -8575,7 +8575,7 @@ When applied to a type it instructs the compiler to pass the type by reference
 (hidden pointer) to procs. When applied to a param it will take precedence, even
 if the the type was marked as `bycopy`. When an `importc` type has a `byref` pragma or
 parameters are marked as `byref` in an `importc` proc, these params translate to pointers.
-When a `importcpp` type has `byref` pragma, these params will translate to
+When an `importcpp` type has a `byref` pragma, these params translate to
 cpp references `&`.
 
   ```Nim
