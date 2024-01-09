@@ -1,4 +1,4 @@
-when false: # issue #22607, needs proper nkWhenStmt handling
+when false: # issue #22607, needs nkWhenStmt to be handled like nkRecWhen
   proc test[x: static bool](
     t: (
       when x:
