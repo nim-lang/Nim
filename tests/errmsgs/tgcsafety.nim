@@ -1,6 +1,6 @@
 discard """
 cmd: "nim check $file"
-errormsg: "type mismatch: got <AsyncHttpServer, Port, proc (req: Request): Future[system.void]>"
+errormsg: "type mismatch: got <AsyncHttpServer, Port, proc (req: Request): Future[system.void]{.raises: <inferred> [Exception].}>"
 nimout: '''
 tgcsafety.nim(31, 18) Error: type mismatch: got <AsyncHttpServer, Port, proc (req: Request): Future[system.void]{.raises: <inferred> [Exception].}>
 but expected one of:
