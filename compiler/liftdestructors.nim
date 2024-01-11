@@ -1183,7 +1183,7 @@ proc produceSym(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp;
     incl result.flags, sfNeverRaises
     result.ast[pragmasPos] = newNodeI(nkPragma, info)
     result.ast[pragmasPos].add newTree(nkExprColonExpr,
-        newIdentNode(c.cache.getIdent("raises"),  info), newNodeI(nkBracket, info))
+        newIdentNode(g.cache.getIdent("raises"),  info), newNodeI(nkBracket, info))
 
   completePartialOp(g, idgen.module, typ, kind, result)
 
