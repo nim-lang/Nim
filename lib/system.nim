@@ -376,7 +376,7 @@ else:
     discard
 
   when defined(nimAllowNonVarDestructor) and arcLikeMem:
-    proc `=destroy`*(x: string) {.inline, magic: "Destroy".} =
+    proc `=destroy`*(x: string) {.inline, magic: "Destroy", enforceNoRaises.} =
       discard
 
     proc `=destroy`*[T](x: seq[T]) {.inline, magic: "Destroy".} =
