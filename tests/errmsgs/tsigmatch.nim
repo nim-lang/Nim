@@ -36,7 +36,7 @@ tsigmatch.nim(143, 13) Error: type mismatch: got <array[0..0, proc (x: int){.gcs
 but expected one of:
 proc takesFuncs(fs: openArray[proc (x: int) {.gcsafe.}])
   first type mismatch at position: 1
-  required type for fs: openArray[proc (x: int){.closure, raises: <inferred> [], gcsafe.}]
+  required type for fs: openArray[proc (x: int){.closure, gcsafe, raises: <inferred> [].}]
   but expression '[proc (x: int) {.gcsafe.} = echo [x]]' is of type: array[0..0, proc (x: int){.gcsafe, raises: <inferred> [].}]
 
 expression: takesFuncs([proc (x: int) {.gcsafe.} = echo [x]])

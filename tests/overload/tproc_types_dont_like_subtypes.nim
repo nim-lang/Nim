@@ -1,5 +1,5 @@
 discard """
-  errormsg: "got <B, proc (b: B){.closure, raises: <inferred> [], gcsafe.}>"
+  errormsg: "got <B, proc (b: B){.closure, gcsafe, raises: <inferred> [].}>"
   line: 20
 """
 

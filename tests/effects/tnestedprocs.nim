@@ -8,10 +8,10 @@ tnestedprocs.nim(45, 8) Error: 'inner' can have side effects
 > tnestedprocs.nim(47, 13) Hint: 'inner' calls `.sideEffect` 'outer6'
 >> tnestedprocs.nim(44, 6) Hint: 'outer6' called by 'inner'
 
-tnestedprocs.nim(58, 41) Error: type mismatch: got <proc ()> but expected 'proc (){.closure, raises: <inferred> [], noSideEffect.}'
+tnestedprocs.nim(58, 41) Error: type mismatch: got <proc ()> but expected 'proc (){.closure, noSideEffect, raises: <inferred> [].}'
   Pragma mismatch: got '{..}', but expected '{.noSideEffect.}'.
 '''
-  errormsg: "type mismatch: got <proc ()> but expected 'proc (){.closure, raises: <inferred> [], noSideEffect.}'"
+  errormsg: "type mismatch: got <proc ()> but expected 'proc (){.closure, noSideEffect, raises: <inferred> [].}'"
 """
 {.experimental: "strictEffects".}
 proc outer {.noSideEffect.} =

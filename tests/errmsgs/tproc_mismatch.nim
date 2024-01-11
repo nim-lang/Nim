@@ -3,18 +3,18 @@ discard """
   cmd: '''nim check --hints:off $options $file'''
   nimoutFull: true
   nimout: '''
-tproc_mismatch.nim(38, 52) Error: type mismatch: got <proc (a: int, c: float){.cdecl, raises: <inferred> [], noSideEffect, gcsafe.}> but expected 'proc (a: int, c: float){.closure, noSideEffect.}'
+tproc_mismatch.nim(38, 52) Error: type mismatch: got <proc (a: int, c: float){.cdecl, noSideEffect, gcsafe, raises: <inferred> [].}> but expected 'proc (a: int, c: float){.closure, noSideEffect.}'
   Calling convention mismatch: got '{.cdecl.}', but expected '{.closure.}'.
-tproc_mismatch.nim(42, 6) Error: type mismatch: got <proc (){.inline, raises: <inferred> [], noSideEffect, gcsafe.}>
+tproc_mismatch.nim(42, 6) Error: type mismatch: got <proc (){.inline, noSideEffect, gcsafe, raises: <inferred> [].}>
 but expected one of:
 proc bar(a: proc ())
   first type mismatch at position: 1
   required type for a: proc (){.closure, raises: <inferred> [].}
-  but expression 'fn1' is of type: proc (){.inline, raises: <inferred> [], noSideEffect, gcsafe.}
+  but expression 'fn1' is of type: proc (){.inline, noSideEffect, gcsafe, raises: <inferred> [].}
   Calling convention mismatch: got '{.inline.}', but expected '{.closure.}'.
 
 expression: bar(fn1)
-tproc_mismatch.nim(46, 8) Error: type mismatch: got <proc (){.inline, raises: <inferred> [], noSideEffect, gcsafe.}> but expected 'proc (){.closure.}'
+tproc_mismatch.nim(46, 8) Error: type mismatch: got <proc (){.inline, noSideEffect, gcsafe, raises: <inferred> [].}> but expected 'proc (){.closure.}'
   Calling convention mismatch: got '{.inline.}', but expected '{.closure.}'.
 tproc_mismatch.nim(51, 8) Error: type mismatch: got <proc (){.raises: <inferred> [].}> but expected 'proc (){.closure, noSideEffect.}'
   Calling convention mismatch: got '{.nimcall.}', but expected '{.closure.}'.

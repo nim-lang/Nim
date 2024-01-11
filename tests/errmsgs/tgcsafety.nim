@@ -9,7 +9,7 @@ proc serve(server: AsyncHttpServer; port: Port;
            address = ""; assumedDescriptorsPerRequest = -1; domain = AF_INET): owned(
     Future[void])
   first type mismatch at position: 3
-  required type for callback: proc (request: Request): Future[system.void]{.closure, raises: <inferred> [Exception], gcsafe.}
+  required type for callback: proc (request: Request): Future[system.void]{.closure, gcsafe, raises: <inferred> [Exception].}
   but expression 'cb' is of type: proc (req: Request): Future[system.void]{.raises: <inferred> [Exception].}
   This expression is not GC-safe. Annotate the proc with {.gcsafe.} to get extended error information.
 

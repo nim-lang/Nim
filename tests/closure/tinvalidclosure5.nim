@@ -1,5 +1,5 @@
 discard """
-  errormsg: "type mismatch: got <proc (){.closure, raises: <inferred> [], gcsafe.}> but expected 'A = proc (){.nimcall.}'"
+  errormsg: "type mismatch: got <proc (){.closure, gcsafe, raises: <inferred> [].}> but expected 'A = proc (){.nimcall.}'"
   line: 9
 """
 
