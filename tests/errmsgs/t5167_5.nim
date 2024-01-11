@@ -22,4 +22,4 @@ bar t #[tt.Error
 let y = m #[tt.Error
         ^ 'm' has unspecified generic parameters]#
 bar m #[tt.Error
-^ type mismatch: got <macro [*missing parameters*](): untyped{.noSideEffect, gcsafe.}>]#
+^ type mismatch: got <macro [*missing parameters*](): untyped{.noSideEffect, gcsafe, raises: <inferred> [].}>]#
