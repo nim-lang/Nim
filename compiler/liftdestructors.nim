@@ -1173,7 +1173,12 @@ proc produceSym(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp;
         # bug #19205: Do not forget to also copy the hidden type field:
         genTypeFieldCopy(a, typ, result.ast[bodyPos], d, src)
 
-  if not a.canRaise: incl result.flags, sfNeverRaises
+  if not a.canRaise:
+    incl result.flags, sfNeverRaises
+    result.ast[pragmasPos] = newNodeI(nkPragma, info)
+    result.ast[pragmasPos].add newTree(nkExprColonExpr,
+        newIdentNode(g.cache.getIdent("raises"),  info), newNodeI(nkBracket, info))
+
   completePartialOp(g, idgen.module, typ, kind, result)
 
 
