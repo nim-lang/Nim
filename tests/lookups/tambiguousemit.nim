@@ -8,5 +8,5 @@ proc foo(x: float) = discard
 
 {.emit: ["// ", foo].} #[tt.Error
                 ^ ambiguous identifier: 'foo' -- use one of the following:
-  tambiguousemit.foo: proc (x: int){.raises: <inferred> [], noSideEffect, gcsafe.}
-  tambiguousemit.foo: proc (x: float){.raises: <inferred> [], noSideEffect, gcsafe.}]#
+  tambiguousemit.foo: proc (x: int){.noSideEffect, gcsafe, raises: <inferred> [].}
+  tambiguousemit.foo: proc (x: float){.noSideEffect, gcsafe, raises: <inferred> [].}]#

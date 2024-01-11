@@ -732,7 +732,12 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
           prag.add("raises: ")
           prag.add($raisesSpec)
           hasImplicitRaises = true
-
+      if tfNoSideEffect in t.flags:
+        addSep(prag)
+        prag.add("noSideEffect")
+      if tfThread in t.flags:
+        addSep(prag)
+        prag.add("gcsafe")
       if not hasImplicitRaises and not isNil(t.owner) and not isNil(t.owner.typ) and not isNil(t.owner.typ.n) and (t.owner.typ.n.len > 0):
         let effects = t.owner.typ.n[0]
         if effects.kind == nkEffectList and effects.len == effectListLen:
@@ -747,13 +752,6 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
           prag.add("raises: <inferred> [")
           prag.add(inferredRaisesStr)
           prag.add("]")
-
-      if tfNoSideEffect in t.flags:
-        addSep(prag)
-        prag.add("noSideEffect")
-      if tfThread in t.flags:
-        addSep(prag)
-        prag.add("gcsafe")
       if prag.len != 0: result.add("{." & prag & ".}")
     of tyVarargs:
       result = typeToStr[t.kind] % typeToString(t.elementType)

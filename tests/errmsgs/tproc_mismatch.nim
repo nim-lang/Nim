@@ -19,7 +19,7 @@ tproc_mismatch.nim(46, 8) Error: type mismatch: got <proc (){.inline, raises: <i
 tproc_mismatch.nim(51, 8) Error: type mismatch: got <proc (){.raises: <inferred> [].}> but expected 'proc (){.closure, noSideEffect.}'
   Calling convention mismatch: got '{.nimcall.}', but expected '{.closure.}'.
   Pragma mismatch: got '{..}', but expected '{.noSideEffect.}'.
-tproc_mismatch.nim(55, 8) Error: type mismatch: got <proc (a: int){.raises: <inferred> [], noSideEffect, gcsafe.}> but expected 'proc (a: float){.closure.}'
+tproc_mismatch.nim(55, 8) Error: type mismatch: got <proc (a: int){.noSideEffect, gcsafe, raises: <inferred> [].}> but expected 'proc (a: float){.closure.}'
   Calling convention mismatch: got '{.nimcall.}', but expected '{.closure.}'.
 tproc_mismatch.nim(64, 9) Error: type mismatch: got <proc (a: int){.raises: <inferred> [].}> but expected 'proc (a: int){.closure, gcsafe.}'
   Calling convention mismatch: got '{.nimcall.}', but expected '{.closure.}'.

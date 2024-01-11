@@ -3,8 +3,8 @@ discard """
   errormsg: ""
   nimout: '''
 t18886.nim(18, 24) Error: ambiguous identifier: 'bar' -- you need a helper proc to disambiguate the following:
-  t18886.bar: proc (i: ptr int){.raises: <inferred> [], noSideEffect, gcsafe.}
-  t18886.bar: proc (i: ptr char){.raises: <inferred> [], noSideEffect, gcsafe.}
+  t18886.bar: proc (i: ptr int){.noSideEffect, gcsafe, raises: <inferred> [].}
+  t18886.bar: proc (i: ptr char){.noSideEffect, gcsafe, raises: <inferred> [].}
 '''
 """
 

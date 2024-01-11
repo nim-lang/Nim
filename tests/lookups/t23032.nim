@@ -1,6 +1,6 @@
 discard """
 action: "run"
-outputsub: "proc (a: A[system.float]): bool{.raises: <inferred> [], noSideEffect, gcsafe.}"
+outputsub: "proc (a: A[system.float]): bool{.noSideEffect, gcsafe, raises: <inferred> [].}"
 """
 
 import issue_23032/deep_scope

@@ -1,5 +1,5 @@
 discard """
-  errormsg: "type mismatch: got <TT[seq[string]], proc (v: int){.raises: <inferred> [], gcsafe.}>"
+  errormsg: "type mismatch: got <TT[seq[string]], proc (v: int){.gcsafe, raises: <inferred> [].}>"
   line: 20
 """
 
