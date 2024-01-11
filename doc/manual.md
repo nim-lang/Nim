@@ -6976,25 +6976,47 @@ All identifiers of a module are valid from the point of declaration until
 the end of the module. Identifiers from indirectly dependent modules are *not*
 available. The `system`:idx: module is automatically imported in every module.
 
-If a module imports an identifier by two different modules, each occurrence of
-the identifier has to be qualified unless it is an overloaded procedure or
-iterator in which case the overloading resolution takes place:
+If a module imports the same identifier from two different modules, the
+identifier is considered ambiguous, which can be resolved in the following ways:
+
+* Qualifying the identifier as `module.identifier` resolves ambiguity
+  between modules. (See below for the case that the module name itself
+  is ambiguous.)
+* Calling the identifier as a routine makes overload resolution take place,
+  which resolves ambiguity in the case that one overload matches stronger
+  than the others.
+* Using the identifier in a context where the compiler can infer the type
+  of the identifier resolves ambiguity in the case that one definition
+  matches the type stronger than the others.
 
   ```nim
   # Module A
   var x*: string
+  proc foo*(a: string) =
+    echo "A: ", a
   ```
 
   ```nim
   # Module B
   var x*: int
+  proc foo*(b: int) =
+    echo "B: ", b
   ```
 
   ```nim
   # Module C
   import A, B
+
+  foo("abc") # A: abc
+  foo(123) # B: 123
+  let inferred: proc (x: string) = foo
+  foo("def") # A: def
+
   write(stdout, x) # error: x is ambiguous
   write(stdout, A.x) # no error: qualifier used
+  
+  proc bar(a: int): int = a + 1
+  assert bar(x) == x + 1 # no error: only A.x of type int matches
 
   var x = 4
   write(stdout, x) # not ambiguous: uses the module C's x
@@ -7018,7 +7040,7 @@ proc fb* = echo "buzz"
 import A/C
 import B/C
 
-C.fb() # Error: ambiguous identifier: 'fb'
+C.fb() # Error: ambiguous identifier: 'C'
 ```
 
 
