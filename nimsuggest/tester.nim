@@ -279,10 +279,10 @@ proc runEpcTest(filename: string): int =
         os.sleep(50)
         inc i
       let a = outp.readAll().strip()
-    var port
+    var port: int
     try:
       port = parseInt(a)
-    on ValueError:
+    except ValueError:
       echo "Error parsing int: " & a
       raise
     socket.connect("localhost", Port(port))
