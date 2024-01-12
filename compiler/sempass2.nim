@@ -990,7 +990,8 @@ proc trackCall(tracked: PEffects; n: PNode) =
     var actualLoc = a.info
     if n.kind == nkHiddenCallConv:
       actualLoc = n.info
-    markCaughtExceptions(tracked, tracked.graph, actualLoc, a.sym, tracked.graph.usageSym)
+    if a.kind == nkSym:
+      markCaughtExceptions(tracked, tracked.graph, actualLoc, a.sym, tracked.graph.usageSym)
 
   let notConstExpr = getConstExpr(tracked.ownerModule, n, tracked.c.idgen, tracked.graph) == nil
   if notConstExpr:
