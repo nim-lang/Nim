@@ -284,6 +284,7 @@ proc runEpcTest(filename: string): int =
       port = parseInt(a)
     except ValueError:
       echo "Error parsing int: " & a
+      echo outp.readAll()
       raise
     socket.connect("localhost", Port(port))
 
