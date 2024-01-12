@@ -279,7 +279,12 @@ proc runEpcTest(filename: string): int =
         os.sleep(50)
         inc i
       let a = outp.readAll().strip()
-    let port = parseInt(a)
+    var port
+    try:
+      port = parseInt(a)
+    on ValueError:
+      echo "Error parsing int: " & a
+      raise
     socket.connect("localhost", Port(port))
 
     for req, resp in items(s.script):
