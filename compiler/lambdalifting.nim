@@ -994,12 +994,15 @@ proc liftForLoop*(g: ModuleGraph; body: PNode; idgen: IdGenerator; owner: PSym):
   # gather vars in a tuple:
   var v2 = newNodeI(nkLetSection, body.info)
   var vpart = newNodeI(if body.len == 3: nkIdentDefs else: nkVarTuple, body.info)
-  for i in 0..<body.len-2:
-    if body[i].kind == nkSym:
-      body[i].sym.transitionToLet()
-    vpart.add body[i]
+  if body.len == 3 and body[0].kind == nkVarTuple:
+    vpart = body[0] # fixes for (i,j) in walk() # bug #15924
+  else:
+    for i in 0..<body.len-2:
+      if body[i].kind == nkSym:
+        body[i].sym.transitionToLet()
+      vpart.add body[i]
 
-  vpart.add newNodeI(nkEmpty, body.info) # no explicit type
+    vpart.add newNodeI(nkEmpty, body.info) # no explicit type
   if not env.isNil:
     call[0] = makeClosure(g, idgen, call[0].sym, env.newSymNode, body.info)
   vpart.add call
