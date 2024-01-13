@@ -1002,7 +1002,7 @@ proc liftForLoop*(g: ModuleGraph; body: PNode; idgen: IdGenerator; owner: PSym):
         body[i].sym.transitionToLet()
       vpart.add body[i]
 
-  vpart.add newNodeI(nkEmpty, body.info) # no explicit type
+    vpart.add newNodeI(nkEmpty, body.info) # no explicit type
   if not env.isNil:
     call[0] = makeClosure(g, idgen, call[0].sym, env.newSymNode, body.info)
   vpart.add call
