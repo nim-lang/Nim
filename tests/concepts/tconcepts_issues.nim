@@ -510,7 +510,7 @@ proc depthOf*[V](orderType: typedesc[BreadthOrder], tree: AnyTree[V], root, goal
   if root == goal:
     return 0
   var order = init[LevelNode[V]](orderType)
-  order.expand(tree, root, (leaf) => (1, leaf))
+  order.expand(tree, root, (leaf) => (1.uint, leaf))
   while order.hasNext():
     let depthNode: LevelNode[V] = order.popNext()
     if depthNode.node == goal:

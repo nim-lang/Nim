@@ -22,6 +22,9 @@ block: # issue #18866
     month: 1..12
     day:   1..31
 
-  @[TimeD()].somefn(proc (v: auto): auto =
+  doAssert not compiles(@[TimeD()].somefn(proc (v: auto): auto =
     v
+  ))
+  @[TimeD()].somefn(proc (v: auto): auto =
+    v.year.float
   )
