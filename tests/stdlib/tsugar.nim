@@ -295,7 +295,7 @@ template main() =
       for i in 0..5:
         xs.add(i)
 
-      xs.apply(d => ys.add(d))
+      xs.apply(proc (d: auto) = ys.add(d))
       doAssert ys == @[0, 1, 2, 3, 4, 5]
 
     test()

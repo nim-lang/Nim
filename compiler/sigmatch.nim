@@ -2189,8 +2189,9 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
   #  because in that case there is no point in continuing.
   var bothMetaCounter = 0
   var lastBindingsLength = -1
-  while r == isBothMetaConvertible and
-      lastBindingsLength != m.bindings.counter and
+  while r in {isBothMetaConvertible, isInferred, isInferredConvertible} and
+      (lastBindingsLength != m.bindings.counter or
+        (arg.typ[0] != nil and arg.typ[0].kind == tyAnything)) and
       bothMetaCounter < 100:
     lastBindingsLength = m.bindings.counter
     inc(bothMetaCounter)
@@ -2201,7 +2202,8 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
     else:
       let inferred = c.semGenerateInstance(c, arg.sym, m.bindings, arg.info)
       result = newSymNode(inferred, arg.info)
-    inc(m.convMatches)
+    if r == isBothMetaConvertible: # ???
+      inc(m.convMatches)
     arg = result
     r = typeRel(m, f, arg.typ)
 
