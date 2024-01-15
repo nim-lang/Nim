@@ -33,7 +33,7 @@ py
 py
 px
 6
-proc (){.closure, noSideEffect, gcsafe, raises: <inferred> [].}
+proc (){.closure, noSideEffect, gcsafe.}
 '''
 """
 

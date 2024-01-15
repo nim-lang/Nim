@@ -1,5 +1,5 @@
 discard """
-  errormsg: "type mismatch: got <proc (s: TScgi: ScgiState or AsyncScgiState) | proc (client: AsyncSocket, headers: StringTableRef, input: string){.noSideEffect, gcsafe, raises: <inferred> [].}>"
+  errormsg: "type mismatch: got <proc (s: TScgi: ScgiState or AsyncScgiState) | proc (client: AsyncSocket, headers: StringTableRef, input: string){.noSideEffect, gcsafe.}>"
   line: 23
 """
 

@@ -3,8 +3,8 @@ discard """
   cmd: "nim check $file"
   nimout: '''
 tambprocvar.nim(15, 11) Error: ambiguous identifier: 'foo' -- use one of the following:
-  tambprocvar.foo: proc (x: int){.noSideEffect, gcsafe, raises: <inferred> [].}
-  tambprocvar.foo: proc (x: float){.noSideEffect, gcsafe, raises: <inferred> [].}
+  tambprocvar.foo: proc (x: int){.noSideEffect, gcsafe.}
+  tambprocvar.foo: proc (x: float){.noSideEffect, gcsafe.}
 '''
 """
 

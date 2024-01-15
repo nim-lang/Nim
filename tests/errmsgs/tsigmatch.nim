@@ -12,32 +12,32 @@ proc f(b: B)
   but expression 'A()' is of type: A
 
 expression: f(A(), "extra")
-tsigmatch.nim(125, 6) Error: type mismatch: got <(string, proc (){.gcsafe, raises: <inferred> [].})>
+tsigmatch.nim(125, 6) Error: type mismatch: got <(string, proc (){.gcsafe.})>
 but expected one of:
 proc foo(x: (string, proc ()))
   first type mismatch at position: 1
-  required type for x: (string, proc (){.closure, raises: <inferred> [Exception].})
-  but expression '("foobar", proc () = echo(["Hello!"]))' is of type: (string, proc (){.gcsafe, raises: <inferred> [].})
+  required type for x: (string, proc (){.closure.})
+  but expression '("foobar", proc () = echo(["Hello!"]))' is of type: (string, proc (){.gcsafe.})
 
 expression: foo(("foobar", proc () = echo(["Hello!"])))
-tsigmatch.nim(132, 11) Error: type mismatch: got <proc (s: string): string{.noSideEffect, gcsafe, raises: <inferred> [].}>
+tsigmatch.nim(132, 11) Error: type mismatch: got <proc (s: string): string{.noSideEffect, gcsafe.}>
 but expected one of:
 proc foo[T, S](op: proc (x: T): S {.cdecl.}): auto
   first type mismatch at position: 1
   required type for op: proc (x: T): S{.cdecl.}
-  but expression 'fun' is of type: proc (s: string): string{.noSideEffect, gcsafe, raises: <inferred> [].}
+  but expression 'fun' is of type: proc (s: string): string{.noSideEffect, gcsafe.}
 proc foo[T, S](op: proc (x: T): S {.safecall.}): auto
   first type mismatch at position: 1
   required type for op: proc (x: T): S{.safecall.}
-  but expression 'fun' is of type: proc (s: string): string{.noSideEffect, gcsafe, raises: <inferred> [].}
+  but expression 'fun' is of type: proc (s: string): string{.noSideEffect, gcsafe.}
 
 expression: foo(fun)
-tsigmatch.nim(143, 13) Error: type mismatch: got <array[0..0, proc (x: int){.gcsafe, raises: <inferred> [].}]>
+tsigmatch.nim(143, 13) Error: type mismatch: got <array[0..0, proc (x: int){.gcsafe.}]>
 but expected one of:
 proc takesFuncs(fs: openArray[proc (x: int) {.gcsafe.}])
   first type mismatch at position: 1
-  required type for fs: openArray[proc (x: int){.closure, gcsafe, raises: <inferred> [].}]
-  but expression '[proc (x: int) {.gcsafe.} = echo [x]]' is of type: array[0..0, proc (x: int){.gcsafe, raises: <inferred> [].}]
+  required type for fs: openArray[proc (x: int){.closure, gcsafe.}]
+  but expression '[proc (x: int) {.gcsafe.} = echo [x]]' is of type: array[0..0, proc (x: int){.gcsafe.}]
 
 expression: takesFuncs([proc (x: int) {.gcsafe.} = echo [x]])
 tsigmatch.nim(149, 4) Error: type mismatch: got <int literal(10), a0: int literal(5), string>

@@ -1,6 +1,6 @@
 discard """
 action: compile
-errormsg: "type mismatch: got <proc (i: int){.gcsafe, raises: <inferred> [].}>"
+errormsg: "type mismatch: got <proc (i: int){.gcsafe.}>"
 line: 23
 """
 

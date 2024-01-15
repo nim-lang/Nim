@@ -31,6 +31,7 @@ type
       # most useful, shows: symbol + resolved symbols if it differs, e.g.:
       # tuple[a: MyInt{int}, b: float]
     preferInlayHint,
+    preferInferredEffects,
 
   TTypeRelation* = enum      # order is important!
     isNone, isConvertible,
@@ -477,7 +478,7 @@ const
     "void", "iterable"]
 
 const preferToResolveSymbols = {preferName, preferTypeName, preferModuleInfo,
-  preferGenericArg, preferResolved, preferMixed, preferInlayHint}
+  preferGenericArg, preferResolved, preferMixed, preferInlayHint, preferInferredEffects}
 
 template bindConcreteTypeToUserTypeClass*(tc, concrete: PType) =
   tc.add concrete
@@ -530,7 +531,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
           result = t.sym.name.s
         if prefer == preferMixed and result != t.sym.name.s:
           result = t.sym.name.s & "{" & result & "}"
-      elif prefer in {preferName, preferTypeName, preferInlayHint} or t.sym.owner.isNil:
+      elif prefer in {preferName, preferTypeName, preferInlayHint, preferInferredEffects} or t.sym.owner.isNil:
         # note: should probably be: {preferName, preferTypeName, preferGenericArg}
         result = t.sym.name.s
         if t.kind == tyGenericParam and t.genericParamHasConstraints:
@@ -738,7 +739,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
       if tfThread in t.flags:
         addSep(prag)
         prag.add("gcsafe")
-      if not hasImplicitRaises and not isNil(t.owner) and not isNil(t.owner.typ) and not isNil(t.owner.typ.n) and (t.owner.typ.n.len > 0):
+      if not hasImplicitRaises and prefer == preferInferredEffects and not isNil(t.owner) and not isNil(t.owner.typ) and not isNil(t.owner.typ.n) and (t.owner.typ.n.len > 0):
         let effects = t.owner.typ.n[0]
         if effects.kind == nkEffectList and effects.len == effectListLen:
           var inferredRaisesStr = ""
