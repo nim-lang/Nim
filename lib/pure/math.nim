@@ -270,7 +270,6 @@ func classify*(x: float): FloatClass =
   ## Classifies a floating point value.
   ##
   ## Returns `x`'s class as specified by the `FloatClass enum<#FloatClass>`_.
-  ## Doesn't work with `--passc:-ffast-math`.
   runnableExamples:
     doAssert classify(0.3) == fcNormal
     doAssert classify(0.0) == fcZero
@@ -279,6 +278,7 @@ func classify*(x: float): FloatClass =
     doAssert classify(5.0e-324) == fcSubnormal
 
   # JavaScript and most C compilers have no classify:
+  if isNan(x): return fcNan
   if x == 0.0:
     if 1.0 / x == Inf:
       return fcZero
@@ -287,7 +287,6 @@ func classify*(x: float): FloatClass =
   if x * 0.5 == x:
     if x > 0.0: return fcInf
     else: return fcNegInf
-  if x != x: return fcNan
   if abs(x) < MinFloatNormal:
     return fcSubnormal
   return fcNormal
