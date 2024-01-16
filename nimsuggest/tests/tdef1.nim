@@ -1,9 +1,9 @@
 discard """
 $nimsuggest --tester $file
 >def $1
-def;;skProc;;tdef1.hello;;proc (): string{.noSideEffect, gcsafe, locks: 0.};;$file;;9;;5;;"Return hello";;100
+def;;skProc;;tdef1.hello;;proc (): string{.noSideEffect, gcsafe, locks: 0, raises: <inferred> [].};;$file;;9;;5;;"Return hello";;100
 >def $1
-def;;skProc;;tdef1.hello;;proc (): string{.noSideEffect, gcsafe, locks: 0.};;$file;;9;;5;;"Return hello";;100
+def;;skProc;;tdef1.hello;;proc (): string{.noSideEffect, gcsafe, locks: 0, raises: <inferred> [].};;$file;;9;;5;;"Return hello";;100
 """
 
 proc hello(): string =
