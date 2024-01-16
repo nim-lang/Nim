@@ -1819,15 +1819,7 @@ proc semInferredLambda(c: PContext, pt: TIdTable, n: PNode): PNode =
   #incl(s.flags, sfFromGeneric)
   #s.owner = original
 
-  let originalReturnType = n.typ[0]
   n = replaceTypesInBody(c, pt, n, original)
-  if originalReturnType != nil and originalReturnType.kind == tyAnything:
-    # the return type should not be set to a previous binding of `auto`
-    # this could alternatively be done by changing tyAnything to
-    # differentiate based on which place it's inferring the type of
-    # (i.e. a unique instance of tyAnything for every reference to `auto`),
-    # but for now this is sufficient as we only care to infer return types
-    n.typ[0] = originalReturnType
   result = n
   s.ast = result
   n[namePos].sym = s
