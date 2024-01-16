@@ -2120,6 +2120,7 @@ template matchesVoidProc(t: PType): bool =
 
 proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
                         argSemantized, argOrig: PNode): PNode =
+  result = nil
   var
     fMaybeStatic = f.skipTypes({tyDistinct})
     arg = argSemantized
