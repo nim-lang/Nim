@@ -11,7 +11,9 @@ block: # issue #23200
   dosomething(makeSeq)
   # Works with 1.6.12, fails with 1.6.14
   dosomething((y) => makeSeq(y))
-  doSomething(proc (y: auto): auto = makeSeq(y))
+  dosomething(proc (y: auto): auto = makeSeq(y))
+  proc foo(y: auto): auto = makeSeq(y)
+  dosomething(foo)
 
 block: # issue #18866
   proc somefn[T](list: openarray[T], op: proc (v: T): float) =
@@ -28,3 +30,7 @@ block: # issue #18866
   @[TimeD()].somefn(proc (v: auto): auto =
     v.year.float
   )
+  proc foo(v: auto): auto = v
+  doAssert not compiles(@[TimeD()].somefn(foo))
+  proc bar(v: auto): auto = v.year.float
+  @[TimeD()].somefn(bar)
