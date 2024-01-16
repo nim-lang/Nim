@@ -339,6 +339,8 @@ proc fitRemoveHiddenConv(c: PContext, typ: PType, n: PNode): PNode =
       result.typ = typ
       if not floatRangeCheck(result.floatVal, typ):
         localError(c.config, n.info, errFloatToString % [$result.floatVal, typeToString(typ)])
+    elif r1.kind == nkSym and typ.skipTypes(abstractRange).kind == tyCstring:
+      discard "keep nkHiddenStdConv for cstring conversions"
     else:
       changeType(c, r1, typ, check=true)
       result = r1
