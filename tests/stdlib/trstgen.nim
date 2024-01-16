@@ -253,6 +253,17 @@ not in table"""
     doAssert output2 == """<table border="1" class="docutils"><tr><th>A1 header</th><th>A2</th></tr>
 </table>"""
 
+  test "Math formulas":
+    check("""Inline :math:`\sqrt{3x-1}+(1+x)^2`""".toHtml ==
+      """Inline <span class="math inline">\sqrt{3x-1}+(1+x)^2</span>""")
+
+    check(dedent"""
+      .. math::
+
+        \sqrt{3x-1}+(1+x)^2
+      """.toHtml ==
+      """<span class="math display">\sqrt{3x-1}+(1+x)^2</span>""")
+
   test "RST tables":
     let input1 = """
 Test 2 column/4 rows table:
