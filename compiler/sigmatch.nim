@@ -2186,16 +2186,16 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
   block instantiateGenericRoutine:
     # In the case where the matched value is a generic proc, we need to
     # fully instantiate it and then rerun typeRel to make sure it matches.
-    # bothMetaCounter is for safety to avoid any infinite loop,
+    # instantiationCounter is for safety to avoid any infinite loop,
     #  I don't have any example when it is needed.
-    # lastBindingsLenth is used to check whether m.bindings remains the same,
+    # lastBindingCount is used to check whether m.bindings remains the same,
     #  because in that case there is no point in continuing.
     var instantiationCounter = 0
-    var lastBindingsLength = -1
+    var lastBindingCount = -1
     while r in {isBothMetaConvertible, isInferred, isInferredConvertible} and
-        lastBindingsLength != m.bindings.counter and
+        lastBindingCount != m.bindings.counter and
         instantiationCounter < 100:
-      lastBindingsLength = m.bindings.counter
+      lastBindingCount = m.bindings.counter
       inc(instantiationCounter)
       if arg.kind in {nkProcDef, nkFuncDef, nkIteratorDef} + nkLambdaKinds:
         result = c.semInferredLambda(c, m.bindings, arg)
