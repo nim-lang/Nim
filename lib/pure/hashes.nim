@@ -190,7 +190,7 @@ proc hashData*(data: pointer, size: int): Hash =
   var h: Hash = 0
   when defined(js):
     var p: cstring
-    asm """`p` = `Data`"""
+    {.emit: """`p` = `Data`""".}
   else:
     var p = cast[cstring](data)
   var i = 0
@@ -216,7 +216,6 @@ else:
 
 when defined(js):
   proc getObjectId(x: pointer | proc): int
-
 
 proc hash*(x: pointer): Hash {.inline.} =
   ## Efficient `hash` overload.

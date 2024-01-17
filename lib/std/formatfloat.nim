@@ -104,7 +104,7 @@ when defined(js):
   proc nimFloatToString(a: float): cstring =
     ## ensures the result doesn't print like an integer, i.e. return 2.0, not 2
     # print `-0.0` properly
-    asm """
+    {.emit: """
       function nimOnlyDigitsOrMinus(n) {
         return n.toString().match(/^-?\d+$/);
       }
@@ -116,7 +116,7 @@ when defined(js):
           `result` = `a`+".0"
         }
       }
-    """
+    """.}
 
 proc addFloat*(result: var string; x: float | float32) {.inline.} =
   ## Converts float to its string representation and appends it to `result`.
