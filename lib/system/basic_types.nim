@@ -19,6 +19,20 @@ type
 # 'float64' is now an alias to 'float'; this solves many problems
 
 type
+  i8* = int8                  ## Signed 8 bit integer type.
+  i16* = int16                ## Signed 16 bit integer type.
+  i32* = int32                ## Signed 32 bit integer type.
+  i64* = int64                ## Signed 64 bit integer type.
+
+  u8* = uint8                 ## Unsigned 8 bit integer type.
+  u16* = uint16               ## Unsigned 16 bit integer type.
+  u32* = uint32               ## Unsigned 32 bit integer type.
+  u64* = uint64               ## Unsigned 64 bit integer type.
+
+  f32* = float32              ## 32 bit floating point type.
+  f64* = float64              ## 64 bit floating point type.
+
+type
   char* {.magic: Char.}         ## Built-in 8 bit character type (unsigned).
   string* {.magic: String.}     ## Built-in string type.
   cstring* {.magic: Cstring.}   ## Built-in cstring (*compatible string*) type.
