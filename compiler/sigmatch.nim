@@ -2129,6 +2129,7 @@ template matchesVoidProc(t: PType): bool =
 
 proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
                         argSemantized, argOrig: PNode): PNode =
+  result = nil
   var
     fMaybeStatic = f.skipTypes({tyDistinct})
     arg = argSemantized
@@ -2192,28 +2193,33 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
     else:
       return argSemantized # argOrig
 
-  # If r == isBothMetaConvertible then we rerun typeRel.
-  # bothMetaCounter is for safety to avoid any infinite loop,
-  #  I don't have any example when it is needed.
-  # lastBindingsLenth is used to check whether m.bindings remains the same,
-  #  because in that case there is no point in continuing.
-  var bothMetaCounter = 0
-  var lastBindingsLength = -1
-  while r == isBothMetaConvertible and
-      lastBindingsLength != m.bindings.counter and
-      bothMetaCounter < 100:
-    lastBindingsLength = m.bindings.counter
-    inc(bothMetaCounter)
-    if arg.kind in {nkProcDef, nkFuncDef, nkIteratorDef} + nkLambdaKinds:
-      result = c.semInferredLambda(c, m.bindings, arg)
-    elif arg.kind != nkSym:
-      return nil
-    else:
-      let inferred = c.semGenerateInstance(c, arg.sym, m.bindings, arg.info)
-      result = newSymNode(inferred, arg.info)
-    inc(m.convMatches)
-    arg = result
-    r = typeRel(m, f, arg.typ)
+  block instantiateGenericRoutine:
+    # In the case where the matched value is a generic proc, we need to
+    # fully instantiate it and then rerun typeRel to make sure it matches.
+    # instantiationCounter is for safety to avoid any infinite loop,
+    #  I don't have any example when it is needed.
+    # lastBindingCount is used to check whether m.bindings remains the same,
+    #  because in that case there is no point in continuing.
+    var instantiationCounter = 0
+    var lastBindingCount = -1
+    while r in {isBothMetaConvertible, isInferred, isInferredConvertible} and
+        lastBindingCount != m.bindings.counter and
+        instantiationCounter < 100:
+      lastBindingCount = m.bindings.counter
+      inc(instantiationCounter)
+      if arg.kind in {nkProcDef, nkFuncDef, nkIteratorDef} + nkLambdaKinds:
+        result = c.semInferredLambda(c, m.bindings, arg)
+      elif arg.kind != nkSym:
+        return nil
+      elif arg.sym.kind in {skMacro, skTemplate}:
+        return nil
+      else:
+        if arg.sym.ast == nil:
+          return nil
+        let inferred = c.semGenerateInstance(c, arg.sym, m.bindings, arg.info)
+        result = newSymNode(inferred, arg.info)
+      arg = result
+      r = typeRel(m, f, arg.typ)
 
   case r
   of isConvertible:
@@ -2240,23 +2246,15 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
       result = arg
     else:
       result = implicitConv(nkHiddenStdConv, f, arg, m, c)
-  of isInferred, isInferredConvertible:
-    if arg.kind in {nkProcDef, nkFuncDef, nkIteratorDef} + nkLambdaKinds:
-      result = c.semInferredLambda(c, m.bindings, arg)
-    elif arg.kind != nkSym:
-      return nil
-    elif arg.sym.kind in {skMacro, skTemplate}:
-      return nil
-    else:
-      if arg.sym.ast == nil:
-        return nil
-      let inferred = c.semGenerateInstance(c, arg.sym, m.bindings, arg.info)
-      result = newSymNode(inferred, arg.info)
-    if r == isInferredConvertible:
-      inc(m.convMatches)
-      result = implicitConv(nkHiddenStdConv, f, result, m, c)
-    else:
-      inc(m.genericMatches)
+  of isInferred:
+    # result should be set in above while loop:
+    assert result != nil
+    inc(m.genericMatches)
+  of isInferredConvertible:
+    # result should be set in above while loop:
+    assert result != nil
+    inc(m.convMatches)
+    result = implicitConv(nkHiddenStdConv, f, result, m, c)
   of isGeneric:
     inc(m.genericMatches)
     if arg.typ == nil:
@@ -2270,8 +2268,10 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
     else:
       result = arg
   of isBothMetaConvertible:
-    # This is the result for the 101th time.
-    result = nil
+    # result should be set in above while loop:
+    assert result != nil
+    inc(m.convMatches)
+    result = arg
   of isFromIntLit:
     # too lazy to introduce another ``*matches`` field, so we conflate
     # ``isIntConv`` and ``isIntLit`` here:
