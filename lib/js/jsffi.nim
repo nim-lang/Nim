@@ -185,7 +185,6 @@ proc `and`*(x, y: JsObject): JsObject {.importjs: "(# && #)".}
 proc `or`*(x, y: JsObject): JsObject {.importjs: "(# || #)".}
 proc `not`*(x:    JsObject): JsObject {.importjs: "(!#)".}
 proc `in`*(x, y: JsObject): JsObject {.importjs: "(# in #)".}
-proc `notin`*(x, y: JsObject): JsObject {.importjs: "!(# in #)".}
 
 proc `[]`*(obj: JsObject, field: cstring): JsObject {.importjs: getImpl.}
   ## Returns the value of a property of name `field` from a JsObject `obj`.

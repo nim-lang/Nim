@@ -597,8 +597,7 @@ when defined(js):
 
   proc getObjectId(x: pointer | proc): int =
     var obj = x.toJS()
-    if jsTypeof(obj) in ["object".cstring, "function".cstring]:
-      if (idKey.toJS notin obj).to(bool):
-        objectID += 1
-        obj[idKey] = objectID
-      return obj[idKey].to(int)
+    if (idKey.toJS() notin obj).to(bool):
+      objectID += 1
+      obj[idKey] = objectID
+    return obj[idKey].to(int)
