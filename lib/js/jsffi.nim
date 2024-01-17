@@ -35,15 +35,15 @@ runnableExamples:
 when not defined(js) and not defined(nimsuggest):
   {.fatal: "Module jsFFI is designed to be used with the JavaScript backend.".}
 
-import std/[macros, tables]
+import std/[macros, macrocache, strutils]
 
 const
   setImpl = "#[#] = #"
   getImpl = "#[#]"
 
-var
-  mangledNames {.compileTime.} = initTable[string, string]()
-  nameCounter {.compileTime.} = 0
+const
+  mangledNames = CacheTable"nim.jsffi.names"
+  nameCounter = CacheCounter"nim.jsffi.counter"
 
 proc validJsName(name: string): bool =
   result = true
@@ -66,7 +66,7 @@ proc validJsName(name: string): bool =
 
 template mangleJsName(name: string): string =
   inc nameCounter
-  "mangledName" & $nameCounter
+  "mangledName" & $nameCounter.value
 
 # only values that can be mapped 1 to 1 with cstring should be keys: they have an injective function with cstring
 
@@ -219,6 +219,19 @@ proc `==`*(x, y: JsRoot): bool {.importjs: "(# === #)".}
   ## and not strings or numbers, this is a *comparison of references*.
 
 {.experimental.}
+
+proc getImportString(field, pattern: string): string {.compileTime.} =
+  ## Returns import string for field. "field" in the pattern
+  ## gets replaced with the field name
+  var fieldName: string
+  if validJsName(field):
+    fieldName = field
+  else:
+    if not mangledNames.hasKey($field):
+      mangledNames[field] = newLit mangleJsName($field)
+    fieldName = mangledNames[field].strVal
+  pattern.replace("field", fieldName)
+
 macro `.`*(obj: JsObject, field: untyped): JsObject =
   ## Experimental dot accessor (get) for type JsObject.
   ## Returns the value of a property of name `field` from a JsObject `x`.
@@ -226,42 +239,21 @@ macro `.`*(obj: JsObject, field: untyped): JsObject =
     let obj = newJsObject()
     obj.a = 20
     assert obj.a.to(int) == 20
-  if validJsName($field):
-    let importString = "#." & $field
-    let helperName = genSym(nskProc, "helper")
-    result = quote do:
-      proc `helperName`(o: JsObject): JsObject
-        {.importjs: `importString`.}
-      `helperName`(`obj`)
-  else:
-    if not mangledNames.hasKey($field):
-      mangledNames[$field] = mangleJsName($field)
-    let importString = "#." & mangledNames[$field]
-    let helperName = genSym(nskProc, "helper")
-    result = quote do:
-      proc `helperName`(o: JsObject): JsObject
-        {.importjs: `importString`.}
-      `helperName`(`obj`)
+
+  let importString = getImportString($field, "#.field")
+  let helperName = genSym(nskProc, "helper")
+  result = quote do:
+    proc `helperName`(o: JsObject): JsObject {.importjs: `importString`.}
+    `helperName`(`obj`)
 
 macro `.=`*(obj: JsObject, field, value: untyped): untyped =
   ## Experimental dot accessor (set) for type JsObject.
   ## Sets the value of a property of name `field` in a JsObject `x` to `value`.
-  if validJsName($field):
-    let importString = "#." & $field & " = #"
-    let helperName = genSym(nskProc, "helper")
-    result = quote do:
-      proc `helperName`(o: JsObject, v: auto)
-        {.importjs: `importString`.}
-      `helperName`(`obj`, `value`)
-  else:
-    if not mangledNames.hasKey($field):
-      mangledNames[$field] = mangleJsName($field)
-    let importString = "#." & mangledNames[$field] & " = #"
-    let helperName = genSym(nskProc, "helper")
-    result = quote do:
-      proc `helperName`(o: JsObject, v: auto)
-        {.importjs: `importString`.}
-      `helperName`(`obj`, `value`)
+  let importString = getImportString($field.strVal, "#.field = #")
+  let helperName = genSym(nskProc, "helper")
+  result = quote do:
+    proc `helperName`(o: JsObject, v: auto) {.importjs: `importString`.}
+    `helperName`(`obj`, `value`)
 
 macro `.()`*(obj: JsObject,
              field: untyped,
@@ -281,13 +273,7 @@ macro `.()`*(obj: JsObject,
   ##                    # undefined. Thus one has to be careful, when using
   ##                    # JsObject calls.
   ##   ```
-  var importString: string
-  if validJsName($field):
-    importString = "#." & $field & "(@)"
-  else:
-    if not mangledNames.hasKey($field):
-      mangledNames[$field] = mangleJsName($field)
-    importString = "#." & mangledNames[$field] & "(@)"
+  let importString = getImportString($field, "#.field(@)")
   let helperName = genSym(nskProc, "helper")
   result = quote do:
     proc `helperName`(o: JsObject): JsObject
@@ -302,13 +288,7 @@ macro `.`*[K: cstring, V](obj: JsAssoc[K, V],
                                    field: untyped): V =
   ## Experimental dot accessor (get) for type JsAssoc.
   ## Returns the value of a property of name `field` from a JsObject `x`.
-  var importString: string
-  if validJsName($field):
-    importString = "#." & $field
-  else:
-    if not mangledNames.hasKey($field):
-      mangledNames[$field] = mangleJsName($field)
-    importString = "#." & mangledNames[$field]
+  let importString = getImportString($field, "#.field")
   let helperName = genSym(nskProc, "helper")
   result = quote do:
     proc `helperName`(o: type(`obj`)): `obj`.V
@@ -320,13 +300,7 @@ macro `.=`*[K: cstring, V](obj: JsAssoc[K, V],
                                     value: V): untyped =
   ## Experimental dot accessor (set) for type JsAssoc.
   ## Sets the value of a property of name `field` in a JsObject `x` to `value`.
-  var importString: string
-  if validJsName($field):
-    importString = "#." & $field & " = #"
-  else:
-    if not mangledNames.hasKey($field):
-      mangledNames[$field] = mangleJsName($field)
-    importString = "#." & mangledNames[$field] & " = #"
+  let importString = getImportString($field, "#.field = #")
   let helperName = genSym(nskProc, "helper")
   result = quote do:
     proc `helperName`(o: type(`obj`), v: `obj`.V)
