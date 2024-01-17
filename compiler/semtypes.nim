@@ -1436,7 +1436,8 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
             "' is only valid for macros and templates")
       # 'auto' as a return type does not imply a generic:
       elif r.kind == tyAnything:
-        discard
+        r = copyType(r, c.idgen, r.owner)
+        r.flags.incl tfRetType
       elif r.kind == tyStatic:
         # type allowed should forbid this type
         discard
