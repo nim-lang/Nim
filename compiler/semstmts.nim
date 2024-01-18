@@ -2268,8 +2268,8 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     incl(s.typ.flags, tfNoSideEffect)
 
   var (proto, comesFromShadowScope) =
-      if not isAnon: searchForProc(c, declarationScope, s)
-      else: (nil, false)
+      if isAnon: (nil, false)
+      else: searchForProc(c, declarationScope, s)
   if proto == nil and sfForward in s.flags and n[bodyPos].kind != nkEmpty:
     ## In cases such as a macro generating a proc with a gensymmed name we
     ## know `searchForProc` will not find it and sfForward will be set. In
