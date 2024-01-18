@@ -2128,12 +2128,10 @@ proc semYield(c: PContext, n: PNode): PNode =
   if c.p.owner == nil or c.p.owner.kind != skIterator:
     localError(c.config, n.info, errYieldNotAllowedHere)
   elif n[0].kind != nkEmpty:
-    n[0] = semExprWithType(c, n[0]) # check for type compatibility:
     var iterType = c.p.owner.typ
     let restype = iterType[0]
+    n[0] = semExprWithType(c, n[0], {}, restype) # check for type compatibility:
     if restype != nil:
-      if restype.kind != tyUntyped:
-        n[0] = fitNode(c, restype, n[0], n.info)
       if n[0].typ == nil: internalError(c.config, n.info, "semYield")
 
       if resultTypeIsInferrable(restype):
@@ -2141,6 +2139,8 @@ proc semYield(c: PContext, n: PNode): PNode =
         iterType[0] = inferred
         if c.p.resultSym != nil:
           c.p.resultSym.typ = inferred
+      else:
+        n[0] = fitNode(c, restype, n[0], n.info)
 
       semYieldVarResult(c, n, restype)
     else:
@@ -2827,6 +2827,12 @@ proc semTupleFieldsConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType
     # can check if field name matches expected type here
     let expectedElemType = if expected != nil: expected[i] else: nil
     n[i][1] = semExprWithType(c, n[i][1], {}, expectedElemType)
+    if expectedElemType != nil and
+        (expectedElemType.kind != tyNil and not hasEmpty(expectedElemType)):
+      # hasEmpty/nil check is to not break existing code like
+      # `const foo = [(1, {}), (2, {false})]`,
+      # `const foo = if true: (0, nil) else: (1, new(int))`
+      n[i][1] = fitNode(c, expectedElemType, n[i][1], n[i][1].info)
 
     if n[i][1].typ.kind == tyTypeDesc:
       localError(c.config, n[i][1].info, "typedesc not allowed as tuple field.")
@@ -2853,6 +2859,12 @@ proc semTuplePositionsConstr(c: PContext, n: PNode, flags: TExprFlags; expectedT
   for i in 0..<n.len:
     let expectedElemType = if expected != nil: expected[i] else: nil
     n[i] = semExprWithType(c, n[i], {}, expectedElemType)
+    if expectedElemType != nil and
+        (expectedElemType.kind != tyNil and not hasEmpty(expectedElemType)):
+      # hasEmpty/nil check is to not break existing code like
+      # `const foo = [(1, {}), (2, {false})]`,
+      # `const foo = if true: (0, nil) else: (1, new(int))`
+      n[i] = fitNode(c, expectedElemType, n[i], n[i].info)
     addSonSkipIntLit(typ, n[i].typ, c.idgen)
   result.typ = typ
 
