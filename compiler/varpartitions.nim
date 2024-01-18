@@ -985,7 +985,9 @@ proc computeCursors*(s: PSym; n: PNode; g: ModuleGraph) =
     if v.flags * {ownsData, preventCursor, isConditionallyReassigned} == {} and
         v.sym.kind notin {skParam, skResult} and
         v.sym.flags * {sfThread, sfGlobal} == {} and hasDestructor(v.sym.typ) and
-        v.sym.typ.skipTypes({tyGenericInst, tyAlias}).kind != tyOwned:
+        v.sym.typ.skipTypes({tyGenericInst, tyAlias}).kind != tyOwned and
+        (getAttachedOp(g, v.sym.typ, attachedAsgn) == nil or
+        sfError notin getAttachedOp(g, v.sym.typ, attachedAsgn).flags):
       let rid = root(par, i)
       if par.s[rid].con.kind == isRootOf and dangerousMutation(par.graphs[par.s[rid].con.graphIndex], par.s[i]):
         discard "cannot cursor into a graph that is mutated"
