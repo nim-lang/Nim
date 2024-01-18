@@ -587,12 +587,13 @@ proc recordRel(c: var TCandidate, f, a: PType, flags: TTypeRelFlags): TTypeRelat
     let firstField = if f.kind == tyTuple: 0
                      else: 1
     for _, ff, aa in tupleTypePairs(f, a):
+      let oldInheritancePenalty = c.inheritancePenalty
       var m = typeRel(c, ff, aa, flags)
-      if m < isSubtype or
-          (m == isSubtype and aa.kind != tyNil):
+      if m < isSubtype: return isNone
+      if m == isSubtype and c.inheritancePenalty > oldInheritancePenalty:
         # we can't process individual element type conversions from a
         # type conversion for the whole tuple
-        # except for `nil` which doesn't need a type conversion
+        # subtype relations need type conversions when inheritance is used
         return isNone
       result = minRel(result, m)
     if f.n != nil and a.n != nil:
