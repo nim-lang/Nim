@@ -2767,6 +2767,8 @@ proc semTupleFieldsConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType
     # can check if field name matches expected type here
     let expectedElemType = if expected != nil: expected[i] else: nil
     n[i][1] = semExprWithType(c, n[i][1], {}, expectedElemType)
+    if expectedElemType != nil:
+      n[i][1] = fitNode(c, expectedElemType, n[i][1], n[i][1].info)
 
     if n[i][1].typ.kind == tyTypeDesc:
       localError(c.config, n[i][1].info, "typedesc not allowed as tuple field.")
@@ -2793,6 +2795,8 @@ proc semTuplePositionsConstr(c: PContext, n: PNode, flags: TExprFlags; expectedT
   for i in 0..<n.len:
     let expectedElemType = if expected != nil: expected[i] else: nil
     n[i] = semExprWithType(c, n[i], {}, expectedElemType)
+    if expectedElemType != nil:
+      n[i] = fitNode(c, expectedElemType, n[i], n[i].info)
     addSonSkipIntLit(typ, n[i].typ, c.idgen)
   result.typ = typ
 
