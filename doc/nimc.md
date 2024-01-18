@@ -552,6 +552,13 @@ Define                   Effect
 `globalSymbols`          Load all `{.dynlib.}` libraries with the `RTLD_GLOBAL`:c:
                          flag on Posix systems to resolve symbols in subsequently
                          loaded libraries.
+`lto`                    Enable link-time optimization in the backend compiler and
+                         linker.
+`lto_incremental`        Enable link-time optimization and additionally enable
+                         incremental linking for compilers that support it.
+                         Currently only clang and vcc.
+`strip`                  Strip debug symbols added by the backend compiler from
+                         the executable.
 ======================   =========================================================
 
 
@@ -677,11 +684,11 @@ additional flags to both the Nim compiler and the C compiler and/or linker
 to optimize the build for size. For example, the following flags can be used
 when targeting a gcc compiler:
 
-`--opt:size --passC:-flto --passL:-flto`:option:
+`--opt:size -d:lto -d:strip`:option:
 
 The `--opt:size`:option: flag instructs Nim to optimize code generation for small
-size (with the help of the C compiler), the `-flto`:option: flags enable link-time
-optimization in the compiler and linker.
+size (with the help of the C compiler), the `-d:lto`:option: flags enable link-time
+optimization in the compiler and linker, the `-d:strip`:option: strips debug symbols.
 
 Check the [Cross-compilation] section for instructions on how to compile the
 program for your target.
