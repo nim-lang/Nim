@@ -2114,7 +2114,7 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
       genRdVar(c, n, dest, flags)
     of skParam:
       if s.typ.kind == tyTypeDesc:
-        genTypeLit(c, s.typ, dest)
+        genTypeLit(c, s.typ.skipTypes({tyTypeDesc}), dest)
       else:
         genRdVar(c, n, dest, flags)
     of skProc, skFunc, skConverter, skMacro, skTemplate, skMethod, skIterator:
