@@ -1862,7 +1862,7 @@ proc copyNode*(src: PNode): PNode =
   case src.kind
   of nkCharLit..nkUInt64Lit: result.intVal = src.intVal
   of nkFloatLiterals: result.floatVal = src.floatVal
-  of nkSym: result.sym = src.sym
+  of nkSym, nkOpenSym: result.sym = src.sym
   of nkIdent: result.ident = src.ident
   of nkStrLit..nkTripleStrLit: result.strVal = src.strVal
   else: discard
