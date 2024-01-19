@@ -370,7 +370,7 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
   of nkMixinStmt:
     if c.scopeN > 0: result = semTemplBodySons(c, n)
     else: result = semMixinStmt(c.c, n, c.toMixin)
-  of nkEmpty, nkSym..nkNilLit, nkComesFrom:
+  of nkEmpty, nkSym..nkNilLit, nkOpenSym, nkComesFrom:
     discard
   of nkIfStmt:
     for i in 0..<n.len:
@@ -619,7 +619,7 @@ proc semTemplBodyDirty(c: var TemplCtx, n: PNode): PNode =
     result = semTemplBodyDirty(c, n[0])
   of nkBindStmt:
     result = semBindStmt(c.c, n, c.toBind)
-  of nkEmpty, nkSym..nkNilLit, nkComesFrom:
+  of nkEmpty, nkSym..nkNilLit, nkOpenSym, nkComesFrom:
     discard
   else:
     # dotExpr is ambiguous: note that we explicitly allow 'x.TemplateParam',
@@ -780,7 +780,7 @@ proc semPatternBody(c: var TemplCtx, n: PNode): PNode =
     result = handleSym(c, n, s)
   of nkBindStmt:
     result = semBindStmt(c.c, n, c.toBind)
-  of nkEmpty, nkSym..nkNilLit: discard
+  of nkEmpty, nkSym..nkNilLit, nkOpenSym: discard
   of nkCurlyExpr:
     # we support '(pattern){x}' to bind a subpattern to a parameter 'x';
     # '(pattern){|x}' does the same but the matches will be gathered in 'x'

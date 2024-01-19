@@ -1925,7 +1925,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     let x = n[0]
     let ident = case x.kind
                 of nkIdent: x.ident
-                of nkSym: x.sym.name
+                of nkSym, nkOpenSym: x.sym.name
                 of nkClosedSymChoice, nkOpenSymChoice: x[0].sym.name
                 else: nil
     if ident != nil and ident.s == "[]":

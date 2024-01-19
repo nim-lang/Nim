@@ -1750,7 +1750,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       var u = regs[rb].node
       if nfSem in u.flags and allowSemcheckedAstModification notin c.config.legacyFeatures:
         stackTrace(c, tos, pc, "typechecked nodes may not be modified")
-      elif u.kind in {nkEmpty..nkNilLit}:
+      elif u.kind in {nkEmpty..nkNilLit, nkOpenSym}:
         stackTrace(c, tos, pc, "cannot add to node kind: n" & $u.kind)
       else:
         for i in 0..<x.len: u.add(x[i])

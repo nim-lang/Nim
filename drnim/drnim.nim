@@ -167,7 +167,7 @@ proc stableName(result: var string; c: DrnimContext; n: PNode; version: VersionS
   of nkEmpty, nkNilLit, nkType: discard
   of nkIdent:
     result.add n.ident.s
-  of nkSym:
+  of nkSym, nkOpenSym:
     result.add n.sym.name.s
     if n.sym.magic == mNone:
       let d = disamb(c, n.sym)

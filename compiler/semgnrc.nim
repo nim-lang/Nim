@@ -21,7 +21,7 @@ proc getIdentNode(c: PContext; n: PNode): PNode =
   case n.kind
   of nkPostfix: result = getIdentNode(c, n[1])
   of nkPragmaExpr: result = getIdentNode(c, n[0])
-  of nkIdent, nkAccQuoted, nkSym: result = n
+  of nkIdent, nkAccQuoted, nkSym, nkOpenSym: result = n
   else:
     illFormedAst(n, c.config)
     result = n
@@ -73,8 +73,8 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
     else:
       result = symChoice(c, n, s, scOpen)
       if result.kind == nkSym and canOpenSym(result.sym):
-        result.flags.incl nfOpenSym
         result.typ = nil
+        result.transitionSymNodeKind(nkOpenSym)
   case s.kind
   of skUnknown:
     # Introduced in this pass! Leave it as an identifier.
@@ -103,8 +103,8 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
     else:
       result = newSymNodeTypeDesc(s, c.idgen, n.info)
       if canOpenSym(result.sym):
-        result.flags.incl nfOpenSym
         result.typ = nil
+        result.transitionSymNodeKind(nkOpenSym)
     onUse(n.info, s)
   of skParam:
     result = n
@@ -114,16 +114,16 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
        (s.typ.flags * {tfGenericTypeParam, tfImplicitTypeParam} == {}):
       result = newSymNodeTypeDesc(s, c.idgen, n.info)
       if canOpenSym(result.sym):
-        result.flags.incl nfOpenSym
         result.typ = nil
+        result.transitionSymNodeKind(nkOpenSym)
     else:
       result = n
     onUse(n.info, s)
   else:
     result = newSymNode(s, n.info)
     if canOpenSym(result.sym):
-      result.flags.incl nfOpenSym
       result.typ = nil
+      result.transitionSymNodeKind(nkOpenSym)
     onUse(n.info, s)
 
 proc lookup(c: PContext, n: PNode, flags: TSemGenericFlags,
@@ -239,7 +239,7 @@ proc semGenericStmt(c: PContext, n: PNode,
     # XXX for example: ``result.add`` -- ``add`` needs to be looked up here...
     var dummy: bool
     result = fuzzyLookup(c, n, flags, ctx, dummy)
-  of nkSym:
+  of nkSym, nkOpenSym:
     let a = n.sym
     let b = getGenSym(c, a)
     if b != a: n.sym = b

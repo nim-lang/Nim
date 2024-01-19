@@ -39,7 +39,7 @@ proc typeAllowedNode(marker: var IntSet, n: PNode, kind: TSymKind,
     result = typeAllowedAux(marker, n.typ, kind, c, flags)
     if result == nil:
       case n.kind
-      of nkNone..nkNilLit:
+      of nkNone..nkNilLit, nkOpenSym:
         discard
       else:
         #if n.kind == nkRecCase and kind in {skProc, skFunc, skConst}:

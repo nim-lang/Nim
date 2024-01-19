@@ -229,6 +229,7 @@ type
     nkModuleRef           # for .rod file support: A (moduleId, itemId) pair
     nkReplayAction        # for .rod file support: A replay action
     nkNilRodNode          # for .rod file support: a 'nil' PNode
+    nkOpenSym             # node is a captured sym but can be overriden by local symbols
 
   TNodeKinds* = set[TNodeKind]
 
@@ -520,7 +521,6 @@ type
     nfFirstWrite # this node is a first write
     nfHasComment # node has a comment
     nfSkipFieldChecking # node skips field visable checking
-    nfOpenSym # node is a captured sym but can be overriden by local symbols
 
   TNodeFlags* = set[TNodeFlag]
   TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 47)
@@ -801,7 +801,7 @@ type
       floatVal*: BiggestFloat
     of nkStrLit..nkTripleStrLit:
       strVal*: string
-    of nkSym:
+    of nkSym, nkOpenSym:
       sym*: PSym
     of nkIdent:
       ident*: PIdent
@@ -1096,8 +1096,7 @@ const
                                       nfIsRef, nfIsPtr, nfPreventCg, nfLL,
                                       nfFromTemplate, nfDefaultRefsParam,
                                       nfExecuteOnReload, nfLastRead,
-                                      nfFirstWrite, nfSkipFieldChecking,
-                                      nfOpenSym}
+                                      nfFirstWrite, nfSkipFieldChecking}
   namePos* = 0
   patternPos* = 1    # empty except for term rewriting macros
   genericParamsPos* = 2
@@ -1113,7 +1112,7 @@ const
   nkCallKinds* = {nkCall, nkInfix, nkPrefix, nkPostfix,
                   nkCommand, nkCallStrLit, nkHiddenCallConv}
   nkIdentKinds* = {nkIdent, nkSym, nkAccQuoted, nkOpenSymChoice,
-                   nkClosedSymChoice}
+                   nkClosedSymChoice, nkOpenSym}
 
   nkPragmaCallKinds* = {nkExprColonExpr, nkCall, nkCallStrLit}
   nkLiterals* = {nkCharLit..nkTripleStrLit}
@@ -1138,7 +1137,7 @@ const
 proc getPIdent*(a: PNode): PIdent {.inline.} =
   ## Returns underlying `PIdent` for `{nkSym, nkIdent}`, or `nil`.
   case a.kind
-  of nkSym: a.sym.name
+  of nkSym, nkOpenSym: a.sym.name
   of nkIdent: a.ident
   of nkOpenSymChoice, nkClosedSymChoice: a.sons[0].sym.name
   else: nil
@@ -1203,13 +1202,13 @@ proc len*(n: PNode): int {.inline.} =
 
 proc safeLen*(n: PNode): int {.inline.} =
   ## works even for leaves.
-  if n.kind in {nkNone..nkNilLit}: result = 0
+  if n.kind in {nkNone..nkNilLit, nkOpenSym}: result = 0
   else: result = n.len
 
 proc safeArrLen*(n: PNode): int {.inline.} =
   ## works for array-like objects (strings passed as openArray in VM).
   if n.kind in {nkStrLit..nkTripleStrLit}: result = n.strVal.len
-  elif n.kind in {nkNone..nkFloat128Lit}: result = 0
+  elif n.kind in {nkNone..nkFloat128Lit, nkOpenSym}: result = 0
   else: result = n.len
 
 proc add*(father, son: PNode) =
@@ -1892,6 +1891,11 @@ proc transitionIntToFloatKind*(n: PNode, kind: range[nkFloatLit..nkFloat128Lit])
 proc transitionNoneToSym*(n: PNode) =
   transitionNodeKindCommon(nkSym)
 
+proc transitionSymNodeKind*(n: PNode, kind: range[nkSym..nkSym] or range[nkOpenSym..nkOpenSym]) =
+  when true: # work around #21376
+    transitionNodeKindCommon(kind)
+    n.sym = obj.sym
+
 template transitionSymKindCommon*(k: TSymKind) =
   let obj {.inject.} = s[]
   s[] = TSym(kind: k, itemId: obj.itemId, magic: obj.magic, typ: obj.typ, name: obj.name,
@@ -1932,7 +1936,7 @@ template copyNodeImpl(dst, src, processSonsStmt) =
   case src.kind
   of nkCharLit..nkUInt64Lit: dst.intVal = src.intVal
   of nkFloatLiterals: dst.floatVal = src.floatVal
-  of nkSym: dst.sym = src.sym
+  of nkSym, nkOpenSym: dst.sym = src.sym
   of nkIdent: dst.ident = src.ident
   of nkStrLit..nkTripleStrLit: dst.strVal = src.strVal
   else: processSonsStmt
@@ -1974,14 +1978,14 @@ proc containsNode*(n: PNode, kinds: TNodeKinds): bool =
   result = false
   if n == nil: return
   case n.kind
-  of nkEmpty..nkNilLit: result = n.kind in kinds
+  of nkEmpty..nkNilLit, nkOpenSym: result = n.kind in kinds
   else:
     for i in 0..<n.len:
       if n.kind in kinds or containsNode(n[i], kinds): return true
 
 proc hasSubnodeWith*(n: PNode, kind: TNodeKind): bool =
   case n.kind
-  of nkEmpty..nkNilLit, nkFormalParams: result = n.kind == kind
+  of nkEmpty..nkNilLit, nkOpenSym, nkFormalParams: result = n.kind == kind
   else:
     for i in 0..<n.len:
       if (n[i].kind == kind) or hasSubnodeWith(n[i], kind):
@@ -2100,7 +2104,7 @@ iterator pairs*(n: PNode): tuple[i: int, n: PNode] =
   for i in 0..<n.safeLen: yield (i, n[i])
 
 proc isAtom*(n: PNode): bool {.inline.} =
-  result = n.kind >= nkNone and n.kind <= nkNilLit
+  result = n.kind in {nkNone..nkNilLit, nkOpenSym}
 
 proc isEmptyType*(t: PType): bool {.inline.} =
   ## 'void' and 'typed' types are often equivalent to 'nil' these days:

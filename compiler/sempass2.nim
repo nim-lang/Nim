@@ -1116,7 +1116,7 @@ proc trackInnerProc(tracked: PEffects, n: PNode) =
     let s = n.sym
     if s.kind == skParam and s.owner == tracked.owner:
       tracked.escapingParams.incl s.id
-  of nkNone..pred(nkSym), succ(nkSym)..nkNilLit:
+  of nkNone..pred(nkSym), succ(nkSym)..nkNilLit, nkOpenSym:
     discard
   of nkProcDef, nkConverterDef, nkMethodDef, nkIteratorDef, nkLambda, nkFuncDef, nkDo:
     if n[0].kind == nkSym and n[0].sym.ast != nil:

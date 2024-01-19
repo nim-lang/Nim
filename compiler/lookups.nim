@@ -38,7 +38,7 @@ proc considerQuotedIdent*(c: PContext; n: PNode, origin: PNode = nil): PIdent =
 
   case n.kind
   of nkIdent: result = n.ident
-  of nkSym: result = n.sym.name
+  of nkSym, nkOpenSym: result = n.sym.name
   of nkAccQuoted:
     case n.len
     of 0: handleError(n, origin)
@@ -49,7 +49,7 @@ proc considerQuotedIdent*(c: PContext; n: PNode, origin: PNode = nil): PIdent =
         let x = n[i]
         case x.kind
         of nkIdent: id.add(x.ident.s)
-        of nkSym: id.add(x.sym.name.s)
+        of nkSym, nkOpenSym: id.add(x.sym.name.s)
         of nkSymChoices:
           if x[0].kind == nkSym:
             id.add(x[0].sym.name.s)
@@ -316,7 +316,7 @@ proc errorSym*(c: PContext, n: PNode): PSym =
   var m = n
   # ensure that 'considerQuotedIdent' can't fail:
   if m.kind == nkDotExpr: m = m[1]
-  let ident = if m.kind in {nkIdent, nkSym, nkAccQuoted}:
+  let ident = if m.kind in {nkIdent, nkSym, nkOpenSym, nkAccQuoted}:
       considerQuotedIdent(c, m)
     else:
       getIdent(c.cache, "err:" & renderTree(m))
@@ -605,7 +605,7 @@ proc lookUp*(c: PContext, n: PNode): PSym =
   of nkIdent:
     result = searchInScopes(c, n.ident, amb)
     if result == nil: result = errorUndeclaredIdentifierHint(c, n.ident, n.info)
-  of nkSym:
+  of nkSym, nkOpenSym:
     result = n.sym
   of nkAccQuoted:
     var ident = considerQuotedIdent(c, n)
@@ -659,7 +659,7 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
     elif checkAmbiguity in flags and result != nil and amb:
       result = errorUseQualifier(c, n.info, result, amb)
     c.isAmbiguous = amb
-  of nkSym:
+  of nkSym, nkOpenSym:
     result = n.sym
   of nkDotExpr:
     result = nil
@@ -721,7 +721,7 @@ proc initOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
               return result
           return nil
 
-  of nkSym:
+  of nkSym, nkOpenSym:
     result = n.sym
     o.mode = oimDone
   of nkDotExpr:

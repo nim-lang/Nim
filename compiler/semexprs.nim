@@ -1192,7 +1192,7 @@ proc semExprNoType(c: PContext, n: PNode): PNode =
 proc isTypeExpr(n: PNode): bool =
   case n.kind
   of nkType, nkTypeOfExpr: result = true
-  of nkSym: result = n.sym.kind == skType
+  of nkSym, nkOpenSym: result = n.sym.kind == skType
   else: result = false
 
 proc createSetType(c: PContext; baseType: PType): PType =
@@ -2134,7 +2134,7 @@ proc lookUpForDeclared(c: PContext, n: PNode, onlyCurrentScope: bool): PSym =
         result = strTableGet(c.topLevelScope.symbols, ident)
       else:
         result = someSym(c.graph, m, ident)
-  of nkSym:
+  of nkSym, nkOpenSym:
     result = n.sym
   of nkOpenSymChoice, nkClosedSymChoice:
     result = n[0].sym
@@ -2594,7 +2594,7 @@ proc semWhen(c: PContext, n: PNode, semCheck = true): PNode =
     let exprNode = n[0][0]
     if exprNode.kind == nkIdent:
       whenNimvm = lookUp(c, exprNode).magic == mNimvm
-    elif exprNode.kind == nkSym:
+    elif exprNode.kind in {nkSym, nkOpenSym}:
       whenNimvm = exprNode.sym.magic == mNimvm
     if whenNimvm: n.flags.incl nfLL
 
@@ -3121,30 +3121,32 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
       result = semSymChoice(c, result, flags, expectedType)
   of nkClosedSymChoice, nkOpenSymChoice:
     result = semSymChoice(c, result, flags, expectedType)
+  of nkOpenSym:
+    let s = n.sym
+    let id = newIdentNode(s.name, n.info)
+    c.isAmbiguous = false
+    let s2 = qualifiedLookUp(c, id, {})
+    if s2 != nil and s2 != s and not c.isAmbiguous:
+      # only consider symbols defined under current proc:
+      var o = s2.owner
+      while o != nil:
+        if o == c.p.owner:
+          if genericsOpenSym in c.features:
+            result = semExpr(c, id, flags, expectedType)
+            return
+          else:
+            message(c.config, n.info, warnGenericsIgnoredInjection,
+              "a new symbol '" & s.name.s & "' has been injected during " &
+              "instantiation of " & c.p.owner.name.s & ", " &
+              "however " & getSymRepr(c.config, s) & " captured at " &
+              "the proc declaration will be used instead; " &
+              "either enable --experimental:genericsOpenSym to use the " &
+              "injected symbol or `bind` this captured symbol explicitly")
+            break
+        o = o.owner
+    result = semSym(c, n, s, flags)
   of nkSym:
     let s = n.sym
-    if nfOpenSym in n.flags:
-      let id = newIdentNode(s.name, n.info)
-      c.isAmbiguous = false
-      let s2 = qualifiedLookUp(c, id, {})
-      if s2 != nil and s2 != s and not c.isAmbiguous:
-        # only consider symbols defined under current proc:
-        var o = s2.owner
-        while o != nil:
-          if o == c.p.owner:
-            if genericsOpenSym in c.features:
-              result = semExpr(c, id, flags, expectedType)
-              return
-            else:
-              message(c.config, n.info, warnGenericsIgnoredInjection,
-                "a new symbol '" & s.name.s & "' has been injected during " &
-                "instantiation of " & c.p.owner.name.s & ", " &
-                "however " & getSymRepr(c.config, s) & " captured at " &
-                "the proc declaration will be used instead; " &
-                "either enable --experimental:genericsOpenSym to use the " &
-                "injected symbol or `bind` this captured symbol explicitly")
-              break
-          o = o.owner
     # because of the changed symbol binding, this does not mean that we
     # don't have to check the symbol for semantics here again!
     result = semSym(c, n, s, flags)

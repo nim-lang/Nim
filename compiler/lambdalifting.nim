@@ -438,7 +438,7 @@ proc addClosureParam(c: var DetectionPass; fn: PSym; info: TLineInfo) =
 
 proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
   case n.kind
-  of nkSym:
+  of nkSym, nkOpenSym:
     let s = n.sym
     if s.kind in {skProc, skFunc, skMethod, skConverter, skIterator} and
         s.typ != nil and s.typ.callConv == ccClosure:
@@ -750,7 +750,7 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: var DetectionPass;
                       c: var LiftingPass): PNode =
   result = n
   case n.kind
-  of nkSym:
+  of nkSym, nkOpenSym:
     let s = n.sym
     if isInnerProc(s):
       if not c.processed.containsOrIncl(s.id):

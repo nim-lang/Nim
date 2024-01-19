@@ -24,7 +24,7 @@ proc instFieldLoopBody(c: TFieldInstCtx, n: PNode, forLoop: PNode): PNode =
     return
   case n.kind
   of nkEmpty..pred(nkIdent), succ(nkSym)..nkNilLit: result = copyNode(n)
-  of nkIdent, nkSym:
+  of nkIdent, nkSym, nkOpenSym:
     result = n
     let ident = considerQuotedIdent(c.c, n)
     if c.replaceByFieldName:

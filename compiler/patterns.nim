@@ -55,7 +55,7 @@ proc sameKinds(a, b: PNode): bool {.inline.} =
 proc sameTrees*(a, b: PNode): bool =
   if sameKinds(a, b):
     case a.kind
-    of nkSym: result = a.sym == b.sym
+    of nkSym, nkOpenSym: result = a.sym == b.sym
     of nkIdent: result = a.ident.id == b.ident.id
     of nkCharLit..nkInt64Lit: result = a.intVal == b.intVal
     of nkFloatLit..nkFloat64Lit: result = a.floatVal == b.floatVal

@@ -25,7 +25,7 @@ proc getModuleName*(conf: ConfigRef; n: PNode): string =
       result = n.strVal
   of nkIdent:
     result = n.ident.s
-  of nkSym:
+  of nkSym, nkOpenSym:
     result = n.sym.name.s
   of nkInfix:
     let n0 = n[0]

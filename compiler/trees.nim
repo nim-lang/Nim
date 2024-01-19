@@ -17,7 +17,7 @@ proc cyclicTreeAux(n: PNode, visited: var seq[PNode]): bool =
   if n == nil: return
   for v in visited:
     if v == n: return true
-  if not (n.kind in {nkEmpty..nkNilLit}):
+  if not (n.kind in {nkEmpty..nkNilLit, nkOpenSym}):
     visited.add(n)
     for nSon in n.sons:
       if cyclicTreeAux(nSon, visited): return true
@@ -36,7 +36,7 @@ proc exprStructuralEquivalent*(a, b: PNode; strictSymEquality=false): bool =
     result = true
   elif (a != nil) and (b != nil) and (a.kind == b.kind):
     case a.kind
-    of nkSym:
+    of nkSym, nkOpenSym:
       if strictSymEquality:
         result = a.sym == b.sym
       else:
@@ -69,7 +69,7 @@ proc sameTree*(a, b: PNode): bool =
     if a.info.col != b.info.col:
       return                  #if a.info.fileIndex <> b.info.fileIndex then exit;
     case a.kind
-    of nkSym:
+    of nkSym, nkOpenSym:
       # don't go nuts here: same symbol as string is enough:
       result = a.sym.name.id == b.sym.name.id
     of nkIdent: result = a.ident.id == b.ident.id
@@ -143,7 +143,7 @@ proc whichPragma*(n: PNode): TSpecialWord =
   let key = if n.kind in nkPragmaCallKinds and n.len > 0: n[0] else: n
   case key.kind
   of nkIdent: result = whichKeyword(key.ident)
-  of nkSym: result = whichKeyword(key.sym.name)
+  of nkSym, nkOpenSym: result = whichKeyword(key.sym.name)
   of nkCast: return wCast
   of nkClosedSymChoice, nkOpenSymChoice:
     return whichPragma(key[0])

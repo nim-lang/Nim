@@ -26,7 +26,7 @@ type
 
 proc errorSubNode*(n: PNode): PNode =
   case n.kind
-  of nkEmpty..nkNilLit:
+  of nkEmpty..nkNilLit, nkOpenSym:
     result = nil
   of nkError:
     result = n

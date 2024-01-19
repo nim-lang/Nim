@@ -154,7 +154,7 @@ proc analyse(c: var Con; b: var BasicBlock; n: PNode) =
       nkMethodDef, nkIteratorDef, nkMacroDef, nkTemplateDef, nkLambda, nkDo,
       nkFuncDef, nkConstSection, nkConstDef, nkIncludeStmt, nkImportStmt,
       nkExportStmt, nkPragma, nkCommentStmt, nkBreakState,
-      nkTypeOfExpr, nkMixinStmt, nkBindStmt:
+      nkTypeOfExpr, nkMixinStmt, nkBindStmt, nkOpenSym:
     discard "do not follow the construct"
 
   of nkAsgn, nkFastAsgn, nkSinkAsgn:
@@ -254,7 +254,7 @@ proc opt(c: Con; n, parent: PNode; parentPos: int) =
       nkMethodDef, nkIteratorDef, nkMacroDef, nkTemplateDef, nkLambda, nkDo,
       nkFuncDef, nkConstSection, nkConstDef, nkIncludeStmt, nkImportStmt,
       nkExportStmt, nkPragma, nkCommentStmt, nkBreakState, nkTypeOfExpr,
-      nkMixinStmt, nkBindStmt:
+      nkMixinStmt, nkBindStmt, nkOpenSym:
     parent[parentPos] = n
 
   else:

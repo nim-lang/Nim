@@ -1005,7 +1005,7 @@ proc containsResult(n: PNode): bool =
     for i in 0..<n.len:
       if containsResult(n[i]): return true
     result = n.len > 0 and n[0].kind == nkEmpty
-  of nkSym:
+  of nkSym, nkOpenSym:
     if n.sym.kind == skResult:
       result = true
   else:

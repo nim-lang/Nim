@@ -203,7 +203,7 @@ proc iterOverNode(marker: var IntSet, n: PNode, iter: TTypeIter,
                   closure: RootRef): bool =
   if n != nil:
     case n.kind
-    of nkNone..nkNilLit:
+    of nkNone..nkNilLit, nkOpenSym:
       # a leaf
       result = iterOverTypeAux(marker, n.typ, iter, closure)
     else:
@@ -380,7 +380,7 @@ proc canFormAcycleNode(g: ModuleGraph; marker: var IntSet, n: PNode, orig: PType
       result = canFormAcycleAux(g, marker, n.typ, orig, withRef, hasTrace)
       if not result:
         case n.kind
-        of nkNone..nkNilLit:
+        of nkNone..nkNilLit, nkOpenSym:
           discard
         else:
           for i in 0..<n.len:
@@ -1142,7 +1142,7 @@ proc sameObjectTree(a, b: PNode, c: var TSameTypeClosure): bool =
       if y != nil: y = skipTypes(y, {tyRange, tyGenericInst, tyAlias})
     if sameTypeOrNilAux(x, y, c):
       case a.kind
-      of nkSym:
+      of nkSym, nkOpenSym:
         # same symbol as string is enough:
         result = a.sym.name.id == b.sym.name.id
       of nkIdent: result = a.ident.id == b.ident.id

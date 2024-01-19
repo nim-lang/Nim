@@ -242,7 +242,7 @@ proc transformConstSection(c: PTransf, v: PNode): PNode =
 
 proc hasContinue(n: PNode): bool =
   case n.kind
-  of nkEmpty..nkNilLit, nkForStmt, nkParForStmt, nkWhileStmt: result = false
+  of nkEmpty..nkNilLit, nkForStmt, nkParForStmt, nkWhileStmt, nkOpenSym: result = false
   of nkContinueStmt: result = true
   else:
     result = false
@@ -312,7 +312,7 @@ proc introduceNewLocalVars(c: PTransf, n: PNode): PNode =
   case n.kind
   of nkSym:
     result = transformSym(c, n)
-  of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit:
+  of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit, nkOpenSym:
     # nothing to be done for leaves:
     result = n
   of nkVarSection, nkLetSection:
@@ -630,7 +630,7 @@ proc putArgInto(arg: PNode, formal: PType): TPutArgInto =
       # XXX incorrect, causes #13417 when `arg` has side effects.
       return paDirectMapping
   case arg.kind
-  of nkEmpty..nkNilLit:
+  of nkEmpty..nkNilLit, nkOpenSym:
     result = paDirectMapping
   of nkDotExpr, nkDerefExpr, nkHiddenDeref, nkAddr, nkHiddenAddr:
     result = putArgInto(arg[0], formal)
@@ -666,7 +666,7 @@ proc findWrongOwners(c: PTransf, n: PNode) =
 proc isSimpleIteratorVar(c: PTransf; iter: PSym; call: PNode; owner: PSym): bool =
   proc rec(n: PNode; owner: PSym; dangerousYields: var int) =
     case n.kind
-    of nkEmpty..nkNilLit: discard
+    of nkEmpty..nkNilLit, nkOpenSym: discard
     of nkYieldStmt:
       if n[0].kind == nkSym and n[0].sym.owner == owner:
         discard "good: yield a single variable that we own"
@@ -677,7 +677,7 @@ proc isSimpleIteratorVar(c: PTransf; iter: PSym; call: PNode; owner: PSym): bool
 
   proc recSym(n: PNode; owner: PSym; sameOwner: var bool) =
     case n.kind
-    of {nkEmpty..nkNilLit} - {nkSym}: discard
+    of {nkEmpty..nkNilLit} - {nkSym}, nkOpenSym: discard
     of nkSym:
       if n.sym.owner != owner:
         sameOwner = false
@@ -1003,7 +1003,7 @@ proc transform(c: PTransf, n: PNode): PNode =
   case n.kind
   of nkSym:
     result = transformSym(c, n)
-  of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit, nkComesFrom:
+  of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit, nkOpenSym, nkComesFrom:
     # nothing to be done for leaves:
     result = n
   of nkBracketExpr: result = transformArrayAccess(c, n)

@@ -91,7 +91,7 @@ proc toString*(tree: PackedTree; pos: NodePos; m: PackedModule; nesting: int;
   of nkIdent, nkStrLit..nkTripleStrLit:
     result.add " "
     result.add m.strings[LitId tree[pos].uoperand]
-  of nkSym:
+  of nkSym, nkOpenSym:
     result.add " "
     result.add m.strings[m.syms[tree[pos].soperand].name]
   of directIntLit:
@@ -457,17 +457,17 @@ proc toPackedNode*(n: PNode; ir: var PackedTree; c: var PackedEncoder; m: var Pa
     ir.addNode(kind = n.kind, flags = n.flags,
                 operand = int32 getOrIncl(m.strings, n.ident.s),
                 typeId = storeTypeLater(n.typ, c, m), info = info)
-  of nkSym:
+  of nkSym, nkOpenSym:
     if n.sym.itemId.module == c.thisModule:
       # it is a symbol that belongs to the module we're currently
       # packing:
       let id = n.sym.storeSymLater(c, m).item
       if n.typ != n.sym.typ:
-        ir.addNode(kind = nkSym, flags = n.flags, operand = id,
+        ir.addNode(kind = n.kind, flags = n.flags, operand = id,
                    info = info,
                    typeId = storeTypeLater(n.typ, c, m))
       else:
-        ir.addNode(kind = nkSym, flags = n.flags, operand = id,
+        ir.addNode(kind = n.kind, flags = n.flags, operand = id,
                    info = info)
     else:
       # store it as an external module reference:
@@ -827,9 +827,9 @@ proc loadNodes*(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: int;
     discard
   of nkIdent:
     result.ident = getIdent(c.cache, g[thisModule].fromDisk.strings[n.litId])
-  of nkSym:
+  of nkSym, nkOpenSym:
     result.sym = loadSym(c, g, thisModule, PackedItemId(module: LitId(0), item: tree[n].soperand))
-    if result.typ == nil and nfOpenSym notin result.flags:
+    if result.typ == nil and k != nkOpenSym:
       result.typ = result.sym.typ
   of externIntLit:
     result.intVal = g[thisModule].fromDisk.numbers[n.litId]
@@ -843,7 +843,7 @@ proc loadNodes*(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: int;
     assert n2.kind == nkNone
     transitionNoneToSym(result)
     result.sym = loadSym(c, g, thisModule, PackedItemId(module: n1.litId, item: tree[n2].soperand))
-    if result.typ == nil and nfOpenSym notin result.flags:
+    if result.typ == nil and result.kind != nkOpenSym:
       result.typ = result.sym.typ
   else:
     for n0 in sonsReadonly(tree, n):

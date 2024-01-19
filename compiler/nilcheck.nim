@@ -1322,7 +1322,7 @@ proc preVisitNode(ctx: NilCheckerContext, node: PNode, conf: ConfigRef) =
             ctx.dependants.setLen(baseIndex + 1.ExprIndex)
           ctx.dependants[baseIndex].incl(index.int)
   case node.kind:
-  of nkSym, nkEmpty, nkNilLit, nkType, nkIdent, nkCharLit .. nkUInt64Lit, nkFloatLit .. nkFloat64Lit, nkStrLit .. nkTripleStrLit:
+  of nkSym, nkOpenSym, nkEmpty, nkNilLit, nkType, nkIdent, nkCharLit .. nkUInt64Lit, nkFloatLit .. nkFloat64Lit, nkStrLit .. nkTripleStrLit:
     discard
   of nkDotExpr:
     # visit only the base

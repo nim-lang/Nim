@@ -82,7 +82,7 @@ proc hashTree(c: var MD5Context, n: PNode; flags: set[ConsiderFlag]; conf: Confi
   of nkEmpty, nkNilLit, nkType: discard
   of nkIdent:
     c &= n.ident.s
-  of nkSym:
+  of nkSym, nkOpenSym:
     hashSym(c, n.sym)
     if CoHashTypeInsideNode in flags and n.sym.typ != nil:
       hashType(c, n.sym.typ, flags, conf)
@@ -362,7 +362,7 @@ proc hashBodyTree(graph: ModuleGraph, c: var MD5Context, n: PNode) =
   of nkEmpty, nkNilLit, nkType: discard
   of nkIdent:
     c &= n.ident.s
-  of nkSym:
+  of nkSym, nkOpenSym:
     if n.sym.kind in skProcKinds:
       c &= symBodyDigest(graph, n.sym)
     elif n.sym.kind in {skParam, skResult, skVar, skLet, skConst, skForVar}:

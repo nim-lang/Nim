@@ -91,7 +91,7 @@ proc computeDeps(cache: IdentCache; n: PNode, declares, uses: var IntSet; topLev
     for i in 1..<n.len: # avoid members identifiers in object definition
       deps(n[i])
   of nkIdent: uses.incl n.ident.id
-  of nkSym: uses.incl n.sym.name.id
+  of nkSym, nkOpenSym: uses.incl n.sym.name.id
   of nkAccQuoted: uses.incl accQuoted(cache, n).id
   of nkOpenSymChoice, nkClosedSymChoice:
     uses.incl n[0].sym.name.id

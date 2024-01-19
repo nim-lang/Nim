@@ -93,6 +93,8 @@ type
     nnkFuncDef,
     nnkTupleConstr,
     nnkError,  ## erroneous AST node
+    nnkModuleRef, nnkReplayAction, nnkNilRodNode # IC internal nodes
+    nnkOpenSym
 
   NimNodeKinds* = set[NimNodeKind]
   NimTypeKind* = enum  # some types are no longer used, see ast.nim
@@ -956,7 +958,7 @@ proc treeTraverse(n: NimNode; res: var string; level = 0; isLisp = false, indent
     res.add(" " & $cast[uint64](n.intVal))
   of nnkFloatLit .. nnkFloat64Lit:
     res.add(" " & $n.floatVal)
-  of nnkStrLit .. nnkTripleStrLit, nnkCommentStmt, nnkIdent, nnkSym:
+  of nnkStrLit .. nnkTripleStrLit, nnkCommentStmt, nnkIdent, nnkSym, nnkOpenSym:
     res.add(" " & $n.strVal.newLit.repr)
   of nnkNone:
     assert false
@@ -1000,7 +1002,7 @@ proc astGenRepr*(n: NimNode): string {.benign.} =
   ## See also `repr`_, `treeRepr`_, and `lispRepr`_.
 
   const
-    NodeKinds = {nnkEmpty, nnkIdent, nnkSym, nnkNone, nnkCommentStmt}
+    NodeKinds = {nnkEmpty, nnkIdent, nnkSym, nnkOpenSym, nnkNone, nnkCommentStmt}
     LitKinds = {nnkCharLit..nnkInt64Lit, nnkFloatLit..nnkFloat64Lit, nnkStrLit..nnkTripleStrLit}
 
   proc traverse(res: var string, level: int, n: NimNode) {.benign.} =
@@ -1019,7 +1021,7 @@ proc astGenRepr*(n: NimNode): string {.benign.} =
     of nnkCharLit: res.add("'" & $chr(n.intVal) & "'")
     of nnkIntLit..nnkInt64Lit: res.add($n.intVal)
     of nnkFloatLit..nnkFloat64Lit: res.add($n.floatVal)
-    of nnkStrLit..nnkTripleStrLit, nnkCommentStmt, nnkIdent, nnkSym:
+    of nnkStrLit..nnkTripleStrLit, nnkCommentStmt, nnkIdent, nnkSym, nnkOpenSym:
       res.add(n.strVal.newLit.repr)
     of nnkNone: assert false
     elif n.kind in {nnkOpenSymChoice, nnkClosedSymChoice} and collapseSymChoice:
@@ -1405,7 +1407,7 @@ proc `$`*(node: NimNode): string =
   case node.kind
   of nnkPostfix:
     result = node.basename.strVal & "*"
-  of nnkStrLit..nnkTripleStrLit, nnkCommentStmt, nnkSym, nnkIdent:
+  of nnkStrLit..nnkTripleStrLit, nnkCommentStmt, nnkSym, nnkOpenSym, nnkIdent:
     result = node.strVal
   of nnkOpenSymChoice, nnkClosedSymChoice:
     result = $node[0]
