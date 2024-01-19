@@ -1838,7 +1838,7 @@ proc semTypeOf2(c: PContext; n: PNode; prev: PType): PType =
   result = t.typ
 
 proc semTypeIdent(c: PContext, n: PNode): PSym =
-  if n.kind == nkSym:
+  if n.kind in {nkSym, nkOpenSym}:
     result = getGenSym(c, n.sym)
   else:
     result = pickSym(c, n, {skType, skGenericParam, skParam})

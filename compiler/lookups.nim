@@ -681,7 +681,7 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
             result = someSym(c.graph, m, ident)
         if result == nil and checkUndeclared in flags:
           result = errorUndeclaredIdentifierHint(c, ident, n[1].info)
-      elif n[1].kind == nkSym:
+      elif n[1].kind in {nkOpenSym, nkSym}:
         result = n[1].sym
         if result.owner != nil and result.owner != m and checkUndeclared in flags:
           # dotExpr in templates can end up here
