@@ -209,3 +209,26 @@ block: # tuple unpacking assignment with underscore
   doAssert (a, b) == (6, 2)
   (b, _) = (7, 8)
   doAssert (a, b) == (6, 7)
+
+block: # bug #22863
+  # annon tuple types
+  macro works(): typedesc =
+    nnkTupleConstr.newTree(ident"ValueError")
+
+  macro fails(): typedesc =
+    nnkTupleConstr.newTree()
+
+  type
+    A[T] = object
+    B = A[works()]
+    C = A[type(())]
+    D = A[fails()]
+
+  var x: tuple[] = ()
+  var s: () = ()
+
+  proc foo(x: ()) =
+    doAssert x == s
+
+  foo(x)
+  foo(s)
