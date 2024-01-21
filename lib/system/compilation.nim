@@ -150,8 +150,8 @@ template currentSourcePath*: string = instantiationInfo(-1, true).filename
   ## The path returned by this template is set at compile time.
   ##
   ## See the docstring of `macros.getProjectPath() <macros.html#getProjectPath>`_
-  ## for an example to see the distinction between the `currentSourcePath`
-  ## and `getProjectPath`.
+  ## for an example to see the distinction between the `currentSourcePath()`
+  ## and `getProjectPath()`.
   ##
   ## See also:
   ## * `ospaths2.getCurrentDir() proc <ospaths2.html#getCurrentDir>`_
