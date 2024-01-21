@@ -144,7 +144,8 @@ template currentSourcePath*: string = instantiationInfo(-1, true).filename
   ## Returns the full file-system path of the current source.
   ##
   ## To get the directory containing the current source, use it with
-  ## `os.parentDir() <os.html#parentDir%2Cstring>`_ as `currentSourcePath.parentDir()`.
+  ## `ospaths2.parentDir() <ospaths2.html#parentDir%2Cstring>`_ as
+  ## `currentSourcePath.parentDir()`.
   ##
   ## The path returned by this template is set at compile time.
   ##
@@ -153,7 +154,7 @@ template currentSourcePath*: string = instantiationInfo(-1, true).filename
   ## and `getProjectPath`.
   ##
   ## See also:
-  ## * `getCurrentDir proc <os.html#getCurrentDir>`_
+  ## * `ospaths2.getCurrentDir() proc <ospaths2.html#getCurrentDir>`_
 
 proc slurp*(filename: string): string {.magic: "Slurp".}
   ## This is an alias for `staticRead <#staticRead,string>`_.
