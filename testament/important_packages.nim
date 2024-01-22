@@ -97,7 +97,8 @@ pkg "memo"
 pkg "msgpack4nim", "nim c -r tests/test_spec.nim"
 pkg "nake", "nim c nakefile.nim"
 pkg "neo", "nim c -d:blas=openblas --mm:refc tests/all.nim", url = "https://github.com/nim-lang/neo"
-pkg "nesm", "nimble tests", "https://github.com/nim-lang/NESM", useHead = true
+pkg "nesm", "nimble tests", "https://github.com/nim-lang/NESM", useHead = true, allowFailure = true
+  # inactive, tests not adapted to #23096
 pkg "netty"
 pkg "nico", allowFailure = true
 pkg "nicy", "nim c -r src/nicy.nim"

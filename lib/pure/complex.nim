@@ -81,7 +81,7 @@ func abs2*[T](z: Complex[T]): T =
   ## that is the squared distance from (0, 0) to `z`.
   ## This is more efficient than `abs(z) ^ 2`.
   result = z.re * z.re + z.im * z.im
-  
+
 func sgn*[T](z: Complex[T]): Complex[T] =
   ## Returns the phase of `z` as a unit complex number,
   ## or 0 if `z` is 0.
@@ -253,6 +253,10 @@ func pow*[T](x, y: Complex[T]): Complex[T] =
     result = x
   elif y.re == -1.0 and y.im == 0.0:
     result = T(1.0) / x
+  elif y.re == 2.0 and y.im == 0.0:
+    result = x * x
+  elif y.re == 0.5 and y.im == 0.0:
+    result = sqrt(x)
   else:
     let
       rho = abs(x)

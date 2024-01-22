@@ -198,7 +198,7 @@ proc newEnvVar(ctx: var Ctx, name: string, typ: PType): PSym =
   else:
     let envParam = getEnvParam(ctx.fn)
     # let obj = envParam.typ.lastSon
-    result = addUniqueField(envParam.typ.lastSon, result, ctx.g.cache, ctx.idgen)
+    result = addUniqueField(envParam.typ.elementType, result, ctx.g.cache, ctx.idgen)
 
 proc newEnvVarAccess(ctx: Ctx, s: PSym): PNode =
   if ctx.stateVarSym.isNil:
@@ -208,7 +208,7 @@ proc newEnvVarAccess(ctx: Ctx, s: PSym): PNode =
 
 proc newTmpResultAccess(ctx: var Ctx): PNode =
   if ctx.tmpResultSym.isNil:
-    ctx.tmpResultSym = ctx.newEnvVar(":tmpResult", ctx.fn.typ[0])
+    ctx.tmpResultSym = ctx.newEnvVar(":tmpResult", ctx.fn.typ.returnType)
   ctx.newEnvVarAccess(ctx.tmpResultSym)
 
 proc newUnrollFinallyAccess(ctx: var Ctx, info: TLineInfo): PNode =
@@ -413,7 +413,7 @@ proc hasYieldsInExpressions(n: PNode): bool =
 
 proc exprToStmtList(n: PNode): tuple[s, res: PNode] =
   assert(n.kind == nkStmtListExpr)
-  result.s = newNodeI(nkStmtList, n.info)
+  result = (newNodeI(nkStmtList, n.info), nil)
   result.s.sons = @[]
 
   var n = n
@@ -831,7 +831,7 @@ proc newEndFinallyNode(ctx: var Ctx, info: TLineInfo): PNode =
   let retStmt =
     if ctx.nearestFinally == 0:
       # last finally, we can return
-      let retValue = if ctx.fn.typ[0].isNil:
+      let retValue = if ctx.fn.typ.returnType.isNil:
                    ctx.g.emptyNode
                  else:
                    newTree(nkFastAsgn,
@@ -1431,10 +1431,7 @@ proc preprocess(c: var PreprocessContext; n: PNode): PNode =
       result[i] = preprocess(c, n[i])
 
 proc transformClosureIterator*(g: ModuleGraph; idgen: IdGenerator; fn: PSym, n: PNode): PNode =
-  var ctx: Ctx
-  ctx.g = g
-  ctx.fn = fn
-  ctx.idgen = idgen
+  var ctx = Ctx(g: g, fn: fn, idgen: idgen)
 
   if getEnvParam(fn).isNil:
     # Lambda lifting was not done yet. Use temporary :state sym, which will

@@ -289,13 +289,12 @@ proc potentialValueInit(p: BProc; v: PSym; value: PNode; result: var Rope) =
     #echo "New code produced for ", v.name.s, " ", p.config $ value.info
     genBracedInit(p, value, isConst = false, v.typ, result)
 
-proc genCppParamsForCtor(p: BProc; call: PNode): string = 
+proc genCppParamsForCtor(p: BProc; call: PNode): string =
   result = ""
   var argsCounter = 0
   let typ = skipTypes(call[0].typ, abstractInst)
   assert(typ.kind == tyProc)
   for i in 1..<call.len:
-    assert(typ.len == typ.n.len)
     #if it's a type we can just generate here another initializer as we are in an initializer context
     if call[i].kind == nkCall and call[i][0].kind == nkSym and call[i][0].sym.kind == skType:
       if argsCounter > 0: result.add ","
@@ -1489,7 +1488,12 @@ proc genTrySetjmp(p: BProc, t: PNode, d: var TLoc) =
 
 proc genAsmOrEmitStmt(p: BProc, t: PNode, isAsmStmt=false; result: var Rope) =
   var res = ""
-  for it in t.sons:
+  let offset =
+    if isAsmStmt: 1 # first son is pragmas
+    else: 0
+
+  for i in offset..<t.len:
+    let it = t[i]
     case it.kind
     of nkStrLit..nkTripleStrLit:
       res.add(it.strVal)
@@ -1533,6 +1537,21 @@ proc genAsmStmt(p: BProc, t: PNode) =
   assert(t.kind == nkAsmStmt)
   genLineDir(p, t)
   var s = newRopeAppender()
+
+  var asmSyntax = ""
+  if (let p = t[0]; p.kind == nkPragma):
+    for i in p:
+      if whichPragma(i) == wAsmSyntax:
+        asmSyntax = i[1].strVal
+
+  if asmSyntax != "" and 
+     not (
+      asmSyntax == "gcc" and hasGnuAsm in CC[p.config.cCompiler].props or
+      asmSyntax == "vcc" and hasGnuAsm notin CC[p.config.cCompiler].props):
+    localError(
+      p.config, t.info, 
+      "Your compiler does not support the specified inline assembler")
+  
   genAsmOrEmitStmt(p, t, isAsmStmt=true, s)
   # see bug #2362, "top level asm statements" seem to be a mis-feature
   # but even if we don't do this, the example in #2362 cannot possibly

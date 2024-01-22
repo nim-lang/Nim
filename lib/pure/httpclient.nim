@@ -1232,7 +1232,7 @@ proc responseContent(resp: Response | AsyncResponse): Future[string] {.multisync
   ## A `HttpRequestError` will be raised if the server responds with a
   ## client error (status code 4xx) or a server error (status code 5xx).
   if resp.code.is4xx or resp.code.is5xx:
-    raise newException(HttpRequestError, resp.status)
+    raise newException(HttpRequestError, resp.status.move)
   else:
     return await resp.bodyStream.readAll()
 

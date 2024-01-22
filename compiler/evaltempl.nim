@@ -44,7 +44,7 @@ proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
         handleParam actual[s.position]
       elif (s.owner != nil) and (s.kind == skGenericParam or
            s.kind == skType and s.typ != nil and s.typ.kind == tyGenericParam):
-        handleParam actual[s.owner.typ.len + s.position - 1]
+        handleParam actual[s.owner.typ.signatureLen + s.position - 1]
       else:
         internalAssert c.config, sfGenSym in s.flags or s.kind == skType
         var x = PSym(idTableGet(c.mapping, s))
@@ -116,7 +116,7 @@ proc evalTemplateArgs(n: PNode, s: PSym; conf: ConfigRef; fromHlo: bool): PNode 
     # now that we have working untyped parameters.
     genericParams = if fromHlo: 0
                     else: s.ast[genericParamsPos].len
-    expectedRegularParams = s.typ.len-1
+    expectedRegularParams = s.typ.paramsLen
     givenRegularParams = totalParams - genericParams
   if givenRegularParams < 0: givenRegularParams = 0
 
@@ -182,14 +182,14 @@ proc evalTemplate*(n: PNode, tmpl, genSymOwner: PSym;
 
   # replace each param by the corresponding node:
   var args = evalTemplateArgs(n, tmpl, conf, fromHlo)
-  var ctx: TemplCtx
-  ctx.owner = tmpl
-  ctx.genSymOwner = genSymOwner
-  ctx.config = conf
-  ctx.ic = ic
-  ctx.mapping = initIdTable()
-  ctx.instID = instID[]
-  ctx.idgen = idgen
+  var ctx = TemplCtx(owner: tmpl,
+    genSymOwner: genSymOwner,
+    config: conf,
+    ic: ic,
+    mapping: initIdTable(),
+    instID: instID[],
+    idgen: idgen
+  )
 
   let body = tmpl.ast[bodyPos]
   #echo "instantion of ", renderTree(body, {renderIds})

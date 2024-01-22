@@ -224,7 +224,6 @@ proc commandScan(cache: IdentCache, config: ConfigRef) =
     var
       L: Lexer
       tok: Token = default(Token)
-    initToken(tok)
     openLexer(L, f, stream, cache, config)
     while true:
       rawGetTok(L, tok)

@@ -157,7 +157,7 @@ proc getClosureIterResult*(g: ModuleGraph; iter: PSym; idgen: IdGenerator): PSym
   else:
     # XXX a bit hacky:
     result = newSym(skResult, getIdent(g.cache, ":result"), idgen, iter, iter.info, {})
-    result.typ = iter.typ[0]
+    result.typ = iter.typ.returnType
     incl(result.flags, sfUsed)
     iter.ast.add newSymNode(result)
 
@@ -246,7 +246,7 @@ proc liftingHarmful(conf: ConfigRef; owner: PSym): bool {.inline.} =
 
 proc createTypeBoundOpsLL(g: ModuleGraph; refType: PType; info: TLineInfo; idgen: IdGenerator; owner: PSym) =
   if owner.kind != skMacro:
-    createTypeBoundOps(g, nil, refType.lastSon, info, idgen)
+    createTypeBoundOps(g, nil, refType.elementType, info, idgen)
     createTypeBoundOps(g, nil, refType, info, idgen)
     if tfHasAsgn in refType.flags or optSeqDestructors in g.config.globalOptions:
       owner.flags.incl sfInjectDestructors
@@ -551,8 +551,8 @@ proc accessViaEnvParam(g: ModuleGraph; n: PNode; owner: PSym): PNode =
   let envParam = getHiddenParam(g, owner)
   if not envParam.isNil:
     var access = newSymNode(envParam)
+    var obj = access.typ.elementType
     while true:
-      let obj = access.typ[0]
       assert obj.kind == tyObject
       let field = getFieldFromObj(obj, s)
       if field != nil:
@@ -560,6 +560,7 @@ proc accessViaEnvParam(g: ModuleGraph; n: PNode; owner: PSym): PNode =
       let upField = lookupInRecord(obj.n, getIdent(g.cache, upName))
       if upField == nil: break
       access = rawIndirectAccess(access, upField, n.info)
+      obj = access.typ.baseClass
   localError(g.config, n.info, "internal error: environment misses: " & s.name.s)
   result = n
 
@@ -571,7 +572,7 @@ proc newEnvVar(cache: IdentCache; owner: PSym; typ: PType; info: TLineInfo; idge
   when false:
     if owner.kind == skIterator and owner.typ.callConv == ccClosure:
       let it = getHiddenParam(owner)
-      addUniqueField(it.typ[0], v)
+      addUniqueField(it.typ.elementType, v)
       result = indirectAccess(newSymNode(it), v, v.info)
     else:
       result = newSymNode(v)
@@ -993,12 +994,15 @@ proc liftForLoop*(g: ModuleGraph; body: PNode; idgen: IdGenerator; owner: PSym):
   # gather vars in a tuple:
   var v2 = newNodeI(nkLetSection, body.info)
   var vpart = newNodeI(if body.len == 3: nkIdentDefs else: nkVarTuple, body.info)
-  for i in 0..<body.len-2:
-    if body[i].kind == nkSym:
-      body[i].sym.transitionToLet()
-    vpart.add body[i]
+  if body.len == 3 and body[0].kind == nkVarTuple:
+    vpart = body[0] # fixes for (i,j) in walk() # bug #15924
+  else:
+    for i in 0..<body.len-2:
+      if body[i].kind == nkSym:
+        body[i].sym.transitionToLet()
+      vpart.add body[i]
 
-  vpart.add newNodeI(nkEmpty, body.info) # no explicit type
+    vpart.add newNodeI(nkEmpty, body.info) # no explicit type
   if not env.isNil:
     call[0] = makeClosure(g, idgen, call[0].sym, env.newSymNode, body.info)
   vpart.add call

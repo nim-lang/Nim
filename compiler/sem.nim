@@ -20,6 +20,7 @@ import
   isolation_check, typeallowed, modulegraphs, enumtostr, concepts, astmsgs,
   extccomp
 
+import vtables
 import std/[strtabs, math, tables, intsets, strutils]
 
 when not defined(leanCompiler):
@@ -143,7 +144,7 @@ proc commonType*(c: PContext; x, y: PType): PType =
   elif b.kind == tyTyped: result = b
   elif a.kind == tyTypeDesc:
     # turn any concrete typedesc into the abstract typedesc type
-    if a.len == 0: result = a
+    if not a.hasElementType: result = a
     else:
       result = newType(tyTypeDesc, c.idgen, a.owner)
       rawAddSon(result, newType(tyNone, c.idgen, a.owner))
@@ -152,17 +153,17 @@ proc commonType*(c: PContext; x, y: PType): PType =
     # check for seq[empty] vs. seq[int]
     let idx = ord(b.kind == tyArray)
     if a[idx].kind == tyEmpty: return y
-  elif a.kind == tyTuple and b.kind == tyTuple and a.len == b.len:
+  elif a.kind == tyTuple and b.kind == tyTuple and sameTupleLengths(a, b):
     var nt: PType = nil
-    for i in 0..<a.len:
-      let aEmpty = isEmptyContainer(a[i])
-      let bEmpty = isEmptyContainer(b[i])
+    for i, aa, bb in tupleTypePairs(a, b):
+      let aEmpty = isEmptyContainer(aa)
+      let bEmpty = isEmptyContainer(bb)
       if aEmpty != bEmpty:
         if nt.isNil:
           nt = copyType(a, c.idgen, a.owner)
           copyTypeProps(c.graph, c.idgen.module, nt, a)
 
-        nt[i] = if aEmpty: b[i] else: a[i]
+        nt[i] = if aEmpty: bb else: aa
     if not nt.isNil: result = nt
     #elif b[idx].kind == tyEmpty: return x
   elif a.kind == tyRange and b.kind == tyRange:
@@ -195,8 +196,8 @@ proc commonType*(c: PContext; x, y: PType): PType =
       k = a.kind
       if b.kind != a.kind: return x
       # bug #7601, array construction of ptr generic
-      a = a.lastSon.skipTypes({tyGenericInst})
-      b = b.lastSon.skipTypes({tyGenericInst})
+      a = a.elementType.skipTypes({tyGenericInst})
+      b = b.elementType.skipTypes({tyGenericInst})
     if a.kind == tyObject and b.kind == tyObject:
       result = commonSuperclass(a, b)
       # this will trigger an error later:
@@ -208,6 +209,18 @@ proc commonType*(c: PContext; x, y: PType): PType =
         let r = result
         result = newType(k, c.idgen, r.owner)
         result.addSonSkipIntLit(r, c.idgen)
+
+const shouldChckCovered = {tyInt..tyInt64, tyChar, tyEnum, tyUInt..tyUInt64, tyBool}
+proc shouldCheckCaseCovered(caseTyp: PType): bool =
+  result = false
+  case caseTyp.kind
+  of shouldChckCovered:
+    result = true
+  of tyRange:
+    if skipTypes(caseTyp[0], abstractInst).kind in shouldChckCovered:
+      result = true
+  else:
+    discard
 
 proc endsInNoReturn(n: PNode): bool =
   ## check if expr ends the block like raising or call of noreturn procs do
@@ -238,6 +251,12 @@ proc endsInNoReturn(n: PNode): bool =
     # none of the branches returned
     result = hasElse # Only truly a no-return when it's exhaustive
   of nkCaseStmt:
+    let caseTyp = skipTypes(it[0].typ, abstractVar-{tyTypeDesc})
+    # semCase should already have checked for exhaustiveness in this case
+    # effectively the same as having an else
+    var hasElse = caseTyp.shouldCheckCaseCovered()
+
+    # actual noreturn checks
     for i in 1 ..< it.len:
       let branch = it[i]
       checkBranch:
@@ -247,11 +266,12 @@ proc endsInNoReturn(n: PNode): bool =
         of nkElifBranch:
           branch[1]
         of nkElse:
+          hasElse = true
           branch[0]
         else:
           raiseAssert "Malformed `case` statement in endsInNoReturn"
-    # none of the branches returned
-    result = true
+    # Can only guarantee a noreturn if there is an else or it's exhaustive
+    result = hasElse
   of nkTryStmt:
     checkBranch(it[0])
     for i in 1 ..< it.len:
@@ -478,15 +498,15 @@ proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
   c.friendModules.add(s.owner.getModule)
   result = macroResult
   resetSemFlag result
-  if s.typ[0] == nil:
+  if s.typ.returnType == nil:
     result = semStmt(c, result, flags)
   else:
-    var retType = s.typ[0]
+    var retType = s.typ.returnType
     if retType.kind == tyTypeDesc and tfUnresolved in retType.flags and
-        retType.len == 1:
+        retType.hasElementType:
       # bug #11941: template fails(T: type X, v: auto): T
       # does not mean we expect a tyTypeDesc.
-      retType = retType[0]
+      retType = retType.skipModifier
     case retType.kind
     of tyUntyped, tyAnything:
       # Not expecting a type here allows templates like in ``tmodulealias.in``.
@@ -528,7 +548,7 @@ proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
       else:
         result = semExpr(c, result, flags, expectedType)
         result = fitNode(c, retType, result, result.info)
-      #globalError(s.info, errInvalidParamKindX, typeToString(s.typ[0]))
+      #globalError(s.info, errInvalidParamKindX, typeToString(s.typ.returnType))
   dec(c.config.evalTemplateCounter)
   discard c.friendModules.pop()
 
@@ -839,6 +859,13 @@ proc semStmtAndGenerateGenerics(c: PContext, n: PNode): PNode =
   if c.config.cmd == cmdIdeTools:
     appendToModule(c.module, result)
   trackStmt(c, c.module, result, isTopLevel = true)
+  if optMultiMethods notin c.config.globalOptions and
+      c.config.selectedGC in {gcArc, gcOrc, gcAtomicArc} and
+      Feature.vtables in c.config.features:
+    sortVTableDispatchers(c.graph)
+
+    if sfMainModule in c.module.flags:
+      collectVTableDispatchers(c.graph)
 
 proc recoverContext(c: PContext) =
   # clean up in case of a semantic error: We clean up the stacks, etc. This is
@@ -871,6 +898,7 @@ proc semWithPContext*(c: PContext, n: PNode): PNode =
 
 
 proc reportUnusedModules(c: PContext) =
+  if c.config.cmd == cmdM: return
   for i in 0..high(c.unusedImports):
     if sfUsed notin c.unusedImports[i][0].flags:
       message(c.config, c.unusedImports[i][1], warnUnusedImportX, c.unusedImports[i][0].name.s)

@@ -54,24 +54,23 @@ proc specializeResetT(p: BProc, accessor: Rope, typ: PType) =
   case typ.kind
   of tyGenericInst, tyGenericBody, tyTypeDesc, tyAlias, tyDistinct, tyInferred,
      tySink, tyOwned:
-    specializeResetT(p, accessor, lastSon(typ))
+    specializeResetT(p, accessor, skipModifier(typ))
   of tyArray:
-    let arraySize = lengthOrd(p.config, typ[0])
+    let arraySize = lengthOrd(p.config, typ.indexType)
     var i: TLoc = getTemp(p, getSysType(p.module.g.graph, unknownLineInfo, tyInt))
     linefmt(p, cpsStmts, "for ($1 = 0; $1 < $2; $1++) {$n",
             [i.r, arraySize])
-    specializeResetT(p, ropecg(p.module, "$1[$2]", [accessor, i.r]), typ[1])
+    specializeResetT(p, ropecg(p.module, "$1[$2]", [accessor, i.r]), typ.elementType)
     lineF(p, cpsStmts, "}$n", [])
   of tyObject:
-    for i in 0..<typ.len:
-      var x = typ[i]
-      if x != nil: x = x.skipTypes(skipPtrs)
-      specializeResetT(p, accessor.parentObj(p.module), x)
+    var x = typ.baseClass
+    if x != nil: x = x.skipTypes(skipPtrs)
+    specializeResetT(p, accessor.parentObj(p.module), x)
     if typ.n != nil: specializeResetN(p, accessor, typ.n, typ)
   of tyTuple:
     let typ = getUniqueType(typ)
-    for i in 0..<typ.len:
-      specializeResetT(p, ropecg(p.module, "$1.Field$2", [accessor, i]), typ[i])
+    for i, a in typ.ikids:
+      specializeResetT(p, ropecg(p.module, "$1.Field$2", [accessor, i]), a)
 
   of tyString, tyRef, tySequence:
     lineCg(p, cpsStmts, "#unsureAsgnRef((void**)&$1, NIM_NIL);$n", [accessor])
@@ -82,7 +81,7 @@ proc specializeResetT(p: BProc, accessor: Rope, typ: PType) =
       lineCg(p, cpsStmts, "$1.ClP_0 = NIM_NIL;$n", [accessor])
     else:
       lineCg(p, cpsStmts, "$1 = NIM_NIL;$n", [accessor])
-  of tyChar, tyBool, tyEnum, tyInt..tyUInt64:
+  of tyChar, tyBool, tyEnum, tyRange, tyInt..tyUInt64:
     lineCg(p, cpsStmts, "$1 = 0;$n", [accessor])
   of tyCstring, tyPointer, tyPtr, tyVar, tyLent:
     lineCg(p, cpsStmts, "$1 = NIM_NIL;$n", [accessor])
@@ -96,7 +95,7 @@ proc specializeResetT(p: BProc, accessor: Rope, typ: PType) =
     else:
       raiseAssert "unexpected set type kind"
   of tyNone, tyEmpty, tyNil, tyUntyped, tyTyped, tyGenericInvocation,
-      tyGenericParam, tyOrdinal, tyRange, tyOpenArray, tyForward, tyVarargs,
+      tyGenericParam, tyOrdinal, tyOpenArray, tyForward, tyVarargs,
       tyUncheckedArray, tyProxy, tyBuiltInTypeClass, tyUserTypeClass,
       tyUserTypeClassInst, tyCompositeTypeClass, tyAnd, tyOr, tyNot,
       tyAnything, tyStatic, tyFromExpr, tyConcept, tyVoid, tyIterable:

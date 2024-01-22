@@ -251,7 +251,8 @@ proc importModuleAs(c: PContext; n: PNode, realModule: PSym, importHidden: bool)
   c.importModuleLookup.mgetOrPut(result.name.id, @[]).addUnique realModule.id
 
 proc transformImportAs(c: PContext; n: PNode): tuple[node: PNode, importHidden: bool] =
-  var ret: typeof(result)
+  result = (nil, false)
+  var ret = default(typeof(result))
   proc processPragma(n2: PNode): PNode =
     let (result2, kws) = splitPragmas(c, n2)
     result = result2

@@ -12,6 +12,7 @@ import strformat
 import algorithm
 import tables
 import times
+import procmonitor
 
 template tryImport(module) = import module
 
@@ -56,6 +57,7 @@ Options:
   --address:HOST          binds to that address, by default ""
   --stdin                 read commands from stdin and write results to
                           stdout instead of using sockets
+  --clientProcessId:PID   shutdown nimsuggest in case this process dies
   --epc                   use emacs epc mode
   --debug                 enable debug output
   --log                   enable verbose logging to nimsuggest.log file
@@ -66,6 +68,7 @@ Options:
   --info:X                information
     --info:nimVer           return the Nim compiler version that nimsuggest uses internally
     --info:protocolVer      return the newest protocol version that is supported
+    --info:capabilities     return the capabilities supported by nimsuggest
   --refresh               perform automatic refreshes to keep the analysis precise
   --maxresults:N          limit the number of suggestions to N
   --tester                implies --stdin and outputs a line
@@ -122,6 +125,10 @@ const
          "type 'quit' to quit\n" &
          "type 'debug' to toggle debug mode on/off\n" &
          "type 'terse' to toggle terse mode on/off"
+  #List of currently supported capabilities. So lang servers/ides can iterate over and check for what's enabled
+  Capabilities = [
+    "con" #current NimSuggest supports the `con` commmand
+  ]
 
 proc parseQuoted(cmd: string; outp: var string; start: int): int =
   var i = start
@@ -625,6 +632,9 @@ proc mainCommand(graph: ModuleGraph) =
   open(requests)
   open(results)
 
+  if graph.config.clientProcessId != 0:
+    hookProcMonitor(graph.config.clientProcessId)
+
   case gMode
   of mstdin: createThread(inputThread, replStdin, (gPort, gAddress))
   of mtcp: createThread(inputThread, replTcp, (gPort, gAddress))
@@ -684,6 +694,9 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string; conf: ConfigRef) =
         of "nimver":
           stdout.writeLine(system.NimVersion)
           quit 0
+        of "capabilities":
+          stdout.writeLine(Capabilities.toSeq.mapIt($it).join(" "))
+          quit 0
         else:
           processSwitch(pass, p, conf)
       of "tester":
@@ -700,6 +713,8 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string; conf: ConfigRef) =
         conf.suggestMaxResults = parseInt(p.val)
       of "find":
         findProject = true
+      of "clientprocessid":
+        conf.clientProcessId = parseInt(p.val)
       else: processSwitch(pass, p, conf)
     of cmdArgument:
       let a = unixToNativePath(p.key)
@@ -977,10 +992,10 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
     graph.unmarkAllDirty()
 
   # these commands require partially compiled project
-  elif cmd in {ideSug, ideOutline, ideHighlight, ideDef, ideChkFile, ideType, ideDeclaration, ideExpand} and
-       (graph.needsCompilation(fileIndex) or cmd == ideSug):
+  elif cmd in {ideSug, ideCon, ideOutline, ideHighlight, ideDef, ideChkFile, ideType, ideDeclaration, ideExpand} and
+       (graph.needsCompilation(fileIndex) or cmd in {ideSug, ideCon}):
     # for ideSug use v2 implementation
-    if cmd == ideSug:
+    if cmd in {ideSug, ideCon}:
       conf.m.trackPos = newLineInfo(fileIndex, line, col)
       conf.m.trackPosAttached = false
     else:
@@ -1026,6 +1041,9 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
     # ideSug performs partial build of the file, thus mark it dirty for the
     # future calls.
     graph.markDirtyIfNeeded(file.string, fileIndex)
+  of ideCon:
+    graph.markDirty fileIndex
+    graph.markClientsDirty fileIndex
   of ideOutline:
     let n = parseFile(fileIndex, graph.cache, graph.config)
     graph.iterateOutlineNodes(n, graph.fileSymbols(fileIndex).deduplicateSymInfoPair)

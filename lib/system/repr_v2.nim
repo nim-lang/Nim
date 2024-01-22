@@ -99,7 +99,7 @@ proc repr*(p: proc | iterator {.closure.}): string =
   ## repr of a proc as its address
   repr(cast[ptr pointer](unsafeAddr p)[])
 
-template repr*[T: distinct|range](x: T): string =
+template repr*[T: distinct|(range and not enum)](x: T): string =
   when T is range: # add a branch to handle range
     repr(rangeBase(typeof(x))(x))
   elif T is distinct:

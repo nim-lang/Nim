@@ -16,6 +16,7 @@ import ../dist/checksums/src/checksums/md5
 import ast, astalgo, options, lineinfos,idents, btrees, ropes, msgs, pathutils, packages
 import ic / [packed_ast, ic]
 
+
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
@@ -81,7 +82,7 @@ type
     typeInstCache*: Table[ItemId, seq[LazyType]] # A symbol's ItemId.
     procInstCache*: Table[ItemId, seq[LazyInstantiation]] # A symbol's ItemId.
     attachedOps*: array[TTypeAttachedOp, Table[ItemId, LazySym]] # Type ID, destructors, etc.
-    methodsPerType*: Table[ItemId, seq[(int, LazySym)]] # Type ID, attached methods
+    methodsPerGenericType*: Table[ItemId, seq[(int, LazySym)]] # Type ID, attached methods
     memberProcsPerType*: Table[ItemId, seq[PSym]] # Type ID, attached member procs (only c++, virtual,member and ctor so far).
     initializersPerType*: Table[ItemId, PNode] # Type ID, AST call to the default ctor (c++ only)
     enumToStringProcs*: Table[ItemId, LazySym]
@@ -110,6 +111,11 @@ type
     suggestSymbols*: Table[FileIndex, seq[SymInfoPair]]
     suggestErrors*: Table[FileIndex, seq[Suggest]]
     methods*: seq[tuple[methods: seq[PSym], dispatcher: PSym]] # needs serialization!
+    bucketTable*: CountTable[ItemId]
+    objectTree*: Table[ItemId, seq[tuple[depth: int, value: PType]]]
+    methodsPerType*: Table[ItemId, seq[LazySym]]
+    dispatchers*: seq[LazySym]
+
     systemModule*: PSym
     sysTypes*: array[TTypeKind, PType]
     compilerprocs*: TStrTable
@@ -153,8 +159,10 @@ proc resetForBackend*(g: ModuleGraph) =
   g.procInstCache.clear()
   for a in mitems(g.attachedOps):
     a.clear()
-  g.methodsPerType.clear()
+  g.methodsPerGenericType.clear()
   g.enumToStringProcs.clear()
+  g.dispatchers.setLen(0)
+  g.methodsPerType.clear()
 
 const
   cb64 = [
@@ -325,6 +333,7 @@ iterator procInstCacheItems*(g: ModuleGraph; s: PSym): PInstantiation =
     for t in mitems(x[]):
       yield resolveInst(g, t)
 
+
 proc getAttachedOp*(g: ModuleGraph; t: PType; op: TTypeAttachedOp): PSym =
   ## returns the requested attached operation for type `t`. Can return nil
   ## if no such operation exists.
@@ -348,6 +357,27 @@ proc completePartialOp*(g: ModuleGraph; module: int; t: PType; op: TTypeAttached
     toPackedGeneratedProcDef(value, g.encoders[module], g.packed[module].fromDisk)
     #storeAttachedProcDef(t, op, value, g.encoders[module], g.packed[module].fromDisk)
 
+iterator getDispatchers*(g: ModuleGraph): PSym =
+  for i in g.dispatchers.mitems:
+    yield resolveSym(g, i)
+
+proc addDispatchers*(g: ModuleGraph, value: PSym) =
+  # TODO: add it for packed modules
+  g.dispatchers.add LazySym(sym: value)
+
+iterator resolveLazySymSeq(g: ModuleGraph, list: var seq[LazySym]): PSym =
+  for it in list.mitems:
+    yield resolveSym(g, it)
+
+proc setMethodsPerType*(g: ModuleGraph; id: ItemId, methods: seq[LazySym]) =
+  # TODO: add it for packed modules
+  g.methodsPerType[id] = methods
+
+iterator getMethodsPerType*(g: ModuleGraph; t: PType): PSym =
+  if g.methodsPerType.contains(t.itemId):
+    for it in mitems g.methodsPerType[t.itemId]:
+      yield resolveSym(g, it)
+
 proc getToStringProc*(g: ModuleGraph; t: PType): PSym =
   result = resolveSym(g, g.enumToStringProcs[t.itemId])
   assert result != nil
@@ -356,12 +386,12 @@ proc setToStringProc*(g: ModuleGraph; t: PType; value: PSym) =
   g.enumToStringProcs[t.itemId] = LazySym(sym: value)
 
 iterator methodsForGeneric*(g: ModuleGraph; t: PType): (int, PSym) =
-  if g.methodsPerType.contains(t.itemId):
-    for it in mitems g.methodsPerType[t.itemId]:
+  if g.methodsPerGenericType.contains(t.itemId):
+    for it in mitems g.methodsPerGenericType[t.itemId]:
       yield (it[0], resolveSym(g, it[1]))
 
 proc addMethodToGeneric*(g: ModuleGraph; module: int; t: PType; col: int; m: PSym) =
-  g.methodsPerType.mgetOrPut(t.itemId, @[]).add (col, LazySym(sym: m))
+  g.methodsPerGenericType.mgetOrPut(t.itemId, @[]).add (col, LazySym(sym: m))
 
 proc hasDisabledAsgn*(g: ModuleGraph; t: PType): bool =
   let op = getAttachedOp(g, t, attachedAsgn)
@@ -447,19 +477,21 @@ proc registerModuleById*(g: ModuleGraph; m: FileIndex) =
 proc initOperators*(g: ModuleGraph): Operators =
   # These are safe for IC.
   # Public because it's used by DrNim.
-  result.opLe = createMagic(g, "<=", mLeI)
-  result.opLt = createMagic(g, "<", mLtI)
-  result.opAnd = createMagic(g, "and", mAnd)
-  result.opOr = createMagic(g, "or", mOr)
-  result.opIsNil = createMagic(g, "isnil", mIsNil)
-  result.opEq = createMagic(g, "==", mEqI)
-  result.opAdd = createMagic(g, "+", mAddI)
-  result.opSub = createMagic(g, "-", mSubI)
-  result.opMul = createMagic(g, "*", mMulI)
-  result.opDiv = createMagic(g, "div", mDivI)
-  result.opLen = createMagic(g, "len", mLengthSeq)
-  result.opNot = createMagic(g, "not", mNot)
-  result.opContains = createMagic(g, "contains", mInSet)
+  result = Operators(
+    opLe: createMagic(g, "<=", mLeI),
+    opLt: createMagic(g, "<", mLtI),
+    opAnd: createMagic(g, "and", mAnd),
+    opOr: createMagic(g, "or", mOr),
+    opIsNil: createMagic(g, "isnil", mIsNil),
+    opEq: createMagic(g, "==", mEqI),
+    opAdd: createMagic(g, "+", mAddI),
+    opSub: createMagic(g, "-", mSubI),
+    opMul: createMagic(g, "*", mMulI),
+    opDiv: createMagic(g, "div", mDivI),
+    opLen: createMagic(g, "len", mLengthSeq),
+    opNot: createMagic(g, "not", mNot),
+    opContains: createMagic(g, "contains", mInSet)
+  )
 
 proc initModuleGraphFields(result: ModuleGraph) =
   # A module ID of -1 means that the symbol is not attached to a module at all,

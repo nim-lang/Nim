@@ -56,6 +56,12 @@ iterator instantiateGenericParamList(c: PContext, n: PNode, pt: TIdTable): PSym 
       elif t.kind in {tyGenericParam, tyConcept}:
         localError(c.config, a.info, errCannotInstantiateX % q.name.s)
         t = errorType(c)
+      elif isUnresolvedStatic(t) and c.inGenericContext == 0 and
+          c.matchedConcept == nil:
+        # generic/concept type bodies will try to instantiate static values but
+        # won't actually use them
+        localError(c.config, a.info, errCannotInstantiateX % q.name.s)
+        t = errorType(c)
       elif t.kind == tyGenericInvocation:
         #t = instGenericContainer(c, a, t)
         t = generateTypeInstance(c, pt, a, t)
@@ -133,7 +139,7 @@ proc instantiateBody(c: PContext, n, params: PNode, result, orig: PSym) =
         if result.kind == skMacro:
           sysTypeFromName(c.graph, n.info, "NimNode")
         elif not isInlineIterator(result.typ):
-          result.typ[0]
+          result.typ.returnType
         else:
           nil
       b = semProcBody(c, b, resultType)
@@ -181,8 +187,7 @@ proc instGenericContainer(c: PContext, info: TLineInfo, header: PType,
   # perhaps the code can be extracted in a shared function.
   openScope(c)
   let genericTyp = header.base
-  for i in 0..<genericTyp.len - 1:
-    let genParam = genericTyp[i]
+  for i, genParam in genericBodyParams(genericTyp):
     var param: PSym
 
     template paramSym(kind): untyped =
@@ -234,18 +239,18 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
   var result = instCopyType(cl, prc.typ)
   let originalParams = result.n
   result.n = originalParams.shallowCopy
-  for i in 1..<result.len:
+  for i, resulti in paramTypes(result):
     # twrong_field_caching requires these 'resetIdTable' calls:
-    if i > 1:
+    if i > FirstParamAt:
       resetIdTable(cl.symMap)
       resetIdTable(cl.localCache)
 
     # take a note of the original type. If't a free type or static parameter
     # we'll need to keep it unbound for the `fitNode` operation below...
-    var typeToFit = result[i]
+    var typeToFit = resulti
 
-    let needsStaticSkipping = result[i].kind == tyFromExpr
-    result[i] = replaceTypeVarsT(cl, result[i])
+    let needsStaticSkipping = resulti.kind == tyFromExpr
+    result[i] = replaceTypeVarsT(cl, resulti)
     if needsStaticSkipping:
       result[i] = result[i].skipTypes({tyStatic})
 
@@ -295,7 +300,7 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
   resetIdTable(cl.symMap)
   resetIdTable(cl.localCache)
   cl.isReturnType = true
-  result[0] = replaceTypeVarsT(cl, result[0])
+  result.setReturnType replaceTypeVarsT(cl, result.returnType)
   cl.isReturnType = false
   result.n[0] = originalParams[0].copyTree
   if result[0] != nil:
@@ -315,8 +320,8 @@ proc fillMixinScope(c: PContext) =
         addSym(c.currentScope, n.sym)
     p = p.next
 
-proc getLocalPassC(c: PContext, s: PSym): string = 
-  if s.ast == nil or s.ast.len == 0: return "" 
+proc getLocalPassC(c: PContext, s: PSym): string =
+  if s.ast == nil or s.ast.len == 0: return ""
   result = ""
   template extractPassc(p: PNode) =
     if p.kind == nkPragma and p[0][0].ident == c.cache.getIdent"localpassc":
@@ -325,7 +330,7 @@ proc getLocalPassC(c: PContext, s: PSym): string =
   for n in s.ast:
     for p in n:
       extractPassc(p)
-  
+
 proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
                       info: TLineInfo): PSym =
   ## Generates a new instance of a generic procedure.
@@ -354,7 +359,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
     let passc = getLocalPassC(c, producer)
     if passc != "": #pass the local compiler options to the consumer module too
       extccomp.addLocalCompileOption(c.config, passc, toFullPathConsiderDirty(c.config, c.module.info.fileIndex))
-    result.owner = c.module 
+    result.owner = c.module
   else:
     result.owner = fn
   result.ast = n
@@ -377,15 +382,18 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   # generic[void](), generic[int]()
   # see ttypeor.nim test.
   var i = 0
-  newSeq(entry.concreteTypes, fn.typ.len+gp.len-1)
+  newSeq(entry.concreteTypes, fn.typ.paramsLen+gp.len)
+  # let param instantiation know we are in a concept for unresolved statics:
+  c.matchedConcept = oldMatchedConcept
   for s in instantiateGenericParamList(c, gp, pt):
     addDecl(c, s)
     entry.concreteTypes[i] = s.typ
     inc i
+  c.matchedConcept = nil
   pushProcCon(c, result)
   instantiateProcType(c, pt, result, info)
-  for j in 1..<result.typ.len:
-    entry.concreteTypes[i] = result.typ[j]
+  for _, param in paramTypes(result.typ):
+    entry.concreteTypes[i] = param
     inc i
   if tfTriggersCompileTime in result.typ.flags:
     incl(result.flags, sfCompileTime)
