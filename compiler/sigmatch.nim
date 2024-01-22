@@ -246,7 +246,8 @@ proc sumGeneric(t: PType): int =
           result += sumGeneric(a)
       break
     of tyProc:
-      result += sumGeneric(t.returnType)
+      if t.returnType != nil:
+        result += sumGeneric(t.returnType)
       for _, a in t.paramTypes:
         result += sumGeneric(a)
       break
