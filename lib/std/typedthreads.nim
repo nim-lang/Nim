@@ -34,8 +34,6 @@
 ##   deinitLock(L)
 ##   ```
 
-
-
 import std/private/[threadtypes]
 export Thread
 
@@ -166,10 +164,15 @@ when false:
       deallocThreadStorage(t.core)
       t.core = nil
 
+# Forward declar to ensure consistent raises across platforms
+proc createThreadImpl[TArg](t: var Thread[TArg],
+                            tp: proc (arg: TArg) {.thread, nimcall, gcsafe.},
+                            param: TArg) {.raises: [ResourceExhaustedError].}
+
 when hostOS == "windows":
-  proc createThread*[TArg](t: var Thread[TArg],
-                           tp: proc (arg: TArg) {.thread, nimcall.},
-                           param: TArg) =
+  proc createThreadImpl[TArg](t: var Thread[TArg],
+                              tp: proc (arg: TArg) {.thread, nimcall, gcsafe.},
+                              param: TArg) =
     ## Creates a new thread `t` and starts its execution.
     ##
     ## Entry point is the proc `tp`.
@@ -197,9 +200,9 @@ elif defined(genode):
   var affinityOffset: cuint = 1
     ## CPU affinity offset for next thread, safe to roll-over.
 
-  proc createThread*[TArg](t: var Thread[TArg],
-                           tp: proc (arg: TArg) {.thread, nimcall.},
-                           param: TArg) =
+  proc createThreadImpl[TArg](t: var Thread[TArg],
+                              tp: proc (arg: TArg) {.thread, nimcall, gcsafe.},
+                              param: TArg) =
     t.core = cast[PGcThread](allocThreadStorage(sizeof(GcThread)))
 
     when TArg isnot void: t.data = param
@@ -216,9 +219,9 @@ elif defined(genode):
     discard
 
 else:
-  proc createThread*[TArg](t: var Thread[TArg],
-                           tp: proc (arg: TArg) {.thread, nimcall.},
-                           param: TArg) =
+  proc createThreadImpl[TArg](t: var Thread[TArg],
+                              tp: proc (arg: TArg) {.thread, nimcall, gcsafe.},
+                              param: TArg) =
     ## Creates a new thread `t` and starts its execution.
     ##
     ## Entry point is the proc `tp`. `param` is passed to `tp`.
@@ -258,8 +261,33 @@ else:
       cpusetIncl(cpu.cint, s)
       setAffinity(t.sys, csize_t(sizeof(s)), s)
 
-proc createThread*(t: var Thread[void], tp: proc () {.thread, nimcall.}) =
-  createThread[void](t, tp)
+proc checkRaises(tp: proc() {.raises: [].}) = discard
+proc checkRaises[TArg](tp: proc(arg: TArg) {.raises: [].}) = discard
+
+template createThread*[TArg](t: var Thread[TArg],
+                         tp: proc (arg: TArg) {.thread, nimcall, gcsafe.},
+                         param: TArg) =
+  ## Creates and starts running `tp` in a separate thread of execution, passing
+  ## to it the given `param`.
+  ##
+  ## Unhandled exceptions raised from the thread procedure will cause the
+  ## application to terminate - annotate it with `{.raises: [].}` to discover
+  ## potential sources of exceptions at compile time
+  when not compiles(checkRaises(tp)):
+    {.warning: "Given thread procedure may raise exceptions causing the application to terminate if unhandled - annotate `tp` with {.raises: [].} to see details".}
+
+  createThreadImpl(t, tp, param)
+
+template createThread*(t: var Thread[void], tp: proc () {.thread, nimcall, gcsafe.}) =
+  ## Creates and starts running `tp` in a separate thread of execution.
+  ##
+  ## Unhandled exceptions raised from the thread procedure will cause the
+  ## application to terminate - annotate it with `{.raises: [].}` to discover
+  ## potential sources of exceptions at compile time
+  when not compiles(checkRaises(tp)):
+    {.warning: "Given thread procedure may raise exceptions causing the application to terminate if unhandled - annotate `tp` with {.raises: [].} to see details".}
+
+  createThreadImpl[void](t, tp)
 
 when not defined(gcOrc):
   include system/threadids

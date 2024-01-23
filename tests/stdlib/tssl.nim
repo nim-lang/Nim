@@ -26,7 +26,6 @@ proc abruptShutdown(port: Port) {.thread.} =
 
   discard client.recvLine()
   client.getFd.close()
-
 proc notifiedShutdown(port: Port) {.thread.} =
   let clientContext = newContext(verifyMode = CVerifyNone)
   var client = newSocket(buffered = false)
