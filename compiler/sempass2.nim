@@ -1387,7 +1387,8 @@ proc track(tracked: PEffects, n: PNode) =
     if n.len == 2:
       track(tracked, n[1])
       if tracked.owner.kind != skMacro:
-        createTypeBoundOps(tracked, n.typ, n.info)
+        if n.typ.kind notin {tyOpenArray, tyVarargs}:
+          createTypeBoundOps(tracked, n.typ, n.info)
         # This is a hacky solution in order to fix bug #13110. Hopefully
         # a better solution will come up eventually.
         if n[1].typ.kind != tyString:
