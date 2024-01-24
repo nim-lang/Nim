@@ -594,7 +594,9 @@ template processScopeExpr(c: var Con; s: var Scope; ret: PNode, processCall: unt
   # tricky because you would have to intercept moveOrCopy at a certain point
   let tmp = c.getTemp(s.parent[], ret.typ, ret.info)
   tmp.sym.flags = tmpFlags
-  let cpy = if hasDestructor(c, ret.typ):
+  let cpy = if hasDestructor(c, ret.typ) and
+                ret.typ.kind notin {tyOpenArray, tyVarargs}:
+                # bug #23247 we don't own the data, so it's harmful to destroy it
               s.parent[].final.add c.genDestroy(tmp)
               moveOrCopy(tmp, ret, c, s, {IsDecl})
             else:
