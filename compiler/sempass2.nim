@@ -1388,6 +1388,7 @@ proc track(tracked: PEffects, n: PNode) =
       track(tracked, n[1])
       if tracked.owner.kind != skMacro:
         if n.typ.kind notin {tyOpenArray, tyVarargs}:
+          # bug #23247; don't create type bound ops for openarray conversions
           createTypeBoundOps(tracked, n.typ, n.info)
         # This is a hacky solution in order to fix bug #13110. Hopefully
         # a better solution will come up eventually.
