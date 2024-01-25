@@ -10,6 +10,7 @@
 import ast, renderer, msgs, options, idents, lineinfos,
   pathutils
 
+import ../dist/checksums/src/checksums/md5
 import std/[strutils, os]
 
 proc getModuleName*(conf: ConfigRef; n: PNode): string =
@@ -87,9 +88,18 @@ proc mangleModuleName*(conf: ConfigRef; path: AbsoluteFile): string =
   ##
   ## Example:
   ## `foo-#head/../bar` becomes `@foo-@hhead@s..@sbar`
-  "@m" & relativeTo(path, conf.projectPath).string.multiReplace(
-    {$os.DirSep: "@s", $os.AltSep: "@s", "#": "@h", "@": "@@", ":": "@c"})
+  var sum = getMD5(customPath(path.string))
+  sum.setLen(8)
+  result = path.splitFile.name & "_" & sum
+  when false:
+    result = "@m" & relativeTo(path, conf.projectPath).string.multiReplace(
+      {$os.DirSep: "@s", $os.AltSep: "@s", "#": "@h", "@": "@@", ":": "@c"})
 
-proc demangleModuleName*(path: string): string =
-  ## Demangle a relative module path.
-  result = path.multiReplace({"@@": "@", "@h": "#", "@s": "/", "@m": "", "@c": ":"})
+proc demangleModuleName*(path: sink string): string =
+  ## Demangle a module path.
+  result = path
+  var i = path.len-1
+  while i > 0 and path[i] != '_': dec i
+  if i > 0:
+    setLen result, i
+  #result = path.multiReplace({"@@": "@", "@h": "#", "@s": "/", "@m": "", "@c": ":"})
