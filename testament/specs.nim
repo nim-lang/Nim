@@ -513,7 +513,7 @@ proc parseSpec*(filename: string): TSpec =
     try:
       msg % ["/", $DirSep, "file", result.filename]
     except ValueError:
-      result.parseErrors.addLine "invalid variable interpolation (see 'https://nim-lang.github.io/Nim/testament.html#writing-unitests-output-message-variable-interpolation')"
+      result.parseErrors.addLine "invalid variable interpolation (see 'https://nim-lang.github.io/Nim/testament.html#writing-unit-tests-output-message-variable-interpolation')"
       msg
   result.nimout = result.nimout.varSub
   result.msg = result.msg.varSub

@@ -267,7 +267,7 @@ You can also use the [discard statement](#statements-and-expressions-discard-sta
   ```
 
 This was how multiline comments were done before version 0.13.0,
-and it is used to provide specifications to [testament](testament.html#writing-unitests) test framework.
+and it is used to provide specifications to [testament](testament.html#writing-unit-tests) test framework.
 
 
 Identifiers & Keywords
