@@ -909,7 +909,7 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
         result[0] = p(n[0], c, s, normal)
       if canRaise(n[0]): s.needsTry = true
       if mode == normal:
-        if result.typ != nil and result.typ.kind != tyOpenArray:
+        if result.typ != nil and result.typ.kind notin {tyOpenArray, tyVarargs}:
           # Returns of openarray types shouldn't be destroyed
           # bug #19435; # bug #23247
           result = ensureDestruction(result, n, c, s)
