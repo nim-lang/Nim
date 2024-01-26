@@ -153,3 +153,83 @@ proc ccgIntroducedPtr*(conf: ConfigRef; s: PSym, retType: PType): bool =
     result = not (pt.kind in {tyVar, tyArray, tyOpenArray, tyVarargs, tyRef, tyPtr, tyPointer} or
       pt.kind == tySet and mapSetType(conf, pt) == ctArray)
 
+proc encodeName*(name: string): string = 
+  result = ""
+  for i in 0..<name.len:
+    let c = name[i]
+    result.add(
+    case c
+    of '$': "dollar"
+    of '%': "percent"
+    of '&': "amp"
+    of '^': "roof"
+    of '!': "emark"
+    of '?': "qmark"
+    of '*': "star"
+    of '+': "plus"
+    of '-': "minus"
+    of '/': "slash"
+    of '\\': "backslash"
+    of '=': "eq"
+    of '<': "lt"
+    of '>': "gt"
+    of '~': "tilde"
+    of ':': "colon"
+    of '.': "dot"
+    of '@': "at"
+    of '|': "bar"
+    of '[': "lsquare"
+    of ']': "rsquare"
+    else: $c)
+  result = $result.len & result
+
+proc makeUnique(m: BModule; s: PSym, name: string = ""): string = 
+  result = if name == "": s.name.s else: name
+  result.add "__"
+  result.add m.g.graph.ifaces[s.itemId.module].uniqueName
+  result.add "_u"
+  result.add $s.itemId.item
+
+proc encodeSym*(m: BModule; s: PSym): string = 
+  #Module::Type
+  var name = s.name.s
+  if sfFromGeneric in s.flags or m.module.id != s.owner.id:
+    name = makeUnique(m, s, name)
+  "N" & encodeName(s.owner.name.s) & encodeName(name) & "E"
+
+proc encodeType*(m: BModule; t: PType): string = 
+  var kindName = ($t.kind)[2..^1]
+  kindName[0] = toLower($kindName[0])[0]
+  case t.kind:
+  of tyObject, tyEnum, tyDistinct: 
+    encodeSym(m, t.sym)
+  of tyGenericInst:
+    let s = t[0].sym
+    var name = encodeName(s.owner.name.s & "_" & s.name.s & "_" & $s.itemId.item) #TODO review
+    name.add "I"
+    for i in 1..<t.len - 1: 
+      name.add encodeType(m, t[i])
+    name.add "E"
+    name
+  of tySequence, tyOpenArray, tyArray, tyVarargs, tyTuple, tyProc, tySet, tyTypeDesc,
+    tyPtr, tyRef, tyVar, tyLent, tySink, tyStatic, tyUncheckedArray:
+    var name = 
+      case t.kind:
+      of tySequence: encodeName("seq") 
+      of tyTuple: 
+        encodeName("tuple_" & $t.id) #TODO review
+      else: encodeName(kindName)
+    name.add "I"
+    for i in 0..<t.len:
+      let s = t[i]  
+      if s.isNil: continue
+      name.add encodeType(m, s)
+    name.add "E"
+    name
+  of tyRange:
+    encodeName("range_" & $t.n[0].intVal & "_" & $t.n[1].intVal)
+  of tyString..tyUInt64, tyPointer, tyBool, tyChar: 
+    encodeName(kindName)
+  else:
+    assert false, "Not covered " & $t.kind
+    ""
