@@ -846,7 +846,12 @@ proc cmpRunesIgnoreCase*(a, b: openArray[char]): int {.rtl, extern: "nuc$1".} =
     # slow path:
     fastRuneAt(a, i, ar)
     fastRuneAt(b, j, br)
-    result = RuneImpl(toLower(ar)) - RuneImpl(toLower(br))
+    when sizeof(int) < 4:
+      const lo = low(int).int32
+      const hi = high(int).int32
+      result = clamp(RuneImpl(toLower(ar)) - RuneImpl(toLower(br)), lo, hi).int
+    else:
+      result = RuneImpl(toLower(ar)) - RuneImpl(toLower(br))
     if result != 0: return
   result = a.len - b.len
 

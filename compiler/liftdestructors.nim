@@ -288,7 +288,7 @@ proc boolLit*(g: ModuleGraph; info: TLineInfo; value: bool): PNode =
 
 proc getCycleParam(c: TLiftCtx): PNode =
   assert c.kind in {attachedAsgn, attachedDup}
-  if c.fn.typ.signatureLen == 4:
+  if c.fn.typ.len == 3 + ord(c.kind == attachedAsgn):
     result = c.fn.typ.n.lastSon
     assert result.kind == nkSym
     assert result.sym.name.s == "cyclic"
@@ -322,6 +322,14 @@ proc newOpCall(c: var TLiftCtx; op: PSym; x: PNode): PNode =
   result.add x
   if sfNeverRaises notin op.flags:
     c.canRaise = true
+
+  if c.kind == attachedDup and op.typ.len == 3:
+    assert x != nil
+    if c.fn.typ.len == 3:
+      result.add getCycleParam(c)
+    else:
+      # assume the worst: A cycle is created:
+      result.add boolLit(c.g, x.info, true)
 
 proc newDeepCopyCall(c: var TLiftCtx; op: PSym; x, y: PNode): PNode =
   result = newAsgnStmt(x, newOpCall(c, op, y))
@@ -1179,7 +1187,12 @@ proc produceSym(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp;
         # bug #19205: Do not forget to also copy the hidden type field:
         genTypeFieldCopy(a, typ, result.ast[bodyPos], d, src)
 
-  if not a.canRaise: incl result.flags, sfNeverRaises
+  if not a.canRaise:
+    incl result.flags, sfNeverRaises
+    result.ast[pragmasPos] = newNodeI(nkPragma, info)
+    result.ast[pragmasPos].add newTree(nkExprColonExpr,
+        newIdentNode(g.cache.getIdent("raises"),  info), newNodeI(nkBracket, info))
+
   completePartialOp(g, idgen.module, typ, kind, result)
 
 

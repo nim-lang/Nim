@@ -25,7 +25,7 @@ const
   useEffectSystem* = true
   useWriteTracking* = false
   hasFFI* = defined(nimHasLibFFI)
-  copyrightYear* = "2023"
+  copyrightYear* = "2024"
 
   nimEnableCovariance* = defined(nimEnableCovariance)
 
@@ -227,6 +227,7 @@ type
     strictDefs,
     strictCaseObjects,
     inferGenericTypes,
+    genericsOpenSym,
     vtables
 
   LegacyFeature* = enum

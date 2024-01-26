@@ -415,13 +415,16 @@ proc semArray(c: PContext, n: PNode, prev: PType): PType =
     if indxB.kind in {tyGenericInst, tyAlias, tySink}: indxB = skipModifier(indxB)
     if indxB.kind notin {tyGenericParam, tyStatic, tyFromExpr} and
         tfUnresolved notin indxB.flags:
-      if indxB.skipTypes({tyRange}).kind in {tyUInt, tyUInt64}:
-        discard
-      elif not isOrdinalType(indxB):
+      if not isOrdinalType(indxB):
         localError(c.config, n[1].info, errOrdinalTypeExpected % typeToString(indxB, preferDesc))
       elif enumHasHoles(indxB):
         localError(c.config, n[1].info, "enum '$1' has holes" %
                    typeToString(indxB.skipTypes({tyRange})))
+      elif indxB.kind != tyRange and
+          lengthOrd(c.config, indxB) > high(uint16).int:
+        # assume range type is intentional
+        localError(c.config, n[1].info,
+          "index type '$1' for array is too large" % typeToString(indxB))
     base = semTypeNode(c, n[2], nil)
     # ensure we only construct a tyArray when there was no error (bug #3048):
     # bug #6682: Do not propagate initialization requirements etc for the
@@ -1436,7 +1439,8 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
             "' is only valid for macros and templates")
       # 'auto' as a return type does not imply a generic:
       elif r.kind == tyAnything:
-        discard
+        r = copyType(r, c.idgen, r.owner)
+        r.flags.incl tfRetType
       elif r.kind == tyStatic:
         # type allowed should forbid this type
         discard

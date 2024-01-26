@@ -56,6 +56,12 @@ iterator instantiateGenericParamList(c: PContext, n: PNode, pt: TIdTable): PSym 
       elif t.kind in {tyGenericParam, tyConcept}:
         localError(c.config, a.info, errCannotInstantiateX % q.name.s)
         t = errorType(c)
+      elif isUnresolvedStatic(t) and c.inGenericContext == 0 and
+          c.matchedConcept == nil:
+        # generic/concept type bodies will try to instantiate static values but
+        # won't actually use them
+        localError(c.config, a.info, errCannotInstantiateX % q.name.s)
+        t = errorType(c)
       elif t.kind == tyGenericInvocation:
         #t = instGenericContainer(c, a, t)
         t = generateTypeInstance(c, pt, a, t)
@@ -377,10 +383,13 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   # see ttypeor.nim test.
   var i = 0
   newSeq(entry.concreteTypes, fn.typ.paramsLen+gp.len)
+  # let param instantiation know we are in a concept for unresolved statics:
+  c.matchedConcept = oldMatchedConcept
   for s in instantiateGenericParamList(c, gp, pt):
     addDecl(c, s)
     entry.concreteTypes[i] = s.typ
     inc i
+  c.matchedConcept = nil
   pushProcCon(c, result)
   instantiateProcType(c, pt, result, info)
   for _, param in paramTypes(result.typ):

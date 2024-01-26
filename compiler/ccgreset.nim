@@ -81,7 +81,7 @@ proc specializeResetT(p: BProc, accessor: Rope, typ: PType) =
       lineCg(p, cpsStmts, "$1.ClP_0 = NIM_NIL;$n", [accessor])
     else:
       lineCg(p, cpsStmts, "$1 = NIM_NIL;$n", [accessor])
-  of tyChar, tyBool, tyEnum, tyInt..tyUInt64:
+  of tyChar, tyBool, tyEnum, tyRange, tyInt..tyUInt64:
     lineCg(p, cpsStmts, "$1 = 0;$n", [accessor])
   of tyCstring, tyPointer, tyPtr, tyVar, tyLent:
     lineCg(p, cpsStmts, "$1 = NIM_NIL;$n", [accessor])
@@ -95,7 +95,7 @@ proc specializeResetT(p: BProc, accessor: Rope, typ: PType) =
     else:
       raiseAssert "unexpected set type kind"
   of tyNone, tyEmpty, tyNil, tyUntyped, tyTyped, tyGenericInvocation,
-      tyGenericParam, tyOrdinal, tyRange, tyOpenArray, tyForward, tyVarargs,
+      tyGenericParam, tyOrdinal, tyOpenArray, tyForward, tyVarargs,
       tyUncheckedArray, tyProxy, tyBuiltInTypeClass, tyUserTypeClass,
       tyUserTypeClassInst, tyCompositeTypeClass, tyAnd, tyOr, tyNot,
       tyAnything, tyStatic, tyFromExpr, tyConcept, tyVoid, tyIterable:

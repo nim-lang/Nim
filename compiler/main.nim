@@ -326,7 +326,8 @@ proc mainCommand*(graph: ModuleGraph) =
     # so by default should not end up in $PWD nor in $projectPath.
     var ret = if optUseNimcache in conf.globalOptions: getNimcacheDir(conf)
               else: conf.projectPath
-    doAssert ret.string.isAbsolute # `AbsoluteDir` is not a real guarantee
+    if not ret.string.isAbsolute: # `AbsoluteDir` is not a real guarantee
+      rawMessage(conf, errCannotOpenFile, ret.string & "/")
     if conf.cmd in cmdDocLike + {cmdRst2html, cmdRst2tex, cmdMd2html, cmdMd2tex}:
       ret = ret / htmldocsDir
     conf.outDir = ret

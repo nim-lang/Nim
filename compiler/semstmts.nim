@@ -339,6 +339,8 @@ proc fitRemoveHiddenConv(c: PContext, typ: PType, n: PNode): PNode =
       result.typ = typ
       if not floatRangeCheck(result.floatVal, typ):
         localError(c.config, n.info, errFloatToString % [$result.floatVal, typeToString(typ)])
+    elif r1.kind == nkSym and typ.skipTypes(abstractRange).kind == tyCstring:
+      discard "keep nkHiddenStdConv for cstring conversions"
     else:
       changeType(c, r1, typ, check=true)
       result = r1
@@ -930,7 +932,10 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
   if iterAfterVarLent.kind != tyTuple or n.len == 3:
     if n.len == 3:
       if n[0].kind == nkVarTuple:
-        if n[0].len-1 != iterAfterVarLent.len:
+        if iterAfterVarLent.kind != tyTuple:
+          return localErrorNode(c, n, n[0].info, errTupleUnpackingTupleExpected %
+              [typeToString(n[1].typ, preferDesc)])
+        elif n[0].len-1 != iterAfterVarLent.len:
           return localErrorNode(c, n, n[0].info, errWrongNumberOfVariables)
 
         for i in 0..<n[0].len-1:
@@ -1259,6 +1264,9 @@ proc typeSectionTypeName(c: PContext; n: PNode): PNode =
     result = n[0]
   else:
     result = n
+  if result.kind == nkPostfix:
+    if result.len != 2: illFormedAst(n, c.config)
+    result = result[1]
   if result.kind != nkSym: illFormedAst(n, c.config)
 
 proc typeDefLeftSidePass(c: PContext, typeSection: PNode, i: int) =
@@ -1326,9 +1334,15 @@ proc typeDefLeftSidePass(c: PContext, typeSection: PNode, i: int) =
     elif s.owner == nil: s.owner = getCurrOwner(c)
 
   if name.kind == nkPragmaExpr:
-    typeDef[0][0] = newSymNode(s)
+    if name[0].kind == nkPostfix:
+      typeDef[0][0][1] = newSymNode(s)
+    else:
+      typeDef[0][0] = newSymNode(s)
   else:
-    typeDef[0] = newSymNode(s)
+    if name.kind == nkPostfix:
+      typeDef[0][1] = newSymNode(s)
+    else:
+      typeDef[0] = newSymNode(s)
 
 proc typeSectionLeftSidePass(c: PContext, n: PNode) =
   # process the symbols on the left side for the whole type section, before
@@ -1538,8 +1552,15 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
       of nkSym: obj.ast[0] = symNode
       of nkPragmaExpr:
         obj.ast[0] = a[0].shallowCopy
-        obj.ast[0][0] = symNode
+        if a[0][0].kind == nkPostfix:
+          obj.ast[0][0] = a[0][0].shallowCopy
+          obj.ast[0][0][1] = symNode
+        else:
+          obj.ast[0][0] = symNode
         obj.ast[0][1] = a[0][1]
+      of nkPostfix:
+        obj.ast[0] = a[0].shallowCopy
+        obj.ast[0][1] = symNode
       else: assert(false)
       obj.ast[1] = a[1]
       obj.ast[2] = a[2][0]

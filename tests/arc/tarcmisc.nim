@@ -688,3 +688,29 @@ block: # bug #22259
     f(wrapper)
 
   main()
+
+block:
+  block: # bug #22923
+    block:
+      let
+        a: int = 100
+        b: int32 = 200'i32
+
+      let
+        x = arrayWith(a, 8) # compiles
+        y = arrayWith(b, 8) # internal error
+        z = arrayWith(14, 8) # integer literal also results in a crash
+
+      doAssert x == [100, 100, 100, 100, 100, 100, 100, 100]
+      doAssert $y == "[200, 200, 200, 200, 200, 200, 200, 200]"
+      doAssert z == [14, 14, 14, 14, 14, 14, 14, 14]
+
+    block:
+      let a: string = "nim"
+      doAssert arrayWith(a, 3) == ["nim", "nim", "nim"]
+
+      let b: char = 'c'
+      doAssert arrayWith(b, 3) == ['c', 'c', 'c']
+
+      let c: uint = 300'u
+      doAssert $arrayWith(c, 3) == "[300, 300, 300]"

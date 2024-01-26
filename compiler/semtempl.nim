@@ -507,14 +507,21 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
       if x.kind == nkExprColonExpr:
         x[1] = semTemplBody(c, x[1])
   of nkBracketExpr:
-    result = newNodeI(nkCall, n.info)
-    result.add newIdentNode(getIdent(c.c.cache, "[]"), n.info)
-    for i in 0..<n.len: result.add(n[i])
+    if n.typ == nil:
+      # if a[b] is nested inside a typed expression, don't convert it
+      # back to `[]`(a, b), prepareOperand will not typecheck it again
+      # and so `[]` will not be resolved
+      # checking if a[b] is typed should be enough to cover this case
+      result = newNodeI(nkCall, n.info)
+      result.add newIdentNode(getIdent(c.c.cache, "[]"), n.info)
+      for i in 0..<n.len: result.add(n[i])
     result = semTemplBodySons(c, result)
   of nkCurlyExpr:
-    result = newNodeI(nkCall, n.info)
-    result.add newIdentNode(getIdent(c.c.cache, "{}"), n.info)
-    for i in 0..<n.len: result.add(n[i])
+    if n.typ == nil:
+      # see nkBracketExpr case for explanation
+      result = newNodeI(nkCall, n.info)
+      result.add newIdentNode(getIdent(c.c.cache, "{}"), n.info)
+      for i in 0..<n.len: result.add(n[i])
     result = semTemplBodySons(c, result)
   of nkAsgn, nkFastAsgn, nkSinkAsgn:
     checkSonsLen(n, 2, c.c.config)
@@ -524,17 +531,21 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
     let k = a.kind
     case k
     of nkBracketExpr:
-      result = newNodeI(nkCall, n.info)
-      result.add newIdentNode(getIdent(c.c.cache, "[]="), n.info)
-      for i in 0..<a.len: result.add(a[i])
-      result.add(b)
+      if a.typ == nil:
+        # see nkBracketExpr case above for explanation
+        result = newNodeI(nkCall, n.info)
+        result.add newIdentNode(getIdent(c.c.cache, "[]="), n.info)
+        for i in 0..<a.len: result.add(a[i])
+        result.add(b)
       let a0 = semTemplBody(c, a[0])
       result = semTemplBodySons(c, result)
     of nkCurlyExpr:
-      result = newNodeI(nkCall, n.info)
-      result.add newIdentNode(getIdent(c.c.cache, "{}="), n.info)
-      for i in 0..<a.len: result.add(a[i])
-      result.add(b)
+      if a.typ == nil:
+        # see nkBracketExpr case above for explanation
+        result = newNodeI(nkCall, n.info)
+        result.add newIdentNode(getIdent(c.c.cache, "{}="), n.info)
+        for i in 0..<a.len: result.add(a[i])
+        result.add(b)
       result = semTemplBodySons(c, result)
     else:
       result = semTemplBodySons(c, n)
