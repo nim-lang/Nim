@@ -230,6 +230,8 @@ proc encodeType*(m: BModule; t: PType): string =
     encodeName("range_" & $t.n[0].intVal & "_" & $t.n[1].intVal)
   of tyString..tyUInt64, tyPointer, tyBool, tyChar: 
     encodeName(kindName)
+  of tyAlias: 
+    encodeType(m, t[0])
   else:
-    assert false, "Not covered " & $t.kind
+    assert false, "encodeType " & $t.kind
     ""
