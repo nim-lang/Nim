@@ -401,6 +401,7 @@ proc rdCharLoc(a: TLoc): Rope =
 type
   TAssignmentFlag = enum
     needToCopy
+    needTempForOpenArray
   TAssignmentFlags = set[TAssignmentFlag]
 
 proc genObjConstr(p: BProc, e: PNode, d: var TLoc)
