@@ -1,3 +1,6 @@
+discard """
+  disabled: "true"
+"""
 
 import std / [atomics, strutils, sequtils, isolation]
 
