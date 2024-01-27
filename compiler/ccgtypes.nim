@@ -55,14 +55,19 @@ proc mangleField(m: BModule; name: PIdent): string =
   if isKeyword(name):
     result.add "_0"
 
-proc mangleProc(m: BModule; s: PSym): string = 
+proc mangleProc(m: BModule; s: PSym, makeUnique: bool = false): string = 
   result = "_Z"  # Common prefix in Itanium ABI
-  result.add encodeSym(m, s)
+  result.add encodeSym(m, s, makeUnique)
   if s.typ.len > 1: #we dont care about the return param
     for i in 1..<s.typ.len: 
       if s.typ[i].isNil: continue
       result.add encodeType(m, s.typ[i])
-    
+  
+  if result in m.g.mangledPrcs:
+    result = mangleProc(m, s, true)
+  else:
+    m.g.mangledPrcs.incl(result)
+
 proc fillBackendName(m: BModule; s: PSym) =
   if s.loc.r == "":
     var result: Rope

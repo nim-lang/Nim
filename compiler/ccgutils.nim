@@ -180,6 +180,8 @@ proc encodeName*(name: string): string =
     of '|': "bar"
     of '[': "lsquare"
     of ']': "rsquare"
+    of '{': "lcurly"
+    of '}': "rcurly"
     else: $c)
   result = $result.len & result
 
@@ -190,10 +192,10 @@ proc makeUnique(m: BModule; s: PSym, name: string = ""): string =
   result.add "_u"
   result.add $s.itemId.item
 
-proc encodeSym*(m: BModule; s: PSym): string = 
+proc encodeSym*(m: BModule; s: PSym, makeUnique: bool = false): string = 
   #Module::Type
-  var name = s.name.s
-  if sfFromGeneric in s.flags or m.module.id != s.owner.id:
+  var name = s.name.s 
+  if sfFromGeneric in s.flags or m.module.id != s.owner.id or makeUnique:
     name = makeUnique(m, s, name)
   "N" & encodeName(s.owner.name.s) & encodeName(name) & "E"
 
