@@ -203,7 +203,7 @@ proc encodeType*(m: BModule; t: PType): string =
   var kindName = ($t.kind)[2..^1]
   kindName[0] = toLower($kindName[0])[0]
   case t.kind:
-  of tyObject, tyEnum, tyDistinct: 
+  of tyObject, tyEnum, tyDistinct, tyUserTypeClass: 
     encodeSym(m, t.sym)
   of tyGenericInst:
     let s = t[0].sym
