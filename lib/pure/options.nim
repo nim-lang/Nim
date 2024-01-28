@@ -215,6 +215,21 @@ proc get*[T](self: Option[T], otherwise: T): T {.inline.} =
   else:
     otherwise
 
+proc get*[T](self: Option[T], val: var T): bool {.inline.} =
+  ## Gets the content of the `Option`, stores it in `val` and returns true if the `Option` has a value.
+  ## Otherwise, it simply returns false.
+  runnableExamples:
+    var storage: int
+
+    if some(1337).get(storage):
+      assert storage == 1337
+
+  if not self.isSome:
+    return false
+
+  val = self.get()
+  true
+
 proc get*[T](self: var Option[T]): var T {.inline.} =
   ## Returns the content of the `var Option` mutably. If it has no value,
   ## an `UnpackDefect` exception is raised.
