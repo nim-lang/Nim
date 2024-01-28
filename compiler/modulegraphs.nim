@@ -55,7 +55,7 @@ type
     concreteTypes*: seq[FullId]
     inst*: PInstantiation
 
-  SymInfoPair* = ref object
+  SymInfoPair* = object
     sym*: PSym
     info*: TLineInfo
     isDecl*: bool
@@ -745,7 +745,7 @@ proc add*(s: var SuggestFileSymbolDatabase; v: SymInfoPair) =
 proc add*(s: var SuggestSymbolDatabase; v: SymInfoPair) =
   s.mgetOrPut(v.info.fileIndex, newSuggestFileSymbolDatabase()).add(v)
 
-proc findSymInfo*(s: var SuggestFileSymbolDatabase; li: TLineInfo): SymInfoPair =
+proc findSymInfo*(s: var SuggestFileSymbolDatabase; li: TLineInfo): ref SymInfoPair =
   if not s.isSorted:
     s.sort()
   var q = SymInfoPair(
@@ -753,9 +753,10 @@ proc findSymInfo*(s: var SuggestFileSymbolDatabase; li: TLineInfo): SymInfoPair 
   )
   var idx = binarySearch(s.items, q, cmp)
   if idx != -1:
-    return s.items[idx]
+    new(result)
+    result[] = s.items[idx]
   else:
-    return nil
+    result = nil
 
 proc fileSymbols*(graph: ModuleGraph, fileIdx: FileIndex): seq[SymInfoPair] =
   result = graph.suggestSymbols.getOrDefault(fileIdx, newSuggestFileSymbolDatabase()).items
