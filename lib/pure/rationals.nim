@@ -318,3 +318,23 @@ func hash*[T](x: Rational[T]): Hash =
   h = h !& hash(copy.num)
   h = h !& hash(copy.den)
   result = !$h
+
+func `^`*[T: SomeInteger](x: Rational[T], y: T): Rational[T] =
+  ## Computes `x` to the power of `y`.
+  ##
+  ## The exponent `y` must be an integer. Negative exponents are supported
+  ## but floating point exponents are not.
+  runnableExamples:
+    doAssert (-3 // 5) ^ 0 == (1 // 1)
+    doAssert (-3 // 5) ^ 1 == (-3 // 5)
+    doAssert (-3 // 5) ^ 2 == (9 // 25)
+    doAssert (-3 // 5) ^ -2 == (25 // 9)
+
+  if y >= 0:
+    result.num = x.num ^ y
+    result.den = x.den ^ y
+  else:
+    result.num = x.den ^ -y
+    result.den = x.num ^ -y
+  # Note that all powers of reduced rationals are already reduced,
+  # so we don't need to call reduce() here

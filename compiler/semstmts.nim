@@ -339,6 +339,8 @@ proc fitRemoveHiddenConv(c: PContext, typ: PType, n: PNode): PNode =
       result.typ = typ
       if not floatRangeCheck(result.floatVal, typ):
         localError(c.config, n.info, errFloatToString % [$result.floatVal, typeToString(typ)])
+    elif r1.kind == nkSym and typ.skipTypes(abstractRange).kind == tyCstring:
+      discard "keep nkHiddenStdConv for cstring conversions"
     else:
       changeType(c, r1, typ, check=true)
       result = r1
@@ -930,7 +932,10 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
   if iterAfterVarLent.kind != tyTuple or n.len == 3:
     if n.len == 3:
       if n[0].kind == nkVarTuple:
-        if n[0].len-1 != iterAfterVarLent.len:
+        if iterAfterVarLent.kind != tyTuple:
+          return localErrorNode(c, n, n[0].info, errTupleUnpackingTupleExpected %
+              [typeToString(n[1].typ, preferDesc)])
+        elif n[0].len-1 != iterAfterVarLent.len:
           return localErrorNode(c, n, n[0].info, errWrongNumberOfVariables)
 
         for i in 0..<n[0].len-1:

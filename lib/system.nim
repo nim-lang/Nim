@@ -2131,7 +2131,7 @@ when not defined(js) and declared(alloc0) and declared(dealloc):
       inc(i)
     dealloc(a)
 
-when notJSnotNims:
+when notJSnotNims and not gotoBasedExceptions:
   type
     PSafePoint = ptr TSafePoint
     TSafePoint {.compilerproc, final.} = object
@@ -2520,6 +2520,8 @@ when hasAlloc or defined(nimscript):
     ##   var a = "abc"
     ##   a.insert("zz", 0) # a <- "zzabc"
     ##   ```
+    if item.len == 0: # prevents self-assignment
+      return
     var xl = x.len
     setLen(x, xl+item.len)
     var j = xl-1
@@ -2926,5 +2928,5 @@ proc arrayWith*[T](y: T, size: static int): array[size, T] {.raises: [].} =
     when nimvm:
       result[i] = y
     else:
-      {.cast(raises: []).}: # TODO: fixme bug #23129
-        result[i] = `=dup`(y)
+      # TODO: fixme it should be `=dup`
+      result[i] = y
