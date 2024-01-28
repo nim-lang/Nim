@@ -182,6 +182,11 @@ proc encodeName*(name: string): string =
     of ']': "rsquare"
     of '{': "lcurly"
     of '}': "rcurly"
+    of '(': "lparen"
+    of ')': "rparen"
+    of ' ': "space"
+    of '\'': "squote"
+    of '`': "bquote"
     else: $c)
   result = $result.len & result
 
@@ -229,8 +234,11 @@ proc encodeType*(m: BModule; t: PType): string =
     name.add "E"
     name
   of tyRange:
-    encodeName("range_" & $t.n[0].intVal & "_" & $t.n[1].intVal)
-  of tyString..tyUInt64, tyPointer, tyBool, tyChar: 
+    let val = 
+      if t.n[0].typ.kind == tyFloat: $t.n[0].floatVal.int & "_" & $t.n[1].floatVal.int
+      else: $t.n[0].intVal & "_" & $t.n[1].intVal
+    encodeName("range_" & val)
+  of tyString..tyUInt64, tyPointer, tyBool, tyChar, tyVoid: 
     encodeName(kindName)
   of tyAlias: 
     encodeType(m, t[0])
