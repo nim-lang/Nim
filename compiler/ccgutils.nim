@@ -154,41 +154,7 @@ proc ccgIntroducedPtr*(conf: ConfigRef; s: PSym, retType: PType): bool =
       pt.kind == tySet and mapSetType(conf, pt) == ctArray)
 
 proc encodeName*(name: string): string = 
-  result = ""
-  for i in 0..<name.len:
-    let c = name[i]
-    result.add(
-    case c
-    of '$': "dollar"
-    of '%': "percent"
-    of '&': "amp"
-    of '^': "roof"
-    of '!': "emark"
-    of '?': "qmark"
-    of '*': "star"
-    of '+': "plus"
-    of '-': "minus"
-    of '/': "slash"
-    of '\\': "backslash"
-    of '=': "eq"
-    of '<': "lt"
-    of '>': "gt"
-    of '~': "tilde"
-    of ':': "colon"
-    of '.': "dot"
-    of '@': "at"
-    of '|': "bar"
-    of '[': "lsquare"
-    of ']': "rsquare"
-    of '{': "lcurly"
-    of '}': "rcurly"
-    of '(': "lparen"
-    of ')': "rparen"
-    of ' ': "space"
-    of '\'': "squote"
-    of '`': "bquote"
-    of ',': "comma"
-    else: $c)
+  result = mangle(name)
   result = $result.len & result
 
 proc makeUnique(m: BModule; s: PSym, name: string = ""): string = 
@@ -239,7 +205,7 @@ proc encodeType*(m: BModule; t: PType): string =
       if t.n[0].typ.kind == tyFloat: $t.n[0].floatVal.int & "_" & $t.n[1].floatVal.int
       else: $t.n[0].intVal & "_" & $t.n[1].intVal
     encodeName("range_" & val)
-  of tyString..tyUInt64, tyPointer, tyBool, tyChar, tyVoid, tyAnything, tyNil: 
+  of tyString..tyUInt64, tyPointer, tyBool, tyChar, tyVoid, tyAnything, tyNil, tyEmpty: 
     encodeName(kindName)
   of tyAlias, tyInferred: 
     encodeType(m, t[0])
