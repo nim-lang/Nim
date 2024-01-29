@@ -13,7 +13,7 @@ import
   ast, types, msgs, wordrecg,
   platform, trees, options, cgendata
 
-import std/[hashes, strutils]
+import std/[hashes, strutils, formatFloat]
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -201,14 +201,18 @@ proc encodeType*(m: BModule; t: PType): string =
     name.add "E"
     name
   of tyRange:
-    let val = 
-      if t.n[0].typ.kind == tyFloat: $t.n[0].floatVal.int & "_" & $t.n[1].floatVal.int
-      else: $t.n[0].intVal & "_" & $t.n[1].intVal
-    encodeName("range_" & val)
+    var val = "range_"
+    if t.n[0].typ.kind in {tyFloat..tyFloat128}: 
+      val.addFloat t.n[0].floatVal 
+      val.add "_" 
+      val.addFloat t.n[1].floatVal
+    else: 
+      val.add $t.n[0].intVal & "_" & $t.n[1].intVal
+    encodeName(val)
   of tyString..tyUInt64, tyPointer, tyBool, tyChar, tyVoid, tyAnything, tyNil, tyEmpty: 
     encodeName(kindName)
-  of tyAlias, tyInferred: 
-    encodeType(m, t[0])
+  of tyAlias, tyInferred, tyOwned: 
+    encodeType(m, t.elementType)
   else:
     assert false, "encodeType " & $t.kind
     ""

@@ -71,7 +71,7 @@ proc mangleProc(m: BModule; s: PSym, makeUnique: bool = false): string =
 proc fillBackendName(m: BModule; s: PSym) =
   if s.loc.r == "":
     var result: Rope
-    if s.kind in routineKinds: #TODO test against debug
+    if s.kind in routineKinds and m.g.config.symbolFiles == disabledSf: 
       result = mangleProc(m, s).rope
     else:
       result = s.name.s.mangle.rope
