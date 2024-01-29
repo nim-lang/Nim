@@ -272,8 +272,8 @@ func pow*[T](x, y: Complex[T]): Complex[T] =
       result.re = s * cos(r)
       result.im = s * sin(r)
   elif x.im == 0.0 and x.re == E:
-     # Special case Euler's formula
-     result = exp(y)
+   # Special case Euler's formula
+   result = exp(y)
   else:
     let
       rho = abs(x)
