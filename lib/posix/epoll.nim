@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-from posix import SocketHandle
+from std/posix import SocketHandle
 
 const
   EPOLLIN* = 0x00000001

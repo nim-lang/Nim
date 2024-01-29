@@ -11,10 +11,11 @@
 # and evaluation phase
 
 import
-  strutils, options, ast, trees, nimsets,
-  platform, math, msgs, idents, renderer, types,
-  commands, magicsys, modulegraphs, strtabs, lineinfos, wordrecg
+  options, ast, trees, nimsets,
+  platform, msgs, idents, renderer, types,
+  commands, magicsys, modulegraphs, lineinfos, wordrecg
 
+import std/[strutils, math, strtabs]
 from system/memory import nimCStrLen
 
 when defined(nimPreviewSlimSystem):
@@ -22,13 +23,13 @@ when defined(nimPreviewSlimSystem):
 
 proc errorType*(g: ModuleGraph): PType =
   ## creates a type representing an error state
-  result = newType(tyError, nextTypeId(g.idgen), g.owners[^1])
+  result = newType(tyError, g.idgen, g.owners[^1])
   result.flags.incl tfCheckedForDestructor
 
 proc getIntLitTypeG(g: ModuleGraph; literal: PNode; idgen: IdGenerator): PType =
   # we cache some common integer literal types for performance:
   let ti = getSysType(g, literal.info, tyInt)
-  result = copyType(ti, nextTypeId(idgen), ti.owner)
+  result = copyType(ti, idgen, ti.owner)
   result.n = literal
 
 proc newIntNodeT*(intVal: Int128, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode =
@@ -121,10 +122,10 @@ proc ordinalValToString*(a: PNode; g: ModuleGraph): string =
     result = $x
 
 proc isFloatRange(t: PType): bool {.inline.} =
-  result = t.kind == tyRange and t[0].kind in {tyFloat..tyFloat128}
+  result = t.kind == tyRange and t.elementType.kind in {tyFloat..tyFloat128}
 
 proc isIntRange(t: PType): bool {.inline.} =
-  result = t.kind == tyRange and t[0].kind in {
+  result = t.kind == tyRange and t.elementType.kind in {
       tyInt..tyInt64, tyUInt8..tyUInt32}
 
 proc pickIntRange(a, b: PType): PType =
@@ -512,7 +513,7 @@ proc foldConStrStr(m: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode
 proc newSymNodeTypeDesc*(s: PSym; idgen: IdGenerator; info: TLineInfo): PNode =
   result = newSymNode(s, info)
   if s.typ.kind != tyTypeDesc:
-    result.typ = newType(tyTypeDesc, idgen.nextTypeId, s.owner)
+    result.typ = newType(tyTypeDesc, idgen, s.owner)
     result.typ.addSonSkipIntLit(s.typ, idgen)
   else:
     result.typ = s.typ

@@ -29,7 +29,7 @@
 ##   writeLine(stdout, "</body></html>")
 ##   ```
 
-import strutils, os, strtabs, cookies, uri
+import std/[strutils, os, strtabs, cookies, uri]
 export uri.encodeUrl, uri.decodeUrl
 
 when defined(nimPreviewSlimSystem):

@@ -366,19 +366,24 @@ proc arrPut[I: Ordinal;T,S](a: T; i: I;
 const arcLikeMem = defined(gcArc) or defined(gcAtomicArc) or defined(gcOrc)
 
 
-when defined(nimAllowNonVarDestructor) and arcLikeMem:
-  proc `=destroy`*(x: string) {.inline, magic: "Destroy".} =
+when defined(nimAllowNonVarDestructor) and arcLikeMem and defined(nimPreviewNonVarDestructor):
+  proc `=destroy`*[T](x: T) {.inline, magic: "Destroy".} =
+    ## Generic `destructor`:idx: implementation that can be overridden.
+    discard
+else:
+  proc `=destroy`*[T](x: var T) {.inline, magic: "Destroy".} =
+    ## Generic `destructor`:idx: implementation that can be overridden.
     discard
 
-  proc `=destroy`*[T](x: seq[T]) {.inline, magic: "Destroy".} =
-    discard
+  when defined(nimAllowNonVarDestructor) and arcLikeMem:
+    proc `=destroy`*(x: string) {.inline, magic: "Destroy", enforceNoRaises.} =
+      discard
 
-  proc `=destroy`*[T](x: ref T) {.inline, magic: "Destroy".} =
-    discard
+    proc `=destroy`*[T](x: seq[T]) {.inline, magic: "Destroy".} =
+      discard
 
-proc `=destroy`*[T](x: var T) {.inline, magic: "Destroy".} =
-  ## Generic `destructor`:idx: implementation that can be overridden.
-  discard
+    proc `=destroy`*[T](x: ref T) {.inline, magic: "Destroy".} =
+      discard
 
 when defined(nimHasDup):
   proc `=dup`*[T](x: T): T {.inline, magic: "Dup".} =
@@ -627,7 +632,7 @@ proc newSeq*[T](len = 0.Natural): seq[T] =
   ##
   ## See also:
   ## * `newSeqOfCap <#newSeqOfCap,Natural>`_
-  ## * `newSeqUninitialized <#newSeqUninitialized,Natural>`_
+  ## * `newSeqUninit <#newSeqUninit,Natural>`_
   newSeq(result, len)
 
 proc newSeqOfCap*[T](cap: Natural): seq[T] {.
@@ -1117,8 +1122,6 @@ template sysAssert(cond: bool, msg: string) =
 
 const hasAlloc = (hostOS != "standalone" or not defined(nogc)) and not defined(nimscript)
 
-when notJSnotNims and hostOS != "standalone" and hostOS != "any":
-  include "system/cgprocs"
 when notJSnotNims and hasAlloc and not defined(nimSeqsV2):
   proc addChar(s: NimString, c: char): NimString {.compilerproc, benign.}
 
@@ -1431,7 +1434,6 @@ proc isNil*[T: proc | iterator {.closure.}](x: T): bool {.noSideEffect, magic: "
   ## Fast check whether `x` is nil. This is sometimes more efficient than
   ## `== nil`.
 
-
 when defined(nimHasTopDownInference):
   # magic used for seq type inference
   proc `@`*[T](a: openArray[T]): seq[T] {.magic: "OpenArrayToSeq".} =
@@ -1604,14 +1606,30 @@ when not defined(js) and defined(nimV2):
       traceImpl: pointer
       typeInfoV1: pointer # for backwards compat, usually nil
       flags: int
+      when defined(gcDestructors):
+        when defined(cpp):
+          vTable: ptr UncheckedArray[pointer] # vtable for types
+        else:
+          vTable: UncheckedArray[pointer] # vtable for types
     PNimTypeV2 = ptr TNimTypeV2
+
+proc supportsCopyMem(t: typedesc): bool {.magic: "TypeTrait".}
 
 when notJSnotNims and defined(nimSeqsV2):
   include "system/strs_v2"
   include "system/seqs_v2"
 
 when not defined(js):
-  proc newSeqUninitialized*[T: SomeNumber](len: Natural): seq[T] =
+  template newSeqImpl(T, len) =
+    result = newSeqOfCap[T](len)
+    {.cast(noSideEffect).}:
+      when defined(nimSeqsV2):
+        cast[ptr int](addr result)[] = len
+      else:
+        var s = cast[PGenericSeq](result)
+        s.len = len
+
+  proc newSeqUninitialized*[T: SomeNumber](len: Natural): seq[T] {.deprecated: "Use `newSeqUninit` instead".} =
     ## Creates a new sequence of type `seq[T]` with length `len`.
     ##
     ## Only available for numbers types. Note that the sequence will be
@@ -1630,6 +1648,26 @@ when not defined(js):
       var s = cast[PGenericSeq](result)
       s.len = len
 
+  func newSeqUninit*[T](len: Natural): seq[T] =
+    ## Creates a new sequence of type `seq[T]` with length `len`.
+    ##
+    ## Only available for types, which don't contain
+    ## managed memory or have destructors.
+    ## Note that the sequence will be uninitialized.
+    ## After the creation of the sequence you should assign
+    ## entries to the sequence instead of adding them.
+    runnableExamples:
+      var x = newSeqUninit[int](3)
+      assert len(x) == 3
+      x[0] = 10
+    when supportsCopyMem(T):
+      when nimvm:
+        result = newSeq[T](len)
+      else:
+        newSeqImpl(T, len)
+    else:
+      {.error: "The type T cannot contain managed memory or have destructors".}
+
   proc newStringUninit*(len: Natural): string =
     ## Returns a new string of length `len` but with uninitialized
     ## content. One needs to fill the string character after character
@@ -1637,12 +1675,22 @@ when not defined(js):
     ##
     ## This procedure exists only for optimization purposes;
     ## the same effect can be achieved with the `&` operator or with `add`.
-    result = newStringOfCap(len)
-    when defined(nimSeqsV2):
-      cast[ptr int](addr result)[] = len
+    when nimvm:
+      result = newString(len)
     else:
-      var s = cast[PGenericSeq](result)
-      s.len = len
+      result = newStringOfCap(len)
+      when defined(nimSeqsV2):
+        let s = cast[ptr NimStringV2](addr result)
+        if len > 0:
+          s.len = len
+          s.p.data[len] = '\0'
+      else:
+        let s = cast[NimString](result)
+        s.len = len
+        s.data[len] = '\0'
+else:
+  proc newStringUninit*(len: Natural): string {.
+    magic: "NewString", importc: "mnewString", noSideEffect.}
 
 {.pop.}
 
@@ -1823,14 +1871,14 @@ when defined(js) or defined(nimdoc):
       tmp.add(cstring("ab"))
       tmp.add(cstring("cd"))
       doAssert tmp == "abcd"
-    asm """
+    {.emit: """
       if (`x` === null) { `x` = []; }
       var off = `x`.length;
       `x`.length += `y`.length;
       for (var i = 0; i < `y`.length; ++i) {
         `x`[off+i] = `y`.charCodeAt(i);
       }
-    """
+    """.}
   proc add*(x: var cstring, y: cstring) {.magic: "AppendStrStr".} =
     ## Appends `y` to `x` in place.
     ## Only implemented for JS backend.
@@ -1946,14 +1994,10 @@ when defined(nimAuditDelete):
 else:
   {.pragma: auditDelete.}
 
-proc delete*[T](x: var seq[T], i: Natural) {.noSideEffect, auditDelete.} =
+proc delete*[T](x: var seq[T], i: Natural) {.noSideEffect, systemRaisesDefect, auditDelete.} =
   ## Deletes the item at index `i` by moving all `x[i+1..^1]` items by one position.
   ##
   ## This is an `O(n)` operation.
-  ##
-  ## .. note:: With `-d:nimStrictDelete`, an index error is produced when the index passed
-  ##    to it was out of bounds. `-d:nimStrictDelete` will become the default
-  ##    in upcoming versions.
   ##
   ## See also:
   ## * `del <#del,seq[T],Natural>`_ for O(1) operation
@@ -1963,7 +2007,7 @@ proc delete*[T](x: var seq[T], i: Natural) {.noSideEffect, auditDelete.} =
     s.delete(2)
     doAssert s == @[1, 2, 4, 5]
 
-  when defined(nimStrictDelete):
+  when not defined(nimAuditDelete):
     if i > high(x):
       # xxx this should call `raiseIndexError2(i, high(x))` after some refactoring
       raise (ref IndexDefect)(msg: "index out of bounds: '" & $i & "' < '" & $x.len & "' failed")
@@ -2087,7 +2131,7 @@ when not defined(js) and declared(alloc0) and declared(dealloc):
       inc(i)
     dealloc(a)
 
-when notJSnotNims:
+when notJSnotNims and not gotoBasedExceptions:
   type
     PSafePoint = ptr TSafePoint
     TSafePoint {.compilerproc, final.} = object
@@ -2162,6 +2206,16 @@ when not defined(js):
 
 when notJSnotNims:
   when hostOS != "standalone" and hostOS != "any":
+    type
+      LibHandle = pointer       # private type
+      ProcAddr = pointer        # library loading and loading of procs:
+
+    proc nimLoadLibrary(path: string): LibHandle {.compilerproc, hcrInline, nonReloadable.}
+    proc nimUnloadLibrary(lib: LibHandle) {.compilerproc, hcrInline, nonReloadable.}
+    proc nimGetProcAddr(lib: LibHandle, name: cstring): ProcAddr {.compilerproc, hcrInline, nonReloadable.}
+
+    proc nimLoadLibraryError(path: string) {.compilerproc, hcrInline, nonReloadable.}
+
     include "system/dyncalls"
 
   import system/countbits_impl
@@ -2466,6 +2520,8 @@ when hasAlloc or defined(nimscript):
     ##   var a = "abc"
     ##   a.insert("zz", 0) # a <- "zzabc"
     ##   ```
+    if item.len == 0: # prevents self-assignment
+      return
     var xl = x.len
     setLen(x, xl+item.len)
     var j = xl-1
@@ -2635,7 +2691,7 @@ proc `==`*(x, y: cstring): bool {.magic: "EqCString", noSideEffect,
   proc strcmp(a, b: cstring): cint {.noSideEffect,
     importc, header: "<string.h>".}
   if pointer(x) == pointer(y): result = true
-  elif x.isNil or y.isNil: result = false
+  elif pointer(x) == nil or pointer(y) == nil: result = false
   else: result = strcmp(x, y) == 0
 
 template closureScope*(body: untyped): untyped =
@@ -2745,6 +2801,9 @@ proc toOpenArrayByte*(x: openArray[char]; first, last: int): openArray[byte] {.
 proc toOpenArrayByte*(x: seq[char]; first, last: int): openArray[byte] {.
   magic: "Slice".}
 
+proc toOpenArrayChar*(x: openArray[byte]; first, last: int): openArray[char] {.
+  magic: "Slice".}
+
 when defined(genode):
   var componentConstructHook*: proc (env: GenodeEnv) {.nimcall.}
     ## Hook into the Genode component bootstrap process.
@@ -2788,7 +2847,7 @@ when notJSnotNims:
                     hostOS != "any"
 
   proc raiseEIO(msg: string) {.noinline, noreturn.} =
-    sysFatal(IOError, msg)
+    raise newException(IOError, msg)
 
   proc echoBinSafe(args: openArray[string]) {.compilerproc.} =
     when defined(androidNDK):
@@ -2869,4 +2928,5 @@ proc arrayWith*[T](y: T, size: static int): array[size, T] {.raises: [].} =
     when nimvm:
       result[i] = y
     else:
-      result[i] = `=dup`(y)
+      # TODO: fixme it should be `=dup`
+      result[i] = y

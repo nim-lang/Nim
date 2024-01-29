@@ -400,15 +400,14 @@ proc allRoots(n: PNode; result: var seq[(PSym, int)]; level: int) =
         if typ != nil:
           typ = skipTypes(typ, abstractInst)
           if typ.kind != tyProc: typ = nil
-          else: assert(typ.len == typ.n.len)
 
         for i in 1 ..< n.len:
           let it = n[i]
-          if typ != nil and i < typ.len:
+          if typ != nil and i < typ.n.len:
             assert(typ.n[i].kind == nkSym)
             let paramType = typ.n[i].typ
-            if not paramType.isCompileTimeOnly and not typ[0].isEmptyType and
-                canAlias(paramType, typ[0]):
+            if not paramType.isCompileTimeOnly and not typ.returnType.isEmptyType and
+                canAlias(paramType, typ.returnType):
               allRoots(it, result, RootEscapes)
           else:
             allRoots(it, result, RootEscapes)
@@ -707,7 +706,7 @@ proc traverse(c: var Partitions; n: PNode) =
     for child in n: traverse(c, child)
 
     let parameters = n[0].typ
-    let L = if parameters != nil: parameters.len else: 0
+    let L = if parameters != nil: parameters.signatureLen else: 0
     let m = getMagic(n)
 
     if m == mEnsureMove and n[1].kind == nkSym:
@@ -823,6 +822,10 @@ proc computeLiveRanges(c: var Partitions; n: PNode) =
           registerVariable(c, child[i])
           #deps(c, child[i], last)
 
+        if c.inLoop > 0 and child[0].kind == nkSym: # bug #22787
+          let vid = variableId(c, child[0].sym)
+          if child[^1].kind != nkEmpty:
+            markAsReassigned(c, vid)
   of nkAsgn, nkFastAsgn, nkSinkAsgn:
     computeLiveRanges(c, n[0])
     computeLiveRanges(c, n[1])
@@ -854,7 +857,7 @@ proc computeLiveRanges(c: var Partitions; n: PNode) =
     for child in n: computeLiveRanges(c, child)
 
     let parameters = n[0].typ
-    let L = if parameters != nil: parameters.len else: 0
+    let L = if parameters != nil: parameters.signatureLen else: 0
 
     for i in 1..<n.len:
       let it = n[i]
@@ -982,7 +985,9 @@ proc computeCursors*(s: PSym; n: PNode; g: ModuleGraph) =
     if v.flags * {ownsData, preventCursor, isConditionallyReassigned} == {} and
         v.sym.kind notin {skParam, skResult} and
         v.sym.flags * {sfThread, sfGlobal} == {} and hasDestructor(v.sym.typ) and
-        v.sym.typ.skipTypes({tyGenericInst, tyAlias}).kind != tyOwned:
+        v.sym.typ.skipTypes({tyGenericInst, tyAlias}).kind != tyOwned and
+        (getAttachedOp(g, v.sym.typ, attachedAsgn) == nil or
+        sfError notin getAttachedOp(g, v.sym.typ, attachedAsgn).flags):
       let rid = root(par, i)
       if par.s[rid].con.kind == isRootOf and dangerousMutation(par.graphs[par.s[rid].con.graphIndex], par.s[i]):
         discard "cannot cursor into a graph that is mutated"

@@ -25,7 +25,7 @@
 ## At this time only `fastLog2`, `firstSetBit`, `countLeadingZeroBits` and `countTrailingZeroBits`
 ## may return undefined and/or platform dependent values if given invalid input.
 
-import macros
+import std/macros
 import std/private/since
 from std/private/bitops_utils import forwardImpl, castToUnsigned
 
@@ -463,7 +463,7 @@ elif useVCC_builtins:
       importc: "_BitScanForward64", header: "<intrin.h>".}
 
   template vcc_scan_impl(fnc: untyped; v: untyped): int =
-    var index: culong
+    var index {.inject.}: culong = 0
     discard fnc(index.addr, v)
     index.int
 

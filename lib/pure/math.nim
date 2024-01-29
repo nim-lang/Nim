@@ -57,7 +57,7 @@ import std/private/since
 {.push debugger: off.} # the user does not want to trace a part
                        # of the standard library!
 
-import bitops, fenv
+import std/[bitops, fenv]
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -200,7 +200,7 @@ func isNaN*(x: SomeFloat): bool {.inline, since: (1,5,1).} =
   template fn: untyped = result = x != x
   when nimvm: fn()
   else:
-    when defined(js): fn()
+    when defined(js) or defined(nimscript): fn()
     else: result = c_isnan(x)
 
 when defined(js):
@@ -219,13 +219,13 @@ when defined(js):
     let a = newFloat64Array(buffer)
     let b = newUint32Array(buffer)
     a[0] = x
-    asm """
+    {.emit: """
     function updateBit(num, bitPos, bitVal) {
       return (num & ~(1 << bitPos)) | (bitVal << bitPos);
     }
     `b`[1] = updateBit(`b`[1], 31, `sgn`);
     `result` = `a`[0]
-    """
+    """.}
 
 proc signbit*(x: SomeFloat): bool {.inline, since: (1, 5, 1).} =
   ## Returns true if `x` is negative, false otherwise.
@@ -270,7 +270,6 @@ func classify*(x: float): FloatClass =
   ## Classifies a floating point value.
   ##
   ## Returns `x`'s class as specified by the `FloatClass enum<#FloatClass>`_.
-  ## Doesn't work with `--passc:-ffast-math`.
   runnableExamples:
     doAssert classify(0.3) == fcNormal
     doAssert classify(0.0) == fcZero
@@ -279,6 +278,7 @@ func classify*(x: float): FloatClass =
     doAssert classify(5.0e-324) == fcSubnormal
 
   # JavaScript and most C compilers have no classify:
+  if isNan(x): return fcNan
   if x == 0.0:
     if 1.0 / x == Inf:
       return fcZero
@@ -287,7 +287,6 @@ func classify*(x: float): FloatClass =
   if x * 0.5 == x:
     if x > 0.0: return fcInf
     else: return fcNegInf
-  if x != x: return fcNan
   if abs(x) < MinFloatNormal:
     return fcSubnormal
   return fcNormal

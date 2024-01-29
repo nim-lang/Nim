@@ -717,6 +717,33 @@ template main {.dirty.} =
 
     doAssert T().kind == B
 
+  block: # bug #22926
+    type
+      Direction = enum
+        North
+        South
+        East
+        West
+
+      ArrayObj1 = object
+        list: array[Direction, int]
+
+      ArrayObj2 = object
+        list: array[Direction, int] = [1, 2, 3, 4]
+
+    block:
+      var a: ArrayObj1
+      doAssert a.list[West] == 0
+      var b = default ArrayObj1
+      doAssert b.list[North] == 0
+
+
+    block:
+      var a: ArrayObj2
+      doAssert a.list[West] == 0
+      var b = default ArrayObj2
+      doAssert b.list[North] == 1
+
 
 static: main()
 main()

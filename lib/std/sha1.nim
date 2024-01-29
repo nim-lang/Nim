@@ -29,8 +29,8 @@ runnableExamples("-r:off"):
 
 {.deprecated: "use command `nimble install checksums` and import `checksums/sha1` instead".}
 
-import strutils
-from endians import bigEndian32, bigEndian64
+import std/strutils
+from std/endians import bigEndian32, bigEndian64
 
 when defined(nimPreviewSlimSystem):
   import std/syncio

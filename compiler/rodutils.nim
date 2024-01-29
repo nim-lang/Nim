@@ -8,7 +8,7 @@
 #
 
 ## Serialization utilities for the compiler.
-import strutils, math
+import std/[strutils, math]
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -34,7 +34,7 @@ when defined(windows) and defined(bcc):
   #endif
   """.}
 
-proc c_snprintf(s: cstring; n:uint; frmt: cstring): cint {.importc: "snprintf", header: "<stdio.h>", nodecl, varargs.}
+proc c_snprintf(s: cstring; n: uint; frmt: cstring): cint {.importc: "snprintf", header: "<stdio.h>", nodecl, varargs.}
 
 
 when not declared(signbit):

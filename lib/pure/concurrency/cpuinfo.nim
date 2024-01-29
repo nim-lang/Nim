@@ -16,7 +16,7 @@ runnableExamples:
 include "system/inclrtl"
 
 when defined(posix) and not (defined(macosx) or defined(bsd)):
-  import posix
+  import std/posix
 
 when defined(windows):
   import std/private/win_getsysteminfo

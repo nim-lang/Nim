@@ -78,7 +78,7 @@ when defined(memProfiler):
   proc nimProfile(requestedSize: int) {.benign.}
 
 when hasThreadSupport:
-  import sharedlist
+  import std/sharedlist
 
 const
   rcIncrement = 0b1000 # so that lowest 3 bits are not touched

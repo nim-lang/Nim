@@ -82,7 +82,8 @@ runnableExamples:
 
 import std/private/since
 
-import macros
+import std/macros
+from std/typetraits import supportsCopyMem
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -156,18 +157,6 @@ func addUnique*[T](s: var seq[T], x: sink T) =
   else:
     s.add x
 
-func addUnique*[T](s: var seq[T], xs: sink seq[T]) =
-  ## Adds any items from `xs` to the container `s` that are not already present.
-  ## Uses `==` to check if the item is already present.
-  runnableExamples:
-    var a = @[1, 2, 3]
-    a.addUnique(@[3, 4])
-    a.addUnique(@[4, 5])
-    assert a == @[1, 2, 3, 4, 5]
-
-  for i in 0..high(xs):
-    addUnique(s, move(xs[i]))
-    
 func count*[T](s: openArray[T], x: T): int =
   ## Returns the number of occurrences of the item `x` in the container `s`.
   ##
@@ -1114,8 +1103,12 @@ template newSeqWith*(len: int, init: untyped): untyped =
     import std/random
     var seqRand = newSeqWith(20, rand(1.0))
     assert seqRand[0] != seqRand[1]
+  type T = typeof(init)
   let newLen = len
-  var result = newSeq[typeof(init)](newLen)
+  when supportsCopyMem(T) and declared(newSeqUninit):
+    var result = newSeqUninit[T](newLen)
+  else: # TODO: use `newSeqUnsafe` when that's available
+    var result = newSeq[T](newLen)
   for i in 0 ..< newLen:
     result[i] = init
   move(result) # refs bug #7295

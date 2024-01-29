@@ -23,7 +23,7 @@
 ##   waitFor main()
 ##   ```
 
-import asyncdispatch, os
+import std/[asyncdispatch, os]
 
 when defined(nimPreviewSlimSystem):
   import std/[assertions, syncio]
@@ -33,9 +33,9 @@ when defined(nimPreviewSlimSystem):
 # TODO: Fix duplication introduced by PR #4683.
 
 when defined(windows) or defined(nimdoc):
-  import winlean
+  import std/winlean
 else:
-  import posix
+  import std/posix
 
 type
   AsyncFile* = ref object
@@ -146,7 +146,7 @@ proc readBuffer*(f: AsyncFile, buf: pointer, size: int): Future[int] =
             if errcode.int32 == ERROR_HANDLE_EOF:
               retFuture.complete(0)
             else:
-              retFuture.fail(newException(OSError, osErrorMsg(errcode)))
+              retFuture.fail(newOSError(errcode))
     )
     ol.offset = DWORD(f.offset and 0xffffffff)
     ol.offsetHigh = DWORD(f.offset shr 32)
@@ -162,7 +162,7 @@ proc readBuffer*(f: AsyncFile, buf: pointer, size: int): Future[int] =
           # This happens in Windows Server 2003
           retFuture.complete(0)
         else:
-          retFuture.fail(newException(OSError, osErrorMsg(err)))
+          retFuture.fail(newOSError(err))
     else:
       # Request completed immediately.
       var bytesRead: DWORD
@@ -173,7 +173,7 @@ proc readBuffer*(f: AsyncFile, buf: pointer, size: int): Future[int] =
         if err.int32 == ERROR_HANDLE_EOF:
           retFuture.complete(0)
         else:
-          retFuture.fail(newException(OSError, osErrorMsg(osLastError())))
+          retFuture.fail(newOSError(osLastError()))
       else:
         assert bytesRead > 0
         assert bytesRead <= size
@@ -186,7 +186,7 @@ proc readBuffer*(f: AsyncFile, buf: pointer, size: int): Future[int] =
       if res < 0:
         let lastError = osLastError()
         if lastError.int32 != EAGAIN:
-          retFuture.fail(newException(OSError, osErrorMsg(lastError)))
+          retFuture.fail(newOSError(lastError))
         else:
           result = false # We still want this callback to be called.
       elif res == 0:
@@ -228,7 +228,7 @@ proc read*(f: AsyncFile, size: int): Future[string] =
             if errcode.int32 == ERROR_HANDLE_EOF:
               retFuture.complete("")
             else:
-              retFuture.fail(newException(OSError, osErrorMsg(errcode)))
+              retFuture.fail(newOSError(errcode))
         if buffer != nil:
           dealloc buffer
           buffer = nil
@@ -251,7 +251,7 @@ proc read*(f: AsyncFile, size: int): Future[string] =
           # This happens in Windows Server 2003
           retFuture.complete("")
         else:
-          retFuture.fail(newException(OSError, osErrorMsg(err)))
+          retFuture.fail(newOSError(err))
     else:
       # Request completed immediately.
       var bytesRead: DWORD
@@ -262,7 +262,7 @@ proc read*(f: AsyncFile, size: int): Future[string] =
         if err.int32 == ERROR_HANDLE_EOF:
           retFuture.complete("")
         else:
-          retFuture.fail(newException(OSError, osErrorMsg(osLastError())))
+          retFuture.fail(newOSError(osLastError()))
       else:
         assert bytesRead > 0
         assert bytesRead <= size
@@ -279,7 +279,7 @@ proc read*(f: AsyncFile, size: int): Future[string] =
       if res < 0:
         let lastError = osLastError()
         if lastError.int32 != EAGAIN:
-          retFuture.fail(newException(OSError, osErrorMsg(lastError)))
+          retFuture.fail(newOSError(lastError))
         else:
           result = false # We still want this callback to be called.
       elif res == 0:
@@ -301,6 +301,8 @@ proc readLine*(f: AsyncFile): Future[string] {.async.} =
   result = ""
   while true:
     var c = await read(f, 1)
+    if c.len == 0:
+      break
     if c[0] == '\c':
       c = await read(f, 1)
       break
@@ -348,7 +350,7 @@ proc writeBuffer*(f: AsyncFile, buf: pointer, size: int): Future[void] =
             assert bytesCount == size.int32
             retFuture.complete()
           else:
-            retFuture.fail(newException(OSError, osErrorMsg(errcode)))
+            retFuture.fail(newOSError(errcode))
     )
     # passing -1 here should work according to MSDN, but doesn't. For more
     # information see
@@ -365,14 +367,14 @@ proc writeBuffer*(f: AsyncFile, buf: pointer, size: int): Future[void] =
       let err = osLastError()
       if err.int32 != ERROR_IO_PENDING:
         GC_unref(ol)
-        retFuture.fail(newException(OSError, osErrorMsg(err)))
+        retFuture.fail(newOSError(err))
     else:
       # Request completed immediately.
       var bytesWritten: DWORD
       let overlappedRes = getOverlappedResult(f.fd.Handle,
           cast[POVERLAPPED](ol), bytesWritten, false.WINBOOL)
       if not overlappedRes.bool:
-        retFuture.fail(newException(OSError, osErrorMsg(osLastError())))
+        retFuture.fail(newOSError(osLastError()))
       else:
         assert bytesWritten == size.int32
         retFuture.complete()
@@ -387,7 +389,7 @@ proc writeBuffer*(f: AsyncFile, buf: pointer, size: int): Future[void] =
       if res < 0:
         let lastError = osLastError()
         if lastError.int32 != EAGAIN:
-          retFuture.fail(newException(OSError, osErrorMsg(lastError)))
+          retFuture.fail(newOSError(lastError))
         else:
           result = false # We still want this callback to be called.
       else:
@@ -421,7 +423,7 @@ proc write*(f: AsyncFile, data: string): Future[void] =
             assert bytesCount == data.len.int32
             retFuture.complete()
           else:
-            retFuture.fail(newException(OSError, osErrorMsg(errcode)))
+            retFuture.fail(newOSError(errcode))
         if buffer != nil:
           dealloc buffer
           buffer = nil
@@ -440,14 +442,14 @@ proc write*(f: AsyncFile, data: string): Future[void] =
           dealloc buffer
           buffer = nil
         GC_unref(ol)
-        retFuture.fail(newException(OSError, osErrorMsg(err)))
+        retFuture.fail(newOSError(err))
     else:
       # Request completed immediately.
       var bytesWritten: DWORD
       let overlappedRes = getOverlappedResult(f.fd.Handle,
           cast[POVERLAPPED](ol), bytesWritten, false.WINBOOL)
       if not overlappedRes.bool:
-        retFuture.fail(newException(OSError, osErrorMsg(osLastError())))
+        retFuture.fail(newOSError(osLastError()))
       else:
         assert bytesWritten == data.len.int32
         retFuture.complete()
@@ -468,7 +470,7 @@ proc write*(f: AsyncFile, data: string): Future[void] =
       if res < 0:
         let lastError = osLastError()
         if lastError.int32 != EAGAIN:
-          retFuture.fail(newException(OSError, osErrorMsg(lastError)))
+          retFuture.fail(newOSError(lastError))
         else:
           result = false # We still want this callback to be called.
       else:

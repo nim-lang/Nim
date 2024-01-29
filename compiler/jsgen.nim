@@ -37,8 +37,8 @@ import
 
 import pipelineutils
 
-import json, sets, math, tables, intsets
-import strutils except addf
+import std/[json, sets, math, tables, intsets]
+import std/strutils except addf
 
 when defined(nimPreviewSlimSystem):
   import std/[assertions, syncio]
@@ -187,7 +187,7 @@ proc mapType(typ: PType): TJSTypeKind =
   let t = skipTypes(typ, abstractInst)
   case t.kind
   of tyVar, tyRef, tyPtr:
-    if skipTypes(t.lastSon, abstractInst).kind in MappedToObject:
+    if skipTypes(t.elementType, abstractInst).kind in MappedToObject:
       result = etyObject
     else:
       result = etyBaseIndex
@@ -196,7 +196,7 @@ proc mapType(typ: PType): TJSTypeKind =
     result = etyBaseIndex
   of tyRange, tyDistinct, tyOrdinal, tyProxy, tyLent:
     # tyLent is no-op as JS has pass-by-reference semantics
-    result = mapType(t[0])
+    result = mapType(skipModifier t)
   of tyInt..tyInt64, tyUInt..tyUInt64, tyEnum, tyChar: result = etyInt
   of tyBool: result = etyBool
   of tyFloat..tyFloat128: result = etyFloat
@@ -212,9 +212,9 @@ proc mapType(typ: PType): TJSTypeKind =
     result = etyNone
   of tyGenericInst, tyInferred, tyAlias, tyUserTypeClass, tyUserTypeClassInst,
      tySink, tyOwned:
-    result = mapType(typ.lastSon)
+    result = mapType(typ.skipModifier)
   of tyStatic:
-    if t.n != nil: result = mapType(lastSon t)
+    if t.n != nil: result = mapType(skipModifier t)
     else: result = etyNone
   of tyProc: result = etyProc
   of tyCstring: result = etyString
@@ -516,7 +516,7 @@ proc maybeMakeTempAssignable(p: PProc, n: PNode; x: TCompRes): tuple[a, tmp: Rop
       let (m1, tmp1) = maybeMakeTemp(p, n[0], address)
       let typ = skipTypes(n[0].typ, abstractPtrs)
       if typ.kind == tyArray:
-        first = firstOrd(p.config, typ[0])
+        first = firstOrd(p.config, typ.indexType)
       if optBoundsCheck in p.options:
         useMagic(p, "chckIndx")
         if first == 0: # save a couple chars
@@ -1136,10 +1136,14 @@ proc genBreakStmt(p: PProc, n: PNode) =
   p.blocks[idx].id = abs(p.blocks[idx].id) # label is used
   lineF(p, "break Label$1;$n", [rope(p.blocks[idx].id)])
 
-proc genAsmOrEmitStmt(p: PProc, n: PNode) =
+proc genAsmOrEmitStmt(p: PProc, n: PNode; isAsmStmt = false) =
   genLineDir(p, n)
   p.body.add p.indentLine("")
-  for i in 0..<n.len:
+  let offset =
+    if isAsmStmt: 1 # first son is pragmas
+    else: 0
+
+  for i in offset..<n.len:
     let it = n[i]
     case it.kind
     of nkStrLit..nkTripleStrLit:
@@ -1439,7 +1443,7 @@ proc genArrayAddr(p: PProc, n: PNode, r: var TCompRes) =
   r.address = x
   var typ = skipTypes(m[0].typ, abstractPtrs)
   if typ.kind == tyArray:
-    first = firstOrd(p.config, typ[0])
+    first = firstOrd(p.config, typ.indexType)
   if optBoundsCheck in p.options:
     useMagic(p, "chckIndx")
     if first == 0: # save a couple chars
@@ -1455,7 +1459,7 @@ proc genArrayAddr(p: PProc, n: PNode, r: var TCompRes) =
 
 proc genArrayAccess(p: PProc, n: PNode, r: var TCompRes) =
   var ty = skipTypes(n[0].typ, abstractVarRange)
-  if ty.kind in {tyRef, tyPtr, tyLent, tyOwned}: ty = skipTypes(ty.lastSon, abstractVarRange)
+  if ty.kind in {tyRef, tyPtr, tyLent, tyOwned}: ty = skipTypes(ty.elementType, abstractVarRange)
   case ty.kind
   of tyArray, tyOpenArray, tySequence, tyString, tyCstring, tyVarargs:
     genArrayAddr(p, n, r)
@@ -1889,7 +1893,7 @@ proc createObjInitList(p: PProc, typ: PType, excludedFieldIDs: IntSet, output: v
   while t != nil:
     t = t.skipTypes(skipPtrs)
     createRecordVarAux(p, t.n, excludedFieldIDs, output)
-    t = t[0]
+    t = t.baseClass
 
 proc arrayTypeForElemType(conf: ConfigRef; typ: PType): string =
   let typ = typ.skipTypes(abstractRange)
@@ -1938,7 +1942,7 @@ proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
   of tyFloat..tyFloat128:
     result = putToSeq("0.0", indirect)
   of tyRange, tyGenericInst, tyAlias, tySink, tyOwned, tyLent:
-    result = createVar(p, lastSon(typ), indirect)
+    result = createVar(p, skipModifier(typ), indirect)
   of tySet:
     result = putToSeq("{}", indirect)
   of tyBool:
@@ -1990,7 +1994,7 @@ proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
     result = putToSeq("null", indirect)
   of tyStatic:
     if t.n != nil:
-      result = createVar(p, lastSon t, indirect)
+      result = createVar(p, skipModifier t, indirect)
     else:
       internalError(p.config, "createVar: " & $t.kind)
       result = ""
@@ -2699,7 +2703,7 @@ proc genProc(oldProc: PProc, prc: PSym): Rope =
   var resultAsgn: Rope = ""
   var name = mangleName(p.module, prc)
   let header = generateHeader(p, prc.typ)
-  if prc.typ[0] != nil and sfPure notin prc.flags:
+  if prc.typ.returnType != nil and sfPure notin prc.flags:
     resultSym = prc.ast[resultPos].sym
     let mname = mangleName(p.module, resultSym)
     # otherwise uses "fat pointers"
@@ -2718,7 +2722,7 @@ proc genProc(oldProc: PProc, prc: PSym): Rope =
     else:
       returnStmt = "return $#;$n" % [a.res]
 
-  var transformedBody = transformBody(p.module.graph, p.module.idgen, prc, dontUseCache)
+  var transformedBody = transformBody(p.module.graph, p.module.idgen, prc, {})
   if sfInjectDestructors in prc.flags:
     transformedBody = injectDestructorCalls(p.module.graph, p.module.idgen, prc, transformedBody)
 
@@ -2981,7 +2985,9 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
       genLineDir(p, n)
       gen(p, n[0], r)
       r.res = "var _ = " & r.res
-  of nkAsmStmt: genAsmOrEmitStmt(p, n)
+  of nkAsmStmt:
+    warningDeprecated(p.config, n.info, "'asm' for the JS target is deprecated, use the 'emit' pragma")
+    genAsmOrEmitStmt(p, n, true)
   of nkTryStmt, nkHiddenTryStmt: genTry(p, n, r)
   of nkRaiseStmt: genRaiseStmt(p, n)
   of nkTypeSection, nkCommentStmt, nkIncludeStmt,
@@ -3097,9 +3103,8 @@ proc wholeCode(graph: ModuleGraph; m: BModule): Rope =
       var p = newInitProc(globals, m)
       attachProc(p, prc)
 
-  var disp = generateMethodDispatchers(graph, m.idgen)
-  for i in 0..<disp.len:
-    let prc = disp[i].sym
+  generateIfMethodDispatchers(graph, m.idgen)
+  for prc in getDispatchers(graph):
     if not globals.generatedSyms.containsOrIncl(prc.id):
       var p = newInitProc(globals, m)
       attachProc(p, prc)

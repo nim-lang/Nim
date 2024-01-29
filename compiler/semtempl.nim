@@ -507,14 +507,21 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
       if x.kind == nkExprColonExpr:
         x[1] = semTemplBody(c, x[1])
   of nkBracketExpr:
-    result = newNodeI(nkCall, n.info)
-    result.add newIdentNode(getIdent(c.c.cache, "[]"), n.info)
-    for i in 0..<n.len: result.add(n[i])
+    if n.typ == nil:
+      # if a[b] is nested inside a typed expression, don't convert it
+      # back to `[]`(a, b), prepareOperand will not typecheck it again
+      # and so `[]` will not be resolved
+      # checking if a[b] is typed should be enough to cover this case
+      result = newNodeI(nkCall, n.info)
+      result.add newIdentNode(getIdent(c.c.cache, "[]"), n.info)
+      for i in 0..<n.len: result.add(n[i])
     result = semTemplBodySons(c, result)
   of nkCurlyExpr:
-    result = newNodeI(nkCall, n.info)
-    result.add newIdentNode(getIdent(c.c.cache, "{}"), n.info)
-    for i in 0..<n.len: result.add(n[i])
+    if n.typ == nil:
+      # see nkBracketExpr case for explanation
+      result = newNodeI(nkCall, n.info)
+      result.add newIdentNode(getIdent(c.c.cache, "{}"), n.info)
+      for i in 0..<n.len: result.add(n[i])
     result = semTemplBodySons(c, result)
   of nkAsgn, nkFastAsgn, nkSinkAsgn:
     checkSonsLen(n, 2, c.c.config)
@@ -524,17 +531,21 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
     let k = a.kind
     case k
     of nkBracketExpr:
-      result = newNodeI(nkCall, n.info)
-      result.add newIdentNode(getIdent(c.c.cache, "[]="), n.info)
-      for i in 0..<a.len: result.add(a[i])
-      result.add(b)
+      if a.typ == nil:
+        # see nkBracketExpr case above for explanation
+        result = newNodeI(nkCall, n.info)
+        result.add newIdentNode(getIdent(c.c.cache, "[]="), n.info)
+        for i in 0..<a.len: result.add(a[i])
+        result.add(b)
       let a0 = semTemplBody(c, a[0])
       result = semTemplBodySons(c, result)
     of nkCurlyExpr:
-      result = newNodeI(nkCall, n.info)
-      result.add newIdentNode(getIdent(c.c.cache, "{}="), n.info)
-      for i in 0..<a.len: result.add(a[i])
-      result.add(b)
+      if a.typ == nil:
+        # see nkBracketExpr case above for explanation
+        result = newNodeI(nkCall, n.info)
+        result.add newIdentNode(getIdent(c.c.cache, "{}="), n.info)
+        for i in 0..<a.len: result.add(a[i])
+        result.add(b)
       result = semTemplBodySons(c, result)
     else:
       result = semTemplBodySons(c, n)
@@ -657,7 +668,7 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
     # a template's parameters are not gensym'ed even if that was originally the
     # case as we determine whether it's a template parameter in the template
     # body by the absence of the sfGenSym flag:
-    let retType = s.typ[0]
+    let retType = s.typ.returnType
     if retType != nil and retType.kind != tyUntyped:
       allUntyped = false
     for i in 1..<s.typ.n.len:
@@ -673,7 +684,7 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
     # XXX why do we need tyTyped as a return type again?
     s.typ.n = newNodeI(nkFormalParams, n.info)
     rawAddSon(s.typ, newTypeS(tyTyped, c))
-    s.typ.n.add newNodeIT(nkType, n.info, s.typ[0])
+    s.typ.n.add newNodeIT(nkType, n.info, s.typ.returnType)
   if n[genericParamsPos].safeLen == 0:
     # restore original generic type params as no explicit or implicit were found
     n[genericParamsPos] = n[miscPos][1]
@@ -688,12 +699,13 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
   if n[patternPos].kind != nkEmpty:
     n[patternPos] = semPattern(c, n[patternPos], s)
 
-  var ctx: TemplCtx
-  ctx.toBind = initIntSet()
-  ctx.toMixin = initIntSet()
-  ctx.toInject = initIntSet()
-  ctx.c = c
-  ctx.owner = s
+  var ctx = TemplCtx(
+    toBind: initIntSet(),
+    toMixin: initIntSet(),
+    toInject: initIntSet(),
+    c: c,
+    owner: s
+  )
   if sfDirty in s.flags:
     n[bodyPos] = semTemplBodyDirty(ctx, n[bodyPos])
   else:
@@ -844,12 +856,13 @@ proc semPatternBody(c: var TemplCtx, n: PNode): PNode =
 
 proc semPattern(c: PContext, n: PNode; s: PSym): PNode =
   openScope(c)
-  var ctx: TemplCtx
-  ctx.toBind = initIntSet()
-  ctx.toMixin = initIntSet()
-  ctx.toInject = initIntSet()
-  ctx.c = c
-  ctx.owner = getCurrOwner(c)
+  var ctx = TemplCtx(
+    toBind: initIntSet(),
+    toMixin: initIntSet(),
+    toInject: initIntSet(),
+    c: c,
+    owner: getCurrOwner(c)
+  )
   result = flattenStmts(semPatternBody(ctx, n))
   if result.kind in {nkStmtList, nkStmtListExpr}:
     if result.len == 1:

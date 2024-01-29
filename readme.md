@@ -35,9 +35,11 @@ the latest release, check out [Nim's website][nim-site] or [bleeding edge docs](
 The compiler currently officially supports the following platform and
 architecture combinations:
 
-  * Windows (Windows XP or greater) - x86 and x86_64
-  * Linux (most, if not all, distributions) - x86, x86_64, ppc64 and armv6l
-  * Mac OS X (10.04 or greater) - x86, x86_64, ppc64 and Apple Silicon (based on the ARM64 architecture)
+| Operating System               | Architectures Supported                          |
+|--------------------------------|----------------------------------------|
+| Windows (Windows XP or greater) | x86 and x86_64                             |
+| Linux (most distributions)     | x86, x86_64, ppc64, and armv6l             |
+| Mac OS X (10.04 or greater)    | x86, x86_64, ppc64, and Apple Silicon (ARM64) |
 
 More platforms are supported, however, they are not tested regularly and they
 may not be as stable as the above-listed platforms.
@@ -202,7 +204,7 @@ Nim. You are explicitly permitted to develop commercial applications using Nim.
 
 Please read the [copying.txt](copying.txt) file for more details.
 
-Copyright © 2006-2023 Andreas Rumpf, all rights reserved.
+Copyright © 2006-2024 Andreas Rumpf, all rights reserved.
 
 [nim-site]: https://nim-lang.org
 [nim-forum]: https://forum.nim-lang.org

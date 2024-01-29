@@ -11,8 +11,8 @@
 # An identifier is a shared immutable string that can be compared by its
 # id. This module is essential for the compiler's performance.
 
-import
-  hashes, wordrecg
+import wordrecg
+import std/hashes
 
 when defined(nimPreviewSlimSystem):
   import std/assertions

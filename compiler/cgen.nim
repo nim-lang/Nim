@@ -10,12 +10,14 @@
 ## This module implements the C code generator.
 
 import
-  ast, astalgo, hashes, trees, platform, magicsys, extccomp, options, intsets,
+  ast, astalgo, trees, platform, magicsys, extccomp, options,
   nversion, nimsets, msgs, bitsets, idents, types,
-  ccgutils, os, ropes, math, wordrecg, treetab, cgmeth,
+  ccgutils, ropes, wordrecg, treetab, cgmeth,
   rodutils, renderer, cgendata, aliases,
-  lowerings, tables, sets, ndi, lineinfos, pathutils, transf,
+  lowerings, ndi, lineinfos, pathutils, transf,
   injectdestructors, astmsgs, modulepaths, backendpragmas
+
+from expanddefaults import caseObjDefaultBranch
 
 import pipelineutils
 
@@ -25,10 +27,10 @@ when defined(nimPreviewSlimSystem):
 when not defined(leanCompiler):
   import spawn, semparallel
 
-import strutils except `%`, addf # collides with ropes.`%`
+import std/strutils except `%`, addf # collides with ropes.`%`
 
 from ic / ic import ModuleBackendFlag
-import dynlib
+import std/[dynlib, math, tables, sets, os, intsets, hashes]
 
 when not declared(dynlib.libCandidates):
   proc libCandidates(s: string, dest: var seq[string]) =
@@ -119,7 +121,7 @@ proc getModuleDllPath(m: BModule, module: int): Rope =
 proc getModuleDllPath(m: BModule, s: PSym): Rope =
   result = getModuleDllPath(m.g.modules[s.itemId.module])
 
-import macros
+import std/macros
 
 proc cgFormatValue(result: var string; value: string) =
   result.add value
@@ -364,6 +366,8 @@ proc dataField(p: BProc): Rope =
   else:
     result = rope"->data"
 
+proc genProcPrototype(m: BModule, sym: PSym)
+
 include ccgliterals
 include ccgtypes
 
@@ -402,6 +406,7 @@ proc rdCharLoc(a: TLoc): Rope =
 type
   TAssignmentFlag = enum
     needToCopy
+    needTempForOpenArray
   TAssignmentFlags = set[TAssignmentFlag]
 
 proc genObjConstr(p: BProc, e: PNode, d: var TLoc)
@@ -499,8 +504,8 @@ proc resetLoc(p: BProc, loc: var TLoc) =
       # array passed as argument decayed into pointer, bug #7332
       # so we use getTypeDesc here rather than rdLoc(loc)
       let tyDesc = getTypeDesc(p.module, loc.t, descKindFromSymKind mapTypeChooser(loc))
-      if p.module.compileToCpp and isOrHasImportedCppType(typ): 
-        if lfIndirect in loc.flags: 
+      if p.module.compileToCpp and isOrHasImportedCppType(typ):
+        if lfIndirect in loc.flags:
           #C++ cant be just zeroed. We need to call the ctors
           var tmp = getTemp(p, loc.t)
           linefmt(p, cpsStmts,"#nimCopyMem((void*)$1, (NIM_CONST void*)$2, sizeof($3));$n",
@@ -508,7 +513,7 @@ proc resetLoc(p: BProc, loc: var TLoc) =
       else:
         linefmt(p, cpsStmts, "#nimZeroMem((void*)$1, sizeof($2));$n",
                 [addrLoc(p.config, loc), tyDesc])
-      
+
       # XXX: We can be extra clever here and call memset only
       # on the bytes following the m_type field?
       genObjectInit(p, cpsStmts, loc.t, loc, constructObj)
@@ -551,7 +556,7 @@ proc getTemp(p: BProc, t: PType, needsInit=false): TLoc =
   result = TLoc(r: "T" & rope(p.labels) & "_", k: locTemp, lode: lodeTyp t,
                 storage: OnStack, flags: {})
   if p.module.compileToCpp and isOrHasImportedCppType(t):
-    linefmt(p, cpsLocals, "$1 $2$3;$n", [getTypeDesc(p.module, t, dkVar), result.r, 
+    linefmt(p, cpsLocals, "$1 $2$3;$n", [getTypeDesc(p.module, t, dkVar), result.r,
       genCppInitializer(p.module, p, t)])
   else:
     linefmt(p, cpsLocals, "$1 $2;$n", [getTypeDesc(p.module, t, dkVar), result.r])
@@ -607,8 +612,8 @@ proc assignLocalVar(p: BProc, n: PNode) =
   # this need not be fulfilled for inline procs; they are regenerated
   # for each module that uses them!
   let nl = if optLineDir in p.config.options: "" else: "\n"
-  var decl = localVarDecl(p, n) 
-  if p.module.compileToCpp and isOrHasImportedCppType(n.typ): 
+  var decl = localVarDecl(p, n)
+  if p.module.compileToCpp and isOrHasImportedCppType(n.typ):
     decl.add genCppInitializer(p.module, p, n.typ)
   decl.add ";" & nl
   line(p, cpsLocals, decl)
@@ -732,7 +737,7 @@ proc genVarPrototype(m: BModule, n: PNode)
 proc requestConstImpl(p: BProc, sym: PSym)
 proc genStmts(p: BProc, t: PNode)
 proc expr(p: BProc, n: PNode, d: var TLoc)
-proc genProcPrototype(m: BModule, sym: PSym)
+
 proc putLocIntoDest(p: BProc, d: var TLoc, s: TLoc)
 proc intLiteral(i: BiggestInt; result: var Rope)
 proc genLiteral(p: BProc, n: PNode; result: var Rope)
@@ -1160,14 +1165,14 @@ proc genProcAux*(m: BModule, prc: PSym) =
   var returnStmt: Rope = ""
   assert(prc.ast != nil)
 
-  var procBody = transformBody(m.g.graph, m.idgen, prc, dontUseCache)
+  var procBody = transformBody(m.g.graph, m.idgen, prc, {})
   if sfInjectDestructors in prc.flags:
     procBody = injectDestructorCalls(m.g.graph, m.idgen, prc, procBody)
 
   let tmpInfo = prc.info
   discard freshLineInfo(p, prc.info)
 
-  if sfPure notin prc.flags and prc.typ[0] != nil:
+  if sfPure notin prc.flags and prc.typ.returnType != nil:
     if resultPos >= prc.ast.len:
       internalError(m.config, prc.info, "proc has no result symbol")
     let resNode = prc.ast[resultPos]
@@ -1195,7 +1200,7 @@ proc genProcAux*(m: BModule, prc: PSym) =
       fillLoc(resNode.sym.loc, locParam, resNode, "this", OnHeap)
     else:
       fillResult(p.config, resNode, prc.typ)
-      assignParam(p, res, prc.typ[0])
+      assignParam(p, res, prc.typ.returnType)
       # We simplify 'unsureAsgn(result, nil); unsureAsgn(result, x)'
       # to 'unsureAsgn(result, x)'
       # Sketch why this is correct: If 'result' points to a stack location
@@ -1213,7 +1218,7 @@ proc genProcAux*(m: BModule, prc: PSym) =
   for i in 1..<prc.typ.n.len:
     let param = prc.typ.n[i].sym
     if param.typ.isCompileTimeOnly: continue
-    assignParam(p, param, prc.typ[0])
+    assignParam(p, param, prc.typ.returnType)
   closureSetup(p, prc)
   genProcBody(p, procBody)
 
@@ -2179,9 +2184,8 @@ proc updateCachedModule(m: BModule) =
   cf.flags = {CfileFlag.Cached}
   addFileToCompile(m.config, cf)
 
-proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: PNode): PNode =
+proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: PNode) =
   ## Also called from IC.
-  result = nil
   if sfMainModule in m.module.flags:
     # phase ordering problem here: We need to announce this
     # dependency to 'nimTestErrorFlag' before system.c has been written to disk.
@@ -2229,7 +2233,11 @@ proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: PNode): PNode =
 
       if m.g.forwardedProcs.len == 0:
         incl m.flags, objHasKidsValid
-      result = generateMethodDispatchers(graph, m.idgen)
+      if optMultiMethods in m.g.config.globalOptions or
+          m.g.config.selectedGC notin {gcArc, gcOrc, gcAtomicArc} or
+          vtables notin m.g.config.features:
+        generateIfMethodDispatchers(graph, m.idgen)
+
 
   let mm = m
   m.g.modulesClosed.add mm

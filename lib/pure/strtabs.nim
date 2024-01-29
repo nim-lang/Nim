@@ -51,7 +51,7 @@ runnableExamples:
 import std/private/since
 
 import
-  hashes, strutils
+  std/[hashes, strutils]
 
 when defined(nimPreviewSlimSystem):
   import std/assertions

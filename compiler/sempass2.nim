@@ -8,10 +8,12 @@
 #
 
 import
-  intsets, ast, astalgo, msgs, renderer, magicsys, types, idents, trees,
-  wordrecg, strutils, options, guards, lineinfos, semfold, semdata,
-  modulegraphs, varpartitions, typeallowed, nilcheck, errorhandling, tables,
+  ast, astalgo, msgs, renderer, magicsys, types, idents, trees,
+  wordrecg, options, guards, lineinfos, semfold, semdata,
+  modulegraphs, varpartitions, typeallowed, nilcheck, errorhandling,
   semstrictfuncs
+
+import std/[tables, intsets, strutils]
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -88,6 +90,34 @@ type
 const
   errXCannotBeAssignedTo = "'$1' cannot be assigned to"
   errLetNeedsInit = "'let' symbol requires an initialization"
+
+proc getObjDepth(t: PType): (int, ItemId) =
+  var x = t
+  result = (-1, default(ItemId))
+  var stack = newSeq[ItemId]()
+  while x != nil:
+    x = skipTypes(x, skipPtrs)
+    if x.kind != tyObject:
+      return (-3, default(ItemId))
+    stack.add x.itemId
+    x = x.baseClass
+    inc(result[0])
+  result[1] = stack[^2]
+
+proc collectObjectTree(graph: ModuleGraph, n: PNode) =
+  for section in n:
+    if section.kind == nkTypeDef and section[^1].kind in {nkObjectTy, nkRefTy, nkPtrTy}:
+      let typ = section[^1].typ.skipTypes(skipPtrs)
+      if typ.kind == tyObject and typ.baseClass != nil:
+        let (depthLevel, root) = getObjDepth(typ)
+        if depthLevel != -3:
+          if depthLevel == 1:
+            graph.objectTree[root] = @[]
+          else:
+            if root notin graph.objectTree:
+              graph.objectTree[root] = @[(depthLevel, typ)]
+            else:
+              graph.objectTree[root].add (depthLevel, typ)
 
 proc createTypeBoundOps(tracked: PEffects, typ: PType; info: TLineInfo) =
   if typ == nil or sfGeneratedOp in tracked.owner.flags:
@@ -630,7 +660,7 @@ proc isTrival(caller: PNode): bool {.inline.} =
 proc trackOperandForIndirectCall(tracked: PEffects, n: PNode, formals: PType; argIndex: int; caller: PNode) =
   let a = skipConvCastAndClosure(n)
   let op = a.typ
-  let param = if formals != nil and argIndex < formals.len and formals.n != nil: formals.n[argIndex].sym else: nil
+  let param = if formals != nil and formals.n != nil and argIndex < formals.n.len: formals.n[argIndex].sym else: nil
   # assume indirect calls are taken here:
   if op != nil and op.kind == tyProc and n.skipConv.kind != nkNilLit and
       not isTrival(caller) and
@@ -665,7 +695,7 @@ proc trackOperandForIndirectCall(tracked: PEffects, n: PNode, formals: PType; ar
         markGcUnsafe(tracked, a)
       elif tfNoSideEffect notin op.flags:
         markSideEffect(tracked, a, n.info)
-  let paramType = if formals != nil and argIndex < formals.len: formals[argIndex] else: nil
+  let paramType = if formals != nil and argIndex < formals.signatureLen: formals[argIndex] else: nil
   if paramType != nil and paramType.kind in {tyVar}:
     invalidateFacts(tracked.guards, n)
     if n.kind == nkSym and isLocalSym(tracked, n.sym):
@@ -721,7 +751,7 @@ proc addIdToIntersection(tracked: PEffects, inter: var TIntersection, resCounter
 
 template hasResultSym(s: PSym): bool =
   s != nil and s.kind in {skProc, skFunc, skConverter, skMethod} and
-    not isEmptyType(s.typ[0])
+    not isEmptyType(s.typ.returnType)
 
 proc trackCase(tracked: PEffects, n: PNode) =
   track(tracked, n[0])
@@ -949,7 +979,7 @@ proc trackCall(tracked: PEffects; n: PNode) =
       # may not look like an assignment, but it is:
       let arg = n[1]
       initVarViaNew(tracked, arg)
-      if arg.typ.len != 0 and {tfRequiresInit} * arg.typ.lastSon.flags != {}:
+      if arg.typ.hasElementType and {tfRequiresInit} * arg.typ.elementType.flags != {}:
         if a.sym.magic == mNewSeq and n[2].kind in {nkCharLit..nkUInt64Lit} and
             n[2].intVal == 0:
           # var s: seq[notnil];  newSeq(s, 0)  is a special case!
@@ -958,8 +988,8 @@ proc trackCall(tracked: PEffects; n: PNode) =
           message(tracked.config, arg.info, warnProveInit, $arg)
 
       # check required for 'nim check':
-      if n[1].typ.len > 0:
-        createTypeBoundOps(tracked, n[1].typ.lastSon, n.info)
+      if n[1].typ.hasElementType:
+        createTypeBoundOps(tracked, n[1].typ.elementType, n.info)
         createTypeBoundOps(tracked, n[1].typ, n.info)
         # new(x, finalizer): Problem: how to move finalizer into 'createTypeBoundOps'?
 
@@ -982,20 +1012,20 @@ proc trackCall(tracked: PEffects; n: PNode) =
           n[0].sym = op
 
   if op != nil and op.kind == tyProc:
-    for i in 1..<min(n.safeLen, op.len):
+    for i in 1..<min(n.safeLen, op.signatureLen):
       let paramType = op[i]
       case paramType.kind
       of tySink:
-        createTypeBoundOps(tracked, paramType[0], n.info)
+        createTypeBoundOps(tracked, paramType.elementType, n.info)
         checkForSink(tracked, n[i])
       of tyVar:
         if isOutParam(paramType):
           # consider this case: p(out x, x); we want to remark that 'x' is not
           # initialized until after the call. Since we do this after we analysed the
           # call, this is fine.
-          initVar(tracked, n[i].skipAddr, false)
+          initVar(tracked, n[i].skipHiddenAddr, false)
         if strictFuncs in tracked.c.features and not tracked.inEnforcedNoSideEffects and
-           isDangerousLocation(n[i].skipAddr, tracked.owner):
+           isDangerousLocation(n[i].skipHiddenAddr, tracked.owner):
           if sfNoSideEffect in tracked.owner.flags:
             localError(tracked.config, n[i].info,
               "cannot pass $1 to `var T` parameter within a strict func" % renderTree(n[i]))
@@ -1138,7 +1168,10 @@ proc track(tracked: PEffects, n: PNode) =
     trackCall(tracked, n)
   of nkDotExpr:
     guardDotAccess(tracked, n)
+    let oldLeftPartOfAsgn = tracked.leftPartOfAsgn
+    tracked.leftPartOfAsgn = 0
     for i in 0..<n.len: track(tracked, n[i])
+    tracked.leftPartOfAsgn = oldLeftPartOfAsgn
   of nkCheckedFieldExpr:
     track(tracked, n[0])
     if tracked.config.hasWarn(warnProveField) or strictCaseObjects in tracked.c.features:
@@ -1286,7 +1319,7 @@ proc track(tracked: PEffects, n: PNode) =
     if tracked.owner.kind != skMacro:
       # XXX n.typ can be nil in runnableExamples, we need to do something about it.
       if n.typ != nil and n.typ.skipTypes(abstractInst).kind == tyRef:
-        createTypeBoundOps(tracked, n.typ.lastSon, n.info)
+        createTypeBoundOps(tracked, n.typ.elementType, n.info)
       createTypeBoundOps(tracked, n.typ, n.info)
   of nkTupleConstr:
     for i in 0..<n.len:
@@ -1321,8 +1354,11 @@ proc track(tracked: PEffects, n: PNode) =
   of nkProcDef, nkConverterDef, nkMethodDef, nkIteratorDef, nkLambda, nkFuncDef, nkDo:
     if n[0].kind == nkSym and n[0].sym.ast != nil:
       trackInnerProc(tracked, getBody(tracked.graph, n[0].sym))
-  of nkTypeSection, nkMacroDef, nkTemplateDef:
+  of nkMacroDef, nkTemplateDef:
     discard
+  of nkTypeSection:
+    if tracked.isTopLevel:
+      collectObjectTree(tracked.graph, n)
   of nkCast:
     if n.len == 2:
       track(tracked, n[1])
@@ -1388,7 +1424,7 @@ proc track(tracked: PEffects, n: PNode) =
 proc subtypeRelation(g: ModuleGraph; spec, real: PNode): bool =
   if spec.typ.kind == tyOr:
     result = false
-    for t in spec.typ:
+    for t in spec.typ.kids:
       if safeInheritanceDiff(g.excType(real), t) <= 0:
         return true
   else:
@@ -1532,7 +1568,7 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
   var t: TEffects = initEffects(g, inferredEffects, s, c)
   rawInitEffects g, effects
 
-  if not isEmptyType(s.typ[0]) and
+  if not isEmptyType(s.typ.returnType) and
      s.kind in {skProc, skFunc, skConverter, skMethod}:
     var res = s.ast[resultPos].sym # get result symbol
     t.scopes[res.id] = t.currentBlock
@@ -1551,13 +1587,13 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
       if isOutParam(typ) and param.id notin t.init:
         message(g.config, param.info, warnProveInit, param.name.s)
 
-  if not isEmptyType(s.typ[0]) and
-     (s.typ[0].requiresInit or s.typ[0].skipTypes(abstractInst).kind == tyVar or
+  if not isEmptyType(s.typ.returnType) and
+     (s.typ.returnType.requiresInit or s.typ.returnType.skipTypes(abstractInst).kind == tyVar or
        strictDefs in c.features) and
      s.kind in {skProc, skFunc, skConverter, skMethod} and s.magic == mNone:
     var res = s.ast[resultPos].sym # get result symbol
     if res.id notin t.init and breaksBlock(body) != bsNoReturn:
-      if tfRequiresInit in s.typ[0].flags:
+      if tfRequiresInit in s.typ.returnType.flags:
         localError(g.config, body.info, "'$1' requires explicit initialization" % "result")
       else:
         message(g.config, body.info, warnProveInit, "result")
@@ -1631,17 +1667,22 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
       dataflowAnalysis(s, body)
 
       when false: trackWrites(s, body)
-  if strictNotNil in c.features and s.kind == skProc:
+  if strictNotNil in c.features and s.kind in {skProc, skFunc, skMethod, skConverter}:
     checkNil(s, body, g.config, c.idgen)
 
 proc trackStmt*(c: PContext; module: PSym; n: PNode, isTopLevel: bool) =
-  if n.kind in {nkPragma, nkMacroDef, nkTemplateDef, nkProcDef, nkFuncDef,
-                nkTypeSection, nkConverterDef, nkMethodDef, nkIteratorDef}:
-    return
-  let g = c.graph
-  var effects = newNodeI(nkEffectList, n.info)
-  var t: TEffects = initEffects(g, effects, module, c)
-  t.isTopLevel = isTopLevel
-  track(t, n)
-  when defined(drnim):
-    if c.graph.strongSemCheck != nil: c.graph.strongSemCheck(c.graph, module, n)
+  case n.kind
+  of {nkPragma, nkMacroDef, nkTemplateDef, nkProcDef, nkFuncDef,
+                nkConverterDef, nkMethodDef, nkIteratorDef}:
+    discard
+  of nkTypeSection:
+    if isTopLevel:
+      collectObjectTree(c.graph, n)
+  else:
+    let g = c.graph
+    var effects = newNodeI(nkEffectList, n.info)
+    var t: TEffects = initEffects(g, effects, module, c)
+    t.isTopLevel = isTopLevel
+    track(t, n)
+    when defined(drnim):
+      if c.graph.strongSemCheck != nil: c.graph.strongSemCheck(c.graph, module, n)

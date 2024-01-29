@@ -11,7 +11,7 @@
 
 # included from sem.nim
 
-from sugar import dup
+from std/sugar import dup
 
 type
   ObjConstrContext = object
@@ -68,9 +68,7 @@ proc locateFieldInInitExpr(c: PContext, field: PSym, initExpr: PNode): PNode =
     let assignment = initExpr[i]
     if assignment.kind != nkExprColonExpr:
       invalidObjConstr(c, assignment)
-      continue
-
-    if fieldId == considerQuotedIdent(c, assignment[0]).id:
+    elif fieldId == considerQuotedIdent(c, assignment[0]).id:
       return assignment
 
 proc semConstrField(c: PContext, flags: TExprFlags,
@@ -125,7 +123,7 @@ proc pickCaseBranch(caseExpr, matched: PNode): PNode =
       return caseExpr[i]
 
   if endsWithElse:
-    return caseExpr[^1]
+    result = caseExpr[^1]
   else:
     result = nil
 
@@ -138,8 +136,8 @@ iterator directFieldsInRecList(recList: PNode): PNode =
   else:
     doAssert recList.kind == nkRecList
     for field in recList:
-      if field.kind != nkSym: continue
-      yield field
+      if field.kind == nkSym:
+        yield field
 
 template quoteStr(s: string): string = "'" & s & "'"
 
@@ -182,7 +180,7 @@ proc collectOrAddMissingCaseFields(c: PContext, branchNode: PNode,
                           constrCtx: var ObjConstrContext, defaults: var seq[PNode]) =
   let res = collectMissingCaseFields(c, branchNode, constrCtx, defaults)
   for sym in res:
-    let asgnType = newType(tyTypeDesc, nextTypeId(c.idgen), sym.typ.owner)
+    let asgnType = newType(tyTypeDesc, c.idgen, sym.typ.owner)
     let recTyp = sym.typ.skipTypes(defaultFieldsSkipTypes)
     rawAddSon(asgnType, recTyp)
     let asgnExpr = newTree(nkCall,
@@ -407,7 +405,7 @@ proc semConstructFields(c: PContext, n: PNode, constrCtx: var ObjConstrContext,
 proc semConstructTypeAux(c: PContext,
                          constrCtx: var ObjConstrContext,
                          flags: TExprFlags): tuple[status: InitStatus, defaults: seq[PNode]] =
-  result.status = initUnknown
+  result = (initUnknown, @[])
   var t = constrCtx.typ
   while true:
     let (status, defaults) = semConstructFields(c, t.n, constrCtx, flags)
@@ -415,10 +413,10 @@ proc semConstructTypeAux(c: PContext,
     result.defaults.add defaults
     if status in {initPartial, initNone, initUnknown}:
       discard collectMissingFields(c, t.n, constrCtx, result.defaults)
-    let base = t[0]
-    if base == nil or base.id == t.id or 
-      base.kind in { tyRef, tyPtr } and base[0].id == t.id: 
-        break
+    let base = t.baseClass
+    if base == nil or base.id == t.id or
+        base.kind in {tyRef, tyPtr} and base.elementType.id == t.id:
+      break
     t = skipTypes(base, skipPtrs)
     if t.kind != tyObject:
       # XXX: This is not supposed to happen, but apparently
@@ -441,7 +439,7 @@ proc computeRequiresInit(c: PContext, t: PType): bool =
 proc defaultConstructionError(c: PContext, t: PType, info: TLineInfo) =
   var objType = t
   while objType.kind notin {tyObject, tyDistinct}:
-    objType = objType.lastSon
+    objType = objType.last
     assert objType != nil
   if objType.kind == tyObject:
     var constrCtx = initConstrContext(objType, newNodeI(nkObjConstr, info))
@@ -463,7 +461,7 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType 
 
   if t == nil:
     return localErrorNode(c, result, "object constructor needs an object type")
-  
+
   if t.skipTypes({tyGenericInst,
       tyAlias, tySink, tyOwned, tyRef}).kind != tyObject and
       expectedType != nil and expectedType.skipTypes({tyGenericInst,
@@ -472,7 +470,7 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType 
 
   t = skipTypes(t, {tyGenericInst, tyAlias, tySink, tyOwned})
   if t.kind == tyRef:
-    t = skipTypes(t[0], {tyGenericInst, tyAlias, tySink, tyOwned})
+    t = skipTypes(t.elementType, {tyGenericInst, tyAlias, tySink, tyOwned})
     if optOwnedRefs in c.config.globalOptions:
       result.typ = makeVarType(c, result.typ, tyOwned)
       # we have to watch out, there are also 'owned proc' types that can be used

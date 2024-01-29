@@ -73,18 +73,18 @@ Other MM modes
 
 Here is a comparison of the different memory management modes:
 
-================== ======== ================= ============== ====== ===================
-Memory Management  Heap     Reference Cycles  Stop-The-World Atomic Command line switch
-================== ======== ================= ============== ====== ===================
-ORC                Shared   Cycle Collector   No             No     `--mm:orc`
-ARC                Shared   Leak              No             No     `--mm:arc`
-Atomic ARC         Shared   Leak              No             Yes    `--mm:atomicArc`
-RefC               Local    Cycle Collector   No             No     `--mm:refc`
-Mark & Sweep       Local    Cycle Collector   No             No     `--mm:markAndSweep`
-Boehm              Shared   Cycle Collector   Yes            No     `--mm:boehm`
-Go                 Shared   Cycle Collector   Yes            No     `--mm:go`
-None               Manual   Manual            Manual         Manual `--mm:none`
-================== ======== ================= ============== ====== ===================
+================== ======== ================= ============== ====== =================== ===================
+Memory Management  Heap     Reference Cycles  Stop-The-World Atomic Valgrind compatible Command line switch
+================== ======== ================= ============== ====== =================== ===================
+ORC                Shared   Cycle Collector   No             No     Yes                 `--mm:orc`
+ARC                Shared   Leak              No             No     Yes                 `--mm:arc`
+Atomic ARC         Shared   Leak              No             Yes    Yes                 `--mm:atomicArc`
+RefC               Local    Cycle Collector   No             No     No                  `--mm:refc`
+Mark & Sweep       Local    Cycle Collector   No             No     No                  `--mm:markAndSweep`
+Boehm              Shared   Cycle Collector   Yes            No     No                  `--mm:boehm`
+Go                 Shared   Cycle Collector   Yes            No     No                  `--mm:go`
+None               Manual   Manual            Manual         Manual Manual              `--mm:none`
+================== ======== ================= ============== ====== =================== ===================
 
 .. default-role:: code
 .. include:: rstcommon.rst

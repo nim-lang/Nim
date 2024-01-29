@@ -10,9 +10,10 @@
 ## Implements the dispatcher for the different parsers.
 
 import
-  strutils, llstream, ast, idents, lexer, options, msgs, parser,
+  llstream, ast, idents, lexer, options, msgs, parser,
   filters, filter_tmpl, renderer, lineinfos, pathutils
 
+import std/strutils
 when defined(nimPreviewSlimSystem):
   import std/[syncio, assertions]
 

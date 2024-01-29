@@ -10,7 +10,8 @@
 ## This module contains the `TMsgKind` enum as well as the
 ## `TLineInfo` object.
 
-import ropes, tables, pathutils, hashes
+import ropes, pathutils
+import std/[hashes, tables]
 
 const
   explanationsBaseUrl* = "https://nim-lang.github.io/Nim"
@@ -91,6 +92,8 @@ type
     warnStmtListLambda = "StmtListLambda",
     warnBareExcept = "BareExcept",
     warnImplicitDefaultValue = "ImplicitDefaultValue",
+    warnGenericsIgnoredInjection = "GenericsIgnoredInjection",
+    warnStdPrefix = "StdPrefix"
     warnUser = "User",
     # hints
     hintSuccess = "Success", hintSuccessX = "SuccessX",
@@ -107,6 +110,7 @@ type
     hintUser = "User", hintUserRaw = "UserRaw", hintExtendedContext = "ExtendedContext",
     hintMsgOrigin = "MsgOrigin", # since 1.3.5
     hintDeclaredLoc = "DeclaredLoc", # since 1.5.1
+    hintUnknownHint = "UnknownHint"
 
 const
   MsgKindToStr*: array[TMsgKind, string] = [
@@ -184,7 +188,7 @@ const
     warnAnyEnumConv: "$1",
     warnHoleEnumConv: "$1",
     warnCstringConv: "$1",
-    warnPtrToCstringConv: "unsafe conversion to 'cstring' from '$1'; this will become a compile time error in the future",
+    warnPtrToCstringConv: "unsafe conversion to 'cstring' from '$1'; Use a `cast` operation like `cast[cstring](x)`; this will become a compile time error in the future",
     warnEffect: "$1",
     warnCastSizes: "$1", # deadcode
     warnAboveMaxSizeSet: "$1",
@@ -193,6 +197,8 @@ const
     warnStmtListLambda: "statement list expression assumed to be anonymous proc; this is deprecated, use `do (): ...` or `proc () = ...` instead",
     warnBareExcept: "$1",
     warnImplicitDefaultValue: "$1",
+    warnGenericsIgnoredInjection: "$1",
+    warnStdPrefix: "$1 needs the 'std' prefix",
     warnUser: "$1",
     hintSuccess: "operation successful: $#",
     # keep in sync with `testament.isSuccess`
@@ -229,6 +235,7 @@ const
     hintExtendedContext: "$1",
     hintMsgOrigin: "$1",
     hintDeclaredLoc: "$1",
+    hintUnknownHint: "unknown hint: $1"
   ]
 
 const
@@ -247,7 +254,7 @@ type
 
 proc computeNotesVerbosity(): array[0..3, TNoteKinds] =
   result = default(array[0..3, TNoteKinds])
-  result[3] = {low(TNoteKind)..high(TNoteKind)} - {warnObservableStores, warnResultUsed, warnAnyEnumConv, warnBareExcept}
+  result[3] = {low(TNoteKind)..high(TNoteKind)} - {warnObservableStores, warnResultUsed, warnAnyEnumConv, warnBareExcept, warnStdPrefix}
   result[2] = result[3] - {hintStackTrace, hintExtendedContext, hintDeclaredLoc, hintProcessingStmt}
   result[1] = result[2] - {warnProveField, warnProveIndex,
     warnGcUnsafe, hintPath, hintDependency, hintCodeBegin, hintCodeEnd,

@@ -12,7 +12,7 @@
 ##
 ## Unstable API.
 
-import strutils, lexbase
+import std/[strutils, lexbase]
 import std/private/decode_helpers
 
 when defined(nimPreviewSlimSystem):
@@ -1491,7 +1491,7 @@ proc treeRepr*(s: SqlNode): string =
   result = newStringOfCap(128)
   treeReprAux(s, 0, result)
 
-import streams
+import std/streams
 
 proc open(L: var SqlLexer, input: Stream, filename: string) =
   lexbase.open(L, input)

@@ -151,14 +151,11 @@ proc c_fprintf(f: File, frmt: cstring): cint {.
 proc c_fputc(c: char, f: File): cint {.
   importc: "fputc", header: "<stdio.h>".}
 
-template sysFatal(exc, msg) =
-  raise newException(exc, msg)
-
 proc raiseEIO(msg: string) {.noinline, noreturn.} =
-  sysFatal(IOError, msg)
+  raise newException(IOError, msg)
 
 proc raiseEOF() {.noinline, noreturn.} =
-  sysFatal(EOFError, "EOF reached")
+  raise newException(EOFError, "EOF reached")
 
 proc strerror(errnum: cint): cstring {.importc, header: "<string.h>".}
 
@@ -764,7 +761,7 @@ proc open*(filename: string,
   ##
   ## The file handle associated with the resulting `File` is not inheritable.
   if not open(result, filename, mode, bufSize):
-    sysFatal(IOError, "cannot open: " & filename)
+    raise newException(IOError, "cannot open: " & filename)
 
 proc setFilePos*(f: File, pos: int64, relativeTo: FileSeekPos = fspSet) {.benign.} =
   ## Sets the position of the file pointer that is used for read/write
@@ -852,7 +849,7 @@ proc readFile*(filename: string): string {.tags: [ReadIOEffect], benign.} =
     finally:
       close(f)
   else:
-    sysFatal(IOError, "cannot open: " & filename)
+    raise newException(IOError, "cannot open: " & filename)
 
 proc writeFile*(filename, content: string) {.tags: [WriteIOEffect], benign.} =
   ## Opens a file named `filename` for writing. Then writes the
@@ -865,7 +862,7 @@ proc writeFile*(filename, content: string) {.tags: [WriteIOEffect], benign.} =
     finally:
       close(f)
   else:
-    sysFatal(IOError, "cannot open: " & filename)
+    raise newException(IOError, "cannot open: " & filename)
 
 proc writeFile*(filename: string, content: openArray[byte]) {.since: (1, 1).} =
   ## Opens a file named `filename` for writing. Then writes the
@@ -895,7 +892,7 @@ proc readLines*(filename: string, n: Natural): seq[string] =
     finally:
       close(f)
   else:
-    sysFatal(IOError, "cannot open: " & filename)
+    raise newException(IOError, "cannot open: " & filename)
 
 template readLines*(filename: string): seq[
     string] {.deprecated: "use readLines with two arguments".} =

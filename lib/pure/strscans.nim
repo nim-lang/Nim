@@ -94,7 +94,7 @@ which we then use in our scanf pattern to help us in the matching process:
     ...
   ```
 
-It also possible to pass arguments to a user definable matcher:
+It is also possible to pass arguments to a user definable matcher:
 
   ```nim
   proc ndigits(input: string; intVal: var int; start: int; n: int): int =
@@ -283,7 +283,7 @@ efficiency and perform different checks.
 ]##
 
 
-import macros, parseutils
+import std/[macros, parseutils]
 import std/private/since
 
 when defined(nimPreviewSlimSystem):

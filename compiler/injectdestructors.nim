@@ -14,10 +14,12 @@
 ## See doc/destructors.rst for a spec of the implemented rewrite rules
 
 import
-  intsets, strtabs, ast, astalgo, msgs, renderer, magicsys, types, idents,
-  strutils, options, lowerings, tables, modulegraphs,
+  ast, astalgo, msgs, renderer, magicsys, types, idents,
+  options, lowerings, modulegraphs,
   lineinfos, parampatterns, sighashes, liftdestructors, optimizer,
   varpartitions, aliasanalysis, dfa, wordrecg
+
+import std/[strtabs, tables, strutils, intsets]
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -209,15 +211,17 @@ proc checkForErrorPragma(c: Con; t: PType; ri: PNode; opname: string; inferredFr
       m.add " a 'sink' parameter"
   m.add "; routine: "
   m.add c.owner.name.s
+  #m.add "\n\n"
+  #m.add renderTree(c.body, {renderIds})
   localError(c.graph.config, ri.info, errGenerated, m)
 
 proc makePtrType(c: var Con, baseType: PType): PType =
-  result = newType(tyPtr, nextTypeId c.idgen, c.owner)
+  result = newType(tyPtr, c.idgen, c.owner)
   addSonSkipIntLit(result, baseType, c.idgen)
 
 proc genOp(c: var Con; op: PSym; dest: PNode): PNode =
   var addrExp: PNode
-  if op.typ != nil and op.typ.len > 1 and op.typ[1].kind != tyVar:
+  if op.typ != nil and op.typ.signatureLen > 1 and op.typ.firstParamType.kind != tyVar:
     addrExp = dest
   else:
     addrExp = newNodeIT(nkHiddenAddr, dest.info, makePtrType(c, dest.typ))
@@ -485,7 +489,7 @@ proc passCopyToSink(n: PNode; c: var Con; s: var Scope): PNode =
 
 proc isDangerousSeq(t: PType): bool {.inline.} =
   let t = t.skipTypes(abstractInst)
-  result = t.kind == tySequence and tfHasOwned notin t[0].flags
+  result = t.kind == tySequence and tfHasOwned notin t.elementType.flags
 
 proc containsConstSeq(n: PNode): bool =
   if n.kind == nkBracket and n.len > 0 and n.typ != nil and isDangerousSeq(n.typ):
@@ -590,7 +594,9 @@ template processScopeExpr(c: var Con; s: var Scope; ret: PNode, processCall: unt
   # tricky because you would have to intercept moveOrCopy at a certain point
   let tmp = c.getTemp(s.parent[], ret.typ, ret.info)
   tmp.sym.flags = tmpFlags
-  let cpy = if hasDestructor(c, ret.typ):
+  let cpy = if hasDestructor(c, ret.typ) and
+                ret.typ.kind notin {tyOpenArray, tyVarargs}:
+                # bug #23247 we don't own the data, so it's harmful to destroy it
               s.parent[].final.add c.genDestroy(tmp)
               moveOrCopy(tmp, ret, c, s, {IsDecl})
             else:
@@ -855,7 +861,9 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
             result[i][1] = p(n[i][1], c, s, m)
         else:
           result[i] = p(n[i], c, s, m)
-      if mode == normal and isRefConstr:
+      if mode == normal and (isRefConstr or (hasDestructor(c, t) and
+        getAttachedOp(c.graph, t, attachedDestructor) != nil and
+        sfOverridden in getAttachedOp(c.graph, t, attachedDestructor).flags)):
         result = ensureDestruction(result, n, c, s)
     of nkCallKinds:
       if n[0].kind == nkSym and n[0].sym.magic == mEnsureMove:
@@ -871,7 +879,7 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
         c.inSpawn.dec
 
       let parameters = n[0].typ
-      let L = if parameters != nil: parameters.len else: 0
+      let L = if parameters != nil: parameters.signatureLen else: 0
 
       when false:
         var isDangerous = false
@@ -901,7 +909,10 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
         result[0] = p(n[0], c, s, normal)
       if canRaise(n[0]): s.needsTry = true
       if mode == normal:
-        result = ensureDestruction(result, n, c, s)
+        if result.typ != nil and result.typ.kind notin {tyOpenArray, tyVarargs}:
+          # Returns of openarray types shouldn't be destroyed
+          # bug #19435; # bug #23247
+          result = ensureDestruction(result, n, c, s)
     of nkDiscardStmt: # Small optimization
       result = shallowCopy(n)
       if n[0].kind != nkEmpty:

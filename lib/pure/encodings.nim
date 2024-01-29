@@ -39,7 +39,7 @@ runnableExamples:
     assert fromGB2312.convert(second) == "有白头如新，倾盖如故"
 
 
-import os
+import std/os
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
@@ -59,7 +59,7 @@ type
                                         ## for encoding errors.
 
 when defined(windows):
-  import parseutils, strutils
+  import std/[parseutils, strutils]
   proc eqEncodingNames(a, b: string): bool =
     var i = 0
     var j = 0

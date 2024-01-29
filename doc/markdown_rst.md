@@ -246,7 +246,7 @@ nim md2html file2.md               # creates ``htmldocs/file2.html``
 ```
 
 To allow cross-references between any files in any order (especially, if
-circular references are present), it's strongly reccommended
+circular references are present), it's strongly recommended
 to make a run for creating all the indexes first:
 
 ```cmd

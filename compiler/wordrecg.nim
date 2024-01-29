@@ -84,7 +84,7 @@ type
     wComputedGoto = "computedGoto", wExperimental = "experimental", wDoctype = "doctype",
     wWrite = "write", wGensym = "gensym", wInject = "inject", wDirty = "dirty",
     wInheritable = "inheritable", wThreadVar = "threadvar", wEmit = "emit",
-    wAsmNoStackFrame = "asmNoStackFrame", wImplicitStatic = "implicitStatic",
+    wAsmNoStackFrame = "asmNoStackFrame", wAsmSyntax = "asmSyntax", wImplicitStatic = "implicitStatic",
     wGlobal = "global", wCodegenDecl = "codegenDecl", wUnchecked = "unchecked",
     wGuard = "guard", wLocks = "locks", wPartial = "partial", wExplain = "explain",
     wLiftLocals = "liftlocals", wEnforceNoRaises = "enforceNoRaises", wSystemRaisesDefect = "systemRaisesDefect",
@@ -145,6 +145,6 @@ const
 
 
 from std/enumutils import genEnumCaseStmt
-from strutils import normalize
+from std/strutils import normalize
 proc findStr*[T: enum](a, b: static[T], s: string, default: T): T =
   genEnumCaseStmt(T, s, default, ord(a), ord(b), normalize)

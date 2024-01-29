@@ -14,7 +14,9 @@
 {.used.}
 
 import
-  lexer, options, idents, strutils, ast, msgs, lineinfos, wordrecg
+  lexer, options, idents, ast, msgs, lineinfos, wordrecg
+
+import std/[strutils]
 
 when defined(nimPreviewSlimSystem):
   import std/[syncio, assertions, formatfloat]
@@ -23,7 +25,7 @@ type
   TRenderFlag* = enum
     renderNone, renderNoBody, renderNoComments, renderDocComments,
     renderNoPragmas, renderIds, renderNoProcDefs, renderSyms, renderRunnableExamples,
-    renderIr, renderNonExportedFields, renderExpandUsing
+    renderIr, renderNonExportedFields, renderExpandUsing, renderNoPostfix
 
   TRenderFlags* = set[TRenderFlag]
   TRenderTok* = object
@@ -123,6 +125,8 @@ template outside(g: var TSrcGen, section: Section, body: untyped) =
 const
   IndentWidth = 2
   longIndentWid = IndentWidth * 2
+  MaxLineLen = 80
+  LineCommentColumn = 30
 
 when defined(nimpretty):
   proc minmaxLine(n: PNode): (int, int) =
@@ -140,10 +144,6 @@ when defined(nimpretty):
 
   proc lineDiff(a, b: PNode): int =
     result = minmaxLine(b)[0] - minmaxLine(a)[1]
-
-const
-  MaxLineLen = 80
-  LineCommentColumn = 30
 
 proc initSrcGen(renderFlags: TRenderFlags; config: ConfigRef): TSrcGen =
   result = TSrcGen(comStack: @[], tokens: @[], indent: 0,
@@ -366,7 +366,7 @@ proc litAux(g: TSrcGen; n: PNode, x: BiggestInt, size: int): string =
     result = t
     while result != nil and result.kind in {tyGenericInst, tyRange, tyVar,
                           tyLent, tyDistinct, tyOrdinal, tyAlias, tySink}:
-      result = lastSon(result)
+      result = skipModifier(result)
 
   result = ""
   let typ = n.typ.skip
@@ -546,7 +546,11 @@ proc lsub(g: TSrcGen; n: PNode): int =
   of nkInfix: result = lsons(g, n) + 2
   of nkPrefix:
     result = lsons(g, n)+1+(if n.len > 0 and n[1].kind == nkInfix: 2 else: 0)
-  of nkPostfix: result = lsons(g, n)
+  of nkPostfix:
+    if renderNoPostfix notin g.flags:
+      result = lsons(g, n)
+    else:
+      result = lsub(g, n[1])
   of nkCallStrLit: result = lsons(g, n)
   of nkPragmaExpr: result = lsub(g, n[0]) + lcomma(g, n, 1)
   of nkRange: result = lsons(g, n) + 2
@@ -864,7 +868,7 @@ proc gproc(g: var TSrcGen, n: PNode) =
   if renderNoPragmas notin g.flags:
     gsub(g, n[pragmasPos])
   if renderNoBody notin g.flags:
-    if n[bodyPos].kind != nkEmpty:
+    if n.len > bodyPos and n[bodyPos].kind != nkEmpty:
       put(g, tkSpaces, Space)
       putWithSpace(g, tkEquals, "=")
       indentNL(g)
@@ -1330,14 +1334,20 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
     put(g, tkColon, ":")
     gsub(g, n, bodyPos)
   of nkIdentDefs:
-    # Skip if this is a property in a type and its not exported
-    # (While also not allowing rendering of non exported fields)
-    if ObjectDef in g.inside and (not n[0].isExported() and renderNonExportedFields notin g.flags):
-      return
+    var exclFlags: TRenderFlags = {}
+    if ObjectDef in g.inside:
+      if not n[0].isExported() and renderNonExportedFields notin g.flags:
+        # Skip if this is a property in a type and its not exported
+        # (While also not allowing rendering of non exported fields)
+        return
+      # render postfix for object fields:
+      exclFlags = g.flags * {renderNoPostfix}
     # We render the identDef without being inside the section incase we render something like
     # y: proc (x: string) # (We wouldn't want to check if x is exported)
     g.outside(ObjectDef):
+      g.flags.excl(exclFlags)
       gcomma(g, n, 0, -3)
+      g.flags.incl(exclFlags)
       if n.len >= 2 and n[^2].kind != nkEmpty:
         putWithSpace(g, tkColon, ":")
         gsub(g, n[^2], c)
@@ -1416,7 +1426,8 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
       postStatements(g, n, i, fromStmtList)
   of nkPostfix:
     gsub(g, n, 1)
-    gsub(g, n, 0)
+    if renderNoPostfix notin g.flags:
+      gsub(g, n, 0)
   of nkRange:
     gsub(g, n, 0)
     put(g, tkDotDot, "..")
@@ -1520,17 +1531,16 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
         gsub(g, n[0])
         gsub(g, n[1])
         gcoms(g)
+        indentNL(g)
         gsub(g, n[2])
+        dedent(g)
     else:
       put(g, tkObject, "object")
   of nkRecList:
-    indentNL(g)
     for i in 0..<n.len:
       optNL(g)
       gsub(g, n[i], c)
       gcoms(g)
-    dedent(g)
-    putNL(g)
   of nkOfInherit:
     putWithSpace(g, tkOf, "of")
     gsub(g, n, 0)
