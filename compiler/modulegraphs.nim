@@ -745,7 +745,7 @@ proc add*(s: var SuggestFileSymbolDatabase; v: SymInfoPair) =
 proc add*(s: var SuggestSymbolDatabase; v: SymInfoPair) =
   s.mgetOrPut(v.info.fileIndex, newSuggestFileSymbolDatabase()).add(v)
 
-proc findSymInfo*(s: var SuggestFileSymbolDatabase; li: TLineInfo): ref SymInfoPair =
+proc findSymInfo*(s: var SuggestFileSymbolDatabase; li: TLineInfo): ptr SymInfoPair =
   if not s.isSorted:
     s.sort()
   var q = SymInfoPair(
@@ -753,8 +753,7 @@ proc findSymInfo*(s: var SuggestFileSymbolDatabase; li: TLineInfo): ref SymInfoP
   )
   var idx = binarySearch(s.items, q, cmp)
   if idx != -1:
-    new(result)
-    result[] = s.items[idx]
+    result = addr s.items[idx]
   else:
     result = nil
 
