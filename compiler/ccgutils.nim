@@ -187,6 +187,7 @@ proc encodeName*(name: string): string =
     of ' ': "space"
     of '\'': "squote"
     of '`': "bquote"
+    of ',': "comma"
     else: $c)
   result = $result.len & result
 
