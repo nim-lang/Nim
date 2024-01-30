@@ -248,7 +248,8 @@ proc compilePipelineModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymF
     result = moduleFromRodFile(graph, fileIdx, cachedModules)
     let path = toFullPath(graph.config, fileIdx)
     let filename = AbsoluteFile path
-    graph.cachedFiles[path] = $secureHashFile(path)
+    if fileExists(filename): # it could be a stdinfile
+      graph.cachedFiles[path] = $secureHashFile(path)
     if result == nil:
       result = newModule(graph, fileIdx)
       result.flags.incl flags
