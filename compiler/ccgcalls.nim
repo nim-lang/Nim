@@ -66,8 +66,6 @@ proc preventNrvo(p: BProc; dest, le, ri: PNode): bool =
 proc hasNoInit(call: PNode): bool {.inline.} =
   result = call[0].kind == nkSym and sfNoInit in call[0].sym.flags
 
-import renderer
-
 proc isHarmlessStore(p: BProc; canRaise: bool; d: TLoc): bool =
   if d.k in {locTemp, locNone} or not canRaise:
     result = true
@@ -144,7 +142,6 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
         if canRaise:
           if hasDestructor(typ.returnType) and p.nestedTryStmts.len > 0:
             var needRaiseExit = true
-            debug p.nestedTryStmts[^1].fin
             var fin = p.nestedTryStmts[^1].fin
             if fin.len == 1 and fin[0].kind in {nkStmtList, nkStmtListExpr}:
               fin = fin[0]
