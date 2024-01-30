@@ -58,9 +58,9 @@ type
   SymInfoPair* = object
     sym*: PSym
     info*: TLineInfo
-    isDecl*: bool
     caughtExceptions*: seq[PType]
     caughtExceptionsSet*: bool
+    isDecl*: bool
 
   PipelinePass* = enum
     NonePass
