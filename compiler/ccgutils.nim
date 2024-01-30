@@ -186,7 +186,7 @@ proc encodeType*(m: BModule; t: PType): string =
     name.add "E"
     name
   of tySequence, tyOpenArray, tyArray, tyVarargs, tyTuple, tyProc, tySet, tyTypeDesc,
-    tyPtr, tyRef, tyVar, tyLent, tySink, tyStatic, tyUncheckedArray:
+    tyPtr, tyRef, tyVar, tyLent, tySink, tyStatic, tyUncheckedArray, tyOr, tyAnd, tyBuiltInTypeClass:
     var name = 
       case t.kind:
       of tySequence: encodeName("seq") 
