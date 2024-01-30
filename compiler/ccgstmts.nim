@@ -733,6 +733,12 @@ proc raiseExit(p: BProc) =
       lineCg(p, cpsStmts, "if (NIM_UNLIKELY(*nimErr_)) goto LA$1_;$n",
         [p.nestedTryStmts[^1].label])
 
+proc raiseExitCleanup(p: BProc, destroy: string) =
+  assert p.config.exc == excGoto
+  if nimErrorFlagDisabled notin p.flags:
+    lineCg(p, cpsStmts, "if (NIM_UNLIKELY(*nimErr_)) {$2; goto LA$1_;}$n",
+        [p.nestedTryStmts[^1].label, destroy])
+
 proc finallyActions(p: BProc) =
   if p.config.exc != excGoto and p.nestedTryStmts.len > 0 and p.nestedTryStmts[^1].inExcept:
     # if the current try stmt have a finally block,

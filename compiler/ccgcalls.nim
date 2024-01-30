@@ -66,6 +66,8 @@ proc preventNrvo(p: BProc; dest, le, ri: PNode): bool =
 proc hasNoInit(call: PNode): bool {.inline.} =
   result = call[0].kind == nkSym and sfNoInit in call[0].sym.flags
 
+import renderer
+
 proc isHarmlessStore(p: BProc; canRaise: bool; d: TLoc): bool =
   if d.k in {locTemp, locNone} or not canRaise:
     result = true
@@ -139,7 +141,27 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
         var list = initLoc(locCall, d.lode, OnUnknown)
         list.r = pl
         genAssignment(p, tmp, list, flags) # no need for deep copying
-        if canRaise: raiseExit(p)
+        if canRaise:
+          if hasDestructor(typ.returnType) and p.nestedTryStmts.len > 0:
+            var needRaiseExit = true
+            debug p.nestedTryStmts[^1].fin
+            var fin = p.nestedTryStmts[^1].fin
+            if fin.len == 1 and fin[0].kind in {nkStmtList, nkStmtListExpr}:
+              fin = fin[0]
+            for dtor in fin:
+              if dtor.kind == nkCall and dtor[0].kind == nkSym and
+                  dtor[0].sym.name.s == "=destroy" and
+                  sameType(dtor[1].typ, typ.returnType):
+                var op = initLocExpr(p, dtor[0])
+                var callee = rdLoc(op)
+                let destroy = callee & "(" & rdLoc(tmp) & ")"
+                raiseExitCleanup(p, destroy)
+                needRaiseExit = false
+                break
+            if needRaiseExit:
+              raiseExit(p)
+          else:
+            raiseExit(p)
         genAssignment(p, d, tmp, {})
   else:
     pl.add(");\n")
