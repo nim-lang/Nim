@@ -140,7 +140,7 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
         list.r = pl
         genAssignment(p, tmp, list, flags) # no need for deep copying
         if canRaise:
-          if hasDestructor(typ.returnType) and p.nestedTryStmts.len > 0:
+          if hasDestructor(typ.returnType) and p.nestedTryStmts.len > 0 and p.nestedTryStmts[^1].fin != nil:
             var needRaiseExit = true
             var fin = p.nestedTryStmts[^1].fin
             if fin.len == 1 and fin[0].kind in {nkStmtList, nkStmtListExpr}:
