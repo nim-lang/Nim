@@ -215,8 +215,8 @@ proc get*[T](self: Option[T], otherwise: T): T {.inline.} =
   else:
     otherwise
 
-proc get*[T](self: Option[T], val: var T): bool {.inline.} =
-  ## Gets the content of the `Option`, stores it in `val` and returns true if the `Option` has a value.
+proc unpack*[T](self: Option[T], val: var T): bool {.inline.} =
+  ## Unpacks the contents of the `Option` if there are any, and returns true.
   ## Otherwise, it simply returns false.
   runnableExamples:
     var storage: int
