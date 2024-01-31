@@ -167,7 +167,7 @@ proc makeUnique(m: BModule; s: PSym, name: string = ""): string =
 proc encodeSym*(m: BModule; s: PSym, makeUnique: bool = false): string = 
   #Module::Type
   var name = s.name.s 
-  if { sfFromGeneric, sfGlobal } * s.flags != {} or makeUnique:
+  if makeUnique:
     name = makeUnique(m, s, name)
   "N" & encodeName(s.owner.name.s) & encodeName(name) & "E"
 
@@ -178,7 +178,7 @@ proc encodeType*(m: BModule; t: PType): string =
   of tyObject, tyEnum, tyDistinct, tyUserTypeClass, tyGenericParam: 
     encodeSym(m, t.sym)
   of tyGenericInst, tyUserTypeClassInst, tyGenericBody:
-    var name = encodeSym(m, t[0].sym)
+    var name = encodeName(t[0].sym.name.s)
     name.add "I"
     for i in 1..<t.len - 1: 
       name.add encodeType(m, t[i])
