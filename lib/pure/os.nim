@@ -453,7 +453,7 @@ proc expandFilename*(filename: string): string {.rtl, extern: "nos$1",
       c_free(cast[pointer](r))
 
 proc getCurrentCompilerExe*(): string {.compileTime.} = discard
-  ## This is `getAppFilename()`_ at compile time.
+  ## Returns the current Nim compiler path or nimble executable path.
   ##
   ## Can be used to retrieve the currently executing
   ## Nim compiler from a Nim or nimscript program, or the nimble binary
