@@ -164,7 +164,7 @@ proc makeUnique(m: BModule; s: PSym, name: string = ""): string =
   result.add "_u"
   result.add $s.itemId.item
 
-proc encodeSym*(m: BModule; s: PSym, makeUnique: bool = false): string = 
+proc encodeSym*(m: BModule; s: PSym; makeUnique: bool = false): string = 
   #Module::Type
   var name = s.name.s 
   if makeUnique:
