@@ -204,10 +204,10 @@ proc main() =
 
       var a, b: int
 
-      doAssert x.get(a)
+      doAssert x.unpack(a)
       doAssert a == 1984
 
-      doAssert not y.get(b)
+      doAssert not y.unpack(b)
 
 static: main()
 main()
