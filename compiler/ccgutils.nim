@@ -167,7 +167,7 @@ proc makeUnique(m: BModule; s: PSym, name: string = ""): string =
 proc encodeSym*(m: BModule; s: PSym, makeUnique: bool = false): string = 
   #Module::Type
   var name = s.name.s 
-  if sfFromGeneric in s.flags or m.module.id != s.owner.id or makeUnique:
+  if { sfFromGeneric, sfGlobal } * s.flags != {} or makeUnique:
     name = makeUnique(m, s, name)
   "N" & encodeName(s.owner.name.s) & encodeName(name) & "E"
 
@@ -178,8 +178,7 @@ proc encodeType*(m: BModule; t: PType): string =
   of tyObject, tyEnum, tyDistinct, tyUserTypeClass, tyGenericParam: 
     encodeSym(m, t.sym)
   of tyGenericInst, tyUserTypeClassInst, tyGenericBody:
-    let s = t[0].sym
-    var name = encodeName(s.owner.name.s & "_" & s.name.s & "_" & $s.itemId.item) #TODO review
+    var name = encodeSym(m, t[0].sym)
     name.add "I"
     for i in 1..<t.len - 1: 
       name.add encodeType(m, t[i])
@@ -190,8 +189,6 @@ proc encodeType*(m: BModule; t: PType): string =
     var name = 
       case t.kind:
       of tySequence: encodeName("seq") 
-      of tyTuple: 
-        encodeName("tuple_" & $t.id) #TODO review
       else: encodeName(kindName)
     name.add "I"
     for i in 0..<t.len:
