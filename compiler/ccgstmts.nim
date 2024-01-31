@@ -736,7 +736,13 @@ proc raiseExit(p: BProc) =
 proc raiseExitCleanup(p: BProc, destroy: string) =
   assert p.config.exc == excGoto
   if nimErrorFlagDisabled notin p.flags:
-    lineCg(p, cpsStmts, "if (NIM_UNLIKELY(*nimErr_)) {$2; goto LA$1_;}$n",
+    p.flags.incl nimErrorFlagAccessed
+    if p.nestedTryStmts.len == 0:
+      p.flags.incl beforeRetNeeded
+      # easy case, simply goto 'ret':
+      lineCg(p, cpsStmts, "if (NIM_UNLIKELY(*nimErr_)) {$1; goto BeforeRet_;}$n", [destroy])
+    else:
+      lineCg(p, cpsStmts, "if (NIM_UNLIKELY(*nimErr_)) {$2; goto LA$1_;}$n",
         [p.nestedTryStmts[^1].label, destroy])
 
 proc finallyActions(p: BProc) =

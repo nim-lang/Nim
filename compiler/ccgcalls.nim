@@ -76,6 +76,17 @@ proc isHarmlessStore(p: BProc; canRaise: bool; d: TLoc): bool =
   else:
     result = false
 
+proc cleanupTemp(p: BProc; returnType: PType, tmp: TLoc): bool =
+  if hasDestructor(returnType) and getAttachedOp(p.module.g.graph, returnType, attachedDestructor) != nil:
+    let dtor = getAttachedOp(p.module.g.graph, returnType, attachedDestructor)
+    var op = initLocExpr(p, newSymNode(dtor))
+    var callee = rdLoc(op)
+    let destroy = callee & "(" & rdLoc(tmp) & ")"
+    raiseExitCleanup(p, destroy)
+    result = true
+  else:
+    result = false
+
 proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
                callee, params: Rope) =
   let canRaise = p.config.exc == excGoto and canRaiseDisp(p, ri[0])
@@ -128,36 +139,24 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
             if canRaise: raiseExit(p)
 
       elif isHarmlessStore(p, canRaise, d):
-        if d.k == locNone: d = getTemp(p, typ.returnType)
+        var useTemp = false
+        if d.k == locNone:
+          useTemp = true
+          d = getTemp(p, typ.returnType)
         assert(d.t != nil)        # generate an assignment to d:
         var list = initLoc(locCall, d.lode, OnUnknown)
         list.r = pl
         genAssignment(p, d, list, flags) # no need for deep copying
-        if canRaise: raiseExit(p)
+        if canRaise:
+          if not (useTemp and cleanupTemp(p, typ.returnType, d)):
+            raiseExit(p)
       else:
         var tmp: TLoc = getTemp(p, typ.returnType, needsInit=true)
         var list = initLoc(locCall, d.lode, OnUnknown)
         list.r = pl
         genAssignment(p, tmp, list, flags) # no need for deep copying
         if canRaise:
-          if hasDestructor(typ.returnType) and p.nestedTryStmts.len > 0 and p.nestedTryStmts[^1].fin != nil:
-            var needRaiseExit = true
-            var fin = p.nestedTryStmts[^1].fin
-            if fin.len == 1 and fin[0].kind in {nkStmtList, nkStmtListExpr}:
-              fin = fin[0]
-            for dtor in fin:
-              if dtor.kind == nkCall and dtor[0].kind == nkSym and
-                  dtor[0].sym.name.s == "=destroy" and
-                  sameType(dtor[1].typ, typ.returnType):
-                var op = initLocExpr(p, dtor[0])
-                var callee = rdLoc(op)
-                let destroy = callee & "(" & rdLoc(tmp) & ")"
-                raiseExitCleanup(p, destroy)
-                needRaiseExit = false
-                break
-            if needRaiseExit:
-              raiseExit(p)
-          else:
+          if not cleanupTemp(p, typ.returnType, tmp):
             raiseExit(p)
         genAssignment(p, d, tmp, {})
   else:
