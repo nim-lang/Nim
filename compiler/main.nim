@@ -151,7 +151,7 @@ proc commandCompileToC(graph: ModuleGraph) =
     extccomp.callCCompiler(conf)
     # for now we do not support writing out a .json file with the build instructions when HCR is on
     if not conf.hcrOn:
-      extccomp.writeJsonBuildInstructions(conf)
+      extccomp.writeJsonBuildInstructions(conf, graph.cachedFiles)
     if optGenScript in graph.config.globalOptions:
       writeDepsFile(graph)
     if optGenCDeps in graph.config.globalOptions:
