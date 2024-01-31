@@ -221,7 +221,7 @@ proc unpack*[T](self: Option[T], val: var T): bool {.inline.} =
   runnableExamples:
     var storage: int
 
-    if some(1337).get(storage):
+    if some(1337).unpack(storage):
       assert storage == 1337
 
   if not self.isSome:
