@@ -837,7 +837,7 @@ proc findSymInfoIndex*(s: var SuggestFileSymbolDatabase; li: TLineInfo): int =
   var q = InternalSymInfoPair(
     info: li
   )
-  var idx = binarySearch(s.items, q, cmp)
+  result = binarySearch(s.items, q, cmp)
 
 proc fileSymbols*(graph: ModuleGraph, fileIdx: FileIndex): SuggestFileSymbolDatabase =
   result = graph.suggestSymbols.getOrDefault(fileIdx, newSuggestFileSymbolDatabase())
