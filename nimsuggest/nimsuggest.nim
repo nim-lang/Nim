@@ -814,6 +814,7 @@ func deduplicateSymInfoPair(xs: SuggestFileSymbolDatabase): SuggestFileSymbolDat
     isDecl: newSeqOfCap[bool](xs.isDecl.len),
     caughtExceptions: newSeqOfCap[seq[PType]](xs.caughtExceptions.len),
     caughtExceptionsSet: newSeqOfCap[bool](xs.caughtExceptionsSet.len),
+    fileIndex: xs.fileIndex,
     isSorted: false
   )
   var i = xs.items.high
@@ -821,7 +822,7 @@ func deduplicateSymInfoPair(xs: SuggestFileSymbolDatabase): SuggestFileSymbolDat
     let itm = xs.items[i]
     var found = false
     for res in result.items:
-      if res.info.exactEquals(itm.info):
+      if res.exactEquals(itm):
         found = true
         break
     if not found:
@@ -832,15 +833,16 @@ func deduplicateSymInfoPair(xs: SuggestFileSymbolDatabase): SuggestFileSymbolDat
 proc findSymData(graph: ModuleGraph, trackPos: TLineInfo):
     ref SymInfoPair =
   let db = graph.fileSymbols(trackPos.fileIndex).deduplicateSymInfoPair
+  doAssert(db.fileIndex == trackPos.fileIndex)
   for i in db.items.low..db.items.high:
-    if isTracked(db.items[i].info, trackPos, db.sym[i].name.s.len):
+    if isTracked(db.items[i], InternalSymInfoPair(line: trackPos.line, col: trackPos.col), db.sym[i].name.s.len):
       var res = db.getSymInfoPair(i)
       new(result)
       result[] = res
       break
 
-func isInRange*(current, startPos, endPos: TLineInfo, tokenLen: int): bool =
-  result = current.fileIndex == startPos.fileIndex and
+func isInRange*(current, startPos, endPos: InternalSymInfoPair, tokenLen: int): bool =
+  result =
     (current.line > startPos.line or (current.line == startPos.line and current.col>=startPos.col)) and
     (current.line < endPos.line or (current.line == endPos.line and current.col <= endPos.col))
 
@@ -849,7 +851,7 @@ proc findSymDataInRange(graph: ModuleGraph, startPos, endPos: TLineInfo):
   result = newSeq[SymInfoPair]()
   let db = graph.fileSymbols(startPos.fileIndex).deduplicateSymInfoPair
   for i in db.items.low..db.items.high:
-    if isInRange(db.items[i].info, startPos, endPos, db.sym[i].name.s.len):
+    if isInRange(db.items[i], InternalSymInfoPair(line: startPos.line, col: startPos.col), InternalSymInfoPair(line: endPos.line, col: endPos.col), db.sym[i].name.s.len):
       result.add(db.getSymInfoPair(i))
 
 proc findSymData(graph: ModuleGraph, file: AbsoluteFile; line, col: int):
@@ -970,12 +972,14 @@ proc findDef(n: PNode, line: uint16, col: int16): PNode =
 
 proc findByTLineInfo(trackPos: TLineInfo, infoPairs: SuggestFileSymbolDatabase):
     ref SymInfoPair =
-  for i in infoPairs.items.low..infoPairs.items.high:
-    let s = infoPairs.getSymInfoPair(i)
-    if s.info.exactEquals trackPos:
-      new(result)
-      result[] = s
-      break
+  result = nil
+  if infoPairs.fileIndex == trackPos.fileIndex:
+    for i in infoPairs.items.low..infoPairs.items.high:
+      let s = infoPairs.getSymInfoPair(i)
+      if s.info.exactEquals trackPos:
+        new(result)
+        result[] = s
+        break
 
 proc outlineNode(graph: ModuleGraph, n: PNode, endInfo: TLineInfo, infoPairs: SuggestFileSymbolDatabase): bool =
   proc checkSymbol(sym: PSym, info: TLineInfo): bool =

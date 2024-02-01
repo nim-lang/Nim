@@ -558,6 +558,16 @@ proc isTracked*(current, trackPos: TLineInfo, tokenLen: int): bool =
   else:
     result = false
 
+proc isTracked*(current, trackPos: InternalSymInfoPair, tokenLen: int): bool =
+  if current.line==trackPos.line:
+    let col = trackPos.col
+    if col >= current.col and col <= current.col+tokenLen-1:
+      result = true
+    else:
+      result = false
+  else:
+    result = false
+
 when defined(nimsuggest):
   # Since TLineInfo defined a == operator that doesn't include the column,
   # we map TLineInfo to a unique int here for this lookup table:

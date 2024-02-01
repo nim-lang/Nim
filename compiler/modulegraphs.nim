@@ -56,7 +56,8 @@ type
     inst*: PInstantiation
 
   InternalSymInfoPair* = object
-    info*: TLineInfo
+    line*: uint16
+    col*: int16
 
   SymInfoPair* = object
     sym*: PSym
@@ -85,6 +86,7 @@ type
     caughtExceptions*: seq[seq[PType]]
     caughtExceptionsSet*: seq[bool]
     isDecl*: seq[bool]
+    fileIndex*: FileIndex
     isSorted*: bool
 
   SuggestSymbolDatabase* = Table[FileIndex, SuggestFileSymbolDatabase]
@@ -171,7 +173,11 @@ type
 proc getSymInfoPair*(s: SuggestFileSymbolDatabase; idx: int): SymInfoPair =
   SymInfoPair(
     sym: s.sym[idx],
-    info: s.items[idx].info,
+    info: TLineInfo(
+      line: s.items[idx].line,
+      col: s.items[idx].col,
+      fileIndex: s.fileIndex
+    ),
     caughtExceptions: s.caughtExceptions[idx],
     caughtExceptionsSet: s.caughtExceptionsSet[idx],
     isDecl: s.isDecl[idx]
@@ -524,15 +530,19 @@ proc initOperators*(g: ModuleGraph): Operators =
     opContains: createMagic(g, "contains", mInSet)
   )
 
-proc newSuggestFileSymbolDatabase*(): SuggestFileSymbolDatabase =
+proc newSuggestFileSymbolDatabase*(aFileIndex: FileIndex): SuggestFileSymbolDatabase =
   SuggestFileSymbolDatabase(
     items: @[],
     sym: @[],
     caughtExceptions: @[],
     caughtExceptionsSet: @[],
     isDecl: @[],
+    fileIndex: aFileIndex,
     isSorted: true
   )
+
+proc exactEquals*(a, b: InternalSymInfoPair): bool =
+  result = a.line == b.line and a.col == b.col
 
 proc initModuleGraphFields(result: ModuleGraph) =
   # A module ID of -1 means that the symbol is not attached to a module at all,
@@ -545,7 +555,7 @@ proc initModuleGraphFields(result: ModuleGraph) =
   result.importStack = @[]
   result.inclToMod = initTable[FileIndex, FileIndex]()
   result.owners = @[]
-  result.suggestSymbols = initTable[FileIndex, newSuggestFileSymbolDatabase()]()
+  result.suggestSymbols = initTable[FileIndex, SuggestFileSymbolDatabase]()
   result.suggestErrors = initTable[FileIndex, seq[Suggest]]()
   result.methods = @[]
   result.compilerprocs = initStrTable()
@@ -754,11 +764,9 @@ proc `==`*(a, b: SymInfoPair): bool =
   result = a.sym == b.sym and a.info.exactEquals(b.info)
 
 func cmp*(a: InternalSymInfoPair; b: InternalSymInfoPair): int =
-  result = cmp(int32(a.info.fileIndex), int32(b.info.fileIndex))
+  result = cmp(a.line, b.line)
   if result == 0:
-    result = cmp(a.info.line, b.info.line)
-  if result == 0:
-    result = cmp(a.info.col, b.info.col)
+    result = cmp(a.col, b.col)
 
 func compare*(s: var SuggestFileSymbolDatabase; i, j: int): int =
   result = cmp(s.items[i], s.items[j])
@@ -832,8 +840,10 @@ proc sort*(s: var SuggestFileSymbolDatabase) =
   s.isSorted = true
 
 proc add*(s: var SuggestFileSymbolDatabase; v: SymInfoPair) =
+  doAssert(v.info.fileIndex == s.fileIndex)
   s.items.add(InternalSymInfoPair(
-    info: v.info
+    line: v.info.line,
+    col: v.info.col
   ))
   s.sym.add(v.sym)
   s.isDecl.add(v.isDecl)
@@ -842,18 +852,21 @@ proc add*(s: var SuggestFileSymbolDatabase; v: SymInfoPair) =
   s.isSorted = false
 
 proc add*(s: var SuggestSymbolDatabase; v: SymInfoPair) =
-  s.mgetOrPut(v.info.fileIndex, newSuggestFileSymbolDatabase()).add(v)
+  s.mgetOrPut(v.info.fileIndex, newSuggestFileSymbolDatabase(v.info.fileIndex)).add(v)
 
 proc findSymInfoIndex*(s: var SuggestFileSymbolDatabase; li: TLineInfo): int =
+  doAssert(li.fileIndex == s.fileIndex)
   if not s.isSorted:
     s.sort()
   var q = InternalSymInfoPair(
-    info: li
+    line: li.line,
+    col: li.col
   )
   result = binarySearch(s.items, q, cmp)
 
 proc fileSymbols*(graph: ModuleGraph, fileIdx: FileIndex): SuggestFileSymbolDatabase =
-  result = graph.suggestSymbols.getOrDefault(fileIdx, newSuggestFileSymbolDatabase())
+  result = graph.suggestSymbols.getOrDefault(fileIdx, newSuggestFileSymbolDatabase(fileIdx))
+  doAssert(result.fileIndex == fileIdx)
 
 iterator suggestSymbolsIter*(g: ModuleGraph): SymInfoPair =
   for xs in g.suggestSymbols.values:
