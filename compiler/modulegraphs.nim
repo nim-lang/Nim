@@ -55,6 +55,12 @@ type
     concreteTypes*: seq[FullId]
     inst*: PInstantiation
 
+  InternalSymInfoPair* = object
+    sym*: PSym
+    info*: TLineInfo
+    isDecl*: bool
+    caughtExceptionsSet*: bool
+
   SymInfoPair* = object
     sym*: PSym
     info*: TLineInfo
@@ -77,7 +83,8 @@ type
     Docgen2Pass
 
   SuggestFileSymbolDatabase* = object
-    items*: seq[SymInfoPair]
+    items*: seq[InternalSymInfoPair]
+    caughtExceptions*: seq[seq[PType]]
     isSorted*: bool
 
   SuggestSymbolDatabase* = Table[FileIndex, SuggestFileSymbolDatabase]
@@ -160,6 +167,15 @@ type
                  process: TPassProcess,
                  close: TPassClose,
                  isFrontend: bool]
+
+proc getSymInfoPair*(s: SuggestFileSymbolDatabase; idx: int): SymInfoPair =
+  SymInfoPair(
+    sym: s.items[idx].sym,
+    info: s.items[idx].info,
+    caughtExceptions: s.caughtExceptions[idx],
+    caughtExceptionsSet: s.items[idx].caughtExceptionsSet,
+    isDecl: s.items[idx].isDecl
+  )
 
 proc resetForBackend*(g: ModuleGraph) =
   g.compilerprocs = initStrTable()
@@ -504,6 +520,7 @@ proc initOperators*(g: ModuleGraph): Operators =
 proc newSuggestFileSymbolDatabase*(): SuggestFileSymbolDatabase =
   SuggestFileSymbolDatabase(
     items: @[],
+    caughtExceptions: @[],
     isSorted: true
   )
 
@@ -726,7 +743,7 @@ func belongsToStdlib*(graph: ModuleGraph, sym: PSym): bool =
 proc `==`*(a, b: SymInfoPair): bool =
   result = a.sym == b.sym and a.info.exactEquals(b.info)
 
-func cmp*(a: SymInfoPair; b: SymInfoPair): int =
+func cmp*(a: InternalSymInfoPair; b: InternalSymInfoPair): int =
   result = cmp(int32(a.info.fileIndex), int32(b.info.fileIndex))
   if result == 0:
     result = cmp(a.info.line, b.info.line)
@@ -734,36 +751,91 @@ func cmp*(a: SymInfoPair; b: SymInfoPair): int =
     result = cmp(a.info.col, b.info.col)
   if result == 0:
     result = cmp(a.isDecl, b.isDecl)
+
+proc exchange(s: var SuggestFileSymbolDatabase; i, j: int) =
+  if i == j:
+    return
+  var tmp1 = s.items[i]
+  s.items[i] = s.items[j]
+  s.items[j] = tmp1
+  if s.caughtExceptions.len > 0:
+    var tmp2 = s.caughtExceptions[i]
+    s.caughtExceptions[i] = s.caughtExceptions[j]
+    s.caughtExceptions[j] = tmp2
+
+proc quickSort(s: var SuggestFileSymbolDatabase; ll, rr: int) =
+  var
+    i, j, pivotIdx: int
+    l = ll
+    r = rr
+  while true:
+    i = l
+    j = r
+    pivotIdx = l + ((r - l) shr 1)
+    while true:
+      while (i < pivotIdx) and (cmp(s.items[pivotIdx], s.items[i]) > 0):
+        inc i
+      while (j > pivotIdx) and (cmp(s.items[pivotIdx], s.items[j]) < 0):
+        dec j
+      if i < j:
+        s.exchange(i, j)
+        if pivotIdx == i:
+          pivotIdx = j
+          inc i
+        elif pivotIdx == j:
+          pivotIdx = i
+          dec j
+        else:
+          inc i
+          dec j
+      else:
+        break
+    if (pivotIdx - l) < (r - pivotIdx):
+      if (l + 1) < pivotIdx:
+        s.quickSort(l, pivotIdx - 1)
+      l = pivotIdx + 1
+    else:
+      if (pivotIdx + 1) < r:
+        s.quickSort(pivotIdx + 1, r)
+      if (l + 1) < pivotIdx:
+        r = pivotIdx - 1
+      else:
+        break
+    if l >= r:
+      break
+
 proc sort*(s: var SuggestFileSymbolDatabase) =
-  s.items.sort(cmp)
+  s.quickSort(s.items.low, s.items.high)
   s.isSorted = true
 
 proc add*(s: var SuggestFileSymbolDatabase; v: SymInfoPair) =
-  s.items.add(v)
+  s.items.add(InternalSymInfoPair(
+    sym: v.sym,
+    info: v.info,
+    isDecl: v.isDecl,
+    caughtExceptionsSet: v.caughtExceptionsSet
+  ))
+  s.caughtExceptions.add(v.caughtExceptions)
   s.isSorted = false
 
 proc add*(s: var SuggestSymbolDatabase; v: SymInfoPair) =
   s.mgetOrPut(v.info.fileIndex, newSuggestFileSymbolDatabase()).add(v)
 
-proc findSymInfo*(s: var SuggestFileSymbolDatabase; li: TLineInfo): ptr SymInfoPair =
+proc findSymInfoIndex*(s: var SuggestFileSymbolDatabase; li: TLineInfo): int =
   if not s.isSorted:
     s.sort()
-  var q = SymInfoPair(
+  var q = InternalSymInfoPair(
     info: li
   )
   var idx = binarySearch(s.items, q, cmp)
-  if idx != -1:
-    result = addr s.items[idx]
-  else:
-    result = nil
 
-proc fileSymbols*(graph: ModuleGraph, fileIdx: FileIndex): seq[SymInfoPair] =
-  result = graph.suggestSymbols.getOrDefault(fileIdx, newSuggestFileSymbolDatabase()).items
+proc fileSymbols*(graph: ModuleGraph, fileIdx: FileIndex): SuggestFileSymbolDatabase =
+  result = graph.suggestSymbols.getOrDefault(fileIdx, newSuggestFileSymbolDatabase())
 
 iterator suggestSymbolsIter*(g: ModuleGraph): SymInfoPair =
   for xs in g.suggestSymbols.values:
-    for x in xs.items:
-      yield x
+    for i in xs.items.low..xs.items.high:
+      yield xs.getSymInfoPair(i)
 
 iterator suggestErrorsIter*(g: ModuleGraph): Suggest =
   for xs in g.suggestErrors.values:

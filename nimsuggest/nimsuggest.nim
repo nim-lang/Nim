@@ -803,12 +803,39 @@ func deduplicateSymInfoPair[SymInfoPair](xs: seq[SymInfoPair]): seq[SymInfoPair]
       result.add(itm)
   result.reverse()
 
+func deduplicateSymInfoPair(xs: SuggestFileSymbolDatabase): SuggestFileSymbolDatabase =
+  # xs contains duplicate items and we want to filter them by range because the
+  # sym may not match. This can happen when xs contains the same definition but
+  # with different signature because suggestSym might be called multiple times
+  # for the same symbol (e. g. including/excluding the pragma)
+  result = SuggestFileSymbolDatabase(
+    items: newSeqOfCap[InternalSymInfoPair](xs.items.len),
+    caughtExceptions: newSeqOfCap[seq[PType]](xs.caughtExceptions.len),
+    isSorted: false
+  )
+  var i = xs.items.high
+  while i > 0:
+    let itm = xs.items[i]
+    var found = false
+    for res in result.items:
+      if res.info.exactEquals(itm.info):
+        found = true
+        break
+    if not found:
+      result.items.add(itm)
+      result.caughtExceptions.add(xs.caughtExceptions[i])
+    dec i
+  result.items.reverse()
+  result.caughtExceptions.reverse()
+
 proc findSymData(graph: ModuleGraph, trackPos: TLineInfo):
     ref SymInfoPair =
-  for s in graph.fileSymbols(trackPos.fileIndex).deduplicateSymInfoPair:
-    if isTracked(s.info, trackPos, s.sym.name.s.len):
+  let db = graph.fileSymbols(trackPos.fileIndex).deduplicateSymInfoPair
+  for i in db.items.low..db.items.high:
+    if isTracked(db.items[i].info, trackPos, db.items[i].sym.name.s.len):
+      var res = db.getSymInfoPair(i)
       new(result)
-      result[] = s
+      result[] = res
       break
 
 func isInRange*(current, startPos, endPos: TLineInfo, tokenLen: int): bool =
@@ -819,9 +846,10 @@ func isInRange*(current, startPos, endPos: TLineInfo, tokenLen: int): bool =
 proc findSymDataInRange(graph: ModuleGraph, startPos, endPos: TLineInfo):
     seq[SymInfoPair] =
   result = newSeq[SymInfoPair]()
-  for s in graph.fileSymbols(startPos.fileIndex).deduplicateSymInfoPair:
-    if isInRange(s.info, startPos, endPos, s.sym.name.s.len):
-      result.add(s)
+  let db = graph.fileSymbols(startPos.fileIndex).deduplicateSymInfoPair
+  for i in db.items.low..db.items.high:
+    if isInRange(db.items[i].info, startPos, endPos, db.items[i].sym.name.s.len):
+      result.add(db.getSymInfoPair(i))
 
 proc findSymData(graph: ModuleGraph, file: AbsoluteFile; line, col: int):
     ref SymInfoPair =
@@ -939,15 +967,16 @@ proc findDef(n: PNode, line: uint16, col: int16): PNode =
       let res = findDef(n[i], line, col)
       if res != nil: return res
 
-proc findByTLineInfo(trackPos: TLineInfo, infoPairs: seq[SymInfoPair]):
+proc findByTLineInfo(trackPos: TLineInfo, infoPairs: SuggestFileSymbolDatabase):
     ref SymInfoPair =
-  for s in infoPairs:
+  for i in infoPairs.items.low..infoPairs.items.high:
+    let s = infoPairs.getSymInfoPair(i)
     if s.info.exactEquals trackPos:
       new(result)
       result[] = s
       break
 
-proc outlineNode(graph: ModuleGraph, n: PNode, endInfo: TLineInfo, infoPairs: seq[SymInfoPair]): bool =
+proc outlineNode(graph: ModuleGraph, n: PNode, endInfo: TLineInfo, infoPairs: SuggestFileSymbolDatabase): bool =
   proc checkSymbol(sym: PSym, info: TLineInfo): bool =
     result = (sym.owner.kind in {skModule, skType} or sym.kind in {skProc, skMethod, skIterator, skTemplate, skType})
 
@@ -961,7 +990,7 @@ proc outlineNode(graph: ModuleGraph, n: PNode, endInfo: TLineInfo, infoPairs: se
        graph.suggestResult(sym, sym.info, ideOutline, endInfo.line, endInfo.col)
        return true
 
-proc handleIdentOrSym(graph: ModuleGraph, n: PNode, endInfo: TLineInfo, infoPairs: seq[SymInfoPair]): bool =
+proc handleIdentOrSym(graph: ModuleGraph, n: PNode, endInfo: TLineInfo, infoPairs: SuggestFileSymbolDatabase): bool =
   for child in n:
     if child.kind in {nkIdent, nkSym}:
       if graph.outlineNode(child, endInfo, infoPairs):
@@ -970,7 +999,7 @@ proc handleIdentOrSym(graph: ModuleGraph, n: PNode, endInfo: TLineInfo, infoPair
       if graph.handleIdentOrSym(child, endInfo, infoPairs):
         return true
 
-proc iterateOutlineNodes(graph: ModuleGraph, n: PNode, infoPairs: seq[SymInfoPair]) =
+proc iterateOutlineNodes(graph: ModuleGraph, n: PNode, infoPairs: SuggestFileSymbolDatabase) =
   var matched = true
   if n.kind == nkIdent:
     let symData = findByTLineInfo(n.info, infoPairs)
@@ -1075,7 +1104,11 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
   of ideHighlight:
     let sym = graph.findSymData(file, line, col)
     if not sym.isNil:
-      let usages = graph.fileSymbols(fileIndex).filterIt(it.sym == sym.sym)
+      let fs = graph.fileSymbols(fileIndex)
+      var usages: seq[SymInfoPair] = @[]
+      for i in fs.items.low..fs.items.high:
+        if fs.items[i].sym == sym.sym:
+          usages.add(fs.getSymInfoPair(i))
       myLog fmt "Found {usages.len} usages in {file.string}"
       for s in usages:
         graph.suggestResult(s.sym, s.info)
@@ -1144,9 +1177,10 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
       # find first mention of the symbol in the file containing the definition.
       # It is either the definition or the declaration.
       var first: SymInfoPair
-      for symbol in graph.fileSymbols(s.sym.info.fileIndex).deduplicateSymInfoPair:
-        if s.sym.symbolEqual(symbol.sym):
-          first = symbol
+      let db = graph.fileSymbols(s.sym.info.fileIndex).deduplicateSymInfoPair
+      for i in db.items.low..db.items.high:
+        if s.sym.symbolEqual(db.items[i].sym):
+          first = db.getSymInfoPair(i)
           break
 
       if s.info.exactEquals(first.info):
