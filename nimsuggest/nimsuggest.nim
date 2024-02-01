@@ -811,6 +811,7 @@ func deduplicateSymInfoPair(xs: SuggestFileSymbolDatabase): SuggestFileSymbolDat
   result = SuggestFileSymbolDatabase(
     items: newSeqOfCap[InternalSymInfoPair](xs.items.len),
     caughtExceptions: newSeqOfCap[seq[PType]](xs.caughtExceptions.len),
+    caughtExceptionsSet: newSeqOfCap[bool](xs.caughtExceptionsSet.len),
     isSorted: false
   )
   var i = xs.items.high
@@ -822,11 +823,9 @@ func deduplicateSymInfoPair(xs: SuggestFileSymbolDatabase): SuggestFileSymbolDat
         found = true
         break
     if not found:
-      result.items.add(itm)
-      result.caughtExceptions.add(xs.caughtExceptions[i])
+      result.add(xs.getSymInfoPair(i))
     dec i
-  result.items.reverse()
-  result.caughtExceptions.reverse()
+  result.reverse()
 
 proc findSymData(graph: ModuleGraph, trackPos: TLineInfo):
     ref SymInfoPair =

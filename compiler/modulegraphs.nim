@@ -59,7 +59,6 @@ type
     sym*: PSym
     info*: TLineInfo
     isDecl*: bool
-    caughtExceptionsSet*: bool
 
   SymInfoPair* = object
     sym*: PSym
@@ -85,6 +84,7 @@ type
   SuggestFileSymbolDatabase* = object
     items*: seq[InternalSymInfoPair]
     caughtExceptions*: seq[seq[PType]]
+    caughtExceptionsSet*: seq[bool]
     isSorted*: bool
 
   SuggestSymbolDatabase* = Table[FileIndex, SuggestFileSymbolDatabase]
@@ -173,9 +173,14 @@ proc getSymInfoPair*(s: SuggestFileSymbolDatabase; idx: int): SymInfoPair =
     sym: s.items[idx].sym,
     info: s.items[idx].info,
     caughtExceptions: s.caughtExceptions[idx],
-    caughtExceptionsSet: s.items[idx].caughtExceptionsSet,
+    caughtExceptionsSet: s.caughtExceptionsSet[idx],
     isDecl: s.items[idx].isDecl
   )
+
+proc reverse*(s: var SuggestFileSymbolDatabase) =
+  s.items.reverse()
+  s.caughtExceptions.reverse()
+  s.caughtExceptionsSet.reverse()
 
 proc resetForBackend*(g: ModuleGraph) =
   g.compilerprocs = initStrTable()
@@ -521,6 +526,7 @@ proc newSuggestFileSymbolDatabase*(): SuggestFileSymbolDatabase =
   SuggestFileSymbolDatabase(
     items: @[],
     caughtExceptions: @[],
+    caughtExceptionsSet: @[],
     isSorted: true
   )
 
@@ -762,6 +768,10 @@ proc exchange(s: var SuggestFileSymbolDatabase; i, j: int) =
     var tmp2 = s.caughtExceptions[i]
     s.caughtExceptions[i] = s.caughtExceptions[j]
     s.caughtExceptions[j] = tmp2
+  if s.caughtExceptionsSet.len > 0:
+    var tmp3 = s.caughtExceptionsSet[i]
+    s.caughtExceptionsSet[i] = s.caughtExceptionsSet[j]
+    s.caughtExceptionsSet[j] = tmp3
 
 proc quickSort(s: var SuggestFileSymbolDatabase; ll, rr: int) =
   var
@@ -812,10 +822,10 @@ proc add*(s: var SuggestFileSymbolDatabase; v: SymInfoPair) =
   s.items.add(InternalSymInfoPair(
     sym: v.sym,
     info: v.info,
-    isDecl: v.isDecl,
-    caughtExceptionsSet: v.caughtExceptionsSet
+    isDecl: v.isDecl
   ))
   s.caughtExceptions.add(v.caughtExceptions)
+  s.caughtExceptionsSet.add(v.caughtExceptionsSet)
   s.isSorted = false
 
 proc add*(s: var SuggestSymbolDatabase; v: SymInfoPair) =

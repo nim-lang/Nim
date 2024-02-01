@@ -959,7 +959,7 @@ proc markCaughtExceptions(tracked: PEffects; g: ModuleGraph; info: TLineInfo; s:
     proc internalMarkCaughtExceptions(tracked: PEffects; q: var SuggestFileSymbolDatabase; info: TLineInfo) =
       var si = q.findSymInfoIndex(info)
       if si != -1:
-        #q.items[si].caughtExceptionsSet = true
+        q.caughtExceptionsSet[si] = true
         for w1 in tracked.caughtExceptions.nodes:
           for w2 in w1:
             q.caughtExceptions[si].add(w2)
