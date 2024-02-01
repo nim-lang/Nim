@@ -810,6 +810,7 @@ func deduplicateSymInfoPair(xs: SuggestFileSymbolDatabase): SuggestFileSymbolDat
   # for the same symbol (e. g. including/excluding the pragma)
   result = SuggestFileSymbolDatabase(
     items: newSeqOfCap[InternalSymInfoPair](xs.items.len),
+    isDecl: newSeqOfCap[bool](xs.isDecl.len),
     caughtExceptions: newSeqOfCap[seq[PType]](xs.caughtExceptions.len),
     caughtExceptionsSet: newSeqOfCap[bool](xs.caughtExceptionsSet.len),
     isSorted: false

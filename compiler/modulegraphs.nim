@@ -58,7 +58,6 @@ type
   InternalSymInfoPair* = object
     sym*: PSym
     info*: TLineInfo
-    isDecl*: bool
 
   SymInfoPair* = object
     sym*: PSym
@@ -85,6 +84,7 @@ type
     items*: seq[InternalSymInfoPair]
     caughtExceptions*: seq[seq[PType]]
     caughtExceptionsSet*: seq[bool]
+    isDecl*: seq[bool]
     isSorted*: bool
 
   SuggestSymbolDatabase* = Table[FileIndex, SuggestFileSymbolDatabase]
@@ -174,13 +174,14 @@ proc getSymInfoPair*(s: SuggestFileSymbolDatabase; idx: int): SymInfoPair =
     info: s.items[idx].info,
     caughtExceptions: s.caughtExceptions[idx],
     caughtExceptionsSet: s.caughtExceptionsSet[idx],
-    isDecl: s.items[idx].isDecl
+    isDecl: s.isDecl[idx]
   )
 
 proc reverse*(s: var SuggestFileSymbolDatabase) =
   s.items.reverse()
   s.caughtExceptions.reverse()
   s.caughtExceptionsSet.reverse()
+  s.isDecl.reverse()
 
 proc resetForBackend*(g: ModuleGraph) =
   g.compilerprocs = initStrTable()
@@ -527,6 +528,7 @@ proc newSuggestFileSymbolDatabase*(): SuggestFileSymbolDatabase =
     items: @[],
     caughtExceptions: @[],
     caughtExceptionsSet: @[],
+    isDecl: @[],
     isSorted: true
   )
 
@@ -755,8 +757,11 @@ func cmp*(a: InternalSymInfoPair; b: InternalSymInfoPair): int =
     result = cmp(a.info.line, b.info.line)
   if result == 0:
     result = cmp(a.info.col, b.info.col)
+
+func compare*(s: var SuggestFileSymbolDatabase; i, j: int): int =
+  result = cmp(s.items[i], s.items[j])
   if result == 0:
-    result = cmp(a.isDecl, b.isDecl)
+    result = cmp(s.isDecl[i], s.isDecl[j])
 
 proc exchange(s: var SuggestFileSymbolDatabase; i, j: int) =
   if i == j:
@@ -772,6 +777,9 @@ proc exchange(s: var SuggestFileSymbolDatabase; i, j: int) =
     var tmp3 = s.caughtExceptionsSet[i]
     s.caughtExceptionsSet[i] = s.caughtExceptionsSet[j]
     s.caughtExceptionsSet[j] = tmp3
+  var tmp4 = s.isDecl[i]
+  s.isDecl[i] = s.isDecl[j]
+  s.isDecl[j] = tmp4
 
 proc quickSort(s: var SuggestFileSymbolDatabase; ll, rr: int) =
   var
@@ -783,9 +791,9 @@ proc quickSort(s: var SuggestFileSymbolDatabase; ll, rr: int) =
     j = r
     pivotIdx = l + ((r - l) shr 1)
     while true:
-      while (i < pivotIdx) and (cmp(s.items[pivotIdx], s.items[i]) > 0):
+      while (i < pivotIdx) and (s.compare(pivotIdx, i) > 0):
         inc i
-      while (j > pivotIdx) and (cmp(s.items[pivotIdx], s.items[j]) < 0):
+      while (j > pivotIdx) and (s.compare(pivotIdx, j) < 0):
         dec j
       if i < j:
         s.exchange(i, j)
@@ -821,9 +829,9 @@ proc sort*(s: var SuggestFileSymbolDatabase) =
 proc add*(s: var SuggestFileSymbolDatabase; v: SymInfoPair) =
   s.items.add(InternalSymInfoPair(
     sym: v.sym,
-    info: v.info,
-    isDecl: v.isDecl
+    info: v.info
   ))
+  s.isDecl.add(v.isDecl)
   s.caughtExceptions.add(v.caughtExceptions)
   s.caughtExceptionsSet.add(v.caughtExceptionsSet)
   s.isSorted = false
