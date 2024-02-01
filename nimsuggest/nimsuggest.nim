@@ -810,6 +810,7 @@ func deduplicateSymInfoPair(xs: SuggestFileSymbolDatabase): SuggestFileSymbolDat
   # for the same symbol (e. g. including/excluding the pragma)
   result = SuggestFileSymbolDatabase(
     items: newSeqOfCap[InternalSymInfoPair](xs.items.len),
+    sym: newSeqOfCap[PSym](xs.sym.len),
     isDecl: newSeqOfCap[bool](xs.isDecl.len),
     caughtExceptions: newSeqOfCap[seq[PType]](xs.caughtExceptions.len),
     caughtExceptionsSet: newSeqOfCap[bool](xs.caughtExceptionsSet.len),
@@ -832,7 +833,7 @@ proc findSymData(graph: ModuleGraph, trackPos: TLineInfo):
     ref SymInfoPair =
   let db = graph.fileSymbols(trackPos.fileIndex).deduplicateSymInfoPair
   for i in db.items.low..db.items.high:
-    if isTracked(db.items[i].info, trackPos, db.items[i].sym.name.s.len):
+    if isTracked(db.items[i].info, trackPos, db.sym[i].name.s.len):
       var res = db.getSymInfoPair(i)
       new(result)
       result[] = res
@@ -848,7 +849,7 @@ proc findSymDataInRange(graph: ModuleGraph, startPos, endPos: TLineInfo):
   result = newSeq[SymInfoPair]()
   let db = graph.fileSymbols(startPos.fileIndex).deduplicateSymInfoPair
   for i in db.items.low..db.items.high:
-    if isInRange(db.items[i].info, startPos, endPos, db.items[i].sym.name.s.len):
+    if isInRange(db.items[i].info, startPos, endPos, db.sym[i].name.s.len):
       result.add(db.getSymInfoPair(i))
 
 proc findSymData(graph: ModuleGraph, file: AbsoluteFile; line, col: int):
@@ -1107,7 +1108,7 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
       let fs = graph.fileSymbols(fileIndex)
       var usages: seq[SymInfoPair] = @[]
       for i in fs.items.low..fs.items.high:
-        if fs.items[i].sym == sym.sym:
+        if fs.sym[i] == sym.sym:
           usages.add(fs.getSymInfoPair(i))
       myLog fmt "Found {usages.len} usages in {file.string}"
       for s in usages:
@@ -1179,7 +1180,7 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
       var first: SymInfoPair
       let db = graph.fileSymbols(s.sym.info.fileIndex).deduplicateSymInfoPair
       for i in db.items.low..db.items.high:
-        if s.sym.symbolEqual(db.items[i].sym):
+        if s.sym.symbolEqual(db.sym[i]):
           first = db.getSymInfoPair(i)
           break
 

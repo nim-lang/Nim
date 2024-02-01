@@ -56,7 +56,6 @@ type
     inst*: PInstantiation
 
   InternalSymInfoPair* = object
-    sym*: PSym
     info*: TLineInfo
 
   SymInfoPair* = object
@@ -82,6 +81,7 @@ type
 
   SuggestFileSymbolDatabase* = object
     items*: seq[InternalSymInfoPair]
+    sym*: seq[PSym]
     caughtExceptions*: seq[seq[PType]]
     caughtExceptionsSet*: seq[bool]
     isDecl*: seq[bool]
@@ -170,7 +170,7 @@ type
 
 proc getSymInfoPair*(s: SuggestFileSymbolDatabase; idx: int): SymInfoPair =
   SymInfoPair(
-    sym: s.items[idx].sym,
+    sym: s.sym[idx],
     info: s.items[idx].info,
     caughtExceptions: s.caughtExceptions[idx],
     caughtExceptionsSet: s.caughtExceptionsSet[idx],
@@ -179,6 +179,7 @@ proc getSymInfoPair*(s: SuggestFileSymbolDatabase; idx: int): SymInfoPair =
 
 proc reverse*(s: var SuggestFileSymbolDatabase) =
   s.items.reverse()
+  s.sym.reverse()
   s.caughtExceptions.reverse()
   s.caughtExceptionsSet.reverse()
   s.isDecl.reverse()
@@ -526,6 +527,7 @@ proc initOperators*(g: ModuleGraph): Operators =
 proc newSuggestFileSymbolDatabase*(): SuggestFileSymbolDatabase =
   SuggestFileSymbolDatabase(
     items: @[],
+    sym: @[],
     caughtExceptions: @[],
     caughtExceptionsSet: @[],
     isDecl: @[],
@@ -780,6 +782,9 @@ proc exchange(s: var SuggestFileSymbolDatabase; i, j: int) =
   var tmp4 = s.isDecl[i]
   s.isDecl[i] = s.isDecl[j]
   s.isDecl[j] = tmp4
+  var tmp5 = s.sym[i]
+  s.sym[i] = s.sym[j]
+  s.sym[j] = tmp5
 
 proc quickSort(s: var SuggestFileSymbolDatabase; ll, rr: int) =
   var
@@ -828,9 +833,9 @@ proc sort*(s: var SuggestFileSymbolDatabase) =
 
 proc add*(s: var SuggestFileSymbolDatabase; v: SymInfoPair) =
   s.items.add(InternalSymInfoPair(
-    sym: v.sym,
     info: v.info
   ))
+  s.sym.add(v.sym)
   s.isDecl.add(v.isDecl)
   s.caughtExceptions.add(v.caughtExceptions)
   s.caughtExceptionsSet.add(v.caughtExceptionsSet)
