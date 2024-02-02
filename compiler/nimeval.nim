@@ -11,8 +11,8 @@
 import
   ast, modules, condsyms,
   options, llstream, lineinfos, vm,
-  vmdef, modulegraphs, idents, os, pathutils,
-  scriptconfig, std/[compilesettings, tables]
+  vmdef, modulegraphs, idents, pathutils,
+  scriptconfig, std/[compilesettings, tables, os]
 
 import pipelines
 
