@@ -77,12 +77,15 @@ proc isHarmlessStore(p: BProc; canRaise: bool; d: TLoc): bool =
     result = false
 
 proc cleanupTemp(p: BProc; returnType: PType, tmp: TLoc): bool =
-  if hasDestructor(returnType) and getAttachedOp(p.module.g.graph, returnType, attachedDestructor) != nil:
+  if returnType.kind in {tyVar, tyLent}:
+    # we don't need to worry about var/lent return types
+    result = false
+  elif hasDestructor(returnType) and getAttachedOp(p.module.g.graph, returnType, attachedDestructor) != nil:
     let dtor = getAttachedOp(p.module.g.graph, returnType, attachedDestructor)
     var op = initLocExpr(p, newSymNode(dtor))
     var callee = rdLoc(op)
     let destroy = if dtor.typ.firstParamType.kind == tyVar:
-        callee & "( &" & rdLoc(tmp) & ")" # TODO:
+        callee & "(&" & rdLoc(tmp) & ")"
       else:
         callee & "(" & rdLoc(tmp) & ")"
     raiseExitCleanup(p, destroy)
