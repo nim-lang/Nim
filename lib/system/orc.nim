@@ -81,10 +81,14 @@ proc trace(s: Cell; desc: PNimTypeV2; j: var GcEnv) {.inline.} =
 
 include threadids
 
-when logOrc:
+when logOrc or orcLeakDetector:
   proc writeCell(msg: cstring; s: Cell; desc: PNimTypeV2) =
-    cfprintf(cstderr, "%s %s %ld root index: %ld; RC: %ld; color: %ld; thread: %ld\n",
-      msg, desc.name, s.refId, s.rootIdx, s.rc shr rcShift, s.color, getThreadId())
+    when orcLeakDetector:
+      cfprintf(cstderr, "%s %s file: %s:%ld; color: %ld; thread: %ld\n",
+        msg, desc.name, s.filename, s.line, s.color, getThreadId())
+    else:
+      cfprintf(cstderr, "%s %s %ld root index: %ld; RC: %ld; color: %ld; thread: %ld\n",
+        msg, desc.name, s.refId, s.rootIdx, s.rc shr rcShift, s.color, getThreadId())
 
 proc free(s: Cell; desc: PNimTypeV2) {.inline.} =
   when traceCollector:
@@ -338,6 +342,8 @@ proc collectCyclesBacon(j: var GcEnv; lowMark: int) =
     collectColor(s, roots.d[i][1], colToCollect, j)
 
   for i in 0 ..< j.toFree.len:
+    when orcLeakDetector:
+      writeCell("CYCLIC OBJECT FREED", j.toFree.d[i][0], j.toFree.d[i][1])
     free(j.toFree.d[i][0], j.toFree.d[i][1])
 
   inc j.freed, j.toFree.len
