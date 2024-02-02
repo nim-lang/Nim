@@ -703,7 +703,7 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string; conf: ConfigRef) =
           quit 0
         else:
           processSwitch(pass, p, conf)
-      of "exceptionInlayHints":
+      of "exceptioninlayhints":
         case p.val.normalize
         of "", "on": incl(conf.globalOptions, optIdeExceptionInlayHints)
         of "off": excl(conf.globalOptions, optIdeExceptionInlayHints)
