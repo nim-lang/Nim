@@ -81,7 +81,7 @@ type
     Docgen2Pass
 
   SuggestFileSymbolDatabase* = object
-    items*: seq[TinyLineInfo]
+    lineInfo*: seq[TinyLineInfo]
     sym*: seq[PSym]
     caughtExceptions*: seq[seq[PType]]
     caughtExceptionsSet*: seq[bool]
@@ -174,8 +174,8 @@ proc getSymInfoPair*(s: SuggestFileSymbolDatabase; idx: int): SymInfoPair =
   SymInfoPair(
     sym: s.sym[idx],
     info: TLineInfo(
-      line: s.items[idx].line,
-      col: s.items[idx].col,
+      line: s.lineInfo[idx].line,
+      col: s.lineInfo[idx].col,
       fileIndex: s.fileIndex
     ),
     caughtExceptions: s.caughtExceptions[idx],
@@ -184,7 +184,7 @@ proc getSymInfoPair*(s: SuggestFileSymbolDatabase; idx: int): SymInfoPair =
   )
 
 proc reverse*(s: var SuggestFileSymbolDatabase) =
-  s.items.reverse()
+  s.lineInfo.reverse()
   s.sym.reverse()
   s.caughtExceptions.reverse()
   s.caughtExceptionsSet.reverse()
@@ -532,7 +532,7 @@ proc initOperators*(g: ModuleGraph): Operators =
 
 proc newSuggestFileSymbolDatabase*(aFileIndex: FileIndex): SuggestFileSymbolDatabase =
   SuggestFileSymbolDatabase(
-    items: @[],
+    lineInfo: @[],
     sym: @[],
     caughtExceptions: @[],
     caughtExceptionsSet: @[],
@@ -769,16 +769,16 @@ func cmp*(a: TinyLineInfo; b: TinyLineInfo): int =
     result = cmp(a.col, b.col)
 
 func compare*(s: var SuggestFileSymbolDatabase; i, j: int): int =
-  result = cmp(s.items[i], s.items[j])
+  result = cmp(s.lineInfo[i], s.lineInfo[j])
   if result == 0:
     result = cmp(s.isDecl[i], s.isDecl[j])
 
 proc exchange(s: var SuggestFileSymbolDatabase; i, j: int) =
   if i == j:
     return
-  var tmp1 = s.items[i]
-  s.items[i] = s.items[j]
-  s.items[j] = tmp1
+  var tmp1 = s.lineInfo[i]
+  s.lineInfo[i] = s.lineInfo[j]
+  s.lineInfo[j] = tmp1
   if s.caughtExceptions.len > 0:
     var tmp2 = s.caughtExceptions[i]
     s.caughtExceptions[i] = s.caughtExceptions[j]
@@ -836,12 +836,12 @@ proc quickSort(s: var SuggestFileSymbolDatabase; ll, rr: int) =
       break
 
 proc sort*(s: var SuggestFileSymbolDatabase) =
-  s.quickSort(s.items.low, s.items.high)
+  s.quickSort(s.lineInfo.low, s.lineInfo.high)
   s.isSorted = true
 
 proc add*(s: var SuggestFileSymbolDatabase; v: SymInfoPair) =
   doAssert(v.info.fileIndex == s.fileIndex)
-  s.items.add(TinyLineInfo(
+  s.lineInfo.add(TinyLineInfo(
     line: v.info.line,
     col: v.info.col
   ))
@@ -862,7 +862,7 @@ proc findSymInfoIndex*(s: var SuggestFileSymbolDatabase; li: TLineInfo): int =
     line: li.line,
     col: li.col
   )
-  result = binarySearch(s.items, q, cmp)
+  result = binarySearch(s.lineInfo, q, cmp)
 
 proc fileSymbols*(graph: ModuleGraph, fileIdx: FileIndex): SuggestFileSymbolDatabase =
   result = graph.suggestSymbols.getOrDefault(fileIdx, newSuggestFileSymbolDatabase(fileIdx))
@@ -870,7 +870,7 @@ proc fileSymbols*(graph: ModuleGraph, fileIdx: FileIndex): SuggestFileSymbolData
 
 iterator suggestSymbolsIter*(g: ModuleGraph): SymInfoPair =
   for xs in g.suggestSymbols.values:
-    for i in xs.items.low..xs.items.high:
+    for i in xs.lineInfo.low..xs.lineInfo.high:
       yield xs.getSymInfoPair(i)
 
 iterator suggestErrorsIter*(g: ModuleGraph): Suggest =

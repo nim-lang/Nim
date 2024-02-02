@@ -809,7 +809,7 @@ func deduplicateSymInfoPair(xs: SuggestFileSymbolDatabase): SuggestFileSymbolDat
   # with different signature because suggestSym might be called multiple times
   # for the same symbol (e. g. including/excluding the pragma)
   result = SuggestFileSymbolDatabase(
-    items: newSeqOfCap[TinyLineInfo](xs.items.len),
+    lineInfo: newSeqOfCap[TinyLineInfo](xs.lineInfo.len),
     sym: newSeqOfCap[PSym](xs.sym.len),
     isDecl: newSeqOfCap[bool](xs.isDecl.len),
     caughtExceptions: newSeqOfCap[seq[PType]](xs.caughtExceptions.len),
@@ -817,11 +817,11 @@ func deduplicateSymInfoPair(xs: SuggestFileSymbolDatabase): SuggestFileSymbolDat
     fileIndex: xs.fileIndex,
     isSorted: false
   )
-  var i = xs.items.high
+  var i = xs.lineInfo.high
   while i > 0:
-    let itm = xs.items[i]
+    let itm = xs.lineInfo[i]
     var found = false
-    for res in result.items:
+    for res in result.lineInfo:
       if res.exactEquals(itm):
         found = true
         break
@@ -834,8 +834,8 @@ proc findSymData(graph: ModuleGraph, trackPos: TLineInfo):
     ref SymInfoPair =
   let db = graph.fileSymbols(trackPos.fileIndex).deduplicateSymInfoPair
   doAssert(db.fileIndex == trackPos.fileIndex)
-  for i in db.items.low..db.items.high:
-    if isTracked(db.items[i], TinyLineInfo(line: trackPos.line, col: trackPos.col), db.sym[i].name.s.len):
+  for i in db.lineInfo.low..db.lineInfo.high:
+    if isTracked(db.lineInfo[i], TinyLineInfo(line: trackPos.line, col: trackPos.col), db.sym[i].name.s.len):
       var res = db.getSymInfoPair(i)
       new(result)
       result[] = res
@@ -850,8 +850,8 @@ proc findSymDataInRange(graph: ModuleGraph, startPos, endPos: TLineInfo):
     seq[SymInfoPair] =
   result = newSeq[SymInfoPair]()
   let db = graph.fileSymbols(startPos.fileIndex).deduplicateSymInfoPair
-  for i in db.items.low..db.items.high:
-    if isInRange(db.items[i], TinyLineInfo(line: startPos.line, col: startPos.col), TinyLineInfo(line: endPos.line, col: endPos.col), db.sym[i].name.s.len):
+  for i in db.lineInfo.low..db.lineInfo.high:
+    if isInRange(db.lineInfo[i], TinyLineInfo(line: startPos.line, col: startPos.col), TinyLineInfo(line: endPos.line, col: endPos.col), db.sym[i].name.s.len):
       result.add(db.getSymInfoPair(i))
 
 proc findSymData(graph: ModuleGraph, file: AbsoluteFile; line, col: int):
@@ -974,7 +974,7 @@ proc findByTLineInfo(trackPos: TLineInfo, infoPairs: SuggestFileSymbolDatabase):
     ref SymInfoPair =
   result = nil
   if infoPairs.fileIndex == trackPos.fileIndex:
-    for i in infoPairs.items.low..infoPairs.items.high:
+    for i in infoPairs.lineInfo.low..infoPairs.lineInfo.high:
       let s = infoPairs.getSymInfoPair(i)
       if s.info.exactEquals trackPos:
         new(result)
@@ -1111,7 +1111,7 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
     if not sym.isNil:
       let fs = graph.fileSymbols(fileIndex)
       var usages: seq[SymInfoPair] = @[]
-      for i in fs.items.low..fs.items.high:
+      for i in fs.lineInfo.low..fs.lineInfo.high:
         if fs.sym[i] == sym.sym:
           usages.add(fs.getSymInfoPair(i))
       myLog fmt "Found {usages.len} usages in {file.string}"
@@ -1183,7 +1183,7 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
       # It is either the definition or the declaration.
       var first: SymInfoPair
       let db = graph.fileSymbols(s.sym.info.fileIndex).deduplicateSymInfoPair
-      for i in db.items.low..db.items.high:
+      for i in db.lineInfo.low..db.lineInfo.high:
         if s.sym.symbolEqual(db.sym[i]):
           first = db.getSymInfoPair(i)
           break
