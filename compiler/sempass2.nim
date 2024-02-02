@@ -964,7 +964,8 @@ proc markCaughtExceptions(tracked: PEffects; g: ModuleGraph; info: TLineInfo; s:
           for w2 in w1:
             q.caughtExceptions[si].add(w2)
 
-    internalMarkCaughtExceptions(tracked, g.suggestSymbols.mgetOrPut(info.fileIndex, newSuggestFileSymbolDatabase(info.fileIndex)), info)
+    if optIdeExceptionInlayHints in tracked.config.globalOptions:
+      internalMarkCaughtExceptions(tracked, g.suggestSymbols.mgetOrPut(info.fileIndex, newSuggestFileSymbolDatabase(info.fileIndex, true)), info)
 
 proc trackCall(tracked: PEffects; n: PNode) =
   template gcsafeAndSideeffectCheck() =

@@ -75,6 +75,8 @@ Options:
   --tester                implies --stdin and outputs a line
                           '""" & DummyEof & """' for the tester
   --find                  attempts to find the project file of the current project
+  --exceptionInlayHints:on|off
+                          globally turn exception inlay hints on|off
 
 The server then listens to the connection and takes line-based commands.
 
@@ -128,7 +130,8 @@ const
          "type 'terse' to toggle terse mode on/off"
   #List of currently supported capabilities. So lang servers/ides can iterate over and check for what's enabled
   Capabilities = [
-    "con" #current NimSuggest supports the `con` commmand
+    "con", #current NimSuggest supports the `con` commmand
+    "exceptionInlayHints"
   ]
 
 proc parseQuoted(cmd: string; outp: var string; start: int): int =
@@ -700,6 +703,11 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string; conf: ConfigRef) =
           quit 0
         else:
           processSwitch(pass, p, conf)
+      of "exceptionInlayHints":
+        case p.val.normalize
+        of "", "on": incl(conf.globalOptions, optIdeExceptionInlayHints)
+        of "off": excl(conf.globalOptions, optIdeExceptionInlayHints)
+        else: processSwitch(pass, p, conf)
       of "tester":
         gMode = mstdin
         gEmitEof = true
@@ -815,6 +823,7 @@ func deduplicateSymInfoPair(xs: SuggestFileSymbolDatabase): SuggestFileSymbolDat
     caughtExceptions: newSeqOfCap[seq[PType]](xs.caughtExceptions.len),
     caughtExceptionsSet: newSeqOfCap[bool](xs.caughtExceptionsSet.len),
     fileIndex: xs.fileIndex,
+    trackCaughtExceptions: xs.trackCaughtExceptions,
     isSorted: false
   )
   var i = xs.lineInfo.high

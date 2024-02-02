@@ -87,6 +87,7 @@ type
     caughtExceptionsSet*: seq[bool]
     isDecl*: seq[bool]
     fileIndex*: FileIndex
+    trackCaughtExceptions*: bool
     isSorted*: bool
 
   SuggestSymbolDatabase* = Table[FileIndex, SuggestFileSymbolDatabase]
@@ -178,8 +179,16 @@ proc getSymInfoPair*(s: SuggestFileSymbolDatabase; idx: int): SymInfoPair =
       col: s.lineInfo[idx].col,
       fileIndex: s.fileIndex
     ),
-    caughtExceptions: s.caughtExceptions[idx],
-    caughtExceptionsSet: s.caughtExceptionsSet[idx],
+    caughtExceptions:
+      if s.trackCaughtExceptions:
+        s.caughtExceptions[idx]
+      else:
+        @[],
+    caughtExceptionsSet:
+      if s.trackCaughtExceptions:
+        s.caughtExceptionsSet[idx]
+      else:
+        false,
     isDecl: s.isDecl[idx]
   )
 
@@ -530,7 +539,7 @@ proc initOperators*(g: ModuleGraph): Operators =
     opContains: createMagic(g, "contains", mInSet)
   )
 
-proc newSuggestFileSymbolDatabase*(aFileIndex: FileIndex): SuggestFileSymbolDatabase =
+proc newSuggestFileSymbolDatabase*(aFileIndex: FileIndex; aTrackCaughtExceptions: bool): SuggestFileSymbolDatabase =
   SuggestFileSymbolDatabase(
     lineInfo: @[],
     sym: @[],
@@ -538,6 +547,7 @@ proc newSuggestFileSymbolDatabase*(aFileIndex: FileIndex): SuggestFileSymbolData
     caughtExceptionsSet: @[],
     isDecl: @[],
     fileIndex: aFileIndex,
+    trackCaughtExceptions: aTrackCaughtExceptions,
     isSorted: true
   )
 
@@ -779,11 +789,10 @@ proc exchange(s: var SuggestFileSymbolDatabase; i, j: int) =
   var tmp1 = s.lineInfo[i]
   s.lineInfo[i] = s.lineInfo[j]
   s.lineInfo[j] = tmp1
-  if s.caughtExceptions.len > 0:
+  if s.trackCaughtExceptions:
     var tmp2 = s.caughtExceptions[i]
     s.caughtExceptions[i] = s.caughtExceptions[j]
     s.caughtExceptions[j] = tmp2
-  if s.caughtExceptionsSet.len > 0:
     var tmp3 = s.caughtExceptionsSet[i]
     s.caughtExceptionsSet[i] = s.caughtExceptionsSet[j]
     s.caughtExceptionsSet[j] = tmp3
@@ -847,12 +856,13 @@ proc add*(s: var SuggestFileSymbolDatabase; v: SymInfoPair) =
   ))
   s.sym.add(v.sym)
   s.isDecl.add(v.isDecl)
-  s.caughtExceptions.add(v.caughtExceptions)
-  s.caughtExceptionsSet.add(v.caughtExceptionsSet)
+  if s.trackCaughtExceptions:
+    s.caughtExceptions.add(v.caughtExceptions)
+    s.caughtExceptionsSet.add(v.caughtExceptionsSet)
   s.isSorted = false
 
-proc add*(s: var SuggestSymbolDatabase; v: SymInfoPair) =
-  s.mgetOrPut(v.info.fileIndex, newSuggestFileSymbolDatabase(v.info.fileIndex)).add(v)
+proc add*(s: var SuggestSymbolDatabase; v: SymInfoPair; trackCaughtExceptions: bool) =
+  s.mgetOrPut(v.info.fileIndex, newSuggestFileSymbolDatabase(v.info.fileIndex, trackCaughtExceptions)).add(v)
 
 proc findSymInfoIndex*(s: var SuggestFileSymbolDatabase; li: TLineInfo): int =
   doAssert(li.fileIndex == s.fileIndex)
@@ -865,7 +875,7 @@ proc findSymInfoIndex*(s: var SuggestFileSymbolDatabase; li: TLineInfo): int =
   result = binarySearch(s.lineInfo, q, cmp)
 
 proc fileSymbols*(graph: ModuleGraph, fileIdx: FileIndex): SuggestFileSymbolDatabase =
-  result = graph.suggestSymbols.getOrDefault(fileIdx, newSuggestFileSymbolDatabase(fileIdx))
+  result = graph.suggestSymbols.getOrDefault(fileIdx, newSuggestFileSymbolDatabase(fileIdx, optIdeExceptionInlayHints in graph.config.globalOptions))
   doAssert(result.fileIndex == fileIdx)
 
 iterator suggestSymbolsIter*(g: ModuleGraph): SymInfoPair =
