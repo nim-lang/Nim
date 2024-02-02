@@ -11,7 +11,7 @@
 ## represents a complete Nim project. Single modules can either be kept in RAM
 ## or stored in a rod-file.
 
-import std/[intsets, tables, hashes, algorithm]
+import std/[intsets, tables, hashes, strtabs, algorithm]
 import ../dist/checksums/src/checksums/md5
 import ast, astalgo, options, lineinfos,idents, btrees, ropes, msgs, pathutils, packages
 import ic / [packed_ast, ic]
@@ -157,6 +157,8 @@ type
     compatibleProps*: proc (graph: ModuleGraph; formal, actual: PType): bool {.nimcall.}
     idgen*: IdGenerator
     operators*: Operators
+
+    cachedFiles*: StringTableRef
 
   TPassContext* = object of RootObj # the pass's context
     idgen*: IdGenerator
@@ -579,6 +581,7 @@ proc initModuleGraphFields(result: ModuleGraph) =
   result.symBodyHashes = initTable[int, SigHash]()
   result.operators = initOperators(result)
   result.emittedTypeInfo = initTable[string, FileIndex]()
+  result.cachedFiles = newStringTable()
 
 proc newModuleGraph*(cache: IdentCache; config: ConfigRef): ModuleGraph =
   result = ModuleGraph()
