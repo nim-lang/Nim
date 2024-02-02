@@ -352,6 +352,9 @@ when defined(nimStressOrc):
 else:
   var rootsThreshold {.threadvar.}: int
 
+when defined(nimOrcStats):
+  var freedCyclicObjects {.threadvar.}: int
+
 proc partialCollect(lowMark: int) =
   when false:
     if roots.len < 10 + lowMark: return
@@ -365,6 +368,8 @@ proc partialCollect(lowMark: int) =
       roots.len - lowMark)
   roots.len = lowMark
   deinit j.traceStack
+  when defined(nimOrcStats):
+    inc freedCyclicObjects, j.freed
 
 proc collectCycles() =
   ## Collect cycles.
@@ -405,6 +410,16 @@ proc collectCycles() =
   when logOrc:
     cfprintf(cstderr, "[collectCycles] end; freed %ld new threshold %ld touched: %ld mem: %ld rcSum: %ld edges: %ld\n", j.freed, rootsThreshold, j.touched,
       getOccupiedMem(), j.rcSum, j.edges)
+  when defined(nimOrcStats):
+    inc freedCyclicObjects, j.freed
+
+when defined(nimOrcStats):
+  type
+    OrcStats* = object ## Statistics of the cycle collector subsystem.
+      freedCyclicObjects*: int ## Number of freed cyclic objects.
+  proc GC_orcStats*(): OrcStats =
+    ## Returns the statistics of the cycle collector subsystem.
+    result = OrcStats(freedCyclicObjects: freedCyclicObjects)
 
 proc registerCycle(s: Cell; desc: PNimTypeV2) =
   s.rootIdx = roots.len+1
