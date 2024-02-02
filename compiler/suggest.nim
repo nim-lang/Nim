@@ -558,7 +558,7 @@ proc isTracked*(current, trackPos: TLineInfo, tokenLen: int): bool =
   else:
     result = false
 
-proc isTracked*(current, trackPos: InternalSymInfoPair, tokenLen: int): bool =
+proc isTracked*(current, trackPos: TinyLineInfo, tokenLen: int): bool =
   if current.line==trackPos.line:
     let col = trackPos.col
     if col >= current.col and col <= current.col+tokenLen-1:

@@ -55,7 +55,7 @@ type
     concreteTypes*: seq[FullId]
     inst*: PInstantiation
 
-  InternalSymInfoPair* = object
+  TinyLineInfo* = object
     line*: uint16
     col*: int16
 
@@ -81,7 +81,7 @@ type
     Docgen2Pass
 
   SuggestFileSymbolDatabase* = object
-    items*: seq[InternalSymInfoPair]
+    items*: seq[TinyLineInfo]
     sym*: seq[PSym]
     caughtExceptions*: seq[seq[PType]]
     caughtExceptionsSet*: seq[bool]
@@ -541,7 +541,7 @@ proc newSuggestFileSymbolDatabase*(aFileIndex: FileIndex): SuggestFileSymbolData
     isSorted: true
   )
 
-proc exactEquals*(a, b: InternalSymInfoPair): bool =
+proc exactEquals*(a, b: TinyLineInfo): bool =
   result = a.line == b.line and a.col == b.col
 
 proc initModuleGraphFields(result: ModuleGraph) =
@@ -763,7 +763,7 @@ func belongsToStdlib*(graph: ModuleGraph, sym: PSym): bool =
 proc `==`*(a, b: SymInfoPair): bool =
   result = a.sym == b.sym and a.info.exactEquals(b.info)
 
-func cmp*(a: InternalSymInfoPair; b: InternalSymInfoPair): int =
+func cmp*(a: TinyLineInfo; b: TinyLineInfo): int =
   result = cmp(a.line, b.line)
   if result == 0:
     result = cmp(a.col, b.col)
@@ -841,7 +841,7 @@ proc sort*(s: var SuggestFileSymbolDatabase) =
 
 proc add*(s: var SuggestFileSymbolDatabase; v: SymInfoPair) =
   doAssert(v.info.fileIndex == s.fileIndex)
-  s.items.add(InternalSymInfoPair(
+  s.items.add(TinyLineInfo(
     line: v.info.line,
     col: v.info.col
   ))
@@ -858,7 +858,7 @@ proc findSymInfoIndex*(s: var SuggestFileSymbolDatabase; li: TLineInfo): int =
   doAssert(li.fileIndex == s.fileIndex)
   if not s.isSorted:
     s.sort()
-  var q = InternalSymInfoPair(
+  var q = TinyLineInfo(
     line: li.line,
     col: li.col
   )

@@ -809,7 +809,7 @@ func deduplicateSymInfoPair(xs: SuggestFileSymbolDatabase): SuggestFileSymbolDat
   # with different signature because suggestSym might be called multiple times
   # for the same symbol (e. g. including/excluding the pragma)
   result = SuggestFileSymbolDatabase(
-    items: newSeqOfCap[InternalSymInfoPair](xs.items.len),
+    items: newSeqOfCap[TinyLineInfo](xs.items.len),
     sym: newSeqOfCap[PSym](xs.sym.len),
     isDecl: newSeqOfCap[bool](xs.isDecl.len),
     caughtExceptions: newSeqOfCap[seq[PType]](xs.caughtExceptions.len),
@@ -835,13 +835,13 @@ proc findSymData(graph: ModuleGraph, trackPos: TLineInfo):
   let db = graph.fileSymbols(trackPos.fileIndex).deduplicateSymInfoPair
   doAssert(db.fileIndex == trackPos.fileIndex)
   for i in db.items.low..db.items.high:
-    if isTracked(db.items[i], InternalSymInfoPair(line: trackPos.line, col: trackPos.col), db.sym[i].name.s.len):
+    if isTracked(db.items[i], TinyLineInfo(line: trackPos.line, col: trackPos.col), db.sym[i].name.s.len):
       var res = db.getSymInfoPair(i)
       new(result)
       result[] = res
       break
 
-func isInRange*(current, startPos, endPos: InternalSymInfoPair, tokenLen: int): bool =
+func isInRange*(current, startPos, endPos: TinyLineInfo, tokenLen: int): bool =
   result =
     (current.line > startPos.line or (current.line == startPos.line and current.col>=startPos.col)) and
     (current.line < endPos.line or (current.line == endPos.line and current.col <= endPos.col))
@@ -851,7 +851,7 @@ proc findSymDataInRange(graph: ModuleGraph, startPos, endPos: TLineInfo):
   result = newSeq[SymInfoPair]()
   let db = graph.fileSymbols(startPos.fileIndex).deduplicateSymInfoPair
   for i in db.items.low..db.items.high:
-    if isInRange(db.items[i], InternalSymInfoPair(line: startPos.line, col: startPos.col), InternalSymInfoPair(line: endPos.line, col: endPos.col), db.sym[i].name.s.len):
+    if isInRange(db.items[i], TinyLineInfo(line: startPos.line, col: startPos.col), TinyLineInfo(line: endPos.line, col: endPos.col), db.sym[i].name.s.len):
       result.add(db.getSymInfoPair(i))
 
 proc findSymData(graph: ModuleGraph, file: AbsoluteFile; line, col: int):
