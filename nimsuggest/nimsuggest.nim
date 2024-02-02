@@ -827,7 +827,7 @@ func deduplicateSymInfoPair(xs: SuggestFileSymbolDatabase): SuggestFileSymbolDat
     isSorted: false
   )
   var i = xs.lineInfo.high
-  while i > 0:
+  while i >= 0:
     let itm = xs.lineInfo[i]
     var found = false
     for res in result.lineInfo:
