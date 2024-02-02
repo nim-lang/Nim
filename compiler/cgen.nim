@@ -1203,8 +1203,6 @@ proc genProcAux*(m: BModule, prc: PSym) =
           # In an ideal world the codegen could rely on injectdestructors doing its job properly
           # and then the analysis step would not be required.
           discard "result init optimized out"
-          # TODO: allPathsAsgnResult needs to consider exceptions
-          initLocalVar(p, res, immediateAsgn=false)
         else:
           initLocalVar(p, res, immediateAsgn=false)
       returnStmt = ropecg(p.module, "\treturn $1;$n", [rdLoc(res.loc)])
