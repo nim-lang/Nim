@@ -593,6 +593,18 @@ proc semConstBoolExpr(c: PContext, n: PNode): PNode =
     localError(c.config, n.info, errConstExprExpected)
 proc semConceptBody(c: PContext, n: PNode): PNode
 
+proc getLineInfo(n: PNode): TLineInfo =
+  case n.kind
+  of nkPostfix:
+    if len(n) > 1:
+      return getLineInfo(n[1])
+  of nkAccQuoted, nkPragmaExpr:
+    if len(n) > 0:
+      return getLineInfo(n[0])
+  else:
+    discard
+  result = n.info
+
 include semtypes
 
 proc setGenericParamsMisc(c: PContext; n: PNode) =
