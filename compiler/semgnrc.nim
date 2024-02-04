@@ -68,8 +68,8 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
   template maybeDotChoice(c: PContext, n: PNode, s: PSym, fromDotExpr: bool) =
     if fromDotExpr:
       result = symChoice(c, n, s, scForceOpen)
-      if result.kind == nkOpenSymChoice and result.len == 1:
-        result.transitionSonsKind(nkClosedSymChoice)
+      #if result.kind == nkOpenSymChoice and result.len == 1 and s.kind != skEnumField:
+      #  result.transitionSonsKind(nkClosedSymChoice)
     else:
       result = symChoice(c, n, s, scOpen)
       if result.kind == nkSym and canOpenSym(result.sym):
@@ -145,7 +145,7 @@ proc lookup(c: PContext, n: PNode, flags: TSemGenericFlags,
     elif s.isMixedIn:
       result = symChoice(c, n, s, scForceOpen)
     else:
-      result = semGenericStmtSymbol(c, n, s, ctx, flags)
+      result = semGenericStmtSymbol(c, n, s, ctx, flags, fromDotExpr = withinMixin in flags)
   # else: leave as nkIdent
 
 proc newDot(n, b: PNode): PNode =
@@ -186,7 +186,7 @@ proc fuzzyLookup(c: PContext, n: PNode, flags: TSemGenericFlags,
       else:
         if s.kind == skType and candidates.len > 1:
           var ambig = false
-          let s2 = searchInScopes(c, ident, ambig) 
+          let s2 = searchInScopes(c, ident, ambig)
           if ambig:
             # this is a type conversion like a.T where T is ambiguous with
             # other types or routines
@@ -205,13 +205,13 @@ proc addTempDecl(c: PContext; n: PNode; kind: TSymKind) =
   onDef(n.info, s)
 
 proc addTempDeclToIdents(c: PContext; n: PNode; kind: TSymKind; inCall: bool) =
-  case n.kind 
+  case n.kind
   of nkIdent:
     if inCall:
       addTempDecl(c, n, kind)
   of nkCallKinds:
     for s in n:
-      addTempDeclToIdents(c, s, kind, true)  
+      addTempDeclToIdents(c, s, kind, true)
   else:
     for s in n:
       addTempDeclToIdents(c, s, kind, inCall)

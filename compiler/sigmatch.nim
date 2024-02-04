@@ -2427,7 +2427,12 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
       # only one valid interpretation found:
       markUsed(m.c, arg.info, arg[best].sym)
       onUse(arg.info, arg[best].sym)
-      result = paramTypesMatchAux(m, f, arg[best].typ, arg[best], argOrig)
+      let r = paramTypesMatchAux(m, f, arg[best].typ, arg[best], argOrig)
+      if arg.kind == nkOpenSymChoice:
+        result = copyNode(arg)
+        result.add r
+      else:
+        result = r
   when false:
     if m.calleeSym != nil and m.calleeSym.name.s == "[]":
       echo m.c.config $ arg.info, " for ", m.calleeSym.name.s, " ", m.c.config $ m.calleeSym.info
