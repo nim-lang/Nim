@@ -424,13 +424,13 @@ proc expandFilename*(filename: string): string {.rtl, extern: "nos$1",
   when defined(windows):
     var bufsize = MAX_PATH.int32
     var unused: WideCString = nil
-    var res = newWideCString("", bufsize)
+    var res = newWideCString(bufsize)
     while true:
       var L = getFullPathNameW(newWideCString(filename), bufsize, res, unused)
       if L == 0'i32:
         raiseOSError(osLastError(), filename)
       elif L > bufsize:
-        res = newWideCString("", L)
+        res = newWideCString(L)
         bufsize = L
       else:
         result = res$L
