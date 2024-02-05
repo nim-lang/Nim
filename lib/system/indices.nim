@@ -112,7 +112,6 @@ proc `[]`*[Idx, T; U, V: Ordinal](a: array[Idx, T], x: HSlice[U, V]): seq[T] {.s
   ##   ```
   let xa = a ^^ x.a
   let L = (a ^^ x.b) - xa + 1
-  # Workaround bug #22852:
   result = newSeq[T](L)
   for i in 0..<L: result[i] = a[Idx(i + xa)]
 
