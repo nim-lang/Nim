@@ -1000,8 +1000,8 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
       conf.m.trackPosAttached = false
     else:
       conf.m.trackPos = default(TLineInfo)
-
-    graph.recompilePartially(fileIndex)
+    if cmd != ideCon: #ideCon is recompiled below
+      graph.recompilePartially(fileIndex)
 
   case cmd
   of ideDef:
@@ -1044,6 +1044,7 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
   of ideCon:
     graph.markDirty fileIndex
     graph.markClientsDirty fileIndex
+    graph.recompilePartially(fileIndex)
   of ideOutline:
     let n = parseFile(fileIndex, graph.cache, graph.config)
     graph.iterateOutlineNodes(n, graph.fileSymbols(fileIndex).deduplicateSymInfoPair)
