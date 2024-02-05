@@ -673,7 +673,6 @@ proc strformatImpl(f: string; openChar, closeChar: char,
         inc i, 2
       else:
         raiseAssert "invalid format string: '$1' instead of '$1$1'" % $closeChar
-        inc i
     else:
       strlit.add f[i]
       inc i

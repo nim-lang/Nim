@@ -155,7 +155,7 @@ proc commandCompileToC(graph: ModuleGraph) =
     extccomp.callCCompiler(conf)
     # for now we do not support writing out a .json file with the build instructions when HCR is on
     if not conf.hcrOn:
-      extccomp.writeJsonBuildInstructions(conf)
+      extccomp.writeJsonBuildInstructions(conf, graph.cachedFiles)
     if optGenScript in graph.config.globalOptions:
       writeDepsFile(graph)
     if optGenCDeps in graph.config.globalOptions:
@@ -326,7 +326,8 @@ proc mainCommand*(graph: ModuleGraph) =
     # so by default should not end up in $PWD nor in $projectPath.
     var ret = if optUseNimcache in conf.globalOptions: getNimcacheDir(conf)
               else: conf.projectPath
-    doAssert ret.string.isAbsolute # `AbsoluteDir` is not a real guarantee
+    if not ret.string.isAbsolute: # `AbsoluteDir` is not a real guarantee
+      rawMessage(conf, errCannotOpenFile, ret.string & "/")
     if conf.cmd in cmdDocLike + {cmdRst2html, cmdRst2tex, cmdMd2html, cmdMd2tex}:
       ret = ret / htmldocsDir
     conf.outDir = ret

@@ -2189,7 +2189,8 @@ proc parseObject(p: var Parser): PNode =
 proc parseTypeClassParam(p: var Parser): PNode =
   let modifier =
     case p.tok.tokType
-    of tkOut, tkVar: nkVarTy
+    of tkVar: nkVarTy
+    of tkOut: nkOutTy
     of tkPtr: nkPtrTy
     of tkRef: nkRefTy
     of tkStatic: nkStaticTy
@@ -2205,7 +2206,7 @@ proc parseTypeClassParam(p: var Parser): PNode =
   setEndInfo()
 
 proc parseTypeClass(p: var Parser): PNode =
-  #| conceptParam = ('var' | 'out')? symbol
+  #| conceptParam = ('var' | 'out' | 'ptr' | 'ref' | 'static' | 'type')? symbol
   #| conceptDecl = 'concept' conceptParam ^* ',' (pragma)? ('of' typeDesc ^* ',')?
   #|               &IND{>} stmt
   result = newNodeP(nkTypeClassTy, p)
