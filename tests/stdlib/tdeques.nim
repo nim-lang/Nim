@@ -204,17 +204,23 @@ proc main() =
     block:
       var a, b = initDeque[int]()
       doAssert a == b
+      doAssert a.hash == b.hash
       a.addFirst(1)
       doAssert a != b
+      doAssert a.hash != b.hash
       b.addLast(1)
       doAssert a == b
+      doAssert a.hash == b.hash
       a.popFirst
       b.popLast
       doAssert a == b
+      doAssert a.hash == b.hash
       a.addLast 2
       doAssert a != b
+      doAssert a.hash != b.hash
       b.addFirst 2
       doAssert a == b
+      doAssert a.hash == b.hash
 
     block:
       var a, b = initDeque[int]()
@@ -225,10 +231,13 @@ proc main() =
       doAssert a == b
       for i in 1..99:
         a.popLast
-      doAssert a == [1].toDeque
+      let a1 = [1].toDeque
+      doAssert a == a1
+      doAssert a.hash == a1.hash
       var c = initDeque[int]()
       c.addLast(1)
       doAssert a == c
+      doAssert a.hash == c.hash
 
 static: main()
 main()

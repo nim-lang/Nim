@@ -50,7 +50,7 @@ runnableExamples:
 
 import std/private/since
 
-import std/math
+import std/[hashes, math]
 
 type
   Deque*[T] = object
@@ -475,3 +475,10 @@ func `==`*[T](deq1, deq2: Deque[T]): bool =
       return false
 
   true
+
+func hash*[T](deq: Deque[T]): Hash =
+  ## Hashing of Deque.
+  var h: Hash = 0
+  for x in deq:
+    h = h !& hash(x)
+  !$h
