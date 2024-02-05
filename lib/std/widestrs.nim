@@ -154,6 +154,7 @@ when not (defined(cpu16) or defined(cpu8)):
     createWide(result, size * 2 + 2)
 
   proc newWideCString*(source: cstring, L: int): WideCStringObj =
+    ## Warning:: `source` needs to be preallocated with the length `L`
     createWide(result, L * 2 + 2)
     var d = 0
     for ch in runes(source, L):
