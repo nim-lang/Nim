@@ -189,6 +189,46 @@ proc main() =
     a.shrink(fromFirst = 0, fromLast = 1)
     doAssert $a == "[10, 20, 30]"
 
+  block:
+    var a, b: Deque[int]
+    for i in 1 .. 256:
+      a.addLast(i)
+    for i in 1 .. 255:
+      a.popLast
+    b.addLast(1)
+    doAssert a == b
+
+  block:
+    # Issue 23275
+    # Test `==`.
+    block:
+      var a, b = initDeque[int]()
+      doAssert a == b
+      a.addFirst(1)
+      doAssert a != b
+      b.addLast(1)
+      doAssert a == b
+      a.popFirst
+      b.popLast
+      doAssert a == b
+      a.addLast 2
+      doAssert a != b
+      b.addFirst 2
+      doAssert a == b
+
+    block:
+      var a, b = initDeque[int]()
+      for i in countDown(100, 1):
+        a.addFirst(i)
+      for i in 1..100:
+        b.addLast(i)
+      doAssert a == b
+      for i in 1..99:
+        a.popLast
+      doAssert a == [1].toDeque
+      var c = initDeque[int]()
+      c.addLast(1)
+      doAssert a == c
 
 static: main()
 main()

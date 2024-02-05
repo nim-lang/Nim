@@ -455,3 +455,23 @@ proc `$`*[T](deq: Deque[T]): string =
     if result.len > 1: result.add(", ")
     result.addQuoted(x)
   result.add("]")
+
+func `==`*[T](deq1, deq2: Deque[T]): bool =
+  ## The `==` operator for Deque.
+  ## Returns `true` if both deques contains the same values in the same order.
+  runnableExamples:
+    var a, b = initDeque[int]()
+    a.addFirst(2)
+    a.addFirst(1)
+    b.addLast(1)
+    b.addLast(2)
+    doAssert a == b
+
+  if deq1.count != deq2.count:
+    return false
+
+  for i in 0 ..< deq1.count:
+    if deq1.data[(deq1.head + i) and deq1.mask] != deq2.data[(deq2.head + i) and deq2.mask]:
+      return false
+
+  true
