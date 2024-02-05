@@ -96,3 +96,13 @@ block: # issue #12582
       x: foo(int) # error
   let b = Bar()
   let b2 = Bar(x: [123])
+
+block:
+  when true: # bug #14710
+    type Foo[T] = object
+      x1: int
+      when T.sizeof == 4: discard # SIGSEGV
+      when sizeof(T) == 4: discard # ok
+    let t = Foo[float](x1: 1)
+    doAssert t.x1 == 1
+
