@@ -1000,7 +1000,6 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
       conf.m.trackPosAttached = false
     else:
       conf.m.trackPos = default(TLineInfo)
-    if cmd != ideCon: #ideCon is recompiled below
       graph.recompilePartially(fileIndex)
 
   case cmd
@@ -1041,6 +1040,7 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
     # ideSug performs partial build of the file, thus mark it dirty for the
     # future calls.
     graph.markDirtyIfNeeded(file.string, fileIndex)
+    graph.recompilePartially(fileIndex)
   of ideCon:
     graph.markDirty fileIndex
     graph.markClientsDirty fileIndex
