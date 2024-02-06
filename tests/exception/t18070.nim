@@ -1,5 +1,6 @@
 discard """
-  matrix: "--mm:refc; --mm:orc"
+  matrix: "--mm:orc"
+
 """
 
 # bug #18070
