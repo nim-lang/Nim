@@ -11,7 +11,7 @@
 ## macro system.
 
 import std/private/since
-import macros
+import std/macros
 
 
 macro enumerate*(x: ForLoopStmt): untyped {.since: (1, 3).} =

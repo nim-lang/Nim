@@ -16,15 +16,15 @@
 ## other "line-like", variable length, delimited records).
 
 when defined(windows):
-  import winlean
+  import std/winlean
   when defined(nimPreviewSlimSystem):
     import std/widestrs
 elif defined(posix):
-  import posix
+  import std/posix
 else:
   {.error: "the memfiles module is not supported on your operating system!".}
 
-import streams
+import std/streams
 import std/oserrors
 
 when defined(nimPreviewSlimSystem):

@@ -9,10 +9,10 @@
 
 # This module implements Posix and Windows select().
 
-import times, nativesockets
+import std/[times, nativesockets]
 
 when defined(windows):
-  import winlean
+  import std/winlean
   when defined(gcc):
     {.passl: "-lws2_32".}
   elif defined(vcc):

@@ -10,7 +10,7 @@
 
 ## This is an internal helper module. Do not use.
 
-import macros
+import std/macros
 
 proc underscoredCalls*(result, calls, arg0: NimNode)
 

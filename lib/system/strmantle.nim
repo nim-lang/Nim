@@ -23,6 +23,14 @@ proc cmpStrings(a, b: string): int {.inline, compilerproc.} =
   else:
     result = alen - blen
 
+proc leStrings(a, b: string): bool {.inline, compilerproc.} =
+  # required by upcoming backends (NIR).
+  cmpStrings(a, b) <= 0
+
+proc ltStrings(a, b: string): bool {.inline, compilerproc.} =
+  # required by upcoming backends (NIR).
+  cmpStrings(a, b) < 0
+
 proc eqStrings(a, b: string): bool {.inline, compilerproc.} =
   let alen = a.len
   let blen = b.len

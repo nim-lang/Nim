@@ -12,8 +12,9 @@
 # handling that exists! Only at line endings checks are necessary
 # if the buffer needs refilling.
 
-import
-  llstream, strutils
+import llstream
+
+import std/strutils
 
 when defined(nimPreviewSlimSystem):
   import std/assertions

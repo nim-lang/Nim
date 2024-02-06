@@ -1682,7 +1682,6 @@ proc `$`*(s: Selection): string = $(s.toString())
 # Storage "methods"
 proc getItem*(s: Storage, key: cstring): cstring
 proc setItem*(s: Storage, key, value: cstring)
-proc hasItem*(s: Storage, key: cstring): bool
 proc clear*(s: Storage)
 proc removeItem*(s: Storage, key: cstring)
 
@@ -1832,3 +1831,11 @@ since (1, 7):
 
   proc matches*(self: Node; cssSelector: cstring): bool {.importjs: "(#.$1(#) || false)".}
     ## https://developer.mozilla.org/en-US/docs/Web/API/Element/matches
+
+
+since (2, 1):
+  type VisualViewport* {.importc.} = ref object of EventTarget
+    offsetLeft*, offsetTop*, pageLeft*, pageTop*, width*, height*, scale*: float
+    onResize*, onScroll*: proc (event: Event) {.closure.}
+
+  func visualViewport*(self: Window): VisualViewport {.importjs: "#.$1", nodecl.}

@@ -1,8 +1,10 @@
 
 import
-  intsets, ast, idents, algorithm, renderer, strutils,
+  ast, idents, renderer,
   msgs, modulegraphs, syntaxes, options, modulepaths,
   lineinfos
+
+import std/[algorithm, strutils, intsets]
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -252,6 +254,7 @@ proc hasCommand(n: PNode): bool =
   of nkStmtList, nkStmtListExpr, nkWhenStmt, nkElifBranch, nkElse,
       nkStaticStmt, nkLetSection, nkConstSection, nkVarSection,
       nkIdentDefs:
+    result = false
     for a in n:
       if a.hasCommand:
         return true

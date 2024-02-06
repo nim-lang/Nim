@@ -11,7 +11,9 @@
 
 import
   options, idents, nimconf, extccomp, commands, msgs,
-  lineinfos, modulegraphs, condsyms, os, pathutils, parseopt
+  lineinfos, modulegraphs, condsyms, pathutils
+
+import std/[os, parseopt]
 
 proc prependCurDir*(f: AbsoluteFile): AbsoluteFile =
   when defined(unix):

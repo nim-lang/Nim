@@ -19,7 +19,7 @@ when defined(nimPreviewSlimSystem):
 const hasRstdin = (defined(nimUseLinenoise) or defined(useLinenoise) or defined(useGnuReadline)) and
   not defined(windows)
 
-when hasRstdin: import rdstdin
+when hasRstdin: import std/rdstdin
 
 type
   TLLRepl* = proc (s: PLLStream, buf: pointer, bufLen: int): int

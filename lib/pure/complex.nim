@@ -36,7 +36,7 @@ runnableExamples:
 {.push checks: off, line_dir: off, stack_trace: off, debugger: off.}
 # the user does not want to trace a part of the standard library!
 
-import math
+import std/[math, strformat]
 
 type
   Complex*[T: SomeFloat] = object
@@ -81,7 +81,7 @@ func abs2*[T](z: Complex[T]): T =
   ## that is the squared distance from (0, 0) to `z`.
   ## This is more efficient than `abs(z) ^ 2`.
   result = z.re * z.re + z.im * z.im
-  
+
 func sgn*[T](z: Complex[T]): Complex[T] =
   ## Returns the phase of `z` as a unit complex number,
   ## or 0 if `z` is 0.
@@ -249,10 +249,31 @@ func pow*[T](x, y: Complex[T]): Complex[T] =
     else:
       result.re = 0.0
       result.im = 0.0
-  elif y.re == 1.0 and y.im == 0.0:
-    result = x
-  elif y.re == -1.0 and y.im == 0.0:
-    result = T(1.0) / x
+  elif y.im == 0.0:
+    if y.re == 1.0:
+      result = x
+    elif y.re == -1.0:
+      result = T(1.0) / x
+    elif y.re == 2.0:
+      result = x * x
+    elif y.re == 0.5:
+      result = sqrt(x)
+    elif x.im == 0.0:
+      # Revert to real pow when both base and exponent are real
+      result.re = pow(x.re, y.re)
+      result.im = 0.0
+    else:
+      # Special case when the exponent is real
+      let
+        rho = abs(x)
+        theta = arctan2(x.im, x.re)
+        s = pow(rho, y.re)
+        r = y.re * theta
+      result.re = s * cos(r)
+      result.im = s * sin(r)
+  elif x.im == 0.0 and x.re == E:
+   # Special case Euler's formula
+   result = exp(y)
   else:
     let
       rho = abs(x)
@@ -398,5 +419,40 @@ func `$`*(z: Complex): string =
     doAssert $complex(1.0, 2.0) == "(1.0, 2.0)"
 
   result = "(" & $z.re & ", " & $z.im & ")"
+
+proc formatValueAsTuple(result: var string; value: Complex; specifier: string) =
+  ## Format implementation for `Complex` representing the value as a (real, imaginary) tuple.
+  result.add "("
+  formatValue(result, value.re, specifier)
+  result.add ", "
+  formatValue(result, value.im, specifier)
+  result.add ")"
+
+proc formatValueAsComplexNumber(result: var string; value: Complex; specifier: string) =
+  ## Format implementation for `Complex` representing the value as a (RE+IMj) number
+  ## By default, the real and imaginary parts are formatted using the general ('g') format
+  let specifier = if specifier.contains({'e', 'E', 'f', 'F', 'g', 'G'}):
+      specifier.replace("j")
+    else:
+      specifier.replace('j', 'g')
+  result.add "("
+  formatValue(result, value.re, specifier)
+  if value.im >= 0 and not specifier.contains({'+', '-'}):
+    result.add "+"
+  formatValue(result, value.im, specifier)
+  result.add "j)"
+
+proc formatValue*(result: var string; value: Complex; specifier: string) =
+  ## Standard format implementation for `Complex`. It makes little
+  ## sense to call this directly, but it is required to exist
+  ## by the `&` macro.
+  ## For complex numbers, we add a specific 'j' specifier, which formats
+  ## the value as (A+Bj) like in mathematics.
+  if specifier.len == 0:
+    result.add $value
+  elif 'j' in specifier:
+    formatValueAsComplexNumber(result, value, specifier)
+  else:
+    formatValueAsTuple(result, value, specifier)
 
 {.pop.}

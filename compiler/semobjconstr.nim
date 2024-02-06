@@ -11,7 +11,7 @@
 
 # included from sem.nim
 
-from sugar import dup
+from std/sugar import dup
 
 type
   ObjConstrContext = object
@@ -68,14 +68,11 @@ proc locateFieldInInitExpr(c: PContext, field: PSym, initExpr: PNode): PNode =
     let assignment = initExpr[i]
     if assignment.kind != nkExprColonExpr:
       invalidObjConstr(c, assignment)
-      continue
-
-    if fieldId == considerQuotedIdent(c, assignment[0]).id:
+    elif fieldId == considerQuotedIdent(c, assignment[0]).id:
       return assignment
 
 proc semConstrField(c: PContext, flags: TExprFlags,
                     field: PSym, initExpr: PNode): PNode =
-  result = nil
   let assignment = locateFieldInInitExpr(c, field, initExpr)
   if assignment != nil:
     if nfSem in assignment.flags: return assignment[1]
@@ -93,7 +90,9 @@ proc semConstrField(c: PContext, flags: TExprFlags,
     assignment[0] = newSymNode(field)
     assignment[1] = initValue
     assignment.flags.incl nfSem
-    return initValue
+    result = initValue
+  else:
+    result = nil
 
 proc branchVals(c: PContext, caseNode: PNode, caseIdx: int,
                 isStmtBranch: bool): IntSet =
@@ -124,7 +123,7 @@ proc pickCaseBranch(caseExpr, matched: PNode): PNode =
       return caseExpr[i]
 
   if endsWithElse:
-    return caseExpr[^1]
+    result = caseExpr[^1]
   else:
     result = nil
 
@@ -137,8 +136,8 @@ iterator directFieldsInRecList(recList: PNode): PNode =
   else:
     doAssert recList.kind == nkRecList
     for field in recList:
-      if field.kind != nkSym: continue
-      yield field
+      if field.kind == nkSym:
+        yield field
 
 template quoteStr(s: string): string = "'" & s & "'"
 
@@ -181,7 +180,7 @@ proc collectOrAddMissingCaseFields(c: PContext, branchNode: PNode,
                           constrCtx: var ObjConstrContext, defaults: var seq[PNode]) =
   let res = collectMissingCaseFields(c, branchNode, constrCtx, defaults)
   for sym in res:
-    let asgnType = newType(tyTypeDesc, nextTypeId(c.idgen), sym.typ.owner)
+    let asgnType = newType(tyTypeDesc, c.idgen, sym.typ.owner)
     let recTyp = sym.typ.skipTypes(defaultFieldsSkipTypes)
     rawAddSon(asgnType, recTyp)
     let asgnExpr = newTree(nkCall,
@@ -191,6 +190,23 @@ proc collectOrAddMissingCaseFields(c: PContext, branchNode: PNode,
     asgnExpr.flags.incl nfSkipFieldChecking
     asgnExpr.typ = recTyp
     defaults.add newTree(nkExprColonExpr, newSymNode(sym), asgnExpr)
+
+proc collectBranchFields(c: PContext, n: PNode, discriminatorVal: PNode,
+                          constrCtx: var ObjConstrContext, flags: TExprFlags) =
+  # All bets are off. If any of the branches has a mandatory
+  # fields we must produce an error:
+  for i in 1..<n.len:
+    let branchNode = n[i]
+    if branchNode != nil:
+      let oldCheckDefault = constrCtx.checkDefault
+      constrCtx.checkDefault = true
+      let (_, defaults) = semConstructFields(c, branchNode[^1], constrCtx, flags)
+      constrCtx.checkDefault = oldCheckDefault
+      if len(defaults) > 0:
+        localError(c.config, discriminatorVal.info, "branch initialization " &
+                    "with a runtime discriminator is not supported " &
+                    "for a branch whose fields have default values.")
+    discard collectMissingCaseFields(c, n[i], constrCtx, @[])
 
 proc semConstructFields(c: PContext, n: PNode, constrCtx: var ObjConstrContext,
                         flags: TExprFlags): tuple[status: InitStatus, defaults: seq[PNode]] =
@@ -331,13 +347,27 @@ proc semConstructFields(c: PContext, n: PNode, constrCtx: var ObjConstrContext,
                                             discriminator.sym,
                                             constrCtx.initExpr)
       if discriminatorVal == nil:
-        # None of the branches were explicitly selected by the user and no
-        # value was given to the discrimator. We can assume that it will be
-        # initialized to zero and this will select a particular branch as
-        # a result:
-        let defaultValue = newIntLit(c.graph, constrCtx.initExpr.info, 0)
-        let matchedBranch = n.pickCaseBranch defaultValue
-        discard collectMissingCaseFields(c, matchedBranch, constrCtx, @[])
+        if discriminator.sym.ast != nil:
+          # branch is selected by the default field value of discriminator
+          let discriminatorDefaultVal = discriminator.sym.ast
+          result.status = initUnknown
+          result.defaults.add newTree(nkExprColonExpr, n[0], discriminatorDefaultVal)
+          if discriminatorDefaultVal.kind == nkIntLit:
+            let matchedBranch = n.pickCaseBranch discriminatorDefaultVal
+            if matchedBranch != nil:
+              let (_, defaults) = semConstructFields(c, matchedBranch[^1], constrCtx, flags)
+              result.defaults.add defaults
+              collectOrAddMissingCaseFields(c, matchedBranch, constrCtx, result.defaults)
+          else:
+            collectBranchFields(c, n, discriminatorDefaultVal, constrCtx, flags)
+        else:
+          # None of the branches were explicitly selected by the user and no
+          # value was given to the discrimator. We can assume that it will be
+          # initialized to zero and this will select a particular branch as
+          # a result:
+          let defaultValue = newIntLit(c.graph, constrCtx.initExpr.info, 0)
+          let matchedBranch = n.pickCaseBranch defaultValue
+          discard collectMissingCaseFields(c, matchedBranch, constrCtx, @[])
       else:
         result.status = initPartial
         if discriminatorVal.kind == nkIntLit:
@@ -349,20 +379,8 @@ proc semConstructFields(c: PContext, n: PNode, constrCtx: var ObjConstrContext,
             result.defaults.add defaults
             collectOrAddMissingCaseFields(c, matchedBranch, constrCtx, result.defaults)
         else:
-          # All bets are off. If any of the branches has a mandatory
-          # fields we must produce an error:
-          for i in 1..<n.len:
-            let branchNode = n[i]
-            if branchNode != nil:
-              let oldCheckDefault = constrCtx.checkDefault
-              constrCtx.checkDefault = true
-              let (_, defaults) = semConstructFields(c, branchNode[^1], constrCtx, flags)
-              constrCtx.checkDefault = oldCheckDefault
-              if len(defaults) > 0:
-                localError(c.config, discriminatorVal.info, "branch initialization " &
-                            "with a runtime discriminator is not supported " &
-                            "for a branch whose fields have default values.")
-            discard collectMissingCaseFields(c, n[i], constrCtx, @[])
+          collectBranchFields(c, n, discriminatorVal, constrCtx, flags)
+
   of nkSym:
     let field = n.sym
     let e = semConstrField(c, flags, field, constrCtx.initExpr)
@@ -387,7 +405,7 @@ proc semConstructFields(c: PContext, n: PNode, constrCtx: var ObjConstrContext,
 proc semConstructTypeAux(c: PContext,
                          constrCtx: var ObjConstrContext,
                          flags: TExprFlags): tuple[status: InitStatus, defaults: seq[PNode]] =
-  result.status = initUnknown
+  result = (initUnknown, @[])
   var t = constrCtx.typ
   while true:
     let (status, defaults) = semConstructFields(c, t.n, constrCtx, flags)
@@ -395,10 +413,10 @@ proc semConstructTypeAux(c: PContext,
     result.defaults.add defaults
     if status in {initPartial, initNone, initUnknown}:
       discard collectMissingFields(c, t.n, constrCtx, result.defaults)
-    let base = t[0]
-    if base == nil or base.id == t.id or 
-      base.kind in { tyRef, tyPtr } and base[0].id == t.id: 
-        break
+    let base = t.baseClass
+    if base == nil or base.id == t.id or
+        base.kind in {tyRef, tyPtr} and base.elementType.id == t.id:
+      break
     t = skipTypes(base, skipPtrs)
     if t.kind != tyObject:
       # XXX: This is not supposed to happen, but apparently
@@ -421,7 +439,7 @@ proc computeRequiresInit(c: PContext, t: PType): bool =
 proc defaultConstructionError(c: PContext, t: PType, info: TLineInfo) =
   var objType = t
   while objType.kind notin {tyObject, tyDistinct}:
-    objType = objType.lastSon
+    objType = objType.last
     assert objType != nil
   if objType.kind == tyObject:
     var constrCtx = initConstrContext(objType, newNodeI(nkObjConstr, info))
@@ -443,7 +461,7 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType 
 
   if t == nil:
     return localErrorNode(c, result, "object constructor needs an object type")
-  
+
   if t.skipTypes({tyGenericInst,
       tyAlias, tySink, tyOwned, tyRef}).kind != tyObject and
       expectedType != nil and expectedType.skipTypes({tyGenericInst,
@@ -452,7 +470,7 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType 
 
   t = skipTypes(t, {tyGenericInst, tyAlias, tySink, tyOwned})
   if t.kind == tyRef:
-    t = skipTypes(t[0], {tyGenericInst, tyAlias, tySink, tyOwned})
+    t = skipTypes(t.elementType, {tyGenericInst, tyAlias, tySink, tyOwned})
     if optOwnedRefs in c.config.globalOptions:
       result.typ = makeVarType(c, result.typ, tyOwned)
       # we have to watch out, there are also 'owned proc' types that can be used

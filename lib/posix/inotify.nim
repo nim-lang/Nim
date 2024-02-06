@@ -14,7 +14,8 @@ when defined(nimPreviewSlimSystem):
 # Structure describing an inotify event.
 type
   InotifyEvent* {.pure, final, importc: "struct inotify_event",
-                  header: "<sys/inotify.h>".} = object ## An Inotify event.
+                  header: "<sys/inotify.h>",
+                  completeStruct.} = object            ## An Inotify event.
     wd* {.importc: "wd".}: FileHandle                  ## Watch descriptor.
     mask* {.importc: "mask".}: uint32                  ## Watch mask.
     cookie* {.importc: "cookie".}: uint32              ## Cookie to synchronize two events.

@@ -1,7 +1,8 @@
 ## A BiTable is a table that can be seen as an optimized pair
 ## of `(Table[LitId, Val], Table[Val, LitId])`.
 
-import hashes, rodfiles
+import std/hashes
+import rodfiles
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -12,6 +13,8 @@ type
   BiTable*[T] = object
     vals: seq[T] # indexed by LitId
     keys: seq[LitId]  # indexed by hash(val)
+
+proc initBiTable*[T](): BiTable[T] = BiTable[T](vals: @[], keys: @[])
 
 proc nextTry(h, maxHash: Hash): Hash {.inline.} =
   result = (h + 1) and maxHash
@@ -33,9 +36,7 @@ proc mustRehash(length, counter: int): bool {.inline.} =
   result = (length * 2 < counter * 3) or (length - counter < 4)
 
 const
-  idStart = 256 ##
-  ## Ids do not start with 0 but with this value. The IR needs it.
-  ## TODO: explain why
+  idStart = 1
 
 template idToIdx(x: LitId): int = x.int - idStart
 
@@ -117,6 +118,12 @@ proc store*[T](f: var RodFile; t: BiTable[T]) =
 proc load*[T](f: var RodFile; t: var BiTable[T]) =
   loadSeq(f, t.vals)
   loadSeq(f, t.keys)
+
+proc sizeOnDisc*(t: BiTable[string]): int =
+  result = 4
+  for x in t.vals:
+    result += x.len + 4
+  result += t.keys.len * sizeof(LitId)
 
 when isMainModule:
 

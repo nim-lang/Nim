@@ -29,8 +29,7 @@ when not nimCoroutines and not defined(nimdoc):
   else:
     {.error: "Coroutines require -d:nimCoroutines".}
 
-import os
-import lists
+import std/[os, lists]
 include system/timers
 
 when defined(nimPreviewSlimSystem):
@@ -68,7 +67,7 @@ else:
   const coroBackend = CORO_BACKEND_UCONTEXT
 
 when coroBackend == CORO_BACKEND_FIBERS:
-  import windows/winlean
+  import std/winlean
   type
     Context = pointer
 

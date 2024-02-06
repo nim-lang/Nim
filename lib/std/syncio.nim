@@ -151,14 +151,11 @@ proc c_fprintf(f: File, frmt: cstring): cint {.
 proc c_fputc(c: char, f: File): cint {.
   importc: "fputc", header: "<stdio.h>".}
 
-template sysFatal(exc, msg) =
-  raise newException(exc, msg)
-
 proc raiseEIO(msg: string) {.noinline, noreturn.} =
-  sysFatal(IOError, msg)
+  raise newException(IOError, msg)
 
 proc raiseEOF() {.noinline, noreturn.} =
-  sysFatal(EOFError, "EOF reached")
+  raise newException(EOFError, "EOF reached")
 
 proc strerror(errnum: cint): cstring {.importc, header: "<string.h>".}
 
@@ -246,7 +243,7 @@ when defined(windows):
     # machine. We also enable `setConsoleOutputCP(65001)` now by default.
     # But we cannot call printf directly as the string might contain \0.
     # So we have to loop over all the sections separated by potential \0s.
-    var i = c_fprintf(f, "%s", s)
+    var i = int c_fprintf(f, "%s", s)
     while i < s.len:
       if s[i] == '\0':
         let w = c_fputc('\0', f)
@@ -359,12 +356,12 @@ proc getOsFileHandle*(f: File): FileHandle =
 
 when defined(nimdoc) or (defined(posix) and not defined(nimscript)) or defined(windows):
   proc setInheritable*(f: FileHandle, inheritable: bool): bool =
-    ## control whether a file handle can be inherited by child processes. Returns
+    ## Controls whether a file handle can be inherited by child processes. Returns
     ## `true` on success. This requires the OS file handle, which can be
     ## retrieved via `getOsFileHandle <#getOsFileHandle,File>`_.
     ##
     ## This procedure is not guaranteed to be available for all platforms. Test for
-    ## availability with `declared() <system.html#declared,untyped>`.
+    ## availability with `declared() <system.html#declared,untyped>`_.
     when SupportIoctlInheritCtl:
       result = c_ioctl(f, if inheritable: FIONCLEX else: FIOCLEX) != -1
     elif defined(freertos) or defined(zephyr):
@@ -422,7 +419,7 @@ proc readLine*(f: File, line: var string): bool {.tags: [ReadIOEffect],
     if f.isatty:
       const numberOfCharsToRead = 2048
       var numberOfCharsRead = 0'i32
-      var buffer = newWideCString("", numberOfCharsToRead)
+      var buffer = newWideCString(numberOfCharsToRead)
       if readConsole(getOsFileHandle(f), addr(buffer[0]),
         numberOfCharsToRead, addr(numberOfCharsRead), nil) == 0:
         var error = getLastError()
@@ -764,7 +761,7 @@ proc open*(filename: string,
   ##
   ## The file handle associated with the resulting `File` is not inheritable.
   if not open(result, filename, mode, bufSize):
-    sysFatal(IOError, "cannot open: " & filename)
+    raise newException(IOError, "cannot open: " & filename)
 
 proc setFilePos*(f: File, pos: int64, relativeTo: FileSeekPos = fspSet) {.benign.} =
   ## Sets the position of the file pointer that is used for read/write
@@ -852,7 +849,7 @@ proc readFile*(filename: string): string {.tags: [ReadIOEffect], benign.} =
     finally:
       close(f)
   else:
-    sysFatal(IOError, "cannot open: " & filename)
+    raise newException(IOError, "cannot open: " & filename)
 
 proc writeFile*(filename, content: string) {.tags: [WriteIOEffect], benign.} =
   ## Opens a file named `filename` for writing. Then writes the
@@ -865,7 +862,7 @@ proc writeFile*(filename, content: string) {.tags: [WriteIOEffect], benign.} =
     finally:
       close(f)
   else:
-    sysFatal(IOError, "cannot open: " & filename)
+    raise newException(IOError, "cannot open: " & filename)
 
 proc writeFile*(filename: string, content: openArray[byte]) {.since: (1, 1).} =
   ## Opens a file named `filename` for writing. Then writes the
@@ -895,7 +892,7 @@ proc readLines*(filename: string, n: Natural): seq[string] =
     finally:
       close(f)
   else:
-    sysFatal(IOError, "cannot open: " & filename)
+    raise newException(IOError, "cannot open: " & filename)
 
 template readLines*(filename: string): seq[
     string] {.deprecated: "use readLines with two arguments".} =

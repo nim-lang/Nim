@@ -387,7 +387,7 @@ func sort*[T](a: var openArray[T],
   ##   ```
   ##
   ## You can inline adhoc comparison procs with the `do notation
-  ## <manual_experimental.html#do-notation>`_. Example:
+  ## <manual.html#procedures-do-notation>`_. Example:
   ##
   ##   ```nim
   ##   people.sort do (x, y: Person) -> int:

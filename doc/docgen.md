@@ -354,9 +354,9 @@ This pertains to any exported symbol like `proc`, `const`, `iterator`, etc.
 Link text is either one word or a group of words enclosed by delimiters
 (brackets ``[...]`` for Markdown or backticks `\`...\`_` for RST).
 Link text will be displayed *as is* while *link target* will be set to
-the anchor \[*] of Nim symbol that corresponds to link text.
+the anchor [^1] of Nim symbol that corresponds to link text.
 
-\[*] anchors' format is described in [HTML anchor generation] section below.
+[^1] anchors' format is described in [HTML anchor generation] section below.
 
 If you have a constant:
 
@@ -621,7 +621,7 @@ compilation options are different:
    .. Note:: markup documents are just placed into the specified directory
      `OUTDIR`:option: by default (i.e. they are **not** affected by
      `--project`:option:), so if you have ``PROJECT/doc/manual.md``
-     document and want to use complex hirearchy (with ``doc/``),
+     document and want to use complex hierarchy (with ``doc/``),
      compile it with `--docroot`:option:\:
        ```cmd
        # 1st stage
@@ -688,7 +688,7 @@ the rest optional. See the [Index (idx) file format] section for details.
 
 .. Note:: `--index`:option: switch only affects creation of ``.idx``
   index files, while user-searchable Index HTML file is created by
-  `buildIndex`:option: commmand.
+  `buildIndex`:option: command.
 
 Buildindex command
 ------------------

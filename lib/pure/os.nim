@@ -8,7 +8,7 @@
 #
 
 ## This module contains basic operating system facilities like
-## retrieving environment variables, working with directories, 
+## retrieving environment variables, working with directories,
 ## running shell commands, etc.
 
 ## .. importdoc:: symlinks.nim, appdirs.nim, dirs.nim, ospaths2.nim
@@ -52,7 +52,7 @@ import std/private/since
 import std/cmdline
 export cmdline
 
-import strutils, pathnorm
+import std/[strutils, pathnorm]
 
 when defined(nimPreviewSlimSystem):
   import std/[syncio, assertions, widestrs]
@@ -76,9 +76,9 @@ since (1, 1):
 when weirdTarget:
   discard
 elif defined(windows):
-  import winlean, times
+  import std/[winlean, times]
 elif defined(posix):
-  import posix, times
+  import std/[posix, times]
 
   proc toTime(ts: Timespec): times.Time {.inline.} =
     result = initTime(ts.tv_sec.int64, ts.tv_nsec.int)
@@ -424,13 +424,13 @@ proc expandFilename*(filename: string): string {.rtl, extern: "nos$1",
   when defined(windows):
     var bufsize = MAX_PATH.int32
     var unused: WideCString = nil
-    var res = newWideCString("", bufsize)
+    var res = newWideCString(bufsize)
     while true:
       var L = getFullPathNameW(newWideCString(filename), bufsize, res, unused)
       if L == 0'i32:
         raiseOSError(osLastError(), filename)
       elif L > bufsize:
-        res = newWideCString("", L)
+        res = newWideCString(L)
         bufsize = L
       else:
         result = res$L
@@ -453,7 +453,7 @@ proc expandFilename*(filename: string): string {.rtl, extern: "nos$1",
       c_free(cast[pointer](r))
 
 proc getCurrentCompilerExe*(): string {.compileTime.} = discard
-  ## This is `getAppFilename()`_ at compile time.
+  ## Returns the path of the currently running Nim compiler or nimble executable.
   ##
   ## Can be used to retrieve the currently executing
   ## Nim compiler from a Nim or nimscript program, or the nimble binary
@@ -624,9 +624,11 @@ when defined(haiku):
     else:
       result = ""
 
-proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect], noWeirdTarget.} =
+proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect], noWeirdTarget, raises: [].} =
   ## Returns the filename of the application's executable.
   ## This proc will resolve symlinks.
+  ##
+  ## Returns empty string when name is unavailable
   ##
   ## See also:
   ## * `getAppDir proc`_
@@ -657,26 +659,29 @@ proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect], noW
     if getExecPath2(result.cstring, size):
       result = "" # error!
     if result.len > 0:
-      result = result.expandFilename
+      try:
+        result = result.expandFilename
+      except OSError:
+        result = ""
   else:
     when defined(linux) or defined(aix):
       result = getApplAux("/proc/self/exe")
     elif defined(solaris):
       result = getApplAux("/proc/" & $getpid() & "/path/a.out")
     elif defined(genode):
-      raiseOSError(OSErrorCode(-1), "POSIX command line not supported")
+      result = "" # Not supported
     elif defined(freebsd) or defined(dragonfly) or defined(netbsd):
       result = getApplFreebsd()
     elif defined(haiku):
       result = getApplHaiku()
     elif defined(openbsd):
-      result = getApplOpenBsd()
+      result = try: getApplOpenBsd() except OSError: ""
     elif defined(nintendoswitch):
       result = ""
 
     # little heuristic that may work on other POSIX-like systems:
     if result.len == 0:
-      result = getApplHeuristic()
+      result = try: getApplHeuristic() except OSError: ""
 
 proc getAppDir*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect], noWeirdTarget.} =
   ## Returns the directory of the application's executable.

@@ -377,7 +377,7 @@ template main {.dirty.} =
         Red, Blue, Yellow
   
     type
-      ObjectVarint3 = object # fixme it doesn't work with static
+      ObjectVarint3 = object
         case kind: Color = Blue
         of Red:
           data1: int = 10
@@ -702,6 +702,48 @@ template main {.dirty.} =
 
     var foo = new Container
     doAssert int(foo.thing[0].x) == 1
+
+  block: # bug #22613
+    type
+      K = enum
+        A = "a"
+        B = "b"
+      T = object
+        case kind: K = B
+        of A:
+          a: int
+        of B:
+          b: float
+
+    doAssert T().kind == B
+
+  block: # bug #22926
+    type
+      Direction = enum
+        North
+        South
+        East
+        West
+
+      ArrayObj1 = object
+        list: array[Direction, int]
+
+      ArrayObj2 = object
+        list: array[Direction, int] = [1, 2, 3, 4]
+
+    block:
+      var a: ArrayObj1
+      doAssert a.list[West] == 0
+      var b = default ArrayObj1
+      doAssert b.list[North] == 0
+
+
+    block:
+      var a: ArrayObj2
+      doAssert a.list[West] == 0
+      var b = default ArrayObj2
+      doAssert b.list[North] == 1
+
 
 static: main()
 main()

@@ -19,7 +19,7 @@ import std/[os, osproc, streams, sequtils, times, strtabs, json, jsonutils, suga
 import std / strutils except addf
 
 when defined(nimPreviewSlimSystem):
-  import std/syncio
+  import std/[syncio, assertions]
 
 import ../dist/checksums/src/checksums/sha1
 
@@ -33,6 +33,7 @@ type
     hasGnuAsm,                # CC's asm uses the absurd GNU assembler syntax
     hasDeclspec,              # CC has __declspec(X)
     hasAttribute,             # CC has __attribute__((X))
+    hasBuiltinUnreachable     # CC has __builtin_unreachable
   TInfoCCProps* = set[TInfoCCProp]
   TInfoCC* = tuple[
     name: string,        # the short name of the compiler
@@ -95,7 +96,7 @@ compiler gcc:
     produceAsm: gnuAsmListing,
     cppXsupport: "-std=gnu++17 -funsigned-char",
     props: {hasSwitchRange, hasComputedGoto, hasCpp, hasGcGuard, hasGnuAsm,
-            hasAttribute})
+            hasAttribute, hasBuiltinUnreachable})
 
 # GNU C and C++ Compiler
 compiler nintendoSwitchGCC:
@@ -122,7 +123,7 @@ compiler nintendoSwitchGCC:
     produceAsm: gnuAsmListing,
     cppXsupport: "-std=gnu++17 -funsigned-char",
     props: {hasSwitchRange, hasComputedGoto, hasCpp, hasGcGuard, hasGnuAsm,
-            hasAttribute})
+            hasAttribute, hasBuiltinUnreachable})
 
 # LLVM Frontend for GCC/G++
 compiler llvmGcc:
@@ -318,7 +319,7 @@ proc getConfigVar(conf: ConfigRef; c: TSystemCC, suffix: string): string =
   var fullSuffix = suffix
   case conf.backend
   of backendCpp, backendJs, backendObjc: fullSuffix = "." & $conf.backend & suffix
-  of backendC: discard
+  of backendC, backendNir: discard
   of backendInvalid:
     # during parsing of cfg files; we don't know the backend yet, no point in
     # guessing wrong thing
@@ -998,7 +999,7 @@ type BuildCache = object
   depfiles: seq[(string, string)]
   nimexe: string
 
-proc writeJsonBuildInstructions*(conf: ConfigRef) =
+proc writeJsonBuildInstructions*(conf: ConfigRef; deps: StringTableRef) =
   var linkFiles = collect(for it in conf.externalToLink:
     var it = it
     if conf.noAbsolutePaths: it = it.extractFilename
@@ -1019,10 +1020,14 @@ proc writeJsonBuildInstructions*(conf: ConfigRef) =
     currentDir: getCurrentDir())
   if optRun in conf.globalOptions or isDefined(conf, "nimBetterRun"):
     bcache.cmdline = conf.commandLine
-    bcache.depfiles = collect(for it in conf.m.fileInfos:
+    for it in conf.m.fileInfos:
       let path = it.fullPath.string
       if isAbsolute(path): # TODO: else?
-        (path, $secureHashFile(path)))
+        if path in deps:
+          bcache.depfiles.add (path, deps[path])
+        else: # backup for configs etc.
+          bcache.depfiles.add (path, $secureHashFile(path))
+
     bcache.nimexe = hashNimExe()
   conf.jsonBuildFile = conf.jsonBuildInstructionsFile
   conf.jsonBuildFile.string.writeFile(bcache.toJson.pretty)

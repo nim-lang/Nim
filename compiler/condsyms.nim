@@ -10,7 +10,7 @@
 # This module handles the conditional symbols.
 
 import
-  strtabs
+  std/strtabs
 
 from options import Feature
 from lineinfos import hintMin, hintMax, warnMin, warnMax
@@ -143,7 +143,6 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimHasTemplateRedefinitionPragma")
   defineSymbol("nimHasCstringCase")
   defineSymbol("nimHasCallsitePragma")
-  defineSymbol("nimHasAmbiguousEnumHint")
 
   defineSymbol("nimHasWarnCastSizes") # deadcode
   defineSymbol("nimHasOutParams")
@@ -158,6 +157,12 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimAllowNonVarDestructor")
   defineSymbol("nimHasQuirky")
   defineSymbol("nimHasEnsureMove")
+  defineSymbol("nimHasNoReturnError")
 
   defineSymbol("nimUseStrictDefs")
   defineSymbol("nimHasNolineTooLong")
+
+  defineSymbol("nimHasCastExtendedVm")
+  defineSymbol("nimHasWarnStdPrefix")
+
+  defineSymbol("nimHasVtables")

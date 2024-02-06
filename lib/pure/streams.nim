@@ -1482,7 +1482,7 @@ when false:
     # do not import windows as this increases compile times:
     discard
   else:
-    import posix
+    import std/posix
 
     proc hsSetPosition(s: FileHandleStream, pos: int) =
       discard lseek(s.handle, pos, SEEK_SET)

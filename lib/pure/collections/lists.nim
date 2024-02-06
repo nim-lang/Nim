@@ -165,28 +165,6 @@ proc newSinglyLinkedNode*[T](value: T): SinglyLinkedNode[T] =
   new(result)
   result.value = value
 
-func toSinglyLinkedList*[T](elems: openArray[T]): SinglyLinkedList[T] {.since: (1, 5, 1).} =
-  ## Creates a new `SinglyLinkedList` from the members of `elems`.
-  runnableExamples:
-    from std/sequtils import toSeq
-    let a = [1, 2, 3, 4, 5].toSinglyLinkedList
-    assert a.toSeq == [1, 2, 3, 4, 5]
-
-  result = initSinglyLinkedList[T]()
-  for elem in elems.items:
-    result.add(elem)
-
-func toDoublyLinkedList*[T](elems: openArray[T]): DoublyLinkedList[T] {.since: (1, 5, 1).} =
-  ## Creates a new `DoublyLinkedList` from the members of `elems`.
-  runnableExamples:
-    from std/sequtils import toSeq
-    let a = [1, 2, 3, 4, 5].toDoublyLinkedList
-    assert a.toSeq == [1, 2, 3, 4, 5]
-
-  result = initDoublyLinkedList[T]()
-  for elem in elems.items:
-    result.add(elem)
-
 template itemsListImpl() {.dirty.} =
   var it {.cursor.} = L.head
   while it != nil:
@@ -286,7 +264,7 @@ iterator nodes*[T](L: SomeLinkedList[T]): SomeLinkedNode[T] =
         x.value = 5 * x.value - 1
     assert $a == "[49, 99, 199, 249]"
 
-  var it = L.head
+  var it {.cursor.} = L.head
   while it != nil:
     let nxt = it.next
     yield it
@@ -311,7 +289,7 @@ iterator nodes*[T](L: SomeLinkedRing[T]): SomeLinkedNode[T] =
         x.value = 5 * x.value - 1
     assert $a == "[49, 99, 199, 249]"
 
-  var it = L.head
+  var it {.cursor.} = L.head
   if it != nil:
     while true:
       let nxt = it.next
@@ -733,7 +711,7 @@ proc remove*[T](L: var SinglyLinkedList[T], n: SinglyLinkedNode[T]): bool {.disc
     if L.tail.next == n:
       L.tail.next = L.head # restore cycle
   else:
-    var prev = L.head
+    var prev {.cursor.} = L.head
     while prev.next != n and prev.next != nil:
       prev = prev.next
     if prev.next == nil:
@@ -993,3 +971,47 @@ proc appendMoved*[T: SomeLinkedList](a, b: var T) {.since: (1, 5, 1).} =
   ## * `addMoved proc <#addMoved,SinglyLinkedList[T],SinglyLinkedList[T]>`_
   ## * `addMoved proc <#addMoved,DoublyLinkedList[T],DoublyLinkedList[T]>`_
   a.addMoved(b)
+
+func toSinglyLinkedList*[T](elems: openArray[T]): SinglyLinkedList[T] {.since: (1, 5, 1).} =
+  ## Creates a new `SinglyLinkedList` from the members of `elems`.
+  runnableExamples:
+    from std/sequtils import toSeq
+    let a = [1, 2, 3, 4, 5].toSinglyLinkedList
+    assert a.toSeq == [1, 2, 3, 4, 5]
+
+  result = initSinglyLinkedList[T]()
+  for elem in elems.items:
+    result.add(elem)
+
+func toSinglyLinkedRing*[T](elems: openArray[T]): SinglyLinkedRing[T] =
+  ## Creates a new `SinglyLinkedRing` from the members of `elems`.
+  runnableExamples:
+    from std/sequtils import toSeq
+    let a = [1, 2, 3, 4, 5].toSinglyLinkedRing
+    assert a.toSeq == [1, 2, 3, 4, 5]
+
+  result = initSinglyLinkedRing[T]()
+  for elem in elems.items:
+    result.add(elem)
+
+func toDoublyLinkedList*[T](elems: openArray[T]): DoublyLinkedList[T] {.since: (1, 5, 1).} =
+  ## Creates a new `DoublyLinkedList` from the members of `elems`.
+  runnableExamples:
+    from std/sequtils import toSeq
+    let a = [1, 2, 3, 4, 5].toDoublyLinkedList
+    assert a.toSeq == [1, 2, 3, 4, 5]
+
+  result = initDoublyLinkedList[T]()
+  for elem in elems.items:
+    result.add(elem)
+
+func toDoublyLinkedRing*[T](elems: openArray[T]): DoublyLinkedRing[T] =
+  ## Creates a new `DoublyLinkedRing` from the members of `elems`.
+  runnableExamples:
+    from std/sequtils import toSeq
+    let a = [1, 2, 3, 4, 5].toDoublyLinkedRing
+    assert a.toSeq == [1, 2, 3, 4, 5]
+
+  result = initDoublyLinkedRing[T]()
+  for elem in elems.items:
+    result.add(elem)

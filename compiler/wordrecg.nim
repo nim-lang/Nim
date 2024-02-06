@@ -49,7 +49,7 @@ type
     wCompleteStruct = "completeStruct", wRequiresInit = "requiresInit", wAlign = "align",
     wNodecl = "nodecl", wPure = "pure", wSideEffect = "sideEffect", wHeader = "header",
     wNoSideEffect = "noSideEffect", wGcSafe = "gcsafe", wNoreturn = "noreturn",
-    wNosinks = "nosinks", wMerge = "merge", wLib = "lib", wDynlib = "dynlib",
+    wNosinks = "nosinks", wLib = "lib", wDynlib = "dynlib",
     wCompilerProc = "compilerproc", wCore = "core", wProcVar = "procvar",
     wBase = "base", wUsed = "used", wFatal = "fatal", wError = "error", wWarning = "warning",
     wHint = "hint",
@@ -84,35 +84,43 @@ type
     wComputedGoto = "computedGoto", wExperimental = "experimental", wDoctype = "doctype",
     wWrite = "write", wGensym = "gensym", wInject = "inject", wDirty = "dirty",
     wInheritable = "inheritable", wThreadVar = "threadvar", wEmit = "emit",
-    wAsmNoStackFrame = "asmNoStackFrame", wImplicitStatic = "implicitStatic",
+    wAsmNoStackFrame = "asmNoStackFrame", wAsmSyntax = "asmSyntax", wImplicitStatic = "implicitStatic",
     wGlobal = "global", wCodegenDecl = "codegenDecl", wUnchecked = "unchecked",
     wGuard = "guard", wLocks = "locks", wPartial = "partial", wExplain = "explain",
     wLiftLocals = "liftlocals", wEnforceNoRaises = "enforceNoRaises", wSystemRaisesDefect = "systemRaisesDefect",
     wRedefine = "redefine", wCallsite = "callsite",
     wQuirky = "quirky",
 
+    # codegen keywords, but first the ones that are also pragmas:
+    wExtern = "extern", wGoto = "goto", wRegister = "register",
+    wUnion = "union", wPacked = "packed", wVirtual = "virtual",
+    wVolatile = "volatile", wMember = "member",
+    wByCopy = "bycopy", wByRef = "byref",
+
+    # codegen keywords but not pragmas:
     wAuto = "auto", wBool = "bool", wCatch = "catch", wChar = "char",
     wClass = "class", wCompl = "compl", wConstCast = "const_cast", wDefault = "default",
     wDelete = "delete", wDouble = "double", wDynamicCast = "dynamic_cast",
-    wExplicit = "explicit", wExtern = "extern", wFalse = "false", wFloat = "float",
-    wFriend = "friend", wGoto = "goto", wInt = "int", wLong = "long", wMutable = "mutable",
+    wExplicit = "explicit", wFalse = "false", wFloat = "float",
+    wFriend = "friend", wInt = "int", wLong = "long", wMutable = "mutable",
     wNamespace = "namespace", wNew = "new", wOperator = "operator", wPrivate = "private",
-    wProtected = "protected", wPublic = "public", wRegister = "register",
+    wProtected = "protected", wPublic = "public",
     wReinterpretCast = "reinterpret_cast", wRestrict = "restrict", wShort = "short",
     wSigned = "signed", wSizeof = "sizeof", wStaticCast = "static_cast", wStruct = "struct",
     wSwitch = "switch", wThis = "this", wThrow = "throw", wTrue = "true", wTypedef = "typedef",
     wTypeid = "typeid", wTypeof = "typeof",  wTypename = "typename",
-    wUnion = "union", wPacked = "packed", wUnsigned = "unsigned", wVirtual = "virtual",
-    wVoid = "void", wVolatile = "volatile", wWchar = "wchar_t", wMember = "member",
+    wUnsigned = "unsigned", wVoid = "void", 
 
     wAlignas = "alignas", wAlignof = "alignof", wConstexpr = "constexpr", wDecltype = "decltype",
     wNullptr = "nullptr", wNoexcept = "noexcept",
     wThreadLocal = "thread_local", wStaticAssert = "static_assert",
-    wChar16 = "char16_t", wChar32 = "char32_t",
+    wChar16 = "char16_t", wChar32 = "char32_t", wWchar = "wchar_t",
 
     wStdIn = "stdin", wStdOut = "stdout", wStdErr = "stderr",
 
-    wInOut = "inout", wByCopy = "bycopy", wByRef = "byref", wOneWay = "oneway",
+    wInOut = "inout", wOneWay = "oneway",
+    # end of codegen keywords
+
     wBitsize = "bitsize", wImportHidden = "all",
     wSendable = "sendable"
 
@@ -125,15 +133,18 @@ const
   nimKeywordsLow* = ord(wAsm)
   nimKeywordsHigh* = ord(wYield)
 
-  ccgKeywordsLow* = ord(wAuto)
+  ccgKeywordsLow* = ord(wExtern)
   ccgKeywordsHigh* = ord(wOneWay)
 
   cppNimSharedKeywords* = {
     wAsm, wBreak, wCase, wConst, wContinue, wDo, wElse, wEnum, wExport,
     wFor, wIf, wReturn, wStatic, wTemplate, wTry, wWhile, wUsing}
+  
+  nonPragmaWordsLow* = wAuto
+  nonPragmaWordsHigh* = wOneWay
 
 
 from std/enumutils import genEnumCaseStmt
-from strutils import normalize
+from std/strutils import normalize
 proc findStr*[T: enum](a, b: static[T], s: string, default: T): T =
   genEnumCaseStmt(T, s, default, ord(a), ord(b), normalize)

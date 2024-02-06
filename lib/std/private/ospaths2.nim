@@ -1,7 +1,7 @@
 include system/inclrtl
 import std/private/since
 
-import strutils, pathnorm
+import std/[strutils, pathnorm]
 import std/oserrors
 
 import oscommon
@@ -17,9 +17,9 @@ const weirdTarget = defined(nimscript) or defined(js)
 when weirdTarget:
   discard
 elif defined(windows):
-  import winlean
+  import std/winlean
 elif defined(posix):
-  import posix, system/ansi_c
+  import std/posix, system/ansi_c
 else:
   {.error: "OS module not ported to your operating system!".}
 
@@ -862,13 +862,13 @@ when not defined(nimscript):
       raiseAssert "use -d:nodejs to have `getCurrentDir` defined"
     elif defined(windows):
       var bufsize = MAX_PATH.int32
-      var res = newWideCString("", bufsize)
+      var res = newWideCString(bufsize)
       while true:
         var L = getCurrentDirectoryW(bufsize, res)
         if L == 0'i32:
           raiseOSError(osLastError())
         elif L > bufsize:
-          res = newWideCString("", L)
+          res = newWideCString(L)
           bufsize = L
         else:
           result = res$L

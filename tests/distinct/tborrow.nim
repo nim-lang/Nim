@@ -98,3 +98,35 @@ block: # issue #22069
     MuscleCar = Car[128]
   var x: MuscleCar
   doAssert x.color is array[128, int]
+
+block: # issue #22646
+  type
+    Vec[N : static[int], T: SomeNumber] = object
+      arr: array[N, T]
+    Vec3[T: SomeNumber] = Vec[3, T]
+
+  proc `[]=`[N,T](v: var Vec[N,T]; ix:int; c:T): void {.inline.} = v.arr[ix] = c
+  proc `[]`[N,T](v: Vec[N,T]; ix: int): T {.inline.} = v.arr[ix]
+
+  proc dot[N,T](u,v: Vec[N,T]): T {. inline .} = discard
+  proc length[N,T](v: Vec[N,T]): T = discard
+  proc cross[T](v1,v2:Vec[3,T]): Vec[3,T] = discard
+  proc normalizeWorks[T](v: Vec[3,T]): Vec[3,T] = discard ## <- Explicit size makes it work!
+  proc foo[N,T](u, v: Vec[N,T]): Vec[N,T] = discard ## <- broken
+  proc normalize[N,T](v: Vec[N,T]): Vec[N,T] = discard ## <- broken
+
+  type Color = distinct Vec3[float]
+
+  template borrowOps(typ: typedesc): untyped =
+    proc `[]=`(v: var typ; ix: int; c: float): void {.borrow.}
+    proc `[]`(v: typ; ix: int): float {.borrow.}
+    proc dot(v, u: typ): float {.borrow.}
+    proc cross(v, u: typ): typ {.borrow.}
+    proc length(v: typ): float {.borrow.}
+    proc normalizeWorks(v: typ): typ {.borrow.} ## Up to here everything works
+    proc foo(u, v: typ): typ {.borrow.} ## Broken
+    proc normalize(v: typ): typ {.borrow.} ## Broken
+  borrowOps(Color)
+  var x: Vec[3, float]
+  let y = Color(x)
+  doAssert Vec3[float](y) == x
