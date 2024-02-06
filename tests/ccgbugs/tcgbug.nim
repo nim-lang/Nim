@@ -122,3 +122,13 @@ proc bug19613 =
   doAssert x.bid.root.data[0] == 42
 
 bug19613()
+
+proc foo = # bug #23280
+  let foo = @[1,2,3,4,5,6]
+  doAssert toOpenArray(foo, 0, 5).len == 6
+  doAssert toOpenArray(foo, 0, 5).len mod 6 == 0 # this should output 0
+  doAssert toOpenArray(foo, 0, 5).max mod 6 == 0
+  let L = toOpenArray(foo, 0, 5).len
+  doAssert L mod 6 == 0 
+
+foo()
