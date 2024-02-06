@@ -65,7 +65,7 @@ elif defined(macosx) or defined(linux) or defined(freebsd) or
     SIGSEGV* = cint(11)
     SIGTERM* = cint(15)
     SIGPIPE* = cint(13)
-    SIG_DFL* = cast[CSighandlerT](0)
+    SIG_DFL* = CSighandlerT(nil)
 elif defined(haiku):
   const
     SIGABRT* = cint(6)
@@ -75,7 +75,7 @@ elif defined(haiku):
     SIGSEGV* = cint(11)
     SIGTERM* = cint(15)
     SIGPIPE* = cint(7)
-    SIG_DFL* = cast[CSighandlerT](0)
+    SIG_DFL* = CSighandlerT(nil)
 else:
   when defined(nimscript):
     {.error: "SIGABRT not ported to your platform".}
@@ -224,7 +224,7 @@ proc rawWriteString*(f: CFilePtr, s: cstring, length: int) {.compilerproc, nonRe
 
 proc rawWrite*(f: CFilePtr, s: cstring) {.compilerproc, nonReloadable, inline.} =
   # we cannot throw an exception here!
-  discard c_fwrite(s, 1, cast[csize_t](s.len), f)
+  discard c_fwrite(s, 1, c_strlen(s), f)
   discard c_fflush(f)
 
 {.pop.}

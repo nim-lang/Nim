@@ -32,12 +32,12 @@ The `md2tex`:option: command is invoked identically to `md2html`:option:,
 but outputs a ``.tex`` file instead of ``.html``.
 
 These tools embedded into Nim compiler; the compiler can output
-the result to HTML \[#html] or Latex \[#latex].
+the result to HTML [^html] or Latex [^latex].
 
-\[#html] commands `nim doc`:cmd: for ``*.nim`` files and
+[^html]: commands `nim doc`:cmd: for ``*.nim`` files and
    `nim rst2html`:cmd: for ``*.rst`` files
 
-\[#latex] commands `nim doc2tex`:cmd: for ``*.nim`` and
+[^latex]: commands `nim doc2tex`:cmd: for ``*.nim`` and
    `nim rst2tex`:cmd: for ``*.rst``.
 
 Full list of supported commands:
@@ -127,7 +127,9 @@ Markdown-specific features
       ```
 * Markdown links ``[...](...)``
 * Pandoc syntax for automatic links ``[...]``, see [Referencing] for description
-+ Markdown literal blocks indented by 4 or more spaces
+* Pandoc syntax for footnotes, including ``[^10]`` (manually numbered)
+  and ``[^someName]`` (auto-numbered with a label)
+* Markdown literal blocks indented by 4 or more spaces
 * Markdown headlines
 * Markdown block quotes
 * Markdown syntax for definition lists
@@ -139,8 +141,8 @@ Additional Nim-specific features
 
 * referencing to definitions in external files, see
   [Markup external referencing] section
-* directives: ``code-block`` \[cmp:Sphinx], ``title``,
-  ``index`` \[cmp:Sphinx]
+* directives: ``code-block`` [^Sphinx], ``title``,
+  ``index`` [^Sphinx]
 * predefined roles
   - ``:nim:`` (default), ``:c:`` (C programming language),
     ``:python:``, ``:yaml:``, ``:java:``, ``:cpp:`` (C++), ``:csharp`` (C#).
@@ -154,9 +156,9 @@ Additional Nim-specific features
     - ``:cmd:`` for commands and common shells syntax
     - ``:console:`` the same  for interactive sessions
       (commands should be prepended by ``$``)
-    - ``:program:`` for executable names \[cmp:Sphinx]
+    - ``:program:`` for executable names [^Sphinx]
       (one can just use ``:cmd:`` on single word)
-    - ``:option:`` for command line options \[cmp:Sphinx]
+    - ``:option:`` for command line options [^Sphinx]
   - ``:tok:``, a role for highlighting of programming language tokens
 * ***triple emphasis*** (bold and italic) using \*\*\*
 * ``:idx:`` role for \`interpreted text\` to include the link to this
@@ -171,7 +173,7 @@ Additional Nim-specific features
   and `doc`:option: will be left in the final document.
 * emoji / smiley symbols
 
-\[cmp:Sphinx] similar but different from the directives of
+[^Sphinx]: similar but different from the directives of
    Python [Sphinx directives] and [Sphinx roles] extensions
 
 .. Note:: By default Nim has ``roSupportMarkdown`` and
@@ -244,7 +246,7 @@ nim md2html file2.md               # creates ``htmldocs/file2.html``
 ```
 
 To allow cross-references between any files in any order (especially, if
-circular references are present), it's strongly reccommended
+circular references are present), it's strongly recommended
 to make a run for creating all the indexes first:
 
 ```cmd

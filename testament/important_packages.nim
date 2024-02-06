@@ -96,9 +96,9 @@ pkg "measuremancer", "nimble testDeps; nimble -y test"
 pkg "memo"
 pkg "msgpack4nim", "nim c -r tests/test_spec.nim"
 pkg "nake", "nim c nakefile.nim"
-pkg "neo", "nim c -d:blas=openblas --mm:refc tests/all.nim", "https://github.com/metagn/neo"
-# remove custom url when https://github.com/andreaferretti/neo/pull/53 is merged
-pkg "nesm", "nimble tests", "https://github.com/nim-lang/NESM", useHead = true
+pkg "neo", "nim c -d:blas=openblas --mm:refc tests/all.nim", url = "https://github.com/nim-lang/neo"
+pkg "nesm", "nimble tests", "https://github.com/nim-lang/NESM", useHead = true, allowFailure = true
+  # inactive, tests not adapted to #23096
 pkg "netty"
 pkg "nico", allowFailure = true
 pkg "nicy", "nim c -r src/nicy.nim"
@@ -120,7 +120,7 @@ pkg "nimquery"
 pkg "nimsl"
 pkg "nimsvg"
 pkg "nimterop", "nimble minitest", url = "https://github.com/nim-lang/nimterop"
-pkg "nimwc", "nim c nimwc.nim", allowFailure = true
+pkg "nimwc", "nim c nimwc.nim"
 pkg "nimx", "nim c test/main.nim", allowFailure = true
 pkg "nitter", "nim c src/nitter.nim", "https://github.com/zedeus/nitter"
 pkg "norm", "testament r tests/common/tmodel.nim"
@@ -151,7 +151,7 @@ pkg "smtp", "nimble compileExample"
 pkg "snip", "nimble test", "https://github.com/genotrance/snip"
 pkg "ssostrings"
 pkg "stew"
-pkg "stint", "nim r stint.nim"
+pkg "stint", "nim c stint.nim"
 pkg "strslice"
 pkg "strunicode", "nim c -r --mm:refc src/strunicode.nim"
 pkg "supersnappy"
@@ -168,12 +168,13 @@ pkg "timezones"
 pkg "tiny_sqlite"
 pkg "unicodedb", "nim c -d:release -r tests/tests.nim"
 pkg "unicodeplus", "nim c -d:release -r tests/tests.nim"
+pkg "union", "nim c -r tests/treadme.nim", url = "https://github.com/alaviss/union"
 pkg "unpack"
 pkg "weave", "nimble test_gc_arc", useHead = true
 pkg "websocket", "nim c websocket.nim"
 pkg "winim", "nim c winim.nim"
 pkg "with"
 pkg "ws", allowFailure = true
-pkg "yaml", "nim c -r test/tserialization.nim"
+pkg "yaml"
 pkg "zero_functional", "nim c -r test.nim"
 pkg "zippy"

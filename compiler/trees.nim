@@ -116,7 +116,7 @@ proc isDeepConstExpr*(n: PNode; preventInheritance = false): bool =
       let t = n.typ.skipTypes({tyGenericInst, tyDistinct, tyAlias, tySink, tyOwned})
       if t.kind in {tyRef, tyPtr} or tfUnion in t.flags: return false
       if t.kind == tyObject:
-        if preventInheritance and t[0] != nil:
+        if preventInheritance and t.baseClass != nil:
           result = false
         elif isCaseObj(t.n):
           result = false
@@ -144,10 +144,12 @@ proc whichPragma*(n: PNode): TSpecialWord =
   case key.kind
   of nkIdent: result = whichKeyword(key.ident)
   of nkSym: result = whichKeyword(key.sym.name)
-  of nkCast: result = wCast
+  of nkCast: return wCast
   of nkClosedSymChoice, nkOpenSymChoice:
-    result = whichPragma(key[0])
-  else: result = wInvalid
+    return whichPragma(key[0])
+  else: return wInvalid
+  if result in nonPragmaWordsLow..nonPragmaWordsHigh:
+    result = wInvalid
 
 proc isNoSideEffectPragma*(n: PNode): bool =
   var k = whichPragma(n)
@@ -196,10 +198,6 @@ proc extractRange*(k: TNodeKind, n: PNode, a, b: int): PNode =
   result = newNodeI(k, n.info, b-a+1)
   for i in 0..b-a: result[i] = n[i+a]
 
-proc isTrue*(n: PNode): bool =
-  n.kind == nkSym and n.sym.kind == skEnumField and n.sym.position != 0 or
-    n.kind == nkIntLit and n.intVal != 0
-
 proc getRoot*(n: PNode): PSym =
   ## ``getRoot`` takes a *path* ``n``. A path is an lvalue expression
   ## like ``obj.x[i].y``. The *root* of a path is the symbol that can be
@@ -236,3 +234,6 @@ proc isRunnableExamples*(n: PNode): bool =
   # Templates and generics don't perform symbol lookups.
   result = n.kind == nkSym and n.sym.magic == mRunnableExamples or
     n.kind == nkIdent and n.ident.id == ord(wRunnableExamples)
+
+proc skipAddr*(n: PNode): PNode {.inline.} =
+  result = if n.kind in {nkAddr, nkHiddenAddr}: n[0] else: n

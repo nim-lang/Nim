@@ -21,8 +21,10 @@
 ## turned on by passing ``options:`` [RstParseOptions] to [proc rstParse].
 
 import
-  os, strutils, rstast, dochelpers, std/enumutils, algorithm, lists, sequtils,
-  std/private/miscdollars, tables, strscans, rstidx
+  std/[os, strutils, enumutils, algorithm, lists, sequtils,
+  tables, strscans]
+import dochelpers, rstidx, rstast
+import std/private/miscdollars
 from highlite import SourceLanguage, getSourceLanguage
 
 when defined(nimPreviewSlimSystem):
@@ -442,6 +444,7 @@ type
                                 ## because RST can have >1 alias per 1 anchor
 
   EParseError* = object of ValueError
+  SectionParser = proc (p: var RstParser): PRstNode {.nimcall, gcsafe.}
 
 const
   LineRstInit* = 1  ## Initial line number for standalone RST text
@@ -597,8 +600,10 @@ proc rstMessage(p: RstParser, msgKind: MsgKind) =
 #
 # TODO: we need to apply this strategy to all markup elements eventually.
 
-func isPureRst(p: RstParser): bool =
-  roSupportMarkdown notin p.s.options
+func isPureRst(p: RstParser): bool = roSupportMarkdown notin p.s.options
+func isRst(p: RstParser): bool = roPreferMarkdown notin p.s.options
+func isMd(p: RstParser): bool = roPreferMarkdown in p.s.options
+func isMd(s: PRstSharedState): bool = roPreferMarkdown in s.options
 
 proc stopOrWarn(p: RstParser, errorType: MsgKind, arg: string) =
   let realMsgKind = if isPureRst(p): errorType else: mwRstStyle
@@ -1692,7 +1697,7 @@ proc parseMarkdownLink(p: var RstParser; father: PRstNode): bool =
   else:
     result = false
 
-proc getFootnoteType(label: PRstNode): (FootnoteType, int) =
+proc getRstFootnoteType(label: PRstNode): (FootnoteType, int) =
   if label.sons.len >= 1 and label.sons[0].kind == rnLeaf and
       label.sons[0].text == "#":
     if label.sons.len == 1:
@@ -1710,7 +1715,18 @@ proc getFootnoteType(label: PRstNode): (FootnoteType, int) =
   else:
     result = (fnCitation, -1)
 
-proc parseFootnoteName(p: var RstParser, reference: bool): PRstNode =
+proc getMdFootnoteType(label: PRstNode): (FootnoteType, int) =
+  try:
+    result = (fnManualNumber, parseInt(label.sons[0].text))
+  except ValueError:
+    result = (fnAutoNumberLabel, -1)
+
+proc getFootnoteType(s: PRstSharedState, label: PRstNode): (FootnoteType, int) =
+  ## Returns footnote/citation type and manual number (if present).
+  if isMd(s): getMdFootnoteType(label)
+  else: getRstFootnoteType(label)
+
+proc parseRstFootnoteName(p: var RstParser, reference: bool): PRstNode =
   ## parse footnote/citation label. Precondition: start at `[`.
   ## Label text should be valid ref. name symbol, otherwise nil is returned.
   var i = p.idx + 1
@@ -1739,6 +1755,41 @@ proc parseFootnoteName(p: var RstParser, reference: bool): PRstNode =
     result.add newLeaf(p.tok[i].symbol)
     inc i
   p.idx = i
+
+proc isMdFootnoteName(p: RstParser, reference: bool): bool =
+  ## Pandoc Markdown footnote extension.
+  let j = p.idx
+  result = p.tok[j].symbol == "[" and p.tok[j+1].symbol == "^" and
+           p.tok[j+2].kind == tkWord
+
+proc parseMdFootnoteName(p: var RstParser, reference: bool): PRstNode =
+  if isMdFootnoteName(p, reference):
+    result = newRstNode(rnInner)
+    var j = p.idx + 2
+    while p.tok[j].kind in {tkWord, tkOther} or
+        validRefnamePunct(p.tok[j].symbol):
+      result.add newLeaf(p.tok[j].symbol)
+      inc j
+    if j == p.idx + 2:
+      return nil
+    if p.tok[j].symbol == "]":
+      if reference:
+        p.idx = j + 1  # skip ]
+      else:
+        if p.tok[j+1].symbol == ":":
+          p.idx = j + 2  # skip ]:
+        else:
+          result = nil
+    else:
+      result = nil
+  else:
+    result = nil
+
+proc parseFootnoteName(p: var RstParser, reference: bool): PRstNode =
+  if isMd(p): parseMdFootnoteName(p, reference)
+  else:
+    if isInlineMarkupStart(p, "["): parseRstFootnoteName(p, reference)
+    else: nil
 
 proc isMarkdownCodeBlock(p: RstParser, idx: int): bool =
   let tok = p.tok[idx]
@@ -1806,16 +1857,12 @@ proc parseInline(p: var RstParser, father: PRstNode) =
       var n = newRstNode(rnSubstitutionReferences, info=lineInfo(p, p.idx+1))
       parseUntil(p, n, "|", false)
       father.add(n)
-    elif roSupportMarkdown in p.s.options and
-        currentTok(p).symbol == "[" and nextTok(p).symbol != "[" and
-        parseMarkdownLink(p, father):
-      discard "parseMarkdownLink already processed it"
-    elif isInlineMarkupStart(p, "[") and nextTok(p).symbol != "[" and
+    elif currentTok(p).symbol == "[" and nextTok(p).symbol != "[" and
          (n = parseFootnoteName(p, reference=true); n != nil):
       var nn = newRstNode(rnFootnoteRef)
       nn.info = lineInfo(p, saveIdx+1)
       nn.add n
-      let (fnType, _) = getFootnoteType(n)
+      let (fnType, _) = getFootnoteType(p.s, n)
       case fnType
       of fnAutoSymbol:
         p.s.lineFootnoteSymRef.add lineInfo(p)
@@ -1823,6 +1870,10 @@ proc parseInline(p: var RstParser, father: PRstNode) =
         p.s.lineFootnoteNumRef.add lineInfo(p)
       else: discard
       father.add(nn)
+    elif roSupportMarkdown in p.s.options and
+        currentTok(p).symbol == "[" and nextTok(p).symbol != "[" and
+        parseMarkdownLink(p, father):
+      discard "parseMarkdownLink already processed it"
     else:
       if roSupportSmilies in p.s.options:
         let n = parseSmiley(p)
@@ -1960,8 +2011,26 @@ proc getMdBlockIndent(p: RstParser): int =
     else:
       result = nextIndent                 # allow parsing next lines [case.3]
 
-template isRst(p: RstParser): bool = roPreferMarkdown notin p.s.options
-template isMd(p: RstParser): bool = roPreferMarkdown in p.s.options
+proc indFollows(p: RstParser): bool =
+  result = currentTok(p).kind == tkIndent and currentTok(p).ival > currInd(p)
+
+proc parseBlockContent(p: var RstParser, father: var PRstNode,
+                       contentParser: SectionParser): bool {.gcsafe.} =
+  ## parse the final content part of explicit markup blocks (directives,
+  ## footnotes, etc). Returns true if succeeded.
+  if currentTok(p).kind != tkIndent or indFollows(p):
+    let blockIndent = getWrappableIndent(p)
+    pushInd(p, blockIndent)
+    let content = contentParser(p)
+    popInd(p)
+    father.add content
+    result = true
+
+proc parseSectionWrapper(p: var RstParser): PRstNode =
+  result = newRstNode(rnInner)
+  parseSection(p, result)
+  while result.kind == rnInner and result.len == 1:
+    result = result.sons[0]
 
 proc parseField(p: var RstParser): PRstNode =
   ## Returns a parsed rnField node.
@@ -2298,6 +2367,8 @@ proc whichSection(p: RstParser): RstNodeKind =
     elif roSupportMarkdown in p.s.options and predNL(p) and
         match(p, p.idx, "| w") and findPipe(p, p.idx+3):
       result = rnMarkdownTable
+    elif isMd(p) and isMdFootnoteName(p, reference=false):
+      result = rnFootnote
     elif currentTok(p).symbol == "|" and isLineBlock(p):
       result = rnLineBlock
     elif roSupportMarkdown in p.s.options and isMarkdownBlockQuote(p):
@@ -2866,7 +2937,7 @@ proc parseOptionList(p: var RstParser): PRstNode =
       break
 
 proc parseMdDefinitionList(p: var RstParser): PRstNode =
-  ## Parses (Pandoc/kramdown/PHPextra) Mardkown definition lists.
+  ## Parses (Pandoc/kramdown/PHPextra) Markdown definition lists.
   result = newRstNodeA(p, rnMdDefList)
   let termCol = currentTok(p).col
   while true:
@@ -3022,6 +3093,57 @@ proc parseEnumList(p: var RstParser): PRstNode =
     else:
       break
 
+proc prefix(ftnType: FootnoteType): string =
+  case ftnType
+  of fnManualNumber: result = "footnote-"
+  of fnAutoNumber: result = "footnoteauto-"
+  of fnAutoNumberLabel: result = "footnote-"
+  of fnAutoSymbol: result = "footnotesym-"
+  of fnCitation: result = "citation-"
+
+proc parseFootnote(p: var RstParser): PRstNode {.gcsafe.} =
+  ## Parses footnotes and citations, always returns 2 sons:
+  ##
+  ## 1) footnote label, always containing rnInner with 1 or more sons
+  ## 2) footnote body, which may be nil
+  var label: PRstNode
+  if isRst(p):
+    inc p.idx  # skip space after `..`
+  label = parseFootnoteName(p, reference=false)
+  if label == nil:
+    if isRst(p):
+      dec p.idx
+    return nil
+  result = newRstNode(rnFootnote)
+  result.add label
+  let (fnType, i) = getFootnoteType(p.s, label)
+  var name = ""
+  var anchor = fnType.prefix
+  case fnType
+  of fnManualNumber:
+    addFootnoteNumManual(p, i)
+    anchor.add $i
+  of fnAutoNumber, fnAutoNumberLabel:
+    name = rstnodeToRefname(label)
+    addFootnoteNumAuto(p, name)
+    if fnType == fnAutoNumberLabel:
+      anchor.add name
+    else:  # fnAutoNumber
+      result.order = p.s.lineFootnoteNum.len
+      anchor.add $result.order
+  of fnAutoSymbol:
+    addFootnoteSymAuto(p)
+    result.order = p.s.lineFootnoteSym.len
+    anchor.add $p.s.lineFootnoteSym.len
+  of fnCitation:
+    anchor.add rstnodeToRefname(label)
+  addAnchorRst(p, anchor, target = result, anchorType = footnoteAnchor)
+  result.anchor = anchor
+  if currentTok(p).kind == tkWhite: inc p.idx
+  discard parseBlockContent(p, result, parseSectionWrapper)
+  if result.len < 2:
+    result.add nil
+
 proc sonKind(father: PRstNode, i: int): RstNodeKind =
   result = rnLeaf
   if i < father.len: result = father.sons[i].kind
@@ -3064,6 +3186,7 @@ proc parseSection(p: var RstParser, result: PRstNode) =
     of rnLineBlock: a = parseLineBlock(p)
     of rnMarkdownBlockQuote: a = parseMarkdownBlockQuote(p)
     of rnDirective: a = parseDotDot(p)
+    of rnFootnote: a = parseFootnote(p)
     of rnEnumList: a = parseEnumList(p)
     of rnLeaf: rstMessage(p, meNewSectionExpected, "(syntax error)")
     of rnParagraph: discard
@@ -3089,12 +3212,6 @@ proc parseSection(p: var RstParser, result: PRstNode) =
     result.sons[0] = newRstNode(rnInner, result.sons[0].sons,
                                 anchor=result.sons[0].anchor)
 
-proc parseSectionWrapper(p: var RstParser): PRstNode =
-  result = newRstNode(rnInner)
-  parseSection(p, result)
-  while result.kind == rnInner and result.len == 1:
-    result = result.sons[0]
-
 proc parseDoc(p: var RstParser): PRstNode =
   result = parseSectionWrapper(p)
   if currentTok(p).kind != tkEof:
@@ -3104,7 +3221,6 @@ type
   DirFlag = enum
     hasArg, hasOptions, argIsFile, argIsWord
   DirFlags = set[DirFlag]
-  SectionParser = proc (p: var RstParser): PRstNode {.nimcall, gcsafe.}
 
 proc parseDirective(p: var RstParser, k: RstNodeKind, flags: DirFlags): PRstNode =
   ## Parses arguments and options for a directive block.
@@ -3146,21 +3262,6 @@ proc parseDirective(p: var RstParser, k: RstNodeKind, flags: DirFlags): PRstNode
       options = parseFields(p)
       popInd(p)
   result.add(options)
-
-proc indFollows(p: RstParser): bool =
-  result = currentTok(p).kind == tkIndent and currentTok(p).ival > currInd(p)
-
-proc parseBlockContent(p: var RstParser, father: var PRstNode,
-                       contentParser: SectionParser): bool {.gcsafe.} =
-  ## parse the final content part of explicit markup blocks (directives,
-  ## footnotes, etc). Returns true if succeeded.
-  if currentTok(p).kind != tkIndent or indFollows(p):
-    let blockIndent = getWrappableIndent(p)
-    pushInd(p, blockIndent)
-    let content = contentParser(p)
-    popInd(p)
-    father.add content
-    result = true
 
 proc parseDirective(p: var RstParser, k: RstNodeKind, flags: DirFlags,
                     contentParser: SectionParser): PRstNode =
@@ -3398,54 +3499,6 @@ proc selectDir(p: var RstParser, d: string): PRstNode =
   else:
     rstMessage(p, meInvalidDirective, d, tok.line, tok.col)
 
-proc prefix(ftnType: FootnoteType): string =
-  case ftnType
-  of fnManualNumber: result = "footnote-"
-  of fnAutoNumber: result = "footnoteauto-"
-  of fnAutoNumberLabel: result = "footnote-"
-  of fnAutoSymbol: result = "footnotesym-"
-  of fnCitation: result = "citation-"
-
-proc parseFootnote(p: var RstParser): PRstNode {.gcsafe.} =
-  ## Parses footnotes and citations, always returns 2 sons:
-  ##
-  ## 1) footnote label, always containing rnInner with 1 or more sons
-  ## 2) footnote body, which may be nil
-  inc p.idx
-  let label = parseFootnoteName(p, reference=false)
-  if label == nil:
-    dec p.idx
-    return nil
-  result = newRstNode(rnFootnote)
-  result.add label
-  let (fnType, i) = getFootnoteType(label)
-  var name = ""
-  var anchor = fnType.prefix
-  case fnType
-  of fnManualNumber:
-    addFootnoteNumManual(p, i)
-    anchor.add $i
-  of fnAutoNumber, fnAutoNumberLabel:
-    name = rstnodeToRefname(label)
-    addFootnoteNumAuto(p, name)
-    if fnType == fnAutoNumberLabel:
-      anchor.add name
-    else:  # fnAutoNumber
-      result.order = p.s.lineFootnoteNum.len
-      anchor.add $result.order
-  of fnAutoSymbol:
-    addFootnoteSymAuto(p)
-    result.order = p.s.lineFootnoteSym.len
-    anchor.add $p.s.lineFootnoteSym.len
-  of fnCitation:
-    anchor.add rstnodeToRefname(label)
-  addAnchorRst(p, anchor, target = result, anchorType = footnoteAnchor)
-  result.anchor = anchor
-  if currentTok(p).kind == tkWhite: inc p.idx
-  discard parseBlockContent(p, result, parseSectionWrapper)
-  if result.len < 2:
-    result.add nil
-
 proc parseDotDot(p: var RstParser): PRstNode =
   # parse "explicit markup blocks"
   result = nil
@@ -3599,114 +3652,114 @@ proc preparePass2*(s: var PRstSharedState, mainNode: PRstNode, importdoc = true)
       loadIdxFile(s, origFilename)
 
 proc resolveLink(s: PRstSharedState, n: PRstNode) : PRstNode =
-    # Associate this link alias with its target and change node kind to
-    # rnHyperlink or rnInternalRef appropriately.
-    var desc, alias: PRstNode
-    if n.kind == rnPandocRef:  # link like [desc][alias]
-      desc = n.sons[0]
-      alias = n.sons[1]
-    else:  # n.kind == rnRstRef, link like `desc=alias`_
-      desc = n
-      alias = n
-    type LinkDef = object
-      ar: AnchorRule
-      priority: int
-      tooltip: string
-      target: PRstNode
-      info: TLineInfo
-      externFilename: string
-        # when external anchor: origin filename where anchor was defined
-      isTitle: bool
-    proc cmp(x, y: LinkDef): int =
-      result = cmp(x.priority, y.priority)
-      if result == 0:
-        result = cmp(x.target, y.target)
-    var foundLinks: seq[LinkDef]
-    let refn = rstnodeToRefname(alias)
-    var hyperlinks = findRef(s, refn)
-    for y in hyperlinks:
-      foundLinks.add LinkDef(ar: arHyperlink, priority: refPriority(y.kind),
-                             target: y.value, info: y.info,
-                             tooltip: "(" & $y.kind & ")")
-    let substRst = findMainAnchorRst(s, alias.addNodes, n.info)
-    template getExternFilename(subst: AnchorSubst): string =
-      if subst.kind == arExternalRst or
-          (subst.kind == arNim and subst.external):
-        getFilename(s, subst)
-      else: ""
-    for subst in substRst:
-      var refname, fullRefname: string
-      if subst.kind == arInternalRst:
-        refname = subst.target.anchor
-        fullRefname = refname
-      else:  # arExternalRst
-        refname = subst.refnameExt
-        fullRefname = s.idxImports[getFilename(s, subst)].linkRelPath &
-                        "/" & refname
-      let anchorType =
-        if subst.kind == arInternalRst: subst.anchorType
-        else: subst.anchorTypeExt  # arExternalRst
+  # Associate this link alias with its target and change node kind to
+  # rnHyperlink or rnInternalRef appropriately.
+  var desc, alias: PRstNode
+  if n.kind == rnPandocRef:  # link like [desc][alias]
+    desc = n.sons[0]
+    alias = n.sons[1]
+  else:  # n.kind == rnRstRef, link like `desc=alias`_
+    desc = n
+    alias = n
+  type LinkDef = object
+    ar: AnchorRule
+    priority: int
+    tooltip: string
+    target: PRstNode
+    info: TLineInfo
+    externFilename: string
+      # when external anchor: origin filename where anchor was defined
+    isTitle: bool
+  proc cmp(x, y: LinkDef): int =
+    result = cmp(x.priority, y.priority)
+    if result == 0:
+      result = cmp(x.target, y.target)
+  var foundLinks: seq[LinkDef]
+  let refn = rstnodeToRefname(alias)
+  var hyperlinks = findRef(s, refn)
+  for y in hyperlinks:
+    foundLinks.add LinkDef(ar: arHyperlink, priority: refPriority(y.kind),
+                           target: y.value, info: y.info,
+                           tooltip: "(" & $y.kind & ")")
+  let substRst = findMainAnchorRst(s, alias.addNodes, n.info)
+  template getExternFilename(subst: AnchorSubst): string =
+    if subst.kind == arExternalRst or
+        (subst.kind == arNim and subst.external):
+      getFilename(s, subst)
+    else: ""
+  for subst in substRst:
+    var refname, fullRefname: string
+    if subst.kind == arInternalRst:
+      refname = subst.target.anchor
+      fullRefname = refname
+    else:  # arExternalRst
+      refname = subst.refnameExt
+      fullRefname = s.idxImports[getFilename(s, subst)].linkRelPath &
+                      "/" & refname
+    let anchorType =
+      if subst.kind == arInternalRst: subst.anchorType
+      else: subst.anchorTypeExt  # arExternalRst
+    foundLinks.add LinkDef(ar: subst.kind, priority: subst.priority,
+                           target: newLeaf(fullRefname),
+                           info: subst.info,
+                           externFilename: getExternFilename(subst),
+                           isTitle: isDocumentationTitle(refname),
+                           tooltip: "(" & $anchorType & ")")
+  # find anchors automatically generated from Nim symbols
+  if roNimFile in s.options or s.nimFileImported:
+    let substNim = findMainAnchorNim(s, signature=alias, n.info)
+    for subst in substNim:
+      let fullRefname =
+        if subst.external:
+          s.idxImports[getFilename(s, subst)].linkRelPath &
+              "/" & subst.refname
+        else: subst.refname
       foundLinks.add LinkDef(ar: subst.kind, priority: subst.priority,
                              target: newLeaf(fullRefname),
-                             info: subst.info,
                              externFilename: getExternFilename(subst),
-                             isTitle: isDocumentationTitle(refname),
-                             tooltip: "(" & $anchorType & ")")
-    # find anchors automatically generated from Nim symbols
-    if roNimFile in s.options or s.nimFileImported:
-      let substNim = findMainAnchorNim(s, signature=alias, n.info)
-      for subst in substNim:
-        let fullRefname =
-          if subst.external:
-            s.idxImports[getFilename(s, subst)].linkRelPath &
-                "/" & subst.refname
-          else: subst.refname
-        foundLinks.add LinkDef(ar: subst.kind, priority: subst.priority,
-                               target: newLeaf(fullRefname),
-                               externFilename: getExternFilename(subst),
-                               isTitle: isDocumentationTitle(subst.refname),
-                               info: subst.info, tooltip: subst.tooltip)
-    foundLinks.sort(cmp = cmp, order = Descending)
-    let aliasStr = addNodes(alias)
-    if foundLinks.len >= 1:
+                             isTitle: isDocumentationTitle(subst.refname),
+                             info: subst.info, tooltip: subst.tooltip)
+  foundLinks.sort(cmp = cmp, order = Descending)
+  let aliasStr = addNodes(alias)
+  if foundLinks.len >= 1:
+    if foundLinks[0].externFilename != "":
+      s.idxImports[foundLinks[0].externFilename].used = true
+    let kind = if foundLinks[0].ar in {arHyperlink, arExternalRst}: rnHyperlink
+               elif foundLinks[0].ar == arNim:
+                 if foundLinks[0].externFilename == "": rnNimdocRef
+                 else: rnHyperlink
+               else: rnInternalRef
+    result = newRstNode(kind)
+    let documentName =  # filename without ext for `.nim`, title for `.md`
+      if foundLinks[0].ar == arNim:
+        changeFileExt(foundLinks[0].externFilename.extractFilename, "")
+      elif foundLinks[0].externFilename != "":
+        s.idxImports[foundLinks[0].externFilename].title
+      else: foundLinks[0].externFilename.extractFilename
+    let linkText =
       if foundLinks[0].externFilename != "":
-        s.idxImports[foundLinks[0].externFilename].used = true
-      let kind = if foundLinks[0].ar in {arHyperlink, arExternalRst}: rnHyperlink
-                 elif foundLinks[0].ar == arNim:
-                   if foundLinks[0].externFilename == "": rnNimdocRef
-                   else: rnHyperlink
-                 else: rnInternalRef
-      result = newRstNode(kind)
-      let documentName =  # filename without ext for `.nim`, title for `.md`
-        if foundLinks[0].ar == arNim:
-          changeFileExt(foundLinks[0].externFilename.extractFilename, "")
-        elif foundLinks[0].externFilename != "":
-          s.idxImports[foundLinks[0].externFilename].title
-        else: foundLinks[0].externFilename.extractFilename
-      let linkText =
-        if foundLinks[0].externFilename != "":
-          if foundLinks[0].isTitle: newLeaf(addNodes(desc))
-          else: newLeaf(documentName & ": " & addNodes(desc))
-        else:
-          newRstNode(rnInner, desc.sons)
-      result.sons = @[linkText, foundLinks[0].target]
-      if kind == rnNimdocRef: result.tooltip = foundLinks[0].tooltip
-      if foundLinks.len > 1:  # report ambiguous link
-        var targets = newSeq[string]()
-        for l in foundLinks:
-          var t = "    "
-          if s.filenames.len > 1:
-            t.add getFilename(s.filenames, l.info.fileIndex)
-          let n = l.info.line
-          let c = l.info.col + ColRstOffset
-          t.add "($1, $2): $3" % [$n, $c, l.tooltip]
-          targets.add t
-        rstMessage(s.filenames, s.msgHandler, n.info, mwAmbiguousLink,
-                   "`$1`\n  clash:\n$2" % [
-                     aliasStr, targets.join("\n")])
-    else:  # nothing found
-      result = n
-      rstMessage(s.filenames, s.msgHandler, n.info, mwBrokenLink, aliasStr)
+        if foundLinks[0].isTitle: newLeaf(addNodes(desc))
+        else: newLeaf(documentName & ": " & addNodes(desc))
+      else:
+        newRstNode(rnInner, desc.sons)
+    result.sons = @[linkText, foundLinks[0].target]
+    if kind == rnNimdocRef: result.tooltip = foundLinks[0].tooltip
+    if foundLinks.len > 1:  # report ambiguous link
+      var targets = newSeq[string]()
+      for l in foundLinks:
+        var t = "    "
+        if s.filenames.len > 1:
+          t.add getFilename(s.filenames, l.info.fileIndex)
+        let n = l.info.line
+        let c = l.info.col + ColRstOffset
+        t.add "($1, $2): $3" % [$n, $c, l.tooltip]
+        targets.add t
+      rstMessage(s.filenames, s.msgHandler, n.info, mwAmbiguousLink,
+                 "`$1`\n  clash:\n$2" % [
+                   aliasStr, targets.join("\n")])
+  else:  # nothing found
+    result = n
+    rstMessage(s.filenames, s.msgHandler, n.info, mwBrokenLink, aliasStr)
 
 proc resolveSubs*(s: PRstSharedState, n: PRstNode): PRstNode =
   ## Makes pass 2 of RST parsing.
@@ -3729,7 +3782,7 @@ proc resolveSubs*(s: PRstSharedState, n: PRstNode): PRstNode =
   of rnRstRef, rnPandocRef:
     result = resolveLink(s, n)
   of rnFootnote:
-    var (fnType, num) = getFootnoteType(n.sons[0])
+    var (fnType, num) = getFootnoteType(s, n.sons[0])
     case fnType
     of fnManualNumber, fnCitation:
       discard "no need to alter fixed text"
@@ -3747,7 +3800,7 @@ proc resolveSubs*(s: PRstSharedState, n: PRstNode): PRstNode =
       n.sons[0].sons[0].text = sym
     n.sons[1] = resolveSubs(s, n.sons[1])
   of rnFootnoteRef:
-    var (fnType, num) = getFootnoteType(n.sons[0])
+    var (fnType, num) = getFootnoteType(s, n.sons[0])
     template addLabel(number: int | string) =
       var nn = newRstNode(rnInner)
       nn.add newLeaf($number)

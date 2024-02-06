@@ -60,7 +60,7 @@ when not defined(nimscript):
     when defined(windows):
       proc c_putenv(envstring: cstring): cint {.importc: "_putenv", header: "<stdlib.h>".}
       from std/private/win_setenv import setEnvImpl
-      import winlean
+      import std/winlean
       when defined(nimPreviewSlimSystem):
         import std/widestrs
 

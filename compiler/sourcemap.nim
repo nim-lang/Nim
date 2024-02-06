@@ -160,10 +160,7 @@ func parse*(source: string): SourceInfo =
 func toSourceMap*(info: SourceInfo, file: string): SourceMap {.raises: [].} =
   ## Convert from high level SourceInfo into the required SourceMap object
   # Add basic info
-  result.version = 3
-  result.file = file
-  result.sources = info.files
-  result.names = info.names
+  result = SourceMap(version: 3, file: file, sources: info.files, names: info.names)
   # Convert nodes into mappings.
   # Mappings are split into blocks where each block referes to a line in the outputted JS.
   # Blocks can be separated into statements which refere to tokens on the line.

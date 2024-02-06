@@ -1,7 +1,7 @@
-# bug #4462
 import macros
 import os
 
+# bug #4462
 block:
   proc foo(t: typedesc) {.compileTime.} =
     assert sameType(getType(t), getType(int))
@@ -82,6 +82,8 @@ block:
 
     doAssert fileExists("MISSINGFILE") == false
     doAssert dirExists("MISSINGDIR") == false
+    doAssert fileExists(currentSourcePath())
+    doAssert dirExists(currentSourcePath().parentDir)
 
 # bug #7210
 block:
@@ -228,6 +230,14 @@ block: # bug #15595
     doAssert a3 == a4 # bugfix
   static: main()
   main()
+
+block: # issue #20543
+  type F = proc()
+  const myArray = block:
+    var r: array[1, F]
+    r[0] = nil
+    r
+  doAssert isNil(myArray[0])
 
 # bug #15363
 import sequtils
@@ -733,3 +743,34 @@ block: # bug #22190
     tab = mkOpTable(Berlin)
 
   doAssert not tab
+
+block: # issue #22524
+  const cnst = cstring(nil)
+  doAssert cnst.isNil
+  doAssert cnst == nil
+  let b = cnst
+  doAssert b.isNil
+  doAssert b == nil
+
+  let a = static: cstring(nil)
+  doAssert a.isNil
+
+  static:
+    var x: cstring
+    doAssert x.isNil
+    doAssert x == nil
+    doAssert x != ""
+
+block: # issue #15730
+  const s: cstring = ""
+  doAssert s != nil
+
+  static:
+    let s: cstring = ""
+    doAssert not s.isNil
+    doAssert s != nil
+    doAssert s == ""
+
+static: # more nil cstring issues
+  let x = cstring(nil)
+  doAssert x.len == 0

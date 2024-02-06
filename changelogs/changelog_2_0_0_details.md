@@ -205,7 +205,7 @@
   proc prc(): int =
     123
 
-  iterator iter(): int =
+  iterator iter(): int {.closure.} =
     yield 123
 
   proc takesProc[T: proc](x: T) = discard

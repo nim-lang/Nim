@@ -2,8 +2,8 @@
 ## and [asyncjs](asyncjs.html) on the JS backend. 
 
 when defined(js):
-  import asyncjs
+  import std/asyncjs
   export asyncjs
 else:
-  import asyncmacro, asyncfutures
+  import std/[asyncmacro, asyncfutures]
   export asyncmacro, asyncfutures

@@ -81,10 +81,13 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string, isOrc =
   testSpec r, makeTest("tests/dll/nimhcr_unit.nim", options & " --threads:off" & rpath, cat)
   testSpec r, makeTest("tests/dll/visibility.nim", options & " --threads:off" & rpath, cat)
 
-  if "boehm" notin options and not isOrc:
+  if "boehm" notin options:
     # hcr tests
     
-    testSpec r, makeTest("tests/dll/nimhcr_basic.nim", options & " --threads:off --forceBuild --hotCodeReloading:on " & rpath, cat)
+    var basicHcrTest = makeTest("tests/dll/nimhcr_basic.nim", options & " --threads:off --forceBuild --hotCodeReloading:on " & rpath, cat)
+    # test segfaults for now but compiles:
+    if isOrc: basicHcrTest.spec.action = actionCompile
+    testSpec r, basicHcrTest
 
     # force build required - see the comments in the .nim file for more details
     var hcri = makeTest("tests/dll/nimhcr_integration.nim",

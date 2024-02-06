@@ -9,7 +9,7 @@
 
 ## `outParamsAt` macro for easy writing code that works with both 2.0 and 1.x.
 
-import macros
+import std/macros
 
 macro outParamsAt*(positions: static openArray[int]; n: untyped): untyped =
   ## Use this macro to annotate `out` parameters in a portable way.

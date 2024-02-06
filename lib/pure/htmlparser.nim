@@ -47,7 +47,9 @@
 ##     writeFile("output.html", $html)
 ##   ```
 
-import strutils, streams, parsexml, xmltree, unicode, strtabs
+{.deprecated: "use `nimble install htmlparser` and import `pkg/htmlparser` instead".}
+
+import std/[strutils, streams, parsexml, xmltree, unicode, strtabs]
 
 when defined(nimPreviewSlimSystem):
   import std/syncio
@@ -2062,7 +2064,7 @@ proc loadHtml*(path: string): XmlNode =
   result = loadHtml(path, errors)
 
 when not defined(testing) and isMainModule:
-  import os
+  import std/os
 
   var errors: seq[string] = @[]
   var x = loadHtml(paramStr(1), errors)

@@ -267,7 +267,7 @@ You can also use the [discard statement](#statements-and-expressions-discard-sta
   ```
 
 This was how multiline comments were done before version 0.13.0,
-and it is used to provide specifications to [testament](testament.html#writing-unitests) test framework.
+and it is used to provide specifications to [testament](testament.html#writing-unit-tests) test framework.
 
 
 Identifiers & Keywords
@@ -655,7 +655,7 @@ string containing the literal. The callable identifier needs to be declared
 with a special ``'`` prefix:
 
   ```nim
-  import strutils
+  import std/strutils
   type u4 = distinct uint8 # a 4-bit unsigned integer aka "nibble"
   proc `'u4`(n: string): u4 =
     # The leading ' is required.
@@ -670,7 +670,7 @@ corresponds to this transformation. The transformation naturally handles
 the case that additional parameters are passed to the callee:
 
   ```nim
-  import strutils
+  import std/strutils
   type u4 = distinct uint8 # a 4-bit unsigned integer aka "nibble"
   proc `'u4`(n: string; moreData: int): u4 =
     result = (parseInt(n) and 0x0F).u4
@@ -1495,7 +1495,8 @@ it can be modified:
 
   ```nim
   var x = "123456"
-  var s: cstring = x
+  prepareMutation(x) # call `prepareMutation` before modifying the strings
+  var s: cstring = cstring(x)
   s[0] = 'u' # This is ok
   ```
 
@@ -2618,13 +2619,20 @@ An expression `b` can be assigned to an expression `a` iff `a` is an
 Overload resolution
 ===================
 
-In a call `p(args)` the routine `p` that matches best is selected. If
-multiple routines match equally well, the ambiguity is reported during
-semantic analysis.
+In a call `p(args)` where `p` may refer to more than one
+candidate, it is said to be a symbol choice. Overload resolution will attempt to
+find the best candidate, thus transforming the symbol choice into a resolved symbol.
+The routine `p` that matches best is selected following a series of trials explained below. 
+In order: Catagory matching, Hierarchical Order Comparison, and finally, Complexity Analysis.
 
-Every arg in args needs to match. There are multiple different categories how an
-argument can match. Let `f` be the formal parameter's type and `a` the type
-of the argument.
+If multiple candidates match equally well after all trials have been tested, the ambiguity 
+is reported during semantic analysis.
+
+First Trial: Catagory matching
+--------------------------------
+
+Every arg in `args` needs to match and there are multiple different categories of matches.
+Let `f` be the formal parameter's type and `a` the type of the argument.
 
 1. Exact match: `a` and `f` are of the same type.
 2. Literal match: `a` is an integer literal of value `v`
@@ -2642,16 +2650,16 @@ of the argument.
 6. Conversion match: `a` is convertible to `f`, possibly via a user
    defined `converter`.
 
+Each operand may fall into one of the categories above; the operand's
+highest priority category. The list above is in order or priority.
+If a candidate has more priority matches than all other candidates, it is selected as the
+resolved symbol.
 
-There are two major methods of selecting the best matching candidate, namely
-counting and disambiguation. Counting takes precedence to disambiguation. In counting,
-each parameter is given a category and the number of parameters in each category is counted.
-The categories are listed above and are in order of precedence. For example, if
-a candidate with one exact match is compared to a candidate with multiple generic matches
-and zero exact matches, the candidate with an exact match will win.
+For example, if a candidate with one exact match is compared to a candidate with multiple
+generic matches and zero exact matches, the candidate with an exact match will win.
 
-In the following, `count(p, m)` counts the number of matches of the matching category `m`
-for the routine `p`.
+Below is a pseudocode interpretation of category matching, `count(p, m)` counts the number 
+of matches of the matching category `m` for the routine `p`.
 
 A routine `p` matches better than a routine `q` if the following
 algorithm returns true:
@@ -2668,13 +2676,51 @@ algorithm returns true:
   return "ambiguous"
   ```
 
-When counting is ambiguous, disambiguation begins. Parameters are iterated
-by position and these parameter pairs are compared for their type relation. The general goal
-of this comparison is to determine which parameter is more specific. The types considered are
-not of the inputs from the callsite, but of the competing candidates' parameters.
+Second Trial: Hierarchical Order Comparison
+----------------------------------------------
 
+The hierarchical order of a type is analogous to its relative specificity. Consider the type defined:
 
-Some examples:
+```nim
+type A[T] = object
+```
+
+Matching formals for this type include `T`, `object`, `A`, `A[...]` and `A[C]` where `C` is a concrete type, `A[...]`
+is a generic typeclass composition and `T` is an unconstrained generic type variable. This list is in order of 
+specificity with respect to `A` as each subsequent category narrows the set of types that are members of their match set.
+
+In this trail, the formal parameters of candidates are compared in order (1st parameter, 2nd parameter, etc.) to search for
+a candidate that has an unrivaled specificity. If such a formal parameter is found, the candidate it belongs to is chosen 
+as the resolved symbol.
+
+Third Trial: Complexity Analysis
+----------------------------------
+
+A slight clarification: While category matching digests all the formal parameters of a candidate at once (order doesn't matter),
+specificity comparison and complexity analysis operate on each formal parameter at a time. The following
+is the final trial to disambiguate a symbol choice when a pair of formal parameters have the same hierarchical order.
+
+The complexity of a type is essentially its number of modifiers and depth of shape. The definition with the *highest*
+complexity wins. Consider the following types:
+
+```nim
+type
+  A[T] = object
+  B[T, H] = object
+```
+
+Note: The below examples are not exhaustive.
+
+We shall say that:
+
+1. `A[T]` has a higher complexity than `A`
+2. `var A[T]` has a higher complexity than `A[T]`
+3. `A[A[T]]` has a higher complexity than `A[T]`
+4. `B[T, H]` has a higher complexity than `A[T]` (`A` and `B` are not compatible here, but convoluted versions of this exist)
+5. `B[ptr T, H]` has a higher complexity than `B[T, H]`
+
+Some Examples
+---------------
 
   ```nim
   proc takesInt(x: int) = echo "int"
@@ -2691,7 +2737,6 @@ Some examples:
   ```
 
 
-If this algorithm returns "ambiguous" further disambiguation is performed:
 If the argument `a` matches both the parameter type `f` of `p`
 and `g` of `q` via a subtyping relation, the inheritance depth is taken
 into account:
@@ -2732,6 +2777,23 @@ matches) is preferred:
   var ri: ref int
   gen(ri) # "ref T"
   ```
+
+Type variables match
+----------------------
+
+When overload resolution is considering candidates, the type variable's definition
+is not overlooked as it is used to define the formal parameter's type via variable substitution.
+
+For example:
+```nim
+type A
+proc p[T: A](param: T)
+proc p[T: object](param: T)
+```
+
+These signatures are not ambiguous for a concrete type of `A` even though the formal parameters match ("T" == "T").
+Instead `T` is treated as a variable in that (`T` ?= `T`) depending on the bound type of `T` at the time of
+overload resolution.
 
 
 Overloading based on 'var T'
@@ -5160,7 +5222,7 @@ possibly raised exceptions; the algorithm operates on `p`'s call graph:
    raise `system.Exception` (the base type of the exception hierarchy) and
    thus any exception unless `T` has an explicit `raises` list.
    However, if the call is of the form `f(...)` where `f` is a parameter of
-   the currently analyzed routine it is ignored that is marked as `.effectsOf: f`.
+   the currently analyzed routine that is marked as `.effectsOf: f`, it is ignored.
    The call is optimistically assumed to have no effect.
    Rule 2 compensates for this case.
 2. Every expression `e` of some proc type within a call that is passed to parameter
@@ -5230,7 +5292,7 @@ conservative in its effect analysis:
   ```nim  test = "nim c $1"  status = 1
   {.push warningAsError[Effect]: on.}
 
-  import algorithm
+  import std/algorithm
 
   type
     MyInt = distinct int
@@ -5422,6 +5484,7 @@ Generics
 Generics are Nim's means to parametrize procs, iterators or types with
 `type parameters`:idx:. Depending on the context, the brackets are used either to
 introduce type parameters or to instantiate a generic proc, iterator, or type.
+
 
 The following example shows how a generic binary tree can be modeled:
 
@@ -6955,25 +7018,47 @@ All identifiers of a module are valid from the point of declaration until
 the end of the module. Identifiers from indirectly dependent modules are *not*
 available. The `system`:idx: module is automatically imported in every module.
 
-If a module imports an identifier by two different modules, each occurrence of
-the identifier has to be qualified unless it is an overloaded procedure or
-iterator in which case the overloading resolution takes place:
+If a module imports the same identifier from two different modules, the
+identifier is considered ambiguous, which can be resolved in the following ways:
+
+* Qualifying the identifier as `module.identifier` resolves ambiguity
+  between modules. (See below for the case that the module name itself
+  is ambiguous.)
+* Calling the identifier as a routine makes overload resolution take place,
+  which resolves ambiguity in the case that one overload matches stronger
+  than the others.
+* Using the identifier in a context where the compiler can infer the type
+  of the identifier resolves ambiguity in the case that one definition
+  matches the type stronger than the others.
 
   ```nim
   # Module A
   var x*: string
+  proc foo*(a: string) =
+    echo "A: ", a
   ```
 
   ```nim
   # Module B
   var x*: int
+  proc foo*(b: int) =
+    echo "B: ", b
   ```
 
   ```nim
   # Module C
   import A, B
+
+  foo("abc") # A: abc
+  foo(123) # B: 123
+  let inferred: proc (x: string) = foo
+  foo("def") # A: def
+
   write(stdout, x) # error: x is ambiguous
   write(stdout, A.x) # no error: qualifier used
+  
+  proc bar(a: int): int = a + 1
+  assert bar(x) == x + 1 # no error: only A.x of type int matches
 
   var x = 4
   write(stdout, x) # not ambiguous: uses the module C's x
@@ -6997,7 +7082,7 @@ proc fb* = echo "buzz"
 import A/C
 import B/C
 
-C.fb() # Error: ambiguous identifier: 'fb'
+C.fb() # Error: ambiguous identifier: 'C'
 ```
 
 
@@ -8552,8 +8637,62 @@ Byref pragma
 The `byref` pragma can be applied to an object or tuple type or a proc param.
 When applied to a type it instructs the compiler to pass the type by reference
 (hidden pointer) to procs. When applied to a param it will take precedence, even
-if the the type was marked as `bycopy`. When using the Cpp backend, params marked
-as byref will translate to cpp references `&`.
+if the the type was marked as `bycopy`. When an `importc` type has a `byref` pragma or
+parameters are marked as `byref` in an `importc` proc, these params translate to pointers.
+When an `importcpp` type has a `byref` pragma, these params translate to
+C++ references `&`.
+
+  ```Nim
+  {.emit: """/*TYPESECTION*/
+  typedef struct {
+    int x;
+  } CStruct;
+  """.}
+
+  {.emit: """
+  #ifdef __cplusplus
+  extern "C"
+  #endif
+  int takesCStruct(CStruct* x) {
+    return x->x;
+  }
+  """.}
+
+  type
+    CStruct {.importc, byref.} = object
+      x: cint
+
+  proc takesCStruct(x: CStruct): cint {.importc.}
+  ```
+
+  or
+
+
+  ```Nim
+  type
+    CStruct {.importc.} = object
+      x: cint
+
+  proc takesCStruct(x {.byref.}: CStruct): cint {.importc.}
+  ```
+
+  ```Nim
+  {.emit: """/*TYPESECTION*/
+  struct CppStruct {
+    int x;
+
+    int takesCppStruct(CppStruct& y) {
+      return x + y.x;
+    }
+  };
+  """.}
+
+  type
+    CppStruct {.importcpp, byref.} = object
+      x: cint
+
+  proc takesCppStruct(x, y: CppStruct): cint {.importcpp.}
+  ```
 
 Varargs pragma
 --------------

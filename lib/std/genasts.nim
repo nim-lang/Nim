@@ -1,6 +1,6 @@
 ## This module implements AST generation using captured variables for macros.
 
-import macros
+import std/macros
 
 type GenAstOpt* = enum
   kDirtyTemplate,

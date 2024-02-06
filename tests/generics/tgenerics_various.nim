@@ -231,3 +231,24 @@ doSomething(identity((1, 2)))
 proc myProc[T, U](x: T or U) = discard
 
 myProc[int, string](x = 2)
+
+block: # issue #8390
+  proc x[T:SomeFloat](q: openarray[T], y: T = 1): string =
+    doAssert $q.type == $openarray[y.type]
+    $y.type
+
+  doAssert x(@[1.0]) == $1.0.type
+
+
+block: # issue #9381
+  var evalCount {.compileTime.} = 0
+
+  macro test(t: typed): untyped =
+    inc evalCount
+    t
+
+  type GenericObj[T] = object
+    f: test(T)
+
+  var x: GenericObj[int]
+  static: doAssert evalCount == 1

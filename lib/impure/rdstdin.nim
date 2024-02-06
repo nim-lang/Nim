@@ -55,7 +55,7 @@ elif defined(genode):
     stdin.readLine(line)
 
 else:
-  import linenoise
+  import std/linenoise
 
   proc readLineFromStdin*(prompt: string, line: var string): bool {.
                           tags: [ReadIOEffect, WriteIOEffect].} =

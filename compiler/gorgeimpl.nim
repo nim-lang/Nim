@@ -9,8 +9,9 @@
 
 ## Module that implements ``gorge`` for the compiler.
 
-import msgs, os, osproc, streams, options,
-  lineinfos, pathutils
+import msgs, options, lineinfos, pathutils
+
+import std/[os, osproc, streams]
 
 when defined(nimPreviewSlimSystem):
   import std/syncio

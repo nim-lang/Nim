@@ -7,7 +7,7 @@ false
 '''
 """
 
-import mbind_bracket, mclosed_sym, mdotlookup, mmodule_same_as_proc
+import mbind_bracket, mclosed_sym, mdotlookup, mmodule_same_as_proc, mtypenodes
 
 
 block tbind_bracket:
@@ -57,3 +57,7 @@ block tmodule_same_as_proc:
   proc test[T](t: T) =
     mmodule_same_as_proc"a"
   test(0)
+
+block ttypenodes:
+  # issue #22699
+  doAssert chop[bool](42) == 42

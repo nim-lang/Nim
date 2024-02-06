@@ -291,14 +291,21 @@ proc potentialValueInit(p: BProc; v: PSym; value: PNode; result: var Rope) =
     #echo "New code produced for ", v.name.s, " ", p.config $ value.info
     genBracedInit(p, value, isConst = false, v.typ, result)
 
-proc genCppVarForCtor(p: BProc, v: PSym; vn, value: PNode; decl: var Rope) =
-  var params = newRopeAppender()
+proc genCppParamsForCtor(p: BProc; call: PNode): string =
+  result = ""
   var argsCounter = 0
-  let typ = skipTypes(value[0].typ, abstractInst)
+  let typ = skipTypes(call[0].typ, abstractInst)
   assert(typ.kind == tyProc)
-  for i in 1..<value.len:
-    assert(typ.len == typ.n.len)
-    genOtherArg(p, value, i, typ, params, argsCounter)
+  for i in 1..<call.len:
+    #if it's a type we can just generate here another initializer as we are in an initializer context
+    if call[i].kind == nkCall and call[i][0].kind == nkSym and call[i][0].sym.kind == skType:
+      if argsCounter > 0: result.add ","
+      result.add genCppInitializer(p.module, p, call[i][0].sym.typ)
+    else:
+      genOtherArg(p, call, i, typ, result, argsCounter)
+
+proc genCppVarForCtor(p: BProc; call: PNode; decl: var Rope) =
+  let params = genCppParamsForCtor(p, call)
   if params.len == 0:
     decl = runtimeFormat("$#;\n", [decl])
   else:
@@ -360,7 +367,7 @@ proc genSingleVar(p: BProc, v: PSym; vn, value: PNode) =
       var decl = localVarDecl(p, vn)
       var tmp: TLoc
       if isCppCtorCall:
-        genCppVarForCtor(p, v, vn, value, decl)
+        genCppVarForCtor(p, value, decl)
         line(p, cpsStmts, decl)
       else:
         tmp = initLocExprSingleUse(p, value)
@@ -969,8 +976,11 @@ proc genOrdinalCase(p: BProc, n: PNode, d: var TLoc) =
         hasDefault = true
       exprBlock(p, branch.lastSon, d)
       lineF(p, cpsStmts, "break;$n", [])
-    if (hasAssume in CC[p.config.cCompiler].props) and not hasDefault:
-      lineF(p, cpsStmts, "default: __assume(0);$n", [])
+    if not hasDefault:
+      if hasBuiltinUnreachable in CC[p.config.cCompiler].props:
+        lineF(p, cpsStmts, "default: __builtin_unreachable();$n", [])
+      elif hasAssume in CC[p.config.cCompiler].props:
+        lineF(p, cpsStmts, "default: __assume(0);$n", [])
     lineF(p, cpsStmts, "}$n", [])
   if lend != "": fixLabel(p, lend)
 
@@ -1452,7 +1462,8 @@ proc genTrySetjmp(p: BProc, t: PNode, d: var TLoc) =
         let memberName = if p.module.compileToCpp: "m_type" else: "Sup.m_type"
         if optTinyRtti in p.config.globalOptions:
           let checkFor = $getObjDepth(t[i][j].typ)
-          appcg(p.module, orExpr, "#isObjDisplayCheck(#nimBorrowCurrentException()->$1, $2, $3)", [memberName, checkFor,  $genDisplayElem(MD5Digest(hashType(t[i][j].typ, p.config)))])
+          appcg(p.module, orExpr, "#isObjDisplayCheck(#nimBorrowCurrentException()->$1, $2, $3)",
+              [memberName, checkFor, $genDisplayElem(MD5Digest(hashType(t[i][j].typ, p.config)))])
         else:
           let checkFor = genTypeInfoV1(p.module, t[i][j].typ, t[i][j].info)
           appcg(p.module, orExpr, "#isObj(#nimBorrowCurrentException()->$1, $2)", [memberName, checkFor])
@@ -1483,7 +1494,12 @@ proc genTrySetjmp(p: BProc, t: PNode, d: var TLoc) =
 
 proc genAsmOrEmitStmt(p: BProc, t: PNode, isAsmStmt=false; result: var Rope) =
   var res = ""
-  for it in t.sons:
+  let offset =
+    if isAsmStmt: 1 # first son is pragmas
+    else: 0
+
+  for i in offset..<t.len:
+    let it = t[i]
     case it.kind
     of nkStrLit..nkTripleStrLit:
       res.add(it.strVal)
@@ -1527,6 +1543,21 @@ proc genAsmStmt(p: BProc, t: PNode) =
   assert(t.kind == nkAsmStmt)
   genLineDir(p, t)
   var s = newRopeAppender()
+
+  var asmSyntax = ""
+  if (let p = t[0]; p.kind == nkPragma):
+    for i in p:
+      if whichPragma(i) == wAsmSyntax:
+        asmSyntax = i[1].strVal
+
+  if asmSyntax != "" and 
+     not (
+      asmSyntax == "gcc" and hasGnuAsm in CC[p.config.cCompiler].props or
+      asmSyntax == "vcc" and hasGnuAsm notin CC[p.config.cCompiler].props):
+    localError(
+      p.config, t.info, 
+      "Your compiler does not support the specified inline assembler")
+  
   genAsmOrEmitStmt(p, t, isAsmStmt=true, s)
   # see bug #2362, "top level asm statements" seem to be a mis-feature
   # but even if we don't do this, the example in #2362 cannot possibly

@@ -334,7 +334,7 @@ when not defined(gcDestructors):
     n.link[0] = a.freeAvlNodes
     a.freeAvlNodes = n
 
-proc addHeapLink(a: var MemRegion; p: PBigChunk, size: int) =
+proc addHeapLink(a: var MemRegion; p: PBigChunk, size: int): ptr HeapLinks =
   var it = addr(a.heapLinks)
   while it != nil and it.len >= it.chunks.len: it = it.next
   if it == nil:
@@ -343,10 +343,12 @@ proc addHeapLink(a: var MemRegion; p: PBigChunk, size: int) =
     a.heapLinks.next = n
     n.chunks[0] = (p, size)
     n.len = 1
+    result = n
   else:
     let L = it.len
     it.chunks[L] = (p, size)
     inc it.len
+    result = it
 
 when not defined(gcDestructors):
   include "system/avltree"
@@ -490,10 +492,10 @@ proc requestOsChunks(a: var MemRegion, size: int): PBigChunk =
 
   incCurrMem(a, size)
   inc(a.freeMem, size)
-  a.addHeapLink(result, size)
+  let heapLink = a.addHeapLink(result, size)
   when defined(debugHeapLinks):
     cprintf("owner: %p; result: %p; next pointer %p; size: %ld\n", addr(a),
-      result, result.heapLink, result.size)
+      result, heapLink, size)
 
   when defined(memtracker):
     trackLocation(addr result.size, sizeof(int))
@@ -1091,7 +1093,7 @@ proc deallocOsPages(a: var MemRegion) =
       let (p, size) = it.chunks[i]
       when defined(debugHeapLinks):
         cprintf("owner %p; dealloc A: %p size: %ld; next: %p\n", addr(a),
-          it, it.size, next)
+          it, size, next)
       sysAssert size >= PageSize, "origSize too small"
       osDeallocPages(p, size)
     it = next

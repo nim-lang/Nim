@@ -18,3 +18,15 @@ block: # issue #11733
   var evaluated = false
   a.publicTemplateObjSyntax(42): evaluated = true
   doAssert evaluated
+
+block: # issue #15246
+  doAssert sourceBaseName() == "tdotcall"
+
+block: # issue #12683
+  heh(0..40, "|")
+
+block: # issue #7889
+  if false:
+    bindmeQuote()
+  if false:
+    bindmeTemplate()

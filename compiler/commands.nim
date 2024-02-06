@@ -27,7 +27,9 @@ bootSwitch(usedNoGC, defined(nogc), "--gc:none")
 import std/[setutils, os, strutils, parseutils, parseopt, sequtils, strtabs]
 import
   msgs, options, nversion, condsyms, extccomp, platform,
-  wordrecg, nimblecmd, lineinfos, pathutils, pathnorm
+  wordrecg, nimblecmd, lineinfos, pathutils
+
+import std/pathnorm
 
 from ast import setUseIc, eqTypeFlags, tfGcSafe, tfNoSideEffect
 
@@ -205,7 +207,11 @@ proc processSpecificNote*(arg: string, state: TSpecialWord, pass: TCmdLinePass,
     # unfortunately, hintUser and warningUser clash, otherwise implementation would simplify a bit
     let x = findStr(noteMin, noteMax, id, errUnknown)
     if x != errUnknown: notes = {TNoteKind(x)}
-    else: localError(conf, info, "unknown $#: $#" % [name, id])
+    else:
+      if isSomeHint:
+        message(conf, info, hintUnknownHint, id)
+      else:
+        localError(conf, info, "unknown $#: $#" % [name, id])
   case id.normalize
   of "all": # other note groups would be easy to support via additional cases
     notes = if isSomeHint: {hintMin..hintMax} else: {warnMin..warnMax}
@@ -456,10 +462,12 @@ proc handleCmdInput*(conf: ConfigRef) =
 proc parseCommand*(command: string): Command =
   case command.normalize
   of "c", "cc", "compile", "compiletoc": cmdCompileToC
+  of "nir": cmdCompileToNir
   of "cpp", "compiletocpp": cmdCompileToCpp
   of "objc", "compiletooc": cmdCompileToOC
   of "js", "compiletojs": cmdCompileToJS
   of "r": cmdCrun
+  of "m": cmdM
   of "run": cmdTcc
   of "check": cmdCheck
   of "e": cmdNimscript
@@ -492,6 +500,7 @@ proc setCmd*(conf: ConfigRef, cmd: Command) =
   of cmdCompileToCpp: conf.backend = backendCpp
   of cmdCompileToOC: conf.backend = backendObjc
   of cmdCompileToJS: conf.backend = backendJs
+  of cmdCompileToNir: conf.backend = backendNir
   else: discard
 
 proc setCommandEarly*(conf: ConfigRef, command: string) =
@@ -604,6 +613,13 @@ proc processMemoryManagementOption(switch, arg: string, pass: TCmdLinePass,
       defineSymbol(conf.symbols, "gcregions")
     else: localError(conf, info, errNoneBoehmRefcExpectedButXFound % arg)
 
+proc pathRelativeToConfig(arg: string, pass: TCmdLinePass, conf: ConfigRef): string =
+  if pass == passPP and not isAbsolute(arg):
+    assert isAbsolute(conf.currentConfigDir), "something is wrong with currentConfigDir"
+    result = conf.currentConfigDir / arg
+  else:
+    result = arg
+
 proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
                     conf: ConfigRef) =
   var key = ""
@@ -622,8 +638,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     for path in nimbleSubs(conf, arg):
       addPath(conf, if pass == passPP: processCfgPath(conf, path, info)
                     else: processPath(conf, path, info), info)
-  of "nimblepath", "babelpath":
-    if switch.normalize == "babelpath": deprecatedAlias(switch, "nimblepath")
+  of "nimblepath":
     if pass in {passCmd2, passPP} and optNoNimblePath notin conf.globalOptions:
       expectArg(conf, switch, arg, pass, info)
       var path = processPath(conf, arg, info, notRelativeToProj=true)
@@ -633,8 +648,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
         nimblePath(conf, path, info)
         path = nimbleDir / RelativeDir"pkgs"
       nimblePath(conf, path, info)
-  of "nonimblepath", "nobabelpath":
-    if switch.normalize == "nobabelpath": deprecatedAlias(switch, "nonimblepath")
+  of "nonimblepath":
     expectNoArg(conf, switch, arg, pass, info)
     disableNimblePath(conf)
   of "clearnimblepath":
@@ -651,7 +665,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     # refs bug #18674, otherwise `--os:windows` messes up with `--nimcache` set
     # in config nims files, e.g. via: `import os; switch("nimcache", "/tmp/somedir")`
     if conf.target.targetOS == osWindows and DirSep == '/': arg = arg.replace('\\', '/')
-    conf.nimcacheDir = processPath(conf, arg, info, notRelativeToProj=true)
+    conf.nimcacheDir = processPath(conf, pathRelativeToConfig(arg, pass, conf), info, notRelativeToProj=true)
   of "out", "o":
     expectArg(conf, switch, arg, pass, info)
     let f = splitFile(processPath(conf, arg, info, notRelativeToProj=true).string)
@@ -785,7 +799,10 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     if conf.backend == backendJs or conf.cmd == cmdNimscript: discard
     else: processOnOffSwitchG(conf, {optThreads}, arg, pass, info)
     #if optThreads in conf.globalOptions: conf.setNote(warnGcUnsafe)
-  of "tlsemulation": processOnOffSwitchG(conf, {optTlsEmulation}, arg, pass, info)
+  of "tlsemulation":
+    processOnOffSwitchG(conf, {optTlsEmulation}, arg, pass, info)
+    if optTlsEmulation in conf.globalOptions:
+      conf.legacyFeatures.incl emitGenerics
   of "implicitstatic":
     processOnOffSwitch(conf, {optImplicitStatic}, arg, pass, info)
   of "patterns", "trmacros":
@@ -893,15 +910,19 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       defineSymbol(conf.symbols, "nodejs")
   of "maxloopiterationsvm":
     expectArg(conf, switch, arg, pass, info)
-    conf.maxLoopIterationsVM = parseInt(arg)
+    var value: int = 10_000_000
+    discard parseSaturatedNatural(arg, value)
+    if not value > 0: localError(conf, info, "maxLoopIterationsVM must be a positive integer greater than zero")
+    conf.maxLoopIterationsVM = value
   of "errormax":
     expectArg(conf, switch, arg, pass, info)
     # Note: `nim check` (etc) can overwrite this.
     # `0` is meaningless, give it a useful meaning as in clang's -ferror-limit
     # If user doesn't set this flag and the code doesn't either, it'd
     # have the same effect as errorMax = 1
-    let ret = parseInt(arg)
-    conf.errorMax = if ret == 0: high(int) else: ret
+    var value: int = 0
+    discard parseSaturatedNatural(arg, value)
+    conf.errorMax = if value == 0: high(int) else: value
   of "verbosity":
     expectArg(conf, switch, arg, pass, info)
     let verbosity = parseInt(arg)
@@ -915,7 +936,9 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     conf.mainPackageNotes = conf.notes
   of "parallelbuild":
     expectArg(conf, switch, arg, pass, info)
-    conf.numberOfProcessors = parseInt(arg)
+    var value: int = 0
+    discard parseSaturatedNatural(arg, value)
+    conf.numberOfProcessors = value
   of "version", "v":
     expectNoArg(conf, switch, arg, pass, info)
     writeVersionInfo(conf, pass)

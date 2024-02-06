@@ -7,8 +7,10 @@
 #    distribution, for details about the copyright.
 #
 
-import ast, renderer, strutils, msgs, options, idents, os, lineinfos,
+import ast, renderer, msgs, options, idents, lineinfos,
   pathutils
+
+import std/[strutils, os]
 
 proc getModuleName*(conf: ConfigRef; n: PNode): string =
   # This returns a short relative module name without the nim extension
@@ -36,11 +38,18 @@ proc getModuleName*(conf: ConfigRef; n: PNode): string =
           localError(n.info, "only '/' supported with $package notation")
           result = ""
     else:
-      let modname = getModuleName(conf, n[2])
-      # hacky way to implement 'x / y /../ z':
-      result = getModuleName(conf, n1)
-      result.add renderTree(n0, {renderNoComments}).replace(" ")
-      result.add modname
+      if n0.kind in nkIdentKinds:
+        let ident = n0.getPIdent
+        if ident != nil and ident.s[0] == '/':
+          let modname = getModuleName(conf, n[2])
+          # hacky way to implement 'x / y /../ z':
+          result = getModuleName(conf, n1)
+          result.add renderTree(n0, {renderNoComments}).replace(" ")
+          result.add modname
+        else:
+          result = ""
+      else:
+        result = ""
   of nkPrefix:
     when false:
       if n[0].kind == nkIdent and n[0].ident.s == "$":

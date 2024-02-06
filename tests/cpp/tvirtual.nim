@@ -116,3 +116,11 @@ proc test(self: Child): Box[Inner] {.virtual, asmnostackframe.} =
   
 
 discard Child().test() 
+
+import virtualptr
+
+#We dont want to pull Loo directly by using it as we are testing that the pointer pulls it. 
+proc makeMoo(): Moo {.importcpp:"{ new Loo() }".}
+
+makeMoo().loo.salute()
+

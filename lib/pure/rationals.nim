@@ -21,7 +21,7 @@ runnableExamples:
   doAssert r1 * r2 == -3 // 8
   doAssert r1 / r2 == -2 // 3
 
-import math, hashes
+import std/[math, hashes]
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
@@ -40,16 +40,16 @@ func reduce*[T: SomeInteger](x: var Rational[T]) =
     reduce(r)
     doAssert r.num == 1
     doAssert r.den == 2
-
+  if x.den == 0:
+    raise newException(DivByZeroDefect, "division by zero")
   let common = gcd(x.num, x.den)
   if x.den > 0:
     x.num = x.num div common
     x.den = x.den div common
-  elif x.den < 0:
-    x.num = -x.num div common
-    x.den = -x.den div common
-  else:
-    raise newException(DivByZeroDefect, "division by zero")
+  when T isnot SomeUnsignedInt:
+    if x.den < 0:
+      x.num = -x.num div common
+      x.den = -x.den div common
 
 func initRational*[T: SomeInteger](num, den: T): Rational[T] =
   ## Creates a new rational number with numerator `num` and denominator `den`.
@@ -318,3 +318,23 @@ func hash*[T](x: Rational[T]): Hash =
   h = h !& hash(copy.num)
   h = h !& hash(copy.den)
   result = !$h
+
+func `^`*[T: SomeInteger](x: Rational[T], y: T): Rational[T] =
+  ## Computes `x` to the power of `y`.
+  ##
+  ## The exponent `y` must be an integer. Negative exponents are supported
+  ## but floating point exponents are not.
+  runnableExamples:
+    doAssert (-3 // 5) ^ 0 == (1 // 1)
+    doAssert (-3 // 5) ^ 1 == (-3 // 5)
+    doAssert (-3 // 5) ^ 2 == (9 // 25)
+    doAssert (-3 // 5) ^ -2 == (25 // 9)
+
+  if y >= 0:
+    result.num = x.num ^ y
+    result.den = x.den ^ y
+  else:
+    result.num = x.den ^ -y
+    result.den = x.num ^ -y
+  # Note that all powers of reduced rationals are already reduced,
+  # so we don't need to call reduce() here

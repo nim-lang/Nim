@@ -22,6 +22,10 @@ proc main() =
     # test `bitops.toMask` patch via bitops.masked
     doAssert(0x12FFFF34.masked(8..23) == 0x00FFFF00)
 
+  block: # bug #22687
+    var a: uint8 = 0b1111_1111
+    doAssert a.bitsliced(4..7).int == 15
+
 main()
 
 static:

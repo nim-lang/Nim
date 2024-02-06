@@ -109,6 +109,7 @@ proc testCustomContentLength() {.async.} =
     doAssert(body == "")
     doAssert(response.headers.hasKey("Content-Length"))
     doAssert(response.headers["Content-Length"] == "0")
+    doAssert contentLength(response) == 0 # bug #22778
 
   runTest(handler, request, test)
 
