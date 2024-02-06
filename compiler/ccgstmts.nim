@@ -767,7 +767,7 @@ proc genRaiseStmt(p: BProc, t: PNode) =
     case p.config.exc
     of excCpp:
       blockLeaveActions(p, howManyTrys = 0, howManyExcepts = p.inExceptBlockLen)
-    of excGoto, excSetjmp:
+    of excGoto:
       # bug #18070; bug #22398
       if p.nestedTryStmts.len > 0 and p.nestedTryStmts[^1].inExcept:
         linefmt(p, cpsStmts, "#popCurrentException();$n", [])
