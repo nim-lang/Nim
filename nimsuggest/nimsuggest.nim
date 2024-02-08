@@ -1252,6 +1252,7 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
     while i <= tag.high:
       var token: string
       i += parseUntil(tag, token, seps, i)
+      i += skipWhile(tag, seps, i)
       case token:
       of "+typeHints":
         typeHints = true
@@ -1261,6 +1262,8 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
         exceptionHints = true
       of "-exceptionHints":
         exceptionHints = false
+      else:
+        myLog fmt "Discarding unknown inlay hint parameter {token}"
 
     let s = graph.findSymDataInRange(file, line, col, endLine, endCol)
     for q in s:
