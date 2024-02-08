@@ -174,29 +174,27 @@ proc encodeSym*(m: BModule; s: PSym; makeUnique: bool = false): string =
 proc encodeType*(m: BModule; t: PType): string = 
   var kindName = ($t.kind)[2..^1]
   kindName[0] = toLower($kindName[0])[0]
-  case t.kind:
+  case t.kind
   of tyObject, tyEnum, tyDistinct, tyUserTypeClass, tyGenericParam: 
     encodeSym(m, t.sym)
   of tyGenericInst, tyUserTypeClassInst, tyGenericBody:
-    var name = encodeName(t[0].sym.name.s)
-    name.add "I"
+    result = encodeName(t[0].sym.name.s)
+    result.add "I"
     for i in 1..<t.len - 1: 
-      name.add encodeType(m, t[i])
-    name.add "E"
-    name
+      result.add encodeType(m, t[i])
+    result.add "E"
   of tySequence, tyOpenArray, tyArray, tyVarargs, tyTuple, tyProc, tySet, tyTypeDesc,
     tyPtr, tyRef, tyVar, tyLent, tySink, tyStatic, tyUncheckedArray, tyOr, tyAnd, tyBuiltInTypeClass:
-    var name = 
+    result = 
       case t.kind:
       of tySequence: encodeName("seq") 
       else: encodeName(kindName)
-    name.add "I"
+    result.add "I"
     for i in 0..<t.len:
       let s = t[i]  
       if s.isNil: continue
-      name.add encodeType(m, s)
-    name.add "E"
-    name
+      result.add encodeType(m, s)
+    result.add "E"
   of tyRange:
     var val = "range_"
     if t.n[0].typ.kind in {tyFloat..tyFloat128}: 
