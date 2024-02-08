@@ -47,6 +47,9 @@ runnableExamples:
 
 import std/private/since
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 type HeapQueue*[T] = object
   ## A heap queue, commonly known as a priority queue.
   data: seq[T]
