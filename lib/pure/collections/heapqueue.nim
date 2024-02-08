@@ -73,6 +73,13 @@ proc `[]`*[T](heap: HeapQueue[T], i: Natural): lent T {.inline.} =
   ## Accesses the i-th element of `heap`.
   heap.data[i]
 
+iterator items*[T](heap: HeapQueue[T]): lent T {.inline, since: (2, 1, 1).} =
+  ## Iterates over each item of `heap`.
+  let L = len(heap)
+  for i in 0 .. high(heap.data):
+    yield heap.data[i]
+    assert(len(heap) == L, "the length of the HeapQueue changed while iterating over it")
+
 proc heapCmp[T](x, y: T): bool {.inline.} = x < y
 
 proc siftup[T](heap: var HeapQueue[T], startpos, p: int) =
@@ -177,6 +184,11 @@ proc find*[T](heap: HeapQueue[T], x: T): int {.since: (1, 3).} =
   result = -1
   for i in 0 ..< heap.len:
     if heap[i] == x: return i
+
+proc contains*[T](heap: HeapQueue[T], x: T): bool {.since: (2, 1, 1).} =
+  ## Returns true if `x` is in `heap` or false if not found. This is a shortcut
+  ## for `find(heap, x) >= 0`.
+  result = find(heap, x) >= 0
 
 proc del*[T](heap: var HeapQueue[T], index: Natural) =
   ## Removes the element at `index` from `heap`, maintaining the heap invariant.
