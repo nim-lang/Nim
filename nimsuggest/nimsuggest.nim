@@ -9,6 +9,8 @@
 
 import compiler/renderer
 import compiler/types
+import compiler/trees
+import compiler/wordrecg
 import strformat
 import algorithm
 import tables
@@ -925,8 +927,8 @@ proc suggestInlayHintResultException(graph: ModuleGraph, sym: PSym, info: TLineI
   var raisesList: seq[PType] = @[]
 
   let t = sym.typ
-  if not isNil(t) and not isNil(t.owner) and not isNil(t.owner.typ) and not isNil(t.owner.typ.n) and (t.owner.typ.n.len > 0):
-    let effects = t.owner.typ.n[0]
+  if not isNil(t) and not isNil(t.n) and t.n.len > 0 and t.n[0].len > exceptionEffects:
+    let effects = t.n[0]
     if effects.kind == nkEffectList and effects.len == effectListLen:
       let effs = effects[exceptionEffects]
       if not isNil(effs):
@@ -1269,7 +1271,7 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
     for q in s:
       if typeHints and q.sym.kind in {skLet, skVar, skForVar, skConst} and q.isDecl and not q.sym.hasUserSpecifiedType:
         graph.suggestInlayHintResultType(q.sym, q.info, ideInlayHints)
-      if exceptionHints and q.sym.kind in {skProc, skFunc, skMethod} and not q.isDecl:
+      if exceptionHints and q.sym.kind in {skProc, skFunc, skMethod, skVar, skLet} and not q.isDecl:
         graph.suggestInlayHintResultException(q.sym, q.info, ideInlayHints, caughtExceptions = q.caughtExceptions, caughtExceptionsSet = q.caughtExceptionsSet)
   else:
     myLog fmt "Discarding {cmd}"
