@@ -172,11 +172,12 @@ proc encodeSym*(m: BModule; s: PSym; makeUnique: bool = false): string =
   "N" & encodeName(s.owner.name.s) & encodeName(name) & "E"
 
 proc encodeType*(m: BModule; t: PType): string = 
+  result = ""
   var kindName = ($t.kind)[2..^1]
   kindName[0] = toLower($kindName[0])[0]
   case t.kind
   of tyObject, tyEnum, tyDistinct, tyUserTypeClass, tyGenericParam: 
-    encodeSym(m, t.sym)
+    result = encodeSym(m, t.sym)
   of tyGenericInst, tyUserTypeClassInst, tyGenericBody:
     result = encodeName(t[0].sym.name.s)
     result.add "I"
@@ -203,11 +204,11 @@ proc encodeType*(m: BModule; t: PType): string =
       val.addFloat t.n[1].floatVal
     else: 
       val.add $t.n[0].intVal & "_" & $t.n[1].intVal
-    encodeName(val)
+    result = encodeName(val)
   of tyString..tyUInt64, tyPointer, tyBool, tyChar, tyVoid, tyAnything, tyNil, tyEmpty: 
-    encodeName(kindName)
+    result = encodeName(kindName)
   of tyAlias, tyInferred, tyOwned: 
-    encodeType(m, t.elementType)
+    result = encodeType(m, t.elementType)
   else:
     assert false, "encodeType " & $t.kind
-    ""
+    
