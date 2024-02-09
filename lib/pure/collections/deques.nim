@@ -59,19 +59,21 @@ type
     ## To initialize an empty deque,
     ## use the `initDeque proc <#initDeque,int>`_.
     data: seq[T]
-    head, tail, count, mask: int
+    head, tail, count: int
 
 const
   defaultInitialSize* = 4
 
 template initImpl(result: typed, initialSize: int) =
   let correctSize = nextPowerOfTwo(initialSize)
-  result.mask = correctSize - 1
   newSeq(result.data, correctSize)
 
 template checkIfInitialized(deq: typed) =
-  if deq.mask == 0:
+  if deq.data.len == 0:
     initImpl(deq, defaultInitialSize)
+
+func mask[T](deq: Deque[T]): int =
+  deq.data.len - 1
 
 proc initDeque*[T](initialSize: int = defaultInitialSize): Deque[T] =
   ## Creates a new empty deque.
@@ -242,7 +244,7 @@ proc contains*[T](deq: Deque[T], item: T): bool {.inline.} =
 
 proc expandIfNeeded[T](deq: var Deque[T]) =
   checkIfInitialized(deq)
-  var cap = deq.mask + 1
+  var cap = deq.data.len
   if unlikely(deq.count >= cap):
     var n = newSeq[T](cap * 2)
     var i = 0
@@ -251,7 +253,6 @@ proc expandIfNeeded[T](deq: var Deque[T]) =
       else: n[i] = move(x)
       inc i
     deq.data = move(n)
-    deq.mask = cap * 2 - 1
     deq.tail = deq.count
     deq.head = 0
 
