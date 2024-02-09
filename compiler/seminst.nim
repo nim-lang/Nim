@@ -321,6 +321,7 @@ proc fillMixinScope(c: PContext) =
     p = p.next
 
 proc getLocalPassC(c: PContext, s: PSym): string =
+  when defined(nimsuggest): return ""
   if s.ast == nil or s.ast.len == 0: return ""
   result = ""
   template extractPassc(p: PNode) =
