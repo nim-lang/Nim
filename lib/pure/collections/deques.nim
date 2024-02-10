@@ -72,7 +72,7 @@ template checkIfInitialized(deq: typed) =
   if deq.data.len == 0:
     initImpl(deq, defaultInitialSize)
 
-func mask[T](deq: Deque[T]): int =
+func mask[T](deq: Deque[T]): int {.inline.} =
   deq.data.len - 1
 
 proc initDeque*[T](initialSize: int = defaultInitialSize): Deque[T] =
