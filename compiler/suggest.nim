@@ -114,6 +114,10 @@ proc getTokenLenFromSource(conf: ConfigRef; ident: string; info: TLineInfo; skip
     result = skipUntil(line, '`', column)
     if cmpIgnoreStyle(line[column..column + result - 1], ident) != 0:
       result = 0
+  elif column >= 0 and line[column] == '`' and isOpeningBacktick(column):
+    result = skipUntil(line, '`', column + 1) + 2
+    if cmpIgnoreStyle(line[column + 1..column + result - 2], ident) != 0:
+      result = 0
   elif ident[0] in linter.Letters and ident[^1] != '=':
     result = identLen(line, column)
     if cmpIgnoreStyle(line[column..column + result - 1], ident[0..min(result-1,len(ident)-1)]) != 0:
