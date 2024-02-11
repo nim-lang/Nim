@@ -52,23 +52,38 @@ proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule;
                isField = false): PNode =
   var
     a: PSym
-    o: TOverloadIter
+    o: TOverloadIter = default(TOverloadIter)
+    firstPreferred = true
   var i = 0
   a = initOverloadIter(o, c, n)
+  let firstScope = lastOverloadScope(o)
   while a != nil:
     if a.kind != skModule:
       inc(i)
-      if i > 1: break
+      if i > 1:
+        firstPreferred = firstScope > lastOverloadScope(o)
+        break
     a = nextOverloadIter(o, c, n)
   let info = getCallLineInfo(n)
   if i <= 1 and r != scForceOpen:
-    # XXX this makes more sense but breaks bootstrapping for now:
-    # (s.kind notin routineKinds or s.magic != mNone):
-    # for instance 'nextTry' is both in tables.nim and astalgo.nim ...
     if not isField or sfGenSym notin s.flags:
       result = newSymNode(s, info)
-      markUsed(c, info, s)
-      onUse(info, s)
+      if r == scClosed or n.kind == nkDotExpr or
+          # also bind magic procs:
+          (s.magic != mNone and s.kind in routineKinds):
+        markUsed(c, info, s)
+        onUse(info, s)
+      else:
+        # we need a node with a type here so things like default parameters,
+        # which use semGenericStmt, can infer the parameter type
+        # from expressions like `false`
+        # but symchoices having types can mislead the compiler
+        # instead we allow standalone sym nodes to have nfPreferredSym
+        # which acts like an open symchoice in initOverloadIter
+        result.flags.incl nfPreferredSym
+        #result = newTreeIT(nkOpenSymChoice, info, result.typ, result)
+        incl(s.flags, sfUsed)
+        markOwnerModuleAsUsed(c, s)
     else:
       result = n
   elif i == 0:
@@ -88,6 +103,8 @@ proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule;
         result.add newSymNode(a, info)
         onUse(info, a)
       a = nextOverloadIter(o, c, n)
+    if r != scForceOpen and firstPreferred:
+      result[0].flags.incl nfPreferredSym
 
 proc semBindStmt(c: PContext, n: PNode, toBind: var IntSet): PNode =
   result = copyNode(n)

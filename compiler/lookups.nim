@@ -268,41 +268,6 @@ proc cmpScopes*(ctx: PContext, s: PSym): int =
   else:
     result = 1
 
-proc isAmbiguous*(c: PContext, s: PIdent, filter: TSymKinds, sym: var PSym): bool =
-  result = false
-  block outer:
-    for scope in allScopes(c.currentScope):
-      var ti: TIdentIter
-      var candidate = initIdentIter(ti, scope.symbols, s)
-      var scopeHasCandidate = false
-      while candidate != nil:
-        if candidate.kind in filter:
-          if scopeHasCandidate:
-            # 2 candidates in same scope, ambiguous
-            return true
-          else:
-            scopeHasCandidate = true
-            sym = candidate
-        candidate = nextIdentIter(ti, scope.symbols)
-      if scopeHasCandidate:
-        # scope had a candidate but wasn't ambiguous
-        return false
-
-  var importsHaveCandidate = false
-  var marked = initIntSet()
-  for im in c.imports.mitems:
-    for s in symbols(im, marked, s, c.graph):
-      if s.kind in filter:
-        if importsHaveCandidate:
-          # 2 candidates among imports, ambiguous
-          return true
-        else:
-          importsHaveCandidate = true
-          sym = s
-  if importsHaveCandidate:
-    # imports had a candidate but wasn't ambiguous
-    return false
-
 proc errorSym*(c: PContext, ident: PIdent, info: TLineInfo): PSym =
   ## creates an error symbol to avoid cascading errors (for IDE support)
   result = newSym(skError, ident, c.idgen, getCurrOwner(c), info, {})
@@ -332,6 +297,7 @@ type
     m*: PSym
     mode*: TOverloadIterMode
     symChoiceIndex*: int
+    symChoiceLastPreferred: bool
     currentScope: PScope
     importIdx: int
     marked: IntSet
@@ -611,6 +577,11 @@ proc lookUp*(c: PContext, n: PNode): PSym =
     var ident = considerQuotedIdent(c, n)
     result = searchInScopes(c, ident, amb)
     if result == nil: result = errorUndeclaredIdentifierHint(c, ident, n.info)
+  of nkOpenSymChoice, nkClosedSymChoice:
+    if nfPreferredSym in n[0].flags:
+      result = n[0].sym
+    else:
+      result = nil
   else:
     internalError(c.config, n.info, "lookUp")
     return nil
@@ -691,6 +662,11 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
         localError(c.config, n[1].info, "identifier expected, but got: " &
                    renderTree(n[1]))
         result = errorSym(c, n[1])
+  of nkOpenSymChoice, nkClosedSymChoice:
+    if nfPreferredSym in n[0].flags:
+      result = n[0].sym
+    else:
+      result = nil
   else:
     result = nil
   when false:
@@ -723,7 +699,18 @@ proc initOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
 
   of nkSym:
     result = n.sym
-    o.mode = oimDone
+    if nfPreferredSym in n.flags:
+      # standalone sym node with nfPreferredSym acts like an open symchoice,
+      # see semtempl.symChoice for reasoning
+      o.mode = oimSymChoiceLocalLookup
+      o.symChoiceLastPreferred = true
+      o.currentScope = c.currentScope
+      o.it.h = result.name.h
+      o.it.name = result.name
+      o.marked = initIntSet()
+      incl(o.marked, result.id)
+    else:
+      o.mode = oimDone
   of nkDotExpr:
     result = nil
     o.mode = oimOtherModule
@@ -749,6 +736,7 @@ proc initOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
     o.mode = oimSymChoice
     if n[0].kind == nkSym:
       result = n[0].sym
+      o.symChoiceLastPreferred = nfPreferredSym in n[0].flags
     else:
       o.mode = oimDone
       return nil
@@ -767,6 +755,11 @@ proc lastOverloadScope*(o: TOverloadIter): int =
              else: o.currentScope.depthLevel
   of oimSelfModule:  result = 1
   of oimOtherModule: result = 0
+  of oimSymChoice, oimSymChoiceLocalLookup:
+    if o.symChoiceLastPreferred:
+      result = 999
+    else:
+      result = -1
   else: result = -1
 
 proc nextOverloadIterImports(o: var TOverloadIter, c: PContext, n: PNode): PSym =
@@ -825,6 +818,7 @@ proc nextOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
   of oimOtherModule:
     result = nextModuleIter(o.mit, c.graph)
   of oimSymChoice:
+    o.symChoiceLastPreferred = false
     if o.symChoiceIndex < n.len:
       result = n[o.symChoiceIndex].sym
       incl(o.marked, result.id)
@@ -849,13 +843,15 @@ proc nextOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
     else:
       result = nil
   of oimSymChoiceLocalLookup:
+    o.symChoiceLastPreferred = false
     if o.currentScope != nil:
       result = nextIdentExcluding(o.it, o.currentScope.symbols, o.marked)
       while result == nil:
         o.currentScope = o.currentScope.parent
         if o.currentScope != nil:
+          let name = if n.kind == nkSym: n.sym.name else: n[0].sym.name
           result = firstIdentExcluding(o.it, o.currentScope.symbols,
-                                      n[0].sym.name, o.marked)
+                                       name, o.marked)
         else:
           o.importIdx = 0
           result = symChoiceExtension(o, c, n)

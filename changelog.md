@@ -14,6 +14,14 @@
   ```
   will no longer compile.
 
+- In template and generic bodies, for symbols with only 1 overload in scope,
+  previously the compiler would not allow other overloads in the instantiation
+  context to be used, which was not the case for 0 or more than 1 overloads.
+  Now other overloads are allowed with a preference for the original overload
+  in cases of ambiguity. Some code might need to be changed to use `bind` to
+  prevent outside overloads from replacing a weaker captured overload. See
+  [issue #11184](https://github.com/nim-lang/Nim/issues/11184) for more details.
+
 ## Standard library additions and changes
 
 [//]: # "Changes:"
