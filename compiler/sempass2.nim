@@ -415,7 +415,7 @@ proc throws(tracked, n, orig: PNode) =
     else:
       tracked.add n
 
-proc getEbase(g: ModuleGraph; info: TLineInfo): PType =
+proc getEbase*(g: ModuleGraph; info: TLineInfo): PType =
   result = g.sysTypeFromName(info, "Exception")
 
 proc excType(g: ModuleGraph; n: PNode): PType =

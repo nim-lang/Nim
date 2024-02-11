@@ -11,6 +11,7 @@ import compiler/renderer
 import compiler/types
 import compiler/trees
 import compiler/wordrecg
+import compiler/sempass2
 import strformat
 import algorithm
 import tables
@@ -924,7 +925,7 @@ proc suggestInlayHintResultException(graph: ModuleGraph, sym: PSym, info: TLineI
   if not caughtExceptionsSet:
     return
 
-  var raisesList: seq[PType] = @[]
+  var raisesList: seq[PType] = @[getEbase(graph, info)]
 
   let t = sym.typ
   if not isNil(t) and not isNil(t.n) and t.n.len > 0 and t.n[0].len > exceptionEffects:
@@ -932,6 +933,7 @@ proc suggestInlayHintResultException(graph: ModuleGraph, sym: PSym, info: TLineI
     if effects.kind == nkEffectList and effects.len == effectListLen:
       let effs = effects[exceptionEffects]
       if not isNil(effs):
+        raisesList = @[]
         for eff in items(effs):
           if not isNil(eff):
             raisesList.add(eff.typ)
