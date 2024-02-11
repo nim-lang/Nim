@@ -106,7 +106,7 @@ proc getObjDepth(t: PType): (int, ItemId) =
 
 proc collectObjectTree(graph: ModuleGraph, n: PNode) =
   for section in n:
-    if section.kind == nkTypeDef and section[^1].kind in {nkObjectTy, nkRefTy, nkPtrTy}:
+    if section.kind == nkTypeDef and section[^1].kind in {nkObjectTy, nkRefTy, nkPtrTy} and section[^1].typ != nil:
       let typ = section[^1].typ.skipTypes(skipPtrs)
       if typ.kind == tyObject and typ.baseClass != nil:
         let (depthLevel, root) = getObjDepth(typ)
