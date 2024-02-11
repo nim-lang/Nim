@@ -925,6 +925,9 @@ proc suggestInlayHintResultException(graph: ModuleGraph, sym: PSym, info: TLineI
   if not caughtExceptionsSet:
     return
 
+  if sym.kind == skParam and sfEffectsDelayed in sym.flags:
+    return
+
   var raisesList: seq[PType] = @[getEbase(graph, info)]
 
   let t = sym.typ
@@ -1273,7 +1276,7 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
     for q in s:
       if typeHints and q.sym.kind in {skLet, skVar, skForVar, skConst} and q.isDecl and not q.sym.hasUserSpecifiedType:
         graph.suggestInlayHintResultType(q.sym, q.info, ideInlayHints)
-      if exceptionHints and q.sym.kind in {skProc, skFunc, skMethod, skVar, skLet} and not q.isDecl:
+      if exceptionHints and q.sym.kind in {skProc, skFunc, skMethod, skVar, skLet, skParam} and not q.isDecl:
         graph.suggestInlayHintResultException(q.sym, q.info, ideInlayHints, caughtExceptions = q.caughtExceptions, caughtExceptionsSet = q.caughtExceptionsSet)
   else:
     myLog fmt "Discarding {cmd}"
