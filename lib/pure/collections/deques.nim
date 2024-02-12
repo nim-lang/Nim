@@ -50,7 +50,7 @@ runnableExamples:
 
 import std/private/since
 
-import std/math
+import std/[hashes, math]
 
 type
   Deque*[T] = object
@@ -59,19 +59,21 @@ type
     ## To initialize an empty deque,
     ## use the `initDeque proc <#initDeque,int>`_.
     data: seq[T]
-    head, tail, count, mask: int
+    head, tail, count: int
 
 const
   defaultInitialSize* = 4
 
 template initImpl(result: typed, initialSize: int) =
   let correctSize = nextPowerOfTwo(initialSize)
-  result.mask = correctSize - 1
   newSeq(result.data, correctSize)
 
 template checkIfInitialized(deq: typed) =
-  if deq.mask == 0:
+  if deq.data.len == 0:
     initImpl(deq, defaultInitialSize)
+
+func mask[T](deq: Deque[T]): int {.inline.} =
+  deq.data.len - 1
 
 proc initDeque*[T](initialSize: int = defaultInitialSize): Deque[T] =
   ## Creates a new empty deque.
@@ -242,7 +244,7 @@ proc contains*[T](deq: Deque[T], item: T): bool {.inline.} =
 
 proc expandIfNeeded[T](deq: var Deque[T]) =
   checkIfInitialized(deq)
-  var cap = deq.mask + 1
+  var cap = deq.data.len
   if unlikely(deq.count >= cap):
     var n = newSeq[T](cap * 2)
     var i = 0
@@ -251,7 +253,6 @@ proc expandIfNeeded[T](deq: var Deque[T]) =
       else: n[i] = move(x)
       inc i
     deq.data = move(n)
-    deq.mask = cap * 2 - 1
     deq.tail = deq.count
     deq.head = 0
 
@@ -455,3 +456,30 @@ proc `$`*[T](deq: Deque[T]): string =
     if result.len > 1: result.add(", ")
     result.addQuoted(x)
   result.add("]")
+
+func `==`*[T](deq1, deq2: Deque[T]): bool =
+  ## The `==` operator for Deque.
+  ## Returns `true` if both deques contains the same values in the same order.
+  runnableExamples:
+    var a, b = initDeque[int]()
+    a.addFirst(2)
+    a.addFirst(1)
+    b.addLast(1)
+    b.addLast(2)
+    doAssert a == b
+
+  if deq1.count != deq2.count:
+    return false
+
+  for i in 0 ..< deq1.count:
+    if deq1.data[(deq1.head + i) and deq1.mask] != deq2.data[(deq2.head + i) and deq2.mask]:
+      return false
+
+  true
+
+func hash*[T](deq: Deque[T]): Hash =
+  ## Hashing of Deque.
+  var h: Hash = 0
+  for x in deq:
+    h = h !& hash(x)
+  !$h
