@@ -138,6 +138,7 @@ type
                             # unconditionally...
                             # nimtvDeps is VERY hard to cache because it's
                             # not a list of IDs nor can it be made to be one.
+    mangledPrcs*: HashSet[string]
 
   TCGen = object of PPassContext # represents a C source file
     s*: TCFileSections        # sections of the C file
