@@ -106,3 +106,10 @@ block:
     let t = Foo[float](x1: 1)
     doAssert t.x1 == 1
 
+block:
+  template s(d: varargs[typed])=discard
+
+  proc something()=discard
+  proc something(x:int)=discard
+
+  s(something)

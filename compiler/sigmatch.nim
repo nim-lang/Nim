@@ -2359,8 +2359,10 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
     
     var best = -1
     result = arg
-    
-    if f.kind in {tyTyped, tyUntyped}:
+    var chkType = f.kind
+    if chkType == tyVarargs:
+      chkType = f.base.kind
+    if chkType in {tyTyped, tyUntyped}:
       var
         bestScope = -1
         counts = 0
