@@ -13,6 +13,11 @@ import
   ast, types, hashes, strutils, msgs, wordrecg,
   platform, trees, options, cgendata
 
+import std/[hashes, strutils]
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 proc getPragmaStmt*(n: PNode, w: TSpecialWord): PNode =
   case n.kind
   of nkStmtList:
@@ -141,4 +146,3 @@ proc ccgIntroducedPtr*(conf: ConfigRef; s: PSym, retType: PType): bool =
   if s.position == 0 and retType != nil and retType.kind == tyLent:
     result = not (pt.kind in {tyVar, tyArray, tyOpenArray, tyVarargs, tyRef, tyPtr, tyPointer} or
       pt.kind == tySet and mapSetType(conf, pt) == ctArray)
-

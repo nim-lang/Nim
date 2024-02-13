@@ -35,14 +35,94 @@ proc mangleField(m: BModule; name: PIdent): string =
   if isKeyword(name):
     result.add "_0"
 
+
+proc encodeName*(name: string): string = 
+  result = mangle(name)
+  result = $result.len & result
+
+proc makeUnique(m: BModule; s: PSym, name: string = ""): Rope = 
+  let str = if name == "": s.name.s else: name
+  result.add str
+  result.add "__"
+  result.add m.g.graph.ifaces[s.itemId.module].uniqueName
+  result.add "_u"
+  result.add $s.itemId.item
+
+proc encodeSym*(m: BModule; s: PSym; makeUnique: bool = false): string = 
+  #Module::Type
+  var name = s.name.s 
+  if makeUnique:
+    name = $makeUnique(m, s, name)
+  "N" & encodeName(s.owner.name.s) & encodeName(name) & "E"
+
+proc elementType*(n: PType): PType {.inline.} = n.sons[^1]
+
+proc encodeType*(m: BModule; t: PType): string = 
+  result = ""
+  var kindName = ($t.kind)[2..^1]
+  kindName[0] = toLower($kindName[0])[0]
+  case t.kind
+  of tyObject, tyEnum, tyDistinct, tyUserTypeClass, tyGenericParam: 
+    result = encodeSym(m, t.sym)
+  of tyGenericInst, tyUserTypeClassInst, tyGenericBody:
+    result = encodeName(t[0].sym.name.s)
+    result.add "I"
+    for i in 1..<t.len - 1: 
+      result.add encodeType(m, t[i])
+    result.add "E"
+  of tySequence, tyOpenArray, tyArray, tyVarargs, tyTuple, tyProc, tySet, tyTypeDesc,
+    tyPtr, tyRef, tyVar, tyLent, tySink, tyStatic, tyUncheckedArray, tyOr, tyAnd, tyBuiltInTypeClass:
+    result = 
+      case t.kind:
+      of tySequence: encodeName("seq") 
+      else: encodeName(kindName)
+    result.add "I"
+    for i in 0..<t.len:
+      let s = t[i]  
+      if s.isNil: continue
+      result.add encodeType(m, s)
+    result.add "E"
+  of tyRange:
+    var val = "range_"
+    if t.n[0].typ.kind in {tyFloat..tyFloat128}: 
+      val.addFloat t.n[0].floatVal 
+      val.add "_" 
+      val.addFloat t.n[1].floatVal
+    else: 
+      val.add $t.n[0].intVal & "_" & $t.n[1].intVal
+    result = encodeName(val)
+  of tyString..tyUInt64, tyPointer, tyBool, tyChar, tyVoid, tyAnything, tyNil, tyEmpty: 
+    result = encodeName(kindName)
+  of tyAlias, tyInferred, tyOwned: 
+    result = encodeType(m, t.elementType)
+  else:
+    assert false, "encodeType " & $t.kind
+
+proc mangleProc(m: BModule; s: PSym; makeUnique: bool): string = 
+  result = "_Z"  # Common prefix in Itanium ABI
+  result.add encodeSym(m, s, makeUnique)
+  if s.typ.len > 1: #we dont care about the return param
+    for i in 1..<s.typ.len: 
+      if s.typ[i].isNil: continue
+      result.add encodeType(m, s.typ[i])
+  
+  if result in m.g.mangledPrcs:
+    result = mangleProc(m, s, true)
+  else:
+    m.g.mangledPrcs.incl(result)
+
 proc mangleName(m: BModule; s: PSym): Rope =
-  result = s.loc.r
-  if result == nil:
-    result = s.name.s.mangle.rope
-    result.add "__"
-    result.add m.g.graph.ifaces[s.itemId.module].uniqueName
-    result.add "_"
-    result.add rope s.itemId.item
+  if $s.loc.r == "":
+    var result: Rope
+    if s.kind in routineKinds and optCDebug in m.g.config.globalOptions and
+      m.g.config.symbolFiles == disabledSf: 
+      result = mangleProc(m, s, false).rope
+    else:
+      result = s.name.s.mangle.rope
+      result.add "__"
+      result.add m.g.graph.ifaces[s.itemId.module].uniqueName
+      result.add "_u"
+      result.add $s.itemId.item # s.disamb #
     if m.hcrOn:
       result.add "_"
       result.add(idOrSig(s, m.module.name.s.mangle, m.sigConflicts, m.config))
