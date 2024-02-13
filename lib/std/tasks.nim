@@ -68,7 +68,8 @@ type
 
 proc `=copy`*(x: var Task, y: Task) {.error.}
 
-when defined(nimAllowNonVarDestructor):
+const arcLike = defined(gcArc) or defined(gcAtomicArc) or defined(gcOrc)
+when defined(nimAllowNonVarDestructor) and arcLike:
   proc `=destroy`*(t: Task) {.inline, gcsafe.} =
     ## Frees the resources allocated for a `Task`.
     if t.args != nil:
