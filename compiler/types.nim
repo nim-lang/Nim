@@ -741,7 +741,6 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
         prag.add("gcsafe")
       var effectsOfStr = ""
       for i, a in t.paramTypes:
-        if i > FirstParamAt: result.add(", ")
         let j = paramTypeToNodeIndex(i)
         if t.n != nil and j < t.n.len and t.n[j].kind == nkSym and t.n[j].sym.kind == skParam and sfEffectsDelayed in t.n[j].sym.flags:
           addSep(effectsOfStr)
