@@ -2689,8 +2689,10 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
             else:
               incrIndexType(container.typ)
             container.add n[a]
+            f = max(f, formalLen - n.len + a + 1)
           elif m.baseTypeMatch:
             assert formal.typ.kind == tyVarargs
+            #assert(container == nil)
             if container.isNil:
               container = newNodeIT(nkBracket, n[a].info, arrayConstr(c, arg))
               container.typ.flags.incl tfVarargs
