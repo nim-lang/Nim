@@ -80,7 +80,7 @@ template checkIfInitialized(deq: typed) =
     initImpl(deq, defaultInitialSize)
 
 func mask[T](deq: Deque[T]): uint {.inline.} =
-  deq.data.len.uint - 1
+  uint(deq.data.len) - 1
 
 proc initDeque*[T](initialSize: int = defaultInitialSize): Deque[T] =
   ## Creates a new empty deque.
