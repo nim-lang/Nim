@@ -3,10 +3,10 @@ cmd: "nim check --hints:off $file"
 errormsg: "type mismatch"
 nimoutFull: true
 nimout: '''
-t22753.nim(34, 13) Error: array expects two type parameters
-t22753.nim(35, 1) Error: expression 'x' has no type (or is ambiguous)
-t22753.nim(35, 1) Error: expression 'x' has no type (or is ambiguous)
-t22753.nim(35, 2) Error: type mismatch: got <>
+t22753.nim(32, 13) Error: array expects two type parameters
+t22753.nim(33, 1) Error: expression 'x' has no type (or is ambiguous)
+t22753.nim(33, 1) Error: expression 'x' has no type (or is ambiguous)
+t22753.nim(33, 2) Error: type mismatch: got <>
 but expected one of:
 proc `[]=`(s: var string; i: BackwardsIndex; x: char)
   first type mismatch at position: 0
@@ -22,8 +22,6 @@ proc `[]=`[T, U: Ordinal](s: var string; x: HSlice[T, U]; b: string)
 proc `[]=`[T; U, V: Ordinal](s: var seq[T]; x: HSlice[U, V]; b: openArray[T])
   first type mismatch at position: 0
 proc `[]=`[T](s: var openArray[T]; i: BackwardsIndex; x: T)
-  first type mismatch at position: 0
-template `[]=`(a: WideCStringObj; idx: int; val: Utf16Char)
   first type mismatch at position: 0
 template `[]=`(s: string; i: int; val: char)
   first type mismatch at position: 0
