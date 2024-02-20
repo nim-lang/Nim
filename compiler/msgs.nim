@@ -429,7 +429,8 @@ To create a stacktrace, rerun compilation with './koch temp $1 <file>', see $2 f
 proc handleError(conf: ConfigRef; msg: TMsgKind, eh: TErrorHandling, s: string, ignoreMsg: bool) =
   if msg in fatalMsgs:
     if conf.cmd == cmdIdeTools: log(s)
-    quit(conf, msg)
+    if conf.cmd != cmdIdeTools or msg != errFatal:
+      quit(conf, msg)
   if msg >= errMin and msg <= errMax or
       (msg in warnMin..hintMax and msg in conf.warningAsErrors and not ignoreMsg):
     inc(conf.errorCounter)
