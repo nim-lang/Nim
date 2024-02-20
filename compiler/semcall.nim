@@ -58,9 +58,8 @@ proc initCandidateSymbols(c: PContext, headSymbol: PNode,
       ]#
       for paramSym in searchInScopesAllCandidatesFilterBy(c, symx.name, {skConst}):
         let paramTyp = paramSym.typ
-        if paramTyp.n.sym.kind in filter:
+        if paramTyp.n.kind == nkSym and paramTyp.n.sym.kind in filter:
           result.add((paramTyp.n.sym, o.lastOverloadScope))
-
 
     symx = nextOverloadIter(o, c, headSymbol)
   if result.len > 0:
