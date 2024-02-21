@@ -30,6 +30,9 @@ slots when enlarging a sequence.
 - Added `hasDefaultValue` to `std/typetraits` to check if a type has a valid default value.
 - Added Viewport API for the JavaScript targets in the `dom` module.
 - Added `toSinglyLinkedRing` and `toDoublyLinkedRing` to `std/lists` to convert from `openArray`s.
+- ORC: To be enabled via `nimOrcStats` there is a new API called `GC_orcStats` that can be used to query how many
+  objects the cyclic collector did free. If the number is zero that is a strong indicator that you can use `--mm:arc`
+  instead of `--mm:orc`.
 
 [//]: # "Deprecations:"
 
@@ -40,7 +43,7 @@ slots when enlarging a sequence.
 
 ## Language changes
 
-- `noInit` can be used in types and fields to disable member initializers in the C++ backend. 
+- `noInit` can be used in types and fields to disable member initializers in the C++ backend.
 - C++ custom constructors initializers see https://nim-lang.org/docs/manual_experimental.htm#constructor-initializer
 - `member` can be used to attach a procedure to a C++ type.
 - C++ `constructor` now reuses `result` instead creating `this`.
@@ -62,7 +65,7 @@ slots when enlarging a sequence.
   symbols in generic routine bodies to be replaced by symbols injected locally
   by templates/macros at instantiation time. `bind` may be used to keep the
   captured symbols over the injected ones regardless of enabling the option.
-  
+
   Since this change may affect runtime behavior, the experimental switch
   `genericsOpenSym` needs to be enabled, and a warning is given in the case
   where an injected symbol would replace a captured symbol not bound by `bind`

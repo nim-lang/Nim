@@ -1703,8 +1703,24 @@ when not defined(nimscript):
 when not declared(sysFatal):
   include "system/fatal"
 
+type
+  PFrame* = ptr TFrame  ## Represents a runtime frame of the call stack;
+                        ## part of the debugger API.
+  # keep in sync with nimbase.h `struct TFrame_`
+  TFrame* {.importc, nodecl, final.} = object ## The frame itself.
+    prev*: PFrame       ## Previous frame; used for chaining the call stack.
+    procname*: cstring  ## Name of the proc that is currently executing.
+    line*: int          ## Line number of the proc that is currently executing.
+    filename*: cstring  ## Filename of the proc that is currently executing.
+    len*: int16         ## Length of the inspectable slots.
+    calldepth*: int16   ## Used for max call depth checking.
+    when NimStackTraceMsgs:
+      frameMsgLen*: int   ## end position in frameMsgBuf for this frame.
 
 when defined(nimV2):
+  var
+    framePtr {.threadvar.}: PFrame
+
   include system/arc
 
 template newException*(exceptn: typedesc, message: string;
@@ -1848,20 +1864,6 @@ when notJSnotNims:
       ## in case of an `unhandle exception` event. The standard handler
       ## writes an error message and terminates the program, except when
       ## using `--os:any`
-
-type
-  PFrame* = ptr TFrame  ## Represents a runtime frame of the call stack;
-                        ## part of the debugger API.
-  # keep in sync with nimbase.h `struct TFrame_`
-  TFrame* {.importc, nodecl, final.} = object ## The frame itself.
-    prev*: PFrame       ## Previous frame; used for chaining the call stack.
-    procname*: cstring  ## Name of the proc that is currently executing.
-    line*: int          ## Line number of the proc that is currently executing.
-    filename*: cstring  ## Filename of the proc that is currently executing.
-    len*: int16         ## Length of the inspectable slots.
-    calldepth*: int16   ## Used for max call depth checking.
-    when NimStackTraceMsgs:
-      frameMsgLen*: int   ## end position in frameMsgBuf for this frame.
 
 when defined(js) or defined(nimdoc):
   proc add*(x: var string, y: cstring) {.asmNoStackFrame.} =
