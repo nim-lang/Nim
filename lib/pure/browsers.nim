@@ -38,7 +38,7 @@ proc prepare(s: string): string =
   else:
     result = "file://" & absolutePath(s)
 
-proc openDefaultBrowserImplPrep(url: string) =
+proc openDefaultBrowserRaw(url: string) =
   ## note the url argument should be alreadly prepared, i.e. the url is passed "AS IS"
 
   when defined(windows):
@@ -58,9 +58,6 @@ proc openDefaultBrowserImplPrep(url: string) =
       except OSError:
         discard
 
-proc openDefaultBrowserImpl(url: string) =
-  openDefaultBrowserImplPrep(prepare url)
-
 proc openDefaultBrowser*(url: string) =
   ## Opens `url` with the user's default browser. This does not block.
   ## The URL must not be empty string, to open on a blank page see `openDefaultBrowser()`.
@@ -76,4 +73,4 @@ proc openDefaultBrowser*(url: string) =
   ##   block: openDefaultBrowser("https://nim-lang.org")
   ##   ```
   doAssert url.len > 0, "URL must not be empty string"
-  openDefaultBrowserImpl(url)
+  openDefaultBrowserRaw(url)
