@@ -553,7 +553,7 @@ type
     tfIterator,       # type is really an iterator, not a tyProc
     tfPartial,        # type is declared as 'partial'
     tfNotNil,         # type cannot be 'nil'
-    tfRequiresInit,   # type constains a "not nil" constraint somewhere or
+    tfRequiresInit,   # type constrains a "not nil" constraint somewhere or
                       # a `requiresInit` field, so the default zero init
                       # is not appropriate
     tfNeedsFullInit,  # object type marked with {.requiresInit.}
