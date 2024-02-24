@@ -439,10 +439,10 @@ proc handleError(conf: ConfigRef; msg: TMsgKind, eh: TErrorHandling, s: string, 
       # only really quit when we're not in the new 'nim check --def' mode:
       if conf.ideCmd == ideNone:
         when defined(nimsuggest):
-        #we need to inform the user that something went wrong when initializing NimSuggest
-        raiseRecoverableError(s)
-      else:
-        quit(conf, msg)
+          #we need to inform the user that something went wrong when initializing NimSuggest
+          raiseRecoverableError(s)
+        else:
+          quit(conf, msg)
     elif eh == doAbort and conf.cmd != cmdIdeTools:
       quit(conf, msg)
     elif eh == doRaise:
