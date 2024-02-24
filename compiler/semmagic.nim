@@ -66,7 +66,7 @@ proc semArrGet(c: PContext; n: PNode; flags: TExprFlags): PNode =
     x[0] = newIdentNode(getIdent(c.cache, "[]"), n.info)
     bracketNotFoundError(c, x)
     #localError(c.config, n.info, "could not resolve: " & $n)
-    result = n
+    result = errorNode(c, n)
 
 proc semArrPut(c: PContext; n: PNode; flags: TExprFlags): PNode =
   # rewrite `[]=`(a, i, x)  back to ``a[i] = x``.
