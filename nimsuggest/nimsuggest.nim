@@ -92,7 +92,7 @@ type
 
 var
   gPort = 6000.Port
-  gAddress = ""
+  gAddress = "localhost"
   gMode: Mode
   gEmitEof: bool # whether we write '!EOF!' dummy lines
   gLogging = defined(logging)
