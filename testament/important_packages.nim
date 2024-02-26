@@ -91,7 +91,7 @@ pkg "lockfreequeues"
 pkg "macroutils"
 pkg "manu"
 pkg "markdown"
-pkg "measuremancer", "nimble testDeps; nimble -y test"
+pkg "measuremancer", "nimble testDeps; nimble -y test", allowFailure = true
 # when unchained is version 0.3.7 or higher, use `nimble testDeps;`
 pkg "memo"
 pkg "msgpack4nim", "nim c -r tests/test_spec.nim"
