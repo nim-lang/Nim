@@ -74,3 +74,37 @@ proc openDefaultBrowser*(url: string) =
   ##   ```
   doAssert url.len > 0, "URL must not be empty string"
   openDefaultBrowserRaw(url)
+
+proc openDefaultBrowser*() {.since: (1, 1), deprecated: 
+  "not implemented, please open with a specifical url instead".} =
+  ## Intends to open the user's default browser without any `url` (blank page).
+  ## This does not block.
+  ## Intends to implement IETF RFC-6694 Section 3,
+  ## ("about:blank" is reserved for a blank page).
+  ##
+  ## Beware that this intended behavior is **not** implemented and 
+  ## considered not worthy to implement here.
+  ##
+  ## The following describes the behavior of current implementation:
+  ## 
+  ##  - Under Windows, this will only cause a pop-up dialog \
+  ## asking the assocated application with `about` \
+  ## (as Windows simply treats `about:` as a protocol like `http`).
+  ##  - Under Mac OS X the `open "about:blank"` command is used.
+  ##  - Under Unix, it is checked if `xdg-open` exists and used \
+  ## if it does and open the application assocated with `text/html` mime \
+  ## (not `x-scheme-handler/http`, so maybe html-viewer \
+  ## other than your default browser is opened). \
+  ## Otherwise the environment variable `BROWSER` is used \
+  ## to determine the default browser to use.
+  ##
+  ## This proc doesn't raise an exception on error, beware.
+  ##
+  ##   ```nim
+  ##   block: openDefaultBrowser()
+  ##   ```
+  ##
+  ## **See also:**
+  ##
+  ## * https://tools.ietf.org/html/rfc6694#section-3
+  openDefaultBrowserRaw("about:blank")  # See IETF RFC-6694 Section 3.
