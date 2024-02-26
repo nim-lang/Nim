@@ -76,7 +76,7 @@ proc openDefaultBrowser*(url: string) =
   openDefaultBrowserRaw(url)
 
 proc openDefaultBrowser*() {.since: (1, 1), deprecated: 
-  "not implemented, please open with a specifical url instead".} =
+  "not implemented, please open with a specific url instead".} =
   ## Intends to open the user's default browser without any `url` (blank page).
   ## This does not block.
   ## Intends to implement IETF RFC-6694 Section 3,
