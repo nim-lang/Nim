@@ -107,7 +107,7 @@ proc aliveCode(c: var AliveContext; g: PackedModuleGraph; tree: PackedTree; n: N
   case n.kind
   of nkNone..pred(nkSym), succ(nkSym)..nkNilLit:
     discard "ignore non-sym atoms"
-  of nkSym:
+  of nkSym, nkOpenSym:
     # This symbol is alive and everything its body references.
     followLater(c, g, c.thisModule, tree[n].soperand)
   of nkModuleRef:

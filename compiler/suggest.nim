@@ -301,7 +301,7 @@ proc filterSym(s: PSym; prefix: PNode; res: var PrefixMatch): bool {.inline.} =
   proc prefixMatch(s: PSym; n: PNode): PrefixMatch =
     case n.kind
     of nkIdent: result = n.ident.s.prefixMatch(s.name.s)
-    of nkSym: result = n.sym.name.s.prefixMatch(s.name.s)
+    of nkSym, nkOpenSym: result = n.sym.name.s.prefixMatch(s.name.s)
     of nkOpenSymChoice, nkClosedSymChoice, nkAccQuoted:
       if n.len > 0:
         result = prefixMatch(s, n[0])

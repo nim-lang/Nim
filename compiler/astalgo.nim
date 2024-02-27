@@ -443,7 +443,7 @@ proc value(this: var DebugPrinter; value: PNode) =
   of nkStrLit..nkTripleStrLit:
     this.key "strVal"
     this.value value.strVal
-  of nkSym:
+  of nkSym, nkOpenSym:
     this.key "sym"
     this.value value.sym
     #this.value value.sym.name.s

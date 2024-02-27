@@ -1841,7 +1841,7 @@ proc semTypeOf2(c: PContext; n: PNode; prev: PType): PType =
   result = t.typ
 
 proc semTypeIdent(c: PContext, n: PNode): PSym =
-  if n.kind == nkSym:
+  if n.kind in {nkSym, nkOpenSym}:
     result = getGenSym(c, n.sym)
   else:
     result = pickSym(c, n, {skType, skGenericParam, skParam})
@@ -1928,7 +1928,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     let x = n[0]
     let ident = case x.kind
                 of nkIdent: x.ident
-                of nkSym: x.sym.name
+                of nkSym, nkOpenSym: x.sym.name
                 of nkClosedSymChoice, nkOpenSymChoice: x[0].sym.name
                 else: nil
     if ident != nil and ident.s == "[]":

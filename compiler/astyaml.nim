@@ -120,7 +120,7 @@ proc treeToYamlAux(res: var string; conf: ConfigRef; n: PNode; marker: var IntSe
         res.addf("\n$1floatVal: $2", [istr, n.floatVal.toStrMaxPrecision])
       of nkStrLit .. nkTripleStrLit:
         res.addf("\n$1strVal: $2", [istr, makeYamlString(n.strVal)])
-      of nkSym:
+      of nkSym, nkOpenSym:
         res.addf("\n$1sym: ", [istr])
         res.symToYamlAux(conf, n.sym, marker, indent + 1, maxRecDepth)
       of nkIdent:

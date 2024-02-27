@@ -21,7 +21,7 @@ proc invalidPragma(conf: ConfigRef; n: PNode) =
 
 proc getArg(conf: ConfigRef; n: PNode, name: string, pos: int): PNode =
   result = nil
-  if n.kind in {nkEmpty..nkNilLit}: return
+  if n.kind in {nkEmpty..nkNilLit, nkOpenSym}: return
   for i in 1..<n.len:
     if n[i].kind == nkExprEqExpr:
       if n[i][0].kind != nkIdent: invalidPragma(conf, n)

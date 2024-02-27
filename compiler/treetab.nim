@@ -25,7 +25,7 @@ proc hashTree*(n: PNode): Hash =
     discard
   of nkIdent:
     result = result !& n.ident.h
-  of nkSym:
+  of nkSym, nkOpenSym:
     result = result !& n.sym.id
   of nkCharLit..nkUInt64Lit:
     if (n.intVal >= low(int)) and (n.intVal <= high(int)):
@@ -48,7 +48,7 @@ proc treesEquivalent(a, b: PNode): bool =
   elif (a != nil) and (b != nil) and (a.kind == b.kind):
     case a.kind
     of nkEmpty, nkNilLit, nkType: result = true
-    of nkSym: result = a.sym.id == b.sym.id
+    of nkSym, nkOpenSym: result = a.sym.id == b.sym.id
     of nkIdent: result = a.ident.id == b.ident.id
     of nkCharLit..nkUInt64Lit: result = a.intVal == b.intVal
     of nkFloatLit..nkFloat64Lit: result = a.floatVal == b.floatVal

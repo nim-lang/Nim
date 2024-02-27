@@ -167,7 +167,7 @@ when false: # old workaround
 proc replaceObjBranches(cl: TReplTypeVars, n: PNode): PNode =
   result = n
   case n.kind
-  of nkNone..nkNilLit:
+  of nkNone..nkNilLit, nkOpenSym:
     discard
   of nkRecWhen:
     var branch: PNode = nil              # the branch to take
@@ -222,7 +222,7 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0; expectedType: PT
   of nkNone..pred(nkSym), succ(nkSym)..nkNilLit:
     discard
   of nkOpenSymChoice, nkClosedSymChoice: result = n
-  of nkSym:
+  of nkSym, nkOpenSym:
     result.sym =
       if n.typ != nil and n.typ == n.sym.typ:
         replaceTypeVarsS(cl, n.sym, result.typ)

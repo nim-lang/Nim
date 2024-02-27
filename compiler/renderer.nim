@@ -409,7 +409,7 @@ proc atom(g: TSrcGen; n: PNode): string =
   case n.kind
   of nkEmpty: result = ""
   of nkIdent: result = n.ident.s
-  of nkSym: result = n.sym.name.s
+  of nkSym, nkOpenSym: result = n.sym.name.s
   of nkClosedSymChoice, nkOpenSymChoice: result = n[0].sym.name.s
   of nkStrLit: result = ""; result.addQuoted(n.strVal)
   of nkRStrLit: result = "r\"" & replace(n.strVal, "\"", "\"\"") & '\"'
@@ -494,7 +494,7 @@ proc lsub(g: TSrcGen; n: PNode): int =
   of nkTripleStrLit:
     if containsNL(n.strVal): result = MaxLineLen + 1
     else: result = atom(g, n).len
-  of succ(nkEmpty)..pred(nkTripleStrLit), succ(nkTripleStrLit)..nkNilLit:
+  of succ(nkEmpty)..pred(nkTripleStrLit), succ(nkTripleStrLit)..nkNilLit, nkOpenSym:
     result = atom(g, n).len
   of nkCall, nkBracketExpr, nkCurlyExpr, nkConv, nkPattern, nkObjConstr:
     result = lsub(g, n[0]) + lcomma(g, n, 1) + 2
@@ -1093,7 +1093,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
   of nkTripleStrLit: put(g, tkTripleStrLit, atom(g, n))
   of nkEmpty: discard
   of nkType: put(g, tkInvalid, atom(g, n))
-  of nkSym, nkIdent: gident(g, n)
+  of nkSym, nkOpenSym, nkIdent: gident(g, n)
   of nkIntLit: put(g, tkIntLit, atom(g, n))
   of nkInt8Lit: put(g, tkInt8Lit, atom(g, n))
   of nkInt16Lit: put(g, tkInt16Lit, atom(g, n))
@@ -1407,10 +1407,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
   of nkPrefix:
     gsub(g, n, 0)
     if n.len > 1:
-      let opr = if n[0].kind == nkIdent: n[0].ident
-                elif n[0].kind == nkSym: n[0].sym.name
-                elif n[0].kind in {nkOpenSymChoice, nkClosedSymChoice}: n[0][0].sym.name
-                else: nil
+      let opr = if n[0].kind in nkIdentKinds: n[0].getPIdent else: nil
       let nNext = skipHiddenNodes(n[1])
       if nNext.kind == nkPrefix or (opr != nil and renderer.isKeyword(opr)):
         put(g, tkSpaces, Space)
@@ -1439,7 +1436,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
     put(g, tkAccent, "`")
     for i in 0..<n.len:
       proc isAlpha(n: PNode): bool =
-        if n.kind in {nkIdent, nkSym}:
+        if n.kind in {nkIdent, nkSym, nkOpenSym}:
           let tmp = n.getPIdent.s
           result = tmp.len > 0 and tmp[0] in {'a'..'z', 'A'..'Z'}
         else:

@@ -452,7 +452,7 @@ proc sameTree*(a, b: PNode): bool =
     result = true
   elif a != nil and b != nil and a.kind == b.kind:
     case a.kind
-    of nkSym:
+    of nkSym, nkOpenSym:
       result = a.sym == b.sym
       if not result and a.sym.magic != mNone:
         result = a.sym.magic == b.sym.magic or sameOpr(a.sym, b.sym)
