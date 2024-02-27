@@ -12,6 +12,8 @@
 ##
 ## Unstable API.
 
+import std/private/since # used by the deprecated `openDefaultBrowser()`
+
 import std/strutils
 
 when defined(nimPreviewSlimSystem):
@@ -75,7 +77,6 @@ proc openDefaultBrowser*(url: string) =
   doAssert url.len > 0, "URL must not be empty string"
   openDefaultBrowserRaw(url)
 
-import std/private/since
 proc openDefaultBrowser*() {.since: (1, 1), deprecated: 
   "not implemented, please open with a specific url instead".} =
   ## Intends to open the user's default browser without any `url` (blank page).
