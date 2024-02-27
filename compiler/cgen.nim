@@ -2194,6 +2194,22 @@ proc updateCachedModule(m: BModule) =
   cf.flags = {CfileFlag.Cached}
   addFileToCompile(m.config, cf)
 
+proc generateLibraryDestroyGlobals(graph: ModuleGraph; m: BModule; body: PNode; isDynlib: bool): PSym =
+  let procname = getIdent(graph.cache, "nimDestroyGlobals")
+  result = newSym(skProc, procname, m.idgen, m.module.owner, m.module.info)
+  result.typ = newProcType(m.module.info, m.idgen, m.module.owner)
+  result.typ.callConv = ccCDecl
+  incl result.flags, sfExportc
+  result.loc.r = "nimDestroyGlobals"
+  if isDynlib:
+    incl(result.loc.flags, lfExportLib)
+
+  let theProc = newNodeI(nkProcDef, m.module.info, bodyPos+1)
+  for i in 0..<theProc.len: theProc[i] = newNodeI(nkEmpty, m.module.info)
+  theProc[namePos] = newSymNode(result)
+  theProc[bodyPos] = body
+  result.ast = theProc
+
 proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: PNode) =
   ## Also called from IC.
   if sfMainModule in m.module.flags:
@@ -2205,6 +2221,12 @@ proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: PNode) =
     if {optGenStaticLib, optGenDynLib, optNoMain} * m.config.globalOptions == {}:
       for i in countdown(high(graph.globalDestructors), 0):
         n.add graph.globalDestructors[i]
+    else:
+      var body = newNodeI(nkStmtList, m.module.info)
+      for i in countdown(high(graph.globalDestructors), 0):
+        body.add graph.globalDestructors[i]
+      let dtor = generateLibraryDestroyGlobals(graph, m, body, optGenDynLib in m.config.globalOptions)
+      genProcAux(m, dtor)
   if pipelineutils.skipCodegen(m.config, n): return
   if moduleHasChanged(graph, m.module):
     # if the module is cached, we don't regenerate the main proc
