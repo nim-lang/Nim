@@ -2225,6 +2225,7 @@ proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: PNode) =
       var body = newNodeI(nkStmtList, m.module.info)
       for i in countdown(high(graph.globalDestructors), 0):
         body.add graph.globalDestructors[i]
+      body.flags.incl nfTransf # should not be further transformed
       let dtor = generateLibraryDestroyGlobals(graph, m, body, optGenDynLib in m.config.globalOptions)
       genProcAux(m, dtor)
   if pipelineutils.skipCodegen(m.config, n): return
