@@ -1017,6 +1017,8 @@ proc trackCall(tracked: PEffects; n: PNode) =
       case paramType.kind
       of tySink:
         createTypeBoundOps(tracked, paramType.elementType, n.info)
+        if not isTrival(getAttachedOp(tracked.graph, paramType.elementType, attachedAsgn)):
+          paramType.elementType.flags.incl tfHasAsgn
         checkForSink(tracked, n[i])
       of tyVar:
         if isOutParam(paramType):
