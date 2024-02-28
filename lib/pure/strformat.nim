@@ -483,10 +483,10 @@ proc parseStandardFormatSpecifier*(s: string; start = 0;
 
 proc toRadix(typ: char): int =
   case typ
-  of ['x', 'X']: 16
-  of ['d', '\0']: 10
-  of ['o']: 8
-  of ['b']: 2
+  of 'x', 'X': 16
+  of 'd', '\0': 10
+  of 'o': 8
+  of 'b': 2
   else:
     raise newException(ValueError,
       "invalid type in format string for number, expected one " &
@@ -559,10 +559,10 @@ proc formatFloat(
 
 proc toFloatFormatMode(typ: char): FloatFormatMode =
   case typ
-  of ['e', 'E']: ffScientific
-  of ['f', 'F']: ffDecimal
-  of ['g', 'G']: ffDefault
-  of ['\0']: ffDefault
+  of 'e', 'E': ffScientific
+  of 'f', 'F': ffDecimal
+  of 'g', 'G': ffDefault
+  of '\0': ffDefault
   else:
     raise newException(ValueError,
       "invalid type in format string for number, expected one " &
@@ -600,7 +600,7 @@ proc formatValue*(result: var string; value: string; specifier: static string) =
   ## by the `&` macro.
   const spec = parseStandardFormatSpecifier(specifier)
   var value =
-    when spec.typ in ['s', '\0']: value
+    when spec.typ in {'s', '\0'}: value
     else: static:
       raise newException(ValueError,
         "invalid type in format string for string, expected 's', but got " &
@@ -618,7 +618,7 @@ proc formatValue*(result: var string; value: string; specifier: string) =
   ## by the `&` macro.
   let spec = parseStandardFormatSpecifier(specifier)
   var value =
-    if spec.typ in ['s', '\0']: value
+    if spec.typ in {'s', '\0'}: value
     else:
       raise newException(ValueError,
         "invalid type in format string for string, expected 's', but got " &
