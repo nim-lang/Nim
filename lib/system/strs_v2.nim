@@ -190,7 +190,7 @@ proc nimPrepareStrMutationImpl(s: var NimStringV2) =
   s.p.cap = s.len
   copyMem(unsafeAddr s.p.data[0], unsafeAddr oldP.data[0], s.len+1)
 
-proc nimPrepareStrMutationV2(s: var NimStringV2) {.compilerRtl, inl.} =
+proc nimPrepareStrMutationV2(s: var NimStringV2) {.compilerRtl, inl, raises: [], tags: [].} =
   if s.p != nil and (s.p.cap and strlitFlag) == strlitFlag:
     nimPrepareStrMutationImpl(s)
 
