@@ -1427,7 +1427,7 @@ proc parseTypeDesc(p: var Parser, fullExpr = false): PNode =
       result = newNodeP(nkObjectTy, p)
       getTok(p)
     of tkConcept:
-      result = nil
+      result = p.emptyNode
       parMessage(p, "the 'concept' keyword is only valid in 'type' sections")
     of tkVar: result = parseTypeDescKAux(p, nkVarTy, pmTypeDesc)
     of tkOut: result = parseTypeDescKAux(p, nkOutTy, pmTypeDesc)
