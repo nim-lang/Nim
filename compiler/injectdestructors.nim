@@ -163,8 +163,8 @@ proc isLastReadImpl(n: PNode; c: var Con; scope: var Scope): bool =
     result = false
 
 proc isLastRead(n: PNode; c: var Con; s: var Scope): bool =
-  # bug #23354; a type could have a non-trival assignements when it is passed to a sink parameter
-  if not hasDestructor(c, n.typ) and isTrival(getAttachedOp(c.graph, n.typ, attachedAsgn)): return true
+  # bug #23354; an object type could have a non-trival assignements when it is passed to a sink parameter
+  if not hasDestructor(c, n.typ) and (n.typ.kind != tyObject or isTrival(getAttachedOp(c.graph, n.typ, attachedAsgn))): return true
 
   let m = skipConvDfa(n)
   result = (m.kind == nkSym and sfSingleUsedTemp in m.sym.flags) or
