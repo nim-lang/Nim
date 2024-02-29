@@ -1,3 +1,7 @@
+discard """
+  matrix: "--mm:refc; --mm:arc"
+"""
+
 block: # bug #23354
   type AnObject = object of RootObj
     value: int
