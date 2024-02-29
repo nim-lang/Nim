@@ -119,7 +119,7 @@ proc collectObjectTree(graph: ModuleGraph, n: PNode) =
             else:
               graph.objectTree[root].add (depthLevel, typ)
 
-proc createTypeBoundOps(tracked: PEffects, typ: PType; info: TLineInfo) =
+proc createTypeBoundOps(tracked: PEffects, typ: PType; info: TLineInfo; fromSinkParam = false) =
   if typ == nil or sfGeneratedOp in tracked.owner.flags:
     # don't create type bound ops for anything in a function with a `nodestroy` pragma
     # bug #21987
@@ -132,7 +132,8 @@ proc createTypeBoundOps(tracked: PEffects, typ: PType; info: TLineInfo) =
 
   createTypeBoundOps(tracked.graph, tracked.c, typ, info, tracked.c.idgen)
   if (tfHasAsgn in typ.flags) or
-      optSeqDestructors in tracked.config.globalOptions:
+      optSeqDestructors in tracked.config.globalOptions or
+      (tracked.config.selectedGC == gcRefc and fromSinkParam):
     tracked.owner.flags.incl sfInjectDestructors
 
 proc isLocalSym(a: PEffects, s: PSym): bool =
@@ -1016,7 +1017,7 @@ proc trackCall(tracked: PEffects; n: PNode) =
       let paramType = op[i]
       case paramType.kind
       of tySink:
-        createTypeBoundOps(tracked, paramType.elementType, n.info)
+        createTypeBoundOps(tracked, paramType.elementType, n.info, fromSinkParam = true)
         checkForSink(tracked, n[i])
       of tyVar:
         if isOutParam(paramType):
