@@ -446,7 +446,7 @@ proc passCopyToSink(n: PNode; c: var Con; s: var Scope): PNode =
   let tmp = c.getTemp(s, nTyp, n.info)
   let typ = nTyp.skipTypes({tyGenericInst, tyAlias, tySink})
   if hasDestructor(c, nTyp) or (c.graph.config.selectedGC == gcRefc and
-              getAttachedOp(c.graph, typ, attachedDup) != nil):
+      typ.kind == tyObject and getAttachedOp(c.graph, typ, attachedDup) != nil):
     let op = getAttachedOp(c.graph, typ, attachedDup)
     if op != nil and tfHasOwned notin typ.flags:
       if sfError in op.flags:
