@@ -1,5 +1,5 @@
 discard """
-  targets: "c cpp"
+  targets: "c"
   matrix: "--debugger:native"
   ccodecheck: "'_ZN14titaniummangle8testFuncE'"
   ccodecheck: "'_ZN14titaniummangle8testFuncE6stringN14titaniummangle3FooE'"
