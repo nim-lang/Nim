@@ -302,6 +302,15 @@ proc toJson*[T](a: T, opt = initToJsonOptions()): JsonNode =
   ## .. note:: With `-d:nimPreviewJsonutilsHoleyEnum`, `toJson` now can 
   ##    serialize/deserialize holey enums as regular enums (via `ord`) instead of as strings.
   ##    It is expected that this behavior becomes the new default in upcoming versions.
+  runnableExamples:
+    import std/json
+
+    var x: JsonNode = nil
+    let option = ToJsonOptions(
+        enumMode: joptEnumOrd,
+        jsonNodeMode: joptJsonNodeAsObject
+        ) # treats JsonNode as a regular ref object
+    assert $toJson(x, option) == "null"
   when compiles(toJsonHook(a, opt)): result = toJsonHook(a, opt)
   elif compiles(toJsonHook(a)): result = toJsonHook(a)
   elif T is object | tuple:
