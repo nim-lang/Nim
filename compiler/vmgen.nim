@@ -2041,6 +2041,8 @@ proc genSetConstr(c: PCtx, n: PNode, dest: var TDest) =
       c.freeTemp(a)
 
 proc genObjConstr(c: PCtx, n: PNode, dest: var TDest) =
+  if tfUnion in n.typ.flags: # bug #22708 # bug #13481
+    globalError(c.config, n.info, "object with '{.union.}' pragmas is not supported by VM")
   if dest < 0: dest = c.getTemp(n.typ)
   let t = n.typ.skipTypes(abstractRange+{tyOwned}-{tyTypeDesc})
   if t.kind == tyRef:
