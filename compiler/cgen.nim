@@ -574,7 +574,7 @@ proc getTempCpp(p: BProc, t: PType, value: Rope): TLoc =
   inc(p.labels)
   result = TLoc(r: "T" & rope(p.labels) & "_", k: locTemp, lode: lodeTyp t,
                 storage: OnStack, flags: {})
-  linefmt(p, cpsStmts, "$1 $2 = $3;$n", [getTypeDesc(p.module, t, dkVar), result.r, value])
+  linefmt(p, cpsStmts, "auto $1 = $2;$n", [result.r, value])
 
 proc getIntTemp(p: BProc): TLoc =
   inc(p.labels)
