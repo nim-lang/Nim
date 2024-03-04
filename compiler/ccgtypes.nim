@@ -1987,8 +1987,11 @@ proc genTypeSection(m: BModule, n: PNode) =
     if len(n[i]) == 0: continue
     if n[i][0].kind != nkPragmaExpr: continue
     for p in 0..<n[i][0].len:
-      if (n[i][0][p].kind != nkSym): continue
-      if sfExportc in n[i][0][p].sym.flags:
-        discard getTypeDescAux(m, n[i][0][p].typ, intSet, descKindFromSymKind(n[i][0][p].sym.kind))
+      if (n[i][0][p].kind notin { nkSym, nkPostfix}): continue
+      var s = n[i][0][p]
+      if s.kind == nkPostfix:
+        s = n[i][0][p][1]
+      if sfExportc in s.sym.flags:
+        discard getTypeDescAux(m, s.typ, intSet, descKindFromSymKind(s.sym.kind))
         if m.g.generatedHeader != nil:
-          discard getTypeDescAux(m.g.generatedHeader, n[i][0][p].typ, intSet, descKindFromSymKind(n[i][0][p].sym.kind))
+          discard getTypeDescAux(m.g.generatedHeader, s.typ, intSet, descKindFromSymKind(s.sym.kind))
