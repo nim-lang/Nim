@@ -2114,6 +2114,9 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     else:
       let symKind = if n.kind == nkIteratorTy: skIterator else: skProc
       result = semProcTypeWithScope(c, n, prev, symKind)
+      if result == nil:
+        localError(c.config, n.info, "type expected, but got: " & renderTree(n))
+        result = newOrPrevType(tyError, prev, c)
       if n.kind == nkIteratorTy and result.kind == tyProc:
         result.flags.incl(tfIterator)
   of nkEnumTy: result = semEnum(c, n, prev)
