@@ -58,9 +58,8 @@ proc initCandidateSymbols(c: PContext, headSymbol: PNode,
       ]#
       for paramSym in searchInScopesAllCandidatesFilterBy(c, symx.name, {skConst}):
         let paramTyp = paramSym.typ
-        if paramTyp.n.sym.kind in filter:
+        if paramTyp.n.kind == nkSym and paramTyp.n.sym.kind in filter:
           result.add((paramTyp.n.sym, o.lastOverloadScope))
-
 
     symx = nextOverloadIter(o, c, headSymbol)
   if result.len > 0:
@@ -249,44 +248,89 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
     candidates.add("\n")
     let nArg = if err.firstMismatch.arg < n.len: n[err.firstMismatch.arg] else: nil
     let nameParam = if err.firstMismatch.formal != nil: err.firstMismatch.formal.name.s else: ""
-    if n.len > 1 and verboseTypeMismatch in c.config.legacyFeatures:
-      candidates.add("  first type mismatch at position: " & $err.firstMismatch.arg)
-      # candidates.add "\n  reason: " & $err.firstMismatch.kind # for debugging
-      case err.firstMismatch.kind
-      of kUnknownNamedParam:
-        if nArg == nil:
-          candidates.add("\n  unknown named parameter")
-        else:
-          candidates.add("\n  unknown named parameter: " & $nArg[0])
-      of kAlreadyGiven: candidates.add("\n  named param already provided: " & $nArg[0])
-      of kPositionalAlreadyGiven: candidates.add("\n  positional param was already given as named param")
-      of kExtraArg: candidates.add("\n  extra argument given")
-      of kMissingParam: candidates.add("\n  missing parameter: " & nameParam)
-      of kTypeMismatch, kVarNeeded:
-        doAssert nArg != nil
-        let wanted = err.firstMismatch.formal.typ
-        doAssert err.firstMismatch.formal != nil
-        candidates.add("\n  required type for " & nameParam &  ": ")
-        candidates.addTypeDeclVerboseMaybe(c.config, wanted)
-        candidates.add "\n  but expression '"
-        if err.firstMismatch.kind == kVarNeeded:
+    if n.len > 1:
+      if verboseTypeMismatch notin c.config.legacyFeatures:
+        case err.firstMismatch.kind
+        of kUnknownNamedParam:
+          if nArg == nil:
+            candidates.add("  unknown named parameter")
+          else:
+            candidates.add("  unknown named parameter: " & $nArg[0])
+          candidates.add "\n"
+        of kAlreadyGiven:
+          candidates.add("  named param already provided: " & $nArg[0])
+          candidates.add "\n"
+        of kPositionalAlreadyGiven:
+          candidates.add("  positional param was already given as named param")
+          candidates.add "\n"
+        of kExtraArg:
+          candidates.add("  extra argument given")
+          candidates.add "\n"
+        of kMissingParam:
+          candidates.add("  missing parameter: " & nameParam)
+          candidates.add "\n"
+        of kVarNeeded:
+          doAssert nArg != nil
+          doAssert err.firstMismatch.formal != nil
+          candidates.add "  expression '"
           candidates.add renderNotLValue(nArg)
           candidates.add "' is immutable, not 'var'"
-        else:
-          candidates.add renderTree(nArg)
-          candidates.add "' is of type: "
-          let got = nArg.typ
-          candidates.addTypeDeclVerboseMaybe(c.config, got)
+          candidates.add "\n"
+        of kTypeMismatch:
+          doAssert nArg != nil
+          let wanted = err.firstMismatch.formal.typ
+          doAssert err.firstMismatch.formal != nil
           doAssert wanted != nil
-          if got != nil:
-            if got.kind == tyProc and wanted.kind == tyProc:
-              # These are proc mismatches so,
-              # add the extra explict detail of the mismatch
-              candidates.addPragmaAndCallConvMismatch(wanted, got, c.config)
+          let got = nArg.typ
+          if got != nil and got.kind == tyProc and wanted.kind == tyProc:
+            # These are proc mismatches so,
+            # add the extra explict detail of the mismatch
+            candidates.add "  expression '"
+            candidates.add renderTree(nArg)
+            candidates.add "' is of type: "
+            candidates.addTypeDeclVerboseMaybe(c.config, got)
+            candidates.addPragmaAndCallConvMismatch(wanted, got, c.config)
             effectProblem(wanted, got, candidates, c)
+            candidates.add "\n"
+        of kUnknown: discard "do not break 'nim check'"
+      else:
+        candidates.add("  first type mismatch at position: " & $err.firstMismatch.arg)
+        # candidates.add "\n  reason: " & $err.firstMismatch.kind # for debugging
+        case err.firstMismatch.kind
+        of kUnknownNamedParam:
+          if nArg == nil:
+            candidates.add("\n  unknown named parameter")
+          else:
+            candidates.add("\n  unknown named parameter: " & $nArg[0])
+        of kAlreadyGiven: candidates.add("\n  named param already provided: " & $nArg[0])
+        of kPositionalAlreadyGiven: candidates.add("\n  positional param was already given as named param")
+        of kExtraArg: candidates.add("\n  extra argument given")
+        of kMissingParam: candidates.add("\n  missing parameter: " & nameParam)
+        of kTypeMismatch, kVarNeeded:
+          doAssert nArg != nil
+          let wanted = err.firstMismatch.formal.typ
+          doAssert err.firstMismatch.formal != nil
+          candidates.add("\n  required type for " & nameParam &  ": ")
+          candidates.addTypeDeclVerboseMaybe(c.config, wanted)
+          candidates.add "\n  but expression '"
+          if err.firstMismatch.kind == kVarNeeded:
+            candidates.add renderNotLValue(nArg)
+            candidates.add "' is immutable, not 'var'"
+          else:
+            candidates.add renderTree(nArg)
+            candidates.add "' is of type: "
+            let got = nArg.typ
+            candidates.addTypeDeclVerboseMaybe(c.config, got)
+            doAssert wanted != nil
+            if got != nil:
+              if got.kind == tyProc and wanted.kind == tyProc:
+                # These are proc mismatches so,
+                # add the extra explict detail of the mismatch
+                candidates.addPragmaAndCallConvMismatch(wanted, got, c.config)
+              effectProblem(wanted, got, candidates, c)
 
-      of kUnknown: discard "do not break 'nim check'"
-      candidates.add "\n"
+        of kUnknown: discard "do not break 'nim check'"
+        candidates.add "\n"
       if err.firstMismatch.arg == 1 and nArg.kind == nkTupleConstr and
           n.kind == nkCommand:
         maybeWrongSpace = true

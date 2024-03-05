@@ -55,13 +55,31 @@ proc mangleField(m: BModule; name: PIdent): string =
   if isKeyword(name):
     result.add "_0"
 
+proc mangleProc(m: BModule; s: PSym; makeUnique: bool): string = 
+  result = "_Z"  # Common prefix in Itanium ABI
+  result.add encodeSym(m, s, makeUnique)
+  if s.typ.len > 1: #we dont care about the return param
+    for i in 1..<s.typ.len: 
+      if s.typ[i].isNil: continue
+      result.add encodeType(m, s.typ[i])
+  
+  if result in m.g.mangledPrcs:
+    result = mangleProc(m, s, true)
+  else:
+    m.g.mangledPrcs.incl(result)
+
 proc fillBackendName(m: BModule; s: PSym) =
   if s.loc.r == "":
-    var result = s.name.s.mangle.rope
-    result.add "__"
-    result.add m.g.graph.ifaces[s.itemId.module].uniqueName
-    result.add "_u"
-    result.addInt s.itemId.item # s.disamb #
+    var result: Rope
+    if not m.compileToCpp and s.kind in routineKinds and optCDebug in m.g.config.globalOptions and
+      m.g.config.symbolFiles == disabledSf: 
+      result = mangleProc(m, s, false).rope
+    else:
+      result = s.name.s.mangle.rope
+      result.add "__"
+      result.add m.g.graph.ifaces[s.itemId.module].uniqueName
+      result.add "_u"
+      result.addInt s.itemId.item # s.disamb #
     if m.hcrOn:
       result.add '_'
       result.add(idOrSig(s, m.module.name.s.mangle, m.sigConflicts, m.config))

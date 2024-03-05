@@ -92,7 +92,7 @@ type
 
 var
   gPort = 6000.Port
-  gAddress = ""
+  gAddress = "127.0.0.1"
   gMode: Mode
   gEmitEof: bool # whether we write '!EOF!' dummy lines
   gLogging = defined(logging)
@@ -839,7 +839,7 @@ proc findSymDataInRange(graph: ModuleGraph, file: AbsoluteFile; startLine, start
 
 proc markDirtyIfNeeded(graph: ModuleGraph, file: string, originalFileIdx: FileIndex) =
   let sha = $sha1.secureHashFile(file)
-  if graph.config.m.fileInfos[originalFileIdx.int32].hash != sha or graph.config.ideCmd == ideSug:
+  if graph.config.m.fileInfos[originalFileIdx.int32].hash != sha or graph.config.ideCmd in {ideSug, ideCon}:
     myLog fmt "{file} changed compared to last compilation"
     graph.markDirty originalFileIdx
     graph.markClientsDirty originalFileIdx
@@ -1000,8 +1000,7 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
       conf.m.trackPosAttached = false
     else:
       conf.m.trackPos = default(TLineInfo)
-
-    graph.recompilePartially(fileIndex)
+      graph.recompilePartially(fileIndex)
 
   case cmd
   of ideDef:
@@ -1037,13 +1036,13 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
     graph.recompileFullProject()
   of ideChanged:
     graph.markDirtyIfNeeded(file.string, fileIndex)
-  of ideSug:
-    # ideSug performs partial build of the file, thus mark it dirty for the
+  of ideSug, ideCon:
+    # ideSug/ideCon performs partial build of the file, thus mark it dirty for the
     # future calls.
     graph.markDirtyIfNeeded(file.string, fileIndex)
-  of ideCon:
-    graph.markDirty fileIndex
-    graph.markClientsDirty fileIndex
+    graph.recompilePartially(fileIndex) 
+    let m = graph.getModule fileIndex
+    incl m.flags, sfDirty 
   of ideOutline:
     let n = parseFile(fileIndex, graph.cache, graph.config)
     graph.iterateOutlineNodes(n, graph.fileSymbols(fileIndex).deduplicateSymInfoPair)
