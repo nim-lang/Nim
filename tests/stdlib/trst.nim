@@ -526,8 +526,7 @@ suite "RST parsing":
             rnFieldBody
               rnLeaf  'Nim'
         rnLiteralBlock
-          rnLeaf  '
-      let a = 1
+          rnLeaf  'let a = 1
       ```'
       """
 
@@ -637,8 +636,7 @@ suite "RST parsing":
                 rnLeaf  'test'
               rnFieldBody
           rnLiteralBlock
-            rnLeaf  '
-        let a = 1'
+            rnLeaf  'let a = 1'
         """)
 
     check(dedent"""
@@ -661,8 +659,7 @@ suite "RST parsing":
               rnFieldBody
                 rnLeaf  '1'
           rnLiteralBlock
-            rnLeaf  '
-        let a = 1'
+            rnLeaf  'let a = 1'
         """)
 
   test "additional indentation < 4 spaces is handled fine":
@@ -682,8 +679,7 @@ suite "RST parsing":
                 rnLeaf  'nim'
               [nil]
               rnLiteralBlock
-                rnLeaf  '
-          let a = 1'
+                rnLeaf  '  let a = 1'
       """)
       # | |
       # |  \ indentation of exactly two spaces before 'let a = 1'
@@ -717,8 +713,7 @@ suite "RST parsing":
                   rnFieldBody
                     rnLeaf  'Nim'
               rnLiteralBlock
-                rnLeaf  '
-        CodeBlock()'
+                rnLeaf  'CodeBlock()'
             rnLeaf  ' '
             rnLeaf  'Other'
             rnLeaf  ' '
