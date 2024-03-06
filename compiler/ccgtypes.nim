@@ -1991,7 +1991,7 @@ proc genTypeSection(m: BModule, n: PNode) =
       var s = n[i][0][p]
       if s.kind == nkPostfix:
         s = n[i][0][p][1]
-      if {sfExportc, sfCompilerProc} * s.sym.flags == {sfExportc} :
+      if {sfExportc, sfCompilerProc} * s.sym.flags == {sfExportc}:
         discard getTypeDescAux(m, s.typ, intSet, descKindFromSymKind(s.sym.kind))
         if m.g.generatedHeader != nil:
           discard getTypeDescAux(m.g.generatedHeader, s.typ, intSet, descKindFromSymKind(s.sym.kind))
