@@ -1037,8 +1037,8 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
 
   inc(p.labels, 2)
   let etmp = p.labels
-
-  lineCg(p, cpsStmts, "std::exception_ptr T$1_;$n", [etmp])
+  #init on locals, fixes #23306
+  lineCg(p, cpsLocals, "std::exception_ptr T$1_;$n", [etmp])
 
   let fin = if t[^1].kind == nkFinally: t[^1] else: nil
   p.nestedTryStmts.add((fin, false, 0.Natural))
