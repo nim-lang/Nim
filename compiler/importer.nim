@@ -307,7 +307,15 @@ proc myImportModule(c: PContext, n: var PNode, importStmtResult: PNode): PSym =
     if belongsToStdlib(c.graph, result) and not startsWith(moduleName, stdPrefix) and
         not startsWith(moduleName, "system/") and not startsWith(moduleName, "packages/"):
       message(c.config, n.info, warnStdPrefix, realModule.name.s)
-    suggestSym(c.graph, n.info, result, c.graph.usageSym, false)
+
+    proc suggestMod(n: PNode; s: PSym) =
+      if n.kind == nkImportAs:
+        suggestMod(n[0], realModule)
+      elif n.kind == nkInfix:
+        suggestMod(n[2], s)
+      else:
+        suggestSym(c.graph, n.info, s, c.graph.usageSym, false)
+    suggestMod(n, result)
     importStmtResult.add newSymNode(result, n.info)
     #newStrNode(toFullPath(c.config, f), n.info)
   else:

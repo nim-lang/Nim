@@ -2250,9 +2250,15 @@ proc convStrToCStr(p: BProc, n: PNode, d: var TLoc) =
 
 proc convCStrToStr(p: BProc, n: PNode, d: var TLoc) =
   var a: TLoc = initLocExpr(p, n[0])
-  putIntoDest(p, d, n,
-              ropecg(p.module, "#cstrToNimstr($1)", [rdLoc(a)]),
-              a.storage)
+  if p.module.compileToCpp:
+    # fixes for const qualifier; bug #12703; bug #19588
+    putIntoDest(p, d, n,
+            ropecg(p.module, "#cstrToNimstr((NCSTRING) $1)", [rdLoc(a)]),
+            a.storage)
+  else:
+    putIntoDest(p, d, n,
+                ropecg(p.module, "#cstrToNimstr($1)", [rdLoc(a)]),
+                a.storage)
   gcUsage(p.config, n)
 
 proc genStrEquals(p: BProc, e: PNode, d: var TLoc) =
@@ -2470,7 +2476,12 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       genDollar(p, e, d, "#nimFloat32ToStr($1)")
     else:
       genDollar(p, e, d, "#nimFloatToStr($1)")
-  of mCStrToStr: genDollar(p, e, d, "#cstrToNimstr($1)")
+  of mCStrToStr:
+    if p.module.compileToCpp:
+      # fixes for const qualifier; bug #12703; bug #19588
+      genDollar(p, e, d, "#cstrToNimstr((NCSTRING) $1)")
+    else:
+      genDollar(p, e, d, "#cstrToNimstr($1)")
   of mStrToStr, mUnown: expr(p, e[1], d)
   of generatedMagics: genCall(p, e, d)
   of mEnumToStr:
