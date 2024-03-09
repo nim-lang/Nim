@@ -1805,7 +1805,6 @@ proc semInferredLambda(c: PContext, pt: TIdTable, n: PNode): PNode =
   n[genericParamsPos] = c.graph.emptyNode
   # for LL we need to avoid wrong aliasing
   let params = copyTree n.typ.n
-  n[paramsPos] = params
   s.typ = n.typ
   for i in 1..<params.len:
     if params[i].typ.kind in {tyTypeDesc, tyGenericParam,
