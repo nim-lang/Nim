@@ -792,7 +792,7 @@ proc arithAux(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
     let typ = n[1].typ.skipTypes(abstractVarRange)
     if typ.kind == tyInt64 and optJsBigInt64 in p.config.globalOptions:
       useMagic(p, "absInt64")
-      applyFormat("absInt64($1)", "Math.abs($1)")
+      applyFormat("absInt64($1)", "absInt64($1)")
     else:
       applyFormat("absInt($1)", "Math.abs($1)")
   of mNot: applyFormat("!($1)", "!($1)")
