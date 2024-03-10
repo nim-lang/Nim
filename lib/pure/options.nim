@@ -241,6 +241,7 @@ template `?=`*[T](x: untyped, self: Option[T]): bool =
       assert x == 1337
 
   unpack(self, x)
+  true
 
 proc get*[T](self: var Option[T]): var T {.inline.} =
   ## Returns the content of the `var Option` mutably. If it has no value,
