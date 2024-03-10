@@ -231,7 +231,7 @@ proc unpack*[T](self: Option[T], val: out T): bool {.inline.} =
     val = self.get()
     true
 
-template `?=`*[T](x: untyped, self: Option[T]): bool =
+template `?=`*[T](x: untyped{ident}, self: Option[T]): bool =
   ## Unpacks the contents of the `Option` into a value name provided if there are any, and returns true.
   ## Otherwise, returns false and no value is created.
   runnableExamples:
