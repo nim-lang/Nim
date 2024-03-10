@@ -235,9 +235,10 @@ template `?=`*[T](x: untyped, self: Option[T]): bool =
   ## Unpacks the contents of the `Option` into a value name provided if there are any, and returns true.
   ## Otherwise, returns false and no value is created.
   runnableExamples:
-    var container = some(1337)
+    let container = some(1337)
+    var store: int
 
-    if container ?= x:
+    if store ?= container:
       assert x == 1337
 
   unpack(self, x)
