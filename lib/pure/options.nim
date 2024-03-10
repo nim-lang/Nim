@@ -226,10 +226,21 @@ proc unpack*[T](self: Option[T], val: out T): bool {.inline.} =
 
   if not self.isSome:
     val = default(T)
-    return false
+    false
+  else:
+    val = self.get()
+    true
 
-  val = self.get()
-  true
+template `?=`*[T](x: untyped, self: Option[T]): bool =
+  ## Unpacks the contents of the `Option` into a value name provided if there are any, and returns true.
+  ## Otherwise, returns false and no value is created.
+  runnableExamples:
+    var container = some(1337)
+
+    if container ?= x:
+      assert x == 1337
+
+  unpack(self, x)
 
 proc get*[T](self: var Option[T]): var T {.inline.} =
   ## Returns the content of the `var Option` mutably. If it has no value,
