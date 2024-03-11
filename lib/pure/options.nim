@@ -236,11 +236,11 @@ template `?=`*[T](x: untyped{ident}, self: Option[T]): bool =
   ## Otherwise, returns false and no value is created.
   runnableExamples:
     let container = some(1337)
-    var store: int
 
     if store ?= container:
-      assert x == 1337
-
+      assert store == 1337
+  
+  var x: T
   unpack(self, x)
 
 proc get*[T](self: var Option[T]): var T {.inline.} =
