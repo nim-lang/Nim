@@ -1324,6 +1324,8 @@ proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
 
     linefmt(p, cpsStmts, "#popCurrentException();$n", [])
     linefmt(p, cpsStmts, "LA$1_:;$n", [nextExcept])
+    lineCg(p, cpsStmts, "if (NIM_UNLIKELY(*nimErr_)) #popLastException();$n",
+      []) # something raises in the except branch
     endBlock(p)
 
     inc(i)
