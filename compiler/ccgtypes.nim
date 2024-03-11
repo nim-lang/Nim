@@ -1193,12 +1193,15 @@ proc isReloadable(m: BModule; prc: PSym): bool =
 proc isNonReloadable(m: BModule; prc: PSym): bool =
   return m.hcrOn and sfNonReloadable in prc.flags
 
-proc parseVFunctionDecl(val: string; name, params, retType, superCall: var string; isFnConst, isOverride, isMemberVirtual: var bool; isCtor: bool, isFunctor=false) =
+proc parseVFunctionDecl(val: string; name, params, retType, superCall: var string; isFnConst, isOverride, isMemberVirtual, isStatic: var bool; isCtor: bool, isFunctor=false) =
   var afterParams: string = ""
   if scanf(val, "$*($*)$s$*", name, params, afterParams):
     if name.strip() == "operator" and params == "": #isFunctor?
-      parseVFunctionDecl(afterParams, name, params, retType, superCall, isFnConst, isOverride, isMemberVirtual, isCtor, true)
+      parseVFunctionDecl(afterParams, name, params, retType, superCall, isFnConst, isOverride, isMemberVirtual, isStatic, isCtor, true)
       return
+    if name.find("static ") > -1:
+      isStatic = true
+      name = name.replace("static ", "")
     isFnConst = afterParams.find("const") > -1
     isOverride = afterParams.find("override") > -1
     isMemberVirtual = name.find("virtual ") > -1
@@ -1231,8 +1234,8 @@ proc genMemberProcHeader(m: BModule; prc: PSym; result: var Rope; asPtr: bool = 
   var typDesc = getTypeDescWeak(m, typ, check, dkParam)
   let asPtrStr = rope(if asPtr: "_PTR" else: "")
   var name, params, rettype, superCall: string = ""
-  var isFnConst, isOverride, isMemberVirtual: bool = false
-  parseVFunctionDecl(prc.constraint.strVal, name, params, rettype, superCall, isFnConst, isOverride, isMemberVirtual, isCtor)
+  var isFnConst, isOverride, isMemberVirtual, isStatic: bool = false
+  parseVFunctionDecl(prc.constraint.strVal, name, params, rettype, superCall, isFnConst, isOverride, isMemberVirtual, isStatic, isCtor)
   genMemberProcParams(m, prc, superCall, rettype, name, params, check, true, false)
   let isVirtual = sfVirtual in prc.flags or isMemberVirtual
   var fnConst, override: string = ""
@@ -1241,6 +1244,8 @@ proc genMemberProcHeader(m: BModule; prc: PSym; result: var Rope; asPtr: bool = 
   if isFnConst:
     fnConst = " const"
   if isFwdDecl:
+    if isStatic:
+      result.add "static "
     if isVirtual:
       rettype = "virtual " & rettype
       if isOverride:
