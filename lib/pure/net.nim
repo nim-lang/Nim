@@ -211,7 +211,7 @@ when defined(nimHasStyleChecks):
 when defined(posix) and not defined(lwip):
   from std/posix import TPollfd, POLLIN, POLLPRI, POLLOUT, POLLWRBAND, Tnfds
 
-  template monitorPollEvent(x: var SocketHandle, y: cint, timeout: int): int =
+  template monitorPollEvent(x: var SocketHandle, y: cshort, timeout: int): int =
     var tpollfd: TPollfd
     tpollfd.fd = cast[cint](x)
     tpollfd.events = y
