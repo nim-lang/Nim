@@ -24,3 +24,14 @@ block:
   let rErr = Result[string](e: "a")
   let rErrV = rErr.valueOr:
     ord(error[0])
+
+block:
+  template foo(x: static bool): untyped =
+    when x:
+      let a = 123
+    else:
+      template a: untyped {.gensym.} = 456
+    a
+  
+  doAssert foo(false) == 456
+  doAssert foo(true) == 123
