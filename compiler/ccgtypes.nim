@@ -71,7 +71,7 @@ proc mangleProc(m: BModule; s: PSym; makeUnique: bool): string =
 proc fillBackendName(m: BModule; s: PSym) =
   if s.loc.r == "":
     var result: Rope
-    if s.kind in routineKinds and optCDebug in m.g.config.globalOptions and
+    if not m.compileToCpp and s.kind in routineKinds and optCDebug in m.g.config.globalOptions and
       m.g.config.symbolFiles == disabledSf: 
       result = mangleProc(m, s, false).rope
     else:
@@ -1193,12 +1193,15 @@ proc isReloadable(m: BModule; prc: PSym): bool =
 proc isNonReloadable(m: BModule; prc: PSym): bool =
   return m.hcrOn and sfNonReloadable in prc.flags
 
-proc parseVFunctionDecl(val: string; name, params, retType, superCall: var string; isFnConst, isOverride, isMemberVirtual: var bool; isCtor: bool, isFunctor=false) =
+proc parseVFunctionDecl(val: string; name, params, retType, superCall: var string; isFnConst, isOverride, isMemberVirtual, isStatic: var bool; isCtor: bool, isFunctor=false) =
   var afterParams: string = ""
   if scanf(val, "$*($*)$s$*", name, params, afterParams):
     if name.strip() == "operator" and params == "": #isFunctor?
-      parseVFunctionDecl(afterParams, name, params, retType, superCall, isFnConst, isOverride, isMemberVirtual, isCtor, true)
+      parseVFunctionDecl(afterParams, name, params, retType, superCall, isFnConst, isOverride, isMemberVirtual, isStatic, isCtor, true)
       return
+    if name.find("static ") > -1:
+      isStatic = true
+      name = name.replace("static ", "")
     isFnConst = afterParams.find("const") > -1
     isOverride = afterParams.find("override") > -1
     isMemberVirtual = name.find("virtual ") > -1
@@ -1231,8 +1234,8 @@ proc genMemberProcHeader(m: BModule; prc: PSym; result: var Rope; asPtr: bool = 
   var typDesc = getTypeDescWeak(m, typ, check, dkParam)
   let asPtrStr = rope(if asPtr: "_PTR" else: "")
   var name, params, rettype, superCall: string = ""
-  var isFnConst, isOverride, isMemberVirtual: bool = false
-  parseVFunctionDecl(prc.constraint.strVal, name, params, rettype, superCall, isFnConst, isOverride, isMemberVirtual, isCtor)
+  var isFnConst, isOverride, isMemberVirtual, isStatic: bool = false
+  parseVFunctionDecl(prc.constraint.strVal, name, params, rettype, superCall, isFnConst, isOverride, isMemberVirtual, isStatic, isCtor)
   genMemberProcParams(m, prc, superCall, rettype, name, params, check, true, false)
   let isVirtual = sfVirtual in prc.flags or isMemberVirtual
   var fnConst, override: string = ""
@@ -1241,6 +1244,8 @@ proc genMemberProcHeader(m: BModule; prc: PSym; result: var Rope; asPtr: bool = 
   if isFnConst:
     fnConst = " const"
   if isFwdDecl:
+    if isStatic:
+      result.add "static "
     if isVirtual:
       rettype = "virtual " & rettype
       if isOverride:
@@ -1987,8 +1992,11 @@ proc genTypeSection(m: BModule, n: PNode) =
     if len(n[i]) == 0: continue
     if n[i][0].kind != nkPragmaExpr: continue
     for p in 0..<n[i][0].len:
-      if (n[i][0][p].kind != nkSym): continue
-      if sfExportc in n[i][0][p].sym.flags:
-        discard getTypeDescAux(m, n[i][0][p].typ, intSet, descKindFromSymKind(n[i][0][p].sym.kind))
+      if (n[i][0][p].kind notin {nkSym, nkPostfix}): continue
+      var s = n[i][0][p]
+      if s.kind == nkPostfix:
+        s = n[i][0][p][1]
+      if {sfExportc, sfCompilerProc} * s.sym.flags == {sfExportc}:
+        discard getTypeDescAux(m, s.typ, intSet, descKindFromSymKind(s.sym.kind))
         if m.g.generatedHeader != nil:
-          discard getTypeDescAux(m.g.generatedHeader, n[i][0][p].typ, intSet, descKindFromSymKind(n[i][0][p].sym.kind))
+          discard getTypeDescAux(m.g.generatedHeader, s.typ, intSet, descKindFromSymKind(s.sym.kind))

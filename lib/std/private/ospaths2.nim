@@ -254,10 +254,10 @@ proc isAbsolute*(path: string): bool {.rtl, noSideEffect, extern: "nos$1", raise
     result = path[0] != ':'
   elif defined(RISCOS):
     result = path[0] == '$'
-  elif defined(posix) or defined(js):
-    # `or defined(js)` wouldn't be needed pending https://github.com/nim-lang/Nim/issues/13469
-    # This works around the problem for posix, but Windows is still broken with nim js -d:nodejs
+  elif defined(posix):
     result = path[0] == '/'
+  elif defined(nodejs):
+    {.emit: [result," = require(\"path\").isAbsolute(",path.cstring,");"].}
   else:
     raiseAssert "unreachable" # if ever hits here, adapt as needed
 

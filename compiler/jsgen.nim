@@ -788,7 +788,13 @@ proc arithAux(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
   of mEqProc: applyFormat("($1 == $2)", "($1 == $2)")
   of mUnaryMinusI: applyFormat("negInt($1)", "-($1)")
   of mUnaryMinusI64: applyFormat("negInt64($1)", "-($1)")
-  of mAbsI: applyFormat("absInt($1)", "Math.abs($1)")
+  of mAbsI:
+    let typ = n[1].typ.skipTypes(abstractVarRange)
+    if typ.kind == tyInt64 and optJsBigInt64 in p.config.globalOptions:
+      useMagic(p, "absInt64")
+      applyFormat("absInt64($1)", "absInt64($1)")
+    else:
+      applyFormat("absInt($1)", "Math.abs($1)")
   of mNot: applyFormat("!($1)", "!($1)")
   of mUnaryPlusI: applyFormat("+($1)", "+($1)")
   of mBitnotI:
