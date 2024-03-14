@@ -663,7 +663,7 @@ proc inheritBindings(c: PContext, x: var TCandidate, expectedType: PType) =
         if t[i] == nil or u[i] == nil: return
         stackPut(t[i], u[i])
     of tyGenericParam:
-      let prebound = x.bindings.idTableGet(t).PType
+      let prebound = x.bindings.idTableGet(t)
       if prebound != nil:
         continue # Skip param, already bound
 

@@ -38,7 +38,7 @@ from wordrecg import wDeprecated, wError, wAddr, wYield
 import std/[algorithm, sets, parseutils, tables]
 
 when defined(nimsuggest):
-  import std/tables, pathutils # importer
+  import pathutils # importer
 
 const
   sep = '\t'

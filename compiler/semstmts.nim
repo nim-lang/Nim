@@ -1834,7 +1834,7 @@ proc semProcAnnotation(c: PContext, prc: PNode;
 
       return result
 
-proc semInferredLambda(c: PContext, pt: TIdTable, n: PNode): PNode =
+proc semInferredLambda(c: PContext, pt: TypeMapping, n: PNode): PNode =
   ## used for resolving 'auto' in lambdas based on their callsite
   var n = n
   let original = n[namePos].sym
@@ -1849,7 +1849,6 @@ proc semInferredLambda(c: PContext, pt: TIdTable, n: PNode): PNode =
   n[genericParamsPos] = c.graph.emptyNode
   # for LL we need to avoid wrong aliasing
   let params = copyTree n.typ.n
-  n[paramsPos] = params
   s.typ = n.typ
   for i in 1..<params.len:
     if params[i].typ.kind in {tyTypeDesc, tyGenericParam,

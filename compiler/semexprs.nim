@@ -2418,7 +2418,7 @@ proc instantiateCreateFlowVarCall(c: PContext; t: PType;
   let sym = magicsys.getCompilerProc(c.graph, "nimCreateFlowVar")
   if sym == nil:
     localError(c.config, info, "system needs: nimCreateFlowVar")
-  var bindings: TIdTable = initIdTable()
+  var bindings = initTypeMapping()
   bindings.idTablePut(sym.ast[genericParamsPos][0].typ, t)
   result = c.semGenerateInstance(c, sym, bindings, info)
   # since it's an instantiation, we unmark it as a compilerproc. Otherwise
@@ -2577,9 +2577,10 @@ proc semWhen(c: PContext, n: PNode, semCheck = true): PNode =
   # If semCheck is set to false, ``when`` will return the verbatim AST of
   # the correct branch. Otherwise the AST will be passed through semStmt.
   result = nil
+  let flags = if semCheck: {efWantStmt} else: {}
 
   template setResult(e: untyped) =
-    if semCheck: result = semExpr(c, e) # do not open a new scope!
+    if semCheck: result = semExpr(c, e, flags) # do not open a new scope!
     else: result = e
 
   # Check if the node is "when nimvm"
@@ -2605,7 +2606,7 @@ proc semWhen(c: PContext, n: PNode, semCheck = true): PNode =
       checkSonsLen(it, 2, c.config)
       if whenNimvm:
         if semCheck:
-          it[1] = semExpr(c, it[1])
+          it[1] = semExpr(c, it[1], flags)
           typ = commonType(c, typ, it[1].typ)
         result = n # when nimvm is not elimited until codegen
       else:
@@ -2621,7 +2622,7 @@ proc semWhen(c: PContext, n: PNode, semCheck = true): PNode =
       checkSonsLen(it, 1, c.config)
       if result == nil or whenNimvm:
         if semCheck:
-          it[0] = semExpr(c, it[0])
+          it[0] = semExpr(c, it[0], flags)
           typ = commonType(c, typ, it[0].typ)
         if result == nil:
           result = it[0]
