@@ -320,7 +320,7 @@ elif defined(windows):
 const
   BufSize = 4000
 
-proc close*(f: File) {.tags: [], gcsafe.} =
+proc close*(f: File) {.tags: [], gcsafe, sideEffect.} =
   ## Closes the file.
   if not f.isNil:
     discard c_fclose(f)
@@ -763,7 +763,7 @@ proc open*(filename: string,
   if not open(result, filename, mode, bufSize):
     raise newException(IOError, "cannot open: " & filename)
 
-proc setFilePos*(f: File, pos: int64, relativeTo: FileSeekPos = fspSet) {.benign.} =
+proc setFilePos*(f: File, pos: int64, relativeTo: FileSeekPos = fspSet) {.benign, sideEffect.} =
   ## Sets the position of the file pointer that is used for read/write
   ## operations. The file's first byte has the index zero.
   if c_fseek(f, pos, cint(relativeTo)) != 0:

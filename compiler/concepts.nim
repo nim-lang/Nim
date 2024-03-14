@@ -309,7 +309,7 @@ proc conceptMatchNode(c: PContext; n: PNode; m: var MatchCon): bool =
     # error was reported earlier.
     result = false
 
-proc conceptMatch*(c: PContext; concpt, arg: PType; bindings: var TIdTable; invocation: PType): bool =
+proc conceptMatch*(c: PContext; concpt, arg: PType; bindings: var TypeMapping; invocation: PType): bool =
   ## Entry point from sigmatch. 'concpt' is the concept we try to match (here still a PType but
   ## we extract its AST via 'concpt.n.lastSon'). 'arg' is the type that might fullfill the
   ## concept's requirements. If so, we return true and fill the 'bindings' with pairs of

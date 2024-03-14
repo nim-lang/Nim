@@ -780,10 +780,6 @@ proc hash*(x: ItemId): Hash =
 
 
 type
-  TIdObj* {.acyclic.} = object of RootObj
-    itemId*: ItemId
-  PIdObj* = ref TIdObj
-
   PNode* = ref TNode
   TNodeSeq* = seq[PNode]
   PType* = ref TType
@@ -886,7 +882,8 @@ type
   PScope* = ref TScope
 
   PLib* = ref TLib
-  TSym* {.acyclic.} = object of TIdObj # Keep in sync with PackedSym
+  TSym* {.acyclic.} = object # Keep in sync with PackedSym
+    itemId*: ItemId
     # proc and type instantiations are cached in the generic symbol
     case kind*: TSymKind
     of routineKinds:
@@ -955,11 +952,12 @@ type
     attachedTrace,
     attachedDeepCopy
 
-  TType* {.acyclic.} = object of TIdObj # \
+  TType* {.acyclic.} = object # \
                               # types are identical iff they have the
                               # same id; there may be multiple copies of a type
                               # in memory!
                               # Keep in sync with PackedType
+    itemId*: ItemId
     kind*: TTypeKind          # kind of type
     callConv*: TCallingConvention # for procs
     flags*: TTypeFlags        # flags of the type
@@ -990,24 +988,6 @@ type
     key*, val*: RootRef
 
   TPairSeq* = seq[TPair]
-
-  TIdPair* = object
-    key*: PIdObj
-    val*: RootRef
-
-  TIdPairSeq* = seq[TIdPair]
-  TIdTable* = object # the same as table[PIdent] of PObject
-    counter*: int
-    data*: TIdPairSeq
-
-  TIdNodePair* = object
-    key*: PIdObj
-    val*: PNode
-
-  TIdNodePairSeq* = seq[TIdNodePair]
-  TIdNodeTable* = object # the same as table[PIdObj] of PNode
-    counter*: int
-    data*: TIdNodePairSeq
 
   TNodePair* = object
     h*: Hash                 # because it is expensive to compute!
@@ -1146,7 +1126,7 @@ proc getPIdent*(a: PNode): PIdent {.inline.} =
 const
   moduleShift = when defined(cpu32): 20 else: 24
 
-template id*(a: PIdObj): int =
+template id*(a: PType | PSym): int =
   let x = a
   (x.itemId.module.int shl moduleShift) + x.itemId.item.int
 
@@ -1443,11 +1423,6 @@ const                         # for all kind of hash tables:
 proc copyStrTable*(dest: var TStrTable, src: TStrTable) =
   dest.counter = src.counter
   setLen(dest.data, src.data.len)
-  for i in 0..high(src.data): dest.data[i] = src.data[i]
-
-proc copyIdTable*(dest: var TIdTable, src: TIdTable) =
-  dest.counter = src.counter
-  newSeq(dest.data, src.data.len)
   for i in 0..high(src.data): dest.data[i] = src.data[i]
 
 proc copyObjectSet*(dest: var TObjectSet, src: TObjectSet) =
@@ -1770,22 +1745,8 @@ proc initStrTable*(): TStrTable =
   result = TStrTable(counter: 0)
   newSeq(result.data, StartSize)
 
-proc initIdTable*(): TIdTable =
-  result = TIdTable(counter: 0)
-  newSeq(result.data, StartSize)
-
-proc resetIdTable*(x: var TIdTable) =
-  x.counter = 0
-  # clear and set to old initial size:
-  setLen(x.data, 0)
-  setLen(x.data, StartSize)
-
 proc initObjectSet*(): TObjectSet =
   result = TObjectSet(counter: 0)
-  newSeq(result.data, StartSize)
-
-proc initIdNodeTable*(): TIdNodeTable =
-  result = TIdNodeTable(counter: 0)
   newSeq(result.data, StartSize)
 
 proc initNodeTable*(): TNodeTable =
@@ -2308,3 +2269,16 @@ const
 proc isTrue*(n: PNode): bool =
   n.kind == nkSym and n.sym.kind == skEnumField and n.sym.position != 0 or
     n.kind == nkIntLit and n.intVal != 0
+
+type
+  TypeMapping* = Table[ItemId, PType]
+  SymMapping* = Table[ItemId, PSym]
+
+template idTableGet*(tab: typed; key: PSym | PType): untyped = tab.getOrDefault(key.itemId)
+template idTablePut*(tab: typed; key, val: PSym | PType) = tab[key.itemId] = val
+
+template initSymMapping*(): Table[ItemId, PSym] = initTable[ItemId, PSym]()
+template initTypeMapping*(): Table[ItemId, PType] = initTable[ItemId, PType]()
+
+template resetIdTable*(tab: Table[ItemId, PSym]) = tab.clear()
+template resetIdTable*(tab: Table[ItemId, PType]) = tab.clear()

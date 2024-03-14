@@ -18,6 +18,8 @@
 # * performs lambda lifting for closure support
 # * transforms 'defer' into a 'try finally' statement
 
+import std / tables
+
 import
   options, ast, astalgo, trees, msgs,
   idents, renderer, types, semfold, magicsys, cgmeth,
@@ -38,7 +40,7 @@ import closureiters, lambdalifting
 
 type
   PTransCon = ref object # part of TContext; stackable
-    mapping: TIdNodeTable     # mapping from symbols to nodes
+    mapping: Table[ItemId, PNode]     # mapping from symbols to nodes
     owner: PSym               # current owner
     forStmt: PNode            # current for stmt
     forLoopBody: PNode   # transformed for loop body
@@ -76,7 +78,7 @@ proc newTransNode(kind: TNodeKind, n: PNode,
 
 proc newTransCon(owner: PSym): PTransCon =
   assert owner != nil
-  result = PTransCon(mapping: initIdNodeTable(), owner: owner)
+  result = PTransCon(mapping: initTable[ItemId, PNode](), owner: owner)
 
 proc pushTransCon(c: PTransf, t: PTransCon) =
   t.next = c.transCon
@@ -159,7 +161,7 @@ proc transformSymAux(c: PTransf, n: PNode): PNode =
   else:
     b = n
   while tc != nil:
-    result = idNodeTableGet(tc.mapping, b.sym)
+    result = getOrDefault(tc.mapping, b.sym.itemId)
     if result != nil:
       # this slightly convoluted way ensures the line info stays correct:
       if result.kind == nkSym:
@@ -194,7 +196,7 @@ proc transformVarSection(c: PTransf, v: PNode): PNode =
       if vn.kind == nkSym:
         internalAssert(c.graph.config, it.len == 3)
         let x = freshVar(c, vn.sym)
-        idNodeTablePut(c.transCon.mapping, vn.sym, x)
+        c.transCon.mapping[vn.sym.itemId] = x
         var defs = newTransNode(nkIdentDefs, it.info, 3)
         if importantComments(c.graph.config):
           # keep documentation information:
@@ -215,7 +217,7 @@ proc transformVarSection(c: PTransf, v: PNode): PNode =
       for j in 0..<it.len-2:
         if it[j].kind == nkSym:
           let x = freshVar(c, it[j].sym)
-          idNodeTablePut(c.transCon.mapping, it[j].sym, x)
+          c.transCon.mapping[it[j].sym.itemId] = x
           defs[j] = x
         else:
           defs[j] = transform(c, it[j])
@@ -256,7 +258,7 @@ proc transformBlock(c: PTransf, n: PNode): PNode =
   var labl: PSym
   if c.inlining > 0:
     labl = newLabel(c, n[0])
-    idNodeTablePut(c.transCon.mapping, n[0].sym, newSymNode(labl))
+    c.transCon.mapping[n[0].sym.itemId] = newSymNode(labl)
   else:
     labl =
       if n[0].kind != nkEmpty:
@@ -328,7 +330,7 @@ proc introduceNewLocalVars(c: PTransf, n: PNode): PNode =
   of nkProcDef: # todo optimize nosideeffects?
     result = newTransNode(n)
     let x = newSymNode(copySym(n[namePos].sym, c.idgen))
-    idNodeTablePut(c.transCon.mapping, n[namePos].sym, x)
+    c.transCon.mapping[n[namePos].sym.itemId] = x
     result[namePos] = x # we have to copy proc definitions for iters
     for i in 1..<n.len:
       result[i] = introduceNewLocalVars(c, n[i])
@@ -759,7 +761,7 @@ proc transformFor(c: PTransf, n: PNode): PNode =
     let pa = putArgInto(arg, formal.typ)
     case pa
     of paDirectMapping:
-      idNodeTablePut(newC.mapping, formal, arg)
+      newC.mapping[formal.itemId] = arg
     of paFastAsgn, paFastAsgnTakeTypeFromArg:
       var t = formal.typ
       if pa == paFastAsgnTakeTypeFromArg:
@@ -773,10 +775,10 @@ proc transformFor(c: PTransf, n: PNode): PNode =
       #incl(temp.sym.flags, sfCursor)
       addVar(v, temp)
       stmtList.add(newAsgnStmt(c, nkFastAsgn, temp, arg, true))
-      idNodeTablePut(newC.mapping, formal, temp)
+      newC.mapping[formal.itemId] = temp
     of paVarAsgn:
       assert(skipTypes(formal.typ, abstractInst).kind in {tyVar, tyLent})
-      idNodeTablePut(newC.mapping, formal, arg)
+      newC.mapping[formal.itemId] = arg
       # XXX BUG still not correct if the arg has a side effect!
     of paViaIndirection:
       let t = formal.typ
@@ -787,13 +789,13 @@ proc transformFor(c: PTransf, n: PNode): PNode =
       var addrExp = newNodeIT(nkHiddenAddr, formal.info, makeVarType(t.owner, t, c.idgen, tyPtr))
       addrExp.add(arg)
       stmtList.add(newAsgnStmt(c, nkFastAsgn, temp, addrExp, true))
-      idNodeTablePut(newC.mapping, formal, newDeref(temp))
+      newC.mapping[formal.itemId] = newDeref(temp)
     of paComplexOpenarray:
       # arrays will deep copy here (pretty bad).
       var temp = newTemp(c, arg.typ, formal.info)
       addVar(v, temp)
       stmtList.add(newAsgnStmt(c, nkFastAsgn, temp, arg, true))
-      idNodeTablePut(newC.mapping, formal, temp)
+      newC.mapping[formal.itemId] = temp
 
   let body = transformBody(c.graph, c.idgen, iter, {useCache}+c.flags)
   pushInfoContext(c.graph.config, n.info)

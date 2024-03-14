@@ -34,7 +34,7 @@ proc pushProcCon*(c: PContext; owner: PSym) =
 const
   errCannotInstantiateX = "cannot instantiate: '$1'"
 
-iterator instantiateGenericParamList(c: PContext, n: PNode, pt: TIdTable): PSym =
+iterator instantiateGenericParamList(c: PContext, n: PNode, pt: TypeMapping): PSym =
   internalAssert c.config, n.kind == nkGenericParams
   for a in n.items:
     internalAssert c.config, a.kind == nkSym
@@ -43,7 +43,7 @@ iterator instantiateGenericParamList(c: PContext, n: PNode, pt: TIdTable): PSym 
       let symKind = if q.typ.kind == tyStatic: skConst else: skType
       var s = newSym(symKind, q.name, c.idgen, getCurrOwner(c), q.info)
       s.flags.incl {sfUsed, sfFromGeneric}
-      var t = PType(idTableGet(pt, q.typ))
+      var t = idTableGet(pt, q.typ)
       if t == nil:
         if tfRetType in q.typ.flags:
           # keep the generic type and allow the return type to be bound
@@ -92,7 +92,7 @@ when false:
   proc `$`(x: PSym): string =
     result = x.name.s & " " & " id " & $x.id
 
-proc freshGenSyms(c: PContext; n: PNode, owner, orig: PSym, symMap: var TIdTable) =
+proc freshGenSyms(c: PContext; n: PNode, owner, orig: PSym, symMap: var SymMapping) =
   # we need to create a fresh set of gensym'ed symbols:
   #if n.kind == nkSym and sfGenSym in n.sym.flags:
   #  if n.sym.owner != orig:
@@ -100,7 +100,7 @@ proc freshGenSyms(c: PContext; n: PNode, owner, orig: PSym, symMap: var TIdTable
   if n.kind == nkSym and sfGenSym in n.sym.flags: # and
     #  (n.sym.owner == orig or n.sym.owner.kind in {skPackage}):
     let s = n.sym
-    var x = PSym(idTableGet(symMap, s))
+    var x = idTableGet(symMap, s)
     if x != nil:
       n.sym = x
     elif s.owner == nil or s.owner.kind == skPackage:
@@ -124,7 +124,7 @@ proc instantiateBody(c: PContext, n, params: PNode, result, orig: PSym) =
     inc c.inGenericInst
     # add it here, so that recursive generic procs are possible:
     var b = n[bodyPos]
-    var symMap: TIdTable = initIdTable()
+    var symMap = initSymMapping()
     if params != nil:
       for i in 1..<params.len:
         let param = params[i].sym
@@ -174,12 +174,12 @@ proc instGenericContainer(c: PContext, info: TLineInfo, header: PType,
                           allowMetaTypes = false): PType =
   internalAssert c.config, header.kind == tyGenericInvocation
 
-  var cl: TReplTypeVars = TReplTypeVars(symMap: initIdTable(),
-        localCache: initIdTable(), typeMap: LayeredIdTable(),
+  var cl: TReplTypeVars = TReplTypeVars(symMap: initSymMapping(),
+        localCache: initTypeMapping(), typeMap: LayeredIdTable(),
         info: info, c: c, allowMetaTypes: allowMetaTypes
       )
 
-  cl.typeMap.topLayer = initIdTable()
+  cl.typeMap.topLayer = initTypeMapping()
 
   # We must add all generic params in scope, because the generic body
   # may include tyFromExpr nodes depending on these generic params.
@@ -217,7 +217,7 @@ proc referencesAnotherParam(n: PNode, p: PSym): bool =
       if referencesAnotherParam(n[i], p): return true
     return false
 
-proc instantiateProcType(c: PContext, pt: TIdTable,
+proc instantiateProcType(c: PContext, pt: TypeMapping,
                          prc: PSym, info: TLineInfo) =
   # XXX: Instantiates a generic proc signature, while at the same
   # time adding the instantiated proc params into the current scope.
@@ -332,7 +332,7 @@ proc getLocalPassC(c: PContext, s: PSym): string =
     for p in n:
       extractPassc(p)
 
-proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
+proc generateInstance(c: PContext, fn: PSym, pt: TypeMapping,
                       info: TLineInfo): PSym =
   ## Generates a new instance of a generic procedure.
   ## The `pt` parameter is a type-unsafe mapping table used to link generic
