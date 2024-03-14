@@ -1803,7 +1803,7 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
       result.add(n[1])
       if mode == noOverloadedSubscript:
         bracketNotFoundError(c, result)
-        return n
+        return errorNode(c, n)
       else:
         result = semExprNoType(c, result)
         return result
