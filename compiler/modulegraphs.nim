@@ -80,12 +80,16 @@ type
     Docgen2JsonPass
     Docgen2Pass
 
+  PackedBoolArray* = object
+    s: IntSet
+    len: int
+
   SuggestFileSymbolDatabase* = object
     lineInfo*: seq[TinyLineInfo]
     sym*: seq[PSym]
     caughtExceptions*: seq[seq[PType]]
-    caughtExceptionsSet*: seq[bool]
-    isDecl*: seq[bool]
+    caughtExceptionsSet*: PackedBoolArray
+    isDecl*: PackedBoolArray
     fileIndex*: FileIndex
     trackCaughtExceptions*: bool
     isSorted*: bool
@@ -172,6 +176,40 @@ type
                  process: TPassProcess,
                  close: TPassClose,
                  isFrontend: bool]
+
+func newPackedBoolArray*(): PackedBoolArray =
+  PackedBoolArray(
+    s: initIntSet(),
+    len: 0
+  )
+
+func low*(s: PackedBoolArray): int =
+  0
+
+func high*(s: PackedBoolArray): int =
+  s.len - 1
+
+func `[]`*(s: PackedBoolArray; idx: int): bool =
+  s.s.contains(idx)
+
+proc `[]=`*(s: var PackedBoolArray; idx: int; v: bool) =
+  if v:
+    s.s.incl(idx)
+  else:
+    s.s.excl(idx)
+
+proc add*(s: var PackedBoolArray; v: bool) =
+  inc(s.len)
+  if v:
+    s.s.incl(s.len - 1)
+
+proc reverse*(s: var PackedBoolArray) =
+  var
+    reversedSet = initIntSet()
+  for i in 0..s.high:
+    if s.s.contains(i):
+      reversedSet.incl(s.high - i)
+  s.s = reversedSet
 
 proc getSymInfoPair*(s: SuggestFileSymbolDatabase; idx: int): SymInfoPair =
   SymInfoPair(
@@ -546,8 +584,8 @@ proc newSuggestFileSymbolDatabase*(aFileIndex: FileIndex; aTrackCaughtExceptions
     lineInfo: @[],
     sym: @[],
     caughtExceptions: @[],
-    caughtExceptionsSet: @[],
-    isDecl: @[],
+    caughtExceptionsSet: newPackedBoolArray(),
+    isDecl: newPackedBoolArray(),
     fileIndex: aFileIndex,
     trackCaughtExceptions: aTrackCaughtExceptions,
     isSorted: true
