@@ -430,7 +430,10 @@ proc handleError(conf: ConfigRef; msg: TMsgKind, eh: TErrorHandling, s: string, 
   if msg in fatalMsgs:
     if conf.cmd == cmdIdeTools: log(s)
     if conf.cmd != cmdIdeTools or msg != errFatal:
-      quit(conf, msg)
+      when defined(nimsuggest):
+        raiseRecoverableError(s)
+      else:
+        quit(conf, msg)
   if msg >= errMin and msg <= errMax or
       (msg in warnMin..hintMax and msg in conf.warningAsErrors and not ignoreMsg):
     inc(conf.errorCounter)
