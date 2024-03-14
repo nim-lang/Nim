@@ -15,7 +15,7 @@ import
   magicsys, idents, lexer, options, parampatterns, trees,
   linter, lineinfos, lowerings, modulegraphs, concepts
 
-import std/[intsets, strutils]
+import std/[intsets, strutils, tables]
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -55,7 +55,7 @@ type
     calleeScope*: int        # scope depth:
                              # is this a top-level symbol or a nested proc?
     call*: PNode             # modified call
-    bindings*: TIdTable      # maps types to types
+    bindings*: TypeMapping   # maps types to types
     magic*: TMagic           # magic of operation
     baseTypeMatch: bool      # needed for conversions from T to openarray[T]
                              # for example
@@ -113,7 +113,7 @@ proc initCandidateAux(ctx: PContext,
 proc initCandidate*(ctx: PContext, callee: PType): TCandidate =
   result = initCandidateAux(ctx, callee)
   result.calleeSym = nil
-  result.bindings = initIdTable()
+  result.bindings = initTypeMapping()
 
 proc put(c: var TCandidate, key, val: PType) {.inline.} =
   ## Given: proc foo[T](x: T); foo(4)
@@ -141,7 +141,7 @@ proc initCandidate*(ctx: PContext, callee: PSym,
   result.diagnostics = @[] # if diagnosticsEnabled: @[] else: nil
   result.diagnosticsEnabled = diagnosticsEnabled
   result.magic = result.calleeSym.magic
-  result.bindings = initIdTable()
+  result.bindings = initTypeMapping()
   if binding != nil and callee.kind in routineKinds:
     var typeParams = callee.ast[genericParamsPos]
     for i in 1..min(typeParams.len, binding.len-1):
@@ -174,7 +174,7 @@ proc copyCandidate(dest: var TCandidate, src: TCandidate) =
   dest.calleeSym = src.calleeSym
   dest.call = copyTree(src.call)
   dest.baseTypeMatch = src.baseTypeMatch
-  copyIdTable(dest.bindings, src.bindings)
+  dest.bindings = src.bindings
 
 proc typeRel*(c: var TCandidate, f, aOrig: PType,
               flags: TTypeRelFlags = {}): TTypeRelation
@@ -362,7 +362,7 @@ proc concreteType(c: TCandidate, t: PType; f: PType = nil): PType =
   of tyGenericParam, tyAnything, tyConcept:
     result = t
     while true:
-      result = PType(idTableGet(c.bindings, t))
+      result = idTableGet(c.bindings, t)
       if result == nil:
         break # it's ok, no match
         # example code that triggers it:
@@ -500,7 +500,7 @@ proc genericParamPut(c: var TCandidate; last, fGenericOrigin: PType) =
   if fGenericOrigin != nil and last.kind == tyGenericInst and
      last.kidsLen-1 == fGenericOrigin.kidsLen:
     for i in FirstGenericParamAt..<fGenericOrigin.kidsLen:
-      let x = PType(idTableGet(c.bindings, fGenericOrigin[i]))
+      let x = idTableGet(c.bindings, fGenericOrigin[i])
       if x == nil:
         put(c, fGenericOrigin[i], last[i])
 
@@ -639,7 +639,7 @@ proc procParamTypeRel(c: var TCandidate; f, a: PType): TTypeRelation =
     a = a
 
   if a.isMetaType:
-    let aResolved = PType(idTableGet(c.bindings, a))
+    let aResolved = idTableGet(c.bindings, a)
     if aResolved != nil:
       a = aResolved
   if a.isMetaType:
@@ -763,7 +763,7 @@ proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
         typeParamName = ff.base[i-1].sym.name
         typ = ff[i]
         param: PSym = nil
-        alreadyBound = PType(idTableGet(m.bindings, typ))
+        alreadyBound = idTableGet(m.bindings, typ)
 
       if alreadyBound != nil: typ = alreadyBound
 
@@ -1090,7 +1090,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
 
       case f.kind
       of tyGenericParam:
-        var prev = PType(idTableGet(c.bindings, f))
+        var prev = idTableGet(c.bindings, f)
         if prev != nil: candidate = prev
       of tyFromExpr:
         let computedType = tryResolvingStaticExpr(c, f.n).typ
@@ -1140,7 +1140,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     return res
 
   template considerPreviousT(body: untyped) =
-    var prev = PType(idTableGet(c.bindings, f))
+    var prev = idTableGet(c.bindings, f)
     if prev == nil: body
     else: return typeRel(c, prev, a, flags)
 
@@ -1265,7 +1265,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       var fRange = f.indexType
       var aRange = a.indexType
       if fRange.kind in {tyGenericParam, tyAnything}:
-        var prev = PType(idTableGet(c.bindings, fRange))
+        var prev = idTableGet(c.bindings, fRange)
         if prev == nil:
           put(c, fRange, a.indexType)
           fRange = a
@@ -1502,7 +1502,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     else:
       result = isNone
   of tyGenericInst:
-    var prev = PType(idTableGet(c.bindings, f))
+    var prev = idTableGet(c.bindings, f)
     let origF = f
     var f = if prev == nil: f else: prev
 
@@ -1634,14 +1634,14 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         #
         # we steal the generic parameters from the tyGenericBody:
         for i in 1..<f.len:
-          let x = PType(idTableGet(c.bindings, genericBody[i-1]))
+          let x = idTableGet(c.bindings, genericBody[i-1])
           if x == nil:
             discard "maybe fine (for e.g. a==tyNil)"
           elif x.kind in {tyGenericInvocation, tyGenericParam}:
             internalError(c.c.graph.config, "wrong instantiated type!")
           else:
             let key = f[i]
-            let old = PType(idTableGet(c.bindings, key))
+            let old = idTableGet(c.bindings, key)
             if old == nil:
               put(c, key, x)
             elif typeRel(c, old, x, flags + {trDontBind}) == isNone:
@@ -1764,7 +1764,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         result = isGeneric
   of tyGenericParam:
     let doBindGP = doBind or trBindGenericParam in flags
-    var x = PType(idTableGet(c.bindings, f))
+    var x = idTableGet(c.bindings, f)
     if x == nil:
       if c.callee.kind == tyGenericBody and not c.typedescMatched:
         # XXX: The fact that generic types currently use tyGenericParam for
@@ -1828,7 +1828,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         elif doBind:
           # careful: `trDontDont` (set by `checkGeneric`) is not always respected in this call graph.
           # typRel having two different modes (binding and non-binding) can make things harder to
-          # reason about and maintain. Refactoring typeRel to not be responsible for setting, or 
+          # reason about and maintain. Refactoring typeRel to not be responsible for setting, or
           # at least validating, bindings can have multiple benefits. This is debatable. I'm not 100% sure.
           # A design that allows a proper complexity analysis of types like `tyOr` would be ideal.
           concrete = concreteType(c, a, f)
@@ -1846,7 +1846,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       result = typeRel(c, x, a, flags) # check if it fits
       if result > isGeneric: result = isGeneric
   of tyStatic:
-    let prev = PType(idTableGet(c.bindings, f))
+    let prev = idTableGet(c.bindings, f)
     if prev == nil:
       if aOrig.kind == tyStatic:
         if f.base.kind notin {tyNone, tyGenericParam}:
@@ -1899,7 +1899,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         c.inferredTypes.add f
         f.add a
   of tyTypeDesc:
-    var prev = PType(idTableGet(c.bindings, f))
+    var prev = idTableGet(c.bindings, f)
     if prev == nil:
       # proc foo(T: typedesc, x: T)
       # when `f` is an unresolved typedesc, `a` could be any
@@ -1983,7 +1983,7 @@ proc cmpTypes*(c: PContext, f, a: PType): TTypeRelation =
 
 proc getInstantiatedType(c: PContext, arg: PNode, m: TCandidate,
                          f: PType): PType =
-  result = PType(idTableGet(m.bindings, f))
+  result = idTableGet(m.bindings, f)
   if result == nil:
     result = generateTypeInstance(c, m.bindings, arg, f)
   if result == nil:
@@ -2200,9 +2200,9 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
     var instantiationCounter = 0
     var lastBindingCount = -1
     while r in {isBothMetaConvertible, isInferred, isInferredConvertible} and
-        lastBindingCount != m.bindings.counter and
+        lastBindingCount != m.bindings.len and
         instantiationCounter < 100:
-      lastBindingCount = m.bindings.counter
+      lastBindingCount = m.bindings.len
       inc(instantiationCounter)
       if arg.kind in {nkProcDef, nkFuncDef, nkIteratorDef} + nkLambdaKinds:
         result = c.semInferredLambda(c, m.bindings, arg)
@@ -2359,10 +2359,10 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
   else:
     # symbol kinds that don't participate in symchoice type disambiguation:
     let matchSet = {low(TSymKind)..high(TSymKind)} - {skModule, skPackage, skType}
-    
+
     var best = -1
     result = arg
-    
+
     var actingF = f
     if f.kind == tyVarargs:
       if m.calleeSym.kind in {skTemplate, skMacro}:
@@ -2398,7 +2398,7 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
       x.calleeSym = m.calleeSym
       y.calleeSym = m.calleeSym
       z.calleeSym = m.calleeSym
-      
+
       for i in 0..<arg.len:
         if arg[i].sym.kind in matchSet:
           copyCandidate(z, m)
@@ -2783,7 +2783,7 @@ proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
         # proc foo(x: T = 0.0)
         # foo()
         if {tfImplicitTypeParam, tfGenericTypeParam} * formal.typ.flags != {}:
-          let existing = PType(idTableGet(m.bindings, formal.typ))
+          let existing = idTableGet(m.bindings, formal.typ)
           if existing == nil or existing.kind == tyTypeDesc:
             # see bug #11600:
             put(m, formal.typ, defaultValue.typ)

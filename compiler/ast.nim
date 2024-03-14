@@ -2310,3 +2310,16 @@ const
 proc isTrue*(n: PNode): bool =
   n.kind == nkSym and n.sym.kind == skEnumField and n.sym.position != 0 or
     n.kind == nkIntLit and n.intVal != 0
+
+type
+  TypeMapping* = Table[ItemId, PType]
+  SymMapping* = Table[ItemId, PSym]
+
+template idTableGet*(tab: typed; key: PSym | PType): untyped = tab.getOrDefault(key.itemId)
+template idTablePut*(tab: typed; key, val: PSym | PType) = tab[key.itemId] = val
+
+template initSymMapping*(): Table[ItemId, PSym] = initTable[ItemId, PSym]()
+template initTypeMapping*(): Table[ItemId, PType] = initTable[ItemId, PType]()
+
+template resetIdTable*(tab: Table[ItemId, PSym]) = tab.clear()
+template resetIdTable*(tab: Table[ItemId, PType]) = tab.clear()
