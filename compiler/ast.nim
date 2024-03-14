@@ -780,10 +780,6 @@ proc hash*(x: ItemId): Hash =
 
 
 type
-  TIdObj* {.acyclic.} = object of RootObj
-    itemId*: ItemId
-  PIdObj* = ref TIdObj
-
   PNode* = ref TNode
   TNodeSeq* = seq[PNode]
   PType* = ref TType
@@ -993,24 +989,6 @@ type
 
   TPairSeq* = seq[TPair]
 
-  TIdPair* = object
-    key*: PIdObj
-    val*: RootRef
-
-  TIdPairSeq* = seq[TIdPair]
-  TIdTable* = object # the same as table[PIdent] of PObject
-    counter*: int
-    data*: TIdPairSeq
-
-  TIdNodePair* = object
-    key*: PIdObj
-    val*: PNode
-
-  TIdNodePairSeq* = seq[TIdNodePair]
-  TIdNodeTable* = object # the same as table[PIdObj] of PNode
-    counter*: int
-    data*: TIdNodePairSeq
-
   TNodePair* = object
     h*: Hash                 # because it is expensive to compute!
     key*: PNode
@@ -1148,7 +1126,7 @@ proc getPIdent*(a: PNode): PIdent {.inline.} =
 const
   moduleShift = when defined(cpu32): 20 else: 24
 
-template id*(a: PType | PSym | PIdObj): int =
+template id*(a: PType | PSym): int =
   let x = a
   (x.itemId.module.int shl moduleShift) + x.itemId.item.int
 
@@ -1445,11 +1423,6 @@ const                         # for all kind of hash tables:
 proc copyStrTable*(dest: var TStrTable, src: TStrTable) =
   dest.counter = src.counter
   setLen(dest.data, src.data.len)
-  for i in 0..high(src.data): dest.data[i] = src.data[i]
-
-proc copyIdTable*(dest: var TIdTable, src: TIdTable) =
-  dest.counter = src.counter
-  newSeq(dest.data, src.data.len)
   for i in 0..high(src.data): dest.data[i] = src.data[i]
 
 proc copyObjectSet*(dest: var TObjectSet, src: TObjectSet) =
@@ -1772,22 +1745,8 @@ proc initStrTable*(): TStrTable =
   result = TStrTable(counter: 0)
   newSeq(result.data, StartSize)
 
-proc initIdTable*(): TIdTable =
-  result = TIdTable(counter: 0)
-  newSeq(result.data, StartSize)
-
-proc resetIdTable*(x: var TIdTable) =
-  x.counter = 0
-  # clear and set to old initial size:
-  setLen(x.data, 0)
-  setLen(x.data, StartSize)
-
 proc initObjectSet*(): TObjectSet =
   result = TObjectSet(counter: 0)
-  newSeq(result.data, StartSize)
-
-proc initIdNodeTable*(): TIdNodeTable =
-  result = TIdNodeTable(counter: 0)
   newSeq(result.data, StartSize)
 
 proc initNodeTable*(): TNodeTable =

@@ -120,7 +120,7 @@ proc put(c: var TCandidate, key, val: PType) {.inline.} =
   ## key: 'T'
   ## val: 'int' (typeof(4))
   when false:
-    let old = PType(idTableGet(c.bindings, key))
+    let old = idTableGet(c.bindings, key)
     if old != nil:
       echo "Putting ", typeToString(key), " ", typeToString(val), " and old is ", typeToString(old)
       if typeToString(old) == "float32":

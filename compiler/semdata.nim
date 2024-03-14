@@ -122,8 +122,6 @@ type
     converters*: seq[PSym]
     patterns*: seq[PSym]       # sequence of pattern matchers
     optionStack*: seq[POptionEntry]
-    symMapping*: TIdTable      # every gensym'ed symbol needs to be mapped
-                               # to some new symbol in a generic instantiation
     libs*: seq[PLib]           # all libs used by this module
     semConstExpr*: proc (c: PContext, n: PNode; expectedType: PType = nil): PNode {.nimcall.} # for the pragmas
     semExpr*: proc (c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType = nil): PNode {.nimcall.}
