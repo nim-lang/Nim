@@ -886,7 +886,8 @@ type
   PScope* = ref TScope
 
   PLib* = ref TLib
-  TSym* {.acyclic.} = object of TIdObj # Keep in sync with PackedSym
+  TSym* {.acyclic.} = object # Keep in sync with PackedSym
+    itemId*: ItemId
     # proc and type instantiations are cached in the generic symbol
     case kind*: TSymKind
     of routineKinds:
@@ -955,11 +956,12 @@ type
     attachedTrace,
     attachedDeepCopy
 
-  TType* {.acyclic.} = object of TIdObj # \
+  TType* {.acyclic.} = object # \
                               # types are identical iff they have the
                               # same id; there may be multiple copies of a type
                               # in memory!
                               # Keep in sync with PackedType
+    itemId*: ItemId
     kind*: TTypeKind          # kind of type
     callConv*: TCallingConvention # for procs
     flags*: TTypeFlags        # flags of the type
@@ -1146,7 +1148,7 @@ proc getPIdent*(a: PNode): PIdent {.inline.} =
 const
   moduleShift = when defined(cpu32): 20 else: 24
 
-template id*(a: PIdObj): int =
+template id*(a: PType | PSym | PIdObj): int =
   let x = a
   (x.itemId.module.int shl moduleShift) + x.itemId.item.int
 

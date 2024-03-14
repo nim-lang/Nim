@@ -41,7 +41,7 @@ type
     breakInLoop*: bool        # whether we are in a loop without block
     next*: PProcCon           # used for stacking procedure contexts
     mappingExists*: bool
-    mapping*: TIdTable
+    mapping*: Table[ItemId, PSym]
     caseContext*: seq[tuple[n: PNode, idx: int]]
     localBindStmts*: seq[PNode]
 
@@ -138,8 +138,8 @@ type
     semOverloadedCall*: proc (c: PContext, n, nOrig: PNode,
                               filter: TSymKinds, flags: TExprFlags, expectedType: PType = nil): PNode {.nimcall.}
     semTypeNode*: proc(c: PContext, n: PNode, prev: PType): PType {.nimcall.}
-    semInferredLambda*: proc(c: PContext, pt: TIdTable, n: PNode): PNode
-    semGenerateInstance*: proc (c: PContext, fn: PSym, pt: TIdTable,
+    semInferredLambda*: proc(c: PContext, pt: Table[ItemId, PType], n: PNode): PNode
+    semGenerateInstance*: proc (c: PContext, fn: PSym, pt: Table[ItemId, PType],
                                 info: TLineInfo): PSym
     includedFiles*: IntSet    # used to detect recursive include files
     pureEnumFields*: TStrTable   # pure enum fields that can be used unambiguously
@@ -251,14 +251,14 @@ proc popProcCon*(c: PContext) {.inline.} = c.p = c.p.next
 
 proc put*(p: PProcCon; key, val: PSym) =
   if not p.mappingExists:
-    p.mapping = initIdTable()
+    p.mapping = initTable[ItemId, PSym]()
     p.mappingExists = true
   #echo "put into table ", key.info
-  p.mapping.idTablePut(key, val)
+  p.mapping[key.itemId] = val
 
 proc get*(p: PProcCon; key: PSym): PSym =
   if not p.mappingExists: return nil
-  result = PSym(p.mapping.idTableGet(key))
+  result = p.mapping.getOrDefault(key.itemId)
 
 proc getGenSym*(c: PContext; s: PSym): PSym =
   if sfGenSym notin s.flags: return s
