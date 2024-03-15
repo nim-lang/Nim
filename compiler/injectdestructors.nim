@@ -1111,6 +1111,21 @@ proc genFieldAccessSideEffects(c: var Con; s: var Scope; dest, ri: PNode; flags:
   var snk = c.genSink(s, dest, newAccess, flags)
   result = newTree(nkStmtList, v, snk, c.genWasMoved(newAccess))
 
+proc partOfReturn(orig: PNode): PNode =
+  var n = orig
+  while true:
+    case n.kind
+    of PathKinds0:
+      n = n[0]
+    of PathKinds1:
+      n = n[1]
+    else:
+      break
+  if n.kind in nkCallKinds:
+    result = n
+  else:
+    result = nil
+
 proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope, flags: set[MoveOrCopyFlag] = {}): PNode =
   var ri = ri
   var isEnsureMove = 0
@@ -1194,11 +1209,37 @@ proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope, flags: set[MoveOrCopy
     of nkRaiseStmt:
       result = pRaiseStmt(ri, c, s)
     else:
+      let isPartOfRerurn = partOfReturn(ri2)
       if isAnalysableFieldAccess(ri, c.owner) and isLastRead(ri, c, s) and
           canBeMoved(c, dest.typ):
         # Rule 3: `=sink`(x, z); wasMoved(z)
         let snk = c.genSink(s, dest, ri, flags)
         result = newTree(nkStmtList, snk, c.genWasMoved(ri))
+      elif isPartOfRerurn != nil:
+        # result = c.genSink(s, dest, p(ri, c, s, sinkArg), flags)
+        let tmp = c.getTemp(s, isPartOfRerurn.typ, isPartOfRerurn.info)
+        tmp.sym.flags = {sfSingleUsedTemp}
+        if isPartOfRerurn.typ != nil and hasDestructor(c, isPartOfRerurn.typ):
+          s.final.add c.genDestroy(tmp)
+        let callNode = c.genSink(s, tmp, p(isPartOfRerurn, c, s, consumed), flags)
+        var iter = ri
+        while true:
+          case iter.kind
+          of PathKinds0:
+            if iter[0].kind in nkCallKinds:
+              iter[0] = tmp
+              break
+            iter = iter[0]
+          of PathKinds1:
+            if iter[1].kind in nkCallKinds:
+              iter[1] = tmp
+              break
+            iter = iter[1]
+          else:
+            break
+        let value = p(ri, c, s, normal)
+        let wasMovedNode = c.genWasMoved(value)
+        result = newTree(nkStmtList, callNode, c.genSink(s, dest, value, flags), wasMovedNode)
       else:
         inc c.inEnsureMove, isEnsureMove
         result = c.genCopy(dest, ri, flags)
