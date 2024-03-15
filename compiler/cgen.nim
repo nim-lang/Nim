@@ -945,6 +945,13 @@ proc generateHeaders(m: BModule) =
   var nimbase = m.config.nimbasePattern
   if nimbase == "": nimbase = "nimbase.h"
   m.s[cfsHeaders].addf("\L#include \"$1\"\L", [nimbase])
+  m.s[cfsHeaders].add("""
+#ifdef _MSC_VER
+#  define NIM_GENERIC __declspec(selectany)
+#else
+#  define NIM_GENERIC __attribute__((weak))
+#endif
+""")
 
   for it in m.headerFiles:
     if it[0] == '#':
