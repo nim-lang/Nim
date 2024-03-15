@@ -2049,7 +2049,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       elif op.s == "owned" and optOwnedRefs notin c.config.globalOptions and n.len == 2:
         result = semTypeExpr(c, n[1], prev)
       else:
-        if c.inGenericContext > 0 and n.kind == nkCall:
+        if c.inGenericContext > 0 and n.kind in nkCallKinds:
           let n = semGenericStmt(c, n)
           result = makeTypeFromExpr(c, n.copyTree)
         else:
