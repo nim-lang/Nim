@@ -11,9 +11,9 @@
 ## represents a complete Nim project. Single modules can either be kept in RAM
 ## or stored in a rod-file.
 
-import std/[intsets, tables, hashes, strtabs]
+import std/[intsets, tables, hashes, strtabs, algorithm]
 import ../dist/checksums/src/checksums/md5
-import ast, astalgo, options, lineinfos,idents, btrees, ropes, msgs, pathutils, packages
+import ast, astalgo, options, lineinfos,idents, btrees, ropes, msgs, pathutils, packages, suggestsymdb
 import ic / [packed_ast, ic]
 
 when defined(nimPreviewSlimSystem):
@@ -53,11 +53,6 @@ type
     sym*: FullId
     concreteTypes*: seq[FullId]
     inst*: PInstantiation
-
-  SymInfoPair* = object
-    sym*: PSym
-    info*: TLineInfo
-    isDecl*: bool
 
   PipelinePass* = enum
     NonePass
@@ -102,7 +97,7 @@ type
     doStopCompile*: proc(): bool {.closure.}
     usageSym*: PSym # for nimsuggest
     owners*: seq[PSym]
-    suggestSymbols*: Table[FileIndex, seq[SymInfoPair]]
+    suggestSymbols*: SuggestSymbolDatabase
     suggestErrors*: Table[FileIndex, seq[Suggest]]
     methods*: seq[tuple[methods: seq[PSym], dispatcher: PSym]] # needs serialization!
     systemModule*: PSym
@@ -468,7 +463,7 @@ proc initModuleGraphFields(result: ModuleGraph) =
   result.importStack = @[]
   result.inclToMod = initTable[FileIndex, FileIndex]()
   result.owners = @[]
-  result.suggestSymbols = initTable[FileIndex, seq[SymInfoPair]]()
+  result.suggestSymbols = initTable[FileIndex, SuggestFileSymbolDatabase]()
   result.suggestErrors = initTable[FileIndex, seq[Suggest]]()
   result.methods = @[]
   initStrTable(result.compilerprocs)
@@ -668,16 +663,14 @@ func belongsToStdlib*(graph: ModuleGraph, sym: PSym): bool =
   ## Check if symbol belongs to the 'stdlib' package.
   sym.getPackageSymbol.getPackageId == graph.systemModule.getPackageId
 
-proc `==`*(a, b: SymInfoPair): bool =
-  result = a.sym == b.sym and a.info.exactEquals(b.info)
-
-proc fileSymbols*(graph: ModuleGraph, fileIdx: FileIndex): seq[SymInfoPair] =
-  result = graph.suggestSymbols.getOrDefault(fileIdx, @[])
+proc fileSymbols*(graph: ModuleGraph, fileIdx: FileIndex): SuggestFileSymbolDatabase =
+  result = graph.suggestSymbols.getOrDefault(fileIdx, newSuggestFileSymbolDatabase(fileIdx, optIdeExceptionInlayHints in graph.config.globalOptions))
+  doAssert(result.fileIndex == fileIdx)
 
 iterator suggestSymbolsIter*(g: ModuleGraph): SymInfoPair =
   for xs in g.suggestSymbols.values:
-    for x in xs:
-      yield x
+    for i in xs.lineInfo.low..xs.lineInfo.high:
+      yield xs.getSymInfoPair(i)
 
 iterator suggestErrorsIter*(g: ModuleGraph): Suggest =
   for xs in g.suggestErrors.values:
