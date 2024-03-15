@@ -32,7 +32,7 @@
 
 # included from sigmatch.nim
 
-import prefixmatches
+import prefixmatches, suggestsymdb
 from wordrecg import wDeprecated, wError, wAddr, wYield
 
 import std/[algorithm, sets, parseutils, tables]

@@ -38,7 +38,7 @@ import compiler / [options, commands, modules,
   passes, passaux, msgs,
   sigmatch, ast,
   idents, modulegraphs, prefixmatches, lineinfos, cmdlinehelper,
-  pathutils, condsyms, syntaxes]
+  pathutils, condsyms, syntaxes, suggestsymdb]
 
 when defined(nimPreviewSlimSystem):
   import std/typedthreads
