@@ -300,7 +300,7 @@ proc genSink(c: var Con; s: var Scope; dest, ri: PNode; flags: set[MoveOrCopyFla
 proc isCriticalLink(dest: PNode): bool {.inline.} =
   #[
   Lins's idea that only "critical" links can introduce a cycle. This is
-  critical for the performance gurantees that we strive for: If you
+  critical for the performance guarantees that we strive for: If you
   traverse a data structure, no tracing will be performed at all.
   ORC is about this promise: The GC only touches the memory that the
   mutator touches too.
