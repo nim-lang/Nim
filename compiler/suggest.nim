@@ -32,7 +32,7 @@
 
 # included from sigmatch.nim
 
-import prefixmatches
+import prefixmatches, suggestsymdb
 from wordrecg import wDeprecated, wError, wAddr, wYield
 
 import std/[algorithm, sets, parseutils, tables]
@@ -113,6 +113,10 @@ proc getTokenLenFromSource(conf: ConfigRef; ident: string; info: TLineInfo; skip
   elif column > 0 and line[column - 1] == '`' and isOpeningBacktick(column - 1):
     result = skipUntil(line, '`', column)
     if cmpIgnoreStyle(line[column..column + result - 1], ident) != 0:
+      result = 0
+  elif column >= 0 and line[column] == '`' and isOpeningBacktick(column):
+    result = skipUntil(line, '`', column + 1) + 2
+    if cmpIgnoreStyle(line[column + 1..column + result - 2], ident) != 0:
       result = 0
   elif ident[0] in linter.Letters and ident[^1] != '=':
     result = identLen(line, column)
@@ -265,7 +269,7 @@ proc `$`*(suggest: Suggest): string =
       result.add(sep)
       result.add($suggest.endCol)
 
-proc suggestToSuggestInlayHint*(sug: Suggest): SuggestInlayHint =
+proc suggestToSuggestInlayTypeHint*(sug: Suggest): SuggestInlayHint =
   SuggestInlayHint(
     kind: sihkType,
     line: sug.line,
@@ -275,6 +279,30 @@ proc suggestToSuggestInlayHint*(sug: Suggest): SuggestInlayHint =
     paddingRight: false,
     allowInsert: true,
     tooltip: ""
+  )
+
+proc suggestToSuggestInlayExceptionHintLeft*(sug: Suggest, propagatedExceptions: seq[PType]): SuggestInlayHint =
+  SuggestInlayHint(
+    kind: sihkException,
+    line: sug.line,
+    column: sug.column,
+    label: "try ",
+    paddingLeft: false,
+    paddingRight: false,
+    allowInsert: false,
+    tooltip: "propagated exceptions: " & $propagatedExceptions
+  )
+
+proc suggestToSuggestInlayExceptionHintRight*(sug: Suggest, propagatedExceptions: seq[PType]): SuggestInlayHint =
+  SuggestInlayHint(
+    kind: sihkException,
+    line: sug.line,
+    column: sug.column + sug.tokenLen,
+    label: "!",
+    paddingLeft: false,
+    paddingRight: false,
+    allowInsert: false,
+    tooltip: "propagated exceptions: " & $propagatedExceptions
   )
 
 proc suggestResult*(conf: ConfigRef; s: Suggest) =
@@ -534,6 +562,16 @@ proc isTracked*(current, trackPos: TLineInfo, tokenLen: int): bool =
   else:
     result = false
 
+proc isTracked*(current, trackPos: TinyLineInfo, tokenLen: int): bool =
+  if current.line==trackPos.line:
+    let col = trackPos.col
+    if col >= current.col and col <= current.col+tokenLen-1:
+      result = true
+    else:
+      result = false
+  else:
+    result = false
+
 when defined(nimsuggest):
   # Since TLineInfo defined a == operator that doesn't include the column,
   # we map TLineInfo to a unique int here for this lookup table:
@@ -584,7 +622,7 @@ proc suggestSym*(g: ModuleGraph; info: TLineInfo; s: PSym; usageSym: var PSym; i
   ## misnamed: should be 'symDeclared'
   let conf = g.config
   when defined(nimsuggest):
-    g.suggestSymbols.mgetOrPut(info.fileIndex, @[]).add SymInfoPair(sym: s, info: info, isDecl: isDecl)
+    g.suggestSymbols.add SymInfoPair(sym: s, info: info, isDecl: isDecl), optIdeExceptionInlayHints in g.config.globalOptions
 
     if conf.suggestVersion == 0:
       if s.allUsages.len == 0:

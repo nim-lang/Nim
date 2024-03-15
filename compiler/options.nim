@@ -86,6 +86,7 @@ type                          # please make sure we have under 32 options
                               # also: generate header file
     optIdeDebug               # idetools: debug mode
     optIdeTerse               # idetools: use terse descriptions
+    optIdeExceptionInlayHints
     optExcessiveStackTrace    # fully qualified module filenames
     optShowAllMismatches      # show all overloading resolution candidates
     optWholeProject           # for 'doc': output any dependency
@@ -298,6 +299,7 @@ type
   SuggestInlayHintKind* = enum
     sihkType = "Type",
     sihkParameter = "Parameter"
+    sihkException = "Exception"
 
   SuggestInlayHint* = ref object
     kind*: SuggestInlayHintKind
