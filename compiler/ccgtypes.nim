@@ -55,14 +55,14 @@ proc mangleField(m: BModule; name: PIdent): string =
   if isKeyword(name):
     result.add "_0"
 
-proc mangleProc(m: BModule; s: PSym; makeUnique: bool): string = 
+proc mangleProc(m: BModule; s: PSym; makeUnique: bool): string =
   result = "_Z"  # Common prefix in Itanium ABI
   result.add encodeSym(m, s, makeUnique)
   if s.typ.len > 1: #we dont care about the return param
-    for i in 1..<s.typ.len: 
+    for i in 1..<s.typ.len:
       if s.typ[i].isNil: continue
       result.add encodeType(m, s.typ[i])
-  
+
   if result in m.g.mangledPrcs:
     result = mangleProc(m, s, true)
   else:
@@ -72,7 +72,7 @@ proc fillBackendName(m: BModule; s: PSym) =
   if s.loc.r == "":
     var result: Rope
     if not m.compileToCpp and s.kind in routineKinds and optCDebug in m.g.config.globalOptions and
-      m.g.config.symbolFiles == disabledSf: 
+      m.g.config.symbolFiles == disabledSf:
       result = mangleProc(m, s, false).rope
     else:
       result = s.name.s.mangle.rope
@@ -1280,6 +1280,9 @@ proc genProcHeader(m: BModule; prc: PSym; result: var Rope; asPtr: bool = false)
   # careful here! don't access ``prc.ast`` as that could reload large parts of
   # the object graph!
   if sfCodegenDecl notin prc.flags:
+    if sfFromGeneric in prc.flags and prc.typ.callConv != ccInline:
+      result.add "NIM_GENERIC "
+
     if lfExportLib in prc.loc.flags:
       if isHeaderFile in m.flags:
         result.add "N_LIB_IMPORT "
