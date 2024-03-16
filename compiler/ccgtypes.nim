@@ -1281,7 +1281,9 @@ proc genProcHeader(m: BModule; prc: PSym; result: var Rope; asPtr: bool = false)
   # the object graph!
   if sfCodegenDecl notin prc.flags:
     if sfFromGeneric in prc.flags and prc.typ.callConv != ccInline:
-      result.add "NIM_GENERIC "
+      result.add "NIM_GENERIC("
+      result.add makeSingleLineCString(".gnu.linkonce." & name)
+      result.add ")"
 
     if lfExportLib in prc.loc.flags:
       if isHeaderFile in m.flags:

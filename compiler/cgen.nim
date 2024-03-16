@@ -947,9 +947,9 @@ proc generateHeaders(m: BModule) =
   m.s[cfsHeaders].addf("\L#include \"$1\"\L", [nimbase])
   m.s[cfsHeaders].add("""
 #ifdef _MSC_VER
-#  define NIM_GENERIC __declspec(selectany)
+#  define NIM_GENERIC(x) __declspec(selectany)
 #else
-#  define NIM_GENERIC __attribute__((weak))
+#  define NIM_GENERIC(x) __attribute__((section(x)))
 #endif
 """)
 
