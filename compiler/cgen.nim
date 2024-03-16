@@ -1315,6 +1315,8 @@ proc genProcPrototype(m: BModule, sym: PSym) =
         header.add(" __attribute__((naked))")
       if isNoReturn(m, sym) and hasAttribute in CC[m.config.cCompiler].props:
         header.add(" __attribute__((noreturn))")
+      if sfFromGeneric in sym.flags and sym.typ.callConv != ccInline:
+        header.add "NIM_GENERIC"
     m.s[cfsProcHeaders].add(ropecg(m, "$1;$N", [header]))
 
 # TODO: figure out how to rename this - it DOES generate a forward declaration
