@@ -275,7 +275,10 @@ proc isInvalidReturnType(conf: ConfigRef; typ: PType, isProc = true): bool =
           {tyVar, tyLent, tyRef, tyPtr})
     of ctStruct:
       let t = skipTypes(rettype, typedescInst)
-      if rettype.isImportedCppType or t.isImportedCppType: return false
+      if rettype.isImportedCppType or t.isImportedCppType or
+          (typ.callConv == ccCDecl and conf.selectedGC in {gcArc, gcAtomicArc, gcOrc}):
+        # prevents nrvo for cdecl procs; # bug #23401
+        return false
       result = containsGarbageCollectedRef(t) or
           (t.kind == tyObject and not isObjLackingTypeField(t))
     else: result = false
