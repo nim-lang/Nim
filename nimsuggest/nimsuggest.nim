@@ -936,7 +936,6 @@ proc suggestInlayHintResultException(graph: ModuleGraph, sym: PSym, info: TLineI
     if effects.kind == nkEffectList and effects.len == effectListLen:
       let effs = effects[exceptionEffects]
       if not isNil(effs):
-        raisesList = @[]
         for eff in items(effs):
           if not isNil(eff):
             raisesList.add(eff.typ)
