@@ -789,8 +789,8 @@ proc explicitGenericSym(c: PContext, n: PNode, s: PSym): PNode =
   var newInst = generateInstance(c, s, m.bindings, n.info)
   newInst.typ.flags.excl tfUnresolved
   let info = getCallLineInfo(n)
-  markUsed(c, info, s)
-  onUse(info, s)
+  markUsed(c, info, newInst)
+  onUse(info, newInst)
   result = newSymNode(newInst, info)
 
 proc setGenericParams(c: PContext, n, expectedParams: PNode) =
