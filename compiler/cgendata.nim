@@ -151,7 +151,7 @@ type
     typeABICache*: HashSet[SigHash] # cache for ABI checks; reusing typeCache
                               # would be ideal but for some reason enums
                               # don't seem to get cached so it'd generate
-                              # 1 ABI check per occurence in code
+                              # 1 ABI check per occurrence in code
     forwTypeCache*: TypeCache # cache for forward declarations of types
     declaredThings*: IntSet   # things we have declared in this .c file
     declaredProtos*: IntSet   # prototypes we have declared in this .c file
