@@ -928,7 +928,7 @@ proc suggestInlayHintResultException(graph: ModuleGraph, sym: PSym, info: TLineI
   if sym.kind == skParam and sfEffectsDelayed in sym.flags:
     return
 
-  var raisesList: seq[PType] = @[getEbase(graph, info)]
+  var raisesList: seq[PType] = @[]
 
   let t = sym.typ
   if not isNil(t) and not isNil(t.n) and t.n.len > 0 and t.n[0].len > exceptionEffects:
