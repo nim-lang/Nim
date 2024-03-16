@@ -683,10 +683,10 @@ proc semResolvedCall(c: PContext, x: var TCandidate,
   assert x.state == csMatch
   var finalCallee = x.calleeSym
   let info = getCallLineInfo(n)
-  markUsed(c, info, finalCallee)
-  onUse(info, finalCallee)
   assert finalCallee.ast != nil
   if x.hasFauxMatch:
+    markUsed(c, info, finalCallee)
+    onUse(info, finalCallee)
     result = x.call
     result[0] = newSymNode(finalCallee, getCallLineInfo(result[0]))
     if containsGenericType(result.typ) or x.fauxMatch == tyUnknown:
@@ -721,6 +721,8 @@ proc semResolvedCall(c: PContext, x: var TCandidate,
           x.call.add tn
         else:
           internalAssert c.config, false
+  markUsed(c, info, finalCallee)
+  onUse(info, finalCallee)
 
   result = x.call
   instGenericConvertersSons(c, result, x)
