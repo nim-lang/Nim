@@ -81,11 +81,11 @@ iterator inotify_events*(evs: pointer, n: int): ptr InotifyEvent =
   ## Abstract the packed buffer interface to yield event object pointers.
   ##   ```Nim
   ##   import std/posix  # needed for FileHandle read procedure
-  ##   const MaxWatchdogs = 8192
+  ##   const MaxWatches = 8192
   ##   ...
-  ##   var evs = newSeq[byte](MaxWatchdogs)  # only after inotify_init and add_watch
-  ##   while (let n = read(fd, evs[0].addr, MaxWatchdogs); n) > 0:  # blocks until any events have been read
-  ##     echo (e[].wd, e[].mask, cast[cstring](addr e[].name)       # echo watchdog id, mask, and name value of each event
+  ##   var evs = newSeq[byte](MaxWatches)  # only after inotify_init and add_watch
+  ##   while (let n = read(fd, evs[0].addr, MaxWatches); n) > 0:  # blocks until any events have been read
+  ##     echo (e[].wd, e[].mask, cast[cstring](addr e[].name)       # echo watch id, mask, and name value of each event
   ##   ```
   var ev: ptr InotifyEvent = cast[ptr InotifyEvent](evs)
   var n = n
@@ -97,13 +97,10 @@ iterator inotify_events*(evs: pointer, n: int): ptr InotifyEvent =
 
 runnableExamples:
   when defined(linux):
-    import std/posix
-    const MaxWatchdogs = 8192
-
     let inotifyFd = inotify_init()  # create and get new inotify FileHandle
     doAssert inotifyFd >= 0         # check for errors
 
-    let wd = inotifyFd.inotify_add_watch("/tmp", IN_CREATE or IN_DELETE)  # Add new watchdog
+    let wd = inotifyFd.inotify_add_watch("/tmp", IN_CREATE or IN_DELETE)  # Add new watch
     doAssert wd >= 0                 # check for errors
 
-    discard inotifyFd.inotify_rm_watch(wd) # remove watchdog
+    discard inotifyFd.inotify_rm_watch(wd) # remove watch
