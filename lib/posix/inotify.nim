@@ -80,9 +80,12 @@ proc inotify_rm_watch*(fd: cint; wd: cint): cint {.cdecl,
 iterator inotify_events*(evs: pointer, n: int): ptr InotifyEvent =
   ## Abstract the packed buffer interface to yield event object pointers.
   ##   ```Nim
-  ##   var evs = newSeq[byte](8192)        # Already did inotify_init+add_watch
-  ##   while (let n = read(fd, evs[0].addr, 8192); n) > 0:     # read forever
-  ##     for e in inotify_events(evs[0].addr, n): echo e[].len # echo name lens
+  ##   import std/posix  # needed for FileHandle read procedure
+  ##   const MaxWatchdogs = 8192
+  ##   ...
+  ##   var evs = newSeq[byte](MaxWatchdogs)  # only after inotify_init and add_watch
+  ##   while (let n = read(fd, evs[0].addr, MaxWatchdogs); n) > 0:  # blocks until any events have been read
+  ##     echo (e[].wd, e[].mask, cast[cstring](addr e[].name)       # echo watchdog id, mask, and name value of each event
   ##   ```
   var ev: ptr InotifyEvent = cast[ptr InotifyEvent](evs)
   var n = n
@@ -94,8 +97,18 @@ iterator inotify_events*(evs: pointer, n: int): ptr InotifyEvent =
 
 runnableExamples:
   when defined(linux):
-    let inoty: FileHandle = inotify_init()           ## Create 1 Inotify.
-    doAssert inoty >= 0                              ## Check for errors (FileHandle is alias to cint).
-    let watchdoge: cint = inotify_add_watch(inoty, ".", IN_ALL_EVENTS) ## Add directory to watchdog.
-    doAssert watchdoge >= 0                          ## Check for errors.
-    doAssert inotify_rm_watch(inoty, watchdoge) >= 0 ## Remove directory from the watchdog
+    import std/posix
+    const MaxWatchdogs = 8192
+
+    let inotifyFd = inotify_init()  # create and get new inotify FileHandle
+    doAssert inotifyFd >= 0         # check for errors
+
+    let wd = inotifyFd.inotify_add_watch("/tmp", IN_CREATE or IN_DELETE)  # Add new watchdog
+    doAssert wd >= 0                 # check for errors
+
+    var events: array[MaxWatchdogs, byte]  # event buffer
+    while (let n = inotifyFd.read(addr events, MaxWatchdogs); n) > 0:  # wait for new events in infinite loop
+      for e in inotify_events(addr events, n):
+        echo (e[].wd, e[].mask, cast[cstring](addr e[].name))  # echo watch descriptor, mask and name value of each event
+
+    discard inotifyFd.inotify_rm_watch(wd) # remove watchdog
