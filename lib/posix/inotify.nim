@@ -106,9 +106,4 @@ runnableExamples:
     let wd = inotifyFd.inotify_add_watch("/tmp", IN_CREATE or IN_DELETE)  # Add new watchdog
     doAssert wd >= 0                 # check for errors
 
-    var events: array[MaxWatchdogs, byte]  # event buffer
-    while (let n = inotifyFd.read(addr events, MaxWatchdogs); n) > 0:  # wait for new events in infinite loop
-      for e in inotify_events(addr events, n):
-        echo (e[].wd, e[].mask, cast[cstring](addr e[].name))  # echo watch descriptor, mask and name value of each event
-
     discard inotifyFd.inotify_rm_watch(wd) # remove watchdog
