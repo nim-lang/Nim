@@ -1145,6 +1145,33 @@ func prod*[T](x: openArray[T]): T =
   result = T(1)
   for i in items(x): result = result * i
 
+func cumprod*[T](x: var openArray[T]) =
+  ## Transforms ``x`` in-place (must be declared as `var`) into its
+  ## product.
+  ##
+  ## See also:
+  ## * `sum proc <#sum,openArray[T]>`_
+  ## * `cumprodmed proc <#cumprodmed,openArray[T]>`_ for a version which
+  ##   returns cumprodmed sequence
+  runnableExamples:
+    var a = [1, 2, 3, 4]
+    cumprod(a)
+    doAssert a == @[1, 2, 6, 24]
+  for i in 1 ..< x.len: x[i] = x[i-1] * x[i]
+
+func cumproded*[T](x: openArray[T]): seq[T] =
+  ## Return cumulative (aka prefix) product of ``x``.
+  ##
+  ## See also:
+  ## * `sum proc <#prod,openArray[T]>`_
+  ## * `cumsum proc <#cumprod,openArray[T]>`_ for the in-place version
+  runnableExamples:
+    let a = [1, 2, 3, 4]
+    doAssert cumproded(a) == @[1, 2, 6, 24]
+  result.setLen(x.len)
+  result[0] = x[0]
+  for i in 1 ..< x.len: result[i] = result[i-1] * x[i]
+
 func cumsummed*[T](x: openArray[T]): seq[T] =
   ## Returns the cumulative (aka prefix) summation of `x`.
   ##
@@ -1309,3 +1336,4 @@ func lcm*[T](x: openArray[T]): T {.since: (1, 1).} =
   result = x[0]
   for i in 1 ..< x.len:
     result = lcm(result, x[i])
+
