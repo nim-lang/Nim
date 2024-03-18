@@ -89,15 +89,15 @@ proc newAtom*(ident: PIdent, info: TLineInfo): PNode =
   result.info = info
 
 proc newAtom*(kind: TNodeKind, intVal: BiggestInt, info: TLineInfo): PNode =
-  result = newNode(kind)
+  result = newNode(kind, info)
   result.intVal = intVal
 
 proc newAtom*(kind: TNodeKind, floatVal: BiggestFloat, info: TLineInfo): PNode =
-  result = newNode(kind)
+  result = newNode(kind, info)
   result.floatVal = floatVal
 
 proc newAtom*(kind: TNodeKind; strVal: sink string; info: TLineInfo): PNode =
-  result = newNode(kind)
+  result = newNode(kind, info)
   result.strVal = strVal
 
 proc lastSon*(n: PNode): PNode {.inline.} = n.last

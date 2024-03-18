@@ -1139,20 +1139,19 @@ proc newNode*(kind: TNodeKind, info: TLineInfo): PNode =
   setIdMaybe()
 
 proc newAtom*(ident: PIdent, info: TLineInfo): PNode =
-  result = newNode(nkIdent)
+  result = newNode(nkIdent, info)
   result.ident = ident
-  result.info = info
 
 proc newAtom*(kind: TNodeKind, intVal: BiggestInt, info: TLineInfo): PNode =
-  result = newNode(kind)
+  result = newNode(kind, info)
   result.intVal = intVal
 
 proc newAtom*(kind: TNodeKind, floatVal: BiggestFloat, info: TLineInfo): PNode =
-  result = newNode(kind)
+  result = newNode(kind, info)
   result.floatVal = floatVal
 
 proc newAtom*(kind: TNodeKind; strVal: sink string; info: TLineInfo): PNode =
-  result = newNode(kind)
+  result = newNode(kind, info)
   result.strVal = strVal
 
 proc newTree*(kind: TNodeKind; info: TLineInfo; children: varargs[PNode]): PNode =
