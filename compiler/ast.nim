@@ -1133,6 +1133,34 @@ proc newNodeIT*(kind: TNodeKind, info: TLineInfo, typ: PType): PNode =
   result.info = info
   result.typ = typ
 
+proc newNode*(kind: TNodeKind, info: TLineInfo): PNode =
+  ## new node with line info, no type, and no children
+  newNodeImpl(info)
+  setIdMaybe()
+
+proc newAtom*(ident: PIdent, info: TLineInfo): PNode =
+  result = newNode(nkIdent)
+  result.ident = ident
+  result.info = info
+
+proc newAtom*(kind: TNodeKind, intVal: BiggestInt, info: TLineInfo): PNode =
+  result = newNode(kind)
+  result.intVal = intVal
+
+proc newAtom*(kind: TNodeKind, floatVal: BiggestFloat, info: TLineInfo): PNode =
+  result = newNode(kind)
+  result.floatVal = floatVal
+
+proc newAtom*(kind: TNodeKind; strVal: sink string; info: TLineInfo): PNode =
+  result = newNode(kind)
+  result.strVal = strVal
+
+proc newTree*(kind: TNodeKind; info: TLineInfo; children: varargs[PNode]): PNode =
+  result = newNodeI(kind, info)
+  if children.len > 0:
+    result.info = children[0].info
+  result.sons = @children
+
 proc newTree*(kind: TNodeKind; children: varargs[PNode]): PNode =
   result = newNode(kind)
   if children.len > 0:
