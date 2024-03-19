@@ -81,16 +81,17 @@ proc inotify_rm_watch*(fd: cint; wd: cint): cint {.cdecl,
 iterator inotify_events*(evs: pointer, n: int): ptr InotifyEvent =
   ## Abstract the packed buffer interface to yield event object pointers.
   runnableExamples("-r:off"):
-     import std/posix  # needed for FileHandle read procedure
-     const MaxWatches = 8192
+    when defined(linux):
+       import std/posix  # needed for FileHandle read procedure
+       const MaxWatches = 8192
 
-     let inotifyFd = inotify_init()  # create new inotify instance and get it's FileHandle
-     let wd = inotifyFd.inotify_add_watch("/tmp", IN_CREATE or IN_DELETE)  # Add new watch
+       let inotifyFd = inotify_init()  # create new inotify instance and get it's FileHandle
+       let wd = inotifyFd.inotify_add_watch("/tmp", IN_CREATE or IN_DELETE)  # Add new watch
 
-     var events: array[MaxWatches, byte]  # event buffer
-     while (let n = read(inotifyFd, addr events, MaxWatches); n) > 0:  # blocks until any events have been read
-       for e in inotify_events(addr events, n):
-         echo (e[].wd, e[].mask, cast[cstring](addr e[].name))    # echo watch id, mask, and name value of each event
+       var events: array[MaxWatches, byte]  # event buffer
+       while (let n = read(inotifyFd, addr events, MaxWatches); n) > 0:  # blocks until any events have been read
+         for e in inotify_events(addr events, n):
+           echo (e[].wd, e[].mask, cast[cstring](addr e[].name))    # echo watch id, mask, and name value of each event
   var ev: ptr InotifyEvent = cast[ptr InotifyEvent](evs)
   var n = n
   while n > 0:
