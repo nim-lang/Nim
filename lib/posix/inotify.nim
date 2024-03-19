@@ -67,7 +67,8 @@ proc inotify_init*(): FileHandle {.cdecl, importc: "inotify_init",
 
 proc inotify_init1*(flags: cint): FileHandle {.cdecl, importc: "inotify_init1",
     header: "<sys/inotify.h>".}
-  ## Create and initialize inotify instance.
+  ## Like `inotify_init<#inotify_init>`_ ,
+  ## but has a flags argument that provides access to some extra functionality.
 
 proc inotify_add_watch*(fd: cint; name: cstring; mask: uint32): cint {.cdecl,
     importc: "inotify_add_watch", header: "<sys/inotify.h>".}
