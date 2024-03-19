@@ -85,7 +85,7 @@ iterator inotify_events*(evs: pointer, n: int): ptr InotifyEvent =
   ##   ...
   ##   var evs = newSeq[byte](MaxWatches)  # only after inotify_init and add_watch
   ##   while (let n = read(fd, evs[0].addr, MaxWatches); n) > 0:  # blocks until any events have been read
-  ##     echo (e[].wd, e[].mask, cast[cstring](addr e[].name)       # echo watch id, mask, and name value of each event
+  ##     echo (e[].wd, e[].mask, cast[cstring](addr e[].name))    # echo watch id, mask, and name value of each event
   ##   ```
   var ev: ptr InotifyEvent = cast[ptr InotifyEvent](evs)
   var n = n
