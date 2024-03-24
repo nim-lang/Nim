@@ -215,18 +215,7 @@ else:
     hashWangYi1(uint64(ord(x)))
 
 when defined(js):
-  var objectID = 0
-  proc getObjectId(x: pointer): int =
-    {.emit: """
-      if (typeof `x` == "object") {
-        if ("_NimID" in `x`)
-          `result` = `x`["_NimID"];
-        else {
-          `result` = ++`objectID`;
-          `x`["_NimID"] = `result`;
-        }
-      }
-    """.}
+  proc getObjectId(x: pointer | proc): int
 
 proc hash*(x: pointer): Hash {.inline.} =
   ## Efficient `hash` overload.
@@ -539,7 +528,9 @@ proc hash*[T: tuple | object | proc | iterator {.closure.}](x: T): Hash =
       assert hash(fn2) != hash(fn1)
     outer()
 
-  when T is "closure":
+  when defined(js) and (T is "closure" or T is proc):
+    result = hash(getObjectId(x))
+  elif T is "closure":
     result = hash((rawProc(x), rawEnv(x)))
   elif T is (proc):
     result = hash(cast[pointer](x))
@@ -597,3 +588,16 @@ proc hash*[A](x: set[A]): Hash =
   for it in items(x):
     result = result !& hash(it)
   result = !$result
+
+when defined(js):
+  import std/jsffi
+
+  var objectID = 0
+  const idKey = "_NimID".cstring
+
+  proc getObjectId(x: pointer | proc): int =
+    var obj = x.toJS()
+    if (idKey.toJS() notin obj).to(bool):
+      objectID += 1
+      obj[idKey] = objectID
+    return obj[idKey].to(int)
