@@ -155,7 +155,7 @@ func fac*(n: int): int =
 
 {.push checks: off, line_dir: off, stack_trace: off.}
 
-when defined(posix) and not defined(genode):
+when defined(posix) and not defined(genode) and not defined(macosx):
   {.passl: "-lm".}
 
 const
