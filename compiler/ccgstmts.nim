@@ -369,7 +369,10 @@ proc genSingleVar(p: BProc, v: PSym; vn, value: PNode) =
         line(p, cpsStmts, decl)
       else:
         tmp = initLocExprSingleUse(p, value)
-        lineF(p, cpsStmts, "$# = $#;\n", [decl, tmp.rdLoc])
+        if value.kind == nkEmpty:
+          lineF(p, cpsStmts, "$#;\n", [decl])
+        else:
+          lineF(p, cpsStmts, "$# = $#;\n", [decl, tmp.rdLoc])
       return
     assignLocalVar(p, vn)
     initLocalVar(p, v, imm)

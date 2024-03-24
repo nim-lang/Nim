@@ -1208,6 +1208,7 @@ proc genProcAux*(m: BModule, prc: PSym) =
     elif sfConstructor in prc.flags:
       resNode.sym.loc.flags.incl lfIndirect
       fillLoc(resNode.sym.loc, locParam, resNode, "this", OnHeap)
+      prc.loc.r = getTypeDesc(m, resNode.sym.loc.t, dkVar)
     else:
       fillResult(p.config, resNode, prc.typ)
       assignParam(p, res, prc.typ.returnType)
