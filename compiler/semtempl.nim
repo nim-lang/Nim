@@ -67,6 +67,8 @@ proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule;
     # for instance 'nextTry' is both in tables.nim and astalgo.nim ...
     if not isField or sfGenSym notin s.flags:
       result = newSymNode(s, info)
+      markUsed(c, info, s)
+      onUse(info, s)
     else:
       result = n
   elif i == 0:
