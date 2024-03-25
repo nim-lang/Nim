@@ -14,7 +14,7 @@ proc main() =
   proc foo2(a: static[bool]): bar(a) = 1
   doAssert foo2(true) == 1
 
-  proc foo3(a: static[bool]): bar(cast[static[bool]](a)) = 1
+  proc foo3(a: static[bool]): bar(cast[bool](a)) = 1
   doAssert foo3(true) == 1
 
   proc foo4(a: static[bool]): bar(static(a)) = 1
