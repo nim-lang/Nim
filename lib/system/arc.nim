@@ -221,7 +221,7 @@ proc nimDecRefIsLast(p: pointer): bool {.compilerRtl, inl.} =
 
     when defined(gcAtomicArc) and hasThreadSupport:
       # `atomicDec` returns the new value
-      if atomicDec(cell.rc, rcIncrement) == -1:
+      if atomicDec(cell.rc, rcIncrement) == -rcIncrement:
         result = true
         when traceCollector:
           cprintf("[ABOUT TO DESTROY] %p\n", cell)
