@@ -464,7 +464,7 @@ proc `==`*(a, b: Rune): bool =
 
 include "includes/unicode_ranges"
 
-proc binarySearch(c: RuneImpl, tab: openArray[int], len, stride: int): int =
+proc binarySearch(c: RuneImpl, tab: openArray[int32], len, stride: int): int =
   var n = len
   var t = 0
   while n > 1:
