@@ -1028,7 +1028,7 @@ proc semOverloadedCallAnalyseEffects(c: PContext, n: PNode, nOrig: PNode,
 
   if result != nil:
     if result[0].kind != nkSym:
-      if not (efDetermineType in flags and c.inGenericContext > 0):
+      if not (c.inGenericContext > 0): # see generic context check in semOverloadedCall
         internalError(c.config, "semOverloadedCallAnalyseEffects")
       return
     let callee = result[0].sym
