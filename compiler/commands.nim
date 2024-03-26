@@ -931,8 +931,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     conf.verbosity = verbosity
     var verb = NotesVerbosity[conf.verbosity]
     ## We override the default `verb` by explicitly modified (set/unset) notes.
-    conf.notes = (conf.modifiedyNotes * conf.notes + verb) -
-      (conf.modifiedyNotes * verb - conf.notes)
+    conf.notes = (conf.modifiedyNotes * conf.mainPackageNotes + verb) -
+      (conf.modifiedyNotes * verb - conf.mainPackageNotes)
     conf.mainPackageNotes = conf.notes
   of "parallelbuild":
     expectArg(conf, switch, arg, pass, info)
