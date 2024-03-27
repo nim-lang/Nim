@@ -719,7 +719,7 @@ proc getFileSize*(file: string): BiggestInt {.rtl, extern: "nos$1",
 when defined(windows) or weirdTarget:
   type
     DeviceId* = int32
-    FileId* = int64
+    FileId* = uint64
 else:
   type
     DeviceId* = Dev
@@ -755,13 +755,13 @@ template rawToFormalFileInfo(rawInfo, path, formalInfo): untyped =
   ## or a 'Stat' structure on posix
   when defined(windows):
     template merge(a, b): untyped =
-      int64(
+       (
         (uint64(cast[uint32](a))) or
         (uint64(cast[uint32](b)) shl 32)
        )
     formalInfo.id.device = rawInfo.dwVolumeSerialNumber
     formalInfo.id.file = merge(rawInfo.nFileIndexLow, rawInfo.nFileIndexHigh)
-    formalInfo.size = merge(rawInfo.nFileSizeLow, rawInfo.nFileSizeHigh)
+    formalInfo.size = BiggestInt merge(rawInfo.nFileSizeLow, rawInfo.nFileSizeHigh)
     formalInfo.linkCount = rawInfo.nNumberOfLinks
     formalInfo.lastAccessTime = fromWinTime(rdFileTime(rawInfo.ftLastAccessTime))
     formalInfo.lastWriteTime = fromWinTime(rdFileTime(rawInfo.ftLastWriteTime))
