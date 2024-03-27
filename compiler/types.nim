@@ -838,11 +838,11 @@ proc firstOrd*(conf: ConfigRef; t: PType): Int128 =
     result = firstOrd(conf, lastSon(t))
   of tyOrdinal:
     if t.len > 0: result = firstOrd(conf, lastSon(t))
-    else: internalError(conf, "invalid kind for firstOrd(" & $t.kind & ')')
+    else: fatal(conf, unknownLineInfo, "invalid kind for firstOrd(" & $t.kind & ')')
   of tyUncheckedArray, tyCstring:
     result = Zero
   else:
-    internalError(conf, "invalid kind for firstOrd(" & $t.kind & ')')
+    fatal(conf, unknownLineInfo, "invalid kind for firstOrd(" & $t.kind & ')')
     result = Zero
 
 proc firstFloat*(t: PType): BiggestFloat =
@@ -926,11 +926,11 @@ proc lastOrd*(conf: ConfigRef; t: PType): Int128 =
   of tyProxy: result = Zero
   of tyOrdinal:
     if t.len > 0: result = lastOrd(conf, lastSon(t))
-    else: internalError(conf, "invalid kind for lastOrd(" & $t.kind & ')')
+    else: fatal(conf, unknownLineInfo, "invalid kind for lastOrd(" & $t.kind & ')')
   of tyUncheckedArray:
     result = Zero
   else:
-    internalError(conf, "invalid kind for lastOrd(" & $t.kind & ')')
+    fatal(conf, unknownLineInfo, "invalid kind for lastOrd(" & $t.kind & ')')
     result = Zero
 
 proc lastFloat*(t: PType): BiggestFloat =
