@@ -817,6 +817,16 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
     elif n.typ == nil:
       # 'raise X' can be part of a 'case' expression. Deal with it here:
       result = p(n, c, s, normal)
+    elif c.graph.config.selectedGC == gcRefc and
+        n.kind == nkDerefExpr and
+        n.typ.skipTypes({tyGenericInst, tyAlias, tySink}).kind == tyObject and
+        c.owner.kind == skModule and
+        n[0].typ.skipTypes({tyGenericInst, tyAlias, tySink}).kind == tyRef and
+        not hasDestructor(c, n.typ.skipTypes({tyGenericInst, tyAlias, tySink})):
+      # TODO: fixme still a hole sink in refc
+      # workaround: let a: ref A = new(B) in the global scope: `sink a` causes troubles
+      # perhaps introduce a flag so that genericAssign could ignore ObjectAssignmentDefect
+      result = p(n, c, s, normal)
     else:
       # copy objects that are not temporary but passed to a 'sink' parameter
       result = passCopyToSink(n, c, s)
