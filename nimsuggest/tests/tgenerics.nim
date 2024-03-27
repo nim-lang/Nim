@@ -14,5 +14,5 @@ main()
 discard """
 $nimsuggest --tester $file
 >def $1
-def;;skProc;;tgenerics.printHelloValue;;proc (hello: Hello[printHelloValue.T]);;$file;;5;;5;;"";;100
+def;;skProc;;tgenerics.printHelloValue.printHelloValue;;proc (hello: Hello[system.float]){.gcsafe, raises: <inferred> [].};;$file;;5;;5;;"";;100
 """
