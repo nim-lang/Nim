@@ -863,7 +863,8 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
             result[i][1] = p(n[i][1], c, s, m)
         else:
           result[i] = p(n[i], c, s, m)
-      if mode == normal and (isRefConstr or hasDestructor(c, t)):
+      if mode == normal and (isRefConstr or (hasDestructor(c, t) and
+        getAttachedOp(c.graph, t, attachedDestructor) != nil)):
         result = ensureDestruction(result, n, c, s)
     of nkCallKinds:
       if n[0].kind == nkSym and n[0].sym.magic == mEnsureMove:
