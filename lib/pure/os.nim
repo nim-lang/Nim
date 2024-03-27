@@ -755,13 +755,15 @@ template rawToFormalFileInfo(rawInfo, path, formalInfo): untyped =
   ## or a 'Stat' structure on posix
   when defined(windows):
     template merge(a, b): untyped =
-      int64(
+      (
         (uint64(cast[uint32](a))) or
         (uint64(cast[uint32](b)) shl 32)
        )
     formalInfo.id.device = rawInfo.dwVolumeSerialNumber
-    formalInfo.id.file = merge(rawInfo.nFileIndexLow, rawInfo.nFileIndexHigh)
-    formalInfo.size = merge(rawInfo.nFileSizeLow, rawInfo.nFileSizeHigh)
+    formalInfo.id.file = cast[FileId](  # workaround for issue #23442
+      merge(rawInfo.nFileIndexLow, rawInfo.nFileIndexHigh)
+    )
+    formalInfo.size = int64 merge(rawInfo.nFileSizeLow, rawInfo.nFileSizeHigh)
     formalInfo.linkCount = rawInfo.nNumberOfLinks
     formalInfo.lastAccessTime = fromWinTime(rdFileTime(rawInfo.ftLastAccessTime))
     formalInfo.lastWriteTime = fromWinTime(rdFileTime(rawInfo.ftLastWriteTime))
