@@ -155,11 +155,21 @@ proc pushCurrentException(e: sink(ref Exception)) {.compilerRtl, inl.} =
   #showErrorMessage2 "A"
 
 proc popCurrentException {.compilerRtl, inl.} =
-  currException = currException.up
+  if currException != currException.up:
+    currException = currException.up
+  else:
+    currException.up = nil
   #showErrorMessage2 "B"
 
 proc popCurrentExceptionEx(id: uint) {.compilerRtl.} =
   discard "only for bootstrapping compatbility"
+
+proc popLastException {.compilerRtl, inl.} =
+  if currException.up != nil:
+    if currException.up != currException.up.up:
+      currException.up = currException.up.up
+    else: # a cycle: e.g. reraise the exception in the except branch
+      currException.up = nil
 
 proc closureIterSetupExc(e: ref Exception) {.compilerproc, inline.} =
   currException = e
