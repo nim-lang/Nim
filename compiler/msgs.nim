@@ -438,7 +438,11 @@ proc handleError(conf: ConfigRef; msg: TMsgKind, eh: TErrorHandling, s: string, 
     if conf.errorCounter >= conf.errorMax:
       # only really quit when we're not in the new 'nim check --def' mode:
       if conf.ideCmd == ideNone:
-        quit(conf, msg)
+        when defined(nimsuggest):
+          #we need to inform the user that something went wrong when initializing NimSuggest
+          raiseRecoverableError(s)
+        else:
+          quit(conf, msg)
     elif eh == doAbort and conf.cmd != cmdIdeTools:
       quit(conf, msg)
     elif eh == doRaise:
@@ -556,9 +560,10 @@ proc liMessage*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
     ignoreMsg = not conf.hasHint(msg)
     if not ignoreMsg and msg in conf.warningAsErrors:
       title = ErrorTitle
+      color = ErrorColor
     else:
       title = HintTitle
-    color = HintColor
+      color = HintColor
     inc(conf.hintCounter)
 
   let s = if isRaw: arg else: getMessageStr(msg, arg)

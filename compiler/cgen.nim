@@ -574,7 +574,7 @@ proc getTempCpp(p: BProc, t: PType, value: Rope): TLoc =
   inc(p.labels)
   result = TLoc(r: "T" & rope(p.labels) & "_", k: locTemp, lode: lodeTyp t,
                 storage: OnStack, flags: {})
-  linefmt(p, cpsStmts, "$1 $2 = $3;$n", [getTypeDesc(p.module, t, dkVar), result.r, value])
+  linefmt(p, cpsStmts, "auto $1 = $2;$n", [result.r, value])
 
 proc getIntTemp(p: BProc): TLoc =
   inc(p.labels)
@@ -1208,6 +1208,7 @@ proc genProcAux*(m: BModule, prc: PSym) =
     elif sfConstructor in prc.flags:
       resNode.sym.loc.flags.incl lfIndirect
       fillLoc(resNode.sym.loc, locParam, resNode, "this", OnHeap)
+      prc.loc.r = getTypeDesc(m, resNode.sym.loc.t, dkVar)
     else:
       fillResult(p.config, resNode, prc.typ)
       assignParam(p, res, prc.typ.returnType)
@@ -2194,6 +2195,22 @@ proc updateCachedModule(m: BModule) =
   cf.flags = {CfileFlag.Cached}
   addFileToCompile(m.config, cf)
 
+proc generateLibraryDestroyGlobals(graph: ModuleGraph; m: BModule; body: PNode; isDynlib: bool): PSym =
+  let procname = getIdent(graph.cache, "NimDestroyGlobals")
+  result = newSym(skProc, procname, m.idgen, m.module.owner, m.module.info)
+  result.typ = newProcType(m.module.info, m.idgen, m.module.owner)
+  result.typ.callConv = ccCDecl
+  incl result.flags, sfExportc
+  result.loc.r = "NimDestroyGlobals"
+  if isDynlib:
+    incl(result.loc.flags, lfExportLib)
+
+  let theProc = newNodeI(nkProcDef, m.module.info, bodyPos+1)
+  for i in 0..<theProc.len: theProc[i] = newNodeI(nkEmpty, m.module.info)
+  theProc[namePos] = newSymNode(result)
+  theProc[bodyPos] = body
+  result.ast = theProc
+
 proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: PNode) =
   ## Also called from IC.
   if sfMainModule in m.module.flags:
@@ -2205,6 +2222,13 @@ proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: PNode) =
     if {optGenStaticLib, optGenDynLib, optNoMain} * m.config.globalOptions == {}:
       for i in countdown(high(graph.globalDestructors), 0):
         n.add graph.globalDestructors[i]
+    else:
+      var body = newNodeI(nkStmtList, m.module.info)
+      for i in countdown(high(graph.globalDestructors), 0):
+        body.add graph.globalDestructors[i]
+      body.flags.incl nfTransf # should not be further transformed
+      let dtor = generateLibraryDestroyGlobals(graph, m, body, optGenDynLib in m.config.globalOptions)
+      genProcAux(m, dtor)
   if pipelineutils.skipCodegen(m.config, n): return
   if moduleHasChanged(graph, m.module):
     # if the module is cached, we don't regenerate the main proc
