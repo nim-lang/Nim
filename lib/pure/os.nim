@@ -719,7 +719,7 @@ proc getFileSize*(file: string): BiggestInt {.rtl, extern: "nos$1",
 when defined(windows) or weirdTarget:
   type
     DeviceId* = int32
-    FileId* = uint64
+    FileId* = int64
 else:
   type
     DeviceId* = Dev
@@ -755,7 +755,7 @@ template rawToFormalFileInfo(rawInfo, path, formalInfo): untyped =
   ## or a 'Stat' structure on posix
   when defined(windows):
     template merge(a, b): untyped =
-       (
+       cast[int64](
         (uint64(cast[uint32](a))) or
         (uint64(cast[uint32](b)) shl 32)
        )
