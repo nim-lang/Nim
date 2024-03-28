@@ -1,0 +1,17 @@
+nimTitle	nirslots	nir/nirslots.html	module nir/nirslots		0
+nim	ReuseTemps	nir/nirslots.html#ReuseTemps	SlotManagerFlag.ReuseTemps		17
+nim	ReuseVars	nir/nirslots.html#ReuseVars	SlotManagerFlag.ReuseVars		17
+nim	SlotManagerFlag	nir/nirslots.html#SlotManagerFlag	enum SlotManagerFlag		17
+nim	Temp	nir/nirslots.html#Temp	SlotKind.Temp		20
+nim	Perm	nir/nirslots.html#Perm	SlotKind.Perm		20
+nim	SlotKind	nir/nirslots.html#SlotKind	enum SlotKind		20
+nim	SlotManager	nir/nirslots.html#SlotManager	object SlotManager		22
+nim	initSlotManager	nir/nirslots.html#initSlotManager,set[SlotManagerFlag]	proc initSlotManager(flags: set[SlotManagerFlag]): SlotManager		28
+nim	allocTemp	nir/nirslots.html#allocTemp,SlotManager,TypeId,int32	proc allocTemp(m: var SlotManager; t: TypeId; symIdgen: var int32): SymId		41
+nim	allocVar	nir/nirslots.html#allocVar,SlotManager,TypeId,int32	proc allocVar(m: var SlotManager; t: TypeId; symIdgen: var int32): SymId		44
+nim	freeLoc	nir/nirslots.html#freeLoc,SlotManager,SymId	proc freeLoc(m: var SlotManager; s: SymId)		47
+nim	freeTemp	nir/nirslots.html#freeTemp,SlotManager,SymId	proc freeTemp(m: var SlotManager; s: SymId)		53
+nim	stillAlive	nir/nirslots.html#stillAlive.i,SlotManager	iterator stillAlive(m: SlotManager): (SymId, TypeId)		59
+nim	getType	nir/nirslots.html#getType,SlotManager,SymId	proc getType(m: SlotManager; s: SymId): TypeId		63
+nim	openScope	nir/nirslots.html#openScope,SlotManager	proc openScope(m: var SlotManager)		65
+nim	closeScope	nir/nirslots.html#closeScope,SlotManager	proc closeScope(m: var SlotManager)		68

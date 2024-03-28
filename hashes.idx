@@ -1,0 +1,27 @@
+nimTitle	hashes	hashes.html	module std/hashes		0
+nim	Hash	hashes.html#Hash	type Hash		75
+nim	`!&`	hashes.html#!&,Hash,int	proc `!&`(h: Hash; val: int): Hash		79
+nim	`!$`	hashes.html#!$,Hash	proc `!$`(h: Hash): Hash		90
+nim	hashWangYi1	hashes.html#hashWangYi1	proc hashWangYi1(x: int64 | uint64 | Hash): Hash		165
+nim	hashData	hashes.html#hashData,pointer,int	proc hashData(data: pointer; size: int): Hash		188
+nim	hashIdentity	hashes.html#hashIdentity,T	proc hashIdentity[T: Ordinal | enum](x: T): Hash		204
+nim	hash	hashes.html#hash,T	proc hash[T: Ordinal | enum](x: T): Hash		213
+nim	hash	hashes.html#hash,pointer	proc hash(x: pointer): Hash		231
+nim	hash	hashes.html#hash,ptr.	proc hash[T](x: ptr [T]): Hash		239
+nim	hash	hashes.html#hash,ref.	proc hash[T](x: ref [T]): Hash		248
+nim	hash	hashes.html#hash,float	proc hash(x: float): Hash		272
+nim	hash	hashes.html#hash,openArray[A]	proc hash[A](x: openArray[A]): Hash		286
+nim	hash	hashes.html#hash,set[A]	proc hash[A](x: set[A]): Hash		287
+nim	hash	hashes.html#hash,string	proc hash(x: string): Hash		382
+nim	hash	hashes.html#hash,cstring	proc hash(x: cstring): Hash		396
+nim	hash	hashes.html#hash,string,int,int	proc hash(sBuf: string; sPos, ePos: int): Hash		412
+nim	hashIgnoreStyle	hashes.html#hashIgnoreStyle,string	proc hashIgnoreStyle(x: string): Hash		423
+nim	hashIgnoreStyle	hashes.html#hashIgnoreStyle,string,int,int	proc hashIgnoreStyle(sBuf: string; sPos, ePos: int): Hash		448
+nim	hashIgnoreCase	hashes.html#hashIgnoreCase,string	proc hashIgnoreCase(x: string): Hash		473
+nim	hashIgnoreCase	hashes.html#hashIgnoreCase,string,int,int	proc hashIgnoreCase(sBuf: string; sPos, ePos: int): Hash		492
+nim	hash	hashes.html#hash,T_2	proc hash[T: tuple | object | proc | iterator {.closure.}](x: T): Hash		512
+nim	hash	hashes.html#hash,openArray[A],int,int	proc hash[A](aBuf: openArray[A]; sPos, ePos: int): Hash		568
+heading	See also	hashes.html#see-also	 See also		0
+nimgrp	hashignorecase	hashes.html#hashIgnoreCase-procs-all	proc		473
+nimgrp	hashignorestyle	hashes.html#hashIgnoreStyle-procs-all	proc		423
+nimgrp	hash	hashes.html#hash-procs-all	proc		213

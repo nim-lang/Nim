@@ -1,0 +1,8 @@
+nimTitle	types2ir	nir/types2ir.html	module nir/types2ir		0
+nim	TypesCon	nir/types2ir.html#TypesCon	object TypesCon		15
+nim	initTypesCon	nir/types2ir.html#initTypesCon,ConfigRef	proc initTypesCon(conf: ConfigRef): TypesCon		22
+nim	typeToIr	nir/types2ir.html#typeToIr,TypesCon,TypeGraph,PType	proc typeToIr(c: var TypesCon; g: var TypeGraph; t: PType): TypeId		41
+nim	openArrayPayloadType	nir/types2ir.html#openArrayPayloadType,TypesCon,TypeGraph,PType	proc openArrayPayloadType(c: var TypesCon; g: var TypeGraph; t: PType): TypeId		173
+nim	strPayloadPtrType	nir/types2ir.html#strPayloadPtrType,TypesCon,TypeGraph	proc strPayloadPtrType(c: var TypesCon; g: var TypeGraph): (TypeId, TypeId)		225
+nim	seqPayloadPtrType	nir/types2ir.html#seqPayloadPtrType,TypesCon,TypeGraph,PType	proc seqPayloadPtrType(c: var TypesCon; g: var TypeGraph; t: PType): (TypeId, TypeId)		295
+nim	bitsetBasetype	nir/types2ir.html#bitsetBasetype,TypesCon,TypeGraph,PType	proc bitsetBasetype(c: var TypesCon; g: var TypeGraph; t: PType): TypeId		359

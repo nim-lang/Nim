@@ -1,0 +1,38 @@
+nimTitle	critbits	critbits.html	module std/critbits		0
+nim	CritBitTree	critbits.html#CritBitTree	object CritBitTree		54
+nim	len	critbits.html#len,CritBitTree[T]	proc len[T](c: CritBitTree[T]): int		61
+nim	contains	critbits.html#contains,CritBitTree[T],string	proc contains[T](c: CritBitTree[T]; key: string): bool		79
+nim	hasKey	critbits.html#hasKey,CritBitTree[T],string	proc hasKey[T](c: CritBitTree[T]; key: string): bool		88
+nim	excl	critbits.html#excl,CritBitTree[T],string	proc excl[T](c: var CritBitTree[T]; key: string)		166
+nim	missingOrExcl	critbits.html#missingOrExcl,CritBitTree[T],string	proc missingOrExcl[T](c: var CritBitTree[T]; key: string): bool		181
+nim	containsOrIncl	critbits.html#containsOrIncl,CritBitTree[T],string,sinkT	proc containsOrIncl[T](c: var CritBitTree[T]; key: string; val: sink T): bool		203
+nim	containsOrIncl	critbits.html#containsOrIncl,CritBitTree[void],string	proc containsOrIncl(c: var CritBitTree[void]; key: string): bool		229
+nim	inc	critbits.html#inc,CritBitTree[int],string,int	proc inc(c: var CritBitTree[int]; key: string; val: int = 1)		252
+nim	incl	critbits.html#incl,CritBitTree[void],string	proc incl(c: var CritBitTree[void]; key: string)		263
+nim	incl	critbits.html#incl,CritBitTree[T],string,sinkT	proc incl[T](c: var CritBitTree[T]; key: string; val: sink T)		276
+nim	`[]=`	critbits.html#[]=,CritBitTree[T],string,sinkT	proc `[]=`[T](c: var CritBitTree[T]; key: string; val: sink T)		290
+nim	`[]`	critbits.html#[],CritBitTree[T],string	proc `[]`[T](c: CritBitTree[T]; key: string): lent T		306
+nim	`[]`	critbits.html#[],CritBitTree[T],string_2	proc `[]`[T](c: var CritBitTree[T]; key: string): var T		316
+nim	keys	critbits.html#keys.i,CritBitTree[T]	iterator keys[T](c: CritBitTree[T]): string		338
+nim	values	critbits.html#values.i,CritBitTree[T]	iterator values[T](c: CritBitTree[T]): lent T		348
+nim	mvalues	critbits.html#mvalues.i,CritBitTree[T]	iterator mvalues[T](c: var CritBitTree[T]): var T		362
+nim	items	critbits.html#items.i,CritBitTree[T]	iterator items[T](c: CritBitTree[T]): string		370
+nim	pairs	critbits.html#pairs.i,CritBitTree[T]	iterator pairs[T](c: CritBitTree[T]): tuple[key: string, val: T]		374
+nim	mpairs	critbits.html#mpairs.i,CritBitTree[T]	iterator mpairs[T](c: var CritBitTree[T]): tuple[key: string, val: var T]		388
+nim	keysWithPrefix	critbits.html#keysWithPrefix.i,CritBitTree[T],string	iterator keysWithPrefix[T](c: CritBitTree[T]; prefix: string): string		410
+nim	valuesWithPrefix	critbits.html#valuesWithPrefix.i,CritBitTree[T],string	iterator valuesWithPrefix[T](c: CritBitTree[T]; prefix: string): lent T		421
+nim	mvaluesWithPrefix	critbits.html#mvaluesWithPrefix.i,CritBitTree[T],string	iterator mvaluesWithPrefix[T](c: var CritBitTree[T]; prefix: string): var T		436
+nim	itemsWithPrefix	critbits.html#itemsWithPrefix.i,CritBitTree[T],string	iterator itemsWithPrefix[T](c: CritBitTree[T]; prefix: string): string		445
+nim	pairsWithPrefix	critbits.html#pairsWithPrefix.i,CritBitTree[T],string	iterator pairsWithPrefix[T](c: CritBitTree[T]; prefix: string): tuple[key: string, val: T]		450
+nim	mpairsWithPrefix	critbits.html#mpairsWithPrefix.i,CritBitTree[T],string	iterator mpairsWithPrefix[T](c: var CritBitTree[T]; prefix: string): tuple[key: string,\n    val: var T]		465
+nim	`$`	critbits.html#$,CritBitTree[T]	proc `$`[T](c: CritBitTree[T]): string		475
+nim	commonPrefixLen	critbits.html#commonPrefixLen,CritBitTree[T]	proc commonPrefixLen[T](c: CritBitTree[T]): int		508
+nim	toCritBitTree	critbits.html#toCritBitTree,sinkopenArray[]	proc toCritBitTree[T](pairs: sink openArray[(string, T)]): CritBitTree[T]		524
+nim	toCritBitTree	critbits.html#toCritBitTree,sinkopenArray[string]	proc toCritBitTree(items: sink openArray[string]): CritBitTree[void]		532
+idx	crit bit tree	critbits.html#crit-bit-tree_1	Module critbits		0
+idx	radix tree	critbits.html#radix-tree_1	Module critbits		0
+idx	patricia trie	critbits.html#patricia-trie_1	Module critbits		0
+nimgrp	containsorincl	critbits.html#containsOrIncl-procs-all	proc		203
+nimgrp	incl	critbits.html#incl-procs-all	proc		263
+nimgrp	tocritbittree	critbits.html#toCritBitTree-procs-all	proc		524
+nimgrp	[]	critbits.html#[]-procs-all	proc		306

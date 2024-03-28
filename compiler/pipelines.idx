@@ -1,0 +1,7 @@
+nimTitle	pipelines	pipelines.html	module pipelines		0
+nim	setPipeLinePass	pipelines.html#setPipeLinePass,ModuleGraph,PipelinePass	proc setPipeLinePass(graph: ModuleGraph; pass: PipelinePass)		18
+nim	processPipelineModule	pipelines.html#processPipelineModule,ModuleGraph,PSym,IdGenerator,PLLStream	proc processPipelineModule(graph: ModuleGraph; module: PSym; idgen: IdGenerator;\n                      stream: PLLStream): bool		100
+nim	compilePipelineModule	pipelines.html#compilePipelineModule,ModuleGraph,FileIndex,TSymFlags,PSym	proc compilePipelineModule(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymFlags;\n                      fromModule: PSym = nil): PSym		234
+nim	connectPipelineCallbacks	pipelines.html#connectPipelineCallbacks,ModuleGraph	proc connectPipelineCallbacks(graph: ModuleGraph)		296
+nim	compilePipelineSystemModule	pipelines.html#compilePipelineSystemModule,ModuleGraph	proc compilePipelineSystemModule(graph: ModuleGraph)		300
+nim	compilePipelineProject	pipelines.html#compilePipelineProject,ModuleGraph	proc compilePipelineProject(graph: ModuleGraph; projectFileIdx = InvalidFileIdx)		307

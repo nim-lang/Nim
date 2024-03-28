@@ -1,0 +1,75 @@
+nimTitle	packed_ast	ic/packed_ast.html	module ic/packed_ast		0
+nim	SymId	ic/packed_ast.html#SymId	type SymId		25
+nim	ModuleId	ic/packed_ast.html#ModuleId	type ModuleId		26
+nim	NodePos	ic/packed_ast.html#NodePos	type NodePos		27
+nim	NodeId	ic/packed_ast.html#NodeId	type NodeId		29
+nim	PackedItemId	ic/packed_ast.html#PackedItemId	object PackedItemId		31
+nim	nilItemId	ic/packed_ast.html#nilItemId	const nilItemId		36
+nim	emptyNodeId	ic/packed_ast.html#emptyNodeId	const emptyNodeId		39
+nim	PackedLib	ic/packed_ast.html#PackedLib	object PackedLib		42
+nim	PackedSym	ic/packed_ast.html#PackedSym	object PackedSym		49
+nim	PackedType	ic/packed_ast.html#PackedType	object PackedType		73
+nim	PackedNode	ic/packed_ast.html#PackedNode	object PackedNode		90
+nim	PackedTree	ic/packed_ast.html#PackedTree	object PackedTree		94
+nim	PackedInstantiation	ic/packed_ast.html#PackedInstantiation	object PackedInstantiation		99
+nim	kind	ic/packed_ast.html#kind.t,PackedNode	template kind(n: PackedNode): TNodeKind		107
+nim	uoperand	ic/packed_ast.html#uoperand.t,PackedNode	template uoperand(n: PackedNode): uint32		108
+nim	soperand	ic/packed_ast.html#soperand.t,PackedNode	template soperand(n: PackedNode): int32		109
+nim	typeId	ic/packed_ast.html#typeId.t,PackedNode	template typeId(n: PackedNode): PackedItemId		117
+nim	`==`	ic/packed_ast.html#==,SymId,SymId	proc `==`(a, b: SymId): bool		119
+nim	hash	ic/packed_ast.html#hash,SymId	proc hash(a: SymId): Hash		120
+nim	`==`	ic/packed_ast.html#==,NodePos,NodePos	proc `==`(a, b: NodePos): bool		122
+nim	`==`	ic/packed_ast.html#==,NodeId,NodeId	proc `==`(a, b: NodeId): bool		124
+nim	newTreeFrom	ic/packed_ast.html#newTreeFrom,PackedTree	proc newTreeFrom(old: PackedTree): PackedTree		126
+nim	addIdent	ic/packed_ast.html#addIdent,PackedTree,LitId,PackedLineInfo	proc addIdent(tree: var PackedTree; s: LitId; info: PackedLineInfo)		130
+nim	addSym	ic/packed_ast.html#addSym,PackedTree,int32,PackedLineInfo	proc addSym(tree: var PackedTree; s: int32; info: PackedLineInfo)		133
+nim	addSymDef	ic/packed_ast.html#addSymDef,PackedTree,SymId,PackedLineInfo	proc addSymDef(tree: var PackedTree; s: SymId; info: PackedLineInfo)		136
+nim	isAtom	ic/packed_ast.html#isAtom,PackedTree,int	proc isAtom(tree: PackedTree; pos: int): bool		139
+nim	addNode	ic/packed_ast.html#addNode,PackedTree,TNodeKind,int32,PackedItemId,PackedLineInfo,TNodeFlags	proc addNode(t: var PackedTree; kind: TNodeKind; operand: int32;\n        typeId: PackedItemId = nilItemId; info: PackedLineInfo;\n        flags: TNodeFlags = {})		144
+nim	prepare	ic/packed_ast.html#prepare,PackedTree,TNodeKind,TNodeFlags,PackedItemId,PackedLineInfo	proc prepare(tree: var PackedTree; kind: TNodeKind; flags: TNodeFlags;\n        typeId: PackedItemId; info: PackedLineInfo): PatchPos		153
+nim	prepare	ic/packed_ast.html#prepare,PackedTree,PackedTree,NodePos	proc prepare(dest: var PackedTree; source: PackedTree; sourcePos: NodePos): PatchPos		157
+nim	patch	ic/packed_ast.html#patch,PackedTree,PatchPos	proc patch(tree: var PackedTree; pos: PatchPos)		161
+nim	len	ic/packed_ast.html#len,PackedTree	proc len(tree: PackedTree): int		169
+nim	`[]`	ic/packed_ast.html#[],PackedTree,NodePos	proc `[]`(tree: PackedTree; i: NodePos): lent PackedNode		171
+nim	sonsReadonly	ic/packed_ast.html#sonsReadonly.i,PackedTree,NodePos	iterator sonsReadonly(tree: PackedTree; n: NodePos): NodePos		183
+nim	sons	ic/packed_ast.html#sons.i,PackedTree,PackedTree,NodePos	iterator sons(dest: var PackedTree; tree: PackedTree; n: NodePos): NodePos		192
+nim	isons	ic/packed_ast.html#isons.i,PackedTree,PackedTree,NodePos	iterator isons(dest: var PackedTree; tree: PackedTree; n: NodePos): (int, NodePos)		197
+nim	sonsFrom1	ic/packed_ast.html#sonsFrom1.i,PackedTree,NodePos	iterator sonsFrom1(tree: PackedTree; n: NodePos): NodePos		204
+nim	sonsWithoutLast2	ic/packed_ast.html#sonsWithoutLast2.i,PackedTree,NodePos	iterator sonsWithoutLast2(tree: PackedTree; n: NodePos): NodePos		215
+nim	parent	ic/packed_ast.html#parent.t,NodePos	template parent(n: NodePos): NodePos		236
+nim	hasXsons	ic/packed_ast.html#hasXsons,PackedTree,NodePos,int	proc hasXsons(tree: PackedTree; n: NodePos; x: int): bool		238
+nim	hasAtLeastXsons	ic/packed_ast.html#hasAtLeastXsons,PackedTree,NodePos,int	proc hasAtLeastXsons(tree: PackedTree; n: NodePos; x: int): bool		244
+nim	firstSon	ic/packed_ast.html#firstSon,PackedTree,NodePos	proc firstSon(tree: PackedTree; n: NodePos): NodePos		252
+nim	kind	ic/packed_ast.html#kind,PackedTree,NodePos	proc kind(tree: PackedTree; n: NodePos): TNodeKind		254
+nim	litId	ic/packed_ast.html#litId,PackedTree,NodePos	proc litId(tree: PackedTree; n: NodePos): LitId		256
+nim	info	ic/packed_ast.html#info,PackedTree,NodePos	proc info(tree: PackedTree; n: NodePos): PackedLineInfo		258
+nim	findType	ic/packed_ast.html#findType,PackedTree,NodePos	proc findType(tree: PackedTree; n: NodePos): PackedItemId		261
+nim	findFlags	ic/packed_ast.html#findFlags,PackedTree,NodePos	proc findFlags(tree: PackedTree; n: NodePos): TNodeFlags		267
+nim	typ	ic/packed_ast.html#typ.t,NodePos	template typ(n: NodePos): PackedItemId		273
+nim	flags	ic/packed_ast.html#flags.t,NodePos	template flags(n: NodePos): TNodeFlags		275
+nim	uoperand	ic/packed_ast.html#uoperand.t,NodePos	template uoperand(n: NodePos): uint32		278
+nim	span	ic/packed_ast.html#span,PackedTree,int	proc span(tree: PackedTree; pos: int): int		281
+nim	sons2	ic/packed_ast.html#sons2,PackedTree,NodePos	proc sons2(tree: PackedTree; n: NodePos): (NodePos, NodePos)		284
+nim	sons3	ic/packed_ast.html#sons3,PackedTree,NodePos	proc sons3(tree: PackedTree; n: NodePos): (NodePos, NodePos, NodePos)		290
+nim	ithSon	ic/packed_ast.html#ithSon,PackedTree,NodePos,int	proc ithSon(tree: PackedTree; n: NodePos; i: int): NodePos		297
+nim	kind	ic/packed_ast.html#kind.t,NodePos	template kind(n: NodePos): TNodeKind		310
+nim	info	ic/packed_ast.html#info.t,NodePos	template info(n: NodePos): PackedLineInfo		311
+nim	litId	ic/packed_ast.html#litId.t,NodePos	template litId(n: NodePos): LitId		312
+nim	symId	ic/packed_ast.html#symId.t,NodePos	template symId(n: NodePos): SymId		314
+nim	firstSon	ic/packed_ast.html#firstSon,NodePos	proc firstSon(n: NodePos): NodePos		316
+nim	externIntLit	ic/packed_ast.html#externIntLit	const externIntLit		319
+nim	externSIntLit	ic/packed_ast.html#externSIntLit	const externSIntLit		331
+nim	externUIntLit	ic/packed_ast.html#externUIntLit	const externUIntLit		332
+nim	directIntLit	ic/packed_ast.html#directIntLit	const directIntLit		333
+nim	copyInto	ic/packed_ast.html#copyInto.t,,,	template copyInto(dest, n, body)		335
+nim	copyIntoKind	ic/packed_ast.html#copyIntoKind.t,,,,	template copyIntoKind(dest, kind, info, body)		340
+nim	getNodeId	ic/packed_ast.html#getNodeId,PackedTree	proc getNodeId(tree: PackedTree): NodeId		345
+nim	allNodes	ic/packed_ast.html#allNodes.i,PackedTree	iterator allNodes(tree: PackedTree): NodePos		347
+nim	toPackedItemId	ic/packed_ast.html#toPackedItemId,int32	proc toPackedItemId(item: int32): PackedItemId		354
+nim	load	ic/packed_ast.html#load,RodFile,PackedTree	proc load(f: var RodFile; t: var PackedTree)		357
+nim	store	ic/packed_ast.html#store,RodFile,PackedTree	proc store(f: var RodFile; t: PackedTree)		362
+nimgrp	prepare	ic/packed_ast.html#prepare-procs-all	proc		153
+nimgrp	firstson	ic/packed_ast.html#firstSon-procs-all	proc		252
+nimgrp	==	ic/packed_ast.html#==-procs-all	proc		119
+nimgrp	kind	ic/packed_ast.html#kind-templates-all	template		107
+nimgrp	uoperand	ic/packed_ast.html#uoperand-templates-all	template		108

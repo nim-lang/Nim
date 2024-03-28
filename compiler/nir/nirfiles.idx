@@ -1,0 +1,4 @@
+nimTitle	nirfiles	nir/nirfiles.html	module nir/nirfiles		0
+nim	NirModule	nir/nirfiles.html#NirModule	object NirModule		14
+nim	load	nir/nirfiles.html#load,string	proc load(filename: string): NirModule		23
+nim	store	nir/nirfiles.html#store,NirModule,string	proc store(m: NirModule; outp: string)		54

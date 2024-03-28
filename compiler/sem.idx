@@ -1,0 +1,17 @@
+nimTitle	sem	sem.html	module sem		0
+nim	commonTypeBegin	sem.html#commonTypeBegin.t	template commonTypeBegin(): PType		131
+nim	commonType	sem.html#commonType,PContext,PType,PType	proc commonType(c: PContext; x, y: PType): PType		133
+nim	commonType	sem.html#commonType,PContext,PType,PNode	proc commonType(c: PContext; x: PType; y: PNode): PType		286
+nim	newSymG	sem.html#newSymG,TSymKind,PNode,PContext	proc newSymG(kind: TSymKind; n: PNode; c: PContext): PSym		296
+nim	pushProcCon	sem.html#pushProcCon,PContext,PSym	proc pushProcCon(c: PContext; owner: PSym)		31
+nim	notFoundError	sem.html#notFoundError,PContext,PNode,CandidateErrors	proc notFoundError(c: PContext; n: PNode; errors: CandidateErrors)		375
+nim	instGenericConvertersArg	sem.html#instGenericConvertersArg,PContext,PNode,TCandidate	proc instGenericConvertersArg(c: PContext; a: PNode; x: TCandidate)		557
+nim	instGenericConvertersSons	sem.html#instGenericConvertersSons,PContext,PNode,TCandidate	proc instGenericConvertersSons(c: PContext; n: PNode; x: TCandidate)		567
+nim	isRecursiveType	sem.html#isRecursiveType,PType	proc isRecursiveType(t: PType): bool		262
+nim	tyUserDefinedGenerics	sem.html#tyUserDefinedGenerics	const tyUserDefinedGenerics		122
+nim	tyMagicGenerics	sem.html#tyMagicGenerics	const tyMagicGenerics		125
+nim	tyGenericLike	sem.html#tyGenericLike	const tyGenericLike		127
+nim	preparePContext	sem.html#preparePContext,ModuleGraph,PSym,IdGenerator	proc preparePContext(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PContext		764
+nim	semWithPContext	sem.html#semWithPContext,PContext,PNode	proc semWithPContext(c: PContext; n: PNode): PNode		878
+nim	closePContext	sem.html#closePContext,ModuleGraph,PContext,PNode	proc closePContext(graph: ModuleGraph; c: PContext; n: PNode): PNode		906
+nimgrp	commontype	sem.html#commonType-procs-all	proc		133

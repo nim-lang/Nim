@@ -1,0 +1,18 @@
+nimTitle	semtypinst	semtypinst.html	module semtypinst		0
+nim	checkConstructedType	semtypinst.html#checkConstructedType,ConfigRef,TLineInfo,PType	proc checkConstructedType(conf: ConfigRef; info: TLineInfo; typ: PType)		26
+nim	searchInstTypes	semtypinst.html#searchInstTypes,ModuleGraph,PType	proc searchInstTypes(g: ModuleGraph; key: PType): PType		34
+nim	LayeredIdTable	semtypinst.html#LayeredIdTable	type LayeredIdTable		68
+nim	TReplTypeVars	semtypinst.html#TReplTypeVars	object TReplTypeVars		72
+nim	replaceTypeVarsN	semtypinst.html#replaceTypeVarsN,TReplTypeVars,PNode,int,PType	proc replaceTypeVarsN(cl: var TReplTypeVars; n: PNode; start = 0;\n                 expectedType: PType = nil): PNode		89
+nim	initLayeredTypeMap	semtypinst.html#initLayeredTypeMap,sinkTypeMapping	proc initLayeredTypeMap(pt: sink TypeMapping): LayeredIdTable		91
+nim	newTypeMapLayer	semtypinst.html#newTypeMapLayer,TReplTypeVars	proc newTypeMapLayer(cl: var TReplTypeVars): LayeredIdTable		95
+nim	replaceTypeVarsT	semtypinst.html#replaceTypeVarsT,TReplTypeVars,PType	proc replaceTypeVarsT(cl: var TReplTypeVars; t: PType): PType		117
+nim	instCopyType	semtypinst.html#instCopyType,TReplTypeVars,PType	proc instCopyType(cl: var TReplTypeVars; t: PType): PType		335
+nim	eraseVoidParams	semtypinst.html#eraseVoidParams,PType	proc eraseVoidParams(t: PType)		483
+nim	skipIntLiteralParams	semtypinst.html#skipIntLiteralParams,PType,IdGenerator	proc skipIntLiteralParams(t: PType; idgen: IdGenerator)		502
+nim	initTypeVars	semtypinst.html#initTypeVars,PContext,LayeredIdTable,TLineInfo,PSym	proc initTypeVars(p: PContext; typeMap: LayeredIdTable; info: TLineInfo; owner: PSym): TReplTypeVars		693
+nim	replaceTypesInBody	semtypinst.html#replaceTypesInBody,PContext,TypeMapping,PNode,PSym,PType	proc replaceTypesInBody(p: PContext; pt: TypeMapping; n: PNode; owner: PSym;\n                   allowMetaTypes = false; fromStaticExpr = false;\n                   expectedType: PType = nil): PNode		699
+nim	recomputeFieldPositions	semtypinst.html#recomputeFieldPositions,PType,PNode,int	proc recomputeFieldPositions(t: PType; obj: PNode; currPosition: var int)		720
+nim	generateTypeInstance	semtypinst.html#generateTypeInstance,PContext,TypeMapping,TLineInfo,PType	proc generateTypeInstance(p: PContext; pt: TypeMapping; info: TLineInfo; t: PType): PType		736
+nim	prepareMetatypeForSigmatch	semtypinst.html#prepareMetatypeForSigmatch,PContext,TypeMapping,TLineInfo,PType	proc prepareMetatypeForSigmatch(p: PContext; pt: TypeMapping; info: TLineInfo;\n                           t: PType): PType		752
+nim	generateTypeInstance	semtypinst.html#generateTypeInstance.t,PContext,TypeMapping,PNode,PType	template generateTypeInstance(p: PContext; pt: TypeMapping; arg: PNode; t: PType): untyped		761
