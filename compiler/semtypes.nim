@@ -1664,6 +1664,8 @@ proc semTypeExpr(c: PContext, n: PNode; prev: PType): PType =
         # unnecessary new type creation
         let alias = maybeAliasType(c, result, prev)
         if alias != nil: result = alias
+  elif n.typ.kind == tyFromExpr and c.inGenericContext > 0:
+    result = n.typ
   else:
     localError(c.config, n.info, "expected type, but got: " & n.renderTree)
     result = errorType(c)
@@ -2025,11 +2027,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       elif op.s == "owned" and optOwnedRefs notin c.config.globalOptions and n.len == 2:
         result = semTypeExpr(c, n[1], prev)
       else:
-        if c.inGenericContext > 0 and n.kind == nkCall:
-          let n = semGenericStmt(c, n)
-          result = makeTypeFromExpr(c, n.copyTree)
-        else:
-          result = semTypeExpr(c, n, prev)
+        result = semTypeExpr(c, n, prev)
   of nkWhenStmt:
     var whenResult = semWhen(c, n, false)
     if whenResult.kind == nkStmtList: whenResult.transitionSonsKind(nkStmtListType)
