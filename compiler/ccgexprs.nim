@@ -2088,7 +2088,7 @@ proc genSetOp(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     of mExcl: binaryStmtInExcl(p, e, d, "$1[(NU)($2)>>3] &= ~(1U<<($2&7U));$n")
     of mCard:
       var a: TLoc = initLocExpr(p, e[1])
-      putIntoDest(p, d, e, ropecg(p.module, "#cardSet($1, $2)", [addrLoc(p.config, a), size]))
+      putIntoDest(p, d, e, ropecg(p.module, "#cardSet($1, $2)", [rdCharLoc(a), size]))
     of mLtSet, mLeSet:
       i = getTemp(p, getSysType(p.module.g.graph, unknownLineInfo, tyInt)) # our counter
       a = initLocExpr(p, e[1])
