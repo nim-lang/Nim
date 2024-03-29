@@ -2423,7 +2423,7 @@ proc addCallConv(c: var ProcCon; info: PackedLineInfo; callConv: TCallingConvent
   of ccInline: ann InlineCall
   of ccNoInline: ann NoinlineCall
   of ccThisCall: ann ThisCall
-  of ccNoConvention: ann NoCall
+  of ccNoConvention, ccMember: ann NoCall
 
 proc genProc(cOuter: var ProcCon; prc: PSym) =
   if prc.magic notin generatedMagics: return

@@ -36,6 +36,7 @@ type
     ccThisCall = "thiscall"         # thiscall (parameters are pushed right-to-left)
     ccClosure  = "closure"          # proc has a closure
     ccNoConvention = "noconv"       # needed for generating proper C procs sometimes
+    ccMember = "member"             # proc is a (cpp) member
 
   TNodeKinds* = set[TNodeKind]
 
