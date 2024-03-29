@@ -50,3 +50,21 @@ template get*[T: not void](self: Opt[T]): T = self.value()
 method connect*(
   self: Opt[(int, int)]) =
   discard self.get()[0]
+
+block: # bug #23454
+  type
+    Letter = enum
+      A
+
+    LetterPairs = object
+      values: seq[(Letter, string)]
+
+  iterator items(list: var LetterPairs): lent (Letter, string) =
+    for item in list.values:
+      yield item
+
+  var instance = LetterPairs(values: @[(A, "foo")])
+
+  for (a, _) in instance:
+    case a
+    of A: discard
