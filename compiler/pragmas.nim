@@ -241,7 +241,7 @@ proc processVirtual(c: PContext, n: PNode, s: PSym, flag: TSymFlag) =
   s.constraint.strVal = s.constraint.strVal % s.name.s
   s.flags.incl {flag, sfInfixCall, sfExportc, sfMangleCpp}
 
-  s.typ.callConv = ccNoConvention
+  s.typ.callConv = ccMember
   incl c.config.globalOptions, optMixedMode
 
 proc processCodegenDecl(c: PContext, n: PNode, sym: PSym) =
