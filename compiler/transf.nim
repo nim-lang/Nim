@@ -441,7 +441,7 @@ proc transformYield(c: PTransf, n: PNode): PNode =
         let v = newNodeI(nkVarSection, e.info)
         v.addVar(tmp, e)
 
-        if e.typ.kind == tyPtr: # tyLent
+        if e.typ.kind == tyPtr: # tyLent, tyVar
           tmp = newTreeIT(nkHiddenDeref, e.info, e.typ.skipTypes({tyPtr}),
                   tmp)
 
@@ -449,7 +449,7 @@ proc transformYield(c: PTransf, n: PNode): PNode =
         for i in 0..<c.transCon.forStmt[0].len-1:
           let lhs = c.transCon.forStmt[0][i]
           let rhs = transform(c, newTupleAccess(c.graph, tmp, i))
-          if lhs.typ.kind == tyLent:
+          if lhs.typ.kind in {tyLent, tyVar}:
             var addrExp = newNodeIT(nkHiddenAddr, rhs.info, makeVarType(rhs.typ.owner, rhs.typ, c.idgen, tyPtr))
             addrExp.add(rhs)
             result.add(asgnTo(lhs, addrExp))
