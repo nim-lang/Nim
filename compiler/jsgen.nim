@@ -1552,7 +1552,7 @@ proc genAddr(p: PProc, n: PNode, r: var TCompRes) =
       if ty.kind in MappedToObject:
         gen(p, n[0], r)
       else:
-        let kindOfIndexedExpr = skipTypes(n[0][0].typ, abstractVarRange).kind
+        let kindOfIndexedExpr = skipTypes(n[0][0].typ, abstractVarRange+tyUserTypeClasses).kind
         case kindOfIndexedExpr
         of tyArray, tyOpenArray, tySequence, tyString, tyCstring, tyVarargs:
           genArrayAddr(p, n[0], r)
