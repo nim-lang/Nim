@@ -1322,19 +1322,10 @@ proc genFastAsgn(p: PProc, n: PNode) =
   genAsgnAux(p, n[0], n[1], noCopyNeeded=noCopy)
 
 proc genSwap(p: PProc, n: PNode) =
-  var a, b: TCompRes = default(TCompRes)
-  gen(p, n[1], a)
-  gen(p, n[2], b)
-  var tmp = p.getTemp(false)
-  if mapType(p, skipTypes(n[1].typ, abstractVar)) == etyBaseIndex:
-    let tmp2 = p.getTemp(false)
-    if a.typ != etyBaseIndex or b.typ != etyBaseIndex:
-      internalError(p.config, n.info, "genSwap")
-    lineF(p, "var $1 = $2; $2 = $3; $3 = $1;$n",
-             [tmp, a.address, b.address])
-    tmp = tmp2
-  lineF(p, "var $1 = $2; $2 = $3; $3 = $1;",
-           [tmp, a.res, b.res])
+  let stmtList = lowerSwap(p.module.graph, n, p.module.idgen, if p.prc != nil: p.prc else: p.module.module)
+  assert stmtList.kind == nkStmtList
+  for i in 0..<stmtList.len:
+    genStmt(p, stmtList[i])
 
 proc getFieldPosition(p: PProc; f: PNode): int =
   case f.kind
