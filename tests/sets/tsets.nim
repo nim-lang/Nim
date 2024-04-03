@@ -1,5 +1,5 @@
 discard """
-  target: "c cpp"
+  targets: "c cpp"
 """
 
 # Test builtin sets
