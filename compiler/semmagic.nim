@@ -561,9 +561,9 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
   case n[0].sym.magic
   of mAddr:
     checkSonsLen(n, 2, c.config)
-    result = n
-    result[1] = semAddrArg(c, n[1])
-    result.typ = makePtrType(c, result[1].typ)
+    result = newTreeI(nkAddr, n.info)
+    result.add semAddrArg(c, n[1])
+    result.typ = makePtrType(c, result[0].typ)
   of mTypeOf:
     result = semTypeOf(c, n)
   of mSizeOf:
