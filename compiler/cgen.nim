@@ -15,7 +15,8 @@ import
   ccgutils, ropes, wordrecg, treetab, cgmeth,
   rodutils, renderer, cgendata, aliases,
   lowerings, ndi, lineinfos, pathutils, transf,
-  injectdestructors, astmsgs, modulepaths, backendpragmas
+  injectdestructors, astmsgs, modulepaths, backendpragmas,
+  mangleutils
 
 from expanddefaults import caseObjDefaultBranch
 

@@ -76,10 +76,7 @@ proc fillBackendName(m: BModule; s: PSym) =
       result = mangleProc(m, s, false).rope
     else:
       result = s.name.s.mangle.rope
-      result.add "__"
-      result.add m.g.graph.ifaces[s.itemId.module].uniqueName
-      result.add "_u"
-      result.addInt s.itemId.item # s.disamb #
+      result.add mangleProcNameExt(m.g.graph, s)
     if m.hcrOn:
       result.add '_'
       result.add(idOrSig(s, m.module.name.s.mangle, m.sigConflicts, m.config))
@@ -89,8 +86,7 @@ proc fillBackendName(m: BModule; s: PSym) =
 proc fillParamName(m: BModule; s: PSym) =
   if s.loc.r == "":
     var res = s.name.s.mangle
-    res.add "_p"
-    res.addInt s.position
+    res.add mangleParamExt(s)
     #res.add idOrSig(s, res, m.sigConflicts, m.config)
     # Take into account if HCR is on because of the following scenario:
     #   if a module gets imported and it has some more importc symbols in it,

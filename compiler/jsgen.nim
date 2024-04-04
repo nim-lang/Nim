@@ -31,9 +31,10 @@ implements the required case distinction.
 import
   ast, trees, magicsys, options,
   nversion, msgs, idents, types,
-  ropes, ccgutils, wordrecg, renderer,
+  ropes, wordrecg, renderer,
   cgmeth, lowerings, sighashes, modulegraphs, lineinfos,
-  transf, injectdestructors, sourcemap, astmsgs, backendpragmas
+  transf, injectdestructors, sourcemap, astmsgs, backendpragmas,
+  mangleutils
 
 import pipelineutils
 
@@ -269,6 +270,10 @@ proc mangleName(m: BModule, s: PSym): Rope =
         # When hot reloading is enabled, we must ensure that the names
         # of functions and types will be preserved across rebuilds:
         result.add(idOrSig(s, m.module.name.s, m.sigConflicts, m.config))
+      elif s.kind == skParam:
+        result.add mangleParamExt(s)
+      elif s.kind in routineKinds:
+        result.add mangleProcNameExt(m.graph, s)
       else:
         result.add("_")
         result.add(rope(s.id))
