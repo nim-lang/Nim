@@ -125,9 +125,6 @@ proc unsafeAddr*[T](x: T): ptr T {.magic: "Addr", noSideEffect.} =
 
 const ThisIsSystem = true
 
-proc internalNew*[T](a: var ref T) {.magic: "New", noSideEffect.}
-  ## Leaked implementation detail. Do not use.
-
 proc new*[T](a: var ref T, finalizer: proc (x: ref T) {.nimcall.}) {.
   magic: "NewFinalize", noSideEffect.}
   ## Creates a new object of type `T` and returns a safe (traced)
