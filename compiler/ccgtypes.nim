@@ -1624,7 +1624,7 @@ proc generateRttiDestructor(g: ModuleGraph; typ: PType; owner: PSym; kind: TType
     ))
     )
   else:
-    let addrOf = newNodeIT(nkAddr, info, theProc.typ.firstParamType)
+    let addrOf = newNodeIT(nkHiddenAddr, info, theProc.typ.firstParamType)
     addrOf.add newDeref(newTreeIT(
       nkCast, info, castType, newNodeIT(nkType, info, castType),
       newSymNode(dest)
