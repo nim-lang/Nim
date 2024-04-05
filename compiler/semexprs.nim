@@ -2448,9 +2448,7 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags; expectedType: P
   of mAddr:
     markUsed(c, n.info, s)
     checkSonsLen(n, 2, c.config)
-    result = newTreeI(nkAddr, n.info)
-    result.add semAddrArg(c, n[1])
-    result.typ = makePtrType(c, result[0].typ)
+    result = semAddr(c, n[1])
   of mTypeOf:
     markUsed(c, n.info, s)
     result = semTypeOf(c, n)
@@ -3335,8 +3333,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
   of nkAddr:
     result = n
     checkSonsLen(n, 1, c.config)
-    result[0] = semAddrArg(c, n[0])
-    result.typ = makePtrType(c, result[0].typ)
+    result = semAddr(c, n[0])
   of nkHiddenAddr, nkHiddenDeref:
     checkSonsLen(n, 1, c.config)
     n[0] = semExpr(c, n[0], flags, expectedType)

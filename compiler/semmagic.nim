@@ -30,13 +30,15 @@ proc addDefaultFieldForNew(c: PContext, n: PNode): PNode =
     if asgnExpr.sons.len > 1:
       result = newTree(nkAsgn, result[1], asgnExpr)
 
-proc semAddrArg(c: PContext; n: PNode): PNode =
+proc semAddr(c: PContext; n: PNode): PNode =
+  result = newNodeI(nkAddr, n.info)
   let x = semExprWithType(c, n)
   if x.kind == nkSym:
     x.sym.flags.incl(sfAddrTaken)
   if isAssignable(c, x) notin {arLValue, arLocalLValue, arAddressableConst, arLentValue}:
     localError(c.config, n.info, errExprHasNoAddress)
-  result = x
+  result.add x
+  result.typ = makePtrType(c, x.typ)
 
 proc semTypeOf(c: PContext; n: PNode): PNode =
   var m = BiggestInt 1 # typeOfIter
@@ -561,9 +563,7 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
   case n[0].sym.magic
   of mAddr:
     checkSonsLen(n, 2, c.config)
-    result = newTreeI(nkAddr, n.info)
-    result.add semAddrArg(c, n[1])
-    result.typ = makePtrType(c, result[0].typ)
+    result = semAddr(c, n[1])
   of mTypeOf:
     result = semTypeOf(c, n)
   of mSizeOf:
