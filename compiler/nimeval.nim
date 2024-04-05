@@ -40,7 +40,7 @@ proc selectUniqueSymbol*(i: Interpreter; name: string;
   assert i != nil
   assert i.mainModule != nil, "no main module selected"
   let n = getIdent(i.graph.cache, name)
-  var it: ModuleIter
+  var it: ModuleIter = default(ModuleIter)
   var s = initModuleIter(it, i.graph, i.mainModule, n)
   result = nil
   while s != nil:

@@ -259,7 +259,7 @@ proc nextModuleIter*(mi: var ModuleIter; g: ModuleGraph): PSym =
 iterator allSyms*(g: ModuleGraph; m: PSym): PSym =
   let importHidden = optImportHidden in m.options
   if isCachedModule(g, m):
-    var rodIt: RodIter
+    var rodIt: RodIter = default(RodIter)
     var r = initRodIterAllSyms(rodIt, g.config, g.cache, g.packed, FileIndex m.position, importHidden)
     while r != nil:
       yield r
@@ -280,7 +280,7 @@ proc systemModuleSym*(g: ModuleGraph; name: PIdent): PSym =
   result = someSym(g, g.systemModule, name)
 
 iterator systemModuleSyms*(g: ModuleGraph; name: PIdent): PSym =
-  var mi: ModuleIter
+  var mi: ModuleIter = default(ModuleIter)
   var r = initModuleIter(mi, g, g.systemModule, name)
   while r != nil:
     yield r

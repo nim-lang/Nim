@@ -2198,7 +2198,7 @@ proc semExpandToAst(c: PContext, n: PNode): PNode =
     let headSymbol = macroCall[0]
     var cands = 0
     var cand: PSym = nil
-    var o: TOverloadIter
+    var o: TOverloadIter = default(TOverloadIter)
     var symx = initOverloadIter(o, c, headSymbol)
     while symx != nil:
       if symx.kind in {skTemplate, skMacro} and symx.typ.len == macroCall.len:
@@ -2861,7 +2861,7 @@ proc semExport(c: PContext, n: PNode): PNode =
   result = newNodeI(nkExportStmt, n.info)
   for i in 0..<n.len:
     let a = n[i]
-    var o: TOverloadIter
+    var o: TOverloadIter = default(TOverloadIter)
     var s = initOverloadIter(o, c, a)
     if s == nil:
       localError(c.config, a.info, errGenerated, "cannot export: " & renderTree(a))
@@ -2991,7 +2991,7 @@ proc getNilType(c: PContext): PType =
     c.nilTypeCache = result
 
 proc enumFieldSymChoice(c: PContext, n: PNode, s: PSym): PNode =
-  var o: TOverloadIter
+  var o: TOverloadIter = default(TOverloadIter)
   var i = 0
   var a = initOverloadIter(o, c, n)
   while a != nil:

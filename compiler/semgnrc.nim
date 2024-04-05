@@ -237,7 +237,7 @@ proc semGenericStmt(c: PContext, n: PNode,
     #var s = qualifiedLookUp(c, n, luf)
     #if s != nil: result = semGenericStmtSymbol(c, n, s)
     # XXX for example: ``result.add`` -- ``add`` needs to be looked up here...
-    var dummy: bool
+    var dummy: bool = false
     result = fuzzyLookup(c, n, flags, ctx, dummy)
   of nkSym:
     let a = n.sym

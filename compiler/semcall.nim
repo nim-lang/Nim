@@ -80,7 +80,7 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
   # `matches` may find new symbols, so keep track of count
   var symCount = c.currentScope.symbols.counter
 
-  var o: TOverloadIter
+  var o: TOverloadIter = default(TOverloadIter)
   # https://github.com/nim-lang/Nim/issues/21272
   # prevent mutation during iteration by storing them in a seq
   # luckily `initCandidateSymbols` does just that
@@ -411,7 +411,7 @@ proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
 
 proc bracketNotFoundError(c: PContext; n: PNode) =
   var errors: CandidateErrors = @[]
-  var o: TOverloadIter
+  var o: TOverloadIter = default(TOverloadIter)
   let headSymbol = n[0]
   var symx = initOverloadIter(o, c, headSymbol)
   while symx != nil:
@@ -434,7 +434,7 @@ proc getMsgDiagnostic(c: PContext, flags: TExprFlags, n, f: PNode): string =
     # also avoid slowdowns in evaluating `compiles(expr)`.
     discard
   else:
-    var o: TOverloadIter
+    var o: TOverloadIter = default(TOverloadIter)
     var sym = initOverloadIter(o, c, f)
     while sym != nil:
       result &= "\n  found $1" % [getSymRepr(c.config, sym)]
@@ -479,7 +479,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
                     filter, result, alt, errors, efExplain in flags,
                     errorsEnabled, flags)
 
-  var dummyErrors: CandidateErrors
+  var dummyErrors: CandidateErrors = @[]
   template pickSpecialOp(headSymbol) =
     pickBestCandidate(c, headSymbol, n, orig, initialBinding,
                       filter, result, alt, dummyErrors, efExplain in flags,

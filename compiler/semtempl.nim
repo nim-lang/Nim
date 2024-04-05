@@ -52,7 +52,7 @@ proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule;
                isField = false): PNode =
   var
     a: PSym
-    o: TOverloadIter
+    o: TOverloadIter = default(TOverloadIter)
   var i = 0
   a = initOverloadIter(o, c, n)
   while a != nil:

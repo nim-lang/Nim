@@ -785,7 +785,7 @@ proc getRecordFields(m: BModule; typ: PType, check: var IntSet): Rope =
       genMemberProcHeader(m, prc, header, false, true)
       result.addf "$1;$n", [header]
     if isCtorGen and not isDefaultCtorGen:
-      var ch: IntSet
+      var ch: IntSet = default(IntSet)
       result.addf "$1() = default;$n", [getTypeDescAux(m, typ, ch, dkOther)]
 
 proc fillObjectFields*(m: BModule; typ: PType) =

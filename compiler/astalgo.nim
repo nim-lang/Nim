@@ -707,7 +707,7 @@ proc initTabIter*(ti: var TTabIter, tab: TStrTable): PSym =
     result = nextIter(ti, tab)
 
 iterator items*(tab: TStrTable): PSym =
-  var it: TTabIter
+  var it: TTabIter = default(TTabIter)
   var s = initTabIter(it, tab)
   while s != nil:
     yield s
