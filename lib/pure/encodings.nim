@@ -340,6 +340,9 @@ proc getCurrentEncoding*(uiApp = false): string =
 proc open*(destEncoding = "UTF-8", srcEncoding = "CP1252"): EncodingConverter =
   ## Opens a converter that can convert from `srcEncoding` to `destEncoding`.
   ## Raises `EncodingError` if it cannot fulfill the request.
+  runnableExamples:
+    doAssertRaises EncodingError:
+      discard open(destEncoding="this is a invalid enc")
   when not defined(windows):
     result = iconvOpen(destEncoding, srcEncoding)
     if result == cast[EncodingConverter](-1):
