@@ -1205,7 +1205,7 @@ proc track(tracked: PEffects, n: PNode) =
       if not hasDestructor(n.typ) and sameType(n.typ, n.sym.typ): n.typ = n.sym.typ
   of nkHiddenAddr, nkAddr:
     if n[0].kind == nkSym and isLocalSym(tracked, n[0].sym) and
-          n.typ.kind != tyVar:
+          n.typ.kind notin {tyVar, tyLent}:
       useVarNoInitCheck(tracked, n[0], n[0].sym)
     else:
       track(tracked, n[0])
