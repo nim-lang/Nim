@@ -7,7 +7,17 @@
 #    distribution, for details about the copyright.
 #
 
-## Thread support for Nim.
+## Thread support for Nim. Threads allow multiple functions to execute concurrently.
+## 
+## In Nim, threads are a low-level construct and using a library like `malebolgia`, `taskpools` or `weave` is recommended.
+## 
+## When creating a thread, you can pass arguments to it. As Nim's garbage collector does not use atomic references, sharing
+## `ref` and other variables managed by the garbage collector between threads is not supported.
+## Use global variables to do so, or pointers.
+## 
+## Memory allocated using [`sharedAlloc`](./system.html#allocShared.t%2CNatural) can be used and shared between threads.
+##
+## To communicate between threads, consider using [channels](./system.html#Channel)
 ##
 ## Examples
 ## ========
@@ -33,6 +43,34 @@
 ##
 ##   deinitLock(L)
 ##   ```
+## 
+## You can pass pointer to threads, but the memory must outlive the thread.
+## 
+## ```Nim
+## import locks
+## 
+## var l: Lock
+## 
+## proc threadFunc(obj: ptr seq[int]) {.thread.} =
+##     withLock l:
+##         for i in 0..<100:
+##             obj[].add(obj[].len * obj[].len)
+## 
+## proc threadHandler() =
+##     var thr: array[0..4, Thread[ptr seq[int]]]
+##     var s = newSeq[int]()
+##     
+##     for i in 0..high(thr):
+##         createThread(thr[i], threadFunc, s.addr)
+##     joinThreads(thr)
+##     echo s
+## 
+## initLock(l)
+## threadHandler()
+## deinitLock(l)
+## ```
+## 
+
 
 
 
