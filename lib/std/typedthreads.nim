@@ -7,71 +7,72 @@
 #    distribution, for details about the copyright.
 #
 
-## Thread support for Nim. Threads allow multiple functions to execute concurrently.
-## 
-## In Nim, threads are a low-level construct and using a library like `malebolgia`, `taskpools` or `weave` is recommended.
-## 
-## When creating a thread, you can pass arguments to it. As Nim's garbage collector does not use atomic references, sharing
-## `ref` and other variables managed by the garbage collector between threads is not supported.
-## Use global variables to do so, or pointers.
-## 
-## Memory allocated using [`sharedAlloc`](./system.html#allocShared.t%2CNatural) can be used and shared between threads.
-##
-## To communicate between threads, consider using [channels](./system.html#Channel)
-##
-## Examples
-## ========
-##
-##   ```Nim
-##   import std/locks
-##
-##   var
-##     thr: array[0..4, Thread[tuple[a,b: int]]]
-##     L: Lock
-##
-##   proc threadFunc(interval: tuple[a,b: int]) {.thread.} =
-##     for i in interval.a..interval.b:
-##       acquire(L) # lock stdout
-##       echo i
-##       release(L)
-##
-##   initLock(L)
-##
-##   for i in 0..high(thr):
-##     createThread(thr[i], threadFunc, (i*10, i*10+5))
-##   joinThreads(thr)
-##
-##   deinitLock(L)
-##   ```
-## 
-## You can pass pointer to threads, but the memory must outlive the thread.
-## 
-## ```Nim
-## import locks
-## 
-## var l: Lock
-## 
-## proc threadFunc(obj: ptr seq[int]) {.thread.} =
-##     withLock l:
-##         for i in 0..<100:
-##             obj[].add(obj[].len * obj[].len)
-## 
-## proc threadHandler() =
-##     var thr: array[0..4, Thread[ptr seq[int]]]
-##     var s = newSeq[int]()
-##     
-##     for i in 0..high(thr):
-##         createThread(thr[i], threadFunc, s.addr)
-##     joinThreads(thr)
-##     echo s
-## 
-## initLock(l)
-## threadHandler()
-## deinitLock(l)
-## ```
-## 
+##[
+Thread support for Nim. Threads allow multiple functions to execute concurrently.
+ 
+In Nim, threads are a low-level construct and using a library like `malebolgia`, `taskpools` or `weave` is recommended.
+ 
+When creating a thread, you can pass arguments to it. As Nim's garbage collector does not use atomic references, sharing
+`ref` and other variables managed by the garbage collector between threads is not supported.
+Use global variables to do so, or pointers.
+ 
+Memory allocated using [`sharedAlloc`](./system.html#allocShared.t%2CNatural) can be used and shared between threads.
 
+To communicate between threads, consider using [channels](./system.html#Channel)
 
+Examples
+========
+
+```Nim
+import std/locks
+
+var
+  thr: array[0..4, Thread[tuple[a,b: int]]]
+  L: Lock
+
+proc threadFunc(interval: tuple[a,b: int]) {.thread.} =
+  for i in interval.a..interval.b:
+    acquire(L) # lock stdout
+    echo i
+    release(L)
+
+initLock(L)
+
+for i in 0..high(thr):
+  createThread(thr[i], threadFunc, (i*10, i*10+5))
+joinThreads(thr)
+
+deinitLock(L)
+```
+ 
+When using a memory management strategy that supports shared heaps like `arc` or `boehm`,
+you can pass pointer to threads and share memory between them, but the memory must outlive the thread.
+The default memory management strategy, `orc`, supports this.
+ 
+```Nim
+import locks
+ 
+var l: Lock
+ 
+proc threadFunc(obj: ptr seq[int]) {.thread.} =
+    withLock l:
+        for i in 0..<100:
+            obj[].add(obj[].len * obj[].len)
+ 
+proc threadHandler() =
+    var thr: array[0..4, Thread[ptr seq[int]]]
+    var s = newSeq[int]()
+    
+    for i in 0..high(thr):
+        createThread(thr[i], threadFunc, s.addr)
+    joinThreads(thr)
+    echo s
+ 
+initLock(l)
+threadHandler()
+deinitLock(l)
+```
+]##
 
 
 import std/private/[threadtypes]
