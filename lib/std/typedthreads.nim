@@ -48,7 +48,8 @@ deinitLock(L)
 When using a memory management strategy that supports shared heaps like `arc` or `boehm`,
 you can pass pointer to threads and share memory between them, but the memory must outlive the thread.
 The default memory management strategy, `orc`, supports this.
- 
+The example below is **not valid** for memory management strategies that use local heaps like `refc`!
+
 ```Nim
 import locks
  
