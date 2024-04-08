@@ -117,7 +117,7 @@ template config*(p: PProc): ConfigRef = p.module.config
 
 proc indentLine(p: PProc, r: Rope): Rope =
   var p = p
-  var ind = p.blocks.len + p.extraIndent
+  let ind = p.blocks.len + p.extraIndent
   result = repeat(' ', ind*2) & r
 
 template line(p: PProc, added: string) =
