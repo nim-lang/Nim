@@ -841,6 +841,11 @@ proc arith(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
       gen(p, n[1], x)
       gen(p, n[2], y)
       r.res = "($# == $# && $# == $#)" % [x.address, y.address, x.res, y.res]
+  of mEqProc:
+    if skipTypes(n[1].typ, abstractInst).callConv == ccClosure:
+      binaryExpr(p, n, r, "cmpClosures", "cmpClosures($1, $2)")
+    else:
+      arithAux(p, n, r, op)
   else:
     arithAux(p, n, r, op)
   r.kind = resExpr
@@ -1207,8 +1212,7 @@ proc generateHeader(p: PProc, prc: PSym): Rope =
   let typ = prc.typ
   if typ.callConv == ccClosure:
     # we treat Env as the `this` parameter of the function
-    # so it can be compatible with C backend while maintain
-    # simplicity
+    # to keep it simple
     let env = prc.ast[paramsPos].lastSon
     assert env.kind == nkSym, "env is missing"
     env.sym.loc.r = "this"
@@ -2994,8 +2998,11 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
   of nkRaiseStmt: genRaiseStmt(p, n)
   of nkTypeSection, nkCommentStmt, nkIncludeStmt,
      nkImportStmt, nkImportExceptStmt, nkExportStmt, nkExportExceptStmt,
-     nkFromStmt, nkTemplateDef, nkMacroDef, nkIteratorDef, nkStaticStmt,
+     nkFromStmt, nkTemplateDef, nkMacroDef, nkStaticStmt,
      nkMixinStmt, nkBindStmt: discard
+  of nkIteratorDef:
+    if n[0].sym.typ.callConv == TCallingConvention.ccClosure:
+      globalError(p.config, n.info, "Closure iterators are not supported by JS backend!")
   of nkPragma: genPragma(p, n)
   of nkProcDef, nkFuncDef, nkMethodDef, nkConverterDef:
     var s = n[namePos].sym
