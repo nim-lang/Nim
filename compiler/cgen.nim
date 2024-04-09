@@ -33,6 +33,12 @@ import std/strutils except `%`, addf # collides with ropes.`%`
 from ic / ic import ModuleBackendFlag
 import std/[dynlib, math, tables, sets, os, intsets, hashes]
 
+const
+  # we use some ASCII control characters to insert directives that will be converted to real code in a postprocessing pass
+  postprocessDirStart = '\1'
+  postprocessDirSep = '\31'
+  postprocessDirEnd = '\23'
+
 when not declared(dynlib.libCandidates):
   proc libCandidates(s: string, dest: var seq[string]) =
     ## given a library name pattern `s` write possible library names to `dest`.
@@ -267,20 +273,25 @@ proc safeLineNm(info: TLineInfo): int =
   result = toLinenumber(info)
   if result < 0: result = 0 # negative numbers are not allowed in #line
 
+proc genPostprocessDir(fields: seq[string]): string =
+  result = $postprocessDirStart
+  var first = true
+  for s in fields:
+    if not first:
+      result.add(postprocessDirSep)
+    result.add(s)
+    first = false
+  result.add(postprocessDirEnd)
+
 proc genCLineDir(r: var Rope, filename: string, line: int; conf: ConfigRef) =
   assert line >= 0
   if optLineDir in conf.options and line > 0:
-    r.addf("\n#line $2 $1\n",
-        [rope(makeSingleLineCString(filename)), rope(line)])
+    r.add(rope(genPostprocessDir(@["#line", $line, makeSingleLineCString(filename)])))
 
 proc genCLineDir(r: var Rope, filename: string, line: int; p: BProc; info: TLineInfo; lastFileIndex: FileIndex) =
   assert line >= 0
   if optLineDir in p.config.options and line > 0:
-    if lastFileIndex == info.fileIndex:
-        r.addf("\n#line $1\n", [rope(line)])
-    else:
-      r.addf("\n#line $2 $1\n",
-        [rope(makeSingleLineCString(filename)), rope(line)])
+    r.add(rope(genPostprocessDir(@["#line", $line, makeSingleLineCString(filename)])))
 
 proc genCLineDir(r: var Rope, info: TLineInfo; conf: ConfigRef) =
   if optLineDir in conf.options:
@@ -314,12 +325,7 @@ proc genLineDir(p: BProc, t: PNode) =
   if ({optLineTrace, optStackTrace} * p.options == {optLineTrace, optStackTrace}) and
       (p.prc == nil or sfPure notin p.prc.flags) and t.info.fileIndex != InvalidFileIdx:
       if freshLine:
-        if lastFileIndex == t.info.fileIndex:
-          linefmt(p, cpsStmts, "nimln_($1);",
-              [line])
-        else:
-          linefmt(p, cpsStmts, "nimlf_($1, $2);",
-              [line, quotedFilename(p.config, t.info)])
+        line(p, cpsStmts, genPostprocessDir(@["nimln", $line, quotedFilename(p.config, t.info)]))
 
 proc accessThreadLocalVar(p: BProc, s: PSym)
 proc emulatedThreadVars(conf: ConfigRef): bool {.inline.}
@@ -1966,6 +1972,47 @@ proc genInitCode(m: BModule) =
 
   registerModuleToMain(m.g, m)
 
+proc postprocessCode(r: var Rope) =
+  # find the first directive
+  var f = r.find(postprocessDirStart)
+  if f == -1:
+    return
+
+  var
+    lineDirLastF = ""
+    nimlnDirLastF = ""
+
+  var res: Rope = r.substr(0, f - 1)
+  while f != -1:
+    var
+      e = r.find(postprocessDirEnd, f + 1)
+      dir = r.substr(f + 1, e - 1).split(postprocessDirSep)
+    case dir[0]
+    of "#line":
+      if dir[2] == lineDirLastF:
+        res.add("\n#line " & dir[1] & "\n")
+      else:
+        res.add("\n#line " & dir[1] & " " & dir[2] & "\n")
+        lineDirLastF = dir[2]
+    of "nimln":
+      if dir[2] == nimlnDirLastF:
+        res.add("nimln_(" & dir[1] & ");")
+      else:
+        res.add("nimlf_(" & dir[1] & ", " & dir[2] & ");")
+        nimlnDirLastF = dir[2]
+    else:
+      raiseAssert "unexpected postprocess directive"
+
+    # find the next directive
+    f = r.find(postprocessDirStart, e + 1)
+    # copy the code until the next directive
+    if f != -1:
+      res.add(r.substr(e + 1, f - 1))
+    else:
+      res.add(r.substr(e + 1))
+
+  r = res
+
 proc genModule(m: BModule, cfile: Cfile): Rope =
   var moduleIsEmpty = true
 
@@ -1996,6 +2043,8 @@ proc genModule(m: BModule, cfile: Cfile): Rope =
 
   if moduleIsEmpty:
     result = ""
+
+  postprocessCode(result)
 
 proc initProcOptions(m: BModule): TOptions =
   let opts = m.config.options
