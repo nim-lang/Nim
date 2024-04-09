@@ -566,7 +566,11 @@ proc errorUndeclaredIdentifier*(c: PContext; info: TLineInfo; name: string, extr
   if name == "_":
     err = "the special identifier '_' is ignored in declarations and cannot be used"
   else:
-    err = "undeclared identifier: '" & name & "'" & extra
+    err = "undeclared identifier: '" & name & "'"
+    if "`gensym" in name:
+      err.add "; if declared in a template, this identifier may be inconsistently marked inject or gensym"
+    if extra.len != 0:
+      err.add extra
     if c.recursiveDep.len > 0:
       err.add "\nThis might be caused by a recursive module dependency:\n"
       err.add c.recursiveDep
