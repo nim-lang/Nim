@@ -307,11 +307,9 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; idgen: IdGenerator; g: ModuleGraph): P
   of mRepr:
     # BUGFIX: we cannot eval mRepr here for reasons that I forgot.
     discard
-  of mIntToStr, mInt64ToStr: result = newStrNodeT($(getOrdValue(a)), n, g)
   of mBoolToStr:
     if getOrdValue(a) == 0: result = newStrNodeT("false", n, g)
     else: result = newStrNodeT("true", n, g)
-  of mFloatToStr: result = newStrNodeT($getFloat(a), n, g)
   of mCStrToStr, mCharToStr:
     result = newStrNodeT(getStrOrChar(a), n, g)
   of mStrToStr: result = newStrNodeT(getStrOrChar(a), n, g)

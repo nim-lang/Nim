@@ -1819,15 +1819,8 @@ proc genMagic(c: var ProcCon; n: PNode; d: var Value; m: TMagic) =
       if t.kind in {tyUInt8..tyUInt32} or (t.kind == tyUInt and size < 8):
         c.gABC(n, opcNarrowU, d, TRegister(size*8))
   of mStrToStr, mEnsureMove: c.gen n[1], d
-  of mIntToStr: genUnaryCp(c, n, d, "nimIntToStr")
-  of mInt64ToStr: genUnaryCp(c, n, d, "nimInt64ToStr")
   of mBoolToStr: genUnaryCp(c, n, d, "nimBoolToStr")
   of mCharToStr: genUnaryCp(c, n, d, "nimCharToStr")
-  of mFloatToStr:
-    if n[1].typ.skipTypes(abstractInst).kind == tyFloat32:
-      genUnaryCp(c, n, d, "nimFloat32ToStr")
-    else:
-      genUnaryCp(c, n, d, "nimFloatToStr")
   of mCStrToStr: genUnaryCp(c, n, d, "cstrToNimstr")
   of mEnumToStr: genEnumToStr(c, n, d)
 
