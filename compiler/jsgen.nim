@@ -932,7 +932,7 @@ proc genTry(p: PProc, n: PNode, r: var TCompRes) =
     p.body.add("++excHandler;\L")
   var tmpFramePtr = rope"F"
   lineF(p, "try {$n", [])
-  var a: TCompRes
+  var a: TCompRes = default(TCompRes)
   gen(p, n[0], a)
   moveInto(p, a, r)
   var generalCatchBranchExists = false
