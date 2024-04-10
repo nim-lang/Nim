@@ -273,25 +273,18 @@ proc safeLineNm(info: TLineInfo): int =
   result = toLinenumber(info)
   if result < 0: result = 0 # negative numbers are not allowed in #line
 
-proc genPostprocessDir(fields: seq[string]): string =
-  result = $postprocessDirStart
-  var first = true
-  for s in fields:
-    if not first:
-      result.add(postprocessDirSep)
-    result.add(s)
-    first = false
-  result.add(postprocessDirEnd)
+proc genPostprocessDir(field1, field2, field3: string): string =
+  result = postprocessDirStart & field1 & postprocessDirSep & field2 & postprocessDirSep & field3 & postprocessDirEnd
 
 proc genCLineDir(r: var Rope, filename: string, line: int; conf: ConfigRef) =
   assert line >= 0
   if optLineDir in conf.options and line > 0:
-    r.add(rope(genPostprocessDir(@["#line", $line, makeSingleLineCString(filename)])))
+    r.add(rope(genPostprocessDir("#line", $line, makeSingleLineCString(filename))))
 
 proc genCLineDir(r: var Rope, filename: string, line: int; p: BProc; info: TLineInfo; lastFileIndex: FileIndex) =
   assert line >= 0
   if optLineDir in p.config.options and line > 0:
-    r.add(rope(genPostprocessDir(@["#line", $line, makeSingleLineCString(filename)])))
+    r.add(rope(genPostprocessDir("#line", $line, makeSingleLineCString(filename))))
 
 proc genCLineDir(r: var Rope, info: TLineInfo; conf: ConfigRef) =
   if optLineDir in conf.options:
@@ -325,7 +318,7 @@ proc genLineDir(p: BProc, t: PNode) =
   if ({optLineTrace, optStackTrace} * p.options == {optLineTrace, optStackTrace}) and
       (p.prc == nil or sfPure notin p.prc.flags) and t.info.fileIndex != InvalidFileIdx:
       if freshLine:
-        line(p, cpsStmts, genPostprocessDir(@["nimln", $line, quotedFilename(p.config, t.info)]))
+        line(p, cpsStmts, genPostprocessDir("nimln", $line, quotedFilename(p.config, t.info)))
 
 proc accessThreadLocalVar(p: BProc, s: PSym)
 proc emulatedThreadVars(conf: ConfigRef): bool {.inline.}
