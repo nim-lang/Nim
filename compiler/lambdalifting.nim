@@ -467,6 +467,7 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
             #let obj = c.getEnvTypeForOwner(s.owner).skipTypes({tyOwned, tyRef, tyPtr})
 
             if s.name.id == getIdent(c.graph.cache, ":state").id:
+              obj.n[0].sym.flags.incl sfNoInit
               obj.n[0].sym.itemId = ItemId(module: s.itemId.module, item: -s.itemId.item)
             else:
               discard addField(obj, s, c.graph.cache, c.idgen)
