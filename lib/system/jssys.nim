@@ -785,3 +785,15 @@ if (!Math.trunc) {
   };
 }
 """.}
+
+proc cmpClosures(a, b: JSRef): bool {.compilerproc, asmNoStackFrame.} =
+  # Both `a` and `b` need to be a closure
+  {.emit: """
+    if (`a` !== null && `a`.ClP_0 !== undefined &&
+        `b` !== null && `b`.ClP_0 !== undefined) {
+      return `a`.ClP_0 == `b`.ClP_0 && `a`.ClE_0 == `b`.ClE_0;
+    } else {
+      return `a` == `b`;
+    }
+  """
+  .}

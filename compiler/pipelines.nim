@@ -101,7 +101,7 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
                     stream: PLLStream): bool =
   if graph.stopCompile(): return true
   var
-    p: Parser
+    p: Parser = default(Parser)
     s: PLLStream
     fileIdx = module.fileIdx
 

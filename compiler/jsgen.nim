@@ -106,12 +106,10 @@ type
     optionsStack: seq[TOptions]
     module: BModule
     g: PGlobals
-    generatedParamCopies: IntSet
     beforeRetNeeded: bool
     unique: int    # for temp identifier generation
     blocks: seq[TBlock]
     extraIndent: int
-    up: PProc     # up the call chain; required for closure support
     declaredGlobals: IntSet
     previousFileName: string  # For frameInfo inside templates.
 
@@ -119,12 +117,7 @@ template config*(p: PProc): ConfigRef = p.module.config
 
 proc indentLine(p: PProc, r: Rope): Rope =
   var p = p
-  var ind = 0
-  while true:
-    inc ind, p.blocks.len + p.extraIndent
-    if p.up == nil or p.up.prc != p.prc.owner:
-      break
-    p = p.up
+  let ind = p.blocks.len + p.extraIndent
   result = repeat(' ', ind*2) & r
 
 template line(p: PProc, added: string) =
@@ -843,6 +836,11 @@ proc arith(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
       gen(p, n[1], x)
       gen(p, n[2], y)
       r.res = "($# == $# && $# == $#)" % [x.address, y.address, x.res, y.res]
+  of mEqProc:
+    if skipTypes(n[1].typ, abstractInst).callConv == ccClosure:
+      binaryExpr(p, n, r, "cmpClosures", "cmpClosures($1, $2)")
+    else:
+      arithAux(p, n, r, op)
   else:
     arithAux(p, n, r, op)
   r.kind = resExpr
@@ -932,7 +930,7 @@ proc genTry(p: PProc, n: PNode, r: var TCompRes) =
     p.body.add("++excHandler;\L")
   var tmpFramePtr = rope"F"
   lineF(p, "try {$n", [])
-  var a: TCompRes
+  var a: TCompRes = default(TCompRes)
   gen(p, n[0], a)
   moveInto(p, a, r)
   var generalCatchBranchExists = false
@@ -1204,8 +1202,16 @@ proc genIf(p: PProc, n: PNode, r: var TCompRes) =
     lineF(p, "}$n", [])
   line(p, repeat('}', toClose) & "\L")
 
-proc generateHeader(p: PProc, typ: PType): Rope =
+proc generateHeader(p: PProc, prc: PSym): Rope =
   result = ""
+  let typ = prc.typ
+  if typ.callConv == ccClosure:
+    # we treat Env as the `this` parameter of the function
+    # to keep it simple
+    let env = prc.ast[paramsPos].lastSon
+    assert env.kind == nkSym, "env is missing"
+    env.sym.loc.r = "this"
+
   for i in 1..<typ.n.len:
     assert(typ.n[i].kind == nkSym)
     var param = typ.n[i].sym
@@ -1238,7 +1244,7 @@ const
 
 proc needsNoCopy(p: PProc; y: PNode): bool =
   return y.kind in nodeKindsNeedNoCopy or
-        ((mapType(y.typ) != etyBaseIndex or (y.kind == nkSym and y.sym.kind == skParam)) and
+        ((mapType(y.typ) != etyBaseIndex) and
           (skipTypes(y.typ, abstractInst).kind in
             {tyRef, tyPtr, tyLent, tyVar, tyCstring, tyProc, tyOwned} + IntegralTypes))
 
@@ -1589,27 +1595,7 @@ proc attachProc(p: PProc; s: PSym) =
 
 proc genProcForSymIfNeeded(p: PProc, s: PSym) =
   if not p.g.generatedSyms.containsOrIncl(s.id):
-    let newp = genProc(p, s)
-    var owner = p
-    while owner != nil and owner.prc != s.owner:
-      owner = owner.up
-    if owner != nil: owner.locals.add(newp)
-    else: attachProc(p, newp, s)
-
-proc genCopyForParamIfNeeded(p: PProc, n: PNode) =
-  let s = n.sym
-  if p.prc == s.owner or needsNoCopy(p, n):
-    return
-  var owner = p.up
-  while true:
-    if owner == nil:
-      internalError(p.config, n.info, "couldn't find the owner proc of the closed over param: " & s.name.s)
-    if owner.prc == s.owner:
-      if not owner.generatedParamCopies.containsOrIncl(s.id):
-        let copy = "$1 = nimCopy(null, $1, $2);$n" % [s.loc.r, genTypeInfo(p, s.typ)]
-        owner.locals.add(owner.indentLine(copy))
-      return
-    owner = owner.up
+    attachProc(p, s)
 
 proc genVarInit(p: PProc, v: PSym, n: PNode)
 
@@ -1621,8 +1607,6 @@ proc genSym(p: PProc, n: PNode, r: var TCompRes) =
       internalError(p.config, n.info, "symbol has no generated name: " & s.name.s)
     if sfCompileTime in s.flags:
       genVarInit(p, s, if s.astdef != nil: s.astdef else: newNodeI(nkEmpty, s.info))
-    if s.kind == skParam:
-      genCopyForParamIfNeeded(p, n)
     let k = mapType(p, s.typ)
     if k == etyBaseIndex:
       r.typ = etyBaseIndex
@@ -1645,7 +1629,7 @@ proc genSym(p: PProc, n: PNode, r: var TCompRes) =
     if s.loc.r == "":
       internalError(p.config, n.info, "symbol has no generated name: " & s.name.s)
     r.res = s.loc.r
-  of skProc, skFunc, skConverter, skMethod:
+  of skProc, skFunc, skConverter, skMethod, skIterator:
     if sfCompileTime in s.flags:
       localError(p.config, n.info, "request to generate code for .compileTime proc: " &
           s.name.s)
@@ -2076,6 +2060,17 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
     dec p.extraIndent
     lineF(p, "}$n")
 
+proc genClosureVar(p: PProc, n: PNode) =
+  # assert n[2].kind != nkEmpty
+  # TODO: fixme transform `var env.x` into `var env.x = default()` after
+  # the order of transf and lambdalifting is fixed
+  if n[2].kind != nkEmpty:
+    genAsgnAux(p, n[0], n[2], false)
+  else:
+    var a: TCompRes = default(TCompRes)
+    gen(p, n[0], a)
+    line(p, runtimeFormat("$1 = $2;$n", [rdLoc(a), createVar(p, n[0].typ, false)]))
+
 proc genVarStmt(p: PProc, n: PNode) =
   for i in 0..<n.len:
     var a = n[i]
@@ -2085,15 +2080,17 @@ proc genVarStmt(p: PProc, n: PNode) =
         genStmt(p, unpacked)
       else:
         assert(a.kind == nkIdentDefs)
-        assert(a[0].kind == nkSym)
-        var v = a[0].sym
-        if lfNoDecl notin v.loc.flags and sfImportc notin v.flags:
-          genLineDir(p, a)
-          if sfCompileTime notin v.flags:
-            genVarInit(p, v, a[2])
-          else:
-            # lazy emit, done when it's actually used.
-            if v.ast == nil: v.ast = a[2]
+        if a[0].kind == nkSym:
+          var v = a[0].sym
+          if lfNoDecl notin v.loc.flags and sfImportc notin v.flags:
+            genLineDir(p, a)
+            if sfCompileTime notin v.flags:
+              genVarInit(p, v, a[2])
+            else:
+              # lazy emit, done when it's actually used.
+              if v.ast == nil: v.ast = a[2]
+        else: # closure
+          genClosureVar(p, a)
 
 proc genConstant(p: PProc, c: PSym) =
   if lfNoDecl notin c.loc.flags and not p.g.generatedSyms.containsOrIncl(c.id):
@@ -2695,11 +2692,10 @@ proc genProc(oldProc: PProc, prc: PSym): Rope =
   #if gVerbosity >= 3:
   #  echo "BEGIN generating code for: " & prc.name.s
   var p = newProc(oldProc.g, oldProc.module, prc.ast, prc.options)
-  p.up = oldProc
   var returnStmt: Rope = ""
   var resultAsgn: Rope = ""
   var name = mangleName(p.module, prc)
-  let header = generateHeader(p, prc.typ)
+  let header = generateHeader(p, prc)
   if prc.typ.returnType != nil and sfPure notin prc.flags:
     resultSym = prc.ast[resultPos].sym
     let mname = mangleName(p.module, resultSym)
@@ -2918,7 +2914,15 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
       genInfixCall(p, n, r)
     else:
       genCall(p, n, r)
-  of nkClosure: gen(p, n[0], r)
+  of nkClosure:
+    let tmp = getTemp(p)
+    var a: TCompRes = default(TCompRes)
+    var b: TCompRes = default(TCompRes)
+    gen(p, n[0], a)
+    gen(p, n[1], b)
+    lineF(p, "$1 = $2.bind($3); $1.ClP_0 = $2; $1.ClE_0 = $3;$n", [tmp, a.rdLoc, b.rdLoc])
+    r.res = tmp
+    r.kind = resVal
   of nkCurly: genSetConstr(p, n, r)
   of nkBracket: genArrayConstr(p, n, r)
   of nkPar, nkTupleConstr: genTupleConstr(p, n, r)
@@ -2950,9 +2954,7 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
     let s = n[namePos].sym
     discard mangleName(p.module, s)
     r.res = s.loc.r
-    if s.kind == skIterator and s.typ.callConv == TCallingConvention.ccClosure:
-      globalError(p.config, n.info, "Closure iterators are not supported by JS backend!")
-    elif lfNoDecl in s.loc.flags or s.magic notin generatedMagics: discard
+    if lfNoDecl in s.loc.flags or s.magic notin generatedMagics: discard
     elif not p.g.generatedSyms.containsOrIncl(s.id):
       p.locals.add(genProc(p, s))
   of nkType: r.res = genTypeInfo(p, n.typ)

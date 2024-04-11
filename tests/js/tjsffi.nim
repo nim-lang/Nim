@@ -180,7 +180,7 @@ block: # Test lit
 block: # Test bindMethod
   type TestObject = object
     a: int
-    onWhatever: proc(e: int): int
+    onWhatever: proc(e: int): int {.nimcall.}
   proc handleWhatever(this: TestObject, e: int): int =
     e + this.a
   block:

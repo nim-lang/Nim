@@ -511,7 +511,6 @@ proc generateThunk(c: PTransf; prc: PNode, dest: PType): PNode =
 
   # we cannot generate a proper thunk here for GC-safety reasons
   # (see internal documentation):
-  if c.graph.config.backend == backendJs: return prc
   result = newNodeIT(nkClosure, prc.info, dest)
   var conv = newNodeIT(nkHiddenSubConv, prc.info, dest)
   conv.add(newNodeI(nkEmpty, prc.info))
@@ -897,10 +896,6 @@ proc transformCall(c: PTransf, n: PNode): PNode =
           inc(j)
       result.add(a)
     if result.len == 2: result = result[1]
-  elif magic == mAddr:
-    result = newTransNode(nkAddr, n, 1)
-    result[0] = n[1]
-    result = transformAddrDeref(c, result, {nkDerefExpr, nkHiddenDeref})
   elif magic in {mNBindSym, mTypeOf, mRunnableExamples}:
     # for bindSym(myconst) we MUST NOT perform constant folding:
     result = n
