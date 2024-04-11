@@ -56,18 +56,18 @@ import locks
 var l: Lock
  
 proc threadFunc(obj: ptr seq[int]) {.thread.} =
-    withLock l:
-        for i in 0..<100:
-            obj[].add(obj[].len * obj[].len)
+  withLock l:
+    for i in 0..<100:
+      obj[].add(obj[].len * obj[].len)
  
 proc threadHandler() =
-    var thr: array[0..4, Thread[ptr seq[int]]]
-    var s = newSeq[int]()
+  var thr: array[0..4, Thread[ptr seq[int]]]
+  var s = newSeq[int]()
     
-    for i in 0..high(thr):
-        createThread(thr[i], threadFunc, s.addr)
-    joinThreads(thr)
-    echo s
+  for i in 0..high(thr):
+    createThread(thr[i], threadFunc, s.addr)
+  joinThreads(thr)
+  echo s
  
 initLock(l)
 threadHandler()
