@@ -194,6 +194,7 @@ proc newStateAssgn(ctx: var Ctx, stateNo: int = -2): PNode =
 proc newEnvVar(ctx: var Ctx, name: string, typ: PType): PSym =
   result = newSym(skVar, getIdent(ctx.g.cache, name), ctx.idgen, ctx.fn, ctx.fn.info)
   result.typ = typ
+  result.flags.incl sfNoInit
   assert(not typ.isNil)
 
   if not ctx.stateVarSym.isNil:
