@@ -269,5 +269,5 @@ block: # test **
 block: # issue #21208
   type MyEnum = enum baz
   var obj: JsObject
-  {.emit: "`obj` = {bar: {baz: 123}}".}
+  {.emit: "`obj` = {bar: {baz: 123}};".}
   discard obj.bar.baz
