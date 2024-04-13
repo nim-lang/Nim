@@ -508,7 +508,7 @@ proc absInt64(a: int64): int64 {.compilerproc.} =
 proc nimMin(a, b: int): int {.compilerproc.} = return if a <= b: a else: b
 proc nimMax(a, b: int): int {.compilerproc.} = return if a >= b: a else: b
 
-proc chckNilDisp(p: pointer) {.compilerproc.} =
+proc chckNilDisp(p: JSRef) {.compilerproc.} =
   if p == nil:
     sysFatal(NilAccessDefect, "cannot dispatch; dispatcher is nil")
 
