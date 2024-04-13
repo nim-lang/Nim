@@ -2985,7 +2985,7 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
     if n[0].kind != nkEmpty:
       genLineDir(p, n)
       gen(p, n[0], r)
-      r.res = "var _ = " & r.res
+      r.res = "(" & r.res & ")"
   of nkAsmStmt:
     warningDeprecated(p.config, n.info, "'asm' for the JS target is deprecated, use the 'emit' pragma")
     genAsmOrEmitStmt(p, n, true)
