@@ -250,11 +250,6 @@ else:
 
 proc containsRef(typ: typedesc): bool = typ is ref
 
-proc containsRef(typ: typedesc[object or tuple]): bool =
-    for field in default(typ).fields:
-        if containsRef(typeof(field)):
-            return true
-
 proc createThread*[TArg](t: var Thread[TArg],
                            tp: proc (arg: TArg) {.thread, nimcall.},
                            param: TArg) =
