@@ -110,7 +110,6 @@ type
     unique: int    # for temp identifier generation
     blocks: seq[TBlock]
     extraIndent: int
-    declaredGlobals: IntSet
     previousFileName: string  # For frameInfo inside templates.
 
 template config*(p: PProc): ConfigRef = p.module.config
@@ -168,10 +167,6 @@ proc initProcOptions(module: BModule): TOptions =
 
 proc newInitProc(globals: PGlobals, module: BModule): PProc =
   result = newProc(globals, module, nil, initProcOptions(module))
-
-proc declareGlobal(p: PProc; id: int; r: Rope) =
-  if p.prc != nil and not p.declaredGlobals.containsOrIncl(id):
-    p.locals.addf("global $1;$n", [r])
 
 const
   MappedToObject = {tyObject, tyArray, tyTuple, tyOpenArray,
@@ -3111,15 +3106,6 @@ proc wholeCode(graph: ModuleGraph; m: BModule): Rope =
       attachProc(p, prc)
 
   result = globals.typeInfo & globals.constants & globals.code
-
-proc getClassName(t: PType): Rope =
-  var s = t.sym
-  if s.isNil or sfAnon in s.flags:
-    s = skipTypes(t, abstractPtrs).sym
-  if s.isNil or sfAnon in s.flags:
-    doAssert(false, "cannot retrieve class name")
-  if s.loc.r != "": result = s.loc.r
-  else: result = rope(s.name.s)
 
 proc finalJSCodeGen*(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
   ## Finalize JS code generation of a Nim module.
