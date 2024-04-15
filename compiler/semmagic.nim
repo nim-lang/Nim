@@ -73,7 +73,7 @@ proc semArrGet(c: PContext; n: PNode; flags: TExprFlags): PNode =
 proc semArrPut(c: PContext; n: PNode; flags: TExprFlags): PNode =
   # rewrite `[]=`(a, i, x)  back to ``a[i] = x``.
   let b = newNodeI(nkBracketExpr, n.info)
-  b.add(n[1].skipAddr)
+  b.add(n[1].skipHiddenAddr)
   for i in 2..<n.len-1: b.add(n[i])
   result = newNodeI(nkAsgn, n.info, 2)
   result[0] = b
