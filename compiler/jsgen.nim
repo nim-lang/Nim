@@ -2137,20 +2137,20 @@ proc genConStrStr(p: PProc, n: PNode, r: var TCompRes) =
   if skipTypes(n[1].typ, abstractVarRange).kind == tyChar:
     r.res.add("[$1].concat(" % [a.res])
   else:
-    r.res.add("($1 || []).concat(" % [a.res])
+    r.res.add("($1).concat(" % [a.res])
 
   for i in 2..<n.len - 1:
     gen(p, n[i], a)
     if skipTypes(n[i].typ, abstractVarRange).kind == tyChar:
       r.res.add("[$1]," % [a.res])
     else:
-      r.res.add("$1 || []," % [a.res])
+      r.res.add("$1," % [a.res])
 
   gen(p, n[^1], a)
   if skipTypes(n[^1].typ, abstractVarRange).kind == tyChar:
     r.res.add("[$1])" % [a.res])
   else:
-    r.res.add("$1 || [])" % [a.res])
+    r.res.add("$1)" % [a.res])
 
 proc genReprAux(p: PProc, n: PNode, r: var TCompRes, magic: string, typ: Rope = "") =
   useMagic(p, magic)
