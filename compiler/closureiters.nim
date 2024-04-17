@@ -261,6 +261,12 @@ proc hasYields(n: PNode): bool =
     result = true
   of nkSkip:
     result = false
+  of nkCast: # don't split on the dest type
+    result = false
+    for i in 1..<n.len:
+      if n[i].hasYields:
+        result = true
+        break
   else:
     result = false
     for c in n:
