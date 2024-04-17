@@ -1472,7 +1472,7 @@ proc transformClosureIterator*(g: ModuleGraph; idgen: IdGenerator; fn: PSym, n: 
 
   caseDispatcher.add newTreeI(nkElse, n.info, newTreeI(nkReturnStmt, n.info, g.emptyNode))
 
-  result = wrapIntoStateLoop(g, ctx, caseDispatcher)
+  result = wrapIntoStateLoop(ctx, caseDispatcher)
 
   when true:
     echo "TRANSFORM TO STATES: "
