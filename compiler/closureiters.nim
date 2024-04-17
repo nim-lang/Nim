@@ -1474,7 +1474,7 @@ proc transformClosureIterator*(g: ModuleGraph; idgen: IdGenerator; fn: PSym, n: 
 
   result = wrapIntoStateLoop(ctx, caseDispatcher)
 
-  when true:
+  when false:
     echo "TRANSFORM TO STATES: "
     echo renderTree(result)
 
