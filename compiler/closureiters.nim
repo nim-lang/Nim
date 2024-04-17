@@ -268,8 +268,8 @@ proc hasYields(n: PNode): bool =
     result = false
   else:
     result = false
-    for c in n:
-      if c.hasYields:
+    for i in ord(n.kind == nkCast)..<n.len:
+      if n[i].hasYields:
         result = true
         break
 
@@ -1472,9 +1472,9 @@ proc transformClosureIterator*(g: ModuleGraph; idgen: IdGenerator; fn: PSym, n: 
 
   caseDispatcher.add newTreeI(nkElse, n.info, newTreeI(nkReturnStmt, n.info, g.emptyNode))
 
-  result = ctx.wrapIntoStateLoop(caseDispatcher)
+  result = wrapIntoStateLoop(g, ctx, caseDispatcher)
 
-  when false:
+  when true:
     echo "TRANSFORM TO STATES: "
     echo renderTree(result)
 
