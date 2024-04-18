@@ -408,7 +408,10 @@ proc genDefaultCall(t: PType; c: Con; info: TLineInfo): PNode =
 proc destructiveMoveVar(n: PNode; c: var Con; s: var Scope): PNode =
   # generate: (let tmp = v; reset(v); tmp)
   if (not hasDestructor(c, n.typ)) and c.inEnsureMove == 0:
-    assert n.kind != nkSym or not hasDestructor(c, n.sym.typ)
+    assert n.kind != nkSym or not hasDestructor(c, n.sym.typ) or
+          (n.typ.kind == tyPtr and n.sym.typ.kind == tyRef)
+      # bug #23505; transformed by `transf`: addr (deref ref) -> ptr
+      # we know it's really a pointer; so here we assign it directly
     result = copyTree(n)
   else:
     result = newNodeIT(nkStmtListExpr, n.info, n.typ)
