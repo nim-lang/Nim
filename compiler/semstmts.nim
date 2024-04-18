@@ -137,12 +137,25 @@ const
     nkElifBranch, nkElifExpr, nkElseExpr, nkBlockStmt, nkBlockExpr,
     nkHiddenStdConv, nkHiddenDeref}
 
-proc implicitlyDiscardable(n: PNode): bool =
+const skipForDiscardableStmt = skipForDiscardable - {nkHiddenStdConv, nkHiddenDeref}
+
+type
+  DiscardableKind = enum
+    No, LastBlock, Discardable
+
+proc implicitlyDiscardableClassifier(n: PNode): DiscardableKind =
   var n = n
   while n.kind in skipForDiscardable: n = n.lastSon
-  result = n.kind in nkLastBlockStmts or
-           (isCallExpr(n) and n[0].kind == nkSym and
-           sfDiscardable in n[0].sym.flags)
+  if n.kind in nkLastBlockStmts:
+    result = LastBlock
+  elif isCallExpr(n) and n[0].kind == nkSym and
+           sfDiscardable in n[0].sym.flags:
+    result = Discardable
+  else:
+    result = No
+
+proc implicitlyDiscardable(n: PNode): bool =
+  result = implicitlyDiscardableClassifier(n) in {LastBlock, Discardable}
 
 proc fixNilType(c: PContext; n: PNode) =
   if isAtom(n):
@@ -153,13 +166,31 @@ proc fixNilType(c: PContext; n: PNode) =
     for it in n: fixNilType(c, it)
   n.typ = nil
 
-proc discardCheck(c: PContext, result: PNode, flags: TExprFlags) =
+proc wrapDiscardableExpr(n: PNode): PNode =
+  result = n
+  var n = n
+  var parent = n
+  var hasWork = false
+  while n.kind in skipForDiscardableStmt:
+    parent = n
+    n = n.lastSon
+    if n.kind notin skipForDiscardableStmt:
+      parent[^1] = newTreeI(nkDiscardStmt, n.info, n)
+      hasWork = true
+      break
+  if not hasWork:
+    result = newTreeI(nkDiscardStmt, result.info, result)
+
+proc discardCheck(c: PContext, n: PNode, flags: TExprFlags): PNode =
+  result = n
   if c.matchedConcept != nil or efInTypeof in flags: return
 
   if result.typ != nil and result.typ.kind notin {tyTyped, tyVoid}:
-    if implicitlyDiscardable(result):
-      var n = newNodeI(nkDiscardStmt, result.info, 1)
-      n[0] = result
+    let kind = implicitlyDiscardableClassifier(result)
+    if kind == Discardable:
+      result = wrapDiscardableExpr(result)
+    elif kind == LastBlock:
+      discard
     elif result.typ.kind != tyError and c.config.cmd != cmdInteractive:
       if result.typ.kind == tyNone:
         localError(c.config, result.info, "expression has no type: " &
@@ -207,7 +238,8 @@ proc semIf(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = nil):
     else: illFormedAst(it, c.config)
   if isEmptyType(typ) or typ.kind in {tyNil, tyUntyped} or
       (not hasElse and efInTypeof notin flags):
-    for it in n: discardCheck(c, it.lastSon, flags)
+    for it in n:
+      it[^1] = discardCheck(c, it[^1], flags)
     result.transitionSonsKind(nkIfStmt)
     # propagate any enforced VoidContext:
     if typ == c.enforceVoidContext: result.typ = c.enforceVoidContext
@@ -314,12 +346,14 @@ proc semTry(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = nil)
     closeScope(c)
 
   if isEmptyType(typ) or typ.kind in {tyNil, tyUntyped}:
-    discardCheck(c, n[0], flags)
-    for i in 1..<n.len: discardCheck(c, n[i].lastSon, flags)
+    n[0] = discardCheck(c, n[0], flags)
+    for i in 1..<n.len:
+      n[i][^1] = discardCheck(c, n[i][^1], flags)
     if typ == c.enforceVoidContext:
       result.typ = c.enforceVoidContext
   else:
-    if n.lastSon.kind == nkFinally: discardCheck(c, n.lastSon.lastSon, flags)
+    if n.lastSon.kind == nkFinally:
+      n[^1][^1] = discardCheck(c, n[^1][^1], flags)
     if not endsInNoReturn(n[0]):
       n[0] = fitNode(c, typ, n[0], n[0].info)
     for i in 1..last:
@@ -1035,7 +1069,7 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
   openScope(c)
   n[^1] = semExprBranch(c, n[^1], flags)
   if efInTypeof notin flags:
-    discardCheck(c, n[^1], flags)
+    n[^1] = discardCheck(c, n[^1], flags)
   closeScope(c)
   c.p.breakInLoop = oldBreakInLoop
   dec(c.p.nestedLoopCounter)
@@ -1244,7 +1278,8 @@ proc semCase(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = nil
   closeScope(c)
   if isEmptyType(typ) or typ.kind in {tyNil, tyUntyped} or
       (not hasElse and efInTypeof notin flags):
-    for i in 1..<n.len: discardCheck(c, n[i].lastSon, flags)
+    for i in 1..<n.len:
+      n[i][^1] = discardCheck(c, n[i][^1], flags)
     # propagate any enforced VoidContext:
     if typ == c.enforceVoidContext:
       result.typ = c.enforceVoidContext
@@ -2733,7 +2768,7 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags, expectedType: PType =
       n.typ = n[i].typ
       if not isEmptyType(n.typ): n.transitionSonsKind(nkStmtListExpr)
     elif i != last or voidContext:
-      discardCheck(c, n[i], flags)
+      n[i] = discardCheck(c, n[i], flags)
     else:
       n.typ = n[i].typ
       if not isEmptyType(n.typ): n.transitionSonsKind(nkStmtListExpr)
