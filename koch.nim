@@ -13,8 +13,8 @@ const
   # examples of possible values for repos: Head, ea82b54
   NimbleStableCommit = "f8bd7b5fa6ea7a583b411b5959b06e6b5eb23667" # master
   AtlasStableCommit = "7b780811a168f3f32bff4822369dda46a7f87f9a"
-  ChecksumsStableCommit = "b4c73320253f78e3a265aec6d9e8feb83f97c77b"
-  SatStableCommit = "faf1617f44d7632ee9601ebc13887644925dcc01"
+  ChecksumsStableCommit = "025bcca3915a1b9f19878cea12ad68f9884648fc"
+  SatStableCommit = "5faec3e9a33afe99a7d22377dd1b45a5391f5504"
 
   # examples of possible values for fusion: #head, #ea82b54, 1.2.3
   FusionStableHash = "#372ee4313827ef9f2ea388840f7d6b46c2b1b014"
@@ -167,9 +167,11 @@ proc bundleAtlasExe(latest: bool, args: string) =
   let commit = if latest: "HEAD" else: AtlasStableCommit
   cloneDependency(distDir, "https://github.com/nim-lang/atlas.git",
                   commit = commit, allowBundled = true)
+  cloneDependency(distDir / "atlas" / distDir, "https://github.com/nim-lang/sat.git",
+                commit = SatStableCommit, allowBundled = true)
   # installer.ini expects it under $nim/bin
   nimCompile("dist/atlas/src/atlas.nim",
-             options = "-d:release --noNimblePath " & args)
+             options = "-d:release --noNimblePath -d:nimAtlasBootstrap " & args)
 
 proc bundleNimsuggest(args: string) =
   nimCompileFold("Compile nimsuggest", "nimsuggest/nimsuggest.nim",
