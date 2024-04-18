@@ -532,7 +532,7 @@ proc constructLoc(p: BProc, loc: var TLoc, isTemp = false) =
       linefmt(p, cpsStmts, "$1 = ($2)0;$n", [rdLoc(loc),
         getTypeDesc(p.module, typ, descKindFromSymKind mapTypeChooser(loc))])
   else:
-    if not isTemp or containsGarbageCollectedRef(loc.t):
+    if (not isTemp or containsGarbageCollectedRef(loc.t)) and not hasNoInit(loc.t):
       # don't use nimZeroMem for temporary values for performance if we can
       # avoid it:
       if not isOrHasImportedCppType(typ):

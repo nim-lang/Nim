@@ -245,6 +245,9 @@ proc isImportedCppType(t: PType): bool =
 proc isOrHasImportedCppType(typ: PType): bool =
   searchTypeFor(typ.skipTypes({tyRef}), isImportedCppType)
 
+proc hasNoInit(t: PType): bool =
+  result = t.sym != nil and sfNoInit in t.sym.flags
+
 proc getTypeDescAux(m: BModule; origTyp: PType, check: var IntSet; kind: TypeDescKind): Rope
 
 proc isObjLackingTypeField(typ: PType): bool {.inline.} =
