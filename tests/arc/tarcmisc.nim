@@ -714,3 +714,16 @@ block:
 
       let c: uint = 300'u
       doAssert $arrayWith(c, 3) == "[300, 300, 300]"
+
+block: # bug #23505
+  type
+    K = object
+    C = object
+      value: ptr K
+
+  proc init(T: type C): C =
+    let tmp = new K
+    C(value: addr tmp[])
+
+  discard init(C)
+
