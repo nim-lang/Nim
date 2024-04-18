@@ -1023,7 +1023,7 @@ proc genCaseJS(p: PProc, n: PNode, r: var TCompRes) =
     a, b, cond, stmt: TCompRes = default(TCompRes)
   genLineDir(p, n)
   gen(p, n[0], cond)
-  let typeKind = skipTypes(n[0].typ, abstractVar).kind
+  let typeKind = skipTypes(n[0].typ, abstractVar+{tyRange}).kind
   var transferRange = false
   let anyString = typeKind in {tyString, tyCstring}
   case typeKind
