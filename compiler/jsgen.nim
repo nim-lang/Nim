@@ -2993,11 +2993,8 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
   of nkRaiseStmt: genRaiseStmt(p, n)
   of nkTypeSection, nkCommentStmt, nkIncludeStmt,
      nkImportStmt, nkImportExceptStmt, nkExportStmt, nkExportExceptStmt,
-     nkFromStmt, nkTemplateDef, nkMacroDef, nkStaticStmt,
+     nkFromStmt, nkTemplateDef, nkMacroDef, nkIteratorDef, nkStaticStmt,
      nkMixinStmt, nkBindStmt: discard
-  of nkIteratorDef:
-    if n[0].sym.typ.callConv == TCallingConvention.ccClosure:
-      globalError(p.config, n.info, "Closure iterators are not supported by JS backend!")
   of nkPragma: genPragma(p, n)
   of nkProcDef, nkFuncDef, nkMethodDef, nkConverterDef:
     var s = n[namePos].sym
@@ -3005,7 +3002,18 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
       genSym(p, n[namePos], r)
       r.res = ""
   of nkGotoState, nkState:
-    globalError(p.config, n.info, "First class iterators not implemented")
+    globalError(p.config, n.info, "not implemented")
+  of nkBreakState:
+    var a: TCompRes = default(TCompRes)
+    if n[0].kind == nkClosure:
+      gen(p, n[0][1], a)
+      let sym = n[0][1].typ[0].n[0].sym
+      r.res = "(($1).$2 < 0)" % [rdLoc(a), mangleName(p.module, sym)]
+    else:
+      gen(p, n[0], a)
+      let sym = n[0].typ[0].n[0].sym
+      r.res = "((($1.ClE_0).$2) < 0)" % [rdLoc(a), mangleName(p.module, sym)]
+    r.kind = resExpr
   of nkPragmaBlock: gen(p, n.lastSon, r)
   of nkComesFrom:
     discard "XXX to implement for better stack traces"
