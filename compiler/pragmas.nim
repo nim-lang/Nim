@@ -1307,7 +1307,7 @@ proc implicitPragmas*(c: PContext, sym: PSym, info: TLineInfo,
   if sym != nil and sym.kind != skModule:
     for it in c.optionStack:
       let o = it.otherPragmas
-      if not o.isNil:
+      if not o.isNil and sfFromGeneric notin sym.flags: # see issue #12985
         pushInfoContext(c.config, info)
         var i = 0
         while i < o.len:
