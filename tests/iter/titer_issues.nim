@@ -1,4 +1,5 @@
 discard """
+  target: "c js"
   output: '''
 0
 1

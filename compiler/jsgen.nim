@@ -599,6 +599,17 @@ template unaryExpr(p: PProc, n: PNode, r: var TCompRes, magic, frmt: string) =
   r.res = frmt % [a, tmp]
   r.kind = resExpr
 
+proc genBreakState(p: PProc, n: PNode, r: var TCompRes) =
+  var a: TCompRes = default(TCompRes)
+  # mangle `:state` properly somehow
+  if n.kind == nkClosure:
+    gen(p, n[1], a)
+    r.res = "(($1).HEX3Astate < 0)" % [rdLoc(a)]
+  else:
+    gen(p, n, a)
+    r.res = "((($1.ClE_0).HEX3Astate) < 0)" % [rdLoc(a)]
+  r.kind = resExpr
+
 proc arithAux(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
   var
     x, y: TCompRes = default(TCompRes)
@@ -2999,16 +3010,7 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
   of nkGotoState, nkState:
     globalError(p.config, n.info, "not implemented")
   of nkBreakState:
-    var a: TCompRes = default(TCompRes)
-    if n[0].kind == nkClosure:
-      gen(p, n[0][1], a)
-      let sym = n[0][1].typ[0].n[0].sym
-      r.res = "(($1).$2 < 0)" % [rdLoc(a), mangleName(p.module, sym)]
-    else:
-      gen(p, n[0], a)
-      let sym = n[0].typ[0].n[0].sym
-      r.res = "((($1.ClE_0).$2) < 0)" % [rdLoc(a), mangleName(p.module, sym)]
-    r.kind = resExpr
+    genBreakState(p, n[0], r)
   of nkPragmaBlock: gen(p, n.lastSon, r)
   of nkComesFrom:
     discard "XXX to implement for better stack traces"
