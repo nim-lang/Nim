@@ -279,12 +279,18 @@ proc genPostprocessDir(field1, field2, field3: string): string =
 proc genCLineDir(r: var Rope, fileIdx: FileIndex, line: int; conf: ConfigRef) =
   assert line >= 0
   if optLineDir in conf.options and line > 0:
-    r.add(rope(genPostprocessDir("#line", $line, $fileIdx.int32)))
+    if fileIdx == InvalidFileIdx:
+      r.add(rope("\n#line " & $line & " \"generated_not_to_break_here\"\n"))
+    else:
+      r.add(rope("\n#line " & $line & " FX_" & $fileIdx.int32 & "\n"))
 
 proc genCLineDir(r: var Rope, fileIdx: FileIndex, line: int; p: BProc; info: TLineInfo; lastFileIndex: FileIndex) =
   assert line >= 0
   if optLineDir in p.config.options and line > 0:
-    r.add(rope(genPostprocessDir("#line", $line, $fileIdx.int32)))
+    if fileIdx == InvalidFileIdx:
+      r.add(rope("\n#line " & $line & " \"generated_not_to_break_here\"\n"))
+    else:
+      r.add(rope("\n#line " & $line & " FX_" & $fileIdx.int32 & "\n"))
 
 proc genCLineDir(r: var Rope, info: TLineInfo; conf: ConfigRef) =
   if optLineDir in conf.options:
@@ -1972,7 +1978,6 @@ proc postprocessCode(conf: ConfigRef, r: var Rope) =
     return
 
   var
-    lineDirLastF = ""
     nimlnDirLastF = ""
 
   var res: Rope = r.substr(0, f - 1)
@@ -1981,16 +1986,6 @@ proc postprocessCode(conf: ConfigRef, r: var Rope) =
       e = r.find(postprocessDirEnd, f + 1)
       dir = r.substr(f + 1, e - 1).split(postprocessDirSep)
     case dir[0]
-    of "#line":
-      if dir[2] == lineDirLastF:
-        res.add("\n#line " & dir[1] & "\n")
-      else:
-        let fi = dir[2].parseInt.FileIndex
-        if fi != InvalidFileIdx:
-          res.add("\n#line " & dir[1] & " " & makeSingleLineCString(toFullPath(conf, fi)) & "\n")
-        else:
-          res.add("\n#line " & dir[1] & " \"generated_not_to_break_here\"\n")
-        lineDirLastF = dir[2]
     of "nimln":
       if dir[2] == nimlnDirLastF:
         res.add("nimln_(" & dir[1] & ");")
@@ -2037,6 +2032,12 @@ proc genModule(m: BModule, cfile: Cfile): Rope =
 
   if m.config.cppCustomNamespace.len > 0:
     closeNamespaceNim(result)
+
+  if optLineDir in m.config.options:
+    var srcFileDefs = ""
+    for fi in 0..m.config.m.fileInfos.high:
+      srcFileDefs.add("#define FX_" & $fi & " " & makeSingleLineCString(toFullPath(m.config, fi.FileIndex)) & "\n")
+    result = srcFileDefs & result
 
   if moduleIsEmpty:
     result = ""
