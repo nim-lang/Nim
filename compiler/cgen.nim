@@ -30,6 +30,12 @@ import strutils except `%`, addf # collides with ropes.`%`
 from ic / ic import ModuleBackendFlag
 import dynlib
 
+const
+  # we use some ASCII control characters to insert directives that will be converted to real code in a postprocessing pass
+  postprocessDirStart = '\1'
+  postprocessDirSep = '\31'
+  postprocessDirEnd = '\23'
+
 when not declared(dynlib.libCandidates):
   proc libCandidates(s: string, dest: var seq[string]) =
     ## given a library name pattern `s` write possible library names to `dest`.
@@ -266,24 +272,28 @@ proc safeLineNm(info: TLineInfo): int =
   result = toLinenumber(info)
   if result < 0: result = 0 # negative numbers are not allowed in #line
 
-proc genCLineDir(r: var Rope, filename: string, line: int; conf: ConfigRef) =
+proc genPostprocessDir(field1, field2, field3: string): string =
+  result = postprocessDirStart & field1 & postprocessDirSep & field2 & postprocessDirSep & field3 & postprocessDirEnd
+
+proc genCLineDir(r: var Rope, fileIdx: FileIndex, line: int; conf: ConfigRef) =
   assert line >= 0
   if optLineDir in conf.options and line > 0:
-    r.addf("\n#line $2 $1\n",
-        [rope(makeSingleLineCString(filename)), rope(line)])
+    if fileIdx == InvalidFileIdx:
+      r.add(rope("\n#line " & $line & " \"generated_not_to_break_here\"\n"))
+    else:
+      r.add(rope("\n#line " & $line & " FX_" & $fileIdx.int32 & "\n"))
 
-proc genCLineDir(r: var Rope, filename: string, line: int; p: BProc; info: TLineInfo; lastFileIndex: FileIndex) =
+proc genCLineDir(r: var Rope, fileIdx: FileIndex, line: int; p: BProc; info: TLineInfo; lastFileIndex: FileIndex) =
   assert line >= 0
   if optLineDir in p.config.options and line > 0:
-    if lastFileIndex == info.fileIndex:
-        r.addf("\n#line $1\n", [rope(line)])
+    if fileIdx == InvalidFileIdx:
+      r.add(rope("\n#line " & $line & " \"generated_not_to_break_here\"\n"))
     else:
-      r.addf("\n#line $2 $1\n",
-        [rope(makeSingleLineCString(filename)), rope(line)])
+      r.add(rope("\n#line " & $line & " FX_" & $fileIdx.int32 & "\n"))
 
 proc genCLineDir(r: var Rope, info: TLineInfo; conf: ConfigRef) =
   if optLineDir in conf.options:
-    genCLineDir(r, toFullPath(conf, info), info.safeLineNm, conf)
+    genCLineDir(r, info.fileIndex, info.safeLineNm, conf)
 
 proc freshLineInfo(p: BProc; info: TLineInfo): bool =
   if p.lastLineInfo.line != info.line or
@@ -296,7 +306,7 @@ proc genCLineDir(r: var Rope, p: BProc, info: TLineInfo; conf: ConfigRef) =
   if optLineDir in conf.options:
     let lastFileIndex = p.lastLineInfo.fileIndex
     if freshLineInfo(p, info):
-      genCLineDir(r, toFullPath(conf, info), info.safeLineNm, p, info, lastFileIndex)
+      genCLineDir(r, info.fileIndex, info.safeLineNm, p, info, lastFileIndex)
 
 proc genLineDir(p: BProc, t: PNode) =
   let line = t.info.safeLineNm
@@ -306,16 +316,11 @@ proc genLineDir(p: BProc, t: PNode) =
   let lastFileIndex = p.lastLineInfo.fileIndex
   let freshLine = freshLineInfo(p, t.info)
   if freshLine:
-    genCLineDir(p.s(cpsStmts), toFullPath(p.config, t.info), line, p, t.info, lastFileIndex)
+    genCLineDir(p.s(cpsStmts), t.info.fileIndex, line, p, t.info, lastFileIndex)
   if ({optLineTrace, optStackTrace} * p.options == {optLineTrace, optStackTrace}) and
       (p.prc == nil or sfPure notin p.prc.flags) and t.info.fileIndex != InvalidFileIdx:
       if freshLine:
-        if lastFileIndex == t.info.fileIndex:
-          linefmt(p, cpsStmts, "nimln_($1);",
-              [line])
-        else:
-          linefmt(p, cpsStmts, "nimlf_($1, $2);",
-              [line, quotedFilename(p.config, t.info)])
+        line(p, cpsStmts, genPostprocessDir("nimln", $line, $t.info.fileIndex.int32))
 
 proc accessThreadLocalVar(p: BProc, s: PSym)
 proc emulatedThreadVars(conf: ConfigRef): bool {.inline.}
@@ -1796,7 +1801,7 @@ proc genDatInitCode(m: BModule) =
 
   # we don't want to break into such init code - could happen if a line
   # directive from a function written by the user spills after itself
-  genCLineDir(prc, "generated_not_to_break_here", 999999, m.config)
+  genCLineDir(prc, InvalidFileIdx, 999999, m.config)
 
   for i in cfsTypeInit1..cfsDynLibInit:
     if m.s[i].len != 0:
@@ -1837,7 +1842,7 @@ proc genInitCode(m: BModule) =
     [rope(if m.hcrOn: "N_LIB_EXPORT" else: "N_LIB_PRIVATE"), initname]
   # we don't want to break into such init code - could happen if a line
   # directive from a function written by the user spills after itself
-  genCLineDir(prc, "generated_not_to_break_here", 999999, m.config)
+  genCLineDir(prc, InvalidFileIdx, 999999, m.config)
   if m.typeNodes > 0:
     if m.hcrOn:
       appcg(m, m.s[cfsTypeInit1], "\t#TNimNode* $1;$N", [m.typeNodesName])
@@ -1952,6 +1957,40 @@ proc genInitCode(m: BModule) =
 
   registerModuleToMain(m.g, m)
 
+proc postprocessCode(conf: ConfigRef, r: var Rope) =
+  # find the first directive
+  var f = r.find(postprocessDirStart)
+  if f == -1:
+    return
+
+  var
+    nimlnDirLastF = ""
+
+  var res: Rope = r.substr(0, f - 1)
+  while f != -1:
+    var
+      e = r.find(postprocessDirEnd, f + 1)
+      dir = r.substr(f + 1, e - 1).split(postprocessDirSep)
+    case dir[0]
+    of "nimln":
+      if dir[2] == nimlnDirLastF:
+        res.add("nimln_(" & dir[1] & ");")
+      else:
+        res.add("nimlf_(" & dir[1] & ", " & quotedFilename(conf, dir[2].parseInt.FileIndex) & ");")
+        nimlnDirLastF = dir[2]
+    else:
+      raiseAssert "unexpected postprocess directive"
+
+    # find the next directive
+    f = r.find(postprocessDirStart, e + 1)
+    # copy the code until the next directive
+    if f != -1:
+      res.add(r.substr(e + 1, f - 1))
+    else:
+      res.add(r.substr(e + 1))
+
+  r = res
+
 proc genModule(m: BModule, cfile: Cfile): Rope =
   var moduleIsEmpty = true
 
@@ -1980,8 +2019,16 @@ proc genModule(m: BModule, cfile: Cfile): Rope =
   if m.config.cppCustomNamespace.len > 0:
     closeNamespaceNim(result)
 
+  if optLineDir in m.config.options:
+    var srcFileDefs = ""
+    for fi in 0..m.config.m.fileInfos.high:
+      srcFileDefs.add("#define FX_" & $fi & " " & makeSingleLineCString(toFullPath(m.config, fi.FileIndex)) & "\n")
+    result = srcFileDefs & result
+
   if moduleIsEmpty:
     result = ""
+
+  postprocessCode(m.config, result)
 
 proc initProcOptions(m: BModule): TOptions =
   let opts = m.config.options
