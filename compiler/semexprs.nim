@@ -624,7 +624,7 @@ proc changeType(c: PContext; n: PNode, newType: PType, check: bool) =
           a.add m
           changeType(m, tup[i], check)
   of nkCharLit..nkUInt64Lit:
-    if check and n.kind != nkUInt64Lit and not sameType(n.typ, newType):
+    if check and n.kind != nkUInt64Lit and not sameTypeOrNil(n.typ, newType):
       let value = n.intVal
       if value < firstOrd(c.config, newType) or value > lastOrd(c.config, newType):
         localError(c.config, n.info, "cannot convert " & $value &
@@ -1063,7 +1063,7 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType
     elif n[0].kind == nkBracketExpr:
       let s = bracketedMacro(n[0])
       if s != nil:
-        setGenericParams(c, n[0])
+        setGenericParams(c, n[0], s.ast[genericParamsPos])
         return semDirectOp(c, n, flags, expectedType)
     elif isSymChoice(n[0]) and nfDotField notin n.flags:
       # overloaded generic procs e.g. newSeq[int] can end up here
@@ -3078,7 +3078,6 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
           expected.kind in {tyInt..tyInt64,
             tyUInt..tyUInt64,
             tyFloat..tyFloat128}):
-        result.typ = expected
         if expected.kind in {tyFloat..tyFloat128}:
           n.transitionIntToFloatKind(nkFloatLit)
         changeType(c, result, expectedType, check=true)
@@ -3167,7 +3166,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
         isSymChoice(n[0][0]):
       # indirectOp can deal with explicit instantiations; the fixes
       # the 'newSeq[T](x)' bug
-      setGenericParams(c, n[0])
+      setGenericParams(c, n[0], nil)
       result = semDirectOp(c, n, flags, expectedType)
     elif nfDotField in n.flags:
       result = semDirectOp(c, n, flags, expectedType)

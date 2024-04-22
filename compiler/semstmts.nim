@@ -166,6 +166,11 @@ proc discardCheck(c: PContext, result: PNode, flags: TExprFlags) =
         while n.kind in skipForDiscardable:
           if n.kind == nkTryStmt: n = n[0]
           else: n = n.lastSon
+
+        # Ignore noreturn procs since they don't have a type
+        if n.endsInNoReturn:
+          return
+
         var s = "expression '" & $n & "' is of type '" &
             result.typ.typeToString & "' and has to be used (or discarded)"
         if result.info.line != n.info.line or
@@ -331,6 +336,8 @@ proc fitRemoveHiddenConv(c: PContext, typ: PType, n: PNode): PNode =
       result.typ = typ
       if not floatRangeCheck(result.floatVal, typ):
         localError(c.config, n.info, errFloatToString % [$result.floatVal, typeToString(typ)])
+    elif r1.kind == nkSym and typ.skipTypes(abstractRange).kind == tyCstring:
+      discard "keep nkHiddenStdConv for cstring conversions"
     else:
       changeType(c, r1, typ, check=true)
       result = r1
@@ -916,7 +923,10 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
   if iterAfterVarLent.kind != tyTuple or n.len == 3:
     if n.len == 3:
       if n[0].kind == nkVarTuple:
-        if n[0].len-1 != iterAfterVarLent.len:
+        if iterAfterVarLent.kind != tyTuple:
+          return localErrorNode(c, n, n[0].info, errTupleUnpackingTupleExpected %
+              [typeToString(n[1].typ, preferDesc)])
+        elif n[0].len-1 != iterAfterVarLent.len:
           return localErrorNode(c, n, n[0].info, errWrongNumberOfVariables)
 
         for i in 0..<n[0].len-1:

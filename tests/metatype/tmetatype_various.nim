@@ -66,3 +66,8 @@ var x: array[8, CTBool[Ct[uint32]]]
 x[0] = (CTBool[Ct[uint32]])(1)
 echo x.repr, " ", typeof(x[0])
 
+block: # bug #23139
+  type Foo = enum a, b
+
+  var x: range[a..b]
+  doAssert (repr x) == "a"

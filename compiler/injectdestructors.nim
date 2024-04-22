@@ -161,7 +161,8 @@ proc isLastReadImpl(n: PNode; c: var Con; scope: var Scope): bool =
     result = false
 
 proc isLastRead(n: PNode; c: var Con; s: var Scope): bool =
-  if not hasDestructor(c, n.typ): return true
+  # bug #23354; an object type could have a non-trival assignements when it is passed to a sink parameter
+  if not hasDestructor(c, n.typ) and (n.typ.kind != tyObject or isTrival(getAttachedOp(c.graph, n.typ, attachedAsgn))): return true
 
   let m = skipConvDfa(n)
   result = (m.kind == nkSym and sfSingleUsedTemp in m.sym.flags) or
@@ -314,7 +315,7 @@ proc isCriticalLink(dest: PNode): bool {.inline.} =
 
 proc finishCopy(c: var Con; result, dest: PNode; isFromSink: bool) =
   if c.graph.config.selectedGC == gcOrc:
-    let t = dest.typ.skipTypes({tyGenericInst, tyAlias, tySink, tyDistinct})
+    let t = dest.typ.skipTypes(tyUserTypeClasses + {tyGenericInst, tyAlias, tySink, tyDistinct})
     if cyclicType(c.graph, t):
       result.add boolLit(c.graph, result.info, isFromSink or isCriticalLink(dest))
 
@@ -437,18 +438,19 @@ proc isCapturedVar(n: PNode): bool =
 
 proc passCopyToSink(n: PNode; c: var Con; s: var Scope): PNode =
   result = newNodeIT(nkStmtListExpr, n.info, n.typ)
-  let tmp = c.getTemp(s, n.typ, n.info)
-  if hasDestructor(c, n.typ):
-    let typ = n.typ.skipTypes({tyGenericInst, tyAlias, tySink})
+  let nTyp = n.typ.skipTypes(tyUserTypeClasses)
+  let tmp = c.getTemp(s, nTyp, n.info)
+  if hasDestructor(c, nTyp):
+    let typ = nTyp.skipTypes({tyGenericInst, tyAlias, tySink})
     let op = getAttachedOp(c.graph, typ, attachedDup)
     if op != nil and tfHasOwned notin typ.flags:
       if sfError in op.flags:
-        c.checkForErrorPragma(n.typ, n, "=dup")
+        c.checkForErrorPragma(nTyp, n, "=dup")
       else:
         let copyOp = getAttachedOp(c.graph, typ, attachedAsgn)
         if copyOp != nil and sfError in copyOp.flags and
            sfOverridden notin op.flags:
-          c.checkForErrorPragma(n.typ, n, "=dup", inferredFromCopy = true)
+          c.checkForErrorPragma(nTyp, n, "=dup", inferredFromCopy = true)
 
       let src = p(n, c, s, normal)
       var newCall = newTreeIT(nkCall, src.info, src.typ,
@@ -465,7 +467,7 @@ proc passCopyToSink(n: PNode; c: var Con; s: var Scope): PNode =
       m.add p(n, c, s, normal)
       c.finishCopy(m, n, isFromSink = true)
       result.add m
-    if isLValue(n) and not isCapturedVar(n) and n.typ.skipTypes(abstractInst).kind != tyRef and c.inSpawn == 0:
+    if isLValue(n) and not isCapturedVar(n) and nTyp.skipTypes(abstractInst).kind != tyRef and c.inSpawn == 0:
       message(c.graph.config, n.info, hintPerformance,
         ("passing '$1' to a sink parameter introduces an implicit copy; " &
         "if possible, rearrange your program's control flow to prevent it") % $n)
@@ -474,8 +476,8 @@ proc passCopyToSink(n: PNode; c: var Con; s: var Scope): PNode =
         ("cannot move '$1', passing '$1' to a sink parameter introduces an implicit copy") % $n)
   else:
     if c.graph.config.selectedGC in {gcArc, gcOrc, gcAtomicArc}:
-      assert(not containsManagedMemory(n.typ))
-    if n.typ.skipTypes(abstractInst).kind in {tyOpenArray, tyVarargs}:
+      assert(not containsManagedMemory(nTyp))
+    if nTyp.skipTypes(abstractInst).kind in {tyOpenArray, tyVarargs}:
       localError(c.graph.config, n.info, "cannot create an implicit openArray copy to be passed to a sink parameter")
     result.add newTree(nkAsgn, tmp, p(n, c, s, normal))
   # Since we know somebody will take over the produced copy, there is
@@ -589,7 +591,9 @@ template processScopeExpr(c: var Con; s: var Scope; ret: PNode, processCall: unt
   # tricky because you would have to intercept moveOrCopy at a certain point
   let tmp = c.getTemp(s.parent[], ret.typ, ret.info)
   tmp.sym.flags = tmpFlags
-  let cpy = if hasDestructor(c, ret.typ):
+  let cpy = if hasDestructor(c, ret.typ) and
+                ret.typ.kind notin {tyOpenArray, tyVarargs}:
+                # bug #23247 we don't own the data, so it's harmful to destroy it
               s.parent[].final.add c.genDestroy(tmp)
               moveOrCopy(tmp, ret, c, s, {IsDecl})
             else:
@@ -900,7 +904,10 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
         result[0] = p(n[0], c, s, normal)
       if canRaise(n[0]): s.needsTry = true
       if mode == normal:
-        result = ensureDestruction(result, n, c, s)
+        if result.typ != nil and result.typ.kind notin {tyOpenArray, tyVarargs}:
+          # Returns of openarray types shouldn't be destroyed
+          # bug #19435; # bug #23247
+          result = ensureDestruction(result, n, c, s)
     of nkDiscardStmt: # Small optimization
       result = shallowCopy(n)
       if n[0].kind != nkEmpty:
