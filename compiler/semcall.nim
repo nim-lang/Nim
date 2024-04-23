@@ -49,19 +49,6 @@ proc initCandidateSymbols(c: PContext, headSymbol: PNode,
   while symx != nil:
     if symx.kind in filter:
       result.add((symx, o.lastOverloadScope))
-    elif symx.kind == skGenericParam:
-      #[
-        This code handles looking up a generic parameter when it's a static callable.
-        For instance:
-          proc name[T: static proc()]() = T()
-          name[proc() = echo"hello"]()
-      ]#
-      for paramSym in searchInScopesAllCandidatesFilterBy(c, symx.name, {skConst}):
-        let paramTyp = paramSym.typ
-        if paramTyp.n.sym.kind in filter:
-          result.add((paramTyp.n.sym, o.lastOverloadScope))
-
-
     symx = nextOverloadIter(o, c, headSymbol)
   if result.len > 0:
     initCandidate(c, best, result[0].s, initialBinding,
