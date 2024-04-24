@@ -700,3 +700,19 @@ block: # bug #23505
     C(value: addr tmp[])
 
   discard init(C)
+
+block: # bug #23524
+  type MyType = object
+    a: int
+
+  proc `=destroy`(typ: MyType) = discard
+
+  var t1 = MyType(a: 100)
+  var t2 = t1 # Should be a copy?
+
+  proc main() =
+    t2 = t1
+    doAssert t1.a == 100
+    doAssert t2.a == 100
+
+  main()

@@ -161,9 +161,11 @@ when defined(nimHasEnsureMove):
     ## Ensures that `x` is moved to the new location, otherwise it gives
     ## an error at the compile time.
     runnableExamples:
-      var x = "Hello"
-      let y = ensureMove(x)
-      doAssert y == "Hello"
+      proc foo =
+        var x = "Hello"
+        let y = ensureMove(x)
+        doAssert y == "Hello"
+      foo()
     discard "implemented in injectdestructors"
 
 type
