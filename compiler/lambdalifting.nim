@@ -258,8 +258,7 @@ proc liftIterSym*(g: ModuleGraph; n: PNode; idgen: IdGenerator; owner: PSym): PN
   let iter = n.sym
   assert iter.isIterator
 
-  result = newNodeIT(nkStmtListExpr, n.info, n.typ)
-
+  result = newNodeIT(nkStmtListExpr, n.info, iter.typ)
   let hp = getHiddenParam(g, iter)
   var env: PNode
   if owner.isIterator:

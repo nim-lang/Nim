@@ -3,3 +3,6 @@ iterator iter*(): int {.closure.} =
 
 var x = iter
 doAssert x() == 3
+
+let fIt = iterator(): int = yield 70
+doAssert fIt() == 70
