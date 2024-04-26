@@ -651,13 +651,16 @@ template lintReport*(conf: ConfigRef; info: TLineInfo, beau, got: string, extraM
   let msg = if optStyleError in conf.globalOptions: errGenerated else: hintName
   liMessage(conf, info, msg, m, doNothing, instLoc())
 
-proc quotedFilename*(conf: ConfigRef; i: TLineInfo): Rope =
-  if i.fileIndex.int32 < 0:
+proc quotedFilename*(conf: ConfigRef; fi: FileIndex): Rope =
+  if fi.int32 < 0:
     result = makeCString "???"
   elif optExcessiveStackTrace in conf.globalOptions:
-    result = conf.m.fileInfos[i.fileIndex.int32].quotedFullName
+    result = conf.m.fileInfos[fi.int32].quotedFullName
   else:
-    result = conf.m.fileInfos[i.fileIndex.int32].quotedName
+    result = conf.m.fileInfos[fi.int32].quotedName
+
+proc quotedFilename*(conf: ConfigRef; i: TLineInfo): Rope =
+  quotedFilename(conf, i.fileIndex)
 
 template listMsg(title, r) =
   msgWriteln(conf, title, {msgNoUnitSep})

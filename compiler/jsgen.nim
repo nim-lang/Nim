@@ -1467,7 +1467,7 @@ proc genArrayAddr(p: PProc, n: PNode, r: var TCompRes) =
   r.kind = resExpr
 
 proc genArrayAccess(p: PProc, n: PNode, r: var TCompRes) =
-  var ty = skipTypes(n[0].typ, abstractVarRange)
+  var ty = skipTypes(n[0].typ, abstractVarRange+tyUserTypeClasses)
   if ty.kind in {tyRef, tyPtr, tyLent, tyOwned}: ty = skipTypes(ty.elementType, abstractVarRange)
   case ty.kind
   of tyArray, tyOpenArray, tySequence, tyString, tyCstring, tyVarargs:
