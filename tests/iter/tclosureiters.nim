@@ -86,14 +86,11 @@ for x in inf.take(3):
   echo x
 
 # bug #3583
-when not defined(js): # TODO: fixem JS closure
-  proc foo(f: (iterator(): int)) =
-    for i in f(): echo i
+proc foo(f: (iterator(): int)) =
+  for i in f(): echo i
 
-  let fIt = iterator(): int = yield 70
-  foo fIt
-else:
-  echo 70
+let fIt = iterator(): int = yield 70
+foo fIt
 
 # bug #5321
 
