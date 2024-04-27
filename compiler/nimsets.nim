@@ -124,7 +124,7 @@ proc symdiffSets*(conf: ConfigRef; a, b: PNode): PNode = nodeSetOp(a, b, bitSetS
 proc containsSets*(conf: ConfigRef; a, b: PNode): bool =
   let x = toBitSet(conf, a)
   let y = toBitSet(conf, b)
-  result = bitSetContains(y, x)
+  result = bitSetContains(x, y)
 
 proc equalSets*(conf: ConfigRef; a, b: PNode): bool =
   let x = toBitSet(conf, a)
