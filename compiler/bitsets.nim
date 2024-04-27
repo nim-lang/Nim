@@ -61,7 +61,7 @@ proc bitSetEquals*(x, y: TBitSet): bool =
 
 proc bitSetContains*(x, y: TBitSet): bool =
   for i in 0..high(x):
-    if (x[i] and not y[i]) != Zero:
+    if (y[i] and not x[i]) != Zero:
       return false
   result = true
 
