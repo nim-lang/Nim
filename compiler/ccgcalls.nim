@@ -171,7 +171,10 @@ proc genOpenArraySlice(p: BProc; q: PNode; formalType, destType: PType; prepareF
     genBoundsCheck(p, a, b, c)
   if prepareForMutation:
     linefmt(p, cpsStmts, "#nimPrepareStrMutationV2($1);$n", [byRefLoc(p, a)])
-  let ty = skipTypes(a.t, abstractVar+{tyPtr})
+  # bug #23321: In the function mapType, ptrs (tyPtr, tyVar, tyLent, tyRef)
+  # are mapped into ctPtrToArray, the dereference of which is skipped
+  # in the `genref`. We need to skip these ptrs here
+  let ty = skipTypes(a.t, abstractVar+{tyPtr, tyRef})
   let dest = getTypeDesc(p.module, destType)
   let lengthExpr = "($1)-($2)+1" % [rdLoc(c), rdLoc(b)]
   case ty.kind
