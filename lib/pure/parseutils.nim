@@ -474,10 +474,8 @@ proc parseInt*(s: openArray[char], number: var int): int {.
   ## `ValueError` is raised if the parsed integer is out of the valid range.
   runnableExamples:
     var res: int
-    doAssert parseInt("2019", res, 0) == 4
-    doAssert res == 2019
-    doAssert parseInt("2019", res, 2) == 2
-    doAssert res == 19
+    doAssert parseInt("-2024_05_02", res) == 11
+    doAssert res == -20240502
   var res = BiggestInt(0)
   result = parseBiggestInt(s, res)
   when sizeof(int) <= 4:
