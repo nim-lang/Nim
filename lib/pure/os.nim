@@ -754,14 +754,14 @@ template rawToFormalFileInfo(rawInfo, path, formalInfo): untyped =
   ## 'rawInfo' is either a 'BY_HANDLE_FILE_INFORMATION' structure on Windows,
   ## or a 'Stat' structure on posix
   when defined(windows):
-    template merge(a, b): untyped =
-       cast[int64](
+    template merge[T](a, b): untyped =
+       cast[T](
         (uint64(cast[uint32](a))) or
         (uint64(cast[uint32](b)) shl 32)
        )
     formalInfo.id.device = rawInfo.dwVolumeSerialNumber
-    formalInfo.id.file = merge(rawInfo.nFileIndexLow, rawInfo.nFileIndexHigh)
-    formalInfo.size = BiggestInt merge(rawInfo.nFileSizeLow, rawInfo.nFileSizeHigh)
+    formalInfo.id.file = merge[FileId](rawInfo.nFileIndexLow, rawInfo.nFileIndexHigh)
+    formalInfo.size = merge[BiggestInt](rawInfo.nFileSizeLow, rawInfo.nFileSizeHigh)
     formalInfo.linkCount = rawInfo.nNumberOfLinks
     formalInfo.lastAccessTime = fromWinTime(rdFileTime(rawInfo.ftLastAccessTime))
     formalInfo.lastWriteTime = fromWinTime(rdFileTime(rawInfo.ftLastWriteTime))
