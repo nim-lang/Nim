@@ -805,7 +805,7 @@ func split*(s: string, sep: string, maxsplit: int = -1): seq[string] {.rtl,
 func rsplit*(s: string, sep: char, maxsplit: int = -1): seq[string] {.rtl,
     extern: "nsuRSplitChar".} =
   ## The same as the `rsplit iterator <#rsplit.i,string,char,int>`_, but is a func
-  ## that returns a sequence of substrings.
+  ## that returns a sequence of substrings in original order.
   ##
   ## A possible common use case for `rsplit` is path manipulation,
   ## particularly on systems that don't use a common delimiter.
@@ -835,7 +835,7 @@ func rsplit*(s: string, seps: set[char] = Whitespace,
              maxsplit: int = -1): seq[string]
              {.rtl, extern: "nsuRSplitCharSet".} =
   ## The same as the `rsplit iterator <#rsplit.i,string,set[char],int>`_, but is a
-  ## func that returns a sequence of substrings.
+  ## func that returns a sequence of substrings in original order.
   ##
   ## A possible common use case for `rsplit` is path manipulation,
   ## particularly on systems that don't use a common delimiter.
@@ -867,7 +867,7 @@ func rsplit*(s: string, seps: set[char] = Whitespace,
 func rsplit*(s: string, sep: string, maxsplit: int = -1): seq[string] {.rtl,
     extern: "nsuRSplitString".} =
   ## The same as the `rsplit iterator <#rsplit.i,string,string,int,bool>`_, but is a func
-  ## that returns a sequence of substrings.
+  ## that returns a sequence of substrings in original order.
   ##
   ## A possible common use case for `rsplit` is path manipulation,
   ## particularly on systems that don't use a common delimiter.
