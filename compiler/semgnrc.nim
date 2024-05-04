@@ -75,6 +75,8 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
       if result.kind == nkSym and canOpenSym(result.sym):
         result.flags.incl nfOpenSym
         result.typ = nil
+        if genericsOpenSym notin c.features:
+          result.flags.incl nfDisabledOpenSym
   case s.kind
   of skUnknown:
     # Introduced in this pass! Leave it as an identifier.
@@ -105,6 +107,8 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
       if canOpenSym(result.sym):
         result.flags.incl nfOpenSym
         result.typ = nil
+        if genericsOpenSym notin c.features:
+          result.flags.incl nfDisabledOpenSym
     onUse(n.info, s)
   of skParam:
     result = n
@@ -116,6 +120,8 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
       if canOpenSym(result.sym):
         result.flags.incl nfOpenSym
         result.typ = nil
+      if genericsOpenSym notin c.features:
+        result.flags.incl nfDisabledOpenSym
     else:
       result = n
     onUse(n.info, s)
@@ -124,6 +130,8 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
     if canOpenSym(result.sym):
       result.flags.incl nfOpenSym
       result.typ = nil
+      if genericsOpenSym notin c.features:
+        result.flags.incl nfDisabledOpenSym
     onUse(n.info, s)
 
 proc lookup(c: PContext, n: PNode, flags: TSemGenericFlags,

@@ -329,6 +329,9 @@ type
     nfHasComment # node has a comment
     nfSkipFieldChecking # node skips field visable checking
     nfOpenSym # node is a captured sym but can be overriden by local symbols
+    nfDisabledOpenSym # temporary: node is nfOpenSym but cannot be overriden
+                      # because genericsOpenSym experimental switch is disabled
+                      # gives warning instead
 
   TNodeFlags* = set[TNodeFlag]
   TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 47)

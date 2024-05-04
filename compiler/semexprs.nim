@@ -3144,7 +3144,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
         var o = s2.owner
         while o != nil:
           if o == c.p.owner:
-            if genericsOpenSym in c.features:
+            if nfDisabledOpenSym notin n.flags:
               result = semExpr(c, id, flags, expectedType)
               return
             else:
