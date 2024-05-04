@@ -565,7 +565,7 @@ iterator rsplit*(s: string, sep: char,
                  maxsplit: int = -1): string =
   ## Splits the string `s` into substrings from the right using a
   ## string separator. Works exactly the same as `split iterator
-  ## <#split.i,string,char,int>`_ except in reverse order.
+  ## <#split.i,string,char,int>`_ except in **reverse** order.
   ##
   ##   ```nim
   ##   for piece in "foo:bar".rsplit(':'):
@@ -592,7 +592,7 @@ iterator rsplit*(s: string, seps: set[char] = Whitespace,
                  maxsplit: int = -1): string =
   ## Splits the string `s` into substrings from the right using a
   ## string separator. Works exactly the same as `split iterator
-  ## <#split.i,string,char,int>`_ except in reverse order.
+  ## <#split.i,string,char,int>`_ except in **reverse** order.
   ##
   ##   ```nim
   ##   for piece in "foo bar".rsplit(WhiteSpace):
@@ -622,7 +622,7 @@ iterator rsplit*(s: string, sep: string, maxsplit: int = -1,
                  keepSeparators: bool = false): string =
   ## Splits the string `s` into substrings from the right using a
   ## string separator. Works exactly the same as `split iterator
-  ## <#split.i,string,string,int>`_ except in reverse order.
+  ## <#split.i,string,string,int>`_ except in **reverse** order.
   ##
   ##   ```nim
   ##   for piece in "foothebar".rsplit("the"):
