@@ -886,7 +886,7 @@ const
                                       nfFromTemplate, nfDefaultRefsParam,
                                       nfExecuteOnReload, nfLastRead,
                                       nfFirstWrite, nfSkipFieldChecking,
-                                      nfOpenSym}
+                                      nfOpenSym, nfDisabledOpenSym}
   namePos* = 0
   patternPos* = 1    # empty except for term rewriting macros
   genericParamsPos* = 2
