@@ -2033,6 +2033,7 @@ proc dial*(address: string, port: Port,
       success = true
       break
     lastError = osLastError()
+    lastFd.close()
     it = it.ai_next
   freeAddrInfo(aiList)
   closeUnusedFds(ord(domain))
