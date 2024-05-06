@@ -2033,7 +2033,6 @@ proc dial*(address: string, port: Port,
       success = true
       break
     lastError = osLastError()
-    lastFd.close()
     it = it.ai_next
   freeAddrInfo(aiList)
   closeUnusedFds(ord(domain))
@@ -2041,8 +2040,10 @@ proc dial*(address: string, port: Port,
   if success:
     result = newSocket(lastFd, domain, sockType, protocol, buffered)
   elif lastError != 0.OSErrorCode:
+    lastFd.close()
     raiseOSError(lastError)
   else:
+    lastFd.close()
     raise newException(IOError, "Couldn't resolve address: " & address)
 
 proc connect*(socket: Socket, address: string,
