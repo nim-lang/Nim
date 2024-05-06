@@ -2213,15 +2213,16 @@ proc genDefault(p: PProc, n: PNode; r: var TCompRes) =
   r.kind = resExpr
 
 proc genReset(p: PProc, n: PNode) =
+  # TODO: it should be done by nir
   var x: TCompRes = default(TCompRes)
-  useMagic(p, "genericReset")
   gen(p, n[1], x)
   if x.typ == etyBaseIndex:
     lineF(p, "$1 = null, $2 = 0;$n", [x.address, x.res])
   else:
-    let (a, tmp) = maybeMakeTempAssignable(p, n[1], x)
-    lineF(p, "$1 = genericReset($3, $2);$n", [a,
-                  genTypeInfo(p, n[1].typ), tmp])
+    var y: TCompRes = default(TCompRes)
+    genDefault(p, n[1], y)
+    let (a, _) = maybeMakeTempAssignable(p, n[1], x)
+    lineF(p, "$1 = $2;$n", [a, y.rdLoc])
 
 proc genMove(p: PProc; n: PNode; r: var TCompRes) =
   var a: TCompRes = default(TCompRes)
