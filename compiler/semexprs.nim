@@ -2989,7 +2989,7 @@ proc getNilType(c: PContext): PType =
     result.align = c.config.target.ptrSize.int16
     c.nilTypeCache = result
 
-proc enumFieldSymChoice(c: PContext, n: PNode, s: PSym): PNode =
+proc enumFieldSymChoice(c: PContext, n: PNode, s: PSym; flags: TExprFlags): PNode =
   var o: TOverloadIter = default(TOverloadIter)
   var i = 0
   var a = initOverloadIter(o, c, n)
