@@ -3126,7 +3126,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
       if optOwnedRefs in c.config.globalOptions:
         result.typ = makeVarType(c, result.typ, tyOwned)
     of skEnumField:
-      result = enumFieldSymChoice(c, n, s)
+      result = enumFieldSymChoice(c, n, s, flags)
     else:
       result = semSym(c, n, s, flags)
     if isSymChoice(result):
