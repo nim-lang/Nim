@@ -157,7 +157,7 @@ pkg "strunicode", "nim c -r --mm:refc src/strunicode.nim"
 pkg "supersnappy"
 pkg "synthesis"
 pkg "taskpools"
-pkg "telebot", "nim c -o:tbot -r src/telebot.nim", allowFailure = true
+pkg "telebot", "nim c -o:tbot -r src/telebot.nim"
 pkg "tempdir"
 pkg "templates"
 pkg "tensordsl", "nim c -r --mm:refc tests/tests.nim", "https://krux02@bitbucket.org/krux02/tensordslnim.git"
