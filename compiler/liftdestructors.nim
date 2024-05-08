@@ -39,7 +39,7 @@ template asink*(t: PType): PSym = getAttachedOp(c.g, t, attachedSink)
 
 proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode)
 proc produceSym(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp;
-              info: TLineInfo; idgen: IdGenerator): PSym
+              info: TLineInfo; idgen: IdGenerator; isDistinct = false): PSym
 
 proc createTypeBoundOps*(g: ModuleGraph; c: PContext; orig: PType; info: TLineInfo;
                          idgen: IdGenerator)
@@ -1030,7 +1030,9 @@ proc produceSymDistinctType(g: ModuleGraph; c: PContext; typ: PType;
   assert typ.kind == tyDistinct
   let baseType = typ[0]
   if getAttachedOp(g, baseType, kind) == nil:
-    discard produceSym(g, c, baseType, kind, info, idgen)
+    # TODO: fixme `isDistinct` is a fix for #23552; remove it after
+    # `-d:nimPreviewNonVarDestructor` becomes the default
+    discard produceSym(g, c, baseType, kind, info, idgen, isDistinct = true)
   result = getAttachedOp(g, baseType, kind)
   setAttachedOp(g, idgen.module, typ, kind, result)
 
@@ -1069,7 +1071,7 @@ proc symDupPrototype(g: ModuleGraph; typ: PType; owner: PSym; kind: TTypeAttache
   incl result.flags, sfGeneratedOp
 
 proc symPrototype(g: ModuleGraph; typ: PType; owner: PSym; kind: TTypeAttachedOp;
-              info: TLineInfo; idgen: IdGenerator): PSym =
+              info: TLineInfo; idgen: IdGenerator; isDistinct = false): PSym =
   if kind == attachedDup:
     return symDupPrototype(g, typ, owner, kind, info, idgen)
 
@@ -1079,7 +1081,7 @@ proc symPrototype(g: ModuleGraph; typ: PType; owner: PSym; kind: TTypeAttachedOp
   let src = newSym(skParam, getIdent(g.cache, if kind == attachedTrace: "env" else: "src"),
                    idgen, result, info)
 
-  if kind == attachedDestructor and typ.kind in {tyRef, tyString, tySequence} and g.config.selectedGC in {gcArc, gcOrc, gcAtomicArc}:
+  if kind == attachedDestructor and typ.kind in {tyRef, tyString, tySequence} and g.config.selectedGC in {gcArc, gcOrc, gcAtomicArc} and not isDistinct:
     dest.typ = typ
   else:
     dest.typ = makeVarType(typ.owner, typ, idgen)
@@ -1121,13 +1123,13 @@ proc genTypeFieldCopy(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   body.add newAsgnStmt(xx, yy)
 
 proc produceSym(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp;
-              info: TLineInfo; idgen: IdGenerator): PSym =
+              info: TLineInfo; idgen: IdGenerator; isDistinct = false): PSym =
   if typ.kind == tyDistinct:
     return produceSymDistinctType(g, c, typ, kind, info, idgen)
 
   result = getAttachedOp(g, typ, kind)
   if result == nil:
-    result = symPrototype(g, typ, typ.owner, kind, info, idgen)
+    result = symPrototype(g, typ, typ.owner, kind, info, idgen, isDistinct = isDistinct)
 
   var a = TLiftCtx(info: info, g: g, kind: kind, c: c, asgnForType: typ, idgen: idgen,
                    fn: result)
