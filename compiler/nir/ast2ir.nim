@@ -1896,7 +1896,7 @@ proc genMagic(c: var ProcCon; n: PNode; d: var Value; m: TMagic) =
   of mDefault, mZeroDefault:
     genDefault c, n, d
   of mMove: genMove(c, n, d)
-  of mWasMoved, mReset:
+  of mWasMoved:
     unused(c, n, d)
     genWasMoved(c, n)
   of mDestroy: genDestroy(c, n)

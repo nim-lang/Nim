@@ -1352,14 +1352,6 @@ proc genSeqElemAppend(p: BProc, e: PNode, d: var TLoc) =
   genAssignment(p, dest, b, {needToCopy})
   gcUsage(p.config, e)
 
-proc genReset(p: BProc, n: PNode) =
-  var a: TLoc = initLocExpr(p, n[1])
-  specializeReset(p, a)
-  when false:
-    linefmt(p, cpsStmts, "#genericReset((void*)$1, $2);$n",
-            [addrLoc(p.config, a),
-            genTypeInfoV1(p.module, skipTypes(a.t, {tyVar}), n.info)])
-
 proc genDefault(p: BProc; n: PNode; d: var TLoc) =
   if d.k == locNone: d = getTemp(p, n.typ, needsInit=true)
   else: resetLoc(p, d)
@@ -2562,7 +2554,6 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
              [mangleDynLibProc(prc), getTypeDesc(p.module, prc.loc.t), getModuleDllPath(p.module, prc)])
     genCall(p, e, d)
   of mDefault, mZeroDefault: genDefault(p, e, d)
-  of mReset: genReset(p, e)
   of mEcho: genEcho(p, e[1].skipConv)
   of mArrToSeq: genArrToSeq(p, e, d)
   of mNLen..mNError, mSlurp..mQuoteAst:
