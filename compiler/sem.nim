@@ -21,7 +21,7 @@ import
   extccomp
 
 import vtables
-import std/[strtabs, math, tables, intsets, strutils]
+import std/[strtabs, math, tables, intsets, strutils, sets]
 
 when not defined(leanCompiler):
   import spawn
