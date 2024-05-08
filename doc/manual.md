@@ -5358,6 +5358,8 @@ To override the compiler's side effect analysis a `{.noSideEffect.}`
 **Side effects are usually inferred. The inference for side effects is
 analogous to the inference for exception tracking.**
 
+When the compiler cannot infer side effects, as is the case for imported
+functions, one can annotate them with the `sideEffect` pragma.
 
 GC safety effect
 ----------------
