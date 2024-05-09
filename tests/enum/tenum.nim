@@ -258,3 +258,12 @@ block: # unordered enum
 
     doAssert (ord(A), ord(B), ord(C), ord(D), ord(E), ord(G)) ==
              (0, 1, -1, 2, 3, -999)
+
+  block:
+    type
+      SomeEnum = enum
+        seA = 3
+        seB = 2
+        seC = "foo"
+
+    doAssert (ord(seA), ord(seB), ord(seC)) == (3, 2, 4)

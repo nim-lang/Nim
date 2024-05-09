@@ -86,6 +86,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
   var hasNull = false
   for i in 1..<n.len:
     if n[i].kind == nkEmpty: continue
+    var useAutoCounter = false
     case n[i].kind
     of nkEnumFieldDef:
       if n[i][0].kind == nkPragmaExpr:
@@ -113,6 +114,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
       of tyString, tyCstring:
         strVal = v
         x = counter
+        useAutoCounter = true
       else:
         if isOrdinalType(v.typ, allowEnumWithHoles=true):
           x = toInt64(getOrdValue(v))
@@ -125,17 +127,20 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
       counter = x
     of nkSym:
       e = n[i].sym
+      useAutoCounter = true
     of nkIdent, nkAccQuoted:
       e = newSymS(skEnumField, n[i], c)
       identToReplace = addr n[i]
+      useAutoCounter = true
     of nkPragmaExpr:
       e = newSymS(skEnumField, n[i][0], c)
       pragma(c, e, n[i][1], enumFieldPragmas)
       identToReplace = addr n[i][0]
+      useAutoCounter = true
     else:
       illFormedAst(n[i], c.config)
 
-    if n[i].kind != nkEnumFieldDef:
+    if useAutoCounter:
       while counter in counterSet and counter != high(typeof(counter)):
         inc counter
       counterSet.incl counter
