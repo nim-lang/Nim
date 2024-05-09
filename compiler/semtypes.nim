@@ -69,9 +69,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
     e: PSym = nil
     base: PType = nil
     identToReplace: ptr PNode = nil
-    counterSet = initHashSet[BiggestInt]()
-    containsUnorderedValues = false
-    lastCounterValue = -1
+    counterSet = initPackedSet[BiggestInt]()
   counter = 0
   base = nil
   result = newOrPrevType(tyEnum, prev, c)
@@ -123,33 +121,29 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
           localError(c.config, v.info, errOrdinalTypeExpected % typeToString(v.typ, preferDesc))
       if i != 1:
         if x != counter: incl(result.flags, tfEnumHasHoles)
-        if x < lastCounterValue:
-          containsUnorderedValues = true
       e.ast = strVal # might be nil
-      if not containsUnorderedValues:
-        counter = x
+      counter = x
     of nkSym:
       e = n[i].sym
-      x = counter
     of nkIdent, nkAccQuoted:
       e = newSymS(skEnumField, n[i], c)
       identToReplace = addr n[i]
-      x = counter
     of nkPragmaExpr:
       e = newSymS(skEnumField, n[i][0], c)
       pragma(c, e, n[i][1], enumFieldPragmas)
       identToReplace = addr n[i][0]
-      x = counter
     else:
       illFormedAst(n[i], c.config)
 
-    if counterSet.containsOrIncl(x):
+    if n[i].kind != nkEnumFieldDef:
+      while counter in counterSet and counter != high(typeof(counter)):
+        inc counter
+      counterSet.incl counter
+    elif counterSet.containsOrIncl(counter):
       localError(c.config, n[i].info, errInvalidOrderInEnumX % e.name.s)
 
-    lastCounterValue = x
-
     e.typ = result
-    e.position = int(x)
+    e.position = int(counter)
     let symNode = newSymNode(e)
     if identToReplace != nil and c.config.cmd notin cmdDocLike:
       # A hack to produce documentation for enum fields.
