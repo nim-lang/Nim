@@ -3028,13 +3028,6 @@ proc resolveIdentToSym(c: PContext, n: PNode, resultNode: var PNode,
                        flags: TExprFlags, expectedType: PType): PSym =
   # result is nil on error or if a node that can't produce a sym is resolved
   let ident = considerQuotedIdent(c, n)
-  if expectedType != nil and (
-      let expected = expectedType.skipTypes(abstractRange-{tyDistinct});
-      expected.kind == tyEnum):
-    let nameId = ident.id
-    for f in expected.n:
-      if f.kind == nkSym and f.sym.name.id == nameId:
-        return f.sym
   var filter = {low(TSymKind)..high(TSymKind)}
   if efNoEvaluateGeneric in flags:
     # `a[...]` where `a` is a module or package is not possible
