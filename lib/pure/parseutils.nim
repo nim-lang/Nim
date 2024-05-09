@@ -460,7 +460,7 @@ proc parseBiggestInt*(s: openArray[char], number: var BiggestInt): int {.
     var res: BiggestInt
     doAssert parseBiggestInt("9223372036854775807", res) == 19
     doAssert res == 9223372036854775807
-    doAssert parseInt("-2024_05_09", res) == 11
+    doAssert parseBiggestInt("-2024_05_09", res) == 11
     doAssert res == -20240509
   var res = BiggestInt(0)
   # use 'res' for exception safety (don't write to 'number' in case of an
@@ -992,9 +992,9 @@ proc parseBiggestInt*(s: string, number: var BiggestInt, start = 0): int {.noSid
     var res: BiggestInt
     doAssert parseBiggestInt("9223372036854775807", res, 0) == 19
     doAssert res == 9223372036854775807
-    doAssert parseInt("-2024_05_09", res) == 11
+    doAssert parseBiggestInt("-2024_05_09", res) == 11
     doAssert res == -20240509
-    doAssert parseInt("-2024_05_02", res, 7) == 4
+    doAssert parseBiggestInt("-2024_05_02", res, 7) == 4
     doAssert res == 502
   parseBiggestInt(s.toOpenArray(start, s.high), number)
 
