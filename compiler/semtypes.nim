@@ -15,7 +15,7 @@ const
   errStringLiteralExpected = "string literal expected"
   errIntLiteralExpected = "integer literal expected"
   errWrongNumberOfVariables = "wrong number of variables"
-  errInvalidOrderInEnumX = "invalid order in enum '$1'"
+  errDuplicateAliasInEnumX = "duplicate value in enum '$1'"
   errOverflowInEnumX = "The enum '$1' exceeds its maximum value ($2)"
   errOrdinalTypeExpected = "ordinal type expected; given: $1"
   errSetTooBig = "set is too large; use `std/sets` for ordinal types with more than 2^16 elements"
@@ -145,7 +145,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
         inc counter
       counterSet.incl counter
     elif counterSet.containsOrIncl(counter):
-      localError(c.config, n[i].info, errInvalidOrderInEnumX % e.name.s)
+      localError(c.config, n[i].info, errDuplicateAliasInEnumX % e.name.s)
 
     e.typ = result
     e.position = int(counter)

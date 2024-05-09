@@ -1,5 +1,5 @@
 discard """
-  errormsg: "invalid order in enum 'd'"
+  errormsg: "duplicate value in enum 'd'"
 """
 
 type
