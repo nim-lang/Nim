@@ -622,37 +622,6 @@ proc nimCopy(dest, src: JSRef, ti: PNimType): JSRef =
   else:
     result = src
 
-proc genericReset(x: JSRef, ti: PNimType): JSRef {.compilerproc.} =
-  {.emit: "`result` = null;".}
-  case ti.kind
-  of tyPtr, tyRef, tyVar, tyNil:
-    if isFatPointer(ti):
-      {.emit: """
-        `result` = [null, 0];
-      """.}
-  of tySet:
-    {.emit: """
-      `result` = {};
-    """.}
-  of tyTuple, tyObject:
-    if ti.kind == tyObject:
-      {.emit: "`result` = {m_type: `ti`};".}
-    else:
-      {.emit: "`result` = {};".}
-  of tySequence, tyOpenArray, tyString:
-    {.emit: """
-      `result` = [];
-    """.}
-  of tyArrayConstr, tyArray:
-    {.emit: """
-      `result` = new Array(`x`.length);
-      for (var i = 0; i < `x`.length; ++i) {
-        `result`[i] = genericReset(`x`[i], `ti`.base);
-      }
-    """.}
-  else:
-    discard
-
 proc arrayConstr(len: int, value: JSRef, typ: PNimType): JSRef {.
                 asmNoStackFrame, compilerproc.} =
   # types are fake

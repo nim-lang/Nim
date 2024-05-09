@@ -2212,16 +2212,17 @@ proc genDefault(p: PProc, n: PNode; r: var TCompRes) =
   r.res = createVar(p, n.typ, indirect = false)
   r.kind = resExpr
 
-proc genReset(p: PProc, n: PNode) =
+proc genWasMoved(p: PProc, n: PNode) =
+  # TODO: it should be done by nir
   var x: TCompRes = default(TCompRes)
-  useMagic(p, "genericReset")
   gen(p, n[1], x)
   if x.typ == etyBaseIndex:
     lineF(p, "$1 = null, $2 = 0;$n", [x.address, x.res])
   else:
-    let (a, tmp) = maybeMakeTempAssignable(p, n[1], x)
-    lineF(p, "$1 = genericReset($3, $2);$n", [a,
-                  genTypeInfo(p, n[1].typ), tmp])
+    var y: TCompRes = default(TCompRes)
+    genDefault(p, n[1], y)
+    let (a, _) = maybeMakeTempAssignable(p, n[1], x)
+    lineF(p, "$1 = $2;$n", [a, y.rdLoc])
 
 proc genMove(p: PProc; n: PNode; r: var TCompRes) =
   var a: TCompRes = default(TCompRes)
@@ -2229,7 +2230,7 @@ proc genMove(p: PProc; n: PNode; r: var TCompRes) =
   r.res = p.getTemp()
   gen(p, n[1], a)
   lineF(p, "$1 = $2;$n", [r.rdLoc, a.rdLoc])
-  genReset(p, n)
+  genWasMoved(p, n)
   #lineF(p, "$1 = $2;$n", [dest.rdLoc, src.rdLoc])
 
 proc genDup(p: PProc; n: PNode; r: var TCompRes) =
@@ -2410,7 +2411,7 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of mNewSeqOfCap: unaryExpr(p, n, r, "", "[]")
   of mOf: genOf(p, n, r)
   of mDefault, mZeroDefault: genDefault(p, n, r)
-  of mReset, mWasMoved: genReset(p, n)
+  of mWasMoved: genWasMoved(p, n)
   of mEcho: genEcho(p, n, r)
   of mNLen..mNError, mSlurp, mStaticExec:
     localError(p.config, n.info, errXMustBeCompileTime % n[0].sym.name.s)
