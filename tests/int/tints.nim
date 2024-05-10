@@ -1,6 +1,5 @@
 discard """
   matrix: "; --backend:js --jsbigint64:off; --backend:js --jsbigint64:on"
-  targets: "c js"
   output: '''
 0 0
 0 0
@@ -8,7 +7,6 @@ Success'''
 """
 # Test the different integer operations
 
-# TODO: fixme --backend:js cannot change targets!!!
 
 import std/private/jsutils
 
