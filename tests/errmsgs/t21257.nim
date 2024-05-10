@@ -1,5 +1,4 @@
 discard """
-  action: compile
   cmd: "nim check $file" 
 """
 
@@ -16,5 +15,6 @@ type AC_WINCTRL_WINTSEL0* {.pure.} = enum
   BELOW = 0x2,
   OUTSIDE = 0x3,
 
-proc write*(WINTSEL0: AC_WINCTRL_WINTSEL0 = ABOVE) =
+proc write*(WINTSEL0: AC_WINCTRL_WINTSEL0 = ABOVE) = #[tt.Error
+                                            ^ ambiguous identifier: 'ABOVE']#
   discard
