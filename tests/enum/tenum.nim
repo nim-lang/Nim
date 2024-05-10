@@ -197,8 +197,7 @@ block: # unordered enum
         b = 0
 
     doAssert (ord(a), ord(b)) == (1, 0)
-    when false: # TODO: fixme pre-existing issues # bug #23586
-      doAssert unordered_enum.toSeq == @[a, b]
+    doAssert unordered_enum.toSeq == @[a, b]
 
   block:
     type
@@ -228,8 +227,7 @@ block: # unordered enum
         d
 
     doAssert (ord(a), ord(b), ord(c), ord(d)) == (7, 6, 5, 8)
-    when false:
-      doAssert unordered_enum.toSeq == @[a, b, c, d]
+    doAssert unordered_enum.toSeq == @[a, b, c, d]
 
   block:
     type
