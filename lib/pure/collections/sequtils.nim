@@ -253,10 +253,12 @@ func minIndex*[T](s: openArray[T], cmp: proc(a, b: T): bool {.closure.}): int {.
   ## Returns the index of the minimum value of `s`.
   ## `cmp` should return true if `a` is *less* than `b`.
   runnableExamples:
-    let a = @["foo","bar", "hello"]
-    let b = @[2..4, 1..3, 6..10]
-    assert minIndex(a, proc (a, b: string): bool = a.len < b.len)
-    assert minIndex(b, (a, b) => a.a < b.a)
+    import std/sugar
+
+    let s1 = @["foo","bar", "hello"]
+    let s2 = @[2..4, 1..3, 6..10]
+    assert minIndex(s1, proc (a, b: string): bool = a.len < b.len)
+    assert minIndex(s2, (a, b) => a.a < b.a)
 
   for i in 1..high(s):
     if cmp(s[i], s[result]): result = i
@@ -286,10 +288,10 @@ func maxIndex*[T](s: openArray[T], cmp: proc(a, b: T): bool {.closure.}): int {.
   runnableExamples:
     import std/sugar
 
-    let a = @["foo","bar", "hello"]
-    let b = @[2..4, 1..3, 6..10]
-    assert maxIndex(a, proc (a, b: string): bool = a.len < b.len)
-    assert maxIndex(b, (a, b) => a.a < b.a)
+    let s1 = @["foo","bar", "hello"]
+    let s2 = @[2..4, 1..3, 6..10]
+    assert maxIndex(s1, proc (a, b: string): bool = a.len < b.len)
+    assert maxIndex(s2, (a, b) => a.a < b.a)
 
   for i in 1..high(s):
     if s[i] > s[result]: result = i
