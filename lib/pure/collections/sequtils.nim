@@ -294,7 +294,7 @@ func maxIndex*[T](s: openArray[T], cmp: proc(a, b: T): bool {.closure.}): int {.
     assert maxIndex(s2, (a, b) => a.a < b.a) == 2
 
   for i in 1..high(s):
-    if s[i] > s[result]: result = i
+    if cmp(s[result], s[i]): result = i
 
 func minmax*[T](x: openArray[T]): (T, T) =
   ## The minimum and maximum values of `x`. `T` needs to have a `<` operator.
