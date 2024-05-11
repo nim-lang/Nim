@@ -257,8 +257,8 @@ func minIndex*[T](s: openArray[T], cmp: proc(a, b: T): bool {.closure.}): int {.
 
     let s1 = @["foo","bar", "hello"]
     let s2 = @[2..4, 1..3, 6..10]
-    assert minIndex(s1, proc (a, b: string): bool = a.len < b.len)
-    assert minIndex(s2, (a, b) => a.a < b.a)
+    assert minIndex(s1, proc (a, b: string): bool = a.len < b.len) == 0
+    assert minIndex(s2, (a, b) => a.a < b.a) == 1
 
   for i in 1..high(s):
     if cmp(s[i], s[result]): result = i
@@ -290,8 +290,8 @@ func maxIndex*[T](s: openArray[T], cmp: proc(a, b: T): bool {.closure.}): int {.
 
     let s1 = @["foo","bar", "hello"]
     let s2 = @[2..4, 1..3, 6..10]
-    assert maxIndex(s1, proc (a, b: string): bool = a.len < b.len)
-    assert maxIndex(s2, (a, b) => a.a < b.a)
+    assert maxIndex(s1, proc (a, b: string): bool = a.len < b.len) == 2
+    assert maxIndex(s2, (a, b) => a.a < b.a) == 2
 
   for i in 1..high(s):
     if s[i] > s[result]: result = i
