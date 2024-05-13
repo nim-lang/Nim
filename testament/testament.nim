@@ -127,13 +127,26 @@ proc getFileDir(filename: string): string =
     result = getCurrentDir() / result
 
 when defined(windows):
-  proc wrapJob(process: Process): Handle =
-    result = createJobObject(nil, nil)
+  proc initJob(): Handle =
+    let name = newWideCString(getCurrentDir())
+    result = createJobObject(nil, name)
+    if getLastError() == ERROR_ALREADY_EXISTS:
+      discard result.terminateJobObject(1)
+      result = createJobObject(nil, name)
     let info = JOBOBJECT_BASIC_LIMIT_INFORMATION(
         limitFlags : JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
     )
     result.setInformationJobObject(jJobObjectBasicLimitInformation, addr info, sizeof(info).DWORD)
-    discard result.assignProcessToJobObject(process.fProcessHandle)
+
+template wrapWinJob(processBody: untyped): Process =
+  when defined(windows):
+    let job = initJob()
+    defer: discard job.closeHandle()
+    let process = processBody
+    discard job.assignProcessToJobObject(process.fProcessHandle)
+    process
+  else:
+    processBody
 
 proc execCmdEx2(command: string, args: openArray[string]; workingDir, input: string = ""): tuple[
                 cmdLine: string,
@@ -146,11 +159,8 @@ proc execCmdEx2(command: string, args: openArray[string]; workingDir, input: str
     result.cmdLine.add ' '
     result.cmdLine.add quoteShell(arg)
   verboseCmd(result.cmdLine)
-  var p = startProcess(command, workingDir = workingDir, args = args,
+  var p = wrapWinJob startProcess(command, workingDir = workingDir, args = args,
                        options = {poStdErrToStdOut, poUsePath})
-  when defined(windows):
-    let jobHandle = p.wrapJob()
-    defer: discard jobHandle.closeHandle()
   var outp = outputStream(p)
 
   # There is no way to provide input for the child process
@@ -191,11 +201,8 @@ proc callNimCompiler(cmdTemplate, filename, options, nimcache: string,
   result.cmd = prepareTestCmd(cmdTemplate, filename, options, nimcache, target,
                           extraOptions)
   verboseCmd(result.cmd)
-  var p = startProcess(command = result.cmd,
+  var p = wrapWinJob startProcess(command = result.cmd,
                        options = {poStdErrToStdOut, poUsePath, poEvalCommand})
-  when defined(windows):
-    let jobHandle = p.wrapJob()
-    defer: discard jobHandle.closeHandle()
   let outp = p.outputStream
   var foundSuccessMsg = false
   var foundErrorMsg = false
@@ -354,15 +361,12 @@ proc addResult(r: var TResults, test: TTest, target: TTarget,
     if isAzure:
       azure.addTestResult(name, test.cat.string, int(duration * 1000), msg, success)
     else:
-      var p = startProcess("appveyor", args = ["AddTest", test.name.replace("\\", "/") & test.options,
+      var p = wrapWinJob startProcess("appveyor", args = ["AddTest", test.name.replace("\\", "/") & test.options,
                            "-Framework", "nim-testament", "-FileName",
                            test.cat.string,
                            "-Outcome", outcome, "-ErrorMessage", msg,
                            "-Duration", $(duration * 1000).int],
                            options = {poStdErrToStdOut, poUsePath, poParentStreams})
-      when defined(windows):
-        let jobHandle = p.wrapJob()
-        defer: discard jobHandle.closeHandle()
       discard waitForExit(p)
       close(p)
 

@@ -1084,6 +1084,8 @@ type
 const
   JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE* = 0x2000
 
+  ERROR_ALREADY_EXISTS* = 0xB7
+
   jJobObjectBasicLimitInformation* = 2
 
 proc createJobObject*(lpJobAttributes: ptr SECURITY_ATTRIBUTES, lpName: WideCString): Handle
@@ -1094,6 +1096,9 @@ proc assignProcessToJobObject*(hJob, hProcess: Handle): bool
 
 proc setInformationJobObject*(hJob: Handle, JobObjectInformationClass: cint, lpJobObjectInformation: pointer, cbJobObjectInformationLength: DWORD)
      {.stdcall, dynlib: "kernel32", importc: "SetInformationJobObject".}
+
+proc terminateJobObject*(hJob: Handle, uExitCode: cuint): bool
+     {.stdcall, dynlib: "kernel32", importc: "TerminateJobObject".}
 
 
 
