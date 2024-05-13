@@ -135,7 +135,7 @@ proc execCmdEx2(command: string, args: openArray[string]; workingDir, input: str
     result.cmdLine.add quoteShell(arg)
   verboseCmd(result.cmdLine)
   var p = startProcess(command, workingDir = workingDir, args = args,
-                       options = {poStdErrToStdOut, poUsePath})
+                       options = {poStdErrToStdOut, poUsePath, poDaemon})
   var outp = outputStream(p)
 
   # There is no way to provide input for the child process
@@ -177,12 +177,8 @@ proc callNimCompiler(cmdTemplate, filename, options, nimcache: string,
                           extraOptions)
   verboseCmd(result.cmd)
 
-  when hostOS == "windows":
-    var p = startProcess(command = result.cmd,
-                        options = {poStdErrToStdOut, poUsePath, poEvalCommand, poDaemon})
-  else:
-    var p = startProcess(command = result.cmd,
-                        options = {poStdErrToStdOut, poUsePath, poEvalCommand})
+  var p = startProcess(command = result.cmd,
+                      options = {poStdErrToStdOut, poUsePath, poEvalCommand, poDaemon})
   let outp = p.outputStream
   var foundSuccessMsg = false
   var foundErrorMsg = false
@@ -346,7 +342,7 @@ proc addResult(r: var TResults, test: TTest, target: TTarget,
                            test.cat.string,
                            "-Outcome", outcome, "-ErrorMessage", msg,
                            "-Duration", $(duration * 1000).int],
-                           options = {poStdErrToStdOut, poUsePath, poParentStreams})
+                           options = {poStdErrToStdOut, poUsePath, poParentStreams, poDaemon})
       discard waitForExit(p)
       close(p)
 
