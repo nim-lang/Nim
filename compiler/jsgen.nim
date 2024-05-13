@@ -33,7 +33,7 @@ import
   nversion, msgs, idents, types,
   ropes, wordrecg, renderer,
   cgmeth, lowerings, sighashes, modulegraphs, lineinfos,
-  transf, injectdestructors, sourcemap, astmsgs, backendpragmas,
+  transf, injectdestructors, sourcemap, astmsgs, pushpoppragmas,
   mangleutils
 
 import pipelineutils
@@ -103,7 +103,7 @@ type
     prc: PSym
     globals, locals, body: Rope
     options: TOptions
-    optionsStack: seq[TOptions]
+    optionsStack: seq[(TOptions, TNoteKinds)]
     module: BModule
     g: PGlobals
     beforeRetNeeded: bool
@@ -2773,9 +2773,9 @@ proc genPragma(p: PProc, n: PNode) =
     case whichPragma(it)
     of wEmit: genAsmOrEmitStmt(p, it[1])
     of wPush:
-      processPushBackendOption(p.optionsStack, p.options, n, i+1)
+      processPushBackendOption(p.config, p.optionsStack, p.options, n, i+1)
     of wPop:
-      processPopBackendOption(p.optionsStack, p.options)
+      processPopBackendOption(p.config, p.optionsStack, p.options)
     else: discard
 
 proc genCast(p: PProc, n: PNode, r: var TCompRes) =

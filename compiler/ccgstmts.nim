@@ -1592,9 +1592,9 @@ proc genPragma(p: BProc, n: PNode) =
     case whichPragma(it)
     of wEmit: genEmit(p, it)
     of wPush:
-      processPushBackendOption(p.optionsStack, p.options, n, i+1)
+      processPushBackendOption(p.config, p.optionsStack, p.options, n, i+1)
     of wPop:
-      processPopBackendOption(p.optionsStack, p.options)
+      processPopBackendOption(p.config, p.optionsStack, p.options)
     else: discard
 
 
