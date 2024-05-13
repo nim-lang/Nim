@@ -58,7 +58,7 @@ type
 
   ProcessObj = object of RootObj
     when defined(windows):
-      fProcessHandle: Handle
+      fProcessHandle*: Handle
       fThreadHandle: Handle
       inHandle, outHandle, errHandle: FileHandle
       id: Handle
