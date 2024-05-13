@@ -5,14 +5,14 @@ discard """
 
 proc foo(): ref int =
   new result
-  proc inner = 
+  proc inner =
     echo result[]
   inner()
 discard foo()
 
 proc bar(): int =
   result = 0
-  proc inner = 
+  proc inner =
     echo result # illegal capture
   inner()
 discard bar()
