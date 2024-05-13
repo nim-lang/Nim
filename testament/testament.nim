@@ -176,8 +176,13 @@ proc callNimCompiler(cmdTemplate, filename, options, nimcache: string,
   result.cmd = prepareTestCmd(cmdTemplate, filename, options, nimcache, target,
                           extraOptions)
   verboseCmd(result.cmd)
-  var p = startProcess(command = result.cmd,
-                       options = {poStdErrToStdOut, poUsePath, poEvalCommand})
+
+  when hostOS == "windows":
+    var p = startProcess(command = result.cmd,
+                        options = {poStdErrToStdOut, poUsePath, poEvalCommand, poDaemon})
+  else:
+    var p = startProcess(command = result.cmd,
+                        options = {poStdErrToStdOut, poUsePath, poEvalCommand})
   let outp = p.outputStream
   var foundSuccessMsg = false
   var foundErrorMsg = false
