@@ -18,7 +18,8 @@
 #    dec a
 #
 # Should be transformed to:
-#  STATE0:
+#  case :state
+#  of 0:
 #    if a > 0:
 #      echo "hi"
 #      :state = 1 # Next state
@@ -26,12 +27,14 @@
 #    else:
 #      :state = 2 # Next state
 #      break :stateLoop # Proceed to the next state
-#  STATE1:
+#  of 1:
 #    dec a
 #    :state = 0 # Next state
 #    break :stateLoop # Proceed to the next state
-#  STATE2:
+#  of 2:
 #    :state = -1 # End of execution
+#  else:
+#    return
 
 # The transformation should play well with lambdalifting, however depending
 # on situation, it can be called either before or after lambdalifting
@@ -104,12 +107,13 @@
 # Is transformed to (yields are left in place for example simplicity,
 #    in reality the code is subdivided even more, as described above):
 #
-# STATE0: # Try
+# case :state
+# of 0: # Try
 #   yield 0
 #   raise ...
 #   :state = 2 # What would happen should we not raise
 #   break :stateLoop
-# STATE1: # Except
+# of 1: # Except
 #   yield 1
 #   :tmpResult = 3           # Return
 #   :unrollFinally = true # Return
@@ -117,7 +121,7 @@
 #   break :stateLoop
 #   :state = 2 # What would happen should we not return
 #   break :stateLoop
-# STATE2: # Finally
+# of 2: # Finally
 #   yield 2
 #   if :unrollFinally: # This node is created by `newEndFinallyNode`
 #     if :curExc.isNil:
@@ -130,6 +134,8 @@
 #       raise
 #   state = -1 # Goto next state. In this case we just exit
 #   break :stateLoop
+# else:
+#   return
 
 import
   ast, msgs, idents,
@@ -150,7 +156,7 @@ type
     unrollFinallySym: PSym # Indicates that we're unrolling finally states (either exception happened or premature return)
     curExcSym: PSym # Current exception
 
-    states: seq[PNode] # The resulting states. Every state is an nkState node.
+    states: seq[tuple[label: int, body: PNode]] # The resulting states.
     blockLevel: int # Temp used to transform break and continue stmts
     stateLoopLabel: PSym # Label to break on, when jumping between states.
     exitStateIdx: int # index of the last state
@@ -166,6 +172,7 @@ type
 const
   nkSkip = {nkEmpty..nkNilLit, nkTemplateDef, nkTypeSection, nkStaticStmt,
             nkCommentStmt, nkMixinStmt, nkBindStmt} + procDefs
+  emptyStateLabel = -1
 
 proc newStateAccess(ctx: var Ctx): PNode =
   if ctx.stateVarSym.isNil:
@@ -187,6 +194,7 @@ proc newStateAssgn(ctx: var Ctx, stateNo: int = -2): PNode =
 proc newEnvVar(ctx: var Ctx, name: string, typ: PType): PSym =
   result = newSym(skVar, getIdent(ctx.g.cache, name), ctx.idgen, ctx.fn, ctx.fn.info)
   result.typ = typ
+  result.flags.incl sfNoInit
   assert(not typ.isNil)
 
   if not ctx.stateVarSym.isNil:
@@ -228,10 +236,7 @@ proc newState(ctx: var Ctx, n, gotoOut: PNode): int =
 
   result = ctx.states.len
   let resLit = ctx.g.newIntLit(n.info, result)
-  let s = newNodeI(nkState, n.info)
-  s.add(resLit)
-  s.add(n)
-  ctx.states.add(s)
+  ctx.states.add((result, n))
   ctx.exceptionTable.add(ctx.curExcHandlingState)
 
   if not gotoOut.isNil:
@@ -263,8 +268,8 @@ proc hasYields(n: PNode): bool =
     result = false
   else:
     result = false
-    for c in n:
-      if c.hasYields:
+    for i in ord(n.kind == nkCast)..<n.len:
+      if n[i].hasYields:
         result = true
         break
 
@@ -447,6 +452,10 @@ proc convertExprBodyToAsgn(ctx: Ctx, exprBody: PNode, res: PSym): PNode =
 proc newNotCall(g: ModuleGraph; e: PNode): PNode =
   result = newTree(nkCall, newSymNode(g.getSysMagic(e.info, "not", mNot), e.info), e)
   result.typ = g.getSysType(e.info, tyBool)
+
+proc boolLit(g: ModuleGraph; info: TLineInfo; value: bool): PNode =
+  result = newIntLit(g, info, ord value)
+  result.typ = getSysType(g, info, tyBool)
 
 proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
   result = n
@@ -779,7 +788,7 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
         let check = newTree(nkIfStmt, branch)
         let newBody = newTree(nkStmtList, st, check, n[1])
 
-        n[0] = newSymNode(ctx.g.getSysSym(n[0].info, "true"))
+        n[0] = ctx.g.boolLit(n[0].info, true)
         n[1] = newBody
 
   of nkDotExpr, nkCheckedFieldExpr:
@@ -1133,10 +1142,10 @@ proc skipEmptyStates(ctx: Ctx, stateIdx: int): int =
     let label = stateIdx
     if label == ctx.exitStateIdx: break
     var newLabel = label
-    if label == -1:
+    if label == emptyStateLabel:
       newLabel = ctx.exitStateIdx
     else:
-      let fs = skipStmtList(ctx, ctx.states[label][1])
+      let fs = skipStmtList(ctx, ctx.states[label].body)
       if fs.kind == nkGotoState:
         newLabel = fs[0].intVal.int
     if label == newLabel: break
@@ -1145,7 +1154,7 @@ proc skipEmptyStates(ctx: Ctx, stateIdx: int): int =
     if maxJumps == 0:
       assert(false, "Internal error")
 
-  result = ctx.states[stateIdx][0].intVal.int
+  result = ctx.states[stateIdx].label
 
 proc skipThroughEmptyStates(ctx: var Ctx, n: PNode): PNode=
   result = n
@@ -1263,11 +1272,10 @@ proc wrapIntoTryExcept(ctx: var Ctx, n: PNode): PNode {.inline.} =
 proc wrapIntoStateLoop(ctx: var Ctx, n: PNode): PNode =
   # while true:
   #   block :stateLoop:
-  #     gotoState :state
   #     local vars decl (if needed)
   #     body # Might get wrapped in try-except
   let loopBody = newNodeI(nkStmtList, n.info)
-  result = newTree(nkWhileStmt, newSymNode(ctx.g.getSysSym(n.info, "true")), loopBody)
+  result = newTree(nkWhileStmt, ctx.g.boolLit(n.info, true), loopBody)
   result.info = n.info
 
   let localVars = newNodeI(nkStmtList, n.info)
@@ -1282,11 +1290,7 @@ proc wrapIntoStateLoop(ctx: var Ctx, n: PNode): PNode =
   let blockStmt = newNodeI(nkBlockStmt, n.info)
   blockStmt.add(newSymNode(ctx.stateLoopLabel))
 
-  let gs = newNodeI(nkGotoState, n.info)
-  gs.add(ctx.newStateAccess())
-  gs.add(ctx.g.newIntLit(n.info, ctx.states.len - 1))
-
-  var blockBody = newTree(nkStmtList, gs, localVars, n)
+  var blockBody = newTree(nkStmtList, localVars, n)
   if ctx.hasExceptions:
     blockBody = ctx.wrapIntoTryExcept(blockBody)
 
@@ -1299,29 +1303,28 @@ proc deleteEmptyStates(ctx: var Ctx) =
 
   # Apply new state indexes and mark unused states with -1
   var iValid = 0
-  for i, s in ctx.states:
-    let body = skipStmtList(ctx, s[1])
+  for i, s in ctx.states.mpairs:
+    let body = skipStmtList(ctx, s.body)
     if body.kind == nkGotoState and i != ctx.states.len - 1 and i != 0:
       # This is an empty state. Mark with -1.
-      s[0].intVal = -1
+      s.label = emptyStateLabel
     else:
-      s[0].intVal = iValid
+      s.label = iValid
       inc iValid
 
   for i, s in ctx.states:
-    let body = skipStmtList(ctx, s[1])
+    let body = skipStmtList(ctx, s.body)
     if body.kind != nkGotoState or i == 0:
-      discard ctx.skipThroughEmptyStates(s)
+      discard ctx.skipThroughEmptyStates(s.body)
       let excHandlState = ctx.exceptionTable[i]
       if excHandlState < 0:
         ctx.exceptionTable[i] = -ctx.skipEmptyStates(-excHandlState)
       elif excHandlState != 0:
         ctx.exceptionTable[i] = ctx.skipEmptyStates(excHandlState)
 
-  var i = 0
+  var i = 1 # ignore the entry and the exit
   while i < ctx.states.len - 1:
-    let fs = skipStmtList(ctx, ctx.states[i][1])
-    if fs.kind == nkGotoState and i != 0:
+    if ctx.states[i].label == emptyStateLabel:
       ctx.states.delete(i)
       ctx.exceptionTable.delete(i)
     else:
@@ -1460,17 +1463,16 @@ proc transformClosureIterator*(g: ModuleGraph; idgen: IdGenerator; fn: PSym, n: 
   # Optimize empty states away
   ctx.deleteEmptyStates()
 
-  # Make new body by concatenating the list of states
-  result = newNodeI(nkStmtList, n.info)
-  for s in ctx.states:
-    assert(s.len == 2)
-    let body = s[1]
-    s.sons.del(1)
-    result.add(s)
-    result.add(body)
+  let caseDispatcher = newTreeI(nkCaseStmt, n.info,
+      ctx.newStateAccess())
 
-  result = ctx.transformStateAssignments(result)
-  result = ctx.wrapIntoStateLoop(result)
+  for s in ctx.states:
+    let body = ctx.transformStateAssignments(s.body)
+    caseDispatcher.add newTreeI(nkOfBranch, body.info, g.newIntLit(body.info, s.label), body)
+
+  caseDispatcher.add newTreeI(nkElse, n.info, newTreeI(nkReturnStmt, n.info, g.emptyNode))
+
+  result = wrapIntoStateLoop(ctx, caseDispatcher)
 
   when false:
     echo "TRANSFORM TO STATES: "

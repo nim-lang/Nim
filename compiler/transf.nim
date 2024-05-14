@@ -456,6 +456,14 @@ proc transformYield(c: PTransf, n: PNode): PNode =
       let rhs = transform(c, e)
       result.add(asgnTo(lhs, rhs))
 
+
+  # bug #23536; note that the info of forLoopBody should't change
+  for idx in 0 ..< result.len:
+    var changeNode = result[idx]
+    changeNode.info = c.transCon.forStmt.info
+    for i, child in changeNode:
+      child.info = changeNode.info
+
   inc(c.transCon.yieldStmts)
   if c.transCon.yieldStmts <= 1:
     # common case
@@ -465,12 +473,6 @@ proc transformYield(c: PTransf, n: PNode): PNode =
     c.isIntroducingNewLocalVars = true # don't transform yields when introducing new local vars
     result.add(introduceNewLocalVars(c, c.transCon.forLoopBody))
     c.isIntroducingNewLocalVars = false
-
-  for idx in 0 ..< result.len:
-    var changeNode = result[idx]
-    changeNode.info = c.transCon.forStmt.info
-    for i, child in changeNode:
-      child.info = changeNode.info
 
 proc transformAddrDeref(c: PTransf, n: PNode, kinds: TNodeKinds): PNode =
   result = transformSons(c, n)
@@ -511,7 +513,6 @@ proc generateThunk(c: PTransf; prc: PNode, dest: PType): PNode =
 
   # we cannot generate a proper thunk here for GC-safety reasons
   # (see internal documentation):
-  if c.graph.config.backend == backendJs: return prc
   result = newNodeIT(nkClosure, prc.info, dest)
   var conv = newNodeIT(nkHiddenSubConv, prc.info, dest)
   conv.add(newNodeI(nkEmpty, prc.info))
@@ -897,10 +898,6 @@ proc transformCall(c: PTransf, n: PNode): PNode =
           inc(j)
       result.add(a)
     if result.len == 2: result = result[1]
-  elif magic == mAddr:
-    result = newTransNode(nkAddr, n, 1)
-    result[0] = n[1]
-    result = transformAddrDeref(c, result, {nkDerefExpr, nkHiddenDeref})
   elif magic in {mNBindSym, mTypeOf, mRunnableExamples}:
     # for bindSym(myconst) we MUST NOT perform constant folding:
     result = n

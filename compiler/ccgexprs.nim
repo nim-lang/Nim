@@ -1352,14 +1352,6 @@ proc genSeqElemAppend(p: BProc, e: PNode, d: var TLoc) =
   genAssignment(p, dest, b, {needToCopy})
   gcUsage(p.config, e)
 
-proc genReset(p: BProc, n: PNode) =
-  var a: TLoc = initLocExpr(p, n[1])
-  specializeReset(p, a)
-  when false:
-    linefmt(p, cpsStmts, "#genericReset((void*)$1, $2);$n",
-            [addrLoc(p.config, a),
-            genTypeInfoV1(p.module, skipTypes(a.t, {tyVar}), n.info)])
-
 proc genDefault(p: BProc; n: PNode; d: var TLoc) =
   if d.k == locNone: d = getTemp(p, n.typ, needsInit=true)
   else: resetLoc(p, d)
@@ -2088,7 +2080,7 @@ proc genSetOp(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     of mExcl: binaryStmtInExcl(p, e, d, "$1[(NU)($2)>>3] &= ~(1U<<($2&7U));$n")
     of mCard:
       var a: TLoc = initLocExpr(p, e[1])
-      putIntoDest(p, d, e, ropecg(p.module, "#cardSet($1, $2)", [addrLoc(p.config, a), size]))
+      putIntoDest(p, d, e, ropecg(p.module, "#cardSet($1, $2)", [rdCharLoc(a), size]))
     of mLtSet, mLeSet:
       i = getTemp(p, getSysType(p.module.g.graph, unknownLineInfo, tyInt)) # our counter
       a = initLocExpr(p, e[1])
@@ -2467,15 +2459,8 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mLeStr: binaryExpr(p, e, d, "(#cmpStrings($1, $2) <= 0)")
   of mLtStr: binaryExpr(p, e, d, "(#cmpStrings($1, $2) < 0)")
   of mIsNil: genIsNil(p, e, d)
-  of mIntToStr: genDollar(p, e, d, "#nimIntToStr($1)")
-  of mInt64ToStr: genDollar(p, e, d, "#nimInt64ToStr($1)")
   of mBoolToStr: genDollar(p, e, d, "#nimBoolToStr($1)")
   of mCharToStr: genDollar(p, e, d, "#nimCharToStr($1)")
-  of mFloatToStr:
-    if e[1].typ.skipTypes(abstractInst).kind == tyFloat32:
-      genDollar(p, e, d, "#nimFloat32ToStr($1)")
-    else:
-      genDollar(p, e, d, "#nimFloatToStr($1)")
   of mCStrToStr:
     if p.module.compileToCpp:
       # fixes for const qualifier; bug #12703; bug #19588
@@ -2569,7 +2554,6 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
              [mangleDynLibProc(prc), getTypeDesc(p.module, prc.loc.t), getModuleDllPath(p.module, prc)])
     genCall(p, e, d)
   of mDefault, mZeroDefault: genDefault(p, e, d)
-  of mReset: genReset(p, e)
   of mEcho: genEcho(p, e[1].skipConv)
   of mArrToSeq: genArrToSeq(p, e, d)
   of mNLen..mNError, mSlurp..mQuoteAst:

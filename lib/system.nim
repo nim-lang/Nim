@@ -125,9 +125,6 @@ proc unsafeAddr*[T](x: T): ptr T {.magic: "Addr", noSideEffect.} =
 
 const ThisIsSystem = true
 
-proc internalNew*[T](a: var ref T) {.magic: "New", noSideEffect.}
-  ## Leaked implementation detail. Do not use.
-
 proc new*[T](a: var ref T, finalizer: proc (x: ref T) {.nimcall.}) {.
   magic: "NewFinalize", noSideEffect.}
   ## Creates a new object of type `T` and returns a safe (traced)
@@ -161,9 +158,11 @@ when defined(nimHasEnsureMove):
     ## Ensures that `x` is moved to the new location, otherwise it gives
     ## an error at the compile time.
     runnableExamples:
-      var x = "Hello"
-      let y = ensureMove(x)
-      doAssert y == "Hello"
+      proc foo =
+        var x = "Hello"
+        let y = ensureMove(x)
+        doAssert y == "Hello"
+      foo()
     discard "implemented in injectdestructors"
 
 type

@@ -707,7 +707,7 @@ proc initTabIter*(ti: var TTabIter, tab: TStrTable): PSym =
     result = nextIter(ti, tab)
 
 iterator items*(tab: TStrTable): PSym =
-  var it: TTabIter
+  var it: TTabIter = default(TTabIter)
   var s = initTabIter(it, tab)
   while s != nil:
     yield s
@@ -757,14 +757,6 @@ proc iiTablePut(t: var TIITable, key, val: int) =
       swap(t.data, n)
     iiTableRawInsert(t.data, key, val)
     inc(t.counter)
-
-proc isAddrNode*(n: PNode): bool =
-  case n.kind
-    of nkAddr, nkHiddenAddr: true
-    of nkCallKinds:
-      if n[0].kind == nkSym and n[0].sym.magic == mAddr: true
-      else: false
-    else: false
 
 proc listSymbolNames*(symbols: openArray[PSym]): string =
   result = ""

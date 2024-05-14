@@ -76,10 +76,7 @@ proc fillBackendName(m: BModule; s: PSym) =
       result = mangleProc(m, s, false).rope
     else:
       result = s.name.s.mangle.rope
-      result.add "__"
-      result.add m.g.graph.ifaces[s.itemId.module].uniqueName
-      result.add "_u"
-      result.addInt s.itemId.item # s.disamb #
+      result.add mangleProcNameExt(m.g.graph, s)
     if m.hcrOn:
       result.add '_'
       result.add(idOrSig(s, m.module.name.s.mangle, m.sigConflicts, m.config))
@@ -89,8 +86,7 @@ proc fillBackendName(m: BModule; s: PSym) =
 proc fillParamName(m: BModule; s: PSym) =
   if s.loc.r == "":
     var res = s.name.s.mangle
-    res.add "_p"
-    res.addInt s.position
+    res.add mangleParamExt(s)
     #res.add idOrSig(s, res, m.sigConflicts, m.config)
     # Take into account if HCR is on because of the following scenario:
     #   if a module gets imported and it has some more importc symbols in it,
@@ -249,6 +245,9 @@ proc isImportedCppType(t: PType): bool =
 proc isOrHasImportedCppType(typ: PType): bool =
   searchTypeFor(typ.skipTypes({tyRef}), isImportedCppType)
 
+proc hasNoInit(t: PType): bool =
+  result = t.sym != nil and sfNoInit in t.sym.flags
+
 proc getTypeDescAux(m: BModule; origTyp: PType, check: var IntSet; kind: TypeDescKind): Rope
 
 proc isObjLackingTypeField(typ: PType): bool {.inline.} =
@@ -288,7 +287,9 @@ const
     "N_STDCALL", "N_CDECL", "N_SAFECALL",
     "N_SYSCALL", # this is probably not correct for all platforms,
                  # but one can #define it to what one wants
-    "N_INLINE", "N_NOINLINE", "N_FASTCALL", "N_THISCALL", "N_CLOSURE", "N_NOCONV"]
+    "N_INLINE", "N_NOINLINE", "N_FASTCALL", "N_THISCALL", "N_CLOSURE", "N_NOCONV", 
+    "N_NOCONV" #ccMember is N_NOCONV
+    ]
 
 proc cacheGetType(tab: TypeCache; sig: SigHash): Rope =
   # returns nil if we need to declare this type
@@ -783,7 +784,7 @@ proc getRecordFields(m: BModule; typ: PType, check: var IntSet): Rope =
       genMemberProcHeader(m, prc, header, false, true)
       result.addf "$1;$n", [header]
     if isCtorGen and not isDefaultCtorGen:
-      var ch: IntSet
+      var ch: IntSet = default(IntSet)
       result.addf "$1() = default;$n", [getTypeDescAux(m, typ, ch, dkOther)]
 
 proc fillObjectFields*(m: BModule; typ: PType) =
@@ -1626,7 +1627,7 @@ proc generateRttiDestructor(g: ModuleGraph; typ: PType; owner: PSym; kind: TType
     ))
     )
   else:
-    let addrOf = newNodeIT(nkAddr, info, theProc.typ.firstParamType)
+    let addrOf = newNodeIT(nkHiddenAddr, info, theProc.typ.firstParamType)
     addrOf.add newDeref(newTreeIT(
       nkCast, info, castType, newNodeIT(nkType, info, castType),
       newSymNode(dest)

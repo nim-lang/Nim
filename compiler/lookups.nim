@@ -137,7 +137,7 @@ proc nextIdentIter(ti: var ModuleIter; marked: var IntSet; im: ImportedModule;
         return result
 
 iterator symbols(im: ImportedModule; marked: var IntSet; name: PIdent; g: ModuleGraph): PSym =
-  var ti: ModuleIter
+  var ti: ModuleIter = default(ModuleIter)
   var candidate = initIdentIter(ti, marked, im, name, g)
   while candidate != nil:
     yield candidate
@@ -150,7 +150,7 @@ iterator importedItems*(c: PContext; name: PIdent): PSym =
       yield s
 
 proc allPureEnumFields(c: PContext; name: PIdent): seq[PSym] =
-  var ti: TIdentIter
+  var ti: TIdentIter = default(TIdentIter)
   result = @[]
   var res = initIdentIter(ti, c.pureEnumFields, name)
   while res != nil:
@@ -222,7 +222,7 @@ proc debugScopes*(c: PContext; limit=0, max = int.high) {.deprecated.} =
 proc searchInScopesAllCandidatesFilterBy*(c: PContext, s: PIdent, filter: TSymKinds): seq[PSym] =
   result = @[]
   for scope in allScopes(c.currentScope):
-    var ti: TIdentIter
+    var ti: TIdentIter = default(TIdentIter)
     var candidate = initIdentIter(ti, scope.symbols, s)
     while candidate != nil:
       if candidate.kind in filter:
@@ -240,7 +240,7 @@ proc searchInScopesFilterBy*(c: PContext, s: PIdent, filter: TSymKinds): seq[PSy
   result = @[]
   block outer:
     for scope in allScopes(c.currentScope):
-      var ti: TIdentIter
+      var ti: TIdentIter = default(TIdentIter)
       var candidate = initIdentIter(ti, scope.symbols, s)
       while candidate != nil:
         if candidate.kind in filter:
@@ -272,7 +272,7 @@ proc isAmbiguous*(c: PContext, s: PIdent, filter: TSymKinds, sym: var PSym): boo
   result = false
   block outer:
     for scope in allScopes(c.currentScope):
-      var ti: TIdentIter
+      var ti: TIdentIter = default(TIdentIter)
       var candidate = initIdentIter(ti, scope.symbols, s)
       var scopeHasCandidate = false
       while candidate != nil:
@@ -347,7 +347,7 @@ proc getSymRepr*(conf: ConfigRef; s: PSym, getDeclarationPath = true): string =
 
 proc ensureNoMissingOrUnusedSymbols(c: PContext; scope: PScope) =
   # check if all symbols have been used and defined:
-  var it: TTabIter
+  var it: TTabIter = default(TTabIter)
   var s = initTabIter(it, scope.symbols)
   var missingImpls = 0
   var unusedSyms: seq[tuple[sym: PSym, key: string]] = @[]
@@ -558,7 +558,7 @@ proc errorUseQualifier(c: PContext; info: TLineInfo; s: PSym; amb: var bool): PS
     amb = false
 
 proc errorUseQualifier*(c: PContext; info: TLineInfo; s: PSym) =
-  var amb: bool
+  var amb: bool = false
   discard errorUseQualifier(c, info, s, amb)
 
 proc errorUseQualifier*(c: PContext; info: TLineInfo; candidates: seq[PSym]; prefix = "use one of") =
@@ -584,7 +584,11 @@ proc errorUndeclaredIdentifier*(c: PContext; info: TLineInfo; name: string, extr
   if name == "_":
     err = "the special identifier '_' is ignored in declarations and cannot be used"
   else:
-    err = "undeclared identifier: '" & name & "'" & extra
+    err = "undeclared identifier: '" & name & "'"
+    if "`gensym" in name:
+      err.add "; if declared in a template, this identifier may be inconsistently marked inject or gensym"
+    if extra.len != 0:
+      err.add extra
     if c.recursiveDep.len > 0:
       err.add "\nThis might be caused by a recursive module dependency:\n"
       err.add c.recursiveDep
@@ -675,7 +679,7 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
           result = strTableGet(c.topLevelScope.symbols, ident)
         else:
           if c.importModuleLookup.getOrDefault(m.name.id).len > 1:
-            var amb: bool
+            var amb: bool = false
             result = errorUseQualifier(c, n.info, m, amb)
           else:
             result = someSym(c.graph, m, ident)

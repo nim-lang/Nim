@@ -1066,7 +1066,7 @@ proc handleStmtMacro(c: PContext; n, selector: PNode; magicType: string;
     if maType == nil: return
 
     let headSymbol = selector[0]
-    var o: TOverloadIter
+    var o: TOverloadIter = default(TOverloadIter)
     var match: PSym = nil
     var symx = initOverloadIter(o, c, headSymbol)
     while symx != nil:
@@ -1102,7 +1102,7 @@ proc handleCaseStmtMacro(c: PContext; n: PNode; flags: TExprFlags): PNode =
   toResolve.add newIdentNode(getIdent(c.cache, "case"), n.info)
   toResolve.add n[0]
 
-  var errors: CandidateErrors
+  var errors: CandidateErrors = @[]
   var r = resolveOverloads(c, toResolve, toResolve, {skTemplate, skMacro}, {efNoDiagnostics},
                            errors, false)
   if r.state == csMatch:
@@ -1589,21 +1589,27 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
   for sk in c.skipTypes:
     discard semTypeNode(c, sk, nil)
   c.skipTypes = @[]
-proc checkForMetaFields(c: PContext; n: PNode) =
-  proc checkMeta(c: PContext; n: PNode; t: PType) =
-    if t != nil and t.isMetaType and tfGenericTypeParam notin t.flags:
+
+proc checkForMetaFields(c: PContext; n: PNode; hasError: var bool) =
+  proc checkMeta(c: PContext; n: PNode; t: PType; hasError: var bool; parent: PType) =
+    if t != nil and (t.isMetaType or t.kind == tyNone) and tfGenericTypeParam notin t.flags:
       if t.kind == tyBuiltInTypeClass and t.len == 1 and t.elementType.kind == tyProc:
         localError(c.config, n.info, ("'$1' is not a concrete type; " &
           "for a callback without parameters use 'proc()'") % t.typeToString)
+      elif t.kind == tyNone and parent != nil:
+        # TODO: openarray has the `tfGenericTypeParam` flag & generics
+        # TODO: handle special cases (sink etc.) and views
+        localError(c.config, n.info, errTIsNotAConcreteType % parent.typeToString)
       else:
         localError(c.config, n.info, errTIsNotAConcreteType % t.typeToString)
+      hasError = true
 
   if n.isNil: return
   case n.kind
   of nkRecList, nkRecCase:
-    for s in n: checkForMetaFields(c, s)
+    for s in n: checkForMetaFields(c, s, hasError)
   of nkOfBranch, nkElse:
-    checkForMetaFields(c, n.lastSon)
+    checkForMetaFields(c, n.lastSon, hasError)
   of nkSym:
     let t = n.sym.typ
     case t.kind
@@ -1611,9 +1617,9 @@ proc checkForMetaFields(c: PContext; n: PNode) =
        tyProc, tyGenericInvocation, tyGenericInst, tyAlias, tySink, tyOwned:
       let start = ord(t.kind in {tyGenericInvocation, tyGenericInst})
       for i in start..<t.len:
-        checkMeta(c, n, t[i])
+        checkMeta(c, n, t[i], hasError, t)
     else:
-      checkMeta(c, n, t)
+      checkMeta(c, n, t, hasError, nil)
   else:
     internalAssert c.config, false
 
@@ -1648,9 +1654,11 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
               assert s.typ != nil
               assignType(s.typ, t)
               s.typ.itemId = t.itemId     # same id
-        checkConstructedType(c.config, s.info, s.typ)
+        var hasError = false
         if s.typ.kind in {tyObject, tyTuple} and not s.typ.n.isNil:
-          checkForMetaFields(c, s.typ.n)
+          checkForMetaFields(c, s.typ.n, hasError)
+        if not hasError:
+          checkConstructedType(c.config, s.info, s.typ)
 
         # fix bug #5170, bug #17162, bug #15526: ensure locally scoped types get a unique name:
         if s.typ.kind in {tyEnum, tyRef, tyObject} and not isTopLevel(c):
@@ -2402,7 +2410,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   if sfBorrow in s.flags and c.config.cmd notin cmdDocLike:
     result[bodyPos] = c.graph.emptyNode
 
-  if sfCppMember * s.flags != {}:
+  if sfCppMember * s.flags != {} and sfWasForwarded notin s.flags:
     semCppMember(c, s, n)
 
   if n[bodyPos].kind != nkEmpty and sfError notin s.flags:

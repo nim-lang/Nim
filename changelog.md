@@ -13,6 +13,9 @@
   (a, b) = (1, 2, 3, 4)
   ```
   will no longer compile.
+- `internalNew` is removed from system, use `new` instead.
+
+- `bindMethod` in `std/jsffi` is deprecated, don't use it with closures.
 
 ## Standard library additions and changes
 

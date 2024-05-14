@@ -123,14 +123,14 @@ proc fileInfoIdx*(conf: ConfigRef; filename: AbsoluteFile; isKnownFile: var bool
     conf.m.filenameToIndexTbl[canon2] = result
 
 proc fileInfoIdx*(conf: ConfigRef; filename: AbsoluteFile): FileIndex =
-  var dummy: bool
+  var dummy: bool = false
   result = fileInfoIdx(conf, filename, dummy)
 
 proc fileInfoIdx*(conf: ConfigRef; filename: RelativeFile; isKnownFile: var bool): FileIndex =
   fileInfoIdx(conf, AbsoluteFile expandFilename(filename.string), isKnownFile)
 
 proc fileInfoIdx*(conf: ConfigRef; filename: RelativeFile): FileIndex =
-  var dummy: bool
+  var dummy: bool = false
   fileInfoIdx(conf, AbsoluteFile expandFilename(filename.string), dummy)
 
 proc newLineInfo*(fileInfoIdx: FileIndex, line, col: int): TLineInfo =
@@ -560,9 +560,10 @@ proc liMessage*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
     ignoreMsg = not conf.hasHint(msg)
     if not ignoreMsg and msg in conf.warningAsErrors:
       title = ErrorTitle
+      color = ErrorColor
     else:
       title = HintTitle
-    color = HintColor
+      color = HintColor
     inc(conf.hintCounter)
 
   let s = if isRaw: arg else: getMessageStr(msg, arg)
@@ -650,13 +651,16 @@ template lintReport*(conf: ConfigRef; info: TLineInfo, beau, got: string, extraM
   let msg = if optStyleError in conf.globalOptions: errGenerated else: hintName
   liMessage(conf, info, msg, m, doNothing, instLoc())
 
-proc quotedFilename*(conf: ConfigRef; i: TLineInfo): Rope =
-  if i.fileIndex.int32 < 0:
+proc quotedFilename*(conf: ConfigRef; fi: FileIndex): Rope =
+  if fi.int32 < 0:
     result = makeCString "???"
   elif optExcessiveStackTrace in conf.globalOptions:
-    result = conf.m.fileInfos[i.fileIndex.int32].quotedFullName
+    result = conf.m.fileInfos[fi.int32].quotedFullName
   else:
-    result = conf.m.fileInfos[i.fileIndex.int32].quotedName
+    result = conf.m.fileInfos[fi.int32].quotedName
+
+proc quotedFilename*(conf: ConfigRef; i: TLineInfo): Rope =
+  quotedFilename(conf, i.fileIndex)
 
 template listMsg(title, r) =
   msgWriteln(conf, title, {msgNoUnitSep})

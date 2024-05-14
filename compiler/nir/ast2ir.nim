@@ -1819,15 +1819,8 @@ proc genMagic(c: var ProcCon; n: PNode; d: var Value; m: TMagic) =
       if t.kind in {tyUInt8..tyUInt32} or (t.kind == tyUInt and size < 8):
         c.gABC(n, opcNarrowU, d, TRegister(size*8))
   of mStrToStr, mEnsureMove: c.gen n[1], d
-  of mIntToStr: genUnaryCp(c, n, d, "nimIntToStr")
-  of mInt64ToStr: genUnaryCp(c, n, d, "nimInt64ToStr")
   of mBoolToStr: genUnaryCp(c, n, d, "nimBoolToStr")
   of mCharToStr: genUnaryCp(c, n, d, "nimCharToStr")
-  of mFloatToStr:
-    if n[1].typ.skipTypes(abstractInst).kind == tyFloat32:
-      genUnaryCp(c, n, d, "nimFloat32ToStr")
-    else:
-      genUnaryCp(c, n, d, "nimFloatToStr")
   of mCStrToStr: genUnaryCp(c, n, d, "cstrToNimstr")
   of mEnumToStr: genEnumToStr(c, n, d)
 
@@ -1903,7 +1896,7 @@ proc genMagic(c: var ProcCon; n: PNode; d: var Value; m: TMagic) =
   of mDefault, mZeroDefault:
     genDefault c, n, d
   of mMove: genMove(c, n, d)
-  of mWasMoved, mReset:
+  of mWasMoved:
     unused(c, n, d)
     genWasMoved(c, n)
   of mDestroy: genDestroy(c, n)
@@ -2423,7 +2416,7 @@ proc addCallConv(c: var ProcCon; info: PackedLineInfo; callConv: TCallingConvent
   of ccInline: ann InlineCall
   of ccNoInline: ann NoinlineCall
   of ccThisCall: ann ThisCall
-  of ccNoConvention: ann NoCall
+  of ccNoConvention, ccMember: ann NoCall
 
 proc genProc(cOuter: var ProcCon; prc: PSym) =
   if prc.magic notin generatedMagics: return
