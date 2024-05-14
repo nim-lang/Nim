@@ -16,6 +16,7 @@ type
     caughtExceptions*: seq[PType]
     caughtExceptionsSet*: bool
     isDecl*: bool
+    isGenericInstance*: bool
 
   SuggestFileSymbolDatabase* = object
     lineInfo*: seq[TinyLineInfo]
@@ -23,6 +24,7 @@ type
     caughtExceptions*: seq[seq[PType]]
     caughtExceptionsSet*: PackedBoolArray
     isDecl*: PackedBoolArray
+    isGenericInstance*: PackedBoolArray
     fileIndex*: FileIndex
     trackCaughtExceptions*: bool
     isSorted*: bool
@@ -82,6 +84,11 @@ proc getSymInfoPair*(s: SuggestFileSymbolDatabase; idx: int): SymInfoPair =
         s.caughtExceptionsSet[idx]
       else:
         false,
+    isGenericInstance:
+      if s.trackCaughtExceptions:
+        s.isGenericInstance[idx]
+      else:
+        false,
     isDecl: s.isDecl[idx]
   )
 
@@ -90,6 +97,7 @@ proc reverse*(s: var SuggestFileSymbolDatabase) =
   s.sym.reverse()
   s.caughtExceptions.reverse()
   s.caughtExceptionsSet.reverse()
+  s.isGenericInstance.reverse()
   s.isDecl.reverse()
 
 proc newSuggestFileSymbolDatabase*(aFileIndex: FileIndex; aTrackCaughtExceptions: bool): SuggestFileSymbolDatabase =
@@ -99,6 +107,7 @@ proc newSuggestFileSymbolDatabase*(aFileIndex: FileIndex; aTrackCaughtExceptions
     caughtExceptions: @[],
     caughtExceptionsSet: newPackedBoolArray(),
     isDecl: newPackedBoolArray(),
+    isGenericInstance: newPackedBoolArray(),
     fileIndex: aFileIndex,
     trackCaughtExceptions: aTrackCaughtExceptions,
     isSorted: true
@@ -119,6 +128,8 @@ func compare*(s: var SuggestFileSymbolDatabase; i, j: int): int =
   result = cmp(s.lineInfo[i], s.lineInfo[j])
   if result == 0:
     result = cmp(s.isDecl[i], s.isDecl[j])
+  if result == 0 and s.trackCaughtExceptions:
+    result = cmp(s.isGenericInstance[i], s.isGenericInstance[j])
 
 proc exchange(s: var SuggestFileSymbolDatabase; i, j: int) =
   if i == j:
@@ -133,6 +144,9 @@ proc exchange(s: var SuggestFileSymbolDatabase; i, j: int) =
     var tmp3 = s.caughtExceptionsSet[i]
     s.caughtExceptionsSet[i] = s.caughtExceptionsSet[j]
     s.caughtExceptionsSet[j] = tmp3
+    var tmp6 = s.isGenericInstance[i]
+    s.isGenericInstance[i] = s.isGenericInstance[j]
+    s.isGenericInstance[j] = tmp6
   var tmp4 = s.isDecl[i]
   s.isDecl[i] = s.isDecl[j]
   s.isDecl[j] = tmp4
@@ -196,6 +210,7 @@ proc add*(s: var SuggestFileSymbolDatabase; v: SymInfoPair) =
   if s.trackCaughtExceptions:
     s.caughtExceptions.add(v.caughtExceptions)
     s.caughtExceptionsSet.add(v.caughtExceptionsSet)
+    s.isGenericInstance.add(v.isGenericInstance)
   s.isSorted = false
 
 proc add*(s: var SuggestSymbolDatabase; v: SymInfoPair; trackCaughtExceptions: bool) =
