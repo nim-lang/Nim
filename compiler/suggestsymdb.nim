@@ -216,7 +216,11 @@ proc add*(s: var SuggestFileSymbolDatabase; v: SymInfoPair) =
 proc add*(s: var SuggestSymbolDatabase; v: SymInfoPair; trackCaughtExceptions: bool) =
   s.mgetOrPut(v.info.fileIndex, newSuggestFileSymbolDatabase(v.info.fileIndex, trackCaughtExceptions)).add(v)
 
-proc findSymInfoIndex*(s: var SuggestFileSymbolDatabase; li: TLineInfo): int =
+proc findSymInfoIndex*(s: var SuggestFileSymbolDatabase; li: TLineInfo; isGenericInstance: bool): int =
+  # if trackCaughtExceptions is false, then all records in the database are not generic instances, so
+  # if we're searching for a generic instance, we find none
+  if isGenericInstance and not s.trackCaughtExceptions:
+    return -1
   doAssert(li.fileIndex == s.fileIndex)
   if not s.isSorted:
     s.sort()
@@ -225,3 +229,17 @@ proc findSymInfoIndex*(s: var SuggestFileSymbolDatabase; li: TLineInfo): int =
     col: li.col
   )
   result = binarySearch(s.lineInfo, q, cmp)
+  # if trackCaughtExceptions is false, then all records in the database are not generic instances, so
+  # if we're a searching for a non-generic instance, then we're done, we return what we have found
+  if not isGenericInstance and not s.trackCaughtExceptions:
+    return
+  # in this case trackCaughtExceptions is true, and the database contains both generic and non-generic instances, so we need
+  # to check the isGenericInstance flag also
+  if result != -1:
+    # search through a sequence of equal lineInfos to find a matching isGenericInstance
+    while result > 0 and s.isGenericInstance[result] != isGenericInstance and cmp(s.lineInfo[result], s.lineInfo[result - 1]) == 0:
+      dec result
+    while result < (s.lineInfo.len - 1) and s.isGenericInstance[result] != isGenericInstance and cmp(s.lineInfo[result], s.lineInfo[result + 1]) == 0:
+      inc result
+    if s.isGenericInstance[result] != isGenericInstance:
+      result = -1
