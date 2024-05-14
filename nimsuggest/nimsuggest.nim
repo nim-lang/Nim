@@ -825,6 +825,7 @@ func deduplicateSymInfoPair(xs: SuggestFileSymbolDatabase): SuggestFileSymbolDat
     isDecl: newPackedBoolArray(),
     caughtExceptions: newSeqOfCap[seq[PType]](xs.caughtExceptions.len),
     caughtExceptionsSet: newPackedBoolArray(),
+    isGenericInstance: newPackedBoolArray(),
     fileIndex: xs.fileIndex,
     trackCaughtExceptions: xs.trackCaughtExceptions,
     isSorted: false
