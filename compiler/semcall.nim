@@ -683,9 +683,11 @@ proc semResolvedCall(c: PContext, x: var TCandidate,
   assert x.state == csMatch
   var finalCallee = x.calleeSym
   let info = getCallLineInfo(n)
+  markUsed(c, info, finalCallee, isGenericInstance = false)
+  onUse(info, finalCallee)
   assert finalCallee.ast != nil
   if x.hasFauxMatch:
-    markUsed(c, info, finalCallee)
+    markUsed(c, info, finalCallee, isGenericInstance = true)
     onUse(info, finalCallee)
     result = x.call
     result[0] = newSymNode(finalCallee, getCallLineInfo(result[0]))
@@ -721,7 +723,7 @@ proc semResolvedCall(c: PContext, x: var TCandidate,
           x.call.add tn
         else:
           internalAssert c.config, false
-  markUsed(c, info, finalCallee)
+  markUsed(c, info, finalCallee, isGenericInstance = true)
   onUse(info, finalCallee)
 
   result = x.call
@@ -789,7 +791,9 @@ proc explicitGenericSym(c: PContext, n: PNode, s: PSym): PNode =
   var newInst = generateInstance(c, s, m.bindings, n.info)
   newInst.typ.flags.excl tfUnresolved
   let info = getCallLineInfo(n)
-  markUsed(c, info, newInst)
+  markUsed(c, info, s, isGenericInstance = false)
+  onUse(info, s)
+  markUsed(c, info, newInst, isGenericInstance = true)
   onUse(info, newInst)
   result = newSymNode(newInst, info)
 

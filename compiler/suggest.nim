@@ -696,7 +696,9 @@ proc markOwnerModuleAsUsed(c: PContext; s: PSym) =
       else:
         inc i
 
-proc markUsed(c: PContext; info: TLineInfo; s: PSym; checkStyle = true) =
+proc markUsed(c: PContext; info: TLineInfo; s: PSym; checkStyle = true; isGenericInstance = false) =
+  if isGenericInstance:
+    return
   let conf = c.config
   incl(s.flags, sfUsed)
   if s.kind == skEnumField and s.owner != nil:
