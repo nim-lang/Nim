@@ -814,7 +814,7 @@ func deduplicateSymInfoPair[SymInfoPair](xs: seq[SymInfoPair]): seq[SymInfoPair]
       result.add(itm)
   result.reverse()
 
-func deduplicateSymInfoPair(xs: SuggestFileSymbolDatabase): SuggestFileSymbolDatabase =
+func deduplicateSymInfoPair(xs: SuggestFileSymbolDatabase, isGenericInstance: bool): SuggestFileSymbolDatabase =
   # xs contains duplicate items and we want to filter them by range because the
   # sym may not match. This can happen when xs contains the same definition but
   # with different signature because suggestSym might be called multiple times
@@ -839,13 +839,15 @@ func deduplicateSymInfoPair(xs: SuggestFileSymbolDatabase): SuggestFileSymbolDat
         found = true
         break
     if not found:
-      result.add(xs.getSymInfoPair(i))
+      let q = xs.getSymInfoPair(i)
+      if q.isGenericInstance == isGenericInstance:
+        result.add(q)
     dec i
   result.reverse()
 
-proc findSymData(graph: ModuleGraph, trackPos: TLineInfo):
+proc findSymData(graph: ModuleGraph, trackPos: TLineInfo, isGenericInstance: bool = false):
     ref SymInfoPair =
-  let db = graph.fileSymbols(trackPos.fileIndex).deduplicateSymInfoPair
+  let db = graph.fileSymbols(trackPos.fileIndex).deduplicateSymInfoPair(isGenericInstance)
   doAssert(db.fileIndex == trackPos.fileIndex)
   for i in db.lineInfo.low..db.lineInfo.high:
     if isTracked(db.lineInfo[i], TinyLineInfo(line: trackPos.line, col: trackPos.col), db.sym[i].name.s.len):
@@ -859,28 +861,28 @@ func isInRange*(current, startPos, endPos: TinyLineInfo, tokenLen: int): bool =
     (current.line > startPos.line or (current.line == startPos.line and current.col>=startPos.col)) and
     (current.line < endPos.line or (current.line == endPos.line and current.col <= endPos.col))
 
-proc findSymDataInRange(graph: ModuleGraph, startPos, endPos: TLineInfo):
+proc findSymDataInRange(graph: ModuleGraph, startPos, endPos: TLineInfo, isGenericInstance: bool = false):
     seq[SymInfoPair] =
   result = newSeq[SymInfoPair]()
-  let db = graph.fileSymbols(startPos.fileIndex).deduplicateSymInfoPair
+  let db = graph.fileSymbols(startPos.fileIndex).deduplicateSymInfoPair(isGenericInstance)
   for i in db.lineInfo.low..db.lineInfo.high:
     if isInRange(db.lineInfo[i], TinyLineInfo(line: startPos.line, col: startPos.col), TinyLineInfo(line: endPos.line, col: endPos.col), db.sym[i].name.s.len):
       result.add(db.getSymInfoPair(i))
 
-proc findSymData(graph: ModuleGraph, file: AbsoluteFile; line, col: int):
+proc findSymData(graph: ModuleGraph, file: AbsoluteFile; line, col: int, isGenericInstance: bool = false):
     ref SymInfoPair =
   let
     fileIdx = fileInfoIdx(graph.config, file)
     trackPos = newLineInfo(fileIdx, line, col)
-  result = findSymData(graph, trackPos)
+  result = findSymData(graph, trackPos, isGenericInstance)
 
-proc findSymDataInRange(graph: ModuleGraph, file: AbsoluteFile; startLine, startCol, endLine, endCol: int):
+proc findSymDataInRange(graph: ModuleGraph, file: AbsoluteFile; startLine, startCol, endLine, endCol: int, isGenericInstance: bool = false):
     seq[SymInfoPair] =
   let
     fileIdx = fileInfoIdx(graph.config, file)
     startPos = newLineInfo(fileIdx, startLine, startCol)
     endPos = newLineInfo(fileIdx, endLine, endCol)
-  result = findSymDataInRange(graph, startPos, endPos)
+  result = findSymDataInRange(graph, startPos, endPos, isGenericInstance)
 
 proc markDirtyIfNeeded(graph: ModuleGraph, file: string, originalFileIdx: FileIndex) =
   let sha = $sha1.secureHashFile(file)
@@ -1145,7 +1147,7 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
     incl m.flags, sfDirty 
   of ideOutline:
     let n = parseFile(fileIndex, graph.cache, graph.config)
-    graph.iterateOutlineNodes(n, graph.fileSymbols(fileIndex).deduplicateSymInfoPair)
+    graph.iterateOutlineNodes(n, graph.fileSymbols(fileIndex).deduplicateSymInfoPair(false))
   of ideChk:
     myLog fmt "Reporting errors for {graph.suggestErrors.len} file(s)"
     for sug in graph.suggestErrorsIter:
@@ -1197,7 +1199,7 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
       # find first mention of the symbol in the file containing the definition.
       # It is either the definition or the declaration.
       var first: SymInfoPair
-      let db = graph.fileSymbols(s.sym.info.fileIndex).deduplicateSymInfoPair
+      let db = graph.fileSymbols(s.sym.info.fileIndex).deduplicateSymInfoPair(false)
       for i in db.lineInfo.low..db.lineInfo.high:
         if s.sym.symbolEqual(db.sym[i]):
           first = db.getSymInfoPair(i)
@@ -1270,12 +1272,16 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
       else:
         myLog fmt "Discarding unknown inlay hint parameter {token}"
 
-    let s = graph.findSymDataInRange(file, line, col, endLine, endCol)
-    for q in s:
-      if typeHints and q.sym.kind in {skLet, skVar, skForVar, skConst} and q.isDecl and not q.sym.hasUserSpecifiedType and not q.isGenericInstance:
-        graph.suggestInlayHintResultType(q.sym, q.info, ideInlayHints)
-      if exceptionHints and q.sym.kind in {skProc, skFunc, skMethod, skVar, skLet, skParam} and not q.isDecl and q.isGenericInstance:
-        graph.suggestInlayHintResultException(q.sym, q.info, ideInlayHints, caughtExceptions = q.caughtExceptions, caughtExceptionsSet = q.caughtExceptionsSet)
+    if typeHints:
+      let s = graph.findSymDataInRange(file, line, col, endLine, endCol, false)
+      for q in s:
+        if typeHints and q.sym.kind in {skLet, skVar, skForVar, skConst} and q.isDecl and not q.sym.hasUserSpecifiedType:
+          graph.suggestInlayHintResultType(q.sym, q.info, ideInlayHints)
+    if exceptionHints:
+      let sGen = graph.findSymDataInRange(file, line, col, endLine, endCol, true)
+      for q in sGen:
+        if q.sym.kind in {skProc, skFunc, skMethod, skVar, skLet, skParam} and not q.isDecl:
+          graph.suggestInlayHintResultException(q.sym, q.info, ideInlayHints, caughtExceptions = q.caughtExceptions, caughtExceptionsSet = q.caughtExceptionsSet)
   else:
     myLog fmt "Discarding {cmd}"
 
