@@ -1105,8 +1105,8 @@ const
   jJobObjectBasicLimitInformation* = 2
   jJobObjectExtendedLimitInformation* = 9
 
-proc createJobObject*(lpJobAttributes: ptr SECURITY_ATTRIBUTES, lpName: cstring): Handle
-     {.stdcall, dynlib: "kernel32", importc: "CreateJobObjectA".}
+proc createJobObject*(lpJobAttributes: ptr SECURITY_ATTRIBUTES, lpName: WideCString): Handle
+     {.stdcall, dynlib: "kernel32", importc: "CreateJobObjectW".}
 
 proc assignProcessToJobObject*(hJob, hProcess: Handle): bool
      {.stdcall, dynlib: "kernel32", importc: "AssignProcessToJobObject".}
