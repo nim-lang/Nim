@@ -344,9 +344,11 @@ proc evalImport*(c: PContext, n: PNode): PNode =
           imp[lastPos] = x[1]
           impAs[1] = imp
           impAs[2] = x[2]
+          impAs.info = x[2].info
           impMod(c, impAs, result)
         else:
           imp[lastPos] = x
+          imp.info = x.info
           impMod(c, imp, result)
     else:
       impMod(c, it, result)

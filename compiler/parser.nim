@@ -1430,6 +1430,7 @@ proc parseTypeDesc(p: var Parser, fullExpr = false): PNode =
       result = newNodeP(nkObjectTy, p)
       getTok(p)
     of tkConcept:
+      result = p.emptyNode
       parMessage(p, "the 'concept' keyword is only valid in 'type' sections")
     of tkVar: result = parseTypeDescKAux(p, nkVarTy, pmTypeDesc)
     of tkOut: result = parseTypeDescKAux(p, nkOutTy, pmTypeDesc)
@@ -2285,7 +2286,7 @@ proc parseTypeDef(p: var Parser): PNode =
   setEndInfo()
 
 proc parseVarTuple(p: var Parser): PNode =
-  #| varTupleLhs = '(' optInd (identWithPragma / varTupleLhs) ^+ comma optPar ')'
+  #| varTupleLhs = '(' optInd (identWithPragma / varTupleLhs) ^+ comma optPar ')' (':' optInd typeDescExpr)?
   #| varTuple = varTupleLhs '=' optInd expr
   result = newNodeP(nkVarTuple, p)
   getTok(p)                   # skip '('
@@ -2302,9 +2303,14 @@ proc parseVarTuple(p: var Parser): PNode =
     if p.tok.tokType != tkComma: break
     getTok(p)
     skipComment(p, a)
-  result.add(p.emptyNode)         # no type desc
   optPar(p)
   eat(p, tkParRi)
+  if p.tok.tokType == tkColon:
+    getTok(p)
+    optInd(p, result)
+    result.add(parseTypeDesc(p, fullExpr = true))
+  else:
+    result.add(p.emptyNode)         # no type desc
   setEndInfo()
 
 proc parseVariable(p: var Parser): PNode =
@@ -2511,22 +2517,6 @@ proc parseStmt(p: var Parser): PNode =
           if err and p.tok.tokType == tkEof: break
   setEndInfo()
 
-proc parseAll(p: var Parser): PNode =
-  ## Parses the rest of the input stream held by the parser into a PNode.
-  result = newNodeP(nkStmtList, p)
-  while p.tok.tokType != tkEof:
-    p.hasProgress = false
-    var a = complexOrSimpleStmt(p)
-    if a.kind != nkEmpty and p.hasProgress:
-      result.add(a)
-    else:
-      parMessage(p, errExprExpected, p.tok)
-      # bugfix: consume a token here to prevent an endless loop:
-      getTok(p)
-    if p.tok.indent != 0:
-      parMessage(p, errInvalidIndentation)
-  setEndInfo()
-
 proc checkFirstLineIndentation*(p: var Parser) =
   if p.tok.indent != 0 and tsLeading in p.tok.spacing:
     parMessage(p, errInvalidIndentation)
@@ -2559,6 +2549,16 @@ proc parseTopLevelStmt(p: var Parser): PNode =
       result = complexOrSimpleStmt(p)
       if result.kind == nkEmpty: parMessage(p, errExprExpected, p.tok)
       break
+  setEndInfo()
+
+proc parseAll*(p: var Parser): PNode =
+  ## Parses the rest of the input stream held by the parser into a PNode.
+  result = newNodeP(nkStmtList, p)
+  while true:
+    let nextStmt = p.parseTopLevelStmt()
+    if nextStmt.kind == nkEmpty:
+      break
+    result &= nextStmt
   setEndInfo()
 
 proc parseString*(s: string; cache: IdentCache; config: ConfigRef;

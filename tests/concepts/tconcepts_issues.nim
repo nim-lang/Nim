@@ -560,7 +560,7 @@ proc depthOf*[V](orderType: typedesc[BreadthOrder], tree: AnyTree[V], root, goal
   if root == goal:
     return 0
   var order = init[LevelNode[V]](orderType)
-  order.expand(tree, root, (leaf) => (1, leaf))
+  order.expand(tree, root, (leaf) => (1.uint, leaf))
   while order.hasNext():
     let depthNode: LevelNode[V] = order.popNext()
     if depthNode.node == goal:
@@ -580,3 +580,27 @@ block: # bug #12852
   var tree = CappedStringTree(symbols: "^v><", cap: 5)
 
   doAssert BreadthOrder.depthOf(tree, "", ">>>") == 3
+
+block: #bug #22723
+  type
+    Node  = concept n, type T 
+      for i in n.children:
+        i is T
+      n.parent is T
+
+    Nd = ref object
+      parent: Nd
+      children: seq[Nd]
+
+  proc addChild(parent, child: Node) =
+    parent.children.add(child)
+    child.parent = parent
+
+  proc foo =
+    var
+      a = Nd()
+      b = Nd()
+    a.addChild(b)
+    doAssert a.children.len == 1
+
+  foo()

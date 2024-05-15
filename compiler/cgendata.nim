@@ -197,6 +197,8 @@ proc newProc*(prc: PSym, module: BModule): BProc =
   result = BProc(
     prc: prc,
     module: module,
+    optionsStack: if module.initProc != nil: module.initProc.optionsStack
+                  else: @[],
     options: if prc != nil: prc.options
              else: module.config.options,
     blocks: @[initBlock()],

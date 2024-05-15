@@ -874,7 +874,7 @@ proc gproc(g: var TSrcGen, n: PNode) =
   if renderNoPragmas notin g.flags:
     gsub(g, n[pragmasPos])
   if renderNoBody notin g.flags:
-    if n[bodyPos].kind != nkEmpty:
+    if n.len > bodyPos and n[bodyPos].kind != nkEmpty:
       put(g, tkSpaces, Space)
       putWithSpace(g, tkEquals, "=")
       indentNL(g)
@@ -1526,17 +1526,16 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
         gsub(g, n[0])
         gsub(g, n[1])
         gcoms(g)
+        indentNL(g)
         gsub(g, n[2])
+        dedent(g)
     else:
       put(g, tkObject, "object")
   of nkRecList:
-    indentNL(g)
     for i in 0..<n.len:
       optNL(g)
       gsub(g, n[i], c)
       gcoms(g)
-    dedent(g)
-    putNL(g)
   of nkOfInherit:
     putWithSpace(g, tkOf, "of")
     gsub(g, n, 0)

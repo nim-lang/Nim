@@ -270,7 +270,10 @@ proc isInvalidReturnType(conf: ConfigRef; typ: PType, isProc = true): bool =
           {tyVar, tyLent, tyRef, tyPtr})
     of ctStruct:
       let t = skipTypes(rettype, typedescInst)
-      if rettype.isImportedCppType or t.isImportedCppType: return false
+      if rettype.isImportedCppType or t.isImportedCppType or
+          (typ.callConv == ccCDecl and conf.selectedGC in {gcArc, gcAtomicArc, gcOrc}):
+        # prevents nrvo for cdecl procs; # bug #23401
+        return false
       result = containsGarbageCollectedRef(t) or
           (t.kind == tyObject and not isObjLackingTypeField(t))
     else: result = false
@@ -660,6 +663,13 @@ proc mangleRecFieldName(m: BModule; field: PSym): Rope =
     result = rope(mangleField(m, field.name))
   if result == "": internalError(m.config, field.info, "mangleRecFieldName")
 
+proc hasCppCtor(m: BModule; typ: PType): bool = 
+  result = false
+  if m.compileToCpp and typ != nil and typ.itemId in m.g.graph.memberProcsPerType:
+    for prc in m.g.graph.memberProcsPerType[typ.itemId]:
+      if sfConstructor in prc.flags:
+        return true
+
 proc genRecordFieldsAux(m: BModule; n: PNode,
                         rectype: PType,
                         check: var IntSet; result: var Rope; unionPrefix = "") =
@@ -724,7 +734,7 @@ proc genRecordFieldsAux(m: BModule; n: PNode,
       else:
         # don't use fieldType here because we need the
         # tyGenericInst for C++ template support
-        if fieldType.isOrHasImportedCppType():
+        if fieldType.isOrHasImportedCppType() or hasCppCtor(m, field.owner.typ):
           result.addf("\t$1$3 $2{};$n", [getTypeDescAux(m, field.loc.t, check, dkField), sname, noAlias])
         else:
           result.addf("\t$1$3 $2;$n", [getTypeDescAux(m, field.loc.t, check, dkField), sname, noAlias])
@@ -1927,8 +1937,11 @@ proc genTypeSection(m: BModule, n: PNode) =
     if len(n[i]) == 0: continue
     if n[i][0].kind != nkPragmaExpr: continue
     for p in 0..<n[i][0].len:
-      if (n[i][0][p].kind != nkSym): continue
-      if sfExportc in n[i][0][p].sym.flags:        
-        discard getTypeDescAux(m, n[i][0][p].typ, intSet, descKindFromSymKind(n[i][0][p].sym.kind))
+      if (n[i][0][p].kind notin {nkSym, nkPostfix}): continue
+      var s = n[i][0][p]
+      if s.kind == nkPostfix:
+        s = n[i][0][p][1]
+      if {sfExportc, sfCompilerProc} * s.sym.flags == {sfExportc}:
+        discard getTypeDescAux(m, s.typ, intSet, descKindFromSymKind(s.sym.kind))
         if m.g.generatedHeader != nil:
-          discard getTypeDescAux(m.g.generatedHeader, n[i][0][p].typ, intSet, descKindFromSymKind(n[i][0][p].sym.kind))
+          discard getTypeDescAux(m.g.generatedHeader, s.typ, intSet, descKindFromSymKind(s.sym.kind))

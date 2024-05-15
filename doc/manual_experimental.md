@@ -838,6 +838,7 @@ The concept matches if:
 
 a) all expressions within the body can be compiled for the tested type
 b) all statically evaluable boolean expressions in the body are true
+c) all type modifiers specified match their respective definitions
 
 The identifiers following the `concept` keyword represent instances of the
 currently matched type. You can apply any of the standard type modifiers such

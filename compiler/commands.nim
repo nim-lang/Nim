@@ -205,7 +205,11 @@ proc processSpecificNote*(arg: string, state: TSpecialWord, pass: TCmdLinePass,
     # unfortunately, hintUser and warningUser clash, otherwise implementation would simplify a bit
     let x = findStr(noteMin, noteMax, id, errUnknown)
     if x != errUnknown: notes = {TNoteKind(x)}
-    else: localError(conf, info, "unknown $#: $#" % [name, id])
+    else:
+      if isSomeHint:
+        message(conf, info, hintUnknownHint, id)
+      else:
+        localError(conf, info, "unknown $#: $#" % [name, id])
   case id.normalize
   of "all": # other note groups would be easy to support via additional cases
     notes = if isSomeHint: {hintMin..hintMax} else: {warnMin..warnMax}

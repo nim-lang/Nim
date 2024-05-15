@@ -293,23 +293,26 @@ proc freshVarForClosureIter*(g: ModuleGraph; s: PSym; idgen: IdGenerator; owner:
 
 proc markAsClosure(g: ModuleGraph; owner: PSym; n: PNode) =
   let s = n.sym
+  let isEnv = s.name.id == getIdent(g.cache, ":env").id
   if illegalCapture(s):
     localError(g.config, n.info,
       ("'$1' is of type <$2> which cannot be captured as it would violate memory" &
        " safety, declared here: $3; using '-d:nimNoLentIterators' helps in some cases." &
        " Consider using a <ref $2> which can be captured.") %
       [s.name.s, typeToString(s.typ), g.config$s.info])
-  elif not (owner.typ.callConv == ccClosure or owner.typ.callConv == ccNimCall and tfExplicitCallConv notin owner.typ.flags):
+  elif not (owner.typ.isClosure or owner.isNimcall and not owner.isExplicitCallConv or isEnv):
     localError(g.config, n.info, "illegal capture '$1' because '$2' has the calling convention: <$3>" %
       [s.name.s, owner.name.s, $owner.typ.callConv])
   incl(owner.typ.flags, tfCapturesEnv)
-  owner.typ.callConv = ccClosure
+  if not isEnv:
+    owner.typ.callConv = ccClosure
 
 type
   DetectionPass = object
     processed, capturedVars: IntSet
     ownerToType: Table[int, PType]
     somethingToDo: bool
+    inTypeOf: bool
     graph: ModuleGraph
     idgen: IdGenerator
 
@@ -413,6 +416,9 @@ Consider:
 
 """
 
+proc isTypeOf(n: PNode): bool =
+  n.kind == nkSym and n.sym.magic in {mTypeOf, mType}
+
 proc addClosureParam(c: var DetectionPass; fn: PSym; info: TLineInfo) =
   var cp = getEnvParam(fn)
   let owner = if fn.kind == skIterator: fn else: fn.skipGenericOwner
@@ -444,12 +450,15 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
         let body = transformBody(c.graph, c.idgen, s, useCache)
         detectCapturedVars(body, s, c)
     let ow = s.skipGenericOwner
+    let innerClosure = innerProc and s.typ.callConv == ccClosure and not s.isIterator
+    let interested = interestingVar(s)
     if ow == owner:
       if owner.isIterator:
         c.somethingToDo = true
         addClosureParam(c, owner, n.info)
         if interestingIterVar(s):
-          if not c.capturedVars.containsOrIncl(s.id):
+          if not c.capturedVars.contains(s.id):
+            if not c.inTypeOf: c.capturedVars.incl(s.id)
             let obj = getHiddenParam(c.graph, owner).typ.skipTypes({tyOwned, tyRef, tyPtr})
             #let obj = c.getEnvTypeForOwner(s.owner).skipTypes({tyOwned, tyRef, tyPtr})
 
@@ -458,7 +467,7 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
             else:
               discard addField(obj, s, c.graph.cache, c.idgen)
     # direct or indirect dependency:
-    elif (innerProc and not s.isIterator and s.typ.callConv == ccClosure) or interestingVar(s):
+    elif innerClosure or interested:
       discard """
         proc outer() =
           var x: int
@@ -475,10 +484,12 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
       addClosureParam(c, owner, n.info)
       #echo "capturing ", n.info
       # variable 's' is actually captured:
-      if interestingVar(s) and not c.capturedVars.containsOrIncl(s.id):
-        let obj = c.getEnvTypeForOwner(ow, n.info).skipTypes({tyOwned, tyRef, tyPtr})
-        #getHiddenParam(owner).typ.skipTypes({tyOwned, tyRef, tyPtr})
-        discard addField(obj, s, c.graph.cache, c.idgen)
+      if interestingVar(s):
+        if not c.capturedVars.contains(s.id):
+          if not c.inTypeOf: c.capturedVars.incl(s.id)
+          let obj = c.getEnvTypeForOwner(ow, n.info).skipTypes({tyOwned, tyRef, tyPtr})
+          #getHiddenParam(owner).typ.skipTypes({tyOwned, tyRef, tyPtr})
+          discard addField(obj, s, c.graph.cache, c.idgen)
       # create required upFields:
       var w = owner.skipGenericOwner
       if isInnerProc(w) or owner.isIterator:
@@ -510,9 +521,14 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
       detectCapturedVars(n[namePos], owner, c)
   of nkReturnStmt:
     detectCapturedVars(n[0], owner, c)
+  of nkIdentDefs:
+    detectCapturedVars(n[^1], owner, c)
   else:
+    if n.isCallExpr and n[0].isTypeOf:
+      c.inTypeOf = true
     for i in 0..<n.len:
       detectCapturedVars(n[i], owner, c)
+    c.inTypeOf = false
 
 type
   LiftingPass = object
@@ -792,6 +808,8 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: var DetectionPass;
   of nkTypeOfExpr:
     result = n
   else:
+    if n.isCallExpr and n[0].isTypeOf:
+      return
     if owner.isIterator:
       if nfLL in n.flags:
         # special case 'when nimVm' due to bug #3636:
@@ -971,12 +989,15 @@ proc liftForLoop*(g: ModuleGraph; body: PNode; idgen: IdGenerator; owner: PSym):
   # gather vars in a tuple:
   var v2 = newNodeI(nkLetSection, body.info)
   var vpart = newNodeI(if body.len == 3: nkIdentDefs else: nkVarTuple, body.info)
-  for i in 0..<body.len-2:
-    if body[i].kind == nkSym:
-      body[i].sym.transitionToLet()
-    vpart.add body[i]
+  if body.len == 3 and body[0].kind == nkVarTuple:
+    vpart = body[0] # fixes for (i,j) in walk() # bug #15924
+  else:
+    for i in 0..<body.len-2:
+      if body[i].kind == nkSym:
+        body[i].sym.transitionToLet()
+      vpart.add body[i]
 
-  vpart.add newNodeI(nkEmpty, body.info) # no explicit type
+    vpart.add newNodeI(nkEmpty, body.info) # no explicit type
   if not env.isNil:
     call[0] = makeClosure(g, idgen, call[0].sym, env.newSymNode, body.info)
   vpart.add call

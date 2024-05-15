@@ -330,7 +330,7 @@ proc expectDynlibNode(c: PContext, n: PNode): PNode =
     # {.dynlib: myGetProcAddr(...).}
     result = c.semExpr(c, n[1])
     if result.kind == nkSym and result.sym.kind == skConst:
-      result = result.sym.astdef # look it up
+      result = c.semConstExpr(c, result) # fold const
     if result.typ == nil or result.typ.kind notin {tyPointer, tyString, tyProc}:
       localError(c.config, n.info, errStringLiteralExpected)
       result = newEmptyStrNode(c, n)
@@ -1112,13 +1112,20 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wFatal: fatal(c.config, it.info, expectStrLit(c, it))
       of wDefine: processDefine(c, it, sym)
       of wUndef: processUndef(c, it)
-      of wCompile: processCompile(c, it)
+      of wCompile:
+        let m = sym.getModule()
+        incl(m.flags, sfUsed)
+        processCompile(c, it)
       of wLink: processLink(c, it)
       of wPassl:
+        let m = sym.getModule()
+        incl(m.flags, sfUsed)
         let s = expectStrLit(c, it)
         extccomp.addLinkOption(c.config, s)
         recordPragma(c, it, "passl", s)
       of wPassc:
+        let m = sym.getModule()
+        incl(m.flags, sfUsed)
         let s = expectStrLit(c, it)
         extccomp.addCompileOption(c.config, s)
         recordPragma(c, it, "passc", s)

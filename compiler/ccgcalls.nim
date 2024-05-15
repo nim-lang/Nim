@@ -24,6 +24,7 @@ proc canRaiseDisp(p: BProc; n: PNode): bool =
 
 proc preventNrvo(p: BProc; dest, le, ri: PNode): bool =
   proc locationEscapes(p: BProc; le: PNode; inTryStmt: bool): bool =
+    result = false
     var n = le
     while true:
       # do NOT follow nkHiddenDeref here!
@@ -82,6 +83,10 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
   # getUniqueType() is too expensive here:
   var typ = skipTypes(ri[0].typ, abstractInst)
   if typ[0] != nil:
+    var flags: TAssignmentFlags = {}
+    if typ[0].kind in {tyOpenArray, tyVarargs}:
+      # perhaps generate no temp if the call doesn't have side effects
+      flags.incl needTempForOpenArray
     if isInvalidReturnType(p.config, typ):
       if params.len != 0: pl.add(", ")
       # beware of 'result = p(result)'. We may need to allocate a temporary:
@@ -129,7 +134,7 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
         var list: TLoc
         initLoc(list, locCall, d.lode, OnUnknown)
         list.r = pl
-        genAssignment(p, d, list, {}) # no need for deep copying
+        genAssignment(p, d, list, flags) # no need for deep copying
         if canRaise: raiseExit(p)
       else:
         var tmp: TLoc
@@ -137,7 +142,7 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
         var list: TLoc
         initLoc(list, locCall, d.lode, OnUnknown)
         list.r = pl
-        genAssignment(p, tmp, list, {}) # no need for deep copying
+        genAssignment(p, tmp, list, flags) # no need for deep copying
         if canRaise: raiseExit(p)
         genAssignment(p, d, tmp, {})
   else:

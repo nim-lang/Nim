@@ -433,10 +433,9 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
     typ.paddingAtEnd = typ.base.paddingAtEnd
 
   of tyForward:
-    # is this really illegal recursion, or maybe just unknown?
-    typ.size = szIllegalRecursion
-    typ.align = szIllegalRecursion
-    typ.paddingAtEnd = szIllegalRecursion
+    typ.size = szUnknownSize
+    typ.align = szUnknownSize
+    typ.paddingAtEnd = szUnknownSize
 
   of tyStatic:
     if typ.n != nil:

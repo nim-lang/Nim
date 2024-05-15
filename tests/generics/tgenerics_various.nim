@@ -231,3 +231,17 @@ doSomething(identity((1, 2)))
 proc myProc[T, U](x: T or U) = discard
 
 myProc[int, string](x = 2)
+
+
+block: # issue #9381
+  var evalCount {.compileTime.} = 0
+
+  macro test(t: typed): untyped =
+    inc evalCount
+    t
+
+  type GenericObj[T] = object
+    f: test(T)
+
+  var x: GenericObj[int]
+  static: doAssert evalCount == 1

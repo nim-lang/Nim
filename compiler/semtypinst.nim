@@ -88,8 +88,8 @@ type
     recursionLimit: int
 
 proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType
-proc replaceTypeVarsS(cl: var TReplTypeVars, s: PSym): PSym
-proc replaceTypeVarsN*(cl: var TReplTypeVars, n: PNode; start=0): PNode
+proc replaceTypeVarsS(cl: var TReplTypeVars, s: PSym, t: PType): PSym
+proc replaceTypeVarsN*(cl: var TReplTypeVars, n: PNode; start=0; expectedType: PType = nil): PNode
 
 proc initLayeredTypeMap*(pt: TIdTable): LayeredIdTable =
   result = LayeredIdTable()
@@ -129,7 +129,12 @@ proc prepareNode(cl: var TReplTypeVars, n: PNode): PNode =
            else: t.n
   result = copyNode(n)
   result.typ = t
-  if result.kind == nkSym: result.sym = replaceTypeVarsS(cl, n.sym)
+  if result.kind == nkSym:
+    result.sym =
+      if n.typ != nil and n.typ == n.sym.typ:
+        replaceTypeVarsS(cl, n.sym, result.typ)
+      else:
+        replaceTypeVarsS(cl, n.sym, replaceTypeVarsT(cl, n.sym.typ))
   let isCall = result.kind in nkCallKinds
   for i in 0..<n.safeLen:
     # XXX HACK: ``f(a, b)``, avoid to instantiate `f`
@@ -213,7 +218,7 @@ proc hasValuelessStatics(n: PNode): bool =
         return true
     false
 
-proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0): PNode =
+proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0; expectedType: PType = nil): PNode =
   if n == nil: return
   result = copyNode(n)
   if n.typ != nil:
@@ -224,7 +229,11 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0): PNode =
     discard
   of nkOpenSymChoice, nkClosedSymChoice: result = n
   of nkSym:
-    result.sym = replaceTypeVarsS(cl, n.sym)
+    result.sym =
+      if n.typ != nil and n.typ == n.sym.typ:
+        replaceTypeVarsS(cl, n.sym, result.typ)
+      else:
+        replaceTypeVarsS(cl, n.sym, replaceTypeVarsT(cl, n.sym.typ))
     if result.sym.typ.kind == tyVoid:
       # don't add the 'void' field
       result = newNodeI(nkRecList, n.info)
@@ -255,8 +264,8 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0): PNode =
     when false:
       n = reResolveCallsWithTypedescParams(cl, n)
     result = if cl.allowMetaTypes: n
-             else: cl.c.semExpr(cl.c, n)
-    if not cl.allowMetaTypes:
+             else: cl.c.semExpr(cl.c, n, {}, expectedType)
+    if not cl.allowMetaTypes and expectedType != nil:
       assert result.kind notin nkCallKinds
   else:
     if n.len > 0:
@@ -266,7 +275,7 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0): PNode =
       for i in start..<n.len:
         result[i] = replaceTypeVarsN(cl, n[i])
 
-proc replaceTypeVarsS(cl: var TReplTypeVars, s: PSym): PSym =
+proc replaceTypeVarsS(cl: var TReplTypeVars, s: PSym, t: PType): PSym =
   if s == nil: return nil
   # symbol is not our business:
   if cl.owner != nil and s.owner != cl.owner:
@@ -307,11 +316,14 @@ proc replaceTypeVarsS(cl: var TReplTypeVars, s: PSym): PSym =
   incl(result.flags, sfFromGeneric)
   #idTablePut(cl.symMap, s, result)
   result.owner = s.owner
-  result.typ = replaceTypeVarsT(cl, s.typ)
+  result.typ = t
   if result.kind != skType:
     result.ast = replaceTypeVarsN(cl, s.ast)
 
 proc lookupTypeVar(cl: var TReplTypeVars, t: PType): PType =
+  if tfRetType in t.flags and t.kind == tyAnything:
+    # don't bind `auto` return type to a previous binding of `auto`
+    return nil
   result = cl.typeMap.lookup(t)
   if result == nil:
     if cl.allowMetaTypes or tfRetType in t.flags: return
@@ -549,7 +561,9 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
   result = t
   if t == nil: return
 
-  if t.kind in {tyStatic, tyGenericParam, tyConcept} + tyTypeClasses:
+  const lookupMetas = {tyStatic, tyGenericParam, tyConcept} + tyTypeClasses - {tyAnything}
+  if t.kind in lookupMetas or
+      (t.kind == tyAnything and tfRetType notin t.flags):
     let lookup = cl.typeMap.lookup(t)
     if lookup != nil: return lookup
 
@@ -692,12 +706,13 @@ proc initTypeVars*(p: PContext, typeMap: LayeredIdTable, info: TLineInfo;
   result.owner = owner
 
 proc replaceTypesInBody*(p: PContext, pt: TIdTable, n: PNode;
-                         owner: PSym, allowMetaTypes = false): PNode =
+                         owner: PSym, allowMetaTypes = false,
+                         fromStaticExpr = false, expectedType: PType = nil): PNode =
   var typeMap = initLayeredTypeMap(pt)
   var cl = initTypeVars(p, typeMap, n.info, owner)
   cl.allowMetaTypes = allowMetaTypes
   pushInfoContext(p.config, n.info)
-  result = replaceTypeVarsN(cl, n)
+  result = replaceTypeVarsN(cl, n, expectedType = expectedType)
   popInfoContext(p.config)
 
 when false:

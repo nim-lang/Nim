@@ -166,6 +166,11 @@ proc discardCheck(c: PContext, result: PNode, flags: TExprFlags) =
         while n.kind in skipForDiscardable:
           if n.kind == nkTryStmt: n = n[0]
           else: n = n.lastSon
+
+        # Ignore noreturn procs since they don't have a type
+        if n.endsInNoReturn:
+          return
+
         var s = "expression '" & $n & "' is of type '" &
             result.typ.typeToString & "' and has to be used (or discarded)"
         if result.info.line != n.info.line or
@@ -331,6 +336,8 @@ proc fitRemoveHiddenConv(c: PContext, typ: PType, n: PNode): PNode =
       result.typ = typ
       if not floatRangeCheck(result.floatVal, typ):
         localError(c.config, n.info, errFloatToString % [$result.floatVal, typeToString(typ)])
+    elif r1.kind == nkSym and typ.skipTypes(abstractRange).kind == tyCstring:
+      discard "keep nkHiddenStdConv for cstring conversions"
     else:
       changeType(c, r1, typ, check=true)
       result = r1
@@ -590,14 +597,22 @@ proc globalVarInitCheck(c: PContext, n: PNode) =
   if n.isLocalVarSym or n.kind in nkCallKinds and usesLocalVar(n):
     localError(c.config, n.info, errCannotAssignToGlobal)
 
+const
+  errTupleUnpackingTupleExpected = "tuple expected for tuple unpacking, but got '$1'"
+  errTupleUnpackingDifferentLengths = "tuple with $1 elements expected, but got '$2' with $3 elements"
+
 proc makeVarTupleSection(c: PContext, n, a, def: PNode, typ: PType, symkind: TSymKind, origResult: var PNode): PNode =
   ## expand tuple unpacking assignments into new var/let/const section
+  ## 
+  ## mirrored with semexprs.makeTupleAssignments
   if typ.kind != tyTuple:
-    localError(c.config, a.info, errXExpected, "tuple")
+    localError(c.config, a.info, errTupleUnpackingTupleExpected %
+      [typeToString(typ, preferDesc)])
   elif a.len-2 != typ.len:
-    localError(c.config, a.info, errWrongNumberOfVariables)
+    localError(c.config, a.info, errTupleUnpackingDifferentLengths %
+      [$(a.len-2), typeToString(typ, preferDesc), $typ.len])
   var
-    tmpTuple: PSym
+    tempNode: PNode = nil
     lastDef: PNode
   let defkind = if symkind == skConst: nkConstDef else: nkIdentDefs
   # temporary not needed if not const and RHS is tuple literal
@@ -605,17 +620,18 @@ proc makeVarTupleSection(c: PContext, n, a, def: PNode, typ: PType, symkind: TSy
   let useTemp = def.kind notin {nkPar, nkTupleConstr} or symkind == skConst
   if useTemp:
     # use same symkind for compatibility with original section
-    tmpTuple = newSym(symkind, getIdent(c.cache, "tmpTuple"), c.idgen, getCurrOwner(c), n.info)
-    tmpTuple.typ = typ
-    tmpTuple.flags.incl(sfGenSym)
+    let temp = newSym(symkind, getIdent(c.cache, "tmpTuple"), c.idgen, getCurrOwner(c), n.info)
+    temp.typ = typ
+    temp.flags.incl(sfGenSym)
     lastDef = newNodeI(defkind, a.info)
     newSons(lastDef, 3)
-    lastDef[0] = newSymNode(tmpTuple)
+    lastDef[0] = newSymNode(temp)
     # NOTE: at the moment this is always ast.emptyNode, see parser.nim
     lastDef[1] = a[^2]
     lastDef[2] = def
-    tmpTuple.ast = lastDef
+    temp.ast = lastDef
     addToVarSection(c, origResult, n, lastDef)
+    tempNode = newSymNode(temp)
   result = newNodeI(n.kind, a.info)
   for j in 0..<a.len-2:
     let name = a[j]
@@ -634,7 +650,7 @@ proc makeVarTupleSection(c: PContext, n, a, def: PNode, typ: PType, symkind: TSy
       lastDef[0] = name
     lastDef[^2] = c.graph.emptyNode
     if useTemp:
-      lastDef[^1] = newTreeIT(nkBracketExpr, name.info, typ[j], newSymNode(tmpTuple), newIntNode(nkIntLit, j))
+      lastDef[^1] = newTupleAccessRaw(tempNode, j)
     else:
       var val = def[j]
       if val.kind == nkExprColonExpr: val = val[1]
@@ -859,9 +875,13 @@ proc semConst(c: PContext, n: PNode): PNode =
         styleCheckDef(c, v)
         onDef(a[j].info, v)
 
-        setVarType(c, v, typ)
-        when false:
-          v.ast = def               # no need to copy
+        var fillSymbol = true
+        if v.typ != nil:
+          # symbol already has type and probably value
+          # don't mutate
+          fillSymbol = false
+        else:
+          setVarType(c, v, typ)
         b = newNodeI(nkConstDef, a.info)
         if importantComments(c.config): b.comment = a.comment
         # postfix not generated here (to generate, get rid of it in transf)
@@ -874,8 +894,9 @@ proc semConst(c: PContext, n: PNode): PNode =
           b.add newSymNode(v)
         b.add a[1]
         b.add copyTree(def)
-        v.ast = b
-      addToVarSection(c, result, n, b)
+        if fillSymbol:
+          v.ast = b
+        addToVarSection(c, result, n, b)
   dec c.inStaticContext
 
 include semfields
@@ -902,7 +923,10 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
   if iterAfterVarLent.kind != tyTuple or n.len == 3:
     if n.len == 3:
       if n[0].kind == nkVarTuple:
-        if n[0].len-1 != iterAfterVarLent.len:
+        if iterAfterVarLent.kind != tyTuple:
+          return localErrorNode(c, n, n[0].info, errTupleUnpackingTupleExpected %
+              [typeToString(n[1].typ, preferDesc)])
+        elif n[0].len-1 != iterAfterVarLent.len:
           return localErrorNode(c, n, n[0].info, errWrongNumberOfVariables)
 
         for i in 0..<n[0].len-1:
@@ -1121,20 +1145,14 @@ proc semCase(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = nil
   openScope(c)
   pushCaseContext(c, n)
   n[0] = semExprWithType(c, n[0])
-  var chckCovered = false
   var covered: Int128 = toInt128(0)
   var typ = commonTypeBegin
   var expectedType = expectedType
   var hasElse = false
   let caseTyp = skipTypes(n[0].typ, abstractVar-{tyTypeDesc})
-  const shouldChckCovered = {tyInt..tyInt64, tyChar, tyEnum, tyUInt..tyUInt64, tyBool}
+  var chckCovered = caseTyp.shouldCheckCaseCovered()
   case caseTyp.kind
-  of shouldChckCovered:
-    chckCovered = true
-  of tyRange:
-    if skipTypes(caseTyp[0], abstractInst).kind in shouldChckCovered:
-      chckCovered = true
-  of tyFloat..tyFloat128, tyString, tyCstring, tyError:
+  of tyFloat..tyFloat128, tyString, tyCstring, tyError, shouldChckCovered, tyRange:
     discard
   else:
     popCaseContext(c)
@@ -1469,9 +1487,12 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
       # final pass
       if a[2].kind in nkCallKinds:
         incl a[2].flags, nfSem # bug #10548
-    if sfExportc in s.flags and s.typ.kind == tyAlias:
-      localError(c.config, name.info, "{.exportc.} not allowed for type aliases")
-
+    if sfExportc in s.flags:
+      if s.typ.kind == tyAlias:
+        localError(c.config, name.info, "{.exportc.} not allowed for type aliases")
+      elif s.typ.kind == tyGenericBody:
+        localError(c.config, name.info, "{.exportc.} not allowed for generic types")
+    
     if tfBorrowDot in s.typ.flags:
       let body = s.typ.skipTypes({tyGenericBody})
       if body.kind != tyDistinct:
@@ -1656,18 +1677,27 @@ proc addParams(c: PContext, n: PNode, kind: TSymKind) =
 
 proc semBorrow(c: PContext, n: PNode, s: PSym) =
   # search for the correct alias:
-  var b = searchForBorrowProc(c, c.currentScope.parent, s)
-  if b != nil:
-    # store the alias:
-    n[bodyPos] = newSymNode(b)
-    # Carry over the original symbol magic, this is necessary in order to ensure
-    # the semantic pass is correct
-    s.magic = b.magic
-    if b.typ != nil and b.typ.len > 0:
-      s.typ.n[0] = b.typ.n[0]
-    s.typ.flags = b.typ.flags
-  else:
-    localError(c.config, n.info, errNoSymbolToBorrowFromFound)
+  var (b, state) = searchForBorrowProc(c, c.currentScope.parent, s)
+  case state
+    of bsMatch:
+      # store the alias:
+      n[bodyPos] = newSymNode(b)
+      # Carry over the original symbol magic, this is necessary in order to ensure
+      # the semantic pass is correct
+      s.magic = b.magic
+      if b.typ != nil and b.typ.len > 0:
+        s.typ.n[0] = b.typ.n[0]
+      s.typ.flags = b.typ.flags
+    of bsNoDistinct:
+      localError(c.config, n.info, "borrow proc without distinct type parameter is meaningless")
+    of bsReturnNotMatch:
+      localError(c.config, n.info, "borrow from proc return type mismatch: '$1'" % typeToString(b.typ[0]))
+    of bsGeneric:
+      localError(c.config, n.info, "borrow with generic parameter is not supported")
+    of bsNotSupported:
+      localError(c.config, n.info, "borrow from '$1' is not supported" % $b.name.s)
+    else:
+      localError(c.config, n.info, errNoSymbolToBorrowFromFound)
 
 proc swapResult(n: PNode, sRes: PSym, dNode: PNode) =
   ## Swap nodes that are (skResult) symbols to d(estination)Node.
@@ -1775,7 +1805,6 @@ proc semInferredLambda(c: PContext, pt: TIdTable, n: PNode): PNode =
   n[genericParamsPos] = c.graph.emptyNode
   # for LL we need to avoid wrong aliasing
   let params = copyTree n.typ.n
-  n[paramsPos] = params
   s.typ = n.typ
   for i in 1..<params.len:
     if params[i].typ.kind in {tyTypeDesc, tyGenericParam,
@@ -1884,7 +1913,7 @@ proc bindDupHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp) =
   incl(s.flags, sfUsed)
   incl(s.flags, sfOverridden)
 
-proc bindTypeHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp) =
+proc bindTypeHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp; suppressVarDestructorWarning = false) =
   let t = s.typ
   var noError = false
   let cond = case op
@@ -1892,6 +1921,11 @@ proc bindTypeHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp) =
                t.len == 2 and t[0] == nil and t[1].kind == tyVar
              of attachedTrace:
                t.len == 3 and t[0] == nil and t[1].kind == tyVar and t[2].kind == tyPointer
+             of attachedDestructor:
+               if c.config.selectedGC in {gcArc, gcAtomicArc, gcOrc}:
+                 t.len == 2 and t[0] == nil
+               else:
+                 t.len == 2 and t[0] == nil and t[1].kind == tyVar
              else:
                t.len >= 2 and t[0] == nil
 
@@ -1903,7 +1937,8 @@ proc bindTypeHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp) =
       elif obj.kind == tyGenericInvocation: obj = obj[0]
       else: break
     if obj.kind in {tyObject, tyDistinct, tySequence, tyString}:
-      if op == attachedDestructor and t[1].kind == tyVar:
+      if (not suppressVarDestructorWarning) and op == attachedDestructor and t[1].kind == tyVar and
+          c.config.selectedGC in {gcArc, gcAtomicArc, gcOrc}:
         message(c.config, n.info, warnDeprecated, "A custom '=destroy' hook which takes a 'var T' parameter is deprecated; it should take a 'T' parameter")
       obj = canonType(c, obj)
       let ao = getAttachedOp(c.graph, obj, op)
@@ -1923,8 +1958,12 @@ proc bindTypeHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp) =
       localError(c.config, n.info, errGenerated,
         "signature for '=trace' must be proc[T: object](x: var T; env: pointer)")
     of attachedDestructor:
-      localError(c.config, n.info, errGenerated,
-        "signature for '=destroy' must be proc[T: object](x: var T) or proc[T: object](x: T)")
+      if c.config.selectedGC in {gcArc, gcAtomicArc, gcOrc}:
+        localError(c.config, n.info, errGenerated,
+          "signature for '=destroy' must be proc[T: object](x: var T) or proc[T: object](x: T)")
+      else:
+        localError(c.config, n.info, errGenerated,
+          "signature for '=destroy' must be proc[T: object](x: var T)")
     else:
       localError(c.config, n.info, errGenerated,
         "signature for '" & s.name.s & "' must be proc[T: object](x: var T)")

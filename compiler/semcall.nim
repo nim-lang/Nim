@@ -761,17 +761,25 @@ proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
   else:
     result = explicitGenericInstError(c, n)
 
-proc searchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): PSym =
+proc searchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): tuple[s: PSym, state: TBorrowState] =
   # Searches for the fn in the symbol table. If the parameter lists are suitable
   # for borrowing the sym in the symbol table is returned, else nil.
   # New approach: generate fn(x, y, z) where x, y, z have the proper types
   # and use the overloading resolution mechanism:
+  const desiredTypes = abstractVar + {tyCompositeTypeClass} - {tyTypeDesc, tyDistinct}
+
+  template getType(isDistinct: bool; t: PType):untyped =
+    if isDistinct: t.baseOfDistinct(c.graph, c.idgen) else: t
+
+  result = default(tuple[s: PSym, state: TBorrowState])
   var call = newNodeI(nkCall, fn.info)
   var hasDistinct = false
+  var isDistinct: bool
+  var x: PType
+  var t: PType
   call.add(newIdentNode(fn.name, fn.info))
   for i in 1..<fn.typ.n.len:
     let param = fn.typ.n[i]
-    const desiredTypes = abstractVar + {tyCompositeTypeClass} - {tyTypeDesc, tyDistinct}
     #[.
       # We only want the type not any modifiers such as `ptr`, `var`, `ref` ...
       # tyCompositeTypeClass is here for
@@ -780,22 +788,31 @@ proc searchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): PSym =
       proc `$`(f: Foo): string {.borrow.}
       # We want to skip the `Foo` to get `int`
     ]#
-    let t = skipTypes(param.typ, desiredTypes)
-    if t.kind == tyDistinct or param.typ.kind == tyDistinct: hasDistinct = true
-    var x: PType
+    t = skipTypes(param.typ, desiredTypes)
+    isDistinct = t.kind == tyDistinct or param.typ.kind == tyDistinct
+    if t.kind == tyGenericInvocation and t[0].lastSon.kind == tyDistinct:
+      result.state = bsGeneric
+      return
+    if isDistinct: hasDistinct = true
     if param.typ.kind == tyVar:
       x = newTypeS(param.typ.kind, c)
-      x.addSonSkipIntLit(t.baseOfDistinct(c.graph, c.idgen), c.idgen)
+      x.addSonSkipIntLit(getType(isDistinct, t), c.idgen)
     else:
-      x = t.baseOfDistinct(c.graph, c.idgen)
-    call.add(newNodeIT(nkEmpty, fn.info, x))
+      x = getType(isDistinct, t)
+    var s = copySym(param.sym, c.idgen)
+    s.typ = x
+    s.info = param.info
+    call.add(newSymNode(s))
   if hasDistinct:
     let filter = if fn.kind in {skProc, skFunc}: {skProc, skFunc} else: {fn.kind}
     var resolved = semOverloadedCall(c, call, call, filter, {})
     if resolved != nil:
-      result = resolved[0].sym
-      if not compareTypes(result.typ[0], fn.typ[0], dcEqIgnoreDistinct):
-        result = nil
-      elif result.magic in {mArrPut, mArrGet}:
+      result.s = resolved[0].sym
+      result.state = bsMatch
+      if not compareTypes(result.s.typ[0], fn.typ[0], dcEqIgnoreDistinct, {IgnoreFlags}):
+        result.state = bsReturnNotMatch
+      elif result.s.magic in {mArrPut, mArrGet}:
         # cannot borrow these magics for now
-        result = nil
+        result.state = bsNotSupported
+  else:
+    result.state = bsNoDistinct

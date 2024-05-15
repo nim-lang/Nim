@@ -838,11 +838,11 @@ proc firstOrd*(conf: ConfigRef; t: PType): Int128 =
     result = firstOrd(conf, lastSon(t))
   of tyOrdinal:
     if t.len > 0: result = firstOrd(conf, lastSon(t))
-    else: internalError(conf, "invalid kind for firstOrd(" & $t.kind & ')')
+    else: fatal(conf, unknownLineInfo, "invalid kind for firstOrd(" & $t.kind & ')')
   of tyUncheckedArray, tyCstring:
     result = Zero
   else:
-    internalError(conf, "invalid kind for firstOrd(" & $t.kind & ')')
+    fatal(conf, unknownLineInfo, "invalid kind for firstOrd(" & $t.kind & ')')
     result = Zero
 
 proc firstFloat*(t: PType): BiggestFloat =
@@ -926,11 +926,11 @@ proc lastOrd*(conf: ConfigRef; t: PType): Int128 =
   of tyProxy: result = Zero
   of tyOrdinal:
     if t.len > 0: result = lastOrd(conf, lastSon(t))
-    else: internalError(conf, "invalid kind for lastOrd(" & $t.kind & ')')
+    else: fatal(conf, unknownLineInfo, "invalid kind for lastOrd(" & $t.kind & ')')
   of tyUncheckedArray:
     result = Zero
   else:
-    internalError(conf, "invalid kind for lastOrd(" & $t.kind & ')')
+    fatal(conf, unknownLineInfo, "invalid kind for lastOrd(" & $t.kind & ')')
     result = Zero
 
 proc lastFloat*(t: PType): BiggestFloat =
@@ -991,6 +991,7 @@ type
     ExactGcSafety
     AllowCommonBase
     PickyCAliases  # be picky about the distinction between 'cint' and 'int32'
+    IgnoreFlags    # used for borrowed functions and methods; ignores the tfVarIsPtr flag
 
   TTypeCmpFlags* = set[TTypeCmpFlag]
 
@@ -1184,6 +1185,13 @@ proc sameChildrenAux(a, b: PType, c: var TSameTypeClosure): bool =
 proc isGenericAlias*(t: PType): bool =
   return t.kind == tyGenericInst and t.lastSon.kind == tyGenericInst
 
+proc genericAliasDepth*(t: PType): int =
+  result = 0
+  var it = t
+  while it.isGenericAlias:
+    it = it.lastSon
+    inc result
+
 proc skipGenericAlias*(t: PType): PType =
   return if t.isGenericAlias: t.lastSon else: t
 
@@ -1203,12 +1211,12 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
       if containsOrIncl(c, a, b): return true
 
   if x == y: return true
-  var a = skipTypes(x, {tyGenericInst, tyAlias})
+  var a = skipTypes(x, {tyAlias})
   while a.kind == tyUserTypeClass and tfResolved in a.flags:
-    a = skipTypes(a[^1], {tyGenericInst, tyAlias})
-  var b = skipTypes(y, {tyGenericInst, tyAlias})
+    a = skipTypes(a[^1], {tyAlias})
+  var b = skipTypes(y, {tyAlias})
   while b.kind == tyUserTypeClass and tfResolved in b.flags:
-    b = skipTypes(b[^1], {tyGenericInst, tyAlias})
+    b = skipTypes(b[^1], {tyAlias})
   assert(a != nil)
   assert(b != nil)
   if a.kind != b.kind:
@@ -1305,7 +1313,7 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     cycleCheck()
     if a.kind == tyUserTypeClass and a.n != nil: return a.n == b.n
     result = sameChildrenAux(a, b, c)
-    if result:
+    if result and IgnoreFlags notin c.flags:
       if IgnoreTupleFields in c.flags:
         result = a.flags * {tfVarIsPtr, tfIsOutParam} == b.flags * {tfVarIsPtr, tfIsOutParam}
       else:

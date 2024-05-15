@@ -208,6 +208,18 @@ proc commonType*(c: PContext; x, y: PType): PType =
         result = newType(k, nextTypeId(c.idgen), r.owner)
         result.addSonSkipIntLit(r, c.idgen)
 
+const shouldChckCovered = {tyInt..tyInt64, tyChar, tyEnum, tyUInt..tyUInt64, tyBool}
+proc shouldCheckCaseCovered(caseTyp: PType): bool =
+  result = false
+  case caseTyp.kind
+  of shouldChckCovered:
+    result = true
+  of tyRange:
+    if skipTypes(caseTyp[0], abstractInst).kind in shouldChckCovered:
+      result = true
+  else:
+    discard
+
 proc endsInNoReturn(n: PNode): bool =
   ## check if expr ends the block like raising or call of noreturn procs do
   result = false # assume it does return
@@ -237,6 +249,12 @@ proc endsInNoReturn(n: PNode): bool =
     # none of the branches returned
     result = hasElse # Only truly a no-return when it's exhaustive
   of nkCaseStmt:
+    let caseTyp = skipTypes(it[0].typ, abstractVar-{tyTypeDesc})
+    # semCase should already have checked for exhaustiveness in this case
+    # effectively the same as having an else
+    var hasElse = caseTyp.shouldCheckCaseCovered()
+
+    # actual noreturn checks
     for i in 1 ..< it.len:
       let branch = it[i]
       checkBranch:
@@ -246,11 +264,12 @@ proc endsInNoReturn(n: PNode): bool =
         of nkElifBranch:
           branch[1]
         of nkElse:
+          hasElse = true
           branch[0]
         else:
           raiseAssert "Malformed `case` statement in endsInNoReturn"
-    # none of the branches returned
-    result = true
+    # Can only guarantee a noreturn if there is an else or it's exhaustive
+    result = hasElse
   of nkTryStmt:
     checkBranch(it[0])
     for i in 1 ..< it.len:
@@ -400,6 +419,11 @@ proc tryConstExpr(c: PContext, n: PNode; expectedType: PType = nil): PNode =
   c.config.m.errorOutputs = {}
   c.config.errorMax = high(int) # `setErrorMaxHighMaybe` not appropriate here
 
+  when defined(nimsuggest):
+    # Remove the error hook so nimsuggest doesn't report errors there
+    let tempHook = c.graph.config.structuredErrorHook
+    c.graph.config.structuredErrorHook = nil
+
   try:
     result = evalConstExpr(c.module, c.idgen, c.graph, e)
     if result == nil or result.kind == nkEmpty:
@@ -409,6 +433,10 @@ proc tryConstExpr(c: PContext, n: PNode; expectedType: PType = nil): PNode =
 
   except ERecoverableError:
     result = nil
+
+  when defined(nimsuggest):
+    # Restore the error hook
+    c.graph.config.structuredErrorHook = tempHook
 
   c.config.errorCounter = oldErrorCount
   c.config.errorMax = oldErrorMax

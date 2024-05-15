@@ -931,17 +931,21 @@ proc default*[T](_: typedesc[T]): T {.magic: "Default", noSideEffect.} =
 proc reset*[T](obj: var T) {.noSideEffect.} =
   ## Resets an object `obj` to its default value.
   when nimvm:
+    {.push warning[UnsafeDefault]:off.}
     obj = default(typeof(obj))
+    {.pop.}
   else:
     when defined(gcDestructors):
       {.cast(noSideEffect), cast(raises: []), cast(tags: []).}:
         `=destroy`(obj)
         `=wasMoved`(obj)
     else:
+      {.push warning[UnsafeDefault]:off.}
       obj = default(typeof(obj))
+      {.pop.}
 
 proc setLen*[T](s: var seq[T], newlen: Natural) {.
-  magic: "SetLengthSeq", noSideEffect.}
+  magic: "SetLengthSeq", noSideEffect, nodestroy.}
   ## Sets the length of seq `s` to `newlen`. `T` may be any sequence type.
   ##
   ## If the current length is greater than the new length,
@@ -2073,7 +2077,7 @@ when not defined(js) and declared(alloc0) and declared(dealloc):
       inc(i)
     dealloc(a)
 
-when notJSnotNims:
+when notJSnotNims and not gotoBasedExceptions:
   type
     PSafePoint = ptr TSafePoint
     TSafePoint {.compilerproc, final.} = object
@@ -2405,6 +2409,16 @@ when defined(nimV2):
   import system/repr_v2
   export repr_v2
 
+proc repr*[T, U](x: HSlice[T, U]): string =
+  ## Generic `repr` operator for slices that is lifted from the components
+  ## of `x`. Example:
+  ##
+  ## .. code-block:: Nim
+  ##  $(1 .. 5) == "1 .. 5"
+  result = repr(x.a)
+  result.add(" .. ")
+  result.add(repr(x.b))
+
 when hasAlloc or defined(nimscript):
   proc insert*(x: var string, item: string, i = 0.Natural) {.noSideEffect.} =
     ## Inserts `item` into `x` at position `i`.
@@ -2412,6 +2426,8 @@ when hasAlloc or defined(nimscript):
     ##   var a = "abc"
     ##   a.insert("zz", 0) # a <- "zzabc"
     ##   ```
+    if item.len == 0: # prevents self-assignment
+      return
     var xl = x.len
     setLen(x, xl+item.len)
     var j = xl-1
@@ -2555,7 +2571,7 @@ when hasAlloc and notJSnotNims:
     ## This is also used by the code generator
     ## for the implementation of `spawn`.
     ##
-    ## For `--gc:arc` or `--gc:orc` deepcopy support has to be enabled
+    ## For `--mm:arc` or `--mm:orc` deepcopy support has to be enabled
     ## via `--deepcopy:on`.
     discard
 
@@ -2734,7 +2750,7 @@ when notJSnotNims:
                     hostOS != "any"
 
   proc raiseEIO(msg: string) {.noinline, noreturn.} =
-    sysFatal(IOError, msg)
+    raise newException(IOError, msg)
 
   proc echoBinSafe(args: openArray[string]) {.compilerproc.} =
     when defined(androidNDK):
@@ -2764,7 +2780,7 @@ when notJSnotNims:
             # machine. We also enable `setConsoleOutputCP(65001)` now by default.
             # But we cannot call printf directly as the string might contain \0.
             # So we have to loop over all the sections separated by potential \0s.
-            var i = c_fprintf(f, "%s", s)
+            var i = int c_fprintf(f, "%s", s)
             while i < s.len:
               if s[i] == '\0':
                 let w = c_fputc('\0', f)
@@ -2801,7 +2817,7 @@ when notJSnotNims and not defined(nimSeqsV2):
     ## String literals (e.g. "abc", etc) in the ARC/ORC mode are "copy on write",
     ## therefore you should call `prepareMutation` before modifying the strings
     ## via `addr`.
-    runnableExamples("--gc:arc"):
+    runnableExamples:
       var x = "abc"
       var y = "defgh"
       prepareMutation(y) # without this, you may get a `SIGBUS` or `SIGSEGV`

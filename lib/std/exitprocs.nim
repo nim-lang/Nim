@@ -22,7 +22,7 @@ type
 
 var
   gFunsLock: Lock
-  gFuns: seq[Fun]
+  gFuns {.cursor.}: seq[Fun] #Intentionally use the cursor to break up the lifetime trace and make it compatible with JS.
 
 initLock(gFunsLock)
 

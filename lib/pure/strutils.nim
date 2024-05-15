@@ -1852,7 +1852,7 @@ func join*(a: openArray[string], sep: string = ""): string {.rtl,
   else:
     result = ""
 
-func join*[T: not string](a: openArray[T], sep: string = ""): string =
+proc join*[T: not string](a: openArray[T], sep: string = ""): string =
   ## Converts all elements in the container `a` to strings using `$`,
   ## and concatenates them with `sep`.
   runnableExamples:
@@ -2417,8 +2417,8 @@ func validIdentifier*(s: string): bool {.rtl, extern: "nsuValidIdentifier".} =
 
 # floating point formatting:
 when not defined(js):
-  func c_sprintf(buf, frmt: cstring): cint {.header: "<stdio.h>",
-                                     importc: "sprintf", varargs.}
+  func c_snprintf(buf: cstring, n: csize_t, frmt: cstring): cint {.header: "<stdio.h>",
+                                     importc: "snprintf", varargs.}
 
 type
   FloatFormatMode* = enum
@@ -2451,7 +2451,7 @@ func formatBiggestFloat*(f: BiggestFloat, format: FloatFormatMode = ffDefault,
     when defined(js):
       var precision = precision
       if precision == -1:
-        # use the same default precision as c_sprintf
+        # use the same default precision as c_snprintf
         precision = 6
       var res: cstring
       case format
@@ -2482,11 +2482,11 @@ func formatBiggestFloat*(f: BiggestFloat, format: FloatFormatMode = ffDefault,
         frmtstr[3] = '*'
         frmtstr[4] = floatFormatToChar[format]
         frmtstr[5] = '\0'
-        L = c_sprintf(cast[cstring](addr buf), cast[cstring](addr frmtstr), precision, f)
+        L = c_snprintf(cast[cstring](addr buf), csize_t(2501), cast[cstring](addr frmtstr), precision, f)
       else:
         frmtstr[1] = floatFormatToChar[format]
         frmtstr[2] = '\0'
-        L = c_sprintf(cast[cstring](addr buf), cast[cstring](addr frmtstr), f)
+        L = c_snprintf(cast[cstring](addr buf), csize_t(2501), cast[cstring](addr frmtstr), f)
       result = newString(L)
       for i in 0 ..< L:
         # Depending on the locale either dot or comma is produced,

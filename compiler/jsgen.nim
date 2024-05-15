@@ -50,6 +50,7 @@ type
     graph: ModuleGraph
     config: ConfigRef
     sigConflicts: CountTable[SigHash]
+    initProc: PProc
 
   BModule = ref TJSGen
   TJSTypeKind = enum       # necessary JS "types"
@@ -158,6 +159,8 @@ proc newProc(globals: PGlobals, module: BModule, procDef: PNode,
              options: TOptions): PProc =
   result = PProc(
     blocks: @[],
+    optionsStack: if module.initProc != nil: module.initProc.optionsStack
+                  else: @[],
     options: options,
     module: module,
     procDef: procDef,
@@ -3036,6 +3039,7 @@ proc processJSCodeGen*(b: PPassContext, n: PNode): PNode =
   if m.module == nil: internalError(m.config, n.info, "myProcess")
   let globals = PGlobals(m.graph.backend)
   var p = newInitProc(globals, m)
+  m.initProc = p
   p.unique = globals.unique
   genModule(p, n)
   p.g.code.add(p.locals)

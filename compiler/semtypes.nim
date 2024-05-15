@@ -229,6 +229,7 @@ proc isRecursiveType(t: PType, cycleDetector: var IntSet): bool =
     return false
 
 proc fitDefaultNode(c: PContext, n: PNode): PType =
+  inc c.inStaticContext
   let expectedType = if n[^2].kind != nkEmpty: semTypeNode(c, n[^2], nil) else: nil
   n[^1] = semConstExpr(c, n[^1], expectedType = expectedType)
   let oldType = n[^1].typ
@@ -236,9 +237,19 @@ proc fitDefaultNode(c: PContext, n: PNode): PType =
   if n[^2].kind != nkEmpty:
     if expectedType != nil and oldType != expectedType:
       n[^1] = fitNodeConsiderViewType(c, expectedType, n[^1], n[^1].info)
+      changeType(c, n[^1], expectedType, true) # infer types for default fields value
+        # bug #22926; be cautious that it uses `semConstExpr` to
+        # evaulate the default fields; it's only natural to use
+        # `changeType` to infer types for constant values
+        # that's also the reason why we don't use `semExpr` to check
+        # the type since two overlapping error messages might be produced
     result = n[^1].typ
   else:
     result = n[^1].typ
+  # xxx any troubles related to defaults fields, consult `semConst` for a potential answer
+  if n[^1].kind != nkNilLit:
+    typeAllowedCheck(c, n.info, result, skConst, {taProcContextIsNotMacro, taIsDefaultField})
+  dec c.inStaticContext
 
 proc isRecursiveType*(t: PType): bool =
   # handle simple recusive types before typeFinalPass
@@ -336,6 +347,14 @@ proc semRange(c: PContext, n: PNode, prev: PType): PType =
     localError(c.config, n.info, errXExpectsOneTypeParam % "range")
     result = newOrPrevType(tyError, prev, c)
 
+proc semArrayIndexConst(c: PContext, e: PNode, info: TLineInfo): PType =
+  let x = semConstExpr(c, e)
+  if x.kind in {nkIntLit..nkUInt64Lit}:
+    result = makeRangeType(c, 0, x.intVal-1, info,
+                        x.typ.skipTypes({tyTypeDesc}))
+  else:
+    result = x.typ.skipTypes({tyTypeDesc})
+
 proc semArrayIndex(c: PContext, n: PNode): PType =
   if isRange(n):
     result = semRangeAux(c, n, nil)
@@ -352,14 +371,18 @@ proc semArrayIndex(c: PContext, n: PNode): PType =
         localError(c.config, n.info,
           "Array length can't be negative, but was " & $e.intVal)
       result = makeRangeType(c, 0, e.intVal-1, n.info, e.typ)
-    elif e.kind == nkSym and e.typ.kind == tyStatic:
-      if e.sym.ast != nil:
-        return semArrayIndex(c, e.sym.ast)
-      if e.typ.lastSon.kind != tyGenericParam and not isOrdinalType(e.typ.lastSon):
-        let info = if n.safeLen > 1: n[1].info else: n.info
-        localError(c.config, info, errOrdinalTypeExpected % typeToString(e.typ, preferDesc))
-      result = makeRangeWithStaticExpr(c, e)
-      if c.inGenericContext > 0: result.flags.incl tfUnresolved
+    elif e.kind == nkSym and (e.typ.kind == tyStatic or e.typ.kind == tyTypeDesc) :
+      if e.typ.kind == tyStatic:
+        if e.sym.ast != nil:
+          return semArrayIndex(c, e.sym.ast)
+        if e.typ.lastSon.kind != tyGenericParam and not isOrdinalType(e.typ.lastSon):
+          let info = if n.safeLen > 1: n[1].info else: n.info
+          localError(c.config, info, errOrdinalTypeExpected % typeToString(e.typ, preferDesc))
+        result = makeRangeWithStaticExpr(c, e)
+        if c.inGenericContext > 0: result.flags.incl tfUnresolved
+      else:
+        result = e.typ.skipTypes({tyTypeDesc})
+        result.flags.incl tfImplicitStatic
     elif e.kind in (nkCallKinds + {nkBracketExpr}) and hasUnresolvedArgs(c, e):
       if not isOrdinalType(e.typ.skipTypes({tyStatic, tyAlias, tyGenericInst, tySink})):
         localError(c.config, n[1].info, errOrdinalTypeExpected % typeToString(e.typ, preferDesc))
@@ -372,12 +395,7 @@ proc semArrayIndex(c: PContext, n: PNode): PType =
     elif e.kind == nkIdent:
       result = e.typ.skipTypes({tyTypeDesc})
     else:
-      let x = semConstExpr(c, e)
-      if x.kind in {nkIntLit..nkUInt64Lit}:
-        result = makeRangeType(c, 0, x.intVal-1, n.info,
-                             x.typ.skipTypes({tyTypeDesc}))
-      else:
-        result = x.typ.skipTypes({tyTypeDesc})
+      result = semArrayIndexConst(c, e, n.info)
         #localError(c.config, n[1].info, errConstExprExpected)
 
 proc semArray(c: PContext, n: PNode, prev: PType): PType =
@@ -389,13 +407,16 @@ proc semArray(c: PContext, n: PNode, prev: PType): PType =
     if indxB.kind in {tyGenericInst, tyAlias, tySink}: indxB = lastSon(indxB)
     if indxB.kind notin {tyGenericParam, tyStatic, tyFromExpr} and
         tfUnresolved notin indxB.flags:
-      if indxB.skipTypes({tyRange}).kind in {tyUInt, tyUInt64}:
-        discard
-      elif not isOrdinalType(indxB):
+      if not isOrdinalType(indxB):
         localError(c.config, n[1].info, errOrdinalTypeExpected % typeToString(indxB, preferDesc))
       elif enumHasHoles(indxB):
         localError(c.config, n[1].info, "enum '$1' has holes" %
                    typeToString(indxB.skipTypes({tyRange})))
+      elif indxB.kind != tyRange and
+          lengthOrd(c.config, indxB) > high(uint16).int:
+        # assume range type is intentional
+        localError(c.config, n[1].info,
+          "index type '$1' for array is too large" % typeToString(indxB))
     base = semTypeNode(c, n[2], nil)
     # ensure we only construct a tyArray when there was no error (bug #3048):
     result = newOrPrevType(tyArray, prev, c)
@@ -515,6 +536,12 @@ proc semIdentWithPragma(c: PContext, kind: TSymKind, n: PNode,
     else: discard
   else:
     result = semIdentVis(c, kind, n, allowed)
+    case kind
+    of skField: implicitPragmas(c, result, n.info, fieldPragmas)
+    of skVar:   implicitPragmas(c, result, n.info, varPragmas)
+    of skLet:   implicitPragmas(c, result, n.info, letPragmas)
+    of skConst: implicitPragmas(c, result, n.info, constPragmas)
+    else: discard
 
 proc checkForOverlap(c: PContext, t: PNode, currentEx, branchIndex: int) =
   let ex = t[branchIndex][currentEx].skipConv
@@ -1395,7 +1422,8 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
             "' is only valid for macros and templates")
       # 'auto' as a return type does not imply a generic:
       elif r.kind == tyAnything:
-        discard
+        r = copyType(r, nextTypeId c.idgen, r.owner)
+        r.flags.incl tfRetType
       elif r.kind == tyStatic:
         # type allowed should forbid this type
         discard
@@ -1484,6 +1512,14 @@ proc trySemObjectTypeForInheritedGenericInst(c: PContext, n: PNode, t: PType): b
   var newf = newNodeI(nkRecList, n.info)
   semRecordNodeAux(c, t.n, check, pos, newf, t)
 
+proc containsGenericInvocationWithForward(n: PNode): bool = 
+  if n.kind == nkSym and n.sym.ast != nil and n.sym.ast.len > 1 and n.sym.ast[2].kind == nkObjectTy:
+    for p in n.sym.ast[2][^1]:
+      if p.kind == nkIdentDefs and p[1].typ != nil and p[1].typ.kind == tyGenericInvocation and
+        p[1][0].kind == nkSym and p[1][0].typ.kind == tyForward:
+          return true
+  return false
+
 proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
   if s.typ == nil:
     localError(c.config, n.info, "cannot instantiate the '$1' $2" %
@@ -1493,20 +1529,24 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
   var t = s.typ.skipTypes({tyAlias})
   if t.kind == tyCompositeTypeClass and t.base.kind == tyGenericBody:
     t = t.base
-
   result = newOrPrevType(tyGenericInvocation, prev, c)
   addSonSkipIntLit(result, t, c.idgen)
 
-  template addToResult(typ) =
+  template addToResult(typ, skip) =
+    
     if typ.isNil:
       internalAssert c.config, false
       rawAddSon(result, typ)
-    else: addSonSkipIntLit(result, typ, c.idgen)
+    else:
+      if skip:
+        addSonSkipIntLit(result, typ, c.idgen)
+      else:
+        rawAddSon(result, makeRangeWithStaticExpr(c, typ.n))
 
   if t.kind == tyForward:
     for i in 1..<n.len:
       var elem = semGenericParamInInvocation(c, n[i])
-      addToResult(elem)
+      addToResult(elem, true)
     return
   elif t.kind != tyGenericBody:
     # we likely got code of the form TypeA[TypeB] where TypeA is
@@ -1526,7 +1566,8 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
       return newOrPrevType(tyError, prev, c)
 
     var isConcrete = true
-
+    let rType = m.call[0].typ
+    let mIndex = if rType != nil: rType.len - 1 else: -1
     for i in 1..<m.call.len:
       var typ = m.call[i].typ
       # is this a 'typedesc' *parameter*? If so, use the typedesc type,
@@ -1534,17 +1575,22 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
       if m.call[i].kind == nkSym and m.call[i].sym.kind == skParam and
           typ.kind == tyTypeDesc and containsGenericType(typ):
         isConcrete = false
-        addToResult(typ)
+        addToResult(typ, true)
       else:
         typ = typ.skipTypes({tyTypeDesc})
         if containsGenericType(typ): isConcrete = false
-        addToResult(typ)
+        var skip = true
+        if mIndex >= i - 1 and tfImplicitStatic in rType[i - 1].flags and isIntLit(typ):
+          skip = false
+        addToResult(typ, skip)
 
     if isConcrete:
       if s.ast == nil and s.typ.kind != tyCompositeTypeClass:
         # XXX: What kind of error is this? is it still relevant?
         localError(c.config, n.info, errCannotInstantiateX % s.name.s)
         result = newOrPrevType(tyError, prev, c)
+      elif containsGenericInvocationWithForward(n[0]):
+        c.skipTypes.add n #fixes 1500
       else:
         result = instGenericContainer(c, n.info, result,
                                       allowMetaTypes = false)
@@ -1961,6 +2007,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
         result = semTypeExpr(c, n[1], prev)
       else:
         if c.inGenericContext > 0 and n.kind == nkCall:
+          let n = semGenericStmt(c, n)
           result = makeTypeFromExpr(c, n.copyTree)
         else:
           result = semTypeExpr(c, n, prev)
@@ -2119,6 +2166,8 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
         result = newOrPrevType(tyError, prev, c)
       if n.kind == nkIteratorTy and result.kind == tyProc:
         result.flags.incl(tfIterator)
+      if result.callConv == ccClosure and c.config.selectedGC in {gcArc, gcOrc, gcAtomicArc}:
+        result.flags.incl tfHasAsgn
   of nkEnumTy: result = semEnum(c, n, prev)
   of nkType: result = n.typ
   of nkStmtListType: result = semStmtListType(c, n, prev)

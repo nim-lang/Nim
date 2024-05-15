@@ -282,3 +282,21 @@ block: # bug #17898
       for j in 0..<numRepeat:
         discard rands[i].next
         doAssert rands[i] notin randSet
+
+block: # bug #22360
+  const size = 1000
+  var fc = 0
+  var tc = 0
+
+  for _ in 1..size:
+    let s = rand(bool)
+
+    if s:
+      inc tc
+    else:
+      inc fc
+
+  when defined(js):
+    doAssert (tc, fc) == (483, 517), $(tc, fc)
+  else:
+    doAssert (tc, fc) == (510, 490), $(tc, fc)

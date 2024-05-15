@@ -401,6 +401,7 @@ proc rdCharLoc(a: TLoc): Rope =
 type
   TAssignmentFlag = enum
     needToCopy
+    needTempForOpenArray
   TAssignmentFlags = set[TAssignmentFlag]
 
 proc genObjConstr(p: BProc, e: PNode, d: var TLoc)
@@ -1025,7 +1026,7 @@ proc easyResultAsgn(n: PNode): PNode =
 type
   InitResultEnum = enum Unknown, InitSkippable, InitRequired
 
-proc allPathsAsgnResult(n: PNode): InitResultEnum =
+proc allPathsAsgnResult(p: BProc; n: PNode): InitResultEnum =
   # Exceptions coming from calls don't have not be considered here:
   #
   # proc bar(): string = raise newException(...)
@@ -1040,7 +1041,7 @@ proc allPathsAsgnResult(n: PNode): InitResultEnum =
   #   echo "a was not written to"
   #
   template allPathsInBranch(it) =
-    let a = allPathsAsgnResult(it)
+    let a = allPathsAsgnResult(p, it)
     case a
     of InitRequired: return InitRequired
     of InitSkippable: discard
@@ -1052,7 +1053,7 @@ proc allPathsAsgnResult(n: PNode): InitResultEnum =
   case n.kind
   of nkStmtList, nkStmtListExpr:
     for it in n:
-      result = allPathsAsgnResult(it)
+      result = allPathsAsgnResult(p, it)
       if result != Unknown: return result
   of nkAsgn, nkFastAsgn, nkSinkAsgn:
     if n[0].kind == nkSym and n[0].sym.kind == skResult:
@@ -1060,6 +1061,8 @@ proc allPathsAsgnResult(n: PNode): InitResultEnum =
       else: result = InitRequired
     elif containsResult(n):
       result = InitRequired
+    else:
+      result = allPathsAsgnResult(p, n[1])
   of nkReturnStmt:
     if n.len > 0:
       if n[0].kind == nkEmpty and result != InitSkippable:
@@ -1068,7 +1071,7 @@ proc allPathsAsgnResult(n: PNode): InitResultEnum =
         # initialized. This avoids cases like #9286 where this heuristic lead to
         # wrong code being generated.
         result = InitRequired
-      else: result = allPathsAsgnResult(n[0])
+      else: result = allPathsAsgnResult(p, n[0])
   of nkIfStmt, nkIfExpr:
     var exhaustive = false
     result = InitSkippable
@@ -1094,9 +1097,9 @@ proc allPathsAsgnResult(n: PNode): InitResultEnum =
   of nkWhileStmt:
     # some dubious code can assign the result in the 'while'
     # condition and that would be fine. Everything else isn't:
-    result = allPathsAsgnResult(n[0])
+    result = allPathsAsgnResult(p, n[0])
     if result == Unknown:
-      result = allPathsAsgnResult(n[1])
+      result = allPathsAsgnResult(p, n[1])
       # we cannot assume that the 'while' loop is really executed at least once:
       if result == InitSkippable: result = Unknown
   of harmless:
@@ -1121,9 +1124,17 @@ proc allPathsAsgnResult(n: PNode): InitResultEnum =
     allPathsInBranch(n[0])
     for i in 1..<n.len:
       if n[i].kind == nkFinally:
-        result = allPathsAsgnResult(n[i].lastSon)
+        result = allPathsAsgnResult(p, n[i].lastSon)
       else:
         allPathsInBranch(n[i].lastSon)
+  of nkCallKinds:
+    if canRaiseDisp(p, n[0]):
+      result = InitRequired
+    else:
+      for i in 0..<n.safeLen:
+        allPathsInBranch(n[i])
+  of nkRaiseStmt:
+    result = InitRequired
   else:
     for i in 0..<n.safeLen:
       allPathsInBranch(n[i])
@@ -1180,7 +1191,7 @@ proc genProcAux*(m: BModule, prc: PSym) =
         assignLocalVar(p, resNode)
         assert(res.loc.r != "")
         if p.config.selectedGC in {gcArc, gcAtomicArc, gcOrc} and
-            allPathsAsgnResult(procBody) == InitSkippable:
+            allPathsAsgnResult(p, procBody) == InitSkippable:
           # In an ideal world the codegen could rely on injectdestructors doing its job properly
           # and then the analysis step would not be required.
           discard "result init optimized out"
@@ -1199,7 +1210,7 @@ proc genProcAux*(m: BModule, prc: PSym) =
       # global is either 'nil' or points to valid memory and so the RC operation
       # succeeds without touching not-initialized memory.
       if sfNoInit in prc.flags: discard
-      elif allPathsAsgnResult(procBody) == InitSkippable: discard
+      elif allPathsAsgnResult(p, procBody) == InitSkippable: discard
       else:
         resetLoc(p, res.loc)
       if skipTypes(res.typ, abstractInst).kind == tyArray:
@@ -1890,13 +1901,13 @@ proc genInitCode(m: BModule) =
     if beforeRetNeeded in m.initProc.flags:
       prc.add("\tBeforeRet_: ;\n")
 
-    if sfMainModule in m.module.flags and m.config.exc == excGoto:
+    if m.config.exc == excGoto:
       if getCompilerProc(m.g.graph, "nimTestErrorFlag") != nil:
         m.appcg(prc, "\t#nimTestErrorFlag();$n", [])
 
     if optStackTrace in m.initProc.options and preventStackTrace notin m.flags:
       prc.add(deinitFrame(m.initProc))
-  elif sfMainModule in m.module.flags and m.config.exc == excGoto:
+  elif m.config.exc == excGoto:
     if getCompilerProc(m.g.graph, "nimTestErrorFlag") != nil:
       m.appcg(prc, "\t#nimTestErrorFlag();$n", [])
 

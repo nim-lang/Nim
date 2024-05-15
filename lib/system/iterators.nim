@@ -8,12 +8,17 @@ when not defined(nimNoLentIterators):
 else:
   template lent2(T): untyped = T
 
+template unCheckedInc(x) =
+  {.push overflowChecks: off.}
+  inc(x)
+  {.pop.}
+
 iterator items*[T: not char](a: openArray[T]): lent2 T {.inline.} =
   ## Iterates over each item of `a`.
   var i = 0
   while i < len(a):
     yield a[i]
-    inc(i)
+    unCheckedInc(i)
 
 iterator items*[T: char](a: openArray[T]): T {.inline.} =
   ## Iterates over each item of `a`.
@@ -23,14 +28,14 @@ iterator items*[T: char](a: openArray[T]): T {.inline.} =
   var i = 0
   while i < len(a):
     yield a[i]
-    inc(i)
+    unCheckedInc(i)
 
 iterator mitems*[T](a: var openArray[T]): var T {.inline.} =
   ## Iterates over each item of `a` so that you can modify the yielded value.
   var i = 0
   while i < len(a):
     yield a[i]
-    inc(i)
+    unCheckedInc(i)
 
 iterator items*[IX, T](a: array[IX, T]): T {.inline.} =
   ## Iterates over each item of `a`.
@@ -39,7 +44,7 @@ iterator items*[IX, T](a: array[IX, T]): T {.inline.} =
     while true:
       yield a[i]
       if i >= high(IX): break
-      inc(i)
+      unCheckedInc(i)
 
 iterator mitems*[IX, T](a: var array[IX, T]): var T {.inline.} =
   ## Iterates over each item of `a` so that you can modify the yielded value.
@@ -48,7 +53,7 @@ iterator mitems*[IX, T](a: var array[IX, T]): var T {.inline.} =
     while true:
       yield a[i]
       if i >= high(IX): break
-      inc(i)
+      unCheckedInc(i)
 
 iterator items*[T](a: set[T]): T {.inline.} =
   ## Iterates over each element of `a`. `items` iterates only over the
@@ -56,8 +61,11 @@ iterator items*[T](a: set[T]): T {.inline.} =
   ## able to hold).
   var i = low(T).int
   while i <= high(T).int:
-    if T(i) in a: yield T(i)
-    inc(i)
+    when T is enum and not defined(js):
+      if cast[T](i) in a: yield cast[T](i)
+    else:
+      if T(i) in a: yield T(i)
+    unCheckedInc(i)
 
 iterator items*(a: cstring): char {.inline.} =
   ## Iterates over each item of `a`.
@@ -76,7 +84,7 @@ iterator items*(a: cstring): char {.inline.} =
     let n = len(a)
     while i < n:
       yield a[i]
-      inc(i)
+      unCheckedInc(i)
   when defined(js): impl()
   else:
     when nimvm:
@@ -86,7 +94,7 @@ iterator items*(a: cstring): char {.inline.} =
       var i = 0
       while a[i] != '\0':
         yield a[i]
-        inc(i)
+        unCheckedInc(i)
 
 iterator mitems*(a: var cstring): var char {.inline.} =
   ## Iterates over each item of `a` so that you can modify the yielded value.
@@ -109,7 +117,7 @@ iterator mitems*(a: var cstring): var char {.inline.} =
     let n = len(a)
     while i < n:
       yield a[i]
-      inc(i)
+      unCheckedInc(i)
   when defined(js): impl()
   else:
     when nimvm: impl()
@@ -117,7 +125,7 @@ iterator mitems*(a: var cstring): var char {.inline.} =
       var i = 0
       while a[i] != '\0':
         yield a[i]
-        inc(i)
+        unCheckedInc(i)
 
 iterator items*[T: enum and Ordinal](E: typedesc[T]): T =
   ## Iterates over the values of `E`.
@@ -140,7 +148,7 @@ iterator pairs*[T](a: openArray[T]): tuple[key: int, val: T] {.inline.} =
   var i = 0
   while i < len(a):
     yield (i, a[i])
-    inc(i)
+    unCheckedInc(i)
 
 iterator mpairs*[T](a: var openArray[T]): tuple[key: int, val: var T]{.inline.} =
   ## Iterates over each item of `a`. Yields `(index, a[index])` pairs.
@@ -148,7 +156,7 @@ iterator mpairs*[T](a: var openArray[T]): tuple[key: int, val: var T]{.inline.} 
   var i = 0
   while i < len(a):
     yield (i, a[i])
-    inc(i)
+    unCheckedInc(i)
 
 iterator pairs*[IX, T](a: array[IX, T]): tuple[key: IX, val: T] {.inline.} =
   ## Iterates over each item of `a`. Yields `(index, a[index])` pairs.
@@ -157,7 +165,7 @@ iterator pairs*[IX, T](a: array[IX, T]): tuple[key: IX, val: T] {.inline.} =
     while true:
       yield (i, a[i])
       if i >= high(IX): break
-      inc(i)
+      unCheckedInc(i)
 
 iterator mpairs*[IX, T](a: var array[IX, T]): tuple[key: IX, val: var T] {.inline.} =
   ## Iterates over each item of `a`. Yields `(index, a[index])` pairs.
@@ -167,7 +175,7 @@ iterator mpairs*[IX, T](a: var array[IX, T]): tuple[key: IX, val: var T] {.inlin
     while true:
       yield (i, a[i])
       if i >= high(IX): break
-      inc(i)
+      unCheckedInc(i)
 
 iterator pairs*[T](a: seq[T]): tuple[key: int, val: T] {.inline.} =
   ## Iterates over each item of `a`. Yields `(index, a[index])` pairs.
@@ -175,7 +183,7 @@ iterator pairs*[T](a: seq[T]): tuple[key: int, val: T] {.inline.} =
   let L = len(a)
   while i < L:
     yield (i, a[i])
-    inc(i)
+    unCheckedInc(i)
     assert(len(a) == L, "the length of the seq changed while iterating over it")
 
 iterator mpairs*[T](a: var seq[T]): tuple[key: int, val: var T] {.inline.} =
@@ -185,7 +193,7 @@ iterator mpairs*[T](a: var seq[T]): tuple[key: int, val: var T] {.inline.} =
   let L = len(a)
   while i < L:
     yield (i, a[i])
-    inc(i)
+    unCheckedInc(i)
     assert(len(a) == L, "the length of the seq changed while iterating over it")
 
 iterator pairs*(a: string): tuple[key: int, val: char] {.inline.} =
@@ -194,7 +202,7 @@ iterator pairs*(a: string): tuple[key: int, val: char] {.inline.} =
   let L = len(a)
   while i < L:
     yield (i, a[i])
-    inc(i)
+    unCheckedInc(i)
     assert(len(a) == L, "the length of the string changed while iterating over it")
 
 iterator mpairs*(a: var string): tuple[key: int, val: var char] {.inline.} =
@@ -204,7 +212,7 @@ iterator mpairs*(a: var string): tuple[key: int, val: var char] {.inline.} =
   let L = len(a)
   while i < L:
     yield (i, a[i])
-    inc(i)
+    unCheckedInc(i)
     assert(len(a) == L, "the length of the string changed while iterating over it")
 
 iterator pairs*(a: cstring): tuple[key: int, val: char] {.inline.} =
@@ -214,12 +222,12 @@ iterator pairs*(a: cstring): tuple[key: int, val: char] {.inline.} =
     var L = len(a)
     while i < L:
       yield (i, a[i])
-      inc(i)
+      unCheckedInc(i)
   else:
     var i = 0
     while a[i] != '\0':
       yield (i, a[i])
-      inc(i)
+      unCheckedInc(i)
 
 iterator mpairs*(a: var cstring): tuple[key: int, val: var char] {.inline.} =
   ## Iterates over each item of `a`. Yields `(index, a[index])` pairs.
@@ -229,12 +237,12 @@ iterator mpairs*(a: var cstring): tuple[key: int, val: var char] {.inline.} =
     var L = len(a)
     while i < L:
       yield (i, a[i])
-      inc(i)
+      unCheckedInc(i)
   else:
     var i = 0
     while a[i] != '\0':
       yield (i, a[i])
-      inc(i)
+      unCheckedInc(i)
 
 iterator items*[T](a: seq[T]): lent2 T {.inline.} =
   ## Iterates over each item of `a`.
@@ -242,7 +250,7 @@ iterator items*[T](a: seq[T]): lent2 T {.inline.} =
   let L = len(a)
   while i < L:
     yield a[i]
-    inc(i)
+    unCheckedInc(i)
     assert(len(a) == L, "the length of the seq changed while iterating over it")
 
 iterator mitems*[T](a: var seq[T]): var T {.inline.} =
@@ -251,7 +259,7 @@ iterator mitems*[T](a: var seq[T]): var T {.inline.} =
   let L = len(a)
   while i < L:
     yield a[i]
-    inc(i)
+    unCheckedInc(i)
     assert(len(a) == L, "the length of the seq changed while iterating over it")
 
 iterator items*(a: string): char {.inline.} =
@@ -260,7 +268,7 @@ iterator items*(a: string): char {.inline.} =
   let L = len(a)
   while i < L:
     yield a[i]
-    inc(i)
+    unCheckedInc(i)
     assert(len(a) == L, "the length of the string changed while iterating over it")
 
 iterator mitems*(a: var string): var char {.inline.} =
@@ -269,7 +277,7 @@ iterator mitems*(a: var string): var char {.inline.} =
   let L = len(a)
   while i < L:
     yield a[i]
-    inc(i)
+    unCheckedInc(i)
     assert(len(a) == L, "the length of the string changed while iterating over it")
 
 

@@ -98,7 +98,7 @@ proc repr*(p: proc | iterator {.closure.}): string =
   ## repr of a proc as its address
   repr(cast[ptr pointer](unsafeAddr p)[])
 
-template repr*[T: distinct|range](x: T): string =
+template repr*[T: distinct|(range and not enum)](x: T): string =
   when T is range: # add a branch to handle range
     repr(rangeBase(typeof(x))(x))
   elif T is distinct:
@@ -176,16 +176,6 @@ proc repr*[T](x: seq[T]): string =
   ## .. code-block:: Nim
   ##   $(@[23, 45]) == "@[23, 45]"
   collectionToRepr(x, "@[", ", ", "]")
-
-proc repr*[T, U](x: HSlice[T, U]): string =
-  ## Generic `repr` operator for slices that is lifted from the components
-  ## of `x`. Example:
-  ##
-  ## .. code-block:: Nim
-  ##  $(1 .. 5) == "1 .. 5"
-  result = repr(x.a)
-  result.add(" .. ")
-  result.add(repr(x.b))
 
 proc repr*[T, IDX](x: array[IDX, T]): string =
   ## Generic `repr` operator for arrays that is lifted from the components.

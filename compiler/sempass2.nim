@@ -360,12 +360,15 @@ proc useVar(a: PEffects, n: PNode) =
 type
   TIntersection = seq[tuple[id, count: int]] # a simple count table
 
-proc addToIntersection(inter: var TIntersection, s: int) =
+proc addToIntersection(inter: var TIntersection, s: int, zeroInit: bool) =
   for j in 0..<inter.len:
     if s == inter[j].id:
       inc inter[j].count
       return
-  inter.add((id: s, count: 1))
+  if zeroInit:
+    inter.add((id: s, count: 0))
+  else:
+    inter.add((id: s, count: 1))
 
 proc throws(tracked, n, orig: PNode) =
   if n.typ == nil or n.typ.kind != tyError:
@@ -499,7 +502,7 @@ proc trackTryStmt(tracked: PEffects, n: PNode) =
   track(tracked, n[0])
   dec tracked.inTryStmt
   for i in oldState..<tracked.init.len:
-    addToIntersection(inter, tracked.init[i])
+    addToIntersection(inter, tracked.init[i], false)
 
   when defined(nimsuggest):
     tracked.caughtExceptions.pop
@@ -537,7 +540,7 @@ proc trackTryStmt(tracked: PEffects, n: PNode) =
           tracked.init.add b[j][2].sym.id
       track(tracked, b[^1])
       for i in oldState..<tracked.init.len:
-        addToIntersection(inter, tracked.init[i])
+        addToIntersection(inter, tracked.init[i], false)
     else:
       setLen(tracked.init, oldState)
       track(tracked, b[^1])
@@ -733,9 +736,11 @@ proc trackCase(tracked: PEffects, n: PNode) =
       addCaseBranchFacts(tracked.guards, n, i)
     for i in 0..<branch.len:
       track(tracked, branch[i])
-    if not breaksBlock(branch.lastSon): inc toCover
+    let hasBreaksBlock = breaksBlock(branch.lastSon)
+    if not hasBreaksBlock:
+      inc toCover
     for i in oldState..<tracked.init.len:
-      addToIntersection(inter, tracked.init[i])
+      addToIntersection(inter, tracked.init[i], hasBreaksBlock)
 
   setLen(tracked.init, oldState)
   if not stringCase or lastSon(n).kind == nkElse:
@@ -755,9 +760,11 @@ proc trackIf(tracked: PEffects, n: PNode) =
   var inter: TIntersection = @[]
   var toCover = 0
   track(tracked, n[0][1])
-  if not breaksBlock(n[0][1]): inc toCover
+  let hasBreaksBlock = breaksBlock(n[0][1])
+  if not hasBreaksBlock:
+    inc toCover
   for i in oldState..<tracked.init.len:
-    addToIntersection(inter, tracked.init[i])
+    addToIntersection(inter, tracked.init[i], hasBreaksBlock)
 
   for i in 1..<n.len:
     let branch = n[i]
@@ -769,9 +776,12 @@ proc trackIf(tracked: PEffects, n: PNode) =
     setLen(tracked.init, oldState)
     for i in 0..<branch.len:
       track(tracked, branch[i])
-    if not breaksBlock(branch.lastSon): inc toCover
+    let hasBreaksBlock = breaksBlock(branch.lastSon)
+    if not hasBreaksBlock:
+      inc toCover
     for i in oldState..<tracked.init.len:
-      addToIntersection(inter, tracked.init[i])
+      addToIntersection(inter, tracked.init[i], hasBreaksBlock)
+
   setLen(tracked.init, oldState)
   if lastSon(n).len == 1:
     for id, count in items(inter):
@@ -936,7 +946,7 @@ proc trackCall(tracked: PEffects; n: PNode) =
         mergeRaises(tracked, effectList[exceptionEffects], n)
         mergeTags(tracked, effectList[tagEffects], n)
         gcsafeAndSideeffectCheck()
-    if a.kind != nkSym or a.sym.magic notin {mNBindSym, mFinished, mExpandToAst, mQuoteAst}:
+    if a.kind != nkSym or a.sym.magic notin {mNBindSym, mFinished, mExpandToAst, mQuoteAst, mType}:
       for i in 1..<n.len:
         trackOperandForIndirectCall(tracked, n[i], op, i, a)
     if a.kind == nkSym and a.sym.magic in {mNew, mNewFinalize, mNewSeq}:
@@ -1377,6 +1387,7 @@ proc track(tracked: PEffects, n: PNode) =
 
 proc subtypeRelation(g: ModuleGraph; spec, real: PNode): bool =
   if spec.typ.kind == tyOr:
+    result = false
     for t in spec.typ.sons:
       if safeInheritanceDiff(g.excType(real), t) <= 0:
         return true

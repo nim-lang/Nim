@@ -197,3 +197,15 @@ block: # bug #22054
 
   var v = A(field: (a: 1314))
   doAssert get(v)[0] == 1314
+
+block: # tuple unpacking assignment with underscore
+  var
+    a = 1
+    b = 2
+  doAssert (a, b) == (1, 2)
+  (a, _) = (3, 4)
+  doAssert (a, b) == (3, 2)
+  (_, a) = (5, 6)
+  doAssert (a, b) == (6, 2)
+  (b, _) = (7, 8)
+  doAssert (a, b) == (6, 7)

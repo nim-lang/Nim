@@ -193,7 +193,6 @@ proc callNimCompiler(cmdTemplate, filename, options, nimcache: string,
         foundSuccessMsg = true
     elif not running(p):
       break
-  close(p)
   result.msg = ""
   result.file = ""
   result.output = ""
@@ -201,8 +200,9 @@ proc callNimCompiler(cmdTemplate, filename, options, nimcache: string,
   result.column = 0
 
   result.err = reNimcCrash
-  let exitCode = p.peekExitCode
-  case exitCode
+  result.exitCode = p.peekExitCode
+  close p
+  case result.exitCode
   of 0:
     if foundErrorMsg:
       result.debugInfo.add " compiler exit code was 0 but some Error's were found."
@@ -214,7 +214,7 @@ proc callNimCompiler(cmdTemplate, filename, options, nimcache: string,
     if foundSuccessMsg:
       result.debugInfo.add " compiler exit code was 1 but no `isSuccess` was true."
   else:
-    result.debugInfo.add " expected compiler exit code 0 or 1, got $1." % $exitCode
+    result.debugInfo.add " expected compiler exit code 0 or 1, got $1." % $result.exitCode
 
   if err =~ pegLineError:
     result.file = extractFilename(matches[0])
@@ -521,7 +521,12 @@ proc testSpecHelper(r: var TResults, test: var TTest, expected: TSpec,
             r.addResult(test, target, extraOptions, expected.output, bufB, reOutputsDiffer)
           compilerOutputTests(test, target, extraOptions, given, expected, r)
   of actionReject:
+    # Make sure its the compiler rejecting and not the system (e.g. segfault)
     cmpMsgs(r, expected, given, test, target, extraOptions)
+    if given.exitCode != QuitFailure:
+      r.addResult(test, target, extraOptions, "exitcode: " & $QuitFailure,
+                        "exitcode: " & $given.exitCode & "\n\nOutput:\n" &
+                        given.nimout, reExitcodesDiffer)
 
 proc targetHelper(r: var TResults, test: TTest, expected: TSpec, extraOptions: string) =
   for target in expected.targets:
