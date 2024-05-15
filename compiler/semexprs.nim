@@ -3034,6 +3034,13 @@ proc resolveIdentToSym(c: PContext, n: PNode, resultNode: var PNode,
     filter.excl {skModule, skPackage}
   let candidates = lookUpCandidates(c, ident, filter)
   if candidates.len == 0:
+    if expectedType != nil and (
+        let expected = expectedType.skipTypes(abstractRange-{tyDistinct});
+        expected.kind == tyEnum):
+      let nameId = ident.id
+      for f in expected.n:
+        if f.kind == nkSym and f.sym.name.id == nameId:
+          return f.sym
     result = errorUndeclaredIdentifierHint(c, ident, n.info)
   elif candidates.len == 1 or {efNoEvaluateGeneric, efInCall} * flags != {}:
     # unambiguous, or we don't care about ambiguity
