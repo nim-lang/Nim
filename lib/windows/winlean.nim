@@ -1111,7 +1111,7 @@ proc createJobObject*(lpJobAttributes: ptr SECURITY_ATTRIBUTES, lpName: WideCStr
 proc assignProcessToJobObject*(hJob, hProcess: Handle): bool
      {.stdcall, dynlib: "kernel32", importc: "AssignProcessToJobObject".}
 
-proc setInformationJobObject*(hJob: Handle, JobObjectInformationClass: cint, lpJobObjectInformation: pointer, cbJobObjectInformationLength: DWORD)
+proc setInformationJobObject*(hJob: Handle, JobObjectInformationClass: cint, lpJobObjectInformation: pointer, cbJobObjectInformationLength: DWORD): bool
      {.stdcall, dynlib: "kernel32", importc: "SetInformationJobObject".}
 
 proc terminateJobObject*(hJob: Handle, uExitCode: cuint): bool
