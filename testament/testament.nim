@@ -131,6 +131,7 @@ when defined(windows):
     let name = newWideCString(getCurrentDir())
     result = createJobObject(nil, name)
     if getLastError() == ERROR_ALREADY_EXISTS:
+      echo "Terminating existing job"
       discard result.terminateJobObject(1234)
       result = createJobObject(nil, name)
     let info = JOBOBJECT_EXTENDED_LIMIT_INFORMATION(
