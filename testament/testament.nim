@@ -133,7 +133,7 @@ when defined(windows):
       wName = newWideCString(name)
     result = createJobObject(nil, wName)
     if getLastError() == ERROR_ALREADY_EXISTS:
-      echo "Terminating zombie job with name: " & name
+      # Should never happen if the job handle is closed properly.
       discard result.terminateJobObject(1234)
       result = createJobObject(nil, wName)
     let info = JOBOBJECT_EXTENDED_LIMIT_INFORMATION(
