@@ -133,10 +133,12 @@ when defined(windows):
     if getLastError() == ERROR_ALREADY_EXISTS:
       discard result.terminateJobObject(1234)
       result = createJobObject(nil, name)
-    let info = JOBOBJECT_BASIC_LIMIT_INFORMATION(
+    let info = JOBOBJECT_EXTENDED_LIMIT_INFORMATION(
+      basicLimitInformation : JOBOBJECT_BASIC_LIMIT_INFORMATION(
         limitFlags : JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
+      )
     )
-    result.setInformationJobObject(jJobObjectBasicLimitInformation, addr info, sizeof(info).DWORD)
+    result.setInformationJobObject(jJobObjectExtendedLimitInformation, addr info, sizeof(info).DWORD)
 
 template wrapWinJob(processBody: untyped): Process =
   when defined(windows):

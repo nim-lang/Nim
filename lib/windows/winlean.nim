@@ -1081,12 +1081,29 @@ type
     priorityClass*: DWORD
     schedulingClass*: DWORD
 
+  IO_COUNTERS* = object
+    readOperationCount*: uint64
+    writeOperationCount*: uint64
+    otherOperationCount*: uint64
+    readTransferCount*: uint64
+    writeTransferCount*: uint64
+    otherTransferCount*: uint64
+
+  JOBOBJECT_EXTENDED_LIMIT_INFORMATION* = object
+    basicLimitInformation*: JOBOBJECT_BASIC_LIMIT_INFORMATION
+    ioInfo*: IO_COUNTERS
+    processMemoryLimit*: WinSizeT
+    jobMemoryLimit*: WinSizeT
+    peakProcessMemoryUsed*: WinSizeT
+    peakJobMemoryUsed*: WinSizeT
+
 const
   JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE* = 0x2000
 
   ERROR_ALREADY_EXISTS* = 0xB7
 
   jJobObjectBasicLimitInformation* = 2
+  jJobObjectExtendedLimitInformation* = 9
 
 proc createJobObject*(lpJobAttributes: ptr SECURITY_ATTRIBUTES, lpName: WideCString): Handle
      {.stdcall, dynlib: "kernel32", importc: "CreateJobObjectA".}
