@@ -157,7 +157,7 @@ proc execCmdEx2(command: string, args: openArray[string]; workingDir, input: str
   var p = startProcess(command, workingDir = workingDir, args = args,
                        options = {poStdErrToStdOut, poUsePath})
   when defined(windows):
-    discard job.assignProcessToJobObject(process.fProcessHandle)
+    discard job.assignProcessToJobObject(p.fProcessHandle)
   var outp = outputStream(p)
 
   # There is no way to provide input for the child process
@@ -204,7 +204,7 @@ proc callNimCompiler(cmdTemplate, filename, options, nimcache: string,
   var p = startProcess(command = result.cmd,
                        options = {poStdErrToStdOut, poUsePath, poEvalCommand})
   when defined(windows):
-    discard job.assignProcessToJobObject(process.fProcessHandle)
+    discard job.assignProcessToJobObject(p.fProcessHandle)
   let outp = p.outputStream
   var foundSuccessMsg = false
   var foundErrorMsg = false
@@ -373,7 +373,7 @@ proc addResult(r: var TResults, test: TTest, target: TTarget,
                            "-Duration", $(duration * 1000).int],
                            options = {poStdErrToStdOut, poUsePath, poParentStreams})
       when defined(windows):
-        discard job.assignProcessToJobObject(process.fProcessHandle)
+        discard job.assignProcessToJobObject(p.fProcessHandle)
       discard waitForExit(p)
       close(p)
 
