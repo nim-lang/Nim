@@ -137,3 +137,26 @@ proc main2 =
     doAssert b.len == 0
 
 main2()
+
+block:
+  type
+    TestObj = object of RootObj
+      name: string
+    
+    TestSubObj = object of TestObj
+      objname: string
+
+  proc `=destroy`(x: TestObj) =
+    `=destroy`(x.name)
+
+  proc `=destroy`(x: TestSubObj) =
+    `=destroy`(x.objname)
+    `=destroy`(TestObj(x))
+
+  proc testCase() =
+    let t1 {.used.} = TestSubObj(objname: "tso1", name: "to1")
+
+  proc main() =
+    testCase()
+
+  main()
