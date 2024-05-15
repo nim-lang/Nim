@@ -83,7 +83,7 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string, isOrc =
 
   if "boehm" notin options:
     # hcr tests
-    
+
     var basicHcrTest = makeTest("tests/dll/nimhcr_basic.nim", options & " --threads:off --forceBuild --hotCodeReloading:on " & rpath, cat)
     # test segfaults for now but compiles:
     if isOrc: basicHcrTest.spec.action = actionCompile
@@ -641,7 +641,7 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string, options: st
               "--path:" & root]
   args.add options.parseCmdLine
   args.add megatestFile
-  var (cmdLine, buf, exitCode) = execCmdEx2(command = compilerPrefix, args = args, input = "")
+  var (cmdLine, buf, exitCode) = execCmdEx2(command = compilerPrefix, args = args, exeFile = megatestFile, input = "")
   if exitCode != 0:
     echo "$ " & cmdLine & "\n" & buf
     quit(failString & "megatest compilation failed")

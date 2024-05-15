@@ -127,12 +127,11 @@ proc getFileDir(filename: string): string =
     result = getCurrentDir() / result
 
 when defined(windows):
-  proc initJob(): Handle =
-    let name = newWideCString(getCurrentDir())
-    result = createJobObject(nil, name)
+  proc initJob(name: string): Handle =
+    result = createJobObject(nil, name.cstring)
     if getLastError() == ERROR_ALREADY_EXISTS:
       discard result.terminateJobObject(1234)
-      result = createJobObject(nil, name)
+      result = createJobObject(nil, name.cstring)
     let info = JOBOBJECT_EXTENDED_LIMIT_INFORMATION(
       basicLimitInformation : JOBOBJECT_BASIC_LIMIT_INFORMATION(
         limitFlags : JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
@@ -140,7 +139,7 @@ when defined(windows):
     )
     discard result.setInformationJobObject(jJobObjectExtendedLimitInformation, addr info, sizeof(info).DWORD)
 
-proc execCmdEx2(command: string, args: openArray[string]; workingDir, input: string = ""): tuple[
+proc execCmdEx2(command: string, args: openArray[string], exeFile: string; workingDir, input: string = ""): tuple[
                 cmdLine: string,
                 output: string,
                 exitCode: int] {.tags:
@@ -152,7 +151,7 @@ proc execCmdEx2(command: string, args: openArray[string]; workingDir, input: str
     result.cmdLine.add quoteShell(arg)
   verboseCmd(result.cmdLine)
   when defined(windows):
-    let job = initJob()
+    let job = initJob(exeFile)
     defer: discard job.closeHandle()
   var p = startProcess(command, workingDir = workingDir, args = args,
                        options = {poStdErrToStdOut, poUsePath})
@@ -199,7 +198,7 @@ proc callNimCompiler(cmdTemplate, filename, options, nimcache: string,
                           extraOptions)
   verboseCmd(result.cmd)
   when defined(windows):
-    let job = initJob()
+    let job = initJob(filename)
     defer: discard job.closeHandle()
   var p = startProcess(command = result.cmd,
                        options = {poStdErrToStdOut, poUsePath, poEvalCommand})
@@ -364,7 +363,7 @@ proc addResult(r: var TResults, test: TTest, target: TTarget,
       azure.addTestResult(name, test.cat.string, int(duration * 1000), msg, success)
     else:
       when defined(windows):
-        let job = initJob()
+        let job = initJob(name)
         defer: discard job.closeHandle()
       var p = startProcess("appveyor", args = ["AddTest", test.name.replace("\\", "/") & test.options,
                            "-Framework", "nim-testament", "-FileName",
@@ -532,7 +531,7 @@ proc testSpecHelper(r: var TResults, test: var TTest, expected: TSpec,
                 valgrindOptions.add "--leak-check=yes"
               args = valgrindOptions & exeCmd & args
               exeCmd = "valgrind"
-          var (_, buf, exitCode) = execCmdEx2(exeCmd, args, input = expected.input)
+          var (_, buf, exitCode) = execCmdEx2(exeCmd, args, exeFile, input = expected.input)
           # Treat all failure codes from nodejs as 1. Older versions of nodejs used
           # to return other codes, but for us it is sufficient to know that it's not 0.
           if exitCode != 0: exitCode = 1
