@@ -1497,8 +1497,7 @@ proc handleConstExpr(p: BProc, n: PNode, d: var TLoc): bool =
 
 
 proc genFieldObjConstr(p: BProc; ty: PType; useTemp, isRef: bool; nField, val, check: PNode; d: var TLoc; r: Rope; info: TLineInfo) =
-  var tmp2: TLoc = default(TLoc)
-  tmp2.r = r
+  var tmp2 = TLoc(r: r)
   let field = lookupFieldAgain(p, ty, nField.sym, tmp2.r)
   if field.loc.r == "": fillObjectFields(p.module, ty)
   if field.loc.r == "": internalError(p.config, info, "genFieldObjConstr")
@@ -1513,7 +1512,12 @@ proc genFieldObjConstr(p: BProc; ty: PType; useTemp, isRef: bool; nField, val, c
     tmp2.k = d.k
     tmp2.storage = if isRef: OnHeap else: d.storage
   tmp2.lode = val
-  expr(p, val, tmp2)
+  if nField.typ.skipTypes(abstractVar).kind in {tyOpenArray, tyVarargs}:
+    var tmp3 = getTemp(p, val.typ)
+    expr(p, val, tmp3)
+    genOpenArrayConv(p, tmp2, tmp3, {})
+  else:
+    expr(p, val, tmp2)
 
 proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
   # inheritance in C++ does not allow struct initialization so
