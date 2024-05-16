@@ -36,13 +36,24 @@ block: # bug #15778
   doAssert count == 2
 
 block: # bug #16671
-  type X = ref object of RootObj
-  type Y = ref object of X
-    field: openArray[int]
+  block:
+    type X = ref object of RootObj
+    type Y = ref object of X
+      field: openArray[int]
 
-  var s: seq[X]
-  proc f() =
-    s.add(Y(field: [1]))
+    var s: seq[X]
+    proc f() =
+      s.add(Y(field: [1]))
 
-  f()
+    f()
 
+  block:
+    type X = ref object of RootObj
+    type Y = ref object of X
+      field: openArray[int]
+
+    var s: seq[X]
+    proc f() =
+      s.add(Y(field: toOpenArray([1, 2, 3], 0, 1)))
+
+    f()
