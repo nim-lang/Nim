@@ -11,7 +11,7 @@ import
   intsets, ast, astalgo, msgs, renderer, magicsys, types, idents, trees,
   wordrecg, strutils, options, guards, lineinfos, semfold, semdata,
   modulegraphs, varpartitions, typeallowed, nilcheck, errorhandling, tables,
-  semstrictfuncs
+  semstrictfuncs, suggestsymdb
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -64,8 +64,12 @@ discard """
 """
 
 type
+  CaughtExceptionsStack = object
+    nodes: seq[seq[PType]]
   TEffects = object
     exc: PNode  # stack of exceptions
+    when defined(nimsuggest):
+      caughtExceptions: CaughtExceptionsStack
     tags: PNode # list of tags
     forbids: PNode # list of tags
     bottom, inTryStmt, inExceptOrFinallyStmt, leftPartOfAsgn, inIfStmt, currentBlock: int
@@ -375,7 +379,7 @@ proc throws(tracked, n, orig: PNode) =
     else:
       tracked.add n
 
-proc getEbase(g: ModuleGraph; info: TLineInfo): PType =
+proc getEbase*(g: ModuleGraph; info: TLineInfo): PType =
   result = g.sysTypeFromName(info, "Exception")
 
 proc excType(g: ModuleGraph; n: PNode): PType =
@@ -456,6 +460,18 @@ proc catchesAll(tracked: PEffects) =
   if tracked.exc.len > 0:
     setLen(tracked.exc.sons, tracked.bottom)
 
+proc push(s: var CaughtExceptionsStack) =
+  s.nodes.add(@[])
+
+proc pop(s: var CaughtExceptionsStack) =
+  s.nodes.del(high(s.nodes))
+
+proc addCatch(s: var CaughtExceptionsStack, e: PType) =
+  s.nodes[high(s.nodes)].add(e)
+
+proc addCatchAll(s: var CaughtExceptionsStack) =
+  s.nodes[high(s.nodes)].add(nil)
+
 proc track(tracked: PEffects, n: PNode)
 proc trackTryStmt(tracked: PEffects, n: PNode) =
   let oldBottom = tracked.bottom
@@ -464,11 +480,32 @@ proc trackTryStmt(tracked: PEffects, n: PNode) =
   let oldState = tracked.init.len
   var inter: TIntersection = @[]
 
+  when defined(nimsuggest):
+    tracked.caughtExceptions.push
+    for i in 1..<n.len:
+      let b = n[i]
+      if b.kind == nkExceptBranch:
+        if b.len == 1:
+          tracked.caughtExceptions.addCatchAll
+        else:
+          for j in 0..<b.len - 1:
+            if b[j].isInfixAs():
+              assert(b[j][1].kind == nkType)
+              tracked.caughtExceptions.addCatch(b[j][1].typ)
+            else:
+              assert(b[j].kind == nkType)
+              tracked.caughtExceptions.addCatch(b[j].typ)
+      else:
+        assert b.kind == nkFinally
+
   inc tracked.inTryStmt
   track(tracked, n[0])
   dec tracked.inTryStmt
   for i in oldState..<tracked.init.len:
     addToIntersection(inter, tracked.init[i], false)
+
+  when defined(nimsuggest):
+    tracked.caughtExceptions.pop
 
   var branches = 1
   var hasFinally = false
@@ -835,6 +872,19 @@ proc checkForSink(tracked: PEffects; n: PNode) =
   if tracked.inIfStmt == 0 and optSinkInference in tracked.config.options:
     checkForSink(tracked.config, tracked.c.idgen, tracked.owner, n)
 
+proc markCaughtExceptions(tracked: PEffects; g: ModuleGraph; info: TLineInfo; s: PSym; usageSym: var PSym) =
+  when defined(nimsuggest):
+    proc internalMarkCaughtExceptions(tracked: PEffects; q: var SuggestFileSymbolDatabase; info: TLineInfo) =
+      var si = q.findSymInfoIndex(info)
+      if si != -1:
+        q.caughtExceptionsSet[si] = true
+        for w1 in tracked.caughtExceptions.nodes:
+          for w2 in w1:
+            q.caughtExceptions[si].add(w2)
+
+    if optIdeExceptionInlayHints in tracked.config.globalOptions:
+      internalMarkCaughtExceptions(tracked, g.suggestSymbols.mgetOrPut(info.fileIndex, newSuggestFileSymbolDatabase(info.fileIndex, true)), info)
+
 proc trackCall(tracked: PEffects; n: PNode) =
   template gcsafeAndSideeffectCheck() =
     if notGcSafe(op) and not importedFromC(a):
@@ -854,6 +904,14 @@ proc trackCall(tracked: PEffects; n: PNode) =
   if n.typ != nil:
     if tracked.owner.kind != skMacro and n.typ.skipTypes(abstractVar).kind != tyOpenArray:
       createTypeBoundOps(tracked, n.typ, n.info)
+
+  when defined(nimsuggest):
+    var actualLoc = a.info
+    if n.kind == nkHiddenCallConv:
+      actualLoc = n.info
+    if a.kind == nkSym:
+      markCaughtExceptions(tracked, tracked.graph, actualLoc, a.sym, tracked.graph.usageSym)
+
   if getConstExpr(tracked.ownerModule, n, tracked.c.idgen, tracked.graph) == nil:
     if a.kind == nkCast and a[1].typ.kind == tyProc:
       a = a[1]
