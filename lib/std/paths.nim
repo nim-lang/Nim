@@ -25,8 +25,8 @@ export ReadDirEffect, WriteDirEffect
 type
   Path* = distinct string
 
-proc `$`*(x: Path): string {.inline.} =
-  result = string(x)
+template `$`*(x: Path): string =
+  string(x)
 
 func `==`*(x, y: Path): bool {.inline.} =
   ## Compares two paths.
