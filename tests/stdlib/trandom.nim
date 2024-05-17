@@ -297,6 +297,9 @@ block: # bug #22360
       inc fc
 
   when defined(js):
-    doAssert (tc, fc) == (483, 517), $(tc, fc)
+    when compileOption("jsbigint64"):
+      doAssert (tc, fc) == (517, 483), $(tc, fc)
+    else:
+      doAssert (tc, fc) == (515, 485), $(tc, fc)
   else:
     doAssert (tc, fc) == (510, 490), $(tc, fc)

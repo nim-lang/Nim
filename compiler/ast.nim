@@ -504,7 +504,7 @@ type
     mSwap, mIsNil, mArrToSeq, mOpenArrayToSeq,
     mNewString, mNewStringOfCap, mParseBiggestFloat,
     mMove, mEnsureMove, mWasMoved, mDup, mDestroy, mTrace,
-    mDefault, mUnown, mFinished, mIsolate, mAccessEnv, mAccessTypeField, mReset,
+    mDefault, mUnown, mFinished, mIsolate, mAccessEnv, mAccessTypeField,
     mArray, mOpenArray, mRange, mSet, mSeq, mVarargs,
     mRef, mPtr, mVar, mDistinct, mVoid, mTuple,
     mOrdinal, mIterableType,

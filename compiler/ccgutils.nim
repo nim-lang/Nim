@@ -122,7 +122,7 @@ proc encodeSym*(m: BModule; s: PSym; makeUnique: bool = false): string =
   var name = s.name.s
   if makeUnique:
     name = makeUnique(m, s, name)
-  "N" & encodeName(s.owner.name.s) & encodeName(name) & "E"
+  "N" & encodeName(s.skipGenericOwner.name.s) & encodeName(name) & "E"
 
 proc encodeType*(m: BModule; t: PType): string =
   result = ""

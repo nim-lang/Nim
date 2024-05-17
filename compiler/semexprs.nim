@@ -815,7 +815,7 @@ proc analyseIfAddressTakenInCall(c: PContext, n: PNode, isConverter = false) =
   const
     FakeVarParams = {mNew, mNewFinalize, mInc, ast.mDec, mIncl, mExcl,
       mSetLengthStr, mSetLengthSeq, mAppendStrCh, mAppendStrStr, mSwap,
-      mAppendSeqElem, mNewSeq, mReset, mShallowCopy, mDeepCopy, mMove,
+      mAppendSeqElem, mNewSeq, mShallowCopy, mDeepCopy, mMove,
       mWasMoved}
 
   template checkIfConverterCalled(c: PContext, n: PNode) =
@@ -1021,10 +1021,14 @@ proc finishOperand(c: PContext, a: PNode): PNode =
     localError(c.config, a.info, err)
   considerGenSyms(c, result)
 
-proc semFinishOperands(c: PContext; n: PNode) =
+proc semFinishOperands(c: PContext; n: PNode; isBracketExpr = false) =
   # this needs to be called to ensure that after overloading resolution every
-  # argument has been sem'checked:
-  for i in 1..<n.len:
+  # argument has been sem'checked
+
+  # skip the first argument for operands of `[]` since it may be an unresolved
+  # generic proc, which is handled in semMagic
+  let start = 1 + ord(isBracketExpr)
+  for i in start..<n.len:
     n[i] = finishOperand(c, n[i])
 
 proc afterCallActions(c: PContext; n, orig: PNode, flags: TExprFlags; expectedType: PType = nil): PNode =
@@ -1047,10 +1051,7 @@ proc afterCallActions(c: PContext; n, orig: PNode, flags: TExprFlags; expectedTy
   of skMacro: result = semMacroExpr(c, result, orig, callee, flags, expectedType)
   of skTemplate: result = semTemplateExpr(c, result, callee, flags, expectedType)
   else:
-    if callee.magic notin {mArrGet, mArrPut, mNBindSym}:
-      # calls to `[]` can be explicit generic instantiations,
-      # don't sem every operand now, leave it to semmagic
-      semFinishOperands(c, result)
+    semFinishOperands(c, result, isBracketExpr = callee.magic in {mArrGet, mArrPut})
     activate(c, result)
     fixAbstractType(c, result)
     analyseIfAddressTakenInCall(c, result)
@@ -2989,7 +2990,7 @@ proc getNilType(c: PContext): PType =
     result.align = c.config.target.ptrSize.int16
     c.nilTypeCache = result
 
-proc enumFieldSymChoice(c: PContext, n: PNode, s: PSym): PNode =
+proc enumFieldSymChoice(c: PContext, n: PNode, s: PSym; flags: TExprFlags): PNode =
   var o: TOverloadIter = default(TOverloadIter)
   var i = 0
   var a = initOverloadIter(o, c, n)
@@ -3002,7 +3003,7 @@ proc enumFieldSymChoice(c: PContext, n: PNode, s: PSym): PNode =
   if i <= 1:
     if sfGenSym notin s.flags:
       result = newSymNode(s, info)
-      markUsed(c, info, s)
+      markUsed(c, info, s, efInCall notin flags)
       onUse(info, s)
     else:
       result = n
@@ -3027,15 +3028,8 @@ proc resolveIdentToSym(c: PContext, n: PNode, resultNode: var PNode,
                        flags: TExprFlags, expectedType: PType): PSym =
   # result is nil on error or if a node that can't produce a sym is resolved
   let ident = considerQuotedIdent(c, n)
-  if expectedType != nil and (
-      let expected = expectedType.skipTypes(abstractRange-{tyDistinct});
-      expected.kind == tyEnum):
-    let nameId = ident.id
-    for f in expected.n:
-      if f.kind == nkSym and f.sym.name.id == nameId:
-        return f.sym
   var filter = {low(TSymKind)..high(TSymKind)}
-  if efNoEvaluateGeneric in flags:
+  if efNoEvaluateGeneric in flags or expectedType != nil:
     # `a[...]` where `a` is a module or package is not possible
     filter.excl {skModule, skPackage}
   let candidates = lookUpCandidates(c, ident, filter)
@@ -3126,7 +3120,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
       if optOwnedRefs in c.config.globalOptions:
         result.typ = makeVarType(c, result.typ, tyOwned)
     of skEnumField:
-      result = enumFieldSymChoice(c, n, s)
+      result = enumFieldSymChoice(c, n, s, flags)
     else:
       result = semSym(c, n, s, flags)
     if isSymChoice(result):
