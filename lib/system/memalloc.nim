@@ -245,7 +245,8 @@ when hasAlloc and not defined(js):
     ## containing zero, so it is somewhat safer than
     ## `allocShared <#allocShared.t,Natural>`_.
     incStat(allocCount)
-    allocShared0Impl(size)
+    when not defined(nimcheck):
+      allocShared0Impl(size)
 
   proc createShared*(T: typedesc, size = 1.Positive): ptr T {.inline.} =
     ## Allocates a new memory block on the shared heap with at
