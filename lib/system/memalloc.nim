@@ -245,7 +245,9 @@ when hasAlloc and not defined(js):
     ## containing zero, so it is somewhat safer than
     ## `allocShared <#allocShared.t,Natural>`_.
     incStat(allocCount)
-    when not defined(nimcheck):
+    when defined(nimcheck):
+      nil
+    else:
       allocShared0Impl(size)
 
   proc createShared*(T: typedesc, size = 1.Positive): ptr T {.inline.} =
