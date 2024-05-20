@@ -1486,7 +1486,7 @@ proc rawConstExpr(p: BProc, n: PNode; d: var TLoc) =
     inc(p.module.labels)
     var data = "static NIM_CONST $1 $2 = " % [getTypeDesc(p.module, t), d.r]
     # bug #23627; when generating const object fields, it's likely that
-    # we need to generate type infos for fields, which may be an object with
+    # we need to generate type infos for the object, which may be an object with
     # custom hooks. We need to generate potential consts in the hooks first.
     genBracedInit(p, n, isConst = true, t, data)
     data.addf(";$n", [])
