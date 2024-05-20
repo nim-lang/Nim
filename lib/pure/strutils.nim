@@ -334,9 +334,9 @@ func normalize*(s: string): string {.rtl, extern: "nsuNormalize".} =
 func cmpIgnoreCase*(a, b: string): int {.rtl, extern: "nsuCmpIgnoreCase".} =
   ## Compares two strings in a case insensitive manner. Returns:
   ##
-  ## | 0 if a == b
-  ## | < 0 if a < b
-  ## | > 0 if a > b
+  ## | `0` if a == b
+  ## | `< 0` if a < b
+  ## | `> 0` if a > b
   runnableExamples:
     doAssert cmpIgnoreCase("FooBar", "foobar") == 0
     doAssert cmpIgnoreCase("bar", "Foo") < 0
@@ -354,9 +354,9 @@ func cmpIgnoreStyle*(a, b: string): int {.rtl, extern: "nsuCmpIgnoreStyle".} =
   ##
   ## Returns:
   ##
-  ## | 0 if a == b
-  ## | < 0 if a < b
-  ## | > 0 if a > b
+  ## | `0` if a == b
+  ## | `< 0` if a < b
+  ## | `> 0` if a > b
   runnableExamples:
     doAssert cmpIgnoreStyle("foo_bar", "FooBar") == 0
     doAssert cmpIgnoreStyle("foo_bar_5", "FooBar4") > 0

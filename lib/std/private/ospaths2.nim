@@ -763,9 +763,9 @@ proc cmpPaths*(pathA, pathB: string): int {.
   ## On a case-sensitive filesystem this is done
   ## case-sensitively otherwise case-insensitively. Returns:
   ##
-  ## | 0 if pathA == pathB
-  ## | < 0 if pathA < pathB
-  ## | > 0 if pathA > pathB
+  ## | `0` if pathA == pathB
+  ## | `< 0` if pathA < pathB
+  ## | `> 0` if pathA > pathB
   runnableExamples:
     when defined(macosx):
       assert cmpPaths("foo", "Foo") == 0
