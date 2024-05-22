@@ -55,14 +55,14 @@ proc mangleField(m: BModule; name: PIdent): string =
   if isKeyword(name):
     result.add "_0"
 
-proc mangleProc(m: BModule; s: PSym; makeUnique: bool): string = 
+proc mangleProc(m: BModule; s: PSym; makeUnique: bool): string =
   result = "_Z"  # Common prefix in Itanium ABI
   result.add encodeSym(m, s, makeUnique)
   if s.typ.len > 1: #we dont care about the return param
-    for i in 1..<s.typ.len: 
+    for i in 1..<s.typ.len:
       if s.typ[i].isNil: continue
       result.add encodeType(m, s.typ[i])
-  
+
   if result in m.g.mangledPrcs:
     result = mangleProc(m, s, true)
   else:
@@ -72,7 +72,7 @@ proc fillBackendName(m: BModule; s: PSym) =
   if s.loc.r == "":
     var result: Rope
     if not m.compileToCpp and s.kind in routineKinds and optCDebug in m.g.config.globalOptions and
-      m.g.config.symbolFiles == disabledSf: 
+      m.g.config.symbolFiles == disabledSf:
       result = mangleProc(m, s, false).rope
     else:
       result = s.name.s.mangle.rope
@@ -189,7 +189,7 @@ proc mapType(conf: ConfigRef; typ: PType; isParam: bool): TCTypeKind =
   of tyObject, tyTuple: result = ctStruct
   of tyUserTypeClasses:
     doAssert typ.isResolvedUserTypeClass
-    return mapType(conf, typ.skipModifier, isParam)
+    result = mapType(conf, typ.skipModifier, isParam)
   of tyGenericBody, tyGenericInst, tyGenericParam, tyDistinct, tyOrdinal,
      tyTypeDesc, tyAlias, tySink, tyInferred, tyOwned:
     result = mapType(conf, skipModifier(typ), isParam)
@@ -287,7 +287,7 @@ const
     "N_STDCALL", "N_CDECL", "N_SAFECALL",
     "N_SYSCALL", # this is probably not correct for all platforms,
                  # but one can #define it to what one wants
-    "N_INLINE", "N_NOINLINE", "N_FASTCALL", "N_THISCALL", "N_CLOSURE", "N_NOCONV", 
+    "N_INLINE", "N_NOINLINE", "N_FASTCALL", "N_THISCALL", "N_CLOSURE", "N_NOCONV",
     "N_NOCONV" #ccMember is N_NOCONV
     ]
 
@@ -374,11 +374,9 @@ proc getTypePre(m: BModule; typ: PType; sig: SigHash): Rope =
     if result == "": result = cacheGetType(m.typeCache, sig)
 
 proc structOrUnion(t: PType): Rope =
-  let cachedUnion = rope("union")
-  let cachedStruct = rope("struct")
   let t = t.skipTypes({tyAlias, tySink})
-  if tfUnion in t.flags: cachedUnion
-  else: cachedStruct
+  if tfUnion in t.flags: "union"
+  else: "struct"
 
 proc addForwardStructFormat(m: BModule; structOrUnion: Rope, typename: Rope) =
   if m.compileToCpp:
@@ -478,8 +476,8 @@ macro unrollChars(x: static openArray[char], name, body: untyped) =
       copy body
     )))
 
-proc multiFormat*(frmt: var string, chars : static openArray[char], args: openArray[seq[string]]) =
-  var res : string
+proc multiFormat*(frmt: var string, chars: static openArray[char], args: openArray[seq[string]]) =
+  var res: string
   unrollChars(chars, c):
     res = ""
     let arg = args[find(chars, c)]
@@ -521,7 +519,8 @@ proc genMemberProcParams(m: BModule; prc: PSym, superCall, rettype, name, params
                    weakDep=false;) =
   let t = prc.typ
   let isCtor = sfConstructor in prc.flags
-  if isCtor or (name[0] == '~' and sfMember in prc.flags): #destructors cant have void
+  if isCtor or (name[0] == '~' and sfMember in prc.flags):
+    # destructors can't have void
     rettype = ""
   elif t.returnType == nil or isInvalidReturnType(m.config, t):
     rettype = "void"
@@ -553,7 +552,7 @@ proc genMemberProcParams(m: BModule; prc: PSym, superCall, rettype, name, params
         descKind = dkRefGenericParam
       else:
         descKind = dkRefParam
-    var typ, name : string
+    var typ, name: string
     fillParamName(m, param)
     fillLoc(param.loc, locParam, t.n[i],
             param.paramStorageLoc)
@@ -1220,7 +1219,7 @@ proc parseVFunctionDecl(val: string; name, params, retType, superCall: var strin
 
   params = "(" & params & ")"
 
-proc genMemberProcHeader(m: BModule; prc: PSym; result: var Rope; asPtr: bool = false, isFwdDecl : bool = false) =
+proc genMemberProcHeader(m: BModule; prc: PSym; result: var Rope; asPtr: bool = false, isFwdDecl: bool = false) =
   assert sfCppMember * prc.flags != {}
   let isCtor = sfConstructor in prc.flags
   var check = initIntSet()
@@ -1861,8 +1860,7 @@ proc typeToC(t: PType): string =
   ## to be unique.
   let s = typeToString(t)
   result = newStringOfCap(s.len)
-  for i in 0..<s.len:
-    let c = s[i]
+  for c in s:
     case c
     of 'a'..'z':
       result.add c
