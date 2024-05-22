@@ -1484,9 +1484,13 @@ proc rawConstExpr(p: BProc, n: PNode; d: var TLoc) =
   if id == p.module.labels:
     # expression not found in the cache:
     inc(p.module.labels)
-    p.module.s[cfsData].addf("static NIM_CONST $1 $2 = ", [getTypeDesc(p.module, t), d.r])
-    genBracedInit(p, n, isConst = true, t, p.module.s[cfsData])
-    p.module.s[cfsData].addf(";$n", [])
+    var data = "static NIM_CONST $1 $2 = " % [getTypeDesc(p.module, t), d.r]
+    # bug #23627; when generating const object fields, it's likely that
+    # we need to generate type infos for the object, which may be an object with
+    # custom hooks. We need to generate potential consts in the hooks first.
+    genBracedInit(p, n, isConst = true, t, data)
+    data.addf(";$n", [])
+    p.module.s[cfsData].add data
 
 proc handleConstExpr(p: BProc, n: PNode, d: var TLoc): bool =
   if d.k == locNone and n.len > ord(n.kind == nkObjConstr) and n.isDeepConstExpr:
