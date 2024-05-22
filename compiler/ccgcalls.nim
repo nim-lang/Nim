@@ -150,8 +150,14 @@ proc genBoundsCheck(p: BProc; arr, a, b: TLoc)
 
 proc reifiedOpenArray(n: PNode): bool {.inline.} =
   var x = n
-  while x.kind in {nkAddr, nkHiddenAddr, nkHiddenStdConv, nkHiddenDeref}:
-    x = x[0]
+  while true:
+    case x.kind
+    of {nkAddr, nkHiddenAddr, nkHiddenDeref}:
+      x = x[0]
+    of nkHiddenStdConv:
+      x = x[1]
+    else:
+      break
   if x.kind == nkSym and x.sym.kind == skParam:
     result = false
   else:
