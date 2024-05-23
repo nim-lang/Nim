@@ -118,7 +118,7 @@ proc analyseRootSym(s: NimNode): NimNode =
         nnkAddr, nnkHiddenAddr,
         nnkObjDownConv, nnkObjUpConv:
       result = result[0]
-    of {nnkDotExpr, nnkCheckedFieldExpr} + {nnkHiddenStdConv, nnkHiddenSubConv}:
+    of nnkDotExpr, nnkCheckedFieldExpr, nnkHiddenStdConv, nnkHiddenSubConv:
       result = result[1]
     else:
       break
