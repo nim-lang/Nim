@@ -603,7 +603,7 @@ block t7854:
 
 
 block t5864:
-  proc defaultStatic(s: openarray, N: static[int] = 1): int = N
+  proc defaultStatic(s: openArray, N: static[int] = 1): int = N
   proc defaultGeneric[T](a: T = 2): int = a
 
   let a = [1, 2, 3, 4].defaultStatic()
@@ -860,3 +860,35 @@ type
 
 var a: Tile3[int]
 
+block: # Ensure no segfault from constraint
+  type
+    Regex[A: SomeOrdinal] = ref object
+      val: Regex[A]
+    MyConstraint = (seq or enum or set)
+    MyOtherType[A: MyConstraint] = ref object
+      val: MyOtherType[A]
+
+  var
+    a = Regex[int]()
+    b = Regex[bool]()
+    c = MyOtherType[seq[int]]()
+
+block: # https://github.com/nim-lang/Nim/issues/20416
+  type
+    Item[T] = object
+      link:ptr Item[T]
+      data:T
+
+    KVSeq[A,B] = seq[(A,B)]
+
+    MyTable[A,B] = object
+      data: KVSeq[A,B]
+
+    Container[T] = object
+      a: MyTable[int,ref Item[T]]
+
+  proc p1(sg:Container) = discard # Make sure that a non parameterized 'Container' argument still compiles
+
+  proc p2[T](sg:Container[T]) = discard
+  var v : Container[int]
+  p2(v)

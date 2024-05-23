@@ -1,8 +1,9 @@
 discard """
-  matrix: "--threads:on"
+  matrix: "--mm:refc; --mm:orc"
 """
 
 import std/rlocks
+import std/assertions
 
 var r: RLock
 r.initRLock()

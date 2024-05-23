@@ -17,6 +17,10 @@ when defined(js):
 ## C library. This means that your application will depend on the PCRE
 ## library's licence when using this module, which should not be a problem
 ## though.
+##
+## .. note:: There are also alternative nimble packages such as [tinyre](https://github.com/khchen/tinyre)
+##   and [regex](https://github.com/nitely/nim-regex).
+##
 ## PCRE's licence follows:
 ##
 ## .. include:: ../../doc/regexprs.txt
@@ -32,7 +36,10 @@ runnableExamples:
     # can't match start of string since we're starting at 1
 
 import
-  pcre, strutils, rtarrays
+  std/[pcre, strutils, rtarrays]
+
+when defined(nimPreviewSlimSystem):
+  import std/syncio
 
 const
   MaxSubpatterns* = 20
@@ -58,10 +65,16 @@ type
     ## is raised if the pattern is no valid regular expression.
 
 when defined(gcDestructors):
-  proc `=destroy`(x: var RegexDesc) =
-    pcre.free_substring(cast[cstring](x.h))
-    if not isNil(x.e):
-      pcre.free_study(x.e)
+  when defined(nimAllowNonVarDestructor):
+    proc `=destroy`(x: RegexDesc) =
+      pcre.free_substring(cast[cstring](x.h))
+      if not isNil(x.e):
+        pcre.free_study(x.e)
+  else:
+    proc `=destroy`(x: var RegexDesc) =
+      pcre.free_substring(cast[cstring](x.h))
+      if not isNil(x.e):
+        pcre.free_study(x.e)
 
 proc raiseInvalidRegex(msg: string) {.noinline, noreturn.} =
   var e: ref RegexError
@@ -433,7 +446,7 @@ iterator findAll*(buf: cstring, pattern: Regex, start = 0, bufSize: int): string
 
 proc findAll*(s: string, pattern: Regex, start = 0): seq[string] {.inline.} =
   ## returns all matching `substrings` of `s` that match `pattern`.
-  ## If it does not match, @[] is returned.
+  ## If it does not match, `@[]` is returned.
   result = @[]
   for x in findAll(s, pattern, start): result.add x
 
@@ -447,7 +460,7 @@ template `=~` *(s: string, pattern: Regex): untyped =
       elif line =~ re"\s*(\#.*)": # matches a comment
         # note that the implicit `matches` array is different from 1st branch
         result = $(matches[0],)
-      else: doAssert false
+      else: raiseAssert "unreachable"
       doAssert not declared(matches)
     doAssert parse("NAME = LENA") == """("NAME", "LENA")"""
     doAssert parse("   # comment ... ") == """("# comment ... ",)"""
@@ -556,19 +569,22 @@ iterator split*(s: string, sep: Regex; maxsplit = -1): string =
       @["", "this", "is", "an", "example", ""]
   var last = 0
   var splits = maxsplit
-  var x: int
+  var x = -1
+  if len(s) == 0:
+    last = 1
+  if matchLen(s, sep, 0) == 0:
+    x = 0
   while last <= len(s):
     var first = last
     var sepLen = 1
+    if x == 0:
+      inc(last)
     while last < len(s):
       x = matchLen(s, sep, last)
       if x >= 0:
         sepLen = x
         break
       inc(last)
-    if x == 0:
-      if last >= len(s): break
-      inc last
     if splits == 0: last = len(s)
     yield substr(s, first, last-1)
     if splits == 0: break

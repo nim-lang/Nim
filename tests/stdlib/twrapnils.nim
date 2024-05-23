@@ -1,5 +1,10 @@
+discard """
+  matrix: "--mm:refc; --mm:orc"
+"""
+
 import std/wrapnils
 from std/options import get, isSome
+import std/assertions
 
 proc checkNotZero(x: float): float =
   doAssert x != 0

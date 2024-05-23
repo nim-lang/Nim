@@ -22,11 +22,16 @@ runnableExamples("-r:off"):
     if line.len > 0: echo line
   echo "exiting"
 
+
 when defined(windows):
+  when defined(nimPreviewSlimSystem):
+    import std/syncio
+
   proc readLineFromStdin*(prompt: string): string {.
                           tags: [ReadIOEffect, WriteIOEffect].} =
     ## Reads a line from stdin.
     stdout.write(prompt)
+    stdout.flushFile()
     result = readLine(stdin)
 
   proc readLineFromStdin*(prompt: string, line: var string): bool {.
@@ -50,7 +55,7 @@ elif defined(genode):
     stdin.readLine(line)
 
 else:
-  import linenoise
+  import std/linenoise
 
   proc readLineFromStdin*(prompt: string, line: var string): bool {.
                           tags: [ReadIOEffect, WriteIOEffect].} =

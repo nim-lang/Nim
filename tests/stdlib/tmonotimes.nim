@@ -1,8 +1,10 @@
 discard """
+  matrix: "--mm:refc; --mm:orc"
   targets: "c js"
 """
 
 import std/[monotimes, times]
+import std/assertions
 
 let d = initDuration(nanoseconds = 10)
 let t1 = getMonoTime()

@@ -1,9 +1,10 @@
 discard """
-  targets: "c cpp js"
+  matrix: "--mm:refc; --mm:orc; --backend:cpp; --backend:js --jsbigint64:on; --backend:js --jsbigint64:off"
 """
 
 import std/hashes
 from stdtest/testutils import disableVm, whenVMorJs
+import std/assertions
 
 when not defined(js) and not defined(cpp):
   block:
@@ -28,6 +29,10 @@ block hashes:
     const wy123 = hashWangYi1(123)
     doAssert wy123 != 0
     doAssert hashWangYi1(123) == wy123
+    const wyNeg123 = hashWangYi1(-123)
+    doAssert wyNeg123 != 0
+    when not defined(js): # TODO: fixme it doesn't work for JS
+      doAssert hashWangYi1(-123) == wyNeg123
 
 
   # "hashIdentity value incorrect at 456"

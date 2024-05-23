@@ -21,7 +21,7 @@ const
 
 proc genTraverseProc(c: TTraversalClosure, accessor: Rope, typ: PType)
 proc genCaseRange(p: BProc, branch: PNode)
-proc getTemp(p: BProc, t: PType, result: var TLoc; needsInit=false)
+proc getTemp(p: BProc, t: PType, needsInit=false): TLoc
 
 proc genTraverseProc(c: TTraversalClosure, accessor: Rope, n: PNode;
                      typ: PType) =
@@ -34,7 +34,7 @@ proc genTraverseProc(c: TTraversalClosure, accessor: Rope, n: PNode;
     if (n[0].kind != nkSym): internalError(c.p.config, n.info, "genTraverseProc")
     var p = c.p
     let disc = n[0].sym
-    if disc.loc.r == nil: fillObjectFields(c.p.module, typ)
+    if disc.loc.r == "": fillObjectFields(c.p.module, typ)
     if disc.loc.t == nil:
       internalError(c.p.config, n.info, "genTraverseProc()")
     lineF(p, cpsStmts, "switch ($1.$2) {$n", [accessor, disc.loc.r])
@@ -51,7 +51,7 @@ proc genTraverseProc(c: TTraversalClosure, accessor: Rope, n: PNode;
   of nkSym:
     let field = n.sym
     if field.typ.kind == tyVoid: return
-    if field.loc.r == nil: fillObjectFields(c.p.module, typ)
+    if field.loc.r == "": fillObjectFields(c.p.module, typ)
     if field.loc.t == nil:
       internalError(c.p.config, n.info, "genTraverseProc()")
     genTraverseProc(c, "$1.$2" % [accessor, field.loc.r], field.loc.t)
@@ -71,37 +71,36 @@ proc genTraverseProc(c: TTraversalClosure, accessor: Rope, typ: PType) =
   case typ.kind
   of tyGenericInst, tyGenericBody, tyTypeDesc, tyAlias, tyDistinct, tyInferred,
      tySink, tyOwned:
-    genTraverseProc(c, accessor, lastSon(typ))
+    genTraverseProc(c, accessor, skipModifier(typ))
   of tyArray:
-    let arraySize = lengthOrd(c.p.config, typ[0])
-    var i: TLoc
-    getTemp(p, getSysType(c.p.module.g.graph, unknownLineInfo, tyInt), i)
-    let oldCode = p.s(cpsStmts)
+    let arraySize = lengthOrd(c.p.config, typ.indexType)
+    var i: TLoc = getTemp(p, getSysType(c.p.module.g.graph, unknownLineInfo, tyInt))
+    var oldCode = p.s(cpsStmts)
+    freeze oldCode
     linefmt(p, cpsStmts, "for ($1 = 0; $1 < $2; $1++) {$n",
             [i.r, arraySize])
     let oldLen = p.s(cpsStmts).len
-    genTraverseProc(c, ropecg(c.p.module, "$1[$2]", [accessor, i.r]), typ[1])
+    genTraverseProc(c, ropecg(c.p.module, "$1[$2]", [accessor, i.r]), typ.elementType)
     if p.s(cpsStmts).len == oldLen:
       # do not emit dummy long loops for faster debug builds:
       p.s(cpsStmts) = oldCode
     else:
       lineF(p, cpsStmts, "}$n", [])
   of tyObject:
-    for i in 0..<typ.len:
-      var x = typ[i]
-      if x != nil: x = x.skipTypes(skipPtrs)
-      genTraverseProc(c, accessor.parentObj(c.p.module), x)
+    var x = typ.baseClass
+    if x != nil: x = x.skipTypes(skipPtrs)
+    genTraverseProc(c, accessor.parentObj(c.p.module), x)
     if typ.n != nil: genTraverseProc(c, accessor, typ.n, typ)
   of tyTuple:
     let typ = getUniqueType(typ)
-    for i in 0..<typ.len:
-      genTraverseProc(c, ropecg(c.p.module, "$1.Field$2", [accessor, i]), typ[i])
+    for i, a in typ.ikids:
+      genTraverseProc(c, ropecg(c.p.module, "$1.Field$2", [accessor, i]), a)
   of tyRef:
     lineCg(p, cpsStmts, visitorFrmt, [accessor, c.visitorFrmt])
   of tySequence:
     if optSeqDestructors notin c.p.module.config.globalOptions:
       lineCg(p, cpsStmts, visitorFrmt, [accessor, c.visitorFrmt])
-    elif containsGarbageCollectedRef(typ.lastSon):
+    elif containsGarbageCollectedRef(typ.elementType):
       # destructor based seqs are themselves not traced but their data is, if
       # they contain a GC'ed type:
       lineCg(p, cpsStmts, "#nimGCvisitSeq((void*)$1, $2);$n", [accessor, c.visitorFrmt])
@@ -118,16 +117,15 @@ proc genTraverseProc(c: TTraversalClosure, accessor: Rope, typ: PType) =
 proc genTraverseProcSeq(c: TTraversalClosure, accessor: Rope, typ: PType) =
   var p = c.p
   assert typ.kind == tySequence
-  var i: TLoc
-  getTemp(p, getSysType(c.p.module.g.graph, unknownLineInfo, tyInt), i)
-  let oldCode = p.s(cpsStmts)
-  var a: TLoc
-  a.r = accessor
+  var i = getTemp(p, getSysType(c.p.module.g.graph, unknownLineInfo, tyInt))
+  var oldCode = p.s(cpsStmts)
+  freeze oldCode
+  var a = TLoc(r: accessor)
 
   lineF(p, cpsStmts, "for ($1 = 0; $1 < $2; $1++) {$n",
       [i.r, lenExpr(c.p, a)])
   let oldLen = p.s(cpsStmts).len
-  genTraverseProc(c, "$1$3[$2]" % [accessor, i.r, dataField(c.p)], typ[0])
+  genTraverseProc(c, "$1$3[$2]" % [accessor, i.r, dataField(c.p)], typ.elementType)
   if p.s(cpsStmts).len == oldLen:
     # do not emit dummy long loops for faster debug builds:
     p.s(cpsStmts) = oldCode
@@ -135,7 +133,6 @@ proc genTraverseProcSeq(c: TTraversalClosure, accessor: Rope, typ: PType) =
     lineF(p, cpsStmts, "}$n", [])
 
 proc genTraverseProc(m: BModule, origTyp: PType; sig: SigHash): Rope =
-  var c: TTraversalClosure
   var p = newProc(nil, m)
   result = "Marker_" & getTypeName(m, origTyp, sig)
   let
@@ -148,18 +145,19 @@ proc genTraverseProc(m: BModule, origTyp: PType; sig: SigHash): Rope =
   lineF(p, cpsLocals, "$1 a;$n", [t])
   lineF(p, cpsInit, "a = ($1)p;$n", [t])
 
-  c.p = p
-  c.visitorFrmt = "op" # "#nimGCvisit((void*)$1, op);$n"
+  var c = TTraversalClosure(p: p,
+    visitorFrmt: "op" # "#nimGCvisit((void*)$1, op);$n"
+    )
 
   assert typ.kind != tyTypeDesc
   if typ.kind == tySequence:
     genTraverseProcSeq(c, "a".rope, typ)
   else:
-    if skipTypes(typ[0], typedescInst+{tyOwned}).kind == tyArray:
+    if skipTypes(typ.elementType, typedescInst+{tyOwned}).kind == tyArray:
       # C's arrays are broken beyond repair:
-      genTraverseProc(c, "a".rope, typ[0])
+      genTraverseProc(c, "a".rope, typ.elementType)
     else:
-      genTraverseProc(c, "(*a)".rope, typ[0])
+      genTraverseProc(c, "(*a)".rope, typ.elementType)
 
   let generatedProc = "$1 {$n$2$3$4}\n" %
         [header, p.s(cpsLocals), p.s(cpsInit), p.s(cpsStmts)]
@@ -175,7 +173,6 @@ proc genTraverseProc(m: BModule, origTyp: PType; sig: SigHash): Rope =
 proc genTraverseProcForGlobal(m: BModule, s: PSym; info: TLineInfo): Rope =
   discard genTypeInfoV1(m, s.loc.t, info)
 
-  var c: TTraversalClosure
   var p = newProc(nil, m)
   var sLoc = rdLoc(s.loc)
   result = getTempName(m)
@@ -184,8 +181,10 @@ proc genTraverseProcForGlobal(m: BModule, s: PSym; info: TLineInfo): Rope =
     accessThreadLocalVar(p, s)
     sLoc = "NimTV_->" & sLoc
 
-  c.visitorFrmt = "0" # "#nimGCvisit((void*)$1, 0);$n"
-  c.p = p
+  var c = TTraversalClosure(p: p,
+    visitorFrmt: "0" # "#nimGCvisit((void*)$1, 0);$n"
+  )
+
   let header = "static N_NIMCALL(void, $1)(void)" % [result]
   genTraverseProc(c, sLoc, s.loc.t)
 

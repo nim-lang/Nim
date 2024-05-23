@@ -1,10 +1,10 @@
 discard """
   targets: "c cpp js"
-  matrix: "--experimental:vmopsDanger"
+  matrix: "--experimental:vmopsDanger; --experimental:vmopsDanger --mm:refc"
 """
 
 import std/sysrand
-
+import std/assertions
 
 template main() =
   block:

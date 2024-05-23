@@ -47,7 +47,7 @@ proc `=destroy`(x: var MyObject) =
 proc `=`(x: var MyObject, y: MyObject) {.error.}
 
 proc newMyObject(i: int): MyObject = 
-  result.p = create(int)
+  result.p = createShared(int)
   result.p[] = i
 
 proc test: seq[MyObject] = 

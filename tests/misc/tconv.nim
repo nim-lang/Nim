@@ -2,6 +2,9 @@ discard """
   matrix: "--warningAsError:EnumConv --warningAsError:CStringConv"
 """
 
+from std/enumutils import items  # missing from the example code
+from std/sequtils import toSeq
+
 template reject(x) =
   static: doAssert(not compiles(x))
 template accept(x) =
@@ -116,5 +119,18 @@ reject:
 
   var va = 2
   var vb = va.Hole
+
+block: # bug #22844
+  type
+    A = enum
+      a0 = 2
+      a1 = 4
+      a2
+    B[T] = enum
+      b0 = 2
+      b1 = 4
+
+  doAssert A.toSeq == [a0, a1, a2]
+  doAssert B[float].toSeq == [B[float].b0, B[float].b1]
 
 {.pop.}

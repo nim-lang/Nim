@@ -10,8 +10,13 @@
 #
 
 const
-  NimbleStableCommit = "d13f3b8ce288b4dc8c34c219a4e050aaeaf43fc9" # master
-  # examples of possible values: #head, #ea82b54, 1.2.3
+  # examples of possible values for repos: Head, ea82b54
+  NimbleStableCommit = "39b61c5d85afffd53aa404ac9126419ae1bd8d67" # master
+  AtlasStableCommit = "5faec3e9a33afe99a7d22377dd1b45a5391f5504"
+  ChecksumsStableCommit = "025bcca3915a1b9f19878cea12ad68f9884648fc"
+  SatStableCommit = "faf1617f44d7632ee9601ebc13887644925dcc01"
+
+  # examples of possible values for fusion: #head, #ea82b54, 1.2.3
   FusionStableHash = "#372ee4313827ef9f2ea388840f7d6b46c2b1b014"
   HeadHash = "#head"
 when not defined(windows):
@@ -33,6 +38,9 @@ import std/[os, strutils, parseopt, osproc]
   # Using `std/os` instead of `os` to fail early if config isn't set up properly.
   # If this fails with: `Error: cannot open file: std/os`, see
   # https://github.com/nim-lang/Nim/pull/14291 for explanation + how to fix.
+
+when defined(nimPreviewSlimSystem):
+  import std/[assertions, syncio]
 
 import tools / kochdocs
 import tools / deps
@@ -59,6 +67,7 @@ Options:
   --nim:path               use specified path for nim binary
   --localdocs[:path]       only build local documentations. If a path is not
                            specified (or empty), the default is used.
+  --skipIntegrityCheck     skips integrity check when booting the compiler
 Possible Commands:
   boot [options]           bootstraps with given command line options
   distrohelper [bindir]    helper for distro packagers
@@ -67,6 +76,7 @@ Possible Commands:
                            e.g. nimble)
                            doesn't require network connectivity
   nimble                   builds the Nimble tool
+  atlas                    builds the Atlas tool
   fusion                   installs fusion via Nimble
 
 Boot options:
@@ -76,9 +86,12 @@ Boot options:
   -d:leanCompiler          produce a compiler without JS codegen or
                            documentation generator in order to use less RAM
                            for bootstrapping
+  -d:nimHasLibFFI          adds FFI support for allowing compile-time VM to
+                           interface with native functions (experimental,
+                           requires prior `koch installdeps libffi`)
 
 Commands for core developers:
-  runCI                    runs continuous integration (CI), e.g. from travis
+  runCI                    runs continuous integration (CI), e.g. from Github Actions
   docs [options]           generates the full documentation
   csource -d:danger        builds the C sources for installation
   pdf                      builds the PDF documentation
@@ -89,9 +102,6 @@ Commands for core developers:
   tests [options]          run the testsuite (run a subset of tests by
                            specifying a category, e.g. `tests cat async`)
   temp options             creates a temporary compiler for testing
-Web options:
-  --googleAnalytics:UA-... add the given google analytics code to the docs. To
-                           build the official docs, use UA-48159761-1
 """
 
 let kochExe* = when isMainModule: os.getAppFilename() # always correct when koch is main program, even if `koch` exe renamed e.g.: `nim c -o:koch_debug koch.nim`
@@ -148,9 +158,21 @@ proc bundleNimbleExe(latest: bool, args: string) =
   let commit = if latest: "HEAD" else: NimbleStableCommit
   cloneDependency(distDir, "https://github.com/nim-lang/nimble.git",
                   commit = commit, allowBundled = true)
+  cloneDependency(distDir / "nimble" / distDir, "https://github.com/nim-lang/checksums.git",
+                commit = ChecksumsStableCommit, allowBundled = true) # or copy it from dist?
   # installer.ini expects it under $nim/bin
   nimCompile("dist/nimble/src/nimble.nim",
-             options = "-d:release --noNimblePath " & args)
+             options = "-d:release -d:nimNimbleBootstrap --noNimblePath " & args)
+
+proc bundleAtlasExe(latest: bool, args: string) =
+  let commit = if latest: "HEAD" else: AtlasStableCommit
+  cloneDependency(distDir, "https://github.com/nim-lang/atlas.git",
+                  commit = commit, allowBundled = true)
+  cloneDependency(distDir / "atlas" / distDir, "https://github.com/nim-lang/sat.git",
+                commit = SatStableCommit, allowBundled = true)
+  # installer.ini expects it under $nim/bin
+  nimCompile("dist/atlas/src/atlas.nim",
+             options = "-d:release --noNimblePath -d:nimAtlasBootstrap " & args)
 
 proc bundleNimsuggest(args: string) =
   nimCompileFold("Compile nimsuggest", "nimsuggest/nimsuggest.nim",
@@ -181,8 +203,14 @@ proc bundleWinTools(args: string) =
     nimCompile(r"tools\downloader.nim",
                options = r"--cc:vcc --app:gui -d:ssl --noNimblePath --path:..\ui " & args)
 
+proc bundleChecksums(latest: bool) =
+  let commit = if latest: "HEAD" else: ChecksumsStableCommit
+  cloneDependency(distDir, "https://github.com/nim-lang/checksums.git", commit, allowBundled = true)
+
 proc zip(latest: bool; args: string) =
+  bundleChecksums(latest)
   bundleNimbleExe(latest, args)
+  bundleAtlasExe(latest, args)
   bundleNimsuggest(args)
   bundleNimpretty(args)
   bundleWinTools(args)
@@ -226,12 +254,17 @@ proc buildTools(args: string = "") =
       "--opt:speed --stacktrace -d:debug --stacktraceMsgs -d:nimCompilerStacktraceHints " & args,
       outputName = "nim_dbg")
 
-  nimCompileFold("Compile atlas", "tools/atlas/atlas.nim", options = "-d:release " & args,
-      outputName = "atlas")
-
+proc testTools(args: string = "") =
+  nimCompileFold("Compile nimgrep", "tools/nimgrep.nim",
+                 options = "-d:release " & args)
+  when defined(windows): buildVccTool(args)
+  bundleNimpretty(args)
+  nimCompileFold("Compile testament", "testament/testament.nim", options = "-d:release " & args)
 
 proc nsis(latest: bool; args: string) =
+  bundleChecksums(latest)
   bundleNimbleExe(latest, args)
+  bundleAtlasExe(latest, args)
   bundleNimsuggest(args)
   bundleWinTools(args)
   # make sure we have generated the niminst executables:
@@ -251,19 +284,21 @@ proc install(args: string) =
   geninstall()
   exec("sh ./install.sh $#" % args)
 
-when false:
-  proc web(args: string) =
-    nimexec("js tools/dochack/dochack.nim")
-    nimexec("cc -r tools/nimweb.nim $# web/website.ini --putenv:nimversion=$#" %
-        [args, VersionAsString])
-
-  proc website(args: string) =
-    nimexec("cc -r tools/nimweb.nim $# --website web/website.ini --putenv:nimversion=$#" %
-        [args, VersionAsString])
-
-  proc pdf(args="") =
-    exec("$# cc -r tools/nimweb.nim $# --pdf web/website.ini --putenv:nimversion=$#" %
-        [findNim().quoteShell(), args, VersionAsString], additionalPATH=findNim().splitFile.dir)
+proc installDeps(dep: string, commit = "") =
+  # the hashes/urls are version controlled here, so can be changed seamlessly
+  # and tied to a nim release (mimicking git submodules)
+  var commit = commit
+  case dep
+  of "tinyc":
+    if commit.len == 0: commit = "916cc2f94818a8a382dd8d4b8420978816c1dfb3"
+    cloneDependency(distDir, "https://github.com/timotheecour/nim-tinyc-archive", commit)
+  of "libffi":
+    # technically a nimble package, however to play nicely with --noNimblePath,
+    # let's just clone it wholesale:
+    if commit.len == 0: commit = "bb2bdaf1a29a4bff6fbd8ae4695877cbb3ec783e"
+    cloneDependency(distDir, "https://github.com/Araq/libffi", commit)
+  else: doAssert false, "unsupported: " & dep
+  # xxx: also add linenoise, niminst etc, refs https://github.com/nim-lang/RFCs/issues/206
 
 # -------------- boot ---------------------------------------------------------
 
@@ -292,7 +327,7 @@ proc thVersion(i: int): string =
 
 template doUseCpp(): bool = getEnv("NIM_COMPILE_TO_CPP", "false") == "true"
 
-proc boot(args: string) =
+proc boot(args: string, skipIntegrityCheck: bool) =
   ## bootstrapping is a process that involves 3 steps:
   ## 1. use csourcesAny to produce nim1.exe. This nim1.exe is buggy but
   ## rock solid for building a Nim compiler. It shouldn't be used for anything else.
@@ -307,13 +342,17 @@ proc boot(args: string) =
   let smartNimcache = (if "release" in args or "danger" in args: "nimcache/r_" else: "nimcache/d_") &
                       hostOS & "_" & hostCPU
 
+  if not dirExists("dist/checksums"):
+    bundleChecksums(false)
+
+  let usingLibFFI = "nimHasLibFFI" in args
+  if usingLibFFI and not dirExists("dist/libffi"):
+    installDeps("libffi")
+
   let nimStart = findStartNim().quoteShell()
-  for i in 0..2:
-    # Nim versions < (1, 1) expect Nim's exception type to have a 'raiseId' field for
-    # C++ interop. Later Nim versions do this differently and removed the 'raiseId' field.
-    # Thus we always bootstrap the first iteration with "c" and not with "cpp" as
-    # a workaround.
-    let defaultCommand = if useCpp and i > 0: "cpp" else: "c"
+  let times = 2 - ord(skipIntegrityCheck)
+  for i in 0..times:
+    let defaultCommand = if useCpp: "cpp" else: "c"
     let bootOptions = if args.len == 0 or args.startsWith("-"): defaultCommand else: ""
     echo "iteration: ", i+1
     var extraOption = ""
@@ -321,6 +360,10 @@ proc boot(args: string) =
     if i == 0:
       nimi = nimStart
       extraOption.add " --skipUserCfg --skipParentCfg -d:nimKochBootstrap"
+
+      # --noNimblePath precludes nimble packages as dependencies to the compiler,
+      # so libffi is not "installed as a nimble package"
+      if usingLibFFI: extraOption.add " --path:./dist"
         # The configs are skipped for bootstrap
         # (1st iteration) to prevent newer flags from breaking bootstrap phase.
       let ret = execCmdEx(nimStart & " --version")
@@ -332,9 +375,9 @@ proc boot(args: string) =
     # in order to use less memory, we split the build into two steps:
     # --compileOnly produces a $project.json file and does not run GCC/Clang.
     # jsonbuild then uses the $project.json file to build the Nim binary.
-    exec "$# $# $# --nimcache:$# $# --compileOnly compiler" / "nim.nim" %
+    exec "$# $# $# --nimcache:$# $# --noNimblePath --compileOnly compiler" / "nim.nim" %
       [nimi, bootOptions, extraOption, smartNimcache, args]
-    exec "$# jsonscript --nimcache:$# $# compiler" / "nim.nim" %
+    exec "$# jsonscript --noNimblePath --nimcache:$# $# compiler" / "nim.nim" %
       [nimi, smartNimcache, args]
 
     if sameFileContent(output, i.thVersion):
@@ -343,7 +386,9 @@ proc boot(args: string) =
       return
     copyExe(output, (i+1).thVersion)
   copyExe(output, finalDest)
-  when not defined(windows): echo "[Warning] executables are still not equal"
+  when not defined(windows):
+    if not skipIntegrityCheck:
+      echo "[Warning] executables are still not equal"
 
 # -------------- clean --------------------------------------------------------
 
@@ -461,6 +506,9 @@ proc temp(args: string) =
       result[1].add " " & quoteShell(args[i])
       inc i
 
+  if not dirExists("dist/checksums"):
+    bundleChecksums(false)
+
   let d = getAppDir()
   let output = d / "compiler" / "nim".exe
   let finalDest = d / "bin" / "nim_temp".exe
@@ -530,17 +578,6 @@ proc hostInfo(): string =
   "hostOS: $1, hostCPU: $2, int: $3, float: $4, cpuEndian: $5, cwd: $6" %
     [hostOS, hostCPU, $int.sizeof, $float.sizeof, $cpuEndian, getCurrentDir()]
 
-proc installDeps(dep: string, commit = "") =
-  # the hashes/urls are version controlled here, so can be changed seamlessly
-  # and tied to a nim release (mimicking git submodules)
-  var commit = commit
-  case dep
-  of "tinyc":
-    if commit.len == 0: commit = "916cc2f94818a8a382dd8d4b8420978816c1dfb3"
-    cloneDependency(distDir, "https://github.com/timotheecour/nim-tinyc-archive", commit)
-  else: doAssert false, "unsupported: " & dep
-  # xxx: also add linenoise, niminst etc, refs https://github.com/nim-lang/RFCs/issues/206
-
 proc runCI(cmd: string) =
   doAssert cmd.len == 0, cmd # avoid silently ignoring
   echo "runCI: ", cmd
@@ -548,7 +585,7 @@ proc runCI(cmd: string) =
   # boot without -d:nimHasLibFFI to make sure this still works
   # `--lib:lib` is needed for bootstrap on openbsd, for reasons described in
   # https://github.com/nim-lang/Nim/pull/14291 (`getAppFilename` bugsfor older nim on openbsd).
-  kochExecFold("Boot in release mode", "boot -d:release -d:nimStrictMode --lib:lib")
+  kochExecFold("Boot Nim ORC", "boot -d:release -d:nimStrictMode --lib:lib")
 
   when false: # debugging: when you need to run only 1 test in CI, use something like this:
     execFold("debugging test", "nim r tests/stdlib/tosproc.nim")
@@ -557,12 +594,14 @@ proc runCI(cmd: string) =
   ## build nimble early on to enable remainder to depend on it if needed
   kochExecFold("Build Nimble", "nimble")
 
+  execFold("Install smtp", "nimble install smtp -y")
+
   let batchParam = "--batch:$1" % "NIM_TESTAMENT_BATCH".getEnv("_")
   if getEnv("NIM_TEST_PACKAGES", "0") == "1":
     nimCompileFold("Compile testament", "testament/testament.nim", options = "-d:release")
     execFold("Test selected Nimble packages", "testament $# pcat nimble-packages" % batchParam)
   else:
-    buildTools()
+    testTools()
 
     for a in "zip opengl sdl1 jester@#head".split:
       let buildDeps = "build"/"deps" # xxx factor pending https://github.com/timotheecour/Nim/issues/616
@@ -582,11 +621,11 @@ proc runCI(cmd: string) =
 
     block: # nimHasLibFFI:
       when defined(posix): # windows can be handled in future PR's
-        execFold("nimble install -y libffi", "nimble install -y libffi")
+        installDeps("libffi")
         const nimFFI = "bin/nim.ctffi"
         # no need to bootstrap with koch boot (would be slower)
         let backend = if doUseCpp(): "cpp" else: "c"
-        execFold("build with -d:nimHasLibFFI", "nim $1 -d:release -d:nimHasLibFFI -o:$2 compiler/nim.nim" % [backend, nimFFI])
+        execFold("build with -d:nimHasLibFFI", "nim $1 -d:release --noNimblePath -d:nimHasLibFFI --path:./dist -o:$2 compiler/nim.nim" % [backend, nimFFI])
         execFold("test with -d:nimHasLibFFI", "$1 $2 -r testament/testament --nim:$1 r tests/misc/trunner.nim -d:nimTrunnerFfi" % [nimFFI, backend])
 
     execFold("Run nimdoc tests", "nim r nimdoc/tester")
@@ -600,11 +639,8 @@ proc runCI(cmd: string) =
       execFold("build nimsuggest_testing", "nim c -o:bin/nimsuggest_testing -d:release nimsuggest/nimsuggest")
       execFold("Run nimsuggest tests", "nim r nimsuggest/tester")
 
-    execFold("Run atlas tests", "nim c -r -d:atlasTests tools/atlas/atlas.nim clone https://github.com/disruptek/balls")
+    kochExecFold("Testing booting in refc", "boot -d:release --mm:refc -d:nimStrictMode --lib:lib")
 
-  when not defined(bsd):
-    # the BSDs are overwhelmed already, so only run this test on the other machines:
-    kochExecFold("Boot Nim ORC", "boot -d:release --mm:orc --lib:lib")
 
 proc testUnixInstall(cmdLineRest: string) =
   csource("-d:danger" & cmdLineRest)
@@ -675,6 +711,7 @@ when isMainModule:
     latest = false
     localDocsOnly = false
     localDocsOut = ""
+    skipIntegrityCheck = false
   while true:
     op.next()
     case op.kind
@@ -688,12 +725,14 @@ when isMainModule:
         localDocsOnly = true
         if op.val.len > 0:
           localDocsOut = op.val.absolutePath
+      of "skipintegritycheck":
+        skipIntegrityCheck = true
       else: showHelp(success = false)
     of cmdArgument:
       case normalize(op.key)
-      of "boot": boot(op.cmdLineRest)
+      of "boot": boot(op.cmdLineRest, skipIntegrityCheck)
       of "clean": clean(op.cmdLineRest)
-      of "doc", "docs": buildDocs(op.cmdLineRest, localDocsOnly, localDocsOut)
+      of "doc", "docs": buildDocs(op.cmdLineRest & " --d:nimPreviewSlimSystem " & paCode, localDocsOnly, localDocsOut)
       of "doc0", "docs0":
         # undocumented command for Araq-the-merciful:
         buildDocs(op.cmdLineRest & gaCode)
@@ -713,6 +752,7 @@ when isMainModule:
       of "xtemp": xtemp(op.cmdLineRest)
       of "wintools": bundleWinTools(op.cmdLineRest)
       of "nimble": bundleNimbleExe(latest, op.cmdLineRest)
+      of "atlas": bundleAtlasExe(latest, op.cmdLineRest)
       of "nimsuggest": bundleNimsuggest(op.cmdLineRest)
       # toolsNoNimble is kept for backward compatibility with build scripts
       of "toolsnonimble", "toolsnoexternal":
@@ -720,6 +760,9 @@ when isMainModule:
       of "tools":
         buildTools(op.cmdLineRest)
         bundleNimbleExe(latest, op.cmdLineRest)
+        bundleAtlasExe(latest, op.cmdLineRest)
+      of "checksums":
+        bundleChecksums(latest)
       of "pushcsource":
         quit "use this instead: https://github.com/nim-lang/csources_v1/blob/master/push_c_code.nim"
       of "valgrind": valgrind(op.cmdLineRest)

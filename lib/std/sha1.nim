@@ -12,9 +12,9 @@
 ##
 ## See also
 ## ========
-## * `base64 module<base64.html>`_ implements a Base64 encoder and decoder
+## * `base64 module<base64.html>`_ for a Base64 encoder and decoder
 ## * `hashes module<hashes.html>`_ for efficient computations of hash values for diverse Nim types
-## * `md5 module<md5.html>`_ implements the MD5 checksum algorithm
+## * `md5 module<md5.html>`_ for the MD5 checksum algorithm
 
 runnableExamples:
   let accessName = secureHash("John Doe")
@@ -26,8 +26,14 @@ runnableExamples("-r:off"):
     b = parseSecureHash("10DFAEBF6BFDBC7939957068E2EFACEC4972933C")
   assert a == b, "files don't match"
 
-import strutils
-from endians import bigEndian32, bigEndian64
+
+{.deprecated: "use command `nimble install checksums` and import `checksums/sha1` instead".}
+
+import std/strutils
+from std/endians import bigEndian32, bigEndian64
+
+when defined(nimPreviewSlimSystem):
+  import std/syncio
 
 const Sha1DigestSize = 20
 

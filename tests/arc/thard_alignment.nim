@@ -1,8 +1,10 @@
 discard """
 disabled: "arm64"
-cmd: "nim c --gc:arc $file"
+cmd: "nim c --mm:arc -u:nimPreviewNonVarDestructor $file"
 output: "y"
 """
+
+# TODO: fixme: investigate why it failed with non-var destructors
 
 {.passC: "-march=native".}
 
@@ -18,7 +20,7 @@ type
 proc set1(x: float): m256d {.importc: "_mm256_set1_pd", header: "immintrin.h".}
 func `+`(a,b: m256d): m256d {.importc: "_mm256_add_pd", header: "immintrin.h".}
 proc `$`(a: m256d): string =  
-  result = $(cast[ptr float](a.unsafeAddr)[])
+  result = $(cast[ptr float](a.addr)[])
 
 
 var res: seq[seq[m256d]]

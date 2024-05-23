@@ -27,74 +27,78 @@
 ## StringStream example
 ## --------------------
 ##
-## .. code-block:: Nim
+##   ```Nim
+##   import std/streams
 ##
-##  import std/streams
+##   var strm = newStringStream("""The first line
+##   the second line
+##   the third line""")
 ##
-##  var strm = newStringStream("""The first line
-##  the second line
-##  the third line""")
+##   var line = ""
 ##
-##  var line = ""
+##   while strm.readLine(line):
+##     echo line
 ##
-##  while strm.readLine(line):
-##    echo line
+##   # Output:
+##   # The first line
+##   # the second line
+##   # the third line
 ##
-##  # Output:
-##  # The first line
-##  # the second line
-##  # the third line
-##
-##  strm.close()
+##   strm.close()
+##   ```
 ##
 ## FileStream example
 ## ------------------
 ##
 ## Write file stream example:
 ##
-## .. code-block:: Nim
+##   ```Nim
+##   import std/streams
 ##
-##  import std/streams
+##   var strm = newFileStream("somefile.txt", fmWrite)
+##   var line = ""
 ##
-##  var strm = newFileStream("somefile.txt", fmWrite)
-##  var line = ""
+##   if not isNil(strm):
+##     strm.writeLine("The first line")
+##     strm.writeLine("the second line")
+##     strm.writeLine("the third line")
+##     strm.close()
 ##
-##  if not isNil(strm):
-##    strm.writeLine("The first line")
-##    strm.writeLine("the second line")
-##    strm.writeLine("the third line")
-##    strm.close()
-##
-##  # Output (somefile.txt):
-##  # The first line
-##  # the second line
-##  # the third line
+##   # Output (somefile.txt):
+##   # The first line
+##   # the second line
+##   # the third line
+##   ```
 ##
 ## Read file stream example:
 ##
-## .. code-block:: Nim
+##   ```Nim
+##   import std/streams
 ##
-##  import std/streams
+##   var strm = newFileStream("somefile.txt", fmRead)
+##   var line = ""
 ##
-##  var strm = newFileStream("somefile.txt", fmRead)
-##  var line = ""
+##   if not isNil(strm):
+##     while strm.readLine(line):
+##       echo line
+##     strm.close()
 ##
-##  if not isNil(strm):
-##    while strm.readLine(line):
-##      echo line
-##    strm.close()
-##
-##  # Output:
-##  # The first line
-##  # the second line
-##  # the third line
+##   # Output:
+##   # The first line
+##   # the second line
+##   # the third line
+##   ```
 ##
 ## See also
 ## ========
 ## * `asyncstreams module <asyncstreams.html>`_
-## * `io module <io.html>`_ for `FileMode enum <io.html#FileMode>`_
+## * `io module <syncio.html>`_ for `FileMode enum <syncio.html#FileMode>`_
 
 import std/private/since
+
+when defined(nimPreviewSlimSystem):
+  import std/syncio
+  export FileMode
 
 proc newEIO(msg: string): owned(ref IOError) =
   new(result)
@@ -111,7 +115,7 @@ type
     ## * That these fields here shouldn't be used directly.
     ##   They are accessible so that a stream implementation can override them.
     closeImpl*: proc (s: Stream)
-      {.nimcall, raises: [Exception, IOError, OSError], tags: [WriteIOEffect], gcsafe.}
+      {.nimcall, raises: [IOError, OSError], tags: [WriteIOEffect], gcsafe.}
     atEndImpl*: proc (s: Stream): bool
       {.nimcall, raises: [Defect, IOError, OSError], tags: [], gcsafe.}
     setPositionImpl*: proc (s: Stream, pos: int)
@@ -170,10 +174,20 @@ proc close*(s: Stream) =
   ## See also:
   ## * `flush proc <#flush,Stream>`_
   runnableExamples:
-    var strm = newStringStream("The first line\nthe second line\nthe third line")
-    ## do something...
-    strm.close()
-  if not isNil(s.closeImpl): s.closeImpl(s)
+    block:
+      let strm = newStringStream("The first line\nthe second line\nthe third line")
+      ## do something...
+      strm.close()
+      
+    block:
+      let strm = newFileStream("amissingfile.txt")
+      # deferring works even if newFileStream fails
+      defer: strm.close()
+      if not isNil(strm):
+        ## do something...
+
+  if not isNil(s) and not isNil(s.closeImpl):
+    s.closeImpl(s)
 
 proc atEnd*(s: Stream): bool =
   ## Checks if more data can be read from `s`. Returns ``true`` if all data has
@@ -240,6 +254,9 @@ proc readDataStr*(s: Stream, buffer: var string, slice: Slice[int]): int =
     result = s.readDataStrImpl(s, buffer, slice)
   else:
     # fallback
+    when declared(prepareMutation):
+      # buffer might potentially be a CoW literal with ARC
+      prepareMutation(buffer)
     result = s.readData(addr buffer[slice.a], slice.b + 1 - slice.a)
 
 template jsOrVmBlock(caseJsOrVm, caseElse: untyped): untyped =
@@ -331,9 +348,9 @@ proc write*[T](s: Stream, x: T) =
   ## **Note:** Not available for JS backend. Use `write(Stream, string)
   ## <#write,Stream,string>`_ for now.
   ##
-  ## .. code-block:: Nim
-  ##
-  ##     s.writeData(s, unsafeAddr(x), sizeof(x))
+  ##   ```Nim
+  ##   s.writeData(s, unsafeAddr(x), sizeof(x))
+  ##   ```
   runnableExamples:
     var strm = newStringStream("")
     strm.write("abcde")
@@ -1191,6 +1208,11 @@ else: # after 1.3 or JS not defined
 
   proc ssReadDataStr(s: Stream, buffer: var string, slice: Slice[int]): int =
     var s = StringStream(s)
+    when nimvm:
+      discard
+    else:
+      when declared(prepareMutation):
+        prepareMutation(buffer) # buffer might potentially be a CoW literal with ARC
     result = min(slice.b + 1 - slice.a, s.data.len - s.pos)
     if result > 0:
       jsOrVmBlock:
@@ -1271,6 +1293,11 @@ else: # after 1.3 or JS not defined
 
     new(result)
     result.data = s
+    when nimvm:
+      discard
+    else:
+      when declared(prepareMutation):
+        prepareMutation(result.data) # Allows us to mutate using `addr` logic like `copyMem`, otherwise it errors.
     result.pos = 0
     result.closeImpl = ssClose
     result.atEndImpl = ssAtEnd
@@ -1331,7 +1358,7 @@ proc newFileStream*(f: File): owned FileStream =
   ## * `newStringStream proc <#newStringStream,string>`_ creates a new stream
   ##   from string.
   ## * `newFileStream proc <#newFileStream,string,FileMode,int>`_ is the same
-  ##   as using `open proc <io.html#open,File,string,FileMode,int>`_
+  ##   as using `open proc <syncio.html#open,File,string,FileMode,int>`_
   ##   on Examples.
   ## * `openFileStream proc <#openFileStream,string,FileMode,int>`_ creates a
   ##   file stream from the file name and the mode.
@@ -1370,7 +1397,7 @@ proc newFileStream*(filename: string, mode: FileMode = fmRead,
   ## Creates a new stream from the file named `filename` with the mode `mode`.
   ##
   ## If the file cannot be opened, `nil` is returned. See the `io module
-  ## <io.html>`_ for a list of available `FileMode enums <io.html#FileMode>`_.
+  ## <syncio.html>`_ for a list of available `FileMode enums <syncio.html#FileMode>`_.
   ##
   ## **Note:**
   ## * **This function returns nil in case of failure.**
@@ -1455,7 +1482,7 @@ when false:
     # do not import windows as this increases compile times:
     discard
   else:
-    import posix
+    import std/posix
 
     proc hsSetPosition(s: FileHandleStream, pos: int) =
       discard lseek(s.handle, pos, SEEK_SET)
@@ -1503,7 +1530,7 @@ when false:
       of fmReadWrite: flags = O_RDWR or int(O_CREAT)
       of fmReadWriteExisting: flags = O_RDWR
       of fmAppend: flags = O_WRONLY or int(O_CREAT) or O_APPEND
-      static: doAssert false # handle bug #17888
+      static: raiseAssert "unreachable" # handle bug #17888
       var handle = open(filename, flags)
       if handle < 0: raise newEOS("posix.open() call failed")
     result = newFileHandleStream(handle)

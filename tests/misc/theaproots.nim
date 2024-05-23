@@ -28,7 +28,7 @@ proc acc(x: var Foo): var ref Bar =
 
 proc test(maybeFoo: var Foo,
           maybeSeq: var seq[ref Bar],
-          bars: var openarray[ref Bar],
+          bars: var openArray[ref Bar],
           maybeTup: var Tup) =
   var bb: ref Bar
   maybeFoo.rmaybe = bb

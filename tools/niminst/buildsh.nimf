@@ -122,6 +122,7 @@ case $uos in
   *netbsd* )
     myos="netbsd"
     LINK_FLAGS="$LINK_FLAGS -lm"
+    ucpu=`uname -p`
     ;;
   *darwin* )
     myos="macosx"
@@ -164,7 +165,7 @@ esac
 
 case $ucpu in
   *i386* | *i486* | *i586* | *i686* | *bepc* | *i86pc* )
-    if [ isOpenIndiana -eq "yes" ] ; then
+    if [ "$isOpenIndiana" = "yes" ] || [ `uname -o` == "illumos" ] ; then
       mycpu="amd64"
     else
       mycpu="i386"
@@ -192,8 +193,10 @@ case $ucpu in
     mycpu="powerpc64" ;;
   *power*|*ppc* )
     if [ "$myos" = "freebsd" ] ; then
-      COMP_FLAGS="$COMP_FLAGS -m64"
-      LINK_FLAGS="$LINK_FLAGS -m64"
+      if [ "$ucpu" != "powerpc" ] ; then
+        COMP_FLAGS="$COMP_FLAGS -m64"
+        LINK_FLAGS="$LINK_FLAGS -m64"
+      fi
       mycpu=`uname -p`
       case $mycpu in
         powerpc64le)
@@ -229,6 +232,8 @@ case $ucpu in
     mycpu="riscv64" ;;
   *e2k* )
     mycpu="e2k" ;;
+  *loongarch64* )
+    mycpu="loongarch64" ;;
   *)
     echo 2>&1 "Error: unknown processor: $ucpu"
     exit 1

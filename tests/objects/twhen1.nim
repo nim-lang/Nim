@@ -55,3 +55,35 @@ type
     x: int
     when (NimMajor, NimMinor) >= (1, 1):
       y: int
+discard MyObject(x: 100, y: 200)
+
+block: # Ensure when evaluates properly in objects
+  type X[bits: static int] = object #22474
+    when bits >= 256:
+     data32: byte
+    else:
+     data16: byte
+
+  static:
+    discard X[255]().data16
+    discard X[256]().data32
+
+
+  type ComplexExprObject[S: static string, I: static int, Y: static auto] = object
+    when 'h' in S and I < 10 and Y isnot float:
+      a: int
+    elif I > 30:
+      b: int
+    elif typeof(Y) is float:
+      c: int
+    else:
+      d: int
+
+  static:
+    discard ComplexExprObject["hello", 9, 300i32]().a
+    discard ComplexExprObject["", 40, 30f]().b
+    discard ComplexExprObject["", 20, float 30]().c
+    discard ComplexExprObject["", 20, ""]().d
+
+
+

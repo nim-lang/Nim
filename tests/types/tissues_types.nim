@@ -3,7 +3,6 @@ discard """
 true
 true
 true
-ptr Foo
 (member: "hello world")
 (member: 123.456)
 (member: "hello world", x: ...)
@@ -11,10 +10,7 @@ ptr Foo
 0
 false
 '''
-joinable: false
 """
-# not joinable because it causes out of memory with --gc:boehm
-import typetraits
 
 block t1252:
   echo float32 isnot float64
@@ -28,29 +24,6 @@ block t5640:
     vec2 = vecBase[2]
 
   var v = vec2([0.0'f32, 0.0'f32])
-
-block t5648:
-  type Foo = object
-    bar: int
-
-  proc main() =
-    var f = create(Foo)
-    f.bar = 3
-    echo f.type.name
-
-    discard realloc(f, 0)
-
-    var g = Foo()
-    g.bar = 3
-
-  var
-    mainPtr1: pointer = main
-    mainPtr2 = pointer(main)
-    mainPtr3 = cast[pointer](main)
-
-  doAssert mainPtr1 == mainPtr2 and mainPtr2 == mainPtr3
-
-  main()
 
 block t7581:
   discard int -1
@@ -108,3 +81,38 @@ block:
 
 var f1: Foo
 echo f1.bar
+
+import macros
+
+block: # issue #12582
+  macro foo(T: type): type =
+    nnkBracketExpr.newTree(bindSym "array", newLit 1, T)
+  var
+    _: foo(int) # fine
+  type
+    Foo = object
+      x: foo(int) # fine
+    Bar = ref object
+      x: foo(int) # error
+  let b = Bar()
+  let b2 = Bar(x: [123])
+
+block:
+  when true: # bug #14710
+    type Foo[T] = object
+      x1: int
+      when T.sizeof == 4: discard # SIGSEGV
+      when sizeof(T) == 4: discard # ok
+    let t = Foo[float](x1: 1)
+    doAssert t.x1 == 1
+
+block:
+  template s(d: varargs[typed])=discard
+
+  proc something(x:float)=discard
+  proc something(x:int)=discard
+  proc otherthing()=discard
+
+  s(something)
+  s(otherthing, something)
+  s(something, otherthing)

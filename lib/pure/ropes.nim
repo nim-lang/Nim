@@ -17,7 +17,10 @@
 ## runtime efficiency.
 
 include system/inclrtl
-import streams
+import std/streams
+
+when defined(nimPreviewSlimSystem):
+  import std/[syncio, formatfloat, assertions]
 
 {.push debugger: off.} # the user does not want to trace a part
                        # of the standard library!

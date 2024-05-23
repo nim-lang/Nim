@@ -25,9 +25,9 @@
 ## At this time only `fastLog2`, `firstSetBit`, `countLeadingZeroBits` and `countTrailingZeroBits`
 ## may return undefined and/or platform dependent values if given invalid input.
 
-import macros
+import std/macros
 import std/private/since
-from std/private/bitops_utils import forwardImpl, toUnsigned
+from std/private/bitops_utils import forwardImpl, castToUnsigned
 
 func bitnot*[T: SomeInteger](x: T): T {.magic: "BitnotI".}
   ## Computes the `bitwise complement` of the integer `x`.
@@ -63,6 +63,12 @@ macro bitxor*[T: SomeInteger](x, y: T; z: varargs[T]): T =
 type BitsRange*[T] = range[0..sizeof(T)*8-1]
   ## A range with all bit positions for type `T`.
 
+template typeMasked[T: SomeInteger](x: T): T =
+  when defined(js):
+    T(x and ((0xffffffff_ffffffff'u shr (64 - sizeof(T) * 8))))
+  else:
+    x
+
 func bitsliced*[T: SomeInteger](v: T; slice: Slice[int]): T {.inline, since: (1, 3).} =
   ## Returns an extracted (and shifted) slice of bits from `v`.
   runnableExamples:
@@ -72,8 +78,8 @@ func bitsliced*[T: SomeInteger](v: T; slice: Slice[int]): T {.inline, since: (1,
 
   let
     upmost = sizeof(T) * 8 - 1
-    uv     = when v is SomeUnsignedInt: v else: v.toUnsigned
-  (uv shl (upmost - slice.b) shr (upmost - slice.b + slice.a)).T
+    uv     = v.castToUnsigned
+  ((uv shl (upmost - slice.b)).typeMasked shr (upmost - slice.b + slice.a)).T
 
 proc bitslice*[T: SomeInteger](v: var T; slice: Slice[int]) {.inline, since: (1, 3).} =
   ## Mutates `v` into an extracted (and shifted) slice of bits from `v`.
@@ -84,8 +90,8 @@ proc bitslice*[T: SomeInteger](v: var T; slice: Slice[int]) {.inline, since: (1,
 
   let
     upmost = sizeof(T) * 8 - 1
-    uv     = when v is SomeUnsignedInt: v else: v.toUnsigned
-  v = (uv shl (upmost - slice.b) shr (upmost - slice.b + slice.a)).T
+    uv     = v.castToUnsigned
+  v = ((uv shl (upmost - slice.b)).typeMasked shr (upmost - slice.b + slice.a)).T
 
 func toMask*[T: SomeInteger](slice: Slice[int]): T {.inline, since: (1, 3).} =
   ## Creates a bitmask based on a slice of bits.
@@ -95,11 +101,8 @@ func toMask*[T: SomeInteger](slice: Slice[int]): T {.inline, since: (1, 3).} =
 
   let
     upmost = sizeof(T) * 8 - 1
-    bitmask = when T is SomeUnsignedInt:
-                bitnot(0.T)
-              else:
-                bitnot(0.T).toUnsigned
-  (bitmask shl (upmost - slice.b + slice.a) shr (upmost - slice.b)).T
+    bitmask = bitnot(0.T).castToUnsigned
+  ((bitmask shl (upmost - slice.b + slice.a)).typeMasked shr (upmost - slice.b)).T
 
 proc masked*[T: SomeInteger](v, mask :T): T {.inline, since: (1, 3).} =
   ## Returns `v`, with only the `1` bits from `mask` matching those of
@@ -460,7 +463,7 @@ elif useVCC_builtins:
       importc: "_BitScanForward64", header: "<intrin.h>".}
 
   template vcc_scan_impl(fnc: untyped; v: untyped): int =
-    var index: culong
+    var index {.inject.}: culong = 0
     discard fnc(index.addr, v)
     index.int
 
@@ -505,8 +508,7 @@ func parityBits*(x: SomeInteger): int {.inline.} =
 
   # Can be used a base if creating ASM version.
   # https://stackoverflow.com/questions/21617970/how-to-check-if-value-has-even-parity-of-bits-or-odd
-  when x is SomeSignedInt:
-    let x = x.toUnsigned
+  let x = x.castToUnsigned
   when nimvm:
     result = forwardImpl(parityImpl, x)
   else:
@@ -529,8 +531,7 @@ func firstSetBit*(x: SomeInteger): int {.inline.} =
     doAssert firstSetBit(0b0000_1111'u8) == 1
 
   # GCC builtin 'builtin_ffs' already handle zero input.
-  when x is SomeSignedInt:
-    let x = x.toUnsigned
+  let x = x.castToUnsigned
   when nimvm:
     when noUndefined:
       if x == 0:
@@ -572,8 +573,7 @@ func fastLog2*(x: SomeInteger): int {.inline.} =
     doAssert fastLog2(0b0000_1000'u8) == 3
     doAssert fastLog2(0b0000_1111'u8) == 3
 
-  when x is SomeSignedInt:
-    let x = x.toUnsigned
+  let x = x.castToUnsigned
   when noUndefined:
     if x == 0:
       return -1
@@ -615,8 +615,7 @@ func countLeadingZeroBits*(x: SomeInteger): int {.inline.} =
     doAssert countLeadingZeroBits(0b0000_1000'u8) == 4
     doAssert countLeadingZeroBits(0b0000_1111'u8) == 4
 
-  when x is SomeSignedInt:
-    let x = x.toUnsigned
+  let x = x.castToUnsigned
   when noUndefined:
     if x == 0:
       return 0
@@ -644,8 +643,7 @@ func countTrailingZeroBits*(x: SomeInteger): int {.inline.} =
     doAssert countTrailingZeroBits(0b0000_1000'u8) == 3
     doAssert countTrailingZeroBits(0b0000_1111'u8) == 0
 
-  when x is SomeSignedInt:
-    let x = x.toUnsigned
+  let x = x.castToUnsigned
   when noUndefined:
     if x == 0:
       return 0

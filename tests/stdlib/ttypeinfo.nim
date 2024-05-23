@@ -1,4 +1,9 @@
-import typeinfo
+discard """
+  matrix: "--mm:refc; --mm:orc"
+"""
+
+import std/typeinfo
+import std/assertions
 
 type
   TE = enum
@@ -50,7 +55,7 @@ doAssert($x4[].kind() == "akString")
 
 block:
   # gimme a new scope dammit
-  var myarr: array[0..4, array[0..4, string]] = [
+  var myArr: array[0..4, array[0..4, string]] = [
     ["test", "1", "2", "3", "4"], ["test", "1", "2", "3", "4"],
     ["test", "1", "2", "3", "4"], ["test", "1", "2", "3", "4"],
     ["test", "1", "2", "3", "4"]]
@@ -69,3 +74,20 @@ block:
 
   doAssert getEnumOrdinal(y, "Hello") == 0
   doAssert getEnumOrdinal(y, "hello") == 1
+
+block: # bug #23556
+  proc test =
+    var
+      t: seq[int]
+      aseq = toAny(t)
+
+    invokeNewSeq(aseq, 0)
+
+    # Got random value only when loop 8 times.
+    for i in 1 .. 8:
+      extendSeq(aseq)
+
+    doAssert t == @[0, 0, 0, 0, 0, 0, 0, 0]
+
+  for i in 1 .. 7:
+    test()

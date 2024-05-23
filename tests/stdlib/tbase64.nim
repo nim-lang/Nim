@@ -1,7 +1,8 @@
 ﻿discard """
+  matrix: "--mm:refc; --mm:orc"
   targets: "c js"
 """
-
+import std/assertions
 import std/base64
 
 template main() =
@@ -17,6 +18,8 @@ template main() =
   doAssert encode("") == ""
   doAssert decode("") == ""
 
+  doAssert decode(" ") == ""
+
   const testInputExpandsTo76 = "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
   const testInputExpands = "++++++++++++++++++++++++++++++"
   const longText = """Man is distinguished, not only by his reason, but by this
@@ -27,13 +30,13 @@ template main() =
   const tests = ["", "abc", "xyz", "man", "leasure.", "sure.", "easure.",
                  "asure.", longText, testInputExpandsTo76, testInputExpands]
 
-  doAssert encodeMIME("foobarbaz", lineLen=4) == "Zm9v\r\nYmFy\r\nYmF6"
+  doAssert encodeMime("foobarbaz", lineLen=4) == "Zm9v\r\nYmFy\r\nYmF6"
   doAssert decode("Zm9v\r\nYmFy\r\nYmF6") == "foobarbaz"
 
   for t in items(tests):
     doAssert decode(encode(t)) == t
-    doAssert decode(encodeMIME(t, lineLen=40)) == t
-    doAssert decode(encodeMIME(t, lineLen=76)) == t
+    doAssert decode(encodeMime(t, lineLen=40)) == t
+    doAssert decode(encodeMime(t, lineLen=76)) == t
 
   doAssertRaises(ValueError): discard decode("SGVsbG\x008gV29ybGQ=")
 
@@ -52,5 +55,9 @@ template main() =
     doAssert encode("", safe = true) == ""
     doAssert encode("the quick brown dog jumps over the lazy fox", safe = true) == "dGhlIHF1aWNrIGJyb3duIGRvZyBqdW1wcyBvdmVyIHRoZSBsYXp5IGZveA=="
 
+func mainNoSideEffects() = main()
+
 static: main()
 main()
+static: mainNoSideEffects()
+mainNoSideEffects()

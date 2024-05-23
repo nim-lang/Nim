@@ -25,7 +25,8 @@ proc helper = doAssert(false)
 
 proc main(i: int) =
   var obj = Obj(kind: kindA, s: "abc")
-  obj.kind = kindB
+  {.cast(uncheckedAssign).}:
+    obj.kind = kindB
   obj.i = 2
   try:
     var objA = ObjA()

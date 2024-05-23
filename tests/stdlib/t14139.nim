@@ -1,4 +1,5 @@
-import heapqueue
+import std/heapqueue
+import std/assertions
 
 var test_queue : HeapQueue[int]
 

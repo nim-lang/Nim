@@ -1,5 +1,9 @@
-import std/heapqueue
+discard """
+  matrix: "--mm:refc; --mm:orc"
+"""
 
+import std/heapqueue
+import std/assertions
 
 proc toSortedSeq[T](h: HeapQueue[T]): seq[T] =
   var tmp = h

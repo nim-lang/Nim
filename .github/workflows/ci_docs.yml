@@ -2,10 +2,10 @@ name: Nim Docs CI
 on:
   push:
     paths:
-      - 'compiler/docgen.nim'
-      - 'compiler/renderverbatim.nim'
+      - 'compiler/**.nim'
       - 'config/nimdoc.cfg'
       - 'doc/**.rst'
+      - 'doc/**.md'
       - 'doc/nimdoc.css'
       - 'lib/**.nim'
       - 'nimdoc/testproject/expected/testproject.html'
@@ -13,13 +13,14 @@ on:
       - 'tools/kochdocs.nim'
       - '.github/workflows/ci_docs.yml'
       - 'koch.nim'
+
   pull_request:
     # Run only on changes on these files.
     paths:
-      - 'compiler/docgen.nim'
-      - 'compiler/renderverbatim.nim'
+      - 'compiler/**.nim'
       - 'config/nimdoc.cfg'
       - 'doc/**.rst'
+      - 'doc/**.md'
       - 'doc/nimdoc.css'
       - 'lib/**.nim'
       - 'nimdoc/testproject/expected/testproject.html'
@@ -27,6 +28,10 @@ on:
       - 'tools/kochdocs.nim'
       - '.github/workflows/ci_docs.yml'
       - 'koch.nim'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -40,7 +45,7 @@ jobs:
           - target: windows
             os: windows-2019
           - target: osx
-            os: macos-10.15
+            os: macos-12
 
     name: ${{ matrix.target }}
     runs-on: ${{ matrix.os }}
@@ -48,7 +53,7 @@ jobs:
 
     steps:
       - name: 'Checkout'
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           fetch-depth: 2
 
@@ -104,7 +109,7 @@ jobs:
         if: |
           github.event_name == 'push' && github.ref == 'refs/heads/devel' &&
           matrix.target == 'linux'
-        uses: crazy-max/ghaction-github-pages@v1
+        uses: crazy-max/ghaction-github-pages@v4
         with:
           build_dir: doc/html
         env:

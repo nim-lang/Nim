@@ -1,4 +1,5 @@
 discard """
+matrix: "--mm:refc; --mm:orc"
 output: '''
 02
 1
@@ -17,7 +18,7 @@ Second readLine raised an exception
 '''
 """
 
-import terminal, colors, re, encodings, strutils, os
+import std/[terminal, colors, re, encodings, strutils, os, assertions, syncio]
 
 
 block t9394:
@@ -77,7 +78,7 @@ block t5349:
   const fn = "file9char.txt"
   writeFile(fn, "123456789")
 
-  var f = system.open(fn)
+  var f = syncio.open(fn)
   echo getFileSize(f)
 
   var line = newString(10)

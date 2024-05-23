@@ -1,6 +1,6 @@
 ## This module is a sample.
 
-import strutils
+import std/strutils
 
 proc helloWorld*(times: int) =
   ## Takes an integer and outputs

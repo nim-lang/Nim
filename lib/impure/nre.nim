@@ -20,15 +20,17 @@ when defined(js):
 ## search the internet for a wide variety of third-party documentation and
 ## tools.
 ##
-## **Note**: If you love `sequtils.toSeq` we have bad news for you. This
-## library doesn't work with it due to documented compiler limitations. As
-## a workaround, use this:
+## .. warning:: If you love `sequtils.toSeq` we have bad news for you. This
+##   library doesn't work with it due to documented compiler limitations. As
+##   a workaround, use this:
 runnableExamples:
   # either `import std/nre except toSeq` or fully qualify `sequtils.toSeq`:
   import std/sequtils
   iterator iota(n: int): int =
     for i in 0..<n: yield i
   assert sequtils.toSeq(iota(3)) == @[0, 1, 2]
+## .. note:: There are also alternative nimble packages such as [tinyre](https://github.com/khchen/tinyre)
+##   and [regex](https://github.com/nitely/nim-regex).
 ## Licencing
 ## ---------
 ##
@@ -59,12 +61,15 @@ runnableExamples:
   assert find("uxabc", re"(?<=x|y)ab", start = 1).get.captures[-1] == "ab"
   assert find("uxabc", re"ab", start = 3).isNone
 
-from pcre import nil
+from std/pcre import nil
 import nre/private/util
-import tables
-from strutils import `%`
-import options
-from unicode import runeLenAt
+import std/tables
+from std/strutils import `%`
+import std/options
+from std/unicode import runeLenAt
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
 
 export options
 
@@ -75,16 +80,16 @@ type
     ## comment".`
     ##
     ## `pattern: string`
-    ##     the string that was used to create the pattern. For details on how
+    ## :   the string that was used to create the pattern. For details on how
     ##     to write a pattern, please see `the official PCRE pattern
     ##     documentation.
     ##     <https://www.pcre.org/original/doc/html/pcrepattern.html>`_
     ##
     ## `captureCount: int`
-    ##     the number of captures that the pattern has.
+    ## :   the number of captures that the pattern has.
     ##
     ## `captureNameId: Table[string, int]`
-    ##     a table from the capture names to their numeric id.
+    ## :   a table from the capture names to their numeric id.
     ##
     ##
     ## Options
@@ -151,36 +156,36 @@ type
     ## execution. On failure, it is none, on success, it is some.
     ##
     ## `pattern: Regex`
-    ##     the pattern that is being matched
+    ## :   the pattern that is being matched
     ##
     ## `str: string`
-    ##     the string that was matched against
+    ## :   the string that was matched against
     ##
     ## `captures[]: string`
-    ##     the string value of whatever was captured at that id. If the value
+    ## :   the string value of whatever was captured at that id. If the value
     ##     is invalid, then behavior is undefined. If the id is `-1`, then
     ##     the whole match is returned. If the given capture was not matched,
     ##     `nil` is returned. See examples for `match`.
     ##
     ## `captureBounds[]: HSlice[int, int]`
-    ##     gets the bounds of the given capture according to the same rules as
+    ## :   gets the bounds of the given capture according to the same rules as
     ##     the above. If the capture is not filled, then `None` is returned.
     ##     The bounds are both inclusive.  See examples for `match`.
     ##
     ## `match: string`
-    ##     the full text of the match.
+    ## :   the full text of the match.
     ##
     ## `matchBounds: HSlice[int, int]`
-    ##     the bounds of the match, as in `captureBounds[]`
+    ## :   the bounds of the match, as in `captureBounds[]`
     ##
     ## `(captureBounds|captures).toTable`
-    ##     returns a table with each named capture as a key.
+    ## :   returns a table with each named capture as a key.
     ##
     ## `(captureBounds|captures).toSeq`
-    ##     returns all the captures by their number.
+    ## :   returns all the captures by their number.
     ##
     ## `$: string`
-    ##     same as `match`
+    ## :   same as `match`
     pattern*: Regex  ## The regex doing the matching.
                      ## Not nil.
     str*: string  ## The string that was matched against.
@@ -212,9 +217,11 @@ type
     ## code.
 
 proc destroyRegex(pattern: Regex) =
+  `=destroy`(pattern.pattern)
   pcre.free_substring(cast[cstring](pattern.pcreObj))
   if pattern.pcreExtra != nil:
     pcre.free_study(pattern.pcreExtra)
+  `=destroy`(pattern.captureNameToId)
 
 proc getinfo[T](pattern: Regex, opt: cint): T =
   let retcode = pcre.fullinfo(pattern.pcreObj, pattern.pcreExtra, opt, addr result)
@@ -281,7 +288,7 @@ proc matchesCrLf(pattern: Regex): bool =
   let newlineFlags = flags and (pcre.NEWLINE_CRLF or
                                 pcre.NEWLINE_ANY or
                                 pcre.NEWLINE_ANYCRLF)
-  if newLineFlags > 0u32:
+  if newlineFlags > 0u32:
     return true
 
   # get flags from build config
@@ -583,11 +590,11 @@ proc find*(str: string, pattern: Regex, start = 0, endpos = int.high): Option[Re
   ## positions.
   ##
   ## `start`
-  ##     The start point at which to start matching. `|abc` is `0`;
+  ## :   The start point at which to start matching. `|abc` is `0`;
   ##     `a|bc` is `1`
   ##
   ## `endpos`
-  ##     The maximum index for a match; `int.high` means the end of the
+  ## :   The maximum index for a match; `int.high` means the end of the
   ##     string, otherwise it’s an inclusive upper bound.
   return str.matchImpl(pattern, start, endpos, 0)
 
@@ -695,8 +702,7 @@ proc replace*(str: string, pattern: Regex,
   ## each match and the return value is the replacement value.
   ##
   ## If `subproc` is a `proc (string): string`, then it is executed with the
-  ## full text of the match and and the return value is the replacement
-  ## value.
+  ## full text of the match and the return value is the replacement value.
   ##
   ## If `subproc` is a string, the syntax is as follows:
   ##

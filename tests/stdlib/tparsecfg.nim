@@ -1,8 +1,10 @@
 discard """
+  matrix: "--mm:refc; --mm:orc"
   targets: "c js"
 """
 
 import parsecfg, streams, sequtils
+import std/assertions
 
 when not defined(js):
   from stdtest/specialpaths import buildDir

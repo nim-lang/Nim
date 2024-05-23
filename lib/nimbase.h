@@ -10,14 +10,11 @@
 /* compiler symbols:
 __BORLANDC__
 _MSC_VER
-__WATCOMC__
-__LCC__
 __GNUC__
-__DMC__
-__POCC__
 __TINYC__
 __clang__
 __AVR__
+__EMSCRIPTEN__
 */
 
 
@@ -89,11 +86,8 @@ __AVR__
 #endif
 
 /* calling convention mess ----------------------------------------------- */
-#if defined(__GNUC__) || defined(__LCC__) || defined(__POCC__) \
-                      || defined(__TINYC__)
+#if defined(__GNUC__) || defined(__TINYC__)
   /* these should support C99's inline */
-  /* the test for __POCC__ has to come before the test for _MSC_VER,
-     because PellesC defines _MSC_VER too. This is brain-dead. */
 #  define N_INLINE(rettype, name) inline rettype name
 #elif defined(__BORLANDC__) || defined(_MSC_VER)
 /* Borland's compiler is really STRANGE here; note that the __fastcall
@@ -101,21 +95,13 @@ __AVR__
    the return type, so we do not handle this mess in the code generator
    but rather here. */
 #  define N_INLINE(rettype, name) __inline rettype name
-#elif defined(__DMC__)
-#  define N_INLINE(rettype, name) inline rettype name
-#elif defined(__WATCOMC__)
-#  define N_INLINE(rettype, name) __inline rettype name
 #else /* others are less picky: */
 #  define N_INLINE(rettype, name) rettype __inline name
 #endif
 
 #define N_INLINE_PTR(rettype, name) rettype (*name)
 
-#if defined(__POCC__)
-#  define NIM_CONST /* PCC is really picky with const modifiers */
-#  undef _MSC_VER /* Yeah, right PCC defines _MSC_VER even if it is
-                     not that compatible. Well done. */
-#elif defined(__cplusplus)
+#if defined(__cplusplus)
 #  define NIM_CONST /* C++ is picky with const modifiers */
 #else
 #  define NIM_CONST  const
@@ -125,12 +111,17 @@ __AVR__
   NIM_THREADVAR declaration based on
   http://stackoverflow.com/questions/18298280/how-to-declare-a-variable-as-thread-local-portably
 */
-#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112 && !defined __STDC_NO_THREADS__
+#if defined _WIN32
+#  if defined _MSC_VER || defined __BORLANDC__
+#    define NIM_THREADVAR __declspec(thread)
+#  else
+#    define NIM_THREADVAR __thread
+#  endif
+#elif defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112 && !defined __STDC_NO_THREADS__
 #  define NIM_THREADVAR _Thread_local
 #elif defined _WIN32 && ( \
        defined _MSC_VER || \
        defined __ICL || \
-       defined __DMC__ || \
        defined __BORLANDC__ )
 #  define NIM_THREADVAR __declspec(thread)
 #elif defined(__TINYC__) || defined(__GENODE__)
@@ -149,8 +140,7 @@ __AVR__
 #endif
 
 /* --------------- how int64 constants should be declared: ----------- */
-#if defined(__GNUC__) || defined(__LCC__) || \
-    defined(__POCC__) || defined(__DMC__) || defined(_MSC_VER)
+#if defined(__GNUC__) || defined(_MSC_VER)
 #  define IL64(x) x##LL
 #else /* works only without LL */
 #  define IL64(x) ((NI64)x)
@@ -188,12 +178,13 @@ __AVR__
 #  define N_THISCALL_PTR(rettype, name) rettype (__thiscall *name)
 #  define N_SAFECALL_PTR(rettype, name) rettype (__stdcall *name)
 
-#  ifdef __cplusplus
-#    define N_LIB_EXPORT  NIM_EXTERNC __declspec(dllexport)
+#  ifdef __EMSCRIPTEN__
+#    define N_LIB_EXPORT  NIM_EXTERNC __declspec(dllexport) __attribute__((used))
+#    define N_LIB_EXPORT_VAR  __declspec(dllexport) __attribute__((used))
 #  else
 #    define N_LIB_EXPORT  NIM_EXTERNC __declspec(dllexport)
+#    define N_LIB_EXPORT_VAR  __declspec(dllexport)
 #  endif
-#  define N_LIB_EXPORT_VAR  __declspec(dllexport)
 #  define N_LIB_IMPORT  extern __declspec(dllimport)
 #else
 #  define N_LIB_PRIVATE __attribute__((visibility("hidden")))
@@ -222,8 +213,13 @@ __AVR__
 #    define N_FASTCALL_PTR(rettype, name) rettype (*name)
 #    define N_SAFECALL_PTR(rettype, name) rettype (*name)
 #  endif
-#  define N_LIB_EXPORT NIM_EXTERNC __attribute__((visibility("default")))
-#  define N_LIB_EXPORT_VAR  __attribute__((visibility("default")))
+#  ifdef __EMSCRIPTEN__
+#    define N_LIB_EXPORT NIM_EXTERNC __attribute__((visibility("default"), used))
+#    define N_LIB_EXPORT_VAR  __attribute__((visibility("default"), used))
+#  else
+#    define N_LIB_EXPORT NIM_EXTERNC __attribute__((visibility("default")))
+#    define N_LIB_EXPORT_VAR  __attribute__((visibility("default")))
+#  endif
 #  define N_LIB_IMPORT  extern
 #endif
 
@@ -241,8 +237,7 @@ __AVR__
 
 #define N_NOINLINE_PTR(rettype, name) rettype (*name)
 
-#if defined(__BORLANDC__) || defined(__WATCOMC__) || \
-    defined(__POCC__) || defined(_MSC_VER) || defined(WIN32) || defined(_WIN32)
+#if defined(__BORLANDC__) || defined(_MSC_VER) || defined(WIN32) || defined(_WIN32)
 /* these compilers have a fastcall so use it: */
 #  ifdef __TINYC__
 #    define N_NIMCALL(rettype, name) rettype __attribute((__fastcall)) name
@@ -290,8 +285,7 @@ __AVR__
 #endif
 
 /* Known compiler with stdint.h that doesn't fit the general pattern? */
-#if defined(__LCC__) || defined(__DMC__) || defined(__POCC__) || \
-  defined(__AVR__) || (defined(__cplusplus) && (__cplusplus < 201103))
+#if defined(__AVR__) || (defined(__cplusplus) && (__cplusplus < 201103))
 #  define HAVE_STDINT_H
 #endif
 
@@ -351,8 +345,7 @@ NIM_STATIC_ASSERT(CHAR_BIT == 8, "");
                               the generated code does not rely on it anymore */
 #endif
 
-#if defined(__BORLANDC__) || defined(__DMC__) \
-   || defined(__WATCOMC__) || defined(_MSC_VER)
+#if defined(__BORLANDC__) || defined(_MSC_VER)
 typedef signed char NI8;
 typedef signed short int NI16;
 typedef signed int NI32;
@@ -478,7 +471,9 @@ typedef char* NCSTRING;
   } name = {{length, (NI) ((NU)length | NIM_STRLIT_FLAG)}, str}
 
 /* declared size of a sequence/variable length array: */
-#if defined(__GNUC__) || defined(__clang__) || defined(_MSC_VER)
+#if defined(__cplusplus) && defined(__clang__)
+#  define SEQ_DECL_SIZE 1
+#elif defined(__GNUC__) || defined(__clang__) || defined(_MSC_VER)
 #  define SEQ_DECL_SIZE /* empty is correct! */
 #else
 #  define SEQ_DECL_SIZE 1000000
@@ -547,7 +542,7 @@ static inline void GCGuard (void *ptr) { asm volatile ("" :: "X" (ptr)); }
 #endif
 
 // Test to see if Nim and the C compiler agree on the size of a pointer.
-NIM_STATIC_ASSERT(sizeof(NI) == sizeof(void*) && NIM_INTBITS == sizeof(NI)*8, "");
+NIM_STATIC_ASSERT(sizeof(NI) == sizeof(void*) && NIM_INTBITS == sizeof(NI)*8, "Pointer size mismatch between Nim and C/C++ backend. You probably need to setup the backend compiler for target CPU.");
 
 #ifdef USE_NIM_NAMESPACE
 }

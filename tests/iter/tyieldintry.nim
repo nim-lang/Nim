@@ -1,4 +1,5 @@
 discard """
+  matrix: "; --experimental:strictdefs"
   targets: "c cpp"
 """
 
@@ -495,3 +496,11 @@ block: #17849 - yield in case subject
     yield 5
 
   test(it, 1, 2, 13, 5)
+
+block: # void iterator
+  iterator it() {.closure.} =
+    try:
+      yield
+    except:
+      discard
+  var a = it

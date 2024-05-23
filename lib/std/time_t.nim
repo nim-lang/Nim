@@ -19,5 +19,5 @@ elif defined(windows):
     # newest version of Visual C++ defines time_t to be of 64 bits
     type Time* {.importc: "time_t", header: "<time.h>".} = distinct int64
 elif defined(posix):
-  import posix
+  import std/posix
   export posix.Time

@@ -1,10 +1,10 @@
 discard """
+  disabled: true
   cmd: "nim check $options --defusages:$file,12,7 $file"
   nimout: '''def tincludefile_temp.nim(11, 10)
 usage tincludefile_temp.nim(12, 8)
   '''
 """
-
 
 
 

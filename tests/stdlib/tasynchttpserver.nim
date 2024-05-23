@@ -7,6 +7,7 @@ discard """
 
 import strutils
 from net import TimeoutError
+import std/assertions
 
 import httpclient, asynchttpserver, asyncdispatch, asyncfutures
 
@@ -39,7 +40,7 @@ proc test200() {.async.} =
     return clientResponse
 
   proc test(response: AsyncResponse, body: string) {.async.} =
-    doAssert(response.status == Http200)
+    doAssert(response.status == $Http200)
     doAssert(body == "Hello World, 200")
     doAssert(response.headers.hasKey("Content-Length"))
     doAssert(response.headers["Content-Length"] == "16")
@@ -60,7 +61,7 @@ proc test404() {.async.} =
     return clientResponse
 
   proc test(response: AsyncResponse, body: string) {.async.} =
-    doAssert(response.status == Http404)
+    doAssert(response.status == $Http404)
     doAssert(body == "Hello World, 404")
     doAssert(response.headers.hasKey("Content-Length"))
     doAssert(response.headers["Content-Length"] == "16")
@@ -81,7 +82,7 @@ proc testCustomEmptyHeaders() {.async.} =
     return clientResponse
 
   proc test(response: AsyncResponse, body: string) {.async.} =
-    doAssert(response.status == Http200)
+    doAssert(response.status == $Http200)
     doAssert(body == "Hello World, 200")
     doAssert(response.headers.hasKey("Content-Length"))
     doAssert(response.headers["Content-Length"] == "16")
@@ -104,16 +105,17 @@ proc testCustomContentLength() {.async.} =
     return clientResponse
 
   proc test(response: AsyncResponse, body: string) {.async.} =
-    doAssert(response.status == Http200)
+    doAssert(response.status == $Http200)
     doAssert(body == "")
     doAssert(response.headers.hasKey("Content-Length"))
     doAssert(response.headers["Content-Length"] == "0")
+    doAssert contentLength(response) == 0 # bug #22778
 
   runTest(handler, request, test)
 
-waitfor(test200())
-waitfor(test404())
-waitfor(testCustomEmptyHeaders())
-waitfor(testCustomContentLength())
+waitFor(test200())
+waitFor(test404())
+waitFor(testCustomEmptyHeaders())
+waitFor(testCustomContentLength())
 
 echo "OK"

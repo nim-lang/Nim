@@ -1,5 +1,5 @@
 discard """
-outputsub: '''tcall_with_default_arg.nim(16) anotherFoo'''
+outputsub: '''tcall_with_default_arg.nim(8) fail'''
 exitcode: 1
 """
 # issue: #5604
