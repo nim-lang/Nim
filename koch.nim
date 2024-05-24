@@ -10,7 +10,9 @@
 #
 
 const
-  NimbleStableCommit = "d13f3b8ce288b4dc8c34c219a4e050aaeaf43fc9" # master
+  NimbleStableCommit = "f8bd7b5fa6ea7a583b411b5959b06e6b5eb23667" # master
+  SatStableCommit = "faf1617f44d7632ee9601ebc13887644925dcc01"
+  ChecksumsStableCommit = "b4c73320253f78e3a265aec6d9e8feb83f97c77b"
   # examples of possible values: #head, #ea82b54, 1.2.3
   FusionStableHash = "#372ee4313827ef9f2ea388840f7d6b46c2b1b014"
   HeadHash = "#head"
@@ -146,9 +148,13 @@ proc bundleNimbleExe(latest: bool, args: string) =
   let commit = if latest: "HEAD" else: NimbleStableCommit
   cloneDependency(distDir, "https://github.com/nim-lang/nimble.git",
                   commit = commit, allowBundled = true)
+  cloneDependency(distDir / "nimble" / distDir, "https://github.com/nim-lang/checksums.git",
+                commit = ChecksumsStableCommit, allowBundled = true)
+  cloneDependency(distDir / "nimble" / distDir, "https://github.com/nim-lang/sat.git",
+                commit = SatStableCommit, allowBundled = true)
   # installer.ini expects it under $nim/bin
   nimCompile("dist/nimble/src/nimble.nim",
-             options = "-d:release --noNimblePath " & args)
+             options = "-d:release --noNimblePath -d:nimNimbleBootstrap " & args)
 
 proc bundleNimsuggest(args: string) =
   nimCompileFold("Compile nimsuggest", "nimsuggest/nimsuggest.nim",
