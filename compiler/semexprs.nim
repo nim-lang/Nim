@@ -2955,8 +2955,6 @@ proc isOpenArraySym(x: PNode): bool =
       x = x[1]
     else:
       break
-  result = false
-
   result = x.kind == nkSym
 
 proc hoistParamsUsedInDefault(c: PContext, call, letSection, defExpr: var PNode) =
