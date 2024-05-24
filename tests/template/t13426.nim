@@ -2,10 +2,10 @@ discard """
   cmd: "nim check --hints:off $file"
   errormsg: ""
   nimout: '''
-t13246.nim(81, 6) template/generic instantiation of `fun` from here
-t13246.nim(80, 24) Error: type mismatch: got <int> but expected 'string'
-t13246.nim(81, 6) template/generic instantiation of `fun` from here
-t13246.nim(80, 17) Error: type mismatch: got <uint, string>
+t13426.nim(81, 6) template/generic instantiation of `fun` from here
+t13426.nim(80, 24) Error: type mismatch: got <int> but expected 'string'
+t13426.nim(81, 6) template/generic instantiation of `fun` from here
+t13426.nim(80, 17) Error: type mismatch: got <uint, string>
 but expected one of:
 proc `and`(x, y: uint): uint
   first type mismatch at position: 2
@@ -18,12 +18,12 @@ proc `and`(x, y: uint64): uint64
 10 other mismatching symbols have been suppressed; compile with --showAllMismatches:on to see them
 
 expression: 1'u and high(@[1])
-t13246.nim(81, 6) template/generic instantiation of `fun` from here
-t13246.nim(80, 17) Error: expression '' has no type (or is ambiguous)
-t13246.nim(87, 6) template/generic instantiation of `fun` from here
-t13246.nim(86, 22) Error: type mismatch: got <int> but expected 'string'
-t13246.nim(87, 6) template/generic instantiation of `fun` from here
-t13246.nim(86, 15) Error: type mismatch: got <int literal(1), string>
+t13426.nim(81, 6) template/generic instantiation of `fun` from here
+t13426.nim(80, 17) Error: expression '' has no type (or is ambiguous)
+t13426.nim(87, 6) template/generic instantiation of `fun` from here
+t13426.nim(86, 22) Error: type mismatch: got <int> but expected 'string'
+t13426.nim(87, 6) template/generic instantiation of `fun` from here
+t13426.nim(86, 15) Error: type mismatch: got <int literal(1), string>
 but expected one of:
 proc `and`(x, y: int): int
   first type mismatch at position: 2
@@ -68,8 +68,8 @@ proc `and`(x, y: uint8): uint8
 2 other mismatching symbols have been suppressed; compile with --showAllMismatches:on to see them
 
 expression: 1 and high(@[1])
-t13246.nim(87, 6) template/generic instantiation of `fun` from here
-t13246.nim(86, 15) Error: expression '' has no type (or is ambiguous)
+t13426.nim(87, 6) template/generic instantiation of `fun` from here
+t13426.nim(86, 15) Error: expression '' has no type (or is ambiguous)
 '''
 """
 
