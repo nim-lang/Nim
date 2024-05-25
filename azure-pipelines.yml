@@ -24,7 +24,7 @@ jobs:
         CPU: amd64
 
       Linux_amd64_gcc14:
-        vmImage: 'ubuntu-latest'
+        vmImage: 'ubuntu-24.04'
         CPU: amd64
       # regularly breaks, refs bug #17325
 #       Linux_i386:
@@ -92,7 +92,8 @@ jobs:
       condition: and(succeeded(), eq(variables['skipci'], 'false'), eq(variables['Agent.OS'], 'Linux'), eq(variables['CPU'], 'amd64'))
 
     - bash: |
-        sudo add-apt-repository ppa:ubuntu-toolchain-r/ppa
+        sudo add-apt-repository ppa:ubuntu-toolchain-r/ppa -y
+        sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
         sudo apt update
         sudo apt install gcc-14 g++-14
         sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 60 --slave /usr/bin/g++ g++ /usr/bin/g++-14
