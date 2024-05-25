@@ -1739,7 +1739,7 @@ proc genRdVar(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
     if s.position > 0 or (s.position == 0 and
                           s.kind in {skParam, skResult}):
       if dest < 0:
-        dest = s.position + ord(s.kind == skParam)          
+        dest = s.position + ord(s.kind == skParam)
         internalAssert(c.config, c.prc.regInfo.len > dest and c.prc.regInfo[dest].kind < slotSomeTemp)
       else:
         # we need to generate an assignment:
