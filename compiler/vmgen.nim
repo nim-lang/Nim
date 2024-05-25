@@ -1524,8 +1524,12 @@ proc setSlot(c: PCtx; v: PSym) =
     v.position = getFreeRegister(c, if v.kind == skLet: slotFixedLet else: slotFixedVar, start = 1)
 
 proc cannotEval(c: PCtx; n: PNode) {.noinline.} =
-  globalError(c.config, n.info, "cannot evaluate at compile time: " &
+  if c.config.cmd == cmdCheck:
+    localError(c.config, n.info, "cannot evaluate at compile time: " & 
     n.renderTree)
+  else:
+    globalError(c.config, n.info, "cannot evaluate at compile time: " &
+      n.renderTree)
 
 proc isOwnedBy(a, b: PSym): bool =
   result = false
@@ -1735,8 +1739,8 @@ proc genRdVar(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
     if s.position > 0 or (s.position == 0 and
                           s.kind in {skParam, skResult}):
       if dest < 0:
-        dest = s.position + ord(s.kind == skParam)
-        internalAssert(c.config, c.prc.regInfo[dest].kind < slotSomeTemp)
+        dest = s.position + ord(s.kind == skParam)          
+        internalAssert(c.config, c.prc.regInfo.len > dest and c.prc.regInfo[dest].kind < slotSomeTemp)
       else:
         # we need to generate an assignment:
         let requiresCopy = c.prc.regInfo[dest].kind >= slotSomeTemp and
