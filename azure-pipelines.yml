@@ -24,7 +24,7 @@ jobs:
         CPU: amd64
 
       Linux_amd64_gcc14:
-        vmImage: 'ubuntu-24.04'
+        vmImage: 'ubuntu-latest'
         CPU: amd64
       # regularly breaks, refs bug #17325
 #       Linux_i386:
