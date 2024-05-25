@@ -48,9 +48,9 @@ jobs:
       - name: 'Install dependencies (Linux amd64 gcc 14)'
         if: runner.os == 'Linux' && matrix.cpu == 'amd64'
         run: |
-          sudo add-apt-repository ppa:ubuntu-toolchain-r/ppa -y
-          sudo apt-get update
-          sudo apt-get install gcc-14 g++-14
+          sudo add-apt-repository universe
+          sudo apt-fast update -qq
+          sudo apt-fast install gcc-14 g++-14
           sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 60 --slave /usr/bin/g++ g++ /usr/bin/g++-14
       - name: 'Install dependencies (macOS)'
         if: runner.os == 'macOS'
