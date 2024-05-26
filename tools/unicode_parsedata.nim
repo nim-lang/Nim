@@ -153,18 +153,18 @@ proc createHeader(output: var string) =
 
 proc `$`(r: Ranges): string =
   let
-    start = "0x" & toHex(r.start, 5)
-    stop = "0x" & toHex(r.stop, 5)
+    start = "0x" & toHex(r.start, 5) & "'i32"
+    stop = "0x" & toHex(r.stop, 5) & "'i32"
   result = "$#, $#, $#,\n" % [start, stop, $r.diff]
 
 proc `$`(r: Singlets): string =
-  let code = "0x" & toHex(r.code, 5)
+  let code = "0x" & toHex(r.code, 5) & "'i32"
   result = "$#, $#,\n" % [code, $r.diff]
 
 proc `$`(r: NonLetterRanges): string =
   let
-    start = "0x" & toHex(r.start, 5)
-    stop = "0x" & toHex(r.stop, 5)
+    start = "0x" & toHex(r.start, 5) & "'i32"
+    stop = "0x" & toHex(r.stop, 5) & "'i32"
   result = "$#, $#,\n" % [start, stop]
 
 
@@ -178,7 +178,7 @@ proc outputSeq(s: seq[Ranges|Singlets|NonLetterRanges], name: string,
 proc outputSeq(s: seq[int], name: string, output: var string) =
   output.add "  $# = [\n" % name
   for i in s:
-    output.add "    0x$#,\n" % toHex(i, 5)
+    output.add "    0x$#'i32,\n" % toHex(i, 5)
   output.add "  ]\n\n"
 
 proc outputSpaces(s: seq[int], name: string, output: var string) =
