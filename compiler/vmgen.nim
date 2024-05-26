@@ -245,7 +245,7 @@ proc getTemp(cc: PCtx; tt: PType): TRegister =
 
 proc freeTemp(c: PCtx; r: TRegister) =
   let c = c.prc
-  if c.regInfo[r].kind in {slotSomeTemp..slotTempComplex}:
+  if r < c.regInfo.len and c.regInfo[r].kind in {slotSomeTemp..slotTempComplex}:
     # this seems to cause https://github.com/nim-lang/Nim/issues/10647
     c.regInfo[r].inUse = false
 
@@ -357,12 +357,13 @@ proc genBlock(c: PCtx; n: PNode; dest: var TDest) =
     #if c.prc.regInfo[i].kind in {slotFixedVar, slotFixedLet}:
     if i != dest:
       when not defined(release):
-        if c.prc.regInfo[i].inUse and c.prc.regInfo[i].kind in {slotTempUnknown,
-                                  slotTempInt,
-                                  slotTempFloat,
-                                  slotTempStr,
-                                  slotTempComplex}:
-          raiseAssert "leaking temporary " & $i & " " & $c.prc.regInfo[i].kind
+        if c.config.cmd != cmdCheck:
+          if c.prc.regInfo[i].inUse and c.prc.regInfo[i].kind in {slotTempUnknown,
+                                    slotTempInt,
+                                    slotTempFloat,
+                                    slotTempStr,
+                                    slotTempComplex}:
+            raiseAssert "leaking temporary " & $i & " " & $c.prc.regInfo[i].kind
       c.prc.regInfo[i] = (inUse: false, kind: slotEmpty)
 
   c.clearDest(n, dest)
