@@ -20,20 +20,20 @@ proc reallocImpl(p: pointer, newSize: Natural): pointer =
       raiseOutOfMem()
 
 when defined(handleOOM):
-  proc nRealloc*(p: pointer, oldsize: csize_t, newsize: csize_t): pointer {.inline.} =
-    result = c_calloc(newSize.csize_t, sizeof(cchar).csize_t)
+  proc nRealloc*(p: pointer, oldsize: csize_t, newsize: csize_t): pointer  =
+    result = c_malloc(newSize.csize_t)
     if result == nil:
       raiseOutOfMem()
     else:
-      if p != nil and newsize != 0 and newsize >= 0:
+      if p != nil and newsize != 0 and newsize > 0:
         for i in 0..(newsize - 1):
-          if i <= oldSize:
+          if i < oldSize:
             cast[ptr UncheckedArray[cchar]](result)[i] = cast[ptr UncheckedArray[cchar]](p)[i]
           else:
             cast[ptr UncheckedArray[cchar]](result)[i] = '\0'
         c_free(p)
-    else:
-      raiseOutOfMem()
+      else:
+        raiseOutOfMem()
 
 
 
