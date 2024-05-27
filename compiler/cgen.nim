@@ -1063,7 +1063,11 @@ proc allPathsAsgnResult(p: BProc; n: PNode): InitResultEnum =
       if result != Unknown: return result
   of nkAsgn, nkFastAsgn, nkSinkAsgn:
     if n[0].kind == nkSym and n[0].sym.kind == skResult:
-      if not containsResult(n[1]): result = InitSkippable
+      if not containsResult(n[1]):
+        if allPathsAsgnResult(p, n[1]) == InitRequired:
+          result = InitRequired
+        else:
+          result = InitSkippable
       else: result = InitRequired
     elif containsResult(n):
       result = InitRequired
@@ -1140,6 +1144,10 @@ proc allPathsAsgnResult(p: BProc; n: PNode): InitResultEnum =
       for i in 0..<n.safeLen:
         allPathsInBranch(n[i])
   of nkRaiseStmt:
+    result = InitRequired
+  of nkChckRangeF, nkChckRange64, nkChckRange:
+    # TODO: more checks might need to be covered like overflow, indexDefect etc.
+    # bug #22852
     result = InitRequired
   else:
     for i in 0..<n.safeLen:
