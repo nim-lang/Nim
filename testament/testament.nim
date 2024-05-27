@@ -26,6 +26,7 @@ import ../dist/checksums/src/checksums/md5
 
 when defined(windows):
   import std/[widestrs, winlean]
+  import windows_extras
 
 proc trimUnitSep(x: var string) =
   let L = x.len
