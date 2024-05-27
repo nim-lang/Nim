@@ -49,6 +49,7 @@ type
     locals: seq[PSym]
     body: PNode
     needsTry: bool
+    destroysResult: bool
     parent: ptr Scope
 
   ProcessMode = enum
@@ -978,6 +979,11 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
         var flags = if n.kind == nkSinkAsgn: {IsExplicitSink} else: {}
         if inReturn:
           flags.incl(IsReturn)
+        elif n[0].kind == nkSym and n[0].sym.kind == skResult:
+          if not s.destroysResult:
+            s.destroysResult = true
+            s.final.add c.genDestroy(n[0])
+            s.wasMoved.add c.genWasMoved(n[0])
         result = moveOrCopy(p(n[0], c, s, mode), n[1], c, s, flags)
       elif isDiscriminantField(n[0]):
         result = c.genDiscriminantAsgn(s, n)
