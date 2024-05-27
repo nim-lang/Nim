@@ -365,3 +365,14 @@ block: # enum.len
     doAssert MyEnum.enumLen == 4
     doAssert OtherEnum.enumLen == 3
     doAssert MyFlag.enumLen == 4
+
+when true: # Odd bug where alias can seep inside of `distinctBase`
+  import std/unittest
+
+  type
+    AdtChild* = concept t
+      distinctBase(t)
+
+  proc `$`*[T: AdtChild](adtChild: T): string = ""
+
+  check 10 is int

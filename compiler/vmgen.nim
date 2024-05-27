@@ -1182,7 +1182,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     let size = getSize(c.config, t)
     if t.kind in {tyUInt8..tyUInt32} or (t.kind == tyUInt and size < 8):
       c.gABC(n, opcNarrowU, dest, TRegister(size*8))
-  of mCharToStr, mBoolToStr, mIntToStr, mInt64ToStr, mFloatToStr, mCStrToStr, mStrToStr, mEnumToStr:
+  of mCharToStr, mBoolToStr, mCStrToStr, mStrToStr, mEnumToStr:
     genConv(c, n, n[1], dest)
   of mEqStr: genBinaryABC(c, n, dest, opcEqStr)
   of mEqCString: genBinaryABC(c, n, dest, opcEqCString)
@@ -1229,13 +1229,6 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     c.freeTemp(tmp1)
     c.genAsgnPatch(d2AsNode, d2)
     c.freeTemp(d2)
-  of mReset:
-    unused(c, n, dest)
-    var d = c.genx(n[1])
-    # XXX use ldNullOpcode() here?
-    c.gABx(n, opcLdNull, d, c.genType(n[1].typ))
-    c.gABC(n, opcNodeToReg, d, d)
-    c.genAsgnPatch(n[1], d)
   of mDefault, mZeroDefault:
     if dest < 0: dest = c.getTemp(n.typ)
     c.gABx(n, ldNullOpcode(n.typ), dest, c.genType(n.typ))
@@ -2050,6 +2043,8 @@ proc genSetConstr(c: PCtx, n: PNode, dest: var TDest) =
       c.freeTemp(a)
 
 proc genObjConstr(c: PCtx, n: PNode, dest: var TDest) =
+  if tfUnion in n.typ.flags: # bug #22708 # bug #13481
+    globalError(c.config, n.info, "object with '{.union.}' pragmas is not supported by VM")
   if dest < 0: dest = c.getTemp(n.typ)
   let t = n.typ.skipTypes(abstractRange+{tyOwned}-{tyTypeDesc})
   if t.kind == tyRef:

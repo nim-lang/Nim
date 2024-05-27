@@ -14,6 +14,7 @@ __GNUC__
 __TINYC__
 __clang__
 __AVR__
+__EMSCRIPTEN__
 */
 
 
@@ -177,12 +178,13 @@ __AVR__
 #  define N_THISCALL_PTR(rettype, name) rettype (__thiscall *name)
 #  define N_SAFECALL_PTR(rettype, name) rettype (__stdcall *name)
 
-#  ifdef __cplusplus
-#    define N_LIB_EXPORT  NIM_EXTERNC __declspec(dllexport)
+#  ifdef __EMSCRIPTEN__
+#    define N_LIB_EXPORT  NIM_EXTERNC __declspec(dllexport) __attribute__((used))
+#    define N_LIB_EXPORT_VAR  __declspec(dllexport) __attribute__((used))
 #  else
 #    define N_LIB_EXPORT  NIM_EXTERNC __declspec(dllexport)
+#    define N_LIB_EXPORT_VAR  __declspec(dllexport)
 #  endif
-#  define N_LIB_EXPORT_VAR  __declspec(dllexport)
 #  define N_LIB_IMPORT  extern __declspec(dllimport)
 #else
 #  define N_LIB_PRIVATE __attribute__((visibility("hidden")))
@@ -211,8 +213,13 @@ __AVR__
 #    define N_FASTCALL_PTR(rettype, name) rettype (*name)
 #    define N_SAFECALL_PTR(rettype, name) rettype (*name)
 #  endif
-#  define N_LIB_EXPORT NIM_EXTERNC __attribute__((visibility("default")))
-#  define N_LIB_EXPORT_VAR  __attribute__((visibility("default")))
+#  ifdef __EMSCRIPTEN__
+#    define N_LIB_EXPORT NIM_EXTERNC __attribute__((visibility("default"), used))
+#    define N_LIB_EXPORT_VAR  __attribute__((visibility("default"), used))
+#  else
+#    define N_LIB_EXPORT NIM_EXTERNC __attribute__((visibility("default")))
+#    define N_LIB_EXPORT_VAR  __attribute__((visibility("default")))
+#  endif
 #  define N_LIB_IMPORT  extern
 #endif
 

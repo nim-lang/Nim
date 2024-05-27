@@ -308,7 +308,7 @@ proc loadAny(p: var JsonParser, t: PType,
 
 proc loadAny*(s: string; t: PType; cache: IdentCache; conf: ConfigRef; idgen: IdGenerator): PNode =
   var tab = initTable[BiggestInt, PNode]()
-  var p: JsonParser
+  var p: JsonParser = default(JsonParser)
   open(p, newStringStream(s), "unknown file")
   next(p)
   result = loadAny(p, t, tab, cache, conf, idgen)

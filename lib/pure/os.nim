@@ -424,13 +424,13 @@ proc expandFilename*(filename: string): string {.rtl, extern: "nos$1",
   when defined(windows):
     var bufsize = MAX_PATH.int32
     var unused: WideCString = nil
-    var res = newWideCString("", bufsize)
+    var res = newWideCString(bufsize)
     while true:
       var L = getFullPathNameW(newWideCString(filename), bufsize, res, unused)
       if L == 0'i32:
         raiseOSError(osLastError(), filename)
       elif L > bufsize:
-        res = newWideCString("", L)
+        res = newWideCString(L)
         bufsize = L
       else:
         result = res$L
@@ -754,14 +754,14 @@ template rawToFormalFileInfo(rawInfo, path, formalInfo): untyped =
   ## 'rawInfo' is either a 'BY_HANDLE_FILE_INFORMATION' structure on Windows,
   ## or a 'Stat' structure on posix
   when defined(windows):
-    template merge(a, b): untyped =
-      int64(
+    template merge[T](a, b): untyped =
+       cast[T](
         (uint64(cast[uint32](a))) or
         (uint64(cast[uint32](b)) shl 32)
        )
     formalInfo.id.device = rawInfo.dwVolumeSerialNumber
-    formalInfo.id.file = merge(rawInfo.nFileIndexLow, rawInfo.nFileIndexHigh)
-    formalInfo.size = merge(rawInfo.nFileSizeLow, rawInfo.nFileSizeHigh)
+    formalInfo.id.file = merge[FileId](rawInfo.nFileIndexLow, rawInfo.nFileIndexHigh)
+    formalInfo.size = merge[BiggestInt](rawInfo.nFileSizeLow, rawInfo.nFileSizeHigh)
     formalInfo.linkCount = rawInfo.nNumberOfLinks
     formalInfo.lastAccessTime = fromWinTime(rdFileTime(rawInfo.ftLastAccessTime))
     formalInfo.lastWriteTime = fromWinTime(rdFileTime(rawInfo.ftLastWriteTime))
