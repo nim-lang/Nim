@@ -2990,15 +2990,7 @@ proc hoistParamsUsedInDefault(c: PContext, call, letSection, defExpr: var PNode)
         newNodeI(nkEmpty, letSection.info),
         call[paramPos])
 
-      # echo " -> ", letSection.renderTree
-      # echo (call[paramPos].typ, hoistedVarSym.typ, call[paramPos].renderTree)
-      # debug call[paramPos]
-      # debug call[paramPos].typ
-      # echo isOpenArraySym
-
       call[paramPos] = newSymNode(hoistedVarSym) # Refer the original arg to its hoisted sym
-
-      
 
     # arg we refer to is a sym, whether introduced by hoisting or not doesn't matter, we simply reuse it
     defExpr = call[paramPos]
