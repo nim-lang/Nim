@@ -2945,7 +2945,6 @@ proc asBracketExpr(c: PContext; n: PNode): PNode =
   return nil
 
 proc isOpenArraySym(x: PNode): bool =
-  result = false
   var x = x
   while true:
     case x.kind
