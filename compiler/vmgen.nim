@@ -1524,13 +1524,13 @@ proc setSlot(c: PCtx; v: PSym) =
   if v.position == 0:
     v.position = getFreeRegister(c, if v.kind == skLet: slotFixedLet else: slotFixedVar, start = 1)
 
-proc cannotEval(c: PCtx; n: PNode) {.noinline.} =
+template cannotEval(c: PCtx; n: PNode) =
   if c.config.cmd == cmdCheck:
     localError(c.config, n.info, "cannot evaluate at compile time: " & 
     n.renderTree)
-  else:
-    globalError(c.config, n.info, "cannot evaluate at compile time: " &
-      n.renderTree)
+    return
+  globalError(c.config, n.info, "cannot evaluate at compile time: " &
+    n.renderTree)
 
 proc isOwnedBy(a, b: PSym): bool =
   result = false
