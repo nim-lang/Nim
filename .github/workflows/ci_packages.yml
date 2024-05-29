@@ -17,7 +17,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, macos-12]
+        os: [ubuntu-24.04]
         cpu: [amd64]
         batch: ["allowed_failures", "0_3", "1_3", "2_3"] # list of `index_num`
     name: '${{ matrix.os }} (batch: ${{ matrix.batch }})'
@@ -48,10 +48,12 @@ jobs:
       - name: 'Install dependencies (Linux amd64 gcc 14)'
         if: runner.os == 'Linux' && matrix.cpu == 'amd64'
         run: |
+          ldconfig -p | grep "libpcre.so"
           sudo add-apt-repository universe
           sudo apt-fast update -qq
           sudo apt-fast install gcc-14 g++-14
           sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 60 --slave /usr/bin/g++ g++ /usr/bin/g++-14
+          ldconfig -p | grep "libpcre.so"
       - name: 'Install dependencies (macOS)'
         if: runner.os == 'macOS'
         run: brew install boehmgc make sfml gtk+3
