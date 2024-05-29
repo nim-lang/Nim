@@ -161,9 +161,11 @@ when defined(nimHasEnsureMove):
     ## Ensures that `x` is moved to the new location, otherwise it gives
     ## an error at the compile time.
     runnableExamples:
-      var x = "Hello"
-      let y = ensureMove(x)
-      doAssert y == "Hello"
+      proc foo =
+        var x = "Hello"
+        let y = ensureMove(x)
+        doAssert y == "Hello"
+      foo()
     discard "implemented in injectdestructors"
 
 type
@@ -1057,7 +1059,7 @@ const
     ## Possible values:
     ## `"i386"`, `"alpha"`, `"powerpc"`, `"powerpc64"`, `"powerpc64el"`,
     ## `"sparc"`, `"amd64"`, `"mips"`, `"mipsel"`, `"arm"`, `"arm64"`,
-    ## `"mips64"`, `"mips64el"`, `"riscv32"`, `"riscv64"`, '"loongarch64"'.
+    ## `"mips64"`, `"mips64el"`, `"riscv32"`, `"riscv64"`, `"loongarch64"`.
 
   seqShallowFlag = low(int)
   strlitFlag = 1 shl (sizeof(int)*8 - 2) # later versions of the codegen \
@@ -2831,5 +2833,4 @@ proc arrayWith*[T](y: T, size: static int): array[size, T] {.raises: [].} =
     when nimvm:
       result[i] = y
     else:
-      {.cast(raises: []).}: # TODO: fixme bug #23129
-        result[i] = `=dup`(y)
+      result[i] = `=dup`(y)

@@ -452,6 +452,14 @@ proc transformYield(c: PTransf, n: PNode): PNode =
       let rhs = transform(c, e)
       result.add(asgnTo(lhs, rhs))
 
+
+  # bug #23536; note that the info of forLoopBody should't change
+  for idx in 0 ..< result.len:
+    var changeNode = result[idx]
+    changeNode.info = c.transCon.forStmt.info
+    for i, child in changeNode:
+      child.info = changeNode.info
+
   inc(c.transCon.yieldStmts)
   if c.transCon.yieldStmts <= 1:
     # common case
@@ -461,12 +469,6 @@ proc transformYield(c: PTransf, n: PNode): PNode =
     c.isIntroducingNewLocalVars = true # don't transform yields when introducing new local vars
     result.add(introduceNewLocalVars(c, c.transCon.forLoopBody))
     c.isIntroducingNewLocalVars = false
-
-  for idx in 0 ..< result.len:
-    var changeNode = result[idx]
-    changeNode.info = c.transCon.forStmt.info
-    for i, child in changeNode:
-      child.info = changeNode.info
 
 proc transformAddrDeref(c: PTransf, n: PNode, kinds: TNodeKinds): PNode =
   result = transformSons(c, n)

@@ -468,6 +468,18 @@ proc processOption(c: PContext, n: PNode, resOptions: var TOptions) =
     # calling conventions (boring...):
     localError(c.config, n.info, "option expected")
 
+proc checkPushedPragma(c: PContext, n: PNode) =
+  let keyDeep = n.kind in nkPragmaCallKinds and n.len > 1
+  var key = if keyDeep: n[0] else: n
+  if key.kind in nkIdentKinds:
+    let ident = considerQuotedIdent(c, key)
+    var userPragma = strTableGet(c.userPragmas, ident)
+    if userPragma == nil:
+      let k = whichKeyword(ident)
+      # TODO: might as well make a list which is not accepted by `push`: emit, cast etc.
+      if k == wEmit:
+        localError(c.config, n.info, "an 'emit' pragma cannot be pushed")
+
 proc processPush(c: PContext, n: PNode, start: int) =
   if n[start-1].kind in nkPragmaCallKinds:
     localError(c.config, n.info, "'push' cannot have arguments")
@@ -475,6 +487,7 @@ proc processPush(c: PContext, n: PNode, start: int) =
   for i in start..<n.len:
     if not tryProcessOption(c, n[i], c.config.options):
       # simply store it somewhere:
+      checkPushedPragma(c, n[i])
       if x.otherPragmas.isNil:
         x.otherPragmas = newNodeI(nkPragma, n.info)
       x.otherPragmas.add n[i]

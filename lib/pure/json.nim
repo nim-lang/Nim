@@ -628,7 +628,7 @@ proc delete*(obj: JsonNode, key: string) =
   obj.fields.del(key)
 
 proc copy*(p: JsonNode): JsonNode =
-  ## Performs a deep copy of `a`.
+  ## Performs a deep copy of `p`.
   case p.kind
   of JString:
     result = newJString(p.str)

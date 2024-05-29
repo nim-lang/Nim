@@ -689,28 +689,30 @@ block: # bug #22259
 
   main()
 
-block:
-  block: # bug #22923
-    block:
-      let
-        a: int = 100
-        b: int32 = 200'i32
+block: # bug #23505
+  type
+    K = object
+    C = object
+      value: ptr K
 
-      let
-        x = arrayWith(a, 8) # compiles
-        y = arrayWith(b, 8) # internal error
-        z = arrayWith(14, 8) # integer literal also results in a crash
+  proc init(T: type C): C =
+    let tmp = new K
+    C(value: addr tmp[])
 
-      doAssert x == [100, 100, 100, 100, 100, 100, 100, 100]
-      doAssert $y == "[200, 200, 200, 200, 200, 200, 200, 200]"
-      doAssert z == [14, 14, 14, 14, 14, 14, 14, 14]
+  discard init(C)
 
-    block:
-      let a: string = "nim"
-      doAssert arrayWith(a, 3) == ["nim", "nim", "nim"]
+block: # bug #23524
+  type MyType = object
+    a: int
 
-      let b: char = 'c'
-      doAssert arrayWith(b, 3) == ['c', 'c', 'c']
+  proc `=destroy`(typ: MyType) = discard
 
-      let c: uint = 300'u
-      doAssert $arrayWith(c, 3) == "[300, 300, 300]"
+  var t1 = MyType(a: 100)
+  var t2 = t1 # Should be a copy?
+
+  proc main() =
+    t2 = t1
+    doAssert t1.a == 100
+    doAssert t2.a == 100
+
+  main()

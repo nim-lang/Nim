@@ -421,7 +421,7 @@ proc addModuleRef(n: PNode; ir: var PackedTree; c: var PackedEncoder; m: var Pac
   ## add a remote symbol reference to the tree
   let info = n.info.toPackedInfo(c, m)
   ir.nodes.add PackedNode(kind: nkModuleRef, operand: 3.int32, # spans 3 nodes in total
-                          typeId: storeTypeLater(n.typ, c, m), info: info)
+                          typeId: storeTypeLater(n.typ, c, m), info: info, flags: n.flags)
   ir.nodes.add PackedNode(kind: nkInt32Lit, info: info,
                           operand: toLitId(n.sym.itemId.module.FileIndex, c, m).int32)
   ir.nodes.add PackedNode(kind: nkInt32Lit, info: info,

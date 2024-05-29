@@ -54,17 +54,6 @@ proc semOperand(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   # same as 'semExprWithType' but doesn't check for proc vars
   result = semExpr(c, n, flags + {efOperand})
   if result.typ != nil:
-    # XXX tyGenericInst here?
-    if result.typ.kind == tyProc and hasUnresolvedParams(result, {efOperand}):
-      #and tfUnresolved in result.typ.flags:
-      let owner = result.typ.owner
-      let err =
-        # consistent error message with evaltempl/semMacroExpr
-        if owner != nil and owner.kind in {skTemplate, skMacro}:
-          errMissingGenericParamsForTemplate % n.renderTree
-        else:
-          errProcHasNoConcreteType % n.renderTree
-      localError(c.config, n.info, err)
     if result.typ.kind in {tyVar, tyLent}: result = newDeref(result)
   elif {efWantStmt, efAllowStmt} * flags != {}:
     result.typ = newTypeS(tyVoid, c)
@@ -523,8 +512,9 @@ proc isOpImpl(c: PContext, n: PNode, flags: TExprFlags): PNode =
   result.typ = n.typ
 
 proc semIs(c: PContext, n: PNode, flags: TExprFlags): PNode =
-  if n.len != 3:
+  if n.len != 3 or n[2].kind == nkEmpty:
     localError(c.config, n.info, "'is' operator takes 2 arguments")
+    return errorNode(c, n)
 
   let boolType = getSysType(c.graph, n.info, tyBool)
   result = n
@@ -1005,6 +995,34 @@ proc bracketedMacro(n: PNode): PSym =
     if result.kind notin {skMacro, skTemplate}:
       result = nil
 
+proc finishOperand(c: PContext, a: PNode): PNode =
+  if a.typ.isNil:
+    result = c.semOperand(c, a, {efDetermineType})
+  else:
+    result = a
+  # XXX tyGenericInst here?
+  if result.typ.kind == tyProc and hasUnresolvedParams(result, {efOperand}):
+    #and tfUnresolved in result.typ.flags:
+    let owner = result.typ.owner
+    let err =
+      # consistent error message with evaltempl/semMacroExpr
+      if owner != nil and owner.kind in {skTemplate, skMacro}:
+        errMissingGenericParamsForTemplate % a.renderTree
+      else:
+        errProcHasNoConcreteType % a.renderTree
+    localError(c.config, a.info, err)
+  considerGenSyms(c, result)
+
+proc semFinishOperands(c: PContext; n: PNode; isBracketExpr = false) =
+  # this needs to be called to ensure that after overloading resolution every
+  # argument has been sem'checked
+
+  # skip the first argument for operands of `[]` since it may be an unresolved
+  # generic proc, which is handled in semMagic
+  let start = 1 + ord(isBracketExpr)
+  for i in start..<n.len:
+    n[i] = finishOperand(c, n[i])
+
 proc afterCallActions(c: PContext; n, orig: PNode, flags: TExprFlags; expectedType: PType = nil): PNode =
   if efNoSemCheck notin flags and n.typ != nil and n.typ.kind == tyError:
     return errorNode(c, n)
@@ -1025,7 +1043,7 @@ proc afterCallActions(c: PContext; n, orig: PNode, flags: TExprFlags; expectedTy
   of skMacro: result = semMacroExpr(c, result, orig, callee, flags, expectedType)
   of skTemplate: result = semTemplateExpr(c, result, callee, flags, expectedType)
   else:
-    semFinishOperands(c, result)
+    semFinishOperands(c, result, isBracketExpr = callee.magic in {mArrGet, mArrPut})
     activate(c, result)
     fixAbstractType(c, result)
     analyseIfAddressTakenInCall(c, result)
@@ -1063,7 +1081,7 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType
     elif n[0].kind == nkBracketExpr:
       let s = bracketedMacro(n[0])
       if s != nil:
-        setGenericParams(c, n[0], s.ast[genericParamsPos])
+        setGenericParams(c, n[0])
         return semDirectOp(c, n, flags, expectedType)
     elif isSymChoice(n[0]) and nfDotField notin n.flags:
       # overloaded generic procs e.g. newSeq[int] can end up here
@@ -2948,7 +2966,7 @@ proc getNilType(c: PContext): PType =
     result.align = c.config.target.ptrSize.int16
     c.nilTypeCache = result
 
-proc enumFieldSymChoice(c: PContext, n: PNode, s: PSym): PNode =
+proc enumFieldSymChoice(c: PContext, n: PNode, s: PSym; flags: TExprFlags): PNode =
   var o: TOverloadIter
   var i = 0
   var a = initOverloadIter(o, c, n)
@@ -2961,7 +2979,7 @@ proc enumFieldSymChoice(c: PContext, n: PNode, s: PSym): PNode =
   if i <= 1:
     if sfGenSym notin s.flags:
       result = newSymNode(s, info)
-      markUsed(c, info, s)
+      markUsed(c, info, s, efInCall notin flags)
       onUse(info, s)
     else:
       result = n
@@ -3051,7 +3069,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
       if optOwnedRefs in c.config.globalOptions:
         result.typ = makeVarType(c, result.typ, tyOwned)
     of skEnumField:
-      result = enumFieldSymChoice(c, n, s)
+      result = enumFieldSymChoice(c, n, s, flags)
     else:
       result = semSym(c, n, s, flags)
     if expectedType != nil and isSymChoice(result):
@@ -3059,9 +3077,32 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
       if result.kind == nkSym:
         result = semSym(c, result, result.sym, flags)
   of nkSym:
+    let s = n.sym
+    if nfOpenSym in n.flags:
+      let id = newIdentNode(s.name, n.info)
+      c.isAmbiguous = false
+      let s2 = qualifiedLookUp(c, id, {})
+      if s2 != nil and s2 != s and not c.isAmbiguous:
+        # only consider symbols defined under current proc:
+        var o = s2.owner
+        while o != nil:
+          if o == c.p.owner:
+            if genericsOpenSym in c.features:
+              result = semExpr(c, id, flags, expectedType)
+              return
+            else:
+              message(c.config, n.info, warnGenericsIgnoredInjection,
+                "a new symbol '" & s.name.s & "' has been injected during " &
+                "instantiation of " & c.p.owner.name.s & ", " &
+                "however " & getSymRepr(c.config, s) & " captured at " &
+                "the proc declaration will be used instead; " &
+                "either enable --experimental:genericsOpenSym to use the " &
+                "injected symbol or `bind` this captured symbol explicitly")
+              break
+          o = o.owner
     # because of the changed symbol binding, this does not mean that we
     # don't have to check the symbol for semantics here again!
-    result = semSym(c, n, n.sym, flags)
+    result = semSym(c, n, s, flags)
   of nkEmpty, nkNone, nkCommentStmt, nkType:
     discard
   of nkNilLit:
@@ -3167,7 +3208,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
         isSymChoice(n[0][0]):
       # indirectOp can deal with explicit instantiations; the fixes
       # the 'newSeq[T](x)' bug
-      setGenericParams(c, n[0], nil)
+      setGenericParams(c, n[0])
       result = semDirectOp(c, n, flags, expectedType)
     elif nfDotField in n.flags:
       result = semDirectOp(c, n, flags, expectedType)

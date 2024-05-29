@@ -1538,21 +1538,27 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
   for sk in c.skipTypes:
     discard semTypeNode(c, sk, nil)
   c.skipTypes = @[]
-proc checkForMetaFields(c: PContext; n: PNode) =
-  proc checkMeta(c: PContext; n: PNode; t: PType) =
-    if t != nil and t.isMetaType and tfGenericTypeParam notin t.flags:
+
+proc checkForMetaFields(c: PContext; n: PNode; hasError: var bool) =
+  proc checkMeta(c: PContext; n: PNode; t: PType; hasError: var bool; parent: PType) =
+    if t != nil and (t.isMetaType or t.kind == tyNone) and tfGenericTypeParam notin t.flags:
       if t.kind == tyBuiltInTypeClass and t.len == 1 and t[0].kind == tyProc:
         localError(c.config, n.info, ("'$1' is not a concrete type; " &
           "for a callback without parameters use 'proc()'") % t.typeToString)
+      elif t.kind == tyNone and parent != nil:
+        # TODO: openarray has the `tfGenericTypeParam` flag & generics
+        # TODO: handle special cases (sink etc.) and views
+        localError(c.config, n.info, errTIsNotAConcreteType % parent.typeToString)
       else:
         localError(c.config, n.info, errTIsNotAConcreteType % t.typeToString)
+      hasError = true
 
   if n.isNil: return
   case n.kind
   of nkRecList, nkRecCase:
-    for s in n: checkForMetaFields(c, s)
+    for s in n: checkForMetaFields(c, s, hasError)
   of nkOfBranch, nkElse:
-    checkForMetaFields(c, n.lastSon)
+    checkForMetaFields(c, n.lastSon, hasError)
   of nkSym:
     let t = n.sym.typ
     case t.kind
@@ -1560,9 +1566,9 @@ proc checkForMetaFields(c: PContext; n: PNode) =
        tyProc, tyGenericInvocation, tyGenericInst, tyAlias, tySink, tyOwned:
       let start = ord(t.kind in {tyGenericInvocation, tyGenericInst})
       for i in start..<t.len:
-        checkMeta(c, n, t[i])
+        checkMeta(c, n, t[i], hasError, t)
     else:
-      checkMeta(c, n, t)
+      checkMeta(c, n, t, hasError, nil)
   else:
     internalAssert c.config, false
 
@@ -1597,9 +1603,11 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
               assert s.typ != nil
               assignType(s.typ, t)
               s.typ.itemId = t.itemId     # same id
-        checkConstructedType(c.config, s.info, s.typ)
+        var hasError = false
         if s.typ.kind in {tyObject, tyTuple} and not s.typ.n.isNil:
-          checkForMetaFields(c, s.typ.n)
+          checkForMetaFields(c, s.typ.n, hasError)
+        if not hasError:
+          checkConstructedType(c.config, s.info, s.typ)
 
         # fix bug #5170, bug #17162, bug #15526: ensure locally scoped types get a unique name:
         if s.typ.kind in {tyEnum, tyRef, tyObject} and not isTopLevel(c):
@@ -1921,6 +1929,11 @@ proc bindTypeHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp; suppressV
                t.len == 2 and t[0] == nil and t[1].kind == tyVar
              of attachedTrace:
                t.len == 3 and t[0] == nil and t[1].kind == tyVar and t[2].kind == tyPointer
+             of attachedDestructor:
+               if c.config.selectedGC in {gcArc, gcAtomicArc, gcOrc}:
+                 t.len == 2 and t[0] == nil
+               else:
+                 t.len == 2 and t[0] == nil and t[1].kind == tyVar
              else:
                t.len >= 2 and t[0] == nil
 
@@ -1932,7 +1945,8 @@ proc bindTypeHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp; suppressV
       elif obj.kind == tyGenericInvocation: obj = obj[0]
       else: break
     if obj.kind in {tyObject, tyDistinct, tySequence, tyString}:
-      if (not suppressVarDestructorWarning) and op == attachedDestructor and t[1].kind == tyVar:
+      if (not suppressVarDestructorWarning) and op == attachedDestructor and t[1].kind == tyVar and
+          c.config.selectedGC in {gcArc, gcAtomicArc, gcOrc}:
         message(c.config, n.info, warnDeprecated, "A custom '=destroy' hook which takes a 'var T' parameter is deprecated; it should take a 'T' parameter")
       obj = canonType(c, obj)
       let ao = getAttachedOp(c.graph, obj, op)
@@ -1952,8 +1966,12 @@ proc bindTypeHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp; suppressV
       localError(c.config, n.info, errGenerated,
         "signature for '=trace' must be proc[T: object](x: var T; env: pointer)")
     of attachedDestructor:
-      localError(c.config, n.info, errGenerated,
-        "signature for '=destroy' must be proc[T: object](x: var T) or proc[T: object](x: T)")
+      if c.config.selectedGC in {gcArc, gcAtomicArc, gcOrc}:
+        localError(c.config, n.info, errGenerated,
+          "signature for '=destroy' must be proc[T: object](x: var T) or proc[T: object](x: T)")
+      else:
+        localError(c.config, n.info, errGenerated,
+          "signature for '=destroy' must be proc[T: object](x: var T)")
     else:
       localError(c.config, n.info, errGenerated,
         "signature for '" & s.name.s & "' must be proc[T: object](x: var T)")

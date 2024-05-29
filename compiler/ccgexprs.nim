@@ -285,15 +285,23 @@ proc genGenericAsgn(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
     linefmt(p, cpsStmts, "#genericAssign((void*)$1, (void*)$2, $3);$n",
             [addrLoc(p.config, dest), addrLoc(p.config, src), genTypeInfoV1(p.module, dest.t, dest.lode.info)])
 
-proc genOpenArrayConv(p: BProc; d: TLoc; a: TLoc) =
+proc genOpenArrayConv(p: BProc; d: TLoc; a: TLoc; flags: TAssignmentFlags) =
   assert d.k != locNone
   #  getTemp(p, d.t, d)
 
   case a.t.skipTypes(abstractVar).kind
   of tyOpenArray, tyVarargs:
     if reifiedOpenArray(a.lode):
-      linefmt(p, cpsStmts, "$1.Field0 = $2.Field0; $1.Field1 = $2.Field1;$n",
-        [rdLoc(d), a.rdLoc])
+      if needTempForOpenArray in flags:
+        var tmp: TLoc
+        getTemp(p, a.t, tmp)
+        linefmt(p, cpsStmts, "$2 = $1; $n",
+                [a.rdLoc, tmp.rdLoc])
+        linefmt(p, cpsStmts, "$1.Field0 = $2.Field0; $1.Field1 = $2.Field1;$n",
+          [rdLoc(d), tmp.rdLoc])
+      else:
+        linefmt(p, cpsStmts, "$1.Field0 = $2.Field0; $1.Field1 = $2.Field1;$n",
+          [rdLoc(d), a.rdLoc])
     else:
       linefmt(p, cpsStmts, "$1.Field0 = $2; $1.Field1 = $2Len_0;$n",
         [rdLoc(d), a.rdLoc])
@@ -392,7 +400,7 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
     # open arrays are always on the stack - really? What if a sequence is
     # passed to an open array?
     if reifiedOpenArray(dest.lode):
-      genOpenArrayConv(p, dest, src)
+      genOpenArrayConv(p, dest, src, flags)
     elif containsGarbageCollectedRef(dest.t):
       linefmt(p, cpsStmts,     # XXX: is this correct for arrays?
            "#genericAssignOpenArray((void*)$1, (void*)$2, $1Len_0, $3);$n",
@@ -2125,7 +2133,7 @@ proc genSetOp(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     of mCard:
       var a: TLoc
       initLocExpr(p, e[1], a)
-      putIntoDest(p, d, e, ropecg(p.module, "#cardSet($1, $2)", [addrLoc(p.config, a), size]))
+      putIntoDest(p, d, e, ropecg(p.module, "#cardSet($1, $2)", [rdCharLoc(a), size]))
     of mLtSet, mLeSet:
       getTemp(p, getSysType(p.module.g.graph, unknownLineInfo, tyInt), i) # our counter
       initLocExpr(p, e[1], a)
@@ -2641,8 +2649,6 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mSlice: genSlice(p, e, d)
   of mTrace: discard "no code to generate"
   of mEnsureMove:
-    expr(p, e[1], d)
-  of mDup:
     expr(p, e[1], d)
   else:
     when defined(debugMagics):

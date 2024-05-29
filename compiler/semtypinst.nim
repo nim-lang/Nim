@@ -321,6 +321,9 @@ proc replaceTypeVarsS(cl: var TReplTypeVars, s: PSym, t: PType): PSym =
     result.ast = replaceTypeVarsN(cl, s.ast)
 
 proc lookupTypeVar(cl: var TReplTypeVars, t: PType): PType =
+  if tfRetType in t.flags and t.kind == tyAnything:
+    # don't bind `auto` return type to a previous binding of `auto`
+    return nil
   result = cl.typeMap.lookup(t)
   if result == nil:
     if cl.allowMetaTypes or tfRetType in t.flags: return
@@ -558,7 +561,9 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
   result = t
   if t == nil: return
 
-  if t.kind in {tyStatic, tyGenericParam, tyConcept} + tyTypeClasses:
+  const lookupMetas = {tyStatic, tyGenericParam, tyConcept} + tyTypeClasses - {tyAnything}
+  if t.kind in lookupMetas or
+      (t.kind == tyAnything and tfRetType notin t.flags):
     let lookup = cl.typeMap.lookup(t)
     if lookup != nil: return lookup
 

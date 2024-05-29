@@ -472,7 +472,7 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType 
       result.typ.flags.incl tfHasOwned
   if t.kind != tyObject:
     return localErrorNode(c, result, if t.kind != tyGenericBody:
-      "object constructor needs an object type".dup(addDeclaredLoc(c.config, t))
+      "object constructor needs an object type".dup(addTypeNodeDeclaredLoc(c.config, t))
       else: "cannot instantiate: '" &
         typeToString(t, preferDesc) &
         "'; the object's generic parameters cannot be inferred and must be explicitly given"

@@ -94,7 +94,7 @@ type
 const
   isNilConversion = isConvertible # maybe 'isIntConv' fits better?
 
-proc markUsed*(c: PContext; info: TLineInfo, s: PSym)
+proc markUsed*(c: PContext; info: TLineInfo, s: PSym; checkStyle = true)
 proc markOwnerModuleAsUsed*(c: PContext; s: PSym)
 
 template hasFauxMatch*(c: TCandidate): bool = c.fauxMatch != tyNone
@@ -2129,6 +2129,7 @@ template matchesVoidProc(t: PType): bool =
 
 proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
                         argSemantized, argOrig: PNode): PNode =
+  result = nil
   var
     fMaybeStatic = f.skipTypes({tyDistinct})
     arg = argSemantized
@@ -2192,28 +2193,33 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
     else:
       return argSemantized # argOrig
 
-  # If r == isBothMetaConvertible then we rerun typeRel.
-  # bothMetaCounter is for safety to avoid any infinite loop,
-  #  I don't have any example when it is needed.
-  # lastBindingsLenth is used to check whether m.bindings remains the same,
-  #  because in that case there is no point in continuing.
-  var bothMetaCounter = 0
-  var lastBindingsLength = -1
-  while r == isBothMetaConvertible and
-      lastBindingsLength != m.bindings.counter and
-      bothMetaCounter < 100:
-    lastBindingsLength = m.bindings.counter
-    inc(bothMetaCounter)
-    if arg.kind in {nkProcDef, nkFuncDef, nkIteratorDef} + nkLambdaKinds:
-      result = c.semInferredLambda(c, m.bindings, arg)
-    elif arg.kind != nkSym:
-      return nil
-    else:
-      let inferred = c.semGenerateInstance(c, arg.sym, m.bindings, arg.info)
-      result = newSymNode(inferred, arg.info)
-    inc(m.convMatches)
-    arg = result
-    r = typeRel(m, f, arg.typ)
+  block instantiateGenericRoutine:
+    # In the case where the matched value is a generic proc, we need to
+    # fully instantiate it and then rerun typeRel to make sure it matches.
+    # instantiationCounter is for safety to avoid any infinite loop,
+    #  I don't have any example when it is needed.
+    # lastBindingCount is used to check whether m.bindings remains the same,
+    #  because in that case there is no point in continuing.
+    var instantiationCounter = 0
+    var lastBindingCount = -1
+    while r in {isBothMetaConvertible, isInferred, isInferredConvertible} and
+        lastBindingCount != m.bindings.counter and
+        instantiationCounter < 100:
+      lastBindingCount = m.bindings.counter
+      inc(instantiationCounter)
+      if arg.kind in {nkProcDef, nkFuncDef, nkIteratorDef} + nkLambdaKinds:
+        result = c.semInferredLambda(c, m.bindings, arg)
+      elif arg.kind != nkSym:
+        return nil
+      elif arg.sym.kind in {skMacro, skTemplate}:
+        return nil
+      else:
+        if arg.sym.ast == nil:
+          return nil
+        let inferred = c.semGenerateInstance(c, arg.sym, m.bindings, arg.info)
+        result = newSymNode(inferred, arg.info)
+      arg = result
+      r = typeRel(m, f, arg.typ)
 
   case r
   of isConvertible:
@@ -2240,23 +2246,15 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
       result = arg
     else:
       result = implicitConv(nkHiddenStdConv, f, arg, m, c)
-  of isInferred, isInferredConvertible:
-    if arg.kind in {nkProcDef, nkFuncDef, nkIteratorDef} + nkLambdaKinds:
-      result = c.semInferredLambda(c, m.bindings, arg)
-    elif arg.kind != nkSym:
-      return nil
-    elif arg.sym.kind in {skMacro, skTemplate}:
-      return nil
-    else:
-      if arg.sym.ast == nil:
-        return nil
-      let inferred = c.semGenerateInstance(c, arg.sym, m.bindings, arg.info)
-      result = newSymNode(inferred, arg.info)
-    if r == isInferredConvertible:
-      inc(m.convMatches)
-      result = implicitConv(nkHiddenStdConv, f, result, m, c)
-    else:
-      inc(m.genericMatches)
+  of isInferred:
+    # result should be set in above while loop:
+    assert result != nil
+    inc(m.genericMatches)
+  of isInferredConvertible:
+    # result should be set in above while loop:
+    assert result != nil
+    inc(m.convMatches)
+    result = implicitConv(nkHiddenStdConv, f, result, m, c)
   of isGeneric:
     inc(m.genericMatches)
     if arg.typ == nil:
@@ -2270,8 +2268,10 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
     else:
       result = arg
   of isBothMetaConvertible:
-    # This is the result for the 101th time.
-    result = nil
+    # result should be set in above while loop:
+    assert result != nil
+    inc(m.convMatches)
+    result = arg
   of isFromIntLit:
     # too lazy to introduce another ``*matches`` field, so we conflate
     # ``isIntConv`` and ``isIntLit`` here:
@@ -2341,17 +2341,6 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
           result = userConvMatch(c, m, base(f), a, arg)
           if result != nil: m.baseTypeMatch = true
 
-proc staticAwareTypeRel(m: var TCandidate, f: PType, arg: var PNode): TTypeRelation =
-  if f.kind == tyStatic and f.base.kind == tyProc:
-    # The ast of the type does not point to the symbol.
-    # Without this we will never resolve a `static proc` with overloads
-    let copiedNode = copyNode(arg)
-    copiedNode.typ = exactReplica(copiedNode.typ)
-    copiedNode.typ.n = arg
-    arg = copiedNode
-  typeRel(m, f, arg.typ)
-
-
 proc paramTypesMatch*(m: var TCandidate, f, a: PType,
                       arg, argOrig: PNode): PNode =
   if arg == nil or arg.kind notin nkSymChoices:
@@ -2380,7 +2369,7 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
         # XXX this is still all wrong: (T, T) should be 2 generic matches
         # and  (int, int) 2 exact matches, etc. Essentially you cannot call
         # typeRel here and expect things to work!
-        let r = staticAwareTypeRel(z, f, arg[i])
+        let r = typeRel(z, f, arg[i].typ)
         incMatches(z, r, 2)
         if r != isNone:
           z.state = csMatch
@@ -2693,12 +2682,6 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
   # for some edge cases (see tdont_return_unowned_from_owned test case)
   m.firstMismatch.arg = a
   m.firstMismatch.formal = formal
-
-proc semFinishOperands*(c: PContext, n: PNode) =
-  # this needs to be called to ensure that after overloading resolution every
-  # argument has been sem'checked:
-  for i in 1..<n.len:
-    n[i] = prepareOperand(c, n[i])
 
 proc partialMatch*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
   # for 'suggest' support:

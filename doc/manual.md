@@ -5358,6 +5358,8 @@ To override the compiler's side effect analysis a `{.noSideEffect.}`
 **Side effects are usually inferred. The inference for side effects is
 analogous to the inference for exception tracking.**
 
+When the compiler cannot infer side effects, as is the case for imported
+functions, one can annotate them with the `sideEffect` pragma.
 
 GC safety effect
 ----------------
@@ -5800,7 +5802,7 @@ at definition and the context at instantiation are considered:
   echo a == b # works!
   ```
 
-In the example, the generic `==` for tuples (as defined in the system module)
+In the example, the [generic `==` for tuples](system.html#%3D%3D%2CT%2CT_2) (as defined in the system module)
 uses the `==` operators of the tuple's components. However, the `==` for
 the `Index` type is defined *after* the `==` for tuples; yet the example
 compiles as the instantiation takes the currently defined symbols into account

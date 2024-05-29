@@ -503,9 +503,6 @@ To link against ``nimrtl.dll`` use the command:
   nim c -d:useNimRtl myprog.nim
   ```
 
-**Note**: Currently the creation of ``nimrtl.dll`` with thread support has
-never been tested and is unlikely to work!
-
 
 Additional compilation switches
 ===============================

@@ -314,7 +314,7 @@ proc conceptMatchNode(c: PContext; n: PNode; m: var MatchCon): bool =
 
 proc conceptMatch*(c: PContext; concpt, arg: PType; bindings: var TIdTable; invocation: PType): bool =
   ## Entry point from sigmatch. 'concpt' is the concept we try to match (here still a PType but
-  ## we extract its AST via 'concpt.n.lastSon'). 'arg' is the type that might fullfill the
+  ## we extract its AST via 'concpt.n.lastSon'). 'arg' is the type that might fulfill the
   ## concept's requirements. If so, we return true and fill the 'bindings' with pairs of
   ## (typeVar, instance) pairs. ('typeVar' is usually simply written as a generic 'T'.)
   ## 'invocation' can be nil for atomic concepts. For non-atomic concepts, it contains the

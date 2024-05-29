@@ -15,9 +15,6 @@
 runnableExamples:
   from std/math import almostEqual, sqrt
 
-  func almostEqual(a, b: Complex): bool =
-    almostEqual(a.re, b.re) and almostEqual(a.im, b.im)
-
   let
     z1 = complex(1.0, 2.0)
     z2 = complex(3.0, -4.0)
@@ -391,6 +388,24 @@ func rect*[T](r, phi: T): Complex[T] =
   ## * `polar func<#polar,Complex[T]>`_ for the inverse operation
   complex(r * cos(phi), r * sin(phi))
 
+func almostEqual*[T: SomeFloat](x, y: Complex[T]; unitsInLastPlace: Natural = 4): bool =
+  ## Checks if two complex values are almost equal, using the
+  ## [machine epsilon](https://en.wikipedia.org/wiki/Machine_epsilon).
+  ##
+  ## Two complex values are considered almost equal if their real and imaginary
+  ## components are almost equal.
+  ##
+  ## `unitsInLastPlace` is the max number of
+  ## [units in the last place](https://en.wikipedia.org/wiki/Unit_in_the_last_place)
+  ## difference tolerated when comparing two numbers. The larger the value, the
+  ## more error is allowed. A `0` value means that two numbers must be exactly the
+  ## same to be considered equal.
+  ##
+  ## The machine epsilon has to be scaled to the magnitude of the values used
+  ## and multiplied by the desired precision in ULPs unless the difference is
+  ## subnormal.
+  almostEqual(x.re, y.re, unitsInLastPlace = unitsInLastPlace) and
+  almostEqual(x.im, y.im, unitsInLastPlace = unitsInLastPlace)
 
 func `$`*(z: Complex): string =
   ## Returns `z`'s string representation as `"(re, im)"`.

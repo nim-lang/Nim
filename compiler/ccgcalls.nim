@@ -83,6 +83,10 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
   # getUniqueType() is too expensive here:
   var typ = skipTypes(ri[0].typ, abstractInst)
   if typ[0] != nil:
+    var flags: TAssignmentFlags = {}
+    if typ[0].kind in {tyOpenArray, tyVarargs}:
+      # perhaps generate no temp if the call doesn't have side effects
+      flags.incl needTempForOpenArray
     if isInvalidReturnType(p.config, typ):
       if params.len != 0: pl.add(", ")
       # beware of 'result = p(result)'. We may need to allocate a temporary:
@@ -130,7 +134,7 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
         var list: TLoc
         initLoc(list, locCall, d.lode, OnUnknown)
         list.r = pl
-        genAssignment(p, d, list, {}) # no need for deep copying
+        genAssignment(p, d, list, flags) # no need for deep copying
         if canRaise: raiseExit(p)
       else:
         var tmp: TLoc
@@ -138,7 +142,7 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
         var list: TLoc
         initLoc(list, locCall, d.lode, OnUnknown)
         list.r = pl
-        genAssignment(p, tmp, list, {}) # no need for deep copying
+        genAssignment(p, tmp, list, flags) # no need for deep copying
         if canRaise: raiseExit(p)
         genAssignment(p, d, tmp, {})
   else:
@@ -167,7 +171,10 @@ proc genOpenArraySlice(p: BProc; q: PNode; formalType, destType: PType; prepareF
     genBoundsCheck(p, a, b, c)
   if prepareForMutation:
     linefmt(p, cpsStmts, "#nimPrepareStrMutationV2($1);$n", [byRefLoc(p, a)])
-  let ty = skipTypes(a.t, abstractVar+{tyPtr})
+  # bug #23321: In the function mapType, ptrs (tyPtr, tyVar, tyLent, tyRef)
+  # are mapped into ctPtrToArray, the dereference of which is skipped
+  # in the `genref`. We need to skip these ptrs here
+  let ty = skipTypes(a.t, abstractVar+{tyPtr, tyRef})
   let dest = getTypeDesc(p.module, destType)
   let lengthExpr = "($1)-($2)+1" % [rdLoc(c), rdLoc(b)]
   case ty.kind

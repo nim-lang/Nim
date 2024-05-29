@@ -836,9 +836,9 @@ proc toRunes*(s: openArray[char]): seq[Rune] =
 proc cmpRunesIgnoreCase*(a, b: openArray[char]): int {.rtl, extern: "nuc$1".} =
   ## Compares two UTF-8 strings and ignores the case. Returns:
   ##
-  ## | 0 if a == b
-  ## | < 0 if a < b
-  ## | > 0 if a > b
+  ## | `0` if a == b
+  ## | `< 0` if a < b
+  ## | `> 0` if a > b
   var i = 0
   var j = 0
   var ar, br: Rune
@@ -1375,9 +1375,9 @@ proc toRunes*(s: string): seq[Rune] {.inline.} =
 proc cmpRunesIgnoreCase*(a, b: string): int {.inline.} =
   ## Compares two UTF-8 strings and ignores the case. Returns:
   ##
-  ## | 0 if a == b
-  ## | < 0 if a < b
-  ## | > 0 if a > b
+  ## | `0` if a == b
+  ## | `< 0` if a < b
+  ## | `> 0` if a > b
   cmpRunesIgnoreCase(a.toOa(), b.toOa())
 
 proc reversed*(s: string): string {.inline.} =

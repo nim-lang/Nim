@@ -220,7 +220,8 @@ type
     unicodeOperators, # deadcode
     flexibleOptionalParams,
     strictDefs,
-    strictCaseObjects
+    strictCaseObjects,
+    genericsOpenSym
 
   LegacyFeature* = enum
     allowSemcheckedAstModification,
