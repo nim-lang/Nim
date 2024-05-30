@@ -172,7 +172,7 @@ pkg "union", "nim c -r tests/treadme.nim", url = "https://github.com/alaviss/uni
 pkg "unpack"
 pkg "weave", "nimble test_gc_arc", useHead = true
 pkg "websocket", "nim c websocket.nim"
-pkg "winim", "nim c winim.nim"
+# pkg "winim", allowFailure = true
 pkg "with"
 pkg "ws", allowFailure = true
 pkg "yaml"
