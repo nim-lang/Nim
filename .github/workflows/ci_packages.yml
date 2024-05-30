@@ -37,6 +37,9 @@ jobs:
         with:
           node-version: '20.x'
 
+      - name: avoids restarting 
+        run: echo "NEEDRESTART_SUSPEND=1" >> $GITHUB_ENV
+
       - name: 'Install dependencies (Linux amd64)'
         if: runner.os == 'Linux' && matrix.cpu == 'amd64'
         run: |
