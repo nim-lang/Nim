@@ -306,8 +306,11 @@ proc genCppParamsForCtor(p: BProc; call: PNode; didGenTemp: var bool): string =
           call[i][0]
         else:
           call[i]
-      let tempLoc = initLocExprSingleUse(p, param)
-      didGenTemp = didGenTemp or tempLoc.k == locTemp
+      if param.kind != nkBracketExpr or param.typ.kind in 
+        {tyRef, tyPtr, tyUncheckedArray, tyArray, tyOpenArray, 
+          tyVarargs, tySequence, tyString, tyCstring, tyTuple}:
+        let tempLoc = initLocExprSingleUse(p, param)
+        didGenTemp = didGenTemp or tempLoc.k == locTemp
       genOtherArg(p, call, i, typ, result, argsCounter)
 
 proc genCppVarForCtor(p: BProc; call: PNode; decl: var Rope, didGenTemp: var bool) =
