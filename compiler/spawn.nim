@@ -110,11 +110,14 @@ stmtList:
 """
 
 proc castToVoidPointer(g: ModuleGraph, n: PNode, fvField: PNode): PNode =
-  let ptrType = getSysType(g, n.info, tyPointer)
-  result = newNodeI(nkCast, fvField.info)
-  result.add newNodeI(nkEmpty, fvField.info)
-  result.add fvField
-  result.typ = ptrType
+  if g.config.backend == backendCpp:
+    result = fvField
+  else:
+    let ptrType = getSysType(g, n.info, tyPointer)
+    result = newNodeI(nkCast, fvField.info)
+    result.add newNodeI(nkEmpty, fvField.info)
+    result.add fvField
+    result.typ = ptrType
 
 proc createWrapperProc(g: ModuleGraph; f: PNode; threadParam, argsParam: PSym;
                        varSection, varInit, call, barrier, fv: PNode;
