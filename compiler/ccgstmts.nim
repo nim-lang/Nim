@@ -289,7 +289,7 @@ proc potentialValueInit(p: BProc; v: PSym; value: PNode; result: var Rope) =
     #echo "New code produced for ", v.name.s, " ", p.config $ value.info
     genBracedInit(p, value, isConst = false, v.typ, result)
 
-proc genCppParamsForCtor(p: BProc; call: PNode): string =
+proc genCppParamsForCtor(p: BProc; call: PNode; didGenTemp: var bool): string =
   result = ""
   var argsCounter = 0
   let typ = skipTypes(call[0].typ, abstractInst)
@@ -298,12 +298,20 @@ proc genCppParamsForCtor(p: BProc; call: PNode): string =
     #if it's a type we can just generate here another initializer as we are in an initializer context
     if call[i].kind == nkCall and call[i][0].kind == nkSym and call[i][0].sym.kind == skType:
       if argsCounter > 0: result.add ","
-      result.add genCppInitializer(p.module, p, call[i][0].sym.typ)
+      result.add genCppInitializer(p.module, p, call[i][0].sym.typ, didGenTemp)
     else:
+      #We need to test for temp in globals, see: #23657
+      let param = 
+        if typ[i].kind in {tyVar} and call[i].kind == nkHiddenAddr:
+          call[i][0]
+        else:
+          call[i]
+      let tempLoc = initLocExprSingleUse(p, param)
+      didGenTemp = didGenTemp or tempLoc.k == locTemp
       genOtherArg(p, call, i, typ, result, argsCounter)
 
-proc genCppVarForCtor(p: BProc; call: PNode; decl: var Rope) =
-  let params = genCppParamsForCtor(p, call)
+proc genCppVarForCtor(p: BProc; call: PNode; decl: var Rope, didGenTemp: var bool) =
+  let params = genCppParamsForCtor(p, call, didGenTemp)
   if params.len == 0:
     decl = runtimeFormat("$#;\n", [decl])
   else:
@@ -330,7 +338,14 @@ proc genSingleVar(p: BProc, v: PSym; vn, value: PNode) =
       # v.owner.kind != skModule:
       targetProc = p.module.preInitProc
     if isCppCtorCall and not containsHiddenPointer(v.typ):
-      callGlobalVarCppCtor(targetProc, v, vn, value)
+      var didGenTemp = false
+      callGlobalVarCppCtor(targetProc, v, vn, value, didGenTemp)
+      if didGenTemp:
+        message(p.config, vn.info, warnGlobalVarConstructorTemporary, vn.sym.name.s)
+        #We fail to call the constructor in the global scope so we do the call inside the main proc
+        assignGlobalVar(targetProc, vn, valueAsRope)
+        var loc = initLocExprSingleUse(targetProc, value)
+        genAssignment(targetProc, v.loc, loc, {})
     else:
       assignGlobalVar(targetProc, vn, valueAsRope)
 
@@ -365,7 +380,8 @@ proc genSingleVar(p: BProc, v: PSym; vn, value: PNode) =
       var decl = localVarDecl(p, vn)
       var tmp: TLoc
       if isCppCtorCall:
-        genCppVarForCtor(p, value, decl)
+        var didGenTemp = false
+        genCppVarForCtor(p, value, decl, didGenTemp)
         line(p, cpsStmts, decl)
       else:
         tmp = initLocExprSingleUse(p, value)

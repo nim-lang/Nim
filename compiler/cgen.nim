@@ -562,8 +562,9 @@ proc getTemp(p: BProc, t: PType, needsInit=false): TLoc =
   result = TLoc(r: "T" & rope(p.labels) & "_", k: locTemp, lode: lodeTyp t,
                 storage: OnStack, flags: {})
   if p.module.compileToCpp and isOrHasImportedCppType(t):
+    var didGenTemp = false
     linefmt(p, cpsLocals, "$1 $2$3;$n", [getTypeDesc(p.module, t, dkVar), result.r,
-      genCppInitializer(p.module, p, t)])
+      genCppInitializer(p.module, p, t, didGenTemp)])
   else:
     linefmt(p, cpsLocals, "$1 $2;$n", [getTypeDesc(p.module, t, dkVar), result.r])
   constructLoc(p, result, not needsInit)
@@ -620,7 +621,8 @@ proc assignLocalVar(p: BProc, n: PNode) =
   let nl = if optLineDir in p.config.options: "" else: "\n"
   var decl = localVarDecl(p, n)
   if p.module.compileToCpp and isOrHasImportedCppType(n.typ):
-    decl.add genCppInitializer(p.module, p, n.typ)
+    var didGenTemp = false
+    decl.add genCppInitializer(p.module, p, n.typ, didGenTemp)
   decl.add ";" & nl
   line(p, cpsLocals, decl)
 
@@ -655,18 +657,7 @@ proc genGlobalVarDecl(p: BProc, n: PNode; td, value: Rope; decl: var Rope) =
     else:
       decl = runtimeFormat(s.cgDeclFrmt & ";$n", [td, s.loc.r])
 
-proc genCppVarForCtor(p: BProc; call: PNode; decl: var Rope)
-
-proc callGlobalVarCppCtor(p: BProc; v: PSym; vn, value: PNode) =
-  let s = vn.sym
-  fillBackendName(p.module, s)
-  fillLoc(s.loc, locGlobalVar, vn, OnHeap)
-  var decl: Rope = ""
-  let td = getTypeDesc(p.module, vn.sym.typ, dkVar)
-  genGlobalVarDecl(p, vn, td, "", decl)
-  decl.add " " & $s.loc.r
-  genCppVarForCtor(p, value, decl)
-  p.module.s[cfsVars].add decl
+proc genCppVarForCtor(p: BProc; call: PNode; decl: var Rope; didGenTemp: var bool)
 
 proc assignGlobalVar(p: BProc, n: PNode; value: Rope) =
   let s = n.sym
@@ -721,6 +712,18 @@ proc assignGlobalVar(p: BProc, n: PNode; value: Rope) =
   if p.withinLoop > 0 and value == "":
     # fixes tests/run/tzeroarray:
     resetLoc(p, s.loc)
+
+proc callGlobalVarCppCtor(p: BProc; v: PSym; vn, value: PNode; didGenTemp: var bool) =
+  let s = vn.sym
+  fillBackendName(p.module, s)
+  fillLoc(s.loc, locGlobalVar, vn, OnHeap)
+  var decl: Rope = ""
+  let td = getTypeDesc(p.module, vn.sym.typ, dkVar)
+  genGlobalVarDecl(p, vn, td, "", decl)
+  decl.add " " & $s.loc.r
+  genCppVarForCtor(p, value, decl, didGenTemp)
+  if didGenTemp:  return # generated in the caller
+  p.module.s[cfsVars].add decl
 
 proc assignParam(p: BProc, s: PSym, retType: PType) =
   assert(s.loc.r != "")
