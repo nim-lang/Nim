@@ -594,4 +594,30 @@ NIM_STATIC_ASSERT(sizeof(NI) == sizeof(void*) && NIM_INTBITS == sizeof(NI)*8, "P
 #define NIM_NOALIAS __restrict
 /* __restrict is said to work for all the C(++) compilers out there that we support */
 
+#if defined(__GNUC__)
+#  define NIM_ERR_FLAG()  /* nothing to declare: uses HW flag */
+#  define NIM_ERR_JUMP(lab)  __asm__ goto("jc %l0" \
+               : \
+               : \
+               : \
+               : lab)
+#  define NIM_ERR_SET()   __asm__ volatile("stc" \
+    : \
+    : \
+    : "cc" \
+    )
+
+#  define NIM_ERR_CLEAR() __asm__ volatile("clc" \
+    : \
+    : \
+    : "cc" \
+    )
+
+#else
+#  define NIM_ERR_FLAG()  NIM_BOOL* nimErr_
+#  define NIM_ERR_JUMP(lab) if (NIM_UNLIKELY(*nimErr_)) goto lab
+#  define NIM_ERR_CLEAR() *nimErr_ = NIM_FALSE
+#  define NIM_ERR_SET() *nimErr_ = NIM_TRUE
+#endif /* __GNUC__ */
+
 #endif /* NIMBASE_H */
