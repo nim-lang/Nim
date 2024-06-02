@@ -731,9 +731,9 @@ proc raiseExit(p: BProc) =
     if p.nestedTryStmts.len == 0:
       p.flags.incl beforeRetNeeded
       # easy case, simply goto 'ret':
-      lineCg(p, cpsStmts, "if (NIM_UNLIKELY(*nimErr_)) goto BeforeRet_;$n", [])
+      lineCg(p, cpsStmts, "NIM_ERR_JUMP(BeforeRet_);$n", [])
     else:
-      lineCg(p, cpsStmts, "if (NIM_UNLIKELY(*nimErr_)) goto LA$1_;$n",
+      lineCg(p, cpsStmts, "NIM_ERR_JUMP(LA$1_);$n",
         [p.nestedTryStmts[^1].label])
 
 proc finallyActions(p: BProc) =
@@ -1282,8 +1282,14 @@ proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
 
   expr(p, t[0], d)
 
+  var endLabel = -1
   if 1 < t.len and t[1].kind == nkExceptBranch:
-    startBlock(p, "if (NIM_UNLIKELY(*nimErr_)) {$n")
+    inc p.labels
+    endLabel = p.labels
+    #startBlock(p, "if (NIM_UNLIKELY(*nimErr_)) {$n")
+    linefmt(p, cpsStmts, "NIM_ERR_JUMP(LA$1_);$n", [lab])
+    linefmt(p, cpsStmts, "goto LA$1_;$n", [endLabel])
+    startBlock(p, "if (NIM_TRUE) {$n") # so that the `else` works out
   else:
     startBlock(p)
   linefmt(p, cpsStmts, "LA$1_:;$n", [lab])
@@ -1303,7 +1309,7 @@ proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
       if i > 1: lineF(p, cpsStmts, "else", [])
       startBlock(p)
       # we handled the exception, remember this:
-      linefmt(p, cpsStmts, "*nimErr_ = NIM_FALSE;$n", [])
+      linefmt(p, cpsStmts, "NIM_ERR_CLEAR();$n", [])
       expr(p, t[i][0], d)
     else:
       var orExpr = newRopeAppender()
@@ -1322,7 +1328,7 @@ proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
       if i > 1: line(p, cpsStmts, "else ")
       startBlock(p, "if ($1) {$n", [orExpr])
       # we handled the exception, remember this:
-      linefmt(p, cpsStmts, "*nimErr_ = NIM_FALSE;$n", [])
+      linefmt(p, cpsStmts, "NIM_ERR_CLEAR();$n", [])
       expr(p, t[i][^1], d)
 
     linefmt(p, cpsStmts, "#popCurrentException();$n", [])
@@ -1332,6 +1338,8 @@ proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
     inc(i)
   discard pop(p.nestedTryStmts)
   endBlock(p)
+  if endLabel >= 0:
+    linefmt(p, cpsStmts, "LA$1_:;$n", [endLabel])
 
   if i < t.len and t[i].kind == nkFinally:
     startBlock(p)
@@ -1342,7 +1350,17 @@ proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
     else:
       # pretend we did handle the error for the safe execution of the 'finally' section:
       p.procSec(cpsLocals).add(ropecg(p.module, "NIM_BOOL oldNimErrFin$1_;$n", [lab]))
-      linefmt(p, cpsStmts, "oldNimErrFin$1_ = *nimErr_; *nimErr_ = NIM_FALSE;$n", [lab])
+
+      inc p.labels, 2
+      let fLabel = p.labels-1
+      let tLabel = p.labels
+
+      linefmt(p, cpsStmts, "NIM_ERR_JUMP(LA$1_);$n", [tLabel])
+      linefmt(p, cpsStmts, "oldNimErrFin$1_ = NIM_FALSE; goto LA$2_;$n", [lab, fLabel])
+      linefmt(p, cpsStmts, "LA$2_: oldNimErrFin$1_ = NIM_TRUE; LA$3_: ;$n", [lab, tLabel, fLabel])
+      linefmt(p, cpsStmts, "NIM_ERR_CLEAR();$n", [])
+
+      #linefmt(p, cpsStmts, "oldNimErrFin$1_ = *nimErr_; NIM_ERR_CLEAR();$n", [lab])
       genStmts(p, t[i][0])
       # this is correct for all these cases:
       # 1. finally is run during ordinary control flow
@@ -1350,7 +1368,7 @@ proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
       #    error back to nil.
       # 3. finally is run for exception handling code without any 'except'
       #    handler present or only handlers that did not match.
-      linefmt(p, cpsStmts, "*nimErr_ = oldNimErrFin$1_;$n", [lab])
+      linefmt(p, cpsStmts, "if (oldNimErrFin$1_) { NIM_ERR_SET(); } else { NIM_ERR_CLEAR(); }$n", [lab])
     endBlock(p)
   raiseExit(p)
   if hasExcept: inc p.withinTryWithExcept

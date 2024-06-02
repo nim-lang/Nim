@@ -472,7 +472,7 @@ proc raiseExceptionAux(e: sink(ref Exception)) {.nodestroy.} =
   elif quirkyExceptions or gotoBasedExceptions:
     pushCurrentException(e)
     when gotoBasedExceptions:
-      inc nimInErrorMode
+      nimInErrorMode = true
   else:
     if excHandler != nil:
       pushCurrentException(e)
