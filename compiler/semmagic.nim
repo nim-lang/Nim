@@ -30,13 +30,15 @@ proc addDefaultFieldForNew(c: PContext, n: PNode): PNode =
     if asgnExpr.sons.len > 1:
       result = newTree(nkAsgn, result[1], asgnExpr)
 
-proc semAddrArg(c: PContext; n: PNode): PNode =
+proc semAddr(c: PContext; n: PNode): PNode =
+  result = newNodeI(nkAddr, n.info)
   let x = semExprWithType(c, n)
   if x.kind == nkSym:
     x.sym.flags.incl(sfAddrTaken)
   if isAssignable(c, x) notin {arLValue, arLocalLValue, arAddressableConst, arLentValue}:
     localError(c.config, n.info, errExprHasNoAddress)
-  result = x
+  result.add x
+  result.typ = makePtrType(c, x.typ)
 
 proc semTypeOf(c: PContext; n: PNode): PNode =
   var m = BiggestInt 1 # typeOfIter
@@ -71,7 +73,7 @@ proc semArrGet(c: PContext; n: PNode; flags: TExprFlags): PNode =
 proc semArrPut(c: PContext; n: PNode; flags: TExprFlags): PNode =
   # rewrite `[]=`(a, i, x)  back to ``a[i] = x``.
   let b = newNodeI(nkBracketExpr, n.info)
-  b.add(n[1].skipAddr)
+  b.add(n[1].skipHiddenAddr)
   for i in 2..<n.len-1: b.add(n[i])
   result = newNodeI(nkAsgn, n.info, 2)
   result[0] = b
@@ -235,7 +237,7 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
 proc semTypeTraits(c: PContext, n: PNode): PNode =
   checkMinSonsLen(n, 2, c.config)
   let t = n[1].typ
-  internalAssert c.config, t != nil and t.kind == tyTypeDesc
+  internalAssert c.config, t != nil and t.skipTypes({tyAlias}).kind == tyTypeDesc
   if t.len > 0:
     # This is either a type known to sem or a typedesc
     # param to a regular proc (again, known at instantiation)
@@ -561,9 +563,7 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
   case n[0].sym.magic
   of mAddr:
     checkSonsLen(n, 2, c.config)
-    result = n
-    result[1] = semAddrArg(c, n[1])
-    result.typ = makePtrType(c, result[1].typ)
+    result = semAddr(c, n[1])
   of mTypeOf:
     result = semTypeOf(c, n)
   of mSizeOf:

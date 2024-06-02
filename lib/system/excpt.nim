@@ -73,8 +73,12 @@ type
 
 when NimStackTraceMsgs:
   var frameMsgBuf* {.threadvar.}: string
+
+when not defined(nimV2):
+  var
+    framePtr {.threadvar.}: PFrame
+
 var
-  framePtr {.threadvar.}: PFrame
   currException {.threadvar.}: ref Exception
 
 when not gotoBasedExceptions:

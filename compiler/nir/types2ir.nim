@@ -150,7 +150,7 @@ proc procToIr(c: var TypesCon; g: var TypeGraph; t: PType; addEnv = false): Type
   of ccInline: g.addAnnotation "__inline"
   of ccNoInline: g.addAnnotation "__noinline"
   of ccThisCall: g.addAnnotation "__thiscall"
-  of ccNoConvention: g.addAnnotation ""
+  of ccNoConvention, ccMember: g.addAnnotation ""
 
   for i in 0..<fieldTypes.len:
     g.addType fieldTypes[i]

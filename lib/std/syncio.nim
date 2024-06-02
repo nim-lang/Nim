@@ -320,7 +320,7 @@ elif defined(windows):
 const
   BufSize = 4000
 
-proc close*(f: File) {.tags: [], gcsafe.} =
+proc close*(f: File) {.tags: [], gcsafe, sideEffect.} =
   ## Closes the file.
   if not f.isNil:
     discard c_fclose(f)
@@ -648,6 +648,9 @@ const
         ""
     else:
       ""
+  RawFormatOpen: array[FileMode, cstring] = [
+    # used for open by FileHandle, which calls `fdopen`
+    cstring("rb"), "wb", "w+b", "r+b", "ab"]
   FormatOpen: array[FileMode, cstring] = [
     cstring("rb" & NoInheritFlag), "wb" & NoInheritFlag, "w+b" & NoInheritFlag,
     "r+b" & NoInheritFlag, "ab" & NoInheritFlag
@@ -749,7 +752,7 @@ proc open*(f: var File, filehandle: FileHandle,
         filehandle) else: filehandle
     if not setInheritable(oshandle, false):
       return false
-  f = c_fdopen(filehandle, FormatOpen[mode])
+  f = c_fdopen(filehandle, RawFormatOpen[mode])
   result = f != nil
 
 proc open*(filename: string,
@@ -763,7 +766,7 @@ proc open*(filename: string,
   if not open(result, filename, mode, bufSize):
     raise newException(IOError, "cannot open: " & filename)
 
-proc setFilePos*(f: File, pos: int64, relativeTo: FileSeekPos = fspSet) {.benign.} =
+proc setFilePos*(f: File, pos: int64, relativeTo: FileSeekPos = fspSet) {.benign, sideEffect.} =
   ## Sets the position of the file pointer that is used for read/write
   ## operations. The file's first byte has the index zero.
   if c_fseek(f, pos, cint(relativeTo)) != 0:

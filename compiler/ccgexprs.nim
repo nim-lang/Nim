@@ -1352,14 +1352,6 @@ proc genSeqElemAppend(p: BProc, e: PNode, d: var TLoc) =
   genAssignment(p, dest, b, {needToCopy})
   gcUsage(p.config, e)
 
-proc genReset(p: BProc, n: PNode) =
-  var a: TLoc = initLocExpr(p, n[1])
-  specializeReset(p, a)
-  when false:
-    linefmt(p, cpsStmts, "#genericReset((void*)$1, $2);$n",
-            [addrLoc(p.config, a),
-            genTypeInfoV1(p.module, skipTypes(a.t, {tyVar}), n.info)])
-
 proc genDefault(p: BProc; n: PNode; d: var TLoc) =
   if d.k == locNone: d = getTemp(p, n.typ, needsInit=true)
   else: resetLoc(p, d)
@@ -1492,9 +1484,13 @@ proc rawConstExpr(p: BProc, n: PNode; d: var TLoc) =
   if id == p.module.labels:
     # expression not found in the cache:
     inc(p.module.labels)
-    p.module.s[cfsData].addf("static NIM_CONST $1 $2 = ", [getTypeDesc(p.module, t), d.r])
-    genBracedInit(p, n, isConst = true, t, p.module.s[cfsData])
-    p.module.s[cfsData].addf(";$n", [])
+    var data = "static NIM_CONST $1 $2 = " % [getTypeDesc(p.module, t), d.r]
+    # bug #23627; when generating const object fields, it's likely that
+    # we need to generate type infos for the object, which may be an object with
+    # custom hooks. We need to generate potential consts in the hooks first.
+    genBracedInit(p, n, isConst = true, t, data)
+    data.addf(";$n", [])
+    p.module.s[cfsData].add data
 
 proc handleConstExpr(p: BProc, n: PNode, d: var TLoc): bool =
   if d.k == locNone and n.len > ord(n.kind == nkObjConstr) and n.isDeepConstExpr:
@@ -1505,8 +1501,7 @@ proc handleConstExpr(p: BProc, n: PNode, d: var TLoc): bool =
 
 
 proc genFieldObjConstr(p: BProc; ty: PType; useTemp, isRef: bool; nField, val, check: PNode; d: var TLoc; r: Rope; info: TLineInfo) =
-  var tmp2: TLoc = default(TLoc)
-  tmp2.r = r
+  var tmp2 = TLoc(r: r)
   let field = lookupFieldAgain(p, ty, nField.sym, tmp2.r)
   if field.loc.r == "": fillObjectFields(p.module, ty)
   if field.loc.r == "": internalError(p.config, info, "genFieldObjConstr")
@@ -1521,7 +1516,12 @@ proc genFieldObjConstr(p: BProc; ty: PType; useTemp, isRef: bool; nField, val, c
     tmp2.k = d.k
     tmp2.storage = if isRef: OnHeap else: d.storage
   tmp2.lode = val
-  expr(p, val, tmp2)
+  if nField.typ.skipTypes(abstractVar).kind in {tyOpenArray, tyVarargs}:
+    var tmp3 = getTemp(p, val.typ)
+    expr(p, val, tmp3)
+    genOpenArrayConv(p, tmp2, tmp3, {})
+  else:
+    expr(p, val, tmp2)
 
 proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
   # inheritance in C++ does not allow struct initialization so
@@ -2088,7 +2088,7 @@ proc genSetOp(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     of mExcl: binaryStmtInExcl(p, e, d, "$1[(NU)($2)>>3] &= ~(1U<<($2&7U));$n")
     of mCard:
       var a: TLoc = initLocExpr(p, e[1])
-      putIntoDest(p, d, e, ropecg(p.module, "#cardSet($1, $2)", [addrLoc(p.config, a), size]))
+      putIntoDest(p, d, e, ropecg(p.module, "#cardSet($1, $2)", [rdCharLoc(a), size]))
     of mLtSet, mLeSet:
       i = getTemp(p, getSysType(p.module.g.graph, unknownLineInfo, tyInt)) # our counter
       a = initLocExpr(p, e[1])
@@ -2250,9 +2250,15 @@ proc convStrToCStr(p: BProc, n: PNode, d: var TLoc) =
 
 proc convCStrToStr(p: BProc, n: PNode, d: var TLoc) =
   var a: TLoc = initLocExpr(p, n[0])
-  putIntoDest(p, d, n,
-              ropecg(p.module, "#cstrToNimstr($1)", [rdLoc(a)]),
-              a.storage)
+  if p.module.compileToCpp:
+    # fixes for const qualifier; bug #12703; bug #19588
+    putIntoDest(p, d, n,
+            ropecg(p.module, "#cstrToNimstr((NCSTRING) $1)", [rdLoc(a)]),
+            a.storage)
+  else:
+    putIntoDest(p, d, n,
+                ropecg(p.module, "#cstrToNimstr($1)", [rdLoc(a)]),
+                a.storage)
   gcUsage(p.config, n)
 
 proc genStrEquals(p: BProc, e: PNode, d: var TLoc) =
@@ -2461,16 +2467,14 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mLeStr: binaryExpr(p, e, d, "(#cmpStrings($1, $2) <= 0)")
   of mLtStr: binaryExpr(p, e, d, "(#cmpStrings($1, $2) < 0)")
   of mIsNil: genIsNil(p, e, d)
-  of mIntToStr: genDollar(p, e, d, "#nimIntToStr($1)")
-  of mInt64ToStr: genDollar(p, e, d, "#nimInt64ToStr($1)")
   of mBoolToStr: genDollar(p, e, d, "#nimBoolToStr($1)")
   of mCharToStr: genDollar(p, e, d, "#nimCharToStr($1)")
-  of mFloatToStr:
-    if e[1].typ.skipTypes(abstractInst).kind == tyFloat32:
-      genDollar(p, e, d, "#nimFloat32ToStr($1)")
+  of mCStrToStr:
+    if p.module.compileToCpp:
+      # fixes for const qualifier; bug #12703; bug #19588
+      genDollar(p, e, d, "#cstrToNimstr((NCSTRING) $1)")
     else:
-      genDollar(p, e, d, "#nimFloatToStr($1)")
-  of mCStrToStr: genDollar(p, e, d, "#cstrToNimstr($1)")
+      genDollar(p, e, d, "#cstrToNimstr($1)")
   of mStrToStr, mUnown: expr(p, e[1], d)
   of generatedMagics: genCall(p, e, d)
   of mEnumToStr:
@@ -2558,7 +2562,6 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
              [mangleDynLibProc(prc), getTypeDesc(p.module, prc.loc.t), getModuleDllPath(p.module, prc)])
     genCall(p, e, d)
   of mDefault, mZeroDefault: genDefault(p, e, d)
-  of mReset: genReset(p, e)
   of mEcho: genEcho(p, e[1].skipConv)
   of mArrToSeq: genArrToSeq(p, e, d)
   of mNLen..mNError, mSlurp..mQuoteAst:

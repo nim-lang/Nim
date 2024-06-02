@@ -21,7 +21,7 @@ import
   extccomp
 
 import vtables
-import std/[strtabs, math, tables, intsets, strutils]
+import std/[strtabs, math, tables, intsets, strutils, packedsets]
 
 when not defined(leanCompiler):
   import spawn
@@ -530,7 +530,7 @@ proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
         # e.g. template foo(T: typedesc): seq[T]
         # We will instantiate the return type here, because
         # we now know the supplied arguments
-        var paramTypes = initIdTable()
+        var paramTypes = initTypeMapping()
         for param, value in genericParamsInMacroCall(s, call):
           var givenType = value.typ
           # the sym nodes used for the supplied generic arguments for

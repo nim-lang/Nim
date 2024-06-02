@@ -222,7 +222,7 @@ proc commandScan(cache: IdentCache, config: ConfigRef) =
   var stream = llStreamOpen(f, fmRead)
   if stream != nil:
     var
-      L: Lexer
+      L: Lexer = default(Lexer)
       tok: Token = default(Token)
     openLexer(L, f, stream, cache, config)
     while true:
