@@ -19,8 +19,6 @@ jobs:
     name: '${{ matrix.os }}'
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60 # refs bug #18178
-    env:
-      NIM_TESTAMENT_BATCH: ${{ matrix.batch }}
     steps:
       - name: 'Checkout'
         uses: actions/checkout@v4
