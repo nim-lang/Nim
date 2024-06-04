@@ -289,7 +289,7 @@ proc discardCheck(c: PContext, result: PNode, flags: TExprFlags) =
                renderTree(result, {renderNoComments}))
       else:
         # Ignore noreturn procs since they don't have a type
-        var n: PNode
+        var n = result
         if result.endsInNoReturn(n):
           return
 
