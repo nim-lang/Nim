@@ -448,6 +448,9 @@ when gotoBasedExceptions:
     ## This proc must be called before `currException` is destroyed.
     ## It also must be called at the end of every thread to ensure no
     ## error is swallowed.
+    when defined(nimUseCpuFlag):
+      var nimInErrorMode = false
+      {.emit: "NIM_ERR_JUMP(Lerr_); goto Lend_; Lerr_: `nimInErrorMode` = NIM_TRUE; Lend_: ;".}
     if nimInErrorMode and currException != nil:
       reportUnhandledError(currException)
       currException = nil
@@ -472,7 +475,10 @@ proc raiseExceptionAux(e: sink(ref Exception)) {.nodestroy.} =
   elif quirkyExceptions or gotoBasedExceptions:
     pushCurrentException(e)
     when gotoBasedExceptions:
-      nimInErrorMode = true
+      when defined(nimUseCpuFlag):
+        {.emit: "NIM_ERR_SET();".}
+      else:
+        nimInErrorMode = true
   else:
     if excHandler != nil:
       pushCurrentException(e)
@@ -512,7 +518,10 @@ proc reraiseException() {.compilerRtl.} =
     sysFatal(ReraiseDefect, "no exception to reraise")
   else:
     when gotoBasedExceptions:
-      inc nimInErrorMode
+      when defined(nimUseCpuFlag):
+        {.emit: "NIM_ERR_SET();".}
+      else:
+        nimInErrorMode = true
     else:
       raiseExceptionAux(currException)
 
