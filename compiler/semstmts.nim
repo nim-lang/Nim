@@ -242,10 +242,15 @@ proc endsInNoReturn(n: PNode, returningNode: var PNode): bool =
     result = hasElse
   of nkTryStmt:
     checkBranch(it[0])
-    for i in 1 ..< it.len:
+    var lastIndex = it.len - 1
+    if it[lastIndex].kind == nkFinally:
+      # if finally is noreturn, then the entire statement is noreturn
+      if endsInNoReturn(it[lastIndex][^1], returningNode):
+        return true
+      dec lastIndex
+    for i in 1 .. lastIndex:
       let branch = it[i]
-      if branch.kind != nkFinally:
-        checkBranch(branch[^1])
+      checkBranch(branch[^1])
     # none of the branches returned
     result = true
   of nkLastBlockStmts:
