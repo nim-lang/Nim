@@ -1267,16 +1267,13 @@ proc createTypeBoundOps(g: ModuleGraph; c: PContext; orig: PType; info: TLineInf
   ## The later 'injectdestructors' pass depends on it.
   if orig == nil or {tfCheckedForDestructor, tfHasMeta} * orig.flags != {}: return
   incl orig.flags, tfCheckedForDestructor
-
-  let skipped = orig.skipTypes({tyGenericInst, tyAlias, tySink})
+  let skipped = orig.skipTypes({tyAlias, tySink})
   if isEmptyContainer(skipped) or skipped.kind == tyStatic: return
-
   let h = sighashes.hashType(skipped, g.config, {CoType, CoConsiderOwned, CoDistinct})
   var canon = g.canonTypes.getOrDefault(h)
   if canon == nil:
     g.canonTypes[h] = skipped
     canon = skipped
-
   # multiple cases are to distinguish here:
   # 1. we don't know yet if 'typ' has a nontrival destructor.
   # 2. we have a nop destructor. --> mDestroy

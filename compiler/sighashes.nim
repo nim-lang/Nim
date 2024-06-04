@@ -125,7 +125,11 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]; conf: Confi
       for _, a in normalizedType.genericInstParams:
         c.hashType a, flags, conf
     else:
-      c.hashType t.skipModifier, flags, conf
+      if t.isGenericAlias():
+        c.hashType t.skipModifier, flags, conf
+      else:
+        for i in 0..<t.len:
+          c.hashType t[i], flags, conf
   of tyAlias, tySink, tyUserTypeClasses, tyInferred:
     c.hashType t.skipModifier, flags, conf
   of tyOwned:
