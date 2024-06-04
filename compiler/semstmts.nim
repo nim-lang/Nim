@@ -184,7 +184,7 @@ proc implicitlyDiscardable(n: PNode): bool =
     # all branches are discardable
     result = true
   of nkCallKinds:
-    result = it[0].kind == nkSym and sfDiscardable in it[0].sym.flags
+    result = it[0].kind == nkSym and {sfDiscardable, sfNoReturn} * it[0].sym.flags != {}
   of nkLastBlockStmts:
     result = true
   else:
