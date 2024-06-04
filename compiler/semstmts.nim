@@ -264,7 +264,7 @@ proc endsInNoReturn(n: PNode, returningNode: var PNode): bool =
     returningNode = it
 
 proc endsInNoReturn(n: PNode): bool =
-  var dummy: PNode
+  var dummy: PNode = nil
   result = endsInNoReturn(n, dummy)
 
 proc fixNilType(c: PContext; n: PNode) =
