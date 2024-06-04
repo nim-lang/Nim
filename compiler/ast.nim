@@ -331,7 +331,7 @@ type
     nfOpenSym # node is a captured sym but can be overriden by local symbols
 
   TNodeFlags* = set[TNodeFlag]
-  TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 47)
+  TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 48)
     tfVarargs,        # procedure has C styled varargs
                       # tyArray type represeting a varargs list
     tfNoSideEffect,   # procedure type does not allow side effects
@@ -403,6 +403,7 @@ type
     tfIsOutParam
     tfSendable
     tfImplicitStatic
+    tfTrackedProc     # used for delayedEffects
 
   TTypeFlags* = set[TTypeFlag]
 

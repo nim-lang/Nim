@@ -168,6 +168,8 @@ type
     inUncheckedAssignSection*: int
     importModuleLookup*: Table[int, seq[int]] # (module.ident.id, [module.id])
     skipTypes*: seq[PNode] # used to skip types between passes in type section. So far only used for inheritance, sets and generic bodies.
+    delayedEffects*: Table[ItemId, seq[PSym]]
+    delayedEffectsInverted*: Table[ItemId, ItemId]
   TBorrowState* = enum
     bsNone, bsReturnNotMatch, bsNoDistinct, bsGeneric, bsNotSupported, bsMatch
 

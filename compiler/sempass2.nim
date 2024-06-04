@@ -1024,7 +1024,14 @@ proc trackCall(tracked: PEffects; n: PNode) =
         else:
           if laxEffects notin tracked.c.config.legacyFeatures and a.kind == nkSym and
               a.sym.kind in routineKinds:
-            propagateEffects(tracked, n, a.sym)
+            if tfTrackedProc in a.sym.typ.flags:
+              propagateEffects(tracked, n, a.sym)
+            else:
+              if a.sym.typ.itemId notin tracked.c.delayedEffects:
+                tracked.c.delayedEffects[a.sym.typ.itemId] = @[tracked.owner]
+              else:
+                tracked.c.delayedEffects[a.sym.typ.itemId].add tracked.owner
+              tracked.c.delayedEffectsInverted[tracked.owner.typ.itemId] = a.sym.typ.itemId
       else:
         mergeRaises(tracked, effectList[exceptionEffects], n)
         mergeTags(tracked, effectList[tagEffects], n)
@@ -1727,6 +1734,14 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
       when false: trackWrites(s, body)
   if strictNotNil in c.features and s.kind in {skProc, skFunc, skMethod, skConverter}:
     checkNil(s, body, g.config, c.idgen)
+
+  if s.typ.itemId notin c.delayedEffectsInverted:
+    s.typ.flags.incl tfTrackedProc
+
+  if s.typ.itemId in c.delayedEffects:
+    for sym in c.delayedEffects[s.typ.itemId]:
+      trackProc(c, sym, sym.ast[bodyPos])
+    # todo call track delayedEffects recursively
 
 proc trackStmt*(c: PContext; module: PSym; n: PNode, isTopLevel: bool) =
   case n.kind
