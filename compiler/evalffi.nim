@@ -434,7 +434,7 @@ proc fficast*(conf: ConfigRef, x: PNode, destTyp: PType): PNode =
 proc callForeignFunction*(conf: ConfigRef, call: PNode): PNode =
   internalAssert conf, call[0].kind == nkPtrLit
 
-  var cif: TCif
+  var cif: TCif = default(TCif)
   var sig: ParamList = default(ParamList)
   # use the arguments' types for varargs support:
   for i in 1..<call.len:
@@ -474,7 +474,7 @@ proc callForeignFunction*(conf: ConfigRef, fn: PNode, fntyp: PType,
                           info: TLineInfo): PNode =
   internalAssert conf, fn.kind == nkPtrLit
 
-  var cif: TCif
+  var cif: TCif = default(TCif)
   var sig: ParamList = default(ParamList)
   for i in 0..len-1:
     var aTyp = args[i+start].typ

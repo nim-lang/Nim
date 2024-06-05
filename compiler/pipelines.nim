@@ -5,10 +5,12 @@ import sem, cgen, modulegraphs, ast, llstream, parser, msgs,
 
 import pipelineutils
 
+import ../dist/checksums/src/checksums/sha1
+
 when not defined(leanCompiler):
   import jsgen, docgen2
 
-import std/[syncio, objectdollar, assertions, tables, strutils]
+import std/[syncio, objectdollar, assertions, tables, strutils, strtabs]
 import renderer
 import ic/replayer
 import nir/nir
@@ -99,7 +101,7 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
                     stream: PLLStream): bool =
   if graph.stopCompile(): return true
   var
-    p: Parser
+    p: Parser = default(Parser)
     s: PLLStream
     fileIdx = module.fileIdx
 
@@ -244,7 +246,10 @@ proc compilePipelineModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymF
   if result == nil:
     var cachedModules: seq[FileIndex] = @[]
     result = moduleFromRodFile(graph, fileIdx, cachedModules)
-    let filename = AbsoluteFile toFullPath(graph.config, fileIdx)
+    let path = toFullPath(graph.config, fileIdx)
+    let filename = AbsoluteFile path
+    if fileExists(filename): # it could be a stdinfile
+      graph.cachedFiles[path] = $secureHashFile(path)
     if result == nil:
       result = newModule(graph, fileIdx)
       result.flags.incl flags

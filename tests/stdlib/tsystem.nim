@@ -83,24 +83,36 @@ block:
     X = object
       a: string
       b: set[char]
+      c: int
+      d: float
+      e: int64
 
-  var y = X(b: {'a'})
+
+  var x = X(b: {'a'}, e: 10)
+
+  var y = move x
+
+  doAssert x.a == ""
+  doAssert x.b == {}
+  doAssert x.c == 0
+  doAssert x.d == 0.0
+  doAssert x.e == 0
 
   reset(y)
 
+  doAssert y.a == ""
   doAssert y.b == {}
+  doAssert y.c == 0
+  doAssert y.d == 0.0
+  doAssert y.e == 0
 
 block:
-  type
-    X = object
-      a: string
-      b: int
-
-  var y = X(b: 1314)
-
-  reset(y)
-
-  doAssert y.b == 0
+  var x = 2
+  var y = move x
+  doAssert y == 2
+  doAssert x == 0
+  reset y
+  doAssert y == 0
 
 block:
   type

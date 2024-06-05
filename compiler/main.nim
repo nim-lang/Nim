@@ -155,7 +155,7 @@ proc commandCompileToC(graph: ModuleGraph) =
     extccomp.callCCompiler(conf)
     # for now we do not support writing out a .json file with the build instructions when HCR is on
     if not conf.hcrOn:
-      extccomp.writeJsonBuildInstructions(conf)
+      extccomp.writeJsonBuildInstructions(conf, graph.cachedFiles)
     if optGenScript in graph.config.globalOptions:
       writeDepsFile(graph)
     if optGenCDeps in graph.config.globalOptions:
@@ -222,7 +222,7 @@ proc commandScan(cache: IdentCache, config: ConfigRef) =
   var stream = llStreamOpen(f, fmRead)
   if stream != nil:
     var
-      L: Lexer
+      L: Lexer = default(Lexer)
       tok: Token = default(Token)
     openLexer(L, f, stream, cache, config)
     while true:

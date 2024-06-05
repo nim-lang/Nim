@@ -150,8 +150,14 @@ proc genBoundsCheck(p: BProc; arr, a, b: TLoc)
 
 proc reifiedOpenArray(n: PNode): bool {.inline.} =
   var x = n
-  while x.kind in {nkAddr, nkHiddenAddr, nkHiddenStdConv, nkHiddenDeref}:
-    x = x[0]
+  while true:
+    case x.kind
+    of {nkAddr, nkHiddenAddr, nkHiddenDeref}:
+      x = x[0]
+    of nkHiddenStdConv:
+      x = x[1]
+    else:
+      break
   if x.kind == nkSym and x.sym.kind == skParam:
     result = false
   else:
@@ -166,7 +172,10 @@ proc genOpenArraySlice(p: BProc; q: PNode; formalType, destType: PType; prepareF
     genBoundsCheck(p, a, b, c)
   if prepareForMutation:
     linefmt(p, cpsStmts, "#nimPrepareStrMutationV2($1);$n", [byRefLoc(p, a)])
-  let ty = skipTypes(a.t, abstractVar+{tyPtr})
+  # bug #23321: In the function mapType, ptrs (tyPtr, tyVar, tyLent, tyRef)
+  # are mapped into ctPtrToArray, the dereference of which is skipped
+  # in the `genref`. We need to skip these ptrs here
+  let ty = skipTypes(a.t, abstractVar+{tyPtr, tyRef})
   let dest = getTypeDesc(p.module, destType)
   let lengthExpr = "($1)-($2)+1" % [rdLoc(c), rdLoc(b)]
   case ty.kind
@@ -310,6 +319,11 @@ proc genArg(p: BProc, n: PNode, param: PSym; call: PNode; result: var Rope; need
       addRdLoc(a, result)
   else:
     a = initLocExprSingleUse(p, n)
+    if param.typ.kind in abstractPtrs:
+      let typ = skipTypes(param.typ, abstractPtrs)
+      if typ.sym != nil and sfImportc in typ.sym.flags:
+        a.r = "(($1) ($2))" %
+          [getTypeDesc(p.module, param.typ), rdCharLoc(a)]
     addRdLoc(withTmpIfNeeded(p, a, needsTmp), result)
   #assert result != nil
 
@@ -354,7 +368,7 @@ proc getPotentialWrites(n: PNode; mutate: bool; result: var seq[PNode]) =
   of nkCallKinds:
     case n.getMagic:
     of mIncl, mExcl, mInc, mDec, mAppendStrCh, mAppendStrStr, mAppendSeqElem,
-        mAddr, mNew, mNewFinalize, mWasMoved, mDestroy, mReset:
+        mAddr, mNew, mNewFinalize, mWasMoved, mDestroy:
       getPotentialWrites(n[1], true, result)
       for i in 2..<n.len:
         getPotentialWrites(n[i], mutate, result)

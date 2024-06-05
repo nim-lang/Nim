@@ -15,7 +15,7 @@ const
   errStringLiteralExpected = "string literal expected"
   errIntLiteralExpected = "integer literal expected"
   errWrongNumberOfVariables = "wrong number of variables"
-  errInvalidOrderInEnumX = "invalid order in enum '$1'"
+  errDuplicateAliasInEnumX = "duplicate value in enum '$1'"
   errOverflowInEnumX = "The enum '$1' exceeds its maximum value ($2)"
   errOrdinalTypeExpected = "ordinal type expected; given: $1"
   errSetTooBig = "set is too large; use `std/sets` for ordinal types with more than 2^16 elements"
@@ -69,6 +69,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
     e: PSym = nil
     base: PType = nil
     identToReplace: ptr PNode = nil
+    counterSet = initPackedSet[BiggestInt]()
   counter = 0
   base = nil
   result = newOrPrevType(tyEnum, prev, c)
@@ -85,6 +86,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
   var hasNull = false
   for i in 1..<n.len:
     if n[i].kind == nkEmpty: continue
+    var useAutoCounter = false
     case n[i].kind
     of nkEnumFieldDef:
       if n[i][0].kind == nkPragmaExpr:
@@ -112,6 +114,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
       of tyString, tyCstring:
         strVal = v
         x = counter
+        useAutoCounter = true
       else:
         if isOrdinalType(v.typ, allowEnumWithHoles=true):
           x = toInt64(getOrdValue(v))
@@ -120,22 +123,30 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
           localError(c.config, v.info, errOrdinalTypeExpected % typeToString(v.typ, preferDesc))
       if i != 1:
         if x != counter: incl(result.flags, tfEnumHasHoles)
-        if x < counter:
-          localError(c.config, n[i].info, errInvalidOrderInEnumX % e.name.s)
-          x = counter
       e.ast = strVal # might be nil
       counter = x
     of nkSym:
       e = n[i].sym
+      useAutoCounter = true
     of nkIdent, nkAccQuoted:
       e = newSymS(skEnumField, n[i], c)
       identToReplace = addr n[i]
+      useAutoCounter = true
     of nkPragmaExpr:
       e = newSymS(skEnumField, n[i][0], c)
       pragma(c, e, n[i][1], enumFieldPragmas)
       identToReplace = addr n[i][0]
+      useAutoCounter = true
     else:
       illFormedAst(n[i], c.config)
+
+    if useAutoCounter:
+      while counter in counterSet and counter != high(typeof(counter)):
+        inc counter
+      counterSet.incl counter
+    elif counterSet.containsOrIncl(counter):
+      localError(c.config, n[i].info, errDuplicateAliasInEnumX % e.name.s)
+
     e.typ = result
     e.position = int(counter)
     let symNode = newSymNode(e)
@@ -1883,7 +1894,7 @@ proc semTypeIdent(c: PContext, n: PNode): PSym =
           return errorSym(c, n)
       if result.kind != skType and result.magic notin {mStatic, mType, mTypeOf}:
         # this implements the wanted ``var v: V, x: V`` feature ...
-        var ov: TOverloadIter
+        var ov: TOverloadIter = default(TOverloadIter)
         var amb = initOverloadIter(ov, c, n)
         while amb != nil and amb.kind != skType:
           amb = nextOverloadIter(ov, c, n)
@@ -2180,6 +2191,10 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     else:
       let symKind = if n.kind == nkIteratorTy: skIterator else: skProc
       result = semProcTypeWithScope(c, n, prev, symKind)
+      if result == nil:
+        localError(c.config, n.info, "type expected, but got: " & renderTree(n))
+        result = newOrPrevType(tyError, prev, c)
+
       if n.kind == nkIteratorTy and result.kind == tyProc:
         result.flags.incl(tfIterator)
       if result.callConv == ccClosure and c.config.selectedGC in {gcArc, gcOrc, gcAtomicArc}:

@@ -88,7 +88,7 @@ const
     wGensym, wInject,
     wIntDefine, wStrDefine, wBoolDefine, wDefine,
     wCompilerProc, wCore}
-  paramPragmas* = {wNoalias, wInject, wGensym, wByRef, wByCopy, wCodegenDecl}
+  paramPragmas* = {wNoalias, wInject, wGensym, wByRef, wByCopy, wCodegenDecl, wExportc, wExportCpp}
   letPragmas* = varPragmas
   procTypePragmas* = {FirstCallConv..LastCallConv, wVarargs, wNoSideEffect,
                       wThread, wRaises, wEffectsOf, wLocks, wTags, wForbids, wGcSafe,
@@ -241,7 +241,7 @@ proc processVirtual(c: PContext, n: PNode, s: PSym, flag: TSymFlag) =
   s.constraint.strVal = s.constraint.strVal % s.name.s
   s.flags.incl {flag, sfInfixCall, sfExportc, sfMangleCpp}
 
-  s.typ.callConv = ccNoConvention
+  s.typ.callConv = ccMember
   incl c.config.globalOptions, optMixedMode
 
 proc processCodegenDecl(c: PContext, n: PNode, sym: PSym) =
@@ -480,6 +480,18 @@ proc processOption(c: PContext, n: PNode, resOptions: var TOptions) =
     # calling conventions (boring...):
     localError(c.config, n.info, "option expected")
 
+proc checkPushedPragma(c: PContext, n: PNode) =
+  let keyDeep = n.kind in nkPragmaCallKinds and n.len > 1
+  var key = if keyDeep: n[0] else: n
+  if key.kind in nkIdentKinds:
+    let ident = considerQuotedIdent(c, key)
+    var userPragma = strTableGet(c.userPragmas, ident)
+    if userPragma == nil:
+      let k = whichKeyword(ident)
+      # TODO: might as well make a list which is not accepted by `push`: emit, cast etc.
+      if k == wEmit:
+        localError(c.config, n.info, "an 'emit' pragma cannot be pushed")
+
 proc processPush(c: PContext, n: PNode, start: int) =
   if n[start-1].kind in nkPragmaCallKinds:
     localError(c.config, n.info, "'push' cannot have arguments")
@@ -487,6 +499,7 @@ proc processPush(c: PContext, n: PNode, start: int) =
   for i in start..<n.len:
     if not tryProcessOption(c, n[i], c.config.options):
       # simply store it somewhere:
+      checkPushedPragma(c, n[i])
       if x.otherPragmas.isNil:
         x.otherPragmas = newNodeI(nkPragma, n.info)
       x.otherPragmas.add n[i]
@@ -1129,13 +1142,20 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wFatal: fatal(c.config, it.info, expectStrLit(c, it))
       of wDefine: processDefine(c, it, sym)
       of wUndef: processUndef(c, it)
-      of wCompile: processCompile(c, it)
+      of wCompile:
+        let m = sym.getModule()
+        incl(m.flags, sfUsed)
+        processCompile(c, it)
       of wLink: processLink(c, it)
       of wPassl:
+        let m = sym.getModule()
+        incl(m.flags, sfUsed)
         let s = expectStrLit(c, it)
         extccomp.addLinkOption(c.config, s)
         recordPragma(c, it, "passl", s)
       of wPassc:
+        let m = sym.getModule()
+        incl(m.flags, sfUsed)
         let s = expectStrLit(c, it)
         extccomp.addCompileOption(c.config, s)
         recordPragma(c, it, "passc", s)

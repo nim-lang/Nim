@@ -239,11 +239,6 @@ proc interestingIterVar(s: PSym): bool {.inline.} =
 template isIterator*(owner: PSym): bool =
   owner.kind == skIterator and owner.typ.callConv == ccClosure
 
-proc liftingHarmful(conf: ConfigRef; owner: PSym): bool {.inline.} =
-  ## lambda lifting can be harmful for JS-like code generators.
-  let isCompileTime = sfCompileTime in owner.flags or owner.kind == skMacro
-  result = conf.backend == backendJs and not isCompileTime
-
 proc createTypeBoundOpsLL(g: ModuleGraph; refType: PType; info: TLineInfo; idgen: IdGenerator; owner: PSym) =
   if owner.kind != skMacro:
     createTypeBoundOps(g, nil, refType.elementType, info, idgen)
@@ -260,12 +255,10 @@ proc genCreateEnv(env: PNode): PNode =
 
 proc liftIterSym*(g: ModuleGraph; n: PNode; idgen: IdGenerator; owner: PSym): PNode =
   # transforms  (iter)  to  (let env = newClosure[iter](); (iter, env))
-  if liftingHarmful(g.config, owner): return n
   let iter = n.sym
   assert iter.isIterator
 
-  result = newNodeIT(nkStmtListExpr, n.info, n.typ)
-
+  result = newNodeIT(nkStmtListExpr, n.info, iter.typ)
   let hp = getHiddenParam(g, iter)
   var env: PNode
   if owner.isIterator:
@@ -467,6 +460,7 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
             #let obj = c.getEnvTypeForOwner(s.owner).skipTypes({tyOwned, tyRef, tyPtr})
 
             if s.name.id == getIdent(c.graph.cache, ":state").id:
+              obj.n[0].sym.flags.incl sfNoInit
               obj.n[0].sym.itemId = ItemId(module: s.itemId.module, item: -s.itemId.item)
             else:
               discard addField(obj, s, c.graph.cache, c.idgen)
@@ -883,14 +877,9 @@ proc liftIterToProc*(g: ModuleGraph; fn: PSym; body: PNode; ptrType: PType;
 
 proc liftLambdas*(g: ModuleGraph; fn: PSym, body: PNode; tooEarly: var bool;
                   idgen: IdGenerator; flags: TransformFlags): PNode =
-  # XXX backend == backendJs does not suffice! The compiletime stuff needs
-  # the transformation even when compiling to JS ...
-
-  # However we can do lifting for the stuff which is *only* compiletime.
   let isCompileTime = sfCompileTime in fn.flags or fn.kind == skMacro
 
-  if body.kind == nkEmpty or (
-      g.config.backend == backendJs and not isCompileTime) or
+  if body.kind == nkEmpty or
       (fn.skipGenericOwner.kind != skModule and force notin flags):
 
     # ignore forward declaration:
@@ -950,7 +939,6 @@ proc liftForLoop*(g: ModuleGraph; body: PNode; idgen: IdGenerator; owner: PSym):
           break
         ...
     """
-  if liftingHarmful(g.config, owner): return body
   if not (body.kind == nkForStmt and body[^2].kind in nkCallKinds):
     localError(g.config, body.info, "ignored invalid for loop")
     return body

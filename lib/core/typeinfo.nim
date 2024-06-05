@@ -129,7 +129,9 @@ when not defined(gcDestructors):
 else:
   proc nimNewObj(size, align: int): pointer {.importCompilerProc.}
   proc newSeqPayload(cap, elemSize, elemAlign: int): pointer {.importCompilerProc.}
-  proc prepareSeqAdd(len: int; p: pointer; addlen, elemSize, elemAlign: int): pointer {.
+  proc prepareSeqAddUninit(len: int; p: pointer; addlen, elemSize, elemAlign: int): pointer {.
+    importCompilerProc.}
+  proc zeroNewElements(len: int; p: pointer; addlen, elemSize, elemAlign: int) {.
     importCompilerProc.}
 
 template `+!!`(a, b): untyped = cast[pointer](cast[int](a) + b)
@@ -221,7 +223,8 @@ proc extendSeq*(x: Any) =
     var s = cast[ptr NimSeqV2Reimpl](x.value)
     let elem = x.rawType.base
     if s.p == nil or s.p.cap < s.len+1:
-      s.p = cast[ptr NimSeqPayloadReimpl](prepareSeqAdd(s.len, s.p, 1, elem.size, elem.align))
+      s.p = cast[ptr NimSeqPayloadReimpl](prepareSeqAddUninit(s.len, s.p, 1, elem.size, elem.align))
+    zeroNewElements(s.len, s.p, 1, elem.size, elem.align)
     inc s.len
   else:
     var y = cast[ptr PGenSeq](x.value)[]

@@ -52,7 +52,7 @@ proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule;
                isField = false): PNode =
   var
     a: PSym
-    o: TOverloadIter
+    o: TOverloadIter = default(TOverloadIter)
   var i = 0
   a = initOverloadIter(o, c, n)
   while a != nil:
@@ -261,7 +261,7 @@ proc semRoutineInTemplName(c: var TemplCtx, n: PNode): PNode =
   if n.kind == nkIdent:
     let s = qualifiedLookUp(c.c, n, {})
     if s != nil:
-      if s.owner == c.owner and (s.kind == skParam or sfGenSym in s.flags):
+      if s.owner == c.owner and s.kind == skParam:
         incl(s.flags, sfUsed)
         result = newSymNode(s, n.info)
         onUse(n.info, s)
