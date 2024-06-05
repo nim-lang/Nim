@@ -93,8 +93,6 @@ type
     freeList: ptr FreeCell
     free: int            # how many bytes remain
     acc: int             # accumulator for small object allocation
-    when defined(gcDestructors):
-      sharedFreeList: ptr FreeCell # make no attempt at avoiding false sharing for now for this object field
     data {.align: MemAlign.}: UncheckedArray[byte]      # start of usable memory
 
   BigChunk = object of BaseChunk # not necessarily > PageSize!
@@ -109,7 +107,9 @@ type
   MemRegion = object
     when not defined(gcDestructors):
       minLargeObj, maxLargeObj: int
-    freeSmallChunks: array[0..max(1,SmallChunkSize div MemAlign-1), PSmallChunk]
+    freeSmallChunks: array[0..max(1, SmallChunkSize div MemAlign-1), PSmallChunk]
+    when defined(gcDestructors):
+      sharedFreeLists: array[0..max(1, SmallChunkSize div MemAlign-1), ptr FreeCell]
     flBitmap: uint32
     slBitmap: array[RealFli, uint32]
     matrix: array[RealFli, array[MaxSli, PBigChunk]]
@@ -775,8 +775,10 @@ when defined(gcDestructors):
     sysAssert c.next == nil, "c.next pointer must be nil"
     atomicPrepend a.sharedFreeListBigChunks, c
 
-  proc addToSharedFreeList(c: PSmallChunk; f: ptr FreeCell) {.inline.} =
-    atomicPrepend c.sharedFreeList, f
+  proc addToSharedFreeList(c: PSmallChunk; f: ptr FreeCell; size: int) {.inline.} =
+    atomicPrepend c.owner.sharedFreeLists[size], f
+
+  const MaxSteps = 20
 
   proc compensateCounters(a: var MemRegion; c: PSmallChunk; size: int) =
     # rawDealloc did NOT do the usual:
@@ -786,30 +788,26 @@ when defined(gcDestructors):
     # we split the list in order to achieve bounded response times.
     var it = c.freeList
     var x = 0
-    var maxIters = 20 # make it time-bounded
     while it != nil:
-      if maxIters == 0:
-        let rest = it.next.loada
-        if rest != nil:
-          it.next.storea nil
-          addToSharedFreeList(c, rest)
-        break
       inc x, size
-      it = it.next.loada
-      dec maxIters
-    inc(c.free, x)
+      let chunk = cast[PSmallChunk](pageAddr(it))
+      inc(chunk.free, x)
+      it = it.next
     dec(a.occ, x)
 
   proc freeDeferredObjects(a: var MemRegion; root: PBigChunk) =
     var it = root
-    var maxIters = 20 # make it time-bounded
+    var maxIters = MaxSteps # make it time-bounded
     while true:
+      let rest = it.next.loada
+      it.next.storea nil
+      deallocBigChunk(a, cast[PBigChunk](it))
       if maxIters == 0:
-        let rest = it.next.loada
-        it.next.storea nil
-        addToSharedFreeListBigChunks(a, rest)
+        if rest != nil:
+          addToSharedFreeListBigChunks(a, rest)
+          sysAssert a.sharedFreeListBigChunks != nil, "re-enqueing failed"
         break
-      it = it.next.loada
+      it = rest
       dec maxIters
       if it == nil: break
 
@@ -833,8 +831,6 @@ proc rawAlloc(a: var MemRegion, requestedSize: int): pointer =
       sysAssert c.size == PageSize, "rawAlloc 3"
       c.size = size
       c.acc = size
-      when defined(gcDestructors):
-        c.sharedFreeList = nil
       c.free = SmallChunkSize - smallChunkOverhead() - size
       sysAssert c.owner == addr(a), "rawAlloc: No owner set!"
       c.next = nil
@@ -851,10 +847,11 @@ proc rawAlloc(a: var MemRegion, requestedSize: int): pointer =
       when defined(gcDestructors):
         if c.freeList == nil:
           when hasThreadSupport:
-            c.freeList = atomicExchangeN(addr c.sharedFreeList, nil, ATOMIC_RELAXED)
+            # Steal the entire list from `sharedFreeList`:
+            c.freeList = atomicExchangeN(addr a.sharedFreeLists[s], nil, ATOMIC_RELAXED)
           else:
-            c.freeList = c.sharedFreeList
-            c.sharedFreeList = nil
+            c.freeList = a.sharedFreeLists[s]
+            a.sharedFreeLists[s] = nil
           compensateCounters(a, c, size)
       if c.freeList == nil:
         sysAssert(c.acc + smallChunkOverhead() + size <= SmallChunkSize,
@@ -921,7 +918,7 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
   if isSmallChunk(c):
     # `p` is within a small chunk:
     var c = cast[PSmallChunk](c)
-    var s = c.size
+    let s = c.size
     #       ^ We might access thread foreign storage here.
     # The other thread cannot possibly free this block as it's still alive.
     var f = cast[ptr FreeCell](p)
@@ -955,7 +952,7 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
           freeBigChunk(a, cast[PBigChunk](c))
     else:
       when defined(gcDestructors):
-        addToSharedFreeList(c, f)
+        addToSharedFreeList(c, f, s div MemAlign)
     sysAssert(((cast[int](p) and PageMask) - smallChunkOverhead()) %%
                s == 0, "rawDealloc 2")
   else:
