@@ -1,3 +1,6 @@
+discard """
+  joinable: false
+"""
 
 import std / [atomics, strutils, sequtils]
 
