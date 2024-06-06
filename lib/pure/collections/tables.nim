@@ -1439,7 +1439,7 @@ proc hasKey*[A, B](t: OrderedTable[A, B], key: A): bool =
     doAssert a.hasKey('a') == true
     doAssert a.hasKey('z') == false
 
-  var hc: Hash
+  var hc: Hash = default(Hash)
   result = rawGet(t, key, hc) >= 0
 
 proc contains*[A, B](t: OrderedTable[A, B], key: A): bool =

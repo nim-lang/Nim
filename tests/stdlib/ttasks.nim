@@ -523,3 +523,39 @@ block:
       doAssert resB == "abcdef"
 
     testReturnValues()
+
+
+block: # bug #23635
+  block:
+    type
+      Store = object
+        run: proc (a: int) {.nimcall, gcsafe.}
+
+    block:
+      var count = 0
+      proc hello(a: int) =
+        inc count, a
+
+      var store = Store()
+      store.run = hello
+
+      let b = toTask store.run(13)
+      b.invoke()
+      doAssert count == 13
+
+  block:
+    type
+      Store = object
+        run: proc () {.nimcall, gcsafe.}
+
+    block:
+      var count = 0
+      proc hello() =
+        inc count, 1
+
+      var store = Store()
+      store.run = hello
+
+      let b = toTask store.run()
+      b.invoke()
+      doAssert count == 1

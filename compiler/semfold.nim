@@ -307,11 +307,9 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; idgen: IdGenerator; g: ModuleGraph): P
   of mRepr:
     # BUGFIX: we cannot eval mRepr here for reasons that I forgot.
     discard
-  of mIntToStr, mInt64ToStr: result = newStrNodeT($(getOrdValue(a)), n, g)
   of mBoolToStr:
     if getOrdValue(a) == 0: result = newStrNodeT("false", n, g)
     else: result = newStrNodeT("true", n, g)
-  of mFloatToStr: result = newStrNodeT($getFloat(a), n, g)
   of mCStrToStr, mCharToStr:
     result = newStrNodeT(getStrOrChar(a), n, g)
   of mStrToStr: result = newStrNodeT(getStrOrChar(a), n, g)
@@ -773,7 +771,8 @@ proc getConstExpr(m: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode 
   of nkCast:
     var a = getConstExpr(m, n[1], idgen, g)
     if a == nil: return
-    if n.typ != nil and n.typ.kind in NilableTypes:
+    if n.typ != nil and n.typ.kind in NilableTypes and
+        not (n.typ.kind == tyProc and a.typ.kind == tyProc):
       # we allow compile-time 'cast' for pointer types:
       result = a
       result.typ = n.typ

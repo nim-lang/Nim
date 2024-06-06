@@ -648,6 +648,9 @@ const
         ""
     else:
       ""
+  RawFormatOpen: array[FileMode, cstring] = [
+    # used for open by FileHandle, which calls `fdopen`
+    cstring("rb"), "wb", "w+b", "r+b", "ab"]
   FormatOpen: array[FileMode, cstring] = [
     cstring("rb" & NoInheritFlag), "wb" & NoInheritFlag, "w+b" & NoInheritFlag,
     "r+b" & NoInheritFlag, "ab" & NoInheritFlag
@@ -749,7 +752,7 @@ proc open*(f: var File, filehandle: FileHandle,
         filehandle) else: filehandle
     if not setInheritable(oshandle, false):
       return false
-  f = c_fdopen(filehandle, FormatOpen[mode])
+  f = c_fdopen(filehandle, RawFormatOpen[mode])
   result = f != nil
 
 proc open*(filename: string,
@@ -871,7 +874,7 @@ proc writeFile*(filename: string, content: openArray[byte]) {.since: (1, 1).} =
   var f: File = nil
   if open(f, filename, fmWrite):
     try:
-      f.writeBuffer(unsafeAddr content[0], content.len)
+      discard f.writeBuffer(unsafeAddr content[0], content.len)
     finally:
       close(f)
   else:

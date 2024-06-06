@@ -300,7 +300,7 @@ proc genSink(c: var Con; s: var Scope; dest, ri: PNode; flags: set[MoveOrCopyFla
 proc isCriticalLink(dest: PNode): bool {.inline.} =
   #[
   Lins's idea that only "critical" links can introduce a cycle. This is
-  critical for the performance gurantees that we strive for: If you
+  critical for the performance guarantees that we strive for: If you
   traverse a data structure, no tracing will be performed at all.
   ORC is about this promise: The GC only touches the memory that the
   mutator touches too.
@@ -412,7 +412,10 @@ proc genDefaultCall(t: PType; c: Con; info: TLineInfo): PNode =
 proc destructiveMoveVar(n: PNode; c: var Con; s: var Scope): PNode =
   # generate: (let tmp = v; reset(v); tmp)
   if (not hasDestructor(c, n.typ)) and c.inEnsureMove == 0:
-    assert n.kind != nkSym or not hasDestructor(c, n.sym.typ)
+    assert n.kind != nkSym or not hasDestructor(c, n.sym.typ) or
+          (n.typ.kind == tyPtr and n.sym.typ.kind == tyRef)
+      # bug #23505; transformed by `transf`: addr (deref ref) -> ptr
+      # we know it's really a pointer; so here we assign it directly
     result = copyTree(n)
   else:
     result = newNodeIT(nkStmtListExpr, n.info, n.typ)
@@ -774,6 +777,18 @@ proc pRaiseStmt(n: PNode, c: var Con; s: var Scope): PNode =
       result.add copyNode(n[0])
   s.needsTry = true
 
+template isCustomDestructor(c: Con, t: PType): bool =
+  hasDestructor(c, t) and
+          getAttachedOp(c.graph, t, attachedDestructor) != nil and
+          sfOverridden in getAttachedOp(c.graph, t, attachedDestructor).flags
+
+proc hasCustomDestructor(c: Con, t: PType): bool =
+  result = isCustomDestructor(c, t)
+  var obj = t
+  while obj.baseClass != nil:
+    obj = skipTypes(obj.baseClass, abstractPtrs)
+    result = result or isCustomDestructor(c, obj)
+
 proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSingleUsedTemp}; inReturn = false): PNode =
   if n.kind in {nkStmtList, nkStmtListExpr, nkBlockStmt, nkBlockExpr, nkIfStmt,
                 nkIfExpr, nkCaseStmt, nkWhen, nkWhileStmt, nkParForStmt, nkTryStmt, nkPragmaBlock}:
@@ -864,9 +879,7 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
             result[i][1] = p(n[i][1], c, s, m)
         else:
           result[i] = p(n[i], c, s, m)
-      if mode == normal and (isRefConstr or (hasDestructor(c, t) and
-        getAttachedOp(c.graph, t, attachedDestructor) != nil and
-        sfOverridden in getAttachedOp(c.graph, t, attachedDestructor).flags)):
+      if mode == normal and (isRefConstr or hasCustomDestructor(c, t)):
         result = ensureDestruction(result, n, c, s)
     of nkCallKinds:
       if n[0].kind == nkSym and n[0].sym.magic == mEnsureMove:
@@ -1174,9 +1187,9 @@ proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope, flags: set[MoveOrCopy
         # Rule 3: `=sink`(x, z); wasMoved(z)
         let snk = c.genSink(s, dest, ri, flags)
         result = newTree(nkStmtList, snk, c.genWasMoved(ri))
-      elif ri.sym.kind != skParam and ri.sym.owner == c.owner and
-          isLastRead(ri, c, s) and canBeMoved(c, dest.typ) and not isCursor(ri) and
-          not ({sfGlobal, sfPure} <= ri.sym.flags):
+      elif ri.sym.kind != skParam and
+          isAnalysableFieldAccess(ri, c.owner) and
+          isLastRead(ri, c, s) and canBeMoved(c, dest.typ):
         # Rule 3: `=sink`(x, z); wasMoved(z)
         let snk = c.genSink(s, dest, ri, flags)
         result = newTree(nkStmtList, snk, c.genWasMoved(ri))
