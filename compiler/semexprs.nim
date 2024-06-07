@@ -3047,6 +3047,10 @@ proc resolveIdentToSym(c: PContext, n: PNode, resultNode: var PNode,
   if efNoEvaluateGeneric in flags or expectedType != nil:
     # `a[...]` where `a` is a module or package is not possible
     filter.excl {skModule, skPackage}
+  if expectedType != nil and (
+      let expected = expectedType.skipTypes(abstractRange-{tyDistinct});
+      expected.kind == tyEnum):
+    filter.excl {skType}
   let candidates = lookUpCandidates(c, ident, filter)
   if candidates.len == 0:
     result = errorUndeclaredIdentifierHint(c, ident, n.info)
