@@ -1,5 +1,6 @@
 discard """
   cmd: "nim $target --hints:on --define:ssl $options $file"
+  disabled: osx
 """
 
 import asyncdispatch, asyncnet, net, strutils
@@ -36,7 +37,7 @@ when defined(ssl):
         inc(clientCount)
         break
       else:
-        if line.startswith("Message "):
+        if line.startsWith("Message "):
           inc(msgCount)
         else:
           doAssert false

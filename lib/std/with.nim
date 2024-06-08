@@ -12,15 +12,16 @@
 ## and https://github.com/nim-lang/RFCs/issues/192 for details leading to this
 ## particular design.
 ##
-## **Since** version 1.2.
+## **Since:** version 1.2.
 
-import macros, private / underscored_calls
+import std/[macros, private / underscored_calls]
 
 macro with*(arg: typed; calls: varargs[untyped]): untyped =
-  ## This macro provides the `chaining`:idx: of function calls.
+  ## This macro provides `chaining`:idx: of function calls.
   ## It does so by patching every call in `calls` to
   ## use `arg` as the first argument.
-  ## **This evaluates `arg` multiple times!**
+  ##
+  ## .. caution:: This evaluates `arg` multiple times!
   runnableExamples:
     var x = "yay"
     with x:
@@ -33,6 +34,15 @@ macro with*(arg: typed; calls: varargs[untyped]): untyped =
       += 4
       -= 5
     doAssert a == 43
+
+    # Nesting works for object types too!
+    var foo = (bar: 1, qux: (baz: 2))
+    with foo:
+      bar = 2
+      with qux:
+        baz = 3
+    doAssert foo.bar == 2
+    doAssert foo.qux.baz == 3
 
   result = newNimNode(nnkStmtList, arg)
   underscoredCalls(result, calls, arg)

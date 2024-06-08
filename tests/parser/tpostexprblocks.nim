@@ -464,7 +464,7 @@ StmtList
           DiscardStmt
             Empty
       OfBranch
-        Par
+        TupleConstr
           Ident "a"
           Ident "b"
         StmtList
@@ -476,7 +476,7 @@ StmtList
           DiscardStmt
             Empty
       ElifBranch
-        Par
+        TupleConstr
           Ident "a"
           Ident "b"
         StmtList
@@ -488,7 +488,7 @@ StmtList
           DiscardStmt
             Empty
       ExceptBranch
-        Par
+        TupleConstr
           Ident "a"
           Ident "b"
         StmtList
@@ -498,6 +498,13 @@ StmtList
         StmtList
           DiscardStmt
             Empty
+
+  Call
+    Ident "foo"
+    Finally
+      StmtList
+        DiscardStmt
+          Empty
 '''
 """
 
@@ -653,5 +660,9 @@ dumpTree:
     discard
   except (a, b):
     discard
+  finally:
+    discard
+
+  foo:
   finally:
     discard

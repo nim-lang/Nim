@@ -6,9 +6,13 @@ switch("path", "$lib/../testament/lib")
 ## prevent common user config settings to interfere with testament expectations
 ## Indifidual tests can override this if needed to test for these options.
 switch("colors", "off")
-switch("listFullPaths", "off")
+
 switch("excessiveStackTrace", "off")
-switch("spellSuggest", "0")
+
+when (NimMajor, NimMinor, NimPatch) >= (1,5,1):
+  # to make it easier to test against older nim versions, (best effort only)
+  switch("filenames", "legacyRelProj")
+  switch("spellSuggest", "0")
 
 # for std/unittest
 switch("define", "nimUnittestOutputLevel:PRINT_FAILURES")
@@ -24,6 +28,20 @@ hint("Processing", off)
 # switch("define", "nimTestsEnableFlaky")
 
 # switch("hint", "ConvFromXtoItselfNotNeeded")
+# switch("warningAsError", "InheritFromException") # would require fixing a few tests
 
-# experimental API's are enabled in testament, refs https://github.com/timotheecour/Nim/issues/575
-switch("define", "nimExperimentalAsyncjsThen")
+# experimental APIs are enabled in testament, refs https://github.com/timotheecour/Nim/issues/575
+# sync with `kochdocs.docDefines` or refactor.
+switch("define", "nimExperimentalLinenoiseExtra")
+
+# preview APIs are expected to be the new default in upcoming versions
+switch("define", "nimPreviewFloatRoundtrip")
+#switch("define", "nimPreviewDotLikeOps") # deprecated?
+switch("define", "nimPreviewJsonutilsHoleyEnum")
+switch("define", "nimPreviewHashRef")
+switch("define", "nimPreviewRangeDefault")
+switch("define", "nimPreviewNonVarDestructor")
+
+switch("warningAserror", "UnnamedBreak")
+switch("legacy", "verboseTypeMismatch")
+switch("experimental", "vtables")

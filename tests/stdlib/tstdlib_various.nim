@@ -1,4 +1,5 @@
 discard """
+matrix: "--mm:refc"
 output: '''
 abc
 def
@@ -20,27 +21,20 @@ Hi Andreas! How do you feel, Rumpf?
 @[0, 2, 1]
 @[0, 1, 2]
 055this should be the casehugh@["(", "+", " 1", " 2", ")"]
-caught a crash!
-caught a crash!
-caught a crash!
-caught a crash!
-caught a crash!
-caught a crash!
 [5]
 [4, 5]
 [3, 4, 5]
 [2, 3, 4, 5]
 [2, 3, 4, 5, 6]
 [1, 2, 3, 4, 5, 6]
-true
 <h1><a href="http://force7.de/nim">Nim</a></h1>
 '''
 """
 
 import
-  critbits, sets, strutils, tables, random, algorithm, re, ropes,
-  segfaults, lists, parsesql, streams, os, htmlgen, xmltree, strtabs
-
+  std/[critbits, sets, strutils, tables, random, algorithm, re, ropes,
+  segfaults, lists, parsesql, streams, os, htmlgen, xmltree, strtabs]
+import std/[syncio, assertions]
 
 block tcritbits:
   var r: CritBitTree[void]
@@ -161,18 +155,21 @@ block tropes:
 
 
 block tsegfaults:
-  proc main =
-    try:
-      var x: ptr int
-      echo x[]
+  when not defined(arm64):
+    var crashes = 0
+    proc main =
       try:
-        raise newException(ValueError, "not a crash")
-      except ValueError:
-        discard
-    except NilAccessDefect:
-      echo "caught a crash!"
-  for i in 0..5:
-    main()
+        var x: ptr int
+        echo x[]
+        try:
+          raise newException(ValueError, "not a crash")
+        except ValueError:
+          discard
+      except NilAccessDefect:
+        inc crashes
+    for i in 0..5:
+      main()
+    assert crashes == 6
 
 
 
@@ -209,11 +206,7 @@ block tsplit2:
     s.add("#")
     s.add(w)
 
-  try:
-    discard "hello".split("")
-    echo "false"
-  except AssertionDefect:
-    echo "true"
+  doAssert "true".split("") == @["true"]
 
 
 

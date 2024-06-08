@@ -1,13 +1,14 @@
 .. default-role:: code
+.. include:: ../doc/rstcommon.rst
 
 The System module imports several separate modules, and their documentation
 is in separate files:
 
 * `iterators <iterators.html>`_
+* `exceptions <exceptions.html>`_
 * `assertions <assertions.html>`_
 * `dollars <dollars.html>`_
-* `io <io.html>`_
-* `widestrs <widestrs.html>`_
+* `ctypes <ctypes.html>`_
 
 
 Here is a short overview of the most commonly used functions from the
@@ -48,27 +49,27 @@ Proc                              Usage
 Seqs
 ----
 
-==============================================     ==========================================
-Proc                                               Usage
-==============================================     ==========================================
-`newSeq<#newSeq>`_                                 Create a new sequence of a given length
-`newSeqOfCap<#newSeqOfCap,Natural>`_               Create a new sequence with zero length
-                                                   and a given capacity
-`setLen<#setLen,seq[T],Natural>`_                  Set the length of a sequence
-`len<#len,seq[T]>`_                                Return the length of a sequence
-`@<#@,openArray[T]>`_                              Turn an array into a sequence
-`add<#add,seq[T],sinkT>`_                          Add an item to the sequence
-`insert<#insert,seq[T],sinkT>`_                    Insert an item at a specific position
-`delete<#delete,seq[T],Natural>`_                  Delete an item while preserving the
-                                                   order of elements (`O(n)` operation)
-`del<#del,seq[T],Natural>`_                        `O(1)` removal, doesn't preserve the order
-`pop<#pop,seq[T]>`_                                Remove and return last item of a sequence
-`x & y<#&,seq[T],seq[T]>`_                         Concatenate two sequences
-`x[a .. b]<#[],openArray[T],HSlice[U,V]>`_         Slice of a sequence (both ends included)
-`x[a .. ^b]<#[],openArray[T],HSlice[U,V]>`_        Slice of a sequence but `b` is a 
-                                                   reversed index (both ends included)
-`x[a ..\< b]<#[],openArray[T],HSlice[U,V]>`_       Slice of a sequence (excluded upper bound)
-==============================================     ==========================================
+=============================================================  ==========================================
+Proc                                                           Usage
+=============================================================  ==========================================
+`newSeq<#newSeq>`_                                             Create a new sequence of a given length
+`newSeqOfCap<#newSeqOfCap,Natural>`_                           Create a new sequence with zero length
+                                                               and a given capacity
+`setLen<#setLen,seq[T],Natural>`_                              Set the length of a sequence
+`len<#len,seq[T]>`_                                            Return the length of a sequence
+`@<#@,openArray[T]>`_                                          Turn an array into a sequence
+`add<#add,seq[T],sinkT>`_                                      Add an item to the sequence
+`insert<#insert,seq[T],sinkT>`_                                Insert an item at a specific position
+`delete<#delete,seq[T],Natural>`_                              Delete an item while preserving the
+                                                               order of elements (`O(n)` operation)
+`del<#del,seq[T],Natural>`_                                    `O(1)` removal, doesn't preserve the order
+`pop<#pop,seq[T]>`_                                            Remove and return last item of a sequence
+`x & y<#&,seq[T],seq[T]>`_                                     Concatenate two sequences
+`x[a .. b]<#[],openArray[T],HSlice[U: Ordinal,V: Ordinal]>`_   Slice of a sequence (both ends included)
+`x[a .. ^b]<#[],openArray[T],HSlice[U: Ordinal,V: Ordinal]>`_  Slice of a sequence but `b` is a 
+                                                               reversed index (both ends included)
+`x[a ..< b]<#[],openArray[T],HSlice[U: Ordinal,V: Ordinal]>`_  Slice of a sequence (excluded upper bound)
+=============================================================  ==========================================
 
 **See also:**
 * `sequtils module <sequtils.html>`_ for operations on container
@@ -98,6 +99,7 @@ Proc                                Usage
 ===============================     ======================================
 
 **See also:**
+* `setutils module <setutils.html>`_ for bit set convenience functions
 * `sets module <sets.html>`_ for hash sets
 * `intsets module <intsets.html>`_ for efficient int sets
 

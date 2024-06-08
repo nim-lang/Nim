@@ -17,7 +17,7 @@ proc reprFloat(x: float): string {.compilerproc.} = return $x
 
 proc reprPointer(x: pointer): string {.compilerproc.} =
   result = newString(60)
-  let n = c_sprintf(addr result[0], "%p", x)
+  let n = c_snprintf(cast[cstring](addr result[0]), csize_t(60), "%p", x)
   setLen(result, n)
 
 proc reprStrAux(result: var string, s: cstring; len: int) =
@@ -71,6 +71,8 @@ proc reprEnum(e: int, typ: PNimType): string {.compilerRtl.} =
         return $s[i].name
 
   result = $e & " (invalid data!)"
+
+include system/repr_impl
 
 type
   PByteArray = ptr UncheckedArray[byte] # array[0xffff, byte]
@@ -153,7 +155,7 @@ when not defined(useNimRtl):
     var bs = typ.base.size
     for i in 0..typ.size div bs - 1:
       if i > 0: add result, ", "
-      reprAux(result, cast[pointer](cast[ByteAddress](p) + i*bs), typ.base, cl)
+      reprAux(result, cast[pointer](cast[int](p) + i*bs), typ.base, cl)
     add result, "]"
 
   when defined(nimSeqsV2):
@@ -181,7 +183,7 @@ when not defined(useNimRtl):
     var bs = typ.base.size
     for i in 0..cast[PGenericSeq](p).len-1:
       if i > 0: add result, ", "
-      reprAux(result, cast[pointer](cast[ByteAddress](payloadPtr(p)) + align(payloadOffset, typ.align) + i*bs),
+      reprAux(result, cast[pointer](cast[int](payloadPtr(p)) + align(payloadOffset, typ.align) + i*bs),
               typ.base, cl)
     add result, "]"
 
@@ -192,14 +194,14 @@ when not defined(useNimRtl):
     of nkSlot:
       add result, $n.name
       add result, " = "
-      reprAux(result, cast[pointer](cast[ByteAddress](p) + n.offset), n.typ, cl)
+      reprAux(result, cast[pointer](cast[int](p) + n.offset), n.typ, cl)
     of nkList:
       for i in 0..n.len-1:
         if i > 0: add result, ",\n"
         reprRecordAux(result, p, n.sons[i], cl)
     of nkCase:
       var m = selectBranch(p, n)
-      reprAux(result, cast[pointer](cast[ByteAddress](p) + n.offset), n.typ, cl)
+      reprAux(result, cast[pointer](cast[int](p) + n.offset), n.typ, cl)
       if m != nil: reprRecordAux(result, p, m, cl)
 
   proc reprRecord(result: var string, p: pointer, typ: PNimType,
@@ -281,7 +283,7 @@ when not defined(useNimRtl):
     of tyString:
       let sp = cast[ptr string](p)
       reprStrAux(result, sp[].cstring, sp[].len)
-    of tyCString:
+    of tyCstring:
       let cs = cast[ptr cstring](p)[]
       if cs.isNil: add result, "nil"
       else: reprStrAux(result, cs, cs.len)
@@ -305,7 +307,7 @@ when not defined(useNimRtl):
     var bs = elemtyp.size
     for i in 0..length - 1:
       if i > 0: add result, ", "
-      reprAux(result, cast[pointer](cast[ByteAddress](p) + i*bs), elemtyp, cl)
+      reprAux(result, cast[pointer](cast[int](p) + i*bs), elemtyp, cl)
     add result, "]"
     deinitReprClosure(cl)
 

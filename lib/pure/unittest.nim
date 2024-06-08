@@ -34,9 +34,9 @@
 ##
 ## Specify the test name as a command line argument.
 ##
-## .. code::
-##
+##   ```cmd
 ##   nim c -r test "my test name" "another test"
+##   ```
 ##
 ## Multiple arguments can be used.
 ##
@@ -45,9 +45,9 @@
 ##
 ## Specify the suite name delimited by `"::"`.
 ##
-## .. code::
-##
+##   ```cmd
 ##   nim c -r test "my test name::"
+##   ```
 ##
 ## Selecting tests by pattern
 ## ==========================
@@ -58,19 +58,18 @@
 ##
 ## Tests matching **any** of the arguments are executed.
 ##
-## .. code::
-##
+##   ```cmd
 ##   nim c -r test fast_suite::mytest1 fast_suite::mytest2
 ##   nim c -r test "fast_suite::mytest*"
 ##   nim c -r test "auth*::" "crypto::hashing*"
 ##   # Run suites starting with 'bug #' and standalone tests starting with '#'
 ##   nim c -r test 'bug #*::' '::#*'
+##   ```
 ##
 ## Examples
 ## ========
 ##
-## .. code:: nim
-##
+##   ```nim
 ##   suite "description for this stuff":
 ##     echo "suite setup: run once before the tests"
 ##
@@ -96,6 +95,7 @@
 ##         discard v[4]
 ##
 ##     echo "suite teardown: run once after the tests"
+##   ```
 ##
 ## Limitations/Bugs
 ## ================
@@ -107,6 +107,9 @@
 
 import std/private/since
 import std/exitprocs
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
 
 import std/[macros, strutils, streams, times, sets, sequtils]
 
@@ -218,7 +221,7 @@ proc resetOutputFormatters* {.since: (1, 1).} =
   formatters = @[]
 
 proc newConsoleOutputFormatter*(outputLevel: OutputLevel = outputLevelDefault,
-                                colorOutput = true): <//>ConsoleOutputFormatter =
+                                colorOutput = true): ConsoleOutputFormatter =
   ConsoleOutputFormatter(
     outputLevel: outputLevel,
     colorOutput: colorOutput
@@ -232,7 +235,7 @@ proc colorOutput(): bool =
     else: result = false
   of "on": result = true
   of "off": result = false
-  else: doAssert false, $color
+  else: raiseAssert $color
 
   when declared(stdout):
     if existsEnv("NIMTEST_COLOR"):
@@ -246,7 +249,7 @@ proc colorOutput(): bool =
       deprecateEnvVarHere()
       result = false
 
-proc defaultConsoleFormatter*(): <//>ConsoleOutputFormatter =
+proc defaultConsoleFormatter*(): ConsoleOutputFormatter =
   var colorOutput = colorOutput()
   var outputLevel = nimUnittestOutputLevel.parseEnum[:OutputLevel]
   when declared(stdout):
@@ -315,7 +318,7 @@ proc xmlEscape(s: string): string =
       else:
         result.add(c)
 
-proc newJUnitOutputFormatter*(stream: Stream): <//>JUnitOutputFormatter =
+proc newJUnitOutputFormatter*(stream: Stream): JUnitOutputFormatter =
   ## Creates a formatter that writes report to the specified stream in
   ## JUnit format.
   ## The ``stream`` is NOT closed automatically when the test are finished,
@@ -430,8 +433,6 @@ proc matchFilter(suiteName, testName, filter: string): bool =
   return glob(suiteName, suiteAndTestFilters[0]) and
          glob(testName, suiteAndTestFilters[1])
 
-when defined(testing): export matchFilter
-
 proc shouldRun(currentSuiteName, testName: string): bool =
   ## Check if a test should be run by matching suiteName and testName against
   ## test filters.
@@ -472,27 +473,26 @@ template suite*(name, body) {.dirty.} =
   ## common fixture (``setup``, ``teardown``). The fixture is executed
   ## for EACH test.
   ##
-  ## .. code-block:: nim
-  ##  suite "test suite for addition":
-  ##    setup:
-  ##      let result = 4
+  ##   ```nim
+  ##   suite "test suite for addition":
+  ##     setup:
+  ##       let result = 4
   ##
-  ##    test "2 + 2 = 4":
-  ##      check(2+2 == result)
+  ##     test "2 + 2 = 4":
+  ##       check(2+2 == result)
   ##
-  ##    test "(2 + -2) != 4":
-  ##      check(2 + -2 != result)
+  ##     test "(2 + -2) != 4":
+  ##       check(2 + -2 != result)
   ##
-  ##    # No teardown needed
+  ##     # No teardown needed
+  ##   ```
   ##
   ## The suite will run the individual test cases in the order in which
   ## they were listed. With default global settings the above code prints:
   ##
-  ## .. code-block::
-  ##
-  ##  [Suite] test suite for addition
-  ##    [OK] 2 + 2 = 4
-  ##    [OK] (2 + -2) != 4
+  ##     [Suite] test suite for addition
+  ##       [OK] 2 + 2 = 4
+  ##       [OK] (2 + -2) != 4
   bind formatters, ensureInitialized, suiteEnded
 
   block:
@@ -518,20 +518,24 @@ proc exceptionTypeName(e: ref Exception): string {.inline.} =
   if e == nil: "<foreign exception>"
   else: $e.name
 
+when not declared(setProgramResult):
+  {.warning: "setProgramResult not available on platform, unittest will not" &
+    " give failing exit code on test failure".}
+  template setProgramResult(a: int) =
+    discard
+
 template test*(name, body) {.dirty.} =
   ## Define a single test case identified by `name`.
   ##
-  ## .. code-block:: nim
-  ##
-  ##  test "roses are red":
-  ##    let roses = "red"
-  ##    check(roses == "red")
+  ##   ```nim
+  ##   test "roses are red":
+  ##     let roses = "red"
+  ##     check(roses == "red")
+  ##   ```
   ##
   ## The above code outputs:
   ##
-  ## .. code-block::
-  ##
-  ##  [OK] roses are red
+  ##     [OK] roses are red
   bind shouldRun, checkpoints, formatters, ensureInitialized, testEnded, exceptionTypeName, setProgramResult
 
   ensureInitialized()
@@ -543,11 +547,14 @@ template test*(name, body) {.dirty.} =
     for formatter in formatters:
       formatter.testStarted(name)
 
+    {.push warning[BareExcept]:off.}
     try:
       when declared(testSetupIMPLFlag): testSetupIMPL()
       when declared(testTeardownIMPLFlag):
         defer: testTeardownIMPL()
+      {.push warning[BareExcept]:on.}
       body
+      {.pop.}
 
     except:
       let e = getCurrentException()
@@ -569,16 +576,17 @@ template test*(name, body) {.dirty.} =
       )
       testEnded(testResult)
       checkpoints = @[]
+    {.pop.}
 
 proc checkpoint*(msg: string) =
   ## Set a checkpoint identified by `msg`. Upon test failure all
   ## checkpoints encountered so far are printed out. Example:
   ##
-  ## .. code-block:: nim
-  ##
-  ##  checkpoint("Checkpoint A")
-  ##  check((42, "the Answer to life and everything") == (1, "a"))
-  ##  checkpoint("Checkpoint B")
+  ##   ```nim
+  ##   checkpoint("Checkpoint A")
+  ##   check((42, "the Answer to life and everything") == (1, "a"))
+  ##   checkpoint("Checkpoint B")
+  ##   ```
   ##
   ## outputs "Checkpoint A" once it fails.
   checkpoints.add(msg)
@@ -590,11 +598,11 @@ template fail* =
   ## failed (change exit code and test status). This template is useful
   ## for debugging, but is otherwise mostly used internally. Example:
   ##
-  ## .. code-block:: nim
-  ##
-  ##  checkpoint("Checkpoint A")
-  ##  complicatedProcInThread()
-  ##  fail()
+  ##   ```nim
+  ##   checkpoint("Checkpoint A")
+  ##   complicatedProcInThread()
+  ##   fail()
+  ##   ```
   ##
   ## outputs "Checkpoint A" before quitting.
   bind ensureInitialized, setProgramResult
@@ -622,11 +630,10 @@ template skip* =
   ## for reasons depending on outer environment,
   ## or certain application logic conditions or configurations.
   ## The test code is still executed.
-  ##
-  ## .. code-block:: nim
-  ##
-  ##  if not isGLContextCreated():
-  ##    skip()
+  ##   ```nim
+  ##   if not isGLContextCreated():
+  ##     skip()
+  ##   ```
   bind checkpoints
 
   testStatusIMPL = TestStatus.SKIPPED
@@ -704,7 +711,9 @@ macro check*(conditions: untyped): untyped =
     result = quote do:
       block:
         `assigns`
-        if not `check`:
+        if `check`:
+          discard
+        else:
           checkpoint(`lineinfo` & ": Check failed: " & `callLit`)
           `printOuts`
           fail()
@@ -720,7 +729,9 @@ macro check*(conditions: untyped): untyped =
     let callLit = checked.toStrLit
 
     result = quote do:
-      if not `checked`:
+      if `checked`:
+        discard
+      else:
         checkpoint(`lineinfo` & ": Check failed: " & `callLit`)
         fail()
 
@@ -747,20 +758,25 @@ macro expect*(exceptions: varargs[typed], body: untyped): untyped =
       of 2: discard parseInt("Hello World!")
       of 3: raise newException(IOError, "I can't do that Dave.")
       else: assert 2 + 2 == 5
-    
+
     expect IOError, OSError, ValueError, AssertionDefect:
       defectiveRobot()
 
   template expectBody(errorTypes, lineInfoLit, body): NimNode {.dirty.} =
+    {.push warning[BareExcept]:off.}
     try:
+      {.push warning[BareExcept]:on.}
       body
+      {.pop.}
       checkpoint(lineInfoLit & ": Expect Failed, no exception was thrown.")
       fail()
     except errorTypes:
       discard
     except:
-      checkpoint(lineInfoLit & ": Expect Failed, unexpected exception was thrown.")
+      let err = getCurrentException()
+      checkpoint(lineInfoLit & ": Expect Failed, " & $err.name & " was thrown.")
       fail()
+    {.pop.}
 
   var errorTypes = newNimNode(nnkBracket)
   for exp in exceptions:

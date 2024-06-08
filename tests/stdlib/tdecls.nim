@@ -1,6 +1,11 @@
+discard """
+  matrix: "--mm:refc; --mm:orc"
+  targets: "c cpp js"
+"""
+import std/assertions
 import std/decls
 
-block:
+template fun() =
   var s = @[10,11,12]
   var a {.byaddr.} = s[0]
   a+=100
@@ -9,6 +14,8 @@ block:
   var b {.byaddr.}: int = s[0]
   doAssert a.addr == b.addr
 
+  {.push warningAsError[ImplicitTemplateRedefinition]: on.}
+  # in the future ImplicitTemplateRedefinition will be an error anyway
   doAssert not compiles(block:
     # redeclaration not allowed
     var foo = 0
@@ -18,6 +25,7 @@ block:
     # ditto
     var foo {.byaddr.} = s[0]
     var foo {.byaddr.} = s[0])
+  {.pop.}
 
   block:
     var b {.byaddr.} = s[1] # redeclaration ok in sub scope
@@ -34,37 +42,9 @@ block:
   doAssert compiles(block:
     var b2 {.byaddr.}: int = s[2])
 
-## We can define custom pragmas in user code
-template byUnsafeAddr(lhs, typ, expr) =
-  when typ is type(nil):
-    let tmp = unsafeAddr(expr)
-  else:
-    let tmp: ptr typ = unsafeAddr(expr)
-  template lhs: untyped = tmp[]
-
-block:
-  let s = @["foo", "bar"]
-  let a {.byUnsafeAddr.} = s[0]
-  doAssert a == "foo"
-  doAssert a[0].unsafeAddr == s[0][0].unsafeAddr
-
-block: # nkAccQuoted
-  # shows using a keyword, which requires nkAccQuoted
-  template `cast`(lhs, typ, expr) =
-    when typ is type(nil):
-      let tmp = unsafeAddr(expr)
-    else:
-      let tmp: ptr typ = unsafeAddr(expr)
-    template lhs: untyped = tmp[]
-
-  block:
-    let s = @["foo", "bar"]
-    let a {.`byUnsafeAddr`.} = s[0]
-    doAssert a == "foo"
-    doAssert a[0].unsafeAddr == s[0][0].unsafeAddr
-
-  block:
-    let s = @["foo", "bar"]
-    let a {.`cast`.} = s[0]
-    doAssert a == "foo"
-    doAssert a[0].unsafeAddr == s[0][0].unsafeAddr
+proc fun2() = fun()
+fun()
+fun2()
+static: fun2()
+when false: # pending bug #13887
+  static: fun()

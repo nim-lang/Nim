@@ -8,7 +8,11 @@ for i, d in pairs(data):
   discard
 for i, (x, y) in pairs(data):
   discard
-var (a, b) = (1, 2)
+var
+  a = 1
+  b = 2
+type
+  A* = object
 
 var data = @[(1, "one"), (2, "two")]
 for (i, d) in pairs(data):
@@ -18,6 +22,8 @@ for i, d in pairs(data):
 for i, (x, y) in pairs(data):
   discard
 var (a, b) = (1, 2)
+type
+  A* = object
 '''
 """
 
@@ -42,3 +48,4 @@ echoTypedAndUntypedRepr:
   for i, (x,y) in pairs(data):
     discard
   var (a,b) = (1,2)
+  type A* = object # issue #22933

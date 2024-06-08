@@ -9,18 +9,21 @@
 
 ## Profiling support for Nim. This is an embedded profiler that requires
 ## `--profiler:on`. You only need to import this module to get a profiling
-## report at program exit.
+## report at program exit. See `Embedded Stack Trace Profiler <estp.html>`_
+## for usage.
 
 when not defined(profiler) and not defined(memProfiler):
   {.error: "Profiling support is turned off! Enable profiling by passing `--profiler:on --stackTrace:on` to the compiler (see the Nim Compiler User Guide for more options).".}
 
-when defined(nimHasUsed):
-  {.used.}
+{.used.}
 
 # We don't want to profile the profiling code ...
 {.push profiler: off.}
 
-import hashes, algorithm, strutils, tables, sets
+import std/[hashes, algorithm, strutils, tables, sets]
+
+when defined(nimPreviewSlimSystem):
+  import std/[syncio, sysatomics]
 
 when not defined(memProfiler):
   include "system/timers"
@@ -66,7 +69,7 @@ when not defined(memProfiler):
     else: interval = intervalInUs * 1000 - tickCountCorrection
 
 when withThreads:
-  import locks
+  import std/locks
   var
     profilingLock: Lock
 
@@ -121,13 +124,13 @@ when defined(memProfiler):
   var
     gTicker {.threadvar.}: int
 
-  proc requestedHook(): bool {.nimcall, locks: 0.} =
+  proc requestedHook(): bool {.nimcall.} =
     if gTicker == 0:
       gTicker = SamplingInterval
       result = true
     dec gTicker
 
-  proc hook(st: StackTrace, size: int) {.nimcall, locks: 0.} =
+  proc hook(st: StackTrace, size: int) {.nimcall.} =
     when defined(ignoreAllocationSize):
       hookAux(st, 1)
     else:
@@ -139,7 +142,7 @@ else:
     gTicker: int # we use an additional counter to
                  # avoid calling 'getTicks' too frequently
 
-  proc requestedHook(): bool {.nimcall, locks: 0.} =
+  proc requestedHook(): bool {.nimcall.} =
     if interval == 0: result = true
     elif gTicker == 0:
       gTicker = 500
@@ -148,7 +151,7 @@ else:
     else:
       dec gTicker
 
-  proc hook(st: StackTrace) {.nimcall, locks: 0.} =
+  proc hook(st: StackTrace) {.nimcall.} =
     #echo "profiling! ", interval
     if interval == 0:
       hookAux(st, 1)

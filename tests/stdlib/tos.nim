@@ -22,11 +22,14 @@ __really_obscure_dir_name/test
 Raises
 Raises
 '''
+  matrix: "--mm:refc; --mm:orc"
+  joinable: false
 """
 # test os path creation, iteration, and deletion
 
 import os, strutils, pathnorm
 from stdtest/specialpaths import buildDir
+import std/[syncio, assertions]
 
 block fileOperations:
   let files = @["these.txt", "are.x", "testing.r", "files.q"]
@@ -38,7 +41,7 @@ block fileOperations:
   doAssert dirExists(dname)
 
   block: # copyFile, copyFileToDir
-    doAssertRaises(OSError): copyFile(dname/"nonexistant.txt", dname/"nonexistant.txt")
+    doAssertRaises(OSError): copyFile(dname/"nonexistent.txt", dname/"nonexistent.txt")
     let fname = "D20201009T112235"
     let fname2 = "D20201009T112235.2"
     let str = "foo1\0foo2\nfoo3\0"
@@ -155,6 +158,9 @@ block fileOperations:
   doAssert fileExists("../dest/a/file.txt")
   removeDir("../dest")
 
+  # createDir should not fail if `dir` is empty
+  createDir("")
+
   # Symlink handling in `copyFile`, `copyFileWithPermissions`, `copyFileToDir`,
   # `copyDir`, `copyDirWithPermissions`, `moveFile`, and `moveDir`.
   block:
@@ -164,7 +170,7 @@ block fileOperations:
     const subDir2 = dname/"sub2"
     const brokenSymlinkName = "D20210101T191320_BROKEN_SYMLINK"
     const brokenSymlink = dname/brokenSymlinkName
-    const brokenSymlinkSrc = "D20210101T191320_nonexistant"
+    const brokenSymlinkSrc = "D20210101T191320_nonexistent"
     const brokenSymlinkCopy = brokenSymlink & "_COPY"
     const brokenSymlinkInSubDir = subDir/brokenSymlinkName
     const brokenSymlinkInSubDir2 = subDir2/brokenSymlinkName
@@ -261,6 +267,51 @@ block fileOperations:
 
     removeDir(dname)
 
+block: # moveFile
+  let tempDir = getTempDir() / "D20210609T151608"
+  createDir(tempDir)
+  defer: removeDir(tempDir)
+
+  writeFile(tempDir / "a.txt", "")
+  moveFile(tempDir / "a.txt", tempDir / "b.txt")
+  doAssert not fileExists(tempDir / "a.txt")
+  doAssert fileExists(tempDir / "b.txt")
+  removeFile(tempDir / "b.txt")
+
+  createDir(tempDir / "moveFile_test")
+  writeFile(tempDir / "moveFile_test/a.txt", "")
+  moveFile(tempDir / "moveFile_test/a.txt", tempDir / "moveFile_test/b.txt")
+  doAssert not fileExists(tempDir / "moveFile_test/a.txt")
+  doAssert fileExists(tempDir / "moveFile_test/b.txt")
+  removeDir(tempDir / "moveFile_test")
+
+  createDir(tempDir / "moveFile_test")
+  writeFile(tempDir / "a.txt", "")
+  moveFile(tempDir / "a.txt", tempDir / "moveFile_test/b.txt")
+  doAssert not fileExists(tempDir / "a.txt")
+  doAssert fileExists(tempDir / "moveFile_test/b.txt")
+  removeDir(tempDir / "moveFile_test")
+
+block: # moveDir
+  let tempDir = getTempDir() / "D20210609T161443"
+  createDir(tempDir)
+  defer: removeDir(tempDir)
+
+  createDir(tempDir / "moveDir_test")
+  moveDir(tempDir / "moveDir_test/", tempDir / "moveDir_test_dest")
+  doAssert not dirExists(tempDir / "moveDir_test")
+  doAssert dirExists(tempDir / "moveDir_test_dest")
+  removeDir(tempDir / "moveDir_test_dest")
+
+  createDir(tempDir / "moveDir_test")
+  writeFile(tempDir / "moveDir_test/a.txt", "")
+  moveDir(tempDir / "moveDir_test", tempDir / "moveDir_test_dest")
+  doAssert not dirExists(tempDir / "moveDir_test")
+  doAssert not fileExists(tempDir / "moveDir_test/a.txt")
+  doAssert dirExists(tempDir / "moveDir_test_dest")
+  doAssert fileExists(tempDir / "moveDir_test_dest/a.txt")
+  removeDir(tempDir / "moveDir_test_dest")
+
 import times
 block modificationTime:
   # Test get/set modification times
@@ -285,7 +336,7 @@ block walkDirRec:
     doAssert p.startsWith("walkdir_test")
 
   var s: seq[string]
-  for p in walkDirRec("walkdir_test", {pcFile}, {pcDir}, relative=true):
+  for p in walkDirRec("walkdir_test", {pcFile}, {pcDir}, relative = true):
     s.add(p)
 
   doAssert s.len == 2
@@ -294,11 +345,13 @@ block walkDirRec:
 
   removeDir("walkdir_test")
 
+import std/sequtils
+
 block: # walkDir
   doAssertRaises(OSError):
-    for a in walkDir("nonexistant", checkDir = true): discard
+    for a in walkDir("nonexistent", checkDir = true): discard
   doAssertRaises(OSError):
-    for p in walkDirRec("nonexistant", checkDir = true): discard
+    for p in walkDirRec("nonexistent", checkDir = true): discard
 
   when not defined(windows):
     block walkDirRelative:
@@ -306,6 +359,21 @@ block: # walkDir
       createSymlink(".", "walkdir_test/c")
       for k, p in walkDir("walkdir_test", true):
         doAssert k == pcLinkToDir
+      removeDir("walkdir_test")
+
+  when defined(posix):
+    block walkDirSpecial:
+      createDir("walkdir_test")
+      doAssert execShellCmd("mkfifo walkdir_test/fifo") == 0
+      createSymlink("fifo", "walkdir_test/fifo_link")
+      let withSpecialFiles = toSeq(walkDir("walkdir_test", relative = true))
+      doAssert (withSpecialFiles.len == 2 and
+                (pcFile, "fifo") in withSpecialFiles and
+                (pcLinkToFile, "fifo_link") in withSpecialFiles)
+      # now Unix special files are excluded from walkdir output:
+      let skipSpecialFiles = toSeq(walkDir("walkdir_test", relative = true,
+                                           skipSpecial = true))
+      doAssert skipSpecialFiles.len == 0
       removeDir("walkdir_test")
 
 block normalizedPath:
@@ -462,7 +530,11 @@ block ospaths:
   doAssert relativePath("/Users/me/bar/z.nim", "/Users/other/bad", '/') == "../../me/bar/z.nim"
 
   doAssert relativePath("/Users/me/bar/z.nim", "/Users/other", '/') == "../me/bar/z.nim"
-  doAssert relativePath("/Users///me/bar//z.nim", "//Users/", '/') == "me/bar/z.nim"
+
+  # `//` is a UNC path, `/` is the current working directory's drive, so can't
+  # run this test on Windows.
+  when not doslikeFileSystem:
+    doAssert relativePath("/Users///me/bar//z.nim", "//Users/", '/') == "me/bar/z.nim"
   doAssert relativePath("/Users/me/bar/z.nim", "/Users/me", '/') == "bar/z.nim"
   doAssert relativePath("", "/users/moo", '/') == ""
   doAssert relativePath("foo", "", '/') == "foo"
@@ -507,19 +579,19 @@ block ospaths:
   doAssert joinPath("/", "") == unixToNativePath"/"
   doAssert joinPath("/" / "") == unixToNativePath"/" # weird test case...
   doAssert joinPath("/", "/a/b/c") == unixToNativePath"/a/b/c"
-  doAssert joinPath("foo/","") == unixToNativePath"foo/"
-  doAssert joinPath("foo/","abc") == unixToNativePath"foo/abc"
-  doAssert joinPath("foo//./","abc/.//") == unixToNativePath"foo/abc/"
-  doAssert joinPath("foo","abc") == unixToNativePath"foo/abc"
-  doAssert joinPath("","abc") == unixToNativePath"abc"
+  doAssert joinPath("foo/", "") == unixToNativePath"foo/"
+  doAssert joinPath("foo/", "abc") == unixToNativePath"foo/abc"
+  doAssert joinPath("foo//./", "abc/.//") == unixToNativePath"foo/abc/"
+  doAssert joinPath("foo", "abc") == unixToNativePath"foo/abc"
+  doAssert joinPath("", "abc") == unixToNativePath"abc"
 
-  doAssert joinPath("gook/.","abc") == unixToNativePath"gook/abc"
+  doAssert joinPath("zook/.", "abc") == unixToNativePath"zook/abc"
 
-  # controversial: inconsistent with `joinPath("gook/.","abc")`
+  # controversial: inconsistent with `joinPath("zook/.","abc")`
   # on linux, `./foo` and `foo` are treated a bit differently for executables
   # but not `./foo/bar` and `foo/bar`
   doAssert joinPath(".", "/lib") == unixToNativePath"./lib"
-  doAssert joinPath(".","abc") == unixToNativePath"./abc"
+  doAssert joinPath(".", "abc") == unixToNativePath"./abc"
 
   # cases related to issue #13455
   doAssert joinPath("foo", "", "") == "foo"
@@ -549,27 +621,15 @@ block getTempDir:
       if existsEnv("TMPDIR"):
         let origTmpDir = getEnv("TMPDIR")
         putEnv("TMPDIR", "/mytmp")
-        doAssert getTempDir() == "/mytmp"
+        doAssert getTempDir() == "/mytmp/"
         delEnv("TMPDIR")
-        doAssert getTempDir() == "/tmp"
+        doAssert getTempDir() == "/tmp/"
         putEnv("TMPDIR", origTmpDir)
       else:
-        doAssert getTempDir() == "/tmp"
+        doAssert getTempDir() == "/tmp/"
 
-block osenv:
-  block delEnv:
-    const dummyEnvVar = "DUMMY_ENV_VAR" # This env var wouldn't be likely to exist to begin with
-    doAssert existsEnv(dummyEnvVar) == false
-    putEnv(dummyEnvVar, "1")
-    doAssert existsEnv(dummyEnvVar) == true
-    delEnv(dummyEnvVar)
-    doAssert existsEnv(dummyEnvVar) == false
-    delEnv(dummyEnvVar)         # deleting an already deleted env var
-    doAssert existsEnv(dummyEnvVar) == false
-  block:
-    doAssert getEnv("DUMMY_ENV_VAR_NONEXISTENT", "") == ""
-    doAssert getEnv("DUMMY_ENV_VAR_NONEXISTENT", " ") == " "
-    doAssert getEnv("DUMMY_ENV_VAR_NONEXISTENT", "Arrakis") == "Arrakis"
+block: # getCacheDir
+  doAssert getCacheDir().dirExists
 
 block isRelativeTo:
   doAssert isRelativeTo("/foo", "/")
@@ -588,7 +648,18 @@ block: # quoteShellWindows
   doAssert quoteShellWindows("aaa\"") == "aaa\\\""
   doAssert quoteShellWindows("") == "\"\""
 
-block: # quoteShellWindows
+block: # quoteShellCommand
+  when defined(windows):
+    doAssert quoteShellCommand(["a b c", "d", "e"]) == """"a b c" d e"""
+    doAssert quoteShellCommand(["""ab"c""", r"\", "d"]) == """ab\"c \ d"""
+    doAssert quoteShellCommand(["""ab"c""", """ \""", "d"]) == """ab\"c " \\" d"""
+    doAssert quoteShellCommand(["""a\\\b""", """de fg""", "h"]) == """a\\\b "de fg" h"""
+    doAssert quoteShellCommand(["""a\"b""", "c", "d"]) == """a\\\"b c d"""
+    doAssert quoteShellCommand(["""a\\b c""", "d", "e"]) == """"a\\b c" d e"""
+    doAssert quoteShellCommand(["""a\\b\ c""", "d", "e"]) == """"a\\b\ c" d e"""
+    doAssert quoteShellCommand(["ab", ""]) == """ab """""
+
+block: # quoteShellPosix
   doAssert quoteShellPosix("aaa") == "aaa"
   doAssert quoteShellPosix("aaa a") == "'aaa a'"
   doAssert quoteShellPosix("") == "''"
@@ -619,7 +690,121 @@ block: # normalizePathEnd
     doAssert r"E:/".normalizePathEnd(trailingSep = true) == r"E:\"
     doAssert "/".normalizePathEnd == r"\"
 
-block: # isValidFilename
+
+import sugar
+
+block: # normalizeExe
+  doAssert "".dup(normalizeExe) == ""
+  when defined(posix):
+    doAssert "foo".dup(normalizeExe) == "./foo"
+    doAssert "foo/../bar".dup(normalizeExe) == "foo/../bar"
+  when defined(windows):
+    doAssert "foo".dup(normalizeExe) == "foo"
+
+block: # isAdmin
+  let isAzure = existsEnv("TF_BUILD") # xxx factor with testament.specs.isAzure
+  # In Azure on Windows tests run as an admin user
+  if isAzure and defined(windows): doAssert isAdmin()
+  # In Azure on POSIX tests run as a normal user
+  if isAzure and defined(posix): doAssert not isAdmin()
+
+
+import sugar
+
+block: # normalizeExe
+  doAssert "".dup(normalizeExe) == ""
+  when defined(posix):
+    doAssert "foo".dup(normalizeExe) == "./foo"
+    doAssert "foo/../bar".dup(normalizeExe) == "foo/../bar"
+  when defined(windows):
+    doAssert "foo".dup(normalizeExe) == "foo"
+
+block: # isAdmin
+  let isAzure = existsEnv("TF_BUILD") # xxx factor with testament.specs.isAzure
+  # In Azure on Windows tests run as an admin user
+  if isAzure and defined(windows): doAssert isAdmin()
+  # In Azure on POSIX tests run as a normal user
+  if isAzure and defined(posix): doAssert not isAdmin()
+
+when doslikeFileSystem:
+  import std/private/ntpath
+
+  block: # Bug #19103 UNC paths
+
+    # Easiest way of generating a valid, readable and writable UNC path
+    let tempDir = r"\\?\" & getTempDir()
+    doAssert dirExists tempDir
+    createDir tempDir / "test"
+    removeDir tempDir / "test"
+    createDir tempDir / "recursive" / "test"
+    removeDir tempDir / "recursive" / "test"
+
+    let tempDir2 = getTempDir()
+    let (drive, pathNoDrive) = splitDrive(tempDir2)
+    setCurrentDir drive
+    doAssert cmpIgnoreCase(getCurrentDir().splitDrive.drive, drive) == 0
+
+    # Test `\Users` path syntax on Windows by stripping away drive. `\`
+    # resolves to the drive in current working directory. This drive will be
+    # the same as `tempDir2` because of the `setCurrentDir` above.
+    doAssert pathNoDrive[0] == '\\'
+    createDir pathNoDrive / "test"
+    doAssert dirExists pathNoDrive / "test"
+    removeDir pathNoDrive / "test"
+
+    doAssert splitPath("//?/c:") == ("//?/c:", "")
+
+    doAssert relativePath("//?/c:///Users//me", "//?/c:", '/') == "Users/me"
+
+    doAssert parentDir(r"\\?\c:") == r""
+    doAssert parentDir(r"//?/c:/Users") == r"\\?\c:"
+    doAssert parentDir(r"\\localhost\c$") == r""
+    doAssert parentDir(r"\Users") == r"\"
+
+    doAssert tailDir("//?/c:") == ""
+    doAssert tailDir("//?/c:/Users") == "Users"
+    doAssert tailDir(r"\\localhost\c$\Windows\System32") == r"Windows\System32"
+
+    doAssert isRootDir("//?/c:")
+    doAssert isRootDir("//?/UNC/localhost/c$")
+    doAssert not isRootDir(r"\\?\c:\Users")
+
+    doAssert parentDirs(r"C:\Users", fromRoot = true).toSeq == @[r"C:\", r"C:\Users"]
+    doAssert parentDirs(r"C:\Users", fromRoot = false).toSeq == @[r"C:\Users", r"C:"]
+    doAssert parentDirs(r"\\?\c:\Users", fromRoot = true).toSeq ==
+      @[r"\\?\c:\", r"\\?\c:\Users"]
+    doAssert parentDirs(r"\\?\c:\Users", fromRoot = false).toSeq ==
+      @[r"\\?\c:\Users", r"\\?\c:"]
+    doAssert parentDirs(r"//localhost/c$/Users", fromRoot = true).toSeq ==
+      @[r"//localhost/c$/", r"//localhost/c$/Users"]
+    doAssert parentDirs(r"//?/UNC/localhost/c$/Users", fromRoot = false).toSeq ==
+      @[r"//?/UNC/localhost/c$/Users", r"\\?\UNC\localhost\c$"]
+    doAssert parentDirs(r"\Users", fromRoot = true).toSeq == @[r"\", r"\Users"]
+    doAssert parentDirs(r"\Users", fromRoot = false).toSeq == @[r"\Users", r"\"]
+
+    doAssert r"//?/c:" /../ "d/e" == r"\\?\c:\d\e"
+    doAssert r"//?/c:/Users" /../ "d/e" == r"\\?\c:\d\e"
+    doAssert r"\\localhost\c$" /../ "d/e" == r"\\localhost\c$\d\e"
+
+    doAssert splitFile("//?/c:") == ("//?/c:", "", "")
+    doAssert splitFile("//?/c:/Users") == ("//?/c:", "Users", "")
+    doAssert splitFile(r"\\localhost\c$\test.txt") == (r"\\localhost\c$", "test", ".txt")
+
+else:
+  block: # parentDirs
+    doAssert parentDirs("/home", fromRoot=true).toSeq == @["/", "/home"]
+    doAssert parentDirs("/home", fromRoot=false).toSeq == @["/home", "/"]
+    doAssert parentDirs("home", fromRoot=true).toSeq == @["home"]
+    doAssert parentDirs("home", fromRoot=false).toSeq == @["home"]
+
+    doAssert parentDirs("/home/user", fromRoot=true).toSeq == @["/", "/home/", "/home/user"]
+    doAssert parentDirs("/home/user", fromRoot=false).toSeq == @["/home/user", "/home", "/"]
+    doAssert parentDirs("home/user", fromRoot=true).toSeq == @["home/", "home/user"]
+    doAssert parentDirs("home/user", fromRoot=false).toSeq == @["home/user", "home"]
+
+
+# https://github.com/nim-lang/Nim/pull/19643#issuecomment-1235102314
+block:  # isValidFilename
   # Negative Tests.
   doAssert not isValidFilename("abcd", maxLen = 2)
   doAssert not isValidFilename("0123456789", maxLen = 8)
@@ -646,19 +831,34 @@ block: # isValidFilename
   doAssert isValidFilename("nim.nim")
   doAssert isValidFilename("foo.log")
 
-import sugar
+block: # searchExtPos
+  doAssert "foo.nim".searchExtPos == 3
+  doAssert "/foo.nim".searchExtPos == 4
+  doAssert "".searchExtPos == -1
+  doAssert "/".searchExtPos == -1
+  doAssert "a.b/foo".searchExtPos == -1
+  doAssert ".".searchExtPos == -1
+  doAssert "foo.".searchExtPos == 3
+  doAssert "foo..".searchExtPos == 4
+  doAssert "..".searchExtPos == -1
+  doAssert "...".searchExtPos == -1
+  doAssert "./".searchExtPos == -1
+  doAssert "../".searchExtPos == -1
+  doAssert "/.".searchExtPos == -1
+  doAssert "/..".searchExtPos == -1
+  doAssert ".b".searchExtPos == -1
+  doAssert "..b".searchExtPos == -1
+  doAssert "/.b".searchExtPos == -1
+  doAssert "a/.b".searchExtPos == -1
+  doAssert ".a.b".searchExtPos == 2
+  doAssert "a/.b.c".searchExtPos == 4
+  doAssert "a/..b".searchExtPos == -1
+  doAssert "a/b..c".searchExtPos == 4
 
-block: # normalizeExe
-  doAssert "".dup(normalizeExe) == ""
-  when defined(posix):
-    doAssert "foo".dup(normalizeExe) == "./foo"
-    doAssert "foo/../bar".dup(normalizeExe) == "foo/../bar"
-  when defined(windows):
-    doAssert "foo".dup(normalizeExe) == "foo"
-
-block: # isAdmin
-  let isAzure = existsEnv("TF_BUILD") # xxx factor with testament.specs.isAzure
-  # In Azure on Windows tests run as an admin user
-  if isAzure and defined(windows): doAssert isAdmin()
-  # In Azure on POSIX tests run as a normal user
-  if isAzure and defined(posix): doAssert not isAdmin()
+  when doslikeFileSystem:
+    doAssert "c:a.b".searchExtPos == 3
+    doAssert "c:.a".searchExtPos == -1
+    doAssert r"c:\.a".searchExtPos == -1
+    doAssert "c:..a".searchExtPos == -1
+    doAssert r"c:\..a".searchExtPos == -1
+    doAssert "c:.a.b".searchExtPos == 4

@@ -1,6 +1,18 @@
+discard """
+  matrix: "--mm:refc; --mm:orc"
+  targets: "c js"
+"""
+
+# xxx move all tests under `main`
+
 import std/sequtils
 import strutils
 from algorithm import sorted
+import std/assertions
+
+{.experimental: "strictEffects".}
+{.push warningAsError[Effect]: on.}
+{.experimental: "strictFuncs".}
 
 # helper for testing double substitution side effects which are handled
 # by `evalOnceAs`
@@ -190,17 +202,6 @@ block: # keepIf test
   keepIf(floats, proc(x: float): bool = x > 10)
   doAssert floats == @[13.0, 12.5, 10.1]
 
-block: # delete tests
-  let outcome = @[1, 1, 1, 1, 1, 1, 1, 1]
-  var dest = @[1, 1, 1, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1]
-  dest.delete(3, 8)
-  doAssert outcome == dest, """\
-  Deleting range 3-9 from [1,1,1,2,2,2,2,2,2,1,1,1,1,1]
-  is [1,1,1,1,1,1,1,1]"""
-  var x = @[1, 2, 3]
-  x.delete(100, 100)
-  doAssert x == @[1, 2, 3]
-
 block: # insert tests
   var dest = @[1, 1, 1, 1, 1, 1, 1, 1]
   let
@@ -298,43 +299,45 @@ block: # toSeq test
     doAssert myIter.toSeq == @[1, 2]
     doAssert toSeq(myIter) == @[1, 2]
 
-  block:
-    iterator myIter(): int {.closure.} =
-      yield 1
-      yield 2
+  when not defined(js):
+    # pending #4695
+    block:
+        iterator myIter(): int {.closure.} =
+          yield 1
+          yield 2
 
-    doAssert myIter.toSeq == @[1, 2]
-    doAssert toSeq(myIter) == @[1, 2]
-
-  block:
-    proc myIter(): auto =
-      iterator ret(): int {.closure.} =
-        yield 1
-        yield 2
-      result = ret
-
-    doAssert myIter().toSeq == @[1, 2]
-    doAssert toSeq(myIter()) == @[1, 2]
-
-  block:
-    proc myIter(n: int): auto =
-      var counter = 0
-      iterator ret(): int {.closure.} =
-        while counter < n:
-          yield counter
-          counter.inc
-      result = ret
+        doAssert myIter.toSeq == @[1, 2]
+        doAssert toSeq(myIter) == @[1, 2]
 
     block:
-      let myIter3 = myIter(3)
-      doAssert myIter3.toSeq == @[0, 1, 2]
+      proc myIter(): auto =
+        iterator ret(): int {.closure.} =
+          yield 1
+          yield 2
+        result = ret
+
+      doAssert myIter().toSeq == @[1, 2]
+      doAssert toSeq(myIter()) == @[1, 2]
+
     block:
-      let myIter3 = myIter(3)
-      doAssert toSeq(myIter3) == @[0, 1, 2]
-    block:
-      # makes sure this does not hang forever
-      doAssert myIter(3).toSeq == @[0, 1, 2]
-      doAssert toSeq(myIter(3)) == @[0, 1, 2]
+      proc myIter(n: int): auto =
+        var counter = 0
+        iterator ret(): int {.closure.} =
+          while counter < n:
+            yield counter
+            counter.inc
+        result = ret
+
+      block:
+        let myIter3 = myIter(3)
+        doAssert myIter3.toSeq == @[0, 1, 2]
+      block:
+        let myIter3 = myIter(3)
+        doAssert toSeq(myIter3) == @[0, 1, 2]
+      block:
+        # makes sure this does not hang forever
+        doAssert myIter(3).toSeq == @[0, 1, 2]
+        doAssert toSeq(myIter(3)) == @[0, 1, 2]
 
 block:
   # tests https://github.com/nim-lang/Nim/issues/7187
@@ -385,6 +388,11 @@ block: # newSeqWith tests
   seq2D[1][0] = true
   seq2D[0][1] = true
   doAssert seq2D == @[@[true, true], @[true, false], @[false, false], @[false, false]]
+
+block: # bug #21538
+  var x: seq[int] = @[2, 4]
+  var y = newSeqWith(x.pop(), true)
+  doAssert y == @[true, true, true, true]
 
 block: # mapLiterals tests
   let x = mapLiterals([0.1, 1.2, 2.3, 3.4], int)
@@ -452,4 +460,88 @@ block:
       for i in 0..<len:
         yield i
 
-  doAssert: iter(3).mapIt(2*it).foldl(a + b) == 6
+  # xxx: obscure CT error: basic_types.nim(16, 16) Error: internal error: symbol has no generated name: true
+  when not defined(js):
+    doAssert: iter(3).mapIt(2*it).foldl(a + b) == 6
+
+block: # strictFuncs tests with ref object
+  type Foo = ref object
+
+  let foo1 = Foo()
+  let foo2 = Foo()
+  let foos = @[foo1, foo2]
+
+  # Procedures that are `func`
+  discard concat(foos, foos)
+  discard count(foos, foo1)
+  discard cycle(foos, 3)
+  discard deduplicate(foos)
+  discard minIndex(foos)
+  discard maxIndex(foos)
+  discard distribute(foos, 2)
+  var mutableFoos = foos
+  mutableFoos.delete(0..1)
+  mutableFoos.insert(foos)
+
+  # Some procedures that are `proc`, but were reverted from `func`
+  discard repeat(foo1, 3)
+  discard zip(foos, foos)
+  let fooTuples = @[(foo1, 1), (foo2, 2)]
+  discard unzip(fooTuples)
+
+template main =
+  # xxx move all tests here
+  block: # delete tests
+    let outcome = @[1, 1, 1, 1, 1, 1, 1, 1]
+    var dest = @[1, 1, 1, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1]
+    dest.delete(3, 8)
+    doAssert outcome == dest, """\
+    Deleting range 3-9 from [1,1,1,2,2,2,2,2,2,1,1,1,1,1]
+    is [1,1,1,1,1,1,1,1]"""
+    var x = @[1, 2, 3]
+    x.delete(100, 100)
+    doAssert x == @[1, 2, 3]
+
+  block: # delete tests
+    var a = @[10, 11, 12, 13, 14]
+    doAssertRaises(IndexDefect): a.delete(4..5)
+    doAssertRaises(IndexDefect): a.delete(4..<6)
+    doAssertRaises(IndexDefect): a.delete(-1..1)
+    doAssertRaises(IndexDefect): a.delete(-1 .. -1)
+    doAssertRaises(IndexDefect): a.delete(5..5)
+    doAssertRaises(IndexDefect): a.delete(5..3)
+    doAssertRaises(IndexDefect): a.delete(5..<5) # edge case
+    doAssert a == @[10, 11, 12, 13, 14]
+    a.delete(4..4)
+    doAssert a == @[10, 11, 12, 13]
+    a.delete(1..2)
+    doAssert a == @[10, 13]
+    a.delete(1..<1) # empty slice
+    doAssert a == @[10, 13]
+    a.delete(0..<0)
+    doAssert a == @[10, 13]
+    a.delete(0..0)
+    doAssert a == @[13]
+    a.delete(0..0)
+    doAssert a == @[]
+    doAssertRaises(IndexDefect): a.delete(0..0)
+    doAssertRaises(IndexDefect): a.delete(0..<0) # edge case
+    block:
+      type A = object
+        a0: int
+      var a = @[A(a0: 10), A(a0: 11), A(a0: 12)]
+      a.delete(0..1)
+      doAssert a == @[A(a0: 12)]
+    block:
+      type A = ref object
+      let a0 = A()
+      let a1 = A()
+      let a2 = A()
+      var a = @[a0, a1, a2]
+      a.delete(0..1)
+      doAssert a == @[a2]
+
+static: main()
+main()
+
+{.pop.}

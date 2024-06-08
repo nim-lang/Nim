@@ -1,5 +1,5 @@
 discard """
-  targets: "c cpp js"
+  matrix: "--mm:refc; --mm:orc; --backend:cpp; --backend:js --jsbigint64:off; --backend:js --jsbigint64:on"
 """
 
 #[
@@ -12,6 +12,7 @@ duplication (which always results in weaker test coverage in practice).
 ]#
 
 import std/unittest
+import std/private/jsutils
 template test[T](a: T, expected: string) =
   check $a == expected
   var b = a
@@ -44,8 +45,7 @@ block: # `$`(SomeInteger)
 
   check $int8.low == "-128"
   check $int8(-128) == "-128"
-  when not defined js: # pending https://github.com/nim-lang/Nim/issues/14127
-    check $cast[int8](-128) == "-128"
+  check $cast[int8](-128) == "-128"
 
   var a = 12345'u16
   check $a == "12345"
@@ -66,7 +66,8 @@ block: # `$`(SomeInteger)
   testType int
   testType bool
 
-  when not defined(js): # requires BigInt support
+  whenJsNoBigInt64: discard
+  do:
     testType uint64
     testType int64
     testType BiggestInt
@@ -102,39 +103,40 @@ block: # #14350, #16674, #16686 for JS
     doAssert nil2 == cstring("")
 
 block:
-  block:
-    let x = -1'i8
-    let y = uint32(x)
-
-    doAssert $y == "4294967295"
-
-  block:
-    let x = -1'i16
-    let y = uint32(x)
-
-    doAssert $y == "4294967295"
-
-  block:
-    let x = -1'i32
-    let y = uint32(x)
-
-    doAssert $y == "4294967295"
+  when defined(js): # bug #18591
+    let a1 = -1'i8
+    let a2 = uint8(a1)
+    # if `uint8(a1)` changes meaning to `cast[uint8](a1)` in future, update this test;
+    # until then, this is the correct semantics.
+    let a3 = $a2
+    doAssert a2 == 255'u8
+    doAssert a3 == "255"
+    proc intToStr(a: uint8): cstring {.importjs: "(# + \"\")".}
+    doAssert $intToStr(a2) == "255"
+  else:
+    block:
+      let x = -1'i8
+      let y = uint32(x)
+      doAssert $y == "4294967295"
+    block:
+      let x = -1'i16
+      let y = uint32(x)
+      doAssert $y == "4294967295"
+    block:
+      let x = -1'i32
+      let y = uint32(x)
+      doAssert $y == "4294967295"
+    block:
+      proc foo1(arg: int): string =
+        let x = uint32(arg)
+        $x
+      doAssert $foo1(-1) == "4294967295"
 
   block:
     let x = 4294967295'u32
     doAssert $x == "4294967295"
-
   block:
     doAssert $(4294967295'u32) == "4294967295"
-
-
-  block:
-    proc foo1(arg: int): string =
-      let x = uint32(arg)
-      $x
-
-    doAssert $foo1(-1) == "4294967295"
-
 
 proc main()=
   block:
@@ -159,6 +161,39 @@ proc main()=
 
   doAssert $uint32.high == "4294967295"
 
+  block: # addInt
+    var res = newStringOfCap(24)
+    template test2(a, b) =
+      res.setLen(0)
+      res.addInt a
+      doAssert res == b
+
+    for i in 0 .. 9:
+      res.addInt int64(i)
+    doAssert res == "0123456789"
+
+    res.setLen(0)
+    for i in -9 .. 0:
+      res.addInt int64(i)
+    doAssert res == "-9-8-7-6-5-4-3-2-10"
+
+    whenJsNoBigInt64: discard
+    do:
+      test2 high(int64), "9223372036854775807"
+      test2 low(int64), "-9223372036854775808"
+    test2 high(int32), "2147483647"
+    test2 low(int32), "-2147483648"
+    test2 high(int16), "32767"
+    test2 low(int16), "-32768"
+    test2 high(int8), "127"
+    test2 low(int8), "-128"
+
+  block:
+    const
+      a: array[3, char] = ['N', 'i', 'm']
+      aStr = $(a)
+
+    doAssert aStr == """['N', 'i', 'm']"""
 
 static: main()
 main()

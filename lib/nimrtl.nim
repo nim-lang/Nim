@@ -26,6 +26,7 @@ batchable: false
 ## * unicode
 ## * pegs
 ## * ropes
+## * cstrutils
 ##
 
 when system.appType != "lib":
@@ -35,5 +36,5 @@ when not defined(createNimRtl):
   {.error: "This file has to be compiled with '-d:createNimRtl'".}
 
 import
-  parseutils, strutils, parseopt, parsecfg, strtabs, unicode, pegs, ropes,
-  os, osproc, times, cstrutils
+  std/[parseutils, strutils, parseopt, parsecfg, strtabs, unicode, pegs, ropes,
+  os, osproc, times, cstrutils]

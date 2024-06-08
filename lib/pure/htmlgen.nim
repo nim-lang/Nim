@@ -8,7 +8,7 @@
 #
 
 ## Do yourself a favor and import the module
-## as `from htmlgen import nil` and then fully qualify the macros.
+## as `from std/htmlgen import nil` and then fully qualify the macros.
 ##
 ## *Note*: The Karax project (`nimble install karax`) has a better
 ## way to achieve the same, see https://github.com/pragmagic/karax/blob/master/tests/nativehtmlgen.nim
@@ -30,17 +30,18 @@
 ## Examples
 ## ========
 ##
-## .. code-block:: Nim
+##   ```Nim
 ##   var nim = "Nim"
 ##   echo h1(a(href="https://nim-lang.org", nim))
+##   ```
 ##
-## Writes the string::
+## Writes the string:
 ##
-##   <h1><a href="https://nim-lang.org">Nim</a></h1>
+##     <h1><a href="https://nim-lang.org">Nim</a></h1>
 ##
 
 import
-  macros, strutils
+  std/[macros, strutils]
 
 const
   coreAttr* = " accesskey class contenteditable dir hidden id lang " &
@@ -56,7 +57,7 @@ const
   ariaAttr* = " role "                           ## HTML DOM Aria Attributes
   commonAttr* = coreAttr & eventAttr & ariaAttr  ## HTML DOM Common Attributes
 
-proc getIdent(e: NimNode): string {.compileTime.} =
+proc getIdent(e: NimNode): string =
   case e.kind
   of nnkIdent:
     result = e.strVal.normalize
@@ -75,7 +76,7 @@ proc delete[T](s: var seq[T], attr: T): bool =
     result = true
 
 proc xmlCheckedTag*(argsList: NimNode, tag: string, optAttr = "", reqAttr = "",
-    isLeaf = false): NimNode {.compileTime.} =
+    isLeaf = false): NimNode =
   ## use this procedure to define a new XML tag
 
   # copy the attributes; when iterating over them these lists
@@ -322,7 +323,7 @@ macro html*(e: varargs[untyped]): untyped =
 
 macro hr*(): untyped =
   ## Generates the HTML `hr` element.
-  result = xmlCheckedTag(newNimNode(nnkArglist), "hr", commonAttr, "", true)
+  result = xmlCheckedTag(newNimNode(nnkArgList), "hr", commonAttr, "", true)
 
 macro i*(e: varargs[untyped]): untyped =
   ## Generates the HTML `i` element.

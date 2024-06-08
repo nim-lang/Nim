@@ -9,7 +9,7 @@
 
 ## :Authors: Zahary Karadjov
 ##
-## This module provides utilities for reserving a portions of the
+## This module provides utilities for reserving portions of the
 ## address space of a program without consuming physical memory.
 ## It can be used to implement a dynamically resizable buffer that
 ## is guaranteed to remain in the same memory location. The buffer
@@ -18,7 +18,10 @@
 ##
 ## Unstable API.
 
-from os import raiseOSError, osLastError
+from std/oserrors import raiseOSError, osLastError
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
 
 template distance*(lhs, rhs: pointer): int =
   cast[int](rhs) - cast[int](lhs)
@@ -41,26 +44,11 @@ type
     mem: ReservedMem
 
 when defined(windows):
-  import winlean
-
-  type
-    SYSTEM_INFO {.final, pure.} = object
-      u1: uint32
-      dwPageSize: uint32
-      lpMinimumApplicationAddress: pointer
-      lpMaximumApplicationAddress: pointer
-      dwActiveProcessorMask: ptr uint32
-      dwNumberOfProcessors: uint32
-      dwProcessorType: uint32
-      dwAllocationGranularity: uint32
-      wProcessorLevel: uint16
-      wProcessorRevision: uint16
-
-  proc getSystemInfo(lpSystemInfo: ptr SYSTEM_INFO) {.stdcall,
-      dynlib: "kernel32", importc: "GetSystemInfo".}
+  import std/winlean
+  import std/private/win_getsysteminfo
 
   proc getAllocationGranularity: uint =
-    var sysInfo: SYSTEM_INFO
+    var sysInfo: SystemInfo
     getSystemInfo(addr sysInfo)
     return uint(sysInfo.dwAllocationGranularity)
 
@@ -80,7 +68,7 @@ when defined(windows):
       raiseOSError(osLastError())
 
 else:
-  import posix
+  import std/posix
 
   let allocationGranularity = sysconf(SC_PAGESIZE)
 

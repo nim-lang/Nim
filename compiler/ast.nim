@@ -10,10 +10,18 @@
 # abstract syntax tree + symbol table
 
 import
-  lineinfos, hashes, options, ropes, idents, int128
-from strutils import toLowerAscii
+  lineinfos, options, ropes, idents, int128, wordrecg
+
+import std/[tables, hashes]
+from std/strutils import toLowerAscii
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
 
 export int128
+
+import nodekinds
+export nodekinds
 
 type
   TCallingConvention* = enum
@@ -28,207 +36,12 @@ type
     ccThisCall = "thiscall"         # thiscall (parameters are pushed right-to-left)
     ccClosure  = "closure"          # proc has a closure
     ccNoConvention = "noconv"       # needed for generating proper C procs sometimes
-
-type
-  TNodeKind* = enum # order is extremely important, because ranges are used
-                    # to check whether a node belongs to a certain class
-    nkNone,               # unknown node kind: indicates an error
-                          # Expressions:
-                          # Atoms:
-    nkEmpty,              # the node is empty
-    nkIdent,              # node is an identifier
-    nkSym,                # node is a symbol
-    nkType,               # node is used for its typ field
-
-    nkCharLit,            # a character literal ''
-    nkIntLit,             # an integer literal
-    nkInt8Lit,
-    nkInt16Lit,
-    nkInt32Lit,
-    nkInt64Lit,
-    nkUIntLit,            # an unsigned integer literal
-    nkUInt8Lit,
-    nkUInt16Lit,
-    nkUInt32Lit,
-    nkUInt64Lit,
-    nkFloatLit,           # a floating point literal
-    nkFloat32Lit,
-    nkFloat64Lit,
-    nkFloat128Lit,
-    nkStrLit,             # a string literal ""
-    nkRStrLit,            # a raw string literal r""
-    nkTripleStrLit,       # a triple string literal """
-    nkNilLit,             # the nil literal
-                          # end of atoms
-    nkComesFrom,          # "comes from" template/macro information for
-                          # better stack trace generation
-    nkDotCall,            # used to temporarily flag a nkCall node;
-                          # this is used
-                          # for transforming ``s.len`` to ``len(s)``
-
-    nkCommand,            # a call like ``p 2, 4`` without parenthesis
-    nkCall,               # a call like p(x, y) or an operation like +(a, b)
-    nkCallStrLit,         # a call with a string literal
-                          # x"abc" has two sons: nkIdent, nkRStrLit
-                          # x"""abc""" has two sons: nkIdent, nkTripleStrLit
-    nkInfix,              # a call like (a + b)
-    nkPrefix,             # a call like !a
-    nkPostfix,            # something like a! (also used for visibility)
-    nkHiddenCallConv,     # an implicit type conversion via a type converter
-
-    nkExprEqExpr,         # a named parameter with equals: ''expr = expr''
-    nkExprColonExpr,      # a named parameter with colon: ''expr: expr''
-    nkIdentDefs,          # a definition like `a, b: typeDesc = expr`
-                          # either typeDesc or expr may be nil; used in
-                          # formal parameters, var statements, etc.
-    nkVarTuple,           # a ``var (a, b) = expr`` construct
-    nkPar,                # syntactic (); may be a tuple constructor
-    nkObjConstr,          # object constructor: T(a: 1, b: 2)
-    nkCurly,              # syntactic {}
-    nkCurlyExpr,          # an expression like a{i}
-    nkBracket,            # syntactic []
-    nkBracketExpr,        # an expression like a[i..j, k]
-    nkPragmaExpr,         # an expression like a{.pragmas.}
-    nkRange,              # an expression like i..j
-    nkDotExpr,            # a.b
-    nkCheckedFieldExpr,   # a.b, but b is a field that needs to be checked
-    nkDerefExpr,          # a^
-    nkIfExpr,             # if as an expression
-    nkElifExpr,
-    nkElseExpr,
-    nkLambda,             # lambda expression
-    nkDo,                 # lambda block appering as trailing proc param
-    nkAccQuoted,          # `a` as a node
-
-    nkTableConstr,        # a table constructor {expr: expr}
-    nkBind,               # ``bind expr`` node
-    nkClosedSymChoice,    # symbol choice node; a list of nkSyms (closed)
-    nkOpenSymChoice,      # symbol choice node; a list of nkSyms (open)
-    nkHiddenStdConv,      # an implicit standard type conversion
-    nkHiddenSubConv,      # an implicit type conversion from a subtype
-                          # to a supertype
-    nkConv,               # a type conversion
-    nkCast,               # a type cast
-    nkStaticExpr,         # a static expr
-    nkAddr,               # a addr expression
-    nkHiddenAddr,         # implicit address operator
-    nkHiddenDeref,        # implicit ^ operator
-    nkObjDownConv,        # down conversion between object types
-    nkObjUpConv,          # up conversion between object types
-    nkChckRangeF,         # range check for floats
-    nkChckRange64,        # range check for 64 bit ints
-    nkChckRange,          # range check for ints
-    nkStringToCString,    # string to cstring
-    nkCStringToString,    # cstring to string
-                          # end of expressions
-
-    nkAsgn,               # a = b
-    nkFastAsgn,           # internal node for a fast ``a = b``
-                          # (no string copy)
-    nkGenericParams,      # generic parameters
-    nkFormalParams,       # formal parameters
-    nkOfInherit,          # inherited from symbol
-
-    nkImportAs,           # a 'as' b in an import statement
-    nkProcDef,            # a proc
-    nkMethodDef,          # a method
-    nkConverterDef,       # a converter
-    nkMacroDef,           # a macro
-    nkTemplateDef,        # a template
-    nkIteratorDef,        # an iterator
-
-    nkOfBranch,           # used inside case statements
-                          # for (cond, action)-pairs
-    nkElifBranch,         # used in if statements
-    nkExceptBranch,       # an except section
-    nkElse,               # an else part
-    nkAsmStmt,            # an assembler block
-    nkPragma,             # a pragma statement
-    nkPragmaBlock,        # a pragma with a block
-    nkIfStmt,             # an if statement
-    nkWhenStmt,           # a when expression or statement
-    nkForStmt,            # a for statement
-    nkParForStmt,         # a parallel for statement
-    nkWhileStmt,          # a while statement
-    nkCaseStmt,           # a case statement
-    nkTypeSection,        # a type section (consists of type definitions)
-    nkVarSection,         # a var section
-    nkLetSection,         # a let section
-    nkConstSection,       # a const section
-    nkConstDef,           # a const definition
-    nkTypeDef,            # a type definition
-    nkYieldStmt,          # the yield statement as a tree
-    nkDefer,              # the 'defer' statement
-    nkTryStmt,            # a try statement
-    nkFinally,            # a finally section
-    nkRaiseStmt,          # a raise statement
-    nkReturnStmt,         # a return statement
-    nkBreakStmt,          # a break statement
-    nkContinueStmt,       # a continue statement
-    nkBlockStmt,          # a block statement
-    nkStaticStmt,         # a static statement
-    nkDiscardStmt,        # a discard statement
-    nkStmtList,           # a list of statements
-    nkImportStmt,         # an import statement
-    nkImportExceptStmt,   # an import x except a statement
-    nkExportStmt,         # an export statement
-    nkExportExceptStmt,   # an 'export except' statement
-    nkFromStmt,           # a from * import statement
-    nkIncludeStmt,        # an include statement
-    nkBindStmt,           # a bind statement
-    nkMixinStmt,          # a mixin statement
-    nkUsingStmt,          # an using statement
-    nkCommentStmt,        # a comment statement
-    nkStmtListExpr,       # a statement list followed by an expr; this is used
-                          # to allow powerful multi-line templates
-    nkBlockExpr,          # a statement block ending in an expr; this is used
-                          # to allow powerful multi-line templates that open a
-                          # temporary scope
-    nkStmtListType,       # a statement list ending in a type; for macros
-    nkBlockType,          # a statement block ending in a type; for macros
-                          # types as syntactic trees:
-
-    nkWith,               # distinct with `foo`
-    nkWithout,            # distinct without `foo`
-
-    nkTypeOfExpr,         # type(1+2)
-    nkObjectTy,           # object body
-    nkTupleTy,            # tuple body
-    nkTupleClassTy,       # tuple type class
-    nkTypeClassTy,        # user-defined type class
-    nkStaticTy,           # ``static[T]``
-    nkRecList,            # list of object parts
-    nkRecCase,            # case section of object
-    nkRecWhen,            # when section of object
-    nkRefTy,              # ``ref T``
-    nkPtrTy,              # ``ptr T``
-    nkVarTy,              # ``var T``
-    nkConstTy,            # ``const T``
-    nkMutableTy,          # ``mutable T``
-    nkDistinctTy,         # distinct type
-    nkProcTy,             # proc type
-    nkIteratorTy,         # iterator type
-    nkSharedTy,           # 'shared T'
-                          # we use 'nkPostFix' for the 'not nil' addition
-    nkEnumTy,             # enum body
-    nkEnumFieldDef,       # `ident = expr` in an enumeration
-    nkArgList,            # argument list
-    nkPattern,            # a special pattern; used for matching
-    nkHiddenTryStmt,      # a hidden try statement
-    nkClosure,            # (prc, env)-pair (internally used for code gen)
-    nkGotoState,          # used for the state machine (for iterators)
-    nkState,              # give a label to a code section (for iterators)
-    nkBreakState,         # special break statement for easier code generation
-    nkFuncDef,            # a func
-    nkTupleConstr         # a tuple constructor
-    nkModuleRef           # for .rod file support: A (moduleId, itemId) pair
-    nkReplayAction        # for .rod file support: A replay action
-    nkNilRodNode          # for .rod file support: a 'nil' PNode
+    ccMember = "member"             # proc is a (cpp) member
 
   TNodeKinds* = set[TNodeKind]
 
 type
-  TSymFlag* = enum    # 46 flags!
+  TSymFlag* = enum    # 51 flags!
     sfUsed,           # read access of sym (for warnings) or simply used
     sfExported,       # symbol is exported from module
     sfFromGeneric,    # symbol is instantiation of a generic; this is needed
@@ -256,7 +69,8 @@ type
                       # *OR*: a proc is indirectly called (used as first class)
     sfCompilerProc,   # proc is a compiler proc, that is a C proc that is
                       # needed for the code generator
-    sfProcvar,        # proc can be passed to a proc var
+    sfEscapes         # param escapes
+                      # currently unimplemented
     sfDiscriminant,   # field is a discriminant in a record/object
     sfRequiresInit,   # field must be initialized during construction
     sfDeprecated,     # symbol is deprecated
@@ -279,7 +93,7 @@ type
     sfNamedParamCall, # symbol needs named parameter call syntax in target
                       # language; for interfacing with Objective C
     sfDiscardable,    # returned value may be discarded implicitly
-    sfOverriden,      # proc is overridden
+    sfOverridden,      # proc is overridden
     sfCallsite        # A flag for template symbols to tell the
                       # compiler it should use line information from
                       # the calling side of the macro, not from the
@@ -295,9 +109,23 @@ type
     sfInjectDestructors # whether the proc needs the 'injectdestructors' transformation
     sfNeverRaises     # proc can never raise an exception, not even OverflowDefect
                       # or out-of-memory
+    sfSystemRaisesDefect # proc in the system can raise defects
     sfUsedInFinallyOrExcept  # symbol is used inside an 'except' or 'finally'
     sfSingleUsedTemp  # For temporaries that we know will only be used once
     sfNoalias         # 'noalias' annotation, means C's 'restrict'
+                      # for templates and macros, means cannot be called
+                      # as a lone symbol (cannot use alias syntax)
+    sfEffectsDelayed  # an 'effectsDelayed' parameter
+    sfGeneratedType   # A anonymous generic type that is generated by the compiler for
+                      # objects that do not have generic parameters in case one of the
+                      # object fields has one.
+                      #
+                      # This is disallowed but can cause the typechecking to go into
+                      # an infinite loop, this flag is used as a sentinel to stop it.
+    sfVirtual         # proc is a C++ virtual function
+    sfByCopy          # param is marked as pass bycopy
+    sfMember          # proc is a C++ member of a type
+    sfCodegenDecl     # type, proc, global or proc param is marked as codegenDecl
 
   TSymFlags* = set[TSymFlag]
 
@@ -323,13 +151,14 @@ const
 
   sfCompileToCpp* = sfInfixCall       # compile the module as C++ code
   sfCompileToObjc* = sfNamedParamCall # compile the module as Objective-C code
-  sfExperimental* = sfOverriden       # module uses the .experimental switch
-  sfGoto* = sfOverriden               # var is used for 'goto' code generation
+  sfExperimental* = sfOverridden       # module uses the .experimental switch
+  sfGoto* = sfOverridden               # var is used for 'goto' code generation
   sfWrittenTo* = sfBorrow             # param is assigned to
-  sfEscapes* = sfProcvar              # param escapes
+                                      # currently unimplemented
   sfBase* = sfDiscriminant
-  sfIsSelf* = sfOverriden             # param is 'self'
   sfCustomPragma* = sfRegister        # symbol is custom pragma template
+  sfTemplateRedefinition* = sfExportc # symbol is a redefinition of an earlier template
+  sfCppMember* = { sfVirtual, sfMember, sfConstructor } # proc is a C++ member, meaning it will be attached to the type definition
 
 const
   # getting ready for the future expr/stmt merge
@@ -342,7 +171,8 @@ const
   ensuresEffects* = 2     # 'ensures' annotation
   tagEffects* = 3       # user defined tag ('gc', 'time' etc.)
   pragmasEffects* = 4    # not an effect, but a slot for pragmas in proc type
-  effectListLen* = 5    # list of effects list
+  forbiddenEffects* = 5    # list of illegal effects
+  effectListLen* = 6    # list of effects list
   nkLastBlockStmts* = {nkRaiseStmt, nkReturnStmt, nkBreakStmt, nkContinueStmt}
                         # these must be last statements in a block
 
@@ -378,7 +208,7 @@ type
     tySequence,
     tyProc,
     tyPointer, tyOpenArray,
-    tyString, tyCString, tyForward,
+    tyString, tyCstring, tyForward,
     tyInt, tyInt8, tyInt16, tyInt32, tyInt64, # signed integers
     tyFloat, tyFloat32, tyFloat64, tyFloat128,
     tyUInt, tyUInt8, tyUInt16, tyUInt32, tyUInt64,
@@ -412,9 +242,9 @@ type
     tyInferred
       # In the initial state `base` stores a type class constraining
       # the types that can be inferred. After a candidate type is
-      # selected, it's stored in `lastSon`. Between `base` and `lastSon`
+      # selected, it's stored in `last`. Between `base` and `last`
       # there may be 0, 2 or more types that were also considered as
-      # possible candidates in the inference process (i.e. lastSon will
+      # possible candidates in the inference process (i.e. last will
       # be updated to store a type best conforming to all candidates)
 
     tyAnd, tyOr, tyNot
@@ -439,10 +269,12 @@ type
 
     tyVoid
       # now different from tyEmpty, hurray!
+    tyIterable
 
 static:
   # remind us when TTypeKind stops to fit in a single 64-bit word
-  assert TTypeKind.high.ord <= 63
+  # assert TTypeKind.high.ord <= 63
+  discard
 
 const
   tyPureObject* = tyTuple
@@ -461,6 +293,8 @@ const
   # consider renaming as `tyAbstractVarRange`
   abstractVarRange* = {tyGenericInst, tyRange, tyVar, tyDistinct, tyOrdinal,
                        tyTypeDesc, tyAlias, tyInferred, tySink, tyOwned}
+  abstractInst* = {tyGenericInst, tyDistinct, tyOrdinal, tyTypeDesc, tyAlias,
+                   tyInferred, tySink, tyOwned} # xxx what about tyStatic?
 
 type
   TTypeKinds* = set[TTypeKind]
@@ -491,10 +325,13 @@ type
                        # the flag is applied to proc default values and to calls
     nfExecuteOnReload  # A top-level statement that will be executed during reloads
     nfLastRead  # this node is a last read
-    nfFirstWrite# this node is a first write
+    nfFirstWrite # this node is a first write
+    nfHasComment # node has a comment
+    nfSkipFieldChecking # node skips field visable checking
+    nfOpenSym # node is a captured sym but can be overriden by local symbols
 
   TNodeFlags* = set[TNodeFlag]
-  TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: ~40)
+  TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 47)
     tfVarargs,        # procedure has C styled varargs
                       # tyArray type represeting a varargs list
     tfNoSideEffect,   # procedure type does not allow side effects
@@ -524,7 +361,7 @@ type
     tfIterator,       # type is really an iterator, not a tyProc
     tfPartial,        # type is declared as 'partial'
     tfNotNil,         # type cannot be 'nil'
-    tfRequiresInit,   # type constains a "not nil" constraint somewhere or
+    tfRequiresInit,   # type contains a "not nil" constraint somewhere or
                       # a `requiresInit` field, so the default zero init
                       # is not appropriate
     tfNeedsFullInit,  # object type marked with {.requiresInit.}
@@ -561,6 +398,11 @@ type
       # (for importc types); type is fully specified, allowing to compute
       # sizeof, alignof, offsetof at CT
     tfExplicitCallConv
+    tfIsConstructor
+    tfEffectSystemWorkaround
+    tfIsOutParam
+    tfSendable
+    tfImplicitStatic
 
   TTypeFlags* = set[TTypeFlag]
 
@@ -596,12 +438,13 @@ type
                           # file (it is loaded on demand, which may
                           # mean: never)
     skPackage,            # symbol is a package (used for canonicalization)
-    skAlias               # an alias (needs to be resolved immediately)
   TSymKinds* = set[TSymKind]
 
 const
   routineKinds* = {skProc, skFunc, skMethod, skIterator,
                    skConverter, skMacro, skTemplate}
+  ExportableSymKinds* = {skVar, skLet, skConst, skType, skEnumField, skStub} + routineKinds
+
   tfUnion* = tfNoSideEffect
   tfGcSafe* = tfThread
   tfObjHasKids* = tfEnumHasHoles
@@ -609,7 +452,7 @@ const
   skError* = skUnknown
 
 var
-  eqTypeFlags* = {tfIterator, tfNotNil, tfVarIsPtr, tfGcSafe, tfNoSideEffect}
+  eqTypeFlags* = {tfIterator, tfNotNil, tfVarIsPtr, tfGcSafe, tfNoSideEffect, tfIsOutParam}
     ## type flags that are essential for type equality.
     ## This is now a variable because for emulation of version:1.0 we
     ## might exclude {tfGcSafe, tfNoSideEffect}.
@@ -644,7 +487,8 @@ type
     mUnaryMinusI, mUnaryMinusI64, mAbsI, mNot,
     mUnaryPlusI, mBitnotI,
     mUnaryPlusF64, mUnaryMinusF64,
-    mCharToStr, mBoolToStr, mIntToStr, mInt64ToStr, mFloatToStr, mCStrToStr,
+    mCharToStr, mBoolToStr,
+    mCStrToStr,
     mStrToStr, mEnumToStr,
     mAnd, mOr,
     mImplies, mIff, mExists, mForall, mOld,
@@ -657,13 +501,13 @@ type
     mInSet, mRepr, mExit,
     mSetLengthStr, mSetLengthSeq,
     mIsPartOf, mAstToStr, mParallel,
-    mSwap, mIsNil, mArrToSeq,
+    mSwap, mIsNil, mArrToSeq, mOpenArrayToSeq,
     mNewString, mNewStringOfCap, mParseBiggestFloat,
-    mMove, mWasMoved, mDestroy,
-    mDefault, mUnown, mIsolate, mAccessEnv, mReset,
+    mMove, mEnsureMove, mWasMoved, mDup, mDestroy, mTrace,
+    mDefault, mUnown, mFinished, mIsolate, mAccessEnv, mAccessTypeField,
     mArray, mOpenArray, mRange, mSet, mSeq, mVarargs,
     mRef, mPtr, mVar, mDistinct, mVoid, mTuple,
-    mOrdinal,
+    mOrdinal, mIterableType,
     mInt, mInt8, mInt16, mInt32, mInt64,
     mUInt, mUInt8, mUInt16, mUInt32, mUInt64,
     mFloat, mFloat32, mFloat64, mFloat128,
@@ -680,19 +524,19 @@ type
     mNctPut, mNctLen, mNctGet, mNctHasNext, mNctNext,
 
     mNIntVal, mNFloatVal, mNSymbol, mNIdent, mNGetType, mNStrVal, mNSetIntVal,
-    mNSetFloatVal, mNSetSymbol, mNSetIdent, mNSetType, mNSetStrVal, mNLineInfo,
+    mNSetFloatVal, mNSetSymbol, mNSetIdent, mNSetStrVal, mNLineInfo,
     mNNewNimNode, mNCopyNimNode, mNCopyNimTree, mStrToIdent, mNSigHash, mNSizeOf,
     mNBindSym, mNCallSite,
     mEqIdent, mEqNimrodNode, mSameNodeType, mGetImpl, mNGenSym,
     mNHint, mNWarning, mNError,
     mInstantiationInfo, mGetTypeInfo, mGetTypeInfoV2,
-    mNimvm, mIntDefine, mStrDefine, mBoolDefine, mRunnableExamples,
+    mNimvm, mIntDefine, mStrDefine, mBoolDefine, mGenericDefine, mRunnableExamples,
     mException, mBuiltinType, mSymOwner, mUncheckedArray, mGetImplTransf,
-    mSymIsInstantiationOf, mNodeId
+    mSymIsInstantiationOf, mNodeId, mPrivateAccess, mZeroDefault
 
 
-# things that we can evaluate safely at compile time, even if not asked for it:
 const
+  # things that we can evaluate safely at compile time, even if not asked for it:
   ctfeWhitelist* = {mNone, mSucc,
     mPred, mInc, mDec, mOrd, mLengthOpenArray,
     mLengthStr, mLengthArray, mLengthSeq,
@@ -712,18 +556,25 @@ const
     mEqRef, mEqProc, mLePtr, mLtPtr, mEqCString, mXor,
     mUnaryMinusI, mUnaryMinusI64, mAbsI, mNot, mUnaryPlusI, mBitnotI,
     mUnaryPlusF64, mUnaryMinusF64,
-    mCharToStr, mBoolToStr, mIntToStr, mInt64ToStr, mFloatToStr, mCStrToStr,
+    mCharToStr, mBoolToStr,
+    mCStrToStr,
     mStrToStr, mEnumToStr,
     mAnd, mOr,
     mEqStr, mLeStr, mLtStr,
     mEqSet, mLeSet, mLtSet, mMulSet, mPlusSet, mMinusSet,
     mConStrStr, mAppendStrCh, mAppendStrStr, mAppendSeqElem,
-    mInSet, mRepr}
+    mInSet, mRepr, mOpenArrayToSeq}
+
+  generatedMagics* = {mNone, mIsolate, mFinished, mOpenArrayToSeq}
+    ## magics that are generated as normal procs in the backend
 
 type
   ItemId* = object
     module*: int32
     item*: int32
+
+proc `$`*(x: ItemId): string =
+  "(module: " & $x.module & ", item: " & $x.item & ")"
 
 proc `==`*(a, b: ItemId): bool {.inline.} =
   a.item == b.item and a.module == b.module
@@ -735,10 +586,6 @@ proc hash*(x: ItemId): Hash =
 
 
 type
-  TIdObj* = object of RootObj
-    itemId*: ItemId
-  PIdObj* = ref TIdObj
-
   PNode* = ref TNode
   TNodeSeq* = seq[PNode]
   PType* = ref TType
@@ -762,7 +609,8 @@ type
       ident*: PIdent
     else:
       sons*: TNodeSeq
-    comment*: string
+    when defined(nimsuggest):
+      endInfo*: TLineInfo
 
   TStrTable* = object         # a table[PIdent] of PSym
     counter*: int
@@ -783,9 +631,6 @@ type
     locOther                  # location is something other
   TLocFlag* = enum
     lfIndirect,               # backend introduced a pointer
-    lfFullExternalName, # only used when 'conf.cmd == cmdNimfix': Indicates
-      # that the symbol has been imported via 'importc: "fullname"' and
-      # no format string.
     lfNoDeepCopy,             # no need for a deep copy
     lfNoDecl,                 # do not declare it in C
     lfDynamicLib,             # link symbol to dynamic library
@@ -820,7 +665,7 @@ type
                               # keep in sync with PackedLib
     kind*: TLibKind
     generated*: bool          # needed for the backends:
-    isOverriden*: bool
+    isOverridden*: bool
     name*: Rope
     path*: PNode              # can be a string literal!
 
@@ -834,20 +679,22 @@ type
 
   PInstantiation* = ref TInstantiation
 
-  TScope* = object
+  TScope* {.acyclic.} = object
     depthLevel*: int
     symbols*: TStrTable
     parent*: PScope
+    allowPrivateAccess*: seq[PSym] #  # enable access to private fields
 
   PScope* = ref TScope
 
   PLib* = ref TLib
-  TSym* {.acyclic.} = object of TIdObj # Keep in sync with PackedSym
+  TSym* {.acyclic.} = object # Keep in sync with PackedSym
+    itemId*: ItemId
     # proc and type instantiations are cached in the generic symbol
     case kind*: TSymKind
     of routineKinds:
       #procInstCache*: seq[PInstantiation]
-      gcUnsafetyReason*: PSym  # for better error messages wrt gcsafe
+      gcUnsafetyReason*: PSym  # for better error messages regarding gcsafe
       transformedBody*: PNode  # cached body after transf pass
     of skLet, skVar, skField, skForVar:
       guard*: PSym
@@ -858,6 +705,9 @@ type
     typ*: PType
     name*: PIdent
     info*: TLineInfo
+    when defined(nimsuggest):
+      endInfo*: TLineInfo
+      hasUserSpecifiedType*: bool  # used for determining whether to display inlay type hints
     owner*: PSym
     flags*: TSymFlags
     ast*: PNode               # syntax tree of proc, iterator, etc.:
@@ -879,7 +729,9 @@ type
                               # for modules, an unique index corresponding
                               # to the module's fileIdx
                               # for variables a slot index for the evaluator
-    offset*: int              # offset of record field
+    offset*: int32            # offset of record field
+    disamb*: int32            # disambiguation number; the basic idea is that
+                              # `<procname>__<module>_<disamb>` is unique
     loc*: TLoc
     annex*: PLib              # additional fields (seldom used, so we use a
                               # reference to another object to save space)
@@ -887,33 +739,35 @@ type
       cname*: string          # resolved C declaration name in importc decl, e.g.:
                               # proc fun() {.importc: "$1aux".} => cname = funaux
     constraint*: PNode        # additional constraints like 'lit|result'; also
-                              # misused for the codegenDecl pragma in the hope
+                              # misused for the codegenDecl and virtual pragmas in the hope
                               # it won't cause problems
                               # for skModule the string literal to output for
                               # deprecated modules.
+    instantiatedFrom*: PSym   # for instances, the generic symbol where it came from.
     when defined(nimsuggest):
       allUsages*: seq[TLineInfo]
 
   TTypeSeq* = seq[PType]
-  TLockLevel* = distinct int16
 
   TTypeAttachedOp* = enum ## as usual, order is important here
+    attachedWasMoved,
     attachedDestructor,
     attachedAsgn,
+    attachedDup,
     attachedSink,
     attachedTrace,
-    attachedDispose,
     attachedDeepCopy
 
-  TType* {.acyclic.} = object of TIdObj # \
+  TType* {.acyclic.} = object # \
                               # types are identical iff they have the
                               # same id; there may be multiple copies of a type
                               # in memory!
                               # Keep in sync with PackedType
+    itemId*: ItemId
     kind*: TTypeKind          # kind of type
     callConv*: TCallingConvention # for procs
     flags*: TTypeFlags        # flags of the type
-    sons*: TTypeSeq           # base types, etc.
+    sons: TTypeSeq           # base types, etc.
     n*: PNode                 # node for types:
                               # for range types a nkRange node
                               # for record types a nkRecord node
@@ -930,7 +784,6 @@ type
                               # -1 means that the size is unkwown
     align*: int16             # the type's alignment requirements
     paddingAtEnd*: int16      #
-    lockLevel*: TLockLevel    # lock level as required for deadlock checking
     loc*: TLoc
     typeInst*: PType          # for generic instantiations the tyGenericInst that led to this
                               # type.
@@ -941,24 +794,6 @@ type
     key*, val*: RootRef
 
   TPairSeq* = seq[TPair]
-
-  TIdPair* = object
-    key*: PIdObj
-    val*: RootRef
-
-  TIdPairSeq* = seq[TIdPair]
-  TIdTable* = object # the same as table[PIdent] of PObject
-    counter*: int
-    data*: TIdPairSeq
-
-  TIdNodePair* = object
-    key*: PIdObj
-    val*: PNode
-
-  TIdNodePairSeq* = seq[TIdNodePair]
-  TIdNodeTable* = object # the same as table[PIdObj] of PNode
-    counter*: int
-    data*: TIdNodePairSeq
 
   TNodePair* = object
     h*: Hash                 # because it is expensive to compute!
@@ -979,13 +814,47 @@ type
   TImplication* = enum
     impUnknown, impNo, impYes
 
+template nodeId(n: PNode): int = cast[int](n)
+
+type Gconfig = object
+  # we put comments in a side channel to avoid increasing `sizeof(TNode)`, which
+  # reduces memory usage given that `PNode` is the most allocated type by far.
+  comments: Table[int, string] # nodeId => comment
+  useIc*: bool
+
+var gconfig {.threadvar.}: Gconfig
+
+proc setUseIc*(useIc: bool) = gconfig.useIc = useIc
+
+proc comment*(n: PNode): string =
+  if nfHasComment in n.flags and not gconfig.useIc:
+    # IC doesn't track comments, see `packed_ast`, so this could fail
+    result = gconfig.comments[n.nodeId]
+  else:
+    result = ""
+
+proc `comment=`*(n: PNode, a: string) =
+  let id = n.nodeId
+  if a.len > 0:
+    # if needed, we could periodically cleanup gconfig.comments when its size increases,
+    # to ensure only live nodes (and with nfHasComment) have an entry in gconfig.comments;
+    # for compiling compiler, the waste is very small:
+    # num calls to newNodeImpl: 14984160 (num of PNode allocations)
+    # size of gconfig.comments: 33585
+    # num of nodes with comments that were deleted and hence wasted: 3081
+    n.flags.incl nfHasComment
+    gconfig.comments[id] = a
+  elif nfHasComment in n.flags:
+    n.flags.excl nfHasComment
+    gconfig.comments.del(id)
+
 # BUGFIX: a module is overloadable so that a proc can have the
 # same name as an imported module. This is necessary because of
 # the poor naming choices in the standard library.
 
 const
   OverloadableSyms* = {skProc, skFunc, skMethod, skIterator,
-    skConverter, skModule, skTemplate, skMacro}
+    skConverter, skModule, skTemplate, skMacro, skEnumField}
 
   GenericTypes*: TTypeKinds = {tyGenericInvocation, tyGenericBody,
     tyGenericParam}
@@ -999,23 +868,22 @@ const
     tyBool, tyChar, tyEnum, tyArray, tyObject,
     tySet, tyTuple, tyRange, tyPtr, tyRef, tyVar, tyLent, tySequence, tyProc,
     tyPointer,
-    tyOpenArray, tyString, tyCString, tyInt..tyInt64, tyFloat..tyFloat128,
+    tyOpenArray, tyString, tyCstring, tyInt..tyInt64, tyFloat..tyFloat128,
     tyUInt..tyUInt64}
   IntegralTypes* = {tyBool, tyChar, tyEnum, tyInt..tyInt64,
     tyFloat..tyFloat128, tyUInt..tyUInt64} # weird name because it contains tyFloat
   ConstantDataTypes*: TTypeKinds = {tyArray, tySet,
                                     tyTuple, tySequence}
-  NilableTypes*: TTypeKinds = {tyPointer, tyCString, tyRef, tyPtr,
+  NilableTypes*: TTypeKinds = {tyPointer, tyCstring, tyRef, tyPtr,
     tyProc, tyError} # TODO
   PtrLikeKinds*: TTypeKinds = {tyPointer, tyPtr} # for VM
-  ExportableSymKinds* = {skVar, skConst, skProc, skFunc, skMethod, skType,
-    skIterator,
-    skMacro, skTemplate, skConverter, skEnumField, skLet, skStub, skAlias}
   PersistentNodeFlags*: TNodeFlags = {nfBase2, nfBase8, nfBase16,
                                       nfDotSetter, nfDotField,
                                       nfIsRef, nfIsPtr, nfPreventCg, nfLL,
                                       nfFromTemplate, nfDefaultRefsParam,
-                                      nfExecuteOnReload, nfLastRead, nfFirstWrite}
+                                      nfExecuteOnReload, nfLastRead,
+                                      nfFirstWrite, nfSkipFieldChecking,
+                                      nfOpenSym}
   namePos* = 0
   patternPos* = 1    # empty except for term rewriting macros
   genericParamsPos* = 2
@@ -1028,8 +896,6 @@ const
 
   nfAllFieldsSet* = nfBase2
 
-  nkCallKinds* = {nkCall, nkInfix, nkPrefix, nkPostfix,
-                  nkCommand, nkCallStrLit, nkHiddenCallConv}
   nkIdentKinds* = {nkIdent, nkSym, nkAccQuoted, nkOpenSymChoice,
                    nkClosedSymChoice}
 
@@ -1051,28 +917,20 @@ const
 
   defaultSize = -1
   defaultAlignment = -1
-  defaultOffset = -1
+  defaultOffset* = -1
 
-
-proc getnimblePkg*(a: PSym): PSym =
-  result = a
-  while result != nil:
-    case result.kind
-    of skModule:
-      result = result.owner
-      assert result.kind == skPackage
-    of skPackage:
-      if result.owner == nil:
-        break
-      else:
-        result = result.owner
-    else:
-      assert false, $result.kind
+proc getPIdent*(a: PNode): PIdent {.inline.} =
+  ## Returns underlying `PIdent` for `{nkSym, nkIdent}`, or `nil`.
+  case a.kind
+  of nkSym: a.sym.name
+  of nkIdent: a.ident
+  of nkOpenSymChoice, nkClosedSymChoice: a.sons[0].sym.name
+  else: nil
 
 const
   moduleShift = when defined(cpu32): 20 else: 24
 
-template id*(a: PIdObj): int =
+template id*(a: PType | PSym): int =
   let x = a
   (x.itemId.module.int shl moduleShift) + x.itemId.item.int
 
@@ -1082,15 +940,19 @@ type
     symId*: int32
     typeId*: int32
     sealed*: bool
+    disambTable*: CountTable[PIdent]
 
 const
   PackageModuleId* = -3'i32
 
 proc idGeneratorFromModule*(m: PSym): IdGenerator =
   assert m.kind == skModule
-  result = IdGenerator(module: m.itemId.module, symId: m.itemId.item, typeId: 0)
+  result = IdGenerator(module: m.itemId.module, symId: m.itemId.item, typeId: 0, disambTable: initCountTable[PIdent]())
 
-proc nextSymId*(x: IdGenerator): ItemId {.inline.} =
+proc idGeneratorForPackage*(nextIdWillBe: int32): IdGenerator =
+  result = IdGenerator(module: PackageModuleId, symId: nextIdWillBe - 1'i32, typeId: 0, disambTable: initCountTable[PIdent]())
+
+proc nextSymId(x: IdGenerator): ItemId {.inline.} =
   assert(not x.sealed)
   inc x.symId
   result = ItemId(module: x.module, item: x.symId)
@@ -1113,22 +975,14 @@ when false:
     assert dest.ItemId.item <= src.ItemId.item
     dest = src
 
-proc getnimblePkgId*(a: PSym): int =
-  let b = a.getnimblePkg
-  result = if b == nil: -1 else: b.id
-
 var ggDebug* {.deprecated.}: bool ## convenience switch for trying out things
-#var
-#  gMainPackageId*: int
 
 proc isCallExpr*(n: PNode): bool =
   result = n.kind in nkCallKinds
 
 proc discardSons*(father: PNode)
 
-type Indexable = PNode | PType
-
-proc len*(n: Indexable): int {.inline.} =
+proc len*(n: PNode): int {.inline.} =
   result = n.sons.len
 
 proc safeLen*(n: PNode): int {.inline.} =
@@ -1142,56 +996,168 @@ proc safeArrLen*(n: PNode): int {.inline.} =
   elif n.kind in {nkNone..nkFloat128Lit}: result = 0
   else: result = n.len
 
-proc add*(father, son: Indexable) =
+proc add*(father, son: PNode) =
   assert son != nil
   father.sons.add(son)
 
-proc addAllowNil*(father, son: Indexable) {.inline.} =
+proc addAllowNil*(father, son: PNode) {.inline.} =
   father.sons.add(son)
 
-template `[]`*(n: Indexable, i: int): Indexable = n.sons[i]
-template `[]=`*(n: Indexable, i: int; x: Indexable) = n.sons[i] = x
+template `[]`*(n: PNode, i: int): PNode = n.sons[i]
+template `[]=`*(n: PNode, i: int; x: PNode) = n.sons[i] = x
 
-template `[]`*(n: Indexable, i: BackwardsIndex): Indexable = n[n.len - i.int]
-template `[]=`*(n: Indexable, i: BackwardsIndex; x: Indexable) = n[n.len - i.int] = x
+template `[]`*(n: PNode, i: BackwardsIndex): PNode = n[n.len - i.int]
+template `[]=`*(n: PNode, i: BackwardsIndex; x: PNode) = n[n.len - i.int] = x
+
+proc add*(father, son: PType) =
+  assert son != nil
+  father.sons.add(son)
+
+proc addAllowNil*(father, son: PType) {.inline.} =
+  father.sons.add(son)
+
+template `[]`*(n: PType, i: int): PType = n.sons[i]
+template `[]=`*(n: PType, i: int; x: PType) = n.sons[i] = x
+
+template `[]`*(n: PType, i: BackwardsIndex): PType = n[n.len - i.int]
+template `[]=`*(n: PType, i: BackwardsIndex; x: PType) = n[n.len - i.int] = x
+
+proc getDeclPragma*(n: PNode): PNode =
+  ## return the `nkPragma` node for declaration `n`, or `nil` if no pragma was found.
+  ## Currently only supports routineDefs + {nkTypeDef}.
+  case n.kind
+  of routineDefs:
+    if n[pragmasPos].kind != nkEmpty: result = n[pragmasPos]
+    else: result = nil
+  of nkTypeDef:
+    #[
+    type F3*{.deprecated: "x3".} = int
+
+    TypeSection
+      TypeDef
+        PragmaExpr
+          Postfix
+            Ident "*"
+            Ident "F3"
+          Pragma
+            ExprColonExpr
+              Ident "deprecated"
+              StrLit "x3"
+        Empty
+        Ident "int"
+    ]#
+    if n[0].kind == nkPragmaExpr:
+      result = n[0][1]
+    else:
+      result = nil
+  else:
+    # support as needed for `nkIdentDefs` etc.
+    result = nil
+  if result != nil:
+    assert result.kind == nkPragma, $(result.kind, n.kind)
+
+proc extractPragma*(s: PSym): PNode =
+  ## gets the pragma node of routine/type/var/let/const symbol `s`
+  if s.kind in routineKinds:
+    result = s.ast[pragmasPos]
+  elif s.kind in {skType, skVar, skLet, skConst}:
+    if s.ast != nil and s.ast.len > 0:
+      if s.ast[0].kind == nkPragmaExpr and s.ast[0].len > 1:
+        # s.ast = nkTypedef / nkPragmaExpr / [nkSym, nkPragma]
+        result = s.ast[0][1]
+      else:
+        result = nil
+    else:
+      result = nil
+  else:
+    result = nil
+  assert result == nil or result.kind == nkPragma
+
+proc skipPragmaExpr*(n: PNode): PNode =
+  ## if pragma expr, give the node the pragmas are applied to,
+  ## otherwise give node itself
+  if n.kind == nkPragmaExpr:
+    result = n[0]
+  else:
+    result = n
+
+proc setInfoRecursive*(n: PNode, info: TLineInfo) =
+  ## set line info recursively
+  if n != nil:
+    for i in 0..<n.safeLen: setInfoRecursive(n[i], info)
+    n.info = info
 
 when defined(useNodeIds):
   const nodeIdToDebug* = -1 # 2322968
   var gNodeId: int
 
-proc newNode*(kind: TNodeKind): PNode =
-  result = PNode(kind: kind, info: unknownLineInfo)
+template newNodeImpl(info2) =
+  result = PNode(kind: kind, info: info2)
+  when false:
+    # this would add overhead, so we skip it; it results in a small amount of leaked entries
+    # for old PNode that gets re-allocated at the same address as a PNode that
+    # has `nfHasComment` set (and an entry in that table). Only `nfHasComment`
+    # should be used to test whether a PNode has a comment; gconfig.comments
+    # can contain extra entries for deleted PNode's with comments.
+    gconfig.comments.del(cast[int](result))
+
+template setIdMaybe() =
   when defined(useNodeIds):
     result.id = gNodeId
     if result.id == nodeIdToDebug:
       echo "KIND ", result.kind
       writeStackTrace()
     inc gNodeId
+
+proc newNode*(kind: TNodeKind): PNode =
+  ## new node with unknown line info, no type, and no children
+  newNodeImpl(unknownLineInfo)
+  setIdMaybe()
 
 proc newNodeI*(kind: TNodeKind, info: TLineInfo): PNode =
-  result = PNode(kind: kind, info: info)
-  when defined(useNodeIds):
-    result.id = gNodeId
-    if result.id == nodeIdToDebug:
-      echo "KIND ", result.kind
-      writeStackTrace()
-    inc gNodeId
+  ## new node with line info, no type, and no children
+  newNodeImpl(info)
+  setIdMaybe()
 
 proc newNodeI*(kind: TNodeKind, info: TLineInfo, children: int): PNode =
-  result = PNode(kind: kind, info: info)
+  ## new node with line info, type, and children
+  newNodeImpl(info)
   if children > 0:
     newSeq(result.sons, children)
-  when defined(useNodeIds):
-    result.id = gNodeId
-    if result.id == nodeIdToDebug:
-      echo "KIND ", result.kind
-      writeStackTrace()
-    inc gNodeId
+  setIdMaybe()
 
 proc newNodeIT*(kind: TNodeKind, info: TLineInfo, typ: PType): PNode =
+  ## new node with line info, type, and no children
   result = newNode(kind)
   result.info = info
   result.typ = typ
+
+proc newNode*(kind: TNodeKind, info: TLineInfo): PNode =
+  ## new node with line info, no type, and no children
+  newNodeImpl(info)
+  setIdMaybe()
+
+proc newAtom*(ident: PIdent, info: TLineInfo): PNode =
+  result = newNode(nkIdent, info)
+  result.ident = ident
+
+proc newAtom*(kind: TNodeKind, intVal: BiggestInt, info: TLineInfo): PNode =
+  result = newNode(kind, info)
+  result.intVal = intVal
+
+proc newAtom*(kind: TNodeKind, floatVal: BiggestFloat, info: TLineInfo): PNode =
+  result = newNode(kind, info)
+  result.floatVal = floatVal
+
+proc newAtom*(kind: TNodeKind; strVal: sink string; info: TLineInfo): PNode =
+  result = newNode(kind, info)
+  result.strVal = strVal
+
+proc newTree*(kind: TNodeKind; info: TLineInfo; children: varargs[PNode]): PNode =
+  result = newNodeI(kind, info)
+  if children.len > 0:
+    result.info = children[0].info
+  result.sons = @children
 
 proc newTree*(kind: TNodeKind; children: varargs[PNode]): PNode =
   result = newNode(kind)
@@ -1212,7 +1178,7 @@ proc newTreeIT*(kind: TNodeKind; info: TLineInfo; typ: PType; children: varargs[
   result.sons = @children
 
 template previouslyInferred*(t: PType): PType =
-  if t.sons.len > 1: t.lastSon else: nil
+  if t.sons.len > 1: t.last else: nil
 
 when false:
   import tables, strutils
@@ -1223,27 +1189,24 @@ when false:
       echo k
       echo v
 
-proc newSym*(symKind: TSymKind, name: PIdent, id: ItemId, owner: PSym,
+proc newSym*(symKind: TSymKind, name: PIdent, idgen: IdGenerator; owner: PSym,
              info: TLineInfo; options: TOptions = {}): PSym =
   # generates a symbol and initializes the hash field too
+  assert not name.isNil
+  let id = nextSymId idgen
   result = PSym(name: name, kind: symKind, flags: {}, info: info, itemId: id,
-                options: options, owner: owner, offset: defaultOffset)
+                options: options, owner: owner, offset: defaultOffset,
+                disamb: getOrDefault(idgen.disambTable, name).int32)
+  idgen.disambTable.inc name
   when false:
-    if id.item > 2141:
-      let s = getStackTrace()
-      const words = ["createTypeBoundOps",
-        "initOperators",
-        "generateInstance",
-        "semIdentDef", "addLocalDecl"]
-      for w in words:
-        if w in s:
-          x.inc w
-          return
-      x.inc "<no category>"
+    if id.module == 48 and id.item == 39:
+      writeStackTrace()
+      echo "kind ", symKind, " ", name.s
+      if owner != nil: echo owner.name.s
 
 proc astdef*(s: PSym): PNode =
   # get only the definition (initializer) portion of the ast
-  if s.ast != nil and s.ast.kind == nkIdentDefs:
+  if s.ast != nil and s.ast.kind in {nkIdentDefs, nkConstDef}:
     s.ast[2]
   else:
     s.ast
@@ -1293,11 +1256,6 @@ proc copyStrTable*(dest: var TStrTable, src: TStrTable) =
   setLen(dest.data, src.data.len)
   for i in 0..high(src.data): dest.data[i] = src.data[i]
 
-proc copyIdTable*(dest: var TIdTable, src: TIdTable) =
-  dest.counter = src.counter
-  newSeq(dest.data, src.data.len)
-  for i in 0..high(src.data): dest.data[i] = src.data[i]
-
 proc copyObjectSet*(dest: var TObjectSet, src: TObjectSet) =
   dest.counter = src.counter
   setLen(dest.data, src.data.len)
@@ -1335,7 +1293,42 @@ proc newIntNode*(kind: TNodeKind, intVal: Int128): PNode =
   result = newNode(kind)
   result.intVal = castToInt64(intVal)
 
-proc lastSon*(n: Indexable): Indexable = n.sons[^1]
+proc lastSon*(n: PNode): PNode {.inline.} = n.sons[^1]
+template setLastSon*(n: PNode, s: PNode) = n.sons[^1] = s
+
+template firstSon*(n: PNode): PNode = n.sons[0]
+template secondSon*(n: PNode): PNode = n.sons[1]
+
+template hasSon*(n: PNode): bool = n.len > 0
+template has2Sons*(n: PNode): bool = n.len > 1
+
+proc replaceFirstSon*(n, newson: PNode) {.inline.} =
+  n.sons[0] = newson
+
+proc replaceSon*(n: PNode; i: int; newson: PNode) {.inline.} =
+  n.sons[i] = newson
+
+proc last*(n: PType): PType {.inline.} = n.sons[^1]
+
+proc elementType*(n: PType): PType {.inline.} = n.sons[^1]
+proc skipModifier*(n: PType): PType {.inline.} = n.sons[^1]
+
+proc indexType*(n: PType): PType {.inline.} = n.sons[0]
+proc baseClass*(n: PType): PType {.inline.} = n.sons[0]
+
+proc base*(t: PType): PType {.inline.} =
+  result = t.sons[0]
+
+proc returnType*(n: PType): PType {.inline.} = n.sons[0]
+proc setReturnType*(n, r: PType) {.inline.} = n.sons[0] = r
+proc setIndexType*(n, idx: PType) {.inline.} = n.sons[0] = idx
+
+proc firstParamType*(n: PType): PType {.inline.} = n.sons[1]
+proc firstGenericParam*(n: PType): PType {.inline.} = n.sons[1]
+
+proc typeBodyImpl*(n: PType): PType {.inline.} = n.sons[^1]
+
+proc genericHead*(n: PType): PType {.inline.} = n.sons[0]
 
 proc skipTypes*(t: PType, kinds: TTypeKinds): PType =
   ## Used throughout the compiler code to test whether a type tree contains or
@@ -1343,7 +1336,7 @@ proc skipTypes*(t: PType, kinds: TTypeKinds): PType =
   ## last child nodes of a type tree need to be searched. This is a really hot
   ## path within the compiler!
   result = t
-  while result.kind in kinds: result = lastSon(result)
+  while result.kind in kinds: result = last(result)
 
 proc newIntTypeNode*(intVal: BiggestInt, typ: PType): PNode =
   let kind = skipTypes(typ, abstractVarRange).kind
@@ -1364,7 +1357,7 @@ proc newIntTypeNode*(intVal: BiggestInt, typ: PType): PNode =
     result = newNode(nkIntLit)
   of tyStatic: # that's a pre-existing bug, will fix in another PR
     result = newNode(nkIntLit)
-  else: doAssert false, $kind
+  else: raiseAssert $kind
   result.intVal = intVal
   result.typ = typ
 
@@ -1393,16 +1386,8 @@ proc newProcNode*(kind: TNodeKind, info: TLineInfo, body: PNode,
                   pragmas, exceptions, body]
 
 const
-  UnspecifiedLockLevel* = TLockLevel(-1'i16)
-  MaxLockLevel* = 1000'i16
-  UnknownLockLevel* = TLockLevel(1001'i16)
   AttachedOpToStr*: array[TTypeAttachedOp, string] = [
-    "=destroy", "=copy", "=sink", "=trace", "=dispose", "=deepcopy"]
-
-proc `$`*(x: TLockLevel): string =
-  if x.ord == UnspecifiedLockLevel.ord: result = "<unspecified>"
-  elif x.ord == UnknownLockLevel.ord: result = "<unknown>"
-  else: result = $int16(x)
+    "=wasMoved", "=destroy", "=copy", "=dup", "=sink", "=trace", "=deepcopy"]
 
 proc `$`*(s: PSym): string =
   if s != nil:
@@ -1410,26 +1395,138 @@ proc `$`*(s: PSym): string =
   else:
     result = "<nil>"
 
-proc newType*(kind: TTypeKind, id: ItemId; owner: PSym): PType =
+when false:
+  iterator items*(t: PType): PType =
+    for i in 0..<t.sons.len: yield t.sons[i]
+
+  iterator pairs*(n: PType): tuple[i: int, n: PType] =
+    for i in 0..<n.sons.len: yield (i, n.sons[i])
+
+when true:
+  proc len*(n: PType): int {.inline.} =
+    result = n.sons.len
+
+proc sameTupleLengths*(a, b: PType): bool {.inline.} =
+  result = a.sons.len == b.sons.len
+
+iterator tupleTypePairs*(a, b: PType): (int, PType, PType) =
+  for i in 0 ..< a.sons.len:
+    yield (i, a.sons[i], b.sons[i])
+
+iterator underspecifiedPairs*(a, b: PType; start = 0; without = 0): (PType, PType) =
+  # XXX Figure out with what typekinds this is called.
+  for i in start ..< min(a.sons.len, b.sons.len) + without:
+    yield (a.sons[i], b.sons[i])
+
+proc signatureLen*(t: PType): int {.inline.} =
+  result = t.sons.len
+
+proc paramsLen*(t: PType): int {.inline.} =
+  result = t.sons.len - 1
+
+proc genericParamsLen*(t: PType): int {.inline.} =
+  assert t.kind == tyGenericInst
+  result = t.sons.len - 2 # without 'head' and 'body'
+
+proc genericInvocationParamsLen*(t: PType): int {.inline.} =
+  assert t.kind == tyGenericInvocation
+  result = t.sons.len - 1 # without 'head'
+
+proc kidsLen*(t: PType): int {.inline.} =
+  result = t.sons.len
+
+proc genericParamHasConstraints*(t: PType): bool {.inline.} = t.sons.len > 0
+
+proc hasElementType*(t: PType): bool {.inline.} = t.sons.len > 0
+proc isEmptyTupleType*(t: PType): bool {.inline.} = t.sons.len == 0
+proc isSingletonTupleType*(t: PType): bool {.inline.} = t.sons.len == 1
+
+proc genericConstraint*(t: PType): PType {.inline.} = t.sons[0]
+
+iterator genericInstParams*(t: PType): (bool, PType) =
+  for i in 1..<t.sons.len-1:
+    yield (i!=1, t.sons[i])
+
+iterator genericInstParamPairs*(a, b: PType): (int, PType, PType) =
+  for i in 1..<min(a.sons.len, b.sons.len)-1:
+    yield (i-1, a.sons[i], b.sons[i])
+
+iterator genericInvocationParams*(t: PType): (bool, PType) =
+  for i in 1..<t.sons.len:
+    yield (i!=1, t.sons[i])
+
+iterator genericInvocationAndBodyElements*(a, b: PType): (PType, PType) =
+  for i in 1..<a.sons.len:
+    yield (a.sons[i], b.sons[i-1])
+
+iterator genericInvocationParamPairs*(a, b: PType): (bool, PType, PType) =
+  for i in 1..<a.sons.len:
+    if i >= b.sons.len:
+      yield (false, nil, nil)
+    else:
+      yield (true, a.sons[i], b.sons[i])
+
+iterator genericBodyParams*(t: PType): (int, PType) =
+  for i in 0..<t.sons.len-1:
+    yield (i, t.sons[i])
+
+iterator userTypeClassInstParams*(t: PType): (bool, PType) =
+  for i in 1..<t.sons.len-1:
+    yield (i!=1, t.sons[i])
+
+iterator ikids*(t: PType): (int, PType) =
+  for i in 0..<t.sons.len: yield (i, t.sons[i])
+
+const
+  FirstParamAt* = 1
+  FirstGenericParamAt* = 1
+
+iterator paramTypes*(t: PType): (int, PType) =
+  for i in FirstParamAt..<t.sons.len: yield (i, t.sons[i])
+
+iterator paramTypePairs*(a, b: PType): (PType, PType) =
+  for i in FirstParamAt..<a.sons.len: yield (a.sons[i], b.sons[i])
+
+template paramTypeToNodeIndex*(x: int): int = x
+
+iterator kids*(t: PType): PType =
+  for i in 0..<t.sons.len: yield t.sons[i]
+
+iterator signature*(t: PType): PType =
+  # yields return type + parameter types
+  for i in 0..<t.sons.len: yield t.sons[i]
+
+proc newType*(kind: TTypeKind; idgen: IdGenerator; owner: PSym; son: sink PType = nil): PType =
+  let id = nextTypeId idgen
   result = PType(kind: kind, owner: owner, size: defaultSize,
                  align: defaultAlignment, itemId: id,
-                 lockLevel: UnspecifiedLockLevel,
-                 uniqueId: id)
+                 uniqueId: id, sons: @[])
+  if son != nil: result.sons.add son
   when false:
     if result.itemId.module == 55 and result.itemId.item == 2:
       echo "KNID ", kind
       writeStackTrace()
 
+proc setSons*(dest: PType; sons: sink seq[PType]) {.inline.} = dest.sons = sons
+proc setSon*(dest: PType; son: sink PType) {.inline.} = dest.sons = @[son]
 
 proc mergeLoc(a: var TLoc, b: TLoc) =
   if a.k == low(typeof(a.k)): a.k = b.k
   if a.storage == low(typeof(a.storage)): a.storage = b.storage
   a.flags.incl b.flags
   if a.lode == nil: a.lode = b.lode
-  if a.r == nil: a.r = b.r
+  if a.r == "": a.r = b.r
 
-proc newSons*(father: Indexable, length: int) =
+proc newSons*(father: PNode, length: int) =
   setLen(father.sons, length)
+
+proc newSons*(father: PType, length: int) =
+  setLen(father.sons, length)
+
+proc truncateInferredTypeCandidates*(t: PType) {.inline.} =
+  assert t.kind == tyInferred
+  if t.sons.len > 1:
+    setLen(t.sons, 1)
 
 proc assignType*(dest, src: PType) =
   dest.kind = src.kind
@@ -1438,28 +1535,31 @@ proc assignType*(dest, src: PType) =
   dest.n = src.n
   dest.size = src.size
   dest.align = src.align
-  dest.lockLevel = src.lockLevel
   # this fixes 'type TLock = TSysLock':
   if src.sym != nil:
     if dest.sym != nil:
-      dest.sym.flags.incl src.sym.flags-{sfExported}
+      dest.sym.flags.incl src.sym.flags-{sfUsed, sfExported}
       if dest.sym.annex == nil: dest.sym.annex = src.sym.annex
       mergeLoc(dest.sym.loc, src.sym.loc)
     else:
       dest.sym = src.sym
-  newSons(dest, src.len)
-  for i in 0..<src.len: dest[i] = src[i]
+  newSons(dest, src.sons.len)
+  for i in 0..<src.sons.len: dest[i] = src[i]
 
-proc copyType*(t: PType, id: ItemId, owner: PSym): PType =
-  result = newType(t.kind, id, owner)
+proc copyType*(t: PType, idgen: IdGenerator, owner: PSym): PType =
+  result = newType(t.kind, idgen, owner)
   assignType(result, t)
   result.sym = t.sym          # backend-info should not be copied
 
 proc exactReplica*(t: PType): PType =
-  result = copyType(t, t.itemId, t.owner)
+  result = PType(kind: t.kind, owner: t.owner, size: defaultSize,
+                 align: defaultAlignment, itemId: t.itemId,
+                 uniqueId: t.uniqueId)
+  assignType(result, t)
+  result.sym = t.sym          # backend-info should not be copied
 
-proc copySym*(s: PSym; id: ItemId): PSym =
-  result = newSym(s.kind, s.name, id, s.owner, s.info, s.options)
+proc copySym*(s: PSym; idgen: IdGenerator): PSym =
+  result = newSym(s.kind, s.name, idgen, s.owner, s.info, s.options)
   #result.ast = nil            # BUGFIX; was: s.ast which made problems
   result.typ = s.typ
   result.flags = s.flags
@@ -1474,9 +1574,9 @@ proc copySym*(s: PSym; id: ItemId): PSym =
     result.bitsize = s.bitsize
     result.alignment = s.alignment
 
-proc createModuleAlias*(s: PSym, id: ItemId, newIdent: PIdent, info: TLineInfo;
+proc createModuleAlias*(s: PSym, idgen: IdGenerator, newIdent: PIdent, info: TLineInfo;
                         options: TOptions): PSym =
-  result = newSym(s.kind, newIdent, id, s.owner, info, options)
+  result = newSym(s.kind, newIdent, idgen, s.owner, info, options)
   # keep ID!
   result.ast = s.ast
   #result.id = s.id # XXX figure out what to do with the ID.
@@ -1486,43 +1586,23 @@ proc createModuleAlias*(s: PSym, id: ItemId, newIdent: PIdent, info: TLineInfo;
   result.loc = s.loc
   result.annex = s.annex
 
-proc initStrTable*(x: var TStrTable) =
-  x.counter = 0
-  newSeq(x.data, StartSize)
+proc initStrTable*(): TStrTable =
+  result = TStrTable(counter: 0)
+  newSeq(result.data, StartSize)
 
-proc newStrTable*: TStrTable =
-  initStrTable(result)
+proc initObjectSet*(): TObjectSet =
+  result = TObjectSet(counter: 0)
+  newSeq(result.data, StartSize)
 
-proc initIdTable*(x: var TIdTable) =
-  x.counter = 0
-  newSeq(x.data, StartSize)
-
-proc newIdTable*: TIdTable =
-  initIdTable(result)
-
-proc resetIdTable*(x: var TIdTable) =
-  x.counter = 0
-  # clear and set to old initial size:
-  setLen(x.data, 0)
-  setLen(x.data, StartSize)
-
-proc initObjectSet*(x: var TObjectSet) =
-  x.counter = 0
-  newSeq(x.data, StartSize)
-
-proc initIdNodeTable*(x: var TIdNodeTable) =
-  x.counter = 0
-  newSeq(x.data, StartSize)
-
-proc initNodeTable*(x: var TNodeTable) =
-  x.counter = 0
-  newSeq(x.data, StartSize)
+proc initNodeTable*(): TNodeTable =
+  result = TNodeTable(counter: 0)
+  newSeq(result.data, StartSize)
 
 proc skipTypes*(t: PType, kinds: TTypeKinds; maxIters: int): PType =
   result = t
   var i = maxIters
   while result.kind in kinds:
-    result = lastSon(result)
+    result = last(result)
     dec i
     if i == 0: return nil
 
@@ -1530,8 +1610,8 @@ proc skipTypesOrNil*(t: PType, kinds: TTypeKinds): PType =
   ## same as skipTypes but handles 'nil'
   result = t
   while result != nil and result.kind in kinds:
-    if result.len == 0: return nil
-    result = lastSon(result)
+    if result.sons.len == 0: return nil
+    result = last(result)
 
 proc isGCedMem*(t: PType): bool {.inline.} =
   result = t.kind in {tyString, tyRef, tySequence} or
@@ -1550,7 +1630,7 @@ proc propagateToOwner*(owner, elem: PType; propagateHasAsgn = true) =
   if mask != {} and propagateHasAsgn:
     let o2 = owner.skipTypes({tyGenericInst, tyAlias, tySink})
     if o2.kind in {tyTuple, tyObject, tyArray,
-                   tySequence, tySet, tyDistinct, tyOpenArray, tyVarargs}:
+                   tySequence, tySet, tyDistinct}:
       o2.flags.incl mask
       owner.flags.incl mask
 
@@ -1565,9 +1645,6 @@ proc propagateToOwner*(owner, elem: PType; propagateHasAsgn = true) =
 proc rawAddSon*(father, son: PType; propagateHasAsgn = true) =
   father.sons.add(son)
   if not son.isNil: propagateToOwner(father, son, propagateHasAsgn)
-
-proc rawAddSonNoPropagationOfTypeFlags*(father, son: PType) =
-  father.sons.add(son)
 
 proc addSonNilAllowed*(father, son: PNode) =
   father.sons.add(son)
@@ -1596,11 +1673,13 @@ proc copyNode*(src: PNode): PNode =
   of nkIdent: result.ident = src.ident
   of nkStrLit..nkTripleStrLit: result.strVal = src.strVal
   else: discard
+  when defined(nimsuggest):
+    result.endInfo = src.endInfo
 
 template transitionNodeKindCommon(k: TNodeKind) =
   let obj {.inject.} = n[]
-  n[] = TNode(kind: k, typ: obj.typ, info: obj.info, flags: obj.flags,
-              comment: obj.comment)
+  n[] = TNode(kind: k, typ: obj.typ, info: obj.info, flags: obj.flags)
+  # n.comment = obj.comment # shouldn't be needed, the address doesnt' change
   when defined(useNodeIds):
     n.id = obj.id
 
@@ -1611,6 +1690,10 @@ proc transitionSonsKind*(n: PNode, kind: range[nkComesFrom..nkTupleConstr]) =
 proc transitionIntKind*(n: PNode, kind: range[nkCharLit..nkUInt64Lit]) =
   transitionNodeKindCommon(kind)
   n.intVal = obj.intVal
+
+proc transitionIntToFloatKind*(n: PNode, kind: range[nkFloatLit..nkFloat128Lit]) =
+  transitionNodeKindCommon(kind)
+  n.floatVal = BiggestFloat(obj.intVal)
 
 proc transitionNoneToSym*(n: PNode) =
   transitionNodeKindCommon(nkSym)
@@ -1644,6 +1727,8 @@ template copyNodeImpl(dst, src, processSonsStmt) =
   if src == nil: return
   dst = newNode(src.kind)
   dst.info = src.info
+  when defined(nimsuggest):
+    result.endInfo = src.endInfo
   dst.typ = src.typ
   dst.flags = src.flags * PersistentNodeFlags
   dst.comment = src.comment
@@ -1692,6 +1777,7 @@ proc hasNilSon*(n: PNode): bool =
   result = false
 
 proc containsNode*(n: PNode, kinds: TNodeKinds): bool =
+  result = false
   if n == nil: return
   case n.kind
   of nkEmpty..nkNilLit: result = n.kind in kinds
@@ -1701,7 +1787,7 @@ proc containsNode*(n: PNode, kinds: TNodeKinds): bool =
 
 proc hasSubnodeWith*(n: PNode, kind: TNodeKind): bool =
   case n.kind
-  of nkEmpty..nkNilLit: result = n.kind == kind
+  of nkEmpty..nkNilLit, nkFormalParams: result = n.kind == kind
   else:
     for i in 0..<n.len:
       if (n[i].kind == kind) or hasSubnodeWith(n[i], kind):
@@ -1792,13 +1878,15 @@ proc skipGenericOwner*(s: PSym): PSym =
   ## Generic instantiations are owned by their originating generic
   ## symbol. This proc skips such owners and goes straight to the owner
   ## of the generic itself (the module or the enclosing proc).
-  result = if s.kind in skProcKinds and sfFromGeneric in s.flags:
+  result = if s.kind == skModule:
+            s
+           elif s.kind in skProcKinds and sfFromGeneric in s.flags and s.owner.kind != skModule:
              s.owner.owner
            else:
              s.owner
 
 proc originatingModule*(s: PSym): PSym =
-  result = s.owner
+  result = s
   while result.kind != skModule: result = result.owner
 
 proc isRoutine*(s: PSym): bool {.inline.} =
@@ -1807,20 +1895,6 @@ proc isRoutine*(s: PSym): bool {.inline.} =
 proc isCompileTimeProc*(s: PSym): bool {.inline.} =
   result = s.kind == skMacro or
            s.kind in {skProc, skFunc} and sfCompileTime in s.flags
-
-proc isRunnableExamples*(n: PNode): bool =
-  # Templates and generics don't perform symbol lookups.
-  result = n.kind == nkSym and n.sym.magic == mRunnableExamples or
-    n.kind == nkIdent and n.ident.s == "runnableExamples"
-
-proc requiredParams*(s: PSym): int =
-  # Returns the number of required params (without default values)
-  # XXX: Perhaps we can store this in the `offset` field of the
-  # symbol instead?
-  for i in 1..<s.typ.len:
-    if s.typ.n[i].sym.ast != nil:
-      return i - 1
-  return s.typ.len - 1
 
 proc hasPattern*(s: PSym): bool {.inline.} =
   result = isRoutine(s) and s.ast[patternPos].kind != nkEmpty
@@ -1858,24 +1932,42 @@ proc toVar*(typ: PType; kind: TTypeKind; idgen: IdGenerator): PType =
   ## returned. Otherwise ``typ`` is simply returned as-is.
   result = typ
   if typ.kind != kind:
-    result = newType(kind, nextTypeId(idgen), typ.owner)
-    rawAddSon(result, typ)
+    result = newType(kind, idgen, typ.owner, typ)
 
 proc toRef*(typ: PType; idgen: IdGenerator): PType =
   ## If ``typ`` is a tyObject then it is converted into a `ref <typ>` and
   ## returned. Otherwise ``typ`` is simply returned as-is.
   result = typ
   if typ.skipTypes({tyAlias, tyGenericInst}).kind == tyObject:
-    result = newType(tyRef, nextTypeId(idgen), typ.owner)
-    rawAddSon(result, typ)
+    result = newType(tyRef, idgen, typ.owner, typ)
 
 proc toObject*(typ: PType): PType =
   ## If ``typ`` is a tyRef then its immediate son is returned (which in many
   ## cases should be a ``tyObject``).
   ## Otherwise ``typ`` is simply returned as-is.
   let t = typ.skipTypes({tyAlias, tyGenericInst})
-  if t.kind == tyRef: t.lastSon
+  if t.kind == tyRef: t.elementType
   else: typ
+
+proc toObjectFromRefPtrGeneric*(typ: PType): PType =
+  #[
+  See also `toObject`.
+  Finds the underlying `object`, even in cases like these:
+  type
+    B[T] = object f0: int
+    A1[T] = ref B[T]
+    A2[T] = ref object f1: int
+    A3 = ref object f2: int
+    A4 = object f3: int
+  ]#
+  result = typ
+  while true:
+    case result.kind
+    of tyGenericBody: result = result.last
+    of tyRef, tyPtr, tyGenericInst, tyGenericInvocation, tyAlias: result = result[0]
+      # automatic dereferencing is deep, refs #18298.
+    else: break
+  # result does not have to be object type
 
 proc isImportedException*(t: PType; conf: ConfigRef): bool =
   assert t != nil
@@ -1884,12 +1976,10 @@ proc isImportedException*(t: PType; conf: ConfigRef): bool =
     return false
 
   let base = t.skipTypes({tyAlias, tyPtr, tyDistinct, tyGenericInst})
-
-  if base.sym != nil and {sfCompileToCpp, sfImportc} * base.sym.flags != {}:
-    result = true
+  result = base.sym != nil and {sfCompileToCpp, sfImportc} * base.sym.flags != {}
 
 proc isInfixAs*(n: PNode): bool =
-  return n.kind == nkInfix and n[0].kind == nkIdent and n[0].ident.s == "as"
+  return n.kind == nkInfix and n[0].kind == nkIdent and n[0].ident.id == ord(wAs)
 
 proc skipColon*(n: PNode): PNode =
   result = n
@@ -1897,10 +1987,12 @@ proc skipColon*(n: PNode): PNode =
     result = n[1]
 
 proc findUnresolvedStatic*(n: PNode): PNode =
-  # n.typ == nil: see issue #14802
   if n.kind == nkSym and n.typ != nil and n.typ.kind == tyStatic and n.typ.n == nil:
     return n
-
+  if n.typ != nil and n.typ.kind == tyTypeDesc:
+    let t = skipTypes(n.typ, {tyTypeDesc})
+    if t.kind == tyGenericParam and not t.genericParamHasConstraints:
+      return n
   for son in n:
     let n = son.findUnresolvedStatic
     if n != nil: return n
@@ -1929,11 +2021,20 @@ template detailedInfo*(sym: PSym): string =
 proc isInlineIterator*(typ: PType): bool {.inline.} =
   typ.kind == tyProc and tfIterator in typ.flags and typ.callConv != ccClosure
 
+proc isIterator*(typ: PType): bool {.inline.} =
+  typ.kind == tyProc and tfIterator in typ.flags
+
 proc isClosureIterator*(typ: PType): bool {.inline.} =
   typ.kind == tyProc and tfIterator in typ.flags and typ.callConv == ccClosure
 
 proc isClosure*(typ: PType): bool {.inline.} =
   typ.kind == tyProc and typ.callConv == ccClosure
+
+proc isNimcall*(s: PSym): bool {.inline.} =
+  s.typ.callConv == ccNimCall
+
+proc isExplicitCallConv*(s: PSym): bool {.inline.} =
+  tfExplicitCallConv in s.typ.flags
 
 proc isSinkParam*(s: PSym): bool {.inline.} =
   s.kind == skParam and (s.typ.kind == tySink or tfHasOwned in s.typ.flags)
@@ -1941,8 +2042,8 @@ proc isSinkParam*(s: PSym): bool {.inline.} =
 proc isSinkType*(t: PType): bool {.inline.} =
   t.kind == tySink or tfHasOwned in t.flags
 
-proc newProcType*(info: TLineInfo; id: ItemId; owner: PSym): PType =
-  result = newType(tyProc, id, owner)
+proc newProcType*(info: TLineInfo; idgen: IdGenerator; owner: PSym): PType =
+  result = newType(tyProc, idgen, owner)
   result.n = newNodeI(nkFormalParams, info)
   rawAddSon(result, nil) # return type
   # result.n[0] used to be `nkType`, but now it's `nkEffectList` because
@@ -1951,7 +2052,7 @@ proc newProcType*(info: TLineInfo; id: ItemId; owner: PSym): PType =
   result.n.add newNodeI(nkEffectList, info)
 
 proc addParam*(procType: PType; param: PSym) =
-  param.position = procType.len-1
+  param.position = procType.sons.len-1
   procType.n.add newSymNode(param)
   rawAddSon(procType, param.typ)
 
@@ -1993,9 +2094,36 @@ proc toHumanStr*(kind: TTypeKind): string =
   ## strips leading `tk`
   result = toHumanStrImpl(kind, 2)
 
-proc skipAddr*(n: PNode): PNode {.inline.} =
+proc skipHiddenAddr*(n: PNode): PNode {.inline.} =
   (if n.kind == nkHiddenAddr: n[0] else: n)
 
 proc isNewStyleConcept*(n: PNode): bool {.inline.} =
   assert n.kind == nkTypeClassTy
   result = n[0].kind == nkEmpty
+
+proc isOutParam*(t: PType): bool {.inline.} = tfIsOutParam in t.flags
+
+const
+  nodesToIgnoreSet* = {nkNone..pred(nkSym), succ(nkSym)..nkNilLit,
+    nkTypeSection, nkProcDef, nkConverterDef,
+    nkMethodDef, nkIteratorDef, nkMacroDef, nkTemplateDef, nkLambda, nkDo,
+    nkFuncDef, nkConstSection, nkConstDef, nkIncludeStmt, nkImportStmt,
+    nkExportStmt, nkPragma, nkCommentStmt, nkBreakState,
+    nkTypeOfExpr, nkMixinStmt, nkBindStmt}
+
+proc isTrue*(n: PNode): bool =
+  n.kind == nkSym and n.sym.kind == skEnumField and n.sym.position != 0 or
+    n.kind == nkIntLit and n.intVal != 0
+
+type
+  TypeMapping* = Table[ItemId, PType]
+  SymMapping* = Table[ItemId, PSym]
+
+template idTableGet*(tab: typed; key: PSym | PType): untyped = tab.getOrDefault(key.itemId)
+template idTablePut*(tab: typed; key, val: PSym | PType) = tab[key.itemId] = val
+
+template initSymMapping*(): Table[ItemId, PSym] = initTable[ItemId, PSym]()
+template initTypeMapping*(): Table[ItemId, PType] = initTable[ItemId, PType]()
+
+template resetIdTable*(tab: Table[ItemId, PSym]) = tab.clear()
+template resetIdTable*(tab: Table[ItemId, PType]) = tab.clear()

@@ -1,6 +1,6 @@
 #
 #
-#           The Nim Compiler
+#              Nim's Runtime Library
 #        (c) Copyright 2021 Nim Contributors
 #
 #    See the file "copying.txt", included in this
@@ -11,6 +11,10 @@
 ##
 ## Experimental API, subject to change.
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
+
 const whitespaces = {' ', '\t', '\v', '\r', '\l', '\f'}
 
 proc add*(x: var string, y: openArray[char]) =
@@ -19,8 +23,8 @@ proc add*(x: var string, y: openArray[char]) =
   # Use `{.noalias.}` ?
   let n = x.len
   x.setLen n + y.len
-    # pending https://github.com/nim-lang/Nim/issues/14655#issuecomment-643671397
-    # use x.setLen(n + y.len, isInit = false)
+    # pending #19727
+    # setLen unnecessarily zeros memory
   var i = 0
   while i < y.len:
     x[n + i] = y[i]
@@ -46,7 +50,7 @@ func setSlice*(s: var string, slice: Slice[int]) =
     import std/sugar
 
     var a = "Hello, Nim!"
-    doassert a.dup(setSlice(7 .. 9)) == "Nim"
+    doAssert a.dup(setSlice(7 .. 9)) == "Nim"
     doAssert a.dup(setSlice(0 .. 0)) == "H"
     doAssert a.dup(setSlice(0 .. 1)) == "He"
     doAssert a.dup(setSlice(0 .. 10)) == a

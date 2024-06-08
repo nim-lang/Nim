@@ -1,0 +1,40 @@
+# create a breakpoint on `debugutils.enteringDebugSection` named enteringDebugSection
+breakpoint set -n 'enteringDebugSection' -N enteringDebugSection
+# run these commands once breakpoint enteringDebugSection is hit
+breakpoint command add enteringDebugSection
+	# enable all breakpoints
+	breakpoint enable
+	# enable all watchpoints
+  # watchpoint enable # FIXME: not currently working for unknown reason
+	# continue execution
+	continue
+DONE
+
+# create a breakpoint on `debugutils.exitingDebugSection` named exitingDebugSection
+breakpoint set -n 'exitingDebugSection' -N exitingDebugSection
+# run these commands once breakpoint exitingDebugSection is hit
+breakpoint command add exitingDebugSection
+	# disable all breakpoints
+	breakpoint disable
+	# disable all watchpoints
+  # watchpoint disable # FIXME: not currently working for unknown reason
+	breakpoint enable enteringDebugSection
+	# continue execution
+	continue
+DONE
+
+# some commands can't be set until the process is running, so set an entry breakpoint
+breakpoint set -n NimMain -N NimMain
+# run these commands once breakpoint NimMain is hit
+breakpoint command add NimMain
+	# disable all breakpoints
+	breakpoint disable
+	# disable all watchpoints
+  # watchpoint disable # FIXME: not currently working for unknown reason
+	# enable the enteringDebugSection breakpoint though
+	breakpoint enable enteringDebugSection
+	# no longer need this breakpoint
+	breakpoint delete NimMain
+	# continue execution
+	continue
+DONE

@@ -47,7 +47,6 @@ runnableExamples:
 ## * `fenv module <fenv.html>`_ for handling of floating-point rounding
 ##   and exceptions (overflow, zero-divide, etc.)
 ## * `random module <random.html>`_ for a fast and tiny random number generator
-## * `mersenne module <mersenne.html>`_ for the Mersenne Twister random number generator
 ## * `stats module <stats.html>`_ for statistical analysis
 ## * `strformat module <strformat.html>`_ for formatting floats for printing
 ## * `system module <system.html>`_ for some very basic and trivial math operators
@@ -60,6 +59,10 @@ import std/private/since
 
 import std/[bitops, fenv]
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
+
 when defined(c) or defined(cpp):
   proc c_isnan(x: float): bool {.importc: "isnan", header: "<math.h>".}
     # a generic like `x: SomeFloat` might work too if this is implemented via a C macro.
@@ -69,16 +72,46 @@ when defined(c) or defined(cpp):
 
   proc c_signbit(x: SomeFloat): cint {.importc: "signbit", header: "<math.h>".}
 
-  func c_frexp*(x: cfloat, exponent: var cint): cfloat {.
-      importc: "frexpf", header: "<math.h>", deprecated: "Use `frexp` instead".}
-  func c_frexp*(x: cdouble, exponent: var cint): cdouble {.
-      importc: "frexp", header: "<math.h>", deprecated: "Use `frexp` instead".}
-
   # don't export `c_frexp` in the future and remove `c_frexp2`.
   func c_frexp2(x: cfloat, exponent: var cint): cfloat {.
       importc: "frexpf", header: "<math.h>".}
   func c_frexp2(x: cdouble, exponent: var cint): cdouble {.
       importc: "frexp", header: "<math.h>".}
+  
+  type
+    div_t {.importc, header: "<stdlib.h>".} = object
+      quot: cint
+      rem: cint
+    ldiv_t {.importc, header: "<stdlib.h>".} = object
+      quot: clong
+      rem: clong
+    lldiv_t {.importc, header: "<stdlib.h>".} = object
+      quot: clonglong
+      rem: clonglong
+  
+  when cint isnot clong:
+    func divmod_c(x, y: cint): div_t {.importc: "div", header: "<stdlib.h>".}
+  when clong isnot clonglong:
+    func divmod_c(x, y: clonglong): lldiv_t {.importc: "lldiv", header: "<stdlib.h>".}
+  func divmod_c(x, y: clong): ldiv_t {.importc: "ldiv", header: "<stdlib.h>".}
+  func divmod*[T: SomeInteger](x, y: T): (T, T) {.inline.} = 
+    ## Specialized instructions for computing both division and modulus.
+    ## Return structure is: (quotient, remainder)
+    runnableExamples:
+      doAssert divmod(5, 2) == (2, 1)
+      doAssert divmod(5, -3) == (-1, 2)
+    when T is cint | clong | clonglong:
+      when compileOption("overflowChecks"):
+        if y == 0:
+          raise new(DivByZeroDefect)
+        elif (x == T.low and y == -1.T):
+          raise new(OverflowDefect)
+      let res = divmod_c(x, y)
+      result[0] = res.quot
+      result[1] = res.rem
+    else:
+      result[0] = x div y
+      result[1] = x mod y
 
 func binom*(n, k: int): int =
   ## Computes the [binomial coefficient](https://en.wikipedia.org/wiki/Binomial_coefficient).
@@ -122,7 +155,7 @@ func fac*(n: int): int =
 
 {.push checks: off, line_dir: off, stack_trace: off.}
 
-when defined(posix) and not defined(genode):
+when defined(posix) and not defined(genode) and not defined(macosx):
   {.passl: "-lm".}
 
 const
@@ -167,7 +200,7 @@ func isNaN*(x: SomeFloat): bool {.inline, since: (1,5,1).} =
   template fn: untyped = result = x != x
   when nimvm: fn()
   else:
-    when defined(js): fn()
+    when defined(js) or defined(nimscript): fn()
     else: result = c_isnan(x)
 
 when defined(js):
@@ -186,13 +219,13 @@ when defined(js):
     let a = newFloat64Array(buffer)
     let b = newUint32Array(buffer)
     a[0] = x
-    asm """
+    {.emit: """
     function updateBit(num, bitPos, bitVal) {
       return (num & ~(1 << bitPos)) | (bitVal << bitPos);
     }
     `b`[1] = updateBit(`b`[1], 31, `sgn`);
     `result` = `a`[0]
-    """
+    """.}
 
 proc signbit*(x: SomeFloat): bool {.inline, since: (1, 5, 1).} =
   ## Returns true if `x` is negative, false otherwise.
@@ -237,7 +270,6 @@ func classify*(x: float): FloatClass =
   ## Classifies a floating point value.
   ##
   ## Returns `x`'s class as specified by the `FloatClass enum<#FloatClass>`_.
-  ## Doesn't work with `--passc:-ffast-math`.
   runnableExamples:
     doAssert classify(0.3) == fcNormal
     doAssert classify(0.0) == fcZero
@@ -246,6 +278,7 @@ func classify*(x: float): FloatClass =
     doAssert classify(5.0e-324) == fcSubnormal
 
   # JavaScript and most C compilers have no classify:
+  if isNan(x): return fcNan
   if x == 0.0:
     if 1.0 / x == Inf:
       return fcZero
@@ -254,7 +287,6 @@ func classify*(x: float): FloatClass =
   if x * 0.5 == x:
     if x > 0.0: return fcInf
     else: return fcNegInf
-  if x != x: return fcNan
   if abs(x) < MinFloatNormal:
     return fcSubnormal
   return fcNormal
@@ -328,68 +360,8 @@ func nextPowerOfTwo*(x: int): int =
   result = result or (result shr 1)
   result += 1 + ord(x <= 0)
 
-func sum*[T](x: openArray[T]): T =
-  ## Computes the sum of the elements in `x`.
-  ##
-  ## If `x` is empty, 0 is returned.
-  ##
-  ## **See also:**
-  ## * `prod func <#prod,openArray[T]>`_
-  ## * `cumsum func <#cumsum,openArray[T]>`_
-  ## * `cumsummed func <#cumsummed,openArray[T]>`_
-  runnableExamples:
-    doAssert sum([1, 2, 3, 4]) == 10
-    doAssert sum([-4, 3, 5]) == 4
 
-  for i in items(x): result = result + i
 
-func prod*[T](x: openArray[T]): T =
-  ## Computes the product of the elements in `x`.
-  ##
-  ## If `x` is empty, 1 is returned.
-  ##
-  ## **See also:**
-  ## * `sum func <#sum,openArray[T]>`_
-  ## * `fac func <#fac,int>`_
-  runnableExamples:
-    doAssert prod([1, 2, 3, 4]) == 24
-    doAssert prod([-4, 3, 5]) == -60
-
-  result = T(1)
-  for i in items(x): result = result * i
-
-func cumsummed*[T](x: openArray[T]): seq[T] =
-  ## Returns the cumulative (aka prefix) summation of `x`.
-  ##
-  ## If `x` is empty, `@[]` is returned.
-  ##
-  ## **See also:**
-  ## * `sum func <#sum,openArray[T]>`_
-  ## * `cumsum func <#cumsum,openArray[T]>`_ for the in-place version
-  runnableExamples:
-    doAssert cumsummed([1, 2, 3, 4]) == @[1, 3, 6, 10]
-
-  let xLen = x.len
-  if xLen == 0:
-    return @[]
-  result.setLen(xLen)
-  result[0] = x[0]
-  for i in 1 ..< xLen: result[i] = result[i - 1] + x[i]
-
-func cumsum*[T](x: var openArray[T]) =
-  ## Transforms `x` in-place (must be declared as `var`) into its
-  ## cumulative (aka prefix) summation.
-  ##
-  ## **See also:**
-  ## * `sum func <#sum,openArray[T]>`_
-  ## * `cumsummed func <#cumsummed,openArray[T]>`_ for a version which
-  ##   returns a cumsummed sequence
-  runnableExamples:
-    var a = [1, 2, 3, 4]
-    cumsum(a)
-    doAssert a == @[1, 3, 6, 10]
-
-  for i in 1 ..< x.len: x[i] = x[i - 1] + x[i]
 
 when not defined(js): # C
   func sqrt*(x: float32): float32 {.importc: "sqrtf", header: "<math.h>".}
@@ -855,6 +827,14 @@ else: # JS
       doAssert -6.5 mod  2.5 == -1.5
       doAssert  6.5 mod -2.5 ==  1.5
       doAssert -6.5 mod -2.5 == -1.5
+  
+  func divmod*[T:SomeInteger](num, denom: T): (T, T) = 
+    runnableExamples:
+      doAssert  divmod(5, 2) ==  (2, 1)
+      doAssert divmod(5, -3) == (-1, 2)
+    result[0] = num div denom
+    result[1] = num mod denom
+  
 
 func round*[T: float32|float64](x: T, places: int): T =
   ## Decimal rounding on a binary floating point number.
@@ -941,6 +921,58 @@ func euclMod*[T: SomeNumber](x, y: T): T {.since: (1, 5, 1).} =
   if result < 0:
     result += abs(y)
 
+func ceilDiv*[T: SomeInteger](x, y: T): T {.inline, since: (1, 5, 1).} =
+  ## Ceil division is conceptually defined as `ceil(x / y)`.
+  ##
+  ## Assumes `x >= 0` and `y > 0` (and `x + y - 1 <= high(T)` if T is SomeUnsignedInt).
+  ##
+  ## This is different from the `system.div <system.html#div,int,int>`_
+  ## operator, which works like `trunc(x / y)`.
+  ## That is, `div` rounds towards `0` and `ceilDiv` rounds up.
+  ##
+  ## This function has the above input limitation, because that allows the
+  ## compiler to generate faster code and it is rarely used with
+  ## negative values or unsigned integers close to `high(T)/2`.
+  ## If you need a `ceilDiv` that works with any input, see:
+  ## https://github.com/demotomohiro/divmath.
+  ##
+  ## **See also:**
+  ## * `system.div proc <system.html#div,int,int>`_ for integer division
+  ## * `floorDiv func <#floorDiv,T,T>`_ for integer division which rounds down.
+  runnableExamples:
+    assert ceilDiv(12, 3) ==  4
+    assert ceilDiv(13, 3) ==  5
+
+  when sizeof(T) == 8:
+    type UT = uint64
+  elif sizeof(T) == 4:
+    type UT = uint32
+  elif sizeof(T) == 2:
+    type UT = uint16
+  elif sizeof(T) == 1:
+    type UT = uint8
+  else:
+    {.fatal: "Unsupported int type".}
+
+  assert x >= 0 and y > 0
+  when T is SomeUnsignedInt:
+    assert x + y - 1 >= x
+
+  # If the divisor is const, the backend C/C++ compiler generates code without a `div`
+  # instruction, as it is slow on most CPUs.
+  # If the divisor is a power of 2 and a const unsigned integer type, the
+  # compiler generates faster code.
+  # If the divisor is const and a signed integer, generated code becomes slower
+  # than the code with unsigned integers, because division with signed integers
+  # need to works for both positive and negative value without `idiv`/`sdiv`.
+  # That is why this code convert parameters to unsigned.
+  # This post contains a comparison of the performance of signed/unsigned integers:
+  # https://github.com/nim-lang/Nim/pull/18596#issuecomment-894420984.
+  # If signed integer arguments were not converted to unsigned integers,
+  # `ceilDiv` wouldn't work for any positive signed integer value, because
+  # `x + (y - 1)` can overflow.
+  ((x.UT + (y.UT - 1.UT)) div y.UT).T
+
 func frexp*[T: float32|float64](x: T): tuple[frac: T, exp: int] {.inline.} =
   ## Splits `x` into a normalized fraction `frac` and an integral power of 2 `exp`,
   ## such that `abs(frac) in 0.5..<1` and `x == frac * 2 ^ exp`, except for special
@@ -949,18 +981,26 @@ func frexp*[T: float32|float64](x: T): tuple[frac: T, exp: int] {.inline.} =
     doAssert frexp(8.0) == (0.5, 4)
     doAssert frexp(-8.0) == (-0.5, 4)
     doAssert frexp(0.0) == (0.0, 0)
+
     # special cases:
-    when not defined(windows):
-      doAssert frexp(-0.0) == (-0.0, 0) # signbit preserved for +-0
+    when sizeof(int) == 8:
+      doAssert frexp(-0.0).frac.signbit # signbit preserved for +-0
       doAssert frexp(Inf).frac == Inf # +- Inf preserved
       doAssert frexp(NaN).frac.isNaN
+
   when not defined(js):
     var exp: cint
     result.frac = c_frexp2(x, exp)
     result.exp = exp
   else:
     if x == 0.0:
-      result = (0.0, 0)
+      # reuse signbit implementation
+      let uintBuffer = toBitsImpl(x)
+      if (uintBuffer[1] shr 31) != 0:
+        # x is -0.0
+        result = (-0.0, 0)
+      else:
+        result = (0.0, 0)
     elif x < 0.0:
       result = frexp(-x)
       result.frac = -result.frac
@@ -980,6 +1020,7 @@ func frexp*[T: float32|float64](x: T, exponent: var int): T {.inline.} =
     var x: int
     doAssert frexp(5.0, x) == 0.625
     doAssert x == 3
+
   (result, exponent) = frexp(x)
 
 
@@ -988,7 +1029,7 @@ when not defined(js):
     # taken from Go-lang Math.Log2
     const ln2 = 0.693147180559945309417232121458176568075500134360255254120680009
     template log2Impl[T](x: T): T =
-      var exp: int32
+      var exp: int
       var frac = frexp(x, exp)
       # Make sure exact powers of two give an exact answer.
       # Don't depend on Log(0.5)*(1/Ln2)+exp being exactly exp-1.
@@ -1073,6 +1114,69 @@ func sgn*[T: SomeNumber](x: T): int {.inline.} =
 
 {.pop.}
 {.pop.}
+
+func sum*[T](x: openArray[T]): T =
+  ## Computes the sum of the elements in `x`.
+  ##
+  ## If `x` is empty, 0 is returned.
+  ##
+  ## **See also:**
+  ## * `prod func <#prod,openArray[T]>`_
+  ## * `cumsum func <#cumsum,openArray[T]>`_
+  ## * `cumsummed func <#cumsummed,openArray[T]>`_
+  runnableExamples:
+    doAssert sum([1, 2, 3, 4]) == 10
+    doAssert sum([-4, 3, 5]) == 4
+
+  for i in items(x): result = result + i
+
+func prod*[T](x: openArray[T]): T =
+  ## Computes the product of the elements in `x`.
+  ##
+  ## If `x` is empty, 1 is returned.
+  ##
+  ## **See also:**
+  ## * `sum func <#sum,openArray[T]>`_
+  ## * `fac func <#fac,int>`_
+  runnableExamples:
+    doAssert prod([1, 2, 3, 4]) == 24
+    doAssert prod([-4, 3, 5]) == -60
+
+  result = T(1)
+  for i in items(x): result = result * i
+
+func cumsummed*[T](x: openArray[T]): seq[T] =
+  ## Returns the cumulative (aka prefix) summation of `x`.
+  ##
+  ## If `x` is empty, `@[]` is returned.
+  ##
+  ## **See also:**
+  ## * `sum func <#sum,openArray[T]>`_
+  ## * `cumsum func <#cumsum,openArray[T]>`_ for the in-place version
+  runnableExamples:
+    doAssert cumsummed([1, 2, 3, 4]) == @[1, 3, 6, 10]
+
+  let xLen = x.len
+  if xLen == 0:
+    return @[]
+  result.setLen(xLen)
+  result[0] = x[0]
+  for i in 1 ..< xLen: result[i] = result[i - 1] + x[i]
+
+func cumsum*[T](x: var openArray[T]) =
+  ## Transforms `x` in-place (must be declared as `var`) into its
+  ## cumulative (aka prefix) summation.
+  ##
+  ## **See also:**
+  ## * `sum func <#sum,openArray[T]>`_
+  ## * `cumsummed func <#cumsummed,openArray[T]>`_ for a version which
+  ##   returns a cumsummed sequence
+  runnableExamples:
+    var a = [1, 2, 3, 4]
+    cumsum(a)
+    doAssert a == @[1, 3, 6, 10]
+
+  for i in 1 ..< x.len: x[i] = x[i - 1] + x[i]
 
 func `^`*[T: SomeNumber](x: T, y: Natural): T =
   ## Computes `x` to the power of `y`.

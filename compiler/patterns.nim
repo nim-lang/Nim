@@ -13,6 +13,9 @@
 import
   ast, types, semdata, sigmatch, idents, aliases, parampatterns, trees
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 type
   TPatternContext = object
     owner: PSym
@@ -26,6 +29,8 @@ type
 proc getLazy(c: PPatternContext, sym: PSym): PNode =
   if c.mappingIsFull:
     result = c.mapping[sym.position]
+  else:
+    result = nil
 
 proc putLazy(c: PPatternContext, sym: PSym, n: PNode) =
   if not c.mappingIsFull:
@@ -36,12 +41,12 @@ proc putLazy(c: PPatternContext, sym: PSym, n: PNode) =
 proc matches(c: PPatternContext, p, n: PNode): bool
 
 proc canonKind(n: PNode): TNodeKind =
-  ## nodekind canonilization for pattern matching
+  ## nodekind canonicalization for pattern matching
   result = n.kind
   case result
   of nkCallKinds: result = nkCall
   of nkStrLit..nkTripleStrLit: result = nkStrLit
-  of nkFastAsgn: result = nkAsgn
+  of nkFastAsgn, nkSinkAsgn: result = nkAsgn
   else: discard
 
 proc sameKinds(a, b: PNode): bool {.inline.} =
@@ -62,14 +67,21 @@ proc sameTrees*(a, b: PNode): bool =
         for i in 0..<a.len:
           if not sameTrees(a[i], b[i]): return
         result = true
+      else:
+        result = false
+  else:
+    result = false
 
 proc inSymChoice(sc, x: PNode): bool =
   if sc.kind == nkClosedSymChoice:
+    result = false
     for i in 0..<sc.len:
       if sc[i].sym == x.sym: return true
   elif sc.kind == nkOpenSymChoice:
     # same name suffices for open sym choices!
     result = sc[0].sym.name.id == x.sym.name.id
+  else:
+    result = false
 
 proc checkTypes(c: PPatternContext, p: PSym, n: PNode): bool =
   # check param constraints first here as this is quite optimized:
@@ -85,6 +97,7 @@ proc isPatternParam(c: PPatternContext, p: PNode): bool {.inline.} =
   result = p.kind == nkSym and p.sym.kind == skParam and p.sym.owner == c.owner
 
 proc matchChoice(c: PPatternContext, p, n: PNode): bool =
+  result = false
   for i in 1..<p.len:
     if matches(c, p[i], n): return true
 
@@ -96,6 +109,8 @@ proc bindOrCheck(c: PPatternContext, param: PSym, n: PNode): bool =
   elif n.kind == nkArgList or checkTypes(c, param, n):
     putLazy(c, param, n)
     result = true
+  else:
+    result = false
 
 proc gather(c: PPatternContext, param: PSym, n: PNode) =
   var pp = getLazy(c, param)
@@ -129,6 +144,10 @@ proc matchNested(c: PPatternContext, p, n: PNode, rpn: bool): bool =
     var arglist = newNodeI(nkArgList, n.info)
     if matchStarAux(c, p, n, arglist, rpn):
       result = bindOrCheck(c, p[2].sym, arglist)
+    else:
+      result = false
+  else:
+    result = false
 
 proc matches(c: PPatternContext, p, n: PNode): bool =
   let n = skipHidden(n)
@@ -143,7 +162,8 @@ proc matches(c: PPatternContext, p, n: PNode): bool =
   elif n.kind == nkSym and n.sym.kind == skConst:
     # try both:
     if p.kind == nkSym: result = p.sym == n.sym
-    elif matches(c, p, n.sym.ast): result = true
+    elif matches(c, p, n.sym.astdef): result = true
+    else: result = false
   elif p.kind == nkPattern:
     # pattern operators: | *
     let opr = p[0].ident.s
@@ -152,7 +172,9 @@ proc matches(c: PPatternContext, p, n: PNode): bool =
     of "*": result = matchNested(c, p, n, rpn=false)
     of "**": result = matchNested(c, p, n, rpn=true)
     of "~": result = not matches(c, p[1], n)
-    else: doAssert(false, "invalid pattern")
+    else:
+      result = false
+      doAssert(false, "invalid pattern")
     # template {add(a, `&` * b)}(a: string{noalias}, b: varargs[string]) =
     #   a.add(b)
   elif p.kind == nkCurlyExpr:
@@ -160,10 +182,14 @@ proc matches(c: PPatternContext, p, n: PNode): bool =
       if matches(c, p[0], n):
         gather(c, p[1][1].sym, n)
         result = true
+      else:
+        result = false
     else:
       assert isPatternParam(c, p[1])
       if matches(c, p[0], n):
         result = bindOrCheck(c, p[1].sym, n)
+      else:
+        result = false
   elif sameKinds(p, n):
     case p.kind
     of nkSym: result = p.sym == n.sym
@@ -176,6 +202,7 @@ proc matches(c: PPatternContext, p, n: PNode): bool =
     else:
       # special rule for p(X) ~ f(...); this also works for stuff like
       # partial case statements, etc! - Not really ... :-/
+      result = false
       let v = lastSon(p)
       if isPatternParam(c, v) and v.sym.typ.kind == tyVarargs:
         var arglist: PNode
@@ -204,6 +231,8 @@ proc matches(c: PPatternContext, p, n: PNode): bool =
         for i in 0..<p.len:
           if not matches(c, p[i], n[i]): return
         result = true
+  else:
+    result = false
 
 proc matchStmtList(c: PPatternContext, p, n: PNode): PNode =
   proc matchRange(c: PPatternContext, p, n: PNode, i: int): bool =
@@ -216,6 +245,7 @@ proc matchStmtList(c: PPatternContext, p, n: PNode): PNode =
     result = true
 
   if p.kind == nkStmtList and n.kind == p.kind and p.len < n.len:
+    result = nil
     let n = flattenStmts(n)
     # no need to flatten 'p' here as that has already been done
     for i in 0..n.len - p.len:
@@ -228,8 +258,11 @@ proc matchStmtList(c: PPatternContext, p, n: PNode): PNode =
         break
   elif matches(c, p, n):
     result = n
+  else:
+    result = nil
 
 proc aliasAnalysisRequested(params: PNode): bool =
+  result = false
   if params.len >= 2:
     for i in 1..<params.len:
       let param = params[i].sym
@@ -243,10 +276,7 @@ proc addToArgList(result, n: PNode) =
 
 proc applyRule*(c: PContext, s: PSym, n: PNode): PNode =
   ## returns a tree to semcheck if the rule triggered; nil otherwise
-  var ctx: TPatternContext
-  ctx.owner = s
-  ctx.c = c
-  ctx.formals = s.typ.len-1
+  var ctx = TPatternContext(owner: s, c: c, formals: s.typ.paramsLen)
   var m = matchStmtList(ctx, s.ast[patternPos], n)
   if isNil(m): return nil
   # each parameter should have been bound; we simply setup a call and
@@ -255,9 +285,11 @@ proc applyRule*(c: PContext, s: PSym, n: PNode): PNode =
   result.add(newSymNode(s, n.info))
   let params = s.typ.n
   let requiresAA = aliasAnalysisRequested(params)
-  var args: PNode
-  if requiresAA:
-    args = newNodeI(nkArgList, n.info)
+  var args: PNode =
+    if requiresAA:
+      newNodeI(nkArgList, n.info)
+    else:
+      nil
   for i in 1..<params.len:
     let param = params[i].sym
     let x = getLazy(ctx, param)

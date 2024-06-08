@@ -1,8 +1,3 @@
-discard """
-  output: '''@["aaa", "bbb", "ccc"]'''
-"""
-
-
 const
   foo = @["aaa", "bbb", "ccc"]
 
@@ -16,4 +11,4 @@ proc myTuple: tuple[n: int, bar: seq[string]] =
 const
   (n, bar) = myTuple()
 
-echo bar
+doAssert bar == @["aaa", "bbb", "ccc"]

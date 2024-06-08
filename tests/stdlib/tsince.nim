@@ -1,4 +1,5 @@
 import std/private/since
+import std/assertions
 
 proc fun1(): int {.since: (1, 3).} = 12
 proc fun1Bad(): int {.since: (99, 3).} = 12
@@ -26,7 +27,6 @@ doAssert ok
 since (99, 3):
   doAssert false
 
-when false:
-  # pending https://github.com/timotheecour/Nim/issues/129
-  # Error: cannot attach a custom pragma to 'fun3'
-  template fun3(): int {.since: (1, 3).} = 12
+template fun3(): int {.since: (1, 3).} = 12
+
+doAssert declared(fun3)

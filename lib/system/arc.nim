@@ -12,26 +12,6 @@ In this new runtime we simplify the object layouts a bit: The runtime type
 information is only accessed for the objects that have it and it's always
 at offset 0 then. The ``ref`` object header is independent from the
 runtime type and only contains a reference count.
-
-Object subtyping is checked via the generated 'name'. This should have
-comparable overhead to the old pointer chasing approach but has the benefit
-that it works across DLL boundaries.
-
-The generated name is a concatenation of the object names in the hierarchy
-so that a subtype check becomes a substring check. For example::
-
-  type
-    ObjectA = object of RootObj
-    ObjectB = object of ObjectA
-
-ObjectA's ``name`` is "|ObjectA|RootObj|".
-ObjectB's ``name`` is "|ObjectB|ObjectA|RootObj|".
-
-Now to check for ``x of ObjectB`` we need to check
-for ``x.typ.name.hasSubstring("|ObjectB|")``. In the actual implementation,
-however, we could also use a
-hash of ``package & "." & module & "." & name`` to save space.
-
 ]#
 
 when defined(gcOrc):
@@ -46,6 +26,9 @@ else:
     rcMask = 0b111
     rcShift = 3      # shift by rcShift to get the reference counter
 
+const
+  orcLeakDetector = defined(nimOrcLeakDetector)
+
 type
   RefHeader = object
     rc: int # the object header is now a single RC field.
@@ -56,8 +39,20 @@ type
                    # in O(1) without doubly linked lists
     when defined(nimArcDebug) or defined(nimArcIds):
       refId: int
+    when defined(gcOrc) and orcLeakDetector:
+      filename: cstring
+      line: int
 
   Cell = ptr RefHeader
+
+template setFrameInfo(c: Cell) =
+  when orcLeakDetector:
+    if framePtr != nil and framePtr.prev != nil:
+      c.filename = framePtr.prev.filename
+      c.line = framePtr.prev.line
+    else:
+      c.filename = nil
+      c.line = 0
 
 template head(p: pointer): Cell =
   cast[Cell](cast[int](p) -% sizeof(RefHeader))
@@ -77,6 +72,21 @@ elif defined(nimArcIds):
 
   const traceId = -1
 
+when defined(gcAtomicArc) and hasThreadSupport:
+  template decrement(cell: Cell): untyped =
+    discard atomicDec(cell.rc, rcIncrement)
+  template increment(cell: Cell): untyped =
+    discard atomicInc(cell.rc, rcIncrement)
+  template count(x: Cell): untyped =
+    atomicLoadN(x.rc.addr, ATOMIC_ACQUIRE) shr rcShift
+else:
+  template decrement(cell: Cell): untyped =
+    dec(cell.rc, rcIncrement)
+  template increment(cell: Cell): untyped =
+    inc(cell.rc, rcIncrement)
+  template count(x: Cell): untyped =
+    x.rc shr rcShift
+
 proc nimNewObj(size, alignment: int): pointer {.compilerRtl.} =
   let hdrSize = align(sizeof(RefHeader), alignment)
   let s = size + hdrSize
@@ -89,9 +99,10 @@ proc nimNewObj(size, alignment: int): pointer {.compilerRtl.} =
     atomicInc gRefId
     if head(result).refId == traceId:
       writeStackTrace()
-      cfprintf(cstderr, "[nimNewObj] %p %ld\n", result, head(result).rc shr rcShift)
+      cfprintf(cstderr, "[nimNewObj] %p %ld\n", result, head(result).count)
   when traceCollector:
     cprintf("[Allocated] %p result: %p\n", result -! sizeof(RefHeader), result)
+  setFrameInfo head(result)
 
 proc nimNewObjUninit(size, alignment: int): pointer {.compilerRtl.} =
   # Same as 'newNewObj' but do not initialize the memory to zero.
@@ -110,21 +121,34 @@ proc nimNewObjUninit(size, alignment: int): pointer {.compilerRtl.} =
     atomicInc gRefId
     if head(result).refId == traceId:
       writeStackTrace()
-      cfprintf(cstderr, "[nimNewObjUninit] %p %ld\n", result, head(result).rc shr rcShift)
+      cfprintf(cstderr, "[nimNewObjUninit] %p %ld\n", result, head(result).count)
 
   when traceCollector:
     cprintf("[Allocated] %p result: %p\n", result -! sizeof(RefHeader), result)
+  setFrameInfo head(result)
 
 proc nimDecWeakRef(p: pointer) {.compilerRtl, inl.} =
-  dec head(p).rc, rcIncrement
+  decrement head(p)
+
+proc isUniqueRef*[T](x: ref T): bool {.inline.} =
+  ## Returns true if the object `x` points to is uniquely referenced. Such
+  ## an object can potentially be passed over to a different thread safely,
+  ## if great care is taken. This queries the internal reference count of
+  ## the object which is subject to lots of optimizations! In other words
+  ## the value of `isUniqueRef` can depend on the used compiler version and
+  ## optimizer setting.
+  ## Nevertheless it can be used as a very valuable debugging tool and can
+  ## be used to specify the constraints of a threading related API
+  ## via `assert isUniqueRef(x)`.
+  head(cast[pointer](x)).rc == 0
 
 proc nimIncRef(p: pointer) {.compilerRtl, inl.} =
   when defined(nimArcDebug):
     if head(p).refId == traceId:
       writeStackTrace()
-      cfprintf(cstderr, "[IncRef] %p %ld\n", p, head(p).rc shr rcShift)
+      cfprintf(cstderr, "[IncRef] %p %ld\n", p, head(p).count)
 
-  inc head(p).rc, rcIncrement
+  increment head(p)
   when traceCollector:
     cprintf("[INCREF] %p\n", head(p))
 
@@ -154,7 +178,7 @@ proc nimRawDispose(p: pointer, alignment: int) {.compilerRtl.} =
     when defined(nimOwnedEnabled):
       if head(p).rc >= rcIncrement:
         cstderr.rawWrite "[FATAL] dangling references exist\n"
-        quit 1
+        rawQuit 1
     when defined(nimArcDebug):
       # we do NOT really free the memory here in order to reliably detect use-after-frees
       if freedCells.data == nil: init(freedCells)
@@ -193,24 +217,29 @@ proc nimDecRefIsLast(p: pointer): bool {.compilerRtl, inl.} =
     when defined(nimArcDebug):
       if cell.refId == traceId:
         writeStackTrace()
-        cfprintf(cstderr, "[DecRef] %p %ld\n", p, cell.rc shr rcShift)
+        cfprintf(cstderr, "[DecRef] %p %ld\n", p, cell.count)
 
-    if (cell.rc and not rcMask) == 0:
-      result = true
-      when traceCollector:
-        cprintf("[ABOUT TO DESTROY] %p\n", cell)
+    when defined(gcAtomicArc) and hasThreadSupport:
+      # `atomicDec` returns the new value
+      if atomicDec(cell.rc, rcIncrement) == -rcIncrement:
+        result = true
+        when traceCollector:
+          cprintf("[ABOUT TO DESTROY] %p\n", cell)
     else:
-      dec cell.rc, rcIncrement
-      # According to Lins it's correct to do nothing else here.
-      when traceCollector:
-        cprintf("[DeCREF] %p\n", cell)
+      if cell.count == 0:
+        result = true
+        when traceCollector:
+          cprintf("[ABOUT TO DESTROY] %p\n", cell)
+      else:
+        decrement cell
+        # According to Lins it's correct to do nothing else here.
+        when traceCollector:
+          cprintf("[DECREF] %p\n", cell)
 
 proc GC_unref*[T](x: ref T) =
   ## New runtime only supports this operation for 'ref T'.
-  if nimDecRefIsLast(cast[pointer](x)):
-    # XXX this does NOT work for virtual destructors!
-    `=destroy`(x[])
-    nimRawDispose(cast[pointer](x), T.alignOf)
+  var y {.cursor.} = x
+  `=destroy`(y)
 
 proc GC_ref*[T](x: ref T) =
   ## New runtime only supports this operation for 'ref T'.
@@ -218,22 +247,21 @@ proc GC_ref*[T](x: ref T) =
 
 when not defined(gcOrc):
   template GC_fullCollect* =
-    ## Forces a full garbage collection pass. With `--gc:arc` a nop.
+    ## Forces a full garbage collection pass. With `--mm:arc` a nop.
     discard
 
 template setupForeignThreadGc* =
-  ## With `--gc:arc` a nop.
+  ## With `--mm:arc` a nop.
   discard
 
 template tearDownForeignThreadGc* =
-  ## With `--gc:arc` a nop.
+  ## With `--mm:arc` a nop.
   discard
 
-proc isObj(obj: PNimTypeV2, subclass: cstring): bool {.compilerRtl, inl.} =
-  proc strstr(s, sub: cstring): cstring {.header: "<string.h>", importc.}
+proc isObjDisplayCheck(source: PNimTypeV2, targetDepth: int16, token: uint32): bool {.compilerRtl, inl.} =
+  result = targetDepth <= source.depth and source.display[targetDepth] == token
 
-  result = strstr(obj.name, subclass) != nil
-
-proc chckObj(obj: PNimTypeV2, subclass: cstring) {.compilerRtl.} =
-  # checks if obj is of type subclass:
-  if not isObj(obj, subclass): sysFatal(ObjectConversionDefect, "invalid object conversion")
+when defined(gcDestructors):
+  proc nimGetVTable(p: pointer, index: int): pointer
+        {.compilerRtl, inline, raises: [].} =
+    result = cast[ptr PNimTypeV2](p).vTable[index]

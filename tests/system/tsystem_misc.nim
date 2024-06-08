@@ -59,11 +59,6 @@ doAssert high(float) > low(float)
 doAssert high(float32) > low(float32)
 doAssert high(float64) > low(float64)
 
-# bug #6710
-var s = @[1]
-s.delete(0)
-
-
 proc foo(a: openArray[int]) =
   for x in a: echo x
 
@@ -136,12 +131,12 @@ let str = "0123456789"
 foo(toOpenArrayByte(str, 0, str.high))
 
 
-template boundedOpenArray[T](x: seq[T], first, last: int): openarray[T] =
+template boundedOpenArray[T](x: seq[T], first, last: int): openArray[T] =
   toOpenarray(x, max(0, first), min(x.high, last))
 
 # bug #9281
 
-proc foo[T](x: openarray[T]) =
+proc foo[T](x: openArray[T]) =
   echo x.len
 
 let a = @[1, 2, 3]
@@ -217,3 +212,10 @@ block:
   doAssert not compiles(echo p.rawProc.repr)
   doAssert not compiles(echo p.rawEnv.repr)
   doAssert not compiles(echo p.finished)
+
+proc bug23223 = # bug #23223
+  var stuff = "hello"
+  stuff.insert ""
+  doAssert stuff == "hello"
+
+bug23223()

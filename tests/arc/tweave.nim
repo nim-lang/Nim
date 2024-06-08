@@ -8,6 +8,9 @@ discard """
 
 import std/atomics
 
+when defined(nimPreviewSlimSystem):
+  import std/[assertions, typedthreads]
+
 const MemBlockSize = 256
 
 type

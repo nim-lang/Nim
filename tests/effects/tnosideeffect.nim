@@ -1,5 +1,5 @@
 block: # `.noSideEffect`
-  func foo(bar: proc(): int): int = bar()
+  func foo(bar: proc(): int): int {.effectsOf: bar.} = bar()
   var count = 0
   proc fn1(): int = 1
   proc fn2(): int = (count.inc; count)

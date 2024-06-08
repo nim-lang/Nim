@@ -64,10 +64,12 @@ type
 proc semForObjectFields(c: TFieldsCtx, typ, forLoop, father: PNode) =
   case typ.kind
   of nkSym:
-    var fc: TFieldInstCtx  # either 'tup[i]' or 'field' is valid
-    fc.c = c.c
-    fc.field = typ.sym
-    fc.replaceByFieldName = c.m == mFieldPairs
+    # either 'tup[i]' or 'field' is valid
+    var fc = TFieldInstCtx(
+      c: c.c,
+      field: typ.sym,
+      replaceByFieldName: c.m == mFieldPairs
+    )
     openScope(c.c)
     inc c.c.inUnrolledContext
     let body = instFieldLoopBody(fc, lastSon(forLoop), forLoop)
@@ -109,7 +111,7 @@ proc semForFields(c: PContext, n: PNode, m: TMagic): PNode =
   var trueSymbol = systemModuleSym(c.graph, getIdent(c.cache, "true"))
   if trueSymbol == nil:
     localError(c.config, n.info, "system needs: 'true'")
-    trueSymbol = newSym(skUnknown, getIdent(c.cache, "true"), nextSymId c.idgen, getCurrOwner(c), n.info)
+    trueSymbol = newSym(skUnknown, getIdent(c.cache, "true"), c.idgen, getCurrOwner(c), n.info)
     trueSymbol.typ = getSysType(c.graph, n.info, tyBool)
 
   result[0] = newSymNode(trueSymbol, n.info)
@@ -133,29 +135,31 @@ proc semForFields(c: PContext, n: PNode, m: TMagic): PNode =
       typeMismatch(c.config, calli.info, tupleTypeA, tupleTypeB, calli)
 
   inc(c.p.nestedLoopCounter)
+  let oldBreakInLoop = c.p.breakInLoop
+  c.p.breakInLoop = true
   if tupleTypeA.kind == tyTuple:
     var loopBody = n[^1]
     for i in 0..<tupleTypeA.len:
       openScope(c)
-      var fc: TFieldInstCtx
-      fc.tupleType = tupleTypeA
-      fc.tupleIndex = i
-      fc.c = c
-      fc.replaceByFieldName = m == mFieldPairs
+      var fc = TFieldInstCtx(
+          tupleType: tupleTypeA,
+          tupleIndex: i,
+          c: c,
+          replaceByFieldName: m == mFieldPairs
+      )
       var body = instFieldLoopBody(fc, loopBody, n)
       inc c.inUnrolledContext
       stmts.add(semStmt(c, body, {}))
       dec c.inUnrolledContext
       closeScope(c)
   else:
-    var fc: TFieldsCtx
-    fc.m = m
-    fc.c = c
+    var fc = TFieldsCtx(m: m, c: c)
     var t = tupleTypeA
     while t.kind == tyObject:
       semForObjectFields(fc, t.n, n, stmts)
-      if t[0] == nil: break
-      t = skipTypes(t[0], skipPtrs)
+      if t.baseClass == nil: break
+      t = skipTypes(t.baseClass, skipPtrs)
+  c.p.breakInLoop = oldBreakInLoop
   dec(c.p.nestedLoopCounter)
   # for TR macros this 'while true: ...; break' loop is pretty bad, so
   # we avoid it now if we can:

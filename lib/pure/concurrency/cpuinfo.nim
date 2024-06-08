@@ -16,7 +16,10 @@ runnableExamples:
 include "system/inclrtl"
 
 when defined(posix) and not (defined(macosx) or defined(bsd)):
-  import posix
+  import std/posix
+
+when defined(windows):
+  import std/private/win_getsysteminfo
 
 when defined(freebsd) or defined(macosx):
   {.emit: "#include <sys/types.h>".}
@@ -37,7 +40,7 @@ when defined(macosx) or defined(bsd):
               importc: "sysctl", nodecl.}
 
 when defined(genode):
-  include genode/env
+  import genode/env
 
   proc affinitySpaceTotal(env: GenodeEnvPtr): cuint {.
     importcpp: "@->cpu().affinity_space().total()".}
@@ -54,25 +57,10 @@ proc countProcessors*(): int {.rtl, extern: "ncpi$1".} =
   ## Returns the number of the processors/cores the machine has.
   ## Returns 0 if it cannot be detected.
   when defined(windows):
-    type
-      SYSTEM_INFO {.final, pure.} = object
-        u1: int32
-        dwPageSize: int32
-        lpMinimumApplicationAddress: pointer
-        lpMaximumApplicationAddress: pointer
-        dwActiveProcessorMask: ptr int32
-        dwNumberOfProcessors: int32
-        dwProcessorType: int32
-        dwAllocationGranularity: int32
-        wProcessorLevel: int16
-        wProcessorRevision: int16
-
-    proc GetSystemInfo(lpSystemInfo: var SYSTEM_INFO) {.stdcall, dynlib: "kernel32", importc: "GetSystemInfo".}
-
     var
-      si: SYSTEM_INFO
-    GetSystemInfo(si)
-    result = si.dwNumberOfProcessors
+      si: SystemInfo
+    getSystemInfo(addr si)
+    result = int(si.dwNumberOfProcessors)
   elif defined(macosx) or defined(bsd):
     var
       mib: array[0..3, cint]

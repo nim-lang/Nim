@@ -3,10 +3,15 @@
 cppDefine "errno"
 cppDefine "unix"
 
+# mangle the macro names in nimbase.h
+cppDefine "NAN_INFINITY"
+cppDefine "INF"
+cppDefine "NAN"
+
 when defined(nimStrictMode):
   # xxx add more flags here, and use `-d:nimStrictMode` in more contexts in CI.
 
-  # pending bug #14246, enable this:
+  # enable this:
   # when defined(nimHasWarningAsError):
   #   switch("warningAsError", "UnusedImport")
 
@@ -14,3 +19,5 @@ when defined(nimStrictMode):
     # switch("hint", "ConvFromXtoItselfNotNeeded")
     switch("hintAsError", "ConvFromXtoItselfNotNeeded")
     # future work: XDeclaredButNotUsed
+
+switch("define", "nimVersion:" & NimVersion)

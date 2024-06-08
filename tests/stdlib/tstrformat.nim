@@ -1,7 +1,12 @@
-# xxx: test js target
+discard """
+  matrix: "--mm:refc; --mm:orc"
+"""
 
 import genericstrformat
-import std/[strformat, strutils, times]
+import std/[strformat, strutils, times, tables, json]
+
+import std/[assertions, formatfloat]
+import std/objectdollar
 
 proc main() =
   block: # issue #7632
@@ -284,6 +289,20 @@ proc main() =
     doAssert fmt"{123.456=:>13e}" == "123.456= 1.234560e+02"
     doAssert fmt"{123.456=:13e}" == "123.456= 1.234560e+02"
 
+    let x = 3.14
+    doAssert fmt"{(if x!=0: 1.0/x else: 0):.5}" == "0.31847"
+    doAssert fmt"""{(block:
+      var res: string
+      for i in 1..15:
+        res.add (if i mod 15 == 0: "FizzBuzz"
+          elif i mod 5 == 0: "Buzz"
+          elif i mod 3 == 0: "Fizz"
+          else: $i) & " "
+      res)}""" == "1 2 Fizz 4 Buzz Fizz 7 8 Fizz Buzz 11 Fizz 13 14 FizzBuzz "
+
+    doAssert fmt"""{ "\{(" & msg & ")\}" }""" == "{(hello)}"
+    doAssert fmt"""{{({ msg })}}""" == "{(hello)}"
+    doAssert fmt"""{ $(\{msg:1,"world":2\}) }""" == """[("hello", 1), ("world", 2)]"""
   block: # tests for debug format string
     var name = "hello"
     let age = 21
@@ -458,15 +477,17 @@ proc main() =
 
     # Note: times.format adheres to the format protocol. Test that this
     # works:
+    when nimvm:
+      discard
+    else:
+      var dt = dateTime(2000, mJan, 01, 00, 00, 00)
+      check &"{dt:yyyy-MM-dd}", "2000-01-01"
 
-    var dt = initDateTime(01, mJan, 2000, 00, 00, 00)
-    check &"{dt:yyyy-MM-dd}", "2000-01-01"
+      var tm = fromUnix(0)
+      discard &"{tm}"
 
-    var tm = fromUnix(0)
-    discard &"{tm}"
-
-    var noww = now()
-    check &"{noww}", $noww
+      var noww = now()
+      check &"{noww}", $noww
 
     # Unicode string tests
     check &"""{"αβγ"}""", "αβγ"
@@ -496,6 +517,74 @@ proc main() =
 
   block: # test low(int64)
     doAssert &"{low(int64):-}" == "-9223372036854775808"
+  block: #expressions plus formatting
+    doAssert fmt"{if true\: 123.456 else\: 0=:>9.3f}" == "if true: 123.456 else: 0=  123.456"
+    doAssert fmt"{(if true: 123.456 else: 0)=}" == "(if true: 123.456 else: 0)=123.456"
+    doAssert fmt"{if true\: 123.456 else\: 0=:9.3f}" == "if true: 123.456 else: 0=  123.456"
+    doAssert fmt"{(if true: 123.456 else: 0)=:9.4f}" == "(if true: 123.456 else: 0)= 123.4560"
+    doAssert fmt"{(if true: 123.456 else: 0)=:>9.0f}" == "(if true: 123.456 else: 0)=     123."
+    doAssert fmt"{if true\: 123.456 else\: 0=:<9.4f}" == "if true: 123.456 else: 0=123.4560 "
 
-# xxx static: main()
+    doAssert fmt"""{(case true
+      of false: 0.0
+      of true: 123.456)=:e}""" == """(case true
+      of false: 0.0
+      of true: 123.456)=1.234560e+02"""
+
+    doAssert fmt"""{block\:
+      var res = 0.000123456
+      for _ in 0..5\:
+        res *= 10
+      res=:>13e}""" == """block:
+      var res = 0.000123456
+      for _ in 0..5:
+        res *= 10
+      res= 1.234560e+02"""
+    #side effects
+    var x = 5
+    doAssert fmt"{(x=7;123.456)=:13e}" == "(x=7;123.456)= 1.234560e+02"
+    doAssert x==7
+  block: #curly bracket expressions and tuples
+    proc formatValue(result: var string; value:Table|bool|JsonNode; specifier:string) = result.add $value
+
+    doAssert fmt"""{\{"a"\:1,"b"\:2\}.toTable() = }""" == """{"a":1,"b":2}.toTable() = {"a": 1, "b": 2}"""
+    doAssert fmt"""{(\{3: (1,"hi",0.9),4: (4,"lo",1.1)\}).toTable()}""" == """{3: (1, "hi", 0.9), 4: (4, "lo", 1.1)}"""
+    doAssert fmt"""{ (%* \{"name": "Isaac", "books": ["Robot Dreams"]\}) }""" == """{"name":"Isaac","books":["Robot Dreams"]}"""
+    doAssert """%( \%\* {"name": "Isaac"})*""".fmt('%','*') == """{"name":"Isaac"}"""
+  block: #parens in quotes that fool my syntax highlighter
+    doAssert fmt"{(if true: ')' else: '(')}" == ")"
+    doAssert fmt"{(if true: ']' else: ')')}" == "]"
+    doAssert fmt"""{(if true: "\")\"" else: "\"(")}""" == """")""""
+    doAssert &"""{(if true: "\")" else: "")}""" == "\")"
+    doAssert &"{(if true: \"\\\")\" else: \"\")}" == "\")"
+    doAssert fmt"""{(if true: "')" else: "")}""" == "')"
+    doAssert fmt"""{(if true: "'" & "'" & ')' else: "")}""" == "'')"
+    doAssert &"""{(if true: "'" & "'" & ')' else: "")}""" == "'')"
+    doAssert &"{(if true: \"\'\" & \"'\" & ')' else: \"\")}" == "'')"
+    doAssert fmt"""{(if true: "'" & ')' else: "")}""" == "')"
+
+  block: # issue #20381
+    var ss: seq[string]
+    template myTemplate(s: string) =
+      ss.add s
+      ss.add s
+    proc foo() =
+      myTemplate fmt"hello"
+    foo()
+    doAssert ss == @["hello", "hello"]
+
+  block:
+    proc noraises() {.raises: [].} =
+      const
+        flt = 0.0
+        str = "str"
+
+      doAssert fmt"{flt} {str}" == "0.0 str"
+
+    noraises()
+
+  block:
+    doAssert not compiles(fmt"{formatting errors detected at compile time")
+
+static: main()
 main()

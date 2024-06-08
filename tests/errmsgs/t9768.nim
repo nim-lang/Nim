@@ -1,13 +1,14 @@
 discard """
-  errormsg: "unhandled exception:"
-  file: "system/fatal.nim"
+  errormsg: "unhandled exception: t9768.nim(24, 3) `a < 4`  [AssertionDefect]"
+  file: "std/assertions.nim"
+  matrix: "-d:nimPreviewSlimSystem"
   nimout: '''
 stack trace: (most recent call last)
-t9768.nim(28, 33)        main
-t9768.nim(23, 11)        foo1
+t9768.nim(29, 33)        main
+t9768.nim(24, 11)        foo1
 '''
 """
-
+import std/assertions
 
 
 

@@ -10,6 +10,8 @@
 ## Platform detection for NimScript. This module is included by the system module!
 ## Do not import it directly!
 
+# CPU architectures have alias names mapped in tools/niminst/makefile.nimf
+
 type
   CpuPlatform* {.pure.} = enum ## the CPU this program will run on.
     none,                      ## unknown CPU
@@ -35,13 +37,15 @@ type
     msp430,                    ## TI MSP430 microcontroller
     riscv32,                   ## RISC-V 32-bit processor
     riscv64,                   ## RISC-V 64-bit processor
-    wasm32                     ## WASM, 32-bit
+    wasm32,                    ## WASM, 32-bit
+    e2k,                       ## MCST Elbrus 2000
+    loongarch64,               ## LoongArch 64-bit processor
+    s390x                      ## IBM Z
 
   OsPlatform* {.pure.} = enum ## the OS this program will run on.
     none, dos, windows, os2, linux, morphos, skyos, solaris,
     irix, netbsd, freebsd, openbsd, aix, palmos, qnx, amiga,
-    atari, netware, macos, macosx, haiku, android, js, nimVM,
-    standalone, nintendoswitch
+    atari, netware, macos, macosx, haiku, android, js, standalone, nintendoswitch
 
 const
   targetOS* = when defined(windows): OsPlatform.windows
@@ -66,7 +70,6 @@ const
               elif defined(haiku): OsPlatform.haiku
               elif defined(android): OsPlatform.android
               elif defined(js): OsPlatform.js
-              elif defined(nimVM): OsPlatform.nimVM
               elif defined(standalone): OsPlatform.standalone
               elif defined(nintendoswitch): OsPlatform.nintendoswitch
               else: OsPlatform.none
@@ -95,5 +98,8 @@ const
                elif defined(riscv32): CpuPlatform.riscv32
                elif defined(riscv64): CpuPlatform.riscv64
                elif defined(wasm32): CpuPlatform.wasm32
+               elif defined(e2k): CpuPlatform.e2k
+               elif defined(loongarch64): CpuPlatform.loongarch64
+               elif defined(s390x): CpuPlatform.s390x
                else: CpuPlatform.none
     ## the CPU this program will run on.

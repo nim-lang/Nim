@@ -1,34 +1,24 @@
 discard """
-  output: '''(repo: "", package: "meo", ext: "")
-doing shady stuff...
-3
-6
-(@[1], @[2])
-192.168.0.1
-192.168.0.1
-192.168.0.1
-192.168.0.1'''
-  cmd: '''nim c --gc:arc --expandArc:newTarget --expandArc:delete --expandArc:p1 --expandArc:tt --hint:Performance:off --assertions:off --expandArc:extractConfig $file'''
-  nimout: '''--expandArc: newTarget
+  nimoutFull: true
+  cmd: '''nim c -r --warnings:off --hints:off --mm:arc --expandArc:newTarget --expandArc:delete --expandArc:p1 --expandArc:tt --hint:Performance:off --assertions:off --expandArc:extractConfig --expandArc:mergeShadowScope --expandArc:check $file'''
+  nimout: '''
+--expandArc: newTarget
 
 var
   splat
   :tmp
   :tmp_1
-  :tmp_2
-splat = splitFile(path)
-:tmp = splat.dir
-wasMoved(splat.dir)
-:tmp_1 = splat.name
-wasMoved(splat.name)
-:tmp_2 = splat.ext
-wasMoved(splat.ext)
+splat = splitDrive do:
+  let blitTmp = path
+  blitTmp
+:tmp = splat.drive
+`=wasMoved`(splat.drive)
+:tmp_1 = splat.path_1
+`=wasMoved`(splat.path_1)
 result = (
-  let blitTmp = :tmp
-  blitTmp,
-  let blitTmp_1 = :tmp_1
+  let blitTmp_1 = :tmp
   blitTmp_1,
-  let blitTmp_2 = :tmp_2
+  let blitTmp_2 = :tmp_1
   blitTmp_2)
 `=destroy`(splat)
 -- end of expandArc ------------------------
@@ -49,14 +39,14 @@ var
   lresult
   lvalue
   lnext
-  _
+  tmpTupleAsgn
 lresult = @[123]
-_ = (
+tmpTupleAsgn = (
   let blitTmp = lresult
   blitTmp, ";")
-lvalue = _[0]
-lnext = _[1]
-result.value = move lvalue
+lvalue = tmpTupleAsgn[0]
+lnext = tmpTupleAsgn[1]
+`=sink`(result.value, move lvalue)
 `=destroy`(lnext)
 `=destroy_1`(lvalue)
 -- end of expandArc ------------------------
@@ -71,14 +61,12 @@ var
 try:
   it_cursor = x
   a = (
-    wasMoved(:tmpD)
-    `=copy`(:tmpD, it_cursor.key)
+    :tmpD = `=dup`(it_cursor.key)
     :tmpD,
-    wasMoved(:tmpD_1)
-    `=copy`(:tmpD_1, it_cursor.val)
+    :tmpD_1 = `=dup`(it_cursor.val)
     :tmpD_1)
   echo [
-    :tmpD_2 = `$`(a)
+    :tmpD_2 = `$$`(a)
     :tmpD_2]
 finally:
   `=destroy`(:tmpD_2)
@@ -103,21 +91,85 @@ try:
             `=copy`(lan_ip, splitted[1])
           echo [lan_ip]
           echo [splitted[1]]
+          {.push, overflowChecks: false.}
           inc(i, 1)
+          {.pop.}
         finally:
           `=destroy`(splitted)
 finally:
   `=destroy_1`(lan_ip)
--- end of expandArc ------------------------'''
+-- end of expandArc ------------------------
+--expandArc: mergeShadowScope
+
+var shadowScope
+`=copy`(shadowScope, c.currentScope)
+rawCloseScope(c)
+block :tmp:
+  var sym
+  var i = 0
+  let L = len(shadowScope.symbols)
+  block :tmp_1:
+    while i < L:
+      var :tmpD
+      sym = shadowScope.symbols[i]
+      addInterfaceDecl(c):
+        :tmpD = `=dup`(sym)
+        :tmpD
+      {.push, overflowChecks: false.}
+      inc(i, 1)
+      {.pop.}
+`=destroy`(shadowScope)
+-- end of expandArc ------------------------
+--expandArc: check
+
+var par
+this.isValid = fileExists(this.value)
+if dirExists(this.value):
+  var :tmpD
+  par = (dir:
+    :tmpD = `=dup`(this.value)
+    :tmpD, front: "") else:
+  var
+    :tmpD_1
+    :tmpD_2
+    :tmpD_3
+  par = (dir_1: parentDir(this.value), front_1:
+    :tmpD_1 = `=dup`(
+      :tmpD_3 = splitDrive do:
+        :tmpD_2 = `=dup`(this.value)
+        :tmpD_2
+      :tmpD_3.path)
+    :tmpD_1)
+  `=destroy`(:tmpD_3)
+if dirExists(par.dir):
+  `=sink`(this.matchDirs, getSubDirs(par.dir, par.front))
+else:
+  `=sink`(this.matchDirs, [])
+`=destroy`(par)
+-- end of expandArc ------------------------
+--expandArc: check
+
+check(this)
+-- end of expandArc ------------------------
+(package: "", ext: "meo")
+doing shady stuff...
+3
+6
+(@[1], @[2])
+192.168.0.1
+192.168.0.1
+192.168.0.1
+192.168.0.1
+'''
 """
 
-import os
+import os, std/private/ntpath
 
-type Target = tuple[repo, package, ext: string]
+type Target = tuple[package, ext: string]
 
 proc newTarget*(path: string): Target =
-  let splat = path.splitFile
-  result = (repo: splat.dir, package: splat.name, ext: splat.ext)
+  let splat = path.splitDrive
+  result = (package: splat.drive, ext: splat.path)
 
 echo newTarget("meo")
 
@@ -277,3 +329,48 @@ proc extractConfig() =
     echo splitted[1] # Without this line everything works
 
 extractConfig()
+
+
+type
+  Symbol = ref object
+    name: string
+
+  Scope = ref object
+    parent: Scope
+    symbols: seq[Symbol]
+
+  PContext = ref object
+    currentScope: Scope
+
+proc rawCloseScope(c: PContext) =
+  c.currentScope = c.currentScope.parent
+
+proc addInterfaceDecl(c: PContext; s: Symbol) =
+  c.currentScope.symbols.add s
+
+proc mergeShadowScope*(c: PContext) =
+  let shadowScope = c.currentScope
+  c.rawCloseScope
+  for sym in shadowScope.symbols:
+    c.addInterfaceDecl(sym)
+
+mergeShadowScope(PContext(currentScope: Scope(parent: Scope())))
+
+type
+  Foo = ref object
+    isValid*: bool
+    value*: string
+    matchDirs*: seq[string]
+
+proc getSubDirs(parent, front: string): seq[string] = @[]
+
+method check(this: Foo) {.base.} =
+  this.isValid = fileExists(this.value)
+  let par = if dirExists(this.value): (dir: this.value, front: "")
+            else: (dir: parentDir(this.value), front: splitDrive(this.value).path)
+  if dirExists(par.dir):
+    this.matchDirs = getSubDirs(par.dir, par.front)
+  else:
+    this.matchDirs = @[]
+
+check(Foo())

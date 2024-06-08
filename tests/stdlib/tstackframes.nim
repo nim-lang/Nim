@@ -1,4 +1,4 @@
-import std/[strformat,os,osproc]
+import std/[strformat,os,osproc,assertions]
 import stdtest/unittest_light
 
 proc main(opt: string, expected: string) =

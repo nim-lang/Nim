@@ -9,16 +9,16 @@
 
 ## Template evaluation engine. Now hygienic.
 
-import
-  strutils, options, ast, astalgo, msgs, renderer, lineinfos, idents
+import options, ast, astalgo, msgs, renderer, lineinfos, idents, trees
+import std/strutils
 
 type
   TemplCtx = object
     owner, genSymOwner: PSym
     instLines: bool   # use the instantiation lines numbers
     isDeclarative: bool
-    mapping: TIdTable # every gensym'ed symbol needs to be mapped to some
-                      # new symbol
+    mapping: SymMapping # every gensym'ed symbol needs to be mapped to some
+                        # new symbol
     config: ConfigRef
     ic: IdentCache
     instID: int
@@ -26,7 +26,7 @@ type
 
 proc copyNode(ctx: TemplCtx, a, b: PNode): PNode =
   result = copyNode(a)
-  if ctx.instLines: result.info = b.info
+  if ctx.instLines: setInfoRecursive(result, b.info)
 
 proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
   template handleParam(param) =
@@ -44,12 +44,12 @@ proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
         handleParam actual[s.position]
       elif (s.owner != nil) and (s.kind == skGenericParam or
            s.kind == skType and s.typ != nil and s.typ.kind == tyGenericParam):
-        handleParam actual[s.owner.typ.len + s.position - 1]
+        handleParam actual[s.owner.typ.signatureLen + s.position - 1]
       else:
         internalAssert c.config, sfGenSym in s.flags or s.kind == skType
-        var x = PSym(idTableGet(c.mapping, s))
+        var x = idTableGet(c.mapping, s)
         if x == nil:
-          x = copySym(s, nextSymId(c.idgen))
+          x = copySym(s, c.idgen)
           # sem'check needs to set the owner properly later, see bug #9476
           x.owner = nil # c.genSymOwner
           #if x.kind == skParam and x.owner.kind == skModule:
@@ -83,10 +83,14 @@ proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
         not c.isDeclarative:
       c.isDeclarative = true
       isDeclarative = true
-    var res = copyNode(c, templ, actual)
-    for i in 0..<templ.len:
-      evalTemplateAux(templ[i], actual, c, res)
-    result.add res
+    if (not c.isDeclarative) and templ.kind in nkCallKinds and isRunnableExamples(templ[0]):
+      # fixes bug #16993, bug #18054
+      discard
+    else:
+      var res = copyNode(c, templ, actual)
+      for i in 0..<templ.len:
+        evalTemplateAux(templ[i], actual, c, res)
+      result.add res
     if isDeclarative: c.isDeclarative = false
 
 const
@@ -112,7 +116,7 @@ proc evalTemplateArgs(n: PNode, s: PSym; conf: ConfigRef; fromHlo: bool): PNode 
     # now that we have working untyped parameters.
     genericParams = if fromHlo: 0
                     else: s.ast[genericParamsPos].len
-    expectedRegularParams = s.typ.len-1
+    expectedRegularParams = s.typ.paramsLen
     givenRegularParams = totalParams - genericParams
   if givenRegularParams < 0: givenRegularParams = 0
 
@@ -178,14 +182,14 @@ proc evalTemplate*(n: PNode, tmpl, genSymOwner: PSym;
 
   # replace each param by the corresponding node:
   var args = evalTemplateArgs(n, tmpl, conf, fromHlo)
-  var ctx: TemplCtx
-  ctx.owner = tmpl
-  ctx.genSymOwner = genSymOwner
-  ctx.config = conf
-  ctx.ic = ic
-  initIdTable(ctx.mapping)
-  ctx.instID = instID[]
-  ctx.idgen = idgen
+  var ctx = TemplCtx(owner: tmpl,
+    genSymOwner: genSymOwner,
+    config: conf,
+    ic: ic,
+    mapping: initSymMapping(),
+    instID: instID[],
+    idgen: idgen
+  )
 
   let body = tmpl.ast[bodyPos]
   #echo "instantion of ", renderTree(body, {renderIds})
@@ -200,7 +204,7 @@ proc evalTemplate*(n: PNode, tmpl, genSymOwner: PSym;
     result = copyNode(body)
     ctx.instLines = sfCallsite in tmpl.flags
     if ctx.instLines:
-      result.info = n.info
+      setInfoRecursive(result, n.info)
     for i in 0..<body.safeLen:
       evalTemplateAux(body[i], args, ctx, result)
   result.flags.incl nfFromTemplate

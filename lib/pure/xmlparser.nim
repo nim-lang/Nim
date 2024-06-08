@@ -9,7 +9,10 @@
 
 ## This module parses an XML document and creates its XML tree representation.
 
-import streams, parsexml, strtabs, xmltree
+import std/[streams, parsexml, strtabs, xmltree]
+
+when defined(nimPreviewSlimSystem):
+  import std/syncio
 
 type
   XmlError* = object of ValueError ## Exception that is raised
@@ -148,7 +151,7 @@ proc loadXml*(path: string, options: set[XmlParseOption] = {reportComments}): Xm
 
 when isMainModule:
   when not defined(testing):
-    import os
+    import std/os
 
     var errors: seq[string] = @[]
     var x = loadXml(paramStr(1), errors)

@@ -9,10 +9,10 @@
 
 # This module implements Posix and Windows select().
 
-import times, nativesockets
+import std/[times, nativesockets]
 
 when defined(windows):
-  import winlean
+  import std/winlean
   when defined(gcc):
     {.passl: "-lws2_32".}
   elif defined(vcc):
@@ -26,27 +26,27 @@ else:
                              #include <sys/types.h>
                              #include <unistd.h>"""
 type
-  Fdset {.importc: "fd_set", header: platformHeaders, pure, final.} = object
+  FdSet {.importc: "fd_set", header: platformHeaders, pure, final.} = object
 var
   FD_SETSIZE {.importc: "FD_SETSIZE", header: platformHeaders.}: cint
 
-proc IOFD_SET(fd: SocketHandle, fdset: ptr Fdset)
+proc IOFD_SET(fd: SocketHandle, fdset: ptr FdSet)
      {.cdecl, importc: "FD_SET", header: platformHeaders, inline.}
-proc IOFD_CLR(fd: SocketHandle, fdset: ptr Fdset)
+proc IOFD_CLR(fd: SocketHandle, fdset: ptr FdSet)
      {.cdecl, importc: "FD_CLR", header: platformHeaders, inline.}
-proc IOFD_ZERO(fdset: ptr Fdset)
+proc IOFD_ZERO(fdset: ptr FdSet)
      {.cdecl, importc: "FD_ZERO", header: platformHeaders, inline.}
 
 when defined(windows):
-  proc IOFD_ISSET(fd: SocketHandle, fdset: ptr Fdset): cint
+  proc IOFD_ISSET(fd: SocketHandle, fdset: ptr FdSet): cint
        {.stdcall, importc: "FD_ISSET", header: platformHeaders, inline.}
-  proc ioselect(nfds: cint, readFds, writeFds, exceptFds: ptr Fdset,
+  proc ioselect(nfds: cint, readFds, writeFds, exceptFds: ptr FdSet,
                 timeout: ptr Timeval): cint
        {.stdcall, importc: "select", header: platformHeaders.}
 else:
-  proc IOFD_ISSET(fd: SocketHandle, fdset: ptr Fdset): cint
+  proc IOFD_ISSET(fd: SocketHandle, fdset: ptr FdSet): cint
        {.cdecl, importc: "FD_ISSET", header: platformHeaders, inline.}
-  proc ioselect(nfds: cint, readFds, writeFds, exceptFds: ptr Fdset,
+  proc ioselect(nfds: cint, readFds, writeFds, exceptFds: ptr FdSet,
                 timeout: ptr Timeval): cint
        {.cdecl, importc: "select", header: platformHeaders.}
 
@@ -313,7 +313,7 @@ proc selectInto*[T](s: Selector[T], timeout: int,
   verifySelectParams(timeout)
 
   if timeout != -1:
-    when defined(genode) or defined(freertos):
+    when defined(genode) or defined(freertos) or defined(zephyr) or defined(nuttx):
       tv.tv_sec = Time(timeout div 1_000)
     else:
       tv.tv_sec = timeout.int32 div 1_000
@@ -397,18 +397,6 @@ proc contains*[T](s: Selector[T], fd: SocketHandle|int): bool {.inline.} =
     for i in 0..<FD_SETSIZE:
       if s.fds[i].ident == fdi:
         return true
-
-when hasThreadSupport:
-  template withSelectLock[T](s: Selector[T], body: untyped) =
-    acquire(s.lock)
-    {.locks: [s.lock].}:
-      try:
-        body
-      finally:
-        release(s.lock)
-else:
-  template withSelectLock[T](s: Selector[T], body: untyped) =
-    body
 
 proc getData*[T](s: Selector[T], fd: SocketHandle|int): var T =
   s.withSelectLock():

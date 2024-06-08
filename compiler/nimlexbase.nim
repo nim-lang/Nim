@@ -12,8 +12,12 @@
 # handling that exists! Only at line endings checks are necessary
 # if the buffer needs refilling.
 
-import
-  llstream, strutils
+import llstream
+
+import std/strutils
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
 
 const
   Lrz* = ' '
@@ -104,7 +108,7 @@ proc fillBuffer(L: var TBaseLexer) =
         oldBufLen = L.bufLen
         L.bufLen = L.bufLen * 2
         L.bufStorage.setLen(L.bufLen)
-        L.buf = L.bufStorage
+        L.buf = L.bufStorage.cstring
         assert(L.bufLen - oldBufLen == oldBufLen)
         charsRead = llStreamRead(L.stream, addr(L.buf[oldBufLen]),
                                  oldBufLen)
@@ -147,7 +151,7 @@ proc openBaseLexer(L: var TBaseLexer, inputstream: PLLStream, bufLen = 8192) =
   L.bufpos = 0
   L.offsetBase = 0
   L.bufStorage = newString(bufLen)
-  L.buf = L.bufStorage
+  L.buf = L.bufStorage.cstring
   L.bufLen = bufLen
   L.sentinel = bufLen - 1
   L.lineStart = 0

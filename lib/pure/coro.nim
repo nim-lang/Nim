@@ -8,11 +8,11 @@
 #
 
 ## Nim coroutines implementation, supports several context switching methods:
-## --------  ------------
+## ========  ============
 ## ucontext  available on unix and alike (default)
 ## setjmp    available on unix and alike (x86/64 only)
 ## fibers    available and required on windows.
-## --------  ------------
+## ========  ============
 ##
 ## -d:nimCoroutines               Required to build this module.
 ## -d:nimCoroutinesUcontext       Use ucontext backend.
@@ -21,18 +21,22 @@
 ##
 ## Unstable API.
 
+import system/coro_detection
+
 when not nimCoroutines and not defined(nimdoc):
   when defined(noNimCoroutines):
     {.error: "Coroutines can not be used with -d:noNimCoroutines".}
   else:
     {.error: "Coroutines require -d:nimCoroutines".}
 
-import os
-import lists
+import std/[os, lists]
 include system/timers
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 const defaultStackSize = 512 * 1024
-const useOrcArc = defined(gcArc) or defined(gcOrc)
+const useOrcArc = defined(gcArc) or defined(gcOrc) or defined(gcAtomicArc)
 
 when useOrcArc:
   proc nimGC_setStackBottom*(theStackBottom: pointer) = discard
@@ -63,7 +67,7 @@ else:
   const coroBackend = CORO_BACKEND_UCONTEXT
 
 when coroBackend == CORO_BACKEND_FIBERS:
-  import windows/winlean
+  import std/winlean
   type
     Context = pointer
 
@@ -219,7 +223,7 @@ proc switchTo(current, to: CoroutinePtr) =
         elif to.state == CORO_CREATED:
           # Coroutine is started.
           coroExecWithStack(runCurrentTask, to.stack.bottom)
-          #doAssert false
+          #raiseAssert "unreachable"
     else:
       {.error: "Invalid coroutine backend set.".}
   # Execution was just resumed. Restore frame information and set active stack.
@@ -261,7 +265,7 @@ proc runCurrentTask() =
     current.state = CORO_FINISHED
   nimGC_setStackBottom(ctx.ncbottom)
   suspend(0) # Exit coroutine without returning from coroExecWithStack()
-  doAssert false
+  raiseAssert "unreachable"
 
 proc start*(c: proc(), stacksize: int = defaultStackSize): CoroutineRef {.discardable.} =
   ## Schedule coroutine for execution. It does not run immediately.
@@ -273,13 +277,11 @@ proc start*(c: proc(), stacksize: int = defaultStackSize): CoroutineRef {.discar
     coro = cast[CoroutinePtr](alloc0(sizeof(Coroutine)))
     coro.execContext = CreateFiberEx(stacksize, stacksize,
       FIBER_FLAG_FLOAT_SWITCH,
-      (proc(p: pointer): void {.stdcall.} = runCurrentTask()),
-      nil)
-    coro.stack.size = stacksize
+      (proc(p: pointer) {.stdcall.} = runCurrentTask()), nil)
   else:
     coro = cast[CoroutinePtr](alloc0(sizeof(Coroutine) + stacksize))
-    coro.stack.top = cast[pointer](cast[ByteAddress](coro) + sizeof(Coroutine))
-    coro.stack.bottom = cast[pointer](cast[ByteAddress](coro.stack.top) + stacksize)
+    coro.stack.top = cast[pointer](cast[int](coro) + sizeof(Coroutine))
+    coro.stack.bottom = cast[pointer](cast[int](coro.stack.top) + stacksize)
     when coroBackend == CORO_BACKEND_UCONTEXT:
       discard getcontext(coro.execContext)
       coro.execContext.uc_stack.ss_sp = coro.stack.top
@@ -294,9 +296,9 @@ proc start*(c: proc(), stacksize: int = defaultStackSize): CoroutineRef {.discar
   return coro.reference
 
 proc run*() =
-  initialize()
   ## Starts main coroutine scheduler loop which exits when all coroutines exit.
   ## Calling this proc starts execution of first coroutine.
+  initialize()
   ctx.current = ctx.coroutines.head
   var minDelay: float = 0
   while ctx.current != nil:

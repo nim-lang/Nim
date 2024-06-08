@@ -19,7 +19,6 @@ proc checkForSink*(config: ConfigRef; idgen: IdGenerator; owner: PSym; arg: PNod
     var local = p # sink parameter?
     passToSink(local)
   ]#
-  if optSinkInference notin config.options: return
   case arg.kind
   of nkSym:
     if arg.sym.kind == skParam and
@@ -32,7 +31,7 @@ proc checkForSink*(config: ConfigRef; idgen: IdGenerator; owner: PSym; arg: PNod
       if sfWasForwarded notin owner.flags:
         let argType = arg.sym.typ
 
-        let sinkType = newType(tySink, nextTypeId(idgen), owner)
+        let sinkType = newType(tySink, idgen, owner)
         sinkType.size = argType.size
         sinkType.align = argType.align
         sinkType.paddingAtEnd = argType.paddingAtEnd

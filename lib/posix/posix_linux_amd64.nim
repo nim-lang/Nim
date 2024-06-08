@@ -47,7 +47,7 @@ type
     d_ino*: Ino
     d_off*: Off
     d_reclen*: cushort
-    d_type*: int8  # cuchar really!
+    d_type*: int8  # uint8 really!
     d_name*: array[256, cchar]
 
   Tflock* {.importc: "struct flock", final, pure,
@@ -168,7 +168,7 @@ type
   Pthread_key* {.importc: "pthread_key_t", header: "<sys/types.h>".} = cuint
   Pthread_mutex* {.importc: "pthread_mutex_t", header: "<sys/types.h>",
                    pure, final.} = object
-    abi: array[48 div sizeof(clong), clong]
+    abi: array[40 div sizeof(clong), clong]
   Pthread_mutexattr* {.importc: "pthread_mutexattr_t",
                         header: "<sys/types.h>", pure, final.} = object
     abi: array[4 div sizeof(cint), cint]
@@ -309,7 +309,7 @@ type
     sa_mask*: Sigset ## Set of signals to be blocked during execution of
                       ## the signal handling function.
     sa_flags*: cint   ## Special flags.
-    sa_sigaction*: proc (x: cint, y: ptr SigInfo, z: pointer) {.noconv.}
+    sa_restorer: proc() {.noconv.}   ## not intended for application use.
 
   Stack* {.importc: "stack_t",
             header: "<signal.h>", final, pure.} = object ## stack_t
@@ -325,17 +325,23 @@ type
   SigInfo* {.importc: "siginfo_t",
               header: "<signal.h>", final, pure.} = object ## siginfo_t
     si_signo*: cint    ## Signal number.
-    si_code*: cint     ## Signal code.
     si_errno*: cint    ## If non-zero, an errno value associated with
                        ## this signal, as defined in <errno.h>.
+    si_code*: cint     ## Signal code.
     si_pid*: Pid       ## Sending process ID.
     si_uid*: Uid       ## Real user ID of sending process.
     si_addr*: pointer  ## Address of faulting instruction.
     si_status*: cint   ## Exit value or signal.
     si_band*: int      ## Band event for SIGPOLL.
     si_value*: SigVal  ## Signal value.
-    pad {.importc: "_pad"}: array[128 - 56, uint8]
+    pad {.importc: "_pad".}: array[128 - 56, uint8]
 
+template sa_sigaction*(v: Sigaction): proc (x: cint, y: ptr SigInfo, z: pointer) {.noconv.} =
+  cast[proc (x: cint, y: ptr SigInfo, z: pointer) {.noconv.}](v.sa_handler)
+proc `sa_sigaction=`*(v: var Sigaction, x: proc (x: cint, y: ptr SigInfo, z: pointer) {.noconv.}) =
+  v.sa_handler = cast[proc (x: cint) {.noconv.}](x)
+
+type
   Nl_item* {.importc: "nl_item", header: "<nl_types.h>".} = cint
   Nl_catd* {.importc: "nl_catd", header: "<nl_types.h>".} = pointer
 
@@ -428,8 +434,8 @@ type
                        header: "<sys/socket.h>",
                        pure, final.} = object ## struct sockaddr_storage
     ss_family*: TSa_Family ## Address family.
-    ss_padding: array[128 - sizeof(cshort) - sizeof(culong), char]
-    ss_align: clong
+    ss_padding {.importc: "__ss_padding".}: array[128 - sizeof(cshort) - sizeof(culong), char]
+    ss_align {.importc: "__ss_align".}: clong
 
   Tif_nameindex* {.importc: "struct if_nameindex", final,
                    pure, header: "<net/if.h>".} = object ## struct if_nameindex

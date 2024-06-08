@@ -10,6 +10,9 @@
 ## Serialization utilities for the compiler.
 import std/[strutils, math]
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 # bcc on windows doesn't have C99 functions
 when defined(windows) and defined(bcc):
   {.emit: """#if defined(_MSC_VER) && _MSC_VER < 1900
@@ -31,7 +34,7 @@ when defined(windows) and defined(bcc):
   #endif
   """.}
 
-proc c_snprintf(s: cstring; n:uint; frmt: cstring): cint {.importc: "snprintf", header: "<stdio.h>", nodecl, varargs.}
+proc c_snprintf(s: cstring; n: uint; frmt: cstring): cint {.importc: "snprintf", header: "<stdio.h>", nodecl, varargs.}
 
 
 when not declared(signbit):
@@ -39,7 +42,10 @@ when not declared(signbit):
   proc signbit*(x: SomeFloat): bool {.inline.} =
     result = c_signbit(x) != 0
 
-proc toStrMaxPrecision*(f: BiggestFloat, literalPostfix = ""): string =
+import std/formatfloat
+
+proc toStrMaxPrecision*(f: BiggestFloat | float32): string =
+  const literalPostfix = when f is float32: "f" else: ""
   case classify(f)
   of fcNan:
     if signbit(f):
@@ -55,9 +61,9 @@ proc toStrMaxPrecision*(f: BiggestFloat, literalPostfix = ""): string =
   of fcNegInf:
     result = "-INF"
   else:
-    result = newString(81)
-    let n = c_snprintf(result.cstring, result.len.uint, "%#.16e%s", f, literalPostfix.cstring)
-    setLen(result, n)
+    result = ""
+    result.addFloatRoundtrip(f)
+    result.add literalPostfix
 
 proc encodeStr*(s: string, result: var string) =
   for i in 0..<s.len:

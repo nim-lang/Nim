@@ -21,7 +21,7 @@ runnableExamples:
       foo: int
       bar: string
 
-  iterator items(x: Something): int =
+  iterator items(x: Something): Hash =
     yield hash(x.foo)
     yield hash(x.bar)
 
@@ -51,17 +51,25 @@ runnableExamples:
     h = h !& hash(x.bar)
     result = !$h
 
-## **Note:** If the type has a `==` operator, the following must hold:
-## If two values compare equal, their hashes must also be equal.
+## .. important:: Use `-d:nimPreviewHashRef` to
+##    enable hashing `ref`s. It is expected that this behavior
+##    becomes the new default in upcoming versions.
+##
+## .. note:: If the type has a `==` operator, the following must hold:
+##    If two values compare equal, their hashes must also be equal.
 ##
 ## See also
 ## ========
 ## * `md5 module <md5.html>`_ for the MD5 checksum algorithm
 ## * `base64 module <base64.html>`_ for a Base64 encoder and decoder
-## * `std/sha1 module <sha1.html>`_ for a SHA-1 encoder and decoder
+## * `sha1 module <sha1.html>`_ for the SHA-1 checksum algorithm
 ## * `tables module <tables.html>`_ for hash tables
 
 import std/private/since
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 
 type
   Hash* = int ## A hash value. Hash tables using these values should
@@ -182,7 +190,7 @@ proc hashData*(data: pointer, size: int): Hash =
   var h: Hash = 0
   when defined(js):
     var p: cstring
-    asm """`p` = `Data`;"""
+    {.emit: """`p` = `Data`""".}
   else:
     var p = cast[cstring](data)
   var i = 0
@@ -192,32 +200,6 @@ proc hashData*(data: pointer, size: int): Hash =
     inc(i)
     dec(s)
   result = !$h
-
-when defined(js):
-  var objectID = 0
-
-proc hash*(x: pointer): Hash {.inline.} =
-  ## Efficient hashing of pointers.
-  when defined(js):
-    asm """
-      if (typeof `x` == "object") {
-        if ("_NimID" in `x`)
-          `result` = `x`["_NimID"];
-        else {
-          `result` = ++`objectID`;
-          `x`["_NimID"] = `result`;
-        }
-      }
-    """
-  else:
-    result = cast[Hash](cast[uint](x) shr 3) # skip the alignment
-
-proc hash*[T: proc](x: T): Hash {.inline.} =
-  ## Efficient hashing of proc vars. Closures are supported too.
-  when T is "closure":
-    result = hash(rawProc(x)) !& hash(rawEnv(x))
-  else:
-    result = hash(pointer(x))
 
 proc hashIdentity*[T: Ordinal|enum](x: T): Hash {.inline, since: (1, 3).} =
   ## The identity hash, i.e. `hashIdentity(x) = x`.
@@ -231,6 +213,61 @@ else:
   proc hash*[T: Ordinal|enum](x: T): Hash {.inline.} =
     ## Efficient hashing of integers.
     hashWangYi1(uint64(ord(x)))
+
+when defined(js):
+  var objectID = 0
+  proc getObjectId(x: pointer): int =
+    {.emit: """
+      if (typeof `x` == "object") {
+        if ("_NimID" in `x`)
+          `result` = `x`["_NimID"];
+        else {
+          `result` = ++`objectID`;
+          `x`["_NimID"] = `result`;
+        }
+      }
+    """.}
+
+proc hash*(x: pointer): Hash {.inline.} =
+  ## Efficient `hash` overload.
+  when defined(js):
+    let y = getObjectId(x)
+  else:
+    let y = cast[int](x)
+  hash(y) # consistent with code expecting scrambled hashes depending on `nimIntHash1`.
+
+proc hash*[T](x: ptr[T]): Hash {.inline.} =
+  ## Efficient `hash` overload.
+  runnableExamples:
+    var a: array[10, uint8]
+    assert a[0].addr.hash != a[1].addr.hash
+    assert cast[pointer](a[0].addr).hash == a[0].addr.hash
+  hash(cast[pointer](x))
+
+when defined(nimPreviewHashRef) or defined(nimdoc):
+  proc hash*[T](x: ref[T]): Hash {.inline.} =
+    ## Efficient `hash` overload.
+    ##
+    ## .. important:: Use `-d:nimPreviewHashRef` to
+    ##    enable hashing `ref`s. It is expected that this behavior
+    ##    becomes the new default in upcoming versions.
+    runnableExamples("-d:nimPreviewHashRef"):
+      type A = ref object
+        x: int
+      let a = A(x: 3)
+      let ha = a.hash
+      assert ha != A(x: 3).hash # A(x: 3) is a different ref object from `a`.
+      a.x = 4
+      assert ha == a.hash # the hash only depends on the address
+    runnableExamples("-d:nimPreviewHashRef"):
+      # you can overload `hash` if you want to customize semantics
+      type A[T] = ref object
+        x, y: T
+      proc hash(a: A): Hash = hash(a.x)
+      assert A[int](x: 3, y: 4).hash == A[int](x: 3, y: 5).hash
+    # xxx pending bug #17733, merge as `proc hash*(pointer | ref | ptr): Hash`
+    # or `proc hash*[T: ref | ptr](x: T): Hash`
+    hash(cast[pointer](x))
 
 proc hash*(x: float): Hash {.inline.} =
   ## Efficient hashing of floats.
@@ -282,16 +319,24 @@ proc murmurHash(x: openArray[byte]): Hash =
     h1: uint32
     i = 0
 
+
+  template impl =
+    var j = stepSize
+    while j > 0:
+      dec j
+      k1 = (k1 shl 8) or (ord(x[i+j])).uint32
+
   # body
   while i < n * stepSize:
     var k1: uint32
-    when defined(js) or defined(sparc) or defined(sparc64):
-      var j = stepSize
-      while j > 0:
-        dec j
-        k1 = (k1 shl 8) or (ord(x[i+j])).uint32
+
+    when nimvm:
+      impl()
     else:
-      k1 = cast[ptr uint32](unsafeAddr x[i])[]
+      when declared(copyMem):
+        copyMem(addr k1, addr x[i], 4)
+      else:
+        impl()
     inc i, stepSize
 
     k1 = imul(k1, c1)
@@ -323,16 +368,16 @@ proc murmurHash(x: openArray[byte]): Hash =
   return cast[Hash](h1)
 
 proc hashVmImpl(x: cstring, sPos, ePos: int): Hash =
-  doAssert false, "implementation override in compiler/vmops.nim"
+  raiseAssert "implementation override in compiler/vmops.nim"
 
 proc hashVmImpl(x: string, sPos, ePos: int): Hash =
-  doAssert false, "implementation override in compiler/vmops.nim"
+  raiseAssert "implementation override in compiler/vmops.nim"
 
 proc hashVmImplChar(x: openArray[char], sPos, ePos: int): Hash =
-  doAssert false, "implementation override in compiler/vmops.nim"
+  raiseAssert "implementation override in compiler/vmops.nim"
 
 proc hashVmImplByte(x: openArray[byte], sPos, ePos: int): Hash =
-  doAssert false, "implementation override in compiler/vmops.nim"
+  raiseAssert "implementation override in compiler/vmops.nim"
 
 proc hash*(x: string): Hash =
   ## Efficient hashing of strings.
@@ -343,16 +388,10 @@ proc hash*(x: string): Hash =
   runnableExamples:
     doAssert hash("abracadabra") != hash("AbracadabrA")
 
-  when not defined(nimToOpenArrayCString):
-    result = 0
-    for c in x:
-      result = result !& ord(c)
-    result = !$result
+  when nimvm:
+    result = hashVmImpl(x, 0, high(x))
   else:
-    when nimvm:
-      result = hashVmImpl(x, 0, high(x))
-    else:
-      result = murmurHash(toOpenArrayByte(x, 0, high(x)))
+    result = murmurHash(toOpenArrayByte(x, 0, high(x)))
 
 proc hash*(x: cstring): Hash =
   ## Efficient hashing of null-terminated strings.
@@ -361,22 +400,14 @@ proc hash*(x: cstring): Hash =
     doAssert hash(cstring"AbracadabrA") == hash("AbracadabrA")
     doAssert hash(cstring"abracadabra") != hash(cstring"AbracadabrA")
 
-  when not defined(nimToOpenArrayCString):
-    result = 0
-    var i = 0
-    while x[i] != '\0':
-      result = result !& ord(x[i])
-      inc i
-    result = !$result
+  when nimvm:
+    hashVmImpl(x, 0, high(x))
   else:
-    when nimvm:
-      hashVmImpl(x, 0, high(x))
+    when not defined(js):
+      murmurHash(toOpenArrayByte(x, 0, x.high))
     else:
-      when not defined(js) and defined(nimToOpenArrayCString):
-        murmurHash(toOpenArrayByte(x, 0, x.high))
-      else:
-        let xx = $x
-        murmurHash(toOpenArrayByte(xx, 0, high(xx)))
+      let xx = $x
+      murmurHash(toOpenArrayByte(xx, 0, high(xx)))
 
 proc hash*(sBuf: string, sPos, ePos: int): Hash =
   ## Efficient hashing of a string buffer, from starting
@@ -387,13 +418,7 @@ proc hash*(sBuf: string, sPos, ePos: int): Hash =
     var a = "abracadabra"
     doAssert hash(a, 0, 3) == hash(a, 7, 10)
 
-  when not defined(nimToOpenArrayCString):
-    result = 0
-    for i in sPos..ePos:
-      result = result !& ord(sBuf[i])
-    result = !$result
-  else:
-    murmurHash(toOpenArrayByte(sBuf, sPos, ePos))
+  murmurHash(toOpenArrayByte(sBuf, sPos, ePos))
 
 proc hashIgnoreStyle*(x: string): Hash =
   ## Efficient hashing of strings; style is ignored.
@@ -484,11 +509,10 @@ proc hashIgnoreCase*(sBuf: string, sPos, ePos: int): Hash =
     h = h !& ord(c)
   result = !$h
 
-
-proc hash*[T: tuple | object](x: T): Hash =
-  ## Efficient hashing of tuples and objects.
-  ## There must be a `hash` proc defined for each of the field types.
+proc hash*[T: tuple | object | proc | iterator {.closure.}](x: T): Hash =
+  ## Efficient `hash` overload.
   runnableExamples:
+    # for `tuple|object`, `hash` must be defined for each component of `x`.
     type Obj = object
       x: int
       y: string
@@ -499,9 +523,31 @@ proc hash*[T: tuple | object](x: T): Hash =
     # you can define custom hashes for objects (even if they're generic):
     proc hash(a: Obj2): Hash = hash((a.x))
     assert hash(Obj2[float](x: 520, y: "Nim")) == hash(Obj2[float](x: 520, y: "Nim2"))
-  for f in fields(x):
-    result = result !& hash(f)
-  result = !$result
+  runnableExamples:
+    # proc
+    proc fn1() = discard
+    const fn1b = fn1
+    assert hash(fn1b) == hash(fn1)
+
+    # closure
+    proc outer =
+      var a = 0
+      proc fn2() = a.inc
+      assert fn2 is "closure"
+      let fn2b = fn2
+      assert hash(fn2b) == hash(fn2)
+      assert hash(fn2) != hash(fn1)
+    outer()
+
+  when T is "closure":
+    result = hash((rawProc(x), rawEnv(x)))
+  elif T is (proc):
+    result = hash(cast[pointer](x))
+  else:
+    result = 0
+    for f in fields(x):
+      result = result !& hash(f)
+    result = !$result
 
 proc hash*[A](x: openArray[A]): Hash =
   ## Efficient hashing of arrays and sequences.
@@ -514,6 +560,7 @@ proc hash*[A](x: openArray[A]): Hash =
     else:
       result = murmurHash(toOpenArrayByte(x, 0, x.high))
   else:
+    result = 0
     for a in x:
       result = result !& hash(a)
     result = !$result
@@ -546,6 +593,7 @@ proc hash*[A](aBuf: openArray[A], sPos, ePos: int): Hash =
 proc hash*[A](x: set[A]): Hash =
   ## Efficient hashing of sets.
   ## There must be a `hash` proc defined for the element type `A`.
+  result = 0
   for it in items(x):
     result = result !& hash(it)
   result = !$result

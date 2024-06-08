@@ -82,7 +82,17 @@ runnableExamples:
 
 import std/private/since
 
-import macros
+import std/macros
+from std/typetraits import supportsCopyMem
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
+
+when defined(nimHasEffectsOf):
+  {.experimental: "strictEffects".}
+else:
+  {.pragma: effectsOf.}
 
 macro evalOnceAs(expAlias, exp: untyped,
                  letAssigneable: static[bool]): untyped =
@@ -131,6 +141,22 @@ func concat*[T](seqs: varargs[seq[T]]): seq[T] =
       result[i] = itm
       inc(i)
 
+func addUnique*[T](s: var seq[T], x: sink T) =
+  ## Adds `x` to the container `s` if it is not already present. 
+  ## Uses `==` to check if the item is already present.
+  runnableExamples:
+    var a = @[1, 2, 3]
+    a.addUnique(4)
+    a.addUnique(4)
+    assert a == @[1, 2, 3, 4]
+
+  for i in 0..high(s):
+    if s[i] == x: return
+  when declared(ensureMove):
+    s.add ensureMove(x)
+  else:
+    s.add x
+
 func count*[T](s: openArray[T], x: T): int =
   ## Returns the number of occurrences of the item `x` in the container `s`.
   ##
@@ -164,7 +190,7 @@ func cycle*[T](s: openArray[T], n: Natural): seq[T] =
       result[o] = e
       inc o
 
-func repeat*[T](x: T, n: Natural): seq[T] =
+proc repeat*[T](x: T, n: Natural): seq[T] =
   ## Returns a new sequence with the item `x` repeated `n` times.
   ## `n` must be a non-negative number (zero or more).
   ##
@@ -239,9 +265,18 @@ func maxIndex*[T](s: openArray[T]): int {.since: (1, 1).} =
   for i in 1..high(s):
     if s[i] > s[result]: result = i
 
+func minmax*[T](x: openArray[T]): (T, T) =
+  ## The minimum and maximum values of `x`. `T` needs to have a `<` operator.
+  var l = x[0]
+  var h = x[0]
+  for i in 1..high(x):
+    if x[i] < l: l = x[i]
+    if h < x[i]: h = x[i]
+  result = (l, h)
+
 
 template zipImpl(s1, s2, retType: untyped): untyped =
-  func zip*[S, T](s1: openArray[S], s2: openArray[T]): retType =
+  proc zip*[S, T](s1: openArray[S], s2: openArray[T]): retType =
     ## Returns a new sequence with a combination of the two input containers.
     ##
     ## The input containers can be of different types.
@@ -284,7 +319,7 @@ when (NimMajor, NimMinor) <= (1, 0):
 else:
   zipImpl(s1, s2, seq[(S, T)])
 
-func unzip*[S, T](s: openArray[(S, T)]): (seq[S], seq[T]) {.since: (1, 1).} =
+proc unzip*[S, T](s: openArray[(S, T)]): (seq[S], seq[T]) {.since: (1, 1).} =
   ## Returns a tuple of two sequences split out from a sequence of 2-field tuples.
   runnableExamples:
     let
@@ -293,8 +328,7 @@ func unzip*[S, T](s: openArray[(S, T)]): (seq[S], seq[T]) {.since: (1, 1).} =
       unzipped2 = @['a', 'b', 'c']
     assert zipped.unzip() == (unzipped1, unzipped2)
     assert zip(unzipped1, unzipped2).unzip() == (unzipped1, unzipped2)
-  result[0] = newSeq[S](s.len)
-  result[1] = newSeq[T](s.len)
+  result = (newSeq[S](s.len), newSeq[T](s.len))
   for i in 0..<s.len:
     result[0][i] = s[i][0]
     result[1][i] = s[i][1]
@@ -356,7 +390,7 @@ func distribute*[T](s: seq[T], num: Positive, spread = true): seq[seq[T]] =
       first = last
 
 proc map*[T, S](s: openArray[T], op: proc (x: T): S {.closure.}):
-                                                            seq[S]{.inline.} =
+                                                            seq[S] {.inline, effectsOf: op.} =
   ## Returns a new sequence with the results of the `op` proc applied to every
   ## item in the container `s`.
   ##
@@ -382,7 +416,7 @@ proc map*[T, S](s: openArray[T], op: proc (x: T): S {.closure.}):
     result[i] = op(s[i])
 
 proc apply*[T](s: var openArray[T], op: proc (x: var T) {.closure.})
-                                                              {.inline.} =
+                                                              {.inline, effectsOf: op.} =
   ## Applies `op` to every item in `s`, modifying it directly.
   ##
   ## Note that the container `s` must be declared as a `var`,
@@ -401,7 +435,7 @@ proc apply*[T](s: var openArray[T], op: proc (x: var T) {.closure.})
   for i in 0 ..< s.len: op(s[i])
 
 proc apply*[T](s: var openArray[T], op: proc (x: T): T {.closure.})
-                                                              {.inline.} =
+                                                              {.inline, effectsOf: op.} =
   ## Applies `op` to every item in `s` modifying it directly.
   ##
   ## Note that the container `s` must be declared as a `var`
@@ -420,7 +454,7 @@ proc apply*[T](s: var openArray[T], op: proc (x: T): T {.closure.})
 
   for i in 0 ..< s.len: s[i] = op(s[i])
 
-proc apply*[T](s: openArray[T], op: proc (x: T) {.closure.}) {.inline, since: (1, 3).} =
+proc apply*[T](s: openArray[T], op: proc (x: T) {.closure.}) {.inline, since: (1, 3), effectsOf: op.} =
   ## Same as `apply` but for a proc that does not return anything
   ## and does not mutate `s` directly.
   runnableExamples:
@@ -429,7 +463,7 @@ proc apply*[T](s: openArray[T], op: proc (x: T) {.closure.}) {.inline, since: (1
     assert message == "01234"
   for i in 0 ..< s.len: op(s[i])
 
-iterator filter*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): T =
+iterator filter*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): T {.effectsOf: pred.} =
   ## Iterates through a container `s` and yields every item that fulfills the
   ## predicate `pred` (a function that returns a `bool`).
   ##
@@ -453,7 +487,7 @@ iterator filter*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): T =
       yield s[i]
 
 proc filter*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): seq[T]
-                                                                  {.inline.} =
+                                                                  {.inline, effectsOf: pred.} =
   ## Returns a new sequence with all the items of `s` that fulfill the
   ## predicate `pred` (a function that returns a `bool`).
   ##
@@ -480,7 +514,7 @@ proc filter*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): seq[T]
       result.add(s[i])
 
 proc keepIf*[T](s: var seq[T], pred: proc(x: T): bool {.closure.})
-                                                                {.inline.} =
+                                                                {.inline, effectsOf: pred.} =
   ## Keeps the items in the passed sequence `s` if they fulfill the
   ## predicate `pred` (a function that returns a `bool`).
   ##
@@ -509,12 +543,51 @@ proc keepIf*[T](s: var seq[T], pred: proc(x: T): bool {.closure.})
       inc(pos)
   setLen(s, pos)
 
-func delete*[T](s: var seq[T]; first, last: Natural) =
+func delete*[T](s: var seq[T]; slice: Slice[int]) =
+  ## Deletes the items `s[slice]`, raising `IndexDefect` if the slice contains
+  ## elements out of range.
+  ##
+  ## This operation moves all elements after `s[slice]` in linear time.
+  runnableExamples:
+    var a = @[10, 11, 12, 13, 14]
+    doAssertRaises(IndexDefect): a.delete(4..5)
+    assert a == @[10, 11, 12, 13, 14]
+    a.delete(4..4)
+    assert a == @[10, 11, 12, 13]
+    a.delete(1..2)
+    assert a == @[10, 13]
+    a.delete(1..<1) # empty slice
+    assert a == @[10, 13]
+  when compileOption("boundChecks"):
+    if not (slice.a < s.len and slice.a >= 0 and slice.b < s.len):
+      raise newException(IndexDefect, $(slice: slice, len: s.len))
+  if slice.b >= slice.a:
+    template defaultImpl =
+      var i = slice.a
+      var j = slice.b + 1
+      var newLen = s.len - j + i
+      while i < newLen:
+        when defined(gcDestructors):
+          s[i] = move(s[j])
+        else:
+          s[i].shallowCopy(s[j])
+        inc(i)
+        inc(j)
+      setLen(s, newLen)
+    when nimvm: defaultImpl()
+    else:
+      when defined(js):
+        let n = slice.b - slice.a + 1
+        let first = slice.a
+        {.emit: "`s`.splice(`first`, `n`);".}
+      else:
+        defaultImpl()
+
+func delete*[T](s: var seq[T]; first, last: Natural) {.deprecated: "use `delete(s, first..last)`".} =
   ## Deletes the items of a sequence `s` at positions `first..last`
   ## (including both ends of the range).
   ## This modifies `s` itself, it does not return a copy.
-  ##
-  runnableExamples:
+  runnableExamples("--warning:deprecated:off"):
     let outcome = @[1, 1, 1, 1, 1, 1, 1, 1]
     var dest = @[1, 1, 1, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1]
     dest.delete(3, 8)
@@ -646,7 +719,7 @@ since (1, 1):
       if pred: result += 1
     result
 
-proc all*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): bool =
+proc all*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): bool {.effectsOf: pred.} =
   ## Iterates through a container and checks if every item fulfills the
   ## predicate.
   ##
@@ -688,7 +761,7 @@ template allIt*(s, pred: untyped): bool =
       break
   result
 
-proc any*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): bool =
+proc any*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): bool {.effectsOf: pred.} =
   ## Iterates through a container and checks if at least one item
   ## fulfills the predicate.
   ##
@@ -743,7 +816,7 @@ template toSeq1(s: not iterator): untyped =
         i += 1
       result
   else:
-    var result: seq[OutType] = @[]
+    var result: seq[OutType]# = @[]
     for it in s:
       result.add(it)
     result
@@ -760,7 +833,7 @@ template toSeq2(iter: iterator): untyped =
     result
   else:
     type OutType = typeof(iter2())
-    var result: seq[OutType] = @[]
+    var result: seq[OutType]# = @[]
     when compiles(iter2()):
       evalOnceAs(iter4, iter, false)
       let iter3 = iter4()
@@ -866,7 +939,7 @@ template foldl*(sequence, operation, first): untyped =
   ##
   ## The `operation` parameter should be an expression which uses the variables
   ## `a` and `b` for each step of the fold. The `first` parameter is the
-  ## start value (the first `a`) and therefor defines the type of the result.
+  ## start value (the first `a`) and therefore defines the type of the result.
   ##
   ## **See also:**
   ## * `foldr template<#foldr.t,untyped,untyped>`_
@@ -972,7 +1045,7 @@ template mapIt*(s: typed, op: untyped): untyped =
           i += 1
         result
     else:
-      var result: seq[OutType] = @[]
+      var result: seq[OutType]# = @[]
       # use `items` to avoid https://github.com/nim-lang/Nim/issues/12639
       for it {.inject.} in items(s):
         result.add(op)
@@ -1014,27 +1087,31 @@ template applyIt*(varSeq, op: untyped) =
 
 
 template newSeqWith*(len: int, init: untyped): untyped =
-  ## Creates a new sequence of length `len`, calling `init` to initialize
-  ## each value of the sequence.
+  ## Creates a new `seq` of length `len`, calling `init` to initialize
+  ## each value of the seq.
   ##
-  ## Useful for creating "2D" sequences - sequences containing other sequences
-  ## or to populate fields of the created sequence.
-  ##
+  ## Useful for creating "2D" seqs - seqs containing other seqs
+  ## or to populate fields of the created seq.
   runnableExamples:
-    ## Creates a sequence containing 5 bool sequences, each of length of 3.
+    ## Creates a seq containing 5 bool seqs, each of length of 3.
     var seq2D = newSeqWith(5, newSeq[bool](3))
     assert seq2D.len == 5
     assert seq2D[0].len == 3
     assert seq2D[4][2] == false
 
-    ## Creates a sequence of 20 random numbers from 1 to 10
-    import random
-    var seqRand = newSeqWith(20, rand(10))
-
-  var result = newSeq[typeof(init)](len)
-  for i in 0 ..< len:
+    ## Creates a seq with random numbers
+    import std/random
+    var seqRand = newSeqWith(20, rand(1.0))
+    assert seqRand[0] != seqRand[1]
+  type T = typeof(init)
+  let newLen = len
+  when supportsCopyMem(T) and declared(newSeqUninit):
+    var result = newSeqUninit[T](newLen)
+  else: # TODO: use `newSeqUnsafe` when that's available
+    var result = newSeq[T](newLen)
+  for i in 0 ..< newLen:
     result[i] = init
-  result
+  move(result) # refs bug #7295
 
 func mapLitsImpl(constructor: NimNode; op: NimNode; nested: bool;
                  filter = nnkLiterals): NimNode =

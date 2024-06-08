@@ -3,27 +3,36 @@
 when not defined(js):
   {.fatal: "Module jsbigints is designed to be used with the JavaScript backend.".}
 
-type JsBigIntImpl {.importc: "bigint".} = int # https://github.com/nim-lang/Nim/pull/16606
-type JsBigInt* = distinct JsBigIntImpl        ## Arbitrary precision integer for JavaScript target.
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
+type JsBigIntImpl {.importjs: "bigint".} = int # https://github.com/nim-lang/Nim/pull/16606
+type JsBigInt* = distinct JsBigIntImpl         ## Arbitrary precision integer for JavaScript target.
 
 func big*(integer: SomeInteger): JsBigInt {.importjs: "BigInt(#)".} =
   ## Constructor for `JsBigInt`.
-  when nimvm: doAssert false, "JsBigInt can not be used at compile-time nor static context" else: discard
   runnableExamples:
     doAssert big(1234567890) == big"1234567890"
     doAssert 0b1111100111.big == 0o1747.big and 0o1747.big == 999.big
+  when nimvm: raiseAssert "JsBigInt can not be used at compile-time nor static context" else: discard
+
+func `'big`*(num: cstring): JsBigInt {.importjs: "BigInt(#)".} =
+  ## Constructor for `JsBigInt`.
+  runnableExamples:
+    doAssert -1'big == 1'big - 2'big
+    # supports decimal, binary, octal, hex:
+    doAssert -12'big == big"-12"
+    doAssert 12'big == 12.big
+    doAssert 0b101'big == 0b101.big
+    doAssert 0o701'big == 0o701.big
+    doAssert 0xdeadbeaf'big == 0xdeadbeaf.big
+    doAssert 0xffffffffffffffff'big == (1'big shl 64'big) - 1'big
+    doAssert not compiles(static(12'big))
+  when nimvm: raiseAssert "JsBigInt can not be used at compile-time nor static context" else: discard
 
 func big*(integer: cstring): JsBigInt {.importjs: "BigInt(#)".} =
-  ## Constructor for `JsBigInt`.
-  when nimvm: doAssert false, "JsBigInt can not be used at compile-time nor static context" else: discard
-  runnableExamples:
-    doAssert big"-1" == big"1" - big"2"
-    # supports decimal, binary, octal, hex:
-    doAssert big"12" == 12.big
-    doAssert big"0b101" == 0b101.big
-    doAssert big"0o701" == 0o701.big
-    doAssert big"0xdeadbeaf" == 0xdeadbeaf.big
-    doAssert big"0xffffffffffffffff" == (1.big shl 64.big) - 1.big
+  ## Alias for `'big`
+  when nimvm: raiseAssert "JsBigInt can not be used at compile-time nor static context" else: discard
 
 func toCstring*(this: JsBigInt; radix: 2..36): cstring {.importjs: "#.toString(#)".} =
   ## Converts from `JsBigInt` to `cstring` representation.
@@ -55,10 +64,10 @@ func wrapToUint*(this: JsBigInt; bits: Natural): JsBigInt {.importjs:
   runnableExamples:
     doAssert (big("3") + big("2") ** big("66")).wrapToUint(66) == big("3")
 
-func toNumber*(this: JsBigInt): BiggestInt {.importjs: "Number(#)".} =
+func toNumber*(this: JsBigInt): int {.importjs: "Number(#)".} =
   ## Does not do any bounds check and may or may not return an inexact representation.
   runnableExamples:
-    doAssert toNumber(big"2147483647") == 2147483647.BiggestInt
+    doAssert toNumber(big"2147483647") == 2147483647.int
 
 func `+`*(x, y: JsBigInt): JsBigInt {.importjs: "(# $1 #)".} =
   runnableExamples:
@@ -101,7 +110,7 @@ func `==`*(x, y: JsBigInt): bool {.importjs: "(# == #)".} =
     doAssert big"42" == big"42"
 
 func `**`*(x, y: JsBigInt): JsBigInt {.importjs: "((#) $1 #)".} =
-  # (#) needed, refs https://github.com/nim-lang/Nim/pull/16409#issuecomment-760550812
+  # (#) needed due to unary minus
   runnableExamples:
     doAssert big"2" ** big"64" == big"18446744073709551616"
     doAssert big"-2" ** big"3" == big"-8"
@@ -111,8 +120,6 @@ func `**`*(x, y: JsBigInt): JsBigInt {.importjs: "((#) $1 #)".} =
     try: discard big"2" ** big"-1" # raises foreign `RangeError`
     except: ok = true
     doAssert ok
-  # pending https://github.com/nim-lang/Nim/pull/15940, simplify to:
-  # doAssertRaises: discard big"2" ** big"-1" # raises foreign `RangeError`
 
 func `and`*(x, y: JsBigInt): JsBigInt {.importjs: "(# & #)".} =
   runnableExamples:

@@ -1,9 +1,11 @@
 discard """
+  matrix: "--mm:refc; --mm:orc"
   targets: "c js"
 """
 
 import std/enumutils
 from std/sequtils import toSeq
+import std/assertions
 
 template main =
   block: # items

@@ -1,8 +1,11 @@
 discard """
-  targets: "c js"
+  matrix: "--mm:refc; --mm:orc"
+  targets: "c cpp js"
 """
 
 import std/deques
+from std/sequtils import toSeq
+import std/assertions
 
 block:
   proc index(self: Deque[int], idx: Natural): int =
@@ -125,7 +128,7 @@ block:
   foo(1, 5)
   foo(3, 2)
 
-import sets
+import std/sets
 
 block t13310:
   proc main() =
@@ -137,3 +140,104 @@ block t13310:
 
   static:
     main()
+
+
+proc main() =
+  block:
+    let a = [10, 20, 30].toDeque
+    doAssert toSeq(a.pairs) == @[(0, 10), (1, 20), (2, 30)]
+
+  block:
+    let q = [7, 9].toDeque
+    doAssert 7 in q
+    doAssert q.contains(7)
+    doAssert 8 notin q
+
+  block:
+    let a = [10, 20, 30, 40, 50].toDeque
+    doAssert $a == "[10, 20, 30, 40, 50]"
+    doAssert a.peekFirst == 10
+    doAssert len(a) == 5
+
+  block:
+    let a = [10, 20, 30, 40, 50].toDeque
+    doAssert $a == "[10, 20, 30, 40, 50]"
+    doAssert a.peekLast == 50
+    doAssert len(a) == 5
+
+  block:
+    var a = [10, 20, 30, 40, 50].toDeque
+    doAssert $a == "[10, 20, 30, 40, 50]"
+    doAssert a.popFirst == 10
+    doAssert $a == "[20, 30, 40, 50]"
+
+  block:
+    var a = [10, 20, 30, 40, 50].toDeque
+    doAssert $a == "[10, 20, 30, 40, 50]"
+    doAssert a.popLast == 50
+    doAssert $a == "[10, 20, 30, 40]"
+
+  block:
+    var a = [10, 20, 30, 40, 50].toDeque
+    doAssert $a == "[10, 20, 30, 40, 50]"
+    clear(a)
+    doAssert len(a) == 0
+
+  block: # bug #21278
+    var a = [10, 20, 30, 40].toDeque
+
+    a.shrink(fromFirst = 0, fromLast = 1)
+    doAssert $a == "[10, 20, 30]"
+
+  block:
+    var a, b: Deque[int]
+    for i in 1 .. 256:
+      a.addLast(i)
+    for i in 1 .. 255:
+      a.popLast
+    b.addLast(1)
+    doAssert a == b
+
+  block:
+    # Issue 23275
+    # Test `==`.
+    block:
+      var a, b = initDeque[int]()
+      doAssert a == b
+      doAssert a.hash == b.hash
+      a.addFirst(1)
+      doAssert a != b
+      doAssert a.hash != b.hash
+      b.addLast(1)
+      doAssert a == b
+      doAssert a.hash == b.hash
+      a.popFirst
+      b.popLast
+      doAssert a == b
+      doAssert a.hash == b.hash
+      a.addLast 2
+      doAssert a != b
+      doAssert a.hash != b.hash
+      b.addFirst 2
+      doAssert a == b
+      doAssert a.hash == b.hash
+
+    block:
+      var a, b = initDeque[int]()
+      for i in countDown(100, 1):
+        a.addFirst(i)
+      for i in 1..100:
+        b.addLast(i)
+      doAssert a == b
+      for i in 1..99:
+        a.popLast
+      let a1 = [1].toDeque
+      doAssert a == a1
+      doAssert a.hash == a1.hash
+      var c = initDeque[int]()
+      c.addLast(1)
+      doAssert a == c
+      doAssert a.hash == c.hash
+
+static: main()
+main()
