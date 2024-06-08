@@ -134,7 +134,8 @@ const
   #List of currently supported capabilities. So lang servers/ides can iterate over and check for what's enabled
   Capabilities = [
     "con", #current NimSuggest supports the `con` commmand
-    "exceptionInlayHints"
+    "exceptionInlayHints",
+    "unknownFile", #current NimSuggest can handle unknown files
   ]
 
 proc parseQuoted(cmd: string; outp: var string; start: int): int =
@@ -1065,10 +1066,6 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
   var fileIndex: FileIndex
 
   if not (cmd in {ideRecompile, ideGlobalSymbols}):
-    if not fileInfoKnown(conf, file):
-      myLog fmt "{file} is unknown, returning no results"
-      return
-
     fileIndex = fileInfoIdx(conf, file)
     msgs.setDirtyFile(
       conf,
