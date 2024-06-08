@@ -1344,13 +1344,7 @@ else:
       conf.writelnHook = proc (msg: string) = discard
     # Find Nim's prefix dir.
     if nimPath == "":
-      let binaryPath = findExe("nim")
-      if binaryPath == "":
-        raise newException(IOError,
-            "Cannot find Nim standard library: Nim compiler not in PATH")
-      conf.prefixDir = AbsoluteDir binaryPath.splitPath().head.parentDir()
-      if not dirExists(conf.prefixDir / RelativeDir"lib"):
-        conf.prefixDir = AbsoluteDir""
+      conf.prefixDir = conf.getPrefixDir()
     else:
       conf.prefixDir = AbsoluteDir nimPath
 
