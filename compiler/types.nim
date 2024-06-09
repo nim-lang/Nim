@@ -1320,7 +1320,9 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     cycleCheck()
     result = sameTypeAux(a.skipModifier, b.skipModifier, c)
   of tyGenericInst:
-    # The type system must distinguish between `T[int] = object` and `T[float] = object`!
+    # BUG #23445
+    # The type system must distinguish between `T[int] = object #[empty]#`
+    # and `T[float] = object #[empty]#`!
     cycleCheck()
     for ff, aa in underspecifiedPairs(a, b, 1, -1):
       if not sameTypeAux(ff, aa, c): return false
