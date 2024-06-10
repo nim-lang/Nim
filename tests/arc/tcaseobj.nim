@@ -341,6 +341,7 @@ block:
 
 import std/sequtils
 
+# bug #23690
 type
   SomeObj* = object of RootObj
 
