@@ -284,9 +284,6 @@ proc fillBodyObjT(c: var TLiftCtx; t: PType, body, x, y: PNode) =
     c.kind = attachedDestructor
     fillBodyObjTImpl(c, t, body, blob, y)
     c.kind = prevKind
-    echo "----------------------------------------"
-    echo body.renderTree
-    echo "----------------------------------------"
 
   else:
     fillBodyObjTImpl(c, t, body, x, y)
