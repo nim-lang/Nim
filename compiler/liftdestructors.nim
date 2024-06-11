@@ -157,7 +157,7 @@ proc genWasMovedCall(c: var TLiftCtx; op: PSym; x: PNode): PNode =
   result.add(newSymNode(op))
   result.add genAddr(c, x)
 
-proc fillBodyObj(c: var TLiftCtx; n, body, x, y: PNode; enforceDefaultOp: bool) =
+proc fillBodyObj(c: var TLiftCtx; n, body, x, y: PNode; enforceDefaultOp: bool, enforceWasMoved = false) =
   case n.kind
   of nkSym:
     if c.filterDiscriminator != nil: return
@@ -167,6 +167,8 @@ proc fillBodyObj(c: var TLiftCtx; n, body, x, y: PNode; enforceDefaultOp: bool) 
         enforceDefaultOp:
       defaultOp(c, f.typ, body, x.dotField(f), b)
     else:
+      if enforceWasMoved:
+        body.add genBuiltin(c, mWasMoved, "`=wasMoved`", x.dotField(f))
       fillBody(c, f.typ, body, x.dotField(f), b)
   of nkNilLit: discard
   of nkRecCase:
@@ -205,7 +207,7 @@ proc fillBodyObj(c: var TLiftCtx; n, body, x, y: PNode; enforceDefaultOp: bool) 
       branch[^1] = newNodeI(nkStmtList, c.info)
 
       fillBodyObj(c, n[i].lastSon, branch[^1], x, y,
-                  enforceDefaultOp = localEnforceDefaultOp)
+                  enforceDefaultOp = localEnforceDefaultOp, enforceWasMoved = c.kind == attachedAsgn)
       if branch[^1].len == 0: inc emptyBranches
       caseStmt.add(branch)
     if emptyBranches != n.len-1:
@@ -216,7 +218,7 @@ proc fillBodyObj(c: var TLiftCtx; n, body, x, y: PNode; enforceDefaultOp: bool) 
       fillBodyObj(c, n[0], body, x, y, enforceDefaultOp = false)
     c.filterDiscriminator = oldfilterDiscriminator
   of nkRecList:
-    for t in items(n): fillBodyObj(c, t, body, x, y, enforceDefaultOp)
+    for t in items(n): fillBodyObj(c, t, body, x, y, enforceDefaultOp, enforceWasMoved)
   else:
     illFormedAstLocal(n, c.g.config)
 
@@ -282,6 +284,7 @@ proc fillBodyObjT(c: var TLiftCtx; t: PType, body, x, y: PNode) =
     c.kind = attachedDestructor
     fillBodyObjTImpl(c, t, body, blob, y)
     c.kind = prevKind
+
   else:
     fillBodyObjTImpl(c, t, body, x, y)
 
