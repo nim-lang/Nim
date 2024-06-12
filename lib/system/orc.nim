@@ -353,8 +353,9 @@ proc collectCyclesBacon(j: var GcEnv; lowMark: int) =
   # We protect against this here by setting `roots.len` to 0 and also
   # setting the threshold so high that no cycle collection can be triggered
   # until we are out of this critical section:
-  let oldThreshold = rootsThreshold
-  rootsThreshold = high(int)
+  when not defined(nimStressOrc):
+    let oldThreshold = rootsThreshold
+    rootsThreshold = high(int)
   roots.len = 0
 
   for i in 0 ..< j.toFree.len:
@@ -362,7 +363,8 @@ proc collectCyclesBacon(j: var GcEnv; lowMark: int) =
       writeCell("CYCLIC OBJECT FREED", j.toFree.d[i][0], j.toFree.d[i][1])
     free(j.toFree.d[i][0], j.toFree.d[i][1])
 
-  rootsThreshold = oldThreshold
+  when not defined(nimStressOrc):
+    rootsThreshold = oldThreshold
 
   inc j.freed, j.toFree.len
   deinit j.toFree
