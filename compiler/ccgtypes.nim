@@ -282,7 +282,7 @@ proc isInvalidReturnType(conf: ConfigRef; typ: PType, isProc = true): bool =
       else:
         result = containsGarbageCollectedRef(t) or
             (t.kind == tyObject and not isObjLackingTypeField(t)) or
-            (size == szUnknownSize and sfImportc notin t.sym.flags)
+            (size == szUnknownSize and (t.sym == nil or sfImportc notin t.sym.flags))
 
     else: result = false
 
