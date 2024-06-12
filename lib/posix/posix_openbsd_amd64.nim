@@ -287,7 +287,6 @@ type
     sa_mask*: Sigset ## Set of signals to be blocked during execution of
                       ## the signal handling function.
     sa_flags*: cint   ## Special flags.
-    sa_sigaction*: proc (x: cint, y: ptr SigInfo, z: pointer) {.noconv.}
 
   Stack* {.importc: "stack_t",
             header: "<signal.h>", final, pure.} = object ## stack_t
@@ -313,6 +312,12 @@ type
     si_band*: int      ## Band event for SIGPOLL.
     si_value*: SigVal  ## Signal value.
 
+template sa_sigaction*(v: Sigaction): proc (x: cint, y: ptr SigInfo, z: pointer) {.noconv.} =
+  cast[proc (x: cint, y: ptr SigInfo, z: pointer) {.noconv.}](v.sa_handler)
+proc `sa_sigaction=`*(v: var Sigaction, x: proc (x: cint, y: ptr SigInfo, z: pointer) {.noconv.}) =
+  v.sa_handler = cast[proc (x: cint) {.noconv.}](x)
+
+type
   Nl_item* {.importc: "nl_item", header: "<nl_types.h>".} = cint
   Nl_catd* {.importc: "nl_catd", header: "<nl_types.h>".} = cint
 
