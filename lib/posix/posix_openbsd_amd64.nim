@@ -280,10 +280,13 @@ type
     sival_ptr*: pointer ## pointer signal value;
                         ## integer signal value not defined!
   Sigaction* {.importc: "struct sigaction",
-                header: "<signal.h>", final, pure.} = object ## struct sigaction
-    sa_handler*: proc (x: cint) {.noconv.}  ## Pointer to a signal-catching
-                                            ## function or one of the macros
-                                            ## SIG_IGN or SIG_DFL.
+                header: "<signal.h>", final, pure.} = object ##[ struct sigaction,
+      whose first field is an union, either `sa_handler` or `sa_sigaction`
+
+    - When as `sa_handler`: Pointer to a signal-catching function \
+      or one of the macros SIG_IGN or SIG_DFL
+    - When as `sa_sigaction`, see `sa_sigaction`_ and `sa_sigaction=`_ ]##
+    sa_handler*: proc (x: cint) {.noconv.}
     sa_mask*: Sigset ## Set of signals to be blocked during execution of
                       ## the signal handling function.
     sa_flags*: cint   ## Special flags.
