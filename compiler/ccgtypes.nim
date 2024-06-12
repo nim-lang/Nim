@@ -264,8 +264,9 @@ proc isInvalidReturnType(conf: ConfigRef; typ: PType, isProc = true): bool =
   if isProc:
     rettype = rettype[0]
     isAllowedCall = typ.callConv in {ccClosure, ccInline, ccNimCall}
+  let size = getSize(conf, rettype)
   if rettype == nil or (isAllowedCall and
-                    getSize(conf, rettype) > conf.target.floatSize*3):
+                    size > conf.target.floatSize*3):
     result = true
   else:
     case mapType(conf, rettype, false)
@@ -277,9 +278,12 @@ proc isInvalidReturnType(conf: ConfigRef; typ: PType, isProc = true): bool =
       if rettype.isImportedCppType or t.isImportedCppType or
           (typ.callConv == ccCDecl and conf.selectedGC in {gcArc, gcAtomicArc, gcOrc}):
         # prevents nrvo for cdecl procs; # bug #23401
-        return false
-      result = containsGarbageCollectedRef(t) or
-          (t.kind == tyObject and not isObjLackingTypeField(t))
+        result = false
+      else:
+        result = containsGarbageCollectedRef(t) or
+            (t.kind == tyObject and not isObjLackingTypeField(t)) or
+            (size == szUnknownSize and sfImportc notin t.sym.flags)
+
     else: result = false
 
 const
