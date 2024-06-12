@@ -281,15 +281,20 @@ type
     sival_ptr*: pointer ## pointer signal value;
                         ## integer signal value not defined!
   Sigaction* {.importc: "struct sigaction",
-                header: "<signal.h>", final, pure.} = object ## struct sigaction
-    sa_handler*: proc (x: cint) {.noconv.}  ## Pointer to a signal-catching
-                                            ## function or one of the macros
-                                            ## SIG_IGN or SIG_DFL.
+                header: "<signal.h>", final, pure.} = object ##[ struct sigaction,
+      whose first field is an union, either `sa_handler` or `sa_sigaction`
+
+    - When as `sa_handler`: Pointer to a signal-catching function \
+      or one of the macros SIG_IGN or SIG_DFL
+    - When as `sa_sigaction`, see `sa_sigaction`_ and `sa_sigaction=`_ ]##
+    sa_handler*: proc (x: cint) {.noconv.}
+    sa_flags*: cint   ## Special flags.
     sa_mask*: Sigset ## Set of signals to be blocked during execution of
                       ## the signal handling function.
-    sa_flags*: cint   ## Special flags.
-    sa_sigaction*: proc (x: cint, y: ptr SigInfo, z: pointer) {.noconv.}
-
+    # ? may not contains sa_restorer field.
+    # ref https://
+    # developer.apple.com/library/archive/documentation/System/Conceptual/
+    # ManPages_iPhoneOS/man2/sigaction.2.html
   Stack* {.importc: "stack_t",
             header: "<signal.h>", final, pure.} = object ## stack_t
     ss_sp*: pointer  ## Stack base or pointer.
@@ -314,6 +319,12 @@ type
     si_band*: int      ## Band event for SIGPOLL.
     si_value*: SigVal  ## Signal value.
 
+template sa_sigaction*(v: Sigaction): proc (x: cint, y: ptr SigInfo, z: pointer) {.noconv.} =
+  cast[proc (x: cint, y: ptr SigInfo, z: pointer) {.noconv.}](v.sa_handler)
+proc `sa_sigaction=`*(v: var Sigaction, x: proc (x: cint, y: ptr SigInfo, z: pointer) {.noconv.}) =
+  v.sa_handler = cast[proc (x: cint) {.noconv.}](x)
+
+type
   Nl_item* {.importc: "nl_item", header: "<nl_types.h>".} = cint
   Nl_catd* {.importc: "nl_catd", header: "<nl_types.h>".} = cint
 
