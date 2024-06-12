@@ -264,9 +264,8 @@ proc isInvalidReturnType(conf: ConfigRef; typ: PType, isProc = true): bool =
   if isProc:
     rettype = rettype[0]
     isAllowedCall = typ.callConv in {ccClosure, ccInline, ccNimCall}
-  let size = getSize(conf, rettype)
   if rettype == nil or (isAllowedCall and
-                    size > conf.target.floatSize*3):
+                    getSize(conf, rettype) > conf.target.floatSize*3):
     result = true
   else:
     case mapType(conf, rettype, false)
@@ -282,7 +281,7 @@ proc isInvalidReturnType(conf: ConfigRef; typ: PType, isProc = true): bool =
       else:
         result = containsGarbageCollectedRef(t) or
             (t.kind == tyObject and not isObjLackingTypeField(t)) or
-            (size == szUnknownSize and (t.sym == nil or sfImportc notin t.sym.flags))
+            (getSize(conf, rettype) == szUnknownSize and (t.sym == nil or sfImportc notin t.sym.flags))
 
     else: result = false
 
