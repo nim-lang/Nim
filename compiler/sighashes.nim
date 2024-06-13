@@ -97,17 +97,6 @@ proc hashTree(c: var MD5Context, n: PNode; flags: set[ConsiderFlag]; conf: Confi
   else:
     for i in 0..<n.len: hashTree(c, n[i], flags, conf)
 
-#import renderer
-
-proc hasEmptyBody(t: PType): bool =
-  case t.kind
-  of tyObject:
-    result = t.n.safeLen == 0
-  of tyTuple:
-    result = t.kidsLen == 0
-  else:
-    result = false
-
 proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]; conf: ConfigRef) =
   if t == nil:
     c &= "\254"
@@ -127,7 +116,7 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]; conf: Confi
     else:
       c.hashSym(t.sym)
   of tyGenericInst:
-    if sfInfixCall in t.base.sym.flags or CoConsiderOwned in flags: # hasEmptyBody(t.base):
+    if sfInfixCall in t.base.sym.flags or CoConsiderOwned in flags:
       # This is an imported C++ generic type.
       # We cannot trust the `lastSon` to hold a properly populated and unique
       # value for each instantiation, so we hash the generic parameters here:
