@@ -480,7 +480,7 @@ proc identWithin(n: PNode, s: PIdent): bool =
 
 proc semIdentDef(c: PContext, n: PNode, kind: TSymKind, reportToNimsuggest = true): PSym =
   if isTopLevel(c):
-    result = semIdentWithPragma(c, kind, n, {sfExported})
+    result = semIdentWithPragma(c, kind, n, {sfExported}, fromTopLevel = true)
     incl(result.flags, sfGlobal)
     #if kind in {skVar, skLet}:
     #  echo "global variable here ", n.info, " ", result.name.s

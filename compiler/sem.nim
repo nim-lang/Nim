@@ -263,7 +263,7 @@ proc semIdentVis(c: PContext, kind: TSymKind, n: PNode,
                  allowed: TSymFlags): PSym
   # identifier with visibility
 proc semIdentWithPragma(c: PContext, kind: TSymKind, n: PNode,
-                        allowed: TSymFlags): PSym
+                        allowed: TSymFlags, fromTopLevel = false): PSym
 
 proc typeAllowedCheck(c: PContext; info: TLineInfo; typ: PType; kind: TSymKind;
                       flags: TTypeAllowedFlags = {}) =
