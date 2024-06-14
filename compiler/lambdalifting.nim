@@ -309,7 +309,7 @@ proc markAsClosure(g: ModuleGraph; owner: PSym; n: PNode) =
 type
   DetectionPass = object
     processed, capturedVars: IntSet
-    ambiguouslyInterestingVars, interestingVars: IntSet
+    interestingVars: IntSet
     ownerToType: Table[int, PType]
     somethingToDo: bool
     inTypeOf: bool
@@ -455,8 +455,8 @@ proc detectCapturedVarsAux(n: PNode; owner: PSym; c: var DetectionPass) =
         c.somethingToDo = true
         addClosureParam(c, owner, n.info)
         if interestingIterVar(s):
-          if not c.capturedVars.contains(s.id) and not c.ambiguouslyInterestingVars.contains(s.id) and not c.interestingVars.contains(s.id):
-            if not c.inTypeOf: c.ambiguouslyInterestingVars.incl(s.id)
+          if not c.capturedVars.contains(s.id) and not c.interestingVars.contains(s.id):
+            if not c.inTypeOf: c.interestingVars.incl(s.id)
             let obj = getHiddenParam(c.graph, owner).typ.skipTypes({tyOwned, tyRef, tyPtr})
 
             if s.name.id == getIdent(c.graph.cache, ":state").id:
@@ -522,9 +522,9 @@ proc detectCapturedVarsAux(n: PNode; owner: PSym; c: var DetectionPass) =
       detectCapturedVarsAux(n[namePos], owner, c)
   of nkYieldStmt, nkReturnStmt:
     # TODO: This needs to take control flow into account. A return in an unrelated branch is not interesting
-    for v in c.ambiguouslyInterestingVars:
-      c.interestingVars.incl(v)
-    c.ambiguouslyInterestingVars.clear()
+    for v in c.interestingVars:
+      c.capturedVars.incl(v)
+    c.interestingVars.clear()
     detectCapturedVarsAux(n[0], owner, c)
   of nkIdentDefs:
     detectCapturedVarsAux(n[^1], owner, c)
@@ -537,7 +537,7 @@ proc detectCapturedVarsAux(n: PNode; owner: PSym; c: var DetectionPass) =
 
 proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
   detectCapturedVarsAux(n, owner, c)
-  c.ambiguouslyInterestingVars.clear()
+  c.interestingVars.clear()
 
 type
   LiftingPass = object
