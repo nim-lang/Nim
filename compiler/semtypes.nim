@@ -555,7 +555,7 @@ proc semIdentWithPragma(c: PContext, kind: TSymKind, n: PNode,
     else: discard
   else:
     result = semIdentVis(c, kind, n, allowed)
-    let invalidPragmasForPush = if fromTopLevel and "`gensym" notin result.name.s:
+    let invalidPragmasForPush = if fromTopLevel and sfWasGenSym notin result.flags:
       {}
     else:
       {wExportc, wExportCpp, wDynlib}

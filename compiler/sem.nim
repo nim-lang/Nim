@@ -254,6 +254,8 @@ proc newSymG*(kind: TSymKind, n: PNode, c: PContext): PSym =
     result.owner = getCurrOwner(c)
   else:
     result = newSym(kind, considerQuotedIdent(c, n), c.idgen, getCurrOwner(c), n.info)
+    if find(result.name.s, '`') >= 0:
+      result.flags.incl sfWasGenSym
   #if kind in {skForVar, skLet, skVar} and result.owner.kind == skModule:
   #  incl(result.flags, sfGlobal)
   when defined(nimsuggest):
