@@ -3316,7 +3316,8 @@ proc getNullValueAux(p: BProc; t: PType; obj, constOrNil: PNode,
       getNullValueAux(p, t, it, constOrNil, result, count, isConst, info)
   of nkRecCase:
     getNullValueAux(p, t, obj[0], constOrNil, result, count, isConst, info)
-    if count > 0: result.add ", "
+    var res = ""
+    if count > 0: res.add ", "
     var branch = Zero
     if constOrNil != nil:
       ## find kind value, default is zero if not specified
@@ -3330,18 +3331,21 @@ proc getNullValueAux(p: BProc; t: PType; obj, constOrNil: PNode,
           break
 
     let selectedBranch = caseObjDefaultBranch(obj, branch)
-    result.add "{"
+    res.add "{"
     var countB = 0
     let b = lastSon(obj[selectedBranch])
     # designated initilization is the only way to init non first element of unions
     # branches are allowed to have no members (b.len == 0), in this case they don't need initializer
     if b.kind == nkRecList and not isEmptyCaseObjectBranch(b):
-      result.add "._" & mangleRecFieldName(p.module, obj[0].sym) & "_" & $selectedBranch & " = {"
-      getNullValueAux(p, t,  b, constOrNil, result, countB, isConst, info)
-      result.add "}"
+      res.add "._" & mangleRecFieldName(p.module, obj[0].sym) & "_" & $selectedBranch & " = {"
+      getNullValueAux(p, t,  b, constOrNil, res, countB, isConst, info)
+      res.add "}"
     elif b.kind == nkSym:
-      result.add "." & mangleRecFieldName(p.module, b.sym) & " = "
-      getNullValueAux(p, t,  b, constOrNil, result, countB, isConst, info)
+      res.add "." & mangleRecFieldName(p.module, b.sym) & " = "
+      getNullValueAux(p, t,  b, constOrNil, res, countB, isConst, info)
+    else:
+      return
+    result.add res
     result.add "}"
 
   of nkSym:
