@@ -309,6 +309,7 @@ proc markAsClosure(g: ModuleGraph; owner: PSym; n: PNode) =
 type
   DetectionPass = object
     processed, capturedVars: IntSet
+    ambiguouslyInterestingVars, interestingVars: IntSet
     ownerToType: Table[int, PType]
     somethingToDo: bool
     inTypeOf: bool
@@ -429,7 +430,7 @@ proc addClosureParam(c: var DetectionPass; fn: PSym; info: TLineInfo) =
     localError(c.graph.config, fn.info, "internal error: inconsistent environment type")
   #echo "adding closure to ", fn.name.s
 
-proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
+proc detectCapturedVarsAux(n: PNode; owner: PSym; c: var DetectionPass) =
   case n.kind
   of nkSym:
     let s = n.sym
@@ -445,7 +446,7 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
       if s.isIterator: c.somethingToDo = true
       if not c.processed.containsOrIncl(s.id):
         let body = transformBody(c.graph, c.idgen, s, {useCache})
-        detectCapturedVars(body, s, c)
+        detectCapturedVarsAux(body, s, c)
     let ow = s.skipGenericOwner
     let innerClosure = innerProc and s.typ.callConv == ccClosure and not s.isIterator
     let interested = interestingVar(s)
@@ -454,16 +455,18 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
         c.somethingToDo = true
         addClosureParam(c, owner, n.info)
         if interestingIterVar(s):
-          if not c.capturedVars.contains(s.id):
-            if not c.inTypeOf: c.capturedVars.incl(s.id)
+          if not c.capturedVars.contains(s.id) and not c.ambiguouslyInterestingVars.contains(s.id) and not c.interestingVars.contains(s.id):
+            if not c.inTypeOf: c.ambiguouslyInterestingVars.incl(s.id)
             let obj = getHiddenParam(c.graph, owner).typ.skipTypes({tyOwned, tyRef, tyPtr})
-            #let obj = c.getEnvTypeForOwner(s.owner).skipTypes({tyOwned, tyRef, tyPtr})
 
             if s.name.id == getIdent(c.graph.cache, ":state").id:
               obj.n[0].sym.flags.incl sfNoInit
               obj.n[0].sym.itemId = ItemId(module: s.itemId.module, item: -s.itemId.item)
             else:
               discard addField(obj, s, c.graph.cache, c.idgen)
+          elif c.interestingVars.contains(s.id):
+            c.interestingVars.excl(s.id)
+            c.capturedVars.incl(s.id)
     # direct or indirect dependency:
     elif innerClosure or interested:
       discard """
@@ -516,17 +519,25 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
     discard
   of nkLambdaKinds, nkIteratorDef:
     if n.typ != nil:
-      detectCapturedVars(n[namePos], owner, c)
-  of nkReturnStmt:
-    detectCapturedVars(n[0], owner, c)
+      detectCapturedVarsAux(n[namePos], owner, c)
+  of nkYieldStmt, nkReturnStmt:
+    # TODO: This needs to take control flow into account. A return in an unrelated branch is not interesting
+    for v in c.ambiguouslyInterestingVars:
+      c.interestingVars.incl(v)
+    c.ambiguouslyInterestingVars.clear()
+    detectCapturedVarsAux(n[0], owner, c)
   of nkIdentDefs:
-    detectCapturedVars(n[^1], owner, c)
+    detectCapturedVarsAux(n[^1], owner, c)
   else:
     if n.isCallExpr and n[0].isTypeOf:
       c.inTypeOf = true
     for i in 0..<n.len:
-      detectCapturedVars(n[i], owner, c)
+      detectCapturedVarsAux(n[i], owner, c)
     c.inTypeOf = false
+
+proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
+  detectCapturedVarsAux(n, owner, c)
+  c.ambiguouslyInterestingVars.clear()
 
 type
   LiftingPass = object
