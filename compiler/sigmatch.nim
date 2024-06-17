@@ -96,7 +96,7 @@ type
 const
   isNilConversion = isConvertible # maybe 'isIntConv' fits better?
 
-proc markUsed*(c: PContext; info: TLineInfo, s: PSym)
+proc markUsed*(c: PContext; info: TLineInfo, s: PSym; checkStyle = true)
 proc markOwnerModuleAsUsed*(c: PContext; s: PSym)
 
 template hasFauxMatch*(c: TCandidate): bool = c.fauxMatch != tyNone
@@ -2491,7 +2491,7 @@ proc arrayConstr(c: PContext, n: PNode): PType =
   result = newTypeS(tyArray, c)
   rawAddSon(result, makeRangeType(c, 0, 0, n.info))
   addSonSkipIntLit(result, skipTypes(n.typ,
-      {tyGenericInst, tyVar, tyLent, tyOrdinal}), c.idgen)
+      {tyVar, tyLent, tyOrdinal}), c.idgen)
 
 proc arrayConstr(c: PContext, info: TLineInfo): PType =
   result = newTypeS(tyArray, c)

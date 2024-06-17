@@ -36,6 +36,7 @@ slots when enlarging a sequence.
 - ORC: To be enabled via `nimOrcStats` there is a new API called `GC_orcStats` that can be used to query how many
   objects the cyclic collector did free. If the number is zero that is a strong indicator that you can use `--mm:arc`
   instead of `--mm:orc`.
+- A `$` template is provided for `Path` in `std/paths`.
 
 [//]: # "Deprecations:"
 

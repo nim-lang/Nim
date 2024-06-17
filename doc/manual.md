@@ -5419,6 +5419,8 @@ To override the compiler's side effect analysis a `{.noSideEffect.}`
 **Side effects are usually inferred. The inference for side effects is
 analogous to the inference for exception tracking.**
 
+When the compiler cannot infer side effects, as is the case for imported
+functions, one can annotate them with the `sideEffect` pragma.
 
 GC safety effect
 ----------------
@@ -8701,7 +8703,7 @@ after the last specified parameter. Nim string values will be converted to C
 strings automatically:
 
   ```Nim
-  proc printf(formatstr: cstring) {.nodecl, varargs.}
+  proc printf(formatstr: cstring) {.header: "<stdio.h>", varargs.}
 
   printf("hallo %s", "world") # "world" will be passed as C string
   ```

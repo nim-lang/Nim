@@ -132,17 +132,140 @@ proc semExprBranchScope(c: PContext, n: PNode; expectedType: PType = nil): PNode
   closeScope(c)
 
 const
-  skipForDiscardable = {nkIfStmt, nkIfExpr, nkCaseStmt, nkOfBranch,
-    nkElse, nkStmtListExpr, nkTryStmt, nkFinally, nkExceptBranch,
+  skipForDiscardable = {nkStmtList, nkStmtListExpr,
+    nkOfBranch, nkElse, nkFinally, nkExceptBranch,
     nkElifBranch, nkElifExpr, nkElseExpr, nkBlockStmt, nkBlockExpr,
     nkHiddenStdConv, nkHiddenDeref}
 
 proc implicitlyDiscardable(n: PNode): bool =
-  var n = n
-  while n.kind in skipForDiscardable: n = n.lastSon
-  result = n.kind in nkLastBlockStmts or
-           (isCallExpr(n) and n[0].kind == nkSym and
-           sfDiscardable in n[0].sym.flags)
+  # same traversal as endsInNoReturn
+  template checkBranch(branch) =
+    if not implicitlyDiscardable(branch):
+      return false
+
+  var it = n
+  # skip these beforehand, no special handling needed
+  while it.kind in skipForDiscardable and it.len > 0:
+    it = it.lastSon
+
+  case it.kind
+  of nkIfExpr, nkIfStmt:
+    for branch in it:
+      checkBranch:
+        if branch.len == 2:
+          branch[1]
+        elif branch.len == 1:
+          branch[0]
+        else:
+          raiseAssert "Malformed `if` statement during implicitlyDiscardable"
+    # all branches are discardable
+    result = true
+  of nkCaseStmt:
+    for i in 1 ..< it.len:
+      let branch = it[i]
+      checkBranch:
+        case branch.kind
+        of nkOfBranch:
+          branch[^1]
+        of nkElifBranch:
+          branch[1]
+        of nkElse:
+          branch[0]
+        else:
+          raiseAssert "Malformed `case` statement in endsInNoReturn"
+    # all branches are discardable
+    result = true
+  of nkTryStmt:
+    checkBranch(it[0])
+    for i in 1 ..< it.len:
+      let branch = it[i]
+      if branch.kind != nkFinally:
+        checkBranch(branch[^1])
+    # all branches are discardable
+    result = true
+  of nkCallKinds:
+    result = it[0].kind == nkSym and {sfDiscardable, sfNoReturn} * it[0].sym.flags != {}
+  of nkLastBlockStmts:
+    result = true
+  else:
+    result = false
+
+proc endsInNoReturn(n: PNode, returningNode: var PNode): bool =
+  ## check if expr ends the block like raising or call of noreturn procs do
+  result = false # assume it does return
+
+  template checkBranch(branch) =
+    if not endsInNoReturn(branch, returningNode):
+      # proved a branch returns
+      return false
+
+  var it = n
+  # skip these beforehand, no special handling needed
+  while it.kind in skipForDiscardable and it.len > 0:
+    it = it.lastSon
+
+  case it.kind
+  of nkIfExpr, nkIfStmt:
+    var hasElse = false
+    for branch in it:
+      checkBranch:
+        if branch.len == 2:
+          branch[1]
+        elif branch.len == 1:
+          hasElse = true
+          branch[0]
+        else:
+          raiseAssert "Malformed `if` statement during endsInNoReturn"
+    # none of the branches returned
+    result = hasElse # Only truly a no-return when it's exhaustive
+  of nkCaseStmt:
+    let caseTyp = skipTypes(it[0].typ, abstractVar-{tyTypeDesc})
+    # semCase should already have checked for exhaustiveness in this case
+    # effectively the same as having an else
+    var hasElse = caseTyp.shouldCheckCaseCovered()
+
+    # actual noreturn checks
+    for i in 1 ..< it.len:
+      let branch = it[i]
+      checkBranch:
+        case branch.kind
+        of nkOfBranch:
+          branch[^1]
+        of nkElifBranch:
+          branch[1]
+        of nkElse:
+          hasElse = true
+          branch[0]
+        else:
+          raiseAssert "Malformed `case` statement in endsInNoReturn"
+    # Can only guarantee a noreturn if there is an else or it's exhaustive
+    result = hasElse
+  of nkTryStmt:
+    checkBranch(it[0])
+    var lastIndex = it.len - 1
+    if it[lastIndex].kind == nkFinally:
+      # if finally is noreturn, then the entire statement is noreturn
+      if endsInNoReturn(it[lastIndex][^1], returningNode):
+        return true
+      dec lastIndex
+    for i in 1 .. lastIndex:
+      let branch = it[i]
+      checkBranch(branch[^1])
+    # none of the branches returned
+    result = true
+  of nkLastBlockStmts:
+    result = true
+  of nkCallKinds:
+    result = it[0].kind == nkSym and sfNoReturn in it[0].sym.flags
+    if not result:
+      returningNode = it
+  else:
+    result = false
+    returningNode = it
+
+proc endsInNoReturn(n: PNode): bool =
+  var dummy: PNode = nil
+  result = endsInNoReturn(n, dummy)
 
 proc fixNilType(c: PContext; n: PNode) =
   if isAtom(n):
@@ -165,13 +288,9 @@ proc discardCheck(c: PContext, result: PNode, flags: TExprFlags) =
         localError(c.config, result.info, "expression has no type: " &
                renderTree(result, {renderNoComments}))
       else:
-        var n = result
-        while n.kind in skipForDiscardable:
-          if n.kind == nkTryStmt: n = n[0]
-          else: n = n.lastSon
-
         # Ignore noreturn procs since they don't have a type
-        if n.endsInNoReturn:
+        var n = result
+        if result.endsInNoReturn(n):
           return
 
         var s = "expression '" & $n & "' is of type '" &
@@ -1589,21 +1708,27 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
   for sk in c.skipTypes:
     discard semTypeNode(c, sk, nil)
   c.skipTypes = @[]
-proc checkForMetaFields(c: PContext; n: PNode) =
-  proc checkMeta(c: PContext; n: PNode; t: PType) =
-    if t != nil and t.isMetaType and tfGenericTypeParam notin t.flags:
+
+proc checkForMetaFields(c: PContext; n: PNode; hasError: var bool) =
+  proc checkMeta(c: PContext; n: PNode; t: PType; hasError: var bool; parent: PType) =
+    if t != nil and (t.isMetaType or t.kind == tyNone) and tfGenericTypeParam notin t.flags:
       if t.kind == tyBuiltInTypeClass and t.len == 1 and t.elementType.kind == tyProc:
         localError(c.config, n.info, ("'$1' is not a concrete type; " &
           "for a callback without parameters use 'proc()'") % t.typeToString)
+      elif t.kind == tyNone and parent != nil:
+        # TODO: openarray has the `tfGenericTypeParam` flag & generics
+        # TODO: handle special cases (sink etc.) and views
+        localError(c.config, n.info, errTIsNotAConcreteType % parent.typeToString)
       else:
         localError(c.config, n.info, errTIsNotAConcreteType % t.typeToString)
+      hasError = true
 
   if n.isNil: return
   case n.kind
   of nkRecList, nkRecCase:
-    for s in n: checkForMetaFields(c, s)
+    for s in n: checkForMetaFields(c, s, hasError)
   of nkOfBranch, nkElse:
-    checkForMetaFields(c, n.lastSon)
+    checkForMetaFields(c, n.lastSon, hasError)
   of nkSym:
     let t = n.sym.typ
     case t.kind
@@ -1611,9 +1736,9 @@ proc checkForMetaFields(c: PContext; n: PNode) =
        tyProc, tyGenericInvocation, tyGenericInst, tyAlias, tySink, tyOwned:
       let start = ord(t.kind in {tyGenericInvocation, tyGenericInst})
       for i in start..<t.len:
-        checkMeta(c, n, t[i])
+        checkMeta(c, n, t[i], hasError, t)
     else:
-      checkMeta(c, n, t)
+      checkMeta(c, n, t, hasError, nil)
   else:
     internalAssert c.config, false
 
@@ -1648,9 +1773,11 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
               assert s.typ != nil
               assignType(s.typ, t)
               s.typ.itemId = t.itemId     # same id
-        checkConstructedType(c.config, s.info, s.typ)
+        var hasError = false
         if s.typ.kind in {tyObject, tyTuple} and not s.typ.n.isNil:
-          checkForMetaFields(c, s.typ.n)
+          checkForMetaFields(c, s.typ.n, hasError)
+        if not hasError:
+          checkConstructedType(c.config, s.info, s.typ)
 
         # fix bug #5170, bug #17162, bug #15526: ensure locally scoped types get a unique name:
         if s.typ.kind in {tyEnum, tyRef, tyObject} and not isTopLevel(c):
