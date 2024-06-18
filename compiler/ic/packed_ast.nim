@@ -47,6 +47,7 @@ type
     path*: NodeId
 
   PackedSym* = object
+    id*: int32
     kind*: TSymKind
     name*: LitId
     typ*: PackedItemId
@@ -71,6 +72,7 @@ type
     instantiatedFrom*: PackedItemId
 
   PackedType* = object
+    id*: int32
     kind*: TTypeKind
     callConv*: TCallingConvention
     #nodekind*: TNodeKind
