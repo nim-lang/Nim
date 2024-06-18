@@ -151,3 +151,13 @@ since (1, 7):
     ## * https://developer.mozilla.org/en-US/docs/Web/API/queueMicrotask
     ## * https://developer.mozilla.org/en-US/docs/Web/API/HTML_DOM_API/Microtask_guide
     runnableExamples"-r:off": queueMicrotask(proc() = echo "Microtask")
+
+
+since (2, 2):
+  func `&&=`*[T](lhs, rhs: T): T {.importjs: "(# &&= #)", discardable.}
+    ## * https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Logical_AND_assignment
+    ## * https://caniuse.com/mdn-javascript_operators_logical_and_assignment
+
+  func `||=`*[T](lhs, rhs: T): T {.importjs: "(# ||= #)", discardable.}
+    ## * https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Logical_OR_assignment
+    ## * https://caniuse.com/mdn-javascript_operators_logical_or_assignment
