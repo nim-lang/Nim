@@ -39,6 +39,9 @@ slots when enlarging a sequence.
   objects the cyclic collector did free. If the number is zero that is a strong indicator that you can use `--mm:arc`
   instead of `--mm:orc`.
 - A `$` template is provided for `Path` in `std/paths`.
+- Added [logical AND-assignment](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Logical_AND_assignment)
+  and [logical OR-Assignment](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Logical_OR_assignment) for JavaScript targets.
+
 
 [//]: # "Deprecations:"
 
