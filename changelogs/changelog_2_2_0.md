@@ -4,6 +4,11 @@
 
 ## Standard library additions and changes
 
+`nimPreviewHashFarm` has been added to `lib/pure/hashes.nim` to activate a
+64-bit string Hash producer (based upon Google's Farm Hash) which is also
+much faster than the present one.  At present, this is incompatible with
+`--jsbigint=off` mode.
+
 ## Language changes
 
 ## Compiler changes
