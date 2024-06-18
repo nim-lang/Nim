@@ -119,7 +119,7 @@ const
          "type 'terse' to toggle terse mode on/off"
   #List of currently supported capabilities. So lang servers/ides can iterate over and check for what's enabled
   Capabilities = [
-    "con" #current NimSuggest supports the `con` commmand,
+    "con", #current NimSuggest supports the `con` commmand
     "unknownFile", #current NimSuggest can handle unknown files
   ]
 
