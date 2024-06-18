@@ -272,11 +272,15 @@ __EMSCRIPTEN__
 #elif defined(__cplusplus)
 #define NIM_STATIC_ASSERT(x, msg) static_assert((x), msg)
 #else
-#define NIM_STATIC_ASSERT(x, msg) typedef int NIM_STATIC_ASSERT_AUX[(x) ? 1 : -1];
+#define _NIM_STATIC_ASSERT_FINAL(x, append_name) typedef int NIM_STATIC_ASSERT_AUX ## append_name[(x) ? 1 : -1];
+#define _NIM_STATIC_ASSERT_STAGE_3(x, line)      _NIM_STATIC_ASSERT_FINAL(x, _AT_LINE_##line)
+#define _NIM_STATIC_ASSERT_STAGE_2(x, line)      _NIM_STATIC_ASSERT_STAGE_3(x, line)
+#define NIM_STATIC_ASSERT(x, msg)                _NIM_STATIC_ASSERT_STAGE_2(x,__LINE__)
 // On failure, your C compiler will say something like:
-//   "error: 'NIM_STATIC_ASSERT_AUX' declared as an array with a negative size"
-// we could use a better fallback to also show line number, using:
-// http://www.pixelbeat.org/programming/gcc/static_assert.html
+//   "error: 'NIM_STATIC_ASSERT_AUX_AT_LINE_XXX' declared as an array with a negative size"
+// Adding the line number helps to avoid redefinitions which are not allowed in
+// old GCC versions, however the order of evaluation for __LINE__ is a little tricky,
+// hence all the helper macros. See https://stackoverflow.com/a/3385694 for more info.
 #endif
 
 /* C99 compiler? */

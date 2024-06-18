@@ -111,13 +111,25 @@ type
     blocks: seq[TBlock]
     extraIndent: int
     previousFileName: string  # For frameInfo inside templates.
+    # legacy: generatedParamCopies and up fields are used for jsNoLambdaLifting
+    generatedParamCopies: IntSet
+    up: PProc     # up the call chain; required for closure support
 
 template config*(p: PProc): ConfigRef = p.module.config
 
 proc indentLine(p: PProc, r: Rope): Rope =
   var p = p
-  let ind = p.blocks.len + p.extraIndent
-  result = repeat(' ', ind*2) & r
+  if jsNoLambdaLifting in p.config.legacyFeatures:
+    var ind = 0
+    while true:
+      inc ind, p.blocks.len + p.extraIndent
+      if p.up == nil or p.up.prc != p.prc.owner:
+        break
+      p = p.up
+    result = repeat(' ', ind*2) & r
+  else:
+    let ind = p.blocks.len + p.extraIndent
+    result = repeat(' ', ind*2) & r
 
 template line(p: PProc, added: string) =
   p.body.add(indentLine(p, rope(added)))
@@ -1211,12 +1223,13 @@ proc genIf(p: PProc, n: PNode, r: var TCompRes) =
 proc generateHeader(p: PProc, prc: PSym): Rope =
   result = ""
   let typ = prc.typ
-  if typ.callConv == ccClosure:
-    # we treat Env as the `this` parameter of the function
-    # to keep it simple
-    let env = prc.ast[paramsPos].lastSon
-    assert env.kind == nkSym, "env is missing"
-    env.sym.loc.r = "this"
+  if jsNoLambdaLifting notin p.config.legacyFeatures:
+    if typ.callConv == ccClosure:
+      # we treat Env as the `this` parameter of the function
+      # to keep it simple
+      let env = prc.ast[paramsPos].lastSon
+      assert env.kind == nkSym, "env is missing"
+      env.sym.loc.r = "this"
 
   for i in 1..<typ.n.len:
     assert(typ.n[i].kind == nkSym)
@@ -1250,7 +1263,8 @@ const
 
 proc needsNoCopy(p: PProc; y: PNode): bool =
   return y.kind in nodeKindsNeedNoCopy or
-        ((mapType(y.typ) != etyBaseIndex) and
+        ((mapType(y.typ) != etyBaseIndex or
+          (jsNoLambdaLifting in p.config.legacyFeatures and y.kind == nkSym and y.sym.kind == skParam)) and
           (skipTypes(y.typ, abstractInst).kind in
             {tyRef, tyPtr, tyLent, tyVar, tyCstring, tyProc, tyOwned, tyOpenArray} + IntegralTypes))
 
@@ -1601,7 +1615,30 @@ proc attachProc(p: PProc; s: PSym) =
 
 proc genProcForSymIfNeeded(p: PProc, s: PSym) =
   if not p.g.generatedSyms.containsOrIncl(s.id):
-    attachProc(p, s)
+    if jsNoLambdaLifting in p.config.legacyFeatures:
+      let newp = genProc(p, s)
+      var owner = p
+      while owner != nil and owner.prc != s.owner:
+        owner = owner.up
+      if owner != nil: owner.locals.add(newp)
+      else: attachProc(p, newp, s)
+    else:
+      attachProc(p, s)
+
+proc genCopyForParamIfNeeded(p: PProc, n: PNode) =
+  let s = n.sym
+  if p.prc == s.owner or needsNoCopy(p, n):
+    return
+  var owner = p.up
+  while true:
+    if owner == nil:
+      internalError(p.config, n.info, "couldn't find the owner proc of the closed over param: " & s.name.s)
+    if owner.prc == s.owner:
+      if not owner.generatedParamCopies.containsOrIncl(s.id):
+        let copy = "$1 = nimCopy(null, $1, $2);$n" % [s.loc.r, genTypeInfo(p, s.typ)]
+        owner.locals.add(owner.indentLine(copy))
+      return
+    owner = owner.up
 
 proc genVarInit(p: PProc, v: PSym, n: PNode)
 
@@ -1613,6 +1650,8 @@ proc genSym(p: PProc, n: PNode, r: var TCompRes) =
       internalError(p.config, n.info, "symbol has no generated name: " & s.name.s)
     if sfCompileTime in s.flags:
       genVarInit(p, s, if s.astdef != nil: s.astdef else: newNodeI(nkEmpty, s.info))
+    if jsNoLambdaLifting in p.config.legacyFeatures and s.kind == skParam:
+      genCopyForParamIfNeeded(p, n)
     let k = mapType(p, s.typ)
     if k == etyBaseIndex:
       r.typ = etyBaseIndex
@@ -2699,6 +2738,7 @@ proc genProc(oldProc: PProc, prc: PSym): Rope =
   #if gVerbosity >= 3:
   #  echo "BEGIN generating code for: " & prc.name.s
   var p = newProc(oldProc.g, oldProc.module, prc.ast, prc.options)
+  p.up = oldProc
   var returnStmt: Rope = ""
   var resultAsgn: Rope = ""
   var name = mangleName(p.module, prc)
@@ -2922,14 +2962,17 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
     else:
       genCall(p, n, r)
   of nkClosure:
-    let tmp = getTemp(p)
-    var a: TCompRes = default(TCompRes)
-    var b: TCompRes = default(TCompRes)
-    gen(p, n[0], a)
-    gen(p, n[1], b)
-    lineF(p, "$1 = $2.bind($3); $1.ClP_0 = $2; $1.ClE_0 = $3;$n", [tmp, a.rdLoc, b.rdLoc])
-    r.res = tmp
-    r.kind = resVal
+    if jsNoLambdaLifting in p.config.legacyFeatures:
+      gen(p, n[0], r)
+    else:
+      let tmp = getTemp(p)
+      var a: TCompRes = default(TCompRes)
+      var b: TCompRes = default(TCompRes)
+      gen(p, n[0], a)
+      gen(p, n[1], b)
+      lineF(p, "$1 = $2.bind($3); $1.ClP_0 = $2; $1.ClE_0 = $3;$n", [tmp, a.rdLoc, b.rdLoc])
+      r.res = tmp
+      r.kind = resVal
   of nkCurly: genSetConstr(p, n, r)
   of nkBracket: genArrayConstr(p, n, r)
   of nkPar, nkTupleConstr: genTupleConstr(p, n, r)

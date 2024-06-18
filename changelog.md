@@ -17,6 +17,8 @@
 
 - `bindMethod` in `std/jsffi` is deprecated, don't use it with closures.
 
+- JS backend now supports lambda lifting for closures. Use `--legacy:jsNoLambdaLifting` to emulate old behavior.
+
 ## Standard library additions and changes
 
 [//]: # "Changes:"
