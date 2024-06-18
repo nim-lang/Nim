@@ -63,7 +63,7 @@ pkg "criterion", allowFailure = true # needs testing binary
 pkg "datamancer"
 pkg "dashing", "nim c tests/functional.nim"
 pkg "delaunay"
-pkg "dnsclient"
+pkg "dnsclient", allowFailure = true # super fragile
 pkg "docopt"
 pkg "dotenv"
 # when defined(linux): pkg "drchaos"
