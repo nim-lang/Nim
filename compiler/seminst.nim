@@ -60,8 +60,11 @@ iterator instantiateGenericParamList(c: PContext, n: PNode, pt: TIdTable): PSym 
       elif t.kind in {tyGenericParam, tyConcept}:
         localError(c.config, a.info, errCannotInstantiateX % q.name.s)
         t = errorType(c)
-      elif isUnresolvedStatic(t) and c.inGenericContext == 0 and
-          c.matchedConcept == nil:
+      elif isUnresolvedStatic(t) and (q.typ.kind == tyStatic or
+            (q.typ.kind == tyGenericParam and
+              q.typ.genericParamHasConstraints and
+              q.typ.genericConstraint.kind == tyStatic)) and
+          c.inGenericContext == 0 and c.matchedConcept == nil:
         # generic/concept type bodies will try to instantiate static values but
         # won't actually use them
         localError(c.config, a.info, errCannotInstantiateX % q.name.s)
