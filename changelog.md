@@ -39,6 +39,9 @@ slots when enlarging a sequence.
   objects the cyclic collector did free. If the number is zero that is a strong indicator that you can use `--mm:arc`
   instead of `--mm:orc`.
 - A `$` template is provided for `Path` in `std/paths`.
+- `nimPreviewHashFarm` has been added to `lib/pure/hashes.nim` to default to a
+64-bit string `Hash` (based upon Google's Farm Hash) which is also faster than
+the present one.  At present, this is incompatible with `--jsbigint=off` mode.
 
 [//]: # "Deprecations:"
 
