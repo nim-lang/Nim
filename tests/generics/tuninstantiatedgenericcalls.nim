@@ -140,3 +140,8 @@ block: # issue #1771
 
   var a: Foo[range[0..2], float]
   doAssert test(a) == 0.0
+
+block: # issue #23730
+  proc test(M: static[int]): array[1 shl M, int] = discard
+  doAssert len(test(3)) == 8
+  doAssert len(test(5)) == 32
