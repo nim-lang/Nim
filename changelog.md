@@ -41,7 +41,9 @@ slots when enlarging a sequence.
 - A `$` template is provided for `Path` in `std/paths`.
 - Added [logical AND-assignment](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Logical_AND_assignment)
   and [logical OR-Assignment](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Logical_OR_assignment) for JavaScript targets.
-
+- `nimPreviewHashFarm` has been added to `lib/pure/hashes.nim` to default to a
+64-bit string `Hash` (based upon Google's Farm Hash) which is also faster than
+the present one.  At present, this is incompatible with `--jsbigint=off` mode.
 
 [//]: # "Deprecations:"
 
