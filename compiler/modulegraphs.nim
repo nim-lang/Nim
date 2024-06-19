@@ -220,7 +220,7 @@ proc isCachedModule(g: ModuleGraph; module: int): bool {.inline.} =
 proc isCachedModule*(g: ModuleGraph; m: PSym): bool {.inline.} =
   isCachedModule(g, m.position)
 
-proc simulateCachedModule(g: ModuleGraph; moduleSym: PSym; m: PackedModule) =
+proc simulateCachedModule(g: ModuleGraph; moduleSym: PSym; m: PackedModuleWriter) =
   when false:
     echo "simulating ", moduleSym.name.s, " ", moduleSym.position
   simulateLoadedModule(g.packed, g.config, g.cache, moduleSym, m)
@@ -230,7 +230,7 @@ proc initEncoder*(g: ModuleGraph; module: PSym) =
   if id >= g.encoders.len:
     setLen g.encoders, id+1
   ic.initEncoder(g.encoders[id],
-    g.packed[id].fromDisk, module, g.config, g.startupPackedConfig)
+    g.packed[id].toDisk, module, g.config, g.startupPackedConfig)
 
 type
   ModuleIter* = object
@@ -351,8 +351,8 @@ proc completePartialOp*(g: ModuleGraph; module: int; t: PType; op: TTypeAttached
   if g.config.symbolFiles != disabledSf:
     assert module < g.encoders.len
     assert isActive(g.encoders[module])
-    toPackedGeneratedProcDef(value, g.encoders[module], g.packed[module].fromDisk)
-    #storeAttachedProcDef(t, op, value, g.encoders[module], g.packed[module].fromDisk)
+    toPackedGeneratedProcDef(value, g.encoders[module], g.packed[module].toDisk)
+    #storeAttachedProcDef(t, op, value, g.encoders[module], g.packed[module].toDisk)
 
 iterator getDispatchers*(g: ModuleGraph): PSym =
   for i in g.dispatchers.mitems:
@@ -555,14 +555,14 @@ proc rememberEmittedTypeInfo*(g: ModuleGraph; m: FileIndex; ti: string) =
   if g.config.symbolFiles != disabledSf:
     #assert g.encoders[m.int32].isActive
     assert g.packed[m.int32].status != stored
-    g.packed[m.int32].fromDisk.emittedTypeInfo.add ti
+    g.packed[m.int32].toDisk.emittedTypeInfo.add ti
     #echo "added typeinfo ", m.int32, " ", ti, " suspicious ", not g.encoders[m.int32].isActive
 
 proc rememberFlag*(g: ModuleGraph; m: PSym; flag: ModuleBackendFlag) =
   if g.config.symbolFiles != disabledSf:
     #assert g.encoders[m.int32].isActive
     assert g.packed[m.position].status != stored
-    g.packed[m.position].fromDisk.backendFlags.incl flag
+    g.packed[m.position].toDisk.backendFlags.incl flag
 
 proc closeRodFile*(g: ModuleGraph; m: PSym) =
   if g.config.symbolFiles in {readOnlySf, v2Sf}:
@@ -571,14 +571,14 @@ proc closeRodFile*(g: ModuleGraph; m: PSym) =
     # not depend on the hard disk contents!
     let mint = m.position
     saveRodFile(toRodFile(g.config, AbsoluteFile toFullPath(g.config, FileIndex(mint))),
-                g.encoders[mint], g.packed[mint].fromDisk)
+                g.encoders[mint], g.packed[mint].toDisk)
     g.packed[mint].status = stored
 
   elif g.config.symbolFiles == stressTest:
     # debug code, but maybe a good idea for production? Could reduce the compiler's
     # memory consumption considerably at the cost of more loads from disk.
     let mint = m.position
-    simulateCachedModule(g, m, g.packed[mint].fromDisk)
+    simulateCachedModule(g, m, g.packed[mint].toDisk)
     g.packed[mint].status = loaded
 
 proc dependsOn(a, b: int): int {.inline.} = (a shl 15) + b

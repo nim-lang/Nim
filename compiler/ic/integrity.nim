@@ -100,11 +100,11 @@ proc checkNode(c: var CheckedContext; tree: PackedTree; n: NodePos) =
 proc checkTree(c: var CheckedContext; t: PackedTree) =
   for p in allNodes(t): checkNode(c, t, p)
 
-proc checkLocalSymIds(c: var CheckedContext; m: PackedModule; symIds: seq[int32]) =
+proc checkLocalSymIds(c: var CheckedContext; m: PackedModuleReader; symIds: seq[int32]) =
   for symId in symIds:
     assert symId >= 0 and symId < m.syms.len, $symId & " " & $m.syms.len
 
-proc checkModule(c: var CheckedContext; m: PackedModule) =
+proc checkModule(c: var CheckedContext; m: PackedModuleReader) =
   # We check that:
   # - Every symbol references existing types and symbols.
   # - Every tree node references existing types and symbols.

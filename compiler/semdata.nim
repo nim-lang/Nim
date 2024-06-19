@@ -331,7 +331,7 @@ proc newContext*(graph: ModuleGraph; module: PSym): PContext =
     graph.packed[id].module = module
     initEncoder graph, module
 
-template packedRepr*(c): untyped = c.graph.packed[c.module.position].fromDisk
+template packedRepr*(c): untyped = c.graph.packed[c.module.position].toDisk
 template encoder*(c): untyped = c.graph.encoders[c.module.position]
 
 proc addIncludeFileDep*(c: PContext; f: FileIndex) =

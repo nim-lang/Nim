@@ -33,7 +33,42 @@ type
     HasDatInitProc
     HasModuleInitProc
 
-  PackedModule* = object ## the parts of a PackedEncoder that are part of the .rod file
+  PackedModuleReader* = object ## the parts of a PackedEncoder that are part of the .rod file
+    definedSymbols: string
+    moduleFlags: TSymFlags
+    includes*: seq[(LitId, string)] # first entry is the module filename itself
+    imports: seq[LitId] # the modules this module depends on
+    toReplay*: PackedTree # pragmas and VM specific state to replay.
+    topLevel*: PackedTree  # top level statements
+    bodies*: PackedTree # other trees. Referenced from typ.n and sym.ast by their position.
+    #producedGenerics*: Table[GenericKey, SymId]
+    exports*: seq[(LitId, int32)]
+    hidden: seq[(LitId, int32)]
+    reexports: seq[(LitId, PackedItemId)]
+    compilerProcs*: seq[(LitId, int32)]
+    converters*, methods*, trmacros*, pureEnums*: seq[int32]
+
+    typeInstCache*: seq[(PackedItemId, PackedItemId)]
+    procInstCache*: seq[PackedInstantiation]
+    attachedOps*: seq[(PackedItemId, TTypeAttachedOp, PackedItemId)]
+    methodsPerGenericType*: seq[(PackedItemId, int, PackedItemId)]
+    enumToStringProcs*: seq[(PackedItemId, PackedItemId)]
+    methodsPerType*: seq[(PackedItemId, PackedItemId)]
+    dispatchers*: seq[PackedItemId]
+
+    emittedTypeInfo*: seq[string]
+    backendFlags*: set[ModuleBackendFlag]
+
+    syms*: OrderedTable[int32, PackedSym]
+    types*: OrderedTable[int32, PackedType]
+    strings*: BiTable[string] # we could share these between modules.
+    numbers*: BiTable[BiggestInt] # we also store floats in here so
+                                  # that we can assure that every bit is kept
+    man*: LineInfoManager
+
+    cfg: PackedConfig
+
+  PackedModuleWriter* = object ## the parts of a PackedEncoder that are part of the .rod file
     definedSymbols: string
     moduleFlags: TSymFlags
     includes*: seq[(LitId, string)] # first entry is the module filename itself
@@ -69,7 +104,7 @@ type
     cfg: PackedConfig
 
   PackedEncoder* = object
-    #m*: PackedModule
+    #m*: PackedModuleWriter
     thisModule*: int32
     lastFile*: FileIndex # remember the last lookup entry.
     lastLit*: LitId
@@ -80,7 +115,7 @@ type
     symMarker*: IntSet #Table[ItemId, SymId]    # ItemId.item -> SymId
     config*: ConfigRef
 
-proc toString*(tree: PackedTree; pos: NodePos; m: PackedModule; nesting: int;
+proc toString*(tree: PackedTree; pos: NodePos; m: PackedModuleWriter|PackedModuleReader; nesting: int;
                result: var string) =
   if result.len > 0 and result[^1] notin {' ', '\n'}:
     result.add ' '
@@ -116,11 +151,11 @@ proc toString*(tree: PackedTree; pos: NodePos; m: PackedModule; nesting: int;
     result.add ")"
     #for i in 1..nesting*2: result.add ' '
 
-proc toString*(tree: PackedTree; n: NodePos; m: PackedModule): string =
+proc toString*(tree: PackedTree; n: NodePos; m: PackedModuleWriter|PackedModuleReader): string =
   result = ""
   toString(tree, n, m, 0, result)
 
-proc debug*(tree: PackedTree; m: PackedModule) =
+proc debug*(tree: PackedTree; m: PackedModuleWriter|PackedModuleReader) =
   stdout.write toString(tree, NodePos 0, m)
 
 proc isActive*(e: PackedEncoder): bool = e.config != nil
@@ -140,7 +175,7 @@ proc definedSymbolsAsString(config: ConfigRef): string =
     result.add ' '
     result.add d
 
-proc rememberConfig(c: var PackedEncoder; m: var PackedModule; config: ConfigRef; pc: PackedConfig) =
+proc rememberConfig(c: var PackedEncoder; m: var PackedModuleWriter; config: ConfigRef; pc: PackedConfig) =
   m.definedSymbols = definedSymbolsAsString(config)
   #template rem(x) =
   #  c.m.cfg.x = config.x
@@ -153,7 +188,7 @@ const
 when debugConfigDiff:
   import hashes, tables, intsets, sha1, strutils, sets
 
-proc configIdentical(m: PackedModule; config: ConfigRef): bool =
+proc configIdentical(m: PackedModuleReader; config: ConfigRef): bool =
   result = m.definedSymbols == definedSymbolsAsString(config)
   when debugConfigDiff:
     if not result:
@@ -183,7 +218,7 @@ proc hashFileCached(conf: ConfigRef; fileIdx: FileIndex): string =
     result = $secureHashFile(fullpath)
     msgs.setHash(conf, fileIdx, result)
 
-proc toLitId(x: FileIndex; c: var PackedEncoder; m: var PackedModule): LitId =
+proc toLitId(x: FileIndex; c: var PackedEncoder; m: var PackedModuleWriter): LitId =
   ## store a file index as a literal
   if x == c.lastFile:
     result = c.lastLit
@@ -197,16 +232,16 @@ proc toLitId(x: FileIndex; c: var PackedEncoder; m: var PackedModule): LitId =
     c.lastLit = result
   assert result != LitId(0)
 
-proc toFileIndex*(x: LitId; m: PackedModule; config: ConfigRef): FileIndex =
+proc toFileIndex*(x: LitId; m: PackedModuleReader; config: ConfigRef): FileIndex =
   result = msgs.fileInfoIdx(config, AbsoluteFile m.strings[x])
 
-proc includesIdentical(m: var PackedModule; config: ConfigRef): bool =
+proc includesIdentical(m: var PackedModuleReader; config: ConfigRef): bool =
   for it in mitems(m.includes):
     if hashFileCached(config, toFileIndex(it[0], m, config)) != it[1]:
       return false
   result = true
 
-proc initEncoder*(c: var PackedEncoder; m: var PackedModule; moduleSym: PSym; config: ConfigRef; pc: PackedConfig) =
+proc initEncoder*(c: var PackedEncoder; m: var PackedModuleWriter; moduleSym: PSym; config: ConfigRef; pc: PackedConfig) =
   ## setup a context for serializing to packed ast
   c.thisModule = moduleSym.itemId.module
   c.config = config
@@ -228,54 +263,54 @@ proc initEncoder*(c: var PackedEncoder; m: var PackedModule; moduleSym: PSym; co
 
   rememberConfig(c, m, config, pc)
 
-proc addIncludeFileDep*(c: var PackedEncoder; m: var PackedModule; f: FileIndex) =
+proc addIncludeFileDep*(c: var PackedEncoder; m: var PackedModuleWriter; f: FileIndex) =
   m.includes.add((toLitId(f, c, m), hashFileCached(c.config, f)))
 
-proc addImportFileDep*(c: var PackedEncoder; m: var PackedModule; f: FileIndex) =
+proc addImportFileDep*(c: var PackedEncoder; m: var PackedModuleWriter; f: FileIndex) =
   m.imports.add toLitId(f, c, m)
 
-proc addHidden*(c: var PackedEncoder; m: var PackedModule; s: PSym) =
+proc addHidden*(c: var PackedEncoder; m: var PackedModuleWriter; s: PSym) =
   assert s.kind != skUnknown
   let nameId = getOrIncl(m.strings, s.name.s)
   m.hidden.add((nameId, s.itemId.item))
   assert s.itemId.module == c.thisModule
 
-proc addExported*(c: var PackedEncoder; m: var PackedModule; s: PSym) =
+proc addExported*(c: var PackedEncoder; m: var PackedModuleWriter; s: PSym) =
   assert s.kind != skUnknown
   assert s.itemId.module == c.thisModule
   let nameId = getOrIncl(m.strings, s.name.s)
   m.exports.add((nameId, s.itemId.item))
 
-proc addConverter*(c: var PackedEncoder; m: var PackedModule; s: PSym) =
+proc addConverter*(c: var PackedEncoder; m: var PackedModuleWriter; s: PSym) =
   assert c.thisModule == s.itemId.module
   m.converters.add(s.itemId.item)
 
-proc addTrmacro*(c: var PackedEncoder; m: var PackedModule; s: PSym) =
+proc addTrmacro*(c: var PackedEncoder; m: var PackedModuleWriter; s: PSym) =
   m.trmacros.add(s.itemId.item)
 
-proc addPureEnum*(c: var PackedEncoder; m: var PackedModule; s: PSym) =
+proc addPureEnum*(c: var PackedEncoder; m: var PackedModuleWriter; s: PSym) =
   assert s.kind == skType
   m.pureEnums.add(s.itemId.item)
 
-proc addMethod*(c: var PackedEncoder; m: var PackedModule; s: PSym) =
+proc addMethod*(c: var PackedEncoder; m: var PackedModuleWriter; s: PSym) =
   m.methods.add s.itemId.item
 
-proc addReexport*(c: var PackedEncoder; m: var PackedModule; s: PSym) =
+proc addReexport*(c: var PackedEncoder; m: var PackedModuleWriter; s: PSym) =
   assert s.kind != skUnknown
   if s.kind == skModule: return
   let nameId = getOrIncl(m.strings, s.name.s)
   m.reexports.add((nameId, PackedItemId(module: toLitId(s.itemId.module.FileIndex, c, m),
                                         item: s.itemId.item)))
 
-proc addCompilerProc*(c: var PackedEncoder; m: var PackedModule; s: PSym) =
+proc addCompilerProc*(c: var PackedEncoder; m: var PackedModuleWriter; s: PSym) =
   let nameId = getOrIncl(m.strings, s.name.s)
   m.compilerProcs.add((nameId, s.itemId.item))
 
-proc toPackedNode*(n: PNode; ir: var PackedTree; c: var PackedEncoder; m: var PackedModule)
-proc storeSym*(s: PSym; c: var PackedEncoder; m: var PackedModule): PackedItemId
-proc storeType(t: PType; c: var PackedEncoder; m: var PackedModule): PackedItemId
+proc toPackedNode*(n: PNode; ir: var PackedTree; c: var PackedEncoder; m: var PackedModuleWriter)
+proc storeSym*(s: PSym; c: var PackedEncoder; m: var PackedModuleWriter): PackedItemId
+proc storeType(t: PType; c: var PackedEncoder; m: var PackedModuleWriter): PackedItemId
 
-proc flush(c: var PackedEncoder; m: var PackedModule) =
+proc flush(c: var PackedEncoder; m: var PackedModuleWriter) =
   ## serialize any pending types or symbols from the context
   while true:
     if c.pendingTypes.len > 0:
@@ -285,19 +320,19 @@ proc flush(c: var PackedEncoder; m: var PackedModule) =
     else:
       break
 
-proc toLitId(x: string; m: var PackedModule): LitId =
+proc toLitId(x: string; m: var PackedModuleWriter): LitId =
   ## store a string as a literal
   result = getOrIncl(m.strings, x)
 
-proc toLitId(x: BiggestInt; m: var PackedModule): LitId =
+proc toLitId(x: BiggestInt; m: var PackedModuleWriter): LitId =
   ## store an integer as a literal
   result = getOrIncl(m.numbers, x)
 
-proc toPackedInfo(x: TLineInfo; c: var PackedEncoder; m: var PackedModule): PackedLineInfo =
+proc toPackedInfo(x: TLineInfo; c: var PackedEncoder; m: var PackedModuleWriter): PackedLineInfo =
   pack(m.man, toLitId(x.fileIndex, c, m), x.line.int32, x.col.int32)
   #PackedLineInfo(line: x.line, col: x.col, file: toLitId(x.fileIndex, c, m))
 
-proc safeItemId(s: PSym; c: var PackedEncoder; m: var PackedModule): PackedItemId {.inline.} =
+proc safeItemId(s: PSym; c: var PackedEncoder; m: var PackedModuleWriter): PackedItemId {.inline.} =
   ## given a symbol, produce an ItemId with the correct properties
   ## for local or remote symbols, packing the symbol as necessary
   if s == nil or s.kind == skPackage:
@@ -331,7 +366,7 @@ template storeNode(dest, src, field) =
     nodeId = emptyNodeId
   dest.field = nodeId
 
-proc storeTypeLater(t: PType; c: var PackedEncoder; m: var PackedModule): PackedItemId =
+proc storeTypeLater(t: PType; c: var PackedEncoder; m: var PackedModuleWriter): PackedItemId =
   # We store multiple different trees in m.bodies. For this to work out, we
   # cannot immediately store types/syms. We enqueue them instead to ensure
   # we only write one tree into m.bodies after the other.
@@ -344,7 +379,7 @@ proc storeTypeLater(t: PType; c: var PackedEncoder; m: var PackedModule): Packed
     # the type belongs to this module, so serialize it here, eventually.
     addMissing(c, t)
 
-proc storeSymLater(s: PSym; c: var PackedEncoder; m: var PackedModule): PackedItemId =
+proc storeSymLater(s: PSym; c: var PackedEncoder; m: var PackedModuleWriter): PackedItemId =
   if s.isNil: return nilItemId
   assert s.itemId.module >= 0
   assert s.itemId.item >= 0
@@ -353,7 +388,7 @@ proc storeSymLater(s: PSym; c: var PackedEncoder; m: var PackedModule): PackedIt
     # the sym belongs to this module, so serialize it here, eventually.
     addMissing(c, s)
 
-proc storeType(t: PType; c: var PackedEncoder; m: var PackedModule): PackedItemId =
+proc storeType(t: PType; c: var PackedEncoder; m: var PackedModuleWriter): PackedItemId =
   ## serialize a ptype
   if t.isNil: return nilItemId
 
@@ -380,7 +415,7 @@ proc storeType(t: PType; c: var PackedEncoder; m: var PackedModule): PackedItemI
     # fill the reserved slot, nothing else:
     m.types[t.uniqueId.item] = p
 
-proc toPackedLib(l: PLib; c: var PackedEncoder; m: var PackedModule): PackedLib =
+proc toPackedLib(l: PLib; c: var PackedEncoder; m: var PackedModuleWriter): PackedLib =
   ## the plib hangs off the psym via the .annex field
   if l.isNil: return
   result = PackedLib(kind: l.kind, generated: l.generated,
@@ -388,7 +423,7 @@ proc toPackedLib(l: PLib; c: var PackedEncoder; m: var PackedModule): PackedLib 
   )
   storeNode(result, l, path)
 
-proc storeSym*(s: PSym; c: var PackedEncoder; m: var PackedModule): PackedItemId =
+proc storeSym*(s: PSym; c: var PackedEncoder; m: var PackedModuleWriter): PackedItemId =
   ## serialize a psym
   if s.isNil: return nilItemId
 
@@ -428,7 +463,7 @@ proc storeSym*(s: PSym; c: var PackedEncoder; m: var PackedModule): PackedItemId
     # fill the reserved slot, nothing else:
     m.syms[s.itemId.item] = p
 
-proc addModuleRef(n: PNode; ir: var PackedTree; c: var PackedEncoder; m: var PackedModule) =
+proc addModuleRef(n: PNode; ir: var PackedTree; c: var PackedEncoder; m: var PackedModuleWriter) =
   ## add a remote symbol reference to the tree
   let info = n.info.toPackedInfo(c, m)
   if n.typ != n.sym.typ:
@@ -443,7 +478,7 @@ proc addModuleRef(n: PNode; ir: var PackedTree; c: var PackedEncoder; m: var Pac
   ir.addNode(kind = nkNone, info = info,
              operand = n.sym.itemId.item)
 
-proc toPackedNode*(n: PNode; ir: var PackedTree; c: var PackedEncoder; m: var PackedModule) =
+proc toPackedNode*(n: PNode; ir: var PackedTree; c: var PackedEncoder; m: var PackedModuleWriter) =
   ## serialize a node into the tree
   if n == nil:
     ir.addNode(kind = nkNilRodNode, operand = 1, info = NoLineInfo)
@@ -491,13 +526,13 @@ proc toPackedNode*(n: PNode; ir: var PackedTree; c: var PackedEncoder; m: var Pa
       toPackedNode(n[i], ir, c, m)
     ir.patch patchPos
 
-proc storeTypeInst*(c: var PackedEncoder; m: var PackedModule; s: PSym; inst: PType) =
+proc storeTypeInst*(c: var PackedEncoder; m: var PackedModuleWriter; s: PSym; inst: PType) =
   m.typeInstCache.add (storeSymLater(s, c, m), storeTypeLater(inst, c, m))
 
-proc addPragmaComputation*(c: var PackedEncoder; m: var PackedModule; n: PNode) =
+proc addPragmaComputation*(c: var PackedEncoder; m: var PackedModuleWriter; n: PNode) =
   toPackedNode(n, m.toReplay, c, m)
 
-proc toPackedProcDef(n: PNode; ir: var PackedTree; c: var PackedEncoder; m: var PackedModule) =
+proc toPackedProcDef(n: PNode; ir: var PackedTree; c: var PackedEncoder; m: var PackedModuleWriter) =
   let info = toPackedInfo(n.info, c, m)
   let patchPos = ir.prepare(n.kind, n.flags,
                             storeTypeLater(n.typ, c, m), info)
@@ -512,7 +547,7 @@ proc toPackedProcDef(n: PNode; ir: var PackedTree; c: var PackedEncoder; m: var 
                  typeId = nilItemId, info = info)
   ir.patch patchPos
 
-proc toPackedNodeIgnoreProcDefs(n: PNode, encoder: var PackedEncoder; m: var PackedModule) =
+proc toPackedNodeIgnoreProcDefs(n: PNode, encoder: var PackedEncoder; m: var PackedModuleWriter) =
   case n.kind
   of routineDefs:
     toPackedProcDef(n, m.topLevel, encoder, m)
@@ -534,11 +569,11 @@ proc toPackedNodeIgnoreProcDefs(n: PNode, encoder: var PackedEncoder; m: var Pac
   else:
     toPackedNode(n, m.topLevel, encoder, m)
 
-proc toPackedNodeTopLevel*(n: PNode, encoder: var PackedEncoder; m: var PackedModule) =
+proc toPackedNodeTopLevel*(n: PNode, encoder: var PackedEncoder; m: var PackedModuleWriter) =
   toPackedNodeIgnoreProcDefs(n, encoder, m)
   flush encoder, m
 
-proc toPackedGeneratedProcDef*(s: PSym, encoder: var PackedEncoder; m: var PackedModule) =
+proc toPackedGeneratedProcDef*(s: PSym, encoder: var PackedEncoder; m: var PackedModuleWriter) =
   ## Generic procs and generated `=hook`'s need explicit top-level entries so
   ## that the code generator can work without having to special case these. These
   ## entries will also be useful for other tools and are the cleanest design
@@ -548,7 +583,7 @@ proc toPackedGeneratedProcDef*(s: PSym, encoder: var PackedEncoder; m: var Packe
   #flush encoder, m
 
 proc storeAttachedProcDef*(t: PType; op: TTypeAttachedOp; s: PSym,
-                           encoder: var PackedEncoder; m: var PackedModule) =
+                           encoder: var PackedEncoder; m: var PackedModuleWriter) =
   assert s.kind in routineKinds
   assert isActive(encoder)
   let tid = storeTypeLater(t, encoder, m)
@@ -556,7 +591,7 @@ proc storeAttachedProcDef*(t: PType; op: TTypeAttachedOp; s: PSym,
   m.attachedOps.add (tid, op, sid)
   toPackedGeneratedProcDef(s, encoder, m)
 
-proc storeInstantiation*(c: var PackedEncoder; m: var PackedModule; s: PSym; i: PInstantiation) =
+proc storeInstantiation*(c: var PackedEncoder; m: var PackedModuleWriter; s: PSym; i: PInstantiation) =
   var t = newSeq[PackedItemId](i.concreteTypes.len)
   for j in 0..high(i.concreteTypes):
     t[j] = storeTypeLater(i.concreteTypes[j], c, m)
@@ -565,7 +600,7 @@ proc storeInstantiation*(c: var PackedEncoder; m: var PackedModule; s: PSym; i: 
                                           concreteTypes: t)
   toPackedGeneratedProcDef(i.sym, c, m)
 
-proc storeExpansion*(c: var PackedEncoder; m: var PackedModule; info: TLineInfo; s: PSym) =
+proc storeExpansion*(c: var PackedEncoder; m: var PackedModuleWriter; info: TLineInfo; s: PSym) =
   toPackedNode(newSymNode(s, info), m.bodies, c, m)
 
 proc loadError(err: RodFileError; filename: AbsoluteFile; config: ConfigRef;) =
@@ -596,7 +631,7 @@ when BenchIC:
 else:
   template bench(x, body) = body
 
-proc loadRodFile*(filename: AbsoluteFile; m: var PackedModule; config: ConfigRef;
+proc loadRodFile*(filename: AbsoluteFile; m: var PackedModuleReader; config: ConfigRef;
                   ignoreConfig = false): RodFileError =
   var f = rodfiles.open(filename.string)
   f.loadHeader()
@@ -676,7 +711,7 @@ proc storeError(err: RodFileError; filename: AbsoluteFile) =
   echo "Error: ", $err, "; couldn't write to ", filename.string
   removeFile(filename.string)
 
-proc saveRodFile*(filename: AbsoluteFile; encoder: var PackedEncoder; m: var PackedModule) =
+proc saveRodFile*(filename: AbsoluteFile; encoder: var PackedEncoder; m: var PackedModuleWriter) =
   flush encoder, m
   #rememberConfig(encoder, encoder.config)
 
@@ -748,7 +783,7 @@ proc saveRodFile*(filename: AbsoluteFile; encoder: var PackedEncoder; m: var Pac
 
   when false:
     # basic loader testing:
-    var m2: PackedModule
+    var m2: PackedModuleReader
     discard loadRodFile(filename, m2, encoder.config)
     echo "loaded ", filename.string
 
@@ -774,7 +809,8 @@ type
   LoadedModule* = object
     status*: ModuleStatus
     symsInit, typesInit, loadedButAliveSetChanged*: bool
-    fromDisk*: PackedModule
+    fromDisk*: PackedModuleReader
+    toDisk*: PackedModuleWriter
     syms: OrderedTable[int32, PSym] # indexed by itemId
     types: OrderedTable[int32, PType]
     module*: PSym # the one true module symbol.
@@ -1193,7 +1229,7 @@ proc translateId*(id: PackedItemId; g: PackedModuleGraph; thisModule: int; confi
     ItemId(module: toFileIndex(id.module, g[thisModule].fromDisk, config).int32, item: id.item)
 
 proc simulateLoadedModule*(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCache;
-                           moduleSym: PSym; m: PackedModule) =
+                           moduleSym: PSym; m: PackedModuleWriter) =
   # For now only used for heavy debugging. In the future we could use this to reduce the
   # compiler's memory consumption.
   let idx = moduleSym.position
@@ -1291,7 +1327,7 @@ proc searchForCompilerproc*(m: LoadedModule; name: string): int32 =
 # ------------------------- .rod file viewer ---------------------------------
 
 proc rodViewer*(rodfile: AbsoluteFile; config: ConfigRef, cache: IdentCache) =
-  var m: PackedModule = PackedModule()
+  var m: PackedModuleReader = PackedModuleReader()
   let err = loadRodFile(rodfile, m, config, ignoreConfig=true)
   if err != ok:
     config.quitOrRaise "Error: could not load: " & $rodfile.string & " reason: " & $err
