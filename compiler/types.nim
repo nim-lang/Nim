@@ -1316,8 +1316,16 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     result = sameTypeOrNilAux(a.elementType, b.elementType, c) and
         sameValue(a.n[0], b.n[0]) and
         sameValue(a.n[1], b.n[1])
-  of tyGenericInst, tyAlias, tyInferred, tyIterable:
+  of tyAlias, tyInferred, tyIterable:
     cycleCheck()
+    result = sameTypeAux(a.skipModifier, b.skipModifier, c)
+  of tyGenericInst:
+    # BUG #23445
+    # The type system must distinguish between `T[int] = object #[empty]#`
+    # and `T[float] = object #[empty]#`!
+    cycleCheck()
+    for ff, aa in underspecifiedPairs(a, b, 1, -1):
+      if not sameTypeAux(ff, aa, c): return false
     result = sameTypeAux(a.skipModifier, b.skipModifier, c)
   of tyNone: result = false
   of tyConcept:

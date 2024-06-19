@@ -56,8 +56,11 @@ iterator instantiateGenericParamList(c: PContext, n: PNode, pt: TypeMapping): PS
       elif t.kind in {tyGenericParam, tyConcept}:
         localError(c.config, a.info, errCannotInstantiateX % q.name.s)
         t = errorType(c)
-      elif isUnresolvedStatic(t) and c.inGenericContext == 0 and
-          c.matchedConcept == nil:
+      elif isUnresolvedStatic(t) and (q.typ.kind == tyStatic or
+            (q.typ.kind == tyGenericParam and
+              q.typ.genericParamHasConstraints and
+              q.typ.genericConstraint.kind == tyStatic)) and
+          c.inGenericContext == 0 and c.matchedConcept == nil:
         # generic/concept type bodies will try to instantiate static values but
         # won't actually use them
         localError(c.config, a.info, errCannotInstantiateX % q.name.s)
@@ -396,6 +399,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TypeMapping,
   for _, param in paramTypes(result.typ):
     entry.concreteTypes[i] = param
     inc i
+  #echo "INSTAN ", fn.name.s, " ", typeToString(result.typ), " ", entry.concreteTypes.len
   if tfTriggersCompileTime in result.typ.flags:
     incl(result.flags, sfCompileTime)
   n[genericParamsPos] = c.graph.emptyNode
@@ -424,7 +428,9 @@ proc generateInstance(c: PContext, fn: PSym, pt: TypeMapping,
     if result.magic notin {mSlice, mTypeOf}:
       # 'toOpenArray' is special and it is allowed to return 'openArray':
       paramsTypeCheck(c, result.typ)
+    #echo "INSTAN ", fn.name.s, " ", typeToString(result.typ), " <-- NEW PROC!", " ", entry.concreteTypes.len
   else:
+    #echo "INSTAN ", fn.name.s, " ", typeToString(result.typ), " <-- CACHED! ", typeToString(oldPrc.typ), " ", entry.concreteTypes.len
     result = oldPrc
   popProcCon(c)
   popInfoContext(c.config)
