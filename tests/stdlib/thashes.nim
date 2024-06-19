@@ -1,5 +1,5 @@
 discard """
-  matrix: "--mm:refc; --mm:orc; --backend:cpp; --backend:js --jsbigint64:on; --backend:js --jsbigint64:off"
+  matrix: "--mm:refc; --mm:orc; --backend:cpp; --backend:js --jsbigint64:on; --backend:js --jsbigint64:off; --backend:c -d:nimPreviewHashFarm; --backend:cpp -d:nimPreviewHashFarm; --backend:js -d:nimPreviewHashFarm"
 """
 
 import std/hashes
