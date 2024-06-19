@@ -231,7 +231,7 @@ type
   TNodeKinds* = set[TNodeKind]
 
 type
-  TSymFlag* = enum    # 51 flags!
+  TSymFlag* = enum    # 52 flags!
     sfUsed,           # read access of sym (for warnings) or simply used
     sfExported,       # symbol is exported from module
     sfFromGeneric,    # symbol is instantiation of a generic; this is needed
@@ -315,6 +315,7 @@ type
     sfVirtual         # proc is a C++ virtual function
     sfByCopy          # param is marked as pass bycopy
     sfCodegenDecl     # type, proc, global or proc param is marked as codegenDecl
+    sfWasGenSym       # symbol was 'gensym'ed
 
   TSymFlags* = set[TSymFlag]
 

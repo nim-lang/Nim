@@ -521,7 +521,7 @@ proc semIdentVis(c: PContext, kind: TSymKind, n: PNode,
     result = newSymG(kind, n, c)
 
 proc semIdentWithPragma(c: PContext, kind: TSymKind, n: PNode,
-                        allowed: TSymFlags): PSym =
+                        allowed: TSymFlags, fromTopLevel = false): PSym =
   if n.kind == nkPragmaExpr:
     checkSonsLen(n, 2, c.config)
     result = semIdentVis(c, kind, n[0], allowed)
@@ -536,11 +536,15 @@ proc semIdentWithPragma(c: PContext, kind: TSymKind, n: PNode,
     else: discard
   else:
     result = semIdentVis(c, kind, n, allowed)
+    let invalidPragmasForPush = if fromTopLevel and sfWasGenSym notin result.flags:
+      {}
+    else:
+      {wExportc, wExportCpp, wDynlib}
     case kind
     of skField: implicitPragmas(c, result, n.info, fieldPragmas)
-    of skVar:   implicitPragmas(c, result, n.info, varPragmas)
-    of skLet:   implicitPragmas(c, result, n.info, letPragmas)
-    of skConst: implicitPragmas(c, result, n.info, constPragmas)
+    of skVar:   implicitPragmas(c, result, n.info, varPragmas-invalidPragmasForPush)
+    of skLet:   implicitPragmas(c, result, n.info, letPragmas-invalidPragmasForPush)
+    of skConst: implicitPragmas(c, result, n.info, constPragmas-invalidPragmasForPush)
     else: discard
 
 proc checkForOverlap(c: PContext, t: PNode, currentEx, branchIndex: int) =
