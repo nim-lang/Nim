@@ -1383,7 +1383,8 @@ elif not defined(useNimRtl):
         s.tv_sec = b.tv_sec
         s.tv_nsec = b.tv_nsec
 
-      if p.exitFlag:
+      # Ensure we don't wait on an exited process
+      if not(p.running()) and p.exitFlag:
         return exitStatusLikeShell(p.exitStatus)
 
       if timeout == -1:
