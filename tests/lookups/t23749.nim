@@ -1,3 +1,7 @@
+discard """
+  action: compile
+"""
+
 {.pragma: callback, gcsafe, raises: [].}
 
 type
