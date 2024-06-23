@@ -42,6 +42,7 @@ slots when enlarging a sequence.
 - `nimPreviewHashFarm` has been added to `lib/pure/hashes.nim` to default to a
 64-bit string `Hash` (based upon Google's Farm Hash) which is also faster than
 the present one.  At present, this is incompatible with `--jsbigint=off` mode.
+- `min`, `max`, and `sequtils`' `minIndex`, `maxIndex` and `minmax` for `openArray`s now accept a comparison function.
 
 [//]: # "Deprecations:"
 
