@@ -1633,7 +1633,7 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
 
   track(t, body)
 
-  if s.kind != skMacro:
+  if s.kind notin {skMacro, skTemplate}:
     let params = s.typ.n
     for i in 1..<params.len:
       let param = params[i].sym

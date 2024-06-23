@@ -701,7 +701,7 @@ proc procTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
     elif a[0] != nil:
       return isNone
 
-    result = getProcConvMismatch(c.c.config, f, a, result)[1]
+    result = getProcConvMismatch(c.c.config, f, a, result, c.calleeSym != nil and c.calleeSym.kind in {skTemplate, skMacro})[1]
 
     when useEffectSystem:
       if compatibleEffects(f, a) != efCompat: return isNone
@@ -2176,19 +2176,17 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
   # This special typing rule for macros and templates is not documented
   # anywhere and breaks symmetry. It's hard to get rid of though, my
   # custom seqs example fails to compile without this:
-  if r != isNone and m.calleeSym != nil and
-    m.calleeSym.kind in {skMacro, skTemplate}:
+  let macroOrTemplate = m.calleeSym != nil and m.calleeSym.kind in {skMacro, skTemplate}
+  if r != isNone and macroOrTemplate:
     # XXX: duplicating this is ugly, but we cannot (!) move this
     # directly into typeRel using return-like templates
-    incMatches(m, r)
-    if f.kind == tyTyped:
-      return arg
-    elif f.kind == tyTypeDesc:
-      return arg
+    if f.kind in {tyTyped, tyUntyped, tyTypeDesc,
+        tyVar, tyLent, tySink, tyOpenArray}:
+      incMatches(m, r)
+      return argSemantized
     elif f.kind == tyStatic and arg.typ.n != nil:
+      incMatches(m, r)
       return arg.typ.n
-    else:
-      return argSemantized # argOrig
 
   block instantiateGenericRoutine:
     # In the case where the matched value is a generic proc, we need to
@@ -2256,8 +2254,9 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
     inc(m.genericMatches)
     if arg.typ == nil:
       result = arg
-    elif skipTypes(arg.typ, abstractVar-{tyTypeDesc}).kind == tyTuple or
-         m.inheritancePenalty > oldInheritancePenalty:
+    elif m.inheritancePenalty > oldInheritancePenalty or (
+        skipTypes(arg.typ, abstractVar-{tyTypeDesc}).kind == tyTuple and
+          not macroOrTemplate):
       result = implicitConv(nkHiddenSubConv, f, arg, m, c)
     elif arg.typ.isEmptyContainer:
       result = arg.copyTree
@@ -2278,8 +2277,8 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
     inc(m.exactMatches)
     result = arg
     let ff = skipTypes(f, abstractVar-{tyTypeDesc})
-    if ff.kind == tyTuple or
-      (arg.typ != nil and skipTypes(arg.typ, abstractVar-{tyTypeDesc}).kind == tyTuple):
+    if not macroOrTemplate and (ff.kind == tyTuple or
+      (arg.typ != nil and skipTypes(arg.typ, abstractVar-{tyTypeDesc}).kind == tyTuple)):
       result = implicitConv(nkHiddenSubConv, f, arg, m, c)
   of isNone:
     # do not do this in ``typeRel`` as it then can't infer T in ``ref T``:
