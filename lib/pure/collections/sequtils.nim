@@ -248,7 +248,7 @@ func minIndex*[T](s: openArray[T]): int {.since: (1, 1).} =
   for i in 1..high(s):
     if s[i] < s[result]: result = i
 
-func minIndex*[T](s: openArray[T], cmp: proc(a, b: T): bool {.closure.}): int {.effectsOf: cmp.} =
+func minIndex*[T](s: openArray[T], cmp: proc(a, b: T): bool): int {.effectsOf: cmp.} =
   ## Returns the index of the minimum value of `s`.
   ## `cmp` should return true if `a` is *less* than `b`.
   runnableExamples:
@@ -280,7 +280,7 @@ func maxIndex*[T](s: openArray[T]): int {.since: (1, 1).} =
   for i in 1..high(s):
     if s[i] > s[result]: result = i
 
-func maxIndex*[T](s: openArray[T], cmp: proc(a, b: T): bool {.closure.}): int {.effectsOf: cmp.} =
+func maxIndex*[T](s: openArray[T], cmp: proc(a, b: T): bool): int {.effectsOf: cmp.} =
   ## Returns the index of the maximum value of `s`.
   ## `cmp` should return true if `a` is *less* than `b`.
   runnableExamples:
@@ -303,7 +303,7 @@ func minmax*[T](x: openArray[T]): (T, T) =
     if h < x[i]: h = x[i]
   result = (l, h)
 
-func minmax*[T](x: openArray[T], cmp: proc(a, b: T): bool {.closure.}): (T, T) {.effectsOf: cmp.} =
+func minmax*[T](x: openArray[T], cmp: proc(a, b: T): bool): (T, T) {.effectsOf: cmp.} =
   ## The minimum and maximum values of `x`.
   ## `cmp` should return true if `a` is *less* than `b`.
   result = (x[0], x[0])
