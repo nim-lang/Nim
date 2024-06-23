@@ -146,7 +146,7 @@ proc unregisterCycle(s: Cell) =
   let idx = s.rootIdx-1
   when false:
     if idx >= roots.len or idx < 0:
-      cprintf("[Bug!] %ld\n", idx)
+      cprintf("[Bug!] %ld %ld\n", idx, roots.len)
       rawQuit 1
   roots.d[idx] = roots.d[roots.len-1]
   roots.d[idx][0].rootIdx = idx+1
@@ -303,6 +303,14 @@ proc collectColor(s: Cell; desc: PNimTypeV2; col: int; j: var GcEnv) =
         t.setColor(colBlack)
         trace(t, desc, j)
 
+const
+  defaultThreshold = when defined(nimFixedOrc): 10_000 else: 128
+
+when defined(nimStressOrc):
+  const rootsThreshold = 10 # broken with -d:nimStressOrc: 10 and for havlak iterations 1..8
+else:
+  var rootsThreshold {.threadvar.}: int
+
 proc collectCyclesBacon(j: var GcEnv; lowMark: int) =
   # pretty direct translation from
   # https://researcher.watson.ibm.com/researcher/files/us-bacon/Bacon01Concurrent.pdf
@@ -341,22 +349,25 @@ proc collectCyclesBacon(j: var GcEnv; lowMark: int) =
     s.rootIdx = 0
     collectColor(s, roots.d[i][1], colToCollect, j)
 
+  # Bug #22927: `free` calls destructors which can append to `roots`.
+  # We protect against this here by setting `roots.len` to 0 and also
+  # setting the threshold so high that no cycle collection can be triggered
+  # until we are out of this critical section:
+  when not defined(nimStressOrc):
+    let oldThreshold = rootsThreshold
+    rootsThreshold = high(int)
+  roots.len = 0
+
   for i in 0 ..< j.toFree.len:
     when orcLeakDetector:
       writeCell("CYCLIC OBJECT FREED", j.toFree.d[i][0], j.toFree.d[i][1])
     free(j.toFree.d[i][0], j.toFree.d[i][1])
 
+  when not defined(nimStressOrc):
+    rootsThreshold = oldThreshold
+
   inc j.freed, j.toFree.len
   deinit j.toFree
-  #roots.len = 0
-
-const
-  defaultThreshold = when defined(nimFixedOrc): 10_000 else: 128
-
-when defined(nimStressOrc):
-  const rootsThreshold = 10 # broken with -d:nimStressOrc: 10 and for havlak iterations 1..8
-else:
-  var rootsThreshold {.threadvar.}: int
 
 when defined(nimOrcStats):
   var freedCyclicObjects {.threadvar.}: int
@@ -396,7 +407,8 @@ proc collectCycles() =
     collectCyclesBacon(j, 0)
 
   deinit j.traceStack
-  deinit roots
+  if roots.len == 0:
+    deinit roots
 
   when not defined(nimStressOrc):
     # compute the threshold based on the previous history

@@ -301,13 +301,13 @@ proc genCppParamsForCtor(p: BProc; call: PNode; didGenTemp: var bool): string =
       result.add genCppInitializer(p.module, p, call[i][0].sym.typ, didGenTemp)
     else:
       #We need to test for temp in globals, see: #23657
-      let param = 
+      let param =
         if typ[i].kind in {tyVar} and call[i].kind == nkHiddenAddr:
           call[i][0]
         else:
           call[i]
-      if param.kind != nkBracketExpr or param.typ.kind in 
-        {tyRef, tyPtr, tyUncheckedArray, tyArray, tyOpenArray, 
+      if param.kind != nkBracketExpr or param.typ.kind in
+        {tyRef, tyPtr, tyUncheckedArray, tyArray, tyOpenArray,
           tyVarargs, tySequence, tyString, tyCstring, tyTuple}:
         let tempLoc = initLocExprSingleUse(p, param)
         didGenTemp = didGenTemp or tempLoc.k == locTemp
@@ -755,6 +755,18 @@ proc raiseExit(p: BProc) =
       lineCg(p, cpsStmts, "if (NIM_UNLIKELY(*nimErr_)) goto LA$1_;$n",
         [p.nestedTryStmts[^1].label])
 
+proc raiseExitCleanup(p: BProc, destroy: string) =
+  assert p.config.exc == excGoto
+  if nimErrorFlagDisabled notin p.flags:
+    p.flags.incl nimErrorFlagAccessed
+    if p.nestedTryStmts.len == 0:
+      p.flags.incl beforeRetNeeded
+      # easy case, simply goto 'ret':
+      lineCg(p, cpsStmts, "if (NIM_UNLIKELY(*nimErr_)) {$1; goto BeforeRet_;}$n", [destroy])
+    else:
+      lineCg(p, cpsStmts, "if (NIM_UNLIKELY(*nimErr_)) {$2; goto LA$1_;}$n",
+        [p.nestedTryStmts[^1].label, destroy])
+
 proc finallyActions(p: BProc) =
   if p.config.exc != excGoto and p.nestedTryStmts.len > 0 and p.nestedTryStmts[^1].inExcept:
     # if the current try stmt have a finally block,
@@ -784,10 +796,14 @@ proc genRaiseStmt(p: BProc, t: PNode) =
     var e = rdLoc(a)
     discard getTypeDesc(p.module, t[0].typ)
     var typ = skipTypes(t[0].typ, abstractPtrs)
-    # XXX For reasons that currently escape me, this is only required by the new
-    # C++ based exception handling:
-    if p.config.exc == excCpp:
+    case p.config.exc
+    of excCpp:
       blockLeaveActions(p, howManyTrys = 0, howManyExcepts = p.inExceptBlockLen)
+    of excGoto:
+      blockLeaveActions(p, howManyTrys = 0,
+        howManyExcepts = (if p.nestedTryStmts.len > 0 and p.nestedTryStmts[^1].inExcept: 1 else: 0))
+    else:
+      discard
     genLineDir(p, t)
     if isImportedException(typ, p.config):
       lineF(p, cpsStmts, "throw $1;$n", [e])
@@ -1566,14 +1582,14 @@ proc genAsmStmt(p: BProc, t: PNode) =
       if whichPragma(i) == wAsmSyntax:
         asmSyntax = i[1].strVal
 
-  if asmSyntax != "" and 
+  if asmSyntax != "" and
      not (
       asmSyntax == "gcc" and hasGnuAsm in CC[p.config.cCompiler].props or
       asmSyntax == "vcc" and hasGnuAsm notin CC[p.config.cCompiler].props):
     localError(
-      p.config, t.info, 
+      p.config, t.info,
       "Your compiler does not support the specified inline assembler")
-  
+
   genAsmOrEmitStmt(p, t, isAsmStmt=true, s)
   # see bug #2362, "top level asm statements" seem to be a mis-feature
   # but even if we don't do this, the example in #2362 cannot possibly
