@@ -62,6 +62,10 @@ jobs:
         shell: bash
         run: echo "${{ github.workspace }}/bin" >> "${GITHUB_PATH}"
 
+      - name: 'NIM_TESTAMENT_DISABLE_SSL'
+        shell: bash
+        run: echo "NIM_TESTAMENT_DISABLE_SSL=1" >> $GITHUB_ENV
+
       - name: 'System information'
         shell: bash
         run: . ci/funs.sh && nimCiSystemInfo
