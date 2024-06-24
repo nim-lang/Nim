@@ -872,7 +872,8 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
       for i in 1..<n.len:
         if n[i].kind == nkExprColonExpr:
           let field = lookupFieldAgain(t, n[i][0].sym)
-          if field != nil and sfCursor in field.flags:
+          if field != nil and (sfCursor in field.flags or field.typ.kind in {tyOpenArray, tyVarargs}):
+            # don't sink fields with openarray types
             result[i][1] = p(n[i][1], c, s, normal)
           else:
             result[i][1] = p(n[i][1], c, s, m)

@@ -692,7 +692,10 @@ proc getAppDir*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect], noWeirdT
 
 proc sleep*(milsecs: int) {.rtl, extern: "nos$1", tags: [TimeEffect], noWeirdTarget.} =
   ## Sleeps `milsecs` milliseconds.
+  ## A negative `milsecs` causes sleep to return immediately.
   when defined(windows):
+    if milsecs < 0:
+      return  # fixes #23732
     winlean.sleep(int32(milsecs))
   else:
     var a, b: Timespec

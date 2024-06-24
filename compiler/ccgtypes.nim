@@ -277,9 +277,12 @@ proc isInvalidReturnType(conf: ConfigRef; typ: PType, isProc = true): bool =
       if rettype.isImportedCppType or t.isImportedCppType or
           (typ.callConv == ccCDecl and conf.selectedGC in {gcArc, gcAtomicArc, gcOrc}):
         # prevents nrvo for cdecl procs; # bug #23401
-        return false
-      result = containsGarbageCollectedRef(t) or
-          (t.kind == tyObject and not isObjLackingTypeField(t))
+        result = false
+      else:
+        result = containsGarbageCollectedRef(t) or
+            (t.kind == tyObject and not isObjLackingTypeField(t)) or
+            (getSize(conf, rettype) == szUnknownSize and (t.sym == nil or sfImportc notin t.sym.flags))
+
     else: result = false
 
 const
