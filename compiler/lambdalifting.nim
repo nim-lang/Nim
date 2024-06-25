@@ -341,9 +341,13 @@ proc getEnvTypeForOwner(c: var DetectionPass; owner: PSym;
                         info: TLineInfo): PType =
   result = c.ownerToType.getOrDefault(owner.id)
   if result.isNil:
-    result = newType(tyRef, c.idgen, owner)
-    let obj = createEnvObj(c.graph, c.idgen, owner, info)
-    rawAddSon(result, obj)
+    let env = getEnvParam(owner)
+    if env.isNil or not owner.isIterator:
+      result = newType(tyRef, c.idgen, owner)
+      let obj = createEnvObj(c.graph, c.idgen, owner, info)
+      rawAddSon(result, obj)
+    else:
+      result = env.typ
     c.ownerToType[owner.id] = result
 
 proc asOwnedRef(c: var DetectionPass; t: PType): PType =
@@ -892,6 +896,9 @@ proc liftLambdas*(g: ModuleGraph; fn: PSym, body: PNode; tooEarly: var bool;
     # ignore forward declaration:
     result = body
     tooEarly = true
+    if fn.isIterator:
+      var d = initDetectionPass(g, fn, idgen)
+      addClosureParam(d, fn, body.info)
   else:
     var d = initDetectionPass(g, fn, idgen)
     detectCapturedVars(body, fn, d)
