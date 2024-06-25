@@ -102,7 +102,7 @@ proc collectionToString[T](x: T, prefix, separator, suffix: string): string =
     result.add(separator)
 
   if result.len > prefix.len:
-    result[^separator.len..^1] = suffix
+    result[^separator.len..(^1)] = suffix
   else:
     result.add(suffix)
 
