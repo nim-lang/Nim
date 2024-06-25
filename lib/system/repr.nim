@@ -89,8 +89,7 @@ proc addSetElem(result: var string, elem: int, typ: PNimType) {.benign.} =
 
 proc reprSetAux(result: var string, p: pointer, typ: PNimType) =
   # "typ.slots.len" field is for sets the "first" field
-  var elemCounter = 0  # we need this flag for adding the comma at
-                       # the right places
+  let oldLen = result.len
   add result, "{"
   var u: uint64
   case typ.size
@@ -103,16 +102,17 @@ proc reprSetAux(result: var string, p: pointer, typ: PNimType) =
     var a = cast[PByteArray](p)
     for i in 0 .. typ.size*8-1:
       if (uint(a[i shr 3]) and (1'u shl (i and 7))) != 0:
-        if elemCounter > 0: add result, ", "
         addSetElem(result, i+typ.node.len, typ.base)
-        inc(elemCounter)
+        result.add ", "
   if typ.size <= 8:
     for i in 0..sizeof(int64)*8-1:
       if (u and (1'u64 shl uint64(i))) != 0'u64:
-        if elemCounter > 0: add result, ", "
         addSetElem(result, i+typ.node.len, typ.base)
-        inc(elemCounter)
-  add result, "}"
+        result.add ", "
+  if result.len - oldLen > 1:
+    result[^2..^1] = "}"
+  else:
+    add result, "}"
 
 proc reprSet(p: pointer, typ: PNimType): string {.compilerRtl.} =
   result = ""
@@ -153,10 +153,14 @@ when not defined(useNimRtl):
                  cl: var ReprClosure) =
     add result, "["
     var bs = typ.base.size
-    for i in 0..typ.size div bs - 1:
-      if i > 0: add result, ", "
+    let len = typ.size div bs
+    for i in 0..<len:
       reprAux(result, cast[pointer](cast[int](p) + i*bs), typ.base, cl)
-    add result, "]"
+      add result, ", "
+    if len > 0:
+      result[^2..^1] = "]"
+    else:
+      add result, "]"
 
   when defined(nimSeqsV2):
     type
@@ -181,11 +185,15 @@ when not defined(useNimRtl):
     result.add(reprPointer(p))
     result.add "@["
     var bs = typ.base.size
-    for i in 0..cast[PGenericSeq](p).len-1:
-      if i > 0: add result, ", "
+    let len = cast[PGenericSeq](p).len
+    for i in 0..<len:
       reprAux(result, cast[pointer](cast[int](payloadPtr(p)) + align(payloadOffset, typ.align) + i*bs),
               typ.base, cl)
-    add result, "]"
+      add result, ", "
+    if len > 0:
+      result[^2..^1] = "]"
+    else:
+      add result, "]"
 
   proc reprRecordAux(result: var string, p: pointer, n: ptr TNimNode,
                      cl: var ReprClosure) {.benign.} =
@@ -206,19 +214,20 @@ when not defined(useNimRtl):
 
   proc reprRecord(result: var string, p: pointer, typ: PNimType,
                   cl: var ReprClosure) =
+    let oldLen = result.len
     add result, "["
     var curTyp = typ
-    var first = true
     while curTyp != nil:
       var part = ""
       reprRecordAux(part, p, curTyp.node, cl)
       if part.len > 0:
-        if not first:
-          add result, ",\n"
         add result, part
-        first = false
+        add result, ",\n"
       curTyp = curTyp.base
-    add result, "]"
+    if result.len - oldLen > 1:
+      result[^2..^1] = "]"
+    else:
+      add result, "]"
 
   proc reprRef(result: var string, p: pointer, typ: PNimType,
                cl: var ReprClosure) =
@@ -306,9 +315,12 @@ when not defined(useNimRtl):
     result = "["
     var bs = elemtyp.size
     for i in 0..length - 1:
-      if i > 0: add result, ", "
       reprAux(result, cast[pointer](cast[int](p) + i*bs), elemtyp, cl)
-    add result, "]"
+      add result, ", "
+    if length > 0:
+      result[^2..^1] = "]"
+    else:
+      add result, "]"
     deinitReprClosure(cl)
 
 when not defined(useNimRtl):

@@ -91,15 +91,15 @@ iterator setKeys(s: int): int {.inline.} =
     inc i
 
 proc reprSetAux(result: var string, s: int, typ: PNimType) =
+  let oldLen = result.len
   add(result, "{")
-  var first: bool = true
   for el in setKeys(s):
-    if first:
-      first = false
-    else:
-      add(result, ", ")
     addSetElem(result, el, typ.base)
-  add(result, "}")
+    add(result, ", ")
+  if result.len - oldLen > 1:
+    result[^2..^1] = "}"
+  else:
+    add(result, "}")
 
 proc reprSet(e: int, typ: PNimType): string {.compilerRtl.} =
   reprSetAux(result, e, typ)
@@ -124,16 +124,18 @@ proc reprArray(a: pointer, typ: PNimType,
   {. emit: "`len` = `a`.length;\n" .}
   var dereffed: pointer = a
   for i in 0 .. len-1:
-    if i > 0 :
-      add(result, ", ")
     # advance pointer and point to element at index
     {. emit: """
     `dereffed`_Idx = `i`;
     `dereffed` = `a`[`dereffed`_Idx];
     """ .}
     reprAux(result, dereffed, typ.base, cl)
+    add(result, ", ")
 
-  add(result, "]")
+  if len > 0:
+    result[^2..^1] = "]"
+  else:
+    add(result, "]")
 
 proc isPointedToNil(p: pointer): bool =
   {. emit: "if (`p` === null) {`result` = true};\n" .}
@@ -156,7 +158,6 @@ proc reprRef(result: var string, p: pointer, typ: PNimType,
 proc reprRecordAux(result: var string, o: pointer, typ: PNimType, cl: var ReprClosure) =
   add(result, "[")
 
-  var first = true
   var val = o
   if typ.node.len == 0:
     # if the object has only one field, len is 0  and sons is nil, the field is in node
@@ -164,17 +165,16 @@ proc reprRecordAux(result: var string, o: pointer, typ: PNimType, cl: var ReprCl
     add(result, $key & " = ")
     {. emit: "`val` = `o`[`key`];\n" .}
     reprAux(result, val, typ.node.typ, cl)
+    add(result, "]")
   else:
     # if the object has more than one field, sons is not nil and contains the fields.
     for i in 0 .. typ.node.len-1:
-      if first: first = false
-      else: add(result, ",\n")
-
       let key: cstring = typ.node.sons[i].name
       add(result, $key & " = ")
       {. emit: "`val` = `o`[`key`];\n" .} # access the field by name
       reprAux(result, val, typ.node.sons[i].typ, cl)
-  add(result, "]")
+      add(result, ",\n")
+    result[^2..^1] = "]"
 
 proc reprRecord(o: pointer, typ: PNimType, cl: var ReprClosure): string {.compilerRtl.} =
   reprRecordAux(result, o, typ, cl)

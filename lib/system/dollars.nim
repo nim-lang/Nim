@@ -89,13 +89,7 @@ when not defined(nimPreviewSlimSystem):
 
 proc collectionToString[T](x: T, prefix, separator, suffix: string): string =
   result = prefix
-  var firstElement = true
   for value in items(x):
-    if firstElement:
-      firstElement = false
-    else:
-      result.add(separator)
-
     when value isnot string and value isnot seq and compiles(value.isNil):
       # this branch should not be necessary
       if value.isNil:
@@ -104,7 +98,13 @@ proc collectionToString[T](x: T, prefix, separator, suffix: string): string =
         result.addQuoted(value)
     else:
       result.addQuoted(value)
-  result.add(suffix)
+
+    result.add(separator)
+
+  if result.len > prefix.len:
+    result[^separator.len..^1] = suffix
+  else:
+    result.add(suffix)
 
 proc `$`*[T](x: set[T]): string =
   ## Generic `$` operator for sets that is lifted from the components
