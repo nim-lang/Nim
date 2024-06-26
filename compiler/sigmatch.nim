@@ -1260,8 +1260,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     subtypeCheck()
   of tyArray:
     a = reduceToBase(a)
-    case a.kind
-    of tyArray:
+    if a.kind == tyArray:
       var fRange = f.indexType
       var aRange = a.indexType
       if fRange.kind in {tyGenericParam, tyAnything}:
@@ -1279,7 +1278,10 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         result = isGeneric
       else:
         result = typeRel(c, ff, aa, flags)
-
+      
+      if fRange.kind == tyArray and fRange.indexType.kind == tyGenericParam:
+        return
+      
       if result < isGeneric:
         if nimEnableCovariance and
            trNoCovariance notin flags and
@@ -1298,7 +1300,6 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       else:
         if lengthOrd(c.c.config, fRange) != lengthOrd(c.c.config, aRange):
           result = isNone
-    else: discard
   of tyUncheckedArray:
     if a.kind == tyUncheckedArray:
       result = typeRel(c, elementType(f), elementType(a), flags)
