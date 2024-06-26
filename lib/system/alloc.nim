@@ -785,20 +785,13 @@ when defined(gcDestructors):
     # Well, not for the entire list, but for `max` elements of the list because
     # we split the list in order to achieve bounded response times.
     var it = c.freeList
-    var x = 0
-    var maxIters = 20 # make it time-bounded
+    var total = 0
     while it != nil:
-      if maxIters == 0:
-        let rest = it.next.loada
-        if rest != nil:
-          it.next.storea nil
-          addToSharedFreeList(c, rest)
-        break
-      inc x, size
-      it = it.next.loada
-      dec maxIters
-    inc(c.free, x)
-    dec(a.occ, x)
+      inc total, size
+      let chunk = cast[PSmallChunk](pageAddr(it))
+      inc(chunk.free, size)
+      it = it.next
+    dec(a.occ, total)
 
   proc freeDeferredObjects(a: var MemRegion; root: PBigChunk) =
     var it = root
@@ -905,7 +898,7 @@ proc rawAlloc(a: var MemRegion, requestedSize: int): pointer =
     trackSize(c.size)
   sysAssert(isAccessible(a, result), "rawAlloc 14")
   sysAssert(allocInv(a), "rawAlloc: end")
-  when logAlloc: cprintf("var pointer_%p = alloc(%ld)\n", result, requestedSize)
+  when logAlloc: cprintf("var pointer_%p = alloc(%ld) # %p\n", result, requestedSize, addr a)
 
 proc rawAlloc0(a: var MemRegion, requestedSize: int): pointer =
   result = rawAlloc(a, requestedSize)
@@ -954,6 +947,8 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
           c.size = SmallChunkSize
           freeBigChunk(a, cast[PBigChunk](c))
     else:
+      when logAlloc: cprintf("dealloc(pointer_%p) # SMALL FROM %p CALLER %p\n", p, c.owner, addr(a))
+
       when defined(gcDestructors):
         addToSharedFreeList(c, f)
     sysAssert(((cast[int](p) and PageMask) - smallChunkOverhead()) %%
@@ -961,6 +956,7 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
   else:
     # set to 0xff to check for usage after free bugs:
     when overwriteFree: nimSetMem(p, -1'i32, c.size -% bigChunkOverhead())
+    when logAlloc: cprintf("dealloc(pointer_%p) # BIG %p\n", p, c.owner)
     when defined(gcDestructors):
       if c.owner == addr(a):
         deallocBigChunk(a, cast[PBigChunk](c))
@@ -968,8 +964,9 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
         addToSharedFreeListBigChunks(c.owner[], cast[PBigChunk](c))
     else:
       deallocBigChunk(a, cast[PBigChunk](c))
+
   sysAssert(allocInv(a), "rawDealloc: end")
-  when logAlloc: cprintf("dealloc(pointer_%p)\n", p)
+  #when logAlloc: cprintf("dealloc(pointer_%p)\n", p)
 
 when not defined(gcDestructors):
   proc isAllocatedPtr(a: MemRegion, p: pointer): bool =
