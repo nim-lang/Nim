@@ -2349,6 +2349,7 @@ proc genMove(p: BProc; n: PNode; d: var TLoc) =
         var tmp = getTemp(p, n[1].typ.skipTypes({tySink}))
         genAssignment(p, tmp, a, {needToCopySinkParam})
         genAssignment(p, d, tmp, {})
+        resetLoc(p, tmp)
       else:
         genAssignment(p, d, a, {})
       resetLoc(p, a)
