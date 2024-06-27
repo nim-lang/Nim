@@ -52,6 +52,7 @@ where code size matters and you know that your code does not produce cycles, you
 use `--mm:arc`. Notice that the default `async`:idx: implementation produces cycles
 and leaks memory with `--mm:arc`, in other words, for `async` you need to use `--mm:orc`.
 
+Only ARC/ORC support move semantics, destructors, views, `sink`, `lent`, `cursor`, `acyclic` and incremental compilation.
 
 
 Other MM modes
