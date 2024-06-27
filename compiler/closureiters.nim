@@ -36,13 +36,6 @@
 #  else:
 #    return
 
-# The transformation should play well with lambdalifting, however depending
-# on situation, it can be called either before or after lambdalifting
-# transformation. As such we behave slightly differently, when accessing
-# iterator state, or using temp variables. If lambdalifting did not happen,
-# we just create local variables, so that they will be lifted further on.
-# Otherwise, we utilize existing env, created by lambdalifting.
-
 # Lambdalifting treats :state variable specially, it should always end up
 # as the first field in env. Currently C codegen depends on this behavior.
 
@@ -167,11 +160,14 @@ type
     nearestFinally: int # Index of the nearest finally block. For try/except it
                     # is their finally. For finally it is parent finally. Otherwise -1
     idgen: IdGenerator
+    varStates: Table[ItemId, int] # Used to detect if local variable belongs to multiple states
 
 const
   nkSkip = {nkEmpty..nkNilLit, nkTemplateDef, nkTypeSection, nkStaticStmt,
             nkCommentStmt, nkMixinStmt, nkBindStmt} + procDefs
   emptyStateLabel = -1
+  localNotSeen = -1
+  localRequiresLifting = -2
 
 proc newStateAccess(ctx: var Ctx): PNode =
   result = rawIndirectAccess(newSymNode(getEnvParam(ctx.fn)),
@@ -1412,11 +1408,65 @@ proc preprocess(c: var PreprocessContext; n: PNode): PNode =
     for i in 0 ..< n.len:
       result[i] = preprocess(c, n[i])
 
+proc detectCapturedVars(c: var Ctx, n: PNode, stateIdx: int) =
+  case n.kind
+  of nkSym:
+    let s = n.sym
+    if s.kind in {skResult, skVar, skLet, skForVar, skTemp} and sfGlobal notin s.flags and s.owner == c.fn:
+      let vs = c.varStates.getOrDefault(s.itemId, localNotSeen)
+      if vs == localNotSeen: # First seing this variable
+        c.varStates[s.itemId] = stateIdx
+      elif vs == localRequiresLifting:
+        discard # Sym already marked
+      elif vs != stateIdx:
+        c.varStates[s.itemId] = localRequiresLifting # Mark this variable for lifting
+        let e = getEnvParam(c.fn)
+        let f = addField(e.typ.elementType, s, c.g.cache, c.idgen)
+  of nkReturnStmt:
+    if n[0].kind in {nkAsgn, nkFastAsgn, nkSinkAsgn}:
+      # we have a `result = result` expression produced by the closure
+      # transform, let's not touch the LHS in order to make the lifting pass
+      # correct when `result` is lifted
+      detectCapturedVars(c, n[0][1], stateIdx)
+    else:
+      detectCapturedVars(c, n[0], stateIdx)
+  else:
+    for i in 0 ..< n.safeLen:
+      detectCapturedVars(c, n[i], stateIdx)
+
+proc detectCapturedVars(c: var Ctx) =
+  for i, s in c.states:
+    detectCapturedVars(c, s.body, i)
+
+proc liftLocals(c: var Ctx, n: PNode): PNode =
+  result = n
+  case n.kind
+  of nkSym:
+    let s = n.sym
+    if c.varStates.getOrDefault(s.itemId) == localRequiresLifting:
+      # lift
+      let e = getEnvParam(c.fn)
+      let field = getFieldFromObj(e.typ.elementType, s)
+      assert(field != nil)
+      result = rawIndirectAccess(newSymNode(e), field, n.info)
+  of nkReturnStmt:
+    if n[0].kind in {nkAsgn, nkFastAsgn, nkSinkAsgn}:
+      # we have a `result = result` expression produced by the closure
+      # transform, let's not touch the LHS in order to make the lifting pass
+      # correct when `result` is lifted
+      n[0][1] = liftLocals(c, n[0][1])
+    else:
+      n[0] = liftLocals(c, n[0])
+  else:
+    for i in 0 ..< n.safeLen:
+      n[i] = liftLocals(c, n[i])
+
 proc transformClosureIterator*(g: ModuleGraph; idgen: IdGenerator; fn: PSym, n: PNode): PNode =
   var ctx = Ctx(g: g, fn: fn, idgen: idgen)
 
-  if getEnvParam(fn).isNil:
-    doAssert(false)
+  # The transformation should always happen after at least partial lambdalifting
+  # is performed, so that the closure iter environment is always created upfront.
+  doAssert(getEnvParam(fn) != nil, "Env param not created before iter transformation")
 
   ctx.stateLoopLabel = newSym(skLabel, getIdent(ctx.g.cache, ":stateLoop"), idgen, fn, fn.info)
   var pc = PreprocessContext(finallys: @[], config: g.config, idgen: idgen)
@@ -1442,6 +1492,10 @@ proc transformClosureIterator*(g: ModuleGraph; idgen: IdGenerator; fn: PSym, n: 
   let caseDispatcher = newTreeI(nkCaseStmt, n.info,
       ctx.newStateAccess())
 
+  # Lamdalifting will not touch our locals, it is our responsibility to lift those that
+  # need it.
+  detectCapturedVars(ctx)
+
   for s in ctx.states:
     let body = ctx.transformStateAssignments(s.body)
     caseDispatcher.add newTreeI(nkOfBranch, body.info, g.newIntLit(body.info, s.label), body)
@@ -1449,6 +1503,7 @@ proc transformClosureIterator*(g: ModuleGraph; idgen: IdGenerator; fn: PSym, n: 
   caseDispatcher.add newTreeI(nkElse, n.info, newTreeI(nkReturnStmt, n.info, g.emptyNode))
 
   result = wrapIntoStateLoop(ctx, caseDispatcher)
+  result = liftLocals(ctx, result)
 
   when false:
     echo "TRANSFORM TO STATES: "

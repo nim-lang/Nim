@@ -145,11 +145,13 @@ proc createStateField(g: ModuleGraph; iter: PSym; idgen: IdGenerator): PSym =
   result = newSym(skField, getIdent(g.cache, ":state"), idgen, iter, iter.info)
   result.typ = createClosureIterStateType(g, iter, idgen)
 
+template isIterator*(owner: PSym): bool =
+  owner.kind == skIterator and owner.typ.callConv == ccClosure
+
 proc createEnvObj(g: ModuleGraph; idgen: IdGenerator; owner: PSym; info: TLineInfo): PType =
-  # YYY meh, just add the state field for every closure for now, it's too
-  # hard to figure out if it comes from a closure iterator:
   result = createObj(g, idgen, owner, info, final=false)
-  rawAddField(result, createStateField(g, owner, idgen))
+  if owner.isIterator:
+    rawAddField(result, createStateField(g, owner, idgen))
 
 proc getClosureIterResult*(g: ModuleGraph; iter: PSym; idgen: IdGenerator): PSym =
   if resultPos < iter.ast.len:
@@ -172,25 +174,21 @@ proc addHiddenParam(routine: PSym, param: PSym) =
   assert sfFromGeneric in param.flags
   #echo "produced environment: ", param.id, " for ", routine.id
 
-proc getHiddenParam(g: ModuleGraph; routine: PSym): PSym =
+proc getEnvParam*(routine: PSym): PSym =
   let params = routine.ast[paramsPos]
   let hidden = lastSon(params)
   if hidden.kind == nkSym and hidden.sym.kind == skParam and hidden.sym.name.s == paramName:
     result = hidden.sym
     assert sfFromGeneric in result.flags
   else:
+    result = nil
+
+proc getHiddenParam(g: ModuleGraph; routine: PSym): PSym =
+  result = getEnvParam(routine)
+  if result.isNil:
     # writeStackTrace()
     localError(g.config, routine.info, "internal error: could not find env param for " & routine.name.s)
     result = routine
-
-proc getEnvParam*(routine: PSym): PSym =
-  let params = routine.ast[paramsPos]
-  let hidden = lastSon(params)
-  if hidden.kind == nkSym and hidden.sym.name.s == paramName:
-    result = hidden.sym
-    assert sfFromGeneric in result.flags
-  else:
-    result = nil
 
 proc interestingVar(s: PSym): bool {.inline.} =
   result = s.kind in {skVar, skLet, skTemp, skForVar, skParam, skResult} and
@@ -229,15 +227,6 @@ proc makeClosure*(g: ModuleGraph; idgen: IdGenerator; prc: PSym; env: PNode; inf
   createTypeBoundOps(g, nil, result.typ, info, idgen)
   if tfHasAsgn in result.typ.flags or optSeqDestructors in g.config.globalOptions:
     prc.flags.incl sfInjectDestructors
-
-proc interestingIterVar(s: PSym): bool {.inline.} =
-  # XXX optimization: Only lift the variable if it lives across
-  # yield/return boundaries! This can potentially speed up
-  # closure iterators quite a bit.
-  result = s.kind in {skResult, skVar, skLet, skTemp, skForVar} and sfGlobal notin s.flags
-
-template isIterator*(owner: PSym): bool =
-  owner.kind == skIterator and owner.typ.callConv == ccClosure
 
 template liftingHarmful(conf: ConfigRef; owner: PSym): bool =
   ## lambda lifting can be harmful for JS-like code generators.
@@ -463,17 +452,6 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
       if owner.isIterator:
         c.somethingToDo = true
         addClosureParam(c, owner, n.info)
-        if interestingIterVar(s):
-          if not c.capturedVars.contains(s.id):
-            if not c.inTypeOf: c.capturedVars.incl(s.id)
-            let obj = getHiddenParam(c.graph, owner).typ.skipTypes({tyOwned, tyRef, tyPtr})
-            #let obj = c.getEnvTypeForOwner(s.owner).skipTypes({tyOwned, tyRef, tyPtr})
-
-            if s.name.id == getIdent(c.graph.cache, ":state").id:
-              obj.n[0].sym.flags.incl sfNoInit
-              obj.n[0].sym.itemId = ItemId(module: s.itemId.module, item: -s.itemId.item)
-            else:
-              discard addField(obj, s, c.graph.cache, c.idgen)
     # direct or indirect dependency:
     elif innerClosure or interested:
       discard """
@@ -776,8 +754,6 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: var DetectionPass;
 
     elif s.id in d.capturedVars:
       if s.owner != owner:
-        result = accessViaEnvParam(d.graph, n, owner)
-      elif owner.isIterator and interestingIterVar(s):
         result = accessViaEnvParam(d.graph, n, owner)
       else:
         result = accessViaEnvVar(n, owner, d, c)
