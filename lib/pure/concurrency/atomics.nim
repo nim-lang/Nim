@@ -360,15 +360,22 @@ else:
     proc fetchXor*[T: SomeInteger](location: var Atomic[T]; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
       cast[T](atomic_fetch_xor_explicit(addr(location.value), cast[nonAtomicType(T)](value), order))
 
-  template withLock[T: not Trivial](location: var Atomic[T]; order: MemoryOrder; body: untyped): untyped =
+  template withLock[T: not Trivial](location: Atomic[T]; order: MemoryOrder; body: untyped): untyped =
     while testAndSet(location.guard, moAcquire): discard
     try:
       body
     finally:
       clear(location.guard, moRelease)
 
+  template withLockR[T: not Trivial](location: Atomic[T]; order: MemoryOrder; body: untyped): untyped =
+    while testAndSet(addr(location.guard)[], moAcquire): discard
+    try:
+      body
+    finally:
+      clear(addr(location.guard)[], moRelease)
+
   proc load*[T: not Trivial](location: Atomic[T]; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
-    withLock(location, order):
+    withLockR(location, order):
       result = location.nonAtomicValue
 
   proc store*[T: not Trivial](location: var Atomic[T]; desired: T; order: MemoryOrder = moSequentiallyConsistent) {.inline.} =
