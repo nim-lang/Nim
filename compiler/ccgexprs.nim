@@ -2345,7 +2345,7 @@ proc genMove(p: BProc; n: PNode; d: var TLoc) =
           else:
             linefmt(p, cpsStmts, "$1($2);$n", [rdLoc(b), byRefLoc(p, a)])
     else:
-      let flags = if not canMove(p, n[1], d): {needToCopy} else: {}
+      let flags = if isSinkType(n[1].typ): {needToCopy} else: {}
       genAssignment(p, d, a, flags)
       resetLoc(p, a)
 
