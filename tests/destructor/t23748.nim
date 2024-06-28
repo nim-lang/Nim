@@ -1,5 +1,9 @@
 discard """
   matrix: "--gc:refc; --gc:arc"
+  output: '''
+hello 42
+hello 42
+'''
 """
 
 # bug #23748
