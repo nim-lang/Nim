@@ -430,9 +430,11 @@ proc genParams(p: BProc, ri: PNode, typ: PType; result: var Rope) =
         if not needTmp[i - 1]:
           needTmp[i - 1] = potentialAlias(n, potentialWrites)
       getPotentialWrites(ri[i], false, potentialWrites)
-    if ri[i].kind in {nkHiddenAddr, nkAddr}:
-      # Optimization: don't use a temp, if we would only take the address anyway
-      needTmp[i - 1] = false
+    when false:
+      # this optimization is wrong, see bug #23748
+      if ri[i].kind in {nkHiddenAddr, nkAddr}:
+        # Optimization: don't use a temp, if we would only take the address anyway
+        needTmp[i - 1] = false
 
   var oldLen = result.len
   for i in 1..<ri.len:
