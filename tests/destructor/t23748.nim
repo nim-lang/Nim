@@ -3,6 +3,7 @@ discard """
   output: '''
 hello 42
 hello 42
+len = 2
 '''
 """
 
@@ -25,5 +26,6 @@ proc push2(o: O, i: int) =
   o.cb.add(p)
 
 let o = O(s: "hello", cb: @[])
-o.push1(42)  # This segfaults
-o.push2(42)  # This also segfaults
+o.push1(42)
+o.push2(42)
+echo "len = ", o.cb.len
