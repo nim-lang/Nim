@@ -70,6 +70,9 @@ template `$`*(typ: PType): string = typeToString(typ)
 type
   TTypeIter* = proc (t: PType, closure: RootRef): bool {.nimcall.} # true if iteration should stop
   TTypePredicate* = proc (t: PType): bool {.nimcall.}
+  Int128Calc* = object
+    val*: Int128
+    err*: bool
 
 proc iterOverType*(t: PType, iter: TTypeIter, closure: RootRef): bool
   # Returns result of `iter`.
@@ -115,7 +118,7 @@ proc isPureObject*(typ: PType): bool =
 proc isUnsigned*(t: PType): bool =
   t.skipTypes(abstractInst).kind in {tyChar, tyUInt..tyUInt64}
 
-proc getOrdValue*(n: PNode; onError = high(Int128)): Int128 =
+proc getOrdValueAux*(n: PNode): Int128Calc =
   var k = n.kind
   if n.typ != nil and n.typ.skipTypes(abstractInst).kind in {tyChar, tyUInt..tyUInt64}:
     k = nkUIntLit
@@ -124,20 +127,26 @@ proc getOrdValue*(n: PNode; onError = high(Int128)): Int128 =
   of nkCharLit, nkUIntLit..nkUInt64Lit:
     # XXX: enable this assert
     #assert n.typ == nil or isUnsigned(n.typ), $n.typ
-    toInt128(cast[uint64](n.intVal))
+    Int128Calc(val: toInt128(cast[uint64](n.intVal)), err:false)
   of nkIntLit..nkInt64Lit:
     # XXX: enable this assert
     #assert n.typ == nil or not isUnsigned(n.typ), $n.typ.kind
-    toInt128(n.intVal)
+    Int128Calc(val: toInt128(n.intVal), err:false)
   of nkNilLit:
-    int128.Zero
-  of nkHiddenStdConv: getOrdValue(n[1], onError)
+    Int128Calc(val: int128.Zero, err:false)
+  of nkHiddenStdConv:
+    getOrdValueAux(n[1])
   else:
-    # XXX: The idea behind the introduction of int128 was to finally
-    # have all calculations numerically far away from any
-    # overflows. This command just introduces such overflows and
-    # should therefore really be revisited.
+    Int128Calc(val: int128.Zero, err:true)
+
+proc getOrdValue*(n: PNode): Int128 = getOrdValueAux(n).val
+
+proc getOrdValue*(n: PNode, onError: Int128): Int128 =
+  let ovx = getOrdValueAux(n)
+  if ovx.err:
     onError
+  else:
+    ovx.val
 
 proc getFloatValue*(n: PNode): BiggestFloat =
   case n.kind
@@ -953,8 +962,6 @@ proc lengthOrd*(conf: ConfigRef; t: PType): Int128 =
     result = lengthOrd(conf, t.skipModifier)
   else:
     let last = lastOrd(conf, t)
-    if last == high(Int128):
-      return high(Int128)  # propigate `onError` from `getOrdValue`
     let first = firstOrd(conf, t)
     result = last - first + One
 
