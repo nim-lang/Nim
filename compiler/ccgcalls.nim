@@ -331,7 +331,14 @@ proc genArg(p: BProc, n: PNode, param: PSym; call: PNode; result: var Rope; need
       addAddrLoc(p.config, withTmpIfNeeded(p, a, needsTmp), result)
   elif p.module.compileToCpp and param.typ.kind in {tyVar} and
       n.kind == nkHiddenAddr:
-    a = initLocExprSingleUse(p, n[0])
+    # bug #23748: we need to introduce a temporary here. The expression type
+    # will be a reference in C++ and we cannot create a temporary reference
+    # variable. Thus, we create a temporary pointer variable instead.
+    n.typ.flags.incl tfVarIsPtr
+    a = initLocExprSingleUse(p, n)
+    a = withTmpIfNeeded(p, a, needsTmp)
+    if n[0].typ.skipTypes(abstractRange).kind != tyArray:
+      a.flags.incl lfIndirect
     # if the proc is 'importc'ed but not 'importcpp'ed then 'var T' still
     # means '*T'. See posix.nim for lots of examples that do that in the wild.
     let callee = call[0]
