@@ -239,6 +239,11 @@ proc interestingIterVar(s: PSym): bool {.inline.} =
 template isIterator*(owner: PSym): bool =
   owner.kind == skIterator and owner.typ.callConv == ccClosure
 
+template liftingHarmful(conf: ConfigRef; owner: PSym): bool =
+  ## lambda lifting can be harmful for JS-like code generators.
+  let isCompileTime = sfCompileTime in owner.flags or owner.kind == skMacro
+  jsNoLambdaLifting in conf.legacyFeatures and conf.backend == backendJs and not isCompileTime
+
 proc createTypeBoundOpsLL(g: ModuleGraph; refType: PType; info: TLineInfo; idgen: IdGenerator; owner: PSym) =
   if owner.kind != skMacro:
     createTypeBoundOps(g, nil, refType.elementType, info, idgen)
@@ -255,6 +260,7 @@ proc genCreateEnv(env: PNode): PNode =
 
 proc liftIterSym*(g: ModuleGraph; n: PNode; idgen: IdGenerator; owner: PSym): PNode =
   # transforms  (iter)  to  (let env = newClosure[iter](); (iter, env))
+  if liftingHarmful(g.config, owner): return n
   let iter = n.sym
   assert iter.isIterator
 
@@ -879,7 +885,8 @@ proc liftLambdas*(g: ModuleGraph; fn: PSym, body: PNode; tooEarly: var bool;
                   idgen: IdGenerator; flags: TransformFlags): PNode =
   let isCompileTime = sfCompileTime in fn.flags or fn.kind == skMacro
 
-  if body.kind == nkEmpty or
+  if body.kind == nkEmpty or (jsNoLambdaLifting in g.config.legacyFeatures and
+      g.config.backend == backendJs and not isCompileTime) or
       (fn.skipGenericOwner.kind != skModule and force notin flags):
 
     # ignore forward declaration:
@@ -939,6 +946,7 @@ proc liftForLoop*(g: ModuleGraph; body: PNode; idgen: IdGenerator; owner: PSym):
           break
         ...
     """
+  if liftingHarmful(g.config, owner): return body
   if not (body.kind == nkForStmt and body[^2].kind in nkCallKinds):
     localError(g.config, body.info, "ignored invalid for loop")
     return body

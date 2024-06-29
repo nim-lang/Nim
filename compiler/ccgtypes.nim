@@ -277,9 +277,12 @@ proc isInvalidReturnType(conf: ConfigRef; typ: PType, isProc = true): bool =
       if rettype.isImportedCppType or t.isImportedCppType or
           (typ.callConv == ccCDecl and conf.selectedGC in {gcArc, gcAtomicArc, gcOrc}):
         # prevents nrvo for cdecl procs; # bug #23401
-        return false
-      result = containsGarbageCollectedRef(t) or
-          (t.kind == tyObject and not isObjLackingTypeField(t))
+        result = false
+      else:
+        result = containsGarbageCollectedRef(t) or
+            (t.kind == tyObject and not isObjLackingTypeField(t)) or
+            (getSize(conf, rettype) == szUnknownSize and (t.sym == nil or sfImportc notin t.sym.flags))
+
     else: result = false
 
 const
@@ -678,9 +681,9 @@ proc hasCppCtor(m: BModule; typ: PType): bool =
       if sfConstructor in prc.flags:
         return true
 
-proc genCppParamsForCtor(p: BProc; call: PNode): string
+proc genCppParamsForCtor(p: BProc; call: PNode; didGenTemp: var bool): string
 
-proc genCppInitializer(m: BModule, prc: BProc; typ: PType): string =
+proc genCppInitializer(m: BModule, prc: BProc; typ: PType; didGenTemp: var bool): string =
   #To avoid creating a BProc per test when called inside a struct nil BProc is allowed
   result = "{}"
   if typ.itemId in m.g.graph.initializersPerType:
@@ -689,7 +692,7 @@ proc genCppInitializer(m: BModule, prc: BProc; typ: PType): string =
       var p = prc
       if p == nil:
         p = BProc(module: m)
-      result = "{" & genCppParamsForCtor(p, call) & "}"
+      result = "{" & genCppParamsForCtor(p, call, didGenTemp) & "}"
       if prc == nil:
         assert p.blocks.len == 0, "BProc belongs to a struct doesnt have blocks"
 
@@ -759,7 +762,8 @@ proc genRecordFieldsAux(m: BModule; n: PNode,
         # tyGenericInst for C++ template support
         let noInit = sfNoInit in field.flags or (field.typ.sym != nil and sfNoInit in field.typ.sym.flags)
         if not noInit and (fieldType.isOrHasImportedCppType() or hasCppCtor(m, field.owner.typ)):
-          var initializer = genCppInitializer(m, nil, fieldType)
+          var didGenTemp = false
+          var initializer = genCppInitializer(m, nil, fieldType, didGenTemp)
           result.addf("\t$1$3 $2$4;$n", [getTypeDescAux(m, field.loc.t, check, dkField), sname, noAlias, initializer])
         else:
           result.addf("\t$1$3 $2;$n", [getTypeDescAux(m, field.loc.t, check, dkField), sname, noAlias])
@@ -1471,7 +1475,7 @@ proc genObjectInfo(m: BModule; typ, origType: PType, name: Rope; info: TLineInfo
                       typeToString(typ))
   genTypeInfoAux(m, typ, origType, name, info)
   var tmp = getNimNode(m)
-  if not isImportedType(typ):
+  if (not isImportedType(typ)) or tfCompleteStruct in typ.flags:
     genObjectFields(m, typ, origType, typ.n, tmp, info)
   m.s[cfsTypeInit3].addf("$1.node = &$2;$n", [tiNameForHcr(m, name), tmp])
   var t = typ.baseClass

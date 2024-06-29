@@ -8703,7 +8703,7 @@ after the last specified parameter. Nim string values will be converted to C
 strings automatically:
 
   ```Nim
-  proc printf(formatstr: cstring) {.nodecl, varargs.}
+  proc printf(formatstr: cstring) {.header: "<stdio.h>", varargs.}
 
   printf("hallo %s", "world") # "world" will be passed as C string
   ```

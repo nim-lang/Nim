@@ -76,6 +76,23 @@ proc isHarmlessStore(p: BProc; canRaise: bool; d: TLoc): bool =
   else:
     result = false
 
+proc cleanupTemp(p: BProc; returnType: PType, tmp: TLoc): bool =
+  if returnType.kind in {tyVar, tyLent}:
+    # we don't need to worry about var/lent return types
+    result = false
+  elif hasDestructor(returnType) and getAttachedOp(p.module.g.graph, returnType, attachedDestructor) != nil:
+    let dtor = getAttachedOp(p.module.g.graph, returnType, attachedDestructor)
+    var op = initLocExpr(p, newSymNode(dtor))
+    var callee = rdLoc(op)
+    let destroy = if dtor.typ.firstParamType.kind == tyVar:
+        callee & "(&" & rdLoc(tmp) & ")"
+      else:
+        callee & "(" & rdLoc(tmp) & ")"
+    raiseExitCleanup(p, destroy)
+    result = true
+  else:
+    result = false
+
 proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
                callee, params: Rope) =
   let canRaise = p.config.exc == excGoto and canRaiseDisp(p, ri[0])
@@ -128,18 +145,25 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
             if canRaise: raiseExit(p)
 
       elif isHarmlessStore(p, canRaise, d):
-        if d.k == locNone: d = getTemp(p, typ.returnType)
+        var useTemp = false
+        if d.k == locNone:
+          useTemp = true
+          d = getTemp(p, typ.returnType)
         assert(d.t != nil)        # generate an assignment to d:
         var list = initLoc(locCall, d.lode, OnUnknown)
         list.r = pl
         genAssignment(p, d, list, flags) # no need for deep copying
-        if canRaise: raiseExit(p)
+        if canRaise:
+          if not (useTemp and cleanupTemp(p, typ.returnType, d)):
+            raiseExit(p)
       else:
         var tmp: TLoc = getTemp(p, typ.returnType, needsInit=true)
         var list = initLoc(locCall, d.lode, OnUnknown)
         list.r = pl
         genAssignment(p, tmp, list, flags) # no need for deep copying
-        if canRaise: raiseExit(p)
+        if canRaise:
+          if not cleanupTemp(p, typ.returnType, tmp):
+            raiseExit(p)
         genAssignment(p, d, tmp, {})
   else:
     pl.add(");\n")
@@ -319,6 +343,11 @@ proc genArg(p: BProc, n: PNode, param: PSym; call: PNode; result: var Rope; need
       addRdLoc(a, result)
   else:
     a = initLocExprSingleUse(p, n)
+    if param.typ.kind in abstractPtrs:
+      let typ = skipTypes(param.typ, abstractPtrs)
+      if typ.sym != nil and sfImportc in typ.sym.flags:
+        a.r = "(($1) ($2))" %
+          [getTypeDesc(p.module, param.typ), rdCharLoc(a)]
     addRdLoc(withTmpIfNeeded(p, a, needsTmp), result)
   #assert result != nil
 
