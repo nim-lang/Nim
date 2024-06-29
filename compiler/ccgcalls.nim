@@ -315,6 +315,8 @@ proc genArgStringToCString(p: BProc, n: PNode; result: var Rope; needsTmp: bool)
   var a = initLocExpr(p, n[0])
   appcg(p.module, result, "#nimToCStringConv($1)", [withTmpIfNeeded(p, a, needsTmp).rdLoc])
 
+proc isCppRef(p: BProc; typ: PType): bool {.inline.}
+
 proc genArg(p: BProc, n: PNode, param: PSym; call: PNode; result: var Rope; needsTmp = false) =
   var a: TLoc
   if n.kind == nkStringToCString:
@@ -334,11 +336,11 @@ proc genArg(p: BProc, n: PNode, param: PSym; call: PNode; result: var Rope; need
     # bug #23748: we need to introduce a temporary here. The expression type
     # will be a reference in C++ and we cannot create a temporary reference
     # variable. Thus, we create a temporary pointer variable instead.
-    n.typ.flags.incl tfVarIsPtr
+    let needsIndirect = mapType(p.config, n[0].typ, mapTypeChooser(n[0]) == skParam) != ctArray and isCppRef(p, param.typ)
+    if needsIndirect: n.typ.flags.incl tfVarIsPtr
     a = initLocExprSingleUse(p, n)
     a = withTmpIfNeeded(p, a, needsTmp)
-    if n[0].typ.skipTypes(abstractRange).kind != tyArray:
-      a.flags.incl lfIndirect
+    if needsIndirect: a.flags.incl lfIndirect
     # if the proc is 'importc'ed but not 'importcpp'ed then 'var T' still
     # means '*T'. See posix.nim for lots of examples that do that in the wild.
     let callee = call[0]
