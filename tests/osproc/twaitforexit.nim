@@ -12,7 +12,7 @@ block: # bug #5091
         try:
             discard waitForExit(p, msWait)
         except OSError:
-            echo getCurrentExceptionMsg()
+            discard
 
         # check that we don't have to wait msWait milliseconds
         doAssert(getTime() <  atStart + milliseconds(msWait))

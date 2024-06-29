@@ -1383,8 +1383,7 @@ elif not defined(useNimRtl):
         s.tv_sec = b.tv_sec
         s.tv_nsec = b.tv_nsec
 
-      # Ensure we don't wait on an exited process
-      if not(p.running()) and p.exitFlag:
+      if p.exitFlag:
         return exitStatusLikeShell(p.exitStatus)
 
       if timeout == -1:
@@ -1417,6 +1416,8 @@ elif not defined(useNimRtl):
           tmspec.tv_nsec = (timeout * 1_000_000)
 
         try:
+          if not running(p):
+            return exitStatusLikeShell(p.exitStatus)
           if clock_gettime(CLOCK_REALTIME, stspec) == -1:
             raiseOSError(osLastError())
           while true:
