@@ -52,11 +52,10 @@ proc asyncTest() {.async.} =
   body = await resp.body # Test caching
   doAssert("<title>Example Domain</title>" in body)
 
-  when false: # sometimes may return status 500 instead of 404
-    resp = await client.request("http://example.com/404")
-    doAssert(resp.code.is4xx)
-    doAssert(resp.code == Http404)
-    doAssert(resp.status == $Http404)
+  resp = await client.request("http://example.com/404")
+  doAssert(resp.code.is4xx or resp.code.is5xx)
+  doAssert(resp.code == Http404 or resp.code == Http500)
+  doAssert(resp.status == $Http404 or resp.status == $Http500)
 
   when false: # occasionally does not give success code 
     resp = await client.request("https://google.com/")
@@ -115,11 +114,10 @@ proc syncTest() =
   doAssert(resp.code.is2xx)
   doAssert("<title>Example Domain</title>" in resp.body)
 
-  when false: # sometimes may return status 500 instead of 404
-    resp = client.request("http://example.com/404")
-    doAssert(resp.code.is4xx)
-    doAssert(resp.code == Http404)
-    doAssert(resp.status == $Http404)
+  resp = client.request("http://example.com/404")
+  doAssert(resp.code.is4xx or resp.code.is5xx)
+  doAssert(resp.code == Http404 or resp.code == Http500)
+  doAssert(resp.status == $Http404 or resp.status == $Http500)
 
   when false: # occasionally does not give success code
     resp = client.request("https://google.com/")
