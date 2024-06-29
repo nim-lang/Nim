@@ -52,10 +52,11 @@ proc asyncTest() {.async.} =
   body = await resp.body # Test caching
   doAssert("<title>Example Domain</title>" in body)
 
-  resp = await client.request("http://example.com/404")
-  doAssert(resp.code.is4xx)
-  doAssert(resp.code == Http404)
-  doAssert(resp.status == $Http404)
+  when false: # sometimes may return status 500 instead of 404
+    resp = await client.request("http://example.com/404")
+    doAssert(resp.code.is4xx)
+    doAssert(resp.code == Http404)
+    doAssert(resp.status == $Http404)
 
   when false: # occasionally does not give success code 
     resp = await client.request("https://google.com/")
