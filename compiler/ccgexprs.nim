@@ -2394,7 +2394,8 @@ proc genMove(p: BProc; n: PNode; d: var TLoc) =
           linefmt(p, cpsStmts, "$1($2);$n", [rdLoc(b), byRefLoc(p, a)])
     else:
       if n[1].kind == nkSym and isSinkParam(n[1].sym):
-        var tmp = getTemp(p, n[1].typ.skipTypes({tySink}))
+        var tmp: TLoc
+        getTemp(p, n[1].typ.skipTypes({tySink}), tmp)
         genAssignment(p, tmp, a, {needToCopySinkParam})
         genAssignment(p, d, tmp, {})
         resetLoc(p, tmp)
