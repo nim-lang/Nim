@@ -406,6 +406,7 @@ proc rdCharLoc(a: TLoc): Rope =
 type
   TAssignmentFlag = enum
     needToCopy
+    needToCopySinkParam
     needTempForOpenArray
   TAssignmentFlags = set[TAssignmentFlag]
 
