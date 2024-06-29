@@ -58,6 +58,8 @@ import std/private/since
                        # of the standard library!
 
 import std/[bitops, fenv]
+from system/countbits_mpl import uesbuiltins
+
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
