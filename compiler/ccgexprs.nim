@@ -343,7 +343,7 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
   of tyString:
     if optSeqDestructors in p.config.globalOptions:
       genGenericAsgn(p, dest, src, flags)
-    elif (needToCopy notin flags and src.storage != OnStatic) or canMove(p, src.lode, dest):
+    elif ({needToCopy, needToCopySinkParam} * flags == {} and src.storage != OnStatic) or canMove(p, src.lode, dest):
       genRefAssign(p, dest, src)
     else:
       if (dest.storage == OnStack and p.config.selectedGC != gcGo) or not usesWriteBarrier(p.config):
@@ -2347,8 +2347,13 @@ proc genMove(p: BProc; n: PNode; d: var TLoc) =
           else:
             linefmt(p, cpsStmts, "$1($2);$n", [rdLoc(b), byRefLoc(p, a)])
     else:
-      let flags = if not canMove(p, n[1], d): {needToCopy} else: {}
-      genAssignment(p, d, a, flags)
+      if n[1].kind == nkSym and isSinkParam(n[1].sym):
+        var tmp = getTemp(p, n[1].typ.skipTypes({tySink}))
+        genAssignment(p, tmp, a, {needToCopySinkParam})
+        genAssignment(p, d, tmp, {})
+        resetLoc(p, tmp)
+      else:
+        genAssignment(p, d, a, {})
       resetLoc(p, a)
 
 proc genDestroy(p: BProc; n: PNode) =
