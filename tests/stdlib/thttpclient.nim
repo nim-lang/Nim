@@ -115,10 +115,11 @@ proc syncTest() =
   doAssert(resp.code.is2xx)
   doAssert("<title>Example Domain</title>" in resp.body)
 
-  resp = client.request("http://example.com/404")
-  doAssert(resp.code.is4xx)
-  doAssert(resp.code == Http404)
-  doAssert(resp.status == $Http404)
+  when false: # sometimes may return status 500 instead of 404
+    resp = client.request("http://example.com/404")
+    doAssert(resp.code.is4xx)
+    doAssert(resp.code == Http404)
+    doAssert(resp.status == $Http404)
 
   when false: # occasionally does not give success code
     resp = client.request("https://google.com/")
