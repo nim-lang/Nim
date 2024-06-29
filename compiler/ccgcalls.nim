@@ -315,8 +315,6 @@ proc genArgStringToCString(p: BProc, n: PNode; result: var Rope; needsTmp: bool)
   var a = initLocExpr(p, n[0])
   appcg(p.module, result, "#nimToCStringConv($1)", [withTmpIfNeeded(p, a, needsTmp).rdLoc])
 
-proc isCppRef(p: BProc; typ: PType): bool {.inline.}
-
 proc genArg(p: BProc, n: PNode, param: PSym; call: PNode; result: var Rope; needsTmp = false) =
   var a: TLoc
   if n.kind == nkStringToCString:
@@ -337,7 +335,7 @@ proc genArg(p: BProc, n: PNode, param: PSym; call: PNode; result: var Rope; need
     # will be a reference in C++ and we cannot create a temporary reference
     # variable. Thus, we create a temporary pointer variable instead.
     let hadVarIsPtr = tfVarIsPtr in n.typ.flags
-    let needsIndirect = mapType(p.config, n[0].typ, mapTypeChooser(n[0]) == skParam) != ctArray and isCppRef(p, param.typ)
+    let needsIndirect = mapType(p.config, n[0].typ, mapTypeChooser(n[0]) == skParam) != ctArray
     if needsIndirect: n.typ.flags.incl tfVarIsPtr
     a = initLocExprSingleUse(p, n)
     a = withTmpIfNeeded(p, a, needsTmp)
