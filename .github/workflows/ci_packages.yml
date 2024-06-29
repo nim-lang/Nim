@@ -41,7 +41,6 @@ jobs:
         if: runner.os == 'Linux' && matrix.cpu == 'amd64'
         run: |
           sudo apt-get update -qq
-          sudo apt-get remove needrestart
           DEBIAN_FRONTEND='noninteractive' \
             sudo apt-get install --no-install-recommends -yq \
               libcurl4-openssl-dev libgc-dev libsdl1.2-dev libsfml-dev \

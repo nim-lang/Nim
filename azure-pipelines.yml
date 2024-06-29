@@ -28,9 +28,6 @@ jobs:
 #         # g++-multilib : Depends: gcc-multilib (>= 4:5.3.1-1ubuntu1) but it is not going to be installed
 #         vmImage: 'ubuntu-18.04'
 #         CPU: i386
-      Linux_amd64_gcc14:
-        vmImage: 'ubuntu-24.04'
-        CPU: amd64
       OSX_amd64:
         vmImage: 'macOS-12'
         CPU: amd64
@@ -83,21 +80,12 @@ jobs:
     - bash: |
         set -e
         . ci/funs.sh
-        sudo apt-fast remove needrestart
         echo_run sudo apt-fast update -qq
         DEBIAN_FRONTEND='noninteractive' \
           echo_run sudo apt-fast install --no-install-recommends -yq \
             libcurl4-openssl-dev libgc-dev libsdl1.2-dev libsfml-dev valgrind libc6-dbg
       displayName: 'Install dependencies (amd64 Linux)'
       condition: and(succeeded(), eq(variables['skipci'], 'false'), eq(variables['Agent.OS'], 'Linux'), eq(variables['CPU'], 'amd64'))
-
-    - bash: |
-        sudo add-apt-repository universe
-        sudo apt-fast update -qq
-        sudo apt-fast install -y gcc-14 g++-14 libpcre3 liblapack-dev
-        sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 60 --slave /usr/bin/g++ g++ /usr/bin/g++-14
-      displayName: 'Install dependencies (amd64 Linux gcc 14)'
-      condition: and(succeeded(), eq(variables['skipci'], 'false'), eq(variables['Agent.OS'], 'Linux'), eq(variables['CPU'], 'amd64'), eq(variables['vmImage'], 'ubuntu-latest'))
 
     - bash: |
         set -e
