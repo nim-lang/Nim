@@ -985,6 +985,9 @@ proc inferStaticsInRange(c: var TCandidate,
         return isGeneric
       else:
         return isNone
+    let lenOrd = lengthOrd(c.c.config, concrete)
+    if lenOrd == high(Int128):
+      return isNone  # propigate `onError` from `getOrdValue`
     doInferStatic(upperBound, lengthOrd(c.c.config, concrete) + lowerBound.intVal - 1)
   elif upperBound.kind == nkIntLit:
     doInferStatic(lowerBound, getInt(upperBound) + 1 - lengthOrd(c.c.config, concrete))

@@ -953,6 +953,8 @@ proc lengthOrd*(conf: ConfigRef; t: PType): Int128 =
     result = lengthOrd(conf, t.skipModifier)
   else:
     let last = lastOrd(conf, t)
+    if last == high(Int128):
+      return high(Int128)  # propigate `onError` from `getOrdValue`
     let first = firstOrd(conf, t)
     result = last - first + One
 
