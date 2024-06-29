@@ -336,11 +336,14 @@ proc genArg(p: BProc, n: PNode, param: PSym; call: PNode; result: var Rope; need
     # bug #23748: we need to introduce a temporary here. The expression type
     # will be a reference in C++ and we cannot create a temporary reference
     # variable. Thus, we create a temporary pointer variable instead.
+    let hadVarIsPtr = tfVarIsPtr in n.typ.flags
     let needsIndirect = mapType(p.config, n[0].typ, mapTypeChooser(n[0]) == skParam) != ctArray and isCppRef(p, param.typ)
     if needsIndirect: n.typ.flags.incl tfVarIsPtr
     a = initLocExprSingleUse(p, n)
     a = withTmpIfNeeded(p, a, needsTmp)
-    if needsIndirect: a.flags.incl lfIndirect
+    if needsIndirect:
+      if not hadVarIsPtr: n.typ.flags.excl tfVarIsPtr
+      a.flags.incl lfIndirect
     # if the proc is 'importc'ed but not 'importcpp'ed then 'var T' still
     # means '*T'. See posix.nim for lots of examples that do that in the wild.
     let callee = call[0]
