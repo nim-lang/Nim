@@ -40,18 +40,18 @@ jobs:
       - name: 'Install dependencies (Linux amd64)'
         if: runner.os == 'Linux' && matrix.cpu == 'amd64'
         run: |
-          sudo apt-fast update -qq
-          sudo apt-fast remove needrestart
+          sudo apt-get update -qq
+          sudo apt-get remove needrestart
           DEBIAN_FRONTEND='noninteractive' \
-            sudo apt-fast install --no-install-recommends -yq \
+            sudo apt-get install --no-install-recommends -yq \
               libcurl4-openssl-dev libgc-dev libsdl1.2-dev libsfml-dev \
               valgrind libc6-dbg libblas-dev xorg-dev
       - name: 'Install dependencies (Linux amd64 gcc 14)'
         if: runner.os == 'Linux' && matrix.cpu == 'amd64'
         run: |
           sudo add-apt-repository universe
-          sudo apt-fast update -qq
-          sudo apt-fast install -y gcc-14 g++-14 libpcre3 liblapack-dev
+          sudo apt-get update -qq
+          sudo apt-get install -y gcc-14 g++-14 libpcre3 liblapack-dev
           sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 60 --slave /usr/bin/g++ g++ /usr/bin/g++-14
       - name: 'Install dependencies (macOS)'
         if: runner.os == 'macOS'
