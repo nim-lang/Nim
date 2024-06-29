@@ -562,7 +562,7 @@ proc semIs(c: PContext, n: PNode, flags: TExprFlags): PNode =
   result = isOpImpl(c, n, flags)
 
 proc semOpAux(c: PContext, n: PNode) =
-  const flags = {efDetermineType}
+  const flags = {efDetermineType, efAllowSymChoice}
   for i in 1..<n.len:
     var a = n[i]
     if a.kind == nkExprEqExpr and a.len == 2:
