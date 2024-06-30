@@ -331,7 +331,16 @@ proc genArg(p: BProc, n: PNode, param: PSym; call: PNode; result: var Rope; need
       addAddrLoc(p.config, withTmpIfNeeded(p, a, needsTmp), result)
   elif p.module.compileToCpp and param.typ.kind in {tyVar} and
       n.kind == nkHiddenAddr:
-    a = initLocExprSingleUse(p, n[0])
+    # bug #23748: we need to introduce a temporary here. The expression type
+    # will be a reference in C++ and we cannot create a temporary reference
+    # variable. Thus, we create a temporary pointer variable instead.
+    let needsIndirect = mapType(p.config, n[0].typ, mapTypeChooser(n[0]) == skParam) != ctArray
+    if needsIndirect:
+      n.typ = n.typ.exactReplica
+      n.typ.flags.incl tfVarIsPtr
+    a = initLocExprSingleUse(p, n)
+    a = withTmpIfNeeded(p, a, needsTmp)
+    if needsIndirect: a.flags.incl lfIndirect
     # if the proc is 'importc'ed but not 'importcpp'ed then 'var T' still
     # means '*T'. See posix.nim for lots of examples that do that in the wild.
     let callee = call[0]
@@ -430,9 +439,11 @@ proc genParams(p: BProc, ri: PNode, typ: PType; result: var Rope) =
         if not needTmp[i - 1]:
           needTmp[i - 1] = potentialAlias(n, potentialWrites)
       getPotentialWrites(ri[i], false, potentialWrites)
-    if ri[i].kind in {nkHiddenAddr, nkAddr}:
-      # Optimization: don't use a temp, if we would only take the address anyway
-      needTmp[i - 1] = false
+    when false:
+      # this optimization is wrong, see bug #23748
+      if ri[i].kind in {nkHiddenAddr, nkAddr}:
+        # Optimization: don't use a temp, if we would only take the address anyway
+        needTmp[i - 1] = false
 
   var oldLen = result.len
   for i in 1..<ri.len:
