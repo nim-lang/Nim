@@ -985,11 +985,6 @@ proc inferStaticsInRange(c: var TCandidate,
         return isGeneric
       else:
         return isNone
-    if concrete.kind == tyRange:
-      var err = false
-      let lenOrd = getOrdValueAux(concrete.n[1], err)
-      if err:
-        return isNone
     doInferStatic(upperBound, lengthOrd(c.c.config, concrete) + lowerBound.intVal - 1)
   elif upperBound.kind == nkIntLit:
     doInferStatic(lowerBound, getInt(upperBound) + 1 - lengthOrd(c.c.config, concrete))
