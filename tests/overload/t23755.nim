@@ -24,3 +24,22 @@ block:
 
   var r: BigInt[64]
   r.limbs.view()
+
+
+block:
+  type IntArray[N: static[int]] = array[N, int]
+
+  proc p[T](a: IntArray[T]): bool= true
+  proc p(a: IntArray[5]): bool= false
+
+  var s: IntArray[5]
+  doAssert s.p == false
+
+block:
+  type IntArray[N: static[int]] = array[N, int]
+
+  proc `$`(a: IntArray): string =
+    return "test"
+
+  var s: IntArray[5] = [1,1,1,1,1]
+  doAssert `$`(s) == "test"

@@ -70,9 +70,6 @@ template `$`*(typ: PType): string = typeToString(typ)
 type
   TTypeIter* = proc (t: PType, closure: RootRef): bool {.nimcall.} # true if iteration should stop
   TTypePredicate* = proc (t: PType): bool {.nimcall.}
-  Int128Calc* = object
-    val*: Int128
-    err*: bool
 
 proc iterOverType*(t: PType, iter: TTypeIter, closure: RootRef): bool
   # Returns result of `iter`.
@@ -118,7 +115,7 @@ proc isPureObject*(typ: PType): bool =
 proc isUnsigned*(t: PType): bool =
   t.skipTypes(abstractInst).kind in {tyChar, tyUInt..tyUInt64}
 
-proc getOrdValueAux*(n: PNode): Int128Calc =
+proc getOrdValueAux*(n: PNode, err: var bool): Int128 =
   var k = n.kind
   if n.typ != nil and n.typ.skipTypes(abstractInst).kind in {tyChar, tyUInt..tyUInt64}:
     k = nkUIntLit
@@ -127,26 +124,28 @@ proc getOrdValueAux*(n: PNode): Int128Calc =
   of nkCharLit, nkUIntLit..nkUInt64Lit:
     # XXX: enable this assert
     #assert n.typ == nil or isUnsigned(n.typ), $n.typ
-    Int128Calc(val: toInt128(cast[uint64](n.intVal)), err:false)
+    toInt128(cast[uint64](n.intVal))
   of nkIntLit..nkInt64Lit:
     # XXX: enable this assert
     #assert n.typ == nil or not isUnsigned(n.typ), $n.typ.kind
-    Int128Calc(val: toInt128(n.intVal), err:false)
+    toInt128(n.intVal)
   of nkNilLit:
-    Int128Calc(val: int128.Zero, err:false)
+    int128.Zero
   of nkHiddenStdConv:
-    getOrdValueAux(n[1])
+    getOrdValueAux(n[1], err)
   else:
-    Int128Calc(val: int128.Zero, err:true)
+    err = true
+    int128.Zero
 
-proc getOrdValue*(n: PNode): Int128 = getOrdValueAux(n).val
+proc getOrdValue*(n: PNode): Int128 =
+  var err: bool = false
+  getOrdValueAux(n, err)
 
 proc getOrdValue*(n: PNode, onError: Int128): Int128 =
-  let ovx = getOrdValueAux(n)
-  if ovx.err:
-    onError
-  else:
-    ovx.val
+  var err = false
+  result = getOrdValueAux(n, err)
+  if err:
+    result = onError
 
 proc getFloatValue*(n: PNode): BiggestFloat =
   case n.kind
