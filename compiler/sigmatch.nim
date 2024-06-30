@@ -1271,6 +1271,8 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       if fRange.kind in {tyGenericParam, tyAnything}:
         var prev = idTableGet(c.bindings, fRange)
         if prev == nil:
+          if typeRel(c, fRange, aRange) == isNone:
+            return isNone
           put(c, fRange, a.indexType)
           fRange = a
         else:
@@ -1283,9 +1285,6 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         result = isGeneric
       else:
         result = typeRel(c, ff, aa, flags)
-      
-      if fRange.kind == tyArray and fRange.indexType.kind == tyGenericParam:
-        return
       
       if result < isGeneric:
         if nimEnableCovariance and
