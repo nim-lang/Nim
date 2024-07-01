@@ -49,4 +49,4 @@ block:
   proc p[T, IDX](a: array[IDX, T]):bool=false
 
   var g: array[32, char]
-  discard p(g)
+  doAssert p(g)
