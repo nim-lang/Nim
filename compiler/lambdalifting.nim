@@ -470,7 +470,7 @@ proc detectCapturedVarsAux(n: PNode; owner: PSym; c: var DetectionPass; yieldSec
         c.somethingToDo = true
         var inPreviousSections = isLoopCond
         if not inPreviousSections:
-          for si in 0 ..< yieldSections.len():
+          for si in 0 ..< yieldSections.len() - 1:
             if s.id in yieldSections[si]:
               inPreviousSections = true
               break
@@ -571,18 +571,19 @@ proc detectCapturedVarsAux(n: PNode; owner: PSym; c: var DetectionPass; yieldSec
     ]#
 
     let hasYield = isLoopCond or containsYield(n)
+    let prevSections = yieldSections
     if hasYield:
       yieldSections.add(initIntSet())
 
     for i in 0 ..< n.len() - 1:
       detectCapturedVarsAux(n[i], owner, c, yieldSections, hasYield)
-
     detectCapturedVarsAux(n[^1], owner, c, yieldSections, isLoopCond)
 
     if hasYield:
-      discard yieldSections.pop()
-  of nkIdentDefs:
-    detectCapturedVarsAux(n[^1], owner, c, yieldSections, isLoopCond)
+      # discard the inner segment
+      yieldSections = prevSections
+      # have the loop act as a yield from here
+      yieldSections.add(initIntSet())
   else:
     if n.isCallExpr and n[0].isTypeOf:
       c.inTypeOf = true
