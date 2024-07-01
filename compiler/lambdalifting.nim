@@ -429,7 +429,7 @@ proc addClosureParam(c: var DetectionPass; fn: PSym; info: TLineInfo) =
     localError(c.graph.config, fn.info, "internal error: inconsistent environment type")
   #echo "adding closure to ", fn.name.s
 
-proc containsYieldOrReturn(n: PNode): bool =
+proc containsYield(n: PNode): bool =
   result = false
   case n.kind:
   of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit,
@@ -438,14 +438,14 @@ proc containsYieldOrReturn(n: PNode): bool =
      nkTypeOfExpr, nkMixinStmt, nkBindStmt, nkLambdaKinds,
      nkIteratorDef, nkSym:
     discard
-  of nkYieldStmt, nkReturnStmt:
+  of nkYieldStmt:
     return true
   else:
     for i in 0 ..< n.len:
-      if n[i].containsYieldOrReturn():
+      if n[i].containsYield():
         return true
 
-proc detectCapturedVarsAux(n: PNode; owner: PSym; c: var DetectionPass, seenYield: var bool) =
+proc detectCapturedVarsAux(n: PNode; owner: PSym; c: var DetectionPass; yieldSections: var seq[IntSet]; isLoopCond: bool = false) =
   case n.kind
   of nkSym:
     let s = n.sym
@@ -461,24 +461,34 @@ proc detectCapturedVarsAux(n: PNode; owner: PSym; c: var DetectionPass, seenYiel
       if s.isIterator: c.somethingToDo = true
       if not c.processed.containsOrIncl(s.id):
         let body = transformBody(c.graph, c.idgen, s, {useCache})
-        detectCapturedVarsAux(body, s, c, seenYield)
+        detectCapturedVarsAux(body, s, c, yieldSections)
     let ow = s.skipGenericOwner
     let innerClosure = innerProc and s.typ.callConv == ccClosure and not s.isIterator
     let interested = interestingVar(s)
     if ow == owner:
       if owner.isIterator:
         c.somethingToDo = true
-        addClosureParam(c, owner, n.info)
-        if interestingIterVar(s) and seenYield:
-          if not c.capturedVars.contains(s.id) and not c.capturedVars.contains(s.id):
-            if not c.inTypeOf: c.capturedVars.incl(s.id)
-            let obj = getHiddenParam(c.graph, owner).typ.skipTypes({tyOwned, tyRef, tyPtr})
+        var inPreviousSections = isLoopCond
+        if not inPreviousSections:
+          for si in 0 ..< yieldSections.len():
+            if s.id in yieldSections[si]:
+              inPreviousSections = true
+              break
+        addClosureParam(c, owner, n.info) # can this be moved into the if block to prevent a useless env?
+        if inPreviousSections:
+          if interestingIterVar(s):
+            if not c.capturedVars.contains(s.id):
+              if not c.inTypeOf: c.capturedVars.incl(s.id)
+              let obj = getHiddenParam(c.graph, owner).typ.skipTypes({tyOwned, tyRef, tyPtr})
+              #let obj = c.getEnvTypeForOwner(s.owner).skipTypes({tyOwned, tyRef, tyPtr})
 
-            if s.name.id == getIdent(c.graph.cache, ":state").id:
-              obj.n[0].sym.flags.incl sfNoInit
-              obj.n[0].sym.itemId = ItemId(module: s.itemId.module, item: -s.itemId.item)
-            else:
-              discard addField(obj, s, c.graph.cache, c.idgen)
+              if s.name.id == getIdent(c.graph.cache, ":state").id:
+                obj.n[0].sym.flags.incl sfNoInit
+                obj.n[0].sym.itemId = ItemId(module: s.itemId.module, item: -s.itemId.item)
+              else:
+                discard addField(obj, s, c.graph.cache, c.idgen)
+        else:
+          yieldSections[^1].incl(s.id)
     # direct or indirect dependency:
     elif innerClosure or interested:
       discard """
@@ -529,38 +539,60 @@ proc detectCapturedVarsAux(n: PNode; owner: PSym; c: var DetectionPass, seenYiel
      nkConverterDef, nkMacroDef, nkFuncDef, nkCommentStmt,
      nkTypeOfExpr, nkMixinStmt, nkBindStmt:
     discard
-  of nkForStmt:
-    # loops carry their own state
-    let capturingLoop = containsYieldOrReturn(n[2])
-    var innerYield = capturingLoop
-    detectCapturedVarsAux(n[0], owner, c, innerYield)
-    detectCapturedVarsAux(n[1], owner, c, innerYield)
-    detectCapturedVarsAux(n[2], owner, c, innerYield)
-  of nkWhileStmt:
-    # loops carry their own state
-    let capturingLoop = containsYieldOrReturn(n[1])
-    var innerYield = capturingLoop
-    detectCapturedVarsAux(n[0], owner, c, innerYield)
-    detectCapturedVarsAux(n[1], owner, c, innerYield)
   of nkLambdaKinds, nkIteratorDef:
     if n.typ != nil:
-      detectCapturedVarsAux(n[namePos], owner, c, seenYield)
-  of nkYieldStmt, nkReturnStmt:
-    # TODO: This needs to take control flow into account. A return in an unrelated branch is not interesting
-    seenYield = true
-    detectCapturedVarsAux(n[0], owner, c, seenYield)
+      detectCapturedVarsAux(n[namePos], owner, c, yieldSections)
+  of nkYieldStmt:
+    # When a yield is encountered, a new area begins
+    #[
+      var x = 0
+      yield 0
+      echo x # capture x
+      var y = 1
+      echo y # don't capture y
+      yield 1
+    ]#
+
+    yieldSections.add(initIntSet())
+    detectCapturedVarsAux(n[0], owner, c, yieldSections)
+  of nkReturnStmt:
+    detectCapturedVarsAux(n[0], owner, c, yieldSections)
+  of nkWhileStmt, nkForStmt:
+    # When a loop is encountered, it can act as a disposable yield if it itself contains one
+    #[
+      var x = 0
+      var z = 0
+      for i in 0 ..< 5:
+        echo z # capture z
+        var y = 0
+        echo y # don't capture y
+        yield 1
+      echo x # capture x
+    ]#
+
+    let hasYield = containsYield(n)
+    if hasYield:
+      yieldSections.add(initIntSet())
+
+    for i in 0 ..< n.len() - 1:
+      detectCapturedVarsAux(n[i], owner, c, yieldSections, hasYield)
+
+    detectCapturedVarsAux(n[^1], owner, c, yieldSections)
+
+    if hasYield:
+      discard yieldSections.pop()
   of nkIdentDefs:
-    detectCapturedVarsAux(n[^1], owner, c, seenYield)
+    detectCapturedVarsAux(n[^1], owner, c, yieldSections)
   else:
     if n.isCallExpr and n[0].isTypeOf:
       c.inTypeOf = true
     for i in 0..<n.len:
-      detectCapturedVarsAux(n[i], owner, c, seenYield)
+      detectCapturedVarsAux(n[i], owner, c, yieldSections)
     c.inTypeOf = false
 
 proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
-  var seenYield = false
-  detectCapturedVarsAux(n, owner, c, seenYield)
+  var yieldSections = @[initIntSet()]
+  detectCapturedVarsAux(n, owner, c, yieldSections)
 
 type
   LiftingPass = object
