@@ -429,7 +429,7 @@ proc addClosureParam(c: var DetectionPass; fn: PSym; info: TLineInfo) =
     localError(c.graph.config, fn.info, "internal error: inconsistent environment type")
   #echo "adding closure to ", fn.name.s
 
-proc containsYield(n: PNode): bool =
+proc containsYieldOrReturn(n: PNode): bool =
   result = false
   case n.kind:
   of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit,
@@ -438,11 +438,11 @@ proc containsYield(n: PNode): bool =
      nkTypeOfExpr, nkMixinStmt, nkBindStmt, nkLambdaKinds,
      nkIteratorDef, nkSym:
     discard
-  of nkYieldStmt:
+  of nkYieldStmt, nkReturnStmt:
     return true
   else:
     for i in 0 ..< n.len:
-      if n[i].containsYield():
+      if n[i].containsYieldOrReturn():
         return true
 
 proc detectCapturedVarsAux(n: PNode; owner: PSym; c: var DetectionPass; yieldSections: var seq[IntSet]; isLoopCond: bool) =
@@ -542,7 +542,7 @@ proc detectCapturedVarsAux(n: PNode; owner: PSym; c: var DetectionPass; yieldSec
   of nkLambdaKinds, nkIteratorDef:
     if n.typ != nil:
       detectCapturedVarsAux(n[namePos], owner, c, yieldSections, isLoopCond)
-  of nkYieldStmt:
+  of nkYieldStmt, nkReturnStmt:
     # When a yield is encountered, a new area begins
     #[
       var x = 0
@@ -552,11 +552,27 @@ proc detectCapturedVarsAux(n: PNode; owner: PSym; c: var DetectionPass; yieldSec
       echo y # don't capture y
       yield 1
     ]#
+    # return is a special case that isn't fully handled, instead it is treated as a yield for now
 
     yieldSections.add(initIntSet())
     detectCapturedVarsAux(n[0], owner, c, yieldSections, isLoopCond)
-  of nkReturnStmt:
-    detectCapturedVarsAux(n[0], owner, c, yieldSections, isLoopCond)
+  of nkCaseStmt:
+    let hasYield = isLoopCond or containsYieldOrReturn(n)
+    let prevSections = yieldSections
+    if hasYield:
+      yieldSections.add(initIntSet())
+    detectCapturedVarsAux(n[^1], owner, c, yieldSections, hasYield)
+    for i in 1 ..< n.len():
+      if hasYield:
+        # going across a case boundary when a yield/return has been found in the case stmt acts like a yield
+        # happens for transformed asts of closures stored in variables
+        yieldSections.add(initIntSet())
+      detectCapturedVarsAux(n[i], owner, c, yieldSections, isLoopCond)
+    if hasYield:
+      # discard the inner segment
+      yieldSections = prevSections
+      # have the loop act as a yield from here
+      yieldSections.add(initIntSet())
   of nkWhileStmt, nkForStmt:
     # When a loop is encountered, it can act as a disposable yield if it itself contains one
     #[
@@ -570,7 +586,7 @@ proc detectCapturedVarsAux(n: PNode; owner: PSym; c: var DetectionPass; yieldSec
       echo x # capture x
     ]#
 
-    let hasYield = isLoopCond or containsYield(n)
+    let hasYield = isLoopCond or containsYieldOrReturn(n)
     let prevSections = yieldSections
     if hasYield:
       yieldSections.add(initIntSet())
