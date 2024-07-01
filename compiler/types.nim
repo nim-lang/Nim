@@ -117,7 +117,7 @@ proc isPureObject*(typ: PType): bool =
 proc isUnsigned*(t: PType): bool =
   t.skipTypes(abstractInst).kind in {tyChar, tyUInt..tyUInt64}
 
-proc getOrdValue*(n: PNode; onError = high(Int128)): Int128 =
+proc getOrdValueAux*(n: PNode, err: var bool): Int128 =
   var k = n.kind
   if n.typ != nil and n.typ.skipTypes(abstractInst).kind in {tyChar, tyUInt..tyUInt64}:
     k = nkUIntLit
@@ -133,13 +133,22 @@ proc getOrdValue*(n: PNode; onError = high(Int128)): Int128 =
     toInt128(n.intVal)
   of nkNilLit:
     int128.Zero
-  of nkHiddenStdConv: getOrdValue(n[1], onError)
+  of nkHiddenStdConv:
+    getOrdValueAux(n[1], err)
   else:
-    # XXX: The idea behind the introduction of int128 was to finally
-    # have all calculations numerically far away from any
-    # overflows. This command just introduces such overflows and
-    # should therefore really be revisited.
-    onError
+    err = true
+    int128.Zero
+
+proc getOrdValue*(n: PNode): Int128 =
+  var err: bool = false
+  result = getOrdValueAux(n, err)
+  #assert err == false
+
+proc getOrdValue*(n: PNode, onError: Int128): Int128 =
+  var err = false
+  result = getOrdValueAux(n, err)
+  if err:
+    result = onError
 
 proc getFloatValue*(n: PNode): BiggestFloat =
   case n.kind
