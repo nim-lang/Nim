@@ -1280,7 +1280,6 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         result = isGeneric
       else:
         result = typeRel(c, ff, aa, flags)
-      
       if result < isGeneric:
         if nimEnableCovariance and
            trNoCovariance notin flags and
