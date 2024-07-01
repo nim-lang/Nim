@@ -445,7 +445,7 @@ proc containsYield(n: PNode): bool =
       if n[i].containsYield():
         return true
 
-proc detectCapturedVarsAux(n: PNode; owner: PSym; c: var DetectionPass; yieldSections: var seq[IntSet]; isLoopCond: bool = false) =
+proc detectCapturedVarsAux(n: PNode; owner: PSym; c: var DetectionPass; yieldSections: var seq[IntSet]; isLoopCond: bool) =
   case n.kind
   of nkSym:
     let s = n.sym
@@ -461,7 +461,7 @@ proc detectCapturedVarsAux(n: PNode; owner: PSym; c: var DetectionPass; yieldSec
       if s.isIterator: c.somethingToDo = true
       if not c.processed.containsOrIncl(s.id):
         let body = transformBody(c.graph, c.idgen, s, {useCache})
-        detectCapturedVarsAux(body, s, c, yieldSections)
+        detectCapturedVarsAux(body, s, c, yieldSections, isLoopCond)
     let ow = s.skipGenericOwner
     let innerClosure = innerProc and s.typ.callConv == ccClosure and not s.isIterator
     let interested = interestingVar(s)
@@ -541,7 +541,7 @@ proc detectCapturedVarsAux(n: PNode; owner: PSym; c: var DetectionPass; yieldSec
     discard
   of nkLambdaKinds, nkIteratorDef:
     if n.typ != nil:
-      detectCapturedVarsAux(n[namePos], owner, c, yieldSections)
+      detectCapturedVarsAux(n[namePos], owner, c, yieldSections, isLoopCond)
   of nkYieldStmt:
     # When a yield is encountered, a new area begins
     #[
@@ -554,9 +554,9 @@ proc detectCapturedVarsAux(n: PNode; owner: PSym; c: var DetectionPass; yieldSec
     ]#
 
     yieldSections.add(initIntSet())
-    detectCapturedVarsAux(n[0], owner, c, yieldSections)
+    detectCapturedVarsAux(n[0], owner, c, yieldSections, isLoopCond)
   of nkReturnStmt:
-    detectCapturedVarsAux(n[0], owner, c, yieldSections)
+    detectCapturedVarsAux(n[0], owner, c, yieldSections, isLoopCond)
   of nkWhileStmt, nkForStmt:
     # When a loop is encountered, it can act as a disposable yield if it itself contains one
     #[
@@ -570,29 +570,29 @@ proc detectCapturedVarsAux(n: PNode; owner: PSym; c: var DetectionPass; yieldSec
       echo x # capture x
     ]#
 
-    let hasYield = containsYield(n)
+    let hasYield = isLoopCond or containsYield(n)
     if hasYield:
       yieldSections.add(initIntSet())
 
     for i in 0 ..< n.len() - 1:
       detectCapturedVarsAux(n[i], owner, c, yieldSections, hasYield)
 
-    detectCapturedVarsAux(n[^1], owner, c, yieldSections)
+    detectCapturedVarsAux(n[^1], owner, c, yieldSections, isLoopCond)
 
     if hasYield:
       discard yieldSections.pop()
   of nkIdentDefs:
-    detectCapturedVarsAux(n[^1], owner, c, yieldSections)
+    detectCapturedVarsAux(n[^1], owner, c, yieldSections, isLoopCond)
   else:
     if n.isCallExpr and n[0].isTypeOf:
       c.inTypeOf = true
     for i in 0..<n.len:
-      detectCapturedVarsAux(n[i], owner, c, yieldSections)
+      detectCapturedVarsAux(n[i], owner, c, yieldSections, isLoopCond)
     c.inTypeOf = false
 
 proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
   var yieldSections = @[initIntSet()]
-  detectCapturedVarsAux(n, owner, c, yieldSections)
+  detectCapturedVarsAux(n, owner, c, yieldSections, false)
 
 type
   LiftingPass = object
