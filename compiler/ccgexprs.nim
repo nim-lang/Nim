@@ -812,6 +812,8 @@ proc genAddr(p: BProc, e: PNode, d: var TLoc) =
     #Message(e.info, warnUser, "HERE NEW &")
   elif mapType(p.config, e[0].typ, mapTypeChooser(e[0]) == skParam) == ctArray or isCppRef(p, e.typ):
     expr(p, e[0], d)
+    # bug #19497
+    d.lode = e
   else:
     var a: TLoc = initLocExpr(p, e[0])
     putIntoDest(p, d, e, addrLoc(p.config, a), a.storage)

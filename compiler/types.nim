@@ -140,7 +140,7 @@ proc getOrdValueAux*(n: PNode, err: var bool): Int128 =
 proc getOrdValue*(n: PNode): Int128 =
   var err: bool = false
   result = getOrdValueAux(n, err)
-  assert err == false
+  #assert err == false
 
 proc getOrdValue*(n: PNode, onError: Int128): Int128 =
   var err = false

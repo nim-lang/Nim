@@ -43,3 +43,10 @@ block:
 
   var s: IntArray[5] = [1,1,1,1,1]
   doAssert `$`(s) == "test"
+
+block: 
+  proc p[n:static[int]](a: array[n, char]):bool=true
+  proc p[T, IDX](a: array[IDX, T]):bool=false
+
+  var g: array[32, char]
+  discard p(g)
