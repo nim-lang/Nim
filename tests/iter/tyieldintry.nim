@@ -520,8 +520,10 @@ block: # Locals present in only 1 state should be on the stack
   iterator it(): int {.closure.} =
     var a = 1
     var b = 2
+    var c {.liftLocals.} = 3
     checkOnStack(addr a, true)
     checkOnStack(addr b, false)
+    checkOnStack(addr c, false)
     yield a
     yield b
   test(it, 1, 2)

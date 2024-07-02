@@ -450,6 +450,12 @@ proc boolLit(g: ModuleGraph; info: TLineInfo; value: bool): PNode =
   result = newIntLit(g, info, ord value)
   result.typ = getSysType(g, info, tyBool)
 
+proc captureVar(c: var Ctx, s: PSym) =
+  if c.varStates.getOrDefault(s.itemId) != localRequiresLifting:
+    c.varStates[s.itemId] = localRequiresLifting # Mark this variable for lifting
+    let e = getEnvParam(c.fn)
+    discard addField(e.typ.elementType, s, c.g.cache, c.idgen)
+
 proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
   result = n
   case n.kind
@@ -696,6 +702,12 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
         let (st, ex) = exprToStmtList(c[^1])
         result.add(st)
         c[^1] = ex
+      for i in 0 .. c.len - 3:
+        if c[i].kind == nkSym:
+          let s = c[i].sym
+          if sfForceLift in s.flags:
+            ctx.captureVar(s)
+
       result.add(varSect)
 
   of nkDiscardStmt, nkReturnStmt, nkRaiseStmt:
@@ -1430,9 +1442,7 @@ proc detectCapturedVars(c: var Ctx, n: PNode, stateIdx: int) =
       elif vs == localRequiresLifting:
         discard # Sym already marked
       elif vs != stateIdx:
-        c.varStates[s.itemId] = localRequiresLifting # Mark this variable for lifting
-        let e = getEnvParam(c.fn)
-        let f = addField(e.typ.elementType, s, c.g.cache, c.idgen)
+        c.captureVar(s)
   of nkReturnStmt:
     if n[0].kind in {nkAsgn, nkFastAsgn, nkSinkAsgn}:
       # we have a `result = result` expression produced by the closure
@@ -1526,3 +1536,5 @@ proc transformClosureIterator*(g: ModuleGraph; idgen: IdGenerator; fn: PSym, n: 
     echo "exception table:"
     for i, e in ctx.exceptionTable:
       echo i, " -> ", e
+
+    echo "ENV: ", renderTree(getEnvParam(fn).typ.elementType.n)
