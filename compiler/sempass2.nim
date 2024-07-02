@@ -957,7 +957,7 @@ proc checkForSink(tracked: PEffects; n: PNode) =
 proc markCaughtExceptions(tracked: PEffects; g: ModuleGraph; info: TLineInfo; s: PSym; usageSym: var PSym) =
   when defined(nimsuggest):
     proc internalMarkCaughtExceptions(tracked: PEffects; q: var SuggestFileSymbolDatabase; info: TLineInfo) =
-      var si = q.findSymInfoIndex(info)
+      var si = q.findSymInfoIndex(info, true)
       if si != -1:
         q.caughtExceptionsSet[si] = true
         for w1 in tracked.caughtExceptions.nodes:

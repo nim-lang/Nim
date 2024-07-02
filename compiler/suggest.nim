@@ -618,41 +618,43 @@ proc ensureIdx[T](x: var T, y: int) =
 proc ensureSeq[T](x: var seq[T]) =
   if x == nil: newSeq(x, 0)
 
-proc suggestSym*(g: ModuleGraph; info: TLineInfo; s: PSym; usageSym: var PSym; isDecl=true) {.inline.} =
+proc suggestSym*(g: ModuleGraph; info: TLineInfo; s: PSym; usageSym: var PSym; isDecl=true; isGenericInstance=false) {.inline.} =
   ## misnamed: should be 'symDeclared'
   let conf = g.config
   when defined(nimsuggest):
-    g.suggestSymbols.add SymInfoPair(sym: s, info: info, isDecl: isDecl), optIdeExceptionInlayHints in g.config.globalOptions
+    if optIdeExceptionInlayHints in conf.globalOptions or not isGenericInstance:
+      g.suggestSymbols.add SymInfoPair(sym: s, info: info, isDecl: isDecl, isGenericInstance: isGenericInstance), optIdeExceptionInlayHints in g.config.globalOptions
 
-    if conf.suggestVersion == 0:
-      if s.allUsages.len == 0:
-        s.allUsages = @[info]
-      else:
-        s.addNoDup(info)
+    if not isGenericInstance:
+      if conf.suggestVersion == 0:
+        if s.allUsages.len == 0:
+          s.allUsages = @[info]
+        else:
+          s.addNoDup(info)
 
-    if conf.ideCmd == ideUse:
-      findUsages(g, info, s, usageSym)
-    elif conf.ideCmd == ideDef:
-      findDefinition(g, info, s, usageSym)
-    elif conf.ideCmd == ideDus and s != nil:
-      if isTracked(info, conf.m.trackPos, s.name.s.len):
-        suggestResult(conf, symToSuggest(g, s, isLocal=false, ideDef, info, 100, PrefixMatch.None, false, 0))
-      findUsages(g, info, s, usageSym)
-    elif conf.ideCmd == ideHighlight and info.fileIndex == conf.m.trackPos.fileIndex:
-      suggestResult(conf, symToSuggest(g, s, isLocal=false, ideHighlight, info, 100, PrefixMatch.None, false, 0))
-    elif conf.ideCmd == ideOutline and isDecl:
-      # if a module is included then the info we have is inside the include and
-      # we need to walk up the owners until we find the outer most module,
-      # which will be the last skModule prior to an skPackage.
-      var
-        parentFileIndex = info.fileIndex # assume we're in the correct module
-        parentModule = s.owner
-      while parentModule != nil and parentModule.kind == skModule:
-        parentFileIndex = parentModule.info.fileIndex
-        parentModule = parentModule.owner
+      if conf.ideCmd == ideUse:
+        findUsages(g, info, s, usageSym)
+      elif conf.ideCmd == ideDef:
+        findDefinition(g, info, s, usageSym)
+      elif conf.ideCmd == ideDus and s != nil:
+        if isTracked(info, conf.m.trackPos, s.name.s.len):
+          suggestResult(conf, symToSuggest(g, s, isLocal=false, ideDef, info, 100, PrefixMatch.None, false, 0))
+        findUsages(g, info, s, usageSym)
+      elif conf.ideCmd == ideHighlight and info.fileIndex == conf.m.trackPos.fileIndex:
+        suggestResult(conf, symToSuggest(g, s, isLocal=false, ideHighlight, info, 100, PrefixMatch.None, false, 0))
+      elif conf.ideCmd == ideOutline and isDecl:
+        # if a module is included then the info we have is inside the include and
+        # we need to walk up the owners until we find the outer most module,
+        # which will be the last skModule prior to an skPackage.
+        var
+          parentFileIndex = info.fileIndex # assume we're in the correct module
+          parentModule = s.owner
+        while parentModule != nil and parentModule.kind == skModule:
+          parentFileIndex = parentModule.info.fileIndex
+          parentModule = parentModule.owner
 
-      if parentFileIndex == conf.m.trackPos.fileIndex:
-        suggestResult(conf, symToSuggest(g, s, isLocal=false, ideOutline, info, 100, PrefixMatch.None, false, 0))
+        if parentFileIndex == conf.m.trackPos.fileIndex:
+          suggestResult(conf, symToSuggest(g, s, isLocal=false, ideOutline, info, 100, PrefixMatch.None, false, 0))
 
 proc warnAboutDeprecated(conf: ConfigRef; info: TLineInfo; s: PSym) =
   var pragmaNode: PNode
@@ -696,26 +698,28 @@ proc markOwnerModuleAsUsed(c: PContext; s: PSym) =
       else:
         inc i
 
-proc markUsed(c: PContext; info: TLineInfo; s: PSym; checkStyle = true) =
-  let conf = c.config
-  incl(s.flags, sfUsed)
-  if s.kind == skEnumField and s.owner != nil:
-    incl(s.owner.flags, sfUsed)
-    if sfDeprecated in s.owner.flags:
-      warnAboutDeprecated(conf, info, s)
-  if {sfDeprecated, sfError} * s.flags != {}:
-    if sfDeprecated in s.flags:
-      if not (c.lastTLineInfo.line == info.line and
-              c.lastTLineInfo.col == info.col):
+proc markUsed(c: PContext; info: TLineInfo; s: PSym; checkStyle = true; isGenericInstance = false) =
+  if not isGenericInstance:
+    let conf = c.config
+    incl(s.flags, sfUsed)
+    if s.kind == skEnumField and s.owner != nil:
+      incl(s.owner.flags, sfUsed)
+      if sfDeprecated in s.owner.flags:
         warnAboutDeprecated(conf, info, s)
-        c.lastTLineInfo = info
+    if {sfDeprecated, sfError} * s.flags != {}:
+      if sfDeprecated in s.flags:
+        if not (c.lastTLineInfo.line == info.line and
+                c.lastTLineInfo.col == info.col):
+          warnAboutDeprecated(conf, info, s)
+          c.lastTLineInfo = info
 
-    if sfError in s.flags: userError(conf, info, s)
+      if sfError in s.flags: userError(conf, info, s)
   when defined(nimsuggest):
-    suggestSym(c.graph, info, s, c.graph.usageSym, false)
-  if checkStyle:
-    styleCheckUse(c, info, s)
-  markOwnerModuleAsUsed(c, s)
+    suggestSym(c.graph, info, s, c.graph.usageSym, isDecl = false, isGenericInstance = isGenericInstance)
+  if not isGenericInstance:
+    if checkStyle:
+      styleCheckUse(c, info, s)
+    markOwnerModuleAsUsed(c, s)
 
 proc safeSemExpr*(c: PContext, n: PNode): PNode =
   # use only for idetools support!

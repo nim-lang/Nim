@@ -96,7 +96,7 @@ type
 const
   isNilConversion = isConvertible # maybe 'isIntConv' fits better?
 
-proc markUsed*(c: PContext; info: TLineInfo, s: PSym; checkStyle = true)
+proc markUsed*(c: PContext; info: TLineInfo, s: PSym; checkStyle = true; isGenericInstance = false)
 proc markOwnerModuleAsUsed*(c: PContext; s: PSym)
 
 template hasFauxMatch*(c: TCandidate): bool = c.fauxMatch != tyNone

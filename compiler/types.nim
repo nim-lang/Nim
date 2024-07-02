@@ -749,7 +749,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
         addSep(prag)
         prag.add("gcsafe")
       if not hasImplicitRaises and prefer == preferInferredEffects and not isNil(t.owner) and not isNil(t.owner.typ) and not isNil(t.owner.typ.n) and (t.owner.typ.n.len > 0):
-        let effects = t.owner.typ.n[0]
+        let effects = t.n[0]
         if effects.kind == nkEffectList and effects.len == effectListLen:
           var inferredRaisesStr = ""
           let effs = effects[exceptionEffects]
