@@ -1031,6 +1031,8 @@ const mimes* = {
   "movie": "video/x-sgi-movie",
   "smv": "video/x-smv",
   "ice": "x-conference/x-cooltalk",
+  "avif": "image/avif",
+  "avifs": "image/avif"
 }
 
 
