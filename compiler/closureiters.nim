@@ -187,7 +187,7 @@ proc newEnvVar(ctx: var Ctx, name: string, typ: PType): PSym =
   result = newSym(skVar, getIdent(ctx.g.cache, name), ctx.idgen, ctx.fn, ctx.fn.info)
   result.typ = typ
   result.flags.incl sfNoInit
-  assert(not typ.isNil)
+  assert(not typ.isNil, "Env var needs a type")
 
   let envParam = getEnvParam(ctx.fn)
   # let obj = envParam.typ.lastSon
@@ -250,7 +250,7 @@ proc newTempVar(ctx: var Ctx, typ: PType, parent: PNode, initialValue: PNode = n
   result = newSym(skVar, getIdent(ctx.g.cache, ":tmpSlLower" & $ctx.tempVarId), ctx.idgen, ctx.fn, ctx.fn.info)
   inc ctx.tempVarId
   result.typ = typ
-  assert(not typ.isNil)
+  assert(not typ.isNil, "Temp var needs a type")
   parent.add(ctx.newTempVarDef(result, initialValue))
 
 proc hasYields(n: PNode): bool =
