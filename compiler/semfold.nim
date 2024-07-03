@@ -703,7 +703,7 @@ proc getConstExpr(m: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode 
   of nkAddr:
     var a = getConstExpr(m, n[0], idgen, g)
     if a != nil:
-      result = n
+      result = nil # don't fold paths containing nkAddr
       n[0] = a
   of nkBracket, nkCurly:
     result = copyNode(n)
