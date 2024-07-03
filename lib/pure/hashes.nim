@@ -518,6 +518,9 @@ proc hashFarm(s: openArray[byte]): uint64 {.inline.} =
   swap z, x
   len16 len16(v[0],w[0],mul) + shiftMix(y)*k0 + z, len16(v[1],w[1],mul) + x, mul
 
+const sHash2 = when defined(nimStringHash2) or (defined(js) and Hash.sizeof==4):
+  true else: false
+
 proc hash*(x: string): Hash =
   ## Efficient hashing of strings.
   ##
@@ -527,7 +530,7 @@ proc hash*(x: string): Hash =
   runnableExamples:
     doAssert hash("abracadabra") != hash("AbracadabrA")
 
-  when defined nimPreviewHashFarm: # Default switched -> `not nimStringHash2`
+  when not sHash2:
     result = cast[Hash](hashFarm(toOpenArrayByte(x, 0, x.high)))
   else:
     when nimvm:
@@ -542,7 +545,7 @@ proc hash*(x: cstring): Hash =
     doAssert hash(cstring"AbracadabrA") == hash("AbracadabrA")
     doAssert hash(cstring"abracadabra") != hash(cstring"AbracadabrA")
 
-  when defined nimPreviewHashFarm: # Default switched -> `not nimStringHash2`
+  when not sHash2:
     when defined js:
       let xx = $x
       result = cast[Hash](hashFarm(toOpenArrayByte(xx, 0, xx.high)))
@@ -567,7 +570,7 @@ proc hash*(sBuf: string, sPos, ePos: int): Hash =
     var a = "abracadabra"
     doAssert hash(a, 0, 3) == hash(a, 7, 10)
 
-  when defined nimPreviewHashFarm: # Default switched -> `not nimStringHash2`
+  when not sHash2:
     result = cast[Hash](hashFarm(toOpenArrayByte(sBuf, sPos, ePos)))
   else:
     murmurHash(toOpenArrayByte(sBuf, sPos, ePos))
@@ -705,12 +708,12 @@ proc hash*[A](x: openArray[A]): Hash =
   ## Efficient hashing of arrays and sequences.
   ## There must be a `hash` proc defined for the element type `A`.
   when A is byte:
-    when defined nimPreviewHashFarm: # Default switched -> `not nimStringHash2`
+    when not sHash2:
       result = cast[Hash](hashFarm(x))
     else:
       result = murmurHash(x)
   elif A is char:
-    when defined nimPreviewHashFarm: # Default switched -> `not nimStringHash2`
+    when not sHash2:
       result = cast[Hash](hashFarm(toOpenArrayByte(x, 0, x.high)))
     else:
       when nimvm:
@@ -734,7 +737,7 @@ proc hash*[A](aBuf: openArray[A], sPos, ePos: int): Hash =
     doAssert hash(a, 0, 1) == hash(a, 3, 4)
 
   when A is byte:
-    when defined nimPreviewHashFarm: # Default switched -> `not nimStringHash2`
+    when not sHash2:
       result = cast[Hash](hashFarm(toOpenArray(aBuf, sPos, ePos)))
     else:
       when nimvm:
@@ -742,7 +745,7 @@ proc hash*[A](aBuf: openArray[A], sPos, ePos: int): Hash =
       else:
         result = murmurHash(toOpenArray(aBuf, sPos, ePos))
   elif A is char:
-    when defined nimPreviewHashFarm: # Default switched -> `not nimStringHash2`
+    when not sHash2:
       result = cast[Hash](hashFarm(toOpenArrayByte(aBuf, sPos, ePos)))
     else:
       when nimvm:
