@@ -127,6 +127,7 @@ type
     sfMember          # proc is a C++ member of a type
     sfCodegenDecl     # type, proc, global or proc param is marked as codegenDecl
     sfWasGenSym       # symbol was 'gensym'ed
+    sfForceLift       # variable has to be lifted into closure environment
 
   TSymFlags* = set[TSymFlag]
 
