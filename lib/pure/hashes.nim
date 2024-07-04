@@ -518,8 +518,9 @@ proc hashFarm(s: openArray[byte]): uint64 {.inline.} =
   swap z, x
   len16 len16(v[0],w[0],mul) + shiftMix(y)*k0 + z, len16(v[1],w[1],mul) + x, mul
 
-const sHash2 = when defined(nimStringHash2) or (defined(js) and Hash.sizeof==4):
-  true else: false
+const sHash2 = when defined(nimStringHash2) or
+                 (defined(js) and not defined(nimHasJsBigIntBackend)): true
+               else: false
 
 proc hash*(x: string): Hash =
   ## Efficient hashing of strings.
