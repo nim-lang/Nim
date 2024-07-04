@@ -1059,7 +1059,7 @@ template instantiateForRegion(allocator: untyped) {.dirty.} =
   # -------------------- shared heap region ----------------------------------
 
   proc allocSharedImpl(size: Natural): pointer =
-    when hasThreadSupport and not defined(gcDestructors):
+    when hasThreadSupport:
       acquireSys(heapLock)
       result = alloc(sharedHeap, size)
       releaseSys(heapLock)
