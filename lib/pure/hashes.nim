@@ -518,13 +518,18 @@ proc hashFarm(s: openArray[byte]): uint64 {.inline.} =
   swap z, x
   len16 len16(v[0],w[0],mul) + shiftMix(y)*k0 + z, len16(v[1],w[1],mul) + x, mul
 
-const sHash2 = when defined(nimStringHash2) or
-                 (defined(js) and not defined(nimHasJsBigIntBackend)): true
-               else: false
+template jsNoInt64: untyped =
+  when defined js:
+    when compiles(compileOption("jsbigint64")):
+      when not compileOption("jsbigint64"): true
+      else: false
+    else: false
+  else: false
+const sHash2 = (when defined(nimStringHash2) or jsNoInt64(): true else: false)
 
 template maybeFailJS_Number =
-  when defined(js) and not compileOption("jsbigint64") and not defined(nimStringHash2):
-    {.error: "When compiling with `--jsbigint64:off must also -d:nimStringHash2".}
+  when jsNoInt64() and not defined(nimStringHash2):
+    {.error: "Must use `-d:nimStringHash2` when using `--jsbigint64:off`".}
 
 proc hash*(x: string): Hash =
   ## Efficient hashing of strings.
