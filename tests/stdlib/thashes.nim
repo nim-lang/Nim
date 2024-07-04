@@ -98,7 +98,7 @@ block largeSize: # longer than 4 characters
 proc main() =
   doAssert hash(0.0) == hash(0)
   # bug #16061
-  when sHash2: # Hash=int=4B on js even w/--jsbigint64:on => cast[Hash]
+  when not sHash2: # Hash=int=4B on js even w/--jsbigint64:on => cast[Hash]
     doAssert hash(cstring"abracadabra") == cast[Hash](-1119910118870047694i64)
   else:
     doAssert hash(cstring"abracadabra") == 97309975
