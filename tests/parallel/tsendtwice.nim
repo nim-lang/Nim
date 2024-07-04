@@ -1,18 +1,10 @@
 discard """
-  output: '''ob2 @[]
-ob @[]
-ob3 @[]
-3
-ob2 @[]
-ob @[]
-ob3 @[]
-'''
   matrix: "--mm:refc"
 """
 
 # bug #4776
 
-import tables
+import tables, sequtils
 
 type
   Base* = ref object of RootObj
@@ -37,15 +29,11 @@ globalTable.add("ob3", d)
 
 proc testThread(channel: ptr TableChannel) {.thread.} =
   globalTable = channel[].recv()
-  for k, v in pairs globaltable:
-    echo k, " ", v.someSeq
   var myObj: Base
   deepCopy(myObj, globalTable["ob"])
   myObj.someSeq = newSeq[int](100)
   let table = channel[].recv() # same table
-  echo table.len
-  for k, v in mpairs table:
-    echo k, " ", v.someSeq
+  assert table == globalTable
   assert(table.contains("ob")) # fails!
   assert(table.contains("ob2")) # fails!
   assert(table.contains("ob3")) # fails!
