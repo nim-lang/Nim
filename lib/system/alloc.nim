@@ -793,7 +793,7 @@ when defined(gcDestructors):
     while it != nil:
       inc total, size
       let chunk = cast[PSmallChunk](pageAddr(it))
-      inc(chunk.free, size)
+      chunk.free = size
       it = it.next
     dec(a.occ, total)
 
