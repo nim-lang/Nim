@@ -46,7 +46,8 @@ block hashes:
     else:
       doAssert hashWangYi1(456) == -6421749900419628582
 
-const sHash2 = when defined(nimStringHash2) or (defined(js) and Hash.sizeof==4)
+const sHash2 = when defined(nimStringHash2) or (defined(js) and Hash.sizeof==4):
+  true else: false
 
 block empty:
   const emptyStrHash = # Hash=int=4B on js even w/--jsbigint64:on => cast[Hash]
