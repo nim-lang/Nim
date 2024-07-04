@@ -106,8 +106,6 @@ type
     when not defined(gcDestructors):
       minLargeObj, maxLargeObj: int
     freeSmallChunks: array[0..max(1, SmallChunkSize div MemAlign-1), PSmallChunk]
-    when defined(gcDestructors):
-      sharedFreeLists: array[0..max(1, SmallChunkSize div MemAlign-1), ptr FreeCell]
     flBitmap: uint32
     slBitmap: array[RealFli, uint32]
     matrix: array[RealFli, array[MaxSli, PBigChunk]]
@@ -791,11 +789,11 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
     dec a.occ, s
     untrackSize(s)
     sysAssert a.occ >= 0, "rawDealloc: negative occupied memory (case A)"
-    sysAssert(((cast[ByteAddress](p) and PageMask) - smallChunkOverhead()) %%
+    sysAssert(((cast[int](p) and PageMask) - smallChunkOverhead()) %%
                s == 0, "rawDealloc 3")
     var f = cast[ptr FreeCell](p)
     when not defined(gcDestructors):
-      #echo("setting to nil: ", $cast[ByteAddress](addr(f.zeroField)))
+      #echo("setting to nil: ", $cast[int](addr(f.zeroField)))
       sysAssert(f.zeroField != 0, "rawDealloc 1")
       f.zeroField = 0
     f.next = c.freeList
@@ -815,7 +813,7 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
         listRemove(a.freeSmallChunks[s div MemAlign], c)
         c.size = SmallChunkSize
         freeBigChunk(a, cast[PBigChunk](c))
-    sysAssert(((cast[ByteAddress](p) and PageMask) - smallChunkOverhead()) %%
+    sysAssert(((cast[int](p) and PageMask) - smallChunkOverhead()) %%
                s == 0, "rawDealloc 2")
   else:
     # set to 0xff to check for usage after free bugs:
@@ -981,7 +979,7 @@ template instantiateForRegion(allocator: untyped) {.dirty.} =
       result = interiorAllocatedPtr(allocator, p)
 
     proc isAllocatedPtr*(p: pointer): bool =
-      let p = cast[pointer](cast[int](p)-%ByteAddress(sizeof(Cell)))
+      let p = cast[pointer](cast[int](p)-%sizeof(Cell))
       result = isAllocatedPtr(allocator, p)
 
   proc deallocOsPages = deallocOsPages(allocator)
