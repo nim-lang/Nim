@@ -522,6 +522,10 @@ const sHash2 = when defined(nimStringHash2) or
                  (defined(js) and not defined(nimHasJsBigIntBackend)): true
                else: false
 
+template maybeFailJS_Number =
+  when defined(js) and not compileOption("jsbigint64") and not defined(nimStringHash2):
+    {.error: "When compiling with `--jsbigint64:off must also -d:nimStringHash2".}
+
 proc hash*(x: string): Hash =
   ## Efficient hashing of strings.
   ##
@@ -530,13 +534,13 @@ proc hash*(x: string): Hash =
   ## * `hashIgnoreCase <#hashIgnoreCase,string>`_
   runnableExamples:
     doAssert hash("abracadabra") != hash("AbracadabrA")
-
+  maybeFailJS_Number()
   when not sHash2:
     result = cast[Hash](hashFarm(toOpenArrayByte(x, 0, x.high)))
   else:
-    when nimvm:
-      result = hashVmImpl(x, 0, high(x))
-    else:
+    #when nimvm:
+    #  result = hashVmImpl(x, 0, high(x))
+    when true:
       result = murmurHash(toOpenArrayByte(x, 0, high(x)))
 
 proc hash*(x: cstring): Hash =
@@ -546,6 +550,7 @@ proc hash*(x: cstring): Hash =
     doAssert hash(cstring"AbracadabrA") == hash("AbracadabrA")
     doAssert hash(cstring"abracadabra") != hash(cstring"AbracadabrA")
 
+  maybeFailJS_Number()
   when not sHash2:
     when defined js:
       let xx = $x
@@ -553,14 +558,14 @@ proc hash*(x: cstring): Hash =
     else:
       result = cast[Hash](hashFarm(toOpenArrayByte(x, 0, x.high)))
   else:
-    when nimvm:
-      hashVmImpl(x, 0, high(x))
-    else:
+    #when nimvm:
+    #  result = hashVmImpl(x, 0, high(x))
+    when true:
       when not defined(js):
-        murmurHash(toOpenArrayByte(x, 0, x.high))
+        result = murmurHash(toOpenArrayByte(x, 0, x.high))
       else:
         let xx = $x
-        murmurHash(toOpenArrayByte(xx, 0, high(xx)))
+        result = murmurHash(toOpenArrayByte(xx, 0, high(xx)))
 
 proc hash*(sBuf: string, sPos, ePos: int): Hash =
   ## Efficient hashing of a string buffer, from starting
@@ -571,6 +576,7 @@ proc hash*(sBuf: string, sPos, ePos: int): Hash =
     var a = "abracadabra"
     doAssert hash(a, 0, 3) == hash(a, 7, 10)
 
+  maybeFailJS_Number()
   when not sHash2:
     result = cast[Hash](hashFarm(toOpenArrayByte(sBuf, sPos, ePos)))
   else:
@@ -717,9 +723,9 @@ proc hash*[A](x: openArray[A]): Hash =
     when not sHash2:
       result = cast[Hash](hashFarm(toOpenArrayByte(x, 0, x.high)))
     else:
-      when nimvm:
-        result = hashVmImplChar(x, 0, x.high)
-      else:
+      #when nimvm:
+      #  result = hashVmImplChar(x, 0, x.high)
+      when true:
         result = murmurHash(toOpenArrayByte(x, 0, x.high))
   else:
     result = 0
@@ -736,22 +742,23 @@ proc hash*[A](aBuf: openArray[A], sPos, ePos: int): Hash =
   runnableExamples:
     let a = [1, 2, 5, 1, 2, 6]
     doAssert hash(a, 0, 1) == hash(a, 3, 4)
-
   when A is byte:
+    maybeFailJS_Number()
     when not sHash2:
       result = cast[Hash](hashFarm(toOpenArray(aBuf, sPos, ePos)))
     else:
-      when nimvm:
-        result = hashVmImplByte(aBuf, sPos, ePos)
-      else:
+      #when nimvm:
+      #  result = hashVmImplByte(aBuf, sPos, ePos)
+      when true:
         result = murmurHash(toOpenArray(aBuf, sPos, ePos))
   elif A is char:
+    maybeFailJS_Number()
     when not sHash2:
       result = cast[Hash](hashFarm(toOpenArrayByte(aBuf, sPos, ePos)))
     else:
-      when nimvm:
-        result = hashVmImplChar(aBuf, sPos, ePos)
-      else:
+      #when nimvm:
+      #  result = hashVmImplChar(aBuf, sPos, ePos)
+      when true:
         result = murmurHash(toOpenArrayByte(aBuf, sPos, ePos))
   else:
     for i in sPos .. ePos:
