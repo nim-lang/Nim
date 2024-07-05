@@ -787,8 +787,8 @@ when defined(gcDestructors):
       # Steal the entire list from `sharedFreeList`:
       var it = atomicExchangeN(addr a.sharedFreeLists[size div MemAlign], nil, ATOMIC_RELAXED)
     else:
-      var it = a.sharedFreeLists[s]
-      a.sharedFreeLists[s] = nil
+      var it = a.sharedFreeLists[size div MemAlign]
+      a.sharedFreeLists[size div MemAlign] = nil
 
     while it != nil:
       let next = it.next
