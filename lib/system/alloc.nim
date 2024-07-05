@@ -804,6 +804,7 @@ when defined(gcDestructors):
         chunk.freeList = it
         chunk.freeList.next = tmp
       inc(chunk.free, size)
+      dec(a.occ, size)
       it = next
 
   proc freeDeferredObjects(a: var MemRegion; root: PBigChunk) =
@@ -943,8 +944,6 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
         #echo("setting to nil: ", $cast[int](addr(f.zeroField)))
         sysAssert(f.zeroField != 0, "rawDealloc 1")
         f.zeroField = 0
-      f.next = c.freeList
-      c.freeList = f
       when overwriteFree:
         # set to 0xff to check for usage after free bugs:
         nimSetMem(cast[pointer](cast[int](p) +% sizeof(FreeCell)), -1'i32,
@@ -955,8 +954,12 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
         if c.acc + s <= SmallChunkSize - smallChunkOverhead:
           when defined(debugAlloc): c_fprintf(c_stdout, "rawDealloc: Removing from freeSmallChunks %p\n", c)
           listRemove(a.freeSmallChunks[s div MemAlign], c)
+        sysAssert(c notin a.freeSmallChunks, "Dangling chunk")
         c.size = SmallChunkSize
         freeBigChunk(a, cast[PBigChunk](c))
+      else:
+        f.next = c.freeList
+        c.freeList = f
     else:
       when logAlloc: cprintf("dealloc(pointer_%p) # SMALL FROM %p CALLER %p\n", p, c.owner, addr(a))
 
