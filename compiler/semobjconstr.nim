@@ -12,6 +12,7 @@
 # included from sem.nim
 
 from std/sugar import dup
+from expanddefaults import caseObjDefaultBranch
 
 type
   ObjConstrContext = object
@@ -208,6 +209,46 @@ proc collectBranchFields(c: PContext, n: PNode, discriminatorVal: PNode,
                     "for a branch whose fields have default values.")
     discard collectMissingCaseFields(c, n[i], constrCtx, @[])
 
+proc filterDefaultValue(c: PContext, typ: PType, constr: PNode): PNode
+
+proc filterConstructFields(c: PContext, n: PNode, constr: PNode, pos: var int, defaults: var seq[PNode]) =
+  case n.kind
+  of nkRecList:
+    for i in 0..<n.len:
+      filterConstructFields(c, n[i], constr, pos, defaults)
+      inc pos
+  of nkRecCase:
+    filterConstructFields(c, n[0], constr, pos, defaults)
+    inc pos
+    assert constr[pos].kind == nkExprColonExpr
+    let picked = caseObjDefaultBranch(n, getOrdValue(constr[pos][1]))
+    let branchNode = lastSon(n[picked])
+    filterConstructFields(c, branchNode, constr, pos, defaults)
+  of nkSym:
+    while n.sym.name.id != constr[pos][0].sym.name.id:
+      inc pos
+
+    assert constr[pos].kind == nkExprColonExpr
+    let node = copyNode(constr[pos])
+    node.add constr[pos][0]
+    node.add filterDefaultValue(c, constr[pos][0].sym.typ, constr[pos][1])
+    defaults.add node
+  else:
+    raiseAssert "unreachable"
+
+proc filterDefaultValue(c: PContext, typ: PType, constr: PNode): PNode =
+  case typ.kind
+  of tyObject:
+    var pos = 1
+    var defaults: seq[PNode] = @[]
+    filterConstructFields(c, typ.n, constr, pos, defaults)
+    result = copyNode(constr)
+    result.add constr[0]
+    for i in defaults:
+      result.add i
+  else:
+    result = constr
+
 proc semConstructFields(c: PContext, n: PNode, constrCtx: var ObjConstrContext,
                         flags: TExprFlags): tuple[status: InitStatus, defaults: seq[PNode]] =
   result = (initUnknown, @[])
@@ -388,7 +429,10 @@ proc semConstructFields(c: PContext, n: PNode, constrCtx: var ObjConstrContext,
       result.status = initFull
     elif field.ast != nil:
       result.status = initUnknown
-      result.defaults.add newTree(nkExprColonExpr, n, field.ast)
+      if field.ast.kind == nkObjConstr:
+        result.defaults.add newTree(nkExprColonExpr, n, filterDefaultValue(c, field.typ, field.ast))
+      else:
+        result.defaults.add newTree(nkExprColonExpr, n, field.ast)
     else:
       if efWantNoDefaults notin flags: # cannot compute defaults at the typeRightPass
         let defaultExpr = defaultNodeField(c, n, constrCtx.checkDefault)
@@ -523,6 +567,13 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType 
       localError(c.config, field.info, msg)
       hasError = true
       break
+
+  if "Another" in n.renderTree:
+    echo n.renderTree
+    debug result
+    echo defaults
+    echo result.sons
+    echo result.renderTree
 
   result.sons.add defaults
 
