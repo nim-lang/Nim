@@ -866,7 +866,7 @@ proc rawAlloc(a: var MemRegion, requestedSize: int): pointer =
                   "rawAlloc 7")
         result = cast[pointer](cast[int](addr(c.data)) +% c.acc)
         inc(c.acc, size)
-        if c.free < size or c.acc + size > SmallChunkSize + smallChunkOverhead:
+        if c.free < size or c.acc + size > SmallChunkSize - smallChunkOverhead():
           when defined(debugAlloc): c_fprintf(c_stdout, "rawAlloc acc: Removing from freeSmallChunks %p\n", c)
           listRemove(a.freeSmallChunks[s], c)
       else:
@@ -951,7 +951,7 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
       # check if it is not in the freeSmallChunks[s] list:
       inc(c.free, s)
       if c.free == SmallChunkSize-smallChunkOverhead():
-        if c.acc + s <= SmallChunkSize - smallChunkOverhead:
+        if c.acc + s <= SmallChunkSize - smallChunkOverhead():
           when defined(debugAlloc): c_fprintf(c_stdout, "rawDealloc: Removing from freeSmallChunks %p\n", c)
           listRemove(a.freeSmallChunks[s div MemAlign], c)
         sysAssert(c notin a.freeSmallChunks, "Dangling chunk")
