@@ -172,6 +172,22 @@ compiler vcc:
     cppXsupport: "",
     props: {hasCpp, hasAssume, hasDeclspec})
 
+# Nvidia CUDA NVCC Compiler
+compiler nvcc:
+  result = gcc()
+  result.name = "nvcc"
+  result.compilerExe = "nvcc"
+  result.cppCompiler = "nvcc"
+  result.compileTmpl = "-c -x cu -Xcompiler=\"$options\" $include -o $objfile $file"
+  result.linkTmpl = "$buildgui $builddll -o $exefile $objfiles -Xcompiler=\"$options\""
+
+# AMD HIPCC Compiler (rocm/cuda)
+compiler hipcc:
+  result = clang()
+  result.name = "hipcc"
+  result.compilerExe = "hipcc"
+  result.cppCompiler = "hipcc"
+
 compiler clangcl:
   result = vcc()
   result.name = "clang_cl"
@@ -285,7 +301,9 @@ const
     envcc(),
     icl(),
     icc(),
-    clangcl()]
+    clangcl(),
+    hipcc(),
+    nvcc()]
 
   hExt* = ".h"
 
