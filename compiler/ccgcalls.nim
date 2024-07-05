@@ -346,7 +346,8 @@ proc genArg(p: BProc, n: PNode, param: PSym; call: PNode; result: var Rope; need
     let callee = call[0]
     if callee.kind == nkSym and
         {sfImportc, sfInfixCall, sfCompilerProc} * callee.sym.flags == {sfImportc} and
-        {lfHeader, lfNoDecl} * callee.sym.loc.flags != {}:
+        {lfHeader, lfNoDecl} * callee.sym.loc.flags != {} and
+        needsIndirect:
       addAddrLoc(p.config, a, result)
     else:
       addRdLoc(a, result)
