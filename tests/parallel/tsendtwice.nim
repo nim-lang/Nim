@@ -4,7 +4,7 @@ discard """
 
 # bug #4776
 
-import tables, sequtils
+import tables, algorithm
 
 type
   Base* = ref object of RootObj
@@ -27,16 +27,21 @@ globalTable.add("ob", d)
 globalTable.add("ob2", d)
 globalTable.add("ob3", d)
 
+proc `<`(x, y: seq[int]): bool = x.len < y.len
+proc kvs(t: TableRef[string, Base]): seq[(string, seq[int])] =
+  for k, v in t.pairs: result.add (k, v.someSeq)
+  result.sort
+
 proc testThread(channel: ptr TableChannel) {.thread.} =
   globalTable = channel[].recv()
   var myObj: Base
   deepCopy(myObj, globalTable["ob"])
   myObj.someSeq = newSeq[int](100)
   let table = channel[].recv() # same table
-  assert table == globalTable
   assert(table.contains("ob")) # fails!
   assert(table.contains("ob2")) # fails!
   assert(table.contains("ob3")) # fails!
+  assert table.kvs == globalTable.kvs # Last to see above spot checks first
 
 var channel: TableChannel
 
