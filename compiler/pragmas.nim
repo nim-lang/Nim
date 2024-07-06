@@ -882,6 +882,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
 
     # number of pragmas increase/decrease with user pragma expansion
     inc c.instCounter
+    defer: dec c.instCounter
     if c.instCounter > 100:
       globalError(c.config, it.info, "recursive dependency: " & userPragma.name.s)
 
@@ -891,7 +892,6 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
     pragma(c, sym, userPragma.ast, validPragmas, isStatement)
     n.sons[i..i] = userPragma.ast.sons # expand user pragma with its content
     i.inc(userPragma.ast.len - 1) # inc by -1 is ok, user pragmas was empty
-    dec c.instCounter
   else:
     let k = whichKeyword(ident)
     if k in validPragmas:
