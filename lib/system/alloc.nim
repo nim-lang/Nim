@@ -949,7 +949,7 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
         inc(c.free, s)
       else:
         inc(c.free, s)
-        if a.freeSmallChunks[s div MemAlign] == c and c.free == SmallChunkSize-smallChunkOverhead():
+        if c.free == SmallChunkSize-smallChunkOverhead() and a.freeSmallChunks[s div MemAlign] == c:
           listRemove(a.freeSmallChunks[s div MemAlign], c)
           c.size = SmallChunkSize
           freeBigChunk(a, cast[PBigChunk](c))
