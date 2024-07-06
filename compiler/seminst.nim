@@ -339,7 +339,8 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   # generates an instantiated proc
   if c.instCounter > 50:
     globalError(c.config, info, "generic instantiation too nested")
-  inc(c.instCounter)
+  inc c.instCounter
+  defer: dec c.instCounter
   # careful! we copy the whole AST including the possibly nil body!
   var n = copyTree(fn.ast)
   # NOTE: for access of private fields within generics from a different module
@@ -416,7 +417,6 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   popOwner(c)
   c.currentScope = oldScope
   discard c.friendModules.pop()
-  dec(c.instCounter)
   c.matchedConcept = oldMatchedConcept
   if result.kind == skMethod: finishMethod(c, result)
 
