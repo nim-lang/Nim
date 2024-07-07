@@ -92,7 +92,7 @@ type
     next, prev: PSmallChunk  # chunks of the same size
     freeList: ptr FreeCell
     free: int            # how many bytes remain
-    acc: int             # accumulator for small object allocation
+    foreignCells: int
     data {.align: MemAlign.}: UncheckedArray[byte]      # start of usable memory
 
   BigChunk = object of BaseChunk # not necessarily > PageSize!
@@ -433,7 +433,7 @@ iterator allObjects(m: var MemRegion): pointer {.inline.} =
 
           let size = c.size
           var a = cast[int](addr(c.data))
-          let limit = a + c.acc
+          let limit = a #+ c.acc
           while a <% limit:
             yield cast[pointer](a)
             a = a +% size
@@ -788,13 +788,17 @@ when defined(gcDestructors):
     # memory locations. We have to compensate here for these for the entire list.
     # Well, not for the entire list, but for `max` elements of the list because
     # we split the list in order to achieve bounded response times.
-    var it = c.freeList
+    var it = c.freeList.next
     var total = 0
     while it != nil:
       inc total, size
       let chunk = cast[PSmallChunk](pageAddr(it))
-      inc(chunk.free, size)
+      if c != chunk:
+        inc c.foreignCells
       it = it.next
+    # By not adjusting each individual chunk we reserve space to prevent deallocation.
+    # Once a cell returns to its source chunk in dealloc, the capacity is fixed
+    inc(c.free, total)
     dec(a.occ, total)
 
   proc freeDeferredObjects(a: var MemRegion; root: PBigChunk) =
@@ -829,15 +833,23 @@ proc rawAlloc(a: var MemRegion, requestedSize: int): pointer =
     var c = a.freeSmallChunks[s]
     if c == nil:
       c = getSmallChunk(a)
-      c.freeList = nil
       sysAssert c.size == PageSize, "rawAlloc 3"
       c.size = size
-      c.acc = size
       c.free = SmallChunkSize - smallChunkOverhead() - size
       sysAssert c.owner == addr(a), "rawAlloc: No owner set!"
       c.next = nil
       c.prev = nil
-      listAdd(a.freeSmallChunks[s], c)
+
+      let cellCount = (SmallChunkSize - smallChunkOverhead()) div size
+      if cellCount > 1:
+        for i in 1 ..< cellCount - 1:
+          cast[ptr FreeCell](cast[int](addr(c.data)) +% i * size).next = cast[ptr FreeCell](cast[int](addr(c.data)) +% (i + 1) * size)
+        cast[ptr FreeCell](cast[int](addr(c.data)) +% (cellCount - 1) * size).next = nil
+        c.freeList = cast[ptr FreeCell](cast[int](addr(c.data)) +% size)
+        listAdd(a.freeSmallChunks[s], c)
+      else:
+        c.freeList = nil
+
       result = addr(c.data)
       sysAssert((cast[int](result) and (MemAlign-1)) == 0, "rawAlloc 4")
     else:
@@ -847,32 +859,31 @@ proc rawAlloc(a: var MemRegion, requestedSize: int): pointer =
       #  c_fprintf(stdout, "csize: %lld; size %lld\n", c.size, size)
       sysAssert c.size == size, "rawAlloc 6"
       when defined(gcDestructors):
-        if c.freeList == nil:
+        if c.freeList.next == nil:
           when hasThreadSupport:
             # Steal the entire list from `sharedFreeList`:
-            c.freeList = atomicExchangeN(addr a.sharedFreeLists[s], nil, ATOMIC_RELAXED)
+            c.freeList.next = atomicExchangeN(addr a.sharedFreeLists[s], nil, ATOMIC_RELAXED)
           else:
-            c.freeList = a.sharedFreeLists[s]
+            c.freeList.next = a.sharedFreeLists[s]
             a.sharedFreeLists[s] = nil
           compensateCounters(a, c, size)
-      if c.freeList == nil:
-        sysAssert(c.acc + smallChunkOverhead() + size <= SmallChunkSize,
-                  "rawAlloc 7")
-        result = cast[pointer](cast[int](addr(c.data)) +% c.acc)
-        inc(c.acc, size)
-      else:
-        result = c.freeList
-        when not defined(gcDestructors):
-          sysAssert(c.freeList.zeroField == 0, "rawAlloc 8")
-        c.freeList = c.freeList.next
+      result = c.freeList
+      when not defined(gcDestructors):
+        sysAssert(c.freeList.zeroField == 0, "rawAlloc 8")
+      c.freeList = c.freeList.next
+      if cast[PSmallChunk](pageAddr(result)) != c:
+        dec(c.foreignCells)
       dec(c.free, size)
       sysAssert((cast[int](result) and (MemAlign-1)) == 0, "rawAlloc 9")
       sysAssert(allocInv(a), "rawAlloc: end c != nil")
-    sysAssert(allocInv(a), "rawAlloc: before c.free < size")
-    if c.free < size:
-      sysAssert(allocInv(a), "rawAlloc: before listRemove test")
-      listRemove(a.freeSmallChunks[s], c)
-      sysAssert(allocInv(a), "rawAlloc: end listRemove test")
+      sysAssert(allocInv(a), "rawAlloc: before c.free < size")
+      if c.free < size:
+        sysAssert(c.freeList == nil, "List is too long")
+        sysAssert(allocInv(a), "rawAlloc: before listRemove test")
+        listRemove(a.freeSmallChunks[s], c)
+        sysAssert(allocInv(a), "rawAlloc: end listRemove test")
+      else:
+        sysAssert(c.freeList != nil, "List ended too early")
     sysAssert(((cast[int](result) and PageMask) - smallChunkOverhead()) %%
                size == 0, "rawAlloc 21")
     sysAssert(allocInv(a), "rawAlloc: end small size")
@@ -948,7 +959,7 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
         inc(c.free, s)
       else:
         inc(c.free, s)
-        if c.free == SmallChunkSize-smallChunkOverhead():
+        if c.free == SmallChunkSize-smallChunkOverhead() and c.foreignCells == 0:
           listRemove(a.freeSmallChunks[s div MemAlign], c)
           c.size = SmallChunkSize
           freeBigChunk(a, cast[PBigChunk](c))
