@@ -943,7 +943,6 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
                 s -% sizeof(FreeCell))
       # check if it is not in the freeSmallChunks[s] list:
       if c.free < s:
-        # TODO: Steal freeList from the other chunk? Leaving it as is will waste a lot of cells until we return to the other chunk
         # add it to the freeSmallChunks[s] array:
         listAdd(a.freeSmallChunks[s div MemAlign], c)
         inc(c.free, s)
