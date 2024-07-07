@@ -30,7 +30,7 @@
 [//]: # "Additions:"
 
 - Added `newStringUninit` to system, which creates a new string of length `len` like `newString` but with uninitialized content.
-- Added `setLenUninit` to system, which doesn't initalize
+- Added `setLenUninit` to system, which doesn't initialize
 slots when enlarging a sequence.
 - Added `hasDefaultValue` to `std/typetraits` to check if a type has a valid default value.
 - Added Viewport API for the JavaScript targets in the `dom` module.
@@ -39,9 +39,12 @@ slots when enlarging a sequence.
   objects the cyclic collector did free. If the number is zero that is a strong indicator that you can use `--mm:arc`
   instead of `--mm:orc`.
 - A `$` template is provided for `Path` in `std/paths`.
-- `nimPreviewHashFarm` has been added to `lib/pure/hashes.nim` to default to a
-64-bit string `Hash` (based upon Google's Farm Hash) which is also faster than
-the present one.  At present, this is incompatible with `--jsbigint=off` mode.
+- `std/hashes.hash(x:string)` changed to produce a 64-bit string `Hash` (based
+on Google's Farm Hash) which is also often faster than the present one.  Define
+`nimStringHash2` to get the old values back.  `--jsbigint=off` mode always only
+produces the old values.  This may impact your automated tests if they depend
+on hash order in some obvious or indirect way.  Using `sorted` or `OrderedTable`
+is often an easy workaround.
 
 [//]: # "Deprecations:"
 
