@@ -847,8 +847,12 @@ proc rawAlloc(a: var MemRegion, requestedSize: int): pointer =
 
       let cellCount = (SmallChunkSize - smallChunkOverhead()) div size
       if cellCount > 1:
-        for i in 1 ..< cellCount - 1:
-          cast[ptr FreeCell](cast[int](addr(c.data)) +% i * size).next = cast[ptr FreeCell](cast[int](addr(c.data)) +% (i + 1) * size)
+        for i in 1 ..< cellCount:
+          let cell = cast[ptr FreeCell](cast[int](addr(c.data)) +% i * size)
+          cell.next = cast[ptr FreeCell](cast[int](addr(c.data)) +% (i + 1) * size)
+          when not defined(gcDestructors):
+            cell.zeroField = 0
+
         cast[ptr FreeCell](cast[int](addr(c.data)) +% (cellCount - 1) * size).next = nil
         c.freeList = cast[ptr FreeCell](cast[int](addr(c.data)) +% size)
         listAdd(a.freeSmallChunks[s], c)
@@ -881,7 +885,7 @@ proc rawAlloc(a: var MemRegion, requestedSize: int): pointer =
       else:
         when not defined(gcDestructors):
           let accCell = cast[ptr FreeCell](cast[int](addr(c.data)) +% c.acc)
-          if result == accCell:
+          if result == accCell and c.acc + size < SmallChunkSize - smallChunkOverhead():
             inc(c.acc, size)
       dec(c.free, size)
       sysAssert((cast[int](result) and (MemAlign-1)) == 0, "rawAlloc 9")
