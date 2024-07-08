@@ -1230,7 +1230,7 @@ func gcd*[T](x, y: T): T =
     swap x, y
   abs x
 
-when usebuiltins:
+when useBuiltins:
   ## this func uses bitwise comparisons from C compilers, which are not always available.
   func gcd*(x, y: SomeInteger): SomeInteger =
     ## Computes the greatest common (positive) divisor of `x` and `y`,
