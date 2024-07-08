@@ -92,6 +92,8 @@ type
     next, prev: PSmallChunk  # chunks of the same size
     freeList: ptr FreeCell
     free: int            # how many bytes remain
+    when not defined(gcDestructors):
+      acc: int           # accumulator for small object allocation
     foreignCells: int
     data {.align: MemAlign.}: UncheckedArray[byte]      # start of usable memory
 
@@ -433,7 +435,7 @@ iterator allObjects(m: var MemRegion): pointer {.inline.} =
 
           let size = c.size
           var a = cast[int](addr(c.data))
-          let limit = a #+ c.acc
+          let limit = a + c.acc
           while a <% limit:
             yield cast[pointer](a)
             a = a +% size
@@ -839,6 +841,8 @@ proc rawAlloc(a: var MemRegion, requestedSize: int): pointer =
       sysAssert c.owner == addr(a), "rawAlloc: No owner set!"
       c.next = nil
       c.prev = nil
+      when not defined(gcDestructors):
+        c.acc = size
 
       let cellCount = (SmallChunkSize - smallChunkOverhead()) div size
       if cellCount > 1:
@@ -873,6 +877,11 @@ proc rawAlloc(a: var MemRegion, requestedSize: int): pointer =
       c.freeList = c.freeList.next
       if cast[PSmallChunk](pageAddr(result)) != c:
         dec(c.foreignCells)
+      else:
+        when not defined(gcDestructors):
+          let accCell = cast[ptr FreeCell](cast[int](addr(c.data)) +% c.acc)
+          if result == accCell:
+            inc(c.acc, size)
       dec(c.free, size)
       sysAssert((cast[int](result) and (MemAlign-1)) == 0, "rawAlloc 9")
       sysAssert(allocInv(a), "rawAlloc: end c != nil")
