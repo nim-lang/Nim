@@ -94,7 +94,8 @@ type
     free: int            # how many bytes remain
     when not defined(gcDestructors):
       acc: int           # accumulator for small object allocation
-    foreignCells: int
+    else:
+      foreignCells: int  # number of cells this chunk can make use of but isn't the owner of
     data {.align: MemAlign.}: UncheckedArray[byte]      # start of usable memory
 
   BigChunk = object of BaseChunk # not necessarily > PageSize!
@@ -880,13 +881,14 @@ proc rawAlloc(a: var MemRegion, requestedSize: int): pointer =
       when not defined(gcDestructors):
         sysAssert(c.freeList.zeroField == 0, "rawAlloc 8")
       c.freeList = c.freeList.next
-      if cast[PSmallChunk](pageAddr(result)) != c:
-        dec(c.foreignCells)
+      when defined(gcDestructors):
+        if cast[PSmallChunk](pageAddr(result)) != c:
+          dec(c.foreignCells)
       else:
-        when not defined(gcDestructors):
-          let accCell = cast[ptr FreeCell](cast[int](addr(c.data)) +% c.acc)
-          if result == accCell and c.acc + size < SmallChunkSize - smallChunkOverhead():
-            inc(c.acc, size)
+        sysAssert(cast[PSmallChunk](pageAddr(result)) == c, "Bad cell")
+        let accCell = cast[ptr FreeCell](cast[int](addr(c.data)) +% c.acc)
+        if result == accCell and c.acc < SmallChunkSize - smallChunkOverhead():
+          inc(c.acc, size)
       dec(c.free, size)
       sysAssert((cast[int](result) and (MemAlign-1)) == 0, "rawAlloc 9")
       sysAssert(allocInv(a), "rawAlloc: end c != nil")
@@ -973,10 +975,18 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
         inc(c.free, s)
       else:
         inc(c.free, s)
-        if c.free == SmallChunkSize-smallChunkOverhead() and c.foreignCells == 0:
+
+        template doFree() =
           listRemove(a.freeSmallChunks[s div MemAlign], c)
           c.size = SmallChunkSize
           freeBigChunk(a, cast[PBigChunk](c))
+
+        when defined(gcDestructors):
+          if c.free == SmallChunkSize-smallChunkOverhead() and c.foreignCells == 0:
+            doFree()
+        else:
+          if c.free == SmallChunkSize-smallChunkOverhead():
+            doFree()
     else:
       when logAlloc: cprintf("dealloc(pointer_%p) # SMALL FROM %p CALLER %p\n", p, c.owner, addr(a))
 
