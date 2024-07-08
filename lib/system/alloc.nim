@@ -423,26 +423,27 @@ proc isSmallChunk(c: PChunk): bool {.inline.} =
 proc chunkUnused(c: PChunk): bool {.inline.} =
   result = (c.prevSize and 1) == 0
 
-iterator allObjects(m: var MemRegion): pointer {.inline.} =
-  m.locked = true
-  for s in elements(m.chunkStarts):
-    # we need to check here again as it could have been modified:
-    if s in m.chunkStarts:
-      let c = cast[PChunk](s shl PageShift)
-      if not chunkUnused(c):
-        if isSmallChunk(c):
-          var c = cast[PSmallChunk](c)
+when not defined(gcDestructors):
+  iterator allObjects(m: var MemRegion): pointer {.inline.} =
+    m.locked = true
+    for s in elements(m.chunkStarts):
+      # we need to check here again as it could have been modified:
+      if s in m.chunkStarts:
+        let c = cast[PChunk](s shl PageShift)
+        if not chunkUnused(c):
+          if isSmallChunk(c):
+            var c = cast[PSmallChunk](c)
 
-          let size = c.size
-          var a = cast[int](addr(c.data))
-          let limit = a + c.acc
-          while a <% limit:
-            yield cast[pointer](a)
-            a = a +% size
-        else:
-          let c = cast[PBigChunk](c)
-          yield addr(c.data)
-  m.locked = false
+            let size = c.size
+            var a = cast[int](addr(c.data))
+            let limit = a + c.acc
+            while a <% limit:
+              yield cast[pointer](a)
+              a = a +% size
+          else:
+            let c = cast[PBigChunk](c)
+            yield addr(c.data)
+    m.locked = false
 
 proc iterToProc*(iter: typed, envType: typedesc; procName: untyped) {.
                       magic: "Plugin", compileTime.}
