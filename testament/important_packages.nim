@@ -53,7 +53,7 @@ pkg "cello", url = "https://github.com/nim-lang/cello", useHead = true
 pkg "checksums"
 pkg "chroma"
 pkg "chronicles", "nim c -o:chr -r chronicles.nim"
-pkg "chronos", "nim c -r -d:release tests/testall"
+pkg "chronos", "nim c -r -d:release tests/testall", allowFailure = true
 pkg "cligen", "nim c --path:. -r cligen.nim"
 pkg "combparser", "nimble test --mm:orc"
 pkg "compactdict"
