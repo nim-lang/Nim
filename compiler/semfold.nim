@@ -701,10 +701,7 @@ proc getConstExpr(m: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode 
     except DivByZeroDefect:
       localError(g.config, n.info, "division by zero")
   of nkAddr:
-    var a = getConstExpr(m, n[0], idgen, g)
-    if a != nil:
-      result = nil # don't fold paths containing nkAddr
-      n[0] = a
+    result = nil # don't fold paths containing nkAddr
   of nkBracket, nkCurly:
     result = copyNode(n)
     for son in n.items:
