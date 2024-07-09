@@ -1,5 +1,5 @@
 discard """
-  matrix: "--mm:refc; --mm:orc; --backend:cpp; --backend:js --jsbigint64:on; --backend:c -d:nimStringHash2; --backend:cpp -d:nimStringHash2; --backend:js -d:nimStringHash2"
+  matrix: "--mm:refc; --mm:orc; --backend:cpp; --backend:js --jsbigint64:on; --backend:js --jsbigint64:off; --backend:c -d:nimPreviewHashFarm; --backend:cpp -d:nimPreviewHashFarm; --backend:js -d:nimPreviewHashFarm"
 """
 
 import std/hashes
@@ -46,18 +46,10 @@ block hashes:
     else:
       doAssert hashWangYi1(456) == -6421749900419628582
 
-template jsNoInt64: untyped =
-  when defined js:
-    when compiles(compileOption("jsbigint64")):
-      when not compileOption("jsbigint64"): true
-      else: false
-    else: false
-  else: false
-const sHash2 = (when defined(nimStringHash2) or jsNoInt64(): true else: false)
-
 block empty:
   const emptyStrHash = # Hash=int=4B on js even w/--jsbigint64:on => cast[Hash]
-    when sHash2: 0 else: cast[Hash](-7286425919675154353i64)
+    when defined nimPreviewHashFarm: cast[Hash](-7286425919675154353i64)
+    else: 0
   var
     a = ""
     b = newSeq[char]()
@@ -104,7 +96,8 @@ block largeSize: # longer than 4 characters
 proc main() =
   doAssert hash(0.0) == hash(0)
   # bug #16061
-  when not sHash2: # Hash=int=4B on js even w/--jsbigint64:on => cast[Hash]
+  when defined nimPreviewHashFarm: # Default switched -> `not nimStringHash2`
+    # Hash=int=4B on js even w/--jsbigint64:on => cast[Hash]
     doAssert hash(cstring"abracadabra") == cast[Hash](-1119910118870047694i64)
   else:
     doAssert hash(cstring"abracadabra") == 97309975
