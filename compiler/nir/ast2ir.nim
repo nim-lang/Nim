@@ -2160,30 +2160,23 @@ proc genVarSection(c: var ProcCon; n: PNode) =
       if vn.kind == nkPragmaExpr: vn = vn[0]
       if vn.kind == nkSym:
         let s = vn.sym
+        var opc: Opcode
         if s.kind == skConst:
-          if dontInlineConstant(n, s.astdef):
-            let symId = toSymId(c, s)
-            c.m.nirm.symnames[symId] = c.lit.strings.getOrIncl(s.name.s)
-            let val = c.genx(s.astdef)
-            let info = toLineInfo(c, a.info)
-            buildTyped c.code, info, SummonConst, typeToIr(c.m, s.typ):
-              c.code.addSymDef info, symId
-              c.code.copyTree val
-            freeTemp c, val
+          opc = SummonConst
+          if dontInlineConstant(n, s.astdef): continue
+        elif sfThread in s.flags:
+          opc = SummonThreadLocal
+        elif sfGlobal in s.flags:
+          opc = SummonGlobal
         else:
-          var opc: Opcode
-          if sfThread in s.flags:
-            opc = SummonThreadLocal
-          elif sfGlobal in s.flags:
-            opc = SummonGlobal
-          else:
-            opc = Summon
-          #assert t.int >= 0, typeToString(s.typ) & (c.config $ n.info)
-          let symId = toSymId(c, s)
-          c.code.addSummon toLineInfo(c, a.info), symId, typeToIr(c.m, s.typ), opc
-          c.m.nirm.symnames[symId] = c.lit.strings.getOrIncl(s.name.s)
-          if a[2].kind != nkEmpty:
-            genAsgn2(c, vn, a[2])
+          opc = Summon
+        let t = typeToIr(c.m, s.typ)
+        #assert t.int >= 0, typeToString(s.typ) & (c.config $ n.info)
+        let symId = toSymId(c, s)
+        c.code.addSummon toLineInfo(c, a.info), symId, t, opc
+        c.m.nirm.symnames[symId] = c.lit.strings.getOrIncl(s.name.s)
+        if a[2].kind != nkEmpty:
+          genAsgn2(c, vn, a[2])
       else:
         if a[2].kind == nkEmpty:
           genAsgn2(c, vn, expandDefault(vn.typ, vn.info))
