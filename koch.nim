@@ -10,7 +10,7 @@
 #
 
 const
-  NimbleStableCommit = "f8bd7b5fa6ea7a583b411b5959b06e6b5eb23667" # master
+  NimbleStableCommit = "3b119f6fa135429a704f9c60f0b8944906398eea" # master
   SatStableCommit = "faf1617f44d7632ee9601ebc13887644925dcc01"
   ChecksumsStableCommit = "b4c73320253f78e3a265aec6d9e8feb83f97c77b"
   # examples of possible values: #head, #ea82b54, 1.2.3
