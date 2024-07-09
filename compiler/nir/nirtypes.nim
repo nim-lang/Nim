@@ -42,11 +42,6 @@ type
 template kind*(n: TypeNode): NirTypeKind = NirTypeKind(n.x and TypeKindMask)
 template operand(n: TypeNode): uint32 = (n.x shr TypeKindBits)
 
-proc integralBits*(n: TypeNode): int {.inline.} =
-  # Number of bits in the IntTy, etc. Only valid for integral types.
-  assert n.kind in {IntTy, UIntTy, FloatTy, BoolTy, CharTy}
-  result = int(n.operand)
-
 template toX(k: NirTypeKind; operand: uint32): uint32 =
   uint32(k) or (operand shl TypeKindBits)
 
@@ -155,10 +150,6 @@ proc elementType*(tree: TypeGraph; n: TypeId): TypeId {.inline.} =
   assert tree[n].kind in {APtrTy, UPtrTy, AArrayPtrTy, UArrayPtrTy, ArrayTy, LastArrayTy}
   result = TypeId(n.int+1)
 
-proc litId*(n: TypeNode): LitId {.inline.} =
-  assert n.kind in {NameVal, IntVal, SizeVal, AlignVal, OffsetVal, AnnotationVal, ObjectTy, UnionTy}
-  result = LitId(n.operand)
-
 proc kind*(tree: TypeGraph; n: TypeId): NirTypeKind {.inline.} = tree[n].kind
 
 proc span(tree: TypeGraph; pos: int): int {.inline.} =
@@ -179,8 +170,7 @@ proc sons3(tree: TypeGraph; n: TypeId): (TypeId, TypeId, TypeId) =
 
 proc arrayLen*(tree: TypeGraph; n: TypeId): BiggestInt =
   assert tree[n].kind == ArrayTy
-  let (_, b) = sons2(tree, n)
-  result = tree.lit.numbers[LitId tree[b].operand]
+  result = tree.lit.numbers[LitId tree[n].operand]
 
 proc openType*(tree: var TypeGraph; kind: NirTypeKind): TypePatchPos =
   assert kind in {APtrTy, UPtrTy, AArrayPtrTy, UArrayPtrTy,
@@ -237,10 +227,6 @@ proc addNominalType*(tree: var TypeGraph; kind: NirTypeKind; name: string) =
   assert kind in {ObjectTy, UnionTy}
   tree.nodes.add TypeNode(x: toX(kind, tree.lit.strings.getOrIncl(name)))
 
-proc getTypeTag*(tree: TypeGraph; t: TypeId): string =
-  assert tree[t].kind in {ObjectTy, UnionTy}
-  result = tree.lit.strings[LitId tree[t].operand]
-
 proc addVarargs*(tree: var TypeGraph) =
   tree.nodes.add TypeNode(x: toX(VarargsTy, 0'u32))
 
@@ -251,7 +237,7 @@ proc getFloat128Type*(tree: var TypeGraph): TypeId =
 proc addBuiltinType*(g: var TypeGraph; id: TypeId) =
   g.nodes.add g[id]
 
-template firstSon*(n: TypeId): TypeId = TypeId(n.int+1)
+template firstSon(n: TypeId): TypeId = TypeId(n.int+1)
 
 proc addType*(g: var TypeGraph; t: TypeId) =
   # We cannot simply copy `*Decl` nodes. We have to introduce `*Ty` nodes instead:
@@ -374,9 +360,7 @@ proc toString*(dest: var string; g: TypeGraph; i: TypeId) =
     dest.add g.lit.strings[LitId g[i].operand]
   of ProcTy:
     dest.add "proc["
-    for t in sons(g, i):
-      dest.add ' '
-      toString(dest, g, t)
+    for t in sons(g, i): toString(dest, g, t)
     dest.add "]"
   of ObjectDecl:
     dest.add "object["
@@ -413,12 +397,6 @@ proc toString*(dest: var string; g: TypeGraph) =
     dest.add "> "
     toString(dest, g, TypeId i)
     dest.add '\n'
-    nextChild g, i
-
-iterator allTypes*(g: TypeGraph; start = 0): TypeId =
-  var i = start
-  while i < g.len:
-    yield TypeId i
     nextChild g, i
 
 proc `$`(g: TypeGraph): string =

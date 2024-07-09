@@ -12,9 +12,8 @@
 
 from std/os import addFileExt, `/`, createDir
 
-import std / assertions
 import ".." / [ast, modulegraphs, renderer, transf, options, msgs, lineinfos]
-import nirtypes, nirinsts, ast2ir, nirlineinfos, nirfiles, nirvm
+import nirtypes, nirinsts, ast2ir, nirlineinfos
 
 import ".." / ic / [rodfiles, bitabs]
 
@@ -23,18 +22,13 @@ type
     m: ModuleCon
     c: ProcCon
     oldErrorCount: int
-    bytecode: Bytecode
 
 proc newCtx*(module: PSym; g: ModuleGraph; idgen: IdGenerator): PCtx =
-  var lit = Literals()
-  var nirm = (ref NirModule)(types: initTypeGraph(lit), lit: lit)
-  var m = initModuleCon(g, g.config, idgen, module, nirm)
-  m.noModularity = true
-  PCtx(m: m, c: initProcCon(m, nil, g.config), idgen: idgen, bytecode: initBytecode(nirm))
+  let m = initModuleCon(g, g.config, idgen, module)
+  PCtx(m: m, c: initProcCon(m, nil, g.config), idgen: idgen)
 
 proc refresh*(c: PCtx; module: PSym; idgen: IdGenerator) =
-  #c.m = initModuleCon(c.m.graph, c.m.graph.config, idgen, module, c.m.nirm)
-  #c.m.noModularity = true
+  c.m = initModuleCon(c.m.graph, c.m.graph.config, idgen, module)
   c.c = initProcCon(c.m, nil, c.m.graph.config)
   c.idgen = idgen
 
@@ -52,14 +46,14 @@ proc setupNirReplGen*(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPa
 proc evalStmt(c: PCtx; n: PNode) =
   let n = transformExpr(c.m.graph, c.idgen, c.m.module, n)
   let pc = genStmt(c.c, n)
-  #var res = ""
-  #toString c.m.nirm.code, NodePos(pc), c.m.nirm.lit.strings, c.m.nirm.lit.numbers, c.m.symnames, res
+
+  var res = ""
+  if pc < c.c.code.len:
+    toString c.c.code, NodePos(pc), c.m.lit.strings, c.m.lit.numbers, res
   #res.add "\n--------------------------\n"
   #toString res, c.m.types.g
-  if pc.int < c.m.nirm.code.len:
-    c.bytecode.interactive = c.m.graph.interactive
-    execCode c.bytecode, c.m.nirm.code, pc
-  #echo res
+  echo res
+
 
 proc runCode*(c: PPassContext; n: PNode): PNode =
   let c = PCtx(c)
@@ -77,9 +71,7 @@ type
     c: ProcCon
 
 proc openNirBackend*(g: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext =
-  var lit = Literals()
-  var nirm = (ref NirModule)(types: initTypeGraph(lit), lit: lit)
-  let m = initModuleCon(g, g.config, idgen, module, nirm)
+  let m = initModuleCon(g, g.config, idgen, module)
   NirPassContext(m: m, c: initProcCon(m, nil, g.config), idgen: idgen)
 
 proc gen(c: NirPassContext; n: PNode) =
@@ -97,9 +89,27 @@ proc closeNirBackend*(c: PPassContext; finalNode: PNode) =
   let nimcache = getNimcacheDir(c.c.config).string
   createDir nimcache
   let outp = nimcache / c.m.module.name.s.addFileExt("nir")
-  #c.m.nirm.code = move c.c.code
+  var r = rodfiles.create(outp)
   try:
-    store c.m.nirm[], outp
-    echo "created: ", outp
-  except IOError:
+    r.storeHeader(nirCookie)
+    r.storeSection stringsSection
+    r.store c.m.lit.strings
+
+    r.storeSection numbersSection
+    r.store c.m.lit.numbers
+
+    r.storeSection bodiesSection
+    r.store c.c.code
+
+    r.storeSection typesSection
+    r.store c.m.types.g
+
+    r.storeSection sideChannelSection
+    r.store c.m.man
+
+  finally:
+    r.close()
+  if r.err != ok:
     rawMessage(c.c.config, errFatal, "serialization failed: " & outp)
+  else:
+    echo "created: ", outp

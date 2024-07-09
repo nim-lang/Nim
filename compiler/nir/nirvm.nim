@@ -15,9 +15,9 @@ We also split the instruction stream into separate (code, debug) seqs while
 we're at it.
 ]##
 
-import std / [syncio, assertions, tables, intsets]
+import std / [tables, intsets]
 import ".." / ic / bitabs
-import nirinsts, nirtypes, nirfiles, nirlineinfos
+import nirinsts, nirtypes
 
 type
   OpcodeM = enum
@@ -25,8 +25,6 @@ type
     IntValM,
     StrValM,
     LoadLocalM, # with local ID
-    LoadGlobalM,
-    LoadProcM,
     TypedM,   # with type ID
     PragmaIdM, # with Pragma ID, possible values: see PragmaKey enum
     NilValM,
@@ -34,6 +32,9 @@ type
     SummonParamM,
     GotoM,
     CheckedGotoM, # last atom
+
+    LoadProcM,
+    LoadGlobalM, # `"module".x`
 
     ArrayConstrM,
     ObjConstrM,
@@ -45,16 +46,26 @@ type
     SelectListM,  # (values...)
     SelectValueM, # (value)
     SelectRangeM, # (valueA..valueB)
+<<<<<<< HEAD
 
     AddrOfM,
     ArrayAtM, # (elemSize, addr(a), i)
     DerefArrayAtM,
+=======
+    SummonGlobalM,
+    SummonThreadLocalM,
+    SummonM, # x = Summon Typed <Type ID>; x begins to live
+    SummonParamM,
+
+    AddrOfM,
+    ArrayAtM, # addr(a[i])
+>>>>>>> parent of 0c26d19e2 (NIR: VM + refactorings (#22835))
     FieldAtM, # addr(obj.field)
     DerefFieldAtM,
 
     LoadM, # a[]
-    AsgnM,  # a = b
     StoreM, # a[] = b
+    AsgnM,  # a = b
     SetExcM,
     TestExcM,
 
@@ -62,6 +73,12 @@ type
     CheckedIndexM,
 
     CallM,
+<<<<<<< HEAD
+=======
+    IndirectCallM,
+    CheckedCallM, # call that can raise
+    CheckedIndirectCallM, # call that can raise
+>>>>>>> parent of 0c26d19e2 (NIR: VM + refactorings (#22835))
     CheckedAddM, # with overflow checking etc.
     CheckedSubM,
     CheckedMulM,
@@ -99,8 +116,8 @@ const
 type
   Instr = distinct uint32
 
-template kind(n: Instr): OpcodeM = OpcodeM(n.uint32 and OpcodeMask)
-template operand(n: Instr): uint32 = (n.uint32 shr OpcodeBits)
+template kind(n: Instr): OpcodeM = OpcodeM(n and OpcodeMask)
+template operand(n: Instr): uint32 = (n shr OpcodeBits)
 
 template toIns(k: OpcodeM; operand: uint32): Instr =
   Instr(uint32(k) or (operand shl OpcodeBits))
@@ -108,6 +125,7 @@ template toIns(k: OpcodeM; operand: uint32): Instr =
 template toIns(k: OpcodeM; operand: LitId): Instr =
   Instr(uint32(k) or (operand.uint32 shl OpcodeBits))
 
+<<<<<<< HEAD
 type
   NimStrPayloadVM = object
     cap: int
@@ -119,15 +137,15 @@ type
 const
   GlobalsSize = 1024*24
 
+=======
+>>>>>>> parent of 0c26d19e2 (NIR: VM + refactorings (#22835))
 type
   PatchPos = distinct int
   CodePos = distinct int
 
-  Bytecode* = object
-    code: seq[Instr]
-    debug: seq[PackedLineInfo]
-    m: ref NirModule
+  Unit = ref object ## a NIR module
     procs: Table[SymId, CodePos]
+<<<<<<< HEAD
     globals: Table[SymId, (uint32, int)]
     strings: Table[LitId, NimStringVM]
     globalData: pointer
@@ -138,12 +156,17 @@ type
     oldTypeLen: int
     procUsagesToPatch: Table[SymId, seq[CodePos]]
     interactive*: bool
+=======
+    globals: Table[SymId, uint32]
+    integers: BiTable[int64]
+    strings: BiTable[string]
+    globalsGen: uint32
+>>>>>>> parent of 0c26d19e2 (NIR: VM + refactorings (#22835))
 
   Universe* = object ## all units: For interpretation we need that
-    units: seq[Bytecode]
-    unitNames: Table[string, int]
-    current: int
+    units: Table[string, Unit]
 
+<<<<<<< HEAD
 proc initBytecode*(m: ref NirModule): Bytecode = Bytecode(m: m, globalData: alloc0(GlobalsSize))
 
 proc debug(bc: Bytecode; t: TypeId) =
@@ -225,6 +248,12 @@ proc traverseTypes(b: var Bytecode) =
       assert b.m.types[t.firstSon].kind == NameVal
       traverseObject b, t, t
   b.oldTypeLen = b.m.types.len
+=======
+  Bytecode = object
+    code: seq[Instr]
+    debug: seq[PackedLineInfo]
+    u: Unit
+>>>>>>> parent of 0c26d19e2 (NIR: VM + refactorings (#22835))
 
 const
   InvalidPatchPos* = PatchPos(-1)
@@ -241,7 +270,7 @@ proc add(bc: var Bytecode; info: PackedLineInfo; kind: OpcodeM; raw: uint32) =
   bc.debug.add info
 
 proc add(bc: var Bytecode; info: PackedLineInfo; kind: OpcodeM; lit: LitId) =
-  add bc, info, kind, uint32(lit)
+  add bc, info, kind, uint(lit)
 
 proc isAtom(bc: Bytecode; pos: int): bool {.inline.} = bc.code[pos].kind <= LastAtomicValue
 proc isAtom(bc: Bytecode; pos: CodePos): bool {.inline.} = bc.code[pos.int].kind <= LastAtomicValue
@@ -270,8 +299,6 @@ proc nextChild(bc: Bytecode; pos: var int) {.inline.} =
   else:
     inc pos
 
-proc next(bc: Bytecode; pos: var CodePos) {.inline.} = nextChild bc, int(pos)
-
 iterator sons(bc: Bytecode; n: CodePos): CodePos =
   var pos = n.int
   assert bc.code[pos].kind > LastAtomicValue
@@ -281,34 +308,12 @@ iterator sons(bc: Bytecode; n: CodePos): CodePos =
     yield CodePos pos
     nextChild bc, pos
 
-iterator sonsFrom1(bc: Bytecode; n: CodePos): CodePos =
-  var pos = n.int
-  assert bc.code[pos].kind > LastAtomicValue
-  let last = pos + bc.code[pos].rawSpan
-  inc pos
-  nextChild bc, pos
-  while pos < last:
-    yield CodePos pos
-    nextChild bc, pos
-
-iterator sonsFrom2(bc: Bytecode; n: CodePos): CodePos =
-  var pos = n.int
-  assert bc.code[pos].kind > LastAtomicValue
-  let last = pos + bc.code[pos].rawSpan
-  inc pos
-  nextChild bc, pos
-  nextChild bc, pos
-  while pos < last:
-    yield CodePos pos
-    nextChild bc, pos
-
-template firstSon(n: CodePos): CodePos = CodePos(n.int+1)
-
-template `[]`(t: Bytecode; n: CodePos): Instr = t.code[n.int]
+template `[]`*(t: Bytecode; n: CodePos): Instr = t.code[n.int]
 
 proc span(bc: Bytecode; pos: int): int {.inline.} =
   if bc.code[pos].kind <= LastAtomicValue: 1 else: int(bc.code[pos].operand)
 
+<<<<<<< HEAD
 iterator triples*(bc: Bytecode; n: CodePos): (uint32, int, CodePos) =
   var pos = n.int
   assert bc.code[pos].kind > LastAtomicValue
@@ -367,28 +372,33 @@ proc debug(b: Bytecode; pos: CodePos) =
   toString(b, pos, buf)
   echo buf
 
+=======
+>>>>>>> parent of 0c26d19e2 (NIR: VM + refactorings (#22835))
 type
   Preprocessing = object
-    u: ref Universe
     known: Table[LabelId, CodePos]
     toPatch: Table[LabelId, seq[CodePos]]
+<<<<<<< HEAD
     locals: Table[SymId, (uint32, int)] # address, size
     thisModule: uint32
     localsAddr: uint32
+=======
+    locals: Table[SymId, uint32]
+    c: Bytecode # to be moved out
+    thisModule: LitId
+>>>>>>> parent of 0c26d19e2 (NIR: VM + refactorings (#22835))
     markedWithLabel: IntSet
 
-proc align(address, alignment: uint32): uint32 =
-  result = (address + (alignment - 1'u32)) and not (alignment - 1'u32)
-
-proc genGoto(c: var Preprocessing; bc: var Bytecode; info: PackedLineInfo; lab: LabelId; opc: OpcodeM) =
+proc genGoto(c: var Preprocessing; lab: LabelId; opc: OpcodeM) =
   let dest = c.known.getOrDefault(lab, CodePos(-1))
   if dest.int >= 0:
-    bc.add info, opc, uint32 dest
+    c.bc.add info, opc, uint32 dest
   else:
-    let here = CodePos(bc.code.len)
+    let here = CodePos(c.bc.code.len)
     c.toPatch.mgetOrPut(lab, @[]).add here
-    bc.add info, opc, 1u32 # will be patched once we traversed the label
+    c.bc.add info, opc, 1u32 # will be patched once we traversed the label
 
+<<<<<<< HEAD
 type
   AddrMode = enum
     InDotExpr, WantAddr
@@ -414,29 +424,37 @@ const
   ForwardedProc = 10_000_000'u32
 
 proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos; flags: set[AddrMode]) =
+=======
+proc preprocess(c: var Preprocessing; u: var Universe; t: Tree; n: NodePos) =
+>>>>>>> parent of 0c26d19e2 (NIR: VM + refactorings (#22835))
   let info = t[n].info
 
   template recurse(opc) =
-    build bc, info, opc:
-      for ch in sons(t, n): preprocess(c, bc, t, ch, {WantAddr})
+    build c.bc, info, opc:
+      for c in sons(t, n): preprocess(c, u, t, c)
 
   case t[n].kind
   of Nop:
     discard "don't use Nop"
   of ImmediateVal:
-    bc.add info, ImmediateValM, t[n].rawOperand
+    c.bc.add info, ImmediateValM, t[n].rawOperand
   of IntVal:
-    bc.add info, IntValM, t[n].rawOperand
+    c.bc.add info, IntValM, t[n].rawOperand
   of StrVal:
+<<<<<<< HEAD
     let litId = LitId t[n].rawOperand
     if not bc.strings.hasKey(litId):
       bc.strings[litId] = toReadonlyString(bc.m.lit.strings[litId])
     bc.add info, StrValM, t[n].rawOperand
+=======
+    c.bc.add info, StrValM, t[n].rawOperand
+>>>>>>> parent of 0c26d19e2 (NIR: VM + refactorings (#22835))
   of SymDef:
-    discard "happens for proc decls. Don't copy the node as we don't need it"
+    assert false, "SymDef outside of declaration context"
   of SymUse:
     let s = t[n].symId
     if c.locals.hasKey(s):
+<<<<<<< HEAD
       let (address, size) = c.locals[s]
       maybeDeref(WantAddr notin flags, size):
         bc.add info, LoadLocalM, address
@@ -446,54 +464,50 @@ proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos; fla
       let (address, size) = bc.globals[s]
       maybeDeref(WantAddr notin flags, size):
         bc.add info, LoadGlobalM, address
+=======
+      c.bc.add info, LoadLocalM, c.locals[s]
+    elif c.bc.u.procs.hasKey(s):
+      build c.bc, info, LoadProcM:
+        c.bc.add info, StrValM, thisModule
+        c.bc.add info, LoadLocalM, uint32 c.bc.u.procs[s]
+    elif c.bc.u.globals.hasKey(s):
+      build c.bc, info, LoadGlobalM:
+        c.bc.add info, StrValM, thisModule
+        c.bc.add info, LoadLocalM, uint32 s
+>>>>>>> parent of 0c26d19e2 (NIR: VM + refactorings (#22835))
     else:
-      let here = CodePos(bc.code.len)
-      bc.add info, LoadProcM, ForwardedProc + uint32(s)
-      bc.procUsagesToPatch.mgetOrPut(s, @[]).add here
-      #raiseAssert "don't understand SymUse ID " & $int(s)
+      assert false, "don't understand SymUse ID"
 
   of ModuleSymUse:
-    when false:
-      let (x, y) = sons2(t, n)
-      let unit = c.u.unitNames.getOrDefault(bc.m.lit.strings[t[x].litId], -1)
-      let s = t[y].symId
-      if c.u.units[unit].procs.hasKey(s):
-        bc.add info, LoadProcM, uint32 c.u.units[unit].procs[s]
-      elif bc.globals.hasKey(s):
-        maybeDeref(WantAddr notin flags):
-          build bc, info, LoadGlobalM:
-            bc.add info, ImmediateValM, uint32 unit
-            bc.add info, LoadLocalM, uint32 s
-      else:
-        raiseAssert "don't understand ModuleSymUse ID"
+    let moduleName {.cursor.} = c.bc.u.strings[t[n.firstSon].litId]
+    let unit = u.units.getOrDefault(moduleName)
 
-    raiseAssert "don't understand ModuleSymUse ID"
   of Typed:
-    bc.add info, TypedM, t[n].rawOperand
+    c.bc.add info, TypedM, t[n].rawOperand
   of PragmaId:
-    bc.add info, PragmaIdM, t[n].rawOperand
+    c.bc.add info, TypedM, t[n].rawOperand
   of NilVal:
-    bc.add info, NilValM, t[n].rawOperand
+    c.bc.add info, NilValM, t[n].rawOperand
   of LoopLabel, Label:
     let lab = t[n].label
+<<<<<<< HEAD
     let here = CodePos(bc.code.len)
+=======
+    let here = CodePos(c.bc.code.len-1)
+>>>>>>> parent of 0c26d19e2 (NIR: VM + refactorings (#22835))
     c.known[lab] = here
-    var p: seq[CodePos] = @[]
+    var p: seq[CodePos]
     if c.toPatch.take(lab, p):
-      for x in p: (bc.code[x]) = toIns(bc.code[x].kind, uint32 here)
+      for x in p: c.bc.code[x] = toIns(c.bc.code[x].kind, here)
     c.markedWithLabel.incl here.int # for toString()
   of Goto, GotoLoop:
-    c.genGoto(bc, info, t[n].label, GotoM)
+    c.genGoto(t[n].label, GotoM)
   of CheckedGoto:
-    c.genGoto(bc, info, t[n].label, CheckedGotoM)
+    c.genGoto(t[n].label, CheckedGotoM)
   of ArrayConstr:
-    let typ = t[n.firstSon].typeId
-    let s = computeElemSize(bc, typ)
-    build bc, info, ArrayConstrM:
-      bc.add info, ImmediateValM, uint32 s
-      for ch in sonsFrom1(t, n):
-        preprocess(c, bc, t, ch, {WantAddr})
+    recurse ArrayConstrM
   of ObjConstr:
+<<<<<<< HEAD
     #debug bc, t, n
     var i = 0
     let typ = t[n.firstSon].typeId
@@ -508,6 +522,9 @@ proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos; fla
           else:
             preprocess(c, bc, t, ch, {WantAddr})
         inc i
+=======
+    recurse ObjConstrM
+>>>>>>> parent of 0c26d19e2 (NIR: VM + refactorings (#22835))
   of Ret:
     recurse RetM
   of Yld:
@@ -523,6 +540,7 @@ proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos; fla
   of SelectRange:
     recurse SelectRangeM
   of SummonGlobal, SummonThreadLocal, SummonConst:
+<<<<<<< HEAD
     let (typ, sym) = sons2(t, n)
 
     let s = t[sym].symId
@@ -558,14 +576,19 @@ proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos; fla
     c.localsAddr += uint32 size
     bc.add info, SummonParamM, local
     bc.add info, ImmediateValM, uint32 size
+=======
+    #let s =
+    discard "xxx"
+  of Summon, SummonParam:
+    # x = Summon Typed <Type ID>; x begins to live
+    discard "xxx"
+>>>>>>> parent of 0c26d19e2 (NIR: VM + refactorings (#22835))
   of Kill:
     discard "we don't care about Kill instructions"
   of AddrOf:
-    let (_, arg) = sons2(t, n)
-    preprocess(c, bc, t, arg, {WantAddr})
-    # the address of x is what the VM works with all the time so there is
-    # nothing to compute.
+    recurse AddrOfM
   of ArrayAt:
+<<<<<<< HEAD
     let (arrayType, a, i) = sons3(t, n)
     let tid = t[arrayType].typeId
     let size = uint32 computeElemSize(bc, tid)
@@ -593,16 +616,17 @@ proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos; fla
     build bc, info, DerefFieldAtM:
       preprocess(c, bc, t, a, flags+{WantAddr})
       bc.add info, ImmediateValM, uint32(offset)
+=======
+    recurse ArrayAtM
+  of FieldAt:
+    recurse FieldAtM
+>>>>>>> parent of 0c26d19e2 (NIR: VM + refactorings (#22835))
   of Load:
-    let (elemType, a) = sons2(t, n)
-    let tid = t[elemType].typeId
-    build bc, info, LoadM:
-      bc.add info, ImmediateValM, uint32 computeSize(bc, tid)[0]
-      preprocess(c, bc, t, a, {})
-
+    recurse LoadM
   of Store:
-    raiseAssert "Assumption was that Store is unused!"
+    recurse StoreM
   of Asgn:
+<<<<<<< HEAD
     let (elemType, dest, src) = sons3(t, n)
     let tid = t[elemType].typeId
     if t[src].kind in {Call, IndirectCall}:
@@ -631,6 +655,9 @@ proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos; fla
         bc.add info, ImmediateValM, uint32 s
         preprocess(c, bc, t, dest, {WantAddr})
         preprocess(c, bc, t, src, {})
+=======
+    recurse AsgnM
+>>>>>>> parent of 0c26d19e2 (NIR: VM + refactorings (#22835))
   of SetExc:
     recurse SetExcM
   of TestExc:
@@ -639,6 +666,7 @@ proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos; fla
     recurse CheckedRangeM
   of CheckedIndex:
     recurse CheckedIndexM
+<<<<<<< HEAD
   of Call, IndirectCall:
     # avoid the Typed thing at position 0:
     build bc, info, CallM:
@@ -650,6 +678,16 @@ proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos; fla
       preprocess(c, bc, t, fn, {WantAddr})
       for ch in sonsFromN(t, n, 3): preprocess(c, bc, t, ch, {WantAddr})
     preprocess c, bc, t, gotoInstr, {WantAddr}
+=======
+  of Call:
+    recurse CallM
+  of IndirectCall:
+    recurse IndirectCallM
+  of CheckedCall:
+    recurse CheckedCallM
+  of CheckedIndirectCall:
+    recurse CheckedIndirectCallM
+>>>>>>> parent of 0c26d19e2 (NIR: VM + refactorings (#22835))
   of CheckedAdd:
     recurse CheckedAddM
   of CheckedSub:
@@ -701,8 +739,9 @@ proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos; fla
   of TestOf:
     recurse TestOfM
   of Emit:
-    raiseAssert "cannot interpret: Emit"
+    assert false, "cannot interpret: Emit"
   of ProcDecl:
+<<<<<<< HEAD
     var c2 = Preprocessing(u: c.u, thisModule: c.thisModule)
     let sym = t[n.firstSon].symId
     let here = CodePos(bc.len)
@@ -720,6 +759,9 @@ proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos; fla
         debug bc, t, n
         debug bc, here
 
+=======
+    recurse ProcDeclM
+>>>>>>> parent of 0c26d19e2 (NIR: VM + refactorings (#22835))
   of PragmaPair:
     recurse PragmaPairM
 
@@ -731,68 +773,29 @@ type
     payload: array[PayloadSize, byte]
     caller: StackFrame
     returnAddr: CodePos
-    jumpTo: CodePos # exception handling
-    u: ref Universe
 
 proc newStackFrame(size: int; caller: StackFrame; returnAddr: CodePos): StackFrame =
-  result = StackFrame(caller: caller, returnAddr: returnAddr, u: caller.u)
+  result = StackFrame(caller: caller, returnAddr: returnAddr)
   if size <= PayloadSize:
     result.locals = addr(result.payload)
   else:
     result.locals = alloc0(size)
 
 proc popStackFrame(s: StackFrame): StackFrame =
-  if s.locals != addr(s.payload):
-    dealloc s.locals
+  if result.locals != addr(result.payload):
+    dealloc result.locals
   result = s.caller
 
 template `+!`(p: pointer; diff: uint): pointer = cast[pointer](cast[uint](p) + diff)
 
-proc isAtom(tree: seq[Instr]; pos: CodePos): bool {.inline.} = tree[pos.int].kind <= LastAtomicValue
+proc eval(c: seq[Instr]; pc: CodePos; s: StackFrame; result: pointer)
 
-proc span(bc: seq[Instr]; pos: int): int {.inline.} =
-  if bc[pos].kind <= LastAtomicValue: 1 else: int(bc[pos].operand)
-
-proc sons2(tree: seq[Instr]; n: CodePos): (CodePos, CodePos) =
-  assert(not isAtom(tree, n))
-  let a = n.int+1
-  let b = a + span(tree, a)
-  result = (CodePos a, CodePos b)
-
-proc sons3(tree: seq[Instr]; n: CodePos): (CodePos, CodePos, CodePos) =
-  assert(not isAtom(tree, n))
-  let a = n.int+1
-  let b = a + span(tree, a)
-  let c = b + span(tree, b)
-  result = (CodePos a, CodePos b, CodePos c)
-
-proc sons4(tree: seq[Instr]; n: CodePos): (CodePos, CodePos, CodePos, CodePos) =
-  assert(not isAtom(tree, n))
-  let a = n.int+1
-  let b = a + span(tree, a)
-  let c = b + span(tree, b)
-  let d = c + span(tree, c)
-  result = (CodePos a, CodePos b, CodePos c, CodePos d)
-
-proc typeId*(ins: Instr): TypeId {.inline.} =
-  assert ins.kind == TypedM
-  result = TypeId(ins.operand)
-
-proc immediateVal*(ins: Instr): int {.inline.} =
-  assert ins.kind == ImmediateValM
-  result = cast[int](ins.operand)
-
-proc litId*(ins: Instr): LitId {.inline.} =
-  assert ins.kind in {StrValM, IntValM}
-  result = LitId(ins.operand)
-
-proc eval(c: Bytecode; pc: CodePos; s: StackFrame; result: pointer; size: int)
-
-proc evalAddr(c: Bytecode; pc: CodePos; s: StackFrame): pointer =
-  case c.code[pc].kind
+proc evalAddr(c: seq[Instr]; pc: CodePos; s: StackFrame): pointer =
+  case c[pc].kind
   of LoadLocalM:
-    result = s.locals +! c.code[pc].operand
+    result = s.locals +! c[pc].operand
   of FieldAtM:
+<<<<<<< HEAD
     let (x, offset) = sons2(c.code, pc)
     result = evalAddr(c, x, s)
     result = result +! c.code[offset].operand
@@ -995,19 +998,43 @@ proc eval(c: Bytecode; pc: CodePos; s: StackFrame; result: pointer; size: int) =
   of EqM: cmpop `==`
   of LeM: cmpop `<=`
   of LtM: cmpop `<`
+=======
+    result = eval(c, pc+1, s)
+    result = result +! c[pc+2].operand
+  of ArrayAtM:
+    let elemSize = c[pc+1].operand
+    result = eval(c, pc+2, s)
+    var idx: int
+    eval(c, pc+3, addr idx)
+    result = result +! (idx * elemSize)
+>>>>>>> parent of 0c26d19e2 (NIR: VM + refactorings (#22835))
 
+proc eval(c: seq[Instr]; pc: CodePos; s: StackFrame; result: pointer) =
+  case c[pc].kind
+  of AddM:
+    # assume `int` here for now:
+    var x, y: int
+    eval c, pc+1, s, addr x
+    eval c, pc+2, s, addr y
+    cast[ptr int](res)[] = x + y
   of StrValM:
+<<<<<<< HEAD
     # binary compatible and no deep copy required:
     copyMem(cast[ptr string](result), addr(c.strings[c[pc].litId]), sizeof(string))
+=======
+    cast[ptr StringDesc](res)[] = addr(c.strings[c[pc].litId])
+>>>>>>> parent of 0c26d19e2 (NIR: VM + refactorings (#22835))
   of ObjConstrM:
-    for offset, size, val in triples(c, pc):
-      eval c, val, s, result+!offset, size
+    for ch in sons(c, pc):
+      let offset = c[ch]
+      eval c, ch+2, s, result+!offset
   of ArrayConstrM:
-    let elemSize = c.code[pc.firstSon].operand
+    let elemSize = c[pc+1].operand
     var r = result
-    for ch in sonsFrom1(c, pc):
-      eval c, ch, s, r, elemSize.int
+    for ch in sons(c, pc):
+      eval c, ch, s, r
       r = r+!elemSize # can even do strength reduction here!
+<<<<<<< HEAD
   of NumberConvM:
     let (t, x) = sons2(c.code, pc)
     let word = if c[x].kind == NilValM: 0'i64 else: c.m.lit.numbers[c[x].litId]
@@ -1034,10 +1061,12 @@ proc eval(c: Bytecode; pc: CodePos; s: StackFrame; result: pointer; size: int) =
         impl uint64
       else:
         raiseAssert "cannot happen: " & $c.m.types[tid].kind
+=======
+>>>>>>> parent of 0c26d19e2 (NIR: VM + refactorings (#22835))
   else:
-    #debug c, c.debug[pc.int]
-    raiseAssert "cannot happen: " & $c.code[pc].kind
+    assert false, "cannot happen"
 
+<<<<<<< HEAD
 proc evalProc(c: Bytecode; pc: CodePos; s: StackFrame): CodePos =
   assert c.code[pc].kind == LoadProcM
   let procSym = c[pc].operand
@@ -1173,3 +1202,35 @@ proc execCode*(bc: var Bytecode; t: Tree; n: NodePos) =
     preprocess c, bc, t, pc, {}
     next t, pc
   exec bc, start, nil
+=======
+proc exec(c: seq[Instr]; pc: CodePos) =
+  var pc = pc
+  var currentFrame: StackFrame = nil
+  while true:
+    case c[pc].kind
+    of GotoM:
+      pc = CodePos(c[pc].operand)
+    of Asgn:
+      let (size, a, b) = sons3(c, pc)
+      let dest = evalAddr(c, a, s)
+      eval(c, b, s, dest)
+    of CallM:
+      # No support for return values, these are mapped to `var T` parameters!
+      let prc = evalProc(c, pc+1)
+      # setup storage for the proc already:
+      let s2 = newStackFrame(prc.frameSize, currentFrame, pc)
+      var i = 0
+      for a in sons(c, pc):
+        eval(c, a, s2, paramAddr(s2, i))
+        inc i
+      currentFrame = s2
+      pc = pcOf(prc)
+    of RetM:
+      pc = currentFrame.returnAddr
+      currentFrame = popStackFrame(currentFrame)
+    of SelectM:
+      var x: bool
+      eval(c, b, addr x)
+      # follow the selection instructions...
+      pc = activeBranch(c, b, x)
+>>>>>>> parent of 0c26d19e2 (NIR: VM + refactorings (#22835))
