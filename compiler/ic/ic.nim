@@ -16,7 +16,7 @@ from std/os import removeFile, isAbsolute
 
 import ../../dist/checksums/src/checksums/sha1
 
-import ".." / nir / nirlineinfos
+import iclineinfos
 
 when defined(nimPreviewSlimSystem):
   import std/[syncio, assertions, formatfloat]
