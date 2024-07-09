@@ -14,7 +14,6 @@ import nirtypes
 type
   TypesCon* = object
     processed: Table[ItemId, TypeId]
-    processedByName: Table[string, TypeId]
     recursionCheck: HashSet[ItemId]
     conf: ConfigRef
     stringType: TypeId
@@ -30,13 +29,6 @@ template cached(c: var TypesCon; t: PType; body: untyped) =
   if result.int == 0:
     body
     c.processed[t.itemId] = result
-
-template cachedByName(c: var TypesCon; t: PType; body: untyped) =
-  let key = mangle(c, t)
-  result = c.processedByName.getOrDefault(key)
-  if result.int == 0:
-    body
-    c.processedByName[key] = result
 
 proc typeToIr*(c: var TypesCon; g: var TypeGraph; t: PType): TypeId
 
@@ -281,15 +273,10 @@ proc seqPayloadType(c: var TypesCon; g: var TypeGraph; t: PType): (string, TypeI
   let f = g.openType FieldDecl
   let arr = g.openType LastArrayTy
   g.addType elementType
-  # DO NOT USE `finishType` here as it is an inner type. This is subtle and we
-  # probably need an even better API here.
-  sealType(g, arr)
-  result[1] = TypeId(arr)
-
+  result[1] = finishType(g, arr) # LastArrayTy
   g.addOffset c.conf.target.ptrSize
   g.addName "data"
   sealType(g, f) # FieldDecl
-
   sealType(g, p)
 
 proc seqPayloadPtrType*(c: var TypesCon; g: var TypeGraph; t: PType): (TypeId, TypeId) =
@@ -426,7 +413,6 @@ proc typeToIr*(c: var TypesCon; g: var TypeGraph; t: PType): TypeId =
       let a = openType(g, ArrayTy)
       g.addType(elemType)
       g.addArrayLen n
-      g.addName mangle(c, t)
       result = finishType(g, a)
   of tyPtr, tyRef:
     cached(c, t):
@@ -465,7 +451,6 @@ proc typeToIr*(c: var TypesCon; g: var TypeGraph; t: PType): TypeId =
         let a = openType(g, ArrayTy)
         g.addType(UInt8Id)
         g.addArrayLen s
-        g.addName mangle(c, t)
         result = finishType(g, a)
   of tyPointer, tyNil:
     # tyNil can happen for code like: `const CRAP = nil` which we have in posix.nim
@@ -482,7 +467,7 @@ proc typeToIr*(c: var TypesCon; g: var TypeGraph; t: PType): TypeId =
       else:
         result = objectHeaderToIr(c, g, t)
   of tyTuple:
-    cachedByName(c, t):
+    cached(c, t):
       result = tupleToIr(c, g, t)
   of tyProc:
     cached(c, t):
@@ -500,7 +485,7 @@ proc typeToIr*(c: var TypesCon; g: var TypeGraph; t: PType): TypeId =
     else:
       result = c.stringType
   of tySequence:
-    cachedByName(c, t):
+    cached(c, t):
       result = seqToIr(c, g, t)
   of tyCstring:
     cached(c, t):

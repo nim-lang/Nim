@@ -421,7 +421,7 @@ proc preprocess(c: var Preprocessing; bc: var Bytecode; t: Tree; n: NodePos; fla
       for ch in sons(t, n): preprocess(c, bc, t, ch, {WantAddr})
 
   case t[n].kind
-  of Nop, ForeignDecl, ForeignProcDecl:
+  of Nop:
     discard "don't use Nop"
   of ImmediateVal:
     bc.add info, ImmediateValM, t[n].rawOperand

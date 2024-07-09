@@ -7,10 +7,10 @@
 #    distribution, for details about the copyright.
 #
 
-## Nir Compiler.
+## Nir Compiler. Currently only supports a "view" command.
 
 import ".." / ic / [bitabs, rodfiles]
-import nirinsts, nirtypes, nirlineinfos, nirfiles, cir
+import nirinsts, nirtypes, nirlineinfos, nirfiles #, nir2gcc
 
 proc view(filename: string) =
   let m = load(filename)
@@ -20,10 +20,14 @@ proc view(filename: string) =
   nirtypes.toString res, m.types
   echo res
 
+proc libgcc(filename: string) =
+  let m = load(filename)
+  #gcc m, filename
+
 import std / [syncio, parseopt]
 
 proc writeHelp =
-  echo """Usage: nirc view|c <file.nir>"""
+  echo """Usage: nirc view|gcc <file.nir>"""
   quit 0
 
 proc main =
@@ -45,8 +49,7 @@ proc main =
   case cmd
   of "", "view":
     view inp
-  of "c":
-    let outp = inp & ".c"
-    cir.generateCode inp, outp
+  of "gcc":
+   libgcc inp
 
 main()
