@@ -139,7 +139,6 @@ type
     backendCpp = "cpp"
     backendJs = "js"
     backendObjc = "objc"
-    backendNir = "nir"
     # backendNimscript = "nimscript" # this could actually work
     # backendLlvm = "llvm" # probably not well supported; was cmdCompileToLLVM
 
@@ -147,7 +146,6 @@ type
     cmdNone # not yet processed command
     cmdUnknown # command unmapped
     cmdCompileToC, cmdCompileToCpp, cmdCompileToOC, cmdCompileToJS,
-    cmdCompileToNir,
     cmdCrun # compile and run in nimache
     cmdTcc # run the project via TCC backend
     cmdCheck # semantic checking for whole project
@@ -176,7 +174,7 @@ type
 
 const
   cmdBackends* = {cmdCompileToC, cmdCompileToCpp, cmdCompileToOC,
-                  cmdCompileToJS, cmdCrun, cmdCompileToNir}
+                  cmdCompileToJS, cmdCrun}
   cmdDocLike* = {cmdDoc0, cmdDoc, cmdDoc2tex, cmdJsondoc0, cmdJsondoc,
                  cmdCtags, cmdBuildindex}
 
