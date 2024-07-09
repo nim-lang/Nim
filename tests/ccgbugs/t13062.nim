@@ -1,6 +1,6 @@
 discard """
   output: "[p = nil]"
-  targets: "c"
+  targets: "c cpp"
 """
 
 import atomics

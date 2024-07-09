@@ -4,6 +4,7 @@ success
 M1 M2
 ok
 '''
+matrix: "--mm:refc;--mm:orc"
 """
 
 type
