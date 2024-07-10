@@ -170,7 +170,7 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
     line(p, cpsStmts, pl)
     if canRaise: raiseExit(p)
 
-proc genBoundsCheck(p: BProc; arr, a, b: TLoc)
+proc genBoundsCheck(p: BProc; arr, a, b: TLoc; arrTyp: PType)
 
 proc reifiedOpenArray(n: PNode): bool {.inline.} =
   var x = n
@@ -191,15 +191,15 @@ proc genOpenArraySlice(p: BProc; q: PNode; formalType, destType: PType; prepareF
   var a = initLocExpr(p, q[1])
   var b = initLocExpr(p, q[2])
   var c = initLocExpr(p, q[3])
-  # but first produce the required index checks:
-  if optBoundsCheck in p.options:
-    genBoundsCheck(p, a, b, c)
-  if prepareForMutation:
-    linefmt(p, cpsStmts, "#nimPrepareStrMutationV2($1);$n", [byRefLoc(p, a)])
   # bug #23321: In the function mapType, ptrs (tyPtr, tyVar, tyLent, tyRef)
   # are mapped into ctPtrToArray, the dereference of which is skipped
-  # in the `genref`. We need to skip these ptrs here
+  # in the `genDeref`. We need to skip these ptrs here
   let ty = skipTypes(a.t, abstractVar+{tyPtr, tyRef})
+  # but first produce the required index checks:
+  if optBoundsCheck in p.options:
+    genBoundsCheck(p, a, b, c, ty)
+  if prepareForMutation:
+    linefmt(p, cpsStmts, "#nimPrepareStrMutationV2($1);$n", [byRefLoc(p, a)])
   let dest = getTypeDesc(p.module, destType)
   let lengthExpr = "($1)-($2)+1" % [rdLoc(c), rdLoc(b)]
   case ty.kind
