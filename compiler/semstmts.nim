@@ -1779,7 +1779,7 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
         if baseType.kind in {tyObject, tyTuple} and not baseType.n.isNil and
           (x.kind in {nkObjectTy, nkTupleTy} or
            (x.kind in {nkRefTy, nkPtrTy} and x.len == 1 and
-           x[0].kind == nkObjectTy)
+           x[0].kind in {nkObjectTy, nkTupleTy})
           ):
           checkForMetaFields(c, baseType.n, hasError)
         if not hasError:
