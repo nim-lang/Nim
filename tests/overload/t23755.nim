@@ -50,3 +50,13 @@ block:
 
   var g: array[32, char]
   doAssert p(g)
+
+block:  # issue #23823
+  func p[N,T](a, b: array[N,T]) =
+    discard
+
+  func p[N: static int; T](x, y: array[N, T]) =
+    discard
+
+  var a: array[5, int]
+  p(a,a)
