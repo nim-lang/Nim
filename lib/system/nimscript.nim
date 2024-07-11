@@ -250,39 +250,6 @@ proc cpDir*(`from`, to: string) {.raises: [OSError].} =
     copyDir `from`, to
     checkOsError()
 
-proc exec*(command: string) {.
-  raises: [OSError], tags: [ExecIOEffect, WriteIOEffect].} =
-  ## Executes an external process. If the external process terminates with
-  ## a non-zero exit code, an OSError exception is raised.
-  ##
-  ## **Note:** If you need a version of `exec` that returns the exit code
-  ## and text output of the command, you can use `system.gorgeEx
-  ## <system.html#gorgeEx,string,string,string>`_.
-  log "exec: " & command:
-    if rawExec(command) != 0:
-      raise newException(OSError, "FAILED: " & command)
-    checkOsError()
-
-proc exec*(command: string, input: string, cache = "") {.
-  raises: [OSError], tags: [ExecIOEffect, WriteIOEffect].} =
-  ## Executes an external process. If the external process terminates with
-  ## a non-zero exit code, an OSError exception is raised.
-  log "exec: " & command:
-    let (output, exitCode) = gorgeEx(command, input, cache)
-    if exitCode != 0:
-      raise newException(OSError, "FAILED: " & command)
-    echo output
-
-proc selfExec*(command: string) {.
-  raises: [OSError], tags: [ExecIOEffect, WriteIOEffect].} =
-  ## Executes an external command with the current nim/nimble executable.
-  ## `Command` must not contain the "nim " part.
-  let c = selfExe() & " " & command
-  log "exec: " & c:
-    if rawExec(c) != 0:
-      raise newException(OSError, "FAILED: " & c)
-    checkOsError()
-
 proc put*(key, value: string) =
   ## Sets a configuration 'key' like 'gcc.options.always' to its value.
   builtin
@@ -351,6 +318,42 @@ template withDir*(dir: string; body: untyped): untyped =
     body
   finally:
     cd(curDir)
+
+proc exec*(command: string) {.
+  raises: [OSError], tags: [ExecIOEffect, WriteIOEffect].} =
+  ## Executes an external process. If the external process terminates with
+  ## a non-zero exit code, an OSError exception is raised. The command is
+  ## executed relative to the current source directory.
+  ##
+  ## **Note:** If you need a version of `exec` that returns the exit code
+  ## and text output of the command, you can use `system.gorgeEx
+  ## <system.html#gorgeEx,string,string,string>`_.
+  log "exec: " & command:
+    if rawExec(command) != 0:
+      raise newException(OSError, "FAILED: " & command)
+    checkOsError()
+
+proc exec*(command: string, input: string, cache = "") {.
+  raises: [OSError], tags: [ExecIOEffect, WriteIOEffect].} =
+  ## Executes an external process. If the external process terminates with
+  ## a non-zero exit code, an OSError exception is raised. The command is
+  ## executed relative to the project directory.
+  log "exec: " & command:
+    withDir(projectDir()):
+      let (output, exitCode) = gorgeEx(command, input, cache)
+      if exitCode != 0:
+        raise newException(OSError, "FAILED: " & command)
+      echo output
+
+proc selfExec*(command: string) {.
+  raises: [OSError], tags: [ExecIOEffect, WriteIOEffect].} =
+  ## Executes an external command with the current nim/nimble executable.
+  ## `Command` must not contain the "nim " part.
+  let c = selfExe() & " " & command
+  log "exec: " & c:
+    if rawExec(c) != 0:
+      raise newException(OSError, "FAILED: " & c)
+    checkOsError()
 
 proc writeTask(name, desc: string) =
   if desc.len > 0:
