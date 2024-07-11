@@ -75,3 +75,10 @@ macro foo2() =
 
 foo()
 foo2()
+
+block:
+  const neg5VM = block:
+    let x = -5'i8
+    uint64(x)
+  let y = -5'i8
+  doAssert uint64(y) == neg5VM

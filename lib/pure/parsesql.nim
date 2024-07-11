@@ -12,8 +12,11 @@
 ##
 ## Unstable API.
 
-import strutils, lexbase
+import std/[strutils, lexbase]
 import std/private/decode_helpers
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
 
 # ------------------- scanner -------------------------------------------------
 
@@ -57,7 +60,7 @@ const
 
   reservedKeywords = @[
     # statements
-    "select", "from", "where", "group", "limit", "having",
+    "select", "from", "where", "group", "limit", "offset", "having",
     # functions
     "count",
   ]
@@ -506,6 +509,7 @@ type
     nkFromItemPair,
     nkGroup,
     nkLimit,
+    nkOffset,
     nkHaving,
     nkOrder,
     nkJoin,
@@ -1123,6 +1127,11 @@ proc parseSelect(p: var SqlParser): SqlNode =
     var l = newNode(nkLimit)
     l.add(parseExpr(p))
     result.add(l)
+  if isKeyw(p, "offset"):
+    getTok(p)
+    var o = newNode(nkOffset)
+    o.add(parseExpr(p))
+    result.add(o)
 
 proc parseStmt(p: var SqlParser; parent: SqlNode) =
   if isKeyw(p, "create"):
@@ -1385,6 +1394,9 @@ proc ra(n: SqlNode, s: var SqlWriter) =
   of nkLimit:
     s.addKeyw("limit")
     s.addMulti(n)
+  of nkOffset:
+    s.addKeyw("offset")
+    s.addMulti(n)
   of nkHaving:
     s.addKeyw("having")
     s.addMulti(n)
@@ -1451,7 +1463,7 @@ proc ra(n: SqlNode, s: var SqlWriter) =
     s.addKeyw("enum")
     rs(n, s)
 
-proc renderSQL*(n: SqlNode, upperCase = false): string =
+proc renderSql*(n: SqlNode, upperCase = false): string =
   ## Converts an SQL abstract syntax tree to its string representation.
   var s: SqlWriter
   s.buffer = ""
@@ -1460,8 +1472,8 @@ proc renderSQL*(n: SqlNode, upperCase = false): string =
   return s.buffer
 
 proc `$`*(n: SqlNode): string =
-  ## an alias for `renderSQL`.
-  renderSQL(n)
+  ## an alias for `renderSql`.
+  renderSql(n)
 
 proc treeReprAux(s: SqlNode, level: int, result: var string) =
   result.add('\n')
@@ -1479,7 +1491,7 @@ proc treeRepr*(s: SqlNode): string =
   result = newStringOfCap(128)
   treeReprAux(s, 0, result)
 
-import streams
+import std/streams
 
 proc open(L: var SqlLexer, input: Stream, filename: string) =
   lexbase.open(L, input)
@@ -1493,7 +1505,7 @@ proc open(p: var SqlParser, input: Stream, filename: string) =
   p.tok.literal = ""
   getTok(p)
 
-proc parseSQL*(input: Stream, filename: string): SqlNode =
+proc parseSql*(input: Stream, filename: string): SqlNode =
   ## parses the SQL from `input` into an AST and returns the AST.
   ## `filename` is only used for error messages.
   ## Syntax errors raise an `SqlParseError` exception.
@@ -1504,8 +1516,8 @@ proc parseSQL*(input: Stream, filename: string): SqlNode =
   finally:
     close(p)
 
-proc parseSQL*(input: string, filename = ""): SqlNode =
+proc parseSql*(input: string, filename = ""): SqlNode =
   ## parses the SQL from `input` into an AST and returns the AST.
   ## `filename` is only used for error messages.
   ## Syntax errors raise an `SqlParseError` exception.
-  parseSQL(newStringStream(input), "")
+  parseSql(newStringStream(input), "")

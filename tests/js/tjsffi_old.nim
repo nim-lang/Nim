@@ -279,8 +279,8 @@ block:
 block:
   type TestObject = object
     a: int
-    onWhatever: proc(e: int): int
-  proc handleWhatever(this: TestObject, e: int): int =
+    onWhatever: proc(e: int): int {.nimcall.}
+  proc handleWhatever(this: TestObject, e: int): int {.nimcall.} =
     e + this.a
   proc test(): bool =
     let obj = TestObject(a: 9, onWhatever: bindMethod(handleWhatever))
@@ -321,7 +321,7 @@ block:
   on("click") do (e: Event):
     console.log e
 
-  jslib.on("reloaded") do:
+  jslib.on("reloaded") do ():
     console.log jsarguments[0]
 
   # this test case is different from the above, because

@@ -94,4 +94,14 @@ proc main() {.async.} =
     doAssert "foobar: 7" in $reason.message
   echo "done" # justified here to make sure we're running this, since it's inside `async`
 
+block asyncPragmaInType:
+  type Handler = proc () {.async.}
+  proc foo() {.async.} = discard
+  var x: Handler = foo
+
+block: # 13341
+  proc f {.async.} =
+    proc g: int =
+      result = 123
+
 discard main()

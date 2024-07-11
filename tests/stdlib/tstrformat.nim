@@ -1,7 +1,12 @@
-# xxx: test js target
+discard """
+  matrix: "--mm:refc; --mm:orc"
+"""
 
 import genericstrformat
 import std/[strformat, strutils, times, tables, json]
+
+import std/[assertions, formatfloat]
+import std/objectdollar
 
 proc main() =
   block: # issue #7632
@@ -472,15 +477,17 @@ proc main() =
 
     # Note: times.format adheres to the format protocol. Test that this
     # works:
+    when nimvm:
+      discard
+    else:
+      var dt = dateTime(2000, mJan, 01, 00, 00, 00)
+      check &"{dt:yyyy-MM-dd}", "2000-01-01"
 
-    var dt = initDateTime(01, mJan, 2000, 00, 00, 00)
-    check &"{dt:yyyy-MM-dd}", "2000-01-01"
+      var tm = fromUnix(0)
+      discard &"{tm}"
 
-    var tm = fromUnix(0)
-    discard &"{tm}"
-
-    var noww = now()
-    check &"{noww}", $noww
+      var noww = now()
+      check &"{noww}", $noww
 
     # Unicode string tests
     check &"""{"αβγ"}""", "αβγ"
@@ -555,5 +562,29 @@ proc main() =
     doAssert &"""{(if true: "'" & "'" & ')' else: "")}""" == "'')"
     doAssert &"{(if true: \"\'\" & \"'\" & ')' else: \"\")}" == "'')"
     doAssert fmt"""{(if true: "'" & ')' else: "")}""" == "')"
-# xxx static: main()
+
+  block: # issue #20381
+    var ss: seq[string]
+    template myTemplate(s: string) =
+      ss.add s
+      ss.add s
+    proc foo() =
+      myTemplate fmt"hello"
+    foo()
+    doAssert ss == @["hello", "hello"]
+
+  block:
+    proc noraises() {.raises: [].} =
+      const
+        flt = 0.0
+        str = "str"
+
+      doAssert fmt"{flt} {str}" == "0.0 str"
+
+    noraises()
+
+  block:
+    doAssert not compiles(fmt"{formatting errors detected at compile time")
+
+static: main()
 main()

@@ -1,4 +1,5 @@
 discard """
+  matrix: "--mm:refc; --mm:orc"
   targets: "c cpp js"
   output: '''
 PEG AST traversal output
@@ -54,7 +55,7 @@ Event parser output
 when defined(nimHasEffectsOf):
   {.experimental: "strictEffects".}
 
-import std/[strutils, streams, pegs]
+import std/[strutils, streams, pegs, assertions]
 
 const
   indent = "  "
@@ -106,9 +107,9 @@ block:
 
 block:
   var
-    pStack: seq[string] = @[]
-    valStack: seq[float] = @[]
-    opStack = ""
+    pStack {.threadvar.}: seq[string]
+    valStack {.threadvar.}: seq[float]
+    opStack {.threadvar.}: string
   let
     parseArithExpr = pegAst.eventParser:
       pkNonTerminal:
@@ -157,6 +158,10 @@ block:
   proc pegsTest() =
     privateAccess(NonTerminal)
     privateAccess(Captures)
+
+    if "test" =~ peg"s <- {{\ident}}": # bug #19104
+      doAssert matches[0] == "test"
+      doAssert matches[1] == "test", $matches[1]
 
     doAssert escapePeg("abc''def'") == r"'abc'\x27\x27'def'\x27"
     doAssert match("(a b c)", peg"'(' @ ')'")
@@ -324,7 +329,16 @@ call()
       doAssert program.len == program.rawMatch(grammar, 0, c)
       doAssert c.ml == 1
 
+    block:
+      # bug #21632
+
+      let p = peg"""
+        atext <- \w / \d
+      """
+
+      doAssert "a".match(p)
+      doAssert "1".match(p)
+
   pegsTest()
   static:
     pegsTest()
-

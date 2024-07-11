@@ -106,14 +106,14 @@ macro carryOutTests(callingConv: untyped): untyped =
       echo `procName`, " implementation #1 ", x
       return x + 1
 
-    let fp1 = cast[F](hcrRegisterProc("dummy_module", `procName`, `p1`))
+    let fp1 = cast[F](hcrRegisterProc("dummy_module", `procName`, cast[pointer](`p1`)))
     echo fp1(10)
 
     proc `p2`(x: int): int {.placeholder.} =
       echo `procName`, " implementation #2 ", x
       return x + 2
 
-    let fp2 = cast[F](hcrRegisterProc("dummy_module", `procName`, `p2`))
+    let fp2 = cast[F](hcrRegisterProc("dummy_module", `procName`, cast[pointer](`p2`)))
     echo fp1(20)
     echo fp2(20)
 
@@ -121,7 +121,7 @@ macro carryOutTests(callingConv: untyped): untyped =
       echo `procName`, " implementation #3 ", x
       return x + 3
 
-    let fp3 = cast[F](hcrRegisterProc("dummy_module", `procName`, `p3`))
+    let fp3 = cast[F](hcrRegisterProc("dummy_module", `procName`, cast[pointer](`p3`)))
     echo fp1(30)
     echo fp2(30)
     echo fp3(30)

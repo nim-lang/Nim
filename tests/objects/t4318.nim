@@ -1,3 +1,8 @@
+discard """
+  matrix: "--mm:refc"
+"""
+
+
 type
   A = object of RootObj
   B = object of A

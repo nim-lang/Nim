@@ -82,7 +82,12 @@ runnableExamples:
 
 import std/private/since
 
-import macros
+import std/macros
+from std/typetraits import supportsCopyMem
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 
 when defined(nimHasEffectsOf):
   {.experimental: "strictEffects".}
@@ -135,6 +140,22 @@ func concat*[T](seqs: varargs[seq[T]]): seq[T] =
     for itm in items(s):
       result[i] = itm
       inc(i)
+
+func addUnique*[T](s: var seq[T], x: sink T) =
+  ## Adds `x` to the container `s` if it is not already present. 
+  ## Uses `==` to check if the item is already present.
+  runnableExamples:
+    var a = @[1, 2, 3]
+    a.addUnique(4)
+    a.addUnique(4)
+    assert a == @[1, 2, 3, 4]
+
+  for i in 0..high(s):
+    if s[i] == x: return
+  when declared(ensureMove):
+    s.add ensureMove(x)
+  else:
+    s.add x
 
 func count*[T](s: openArray[T], x: T): int =
   ## Returns the number of occurrences of the item `x` in the container `s`.
@@ -244,6 +265,15 @@ func maxIndex*[T](s: openArray[T]): int {.since: (1, 1).} =
   for i in 1..high(s):
     if s[i] > s[result]: result = i
 
+func minmax*[T](x: openArray[T]): (T, T) =
+  ## The minimum and maximum values of `x`. `T` needs to have a `<` operator.
+  var l = x[0]
+  var h = x[0]
+  for i in 1..high(x):
+    if x[i] < l: l = x[i]
+    if h < x[i]: h = x[i]
+  result = (l, h)
+
 
 template zipImpl(s1, s2, retType: untyped): untyped =
   proc zip*[S, T](s1: openArray[S], s2: openArray[T]): retType =
@@ -298,8 +328,7 @@ proc unzip*[S, T](s: openArray[(S, T)]): (seq[S], seq[T]) {.since: (1, 1).} =
       unzipped2 = @['a', 'b', 'c']
     assert zipped.unzip() == (unzipped1, unzipped2)
     assert zip(unzipped1, unzipped2).unzip() == (unzipped1, unzipped2)
-  result[0] = newSeq[S](s.len)
-  result[1] = newSeq[T](s.len)
+  result = (newSeq[S](s.len), newSeq[T](s.len))
   for i in 0..<s.len:
     result[0][i] = s[i][0]
     result[1][i] = s[i][1]
@@ -787,7 +816,7 @@ template toSeq1(s: not iterator): untyped =
         i += 1
       result
   else:
-    var result: seq[OutType] = @[]
+    var result: seq[OutType]# = @[]
     for it in s:
       result.add(it)
     result
@@ -804,7 +833,7 @@ template toSeq2(iter: iterator): untyped =
     result
   else:
     type OutType = typeof(iter2())
-    var result: seq[OutType] = @[]
+    var result: seq[OutType]# = @[]
     when compiles(iter2()):
       evalOnceAs(iter4, iter, false)
       let iter3 = iter4()
@@ -910,7 +939,7 @@ template foldl*(sequence, operation, first): untyped =
   ##
   ## The `operation` parameter should be an expression which uses the variables
   ## `a` and `b` for each step of the fold. The `first` parameter is the
-  ## start value (the first `a`) and therefor defines the type of the result.
+  ## start value (the first `a`) and therefore defines the type of the result.
   ##
   ## **See also:**
   ## * `foldr template<#foldr.t,untyped,untyped>`_
@@ -1016,7 +1045,7 @@ template mapIt*(s: typed, op: untyped): untyped =
           i += 1
         result
     else:
-      var result: seq[OutType] = @[]
+      var result: seq[OutType]# = @[]
       # use `items` to avoid https://github.com/nim-lang/Nim/issues/12639
       for it {.inject.} in items(s):
         result.add(op)
@@ -1074,9 +1103,13 @@ template newSeqWith*(len: int, init: untyped): untyped =
     import std/random
     var seqRand = newSeqWith(20, rand(1.0))
     assert seqRand[0] != seqRand[1]
-
-  var result = newSeq[typeof(init)](len)
-  for i in 0 ..< len:
+  type T = typeof(init)
+  let newLen = len
+  when supportsCopyMem(T) and declared(newSeqUninit):
+    var result = newSeqUninit[T](newLen)
+  else: # TODO: use `newSeqUnsafe` when that's available
+    var result = newSeq[T](newLen)
+  for i in 0 ..< newLen:
     result[i] = init
   move(result) # refs bug #7295
 

@@ -1,8 +1,10 @@
 discard """
+  matrix: "--mm:refc; --mm:orc"
   targets: "c js"
 """
 
 import std/setutils
+import std/assertions
 
 type 
   Colors = enum

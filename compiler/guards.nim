@@ -12,6 +12,9 @@
 import ast, astalgo, msgs, magicsys, nimsets, trees, types, renderer, idents,
   saturate, modulegraphs, options, lineinfos, int128
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 const
   someEq = {mEqI, mEqF64, mEqEnum, mEqCh, mEqB, mEqRef, mEqProc,
     mEqStr, mEqSet, mEqCString}
@@ -48,6 +51,10 @@ proc isLet(n: PNode): bool =
     elif n.sym.kind == skParam and skipTypes(n.sym.typ,
                                              abstractInst).kind notin {tyVar}:
       result = true
+    else:
+      result = false
+  else:
+    result = false
 
 proc isVar(n: PNode): bool =
   n.kind == nkSym and n.sym.kind in {skResult, skVar} and
@@ -65,9 +72,12 @@ proc isLetLocation(m: PNode, isApprox: bool): bool =
     case n.kind
     of nkDotExpr, nkCheckedFieldExpr, nkObjUpConv, nkObjDownConv:
       n = n[0]
-    of nkDerefExpr, nkHiddenDeref:
+    of nkDerefExpr:
       n = n[0]
       inc derefs
+    of nkHiddenDeref:
+      n = n[0]
+      if not isApprox: inc derefs
     of nkBracketExpr:
       if isConstExpr(n[1]) or isLet(n[1]) or isConstExpr(n[1].skipConv):
         n = n[0]
@@ -130,6 +140,8 @@ proc neg(n: PNode; o: Operators): PNode =
       result = a
     elif b != nil:
       result = b
+    else:
+      result = nil
   else:
     # leave  not (a == 4)  as it is
     result = newNodeI(nkCall, n.info, 2)
@@ -197,7 +209,7 @@ proc highBound*(conf: ConfigRef; x: PNode; o: Operators): PNode =
              nkIntLit.newIntNode(lastOrd(conf, typ))
            elif typ.kind == tySequence and x.kind == nkSym and
                x.sym.kind == skConst:
-             nkIntLit.newIntNode(x.sym.ast.len-1)
+             nkIntLit.newIntNode(x.sym.astdef.len-1)
            else:
              o.opAdd.buildCall(o.opLen.buildCall(x), minusOne())
   result.info = x.info
@@ -324,6 +336,8 @@ proc usefulFact(n: PNode; o: Operators): PNode =
         result = n
       elif n[1].getMagic in someLen or n[2].getMagic in someLen:
         result = n
+      else:
+        result = nil
   of someLe+someLt:
     if isLetLocation(n[1], true) or isLetLocation(n[2], true):
       # XXX algebraic simplifications!  'i-1 < a.len' --> 'i < a.len+1'
@@ -331,12 +345,18 @@ proc usefulFact(n: PNode; o: Operators): PNode =
     elif n[1].getMagic in someLen or n[2].getMagic in someLen:
       # XXX Rethink this whole idea of 'usefulFact' for semparallel
       result = n
+    else:
+      result = nil
   of mIsNil:
     if isLetLocation(n[1], false) or isVar(n[1]):
       result = n
+    else:
+      result = nil
   of someIn:
     if isLetLocation(n[1], true):
       result = n
+    else:
+      result = nil
   of mAnd:
     let
       a = usefulFact(n[1], o)
@@ -350,10 +370,14 @@ proc usefulFact(n: PNode; o: Operators): PNode =
       result = a
     elif b != nil:
       result = b
+    else:
+      result = nil
   of mNot:
     let a = usefulFact(n[1], o)
     if a != nil:
       result = a.neg(o)
+    else:
+      result = nil
   of mOr:
     # 'or' sucks! (p.isNil or q.isNil) --> hard to do anything
     # with that knowledge...
@@ -370,6 +394,8 @@ proc usefulFact(n: PNode; o: Operators): PNode =
       result[1] = a
       result[2] = b
       result = result.neg(o)
+    else:
+      result = nil
   elif n.kind == nkSym and n.sym.kind == skLet:
     # consider:
     #   let a = 2 < x
@@ -378,8 +404,12 @@ proc usefulFact(n: PNode; o: Operators): PNode =
     # We make can easily replace 'a' by '2 < x' here:
     if n.sym.astdef != nil:
       result = usefulFact(n.sym.astdef, o)
+    else:
+      result = nil
   elif n.kind == nkStmtListExpr:
     result = usefulFact(n.lastSon, o)
+  else:
+    result = nil
 
 type
   TModel* = object
@@ -445,8 +475,9 @@ proc hasSubTree(n, x: PNode): bool =
     of nkEmpty..nkNilLit:
       result = n.sameTree(x)
     of nkFormalParams:
-      discard
+      result = false
     else:
+      result = false
       for i in 0..<n.len:
         if hasSubTree(n[i], x): return true
 
@@ -477,6 +508,8 @@ proc invalidateFacts*(m: var TModel, n: PNode) =
 proc valuesUnequal(a, b: PNode): bool =
   if a.isValue and b.isValue:
     result = not sameValue(a, b)
+  else:
+    result = false
 
 proc impliesEq(fact, eq: PNode): TImplication =
   let (loc, val) = if isLocation(eq[1]): (1, 2) else: (2, 1)
@@ -487,16 +520,26 @@ proc impliesEq(fact, eq: PNode): TImplication =
       # this is not correct; consider:  a == b;  a == 1 --> unknown!
       if sameTree(fact[2], eq[val]): result = impYes
       elif valuesUnequal(fact[2], eq[val]): result = impNo
+      else:
+        result = impUnknown
     elif sameTree(fact[2], eq[loc]):
       if sameTree(fact[1], eq[val]): result = impYes
       elif valuesUnequal(fact[1], eq[val]): result = impNo
+      else:
+        result = impUnknown
+    else:
+      result = impUnknown
   of mInSet:
     # remember: mInSet is 'contains' so the set comes first!
     if sameTree(fact[2], eq[loc]) and isValue(eq[val]):
       if inSet(fact[1], eq[val]): result = impYes
       else: result = impNo
-  of mNot, mOr, mAnd: assert(false, "impliesEq")
-  else: discard
+    else:
+      result = impUnknown
+  of mNot, mOr, mAnd:
+    result = impUnknown
+    assert(false, "impliesEq")
+  else: result = impUnknown
 
 proc leImpliesIn(x, c, aSet: PNode): TImplication =
   if c.kind in {nkCharLit..nkUInt64Lit}:
@@ -506,13 +549,19 @@ proc leImpliesIn(x, c, aSet: PNode): TImplication =
     var value = newIntNode(c.kind, firstOrd(nil, x.typ))
     # don't iterate too often:
     if c.intVal - value.intVal < 1000:
-      var i, pos, neg: int
+      var i, pos, neg: int = 0
       while value.intVal <= c.intVal:
         if inSet(aSet, value): inc pos
         else: inc neg
         inc i; inc value.intVal
       if pos == i: result = impYes
       elif neg == i: result = impNo
+      else:
+        result = impUnknown
+    else:
+      result = impUnknown
+  else:
+    result = impUnknown
 
 proc geImpliesIn(x, c, aSet: PNode): TImplication =
   if c.kind in {nkCharLit..nkUInt64Lit}:
@@ -523,17 +572,23 @@ proc geImpliesIn(x, c, aSet: PNode): TImplication =
     let max = lastOrd(nil, x.typ)
     # don't iterate too often:
     if max - getInt(value) < toInt128(1000):
-      var i, pos, neg: int
+      var i, pos, neg: int = 0
       while value.intVal <= max:
         if inSet(aSet, value): inc pos
         else: inc neg
         inc i; inc value.intVal
       if pos == i: result = impYes
       elif neg == i: result = impNo
+      else: result = impUnknown
+    else:
+      result = impUnknown
+  else:
+    result = impUnknown
 
 proc compareSets(a, b: PNode): TImplication =
   if equalSets(nil, a, b): result = impYes
   elif intersectSets(nil, a, b).len == 0: result = impNo
+  else: result = impUnknown
 
 proc impliesIn(fact, loc, aSet: PNode): TImplication =
   case fact[0].sym.magic
@@ -544,22 +599,32 @@ proc impliesIn(fact, loc, aSet: PNode): TImplication =
     elif sameTree(fact[2], loc):
       if inSet(aSet, fact[1]): result = impYes
       else: result = impNo
+    else:
+      result = impUnknown
   of mInSet:
     if sameTree(fact[2], loc):
       result = compareSets(fact[1], aSet)
+    else:
+      result = impUnknown
   of someLe:
     if sameTree(fact[1], loc):
       result = leImpliesIn(fact[1], fact[2], aSet)
     elif sameTree(fact[2], loc):
       result = geImpliesIn(fact[2], fact[1], aSet)
+    else:
+      result = impUnknown
   of someLt:
     if sameTree(fact[1], loc):
       result = leImpliesIn(fact[1], fact[2].pred, aSet)
     elif sameTree(fact[2], loc):
       # 4 < x  -->  3 <= x
       result = geImpliesIn(fact[2], fact[1].pred, aSet)
-  of mNot, mOr, mAnd: assert(false, "impliesIn")
-  else: discard
+    else:
+      result = impUnknown
+  of mNot, mOr, mAnd:
+    result = impUnknown
+    assert(false, "impliesIn")
+  else: result = impUnknown
 
 proc valueIsNil(n: PNode): TImplication =
   if n.kind == nkNilLit: impYes
@@ -571,13 +636,19 @@ proc impliesIsNil(fact, eq: PNode): TImplication =
   of mIsNil:
     if sameTree(fact[1], eq[1]):
       result = impYes
+    else:
+      result = impUnknown
   of someEq:
     if sameTree(fact[1], eq[1]):
       result = valueIsNil(fact[2].skipConv)
     elif sameTree(fact[2], eq[1]):
       result = valueIsNil(fact[1].skipConv)
-  of mNot, mOr, mAnd: assert(false, "impliesIsNil")
-  else: discard
+    else:
+      result = impUnknown
+  of mNot, mOr, mAnd:
+    result = impUnknown
+    assert(false, "impliesIsNil")
+  else: result = impUnknown
 
 proc impliesGe(fact, x, c: PNode): TImplication =
   assert isLocation(x)
@@ -588,32 +659,57 @@ proc impliesGe(fact, x, c: PNode): TImplication =
         # fact:  x = 4;  question x >= 56? --> true iff 4 >= 56
         if leValue(c, fact[2]): result = impYes
         else: result = impNo
+      else:
+        result = impUnknown
     elif sameTree(fact[2], x):
       if isValue(fact[1]) and isValue(c):
         if leValue(c, fact[1]): result = impYes
         else: result = impNo
+      else:
+        result = impUnknown
+    else:
+      result = impUnknown
   of someLt:
     if sameTree(fact[1], x):
       if isValue(fact[2]) and isValue(c):
         # fact:  x < 4;  question N <= x? --> false iff N <= 4
         if leValue(fact[2], c): result = impNo
+        else: result = impUnknown
         # fact:  x < 4;  question 2 <= x? --> we don't know
+      else:
+        result = impUnknown
     elif sameTree(fact[2], x):
       # fact: 3 < x; question: N-1 < x ?  --> true iff N-1 <= 3
       if isValue(fact[1]) and isValue(c):
         if leValue(c.pred, fact[1]): result = impYes
+        else: result = impUnknown
+      else:
+        result = impUnknown
+    else:
+      result = impUnknown
   of someLe:
     if sameTree(fact[1], x):
       if isValue(fact[2]) and isValue(c):
         # fact:  x <= 4;  question x >= 56? --> false iff 4 <= 56
         if leValue(fact[2], c): result = impNo
         # fact:  x <= 4;  question x >= 2? --> we don't know
+        else:
+          result = impUnknown
+      else:
+        result = impUnknown
     elif sameTree(fact[2], x):
       # fact: 3 <= x; question: x >= 2 ?  --> true iff 2 <= 3
       if isValue(fact[1]) and isValue(c):
         if leValue(c, fact[1]): result = impYes
-  of mNot, mOr, mAnd: assert(false, "impliesGe")
-  else: discard
+        else: result = impUnknown
+      else:
+        result = impUnknown
+    else:
+      result = impUnknown
+  of mNot, mOr, mAnd:
+    result = impUnknown
+    assert(false, "impliesGe")
+  else: result = impUnknown
 
 proc impliesLe(fact, x, c: PNode): TImplication =
   if not isLocation(x):
@@ -628,35 +724,59 @@ proc impliesLe(fact, x, c: PNode): TImplication =
         # fact:  x = 4;  question x <= 56? --> true iff 4 <= 56
         if leValue(fact[2], c): result = impYes
         else: result = impNo
+      else:
+        result = impUnknown
     elif sameTree(fact[2], x):
       if isValue(fact[1]) and isValue(c):
         if leValue(fact[1], c): result = impYes
         else: result = impNo
+      else:
+        result = impUnknown
+    else:
+      result = impUnknown
   of someLt:
     if sameTree(fact[1], x):
       if isValue(fact[2]) and isValue(c):
         # fact:  x < 4;  question x <= N? --> true iff N-1 <= 4
         if leValue(fact[2], c.pred): result = impYes
+        else:
+          result = impUnknown
         # fact:  x < 4;  question x <= 2? --> we don't know
+      else:
+        result = impUnknown
     elif sameTree(fact[2], x):
       # fact: 3 < x; question: x <= 1 ?  --> false iff 1 <= 3
       if isValue(fact[1]) and isValue(c):
         if leValue(c, fact[1]): result = impNo
-
+        else: result = impUnknown
+      else:
+        result = impUnknown
+    else:
+      result = impUnknown
   of someLe:
     if sameTree(fact[1], x):
       if isValue(fact[2]) and isValue(c):
         # fact:  x <= 4;  question x <= 56? --> true iff 4 <= 56
         if leValue(fact[2], c): result = impYes
+        else: result = impUnknown
         # fact:  x <= 4;  question x <= 2? --> we don't know
+      else:
+        result = impUnknown
 
     elif sameTree(fact[2], x):
       # fact: 3 <= x; question: x <= 2 ?  --> false iff 2 < 3
       if isValue(fact[1]) and isValue(c):
         if leValue(c, fact[1].pred): result = impNo
+        else:result = impUnknown
+      else:
+        result = impUnknown
+    else:
+      result = impUnknown
 
-  of mNot, mOr, mAnd: assert(false, "impliesLe")
-  else: discard
+  of mNot, mOr, mAnd:
+    result = impUnknown
+    assert(false, "impliesLe")
+  else: result = impUnknown
 
 proc impliesLt(fact, x, c: PNode): TImplication =
   # x < 3  same as x <= 2:
@@ -668,6 +788,8 @@ proc impliesLt(fact, x, c: PNode): TImplication =
     let q = x.pred
     if q != x:
       result = impliesLe(fact, q, c)
+    else:
+      result = impUnknown
 
 proc `~`(x: TImplication): TImplication =
   case x
@@ -719,6 +841,7 @@ proc factImplies(fact, prop: PNode): TImplication =
 
 proc doesImply*(facts: TModel, prop: PNode): TImplication =
   assert prop.kind in nkCallKinds
+  result = impUnknown
   for f in facts.s:
     # facts can be invalidated, in which case they are 'nil':
     if not f.isNil:
@@ -747,7 +870,7 @@ template isSub(x): untyped = x.getMagic in someSub
 template isVal(x): untyped = x.kind in {nkCharLit..nkUInt64Lit}
 template isIntVal(x, y): untyped = x.intVal == y
 
-import macros
+import std/macros
 
 macro `=~`(x: PNode, pat: untyped): bool =
   proc m(x, pat, conds: NimNode) =
@@ -894,6 +1017,7 @@ proc applyReplacements(n: PNode; rep: TReplacements): PNode =
 
 proc pleViaModelRec(m: var TModel; a, b: PNode): TImplication =
   # now check for inferrable facts: a <= b and b <= c  implies a <= c
+  result = impUnknown
   for i in 0..m.s.high:
     let fact = m.s[i]
     if fact != nil and fact.getMagic in someLe:
@@ -939,7 +1063,7 @@ proc pleViaModel(model: TModel; aa, bb: PNode): TImplication =
       let b = fact[2]
       if a.kind == nkSym: replacements.add((a,b))
       else: replacements.add((b,a))
-  var m: TModel
+  var m = TModel()
   var a = aa
   var b = bb
   if replacements.len > 0:
@@ -974,8 +1098,8 @@ proc addFactLt*(m: var TModel; a, b: PNode) =
   addFactLe(m, a, bb)
 
 proc settype(n: PNode): PType =
-  result = newType(tySet, ItemId(module: -1, item: -1), n.typ.owner)
-  var idgen: IdGenerator
+  var idgen = idGeneratorForPackage(-1'i32)
+  result = newType(tySet, idgen, n.typ.owner)
   addSonSkipIntLit(result, n.typ, idgen)
 
 proc buildOf(it, loc: PNode; o: Operators): PNode =
@@ -1051,8 +1175,12 @@ proc buildProperFieldCheck(access, check: PNode; o: Operators): PNode =
     assert check.getMagic == mNot
     result = buildProperFieldCheck(access, check[1], o).neg(o)
 
-proc checkFieldAccess*(m: TModel, n: PNode; conf: ConfigRef) =
+proc checkFieldAccess*(m: TModel, n: PNode; conf: ConfigRef; produceError: bool) =
   for i in 1..<n.len:
     let check = buildProperFieldCheck(n[0], n[i], m.g.operators)
     if check != nil and m.doesImply(check) != impYes:
-      message(conf, n.info, warnProveField, renderTree(n[0])); break
+      if produceError:
+        localError(conf, n.info, "field access outside of valid case branch: " & renderTree(n[0]))
+      else:
+        message(conf, n.info, warnProveField, renderTree(n[0]))
+      break

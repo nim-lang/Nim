@@ -7,7 +7,12 @@
 #    distribution, for details about the copyright.
 #
 
-import renderer, strutils, ast, types
+import renderer, ast, types
+import std/strutils
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 
 const defaultParamSeparator* = ","
 
@@ -60,9 +65,8 @@ proc renderType(n: PNode, toNormalize: bool): string =
       result = "ptr"
   of nkProcTy:
     assert n.len != 1
-    if n.len > 1:
+    if n.len > 1 and n[0].kind == nkFormalParams:
       let params = n[0]
-      assert params.kind == nkFormalParams
       assert params.len > 0
       result = "proc("
       for i in 1..<params.len: result.add(renderType(params[i], toNormalize) & ',')
@@ -96,6 +100,7 @@ proc renderType(n: PNode, toNormalize: bool): string =
 
 proc renderParamNames*(n: PNode, toNormalize=false): seq[string] =
   ## Returns parameter names of routine `n`.
+  result = @[]
   doAssert n.kind == nkFormalParams
   case n.kind
   of nkFormalParams:

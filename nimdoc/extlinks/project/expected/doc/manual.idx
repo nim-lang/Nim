@@ -1,0 +1,3 @@
+markupTitle	Nothing User Manual	doc/manual.html	Nothing User Manual		0
+heading	First section	doc/manual.html#first-section	 First section		0
+heading	Second section &	doc/manual.html#second-section-amp	 Second <em>section</em> &amp;		0

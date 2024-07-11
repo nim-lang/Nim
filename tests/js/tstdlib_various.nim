@@ -150,12 +150,7 @@ block tsplit2:
     s.add("#")
     s.add(w)
 
-  var errored = false
-  try:
-    discard "hello".split("")
-  except AssertionDefect:
-    errored = true
-  doAssert errored
+  doAssert "true".split("") == @["true"]
 
 block txmlgen:
   var nim = "Nim"

@@ -9,9 +9,12 @@
 
 ## Unstable API.
 
-import asyncfutures
+import std/asyncfutures
 
-import deques
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
+import std/deques
 
 type
   FutureStream*[T] = ref object ## Special future that acts as

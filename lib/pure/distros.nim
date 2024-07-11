@@ -9,21 +9,20 @@
 
 ## This module implements the basics for Linux distribution ("distro")
 ## detection and the OS's native package manager. Its primary purpose is to
-## produce output for Nimble packages, like::
+## produce output for Nimble packages, like:
 ##
-##   To complete the installation, run:
+##     To complete the installation, run:
 ##
-##   sudo apt-get install libblas-dev
-##   sudo apt-get install libvoodoo
+##     sudo apt-get install libblas-dev
+##     sudo apt-get install libvoodoo
 ##
 ## The above output could be the result of a code snippet like:
 ##
-## .. code-block:: nim
-##
+##   ```nim
 ##   if detectOs(Ubuntu):
 ##     foreignDep "lbiblas-dev"
 ##     foreignDep "libvoodoo"
-##
+##   ```
 ##
 ## See `packaging <packaging.html>`_ for hints on distributing Nim using OS packages.
 
@@ -31,7 +30,7 @@ from std/strutils import contains, toLowerAscii
 
 when not defined(nimscript):
   from std/osproc import execProcess
-  from std/os import existsEnv
+  from std/envvars import existsEnv
 
 type
   Distribution* {.pure.} = enum ## the list of known distributions
@@ -128,6 +127,7 @@ type
 
     BSD
     FreeBSD
+    NetBSD
     OpenBSD
     DragonFlyBSD
 
@@ -169,7 +169,7 @@ proc detectOsImpl(d: Distribution): bool =
   else:
     when defined(bsd):
       case d
-      of Distribution.FreeBSD, Distribution.OpenBSD:
+      of Distribution.FreeBSD, Distribution.NetBSD, Distribution.OpenBSD:
         result = $d in uname()
       else:
         result = false
@@ -252,7 +252,7 @@ proc foreignDepInstallCmd*(foreignPackageName: string): (string, bool) =
       result = ("nix-env -i " & p, false)
     elif detectOs(Solaris) or detectOs(FreeBSD):
       result = ("pkg install " & p, true)
-    elif detectOs(OpenBSD):
+    elif detectOs(NetBSD) or detectOs(OpenBSD):
       result = ("pkg_add " & p, true)
     elif detectOs(PCLinuxOS):
       result = ("rpm -ivh " & p, true)

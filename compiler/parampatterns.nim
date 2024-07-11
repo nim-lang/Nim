@@ -10,8 +10,10 @@
 ## This module implements the pattern matching features for term rewriting
 ## macro support.
 
-import strutils, ast, types, msgs, idents, renderer, wordrecg, trees,
+import ast, types, msgs, idents, renderer, wordrecg, trees,
   options
+
+import std/strutils
 
 # we precompile the pattern here for efficiency into some internal
 # stack based VM :-) Why? Because it's fun; I did no benchmarks to see if that
@@ -183,7 +185,8 @@ type
     arLentValue,              # lent value
     arStrange                 # it is a strange beast like 'typedesc[var T]'
 
-proc exprRoot*(n: PNode): PSym =
+proc exprRoot*(n: PNode; allowCalls = true): PSym =
+  result = nil
   var it = n
   while true:
     case it.kind
@@ -204,7 +207,7 @@ proc exprRoot*(n: PNode): PSym =
       if it.len > 0 and it.typ != nil: it = it.lastSon
       else: break
     of nkCallKinds:
-      if it.typ != nil and it.typ.kind in {tyVar, tyLent} and it.len > 1:
+      if allowCalls and it.typ != nil and it.typ.kind in {tyVar, tyLent} and it.len > 1:
         # See RFC #7373, calls returning 'var T' are assumed to
         # return a view into the first argument (if there is one):
         it = it[1]
@@ -224,7 +227,7 @@ proc isAssignable*(owner: PSym, n: PNode): TAssignableResult =
     const kinds = {skVar, skResult, skTemp, skParam, skLet, skForVar}
     if n.sym.kind == skParam:
       result = if n.sym.typ.kind in {tyVar, tySink}: arLValue else: arAddressableConst
-    elif n.sym.kind == skConst and dontInlineConstant(n, n.sym.ast):
+    elif n.sym.kind == skConst and dontInlineConstant(n, n.sym.astdef):
       result = arAddressableConst
     elif n.sym.kind in kinds:
       if n.sym.kind in {skParam, skLet, skForVar}:

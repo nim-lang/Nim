@@ -1,4 +1,5 @@
 discard """
+  matrix: "--mm:refc; --mm:orc"
   targets: "c js"
   output: '''
 true
@@ -11,7 +12,7 @@ import htmlparser
 import xmltree
 import strutils
 from streams import newStringStream
-
+import std/assertions
 
 block t2813:
   const
