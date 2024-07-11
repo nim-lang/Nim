@@ -289,7 +289,7 @@ proc potentialValueInit(p: BProc; v: PSym; value: PNode; result: var Rope) =
     #echo "New code produced for ", v.name.s, " ", p.config $ value.info
     genBracedInit(p, value, isConst = false, v.typ, result)
 
-proc genCppParamsForCtor(p: BProc; call: PNode): string =
+proc genCppParamsForCtor(p: BProc; call: PNode; didGenTemp: var bool): string =
   result = ""
   var argsCounter = 0
   let typ = skipTypes(call[0].typ, abstractInst)
@@ -298,12 +298,23 @@ proc genCppParamsForCtor(p: BProc; call: PNode): string =
     #if it's a type we can just generate here another initializer as we are in an initializer context
     if call[i].kind == nkCall and call[i][0].kind == nkSym and call[i][0].sym.kind == skType:
       if argsCounter > 0: result.add ","
-      result.add genCppInitializer(p.module, p, call[i][0].sym.typ)
+      result.add genCppInitializer(p.module, p, call[i][0].sym.typ, didGenTemp)
     else:
+      #We need to test for temp in globals, see: #23657
+      let param =
+        if typ[i].kind in {tyVar} and call[i].kind == nkHiddenAddr:
+          call[i][0]
+        else:
+          call[i]
+      if param.kind != nkBracketExpr or param.typ.kind in
+        {tyRef, tyPtr, tyUncheckedArray, tyArray, tyOpenArray,
+          tyVarargs, tySequence, tyString, tyCstring, tyTuple}:
+        let tempLoc = initLocExprSingleUse(p, param)
+        didGenTemp = didGenTemp or tempLoc.k == locTemp
       genOtherArg(p, call, i, typ, result, argsCounter)
 
-proc genCppVarForCtor(p: BProc; call: PNode; decl: var Rope) =
-  let params = genCppParamsForCtor(p, call)
+proc genCppVarForCtor(p: BProc; call: PNode; decl: var Rope, didGenTemp: var bool) =
+  let params = genCppParamsForCtor(p, call, didGenTemp)
   if params.len == 0:
     decl = runtimeFormat("$#;\n", [decl])
   else:
@@ -330,7 +341,14 @@ proc genSingleVar(p: BProc, v: PSym; vn, value: PNode) =
       # v.owner.kind != skModule:
       targetProc = p.module.preInitProc
     if isCppCtorCall and not containsHiddenPointer(v.typ):
-      callGlobalVarCppCtor(targetProc, v, vn, value)
+      var didGenTemp = false
+      callGlobalVarCppCtor(targetProc, v, vn, value, didGenTemp)
+      if didGenTemp:
+        message(p.config, vn.info, warnGlobalVarConstructorTemporary, vn.sym.name.s)
+        #We fail to call the constructor in the global scope so we do the call inside the main proc
+        assignGlobalVar(targetProc, vn, valueAsRope)
+        var loc = initLocExprSingleUse(targetProc, value)
+        genAssignment(targetProc, v.loc, loc, {})
     else:
       assignGlobalVar(targetProc, vn, valueAsRope)
 
@@ -365,7 +383,8 @@ proc genSingleVar(p: BProc, v: PSym; vn, value: PNode) =
       var decl = localVarDecl(p, vn)
       var tmp: TLoc
       if isCppCtorCall:
-        genCppVarForCtor(p, value, decl)
+        var didGenTemp = false
+        genCppVarForCtor(p, value, decl, didGenTemp)
         line(p, cpsStmts, decl)
       else:
         tmp = initLocExprSingleUse(p, value)
@@ -736,6 +755,18 @@ proc raiseExit(p: BProc) =
       lineCg(p, cpsStmts, "if (NIM_UNLIKELY(*nimErr_)) goto LA$1_;$n",
         [p.nestedTryStmts[^1].label])
 
+proc raiseExitCleanup(p: BProc, destroy: string) =
+  assert p.config.exc == excGoto
+  if nimErrorFlagDisabled notin p.flags:
+    p.flags.incl nimErrorFlagAccessed
+    if p.nestedTryStmts.len == 0:
+      p.flags.incl beforeRetNeeded
+      # easy case, simply goto 'ret':
+      lineCg(p, cpsStmts, "if (NIM_UNLIKELY(*nimErr_)) {$1; goto BeforeRet_;}$n", [destroy])
+    else:
+      lineCg(p, cpsStmts, "if (NIM_UNLIKELY(*nimErr_)) {$2; goto LA$1_;}$n",
+        [p.nestedTryStmts[^1].label, destroy])
+
 proc finallyActions(p: BProc) =
   if p.config.exc != excGoto and p.nestedTryStmts.len > 0 and p.nestedTryStmts[^1].inExcept:
     # if the current try stmt have a finally block,
@@ -765,10 +796,14 @@ proc genRaiseStmt(p: BProc, t: PNode) =
     var e = rdLoc(a)
     discard getTypeDesc(p.module, t[0].typ)
     var typ = skipTypes(t[0].typ, abstractPtrs)
-    # XXX For reasons that currently escape me, this is only required by the new
-    # C++ based exception handling:
-    if p.config.exc == excCpp:
+    case p.config.exc
+    of excCpp:
       blockLeaveActions(p, howManyTrys = 0, howManyExcepts = p.inExceptBlockLen)
+    of excGoto:
+      blockLeaveActions(p, howManyTrys = 0,
+        howManyExcepts = (if p.nestedTryStmts.len > 0 and p.nestedTryStmts[^1].inExcept: 1 else: 0))
+    else:
+      discard
     genLineDir(p, t)
     if isImportedException(typ, p.config):
       lineF(p, cpsStmts, "throw $1;$n", [e])
@@ -1547,14 +1582,14 @@ proc genAsmStmt(p: BProc, t: PNode) =
       if whichPragma(i) == wAsmSyntax:
         asmSyntax = i[1].strVal
 
-  if asmSyntax != "" and 
+  if asmSyntax != "" and
      not (
       asmSyntax == "gcc" and hasGnuAsm in CC[p.config.cCompiler].props or
       asmSyntax == "vcc" and hasGnuAsm notin CC[p.config.cCompiler].props):
     localError(
-      p.config, t.info, 
+      p.config, t.info,
       "Your compiler does not support the specified inline assembler")
-  
+
   genAsmOrEmitStmt(p, t, isAsmStmt=true, s)
   # see bug #2362, "top level asm statements" seem to be a mis-feature
   # but even if we don't do this, the example in #2362 cannot possibly

@@ -1416,6 +1416,8 @@ elif not defined(useNimRtl):
           tmspec.tv_nsec = (timeout * 1_000_000)
 
         try:
+          if not running(p):
+            return exitStatusLikeShell(p.exitStatus)
           if clock_gettime(CLOCK_REALTIME, stspec) == -1:
             raiseOSError(osLastError())
           while true:

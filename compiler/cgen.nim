@@ -412,6 +412,7 @@ proc rdCharLoc(a: TLoc): Rope =
 type
   TAssignmentFlag = enum
     needToCopy
+    needToCopySinkParam
     needTempForOpenArray
   TAssignmentFlags = set[TAssignmentFlag]
 
@@ -562,8 +563,9 @@ proc getTemp(p: BProc, t: PType, needsInit=false): TLoc =
   result = TLoc(r: "T" & rope(p.labels) & "_", k: locTemp, lode: lodeTyp t,
                 storage: OnStack, flags: {})
   if p.module.compileToCpp and isOrHasImportedCppType(t):
+    var didGenTemp = false
     linefmt(p, cpsLocals, "$1 $2$3;$n", [getTypeDesc(p.module, t, dkVar), result.r,
-      genCppInitializer(p.module, p, t)])
+      genCppInitializer(p.module, p, t, didGenTemp)])
   else:
     linefmt(p, cpsLocals, "$1 $2;$n", [getTypeDesc(p.module, t, dkVar), result.r])
   constructLoc(p, result, not needsInit)
@@ -620,7 +622,8 @@ proc assignLocalVar(p: BProc, n: PNode) =
   let nl = if optLineDir in p.config.options: "" else: "\n"
   var decl = localVarDecl(p, n)
   if p.module.compileToCpp and isOrHasImportedCppType(n.typ):
-    decl.add genCppInitializer(p.module, p, n.typ)
+    var didGenTemp = false
+    decl.add genCppInitializer(p.module, p, n.typ, didGenTemp)
   decl.add ";" & nl
   line(p, cpsLocals, decl)
 
@@ -655,18 +658,7 @@ proc genGlobalVarDecl(p: BProc, n: PNode; td, value: Rope; decl: var Rope) =
     else:
       decl = runtimeFormat(s.cgDeclFrmt & ";$n", [td, s.loc.r])
 
-proc genCppVarForCtor(p: BProc; call: PNode; decl: var Rope)
-
-proc callGlobalVarCppCtor(p: BProc; v: PSym; vn, value: PNode) =
-  let s = vn.sym
-  fillBackendName(p.module, s)
-  fillLoc(s.loc, locGlobalVar, vn, OnHeap)
-  var decl: Rope = ""
-  let td = getTypeDesc(p.module, vn.sym.typ, dkVar)
-  genGlobalVarDecl(p, vn, td, "", decl)
-  decl.add " " & $s.loc.r
-  genCppVarForCtor(p, value, decl)
-  p.module.s[cfsVars].add decl
+proc genCppVarForCtor(p: BProc; call: PNode; decl: var Rope; didGenTemp: var bool)
 
 proc assignGlobalVar(p: BProc, n: PNode; value: Rope) =
   let s = n.sym
@@ -722,6 +714,18 @@ proc assignGlobalVar(p: BProc, n: PNode; value: Rope) =
     # fixes tests/run/tzeroarray:
     resetLoc(p, s.loc)
 
+proc callGlobalVarCppCtor(p: BProc; v: PSym; vn, value: PNode; didGenTemp: var bool) =
+  let s = vn.sym
+  fillBackendName(p.module, s)
+  fillLoc(s.loc, locGlobalVar, vn, OnHeap)
+  var decl: Rope = ""
+  let td = getTypeDesc(p.module, vn.sym.typ, dkVar)
+  genGlobalVarDecl(p, vn, td, "", decl)
+  decl.add " " & $s.loc.r
+  genCppVarForCtor(p, value, decl, didGenTemp)
+  if didGenTemp:  return # generated in the caller
+  p.module.s[cfsVars].add decl
+
 proc assignParam(p: BProc, s: PSym, retType: PType) =
   assert(s.loc.r != "")
   scopeMangledParam(p, s)
@@ -749,6 +753,7 @@ proc intLiteral(i: BiggestInt; result: var Rope)
 proc genLiteral(p: BProc, n: PNode; result: var Rope)
 proc genOtherArg(p: BProc; ri: PNode; i: int; typ: PType; result: var Rope; argsCounter: var int)
 proc raiseExit(p: BProc)
+proc raiseExitCleanup(p: BProc, destroy: string)
 
 proc initLocExpr(p: BProc, e: PNode, flags: TLocFlags = {}): TLoc =
   result = initLoc(locNone, e, OnUnknown, flags)
@@ -1070,7 +1075,11 @@ proc allPathsAsgnResult(p: BProc; n: PNode): InitResultEnum =
       if result != Unknown: return result
   of nkAsgn, nkFastAsgn, nkSinkAsgn:
     if n[0].kind == nkSym and n[0].sym.kind == skResult:
-      if not containsResult(n[1]): result = InitSkippable
+      if not containsResult(n[1]):
+        if allPathsAsgnResult(p, n[1]) == InitRequired:
+          result = InitRequired
+        else:
+          result = InitSkippable
       else: result = InitRequired
     elif containsResult(n):
       result = InitRequired
@@ -1147,6 +1156,10 @@ proc allPathsAsgnResult(p: BProc; n: PNode): InitResultEnum =
       for i in 0..<n.safeLen:
         allPathsInBranch(n[i])
   of nkRaiseStmt:
+    result = InitRequired
+  of nkChckRangeF, nkChckRange64, nkChckRange:
+    # TODO: more checks might need to be covered like overflow, indexDefect etc.
+    # bug #22852
     result = InitRequired
   else:
     for i in 0..<n.safeLen:
