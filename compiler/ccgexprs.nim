@@ -343,7 +343,7 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
   of tyString:
     if optSeqDestructors in p.config.globalOptions:
       genGenericAsgn(p, dest, src, flags)
-    elif (needToCopy notin flags and src.storage != OnStatic) or canMove(p, src.lode, dest):
+    elif ({needToCopy, needToCopySinkParam} * flags == {} and src.storage != OnStatic) or canMove(p, src.lode, dest):
       genRefAssign(p, dest, src)
     else:
       if (dest.storage == OnStack and p.config.selectedGC != gcGo) or not usesWriteBarrier(p.config):
@@ -812,6 +812,8 @@ proc genAddr(p: BProc, e: PNode, d: var TLoc) =
     #Message(e.info, warnUser, "HERE NEW &")
   elif mapType(p.config, e[0].typ, mapTypeChooser(e[0]) == skParam) == ctArray or isCppRef(p, e.typ):
     expr(p, e[0], d)
+    # bug #19497
+    d.lode = e
   else:
     var a: TLoc = initLocExpr(p, e[0])
     putIntoDest(p, d, e, addrLoc(p.config, a), a.storage)
@@ -1019,8 +1021,8 @@ proc genCStringElem(p: BProc, n, x, y: PNode, d: var TLoc) =
   putIntoDest(p, d, n,
               ropecg(p.module, "$1[$2]", [rdLoc(a), rdCharLoc(b)]), a.storage)
 
-proc genBoundsCheck(p: BProc; arr, a, b: TLoc) =
-  let ty = skipTypes(arr.t, abstractVarRange)
+proc genBoundsCheck(p: BProc; arr, a, b: TLoc; arrTyp: PType) =
+  let ty = arrTyp
   case ty.kind
   of tyOpenArray, tyVarargs:
     if reifiedOpenArray(arr.lode):
@@ -1484,9 +1486,13 @@ proc rawConstExpr(p: BProc, n: PNode; d: var TLoc) =
   if id == p.module.labels:
     # expression not found in the cache:
     inc(p.module.labels)
-    p.module.s[cfsData].addf("static NIM_CONST $1 $2 = ", [getTypeDesc(p.module, t), d.r])
-    genBracedInit(p, n, isConst = true, t, p.module.s[cfsData])
-    p.module.s[cfsData].addf(";$n", [])
+    var data = "static NIM_CONST $1 $2 = " % [getTypeDesc(p.module, t), d.r]
+    # bug #23627; when generating const object fields, it's likely that
+    # we need to generate type infos for the object, which may be an object with
+    # custom hooks. We need to generate potential consts in the hooks first.
+    genBracedInit(p, n, isConst = true, t, data)
+    data.addf(";$n", [])
+    p.module.s[cfsData].add data
 
 proc handleConstExpr(p: BProc, n: PNode, d: var TLoc): bool =
   if d.k == locNone and n.len > ord(n.kind == nkObjConstr) and n.isDeepConstExpr:
@@ -1497,8 +1503,7 @@ proc handleConstExpr(p: BProc, n: PNode, d: var TLoc): bool =
 
 
 proc genFieldObjConstr(p: BProc; ty: PType; useTemp, isRef: bool; nField, val, check: PNode; d: var TLoc; r: Rope; info: TLineInfo) =
-  var tmp2: TLoc = default(TLoc)
-  tmp2.r = r
+  var tmp2 = TLoc(r: r)
   let field = lookupFieldAgain(p, ty, nField.sym, tmp2.r)
   if field.loc.r == "": fillObjectFields(p.module, ty)
   if field.loc.r == "": internalError(p.config, info, "genFieldObjConstr")
@@ -1513,7 +1518,12 @@ proc genFieldObjConstr(p: BProc; ty: PType; useTemp, isRef: bool; nField, val, c
     tmp2.k = d.k
     tmp2.storage = if isRef: OnHeap else: d.storage
   tmp2.lode = val
-  expr(p, val, tmp2)
+  if nField.typ.skipTypes(abstractVar).kind in {tyOpenArray, tyVarargs}:
+    var tmp3 = getTemp(p, val.typ)
+    expr(p, val, tmp3)
+    genOpenArrayConv(p, tmp2, tmp3, {})
+  else:
+    expr(p, val, tmp2)
 
 proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
   # inheritance in C++ does not allow struct initialization so
@@ -1847,7 +1857,7 @@ proc genArrayLen(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       var b = initLocExpr(p, a[2])
       var c = initLocExpr(p, a[3])
       if optBoundsCheck in p.options:
-        genBoundsCheck(p, m, b, c)
+        genBoundsCheck(p, m, b, c, skipTypes(m.t, abstractVarRange))
       if op == mHigh:
         putIntoDest(p, d, e, ropecg(p.module, "(($2)-($1))", [rdLoc(b), rdLoc(c)]))
       else:
@@ -2337,8 +2347,13 @@ proc genMove(p: BProc; n: PNode; d: var TLoc) =
           else:
             linefmt(p, cpsStmts, "$1($2);$n", [rdLoc(b), byRefLoc(p, a)])
     else:
-      let flags = if not canMove(p, n[1], d): {needToCopy} else: {}
-      genAssignment(p, d, a, flags)
+      if n[1].kind == nkSym and isSinkParam(n[1].sym):
+        var tmp = getTemp(p, n[1].typ.skipTypes({tySink}))
+        genAssignment(p, tmp, a, {needToCopySinkParam})
+        genAssignment(p, d, tmp, {})
+        resetLoc(p, tmp)
+      else:
+        genAssignment(p, d, a, {})
       resetLoc(p, a)
 
 proc genDestroy(p: BProc; n: PNode) =
@@ -3231,7 +3246,8 @@ proc getNullValueAux(p: BProc; t: PType; obj, constOrNil: PNode,
       getNullValueAux(p, t, it, constOrNil, result, count, isConst, info)
   of nkRecCase:
     getNullValueAux(p, t, obj[0], constOrNil, result, count, isConst, info)
-    if count > 0: result.add ", "
+    var res = ""
+    if count > 0: res.add ", "
     var branch = Zero
     if constOrNil != nil:
       ## find kind value, default is zero if not specified
@@ -3245,18 +3261,21 @@ proc getNullValueAux(p: BProc; t: PType; obj, constOrNil: PNode,
           break
 
     let selectedBranch = caseObjDefaultBranch(obj, branch)
-    result.add "{"
+    res.add "{"
     var countB = 0
     let b = lastSon(obj[selectedBranch])
     # designated initilization is the only way to init non first element of unions
     # branches are allowed to have no members (b.len == 0), in this case they don't need initializer
     if b.kind == nkRecList and not isEmptyCaseObjectBranch(b):
-      result.add "._" & mangleRecFieldName(p.module, obj[0].sym) & "_" & $selectedBranch & " = {"
-      getNullValueAux(p, t,  b, constOrNil, result, countB, isConst, info)
-      result.add "}"
+      res.add "._" & mangleRecFieldName(p.module, obj[0].sym) & "_" & $selectedBranch & " = {"
+      getNullValueAux(p, t,  b, constOrNil, res, countB, isConst, info)
+      res.add "}"
     elif b.kind == nkSym:
-      result.add "." & mangleRecFieldName(p.module, b.sym) & " = "
-      getNullValueAux(p, t,  b, constOrNil, result, countB, isConst, info)
+      res.add "." & mangleRecFieldName(p.module, b.sym) & " = "
+      getNullValueAux(p, t,  b, constOrNil, res, countB, isConst, info)
+    else:
+      return
+    result.add res
     result.add "}"
 
   of nkSym:

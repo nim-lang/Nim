@@ -562,7 +562,7 @@ proc semIs(c: PContext, n: PNode, flags: TExprFlags): PNode =
   result = isOpImpl(c, n, flags)
 
 proc semOpAux(c: PContext, n: PNode) =
-  const flags = {efDetermineType}
+  const flags = {efDetermineType, efAllowSymChoice}
   for i in 1..<n.len:
     var a = n[i]
     if a.kind == nkExprEqExpr and a.len == 2:
@@ -2944,6 +2944,18 @@ proc asBracketExpr(c: PContext; n: PNode): PNode =
           return result
   return nil
 
+proc isOpenArraySym(x: PNode): bool =
+  var x = x
+  while true:
+    case x.kind
+    of {nkAddr, nkHiddenAddr}:
+      x = x[0]
+    of {nkHiddenStdConv, nkHiddenDeref}:
+      x = x[1]
+    else:
+      break
+  result = x.kind == nkSym
+
 proc hoistParamsUsedInDefault(c: PContext, call, letSection, defExpr: var PNode) =
   # This takes care of complicated signatures such as:
   # proc foo(a: int, b = a)
@@ -2964,7 +2976,10 @@ proc hoistParamsUsedInDefault(c: PContext, call, letSection, defExpr: var PNode)
   if defExpr.kind == nkSym and defExpr.sym.kind == skParam and defExpr.sym.owner == call[0].sym:
     let paramPos = defExpr.sym.position + 1
 
-    if call[paramPos].skipAddr.kind != nkSym:
+    if call[paramPos].skipAddr.kind != nkSym and not (
+      skipTypes(call[paramPos].typ, abstractVar).kind in {tyOpenArray, tyVarargs} and
+      isOpenArraySym(call[paramPos])
+    ):
       let hoistedVarSym = newSym(skLet, getIdent(c.graph.cache, genPrefix), c.idgen,
                                  c.p.owner, letSection.info, c.p.owner.options)
       hoistedVarSym.typ = call[paramPos].typ
@@ -3029,7 +3044,7 @@ proc resolveIdentToSym(c: PContext, n: PNode, resultNode: var PNode,
   # result is nil on error or if a node that can't produce a sym is resolved
   let ident = considerQuotedIdent(c, n)
   var filter = {low(TSymKind)..high(TSymKind)}
-  if efNoEvaluateGeneric in flags:
+  if efNoEvaluateGeneric in flags or expectedType != nil:
     # `a[...]` where `a` is a module or package is not possible
     filter.excl {skModule, skPackage}
   let candidates = lookUpCandidates(c, ident, filter)

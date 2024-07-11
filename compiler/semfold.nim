@@ -701,10 +701,7 @@ proc getConstExpr(m: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode 
     except DivByZeroDefect:
       localError(g.config, n.info, "division by zero")
   of nkAddr:
-    var a = getConstExpr(m, n[0], idgen, g)
-    if a != nil:
-      result = n
-      n[0] = a
+    result = nil # don't fold paths containing nkAddr
   of nkBracket, nkCurly:
     result = copyNode(n)
     for son in n.items:
@@ -771,7 +768,8 @@ proc getConstExpr(m: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode 
   of nkCast:
     var a = getConstExpr(m, n[1], idgen, g)
     if a == nil: return
-    if n.typ != nil and n.typ.kind in NilableTypes:
+    if n.typ != nil and n.typ.kind in NilableTypes and
+        not (n.typ.kind == tyProc and a.typ.kind == tyProc):
       # we allow compile-time 'cast' for pointer types:
       result = a
       result.typ = n.typ
