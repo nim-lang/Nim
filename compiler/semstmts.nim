@@ -1775,8 +1775,13 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
               assignType(s.typ, t)
               s.typ.itemId = t.itemId     # same id
         var hasError = false
-        if s.typ.kind in {tyObject, tyTuple} and not s.typ.n.isNil:
-          checkForMetaFields(c, s.typ.n, hasError)
+        let baseType = s.typ.safeSkipTypes(abstractPtrs)
+        if baseType.kind in {tyObject, tyTuple} and not baseType.n.isNil and
+          (x.kind in {nkObjectTy, nkTupleTy} or
+           (x.kind in {nkRefTy, nkPtrTy} and x.len == 1 and
+           x[0].kind in {nkObjectTy, nkTupleTy})
+          ):
+          checkForMetaFields(c, baseType.n, hasError)
         if not hasError:
           checkConstructedType(c.config, s.info, s.typ)
 
