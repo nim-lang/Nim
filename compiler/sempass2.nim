@@ -1602,7 +1602,7 @@ proc initEffects(g: ModuleGraph; effects: PNode; s: PSym; c: PContext): TEffects
   result = TEffects(exc: effects[exceptionEffects], tags: effects[tagEffects],
             forbids: effects[forbiddenEffects], owner: s, ownerModule: s.getModule,
             init: @[], locked: @[], graph: g, config: g.config, c: c,
-            currentBlock: 1
+            currentBlock: 1, optionsStack: @[(g.config.options, g.config.notes)]
   )
   result.guards.s = @[]
   result.guards.g = g
