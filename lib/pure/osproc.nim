@@ -1356,46 +1356,52 @@ elif not defined(useNimRtl):
     import std/times
 
     proc waitForExit(p: Process, timeout: int = -1): int =
-      # Max 1ms delay
-      const maxWait = initDuration(milliseconds = 1)
       if p.exitFlag:
         return exitStatusLikeShell(p.exitStatus)
-      
-      let wait = 
-        if timeout <= 0:
-          initDuration()
-        else:
-          initDuration(milliseconds = timeout)
-      let deadline = getTime() + wait
-      # starting 50μs delay
-      var delay = initDuration(microseconds = 50)
-      
-      while true:
-        var status: cint = 0
-        let pid = waitpid(p.id, status, WNOHANG)
-        if p.id == pid :
-          p.exitFlag = true
-          p.exitSTatus = status
-          break
-        elif pid.int == -1:
-          raiseOsError(osLastError())
-        else:
-          # Continue waiting if needed
-          if getTime() >= deadline:
-            # Previous version of `waitForExit`
-            # foricibly killed the process.
-            # We keep this so we don't break programs
-            # that depend on this behavior
-            if posix.kill(p.id, SIGKILL) < 0:
-              raiseOSError(osLastError())
+
+      if timeout < 0:
+        # Backwards compatibility with previous verison to
+        # handle cases where timeout == -1, but extend
+        # to handle cases where timeout < 0
+        var status: cint
+        if waitpid(p.id, status, 0) < 0:
+          raiseOSError(osLastError())
+        p.exitFlag = true
+        p.exitStatus = status
+      else:
+        # Max 1ms delay
+        const maxWait = initDuration(milliseconds = 1)
+        let wait = initDuration(milliseconds = timeout)
+        let deadline = getTime() + wait
+        # starting 50μs delay
+        var delay = initDuration(microseconds = 50)
+        
+        while true:
+          var status: cint
+          let pid = waitpid(p.id, status, WNOHANG)
+          if p.id == pid :
+            p.exitFlag = true
+            p.exitStatus = status
+            break
+          elif pid.int == -1:
+            raiseOsError(osLastError())
           else:
-            let newWait = getTime() + delay
-            var waitSpec: TimeSpec
-            waitSpec.tv_sec = posix.Time(newWait.toUnix())
-            waitSpec.tv_nsec = newWait.nanosecond.clong
-            discard posix.clock_nanosleep(CLOCK_REALTIME, TIMER_ABSTIME, waitSpec, cast[var TimeSpec](nil))
-            let remaining = deadline - getTime()
-            delay = min([delay * 2, remaining, maxWait])
+            # Continue waiting if needed
+            if getTime() >= deadline:
+              # Previous version of `waitForExit`
+              # foricibly killed the process.
+              # We keep this so we don't break programs
+              # that depend on this behavior
+              if posix.kill(p.id, SIGKILL) < 0:
+                raiseOSError(osLastError())
+            else:
+              let newWait = getTime() + delay
+              var waitSpec: TimeSpec
+              waitSpec.tv_sec = posix.Time(newWait.toUnix())
+              waitSpec.tv_nsec = newWait.nanosecond.clong
+              discard posix.clock_nanosleep(CLOCK_REALTIME, TIMER_ABSTIME, waitSpec, cast[var TimeSpec](nil))
+              let remaining = deadline - getTime()
+              delay = min([delay * 2, remaining, maxWait])
 
       result = exitStatusLikeShell(p.exitStatus)
 
