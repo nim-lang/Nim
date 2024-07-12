@@ -269,7 +269,7 @@ proc exec*(command: string, input: string, cache = "") {.
   ## Executes an external process. If the external process terminates with
   ## a non-zero exit code, an OSError exception is raised.
   ##
-  ## **Warning:** This version of `exec` is executed relative to the nimscript
+  ## .. warning:: This version of `exec` is executed relative to the nimscript
   ## module path, which affects how the command resolves relative paths.
   log "exec: " & command:
     let (output, exitCode) = gorgeEx(command, input, cache)
