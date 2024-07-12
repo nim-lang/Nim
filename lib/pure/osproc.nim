@@ -1396,10 +1396,12 @@ elif not defined(useNimRtl):
                 raiseOSError(osLastError())
             else:
               let newWait = getTime() + delay
-              var waitSpec: TimeSpec
+              var 
+                waitSpec: TimeSpec
+                unused: Timespec
               waitSpec.tv_sec = posix.Time(newWait.toUnix())
               waitSpec.tv_nsec = newWait.nanosecond.clong
-              discard posix.clock_nanosleep(CLOCK_REALTIME, TIMER_ABSTIME, waitSpec, cast[var TimeSpec](nil))
+              discard posix.clock_nanosleep(CLOCK_REALTIME, TIMER_ABSTIME, waitSpec, unused)
               let remaining = deadline - getTime()
               delay = min([delay * 2, remaining, maxWait])
 
