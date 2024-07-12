@@ -41,7 +41,7 @@ type
   TNodeKinds* = set[TNodeKind]
 
 type
-  TSymFlag* = enum    # 52 flags!
+  TSymFlag* = enum    # 53 flags!
     sfUsed,           # read access of sym (for warnings) or simply used
     sfExported,       # symbol is exported from module
     sfFromGeneric,    # symbol is instantiation of a generic; this is needed
@@ -52,6 +52,7 @@ type
     sfForward,        # symbol is forward declared
     sfWasForwarded,   # symbol had a forward declaration
                       # (implies it's too dangerous to patch its type signature)
+    sfNosinks,        # symbol has a `nosinks` pragma
     sfImportc,        # symbol is external; imported
     sfExportc,        # symbol is exported (under a specified name)
     sfMangleCpp,      # mangle as cpp (combines with `sfExportc`)

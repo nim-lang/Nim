@@ -1036,7 +1036,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         incl(sym.flags, sfGeneratedOp)
       of wNosinks:
         noVal(c, it)
-        incl(sym.flags, sfWasForwarded)
+        incl(sym.flags, sfNosinks)
       of wDynlib:
         processDynLib(c, it, sym)
       of wCompilerProc, wCore:

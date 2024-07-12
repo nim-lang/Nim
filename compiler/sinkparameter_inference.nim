@@ -28,7 +28,7 @@ proc checkForSink*(config: ConfigRef; idgen: IdGenerator; owner: PSym; arg: PNod
         arg.sym.typ.kind notin {tyVar, tySink, tyOwned}:
       # Watch out: cannot do this inference for procs with forward
       # declarations.
-      if sfWasForwarded notin owner.flags:
+      if {sfWasForwarded, sfNosinks} * owner.flags == {}:
         let argType = arg.sym.typ
 
         let sinkType = newType(tySink, idgen, owner)
@@ -43,9 +43,9 @@ proc checkForSink*(config: ConfigRef; idgen: IdGenerator; owner: PSym; arg: PNod
         #message(config, arg.info, warnUser,
         #  ("turned '$1' to a sink parameter") % [$arg])
         #echo config $ arg.info, " turned into a sink parameter ", arg.sym.name.s
-      elif sfWasForwarded notin arg.sym.flags:
+      elif {sfWasForwarded, sfNosinks} * arg.sym.flags == {}:
         # we only report every potential 'sink' parameter only once:
-        incl arg.sym.flags, sfWasForwarded
+        incl arg.sym.flags, sfNosinks
         message(config, arg.info, hintPerformance,
           "could not turn '$1' to a sink parameter" % [arg.sym.name.s])
       #echo config $ arg.info, " candidate for a sink parameter here"

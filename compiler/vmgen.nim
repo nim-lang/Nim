@@ -1559,7 +1559,7 @@ proc checkCanEval(c: PCtx; n: PNode) =
     elif s.kind == skParam and s.typ.kind == tyTypeDesc: discard
     else: cannotEval(c, n)
   elif s.kind in {skProc, skFunc, skConverter, skMethod,
-                  skIterator} and sfForward in s.flags:
+                  skIterator} and sfWasForwarded in s.flags:
     cannotEval(c, n)
 
 template needsAdditionalCopy(n): untyped =
