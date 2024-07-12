@@ -1559,7 +1559,8 @@ proc checkCanEval(c: PCtx; n: PNode) =
     elif s.kind == skParam and s.typ.kind == tyTypeDesc: discard
     else: cannotEval(c, n)
   elif s.kind in {skProc, skFunc, skConverter, skMethod,
-                  skIterator} and sfWasForwarded in s.flags:
+                  skIterator} and sfWasForwarded in s.flags and
+                  s.originatingModule == c.module: # forbides recursive calls from the same module
     cannotEval(c, n)
 
 template needsAdditionalCopy(n): untyped =
