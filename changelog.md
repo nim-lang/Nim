@@ -19,6 +19,8 @@
 
 - JS backend now supports lambda lifting for closures. Use `--legacy:jsNoLambdaLifting` to emulate old behavior.
 
+- `owner` in `std/macros` is deprecated.
+
 ## Standard library additions and changes
 
 [//]: # "Changes:"
