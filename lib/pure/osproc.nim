@@ -1396,11 +1396,12 @@ elif not defined(useNimRtl):
               if posix.kill(p.id, SIGKILL) < 0:
                 raiseOSError(osLastError())
             else:
-              const max = 999_999_999
+              const max = 1_000_000_000
               let 
                 newWait = getMonoTime() + delay
-                ns = newWait.ticks() mod max
-                secs = (newWait.ticks() - ns) div 1_000_000_000
+                ticks = newWait.ticks()
+                ns = ticks mod max
+                secs = ticks div max
               var 
                 waitSpec: TimeSpec
                 unused: Timespec
