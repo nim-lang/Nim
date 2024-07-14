@@ -270,12 +270,15 @@ proc exec*(command: string, input: string, cache = "") {.
   ## a non-zero exit code, an OSError exception is raised.
   ##
   ## .. warning:: This version of `exec` is executed relative to the nimscript
-  ## module path, which affects how the command resolves relative paths.
+  ## module path, which affects how the command resolves relative paths. Thus
+  ## it is generally better to use `gorgeEx` directly when you need more
+  ## control over the execution environment or when working with commands
+  ## that deal with relative paths.
   log "exec: " & command:
     let (output, exitCode) = gorgeEx(command, input, cache)
+    echo output
     if exitCode != 0:
       raise newException(OSError, "FAILED: " & command)
-    echo output
 
 proc selfExec*(command: string) {.
   raises: [OSError], tags: [ExecIOEffect, WriteIOEffect].} =
