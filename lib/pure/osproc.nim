@@ -1353,7 +1353,8 @@ elif not defined(useNimRtl):
       result = exitStatusLikeShell(p.exitStatus)
 
   else:
-    import std/times
+    import std/times except getTime
+    import std/monotimes
 
     proc waitForExit(p: Process, timeout: int = -1): int =
       if p.exitFlag:
@@ -1369,10 +1370,10 @@ elif not defined(useNimRtl):
         p.exitFlag = true
         p.exitStatus = status
       else:
-        # Max 1ms delay
-        const maxWait = initDuration(milliseconds = 1)
+        # Max 50ms delay
+        const maxWait = initDuration(milliseconds = 50)
         let wait = initDuration(milliseconds = timeout)
-        let deadline = getTime() + wait
+        let deadline = getMonoTime() + wait
         # starting 50μs delay
         var delay = initDuration(microseconds = 50)
         
@@ -1387,7 +1388,7 @@ elif not defined(useNimRtl):
             raiseOsError(osLastError())
           else:
             # Continue waiting if needed
-            if getTime() >= deadline:
+            if getMonoTime() >= deadline:
               # Previous version of `waitForExit`
               # foricibly killed the process.
               # We keep this so we don't break programs
@@ -1395,14 +1396,19 @@ elif not defined(useNimRtl):
               if posix.kill(p.id, SIGKILL) < 0:
                 raiseOSError(osLastError())
             else:
-              let newWait = getTime() + delay
+              const max = 1_000_000_000
+              let 
+                newWait = getMonoTime() + delay
+                ticks = newWait.ticks()
+                ns = ticks mod max
+                secs = ticks div max
               var 
                 waitSpec: TimeSpec
                 unused: Timespec
-              waitSpec.tv_sec = posix.Time(newWait.toUnix())
-              waitSpec.tv_nsec = newWait.nanosecond.clong
-              discard posix.clock_nanosleep(CLOCK_REALTIME, TIMER_ABSTIME, waitSpec, unused)
-              let remaining = deadline - getTime()
+              waitSpec.tv_sec = posix.Time(secs)
+              waitSpec.tv_nsec = ns 
+              discard posix.clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, waitSpec, unused)
+              let remaining = deadline - getMonoTime()
               delay = min([delay * 2, remaining, maxWait])
 
       result = exitStatusLikeShell(p.exitStatus)
