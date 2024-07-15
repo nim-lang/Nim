@@ -201,7 +201,7 @@ proc endsInNoReturn(n: PNode, returningNode: var PNode): bool =
 
   var it = n
   # skip these beforehand, no special handling needed
-  while it.kind in skipForDiscardable and it.len > 0:
+  while it.kind in skipForDiscardable-{nkBlockExpr, nkBlockStmt} and it.len > 0:
     it = it.lastSon
 
   case it.kind
