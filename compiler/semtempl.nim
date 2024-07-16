@@ -256,25 +256,27 @@ proc semTemplSymbol(c: PContext, n: PNode, s: PSym; isField: bool): PNode =
     if not isField:
       styleCheckUse(c, n.info, s)
 
-proc semRoutineInTemplName(c: var TemplCtx, n: PNode): PNode =
+proc semRoutineInTemplName(c: var TemplCtx, n: PNode, explicitInject: bool): PNode =
   result = n
   if n.kind == nkIdent:
     let s = qualifiedLookUp(c.c, n, {})
     if s != nil:
-      if s.owner == c.owner and s.kind == skParam:
+      if s.owner == c.owner and (s.kind == skParam or
+          (sfGenSym in s.flags and not explicitInject)):
         incl(s.flags, sfUsed)
         result = newSymNode(s, n.info)
         onUse(n.info, s)
   else:
     for i in 0..<n.safeLen:
-      result[i] = semRoutineInTemplName(c, n[i])
+      result[i] = semRoutineInTemplName(c, n[i], explicitInject)
 
 proc semRoutineInTemplBody(c: var TemplCtx, n: PNode, k: TSymKind): PNode =
   result = n
   checkSonsLen(n, bodyPos + 1, c.c.config)
   if n.kind notin nkLambdaKinds:
     # routines default to 'inject':
-    if symBinding(n[pragmasPos]) == spGenSym:
+    let binding = symBinding(n[pragmasPos])
+    if binding == spGenSym:
       let (ident, hasParam) = getIdentReplaceParams(c, n[namePos])
       if not hasParam:
         var s = newGenSym(k, ident, c)
@@ -286,7 +288,7 @@ proc semRoutineInTemplBody(c: var TemplCtx, n: PNode, k: TSymKind): PNode =
       else:
         n[namePos] = ident
     else:
-      n[namePos] = semRoutineInTemplName(c, n[namePos])
+      n[namePos] = semRoutineInTemplName(c, n[namePos], binding == spInject)
   # open scope for parameters
   openScope(c)
   for i in patternPos..paramsPos-1:
