@@ -140,3 +140,12 @@ block: # issue #14665
         continue
       inc i
   test()
+
+block:
+  proc test(): (int, int) {.discardable.} =
+    discard
+
+  if true:
+    test()
+  else:
+    quit()

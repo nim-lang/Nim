@@ -132,7 +132,7 @@ const
   skipForDiscardable = {nkStmtList, nkStmtListExpr,
     nkOfBranch, nkElse, nkFinally, nkExceptBranch,
     nkElifBranch, nkElifExpr, nkElseExpr, nkBlockStmt, nkBlockExpr,
-    nkHiddenStdConv, nkHiddenDeref}
+    nkHiddenStdConv, nkHiddenSubConv, nkHiddenDeref}
 
 proc implicitlyDiscardable(n: PNode): bool =
   # same traversal as endsInNoReturn
