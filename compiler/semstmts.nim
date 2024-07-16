@@ -172,7 +172,7 @@ proc implicitlyDiscardable(n: PNode): bool =
         of nkElse:
           branch[0]
         else:
-          raiseAssert "Malformed `case` statement in endsInNoReturn"
+          raiseAssert "Malformed `case` statement in implicitlyDiscardable"
     # all branches are discardable
     result = true
   of nkTryStmt:
