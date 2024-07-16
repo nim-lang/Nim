@@ -187,18 +187,19 @@ proc implicitlyDiscardable(n: PNode): bool =
   else:
     result = false
 
-proc endsInNoReturn(n: PNode, returningNode: var PNode): bool =
+proc endsInNoReturn(n: PNode, returningNode: var PNode; discardableCheck = false): bool =
   ## check if expr ends the block like raising or call of noreturn procs do
   result = false # assume it does return
 
   template checkBranch(branch) =
-    if not endsInNoReturn(branch, returningNode):
+    if not endsInNoReturn(branch, returningNode, discardableCheck):
       # proved a branch returns
       return false
 
   var it = n
   # skip these beforehand, no special handling needed
-  while it.kind in skipForDiscardable and it.len > 0:
+  let skips = if discardableCheck: skipForDiscardable else: skipForDiscardable-{nkBlockExpr, nkBlockStmt}
+  while it.kind in skips and it.len > 0:
     it = it.lastSon
 
   case it.kind
@@ -242,7 +243,7 @@ proc endsInNoReturn(n: PNode, returningNode: var PNode): bool =
     var lastIndex = it.len - 1
     if it[lastIndex].kind == nkFinally:
       # if finally is noreturn, then the entire statement is noreturn
-      if endsInNoReturn(it[lastIndex][^1], returningNode):
+      if endsInNoReturn(it[lastIndex][^1], returningNode, discardableCheck):
         return true
       dec lastIndex
     for i in 1 .. lastIndex:
@@ -287,7 +288,7 @@ proc discardCheck(c: PContext, result: PNode, flags: TExprFlags) =
       else:
         # Ignore noreturn procs since they don't have a type
         var n = result
-        if result.endsInNoReturn(n):
+        if result.endsInNoReturn(n, discardableCheck = true):
           return
 
         var s = "expression '" & $n & "' is of type '" &
