@@ -4,6 +4,7 @@ Deallocating OwnedString
 HelloWorld
 '''
   matrix: "--cursorinference:on; --cursorinference:off"
+  target: "c"
 """
 
 # bug #23837
@@ -13,7 +14,7 @@ HelloWorld
 #include <stdlib.h>
 #include <string.h>
 char *allocCString() {
-    char *result = malloc(10 + 1);
+    char *result = (char *) malloc(10 + 1);
     strcpy(result, "HelloWorld");
     return result;
 }
