@@ -1406,7 +1406,7 @@ elif not defined(useNimRtl):
                 waitSpec: TimeSpec
                 unused: Timespec
               waitSpec.tv_sec = posix.Time(secs)
-              waitSpec.tv_nsec = ns 
+              waitSpec.tv_nsec = int ns 
               discard posix.clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, waitSpec, unused)
               let remaining = deadline - getMonoTime()
               delay = min([delay * 2, remaining, maxWait])
