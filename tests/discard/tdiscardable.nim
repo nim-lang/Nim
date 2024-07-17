@@ -140,3 +140,36 @@ block: # issue #14665
         continue
       inc i
   test()
+
+block: # bug #23775
+  proc retInt(): int {.discardable.} =
+    42
+
+  proc retString(): string {.discardable.} =
+    "text"
+
+  type
+    Enum = enum
+      A, B, C, D
+
+  proc doStuff(msg: Enum) =
+    case msg:
+    of A:
+      retString()
+    of B:
+      retInt()
+    of C:
+      discard retString()
+    else:
+      let _ = retString()
+
+  doStuff(C)
+
+block:
+  proc test(): (int, int) {.discardable.} =
+    discard
+
+  if true:
+    test()
+  else:
+    quit()

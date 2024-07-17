@@ -20,7 +20,7 @@ when defined(nimPreviewSlimSystem):
   import std/assertions
 
 import ".." / [ast, modulegraphs, msgs, options]
-import ".." / nir / nirlineinfos
+import iclineinfos
 import packed_ast, bitabs, ic
 
 type

@@ -865,7 +865,7 @@ proc rawAlloc(a: var MemRegion, requestedSize: int): pointer =
         when not defined(gcDestructors):
           sysAssert(c.freeList.zeroField == 0, "rawAlloc 8")
         c.freeList = c.freeList.next
-      dec(c.free, size)
+      dec(cast[PSmallChunk](pageAddr(result)).free, size)
       sysAssert((cast[int](result) and (MemAlign-1)) == 0, "rawAlloc 9")
       sysAssert(allocInv(a), "rawAlloc: end c != nil")
     sysAssert(allocInv(a), "rawAlloc: before c.free < size")
@@ -948,7 +948,7 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
         inc(c.free, s)
       else:
         inc(c.free, s)
-        if c.free == SmallChunkSize-smallChunkOverhead():
+        if c.free == SmallChunkSize-smallChunkOverhead() and a.freeSmallChunks[s div MemAlign] == c:
           listRemove(a.freeSmallChunks[s div MemAlign], c)
           c.size = SmallChunkSize
           freeBigChunk(a, cast[PBigChunk](c))
