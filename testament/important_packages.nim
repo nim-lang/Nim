@@ -58,6 +58,7 @@ pkg "cligen", "nim c --path:. -r cligen.nim"
 pkg "combparser", "nimble test --mm:orc"
 pkg "compactdict"
 pkg "comprehension", "nimble test", "https://github.com/alehander92/comprehension"
+pkg "constantine", "nimble make_lib"
 pkg "cowstrings"
 pkg "criterion", allowFailure = true # needs testing binary
 pkg "datamancer"
