@@ -156,16 +156,16 @@ proc pragmaEnsures(c: PContext, n: PNode) =
 proc setExternName(c: PContext; s: PSym, extname: string, info: TLineInfo) =
   # special cases to improve performance:
   if extname == "$1":
-    s.loc.r = rope(s.name.s)
+    s.loc.snippet = rope(s.name.s)
   elif '$' notin extname:
-    s.loc.r = rope(extname)
+    s.loc.snippet = rope(extname)
   else:
     try:
-      s.loc.r = rope(extname % s.name.s)
+      s.loc.snippet = rope(extname % s.name.s)
     except ValueError:
       localError(c.config, info, "invalid extern name: '" & extname & "'. (Forgot to escape '$'?)")
   when hasFFI:
-    s.cname = $s.loc.r
+    s.cname = $s.loc.snippet
 
 
 proc makeExternImport(c: PContext; s: PSym, extname: string, info: TLineInfo) =
@@ -882,6 +882,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
 
     # number of pragmas increase/decrease with user pragma expansion
     inc c.instCounter
+    defer: dec c.instCounter
     if c.instCounter > 100:
       globalError(c.config, it.info, "recursive dependency: " & userPragma.name.s)
 
@@ -891,7 +892,6 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
     pragma(c, sym, userPragma.ast, validPragmas, isStatement)
     n.sons[i..i] = userPragma.ast.sons # expand user pragma with its content
     i.inc(userPragma.ast.len - 1) # inc by -1 is ok, user pragmas was empty
-    dec c.instCounter
   else:
     let k = whichKeyword(ident)
     if k in validPragmas:
@@ -1014,7 +1014,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         incl(sym.loc.flags, lfHeader)
         incl(sym.loc.flags, lfNoDecl)
         # implies nodecl, because otherwise header would not make sense
-        if sym.loc.r == "": sym.loc.r = rope(sym.name.s)
+        if sym.loc.snippet == "": sym.loc.snippet = rope(sym.name.s)
       of wNoSideEffect:
         noVal(c, it)
         if sym != nil:
@@ -1365,7 +1365,7 @@ proc implicitPragmas*(c: PContext, sym: PSym, info: TLineInfo,
         sfImportc in sym.flags and lib != nil:
       incl(sym.loc.flags, lfDynamicLib)
       addToLib(lib, sym)
-      if sym.loc.r == "": sym.loc.r = rope(sym.name.s)
+      if sym.loc.snippet == "": sym.loc.snippet = rope(sym.name.s)
 
 proc hasPragma*(n: PNode, pragma: TSpecialWord): bool =
   if n == nil: return false

@@ -462,7 +462,6 @@ proc handleCmdInput*(conf: ConfigRef) =
 proc parseCommand*(command: string): Command =
   case command.normalize
   of "c", "cc", "compile", "compiletoc": cmdCompileToC
-  of "nir": cmdCompileToNir
   of "cpp", "compiletocpp": cmdCompileToCpp
   of "objc", "compiletooc": cmdCompileToOC
   of "js", "compiletojs": cmdCompileToJS
@@ -500,7 +499,6 @@ proc setCmd*(conf: ConfigRef, cmd: Command) =
   of cmdCompileToCpp: conf.backend = backendCpp
   of cmdCompileToOC: conf.backend = backendObjc
   of cmdCompileToJS: conf.backend = backendJs
-  of cmdCompileToNir: conf.backend = backendNir
   else: discard
 
 proc setCommandEarly*(conf: ConfigRef, command: string) =

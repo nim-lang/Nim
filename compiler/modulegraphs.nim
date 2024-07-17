@@ -62,8 +62,6 @@ type
     CgenPass
     EvalPass
     InterpreterPass
-    NirPass
-    NirReplPass
     GenDependPass
     Docgen2TexPass
     Docgen2JsonPass
