@@ -93,7 +93,8 @@ type
     freeList: ptr FreeCell
     free: int32              # how many bytes remain
     acc: uint32              # accumulator for small object allocation
-    foreignCells: int        # Counter for cells this chunk can use but doesn't own
+    foreignCells: int        # Number of deferred free cells from other threads this chunk stole from sharedFreeLists.
+                             # Freeing the chunk before this is zero means the stolen cells become inaccessible permanently.
     data {.align: MemAlign.}: UncheckedArray[byte]      # start of usable memory
 
   BigChunk = object of BaseChunk # not necessarily > PageSize!
