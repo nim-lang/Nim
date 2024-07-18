@@ -135,7 +135,9 @@ proc createTypeBoundOps(tracked: PEffects, typ: PType; info: TLineInfo) =
       createTypeBoundOps(tracked.graph, tracked.c, realType.lastSon, info)
 
   createTypeBoundOps(tracked.graph, tracked.c, typ, info, tracked.c.idgen)
-  if tracked.config.selectedGC in {gcArc, gcAtomicArc, gcOrc, gcRefc}:
+  if tracked.config.selectedGC == gcRefc or
+      optSeqDestructors in tracked.config.globalOptions or
+      tfHasAsgn in typ.flags:
     tracked.owner.flags.incl sfInjectDestructors
 
 proc isLocalSym(a: PEffects, s: PSym): bool =
