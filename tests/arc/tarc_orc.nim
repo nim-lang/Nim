@@ -160,3 +160,14 @@ block:
     testCase()
 
   main()
+
+block: # bug #23858
+  type Object = object
+    a: int
+    b: ref int
+  var x = 0
+  proc fn(): auto {.cdecl.} =
+    inc x
+    return Object()
+  discard fn()
+  doAssert x == 1
