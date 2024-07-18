@@ -379,7 +379,8 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
     elif not isObjLackingTypeField(ty):
       genGenericAsgn(p, dest, src, flags)
     elif containsGarbageCollectedRef(ty):
-      if ty[0].isNil and asgnComplexity(ty.n) <= 4:
+      if ty[0].isNil and asgnComplexity(ty.n) <= 4 and
+            needAssignCall notin flags: # calls might contain side effects
         discard getTypeDesc(p.module, ty)
         internalAssert p.config, ty.n != nil
         genOptAsgnObject(p, dest, src, flags, ty.n, ty)

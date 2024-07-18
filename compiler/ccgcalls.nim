@@ -141,7 +141,7 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
             if d.k == locNone: d = getTemp(p, typ.returnType)
             var list = initLoc(locCall, d.lode, OnUnknown)
             list.snippet = pl
-            genAssignment(p, d, list, {}) # no need for deep copying
+            genAssignment(p, d, list, {needAssignCall}) # no need for deep copying
             if canRaise: raiseExit(p)
 
       elif isHarmlessStore(p, canRaise, d):
@@ -152,7 +152,7 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
         assert(d.t != nil)        # generate an assignment to d:
         var list = initLoc(locCall, d.lode, OnUnknown)
         list.snippet = pl
-        genAssignment(p, d, list, flags) # no need for deep copying
+        genAssignment(p, d, list, flags+{needAssignCall}) # no need for deep copying
         if canRaise:
           if not (useTemp and cleanupTemp(p, typ.returnType, d)):
             raiseExit(p)
@@ -160,7 +160,7 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
         var tmp: TLoc = getTemp(p, typ.returnType, needsInit=true)
         var list = initLoc(locCall, d.lode, OnUnknown)
         list.snippet = pl
-        genAssignment(p, tmp, list, flags) # no need for deep copying
+        genAssignment(p, tmp, list, flags+{needAssignCall}) # no need for deep copying
         if canRaise:
           if not cleanupTemp(p, typ.returnType, tmp):
             raiseExit(p)

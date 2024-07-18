@@ -413,6 +413,7 @@ type
     needToCopy
     needToCopySinkParam
     needTempForOpenArray
+    needAssignCall
   TAssignmentFlags = set[TAssignmentFlag]
 
 proc genObjConstr(p: BProc, e: PNode, d: var TLoc)
