@@ -881,6 +881,9 @@ proc rawAlloc(a: var MemRegion, requestedSize: int): pointer =
       dec(c.free, size)
       sysAssert((cast[int](result) and (MemAlign-1)) == 0, "rawAlloc 9")
       sysAssert(allocInv(a), "rawAlloc: end c != nil")
+      # We fetch deferred cells *after* advancing c.freeList/acc to adjust c.free.
+      # If after the adjustment it turns out there's free cells available,
+      #  the chunk stays in a.freeSmallChunks[s] and the need for a new chunk is delayed.
       fetchSharedCells(c)
       sysAssert(allocInv(a), "rawAlloc: before c.free < size")
       if c.free < size:
