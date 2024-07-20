@@ -1361,6 +1361,8 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
             result = isSubtype
           else:
             result = isNone
+    elif a.kind == tyNil:
+      result = isNone
   of tyOrdinal:
     if isOrdinalType(a):
       var x = if a.kind == tyOrdinal: a.elementType else: a
