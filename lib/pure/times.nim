@@ -1498,11 +1498,11 @@ proc `-=`*(a: var DateTime, b: Duration) =
   a = a - b
 
 proc getDateStr*(dt = now()): string {.rtl, extern: "nt$1", tags: [TimeEffect].} =
-  ## Gets the current local date as a string of the format `YYYY-MM-DD`.
+  ## Gets the current local date as a string of the format `YYYY-MM-dd`.
   runnableExamples:
     echo getDateStr(now() - 1.months)
   assertDateTimeInitialized dt
-  result = newStringOfCap(10)  # len("YYYY-MM-DD") == 10
+  result = newStringOfCap(10)  # len("YYYY-MM-dd") == 10
   result.addInt dt.year
   result.add '-'
   result.add intToStr(dt.monthZero, 2)
@@ -1631,7 +1631,7 @@ const
         "Sunday"],
   )
 
-  FormatLiterals = {' ', '-', '/', ':', '(', ')', '[', ']', ','}
+  FormatLiterals = {' ', '-', '/', ':', '(', ')', '[', ']', ',', '.'}
 
 proc `$`*(f: TimeFormat): string =
   ## Returns the format string that was used to construct `f`.

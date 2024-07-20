@@ -56,6 +56,7 @@ proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
           #  internalAssert c.config, false
           idTablePut(c.mapping, s, x)
         if sfGenSym in s.flags:
+          # TODO: getIdent(c.ic, "`" & x.name.s & "`gensym" & $c.instID)
           result.add newIdentNode(getIdent(c.ic, x.name.s & "`gensym" & $c.instID),
             if c.instLines: actual.info else: templ.info)
         else:

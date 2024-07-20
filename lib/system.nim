@@ -1037,7 +1037,7 @@ const
     ## Possible values:
     ## `"i386"`, `"alpha"`, `"powerpc"`, `"powerpc64"`, `"powerpc64el"`,
     ## `"sparc"`, `"amd64"`, `"mips"`, `"mipsel"`, `"arm"`, `"arm64"`,
-    ## `"mips64"`, `"mips64el"`, `"riscv32"`, `"riscv64"`, '"loongarch64"'.
+    ## `"mips64"`, `"mips64el"`, `"riscv32"`, `"riscv64"`, `"loongarch64"`.
 
   seqShallowFlag = low(int)
   strlitFlag = 1 shl (sizeof(int)*8 - 2) # later versions of the codegen \
@@ -2102,12 +2102,14 @@ when not defined(js):
     proc cstringArrayToSeq*(a: cstringArray, len: Natural): seq[string] =
       ## Converts a `cstringArray` to a `seq[string]`. `a` is supposed to be
       ## of length `len`.
+      if a == nil: return @[]
       newSeq(result, len)
       for i in 0..len-1: result[i] = $a[i]
 
     proc cstringArrayToSeq*(a: cstringArray): seq[string] =
       ## Converts a `cstringArray` to a `seq[string]`. `a` is supposed to be
       ## terminated by `nil`.
+      if a == nil: return @[]
       var L = 0
       while a[L] != nil: inc(L)
       result = cstringArrayToSeq(a, L)

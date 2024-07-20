@@ -167,3 +167,4 @@ proc initDefines*(symbols: StringTableRef) =
 
   defineSymbol("nimHasVtables")
   defineSymbol("nimHasGenericsOpenSym")
+  defineSymbol("nimHasJsNoLambdaLifting")

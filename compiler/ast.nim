@@ -41,7 +41,7 @@ type
   TNodeKinds* = set[TNodeKind]
 
 type
-  TSymFlag* = enum    # 51 flags!
+  TSymFlag* = enum    # 52 flags!
     sfUsed,           # read access of sym (for warnings) or simply used
     sfExported,       # symbol is exported from module
     sfFromGeneric,    # symbol is instantiation of a generic; this is needed
@@ -126,6 +126,8 @@ type
     sfByCopy          # param is marked as pass bycopy
     sfMember          # proc is a C++ member of a type
     sfCodegenDecl     # type, proc, global or proc param is marked as codegenDecl
+    sfWasGenSym       # symbol was 'gensym'ed
+    sfForceLift       # variable has to be lifted into closure environment
 
   TSymFlags* = set[TSymFlag]
 
@@ -507,7 +509,7 @@ type
     mSwap, mIsNil, mArrToSeq, mOpenArrayToSeq,
     mNewString, mNewStringOfCap, mParseBiggestFloat,
     mMove, mEnsureMove, mWasMoved, mDup, mDestroy, mTrace,
-    mDefault, mUnown, mFinished, mIsolate, mAccessEnv, mAccessTypeField, mReset,
+    mDefault, mUnown, mFinished, mIsolate, mAccessEnv, mAccessTypeField,
     mArray, mOpenArray, mRange, mSet, mSeq, mVarargs,
     mRef, mPtr, mVar, mDistinct, mVoid, mTuple,
     mOrdinal, mIterableType,
@@ -657,7 +659,7 @@ type
     storage*: TStorageLoc
     flags*: TLocFlags         # location's flags
     lode*: PNode              # Node where the location came from; can be faked
-    r*: Rope                  # rope value of location (code generators)
+    snippet*: Rope            # C code snippet of location (code generators)
 
   # ---------------- end of backend information ------------------------------
 
@@ -1518,7 +1520,7 @@ proc mergeLoc(a: var TLoc, b: TLoc) =
   if a.storage == low(typeof(a.storage)): a.storage = b.storage
   a.flags.incl b.flags
   if a.lode == nil: a.lode = b.lode
-  if a.r == "": a.r = b.r
+  if a.snippet == "": a.snippet = b.snippet
 
 proc newSons*(father: PNode, length: int) =
   setLen(father.sons, length)

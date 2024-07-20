@@ -692,7 +692,10 @@ proc getAppDir*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect], noWeirdT
 
 proc sleep*(milsecs: int) {.rtl, extern: "nos$1", tags: [TimeEffect], noWeirdTarget.} =
   ## Sleeps `milsecs` milliseconds.
+  ## A negative `milsecs` causes sleep to return immediately.
   when defined(windows):
+    if milsecs < 0:
+      return  # fixes #23732
     winlean.sleep(int32(milsecs))
   else:
     var a, b: Timespec
@@ -754,14 +757,14 @@ template rawToFormalFileInfo(rawInfo, path, formalInfo): untyped =
   ## 'rawInfo' is either a 'BY_HANDLE_FILE_INFORMATION' structure on Windows,
   ## or a 'Stat' structure on posix
   when defined(windows):
-    template merge(a, b): untyped =
-      int64(
+    template merge[T](a, b): untyped =
+       cast[T](
         (uint64(cast[uint32](a))) or
         (uint64(cast[uint32](b)) shl 32)
        )
     formalInfo.id.device = rawInfo.dwVolumeSerialNumber
-    formalInfo.id.file = merge(rawInfo.nFileIndexLow, rawInfo.nFileIndexHigh)
-    formalInfo.size = merge(rawInfo.nFileSizeLow, rawInfo.nFileSizeHigh)
+    formalInfo.id.file = merge[FileId](rawInfo.nFileIndexLow, rawInfo.nFileIndexHigh)
+    formalInfo.size = merge[BiggestInt](rawInfo.nFileSizeLow, rawInfo.nFileSizeHigh)
     formalInfo.linkCount = rawInfo.nNumberOfLinks
     formalInfo.lastAccessTime = fromWinTime(rdFileTime(rawInfo.ftLastAccessTime))
     formalInfo.lastWriteTime = fromWinTime(rdFileTime(rawInfo.ftLastWriteTime))

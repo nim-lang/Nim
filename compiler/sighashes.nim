@@ -154,9 +154,9 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]; conf: Confi
     # is actually safe without an infinite recursion check:
     if t.sym != nil:
       if {sfCompilerProc} * t.sym.flags != {}:
-        doAssert t.sym.loc.r != ""
+        doAssert t.sym.loc.snippet != ""
         # The user has set a specific name for this type
-        c &= t.sym.loc.r
+        c &= t.sym.loc.snippet
       elif CoOwnerSig in flags:
         c.hashTypeSym(t.sym, conf)
       else:
