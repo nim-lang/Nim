@@ -990,7 +990,8 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
         # This pointer is not part of the active chunk, lend it out
         #  and do not adjust the current chunk (same logic as compensateCounters.)
         # Put the cell into the active chunk,
-        #  may prevent a queue of available chunks from forming in a.freeSmallChunks[s div MemAlign]
+        #  may prevent a queue of available chunks from forming in a.freeSmallChunks[s div MemAlign].
+        #  This queue would otherwise waste memory until we return to those chunks.
         f.next = activeChunk.freeList
         activeChunk.freeList = f # lend the cell
         inc(activeChunk.free, s) # By not adjusting the current chunk's capacity it is prevented from being freed
