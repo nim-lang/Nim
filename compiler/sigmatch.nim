@@ -1809,7 +1809,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
           if result in {isEqual, isSubtype}:
             # 'T: Class' is a *better* match than just 'T'
             # but 'T: Subclass' is even better:
-            c.inheritancePenalty = oldInheritancePenalty - c.inheritancePenalty -
+            c.inheritancePenalty = oldInheritancePenalty + c.inheritancePenalty +
                                   100 * ord(result == isEqual)
             result = isGeneric
         elif a.kind == tyTypeDesc:
