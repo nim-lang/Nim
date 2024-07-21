@@ -513,24 +513,20 @@ block:
     B = object of A
     C = object of B
 
-  proc p[T: A](x: T): int =
-    0
+  proc p[T: A](x: T): int = 0
+  proc p[T: B](x: T): int = 1
 
-  proc p[T: B](x: T): int =
-    1
-
-  proc d(x: A): int =
-    0
-
-  proc d(x: B): int =
-    1
+  proc d(x: A): int = 0
+  proc d(x: B): int = 1
   
-  proc g[T:A](x: typedesc[T]): int =
-    0
-
-  proc g[T: B](x: typedesc[T]): int =
-    1
+  proc g[T:A](x: typedesc[T]): int = 0
+  proc g[T: B](x: typedesc[T]): int = 1
+  
+  proc f[T](x: typedesc[T]): int = 0
+  proc f[T:B](x: typedesc[T]): int = 1
 
   assert p(C()) == 1
   assert d(C()) == 1
   assert g(C) == 1
+  assert f(C) == 1
+
