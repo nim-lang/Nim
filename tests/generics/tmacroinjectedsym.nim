@@ -171,4 +171,4 @@ block: # issue #23865
     let x = f().valueOr:
       return $error
     "ok"
-  assert g(int) == "error"
+  doAssert g(int) == "error"
