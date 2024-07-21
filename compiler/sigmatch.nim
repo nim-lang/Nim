@@ -287,6 +287,19 @@ proc writeMatches*(c: TCandidate) =
   echo "  conv matches: ", c.convMatches
   echo "  inheritance: ", c.inheritancePenalty
 
+proc cmpInheritancePenalty(a, b: int): int =
+  #[
+    a realtive measure, specific only to two penalities and generally not applicable in any other context.
+    returns a positive integer if a is better then b, negative is b is better then a, zero otherwise
+  ]#
+  if b == 0 and a > 0:
+    # an inheritance relation is better then none
+    return 100 - a
+  if a == 0 and b > 0:
+    return -b
+  # the other way round because of other semantics:
+  result = b - a
+
 proc cmpCandidates*(a, b: TCandidate, isFormal=true): int =
   result = a.exactMatches - b.exactMatches
   if result != 0: return
@@ -298,8 +311,7 @@ proc cmpCandidates*(a, b: TCandidate, isFormal=true): int =
   if result != 0: return
   result = a.convMatches - b.convMatches
   if result != 0: return
-  # the other way round because of other semantics:
-  result = b.inheritancePenalty - a.inheritancePenalty
+  result = cmpInheritancePenalty(a.inheritancePenalty, b.inheritancePenalty)
   if result != 0: return
   if isFormal:
     # check for generic subclass relation
@@ -591,7 +603,7 @@ proc recordRel(c: var TCandidate, f, a: PType, flags: TTypeRelFlags): TTypeRelat
       let oldInheritancePenalty = c.inheritancePenalty
       var m = typeRel(c, ff, aa, flags)
       if m < isSubtype: return isNone
-      if m == isSubtype and c.inheritancePenalty > oldInheritancePenalty:
+      if m == isSubtype and cmpInheritancePenalty(oldInheritancePenalty,c.inheritancePenalty) > 0:
         # we can't process individual element type conversions from a
         # type conversion for the whole tuple
         # subtype relations need type conversions when inheritance is used
@@ -2256,8 +2268,7 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
     inc(m.genericMatches)
     if arg.typ == nil:
       result = arg
-    elif skipTypes(arg.typ, abstractVar-{tyTypeDesc}).kind == tyTuple or
-         m.inheritancePenalty > oldInheritancePenalty:
+    elif skipTypes(arg.typ, abstractVar-{tyTypeDesc}).kind == tyTuple or cmpInheritancePenalty(oldInheritancePenalty, m.inheritancePenalty) > 0:
       result = implicitConv(nkHiddenSubConv, f, arg, m, c)
     elif arg.typ.isEmptyContainer:
       result = arg.copyTree
