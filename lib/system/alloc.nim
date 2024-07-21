@@ -952,23 +952,33 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
         #echo("setting to nil: ", $cast[int](addr(f.zeroField)))
         sysAssert(f.zeroField != 0, "rawDealloc 1")
         f.zeroField = 0
-      f.next = c.freeList
-      c.freeList = f
       when overwriteFree:
         # set to 0xff to check for usage after free bugs:
         nimSetMem(cast[pointer](cast[int](p) +% sizeof(FreeCell)), -1'i32,
                 s -% sizeof(FreeCell))
-      # check if it is not in the freeSmallChunks[s] list:
-      if c.free < s:
-        # add it to the freeSmallChunks[s] array:
-        listAdd(a.freeSmallChunks[s div MemAlign], c)
-        inc(c.free, s)
+      let activeChunk = a.freeSmallChunks[s div MemAlign]
+      if activeChunk != nil and c != activeChunk:
+        # Use the same logic as compensateCounters does during alloc.
+        # Put the cell into the currently active chunk,
+        #  may prevent a queue of available chunks from forming in a.freeSmallChunks[s div MemAlign]
+        f.next = activeChunk.freeList
+        activeChunk.freeList = f
+        inc(activeChunk.free, s)
+        inc(activeChunk.foreignCells)
       else:
-        inc(c.free, s)
-        if c.free == SmallChunkSize-smallChunkOverhead() and c.foreignCells == 0:
-          listRemove(a.freeSmallChunks[s div MemAlign], c)
-          c.size = SmallChunkSize
-          freeBigChunk(a, cast[PBigChunk](c))
+        f.next = c.freeList
+        c.freeList = f
+        # check if it is not in the freeSmallChunks[s] list:
+        if c.free < s:
+          # add it to the freeSmallChunks[s] array:
+          listAdd(a.freeSmallChunks[s div MemAlign], c)
+          inc(c.free, s)
+        else:
+          inc(c.free, s)
+          if c.free == SmallChunkSize-smallChunkOverhead() and c.foreignCells == 0:
+            listRemove(a.freeSmallChunks[s div MemAlign], c)
+            c.size = SmallChunkSize
+            freeBigChunk(a, cast[PBigChunk](c))
     else:
       when logAlloc: cprintf("dealloc(pointer_%p) # SMALL FROM %p CALLER %p\n", p, c.owner, addr(a))
 
