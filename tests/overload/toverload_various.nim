@@ -506,3 +506,31 @@ block:
   doAssert(p2(F(float,1.0),F(float,2)) == 3.0)
   doAssert(p2(F(float,1.0),F(float,2.0)) == 3.0)
   #doAssert(p2(F(float,1),F(int,2.0)) == 3.0)
+
+block:
+  type
+    A {.inheritable.} = object
+    B = object of A
+    C = object of B
+
+  proc p[T: A](x: T): int =
+    0
+
+  proc p[T: B](x: T): int =
+    1
+
+  proc d(x: A): int =
+    0
+
+  proc d(x: B): int =
+    1
+  
+  proc g[T:A](x: typedesc[T]): int =
+    0
+
+  proc g[T: B](x: typedesc[T]): int =
+    1
+
+  assert p(C()) == 1
+  assert d(C()) == 1
+  assert g(C) == 1
