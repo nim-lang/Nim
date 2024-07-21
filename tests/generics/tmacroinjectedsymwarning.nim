@@ -1,3 +1,7 @@
+discard """
+  matrix: "--skipParentCfg"
+"""
+
 type Xxx = enum
   error
   value

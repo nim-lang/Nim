@@ -3141,6 +3141,29 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
     if isSymChoice(result):
       result = semSymChoice(c, result, flags, expectedType)
   of nkClosedSymChoice, nkOpenSymChoice:
+    if n.kind == nkOpenSymChoice and nfOpenSym in n.flags:
+      let ident = n.getPIdent
+      assert ident != nil
+      let id = newIdentNode(ident, n.info)
+      c.isAmbiguous = false
+      let s2 = qualifiedLookUp(c, id, {})
+      if s2 != nil and s2.kind notin OverloadableSyms and not c.isAmbiguous:
+        # only consider symbols defined under current proc:
+        var o = s2.owner
+        while o != nil:
+          if o == c.p.owner:
+            if genericsOpenSym in c.features:
+              result = semExpr(c, id, flags, expectedType)
+              return
+            else:
+              message(c.config, n.info, warnGenericsIgnoredInjection,
+                "a new symbol '" & ident.s & "' has been injected during " &
+                "instantiation of " & c.p.owner.name.s & ", " &
+                "however overloads of " & ident.s & " will be used instead; " &
+                "either enable --experimental:genericsOpenSym to use the " &
+                "injected symbol or `bind` this symbol explicitly")
+              break
+          o = o.owner
     result = semSymChoice(c, result, flags, expectedType)
   of nkSym:
     let s = n.sym

@@ -72,7 +72,7 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
         result.transitionSonsKind(nkClosedSymChoice)
     else:
       result = symChoice(c, n, s, scOpen)
-      if result.kind == nkSym and canOpenSym(result.sym):
+      if canOpenSym(s):
         result.flags.incl nfOpenSym
         result.typ = nil
   case s.kind
