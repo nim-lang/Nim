@@ -20,6 +20,37 @@ template track(op, address, size) =
 
 # We manage *chunks* of memory. Each chunk is a multiple of the page size.
 # Each chunk starts at an address that is divisible by the page size.
+# Small chunks may be divided into smaller cells of reusable pointers to reduce the number of page allocations.
+
+# An allocation of a small pointer looks approximately like this
+#[
+
+  alloc -> rawAlloc -> No free chunk available > Request a new page from tslf -> result = chunk.data -------------+
+              |                                                                                                   |
+              v                                                                                                   |
+    Free chunk available                                                                                          |
+              |                                                                                                   |
+              v                                                                                                   v
+      Fetch shared cells -> No free cells available -> Advance acc -> result = chunk.data + chunk.acc -------> return
+    (may not add new cells)                                                                                       ^
+              |                                                                                                   |
+              v                                                                                                   |
+     Free cells available -> result = chunk.freeList -> Advance chunk.freeList -----------------------------------+
+]#
+# so it is split into 3 paths, where the last path is preferred to prevent unnecessary allocations.
+#
+#
+# A deallocation of a small pointer then looks like this
+#[
+  dealloc -> rawDealloc -> chunk.owner == addr(a) --------------> This thread owns the chunk ------> The current chunk is active    -> Chunk is completely unused -----> Chunk references no foreign cells
+                                      |                                       |                   (Add cell into the current chunk)                 |                  Return the current chunk back to tlsf
+                                      |                                       |                                   |                                 |
+                                      v                                       v                                   v                                 v
+                      A different thread owns this chunk.     The current chunk is not active.          chunk.free was < size      Chunk references foreign cells, noop
+                      Add the cell to a.sharedFreeLists      Add the cell into the active chunk          Activate the chunk                       (end)
+                                    (end)                                    (end)                              (end)
+]#
+# So "true" deallocation is delayed for as long as possible in favor of reusing cells.
 
 const
   nimMinHeapPages {.intdefine.} = 128 # 0.5 MB
