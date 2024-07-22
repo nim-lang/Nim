@@ -109,6 +109,7 @@ type
   MemRegion = object
     when not defined(gcDestructors):
       minLargeObj, maxLargeObj: int
+    activeChunks: int
     freeSmallChunks: array[0..max(1, SmallChunkSize div MemAlign-1), PSmallChunk]
     when defined(gcDestructors):
       sharedFreeLists: array[0..max(1, SmallChunkSize div MemAlign-1), ptr FreeCell]
@@ -626,8 +627,10 @@ proc freeBigChunk(a: var MemRegion, c: PBigChunk) =
           let rest = splitChunk2(a, c, MaxBigChunkSize)
           addChunkToMatrix(a, rest)
   addChunkToMatrix(a, c)
+  dec a.activeChunks
 
 proc getBigChunk(a: var MemRegion, size: int): PBigChunk =
+  inc a.activeChunks
   sysAssert(size > 0, "getBigChunk 2")
   var size = size # roundup(size, PageSize)
   var fl = 0
@@ -667,6 +670,7 @@ proc getBigChunk(a: var MemRegion, size: int): PBigChunk =
     releaseSys a.lock
 
 proc getHugeChunk(a: var MemRegion; size: int): PBigChunk =
+  inc a.activeChunks
   result = cast[PBigChunk](allocPages(a, size))
   when RegionHasLock:
     if not a.lockActive:
@@ -693,6 +697,7 @@ proc freeHugeChunk(a: var MemRegion; c: PBigChunk) =
   excl(a.chunkStarts, pageIndex(c))
   decCurrMem(a, size)
   osDeallocPages(c, size)
+  dec a.activeChunks
 
 proc getSmallChunk(a: var MemRegion): PSmallChunk =
   var res = getBigChunk(a, PageSize)
@@ -1129,6 +1134,11 @@ when defined(nimTypeNames):
   proc getMemCounters(a: MemRegion): (int, int) {.inline.} =
     (a.allocCounter, a.deallocCounter)
 
+proc abandonAllocator(a: var MemRegion) =
+  if a.activeChunks == 0:
+    deallocOsPages(a)
+  # if there's still active chunks, we cannot clean up
+
 # ---------------------- thread memory region -------------------------------
 
 template instantiateForRegion(allocator: untyped) {.dirty.} =
@@ -1143,6 +1153,8 @@ template instantiateForRegion(allocator: untyped) {.dirty.} =
       result = isAllocatedPtr(allocator, p)
 
   proc deallocOsPages = deallocOsPages(allocator)
+
+  proc abandonAllocator = abandonAllocator(allocator)
 
   proc allocImpl(size: Natural): pointer =
     result = alloc(allocator, size)
