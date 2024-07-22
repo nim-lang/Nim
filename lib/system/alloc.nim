@@ -851,8 +851,8 @@ proc rawAlloc(a: var MemRegion, requestedSize: int): pointer =
           else:
             tc.freeList = a.sharedFreeLists[s]
             a.sharedFreeLists[s] = nil
-          # The current chunk will have more capacity in `tc.free`,
-          # we must calculate how much it gained and how many foreign cells are included.
+          # if `tc.freeList` isn't nil, `tc` will gain capacity.
+          # We must calculate how much it gained and how many foreign cells are included.
           compensateCounters(a, tc, size)
 
     # allocate a small block: for small chunks, we use only its next pointer
@@ -899,19 +899,20 @@ proc rawAlloc(a: var MemRegion, requestedSize: int): pointer =
           sysAssert(c.freeList.zeroField == 0, "rawAlloc 8")
         c.freeList = c.freeList.next
         if cast[PSmallChunk](pageAddr(result)) != c:
-          # This cell isn't a blocker for the current chunk anymore
+          # This cell isn't a blocker for the current chunk's deallocation anymore
           dec(c.foreignCells)
         else:
           sysAssert(c == cast[PSmallChunk](pageAddr(result)), "rawAlloc: Bad cell")
-      # Even if the cell we return is foreign, the local chunk's capacity decreses.
-      # The capacity was previously reserved in the source chunk and added into the current chunk,
+      # Even if the cell we return is foreign, the local chunk's capacity decreases.
+      # The capacity was previously reserved in the source chunk (when it first got allocated),
+      #  then added into the current chunk during dealloc,
       #  so the source chunk will not be freed or leak memory because of this.
       dec(c.free, size)
       sysAssert((cast[int](result) and (MemAlign-1)) == 0, "rawAlloc 9")
       sysAssert(allocInv(a), "rawAlloc: end c != nil")
-      # We fetch deferred cells *after* advancing c.freeList/acc to adjust c.free.
+      # We fetch deferred cells *after* advancing `c.freeList`/`acc` to adjust `c.free`.
       # If after the adjustment it turns out there's free cells available,
-      #  the chunk stays in a.freeSmallChunks[s] and the need for a new chunk is delayed.
+      #  the chunk stays in `a.freeSmallChunks[s]` and the need for a new chunk is delayed.
       fetchSharedCells(c)
       sysAssert(allocInv(a), "rawAlloc: before c.free < size")
       if c.free < size:
@@ -991,7 +992,7 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
         #  and do not adjust the current chunk (same logic as compensateCounters.)
         # Put the cell into the active chunk,
         #  may prevent a queue of available chunks from forming in a.freeSmallChunks[s div MemAlign].
-        #  This queue would otherwise waste memory until we return to those chunks.
+        #  This queue would otherwise waste memory in the form of free cells until we return to those chunks.
         f.next = activeChunk.freeList
         activeChunk.freeList = f # lend the cell
         inc(activeChunk.free, s) # By not adjusting the current chunk's capacity it is prevented from being freed
