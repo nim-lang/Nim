@@ -1,5 +1,4 @@
 discard """
-  disabled: true # temp
   matrix: "--skipParentCfg --filenames:legacyRelProj"
 """
 
