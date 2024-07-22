@@ -2,7 +2,7 @@ block:
   type Head[T] = object
     wasc: bool
 
-  proc `=destroy`[T](x: Head[T]) =
+  proc `=destroy`[T](x: var Head[T]) =
     discard
 
   proc `=copy`[T](x: var Head[T], y: Head[T]) =
