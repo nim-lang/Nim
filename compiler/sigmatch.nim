@@ -1196,10 +1196,15 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         return isGeneric
   of tyFromExpr:
     if c.c.inGenericContext > 0:
-      # generic type bodies can sometimes compile call expressions
-      # prevent expressions with unresolved types from
-      # being passed as parameters
-      return isNone
+      if not c.isNoCall:
+        # generic type bodies can sometimes compile call expressions
+        # prevent expressions with unresolved types from
+        # being passed as parameters
+        return isNone
+      else:
+        # Foo[templateCall(T)] shouldn't fail early if Foo has a constraint
+        # and we can't evaluate `templateCall(T)` yet
+        return isGeneric
   else: discard
 
   case f.kind
@@ -1300,11 +1305,6 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       else:
         if lengthOrd(c.c.config, fRange) != lengthOrd(c.c.config, aRange):
           result = isNone
-  of tyUncheckedArray:
-    if a.kind == tyUncheckedArray:
-      result = typeRel(c, elementType(f), elementType(a), flags)
-      if result < isGeneric: result = isNone
-    else: discard
   of tyOpenArray, tyVarargs:
     # varargs[untyped] is special too but handled earlier. So we only need to
     # handle varargs[typed]:
@@ -1345,9 +1345,8 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
             typeRel(c, base(f), base(a), flags) >= isGeneric:
           result = isConvertible
     else: discard
-  of tySequence:
-    case a.kind
-    of tySequence:
+  of tySequence, tyUncheckedArray:
+    if a.kind == f.kind:
       if (f[0].kind != tyGenericParam) and (a.elementType.kind == tyEmpty):
         result = isSubtype
       else:
@@ -1362,8 +1361,8 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
             result = isSubtype
           else:
             result = isNone
-    of tyNil: result = isNone
-    else: discard
+    elif a.kind == tyNil:
+      result = isNone
   of tyOrdinal:
     if isOrdinalType(a):
       var x = if a.kind == tyOrdinal: a.elementType else: a

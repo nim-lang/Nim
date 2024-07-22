@@ -164,3 +164,12 @@ block: # bug #23775
       let _ = retString()
 
   doStuff(C)
+
+block:
+  proc test(): (int, int) {.discardable.} =
+    discard
+
+  if true:
+    test()
+  else:
+    quit()

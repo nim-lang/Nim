@@ -368,7 +368,6 @@ type
     arguments*: string ## the arguments to be passed to the program that
                        ## should be run
     ideCmd*: IdeCmd
-    oldNewlines*: bool
     cCompiler*: TSystemCC # the used compiler
     modifiedyNotes*: TNoteKinds # notes that have been set/unset from either cmdline/configs
     cmdlineNotes*: TNoteKinds # notes that have been set/unset from cmdline
