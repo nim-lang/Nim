@@ -1101,6 +1101,7 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
   if c.owner.isAbandoned:
     if c.owner.chunksInUse == 0:
       deallocOsPages(c.owner[])
+      osDeallocPages(p, sizeof(MemRegion))
 
   sysAssert(allocInv(a), "rawDealloc: end")
   #when logAlloc: cprintf("dealloc(pointer_%p)\n", p)
