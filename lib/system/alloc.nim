@@ -87,6 +87,7 @@ type
                          # 0th bit == 1 if 'used
     size: int            # if < PageSize it is a small chunk
     owner: ptr MemRegion
+    ownerKey: int
 
   SmallChunk = object of BaseChunk
     next, prev: PSmallChunk  # chunks of the same size
@@ -107,6 +108,7 @@ type
     next: ptr HeapLinks
 
   MemRegion = object
+    key: int
     when not defined(gcDestructors):
       minLargeObj, maxLargeObj: int
     activeChunks: int
@@ -579,6 +581,7 @@ proc splitChunk2(a: var MemRegion, c: PBigChunk, size: int): PBigChunk =
   # size and not used:
   result.prevSize = size
   result.owner = addr a
+  result.ownerKey = a.key
   sysAssert((size and 1) == 0, "splitChunk 2")
   sysAssert((size and PageMask) == 0,
       "splitChunk: size is not a multiple of the PageSize")
@@ -655,6 +658,7 @@ proc getBigChunk(a: var MemRegion, size: int): PBigChunk =
       if result.size > size:
         splitChunk(a, result, size)
     result.owner = addr a
+    result.ownerKey = a.key
   else:
     removeChunkFromMatrix2(a, result, fl, sl)
     if result.size >= size + PageSize:
@@ -687,6 +691,7 @@ proc getHugeChunk(a: var MemRegion; size: int): PBigChunk =
   # set 'used' to to true:
   result.prevSize = 1
   result.owner = addr a
+  result.ownerKey = a.key
   incl(a, a.chunkStarts, pageIndex(result))
   when RegionHasLock:
     releaseSys a.lock
@@ -946,50 +951,68 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
     #       ^ We might access thread foreign storage here.
     # The other thread cannot possibly free this block as it's still alive.
     var f = cast[ptr FreeCell](p)
-    if c.owner == addr(a):
-      # We own the block, there is no foreign thread involved.
-      dec a.occ, s
-      untrackSize(s)
-      sysAssert a.occ >= 0, "rawDealloc: negative occupied memory (case A)"
-      sysAssert(((cast[int](p) and PageMask) - smallChunkOverhead()) %%
-                s == 0, "rawDealloc 3")
-      when not defined(gcDestructors):
-        #echo("setting to nil: ", $cast[int](addr(f.zeroField)))
-        sysAssert(f.zeroField != 0, "rawDealloc 1")
-        f.zeroField = 0
-      f.next = c.freeList
-      c.freeList = f
-      when overwriteFree:
-        # set to 0xff to check for usage after free bugs:
-        nimSetMem(cast[pointer](cast[int](p) +% sizeof(FreeCell)), -1'i32,
-                s -% sizeof(FreeCell))
-      # check if it is not in the freeSmallChunks[s] list:
-      if c.free < s:
-        # add it to the freeSmallChunks[s] array:
-        listAdd(a.freeSmallChunks[s div MemAlign], c)
-        inc(c.free, s)
-      else:
-        inc(c.free, s)
-        if c.free == SmallChunkSize-smallChunkOverhead() and c.foreignCells == 0:
-          listRemove(a.freeSmallChunks[s div MemAlign], c)
-          c.size = SmallChunkSize
-          freeBigChunk(a, cast[PBigChunk](c))
-    else:
-      when logAlloc: cprintf("dealloc(pointer_%p) # SMALL FROM %p CALLER %p\n", p, c.owner, addr(a))
 
-      when defined(gcDestructors):
-        addToSharedFreeList(c, f, s div MemAlign)
-    sysAssert(((cast[int](p) and PageMask) - smallChunkOverhead()) %%
-               s == 0, "rawDealloc 2")
+    if c.owner == nil:
+      discard # TODO
+    else:
+      if c.ownerKey == a.key:
+        # We own the block, there is no foreign thread involved.
+        dec a.occ, s
+        untrackSize(s)
+        sysAssert a.occ >= 0, "rawDealloc: negative occupied memory (case A)"
+        sysAssert(((cast[int](p) and PageMask) - smallChunkOverhead()) %%
+                  s == 0, "rawDealloc 3")
+        when not defined(gcDestructors):
+          #echo("setting to nil: ", $cast[int](addr(f.zeroField)))
+          sysAssert(f.zeroField != 0, "rawDealloc 1")
+          f.zeroField = 0
+        f.next = c.freeList
+        c.freeList = f
+        when overwriteFree:
+          # set to 0xff to check for usage after free bugs:
+          nimSetMem(cast[pointer](cast[int](p) +% sizeof(FreeCell)), -1'i32,
+                  s -% sizeof(FreeCell))
+        # check if it is not in the freeSmallChunks[s] list:
+        if c.free < s:
+          # add it to the freeSmallChunks[s] array:
+          listAdd(a.freeSmallChunks[s div MemAlign], c)
+          inc(c.free, s)
+        else:
+          inc(c.free, s)
+          if c.free == SmallChunkSize-smallChunkOverhead() and c.foreignCells == 0:
+            listRemove(a.freeSmallChunks[s div MemAlign], c)
+            c.size = SmallChunkSize
+            freeBigChunk(a, cast[PBigChunk](c))
+      else:
+        when logAlloc: cprintf("dealloc(pointer_%p) # SMALL FROM %p CALLER %p\n", p, c.owner, addr(a))
+
+        when defined(gcDestructors):
+          if c.owner == nil:
+            discard # TODO
+          else:
+            if c.ownerKey == a.key:
+              addToSharedFreeList(c, f, s div MemAlign)
+            else:
+              discard # TODO
+
+      sysAssert(((cast[int](p) and PageMask) - smallChunkOverhead()) %%
+                s == 0, "rawDealloc 2")
   else:
     # set to 0xff to check for usage after free bugs:
     when overwriteFree: nimSetMem(p, -1'i32, c.size -% bigChunkOverhead())
     when logAlloc: cprintf("dealloc(pointer_%p) # BIG %p\n", p, c.owner)
     when defined(gcDestructors):
-      if c.owner == addr(a):
-        deallocBigChunk(a, cast[PBigChunk](c))
+      if c.owner == nil:
+        discard # TODO
       else:
-        addToSharedFreeListBigChunks(c.owner[], cast[PBigChunk](c))
+        if c.ownerKey == a.key:
+          deallocBigChunk(a, cast[PBigChunk](c))
+        else:
+
+          if c.ownerKey == a.key:
+            addToSharedFreeListBigChunks(c.owner[], cast[PBigChunk](c))
+          else:
+            discard # TODO
     else:
       deallocBigChunk(a, cast[PBigChunk](c))
 
@@ -1155,6 +1178,8 @@ template instantiateForRegion(allocator: untyped) {.dirty.} =
   proc deallocOsPages = deallocOsPages(allocator)
 
   proc abandonAllocator = abandonAllocator(allocator)
+  proc setAllocatorKey(key: int) =
+    allocator.key = key
 
   proc allocImpl(size: Natural): pointer =
     result = alloc(allocator, size)

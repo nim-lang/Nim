@@ -2,7 +2,9 @@ var
   nimThreadDestructionHandlers* {.rtlThreadVar.}: seq[proc () {.closure, gcsafe, raises: [].}]
 when not defined(boehmgc) and not hasSharedHeap and not defined(gogc) and not defined(gcRegions):
   proc deallocOsPages() {.rtl, raises: [].}
-proc abandonAllocator() {.rtl, raises: [].}
+when not defined(useMalloc):
+  proc abandonAllocator() {.rtl, raises: [].}
+  proc setAllocatorKey(key: int) {.rtl, raises: [].}
 proc threadTrouble() {.raises: [], gcsafe.}
 # create for the main thread. Note: do not insert this data into the list
 # of all threads; it's not to be stopped etc.
@@ -96,7 +98,9 @@ proc threadProcWrapStackFrame[TArg](thrd: ptr Thread[TArg]) {.raises: [].} =
     threadProcWrapDispatch(thrd)
     abandonAllocator()
 
+var nextAllocatorKey {.global.} = 1
 template nimThreadProcWrapperBody*(closure: untyped): untyped =
+  setAllocatorKey(atomicFetchAdd(addr nextAllocatorKey, 1, ATOMIC_RELAXED))
   var thrd = cast[ptr Thread[TArg]](closure)
   var core = thrd.core
   when declared(globalsSlot): threadVarSetValue(globalsSlot, thrd.core)
