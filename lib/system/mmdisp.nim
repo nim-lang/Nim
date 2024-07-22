@@ -85,7 +85,8 @@ else:
     when not defined(useNimRtl):
       var allocator {.rtlThreadVar.}: MemRegion
       instantiateForRegion(allocator)
-      setAllocatorKey(0)
+      when not defined(useMalloc):
+        setAllocatorKey(0)
     when defined(gcHooks):
       include "system/gc_hooks"
   elif defined(gcMarkAndSweep):

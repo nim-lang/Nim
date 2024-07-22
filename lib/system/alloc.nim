@@ -109,6 +109,7 @@ type
 
   MemRegion = object
     key: int
+    isAbandoned: bool
     when not defined(gcDestructors):
       minLargeObj, maxLargeObj: int
     activeChunks: int
@@ -952,8 +953,9 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
     # The other thread cannot possibly free this block as it's still alive.
     var f = cast[ptr FreeCell](p)
 
-    if c.owner == nil:
+    if c.owner.isAbandoned:
       discard # TODO
+      #c_fprintf(c_stdout, "rawDealloc: Observed abandoned small chunk %p %lld\n", c.owner, c.owner.key)
     else:
       if c.ownerKey == a.key:
         # We own the block, there is no foreign thread involved.
@@ -987,13 +989,11 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
         when logAlloc: cprintf("dealloc(pointer_%p) # SMALL FROM %p CALLER %p\n", p, c.owner, addr(a))
 
         when defined(gcDestructors):
-          if c.owner == nil:
+          if c.owner.isAbandoned:
             discard # TODO
+            #c_fprintf(c_stdout, "rawDealloc: Observed abandoned shared small chunk\n")
           else:
-            if c.ownerKey == a.key:
-              addToSharedFreeList(c, f, s div MemAlign)
-            else:
-              discard # TODO
+            addToSharedFreeList(c, f, s div MemAlign)
 
       sysAssert(((cast[int](p) and PageMask) - smallChunkOverhead()) %%
                 s == 0, "rawDealloc 2")
@@ -1002,17 +1002,14 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
     when overwriteFree: nimSetMem(p, -1'i32, c.size -% bigChunkOverhead())
     when logAlloc: cprintf("dealloc(pointer_%p) # BIG %p\n", p, c.owner)
     when defined(gcDestructors):
-      if c.owner == nil:
+      if c.owner.isAbandoned:
         discard # TODO
+        #c_fprintf(c_stdout, "rawDealloc: Observed abandoned big chunk\n")
       else:
         if c.ownerKey == a.key:
           deallocBigChunk(a, cast[PBigChunk](c))
         else:
-
-          if c.ownerKey == a.key:
-            addToSharedFreeListBigChunks(c.owner[], cast[PBigChunk](c))
-          else:
-            discard # TODO
+          addToSharedFreeListBigChunks(c.owner[], cast[PBigChunk](c))
     else:
       deallocBigChunk(a, cast[PBigChunk](c))
 
@@ -1158,9 +1155,28 @@ when defined(nimTypeNames):
     (a.allocCounter, a.deallocCounter)
 
 proc abandonAllocator(a: var MemRegion) =
+  # There may be a race condition here...
   if a.activeChunks == 0:
+    #c_fprintf(c_stdout, "Abandoning in full: %p %lld\n", addr a, a.key)
     deallocOsPages(a)
-  # if there's still active chunks, we cannot clean up
+  else:
+    #c_fprintf(c_stdout, "Not abandoning: %p %lld\n", addr a, a.key)
+    a.isAbandoned = true
+    var deadRegionPtr = cast[ptr MemRegion](a.tryAllocPages(sizeof(MemRegion)))
+    copyMem(deadRegionPtr, addr a, sizeof(MemRegion))
+
+    var it = addr a.heapLinks
+    while it != nil:
+      for i in 0 ..< it.len:
+        var off = 0
+        # Very dirty way of finding chunks
+        while off < it.chunks[i][1] - sizeof(BaseChunk):
+          let maybeChunk = cast[ptr BaseChunk](cast[int](it.chunks[i][0]) + off)
+          if maybeChunk.owner == addr(a) and maybeChunk.ownerKey == a.key:
+            maybeChunk.owner = deadRegionPtr
+            maybeChunk.ownerKey = -1
+          inc(off)
+      it = it.next
 
 # ---------------------- thread memory region -------------------------------
 
