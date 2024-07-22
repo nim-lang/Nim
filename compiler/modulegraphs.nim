@@ -615,7 +615,6 @@ proc markDirty*(g: ModuleGraph; fileIdx: FileIndex) =
   if m != nil:
     g.suggestSymbols.del(fileIdx)
     g.suggestErrors.del(fileIdx)
-    g.resetForBackend
     incl m.flags, sfDirty
 
 proc unmarkAllDirty*(g: ModuleGraph) =
