@@ -1845,23 +1845,10 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     elif x.kind == tyGenericParam:
       result = isGeneric
     else:
-      # ugly, but this shouldnt count. First, it benifits
-      # from iteration order since it may bind during match (I dont think its suppoed
-      # to bind during matching but it does). Second, this is a copy
-      # of the operand, so it's cheating to measure it like this
+      # This is the bound type - can't benifit from these tallies
       let
-        exactMatchesOld = c.exactMatches
-        genericMatchesOld = c.genericMatches
-        subtypeMatchesOld = c.subtypeMatches
-        intConvMatchesOld = c.intConvMatches
-        convMatchesOld = c.convMatches
         inheritancePenaltyOld = c.inheritancePenalty
       result = typeRel(c, x, a, flags) # check if it fits
-      c.exactMatches = exactMatchesOld
-      c.genericMatches = genericMatchesOld
-      c.subtypeMatches = subtypeMatchesOld
-      c.intConvMatches = intConvMatchesOld
-      c.convMatches = convMatchesOld
       c.inheritancePenalty = inheritancePenaltyOld
       if result > isGeneric: result = isGeneric
   of tyStatic:
