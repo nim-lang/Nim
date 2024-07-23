@@ -309,7 +309,7 @@ proc resolveInst(g: ModuleGraph; t: var LazyInstantiation): PInstantiation =
     t.inst = result
   assert result != nil
 
-proc resolveAttachedOp(g: ModuleGraph; t: var LazySym): PSym =
+proc resolveAttachedOp*(g: ModuleGraph; t: var LazySym): PSym =
   result = t.sym
   if result == nil:
     result = loadSymFromId(g.config, g.cache, g.packed, t.id.module, t.id.packed)
@@ -615,7 +615,6 @@ proc markDirty*(g: ModuleGraph; fileIdx: FileIndex) =
   if m != nil:
     g.suggestSymbols.del(fileIdx)
     g.suggestErrors.del(fileIdx)
-    g.resetForBackend
     incl m.flags, sfDirty
 
 proc unmarkAllDirty*(g: ModuleGraph) =
