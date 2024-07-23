@@ -5,7 +5,7 @@ discard """
 
 proc main =
   block: # issue 19171
-    let a = ['A']
+    var a = ['A']
     proc mutB(x: var openArray[char]) =
       x[0] = 'B'
     mutB(toOpenArray(cast[ptr UncheckedArray[char]](addr a), 0, 0))
