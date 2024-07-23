@@ -599,7 +599,7 @@ proc recordRel(c: var TCandidate, f, a: PType, flags: TTypeRelFlags): TTypeRelat
     for _, ff, aa in tupleTypePairs(f, a):
       var m = typeRel(c, ff, aa, flags)
       if m < isSubtype: return isNone
-      if m == isSubtype and c.inheritancePenalty > -1:
+      if m == isSubtype and aa.kind != tyNil and c.inheritancePenalty > -1:
         # we can't process individual element type conversions from a
         # type conversion for the whole tuple
         # subtype relations need type conversions when inheritance is used
