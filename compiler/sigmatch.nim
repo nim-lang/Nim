@@ -289,10 +289,6 @@ proc writeMatches*(c: TCandidate) =
   echo "  inheritance: ", c.inheritancePenalty
 
 proc cmpInheritancePenalty(a, b: int): int =
-  #[
-    a realtive measure, specific only to two penalities and generally not applicable in any other context.
-    returns a positive integer if a is better then b, negative is b is better then a, zero otherwise
-  ]#
   var eb = b
   if b < 0:
     eb = 100  # defacto max penalty
