@@ -83,5 +83,6 @@ proc main =
       var d: array[1, int]
       foo task(d)[].toOpenArray(0, 0)
 
+
 main()
 static: main()

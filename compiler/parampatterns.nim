@@ -285,9 +285,9 @@ proc isAssignable*(owner: PSym, n: PNode): TAssignableResult =
   of nkCallKinds:
     let m = getMagic(n)
     if m == mSlice:
-      # builtin slice keeps lvalue-ness:
+      # builtin slice keeps l-value-ness
+      # except for pointers because slice dereferences
       if n[1].typ.kind == tyPtr:
-        # slices of non-lvalue pointers are still l-values
         result = arLValue
       else:
         result = isAssignable(owner, n[1])
