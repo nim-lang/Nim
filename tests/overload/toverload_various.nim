@@ -507,7 +507,7 @@ block:
   doAssert(p2(F(float,1.0),F(float,2.0)) == 3.0)
   #doAssert(p2(F(float,1),F(int,2.0)) == 3.0)
 
-block: #PR #26683
+block: # PR #23870
   type
     A {.inheritable.} = object
     B = object of A
@@ -530,7 +530,7 @@ block: #PR #26683
   assert g(C) == 1
   assert f(C) == 1
 
-block: #PR #26683
+block: # PR #23870
   type
     A = object of RootObj
     PT = proc(ev: A) {.closure.}
