@@ -27,6 +27,7 @@ type ObjSeq = object
 let oseq = ObjSeq() # <-- nimsuggest crashes
 discard oseq
 
+#[!]#
 discard """
 $nimsuggest --tester $file
 >chk $1
