@@ -290,9 +290,12 @@ proc writeMatches*(c: TCandidate) =
 
 proc cmpInheritancePenalty(a, b: int): int =
   var eb = b
+  var ea = a
   if b < 0:
     eb = 100  # defacto max penalty
-  eb - a
+  if a < 0:
+    ea = 100
+  eb - ea
 
 proc cmpCandidates*(a, b: TCandidate, isFormal=true): int =
   result = a.exactMatches - b.exactMatches
@@ -1393,12 +1396,12 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         reduceToBase(a)
     if effectiveArgType.kind == tyObject:
       if sameObjectTypes(f, effectiveArgType):
+        c.inheritancePenalty = 0
         result = isEqual
         # elif tfHasMeta in f.flags: result = recordRel(c, f, a)
       elif trIsOutParam notin flags:
-        var depth = isObjectSubtype(c, effectiveArgType, f, nil)
-        if depth > 0:
-          inc c.inheritancePenalty, depth + int(c.inheritancePenalty < 0)
+        c.inheritancePenalty = isObjectSubtype(c, effectiveArgType, f, nil)
+        if c.inheritancePenalty > 0:
           result = isSubtype
   of tyDistinct:
     a = a.skipTypes({tyOwned, tyGenericInst, tyRange})
@@ -1804,17 +1807,12 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       else:
         # check if 'T' has a constraint as in 'proc p[T: Constraint](x: T)'
         if f.len > 0 and f[0].kind != tyNone:
-          let oldInheritancePenalty = c.inheritancePenalty
           result = typeRel(c, f[0], a, flags + {trDontBind, trBindGenericParam})
           if doBindGP and result notin {isNone, isGeneric}:
             let concrete = concreteType(c, a, f)
             if concrete == nil: return isNone
             put(c, f, concrete)
-          # bug #6526
           if result in {isEqual, isSubtype}:
-            # 'T: Class' is a *better* match than just 'T'
-            # but 'T: Subclass' is even better:
-            c.inheritancePenalty = (oldInheritancePenalty + c.inheritancePenalty) * int(result != isEqual)
             result = isGeneric
         elif a.kind == tyTypeDesc:
           # somewhat special typing rule, the following is illegal:
@@ -1847,7 +1845,24 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     elif x.kind == tyGenericParam:
       result = isGeneric
     else:
+      # ugly, but this shouldnt count. First, it benifits
+      # from iteration order since it may bind during match (I dont think its suppoed
+      # to bind during matching but it does). Second, this is a copy
+      # of the operand, so it's cheating to measure it like this
+      let
+        exactMatchesOld = c.exactMatches
+        genericMatchesOld = c.genericMatches
+        subtypeMatchesOld = c.subtypeMatches
+        intConvMatchesOld = c.intConvMatches
+        convMatchesOld = c.convMatches
+        inheritancePenaltyOld = c.inheritancePenalty
       result = typeRel(c, x, a, flags) # check if it fits
+      c.exactMatches = exactMatchesOld
+      c.genericMatches = genericMatchesOld
+      c.subtypeMatches = subtypeMatchesOld
+      c.intConvMatches = intConvMatchesOld
+      c.convMatches = convMatchesOld
+      c.inheritancePenalty = inheritancePenaltyOld
       if result > isGeneric: result = isGeneric
   of tyStatic:
     let prev = idTableGet(c.bindings, f)
