@@ -285,7 +285,10 @@ proc isAssignable*(owner: PSym, n: PNode): TAssignableResult =
   of nkCallKinds:
     # builtin slice keeps lvalue-ness:
     if getMagic(n) in {mArrGet, mSlice}:
-      result = isAssignable(owner, n[1])
+      if n[1].typ.kind == tyPtr:
+        result = arLValue
+      else:
+        result = isAssignable(owner, n[1])
     elif n.typ != nil:
       case n.typ.kind
       of tyVar: result = arLValue
