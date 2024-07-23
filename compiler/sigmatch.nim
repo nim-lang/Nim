@@ -80,7 +80,8 @@ type
                               # or when the explain pragma is used. may be
                               # triggered with an idetools command in the
                               # future.
-    inheritancePenalty: int   # to prefer closest father object type
+                              # to prefer closest father object type
+    inheritancePenalty: int
     firstMismatch*: MismatchInfo # mismatch info for better error messages
     diagnosticsEnabled*: bool
 
@@ -107,7 +108,7 @@ proc initCandidateAux(ctx: PContext,
                       convMatches: 0, intConvMatches: 0, genericMatches: 0,
                       state: csEmpty, firstMismatch: MismatchInfo(),
                       callee: callee, call: nil, baseTypeMatch: false,
-                      genericConverter: false, inheritancePenalty: 0
+                      genericConverter: false, inheritancePenalty: -1
   )
 
 proc initCandidate*(ctx: PContext, callee: PType): TCandidate =
@@ -292,13 +293,10 @@ proc cmpInheritancePenalty(a, b: int): int =
     a realtive measure, specific only to two penalities and generally not applicable in any other context.
     returns a positive integer if a is better then b, negative is b is better then a, zero otherwise
   ]#
-  if b == 0 and a > 0:
-    # an inheritance relation is better then none
-    return 100 - a
-  if a == 0 and b > 0:
-    return -b
-  # the other way round because of other semantics:
-  result = b - a
+  var eb = b
+  if b < 0:
+    eb = 100  # defacto max penalty
+  eb - a
 
 proc cmpCandidates*(a, b: TCandidate, isFormal=true): int =
   result = a.exactMatches - b.exactMatches
@@ -602,7 +600,7 @@ proc recordRel(c: var TCandidate, f, a: PType, flags: TTypeRelFlags): TTypeRelat
     for _, ff, aa in tupleTypePairs(f, a):
       var m = typeRel(c, ff, aa, flags)
       if m < isSubtype: return isNone
-      if m == isSubtype and c.inheritancePenalty > 0:
+      if m == isSubtype and c.inheritancePenalty > -1:
         # we can't process individual element type conversions from a
         # type conversion for the whole tuple
         # subtype relations need type conversions when inheritance is used
@@ -1404,7 +1402,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       elif trIsOutParam notin flags:
         var depth = isObjectSubtype(c, effectiveArgType, f, nil)
         if depth > 0:
-          inc(c.inheritancePenalty, depth)
+          inc c.inheritancePenalty, depth + int(c.inheritancePenalty < 0)
           result = isSubtype
   of tyDistinct:
     a = a.skipTypes({tyOwned, tyGenericInst, tyRange})
@@ -1573,7 +1571,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         if aAsObject.kind == tyObject and trIsOutParam notin flags:
           let baseType = aAsObject.base
           if baseType != nil:
-            c.inheritancePenalty += 1
+            inc c.inheritancePenalty, 1 + int(c.inheritancePenalty < 0)
             let ret = typeRel(c, f, baseType, flags)
             return if ret in {isEqual,isGeneric}: isSubtype else: ret
 
@@ -1670,7 +1668,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
           depth = -1
 
       if depth >= 0:
-        c.inheritancePenalty += depth
+        inc c.inheritancePenalty, depth + int(c.inheritancePenalty < 0)
         # bug #4863: We still need to bind generic alias crap, so
         # we cannot return immediately:
         result = if depth == 0: isGeneric else: isSubtype
@@ -1690,7 +1688,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       let oldInheritancePenalty = c.inheritancePenalty
       var maxInheritance = 0
       for branch in f.kids:
-        c.inheritancePenalty = 0
+        c.inheritancePenalty = -1
         let x = typeRel(c, branch, aOrig, flags)
         maxInheritance = max(maxInheritance, c.inheritancePenalty)
         # 'or' implies maximum matching result:
@@ -1820,8 +1818,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
           if result in {isEqual, isSubtype}:
             # 'T: Class' is a *better* match than just 'T'
             # but 'T: Subclass' is even better:
-            c.inheritancePenalty = oldInheritancePenalty + c.inheritancePenalty -
-                                  (100 * ord(result == isEqual))
+            c.inheritancePenalty = (oldInheritancePenalty + c.inheritancePenalty) * int(result != isEqual)
             result = isGeneric
         elif a.kind == tyTypeDesc:
           # somewhat special typing rule, the following is illegal:
