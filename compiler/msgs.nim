@@ -683,14 +683,14 @@ proc uniqueModuleName*(conf: ConfigRef; fid: FileIndex): string =
   for i in 0..<trunc:
     let c = rel[i]
     case c
-    of 'a'..'z':
+    of 'a'..'z', '0'..'9':
       result.add c
     of {os.DirSep, os.AltSep}:
       result.add 'Z' # because it looks a bit like '/'
     of '.':
       result.add 'O' # a circle
     else:
-      # We mangle upper letters and digits too so that there cannot
+      # We mangle upper letters too so that there cannot
       # be clashes with our special meanings of 'Z' and 'O'
       result.addInt ord(c)
 
