@@ -1484,15 +1484,13 @@ proc getFileHeader(conf: ConfigRef; cfile: Cfile): Rope =
 
 proc getSomeNameForModule(conf: ConfigRef, filename: AbsoluteFile): Rope =
   ## Returns a mangled module name.
-  result = ""
-  result.add mangleModuleName(conf, filename).mangle
+  result = mangleModuleName(conf, filename).mangle
 
 proc getSomeNameForModule(m: BModule): Rope =
   ## Returns a mangled module name.
   assert m.module.kind == skModule
   assert m.module.owner.kind == skPackage
-  result = ""
-  result.add mangleModuleName(m.g.config, m.filename).mangle
+  result = mangleModuleName(m.g.config, m.filename).mangle
 
 proc getSomeInitName(m: BModule, suffix: string): Rope =
   if not m.hcrOn:
