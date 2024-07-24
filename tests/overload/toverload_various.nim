@@ -559,16 +559,10 @@ block: # PR #23870
 
   assert p(C()) == 0
 
-block: # PR #23870
-  type
-    A = object of RootObj
-    B = object of A
-    C = object of B
-
-  proc p(a: RootObj | B): int =
+  proc d(a: RootObj | B): int =
     0
 
-  proc p(a: A | A): int =
+  proc d(a: A | A): int =
     1
 
-  assert p(C()) == 0
+  assert d(C()) == 0
