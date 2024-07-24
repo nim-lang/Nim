@@ -96,6 +96,7 @@ type
 
 const
   isNilConversion = isConvertible # maybe 'isIntConv' fits better?
+  maxInheritancePenalty = high(int) div 2
 
 proc markUsed*(c: PContext; info: TLineInfo, s: PSym; checkStyle = true)
 proc markOwnerModuleAsUsed*(c: PContext; s: PSym)
@@ -292,9 +293,9 @@ proc cmpInheritancePenalty(a, b: int): int =
   var eb = b
   var ea = a
   if b < 0:
-    eb = 100  # defacto max penalty
+    eb = maxInheritancePenalty  # defacto max penalty
   if a < 0:
-    ea = 100
+    ea = maxInheritancePenalty
   eb - ea
 
 proc cmpCandidates*(a, b: TCandidate, isFormal=true): int =
@@ -1685,19 +1686,21 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     considerPreviousT:
       result = isNone
       let oldInheritancePenalty = c.inheritancePenalty
-      var maxInheritance = 0
+      var minInheritance = maxInheritancePenalty
       for branch in f.kids:
         c.inheritancePenalty = -1
         let x = typeRel(c, branch, aOrig, flags)
-        maxInheritance = max(maxInheritance, c.inheritancePenalty)
-        # 'or' implies maximum matching result:
-        if x > result: result = x
+        if x >= result:
+          if  c.inheritancePenalty > -1:
+            minInheritance = min(minInheritance, c.inheritancePenalty)
+          result = x
       if result >= isIntConv:
+        if minInheritance < maxInheritancePenalty:
+          c.inheritancePenalty = oldInheritancePenalty + minInheritance
         if result > isGeneric: result = isGeneric
         bindingRet result
       else:
         result = isNone
-      c.inheritancePenalty = oldInheritancePenalty + maxInheritance
   of tyNot:
     considerPreviousT:
       if typeRel(c, f.elementType, aOrig, flags) != isNone:

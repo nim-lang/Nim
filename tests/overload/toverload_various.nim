@@ -545,3 +545,30 @@ block: # PR #23870
 
   encap()
 
+block: # PR #23870
+  type
+    A = object of RootObj
+    B = object of A
+    C = object of B
+
+  proc p(a: B | RootObj): int =
+    0
+
+  proc p(a: A | A): int =
+    1
+
+  assert p(C()) == 0
+
+block: # PR #23870
+  type
+    A = object of RootObj
+    B = object of A
+    C = object of B
+
+  proc p(a: RootObj | B): int =
+    0
+
+  proc p(a: A | A): int =
+    1
+
+  assert p(C()) == 0
