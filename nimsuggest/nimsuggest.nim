@@ -231,6 +231,14 @@ proc clearInstCache(graph: ModuleGraph, projectFileIdx: FileIndex) =
   for id in procIdsToDelete:
     graph.procInstCache.del id
 
+  for tbl in mitems(graph.attachedOps):
+    var attachedOpsToDelete = newSeq[ItemId]()
+    for id in tbl.keys:
+      if id.module == projectFileIdx.int and sfOverridden in resolveAttachedOp(graph, tbl[id]).flags:
+        attachedOpsToDelete.add id
+    for id in attachedOpsToDelete:
+      tbl.del id
+
 proc executeNoHooks(cmd: IdeCmd, file, dirtyfile: AbsoluteFile, line, col: int, tag: string,
              graph: ModuleGraph) =
   let conf = graph.config
@@ -765,6 +773,10 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
 
   var graph = newModuleGraph(cache, conf)
   if self.loadConfigsAndProcessCmdLine(cache, conf, graph):
+
+    if conf.selectedGC == gcUnselected and
+          conf.backend != backendJs:
+      initOrcDefines(conf)
     mainCommand(graph)
 
 # v3 start

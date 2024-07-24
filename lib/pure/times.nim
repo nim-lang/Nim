@@ -131,9 +131,10 @@
   ===========  =================================================================================  ==============================================
 
   Other strings can be inserted by putting them in `''`. For example
-  `hh'->'mm` will give `01->56`.  The following characters can be
-  inserted without quoting them: `:` `-` `(` `)` `/` `[` `]`
-  `,`. A literal `'` can be specified with `''`.
+  `hh'->'mm` will give `01->56`.  In addition to spaces,
+  the following characters can be inserted without quoting them:
+  `:` `-` `,` `.` `(` `)` `/` `[` `]`.
+  A literal `'` can be specified with `''`.
 
   However you don't need to necessarily separate format patterns, as an
   unambiguous format string like `yyyyMMddhhmmss` is also valid (although
