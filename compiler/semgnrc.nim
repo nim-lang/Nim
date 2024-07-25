@@ -229,6 +229,7 @@ proc semGenericStmt(c: PContext, n: PNode,
 
   case n.kind
   of nkIdent, nkAccQuoted:
+    # templates have not eval yet so symbols may be missing
     result = lookup(c, n, flags, ctx, mustExist=false)
     if result != nil and result.kind == nkSym:
       assert result.sym != nil
