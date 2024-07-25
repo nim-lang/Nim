@@ -2,7 +2,7 @@ var
   nimThreadDestructionHandlers* {.rtlThreadVar.}: seq[proc () {.closure, gcsafe, raises: [].}]
 when not defined(boehmgc) and not hasSharedHeap and not defined(gogc) and not defined(gcRegions):
   proc deallocOsPages() {.rtl, raises: [].}
-when not defined(useMalloc):
+when defined(gcDestructors):
   proc abandonAllocator() {.rtl, raises: [].}
 proc threadTrouble() {.raises: [], gcsafe.}
 # create for the main thread. Note: do not insert this data into the list
@@ -95,7 +95,7 @@ proc threadProcWrapStackFrame[TArg](thrd: ptr Thread[TArg]) {.raises: [].} =
     when declared(deallocOsPages): deallocOsPages()
   else:
     threadProcWrapDispatch(thrd)
-    when not defined(useMalloc):
+    when defined(gcDestructors):
       abandonAllocator()
 
 template nimThreadProcWrapperBody*(closure: untyped): untyped =
