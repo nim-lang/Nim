@@ -518,6 +518,8 @@ type
     nfHasComment # node has a comment
     nfSkipFieldChecking # node skips field visable checking
     nfOpenSym # node is a captured sym but can be overriden by local symbols
+              # ideally a unary node containing nkSym/nkOpenSymChoice or an
+              # extension over nkOpenSymChoice
 
   TNodeFlags* = set[TNodeFlag]
   TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 47)
