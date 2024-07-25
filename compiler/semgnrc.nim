@@ -229,8 +229,8 @@ proc semGenericStmt(c: PContext, n: PNode,
 
   case n.kind
   of nkIdent, nkAccQuoted:
-    # templates have not eval yet so symbols may be missing
-    result = lookup(c, n, flags, ctx, mustExist=false)
+    # If this generic is in a template it's too early to bind for sure
+    result = lookup(c, n, flags, ctx, mustExist=c.config.evalTemplateCounter <= 0)
     if result != nil and result.kind == nkSym:
       assert result.sym != nil
       markUsed(c, n.info, result.sym)
