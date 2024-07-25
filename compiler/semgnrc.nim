@@ -59,6 +59,9 @@ template isMixedIn(sym): bool =
 template canOpenSym(s): bool =
   {withinMixin, withinConcept} * flags == {withinMixin} and s.id notin ctx.toBind
 
+proc newOpenSym*(n: PNode): PNode {.inline.} =
+  result = newTreeI(nkOpenSym, n.info, n)
+
 proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
                           ctx: var GenericCtx; flags: TSemGenericFlags,
                           fromDotExpr=false): PNode =
@@ -73,8 +76,7 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
     else:
       result = symChoice(c, n, s, scOpen)
       if canOpenSym(s):
-        result.flags.incl nfOpenSym
-        result.typ = nil
+        result = newOpenSym(result)
   case s.kind
   of skUnknown:
     # Introduced in this pass! Leave it as an identifier.
@@ -103,8 +105,7 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
     else:
       result = newSymNodeTypeDesc(s, c.idgen, n.info)
       if canOpenSym(result.sym):
-        result.flags.incl nfOpenSym
-        result.typ = nil
+        result = newOpenSym(result)
     onUse(n.info, s)
   of skParam:
     result = n
@@ -114,16 +115,14 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
        (s.typ.flags * {tfGenericTypeParam, tfImplicitTypeParam} == {}):
       result = newSymNodeTypeDesc(s, c.idgen, n.info)
       if canOpenSym(result.sym):
-        result.flags.incl nfOpenSym
-        result.typ = nil
+        result = newOpenSym(result)
     else:
       result = n
     onUse(n.info, s)
   else:
     result = newSymNode(s, n.info)
     if canOpenSym(result.sym):
-      result.flags.incl nfOpenSym
-      result.typ = nil
+        result = newOpenSym(result)
     onUse(n.info, s)
 
 proc lookup(c: PContext, n: PNode, flags: TSemGenericFlags,
