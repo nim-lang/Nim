@@ -1874,12 +1874,9 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
           # faulty instantiations in calls in generic bodies
           # but not for generic invocations as they only check constraints
           result = isNone
-        elif f.base.kind notin {tyNone, tyGenericParam}:
-          result = typeRel(c, f.base, a, flags)
-          if result != isNone and f.n != nil:
-            if not exprStructuralEquivalent(f.n, aOrig.n):
-              result = isNone
-        elif f.base.kind == tyGenericParam:
+        elif f.base.kind == tyNone:
+          result = isGeneric
+        elif f.base.containsGenericType:
           # Handling things like `type A[T; Y: static T] = object`
           if f.base.len > 0: # There is a constraint, handle it
             result = typeRel(c, f.base.last, a, flags)
@@ -1891,7 +1888,10 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
               # for things like `proc fun[T](a: static[T])`
               result = typeRel(c, f.base, a, flags)
         else:
-          result = isGeneric
+          result = typeRel(c, f.base, a, flags)
+          if result != isNone and f.n != nil:
+            if not exprStructuralEquivalent(f.n, aOrig.n):
+              result = isNone
         if result != isNone: put(c, f, aOrig)
       elif aOrig.n != nil and aOrig.n.typ != nil:
         result = if f.base.kind != tyNone:
