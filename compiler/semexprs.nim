@@ -2190,6 +2190,8 @@ proc lookUpForDeclared(c: PContext, n: PNode, onlyCurrentScope: bool): PSym =
     result = n.sym
   of nkOpenSymChoice, nkClosedSymChoice:
     result = n[0].sym
+  of nkOpenSym:
+    result = lookUpForDeclared(c, n[0], onlyCurrentScope)
   else:
     localError(c.config, n.info, "identifier expected, but got: " & renderTree(n))
     result = nil
