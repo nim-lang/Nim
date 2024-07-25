@@ -95,7 +95,8 @@ proc threadProcWrapStackFrame[TArg](thrd: ptr Thread[TArg]) {.raises: [].} =
     when declared(deallocOsPages): deallocOsPages()
   else:
     threadProcWrapDispatch(thrd)
-    abandonAllocator()
+    when not defined(useMalloc):
+      abandonAllocator()
 
 template nimThreadProcWrapperBody*(closure: untyped): untyped =
   var thrd = cast[ptr Thread[TArg]](closure)
