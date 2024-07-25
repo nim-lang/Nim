@@ -127,7 +127,7 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
     onUse(n.info, s)
 
 proc lookup(c: PContext, n: PNode, flags: TSemGenericFlags,
-            ctx: var GenericCtx): PNode =
+            ctx: var GenericCtx, mustExist=true): PNode =
   result = n
   let ident = considerQuotedIdent(c, n)
   var amb = false
@@ -137,8 +137,9 @@ proc lookup(c: PContext, n: PNode, flags: TSemGenericFlags,
     #if s != nil and contains(c.ambiguousSymbols, s.id):
     #  s = nil
   if s == nil:
-    if ident.id notin ctx.toMixin and withinMixin notin flags:
-      errorUndeclaredIdentifier(c, n.info, ident.s)
+    if mustExist:
+      if ident.id notin ctx.toMixin and withinMixin notin flags:
+        errorUndeclaredIdentifier(c, n.info, ident.s)
   else:
     if withinBind in flags or s.id in ctx.toBind:
       result = symChoice(c, n, s, scClosed)
@@ -228,7 +229,7 @@ proc semGenericStmt(c: PContext, n: PNode,
 
   case n.kind
   of nkIdent, nkAccQuoted:
-    result = lookup(c, n, flags, ctx)
+    result = lookup(c, n, flags, ctx, mustExist=false)
     if result != nil and result.kind == nkSym:
       assert result.sym != nil
       markUsed(c, n.info, result.sym)
