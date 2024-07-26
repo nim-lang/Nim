@@ -225,7 +225,7 @@ when defined(js):
       return (num & ~(1 << bitPos)) | (bitVal << bitPos);
     }
     `b`[1] = updateBit(`b`[1], 31, `sgn`);
-    `result` = `a`[0]
+    `result` = `a`[0];
     """.}
 
 proc signbit*(x: SomeFloat): bool {.inline, since: (1, 5, 1).} =
