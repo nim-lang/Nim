@@ -53,6 +53,7 @@ when defined(nimPreviewSlimSystem):
 type HeapQueue*[T] = object
   ## A heap queue, commonly known as a priority queue.
   data: seq[T]
+  cmp: proc (x, y: T): bool {.closure.}
 
 proc initHeapQueue*[T](): HeapQueue[T] =
   ## Creates a new empty heap.
@@ -63,6 +64,13 @@ proc initHeapQueue*[T](): HeapQueue[T] =
   ## **See also:**
   ## * `toHeapQueue proc <#toHeapQueue,openArray[T]>`_
   result = default(HeapQueue[T])
+
+proc initHeapQueue*[T](cmp: proc (x, y: T): bool {.closure.}): HeapQueue[T] =
+  ## Creates a new empty heap with a custom comparison function.
+  result = HeapQueue[T](
+    data: newSeq[T](),
+    cmp: cmp
+  )
 
 proc len*[T](heap: HeapQueue[T]): int {.inline.} =
   ## Returns the number of elements of `heap`.
@@ -83,7 +91,9 @@ iterator items*[T](heap: HeapQueue[T]): lent T {.inline, since: (2, 1, 1).} =
     yield heap.data[i]
     assert(len(heap) == L, "the length of the HeapQueue changed while iterating over it")
 
-proc heapCmp[T](x, y: T): bool {.inline.} = x < y
+proc heapCmp[T](heap: HeapQueue[T]; x, y: T): bool {.inline.} =
+  if heap.cmp == nil: x < y
+  else: heap.cmp(x, y)
 
 proc siftup[T](heap: var HeapQueue[T], startpos, p: int) =
   ## `heap` is a heap at all indices >= `startpos`, except possibly for `p`. `p`
@@ -96,7 +106,7 @@ proc siftup[T](heap: var HeapQueue[T], startpos, p: int) =
   while pos > startpos:
     let parentpos = (pos - 1) shr 1
     let parent = heap[parentpos]
-    if heapCmp(newitem, parent):
+    if heap.heapCmp(newitem, parent):
       heap.data[pos] = parent
       pos = parentpos
     else:
@@ -114,7 +124,7 @@ proc siftdownToBottom[T](heap: var HeapQueue[T], p: int) =
   while childpos < endpos:
     # Set childpos to index of smaller child.
     let rightpos = childpos + 1
-    if rightpos < endpos and not heapCmp(heap[childpos], heap[rightpos]):
+    if rightpos < endpos and not heap.heapCmp(heap[childpos], heap[rightpos]):
       childpos = rightpos
     # Move the smaller child up.
     heap.data[pos] = heap[childpos]
@@ -132,9 +142,9 @@ proc siftdown[T](heap: var HeapQueue[T], p: int) =
   var childpos = 2 * pos + 1
   while childpos < endpos:
     let rightpos = childpos + 1
-    if rightpos < endpos and not heapCmp(heap[childpos], heap[rightpos]):
+    if rightpos < endpos and not heap.heapCmp(heap[childpos], heap[rightpos]):
       childpos = rightpos
-    if not heapCmp(heap[childpos], newitem):
+    if not heap.heapCmp(heap[childpos], newitem):
       break
     heap.data[pos] = heap[childpos]
     pos = childpos
@@ -158,6 +168,13 @@ proc toHeapQueue*[T](x: openArray[T]): HeapQueue[T] {.since: (1, 3).} =
 
   # see https://en.wikipedia.org/wiki/Binary_heap#Building_a_heap
   result.data = @x
+  for i in countdown(x.len div 2 - 1, 0):
+    siftdown(result, i)
+
+proc toHeapQueue*[T](x: openArray[T], cmp: proc (x, y: T): bool {.closure.}): HeapQueue[T] =
+  ## Creates a new HeapQueue that contains the elements of `x` with a custom comparison function.
+  result.data = @x
+  result.cmp = cmp
   for i in countdown(x.len div 2 - 1, 0):
     siftdown(result, i)
 
@@ -240,7 +257,7 @@ proc pushpop*[T](heap: var HeapQueue[T], item: sink T): T =
     assert heap.pushpop(4) == 4
 
   result = item
-  if heap.len > 0 and heapCmp(heap.data[0], result):
+  if heap.len > 0 and heap.heapCmp(heap.data[0], result):
     swap(result, heap.data[0])
     siftdown(heap, 0)
 
