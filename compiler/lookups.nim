@@ -803,6 +803,8 @@ proc symChoiceExtension(o: var TOverloadIter; c: PContext; n: PNode): PSym =
     inc o.importIdx
 
 proc nextOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
+  var n = n
+  if n.kind == nkOpenSym: n = n[0]
   case o.mode
   of oimDone:
     result = nil
