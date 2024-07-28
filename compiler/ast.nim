@@ -325,6 +325,9 @@ type
     nfFirstWrite # this node is a first write
     nfHasComment # node has a comment
     nfSkipFieldChecking # node skips field visable checking
+    nfDisabledOpenSym # temporary: node should be nkOpenSym but cannot
+                      # because genericsOpenSym experimental switch is disabled
+                      # gives warning instead
 
   TNodeFlags* = set[TNodeFlag]
   TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 47)
@@ -878,7 +881,8 @@ const
                                       nfIsRef, nfIsPtr, nfPreventCg, nfLL,
                                       nfFromTemplate, nfDefaultRefsParam,
                                       nfExecuteOnReload, nfLastRead,
-                                      nfFirstWrite, nfSkipFieldChecking}
+                                      nfFirstWrite, nfSkipFieldChecking,
+                                      nfDisabledOpenSym}
   namePos* = 0
   patternPos* = 1    # empty except for term rewriting macros
   genericParamsPos* = 2

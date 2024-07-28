@@ -182,26 +182,8 @@ proc semOpenSym(c: PContext, n: PNode, flags: TExprFlags, expectedType: PType): 
     var o = s2.owner
     while o != nil:
       if o == c.p.owner:
-        if genericsOpenSym in c.features:
-          result = semExpr(c, id, flags, expectedType)
-          return
-        else:
-          var msg =
-            "a new symbol '" & ident.s & "' has been injected during " &
-            "instantiation of " & c.p.owner.name.s & ", however "
-          if isSym:
-            msg.add(
-              getSymRepr(c.config, n.sym) & " captured at " &
-              "the proc declaration will be used instead; " &
-              "either enable --experimental:genericsOpenSym to use the " &
-              "injected symbol or `bind` this captured symbol explicitly")
-          else:
-            msg.add(
-              "overloads of " & ident.s & " will be used instead; " &
-              "either enable --experimental:genericsOpenSym to use the " &
-              "injected symbol or `bind` this symbol explicitly")
-          message(c.config, n.info, warnGenericsIgnoredInjection, msg)
-          break
+        result = semExpr(c, id, flags, expectedType)
+        return
       o = o.owner
   # nothing found
   result = semExpr(c, n, flags, expectedType)
@@ -3195,9 +3177,25 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
     if isSymChoice(result):
       result = semSymChoice(c, result, flags, expectedType)
   of nkClosedSymChoice, nkOpenSymChoice:
+    if nfDisabledOpenSym in n.flags:
+      let ident = n[0].sym.name
+      message(c.config, n.info, warnGenericsIgnoredInjection,
+        "a new symbol '" & ident.s & "' has been injected during " &
+        "instantiation of " & c.p.owner.name.s & ", however " &
+        "overloads of " & ident.s & " will be used instead; " &
+        "either enable --experimental:genericsOpenSym to use the " &
+        "injected symbol or `bind` this symbol explicitly")
     result = semSymChoice(c, n, flags, expectedType)
   of nkSym:
     let s = n.sym
+    if nfDisabledOpenSym in n.flags:
+      message(c.config, n.info, warnGenericsIgnoredInjection,
+        "a new symbol '" & s.name.s & "' has been injected during " &
+        "instantiation of " & c.p.owner.name.s & ", however " &
+        getSymRepr(c.config, s) & " captured at " &
+        "the proc declaration will be used instead; " &
+        "either enable --experimental:genericsOpenSym to use the " &
+        "injected symbol or `bind` this captured symbol explicitly")
     # because of the changed symbol binding, this does not mean that we
     # don't have to check the symbol for semantics here again!
     result = semSym(c, n, s, flags)
