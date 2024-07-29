@@ -704,6 +704,8 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
 
 proc initOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
   if n.kind == nkOpenSym:
+    # maybe the logic in semexprs should be mirrored here instead
+    # for now it only seems this is called for `pickSym` in `getTypeIdent` 
     return initOverloadIter(o, c, n[0])
   o.importIdx = -1
   o.marked = initIntSet()
@@ -803,8 +805,6 @@ proc symChoiceExtension(o: var TOverloadIter; c: PContext; n: PNode): PSym =
     inc o.importIdx
 
 proc nextOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
-  var n = n
-  if n.kind == nkOpenSym: n = n[0]
   case o.mode
   of oimDone:
     result = nil
