@@ -639,6 +639,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
           regs[ra].intVal = cast[int](regs[rb].node.intVal)
         of rkNodeAddr:
           regs[ra].intVal = cast[int](regs[rb].nodeAddr)
+        of rkRegisterAddr:
+          regs[ra].intVal = cast[int](regs[rb].regAddr)
         of rkInt:
           regs[ra].intVal = regs[rb].intVal
         else:
