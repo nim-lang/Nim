@@ -2159,32 +2159,38 @@ proc genSomeCast(p: BProc, e: PNode, d: var TLoc) =
       putIntoDest(p, d, e, "(($1) ($2))" %
           [getTypeDesc(p.module, e.typ), rdCharLoc(a)], a.storage)
 
+proc genUnionCast(p: BProc, e: PNode, d: var TLoc) =
+  # 'cast' and some float type involved? --> use a union.
+  let
+    destt = skipTypes(e.typ, abstractRange)
+    srct = skipTypes(e[1].typ, abstractRange)
+  inc(p.labels)
+  var lbl = p.labels.rope
+  var tmp: TLoc = default(TLoc)
+  tmp.snippet = "LOC$1.source" % [lbl]
+  let destsize = getSize(p.config, destt)
+  let srcsize = getSize(p.config, srct)
+
+  if destsize > srcsize:
+    linefmt(p, cpsLocals, "union { $1 dest; $2 source; } LOC$3;$n #nimZeroMem(&LOC$3, sizeof(LOC$3));$n",
+      [getTypeDesc(p.module, e.typ), getTypeDesc(p.module, e[1].typ), lbl])
+  else:
+    linefmt(p, cpsLocals, "union { $1 source; $2 dest; } LOC$3;$n",
+      [getTypeDesc(p.module, e[1].typ), getTypeDesc(p.module, e.typ), lbl])
+  tmp.k = locExpr
+  tmp.lode = lodeTyp srct
+  tmp.storage = OnStack
+  tmp.flags = {}
+  expr(p, e[1], tmp)
+  putIntoDest(p, d, e, "LOC$#.dest" % [lbl], tmp.storage)
+
 proc genCast(p: BProc, e: PNode, d: var TLoc) =
   const ValueTypes = {tyFloat..tyFloat128, tyTuple, tyObject, tyArray}
   let
     destt = skipTypes(e.typ, abstractRange)
     srct = skipTypes(e[1].typ, abstractRange)
   if destt.kind in ValueTypes or srct.kind in ValueTypes:
-    # 'cast' and some float type involved? --> use a union.
-    inc(p.labels)
-    var lbl = p.labels.rope
-    var tmp: TLoc = default(TLoc)
-    tmp.snippet = "LOC$1.source" % [lbl]
-    let destsize = getSize(p.config, destt)
-    let srcsize = getSize(p.config, srct)
-
-    if destsize > srcsize:
-      linefmt(p, cpsLocals, "union { $1 dest; $2 source; } LOC$3;$n #nimZeroMem(&LOC$3, sizeof(LOC$3));$n",
-        [getTypeDesc(p.module, e.typ), getTypeDesc(p.module, e[1].typ), lbl])
-    else:
-      linefmt(p, cpsLocals, "union { $1 source; $2 dest; } LOC$3;$n",
-        [getTypeDesc(p.module, e[1].typ), getTypeDesc(p.module, e.typ), lbl])
-    tmp.k = locExpr
-    tmp.lode = lodeTyp srct
-    tmp.storage = OnStack
-    tmp.flags = {}
-    expr(p, e[1], tmp)
-    putIntoDest(p, d, e, "LOC$#.dest" % [lbl], tmp.storage)
+    genUnionCast(p, e, d)
   else:
     # I prefer the shorter cast version for pointer types -> generate less
     # C code; plus it's the right thing to do for closures:
@@ -2238,9 +2244,14 @@ proc genRangeChck(p: BProc, n: PNode, d: var TLoc) =
       [getTypeDesc(p.module, dest), rdCharLoc(a)], a.storage)
 
 proc genConv(p: BProc, e: PNode, d: var TLoc) =
+  const FloatTypes = {tyFloat..tyFloat128}
   let destType = e.typ.skipTypes({tyVar, tyLent, tyGenericInst, tyAlias, tySink})
   if sameBackendType(destType, e[1].typ):
     expr(p, e[1], d)
+  elif destType.kind in FloatTypes or
+      skipTypes(e[1].typ, abstractRange).kind in FloatTypes:
+    # 'conv' and some float type involved? --> use a union.
+    genUnionCast(p, e, d)
   else:
     genSomeCast(p, e, d)
 
