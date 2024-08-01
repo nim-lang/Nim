@@ -31,13 +31,19 @@ when defined(macosx) or defined(bsd):
   # we HAVE to emit param.h before sysctl.h so we cannot use .header here
   # either. The amount of archaic bullshit in Poonix based OSes is just insane.
   {.emit: "#include <sys/sysctl.h>".}
-  const
-    CTL_HW = 6
-    HW_AVAILCPU = 25
-    HW_NCPU = 3
-  proc sysctl(x: ptr array[0..3, cint], y: cint, z: pointer,
-              a: var csize_t, b: pointer, c: csize_t): cint {.
-              importc: "sysctl", nodecl.}
+  {.push nodecl.}
+  let
+    CTL_HW{.importc.}: cint
+    HW_NCPU{.importc.}: cint
+  const HAS_HW_AVAILCPU = defined(macosx)
+  # XXX: HW_AVAILCPU isn't officially documented
+  # ref https://github.com/python/cpython/issues/61646#issuecomment-1093610788
+  when HAS_HW_AVAILCPU:
+    let HW_AVAILCPU{.importc.}: cint
+  proc sysctl[I: static[int]](name: var array[I, cint], namelen: cuint,
+      oldp: pointer, oldlenp: var csize_t,
+      newp: pointer, newlen: csize_t): cint {.importc.}
+  {.pop.}
 
 when defined(genode):
   import genode/env
@@ -62,17 +68,17 @@ proc countProcessors*(): int {.rtl, extern: "ncpi$1".} =
     getSystemInfo(addr si)
     result = int(si.dwNumberOfProcessors)
   elif defined(macosx) or defined(bsd):
-    var
-      mib: array[0..3, cint]
-      numCPU: int
+    let dest = addr result
+    var len = sizeof(result).csize_t
+    var mib: array[2, cint]
     mib[0] = CTL_HW
-    mib[1] = HW_AVAILCPU
-    var len = sizeof(numCPU).csize_t
-    discard sysctl(addr(mib), 2, addr(numCPU), len, nil, 0)
-    if numCPU < 1:
-      mib[1] = HW_NCPU
-      discard sysctl(addr(mib), 2, addr(numCPU), len, nil, 0)
-    result = numCPU
+    when HAS_HW_AVAILCPU:
+      mib[1] = HW_AVAILCPU
+      if sysctl(mib, 2, dest, len, nil, 0) == 0 and result > 0:
+        return
+    mib[1] = HW_NCPU
+    if sysctl(mib, 2, dest, len, nil, 0) == 0:
+      return
   elif defined(hpux):
     result = mpctl(MPC_GETNUMSPUS, nil, nil)
   elif defined(irix):
@@ -86,4 +92,4 @@ proc countProcessors*(): int {.rtl, extern: "ncpi$1".} =
       result = sysinfo.cpuCount.int
   else:
     result = sysconf(SC_NPROCESSORS_ONLN)
-  if result <= 0: result = 0
+  if result < 0: result = 0
