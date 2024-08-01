@@ -895,7 +895,7 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
         c.inSpawn.dec
 
       # bug #23907; skips tyGenericInst for generic callbacks
-      let parameters = n[0].typ.skipTypes(abstractInst)
+      let parameters = if n[0].typ != nil: n[0].typ.skipTypes(abstractInst) else: n[0].typ
       let L = if parameters != nil: parameters.signatureLen else: 0
 
       when false:
