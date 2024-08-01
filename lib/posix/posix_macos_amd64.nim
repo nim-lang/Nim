@@ -284,15 +284,11 @@ type
 const saHandleSigactionUnion = defined(macosx) or defined(openbsd)
 type
   Sigaction* {.importc: "struct sigaction",
-                header: "<signal.h>", final, pure.} = object ##[ struct sigaction,
-      whose first field is an union, either `sa_handler` or `sa_sigaction`
-
-    - When as `sa_handler`: Pointer to a signal-catching function \
-      or one of the macros SIG_IGN or SIG_DFL
-    - When as `sa_sigaction`, see `sa_sigaction`_ and `sa_sigaction=`_ ]##
+                header: "<signal.h>", final, pure.} = object
     when saHandleSigactionUnion:
-      sa_handler*: proc (x: cint) {.noconv.}
-    elif defined(freebsd):
+      sa_handler*: proc (x: cint) {.noconv.}  ##[ an union. See also
+          `sa_sigaction`_ and `sa_sigaction=`_ ]##
+    elif defined(freebsd) or defined(dragonfly):
       sa_handler*: proc (x: cint) {.noconv.}
       sa_sigaction*: proc (x: cint, y: ptr SigInfo, z: pointer) {.noconv.}
     elif defined(netbsd):
