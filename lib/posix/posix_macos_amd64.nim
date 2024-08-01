@@ -281,6 +281,19 @@ type
     sival_ptr*: pointer ## pointer signal value;
                         ## integer signal value not defined!
 
+  SigInfo* {.importc: "siginfo_t",
+              header: "<signal.h>", final, pure.} = object ## siginfo_t
+    si_signo*: cint    ## Signal number.
+    si_code*: cint     ## Signal code.
+    si_errno*: cint    ## If non-zero, an errno value associated with
+                       ## this signal, as defined in <errno.h>.
+    si_pid*: Pid       ## Sending process ID.
+    si_uid*: Uid       ## Real user ID of sending process.
+    si_addr*: pointer  ## Address of faulting instruction.
+    si_status*: cint   ## Exit value or signal.
+    si_band*: int      ## Band event for SIGPOLL.
+    si_value*: SigVal  ## Signal value.
+
 const saHandleSigactionUnion = defined(macosx) or defined(openbsd)
 type
   Sigaction* {.importc: "struct sigaction",
@@ -298,7 +311,7 @@ type
     sa_flags*: cint   ## Special flags.
     sa_mask*: Sigset ## Set of signals to be blocked during execution of
                       ## the signal handling function.
-    # does not contains `sa_restorer` field.
+
 when saHandleSigactionUnion:
   template sa_sigaction*(v: Sigaction): proc (x: cint, y: ptr SigInfo, z: pointer) {.noconv.} =
     cast[proc (x: cint, y: ptr SigInfo, z: pointer) {.noconv.}](v.sa_handler)
@@ -316,19 +329,6 @@ type
                header: "<signal.h>", final, pure.} = object ## struct sigstack
     ss_onstack*: cint ## Non-zero when signal stack is in use.
     ss_sp*: pointer   ## Signal stack pointer.
-
-  SigInfo* {.importc: "siginfo_t",
-              header: "<signal.h>", final, pure.} = object ## siginfo_t
-    si_signo*: cint    ## Signal number.
-    si_code*: cint     ## Signal code.
-    si_errno*: cint    ## If non-zero, an errno value associated with
-                       ## this signal, as defined in <errno.h>.
-    si_pid*: Pid       ## Sending process ID.
-    si_uid*: Uid       ## Real user ID of sending process.
-    si_addr*: pointer  ## Address of faulting instruction.
-    si_status*: cint   ## Exit value or signal.
-    si_band*: int      ## Band event for SIGPOLL.
-    si_value*: SigVal  ## Signal value.
 
 type
   Nl_item* {.importc: "nl_item", header: "<nl_types.h>".} = cint
