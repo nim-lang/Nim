@@ -32,17 +32,16 @@ when defined(macosx) or defined(bsd):
   # either. The amount of archaic bullshit in Poonix based OSes is just insane.
   {.emit: "#include <sys/sysctl.h>".}
   {.push nodecl.}
+  when defined(macosx):
+    proc sysctlbyname(name: cstring,
+      oldp: pointer, oldlenp: var csize_t,
+      newp: pointer, newlen: csize_t): cint {.importc.}
   let
     CTL_HW{.importc.}: cint
     HW_NCPU{.importc.}: cint
-  const HAS_HW_AVAILCPU = defined(macosx)
-  # XXX: HW_AVAILCPU isn't officially documented
-  # ref https://github.com/python/cpython/issues/61646#issuecomment-1093610788
-  when HAS_HW_AVAILCPU:
-    let HW_AVAILCPU{.importc.}: cint
   proc sysctl[I: static[int]](name: var array[I, cint], namelen: cuint,
-      oldp: pointer, oldlenp: var csize_t,
-      newp: pointer, newlen: csize_t): cint {.importc.}
+    oldp: pointer, oldlenp: var csize_t,
+    newp: pointer, newlen: csize_t): cint {.importc.}
   {.pop.}
 
 when defined(genode):
@@ -70,13 +69,11 @@ proc countProcessors*(): int {.rtl, extern: "ncpi$1".} =
   elif defined(macosx) or defined(bsd):
     let dest = addr result
     var len = sizeof(result).csize_t
-    var mib: array[2, cint]
-    mib[0] = CTL_HW
-    when HAS_HW_AVAILCPU:
-      mib[1] = HW_AVAILCPU
-      if sysctl(mib, 2, dest, len, nil, 0) == 0 and result > 0:
+    when defined(macosx):
+      # alias of "hw.activecpu"
+      if sysctlbyname("hw.logicalcpu", dest, len, nil, 0) == 0:
         return
-    mib[1] = HW_NCPU
+    var mib = [CTL_HW, HW_NCPU]
     if sysctl(mib, 2, dest, len, nil, 0) == 0:
       return
   elif defined(hpux):
