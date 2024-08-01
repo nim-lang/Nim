@@ -766,3 +766,26 @@ block: # bug #23524
     doAssert t2.a == 100
 
   main()
+
+block: # bug #23907
+  type
+    Thingy = object
+      value: int
+
+    ExecProc[C] = proc(value: sink C): int {.nimcall.}
+
+  proc `=copy`(a: var Thingy, b: Thingy) {.error.}
+
+  var thingyDestroyCount = 0
+
+  proc `=destroy`(thingy: Thingy) =
+    assert(thingyDestroyCount <= 0)
+    thingyDestroyCount += 1
+
+  proc store(value: sink Thingy): int =
+    result = value.value
+
+  let callback: ExecProc[Thingy] = store
+
+  doAssert callback(Thingy(value: 123)) == 123
+
