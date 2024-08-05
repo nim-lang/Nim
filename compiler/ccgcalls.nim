@@ -315,12 +315,6 @@ proc genArgStringToCString(p: BProc, n: PNode; result: var Rope; needsTmp: bool)
   var a = initLocExpr(p, n[0])
   appcg(p.module, result, "#nimToCStringConv($1)", [withTmpIfNeeded(p, a, needsTmp).rdLoc])
 
-# proc filterArgType(t: PType): bool =
-#   case t.kind
-#   of tyEmpty, tyChar, tyBool, tyNil, tyPointer, tyString, tyCstring,
-#      tyInt..tyUInt64, tyTyped, tyUntyped, tyVoid:
-#     result = 
-
 proc genArg(p: BProc, n: PNode, param: PSym; call: PNode; result: var Rope; needsTmp = false) =
   var a: TLoc
   if n.kind == nkStringToCString:
