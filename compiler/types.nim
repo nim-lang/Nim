@@ -984,7 +984,7 @@ type
     AllowCommonBase
     PickyCAliases  # be picky about the distinction between 'cint' and 'int32'
     IgnoreFlags    # used for borrowed functions and methods; ignores the tfVarIsPtr flag
-    PickyBackendAliases # be picky different aliases
+    PickyBackendAliases # be picky about different aliases
 
   TTypeCmpFlags* = set[TTypeCmpFlag]
 
