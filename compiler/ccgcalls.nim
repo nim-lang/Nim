@@ -315,6 +315,12 @@ proc genArgStringToCString(p: BProc, n: PNode; result: var Rope; needsTmp: bool)
   var a = initLocExpr(p, n[0])
   appcg(p.module, result, "#nimToCStringConv($1)", [withTmpIfNeeded(p, a, needsTmp).rdLoc])
 
+# proc filterArgType(t: PType): bool =
+#   case t.kind
+#   of tyEmpty, tyChar, tyBool, tyNil, tyPointer, tyString, tyCstring,
+#      tyInt..tyUInt64, tyTyped, tyUntyped, tyVoid:
+#     result = 
+
 proc genArg(p: BProc, n: PNode, param: PSym; call: PNode; result: var Rope; needsTmp = false) =
   var a: TLoc
   if n.kind == nkStringToCString:
@@ -355,7 +361,7 @@ proc genArg(p: BProc, n: PNode, param: PSym; call: PNode; result: var Rope; need
     a = initLocExprSingleUse(p, n)
     if param.typ.kind in abstractPtrs:
       let typ = skipTypes(param.typ, abstractPtrs)
-      if typ.sym != nil and sfImportc in typ.sym.flags:
+      if not sameBackendTypePickyAliases(typ, n.typ.skipTypes(abstractPtrs)):
         a.snippet = "(($1) ($2))" %
           [getTypeDesc(p.module, param.typ), rdCharLoc(a)]
     addRdLoc(withTmpIfNeeded(p, a, needsTmp), result)
