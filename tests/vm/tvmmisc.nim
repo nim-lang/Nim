@@ -766,3 +766,12 @@ block: # issue #15730
 static: # more nil cstring issues
   let x = cstring(nil)
   doAssert x.len == 0
+
+block: # bug #23925
+  type Foo = enum A = -1
+  proc foo =
+    doAssert cast[Foo](-1) == A
+    doAssert ord(A) == -1
+
+  static: foo()
+  foo()
