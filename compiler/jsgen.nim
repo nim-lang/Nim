@@ -2632,7 +2632,13 @@ proc genRangeChck(p: PProc, n: PNode, r: var TCompRes, magic: string) =
   let src = skipTypes(n[0].typ, abstractVarRange)
   let dest = skipTypes(n.typ, abstractVarRange)
   if optRangeCheck notin p.options:
-    return
+    if optJsBigInt64 in p.config.globalOptions and
+          dest.kind in {tyUInt..tyUInt32, tyInt..tyInt32} and
+          src.kind in {tyInt64, tyUInt64}:
+      # conversions to Number are kept
+      r.res = "Number($1)" % [r.res]
+    else:
+      discard
   elif dest.kind in {tyUInt..tyUInt64} and checkUnsignedConversions notin p.config.legacyFeatures:
     if src.kind in {tyInt64, tyUInt64} and optJsBigInt64 in p.config.globalOptions:
       r.res = "BigInt.asUintN($1, $2)" % [$(dest.size * 8), r.res]
