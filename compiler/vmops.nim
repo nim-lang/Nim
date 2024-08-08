@@ -341,7 +341,7 @@ proc registerAdditionalOps*(c: PCtx) =
     ## reproducible builds and users need to understand that this runs at CT.
     ## Note that `staticExec` can already do equal amount of damage so it's more
     ## of a semantic issue than a security issue.
-    registerCallback c, "stdlib.os.getCurrentDir", proc (a: VmArgs) {.nimcall.} =
+    registerCallback c, "stdlib.paths.getCurrentDir", proc (a: VmArgs) {.nimcall.} =
       setResult(a, os.getCurrentDir())
     registerCallback c, "stdlib.osproc.execCmdEx", proc (a: VmArgs) {.nimcall.} =
       let options = getNode(a, 1).fromLit(set[osproc.ProcessOption])
