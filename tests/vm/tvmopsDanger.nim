@@ -8,3 +8,6 @@ import std/times
 const foo = getTime()
 let bar = foo
 doAssert bar > low(Time)
+
+static: # bug #23932
+  doAssert getCurrentDir().len > 0
