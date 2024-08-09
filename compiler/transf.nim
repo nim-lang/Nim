@@ -523,7 +523,8 @@ proc transformConv(c: PTransf, n: PNode): PNode =
   var dest = skipTypes(n.typ, abstractVarRange)
   var source = skipTypes(n[1].typ, abstractVarRange)
   case dest.kind
-  of tyInt..tyInt64, tyEnum, tyChar:
+  of tyInt..tyInt64, tyEnum, tyChar, tyUInt8..tyUInt32:
+    # we don't include uint and uint64 here as these are no ordinal types ;-)
     if not isOrdinalType(source):
       # float -> int conversions. ugh.
       result = transformSons(c, n)

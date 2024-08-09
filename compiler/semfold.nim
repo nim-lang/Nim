@@ -750,6 +750,8 @@ proc getConstExpr(m: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode 
     if leValueConv(n[1], a) and leValueConv(a, n[2]):
       result = a              # a <= x and x <= b
       result.typ = n.typ
+    elif n.typ.kind in {tyUInt..tyUInt64}:
+      discard "don't check uints"
     else:
       localError(g.config, n.info,
         "conversion from $1 to $2 is invalid" %
