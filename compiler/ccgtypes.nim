@@ -1114,7 +1114,7 @@ proc getTypeDescAux(m: BModule; origTyp: PType, check: var IntSet; kind: TypeDes
       # The resulting type will include commas and these won't play well
       # with the C macros for defining procs such as N_NIMCALL. We must
       # create a typedef for the type and use it in the proc signature:
-      let typedefName = "TY" & $sig
+      let typedefName = "TY$1_$2" % [$sig, m.encodeType(origTyp)]
       m.s[cfsTypes].addf("typedef $1 $2;$n", [result, typedefName])
       m.typeCache[sig] = typedefName
       result = typedefName
