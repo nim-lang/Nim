@@ -3,7 +3,7 @@ discard """
 """
 when defined(nimPreviewSlimSystem):
   import std/assertions
-import std/times
+import std/[times, os]
 
 const foo = getTime()
 let bar = foo
