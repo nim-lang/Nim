@@ -173,8 +173,10 @@ proc semOpenSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags, expectedType:
   # enough to replace the original
   # for `nkOpenSymChoice`, the first found symbol must be non-overloadable,
   # since otherwise we have to use regular `nkOpenSymChoice` functionality
+  # but of the overloadable sym kinds, semExpr does not handle skModule, skMacro, skTemplate
+  # as overloaded in the case where `nkIdent` finds them first
   if s2 != nil and not c.isAmbiguous and
-      ((s == nil and s2.kind notin OverloadableSyms) or
+      ((s == nil and s2.kind notin OverloadableSyms-{skModule, skMacro, skTemplate}) or
         (s != nil and s2 != s)):
     # only consider symbols defined under current proc:
     var o = s2.owner
