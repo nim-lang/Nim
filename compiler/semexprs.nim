@@ -3185,6 +3185,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
         "overloads of " & ident.s & " will be used instead; " &
         "either enable --experimental:genericsOpenSym to use the " &
         "injected symbol or `bind` this symbol explicitly")
+      n.typ = newTypeS(tyNone, c)
     result = semSymChoice(c, n, flags, expectedType)
   of nkSym:
     let s = n.sym

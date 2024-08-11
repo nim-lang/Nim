@@ -80,7 +80,7 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
           result = newOpenSym(result)
         else:
           result.flags.incl nfDisabledOpenSym
-          if result.kind == nkSym: result.typ = nil
+          result.typ = nil
   case s.kind
   of skUnknown:
     # Introduced in this pass! Leave it as an identifier.
