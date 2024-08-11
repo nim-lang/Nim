@@ -203,6 +203,9 @@ proc semOpenSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags, expectedType:
           message(c.config, n.info, warnGenericsIgnoredInjection, msg)
           break
       o = o.owner
+  if s == nil:
+    # set symchoice node type back to None
+    n.typ = newTypeS(tyNone, c)
 
 proc inlineConst(c: PContext, n: PNode, s: PSym): PNode {.inline.} =
   result = copyTree(s.astdef)
