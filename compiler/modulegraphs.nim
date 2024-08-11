@@ -11,7 +11,7 @@
 ## represents a complete Nim project. Single modules can either be kept in RAM
 ## or stored in a rod-file.
 
-import std/[intsets, tables, hashes, strtabs, algorithm]
+import std/[intsets, tables, hashes, strtabs, algorithm, os, strutils, parseutils]
 import ../dist/checksums/src/checksums/md5
 import ast, astalgo, options, lineinfos,idents, btrees, ropes, msgs, pathutils, packages, suggestsymdb
 import ic / [packed_ast, ic]
@@ -452,6 +452,49 @@ proc createMagic*(g: ModuleGraph; idgen: IdGenerator; name: string, m: TMagic): 
 proc createMagic(g: ModuleGraph; name: string, m: TMagic): PSym =
   result = createMagic(g, g.idgen, name, m)
 
+proc uniqueModuleName*(conf: ConfigRef; m: PSym): string =
+  ## The unique module name is guaranteed to only contain {'A'..'Z', 'a'..'z', '0'..'9', '_'}
+  ## so that it is useful as a C identifier snippet.
+  let fid = FileIndex(m.position)
+  let path = AbsoluteFile toFullPath(conf, fid)
+  var isLib = false
+  var rel = ""
+  if path.string.startsWith(conf.libpath.string):
+    isLib = true
+    rel = relativeTo(path, conf.libpath).string
+  else:
+    rel = relativeTo(path, conf.projectPath).string
+
+  if not isLib and not belongsToProjectPackage(conf, m):
+    # special handlings for nimble packages
+    when DirSep == '\\':
+      let rel2 = replace(rel, '\\', '/')
+    else:
+      let rel2 = rel
+    const pkgs2 = "pkgs2/"
+    var start = rel2.find(pkgs2)
+    if start >= 0:
+      start += pkgs2.len
+      start += skipUntil(rel2, {'/'}, start)
+      if start+1 < rel2.len:
+        rel = "pkg/" & rel2[start+1..<rel.len] # strips paths
+
+  let trunc = if rel.endsWith(".nim"): rel.len - len(".nim") else: rel.len
+  result = newStringOfCap(trunc)
+  for i in 0..<trunc:
+    let c = rel[i]
+    case c
+    of 'a'..'z', '0'..'9':
+      result.add c
+    of {os.DirSep, os.AltSep}:
+      result.add 'Z' # because it looks a bit like '/'
+    of '.':
+      result.add 'O' # a circle
+    else:
+      # We mangle upper letters too so that there cannot
+      # be clashes with our special meanings of 'Z' and 'O'
+      result.addInt ord(c)
+
 proc registerModule*(g: ModuleGraph; m: PSym) =
   assert m != nil
   assert m.kind == skModule
@@ -463,7 +506,7 @@ proc registerModule*(g: ModuleGraph; m: PSym) =
     setLen(g.packed.pm, m.position + 1)
 
   g.ifaces[m.position] = Iface(module: m, converters: @[], patterns: @[],
-                               uniqueName: rope(uniqueModuleName(g.config, FileIndex(m.position))))
+                               uniqueName: rope(uniqueModuleName(g.config, m)))
   initStrTables(g, m)
 
 proc registerModuleById*(g: ModuleGraph; m: FileIndex) =
@@ -676,8 +719,6 @@ proc moduleFromRodFile*(g: ModuleGraph; fileIdx: FileIndex;
 
 proc configComplete*(g: ModuleGraph) =
   rememberStartupConfig(g.startupPackedConfig, g.config)
-
-from std/strutils import repeat, `%`
 
 proc onProcessing*(graph: ModuleGraph, fileIdx: FileIndex, moduleStatus: string, fromModule: PSym, ) =
   let conf = graph.config
