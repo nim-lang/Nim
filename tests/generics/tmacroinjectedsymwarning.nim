@@ -46,6 +46,11 @@ proc f(): Result[int, cstring] =
 
 proc g(T: type): string =
   let x = f().valueOr:
+    {.push warningAsError[GenericsIgnoredInjection]: on.}
+    # test spurious error
+    discard true
+    let _ = f
+    {.pop.}
     return $error #[tt.Warning
             ^ a new symbol 'error' has been injected during instantiation of g, however 'error' [enumField declared in tmacroinjectedsymwarning.nim(6, 3)] captured at the proc declaration will be used instead; either enable --experimental:genericsOpenSym to use the injected symbol or `bind` this captured symbol explicitly [GenericsIgnoredInjection]]#
 

@@ -2176,6 +2176,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   of nkType: result = n.typ
   of nkStmtListType: result = semStmtListType(c, n, prev)
   of nkBlockType: result = semBlockType(c, n, prev)
+  of nkOpenSym: result = semTypeNode(c, n[0], prev)
   else:
     result = semTypeExpr(c, n, prev)
     when false:

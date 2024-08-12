@@ -227,6 +227,7 @@ type
     nkModuleRef           # for .rod file support: A (moduleId, itemId) pair
     nkReplayAction        # for .rod file support: A replay action
     nkNilRodNode          # for .rod file support: a 'nil' PNode
+    nkOpenSym             # container for captured sym that can be overriden by local symbols
 
   TNodeKinds* = set[TNodeKind]
 
@@ -517,9 +518,9 @@ type
     nfFirstWrite # this node is a first write
     nfHasComment # node has a comment
     nfSkipFieldChecking # node skips field visable checking
-    nfOpenSym # node is a captured sym but can be overriden by local symbols
-              # ideally a unary node containing nkSym/nkOpenSymChoice or an
-              # extension over nkOpenSymChoice
+    nfDisabledOpenSym # temporary: node should be nkOpenSym but cannot
+                      # because genericsOpenSym experimental switch is disabled
+                      # gives warning instead
 
   TNodeFlags* = set[TNodeFlag]
   TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 47)
@@ -1093,7 +1094,7 @@ const
                                       nfFromTemplate, nfDefaultRefsParam,
                                       nfExecuteOnReload, nfLastRead,
                                       nfFirstWrite, nfSkipFieldChecking,
-                                      nfOpenSym}
+                                      nfDisabledOpenSym}
   namePos* = 0
   patternPos* = 1    # empty except for term rewriting macros
   genericParamsPos* = 2
@@ -1137,6 +1138,7 @@ proc getPIdent*(a: PNode): PIdent {.inline.} =
   of nkSym: a.sym.name
   of nkIdent: a.ident
   of nkOpenSymChoice, nkClosedSymChoice: a.sons[0].sym.name
+  of nkOpenSym: getPIdent(a.sons[0])
   else: nil
 
 const

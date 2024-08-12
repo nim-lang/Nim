@@ -345,7 +345,7 @@ proc collectImpl(init, body: NimNode): NimNode {.since: (1, 1).} =
   let res = genSym(nskVar, "collectResult")
   var bracketExpr: NimNode
   if init != nil:
-    expectKind init, {nnkCall, nnkIdent, nnkSym}
+    expectKind init, {nnkCall, nnkIdent, nnkSym, nnkOpenSym}
     bracketExpr = newTree(nnkBracketExpr,
       if init.kind == nnkCall: freshIdentNodes(init[0]) else: freshIdentNodes(init))
   else:

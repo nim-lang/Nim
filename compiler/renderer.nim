@@ -515,6 +515,7 @@ proc lsub(g: TSrcGen; n: PNode): int =
     result = if n.len > 0: lcomma(g, n) + 2 else: len("{:}")
   of nkClosedSymChoice, nkOpenSymChoice:
     if n.len > 0: result += lsub(g, n[0])
+  of nkOpenSym: result = lsub(g, n[0])
   of nkTupleTy: result = lcomma(g, n) + len("tuple[]")
   of nkTupleClassTy: result = len("tuple")
   of nkDotExpr: result = lsons(g, n) + 1
@@ -1019,7 +1020,7 @@ proc bracketKind*(g: TSrcGen, n: PNode): BracketKind =
 proc skipHiddenNodes(n: PNode): PNode =
   result = n
   while result != nil:
-    if result.kind in {nkHiddenStdConv, nkHiddenSubConv, nkHiddenCallConv} and result.len > 1:
+    if result.kind in {nkHiddenStdConv, nkHiddenSubConv, nkHiddenCallConv, nkOpenSym} and result.len > 1:
       result = result[1]
     elif result.kind in {nkCheckedFieldExpr, nkHiddenAddr, nkHiddenDeref, nkStringToCString, nkCStringToString} and
         result.len > 0:
@@ -1279,6 +1280,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
       put(g, tkParRi, if n.kind == nkOpenSymChoice: "|...)" else: ")")
     else:
       gsub(g, n, 0)
+  of nkOpenSym: gsub(g, n, 0)
   of nkPar, nkClosure:
     put(g, tkParLe, "(")
     gcomma(g, n, c)

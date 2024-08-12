@@ -148,13 +148,14 @@ proc semSymChoice(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: P
   if result.kind == nkSym:
     result = semSym(c, result, result.sym, flags)
 
-proc semOpenSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags, expectedType: PType): PNode =
-  ## sem a node marked `nfOpenSym`, that is, captured symbols that can be
+proc semOpenSym(c: PContext, n: PNode, flags: TExprFlags, expectedType: PType,
+                warnDisabled = false): PNode =
+  ## sem the child of an `nkOpenSym` node, that is, captured symbols that can be
   ## replaced by newly injected symbols in generics. `s` must be the captured
   ## symbol if the original node is an `nkSym` node; and `nil` if it is an
   ## `nkOpenSymChoice`, in which case only non-overloadable injected symbols
   ## will be considered.
-  result = nil
+  let isSym = n.kind == nkSym
   let ident = n.getPIdent
   assert ident != nil
   let id = newIdentNode(ident, n.info)
@@ -167,36 +168,41 @@ proc semOpenSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags, expectedType:
   # but of the overloadable sym kinds, semExpr does not handle skModule, skMacro, skTemplate
   # as overloaded in the case where `nkIdent` finds them first
   if s2 != nil and not c.isAmbiguous and
-      ((s == nil and s2.kind notin OverloadableSyms-{skModule, skMacro, skTemplate}) or
-        (s != nil and s2 != s)):
+      ((isSym and s2 != n.sym) or
+        (not isSym and s2.kind notin OverloadableSyms-{skModule, skMacro, skTemplate})):
     # only consider symbols defined under current proc:
     var o = s2.owner
     while o != nil:
       if o == c.p.owner:
-        if genericsOpenSym in c.features:
+        if not warnDisabled:
           result = semExpr(c, id, flags, expectedType)
           return
         else:
           var msg =
             "a new symbol '" & ident.s & "' has been injected during " &
             "instantiation of " & c.p.owner.name.s & ", however "
-          if s == nil:
+          if isSym:
+            msg.add(
+              getSymRepr(c.config, n.sym) & " captured at " &
+              "the proc declaration will be used instead; " &
+              "either enable --experimental:genericsOpenSym to use the " &
+              "injected symbol or `bind` this captured symbol explicitly")
+          else:
             msg.add(
               "overloads of " & ident.s & " will be used instead; " &
               "either enable --experimental:genericsOpenSym to use the " &
               "injected symbol or `bind` this symbol explicitly")
-          else:
-            msg.add(
-              getSymRepr(c.config, s) & " captured at " &
-              "the proc declaration will be used instead; " &
-              "either enable --experimental:genericsOpenSym to use the " &
-              "injected symbol or `bind` this captured symbol explicitly")
           message(c.config, n.info, warnGenericsIgnoredInjection, msg)
           break
       o = o.owner
-  if s == nil:
-    # set symchoice node type back to None
-    n.typ = newTypeS(tyNone, c)
+  # nothing found
+  if not warnDisabled:
+    result = semExpr(c, n, flags, expectedType)
+  else:
+    result = nil
+    if not isSym:
+      # set symchoice node type back to None
+      n.typ = newTypeS(tyNone, c)
 
 proc inlineConst(c: PContext, n: PNode, s: PSym): PNode {.inline.} =
   result = copyTree(s.astdef)
@@ -2177,6 +2183,8 @@ proc lookUpForDeclared(c: PContext, n: PNode, onlyCurrentScope: bool): PSym =
     result = n.sym
   of nkOpenSymChoice, nkClosedSymChoice:
     result = n[0].sym
+  of nkOpenSym:
+    result = lookUpForDeclared(c, n[0], onlyCurrentScope)
   else:
     localError(c.config, n.info, "identifier expected, but got: " & renderTree(n))
     result = nil
@@ -2632,7 +2640,9 @@ proc semWhen(c: PContext, n: PNode, semCheck = true): PNode =
   var typ = commonTypeBegin
   if n.len in 1..2 and n[0].kind == nkElifBranch and (
       n.len == 1 or n[1].kind == nkElse):
-    let exprNode = n[0][0]
+    var exprNode = n[0][0]
+    if exprNode.kind == nkOpenSym:
+      exprNode = exprNode[0]
     if exprNode.kind == nkIdent:
       whenNimvm = lookUp(c, exprNode).magic == mNimvm
     elif exprNode.kind == nkSym:
@@ -3139,20 +3149,22 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
     if isSymChoice(result):
       result = semSymChoice(c, result, flags, expectedType)
   of nkClosedSymChoice, nkOpenSymChoice:
-    if n.kind == nkOpenSymChoice and nfOpenSym in n.flags:
-      result = semOpenSym(c, n, nil, flags, expectedType)
-      if result != nil:
-        return
+    if nfDisabledOpenSym in n.flags:
+      let res = semOpenSym(c, n, flags, expectedType, warnDisabled = true)
+      assert res == nil
     result = semSymChoice(c, n, flags, expectedType)
   of nkSym:
     let s = n.sym
-    if nfOpenSym in n.flags:
-      result = semOpenSym(c, n, s, flags, expectedType)
-      if result != nil:
-        return
+    if nfDisabledOpenSym in n.flags:
+      let res = semOpenSym(c, n, flags, expectedType, warnDisabled = true)
+      assert res == nil
     # because of the changed symbol binding, this does not mean that we
     # don't have to check the symbol for semantics here again!
     result = semSym(c, n, s, flags)
+  of nkOpenSym:
+    assert n.len == 1
+    let inner = n[0]
+    result = semOpenSym(c, inner, flags, expectedType)
   of nkEmpty, nkNone, nkCommentStmt, nkType:
     discard
   of nkNilLit:

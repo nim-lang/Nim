@@ -33,7 +33,9 @@ slots when enlarging a sequence.
 - An experimental option `genericsOpenSym` has been added to allow captured
   symbols in generic routine bodies to be replaced by symbols injected locally
   by templates/macros at instantiation time. `bind` may be used to keep the
-  captured symbols over the injected ones regardless of enabling the option.
+  captured symbols over the injected ones regardless of enabling the option,
+  but other methods like renaming the captured symbols should be used instead
+  so that the code is not affected by context changes.
 
   Since this change may affect runtime behavior, the experimental switch
   `genericsOpenSym` needs to be enabled, and a warning is given in the case
@@ -64,6 +66,13 @@ slots when enlarging a sequence.
       return value
   assert baz[int]() == "captured"
   ```
+
+  This option also generates a new node kind `nnkOpenSym` which contains
+  exactly 1 of either an `nnkSym` or an `nnkOpenSymChoice` node. In the future
+  this might be merged with a slightly modified `nnkOpenSymChoice` node but
+  macros that want to support the experimental feature should still handle
+  `nnkOpenSym`, as the node kind would simply not be generated as opposed to
+  being removed.
 
 ## Compiler changes
 

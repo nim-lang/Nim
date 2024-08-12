@@ -160,3 +160,4 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimHasNoReturnError")
 
   defineSymbol("nimHasCastExtendedVm")
+  defineSymbol("nimHasGenericsOpenSym2")
