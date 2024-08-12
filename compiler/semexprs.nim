@@ -157,7 +157,8 @@ proc semSymChoice(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: P
   if result.kind == nkSym:
     result = semSym(c, result, result.sym, flags)
 
-proc semOpenSym(c: PContext, n: PNode, flags: TExprFlags, expectedType: PType): PNode =
+proc semOpenSym(c: PContext, n: PNode, flags: TExprFlags, expectedType: PType,
+                warnDisabled = false): PNode =
   ## sem the child of an `nkOpenSym` node, that is, captured symbols that can be
   ## replaced by newly injected symbols in generics. `s` must be the captured
   ## symbol if the original node is an `nkSym` node; and `nil` if it is an
@@ -182,11 +183,33 @@ proc semOpenSym(c: PContext, n: PNode, flags: TExprFlags, expectedType: PType): 
     var o = s2.owner
     while o != nil:
       if o == c.p.owner:
-        result = semExpr(c, id, flags, expectedType)
+        if not warnDisabled:
+          result = semExpr(c, id, flags, expectedType)
+        else:
+          result = nil
+          var msg =
+            "a new symbol '" & ident.s & "' has been injected during " &
+            "instantiation of " & c.p.owner.name.s & ", however "
+          if isSym:
+            msg.add(
+              getSymRepr(c.config, n.sym) & " captured at " &
+              "the proc declaration will be used instead; " &
+              "either enable --experimental:genericsOpenSym to use the " &
+              "injected symbol or `bind` this captured symbol explicitly")
+          else:
+            n.typ = newTypeS(tyNone, c)
+            msg.add(
+              "overloads of " & ident.s & " will be used instead; " &
+              "either enable --experimental:genericsOpenSym to use the " &
+              "injected symbol or `bind` this symbol explicitly")
+          message(c.config, n.info, warnGenericsIgnoredInjection, msg)
         return
       o = o.owner
   # nothing found
-  result = semExpr(c, n, flags, expectedType)
+  if not warnDisabled:
+    result = semExpr(c, n, flags, expectedType)
+  else:
+    result = nil
 
 proc inlineConst(c: PContext, n: PNode, s: PSym): PNode {.inline.} =
   result = copyTree(s.astdef)
@@ -3178,25 +3201,14 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
       result = semSymChoice(c, result, flags, expectedType)
   of nkClosedSymChoice, nkOpenSymChoice:
     if nfDisabledOpenSym in n.flags:
-      let ident = n[0].sym.name
-      message(c.config, n.info, warnGenericsIgnoredInjection,
-        "a new symbol '" & ident.s & "' has been injected during " &
-        "instantiation of " & c.p.owner.name.s & ", however " &
-        "overloads of " & ident.s & " will be used instead; " &
-        "either enable --experimental:genericsOpenSym to use the " &
-        "injected symbol or `bind` this symbol explicitly")
-      n.typ = newTypeS(tyNone, c)
+      let res = semOpenSym(c, n, flags, expectedType, warnDisabled = true)
+      assert res == nil
     result = semSymChoice(c, n, flags, expectedType)
   of nkSym:
     let s = n.sym
     if nfDisabledOpenSym in n.flags:
-      message(c.config, n.info, warnGenericsIgnoredInjection,
-        "a new symbol '" & s.name.s & "' has been injected during " &
-        "instantiation of " & c.p.owner.name.s & ", however " &
-        getSymRepr(c.config, s) & " captured at " &
-        "the proc declaration will be used instead; " &
-        "either enable --experimental:genericsOpenSym to use the " &
-        "injected symbol or `bind` this captured symbol explicitly")
+      let res = semOpenSym(c, n, flags, expectedType, warnDisabled = true)
+      assert res == nil
     # because of the changed symbol binding, this does not mean that we
     # don't have to check the symbol for semantics here again!
     result = semSym(c, n, s, flags)
