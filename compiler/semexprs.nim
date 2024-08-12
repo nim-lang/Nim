@@ -185,8 +185,8 @@ proc semOpenSym(c: PContext, n: PNode, flags: TExprFlags, expectedType: PType,
       if o == c.p.owner:
         if not warnDisabled:
           result = semExpr(c, id, flags, expectedType)
+          return
         else:
-          result = nil
           var msg =
             "a new symbol '" & ident.s & "' has been injected during " &
             "instantiation of " & c.p.owner.name.s & ", however "
@@ -197,19 +197,21 @@ proc semOpenSym(c: PContext, n: PNode, flags: TExprFlags, expectedType: PType,
               "either enable --experimental:genericsOpenSym to use the " &
               "injected symbol or `bind` this captured symbol explicitly")
           else:
-            n.typ = newTypeS(tyNone, c)
             msg.add(
               "overloads of " & ident.s & " will be used instead; " &
               "either enable --experimental:genericsOpenSym to use the " &
               "injected symbol or `bind` this symbol explicitly")
           message(c.config, n.info, warnGenericsIgnoredInjection, msg)
-        return
+          break
       o = o.owner
   # nothing found
   if not warnDisabled:
     result = semExpr(c, n, flags, expectedType)
   else:
     result = nil
+    if not isSym:
+      # set symchoice node type back to None
+      n.typ = newTypeS(tyNone, c)
 
 proc inlineConst(c: PContext, n: PNode, s: PSym): PNode {.inline.} =
   result = copyTree(s.astdef)
