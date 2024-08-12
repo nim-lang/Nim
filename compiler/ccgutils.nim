@@ -18,6 +18,10 @@ import std/[hashes, strutils, formatfloat]
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
+type 
+  MangleAlgo* = enum
+    maNone, maItanium
+    
 proc getPragmaStmt*(n: PNode, w: TSpecialWord): PNode =
   case n.kind
   of nkStmtList:
@@ -109,49 +113,63 @@ proc ccgIntroducedPtr*(conf: ConfigRef; s: PSym, retType: PType): bool =
     result = not (pt.kind in {tyVar, tyArray, tyOpenArray, tyVarargs, tyRef, tyPtr, tyPointer} or
       pt.kind == tySet and mapSetType(conf, pt) == ctArray)
 
-proc encodeName*(name: string): string =
+proc encodeName*(name: string; algo: MangleAlgo): string =
   result = mangle(name)
-  result = $result.len & result
+  if algo == maItanium:
+    result = $result.len & result
 
-proc makeUnique(m: BModule; s: PSym, name: string = ""): string =
+proc makeUnique(m: BModule; s: PSym; name: string = ""): string =
   result = if name == "": s.name.s else: name
   result.add "__"
   result.add m.g.graph.ifaces[s.itemId.module].uniqueName
   result.add "_u"
   result.add $s.itemId.item
 
-proc encodeSym*(m: BModule; s: PSym; makeUnique: bool = false): string =
-  #Module::Type
+proc encodeSym*(m: BModule; s: PSym; algo: MangleAlgo; makeUnique: bool = false): string =
+  #Module::Type 
   var name = s.name.s
   if makeUnique:
     name = makeUnique(m, s, name)
-  "N" & encodeName(s.skipGenericOwner.name.s) & encodeName(name) & "E"
+  let module = encodeName(s.skipGenericOwner.name.s, algo)
+  let sym = encodeName(name, algo)
+  case algo:
+  of maNone:
+    module & "_" & sym
+  of maItanium:
+    "N" & module & sym & "E"
 
-proc encodeType*(m: BModule; t: PType): string =
+proc encodeType*(m: BModule; t: PType, algo: MangleAlgo): string =
+  template addItanium(s: string) = 
+    case algo:
+    of maItanium: result.add s
+    of maNone: 
+      if s == "I":
+        result.add "_"
+    
   result = ""
   var kindName = ($t.kind)[2..^1]
   kindName[0] = toLower($kindName[0])[0]
   case t.kind
   of tyObject, tyEnum, tyDistinct, tyUserTypeClass, tyGenericParam:
-    result = encodeSym(m, t.sym)
+    result = encodeSym(m, t.sym, algo)
   of tyGenericInst, tyUserTypeClassInst, tyGenericBody:
-    result = encodeName(t[0].sym.name.s)
-    result.add "I"
+    result = encodeName(t[0].sym.name.s, algo)
+    addItanium "I"      
     for i in 1..<t.len - 1:
-      result.add encodeType(m, t[i])
-    result.add "E"
+      result.add encodeType(m, t[i], algo)
+    addItanium "E"
   of tySequence, tyOpenArray, tyArray, tyVarargs, tyTuple, tyProc, tySet, tyTypeDesc,
     tyPtr, tyRef, tyVar, tyLent, tySink, tyStatic, tyUncheckedArray, tyOr, tyAnd, tyBuiltInTypeClass:
     result =
       case t.kind:
-      of tySequence: encodeName("seq")
-      else: encodeName(kindName)
-    result.add "I"
+      of tySequence: encodeName("seq", algo)
+      else: encodeName(kindName, algo)
+    addItanium "I"
     for i in 0..<t.len:
       let s = t[i]
       if s.isNil: continue
-      result.add encodeType(m, s)
-    result.add "E"
+      result.add encodeType(m, s, algo)
+    addItanium "E"
   of tyRange:
     var val = "range_"
     if t.n[0].typ.kind in {tyFloat..tyFloat128}:
@@ -160,11 +178,11 @@ proc encodeType*(m: BModule; t: PType): string =
       val.addFloat t.n[1].floatVal
     else:
       val.add $t.n[0].intVal & "_" & $t.n[1].intVal
-    result = encodeName(val)
+    result = encodeName(val, algo)
   of tyString..tyUInt64, tyPointer, tyBool, tyChar, tyVoid, tyAnything, tyNil, tyEmpty:
-    result = encodeName(kindName)
+    result = encodeName(kindName, algo)
   of tyAlias, tyInferred, tyOwned:
-    result = encodeType(m, t.elementType)
+    result = encodeType(m, t.elementType, algo)
   else:
     assert false, "encodeType " & $t.kind
 

@@ -57,11 +57,11 @@ proc mangleField(m: BModule; name: PIdent): string =
 
 proc mangleProc(m: BModule; s: PSym; makeUnique: bool): string =
   result = "_Z"  # Common prefix in Itanium ABI
-  result.add encodeSym(m, s, makeUnique)
+  result.add encodeSym(m, s, maItanium, makeUnique)
   if s.typ.len > 1: #we dont care about the return param
     for i in 1..<s.typ.len:
       if s.typ[i].isNil: continue
-      result.add encodeType(m, s.typ[i])
+      result.add encodeType(m, s.typ[i], maItanium)
 
   if result in m.g.mangledPrcs:
     result = mangleProc(m, s, true)
@@ -1111,10 +1111,7 @@ proc getTypeDescAux(m: BModule; origTyp: PType, check: var IntSet; kind: TypeDes
       # always call for sideeffects:
       assert t.kind != tyTuple
       discard getRecordDesc(m, t, result, check)
-      # The resulting type will include commas and these won't play well
-      # with the C macros for defining procs such as N_NIMCALL. We must
-      # create a typedef for the type and use it in the proc signature:
-      let typedefName = "TY$1_$2" % [$sig, m.encodeType(origTyp)]
+      let typedefName = "TY_$2" % [$sig, m.encodeType(origTyp, maNone)]
       m.s[cfsTypes].addf("typedef $1 $2;$n", [result, typedefName])
       m.typeCache[sig] = typedefName
       result = typedefName
