@@ -831,7 +831,7 @@ proc getName(n: PNode): string =
     result = "`"
     for i in 0..<n.len: result.add(getName(n[i]))
     result = "`"
-  of nkOpenSymChoice, nkClosedSymChoice:
+  of nkOpenSymChoice, nkClosedSymChoice, nkOpenSym:
     result = getName(n[0])
   else:
     result = ""
@@ -849,7 +849,7 @@ proc getNameIdent(cache: IdentCache; n: PNode): PIdent =
     var r = ""
     for i in 0..<n.len: r.add(getNameIdent(cache, n[i]).s)
     result = getIdent(cache, r)
-  of nkOpenSymChoice, nkClosedSymChoice:
+  of nkOpenSymChoice, nkClosedSymChoice, nkOpenSym:
     result = getNameIdent(cache, n[0])
   else:
     result = nil
@@ -863,7 +863,7 @@ proc getRstName(n: PNode): PRstNode =
   of nkAccQuoted:
     result = getRstName(n[0])
     for i in 1..<n.len: result.text.add(getRstName(n[i]).text)
-  of nkOpenSymChoice, nkClosedSymChoice:
+  of nkOpenSymChoice, nkClosedSymChoice, nkOpenSym:
     result = getRstName(n[0])
   else:
     result = nil
