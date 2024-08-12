@@ -14,6 +14,7 @@ __GNUC__
 __TINYC__
 __clang__
 __AVR__
+__arm__
 __EMSCRIPTEN__
 */
 
@@ -584,9 +585,16 @@ NIM_STATIC_ASSERT(sizeof(NI) == sizeof(void*) && NIM_INTBITS == sizeof(NI)*8, "P
   #define nimMulInt64(a, b, res) __builtin_smulll_overflow(a, b, (long long int*)res)
 
   #if NIM_INTBITS == 32
-    #define nimAddInt(a, b, res) __builtin_sadd_overflow(a, b, res)
-    #define nimSubInt(a, b, res) __builtin_ssub_overflow(a, b, res)
-    #define nimMulInt(a, b, res) __builtin_smul_overflow(a, b, res)
+    #if defined(__arm__) && defined(__GNUC__)
+      /* arm-none-eabi-gcc targets defines int32_t as long int */
+      #define nimAddInt(a, b, res) __builtin_saddl_overflow(a, b, res)
+      #define nimSubInt(a, b, res) __builtin_ssubl_overflow(a, b, res)
+      #define nimMulInt(a, b, res) __builtin_smull_overflow(a, b, res)
+    #else
+      #define nimAddInt(a, b, res) __builtin_sadd_overflow(a, b, res)
+      #define nimSubInt(a, b, res) __builtin_ssub_overflow(a, b, res)
+      #define nimMulInt(a, b, res) __builtin_smul_overflow(a, b, res)
+    #endif
   #else
     /* map it to the 'long long' variant */
     #define nimAddInt(a, b, res) __builtin_saddll_overflow(a, b, (long long int*)res)
