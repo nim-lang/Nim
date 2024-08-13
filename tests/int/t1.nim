@@ -17,6 +17,16 @@ doAssert typeOf(myInt16 + 2i32) is int32  # of type `int32`
 doAssert int32 isnot int64
 doAssert int32 isnot int
 
+block: # bug #23947
+  template foo =
+    let test_u64 : uint64 =   0xFF07.uint64
+    let test_u8  : uint8  = test_u64.uint8
+        # Error: illegal conversion from '65287' to '[0..255]'
+    doAssert test_u8 == 7
+
+  static: foo()
+  foo()
+
 block:
   # bug #22085
   const
