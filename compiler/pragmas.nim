@@ -81,14 +81,14 @@ const
     wRequiresInit, wNoalias, wAlign, wNoInit} - {wExportNims, wNodecl} # why exclude these?
   varPragmas* = declPragmas + {wVolatile, wRegister, wThreadVar,
     wMagic, wHeader, wCompilerProc, wCore, wDynlib,
-    wNoInit, wCompileTime, wGlobal,
+    wNoInit, wCompileTime, wGlobal, wLiftLocals,
     wGensym, wInject, wCodegenDecl,
     wGuard, wGoto, wCursor, wNoalias, wAlign}
   constPragmas* = declPragmas + {wHeader, wMagic,
     wGensym, wInject,
     wIntDefine, wStrDefine, wBoolDefine, wDefine,
     wCompilerProc, wCore}
-  paramPragmas* = {wNoalias, wInject, wGensym, wByRef, wByCopy, wCodegenDecl}
+  paramPragmas* = {wNoalias, wInject, wGensym, wByRef, wByCopy, wCodegenDecl, wExportc, wExportCpp}
   letPragmas* = varPragmas
   procTypePragmas* = {FirstCallConv..LastCallConv, wVarargs, wNoSideEffect,
                       wThread, wRaises, wEffectsOf, wLocks, wTags, wForbids, wGcSafe,
@@ -156,16 +156,16 @@ proc pragmaEnsures(c: PContext, n: PNode) =
 proc setExternName(c: PContext; s: PSym, extname: string, info: TLineInfo) =
   # special cases to improve performance:
   if extname == "$1":
-    s.loc.r = rope(s.name.s)
+    s.loc.snippet = rope(s.name.s)
   elif '$' notin extname:
-    s.loc.r = rope(extname)
+    s.loc.snippet = rope(extname)
   else:
     try:
-      s.loc.r = rope(extname % s.name.s)
+      s.loc.snippet = rope(extname % s.name.s)
     except ValueError:
       localError(c.config, info, "invalid extern name: '" & extname & "'. (Forgot to escape '$'?)")
   when hasFFI:
-    s.cname = $s.loc.r
+    s.cname = $s.loc.snippet
 
 
 proc makeExternImport(c: PContext; s: PSym, extname: string, info: TLineInfo) =
@@ -241,7 +241,7 @@ proc processVirtual(c: PContext, n: PNode, s: PSym, flag: TSymFlag) =
   s.constraint.strVal = s.constraint.strVal % s.name.s
   s.flags.incl {flag, sfInfixCall, sfExportc, sfMangleCpp}
 
-  s.typ.callConv = ccNoConvention
+  s.typ.callConv = ccMember
   incl c.config.globalOptions, optMixedMode
 
 proc processCodegenDecl(c: PContext, n: PNode, sym: PSym) =
@@ -480,6 +480,18 @@ proc processOption(c: PContext, n: PNode, resOptions: var TOptions) =
     # calling conventions (boring...):
     localError(c.config, n.info, "option expected")
 
+proc checkPushedPragma(c: PContext, n: PNode) =
+  let keyDeep = n.kind in nkPragmaCallKinds and n.len > 1
+  var key = if keyDeep: n[0] else: n
+  if key.kind in nkIdentKinds:
+    let ident = considerQuotedIdent(c, key)
+    var userPragma = strTableGet(c.userPragmas, ident)
+    if userPragma == nil:
+      let k = whichKeyword(ident)
+      # TODO: might as well make a list which is not accepted by `push`: emit, cast etc.
+      if k == wEmit:
+        localError(c.config, n.info, "an 'emit' pragma cannot be pushed")
+
 proc processPush(c: PContext, n: PNode, start: int) =
   if n[start-1].kind in nkPragmaCallKinds:
     localError(c.config, n.info, "'push' cannot have arguments")
@@ -487,6 +499,7 @@ proc processPush(c: PContext, n: PNode, start: int) =
   for i in start..<n.len:
     if not tryProcessOption(c, n[i], c.config.options):
       # simply store it somewhere:
+      checkPushedPragma(c, n[i])
       if x.otherPragmas.isNil:
         x.otherPragmas = newNodeI(nkPragma, n.info)
       x.otherPragmas.add n[i]
@@ -869,6 +882,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
 
     # number of pragmas increase/decrease with user pragma expansion
     inc c.instCounter
+    defer: dec c.instCounter
     if c.instCounter > 100:
       globalError(c.config, it.info, "recursive dependency: " & userPragma.name.s)
 
@@ -878,7 +892,6 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
     pragma(c, sym, userPragma.ast, validPragmas, isStatement)
     n.sons[i..i] = userPragma.ast.sons # expand user pragma with its content
     i.inc(userPragma.ast.len - 1) # inc by -1 is ok, user pragmas was empty
-    dec c.instCounter
   else:
     let k = whichKeyword(ident)
     if k in validPragmas:
@@ -1001,7 +1014,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         incl(sym.loc.flags, lfHeader)
         incl(sym.loc.flags, lfNoDecl)
         # implies nodecl, because otherwise header would not make sense
-        if sym.loc.r == "": sym.loc.r = rope(sym.name.s)
+        if sym.loc.snippet == "": sym.loc.snippet = rope(sym.name.s)
       of wNoSideEffect:
         noVal(c, it)
         if sym != nil:
@@ -1295,7 +1308,8 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         noVal(c, it)
         if sym == nil: invalidPragma(c, it)
         else: sym.flags.incl sfUsed
-      of wLiftLocals: discard
+      of wLiftLocals:
+        sym.flags.incl(sfForceLift)
       of wRequires, wInvariant, wAssume, wAssert:
         pragmaProposition(c, it)
       of wEnsures:
@@ -1351,7 +1365,7 @@ proc implicitPragmas*(c: PContext, sym: PSym, info: TLineInfo,
         sfImportc in sym.flags and lib != nil:
       incl(sym.loc.flags, lfDynamicLib)
       addToLib(lib, sym)
-      if sym.loc.r == "": sym.loc.r = rope(sym.name.s)
+      if sym.loc.snippet == "": sym.loc.snippet = rope(sym.name.s)
 
 proc hasPragma*(n: PNode, pragma: TSpecialWord): bool =
   if n == nil: return false

@@ -11,9 +11,10 @@
 
 const
   # examples of possible values for repos: Head, ea82b54
-  NimbleStableCommit = "a1fdbe8912a0e3dfd30cef030bbabef218d84687" # master
-  AtlasStableCommit = "7b780811a168f3f32bff4822369dda46a7f87f9a"
+  NimbleStableCommit = "db8245a994f4f7b162f11848d38d7d1862686954" # 0.16.0 (+1 fix in nimble dump)
+  AtlasStableCommit = "5faec3e9a33afe99a7d22377dd1b45a5391f5504"
   ChecksumsStableCommit = "025bcca3915a1b9f19878cea12ad68f9884648fc"
+  SatStableCommit = "faf1617f44d7632ee9601ebc13887644925dcc01"
 
   # examples of possible values for fusion: #head, #ea82b54, 1.2.3
   FusionStableHash = "#372ee4313827ef9f2ea388840f7d6b46c2b1b014"
@@ -159,17 +160,21 @@ proc bundleNimbleExe(latest: bool, args: string) =
                   commit = commit, allowBundled = true)
   cloneDependency(distDir / "nimble" / distDir, "https://github.com/nim-lang/checksums.git",
                 commit = ChecksumsStableCommit, allowBundled = true) # or copy it from dist?
+  cloneDependency(distDir / "nimble" / distDir, "https://github.com/nim-lang/sat.git",
+                commit = SatStableCommit, allowBundled = true)
   # installer.ini expects it under $nim/bin
   nimCompile("dist/nimble/src/nimble.nim",
-             options = "-d:release --noNimblePath " & args)
+             options = "-d:release -d:nimNimbleBootstrap --noNimblePath " & args)
 
 proc bundleAtlasExe(latest: bool, args: string) =
   let commit = if latest: "HEAD" else: AtlasStableCommit
   cloneDependency(distDir, "https://github.com/nim-lang/atlas.git",
                   commit = commit, allowBundled = true)
+  cloneDependency(distDir / "atlas" / distDir, "https://github.com/nim-lang/sat.git",
+                commit = SatStableCommit, allowBundled = true)
   # installer.ini expects it under $nim/bin
   nimCompile("dist/atlas/src/atlas.nim",
-             options = "-d:release --noNimblePath " & args)
+             options = "-d:release --noNimblePath -d:nimAtlasBootstrap " & args)
 
 proc bundleNimsuggest(args: string) =
   nimCompileFold("Compile nimsuggest", "nimsuggest/nimsuggest.nim",

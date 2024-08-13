@@ -59,3 +59,17 @@ block: # bug #10219
 
   var v1 = initVector[int](10)
   doAssert v1[0] == 0
+
+block: # bug #12703 bug #19588
+  type
+    cstringConstImpl {.importc:"const char*".} = cstring
+    constChar = distinct cstringConstImpl
+
+  {.emit: """
+  const char* foo() {
+    return "hello";
+  }
+  """.}
+  proc foo(): constChar {.importcpp.} # change to importcpp for C++ backend
+  doAssert $(foo().cstring) == "hello"
+

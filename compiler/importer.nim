@@ -144,7 +144,7 @@ proc importSymbol(c: PContext, n: PNode, fromMod: PSym; importSet: var IntSet) =
     # for an enumeration we have to add all identifiers
     if multiImport:
       # for a overloadable syms add all overloaded routines
-      var it: ModuleIter
+      var it: ModuleIter = default(ModuleIter)
       var e = initModuleIter(it, c.graph, fromMod, s.name)
       while e != nil:
         if e.name.id != s.name.id: internalError(c.config, n.info, "importSymbol: 3")

@@ -1,11 +1,12 @@
 discard """
-  matrix: "; --backend:js --jsbigint64:off; --backend:js --jsbigint64:on"
+  matrix: "; --backend:js --jsbigint64:off -d:nimStringHash2; --backend:js --jsbigint64:on"
   output: '''
 0 0
 0 0
 Success'''
 """
 # Test the different integer operations
+
 
 import std/private/jsutils
 
@@ -140,5 +141,10 @@ block: # shl
   doAssert u32 shl 1 == u32 - 1
   when not defined(js) or (defined(js) and compileOption("jsbigint64")):
     doAssert u64 shl 1 == u64 - 1
+
+block: # bug #23378
+  var neg = -1  # prevent compile-time evaluation
+  let n = abs BiggestInt neg
+  doAssert n == 1
 
 echo("Success") #OUT Success

@@ -65,16 +65,6 @@ template mdbg*: bool {.deprecated.} =
   else:
     error()
 
-# --------------------------- ident tables ----------------------------------
-proc idTableGet*(t: TIdTable, key: PIdObj): RootRef
-proc idTableGet*(t: TIdTable, key: int): RootRef
-proc idTablePut*(t: var TIdTable, key: PIdObj, val: RootRef)
-proc idTableHasObjectAsKey*(t: TIdTable, key: PIdObj): bool
-  # checks if `t` contains the `key` (compared by the pointer value, not only
-  # `key`'s id)
-proc idNodeTableGet*(t: TIdNodeTable, key: PIdObj): PNode
-proc idNodeTablePut*(t: var TIdNodeTable, key: PIdObj, val: PNode)
-
 # ---------------------------------------------------------------------------
 
 proc lookupInRecord*(n: PNode, field: PIdent): PSym
@@ -717,124 +707,11 @@ proc initTabIter*(ti: var TTabIter, tab: TStrTable): PSym =
     result = nextIter(ti, tab)
 
 iterator items*(tab: TStrTable): PSym =
-  var it: TTabIter
+  var it: TTabIter = default(TTabIter)
   var s = initTabIter(it, tab)
   while s != nil:
     yield s
     s = nextIter(it, tab)
-
-proc hasEmptySlot(data: TIdPairSeq): bool =
-  for h in 0..high(data):
-    if data[h].key == nil:
-      return true
-  result = false
-
-proc idTableRawGet(t: TIdTable, key: int): int =
-  var h: Hash
-  h = key and high(t.data)    # start with real hash value
-  while t.data[h].key != nil:
-    if t.data[h].key.id == key:
-      return h
-    h = nextTry(h, high(t.data))
-  result = - 1
-
-proc idTableHasObjectAsKey(t: TIdTable, key: PIdObj): bool =
-  var index = idTableRawGet(t, key.id)
-  if index >= 0: result = t.data[index].key == key
-  else: result = false
-
-proc idTableGet(t: TIdTable, key: PIdObj): RootRef =
-  var index = idTableRawGet(t, key.id)
-  if index >= 0: result = t.data[index].val
-  else: result = nil
-
-proc idTableGet(t: TIdTable, key: int): RootRef =
-  var index = idTableRawGet(t, key)
-  if index >= 0: result = t.data[index].val
-  else: result = nil
-
-iterator pairs*(t: TIdTable): tuple[key: int, value: RootRef] =
-  for i in 0..high(t.data):
-    if t.data[i].key != nil:
-      yield (t.data[i].key.id, t.data[i].val)
-
-proc idTableRawInsert(data: var TIdPairSeq, key: PIdObj, val: RootRef) =
-  var h: Hash
-  h = key.id and high(data)
-  while data[h].key != nil:
-    assert(data[h].key.id != key.id)
-    h = nextTry(h, high(data))
-  assert(data[h].key == nil)
-  data[h].key = key
-  data[h].val = val
-
-proc idTablePut(t: var TIdTable, key: PIdObj, val: RootRef) =
-  var
-    index: int
-    n: TIdPairSeq
-  index = idTableRawGet(t, key.id)
-  if index >= 0:
-    assert(t.data[index].key != nil)
-    t.data[index].val = val
-  else:
-    if mustRehash(t.data.len, t.counter):
-      newSeq(n, t.data.len * GrowthFactor)
-      for i in 0..high(t.data):
-        if t.data[i].key != nil:
-          idTableRawInsert(n, t.data[i].key, t.data[i].val)
-      assert(hasEmptySlot(n))
-      swap(t.data, n)
-    idTableRawInsert(t.data, key, val)
-    inc(t.counter)
-
-iterator idTablePairs*(t: TIdTable): tuple[key: PIdObj, val: RootRef] =
-  for i in 0..high(t.data):
-    if not isNil(t.data[i].key): yield (t.data[i].key, t.data[i].val)
-
-proc idNodeTableRawGet(t: TIdNodeTable, key: PIdObj): int =
-  var h: Hash
-  h = key.id and high(t.data) # start with real hash value
-  while t.data[h].key != nil:
-    if t.data[h].key.id == key.id:
-      return h
-    h = nextTry(h, high(t.data))
-  result = - 1
-
-proc idNodeTableGet(t: TIdNodeTable, key: PIdObj): PNode =
-  var index: int
-  index = idNodeTableRawGet(t, key)
-  if index >= 0: result = t.data[index].val
-  else: result = nil
-
-proc idNodeTableRawInsert(data: var TIdNodePairSeq, key: PIdObj, val: PNode) =
-  var h: Hash
-  h = key.id and high(data)
-  while data[h].key != nil:
-    assert(data[h].key.id != key.id)
-    h = nextTry(h, high(data))
-  assert(data[h].key == nil)
-  data[h].key = key
-  data[h].val = val
-
-proc idNodeTablePut(t: var TIdNodeTable, key: PIdObj, val: PNode) =
-  var index = idNodeTableRawGet(t, key)
-  if index >= 0:
-    assert(t.data[index].key != nil)
-    t.data[index].val = val
-  else:
-    if mustRehash(t.data.len, t.counter):
-      var n: TIdNodePairSeq
-      newSeq(n, t.data.len * GrowthFactor)
-      for i in 0..high(t.data):
-        if t.data[i].key != nil:
-          idNodeTableRawInsert(n, t.data[i].key, t.data[i].val)
-      swap(t.data, n)
-    idNodeTableRawInsert(t.data, key, val)
-    inc(t.counter)
-
-iterator pairs*(t: TIdNodeTable): tuple[key: PIdObj, val: PNode] =
-  for i in 0..high(t.data):
-    if not isNil(t.data[i].key): yield (t.data[i].key, t.data[i].val)
 
 proc initIITable(x: var TIITable) =
   x.counter = 0
@@ -880,14 +757,6 @@ proc iiTablePut(t: var TIITable, key, val: int) =
       swap(t.data, n)
     iiTableRawInsert(t.data, key, val)
     inc(t.counter)
-
-proc isAddrNode*(n: PNode): bool =
-  case n.kind
-    of nkAddr, nkHiddenAddr: true
-    of nkCallKinds:
-      if n[0].kind == nkSym and n[0].sym.magic == mAddr: true
-      else: false
-    else: false
 
 proc listSymbolNames*(symbols: openArray[PSym]): string =
   result = ""

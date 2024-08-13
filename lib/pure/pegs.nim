@@ -1198,7 +1198,7 @@ template `=~`*(s: string, pattern: Peg): bool =
   ##   ```
   bind MaxSubpatterns
   when not declaredInScope(matches):
-    var matches {.inject.}: array[0..MaxSubpatterns-1, string]
+    var matches {.inject.} = default(array[0..MaxSubpatterns-1, string])
   match(s, pattern, matches)
 
 # ------------------------- more string handling ------------------------------

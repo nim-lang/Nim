@@ -86,6 +86,7 @@ type                          # please make sure we have under 32 options
                               # also: generate header file
     optIdeDebug               # idetools: debug mode
     optIdeTerse               # idetools: use terse descriptions
+    optIdeExceptionInlayHints
     optExcessiveStackTrace    # fully qualified module filenames
     optShowAllMismatches      # show all overloading resolution candidates
     optWholeProject           # for 'doc': output any dependency
@@ -138,7 +139,6 @@ type
     backendCpp = "cpp"
     backendJs = "js"
     backendObjc = "objc"
-    backendNir = "nir"
     # backendNimscript = "nimscript" # this could actually work
     # backendLlvm = "llvm" # probably not well supported; was cmdCompileToLLVM
 
@@ -146,7 +146,6 @@ type
     cmdNone # not yet processed command
     cmdUnknown # command unmapped
     cmdCompileToC, cmdCompileToCpp, cmdCompileToOC, cmdCompileToJS,
-    cmdCompileToNir,
     cmdCrun # compile and run in nimache
     cmdTcc # run the project via TCC backend
     cmdCheck # semantic checking for whole project
@@ -175,7 +174,7 @@ type
 
 const
   cmdBackends* = {cmdCompileToC, cmdCompileToCpp, cmdCompileToOC,
-                  cmdCompileToJS, cmdCrun, cmdCompileToNir}
+                  cmdCompileToJS, cmdCrun}
   cmdDocLike* = {cmdDoc0, cmdDoc, cmdDoc2tex, cmdJsondoc0, cmdJsondoc,
                  cmdCtags, cmdBuildindex}
 
@@ -227,7 +226,7 @@ type
     strictDefs,
     strictCaseObjects,
     inferGenericTypes,
-    genericsOpenSym,
+    genericsOpenSym, # remove nfDisabledOpenSym when this switch is default
     vtables
 
   LegacyFeature* = enum
@@ -245,13 +244,15 @@ type
     emitGenerics
       ## generics are emitted in the module that contains them.
       ## Useful for libraries that rely on local passC
+    jsNoLambdaLifting
+      ## Old transformation for closures in JS backend
 
   SymbolFilesOption* = enum
     disabledSf, writeOnlySf, readOnlySf, v2Sf, stressTest
 
   TSystemCC* = enum
     ccNone, ccGcc, ccNintendoSwitch, ccLLVM_Gcc, ccCLang, ccBcc, ccVcc,
-    ccTcc, ccEnv, ccIcl, ccIcc, ccClangCl
+    ccTcc, ccEnv, ccIcl, ccIcc, ccClangCl, ccHipcc, ccNvcc
 
   ExceptionSystem* = enum
     excNone,   # no exception system selected yet
@@ -298,6 +299,7 @@ type
   SuggestInlayHintKind* = enum
     sihkType = "Type",
     sihkParameter = "Parameter"
+    sihkException = "Exception"
 
   SuggestInlayHint* = ref object
     kind*: SuggestInlayHintKind
@@ -366,7 +368,6 @@ type
     arguments*: string ## the arguments to be passed to the program that
                        ## should be run
     ideCmd*: IdeCmd
-    oldNewlines*: bool
     cCompiler*: TSystemCC # the used compiler
     modifiedyNotes*: TNoteKinds # notes that have been set/unset from either cmdline/configs
     cmdlineNotes*: TNoteKinds # notes that have been set/unset from cmdline

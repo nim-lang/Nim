@@ -11,9 +11,9 @@
 ## represents a complete Nim project. Single modules can either be kept in RAM
 ## or stored in a rod-file.
 
-import std/[intsets, tables, hashes, strtabs]
+import std/[intsets, tables, hashes, strtabs, algorithm, os, strutils, parseutils]
 import ../dist/checksums/src/checksums/md5
-import ast, astalgo, options, lineinfos,idents, btrees, ropes, msgs, pathutils, packages
+import ast, astalgo, options, lineinfos,idents, btrees, ropes, msgs, pathutils, packages, suggestsymdb
 import ic / [packed_ast, ic]
 
 
@@ -55,11 +55,6 @@ type
     concreteTypes*: seq[FullId]
     inst*: PInstantiation
 
-  SymInfoPair* = object
-    sym*: PSym
-    info*: TLineInfo
-    isDecl*: bool
-
   PipelinePass* = enum
     NonePass
     SemPass
@@ -67,8 +62,6 @@ type
     CgenPass
     EvalPass
     InterpreterPass
-    NirPass
-    NirReplPass
     GenDependPass
     Docgen2TexPass
     Docgen2JsonPass
@@ -108,7 +101,7 @@ type
     doStopCompile*: proc(): bool {.closure.}
     usageSym*: PSym # for nimsuggest
     owners*: seq[PSym]
-    suggestSymbols*: Table[FileIndex, seq[SymInfoPair]]
+    suggestSymbols*: SuggestSymbolDatabase
     suggestErrors*: Table[FileIndex, seq[Suggest]]
     methods*: seq[tuple[methods: seq[PSym], dispatcher: PSym]] # needs serialization!
     bucketTable*: CountTable[ItemId]
@@ -264,7 +257,7 @@ proc nextModuleIter*(mi: var ModuleIter; g: ModuleGraph): PSym =
 iterator allSyms*(g: ModuleGraph; m: PSym): PSym =
   let importHidden = optImportHidden in m.options
   if isCachedModule(g, m):
-    var rodIt: RodIter
+    var rodIt: RodIter = default(RodIter)
     var r = initRodIterAllSyms(rodIt, g.config, g.cache, g.packed, FileIndex m.position, importHidden)
     while r != nil:
       yield r
@@ -285,7 +278,7 @@ proc systemModuleSym*(g: ModuleGraph; name: PIdent): PSym =
   result = someSym(g, g.systemModule, name)
 
 iterator systemModuleSyms*(g: ModuleGraph; name: PIdent): PSym =
-  var mi: ModuleIter
+  var mi: ModuleIter = default(ModuleIter)
   var r = initModuleIter(mi, g, g.systemModule, name)
   while r != nil:
     yield r
@@ -316,7 +309,7 @@ proc resolveInst(g: ModuleGraph; t: var LazyInstantiation): PInstantiation =
     t.inst = result
   assert result != nil
 
-proc resolveAttachedOp(g: ModuleGraph; t: var LazySym): PSym =
+proc resolveAttachedOp*(g: ModuleGraph; t: var LazySym): PSym =
   result = t.sym
   if result == nil:
     result = loadSymFromId(g.config, g.cache, g.packed, t.id.module, t.id.packed)
@@ -459,6 +452,49 @@ proc createMagic*(g: ModuleGraph; idgen: IdGenerator; name: string, m: TMagic): 
 proc createMagic(g: ModuleGraph; name: string, m: TMagic): PSym =
   result = createMagic(g, g.idgen, name, m)
 
+proc uniqueModuleName*(conf: ConfigRef; m: PSym): string =
+  ## The unique module name is guaranteed to only contain {'A'..'Z', 'a'..'z', '0'..'9', '_'}
+  ## so that it is useful as a C identifier snippet.
+  let fid = FileIndex(m.position)
+  let path = AbsoluteFile toFullPath(conf, fid)
+  var isLib = false
+  var rel = ""
+  if path.string.startsWith(conf.libpath.string):
+    isLib = true
+    rel = relativeTo(path, conf.libpath).string
+  else:
+    rel = relativeTo(path, conf.projectPath).string
+
+  if not isLib and not belongsToProjectPackage(conf, m):
+    # special handlings for nimble packages
+    when DirSep == '\\':
+      let rel2 = replace(rel, '\\', '/')
+    else:
+      let rel2 = rel
+    const pkgs2 = "pkgs2/"
+    var start = rel2.find(pkgs2)
+    if start >= 0:
+      start += pkgs2.len
+      start += skipUntil(rel2, {'/'}, start)
+      if start+1 < rel2.len:
+        rel = "pkg/" & rel2[start+1..<rel.len] # strips paths
+
+  let trunc = if rel.endsWith(".nim"): rel.len - len(".nim") else: rel.len
+  result = newStringOfCap(trunc)
+  for i in 0..<trunc:
+    let c = rel[i]
+    case c
+    of 'a'..'z', '0'..'9':
+      result.add c
+    of {os.DirSep, os.AltSep}:
+      result.add 'Z' # because it looks a bit like '/'
+    of '.':
+      result.add 'O' # a circle
+    else:
+      # We mangle upper letters too so that there cannot
+      # be clashes with our special meanings of 'Z' and 'O'
+      result.addInt ord(c)
+
 proc registerModule*(g: ModuleGraph; m: PSym) =
   assert m != nil
   assert m.kind == skModule
@@ -470,7 +506,7 @@ proc registerModule*(g: ModuleGraph; m: PSym) =
     setLen(g.packed.pm, m.position + 1)
 
   g.ifaces[m.position] = Iface(module: m, converters: @[], patterns: @[],
-                               uniqueName: rope(uniqueModuleName(g.config, FileIndex(m.position))))
+                               uniqueName: rope(uniqueModuleName(g.config, m)))
   initStrTables(g, m)
 
 proc registerModuleById*(g: ModuleGraph; m: FileIndex) =
@@ -506,7 +542,7 @@ proc initModuleGraphFields(result: ModuleGraph) =
   result.importStack = @[]
   result.inclToMod = initTable[FileIndex, FileIndex]()
   result.owners = @[]
-  result.suggestSymbols = initTable[FileIndex, seq[SymInfoPair]]()
+  result.suggestSymbols = initTable[FileIndex, SuggestFileSymbolDatabase]()
   result.suggestErrors = initTable[FileIndex, seq[Suggest]]()
   result.methods = @[]
   result.compilerprocs = initStrTable()
@@ -622,7 +658,6 @@ proc markDirty*(g: ModuleGraph; fileIdx: FileIndex) =
   if m != nil:
     g.suggestSymbols.del(fileIdx)
     g.suggestErrors.del(fileIdx)
-    g.resetForBackend
     incl m.flags, sfDirty
 
 proc unmarkAllDirty*(g: ModuleGraph) =
@@ -685,8 +720,6 @@ proc moduleFromRodFile*(g: ModuleGraph; fileIdx: FileIndex;
 proc configComplete*(g: ModuleGraph) =
   rememberStartupConfig(g.startupPackedConfig, g.config)
 
-from std/strutils import repeat, `%`
-
 proc onProcessing*(graph: ModuleGraph, fileIdx: FileIndex, moduleStatus: string, fromModule: PSym, ) =
   let conf = graph.config
   let isNimscript = conf.isDefined("nimscript")
@@ -712,16 +745,14 @@ func belongsToStdlib*(graph: ModuleGraph, sym: PSym): bool =
   ## Check if symbol belongs to the 'stdlib' package.
   sym.getPackageSymbol.getPackageId == graph.systemModule.getPackageId
 
-proc `==`*(a, b: SymInfoPair): bool =
-  result = a.sym == b.sym and a.info.exactEquals(b.info)
-
-proc fileSymbols*(graph: ModuleGraph, fileIdx: FileIndex): seq[SymInfoPair] =
-  result = graph.suggestSymbols.getOrDefault(fileIdx, @[])
+proc fileSymbols*(graph: ModuleGraph, fileIdx: FileIndex): SuggestFileSymbolDatabase =
+  result = graph.suggestSymbols.getOrDefault(fileIdx, newSuggestFileSymbolDatabase(fileIdx, optIdeExceptionInlayHints in graph.config.globalOptions))
+  doAssert(result.fileIndex == fileIdx)
 
 iterator suggestSymbolsIter*(g: ModuleGraph): SymInfoPair =
   for xs in g.suggestSymbols.values:
-    for x in xs:
-      yield x
+    for i in xs.lineInfo.low..xs.lineInfo.high:
+      yield xs.getSymInfoPair(i)
 
 iterator suggestErrorsIter*(g: ModuleGraph): Suggest =
   for xs in g.suggestErrors.values:

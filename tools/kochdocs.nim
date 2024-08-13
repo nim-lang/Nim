@@ -325,7 +325,8 @@ proc nim2pdf(src: string, dst: string, nimArgs: string) =
       exec(cmd)
   moveFile(texFile.changeFileExt("pdf"), dst)
 
-proc buildPdfDoc*(nimArgs, destPath: string) =
+proc buildPdfDoc*(args: string, destPath: string) =
+  let args = nimArgs & " " & args
   var pdfList: seq[string]
   createDir(destPath)
   if os.execShellCmd("xelatex -version") != 0:
@@ -334,7 +335,7 @@ proc buildPdfDoc*(nimArgs, destPath: string) =
     for src in items(mdPdfList):
       let dst = destPath / src.lastPathPart.changeFileExt("pdf")
       pdfList.add dst
-      nim2pdf(src, dst, nimArgs)
+      nim2pdf(src, dst, args)
   echo "\nOutput PDF files: \n  ", pdfList.join(" ") # because `nim2pdf` is a bit verbose
 
 proc buildJS(): string =

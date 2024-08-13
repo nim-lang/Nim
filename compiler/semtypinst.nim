@@ -9,6 +9,8 @@
 
 # This module does the instantiation of generic types.
 
+import std / tables
+
 import ast, astalgo, msgs, types, magicsys, semdata, renderer, options,
   lineinfos, modulegraphs
 
@@ -64,14 +66,14 @@ proc cacheTypeInst(c: PContext; inst: PType) =
 
 type
   LayeredIdTable* {.acyclic.} = ref object
-    topLayer*: TIdTable
+    topLayer*: TypeMapping
     nextLayer*: LayeredIdTable
 
   TReplTypeVars* = object
     c*: PContext
     typeMap*: LayeredIdTable  # map PType to PType
-    symMap*: TIdTable         # map PSym to PSym
-    localCache*: TIdTable     # local cache for remembering already replaced
+    symMap*: SymMapping         # map PSym to PSym
+    localCache*: TypeMapping     # local cache for remembering already replaced
                               # types during instantiation of meta types
                               # (they are not stored in the global cache)
     info*: TLineInfo
@@ -86,23 +88,23 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType
 proc replaceTypeVarsS(cl: var TReplTypeVars, s: PSym, t: PType): PSym
 proc replaceTypeVarsN*(cl: var TReplTypeVars, n: PNode; start=0; expectedType: PType = nil): PNode
 
-proc initLayeredTypeMap*(pt: TIdTable): LayeredIdTable =
+proc initLayeredTypeMap*(pt: sink TypeMapping): LayeredIdTable =
   result = LayeredIdTable()
-  copyIdTable(result.topLayer, pt)
+  result.topLayer = pt
 
 proc newTypeMapLayer*(cl: var TReplTypeVars): LayeredIdTable =
-  result = LayeredIdTable(nextLayer: cl.typeMap, topLayer: initIdTable())
+  result = LayeredIdTable(nextLayer: cl.typeMap, topLayer: initTable[ItemId, PType]())
 
 proc lookup(typeMap: LayeredIdTable, key: PType): PType =
   result = nil
   var tm = typeMap
   while tm != nil:
-    result = PType(idTableGet(tm.topLayer, key))
+    result = getOrDefault(tm.topLayer, key.itemId)
     if result != nil: return
     tm = tm.nextLayer
 
 template put(typeMap: LayeredIdTable, key, value: PType) =
-  idTablePut(typeMap.topLayer, key, value)
+  typeMap.topLayer[key.itemId] = value
 
 template checkMetaInvariants(cl: TReplTypeVars, t: PType) = # noop code
   when false:
@@ -130,9 +132,13 @@ proc prepareNode(cl: var TReplTypeVars, n: PNode): PNode =
       else:
         replaceTypeVarsS(cl, n.sym, replaceTypeVarsT(cl, n.sym.typ))
   let isCall = result.kind in nkCallKinds
+  # don't try to instantiate symchoice symbols, they can be
+  # generic procs which the compiler will think are uninstantiated
+  # because their type will contain uninstantiated params
+  let isSymChoice = result.kind in nkSymChoices
   for i in 0..<n.safeLen:
     # XXX HACK: ``f(a, b)``, avoid to instantiate `f`
-    if isCall and i == 0: result.add(n[i])
+    if isSymChoice or (isCall and i == 0): result.add(n[i])
     else: result.add(prepareNode(cl, n[i]))
 
 proc isTypeParam(n: PNode): bool =
@@ -361,7 +367,7 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   var header = t
   # search for some instantiation here:
   if cl.allowMetaTypes:
-    result = PType(idTableGet(cl.localCache, t))
+    result = getOrDefault(cl.localCache, t.itemId)
   else:
     result = searchInstTypes(cl.c.graph, t)
 
@@ -400,7 +406,7 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   if not cl.allowMetaTypes:
     cacheTypeInst(cl.c, result)
   else:
-    idTablePut(cl.localCache, t, result)
+    cl.localCache[t.itemId] = result
 
   let oldSkipTypedesc = cl.skipTypedesc
   cl.skipTypedesc = true
@@ -547,7 +553,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
         # type
         #   Vector[N: static[int]] = array[N, float64]
         #   TwoVectors[Na, Nb: static[int]] = (Vector[Na], Vector[Nb])
-        result = PType(idTableGet(cl.localCache, t))
+        result = getOrDefault(cl.localCache, t.itemId)
         if result != nil: return result
       inc cl.recursionLimit
 
@@ -623,7 +629,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
   of tyGenericInst, tyUserTypeClassInst:
     bailout()
     result = instCopyType(cl, t)
-    idTablePut(cl.localCache, t, result)
+    cl.localCache[t.itemId] = result
     for i in FirstGenericParamAt..<result.kidsLen:
       result[i] = replaceTypeVarsT(cl, result[i])
     propagateToOwner(result, result.last)
@@ -635,7 +641,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
       result = instCopyType(cl, t)
       result.size = -1 # needs to be recomputed
       #if not cl.allowMetaTypes:
-      idTablePut(cl.localCache, t, result)
+      cl.localCache[t.itemId] = result
 
       for i, resulti in result.ikids:
         if resulti != nil:
@@ -690,11 +696,11 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
 
 proc initTypeVars*(p: PContext, typeMap: LayeredIdTable, info: TLineInfo;
                    owner: PSym): TReplTypeVars =
-  result = TReplTypeVars(symMap: initIdTable(),
-            localCache: initIdTable(), typeMap: typeMap,
+  result = TReplTypeVars(symMap: initSymMapping(),
+            localCache: initTypeMapping(), typeMap: typeMap,
             info: info, c: p, owner: owner)
 
-proc replaceTypesInBody*(p: PContext, pt: TIdTable, n: PNode;
+proc replaceTypesInBody*(p: PContext, pt: TypeMapping, n: PNode;
                          owner: PSym, allowMetaTypes = false,
                          fromStaticExpr = false, expectedType: PType = nil): PNode =
   var typeMap = initLayeredTypeMap(pt)
@@ -731,7 +737,7 @@ proc recomputeFieldPositions*(t: PType; obj: PNode; currPosition: var int) =
     inc currPosition
   else: discard "cannot happen"
 
-proc generateTypeInstance*(p: PContext, pt: TIdTable, info: TLineInfo,
+proc generateTypeInstance*(p: PContext, pt: TypeMapping, info: TLineInfo,
                            t: PType): PType =
   # Given `t` like Foo[T]
   # pt: Table with type mappings: T -> int
@@ -747,7 +753,7 @@ proc generateTypeInstance*(p: PContext, pt: TIdTable, info: TLineInfo,
     var position = 0
     recomputeFieldPositions(objType, objType.n, position)
 
-proc prepareMetatypeForSigmatch*(p: PContext, pt: TIdTable, info: TLineInfo,
+proc prepareMetatypeForSigmatch*(p: PContext, pt: TypeMapping, info: TLineInfo,
                                  t: PType): PType =
   var typeMap = initLayeredTypeMap(pt)
   var cl = initTypeVars(p, typeMap, info, nil)
@@ -756,6 +762,6 @@ proc prepareMetatypeForSigmatch*(p: PContext, pt: TIdTable, info: TLineInfo,
   result = replaceTypeVarsT(cl, t)
   popInfoContext(p.config)
 
-template generateTypeInstance*(p: PContext, pt: TIdTable, arg: PNode,
+template generateTypeInstance*(p: PContext, pt: TypeMapping, arg: PNode,
                                t: PType): untyped =
   generateTypeInstance(p, pt, arg.info, t)
