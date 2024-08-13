@@ -492,7 +492,10 @@ proc resetLoc(p: BProc, loc: var TLoc) =
     else:
       linefmt(p, cpsStmts, "$1.len = 0; $1.p = NIM_NIL;$n", [rdLoc(loc)])
   elif not isComplexValueType(typ):
-    if containsGcRef:
+    if typ.kind == tyRange:
+      linefmt(p, cpsStmts, "$1 = ($2)$3;$n", [rdLoc(loc),
+        getTypeDesc(p.module, typ, descKindFromSymKind mapTypeChooser(loc)), firstOrd(p.config, typ)])
+    elif containsGcRef:
       var nilLoc: TLoc = initLoc(locTemp, loc.lode, OnStack)
       nilLoc.snippet = rope("NIM_NIL")
       genRefAssign(p, loc, nilLoc)
@@ -530,7 +533,10 @@ proc constructLoc(p: BProc, loc: var TLoc, isTemp = false) =
   if optSeqDestructors in p.config.globalOptions and skipTypes(typ, abstractInst + {tyStatic}).kind in {tyString, tySequence}:
     linefmt(p, cpsStmts, "$1.len = 0; $1.p = NIM_NIL;$n", [rdLoc(loc)])
   elif not isComplexValueType(typ):
-    if containsGarbageCollectedRef(loc.t):
+    if typ.kind == tyRange:
+      linefmt(p, cpsStmts, "$1 = ($2)$3;$n", [rdLoc(loc),
+        getTypeDesc(p.module, typ, descKindFromSymKind mapTypeChooser(loc)), firstOrd(p.config, typ)])
+    elif containsGarbageCollectedRef(loc.t):
       var nilLoc: TLoc = initLoc(locTemp, loc.lode, OnStack)
       nilLoc.snippet = rope("NIM_NIL")
       genRefAssign(p, loc, nilLoc)
