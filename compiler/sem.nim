@@ -651,7 +651,8 @@ proc defaultFieldsForTheUninitialized(c: PContext, recNode: PNode, checkDefault:
 
 proc defaultNodeField(c: PContext, a: PNode, aTyp: PType, checkDefault: bool): PNode =
   let aTypSkip = aTyp.skipTypes(defaultFieldsSkipTypes)
-  if aTypSkip.kind == tyObject:
+  case aTypSkip.kind
+  of tyObject:
     let child = defaultFieldsForTheUninitialized(c, aTypSkip.n, checkDefault)
     if child.len > 0:
       var asgnExpr = newTree(nkObjConstr, newNodeIT(nkType, a.info, aTyp))
@@ -660,7 +661,7 @@ proc defaultNodeField(c: PContext, a: PNode, aTyp: PType, checkDefault: bool): P
       result = semExpr(c, asgnExpr)
     else:
       result = nil
-  elif aTypSkip.kind == tyArray:
+  of tyArray:
     let child = defaultNodeField(c, a, aTypSkip[1], checkDefault)
 
     if child != nil:
@@ -673,7 +674,7 @@ proc defaultNodeField(c: PContext, a: PNode, aTyp: PType, checkDefault: bool): P
       result.typ = aTyp
     else:
       result = nil
-  elif aTypSkip.kind == tyTuple:
+  of tyTuple:
     var hasDefault = false
     if aTypSkip.n != nil:
       let children = defaultFieldsForTuple(c, aTypSkip.n, hasDefault, checkDefault)
@@ -684,6 +685,12 @@ proc defaultNodeField(c: PContext, a: PNode, aTyp: PType, checkDefault: bool): P
         result = semExpr(c, result)
       else:
         result = nil
+    else:
+      result = nil
+  of tyRange:
+    if c.graph.config.isDefined("nimPreviewRangeDefault"):
+      result = newIntNode(nkIntLit, firstOrd(c.config, aTypSkip))
+      result.typ = aTyp
     else:
       result = nil
   else:
