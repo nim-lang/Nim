@@ -1007,7 +1007,7 @@ when defined(js):
       {.emit: """for (var property in `x`) {
         if (`x`.hasOwnProperty(property)) {
       """.}
-      
+
       var nimProperty: cstring
       var nimValue: JsObject
       {.emit: "`nimProperty` = property; `nimValue` = `x`[property];".}

@@ -864,8 +864,8 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
       f.options = c.config.options
       if fieldOwner != nil and
          {sfImportc, sfExportc} * fieldOwner.flags != {} and
-         not hasCaseFields and f.loc.r == "":
-        f.loc.r = rope(f.name.s)
+         not hasCaseFields and f.loc.snippet == "":
+        f.loc.snippet = rope(f.name.s)
         f.flags.incl {sfImportc, sfExportc} * fieldOwner.flags
       inc(pos)
       if containsOrIncl(check, f.name.id):
@@ -1166,11 +1166,11 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
         paramType[i] = t
         result = paramType
 
-  of tyAlias, tyOwned, tySink:
+  of tyAlias, tyOwned:
     result = recurse(paramType.base)
 
   of tySequence, tySet, tyArray, tyOpenArray,
-     tyVar, tyLent, tyPtr, tyRef, tyProc:
+     tyVar, tyLent, tyPtr, tyRef, tyProc, tySink:
     # XXX: this is a bit strange, but proc(s: seq)
     # produces tySequence(tyGenericParam, tyNone).
     # This also seems to be true when creating aliases
@@ -2207,6 +2207,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   of nkType: result = n.typ
   of nkStmtListType: result = semStmtListType(c, n, prev)
   of nkBlockType: result = semBlockType(c, n, prev)
+  of nkOpenSym: result = semTypeNode(c, n[0], prev)
   else:
     result = semTypeExpr(c, n, prev)
     when false:

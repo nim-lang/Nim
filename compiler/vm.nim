@@ -639,6 +639,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
           regs[ra].intVal = cast[int](regs[rb].node.intVal)
         of rkNodeAddr:
           regs[ra].intVal = cast[int](regs[rb].nodeAddr)
+        of rkRegisterAddr:
+          regs[ra].intVal = cast[int](regs[rb].regAddr)
         of rkInt:
           regs[ra].intVal = regs[rb].intVal
         else:
@@ -1361,7 +1363,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         else:
           internalError(c.config, c.debug[pc], "opcParseFloat: Incorrectly created openarray")
       else:
-        regs[ra].intVal = parseBiggestFloat(regs[ra].node.strVal, rcAddr.floatVal)
+        regs[ra].intVal = parseBiggestFloat(regs[rb].node.strVal, rcAddr.floatVal)
 
     of opcRangeChck:
       let rb = instr.regB

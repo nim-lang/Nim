@@ -2790,6 +2790,18 @@ when not defined(js):
 
 proc toOpenArray*[T](x: seq[T]; first, last: int): openArray[T] {.
   magic: "Slice".}
+  ## Allows passing the slice of `x` from the element at `first` to the element
+  ## at `last` to `openArray[T]` parameters without copying it.
+  ##
+  ## Example:
+  ##   ```nim
+  ##   proc test(x: openArray[int]) =
+  ##     doAssert x == [1, 2, 3]
+  ##
+  ##   let s = @[0, 1, 2, 3, 4]
+  ##   s.toOpenArray(1, 3).test
+  ##   ```
+
 proc toOpenArray*[T](x: openArray[T]; first, last: int): openArray[T] {.
   magic: "Slice".}
 proc toOpenArray*[I, T](x: array[I, T]; first, last: I): openArray[T] {.
