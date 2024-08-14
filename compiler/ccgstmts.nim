@@ -325,12 +325,16 @@ proc genSingleVar(p: BProc, v: PSym; vn, value: PNode) =
     # translate 'var state {.goto.} = X' into 'goto LX':
     genGotoVar(p, value)
     return
+  var value = value
   let imm = isAssignedImmediately(p.config, value)
   let isCppCtorCall = p.module.compileToCpp and imm and
     value.kind in nkCallKinds and value[0].kind == nkSym and
     v.typ.kind != tyPtr and sfConstructor in value[0].sym.flags
   var targetProc = p
   var valueAsRope = ""
+  if p.config.isDefined("nimPreviewRangeDefault") and v.typ.skipTypes(abstractInst).kind == tyRange and value.kind == nkEmpty:
+    value = newIntNode(nkIntLit, firstOrd(p.config, v.typ))
+    value.typ = v.typ
   potentialValueInit(p, v, value, valueAsRope)
   if sfGlobal in v.flags:
     if v.flags * {sfImportc, sfExportc} == {sfImportc} and

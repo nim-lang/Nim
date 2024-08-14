@@ -492,7 +492,7 @@ proc resetLoc(p: BProc, loc: var TLoc) =
     else:
       linefmt(p, cpsStmts, "$1.len = 0; $1.p = NIM_NIL;$n", [rdLoc(loc)])
   elif not isComplexValueType(typ):
-    if typ.kind == tyRange:
+    if p.config.isDefined("nimPreviewRangeDefault") and skipTypes(loc.t, abstractInst).kind == tyRange:
       linefmt(p, cpsStmts, "$1 = ($2)$3;$n", [rdLoc(loc),
         getTypeDesc(p.module, typ, descKindFromSymKind mapTypeChooser(loc)), firstOrd(p.config, typ)])
     elif containsGcRef:
@@ -533,7 +533,7 @@ proc constructLoc(p: BProc, loc: var TLoc, isTemp = false) =
   if optSeqDestructors in p.config.globalOptions and skipTypes(typ, abstractInst + {tyStatic}).kind in {tyString, tySequence}:
     linefmt(p, cpsStmts, "$1.len = 0; $1.p = NIM_NIL;$n", [rdLoc(loc)])
   elif not isComplexValueType(typ):
-    if typ.kind == tyRange:
+    if p.config.isDefined("nimPreviewRangeDefault") and skipTypes(loc.t, abstractInst).kind == tyRange:
       linefmt(p, cpsStmts, "$1 = ($2)$3;$n", [rdLoc(loc),
         getTypeDesc(p.module, typ, descKindFromSymKind mapTypeChooser(loc)), firstOrd(p.config, typ)])
     elif containsGarbageCollectedRef(loc.t):
