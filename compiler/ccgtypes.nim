@@ -152,8 +152,11 @@ proc getTypeName(m: BModule; typ: PType; sig: SigHash): Rope =
   let typ = if typ.kind in {tyAlias, tySink, tyOwned}: typ.elementType else: typ
   if typ.loc.snippet == "":
     m.typeName(typ, typ.loc.snippet)
-    if typ.kind in {tyProc} or typ.len == 1 and typ.kind == tyObject:
+    let inTypeNameCache = typ.loc.snippet in m.typeNameCache and sig notin m.typeCache
+    if typ.kind in {tyProc} or inTypeNameCache:
       typ.loc.snippet.add $sig
+    if not inTypeNameCache:
+      m.typeNameCache.incl $typ.loc.snippet
   else:
     when defined(debugSigHashes):
       # check consistency:
