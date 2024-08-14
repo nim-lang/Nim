@@ -136,12 +136,8 @@ const
                           tyDistinct, tyRange, tyStatic, tyAlias, tySink,
                           tyInferred, tyOwned}
 
-proc typeName(typ: PType; result: var Rope) =
-  let typ = typ.skipTypes(irrelevantForBackend)
-  result.add $typ.kind
-  if typ.sym != nil and typ.kind in {tyObject, tyEnum}:
-    result.add "_"
-    result.add typ.sym.name.s.mangle
+proc typeName(m: BModule; typ: PType; result: var Rope) =
+  result.add m.encodeType(typ, maNone)
 
 proc getTypeName(m: BModule; typ: PType; sig: SigHash): Rope =
   var t = typ
@@ -155,8 +151,9 @@ proc getTypeName(m: BModule; typ: PType; sig: SigHash): Rope =
       break
   let typ = if typ.kind in {tyAlias, tySink, tyOwned}: typ.elementType else: typ
   if typ.loc.snippet == "":
-    typ.typeName(typ.loc.snippet)
-    typ.loc.snippet.add $sig
+    m.typeName(typ, typ.loc.snippet)
+    if typ.kind in {tyProc} or typ.len == 1 and typ.kind == tyObject:
+      typ.loc.snippet.add $sig
   else:
     when defined(debugSigHashes):
       # check consistency:
@@ -1134,7 +1131,7 @@ proc getTypeDescAux(m: BModule; origTyp: PType, check: var IntSet; kind: TypeDes
   of tySet:
     # Don't use the imported name as it may be scoped: 'Foo::SomeKind'
     result = rope("tySet_")
-    t.elementType.typeName(result)
+    m.typeName(t.elementType, result)
     result.add $t.elementType.hashType(m.config)
     m.typeCache[sig] = result
     if not isImportedType(t):
