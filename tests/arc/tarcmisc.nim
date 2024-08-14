@@ -1,5 +1,6 @@
 discard """
   output: '''
+Destructor for TestTestObj
 =destroy called
 123xyzabc
 destroyed: false
@@ -36,8 +37,32 @@ destroying variable: 20
 destroying variable: 10
 closed
 '''
-  cmd: "nim c --gc:arc --deepcopy:on -d:nimAllocPagesViaMalloc $file"
+  cmd: "nim c --mm:arc --deepcopy:on -d:nimAllocPagesViaMalloc $file"
 """
+
+block: # bug #23627
+  type
+    TestObj = object of RootObj
+
+    Test2 = object of RootObj
+      foo: TestObj
+
+    TestTestObj = object of RootObj
+      shit: TestObj
+
+  proc `=destroy`(x: TestTestObj) =
+    echo "Destructor for TestTestObj"
+    let test = Test2(foo: TestObj())
+
+  proc testCaseT() =
+    let tt1 {.used.} = TestTestObj(shit: TestObj())
+
+
+  proc main() =
+    testCaseT()
+
+  main()
+
 
 # bug #9401
 
@@ -46,13 +71,12 @@ type
     len: int
     data: ptr UncheckedArray[float]
 
-proc `=destroy`*(m: var MyObj) =
+proc `=destroy`*(m: MyObj) =
 
   echo "=destroy called"
 
   if m.data != nil:
     deallocShared(m.data)
-    m.data = nil
 
 type
   MyObjDistinct = distinct MyObj
@@ -104,7 +128,7 @@ bbb("123")
 type Variable = ref object
   value: int
 
-proc `=destroy`(self: var typeof(Variable()[])) =
+proc `=destroy`(self: typeof(Variable()[])) =
   echo "destroying variable: ",self.value
 
 proc newVariable(value: int): Variable =
@@ -158,7 +182,7 @@ type
   B = ref object of A
     x: int
 
-proc `=destroy`(x: var AObj) =
+proc `=destroy`(x: AObj) =
   close(x.io)
   echo "closed"
 
@@ -714,3 +738,54 @@ block:
 
       let c: uint = 300'u
       doAssert $arrayWith(c, 3) == "[300, 300, 300]"
+
+block: # bug #23505
+  type
+    K = object
+    C = object
+      value: ptr K
+
+  proc init(T: type C): C =
+    let tmp = new K
+    C(value: addr tmp[])
+
+  discard init(C)
+
+block: # bug #23524
+  type MyType = object
+    a: int
+
+  proc `=destroy`(typ: MyType) = discard
+
+  var t1 = MyType(a: 100)
+  var t2 = t1 # Should be a copy?
+
+  proc main() =
+    t2 = t1
+    doAssert t1.a == 100
+    doAssert t2.a == 100
+
+  main()
+
+block: # bug #23907
+  type
+    Thingy = object
+      value: int
+
+    ExecProc[C] = proc(value: sink C): int {.nimcall.}
+
+  proc `=copy`(a: var Thingy, b: Thingy) {.error.}
+
+  var thingyDestroyCount = 0
+
+  proc `=destroy`(thingy: Thingy) =
+    assert(thingyDestroyCount <= 0)
+    thingyDestroyCount += 1
+
+  proc store(value: sink Thingy): int =
+    result = value.value
+
+  let callback: ExecProc[Thingy] = store
+
+  doAssert callback(Thingy(value: 123)) == 123
+

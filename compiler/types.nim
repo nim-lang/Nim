@@ -115,7 +115,7 @@ proc isPureObject*(typ: PType): bool =
 proc isUnsigned*(t: PType): bool =
   t.skipTypes(abstractInst).kind in {tyChar, tyUInt..tyUInt64}
 
-proc getOrdValue*(n: PNode; onError = high(Int128)): Int128 =
+proc getOrdValueAux*(n: PNode, err: var bool): Int128 =
   var k = n.kind
   if n.typ != nil and n.typ.skipTypes(abstractInst).kind in {tyChar, tyUInt..tyUInt64}:
     k = nkUIntLit
@@ -131,13 +131,22 @@ proc getOrdValue*(n: PNode; onError = high(Int128)): Int128 =
     toInt128(n.intVal)
   of nkNilLit:
     int128.Zero
-  of nkHiddenStdConv: getOrdValue(n[1], onError)
+  of nkHiddenStdConv:
+    getOrdValueAux(n[1], err)
   else:
-    # XXX: The idea behind the introduction of int128 was to finally
-    # have all calculations numerically far away from any
-    # overflows. This command just introduces such overflows and
-    # should therefore really be revisited.
-    onError
+    err = true
+    int128.Zero
+
+proc getOrdValue*(n: PNode): Int128 =
+  var err: bool = false
+  result = getOrdValueAux(n, err)
+  #assert err == false
+
+proc getOrdValue*(n: PNode, onError: Int128): Int128 =
+  var err = false
+  result = getOrdValueAux(n, err)
+  if err:
+    result = onError
 
 proc getFloatValue*(n: PNode): BiggestFloat =
   case n.kind
@@ -809,12 +818,12 @@ proc firstOrd*(conf: ConfigRef; t: PType): Int128 =
     if t.hasElementType: result = firstOrd(conf, skipModifier(t))
     else:
       result = Zero
-      internalError(conf, "invalid kind for firstOrd(" & $t.kind & ')')
+      fatal(conf, unknownLineInfo, "invalid kind for firstOrd(" & $t.kind & ')')
   of tyUncheckedArray, tyCstring:
     result = Zero
   else:
     result = Zero
-    internalError(conf, "invalid kind for firstOrd(" & $t.kind & ')')
+    fatal(conf, unknownLineInfo, "invalid kind for firstOrd(" & $t.kind & ')')
 
 proc firstFloat*(t: PType): BiggestFloat =
   case t.kind
@@ -905,12 +914,12 @@ proc lastOrd*(conf: ConfigRef; t: PType): Int128 =
     if t.hasElementType: result = lastOrd(conf, skipModifier(t))
     else:
       result = Zero
-      internalError(conf, "invalid kind for lastOrd(" & $t.kind & ')')
+      fatal(conf, unknownLineInfo, "invalid kind for lastOrd(" & $t.kind & ')')
   of tyUncheckedArray:
     result = Zero
   else:
     result = Zero
-    internalError(conf, "invalid kind for lastOrd(" & $t.kind & ')')
+    fatal(conf, unknownLineInfo, "invalid kind for lastOrd(" & $t.kind & ')')
 
 proc lastFloat*(t: PType): BiggestFloat =
   case t.kind
@@ -1316,8 +1325,16 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     result = sameTypeOrNilAux(a.elementType, b.elementType, c) and
         sameValue(a.n[0], b.n[0]) and
         sameValue(a.n[1], b.n[1])
-  of tyGenericInst, tyAlias, tyInferred, tyIterable:
+  of tyAlias, tyInferred, tyIterable:
     cycleCheck()
+    result = sameTypeAux(a.skipModifier, b.skipModifier, c)
+  of tyGenericInst:
+    # BUG #23445
+    # The type system must distinguish between `T[int] = object #[empty]#`
+    # and `T[float] = object #[empty]#`!
+    cycleCheck()
+    for ff, aa in underspecifiedPairs(a, b, 1, -1):
+      if not sameTypeAux(ff, aa, c): return false
     result = sameTypeAux(a.skipModifier, b.skipModifier, c)
   of tyNone: result = false
   of tyConcept:

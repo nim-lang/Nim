@@ -634,7 +634,7 @@ proc delete*(obj: JsonNode, key: string) =
   obj.fields.del(key)
 
 proc copy*(p: JsonNode): JsonNode =
-  ## Performs a deep copy of `a`.
+  ## Performs a deep copy of `p`.
   case p.kind
   of JString:
     result = newJString(p.str)
@@ -1007,7 +1007,7 @@ when defined(js):
       {.emit: """for (var property in `x`) {
         if (`x`.hasOwnProperty(property)) {
       """.}
-      
+
       var nimProperty: cstring
       var nimValue: JsObject
       {.emit: "`nimProperty` = property; `nimValue` = `x`[property];".}

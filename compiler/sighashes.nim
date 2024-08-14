@@ -154,9 +154,9 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]; conf: Confi
     # is actually safe without an infinite recursion check:
     if t.sym != nil:
       if {sfCompilerProc} * t.sym.flags != {}:
-        doAssert t.sym.loc.r != ""
+        doAssert t.sym.loc.snippet != ""
         # The user has set a specific name for this type
-        c &= t.sym.loc.r
+        c &= t.sym.loc.snippet
       elif CoOwnerSig in flags:
         c.hashTypeSym(t.sym, conf)
       else:
@@ -268,7 +268,7 @@ when defined(debugSigHashes):
 
 proc hashType*(t: PType; conf: ConfigRef; flags: set[ConsiderFlag] = {CoType}): SigHash =
   result = default(SigHash)
-  var c: MD5Context
+  var c: MD5Context = default(MD5Context)
   md5Init c
   hashType c, t, flags+{CoOwnerSig}, conf
   md5Final c, result.MD5Digest
@@ -278,7 +278,7 @@ proc hashType*(t: PType; conf: ConfigRef; flags: set[ConsiderFlag] = {CoType}): 
 
 proc hashProc(s: PSym; conf: ConfigRef): SigHash =
   result = default(SigHash)
-  var c: MD5Context
+  var c: MD5Context = default(MD5Context)
   md5Init c
   hashType c, s.typ, {CoProc}, conf
 
@@ -299,7 +299,7 @@ proc hashProc(s: PSym; conf: ConfigRef): SigHash =
 
 proc hashNonProc*(s: PSym): SigHash =
   result = default(SigHash)
-  var c: MD5Context
+  var c: MD5Context = default(MD5Context)
   md5Init c
   hashSym(c, s)
   var it = s
@@ -316,7 +316,7 @@ proc hashNonProc*(s: PSym): SigHash =
 
 proc hashOwner*(s: PSym): SigHash =
   result = default(SigHash)
-  var c: MD5Context
+  var c: MD5Context = default(MD5Context)
   md5Init c
   var m = s
   while m.kind != skModule: m = m.owner
@@ -389,7 +389,7 @@ proc symBodyDigest*(graph: ModuleGraph, sym: PSym): SigHash =
   graph.symBodyHashes.withValue(sym.id, value):
     return value[]
 
-  var c: MD5Context
+  var c: MD5Context = default(MD5Context)
   md5Init(c)
   c.hashType(sym.typ, {CoProc}, graph.config)
   c &= char(sym.kind)

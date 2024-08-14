@@ -31,9 +31,10 @@ implements the required case distinction.
 import
   ast, trees, magicsys, options,
   nversion, msgs, idents, types,
-  ropes, ccgutils, wordrecg, renderer,
+  ropes, wordrecg, renderer,
   cgmeth, lowerings, sighashes, modulegraphs, lineinfos,
-  transf, injectdestructors, sourcemap, astmsgs, backendpragmas
+  transf, injectdestructors, sourcemap, astmsgs, backendpragmas,
+  mangleutils
 
 import pipelineutils
 
@@ -105,26 +106,30 @@ type
     optionsStack: seq[TOptions]
     module: BModule
     g: PGlobals
-    generatedParamCopies: IntSet
     beforeRetNeeded: bool
     unique: int    # for temp identifier generation
     blocks: seq[TBlock]
     extraIndent: int
-    up: PProc     # up the call chain; required for closure support
-    declaredGlobals: IntSet
     previousFileName: string  # For frameInfo inside templates.
+    # legacy: generatedParamCopies and up fields are used for jsNoLambdaLifting
+    generatedParamCopies: IntSet
+    up: PProc     # up the call chain; required for closure support
 
 template config*(p: PProc): ConfigRef = p.module.config
 
 proc indentLine(p: PProc, r: Rope): Rope =
   var p = p
-  var ind = 0
-  while true:
-    inc ind, p.blocks.len + p.extraIndent
-    if p.up == nil or p.up.prc != p.prc.owner:
-      break
-    p = p.up
-  result = repeat(' ', ind*2) & r
+  if jsNoLambdaLifting in p.config.legacyFeatures:
+    var ind = 0
+    while true:
+      inc ind, p.blocks.len + p.extraIndent
+      if p.up == nil or p.up.prc != p.prc.owner:
+        break
+      p = p.up
+    result = repeat(' ', ind*2) & r
+  else:
+    let ind = p.blocks.len + p.extraIndent
+    result = repeat(' ', ind*2) & r
 
 template line(p: PProc, added: string) =
   p.body.add(indentLine(p, rope(added)))
@@ -174,10 +179,6 @@ proc initProcOptions(module: BModule): TOptions =
 
 proc newInitProc(globals: PGlobals, module: BModule): PProc =
   result = newProc(globals, module, nil, initProcOptions(module))
-
-proc declareGlobal(p: PProc; id: int; r: Rope) =
-  if p.prc != nil and not p.declaredGlobals.containsOrIncl(id):
-    p.locals.addf("global $1;$n", [r])
 
 const
   MappedToObject = {tyObject, tyArray, tyTuple, tyOpenArray,
@@ -245,7 +246,7 @@ proc mangleName(m: BModule, s: PSym): Rope =
     for chr in name:
       if chr notin {'A'..'Z','a'..'z','_','$','0'..'9'}:
         return false
-  result = s.loc.r
+  result = s.loc.snippet
   if result == "":
     if s.kind == skField and s.name.s.validJsName:
       result = rope(s.name.s)
@@ -269,10 +270,14 @@ proc mangleName(m: BModule, s: PSym): Rope =
         # When hot reloading is enabled, we must ensure that the names
         # of functions and types will be preserved across rebuilds:
         result.add(idOrSig(s, m.module.name.s, m.sigConflicts, m.config))
+      elif s.kind == skParam:
+        result.add mangleParamExt(s)
+      elif s.kind in routineKinds:
+        result.add mangleProcNameExt(m.graph, s)
       else:
         result.add("_")
         result.add(rope(s.id))
-    s.loc.r = result
+    s.loc.snippet = result
 
 proc escapeJSString(s: string): string =
   result = newStringOfCap(s.len + s.len shr 2)
@@ -464,9 +469,6 @@ const # magic checked op; magic unchecked op;
     mUnaryMinusF64: ["", ""],
     mCharToStr: ["nimCharToStr", "nimCharToStr"],
     mBoolToStr: ["nimBoolToStr", "nimBoolToStr"],
-    mIntToStr: ["cstrToNimstr", "cstrToNimstr"],
-    mInt64ToStr: ["cstrToNimstr", "cstrToNimstr"],
-    mFloatToStr: ["cstrToNimstr", "cstrToNimstr"],
     mCStrToStr: ["cstrToNimstr", "cstrToNimstr"],
     mStrToStr: ["", ""]]
 
@@ -811,8 +813,6 @@ proc arithAux(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
   of mUnaryMinusF64: applyFormat("-($1)", "-($1)")
   of mCharToStr: applyFormat("nimCharToStr($1)", "nimCharToStr($1)")
   of mBoolToStr: applyFormat("nimBoolToStr($1)", "nimBoolToStr($1)")
-  of mIntToStr: applyFormat("cstrToNimstr(($1) + \"\")", "cstrToNimstr(($1) + \"\")")
-  of mInt64ToStr: applyFormat("cstrToNimstr(($1) + \"\")", "cstrToNimstr(($1) + \"\")")
   of mCStrToStr: applyFormat("cstrToNimstr($1)", "cstrToNimstr($1)")
   of mStrToStr, mUnown, mIsolate, mFinished: applyFormat("$1", "$1")
   else:
@@ -833,7 +833,7 @@ proc arith(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
     arithAux(p, n, r, op)
   of mModI:
     arithAux(p, n, r, op)
-  of mCharToStr, mBoolToStr, mIntToStr, mInt64ToStr, mCStrToStr, mStrToStr, mEnumToStr:
+  of mCharToStr, mBoolToStr, mCStrToStr, mStrToStr, mEnumToStr:
     arithAux(p, n, r, op)
   of mEqRef:
     if mapType(n[1].typ) != etyBaseIndex:
@@ -843,6 +843,11 @@ proc arith(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
       gen(p, n[1], x)
       gen(p, n[2], y)
       r.res = "($# == $# && $# == $#)" % [x.address, y.address, x.res, y.res]
+  of mEqProc:
+    if skipTypes(n[1].typ, abstractInst).callConv == ccClosure:
+      binaryExpr(p, n, r, "cmpClosures", "cmpClosures($1, $2)")
+    else:
+      arithAux(p, n, r, op)
   else:
     arithAux(p, n, r, op)
   r.kind = resExpr
@@ -932,7 +937,7 @@ proc genTry(p: PProc, n: PNode, r: var TCompRes) =
     p.body.add("++excHandler;\L")
   var tmpFramePtr = rope"F"
   lineF(p, "try {$n", [])
-  var a: TCompRes
+  var a: TCompRes = default(TCompRes)
   gen(p, n[0], a)
   moveInto(p, a, r)
   var generalCatchBranchExists = false
@@ -976,7 +981,7 @@ proc genTry(p: PProc, n: PNode, r: var TCompRes) =
         # if isJsObject(throwObj.typ):
         if isImportedException(throwObj.typ, p.config):
           orExpr.addf("lastJSError instanceof $1",
-            [throwObj.typ.sym.loc.r])
+            [throwObj.typ.sym.loc.snippet])
         else:
           orExpr.addf("isObj(lastJSError.m_type, $1)",
                [genTypeInfo(p, throwObj.typ)])
@@ -986,8 +991,8 @@ proc genTry(p: PProc, n: PNode, r: var TCompRes) =
       # If some branch requires a local alias introduce it here. This is needed
       # since JS cannot do ``catch x as y``.
       if excAlias != nil:
-        excAlias.sym.loc.r = mangleName(p.module, excAlias.sym)
-        lineF(p, "var $1 = lastJSError;$n", excAlias.sym.loc.r)
+        excAlias.sym.loc.snippet = mangleName(p.module, excAlias.sym)
+        lineF(p, "var $1 = lastJSError;$n", excAlias.sym.loc.snippet)
       gen(p, n[i][^1], a)
       moveInto(p, a, r)
       lineF(p, "}$n", [])
@@ -1025,7 +1030,7 @@ proc genCaseJS(p: PProc, n: PNode, r: var TCompRes) =
     a, b, cond, stmt: TCompRes = default(TCompRes)
   genLineDir(p, n)
   gen(p, n[0], cond)
-  let typeKind = skipTypes(n[0].typ, abstractVar).kind
+  let typeKind = skipTypes(n[0].typ, abstractVar+{tyRange}).kind
   var transferRange = false
   let anyString = typeKind in {tyString, tyCstring}
   case typeKind
@@ -1204,8 +1209,17 @@ proc genIf(p: PProc, n: PNode, r: var TCompRes) =
     lineF(p, "}$n", [])
   line(p, repeat('}', toClose) & "\L")
 
-proc generateHeader(p: PProc, typ: PType): Rope =
+proc generateHeader(p: PProc, prc: PSym): Rope =
   result = ""
+  let typ = prc.typ
+  if jsNoLambdaLifting notin p.config.legacyFeatures:
+    if typ.callConv == ccClosure:
+      # we treat Env as the `this` parameter of the function
+      # to keep it simple
+      let env = prc.ast[paramsPos].lastSon
+      assert env.kind == nkSym, "env is missing"
+      env.sym.loc.snippet = "this"
+
   for i in 1..<typ.n.len:
     assert(typ.n[i].kind == nkSym)
     var param = typ.n[i].sym
@@ -1238,9 +1252,10 @@ const
 
 proc needsNoCopy(p: PProc; y: PNode): bool =
   return y.kind in nodeKindsNeedNoCopy or
-        ((mapType(y.typ) != etyBaseIndex or (y.kind == nkSym and y.sym.kind == skParam)) and
+        ((mapType(y.typ) != etyBaseIndex or
+          (jsNoLambdaLifting in p.config.legacyFeatures and y.kind == nkSym and y.sym.kind == skParam)) and
           (skipTypes(y.typ, abstractInst).kind in
-            {tyRef, tyPtr, tyLent, tyVar, tyCstring, tyProc, tyOwned} + IntegralTypes))
+            {tyRef, tyPtr, tyLent, tyVar, tyCstring, tyProc, tyOwned, tyOpenArray} + IntegralTypes))
 
 proc genAsgnAux(p: PProc, x, y: PNode, noCopyNeeded: bool) =
   var a, b: TCompRes = default(TCompRes)
@@ -1267,7 +1282,7 @@ proc genAsgnAux(p: PProc, x, y: PNode, noCopyNeeded: bool) =
       lineF(p, "$1 = nimCopy(null, $2, $3);$n",
                [a.rdLoc, b.res, genTypeInfo(p, y.typ)])
   of etyObject:
-    if x.typ.kind in {tyVar, tyLent} or (needsNoCopy(p, y) and needsNoCopy(p, x)) or noCopyNeeded:
+    if x.typ.kind in {tyVar, tyLent, tyOpenArray, tyVarargs} or (needsNoCopy(p, y) and needsNoCopy(p, x)) or noCopyNeeded:
       lineF(p, "$1 = $2;$n", [a.rdLoc, b.rdLoc])
     else:
       useMagic(p, "nimCopy")
@@ -1322,19 +1337,10 @@ proc genFastAsgn(p: PProc, n: PNode) =
   genAsgnAux(p, n[0], n[1], noCopyNeeded=noCopy)
 
 proc genSwap(p: PProc, n: PNode) =
-  var a, b: TCompRes = default(TCompRes)
-  gen(p, n[1], a)
-  gen(p, n[2], b)
-  var tmp = p.getTemp(false)
-  if mapType(p, skipTypes(n[1].typ, abstractVar)) == etyBaseIndex:
-    let tmp2 = p.getTemp(false)
-    if a.typ != etyBaseIndex or b.typ != etyBaseIndex:
-      internalError(p.config, n.info, "genSwap")
-    lineF(p, "var $1 = $2; $2 = $3; $3 = $1;$n",
-             [tmp, a.address, b.address])
-    tmp = tmp2
-  lineF(p, "var $1 = $2; $2 = $3; $3 = $1;",
-           [tmp, a.res, b.res])
+  let stmtList = lowerSwap(p.module.graph, n, p.module.idgen, if p.prc != nil: p.prc else: p.module.module)
+  assert stmtList.kind == nkStmtList
+  for i in 0..<stmtList.len:
+    genStmt(p, stmtList[i])
 
 proc getFieldPosition(p: PProc; f: PNode): int =
   case f.kind
@@ -1354,8 +1360,8 @@ proc genFieldAddr(p: PProc, n: PNode, r: var TCompRes) =
   else:
     if b[1].kind != nkSym: internalError(p.config, b[1].info, "genFieldAddr")
     var f = b[1].sym
-    if f.loc.r == "": f.loc.r = mangleName(p.module, f)
-    r.res = makeJSString($f.loc.r)
+    if f.loc.snippet == "": f.loc.snippet = mangleName(p.module, f)
+    r.res = makeJSString($f.loc.snippet)
   internalAssert p.config, a.typ != etyBaseIndex
   r.address = a.res
   r.kind = resExpr
@@ -1382,8 +1388,8 @@ proc genFieldAccess(p: PProc, n: PNode, r: var TCompRes) =
   else:
     if n[1].kind != nkSym: internalError(p.config, n[1].info, "genFieldAccess")
     var f = n[1].sym
-    if f.loc.r == "": f.loc.r = mangleName(p.module, f)
-    r.res = "$1.$2" % [r.res, f.loc.r]
+    if f.loc.snippet == "": f.loc.snippet = mangleName(p.module, f)
+    r.res = "$1.$2" % [r.res, f.loc.snippet]
     mkTemp(1)
   r.kind = resExpr
 
@@ -1403,11 +1409,11 @@ proc genCheckedFieldOp(p: PProc, n: PNode, addrTyp: PType, r: var TCompRes) =
   # Field symbol
   var field = accessExpr[1].sym
   internalAssert p.config, field.kind == skField
-  if field.loc.r == "": field.loc.r = mangleName(p.module, field)
+  if field.loc.snippet == "": field.loc.snippet = mangleName(p.module, field)
   # Discriminant symbol
   let disc = checkExpr[2].sym
   internalAssert p.config, disc.kind == skField
-  if disc.loc.r == "": disc.loc.r = mangleName(p.module, disc)
+  if disc.loc.snippet == "": disc.loc.snippet = mangleName(p.module, disc)
 
   var setx: TCompRes = default(TCompRes)
   gen(p, checkExpr[1], setx)
@@ -1424,16 +1430,16 @@ proc genCheckedFieldOp(p: PProc, n: PNode, addrTyp: PType, r: var TCompRes) =
   useMagic(p, "reprDiscriminant") # no need to offset by firstOrd unlike for cgen
   let msg = genFieldDefect(p.config, field.name.s, disc)
   lineF(p, "if ($1[$2.$3]$4undefined) { raiseFieldError2(makeNimstrLit($5), reprDiscriminant($2.$3, $6)); }$n",
-    setx.res, tmp, disc.loc.r, if negCheck: "!==" else: "===",
+    setx.res, tmp, disc.loc.snippet, if negCheck: "!==" else: "===",
     makeJSString(msg), genTypeInfo(p, disc.typ))
 
   if addrTyp != nil and mapType(p, addrTyp) == etyBaseIndex:
     r.typ = etyBaseIndex
-    r.res = makeJSString($field.loc.r)
+    r.res = makeJSString($field.loc.snippet)
     r.address = tmp
   else:
     r.typ = etyNone
-    r.res = "$1.$2" % [tmp, field.loc.r]
+    r.res = "$1.$2" % [tmp, field.loc.snippet]
   r.kind = resExpr
 
 proc genArrayAddr(p: PProc, n: PNode, r: var TCompRes) =
@@ -1464,7 +1470,7 @@ proc genArrayAddr(p: PProc, n: PNode, r: var TCompRes) =
   r.kind = resExpr
 
 proc genArrayAccess(p: PProc, n: PNode, r: var TCompRes) =
-  var ty = skipTypes(n[0].typ, abstractVarRange)
+  var ty = skipTypes(n[0].typ, abstractVarRange+tyUserTypeClasses)
   if ty.kind in {tyRef, tyPtr, tyLent, tyOwned}: ty = skipTypes(ty.elementType, abstractVarRange)
   case ty.kind
   of tyArray, tyOpenArray, tySequence, tyString, tyCstring, tyVarargs:
@@ -1500,10 +1506,10 @@ template isIndirect(x: PSym): bool =
 
 proc genSymAddr(p: PProc, n: PNode, typ: PType, r: var TCompRes) =
   let s = n.sym
-  if s.loc.r == "": internalError(p.config, n.info, "genAddr: 3")
+  if s.loc.snippet == "": internalError(p.config, n.info, "genAddr: 3")
   case s.kind
   of skParam:
-    r.res = s.loc.r
+    r.res = s.loc.snippet
     r.address = ""
     r.typ = etyNone
   of skVar, skLet, skResult:
@@ -1517,15 +1523,15 @@ proc genSymAddr(p: PProc, n: PNode, typ: PType, r: var TCompRes) =
       # make addr() a no-op:
       r.typ = etyNone
       if isIndirect(s):
-        r.res = s.loc.r & "[0]"
+        r.res = s.loc.snippet & "[0]"
       else:
-        r.res = s.loc.r
+        r.res = s.loc.snippet
       r.address = ""
     elif {sfGlobal, sfAddrTaken} * s.flags != {} or jsType == etyBaseIndex:
       # for ease of code generation, we do not distinguish between
       # sfAddrTaken and sfGlobal.
       r.typ = etyBaseIndex
-      r.address = s.loc.r
+      r.address = s.loc.snippet
       r.res = rope("0")
     else:
       # 'var openArray' for instance produces an 'addr' but this is harmless:
@@ -1552,7 +1558,7 @@ proc genAddr(p: PProc, n: PNode, r: var TCompRes) =
       if ty.kind in MappedToObject:
         gen(p, n[0], r)
       else:
-        let kindOfIndexedExpr = skipTypes(n[0][0].typ, abstractVarRange).kind
+        let kindOfIndexedExpr = skipTypes(n[0][0].typ, abstractVarRange+tyUserTypeClasses).kind
         case kindOfIndexedExpr
         of tyArray, tyOpenArray, tySequence, tyString, tyCstring, tyVarargs:
           genArrayAddr(p, n[0], r)
@@ -1598,12 +1604,15 @@ proc attachProc(p: PProc; s: PSym) =
 
 proc genProcForSymIfNeeded(p: PProc, s: PSym) =
   if not p.g.generatedSyms.containsOrIncl(s.id):
-    let newp = genProc(p, s)
-    var owner = p
-    while owner != nil and owner.prc != s.owner:
-      owner = owner.up
-    if owner != nil: owner.locals.add(newp)
-    else: attachProc(p, newp, s)
+    if jsNoLambdaLifting in p.config.legacyFeatures:
+      let newp = genProc(p, s)
+      var owner = p
+      while owner != nil and owner.prc != s.owner:
+        owner = owner.up
+      if owner != nil: owner.locals.add(newp)
+      else: attachProc(p, newp, s)
+    else:
+      attachProc(p, s)
 
 proc genCopyForParamIfNeeded(p: PProc, n: PNode) =
   let s = n.sym
@@ -1615,7 +1624,7 @@ proc genCopyForParamIfNeeded(p: PProc, n: PNode) =
       internalError(p.config, n.info, "couldn't find the owner proc of the closed over param: " & s.name.s)
     if owner.prc == s.owner:
       if not owner.generatedParamCopies.containsOrIncl(s.id):
-        let copy = "$1 = nimCopy(null, $1, $2);$n" % [s.loc.r, genTypeInfo(p, s.typ)]
+        let copy = "$1 = nimCopy(null, $1, $2);$n" % [s.loc.snippet, genTypeInfo(p, s.typ)]
         owner.locals.add(owner.indentLine(copy))
       return
     owner = owner.up
@@ -1626,40 +1635,40 @@ proc genSym(p: PProc, n: PNode, r: var TCompRes) =
   var s = n.sym
   case s.kind
   of skVar, skLet, skParam, skTemp, skResult, skForVar:
-    if s.loc.r == "":
+    if s.loc.snippet == "":
       internalError(p.config, n.info, "symbol has no generated name: " & s.name.s)
     if sfCompileTime in s.flags:
       genVarInit(p, s, if s.astdef != nil: s.astdef else: newNodeI(nkEmpty, s.info))
-    if s.kind == skParam:
+    if jsNoLambdaLifting in p.config.legacyFeatures and s.kind == skParam:
       genCopyForParamIfNeeded(p, n)
     let k = mapType(p, s.typ)
     if k == etyBaseIndex:
       r.typ = etyBaseIndex
       if {sfAddrTaken, sfGlobal} * s.flags != {}:
         if isIndirect(s):
-          r.address = "$1[0][0]" % [s.loc.r]
-          r.res = "$1[0][1]" % [s.loc.r]
+          r.address = "$1[0][0]" % [s.loc.snippet]
+          r.res = "$1[0][1]" % [s.loc.snippet]
         else:
-          r.address = "$1[0]" % [s.loc.r]
-          r.res = "$1[1]" % [s.loc.r]
+          r.address = "$1[0]" % [s.loc.snippet]
+          r.res = "$1[1]" % [s.loc.snippet]
       else:
-        r.address = s.loc.r
-        r.res = s.loc.r & "_Idx"
+        r.address = s.loc.snippet
+        r.res = s.loc.snippet & "_Idx"
     elif isIndirect(s):
-      r.res = "$1[0]" % [s.loc.r]
+      r.res = "$1[0]" % [s.loc.snippet]
     else:
-      r.res = s.loc.r
+      r.res = s.loc.snippet
   of skConst:
     genConstant(p, s)
-    if s.loc.r == "":
+    if s.loc.snippet == "":
       internalError(p.config, n.info, "symbol has no generated name: " & s.name.s)
-    r.res = s.loc.r
-  of skProc, skFunc, skConverter, skMethod:
+    r.res = s.loc.snippet
+  of skProc, skFunc, skConverter, skMethod, skIterator:
     if sfCompileTime in s.flags:
       localError(p.config, n.info, "request to generate code for .compileTime proc: " &
           s.name.s)
     discard mangleName(p.module, s)
-    r.res = s.loc.r
+    r.res = s.loc.snippet
     if lfNoDecl in s.loc.flags or s.magic notin generatedMagics or
        {sfImportc, sfInfixCall} * s.flags != {}:
       discard
@@ -1671,13 +1680,13 @@ proc genSym(p: PProc, n: PNode, r: var TCompRes) =
     else:
       genProcForSymIfNeeded(p, s)
   else:
-    if s.loc.r == "":
+    if s.loc.snippet == "":
       internalError(p.config, n.info, "symbol has no generated name: " & s.name.s)
     if mapType(p, s.typ) == etyBaseIndex:
-      r.address = s.loc.r
-      r.res = s.loc.r & "_Idx"
+      r.address = s.loc.snippet
+      r.res = s.loc.snippet & "_Idx"
     else:
-      r.res = s.loc.r
+      r.res = s.loc.snippet
   r.kind = resVal
 
 proc genDeref(p: PProc, n: PNode, r: var TCompRes) =
@@ -1819,9 +1828,9 @@ proc genPatternCall(p: PProc; n: PNode; pat: string; typ: PType;
 proc genInfixCall(p: PProc, n: PNode, r: var TCompRes) =
   # don't call '$' here for efficiency:
   let f = n[0].sym
-  if f.loc.r == "": f.loc.r = mangleName(p.module, f)
+  if f.loc.snippet == "": f.loc.snippet = mangleName(p.module, f)
   if sfInfixCall in f.flags:
-    let pat = $n[0].sym.loc.r
+    let pat = $n[0].sym.loc.snippet
     internalAssert p.config, pat.len > 0
     if pat.contains({'#', '(', '@'}):
       var typ = skipTypes(n[0].typ, abstractInst)
@@ -1936,7 +1945,7 @@ proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
   of tyInt8..tyInt32, tyUInt8..tyUInt32, tyEnum, tyChar:
     result = putToSeq("0", indirect)
   of tyInt, tyUInt:
-    if $t.sym.loc.r == "bigint":
+    if $t.sym.loc.snippet == "bigint":
       result = putToSeq("0n", indirect)
     else:
       result = putToSeq("0", indirect)
@@ -1996,7 +2005,7 @@ proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
       result = putToSeq("null", indirect)
   of tySequence, tyString:
     result = putToSeq("[]", indirect)
-  of tyCstring, tyProc:
+  of tyCstring, tyProc, tyOpenArray:
     result = putToSeq("null", indirect)
   of tyStatic:
     if t.n != nil:
@@ -2048,7 +2057,7 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
     gen(p, n, a)
     case mapType(p, v.typ)
     of etyObject, etySeq:
-      if needsNoCopy(p, n):
+      if v.typ.kind in {tyOpenArray, tyVarargs} or needsNoCopy(p, n):
         s = a.res
       else:
         useMagic(p, "nimCopy")
@@ -2058,32 +2067,43 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
       if a.typ == etyBaseIndex:
         if targetBaseIndex:
           line(p, runtimeFormat(varCode & " = $3, $2_Idx = $4;$n",
-                   [returnType, v.loc.r, a.address, a.res]))
+                   [returnType, v.loc.snippet, a.address, a.res]))
         else:
           if isIndirect(v):
             line(p, runtimeFormat(varCode & " = [[$3, $4]];$n",
-                     [returnType, v.loc.r, a.address, a.res]))
+                     [returnType, v.loc.snippet, a.address, a.res]))
           else:
             line(p, runtimeFormat(varCode & " = [$3, $4];$n",
-                     [returnType, v.loc.r, a.address, a.res]))
+                     [returnType, v.loc.snippet, a.address, a.res]))
       else:
         if targetBaseIndex:
           let tmp = p.getTemp
           lineF(p, "var $1 = $2, $3 = $1[0], $3_Idx = $1[1];$n",
-                   [tmp, a.res, v.loc.r])
+                   [tmp, a.res, v.loc.snippet])
         else:
-          line(p, runtimeFormat(varCode & " = $3;$n", [returnType, v.loc.r, a.res]))
+          line(p, runtimeFormat(varCode & " = $3;$n", [returnType, v.loc.snippet, a.res]))
       return
     else:
       s = a.res
     if isIndirect(v):
-      line(p, runtimeFormat(varCode & " = [$3];$n", [returnType, v.loc.r, s]))
+      line(p, runtimeFormat(varCode & " = [$3];$n", [returnType, v.loc.snippet, s]))
     else:
-      line(p, runtimeFormat(varCode & " = $3;$n", [returnType, v.loc.r, s]))
+      line(p, runtimeFormat(varCode & " = $3;$n", [returnType, v.loc.snippet, s]))
 
   if useReloadingGuard or useGlobalPragmas:
     dec p.extraIndent
     lineF(p, "}$n")
+
+proc genClosureVar(p: PProc, n: PNode) =
+  # assert n[2].kind != nkEmpty
+  # TODO: fixme transform `var env.x` into `var env.x = default()` after
+  # the order of transf and lambdalifting is fixed
+  if n[2].kind != nkEmpty:
+    genAsgnAux(p, n[0], n[2], false)
+  else:
+    var a: TCompRes = default(TCompRes)
+    gen(p, n[0], a)
+    line(p, runtimeFormat("$1 = $2;$n", [rdLoc(a), createVar(p, n[0].typ, false)]))
 
 proc genVarStmt(p: PProc, n: PNode) =
   for i in 0..<n.len:
@@ -2094,15 +2114,17 @@ proc genVarStmt(p: PProc, n: PNode) =
         genStmt(p, unpacked)
       else:
         assert(a.kind == nkIdentDefs)
-        assert(a[0].kind == nkSym)
-        var v = a[0].sym
-        if lfNoDecl notin v.loc.flags and sfImportc notin v.flags:
-          genLineDir(p, a)
-          if sfCompileTime notin v.flags:
-            genVarInit(p, v, a[2])
-          else:
-            # lazy emit, done when it's actually used.
-            if v.ast == nil: v.ast = a[2]
+        if a[0].kind == nkSym:
+          var v = a[0].sym
+          if lfNoDecl notin v.loc.flags and sfImportc notin v.flags:
+            genLineDir(p, a)
+            if sfCompileTime notin v.flags:
+              genVarInit(p, v, a[2])
+            else:
+              # lazy emit, done when it's actually used.
+              if v.ast == nil: v.ast = a[2]
+        else: # closure
+          genClosureVar(p, a)
 
 proc genConstant(p: PProc, c: PSym) =
   if lfNoDecl notin c.loc.flags and not p.g.generatedSyms.containsOrIncl(c.id):
@@ -2149,20 +2171,20 @@ proc genConStrStr(p: PProc, n: PNode, r: var TCompRes) =
   if skipTypes(n[1].typ, abstractVarRange).kind == tyChar:
     r.res.add("[$1].concat(" % [a.res])
   else:
-    r.res.add("($1 || []).concat(" % [a.res])
+    r.res.add("($1).concat(" % [a.res])
 
   for i in 2..<n.len - 1:
     gen(p, n[i], a)
     if skipTypes(n[i].typ, abstractVarRange).kind == tyChar:
       r.res.add("[$1]," % [a.res])
     else:
-      r.res.add("$1 || []," % [a.res])
+      r.res.add("$1," % [a.res])
 
   gen(p, n[^1], a)
   if skipTypes(n[^1].typ, abstractVarRange).kind == tyChar:
     r.res.add("[$1])" % [a.res])
   else:
-    r.res.add("$1 || [])" % [a.res])
+    r.res.add("$1)" % [a.res])
 
 proc genReprAux(p: PProc, n: PNode, r: var TCompRes, magic: string, typ: Rope = "") =
   useMagic(p, magic)
@@ -2229,16 +2251,17 @@ proc genDefault(p: PProc, n: PNode; r: var TCompRes) =
   r.res = createVar(p, n.typ, indirect = false)
   r.kind = resExpr
 
-proc genReset(p: PProc, n: PNode) =
+proc genWasMoved(p: PProc, n: PNode) =
+  # TODO: it should be done by nir
   var x: TCompRes = default(TCompRes)
-  useMagic(p, "genericReset")
   gen(p, n[1], x)
   if x.typ == etyBaseIndex:
     lineF(p, "$1 = null, $2 = 0;$n", [x.address, x.res])
   else:
-    let (a, tmp) = maybeMakeTempAssignable(p, n[1], x)
-    lineF(p, "$1 = genericReset($3, $2);$n", [a,
-                  genTypeInfo(p, n[1].typ), tmp])
+    var y: TCompRes = default(TCompRes)
+    genDefault(p, n[1], y)
+    let (a, _) = maybeMakeTempAssignable(p, n[1], x)
+    lineF(p, "$1 = $2;$n", [a, y.rdLoc])
 
 proc genMove(p: PProc; n: PNode; r: var TCompRes) =
   var a: TCompRes = default(TCompRes)
@@ -2246,7 +2269,7 @@ proc genMove(p: PProc; n: PNode; r: var TCompRes) =
   r.res = p.getTemp()
   gen(p, n[1], a)
   lineF(p, "$1 = $2;$n", [r.rdLoc, a.rdLoc])
-  genReset(p, n)
+  genWasMoved(p, n)
   #lineF(p, "$1 = $2;$n", [dest.rdLoc, src.rdLoc])
 
 proc genDup(p: PProc; n: PNode; r: var TCompRes) =
@@ -2427,7 +2450,7 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of mNewSeqOfCap: unaryExpr(p, n, r, "", "[]")
   of mOf: genOf(p, n, r)
   of mDefault, mZeroDefault: genDefault(p, n, r)
-  of mReset, mWasMoved: genReset(p, n)
+  of mWasMoved: genWasMoved(p, n)
   of mEcho: genEcho(p, n, r)
   of mNLen..mNError, mSlurp, mStaticExec:
     localError(p.config, n.info, errXMustBeCompileTime % n[0].sym.name.s)
@@ -2540,17 +2563,17 @@ proc genObjConstr(p: PProc, n: PNode, r: var TCompRes) =
     let val = it[1]
     gen(p, val, a)
     var f = it[0].sym
-    if f.loc.r == "": f.loc.r = mangleName(p.module, f)
+    if f.loc.snippet == "": f.loc.snippet = mangleName(p.module, f)
     fieldIDs.incl(lookupFieldAgain(n.typ.skipTypes({tyDistinct}), f).id)
 
     let typ = val.typ.skipTypes(abstractInst)
     if a.typ == etyBaseIndex:
-      initList.addf("$#: [$#, $#]", [f.loc.r, a.address, a.res])
+      initList.addf("$#: [$#, $#]", [f.loc.snippet, a.address, a.res])
     else:
       if not needsNoCopy(p, val):
         useMagic(p, "nimCopy")
         a.res = "nimCopy(null, $1, $2)" % [a.rdLoc, genTypeInfo(p, typ)]
-      initList.addf("$#: $#", [f.loc.r, a.res])
+      initList.addf("$#: $#", [f.loc.snippet, a.res])
   let t = skipTypes(n.typ, abstractInst + skipPtrs)
   createObjInitList(p, t, fieldIDs, initList)
   r.res = ("{$1}") % [initList]
@@ -2609,7 +2632,13 @@ proc genRangeChck(p: PProc, n: PNode, r: var TCompRes, magic: string) =
   let src = skipTypes(n[0].typ, abstractVarRange)
   let dest = skipTypes(n.typ, abstractVarRange)
   if optRangeCheck notin p.options:
-    return
+    if optJsBigInt64 in p.config.globalOptions and
+          dest.kind in {tyUInt..tyUInt32, tyInt..tyInt32} and
+          src.kind in {tyInt64, tyUInt64}:
+      # conversions to Number are kept
+      r.res = "Number($1)" % [r.res]
+    else:
+      discard
   elif dest.kind in {tyUInt..tyUInt64} and checkUnsignedConversions notin p.config.legacyFeatures:
     if src.kind in {tyInt64, tyUInt64} and optJsBigInt64 in p.config.globalOptions:
       r.res = "BigInt.asUintN($1, $2)" % [$(dest.size * 8), r.res]
@@ -2708,7 +2737,7 @@ proc genProc(oldProc: PProc, prc: PSym): Rope =
   var returnStmt: Rope = ""
   var resultAsgn: Rope = ""
   var name = mangleName(p.module, prc)
-  let header = generateHeader(p, prc.typ)
+  let header = generateHeader(p, prc)
   if prc.typ.returnType != nil and sfPure notin prc.flags:
     resultSym = prc.ast[resultPos].sym
     let mname = mangleName(p.module, resultSym)
@@ -2927,7 +2956,18 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
       genInfixCall(p, n, r)
     else:
       genCall(p, n, r)
-  of nkClosure: gen(p, n[0], r)
+  of nkClosure:
+    if jsNoLambdaLifting in p.config.legacyFeatures:
+      gen(p, n[0], r)
+    else:
+      let tmp = getTemp(p)
+      var a: TCompRes = default(TCompRes)
+      var b: TCompRes = default(TCompRes)
+      gen(p, n[0], a)
+      gen(p, n[1], b)
+      lineF(p, "$1 = $2.bind($3); $1.ClP_0 = $2; $1.ClE_0 = $3;$n", [tmp, a.rdLoc, b.rdLoc])
+      r.res = tmp
+      r.kind = resVal
   of nkCurly: genSetConstr(p, n, r)
   of nkBracket: genArrayConstr(p, n, r)
   of nkPar, nkTupleConstr: genTupleConstr(p, n, r)
@@ -2958,10 +2998,8 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
   of nkLambdaKinds:
     let s = n[namePos].sym
     discard mangleName(p.module, s)
-    r.res = s.loc.r
-    if s.kind == skIterator and s.typ.callConv == TCallingConvention.ccClosure:
-      globalError(p.config, n.info, "Closure iterators are not supported by JS backend!")
-    elif lfNoDecl in s.loc.flags or s.magic notin generatedMagics: discard
+    r.res = s.loc.snippet
+    if lfNoDecl in s.loc.flags or s.magic notin generatedMagics: discard
     elif not p.g.generatedSyms.containsOrIncl(s.id):
       p.locals.add(genProc(p, s))
   of nkType: r.res = genTypeInfo(p, n.typ)
@@ -2992,7 +3030,7 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
     if n[0].kind != nkEmpty:
       genLineDir(p, n)
       gen(p, n[0], r)
-      r.res = "var _ = " & r.res
+      r.res = "(" & r.res & ")"
   of nkAsmStmt:
     warningDeprecated(p.config, n.info, "'asm' for the JS target is deprecated, use the 'emit' pragma")
     genAsmOrEmitStmt(p, n, true)
@@ -3000,11 +3038,8 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
   of nkRaiseStmt: genRaiseStmt(p, n)
   of nkTypeSection, nkCommentStmt, nkIncludeStmt,
      nkImportStmt, nkImportExceptStmt, nkExportStmt, nkExportExceptStmt,
-     nkFromStmt, nkTemplateDef, nkMacroDef, nkStaticStmt,
+     nkFromStmt, nkTemplateDef, nkMacroDef, nkIteratorDef, nkStaticStmt,
      nkMixinStmt, nkBindStmt: discard
-  of nkIteratorDef:
-    if n[0].sym.typ.callConv == TCallingConvention.ccClosure:
-      globalError(p.config, n.info, "Closure iterators are not supported by JS backend!")
   of nkPragma: genPragma(p, n)
   of nkProcDef, nkFuncDef, nkMethodDef, nkConverterDef:
     var s = n[namePos].sym
@@ -3012,7 +3047,18 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
       genSym(p, n[namePos], r)
       r.res = ""
   of nkGotoState, nkState:
-    globalError(p.config, n.info, "First class iterators not implemented")
+    globalError(p.config, n.info, "not implemented")
+  of nkBreakState:
+    var a: TCompRes = default(TCompRes)
+    if n[0].kind == nkClosure:
+      gen(p, n[0][1], a)
+      let sym = n[0][1].typ[0].n[0].sym
+      r.res = "(($1).$2 < 0)" % [rdLoc(a), mangleName(p.module, sym)]
+    else:
+      gen(p, n[0], a)
+      let sym = n[0].typ[0].n[0].sym
+      r.res = "((($1.ClE_0).$2) < 0)" % [rdLoc(a), mangleName(p.module, sym)]
+    r.kind = resExpr
   of nkPragmaBlock: gen(p, n.lastSon, r)
   of nkComesFrom:
     discard "XXX to implement for better stack traces"
@@ -3118,15 +3164,6 @@ proc wholeCode(graph: ModuleGraph; m: BModule): Rope =
       attachProc(p, prc)
 
   result = globals.typeInfo & globals.constants & globals.code
-
-proc getClassName(t: PType): Rope =
-  var s = t.sym
-  if s.isNil or sfAnon in s.flags:
-    s = skipTypes(t, abstractPtrs).sym
-  if s.isNil or sfAnon in s.flags:
-    doAssert(false, "cannot retrieve class name")
-  if s.loc.r != "": result = s.loc.r
-  else: result = rope(s.name.s)
 
 proc finalJSCodeGen*(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
   ## Finalize JS code generation of a Nim module.

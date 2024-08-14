@@ -397,7 +397,7 @@ proc getStrongComponents(g: var DepG): seq[seq[DepN]] =
   ## Tarjan's algorithm. Performs a topological sort
   ## and detects strongly connected components.
   result = @[]
-  var s: seq[DepN]
+  var s: seq[DepN] = @[]
   var idx = 0
   for v in g.mitems:
     if v.idx < 0:
