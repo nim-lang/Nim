@@ -134,7 +134,8 @@ const
   #List of currently supported capabilities. So lang servers/ides can iterate over and check for what's enabled
   Capabilities = [
     "con", #current NimSuggest supports the `con` commmand
-    "exceptionInlayHints"
+    "exceptionInlayHints",
+    "unknownFile", #current NimSuggest can handle unknown files
   ]
 
 proc parseQuoted(cmd: string; outp: var string; start: int): int =
@@ -229,6 +230,14 @@ proc clearInstCache(graph: ModuleGraph, projectFileIdx: FileIndex) =
       procIdsToDelete.add id
   for id in procIdsToDelete:
     graph.procInstCache.del id
+
+  for tbl in mitems(graph.attachedOps):
+    var attachedOpsToDelete = newSeq[ItemId]()
+    for id in tbl.keys:
+      if id.module == projectFileIdx.int and sfOverridden in resolveAttachedOp(graph, tbl[id]).flags:
+        attachedOpsToDelete.add id
+    for id in attachedOpsToDelete:
+      tbl.del id
 
 proc executeNoHooks(cmd: IdeCmd, file, dirtyfile: AbsoluteFile, line, col: int, tag: string,
              graph: ModuleGraph) =
@@ -758,20 +767,16 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
 
   if gMode != mstdin:
     conf.writelnHook = proc (msg: string) = discard
-  # Find Nim's prefix dir.
-  let binaryPath = findExe("nim")
-  if binaryPath == "":
-    raise newException(IOError,
-        "Cannot find Nim standard library: Nim compiler not in PATH")
-  conf.prefixDir = AbsoluteDir binaryPath.splitPath().head.parentDir()
-  if not dirExists(conf.prefixDir / RelativeDir"lib"):
-    conf.prefixDir = AbsoluteDir""
-
+  conf.prefixDir = conf.getPrefixDir()
   #msgs.writelnHook = proc (line: string) = log(line)
   myLog("START " & conf.projectFull.string)
 
   var graph = newModuleGraph(cache, conf)
   if self.loadConfigsAndProcessCmdLine(cache, conf, graph):
+
+    if conf.selectedGC == gcUnselected and
+          conf.backend != backendJs:
+      initOrcDefines(conf)
     mainCommand(graph)
 
 # v3 start
@@ -1065,10 +1070,6 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
   var fileIndex: FileIndex
 
   if not (cmd in {ideRecompile, ideGlobalSymbols}):
-    if not fileInfoKnown(conf, file):
-      myLog fmt "{file} is unknown, returning no results"
-      return
-
     fileIndex = fileInfoIdx(conf, file)
     msgs.setDirtyFile(
       conf,
@@ -1344,13 +1345,7 @@ else:
       conf.writelnHook = proc (msg: string) = discard
     # Find Nim's prefix dir.
     if nimPath == "":
-      let binaryPath = findExe("nim")
-      if binaryPath == "":
-        raise newException(IOError,
-            "Cannot find Nim standard library: Nim compiler not in PATH")
-      conf.prefixDir = AbsoluteDir binaryPath.splitPath().head.parentDir()
-      if not dirExists(conf.prefixDir / RelativeDir"lib"):
-        conf.prefixDir = AbsoluteDir""
+      conf.prefixDir = conf.getPrefixDir()
     else:
       conf.prefixDir = AbsoluteDir nimPath
 

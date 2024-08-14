@@ -63,6 +63,8 @@ proc considerQuotedIdent*(c: PContext; n: PNode, origin: PNode = nil): PIdent =
       result = n[0].sym.name
     else:
       handleError(n, origin)
+  of nkOpenSym:
+    result = considerQuotedIdent(c, n[0], origin)
   else:
     handleError(n, origin)
 
@@ -701,6 +703,10 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
     if result != nil and result.kind == skStub: loadStub(result)
 
 proc initOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
+  if n.kind == nkOpenSym:
+    # maybe the logic in semexprs should be mirrored here instead
+    # for now it only seems this is called for `pickSym` in `getTypeIdent` 
+    return initOverloadIter(o, c, n[0])
   o.importIdx = -1
   o.marked = initIntSet()
   case n.kind

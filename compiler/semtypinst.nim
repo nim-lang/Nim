@@ -132,9 +132,13 @@ proc prepareNode(cl: var TReplTypeVars, n: PNode): PNode =
       else:
         replaceTypeVarsS(cl, n.sym, replaceTypeVarsT(cl, n.sym.typ))
   let isCall = result.kind in nkCallKinds
+  # don't try to instantiate symchoice symbols, they can be
+  # generic procs which the compiler will think are uninstantiated
+  # because their type will contain uninstantiated params
+  let isSymChoice = result.kind in nkSymChoices
   for i in 0..<n.safeLen:
     # XXX HACK: ``f(a, b)``, avoid to instantiate `f`
-    if isCall and i == 0: result.add(n[i])
+    if isSymChoice or (isCall and i == 0): result.add(n[i])
     else: result.add(prepareNode(cl, n[i]))
 
 proc isTypeParam(n: PNode): bool =

@@ -17,6 +17,10 @@
 
 - `bindMethod` in `std/jsffi` is deprecated, don't use it with closures.
 
+- JS backend now supports lambda lifting for closures. Use `--legacy:jsNoLambdaLifting` to emulate old behavior.
+
+- `owner` in `std/macros` is deprecated.
+
 ## Standard library additions and changes
 
 [//]: # "Changes:"
@@ -28,7 +32,7 @@
 [//]: # "Additions:"
 
 - Added `newStringUninit` to system, which creates a new string of length `len` like `newString` but with uninitialized content.
-- Added `setLenUninit` to system, which doesn't initalize
+- Added `setLenUninit` to system, which doesn't initialize
 slots when enlarging a sequence.
 - Added `hasDefaultValue` to `std/typetraits` to check if a type has a valid default value.
 - Added Viewport API for the JavaScript targets in the `dom` module.
@@ -36,6 +40,13 @@ slots when enlarging a sequence.
 - ORC: To be enabled via `nimOrcStats` there is a new API called `GC_orcStats` that can be used to query how many
   objects the cyclic collector did free. If the number is zero that is a strong indicator that you can use `--mm:arc`
   instead of `--mm:orc`.
+- A `$` template is provided for `Path` in `std/paths`.
+- `std/hashes.hash(x:string)` changed to produce a 64-bit string `Hash` (based
+on Google's Farm Hash) which is also often faster than the present one.  Define
+`nimStringHash2` to get the old values back.  `--jsbigint=off` mode always only
+produces the old values.  This may impact your automated tests if they depend
+on hash order in some obvious or indirect way.  Using `sorted` or `OrderedTable`
+is often an easy workaround.
 
 [//]: # "Deprecations:"
 
@@ -67,7 +78,9 @@ slots when enlarging a sequence.
 - An experimental option `genericsOpenSym` has been added to allow captured
   symbols in generic routine bodies to be replaced by symbols injected locally
   by templates/macros at instantiation time. `bind` may be used to keep the
-  captured symbols over the injected ones regardless of enabling the option.
+  captured symbols over the injected ones regardless of enabling the option,
+  but other methods like renaming the captured symbols should be used instead
+  so that the code is not affected by context changes.
 
   Since this change may affect runtime behavior, the experimental switch
   `genericsOpenSym` needs to be enabled, and a warning is given in the case
@@ -98,6 +111,13 @@ slots when enlarging a sequence.
       return value
   assert baz[int]() == "captured"
   ```
+
+  This option also generates a new node kind `nnkOpenSym` which contains
+  exactly 1 of either an `nnkSym` or an `nnkOpenSymChoice` node. In the future
+  this might be merged with a slightly modified `nnkOpenSymChoice` node but
+  macros that want to support the experimental feature should still handle
+  `nnkOpenSym`, as the node kind would simply not be generated as opposed to
+  being removed.
 
 ## Compiler changes
 

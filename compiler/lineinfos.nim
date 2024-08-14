@@ -95,6 +95,7 @@ type
     warnGenericsIgnoredInjection = "GenericsIgnoredInjection",
     warnStdPrefix = "StdPrefix"
     warnUser = "User",
+    warnGlobalVarConstructorTemporary = "GlobalVarConstructorTemporary",
     # hints
     hintSuccess = "Success", hintSuccessX = "SuccessX",
     hintCC = "CC",
@@ -200,6 +201,7 @@ const
     warnGenericsIgnoredInjection: "$1",
     warnStdPrefix: "$1 needs the 'std' prefix",
     warnUser: "$1",
+    warnGlobalVarConstructorTemporary: "global variable '$1' initialization requires a temporary variable",
     hintSuccess: "operation successful: $#",
     # keep in sync with `testament.isSuccess`
     hintSuccessX: "$build\n$loc lines; ${sec}s; $mem; proj: $project; out: $output",

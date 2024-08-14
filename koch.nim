@@ -11,7 +11,7 @@
 
 const
   # examples of possible values for repos: Head, ea82b54
-  NimbleStableCommit = "39b61c5d85afffd53aa404ac9126419ae1bd8d67" # master
+  NimbleStableCommit = "db8245a994f4f7b162f11848d38d7d1862686954" # 0.16.0 (+1 fix in nimble dump)
   AtlasStableCommit = "5faec3e9a33afe99a7d22377dd1b45a5391f5504"
   ChecksumsStableCommit = "025bcca3915a1b9f19878cea12ad68f9884648fc"
   SatStableCommit = "faf1617f44d7632ee9601ebc13887644925dcc01"
@@ -160,6 +160,8 @@ proc bundleNimbleExe(latest: bool, args: string) =
                   commit = commit, allowBundled = true)
   cloneDependency(distDir / "nimble" / distDir, "https://github.com/nim-lang/checksums.git",
                 commit = ChecksumsStableCommit, allowBundled = true) # or copy it from dist?
+  cloneDependency(distDir / "nimble" / distDir, "https://github.com/nim-lang/sat.git",
+                commit = SatStableCommit, allowBundled = true)
   # installer.ini expects it under $nim/bin
   nimCompile("dist/nimble/src/nimble.nim",
              options = "-d:release -d:nimNimbleBootstrap --noNimblePath " & args)

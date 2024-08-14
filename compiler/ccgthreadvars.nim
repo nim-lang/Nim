@@ -30,7 +30,7 @@ proc declareThreadVar(m: BModule, s: PSym, isExtern: bool) =
     # allocator for it :-(
     if not containsOrIncl(m.g.nimtvDeclared, s.id):
       m.g.nimtvDeps.add(s.loc.t)
-      m.g.nimtv.addf("$1 $2;$n", [getTypeDesc(m, s.loc.t), s.loc.r])
+      m.g.nimtv.addf("$1 $2;$n", [getTypeDesc(m, s.loc.t), s.loc.snippet])
   else:
     if isExtern: m.s[cfsVars].add("extern ")
     elif lfExportLib in s.loc.flags: m.s[cfsVars].add("N_LIB_EXPORT_VAR ")
@@ -41,7 +41,7 @@ proc declareThreadVar(m: BModule, s: PSym, isExtern: bool) =
         m.s[cfsVars].add("NIM_THREAD_LOCAL ")
       else: m.s[cfsVars].add("NIM_THREADVAR ")
     m.s[cfsVars].add(getTypeDesc(m, s.loc.t))
-    m.s[cfsVars].addf(" $1;$n", [s.loc.r])
+    m.s[cfsVars].addf(" $1;$n", [s.loc.snippet])
 
 proc generateThreadLocalStorage(m: BModule) =
   if m.g.nimtv != "" and (usesThreadVars in m.flags or sfMainModule in m.module.flags):

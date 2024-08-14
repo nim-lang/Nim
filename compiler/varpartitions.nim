@@ -106,6 +106,7 @@ type
     unanalysableMutation: bool
     inAsgnSource, inConstructor, inNoSideEffectSection: int
     inConditional, inLoop: int
+    inConvHasDestructor: int
     owner: PSym
     g: ModuleGraph
 
@@ -427,8 +428,16 @@ proc destMightOwn(c: var Partitions; dest: var VarIndex; n: PNode) =
     # primitive literals including the empty are harmless:
     discard
 
-  of nkExprEqExpr, nkExprColonExpr, nkHiddenStdConv, nkHiddenSubConv, nkCast, nkConv:
+  of nkExprEqExpr, nkExprColonExpr, nkHiddenStdConv, nkHiddenSubConv, nkCast:
     destMightOwn(c, dest, n[1])
+
+  of nkConv:
+    if hasDestructor(n.typ):
+      inc c.inConvHasDestructor
+      destMightOwn(c, dest, n[1])
+      dec c.inConvHasDestructor
+    else:
+      destMightOwn(c, dest, n[1])
 
   of nkIfStmt, nkIfExpr:
     for i in 0..<n.len:
@@ -481,7 +490,7 @@ proc destMightOwn(c: var Partitions; dest: var VarIndex; n: PNode) =
 
   of nkCallKinds:
     if n.typ != nil:
-      if hasDestructor(n.typ):
+      if hasDestructor(n.typ) or c.inConvHasDestructor > 0:
         # calls do construct, what we construct must be destroyed,
         # so dest cannot be a cursor:
         dest.flags.incl ownsData
