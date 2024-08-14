@@ -1956,7 +1956,14 @@ proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
       result = putToSeq("0", indirect)
   of tyFloat..tyFloat128:
     result = putToSeq("0.0", indirect)
-  of tyRange, tyGenericInst, tyAlias, tySink, tyOwned, tyLent:
+  of tyRange:
+    let base = skipModifier(typ)
+    case base.kind
+    of tyFloat..tyFloat64:
+      result = putToSeq(rope(firstFloat(typ)), indirect)
+    else:
+      result = putToSeq(rope(firstOrd(p.config, typ)), indirect)
+  of tyGenericInst, tyAlias, tySink, tyOwned, tyLent:
     result = createVar(p, skipModifier(typ), indirect)
   of tySet:
     result = putToSeq("{}", indirect)
