@@ -761,3 +761,15 @@ template main {.dirty.} =
 
 static: main()
 main()
+
+block:
+  type limited_int = range[1..20]
+  var d: limited_int
+  doAssert d == 1
+
+  proc foo(): int =
+    var d: limited_int
+    doAssert d == 1
+    result = d
+
+  doAssert foo() == 1
