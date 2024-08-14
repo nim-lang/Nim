@@ -689,7 +689,10 @@ proc defaultNodeField(c: PContext, a: PNode, aTyp: PType, checkDefault: bool): P
       result = nil
   of tyRange:
     if c.graph.config.isDefined("nimPreviewRangeDefault"):
-      result = newIntNode(nkIntLit, firstOrd(c.config, aTypSkip))
+      if aTypSkip.skipModifier().kind in tyFloat..tyFloat64:
+        result = newFloatNode(nkFloatLit, firstFloat(aTypSkip))
+      else:
+        result = newIntNode(nkIntLit, firstOrd(c.config, aTypSkip))
       result.typ = aTyp
     else:
       result = nil

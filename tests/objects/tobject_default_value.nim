@@ -744,6 +744,10 @@ template main {.dirty.} =
       var b = default ArrayObj2
       doAssert b.list[North] == 1
 
+  block:
+    type limited_float = range[1.2..20.0]
+    doAssert default(limited_float) == 1.2
+
 
   block:
     type
