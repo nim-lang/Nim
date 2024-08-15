@@ -475,6 +475,13 @@ proc semAnonTuple(c: PContext, n: PNode, prev: PType): PType =
     let t = semTypeNode(c, it, nil)
     addSonSkipIntLitChecked(c, result, t, it, c.idgen)
 
+proc firstRange(config: ConfigRef, t: PType): PNode =
+  if t.skipModifier().kind in tyFloat..tyFloat64:
+    result = newFloatNode(nkFloatLit, firstFloat(t))
+  else:
+    result = newIntNode(nkIntLit, firstOrd(config, t))
+  result.typ = t
+
 proc semTuple(c: PContext, n: PNode, prev: PType): PType =
   var typ: PType
   result = newOrPrevType(tyTuple, prev, c)
@@ -491,8 +498,7 @@ proc semTuple(c: PContext, n: PNode, prev: PType): PType =
     elif a[^2].kind != nkEmpty:
       typ = semTypeNode(c, a[^2], nil)
       if c.graph.config.isDefined("nimPreviewRangeDefault") and typ.skipTypes(abstractInst).kind == tyRange:
-        a[^1] = newIntNode(nkIntLit, firstOrd(c.config, typ))
-        a[^1].typ = typ
+        a[^1] = firstRange(c.config, typ)
         hasDefaultField = true
     else:
       localError(c.config, a.info, errTypeExpected)
@@ -846,8 +852,7 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
     else:
       typ = semTypeNode(c, n[^2], nil)
       if c.graph.config.isDefined("nimPreviewRangeDefault") and typ.skipTypes(abstractInst).kind == tyRange:
-        n[^1] = newIntNode(nkIntLit, firstOrd(c.config, typ))
-        n[^1].typ = typ
+        n[^1] = firstRange(c.config, typ)
         hasDefaultField = true
       propagateToOwner(rectype, typ)
     var fieldOwner = if c.inGenericContext > 0: c.getCurrOwner

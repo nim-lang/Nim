@@ -763,5 +763,13 @@ template main {.dirty.} =
 
     foo()
 
+  block:
+    type
+      Object = object
+        id: range[1.2..29.3]
+
+    var s = default(Object)
+    doAssert s.id == 1.2
+
 static: main()
 main()
