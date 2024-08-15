@@ -34,11 +34,12 @@ proc newTupleAccess*(g: ModuleGraph; tup: PNode, i: int): PNode =
     # iterator items(list: var LetterPairs): lent (Letter, string) =
     #   for item in list.values:
     #     yield item
-    # `item` comes from the `items` which returns `lent T`, which
-    # implies a `nkHiddenDeref` when accessing it from yield
-    # `yield item` is equal to `yield (addr (deref item))`
-    # `(addr (deref item)` is transformed into `item` with a `tyPtr` type
-    # which ends up here
+    # `item` comes from `items(list.values)`  which returns `lent T`,
+    # which implies a `nkHiddenDeref` node when accessing it from yield
+    # so `yield item` is equal to `yield (addr (deref item))`
+    # and `(addr (deref item)` is transformed into `item` 
+    # with a `tyPtr` type in the `transf` phase
+    # and ends up here finally
     let itemType = tup.typ.skipTypes(abstractInst+{tyPtr})[i]
     result = newNodeIT(nkHiddenAddr, tup.info, newType(tyPtr, g.idgen, itemType.owner, skipIntLit(itemType, g.idgen)))
     result.add newNodeIT(nkBracketExpr, tup.info, itemType)
