@@ -163,3 +163,21 @@ block: # issue #23339
       outerField: Inner[O.aToB]
   var x: Outer[A]
   doAssert typeof(x.outerField.innerField) is B
+
+block: # deref syntax
+  type
+    Enqueueable = concept x
+      x is ptr
+    Foo[T: Enqueueable] = object
+      x: typeof(default(T)[])
+
+  proc p[T](f: Foo[T]) =
+    var bar: Foo[T]
+    discard
+  var foo: Foo[ptr int]
+  p(foo)
+  doAssert foo.x is int
+  foo.x = 123
+  doAssert foo.x == 123
+  inc foo.x
+  doAssert foo.x == 124
