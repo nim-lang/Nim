@@ -10,7 +10,7 @@
 ## This module contains helpers that deal with different byte orders
 ## (`endian`:idx:).
 ##
-## Endianess is the order of bytes of a value in memory. Big-endian means that
+## Endianness is the order of bytes of a value in memory. Big-endian means that
 ## the most significant byte is stored at the smallest memory address,
 ## while little endian means that the least-significant byte is stored
 ## at the smallest address. See also https://en.wikipedia.org/wiki/Endianness.

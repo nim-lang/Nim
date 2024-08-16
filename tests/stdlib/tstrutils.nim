@@ -1,9 +1,11 @@
 discard """
-  targets: "c cpp js"
+  matrix: "--mm:refc; --mm:orc; --backend:cpp; --backend:js --jsbigint64:off -d:nimStringHash2; --backend:js --jsbigint64:on"
 """
 
 import std/strutils
 from stdtest/testutils import disableVm
+import std/assertions
+import std/private/jsutils
 # xxx each instance of `disableVm` and `when not defined js:` should eventually be fixed
 
 template rejectParse(e) =
@@ -51,6 +53,15 @@ template main() =
     doAssert s.split(maxsplit = 4) == @["", "this", "is", "an", "example  "]
     doAssert s.split(' ', maxsplit = 1) == @["", "this is an example  "]
     doAssert s.split(" ", maxsplit = 4) == @["", "this", "is", "an", "example  "]
+    # Empty string:
+    doAssert "".split() == @[""]
+    doAssert "".split(" ") == @[""]
+    doAssert "".split({' '}) == @[""]
+    # Empty separators:
+    doAssert "".split({}) == @[""]
+    doAssert "".split("") == @[""]
+    doAssert s.split({}) == @[s]
+    doAssert s.split("") == @[s]
 
   block: # splitLines
     let fixture = "a\nb\rc\r\nd"
@@ -61,12 +72,21 @@ template main() =
   block: # rsplit
     doAssert rsplit("foo bar", seps = Whitespace) == @["foo", "bar"]
     doAssert rsplit(" foo bar", seps = Whitespace, maxsplit = 1) == @[" foo", "bar"]
-    doAssert rsplit(" foo bar ", seps = Whitespace, maxsplit = 1) == @[
-        " foo bar", ""]
+    doAssert rsplit(" foo bar ", seps = Whitespace, maxsplit = 1) == @[" foo bar", ""]
     doAssert rsplit(":foo:bar", sep = ':') == @["", "foo", "bar"]
     doAssert rsplit(":foo:bar", sep = ':', maxsplit = 2) == @["", "foo", "bar"]
     doAssert rsplit(":foo:bar", sep = ':', maxsplit = 3) == @["", "foo", "bar"]
     doAssert rsplit("foothebar", sep = "the") == @["foo", "bar"]
+    # Empty string:
+    doAssert "".rsplit() == @[""]
+    doAssert "".rsplit(" ") == @[""]
+    doAssert "".rsplit({' '}) == @[""]
+    # Empty separators:
+    let s = " this is an example  "
+    doAssert "".rsplit({}) == @[""]
+    doAssert "".rsplit("") == @[""]
+    doAssert s.rsplit({}) == @[s]
+    doAssert s.rsplit("") == @[s]
 
   block: # splitWhitespace
     let s = " this is an example  "
@@ -232,18 +252,22 @@ template main() =
     {.pop.}
 
   block: # find
-    doAssert "0123456789ABCDEFGH".find('A') == 10
-    doAssert "0123456789ABCDEFGH".find('A', 5) == 10
-    doAssert "0123456789ABCDEFGH".find('A', 5, 10) == 10
-    doAssert "0123456789ABCDEFGH".find('A', 5, 9) == -1
-    doAssert "0123456789ABCDEFGH".find("A") == 10
-    doAssert "0123456789ABCDEFGH".find("A", 5) == 10
-    doAssert "0123456789ABCDEFGH".find("A", 5, 10) == 10
-    doAssert "0123456789ABCDEFGH".find("A", 5, 9) == -1
-    doAssert "0123456789ABCDEFGH".find({'A'..'C'}) == 10
-    doAssert "0123456789ABCDEFGH".find({'A'..'C'}, 5) == 10
-    doAssert "0123456789ABCDEFGH".find({'A'..'C'}, 5, 10) == 10
-    doAssert "0123456789ABCDEFGH".find({'A'..'C'}, 5, 9) == -1
+    const haystack: string = "0123456789ABCDEFGH"
+    doAssert haystack.find('A') == 10
+    doAssert haystack.find('A', 5) == 10
+    doAssert haystack.find('A', 5, 10) == 10
+    doAssert haystack.find('A', 5, 9) == -1
+    doAssert haystack.find("A") == 10
+    doAssert haystack.find("A", 5) == 10
+    doAssert haystack.find("A", 5, 10) == 10
+    doAssert haystack.find("A", 5, 9) == -1
+    doAssert haystack.find({'A'..'C'}) == 10
+    doAssert haystack.find({'A'..'C'}, 5) == 10
+    doAssert haystack.find({'A'..'C'}, 5, 10) == 10
+    doAssert haystack.find({'A'..'C'}, 5, 9) == -1
+    doAssert haystack.find('A', 0, 0) == -1 # search limited to the first char
+    doAssert haystack.find('A', 5, 0) == -1 # last < start
+    doAssert haystack.find('A', 5, 4) == -1 # last < start
 
     block:
       const haystack: string = "ABCABABABABCAB"
@@ -290,16 +314,16 @@ template main() =
 
     # when last <= start, searching for non-empty string
     block:
-      let last: int = -1
-      doAssert "abcd".find("ab", start=0, last=last) == -1
-      doAssert "abcd".find("ab", start=1, last=last) == -1
-      doAssert "abcd".find("bc", start=1, last=last) == -1
-      doAssert "abcd".find("bc", start=2, last=last) == -1
-    block:
-      let last: int = 0
+      let last: int = -1 # searching through whole line
       doAssert "abcd".find("ab", start=0, last=last) == 0
       doAssert "abcd".find("ab", start=1, last=last) == -1
       doAssert "abcd".find("bc", start=1, last=last) == 1
+      doAssert "abcd".find("bc", start=2, last=last) == -1
+    block:
+      let last: int = 0
+      doAssert "abcd".find("ab", start=0, last=last) == -1
+      doAssert "abcd".find("ab", start=1, last=last) == -1
+      doAssert "abcd".find("bc", start=1, last=last) == -1
       doAssert "abcd".find("bc", start=2, last=last) == -1
     block:
       let last: int = 1
@@ -356,19 +380,23 @@ template main() =
     doAssert "///".rfind("//", start=3) == -1
 
     # searching for empty string
-    doAssert "".rfind("") == -1
-    doAssert "abc".rfind("") == -1
-    doAssert "abc".rfind("", start=1) == -1
-    doAssert "abc".rfind("", start=2) == -1
-    doAssert "abc".rfind("", start=3) == -1
-    doAssert "abc".rfind("", start=4) == -1
-    doAssert "abc".rfind("", start=400) == -1
+    doAssert "".rfind("") == 0
+    doAssert "abc".rfind("") == 3
+    doAssert "abc".rfind("", start=1) == 3
+    doAssert "abc".rfind("", start=2) == 3
+    doAssert "abc".rfind("", start=3) == 3
+    doAssert "abc".rfind("", start=4) == 4
+    doAssert "abc".rfind("", start=400) == 400
 
-    doAssert "abc".rfind("", start=1, last=3) == -1
-    doAssert "abc".rfind("", start=1, last=2) == -1
-    doAssert "abc".rfind("", start=1, last=1) == -1
-    doAssert "abc".rfind("", start=1, last=0) == -1
-    doAssert "abc".rfind("", start=1, last = -1) == -1
+    doAssert "abc".rfind("", start=1, last=3) == 3
+    doAssert "abc".rfind("", start=1, last=2) == 2
+    doAssert "abc".rfind("", start=1, last=1) == 1
+    # This returns the start index instead of the last index
+    # because start > last
+    doAssert "abc".rfind("", start=1, last=0) == 1
+    doAssert "abc".rfind("", start=1, last = -1) == 3
+    
+    doAssert "abc".rfind("", start=0, last=0) == 0
 
     # when last <= start, searching for non-empty string
     block:
@@ -424,6 +452,9 @@ template main() =
     x = "1e0"
     x.trimZeros()
     doAssert x == "1e0"
+    x = "1.23"
+    x.trimZeros()
+    doAssert x == "1.23"
 
   block: # countLines
     proc assertCountLines(s: string) = doAssert s.countLines == s.splitLines.len
@@ -496,8 +527,9 @@ template main() =
 
   block: # toHex
     doAssert(toHex(100i16, 32) == "00000000000000000000000000000064")
-    doAssert(toHex(-100i16, 32) == "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFF9C")
-    when not defined js:
+    whenJsNoBigInt64: discard
+    do:
+      doAssert(toHex(-100i16, 32) == "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFF9C")
       doAssert(toHex(high(uint64)) == "FFFFFFFFFFFFFFFF")
       doAssert(toHex(high(uint64), 16) == "FFFFFFFFFFFFFFFF")
       doAssert(toHex(high(uint64), 32) == "0000000000000000FFFFFFFFFFFFFFFF")
@@ -518,11 +550,12 @@ template main() =
     doAssert(spaces(0) == "")
 
   block: # toBin, toOct
-    block:# bug #11369
+    whenJsNoBigInt64: # bug #11369
+      discard
+    do:
       var num: int64 = -1
-      when not defined js:
-        doAssert num.toBin(64) == "1111111111111111111111111111111111111111111111111111111111111111"
-        doAssert num.toOct(24) == "001777777777777777777777"
+      doAssert num.toBin(64) == "1111111111111111111111111111111111111111111111111111111111111111"
+      doAssert num.toOct(24) == "001777777777777777777777"
 
   block: # replace
     doAssert "oo".replace("", "abc") == "oo"
@@ -646,11 +679,22 @@ template main() =
       doAssert b == f2
       doAssert c == f3
 
-  block: # parseEnum TODO: merge above
-    type MyEnum = enum enA, enB, enC, enuD, enE
-    doAssert parseEnum[MyEnum]("enu_D") == enuD
+    block:
+      type MyEnum = enum enA, enB, enC, enuD, enE
+      doAssert parseEnum[MyEnum]("enu_D") == enuD
 
-    doAssert parseEnum("invalid enum value", enC) == enC
+      doAssert parseEnum("invalid enum value", enC) == enC
+    
+    block: # issue #22726
+      type SomeEnum = enum A, B, C
+
+      proc assignEnum(dest: var enum, s: string) =
+        type ty = typeof(dest)
+        dest = parseEnum[ty](s)
+      
+      var v: SomeEnum
+      v.assignEnum("A")
+      doAssert v == A
 
   block: # indentation
     doAssert 0 == indentation """
@@ -729,7 +773,8 @@ bar
 
   block: # formatSize
     disableVm:
-      when not defined(js):
+      whenJsNoBigInt64: discard
+      do:
         doAssert formatSize((1'i64 shl 31) + (300'i64 shl 20)) == "2.293GiB" # <=== bug #8231
       doAssert formatSize((2.234*1024*1024).int) == "2.234MiB"
       doAssert formatSize(4096) == "4KiB"
@@ -858,6 +903,11 @@ bar
     doAssert nimIdentNormalize("foo_bar") == "foobar"
     doAssert nimIdentNormalize("Foo_bar") == "Foobar"
     doAssert nimIdentNormalize("_Foo_bar") == "_foobar"
+
+  block: # bug #19500
+    doAssert "abc \0 def".find("def") == 6
+    doAssert "abc \0 def".find('d') == 6
+
 
 static: main()
 main()

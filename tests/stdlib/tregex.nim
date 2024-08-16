@@ -1,5 +1,6 @@
 discard """
   output: "key: keyAYes!"
+  matrix: "--mm:refc; --mm:orc"
 """
 # Test the new regular expression module
 # which is based on the PCRE library
@@ -11,7 +12,7 @@ when defined(powerpc64):
 else:
   import
     re
-
+  import std/syncio
   if "keyA = valueA" =~ re"\s*(\w+)\s*\=\s*(\w+)":
     write(stdout, "key: ", matches[0])
   elif "# comment!" =~ re.re"\s*(\#.*)":

@@ -1,8 +1,10 @@
 discard """
+  matrix: "--mm:refc; --mm:orc"
   targets: "c js"
 """
 
 import std/[lists, sequtils]
+import std/assertions
 
 const
   data = [1, 2, 3, 4, 5, 6]

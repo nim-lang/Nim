@@ -51,3 +51,19 @@ type Bug[T] = object
 
 var bug: Bug[int]
 doAssert sizeof(bug) == 128, "Oops my size is " & $sizeof(bug) # 16
+
+
+block: # bug #22419
+  type
+    ValidatorPubKey = object
+      blob: array[96, byte]
+
+  proc f(): auto =
+    return iterator() =
+      var pad: int8 = 0
+      var y {.align: 16.}: ValidatorPubKey
+      let value = cast[uint64](addr y)
+      doAssert value mod 16 == 0
+
+  f()()
+

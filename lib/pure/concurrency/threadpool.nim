@@ -7,21 +7,25 @@
 #    distribution, for details about the copyright.
 #
 
+{.deprecated: "use the nimble packages `malebolgia`, `taskpools` or `weave` instead".}
+
 ## Implements Nim's `parallel & spawn statements <manual_experimental.html#parallel-amp-spawn>`_.
 ##
 ## Unstable API.
 ##
 ## See also
 ## ========
-## * `threads module <threads.html>`_ for basic thread support
-## * `channels module <channels_builtin.html>`_ for message passing support
+## * `threads module <typedthreads.html>`_ for basic thread support
 ## * `locks module <locks.html>`_ for locks and condition variables
 ## * `asyncdispatch module <asyncdispatch.html>`_ for asynchronous IO
 
 when not compileOption("threads"):
   {.error: "Threadpool requires --threads:on option.".}
 
-import cpuinfo, cpuload, locks, os
+import std/[cpuinfo, cpuload, locks, os]
+
+when defined(nimPreviewSlimSystem):
+  import std/[assertions, typedthreads, sysatomics]
 
 {.push stackTrace:off.}
 
@@ -100,7 +104,7 @@ type
     idx: int
 
   FlowVarBase* = ref FlowVarBaseObj ## Untyped base class for `FlowVar[T] <#FlowVar>`_.
-  FlowVarBaseObj = object of RootObj
+  FlowVarBaseObj {.acyclic.} = object of RootObj
     ready, usesSemaphore, awaited: bool
     cv: Semaphore  # for 'blockUntilAny' support
     ai: ptr AwaitInfo
@@ -109,7 +113,7 @@ type
                    # be RootRef here otherwise the wrong GC keeps track of it!
     owner: pointer # ptr Worker
 
-  FlowVarObj[T] = object of FlowVarBaseObj
+  FlowVarObj[T] {.acyclic.} = object of FlowVarBaseObj
     blob: T
 
   FlowVar*[T] {.compilerproc.} = ref FlowVarObj[T] ## A data flow variable.

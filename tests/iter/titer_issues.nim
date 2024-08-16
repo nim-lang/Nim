@@ -29,6 +29,19 @@ end
 9018
 @[1, 2]
 @[1, 2, 3]
+1
+nested finally
+outer finally
+nested finally
+outer finally
+nested finally
+outer finally
+nested finally
+outer finally
+In defer
+trying
+exception caught
+finally block
 '''
 """
 
@@ -274,3 +287,108 @@ iterator cc() {.closure.} =
             break
 
 var a2 = cc
+
+# bug #16876
+block:
+  iterator a(num: int): int {.closure.} =
+      if num == 1:
+          yield num
+      else:
+          for i in a(num - 1):
+              yield i
+
+  for i in a(5):
+    echo i
+
+block:
+  # bug #19911 (return in nested try)
+
+  # try yield -> try
+  iterator p1: int {.closure.} =
+    try:
+      yield 0
+      try:
+        return
+      finally:
+        echo "nested finally"
+      echo "shouldn't run"
+    finally:
+      echo "outer finally"
+    echo "shouldn't run"
+
+  for _ in p1():
+    discard
+
+  # try -> try yield
+  iterator p2: int {.closure.} =
+    try:
+      try:
+        yield 0
+        return
+      finally:
+        echo "nested finally"
+      echo "shouldn't run"
+    finally:
+      echo "outer finally"
+    echo "shouldn't run"
+
+  for _ in p2():
+    discard
+
+  # try yield -> try yield
+  iterator p3: int {.closure.} =
+    try:
+      yield 0
+      try:
+        yield 0
+        return
+      finally:
+        echo "nested finally"
+      echo "shouldn't run"
+    finally:
+      echo "outer finally"
+    echo "shouldn't run"
+
+  for _ in p3():
+    discard
+
+  # try -> try
+  iterator p4: int {.closure.} =
+    try:
+      try:
+        return
+      finally:
+        echo "nested finally"
+      echo "shouldn't run"
+    finally:
+      echo "outer finally"
+    echo "shouldn't run"
+
+  for _ in p4():
+    discard
+
+# bug #18824
+iterator poc_iterator: int {.closure.}  =
+  block bug18824:
+    try:
+      break bug18824
+    finally:
+      echo "In defer"
+
+for _ in poc_iterator():
+  discard
+
+# bug #20624
+iterator tryFinally() {.closure.} =
+  block route:
+    try:
+      echo "trying"
+      raise
+    except:
+      echo "exception caught"
+      break route
+    finally:
+      echo "finally block"
+
+var x = tryFinally
+x()

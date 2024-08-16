@@ -28,7 +28,7 @@ template main2 = # bug #15958
   doAssert byLent(a) == [11,12]
   doAssert sameAddress(byLent(a), a)
   doAssert byLent(b) == @[21,23]
-  # pending bug #16073
+  # bug #16073
   doAssert sameAddress(byLent(b), b)
   doAssert byLent(ss) == {1, 2, 3, 5}
   doAssert sameAddress(byLent(ss), ss)

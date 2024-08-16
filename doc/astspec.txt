@@ -6,8 +6,7 @@ The AST consists of nodes (``NimNode``) with a variable number of
 children. Each node has a field named ``kind`` which describes what the node
 contains:
 
-.. code-block:: nim
-
+  ```nim
   type
     NimNodeKind = enum     ## kind of a node; only explanatory
       nnkNone,             ## invalid node kind
@@ -32,6 +31,7 @@ contains:
         strVal: string                 ## the string literal
       else:
         sons: seq[NimNode]             ## the node's sons (or children)
+  ```
 
 For the ``NimNode`` type, the ``[]`` operator has been overloaded:
 ``n[i]`` is ``n``'s ``i``-th child.
@@ -50,9 +50,9 @@ A leaf of the AST often corresponds to a terminal symbol in the concrete
 syntax. Note that the default ``float`` in Nim maps to ``float64`` such that
 the default AST for a float is ``nnkFloat64Lit`` as below.
 
------------------                ---------------------------------------------
+=================                =============================================
 Nim expression                   Corresponding AST
------------------                ---------------------------------------------
+=================                =============================================
 ``42``                           ``nnkIntLit(intVal = 42)``
 ``42'i8``                        ``nnkInt8Lit(intVal = 42)``
 ``42'i16``                       ``nnkInt16Lit(intVal = 42)``
@@ -72,7 +72,7 @@ Nim expression                   Corresponding AST
 ``nil``                          ``nnkNilLit()``
 ``myIdentifier``                 ``nnkIdent(strVal = "myIdentifier")``
 ``myIdentifier``                 after lookup pass: ``nnkSym(strVal = "myIdentifier", ...)``
------------------                ---------------------------------------------
+=================                =============================================
 
 Identifiers are ``nnkIdent`` nodes. After the name lookup pass these nodes
 get transferred into ``nnkSym`` nodes.
@@ -86,17 +86,19 @@ Command call
 
 Concrete syntax:
 
-.. code-block:: nim
+  ```nim
   echo "abc", "xyz"
+  ```
 
 AST:
 
-.. code-block:: nim
+  ```nim
   nnkCommand(
     nnkIdent("echo"),
     nnkStrLit("abc"),
     nnkStrLit("xyz")
   )
+  ```
 
 
 Call with ``()``
@@ -104,17 +106,19 @@ Call with ``()``
 
 Concrete syntax:
 
-.. code-block:: nim
+  ```nim
   echo("abc", "xyz")
+  ```
 
 AST:
 
-.. code-block:: nim
+  ```nim
   nnkCall(
     nnkIdent("echo"),
     nnkStrLit("abc"),
     nnkStrLit("xyz")
   )
+  ```
 
 
 Infix operator call
@@ -122,29 +126,32 @@ Infix operator call
 
 Concrete syntax:
 
-.. code-block:: nim
+  ```nim
   "abc" & "xyz"
+  ```
 
 AST:
 
-.. code-block:: nim
+  ```nim
   nnkInfix(
     nnkIdent("&"),
     nnkStrLit("abc"),
     nnkStrLit("xyz")
   )
+  ```
 
 Note that with multiple infix operators, the command is parsed by operator
 precedence.
 
 Concrete syntax:
 
-.. code-block:: nim
+  ```nim
   5 + 3 * 4
+  ```
 
 AST:
 
-.. code-block:: nim
+  ```nim
   nnkInfix(
     nnkIdent("+"),
     nnkIntLit(5),
@@ -154,6 +161,7 @@ AST:
       nnkIntLit(4)
     )
   )
+  ```
 
 As a side note, if you choose to use infix operators in a prefix form, the AST
 behaves as a
@@ -162,12 +170,13 @@ behaves as a
 
 Concrete syntax:
 
-.. code-block:: nim
+  ```nim
   `+`(3, 4)
+  ```
 
 AST:
 
-.. code-block:: nim
+  ```nim
   nnkCall(
     nnkAccQuoted(
       nnkIdent("+")
@@ -175,22 +184,25 @@ AST:
     nnkIntLit(3),
     nnkIntLit(4)
   )
+  ```
 
 Prefix operator call
 --------------------
 
 Concrete syntax:
 
-.. code-block:: nim
+  ```nim
   ? "xyz"
+  ```
 
 AST:
 
-.. code-block:: nim
+  ```nim
   nnkPrefix(
     nnkIdent("?"),
     nnkStrLit("abc")
   )
+  ```
 
 
 Postfix operator call
@@ -201,16 +213,18 @@ Postfix operator call
 
 Concrete syntax:
 
-.. code-block:: nim
+  ```nim
   identifier*
+  ```
 
 AST:
 
-.. code-block:: nim
+  ```nim
   nnkPostfix(
     nnkIdent("*"),
     nnkIdent("identifier")
   )
+  ```
 
 
 Call with named arguments
@@ -218,12 +232,13 @@ Call with named arguments
 
 Concrete syntax:
 
-.. code-block:: nim
+  ```nim
   writeLine(file=stdout, "hallo")
+  ```
 
 AST:
 
-.. code-block:: nim
+  ```nim
   nnkCall(
     nnkIdent("writeLine"),
     nnkExprEqExpr(
@@ -232,6 +247,7 @@ AST:
     ),
     nnkStrLit("hallo")
   )
+  ```
 
 Call with raw string literal
 ----------------------------
@@ -242,29 +258,33 @@ This is used, for example, in the ``bindSym`` examples
 
 Concrete syntax:
 
-.. code-block:: nim
+  ```nim
   echo"abc"
+  ```
 
 AST:
 
-.. code-block:: nim
+  ```nim
   nnkCallStrLit(
     nnkIdent("echo"),
     nnkRStrLit("hello")
   )
+  ```
 
 Dereference operator ``[]``
 ---------------------------
 
 Concrete syntax:
 
-.. code-block:: nim
+  ```nim
   x[]
+  ```
 
 AST:
 
-.. code-block:: nim
+  ```nim
   nnkDerefExpr(nnkIdent("x"))
+  ```
 
 
 Addr operator
@@ -272,13 +292,15 @@ Addr operator
 
 Concrete syntax:
 
-.. code-block:: nim
+  ```nim
   addr(x)
+  ```
 
 AST:
 
-.. code-block:: nim
+  ```nim
   nnkAddr(nnkIdent("x"))
+  ```
 
 
 Cast operator
@@ -286,13 +308,15 @@ Cast operator
 
 Concrete syntax:
 
-.. code-block:: nim
+  ```nim
   cast[T](x)
+  ```
 
 AST:
 
-.. code-block:: nim
+  ```nim
   nnkCast(nnkIdent("T"), nnkIdent("x"))
+  ```
 
 
 Object access operator ``.``
@@ -300,13 +324,15 @@ Object access operator ``.``
 
 Concrete syntax:
 
-.. code-block:: nim
+  ```nim
   x.y
+  ```
 
 AST:
 
-.. code-block:: nim
+  ```nim
   nnkDotExpr(nnkIdent("x"), nnkIdent("y"))
+  ```
 
 If you use Nim's flexible calling syntax (as in ``x.len()``), the result is the
 same as above but wrapped in an ``nnkCall``.
@@ -317,13 +343,15 @@ Array access operator ``[]``
 
 Concrete syntax:
 
-.. code-block:: nim
+  ```nim
   x[y]
+  ```
 
 AST:
 
-.. code-block:: nim
+  ```nim
   nnkBracketExpr(nnkIdent("x"), nnkIdent("y"))
+  ```
 
 
 Parentheses
@@ -333,16 +361,18 @@ Parentheses for affecting operator precedence use the ``nnkPar`` node.
 
 Concrete syntax:
 
-.. code-block:: nim
+  ```nim
   (a + b) * c
+  ```
 
 AST:
 
-.. code-block:: nim
+  ```nim
   nnkInfix(nnkIdent("*"),
     nnkPar(
       nnkInfix(nnkIdent("+"), nnkIdent("a"), nnkIdent("b"))),
     nnkIdent("c"))
+  ```
 
 Tuple Constructors
 ------------------
@@ -351,35 +381,39 @@ Nodes for tuple construction are built with the ``nnkTupleConstr`` node.
 
 Concrete syntax:
 
-.. code-block:: nim
+  ```nim
   (1, 2, 3)
   (a: 1, b: 2, c: 3)
   ()
+  ```
 
 AST:
 
-.. code-block:: nim
+  ```nim
   nnkTupleConstr(nnkIntLit(1), nnkIntLit(2), nnkIntLit(3))
   nnkTupleConstr(
     nnkExprColonExpr(nnkIdent("a"), nnkIntLit(1)),
     nnkExprColonExpr(nnkIdent("b"), nnkIntLit(2)),
     nnkExprColonExpr(nnkIdent("c"), nnkIntLit(3)))
   nnkTupleConstr()
+  ```
 
 Since the one tuple would be syntactically identical to parentheses
 with an expression in them, the parser expects a trailing comma for
 them. For tuple constructors with field names, this is not necessary.
 
-.. code-block:: nim
+  ```nim
   (1,)
   (a: 1)
+  ```
 
 AST:
 
-.. code-block:: nim
+  ```nim
   nnkTupleConstr(nnkIntLit(1))
   nnkTupleConstr(
     nnkExprColonExpr(nnkIdent("a"), nnkIntLit(1)))
+  ```
 
 Curly braces
 ------------
@@ -388,28 +422,32 @@ Curly braces are used as the set constructor.
 
 Concrete syntax:
 
-.. code-block:: nim
+  ```nim
   {1, 2, 3}
+  ```
 
 AST:
 
-.. code-block:: nim
+  ```nim
   nnkCurly(nnkIntLit(1), nnkIntLit(2), nnkIntLit(3))
+  ```
 
 When used as a table constructor, the syntax is different.
 
 Concrete syntax:
 
-.. code-block:: nim
+  ```nim
   {a: 3, b: 5}
+  ```
 
 AST:
 
-.. code-block:: nim
+  ```nim
   nnkTableConstr(
     nnkExprColonExpr(nnkIdent("a"), nnkIntLit(3)),
     nnkExprColonExpr(nnkIdent("b"), nnkIntLit(5))
   )
+  ```
 
 
 Brackets
@@ -419,13 +457,15 @@ Brackets are used as the array constructor.
 
 Concrete syntax:
 
-.. code-block:: nim
+  ```nim
   [1, 2, 3]
+  ```
 
 AST:
 
-.. code-block:: nim
+  ```nim
   nnkBracket(nnkIntLit(1), nnkIntLit(2), nnkIntLit(3))
+  ```
 
 
 Ranges
@@ -437,21 +477,23 @@ AST, construction with ``..`` as an infix operator should be used instead.
 
 Concrete syntax:
 
-.. code-block:: nim
+  ```nim
   1..3
+  ```
 
 AST:
 
-.. code-block:: nim
+  ```nim
   nnkInfix(
     nnkIdent(".."),
     nnkIntLit(1),
     nnkIntLit(3)
   )
+  ```
 
 Example code:
 
-.. code-block:: nim
+  ```nim
   macro genRepeatEcho() =
     result = newNimNode(nnkStmtList)
 
@@ -470,6 +512,7 @@ Example code:
                   # 3
                   # 3
                   # 3
+  ```
 
 
 If expression
@@ -479,17 +522,19 @@ The representation of the ``if`` expression is subtle, but easy to traverse.
 
 Concrete syntax:
 
-.. code-block:: nim
+  ```nim
   if cond1: expr1 elif cond2: expr2 else: expr3
+  ```
 
 AST:
 
-.. code-block:: nim
+  ```nim
   nnkIfExpr(
     nnkElifExpr(cond1, expr1),
     nnkElifExpr(cond2, expr2),
     nnkElseExpr(expr3)
   )
+  ```
 
 Documentation Comments
 ----------------------
@@ -500,19 +545,21 @@ comments are ignored.
 
 Concrete syntax:
 
-.. code-block:: nim
+  ```nim
   ## This is a comment
   ## This is part of the first comment
   stmt1
   ## Yet another
+  ```
 
 AST:
 
-.. code-block:: nim
+  ```nim
   nnkCommentStmt() # only appears once for the first two lines!
   stmt1
   nnkCommentStmt() # another nnkCommentStmt because there is another comment
                    # (separate from the first)
+  ```
 
 Pragmas
 -------
@@ -523,30 +570,33 @@ objects, but the standalone ``emit`` pragma shows the basics with the AST.
 
 Concrete syntax:
 
-.. code-block:: nim
+  ```nim
   {.emit: "#include <stdio.h>".}
+  ```
 
 AST:
 
-.. code-block:: nim
+  ```nim
   nnkPragma(
     nnkExprColonExpr(
       nnkIdent("emit"),
       nnkStrLit("#include <stdio.h>") # the "argument"
     )
   )
+  ```
 
 As many ``nnkIdent`` appear as there are pragmas between ``{..}``. Note that
 the declaration of new pragmas is essentially the same:
 
 Concrete syntax:
 
-.. code-block:: nim
+  ```nim
   {.pragma: cdeclRename, cdecl.}
+  ```
 
 AST:
 
-.. code-block:: nim
+  ```nim
   nnkPragma(
     nnkExprColonExpr(
       nnkIdent("pragma"), # this is always first when declaring a new pragma
@@ -554,6 +604,7 @@ AST:
     ),
     nnkIdent("cdecl")
   )
+  ```
 
 Statements
 ==========
@@ -566,7 +617,7 @@ there is no ``else`` branch, no ``nnkElse`` child exists.
 
 Concrete syntax:
 
-.. code-block:: nim
+  ```nim
   if cond1:
     stmt1
   elif cond2:
@@ -575,16 +626,18 @@ Concrete syntax:
     stmt3
   else:
     stmt4
+  ```
 
 AST:
 
-.. code-block:: nim
+  ```nim
   nnkIfStmt(
     nnkElifBranch(cond1, stmt1),
     nnkElifBranch(cond2, stmt2),
     nnkElifBranch(cond3, stmt3),
     nnkElse(stmt4)
   )
+  ```
 
 
 When statement
@@ -598,13 +651,15 @@ Assignment
 
 Concrete syntax:
 
-.. code-block:: nim
+  ```nim
   x = 42
+  ```
 
 AST:
 
-.. code-block:: nim
+  ```nim
   nnkAsgn(nnkIdent("x"), nnkIntLit(42))
+  ```
 
 This is not the syntax for assignment when combined with ``var``, ``let``,
 or ``const``.
@@ -614,15 +669,17 @@ Statement list
 
 Concrete syntax:
 
-.. code-block:: nim
+  ```nim
   stmt1
   stmt2
   stmt3
+  ```
 
 AST:
 
-.. code-block:: nim
+  ```nim
   nnkStmtList(stmt1, stmt2, stmt3)
+  ```
 
 
 Case statement
@@ -630,7 +687,7 @@ Case statement
 
 Concrete syntax:
 
-.. code-block:: nim
+  ```nim
   case expr1
   of expr2, expr3..expr4:
     stmt1
@@ -640,10 +697,11 @@ Concrete syntax:
     stmt3
   else:
     stmt4
+  ```
 
 AST:
 
-.. code-block:: nim
+  ```nim
   nnkCaseStmt(
     expr1,
     nnkOfBranch(expr2, nnkRange(expr3, expr4), stmt1),
@@ -651,6 +709,7 @@ AST:
     nnkElifBranch(cond1, stmt3),
     nnkElse(stmt4)
   )
+  ```
 
 The ``nnkElifBranch`` and ``nnkElse`` parts may be missing.
 
@@ -660,14 +719,16 @@ While statement
 
 Concrete syntax:
 
-.. code-block:: nim
+  ```nim
   while expr1:
     stmt1
+  ```
 
 AST:
 
-.. code-block:: nim
+  ```nim
   nnkWhileStmt(expr1, stmt1)
+  ```
 
 
 For statement
@@ -675,14 +736,16 @@ For statement
 
 Concrete syntax:
 
-.. code-block:: nim
+  ```nim
   for ident1, ident2 in expr1:
     stmt1
+  ```
 
 AST:
 
-.. code-block:: nim
+  ```nim
   nnkForStmt(ident1, ident2, expr1, stmt1)
+  ```
 
 
 Try statement
@@ -690,7 +753,7 @@ Try statement
 
 Concrete syntax:
 
-.. code-block:: nim
+  ```nim
   try:
     stmt1
   except e1, e2:
@@ -701,10 +764,11 @@ Concrete syntax:
     stmt4
   finally:
     stmt5
+  ```
 
 AST:
 
-.. code-block:: nim
+  ```nim
   nnkTryStmt(
     stmt1,
     nnkExceptBranch(e1, e2, stmt2),
@@ -712,6 +776,7 @@ AST:
     nnkExceptBranch(stmt4),
     nnkFinally(stmt5)
   )
+  ```
 
 
 Return statement
@@ -719,13 +784,15 @@ Return statement
 
 Concrete syntax:
 
-.. code-block:: nim
+  ```nim
   return expr1
+  ```
 
 AST:
 
-.. code-block:: nim
+  ```nim
   nnkReturnStmt(expr1)
+  ```
 
 
 Yield statement
@@ -733,8 +800,9 @@ Yield statement
 
 Like ``return``, but with ``nnkYieldStmt`` kind.
 
-.. code-block:: nim
+  ```nim
   nnkYieldStmt(expr1)
+  ```
 
 
 Discard statement
@@ -742,8 +810,9 @@ Discard statement
 
 Like ``return``, but with ``nnkDiscardStmt`` kind.
 
-.. code-block:: nim
+  ```nim
   nnkDiscardStmt(expr1)
+  ```
 
 
 Continue statement
@@ -751,26 +820,30 @@ Continue statement
 
 Concrete syntax:
 
-.. code-block:: nim
+  ```nim
   continue
+  ```
 
 AST:
 
-.. code-block:: nim
+  ```nim
   nnkContinueStmt()
+  ```
 
 Break statement
 ---------------
 
 Concrete syntax:
 
-.. code-block:: nim
+  ```nim
   break otherLocation
+  ```
 
 AST:
 
-.. code-block:: nim
+  ```nim
   nnkBreakStmt(nnkIdent("otherLocation"))
+  ```
 
 If ``break`` is used without a jump-to location, ``nnkEmpty`` replaces ``nnkIdent``.
 
@@ -779,13 +852,15 @@ Block statement
 
 Concrete syntax:
 
-.. code-block:: nim
+  ```nim
   block name:
+  ```
 
 AST:
 
-.. code-block:: nim
+  ```nim
   nnkBlockStmt(nnkIdent("name"), nnkStmtList(...))
+  ```
 
 A ``block`` doesn't need an name, in which case ``nnkEmpty`` is used.
 
@@ -794,18 +869,20 @@ Asm statement
 
 Concrete syntax:
 
-.. code-block:: nim
+  ```nim
   asm """
     some asm
   """
+  ```
 
 AST:
 
-.. code-block:: nim
+  ```nim
   nnkAsmStmt(
     nnkEmpty(), # for pragmas
     nnkTripleStrLit("some asm"),
   )
+  ```
 
 Import section
 --------------
@@ -815,37 +892,42 @@ on what keywords are present. Let's start with the simplest form.
 
 Concrete syntax:
 
-.. code-block:: nim
-  import math
+  ```nim
+  import std/math
+  ```
 
 AST:
 
-.. code-block:: nim
+  ```nim
   nnkImportStmt(nnkIdent("math"))
+  ```
 
 With ``except``, we get ``nnkImportExceptStmt``.
 
 Concrete syntax:
 
-.. code-block:: nim
-  import math except pow
+  ```nim
+  import std/math except pow
+  ```
 
 AST:
 
-.. code-block:: nim
+  ```nim
   nnkImportExceptStmt(nnkIdent("math"),nnkIdent("pow"))
+  ```
 
-Note that ``import math as m`` does not use a different node; rather,
+Note that ``import std/math as m`` does not use a different node; rather,
 we use ``nnkImportStmt`` with ``as`` as an infix operator.
 
 Concrete syntax:
 
-.. code-block:: nim
-  import strutils as su
+  ```nim
+  import std/strutils as su
+  ```
 
 AST:
 
-.. code-block:: nim
+  ```nim
   nnkImportStmt(
     nnkInfix(
       nnkIdent("as"),
@@ -853,6 +935,7 @@ AST:
       nnkIdent("su")
     )
   )
+  ```
 
 From statement
 --------------
@@ -861,15 +944,17 @@ If we use ``from ... import``, the result is different, too.
 
 Concrete syntax:
 
-.. code-block:: nim
-  from math import pow
+  ```nim
+  from std/math import pow
+  ```
 
 AST:
 
-.. code-block:: nim
+  ```nim
   nnkFromStmt(nnkIdent("math"), nnkIdent("pow"))
+  ```
 
-Using ``from math as m import pow`` works identically to the ``as`` modifier
+Using ``from std/math as m import pow`` works identically to the ``as`` modifier
 with the ``import`` statement, but wrapped in ``nnkFromStmt``.
 
 Export statement
@@ -880,26 +965,30 @@ the ``export`` syntax is pretty straightforward.
 
 Concrete syntax:
 
-.. code-block:: nim
+  ```nim
   export unsigned
+  ```
 
 AST:
 
-.. code-block:: nim
+  ```nim
   nnkExportStmt(nnkIdent("unsigned"))
+  ```
 
 Similar to the ``import`` statement, the AST is different for
 ``export ... except``.
 
 Concrete syntax:
 
-.. code-block:: nim
+  ```nim
   export math except pow # we're going to implement our own exponentiation
+  ```
 
 AST:
 
-.. code-block:: nim
+  ```nim
   nnkExportExceptStmt(nnkIdent("math"),nnkIdent("pow"))
+  ```
 
 Include statement
 -----------------
@@ -908,25 +997,28 @@ Like a plain ``import`` statement but with ``nnkIncludeStmt``.
 
 Concrete syntax:
 
-.. code-block:: nim
+  ```nim
   include blocks
+  ```
 
 AST:
 
-.. code-block:: nim
+  ```nim
   nnkIncludeStmt(nnkIdent("blocks"))
+  ```
 
 Var section
 -----------
 
 Concrete syntax:
 
-.. code-block:: nim
+  ```nim
   var a = 3
+  ```
 
 AST:
 
-.. code-block:: nim
+  ```nim
   nnkVarSection(
     nnkIdentDefs(
       nnkIdent("a"),
@@ -934,6 +1026,7 @@ AST:
       nnkIntLit(3),
     )
   )
+  ```
 
 Note that either the second or third (or both) parameters above must exist,
 as the compiler needs to know the type somehow (which it can infer from
@@ -951,12 +1044,13 @@ This is equivalent to ``var``, but with ``nnkLetSection`` rather than
 
 Concrete syntax:
 
-.. code-block:: nim
+  ```nim
   let a = 3
+  ```
 
 AST:
 
-.. code-block:: nim
+  ```nim
   nnkLetSection(
     nnkIdentDefs(
       nnkIdent("a"),
@@ -964,18 +1058,20 @@ AST:
       nnkIntLit(3),
     )
   )
+  ```
 
 Const section
 -------------
 
 Concrete syntax:
 
-.. code-block:: nim
+  ```nim
   const a = 3
+  ```
 
 AST:
 
-.. code-block:: nim
+  ```nim
   nnkConstSection(
     nnkConstDef( # not nnkConstDefs!
       nnkIdent("a"),
@@ -983,6 +1079,7 @@ AST:
       nnkIntLit(3), # required in a const declaration!
     )
   )
+  ```
 
 Type section
 ------------
@@ -992,12 +1089,13 @@ and ``const``.
 
 Concrete syntax:
 
-.. code-block:: nim
+  ```nim
   type A = int
+  ```
 
 AST:
 
-.. code-block:: nim
+  ```nim
   nnkTypeSection(
     nnkTypeDef(
       nnkIdent("A"),
@@ -1005,18 +1103,20 @@ AST:
       nnkIdent("int")
     )
   )
+  ```
 
 Declaring ``distinct`` types is similar, with the last ``nnkIdent`` wrapped
 in ``nnkDistinctTy``.
 
 Concrete syntax:
 
-.. code-block:: nim
+  ```nim
   type MyInt = distinct int
+  ```
 
 AST:
 
-.. code-block:: nim
+  ```nim
   # ...
   nnkTypeDef(
     nnkIdent("MyInt"),
@@ -1025,17 +1125,19 @@ AST:
       nnkIdent("int")
     )
   )
+  ```
 
 If a type section uses generic parameters, they are treated here:
 
 Concrete syntax:
 
-.. code-block:: nim
+  ```nim
   type A[T] = expr1
+  ```
 
 AST:
 
-.. code-block:: nim
+  ```nim
   nnkTypeSection(
     nnkTypeDef(
       nnkIdent("A"),
@@ -1050,6 +1152,7 @@ AST:
       expr1,
     )
   )
+  ```
 
 Note that not all ``nnkTypeDef`` utilize ``nnkIdent`` as their
 parameter. One of the most common uses of type declarations
@@ -1057,12 +1160,13 @@ is to work with objects.
 
 Concrete syntax:
 
-.. code-block:: nim
+  ```nim
   type IO = object of RootObj
+  ```
 
 AST:
 
-.. code-block:: nim
+  ```nim
   # ...
   nnkTypeDef(
     nnkIdent("IO"),
@@ -1075,13 +1179,14 @@ AST:
       nnkEmpty()
     )
   )
+  ```
 
 Nim's object syntax is rich. Let's take a look at an involved example in
 its entirety to see some of the complexities.
 
 Concrete syntax:
 
-.. code-block:: nim
+  ```nim
   type Obj[T] {.inheritable.} = object
     name: string
     case isFat: bool
@@ -1089,10 +1194,11 @@ Concrete syntax:
       m: array[100_000, T]
     of false:
       m: array[10, T]
+  ```
 
 AST:
 
-.. code-block:: nim
+  ```nim
   # ...
   nnkPragmaExpr(
     nnkIdent("Obj"),
@@ -1149,36 +1255,40 @@ AST:
       )
     )
   )
+  ```
 
 
 Using an ``enum`` is similar to using an ``object``.
 
 Concrete syntax:
 
-.. code-block:: nim
+  ```nim
   type X = enum
     First
+  ```
 
 AST:
 
-.. code-block:: nim
+  ```nim
   # ...
   nnkEnumTy(
     nnkEmpty(),
     nnkIdent("First") # you need at least one nnkIdent or the compiler complains
   )
+  ```
 
 The usage of ``concept`` (experimental) is similar to objects.
 
 Concrete syntax:
 
-.. code-block:: nim
+  ```nim
   type Con = concept x,y,z
     (x & y & z) is string
+  ```
 
 AST:
 
-.. code-block:: nim
+  ```nim
   # ...
   nnkTypeClassTy( # note this isn't nnkConceptTy!
     nnkArgList(
@@ -1186,18 +1296,20 @@ AST:
     )
     # ...
   )
+  ```
 
 Static types, like ``static[int]``, use ``nnkIdent`` wrapped in
 ``nnkStaticTy``.
 
 Concrete syntax:
 
-.. code-block:: nim
+  ```nim
   type A[T: static[int]] = object
+  ```
 
 AST:
 
-.. code-block:: nim
+  ```nim
   # ... within nnkGenericParams
   nnkIdentDefs(
     nnkIdent("T"),
@@ -1207,13 +1319,14 @@ AST:
     nnkEmpty()
   )
   # ...
+  ```
 
 In general, declaring types mirrors this syntax (i.e., ``nnkStaticTy`` for
 ``static``, etc.). Examples follow (exceptions marked by ``*``):
 
--------------                ---------------------------------------------
+=============                =============================================
 Nim type                     Corresponding AST
--------------                ---------------------------------------------
+=============                =============================================
 ``static``                   ``nnkStaticTy``
 ``tuple``                    ``nnkTupleTy``
 ``var``                      ``nnkVarTy``
@@ -1226,7 +1339,7 @@ Nim type                     Corresponding AST
 ``proc``                     ``nnkProcTy``
 ``iterator``                 ``nnkIteratorTy``
 ``object``                   ``nnkObjectTy``
--------------                ---------------------------------------------
+=============                =============================================
 
 Take special care when declaring types as ``proc``. The behavior is similar
 to ``Procedure declaration``, below, but does not treat ``nnkGenericParams``.
@@ -1234,12 +1347,13 @@ Generic parameters are treated in the type, not the ``proc`` itself.
 
 Concrete syntax:
 
-.. code-block:: nim
-  type MyProc[T] = proc(x: T)
+  ```nim
+  type MyProc[T] = proc(x: T) {.nimcall.}
+  ```
 
 AST:
 
-.. code-block:: nim
+  ```nim
   # ...
   nnkTypeDef(
     nnkIdent("MyProc"),
@@ -1249,38 +1363,75 @@ AST:
     nnkProcTy( # behaves like a procedure declaration from here on
       nnkFormalParams(
         # ...
-      )
+      ),
+      nnkPragma(nnkIdent("nimcall"))
     )
   )
+  ```
 
 The same syntax applies to ``iterator`` (with ``nnkIteratorTy``), but
 *does not* apply to ``converter`` or ``template``.
+
+Type class versions of these nodes generally share the same node kind but
+without any child nodes. The ``tuple`` type class is represented by
+``nnkTupleClassTy``, while a ``proc`` or ``iterator`` type class with pragmas
+has an ``nnkEmpty`` node in place of the ``nnkFormalParams`` node of a
+concrete ``proc`` or ``iterator`` type node.
+
+  ```nim
+  type TypeClass = proc {.nimcall.} | ref | tuple
+  ```
+
+AST:
+
+  ```nim
+  nnkTypeDef(
+    nnkIdent("TypeClass"),
+    nnkEmpty(),
+    nnkInfix(
+      nnkIdent("|"),
+      nnkProcTy(
+        nnkEmpty(),
+        nnkPragma(nnkIdent("nimcall"))
+      ),
+      nnkInfix(
+        nnkIdent("|"),
+        nnkRefTy(),
+        nnkTupleClassTy()
+      )
+    )
+  )
+  ```
 
 Mixin statement
 ---------------
 
 Concrete syntax:
 
-.. code-block:: nim
+  ```nim
   mixin x
+  ```
 
 AST:
 
-.. code-block:: nim
+  ```nim
   nnkMixinStmt(nnkIdent("x"))
+  ```
 
 Bind statement
 --------------
 
 Concrete syntax:
 
-.. code-block:: nim
+  ```nim
   bind x
+  ```
 
 AST:
 
-.. code-block:: nim
+  ```nim
   nnkBindStmt(nnkIdent("x"))
+  ```
 
 Procedure declaration
 ---------------------
@@ -1290,12 +1441,13 @@ a feel for how procedure calls are broken down.
 
 Concrete syntax:
 
-.. code-block:: nim
+  ```nim
   proc hello*[T: SomeInteger](x: int = 3, y: float32): int {.inline.} = discard
+  ```
 
 AST:
 
-.. code-block:: nim
+  ```nim
   nnkProcDef(
     nnkPostfix(nnkIdent("*"), nnkIdent("hello")), # the exported proc name
     nnkEmpty(), # patterns for term rewriting in templates and macros (not procs)
@@ -1323,6 +1475,7 @@ AST:
     nnkEmpty(), # reserved slot for future use
     nnkStmtList(nnkDiscardStmt(nnkEmpty())) # the meat of the proc
   )
+  ```
 
 There is another consideration. Nim has flexible type identification for
 its procs. Even though ``proc(a: int, b: int)`` and ``proc(a, b: int)``
@@ -1330,12 +1483,13 @@ are equivalent in the code, the AST is a little different for the latter.
 
 Concrete syntax:
 
-.. code-block:: nim
+  ```nim
   proc(a, b: int)
+  ```
 
 AST:
 
-.. code-block:: nim
+  ```nim
   # ...AST as above...
   nnkFormalParams(
     nnkEmpty(), # no return here
@@ -1347,24 +1501,27 @@ AST:
     )
   ),
   # ...
+  ```
 
 When a procedure uses the special ``var`` type return variable, the result
 is different from that of a var section.
 
 Concrete syntax:
 
-.. code-block:: nim
+  ```nim
   proc hello(): var int
+  ```
 
 AST:
 
-.. code-block:: nim
+  ```nim
   # ...
   nnkFormalParams(
     nnkVarTy(
       nnkIdent("int")
     )
   )
+  ```
 
 Iterator declaration
 --------------------
@@ -1374,17 +1531,19 @@ replacing ``nnkProcDef``.
 
 Concrete syntax:
 
-.. code-block:: nim
+  ```nim
   iterator nonsense[T](x: seq[T]): float {.closure.} = ...
+  ```
 
 AST:
 
-.. code-block:: nim
+  ```nim
   nnkIteratorDef(
     nnkIdent("nonsense"),
     nnkEmpty(),
     ...
   )
+  ```
 
 Converter declaration
 ---------------------
@@ -1393,16 +1552,18 @@ A converter is similar to a proc.
 
 Concrete syntax:
 
-.. code-block:: nim
+  ```nim
   converter toBool(x: float): bool
+  ```
 
 AST:
 
-.. code-block:: nim
+  ```nim
   nnkConverterDef(
     nnkIdent("toBool"),
     # ...
   )
+  ```
 
 Template declaration
 --------------------
@@ -1415,12 +1576,13 @@ the ``nnkEmpty()`` as the second argument to ``nnkProcDef`` and
 
 Concrete syntax:
 
-.. code-block:: nim
+  ```nim
   template optOpt{expr1}(a: int): int
+  ```
 
 AST:
 
-.. code-block:: nim
+  ```nim
   nnkTemplateDef(
     nnkIdent("optOpt"),
     nnkStmtList( # instead of nnkEmpty()
@@ -1428,6 +1590,7 @@ AST:
     ),
     # follows like a proc or iterator
   )
+  ```
 
 If the template does not have types for its parameters, the type identifiers
 inside ``nnkFormalParams`` just becomes ``nnkEmpty``.
@@ -1441,8 +1604,9 @@ Macros behave like templates, but ``nnkTemplateDef`` is replaced with
 Hidden Standard Conversion
 --------------------------
 
-.. code-block:: nim
+  ```nim
   var f: float = 1
+  ```
 
 The type of "f" is ``float`` but the type of "1" is actually ``int``. Inserting 
 ``int`` into a ``float`` is a type error. Nim inserts the ``nnkHiddenStdConv``  

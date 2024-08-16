@@ -37,3 +37,13 @@ doAssert a(b) == "(12)"
 doAssert a.b(c) == `()`(b, a, c)
 doAssert (a.b)(c) == `()`(a.b, c)
 doAssert `()`(a.b, c) == `()`(`()`(b, a), c)
+
+block: # bug #1072
+  var x: int
+
+  proc foo(some:int):int = some
+  proc `()`(l,r:string): string = discard
+
+  block:
+    var foo = 42
+    doAssert x.foo == 0

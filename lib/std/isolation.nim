@@ -15,7 +15,7 @@
 ##
 
 type
-  Isolated*[T] = object ## Isolated data can only be moved, not copied.
+  Isolated*[T] {.sendable.} = object ## Isolated data can only be moved, not copied.
     value: T
 
 proc `=copy`*[T](dest: var Isolated[T]; src: Isolated[T]) {.error.}
@@ -38,9 +38,9 @@ func isolate*[T](value: sink T): Isolated[T] {.magic: "Isolate".} =
 
 func unsafeIsolate*[T](value: sink T): Isolated[T] =
   ## Creates an isolated subgraph from the expression `value`.
-  ## 
+  ##
   ## .. warning:: The proc doesn't check whether `value` is isolated.
-  ## 
+  ##
   Isolated[T](value: value)
 
 func extract*[T](src: var Isolated[T]): T =

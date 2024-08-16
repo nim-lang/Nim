@@ -9,46 +9,47 @@
 
 # This module does the instantiation of generic types.
 
+import std / tables
+
 import ast, astalgo, msgs, types, magicsys, semdata, renderer, options,
   lineinfos, modulegraphs
 
-from concepts import makeTypeDesc
+when defined(nimPreviewSlimSystem):
+  import std/assertions
 
 const tfInstClearedFlags = {tfHasMeta, tfUnresolved}
 
 proc checkPartialConstructedType(conf: ConfigRef; info: TLineInfo, t: PType) =
-  if t.kind in {tyVar, tyLent} and t[0].kind in {tyVar, tyLent}:
+  if t.kind in {tyVar, tyLent} and t.elementType.kind in {tyVar, tyLent}:
     localError(conf, info, "type 'var var' is not allowed")
 
 proc checkConstructedType*(conf: ConfigRef; info: TLineInfo, typ: PType) =
   var t = typ.skipTypes({tyDistinct})
   if t.kind in tyTypeClasses: discard
-  elif t.kind in {tyVar, tyLent} and t[0].kind in {tyVar, tyLent}:
+  elif t.kind in {tyVar, tyLent} and t.elementType.kind in {tyVar, tyLent}:
     localError(conf, info, "type 'var var' is not allowed")
   elif computeSize(conf, t) == szIllegalRecursion or isTupleRecursive(t):
     localError(conf, info, "illegal recursion in type '" & typeToString(t) & "'")
-  when false:
-    if t.kind == tyObject and t[0] != nil:
-      if t[0].kind != tyObject or tfFinal in t[0].flags:
-        localError(info, errInheritanceOnlyWithNonFinalObjects)
 
 proc searchInstTypes*(g: ModuleGraph; key: PType): PType =
+  result = nil
   let genericTyp = key[0]
   if not (genericTyp.kind == tyGenericBody and
       genericTyp.sym != nil): return
 
   for inst in typeInstCacheItems(g, genericTyp.sym):
     if inst.id == key.id: return inst
-    if inst.len < key.len:
+    if inst.kidsLen < key.kidsLen:
       # XXX: This happens for prematurely cached
       # types such as Channel[empty]. Why?
       # See the notes for PActor in handleGenericInvocation
-      return
+      # if this is return the same type gets cached more than it needs to
+      continue
     if not sameFlags(inst, key):
       continue
 
     block matchType:
-      for j in 1..high(key.sons):
+      for j in FirstGenericParamAt..<key.kidsLen:
         # XXX sameType is not really correct for nested generics?
         if not compareTypes(inst[j], key[j],
                             flags = {ExactGenericParams, PickyCAliases}):
@@ -58,21 +59,21 @@ proc searchInstTypes*(g: ModuleGraph; key: PType): PType =
 
 proc cacheTypeInst(c: PContext; inst: PType) =
   let gt = inst[0]
-  let t = if gt.kind == tyGenericBody: gt.lastSon else: gt
+  let t = if gt.kind == tyGenericBody: gt.typeBodyImpl else: gt
   if t.kind in {tyStatic, tyError, tyGenericParam} + tyTypeClasses:
     return
   addToGenericCache(c, gt.sym, inst)
 
 type
   LayeredIdTable* {.acyclic.} = ref object
-    topLayer*: TIdTable
+    topLayer*: TypeMapping
     nextLayer*: LayeredIdTable
 
   TReplTypeVars* = object
     c*: PContext
     typeMap*: LayeredIdTable  # map PType to PType
-    symMap*: TIdTable         # map PSym to PSym
-    localCache*: TIdTable     # local cache for remembering already replaced
+    symMap*: SymMapping         # map PSym to PSym
+    localCache*: TypeMapping     # local cache for remembering already replaced
                               # types during instantiation of meta types
                               # (they are not stored in the global cache)
     info*: TLineInfo
@@ -84,27 +85,26 @@ type
     recursionLimit: int
 
 proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType
-proc replaceTypeVarsS(cl: var TReplTypeVars, s: PSym): PSym
-proc replaceTypeVarsN*(cl: var TReplTypeVars, n: PNode; start=0): PNode
+proc replaceTypeVarsS(cl: var TReplTypeVars, s: PSym, t: PType): PSym
+proc replaceTypeVarsN*(cl: var TReplTypeVars, n: PNode; start=0; expectedType: PType = nil): PNode
 
-proc initLayeredTypeMap*(pt: TIdTable): LayeredIdTable =
+proc initLayeredTypeMap*(pt: sink TypeMapping): LayeredIdTable =
   result = LayeredIdTable()
-  copyIdTable(result.topLayer, pt)
+  result.topLayer = pt
 
 proc newTypeMapLayer*(cl: var TReplTypeVars): LayeredIdTable =
-  result = LayeredIdTable()
-  result.nextLayer = cl.typeMap
-  initIdTable(result.topLayer)
+  result = LayeredIdTable(nextLayer: cl.typeMap, topLayer: initTable[ItemId, PType]())
 
 proc lookup(typeMap: LayeredIdTable, key: PType): PType =
+  result = nil
   var tm = typeMap
   while tm != nil:
-    result = PType(idTableGet(tm.topLayer, key))
+    result = getOrDefault(tm.topLayer, key.itemId)
     if result != nil: return
     tm = tm.nextLayer
 
 template put(typeMap: LayeredIdTable, key, value: PType) =
-  idTablePut(typeMap.topLayer, key, value)
+  typeMap.topLayer[key.itemId] = value
 
 template checkMetaInvariants(cl: TReplTypeVars, t: PType) = # noop code
   when false:
@@ -125,11 +125,20 @@ proc prepareNode(cl: var TReplTypeVars, n: PNode): PNode =
            else: t.n
   result = copyNode(n)
   result.typ = t
-  if result.kind == nkSym: result.sym = replaceTypeVarsS(cl, n.sym)
+  if result.kind == nkSym:
+    result.sym =
+      if n.typ != nil and n.typ == n.sym.typ:
+        replaceTypeVarsS(cl, n.sym, result.typ)
+      else:
+        replaceTypeVarsS(cl, n.sym, replaceTypeVarsT(cl, n.sym.typ))
   let isCall = result.kind in nkCallKinds
+  # don't try to instantiate symchoice symbols, they can be
+  # generic procs which the compiler will think are uninstantiated
+  # because their type will contain uninstantiated params
+  let isSymChoice = result.kind in nkSymChoices
   for i in 0..<n.safeLen:
     # XXX HACK: ``f(a, b)``, avoid to instantiate `f`
-    if isCall and i == 0: result.add(n[i])
+    if isSymChoice or (isCall and i == 0): result.add(n[i])
     else: result.add(prepareNode(cl, n[i]))
 
 proc isTypeParam(n: PNode): bool =
@@ -138,27 +147,28 @@ proc isTypeParam(n: PNode): bool =
          (n.sym.kind == skGenericParam or
            (n.sym.kind == skType and sfFromGeneric in n.sym.flags))
 
-proc reResolveCallsWithTypedescParams(cl: var TReplTypeVars, n: PNode): PNode =
-  # This is needed for tgenericshardcases
-  # It's possible that a generic param will be used in a proc call to a
-  # typedesc accepting proc. After generic param substitution, such procs
-  # should be optionally instantiated with the correct type. In order to
-  # perform this instantiation, we need to re-run the generateInstance path
-  # in the compiler, but it's quite complicated to do so at the moment so we
-  # resort to a mild hack; the head symbol of the call is temporary reset and
-  # overload resolution is executed again (which may trigger generateInstance).
-  if n.kind in nkCallKinds and sfFromGeneric in n[0].sym.flags:
-    var needsFixing = false
-    for i in 1..<n.safeLen:
-      if isTypeParam(n[i]): needsFixing = true
-    if needsFixing:
-      n[0] = newSymNode(n[0].sym.owner)
-      return cl.c.semOverloadedCall(cl.c, n, n, {skProc, skFunc}, {})
+when false: # old workaround
+  proc reResolveCallsWithTypedescParams(cl: var TReplTypeVars, n: PNode): PNode =
+    # This is needed for tuninstantiatedgenericcalls
+    # It's possible that a generic param will be used in a proc call to a
+    # typedesc accepting proc. After generic param substitution, such procs
+    # should be optionally instantiated with the correct type. In order to
+    # perform this instantiation, we need to re-run the generateInstance path
+    # in the compiler, but it's quite complicated to do so at the moment so we
+    # resort to a mild hack; the head symbol of the call is temporary reset and
+    # overload resolution is executed again (which may trigger generateInstance).
+    if n.kind in nkCallKinds and sfFromGeneric in n[0].sym.flags:
+      var needsFixing = false
+      for i in 1..<n.safeLen:
+        if isTypeParam(n[i]): needsFixing = true
+      if needsFixing:
+        n[0] = newSymNode(n[0].sym.owner)
+        return cl.c.semOverloadedCall(cl.c, n, n, {skProc, skFunc}, {})
 
-  for i in 0..<n.safeLen:
-    n[i] = reResolveCallsWithTypedescParams(cl, n[i])
+    for i in 0..<n.safeLen:
+      n[i] = reResolveCallsWithTypedescParams(cl, n[i])
 
-  return n
+    return n
 
 proc replaceObjBranches(cl: TReplTypeVars, n: PNode): PNode =
   result = n
@@ -190,7 +200,25 @@ proc replaceObjBranches(cl: TReplTypeVars, n: PNode): PNode =
     for i in 0..<n.len:
       n[i] = replaceObjBranches(cl, n[i])
 
-proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0): PNode =
+proc hasValuelessStatics(n: PNode): bool =
+  # We should only attempt to call an expression that has no tyStatics
+  # As those are unresolved generic parameters, which means in the following
+  # The compiler attempts to do `T == 300` which errors since the typeclass `MyThing` lacks a parameter
+  #[
+    type MyThing[T: static int] = object
+      when T == 300:
+        a
+    proc doThing(_: MyThing)
+  ]#
+  if n.safeLen == 0 and n.kind != nkEmpty: # Some empty nodes can get in here
+    n.typ == nil or n.typ.kind == tyStatic
+  else:
+    for x in n:
+      if hasValuelessStatics(x):
+        return true
+    false
+
+proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0; expectedType: PType = nil): PNode =
   if n == nil: return
   result = copyNode(n)
   if n.typ != nil:
@@ -201,7 +229,11 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0): PNode =
     discard
   of nkOpenSymChoice, nkClosedSymChoice: result = n
   of nkSym:
-    result.sym = replaceTypeVarsS(cl, n.sym)
+    result.sym =
+      if n.typ != nil and n.typ == n.sym.typ:
+        replaceTypeVarsS(cl, n.sym, result.typ)
+      else:
+        replaceTypeVarsS(cl, n.sym, replaceTypeVarsT(cl, n.sym.typ))
     if result.sym.typ.kind == tyVoid:
       # don't add the 'void' field
       result = newNodeI(nkRecList, n.info)
@@ -214,10 +246,11 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0): PNode =
       of nkElifBranch:
         checkSonsLen(it, 2, cl.c.config)
         var cond = prepareNode(cl, it[0])
-        var e = cl.c.semConstExpr(cl.c, cond)
-        if e.kind != nkIntLit:
-          internalError(cl.c.config, e.info, "ReplaceTypeVarsN: when condition not a bool")
-        if e.intVal != 0 and branch == nil: branch = it[1]
+        if not cond.hasValuelessStatics:
+          var e = cl.c.semConstExpr(cl.c, cond)
+          if e.kind != nkIntLit:
+            internalError(cl.c.config, e.info, "ReplaceTypeVarsN: when condition not a bool")
+          if e.intVal != 0 and branch == nil: branch = it[1]
       of nkElse:
         checkSonsLen(it, 1, cl.c.config)
         if branch == nil: branch = it[0]
@@ -228,10 +261,11 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0): PNode =
       result = newNodeI(nkRecList, n.info)
   of nkStaticExpr:
     var n = prepareNode(cl, n)
-    n = reResolveCallsWithTypedescParams(cl, n)
+    when false:
+      n = reResolveCallsWithTypedescParams(cl, n)
     result = if cl.allowMetaTypes: n
-             else: cl.c.semExpr(cl.c, n)
-    if not cl.allowMetaTypes:
+             else: cl.c.semExpr(cl.c, n, {}, expectedType)
+    if not cl.allowMetaTypes and expectedType != nil:
       assert result.kind notin nkCallKinds
   else:
     if n.len > 0:
@@ -241,7 +275,7 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0): PNode =
       for i in start..<n.len:
         result[i] = replaceTypeVarsN(cl, n[i])
 
-proc replaceTypeVarsS(cl: var TReplTypeVars, s: PSym): PSym =
+proc replaceTypeVarsS(cl: var TReplTypeVars, s: PSym, t: PType): PSym =
   if s == nil: return nil
   # symbol is not our business:
   if cl.owner != nil and s.owner != cl.owner:
@@ -278,15 +312,18 @@ proc replaceTypeVarsS(cl: var TReplTypeVars, s: PSym): PSym =
       var g: G[string]
 
   ]#
-  result = copySym(s, nextSymId cl.c.idgen)
+  result = copySym(s, cl.c.idgen)
   incl(result.flags, sfFromGeneric)
   #idTablePut(cl.symMap, s, result)
   result.owner = s.owner
-  result.typ = replaceTypeVarsT(cl, s.typ)
+  result.typ = t
   if result.kind != skType:
     result.ast = replaceTypeVarsN(cl, s.ast)
 
 proc lookupTypeVar(cl: var TReplTypeVars, t: PType): PType =
+  if tfRetType in t.flags and t.kind == tyAnything:
+    # don't bind `auto` return type to a previous binding of `auto`
+    return nil
   result = cl.typeMap.lookup(t)
   if result == nil:
     if cl.allowMetaTypes or tfRetType in t.flags: return
@@ -304,7 +341,7 @@ proc instCopyType*(cl: var TReplTypeVars, t: PType): PType =
   if cl.allowMetaTypes:
     result = t.exactReplica
   else:
-    result = copyType(t, nextTypeId(cl.c.idgen), t.owner)
+    result = copyType(t, cl.c.idgen, t.owner)
     copyTypeProps(cl.c.graph, cl.c.idgen.module, result, t)
     #cl.typeMap.topLayer.idTablePut(result, t)
 
@@ -324,13 +361,13 @@ proc instCopyType*(cl: var TReplTypeVars, t: PType): PType =
 proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   # tyGenericInvocation[A, tyGenericInvocation[A, B]]
   # is difficult to handle:
-  var body = t[0]
+  var body = t.genericHead
   if body.kind != tyGenericBody:
     internalError(cl.c.config, cl.info, "no generic body")
   var header = t
   # search for some instantiation here:
   if cl.allowMetaTypes:
-    result = PType(idTableGet(cl.localCache, t))
+    result = getOrDefault(cl.localCache, t.itemId)
   else:
     result = searchInstTypes(cl.c.graph, t)
 
@@ -338,7 +375,7 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
     when defined(reportCacheHits):
       echo "Generic instantiation cached ", typeToString(result), " for ", typeToString(t)
     return
-  for i in 1..<t.len:
+  for i in FirstGenericParamAt..<t.kidsLen:
     var x = t[i]
     if x.kind in {tyGenericParam}:
       x = lookupTypeVar(cl, x)
@@ -360,24 +397,23 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   else:
     header = instCopyType(cl, t)
 
-  result = newType(tyGenericInst, nextTypeId(cl.c.idgen), t[0].owner)
+  result = newType(tyGenericInst, cl.c.idgen, t.genericHead.owner, son = header.genericHead)
   result.flags = header.flags
   # be careful not to propagate unnecessary flags here (don't use rawAddSon)
-  result.sons = @[header[0]]
   # ugh need another pass for deeply recursive generic types (e.g. PActor)
   # we need to add the candidate here, before it's fully instantiated for
   # recursive instantions:
   if not cl.allowMetaTypes:
     cacheTypeInst(cl.c, result)
   else:
-    idTablePut(cl.localCache, t, result)
+    cl.localCache[t.itemId] = result
 
   let oldSkipTypedesc = cl.skipTypedesc
   cl.skipTypedesc = true
 
   cl.typeMap = newTypeMapLayer(cl)
 
-  for i in 1..<t.len:
+  for i in FirstGenericParamAt..<t.kidsLen:
     var x = replaceTypeVarsT(cl):
       if header[i].kind == tyGenericInst:
         t[i]
@@ -388,7 +424,7 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
     propagateToOwner(header, x)
     cl.typeMap.put(body[i-1], x)
 
-  for i in 1..<t.len:
+  for i in FirstGenericParamAt..<t.kidsLen:
     # if one of the params is not concrete, we cannot do anything
     # but we already raised an error!
     rawAddSon(result, header[i], propagateHasAsgn = false)
@@ -396,7 +432,7 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   if body.kind == tyError:
     return
 
-  let bbody = lastSon body
+  let bbody = last body
   var newbody = replaceTypeVarsT(cl, bbody)
   cl.skipTypedesc = oldSkipTypedesc
   newbody.flags = newbody.flags + (t.flags + body.flags - tfInstClearedFlags)
@@ -410,6 +446,7 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   # One step is enough, because the recursive nature of
   # handleGenericInvocation will handle the alias-to-alias-to-alias case
   if newbody.isGenericAlias: newbody = newbody.skipGenericAlias
+
   rawAddSon(result, newbody)
   checkPartialConstructedType(cl.c.config, cl.info, newbody)
   if not cl.allowMetaTypes:
@@ -426,11 +463,11 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
         # can come here for tyGenericInst too, see tests/metatype/ttypeor.nim
         # need to look into this issue later
         assert newbody.kind in {tyRef, tyPtr}
-        if newbody.lastSon.typeInst != nil:
+        if newbody.last.typeInst != nil:
           #internalError(cl.c.config, cl.info, "ref already has a 'typeInst' field")
           discard
         else:
-          newbody.lastSon.typeInst = result
+          newbody.last.typeInst = result
     # DESTROY: adding object|opt for opt[topttree.Tree]
     # sigmatch: Formal opt[=destroy.T] real opt[topttree.Tree]
     # adding myseq for myseq[system.int]
@@ -450,25 +487,24 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
 proc eraseVoidParams*(t: PType) =
   # transform '(): void' into '()' because old parts of the compiler really
   # don't deal with '(): void':
-  if t[0] != nil and t[0].kind == tyVoid:
-    t[0] = nil
+  if t.returnType != nil and t.returnType.kind == tyVoid:
+    t.setReturnType nil
 
-  for i in 1..<t.len:
+  for i in FirstParamAt..<t.signatureLen:
     # don't touch any memory unless necessary
     if t[i].kind == tyVoid:
       var pos = i
-      for j in i+1..<t.len:
+      for j in i+1..<t.signatureLen:
         if t[j].kind != tyVoid:
           t[pos] = t[j]
           t.n[pos] = t.n[j]
           inc pos
-      setLen t.sons, pos
+      newSons t, pos
       setLen t.n.sons, pos
       break
 
 proc skipIntLiteralParams*(t: PType; idgen: IdGenerator) =
-  for i in 0..<t.len:
-    let p = t[i]
+  for i, p in t.ikids:
     if p == nil: continue
     let skipped = p.skipIntLit(idgen)
     if skipped != p:
@@ -477,8 +513,8 @@ proc skipIntLiteralParams*(t: PType; idgen: IdGenerator) =
 
   # when the typeof operator is used on a static input
   # param, the results gets infected with static as well:
-  if t[0] != nil and t[0].kind == tyStatic:
-    t[0] = t[0].base
+  if t.returnType != nil and t.returnType.kind == tyStatic:
+    t.setReturnType t.returnType.skipModifier
 
 proc propagateFieldFlags(t: PType, n: PNode) =
   # This is meant for objects and tuples
@@ -496,29 +532,44 @@ proc propagateFieldFlags(t: PType, n: PNode) =
 
 proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
   template bailout =
-    if cl.recursionLimit > 100:
-      # bail out, see bug #2509. But note this caching is in general wrong,
-      # look at this example where TwoVectors should not share the generic
-      # instantiations (bug #3112):
-
-      # type
-      #   Vector[N: static[int]] = array[N, float64]
-      #   TwoVectors[Na, Nb: static[int]] = (Vector[Na], Vector[Nb])
-      result = PType(idTableGet(cl.localCache, t))
-      if result != nil: return result
-    inc cl.recursionLimit
+    if (t.sym == nil) or (t.sym != nil and sfGeneratedType in t.sym.flags):
+      # In the first case 't.sym' can be 'nil' if the type is a ref/ptr, see
+      # issue https://github.com/nim-lang/Nim/issues/20416 for more details.
+      # Fortunately for us this works for now because partial ref/ptr types are
+      # not allowed in object construction, eg.
+      #   type
+      #     Container[T] = ...
+      #     O = object
+      #      val: ref Container
+      #
+      # In the second case only consider the recursion limit if the symbol is a
+      # type with generic parameters that have not been explicitly supplied,
+      # typechecking should terminate when generic parameters are explicitly
+      # supplied.
+      if cl.recursionLimit > 100:
+        # bail out, see bug #2509. But note this caching is in general wrong,
+        # look at this example where TwoVectors should not share the generic
+        # instantiations (bug #3112):
+        # type
+        #   Vector[N: static[int]] = array[N, float64]
+        #   TwoVectors[Na, Nb: static[int]] = (Vector[Na], Vector[Nb])
+        result = getOrDefault(cl.localCache, t.itemId)
+        if result != nil: return result
+      inc cl.recursionLimit
 
   result = t
   if t == nil: return
 
-  if t.kind in {tyStatic, tyGenericParam, tyConcept} + tyTypeClasses:
+  const lookupMetas = {tyStatic, tyGenericParam, tyConcept} + tyTypeClasses - {tyAnything}
+  if t.kind in lookupMetas or
+      (t.kind == tyAnything and tfRetType notin t.flags):
     let lookup = cl.typeMap.lookup(t)
     if lookup != nil: return lookup
 
   case t.kind
   of tyGenericInvocation:
     result = handleGenericInvocation(cl, t)
-    if result.lastSon.kind == tyUserTypeClass:
+    if result.last.kind == tyUserTypeClass:
       result.kind = tyUserTypeClassInst
 
   of tyGenericBody:
@@ -553,8 +604,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
         # return tyStatic values to let anyone make
         # use of this knowledge. The patching here
         # won't be necessary then.
-        result = newTypeS(tyStatic, cl.c)
-        result.sons = @[n.typ]
+        result = newTypeS(tyStatic, cl.c, son = n.typ)
         result.n = n
       else:
         result = n.typ
@@ -570,8 +620,8 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
         result = makeTypeDesc(cl.c, result)
       elif tfUnresolved in t.flags or cl.skipTypedesc:
         result = result.base
-    elif t[0].kind != tyNone:
-      result = makeTypeDesc(cl.c, replaceTypeVarsT(cl, t[0]))
+    elif t.elementType.kind != tyNone:
+      result = makeTypeDesc(cl.c, replaceTypeVarsT(cl, t.elementType))
 
   of tyUserTypeClass, tyStatic:
     result = t
@@ -579,10 +629,10 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
   of tyGenericInst, tyUserTypeClassInst:
     bailout()
     result = instCopyType(cl, t)
-    idTablePut(cl.localCache, t, result)
-    for i in 1..<result.len:
+    cl.localCache[t.itemId] = result
+    for i in FirstGenericParamAt..<result.kidsLen:
       result[i] = replaceTypeVarsT(cl, result[i])
-    propagateToOwner(result, result.lastSon)
+    propagateToOwner(result, result.last)
 
   else:
     if containsGenericType(t):
@@ -591,17 +641,17 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
       result = instCopyType(cl, t)
       result.size = -1 # needs to be recomputed
       #if not cl.allowMetaTypes:
-      idTablePut(cl.localCache, t, result)
+      cl.localCache[t.itemId] = result
 
-      for i in 0..<result.len:
-        if result[i] != nil:
-          if result[i].kind == tyGenericBody:
+      for i, resulti in result.ikids:
+        if resulti != nil:
+          if resulti.kind == tyGenericBody:
             localError(cl.c.config, if t.sym != nil: t.sym.info else: cl.info,
               "cannot instantiate '" &
               typeToString(result[i], preferDesc) &
               "' inside of type definition: '" &
               t.owner.name.s & "'; Maybe generic arguments are missing?")
-          var r = replaceTypeVarsT(cl, result[i])
+          var r = replaceTypeVarsT(cl, resulti)
           if result.kind == tyObject:
             # carefully coded to not skip the precious tyGenericInst:
             let r2 = r.skipTypes({tyAlias, tySink, tyOwned})
@@ -614,7 +664,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
       result.n = replaceTypeVarsN(cl, result.n, ord(result.kind==tyProc))
       case result.kind
       of tyArray:
-        let idx = result[0]
+        let idx = result.indexType
         internalAssert cl.c.config, idx.kind != tyStatic
 
       of tyObject, tyTuple:
@@ -627,7 +677,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
         skipIntLiteralParams(result, cl.c.idgen)
 
       of tyRange:
-        result[0] = result[0].skipTypes({tyStatic, tyDistinct})
+        result.setIndexType result.indexType.skipTypes({tyStatic, tyDistinct})
 
       else: discard
     else:
@@ -636,8 +686,8 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
       result = t
 
       # Slow path, we have some work to do
-      if t.kind == tyRef and t.len > 0 and t[0].kind == tyObject and t[0].n != nil:
-        discard replaceObjBranches(cl, t[0].n)
+      if t.kind == tyRef and t.hasElementType and t.elementType.kind == tyObject and t.elementType.n != nil:
+        discard replaceObjBranches(cl, t.elementType.n)
 
       elif result.n != nil and t.kind == tyObject:
         # Invalidate the type size as we may alter its structure
@@ -646,20 +696,18 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
 
 proc initTypeVars*(p: PContext, typeMap: LayeredIdTable, info: TLineInfo;
                    owner: PSym): TReplTypeVars =
-  initIdTable(result.symMap)
-  initIdTable(result.localCache)
-  result.typeMap = typeMap
-  result.info = info
-  result.c = p
-  result.owner = owner
+  result = TReplTypeVars(symMap: initSymMapping(),
+            localCache: initTypeMapping(), typeMap: typeMap,
+            info: info, c: p, owner: owner)
 
-proc replaceTypesInBody*(p: PContext, pt: TIdTable, n: PNode;
-                         owner: PSym, allowMetaTypes = false): PNode =
+proc replaceTypesInBody*(p: PContext, pt: TypeMapping, n: PNode;
+                         owner: PSym, allowMetaTypes = false,
+                         fromStaticExpr = false, expectedType: PType = nil): PNode =
   var typeMap = initLayeredTypeMap(pt)
   var cl = initTypeVars(p, typeMap, n.info, owner)
   cl.allowMetaTypes = allowMetaTypes
   pushInfoContext(p.config, n.info)
-  result = replaceTypeVarsN(cl, n)
+  result = replaceTypeVarsN(cl, n, expectedType = expectedType)
   popInfoContext(p.config)
 
 when false:
@@ -674,8 +722,8 @@ when false:
     popInfoContext(p.config)
 
 proc recomputeFieldPositions*(t: PType; obj: PNode; currPosition: var int) =
-  if t != nil and t.len > 0 and t[0] != nil:
-    let b = skipTypes(t[0], skipPtrs)
+  if t != nil and t.baseClass != nil:
+    let b = skipTypes(t.baseClass, skipPtrs)
     recomputeFieldPositions(b, b.n, currPosition)
   case obj.kind
   of nkRecList:
@@ -689,7 +737,7 @@ proc recomputeFieldPositions*(t: PType; obj: PNode; currPosition: var int) =
     inc currPosition
   else: discard "cannot happen"
 
-proc generateTypeInstance*(p: PContext, pt: TIdTable, info: TLineInfo,
+proc generateTypeInstance*(p: PContext, pt: TypeMapping, info: TLineInfo,
                            t: PType): PType =
   # Given `t` like Foo[T]
   # pt: Table with type mappings: T -> int
@@ -705,7 +753,7 @@ proc generateTypeInstance*(p: PContext, pt: TIdTable, info: TLineInfo,
     var position = 0
     recomputeFieldPositions(objType, objType.n, position)
 
-proc prepareMetatypeForSigmatch*(p: PContext, pt: TIdTable, info: TLineInfo,
+proc prepareMetatypeForSigmatch*(p: PContext, pt: TypeMapping, info: TLineInfo,
                                  t: PType): PType =
   var typeMap = initLayeredTypeMap(pt)
   var cl = initTypeVars(p, typeMap, info, nil)
@@ -714,6 +762,6 @@ proc prepareMetatypeForSigmatch*(p: PContext, pt: TIdTable, info: TLineInfo,
   result = replaceTypeVarsT(cl, t)
   popInfoContext(p.config)
 
-template generateTypeInstance*(p: PContext, pt: TIdTable, arg: PNode,
+template generateTypeInstance*(p: PContext, pt: TypeMapping, arg: PNode,
                                t: PType): untyped =
   generateTypeInstance(p, pt, arg.info, t)

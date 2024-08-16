@@ -19,7 +19,7 @@ block tbreak:
     run = false
     block myblock:
       if true:
-        break
+        break myblock
       echo "leaving myblock"
     x = true
   doAssert(x)
@@ -95,3 +95,22 @@ block tnestif:
   else:
       writeLine(stdout, "looks like Python")
   #OUT i == 2
+
+# bug https://github.com/nim-lang/RFCs/issues/451
+for i in 1..2: # works
+  break
+
+block: # works
+  for i in 1..2:
+    break
+
+block: # works
+  block:
+    discard 12 + 3
+  for i in 1..2:
+    break
+
+block named: # works
+  if true:
+    break named
+  doAssert false, "not reached"

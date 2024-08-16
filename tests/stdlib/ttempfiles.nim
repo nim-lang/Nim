@@ -1,9 +1,11 @@
 discard """
+  matrix: "--mm:refc; --mm:orc"
   joinable: false # not strictly necessary
 """
 
 import std/tempfiles
 import std/[os, nre]
+import std/[assertions, syncio]
 
 const
   prefix = "D20210502T100442" # safety precaution to only affect files/dirs with this prefix

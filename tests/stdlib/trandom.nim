@@ -1,9 +1,10 @@
 discard """
   joinable: false # to avoid messing with global rand state
-  targets: "c js"
+  matrix: "--mm:refc; --mm:orc; --backend:js --jsbigint64:off -d:nimStringHash2; --backend:js --jsbigint64:on"
 """
-
+import std/[assertions, formatfloat]
 import std/[random, math, stats, sets, tables]
+import std/private/jsutils
 when not defined(js):
   import std/os
 
@@ -191,9 +192,7 @@ block: # bug #17467
       # This used to fail for each i in 0..<26844, i.e. the 1st produced value
       # was predictable and < 1e-4, skewing distributions.
 
-const withUint = false # pending exporting `proc rand[T: uint | uint64](r: var Rand; max: T): T =`
-
-block: # bug #16360
+block: # bug #16360, Natural overload
   var r = initRand()
   template test(a) =
     let a2 = a
@@ -205,23 +204,38 @@ block: # bug #16360
       let a3 = rand(a2)
       doAssert a3 <= a2
       doAssert a3.type is a2.type
-  when withUint:
-    test cast[uint](int.high)
-    test cast[uint](int.high) + 1
-    when not defined(js):
-      # pending bug #16411
-      test uint64.high
-      test uint64.high - 1
-    test uint.high - 2
-    test uint.high - 1
-    test uint.high
   test int.high
   test int.high - 1
   test int.high - 2
   test 0
-  when withUint:
-    test 0'u
-    test 0'u64
+
+block: # same as above but use slice overload
+  var r = initRand()
+  template test[T](a: T) =
+    let a2: T = a
+    block:
+      let a3 = r.rand(T(0) .. a2)
+      doAssert a3 <= a2
+      doAssert a3.type is a2.type
+    block:
+      let a3 = rand(T(0) .. a2)
+      doAssert a3 <= a2
+      doAssert a3.type is a2.type
+  test cast[uint](int.high)
+  test cast[uint](int.high) + 1
+  whenJsNoBigInt64: discard
+  do:
+    test uint64.high
+    test uint64.high - 1
+  test uint.high - 2
+  test uint.high - 1
+  test uint.high
+  test int.high
+  test int.high - 1
+  test int.high - 2
+  test 0
+  test 0'u
+  test 0'u64
 
 block: # bug #16296
   var r = initRand()
@@ -239,16 +253,12 @@ block: # bug #16296
   test(int.low .. -1)
   test(int.low .. 1)
   test(int64.low .. 1'i64)
-  when not defined(js):
-    # pending bug #16411
-    test(10'u64 .. uint64.high)
+  test(10'u64 .. uint64.high)
 
 block: # bug #17670
-  when not defined(js):
-    # pending bug #16411
-    type UInt48 = range[0'u64..2'u64^48-1]
-    let x = rand(UInt48)
-    doAssert x is UInt48
+  type UInt48 = range[0'u64..2'u64^48-1]
+  let x = rand(UInt48)
+  doAssert x is UInt48
 
 block: # bug #17898
   # Checks whether `initRand()` generates unique states.
@@ -272,3 +282,24 @@ block: # bug #17898
       for j in 0..<numRepeat:
         discard rands[i].next
         doAssert rands[i] notin randSet
+
+block: # bug #22360
+  const size = 1000
+  var fc = 0
+  var tc = 0
+
+  for _ in 1..size:
+    let s = rand(bool)
+
+    if s:
+      inc tc
+    else:
+      inc fc
+
+  when defined(js):
+    when compileOption("jsbigint64"):
+      doAssert (tc, fc) == (517, 483), $(tc, fc)
+    else:
+      doAssert (tc, fc) == (515, 485), $(tc, fc)
+  else:
+    doAssert (tc, fc) == (510, 490), $(tc, fc)

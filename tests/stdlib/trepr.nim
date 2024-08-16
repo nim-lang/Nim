@@ -1,12 +1,13 @@
 discard """
   targets: "c cpp js"
-  matrix: ";--gc:arc"
+  matrix: "--mm:refc;--mm:arc"
 """
 
 # if excessive, could remove 'cpp' from targets
 
 from strutils import endsWith, contains, strip
 from std/macros import newLit
+import std/assertions
 
 macro deb(a): string = newLit a.repr.strip
 macro debTyped(a: typed): string = newLit a.repr.strip
@@ -39,7 +40,7 @@ template main() =
   #[
   BUG:
   --gc:arc returns `"abc"`
-  regular gc returns with address, e.g. 0x1068aae60"abc", but only 
+  regular gc returns with address, e.g. 0x1068aae60"abc", but only
   for c,cpp backends (not js, vm)
   ]#
   block:
@@ -269,6 +270,59 @@ func fn1(): int =
 func fn2(): int =
   ## comment
   result = 1"""
+
+  block: # block calls
+    let a = deb:
+      foo(a, b, (c, d)):
+        e
+        f
+      do: g
+      of h: i
+      elif j: k
+      except m: n
+      do () -> u: v
+      finally: o
+
+      a + b:
+        c
+        d
+      do:
+        e
+        f
+      else: g
+
+      *a: b
+      do: c
+
+    doAssert a == """foo(a, b, (c, d)):
+  e
+  f
+do:
+  g
+of h:
+  i
+elif j:
+  k
+except m:
+  n
+do -> u:
+  v
+finally:
+  o
+a + b:
+  c
+  d
+do:
+  e
+  f
+else:
+  g
+*a:
+  b
+do:
+  c"""
+
+  doAssert repr(1..2) == "1 .. 2"
 
 static: main()
 main()

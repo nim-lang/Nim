@@ -135,3 +135,37 @@ block:
   let Q = MyObj[P](y: 2)
   doAssert($Q  == "(y: 2)")
 
+block: # previously tisop.nim
+  type
+    TRecord = (tuple) or (object)
+    TFoo[T, U] = object
+      x: int
+      when T is string:
+        y: float
+      else:
+        y: string
+      when U is TRecord:
+        z: float
+    E = enum A, B, C
+  template m(t: typedesc): typedesc =
+    when t is enum:
+      string
+    else:
+      int
+  var f: TFoo[int, int]
+  static: doAssert(typeof(f.y) is string)
+  when compiles(f.z):
+    {.error: "Foo should not have a `z` field".}
+  proc p(a, b: auto) =
+    when typeof(a) is int:
+      static: doAssert false
+    var f: TFoo[m(a.typeof), b.typeof]
+    static:
+      doAssert f.x.typeof is int
+      doAssert f.y.typeof is float
+      doAssert f.z.typeof is float
+  p(A, f)
+
+block: # issue #22850
+  doAssert not (type is int)
+  doAssert not (typedesc is int)

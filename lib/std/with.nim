@@ -14,7 +14,7 @@
 ##
 ## **Since:** version 1.2.
 
-import macros, private / underscored_calls
+import std/[macros, private / underscored_calls]
 
 macro with*(arg: typed; calls: varargs[untyped]): untyped =
   ## This macro provides `chaining`:idx: of function calls.
@@ -34,6 +34,15 @@ macro with*(arg: typed; calls: varargs[untyped]): untyped =
       += 4
       -= 5
     doAssert a == 43
+
+    # Nesting works for object types too!
+    var foo = (bar: 1, qux: (baz: 2))
+    with foo:
+      bar = 2
+      with qux:
+        baz = 3
+    doAssert foo.bar == 2
+    doAssert foo.qux.baz == 3
 
   result = newNimNode(nnkStmtList, arg)
   underscoredCalls(result, calls, arg)

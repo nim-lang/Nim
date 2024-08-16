@@ -1,9 +1,10 @@
 discard """
+  matrix: "--mm:refc; --mm:orc"
   targets: "c cpp js"
 """
 
 import std/cstrutils
-
+import std/assertions
 
 proc main() =
   let s = cstring "abcdef"

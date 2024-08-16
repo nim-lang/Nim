@@ -10,6 +10,9 @@
 # this unit handles Nim sets; it implements bit sets
 # the code here should be reused in the Nim standard library
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 type
   ElemType = byte
   TBitSet* = seq[ElemType]    # we use byte here to avoid issues with
@@ -84,5 +87,11 @@ const populationCount: array[uint8, uint8] = block:
     arr
 
 proc bitSetCard*(x: TBitSet): BiggestInt =
+  result = 0
   for it in x:
     result.inc int(populationCount[it])
+
+proc bitSetToWord*(s: TBitSet; size: int): BiggestUInt =
+  result = 0
+  for j in 0..<size:
+    if j < s.len: result = result or (BiggestUInt(s[j]) shl (j * 8))

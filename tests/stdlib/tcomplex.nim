@@ -1,5 +1,9 @@
-import std/[complex, math]
+discard """
+  matrix: "--mm:refc; --mm:orc"
+"""
 
+import std/[complex, math]
+import std/assertions
 
 proc `=~`[T](x, y: Complex[T]): bool =
   result = abs(x.re-y.re) < 1e-6 and abs(x.im-y.im) < 1e-6
@@ -79,6 +83,9 @@ doAssert(phase(a) == 1.1071487177940904)
 let t = polar(a)
 doAssert(rect(t.r, t.phi) =~ a)
 doAssert(rect(1.0, 2.0) =~ complex(-0.4161468365471424, 0.9092974268256817))
+
+doAssert(almostEqual(a, a + complex(1e-16, 1e-16)))
+doAssert(almostEqual(a, a + complex(2e-15, 2e-15), unitsInLastPlace = 5))
 
 
 let

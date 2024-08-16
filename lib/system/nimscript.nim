@@ -86,12 +86,12 @@ proc patchFile*(package, filename, replacement: string) =
   ## is interpreted to be local to the Nimscript file that contains
   ## the call to `patchFile`, Nim's `--path` is not used at all
   ## to resolve the filename!
+  ## The compiler also performs `path substitution <nimc.html#compiler-usage-commandminusline-switches>`_ on `replacement`.
   ##
   ## Example:
-  ##
-  ## .. code-block:: nim
-  ##
+  ##   ```nim
   ##   patchFile("stdlib", "asyncdispatch", "patches/replacement")
+  ##   ```
   discard
 
 proc getCommand*(): string =
@@ -136,17 +136,8 @@ proc dirExists*(dir: string): bool {.
   ## Checks if the directory `dir` exists.
   builtin
 
-template existsFile*(args: varargs[untyped]): untyped {.deprecated: "use fileExists".} =
-  # xxx: warning won't be shown for nimsscript because of current logic handling
-  # `foreignPackageNotes`
-  fileExists(args)
-
-template existsDir*(args: varargs[untyped]): untyped {.deprecated: "use dirExists".} =
-  dirExists(args)
-
-proc selfExe*(): string =
+proc selfExe*(): string {.deprecated: "Deprecated since v1.7; Use getCurrentCompilerExe".} =
   ## Returns the currently running nim or nimble executable.
-  # TODO: consider making this as deprecated alias of `getCurrentCompilerExe`
   builtin
 
 proc toExe*(filename: string): string =
@@ -167,20 +158,19 @@ proc strip(s: string): string =
 template `--`*(key, val: untyped) =
   ## A shortcut for `switch <#switch,string,string>`_
   ## Example:
-  ##
-  ## .. code-block:: nim
-  ##
+  ##   ```nim
   ##   --path:somePath # same as switch("path", "somePath")
   ##   --path:"someOtherPath" # same as switch("path", "someOtherPath")
+  ##   --hint:"[Conf]:off" # same as switch("hint", "[Conf]:off")
+  ##   ```
   switch(strip(astToStr(key)), strip(astToStr(val)))
 
 template `--`*(key: untyped) =
   ## A shortcut for `switch <#switch,string,string>`_
   ## Example:
-  ##
-  ## .. code-block:: nim
-  ##
+  ##   ```nim
   ##   --listCmd # same as switch("listCmd")
+  ##   ```
   switch(strip(astToStr(key)))
 
 type
@@ -263,11 +253,12 @@ proc cpDir*(`from`, to: string) {.raises: [OSError].} =
 proc exec*(command: string) {.
   raises: [OSError], tags: [ExecIOEffect, WriteIOEffect].} =
   ## Executes an external process. If the external process terminates with
-  ## a non-zero exit code, an OSError exception is raised.
+  ## a non-zero exit code, an OSError exception is raised. The command is
+  ## executed relative to the current source path.
   ##
-  ## **Note:** If you need a version of `exec` that returns the exit code
-  ## and text output of the command, you can use `system.gorgeEx
-  ## <system.html#gorgeEx,string,string,string>`_.
+  ## .. note:: If you need a version of `exec` that returns the exit code
+  ##   and text output of the command, you can use `system.gorgeEx
+  ##   <system.html#gorgeEx,string,string,string>`_.
   log "exec: " & command:
     if rawExec(command) != 0:
       raise newException(OSError, "FAILED: " & command)
@@ -277,11 +268,17 @@ proc exec*(command: string, input: string, cache = "") {.
   raises: [OSError], tags: [ExecIOEffect, WriteIOEffect].} =
   ## Executes an external process. If the external process terminates with
   ## a non-zero exit code, an OSError exception is raised.
+  ##
+  ## .. warning:: This version of `exec` is executed relative to the nimscript
+  ##   module path, which affects how the command resolves relative paths. Thus
+  ##   it is generally better to use `gorgeEx` directly when you need more
+  ##   control over the execution environment or when working with commands
+  ##   that deal with relative paths.
   log "exec: " & command:
     let (output, exitCode) = gorgeEx(command, input, cache)
+    echo output
     if exitCode != 0:
       raise newException(OSError, "FAILED: " & command)
-    echo output
 
 proc selfExec*(command: string) {.
   raises: [OSError], tags: [ExecIOEffect, WriteIOEffect].} =
@@ -349,18 +346,18 @@ template withDir*(dir: string; body: untyped): untyped =
   ##
   ## If you need a permanent change, use the `cd() <#cd,string>`_ proc.
   ## Usage example:
-  ##
-  ## .. code-block:: nim
+  ##   ```nim
+  ##   # inside /some/path/
   ##   withDir "foo":
-  ##     # inside foo
-  ##   #back to last dir
-  var curDir = getCurrentDir()
+  ##     # move to /some/path/foo/
+  ##   # back in /some/path/
+  ##   ```
+  let curDir = getCurrentDir()
   try:
     cd(dir)
     body
   finally:
     cd(curDir)
-
 
 proc writeTask(name, desc: string) =
   if desc.len > 0:
@@ -399,10 +396,10 @@ when not defined(nimble):
     ## Defines a task. Hidden tasks are supported via an empty description.
     ##
     ## Example:
-    ##
-    ## .. code-block:: nim
-    ##  task build, "default build is via the C backend":
-    ##    setCommand "c"
+    ##   ```nim
+    ##   task build, "default build is via the C backend":
+    ##     setCommand "c"
+    ##   ```
     ##
     ## For a task named `foo`, this template generates a `proc` named
     ## `fooTask`.  This is useful if you need to call one task in
@@ -410,13 +407,14 @@ when not defined(nimble):
     ##
     ## Example:
     ##
-    ## .. code-block:: nim
-    ##  task foo, "foo":        # > nim foo
-    ##    echo "Running foo"    # Running foo
+    ##   ```nim
+    ##   task foo, "foo":        # > nim foo
+    ##     echo "Running foo"    # Running foo
     ##
-    ##  task bar, "bar":        # > nim bar
-    ##    echo "Running bar"    # Running bar
-    ##    fooTask()             # Running foo
+    ##   task bar, "bar":        # > nim bar
+    ##     echo "Running bar"    # Running bar
+    ##     fooTask()             # Running foo
+    ##   ```
     proc `name Task`*() =
       setCommand "nop"
       body

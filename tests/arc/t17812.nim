@@ -27,3 +27,15 @@ block: # bug #17812
     proc `$`(o: MyObj): string = o.repr
 
     doAssert ($MyObj()).len > 0
+
+# bug #22175
+
+type Xxx = object
+  value: string
+
+proc complete(xxx: ref Xxx, v: sink string) =
+  xxx.value = move(v)
+
+let yyy = (ref Xxx)()
+
+yyy.complete("test")

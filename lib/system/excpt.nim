@@ -73,26 +73,45 @@ type
 
 when NimStackTraceMsgs:
   var frameMsgBuf* {.threadvar.}: string
-var
-  framePtr {.threadvar.}: PFrame
-  excHandler {.threadvar.}: PSafePoint
-    # list of exception handlers
-    # a global variable for the root of all try blocks
-  currException {.threadvar.}: ref Exception
-  gcFramePtr {.threadvar.}: GcFrame
 
-type
-  FrameState = tuple[gcFramePtr: GcFrame, framePtr: PFrame,
-                     excHandler: PSafePoint, currException: ref Exception]
+when not defined(nimV2):
+  var
+    framePtr {.threadvar.}: PFrame
+
+var
+  currException {.threadvar.}: ref Exception
+
+when not gotoBasedExceptions:
+  var
+    excHandler {.threadvar.}: PSafePoint
+      # list of exception handlers
+      # a global variable for the root of all try blocks
+    gcFramePtr {.threadvar.}: GcFrame
+
+when gotoBasedExceptions:
+  type
+    FrameState = tuple[framePtr: PFrame,
+                      currException: ref Exception]
+else:
+  type
+    FrameState = tuple[gcFramePtr: GcFrame, framePtr: PFrame,
+                      excHandler: PSafePoint, currException: ref Exception]
 
 proc getFrameState*(): FrameState {.compilerRtl, inl.} =
-  return (gcFramePtr, framePtr, excHandler, currException)
+  when gotoBasedExceptions:
+    return (framePtr, currException)
+  else:
+    return (gcFramePtr, framePtr, excHandler, currException)
 
 proc setFrameState*(state: FrameState) {.compilerRtl, inl.} =
-  gcFramePtr = state.gcFramePtr
-  framePtr = state.framePtr
-  excHandler = state.excHandler
-  currException = state.currException
+  when gotoBasedExceptions:
+    framePtr = state.framePtr
+    currException = state.currException
+  else:
+    gcFramePtr = state.gcFramePtr
+    framePtr = state.framePtr
+    excHandler = state.excHandler
+    currException = state.currException
 
 proc getFrame*(): PFrame {.compilerRtl, inl.} = framePtr
 
@@ -114,20 +133,21 @@ when false:
 proc setFrame*(s: PFrame) {.compilerRtl, inl.} =
   framePtr = s
 
-proc getGcFrame*(): GcFrame {.compilerRtl, inl.} = gcFramePtr
-proc popGcFrame*() {.compilerRtl, inl.} = gcFramePtr = gcFramePtr.prev
-proc setGcFrame*(s: GcFrame) {.compilerRtl, inl.} = gcFramePtr = s
-proc pushGcFrame*(s: GcFrame) {.compilerRtl, inl.} =
-  s.prev = gcFramePtr
-  zeroMem(cast[pointer](cast[int](s)+%sizeof(GcFrameHeader)), s.len*sizeof(pointer))
-  gcFramePtr = s
+when not gotoBasedExceptions:
+  proc getGcFrame*(): GcFrame {.compilerRtl, inl.} = gcFramePtr
+  proc popGcFrame*() {.compilerRtl, inl.} = gcFramePtr = gcFramePtr.prev
+  proc setGcFrame*(s: GcFrame) {.compilerRtl, inl.} = gcFramePtr = s
+  proc pushGcFrame*(s: GcFrame) {.compilerRtl, inl.} =
+    s.prev = gcFramePtr
+    zeroMem(cast[pointer](cast[int](s)+%sizeof(GcFrameHeader)), s.len*sizeof(pointer))
+    gcFramePtr = s
 
-proc pushSafePoint(s: PSafePoint) {.compilerRtl, inl.} =
-  s.prev = excHandler
-  excHandler = s
+  proc pushSafePoint(s: PSafePoint) {.compilerRtl, inl.} =
+    s.prev = excHandler
+    excHandler = s
 
-proc popSafePoint {.compilerRtl, inl.} =
-  excHandler = excHandler.prev
+  proc popSafePoint {.compilerRtl, inl.} =
+    excHandler = excHandler.prev
 
 proc pushCurrentException(e: sink(ref Exception)) {.compilerRtl, inl.} =
   e.up = currException
@@ -397,9 +417,9 @@ proc reportUnhandledErrorAux(e: ref Exception) {.nodestroy, gcsafe.} =
     xadd(buf, e.name, e.name.len)
     add(buf, "]\n")
     if onUnhandledException != nil:
-      onUnhandledException($buf.addr)
+      onUnhandledException($cast[cstring](buf.addr))
     else:
-      showErrorMessage(buf.addr, L)
+      showErrorMessage(cast[cstring](buf.addr), L)
 
 proc reportUnhandledError(e: ref Exception) {.nodestroy, gcsafe.} =
   if unhandledExceptionHook != nil:
@@ -407,15 +427,16 @@ proc reportUnhandledError(e: ref Exception) {.nodestroy, gcsafe.} =
   when hostOS != "any":
     reportUnhandledErrorAux(e)
 
-proc nimLeaveFinally() {.compilerRtl.} =
-  when defined(cpp) and not defined(noCppExceptions) and not gotoBasedExceptions:
-    {.emit: "throw;".}
-  else:
-    if excHandler != nil:
-      c_longjmp(excHandler.context, 1)
+when not gotoBasedExceptions:
+  proc nimLeaveFinally() {.compilerRtl.} =
+    when defined(cpp) and not defined(noCppExceptions) and not gotoBasedExceptions:
+      {.emit: "throw;".}
     else:
-      reportUnhandledError(currException)
-      quit(1)
+      if excHandler != nil:
+        c_longjmp(excHandler.context, 1)
+      else:
+        reportUnhandledError(currException)
+        rawQuit(1)
 
 when gotoBasedExceptions:
   var nimInErrorMode {.threadvar.}: bool
@@ -430,13 +451,13 @@ when gotoBasedExceptions:
     if nimInErrorMode and currException != nil:
       reportUnhandledError(currException)
       currException = nil
-      quit(1)
+      rawQuit(1)
 
 proc raiseExceptionAux(e: sink(ref Exception)) {.nodestroy.} =
   when defined(nimPanics):
     if e of Defect:
       reportUnhandledError(e)
-      quit(1)
+      rawQuit(1)
 
   if localRaiseHook != nil:
     if not localRaiseHook(e): return
@@ -448,7 +469,7 @@ proc raiseExceptionAux(e: sink(ref Exception)) {.nodestroy.} =
     else:
       pushCurrentException(e)
       {.emit: "throw `e`;".}
-  elif defined(nimQuirky) or gotoBasedExceptions:
+  elif quirkyExceptions or gotoBasedExceptions:
     pushCurrentException(e)
     when gotoBasedExceptions:
       inc nimInErrorMode
@@ -458,7 +479,7 @@ proc raiseExceptionAux(e: sink(ref Exception)) {.nodestroy.} =
       c_longjmp(excHandler.context, 1)
     else:
       reportUnhandledError(e)
-      quit(1)
+      rawQuit(1)
 
 proc raiseExceptionEx(e: sink(ref Exception), ename, procname, filename: cstring,
                       line: int) {.compilerRtl, nodestroy.} =
@@ -501,7 +522,7 @@ proc threadTrouble() =
     if currException != nil: reportUnhandledError(currException)
   except:
     discard
-  quit 1
+  rawQuit 1
 
 proc writeStackTrace() =
   when hasSomeStackTrace:
@@ -544,7 +565,7 @@ proc callDepthLimitReached() {.noinline.} =
       "-d:nimCallDepthLimit=<int> but really try to avoid deep " &
       "recursions instead.\n"
   showErrorMessage2(msg)
-  quit(1)
+  rawQuit(1)
 
 proc nimFrame(s: PFrame) {.compilerRtl, inl, raises: [].} =
   if framePtr == nil:
@@ -560,7 +581,7 @@ proc nimFrame(s: PFrame) {.compilerRtl, inl, raises: [].} =
 when defined(cpp) and appType != "lib" and not gotoBasedExceptions and
     not defined(js) and not defined(nimscript) and
     hostOS != "standalone" and hostOS != "any" and not defined(noCppExceptions) and
-    not defined(nimQuirky):
+    not quirkyExceptions:
 
   type
     StdException {.importcpp: "std::exception", header: "<exception>".} = object
@@ -597,7 +618,7 @@ when defined(cpp) and appType != "lib" and not gotoBasedExceptions and
     else:
       writeToStdErr msg & "\n"
 
-    quit 1
+    rawQuit 1
 
 when not defined(noSignalHandler) and not defined(useNimRtl):
   type Sighandler = proc (a: cint) {.noconv, benign.}
@@ -651,7 +672,7 @@ when not defined(noSignalHandler) and not defined(useNimRtl):
       # also return the correct exit code to the shell.
       discard c_raise(sign)
     else:
-      quit(1)
+      rawQuit(1)
 
   var SIG_IGN {.importc: "SIG_IGN", header: "<signal.h>".}: Sighandler
 

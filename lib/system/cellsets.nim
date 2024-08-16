@@ -42,7 +42,7 @@ Complete traversal is done in this way::
 
 ]#
 
-when defined(gcOrc) or defined(gcArc):
+when defined(gcOrc) or defined(gcArc) or defined(gcAtomicArc):
   type
     PCell = Cell
 
@@ -78,7 +78,7 @@ type
     head: PPageDesc
     data: PPageDescArray
 
-when defined(gcOrc) or defined(gcArc):
+when defined(gcOrc) or defined(gcArc) or defined(gcAtomicArc):
   discard
 else:
   include cellseqs_v1

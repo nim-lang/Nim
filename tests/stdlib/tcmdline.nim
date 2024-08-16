@@ -1,9 +1,11 @@
 discard """
+  matrix: "--mm:refc; --mm:orc"
   targets: "c js"
   joinable: false
 """
 
 import std/os
+import std/assertions
 
 var params = paramCount()
 doAssert params == 0

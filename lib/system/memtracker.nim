@@ -35,7 +35,7 @@ type
     count*: int
     disabled: bool
     data*: array[400, LogEntry]
-  TrackLogger* = proc (log: TrackLog) {.nimcall, tags: [], locks: 0, gcsafe.}
+  TrackLogger* = proc (log: TrackLog) {.nimcall, tags: [], gcsafe.}
 
 var
   gLog*: TrackLog
@@ -70,9 +70,9 @@ proc addEntry(entry: LogEntry) =
     if interesting:
       gLog.disabled = true
       cprintf("interesting %s:%ld %s\n", entry.file, entry.line, entry.op)
-      let x = cast[proc() {.nimcall, tags: [], gcsafe, locks: 0, raises: [].}](writeStackTrace)
+      let x = cast[proc() {.nimcall, tags: [], gcsafe, raises: [].}](writeStackTrace)
       x()
-      quit 1
+      rawQuit 1
       #if gLog.count > high(gLog.data):
       #  gLogger(gLog)
       #  gLog.count = 0
@@ -85,7 +85,7 @@ proc memTrackerWrite(address: pointer; size: int; file: cstring; line: int) {.co
       size: size, file: file, line: line, thread: myThreadId())
 
 proc memTrackerOp*(op: cstring; address: pointer; size: int) {.tags: [],
-         locks: 0, gcsafe.} =
+         gcsafe.} =
   addEntry LogEntry(op: op, address: address, size: size,
       file: "", line: 0, thread: myThreadId())
 

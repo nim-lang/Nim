@@ -1,5 +1,5 @@
 discard """
-  matrix: "--gc:arc --threads:on; --gc:arc --threads:on -d:danger; --threads:on"
+  matrix: "--mm:arc; --mm:arc -d:danger; --mm:refc"
   disabled: "freebsd"
 """
 
@@ -8,6 +8,7 @@ import net
 
 import std/asyncnet
 import std/nativesockets
+import std/assertions
 
 const postBegin = """
 POST / HTTP/1.1

@@ -35,7 +35,7 @@ proc `==`*[T](x, y: ref T): bool {.magic: "EqRef", noSideEffect.}
   ## Checks that two `ref` variables refer to the same item.
 proc `==`*[T](x, y: ptr T): bool {.magic: "EqRef", noSideEffect.}
   ## Checks that two `ptr` variables refer to the same item.
-proc `==`*[T: proc](x, y: T): bool {.magic: "EqProc", noSideEffect.}
+proc `==`*[T: proc | iterator](x, y: T): bool {.magic: "EqProc", noSideEffect.}
   ## Checks that two `proc` variables refer to the same procedure.
 
 proc `<=`*[Enum: enum](x, y: Enum): bool {.magic: "LeEnum", noSideEffect.}
@@ -125,15 +125,18 @@ proc `<`*[T](x, y: ref T): bool {.magic: "LtPtr", noSideEffect.}
 proc `<`*[T](x, y: ptr T): bool {.magic: "LtPtr", noSideEffect.}
 proc `<`*(x, y: pointer): bool {.magic: "LtPtr", noSideEffect.}
 
-template `!=`*(x, y: untyped): untyped =
+when not defined(nimHasCallsitePragma):
+  {.pragma: callsite.}
+
+template `!=`*(x, y: untyped): untyped {.callsite.} =
   ## Unequals operator. This is a shorthand for `not (x == y)`.
   not (x == y)
 
-template `>=`*(x, y: untyped): untyped =
+template `>=`*(x, y: untyped): untyped {.callsite.} =
   ## "is greater or equals" operator. This is the same as `y <= x`.
   y <= x
 
-template `>`*(x, y: untyped): untyped =
+template `>`*(x, y: untyped): untyped {.callsite.} =
   ## "is greater" operator. This is the same as `y < x`.
   y < x
 
@@ -206,6 +209,14 @@ proc `==`*(x, y: uint16): bool {.magic: "EqI", noSideEffect.}
 proc `==`*(x, y: uint32): bool {.magic: "EqI", noSideEffect.}
 proc `==`*(x, y: uint64): bool {.magic: "EqI", noSideEffect.}
 
+proc `<=`*(x, y: float32): bool {.magic: "LeF64", noSideEffect.}
+proc `<=`*(x, y: float): bool {.magic: "LeF64", noSideEffect.}
+
+proc `<`*(x, y: float32): bool {.magic: "LtF64", noSideEffect.}
+proc `<`*(x, y: float): bool {.magic: "LtF64", noSideEffect.}
+
+proc `==`*(x, y: float32): bool {.magic: "EqF64", noSideEffect.}
+proc `==`*(x, y: float): bool {.magic: "EqF64", noSideEffect.}
 
 {.push stackTrace: off.}
 
@@ -220,6 +231,13 @@ proc min*(x, y: int32): int32 {.magic: "MinI", noSideEffect.} =
 proc min*(x, y: int64): int64 {.magic: "MinI", noSideEffect.} =
   ## The minimum value of two integers.
   if x <= y: x else: y
+proc min*(x, y: float32): float32 {.noSideEffect, inline.} =
+  if x <= y or y != y: x else: y
+proc min*(x, y: float64): float64 {.noSideEffect, inline.} =
+  if x <= y or y != y: x else: y
+proc min*[T: not SomeFloat](x, y: T): T {.inline.} =
+  ## Generic minimum operator of 2 values based on `<=`.
+  if x <= y: x else: y
 
 proc max*(x, y: int): int {.magic: "MaxI", noSideEffect.} =
   if y <= x: x else: y
@@ -231,6 +249,13 @@ proc max*(x, y: int32): int32 {.magic: "MaxI", noSideEffect.} =
   if y <= x: x else: y
 proc max*(x, y: int64): int64 {.magic: "MaxI", noSideEffect.} =
   ## The maximum value of two integers.
+  if y <= x: x else: y
+proc max*(x, y: float32): float32 {.noSideEffect, inline.} =
+  if y <= x or y != y: x else: y
+proc max*(x, y: float64): float64 {.noSideEffect, inline.} =
+  if y <= x or y != y: x else: y
+proc max*[T: not SomeFloat](x, y: T): T {.inline.} =
+  ## Generic maximum operator of 2 values based on `<=`.
   if y <= x: x else: y
 
 
@@ -250,7 +275,7 @@ proc max*[T](x: openArray[T]): T =
 
 
 proc clamp*[T](x, a, b: T): T =
-  ## Limits the value `x` within the interval [a, b].
+  ## Limits the value `x` within the interval \[a, b].
   ## This proc is equivalent to but faster than `max(a, min(b, x))`.
   ## 
   ## .. warning:: `a <= b` is assumed and will not be checked (currently).
@@ -299,7 +324,7 @@ proc `==`*[T](x, y: seq[T]): bool {.noSideEffect.} =
         return true
     else:
       var sameObject = false
-      asm """`sameObject` = `x` === `y`"""
+      {.emit: """`sameObject` = `x` === `y`;""".}
       if sameObject: return true
 
   if x.len != y.len:

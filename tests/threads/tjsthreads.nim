@@ -1,6 +1,6 @@
 discard """
-  targets: "c cpp js"
-  matrix: "--threads"
+  targets: "js"
+  matrix: "--threads:on"
 """
 
 echo 123

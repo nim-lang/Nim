@@ -7,6 +7,7 @@ discard """
 
 import strutils
 from net import TimeoutError
+import std/assertions
 
 import httpclient, asynchttpserver, asyncdispatch, asyncfutures
 
@@ -108,12 +109,13 @@ proc testCustomContentLength() {.async.} =
     doAssert(body == "")
     doAssert(response.headers.hasKey("Content-Length"))
     doAssert(response.headers["Content-Length"] == "0")
+    doAssert contentLength(response) == 0 # bug #22778
 
   runTest(handler, request, test)
 
-waitfor(test200())
-waitfor(test404())
-waitfor(testCustomEmptyHeaders())
-waitfor(testCustomContentLength())
+waitFor(test200())
+waitFor(test404())
+waitFor(testCustomEmptyHeaders())
+waitFor(testCustomContentLength())
 
 echo "OK"

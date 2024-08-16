@@ -47,7 +47,6 @@ runnableExamples:
 ## * `fenv module <fenv.html>`_ for handling of floating-point rounding
 ##   and exceptions (overflow, zero-divide, etc.)
 ## * `random module <random.html>`_ for a fast and tiny random number generator
-## * `mersenne module <mersenne.html>`_ for the Mersenne Twister random number generator
 ## * `stats module <stats.html>`_ for statistical analysis
 ## * `strformat module <strformat.html>`_ for formatting floats for printing
 ## * `system module <system.html>`_ for some very basic and trivial math operators
@@ -58,7 +57,12 @@ import std/private/since
 {.push debugger: off.} # the user does not want to trace a part
                        # of the standard library!
 
-import bitops, fenv
+import std/[bitops, fenv]
+import system/countbits_impl
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 
 when defined(c) or defined(cpp):
   proc c_isnan(x: float): bool {.importc: "isnan", header: "<math.h>".}
@@ -74,6 +78,41 @@ when defined(c) or defined(cpp):
       importc: "frexpf", header: "<math.h>".}
   func c_frexp2(x: cdouble, exponent: var cint): cdouble {.
       importc: "frexp", header: "<math.h>".}
+  
+  type
+    div_t {.importc, header: "<stdlib.h>".} = object
+      quot: cint
+      rem: cint
+    ldiv_t {.importc, header: "<stdlib.h>".} = object
+      quot: clong
+      rem: clong
+    lldiv_t {.importc, header: "<stdlib.h>".} = object
+      quot: clonglong
+      rem: clonglong
+  
+  when cint isnot clong:
+    func divmod_c(x, y: cint): div_t {.importc: "div", header: "<stdlib.h>".}
+  when clong isnot clonglong:
+    func divmod_c(x, y: clonglong): lldiv_t {.importc: "lldiv", header: "<stdlib.h>".}
+  func divmod_c(x, y: clong): ldiv_t {.importc: "ldiv", header: "<stdlib.h>".}
+  func divmod*[T: SomeInteger](x, y: T): (T, T) {.inline.} = 
+    ## Specialized instructions for computing both division and modulus.
+    ## Return structure is: (quotient, remainder)
+    runnableExamples:
+      doAssert divmod(5, 2) == (2, 1)
+      doAssert divmod(5, -3) == (-1, 2)
+    when T is cint | clong | clonglong:
+      when compileOption("overflowChecks"):
+        if y == 0:
+          raise new(DivByZeroDefect)
+        elif (x == T.low and y == -1.T):
+          raise new(OverflowDefect)
+      let res = divmod_c(x, y)
+      result[0] = res.quot
+      result[1] = res.rem
+    else:
+      result[0] = x div y
+      result[1] = x mod y
 
 func binom*(n, k: int): int =
   ## Computes the [binomial coefficient](https://en.wikipedia.org/wiki/Binomial_coefficient).
@@ -117,7 +156,7 @@ func fac*(n: int): int =
 
 {.push checks: off, line_dir: off, stack_trace: off.}
 
-when defined(posix) and not defined(genode):
+when defined(posix) and not defined(genode) and not defined(macosx):
   {.passl: "-lm".}
 
 const
@@ -162,7 +201,7 @@ func isNaN*(x: SomeFloat): bool {.inline, since: (1,5,1).} =
   template fn: untyped = result = x != x
   when nimvm: fn()
   else:
-    when defined(js): fn()
+    when defined(js) or defined(nimscript): fn()
     else: result = c_isnan(x)
 
 when defined(js):
@@ -181,13 +220,13 @@ when defined(js):
     let a = newFloat64Array(buffer)
     let b = newUint32Array(buffer)
     a[0] = x
-    asm """
+    {.emit: """
     function updateBit(num, bitPos, bitVal) {
       return (num & ~(1 << bitPos)) | (bitVal << bitPos);
     }
     `b`[1] = updateBit(`b`[1], 31, `sgn`);
-    `result` = `a`[0]
-    """
+    `result` = `a`[0];
+    """.}
 
 proc signbit*(x: SomeFloat): bool {.inline, since: (1, 5, 1).} =
   ## Returns true if `x` is negative, false otherwise.
@@ -232,7 +271,6 @@ func classify*(x: float): FloatClass =
   ## Classifies a floating point value.
   ##
   ## Returns `x`'s class as specified by the `FloatClass enum<#FloatClass>`_.
-  ## Doesn't work with `--passc:-ffast-math`.
   runnableExamples:
     doAssert classify(0.3) == fcNormal
     doAssert classify(0.0) == fcZero
@@ -241,6 +279,7 @@ func classify*(x: float): FloatClass =
     doAssert classify(5.0e-324) == fcSubnormal
 
   # JavaScript and most C compilers have no classify:
+  if isNan(x): return fcNan
   if x == 0.0:
     if 1.0 / x == Inf:
       return fcZero
@@ -249,7 +288,6 @@ func classify*(x: float): FloatClass =
   if x * 0.5 == x:
     if x > 0.0: return fcInf
     else: return fcNegInf
-  if x != x: return fcNan
   if abs(x) < MinFloatNormal:
     return fcSubnormal
   return fcNormal
@@ -323,68 +361,8 @@ func nextPowerOfTwo*(x: int): int =
   result = result or (result shr 1)
   result += 1 + ord(x <= 0)
 
-func sum*[T](x: openArray[T]): T =
-  ## Computes the sum of the elements in `x`.
-  ##
-  ## If `x` is empty, 0 is returned.
-  ##
-  ## **See also:**
-  ## * `prod func <#prod,openArray[T]>`_
-  ## * `cumsum func <#cumsum,openArray[T]>`_
-  ## * `cumsummed func <#cumsummed,openArray[T]>`_
-  runnableExamples:
-    doAssert sum([1, 2, 3, 4]) == 10
-    doAssert sum([-4, 3, 5]) == 4
 
-  for i in items(x): result = result + i
 
-func prod*[T](x: openArray[T]): T =
-  ## Computes the product of the elements in `x`.
-  ##
-  ## If `x` is empty, 1 is returned.
-  ##
-  ## **See also:**
-  ## * `sum func <#sum,openArray[T]>`_
-  ## * `fac func <#fac,int>`_
-  runnableExamples:
-    doAssert prod([1, 2, 3, 4]) == 24
-    doAssert prod([-4, 3, 5]) == -60
-
-  result = T(1)
-  for i in items(x): result = result * i
-
-func cumsummed*[T](x: openArray[T]): seq[T] =
-  ## Returns the cumulative (aka prefix) summation of `x`.
-  ##
-  ## If `x` is empty, `@[]` is returned.
-  ##
-  ## **See also:**
-  ## * `sum func <#sum,openArray[T]>`_
-  ## * `cumsum func <#cumsum,openArray[T]>`_ for the in-place version
-  runnableExamples:
-    doAssert cumsummed([1, 2, 3, 4]) == @[1, 3, 6, 10]
-
-  let xLen = x.len
-  if xLen == 0:
-    return @[]
-  result.setLen(xLen)
-  result[0] = x[0]
-  for i in 1 ..< xLen: result[i] = result[i - 1] + x[i]
-
-func cumsum*[T](x: var openArray[T]) =
-  ## Transforms `x` in-place (must be declared as `var`) into its
-  ## cumulative (aka prefix) summation.
-  ##
-  ## **See also:**
-  ## * `sum func <#sum,openArray[T]>`_
-  ## * `cumsummed func <#cumsummed,openArray[T]>`_ for a version which
-  ##   returns a cumsummed sequence
-  runnableExamples:
-    var a = [1, 2, 3, 4]
-    cumsum(a)
-    doAssert a == @[1, 3, 6, 10]
-
-  for i in 1 ..< x.len: x[i] = x[i - 1] + x[i]
 
 when not defined(js): # C
   func sqrt*(x: float32): float32 {.importc: "sqrtf", header: "<math.h>".}
@@ -850,6 +828,14 @@ else: # JS
       doAssert -6.5 mod  2.5 == -1.5
       doAssert  6.5 mod -2.5 ==  1.5
       doAssert -6.5 mod -2.5 == -1.5
+  
+  func divmod*[T:SomeInteger](num, denom: T): (T, T) = 
+    runnableExamples:
+      doAssert  divmod(5, 2) ==  (2, 1)
+      doAssert divmod(5, -3) == (-1, 2)
+    result[0] = num div denom
+    result[1] = num mod denom
+  
 
 func round*[T: float32|float64](x: T, places: int): T =
   ## Decimal rounding on a binary floating point number.
@@ -1130,6 +1116,69 @@ func sgn*[T: SomeNumber](x: T): int {.inline.} =
 {.pop.}
 {.pop.}
 
+func sum*[T](x: openArray[T]): T =
+  ## Computes the sum of the elements in `x`.
+  ##
+  ## If `x` is empty, 0 is returned.
+  ##
+  ## **See also:**
+  ## * `prod func <#prod,openArray[T]>`_
+  ## * `cumsum func <#cumsum,openArray[T]>`_
+  ## * `cumsummed func <#cumsummed,openArray[T]>`_
+  runnableExamples:
+    doAssert sum([1, 2, 3, 4]) == 10
+    doAssert sum([-4, 3, 5]) == 4
+
+  for i in items(x): result = result + i
+
+func prod*[T](x: openArray[T]): T =
+  ## Computes the product of the elements in `x`.
+  ##
+  ## If `x` is empty, 1 is returned.
+  ##
+  ## **See also:**
+  ## * `sum func <#sum,openArray[T]>`_
+  ## * `fac func <#fac,int>`_
+  runnableExamples:
+    doAssert prod([1, 2, 3, 4]) == 24
+    doAssert prod([-4, 3, 5]) == -60
+
+  result = T(1)
+  for i in items(x): result = result * i
+
+func cumsummed*[T](x: openArray[T]): seq[T] =
+  ## Returns the cumulative (aka prefix) summation of `x`.
+  ##
+  ## If `x` is empty, `@[]` is returned.
+  ##
+  ## **See also:**
+  ## * `sum func <#sum,openArray[T]>`_
+  ## * `cumsum func <#cumsum,openArray[T]>`_ for the in-place version
+  runnableExamples:
+    doAssert cumsummed([1, 2, 3, 4]) == @[1, 3, 6, 10]
+
+  let xLen = x.len
+  if xLen == 0:
+    return @[]
+  result.setLen(xLen)
+  result[0] = x[0]
+  for i in 1 ..< xLen: result[i] = result[i - 1] + x[i]
+
+func cumsum*[T](x: var openArray[T]) =
+  ## Transforms `x` in-place (must be declared as `var`) into its
+  ## cumulative (aka prefix) summation.
+  ##
+  ## **See also:**
+  ## * `sum func <#sum,openArray[T]>`_
+  ## * `cumsummed func <#cumsummed,openArray[T]>`_ for a version which
+  ##   returns a cumsummed sequence
+  runnableExamples:
+    var a = [1, 2, 3, 4]
+    cumsum(a)
+    doAssert a == @[1, 3, 6, 10]
+
+  for i in 1 ..< x.len: x[i] = x[i - 1] + x[i]
+
 func `^`*[T: SomeNumber](x: T, y: Natural): T =
   ## Computes `x` to the power of `y`.
   ##
@@ -1181,40 +1230,42 @@ func gcd*[T](x, y: T): T =
     swap x, y
   abs x
 
-func gcd*(x, y: SomeInteger): SomeInteger =
-  ## Computes the greatest common (positive) divisor of `x` and `y`,
-  ## using the binary GCD (aka Stein's) algorithm.
-  ##
-  ## **See also:**
-  ## * `gcd func <#gcd,T,T>`_ for a float version
-  ## * `lcm func <#lcm,T,T>`_
-  runnableExamples:
-    doAssert gcd(12, 8) == 4
-    doAssert gcd(17, 63) == 1
-
-  when x is SomeSignedInt:
-    var x = abs(x)
-  else:
-    var x = x
-  when y is SomeSignedInt:
-    var y = abs(y)
-  else:
-    var y = y
-
-  if x == 0:
-    return y
-  if y == 0:
-    return x
-
-  let shift = countTrailingZeroBits(x or y)
-  y = y shr countTrailingZeroBits(y)
-  while x != 0:
-    x = x shr countTrailingZeroBits(x)
-    if y > x:
-      swap y, x
-    x -= y
-  y shl shift
-
+when useBuiltins:
+  ## this func uses bitwise comparisons from C compilers, which are not always available.
+  func gcd*(x, y: SomeInteger): SomeInteger =
+    ## Computes the greatest common (positive) divisor of `x` and `y`,
+    ## using the binary GCD (aka Stein's) algorithm.
+    ##
+    ## **See also:**
+    ## * `gcd func <#gcd,T,T>`_ for a float version
+    ## * `lcm func <#lcm,T,T>`_
+    runnableExamples:
+      doAssert gcd(12, 8) == 4
+      doAssert gcd(17, 63) == 1
+  
+    when x is SomeSignedInt:
+      var x = abs(x)
+    else:
+      var x = x
+    when y is SomeSignedInt:
+      var y = abs(y)
+    else:
+      var y = y
+  
+    if x == 0:
+      return y
+    if y == 0:
+      return x
+  
+    let shift = countTrailingZeroBits(x or y)
+    y = y shr countTrailingZeroBits(y)
+    while x != 0:
+      x = x shr countTrailingZeroBits(x)
+      if y > x:
+        swap y, x
+      x -= y
+    y shl shift
+  
 func gcd*[T](x: openArray[T]): T {.since: (1, 1).} =
   ## Computes the greatest common (positive) divisor of the elements of `x`.
   ##

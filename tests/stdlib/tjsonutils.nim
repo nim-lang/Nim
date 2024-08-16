@@ -1,4 +1,5 @@
 discard """
+  matrix: "--mm:refc; --mm:orc"
   targets: "c cpp js"
 """
 
@@ -7,6 +8,7 @@ import std/json
 from std/math import isNaN, signbit
 from std/fenv import epsilon
 from stdtest/testutils import whenRuntimeJs
+import std/[assertions, objectdollar]
 
 proc testRoundtrip[T](t: T, expected: string) =
   # checks that `T => json => T2 => json2` is such that json2 = json
@@ -59,8 +61,7 @@ template fn() =
         testRoundtrip(pointer(nil)): """0"""
         testRoundtrip(cast[pointer](nil)): """0"""
 
-    # causes workaround in `fromJson` potentially related to
-    # https://github.com/nim-lang/Nim/issues/12282
+    # refs bug #9423
     testRoundtrip(Foo(1.5)): """1.5"""
 
   block: # OrderedTable
@@ -320,7 +321,7 @@ template fn() =
             b: int
 
         var a = A()
-        fromJson(a, """{"is_a": true, "a":1, "extra_key": 1}""".parse_json, Joptions(allowExtraKeys: true))
+        fromJson(a, """{"is_a": true, "a":1, "extra_key": 1}""".parseJson, Joptions(allowExtraKeys: true))
         doAssert $a[] == "(is_a: true, a: 1)"
 
     block testAllowMissingKeys:
@@ -408,6 +409,39 @@ template fn() =
       doAssert foo.f == 3.14159
       doAssert foo.c == 0
       doAssert foo.c0 == 42
+
+
+    block testInvalidTupleLength:
+      let json = parseJson("[0]")
+      # Should raise ValueError instead of index error
+      doAssertRaises(ValueError):
+        discard json.jsonTo((int, int))
+
+    type
+      InnerEnum = enum
+        A
+        B
+        C
+      InnerObject = object
+        x: string
+        y: InnerEnum
+
+    block testOptionsArePassedWhenDeserialising:
+      let json = parseJson("""{"x": "hello"}""")
+      let inner = json.jsonTo(Option[InnerObject], Joptions(allowMissingKeys: true))
+      doAssert inner.isSome()
+      doAssert inner.get().x == "hello"
+      doAssert inner.get().y == A
+
+    block testOptionsArePassedWhenSerialising:
+      let inner = some InnerObject(x: "hello", y: A)
+      let json = inner.toJson(ToJsonOptions(enumMode: joptEnumSymbol))
+      doAssert $json == """{"x":"hello","y":"A"}"""
+
+    block: # bug #21638
+      type Something = object
+
+      doAssert "{}".parseJson.jsonTo(Something) == Something()
 
     when false:
       ## TODO: Implement support for nested variant objects allowing the tests

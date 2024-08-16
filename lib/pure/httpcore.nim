@@ -12,7 +12,7 @@
 ##
 ## Unstable API.
 import std/private/since
-import tables, strutils, parseutils
+import std/[tables, strutils, parseutils]
 
 type
   HttpHeaders* = ref object
@@ -126,23 +126,20 @@ func toTitleCase(s: string): string =
     result[i] = if upper: toUpperAscii(s[i]) else: toLowerAscii(s[i])
     upper = s[i] == '-'
 
-func toCaseInsensitive(headers: HttpHeaders, s: string): string {.inline.} =
+func toCaseInsensitive*(headers: HttpHeaders, s: string): string {.inline.} =
+  ## For internal usage only. Do not use.
   return if headers.isTitleCase: toTitleCase(s) else: toLowerAscii(s)
 
 func newHttpHeaders*(titleCase=false): HttpHeaders =
   ## Returns a new `HttpHeaders` object. if `titleCase` is set to true,
   ## headers are passed to the server in title case (e.g. "Content-Length")
-  new result
-  result.table = newTable[string, seq[string]]()
-  result.isTitleCase = titleCase
+  result = HttpHeaders(table: newTable[string, seq[string]](), isTitleCase: titleCase)
 
 func newHttpHeaders*(keyValuePairs:
     openArray[tuple[key: string, val: string]], titleCase=false): HttpHeaders =
   ## Returns a new `HttpHeaders` object from an array. if `titleCase` is set to true,
   ## headers are passed to the server in title case (e.g. "Content-Length")
-  new result
-  result.table = newTable[string, seq[string]]()
-  result.isTitleCase = titleCase
+  result = HttpHeaders(table: newTable[string, seq[string]](), isTitleCase: titleCase)
 
   for pair in keyValuePairs:
     let key = result.toCaseInsensitive(pair.key)
@@ -167,7 +164,8 @@ func `[]`*(headers: HttpHeaders, key: string): HttpHeaderValues =
   ## To access multiple values of a key, use the overloaded `[]` below or
   ## to get all of them access the `table` field directly.
   {.cast(noSideEffect).}:
-    return headers.table[headers.toCaseInsensitive(key)].HttpHeaderValues
+    let tmp = headers.table[headers.toCaseInsensitive(key)]
+    return HttpHeaderValues(tmp)
 
 converter toString*(values: HttpHeaderValues): string =
   return seq[string](values)[0]
@@ -237,10 +235,9 @@ func parseList(line: string, list: var seq[string], start: int): int =
   while start+i < line.len and line[start + i] notin {'\c', '\l'}:
     i += line.skipWhitespace(start + i)
     i += line.parseUntil(current, {'\c', '\l', ','}, start + i)
-    list.add(current)
+    list.add(move current)  # implicit current.setLen(0)
     if start+i < line.len and line[start + i] == ',':
       i.inc # Skip ,
-    current.setLen(0)
 
 func parseHeader*(line: string): tuple[key: string, value: seq[string]] =
   ## Parses a single raw header HTTP line into key value pairs.
@@ -352,20 +349,20 @@ func is1xx*(code: HttpCode): bool {.inline, since: (1, 5).} =
   runnableExamples:
     doAssert is1xx(HttpCode(103))
 
-  code.int in {100 .. 199}
+  code.int in 100 .. 199
 
 func is2xx*(code: HttpCode): bool {.inline.} =
   ## Determines whether `code` is a 2xx HTTP status code.
-  code.int in {200 .. 299}
+  code.int in 200 .. 299
 
 func is3xx*(code: HttpCode): bool {.inline.} =
   ## Determines whether `code` is a 3xx HTTP status code.
-  code.int in {300 .. 399}
+  code.int in 300 .. 399
 
 func is4xx*(code: HttpCode): bool {.inline.} =
   ## Determines whether `code` is a 4xx HTTP status code.
-  code.int in {400 .. 499}
+  code.int in 400 .. 499
 
 func is5xx*(code: HttpCode): bool {.inline.} =
   ## Determines whether `code` is a 5xx HTTP status code.
-  code.int in {500 .. 599}
+  code.int in 500 .. 599

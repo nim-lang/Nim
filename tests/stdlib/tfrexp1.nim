@@ -1,8 +1,10 @@
 discard """
+  matrix: "--mm:refc; --mm:orc"
   targets: "js c cpp"
 """
 
 import std/math
+import std/assertions
 
 const manualTest = false
 

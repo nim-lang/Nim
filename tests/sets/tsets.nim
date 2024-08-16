@@ -1,3 +1,7 @@
+discard """
+  targets: "c cpp"
+"""
+
 # Test builtin sets
 
 # xxx these tests are not very good, this should be revisited.
@@ -21,6 +25,10 @@ block:
       k0, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16, k17, k18, k19, k20, k21, k22, k23, k24, k25, k26, k27, k28, k29, k30, k31, k32, k33, k34, k35, k36, k37, k38, k39, k40, k41, k42, k43, k44, k45, k46, k47, k48, k49, k50, k51, k52, k53, k54, k55, k56, k57, k58, k59, k60, k61, k62, k63, k64, k65, k66, k67, k68, k69, k70, k71, k72, k73, k74, k75, k76, k77, k78, k79, k80, k81, k82, k83, k84, k85, k86, k87, k88, k89, k90, k91, k92, k93, k94, k95, k96, k97, k98, k99, k100, k101, k102, k103, k104, k105, k106, k107, k108, k109, k110, k111, k112, k113, k114, k115, k116, k117, k118, k119, k120, k121, k122, k123, k124, k125, k126, k127, k128, k129, k130, k131, k132, k133, k134, k135, k136, k137, k138, k139, k140, k141, k142, k143, k144, k145, k146, k147, k148, k149, k150, k151, k152, k153, k154, k155, k156, k157, k158, k159, k160, k161, k162, k163, k164, k165, k166, k167, k168, k169, k170, k171, k172, k173, k174, k175, k176, k177, k178, k179, k180, k181, k182, k183, k184, k185, k186, k187, k188, k189, k190, k191, k192, k193, k194, k195, k196, k197, k198, k199, k200, k201, k202, k203, k204, k205, k206, k207, k208, k209, k210, k211, k212, k213, k214, k215, k216, k217, k218, k219, k220, k221, k222, k223, k224, k225, k226, k227, k228, k229, k230, k231, k232, k233, k234, k235, k236, k237, k238, k239, k240, k241, k242, k243, k244, k245, k246, k247, k248, k249
     FakeTokTypeRange = range[k2..k101]
     FakeTokTypes = set[FakeTokTypeRange]
+    Foo = object
+      field: set[Bar] #Bug: 6259
+    Bar = enum
+      bar1, bar2, bar3
 
   const toktypes: FakeTokTypes = {FakeTokTypeRange(k2)..pred(k64), k72..k74}
 
@@ -76,11 +84,11 @@ block:
       k0, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, k16, k17, k18, k19, k20, k21, k22, k23, k24, k25, k26, k27, k28, k29, k30, k31, k32, k33, k34, k35, k36, k37, k38, k39, k40, k41, k42, k43, k44, k45, k46, k47, k48, k49, k50, k51, k52, k53, k54, k55, k56, k57, k58, k59, k60, k61, k62, k63, k64, k65, k66, k67, k68, k69, k70, k71, k72, k73, k74, k75, k76, k77, k78, k79, k80, k81, k82, k83, k84, k85, k86, k87, k88, k89, k90, k91, k92, k93, k94, k95, k96, k97, k98, k99, k100
 
   type
-    FakeMsgKind2 = range[k50..high(FakeMsgKind)]
+    FakeMsgKind2 = range[FakeMsgKind.k50..high(FakeMsgKind)]
     FakeMsgKind2s = set[FakeMsgKind2]
 
   const
-    a1: array[0..0, FakeMsgKind2s] = [{low(FakeMsgKind2)..high(FakeMsgKind2)} - {k99}]
+    a1: array[0..0, FakeMsgKind2s] = [{low(FakeMsgKind2)..high(FakeMsgKind2)} - {FakeMsgKind.k99}]
     a2 = a1[0]
 
   var
@@ -89,3 +97,37 @@ block:
 
   doAssert k99 notin s1
   doAssert k99 notin s2
+
+block: # bug #23422
+  block:
+    var a: set[uint8] = {1'u8}
+
+    proc printLen(x: set[uint8]): int =
+      doAssert x.len == card(x)
+      result = card(x)
+
+    proc printLenVar(x: var set[uint8]): int =
+      doAssert x.len == card(x)
+      result = card(x)
+
+    doAssert a.len == 1
+    doAssert printLen(a) == 1
+    doAssert printLenVar(a) == card(a)
+
+  block:
+    type Fruit = enum
+      Apple, Banana, Melon
+
+    var a: set[Fruit] = {Apple}
+
+    proc printLen(x: set[Fruit]): int =
+      doAssert x.len == card(x)
+      result = card(x)
+
+    proc printLenVar(x: var set[Fruit]): int =
+      doAssert x.len == card(x)
+      result = card(x)
+
+    doAssert a.len == 1
+    doAssert printLen(a) == 1
+    doAssert printLenVar(a) == card(a)

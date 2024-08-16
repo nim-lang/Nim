@@ -1,5 +1,5 @@
 discard """
-  cmd: "nim check --showAllMismatches:on --hints:off $file"
+  cmd: "nim check --mm:refc --showAllMismatches:on --hints:off $file"
   nimout: '''
 tsigmatch.nim(111, 4) Error: type mismatch: got <A, string>
 but expected one of:
@@ -12,34 +12,34 @@ proc f(b: B)
   but expression 'A()' is of type: A
 
 expression: f(A(), "extra")
-tsigmatch.nim(125, 6) Error: type mismatch: got <(string, proc (){.gcsafe, locks: 0.})>
+tsigmatch.nim(125, 6) Error: type mismatch: got <(string, proc (){.gcsafe.})>
 but expected one of:
 proc foo(x: (string, proc ()))
   first type mismatch at position: 1
   required type for x: (string, proc (){.closure.})
-  but expression '("foobar", proc () = echo(["Hello!"]))' is of type: (string, proc (){.gcsafe, locks: 0.})
+  but expression '("foobar", proc () = echo(["Hello!"]))' is of type: (string, proc (){.gcsafe.})
 
 expression: foo(("foobar", proc () = echo(["Hello!"])))
-tsigmatch.nim(132, 11) Error: type mismatch: got <proc (s: string): string{.noSideEffect, gcsafe, locks: 0.}>
+tsigmatch.nim(132, 11) Error: type mismatch: got <proc (s: string): string{.noSideEffect, gcsafe.}>
 but expected one of:
 proc foo[T, S](op: proc (x: T): S {.cdecl.}): auto
   first type mismatch at position: 1
   required type for op: proc (x: T): S{.cdecl.}
-  but expression 'fun' is of type: proc (s: string): string{.noSideEffect, gcsafe, locks: 0.}
+  but expression 'fun' is of type: proc (s: string): string{.noSideEffect, gcsafe.}
 proc foo[T, S](op: proc (x: T): S {.safecall.}): auto
   first type mismatch at position: 1
   required type for op: proc (x: T): S{.safecall.}
-  but expression 'fun' is of type: proc (s: string): string{.noSideEffect, gcsafe, locks: 0.}
+  but expression 'fun' is of type: proc (s: string): string{.noSideEffect, gcsafe.}
 
 expression: foo(fun)
-tsigmatch.nim(143, 13) Error: type mismatch: got <array[0..0, proc (x: int){.gcsafe, locks: 0.}]>
+tsigmatch.nim(143, 13) Error: type mismatch: got <array[0..0, proc (x: int){.gcsafe.}]>
 but expected one of:
-proc takesFuncs(fs: openArray[proc (x: int) {.gcsafe, locks: 0.}])
+proc takesFuncs(fs: openArray[proc (x: int) {.gcsafe.}])
   first type mismatch at position: 1
-  required type for fs: openArray[proc (x: int){.closure, gcsafe, locks: 0.}]
-  but expression '[proc (x: int) {.gcsafe, locks: 0.} = echo [x]]' is of type: array[0..0, proc (x: int){.gcsafe, locks: 0.}]
+  required type for fs: openArray[proc (x: int){.closure, gcsafe.}]
+  but expression '[proc (x: int) {.gcsafe.} = echo [x]]' is of type: array[0..0, proc (x: int){.gcsafe.}]
 
-expression: takesFuncs([proc (x: int) {.gcsafe, locks: 0.} = echo [x]])
+expression: takesFuncs([proc (x: int) {.gcsafe.} = echo [x]])
 tsigmatch.nim(149, 4) Error: type mismatch: got <int literal(10), a0: int literal(5), string>
 but expected one of:
 proc f(a0: uint8; b: string)
@@ -135,12 +135,12 @@ block:
   # bug #10285 Function signature don't match when inside seq/array/openArray
   # Note: the error message now shows `closure` which helps debugging the issue
   # out why it doesn't match
-  proc takesFunc(f: proc (x: int) {.gcsafe, locks: 0.}) =
+  proc takesFunc(f: proc (x: int) {.gcsafe.}) =
     echo "takes single Func"
-  proc takesFuncs(fs: openArray[proc (x: int) {.gcsafe, locks: 0.}]) =
+  proc takesFuncs(fs: openArray[proc (x: int) {.gcsafe.}]) =
     echo "takes multiple Func"
-  takesFunc(proc (x: int) {.gcsafe, locks: 0.} = echo x)         # works
-  takesFuncs([proc (x: int) {.gcsafe, locks: 0.} = echo x])      # fails
+  takesFunc(proc (x: int) {.gcsafe.} = echo x)         # works
+  takesFuncs([proc (x: int) {.gcsafe.} = echo x])      # fails
 
 block:
   # bug https://github.com/nim-lang/Nim/issues/11061#issuecomment-508970465

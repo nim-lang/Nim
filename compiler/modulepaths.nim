@@ -7,102 +7,10 @@
 #    distribution, for details about the copyright.
 #
 
-import ast, renderer, strutils, msgs, options, idents, os, lineinfos,
+import ast, renderer, msgs, options, idents, lineinfos,
   pathutils
 
-when false:
-  const
-    considerParentDirs = not defined(noParentProjects)
-    considerNimbleDirs = not defined(noNimbleDirs)
-
-  proc findInNimbleDir(pkg, subdir, dir: string): string =
-    var best = ""
-    var bestv = ""
-    for k, p in os.walkDir(dir, relative=true):
-      if k == pcDir and p.len > pkg.len+1 and
-          p[pkg.len] == '-' and p.startsWith(pkg):
-        let (_, a, _) = getPathVersionChecksum(p)
-        if bestv.len == 0 or bestv < a:
-          bestv = a
-          best = dir / p
-
-    if best.len > 0:
-      var f: File
-      if open(f, best / changeFileExt(pkg, ".nimble-link")):
-        # the second line contains what we're interested in, see:
-        # https://github.com/nim-lang/nimble#nimble-link
-        var override = ""
-        discard readLine(f, override)
-        discard readLine(f, override)
-        close(f)
-        if not override.isAbsolute():
-          best = best / override
-        else:
-          best = override
-    let f = if subdir.len == 0: pkg else: subdir
-    let res = addFileExt(best / f, "nim")
-    if best.len > 0 and fileExists(res):
-      result = res
-
-when false:
-  proc resolveDollar(project, source, pkg, subdir: string; info: TLineInfo): string =
-    template attempt(a) =
-      let x = addFileExt(a, "nim")
-      if fileExists(x): return x
-
-    case pkg
-    of "stdlib":
-      if subdir.len == 0:
-        return options.libpath
-      else:
-        for candidate in stdlibDirs:
-          attempt(options.libpath / candidate / subdir)
-    of "root":
-      let root = project.splitFile.dir
-      if subdir.len == 0:
-        return root
-      else:
-        attempt(root / subdir)
-    else:
-      when considerParentDirs:
-        var p = parentDir(source.splitFile.dir)
-        # support 'import $karax':
-        let f = if subdir.len == 0: pkg else: subdir
-
-        while p.len > 0:
-          let dir = p / pkg
-          if dirExists(dir):
-            attempt(dir / f)
-            # 2nd attempt: try to use 'karax/karax'
-            attempt(dir / pkg / f)
-            # 3rd attempt: try to use 'karax/src/karax'
-            attempt(dir / "src" / f)
-            attempt(dir / "src" / pkg / f)
-          p = parentDir(p)
-
-      when considerNimbleDirs:
-        if not options.gNoNimblePath:
-          var nimbleDir = getEnv("NIMBLE_DIR")
-          if nimbleDir.len == 0: nimbleDir = getHomeDir() / ".nimble"
-          result = findInNimbleDir(pkg, subdir, nimbleDir / "pkgs")
-          if result.len > 0: return result
-          when not defined(windows):
-            result = findInNimbleDir(pkg, subdir, "/opt/nimble/pkgs")
-            if result.len > 0: return result
-
-  proc scriptableImport(pkg, sub: string; info: TLineInfo): string =
-    resolveDollar(gProjectFull, info.toFullPath(), pkg, sub, info)
-
-  proc lookupPackage(pkg, subdir: PNode): string =
-    let sub = if subdir != nil: renderTree(subdir, {renderNoComments}).replace(" ") else: ""
-    case pkg.kind
-    of nkStrLit, nkRStrLit, nkTripleStrLit:
-      result = scriptableImport(pkg.strVal, sub, pkg.info)
-    of nkIdent:
-      result = scriptableImport(pkg.ident.s, sub, pkg.info)
-    else:
-      localError(pkg.info, "package name must be an identifier or string literal")
-      result = ""
+import std/[strutils, os]
 
 proc getModuleName*(conf: ConfigRef; n: PNode): string =
   # This returns a short relative module name without the nim extension
@@ -130,11 +38,18 @@ proc getModuleName*(conf: ConfigRef; n: PNode): string =
           localError(n.info, "only '/' supported with $package notation")
           result = ""
     else:
-      let modname = getModuleName(conf, n[2])
-      # hacky way to implement 'x / y /../ z':
-      result = getModuleName(conf, n1)
-      result.add renderTree(n0, {renderNoComments}).replace(" ")
-      result.add modname
+      if n0.kind in nkIdentKinds:
+        let ident = n0.getPIdent
+        if ident != nil and ident.s[0] == '/':
+          let modname = getModuleName(conf, n[2])
+          # hacky way to implement 'x / y /../ z':
+          result = getModuleName(conf, n1)
+          result.add renderTree(n0, {renderNoComments}).replace(" ")
+          result.add modname
+        else:
+          result = ""
+      else:
+        result = ""
   of nkPrefix:
     when false:
       if n[0].kind == nkIdent and n[0].ident.s == "$":
@@ -163,3 +78,18 @@ proc checkModuleName*(conf: ConfigRef; n: PNode; doLocalError=true): FileIndex =
     result = InvalidFileIdx
   else:
     result = fileInfoIdx(conf, fullPath)
+
+proc mangleModuleName*(conf: ConfigRef; path: AbsoluteFile): string =
+  ## Mangle a relative module path to avoid path and symbol collisions.
+  ##
+  ## Used by backends that need to generate intermediary files from Nim modules.
+  ## This is needed because the compiler uses a flat cache file hierarchy.
+  ##
+  ## Example:
+  ## `foo-#head/../bar` becomes `@foo-@hhead@s..@sbar`
+  "@m" & relativeTo(path, conf.projectPath).string.multiReplace(
+    {$os.DirSep: "@s", $os.AltSep: "@s", "#": "@h", "@": "@@", ":": "@c"})
+
+proc demangleModuleName*(path: string): string =
+  ## Demangle a relative module path.
+  result = path.multiReplace({"@@": "@", "@h": "#", "@s": "/", "@m": "", "@c": ":"})

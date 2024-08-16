@@ -16,8 +16,7 @@ when not compileOption("threads") and not defined(nimdoc):
     # so they can replace each other seamlessly.
     {.error: "Rlocks requires --threads:on option.".}
 
-const insideRLocksModule = true
-include "system/syslocks"
+import std/private/syslocks
 
 type
   RLock* = SysLock ## Nim lock, re-entrant
@@ -32,7 +31,7 @@ proc initRLock*(lock: var RLock) {.inline.} =
   else:
     initSysLock(lock)
 
-proc deinitRLock*(lock: var RLock) {.inline.} =
+proc deinitRLock*(lock: RLock) {.inline.} =
   ## Frees the resources associated with the lock.
   deinitSys(lock)
 

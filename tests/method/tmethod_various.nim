@@ -1,17 +1,15 @@
 discard """
+  matrix: "--mm:arc; --mm:refc"
   output: '''
-do nothing
 HELLO WORLD!
 '''
 """
 
 
-# tmethods1
-method somethin(obj: RootObj) {.base.} =
-  echo "do nothing"
+
 
 type
-  TNode* = object {.inheritable.}
+  TNode* {.inheritable.} = object
   PNode* = ref TNode
 
   PNodeFoo* = ref object of TNode
@@ -22,14 +20,12 @@ type
 method foo(a: PNode, b: PSomethingElse) {.base.} = discard
 method foo(a: PNodeFoo, b: PSomethingElse) = discard
 
-var o: RootObj
-o.somethin()
 
 
 
 # tmproto
 type
-  Obj1 = ref object {.inheritable.}
+  Obj1 {.inheritable.} = ref object
   Obj2 = ref object of Obj1
 
 method beta(x: Obj1): int {.base.}
