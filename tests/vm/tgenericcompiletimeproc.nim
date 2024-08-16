@@ -17,3 +17,10 @@ block: # issue #19365
   proc f[T](x: static T): T {.compileTime.} = x + x
   doAssert f(123) == 246
   doAssert f(1.0) == 2.0
+
+block:
+  # don't fold compile time procs in typeof
+  proc fail[T](x: T): T {.compileTime.} =
+    doAssert false
+    x
+  doAssert typeof(fail(123)) is typeof(123)
