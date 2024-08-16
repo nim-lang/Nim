@@ -560,12 +560,14 @@ Not nil annotation
 `{.experimental: "notnil".}`.
 
 All types for which `nil` is a valid value can be annotated with the
-`not nil` annotation to exclude `nil` as a valid value:
+`not nil` annotation to exclude `nil` as a valid value. Note that only local
+symbols are checked.
 
   ```nim
   {.experimental: "notnil".}
 
   type
+    TObj = object
     PObject = ref TObj not nil
     TProc = (proc (x, y: int)) not nil
 
@@ -576,8 +578,11 @@ All types for which `nil` is a valid value can be annotated with the
   p(nil)
 
   # and also this:
-  var x: PObject
-  p(x)
+  proc foo =
+    var x: PObject
+    p(x)
+
+  foo()
   ```
 
 The compiler ensures that every code path initializes variables which contain
@@ -2445,7 +2450,7 @@ main()
 
 Will produce: 
 
-```c++
+```cpp
 
 struct Test {
 	Foo foo; 
@@ -2515,3 +2520,104 @@ NimFunctor()(1)
 ```
 Notice we use the overload of `()` to have the same semantics in Nim, but on the `importcpp` we import the functor as a function. 
 This allows to easy interop with functions that accepts for example a `const` operator in its signature. 
+
+
+Injected symbols in generic procs
+=================================
+
+With the experimental option `genericsOpenSym`, captured symbols in generic
+routine bodies may be replaced by symbols injected locally by templates/macros
+at instantiation time. `bind` may be used to keep the captured symbols over
+the injected ones regardless of enabling the option, but other methods like
+renaming the captured symbols should be used instead so that the code is not
+affected by context changes.
+  
+Since this change may affect runtime behavior, the experimental switch
+`genericsOpenSym` needs to be enabled, and a warning is given in the case
+where an injected symbol would replace a captured symbol not bound by `bind`
+and the experimental switch isn't enabled.
+
+```nim
+const value = "captured"
+template foo(x: int, body: untyped) =
+  let value {.inject.} = "injected"
+  body
+
+proc old[T](): string =
+  foo(123):
+    return value # warning: a new `value` has been injected, use `bind` or turn on `experimental:genericsOpenSym`
+echo old[int]() # "captured"
+
+{.experimental: "genericsOpenSym".}
+
+proc bar[T](): string =
+  foo(123):
+    return value
+assert bar[int]() == "injected" # previously it would be "captured"
+
+proc baz[T](): string =
+  bind value
+  foo(123):
+    return value
+assert baz[int]() == "captured"
+```
+
+This option also generates a new node kind `nnkOpenSym` which contains
+exactly 1 of either an `nnkSym` or an `nnkOpenSymChoice` node. In the future
+this might be merged with a slightly modified `nnkOpenSymChoice` node but
+macros that want to support the experimental feature should still handle
+`nnkOpenSym`, as the node kind would simply not be generated as opposed to
+being removed.
+
+
+VTable for methods
+==================
+
+Methods now support implementations based on a VTable by using `--experimental:vtables`. Note that the option needs to enabled
+globally. The virtual method table is stored in the type info of
+an object, which is an array of function pointers.
+
+```nim
+method foo(x: Base, ...) {.base.}
+method foo(x: Derived, ...) {.base.}
+```
+
+It roughly generates a dispatcher like
+
+```nim
+proc foo_dispatch(x: Base, ...) =
+  x.typeinfo.vtable[method_index](x, ...) # method_index is the index of the sorted order of a method
+```
+
+Methods are required to be in the same module where their type has been defined.
+
+```nim
+# types.nim
+type
+  Base* = ref object
+```
+
+```nim
+import types
+
+method foo(x: Base) {.base.} = discard
+```
+
+It gives an error: method `foo` can be defined only in the same module with its type (Base).
+
+
+asmSyntax pragma
+================
+
+The `asmSyntax` pragma is used to specify target inline assembler syntax in an `asm` statement.
+
+It prevents compiling code with different of the target CC inline asm syntax, i.e. it will not allow gcc inline asm code to be compiled with vcc.
+
+```nim
+proc nothing() =
+  asm {.asmSyntax: "gcc".}"""
+    nop
+  """
+```
+
+The current C(C++) backend implementation cannot generate code for gcc and for vcc at the same time. For example, `{.asmSyntax: "vcc".}` with the ICC compiler will not generate code with intel asm syntax, even though ICC can use both gcc-like and vcc-like asm.

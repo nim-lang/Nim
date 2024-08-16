@@ -37,13 +37,13 @@ when defined(js):
       let a = array[2, float64].default
       assert jsConstructorName(a) == "Float64Array"
       assert jsConstructorName(a.toJs) == "Float64Array"
-    asm """`result` = `a`.constructor.name"""
+    {.emit: """`result` = `a`.constructor.name;""".}
 
   proc hasJsBigInt*(): bool =
-    asm """`result` = typeof BigInt != 'undefined'"""
+    {.emit: """`result` = typeof BigInt != 'undefined';""".}
 
   proc hasBigUint64Array*(): bool =
-    asm """`result` = typeof BigUint64Array != 'undefined'"""
+    {.emit: """`result` = typeof BigUint64Array != 'undefined';""".}
 
   proc getProtoName*[T](a: T): cstring {.importjs: "Object.prototype.toString.call(#)".} =
     runnableExamples:

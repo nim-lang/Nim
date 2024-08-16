@@ -56,6 +56,12 @@ template isMixedIn(sym): bool =
                                s.magic == mNone and
                                s.kind in OverloadableSyms)
 
+template canOpenSym(s): bool =
+  {withinMixin, withinConcept} * flags == {withinMixin} and s.id notin ctx.toBind
+
+proc newOpenSym*(n: PNode): PNode {.inline.} =
+  result = newTreeI(nkOpenSym, n.info, n)
+
 proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
                           ctx: var GenericCtx; flags: TSemGenericFlags,
                           fromDotExpr=false): PNode =
@@ -69,6 +75,12 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
         result.transitionSonsKind(nkClosedSymChoice)
     else:
       result = symChoice(c, n, s, scOpen)
+      if canOpenSym(s):
+        if genericsOpenSym in c.features:
+          result = newOpenSym(result)
+        else:
+          result.flags.incl nfDisabledOpenSym
+          result.typ = nil
   case s.kind
   of skUnknown:
     # Introduced in this pass! Leave it as an identifier.
@@ -96,6 +108,12 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
         result = n
     else:
       result = newSymNodeTypeDesc(s, c.idgen, n.info)
+      if canOpenSym(result.sym):
+        if genericsOpenSym in c.features:
+          result = newOpenSym(result)
+        else:
+          result.flags.incl nfDisabledOpenSym
+          result.typ = nil
     onUse(n.info, s)
   of skParam:
     result = n
@@ -104,11 +122,23 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
     if (s.typ != nil) and
        (s.typ.flags * {tfGenericTypeParam, tfImplicitTypeParam} == {}):
       result = newSymNodeTypeDesc(s, c.idgen, n.info)
+      if canOpenSym(result.sym):
+        if genericsOpenSym in c.features:
+          result = newOpenSym(result)
+        else:
+          result.flags.incl nfDisabledOpenSym
+          result.typ = nil
     else:
       result = n
     onUse(n.info, s)
   else:
     result = newSymNode(s, n.info)
+    if canOpenSym(result.sym):
+      if genericsOpenSym in c.features:
+        result = newOpenSym(result)
+      else:
+        result.flags.incl nfDisabledOpenSym
+        result.typ = nil
     onUse(n.info, s)
 
 proc lookup(c: PContext, n: PNode, flags: TSemGenericFlags,
@@ -148,6 +178,7 @@ proc fuzzyLookup(c: PContext, n: PNode, flags: TSemGenericFlags,
 
   var s = qualifiedLookUp(c, n, luf)
   if s != nil:
+    isMacro = s.kind in {skTemplate, skMacro}
     result = semGenericStmtSymbol(c, n, s, ctx, flags)
   else:
     n[0] = semGenericStmt(c, n[0], flags, ctx)
@@ -221,7 +252,7 @@ proc semGenericStmt(c: PContext, n: PNode,
     #var s = qualifiedLookUp(c, n, luf)
     #if s != nil: result = semGenericStmtSymbol(c, n, s)
     # XXX for example: ``result.add`` -- ``add`` needs to be looked up here...
-    var dummy: bool
+    var dummy: bool = false
     result = fuzzyLookup(c, n, flags, ctx, dummy)
   of nkSym:
     let a = n.sym
@@ -575,16 +606,18 @@ proc semGenericStmt(c: PContext, n: PNode,
     if withinTypeDesc in flags: dec c.inTypeContext
 
 proc semGenericStmt(c: PContext, n: PNode): PNode =
-  var ctx: GenericCtx
-  ctx.toMixin = initIntSet()
-  ctx.toBind = initIntSet()
+  var ctx = GenericCtx(
+    toMixin: initIntSet(),
+    toBind: initIntSet()
+  )
   result = semGenericStmt(c, n, {}, ctx)
   semIdeForTemplateOrGeneric(c, result, ctx.cursorInBody)
 
 proc semConceptBody(c: PContext, n: PNode): PNode =
-  var ctx: GenericCtx
-  ctx.toMixin = initIntSet()
-  ctx.toBind = initIntSet()
+  var ctx = GenericCtx(
+    toMixin: initIntSet(),
+    toBind: initIntSet()
+  )
   result = semGenericStmt(c, n, {withinConcept}, ctx)
   semIdeForTemplateOrGeneric(c, result, ctx.cursorInBody)
 

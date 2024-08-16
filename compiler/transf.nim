@@ -18,6 +18,8 @@
 # * performs lambda lifting for closure support
 # * transforms 'defer' into a 'try finally' statement
 
+import std / tables
+
 import
   options, ast, astalgo, trees, msgs,
   idents, renderer, types, semfold, magicsys, cgmeth,
@@ -38,7 +40,7 @@ import closureiters, lambdalifting
 
 type
   PTransCon = ref object # part of TContext; stackable
-    mapping: TIdNodeTable     # mapping from symbols to nodes
+    mapping: Table[ItemId, PNode]     # mapping from symbols to nodes
     owner: PSym               # current owner
     forStmt: PNode            # current for stmt
     forLoopBody: PNode   # transformed for loop body
@@ -54,6 +56,7 @@ type
     contSyms, breakSyms: seq[PSym]  # to transform 'continue' and 'break'
     deferDetected, tooEarly: bool
     isIntroducingNewLocalVars: bool  # true if we are in `introducingNewLocalVars` (don't transform yields)
+    inAddr: bool
     flags: TransformFlags
     graph: ModuleGraph
     idgen: IdGenerator
@@ -76,7 +79,7 @@ proc newTransNode(kind: TNodeKind, n: PNode,
 
 proc newTransCon(owner: PSym): PTransCon =
   assert owner != nil
-  result = PTransCon(mapping: initIdNodeTable(), owner: owner)
+  result = PTransCon(mapping: initTable[ItemId, PNode](), owner: owner)
 
 proc pushTransCon(c: PTransf, t: PTransCon) =
   t.next = c.transCon
@@ -95,10 +98,7 @@ proc newTemp(c: PTransf, typ: PType, info: TLineInfo): PNode =
   r.typ = typ #skipTypes(typ, {tyGenericInst, tyAlias, tySink})
   incl(r.flags, sfFromGeneric)
   let owner = getCurrOwner(c)
-  if owner.isIterator and not c.tooEarly:
-    result = freshVarForClosureIter(c.graph, r, c.idgen, owner)
-  else:
-    result = newSymNode(r)
+  result = newSymNode(r)
 
 proc transform(c: PTransf, n: PNode): PNode
 
@@ -159,7 +159,7 @@ proc transformSymAux(c: PTransf, n: PNode): PNode =
   else:
     b = n
   while tc != nil:
-    result = idNodeTableGet(tc.mapping, b.sym)
+    result = getOrDefault(tc.mapping, b.sym.itemId)
     if result != nil:
       # this slightly convoluted way ensures the line info stays correct:
       if result.kind == nkSym:
@@ -174,13 +174,10 @@ proc transformSym(c: PTransf, n: PNode): PNode =
 
 proc freshVar(c: PTransf; v: PSym): PNode =
   let owner = getCurrOwner(c)
-  if owner.isIterator and not c.tooEarly:
-    result = freshVarForClosureIter(c.graph, v, c.idgen, owner)
-  else:
-    var newVar = copySym(v, c.idgen)
-    incl(newVar.flags, sfFromGeneric)
-    newVar.owner = owner
-    result = newSymNode(newVar)
+  var newVar = copySym(v, c.idgen)
+  incl(newVar.flags, sfFromGeneric)
+  newVar.owner = owner
+  result = newSymNode(newVar)
 
 proc transformVarSection(c: PTransf, v: PNode): PNode =
   result = newTransNode(v)
@@ -194,7 +191,7 @@ proc transformVarSection(c: PTransf, v: PNode): PNode =
       if vn.kind == nkSym:
         internalAssert(c.graph.config, it.len == 3)
         let x = freshVar(c, vn.sym)
-        idNodeTablePut(c.transCon.mapping, vn.sym, x)
+        c.transCon.mapping[vn.sym.itemId] = x
         var defs = newTransNode(nkIdentDefs, it.info, 3)
         if importantComments(c.graph.config):
           # keep documentation information:
@@ -215,7 +212,7 @@ proc transformVarSection(c: PTransf, v: PNode): PNode =
       for j in 0..<it.len-2:
         if it[j].kind == nkSym:
           let x = freshVar(c, it[j].sym)
-          idNodeTablePut(c.transCon.mapping, it[j].sym, x)
+          c.transCon.mapping[it[j].sym.itemId] = x
           defs[j] = x
         else:
           defs[j] = transform(c, it[j])
@@ -256,7 +253,7 @@ proc transformBlock(c: PTransf, n: PNode): PNode =
   var labl: PSym
   if c.inlining > 0:
     labl = newLabel(c, n[0])
-    idNodeTablePut(c.transCon.mapping, n[0].sym, newSymNode(labl))
+    c.transCon.mapping[n[0].sym.itemId] = newSymNode(labl)
   else:
     labl =
       if n[0].kind != nkEmpty:
@@ -328,7 +325,7 @@ proc introduceNewLocalVars(c: PTransf, n: PNode): PNode =
   of nkProcDef: # todo optimize nosideeffects?
     result = newTransNode(n)
     let x = newSymNode(copySym(n[namePos].sym, c.idgen))
-    idNodeTablePut(c.transCon.mapping, n[namePos].sym, x)
+    c.transCon.mapping[n[namePos].sym.itemId] = x
     result[namePos] = x # we have to copy proc definitions for iters
     for i in 1..<n.len:
       result[i] = introduceNewLocalVars(c, n[i])
@@ -454,6 +451,14 @@ proc transformYield(c: PTransf, n: PNode): PNode =
       let rhs = transform(c, e)
       result.add(asgnTo(lhs, rhs))
 
+
+  # bug #23536; note that the info of forLoopBody should't change
+  for idx in 0 ..< result.len:
+    var changeNode = result[idx]
+    changeNode.info = c.transCon.forStmt.info
+    for i, child in changeNode:
+      child.info = changeNode.info
+
   inc(c.transCon.yieldStmts)
   if c.transCon.yieldStmts <= 1:
     # common case
@@ -464,15 +469,10 @@ proc transformYield(c: PTransf, n: PNode): PNode =
     result.add(introduceNewLocalVars(c, c.transCon.forLoopBody))
     c.isIntroducingNewLocalVars = false
 
-  for idx in 0 ..< result.len:
-    var changeNode = result[idx]
-    changeNode.info = c.transCon.forStmt.info
-    for i, child in changeNode:
-      child.info = changeNode.info
-
 proc transformAddrDeref(c: PTransf, n: PNode, kinds: TNodeKinds): PNode =
   result = transformSons(c, n)
-  if c.graph.config.backend == backendCpp or sfCompileToCpp in c.module.flags: return
+  # inlining of 'var openarray' iterators; bug #19977
+  if n.typ.kind != tyOpenArray and (c.graph.config.backend == backendCpp or sfCompileToCpp in c.module.flags): return
   var n = result
   case n[0].kind
   of nkObjUpConv, nkObjDownConv, nkChckRange, nkChckRangeF, nkChckRange64:
@@ -508,7 +508,7 @@ proc generateThunk(c: PTransf; prc: PNode, dest: PType): PNode =
 
   # we cannot generate a proper thunk here for GC-safety reasons
   # (see internal documentation):
-  if c.graph.config.backend == backendJs: return prc
+  if jsNoLambdaLifting in c.graph.config.legacyFeatures and c.graph.config.backend == backendJs: return prc
   result = newNodeIT(nkClosure, prc.info, dest)
   var conv = newNodeIT(nkHiddenSubConv, prc.info, dest)
   conv.add(newNodeI(nkEmpty, prc.info))
@@ -614,7 +614,7 @@ proc transformConv(c: PTransf, n: PNode): PNode =
 type
   TPutArgInto = enum
     paDirectMapping, paFastAsgn, paFastAsgnTakeTypeFromArg
-    paVarAsgn, paComplexOpenarray
+    paVarAsgn, paComplexOpenarray, paViaIndirection
 
 proc putArgInto(arg: PNode, formal: PType): TPutArgInto =
   # This analyses how to treat the mapping "formal <-> arg" in an
@@ -634,6 +634,7 @@ proc putArgInto(arg: PNode, formal: PType): TPutArgInto =
     result = paDirectMapping
   of nkDotExpr, nkDerefExpr, nkHiddenDeref, nkAddr, nkHiddenAddr:
     result = putArgInto(arg[0], formal)
+    #if result == paViaIndirection: result = paFastAsgn
   of nkCurly, nkBracket:
     for i in 0..<arg.len:
       if putArgInto(arg[i], formal) != paDirectMapping:
@@ -646,6 +647,9 @@ proc putArgInto(arg: PNode, formal: PType): TPutArgInto =
       if putArgInto(a, formal) != paDirectMapping:
         return paFastAsgn
     result = paDirectMapping
+  of nkBracketExpr:
+    if skipTypes(formal, abstractInst).kind in {tyVar, tyLent}: result = paVarAsgn
+    else: result = paViaIndirection
   else:
     if skipTypes(formal, abstractInst).kind in {tyVar, tyLent}: result = paVarAsgn
     else: result = paFastAsgn
@@ -754,7 +758,7 @@ proc transformFor(c: PTransf, n: PNode): PNode =
     let pa = putArgInto(arg, formal.typ)
     case pa
     of paDirectMapping:
-      idNodeTablePut(newC.mapping, formal, arg)
+      newC.mapping[formal.itemId] = arg
     of paFastAsgn, paFastAsgnTakeTypeFromArg:
       var t = formal.typ
       if pa == paFastAsgnTakeTypeFromArg:
@@ -765,19 +769,30 @@ proc transformFor(c: PTransf, n: PNode): PNode =
         t = arg.typ
       # generate a temporary and produce an assignment statement:
       var temp = newTemp(c, t, formal.info)
+      #incl(temp.sym.flags, sfCursor)
       addVar(v, temp)
       stmtList.add(newAsgnStmt(c, nkFastAsgn, temp, arg, true))
-      idNodeTablePut(newC.mapping, formal, temp)
+      newC.mapping[formal.itemId] = temp
     of paVarAsgn:
-      assert(skipTypes(formal.typ, abstractInst).kind in {tyVar})
-      idNodeTablePut(newC.mapping, formal, arg)
+      assert(skipTypes(formal.typ, abstractInst).kind in {tyVar, tyLent})
+      newC.mapping[formal.itemId] = arg
       # XXX BUG still not correct if the arg has a side effect!
+    of paViaIndirection:
+      let t = formal.typ
+      let vt = makeVarType(t.owner, t, c.idgen)
+      vt.flags.incl tfVarIsPtr
+      var temp = newTemp(c, vt, formal.info)
+      addVar(v, temp)
+      var addrExp = newNodeIT(nkHiddenAddr, formal.info, makeVarType(t.owner, t, c.idgen, tyPtr))
+      addrExp.add(arg)
+      stmtList.add(newAsgnStmt(c, nkFastAsgn, temp, addrExp, true))
+      newC.mapping[formal.itemId] = newDeref(temp)
     of paComplexOpenarray:
       # arrays will deep copy here (pretty bad).
       var temp = newTemp(c, arg.typ, formal.info)
       addVar(v, temp)
       stmtList.add(newAsgnStmt(c, nkFastAsgn, temp, arg, true))
-      idNodeTablePut(newC.mapping, formal, temp)
+      newC.mapping[formal.itemId] = temp
 
   let body = transformBody(c.graph, c.idgen, iter, {useCache}+c.flags)
   pushInfoContext(c.graph.config, n.info)
@@ -879,10 +894,6 @@ proc transformCall(c: PTransf, n: PNode): PNode =
           inc(j)
       result.add(a)
     if result.len == 2: result = result[1]
-  elif magic == mAddr:
-    result = newTransNode(nkAddr, n, 1)
-    result[0] = n[1]
-    result = transformAddrDeref(c, result, {nkDerefExpr, nkHiddenDeref})
   elif magic in {mNBindSym, mTypeOf, mRunnableExamples}:
     # for bindSym(myconst) we MUST NOT perform constant folding:
     result = n
@@ -1046,7 +1057,10 @@ proc transform(c: PTransf, n: PNode): PNode =
   of nkHiddenAddr:
     result = transformAddrDeref(c, n, {nkHiddenDeref})
   of nkAddr:
+    let oldInAddr = c.inAddr
+    c.inAddr = true
     result = transformAddrDeref(c, n, {nkDerefExpr, nkHiddenDeref})
+    c.inAddr = oldInAddr
   of nkDerefExpr:
     result = transformAddrDeref(c, n, {nkAddr, nkHiddenAddr})
   of nkHiddenDeref:
@@ -1126,7 +1140,7 @@ proc transform(c: PTransf, n: PNode): PNode =
   let exprIsPointerCast = n.kind in {nkCast, nkConv, nkHiddenStdConv} and
                           n.typ != nil and
                           n.typ.kind == tyPointer
-  if not exprIsPointerCast:
+  if not exprIsPointerCast and not c.inAddr:
     var cnst = getConstExpr(c.module, result, c.idgen, c.graph)
     # we inline constants if they are not complex constants:
     if cnst != nil and not dontInlineConstant(n, cnst):

@@ -65,7 +65,7 @@ proc toBitSet*(conf: ConfigRef; s: PNode): TBitSet =
   result = @[]
   var first: Int128 = Zero
   var j: Int128 = Zero
-  first = firstOrd(conf, s.typ[0])
+  first = firstOrd(conf, s.typ.elementType)
   bitSetInit(result, int(getSize(conf, s.typ)))
   for i in 0..<s.len:
     if s[i].kind == nkRange:

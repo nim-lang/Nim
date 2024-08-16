@@ -77,3 +77,50 @@ block: # bug #22913
     {.pop.}
 
     discard foo2()
+
+block: # bug #23019
+  proc f(x: bool)
+
+  proc a(x: int) =
+    if false: f(true)
+
+  proc f(x: bool) =
+    if false: a(0)
+
+  proc k(r: int|int) {.inline.} =  # seems to require being generic and inline
+    if false: a(0)
+
+
+  # {.push tags: [].}
+  {.push raises: [].}
+
+  {.push warning[ObservableStores]:off.}  # can be any warning, off or on
+  let w = 0
+  k(w)
+  {.pop.}
+  {.pop.}
+
+{.push exportC.}
+
+block:
+  proc foo11() =
+    const factor = [1, 2, 3, 4]
+    doAssert factor[0] == 1
+  proc foo21() =
+    const factor = [1, 2, 3, 4]
+    doAssert factor[0] == 1
+
+  foo11()
+  foo21()
+
+template foo31() =
+  let factor = [1, 2, 3, 4]
+  doAssert factor[0] == 1
+template foo41() =
+  let factor = [1, 2, 3, 4]
+  doAssert factor[0] == 1
+
+foo31()
+foo41()
+
+{.pop.}

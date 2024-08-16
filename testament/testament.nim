@@ -10,9 +10,12 @@
 ## This program verifies Nim against the testcases.
 
 import
-  strutils, pegs, os, osproc, streams, json, std/exitprocs,
-  backend, parseopt, specs, htmlgen, browsers, terminal,
-  algorithm, times, azure, intsets, macros
+  std/[strutils, pegs, os, osproc, streams, json,
+    parseopt, browsers, terminal, exitprocs,
+    algorithm, times, intsets, macros]
+
+import backend, specs, azure, htmlgen
+
 from std/sugar import dup
 import compiler/nodejs
 import lib/stdtest/testutils
@@ -193,7 +196,6 @@ proc callNimCompiler(cmdTemplate, filename, options, nimcache: string,
         foundSuccessMsg = true
     elif not running(p):
       break
-  close(p)
   result.msg = ""
   result.file = ""
   result.output = ""
@@ -201,8 +203,9 @@ proc callNimCompiler(cmdTemplate, filename, options, nimcache: string,
   result.column = 0
 
   result.err = reNimcCrash
-  let exitCode = p.peekExitCode
-  case exitCode
+  result.exitCode = p.peekExitCode
+  close p
+  case result.exitCode
   of 0:
     if foundErrorMsg:
       result.debugInfo.add " compiler exit code was 0 but some Error's were found."
@@ -214,7 +217,7 @@ proc callNimCompiler(cmdTemplate, filename, options, nimcache: string,
     if foundSuccessMsg:
       result.debugInfo.add " compiler exit code was 1 but no `isSuccess` was true."
   else:
-    result.debugInfo.add " expected compiler exit code 0 or 1, got $1." % $exitCode
+    result.debugInfo.add " expected compiler exit code 0 or 1, got $1." % $result.exitCode
 
   if err =~ pegLineError:
     result.file = extractFilename(matches[0])
@@ -521,7 +524,29 @@ proc testSpecHelper(r: var TResults, test: var TTest, expected: TSpec,
             r.addResult(test, target, extraOptions, expected.output, bufB, reOutputsDiffer)
           compilerOutputTests(test, target, extraOptions, given, expected, r)
   of actionReject:
+    # Make sure its the compiler rejecting and not the system (e.g. segfault)
     cmpMsgs(r, expected, given, test, target, extraOptions)
+    if given.exitCode != QuitFailure:
+      r.addResult(test, target, extraOptions, "exitcode: " & $QuitFailure,
+                        "exitcode: " & $given.exitCode & "\n\nOutput:\n" &
+                        given.nimout, reExitcodesDiffer)
+
+
+
+proc changeTarget(extraOptions: string; defaultTarget: TTarget): TTarget =
+  result = defaultTarget
+  var p = parseopt.initOptParser(extraOptions)
+
+  while true:
+    parseopt.next(p)
+    case p.kind
+    of cmdEnd: break
+    of cmdLongOption, cmdShortOption:
+      if p.key == "b" or p.key == "backend":
+        result = parseEnum[TTarget](p.val.normalize)
+        # chooses the last one
+    else:
+      discard
 
 proc targetHelper(r: var TResults, test: TTest, expected: TSpec, extraOptions: string) =
   for target in expected.targets:
@@ -535,6 +560,7 @@ proc targetHelper(r: var TResults, test: TTest, expected: TSpec, extraOptions: s
     else:
       let nimcache = nimcacheDir(test.name, test.options, target)
       var testClone = test
+      let target = changeTarget(extraOptions, target)
       testSpecHelper(r, testClone, expected, target, extraOptions, nimcache)
 
 proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =

@@ -20,8 +20,8 @@ data =
     :tmpD_2))
   :tmpD
 `=destroy`(:tmpD_2)
-`=destroy`(:tmpD_1)
-`=destroy`(data)
+`=destroy_1`(:tmpD_1)
+`=destroy_1`(data)
 -- end of expandArc ------------------------
 --expandArc: main1
 
@@ -37,8 +37,8 @@ data =
     :tmpD_1))
   :tmpD
 `=destroy`(:tmpD_1)
-`=destroy`(data)
-`=destroy`(s)
+`=destroy_1`(data)
+`=destroy_1`(s)
 -- end of expandArc ------------------------
 --expandArc: main2
 
@@ -54,7 +54,7 @@ data =
     :tmpD_1))
   :tmpD
 `=destroy`(:tmpD_1)
-`=destroy`(data)
+`=destroy_1`(data)
 `=destroy`(s)
 -- end of expandArc ------------------------
 --expandArc: main3
@@ -73,7 +73,7 @@ data =
   :tmpD
 `=destroy`(:tmpD_2)
 `=destroy`(:tmpD_1)
-`=destroy`(data)
+`=destroy_1`(data)
 -- end of expandArc ------------------------
 '''
 """

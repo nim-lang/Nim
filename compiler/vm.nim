@@ -507,7 +507,7 @@ proc setLenSeq(c: PCtx; node: PNode; newLen: int; info: TLineInfo) =
   setLen(node.sons, newLen)
   if oldLen < newLen:
     for i in oldLen..<newLen:
-      node[i] = getNullValue(typ[0], info, c.config)
+      node[i] = getNullValue(typ.elementType, info, c.config)
 
 const
   errNilAccess = "attempt to access a nil address"
@@ -527,7 +527,7 @@ template maybeHandlePtr(node2: PNode, reg: TFullReg, isAssign2: bool): bool =
   if nfIsPtr in node.flags or (typ != nil and typ.kind == tyPtr):
     assert node.kind == nkIntLit, $(node.kind)
     assert typ != nil
-    let typ2 = if typ.kind == tyPtr: typ[0] else: typ
+    let typ2 = if typ.kind == tyPtr: typ.elementType else: typ
     if not derefPtrToReg(node.intVal, typ2, reg, isAssign = isAssign2):
       # tyObject not supported in this context
       stackTrace(c, tos, pc, "deref unsupported ptr type: " & $(typeToString(typ), typ.kind))
@@ -639,6 +639,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
           regs[ra].intVal = cast[int](regs[rb].node.intVal)
         of rkNodeAddr:
           regs[ra].intVal = cast[int](regs[rb].nodeAddr)
+        of rkRegisterAddr:
+          regs[ra].intVal = cast[int](regs[rb].regAddr)
         of rkInt:
           regs[ra].intVal = regs[rb].intVal
         else:
@@ -813,6 +815,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       # a[b] = c
       decodeBC(rkNode)
       let idx = regs[rb].intVal.int
+      assert regs[ra].kind == rkNode
       let arr = regs[ra].node
       case arr.kind
       of nkTupleConstr: # refer to `opcSlice`
@@ -826,7 +829,11 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
           of nkStrKinds:
             src.strVal[int(realIndex)] = char(regs[rc].intVal)
           of nkBracket:
-            src[int(realIndex)] = regs[rc].node
+            if regs[rc].kind == rkInt:
+              src[int(realIndex)] = newIntNode(nkIntLit, regs[rc].intVal)
+            else:
+              assert regs[rc].kind == rkNode
+              src[int(realIndex)] = regs[rc].node
           else:
             stackTrace(c, tos, pc, "opcWrArr internal error")
         else:
@@ -1356,7 +1363,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         else:
           internalError(c.config, c.debug[pc], "opcParseFloat: Incorrectly created openarray")
       else:
-        regs[ra].intVal = parseBiggestFloat(regs[ra].node.strVal, rcAddr.floatVal)
+        regs[ra].intVal = parseBiggestFloat(regs[rb].node.strVal, rcAddr.floatVal)
 
     of opcRangeChck:
       let rb = instr.regB
@@ -1410,8 +1417,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         #echo "new pc ", newPc, " calling: ", prc.name.s
         var newFrame = PStackFrame(prc: prc, comesFrom: pc, next: tos)
         newSeq(newFrame.slots, prc.offset+ord(isClosure))
-        if not isEmptyType(prc.typ[0]):
-          putIntoReg(newFrame.slots[0], getNullValue(prc.typ[0], prc.info, c.config))
+        if not isEmptyType(prc.typ.returnType):
+          putIntoReg(newFrame.slots[0], getNullValue(prc.typ.returnType, prc.info, c.config))
         for i in 1..rc-1:
           newFrame.slots[i] = regs[rb+i]
         if isClosure:
@@ -1556,7 +1563,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       regs[ra].node.typ = typ
       newSeq(regs[ra].node.sons, count)
       for i in 0..<count:
-        regs[ra].node[i] = getNullValue(typ[0], c.debug[pc], c.config)
+        regs[ra].node[i] = getNullValue(typ.elementType, c.debug[pc], c.config)
     of opcNewStr:
       decodeB(rkNode)
       regs[ra].node = newNodeI(nkStrLit, c.debug[pc])
@@ -1618,7 +1625,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         node2.flags.incl nfIsPtr
         regs[ra].node = node2
       elif not derefPtrToReg(node.intVal, typ, regs[ra], isAssign = false):
-        stackTrace(c, tos, pc, "opcLdDeref unsupported type: " & $(typeToString(typ), typ[0].kind))
+        stackTrace(c, tos, pc, "opcLdDeref unsupported type: " & $(typeToString(typ), typ.elementType.kind))
     of opcLdGlobalAddrDerefFFI:
       let rb = instr.regBx - wordExcess - 1
       let node = c.globals[rb]
@@ -1925,6 +1932,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
                             proc (conf: ConfigRef; info: TLineInfo; msg: TMsgKind; arg: string) =
                               if error.len == 0 and msg <= errMax:
                                 error = formatMsg(conf, info, msg, arg))
+
+      regs[ra].node = newNode(nkEmpty)
       if error.len > 0:
         c.errorFlag = error
       elif ast.len != 1:
@@ -1942,6 +1951,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
                                 error = formatMsg(conf, info, msg, arg))
       if error.len > 0:
         c.errorFlag = error
+        regs[ra].node = newNode(nkEmpty)
       else:
         regs[ra].node = ast
     of opcQueryErrorFlag:
@@ -2264,7 +2274,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeB(rkNode)
       var typ = regs[rb].node.typ
       internalAssert c.config, typ != nil
-      while typ.kind == tyTypeDesc and typ.len > 0: typ = typ[0]
+      while typ.kind == tyTypeDesc and typ.hasElementType: typ = typ.skipModifier
       createStr regs[ra]
       regs[ra].node.strVal = typ.typeToString(preferExported)
 
@@ -2280,11 +2290,11 @@ proc execute(c: PCtx, start: int): PNode =
 proc execProc*(c: PCtx; sym: PSym; args: openArray[PNode]): PNode =
   c.loopIterations = c.config.maxLoopIterationsVM
   if sym.kind in routineKinds:
-    if sym.typ.len-1 != args.len:
+    if sym.typ.paramsLen != args.len:
       result = nil
       localError(c.config, sym.info,
         "NimScript: expected $# arguments, but got $#" % [
-        $(sym.typ.len-1), $args.len])
+        $(sym.typ.paramsLen), $args.len])
     else:
       let start = genProc(c, sym)
 
@@ -2293,11 +2303,11 @@ proc execProc*(c: PCtx; sym: PSym; args: openArray[PNode]): PNode =
       newSeq(tos.slots, maxSlots)
 
       # setup parameters:
-      if not isEmptyType(sym.typ[0]) or sym.kind == skMacro:
-        putIntoReg(tos.slots[0], getNullValue(sym.typ[0], sym.info, c.config))
+      if not isEmptyType(sym.typ.returnType) or sym.kind == skMacro:
+        putIntoReg(tos.slots[0], getNullValue(sym.typ.returnType, sym.info, c.config))
       # XXX We could perform some type checking here.
-      for i in 1..<sym.typ.len:
-        putIntoReg(tos.slots[i], args[i-1])
+      for i in 0..<sym.typ.paramsLen:
+        putIntoReg(tos.slots[i+1], args[i])
 
       result = rawExecute(c, start, tos).regToNode
   else:
@@ -2435,7 +2445,7 @@ iterator genericParamsInMacroCall*(macroSym: PSym, call: PNode): (PSym, PNode) =
   let gp = macroSym.ast[genericParamsPos]
   for i in 0..<gp.len:
     let genericParam = gp[i].sym
-    let posInCall = macroSym.typ.len + i
+    let posInCall = macroSym.typ.signatureLen + i
     if posInCall < call.len:
       yield (genericParam, call[posInCall])
 
@@ -2458,9 +2468,10 @@ proc evalMacroCall*(module: PSym; idgen: IdGenerator; g: ModuleGraph; templInstC
 
   # immediate macros can bypass any type and arity checking so we check the
   # arity here too:
-  if sym.typ.len > n.safeLen and sym.typ.len > 1:
+  let sl = sym.typ.signatureLen
+  if sl > n.safeLen and sl > 1:
     globalError(g.config, n.info, "in call '$#' got $#, but expected $# argument(s)" % [
-        n.renderTree, $(n.safeLen-1), $(sym.typ.len-1)])
+        n.renderTree, $(n.safeLen-1), $(sym.typ.paramsLen)])
 
   setupGlobalCtx(module, g, idgen)
   var c = PCtx g.vm
@@ -2485,12 +2496,12 @@ proc evalMacroCall*(module: PSym; idgen: IdGenerator; g: ModuleGraph; templInstC
   tos.slots[0] = TFullReg(kind: rkNode, node: newNodeI(nkEmpty, n.info))
 
   # setup parameters:
-  for i in 1..<sym.typ.len:
-    tos.slots[i] = setupMacroParam(n[i], sym.typ[i])
+  for i, param in paramTypes(sym.typ):
+    tos.slots[i-FirstParamAt+1] = setupMacroParam(n[i-FirstParamAt+1], param)
 
   let gp = sym.ast[genericParamsPos]
   for i in 0..<gp.len:
-    let idx = sym.typ.len + i
+    let idx = sym.typ.signatureLen + i
     if idx < n.len:
       tos.slots[idx] = setupMacroParam(n[idx], gp[i].sym.typ)
     else:

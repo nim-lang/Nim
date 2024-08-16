@@ -210,7 +210,8 @@ proc loadAny(p: var JsonParser, a: Any, t: var Table[BiggestInt, pointer]) =
       setPointer(a, nil)
       next(p)
     of jsonInt:
-      setPointer(a, t.getOrDefault(p.getInt))
+      var raw = t.getOrDefault(p.getInt)
+      setPointer(a, addr raw)
       next(p)
     of jsonArrayStart:
       next(p)

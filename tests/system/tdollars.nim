@@ -1,5 +1,5 @@
 discard """
-  matrix: "--mm:refc; --mm:orc; --backend:cpp; --backend:js --jsbigint64:off; --backend:js --jsbigint64:on"
+  matrix: "--mm:refc; --mm:orc; --backend:cpp; --backend:js --jsbigint64:off -d:nimStringHash2; --backend:js --jsbigint64:on"
 """
 
 #[
@@ -109,10 +109,10 @@ block:
     # if `uint8(a1)` changes meaning to `cast[uint8](a1)` in future, update this test;
     # until then, this is the correct semantics.
     let a3 = $a2
-    doAssert a2 < 3
-    doAssert a3 == "-1"
+    doAssert a2 == 255'u8
+    doAssert a3 == "255"
     proc intToStr(a: uint8): cstring {.importjs: "(# + \"\")".}
-    doAssert $intToStr(a2) == "-1"
+    doAssert $intToStr(a2) == "255"
   else:
     block:
       let x = -1'i8

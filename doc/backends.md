@@ -250,6 +250,8 @@ which will likely make your program crash at runtime.
 The name `NimMain` can be influenced via the `--nimMainPrefix:prefix` switch.
 Use `--nimMainPrefix:MyLib` and the function to call is named `MyLibNimMain`.
 
+When compiling to static or dynamic libraries, they don't call destructors of global variables as normal Nim programs would do. A C API `NimDestroyGlobals` is provided to call these global destructors.
+
 
 ### Nim invocation example from C
 
@@ -371,11 +373,7 @@ The manual mentions that [Nim strings are implicitly convertible to
 cstrings](manual.html#types-cstring-type) which makes interaction usually
 painless. Most C functions accepting a Nim string converted to a
 `cstring` will likely not need to keep this string around and by the time
-they return the string won't be needed anymore. However, for the rare cases
-where a Nim string has to be preserved and made available to the C backend
-as a `cstring`, you will need to manually prevent the string data
-from being freed with [GC_ref](system.html#GC_ref,string) and [GC_unref](
-system.html#GC_unref,string).
+they return the string won't be needed anymore.
 
 A similar thing happens with C code invoking Nim code which returns a
 `cstring`. Consider the following proc:

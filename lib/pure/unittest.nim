@@ -773,7 +773,8 @@ macro expect*(exceptions: varargs[typed], body: untyped): untyped =
     except errorTypes:
       discard
     except:
-      checkpoint(lineInfoLit & ": Expect Failed, unexpected exception was thrown.")
+      let err = getCurrentException()
+      checkpoint(lineInfoLit & ": Expect Failed, " & $err.name & " was thrown.")
       fail()
     {.pop.}
 
