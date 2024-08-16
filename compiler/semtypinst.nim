@@ -573,6 +573,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
       result.kind = tyUserTypeClassInst
 
   of tyGenericBody:
+    if cl.allowMetaTypes: return
     localError(
       cl.c.config,
       cl.info,
@@ -645,7 +646,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
 
       for i, resulti in result.ikids:
         if resulti != nil:
-          if resulti.kind == tyGenericBody:
+          if resulti.kind == tyGenericBody and not cl.allowMetaTypes:
             localError(cl.c.config, if t.sym != nil: t.sym.info else: cl.info,
               "cannot instantiate '" &
               typeToString(result[i], preferDesc) &
