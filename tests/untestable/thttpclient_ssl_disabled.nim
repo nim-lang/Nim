@@ -5,36 +5,32 @@
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
-## Warning: this test performs external networking.
 ## Compile and run with:
-## ./bin/nim c -d:nimDisableCertificateValidation -d:ssl -r -p:. tests/untestable/thttpclient_ssl_disabled.nim
+## nim r --putenv:NIM_TESTAMENT_REMOTE_NETWORKING:1 -d:nimDisableCertificateValidation -d:ssl -p:. tests/untestable/thttpclient_ssl_disabled.nim
 
-import httpclient,
-  net,
-  unittest,
-  os
+from stdtest/testutils import enableRemoteNetworking
+when enableRemoteNetworking and (defined(nimTestsEnableFlaky) or not defined(openbsd)):
+  import httpclient, net, unittest
 
-from strutils import contains
+  const expired = "https://expired.badssl.com/"
 
-const expired = "https://expired.badssl.com/"
+  doAssert defined(nimDisableCertificateValidation)
 
-doAssert defined(nimDisableCertificateValidation)
+  suite "SSL certificate check - disabled":
 
-suite "SSL certificate check - disabled":
+    test "httpclient in insecure mode":
+      var ctx = newContext(verifyMode = CVerifyPeer)
+      var client = newHttpClient(sslContext = ctx)
+      let a = $client.getContent(expired)
 
-  test "httpclient in insecure mode":
-    var ctx = newContext(verifyMode = CVerifyPeer)
-    var client = newHttpClient(sslContext = ctx)
-    let a = $client.getContent(expired)
+    test "httpclient in insecure mode":
+      var ctx = newContext(verifyMode = CVerifyPeerUseEnvVars)
+      var client = newHttpClient(sslContext = ctx)
+      let a = $client.getContent(expired)
 
-  test "httpclient in insecure mode":
-    var ctx = newContext(verifyMode = CVerifyPeerUseEnvVars)
-    var client = newHttpClient(sslContext = ctx)
-    let a = $client.getContent(expired)
-
-  test "net socket in insecure mode":
-    var sock = newSocket()
-    var ctx = newContext(verifyMode = CVerifyPeerUseEnvVars)
-    ctx.wrapSocket(sock)
-    sock.connect("expired.badssl.com", 443.Port)
-    sock.close
+    test "net socket in insecure mode":
+      var sock = newSocket()
+      var ctx = newContext(verifyMode = CVerifyPeerUseEnvVars)
+      ctx.wrapSocket(sock)
+      sock.connect("expired.badssl.com", 443.Port)
+      sock.close

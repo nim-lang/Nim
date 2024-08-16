@@ -1,9 +1,11 @@
 discard """
   output: ""
+  matrix: "--mm:refc; --mm:orc"
   targets: "c js"
 """
 
 import json, strutils, options, tables
+import std/assertions
 
 # The definition of the `%` proc needs to be here, since the `% c` calls below
 # can only find our custom `%` proc for `Pix` if defined in global scope.
@@ -259,7 +261,7 @@ proc testJson() =
         colors: array[2, BirdColor]
 
     var red = BirdColor(name: "red", rgb: [1.0, 0.0, 0.0])
-    var blue = Birdcolor(name: "blue", rgb: [0.0, 0.0, 1.0])
+    var blue = BirdColor(name: "blue", rgb: [0.0, 0.0, 1.0])
     var b = Bird(age: 3, height: 1.734, name: "bardo", colors: [red, blue])
     let jnode = %b
     let data = jnode.to(Bird)
@@ -435,11 +437,7 @@ proc testJson() =
   block:
     let s = """{"a": 1, "b": 2}"""
     let t = parseJson(s).to(Table[string, int])
-    when not defined(js):
-      # For some reason on the JS backend `{"b": 2, "a": 0}` is
-      # sometimes the value of `t`. This needs investigation. I can't
-      # reproduce it right now in an isolated test.
-      doAssert t["a"] == 1
+    doAssert t["a"] == 1
     doAssert t["b"] == 2
 
   block:
@@ -497,7 +495,7 @@ proc testJson() =
     doAssert array[3, float](t.arr) == [1.0,2.0,7.0]
 
     doAssert MyRef(t.person).name == "boney"
-    doAssert MyObj(t.distFruit).color == 11
+    doAssert MyObj(t.distfruit).color == 11
     doAssert t.dog.name == "honey"
     doAssert t.fruit.color == 10
     doAssert seq[string](t.emails) == @["abc", "123"]
@@ -633,6 +631,18 @@ proc testJson() =
     except KeyError:
       doAssert getCurrentExceptionMsg().contains ".member.list[2].value"
 
+  block:
+    # Enum indexed array test
+    type Test = enum
+      one, two, three, four, five
+    let a = [
+      one: 300,
+      two: 20,
+      three: 10,
+      four: 0,
+      five: -10
+    ]
+    doAssert (%* a).to(a.typeof) == a
 
 
 testJson()

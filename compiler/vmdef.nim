@@ -10,6 +10,8 @@
 ## This module contains the type definitions for the new evaluation engine.
 ## An instruction is 1-3 int32s in memory, it is a register based VM.
 
+import std/[tables, strutils]
+
 import ast, idents, options, modulegraphs, lineinfos
 
 type TInstrType* = uint64
@@ -78,6 +80,8 @@ type
     opcWrDeref,
     opcWrStrIdx,
     opcLdStrIdx, # a = b[c]
+    opcLdStrIdxAddr,  # a = addr(b[c])
+    opcSlice, # toOpenArray(collection, left, right)
 
     opcAddInt,
     opcAddImmInt,
@@ -85,6 +89,7 @@ type
     opcSubImmInt,
     opcLenSeq,
     opcLenStr,
+    opcLenCstring,
 
     opcIncl, opcInclRange, opcExcl, opcCard, opcMulInt, opcDivInt, opcModInt,
     opcAddFloat, opcSubFloat, opcMulFloat, opcDivFloat,
@@ -94,11 +99,11 @@ type
     opcLeFloat, opcLtFloat, opcLeu, opcLtu,
     opcEqRef, opcEqNimNode, opcSameNodeType,
     opcXor, opcNot, opcUnaryMinusInt, opcUnaryMinusFloat, opcBitnotInt,
-    opcEqStr, opcLeStr, opcLtStr, opcEqSet, opcLeSet, opcLtSet,
+    opcEqStr, opcEqCString, opcLeStr, opcLtStr, opcEqSet, opcLeSet, opcLtSet,
     opcMulSet, opcPlusSet, opcMinusSet, opcConcatStr,
     opcContainsSet, opcRepr, opcSetLenStr, opcSetLenSeq,
     opcIsNil, opcOf, opcIs,
-    opcSubStr, opcParseFloat, opcConv, opcCast,
+    opcParseFloat, opcConv, opcCast,
     opcQuit, opcInvalidField,
     opcNarrowS, opcNarrowU,
     opcSignExtend,
@@ -122,7 +127,7 @@ type
     opcNGetSize,
 
     opcNSetIntVal,
-    opcNSetFloatVal, opcNSetSymbol, opcNSetIdent, opcNSetType, opcNSetStrVal,
+    opcNSetFloatVal, opcNSetSymbol, opcNSetIdent, opcNSetStrVal,
     opcNNewNimNode, opcNCopyNimNode, opcNCopyNimTree, opcNDel, opcGenSym,
 
     opcNccValue, opcNccInc, opcNcsAdd, opcNcsIncl, opcNcsLen, opcNcsAt,
@@ -136,7 +141,8 @@ type
     opcNError,
     opcNWarning,
     opcNHint,
-    opcNGetLineInfo, opcNSetLineInfo,
+    opcNGetLineInfo, opcNCopyLineInfo, opcNSetLineInfoLine,
+    opcNSetLineInfoColumn, opcNSetLineInfoFile
     opcEqIdent,
     opcStrToIdent,
     opcGetImpl,
@@ -176,7 +182,6 @@ type
     opcNBindSym, opcNDynBindSym,
     opcSetType,   # dest.typ = types[Bx]
     opcTypeTrait,
-    opcMarshalLoad, opcMarshalStore,
     opcSymOwner,
     opcSymIsInstantiationOf
 
@@ -227,8 +232,7 @@ type
   PProc* = ref object
     blocks*: seq[TBlock]    # blocks; temp data structure
     sym*: PSym
-    slots*: array[TRegister, tuple[inUse: bool, kind: TSlotKind]]
-    maxSlots*: int
+    regInfo*: seq[tuple[inUse: bool, kind: TSlotKind]]
 
   VmArgs* = object
     ra*, rb*, rc*: Natural
@@ -255,7 +259,8 @@ type
     traceActive*: bool
     loopIterations*: int
     comesFromHeuristic*: TLineInfo # Heuristic for better macro stack traces
-    callbacks*: seq[tuple[key: string, value: VmCallback]]
+    callbacks*: seq[VmCallback]
+    callbackIndex*: Table[string, int]
     errorFlag*: string
     cache*: IdentCache
     config*: ConfigRef
@@ -263,9 +268,11 @@ type
     oldErrorCount*: int
     profiler*: Profiler
     templInstCounter*: ref int # gives every template instantiation a unique ID, needed here for getAst
+    vmstateDiff*: seq[(PSym, PNode)] # we remember the "diff" to global state here (feature for IC)
+    procToCodePos*: Table[int, int]
 
   PStackFrame* = ref TStackFrame
-  TStackFrame* = object
+  TStackFrame* {.acyclic.} = object
     prc*: PSym                 # current prc; proc that is evaluated
     slots*: seq[TFullReg]      # parameters passed to the proc + locals;
                               # parameters come first
@@ -282,27 +289,37 @@ type
 
   PEvalContext* = PCtx
 
-proc newCtx*(module: PSym; cache: IdentCache; g: ModuleGraph): PCtx =
+proc newCtx*(module: PSym; cache: IdentCache; g: ModuleGraph; idgen: IdGenerator): PCtx =
   PCtx(code: @[], debug: @[],
     globals: newNode(nkStmtListExpr), constants: newNode(nkStmtList), types: @[],
     prc: PProc(blocks: @[]), module: module, loopIterations: g.config.maxLoopIterationsVM,
-    comesFromHeuristic: unknownLineInfo, callbacks: @[], errorFlag: "",
-    cache: cache, config: g.config, graph: g)
+    comesFromHeuristic: unknownLineInfo, callbacks: @[], callbackIndex: initTable[string, int](), errorFlag: "",
+    cache: cache, config: g.config, graph: g, idgen: idgen)
 
-proc refresh*(c: PCtx, module: PSym) =
+proc refresh*(c: PCtx, module: PSym; idgen: IdGenerator) =
   c.module = module
   c.prc = PProc(blocks: @[])
   c.loopIterations = c.config.maxLoopIterationsVM
+  c.idgen = idgen
+
+proc reverseName(s: string): string =
+  result = newStringOfCap(s.len)
+  let y = s.split('.')
+  for i in 1..y.len:
+    result.add y[^i]
+    if i != y.len:
+      result.add '.'
 
 proc registerCallback*(c: PCtx; name: string; callback: VmCallback): int {.discardable.} =
   result = c.callbacks.len
-  c.callbacks.add((name, callback))
+  c.callbacks.add(callback)
+  c.callbackIndex[reverseName(name)] = result
 
 const
   firstABxInstr* = opcTJmp
   largeInstrs* = { # instructions which use 2 int32s instead of 1:
-    opcSubStr, opcConv, opcCast, opcNewSeq, opcOf,
-    opcMarshalLoad, opcMarshalStore}
+    opcConv, opcCast, opcNewSeq, opcOf
+    }
   slotSomeTemp* = slotTempUnknown
   relativeJumps* = {opcTJmp, opcFJmp, opcJmp, opcJmpBack}
 

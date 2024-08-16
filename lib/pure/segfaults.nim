@@ -13,6 +13,8 @@
 ##
 ## Tested on these OSes: Linux, Windows, OSX
 
+# xxx possibly broken on arm64, see bug #17178
+
 {.used.}
 
 # do allocate memory upfront:
@@ -24,11 +26,11 @@ se.msg = "Could not access value because it is nil."
 when defined(windows):
   include "../system/ansi_c"
 
-  import winlean
+  import std/winlean
 
   const
     EXCEPTION_ACCESS_VIOLATION = DWORD(0xc0000005'i32)
-    EXCEPTION_CONTINUE_SEARCH = Long(0)
+    EXCEPTION_CONTINUE_SEARCH = LONG(0)
 
   type
     PEXCEPTION_RECORD = ptr object
@@ -63,7 +65,7 @@ when defined(windows):
     c_signal(SIGSEGV, segfaultHandler)
 
 else:
-  import posix
+  import std/posix
 
   var sa: Sigaction
 

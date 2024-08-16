@@ -8,11 +8,14 @@
 #
 
 ## This module implements a json parser. It is used
-## and exported by the ``json`` standard library
+## and exported by the `json` standard library
 ## module, but can also be used in its own right.
 
-import
-  strutils, lexbase, streams, unicode
+import std/[strutils, lexbase, streams, unicode]
+import std/private/decode_helpers
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
 
 type
   JsonEventKind* = enum ## enumeration of all events that may occur when parsing
@@ -21,13 +24,13 @@ type
     jsonString,         ## a string literal
     jsonInt,            ## an integer literal
     jsonFloat,          ## a float literal
-    jsonTrue,           ## the value ``true``
-    jsonFalse,          ## the value ``false``
-    jsonNull,           ## the value ``null``
-    jsonObjectStart,    ## start of an object: the ``{`` token
-    jsonObjectEnd,      ## end of an object: the ``}`` token
-    jsonArrayStart,     ## start of an array: the ``[`` token
-    jsonArrayEnd        ## end of an array: the ``]`` token
+    jsonTrue,           ## the value `true`
+    jsonFalse,          ## the value `false`
+    jsonNull,           ## the value `null`
+    jsonObjectStart,    ## start of an object: the `{` token
+    jsonObjectEnd,      ## end of an object: the `}` token
+    jsonArrayStart,     ## start of an array: the `[` token
+    jsonArrayEnd        ## end of an array: the `]` token
 
   TokKind* = enum # must be synchronized with TJsonEventKind!
     tkError,
@@ -49,12 +52,12 @@ type
     errNone,              ## no error
     errInvalidToken,      ## invalid token
     errStringExpected,    ## string expected
-    errColonExpected,     ## ``:`` expected
-    errCommaExpected,     ## ``,`` expected
-    errBracketRiExpected, ## ``]`` expected
-    errCurlyRiExpected,   ## ``}`` expected
-    errQuoteExpected,     ## ``"`` or ``'`` expected
-    errEOC_Expected,      ## ``*/`` expected
+    errColonExpected,     ## `:` expected
+    errCommaExpected,     ## `,` expected
+    errBracketRiExpected, ## `]` expected
+    errCurlyRiExpected,   ## `}` expected
+    errQuoteExpected,     ## `"` or `'` expected
+    errEOC_Expected,      ## `*/` expected
     errEofExpected,       ## EOF expected
     errExprExpected       ## expr expected
 
@@ -71,7 +74,7 @@ type
     filename: string
     rawStringLiterals: bool
 
-  JsonKindError* = object of ValueError ## raised by the ``to`` macro if the
+  JsonKindError* = object of ValueError ## raised by the `to` macro if the
                                         ## JSON kind is incorrect.
   JsonParsingError* = object of ValueError ## is raised for a JSON error
 
@@ -119,18 +122,18 @@ proc close*(my: var JsonParser) {.inline.} =
   lexbase.close(my)
 
 proc str*(my: JsonParser): string {.inline.} =
-  ## returns the character data for the events: ``jsonInt``, ``jsonFloat``,
-  ## ``jsonString``
+  ## returns the character data for the events: `jsonInt`, `jsonFloat`,
+  ## `jsonString`
   assert(my.kind in {jsonInt, jsonFloat, jsonString})
   return my.a
 
 proc getInt*(my: JsonParser): BiggestInt {.inline.} =
-  ## returns the number for the event: ``jsonInt``
+  ## returns the number for the event: `jsonInt`
   assert(my.kind == jsonInt)
   return parseBiggestInt(my.a)
 
 proc getFloat*(my: JsonParser): float {.inline.} =
-  ## returns the number for the event: ``jsonFloat``
+  ## returns the number for the event: `jsonFloat`
   assert(my.kind == jsonFloat)
   return parseFloat(my.a)
 
@@ -151,7 +154,7 @@ proc getFilename*(my: JsonParser): string {.inline.} =
   result = my.filename
 
 proc errorMsg*(my: JsonParser): string =
-  ## returns a helpful error message for the event ``jsonError``
+  ## returns a helpful error message for the event `jsonError`
   assert(my.kind == jsonError)
   result = "$1($2, $3) Error: $4" % [
     my.filename, $getLine(my), $getColumn(my), errorMessages[my.err]]
@@ -162,18 +165,11 @@ proc errorMsgExpected*(my: JsonParser, e: string): string =
   result = "$1($2, $3) Error: $4" % [
     my.filename, $getLine(my), $getColumn(my), e & " expected"]
 
-proc handleHexChar(c: char, x: var int): bool =
-  result = true # Success
-  case c
-  of '0'..'9': x = (x shl 4) or (ord(c) - ord('0'))
-  of 'a'..'f': x = (x shl 4) or (ord(c) - ord('a') + 10)
-  of 'A'..'F': x = (x shl 4) or (ord(c) - ord('A') + 10)
-  else: result = false # error
-
 proc parseEscapedUTF16*(buf: cstring, pos: var int): int =
   result = 0
   #UTF-16 escape is always 4 bytes.
   for _ in 0..3:
+    # if char in '0' .. '9', 'a' .. 'f', 'A' .. 'F'
     if handleHexChar(buf[pos], result):
       inc(pos)
     else:
@@ -225,7 +221,7 @@ proc parseString(my: var JsonParser): TokKind =
           add(my.a, 'u')
         inc(pos, 2)
         var pos2 = pos
-        var r = parseEscapedUTF16(my.buf, pos)
+        var r = parseEscapedUTF16(cstring(my.buf), pos)
         if r < 0:
           my.err = errInvalidToken
           break
@@ -235,7 +231,7 @@ proc parseString(my: var JsonParser): TokKind =
             my.err = errInvalidToken
             break
           inc(pos, 2)
-          var s = parseEscapedUTF16(my.buf, pos)
+          var s = parseEscapedUTF16(cstring(my.buf), pos)
           if (s and 0xfc00) == 0xdc00 and s > 0:
             r = 0x10000 + (((r - 0xd800) shl 10) or (s - 0xdc00))
           else:

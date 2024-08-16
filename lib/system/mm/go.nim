@@ -109,7 +109,7 @@ proc newSeqRC1(typ: PNimType, len: int): pointer {.compilerRtl.} =
   writebarrierptr(addr(result), newSeq(typ, len))
 
 proc nimNewSeqOfCap(typ: PNimType, cap: int): pointer {.compilerproc.} =
-  result = newObj(typ, align(GenericSeqSize, typ.base.align) + cap * typ.base.size)
+  result = newObjNoInit(typ, align(GenericSeqSize, typ.base.align) + cap * typ.base.size)
   cast[PGenericSeq](result).len = 0
   cast[PGenericSeq](result).reserved = cap
   cast[PGenericSeq](result).elemSize = typ.base.size
@@ -130,8 +130,8 @@ proc growObj(old: pointer, newsize: int): pointer =
 
 proc nimGCref(p: pointer) {.compilerproc, inline.} = discard
 proc nimGCunref(p: pointer) {.compilerproc, inline.} = discard
-proc nimGCunrefNoCycle(p: pointer) {.compilerProc, inline.} = discard
-proc nimGCunrefRC1(p: pointer) {.compilerProc, inline.} = discard
+proc nimGCunrefNoCycle(p: pointer) {.compilerproc, inline.} = discard
+proc nimGCunrefRC1(p: pointer) {.compilerproc, inline.} = discard
 proc nimGCvisit(d: pointer, op: int) {.compilerRtl.} = discard
 
 proc unsureAsgnRef(dest: PPointer, src: pointer) {.compilerproc, inline.} =

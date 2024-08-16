@@ -59,7 +59,7 @@ proc readMessages(server: AsyncSocket) {.async.} =
   while i < maxResponses:
     let (data, fromIp, fromPort) = await recvFrom(server, 16384)
 
-    if data.startswith("Message ") and fromIp == "127.0.0.1":
+    if data.startsWith("Message ") and fromIp == "127.0.0.1":
       await sendTo(server, fromIp, fromPort, data)
 
       inc(msgCount)
@@ -84,7 +84,7 @@ while true:
   if recvCount == swarmSize * messagesToSend:
     break
 
-assert msgCount == swarmSize * messagesToSend
-assert sendports == recvports
+doAssert msgCount == swarmSize * messagesToSend
+doAssert sendports == recvports
 
 echo msgCount

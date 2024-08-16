@@ -2,18 +2,27 @@
 {.push stackTrace: off.}
 
 proc allocImpl(size: Natural): pointer =
-  c_malloc(size.csize_t)
+  result = c_malloc(size.csize_t)
+  when defined(zephyr):
+    if result == nil:
+      raiseOutOfMem()
 
 proc alloc0Impl(size: Natural): pointer =
-  c_calloc(size.csize_t, 1)
+  result = c_calloc(size.csize_t, 1)
+  when defined(zephyr):
+    if result == nil:
+      raiseOutOfMem()
 
 proc reallocImpl(p: pointer, newSize: Natural): pointer =
-  c_realloc(p, newSize.csize_t)
+  result = c_realloc(p, newSize.csize_t)
+  when defined(zephyr):
+    if result == nil:
+      raiseOutOfMem()
 
 proc realloc0Impl(p: pointer, oldsize, newSize: Natural): pointer =
   result = realloc(p, newSize.csize_t)
   if newSize > oldSize:
-    zeroMem(cast[pointer](cast[int](result) + oldSize), newSize - oldSize)
+    zeroMem(cast[pointer](cast[uint](result) + uint(oldSize)), newSize - oldSize)
 
 proc deallocImpl(p: pointer) =
   c_free(p)
@@ -79,7 +88,7 @@ type
 
 proc alloc(r: var MemRegion, size: int): pointer =
   result = alloc(size)
-proc alloc0Impl(r: var MemRegion, size: int): pointer =
+proc alloc0(r: var MemRegion, size: int): pointer =
   result = alloc0Impl(size)
 proc dealloc(r: var MemRegion, p: pointer) = dealloc(p)
 proc deallocOsPages(r: var MemRegion) = discard

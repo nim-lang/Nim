@@ -1,32 +1,27 @@
 discard """
-  target: "c js"
+  matrix: "--mm:refc; --mm:orc; --backend:js --jsbigint64:on; --backend:js --jsbigint64:off -d:nimStringHash2"
 """
 
 import times, strutils, unittest
+import std/assertions
 
 when not defined(js):
   import os
 
-# Normally testament configures unittest with environment variables,
-# but that doesn't work for the JS target. So instead we must set the correct
-# settings here.
-addOutputFormatter(
-  newConsoleOutputFormatter(PRINT_FAILURES, colorOutput = false))
-
 proc staticTz(hours, minutes, seconds: int = 0): Timezone {.noSideEffect.} =
   let offset = hours * 3600 + minutes * 60 + seconds
 
-  proc zonedTimeFromAdjTime(adjTime: Time): ZonedTime {.locks: 0.} =
+  proc zonedTimeFromAdjTime(adjTime: Time): ZonedTime =
     result.isDst = false
     result.utcOffset = offset
     result.time = adjTime + initDuration(seconds = offset)
 
-  proc zonedTimeFromTime(time: Time): ZonedTime {.locks: 0.}=
+  proc zonedTimeFromTime(time: Time): ZonedTime =
     result.isDst = false
     result.utcOffset = offset
     result.time = time
 
-  newTimezone("", zonedTimeFromTime, zonedTImeFromAdjTime)
+  newTimezone("", zonedTimeFromTime, zonedTimeFromAdjTime)
 
 template parseTest(s, f, sExpected: string, ydExpected: int) =
   let
@@ -76,7 +71,7 @@ template runTimezoneTests() =
       "2006-01-12T22:04:05Z", 11)
   # RFC3339Nano = "2006-01-02T15:04:05.999999999Z07:00"
   parseTest("2006-01-12T15:04:05.999999999Z-07:00",
-      "yyyy-MM-dd'T'HH:mm:ss'.999999999Z'zzz", "2006-01-12T22:04:05Z", 11)
+      "yyyy-MM-dd'T'HH:mm:ss.'999999999Z'zzz", "2006-01-12T22:04:05Z", 11)
   for tzFormat in ["z", "zz", "zzz"]:
     # formatting timezone as 'Z' for UTC
     parseTest("2001-01-12T22:04:05Z", "yyyy-MM-dd'T'HH:mm:ss" & tzFormat,
@@ -89,6 +84,10 @@ template runTimezoneTests() =
   parseTest("2001-01-12T15:04:05 +07:00", "yyyy-MM-dd'T'HH:mm:ss zzz",
       "2001-01-12T08:04:05Z", 11)
   parseTest("2001-01-12T15:04:05 +07:30:59", "yyyy-MM-dd'T'HH:mm:ss zzzz",
+      "2001-01-12T07:33:06Z", 11)
+  parseTest("2001-01-12T15:04:05 +0700", "yyyy-MM-dd'T'HH:mm:ss ZZZ",
+      "2001-01-12T08:04:05Z", 11)
+  parseTest("2001-01-12T15:04:05 +073059", "yyyy-MM-dd'T'HH:mm:ss ZZZZ",
       "2001-01-12T07:33:06Z", 11)
   # Kitchen     = "3:04PM"
   parseTestTimeOnly("3:04PM", "h:mmtt", "15:04:00")
@@ -122,7 +121,7 @@ template usingTimezone(tz: string, body: untyped) =
     body
     putEnv("TZ", oldZone)
 
-suite "ttimes":
+block: # ttimes
 
   # Generate tests for multiple timezone files where available
   # Set the TZ env var for each test
@@ -149,7 +148,7 @@ suite "ttimes":
     test "parseTest":
       runTimezoneTests()
 
-  test "dst handling":
+  block: # dst handling
     usingTimezone("Europe/Stockholm"):
       # In case of an impossible time, the time is moved to after the
       # impossible time period
@@ -169,7 +168,7 @@ suite "ttimes":
       check initDateTime(21, mOct, 2017, 01, 00, 00).format(f) ==
         "2017-10-21 01:00 +02:00"
 
-  test "issue #6520":
+  block: # issue #6520
     usingTimezone("Europe/Stockholm"):
       var local = fromUnix(1469275200).local
       var utc = fromUnix(1469275200).utc
@@ -178,19 +177,19 @@ suite "ttimes":
       local.utcOffset = 0
       check claimedOffset == utc.toTime - local.toTime
 
-  test "issue #5704":
+  block: # issue #5704
     usingTimezone("Asia/Seoul"):
       let diff = parse("19700101-000000", "yyyyMMdd-hhmmss").toTime -
         parse("19000101-000000", "yyyyMMdd-hhmmss").toTime
       check diff == initDuration(seconds = 2208986872)
 
-  test "issue #6465":
+  block: # issue #6465
     usingTimezone("Europe/Stockholm"):
       let dt = parse("2017-03-25 12:00", "yyyy-MM-dd hh:mm")
       check $(dt + initTimeInterval(days = 1)) == "2017-03-26T12:00:00+02:00"
       check $(dt + initDuration(days = 1)) == "2017-03-26T13:00:00+02:00"
 
-  test "adding/subtracting time across dst":
+  block: # adding/subtracting time across dst
     usingTimezone("Europe/Stockholm"):
       let dt1 = initDateTime(26, mMar, 2017, 03, 00, 00)
       check $(dt1 - 1.seconds) == "2017-03-26T01:59:59+01:00"
@@ -198,55 +197,55 @@ suite "ttimes":
       var dt2 = initDateTime(29, mOct, 2017, 02, 59, 59)
       check  $(dt2 + 1.seconds) == "2017-10-29T02:00:00+01:00"
 
-  test "datetime before epoch":
+  block: # datetime before epoch
     check $fromUnix(-2147483648).utc == "1901-12-13T20:45:52Z"
 
-  test "incorrect inputs: empty string":
+  block: # incorrect inputs: empty string
     parseTestExcp("", "yyyy-MM-dd")
 
-  test "incorrect inputs: year":
+  block: # incorrect inputs: year
     parseTestExcp("20-02-19", "yyyy-MM-dd")
 
-  test "incorrect inputs: month number":
+  block: # incorrect inputs: month number
     parseTestExcp("2018-2-19", "yyyy-MM-dd")
 
-  test "incorrect inputs: month name":
+  block: # incorrect inputs: month name
     parseTestExcp("2018-Fe", "yyyy-MMM-dd")
 
-  test "incorrect inputs: day":
+  block: # incorrect inputs: day
     parseTestExcp("2018-02-1", "yyyy-MM-dd")
 
-  test "incorrect inputs: day of week":
+  block: # incorrect inputs: day of week
     parseTestExcp("2018-Feb-Mo", "yyyy-MMM-ddd")
 
-  test "incorrect inputs: hour":
+  block: # incorrect inputs: hour
     parseTestExcp("2018-02-19 1:30", "yyyy-MM-dd hh:mm")
 
-  test "incorrect inputs: minute":
+  block: # incorrect inputs: minute
     parseTestExcp("2018-02-19 16:3", "yyyy-MM-dd hh:mm")
 
-  test "incorrect inputs: second":
+  block: # incorrect inputs: second
     parseTestExcp("2018-02-19 16:30:0", "yyyy-MM-dd hh:mm:ss")
 
-  test "incorrect inputs: timezone (z)":
+  block: # incorrect inputs: timezone (z)
     parseTestExcp("2018-02-19 16:30:00 ", "yyyy-MM-dd hh:mm:ss z")
 
-  test "incorrect inputs: timezone (zz) 1":
+  block: # incorrect inputs: timezone (zz) 1
     parseTestExcp("2018-02-19 16:30:00 ", "yyyy-MM-dd hh:mm:ss zz")
 
-  test "incorrect inputs: timezone (zz) 2":
+  block: # incorrect inputs: timezone (zz) 2
     parseTestExcp("2018-02-19 16:30:00 +1", "yyyy-MM-dd hh:mm:ss zz")
 
-  test "incorrect inputs: timezone (zzz) 1":
+  block: # incorrect inputs: timezone (zzz) 1
     parseTestExcp("2018-02-19 16:30:00 ", "yyyy-MM-dd hh:mm:ss zzz")
 
-  test "incorrect inputs: timezone (zzz) 2":
+  block: # incorrect inputs: timezone (zzz) 2
     parseTestExcp("2018-02-19 16:30:00 +01:", "yyyy-MM-dd hh:mm:ss zzz")
 
-  test "incorrect inputs: timezone (zzz) 3":
+  block: # incorrect inputs: timezone (zzz) 3
     parseTestExcp("2018-02-19 16:30:00 +01:0", "yyyy-MM-dd hh:mm:ss zzz")
 
-  test "incorrect inputs: year (yyyy/uuuu)":
+  block: # incorrect inputs: year (yyyy/uuuu)
     parseTestExcp("-0001", "yyyy")
     parseTestExcp("-0001", "YYYY")
     parseTestExcp("1", "yyyy")
@@ -255,7 +254,7 @@ suite "ttimes":
     parseTestExcp("12345", "uuuu")
     parseTestExcp("-1 BC", "UUUU g")
 
-  test "incorrect inputs: invalid sign":
+  block: # incorrect inputs: invalid sign
     parseTestExcp("+1", "YYYY")
     parseTestExcp("+1", "dd")
     parseTestExcp("+1", "MM")
@@ -263,10 +262,10 @@ suite "ttimes":
     parseTestExcp("+1", "mm")
     parseTestExcp("+1", "ss")
 
-  test "_ as a separator":
+  block: # _ as a separator
     discard parse("2000_01_01", "YYYY'_'MM'_'dd")
 
-  test "dynamic timezone":
+  block: # dynamic timezone
     let tz = staticTz(seconds = -9000)
     let dt = initDateTime(1, mJan, 2000, 12, 00, 00, tz)
     check dt.utcOffset == -9000
@@ -275,13 +274,13 @@ suite "ttimes":
     check $dt.utc == "2000-01-01T09:30:00Z"
     check $dt.utc.inZone(tz) == $dt
 
-  test "isLeapYear":
+  block: # isLeapYear
     check isLeapYear(2016)
     check (not isLeapYear(2015))
     check isLeapYear(2000)
     check (not isLeapYear(1900))
 
-  test "TimeInterval":
+  block: # TimeInterval
     let t = fromUnix(876124714).utc # Mon 6 Oct 08:58:34 BST 1997
     # Interval tests
     let t2 = t - 2.years
@@ -293,7 +292,7 @@ suite "ttimes":
     check (t + 1.hours).toTime.toUnix == t.toTime.toUnix + 60 * 60
     check (t - 1.hours).toTime.toUnix == t.toTime.toUnix - 60 * 60
 
-  test "TimeInterval - months":
+  block: # TimeInterval - months
     var dt = initDateTime(1, mFeb, 2017, 00, 00, 00, utc())
     check $(dt - initTimeInterval(months = 1)) == "2017-01-01T00:00:00Z"
     dt = initDateTime(15, mMar, 2017, 00, 00, 00, utc())
@@ -302,7 +301,7 @@ suite "ttimes":
     # This happens due to monthday overflow. It's consistent with Phobos.
     check $(dt - initTimeInterval(months = 1)) == "2017-03-03T00:00:00Z"
 
-  test "duration":
+  block: # duration
     let d = initDuration
     check d(hours = 48) + d(days = 5) == d(weeks = 1)
     let dt = initDateTime(01, mFeb, 2000, 00, 00, 00, 0, utc()) + d(milliseconds = 1)
@@ -322,7 +321,7 @@ suite "ttimes":
     check (initDuration(seconds = 1, nanoseconds = 3) <=
       initDuration(seconds = 1, nanoseconds = 1)).not
 
-  test "large/small dates":
+  block: # large/small dates
     discard initDateTime(1, mJan, -35_000, 12, 00, 00, utc())
     # with local tz
     discard initDateTime(1, mJan, -35_000, 12, 00, 00)
@@ -334,7 +333,7 @@ suite "ttimes":
     let dt2 = dt + 35_001.years
     check $dt2 == "0001-01-01T12:00:01Z"
 
-  test "compare datetimes":
+  block: # compare datetimes
     var dt1 = now()
     var dt2 = dt1
     check dt1 == dt2
@@ -342,7 +341,7 @@ suite "ttimes":
     dt2 = dt2 + 1.seconds
     check dt1 < dt2
 
-  test "adding/subtracting TimeInterval":
+  block: # adding/subtracting TimeInterval
     # add/subtract TimeIntervals and Time/TimeInfo
     let now = getTime().utc
     let isSpecial = now.isLeapDay
@@ -380,14 +379,14 @@ suite "ttimes":
       check initTime(0, 101).toWinTime.fromWinTime.nanosecond == 100
       check initTime(0, 101).toWinTime.fromWinTime.nanosecond == 100
 
-  test "issue 7620":
+  block: # issue 7620
     let layout = "M/d/yyyy' 'h:mm:ss' 'tt' 'z"
     let t7620_am = parse("4/15/2017 12:01:02 AM +0", layout, utc())
     check t7620_am.format(layout) == "4/15/2017 12:01:02 AM Z"
     let t7620_pm = parse("4/15/2017 12:01:02 PM +0", layout, utc())
     check t7620_pm.format(layout) == "4/15/2017 12:01:02 PM Z"
 
-  test "format":
+  block: # format
     var dt = initDateTime(1, mJan, -0001,
                           17, 01, 02, 123_456_789,
                           staticTz(hours = 1, minutes = 2, seconds = 3))
@@ -456,7 +455,7 @@ suite "ttimes":
       doAssert dt.format("zz") == tz[2]
       doAssert dt.format("zzz") == tz[3]
 
-  test "format locale":
+  block: # format locale
     let loc = DateTimeLocale(
       MMM: ["Fir","Sec","Thi","Fou","Fif","Six","Sev","Eig","Nin","Ten","Ele","Twe"],
       MMMM: ["Firsty", "Secondy", "Thirdy", "Fourthy", "Fifthy", "Sixthy", "Seventhy", "Eighthy", "Ninthy", "Tenthy", "Eleventhy", "Twelfthy"],
@@ -473,7 +472,7 @@ suite "ttimes":
     check dt.format("MMM", loc) == "Fir"
     check dt.format("MMMM", loc) == "Firsty"
 
-  test "parse":
+  block: # parse
     check $parse("20180101", "yyyyMMdd", utc()) == "2018-01-01T00:00:00Z"
     parseTestExcp("+120180101", "yyyyMMdd")
 
@@ -494,7 +493,7 @@ suite "ttimes":
 
     parseTestExcp("2000 A", "yyyy g")
 
-  test "parse locale":
+  block: # parse locale
     let loc = DateTimeLocale(
       MMM: ["Fir","Sec","Thi","Fou","Fif","Six","Sev","Eig","Nin","Ten","Ele","Twe"],
       MMMM: ["Firsty", "Secondy", "Thirdy", "Fourthy", "Fifthy", "Sixthy", "Seventhy", "Eighthy", "Ninthy", "Tenthy", "Eleventhy", "Twelfthy"],
@@ -504,7 +503,7 @@ suite "ttimes":
     check $parse("02 Fir 2019", "dd MMM yyyy", utc(), loc) == "2019-01-02T00:00:00Z"
     check $parse("Fourthy 6, 2017", "MMMM d, yyyy", utc(), loc) == "2017-04-06T00:00:00Z"
 
-  test "timezoneConversion":
+  block: # timezoneConversion
     var l = now()
     let u = l.utc
     l = u.local
@@ -512,7 +511,7 @@ suite "ttimes":
     check l.timezone == local()
     check u.timezone == utc()
 
-  test "getDayOfWeek":
+  block: # getDayOfWeek
     check getDayOfWeek(01, mJan, 0000) == dSat
     check getDayOfWeek(01, mJan, -0023) == dSat
     check getDayOfWeek(21, mSep, 1900) == dFri
@@ -521,29 +520,29 @@ suite "ttimes":
     check getDayOfWeek(01, mJan, 2000) == dSat
     check getDayOfWeek(01, mJan, 2021) == dFri
 
-  test "between - simple":
+  block: # between - simple
     let x = initDateTime(10, mJan, 2018, 13, 00, 00)
     let y = initDateTime(11, mJan, 2018, 12, 00, 00)
     doAssert x + between(x, y) == y
 
-  test "between - dst start":
+  block: # between - dst start
     usingTimezone("Europe/Stockholm"):
       let x = initDateTime(25, mMar, 2018, 00, 00, 00)
       let y = initDateTime(25, mMar, 2018, 04, 00, 00)
       doAssert x + between(x, y) == y
 
-  test "between - empty interval":
+  block: # between - empty interval
     let x = now()
     let y = x
     doAssert x + between(x, y) == y
 
-  test "between - dst end":
+  block: # between - dst end
     usingTimezone("Europe/Stockholm"):
       let x = initDateTime(27, mOct, 2018, 02, 00, 00)
       let y = initDateTime(28, mOct, 2018, 01, 00, 00)
       doAssert x + between(x, y) == y
 
-  test "between - long day":
+  block: # between - long day
     usingTimezone("Europe/Stockholm"):
       # This day is 25 hours long in Europe/Stockholm
       let x = initDateTime(28, mOct, 2018, 00, 30, 00)
@@ -551,7 +550,7 @@ suite "ttimes":
       doAssert between(x, y) == 24.hours + 30.minutes
       doAssert x + between(x, y) == y
 
-  test "between - offset change edge case":
+  block: # between - offset change edge case
     # This test case is important because in this case
     # `x + between(x.utc, y.utc) == y` is not true, which is very rare.
     usingTimezone("America/Belem"):
@@ -560,19 +559,19 @@ suite "ttimes":
       doAssert x + between(x, y) == y
       doAssert y + between(y, x) == x
 
-  test "between - all units":
+  block: # between - all units
     let x = initDateTime(1, mJan, 2000, 00, 00, 00, utc())
     let ti = initTimeInterval(1, 1, 1, 1, 1, 1, 1, 1, 1, 1)
     let y = x + ti
     doAssert between(x, y) == ti
     doAssert between(y, x) == -ti
 
-  test "between - monthday overflow":
+  block: # between - monthday overflow
       let x = initDateTime(31, mJan, 2001, 00, 00, 00, utc())
       let y = initDateTime(1, mMar, 2001, 00, 00, 00, utc())
       doAssert x + between(x, y) == y
 
-  test "between - misc":
+  block: # between - misc
     block:
       let x = initDateTime(31, mDec, 2000, 12, 00, 00, utc())
       let y = initDateTime(01, mJan, 2001, 00, 00, 00, utc())
@@ -614,7 +613,7 @@ suite "ttimes":
       doAssert x + between(x, y) == y
       doAssert between(x, y) == 1.months + 1.weeks
 
-  test "default DateTime": # https://github.com/nim-lang/RFCs/issues/211
+  block: # default DateTime https://github.com/nim-lang/RFCs/issues/211
     var num = 0
     for ai in Month: num.inc
     check num == 12
@@ -640,7 +639,7 @@ suite "ttimes":
     expect(AssertionDefect): discard a.format initTimeFormat("yyyy")
     expect(AssertionDefect): discard between(a, a)
 
-  test "inX procs":
+  block: # inX procs
     doAssert initDuration(seconds = 1).inSeconds == 1
     doAssert initDuration(seconds = -1).inSeconds == -1
     doAssert initDuration(seconds = -1, nanoseconds = 1).inSeconds == 0
@@ -648,3 +647,138 @@ suite "ttimes":
     doAssert initDuration(milliseconds = 500).inMilliseconds == 500
     doAssert initDuration(milliseconds = -500).inMilliseconds == -500
     doAssert initDuration(nanoseconds = -999999999).inMilliseconds == -999
+
+  block: # getIsoWeekAndYear
+    doAssert getIsoWeekAndYear(initDateTime(04, mNov, 2019, 00, 00, 00)) == (isoweek: 45.IsoWeekRange, isoyear: 2019.IsoYear)
+    doAssert initDateTime(dMon, 45, 2019.IsoYear, 00, 00, 00) == initDateTime(04, mNov, 2019, 00, 00, 00)
+    doAssert getIsoWeekAndYear(initDateTime(28, mDec, 2019, 00, 00, 00)) == (isoweek: 52.IsoWeekRange, isoyear: 2019.IsoYear)
+    doAssert initDateTime(dSat, 52, 2019.IsoYear, 00, 00, 00) == initDateTime(28, mDec, 2019, 00, 00, 00)
+    doAssert getIsoWeekAndYear(initDateTime(29, mDec, 2019, 00, 00, 00)) == (isoweek: 52.IsoWeekRange, isoyear: 2019.IsoYear)
+    doAssert initDateTime(dSun, 52, 2019.IsoYear, 00, 00, 00) == initDateTime(29, mDec, 2019, 00, 00, 00)
+    doAssert getIsoWeekAndYear(initDateTime(30, mDec, 2019, 00, 00, 00)) == (isoweek: 01.IsoWeekRange, isoyear: 2020.IsoYear)
+    doAssert initDateTime(dMon, 01, 2020.IsoYear, 00, 00, 00) == initDateTime(30, mDec, 2019, 00, 00, 00)
+    doAssert getIsoWeekAndYear(initDateTime(31, mDec, 2019, 00, 00, 00)) == (isoweek: 01.IsoWeekRange, isoyear: 2020.IsoYear)
+    doAssert initDateTime(dTue, 01, 2020.IsoYear, 00, 00, 00) == initDateTime(31, mDec, 2019, 00, 00, 00)
+    doAssert getIsoWeekAndYear(initDateTime(01, mJan, 2020, 00, 00, 00)) == (isoweek: 01.IsoWeekRange, isoyear: 2020.IsoYear)
+    doAssert initDateTime(dWed, 01, 2020.IsoYear, 00, 00, 00) == initDateTime(01, mJan, 2020, 00, 00, 00)
+    doAssert getIsoWeekAndYear(initDateTime(02, mJan, 2020, 00, 00, 00)) == (isoweek: 01.IsoWeekRange, isoyear: 2020.IsoYear)
+    doAssert initDateTime(dThu, 01, 2020.IsoYear, 00, 00, 00) == initDateTime(02, mJan, 2020, 00, 00, 00)
+    doAssert getIsoWeekAndYear(initDateTime(05, mApr, 2020, 00, 00, 00)) == (isoweek: 14.IsoWeekRange, isoyear: 2020.IsoYear)
+    doAssert initDateTime(dSun, 14, 2020.IsoYear, 00, 00, 00) == initDateTime(05, mApr, 2020, 00, 00, 00)
+    doAssert getIsoWeekAndYear(initDateTime(06, mApr, 2020, 00, 00, 00)) == (isoweek: 15.IsoWeekRange, isoyear: 2020.IsoYear)
+    doAssert initDateTime(dMon, 15, 2020.IsoYear, 00, 00, 00) == initDateTime(06, mApr, 2020, 00, 00, 00)
+    doAssert getIsoWeekAndYear(initDateTime(10, mApr, 2020, 00, 00, 00)) == (isoweek: 15.IsoWeekRange, isoyear: 2020.IsoYear)
+    doAssert initDateTime(dFri, 15, 2020.IsoYear, 00, 00, 00) == initDateTime(10, mApr, 2020, 00, 00, 00)
+    doAssert getIsoWeekAndYear(initDateTime(12, mApr, 2020, 00, 00, 00)) == (isoweek: 15.IsoWeekRange, isoyear: 2020.IsoYear)
+    doAssert initDateTime(dSun, 15, 2020.IsoYear, 00, 00, 00) == initDateTime(12, mApr, 2020, 00, 00, 00)
+    doAssert getIsoWeekAndYear(initDateTime(13, mApr, 2020, 00, 00, 00)) == (isoweek: 16.IsoWeekRange, isoyear: 2020.IsoYear)
+    doAssert initDateTime(dMon, 16, 2020.IsoYear, 00, 00, 00) == initDateTime(13, mApr, 2020, 00, 00, 00)
+    doAssert getIsoWeekAndYear(initDateTime(15, mApr, 2020, 00, 00, 00)) == (isoweek: 16.IsoWeekRange, isoyear: 2020.IsoYear)
+    doAssert initDateTime(dThu, 16, 2020.IsoYear, 00, 00, 00) == initDateTime(16, mApr, 2020, 00, 00, 00)
+    doAssert getIsoWeekAndYear(initDateTime(17, mJul, 2020, 00, 00, 00)) == (isoweek: 29.IsoWeekRange, isoyear: 2020.IsoYear)
+    doAssert initDateTime(dFri, 29, 2020.IsoYear, 00, 00, 00) == initDateTime(17, mJul, 2020, 00, 00, 00)
+    doAssert getIsoWeekAndYear(initDateTime(19, mJul, 2020, 00, 00, 00)) == (isoweek: 29.IsoWeekRange, isoyear: 2020.IsoYear)
+    doAssert initDateTime(dSun, 29, 2020.IsoYear, 00, 00, 00) == initDateTime(19, mJul, 2020, 00, 00, 00)
+    doAssert getIsoWeekAndYear(initDateTime(20, mJul, 2020, 00, 00, 00)) == (isoweek: 30.IsoWeekRange, isoyear: 2020.IsoYear)
+    doAssert initDateTime(dMon, 30, 2020.IsoYear, 00, 00, 00) == initDateTime(20, mJul, 2020, 00, 00, 00)
+    doAssert getIsoWeekAndYear(initDateTime(23, mJul, 2020, 00, 00, 00)) == (isoweek: 30.IsoWeekRange, isoyear: 2020.IsoYear)
+    doAssert initDateTime(dThu, 30, 2020.IsoYear, 00, 00, 00) == initDateTime(23, mJul, 2020, 00, 00, 00)
+    doAssert getIsoWeekAndYear(initDateTime(31, mDec, 2020, 00, 00, 00)) == (isoweek: 53.IsoWeekRange, isoyear: 2020.IsoYear)
+    doAssert initDateTime(dThu, 53, 2020.IsoYear, 00, 00, 00) == initDateTime(31, mDec, 2020, 00, 00, 00)
+    doAssert getIsoWeekAndYear(initDateTime(01, mJan, 2021, 00, 00, 00)) == (isoweek: 53.IsoWeekRange, isoyear: 2020.IsoYear)
+    doAssert initDateTime(dFri, 53, 2020.IsoYear, 00, 00, 00) == initDateTime(01, mJan, 2021, 00, 00, 00)
+    doAssert getIsoWeekAndYear(initDateTime(02, mJan, 2021, 00, 00, 00)) == (isoweek: 53.IsoWeekRange, isoyear: 2020.IsoYear)
+    doAssert initDateTime(dSat, 53, 2020.IsoYear, 00, 00, 00) == initDateTime(02, mJan, 2021, 00, 00, 00)
+    doAssert getIsoWeekAndYear(initDateTime(03, mJan, 2021, 00, 00, 00)) == (isoweek: 53.IsoWeekRange, isoyear: 2020.IsoYear)
+    doAssert initDateTime(dSun, 53, 2020.IsoYear, 00, 00, 00) == initDateTime(03, mJan, 2021, 00, 00, 00)
+    doAssert getIsoWeekAndYear(initDateTime(04, mJan, 2021, 00, 00, 00)) == (isoweek: 01.IsoWeekRange, isoyear: 2021.IsoYear)
+    doAssert initDateTime(dMon, 01, 2021.IsoYear, 00, 00, 00) == initDateTime(04, mJan, 2021, 00, 00, 00)
+    doAssert getIsoWeekAndYear(initDateTime(01, mFeb, 2021, 00, 00, 00)) == (isoweek: 05.IsoWeekRange, isoyear: 2021.IsoYear)
+    doAssert initDateTime(dMon, 05, 2021.IsoYear, 00, 00, 00) == initDateTime(01, mFeb, 2021, 00, 00, 00)
+
+    doAssert getIsoWeekAndYear(initDateTime(01, mFeb, 2021, 01, 02, 03, 400_000_000, staticTz(hours=1))) == (isoweek: 05.IsoWeekRange, isoyear: 2021.IsoYear)
+    doAssert initDateTime(dMon, 05, 2021.IsoYear, 01, 02, 03, 400_000_000, staticTz(hours=1)) == initDateTime(01, mFeb, 2021, 01, 02, 03, 400_000_000, staticTz(hours=1))
+
+    doAssert getIsoWeekAndYear(initDateTime(01, mApr, +0001, 00, 00, 00)) == (isoweek: 13.IsoWeekRange, isoyear: 0001.IsoYear)
+    doAssert initDateTime(dSun, 13, 0001.IsoYear, 00, 00, 00) == initDateTime(01, mApr, 0001, 00, 00, 00)
+    doAssert getIsoWeekAndYear(initDateTime(01, mApr, +0000, 00, 00, 00)) == (isoweek: 13.IsoWeekRange, isoyear: 0000.IsoYear)
+    doAssert initDateTime(dSat, 13, 0000.IsoYear, 00, 00, 00) == initDateTime(01, mApr, 0000, 00, 00, 00)
+    doAssert getIsoWeekAndYear(initDateTime(01, mApr, -0001, 00, 00, 00)) == (isoweek: 13.IsoWeekRange, isoyear: (-0001).IsoYear)
+    doAssert initDateTime(dThu, 13, (-0001).IsoYear, 00, 00, 00) == initDateTime(01, mApr, -0001, 00, 00, 00)
+    doAssert getIsoWeekAndYear(initDateTime(01, mApr, -0002, 00, 00, 00)) == (isoweek: 14.IsoWeekRange, isoyear: (-0002).IsoYear)
+    doAssert initDateTime(dWed, 14, (-0002).IsoYear, 00, 00, 00) == initDateTime(01, mApr, -0002, 00, 00, 00)
+    doAssert getIsoWeekAndYear(initDateTime(01, mApr, -0753, 00, 00, 00)) == (isoweek: 14.IsoWeekRange, isoyear: (-0753).IsoYear)
+    doAssert initDateTime(dMon, 14, (-0753).IsoYear, 00, 00, 00) == initDateTime(01, mApr, -0753, 00, 00, 00)
+
+  block: # getWeeksInIsoYear
+    doAssert getWeeksInIsoYear((-0014).IsoYear) == 52
+    doAssert getWeeksInIsoYear((-0013).IsoYear) == 53
+    doAssert getWeeksInIsoYear((-0012).IsoYear) == 52
+
+    doAssert getWeeksInIsoYear((-0009).IsoYear) == 52
+    doAssert getWeeksInIsoYear((-0008).IsoYear) == 53
+    doAssert getWeeksInIsoYear((-0007).IsoYear) == 52
+
+    doAssert getWeeksInIsoYear((-0003).IsoYear) == 52
+    doAssert getWeeksInIsoYear((-0002).IsoYear) == 53
+    doAssert getWeeksInIsoYear((-0001).IsoYear) == 52
+
+    doAssert getWeeksInIsoYear(0003.IsoYear) == 52
+    doAssert getWeeksInIsoYear(0004.IsoYear) == 53
+    doAssert getWeeksInIsoYear(0005.IsoYear) == 52
+
+    doAssert getWeeksInIsoYear(1653.IsoYear) == 52
+    doAssert getWeeksInIsoYear(1654.IsoYear) == 53
+    doAssert getWeeksInIsoYear(1655.IsoYear) == 52
+
+    doAssert getWeeksInIsoYear(1997.IsoYear) == 52
+    doAssert getWeeksInIsoYear(1998.IsoYear) == 53
+    doAssert getWeeksInIsoYear(1999.IsoYear) == 52
+
+    doAssert getWeeksInIsoYear(2008.IsoYear) == 52
+    doAssert getWeeksInIsoYear(2009.IsoYear) == 53
+    doAssert getWeeksInIsoYear(2010.IsoYear) == 52
+
+    doAssert getWeeksInIsoYear(2014.IsoYear) == 52
+    doAssert getWeeksInIsoYear(2015.IsoYear) == 53
+    doAssert getWeeksInIsoYear(2016.IsoYear) == 52
+
+  block: # parse and generate iso years
+    # short calendar week with text
+    parseTest("KW 23 2023", "'KW' VV GGGG",
+      "2023-06-05T00:00:00Z", 155)
+    parseTest("KW 5 2023", "'KW' V GGGG",
+      "2023-01-30T00:00:00Z", 29)
+    parseTest("KW 05 23 Saturday", "'KW' V GG dddd",
+      "2023-02-04T00:00:00Z", 34)
+    parseTest("KW 53 20 Fri", "'KW' VV GG ddd",
+      "2021-01-01T00:00:00Z", 0)
+
+    parseTestExcp("KW 23", "'KW' VV") # no year
+    parseTestExcp("KW 23", "'KW' V") # no year
+    parseTestExcp("KW 23", "'KW' GG") # no week
+    parseTestExcp("KW 2023", "'KW' GGGG") # no week
+    
+    var dt = initDateTime(5, mJan, 2023, 0, 0, 0, utc())
+    check dt.format("V") == "1"
+    check dt.format("VV") == "01"
+    check dt.format("GG") == "23"
+    check dt.format("GGGG") == "2023"
+    check dt.format("dddd 'KW'V GGGG") == "Thursday KW1 2023"
+
+  block: # Can be used inside gcsafe proc
+    proc test(): DateTime {.gcsafe.} =
+      result = "1970".parse("yyyy")
+    doAssert test().year == 1970
+
+  block: # test FormatLiterals
+    # since #23861
+    block:
+      let dt = dateTime(2024, mJul, 21, 17, 01, 02, 123_321_123, utc())
+      check dt.format("ss.fff") == "02.123"
+      check dt.format("fff.ffffff") == "123.123321"
+    block:
+      let dt = parse("2024.07.21", "yyyy.MM.dd")
+      check dt.year == 2024
+      check dt.month == mJul
+      check dt.monthday == 21

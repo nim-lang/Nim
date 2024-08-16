@@ -9,11 +9,16 @@
 
 # Implements a table from trees to trees. Does structural equivalence checking.
 
-import
-  hashes, ast, astalgo, types
+import ast, astalgo, types
 
-proc hashTree(n: PNode): Hash =
-  if n == nil: return
+import std/hashes
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
+proc hashTree*(n: PNode): Hash =
+  if n.isNil:
+    return
   result = ord(n.kind)
   case n.kind
   of nkEmpty, nkNilLit, nkType:
@@ -21,7 +26,7 @@ proc hashTree(n: PNode): Hash =
   of nkIdent:
     result = result !& n.ident.h
   of nkSym:
-    result = result !& n.sym.name.h
+    result = result !& n.sym.id
   of nkCharLit..nkUInt64Lit:
     if (n.intVal >= low(int)) and (n.intVal <= high(int)):
       result = result !& int(n.intVal)
@@ -33,6 +38,9 @@ proc hashTree(n: PNode): Hash =
   else:
     for i in 0..<n.len:
       result = result !& hashTree(n[i])
+  result = !$result
+  #echo "hashTree ", result
+  #echo n
 
 proc treesEquivalent(a, b: PNode): bool =
   if a == b:
@@ -50,7 +58,11 @@ proc treesEquivalent(a, b: PNode): bool =
         for i in 0..<a.len:
           if not treesEquivalent(a[i], b[i]): return
         result = true
+      else:
+        result = false
     if result: result = sameTypeOrNil(a.typ, b.typ)
+  else:
+    result = false
 
 proc nodeTableRawGet(t: TNodeTable, k: Hash, key: PNode): int =
   var h: Hash = k and high(t.data)
@@ -75,36 +87,34 @@ proc nodeTableRawInsert(data: var TNodePairSeq, k: Hash, key: PNode,
   data[h].val = val
 
 proc nodeTablePut*(t: var TNodeTable, key: PNode, val: int) =
-  var n: TNodePairSeq
-  var k: Hash = hashTree(key)
-  var index = nodeTableRawGet(t, k, key)
+  let k = hashTree(key)
+  let index = nodeTableRawGet(t, k, key)
   if index >= 0:
     assert(t.data[index].key != nil)
     t.data[index].val = val
   else:
     if mustRehash(t.data.len, t.counter):
-      newSeq(n, t.data.len * GrowthFactor)
+      var n = newSeq[TNodePair](t.data.len * GrowthFactor)
       for i in 0..high(t.data):
         if t.data[i].key != nil:
           nodeTableRawInsert(n, t.data[i].h, t.data[i].key, t.data[i].val)
-      swap(t.data, n)
+      t.data = move n
     nodeTableRawInsert(t.data, k, key, val)
     inc(t.counter)
 
 proc nodeTableTestOrSet*(t: var TNodeTable, key: PNode, val: int): int =
-  var n: TNodePairSeq
-  var k: Hash = hashTree(key)
-  var index = nodeTableRawGet(t, k, key)
+  let k = hashTree(key)
+  let index = nodeTableRawGet(t, k, key)
   if index >= 0:
     assert(t.data[index].key != nil)
     result = t.data[index].val
   else:
     if mustRehash(t.data.len, t.counter):
-      newSeq(n, t.data.len * GrowthFactor)
+      var n = newSeq[TNodePair](t.data.len * GrowthFactor)
       for i in 0..high(t.data):
         if t.data[i].key != nil:
           nodeTableRawInsert(n, t.data[i].h, t.data[i].key, t.data[i].val)
-      swap(t.data, n)
+      t.data = move n
     nodeTableRawInsert(t.data, k, key, val)
     result = val
     inc(t.counter)

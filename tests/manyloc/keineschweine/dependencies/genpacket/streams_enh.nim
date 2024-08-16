@@ -1,7 +1,7 @@
 import streams
 from strutils import repeat
 
-proc readPaddedStr*(s: PStream, length: int, padChar = '\0'): TaintedString =
+proc readPaddedStr*(s: PStream, length: int, padChar = '\0'): string =
   var lastChr = length
   result = s.readStr(length)
   while lastChr >= 0 and result[lastChr - 1] == padChar: dec(lastChr)
@@ -16,7 +16,7 @@ proc writePaddedStr*(s: PStream, str: string, length: int, padChar = '\0') =
   else:
     s.write(str)
 
-proc readLEStr*(s: PStream): TaintedString =
+proc readLEStr*(s: PStream): string =
   var len = s.readInt16()
   result = s.readStr(len)
 

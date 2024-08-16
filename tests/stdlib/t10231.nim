@@ -1,10 +1,11 @@
 discard """
-  target: cpp
+  targets: "cpp"
   action: run
   exitcode: 0
 """
 
 import os
+import std/assertions
 
 # consider moving this inside tosproc (taking care that it's for cpp mode)
 

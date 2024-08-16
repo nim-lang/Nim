@@ -2,7 +2,7 @@
 discard """
    output: '''5.0 10.0
 =destroy
-=destroy   
+=destroy
 '''
 """
 

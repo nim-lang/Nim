@@ -6,24 +6,26 @@
 #    distribution, for details about the copyright.
 #
 
-## This module implements color handling for Nim.
+## This module implements color handling for Nim,
+## namely color mixing and parsing the CSS color names.
 
-import strutils
-from algorithm import binarySearch
+import std/strutils
+from std/algorithm import binarySearch
 
 type
   Color* = distinct int ## A color stored as RGB, e.g. `0xff00cc`.
 
-proc `==` *(a, b: Color): bool {.borrow.}
+proc `==`*(a, b: Color): bool {.borrow.}
   ## Compares two colors.
   ##
-  ## .. code-block::
+  ##   ```Nim
   ##   var
   ##     a = Color(0xff_00_ff)
   ##     b = colFuchsia
   ##     c = Color(0x00_ff_cc)
   ##   assert a == b
-  ##   assert not a == c
+  ##   assert not (a == c)
+  ##   ```
 
 template extract(a: Color, r, g, b: untyped) =
   var r = a.int shr 16 and 0xff
@@ -170,6 +172,7 @@ const
   colDarkGoldenRod* = Color(0xB8860B)
   colDarkGray* = Color(0xA9A9A9)
   colDarkGreen* = Color(0x006400)
+  colDarkGrey* = Color(0xA9A9A9)
   colDarkKhaki* = Color(0xBDB76B)
   colDarkMagenta* = Color(0x8B008B)
   colDarkOliveGreen* = Color(0x556B2F)
@@ -180,11 +183,13 @@ const
   colDarkSeaGreen* = Color(0x8FBC8F)
   colDarkSlateBlue* = Color(0x483D8B)
   colDarkSlateGray* = Color(0x2F4F4F)
+  colDarkSlateGrey* = Color(0x2F4F4F)
   colDarkTurquoise* = Color(0x00CED1)
   colDarkViolet* = Color(0x9400D3)
   colDeepPink* = Color(0xFF1493)
   colDeepSkyBlue* = Color(0x00BFFF)
   colDimGray* = Color(0x696969)
+  colDimGrey* = Color(0x696969)
   colDodgerBlue* = Color(0x1E90FF)
   colFireBrick* = Color(0xB22222)
   colFloralWhite* = Color(0xFFFAF0)
@@ -197,6 +202,7 @@ const
   colGray* = Color(0x808080)
   colGreen* = Color(0x008000)
   colGreenYellow* = Color(0xADFF2F)
+  colGrey* = Color(0x808080)
   colHoneyDew* = Color(0xF0FFF0)
   colHotPink* = Color(0xFF69B4)
   colIndianRed* = Color(0xCD5C5C)
@@ -211,13 +217,15 @@ const
   colLightCoral* = Color(0xF08080)
   colLightCyan* = Color(0xE0FFFF)
   colLightGoldenRodYellow* = Color(0xFAFAD2)
-  colLightGrey* = Color(0xD3D3D3)
+  colLightGray* = Color(0xD3D3D3)
   colLightGreen* = Color(0x90EE90)
+  colLightGrey* = Color(0xD3D3D3)
   colLightPink* = Color(0xFFB6C1)
   colLightSalmon* = Color(0xFFA07A)
   colLightSeaGreen* = Color(0x20B2AA)
   colLightSkyBlue* = Color(0x87CEFA)
   colLightSlateGray* = Color(0x778899)
+  colLightSlateGrey* = Color(0x778899)
   colLightSteelBlue* = Color(0xB0C4DE)
   colLightYellow* = Color(0xFFFFE0)
   colLime* = Color(0x00FF00)
@@ -228,7 +236,7 @@ const
   colMediumAquaMarine* = Color(0x66CDAA)
   colMediumBlue* = Color(0x0000CD)
   colMediumOrchid* = Color(0xBA55D3)
-  colMediumPurple* = Color(0x9370D8)
+  colMediumPurple* = Color(0x9370DB)
   colMediumSeaGreen* = Color(0x3CB371)
   colMediumSlateBlue* = Color(0x7B68EE)
   colMediumSpringGreen* = Color(0x00FA9A)
@@ -249,7 +257,7 @@ const
   colPaleGoldenRod* = Color(0xEEE8AA)
   colPaleGreen* = Color(0x98FB98)
   colPaleTurquoise* = Color(0xAFEEEE)
-  colPaleVioletRed* = Color(0xD87093)
+  colPaleVioletRed* = Color(0xDB7093)
   colPapayaWhip* = Color(0xFFEFD5)
   colPeachPuff* = Color(0xFFDAB9)
   colPeru* = Color(0xCD853F)
@@ -257,6 +265,7 @@ const
   colPlum* = Color(0xDDA0DD)
   colPowderBlue* = Color(0xB0E0E6)
   colPurple* = Color(0x800080)
+  colRebeccaPurple* = Color(0x663399)
   colRed* = Color(0xFF0000)
   colRosyBrown* = Color(0xBC8F8F)
   colRoyalBlue* = Color(0x4169E1)
@@ -270,6 +279,7 @@ const
   colSkyBlue* = Color(0x87CEEB)
   colSlateBlue* = Color(0x6A5ACD)
   colSlateGray* = Color(0x708090)
+  colSlateGrey* = Color(0x708090)
   colSnow* = Color(0xFFFAFA)
   colSpringGreen* = Color(0x00FF7F)
   colSteelBlue* = Color(0x4682B4)
@@ -285,147 +295,155 @@ const
   colYellow* = Color(0xFFFF00)
   colYellowGreen* = Color(0x9ACD32)
 
-  colorNames = [
-    ("aliceblue", colAliceBlue),
-    ("antiquewhite", colAntiqueWhite),
-    ("aqua", colAqua),
-    ("aquamarine", colAquamarine),
-    ("azure", colAzure),
-    ("beige", colBeige),
-    ("bisque", colBisque),
-    ("black", colBlack),
-    ("blanchedalmond", colBlanchedAlmond),
-    ("blue", colBlue),
-    ("blueviolet", colBlueViolet),
-    ("brown", colBrown),
-    ("burlywood", colBurlyWood),
-    ("cadetblue", colCadetBlue),
-    ("chartreuse", colChartreuse),
-    ("chocolate", colChocolate),
-    ("coral", colCoral),
-    ("cornflowerblue", colCornflowerBlue),
-    ("cornsilk", colCornsilk),
-    ("crimson", colCrimson),
-    ("cyan", colCyan),
-    ("darkblue", colDarkBlue),
-    ("darkcyan", colDarkCyan),
-    ("darkgoldenrod", colDarkGoldenRod),
-    ("darkgray", colDarkGray),
-    ("darkgreen", colDarkGreen),
-    ("darkkhaki", colDarkKhaki),
-    ("darkmagenta", colDarkMagenta),
-    ("darkolivegreen", colDarkOliveGreen),
-    ("darkorange", colDarkorange),
-    ("darkorchid", colDarkOrchid),
-    ("darkred", colDarkRed),
-    ("darksalmon", colDarkSalmon),
-    ("darkseagreen", colDarkSeaGreen),
-    ("darkslateblue", colDarkSlateBlue),
-    ("darkslategray", colDarkSlateGray),
-    ("darkturquoise", colDarkTurquoise),
-    ("darkviolet", colDarkViolet),
-    ("deeppink", colDeepPink),
-    ("deepskyblue", colDeepSkyBlue),
-    ("dimgray", colDimGray),
-    ("dodgerblue", colDodgerBlue),
-    ("firebrick", colFireBrick),
-    ("floralwhite", colFloralWhite),
-    ("forestgreen", colForestGreen),
-    ("fuchsia", colFuchsia),
-    ("gainsboro", colGainsboro),
-    ("ghostwhite", colGhostWhite),
-    ("gold", colGold),
-    ("goldenrod", colGoldenRod),
-    ("gray", colGray),
-    ("green", colGreen),
-    ("greenyellow", colGreenYellow),
-    ("honeydew", colHoneyDew),
-    ("hotpink", colHotPink),
-    ("indianred", colIndianRed),
-    ("indigo", colIndigo),
-    ("ivory", colIvory),
-    ("khaki", colKhaki),
-    ("lavender", colLavender),
-    ("lavenderblush", colLavenderBlush),
-    ("lawngreen", colLawnGreen),
-    ("lemonchiffon", colLemonChiffon),
-    ("lightblue", colLightBlue),
-    ("lightcoral", colLightCoral),
-    ("lightcyan", colLightCyan),
-    ("lightgoldenrodyellow", colLightGoldenRodYellow),
-    ("lightgrey", colLightGrey),
-    ("lightgreen", colLightGreen),
-    ("lightpink", colLightPink),
-    ("lightsalmon", colLightSalmon),
-    ("lightseagreen", colLightSeaGreen),
-    ("lightskyblue", colLightSkyBlue),
-    ("lightslategray", colLightSlateGray),
-    ("lightsteelblue", colLightSteelBlue),
-    ("lightyellow", colLightYellow),
-    ("lime", colLime),
-    ("limegreen", colLimeGreen),
-    ("linen", colLinen),
-    ("magenta", colMagenta),
-    ("maroon", colMaroon),
-    ("mediumaquamarine", colMediumAquaMarine),
-    ("mediumblue", colMediumBlue),
-    ("mediumorchid", colMediumOrchid),
-    ("mediumpurple", colMediumPurple),
-    ("mediumseagreen", colMediumSeaGreen),
-    ("mediumslateblue", colMediumSlateBlue),
-    ("mediumspringgreen", colMediumSpringGreen),
-    ("mediumturquoise", colMediumTurquoise),
-    ("mediumvioletred", colMediumVioletRed),
-    ("midnightblue", colMidnightBlue),
-    ("mintcream", colMintCream),
-    ("mistyrose", colMistyRose),
-    ("moccasin", colMoccasin),
-    ("navajowhite", colNavajoWhite),
-    ("navy", colNavy),
-    ("oldlace", colOldLace),
-    ("olive", colOlive),
-    ("olivedrab", colOliveDrab),
-    ("orange", colOrange),
-    ("orangered", colOrangeRed),
-    ("orchid", colOrchid),
-    ("palegoldenrod", colPaleGoldenRod),
-    ("palegreen", colPaleGreen),
-    ("paleturquoise", colPaleTurquoise),
-    ("palevioletred", colPaleVioletRed),
-    ("papayawhip", colPapayaWhip),
-    ("peachpuff", colPeachPuff),
-    ("peru", colPeru),
-    ("pink", colPink),
-    ("plum", colPlum),
-    ("powderblue", colPowderBlue),
-    ("purple", colPurple),
-    ("red", colRed),
-    ("rosybrown", colRosyBrown),
-    ("royalblue", colRoyalBlue),
-    ("saddlebrown", colSaddleBrown),
-    ("salmon", colSalmon),
-    ("sandybrown", colSandyBrown),
-    ("seagreen", colSeaGreen),
-    ("seashell", colSeaShell),
-    ("sienna", colSienna),
-    ("silver", colSilver),
-    ("skyblue", colSkyBlue),
-    ("slateblue", colSlateBlue),
-    ("slategray", colSlateGray),
-    ("snow", colSnow),
-    ("springgreen", colSpringGreen),
-    ("steelblue", colSteelBlue),
-    ("tan", colTan),
-    ("teal", colTeal),
-    ("thistle", colThistle),
-    ("tomato", colTomato),
-    ("turquoise", colTurquoise),
-    ("violet", colViolet),
-    ("wheat", colWheat),
-    ("white", colWhite),
-    ("whitesmoke", colWhiteSmoke),
-    ("yellow", colYellow),
-    ("yellowgreen", colYellowGreen)]
+  colorNames = {
+    "aliceblue": colAliceBlue,
+    "antiquewhite": colAntiqueWhite,
+    "aqua": colAqua,
+    "aquamarine": colAquamarine,
+    "azure": colAzure,
+    "beige": colBeige,
+    "bisque": colBisque,
+    "black": colBlack,
+    "blanchedalmond": colBlanchedAlmond,
+    "blue": colBlue,
+    "blueviolet": colBlueViolet,
+    "brown": colBrown,
+    "burlywood": colBurlyWood,
+    "cadetblue": colCadetBlue,
+    "chartreuse": colChartreuse,
+    "chocolate": colChocolate,
+    "coral": colCoral,
+    "cornflowerblue": colCornflowerBlue,
+    "cornsilk": colCornsilk,
+    "crimson": colCrimson,
+    "cyan": colCyan,
+    "darkblue": colDarkBlue,
+    "darkcyan": colDarkCyan,
+    "darkgoldenrod": colDarkGoldenRod,
+    "darkgray": colDarkGray,
+    "darkgreen": colDarkGreen,
+    "darkgrey": colDarkGrey,
+    "darkkhaki": colDarkKhaki,
+    "darkmagenta": colDarkMagenta,
+    "darkolivegreen": colDarkOliveGreen,
+    "darkorange": colDarkorange,
+    "darkorchid": colDarkOrchid,
+    "darkred": colDarkRed,
+    "darksalmon": colDarkSalmon,
+    "darkseagreen": colDarkSeaGreen,
+    "darkslateblue": colDarkSlateBlue,
+    "darkslategray": colDarkSlateGray,
+    "darkslategrey": colDarkSlateGrey,
+    "darkturquoise": colDarkTurquoise,
+    "darkviolet": colDarkViolet,
+    "deeppink": colDeepPink,
+    "deepskyblue": colDeepSkyBlue,
+    "dimgray": colDimGray,
+    "dimgrey": colDimGrey,
+    "dodgerblue": colDodgerBlue,
+    "firebrick": colFireBrick,
+    "floralwhite": colFloralWhite,
+    "forestgreen": colForestGreen,
+    "fuchsia": colFuchsia,
+    "gainsboro": colGainsboro,
+    "ghostwhite": colGhostWhite,
+    "gold": colGold,
+    "goldenrod": colGoldenRod,
+    "gray": colGray,
+    "green": colGreen,
+    "greenyellow": colGreenYellow,
+    "grey": colGrey,
+    "honeydew": colHoneyDew,
+    "hotpink": colHotPink,
+    "indianred": colIndianRed,
+    "indigo": colIndigo,
+    "ivory": colIvory,
+    "khaki": colKhaki,
+    "lavender": colLavender,
+    "lavenderblush": colLavenderBlush,
+    "lawngreen": colLawnGreen,
+    "lemonchiffon": colLemonChiffon,
+    "lightblue": colLightBlue,
+    "lightcoral": colLightCoral,
+    "lightcyan": colLightCyan,
+    "lightgoldenrodyellow": colLightGoldenRodYellow,
+    "lightgray": colLightGray,
+    "lightgreen": colLightGreen,
+    "lightgrey": colLightGrey,
+    "lightpink": colLightPink,
+    "lightsalmon": colLightSalmon,
+    "lightseagreen": colLightSeaGreen,
+    "lightskyblue": colLightSkyBlue,
+    "lightslategray": colLightSlateGray,
+    "lightslategrey": colLightSlateGrey,
+    "lightsteelblue": colLightSteelBlue,
+    "lightyellow": colLightYellow,
+    "lime": colLime,
+    "limegreen": colLimeGreen,
+    "linen": colLinen,
+    "magenta": colMagenta,
+    "maroon": colMaroon,
+    "mediumaquamarine": colMediumAquaMarine,
+    "mediumblue": colMediumBlue,
+    "mediumorchid": colMediumOrchid,
+    "mediumpurple": colMediumPurple,
+    "mediumseagreen": colMediumSeaGreen,
+    "mediumslateblue": colMediumSlateBlue,
+    "mediumspringgreen": colMediumSpringGreen,
+    "mediumturquoise": colMediumTurquoise,
+    "mediumvioletred": colMediumVioletRed,
+    "midnightblue": colMidnightBlue,
+    "mintcream": colMintCream,
+    "mistyrose": colMistyRose,
+    "moccasin": colMoccasin,
+    "navajowhite": colNavajoWhite,
+    "navy": colNavy,
+    "oldlace": colOldLace,
+    "olive": colOlive,
+    "olivedrab": colOliveDrab,
+    "orange": colOrange,
+    "orangered": colOrangeRed,
+    "orchid": colOrchid,
+    "palegoldenrod": colPaleGoldenRod,
+    "palegreen": colPaleGreen,
+    "paleturquoise": colPaleTurquoise,
+    "palevioletred": colPaleVioletRed,
+    "papayawhip": colPapayaWhip,
+    "peachpuff": colPeachPuff,
+    "peru": colPeru,
+    "pink": colPink,
+    "plum": colPlum,
+    "powderblue": colPowderBlue,
+    "purple": colPurple,
+    "rebeccapurple": colRebeccaPurple,
+    "red": colRed,
+    "rosybrown": colRosyBrown,
+    "royalblue": colRoyalBlue,
+    "saddlebrown": colSaddleBrown,
+    "salmon": colSalmon,
+    "sandybrown": colSandyBrown,
+    "seagreen": colSeaGreen,
+    "seashell": colSeaShell,
+    "sienna": colSienna,
+    "silver": colSilver,
+    "skyblue": colSkyBlue,
+    "slateblue": colSlateBlue,
+    "slategray": colSlateGray,
+    "slategrey": colSlateGrey,
+    "snow": colSnow,
+    "springgreen": colSpringGreen,
+    "steelblue": colSteelBlue,
+    "tan": colTan,
+    "teal": colTeal,
+    "thistle": colThistle,
+    "tomato": colTomato,
+    "turquoise": colTurquoise,
+    "violet": colViolet,
+    "wheat": colWheat,
+    "white": colWhite,
+    "whitesmoke": colWhiteSmoke,
+    "yellow": colYellow,
+    "yellowgreen": colYellowGreen}
 
 proc `$`*(c: Color): string =
   ## Converts a color into its textual representation.
@@ -440,7 +458,7 @@ proc colorNameCmp(x: tuple[name: string, col: Color], y: string): int =
 proc parseColor*(name: string): Color =
   ## Parses `name` to a color value.
   ##
-  ## If no valid color could be parsed ``ValueError`` is raised.
+  ## If no valid color could be parsed `ValueError` is raised.
   ## Case insensitive.
   ##
   runnableExamples:
@@ -461,7 +479,7 @@ proc parseColor*(name: string): Color =
 
 proc isColor*(name: string): bool =
   ## Returns true if `name` is a known color name or a hexadecimal color
-  ## prefixed with ``#``. Case insensitive.
+  ## prefixed with `#`. Case insensitive.
   ##
   runnableExamples:
     var
@@ -475,7 +493,7 @@ proc isColor*(name: string): bool =
   if name.len == 0: return false
   if name[0] == '#':
     for i in 1 .. name.len-1:
-      if name[i] notin {'0'..'9', 'a'..'f', 'A'..'F'}: return false
+      if name[i] notin HexDigits: return false
     result = true
   else:
     result = binarySearch(colorNames, name, colorNameCmp) >= 0

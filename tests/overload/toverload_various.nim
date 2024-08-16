@@ -264,8 +264,8 @@ proc init*[T](hmctx: HMAC[T], key: ptr byte, ulen: uint) =
   const sizeBlock = hmctx.sizeBlock
   echo sizeBlock
 
-proc hmac*[A, B](HashType: typedesc, key: openarray[A],
-                 data: openarray[B]) =
+proc hmac*[A, B](HashType: typedesc, key: openArray[A],
+                 data: openArray[B]) =
   var ctx: HMAC[HashType]
   ctx.init(nil, 0)
 
@@ -395,7 +395,7 @@ block:
   template bar2[F,T](x: FooUn[F,T]): int = 1
   template bar2[F,T1,T2](x: FooBi[F,T1,T2]): int = 2
 
-  proc test(x: any, n: int) =
+  proc test(x: auto, n: int) =
     doAssert(foo1(x) == n)
     doAssert(foo2(x) == n)
     doAssert(bar1(x) == n)
@@ -506,3 +506,63 @@ block:
   doAssert(p2(F(float,1.0),F(float,2)) == 3.0)
   doAssert(p2(F(float,1.0),F(float,2.0)) == 3.0)
   #doAssert(p2(F(float,1),F(int,2.0)) == 3.0)
+
+block: # PR #23870
+  type
+    A {.inheritable.} = object
+    B = object of A
+    C = object of B
+
+  proc p[T: A](x: T): int = 0
+  proc p[T: B](x: T): int = 1
+
+  proc d(x: A): int = 0
+  proc d(x: B): int = 1
+  
+  proc g[T:A](x: typedesc[T]): int = 0
+  proc g[T: B](x: typedesc[T]): int = 1
+  
+  proc f[T](x: typedesc[T]): int = 0
+  proc f[T:B](x: typedesc[T]): int = 1
+
+  assert p(C()) == 1
+  assert d(C()) == 1
+  assert g(C) == 1
+  assert f(C) == 1
+
+block: # PR #23870
+  type
+    A = object of RootObj
+    PT = proc(ev: A) {.closure.}
+    sdt = seq[(PT, PT)]
+
+  proc encap() =
+    proc p(a: A) {.closure.} =
+      discard
+
+    var s: sdt
+    s.add (p, nil)
+
+  encap()
+
+block: # PR #23870
+  type
+    A = object of RootObj
+    B = object of A
+    C = object of B
+
+  proc p(a: B | RootObj): int =
+    0
+
+  proc p(a: A | A): int =
+    1
+
+  assert p(C()) == 0
+
+  proc d(a: RootObj | B): int =
+    0
+
+  proc d(a: A | A): int =
+    1
+
+  assert d(C()) == 0

@@ -1,6 +1,6 @@
 
 discard """
-  errmsg: "func keyword is not allowed in type descriptions, use proc with {.noSideEffect.} pragma instead"
+  errormsg: "func keyword is not allowed in type descriptions, use proc with {.noSideEffect.} pragma instead"
 """
 
 type

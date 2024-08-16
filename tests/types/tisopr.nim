@@ -109,3 +109,59 @@ block:
   doAssert Foo2[int,float|int] is Foo
   doAssert Foo2[int,float|int] isnot Bar
   doAssert int is (int|float)
+
+
+block:
+  # Slice[T] as static type issue
+  type
+    MyEnum = enum
+      x1, x2, x3, x4, x5, x6
+
+  proc enumGen[T: enum](s: static[Slice[T]]) = 
+    doAssert($s.a & "  " & $s.b == "x1  x3")
+
+  enumGen(x1..x3)
+
+block:
+  # issue #11142
+  type
+    MyObjParam[N: static int] = object
+      x: int
+
+    MyObj[P: static MyObjParam] = object
+      y: int
+
+  const P = MyObjParam[256](x: 2)
+  let Q = MyObj[P](y: 2)
+  doAssert($Q  == "(y: 2)")
+
+block: # previously tisop.nim
+  type
+    TRecord = (tuple) or (object)
+    TFoo[T, U] = object
+      x: int
+      when T is string:
+        y: float
+      else:
+        y: string
+      when U is TRecord:
+        z: float
+    E = enum A, B, C
+  template m(t: typedesc): typedesc =
+    when t is enum:
+      string
+    else:
+      int
+  var f: TFoo[int, int]
+  static: doAssert(typeof(f.y) is string)
+  when compiles(f.z):
+    {.error: "Foo should not have a `z` field".}
+  proc p(a, b: auto) =
+    when typeof(a) is int:
+      static: doAssert false
+    var f: TFoo[m(a.typeof), b.typeof]
+    static:
+      doAssert f.x.typeof is int
+      doAssert f.y.typeof is float
+      doAssert f.z.typeof is float
+  p(A, f)

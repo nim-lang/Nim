@@ -1,8 +1,7 @@
 discard """
+  matrix: "--mm:refc"
   output: '''
 '''
-
-ccodeCheck: "\\i ! @'deepCopy(' .*"
 """
 
 # parallel convex hull for Nim bigbreak

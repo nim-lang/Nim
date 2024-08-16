@@ -11,7 +11,45 @@
 ##
 ## Unstable API.
 
-import macros
+runnableExamples:
+  # Atomic
+  var loc: Atomic[int]
+  loc.store(4)
+  assert loc.load == 4
+  loc.store(2)
+  assert loc.load(moRelaxed) == 2
+  loc.store(9)
+  assert loc.load(moAcquire) == 9
+  loc.store(0, moRelease)
+  assert loc.load == 0
+
+  assert loc.exchange(7) == 0
+  assert loc.load == 7
+
+  var expected = 7
+  assert loc.compareExchange(expected, 5, moRelaxed, moRelaxed)
+  assert expected == 7
+  assert loc.load == 5
+
+  assert not loc.compareExchange(expected, 12, moRelaxed, moRelaxed)
+  assert expected == 5
+  assert loc.load == 5
+
+  assert loc.fetchAdd(1) == 5
+  assert loc.fetchAdd(2) == 6
+  assert loc.fetchSub(3) == 8
+
+  loc.atomicInc(1)
+  assert loc.load == 6
+
+  # AtomicFlag
+  var flag: AtomicFlag
+
+  assert not flag.testAndSet
+  assert flag.testAndSet
+  flag.clear(moRelaxed)
+  assert not flag.testAndSet
+
 
 when defined(cpp) or defined(nimdoc):
   # For the C++ backend, types and operations map directly to C++11 atomics.
@@ -51,10 +89,11 @@ when defined(cpp) or defined(nimdoc):
         ## with other moSequentiallyConsistent operations.
 
   type
-    Atomic* {.importcpp: "std::atomic".} [T] = object
+    Atomic*[T] {.importcpp: "std::atomic", completeStruct.} = object
       ## An atomic object with underlying type `T`.
+      raw: T
 
-    AtomicFlag* {.importcpp: "std::atomic_flag".} = object
+    AtomicFlag* {.importcpp: "std::atomic_flag", size: 1.} = object
       ## An atomic boolean state.
 
   # Access operations
@@ -172,8 +211,8 @@ else:
 
     # MSVC intrinsics
     proc interlockedExchange(location: pointer; desired: int8): int8 {.importc: "_InterlockedExchange8".}
-    proc interlockedExchange(location: pointer; desired: int16): int16 {.importc: "_InterlockedExchange".}
-    proc interlockedExchange(location: pointer; desired: int32): int32 {.importc: "_InterlockedExchange16".}
+    proc interlockedExchange(location: pointer; desired: int16): int16 {.importc: "_InterlockedExchange16".}
+    proc interlockedExchange(location: pointer; desired: int32): int32 {.importc: "_InterlockedExchange".}
     proc interlockedExchange(location: pointer; desired: int64): int64 {.importc: "_InterlockedExchange64".}
 
     proc interlockedCompareExchange(location: pointer; desired, expected: int8): int8 {.importc: "_InterlockedCompareExchange8".}
@@ -247,26 +286,23 @@ else:
         moSequentiallyConsistent
 
     type
-      # Atomic* {.importcpp: "_Atomic('0)".} [T] = object
+      # Atomic*[T] {.importcpp: "_Atomic('0)".} = object
 
-      AtomicInt8 {.importc: "_Atomic NI8".} = object
-      AtomicInt16 {.importc: "_Atomic NI16".} = object
-      AtomicInt32 {.importc: "_Atomic NI32".} = object
-      AtomicInt64 {.importc: "_Atomic NI64".} = object
-
-    template atomicType*(T: typedesc[Trivial]): untyped =
-      # Maps the size of a trivial type to it's internal atomic type
-      when sizeof(T) == 1: AtomicInt8
-      elif sizeof(T) == 2: AtomicInt16
-      elif sizeof(T) == 4: AtomicInt32
-      elif sizeof(T) == 8: AtomicInt64
+      AtomicInt8 {.importc: "_Atomic NI8".} = int8
+      AtomicInt16 {.importc: "_Atomic NI16".} = int16
+      AtomicInt32 {.importc: "_Atomic NI32".} = int32
+      AtomicInt64 {.importc: "_Atomic NI64".} = int64
 
     type
-      AtomicFlag* {.importc: "atomic_flag".} = object
+      AtomicFlag* {.importc: "atomic_flag", size: 1.} = object
 
       Atomic*[T] = object
         when T is Trivial:
-          value: T.atomicType
+          # Maps the size of a trivial type to it's internal atomic type
+          when sizeof(T) == 1: value: AtomicInt8
+          elif sizeof(T) == 2: value: AtomicInt16
+          elif sizeof(T) == 4: value: AtomicInt32
+          elif sizeof(T) == 8: value: AtomicInt64
         else:
           nonAtomicValue: T
           guard: AtomicFlag
@@ -297,7 +333,7 @@ else:
     {.pop.}
 
     proc load*[T: Trivial](location: var Atomic[T]; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
-      cast[T](atomic_load_explicit[nonAtomicType(T), type(location.value)](addr(location.value), order))
+      cast[T](atomic_load_explicit[nonAtomicType(T), typeof(location.value)](addr(location.value), order))
     proc store*[T: Trivial](location: var Atomic[T]; desired: T; order: MemoryOrder = moSequentiallyConsistent) {.inline.} =
       atomic_store_explicit(addr(location.value), cast[nonAtomicType(T)](desired), order)
     proc exchange*[T: Trivial](location: var Atomic[T]; desired: T; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
@@ -325,11 +361,11 @@ else:
       cast[T](atomic_fetch_xor_explicit(addr(location.value), cast[nonAtomicType(T)](value), order))
 
   template withLock[T: not Trivial](location: var Atomic[T]; order: MemoryOrder; body: untyped): untyped =
-    while location.guard.testAndSet(moAcquire): discard
+    while testAndSet(location.guard, moAcquire): discard
     try:
       body
     finally:
-      location.guard.clear(moRelease)
+      clear(location.guard, moRelease)
 
   proc load*[T: not Trivial](location: var Atomic[T]; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
     withLock(location, order):

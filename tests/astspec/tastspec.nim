@@ -327,19 +327,43 @@ static:
 
   testArrayAccessOperator(x[y])
 
-
-
   ## Parentheses
 
   scope:
-
     let ast = myquote:
-      (1, 2, (3))
+      (a + b) * c
 
     ast.matchAst:
-    of nnkPar(nnkIntLit(intVal = 1), nnkIntLit(intVal = 2), nnkPar(nnkIntLit(intVal = 3))):
-      echo "ok"
+    of nnkInfix(ident"*", nnkPar(nnkInfix(ident"+", ident"a", ident"b")), ident"c"):
+      echo "parentheses ok"
 
+  ## Tuple Constructors
+
+  scope:
+    let ast = myquote:
+      (1, 2, 3)
+      (a: 1, b: 2, c: 3)
+      (1,)
+      (a: 1)
+      ()
+
+    for it in ast:
+      echo it.lispRepr
+      it.matchAst:
+      of nnkTupleConstr(nnkIntLit(intVal = 1), nnkIntLit(intVal = 2), nnkIntLit(intVal = 3)):
+        echo "simple tuple ok"
+      of nnkTupleConstr(
+        nnkExprColonExpr(ident"a", nnkIntLit(intVal = 1)),
+        nnkExprColonExpr(ident"b", nnkIntLit(intVal = 2)),
+        nnkExprColonExpr(ident"c", nnkIntLit(intVal = 3))
+      ):
+        echo "named tuple ok"
+      of nnkTupleConstr(nnkIntLit(intVal = 1)):
+        echo "one tuple ok"
+      of nnkTupleConstr(nnkExprColonExpr(ident"a", nnkIntLit(intVal = 1))):
+        echo "named one tuple ok"
+      of nnkTupleConstr():
+       echo "empty tuple ok"
 
   ## Curly braces
 
@@ -847,11 +871,20 @@ static:
 
   scope:
     macro testRecCase(ast: untyped): untyped =
-      ast.peelOff({nnkStmtList, nnkTypeSection})[2].matchAst:
-      of nnkObjectTy(
-        nnkPragma(
-          ident"inheritable"
+      ast.peelOff({nnkStmtList, nnkTypeSection}).matchAst:
+      of nnkTypeDef(
+        nnkPragmaExpr(
+          ident"Obj",
+          nnkPragma(ident"inheritable")
         ),
+        nnkGenericParams(
+        nnkIdentDefs(
+          ident"T",
+          nnkEmpty(),
+          nnkEmpty())
+        ),
+        nnkObjectTy(
+        nnkEmpty(),
         nnkEmpty(),
         nnkRecList( # list of object parameters
           nnkIdentDefs(
@@ -890,6 +923,7 @@ static:
                     ident"T"
                   ),
                   nnkEmpty()
+                  )
                 )
               )
             )
@@ -898,10 +932,8 @@ static:
       ):
         echo "ok"
 
-
-
     testRecCase:
-      type Obj[T] = object {.inheritable.}
+      type Obj[T] {.inheritable.} = object
         name: string
         case isFat: bool
         of true:

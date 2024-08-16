@@ -53,7 +53,6 @@ depth-first traversal suffices.
 
 ]#
 
-type PT = ptr pointer
 include cellseqs_v2
 
 const
@@ -70,13 +69,15 @@ template color(c): untyped = c.rc and colorMask
 template setColor(c, col) =
   c.rc = c.rc and not colorMask or col
 
-proc nimIncRefCyclic(p: pointer) {.compilerRtl, inl.} =
+proc nimIncRefCyclic(p: pointer; cyclic: bool) {.compilerRtl, inl.} =
   let h = head(p)
   inc h.rc, rcIncrement
 
+proc nimMarkCyclic(p: pointer) {.compilerRtl, inl.} = discard
+
 type
   GcEnv = object
-    traceStack: CellSeq
+    traceStack: CellSeq[ptr pointer]
 
 proc trace(p: pointer; desc: PNimTypeV2; j: var GcEnv) {.inline.} =
   when false:
@@ -137,7 +138,8 @@ proc breakCycles(s: Cell; desc: PNimTypeV2) =
       else:
         # anyhow as a link that the produced destructor does not have to follow:
         u[] = nil
-        cprintf("[Bug] %p %s RC %ld\n", t, desc.name, t.rc shr rcShift)
+        when traceCollector:
+          cprintf("[Bug] %p %s RC %ld\n", t, desc.name, t.rc shr rcShift)
   deinit j.traceStack
 
 proc thinout*[T](x: ref T) {.inline.} =
@@ -147,7 +149,7 @@ proc thinout*[T](x: ref T) {.inline.} =
   ## and thus would keep the graph from being freed are `nil`'ed.
   ## This is a form of cycle collection that works well with Nim's ARC
   ## and its associated cost model.
-  proc getDynamicTypeInfo[T](x: T): PNimTypeV2 {.magic: "GetTypeInfoV2", noSideEffect, locks: 0.}
+  proc getDynamicTypeInfo[T](x: T): PNimTypeV2 {.magic: "GetTypeInfoV2", noSideEffect.}
 
   breakCycles(head(cast[pointer](x)), getDynamicTypeInfo(x[]))
 

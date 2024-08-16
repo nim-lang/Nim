@@ -267,7 +267,7 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
     if not em.endsInWhite: wr(" ")
     wr(tok.ident.s)
     template isUnary(tok): bool =
-      tok.strongSpaceB == 0 and tok.strongSpaceA > 0
+      tok.spacing == {tsLeading}
 
     if not isUnary(tok) or em.lastTok in {tkOpr, tkDotDot}:
       wr(" ")
@@ -418,9 +418,9 @@ proc isValid1*[A](s: HashSet[A]): bool {.deprecated:
   result = s.data.len > 0
   # bug #11468
 
-assert $type(a) == "Option[system.int]"
-foo(a, $type(b), c)
-foo(type(b), c) # this is ok
+assert $typeof(a) == "Option[system.int]"
+foo(a, $typeof(b), c)
+foo(typeof(b), c) # this is ok
 
 proc `<`*[A](s, t: A): bool = discard
 proc `==`*[A](s, t: HashSet[A]): bool = discard
@@ -693,11 +693,11 @@ proc newRecordGen(ctx: Context; typ: TypRef): PNode =
 String `interpolation`:idx: / `format`:idx: inspired by
 Python's ``f``-strings.
 
-.. code-block:: nim
-
-    import strformat
-    let msg = "hello"
-    doAssert fmt"{msg}\n" == "hello\\n"
+  ```nim
+  import strformat
+  let msg = "hello"
+  doAssert fmt"{msg}\n" == "hello\\n"
+  ```
 
 Because the literal is a raw string literal, the ``\n`` is not interpreted as
 an escape sequence.
@@ -843,3 +843,7 @@ type
   SpinnyEvent2 = tuple
     kind: EventKind
     payload: string
+
+
+proc hid_open*(vendor_id: cushort; product_id: cushort; serial_number: cstring): ptr HidDevice {.
+    importc: "hid_open", dynlib: hidapi.}

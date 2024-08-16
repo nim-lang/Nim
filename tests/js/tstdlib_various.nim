@@ -29,7 +29,7 @@ Hi Andreas! How do you feel, Rumpf?
 """
 
 import
-  critbits, cstrutils, sets, strutils, tables, random, algorithm, ropes,
+  critbits, sets, strutils, tables, random, algorithm, ropes,
   lists, htmlgen, xmltree, strtabs
 
 
@@ -150,12 +150,7 @@ block tsplit2:
     s.add("#")
     s.add(w)
 
-  var errored = false
-  try:
-    discard "hello".split("")
-  except AssertionError:
-    errored = true
-  doAssert errored
+  doAssert "true".split("") == @["true"]
 
 block txmlgen:
   var nim = "Nim"
@@ -177,18 +172,3 @@ block txmltree:
     ])
   ])
   doAssert(y.innerText == "foobar")
-
-
-
-block tcstrutils:
-  let s = cstring "abcdef"
-  doAssert s.startsWith("a")
-  doAssert not s.startsWith("b")
-  doAssert s.endsWith("f")
-  doAssert not s.endsWith("a")
-
-  let a = cstring "abracadabra"
-  doAssert a.startsWith("abra")
-  doAssert not a.startsWith("bra")
-  doAssert a.endsWith("abra")
-  doAssert not a.endsWith("dab")

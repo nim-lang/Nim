@@ -1,5 +1,5 @@
 discard """
-  nimout: '''"muhaha"
+  nimout: '''foo = "muhaha"
 proc poo(x, y: int) =
   let y = x
   echo ["poo"]'''
@@ -44,10 +44,11 @@ static:
   doAssert checkOwner(poo, 2) == "nskProc"
   doAssert checkOwner(poo, 3) == "nskModule"
   doAssert isSameOwner(foo, poo)
-  doAssert isSameOwner(foo, echo) == false
-  doAssert isSameOwner(poo, len) == false
-
-#---------------------------------------------------------------
+  proc wrappedScope() =
+    proc dummyproc() = discard
+    doAssert isSameOwner(foo, dummyproc) == false
+    doAssert isSameOwner(poo, dummyproc) == false
+  wrappedScope()
 
 macro check_gen_proc(ex: typed): (bool, bool) =
   let lenChoice = bindsym"len"
@@ -65,3 +66,38 @@ macro check_gen_proc(ex: typed): (bool, bool) =
 let a = @[1,2,3]
 assert: check_gen_proc(len(a)) == (false, true)
 
+
+#---------------------------------------------------------------
+# issue #16110
+
+macro check(x: type): untyped =
+  let z = getType(x)
+  let y = getImpl(z[1])  
+  var sym = y[0]
+  if sym.kind == nnkPragmaExpr: sym = sym[0]
+  if sym.kind == nnkPostfix: sym = sym[1]
+  expectKind(z[1], nnkSym)
+  expectKind(sym, nnkSym)
+  expectKind(y[2], nnkObjectTy)
+  doAssert(sym == z[1])
+
+type
+  TirePtr = ptr object
+    code: int
+
+  TireRef* = ref object
+    code: int
+
+  TireRef2* {.inheritable.} = ref object
+    code: int
+
+  TireRef3* {.inheritable.} = object
+    code: int
+
+var z1: TirePtr
+check(typeof(z1[]))
+var z2: TireRef
+check(typeof(z2[]))
+var z3: TireRef2
+check(typeof(z3[]))
+check(TireRef3)

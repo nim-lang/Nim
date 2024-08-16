@@ -1,8 +1,4 @@
-discard """
-  output: "works"
-"""
-
-import cgi, strtabs
+import std/[cgi, strtabs]
 
 proc handleRequest(query: string): StringTableRef =
   iterator foo(): StringTableRef {.closure.} =
@@ -26,4 +22,3 @@ proc main =
           quit "but now a leak"
 
 main()
-echo "works"

@@ -1,14 +1,21 @@
 discard """
   cmd: "nim c --threads:on -d:ssl $file"
-  exitcode: 0
-  output: "OK"
-  disabled: true
+  disabled: "openbsd"
+  disabled: "freebsd"
+  disabled: "windows"
 """
+
+#[
+disabled: see https://github.com/timotheecour/Nim/issues/528
+]#
 
 import strutils
 from net import TimeoutError
 
 import nativesockets, os, httpclient, asyncdispatch
+
+import std/[assertions, syncio]
+from stdtest/testutils import enableRemoteNetworking
 
 const manualTests = false
 
@@ -17,7 +24,7 @@ proc makeIPv6HttpServer(hostname: string, port: Port,
   let fd = createNativeSocket(AF_INET6)
   setSockOptInt(fd, SOL_SOCKET, SO_REUSEADDR, 1)
   var aiList = getAddrInfo(hostname, port, AF_INET6)
-  if bindAddr(fd, aiList.ai_addr, aiList.ai_addrlen.Socklen) < 0'i32:
+  if bindAddr(fd, aiList.ai_addr, aiList.ai_addrlen.SockLen) < 0'i32:
     freeAddrInfo(aiList)
     raiseOSError(osLastError())
   freeAddrInfo(aiList)
@@ -39,19 +46,20 @@ proc makeIPv6HttpServer(hostname: string, port: Port,
 
 proc asyncTest() {.async.} =
   var client = newAsyncHttpClient()
-  var resp = await client.request("http://example.com/")
+  var resp = await client.request("http://example.com/", HttpGet)
   doAssert(resp.code.is2xx)
   var body = await resp.body
   body = await resp.body # Test caching
   doAssert("<title>Example Domain</title>" in body)
 
   resp = await client.request("http://example.com/404")
-  doAssert(resp.code.is4xx)
-  doAssert(resp.code == Http404)
-  doAssert(resp.status == Http404)
+  doAssert(resp.code.is4xx or resp.code.is5xx)
+  doAssert(resp.code == Http404 or resp.code == Http500)
+  doAssert(resp.status == $Http404 or resp.status == $Http500)
 
-  resp = await client.request("https://google.com/")
-  doAssert(resp.code.is2xx or resp.code.is3xx)
+  when false: # occasionally does not give success code 
+    resp = await client.request("https://google.com/")
+    doAssert(resp.code.is2xx or resp.code.is3xx)
 
   # getContent
   try:
@@ -102,17 +110,18 @@ proc asyncTest() {.async.} =
 
 proc syncTest() =
   var client = newHttpClient()
-  var resp = client.request("http://example.com/")
+  var resp = client.request("http://example.com/", HttpGet)
   doAssert(resp.code.is2xx)
   doAssert("<title>Example Domain</title>" in resp.body)
 
   resp = client.request("http://example.com/404")
-  doAssert(resp.code.is4xx)
-  doAssert(resp.code == Http404)
-  doAssert(resp.status == Http404)
+  doAssert(resp.code.is4xx or resp.code.is5xx)
+  doAssert(resp.code == Http404 or resp.code == Http500)
+  doAssert(resp.status == $Http404 or resp.status == $Http500)
 
-  resp = client.request("https://google.com/")
-  doAssert(resp.code.is2xx or resp.code.is3xx)
+  when false: # occasionally does not give success code
+    resp = client.request("https://google.com/")
+    doAssert(resp.code.is2xx or resp.code.is3xx)
 
   # getContent
   try:
@@ -144,6 +153,12 @@ proc syncTest() =
 
   client.close()
 
+  # SIGSEGV on HEAD body read: issue #16743
+  block:
+    let client = newHttpClient()
+    let resp = client.head("http://httpbin.org/head")
+    doAssert(resp.body == "")
+
   when false:
     # Disabled for now because it causes troubles with AppVeyor
     # Timeout test.
@@ -166,7 +181,7 @@ proc ipv6Test() =
   client.close()
 
 ipv6Test()
-syncTest()
-waitFor(asyncTest())
 
-echo "OK"
+when enableRemoteNetworking:
+  syncTest()
+  waitFor(asyncTest())

@@ -45,7 +45,7 @@ type
       d_type*: int8 ## Type of file; not supported by all filesystem types.
                     ## (not POSIX)
       when defined(linux) or defined(openbsd):
-        d_off*: Off  ## Not an offset. Value that ``telldir()`` would return.
+        d_off*: Off  ## Not an offset. Value that `telldir()` would return.
     elif defined(haiku):
       d_pino*: Ino ## Parent inode (only for queries) (not POSIX)
       d_reclen*: cushort ## Length of this record. (not POSIX)
@@ -107,15 +107,6 @@ type
     p_sep_by_space*: char
     p_sign_posn*: char
     thousands_sep*: cstring
-
-  Mqd* {.importc: "mqd_t", header: "<mqueue.h>", final, pure.} = object
-  MqAttr* {.importc: "struct mq_attr",
-             header: "<mqueue.h>",
-             final, pure.} = object ## message queue attribute
-    mq_flags*: int   ## Message queue flags.
-    mq_maxmsg*: int  ## Maximum number of messages.
-    mq_msgsize*: int ## Maximum message size.
-    mq_curmsgs*: int ## Number of messages currently queued.
 
   Passwd* {.importc: "struct passwd", header: "<pwd.h>",
              final, pure.} = object ## struct passwd
@@ -375,6 +366,18 @@ when hasSpawnH:
     Tposix_spawn_file_actions* {.importc: "posix_spawn_file_actions_t",
                                  header: "<spawn.h>", final, pure.} = object
 
+
+when not defined(macos) and not defined(macosx): # freebsd
+  type
+    Mqd* {.importc: "mqd_t", header: "<mqueue.h>", final, pure.} = object
+    MqAttr* {.importc: "struct mq_attr",
+              header: "<mqueue.h>",
+              final, pure.} = object ## message queue attribute
+      mq_flags*: int   ## Message queue flags.
+      mq_maxmsg*: int  ## Maximum number of messages.
+      mq_msgsize*: int ## Maximum message size.
+      mq_curmsgs*: int ## Number of messages currently queued.
+
 when defined(linux):
   # from sys/un.h
   const Sockaddr_un_path_length* = 108
@@ -561,7 +564,7 @@ when defined(linux) or defined(bsd):
   var SOCK_CLOEXEC* {.importc, header: "<sys/socket.h>".}: cint
 
 when defined(macosx):
-  # We can't use the NOSIGNAL flag in the ``send`` function, it has no effect
+  # We can't use the NOSIGNAL flag in the `send` function, it has no effect
   # Instead we should use SO_NOSIGPIPE in setsockopt
   const
     MSG_NOSIGNAL* = 0'i32

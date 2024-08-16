@@ -7,14 +7,14 @@
 #    distribution, for details about the copyright.
 #
 
-## OS-Path normalization. Used by ``os.nim`` but also
+## OS-Path normalization. Used by `os.nim` but also
 ## generally useful for dealing with paths.
 ##
 ## Unstable API.
 
 # Yes, this uses import here, not include so that
 # we don't end up exporting these symbols from pathnorm and os:
-import "includes/osseps"
+import std/private/osseps
 
 type
   PathIter* = object
@@ -29,10 +29,6 @@ proc next*(it: var PathIter; x: string): (int, int) =
   if not it.notFirst and x[it.i] in {DirSep, AltSep}:
     # absolute path:
     inc it.i
-    when doslikeFileSystem: # UNC paths have leading `\\`
-      if hasNext(it, x) and x[it.i] == DirSep and
-          it.i+1 < x.len and x[it.i+1] != DirSep:
-        inc it.i
   else:
     while it.i < x.len and x[it.i] notin {DirSep, AltSep}: inc it.i
   if it.i > it.prev:
@@ -56,9 +52,22 @@ proc isDotDot(x: string; bounds: (int, int)): bool =
 proc isSlash(x: string; bounds: (int, int)): bool =
   bounds[1] == bounds[0] and x[bounds[0]] in {DirSep, AltSep}
 
+when doslikeFileSystem:
+  import std/private/ntpath
+
 proc addNormalizePath*(x: string; result: var string; state: var int;
     dirSep = DirSep) =
   ## Low level proc. Undocumented.
+
+  when doslikeFileSystem: # Add Windows drive at start without normalization
+    var x = x
+    if result == "":
+      let (drive, file) = splitDrive(x)
+      x = file
+      result.add drive
+      for c in result.mitems:
+        if c in {DirSep, AltSep}:
+          c = dirSep
 
   # state: 0th bit set if isAbsolute path. Other bits count
   # the number of path components.
@@ -69,7 +78,7 @@ proc addNormalizePath*(x: string; result: var string; state: var int;
   while hasNext(it, x):
     let b = next(it, x)
     if (state shr 1 == 0) and isSlash(x, b):
-      if result.len == 0 or result[^1] notin {DirSep, AltSep}:
+      if result.len == 0 or result[result.len - 1] notin {DirSep, AltSep}:
         result.add dirSep
       state = state or 1
     elif isDotDot(x, b):
@@ -87,28 +96,26 @@ proc addNormalizePath*(x: string; result: var string; state: var int;
           setLen(result, d-1)
           dec state, 2
       else:
-        if result.len > 0 and result[^1] notin {DirSep, AltSep}:
+        if result.len > 0 and result[result.len - 1] notin {DirSep, AltSep}:
           result.add dirSep
         result.add substr(x, b[0], b[1])
     elif isDot(x, b):
       discard "discard the dot"
     elif b[1] >= b[0]:
-      if result.len > 0 and result[^1] notin {DirSep, AltSep}:
+      if result.len > 0 and result[result.len - 1] notin {DirSep, AltSep}:
         result.add dirSep
       result.add substr(x, b[0], b[1])
       inc state, 2
   if result == "" and x != "": result = "."
 
 proc normalizePath*(path: string; dirSep = DirSep): string =
-  ## Example:
-  ##
-  ## .. code-block:: nim
-  ##   assert normalizePath("./foo//bar/../baz") == "foo/baz"
-  ##
-  ##
+  runnableExamples:
+    when defined(posix):
+      doAssert normalizePath("./foo//bar/../baz") == "foo/baz"
+
   ## - Turns multiple slashes into single slashes.
-  ## - Resolves '/foo/../bar' to '/bar'.
-  ## - Removes './' from the path (but "foo/.." becomes ".")
+  ## - Resolves `'/foo/../bar'` to `'/bar'`.
+  ## - Removes `'./'` from the path, but `"foo/.."` becomes `"."`.
   result = newStringOfCap(path.len)
   var state = 0
   addNormalizePath(path, result, state, dirSep)

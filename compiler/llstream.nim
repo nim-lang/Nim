@@ -12,14 +12,18 @@
 import
   pathutils
 
+when defined(nimPreviewSlimSystem):
+  import std/syncio
+
 # support `useGnuReadline`, `useLinenoise` for backwards compatibility
 const hasRstdin = (defined(nimUseLinenoise) or defined(useLinenoise) or defined(useGnuReadline)) and
   not defined(windows)
 
-when hasRstdin: import rdstdin
+when hasRstdin: import std/rdstdin
 
 type
   TLLRepl* = proc (s: PLLStream, buf: pointer, bufLen: int): int
+  OnPrompt* = proc() {.closure.}
   TLLStreamKind* = enum       # enum of different stream implementations
     llsNone,                  # null stream: reading and writing has no effect
     llsString,                # stream encapsulates a string
@@ -32,35 +36,26 @@ type
     rd*, wr*: int             # for string streams
     lineOffset*: int          # for fake stdin line numbers
     repl*: TLLRepl            # gives stdin control to clients
+    onPrompt*: OnPrompt
 
   PLLStream* = ref TLLStream
 
-proc llStreamOpen*(data: string): PLLStream =
-  new(result)
-  result.s = data
-  result.kind = llsString
+proc llStreamOpen*(data: sink string): PLLStream =
+  PLLStream(kind: llsString, s: data)
 
 proc llStreamOpen*(f: File): PLLStream =
-  new(result)
-  result.f = f
-  result.kind = llsFile
+  PLLStream(kind: llsFile, f: f)
 
 proc llStreamOpen*(filename: AbsoluteFile, mode: FileMode): PLLStream =
-  new(result)
-  result.kind = llsFile
+  result = PLLStream(kind: llsFile)
   if not open(result.f, filename.string, mode): result = nil
 
 proc llStreamOpen*(): PLLStream =
-  new(result)
-  result.kind = llsNone
+  PLLStream(kind: llsNone)
 
 proc llReadFromStdin(s: PLLStream, buf: pointer, bufLen: int): int
-proc llStreamOpenStdIn*(r: TLLRepl = llReadFromStdin): PLLStream =
-  new(result)
-  result.kind = llsStdIn
-  result.s = ""
-  result.lineOffset = -1
-  result.repl = r
+proc llStreamOpenStdIn*(r: TLLRepl = llReadFromStdin, onPrompt: OnPrompt = nil): PLLStream =
+  PLLStream(kind: llsStdIn, s: "", lineOffset: -1, repl: r, onPrompt: onPrompt)
 
 proc llStreamClose*(s: PLLStream) =
   case s.kind
@@ -72,10 +67,11 @@ proc llStreamClose*(s: PLLStream) =
 when not declared(readLineFromStdin):
   # fallback implementation:
   proc readLineFromStdin(prompt: string, line: var string): bool =
-    stderr.write(prompt)
+    stdout.write(prompt)
+    stdout.flushFile()
     result = readLine(stdin, line)
     if not result:
-      stderr.write("\n")
+      stdout.write("\n")
       quit(0)
 
 proc endsWith*(x: string, s: set[char]): bool =
@@ -83,6 +79,8 @@ proc endsWith*(x: string, s: set[char]): bool =
   while i >= 0 and x[i] == ' ': dec(i)
   if i >= 0 and x[i] in s:
     result = true
+  else:
+    result = false
 
 const
   LineContinuationOprs = {'+', '-', '*', '/', '\\', '<', '>', '!', '?', '^',
@@ -98,6 +96,7 @@ proc continueLine(line: string, inTripleString: bool): bool {.inline.} =
         line.endsWith(LineContinuationOprs+AdditionalLineContinuationOprs))
 
 proc countTriples(s: string): int =
+  result = 0
   var i = 0
   while i+2 < s.len:
     if s[i] == '"' and s[i+1] == '"' and s[i+2] == '"':
@@ -133,6 +132,7 @@ proc llStreamRead*(s: PLLStream, buf: pointer, bufLen: int): int =
   of llsFile:
     result = readBuffer(s.f, buf, bufLen)
   of llsStdIn:
+    if s.onPrompt!=nil: s.onPrompt()
     result = s.repl(s, buf, bufLen)
 
 proc llStreamReadLine*(s: PLLStream, line: var string): bool =
@@ -143,11 +143,11 @@ proc llStreamReadLine*(s: PLLStream, line: var string): bool =
   of llsString:
     while s.rd < s.s.len:
       case s.s[s.rd]
-      of '\x0D':
+      of '\r':
         inc(s.rd)
-        if s.s[s.rd] == '\x0A': inc(s.rd)
+        if s.s[s.rd] == '\n': inc(s.rd)
         break
-      of '\x0A':
+      of '\n':
         inc(s.rd)
         break
       else:

@@ -34,7 +34,7 @@ proc readMessages(client: AsyncFD) {.async.} =
       clientCount.inc
       break
     else:
-      if line.startswith("Message "):
+      if line.startsWith("Message "):
         msgCount.inc
       else:
         doAssert false
@@ -52,5 +52,5 @@ while true:
   poll()
   if clientCount == swarmSize: break
 
-assert msgCount == swarmSize * messagesToSend
+doAssert msgCount == swarmSize * messagesToSend
 doAssert msgCount == 2000

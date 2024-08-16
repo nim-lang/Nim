@@ -765,7 +765,7 @@ void linenoiseEditDeletePrevWord(struct linenoiseState *l) {
  * when ctrl+d is typed.
  *
  * The function returns the length of the current buffer. */
-static int linenoiseEdit(int stdin_fd, int stdout_fd, char *buf, size_t buflen, const char *prompt)
+static int linenoiseEdit(int stdin_fd, int stdout_fd, char *buf, size_t buflen, const char *prompt, linenoiseData* data)
 {
     struct linenoiseState l;
 
@@ -827,6 +827,7 @@ static int linenoiseEdit(int stdin_fd, int stdout_fd, char *buf, size_t buflen, 
             return (int)l.len;
         case CTRL_C:     /* ctrl-c */
             errno = EAGAIN;
+            data->status = linenoiseStatus_ctrl_C;
             return -1;
         case BACKSPACE:   /* backspace */
         case 8:     /* ctrl-h */
@@ -839,6 +840,7 @@ static int linenoiseEdit(int stdin_fd, int stdout_fd, char *buf, size_t buflen, 
             } else {
                 history_len--;
                 free(history[history_len]);
+                data->status = linenoiseStatus_ctrl_D;
                 return -1;
             }
             break;
@@ -979,7 +981,7 @@ void linenoisePrintKeyCodes(void) {
 
 /* This function calls the line editing function linenoiseEdit() using
  * the STDIN file descriptor set in raw mode. */
-static int linenoiseRaw(char *buf, size_t buflen, const char *prompt) {
+static int linenoiseRaw(char *buf, size_t buflen, const char *prompt, linenoiseData* data) {
     int count;
 
     if (buflen == 0) {
@@ -988,7 +990,7 @@ static int linenoiseRaw(char *buf, size_t buflen, const char *prompt) {
     }
 
     if (enableRawMode(STDIN_FILENO) == -1) return -1;
-    count = linenoiseEdit(STDIN_FILENO, STDOUT_FILENO, buf, buflen, prompt);
+    count = linenoiseEdit(STDIN_FILENO, STDOUT_FILENO, buf, buflen, prompt, data);
     disableRawMode(STDIN_FILENO);
     printf("\n");
     return count;
@@ -1035,7 +1037,7 @@ static char *linenoiseNoTTY(void) {
  * for a blacklist of stupid terminals, and later either calls the line
  * editing function or uses dummy fgets() so that you will be able to type
  * something even in the most desperate of the conditions. */
-char *linenoise(const char *prompt) {
+char *linenoiseExtra(const char *prompt, linenoiseData* data) {
     char buf[LINENOISE_MAX_LINE];
     int count;
 
@@ -1056,10 +1058,16 @@ char *linenoise(const char *prompt) {
         }
         return strdup(buf);
     } else {
-        count = linenoiseRaw(buf,LINENOISE_MAX_LINE,prompt);
+        count = linenoiseRaw(buf,LINENOISE_MAX_LINE,prompt, data);
         if (count == -1) return NULL;
         return strdup(buf);
     }
+}
+
+char *linenoise(const char *prompt) {
+  linenoiseData data;
+  data.status = linenoiseStatus_ctrl_unknown;
+  return linenoiseExtra(prompt, &data);
 }
 
 /* This is just a wrapper the user may want to call in order to make sure

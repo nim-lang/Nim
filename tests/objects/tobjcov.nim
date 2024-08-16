@@ -1,6 +1,6 @@
 discard """
 action: compile
-target: "c"
+targets: "c"
 """
 
 # Covariance is not type safe:

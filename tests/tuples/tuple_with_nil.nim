@@ -1,23 +1,16 @@
 import macros
-from strutils import IdentStartChars
 import parseutils
 import unicode
 import math
-import fenv
 import pegs
 import streams
 
 type
-  FormatError = object of Exception ## Error in the format string.
+  FormatError = object of CatchableError ## Error in the format string.
 
   Writer = concept W
     ## Writer to output a character `c`.
-    when (NimMajor, NimMinor, NimPatch) > (0, 10, 2):
-      write(W, 'c')
-    else:
-      block:
-        var x: W
-        write(x, char)
+    write(W, 'c')
 
   FmtAlign = enum ## Format alignment
     faDefault  ## default for given format type
@@ -484,7 +477,7 @@ proc writeformat(o: var Writer; b: bool; fmt: Format) =
   else:
     raise newException(FormatError, "Boolean values must of one of the following types: s,b,o,x,X,d,n")
 
-proc writeformat(o: var Writer; ary: openarray[system.any]; fmt: Format) =
+proc writeformat(o: var Writer; ary: openArray[system.any]; fmt: Format) =
   ## Write array `ary` according to format `fmt` using output object
   ## `o` and output function `add`.
   if ary.len == 0: return
@@ -664,7 +657,7 @@ proc literal[T](x: T): NimNode {.compiletime, nosideeffect.} =
     result = newLit(x)
 
 proc generatefmt(fmtstr: string;
-                 args: var openarray[tuple[arg:NimNode, cnt:int]];
+                 args: var openArray[tuple[arg:NimNode, cnt:int]];
                  arg: var int;): seq[tuple[val, fmt:NimNode]] {.compiletime.} =
   ## fmtstr
   ##   the format string

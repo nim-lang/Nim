@@ -20,15 +20,17 @@ when defined(js):
 ## search the internet for a wide variety of third-party documentation and
 ## tools.
 ##
-## **Note**: If you love ``sequtils.toSeq`` we have bad news for you. This
-## library doesn't work with it due to documented compiler limitations. As
-## a workaround, use this:
-##
-## .. code-block:: nim
-##
-##    import nre except toSeq
-##
-##
+## .. warning:: If you love `sequtils.toSeq` we have bad news for you. This
+##   library doesn't work with it due to documented compiler limitations. As
+##   a workaround, use this:
+runnableExamples:
+  # either `import std/nre except toSeq` or fully qualify `sequtils.toSeq`:
+  import std/sequtils
+  iterator iota(n: int): int =
+    for i in 0..<n: yield i
+  assert sequtils.toSeq(iota(3)) == @[0, 1, 2]
+## .. note:: There are also alternative nimble packages such as [tinyre](https://github.com/khchen/tinyre)
+##   and [regex](https://github.com/nitely/nim-regex).
 ## Licencing
 ## ---------
 ##
@@ -36,61 +38,58 @@ when defined(js):
 ## this module.
 ##
 ## .. _`some additional terms`: http://pcre.sourceforge.net/license.txt
-##
 runnableExamples:
+  import std/sugar
   let vowels = re"[aeoui]"
-
-  let expectedResults = [
-    1 .. 1,
-    2 .. 2,
-    4 .. 4,
-    6 .. 6,
-    7 .. 7,
-  ]
-  var i = 0
-  for match in "moigagoo".findIter(vowels):
-    doAssert match.matchBounds == expectedResults[i]
-    inc i
+  let bounds = collect:
+    for match in "moiga".findIter(vowels): match.matchBounds
+  assert bounds == @[1 .. 1, 2 .. 2, 4 .. 4]
+  from std/sequtils import toSeq
+  let s = sequtils.toSeq("moiga".findIter(vowels))
+    # fully qualified to avoid confusion with nre.toSeq
+  assert s.len == 3
 
   let firstVowel = "foo".find(vowels)
   let hasVowel = firstVowel.isSome()
-  if hasVowel:
-    let matchBounds = firstVowel.get().captureBounds[-1]
-    doAssert matchBounds.a == 1
+  assert hasVowel
+  let matchBounds = firstVowel.get().captureBounds[-1]
+  assert matchBounds.a == 1
 
-  ## as with module `re`, unless specified otherwise, `start` parameter in each
-  ## proc indicates where the scan starts, but outputs are relative to the start
-  ## of the input string, not to `start`:
-  doAssert find("uxabc", re"(?<=x|y)ab", start = 1).get.captures[-1] == "ab"
-  doAssert find("uxabc", re"ab", start = 3).isNone
+  # as with module `re`, unless specified otherwise, `start` parameter in each
+  # proc indicates where the scan starts, but outputs are relative to the start
+  # of the input string, not to `start`:
+  assert find("uxabc", re"(?<=x|y)ab", start = 1).get.captures[-1] == "ab"
+  assert find("uxabc", re"ab", start = 3).isNone
 
-from pcre import nil
+from std/pcre import nil
 import nre/private/util
-import tables
-from strutils import `%`
-from math import ceil
-import options
-from unicode import runeLenAt
+import std/tables
+from std/strutils import `%`
+import std/options
+from std/unicode import runeLenAt
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
 
 export options
 
 type
   Regex* = ref object
     ## Represents the pattern that things are matched against, constructed with
-    ## ``re(string)``. Examples: ``re"foo"``, ``re(r"(*ANYCRLF)(?x)foo #
-    ## comment".``
+    ## `re(string)`. Examples: `re"foo"`, `re(r"(*ANYCRLF)(?x)foo #
+    ## comment".`
     ##
-    ## ``pattern: string``
-    ##     the string that was used to create the pattern. For details on how
+    ## `pattern: string`
+    ## :   the string that was used to create the pattern. For details on how
     ##     to write a pattern, please see `the official PCRE pattern
     ##     documentation.
     ##     <https://www.pcre.org/original/doc/html/pcrepattern.html>`_
     ##
-    ## ``captureCount: int``
-    ##     the number of captures that the pattern has.
+    ## `captureCount: int`
+    ## :   the number of captures that the pattern has.
     ##
-    ## ``captureNameId: Table[string, int]``
-    ##     a table from the capture names to their numeric id.
+    ## `captureNameId: Table[string, int]`
+    ## :   a table from the capture names to their numeric id.
     ##
     ##
     ## Options
@@ -99,30 +98,30 @@ type
     ## The following options may appear anywhere in the pattern, and they affect
     ## the rest of it.
     ##
-    ## -  ``(?i)`` - case insensitive
-    ## -  ``(?m)`` - multi-line: ``^`` and ``$`` match the beginning and end of
+    ## -  `(?i)` - case insensitive
+    ## -  `(?m)` - multi-line: `^` and `$` match the beginning and end of
     ##    lines, not of the subject string
-    ## -  ``(?s)`` - ``.`` also matches newline (*dotall*)
-    ## -  ``(?U)`` - expressions are not greedy by default. ``?`` can be added
+    ## -  `(?s)` - `.` also matches newline (*dotall*)
+    ## -  `(?U)` - expressions are not greedy by default. `?` can be added
     ##    to a qualifier to make it greedy
-    ## -  ``(?x)`` - whitespace and comments (``#``) are ignored (*extended*)
-    ## -  ``(?X)`` - character escapes without special meaning (``\w`` vs.
-    ##    ``\a``) are errors (*extra*)
+    ## -  `(?x)` - whitespace and comments (`#`) are ignored (*extended*)
+    ## -  `(?X)` - character escapes without special meaning (`\w` vs.
+    ##    `\a`) are errors (*extra*)
     ##
     ## One or a combination of these options may appear only at the beginning
     ## of the pattern:
     ##
-    ## -  ``(*UTF8)`` - treat both the pattern and subject as UTF-8
-    ## -  ``(*UCP)`` - Unicode character properties; ``\w`` matches ``я``
-    ## -  ``(*U)`` - a combination of the two options above
-    ## -  ``(*FIRSTLINE*)`` - fails if there is not a match on the first line
-    ## -  ``(*NO_AUTO_CAPTURE)`` - turn off auto-capture for groups;
-    ##    ``(?<name>...)`` can be used to capture
-    ## -  ``(*CR)`` - newlines are separated by ``\r``
-    ## -  ``(*LF)`` - newlines are separated by ``\n`` (UNIX default)
-    ## -  ``(*CRLF)`` - newlines are separated by ``\r\n`` (Windows default)
-    ## -  ``(*ANYCRLF)`` - newlines are separated by any of the above
-    ## -  ``(*ANY)`` - newlines are separated by any of the above and Unicode
+    ## -  `(*UTF8)` - treat both the pattern and subject as UTF-8
+    ## -  `(*UCP)` - Unicode character properties; `\w` matches `я`
+    ## -  `(*U)` - a combination of the two options above
+    ## -  `(*FIRSTLINE*)` - fails if there is not a match on the first line
+    ## -  `(*NO_AUTO_CAPTURE)` - turn off auto-capture for groups;
+    ##    `(?<name>...)` can be used to capture
+    ## -  `(*CR)` - newlines are separated by `\r`
+    ## -  `(*LF)` - newlines are separated by `\n` (UNIX default)
+    ## -  `(*CRLF)` - newlines are separated by `\r\n` (Windows default)
+    ## -  `(*ANYCRLF)` - newlines are separated by any of the above
+    ## -  `(*ANY)` - newlines are separated by any of the above and Unicode
     ##    newlines:
     ##
     ##     single characters VT (vertical tab, U+000B), FF (form feed, U+000C),
@@ -131,8 +130,8 @@ type
     ##     are recognized only in UTF-8 mode.
     ##     —  man pcre
     ##
-    ## -  ``(*JAVASCRIPT_COMPAT)`` - JavaScript compatibility
-    ## -  ``(*NO_STUDY)`` - turn off studying; study is enabled by default
+    ## -  `(*JAVASCRIPT_COMPAT)` - JavaScript compatibility
+    ## -  `(*NO_STUDY)` - turn off studying; study is enabled by default
     ##
     ## For more details on the leading option groups, see the `Option
     ## Setting <http://man7.org/linux/man-pages/man3/pcresyntax.3.html#OPTION_SETTING>`_
@@ -142,11 +141,11 @@ type
     ## manual <http://man7.org/linux/man-pages/man3/pcresyntax.3.html>`_.
     ##
     ## Some of these options are not part of PCRE and are converted by nre
-    ## into PCRE flags. These include ``NEVER_UTF``, ``ANCHORED``,
-    ## ``DOLLAR_ENDONLY``, ``FIRSTLINE``, ``NO_AUTO_CAPTURE``,
-    ## ``JAVASCRIPT_COMPAT``, ``U``, ``NO_STUDY``. In other PCRE wrappers, you
+    ## into PCRE flags. These include `NEVER_UTF`, `ANCHORED`,
+    ## `DOLLAR_ENDONLY`, `FIRSTLINE`, `NO_AUTO_CAPTURE`,
+    ## `JAVASCRIPT_COMPAT`, `U`, `NO_STUDY`. In other PCRE wrappers, you
     ## will need to pass these as separate flags to PCRE.
-    pattern*: string  ## not nil
+    pattern*: string
     pcreObj: ptr pcre.Pcre  ## not nil
     pcreExtra: ptr pcre.ExtraData  ## nil
 
@@ -156,50 +155,40 @@ type
     ## Usually seen as Option[RegexMatch], it represents the result of an
     ## execution. On failure, it is none, on success, it is some.
     ##
-    ## ``pattern: Regex``
-    ##     the pattern that is being matched
+    ## `pattern: Regex`
+    ## :   the pattern that is being matched
     ##
-    ## ``str: string``
-    ##     the string that was matched against
+    ## `str: string`
+    ## :   the string that was matched against
     ##
-    ## ``captures[]: string``
-    ##     the string value of whatever was captured at that id. If the value
-    ##     is invalid, then behavior is undefined. If the id is ``-1``, then
+    ## `captures[]: string`
+    ## :   the string value of whatever was captured at that id. If the value
+    ##     is invalid, then behavior is undefined. If the id is `-1`, then
     ##     the whole match is returned. If the given capture was not matched,
-    ##     ``nil`` is returned.
+    ##     `nil` is returned. See examples for `match`.
     ##
-    ##     -  ``"abc".match(re"(\w)").get.captures[0] == "a"``
-    ##     -  ``"abc".match(re"(?<letter>\w)").get.captures["letter"] == "a"``
-    ##     -  ``"abc".match(re"(\w)\w").get.captures[-1] == "ab"``
+    ## `captureBounds[]: HSlice[int, int]`
+    ## :   gets the bounds of the given capture according to the same rules as
+    ##     the above. If the capture is not filled, then `None` is returned.
+    ##     The bounds are both inclusive.  See examples for `match`.
     ##
-    ## ``captureBounds[]: HSlice[int, int]``
-    ##     gets the bounds of the given capture according to the same rules as
-    ##     the above. If the capture is not filled, then ``None`` is returned.
-    ##     The bounds are both inclusive.
+    ## `match: string`
+    ## :   the full text of the match.
     ##
-    ##     -  ``"abc".match(re"(\w)").get.captureBounds[0] == 0 .. 0``
-    ##     -  ``0 in "abc".match(re"(\w)").get.captureBounds == true``
-    ##     -  ``"abc".match(re"").get.captureBounds[-1] == 0 .. -1``
-    ##     -  ``"abc".match(re"abc").get.captureBounds[-1] == 0 .. 2``
+    ## `matchBounds: HSlice[int, int]`
+    ## :   the bounds of the match, as in `captureBounds[]`
     ##
-    ## ``match: string``
-    ##     the full text of the match.
+    ## `(captureBounds|captures).toTable`
+    ## :   returns a table with each named capture as a key.
     ##
-    ## ``matchBounds: HSlice[int, int]``
-    ##     the bounds of the match, as in ``captureBounds[]``
+    ## `(captureBounds|captures).toSeq`
+    ## :   returns all the captures by their number.
     ##
-    ## ``(captureBounds|captures).toTable``
-    ##     returns a table with each named capture as a key.
-    ##
-    ## ``(captureBounds|captures).toSeq``
-    ##     returns all the captures by their number.
-    ##
-    ## ``$: string``
-    ##     same as ``match``
+    ## `$: string`
+    ## :   same as `match`
     pattern*: Regex  ## The regex doing the matching.
                      ## Not nil.
     str*: string  ## The string that was matched against.
-                  ## Not nil.
     pcreMatchBounds: seq[HSlice[cint, cint]] ## First item is the bounds of the match
                                             ## Other items are the captures
                                             ## `a` is inclusive start, `b` is exclusive end
@@ -227,22 +216,12 @@ type
     ## for whatever reason. The message contains the error
     ## code.
 
-runnableExamples:
-  # This MUST be kept in sync with the examples in RegexMatch
-  doAssert "abc".match(re"(\w)").get.captures[0] == "a"
-  doAssert "abc".match(re"(?<letter>\w)").get.captures["letter"] == "a"
-  doAssert "abc".match(re"(\w)\w").get.captures[-1] == "ab"
-
-  doAssert "abc".match(re"(\w)").get.captureBounds[0] == 0 .. 0
-  doAssert 0 in "abc".match(re"(\w)").get.captureBounds == true
-  doAssert "abc".match(re"").get.captureBounds[-1] == 0 .. -1
-  doAssert "abc".match(re"abc").get.captureBounds[-1] == 0 .. 2
-
-
 proc destroyRegex(pattern: Regex) =
+  `=destroy`(pattern.pattern)
   pcre.free_substring(cast[cstring](pattern.pcreObj))
   if pattern.pcreExtra != nil:
     pcre.free_study(pattern.pcreExtra)
+  `=destroy`(pattern.captureNameToId)
 
 proc getinfo[T](pattern: Regex, opt: cint): T =
   let retcode = pcre.fullinfo(pattern.pcreObj, pattern.pcreExtra, opt, addr result)
@@ -309,7 +288,7 @@ proc matchesCrLf(pattern: Regex): bool =
   let newlineFlags = flags and (pcre.NEWLINE_CRLF or
                                 pcre.NEWLINE_ANY or
                                 pcre.NEWLINE_ANYCRLF)
-  if newLineFlags > 0u32:
+  if newlineFlags > 0u32:
     return true
 
   # get flags from build config
@@ -541,24 +520,33 @@ proc matchImpl(str: string, pattern: Regex, start, endpos: int, flags: int): Opt
 proc match*(str: string, pattern: Regex, start = 0, endpos = int.high): Option[RegexMatch] =
   ## Like `find(...)<#find,string,Regex,int>`_, but anchored to the start of the
   ## string.
-  ##
   runnableExamples:
-    doAssert "foo".match(re"f").isSome
-    doAssert "foo".match(re"o").isNone
+    assert "foo".match(re"f").isSome
+    assert "foo".match(re"o").isNone
 
+    assert "abc".match(re"(\w)").get.captures[0] == "a"
+    assert "abc".match(re"(?<letter>\w)").get.captures["letter"] == "a"
+    assert "abc".match(re"(\w)\w").get.captures[-1] == "ab"
+
+    assert "abc".match(re"(\w)").get.captureBounds[0] == 0 .. 0
+    assert 0 in "abc".match(re"(\w)").get.captureBounds
+    assert "abc".match(re"").get.captureBounds[-1] == 0 .. -1
+    assert "abc".match(re"abc").get.captureBounds[-1] == 0 .. 2
   return str.matchImpl(pattern, start, endpos, pcre.ANCHORED)
 
 iterator findIter*(str: string, pattern: Regex, start = 0, endpos = int.high): RegexMatch =
   ## Works the same as `find(...)<#find,string,Regex,int>`_, but finds every
-  ## non-overlapping match. ``"2222".find(re"22")`` is ``"22", "22"``, not
-  ## ``"22", "22", "22"``.
-  ##
+  ## non-overlapping match:
+  runnableExamples:
+    import std/sugar
+    assert collect(for a in "2222".findIter(re"22"): a.match) == @["22", "22"]
+     # not @["22", "22", "22"]
   ## Arguments are the same as `find(...)<#find,string,Regex,int>`_
   ##
   ## Variants:
   ##
-  ## -  ``proc findAll(...)`` returns a ``seq[string]``
-  # see pcredemo for explanation
+  ## -  `proc findAll(...)` returns a `seq[string]`
+  # see pcredemo for explanation => https://www.pcre.org/original/doc/html/pcredemo.html
   let matchesCrLf = pattern.matchesCrLf()
   let unicode = uint32(getinfo[culong](pattern, pcre.INFO_OPTIONS) and
     pcre.UTF8) > 0u32
@@ -579,7 +567,7 @@ iterator findIter*(str: string, pattern: Regex, start = 0, endpos = int.high): R
       # either the end of the input or the string
       # cannot be split here - we also need to bail
       # if we've never matched and we've already tried to...
-      if offset >= strlen or neverMatched:
+      if flags == 0 or offset >= strlen or neverMatched: # All matches found
         break
 
       if matchesCrLf and offset < (str.len - 1) and
@@ -595,19 +583,18 @@ iterator findIter*(str: string, pattern: Regex, start = 0, endpos = int.high): R
     else:
       neverMatched = false
       offset = match.get.matchBounds.b + 1
-
       yield match.get
 
 proc find*(str: string, pattern: Regex, start = 0, endpos = int.high): Option[RegexMatch] =
   ## Finds the given pattern in the string between the end and start
   ## positions.
   ##
-  ## ``start``
-  ##     The start point at which to start matching. ``|abc`` is ``0``;
-  ##     ``a|bc`` is ``1``
+  ## `start`
+  ## :   The start point at which to start matching. `|abc` is `0`;
+  ##     `a|bc` is `1`
   ##
-  ## ``endpos``
-  ##     The maximum index for a match; ``int.high`` means the end of the
+  ## `endpos`
+  ## :   The maximum index for a match; `int.high` means the end of the
   ##     string, otherwise it’s an inclusive upper bound.
   return str.matchImpl(pattern, start, endpos, 0)
 
@@ -619,12 +606,11 @@ proc findAll*(str: string, pattern: Regex, start = 0, endpos = int.high): seq[st
 proc contains*(str: string, pattern: Regex, start = 0, endpos = int.high): bool =
   ## Determine if the string contains the given pattern between the end and
   ## start positions:
-  ## This function is equivalent to ``isSome(str.find(pattern, start, endpos))``.
-  ##
+  ## This function is equivalent to `isSome(str.find(pattern, start, endpos))`.
   runnableExamples:
-    doAssert "abc".contains(re"bc")
-    doAssert not "abc".contains(re"cd")
-    doAssert not "abc".contains(re"a", start = 1)
+    assert "abc".contains(re"bc")
+    assert not "abc".contains(re"cd")
+    assert not "abc".contains(re"a", start = 1)
 
   return isSome(str.find(pattern, start, endpos))
 
@@ -632,20 +618,20 @@ proc split*(str: string, pattern: Regex, maxSplit = -1, start = 0): seq[string] 
   ## Splits the string with the given regex. This works according to the
   ## rules that Perl and Javascript use.
   ##
-  ## ``start`` behaves the same as in `find(...)<#find,string,Regex,int>`_.
+  ## `start` behaves the same as in `find(...)<#find,string,Regex,int>`_.
   ##
   runnableExamples:
     # -  If the match is zero-width, then the string is still split:
-    doAssert "123".split(re"") == @["1", "2", "3"]
+    assert "123".split(re"") == @["1", "2", "3"]
 
     # -  If the pattern has a capture in it, it is added after the string
     #    split:
-    doAssert "12".split(re"(\d)") == @["", "1", "", "2", ""]
+    assert "12".split(re"(\d)") == @["", "1", "", "2", ""]
 
-    # -  If ``maxsplit != -1``, then the string will only be split
-    #    ``maxsplit - 1`` times. This means that there will be ``maxsplit``
+    # -  If `maxsplit != -1`, then the string will only be split
+    #    `maxsplit - 1` times. This means that there will be `maxsplit`
     #    strings in the output seq.
-    doAssert "1.2.3".split(re"\.", maxsplit = 2) == @["1", "2.3"]
+    assert "1.2.3".split(re"\.", maxsplit = 2) == @["1", "2.3"]
 
   result = @[]
   var lastIdx = start
@@ -709,28 +695,27 @@ template replaceImpl(str: string, pattern: Regex,
 
 proc replace*(str: string, pattern: Regex,
               subproc: proc (match: RegexMatch): string): string =
-  ## Replaces each match of Regex in the string with ``subproc``, which should
-  ## never be or return ``nil``.
+  ## Replaces each match of Regex in the string with `subproc`, which should
+  ## never be or return `nil`.
   ##
-  ## If ``subproc`` is a ``proc (RegexMatch): string``, then it is executed with
+  ## If `subproc` is a `proc (RegexMatch): string`, then it is executed with
   ## each match and the return value is the replacement value.
   ##
-  ## If ``subproc`` is a ``proc (string): string``, then it is executed with the
-  ## full text of the match and and the return value is the replacement
-  ## value.
+  ## If `subproc` is a `proc (string): string`, then it is executed with the
+  ## full text of the match and the return value is the replacement value.
   ##
-  ## If ``subproc`` is a string, the syntax is as follows:
+  ## If `subproc` is a string, the syntax is as follows:
   ##
-  ## -  ``$$`` - literal ``$``
-  ## -  ``$123`` - capture number ``123``
-  ## -  ``$foo`` - named capture ``foo``
-  ## -  ``${foo}`` - same as above
-  ## -  ``$1$#`` - first and second captures
-  ## -  ``$#`` - first capture
-  ## -  ``$0`` - full match
+  ## -  `$$` - literal `$`
+  ## -  `$123` - capture number `123`
+  ## -  `$foo` - named capture `foo`
+  ## -  `${foo}` - same as above
+  ## -  `$1$#` - first and second captures
+  ## -  `$#` - first capture
+  ## -  `$0` - full match
   ##
-  ## If a given capture is missing, ``IndexDefect`` thrown for un-named captures
-  ## and ``KeyError`` for named captures.
+  ## If a given capture is missing, `IndexDefect` thrown for un-named captures
+  ## and `KeyError` for named captures.
   replaceImpl(str, pattern, subproc(match))
 
 proc replace*(str: string, pattern: Regex,
@@ -742,8 +727,25 @@ proc replace*(str: string, pattern: Regex, sub: string): string =
   replaceImpl(str, pattern,
     formatStr(sub, match.captures[name], match.captures[id - 1]))
 
-let SpecialCharMatcher = re"([\\+*?[^\]$(){}=!<>|:-])"
-proc escapeRe*(str: string): string =
-  ## Escapes the string so it doesn’t match any special characters.
-  ## Incompatible with the Extra flag (``X``).
-  str.replace(SpecialCharMatcher, "\\$1")
+proc escapeRe*(str: string): string {.gcsafe.} =
+  ## Escapes the string so it doesn't match any special characters.
+  ## Incompatible with the Extra flag (`X`).
+  ##
+  ## Escaped char: `\ + * ? [ ^ ] $ ( ) { } = ! < > | : -`
+  runnableExamples:
+    assert escapeRe("fly+wind") == "fly\\+wind"
+    assert escapeRe("!") == "\\!"
+    assert escapeRe("nim*") == "nim\\*"
+
+  #([\\+*?[^\]$(){}=!<>|:-])
+  const SpecialCharMatcher = {'\\', '+', '*', '?', '[', '^', ']', '$', '(',
+                              ')', '{', '}', '=', '!', '<', '>', '|', ':',
+                              '-'}
+
+  for c in items(str):
+    case c
+    of SpecialCharMatcher:
+      result.add("\\")
+      result.add(c)
+    else:
+      result.add(c)

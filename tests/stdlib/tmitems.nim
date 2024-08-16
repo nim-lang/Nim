@@ -1,4 +1,5 @@
 discard """
+  matrix: "--mm:refc; --mm:orc"
   output: '''@[11, 12, 13]
 @[11, 12, 13]
 @[1, 3, 5]
@@ -16,7 +17,18 @@ fpqeew
 <Students>
   <Student Name="Aprilfoo" />
   <Student Name="bar" />
-</Students>'''
+</Students>
+<chapter>
+    <title>This is a Docbook title</title>
+    <para>
+        This is a Docbook paragraph containing <emphasis>emphasized</emphasis>,
+        <literal>literal</literal> and <replaceable>replaceable</replaceable>
+        text. Sometimes scrunched together like this:
+        <literal>literal</literal><replaceable>replaceable</replaceable>
+        and sometimes not:
+        <literal>literal</literal> <replaceable>replaceable</replaceable>
+    </para>
+</chapter>'''
 """
 
 block:
@@ -51,6 +63,7 @@ block:
 
 block:
   var x = "foobar"
+  prepareMutation(x)
   var y = cast[cstring](addr x[0])
   for c in y.mitems:
     inc c
@@ -64,6 +77,7 @@ block:
 
 block:
   var x = "foobar"
+  prepareMutation(x)
   var y = cast[cstring](addr x[0])
   for i, c in y.mpairs:
     inc c, i
@@ -123,7 +137,7 @@ block:
     x.num += 10
   echo j
 
-import xmltree, xmlparser, streams, strtabs
+import xmltree, xmlparser, parsexml, streams, strtabs
 
 block:
   var d = parseXml(newStringStream """<Students>
@@ -133,4 +147,18 @@ block:
   for x in d.mitems:
     x = <>Student(Name=x.attrs["Name"] & "foo")
   d[1].attrs["Name"] = "bar"
+  echo d
+
+block:
+  var d = parseXml(newStringStream """<chapter>
+    <title>This is a Docbook title</title>
+    <para>
+        This is a Docbook paragraph containing <emphasis>emphasized</emphasis>,
+        <literal>literal</literal> and <replaceable>replaceable</replaceable>
+        text. Sometimes scrunched together like this:
+        <literal>literal</literal><replaceable>replaceable</replaceable>
+        and sometimes not:
+        <literal>literal</literal> <replaceable>replaceable</replaceable>
+    </para>
+</chapter>""",{reportComments, reportWhitespace})
   echo d

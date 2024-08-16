@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-from posix import Timespec
+from std/posix import Timespec
 
 when defined(macosx) or defined(freebsd) or defined(openbsd) or
      defined(dragonfly):
@@ -153,7 +153,7 @@ proc kevent*(kqFD: cint,
              changelist: ptr KEvent, nchanges: cint,
              eventlist: ptr KEvent, nevents: cint, timeout: ptr Timespec): cint
      {.importc: "kevent", header: "<sys/event.h>".}
-  ## Manipulates queue for given ``kqFD`` descriptor.
+  ## Manipulates queue for given `kqFD` descriptor.
 
 proc EV_SET*(event: ptr KEvent, ident: uint, filter: cshort, flags: cushort,
              fflags: cuint, data: int, udata: pointer)

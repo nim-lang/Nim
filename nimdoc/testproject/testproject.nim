@@ -1,3 +1,15 @@
+## Basic usage
+## ===========
+##
+## Encoding data
+## -------------
+##
+## Apart from strings you can also encode lists of integers or characters:
+
+## Decoding data
+## -------------
+##
+
 
 import subdir / subdir_b / utils
 
@@ -8,6 +20,9 @@ runnableExamples:
   foo(enumValueA, enumValueB)
   # bug #11078
   for x in "xx": discard
+
+
+var someVariable*: bool ## This should be visible.
 
 when true:
   ## top2
@@ -36,6 +51,14 @@ proc buzz*[T](a, b: T): T {.deprecated: "since v0.20".} =
   ## This is deprecated with a message.
   result = a + b
 
+type
+  FooBuzz* {.deprecated: "FooBuzz msg".} = int
+
+using f: FooBuzz
+
+proc bar*(f) = # `f` should be expanded to `f: FooBuzz`
+  discard
+
 import std/macros
 
 var aVariable*: array[1, int]
@@ -49,7 +72,7 @@ proc isValid*[T](x: T): bool = x.len > 0
 
 when true:
   # these cases appear redundant but they're actually (almost) all different at
-  # AST level and needed to ensure docgen keeps working, eg because of issues
+  # AST level and needed to ensure docgen keeps working, e.g. because of issues
   # like D20200526T163511
   type
     Foo* = enum
@@ -128,6 +151,7 @@ when true:
       # BUG: this currently this won't be run since not exported
       # but probably should
       doAssert false
+  if false: bazNonExported() # silence XDeclaredButNotUsed
 
   proc z17*() =
     # BUG: a comment before 1st doc comment currently doesn't prevent
@@ -182,7 +206,7 @@ when true: # procs without `=` (using comment field)
     ## the c printf.
     ## etc.
 
-  proc c_nonexistant*(frmt: cstring): cint {.importc: "nonexistant", header: "<stdio.h>", varargs, discardable.}
+  proc c_nonexistent*(frmt: cstring): cint {.importc: "nonexistent", header: "<stdio.h>", varargs, discardable.}
 
 when true: # tests RST inside comments
   proc low*[T: Ordinal|enum|range](x: T): T {.magic: "Low", noSideEffect.}
@@ -209,7 +233,7 @@ when true: # tests RST inside comments
 
 when true: # multiline string litterals
   proc tripleStrLitTest*() =
-    runnableExamples:
+    runnableExamples("--hint:XDeclaredButNotUsed:off"):
       ## mullitline string litterals are tricky as their indentation can span
       ## below that of the runnableExamples
       let s1a = """
@@ -249,12 +273,12 @@ at indent 0
 
 when true: # methods; issue #14691
   type Moo = object
-  method method1*(self: Moo) =
+  method method1*(self: Moo) {.base.} =
     ## foo1
-  method method2*(self: Moo): int =
+  method method2*(self: Moo): int {.base.} =
     ## foo2
     result = 1
-  method method3*(self: Moo): int =
+  method method3*(self: Moo): int {.base.} =
     ## foo3
     1
 
@@ -327,20 +351,18 @@ when true: # (most) templates
     ## ok5
     ## ok5b
     runnableExamples: assert true
+    runnableExamples: discard 1
 
     ## in or out?
-    # this is an edge case; a newline separate last runnableExamples from 
-    # next doc comment but AST isnt' aware of it; this could change in future
     discard 8
     ## out
-    runnableExamples: discard 1
 
 when true: # issue #14473
   import std/[sequtils]
   template doit(): untyped =
     ## doit
     ## return output only
-    toSeq([1,2])
+    toSeq(["D20210427T172228"]) # make it searcheable at least until we figure out a way to avoid echo
   echo doit() # using doAssert or similar to avoid echo would "hide" the original bug
 
 when true: # issue #14846
@@ -364,3 +386,37 @@ when true:
     # the last character of runnableExamples
     runnableExamples:
       discard 2
+
+when true: # issue #15702
+  type
+    Shapes* = enum
+      ## Some shapes.
+      Circle,     ## A circle
+      Triangle,   ## A three-sided shape
+      Rectangle   ## A four-sided shape
+
+when true: # issue #15184
+  proc anything* =
+    ##
+    ##  There is no block quote after blank lines at the beginning.
+  discard
+
+type T19396* = object # bug #19396
+   a*: int
+   b: float
+
+template somePragma*() {.pragma.}
+  ## Just some annotation
+
+type # bug #21483
+   MyObject* = object
+      someString*: string ## This is a string
+      annotated* {.somePragma.}: string ## This is an annotated string
+
+type
+  AnotherObject* = object
+    case x*: bool
+    of true:
+      y*: proc (x: string)
+    of false:
+      hidden: string

@@ -7,6 +7,10 @@ contents thereof.
 
 As said in the Olde Country, `Keepe it Gangster'."""
 
+#[
+xxx remove this? seems mostly duplicate of: tests/manyloc/nake/nake.nim
+]#
+
 import strutils, parseopt, tables, os
 
 type
@@ -60,11 +64,12 @@ when true:
     args.add " "
   quit(shell("nim", "c", "-r", "nakefile.nim", args))
 else:
-  addQuitProc(proc() {.noconv.} =
+  import std/exitprocs
+  addExitProc(proc() {.noconv.} =
     var
       task: string
       printTaskList: bool
-    for kind, key, val in getOpt():
+    for kind, key, val in getopt():
       case kind
       of cmdLongOption, cmdShortOption:
         case key.tolower

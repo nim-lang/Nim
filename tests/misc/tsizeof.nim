@@ -361,6 +361,16 @@ testinstance:
           y: int32
       z: AnotherEnum
 
+    Stack[N: static int, T: object] = object
+      pad: array[128 - sizeof(array[N, ptr T]) - sizeof(int) - sizeof(pointer), byte]
+      stack: array[N, ptr T]
+      len*: int
+      rawMem: ptr array[N, T]
+
+    Stack2[T: object] = object
+      pad: array[128 - sizeof(array[sizeof(T), ptr T]), byte]
+    
+
   const trivialSize = sizeof(TrivialType) # needs to be able to evaluate at compile time
 
   proc main(): void =
@@ -377,6 +387,8 @@ testinstance:
     var po : PaddingOfSetEnum33
     var capo: MyCustomAlignPackedObject
     var issue15516: MyObject
+    var issue12636_1: Stack[5, MyObject]
+    var issue12636_2: Stack2[MyObject]
 
     var
       e1: Enum1
@@ -395,7 +407,7 @@ testinstance:
     else:
       doAssert sizeof(SimpleAlignment) > 10
 
-    testSizeAlignOf(t,a,b,c,d,e,f,g,ro,go,po, e1, e2, e4, e8, eoa, eob, capo, issue15516)
+    testSizeAlignOf(t,a,b,c,d,e,f,g,ro,go,po, e1, e2, e4, e8, eoa, eob, capo, issue15516, issue12636_1, issue12636_2)
 
     type
       WithBitsize {.objectconfig.} = object

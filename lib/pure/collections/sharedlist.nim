@@ -11,10 +11,12 @@
 ##
 ## Unstable API.
 
+{.deprecated.}
+
 {.push stackTrace: off.}
 
 import
-  locks
+  std/locks
 
 const
   ElemsPerNode = 100
@@ -35,8 +37,10 @@ template withLock(t, x: untyped) =
   release(t.lock)
 
 proc iterAndMutate*[A](x: var SharedList[A]; action: proc(x: A): bool) =
-  ## iterates over the list. If 'action' returns true, the
+  ## Iterates over the list. If `action` returns true, the
   ## current item is removed from the list.
+  ##
+  ## .. warning:: It may not preserve the element order after some modifications.
   withLock(x):
     var n = x.head
     while n != nil:
@@ -47,8 +51,9 @@ proc iterAndMutate*[A](x: var SharedList[A]; action: proc(x: A): bool) =
         if action(n.d[i]):
           acquire(x.lock)
           let t = x.tail
+          dec t.dataLen # TODO considering t.dataLen == 0,
+                        # probably the module should be refactored using doubly linked lists
           n.d[i] = t.d[t.dataLen]
-          dec t.dataLen
         else:
           acquire(x.lock)
           inc i
@@ -65,11 +70,14 @@ iterator items*[A](x: var SharedList[A]): A =
 proc add*[A](x: var SharedList[A]; y: A) =
   withLock(x):
     var node: SharedListNode[A]
-    if x.tail == nil or x.tail.dataLen == ElemsPerNode:
-      node = cast[type node](allocShared0(sizeof(node[])))
-      node.next = x.tail
+    if x.tail == nil:
+      node = cast[typeof node](allocShared0(sizeof(node[])))
       x.tail = node
-      if x.head == nil: x.head = node
+      x.head = node
+    elif x.tail.dataLen == ElemsPerNode:
+      node = cast[typeof node](allocShared0(sizeof(node[])))
+      x.tail.next = node
+      x.tail = node
     else:
       node = x.tail
     node.d[node.dataLen] = y

@@ -1,5 +1,5 @@
 discard """
-  cmd: "nim $target --threads:on -d:ssl $options $file"
+  cmd: "nim $target --mm:refc -d:ssl $options $file"
   disabled: "openbsd"
 """
 
@@ -15,7 +15,7 @@ discard """
 
 when not defined(windows):
   # Disabled on Windows due to old OpenSSL version
-
+  import std/[formatfloat, syncio]
   import
     httpclient,
     net,
@@ -101,7 +101,7 @@ when not defined(windows):
       let t = spawn runServer(port)
       sleep(100)
 
-      var client = newHttpClient()
+      var client = newHttpClient(sslContext=newContext(verifyMode=CVerifyNone))
       try:
         log "client: connect"
         discard client.getContent("https://127.0.0.1:12345")
@@ -129,3 +129,19 @@ when not defined(windows):
           msg.contains("certificate verify failed")):
           echo "CVerifyPeer exception: " & msg
           check(false)
+
+    test "HttpClient with CVerifyPeerUseEnvVars":
+      const port = 12346.Port
+      let t = spawn runServer(port)
+      sleep(100)
+
+      putEnv("SSL_CERT_FILE", getCurrentDir() / certFile)
+      var client = newHttpClient(sslContext=newContext(verifyMode=CVerifyPeerUseEnvVars))
+      try:
+        log "client: connect"
+        discard client.getContent("https://127.0.0.1:12346")
+      except:
+        let msg = getCurrentExceptionMsg()
+        log "client: exception: " & msg
+        log "getContent should not have raised an exception"
+        fail()

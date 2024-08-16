@@ -172,3 +172,14 @@ when true: # D20200607T202043
   main2()
 
 
+
+#------------------------------------------------------------
+# Issue #15825
+
+type
+  Union = string | int | char
+
+proc run(a: sink Union) =
+  discard
+
+run("123")

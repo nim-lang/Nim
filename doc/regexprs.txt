@@ -47,16 +47,18 @@ full documentation of Perl's regular expressions.
 Because the backslash ``\`` is a meta character both in the Nim
 programming language and in regular expressions, it is strongly
 recommended that one uses the *raw* strings of Nim, so that
-backslashes are interpreted by the regular expression engine::
+backslashes are interpreted by the regular expression engine:
 
+```nim
   r"\S"  # matches any character that is not whitespace
+```
 
 A regular expression is a pattern that is matched against a subject string
 from left to right. Most characters stand for themselves in a pattern, and
 match the corresponding characters in the subject. As a trivial example,
-the pattern::
+the pattern:
 
-  The quick brown fox
+    The quick brown fox
 
 matches a portion of a subject string that is identical to itself.
 The power of regular expressions comes from the ability to include
@@ -128,7 +130,7 @@ in patterns in a visible manner. There is no restriction on the appearance of
 non-printing characters, apart from the binary zero that terminates a pattern,
 but when a pattern is being prepared by text editing, it is usually easier to
 use one of the following escape sequences than the binary character it
-represents::
+represents:
 
 ==============     ============================================================
 character          meaning
@@ -146,7 +148,7 @@ character          meaning
 After ``\x``, from zero to two hexadecimal digits are read (letters can be in
 upper or lower case). In UTF-8 mode, any number of hexadecimal digits may
 appear between ``\x{`` and ``}``, but the value of the character code must be
-less than 2**31 (that is, the maximum hexadecimal value is 7FFFFFFF). If
+less than 2^31 (that is, the maximum hexadecimal value is 7FFFFFFF). If
 characters other than hexadecimal digits appear between ``\x{`` and ``}``, or
 if there is no terminating ``}``, this form of escape is not recognized.
 Instead, the initial ``\x`` will be interpreted as a basic hexadecimal escape,
@@ -224,7 +226,7 @@ current matching point is at the end of the subject string, all of them fail,
 since there is no character to match.
 
 For compatibility with Perl, ``\s`` does not match the VT character (code 11).
-This makes it different from the the POSIX "space" class. The ``\s`` characters
+This makes it different from the POSIX "space" class. The ``\s`` characters
 are HT (9), LF (10), FF (12), CR (13), and space (32).
 
 A "word" character is an underscore or any character less than 256 that is
@@ -244,7 +246,7 @@ The fourth use of backslash is for certain `simple assertions`:idx:. An
 assertion specifies a condition that has to be met at a particular point in
 a match, without consuming any characters from the subject string. The use of
 subpatterns for more complicated assertions is described below. The
-backslashed assertions are::
+backslashed assertions are:
 
 ==============     ============================================================
 assertion          meaning

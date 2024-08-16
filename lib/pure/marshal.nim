@@ -10,7 +10,7 @@
 ## This module contains procs for `serialization`:idx: and `deserialization`:idx:
 ## of arbitrary Nim data structures. The serialization format uses `JSON`:idx:.
 ##
-## **Restriction**: For objects their type is **not** serialized. This means
+## **Restriction:** For objects, their type is **not** serialized. This means
 ## essentially that it does not work if the object has some other runtime
 ## type than its compiletime type.
 ##
@@ -18,31 +18,24 @@
 ## Basic usage
 ## ===========
 ##
-## .. code-block:: nim
-##
-##   type
-##     A = object of RootObj
-##     B = object of A
-##       f: int
-##
-##   var
-##     a: ref A
-##     b: ref B
-##
-##   new(b)
-##   a = b
-##   echo($$a[]) # produces "{}", not "{f: 0}"
-##
-##   # unmarshal
-##   let c = to[B]("""{"f": 2}""")
-##   assert typeof(c) is B
-##   assert c.f == 2
-##
-##   # marshal
-##   let s = $$c
-##   assert s == """{"f": 2}"""
-##
-## **Note**: The ``to`` and ``$$`` operations are available at compile-time!
+runnableExamples:
+  type
+    A = object of RootObj
+    B = object of A
+      f: int
+
+  let a: ref A = new(B)
+  assert $$a[] == "{}" # not "{f: 0}"
+
+  # unmarshal
+  let c = to[B]("""{"f": 2}""")
+  assert typeof(c) is B
+  assert c.f == 2
+
+  # marshal
+  assert $$c == """{"f": 2}"""
+
+## **Note:** The `to` and `$$` operations are available at compile-time!
 ##
 ##
 ## See also
@@ -61,7 +54,10 @@ Please use alternative packages for serialization.
 It is possible to reimplement this module using generics and type traits.
 Please contribute a new implementation.""".}
 
-import streams, typeinfo, json, intsets, tables, unicode
+import std/[streams, typeinfo, json, intsets, tables, unicode]
+
+when defined(nimPreviewSlimSystem):
+  import std/[assertions, formatfloat]
 
 proc ptrToInt(x: pointer): int {.inline.} =
   result = cast[int](x) # don't skip alignment
@@ -170,7 +166,10 @@ proc loadAny(p: var JsonParser, a: Any, t: var Table[BiggestInt, pointer]) =
   of akSequence:
     case p.kind
     of jsonNull:
-      setPointer(a, nil)
+      when defined(nimSeqsV2):
+        invokeNewSeq(a, 0)
+      else:
+        setPointer(a, nil)
       next(p)
     of jsonArrayStart:
       next(p)
@@ -211,7 +210,8 @@ proc loadAny(p: var JsonParser, a: Any, t: var Table[BiggestInt, pointer]) =
       setPointer(a, nil)
       next(p)
     of jsonInt:
-      setPointer(a, t.getOrDefault(p.getInt))
+      var raw = t.getOrDefault(p.getInt)
+      setPointer(a, addr raw)
       next(p)
     of jsonArrayStart:
       next(p)
@@ -237,7 +237,10 @@ proc loadAny(p: var JsonParser, a: Any, t: var Table[BiggestInt, pointer]) =
   of akString:
     case p.kind
     of jsonNull:
-      setPointer(a, nil)
+      when defined(nimSeqsV2):
+        setString(a, "")
+      else:
+        setPointer(a, nil)
       next(p)
     of jsonString:
       setString(a, p.str)
@@ -279,7 +282,8 @@ proc loadAny(s: Stream, a: Any, t: var Table[BiggestInt, pointer]) =
 proc load*[T](s: Stream, data: var T) =
   ## Loads `data` from the stream `s`. Raises `IOError` in case of an error.
   runnableExamples:
-    import marshal, streams
+    import std/streams
+
     var s = newStringStream("[1, 3, 5]")
     var a: array[3, int]
     load(s, a)
@@ -288,10 +292,11 @@ proc load*[T](s: Stream, data: var T) =
   var tab = initTable[BiggestInt, pointer]()
   loadAny(s, toAny(data), tab)
 
-proc store*[T](s: Stream, data: T) =
+proc store*[T](s: Stream, data: sink T) =
   ## Stores `data` into the stream `s`. Raises `IOError` in case of an error.
   runnableExamples:
-    import marshal, streams
+    import std/streams
+
     var s = newStringStream("")
     var a = [1, 3, 5]
     store(s, a)
@@ -300,13 +305,20 @@ proc store*[T](s: Stream, data: T) =
 
   var stored = initIntSet()
   var d: T
-  shallowCopy(d, data)
+  when defined(gcArc) or defined(gcOrc)or defined(gcAtomicArc):
+    d = data
+  else:
+    shallowCopy(d, data)
   storeAny(s, toAny(d), stored)
 
-proc `$$`*[T](x: T): string =
+proc loadVM[T](typ: typedesc[T], x: T): string =
+  discard "the implementation is in the compiler/vmops"
+
+proc `$$`*[T](x: sink T): string =
   ## Returns a string representation of `x` (serialization, marshalling).
   ##
-  ## **Note:** to serialize `x` to JSON use `$(%x)` from the ``json`` module.
+  ## **Note:** to serialize `x` to JSON use `%x` from the `json` module
+  ## or `jsonutils.toJson(x)`.
   runnableExamples:
     type
       Foo = object
@@ -317,15 +329,24 @@ proc `$$`*[T](x: T): string =
     let y = $$x
     assert y == """{"id": 1, "bar": "baz"}"""
 
-  var stored = initIntSet()
-  var d: T
-  shallowCopy(d, x)
-  var s = newStringStream()
-  storeAny(s, toAny(d), stored)
-  result = s.data
+  when nimvm:
+    result = loadVM(T, x)
+  else:
+    var stored = initIntSet()
+    var d: T
+    when defined(gcArc) or defined(gcOrc) or defined(gcAtomicArc):
+      d = x
+    else:
+      shallowCopy(d, x)
+    var s = newStringStream()
+    storeAny(s, toAny(d), stored)
+    result = s.data
+
+proc toVM[T](typ: typedesc[T], data: string): T =
+  discard "the implementation is in the compiler/vmops"
 
 proc to*[T](data: string): T =
-  ## Reads data and transforms it to a type ``T`` (deserialization, unmarshalling).
+  ## Reads data and transforms it to a type `T` (deserialization, unmarshalling).
   runnableExamples:
     type
       Foo = object
@@ -339,79 +360,8 @@ proc to*[T](data: string): T =
     assert z.id == 1
     assert z.bar == "baz"
 
-  var tab = initTable[BiggestInt, pointer]()
-  loadAny(newStringStream(data), toAny(result), tab)
-
-
-when not defined(testing) and isMainModule:
-  template testit(x: untyped) = echo($$to[typeof(x)]($$x))
-
-  var x: array[0..4, array[0..4, string]] = [
-    ["test", "1", "2", "3", "4"], ["test", "1", "2", "3", "4"],
-    ["test", "1", "2", "3", "4"], ["test", "1", "2", "3", "4"],
-    ["test", "1", "2", "3", "4"]]
-  testit(x)
-  var test2: tuple[name: string, s: uint] = ("tuple test", 56u)
-  testit(test2)
-
-  type
-    TE = enum
-      blah, blah2
-
-    TestObj = object
-      test, asd: int
-      case test2: TE
-      of blah:
-        help: string
-      else:
-        nil
-
-    PNode = ref Node
-    Node = object
-      next, prev: PNode
-      data: string
-
-  proc buildList(): PNode =
-    new(result)
-    new(result.next)
-    new(result.prev)
-    result.data = "middle"
-    result.next.data = "next"
-    result.prev.data = "prev"
-    result.next.next = result.prev
-    result.next.prev = result
-    result.prev.next = result
-    result.prev.prev = result.next
-
-  var test3: TestObj
-  test3.test = 42
-  test3 = TestObj(test2: blah)
-  testit(test3)
-
-  var test4: ref tuple[a, b: string]
-  new(test4)
-  test4.a = "ref string test: A"
-  test4.b = "ref string test: B"
-  testit(test4)
-
-  var test5 = @[(0, 1), (2, 3), (4, 5)]
-  testit(test5)
-
-  var test6: set[char] = {'A'..'Z', '_'}
-  testit(test6)
-
-  var test7 = buildList()
-  echo($$test7)
-  testit(test7)
-
-  type
-    A {.inheritable.} = object
-    B = object of A
-      f: int
-
-  var
-    a: ref A
-    b: ref B
-  new(b)
-  a = b
-  echo($$a[]) # produces "{}", not "{f: 0}"
+  when nimvm:
+    result = toVM(T, data)
+  else:
+    var tab = initTable[BiggestInt, pointer]()
+    loadAny(newStringStream(data), toAny(result), tab)

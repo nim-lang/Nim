@@ -7,6 +7,7 @@
 #
 
 # "Stack GC" for embedded devices or ultra performance requirements.
+import std/private/syslocks
 
 when defined(memProfiler):
   proc nimProfile(requestedSize: int) {.benign.}
@@ -87,8 +88,8 @@ type
     region: ptr MemRegion
 
 var
-  tlRegion {.threadVar.}: MemRegion
-#  tempStrRegion {.threadVar.}: MemRegion  # not yet used
+  tlRegion {.threadvar.}: MemRegion
+#  tempStrRegion {.threadvar.}: MemRegion  # not yet used
 
 template withRegion*(r: var MemRegion; body: untyped) =
   let oldRegion = tlRegion
@@ -437,5 +438,5 @@ proc getTotalMem*(r: MemRegion): int =
 
 proc nimGC_setStackBottom(theStackBottom: pointer) = discard
 
-proc nimGCref(x: pointer) {.compilerProc.} = discard
-proc nimGCunref(x: pointer) {.compilerProc.} = discard
+proc nimGCref(x: pointer) {.compilerproc.} = discard
+proc nimGCunref(x: pointer) {.compilerproc.} = discard

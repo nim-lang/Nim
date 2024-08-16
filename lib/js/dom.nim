@@ -9,16 +9,46 @@
 
 ## Declaration of the Document Object Model for the `JavaScript backend
 ## <backends.html#backends-the-javascript-target>`_.
+##
+##
+## Document Ready
+## --------------
+##
+## * Basic example of a document ready:
+runnableExamples"-b:js -r:off":
+  proc example(e: Event) = echo "Document is ready"
+  document.addEventListener("DOMContentLoaded", example)  # You can also use "load" event.
+## * This example runs 5 seconds after the document ready:
+runnableExamples"-b:js -r:off":
+  proc example() = echo "5 seconds after document ready"
+  proc domReady(e: Event) = discard setTimeout(example, 5_000) # Document is ready.
+  document.addEventListener("DOMContentLoaded", domReady)
+## Document onUnload
+## -----------------
+##
+## * Simple example of how to implement code that runs when the page unloads:
+runnableExamples"-b:js -r:off":
+  proc example(e: Event) = echo "Document is unloaded"
+  document.addEventListener("unload", example)  # You can also use "beforeunload".
+## Document Autorefresh
+## --------------------
+##
+## * Minimal example of a document autorefresh:
+runnableExamples"-b:js -r:off":
+  proc example() = window.location.reload()
+  discard setTimeout(example, 5_000)
+## - For more examples, see https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/addEventListener
+
+
 import std/private/since
-when not defined(js) and not defined(Nimdoc):
+when not defined(js):
   {.error: "This module only works on the JavaScript platform".}
 
 const
   DomApiVersion* = 3 ## the version of DOM API we try to follow. No guarantees though.
 
 type
-  EventTarget* = ref EventTargetObj
-  EventTargetObj {.importc.} = object of RootObj
+  EventTarget* {.importc.} = ref object of RootObj
     onabort*: proc (event: Event) {.closure.}
     onblur*: proc (event: Event) {.closure.}
     onchange*: proc (event: Event) {.closure.}
@@ -37,6 +67,7 @@ type
     onmouseup*: proc (event: Event) {.closure.}
     onreset*: proc (event: Event) {.closure.}
     onselect*: proc (event: Event) {.closure.}
+    onstorage*: proc (event: Event) {.closure.}
     onsubmit*: proc (event: Event) {.closure.}
     onunload*: proc (event: Event) {.closure.}
     onloadstart*: proc (event: Event) {.closure.}
@@ -72,6 +103,7 @@ type
     Resize = "resize",
     Scroll = "scroll",
     Select = "select",
+    Storage = "storage",
     Unload = "unload",
     Wheel = "wheel"
 
@@ -107,7 +139,7 @@ type
     timing*: PerformanceTiming
 
   Range* {.importc.} = ref object
-    ## see `docs{https://developer.mozilla.org/en-US/docs/Web/API/Range}`_
+    ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/Range>`_
     collapsed*: bool
     commonAncestorContainer*: Node
     endContainer*: Node
@@ -125,10 +157,9 @@ type
     rangeCount*: int
     `type`*: cstring
 
-  LocalStorage* {.importc.} = ref object
+  Storage* {.importc.} = ref object
 
-  Window* = ref WindowObj
-  WindowObj {.importc.} = object of EventTargetObj
+  Window* {.importc.} = ref object of EventTarget
     document*: Document
     event*: Event
     history*: History
@@ -153,13 +184,13 @@ type
     screen*: Screen
     performance*: Performance
     onpopstate*: proc (event: Event)
-    localStorage*: LocalStorage
+    localStorage*: Storage
+    sessionStorage*: Storage
+    parent*: Window
 
-  Frame* = ref FrameObj
-  FrameObj {.importc.} = object of WindowObj
+  Frame* {.importc.} = ref object of Window
 
-  ClassList* = ref ClassListObj
-  ClassListObj {.importc.} = object of RootObj
+  ClassList* {.importc.} = ref object of RootObj
 
   NodeType* = enum
     ElementNode = 1,
@@ -175,8 +206,7 @@ type
     DocumentFragmentNode,
     NotationNode
 
-  Node* = ref NodeObj
-  NodeObj {.importc.} = object of EventTargetObj
+  Node* {.importc.} = ref object of EventTarget
     attributes*: seq[Node]
     childNodes*: seq[Node]
     children*: seq[Node]
@@ -200,9 +230,9 @@ type
     parentElement*: Element
     isConnected*: bool
 
-  Document* = ref DocumentObj
-  DocumentObj {.importc.} = object of NodeObj
+  Document* {.importc.} = ref object of Node
     activeElement*: Element
+    documentElement*: Element
     alinkColor*: cstring
     bgColor*: cstring
     body*: Element
@@ -211,11 +241,13 @@ type
     defaultCharset*: cstring
     fgColor*: cstring
     head*: Element
+    hidden*: bool
     lastModified*: cstring
     linkColor*: cstring
     referrer*: cstring
     title*: cstring
     URL*: cstring
+    visibilityState*: cstring
     vlinkColor*: cstring
     anchors*: seq[AnchorElement]
     forms*: seq[FormElement]
@@ -225,8 +257,7 @@ type
     links*: seq[LinkElement]
     fonts*: FontFaceSet
 
-  Element* = ref ElementObj
-  ElementObj {.importc.} = object of NodeObj
+  Element* {.importc.} = ref object of Node
     className*: cstring
     classList*: ClassList
     checked*: bool
@@ -247,8 +278,7 @@ type
     offsetLeft*: int
     offsetTop*: int
 
-  ValidityState* = ref ValidityStateObj ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/ValidityState>`_
-  ValidityStateObj {.importc.} = object
+  ValidityState* {.importc.} = ref object ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/ValidityState>`_
     badInput*: bool
     customError*: bool
     patternMismatch*: bool
@@ -261,25 +291,21 @@ type
     valid*: bool
     valueMissing*: bool
 
-  Blob* = ref BlobObj ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/Blob>`_
-  BlobObj {.importc.} = object of RootObj
+  Blob* {.importc.} = ref object of RootObj ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/Blob>`_
     size*: int
     `type`*: cstring
 
-  File* = ref FileObj ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/File>`_
-  FileObj {.importc.} = object of Blob
+  File* {.importc.} = ref object of Blob ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/File>`_
     lastModified*: int
     name*: cstring
 
-  TextAreaElement* = ref TextAreaElementObj ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/HTMLTextAreaElement>`_
-  TextAreaElementObj {.importc.} = object of Element
+  TextAreaElement* {.importc.} = ref object of Element ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/HTMLTextAreaElement>`_
     value*: cstring
     selectionStart*, selectionEnd*: int
     selectionDirection*: cstring
     rows*, cols*: int
 
-  InputElement* = ref InputElementObj ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/HTMLInputElement>`_
-  InputElementObj {.importc.} = object of Element
+  InputElement* {.importc.} = ref object of Element ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/HTMLInputElement>`_
     # Properties related to the parent form
     formAction*: cstring
     formEncType*: cstring
@@ -331,15 +357,13 @@ type
     valueAsDate*: cstring
     valueAsNumber*: float
 
-  LinkElement* = ref LinkObj
-  LinkObj {.importc.} = object of ElementObj
+  LinkElement* {.importc.} = ref object of Element
     target*: cstring
     text*: cstring
     x*: int
     y*: int
 
-  EmbedElement* = ref EmbedObj
-  EmbedObj {.importc.} = object of ElementObj
+  EmbedElement* {.importc.} = ref object of Element
     height*: int
     hspace*: int
     src*: cstring
@@ -347,21 +371,18 @@ type
     `type`*: cstring
     vspace*: int
 
-  AnchorElement* = ref AnchorObj
-  AnchorObj {.importc.} = object of ElementObj
+  AnchorElement* {.importc.} = ref object of Element
     text*: cstring
     x*, y*: int
 
-  OptionElement* = ref OptionObj
-  OptionObj {.importc.} = object of ElementObj
+  OptionElement* {.importc.} = ref object of Element
     defaultSelected*: bool
     selected*: bool
     selectedIndex*: int
     text*: cstring
     value*: cstring
 
-  FormElement* = ref FormObj ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/HTMLFormElement>`_
-  FormObj {.importc.} = object of ElementObj
+  FormElement* {.importc.} = ref object of Element ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/HTMLFormElement>`_
     acceptCharset*: cstring
     action*: cstring
     autocomplete*: cstring
@@ -373,8 +394,7 @@ type
     noValidate*: bool
     target*: cstring
 
-  ImageElement* = ref ImageObj
-  ImageObj {.importc.} = object of ElementObj
+  ImageElement* {.importc.} = ref object of Element
     border*: int
     complete*: bool
     height*: int
@@ -384,8 +404,7 @@ type
     vspace*: int
     width*: int
 
-  Style* = ref StyleObj
-  StyleObj {.importc.} = object of RootObj
+  Style* {.importc.} = ref object of RootObj
     alignContent*: cstring
     alignItems*: cstring
     alignSelf*: cstring
@@ -761,8 +780,7 @@ type
     AtTarget,
     BubblingPhase
 
-  Event* = ref EventObj ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/Event>`_
-  EventObj {.importc.} = object of RootObj
+  Event* {.importc.} = ref object of RootObj ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/Event>`_
     bubbles*: bool
     cancelBubble*: bool
     cancelable*: bool
@@ -774,13 +792,11 @@ type
     `type`*: cstring
     isTrusted*: bool
 
-  UIEvent* = ref UIEventObj ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/UIEvent>`_
-  UIEventObj {.importc.} = object of Event
+  UIEvent* {.importc.} = ref object of Event ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/UIEvent>`_
     detail*: int64
     view*: Window
 
-  KeyboardEvent* = ref KeyboardEventObj ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent>`_
-  KeyboardEventObj {.importc.} = object of UIEvent
+  KeyboardEvent* {.importc.} = ref object of UIEvent ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent>`_
     altKey*, ctrlKey*, metaKey*, shiftKey*: bool
     code*: cstring
     isComposing*: bool
@@ -1142,8 +1158,7 @@ type
     FourthButton = 8,
     FifthButton = 16
 
-  MouseEvent* = ref MouseEventObj ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/MouseEvent>`_
-  MouseEventObj {.importc.} = object of UIEvent
+  MouseEvent* {.importc.} = ref object of UIEvent ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/MouseEvent>`_
     altKey*, ctrlKey*, metaKey*, shiftKey*: bool
     button*: int
     buttons*: int
@@ -1160,13 +1175,11 @@ type
     File = "file",
     String = "string"
 
-  DataTransferItem* = ref DataTransferItemObj ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/DataTransferItem>`_
-  DataTransferItemObj {.importc.} = object of RootObj
+  DataTransferItem* {.importc.} = ref object of RootObj ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/DataTransferItem>`_
     kind*: cstring
     `type`*: cstring
 
-  DataTransfer* = ref DataTransferObj ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/DataTransfer>`_
-  DataTransferObj {.importc.} = object of RootObj
+  DataTransfer* {.importc.} = ref object of RootObj ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/DataTransfer>`_
     dropEffect*: cstring
     effectAllowed*: cstring
     files*: seq[Element]
@@ -1208,11 +1221,16 @@ type
     ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/ClipboardEvent>`_
     clipboardData*: DataTransfer
 
+  StorageEvent* {.importc.} = ref object of Event ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/StorageEvent>`_
+    key*: cstring
+    newValue*, oldValue*: cstring
+    storageArea*: Storage
+    url*: cstring
+
   TouchList* {.importc.} = ref object of RootObj
     length*: int
 
-  Touch* = ref TouchObj
-  TouchObj {.importc.} = object of RootObj
+  Touch* {.importc.} = ref object of RootObj
     identifier*: int
     screenX*, screenY*, clientX*, clientY*, pageX*, pageY*: int
     target*: Element
@@ -1220,12 +1238,10 @@ type
     rotationAngle*: int
     force*: float
 
-  TouchEvent* = ref TouchEventObj
-  TouchEventObj {.importc.} = object of UIEvent
+  TouchEvent* {.importc.} = ref object of UIEvent
     changedTouches*, targetTouches*, touches*: seq[Touch]
 
-  Location* = ref LocationObj
-  LocationObj {.importc.} = object of RootObj
+  Location* {.importc.} = ref object of RootObj
     hash*: cstring
     host*: cstring
     hostname*: cstring
@@ -1236,12 +1252,10 @@ type
     search*: cstring
     origin*: cstring
 
-  History* = ref HistoryObj
-  HistoryObj {.importc.} = object of RootObj
+  History* {.importc.} = ref object of RootObj
     length*: int
 
-  Navigator* = ref NavigatorObj
-  NavigatorObj {.importc.} = object of RootObj
+  Navigator* {.importc.} = ref object of RootObj
     appCodeName*: cstring
     appName*: cstring
     appVersion*: cstring
@@ -1279,8 +1293,7 @@ type
   ToolBar* = LocationBar
   StatusBar* = LocationBar
 
-  Screen = ref ScreenObj
-  ScreenObj {.importc.} = object of RootObj
+  Screen* {.importc.} = ref object of RootObj
     availHeight*: int
     availWidth*: int
     colorDepth*: int
@@ -1289,7 +1302,7 @@ type
     width*: int
 
   TimeOut* {.importc.} = ref object of RootObj
-  Interval* {.importc.} = object of RootObj
+  Interval* {.importc.} = ref object of RootObj
 
   AddEventListenerOptions* = object
     capture*: bool
@@ -1305,32 +1318,38 @@ type
     ready*: FontFaceSetReady
     onloadingdone*: proc(event: Event)
 
+  ScrollIntoViewOptions* = object
+    behavior*: cstring
+    `block`*: cstring
+    inline*: cstring
+
+  MediaQueryList* {.importc.} = ref object of EventTarget
+    matches*: bool
+    media*: cstring
+
 since (1, 3):
   type
     DomParser* = ref object
       ## DOM Parser object (defined on browser only, may not be on NodeJS).
       ## * https://developer.mozilla.org/en-US/docs/Web/API/DOMParser
       ##
-      ## .. code-block:: nim
+      ##   ```nim
       ##   let prsr = newDomParser()
       ##   discard prsr.parseFromString("<html><marquee>Hello World</marquee></html>".cstring, "text/html".cstring)
+      ##   ```
 
-    DomException* = ref DOMExceptionObj
+    DomException* {.importc.} = ref object
       ## The DOMException interface represents an abnormal event (called an exception)
       ## which occurs as a result of calling a method or accessing a property of a web API.
       ## Each exception has a name, which is a short "CamelCase" style string identifying
       ## the error or abnormal condition.
       ## https://developer.mozilla.org/en-US/docs/Web/API/DOMException
 
-    DOMExceptionObj {.importc.} = object
-
-    FileReader* = ref FileReaderObj
+    FileReader* {.importc.} = ref object of EventTarget
       ## The FileReader object lets web applications asynchronously read the contents of files
       ## (or raw data buffers) stored on the user's computer, using File or Blob objects to specify
       ## the file or data to read.
       ## https://developer.mozilla.org/en-US/docs/Web/API/FileReader
-
-    FileReaderObj {.importc.} = object of EventTargetObj
 
     FileReaderState* = distinct range[0'u16..2'u16]
     RootNodeOptions* = object of RootObj
@@ -1338,8 +1357,7 @@ since (1, 3):
     DocumentOrShadowRoot* {.importc.} = object of RootObj
       activeElement*: Element
       # styleSheets*: StyleSheetList
-    ShadowRoot* = ref ShadowRootObj
-    ShadowRootObj {.importc.} = object of DocumentOrShadowRoot
+    ShadowRoot* {.importc.} = ref object of DocumentOrShadowRoot
       delegatesFocus*: bool
       host*: Element
       innerHTML*: cstring
@@ -1348,8 +1366,7 @@ since (1, 3):
       mode*: cstring
       delegatesFocus*: bool
 
-    HTMLSlotElement* = ref HTMLSlotElementObj
-    HTMLSlotElementObj {.importc.} = object of RootObj
+    HTMLSlotElement* {.importc.} = ref object of RootObj
       name*: cstring
     SlotOptions* = object of RootObj
       flatten*: bool
@@ -1366,6 +1383,9 @@ proc `class=`*(n: Node; v: cstring) {.importcpp: "#.className = #", nodecl.}
 
 proc value*(n: Node): cstring {.importcpp: "#.value", nodecl.}
 proc `value=`*(n: Node; v: cstring) {.importcpp: "#.value = #", nodecl.}
+
+proc checked*(n: Node): bool {.importcpp: "#.checked", nodecl.}
+proc `checked=`*(n: Node; v: bool) {.importcpp: "#.checked = #", nodecl.}
 
 proc `disabled=`*(n: Node; v: bool) {.importcpp: "#.disabled = #", nodecl.}
 
@@ -1403,7 +1423,7 @@ when defined(nodejs):
         parent.childNodes[i] = newNode
         return
       inc i
-    doAssert false, "old node not in node list"
+    raiseAssert "old node not in node list"
 
   proc removeChild*(parent, child: Node) =
     child.parentNode = nil
@@ -1413,7 +1433,7 @@ when defined(nodejs):
         parent.childNodes.delete(i)
         return
       inc i
-    doAssert false, "old node not in node list"
+    raiseAssert "old node not in node list"
 
   proc insertBefore*(parent, newNode, before: Node) =
     appendChild(parent, newNode)
@@ -1425,7 +1445,7 @@ when defined(nodejs):
         parent.childNodes[i-1] = newNode
         return
       inc i
-    #doAssert false, "before not in node list"
+    #raiseAssert "before not in node list"
 
   proc createElement*(d: Document, identifier: cstring): Element =
     new(result)
@@ -1455,11 +1475,14 @@ else:
   proc insertBefore*(n, newNode, before: Node) {.importcpp.}
   proc getElementById*(d: Document, id: cstring): Element {.importcpp.}
   proc createElement*(d: Document, identifier: cstring): Element {.importcpp.}
+  proc createElementNS*(d: Document, namespaceURI, qualifiedIdentifier: cstring): Element {.importcpp.}
   proc createTextNode*(d: Document, identifier: cstring): Node {.importcpp.}
   proc createComment*(d: Document, data: cstring): Node {.importcpp.}
 
-proc setTimeout*(action: proc(); ms: int): Timeout {.importc, nodecl.}
-proc clearTimeout*(t: Timeout) {.importc, nodecl.}
+proc setTimeout*(action: proc(); ms: int): TimeOut {.importc, nodecl.}
+proc clearTimeout*(t: TimeOut) {.importc, nodecl.}
+proc setInterval*(action: proc(); ms: int): Interval {.importc, nodecl.}
+proc clearInterval*(i: Interval) {.importc, nodecl.}
 
 {.push importcpp.}
 
@@ -1473,17 +1496,19 @@ proc removeEventListener*(et: EventTarget; ev: cstring; cb: proc(ev: Event))
 proc alert*(w: Window, msg: cstring)
 proc back*(w: Window)
 proc blur*(w: Window)
-proc clearInterval*(w: Window, interval: ref Interval)
-proc clearTimeout*(w: Window, timeout: ref TimeOut)
+proc clearInterval*(w: Window, interval: Interval)
+proc clearTimeout*(w: Window, timeout: TimeOut)
 proc close*(w: Window)
 proc confirm*(w: Window, msg: cstring): bool
 proc disableExternalCapture*(w: Window)
 proc enableExternalCapture*(w: Window)
 proc find*(w: Window, text: cstring, caseSensitive = false,
-           backwards = false)
+           backwards = false): bool
 proc focus*(w: Window)
 proc forward*(w: Window)
-proc getComputedStyle*(w: Window, e: Node, pe:Node = nil): Style
+proc getComputedStyle*(w: Window, e: Node, pe: Node = nil): Style
+  ## .. warning:: The returned Style may or may not be read-only at run-time in the browser. getComputedStyle is performance costly.
+
 proc handleEvent*(w: Window, e: Event)
 proc home*(w: Window)
 proc moveBy*(w: Window, x, y: int)
@@ -1497,13 +1522,14 @@ proc resizeTo*(w: Window, x, y: int)
 proc routeEvent*(w: Window, event: Event)
 proc scrollBy*(w: Window, x, y: int)
 proc scrollTo*(w: Window, x, y: int)
-proc setInterval*(w: Window, code: cstring, pause: int): ref Interval
-proc setInterval*(w: Window, function: proc (), pause: int): ref Interval
-proc setTimeout*(w: Window, code: cstring, pause: int): ref TimeOut
-proc setTimeout*(w: Window, function: proc (), pause: int): ref Interval
+proc setInterval*(w: Window, code: cstring, pause: int): Interval
+proc setInterval*(w: Window, function: proc (), pause: int): Interval
+proc setTimeout*(w: Window, code: cstring, pause: int): TimeOut
+proc setTimeout*(w: Window, function: proc (), pause: int): Interval
 proc stop*(w: Window)
 proc requestAnimationFrame*(w: Window, function: proc (time: float)): int
 proc cancelAnimationFrame*(w: Window, id: int)
+proc matchMedia*(w: Window, mediaQueryString: cstring): MediaQueryList
 
 # Node "methods"
 proc appendData*(n: Node, data: cstring)
@@ -1520,6 +1546,7 @@ proc removeAttribute*(n: Node, attr: cstring)
 proc removeAttributeNode*(n, attr: Node)
 proc replaceData*(n: Node, start, len: int, text: cstring)
 proc scrollIntoView*(n: Node)
+proc scrollIntoView*(n: Node, options: ScrollIntoViewOptions)
 proc setAttribute*(n: Node, name, value: cstring)
 proc setAttributeNode*(n: Node, attr: Node)
 proc querySelector*(n: Node, selectors: cstring): Element
@@ -1628,7 +1655,7 @@ proc item*(list: TouchList, i: int): Touch
 proc clearData*(dt: DataTransfer, format: cstring)
 proc getData*(dt: DataTransfer, format: cstring): cstring
 proc setData*(dt: DataTransfer, format: cstring, data: cstring)
-proc setDragImage*(dt: DataTransfer, img: Element, xOffset: int64, yOffset: int64)
+proc setDragImage*(dt: DataTransfer, img: Element, xOffset: int, yOffset: int)
 
 # DataTransferItem "methods"
 proc getAsFile*(dti: DataTransferItem): File
@@ -1652,12 +1679,11 @@ proc getRangeAt*(s: Selection, index: int): Range
 converter toString*(s: Selection): cstring
 proc `$`*(s: Selection): string = $(s.toString())
 
-# LocalStorage "methods"
-proc getItem*(ls: LocalStorage, key: cstring): cstring
-proc setItem*(ls: LocalStorage, key, value: cstring)
-proc hasItem*(ls: LocalStorage, key: cstring): bool
-proc clear*(ls: LocalStorage)
-proc removeItem*(ls: LocalStorage, key: cstring)
+# Storage "methods"
+proc getItem*(s: Storage, key: cstring): cstring
+proc setItem*(s: Storage, key, value: cstring)
+proc clear*(s: Storage)
+proc removeItem*(s: Storage, key: cstring)
 
 {.pop.}
 
@@ -1681,6 +1707,7 @@ proc decodeURIComponent*(uri: cstring): cstring {.importc, nodecl.}
 proc encodeURIComponent*(uri: cstring): cstring {.importc, nodecl.}
 proc isFinite*(x: BiggestFloat): bool {.importc, nodecl.}
 proc isNaN*(x: BiggestFloat): bool {.importc, nodecl.}
+  ## see also `math.isNaN`.
 
 proc newEvent*(name: cstring): Event {.importcpp: "new Event(@)", constructor.}
 
@@ -1716,9 +1743,9 @@ proc offsetTop*(e: Node): int {.importcpp: "#.offsetTop", nodecl.}
 proc offsetLeft*(e: Node): int {.importcpp: "#.offsetLeft", nodecl.}
 
 since (1, 3):
-  func newDomParser*(): DOMParser {.importcpp: "new DOMParser()".}
+  func newDomParser*(): DomParser {.importcpp: "new DOMParser()".}
     ## DOM Parser constructor.
-  func parseFromString*(this: DOMParser; str: cstring; mimeType: cstring): Document {.importcpp.}
+  func parseFromString*(this: DomParser; str: cstring; mimeType: cstring): Document {.importcpp.}
     ## Parse from string to `Document`.
 
   proc newDomException*(): DomException {.importcpp: "new DomException()", constructor.}
@@ -1730,7 +1757,7 @@ since (1, 3):
 
   proc newFileReader*(): FileReader {.importcpp: "new FileReader()", constructor.}
     ## File Reader constructor
-  proc error*(f: FileReader): DOMException {.importcpp: "#.error", nodecl.}
+  proc error*(f: FileReader): DomException {.importcpp: "#.error", nodecl.}
     ## https://developer.mozilla.org/en-US/docs/Web/API/FileReader/error
   proc readyState*(f: FileReader): FileReaderState {.importcpp: "#.readyState", nodecl.}
     ## https://developer.mozilla.org/en-US/docs/Web/API/FileReader/readyState
@@ -1742,5 +1769,73 @@ since (1, 3):
     ## https://developer.mozilla.org/en-US/docs/Web/API/FileReader/readAsBinaryString
   proc readAsDataURL*(f: FileReader, b: Blob) {.importcpp: "#.readAsDataURL(#)".}
     ## https://developer.mozilla.org/en-US/docs/Web/API/FileReader/readAsDataURL
-  proc readAsText*(f: FileReader, b: Blob, encoding = cstring"UTF-8") {.importcpp: "#.readAsText(#, #)".}
+  proc readAsText*(f: FileReader, b: Blob|File, encoding = cstring"UTF-8") {.importcpp: "#.readAsText(#, #)".}
     ## https://developer.mozilla.org/en-US/docs/Web/API/FileReader/readAsText
+
+since (1, 5):
+  proc elementsFromPoint*(n: DocumentOrShadowRoot; x, y: float): seq[Element] {.importcpp.}
+
+
+since (1, 7):
+
+  proc insertAdjacentText*(self: Node; position, data: cstring) {.importjs: "#.$1(#, #)".}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/Element/insertAdjacentText
+
+  proc insertAdjacentElement*(self: Node; position: cstring; element: Node) {.importjs: "#.$1(#, #)".}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/Element/insertAdjacentElement
+
+  proc insertAdjacentHTML*(self: Node; position, html: cstring) {.importjs: "#.$1(#, #)".}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/Element/insertAdjacentHTML
+
+  proc after*(self: Node; element: Node): Node {.importjs: "#.$1(@)", varargs.}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/Element/after
+
+  proc before*(self: Node; element: Node): Node {.importjs: "#.$1(@)", varargs.}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/Element/before
+
+  proc append*(self: Node; element: Node): Node {.importjs: "#.$1(@)", varargs.}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/Element/append
+
+  proc closest*(self: Node; cssSelector: cstring): Node {.importjs: "#.$1(#)".}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/Element/closest
+
+  proc hasAttributeNS*(self: Node; namespace, localName: cstring): bool {.importjs: "(#.$1(#, #) || false)".}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/Element/hasAttributeNS
+
+  proc removeAttributeNS*(self: Node; namespace, attributeName: cstring) {.importjs: "#.$1(#, #)".}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/Element/removeAttributeNS
+
+  proc hasPointerCapture*(self: Node; pointerId: SomeNumber): bool {.importjs: "(#.$1(#) || false)".}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/Element/hasPointerCapture
+
+  proc releasePointerCapture*(self: Node; pointerId: SomeNumber) {.importjs: "#.$1(#)".}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/Element/releasePointerCapture
+
+  proc requestPointerLock*(self: Node) {.importjs: "#.$1()".}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/Element/requestPointerLock
+
+  proc replaceChildren*(self: Node; replacements: Node) {.importjs: "#.$1(@)", varargs.}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/Element/replaceChildren
+
+  proc replaceWith*(self: Node; replacements: Node) {.importjs: "#.$1(@)", varargs.}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/Element/replaceWith
+
+  proc scrollIntoViewIfNeeded*(self: Node; centerIfNeeded: bool) {.importjs: "#.$1(#)".}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/Element/scrollIntoViewIfNeeded
+
+  proc setHTML*(self: Node; html: cstring) {.importjs: "#.$1(#)".}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/Element/setHTML
+
+  proc toggleAttribute*(self: Node; name: cstring; force = false): bool {.importjs: "(#.$1(#, #) || false)".}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/Element/toggleAttribute
+
+  proc matches*(self: Node; cssSelector: cstring): bool {.importjs: "(#.$1(#) || false)".}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/Element/matches
+
+
+since (2, 1):
+  type VisualViewport* {.importc.} = ref object of EventTarget
+    offsetLeft*, offsetTop*, pageLeft*, pageTop*, width*, height*, scale*: float
+    onResize*, onScroll*: proc (event: Event) {.closure.}
+
+  func visualViewport*(self: Window): VisualViewport {.importjs: "#.$1", nodecl.}

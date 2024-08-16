@@ -9,8 +9,14 @@
 
 ## Implements some helper procs for Nimble (Nim's package manager) support.
 
-import parseutils, strutils, strtabs, os, options, msgs, sequtils,
-  lineinfos, pathutils
+import options, msgs, lineinfos, pathutils
+
+import std/[parseutils, strutils, os, tables, sequtils]
+
+when defined(nimPreviewSlimSystem):
+  import std/[syncio, assertions]
+
+import ../dist/checksums/src/checksums/sha1
 
 proc addPath*(conf: ConfigRef; path: AbsoluteDir, info: TLineInfo) =
   if not conf.searchPaths.contains(path):
@@ -18,6 +24,7 @@ proc addPath*(conf: ConfigRef; path: AbsoluteDir, info: TLineInfo) =
 
 type
   Version* = distinct string
+  PackageInfo = Table[string, tuple[version, checksum: string]]
 
 proc `$`*(ver: Version): string {.borrow.}
 
@@ -31,11 +38,16 @@ proc isSpecial(ver: Version): bool =
 
 proc isValidVersion(v: string): bool =
   if v.len > 0:
-    if v[0] in {'#'} + Digits: return true
+    if v[0] in {'#'} + Digits:
+      result = true
+    else:
+      result = false
+  else:
+    result = false
 
 proc `<`*(ver: Version, ver2: Version): bool =
   ## This is synced from Nimble's version module.
-
+  result = false
   # Handling for special versions such as "#head" or "#branch".
   if ver.isSpecial or ver2.isSpecial:
     if ver2.isSpecial and ($ver2).normalize == "#head":
@@ -62,43 +74,66 @@ proc `<`*(ver: Version, ver2: Version): bool =
     else:
       return false
 
-proc getPathVersion*(p: string): tuple[name, version: string] =
-  ## Splits path ``p`` in the format ``/home/user/.nimble/pkgs/package-0.1``
-  ## into ``(/home/user/.nimble/pkgs/package, 0.1)``
-  result.name = ""
-  result.version = ""
+proc getPathVersionChecksum*(p: string): tuple[name, version, checksum: string] =
+  ## Splits path ``p`` in the format
+  ## ``/home/user/.nimble/pkgs/package-0.1-febadeaea2345e777f0f6f8433f7f0a52edd5d1b`` into
+  ## ``("/home/user/.nimble/pkgs/package", "0.1", "febadeaea2345e777f0f6f8433f7f0a52edd5d1b")``
 
-  const specialSeparator = "-#"
-  let last = p.rfind(p.lastPathPart) # the index where the last path part begins
-  var sepIdx = p.find(specialSeparator, start = last)
-  if sepIdx == -1:
-    sepIdx = p.rfind('-', start = last)
+  result = ("", "", "")
 
-  if sepIdx == -1:
-    result.name = p
-    return
+  const checksumSeparator = '-'
+  const versionSeparator = '-'
+  const specialVersionSepartator = "-#"
+  const separatorNotFound = -1
 
-  for i in sepIdx..<p.len:
-    if p[i] in {DirSep, AltSep}:
-      result.name = p
-      return
+  var checksumSeparatorIndex = p.rfind(checksumSeparator)
+  if checksumSeparatorIndex != separatorNotFound:
+    result.checksum = p.substr(checksumSeparatorIndex + 1)
+    if not result.checksum.isValidSha1Hash():
+      result.checksum = ""
+      checksumSeparatorIndex = p.len()
+  else:
+    checksumSeparatorIndex = p.len()
 
-  result.name = p[0..sepIdx - 1]
-  result.version = p.substr(sepIdx + 1)
+  var versionSeparatorIndex = p.rfind(
+    specialVersionSepartator, 0, checksumSeparatorIndex - 1)
+  if versionSeparatorIndex != separatorNotFound:
+    result.version = p.substr(
+      versionSeparatorIndex + 1, checksumSeparatorIndex - 1)
+  else:
+    versionSeparatorIndex = p.rfind(
+      versionSeparator, 0, checksumSeparatorIndex - 1)
+    if versionSeparatorIndex != separatorNotFound:
+      result.version = p.substr(
+        versionSeparatorIndex + 1, checksumSeparatorIndex - 1)
+    else:
+      versionSeparatorIndex = checksumSeparatorIndex
 
-proc addPackage(conf: ConfigRef; packages: StringTableRef, p: string; info: TLineInfo) =
-  let (name, ver) = getPathVersion(p)
+  result.name = p[0..<versionSeparatorIndex]
+
+proc addPackage*(conf: ConfigRef; packages: var PackageInfo, p: string;
+                 info: TLineInfo) =
+  let (name, ver, checksum) = getPathVersionChecksum(p)
   if isValidVersion(ver):
     let version = newVersion(ver)
-    if packages.getOrDefault(name).newVersion < version or
+    if packages.getOrDefault(name).version.newVersion < version or
       (not packages.hasKey(name)):
-      packages[name] = $version
+      if checksum.isValidSha1Hash():
+        packages[name] = ($version, checksum)
+      else:
+        packages[name] = ($version, "")
   else:
     localError(conf, info, "invalid package name: " & p)
 
-iterator chosen(packages: StringTableRef): string =
+iterator chosen(packages: PackageInfo): string =
   for key, val in pairs(packages):
-    let res = if val.len == 0: key else: key & '-' & val
+    var res = key
+    if val.version.len != 0:
+      res &= '-'
+      res &= val.version
+    if val.checksum.len != 0:
+      res &= '-'
+      res &= val.checksum
     yield res
 
 proc addNimblePath(conf: ConfigRef; p: string, info: TLineInfo) =
@@ -118,7 +153,7 @@ proc addNimblePath(conf: ConfigRef; p: string, info: TLineInfo) =
     conf.lazyPaths.insert(AbsoluteDir path, 0)
 
 proc addPathRec(conf: ConfigRef; dir: string, info: TLineInfo) =
-  var packages = newStringTable(modeStyleInsensitive)
+  var packages: PackageInfo = initTable[string, tuple[version, checksum: string]]()
   var pos = dir.len-1
   if dir[pos] in {DirSep, AltSep}: inc(pos)
   for k,p in os.walkDir(dir):
@@ -134,30 +169,3 @@ proc nimblePath*(conf: ConfigRef; path: AbsoluteDir, info: TLineInfo) =
   if i != -1:
     conf.nimblePaths.delete(i)
   conf.nimblePaths.insert(path, 0)
-
-when isMainModule:
-  proc v(s: string): Version = s.newVersion
-  # #head is special in the sense that it's assumed to always be newest.
-  doAssert v"1.0" < v"#head"
-  doAssert v"1.0" < v"1.1"
-  doAssert v"1.0.1" < v"1.1"
-  doAssert v"1" < v"1.1"
-  doAssert v"#aaaqwe" < v"1.1" # We cannot assume that a branch is newer.
-  doAssert v"#a111" < v"#head"
-
-  let conf = newConfigRef()
-  var rr = newStringTable()
-  addPackage conf, rr, "irc-#a111", unknownLineInfo
-  addPackage conf, rr, "irc-#head", unknownLineInfo
-  addPackage conf, rr, "irc-0.1.0", unknownLineInfo
-  #addPackage conf, rr, "irc", unknownLineInfo
-  #addPackage conf, rr, "another", unknownLineInfo
-  addPackage conf, rr, "another-0.1", unknownLineInfo
-
-  addPackage conf, rr, "ab-0.1.3", unknownLineInfo
-  addPackage conf, rr, "ab-0.1", unknownLineInfo
-  addPackage conf, rr, "justone-1.0", unknownLineInfo
-
-  doAssert toSeq(rr.chosen) ==
-    @["irc-#head", "another-0.1", "ab-0.1.3", "justone-1.0"]
-

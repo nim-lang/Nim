@@ -7,10 +7,11 @@
 #    distribution, for details about the copyright.
 #
 
-## This module is deprecated, ``import os`` instead.
-{.deprecated: "import os.nim instead".}
+## This module is deprecated since 0.20.0, `import std/os` instead.
 
-import os
+{.deprecated: "use `std/os` instead".}
+
+import std/os
 export ReadEnvEffect, WriteEnvEffect, ReadDirEffect, WriteDirEffect, OSErrorCode,
   doslikeFileSystem, CurDir, ParDir, DirSep, AltSep, PathSep, FileSystemCaseSensitive,
   ExeExt, ScriptExt, DynlibFormat, ExtSep, joinPath, `/`, splitPath, parentDir,

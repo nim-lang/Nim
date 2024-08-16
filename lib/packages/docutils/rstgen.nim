@@ -23,10 +23,30 @@
 ## many options and tweaking, but you are not limited to snippets and can
 ## generate `LaTeX documents <https://en.wikipedia.org/wiki/LaTeX>`_ too.
 ##
-## **Note:** Import ``packages/docutils/rstgen`` to use this module
+## `Docutils configuration files`_ are not supported. Instead HTML generation
+## can be tweaked by editing file ``config/nimdoc.cfg``.
+##
+## .. _Docutils configuration files: https://docutils.sourceforge.io/docs/user/config.htm
+##
+## There are stylistic difference between how this module renders some elements
+## and how original Python Docutils does:
+##
+## * Backreferences to TOC in section headings are not generated.
+##   In HTML each section is also a link that points to the section itself:
+##   this is done for user to be able to copy the link into clipboard.
+##
+## * The same goes for footnotes/citations links: they point to themselves.
+##   No backreferences are generated since finding all references of a footnote
+##   can be done by simply searching for ``[footnoteName]``.
 
-import strutils, os, hashes, strtabs, rstast, rst, highlite, tables, sequtils,
-  algorithm, parseutils
+import std/[strutils, os, hashes, strtabs, tables, sequtils,
+  algorithm, parseutils, strbasics]
+
+import rstast, rst, rstidx, highlite
+
+when defined(nimPreviewSlimSystem):
+  import std/[assertions, syncio, formatfloat]
+
 
 import ../../std/private/since
 
@@ -39,26 +59,26 @@ type
     outHtml,            # output is HTML
     outLatex            # output is Latex
 
-  TocEntry = object
-    n*: PRstNode
-    refname*, header*: string
-
   MetaEnum* = enum
-    metaNone, metaTitle, metaSubtitle, metaAuthor, metaVersion
+    metaNone, metaTitleRaw, metaTitle, metaSubtitle, metaAuthor, metaVersion
+
+  EscapeMode* = enum  # in Latex text inside options [] and URLs is
+                      # escaped slightly differently than in normal text
+    emText, emOption, emUrl  # emText is currently used for code also
 
   RstGenerator* = object of RootObj
     target*: OutputTarget
     config*: StringTableRef
     splitAfter*: int          # split too long entries in the TOC
     listingCounter*: int
-    tocPart*: seq[TocEntry]
+    tocPart*: seq[PRstNode]   # headings for Table of Contents
     hasToc*: bool
     theIndex: string # Contents of the index file to be dumped at the end.
-    options*: RstParseOptions
     findFile*: FindFileHandler
     msgHandler*: MsgHandler
     outDir*: string      ## output directory, initialized by docgen.nim
     destFile*: string    ## output (HTML) file, initialized by docgen.nim
+    filenames*: RstFileTable
     filename*: string         ## source Nim or Rst file
     meta*: array[MetaEnum, string]
     currentSection: string ## \
@@ -69,7 +89,9 @@ type
     ## for hyperlinks. See renderIndexTerm proc for details.
     id*: int               ## A counter useful for generating IDs.
     onTestSnippet*: proc (d: var RstGenerator; filename, cmd: string; status: int;
-                          content: string)
+                          content: string) {.gcsafe.}
+    escMode*: EscapeMode
+    curQuotationDepth: int
 
   PDoc = var RstGenerator ## Alias to type less.
 
@@ -93,9 +115,10 @@ proc init(p: var CodeBlockParams) =
 
 proc initRstGenerator*(g: var RstGenerator, target: OutputTarget,
                        config: StringTableRef, filename: string,
-                       options: RstParseOptions,
                        findFile: FindFileHandler = nil,
-                       msgHandler: MsgHandler = nil) =
+                       msgHandler: MsgHandler = nil,
+                       filenames = default(RstFileTable),
+                       hasToc = false) =
   ## Initializes a ``RstGenerator``.
   ##
   ## You need to call this before using a ``RstGenerator`` with any other
@@ -112,7 +135,7 @@ proc initRstGenerator*(g: var RstGenerator, target: OutputTarget,
   ## it helps to prettify the generated index if no title is found.
   ##
   ## The ``RstParseOptions``, ``FindFileHandler`` and ``MsgHandler`` types
-  ## are defined in the the `packages/docutils/rst module <rst.html>`_.
+  ## are defined in the `packages/docutils/rst module <rst.html>`_.
   ## ``options`` selects the behaviour of the rst parser.
   ##
   ## ``findFile`` is a proc used by the rst ``include`` directive among others.
@@ -131,22 +154,25 @@ proc initRstGenerator*(g: var RstGenerator, target: OutputTarget,
   ##
   ## Example:
   ##
-  ## .. code-block:: nim
-  ##
+  ##   ```nim
   ##   import packages/docutils/rstgen
   ##
   ##   var gen: RstGenerator
   ##   gen.initRstGenerator(outHtml, defaultConfig(), "filename", {})
+  ##   ```
   g.config = config
   g.target = target
   g.tocPart = @[]
+  g.hasToc = hasToc
   g.filename = filename
+  g.filenames = filenames
   g.splitAfter = 20
   g.theIndex = ""
-  g.options = options
   g.findFile = findFile
   g.currentSection = ""
   g.id = 0
+  g.escMode = emText
+  g.curQuotationDepth = 0
   let fileParts = filename.splitFile
   if fileParts.ext == ".nim":
     g.currentSection = "Module " & fileParts.name
@@ -165,7 +191,9 @@ proc writeIndexFile*(g: var RstGenerator, outfile: string) =
   ## If the index is empty the file won't be created.
   if g.theIndex.len > 0: writeFile(outfile, g.theIndex)
 
-proc addXmlChar(dest: var string, c: char) =
+proc addHtmlChar(dest: var string, c: char) =
+  # Escapes HTML characters. Note that single quote ' is not escaped as
+  # &apos; -- unlike XML (for standards pre HTML5 it was even forbidden).
   case c
   of '&': add(dest, "&amp;")
   of '<': add(dest, "&lt;")
@@ -173,35 +201,36 @@ proc addXmlChar(dest: var string, c: char) =
   of '\"': add(dest, "&quot;")
   else: add(dest, c)
 
-proc addRtfChar(dest: var string, c: char) =
+proc addTexChar(dest: var string, c: char, escMode: EscapeMode) =
+  ## Escapes 10 special Latex characters and sometimes ` and [, ].
+  ## TODO: @ is always a normal symbol (besides the header), am I wrong?
+  ## All escapes that need to work in text and code blocks (`emText` mode)
+  ## should start from \ (to be compatible with fancyvrb/fvextra).
   case c
-  of '{': add(dest, "\\{")
-  of '}': add(dest, "\\}")
-  of '\\': add(dest, "\\\\")
+  of '_', '&', '#', '%': add(dest, "\\" & c)
+  # commands \label and \pageref don't accept \$ by some reason but OK with $:
+  of '$': (if escMode == emUrl: add(dest, c) else: add(dest, "\\" & c))
+  # \~ and \^ have a special meaning unless they are followed by {}
+  of '~', '^': add(dest, "\\" & c & "{}")
+  # Latex loves to substitute ` to opening quote, even in texttt mode!
+  of '`': add(dest, "\\textasciigrave{}")
+  # add {} to avoid gobbling up space by \textbackslash
+  of '\\': add(dest, "\\textbackslash{}")
+  # Using { and } in URL in Latex: https://tex.stackexchange.com/a/469175
+  of '{':
+    add(dest, if escMode == emUrl: "\\%7B" else: "\\{")
+  of '}':
+    add(dest, if escMode == emUrl: "\\%7D" else: "\\}")
+  of ']':
+    # escape ] inside an optional argument in e.g. \section[static[T]]{..
+    add(dest, if escMode == emOption: "\\text{]}" else: "]")
   else: add(dest, c)
 
-proc addTexChar(dest: var string, c: char) =
-  case c
-  of '_': add(dest, "\\_")
-  of '{': add(dest, "\\symbol{123}")
-  of '}': add(dest, "\\symbol{125}")
-  of '[': add(dest, "\\symbol{91}")
-  of ']': add(dest, "\\symbol{93}")
-  of '\\': add(dest, "\\symbol{92}")
-  of '$': add(dest, "\\$")
-  of '&': add(dest, "\\&")
-  of '#': add(dest, "\\#")
-  of '%': add(dest, "\\%")
-  of '~': add(dest, "\\symbol{126}")
-  of '@': add(dest, "\\symbol{64}")
-  of '^': add(dest, "\\symbol{94}")
-  of '`': add(dest, "\\symbol{96}")
-  else: add(dest, c)
-
-proc escChar*(target: OutputTarget, dest: var string, c: char) {.inline.} =
+proc escChar*(target: OutputTarget, dest: var string,
+              c: char, escMode: EscapeMode) {.inline.} =
   case target
-  of outHtml:  addXmlChar(dest, c)
-  of outLatex: addTexChar(dest, c)
+  of outHtml:  addHtmlChar(dest, c)
+  of outLatex: addTexChar(dest, c, escMode)
 
 proc addSplitter(target: OutputTarget; dest: var string) {.inline.} =
   case target
@@ -220,7 +249,7 @@ proc nextSplitPoint*(s: string, start: int): int =
     inc(result)
   dec(result)                 # last valid index
 
-proc esc*(target: OutputTarget, s: string, splitAfter = -1): string =
+proc esc*(target: OutputTarget, s: string, splitAfter = -1, escMode = emText): string =
   ## Escapes the HTML.
   result = ""
   if splitAfter >= 0:
@@ -231,11 +260,11 @@ proc esc*(target: OutputTarget, s: string, splitAfter = -1): string =
       #if (splitter != " ") or (partLen + k - j + 1 > splitAfter):
       partLen = 0
       addSplitter(target, result)
-      for i in countup(j, k): escChar(target, result, s[i])
+      for i in countup(j, k): escChar(target, result, s[i], escMode)
       inc(partLen, k - j + 1)
       j = k + 1
   else:
-    for i in countup(0, len(s) - 1): escChar(target, result, s[i])
+    for i in countup(0, len(s) - 1): escChar(target, result, s[i], escMode)
 
 
 proc disp(target: OutputTarget, xml, tex: string): string =
@@ -255,58 +284,46 @@ proc dispA(target: OutputTarget, dest: var string,
 proc `or`(x, y: string): string {.inline.} =
   result = if x.len == 0: y else: x
 
-proc renderRstToOut*(d: var RstGenerator, n: PRstNode, result: var string)
+proc renderRstToOut*(d: var RstGenerator, n: PRstNode, result: var string) {.gcsafe.}
   ## Writes into ``result`` the rst ast ``n`` using the ``d`` configuration.
   ##
   ## Before using this proc you need to initialise a ``RstGenerator`` with
   ## ``initRstGenerator`` and parse a rst file with ``rstParse`` from the
   ## `packages/docutils/rst module <rst.html>`_. Example:
-  ##
-  ## .. code-block:: nim
-  ##
+  ##   ```nim
   ##   # ...configure gen and rst vars...
   ##   var generatedHtml = ""
   ##   renderRstToOut(gen, rst, generatedHtml)
   ##   echo generatedHtml
+  ##   ```
 
 proc renderAux(d: PDoc, n: PRstNode, result: var string) =
   for i in countup(0, len(n)-1): renderRstToOut(d, n.sons[i], result)
 
-proc renderAux(d: PDoc, n: PRstNode, frmtA, frmtB: string, result: var string) =
+template idS(txt: string): string =
+  if txt == "": ""
+  else:
+    case d.target
+    of outHtml:
+      " id=\"" & txt & "\""
+    of outLatex:
+      "\\label{" & txt & "}\\hypertarget{" & txt & "}{}"
+        # we add \label for page number references via \pageref, while
+        # \hypertarget is for clickable links via \hyperlink.
+
+proc renderAux(d: PDoc, n: PRstNode, html, tex: string, result: var string) =
+  # formats sons of `n` as substitution variable $1 inside strings `html` and
+  # `tex`, internal target (anchor) is provided as substitute $2.
   var tmp = ""
   for i in countup(0, len(n)-1): renderRstToOut(d, n.sons[i], tmp)
-  if d.target != outLatex:
-    result.addf(frmtA, [tmp])
-  else:
-    result.addf(frmtB, [tmp])
+  case d.target
+  of outHtml:  result.addf(html, [tmp, n.anchor.idS])
+  of outLatex: result.addf(tex,  [tmp, n.anchor.idS])
 
 # ---------------- index handling --------------------------------------------
 
-proc quoteIndexColumn(text: string): string =
-  ## Returns a safe version of `text` for serialization to the ``.idx`` file.
-  ##
-  ## The returned version can be put without worries in a line based tab
-  ## separated column text file. The following character sequence replacements
-  ## will be performed for that goal:
-  ##
-  ## * ``"\\"`` => ``"\\\\"``
-  ## * ``"\n"`` => ``"\\n"``
-  ## * ``"\t"`` => ``"\\t"``
-  result = newStringOfCap(text.len + 3)
-  for c in text:
-    case c
-    of '\\': result.add "\\"
-    of '\L': result.add "\\n"
-    of '\C': discard
-    of '\t': result.add "\\t"
-    else: result.add c
-
-proc unquoteIndexColumn(text: string): string =
-  ## Returns the unquoted version generated by ``quoteIndexColumn``.
-  result = text.multiReplace(("\\t", "\t"), ("\\n", "\n"), ("\\\\", "\\"))
-
-proc setIndexTerm*(d: var RstGenerator, htmlFile, id, term: string,
-                   linkTitle, linkDesc = "") =
+proc setIndexTerm*(d: var RstGenerator; k: IndexEntryKind, htmlFile, id, term: string,
+                   linkTitle, linkDesc = "", line = 0) =
   ## Adds a `term` to the index using the specified hyperlink identifier.
   ##
   ## A new entry will be added to the index using the format
@@ -329,21 +346,8 @@ proc setIndexTerm*(d: var RstGenerator, htmlFile, id, term: string,
   ## <#writeIndexFile,RstGenerator,string>`_. The purpose of the index is
   ## documented in the `docgen tools guide
   ## <docgen.html#related-options-index-switch>`_.
-  var
-    entry = term
-    isTitle = false
-  entry.add('\t')
-  entry.add(htmlFile)
-  if id.len > 0:
-    entry.add('#')
-    entry.add(id)
-  else:
-    isTitle = true
-  if linkTitle.len > 0 or linkDesc.len > 0:
-    entry.add('\t' & linkTitle.quoteIndexColumn)
-    entry.add('\t' & linkDesc.quoteIndexColumn)
-  entry.add("\n")
-
+  let (entry, isTitle) = formatIndexEntry(k, htmlFile, id, term,
+                                          linkTitle, linkDesc, line)
   if isTitle: d.theIndex.insert(entry)
   else: d.theIndex.add(entry)
 
@@ -355,6 +359,15 @@ proc hash(n: PRstNode): int =
     for i in 1 ..< len(n):
       result = result !& hash(n.sons[i])
     result = !$result
+
+proc htmlFileRelPath(d: PDoc): string =
+  if d.outDir.len == 0:
+    # /foo/bar/zoo.nim -> zoo.html
+    changeFileExt(extractFilename(d.filename), HtmlExt)
+  else: # d is initialized in docgen.nim
+    # outDir   = /foo              -\
+    # destFile = /foo/bar/zoo.html -|-> bar/zoo.html
+    d.destFile.relativePath(d.outDir, '/')
 
 proc renderIndexTerm*(d: PDoc, n: PRstNode, result: var string) =
   ## Renders the string decorated within \`foobar\`\:idx\: markers.
@@ -372,18 +385,13 @@ proc renderIndexTerm*(d: PDoc, n: PRstNode, result: var string) =
 
   var term = ""
   renderAux(d, n, term)
-  setIndexTerm(d, changeFileExt(extractFilename(d.filename), HtmlExt), id, term, d.currentSection)
-  dispA(d.target, result, "<span id=\"$1\">$2</span>", "$2\\label{$1}",
+  setIndexTerm(d, ieIdxRole,
+  htmlFileRelPath(d), id, term, d.currentSection)
+  dispA(d.target, result, "<span id=\"$1\">$2</span>", "\\nimindexterm{$1}{$2}",
         [id, term])
 
 type
-  IndexEntry = object
-    keyword: string
-    link: string
-    linkTitle: string ## contains a prettier text for the href
-    linkDesc: string ## the title attribute of the final href
-
-  IndexedDocs = Table[IndexEntry, seq[IndexEntry]] ## \
+  IndexedDocs* = Table[IndexEntry, seq[IndexEntry]] ## \
     ## Contains the index sequences for doc types.
     ##
     ## The key is a *fake* IndexEntry which will contain the title of the
@@ -393,21 +401,6 @@ type
     ## The value indexed by this IndexEntry is a sequence with the real index
     ## entries found in the ``.idx`` file.
 
-proc cmp(a, b: IndexEntry): int =
-  ## Sorts two ``IndexEntry`` first by `keyword` field, then by `link`.
-  result = cmpIgnoreStyle(a.keyword, b.keyword)
-  if result == 0:
-    result = cmpIgnoreStyle(a.link, b.link)
-
-proc hash(x: IndexEntry): Hash =
-  ## Returns the hash for the combined fields of the type.
-  ##
-  ## The hash is computed as the chained hash of the individual string hashes.
-  result = x.keyword.hash !& x.link.hash
-  result = result !& x.linkTitle.hash
-  result = result !& x.linkDesc.hash
-  result = !$result
-
 when defined(gcDestructors):
   template `<-`(a, b: var IndexEntry) = a = move(b)
 else:
@@ -416,6 +409,7 @@ else:
     shallowCopy a.link, b.link
     shallowCopy a.linkTitle, b.linkTitle
     shallowCopy a.linkDesc, b.linkDesc
+    shallowCopy a.module, b.module
 
 proc sortIndex(a: var openArray[IndexEntry]) =
   # we use shellsort here; fast and simple
@@ -455,16 +449,20 @@ proc generateSymbolIndex(symbols: seq[IndexEntry]): string =
   result = "<dl>"
   var i = 0
   while i < symbols.len:
-    let keyword = symbols[i].keyword
+    let keyword = esc(outHtml, symbols[i].keyword)
     let cleanedKeyword = keyword.escapeLink
     result.addf("<dt><a name=\"$2\" href=\"#$2\"><span>$1:</span></a></dt><dd><ul class=\"simple\">\n",
                 [keyword, cleanedKeyword])
     var j = i
-    while j < symbols.len and keyword == symbols[j].keyword:
+    while j < symbols.len and symbols[i].keyword == symbols[j].keyword:
       let
         url = symbols[j].link.escapeLink
-        text = if symbols[j].linkTitle.len > 0: symbols[j].linkTitle else: url
-        desc = if symbols[j].linkDesc.len > 0: symbols[j].linkDesc else: ""
+        module = symbols[j].module
+        text =
+          if symbols[j].linkTitle.len > 0:
+            esc(outHtml, module & ": " & symbols[j].linkTitle)
+          else: url
+        desc = symbols[j].linkDesc
       if desc.len > 0:
         result.addf("""<li><a class="reference external"
           title="$3" data-doc-search-tag="$2" href="$1">$2</a></li>
@@ -477,13 +475,6 @@ proc generateSymbolIndex(symbols: seq[IndexEntry]): string =
     result.add("</ul></dd>\n")
     i = j
   result.add("</dl>")
-
-proc isDocumentationTitle(hyperlink: string): bool =
-  ## Returns true if the hyperlink is actually a documentation title.
-  ##
-  ## Documentation titles lack the hash. See `mergeIndexes()
-  ## <#mergeIndexes,string>`_ for a more detailed explanation.
-  result = hyperlink.find('#') < 0
 
 proc stripTocLevel(s: string): tuple[level: int, text: string] =
   ## Returns the *level* of the toc along with the text without it.
@@ -518,17 +509,15 @@ proc generateDocumentationToc(entries: seq[IndexEntry]): string =
     level = 1
   levels.newSeq(entries.len)
   for entry in entries:
-    let (rawLevel, rawText) = stripTocLevel(entry.linkTitle or entry.keyword)
+    let (rawLevel, rawText) = stripTocLevel(entry.linkTitle)
     if rawLevel < 1:
       # This is a normal symbol, push it *inside* one level from the last one.
       levels[L].level = level + 1
-      # Also, ignore the linkTitle and use directly the keyword.
-      levels[L].text = entry.keyword
     else:
       # The level did change, update the level indicator.
       level = rawLevel
       levels[L].level = rawLevel
-      levels[L].text = rawText
+    levels[L].text = rawText
     inc L
 
   # Now generate hierarchical lists based on the precalculated levels.
@@ -559,7 +548,7 @@ proc generateDocumentationIndex(docs: IndexedDocs): string =
   for title in titles:
     let tocList = generateDocumentationToc(docs.getOrDefault(title))
     result.add("<ul><li><a href=\"" &
-      title.link & "\">" & title.keyword & "</a>\n" & tocList & "</li></ul>\n")
+      title.link & "\">" & title.linkTitle & "</a>\n" & tocList & "</li></ul>\n")
 
 proc generateDocumentationJumps(docs: IndexedDocs): string =
   ## Returns a plain list of hyperlinks to documentation TOCs in HTML.
@@ -571,7 +560,7 @@ proc generateDocumentationJumps(docs: IndexedDocs): string =
 
   var chunks: seq[string] = @[]
   for title in titles:
-    chunks.add("<a href=\"" & title.link & "\">" & title.keyword & "</a>")
+    chunks.add("<a href=\"" & title.link & "\">" & title.linkTitle & "</a>")
 
   result.add(chunks.join(", ") & ".<br/>")
 
@@ -585,7 +574,7 @@ proc generateModuleJumps(modules: seq[string]): string =
 
   result.add(chunks.join(", ") & ".<br/>")
 
-proc readIndexDir(dir: string):
+proc readIndexDir*(dir: string):
     tuple[modules: seq[string], symbols: seq[IndexEntry], docs: IndexedDocs] =
   ## Walks `dir` reading ``.idx`` files converting them in IndexEntry items.
   ##
@@ -600,39 +589,12 @@ proc readIndexDir(dir: string):
   # Scan index files and build the list of symbols.
   for path in walkDirRec(dir):
     if path.endsWith(IndexExt):
-      var
-        fileEntries: seq[IndexEntry]
-        title: IndexEntry
-        f = 0
-      newSeq(fileEntries, 500)
-      setLen(fileEntries, 0)
-      for line in lines(path):
-        let s = line.find('\t')
-        if s < 0: continue
-        setLen(fileEntries, f+1)
-        fileEntries[f].keyword = line.substr(0, s-1)
-        fileEntries[f].link = line.substr(s+1)
-        # See if we detect a title, a link without a `#foobar` trailing part.
-        if title.keyword.len == 0 and fileEntries[f].link.isDocumentationTitle:
-          title.keyword = fileEntries[f].keyword
-          title.link = fileEntries[f].link
-
-        if fileEntries[f].link.find('\t') > 0:
-          let extraCols = fileEntries[f].link.split('\t')
-          fileEntries[f].link = extraCols[0]
-          assert extraCols.len == 3
-          fileEntries[f].linkTitle = extraCols[1].unquoteIndexColumn
-          fileEntries[f].linkDesc = extraCols[2].unquoteIndexColumn
-        else:
-          fileEntries[f].linkTitle = ""
-          fileEntries[f].linkDesc = ""
-        inc f
+      var (fileEntries, title) = parseIdxFile(path)
       # Depending on type add this to the list of symbols or table of APIs.
-      if title.keyword.len == 0:
-        for i in 0 ..< f:
-          # Don't add to symbols TOC entries (they start with a whitespace).
-          let toc = fileEntries[i].linkTitle
-          if toc.len > 0 and toc[0] == ' ':
+
+      if title.kind == ieNimTitle:
+        for i in 0 ..< fileEntries.len:
+          if fileEntries[i].kind != ieNim:
             continue
           # Ok, non TOC entry, add it.
           setLen(result.symbols, L + 1)
@@ -642,16 +604,22 @@ proc readIndexDir(dir: string):
           var x = fileEntries[0].link
           let i = find(x, '#')
           if i > 0:
-            x = x.substr(0, i-1)
+            x.setLen(i)
           if i != 0:
             # don't add entries starting with '#'
             result.modules.add(x.changeFileExt(""))
       else:
         # Generate the symbolic anchor for index quickjumps.
-        title.linkTitle = "doc_toc_" & $result.docs.len
+        title.aux = "doc_toc_" & $result.docs.len
         result.docs[title] = fileEntries
 
-  sort(result.modules, system.cmp)
+      for i in 0 ..< fileEntries.len:
+        if fileEntries[i].kind != ieIdxRole:
+          continue
+
+        setLen(result.symbols, L + 1)
+        result.symbols[L] = fileEntries[i]
+        inc L
 
 proc mergeIndexes*(dir: string): string =
   ## Merges all index files in `dir` and returns the generated index as HTML.
@@ -682,6 +650,7 @@ proc mergeIndexes*(dir: string): string =
   ## Returns the merged and sorted indices into a single HTML block which can
   ## be further embedded into nimdoc templates.
   var (modules, symbols, docs) = readIndexDir(dir)
+  sort(modules, system.cmp)
 
   result = ""
   # Generate a quick jump list of documents.
@@ -709,71 +678,36 @@ proc mergeIndexes*(dir: string): string =
 
 # ----------------------------------------------------------------------------
 
-proc stripTocHtml(s: string): string =
-  ## Ugly quick hack to remove HTML tags from TOC titles.
-  ##
-  ## A TocEntry.header field already contains rendered HTML tags. Instead of
-  ## implementing a proper version of renderRstToOut() which recursively
-  ## renders an rst tree to plain text, we simply remove text found between
-  ## angled brackets. Given the limited possibilities of rst inside TOC titles
-  ## this should be enough.
-  result = s
-  var first = result.find('<')
-  while first >= 0:
-    let last = result.find('>', first)
-    if last < 0:
-      # Abort, since we didn't found a closing angled bracket.
-      return
-    result.delete(first, last)
-    first = result.find('<', first)
-
 proc renderHeadline(d: PDoc, n: PRstNode, result: var string) =
   var tmp = ""
   for i in countup(0, len(n) - 1): renderRstToOut(d, n.sons[i], tmp)
   d.currentSection = tmp
-  # Find the last higher level section for unique reference name
-  var sectionPrefix = ""
-  for i in countdown(d.tocPart.high, 0):
-    let n2 = d.tocPart[i].n
-    if n2.level < n.level:
-      sectionPrefix = rstnodeToRefname(n2) & "-"
-      break
-  var refname = sectionPrefix & rstnodeToRefname(n)
+  var tocName = esc(d.target, renderRstToText(n), escMode = emOption)
+    # for Latex: simple text without commands that may break TOC/hyperref
   if d.hasToc:
-    var length = len(d.tocPart)
-    setLen(d.tocPart, length + 1)
-    d.tocPart[length].refname = refname
-    d.tocPart[length].n = n
-    d.tocPart[length].header = tmp
-
-    dispA(d.target, result, "\n<h$1><a class=\"toc-backref\" " &
-      "id=\"$2\" href=\"#$2\">$3</a></h$1>", "\\rsth$4{$3}\\label{$2}\n",
-      [$n.level, d.tocPart[length].refname, tmp, $chr(n.level - 1 + ord('A'))])
+    d.tocPart.add n
+    dispA(d.target, result, "\n<h$1><a class=\"toc-backref\"" &
+      "$2 href=\"#$5\">$3</a></h$1>", "\\rsth$4[$6]{$3}$2\n",
+      [$n.level, n.anchor.idS, tmp,
+       $chr(n.level - 1 + ord('A')), n.anchor, tocName])
   else:
-    dispA(d.target, result, "\n<h$1 id=\"$2\">$3</h$1>",
-                            "\\rsth$4{$3}\\label{$2}\n", [
-        $n.level, refname, tmp,
-        $chr(n.level - 1 + ord('A'))])
+    dispA(d.target, result, "\n<h$1$2>$3</h$1>",
+                            "\\rsth$4[$5]{$3}$2\n", [
+        $n.level, n.anchor.idS, tmp,
+        $chr(n.level - 1 + ord('A')), tocName])
 
   # Generate index entry using spaces to indicate TOC level for the output HTML.
   assert n.level >= 0
-  let
-    htmlFileRelPath = if d.outDir.len == 0:
-                        # /foo/bar/zoo.nim -> zoo.html
-                        changeFileExt(extractFilename(d.filename), HtmlExt)
-                      else: # d is initialized in docgen.nim
-                        # outDir   = /foo              -\
-                        # destFile = /foo/bar/zoo.html -|-> bar/zoo.html
-                        d.destFile.relativePath(d.outDir, '/')
-  setIndexTerm(d, htmlFileRelPath, refname, tmp.stripTocHtml,
-    spaces(max(0, n.level)) & tmp)
+  setIndexTerm(d, ieHeading, htmlFile = d.htmlFileRelPath, id = n.anchor,
+               term = n.addNodes, linkTitle = spaces(max(0, n.level)) & tmp)
 
 proc renderOverline(d: PDoc, n: PRstNode, result: var string) =
-  if d.meta[metaTitle].len == 0:
+  if n.level == 0 and d.meta[metaTitle].len == 0:
+    d.meta[metaTitleRaw] = n.addNodes
     for i in countup(0, len(n)-1):
       renderRstToOut(d, n.sons[i], d.meta[metaTitle])
     d.currentSection = d.meta[metaTitle]
-  elif d.meta[metaSubtitle].len == 0:
+  elif n.level == 0 and d.meta[metaSubtitle].len == 0:
     for i in countup(0, len(n)-1):
       renderRstToOut(d, n.sons[i], d.meta[metaSubtitle])
     d.currentSection = d.meta[metaSubtitle]
@@ -781,21 +715,25 @@ proc renderOverline(d: PDoc, n: PRstNode, result: var string) =
     var tmp = ""
     for i in countup(0, len(n) - 1): renderRstToOut(d, n.sons[i], tmp)
     d.currentSection = tmp
-    dispA(d.target, result, "<h$1 id=\"$2\"><center>$3</center></h$1>",
-                   "\\rstov$4{$3}\\label{$2}\n", [$n.level,
-        rstnodeToRefname(n), tmp, $chr(n.level - 1 + ord('A'))])
+    var tocName = esc(d.target, renderRstToText(n), escMode=emOption)
+    dispA(d.target, result, "<h$1$2><center>$3</center></h$1>",
+                   "\\rstov$4[$5]{$3}$2\n", [$n.level,
+                   n.anchor.idS, tmp, $chr(n.level - 1 + ord('A')), tocName])
+    setIndexTerm(d, ieHeading, htmlFile = d.htmlFileRelPath, id = n.anchor,
+                 term = n.addNodes, linkTitle = spaces(max(0, n.level)) & tmp)
 
-
-proc renderTocEntry(d: PDoc, e: TocEntry, result: var string) =
+proc renderTocEntry(d: PDoc, n: PRstNode, result: var string) =
+  var header = ""
+  for i in countup(0, len(n) - 1): renderRstToOut(d, n.sons[i], header)
   dispA(d.target, result,
     "<li><a class=\"reference\" id=\"$1_toc\" href=\"#$1\">$2</a></li>\n",
-    "\\item\\label{$1_toc} $2\\ref{$1}\n", [e.refname, e.header])
+    "\\item\\label{$1_toc} $2\\ref{$1}\n", [n.anchor, header])
 
 proc renderTocEntries*(d: var RstGenerator, j: var int, lvl: int,
                        result: var string) =
   var tmp = ""
   while j <= high(d.tocPart):
-    var a = abs(d.tocPart[j].n.level)
+    var a = abs(d.tocPart[j].level)
     if a == lvl:
       renderTocEntry(d, d.tocPart[j], tmp)
       inc(j)
@@ -841,15 +779,17 @@ proc renderImage(d: PDoc, n: PRstNode, result: var string) =
   if arg.endsWith(".mp4") or arg.endsWith(".ogg") or
      arg.endsWith(".webm"):
     htmlOut = """
-      <video src="$1"$2 autoPlay='true' loop='true' muted='true'>
+      <video$3 src="$1"$2 autoPlay='true' loop='true' muted='true'>
       Sorry, your browser doesn't support embedded videos
       </video>
     """
   else:
-    htmlOut = "<img src=\"$1\"$2/>"
+    htmlOut = "<img$3 src=\"$1\"$2/>"
 
   # support for `:target:` links for images:
-  var target = esc(d.target, getFieldValue(n, "target").strip())
+  var target = esc(d.target, getFieldValue(n, "target").strip(), escMode=emUrl)
+  discard safeProtocol(target)
+
   if target.len > 0:
     # `htmlOut` needs to be of the following format for link to work for images:
     # <a class="reference external" href="target"><img src=\"$1\"$2/></a>
@@ -859,8 +799,8 @@ proc renderImage(d: PDoc, n: PRstNode, result: var string) =
       "\\href{$2}{$1}", [htmlOut, target])
     htmlOut = htmlOutWithLink
 
-  dispA(d.target, result, htmlOut, "\\includegraphics$2{$1}",
-        [esc(d.target, arg), options])
+  dispA(d.target, result, htmlOut, "$3\\includegraphics$2{$1}",
+        [esc(d.target, arg), options, n.anchor.idS])
   if len(n) >= 3: renderRstToOut(d, n.sons[2], result)
 
 proc renderSmiley(d: PDoc, n: PRstNode, result: var string) =
@@ -869,6 +809,25 @@ proc renderSmiley(d: PDoc, n: PRstNode, result: var string) =
         height="17" hspace="2" vspace="2" class="smiley" />""",
     "\\includegraphics{$1}",
     [d.config.getOrDefault"doc.smiley_format" % n.text])
+
+proc getField1Int(d: PDoc, n: PRstNode, fieldName: string): int =
+  template err(msg: string) =
+    rstMessage(d.filenames, d.msgHandler, n.info, meInvalidField, msg)
+  let value = n.getFieldValue
+  var number: int
+  let nChars = parseInt(value, number)
+  if nChars == 0:
+    if value.len == 0:
+      # use a good default value:
+      result = 1
+    else:
+      err("field $1 requires an integer, but '$2' was given" %
+          [fieldName, value])
+  elif nChars < value.len:
+    err("extra arguments were given to $1: '$2'" %
+        [fieldName, value[nChars..^1]])
+  else:
+    result = number
 
 proc parseCodeBlockField(d: PDoc, n: PRstNode, params: var CodeBlockParams) =
   ## Parses useful fields which can appear before a code block.
@@ -879,9 +838,7 @@ proc parseCodeBlockField(d: PDoc, n: PRstNode, params: var CodeBlockParams) =
   of "number-lines":
     params.numberLines = true
     # See if the field has a parameter specifying a different line than 1.
-    var number: int
-    if parseInt(n.getFieldValue, number) > 0:
-      params.startLine = number
+    params.startLine = getField1Int(d, n, "number-lines")
   of "file", "filename":
     # The ``file`` option is a Nim extension to the official spec, it acts
     # like it would for other directives like ``raw`` or ``cvs-table``. This
@@ -892,18 +849,20 @@ proc parseCodeBlockField(d: PDoc, n: PRstNode, params: var CodeBlockParams) =
   of "test":
     params.testCmd = n.getFieldValue.strip
     if params.testCmd.len == 0:
-      params.testCmd = "$nim r --backend:$backend $options" # see `interpSnippetCmd`
+      # factor with D20210224T221756. Note that `$docCmd` should appear before `$file`
+      # but after all other options, but currently `$options` merges both options and `$file` so it's tricky.
+      params.testCmd = "$nim r --backend:$backend --lib:$libpath $docCmd $options"
     else:
+      # consider whether `$docCmd` should be appended here too
       params.testCmd = unescape(params.testCmd)
   of "status", "exitcode":
-    var status: int
-    if parseInt(n.getFieldValue, status) > 0:
-      params.status = status
+    params.status = getField1Int(d, n, n.getArgument)
   of "default-language":
     params.langStr = n.getFieldValue.strip
     params.lang = params.langStr.getSourceLanguage
   else:
-    d.msgHandler(d.filename, 1, 0, mwUnsupportedField, n.getArgument)
+    rstMessage(d.filenames, d.msgHandler, n.info, mwUnsupportedField,
+               n.getArgument)
 
 proc parseCodeBlockParams(d: PDoc, n: PRstNode): CodeBlockParams =
   ## Iterates over all code block fields and returns processed params.
@@ -913,8 +872,7 @@ proc parseCodeBlockParams(d: PDoc, n: PRstNode): CodeBlockParams =
   result.init
   if n.isNil:
     return
-  assert n.kind == rnCodeBlock
-  assert(not n.sons[2].isNil)
+  assert n.kind in {rnCodeBlock, rnInlineCode}
 
   # Parse the field list for rendering parameters if there are any.
   if not n.sons[1].isNil:
@@ -925,7 +883,8 @@ proc parseCodeBlockParams(d: PDoc, n: PRstNode): CodeBlockParams =
   if result.langStr != "":
     result.lang = getSourceLanguage(result.langStr)
 
-proc buildLinesHtmlTable(d: PDoc; params: CodeBlockParams, code: string):
+proc buildLinesHtmlTable(d: PDoc; params: CodeBlockParams, code: string,
+                         idStr: string):
     tuple[beginTable, endTable: string] =
   ## Returns the necessary tags to start/end a code block in HTML.
   ##
@@ -937,13 +896,14 @@ proc buildLinesHtmlTable(d: PDoc; params: CodeBlockParams, code: string):
   let id = $d.listingCounter
   if not params.numberLines:
     result = (d.config.getOrDefault"doc.listing_start" %
-                [id, sourceLanguageToStr[params.lang]],
+                [id, sourceLanguageToStr[params.lang], idStr],
               d.config.getOrDefault"doc.listing_end" % id)
     return
 
   var codeLines = code.strip.countLines
   assert codeLines > 0
-  result.beginTable = """<table class="line-nums-table"><tbody><tr><td class="blob-line-nums"><pre class="line-nums">"""
+  result.beginTable = """<table$1 class="line-nums-table">""" % [idStr] &
+      """<tbody><tr><td class="blob-line-nums"><pre class="line-nums">"""
   var line = params.startLine
   while codeLines > 0:
     result.beginTable.add($line & "\n")
@@ -951,13 +911,32 @@ proc buildLinesHtmlTable(d: PDoc; params: CodeBlockParams, code: string):
     codeLines.dec
   result.beginTable.add("</pre></td><td>" & (
       d.config.getOrDefault"doc.listing_start" %
-        [id, sourceLanguageToStr[params.lang]]))
+        [id, sourceLanguageToStr[params.lang], idStr]))
   result.endTable = (d.config.getOrDefault"doc.listing_end" % id) &
       "</td></tr></tbody></table>" & (
       d.config.getOrDefault"doc.listing_button" % id)
 
-proc renderCodeBlock(d: PDoc, n: PRstNode, result: var string) =
-  ## Renders a code block, appending it to `result`.
+proc renderCodeLang*(result: var string, lang: SourceLanguage, code: string,
+                     target: OutputTarget) =
+  var g: GeneralTokenizer
+  initGeneralTokenizer(g, code)
+  while true:
+    getNextToken(g, lang)
+    case g.kind
+    of gtEof: break
+    of gtNone, gtWhitespace:
+      add(result, substr(code, g.start, g.length + g.start - 1))
+    else:
+      dispA(target, result, "<span class=\"$2\">$1</span>", "\\span$2{$1}", [
+        esc(target, substr(code, g.start, g.length+g.start-1)),
+        tokenClassToStr[g.kind]])
+  deinitGeneralTokenizer(g)
+
+proc renderNimCode*(result: var string, code: string, target: OutputTarget) =
+  renderCodeLang(result, langNim, code, target)
+
+proc renderCode(d: PDoc, n: PRstNode, result: var string) {.gcsafe.} =
+  ## Renders a code (code block or inline code), appending it to `result`.
   ##
   ## If the code block uses the ``number-lines`` option, a table will be
   ## generated with two columns, the first being a list of numbers and the
@@ -966,37 +945,40 @@ proc renderCodeBlock(d: PDoc, n: PRstNode, result: var string) =
   ## may also come from the parser through the internal ``default-language``
   ## option to differentiate between a plain code block and Nim's code block
   ## extension.
-  assert n.kind == rnCodeBlock
-  if n.sons[2] == nil: return
+  assert n.kind in {rnCodeBlock, rnInlineCode}
   var params = d.parseCodeBlockParams(n)
+  if n.sons[2] == nil: return
   var m = n.sons[2].sons[0]
   assert m.kind == rnLeaf
 
   if params.testCmd.len > 0 and d.onTestSnippet != nil:
     d.onTestSnippet(d, params.filename, params.testCmd, params.status, m.text)
 
-  let (blockStart, blockEnd) = buildLinesHtmlTable(d, params, m.text)
-
-  dispA(d.target, result, blockStart, "\\begin{rstpre}\n", [])
+  var blockStart, blockEnd: string
+  case d.target
+  of outHtml:
+    if n.kind == rnCodeBlock:
+      (blockStart, blockEnd) = buildLinesHtmlTable(d, params, m.text,
+                                                   n.anchor.idS)
+    else:  # rnInlineCode
+      blockStart = "<tt class=\"docutils literal\"><span class=\"pre\">"
+      blockEnd = "</span></tt>"
+  of outLatex:
+    if n.kind == rnCodeBlock:
+      blockStart = "\n\n" & n.anchor.idS & "\\begin{rstpre}\n"
+      blockEnd = "\n\\end{rstpre}\n\n"
+    else:  # rnInlineCode
+      blockStart = "\\rstcode{"
+      blockEnd = "}"
+  dispA(d.target, result, blockStart, blockStart, [])
   if params.lang == langNone:
-    if len(params.langStr) > 0:
-      d.msgHandler(d.filename, 1, 0, mwUnsupportedLanguage, params.langStr)
-    for letter in m.text: escChar(d.target, result, letter)
+    if len(params.langStr) > 0 and params.langStr.toLowerAscii != "none":
+      rstMessage(d.filenames, d.msgHandler, n.info, mwUnsupportedLanguage,
+                 params.langStr)
+    for letter in m.text: escChar(d.target, result, letter, emText)
   else:
-    var g: GeneralTokenizer
-    initGeneralTokenizer(g, m.text)
-    while true:
-      getNextToken(g, params.lang)
-      case g.kind
-      of gtEof: break
-      of gtNone, gtWhitespace:
-        add(result, substr(m.text, g.start, g.length + g.start - 1))
-      else:
-        dispA(d.target, result, "<span class=\"$2\">$1</span>", "\\span$2{$1}", [
-          esc(d.target, substr(m.text, g.start, g.length+g.start-1)),
-          tokenClassToStr[g.kind]])
-    deinitGeneralTokenizer(g)
-  dispA(d.target, result, blockEnd, "\n\\end{rstpre}\n")
+    renderCodeLang(result, params.lang, m.text, d.target)
+  dispA(d.target, result, blockEnd, blockEnd)
 
 proc renderContainer(d: PDoc, n: PRstNode, result: var string) =
   var tmp = ""
@@ -1006,10 +988,6 @@ proc renderContainer(d: PDoc, n: PRstNode, result: var string) =
     dispA(d.target, result, "<div>$1</div>", "$1", [tmp])
   else:
     dispA(d.target, result, "<div class=\"$1\">$2</div>", "$2", [arg, tmp])
-
-proc texColumns(n: PRstNode): string =
-  result = ""
-  for i in countup(1, len(n)): add(result, "|X")
 
 proc renderField(d: PDoc, n: PRstNode, result: var string) =
   var b = false
@@ -1028,41 +1006,150 @@ proc renderField(d: PDoc, n: PRstNode, result: var string) =
   if not b:
     renderAux(d, n, "<tr>$1</tr>\n", "$1", result)
 
+proc renderEnumList(d: PDoc, n: PRstNode, result: var string) =
+  var
+    specifier = ""
+    specStart = ""
+    i1 = 0
+    pre = ""
+    i2 = n.labelFmt.len - 1
+    post = ""
+  if n.labelFmt[0] == '(':
+    i1 = 1
+    pre = "("
+  if n.labelFmt[^1] == ')' or n.labelFmt[^1] == '.':
+    i2 = n.labelFmt.len - 2
+    post = $n.labelFmt[^1]
+  let enumR = i1 .. i2  # enumerator range without surrounding (, ), .
+  if d.target == outLatex:
+    result.add ("\n%" & n.labelFmt & "\n")
+    # use enumerate parameters from package enumitem
+    if n.labelFmt[i1].isDigit:
+      var labelDef = ""
+      if pre != "" or post != "":
+        labelDef = "label=" & pre & "\\arabic*" & post & ","
+      if n.labelFmt[enumR] != "1":
+        specStart = "start=$1" % [n.labelFmt[enumR]]
+      if labelDef != "" or specStart != "":
+        specifier = "[$1$2]" % [labelDef, specStart]
+    else:
+      let (first, labelDef) =
+        if n.labelFmt[i1].isUpperAscii: ('A', "label=" & pre & "\\Alph*" & post)
+        else: ('a', "label=" & pre & "\\alph*" & post)
+      if n.labelFmt[i1] != first:
+        specStart = ",start=" & $(ord(n.labelFmt[i1]) - ord(first) + 1)
+      specifier = "[$1$2]" % [labelDef, specStart]
+  else:  # HTML
+    # TODO: implement enumerator formatting using pre and post ( and ) for HTML
+    if n.labelFmt[i1].isDigit:
+      if n.labelFmt[enumR] != "1":
+        specStart = " start=\"$1\"" % [n.labelFmt[enumR]]
+      specifier = "class=\"simple\"" & specStart
+    else:
+      let (first, labelDef) =
+        if n.labelFmt[i1].isUpperAscii: ('A', "class=\"upperalpha simple\"")
+        else: ('a', "class=\"loweralpha simple\"")
+      if n.labelFmt[i1] != first:
+        specStart = " start=\"$1\"" % [ $(ord(n.labelFmt[i1]) - ord(first) + 1) ]
+      specifier = labelDef & specStart
+  renderAux(d, n, "<ol$2 " & specifier & ">$1</ol>\n",
+            "\\begin{enumerate}" & specifier & "$2$1\\end{enumerate}\n",
+            result)
+
+proc renderAdmonition(d: PDoc, n: PRstNode, result: var string) =
+  var
+    htmlCls = "admonition_warning"
+    texSz = "\\large"
+    texColor = "orange"
+  case n.adType
+  of "hint", "note", "tip":
+    htmlCls = "admonition-info"; texSz = "\\normalsize"; texColor = "green"
+  of "attention", "admonition", "important", "warning", "caution":
+    htmlCls = "admonition-warning"; texSz = "\\large"; texColor = "orange"
+  of "danger", "error":
+    htmlCls = "admonition-error"; texSz = "\\Large"; texColor = "red"
+  else: discard
+  let txt = n.adType.capitalizeAscii()
+  let htmlHead = "<div class=\"admonition " & htmlCls & "\">"
+  renderAux(d, n,
+      htmlHead & "<span$2 class=\"" & htmlCls & "-text\"><b>" & txt &
+        ":</b></span>\n" & "$1</div>\n",
+      "\n\n\\begin{rstadmonition}[borderline west={0.2em}{0pt}{" &
+        texColor & "}]$2\n" &
+        "{" & texSz & "\\color{" & texColor & "}{\\textbf{" & txt & ":}}} " &
+        "$1\n\\end{rstadmonition}\n",
+      result)
+
+proc renderHyperlink(d: PDoc, text, link: PRstNode, result: var string,
+                     external: bool, nimdoc = false, tooltip="") =
+  var linkStr = ""
+  block:
+    let mode = d.escMode
+    d.escMode = emUrl
+    renderRstToOut(d, link, linkStr)
+    d.escMode = mode
+  discard safeProtocol(linkStr)
+  var textStr = ""
+  renderRstToOut(d, text, textStr)
+  let nimDocStr = if nimdoc: " nimdoc" else: ""
+  var tooltipStr = ""
+  if tooltip != "":
+    tooltipStr = """ title="$1"""" % [ esc(d.target, tooltip) ]
+  if external:
+    dispA(d.target, result,
+      "<a class=\"reference external$3\"$4 href=\"$2\">$1</a>",
+      "\\href{$2}{$1}", [textStr, linkStr, nimDocStr, tooltipStr])
+  else:
+    dispA(d.target, result,
+      "<a class=\"reference internal$3\"$4 href=\"#$2\">$1</a>",
+      "\\hyperlink{$2}{$1} (p.~\\pageref{$2})",
+      [textStr, linkStr, nimDocStr, tooltipStr])
+
+proc traverseForIndex*(d: PDoc, n: PRstNode) =
+  ## A version of [renderRstToOut] that only fills entries for ``.idx`` files.
+  var discarded: string
+  if n == nil: return
+  case n.kind
+  of rnIdx: renderIndexTerm(d, n, discarded)
+  of rnHeadline, rnMarkdownHeadline: renderHeadline(d, n, discarded)
+  of rnOverline: renderOverline(d, n, discarded)
+  else:
+    for i in 0 ..< len(n):
+      traverseForIndex(d, n.sons[i])
+
 proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
   if n == nil: return
   case n.kind
   of rnInner: renderAux(d, n, result)
-  of rnHeadline: renderHeadline(d, n, result)
+  of rnHeadline, rnMarkdownHeadline: renderHeadline(d, n, result)
   of rnOverline: renderOverline(d, n, result)
-  of rnTransition: renderAux(d, n, "<hr />\n", "\\hrule\n", result)
-  of rnParagraph: renderAux(d, n, "<p>$1</p>\n", "$1\n\n", result)
+  of rnTransition: renderAux(d, n, "<hr$2 />\n", "\n\n\\vspace{0.6em}\\hrule$2\n", result)
+  of rnParagraph: renderAux(d, n, "<p$2>$1</p>\n", "\n\n$2\n$1\n\n", result)
   of rnBulletList:
-    renderAux(d, n, "<ul class=\"simple\">$1</ul>\n",
-                    "\\begin{itemize}$1\\end{itemize}\n", result)
+    renderAux(d, n, "<ul$2 class=\"simple\">$1</ul>\n",
+                    "\\begin{itemize}\n$2\n$1\\end{itemize}\n", result)
   of rnBulletItem, rnEnumItem:
-    renderAux(d, n, "<li>$1</li>\n", "\\item $1\n", result)
-  of rnEnumList:
-    renderAux(d, n, "<ol class=\"simple\">$1</ol>\n",
-                    "\\begin{enumerate}$1\\end{enumerate}\n", result)
-  of rnDefList:
-    renderAux(d, n, "<dl class=\"docutils\">$1</dl>\n",
-                       "\\begin{description}$1\\end{description}\n", result)
+    renderAux(d, n, "<li$2>$1</li>\n", "\\item $2$1\n", result)
+  of rnEnumList: renderEnumList(d, n, result)
+  of rnDefList, rnMdDefList:
+    renderAux(d, n, "<dl$2 class=\"docutils\">$1</dl>\n",
+                    "\\begin{description}\n$2\n$1\\end{description}\n", result)
   of rnDefItem: renderAux(d, n, result)
-  of rnDefName: renderAux(d, n, "<dt>$1</dt>\n", "\\item[$1] ", result)
-  of rnDefBody: renderAux(d, n, "<dd>$1</dd>\n", "$1\n", result)
+  of rnDefName: renderAux(d, n, "<dt$2>$1</dt>\n", "$2\\item[$1]\\  ", result)
+  of rnDefBody: renderAux(d, n, "<dd$2>$1</dd>\n", "$2\n$1\n", result)
   of rnFieldList:
     var tmp = ""
     for i in countup(0, len(n) - 1):
       renderRstToOut(d, n.sons[i], tmp)
     if tmp.len != 0:
       dispA(d.target, result,
-          "<table class=\"docinfo\" frame=\"void\" rules=\"none\">" &
+          "<table$2 class=\"docinfo\" frame=\"void\" rules=\"none\">" &
           "<col class=\"docinfo-name\" />" &
           "<col class=\"docinfo-content\" />" &
           "<tbody valign=\"top\">$1" &
           "</tbody></table>",
-          "\\begin{description}$1\\end{description}\n",
-          [tmp])
+          "\\begin{description}\n$2\n$1\\end{description}\n",
+          [tmp, n.anchor.idS])
   of rnField: renderField(d, n, result)
   of rnFieldName:
     renderAux(d, n, "<th class=\"docinfo-name\">$1:</th>",
@@ -1072,74 +1159,159 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
   of rnIndex:
     renderRstToOut(d, n.sons[2], result)
   of rnOptionList:
-    renderAux(d, n, "<table frame=\"void\">$1</table>",
-      "\\begin{description}\n$1\\end{description}\n", result)
+    renderAux(d, n, "<div$2 class=\"option-list\">$1</div>",
+        "\\begin{rstoptlist}$2\n$1\\end{rstoptlist}", result)
   of rnOptionListItem:
-    renderAux(d, n, "<tr>$1</tr>\n", "$1", result)
-  of rnOptionGroup:
-    renderAux(d, n, "<th align=\"left\">$1</th>", "\\item[$1]", result)
-  of rnDescription:
-    renderAux(d, n, "<td align=\"left\">$1</td>\n", " $1\n", result)
-  of rnOption, rnOptionString, rnOptionArgument:
-    doAssert false, "renderRstToOut"
-  of rnLiteralBlock:
-    renderAux(d, n, "<pre>$1</pre>\n",
-                    "\\begin{rstpre}\n$1\n\\end{rstpre}\n", result)
-  of rnQuotedLiteralBlock:
-    doAssert false, "renderRstToOut"
-  of rnLineBlock:
-    renderAux(d, n, "<p>$1</p>", "$1\n\n", result)
-  of rnLineBlockItem:
-    renderAux(d, n, "$1<br />", "$1\\\\\n", result)
-  of rnBlockQuote:
-    renderAux(d, n, "<blockquote><p>$1</p></blockquote>\n",
-                    "\\begin{quote}$1\\end{quote}\n", result)
-  of rnTable, rnGridTable:
+    var addclass = if n.order mod 2 == 1: " odd" else: ""
     renderAux(d, n,
-      "<table border=\"1\" class=\"docutils\">$1</table>",
-      "\\begin{table}\\begin{rsttab}{" &
-        texColumns(n) & "|}\n\\hline\n$1\\end{rsttab}\\end{table}", result)
+        "<div class=\"option-list-item" & addclass & "\">$1</div>\n",
+        "$1", result)
+  of rnOptionGroup:
+    renderAux(d, n,
+        "<div class=\"option-list-label\"><tt><span class=\"option\">" &
+        "$1</span></tt></div>",
+        "\\item[\\rstcodeitem{\\spanoption{$1}}]", result)
+  of rnDescription:
+    renderAux(d, n, "<div class=\"option-list-description\">$1</div>",
+        " $1\n", result)
+  of rnOption, rnOptionString, rnOptionArgument:
+    raiseAssert "renderRstToOut"
+  of rnLiteralBlock:
+    renderAux(d, n, "<pre$2>$1</pre>\n",
+                    "\n\n$2\\begin{rstpre}\n$1\n\\end{rstpre}\n\n", result)
+  of rnMarkdownBlockQuote:
+    d.curQuotationDepth = 1
+    var tmp = ""
+    renderAux(d, n, "$1", "$1", tmp)
+    let itemEnding =
+      if d.target == outHtml: "</blockquote>" else: "\\end{rstquote}"
+    tmp.add itemEnding.repeat(d.curQuotationDepth - 1)
+    dispA(d.target, result,
+        "<blockquote$2 class=\"markdown-quote\">$1</blockquote>\n",
+        "\n\\begin{rstquote}\n$2\n$1\\end{rstquote}\n", [tmp, n.anchor.idS])
+  of rnMarkdownBlockQuoteItem:
+    let addQuotationDepth = n.quotationDepth - d.curQuotationDepth
+    var itemPrefix: string  # start or ending (quotation grey bar on the left)
+    if addQuotationDepth >= 0:
+      let s =
+        if d.target == outHtml: "<blockquote class=\"markdown-quote\">"
+        else: "\\begin{rstquote}"
+      itemPrefix = s.repeat(addQuotationDepth)
+    else:
+      let s =
+        if d.target == outHtml: "</blockquote>"
+        else: "\\end{rstquote}"
+      itemPrefix = s.repeat(-addQuotationDepth)
+    renderAux(d, n, itemPrefix & "<p>$1</p>", itemPrefix & "\n$1", result)
+    d.curQuotationDepth = n.quotationDepth
+  of rnLineBlock:
+    if n.sons.len == 1 and n.sons[0].lineIndent == "\n":
+      # whole line block is one empty line, no need to add extra spacing
+      renderAux(d, n, "<p$2>$1</p> ", "\n\n$2\n$1", result)
+    else:  # add extra spacing around the line block for Latex
+      renderAux(d, n, "<p$2>$1</p>",
+        "\n\\vspace{0.5em}$2\n$1\\vspace{0.5em}\n", result)
+  of rnLineBlockItem:
+    if n.lineIndent.len == 0:  # normal case - no additional indentation
+      renderAux(d, n, "$1<br/>", "\\noindent $1\n\n", result)
+    elif n.lineIndent == "\n":  # add one empty line
+      renderAux(d, n, "<br/>", "\\vspace{1em}\n", result)
+    else:  # additional indentation w.r.t. '| '
+      let indent = $(0.5 * (n.lineIndent.len - 1).toFloat) & "em"
+      renderAux(d, n,
+        "<span style=\"margin-left: " & indent & "\">$1</span><br/>",
+        "\\noindent\\hspace{" & indent & "}$1\n\n", result)
+  of rnBlockQuote:
+    renderAux(d, n, "<blockquote$2><p>$1</p></blockquote>\n",
+                    "\\begin{quote}\n$2\n$1\\end{quote}\n", result)
+  of rnAdmonition: renderAdmonition(d, n, result)
+  of rnTable, rnGridTable, rnMarkdownTable:
+    renderAux(d, n,
+      "<table$2 border=\"1\" class=\"docutils\">$1</table>",
+      "\n$2\n\\begin{rsttab}{" &
+        "L".repeat(n.colCount) & "}\n\\toprule\n$1" &
+        "\\addlinespace[0.1em]\\bottomrule\n\\end{rsttab}", result)
   of rnTableRow:
     if len(n) >= 1:
-      if d.target == outLatex:
-        #var tmp = ""
-        renderRstToOut(d, n.sons[0], result)
-        for i in countup(1, len(n) - 1):
-          result.add(" & ")
-          renderRstToOut(d, n.sons[i], result)
-        result.add("\\\\\n\\hline\n")
-      else:
+      case d.target
+      of outHtml:
         result.add("<tr>")
         renderAux(d, n, result)
         result.add("</tr>\n")
-  of rnTableDataCell:
-    renderAux(d, n, "<td>$1</td>", "$1", result)
-  of rnTableHeaderCell:
-    renderAux(d, n, "<th>$1</th>", "\\textbf{$1}", result)
-  of rnLabel:
-    doAssert false, "renderRstToOut" # used for footnotes and other
-  of rnFootnote:
-    doAssert false, "renderRstToOut" # a footnote
-  of rnCitation:
-    doAssert false, "renderRstToOut" # similar to footnote
-  of rnRef:
-    var tmp = ""
-    renderAux(d, n, tmp)
-    dispA(d.target, result,
-      "<a class=\"reference external\" href=\"#$2\">$1</a>",
-      "$1\\ref{$2}", [tmp, rstnodeToRefname(n)])
-  of rnStandaloneHyperlink:
+      of outLatex:
+        if n.sons[0].kind == rnTableHeaderCell:
+          result.add "\\rowcolor{gray!15} "
+        var spanLines: seq[(int, int)]
+        var nCell = 0
+        for uCell in 0 .. n.len - 1:
+          renderRstToOut(d, n.sons[uCell], result)
+          if n.sons[uCell].span > 0:
+            spanLines.add (nCell + 1, nCell + n.sons[uCell].span)
+            nCell += n.sons[uCell].span
+          else:
+            nCell += 1
+          if uCell != n.len - 1:
+            result.add(" & ")
+        result.add("\\\\")
+        if n.endsHeader: result.add("\\midrule\n")
+        for (start, stop) in spanLines:
+          result.add("\\cmidrule(lr){$1-$2}" % [$start, $stop])
+        result.add("\n")
+  of rnTableHeaderCell, rnTableDataCell:
+    case d.target
+    of outHtml:
+      let tag = if n.kind == rnTableHeaderCell: "th" else: "td"
+      var spanSpec: string
+      if n.span <= 1: spanSpec = ""
+      else:
+        spanSpec = " colspan=\"" & $n.span & "\" style=\"text-align: center\""
+      renderAux(d, n, "<$1$2>$$1</$1>" % [tag, spanSpec], "", result)
+    of outLatex:
+      let text = if n.kind == rnTableHeaderCell: "\\textbf{$1}" else: "$1"
+      var latexStr: string
+      if n.span <= 1: latexStr = text
+      else: latexStr = "\\multicolumn{" & $n.span & "}{c}{" & text & "}"
+      renderAux(d, n, "", latexStr, result)
+  of rnFootnoteGroup:
     renderAux(d, n,
-      "<a class=\"reference external\" href=\"$1\">$1</a>",
-      "\\href{$1}{$1}", result)
-  of rnHyperlink:
-    var tmp0 = ""
-    var tmp1 = ""
-    renderRstToOut(d, n.sons[0], tmp0)
-    renderRstToOut(d, n.sons[1], tmp1)
+      "<hr class=\"footnote\">" &
+          "<div class=\"footnote-group\">\n$1</div>\n",
+      "\n\n\\noindent\\rule{0.25\\linewidth}{.4pt}\n" &
+          "\\begin{rstfootnote}\n$1\\end{rstfootnote}\n\n",
+      result)
+  of rnFootnote, rnCitation:
+    var mark = ""
+    renderAux(d, n.sons[0], mark)
+    var body = ""
+    renderRstToOut(d, n.sons[1], body)
     dispA(d.target, result,
-      "<a class=\"reference external\" href=\"$2\">$1</a>",
-      "\\href{$2}{$1}", [tmp0, tmp1])
+      "<div$2><div class=\"footnote-label\">" &
+          "<sup><strong><a href=\"#$4\">[$3]</a></strong></sup>" &
+          "</div> &ensp; $1\n</div>\n",
+      "\\item[\\textsuperscript{[$3]}]$2 $1\n",
+      [body, n.anchor.idS, mark, n.anchor])
+  of rnPandocRef:
+    renderHyperlink(d, text=n.sons[0], link=n.sons[1], result, external=false)
+  of rnRstRef:
+    renderHyperlink(d, text=n.sons[0], link=n.sons[0], result, external=false)
+  of rnStandaloneHyperlink:
+    renderHyperlink(d, text=n.sons[0], link=n.sons[0], result, external=true)
+  of rnInternalRef:
+    renderHyperlink(d, text=n.sons[0], link=n.sons[1], result, external=false)
+  of rnNimdocRef:
+    renderHyperlink(d, text=n.sons[0], link=n.sons[1], result, external=false,
+                    nimdoc=true, tooltip=n.tooltip)
+  of rnHyperlink:
+    renderHyperlink(d, text=n.sons[0], link=n.sons[1], result, external=true)
+  of rnFootnoteRef:
+    var tmp = "["
+    renderAux(d, n.sons[0], tmp)
+    tmp.add "]"
+    dispA(d.target, result,
+      "<sup><strong><a class=\"reference internal\" href=\"#$2\">" &
+          "$1</a></strong></sup>",
+      "\\textsuperscript{\\hyperlink{$2}{\\textbf{$1}}}",
+      [tmp, n.sons[1].text])
   of rnDirArg, rnRaw: renderAux(d, n, result)
   of rnRawHtml:
     if d.target != outLatex and not lastSon(n).isNil:
@@ -1149,19 +1321,28 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
       result.add addNodes(lastSon(n))
 
   of rnImage, rnFigure: renderImage(d, n, result)
-  of rnCodeBlock: renderCodeBlock(d, n, result)
+  of rnCodeBlock, rnInlineCode: renderCode(d, n, result)
   of rnContainer: renderContainer(d, n, result)
   of rnSubstitutionReferences, rnSubstitutionDef:
     renderAux(d, n, "|$1|", "|$1|", result)
   of rnDirective:
     renderAux(d, n, "", "", result)
-  of rnGeneralRole:
+  of rnUnknownRole, rnCodeFragment:
     var tmp0 = ""
     var tmp1 = ""
     renderRstToOut(d, n.sons[0], tmp0)
     renderRstToOut(d, n.sons[1], tmp1)
-    dispA(d.target, result, "<span class=\"$2\">$1</span>", "\\span$2{$1}",
-          [tmp0, tmp1])
+    var class = tmp1
+    # don't allow missing role break latex compilation:
+    if d.target == outLatex and n.kind == rnUnknownRole: class = "Other"
+    if n.kind == rnCodeFragment:
+      dispA(d.target, result,
+            "<tt class=\"docutils literal\"><span class=\"pre $2\">" &
+              "$1</span></tt>",
+            "\\rstcode{\\span$2{$1}}", [tmp0, class])
+    else:  # rnUnknownRole, not necessarily code/monospace font
+      dispA(d.target, result, "<span class=\"$2\">$1</span>", "\\span$2{$1}",
+            [tmp0, class])
   of rnSub: renderAux(d, n, "<sub>$1</sub>", "\\rstsub{$1}", result)
   of rnSup: renderAux(d, n, "<sup>$1</sup>", "\\rstsup{$1}", result)
   of rnEmphasis: renderAux(d, n, "<em>$1</em>", "\\emph{$1}", result)
@@ -1175,13 +1356,22 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
   of rnInlineLiteral, rnInterpretedText:
     renderAux(d, n,
       "<tt class=\"docutils literal\"><span class=\"pre\">$1</span></tt>",
-      "\\texttt{$1}", result)
+      "\\rstcode{$1}", result)
+  of rnInlineTarget:
+    var tmp = ""
+    renderAux(d, n, tmp)
+    dispA(d.target, result,
+      "<span class=\"target\" id=\"$2\">$1</span>",
+      "\\label{$2}\\hypertarget{$2}{$1}",
+      [tmp, rstnodeToRefname(n)])
   of rnSmiley: renderSmiley(d, n, result)
-  of rnLeaf: result.add(esc(d.target, n.text))
+  of rnLeaf: result.add(esc(d.target, n.text, escMode=d.escMode))
   of rnContents: d.hasToc = true
+  of rnDefaultRole: discard
   of rnTitle:
     d.meta[metaTitle] = ""
     renderRstToOut(d, n.sons[0], d.meta[metaTitle])
+    d.meta[metaTitleRaw] = n.sons[0].addNodes
 
 # -----------------------------------------------------------------------------
 
@@ -1311,7 +1501,7 @@ $moduledesc
 $content
 </div>
 """)
-  setConfigVar("doc.listing_start", "<pre class = \"listing\">")
+  setConfigVar("doc.listing_start", "<pre$3 class = \"listing\">")
   setConfigVar("doc.listing_end", "</pre>")
   setConfigVar("doc.listing_button", "</pre>")
   setConfigVar("doc.body_no_toc", "$moduledesc $content")
@@ -1321,7 +1511,8 @@ $content
 # ---------- forum ---------------------------------------------------------
 
 proc rstToHtml*(s: string, options: RstParseOptions,
-                config: StringTableRef): string =
+                config: StringTableRef,
+                msgHandler: MsgHandler = rst.defaultMsgHandler): string {.gcsafe.} =
   ## Converts an input rst string into embeddable HTML.
   ##
   ## This convenience proc parses any input string using rst markup (it doesn't
@@ -1331,12 +1522,13 @@ proc rstToHtml*(s: string, options: RstParseOptions,
   ## work. For an explanation of the ``config`` parameter see the
   ## ``initRstGenerator`` proc. Example:
   ##
-  ## .. code-block:: nim
+  ##   ```nim
   ##   import packages/docutils/rstgen, strtabs
   ##
   ##   echo rstToHtml("*Hello* **world**!", {},
   ##     newStringTable(modeStyleInsensitive))
   ##   # --> <em>Hello</em> <strong>world</strong>!
+  ##   ```
   ##
   ## If you need to allow the rst ``include`` directive or tweak the generated
   ## output you have to create your own ``RstGenerator`` with
@@ -1345,28 +1537,30 @@ proc rstToHtml*(s: string, options: RstParseOptions,
   proc myFindFile(filename: string): string =
     # we don't find any files in online mode:
     result = ""
+  proc myFindRefFile(filename: string): (string, string) =
+    result = ("", "")
 
   const filen = "input"
+  let (rst, filenames, t) = rstParse(s, filen,
+                                     line=LineRstInit, column=ColRstInit,
+                                     options, myFindFile, myFindRefFile, msgHandler)
   var d: RstGenerator
-  initRstGenerator(d, outHtml, config, filen, options, myFindFile,
-                   rst.defaultMsgHandler)
-  var dummyHasToc = false
-  var rst = rstParse(s, filen, 0, 1, dummyHasToc, options)
+  initRstGenerator(d, outHtml, config, filen, myFindFile, msgHandler,
+                   filenames, hasToc = t)
   result = ""
   renderRstToOut(d, rst, result)
+  strbasics.strip(result)
 
 
 proc rstToLatex*(rstSource: string; options: RstParseOptions): string {.inline, since: (1, 3).} =
   ## Convenience proc for `renderRstToOut` and `initRstGenerator`.
   runnableExamples: doAssert rstToLatex("*Hello* **world**", {}) == """\emph{Hello} \textbf{world}"""
   if rstSource.len == 0: return
-  var option: bool
+  let (rst, filenames, t) = rstParse(rstSource, "",
+                                     line=LineRstInit, column=ColRstInit,
+                                     options)
   var rstGenera: RstGenerator
-  rstGenera.initRstGenerator(outLatex, defaultConfig(), "input", options)
-  rstGenera.renderRstToOut(rstParse(rstSource, "", 1, 1, option, options), result)
-
-
-when isMainModule:
-  assert rstToHtml("*Hello* **world**!", {},
-    newStringTable(modeStyleInsensitive)) ==
-    "<em>Hello</em> <strong>world</strong>!"
+  rstGenera.initRstGenerator(outLatex, defaultConfig(), "input",
+                             filenames=filenames, hasToc = t)
+  rstGenera.renderRstToOut(rst, result)
+  strbasics.strip(result)

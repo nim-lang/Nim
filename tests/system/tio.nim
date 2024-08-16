@@ -22,12 +22,12 @@ proc echoLoop(str: string): string =
   while not output.atEnd:
     result.add(output.readLine)
 
-suite "io":
-  suite "readAll":
-    test "stdin":
+block: # io
+  block: # readAll
+    block: # stdin
       check:
         echoLoop(STRING_DATA) == STRING_DATA
-    test "file":
+    block: # file
       check:
         readFile(TEST_FILE).strip == STRING_DATA
 

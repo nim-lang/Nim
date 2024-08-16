@@ -1,5 +1,4 @@
 discard """
-  output: "Done"
   cmd: "nim $target --debuginfo --hints:on --define:useNimRtl $options $file"
 """
 
@@ -37,5 +36,8 @@ proc eval(n: PNode): int =
 for i in 0..100_000:
   discard eval(buildTree(2))
 
-echo "Done"
-
+# bug https://forum.nim-lang.org/t/8176; Error: ambiguous identifier: 'nimrtl'
+import std/strutils
+doAssert join(@[1, 2]) == "12"
+doAssert join(@[1.5, 2.5]) == "1.52.5"
+doAssert join(@["a", "bc"]) == "abc"

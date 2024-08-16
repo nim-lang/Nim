@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## The ``sets`` module implements an efficient `hash set`:idx: and
+## The `sets` module implements an efficient `hash set`:idx: and
 ## ordered hash set.
 ##
 ## Hash sets are different from the `built in set type
@@ -16,7 +16,7 @@
 ##
 ## Common usages of sets:
 ## * removing duplicates from a container by converting it with `toHashSet proc
-##   <#toHashSet,openArray[A]>`_ (see also `sequtils.deduplicate proc
+##   <#toHashSet,openArray[A]>`_ (see also `sequtils.deduplicate func
 ##   <sequtils.html#deduplicate,openArray[T],bool>`_)
 ## * membership testing
 ## * mathematical operations on two sets, such as
@@ -25,7 +25,9 @@
 ##   `difference <#difference,HashSet[A],HashSet[A]>`_, and
 ##   `symmetric difference <#symmetricDifference,HashSet[A],HashSet[A]>`_
 ##
-## .. code-block::
+## **Examples:**
+##
+##   ```Nim
 ##   echo toHashSet([9, 5, 1])     # {9, 1, 5}
 ##   echo toOrderedSet([9, 5, 1])  # {9, 5, 1}
 ##
@@ -37,10 +39,10 @@
 ##   echo s1 - s2    # {1, 9}
 ##   echo s1 * s2    # {5}
 ##   echo s1 -+- s2  # {9, 1, 3, 7}
-##
+##   ```
 ##
 ## Note: The data types declared here have *value semantics*: This means
-## that ``=`` performs a copy of the set.
+## that `=` performs a copy of the set.
 ##
 ## **See also:**
 ## * `intsets module <intsets.html>`_ for efficient int sets
@@ -48,12 +50,12 @@
 
 
 import
-  hashes, math
+  std/[hashes, math]
+
+when not defined(nimHasEffectsOf):
+  {.pragma: effectsOf.}
 
 {.pragma: myShallow.}
-when not defined(nimhygiene):
-  {.pragma: dirty.}
-
 # For "integer-like A" that are too big for intsets/bit-vectors to be practical,
 # it would be best to shrink hcode to the same size as the integer.  Larger
 # codes should never be needed, and this can pack more entries per cache-line.
@@ -64,7 +66,7 @@ type
   HashSet*[A] {.myShallow.} = object ## \
     ## A generic hash set.
     ##
-    ## Use `init proc <#init,HashSet[A],int>`_ or `initHashSet proc <#initHashSet,int>`_
+    ## Use `init proc <#init,HashSet[A]>`_ or `initHashSet proc <#initHashSet>`_
     ## before calling other procs on it.
     data: KeyValuePairSeq[A]
     counter: int
@@ -76,8 +78,8 @@ type
   OrderedSet*[A] {.myShallow.} = object ## \
     ## A generic hash set that remembers insertion order.
     ##
-    ## Use `init proc <#init,OrderedSet[A],int>`_ or `initOrderedSet proc
-    ## <#initOrderedSet,int>`_ before calling other procs on it.
+    ## Use `init proc <#init,OrderedSet[A]>`_ or `initOrderedSet proc
+    ## <#initOrderedSet>`_ before calling other procs on it.
     data: OrderedKeyValuePairSeq[A]
     counter, first, last: int
   SomeSet*[A] = HashSet[A] | OrderedSet[A]
@@ -104,7 +106,7 @@ proc init*[A](s: var HashSet[A], initialSize = defaultInitialSize) =
   ## existing values and calling `excl() <#excl,HashSet[A],A>`_ on them.
   ##
   ## See also:
-  ## * `initHashSet proc <#initHashSet,int>`_
+  ## * `initHashSet proc <#initHashSet>`_
   ## * `toHashSet proc <#toHashSet,openArray[A]>`_
   runnableExamples:
     var a: HashSet[int]
@@ -113,10 +115,10 @@ proc init*[A](s: var HashSet[A], initialSize = defaultInitialSize) =
   initImpl(s, initialSize)
 
 proc initHashSet*[A](initialSize = defaultInitialSize): HashSet[A] =
-  ## Wrapper around `init proc <#init,HashSet[A],int>`_ for initialization of
+  ## Wrapper around `init proc <#init,HashSet[A]>`_ for initialization of
   ## hash sets.
   ##
-  ## Returns an empty hash set you can assign directly in ``var`` blocks in a
+  ## Returns an empty hash set you can assign directly in `var` blocks in a
   ## single line.
   ##
   ## Starting from Nim v0.20, sets are initialized by default and it is
@@ -128,12 +130,12 @@ proc initHashSet*[A](initialSize = defaultInitialSize): HashSet[A] =
     var a = initHashSet[int]()
     a.incl(3)
     assert len(a) == 1
-
+  result = default(HashSet[A])
   result.init(initialSize)
 
 proc `[]`*[A](s: var HashSet[A], key: A): var A =
   ## Returns the element that is actually stored in `s` which has the same
-  ## value as `key` or raises the ``KeyError`` exception.
+  ## value as `key` or raises the `KeyError` exception.
   ##
   ## This is useful when one overloaded `hash` and `==` but still needs
   ## reference semantics for sharing.
@@ -166,6 +168,27 @@ proc contains*[A](s: HashSet[A], key: A): bool =
   var hc: Hash
   var index = rawGet(s, key, hc)
   result = index >= 0
+
+proc len*[A](s: HashSet[A]): int =
+  ## Returns the number of elements in `s`.
+  ##
+  ## Due to an implementation detail you can call this proc on variables which
+  ## have not been initialized yet. The proc will return zero as the length
+  ## then.
+  runnableExamples:
+    var a: HashSet[string]
+    assert len(a) == 0
+    let s = toHashSet([3, 5, 7])
+    assert len(s) == 3
+
+  result = s.counter
+
+proc card*[A](s: HashSet[A]): int =
+  ## Alias for `len() <#len,HashSet[A]>`_.
+  ##
+  ## Card stands for the `cardinality
+  ## <http://en.wikipedia.org/wiki/Cardinality>`_ of a set.
+  result = s.counter
 
 proc incl*[A](s: var HashSet[A], key: A) =
   ## Includes an element `key` in `s`.
@@ -209,7 +232,7 @@ proc toHashSet*[A](keys: openArray[A]): HashSet[A] =
   ## Duplicates are removed.
   ##
   ## See also:
-  ## * `initHashSet proc <#initHashSet,int>`_
+  ## * `initHashSet proc <#initHashSet>`_
   runnableExamples:
     let
       a = toHashSet([5, 3, 2])
@@ -228,7 +251,7 @@ iterator items*[A](s: HashSet[A]): A =
   ## If you need a sequence with the elements you can use `sequtils.toSeq
   ## template <sequtils.html#toSeq.t,untyped>`_.
   ##
-  ## .. code-block::
+  ##   ```Nim
   ##   type
   ##     pair = tuple[a, b: int]
   ##   var
@@ -241,8 +264,12 @@ iterator items*[A](s: HashSet[A]): A =
   ##   assert a.len == 2
   ##   echo b
   ##   # --> {(a: 1, b: 3), (a: 0, b: 4)}
+  ##   ```
+  let length = s.len
   for h in 0 .. high(s.data):
-    if isFilled(s.data[h].hcode): yield s.data[h].key
+    if isFilled(s.data[h].hcode):
+      yield s.data[h].key
+      assert(len(s) == length, "the length of the HashSet changed while iterating over it")
 
 proc containsOrIncl*[A](s: var HashSet[A], key: A): bool =
   ## Includes `key` in the set `s` and tells if `key` was already in `s`.
@@ -321,9 +348,9 @@ proc missingOrExcl*[A](s: var HashSet[A], key: A): bool =
   exclImpl(s, key)
 
 proc pop*[A](s: var HashSet[A]): A =
-  ## Remove and return an arbitrary element from the set `s`.
+  ## Removes and returns an arbitrary element from the set `s`.
   ##
-  ## Raises KeyError if the set `s` is empty.
+  ## Raises `KeyError` if the set `s` is empty.
   ##
   ## See also:
   ## * `clear proc <#clear,HashSet[A]>`_
@@ -355,28 +382,9 @@ proc clear*[A](s: var HashSet[A]) =
   s.counter = 0
   for i in 0 ..< s.data.len:
     s.data[i].hcode = 0
-    s.data[i].key = default(type(s.data[i].key))
-
-proc len*[A](s: HashSet[A]): int =
-  ## Returns the number of elements in `s`.
-  ##
-  ## Due to an implementation detail you can call this proc on variables which
-  ## have not been initialized yet. The proc will return zero as the length
-  ## then.
-  runnableExamples:
-    var a: HashSet[string]
-    assert len(a) == 0
-    let s = toHashSet([3, 5, 7])
-    assert len(s) == 3
-
-  result = s.counter
-
-proc card*[A](s: HashSet[A]): int =
-  ## Alias for `len() <#len,HashSet[A]>`_.
-  ##
-  ## Card stands for the `cardinality
-  ## <http://en.wikipedia.org/wiki/Cardinality>`_ of a set.
-  result = s.counter
+    {.push warning[UnsafeDefault]:off.}
+    reset(s.data[i].key)
+    {.pop.}
 
 
 proc union*[A](s1, s2: HashSet[A]): HashSet[A] =
@@ -422,7 +430,7 @@ proc intersection*[A](s1, s2: HashSet[A]): HashSet[A] =
     assert c == toHashSet(["b"])
 
   result = initHashSet[A](max(min(s1.data.len, s2.data.len), 2))
-  
+
   # iterate over the elements of the smaller set
   if s1.data.len < s2.data.len:
     for item in s1:
@@ -430,7 +438,7 @@ proc intersection*[A](s1, s2: HashSet[A]): HashSet[A] =
   else:
     for item in s2:
       if item in s1: incl(result, item)
-  
+
 
 proc difference*[A](s1, s2: HashSet[A]): HashSet[A] =
   ## Returns the difference of the sets `s1` and `s2`.
@@ -556,7 +564,7 @@ proc `==`*[A](s, t: HashSet[A]): bool =
 
   s.counter == t.counter and s <= t
 
-proc map*[A, B](data: HashSet[A], op: proc (x: A): B {.closure.}): HashSet[B] =
+proc map*[A, B](data: HashSet[A], op: proc (x: A): B {.closure.}): HashSet[B] {.effectsOf: op.} =
   ## Returns a new set after applying `op` proc on each of the elements of
   ##`data` set.
   ##
@@ -583,12 +591,12 @@ proc `$`*[A](s: HashSet[A]): string =
   ## any moment and values are not escaped.
   ##
   ## **Examples:**
-  ##
-  ## .. code-block::
+  ##   ```Nim
   ##   echo toHashSet([2, 4, 5])
   ##   # --> {2, 4, 5}
   ##   echo toHashSet(["no", "esc'aping", "is \" provided"])
   ##   # --> {no, esc'aping, is " provided}
+  ##   ```
   dollarImpl()
 
 
@@ -601,14 +609,12 @@ proc toSet*[A](keys: openArray[A]): HashSet[A] {.deprecated:
 proc isValid*[A](s: HashSet[A]): bool {.deprecated:
      "Deprecated since v0.20; sets are initialized by default".} =
   ## Returns `true` if the set has been initialized (with `initHashSet proc
-  ## <#initHashSet,int>`_ or `init proc <#init,HashSet[A],int>`_).
+  ## <#initHashSet>`_ or `init proc <#init,HashSet[A]>`_).
   ##
-  ## **Examples:**
-  ##
-  ## .. code-block ::
-  ##   proc savePreferences(options: HashSet[string]) =
-  ##     assert options.isValid, "Pass an initialized set!"
-  ##     # Do stuff here, may crash in release builds!
+  runnableExamples:
+    proc savePreferences(options: HashSet[string]) =
+      assert options.isValid, "Pass an initialized set!"
+      # Do stuff here, may crash in release builds!
   result = s.data.len > 0
 
 
@@ -640,7 +646,7 @@ proc init*[A](s: var OrderedSet[A], initialSize = defaultInitialSize) =
   ## existing values and calling `excl() <#excl,HashSet[A],A>`_ on them.
   ##
   ## See also:
-  ## * `initOrderedSet proc <#initOrderedSet,int>`_
+  ## * `initOrderedSet proc <#initOrderedSet>`_
   ## * `toOrderedSet proc <#toOrderedSet,openArray[A]>`_
   runnableExamples:
     var a: OrderedSet[int]
@@ -649,10 +655,10 @@ proc init*[A](s: var OrderedSet[A], initialSize = defaultInitialSize) =
   initImpl(s, initialSize)
 
 proc initOrderedSet*[A](initialSize = defaultInitialSize): OrderedSet[A] =
-  ## Wrapper around `init proc <#init,OrderedSet[A],int>`_ for initialization of
+  ## Wrapper around `init proc <#init,OrderedSet[A]>`_ for initialization of
   ## ordered hash sets.
   ##
-  ## Returns an empty ordered hash set you can assign directly in ``var`` blocks
+  ## Returns an empty ordered hash set you can assign directly in `var` blocks
   ## in a single line.
   ##
   ## Starting from Nim v0.20, sets are initialized by default and it is
@@ -674,7 +680,7 @@ proc toOrderedSet*[A](keys: openArray[A]): OrderedSet[A] =
   ## Duplicates are removed.
   ##
   ## See also:
-  ## * `initOrderedSet proc <#initOrderedSet,int>`_
+  ## * `initOrderedSet proc <#initOrderedSet>`_
   runnableExamples:
     let
       a = toOrderedSet([5, 3, 2])
@@ -812,7 +818,9 @@ proc clear*[A](s: var OrderedSet[A]) =
   for i in 0 ..< s.data.len:
     s.data[i].hcode = 0
     s.data[i].next = 0
-    s.data[i].key = default(type(s.data[i].key))
+    {.push warning[UnsafeDefault]:off.}
+    reset(s.data[i].key)
+    {.pop.}
 
 proc len*[A](s: OrderedSet[A]): int {.inline.} =
   ## Returns the number of elements in `s`.
@@ -873,12 +881,12 @@ proc `$`*[A](s: OrderedSet[A]): string =
   ## any moment and values are not escaped.
   ##
   ## **Examples:**
-  ##
-  ## .. code-block::
+  ##   ```Nim
   ##   echo toOrderedSet([2, 4, 5])
   ##   # --> {2, 4, 5}
   ##   echo toOrderedSet(["no", "esc'aping", "is \" provided"])
   ##   # --> {no, esc'aping, is " provided}
+  ##   ```
   dollarImpl()
 
 
@@ -889,7 +897,7 @@ iterator items*[A](s: OrderedSet[A]): A =
   ## If you need a sequence with the elements you can use `sequtils.toSeq
   ## template <sequtils.html#toSeq.t,untyped>`_.
   ##
-  ## .. code-block::
+  ##   ```Nim
   ##   var a = initOrderedSet[int]()
   ##   for value in [9, 2, 1, 5, 1, 8, 4, 2]:
   ##     a.incl(value)
@@ -901,8 +909,11 @@ iterator items*[A](s: OrderedSet[A]): A =
   ##   # --> Got 5
   ##   # --> Got 8
   ##   # --> Got 4
+  ##   ```
+  let length = s.len
   forAllOrderedPairs:
     yield s.data[h].key
+    assert(len(s) == length, "the length of the OrderedSet changed while iterating over it")
 
 iterator pairs*[A](s: OrderedSet[A]): tuple[a: int, b: A] =
   ## Iterates through (position, value) tuples of OrderedSet `s`.
@@ -913,273 +924,7 @@ iterator pairs*[A](s: OrderedSet[A]): tuple[a: int, b: A] =
       p.add(x)
     assert p == @[(0, 'a'), (1, 'b'), (2, 'r'), (3, 'c'), (4, 'd')]
 
+  let length = s.len
   forAllOrderedPairs:
     yield (idx, s.data[h].key)
-
-# -----------------------------------------------------------------------
-
-
-
-when isMainModule and not defined(release):
-  proc testModule() =
-    ## Internal micro test to validate docstrings and such.
-    block lenTest:
-      var values: HashSet[int]
-      assert values.len == 0
-      assert values.card == 0
-
-    block setIterator:
-      type pair = tuple[a, b: int]
-      var a, b = initHashSet[pair]()
-      a.incl((2, 3))
-      a.incl((3, 2))
-      a.incl((2, 3))
-      for x, y in a.items:
-        b.incl((x - 2, y + 1))
-      assert a.len == b.card
-      assert a.len == 2
-      #echo b
-
-    block setContains:
-      var values = initHashSet[int]()
-      assert(not values.contains(2))
-      values.incl(2)
-      assert values.contains(2)
-      values.excl(2)
-      assert(not values.contains(2))
-
-      values.incl(4)
-      var others = toHashSet([6, 7])
-      values.incl(others)
-      assert values.len == 3
-
-      values.init
-      assert values.containsOrIncl(2) == false
-      assert values.containsOrIncl(2) == true
-      var
-        a = toHashSet([1, 2])
-        b = toHashSet([1])
-      b.incl(2)
-      assert a == b
-
-    block exclusions:
-      var s = toHashSet([2, 3, 6, 7])
-      s.excl(2)
-      s.excl(2)
-      assert s.len == 3
-
-      var
-        numbers = toHashSet([1, 2, 3, 4, 5])
-        even = toHashSet([2, 4, 6, 8])
-      numbers.excl(even)
-      #echo numbers
-      # --> {1, 3, 5}
-
-    block toSeqAndString:
-      var a = toHashSet([2, 7, 5])
-      var b = initHashSet[int](a.len)
-      for x in [2, 7, 5]: b.incl(x)
-      assert($a == $b)
-      #echo a
-      #echo toHashSet(["no", "esc'aping", "is \" provided"])
-
-    #block orderedToSeqAndString:
-    #  echo toOrderedSet([2, 4, 5])
-    #  echo toOrderedSet(["no", "esc'aping", "is \" provided"])
-
-    block setOperations:
-      var
-        a = toHashSet(["a", "b"])
-        b = toHashSet(["b", "c"])
-        c = union(a, b)
-      assert c == toHashSet(["a", "b", "c"])
-      var d = intersection(a, b)
-      assert d == toHashSet(["b"])
-      var e = difference(a, b)
-      assert e == toHashSet(["a"])
-      var f = symmetricDifference(a, b)
-      assert f == toHashSet(["a", "c"])
-      assert d < a and d < b
-      assert((a < a) == false)
-      assert d <= a and d <= b
-      assert((a <= a))
-      # Alias test.
-      assert a + b == toHashSet(["a", "b", "c"])
-      assert a * b == toHashSet(["b"])
-      assert a - b == toHashSet(["a"])
-      assert a -+- b == toHashSet(["a", "c"])
-      assert disjoint(a, b) == false
-      assert disjoint(a, b - a) == true
-
-    block mapSet:
-      var a = toHashSet([1, 2, 3])
-      var b = a.map(proc (x: int): string = $x)
-      assert b == toHashSet(["1", "2", "3"])
-
-    block lenTest:
-      var values: OrderedSet[int]
-      assert values.len == 0
-      assert values.card == 0
-
-    block setIterator:
-      type pair = tuple[a, b: int]
-      var a, b = initOrderedSet[pair]()
-      a.incl((2, 3))
-      a.incl((3, 2))
-      a.incl((2, 3))
-      for x, y in a.items:
-        b.incl((x - 2, y + 1))
-      assert a.len == b.card
-      assert a.len == 2
-
-    block setPairsIterator:
-      var s = toOrderedSet([1, 3, 5, 7])
-      var items = newSeq[tuple[a: int, b: int]]()
-      for idx, item in s: items.add((idx, item))
-      assert items == @[(0, 1), (1, 3), (2, 5), (3, 7)]
-
-    block exclusions:
-      var s = toOrderedSet([1, 2, 3, 6, 7, 4])
-
-      s.excl(3)
-      s.excl(3)
-      s.excl(1)
-      s.excl(4)
-
-      var items = newSeq[int]()
-      for item in s: items.add item
-      assert items == @[2, 6, 7]
-
-    block: #9005
-      var s = initOrderedSet[(int, int)]()
-      for i in 0 .. 30: incl(s, (i, 0))
-      for i in 0 .. 30: excl(s, (i, 0))
-      doAssert s.len == 0
-
-    #block orderedSetIterator:
-    #  var a = initOrderedSet[int]()
-    #  for value in [9, 2, 1, 5, 1, 8, 4, 2]:
-    #    a.incl(value)
-    #  for value in a.items:
-    #    echo "Got ", value
-
-    block setContains:
-      var values = initOrderedSet[int]()
-      assert(not values.contains(2))
-      values.incl(2)
-      assert values.contains(2)
-
-    block toSeqAndString:
-      var a = toOrderedSet([2, 4, 5])
-      var b = initOrderedSet[int]()
-      for x in [2, 4, 5]: b.incl(x)
-      assert($a == $b)
-      assert(a == b) # https://github.com/Araq/Nim/issues/1413
-
-    block initBlocks:
-      var a: OrderedSet[int]
-      a.init(4)
-      a.incl(2)
-      a.init
-      assert a.len == 0
-      a = initOrderedSet[int](4)
-      a.incl(2)
-      assert a.len == 1
-
-      var b: HashSet[int]
-      b.init(4)
-      b.incl(2)
-      b.init
-      assert b.len == 0
-      b = initHashSet[int](4)
-      b.incl(2)
-      assert b.len == 1
-
-    block missingOrExcl:
-      var s = toOrderedSet([2, 3, 6, 7])
-      assert s.missingOrExcl(4) == true
-      assert s.missingOrExcl(6) == false
-
-    block orderedSetEquality:
-      type pair = tuple[a, b: int]
-
-      var aa = initOrderedSet[pair]()
-      var bb = initOrderedSet[pair]()
-
-      var x = (a: 1, b: 2)
-      var y = (a: 3, b: 4)
-
-      aa.incl(x)
-      aa.incl(y)
-
-      bb.incl(x)
-      bb.incl(y)
-      assert aa == bb
-
-    block setsWithoutInit:
-      var
-        a: HashSet[int]
-        b: HashSet[int]
-        c: HashSet[int]
-        d: HashSet[int]
-        e: HashSet[int]
-
-      doAssert a.containsOrIncl(3) == false
-      doAssert a.contains(3)
-      doAssert a.len == 1
-      doAssert a.containsOrIncl(3)
-      a.incl(3)
-      doAssert a.len == 1
-      a.incl(6)
-      doAssert a.len == 2
-
-      b.incl(5)
-      doAssert b.len == 1
-      b.excl(5)
-      b.excl(c)
-      doAssert b.missingOrExcl(5)
-      doAssert b.disjoint(c)
-
-      d = b + c
-      doAssert d.len == 0
-      d = b * c
-      doAssert d.len == 0
-      d = b - c
-      doAssert d.len == 0
-      d = b -+- c
-      doAssert d.len == 0
-
-      doAssert (d < e) == false
-      doAssert d <= e
-      doAssert d == e
-
-    block setsWithoutInit:
-      var
-        a: OrderedSet[int]
-        b: OrderedSet[int]
-        c: OrderedSet[int]
-        d: HashSet[int]
-
-
-      doAssert a.containsOrIncl(3) == false
-      doAssert a.contains(3)
-      doAssert a.len == 1
-      doAssert a.containsOrIncl(3)
-      a.incl(3)
-      doAssert a.len == 1
-      a.incl(6)
-      doAssert a.len == 2
-
-      b.incl(5)
-      doAssert b.len == 1
-      doAssert b.missingOrExcl(5) == false
-      doAssert b.missingOrExcl(5)
-
-      doAssert c.missingOrExcl(9)
-      d.incl(c)
-      doAssert d.len == 0
-
-    when not defined(testing):
-      echo "Micro tests run successfully."
-
-  testModule()
+    assert(len(s) == length, "the length of the OrderedSet changed while iterating over it")

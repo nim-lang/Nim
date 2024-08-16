@@ -168,14 +168,14 @@ template new_parsed_parameter*(tkind: Tparam_kind, expr): Tparsed_parameter =
   ## initialised with. The template figures out at compile time what field to
   ## assign the variable to, and thus you reduce code clutter and may use this
   ## to initialise single assignments variables in `let` blocks. Example:
-  ##
-  ## .. code-block:: nim
+  ##   ```nim
   ##   let
   ##     parsed_param1 = new_parsed_parameter(PK_FLOAT, 3.41)
   ##     parsed_param2 = new_parsed_parameter(PK_BIGGEST_INT, 2358123 * 23123)
   ##     # The following line doesn't compile due to
   ##     # type mismatch: got <string> but expected 'int'
   ##     #parsed_param3 = new_parsed_parameter(PK_INT, "231")
+  ##   ```
   var result {.gensym.}: Tparsed_parameter
   result.kind = tkind
   when tkind == PK_EMPTY: discard
@@ -225,7 +225,7 @@ template raise_or_quit(exception, message: untyped) =
 
 template run_custom_proc(parsed_parameter: Tparsed_parameter,
     custom_validator: Tparameter_callback,
-    parameter: TaintedString) =
+    parameter: string) =
   ## Runs the custom validator if it is not nil.
   ##
   ## Pass in the string of the parameter triggering the call. If the
@@ -318,7 +318,7 @@ proc echo_help*(expected: seq[Tparameter_specification] = @[],
 
 
 proc parse*(expected: seq[Tparameter_specification] = @[],
-    type_of_positional_parameters = PK_STRING, args: seq[TaintedString] = @[],
+    type_of_positional_parameters = PK_STRING, args: seq[string] = @[],
     bad_prefixes = @["-", "--"], end_of_options = "--",
     quit_on_failure = true): Tcommandline_results =
   ## Parses parameters and returns results.

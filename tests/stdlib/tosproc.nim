@@ -1,4 +1,5 @@
 discard """
+matrix: "--mm:refc; --mm:orc"
 joinable: false
 """
 
@@ -9,10 +10,11 @@ because it'd need cleanup up stdout
 see also: tests/osproc/*.nim; consider merging those into a single test here
 (easier to factor and test more things as a single self contained test)
 ]#
+import std/[assertions, syncio]
 
 when defined(case_testfile): # compiled test file for child process
   from posix import exitnow
-  proc c_exit2(code: c_int): void {.importc: "_exit", header: "<unistd.h>".}
+  proc c_exit2(code: cint): void {.importc: "_exit", header: "<unistd.h>".}
   import os
   var a = 0
   proc fun(b = 0) =
@@ -29,6 +31,12 @@ when defined(case_testfile): # compiled test file for child process
     case arg
     of "exit_0":
       if true: quit(0)
+    of "exit_1":
+      if true: quit(1)
+    of "exit_2":
+      if true: quit(2)
+    of "exit_42":
+      if true: quit(42)
     of "exitnow_139":
       if true: exitnow(139)
     of "c_exit2_139":
@@ -86,9 +94,7 @@ else: # main driver
   const sourcePath = currentSourcePath()
   let dir = getCurrentDir() / "tests" / "osproc"
 
-  template deferScoped(cleanup, body) =
-    # pending https://github.com/nim-lang/RFCs/issues/236#issuecomment-646855314
-    # xxx move to std/sugar or (preferably) some low level module
+  template deferring(cleanup, body) =
     try: body
     finally: cleanup
 
@@ -113,7 +119,17 @@ else: # main driver
     runTest("exit_0", 0)
     runTest("exitnow_139", 139)
     runTest("c_exit2_139", 139)
-    runTest("quit_139", 139)
+    when defined(posix):
+      runTest("quit_139", 127) # The quit value gets saturated to 127
+    else:
+      runTest("quit_139", 139)
+
+  block execCmdTest:
+    let output = compileNimProg("-d:release -d:case_testfile", "D20220705T221100")
+    doAssert execCmd(output & " exit_0") == 0
+    doAssert execCmd(output & " exit_1") == 1
+    doAssert execCmd(output & " exit_2") == 2
+    doAssert execCmd(output & " exit_42") == 42
 
   import std/streams
 
@@ -195,19 +211,19 @@ else: # main driver
     # bugfix: windows stdin.close was a noop and led to blocking reads
     proc startProcessTest(command: string, options: set[ProcessOption] = {
                     poStdErrToStdOut, poUsePath}, input = ""): tuple[
-                    output: TaintedString,
+                    output: string,
                     exitCode: int] {.tags:
                     [ExecIOEffect, ReadIOEffect, RootEffect], gcsafe.} =
       var p = startProcess(command, options = options + {poEvalCommand})
       var outp = outputStream(p)
       if input.len > 0: inputStream(p).write(input)
       close inputStream(p)
-      result = (TaintedString"", -1)
-      var line = newStringOfCap(120).TaintedString
+      result = ("", -1)
+      var line = newStringOfCap(120)
       while true:
         if outp.readLine(line):
-          result[0].string.add(line.string)
-          result[0].string.add("\n")
+          result[0].add(line)
+          result[0].add("\n")
         else:
           result[1] = peekExitCode(p)
           if result[1] != -1: break
@@ -223,7 +239,7 @@ else: # main driver
     p.inputStream.flush()
     var line = ""
     var s: seq[string]
-    while p.outputStream.readLine(line.TaintedString):
+    while p.outputStream.readLine(line):
       s.add line
     doAssert s == @["10"]
 
@@ -232,18 +248,18 @@ else: # main driver
     var x = newStringOfCap(120)
     block: # startProcess stdout poStdErrToStdOut (replaces old test `tstdout` + `ta_out`)
       var p = startProcess(output, dir, options={poStdErrToStdOut})
-      deferScoped: p.close()
+      deferring: p.close()
       do:
         var sout: seq[string]
-        while p.outputStream.readLine(x.TaintedString): sout.add x
+        while p.outputStream.readLine(x): sout.add x
         doAssert sout == @["start ta_out", "to stdout", "to stdout", "to stderr", "to stderr", "to stdout", "to stdout", "end ta_out"]
     block: # startProcess stderr (replaces old test `tstderr` + `ta_out`)
       var p = startProcess(output, dir, options={})
-      deferScoped: p.close()
+      deferring: p.close()
       do:
         var serr, sout: seq[string]
-        while p.errorStream.readLine(x.TaintedString): serr.add x
-        while p.outputStream.readLine(x.TaintedString): sout.add x
+        while p.errorStream.readLine(x): serr.add x
+        while p.outputStream.readLine(x): sout.add x
         doAssert serr == @["to stderr", "to stderr"]
         doAssert sout == @["start ta_out", "to stdout", "to stdout", "to stdout", "to stdout", "end ta_out"]
 
@@ -272,10 +288,29 @@ else: # main driver
     stripLineEnd(result[0])
     doAssert result == ("12", 0)
     when not defined(windows):
-      doAssert execCmdEx("ls --nonexistant").exitCode != 0
+      doAssert execCmdEx("ls --nonexistent").exitCode != 0
     when false:
       # bug: on windows, this raises; on posix, passes
-      doAssert execCmdEx("nonexistant").exitCode != 0
+      doAssert execCmdEx("nonexistent").exitCode != 0
     when defined(posix):
       doAssert execCmdEx("echo $FO", env = newStringTable({"FO": "B"})) == ("B\n", 0)
       doAssert execCmdEx("echo $PWD", workingDir = "/") == ("/\n", 0)
+
+  block: # bug #17749
+    let output = compileNimProg("-d:case_testfile4", "D20210417T011153")
+    var p = startProcess(output, dir)
+    let inp = p.inputStream
+    var count = 0
+    when defined(windows):
+      # xxx we should make osproc.hsWriteData raise IOError on windows, consistent
+      # with posix; we could also (in addition) make IOError a subclass of OSError.
+      type SIGPIPEError = OSError
+    else:
+      type SIGPIPEError = IOError
+    doAssertRaises(SIGPIPEError):
+      for i in 0..<100000:
+        count.inc
+        inp.writeLine "ok" # was giving SIGPIPE and crashing
+    doAssert count >= 100
+    doAssert waitForExit(p) == QuitFailure
+    close(p) # xxx isn't that missing in other places?

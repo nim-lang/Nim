@@ -12,7 +12,7 @@ This module contains a `scanf`:idx: macro that can be used for extracting
 substrings from an input string. This is often easier than regular expressions.
 Some examples as an appetizer:
 
-.. code-block:: nim
+  ```nim
   # check if input string matches a triple of integers:
   const input = "(1,2,4)"
   var x, y, z: int
@@ -26,6 +26,7 @@ Some examples as an appetizer:
   var myfloat: float
   if scanf(input, "$i-$i-$i $w$s$f", year, month, day, identifier, myfloat):
     echo "yes, we have a match!"
+  ```
 
 As can be seen from the examples, strings are matched verbatim except for
 substrings starting with ``$``. These constructions are available:
@@ -35,8 +36,9 @@ substrings starting with ``$``. These constructions are available:
 ``$o``              Matches an octal integer. This uses ``parseutils.parseOct``.
 ``$i``              Matches a decimal integer. This uses ``parseutils.parseInt``.
 ``$h``              Matches a hex integer. This uses ``parseutils.parseHex``.
-``$f``              Matches a floating pointer number. Uses ``parseFloat``.
+``$f``              Matches a floating-point number. Uses ``parseFloat``.
 ``$w``              Matches an ASCII identifier: ``[A-Za-z_][A-Za-z_0-9]*``.
+``$c``              Matches a single ASCII character.
 ``$s``              Skips optional whitespace.
 ``$$``              Matches a single dollar sign.
 ``$.``              Matches if the end of the input string has been reached.
@@ -51,7 +53,7 @@ substrings starting with ``$``. These constructions are available:
 =================   ========================================================
 
 Even though ``$*`` and ``$+`` look similar to the regular expressions ``.*``
-and ``.+`` they work quite differently, there is no non-deterministic
+and ``.+``, they work quite differently. There is no non-deterministic
 state machine involved and the matches are non-greedy. ``[$*]``
 matches ``[xyz]`` via ``parseutils.parseUntil``.
 
@@ -82,8 +84,7 @@ matches optional tokens without any result binding.
 In this example, we define a helper proc ``someSep`` that skips some separators
 which we then use in our scanf pattern to help us in the matching process:
 
-.. code-block:: nim
-
+  ```nim
   proc someSep(input: string; start: int; seps: set[char] = {':','-','.'}): int =
     # Note: The parameters and return value must match to what ``scanf`` requires
     result = 0
@@ -91,11 +92,11 @@ which we then use in our scanf pattern to help us in the matching process:
 
   if scanf(input, "$w$[someSep]$w", key, value):
     ...
+  ```
 
-It also possible to pass arguments to a user definable matcher:
+It is also possible to pass arguments to a user definable matcher:
 
-.. code-block:: nim
-
+  ```nim
   proc ndigits(input: string; intVal: var int; start: int; n: int): int =
     # matches exactly ``n`` digits. Matchers need to return 0 if nothing
     # matched or otherwise the number of processed chars.
@@ -114,6 +115,7 @@ It also possible to pass arguments to a user definable matcher:
   var year, month, day: int
   if scanf("2013-01-03", "${ndigits(4)}-${ndigits(2)}-${ndigits(2)}$.", year, month, day):
     ...
+  ```
 
 
 The scanp macro
@@ -144,8 +146,7 @@ not implemented.
 
 Simple example that parses the ``/etc/passwd`` file line by line:
 
-.. code-block:: nim
-
+  ```nim
   const
     etc_passwd = """root:x:0:0:root:/root:/bin/bash
   daemon:x:1:1:daemon:/usr/sbin:/bin/sh
@@ -164,17 +165,17 @@ Simple example that parses the ``/etc/passwd`` file line by line:
         result.add entry
       else:
         break
+  ```
 
 The ``scanp`` maps the grammar code into Nim code that performs the parsing.
 The parsing is performed with the help of 3 helper templates that that can be
 implemented for a custom type.
 
 These templates need to be named ``atom`` and ``nxt``. ``atom`` should be
-overloaded to handle both single characters and sets of character.
+overloaded to handle both `char` and `set[char]`.
 
-.. code-block:: nim
-
-  import streams
+  ```nim
+  import std/streams
 
   template atom(input: Stream; idx: int; c: char): bool =
     ## Used in scanp for the matching of atoms (usually chars).
@@ -189,11 +190,11 @@ overloaded to handle both single characters and sets of character.
 
   if scanp(content, idx, +( ~{'\L', '\0'} -> entry.add(peekChar($input))), '\L'):
     result.add entry
+  ```
 
 Calling ordinary Nim procs inside the macro is possible:
 
-.. code-block:: nim
-
+  ```nim
   proc digits(s: string; intVal: var int; start: int): int =
     var x = 0
     while result+start < s.len and s[result+start] in {'0'..'9'} and s[result+start] != ':':
@@ -219,12 +220,12 @@ Calling ordinary Nim procs inside the macro is possible:
           result.add login & " " & homedir
       else:
         break
+  ```
 
 When used for matching, keep in mind that likewise scanf, no backtracking
 is performed.
 
-.. code-block:: nim
-
+  ```nim
   proc skipUntil(s: string; until: string; unless = '\0'; start: int): int =
     # Skips all characters until the string `until` is found. Returns 0
     # if the char `unless` is found first or the end is reached.
@@ -255,12 +256,12 @@ is performed.
 
   for r in collectLinks(body):
     echo r
+  ```
 
 In this example both macros are combined seamlessly in order to maximise
 efficiency and perform different checks.
 
-.. code-block:: nim
-
+  ```nim
   iterator parseIps*(soup: string): string =
     ## ipv4 only!
     const digits = {'0'..'9'}
@@ -278,11 +279,16 @@ efficiency and perform different checks.
           yield buf
       buf.setLen(0) # need to clear `buf` each time, cause it might contain garbage
       idx.inc
-
+  ```
 ]##
 
 
-import macros, parseutils
+import std/[macros, parseutils]
+import std/private/since
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 
 proc conditionsToIfChain(n, idx, res: NimNode; start: int): NimNode =
   assert n.kind == nnkStmtList
@@ -342,6 +348,12 @@ macro scanf*(input: string; pattern: static[string]; results: varargs[typed]): b
       of 'w':
         if i < results.len and getType(results[i]).typeKind == ntyString:
           matchBind "parseIdent"
+        else:
+          matchError
+        inc i
+      of 'c':
+        if i < results.len and getType(results[i]).typeKind == ntyChar:
+          matchBind "parseChar"
         else:
           matchError
         inc i
@@ -458,6 +470,54 @@ macro scanf*(input: string; pattern: static[string]; results: varargs[typed]): b
   else:
     result.add res
 
+macro scanTuple*(input: untyped; pattern: static[string]; matcherTypes: varargs[untyped]): untyped {.since: (1, 5).}=
+  ## Works identically as scanf, but instead of predeclaring variables it returns a tuple.
+  ## Tuple is started with a bool which indicates if the scan was successful
+  ## followed by the requested data.
+  ## If using a user defined matcher, provide the types in order they appear after pattern:
+  ## `line.scanTuple("${yourMatcher()}", int)`
+  runnableExamples:
+    let (success, year, month, day, time) = scanTuple("1000-01-01 00:00:00", "$i-$i-$i$s$+")
+    if success:
+      assert year == 1000
+      assert month == 1
+      assert day == 1
+      assert time == "00:00:00"
+  var
+    p = 0
+    userMatches = 0
+    arguments: seq[NimNode]
+  result = newStmtList()
+  template addVar(typ: string) =
+    let varIdent = ident("temp" & $arguments.len)
+    result.add(newNimNode(nnkVarSection).add(newIdentDefs(varIdent, ident(typ), newEmptyNode())))
+    arguments.add(varIdent)
+  while p < pattern.len:
+    if pattern[p] == '$':
+      inc p
+      case pattern[p]
+      of 'w', '*', '+':
+        addVar("string")
+      of 'c':
+        addVar("char")
+      of 'b', 'o', 'i', 'h':
+        addVar("int")
+      of 'f':
+        addVar("float")
+      of '{':
+        if userMatches < matcherTypes.len:
+          let varIdent = ident("temp" & $arguments.len)
+          result.add(newNimNode(nnkVarSection).add(newIdentDefs(varIdent, matcherTypes[userMatches], newEmptyNode())))
+          arguments.add(varIdent)
+          inc userMatches
+      else: discard
+    inc p
+  result.add nnkTupleConstr.newTree(newCall(ident("scanf"), input, newStrLitNode(pattern)))
+  for arg in arguments:
+    result[^1][0].add arg
+    result[^1].add arg
+  result = newBlockStmt(result)
+
 template atom*(input: string; idx: int; c: char): bool =
   ## Used in scanp for the matching of atoms (usually chars).
   ## EOF is matched as ``'\0'``.
@@ -521,13 +581,14 @@ macro scanp*(input, idx: typed; pattern: varargs[untyped]): bool =
     of nnkCallKinds:
       # *{'A'..'Z'} !! s.add(!_)
       template buildWhile(input, idx, init, cond, action): untyped =
+        mixin hasNxt
         while hasNxt(input, idx):
           init
           if not cond: break
           action
 
       # (x) a  # bind action a to (x)
-      if it[0].kind == nnkPar and it.len == 2:
+      if it[0].kind in {nnkPar, nnkTupleConstr} and it.len == 2:
         result = atm(it[0], input, idx, placeholder(it[1], input, idx))
       elif it.kind == nnkInfix and it[0].eqIdent"->":
         # bind matching to some action:
@@ -633,115 +694,3 @@ macro scanp*(input, idx: typed; pattern: varargs[untyped]): bool =
   result.add res
   when defined(debugScanp):
     echo repr result
-
-
-when isMainModule:
-  proc twoDigits(input: string; x: var int; start: int): int =
-    if start+1 < input.len and input[start] == '0' and input[start+1] == '0':
-      result = 2
-      x = 13
-    else:
-      result = 0
-
-  proc someSep(input: string; start: int; seps: set[char] = {';', ',', '-', '.'}): int =
-    result = 0
-    while start+result < input.len and input[start+result] in seps: inc result
-
-  proc demangle(s: string; res: var string; start: int): int =
-    while result+start < s.len and s[result+start] in {'_', '@'}: inc result
-    res = ""
-    while result+start < s.len and s[result+start] > ' ' and s[result+start] != '_':
-      res.add s[result+start]
-      inc result
-    while result+start < s.len and s[result+start] > ' ':
-      inc result
-
-  proc parseGDB(resp: string): seq[string] =
-    const
-      digits = {'0'..'9'}
-      hexdigits = digits + {'a'..'f', 'A'..'F'}
-      whites = {' ', '\t', '\C', '\L'}
-    result = @[]
-    var idx = 0
-    while true:
-      var prc = ""
-      var info = ""
-      if scanp(resp, idx, *`whites`, '#', *`digits`, +`whites`, ?("0x", *`hexdigits`, " in "),
-               demangle($input, prc, $index), *`whites`, '(', * ~ ')', ')',
-                *`whites`, "at ", +(~{'\C', '\L'} -> info.add($_))):
-        result.add prc & " " & info
-      else:
-        break
-
-  var key, val: string
-  var intval: int
-  var floatval: float
-  doAssert scanf("abc:: xyz 89  33.25", "$w$s::$s$w$s$i  $f", key, val, intval, floatVal)
-  doAssert key == "abc"
-  doAssert val == "xyz"
-  doAssert intval == 89
-  doAssert floatVal == 33.25
-
-  var binval: int
-  var octval: int
-  var hexval: int
-  doAssert scanf("0b0101 0o1234 0xabcd", "$b$s$o$s$h", binval, octval, hexval)
-  doAssert binval == 0b0101
-  doAssert octval == 0o1234
-  doAssert hexval == 0xabcd
-
-  let xx = scanf("$abc", "$$$i", intval)
-  doAssert xx == false
-
-
-  let xx2 = scanf("$1234", "$$$i", intval)
-  doAssert xx2
-
-  let yy = scanf(";.--Breakpoint00 [output]",
-      "$[someSep]Breakpoint${twoDigits}$[someSep({';','.','-'})] [$+]$.",
-      intVal, key)
-  doAssert yy
-  doAssert key == "output"
-  doAssert intVal == 13
-
-  var ident = ""
-  var idx = 0
-  let zz = scanp("foobar x x  x   xWZ", idx, +{'a'..'z'} -> add(ident, $_), *(*{
-      ' ', '\t'}, "x"), ~'U', "Z")
-  doAssert zz
-  doAssert ident == "foobar"
-
-  const digits = {'0'..'9'}
-  var year = 0
-  var idx2 = 0
-  if scanp("201655-8-9", idx2, `digits`{4, 6} -> (year = year * 10 + ord($_) -
-      ord('0')), "-8", "-9"):
-    doAssert year == 201655
-
-  const gdbOut = """
-      #0  @foo_96013_1208911747@8 (x0=...)
-          at c:/users/anwender/projects/nim/temp.nim:11
-      #1  0x00417754 in tempInit000 () at c:/users/anwender/projects/nim/temp.nim:13
-      #2  0x0041768d in NimMainInner ()
-          at c:/users/anwender/projects/nim/lib/system.nim:2605
-      #3  0x004176b1 in NimMain ()
-          at c:/users/anwender/projects/nim/lib/system.nim:2613
-      #4  0x004176db in main (argc=1, args=0x712cc8, env=0x711ca8)
-          at c:/users/anwender/projects/nim/lib/system.nim:2620"""
-  const result = @["foo c:/users/anwender/projects/nim/temp.nim:11",
-          "tempInit000 c:/users/anwender/projects/nim/temp.nim:13",
-          "NimMainInner c:/users/anwender/projects/nim/lib/system.nim:2605",
-          "NimMain c:/users/anwender/projects/nim/lib/system.nim:2613",
-          "main c:/users/anwender/projects/nim/lib/system.nim:2620"]
-  #doAssert parseGDB(gdbOut) == result
-
-  # bug #6487
-  var count = 0
-
-  proc test(): string =
-    inc count
-    result = ",123123"
-
-  var a: int
-  discard scanf(test(), ",$i", a)
-  doAssert count == 1

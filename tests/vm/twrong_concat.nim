@@ -1,7 +1,3 @@
-discard """
-  output: '''success'''
-"""
-
 # bug #3804
 
 #import sequtils
@@ -23,6 +19,4 @@ static:
   sameBug(objs)
   # sameBug(objs)
   echo objs[0].field
-  assert(objs[0].field == "hello") # fails, because (objs[0].field == "hello bug") - mutated!
-
-echo "success"
+  doAssert(objs[0].field == "hello") # fails, because (objs[0].field == "hello bug") - mutated!

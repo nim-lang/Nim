@@ -1,4 +1,5 @@
 discard """
+  matrix: "--mm:refc; --mm:orc"
   targets: "c js"
   output: '''
 true
@@ -11,7 +12,7 @@ import htmlparser
 import xmltree
 import strutils
 from streams import newStringStream
-
+import std/assertions
 
 block t2813:
   const
@@ -47,7 +48,7 @@ block t2813:
   for n in tree.findAll("table"):
     n.findAll("tr", rows)  # len = 2
     break
-  assert tree.findAll("tr").len == rows.len
+  doAssert tree.findAll("tr").len == rows.len
 
 
 block t2814:

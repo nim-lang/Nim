@@ -21,6 +21,15 @@ discard """
 2
 70
 0
+(1, 1)
+(1, 2)
+(1, 3)
+(2, 1)
+(2, 2)
+(2, 3)
+(3, 1)
+(3, 2)
+(3, 3)
 '''
 """
 
@@ -98,7 +107,7 @@ proc unused =
 iterator lineIter2*(filename: string): string {.closure.} =
   var f = open(filename, bufSize=8000)
   defer: close(f)   # <-- commenting defer "solves" the problem
-  var res = TaintedString(newStringOfCap(80))
+  var res = newStringOfCap(80)
   while f.readLine(res): yield res
 
 proc unusedB =
@@ -152,3 +161,12 @@ var love = iterator: int {.closure.} =
 
 for i in love():
   echo i
+
+# bug #18474
+iterator pairs(): (int, int) {.closure.} =
+  for i in 1..3:
+    for j in 1..3:
+      yield (i, j)
+
+for pair in pairs():
+  echo pair

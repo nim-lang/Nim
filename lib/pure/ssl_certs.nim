@@ -10,17 +10,50 @@
 ## The default locations can be overridden using the SSL_CERT_FILE and
 ## SSL_CERT_DIR environment variables.
 
-import os, strutils
-from os import existsEnv, getEnv
-import strutils
-
-# SECURITY: this unnecessarily scans through dirs/files regardless of the
-# actual host OS/distribution. Hopefully all the paths are writeble only by
-# root.
+import std/[os, strutils]
 
 # FWIW look for files before scanning entire dirs.
 
-const certificate_paths = [
+when defined(macosx):
+  const certificatePaths = [
+    "/etc/ssl/cert.pem",
+    "/System/Library/OpenSSL/certs/cert.pem"
+  ]
+elif defined(linux):
+  const certificatePaths = [
+    # Debian, Ubuntu, Arch: maintained by update-ca-certificates, SUSE, Gentoo
+    # NetBSD (security/mozilla-rootcerts)
+    # SLES10/SLES11, https://golang.org/issue/12139
+    "/etc/ssl/certs/ca-certificates.crt",
+    # OpenSUSE
+    "/etc/ssl/ca-bundle.pem",
+    # Red Hat 5+, Fedora, Centos
+    "/etc/pki/tls/certs/ca-bundle.crt",
+    # Red Hat 4
+    "/usr/share/ssl/certs/ca-bundle.crt",
+    # Fedora/RHEL
+    "/etc/pki/tls/certs",
+    # Android
+    "/data/data/com.termux/files/usr/etc/tls/cert.pem",
+    "/system/etc/security/cacerts",
+  ]
+elif defined(bsd):
+  const certificatePaths = [
+    # Debian, Ubuntu, Arch: maintained by update-ca-certificates, SUSE, Gentoo
+    # NetBSD (security/mozilla-rootcerts)
+    # SLES10/SLES11, https://golang.org/issue/12139
+    "/etc/ssl/certs/ca-certificates.crt",
+    # FreeBSD (security/ca-root-nss package)
+    "/usr/local/share/certs/ca-root-nss.crt",
+    # OpenBSD, FreeBSD (optional symlink)
+    "/etc/ssl/cert.pem",
+    # FreeBSD
+    "/usr/local/share/certs",
+    # NetBSD
+    "/etc/openssl/certs",
+  ]
+else:
+  const certificatePaths = [
     # Debian, Ubuntu, Arch: maintained by update-ca-certificates, SUSE, Gentoo
     # NetBSD (security/mozilla-rootcerts)
     # SLES10/SLES11, https://golang.org/issue/12139
@@ -37,8 +70,6 @@ const certificate_paths = [
     "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem",
     # OpenBSD, FreeBSD (optional symlink)
     "/etc/ssl/cert.pem",
-    # Mac OS X
-    "/System/Library/OpenSSL/certs/cert.pem",
     # Fedora/RHEL
     "/etc/pki/tls/certs",
     # Android
@@ -47,7 +78,7 @@ const certificate_paths = [
     "/usr/local/share/certs",
     # NetBSD
     "/etc/openssl/certs",
-]
+  ]
 
 when defined(haiku):
   const
@@ -57,7 +88,7 @@ when defined(haiku):
   proc find_paths_etc(architecture: cstring, baseDirectory: cint,
                       subPath: cstring, flags: uint32,
                       paths: var ptr UncheckedArray[cstring],
-                      pathCount: var csize): int32
+                      pathCount: var csize_t): int32
                      {.importc, header: "<FindDirectory.h>".}
   proc free(p: pointer) {.importc, header: "<stdlib.h>".}
 
@@ -67,27 +98,46 @@ iterator scanSSLCertificates*(useEnvVars = false): string =
   ## if `useEnvVars` is true, the SSL_CERT_FILE and SSL_CERT_DIR
   ## environment variables can be used to override the certificate
   ## directories to scan or specify a CA certificate file.
-  if existsEnv("SSL_CERT_FILE"):
+  if useEnvVars and existsEnv("SSL_CERT_FILE"):
     yield getEnv("SSL_CERT_FILE")
 
-  elif existsEnv("SSL_CERT_DIR"):
+  elif useEnvVars and existsEnv("SSL_CERT_DIR"):
     let p = getEnv("SSL_CERT_DIR")
     for fn in joinPath(p, "*").walkFiles():
       yield fn
 
   else:
-    when not defined(haiku):
-      for p in certificate_paths:
+    when defined(windows):
+      const cacert = "cacert.pem"
+      let pem = getAppDir() / cacert
+      if fileExists(pem):
+        yield pem
+      else:
+        let path = getEnv("PATH")
+        for candidate in split(path, PathSep):
+          if candidate.len != 0:
+            let x = (if candidate[0] == '"' and candidate[^1] == '"':
+                      substr(candidate, 1, candidate.len-2) else: candidate) / cacert
+            if fileExists(x):
+              yield x
+    elif not defined(haiku):
+      for p in certificatePaths:
         if p.endsWith(".pem") or p.endsWith(".crt"):
           if fileExists(p):
             yield p
         elif dirExists(p):
+          # check if it's a dir where each cert is one file
+          # named by it's hasg
+          for fn in joinPath(p, "*.0").walkFiles:
+            yield p.normalizePathEnd(true)
+            break
           for fn in joinPath(p, "*").walkFiles():
+
             yield fn
     else:
       var
         paths: ptr UncheckedArray[cstring]
-        size: csize
+        size: csize_t
       let err = find_paths_etc(
         nil, B_FIND_PATH_DATA_DIRECTORY, "ssl/CARootCertificates.pem",
         B_FIND_PATH_EXISTING_ONLY, paths, size
@@ -100,7 +150,7 @@ iterator scanSSLCertificates*(useEnvVars = false): string =
 # Certificates management on windows
 # when defined(windows) or defined(nimdoc):
 #
-#   import openssl
+#   import std/openssl
 #
 #   type
 #     PCCertContext {.final, pure.} = pointer

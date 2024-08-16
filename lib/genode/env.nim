@@ -11,19 +11,19 @@
 # This file contains the minimum required definitions
 # for interacting with the initial Genode environment.
 # It is reserved for use only within the standard
-# library. See ``componentConstructHook`` in the system
+# library. See `componentConstructHook` in the system
 # module for accessing the Genode environment after the
 # standard library has finished initializating.
 #
 
 when not defined(genode):
-  {.error: "Genode only include".}
+  {.error: "Genode only module".}
 
 type
-  GenodeEnvObj {.importcpp: "Genode::Env", header: "<base/env.h>", pure.} = object
-  GenodeEnvPtr = ptr GenodeEnvObj
+  GenodeEnvObj* {.importcpp: "Genode::Env", header: "<base/env.h>", pure.} = object
+  GenodeEnvPtr* = ptr GenodeEnvObj
 
-const runtimeEnvSym = "nim_runtime_env"
+const runtimeEnvSym* = "nim_runtime_env"
 
 when not defined(nimscript):
-  var runtimeEnv {.importcpp: runtimeEnvSym.}: GenodeEnvPtr
+  var runtimeEnv* {.importcpp: runtimeEnvSym.}: GenodeEnvPtr

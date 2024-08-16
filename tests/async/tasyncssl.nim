@@ -1,5 +1,6 @@
 discard """
   cmd: "nim $target --hints:on --define:ssl $options $file"
+  disabled: osx
 """
 
 import asyncdispatch, asyncnet, net, strutils
@@ -36,7 +37,7 @@ when defined(ssl):
         inc(clientCount)
         break
       else:
-        if line.startswith("Message "):
+        if line.startsWith("Message "):
           inc(msgCount)
         else:
           doAssert false
@@ -69,5 +70,5 @@ when defined(ssl):
   elif defined(linux) and int.sizeof == 8:
     # currently:  msgCount == 10
     flakyAssert cond()
-    assert msgCount > 0
-  else: assert cond(), $msgCount
+    doAssert msgCount > 0
+  else: doAssert cond(), $msgCount

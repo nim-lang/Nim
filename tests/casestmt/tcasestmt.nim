@@ -258,7 +258,7 @@ func foo(input: string): int =
   try:
     parseInt(input)
   except:
-    0
+    return
 
 func foo2(b, input: string): int =
   case b:
@@ -287,3 +287,28 @@ doAssert(foo2("Y", "a2") == 0)
 doAssert(foo2("Y", "2a") == 2)
 doAssert(foo2("N", "a3") == 3)
 doAssert(foo2("z", "2") == 0)
+
+
+# bug #20031
+proc main(a: uint64) =
+  case a
+  else:
+    discard
+
+static:
+  main(10)
+main(10)
+
+block:
+  # Just needs to compile
+  proc bar(): int {.discardable.} = discard
+
+  proc foo() {.noreturn.} = discard
+
+  case "*"
+  of "*":
+    bar()
+  else:
+    # Make sure this noreturn doesn't
+    # cause the discardable to not discard
+    foo()

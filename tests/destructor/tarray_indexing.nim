@@ -1,7 +1,7 @@
 discard """
   output: '''allocating 1048576 65536
 filling page from 1048576 len 65536'''
-  cmd: '''nim c --newruntime $file'''
+  cmd: '''nim c --gc:arc $file'''
 """
 
 # bug #12669
@@ -63,7 +63,7 @@ proc fillPages*(mem: UserProcessMemory, start: uint32, data: seq[byte]) =
         #echo cast[uint64](addr mem.pageAccess[i])
         let page = mem.pageAccess[i]
         assert page != nil
-        #copyMem(page, unsafeAddr data[i * 0x1000 - start], 0x1000)
+        #copyMem(page, addr data[i * 0x1000 - start], 0x1000)
 
 const base = 0x00100000
 

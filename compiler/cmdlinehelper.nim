@@ -7,13 +7,13 @@
 #    distribution, for details about the copyright.
 #
 
-## Helpers for binaries that use compiler passes, e.g.: nim, nimsuggest, nimfix
+## Helpers for binaries that use compiler passes, e.g.: nim, nimsuggest
 
 import
   options, idents, nimconf, extccomp, commands, msgs,
-  lineinfos, modulegraphs, condsyms, os, pathutils, parseopt
+  lineinfos, modulegraphs, condsyms, pathutils
 
-from strutils import normalize
+import std/[os, parseopt]
 
 proc prependCurDir*(f: AbsoluteFile): AbsoluteFile =
   when defined(unix):
@@ -41,42 +41,45 @@ proc initDefinesProg*(self: NimProg, conf: ConfigRef, name: string) =
 
 proc processCmdLineAndProjectPath*(self: NimProg, conf: ConfigRef) =
   self.processCmdLine(passCmd1, "", conf)
-  if self.supportsStdinFile and conf.projectName == "-":
+  if conf.projectIsCmd and conf.projectName in ["-", ""]:
+    handleCmdInput(conf)
+  elif self.supportsStdinFile and conf.projectName == "-":
     handleStdinInput(conf)
   elif conf.projectName != "":
-    try:
-      conf.projectFull = canonicalizePath(conf, AbsoluteFile conf.projectName)
-    except OSError:
-      conf.projectFull = AbsoluteFile conf.projectName
-    let p = splitFile(conf.projectFull)
-    let dir = if p.dir.isEmpty: AbsoluteDir getCurrentDir() else: p.dir
-    conf.projectPath = AbsoluteDir canonicalizePath(conf, AbsoluteFile dir)
-    conf.projectName = p.name
+    setFromProjectName(conf, conf.projectName)
   else:
     conf.projectPath = AbsoluteDir canonicalizePath(conf, AbsoluteFile getCurrentDir())
 
-proc loadConfigsAndRunMainCommand*(self: NimProg, cache: IdentCache; conf: ConfigRef;
+proc loadConfigsAndProcessCmdLine*(self: NimProg, cache: IdentCache; conf: ConfigRef;
                                    graph: ModuleGraph): bool =
   if self.suggestMode:
-    conf.command = "nimsuggest"
-  loadConfigs(DefaultConfig, cache, conf) # load all config files
+    conf.setCmd cmdIdeTools
+  if conf.cmd == cmdNimscript:
+    incl(conf.globalOptions, optWasNimscript)
+  loadConfigs(DefaultConfig, cache, conf, graph.idgen) # load all config files
+  # restores `conf.notes` after loading config files
+  # because it has overwrites the notes when compiling the system module which
+  # is a foreign module compared to the project
+  if conf.cmd in cmdBackends:
+    conf.notes = conf.mainPackageNotes
 
   if not self.suggestMode:
     let scriptFile = conf.projectFull.changeFileExt("nims")
     # 'nim foo.nims' means to just run the NimScript file and do nothing more:
     if fileExists(scriptFile) and scriptFile == conf.projectFull:
-      if conf.command == "":
-        conf.command = "e"
-        return false
-      elif conf.command.normalize == "e":
-        return false
-
+      if conf.cmd == cmdNone: conf.setCmd cmdNimscript
+      if conf.cmd == cmdNimscript: return false
   # now process command line arguments again, because some options in the
   # command line can overwrite the config file's settings
-  extccomp.initVars(conf)
+  if conf.backend != backendJs: # bug #19059
+    extccomp.initVars(conf)
   self.processCmdLine(passCmd2, "", conf)
-  if conf.command == "":
+  if conf.cmd == cmdNone:
     rawMessage(conf, errGenerated, "command missing")
 
   graph.suggestMode = self.suggestMode
   return true
+
+proc loadConfigsAndRunMainCommand*(self: NimProg, cache: IdentCache; conf: ConfigRef; graph: ModuleGraph): bool =
+  ## Alias for loadConfigsAndProcessCmdLine, here for backwards compatibility
+  loadConfigsAndProcessCmdLine(self, cache, conf, graph)

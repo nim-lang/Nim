@@ -17,10 +17,11 @@
 ##
 ## To get started, first create a logger:
 ##
-## .. code-block::
-##   import logging
+##   ```Nim
+##   import std/logging
 ##
 ##   var logger = newConsoleLogger()
+##   ```
 ##
 ## The logger that was created above logs to the console, but this module
 ## also provides loggers that log to files, such as the
@@ -30,9 +31,10 @@
 ## Once a logger has been created, call its `log proc
 ## <#log.e,ConsoleLogger,Level,varargs[string,]>`_ to log a message:
 ##
-## .. code-block::
+##   ```Nim
 ##   logger.log(lvlInfo, "a log message")
 ##   # Output: INFO a log message
+##   ```
 ##
 ## The ``INFO`` within the output is the result of a format string being
 ## prepended to the message, and it will differ depending on the message's
@@ -45,11 +47,10 @@
 ## ``levelThreshold`` field and the global log filter. The latter can be changed
 ## with the `setLogFilter proc<#setLogFilter,Level>`_.
 ##
-## **Warning:**
-## * For loggers that log to a console or to files, only error and fatal
-##   messages will cause their output buffers to be flushed immediately.
-##   Use the `flushFile proc <io.html#flushFile,File>`_ to flush the buffer
-##   manually if needed.
+## .. warning::
+##   For loggers that log to a console or to files, only error and fatal
+##   messages will cause their output buffers to be flushed immediately by default.
+##   set ``flushThreshold`` when creating the logger to change this.
 ##
 ## Handlers
 ## --------
@@ -59,8 +60,8 @@
 ## used with the `addHandler proc<#addHandler,Logger>`_, which is demonstrated
 ## in the following example:
 ##
-## .. code-block::
-##   import logging
+##   ```Nim
+##   import std/logging
 ##
 ##   var consoleLog = newConsoleLogger()
 ##   var fileLog = newFileLogger("errors.log", levelThreshold=lvlError)
@@ -69,17 +70,19 @@
 ##   addHandler(consoleLog)
 ##   addHandler(fileLog)
 ##   addHandler(rollingLog)
+##   ```
 ##
 ## After doing this, use either the `log template
 ## <#log.t,Level,varargs[string,]>`_ or one of the level-specific templates,
 ## such as the `error template<#error.t,varargs[string,]>`_, to log messages
 ## to all registered handlers at once.
 ##
-## .. code-block::
+##   ```Nim
 ##   # This example uses the loggers created above
 ##   log(lvlError, "an error occurred")
 ##   error("an error occurred")  # Equivalent to the above line
 ##   info("something normal happened")  # Will not be written to errors.log
+##   ```
 ##
 ## Note that a message's level is still checked against each handler's
 ## ``levelThreshold`` and the global log filter.
@@ -117,12 +120,13 @@
 ##
 ## The following example illustrates how to use format strings:
 ##
-## .. code-block::
-##   import logging
+##   ```Nim
+##   import std/logging
 ##
 ##   var logger = newConsoleLogger(fmtStr="[$time] - $levelname: ")
 ##   logger.log(lvlInfo, "this is a message")
 ##   # Output: [19:50:13] - INFO: this is a message
+##   ```
 ##
 ## Notes when using multiple threads
 ## ---------------------------------
@@ -142,9 +146,12 @@
 ## * `strscans module<strscans.html>`_ for ``scanf`` and ``scanp`` macros, which
 ##   offer easier substring extraction than regular expressions
 
-import strutils, times
+import std/[strutils, times]
 when not defined(js):
-  import os
+  import std/os
+
+when defined(nimPreviewSlimSystem):
+  import std/syncio
 
 type
   Level* = enum ## \
@@ -197,6 +204,15 @@ const
   ## If a different format string is preferred, refer to the
   ## `documentation about format strings<#basic-usage-format-strings>`_
   ## for more information, including a list of available variables.
+  defaultFlushThreshold = when NimMajor >= 2:
+      when defined(nimV1LogFlushBehavior): lvlError else: lvlAll
+    else:
+      when defined(nimFlushAllLogs): lvlAll else: lvlError
+  ## The threshold above which log messages to file-like loggers
+  ## are automatically flushed.
+  ## 
+  ## By default, only error and fatal messages are logged,
+  ## but defining ``-d:nimFlushAllLogs`` will make all levels be flushed
 
 type
   Logger* = ref object of RootObj
@@ -225,6 +241,8 @@ type
     ## * `FileLogger<#FileLogger>`_
     ## * `RollingFileLogger<#RollingFileLogger>`_
     useStderr*: bool ## If true, writes to stderr; otherwise, writes to stdout
+    flushThreshold*: Level ## Only messages that are at or above this
+                           ## threshold will be flushed immediately
 
 when not defined(js):
   type
@@ -240,13 +258,15 @@ when not defined(js):
       ## * `ConsoleLogger<#ConsoleLogger>`_
       ## * `RollingFileLogger<#RollingFileLogger>`_
       file*: File ## The wrapped file
+      flushThreshold*: Level ## Only messages that are at or above this
+                           ## threshold will be flushed immediately
 
     RollingFileLogger* = ref object of FileLogger
       ## A logger that writes log messages to a file while performing log
       ## rotation.
       ##
       ## Create a new ``RollingFileLogger`` with the `newRollingFileLogger proc
-      ## <#newRollingFileLogger,FileMode,int,int>`_.
+      ## <#newRollingFileLogger,FileMode,Positive,int>`_.
       ##
       ## **Note:** This logger is not available for the JavaScript backend.
       ##
@@ -345,8 +365,8 @@ method log*(logger: ConsoleLogger, level: Level, args: varargs[string, `$`]) =
   ## `setLogFilter proc<#setLogFilter,Level>`_.
   ##
   ## **Note:** Only error and fatal messages will cause the output buffer
-  ## to be flushed immediately. Use the `flushFile proc
-  ## <io.html#flushFile,File>`_ to flush the buffer manually if needed.
+  ## to be flushed immediately by default. Set ``flushThreshold`` when creating
+  ## the logger to change this.
   ##
   ## See also:
   ## * `log method<#log.e,FileLogger,Level,varargs[string,]>`_
@@ -357,14 +377,15 @@ method log*(logger: ConsoleLogger, level: Level, args: varargs[string, `$`]) =
   ##
   ## **Examples:**
   ##
-  ## .. code-block::
+  ##   ```Nim
   ##   var consoleLog = newConsoleLogger()
   ##   consoleLog.log(lvlInfo, "this is a message")
   ##   consoleLog.log(lvlError, "error code is: ", 404)
+  ##   ```
   if level >= logging.level and level >= logger.levelThreshold:
     let ln = substituteLog(logger.fmtStr, level, args)
     when defined(js):
-      let cln: cstring = ln
+      let cln = ln.cstring
       case level
       of lvlDebug: {.emit: "console.debug(`cln`);".}
       of lvlInfo:  {.emit: "console.info(`cln`);".}
@@ -377,12 +398,12 @@ method log*(logger: ConsoleLogger, level: Level, args: varargs[string, `$`]) =
         if logger.useStderr:
           handle = stderr
         writeLine(handle, ln)
-        if level in {lvlError, lvlFatal}: flushFile(handle)
+        if level >= logger.flushThreshold: flushFile(handle)
       except IOError:
         discard
 
 proc newConsoleLogger*(levelThreshold = lvlAll, fmtStr = defaultFmtStr,
-    useStderr = false): ConsoleLogger =
+    useStderr = false, flushThreshold = defaultFlushThreshold): ConsoleLogger =
   ## Creates a new `ConsoleLogger<#ConsoleLogger>`_.
   ##
   ## By default, log messages are written to ``stdout``. If ``useStderr`` is
@@ -395,17 +416,19 @@ proc newConsoleLogger*(levelThreshold = lvlAll, fmtStr = defaultFmtStr,
   ## * `newFileLogger proc<#newFileLogger,File>`_ that uses a file handle
   ## * `newFileLogger proc<#newFileLogger,FileMode,int>`_
   ##   that accepts a filename
-  ## * `newRollingFileLogger proc<#newRollingFileLogger,FileMode,int,int>`_
+  ## * `newRollingFileLogger proc<#newRollingFileLogger,FileMode,Positive,int>`_
   ##
   ## **Examples:**
   ##
-  ## .. code-block::
+  ##   ```Nim
   ##   var normalLog = newConsoleLogger()
   ##   var formatLog = newConsoleLogger(fmtStr=verboseFmtStr)
   ##   var errorLog = newConsoleLogger(levelThreshold=lvlError, useStderr=true)
+  ##   ```
   new result
   result.fmtStr = fmtStr
   result.levelThreshold = levelThreshold
+  result.flushThreshold = flushThreshold
   result.useStderr = useStderr
 
 when not defined(js):
@@ -421,8 +444,8 @@ when not defined(js):
     ##
     ## **Notes:**
     ## * Only error and fatal messages will cause the output buffer
-    ##   to be flushed immediately. Use the `flushFile proc
-    ##   <io.html#flushFile,File>`_ to flush the buffer manually if needed.
+    ##   to be flushed immediately by default. Set ``flushThreshold`` when creating
+    ##   the logger to change this.
     ## * This method is not available for the JavaScript backend.
     ##
     ## See also:
@@ -434,13 +457,14 @@ when not defined(js):
     ##
     ## **Examples:**
     ##
-    ## .. code-block::
+    ##   ```Nim
     ##   var fileLog = newFileLogger("messages.log")
     ##   fileLog.log(lvlInfo, "this is a message")
     ##   fileLog.log(lvlError, "error code is: ", 404)
+    ##   ```
     if level >= logging.level and level >= logger.levelThreshold:
       writeLine(logger.file, substituteLog(logger.fmtStr, level, args))
-      if level in {lvlError, lvlFatal}: flushFile(logger.file)
+      if level >= logger.flushThreshold: flushFile(logger.file)
 
   proc defaultFilename*(): string =
     ## Returns the filename that is used by default when naming log files.
@@ -451,7 +475,8 @@ when not defined(js):
 
   proc newFileLogger*(file: File,
                       levelThreshold = lvlAll,
-                      fmtStr = defaultFmtStr): FileLogger =
+                      fmtStr = defaultFmtStr,
+                      flushThreshold = defaultFlushThreshold): FileLogger =
     ## Creates a new `FileLogger<#FileLogger>`_ that uses the given file handle.
     ##
     ## **Note:** This proc is not available for the JavaScript backend.
@@ -460,11 +485,11 @@ when not defined(js):
     ## * `newConsoleLogger proc<#newConsoleLogger>`_
     ## * `newFileLogger proc<#newFileLogger,FileMode,int>`_
     ##   that accepts a filename
-    ## * `newRollingFileLogger proc<#newRollingFileLogger,FileMode,int,int>`_
+    ## * `newRollingFileLogger proc<#newRollingFileLogger,FileMode,Positive,int>`_
     ##
     ## **Examples:**
     ##
-    ## .. code-block::
+    ##   ```Nim
     ##   var messages = open("messages.log", fmWrite)
     ##   var formatted = open("formatted.log", fmWrite)
     ##   var errors = open("errors.log", fmWrite)
@@ -472,16 +497,19 @@ when not defined(js):
     ##   var normalLog = newFileLogger(messages)
     ##   var formatLog = newFileLogger(formatted, fmtStr=verboseFmtStr)
     ##   var errorLog = newFileLogger(errors, levelThreshold=lvlError)
+    ##   ```
     new(result)
     result.file = file
     result.levelThreshold = levelThreshold
+    result.flushThreshold = flushThreshold
     result.fmtStr = fmtStr
 
   proc newFileLogger*(filename = defaultFilename(),
                       mode: FileMode = fmAppend,
                       levelThreshold = lvlAll,
                       fmtStr = defaultFmtStr,
-                      bufSize: int = -1): FileLogger =
+                      bufSize: int = -1,
+                      flushThreshold = defaultFlushThreshold): FileLogger =
     ## Creates a new `FileLogger<#FileLogger>`_ that logs to a file with the
     ## given filename.
     ##
@@ -496,16 +524,17 @@ when not defined(js):
     ## See also:
     ## * `newConsoleLogger proc<#newConsoleLogger>`_
     ## * `newFileLogger proc<#newFileLogger,File>`_ that uses a file handle
-    ## * `newRollingFileLogger proc<#newRollingFileLogger,FileMode,int,int>`_
+    ## * `newRollingFileLogger proc<#newRollingFileLogger,FileMode,Positive,int>`_
     ##
     ## **Examples:**
     ##
-    ## .. code-block::
+    ##   ```Nim
     ##   var normalLog = newFileLogger("messages.log")
     ##   var formatLog = newFileLogger("formatted.log", fmtStr=verboseFmtStr)
     ##   var errorLog = newFileLogger("errors.log", levelThreshold=lvlError)
+    ##   ```
     let file = open(filename, mode, bufSize = bufSize)
-    newFileLogger(file, levelThreshold, fmtStr)
+    newFileLogger(file, levelThreshold, fmtStr, flushThreshold)
 
   # ------
 
@@ -537,7 +566,8 @@ when not defined(js):
                             levelThreshold = lvlAll,
                             fmtStr = defaultFmtStr,
                             maxLines: Positive = 1000,
-                            bufSize: int = -1): RollingFileLogger =
+                            bufSize: int = -1,
+                            flushThreshold = defaultFlushThreshold): RollingFileLogger =
     ## Creates a new `RollingFileLogger<#RollingFileLogger>`_.
     ##
     ## Once the current log file being written to contains ``maxLines`` lines,
@@ -559,11 +589,12 @@ when not defined(js):
     ##
     ## **Examples:**
     ##
-    ## .. code-block::
+    ##   ```Nim
     ##   var normalLog = newRollingFileLogger("messages.log")
     ##   var formatLog = newRollingFileLogger("formatted.log", fmtStr=verboseFmtStr)
     ##   var shortLog = newRollingFileLogger("short.log", maxLines=200)
     ##   var errorLog = newRollingFileLogger("errors.log", levelThreshold=lvlError)
+    ##   ```
     new(result)
     result.levelThreshold = levelThreshold
     result.fmtStr = fmtStr
@@ -573,6 +604,7 @@ when not defined(js):
     result.curLine = 0
     result.baseName = filename
     result.baseMode = mode
+    result.flushThreshold = flushThreshold
 
     result.logFiles = countFiles(filename)
 
@@ -599,8 +631,8 @@ when not defined(js):
     ##
     ## **Notes:**
     ## * Only error and fatal messages will cause the output buffer
-    ##   to be flushed immediately. Use the `flushFile proc
-    ##   <io.html#flushFile,File>`_ to flush the buffer manually if needed.
+    ##   to be flushed immediately by default. Set ``flushThreshold`` when creating
+    ##   the logger to change this.
     ## * This method is not available for the JavaScript backend.
     ##
     ## See also:
@@ -612,10 +644,11 @@ when not defined(js):
     ##
     ## **Examples:**
     ##
-    ## .. code-block::
+    ##   ```Nim
     ##   var rollingLog = newRollingFileLogger("messages.log")
     ##   rollingLog.log(lvlInfo, "this is a message")
     ##   rollingLog.log(lvlError, "error code is: ", 404)
+    ##   ```
     if level >= logging.level and level >= logger.levelThreshold:
       if logger.curLine >= logger.maxLines:
         logger.file.close()
@@ -626,7 +659,7 @@ when not defined(js):
             bufSize = logger.bufSize)
 
       writeLine(logger.file, substituteLog(logger.fmtStr, level, args))
-      if level in {lvlError, lvlFatal}: flushFile(logger.file)
+      if level >= logger.flushThreshold: flushFile(logger.file)
       logger.curLine.inc
 
 # --------
@@ -645,11 +678,12 @@ template log*(level: Level, args: varargs[string, `$`]) =
   ##
   ## **Examples:**
   ##
-  ## .. code-block::
+  ##   ```Nim
   ##   var logger = newConsoleLogger()
   ##   addHandler(logger)
   ##
   ##   log(lvlInfo, "This is an example.")
+  ##   ```
   ##
   ## See also:
   ## * `debug template<#debug.t,varargs[string,]>`_
@@ -674,11 +708,12 @@ template debug*(args: varargs[string, `$`]) =
   ##
   ## **Examples:**
   ##
-  ## .. code-block::
+  ##   ```Nim
   ##   var logger = newConsoleLogger()
   ##   addHandler(logger)
   ##
   ##   debug("myProc called with arguments: foo, 5")
+  ##   ```
   ##
   ## See also:
   ## * `log template<#log.t,Level,varargs[string,]>`_
@@ -695,11 +730,12 @@ template info*(args: varargs[string, `$`]) =
   ##
   ## **Examples:**
   ##
-  ## .. code-block::
+  ##   ```Nim
   ##   var logger = newConsoleLogger()
   ##   addHandler(logger)
   ##
   ##   info("Application started successfully.")
+  ##   ```
   ##
   ## See also:
   ## * `log template<#log.t,Level,varargs[string,]>`_
@@ -716,11 +752,12 @@ template notice*(args: varargs[string, `$`]) =
   ##
   ## **Examples:**
   ##
-  ## .. code-block::
+  ##   ```Nim
   ##   var logger = newConsoleLogger()
   ##   addHandler(logger)
   ##
   ##   notice("An important operation has completed.")
+  ##   ```
   ##
   ## See also:
   ## * `log template<#log.t,Level,varargs[string,]>`_
@@ -736,11 +773,12 @@ template warn*(args: varargs[string, `$`]) =
   ##
   ## **Examples:**
   ##
-  ## .. code-block::
+  ##   ```Nim
   ##   var logger = newConsoleLogger()
   ##   addHandler(logger)
   ##
   ##   warn("The previous operation took too long to process.")
+  ##   ```
   ##
   ## See also:
   ## * `log template<#log.t,Level,varargs[string,]>`_
@@ -758,11 +796,12 @@ template error*(args: varargs[string, `$`]) =
   ##
   ## **Examples:**
   ##
-  ## .. code-block::
+  ##   ```Nim
   ##   var logger = newConsoleLogger()
   ##   addHandler(logger)
   ##
   ##   error("An exception occurred while processing the form.")
+  ##   ```
   ##
   ## See also:
   ## * `log template<#log.t,Level,varargs[string,]>`_
@@ -779,11 +818,12 @@ template fatal*(args: varargs[string, `$`]) =
   ##
   ## **Examples:**
   ##
-  ## .. code-block::
+  ##   ```Nim
   ##   var logger = newConsoleLogger()
   ##   addHandler(logger)
   ##
   ##   fatal("Can't open database -- exiting.")
+  ##   ```
   ##
   ## See also:
   ## * `log template<#log.t,Level,varargs[string,]>`_
@@ -794,9 +834,9 @@ template fatal*(args: varargs[string, `$`]) =
 proc addHandler*(handler: Logger) =
   ## Adds a logger to the list of registered handlers.
   ##
-  ## **Warning:** The list of handlers is a thread-local variable. If the given
-  ## handler will be used in multiple threads, this proc should be called in
-  ## each of those threads.
+  ## .. warning:: The list of handlers is a thread-local variable. If the given
+  ##   handler will be used in multiple threads, this proc should be called in
+  ##   each of those threads.
   ##
   ## See also:
   ## * `getHandlers proc<#getHandlers>`_
@@ -820,10 +860,10 @@ proc setLogFilter*(lvl: Level) =
   ## individual logger's ``levelThreshold``. By default, all messages are
   ## logged.
   ##
-  ## **Warning:** The global log filter is a thread-local variable. If logging
-  ## is being performed in multiple threads, this proc should be called in each
-  ## thread unless it is intended that different threads should log at different
-  ## logging levels.
+  ## .. warning:: The global log filter is a thread-local variable. If logging
+  ##   is being performed in multiple threads, this proc should be called in each
+  ##   thread unless it is intended that different threads should log at different
+  ##   logging levels.
   ##
   ## See also:
   ## * `getLogFilter proc<#getLogFilter>`_

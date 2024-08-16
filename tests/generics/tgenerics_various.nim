@@ -58,23 +58,23 @@ block tgenericdefaults:
   var x1: TFoo[int, float]
 
   static:
-    assert type(x1.x) is int
-    assert type(x1.y) is float
-    assert type(x1.z) is int
+    doAssert type(x1.x) is int
+    doAssert type(x1.y) is float
+    doAssert type(x1.z) is int
 
   var x2: TFoo[string, R = float, U = seq[int]]
 
   static:
-    assert type(x2.x) is string
-    assert type(x2.y) is seq[int]
-    assert type(x2.z) is float
+    doAssert type(x2.x) is string
+    doAssert type(x2.y) is seq[int]
+    doAssert type(x2.z) is float
 
   var x3: TBar[float]
 
   static:
-    assert type(x3.x) is float
-    assert type(x3.y) is array[4, float]
-    assert type(x3.z) is float
+    doAssert type(x3.x) is float
+    doAssert type(x3.y) is array[4, float]
+    doAssert type(x3.z) is float
 
 
 
@@ -127,54 +127,18 @@ block trefs:
 
 
 
-block tsharedcases:
-  proc typeNameLen(x: typedesc): int {.compileTime.} =
-    result = x.name.len
-  macro selectType(a, b: typedesc): typedesc =
-    result = a
-
-  type
-    Foo[T] = object
-      data1: array[T.high, int]
-      data2: array[typeNameLen(T), float]
-      data3: array[0..T.typeNameLen, selectType(float, int)]
-    MyEnum = enum A, B, C, D
-
-  var f1: Foo[MyEnum]
-  var f2: Foo[int8]
-
-  doAssert high(f1.data1) == 2 # (D = 3) - 1 == 2
-  doAssert high(f1.data2) == 5 # (MyEnum.len = 6) - 1 == 5
-
-  doAssert high(f2.data1) == 126 # 127 - 1 == 126
-  doAssert high(f2.data2) == 3 # int8.len - 1 == 3
-
-  static:
-    assert high(f1.data1) == ord(C)
-    assert high(f1.data2) == 5 # length of MyEnum minus one, because we used T.high
-
-    assert high(f2.data1) == 126
-    assert high(f2.data2) == 3
-
-    assert high(f1.data3) == 6 # length of MyEnum
-    assert high(f2.data3) == 4 # length of int8
-
-    assert f2.data3[0] is float
-
-
-
 block tmap_auto:
   let x = map(@[1, 2, 3], x => x+10)
-  assert x == @[11, 12, 13]
+  doAssert x == @[11, 12, 13]
 
   let y = map(@[(1,"a"), (2,"b"), (3,"c")], x => $x[0] & x[1])
-  assert y == @["1a", "2b", "3c"]
+  doAssert y == @["1a", "2b", "3c"]
 
   proc eatsTwoArgProc[T,S,U](a: T, b: S, f: proc(t: T, s: S): U): U =
     f(a,b)
 
   let z = eatsTwoArgProc(1, "a", (t,s) => $t & s)
-  assert z == "1a"
+  doAssert z == "1a"
 
 
 
@@ -230,8 +194,8 @@ block tvarargs_vs_generics:
     echo "direct"
   proc withDirectType[T](arg: T) =
     echo "generic"
-  proc withOpenArray(args: openarray[string]) =
-    echo "openarray"
+  proc withOpenArray(args: openArray[string]) =
+    echo "openArray"
   proc withOpenArray[T](arg: T) =
     echo "generic"
   proc withVarargs(args: varargs[string]) =
@@ -253,3 +217,38 @@ block:
 
   var x: Que[int]
   doAssert(x.x == 0)
+
+
+# bug #4466
+proc identity[T](t: T): T = t
+
+proc doSomething[A, B](t: tuple[a: A, b: B]) = discard
+
+discard identity((c: 1, d: 2))
+doSomething(identity((1, 2)))
+
+# bug #6231
+proc myProc[T, U](x: T or U) = discard
+
+myProc[int, string](x = 2)
+
+block: # issue #8390
+  proc x[T:SomeFloat](q: openarray[T], y: T = 1): string =
+    doAssert $q.type == $openarray[y.type]
+    $y.type
+
+  doAssert x(@[1.0]) == $1.0.type
+
+
+block: # issue #9381
+  var evalCount {.compileTime.} = 0
+
+  macro test(t: typed): untyped =
+    inc evalCount
+    t
+
+  type GenericObj[T] = object
+    f: test(T)
+
+  var x: GenericObj[int]
+  static: doAssert evalCount == 1

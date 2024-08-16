@@ -1,7 +1,16 @@
 discard """
+nimoutFull: true
 nimout: '''
 staticAlialProc instantiated with 358
 staticAlialProc instantiated with 368
+0: Foo
+1: Bar
+0: Foo
+1: Bar
+0: Foo
+1: Bar
+0: Foo
+1: Bar
 '''
 output: '''
 16
@@ -10,19 +19,22 @@ b is 2 times a
 17
 ['\x00', '\x00', '\x00', '\x00']
 heyho
+Val1
+Val1
 '''
+matrix: "--hints:off --mm:orc; --hints:off --mm:refc"
 """
 
 import macros
 
-template ok(x) = assert(x)
-template no(x) = assert(not x)
+template ok(x) = doAssert(x)
+template no(x) = doAssert(not x)
 
 template accept(x) =
-  static: assert(compiles(x))
+  static: doAssert(compiles(x))
 
 template reject(x) =
-  static: assert(not compiles(x))
+  static: doAssert(not compiles(x))
 
 proc plus(a, b: int): int = a + b
 
@@ -52,8 +64,8 @@ when true:
                        b: static[int],
                        c: static int) =
     static:
-      assert a.isStatic and b.isStatic and c.isStatic
-      assert isStatic(a + plus(b, c))
+      doAssert a.isStatic and b.isStatic and c.isStatic
+      doAssert isStatic(a + plus(b, c))
       echo "staticAlialProc instantiated with ", a, b, c
 
     when b mod a == 0:
@@ -109,9 +121,9 @@ when true:
   var aw3: ArrayWrapper3[(10, "str")]
 
   static:
-    assert aw1.data.high == 5
-    assert aw2.data.high == 6
-    assert aw3.data.high == 9
+    doAssert aw1.data.high == 5
+    doAssert aw2.data.high == 6
+    doAssert aw3.data.high == 9
 
 # #6077
 block:
@@ -239,3 +251,209 @@ let t = T[true](foo: "hey")
 let u = U[false](bar: "ho")
 echo t.foo, u.bar
 
+
+#------------------------------------------------------------------------------
+# issue #9679
+
+type
+  Foo*[T] = object
+    bar*: int
+    dummy: T
+
+proc initFoo(T: type, bar: int): Foo[T] =
+  result.bar = 1
+
+proc fails[T](x: static Foo[T]) = # Change to non-static and it compiles
+  doAssert($x == "(bar: 1, dummy: 0)")
+
+block:
+  const foo = initFoo(int, 2)
+  fails(foo)
+
+
+import tables
+
+var foo{.compileTime.} = [
+  "Foo",
+  "Bar"
+]
+
+var bar{.compileTime.} = {
+  0: "Foo",
+  1: "Bar"
+}.toTable()
+
+macro fooM(): untyped =
+  for i, val in foo:
+    echo i, ": ", val
+
+macro barM(): untyped =
+  for i, val in bar:
+    echo i, ": ", val
+
+macro fooParam(x: static array[2, string]): untyped =
+  for i, val in x:
+    echo i, ": ", val
+
+macro barParam(x: static Table[int, string]): untyped =
+  let barParamInsides = proc(i: int, val: string): NimNode =
+    echo i, ": ", val
+  for i, val in x:
+    discard barParamInsides(i, val)
+
+fooM()
+barM()
+fooParam(foo)
+barParam(bar)
+
+
+#-----------------------------------------------------------------------------------------
+# issue #7546
+type
+  rangeB[N: static[int16]] = range[0'i16 .. N]
+  setB[N: static[int16]] = set[rangeB[N]]
+
+block:
+  var s : setB[14'i16]
+
+
+#-----------------------------------------------------------------------------------------
+# issue #9520
+
+type
+  MyEnum = enum
+    Val1, Val2
+
+proc myproc(a: static[MyEnum], b: int) =
+  if b < 0:
+    myproc(a, -b)
+
+  echo $a
+
+myproc(Val1, -10)
+
+
+#------------------------------------------------------------------------------------------
+# issue #6177
+
+type                                                                                                 
+  G[N,M:static[int], T] = object                                                                      
+    o: T                                                                                             
+                                                                                                     
+proc newG[N,M:static[int],T](x:var G[N,M,T], y:T) =                                                  
+  x.o = y+10*N+100*M                                                                                 
+                                                                                                     
+proc newG[N,M:static[int],T](x:T):G[N,M,T] = result.newG(x)                                          
+                                                                                                     
+var x:G[2,3,int]                                                                                     
+x.newG(4)                                                                                            
+var y = newG[2,3,int](4)
+
+
+#------------------------------------------------------------------------------------------
+# issue #12897
+
+type
+  TileCT[n: static int] = object
+    a: array[n, int]
+  Tile = TileCT #Commenting this out to make it work
+
+
+#------------------------------------------------------------------------------------------
+# issue #15858
+
+proc fn(N1: static int, N2: static int, T: typedesc): array[N1 * N2, T] = 
+  doAssert(len(result) == N1 * N2)
+
+let yy = fn(5, 10, float)
+
+
+block:
+  block:
+    type Foo[N: static int] = array[cint(0) .. cint(N), float]
+    type T = Foo[3]
+  block:
+    type Foo[N: static int] = array[int32(0) .. int32(N), float]
+    type T = Foo[3]
+
+
+#------------------------------------------------------------------------------------------
+# static proc/lambda param
+func isSorted2[T](a: openArray[T], cmp: static proc(x, y: T): bool {.inline.}): bool =
+  result = true
+  for i in 0..<len(a)-1:
+    if not cmp(a[i], a[i+1]):
+      return false
+
+proc compare(a, b: int): bool {.inline.} = a < b
+
+var sorted = newSeq[int](1000)
+for i in 0..<sorted.len: sorted[i] = i*2
+doAssert isSorted2(sorted, compare)
+doAssert isSorted2(sorted, proc (a, b: int): bool {.inline.} = a < b)
+
+
+block: # Ensure static descriminated objects compile
+  type
+    ObjKind = enum
+      KindA, KindB, KindC
+
+    MyObject[kind: static[ObjKind]] = object of RootObj
+      myNumber: int
+      when kind != KindA:
+        driverType: int
+        otherField: int
+      elif kind == KindC:
+        driverType: uint
+        otherField: int
+
+  var instance: MyObject[KindA]
+  discard instance
+  discard MyObject[KindC]()
+
+block: # more cases of above, issue #8446
+  type
+    Color = enum
+      red, green, blue
+    Blah[color: static[Color]] = object
+      when color == red:
+        a: string
+      else:
+        b: int
+
+  proc foo(blah: Blah) = discard
+  foo(Blah[red](a: "abc"))
+
+  type
+    Mytype[K: static[int]] = object
+      when K < 16:
+        data: uint8
+      else:
+        data: uint64
+  proc usingMyt(k: Mytype) = discard  # triggers Error: cannot generate code for: K
+
+block: # bug #22600
+  proc f(n: static int): int = n * 2 # same for template
+
+  type
+    a[N: static int] = object
+      field : array[N, uint8]
+
+    b[N: static int] = object
+      field : a[N]
+
+    c[N: static int] = object
+      f0    : a[N     ]         # works
+      f1    : a[N + 1 ]         # asserts
+      f2    : a[f(N)  ]         # asserts
+
+      f3    : b[N     ]         # works
+      f4    : b[N + 1 ]         # asserts
+      f5    : b[f(N)  ]         # asserts
+
+  proc init[N: static int](x : var a[N]) = discard
+  proc init[N: static int](x : var b[N]) = discard
+  proc init[N: static int](x : var c[N]) = x.f1.init() # this is needed
+
+  var x: c[2]
+  x.init()

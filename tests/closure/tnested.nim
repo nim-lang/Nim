@@ -33,7 +33,7 @@ py
 py
 px
 6
-proc (){.closure, gcsafe, locks: 0.}
+proc (){.closure, noSideEffect, gcsafe.}
 '''
 """
 
@@ -190,7 +190,7 @@ proc foo() =
   let f = (proc() =
              myDiscard (proc() = echo a)
           )
-  echo name(type(f))
+  echo name(typeof(f))
 
 foo()
 

@@ -1,19 +1,20 @@
 discard """
-cmd: "nim $target --threads:on $options $file"
+matrix: "--mm:refc; --mm:orc"
 output: '''
 '''
 """
 
 import sharedtables
+import std/assertions
 
 block:
   var table: SharedTable[int, int]
 
   init(table)
   table[1] = 10
-  assert table.mget(1) == 10
-  assert table.mgetOrPut(3, 7) == 7
-  assert table.mgetOrPut(3, 99) == 7
+  doAssert table.mget(1) == 10
+  doAssert table.mgetOrPut(3, 7) == 7
+  doAssert table.mgetOrPut(3, 99) == 7
   deinitSharedTable(table)
 
 import sequtils, algorithm

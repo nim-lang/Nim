@@ -8,7 +8,7 @@ block:
   proc myProc():int {.myAttr.} = 2
   const hasMyAttr = myProc.hasCustomPragma(myAttr)
   static:
-    assert(hasMyAttr)
+    doAssert(hasMyAttr)
 
 block:
   template myAttr(a: string) {.pragma.}
@@ -17,10 +17,26 @@ block:
     MyObj = object
       myField1, myField2 {.myAttr: "hi".}: int
 
+    MyGenericObj[T] = object
+      myField1, myField2 {.myAttr: "hi".}: int
+
+    MyOtherObj = MyObj
+
+
   var o: MyObj
   static:
-    assert o.myField2.hasCustomPragma(myAttr)
-    assert(not o.myField1.hasCustomPragma(myAttr))
+    doAssert o.myField2.hasCustomPragma(myAttr)
+    doAssert(not o.myField1.hasCustomPragma(myAttr))
+    doAssert(not o.myField1.hasCustomPragma(MyObj))
+    doAssert(not o.myField1.hasCustomPragma(MyOtherObj))
+
+  var ogen: MyGenericObj[int]
+  static:
+    doAssert ogen.myField2.hasCustomPragma(myAttr)
+    doAssert(not ogen.myField1.hasCustomPragma(myAttr))
+    doAssert(not ogen.myField1.hasCustomPragma(MyGenericObj))
+    doAssert(not ogen.myField1.hasCustomPragma(MyGenericObj))
+
 
 import custom_pragma
 block: # A bit more advanced case
@@ -42,31 +58,31 @@ block: # A bit more advanced case
   var s: MySerializable
 
   const aDefVal = s.a.getCustomPragmaVal(defaultValue)
-  static: assert(aDefVal == 5)
+  static: doAssert(aDefVal == 5)
 
   const aSerKey = s.a.getCustomPragmaVal(serializationKey)
-  static: assert(aSerKey == "asdf")
+  static: doAssert(aSerKey == "asdf")
 
   const cSerKey = getCustomPragmaVal(s.field.c, serializationKey)
-  static: assert(cSerKey == "cc")
+  static: doAssert(cSerKey == "cc")
 
   const procSerKey = getCustomPragmaVal(myproc, serializationKey)
-  static: assert(procSerKey == "myprocSS")
+  static: doAssert(procSerKey == "myprocSS")
 
-  static: assert(hasCustomPragma(myproc, alternativeKey))
+  static: doAssert(hasCustomPragma(myproc, alternativeKey))
 
   const hasFieldCustomPragma = s.field.hasCustomPragma(defaultValue)
-  static: assert(hasFieldCustomPragma == false)
+  static: doAssert(hasFieldCustomPragma == false)
 
   # pragma on an object
   static:
-    assert Subfield.hasCustomPragma(defaultValue)
-    assert(Subfield.getCustomPragmaVal(defaultValue) == "catman")
+    doAssert Subfield.hasCustomPragma(defaultValue)
+    doAssert(Subfield.getCustomPragmaVal(defaultValue) == "catman")
 
-    assert hasCustomPragma(type(s.field), defaultValue)
+    doAssert hasCustomPragma(type(s.field), defaultValue)
 
   proc foo(s: var MySerializable) =
-    static: assert(s.a.getCustomPragmaVal(defaultValue) == 5)
+    static: doAssert(s.a.getCustomPragmaVal(defaultValue) == 5)
 
   foo(s)
 
@@ -91,8 +107,8 @@ block: # ref types
     leftSerKey = getCustomPragmaVal(s.left, serializationKey)
     rightSerKey = getCustomPragmaVal(s.right, serializationKey)
   static:
-    assert leftSerKey == "l"
-    assert rightSerKey == "r"
+    doAssert leftSerKey == "l"
+    doAssert rightSerKey == "r"
 
   var specS = SpecialNodeRef()
 
@@ -100,25 +116,25 @@ block: # ref types
     dataDefVal = hasCustomPragma(specS.data, defaultValue)
     specLeftSerKey = hasCustomPragma(specS.left, serializationKey)
   static:
-    assert dataDefVal == true
-    assert specLeftSerKey == true
+    doAssert dataDefVal == true
+    doAssert specLeftSerKey == true
 
   var ptrS = NodePtr(nil)
   const
     ptrRightSerKey = getCustomPragmaVal(ptrS.right, serializationKey)
   static:
-    assert ptrRightSerKey == "r"
+    doAssert ptrRightSerKey == "r"
 
   var f = MyFile()
   const
     fileDefVal = f.getCustomPragmaVal(defaultValue)
     filePathDefVal = f.path.getCustomPragmaVal(defaultValue)
   static:
-    assert fileDefVal == "closed"
-    assert filePathDefVal == "invalid"
+    doAssert fileDefVal == "closed"
+    doAssert filePathDefVal == "invalid"
 
   static:
-    assert TypeWithoutPragma.hasCustomPragma(defaultValue) == false
+    doAssert TypeWithoutPragma.hasCustomPragma(defaultValue) == false
 
 block:
   type
@@ -144,9 +160,9 @@ block:
     nestedItemDefVal = vari.nestedItem.getCustomPragmaVal(defaultValue)
 
   static:
-    assert hasIntSerKey
-    assert strSerKey == "string"
-    assert nestedItemDefVal == "Nimmers of the world, unite!"
+    doAssert hasIntSerKey
+    doAssert strSerKey == "string"
+    doAssert nestedItemDefVal == "Nimmers of the world, unite!"
 
 block:
   template simpleAttr {.pragma.}
@@ -154,15 +170,25 @@ block:
   type Annotated {.simpleAttr.} = object
 
   proc generic_proc[T]() =
-    assert Annotated.hasCustomPragma(simpleAttr)
-
+    doAssert Annotated.hasCustomPragma(simpleAttr)
 
 #--------------------------------------------------------------------------
 # Pragma on proc type
 
-let a: proc(x: int) {.defaultValue(5).} = nil
+type
+  MyAnnotatedProcType {.defaultValue(4).} = proc(x: int)
+
+let a {.defaultValue(4).}: proc(x: int)  = nil
+var b: MyAnnotatedProcType = nil
+var c: proc(x: int): void {.defaultValue(5).}  = nil
+var d {.defaultValue(44).}: MyAnnotatedProcType = nil
 static:
-  doAssert hasCustomPragma(a.type, defaultValue)
+  doAssert hasCustomPragma(a, defaultValue)
+  doAssert hasCustomPragma(MyAnnotatedProcType, defaultValue)
+  doAssert hasCustomPragma(b, defaultValue)
+  doAssert hasCustomPragma(typeof(c), defaultValue)
+  doAssert getCustomPragmaVal(d, defaultValue) == 44
+  doAssert getCustomPragmaVal(typeof(d), defaultValue) == 4
 
 # bug #8371
 template thingy {.pragma.}
@@ -252,7 +278,11 @@ block:
 
 block:
   macro expectedAst(expectedRepr: static[string], input: untyped): untyped =
-    assert input.treeRepr & "\n" == expectedRepr
+    doAssert input.treeRepr & "\n" == expectedRepr
+    return input
+
+  macro expectedAstRepr(expectedRepr: static[string], input: untyped): untyped =
+    doAssert input.repr == expectedRepr
     return input
 
   const procTypeAst = """
@@ -270,25 +300,15 @@ ProcTy
   type
     Foo = proc (x: int) {.expectedAst(procTypeAst), async.}
 
-  static: assert Foo is proc(x: int): Future[void]
+  static: doAssert Foo is proc(x: int): Future[void]
 
   const asyncProcTypeAst = """
-ProcTy
-  FormalParams
-    BracketExpr
-      Ident "Future"
-      Ident "void"
-    IdentDefs
-      Ident "s"
-      Ident "string"
-      Empty
-  Pragma
-"""
-
+proc (s: string): Future[void] {..}"""
+  # using expectedAst would show `OpenSymChoice` for Future[void], which is fragile.
   type
-    Bar = proc (s: string) {.async, expectedAst(asyncProcTypeAst).}
+    Bar = proc (s: string) {.async, expectedAstRepr(asyncProcTypeAst).}
 
-  static: assert Bar is proc(x: string): Future[void]
+  static: doAssert Bar is proc(x: string): Future[void]
 
   const typeAst = """
 TypeDef
@@ -310,7 +330,7 @@ TypeDef
     Baz {.expectedAst(typeAst).} = object
       x: string
 
-  static: assert Baz.x is string
+  static: doAssert Baz.x is string
 
   const procAst = """
 ProcDef
@@ -333,7 +353,7 @@ ProcDef
   proc bar(s: string): string {.expectedAst(procAst).} =
     return s
 
-  static: assert bar("x") == "x"
+  static: doAssert bar("x") == "x"
 
 #------------------------------------------------------
 # bug #13909
@@ -367,3 +387,147 @@ block:
   let x = RefType2()
   for fieldName, fieldSym in fieldPairs(x[]):
     doAssert hasCustomPragma(fieldSym, myCustomPragma)
+
+# bug 8457
+block:
+  template world {.pragma.}
+
+  type
+    Hello = ref object
+      a: float32
+      b {.world.}: int
+
+  discard Hello(a: 1.0, b: 12)
+
+# test routines
+block:
+  template prag {.pragma.}
+  proc hello {.prag.} = discard
+  iterator hello2: int {.prag.} = discard
+  template hello3(x: int): int {.prag.} = x
+  macro hello4(x: int): int {.prag.} = x
+  func hello5(x: int): int {.prag.} = x
+  doAssert hello.hasCustomPragma(prag)
+  doAssert hello2.hasCustomPragma(prag)
+  doAssert hello3.hasCustomPragma(prag)
+  doAssert hello4.hasCustomPragma(prag)
+  doAssert hello5.hasCustomPragma(prag)
+
+# test push doesn't break
+block:
+  template prag {.pragma.}
+  {.push prag.}
+  proc hello = discard
+  iterator hello2: int = discard
+  template hello3(x: int): int = x
+  macro hello4(x: int): int = x
+  func hello5(x: int): int = x
+  type
+    Foo = enum a
+    Bar[T] = ref object of RootObj
+      x: T
+      case y: bool
+      of false: discard
+      else:
+        when true: discard
+  for a in [1]: discard a
+  {.pop.}
+
+# issue #11511
+when false:
+  template myAttr {.pragma.}
+
+  type TObj = object
+      a {.myAttr.}: int
+
+  macro hasMyAttr(t: typedesc): untyped =
+    let objTy = t.getType[1].getType
+    let recList = objTy[2]
+    let sym = recList[0]
+    assert sym.kind == nnkSym and sym.eqIdent("a")
+    let hasAttr = sym.hasCustomPragma(myAttr)
+    newLit(hasAttr)
+
+  doAssert hasMyAttr(TObj)
+
+
+# bug #11415
+template noserialize() {.pragma.}
+
+type
+  Point[T] = object
+    x, y: T
+
+  ReplayEventKind = enum
+    FoodAppeared, FoodEaten, DirectionChanged
+
+  ReplayEvent = object
+    case kind: ReplayEventKind
+    of FoodEaten, FoodAppeared: # foodPos is in multiple branches
+      foodPos {.noserialize.}: Point[float]
+    of DirectionChanged:
+      playerPos: float
+let ev = ReplayEvent(
+    kind: FoodEaten,
+    foodPos: Point[float](x: 5.0, y: 1.0)
+  )
+
+doAssert ev.foodPos.hasCustomPragma(noserialize)
+
+
+when false:
+  # misc
+  {.pragma: haha.}
+  {.pragma: hoho.}
+  template hehe(key, val: string, haha) {.pragma.}
+
+  type A {.haha, hoho, haha, hehe("hi", "hu", "he").} = int
+
+  assert A.getCustomPragmaVal(hehe) == (key: "hi", val: "hu", haha: "he")
+
+  template hehe(key, val: int) {.pragma.}
+
+  var bb {.haha, hoho, hehe(1, 2), haha, hehe("hi", "hu", "he").} = 3
+
+  # left-to-right priority/override order for getCustomPragmaVal
+  assert bb.getCustomPragmaVal(hehe) == (key: "hi", val: "hu", haha: "he")
+
+{.experimental: "dynamicBindSym".}
+
+# const
+block:
+  template myAttr() {.pragma.}
+  template myAttr2(x: int) {.pragma.}
+  template myAttr3(x: string) {.pragma.}
+
+  type
+    MyObj2 = ref object
+
+  const a {.myAttr,myAttr2(2),myAttr3:"test".}: int = 0
+  const b {.myAttr,myAttr2(2),myAttr3:"test".} = 0
+
+  macro forceHasCustomPragma(x: untyped, y: typed): untyped =
+    var x = bindSym(x.repr)
+    for c in x:
+      if c.symKind == nskConst:
+        x = c
+        break
+    result = getAst(hasCustomPragma(x, y))
+
+  macro forceGetCustomPragmaVal(x: untyped, y: typed): untyped =
+    var x = bindSym(x.repr)
+    for c in x:
+      if c.symKind == nskConst:
+        x = c
+        break
+    result = getAst(getCustomPragmaVal(x, y))
+
+  template check(s: untyped) =
+    doAssert forceHasCustomPragma(s, myAttr)
+    doAssert forceHasCustomPragma(s, myAttr2)
+    doAssert forceGetCustomPragmaVal(s, myAttr2) == 2
+    doAssert forceHasCustomPragma(s, myAttr3)
+    doAssert forceGetCustomPragmaVal(s, myAttr3) == "test"
+
+  check(a)
+  check(b)

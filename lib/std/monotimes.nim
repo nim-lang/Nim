@@ -8,34 +8,35 @@
 #
 
 ##[
-  The ``std/monotimes`` module implements monotonic timestamps. A monotonic
-  timestamp represents the time that has passed since some system defined
-  point in time. The monotonic timestamps are guaranteed to always increase,
-  meaning that that the following is guaranteed to work:
-
-  .. code-block:: nim
-    let a = getMonoTime()
-    # ... do some work
-    let b = getMonoTime()
-    assert a <= b
-
-  This is not guaranteed for the `times.Time` type! This means that the
-  `MonoTime` should be used when measuring durations of time with
-  high precision.
-
-  However, since `MonoTime` represents the time that has passed since some
-  unknown time origin, it cannot be converted to a human readable timestamp.
-  If this is required, the `times.Time` type should be used instead.
-
-  The `MonoTime` type stores the timestamp in nanosecond resolution, but note
-  that the actual supported time resolution differs for different systems.
-
-  See also
-  ========
-  * `times module <times.html>`_
+The `std/monotimes` module implements monotonic timestamps. A monotonic
+timestamp represents the time that has passed since some system defined
+point in time. The monotonic timestamps are guaranteed not to decrease,
+meaning that that the following is guaranteed to work:
 ]##
 
-import times
+runnableExamples:
+  let a = getMonoTime()
+  let b = getMonoTime()
+  assert a <= b
+
+##[
+This is not guaranteed for the `times.Time` type! This means that the
+`MonoTime` should be used when measuring durations of time with
+high precision.
+
+However, since `MonoTime` represents the time that has passed since some
+unknown time origin, it cannot be converted to a human readable timestamp.
+If this is required, the `times.Time` type should be used instead.
+
+The `MonoTime` type stores the timestamp in nanosecond resolution, but note
+that the actual supported time resolution differs for different systems.
+
+See also
+========
+* `times module <times.html>`_
+]##
+
+import std/times
 
 type
   MonoTime* = object ## Represents a monotonic timestamp.
@@ -53,18 +54,16 @@ when defined(macosx):
 
 when defined(js):
   proc getJsTicks: float =
-    ## Returns ticks in the unit seconds
-    {.emit: """
-      var isNode = typeof module !== 'undefined' && module.exports
-
-      if (isNode) {
-        var process = require('process');
-        var time = process.hrtime()
-        return time[0] + time[1] / 1000000000;
-      } else {
-        return window.performance.now() / 1000;
-      }
-    """.}
+    ## Returns ticks in the unit seconds.
+    when defined(nodejs):
+      {.emit: """
+      let process = require('process');
+      let time = process.hrtime();
+      `result` = time[0] + time[1] / 1000000000;
+      """.}
+    else:
+      proc jsNow(): float {.importjs: "window.performance.now()".}
+      result = jsNow() / 1000
 
   # Workaround for #6752.
   {.push overflowChecks: off.}
@@ -74,8 +73,12 @@ when defined(js):
     system.`+`(a, b)
   {.pop.}
 
-elif defined(posix):
-  import posix
+elif defined(posix) and not defined(osx):
+  import std/posix
+
+when defined(zephyr):
+  proc k_uptime_ticks(): int64 {.importc: "k_uptime_ticks", header: "<kernel.h>".}
+  proc k_ticks_to_ns_floor64(ticks: int64): int64 {.importc: "k_ticks_to_ns_floor64", header: "<kernel.h>".}
 
 elif defined(windows):
   proc QueryPerformanceCounter(res: var uint64) {.
@@ -84,11 +87,11 @@ elif defined(windows):
     importc: "QueryPerformanceFrequency", stdcall, dynlib: "kernel32".}
 
 proc getMonoTime*(): MonoTime {.tags: [TimeEffect].} =
-  ## Get the current `MonoTime` timestamp.
+  ## Returns the current `MonoTime` timestamp.
   ##
   ## When compiled with the JS backend and executed in a browser,
-  ## this proc calls `window.performance.now()`, which is not supported by
-  ## older browsers. See [MDN](https://developer.mozilla.org/en-US/docs/Web/API/Performance/now)
+  ## this proc calls `window.performance.now()`.
+  ## See [MDN](https://developer.mozilla.org/en-US/docs/Web/API/Performance/now)
   ## for more information.
   when defined(js):
     let ticks = getJsTicks()
@@ -99,6 +102,9 @@ proc getMonoTime*(): MonoTime {.tags: [TimeEffect].} =
     mach_timebase_info(machAbsoluteTimeFreq)
     result = MonoTime(ticks: ticks * machAbsoluteTimeFreq.numer div
       machAbsoluteTimeFreq.denom)
+  elif defined(zephyr):
+    let ticks = k_ticks_to_ns_floor64(k_uptime_ticks())
+    result = MonoTime(ticks: ticks)
   elif defined(posix):
     var ts: Timespec
     discard clock_gettime(CLOCK_MONOTONIC, ts)
@@ -152,19 +158,3 @@ proc high*(typ: typedesc[MonoTime]): MonoTime =
 proc low*(typ: typedesc[MonoTime]): MonoTime =
   ## Returns the lowest representable `MonoTime`.
   MonoTime(ticks: low(int64))
-
-when isMainModule:
-  let d = initDuration(nanoseconds = 10)
-  let t1 = getMonoTime()
-  let t2 = t1 + d
-
-  doAssert t2 - t1 == d
-  doAssert t1 == t1
-  doAssert t1 != t2
-  doAssert t2 - d == t1
-  doAssert t1 < t2
-  doAssert t1 <= t2
-  doAssert t1 <= t1
-  doAssert not(t2 < t1)
-  doAssert t1 < high(MonoTime)
-  doAssert low(MonoTime) < t1

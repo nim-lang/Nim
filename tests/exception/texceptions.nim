@@ -1,5 +1,8 @@
 discard """
+  disabled: "windows" # no sigsetjmp() there
+  matrix: "-d:nimStdSetjmp; -d:nimSigSetjmp; -d:nimRawSetjmp; -d:nimBuiltinSetjmp"
   output: '''
+
 BEFORE
 FINALLY
 
@@ -16,7 +19,7 @@ FINALLY
 
 echo ""
 
-proc no_expcetion =
+proc no_exception =
   try:
     echo "BEFORE"
 
@@ -27,7 +30,7 @@ proc no_expcetion =
   finally:
     echo "FINALLY"
 
-try: no_expcetion()
+try: no_exception()
 except: echo "RECOVER"
 
 echo ""

@@ -1,13 +1,16 @@
 discard """
+  matrix: "--mm:arc; --mm:refc"
   output: '''
 wof!
 wof!
+type A
+type B
 '''
 """
 
 
 # bug #1659
-type Animal = ref object {.inheritable.}
+type Animal {.inheritable.} = ref object
 type Dog = ref object of Animal
 
 method say(a: Animal): auto {.base.} = "wat!"
@@ -126,3 +129,42 @@ var obj2 = Class2()
 
 obj1.test(obj2) 
 obj2.test(obj1)
+
+
+# -------------------------------------------------------
+# issue #16516
+
+type
+  A = ref object of RootObj
+    x: int
+
+  B = ref object of A
+
+method foo(v: sink A, lst: var seq[A]) {.base,locks:0.} =
+  echo "type A"
+  lst.add v
+
+method foo(v: sink B, lst: var seq[A]) =
+  echo "type B"
+  lst.add v
+
+proc main() =
+  let
+    a = A(x: 5)
+    b: A = B(x: 5)
+
+  var lst: seq[A]
+
+  foo(a, lst)
+  foo(b, lst)
+
+main()
+
+block: # bug #20391
+  type Container[T] = ref object of RootRef
+    item: T
+
+  let a = Container[int]()
+
+  doAssert a of Container[int]
+  doAssert not (a of Container[string])

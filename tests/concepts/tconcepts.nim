@@ -31,6 +31,7 @@ e
 20
 10
 5
+9
 '''
 """
 
@@ -98,7 +99,7 @@ block tconceptinclosure:
 block overload_precedence:
   type ParameterizedType[T] = object
 
-  type CustomTypeClass = concept
+  type CustomTypeClass = concept c
     true
 
   # 3 competing procs
@@ -438,3 +439,13 @@ import mvarconcept
 block tvar:
   # bug #2346, bug #2404
   echo randomInt(5)
+
+block tcomment:
+  type
+    Foo = concept
+      ## Some comment
+      proc bar(x: Self)
+
+  proc bar(x: int) = echo x
+  proc foo(x: Foo) = x.bar
+  foo(9)

@@ -22,7 +22,7 @@ asm """
     function print (text) { console.log (text); }
 """
 
-proc consoleprint (str:cstring): void {.importc: "print", noDecl.}
+proc consoleprint (str:cstring): void {.importc: "print", nodecl.}
 proc print* (a: varargs[string, `$`]) = consoleprint "$1: $2" % [consolePrefix, join(a, " ")]
 
 type CallbackProc {.importc.} = proc () : cstring

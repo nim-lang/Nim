@@ -9,34 +9,33 @@
 
 ## This module implements the basics for Linux distribution ("distro")
 ## detection and the OS's native package manager. Its primary purpose is to
-## produce output for Nimble packages like::
+## produce output for Nimble packages, like:
 ##
-##  To complete the installation, run:
+##     To complete the installation, run:
 ##
-##  sudo apt-get install libblas-dev
-##  sudo apt-get install libvoodoo
+##     sudo apt-get install libblas-dev
+##     sudo apt-get install libvoodoo
 ##
 ## The above output could be the result of a code snippet like:
 ##
-## .. code-block:: nim
-##
+##   ```nim
 ##   if detectOs(Ubuntu):
 ##     foreignDep "lbiblas-dev"
 ##     foreignDep "libvoodoo"
-##
+##   ```
 ##
 ## See `packaging <packaging.html>`_ for hints on distributing Nim using OS packages.
 
-from strutils import contains, toLowerAscii
+from std/strutils import contains, toLowerAscii
 
 when not defined(nimscript):
-  from osproc import execProcess
-  from os import existsEnv
+  from std/osproc import execProcess
+  from std/envvars import existsEnv
 
 type
   Distribution* {.pure.} = enum ## the list of known distributions
     Windows                     ## some version of Windows
-    Posix                       ## some Posix system
+    Posix                       ## some POSIX system
     MacOSX                      ## some version of OSX
     Linux                       ## some version of Linux
     Ubuntu
@@ -52,6 +51,7 @@ type
     CentOS
     Deepin
     ArchLinux
+    Artix
     Antergos
     PCLinuxOS
     Mageia
@@ -108,7 +108,7 @@ type
     Clonezilla
     SteamOS
     Absolute
-    NixOS ## NixOS or a Nix build environment
+    NixOS                       ## NixOS or a Nix build environment
     AUSTRUMI
     Arya
     Porteus
@@ -123,9 +123,11 @@ type
     ExTiX
     Rockstor
     GoboLinux
+    Void
 
     BSD
     FreeBSD
+    NetBSD
     OpenBSD
     DragonFlyBSD
 
@@ -134,7 +136,8 @@ type
 
 const
   LacksDevPackages* = {Distribution.Gentoo, Distribution.Slackware,
-    Distribution.ArchLinux}
+      Distribution.ArchLinux, Distribution.Artix, Distribution.Antergos,
+      Distribution.BlackArch, Distribution.ArchBang}
 
 # we cache the result of the 'cmdRelease'
 # execution for faster platform detections.
@@ -153,12 +156,12 @@ template hostnamectl(): untyped = cmdRelease("hostnamectl", hostnamectlRes)
 proc detectOsWithAllCmd(d: Distribution): bool =
   let dd = toLowerAscii($d)
   result = dd in toLowerAscii(osReleaseID()) or dd in toLowerAscii(release()) or
-            dd in toLowerAscii(uname()) or ("operating system: " & dd) in toLowerAscii(hostnamectl())
+            dd in toLowerAscii(uname()) or ("operating system: " & dd) in
+                toLowerAscii(hostnamectl())
 
 proc detectOsImpl(d: Distribution): bool =
   case d
-  of Distribution.Windows: ## some version of Windows
-    result = defined(windows)
+  of Distribution.Windows: result = defined(windows)
   of Distribution.Posix: result = defined(posix)
   of Distribution.MacOSX: result = defined(macosx)
   of Distribution.Linux: result = defined(linux)
@@ -166,7 +169,7 @@ proc detectOsImpl(d: Distribution): bool =
   else:
     when defined(bsd):
       case d
-      of Distribution.FreeBSD, Distribution.OpenBSD:
+      of Distribution.FreeBSD, Distribution.NetBSD, Distribution.OpenBSD:
         result = $d in uname()
       else:
         result = false
@@ -174,17 +177,19 @@ proc detectOsImpl(d: Distribution): bool =
       case d
       of Distribution.Gentoo:
         result = ("-" & $d & " ") in uname()
-      of Distribution.Elementary, Distribution.Ubuntu, Distribution.Debian, Distribution.Fedora,
-        Distribution.OpenMandriva, Distribution.CentOS, Distribution.Alpine,
-        Distribution.Mageia, Distribution.Zorin:
+      of Distribution.Elementary, Distribution.Ubuntu, Distribution.Debian,
+        Distribution.Fedora, Distribution.OpenMandriva, Distribution.CentOS,
+        Distribution.Alpine, Distribution.Mageia, Distribution.Zorin, Distribution.Void:
         result = toLowerAscii($d) in osReleaseID()
       of Distribution.RedHat:
         result = "rhel" in osReleaseID()
       of Distribution.ArchLinux:
         result = "arch" in osReleaseID()
+      of Distribution.Artix:
+        result = "artix" in osReleaseID()
       of Distribution.NixOS:
-        result = existsEnv("NIX_BUILD_TOP") or existsEnv("__NIXOS_SET_ENVIRONMENT_DONE")
         # Check if this is a Nix build or NixOS environment
+        result = existsEnv("NIX_BUILD_TOP") or existsEnv("__NIXOS_SET_ENVIRONMENT_DONE")
       of Distribution.OpenSUSE:
         result = "suse" in toLowerAscii(uname()) or "suse" in toLowerAscii(release())
       of Distribution.GoboLinux:
@@ -200,16 +205,16 @@ proc detectOsImpl(d: Distribution): bool =
       result = false
 
 template detectOs*(d: untyped): bool =
-  ## Distro/OS detection. For convenience the
-  ## required ``Distribution.`` qualifier is added to the
+  ## Distro/OS detection. For convenience, the
+  ## required `Distribution.` qualifier is added to the
   ## enum value.
   detectOsImpl(Distribution.d)
 
 when not defined(nimble):
-  var foreignDeps: seq[string] = @[]
+  var foreignDeps*: seq[string] = @[]  ## Registered foreign deps.
 
 proc foreignCmd*(cmd: string; requiresSudo = false) =
-  ## Registers a foreign command to the intern list of commands
+  ## Registers a foreign command to the internal list of commands
   ## that can be queried later.
   let c = (if requiresSudo: "sudo " else: "") & cmd
   when defined(nimble):
@@ -218,11 +223,11 @@ proc foreignCmd*(cmd: string; requiresSudo = false) =
     foreignDeps.add(c)
 
 proc foreignDepInstallCmd*(foreignPackageName: string): (string, bool) =
-  ## Returns the distro's native command line to install 'foreignPackageName'
+  ## Returns the distro's native command to install `foreignPackageName`
   ## and whether it requires root/admin rights.
   let p = foreignPackageName
   when defined(windows):
-    result = ("Chocolatey install " & p, false)
+    result = ("choco install " & p, false)
   elif defined(bsd):
     result = ("ports install " & p, true)
   elif defined(linux):
@@ -247,12 +252,14 @@ proc foreignDepInstallCmd*(foreignPackageName: string): (string, bool) =
       result = ("nix-env -i " & p, false)
     elif detectOs(Solaris) or detectOs(FreeBSD):
       result = ("pkg install " & p, true)
-    elif detectOs(OpenBSD):
+    elif detectOs(NetBSD) or detectOs(OpenBSD):
       result = ("pkg_add " & p, true)
     elif detectOs(PCLinuxOS):
       result = ("rpm -ivh " & p, true)
-    elif detectOs(ArchLinux) or detectOs(Manjaro):
+    elif detectOs(ArchLinux) or detectOs(Manjaro) or detectOs(Artix):
       result = ("pacman -S " & p, true)
+    elif detectOs(Void):
+      result = ("xbps-install " & p, true)
     else:
       result = ("<your package manager here> install " & p, true)
   elif defined(haiku):
@@ -261,17 +268,12 @@ proc foreignDepInstallCmd*(foreignPackageName: string): (string, bool) =
     result = ("brew install " & p, false)
 
 proc foreignDep*(foreignPackageName: string) =
-  ## Registers 'foreignPackageName' to the internal list of foreign deps.
-  ## It is your job to ensure the package name
+  ## Registers `foreignPackageName` to the internal list of foreign deps.
+  ## It is your job to ensure that the package name is correct.
   let (installCmd, sudo) = foreignDepInstallCmd(foreignPackageName)
-  foreignCmd installCmd, sudo
+  foreignCmd(installCmd, sudo)
 
 proc echoForeignDeps*() =
   ## Writes the list of registered foreign deps to stdout.
   for d in foreignDeps:
     echo d
-
-when false:
-  foreignDep("libblas-dev")
-  foreignDep "libfoo"
-  echoForeignDeps()

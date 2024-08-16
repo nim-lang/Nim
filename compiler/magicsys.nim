@@ -17,36 +17,30 @@ export createMagic
 
 proc nilOrSysInt*(g: ModuleGraph): PType = g.sysTypes[tyInt]
 
-proc registerSysType*(g: ModuleGraph; t: PType) =
-  if g.sysTypes[t.kind] == nil: g.sysTypes[t.kind] = t
-
 proc newSysType(g: ModuleGraph; kind: TTypeKind, size: int): PType =
-  result = newType(kind, g.systemModule)
+  result = newType(kind, g.idgen, g.systemModule)
   result.size = size
   result.align = size.int16
 
 proc getSysSym*(g: ModuleGraph; info: TLineInfo; name: string): PSym =
-  result = strTableGet(g.systemModule.tab, getIdent(g.cache, name))
+  result = systemModuleSym(g, getIdent(g.cache, name))
   if result == nil:
     localError(g.config, info, "system module needs: " & name)
-    result = newSym(skError, getIdent(g.cache, name), g.systemModule, g.systemModule.info, {})
-    result.typ = newType(tyError, g.systemModule)
-  if result.kind == skAlias: result = result.owner
+    result = newSym(skError, getIdent(g.cache, name), g.idgen, g.systemModule, g.systemModule.info, {})
+    result.typ = newType(tyError, g.idgen, g.systemModule)
 
 proc getSysMagic*(g: ModuleGraph; info: TLineInfo; name: string, m: TMagic): PSym =
-  var ti: TIdentIter
+  result = nil
   let id = getIdent(g.cache, name)
-  var r = initIdentIter(ti, g.systemModule.tab, id)
-  while r != nil:
+  for r in systemModuleSyms(g, id):
     if r.magic == m:
       # prefer the tyInt variant:
-      if r.typ[0] != nil and r.typ[0].kind == tyInt: return r
+      if r.typ.returnType != nil and r.typ.returnType.kind == tyInt: return r
       result = r
-    r = nextIdentIter(ti, g.systemModule.tab)
   if result != nil: return result
   localError(g.config, info, "system module needs: " & name)
-  result = newSym(skError, id, g.systemModule, g.systemModule.info, {})
-  result.typ = newType(tyError, g.systemModule)
+  result = newSym(skError, id, g.idgen, g.systemModule, g.systemModule.info, {})
+  result.typ = newType(tyError, g.idgen, g.systemModule)
 
 proc sysTypeFromName*(g: ModuleGraph; info: TLineInfo; name: string): PType =
   result = getSysSym(g, info, name).typ
@@ -56,6 +50,7 @@ proc getSysType*(g: ModuleGraph; info: TLineInfo; kind: TTypeKind): PType =
   result = g.sysTypes[kind]
   if result == nil:
     case kind
+    of tyVoid: result = sysTypeFromName("void")
     of tyInt: result = sysTypeFromName("int")
     of tyInt8: result = sysTypeFromName("int8")
     of tyInt16: result = sysTypeFromName("int16")
@@ -73,7 +68,7 @@ proc getSysType*(g: ModuleGraph; info: TLineInfo; kind: TTypeKind): PType =
     of tyBool: result = sysTypeFromName("bool")
     of tyChar: result = sysTypeFromName("char")
     of tyString: result = sysTypeFromName("string")
-    of tyCString: result = sysTypeFromName("cstring")
+    of tyCstring: result = sysTypeFromName("cstring")
     of tyPointer: result = sysTypeFromName("pointer")
     of tyNil: result = newSysType(g, tyNil, g.config.target.ptrSize)
     else: internalError(g.config, "request for typekind: " & $kind)
@@ -86,80 +81,40 @@ proc getSysType*(g: ModuleGraph; info: TLineInfo; kind: TTypeKind): PType =
 
 proc resetSysTypes*(g: ModuleGraph) =
   g.systemModule = nil
-  initStrTable(g.compilerprocs)
-  initStrTable(g.exposed)
+  g.compilerprocs = initStrTable()
+  g.exposed = initStrTable()
   for i in low(g.sysTypes)..high(g.sysTypes):
     g.sysTypes[i] = nil
-
-  for i in low(g.intTypeCache)..high(g.intTypeCache):
-    g.intTypeCache[i] = nil
-
-proc getIntLitType*(g: ModuleGraph; literal: PNode): PType =
-  # we cache some common integer literal types for performance:
-  let value = literal.intVal
-  if value >= low(g.intTypeCache) and value <= high(g.intTypeCache):
-    result = g.intTypeCache[value.int]
-    if result == nil:
-      let ti = getSysType(g, literal.info, tyInt)
-      result = copyType(ti, ti.owner, false)
-      result.n = literal
-      g.intTypeCache[value.int] = result
-  else:
-    let ti = getSysType(g, literal.info, tyInt)
-    result = copyType(ti, ti.owner, false)
-    result.n = literal
 
 proc getFloatLitType*(g: ModuleGraph; literal: PNode): PType =
   # for now we do not cache these:
   result = newSysType(g, tyFloat, size=8)
   result.n = literal
 
-proc skipIntLit*(t: PType): PType {.inline.} =
+proc skipIntLit*(t: PType; id: IdGenerator): PType {.inline.} =
   if t.n != nil and t.kind in {tyInt, tyFloat}:
-    result = copyType(t, t.owner, false)
+    result = copyType(t, id, t.owner)
     result.n = nil
   else:
     result = t
 
-proc addSonSkipIntLit*(father, son: PType) =
-  when not defined(nimNoNilSeqs):
-    if isNil(father.sons): father.sons = @[]
-  let s = son.skipIntLit
-  father.sons.add(s)
+proc addSonSkipIntLit*(father, son: PType; id: IdGenerator) =
+  let s = son.skipIntLit(id)
+  father.add(s)
   propagateToOwner(father, s)
 
-proc setIntLitType*(g: ModuleGraph; result: PNode) =
-  let i = result.intVal
-  case g.config.target.intSize
-  of 8: result.typ = getIntLitType(g, result)
-  of 4:
-    if i >= low(int32) and i <= high(int32):
-      result.typ = getIntLitType(g, result)
-    else:
-      result.typ = getSysType(g, result.info, tyInt64)
-  of 2:
-    if i >= low(int16) and i <= high(int16):
-      result.typ = getIntLitType(g, result)
-    elif i >= low(int32) and i <= high(int32):
-      result.typ = getSysType(g, result.info, tyInt32)
-    else:
-      result.typ = getSysType(g, result.info, tyInt64)
-  of 1:
-    # 8 bit CPUs are insane ...
-    if i >= low(int8) and i <= high(int8):
-      result.typ = getIntLitType(g, result)
-    elif i >= low(int16) and i <= high(int16):
-      result.typ = getSysType(g, result.info, tyInt16)
-    elif i >= low(int32) and i <= high(int32):
-      result.typ = getSysType(g, result.info, tyInt32)
-    else:
-      result.typ = getSysType(g, result.info, tyInt64)
+proc makeVarType*(owner: PSym; baseType: PType; idgen: IdGenerator; kind = tyVar): PType =
+  if baseType.kind == kind:
+    result = baseType
   else:
-    internalError(g.config, result.info, "invalid int size")
+    result = newType(kind, idgen, owner)
+    addSonSkipIntLit(result, baseType, idgen)
 
 proc getCompilerProc*(g: ModuleGraph; name: string): PSym =
   let ident = getIdent(g.cache, name)
   result = strTableGet(g.compilerprocs, ident)
+  if result == nil:
+    result = loadCompilerProc(g, name)
 
 proc registerCompilerProc*(g: ModuleGraph; s: PSym) =
   strTableAdd(g.compilerprocs, s)
@@ -176,18 +131,18 @@ proc registerNimScriptSymbol*(g: ModuleGraph; s: PSym) =
 proc getNimScriptSymbol*(g: ModuleGraph; name: string): PSym =
   strTableGet(g.exposed, getIdent(g.cache, name))
 
-proc resetNimScriptSymbols*(g: ModuleGraph) = initStrTable(g.exposed)
+proc resetNimScriptSymbols*(g: ModuleGraph) = g.exposed = initStrTable()
 
 proc getMagicEqSymForType*(g: ModuleGraph; t: PType; info: TLineInfo): PSym =
   case t.kind
   of tyInt,  tyInt8, tyInt16, tyInt32, tyInt64,
-     tyUInt, tyUInt8, tyUInt16, tyUInt32, tyUInt64: 
+     tyUInt, tyUInt8, tyUInt16, tyUInt32, tyUInt64:
     result = getSysMagic(g, info, "==", mEqI)
-  of tyEnum: 
+  of tyEnum:
     result = getSysMagic(g, info, "==", mEqEnum)
-  of tyBool: 
+  of tyBool:
     result = getSysMagic(g, info, "==", mEqB)
-  of tyRef, tyPtr, tyPointer: 
+  of tyRef, tyPtr, tyPointer:
     result = getSysMagic(g, info, "==", mEqRef)
   of tyString:
     result = getSysMagic(g, info, "==", mEqStr)
@@ -198,7 +153,17 @@ proc getMagicEqSymForType*(g: ModuleGraph; t: PType; info: TLineInfo): PSym =
   of tyProc:
     result = getSysMagic(g, info, "==", mEqProc)
   else:
+    result = nil
     globalError(g.config, info,
       "can't find magic equals operator for type kind " & $t.kind)
 
+proc makePtrType*(baseType: PType; idgen: IdGenerator): PType =
+  result = newType(tyPtr, idgen, baseType.owner)
+  addSonSkipIntLit(result, baseType, idgen)
 
+proc makeAddr*(n: PNode; idgen: IdGenerator): PNode =
+  if n.kind == nkHiddenAddr:
+    result = n
+  else:
+    result = newTree(nkHiddenAddr, n)
+    result.typ = makePtrType(n.typ, idgen)
