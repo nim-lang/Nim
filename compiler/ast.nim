@@ -448,6 +448,8 @@ const
   tfGcSafe* = tfThread
   tfObjHasKids* = tfEnumHasHoles
   tfReturnsNew* = tfInheritable
+  tfNonConstExpr* = tfExplicitCallConv
+    ## tyFromExpr where the expression shouldn't be evaluated as a constant
   skError* = skUnknown
 
 var

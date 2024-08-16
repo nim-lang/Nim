@@ -222,6 +222,9 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0; expectedType: PT
   if n == nil: return
   result = copyNode(n)
   if n.typ != nil:
+    if n.typ.kind == tyFromExpr:
+      # type of node should not be evaluated
+      n.typ.flags.incl tfNonConstExpr
     result.typ = replaceTypeVarsT(cl, n.typ)
     checkMetaInvariants(cl, result.typ)
   case n.kind
@@ -591,13 +594,18 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
     assert t.n.typ != t
     var n = prepareNode(cl, t.n)
     if n.kind != nkEmpty:
-      n = cl.c.semConstExpr(cl.c, n)
+      if tfNonConstExpr in t.flags:
+        n = cl.c.semExprWithType(cl.c, n, flags = {efInTypeof})
+      else:
+        n = cl.c.semConstExpr(cl.c, n)
     if n.typ.kind == tyTypeDesc:
       # XXX: sometimes, chained typedescs enter here.
       # It may be worth investigating why this is happening,
       # because it may cause other bugs elsewhere.
       result = n.typ.skipTypes({tyTypeDesc})
       # result = n.typ.base
+    elif tfNonConstExpr in t.flags:
+      result = n.typ
     else:
       if n.typ.kind != tyStatic and n.kind != nkType:
         # XXX: In the future, semConstExpr should
