@@ -2696,11 +2696,6 @@ proc semWhen(c: PContext, n: PNode, semCheck = true): PNode =
     if n.len == 1:
       result.add(newTree(nkElse, newNode(nkStmtList)))
 
-    if $result.typ == "seq[uint8]":
-      echo " -> ", result.typ
-      echo semCheck
-      echo n.renderTree
-
 proc semSetConstr(c: PContext, n: PNode, expectedType: PType = nil): PNode =
   result = newNodeI(nkCurly, n.info)
   result.typ = newTypeS(tySet, c)
