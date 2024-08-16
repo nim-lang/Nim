@@ -3128,7 +3128,7 @@ proc resolveIdentToSym(c: PContext, n: PNode, resultNode: var PNode,
       of skModule, skPackage:
         discard
       of skType:
-        choice.add newSymNodeTypeDesc(cand, n.info)
+        choice.add newSymNodeTypeDesc(cand, c.idgen, n.info)
       else:
         choice.add newSymNode(cand, n.info)
     if choice.len == 0:
