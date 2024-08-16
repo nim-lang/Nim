@@ -3121,12 +3121,16 @@ proc resolveIdentToSym(c: PContext, n: PNode, resultNode: var PNode,
     # unambiguous, or we don't care about ambiguity
     result = candidates[0]
   else:
-    # ambiguous symbols have 1 last chance as a symchoice,
-    # but type symbols cannot participate in symchoices
+    # ambiguous symbols have 1 last chance as a symchoice
     var choice = newNodeIT(nkClosedSymChoice, n.info, newTypeS(tyNone, c))
-    for c in candidates:
-      if c.kind notin {skType, skModule, skPackage}:
-        choice.add newSymNode(c, n.info)
+    for cand in candidates:
+      case cand.kind
+      of skModule, skPackage:
+        discard
+      of skType:
+        choice.add newSymNodeTypeDesc(cand, n.info)
+      else:
+        choice.add newSymNode(cand, n.info)
     if choice.len == 0:
       # we know candidates.len > 1, we just couldn't put any in a symchoice
       errorUseQualifier(c, n.info, candidates)
