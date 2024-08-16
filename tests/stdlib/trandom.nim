@@ -1,6 +1,6 @@
 discard """
   joinable: false # to avoid messing with global rand state
-  matrix: "--mm:refc; --mm:orc; --backend:js --jsbigint64:off; --backend:js --jsbigint64:on"
+  matrix: "--mm:refc; --mm:orc; --backend:js --jsbigint64:off -d:nimStringHash2; --backend:js --jsbigint64:on"
 """
 import std/[assertions, formatfloat]
 import std/[random, math, stats, sets, tables]
@@ -297,6 +297,9 @@ block: # bug #22360
       inc fc
 
   when defined(js):
-    doAssert (tc, fc) == (483, 517), $(tc, fc)
+    when compileOption("jsbigint64"):
+      doAssert (tc, fc) == (517, 483), $(tc, fc)
+    else:
+      doAssert (tc, fc) == (515, 485), $(tc, fc)
   else:
     doAssert (tc, fc) == (510, 490), $(tc, fc)

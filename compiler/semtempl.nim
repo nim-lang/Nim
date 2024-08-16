@@ -52,7 +52,7 @@ proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule;
                isField = false): PNode =
   var
     a: PSym
-    o: TOverloadIter
+    o: TOverloadIter = default(TOverloadIter)
   var i = 0
   a = initOverloadIter(o, c, n)
   while a != nil:
@@ -256,25 +256,27 @@ proc semTemplSymbol(c: PContext, n: PNode, s: PSym; isField: bool): PNode =
     if not isField:
       styleCheckUse(c, n.info, s)
 
-proc semRoutineInTemplName(c: var TemplCtx, n: PNode): PNode =
+proc semRoutineInTemplName(c: var TemplCtx, n: PNode, explicitInject: bool): PNode =
   result = n
   if n.kind == nkIdent:
     let s = qualifiedLookUp(c.c, n, {})
     if s != nil:
-      if s.owner == c.owner and (s.kind == skParam or sfGenSym in s.flags):
+      if s.owner == c.owner and (s.kind == skParam or
+          (sfGenSym in s.flags and not explicitInject)):
         incl(s.flags, sfUsed)
         result = newSymNode(s, n.info)
         onUse(n.info, s)
   else:
     for i in 0..<n.safeLen:
-      result[i] = semRoutineInTemplName(c, n[i])
+      result[i] = semRoutineInTemplName(c, n[i], explicitInject)
 
 proc semRoutineInTemplBody(c: var TemplCtx, n: PNode, k: TSymKind): PNode =
   result = n
   checkSonsLen(n, bodyPos + 1, c.c.config)
   if n.kind notin nkLambdaKinds:
     # routines default to 'inject':
-    if symBinding(n[pragmasPos]) == spGenSym:
+    let binding = symBinding(n[pragmasPos])
+    if binding == spGenSym:
       let (ident, hasParam) = getIdentReplaceParams(c, n[namePos])
       if not hasParam:
         var s = newGenSym(k, ident, c)
@@ -286,7 +288,7 @@ proc semRoutineInTemplBody(c: var TemplCtx, n: PNode, k: TSymKind): PNode =
       else:
         n[namePos] = ident
     else:
-      n[namePos] = semRoutineInTemplName(c, n[namePos])
+      n[namePos] = semRoutineInTemplName(c, n[namePos], binding == spInject)
   # open scope for parameters
   openScope(c)
   for i in patternPos..paramsPos-1:
@@ -507,14 +509,21 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
       if x.kind == nkExprColonExpr:
         x[1] = semTemplBody(c, x[1])
   of nkBracketExpr:
-    result = newNodeI(nkCall, n.info)
-    result.add newIdentNode(getIdent(c.c.cache, "[]"), n.info)
-    for i in 0..<n.len: result.add(n[i])
+    if n.typ == nil:
+      # if a[b] is nested inside a typed expression, don't convert it
+      # back to `[]`(a, b), prepareOperand will not typecheck it again
+      # and so `[]` will not be resolved
+      # checking if a[b] is typed should be enough to cover this case
+      result = newNodeI(nkCall, n.info)
+      result.add newIdentNode(getIdent(c.c.cache, "[]"), n.info)
+      for i in 0..<n.len: result.add(n[i])
     result = semTemplBodySons(c, result)
   of nkCurlyExpr:
-    result = newNodeI(nkCall, n.info)
-    result.add newIdentNode(getIdent(c.c.cache, "{}"), n.info)
-    for i in 0..<n.len: result.add(n[i])
+    if n.typ == nil:
+      # see nkBracketExpr case for explanation
+      result = newNodeI(nkCall, n.info)
+      result.add newIdentNode(getIdent(c.c.cache, "{}"), n.info)
+      for i in 0..<n.len: result.add(n[i])
     result = semTemplBodySons(c, result)
   of nkAsgn, nkFastAsgn, nkSinkAsgn:
     checkSonsLen(n, 2, c.c.config)
@@ -524,17 +533,21 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
     let k = a.kind
     case k
     of nkBracketExpr:
-      result = newNodeI(nkCall, n.info)
-      result.add newIdentNode(getIdent(c.c.cache, "[]="), n.info)
-      for i in 0..<a.len: result.add(a[i])
-      result.add(b)
+      if a.typ == nil:
+        # see nkBracketExpr case above for explanation
+        result = newNodeI(nkCall, n.info)
+        result.add newIdentNode(getIdent(c.c.cache, "[]="), n.info)
+        for i in 0..<a.len: result.add(a[i])
+        result.add(b)
       let a0 = semTemplBody(c, a[0])
       result = semTemplBodySons(c, result)
     of nkCurlyExpr:
-      result = newNodeI(nkCall, n.info)
-      result.add newIdentNode(getIdent(c.c.cache, "{}="), n.info)
-      for i in 0..<a.len: result.add(a[i])
-      result.add(b)
+      if a.typ == nil:
+        # see nkBracketExpr case above for explanation
+        result = newNodeI(nkCall, n.info)
+        result.add newIdentNode(getIdent(c.c.cache, "{}="), n.info)
+        for i in 0..<a.len: result.add(a[i])
+        result.add(b)
       result = semTemplBodySons(c, result)
     else:
       result = semTemplBodySons(c, n)

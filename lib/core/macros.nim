@@ -93,6 +93,8 @@ type
     nnkFuncDef,
     nnkTupleConstr,
     nnkError,  ## erroneous AST node
+    nnkModuleRef, nnkReplayAction, nnkNilRodNode ## internal IC nodes
+    nnkOpenSym
 
   NimNodeKinds* = set[NimNodeKind]
   NimTypeKind* = enum  # some types are no longer used, see ast.nim
@@ -277,7 +279,7 @@ when (NimMajor, NimMinor, NimPatch) >= (1, 3, 5) or defined(nimSymImplTransform)
     ## note that code transformations are implementation dependent and subject to change.
     ## See an example in `tests/macros/tmacros_various.nim`.
 
-proc owner*(sym: NimNode): NimNode {.magic: "SymOwner", noSideEffect.}
+proc owner*(sym: NimNode): NimNode {.magic: "SymOwner", noSideEffect, deprecated.}
   ## Accepts a node of kind `nnkSym` and returns its owner's symbol.
   ## The meaning of 'owner' depends on `sym`'s `NimSymKind` and declaration
   ## context. For top level declarations this is an `nskModule` symbol,
@@ -1407,7 +1409,7 @@ proc `$`*(node: NimNode): string =
     result = node.basename.strVal & "*"
   of nnkStrLit..nnkTripleStrLit, nnkCommentStmt, nnkSym, nnkIdent:
     result = node.strVal
-  of nnkOpenSymChoice, nnkClosedSymChoice:
+  of nnkOpenSymChoice, nnkClosedSymChoice, nnkOpenSym:
     result = $node[0]
   of nnkAccQuoted:
     result = ""

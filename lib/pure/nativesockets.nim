@@ -67,7 +67,7 @@ type
                    ## some procedures, such as getaddrinfo)
     AF_UNIX = 1,   ## for local socket (using a file). Unsupported on Windows.
     AF_INET = 2,   ## for network protocol IPv4 or
-    AF_INET6 = when defined(macosx): 30 else: 23 ## for network protocol IPv6.
+    AF_INET6 = when defined(macosx): 30 elif defined(windows): 23 else: 10 ## for network protocol IPv6.
 
   SockType* = enum     ## second argument to `socket` proc
     SOCK_STREAM = 1,   ## reliable stream-oriented service or Stream Sockets

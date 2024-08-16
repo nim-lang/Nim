@@ -125,9 +125,6 @@ proc unsafeAddr*[T](x: T): ptr T {.magic: "Addr", noSideEffect.} =
 
 const ThisIsSystem = true
 
-proc internalNew*[T](a: var ref T) {.magic: "New", noSideEffect.}
-  ## Leaked implementation detail. Do not use.
-
 proc new*[T](a: var ref T, finalizer: proc (x: ref T) {.nimcall.}) {.
   magic: "NewFinalize", noSideEffect.}
   ## Creates a new object of type `T` and returns a safe (traced)
@@ -161,9 +158,11 @@ when defined(nimHasEnsureMove):
     ## Ensures that `x` is moved to the new location, otherwise it gives
     ## an error at the compile time.
     runnableExamples:
-      var x = "Hello"
-      let y = ensureMove(x)
-      doAssert y == "Hello"
+      proc foo =
+        var x = "Hello"
+        let y = ensureMove(x)
+        doAssert y == "Hello"
+      foo()
     discard "implemented in injectdestructors"
 
 type
@@ -376,7 +375,7 @@ else:
     discard
 
   when defined(nimAllowNonVarDestructor) and arcLikeMem:
-    proc `=destroy`*(x: string) {.inline, magic: "Destroy".} =
+    proc `=destroy`*(x: string) {.inline, magic: "Destroy", enforceNoRaises.} =
       discard
 
     proc `=destroy`*[T](x: seq[T]) {.inline, magic: "Destroy".} =
@@ -1038,7 +1037,7 @@ const
     ## Possible values:
     ## `"i386"`, `"alpha"`, `"powerpc"`, `"powerpc64"`, `"powerpc64el"`,
     ## `"sparc"`, `"amd64"`, `"mips"`, `"mipsel"`, `"arm"`, `"arm64"`,
-    ## `"mips64"`, `"mips64el"`, `"riscv32"`, `"riscv64"`, '"loongarch64"'.
+    ## `"mips64"`, `"mips64el"`, `"riscv32"`, `"riscv64"`, `"loongarch64"`.
 
   seqShallowFlag = low(int)
   strlitFlag = 1 shl (sizeof(int)*8 - 2) # later versions of the codegen \
@@ -1703,8 +1702,24 @@ when not defined(nimscript):
 when not declared(sysFatal):
   include "system/fatal"
 
+type
+  PFrame* = ptr TFrame  ## Represents a runtime frame of the call stack;
+                        ## part of the debugger API.
+  # keep in sync with nimbase.h `struct TFrame_`
+  TFrame* {.importc, nodecl, final.} = object ## The frame itself.
+    prev*: PFrame       ## Previous frame; used for chaining the call stack.
+    procname*: cstring  ## Name of the proc that is currently executing.
+    line*: int          ## Line number of the proc that is currently executing.
+    filename*: cstring  ## Filename of the proc that is currently executing.
+    len*: int16         ## Length of the inspectable slots.
+    calldepth*: int16   ## Used for max call depth checking.
+    when NimStackTraceMsgs:
+      frameMsgLen*: int   ## end position in frameMsgBuf for this frame.
 
 when defined(nimV2):
+  var
+    framePtr {.threadvar.}: PFrame
+
   include system/arc
 
 template newException*(exceptn: typedesc, message: string;
@@ -1848,20 +1863,6 @@ when notJSnotNims:
       ## in case of an `unhandle exception` event. The standard handler
       ## writes an error message and terminates the program, except when
       ## using `--os:any`
-
-type
-  PFrame* = ptr TFrame  ## Represents a runtime frame of the call stack;
-                        ## part of the debugger API.
-  # keep in sync with nimbase.h `struct TFrame_`
-  TFrame* {.importc, nodecl, final.} = object ## The frame itself.
-    prev*: PFrame       ## Previous frame; used for chaining the call stack.
-    procname*: cstring  ## Name of the proc that is currently executing.
-    line*: int          ## Line number of the proc that is currently executing.
-    filename*: cstring  ## Filename of the proc that is currently executing.
-    len*: int16         ## Length of the inspectable slots.
-    calldepth*: int16   ## Used for max call depth checking.
-    when NimStackTraceMsgs:
-      frameMsgLen*: int   ## end position in frameMsgBuf for this frame.
 
 when defined(js) or defined(nimdoc):
   proc add*(x: var string, y: cstring) {.asmNoStackFrame.} =
@@ -2101,12 +2102,14 @@ when not defined(js):
     proc cstringArrayToSeq*(a: cstringArray, len: Natural): seq[string] =
       ## Converts a `cstringArray` to a `seq[string]`. `a` is supposed to be
       ## of length `len`.
+      if a == nil: return @[]
       newSeq(result, len)
       for i in 0..len-1: result[i] = $a[i]
 
     proc cstringArrayToSeq*(a: cstringArray): seq[string] =
       ## Converts a `cstringArray` to a `seq[string]`. `a` is supposed to be
       ## terminated by `nil`.
+      if a == nil: return @[]
       var L = 0
       while a[L] != nil: inc(L)
       result = cstringArrayToSeq(a, L)
@@ -2131,7 +2134,7 @@ when not defined(js) and declared(alloc0) and declared(dealloc):
       inc(i)
     dealloc(a)
 
-when notJSnotNims:
+when notJSnotNims and not gotoBasedExceptions:
   type
     PSafePoint = ptr TSafePoint
     TSafePoint {.compilerproc, final.} = object
@@ -2520,6 +2523,8 @@ when hasAlloc or defined(nimscript):
     ##   var a = "abc"
     ##   a.insert("zz", 0) # a <- "zzabc"
     ##   ```
+    if item.len == 0: # prevents self-assignment
+      return
     var xl = x.len
     setLen(x, xl+item.len)
     var j = xl-1
@@ -2785,6 +2790,18 @@ when not defined(js):
 
 proc toOpenArray*[T](x: seq[T]; first, last: int): openArray[T] {.
   magic: "Slice".}
+  ## Allows passing the slice of `x` from the element at `first` to the element
+  ## at `last` to `openArray[T]` parameters without copying it.
+  ##
+  ## Example:
+  ##   ```nim
+  ##   proc test(x: openArray[int]) =
+  ##     doAssert x == [1, 2, 3]
+  ##
+  ##   let s = @[0, 1, 2, 3, 4]
+  ##   s.toOpenArray(1, 3).test
+  ##   ```
+
 proc toOpenArray*[T](x: openArray[T]; first, last: int): openArray[T] {.
   magic: "Slice".}
 proc toOpenArray*[I, T](x: array[I, T]; first, last: I): openArray[T] {.
@@ -2926,4 +2943,5 @@ proc arrayWith*[T](y: T, size: static int): array[size, T] {.raises: [].} =
     when nimvm:
       result[i] = y
     else:
-      result[i] = `=dup`(y)
+      # TODO: fixme it should be `=dup`
+      result[i] = y

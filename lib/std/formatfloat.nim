@@ -35,8 +35,8 @@ proc writeFloatToBufferRoundtrip*(buf: var array[65, char]; value: float32): int
   result = float32ToChars(buf, value, forceTrailingDotZero=true).int
   buf[result] = '\0'
 
-proc c_sprintf(buf, frmt: cstring): cint {.header: "<stdio.h>",
-                                    importc: "sprintf", varargs, noSideEffect.}
+proc c_snprintf(buf: cstring, n: csize_t, frmt: cstring): cint {.header: "<stdio.h>",
+                                    importc: "snprintf", varargs, noSideEffect.}
 
 proc writeToBuffer(buf: var array[65, char]; value: cstring) =
   var i = 0
@@ -49,7 +49,7 @@ proc writeFloatToBufferSprintf*(buf: var array[65, char]; value: BiggestFloat): 
   ##
   ## returns the amount of bytes written to `buf` not counting the
   ## terminating '\0' character.
-  var n = c_sprintf(cast[cstring](addr buf), "%.16g", value).int
+  var n = c_snprintf(cast[cstring](addr buf), 65, "%.16g", value).int
   var hasDot = false
   for i in 0..n-1:
     if buf[i] == ',':
@@ -109,11 +109,11 @@ when defined(js):
         return n.toString().match(/^-?\d+$/);
       }
       if (Number.isSafeInteger(`a`))
-        `result` = `a` === 0 && 1 / `a` < 0 ? "-0.0" : `a`+".0"
+        `result` = `a` === 0 && 1 / `a` < 0 ? "-0.0" : `a`+".0";
       else {
-        `result` = `a`+""
+        `result` = `a`+"";
         if(nimOnlyDigitsOrMinus(`result`)){
-          `result` = `a`+".0"
+          `result` = `a`+".0";
         }
       }
     """.}

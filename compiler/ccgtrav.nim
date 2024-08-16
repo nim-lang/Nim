@@ -34,10 +34,10 @@ proc genTraverseProc(c: TTraversalClosure, accessor: Rope, n: PNode;
     if (n[0].kind != nkSym): internalError(c.p.config, n.info, "genTraverseProc")
     var p = c.p
     let disc = n[0].sym
-    if disc.loc.r == "": fillObjectFields(c.p.module, typ)
+    if disc.loc.snippet == "": fillObjectFields(c.p.module, typ)
     if disc.loc.t == nil:
       internalError(c.p.config, n.info, "genTraverseProc()")
-    lineF(p, cpsStmts, "switch ($1.$2) {$n", [accessor, disc.loc.r])
+    lineF(p, cpsStmts, "switch ($1.$2) {$n", [accessor, disc.loc.snippet])
     for i in 1..<n.len:
       let branch = n[i]
       assert branch.kind in {nkOfBranch, nkElse}
@@ -51,10 +51,10 @@ proc genTraverseProc(c: TTraversalClosure, accessor: Rope, n: PNode;
   of nkSym:
     let field = n.sym
     if field.typ.kind == tyVoid: return
-    if field.loc.r == "": fillObjectFields(c.p.module, typ)
+    if field.loc.snippet == "": fillObjectFields(c.p.module, typ)
     if field.loc.t == nil:
       internalError(c.p.config, n.info, "genTraverseProc()")
-    genTraverseProc(c, "$1.$2" % [accessor, field.loc.r], field.loc.t)
+    genTraverseProc(c, "$1.$2" % [accessor, field.loc.snippet], field.loc.t)
   else: internalError(c.p.config, n.info, "genTraverseProc()")
 
 proc parentObj(accessor: Rope; m: BModule): Rope {.inline.} =
@@ -78,9 +78,9 @@ proc genTraverseProc(c: TTraversalClosure, accessor: Rope, typ: PType) =
     var oldCode = p.s(cpsStmts)
     freeze oldCode
     linefmt(p, cpsStmts, "for ($1 = 0; $1 < $2; $1++) {$n",
-            [i.r, arraySize])
+            [i.snippet, arraySize])
     let oldLen = p.s(cpsStmts).len
-    genTraverseProc(c, ropecg(c.p.module, "$1[$2]", [accessor, i.r]), typ.elementType)
+    genTraverseProc(c, ropecg(c.p.module, "$1[$2]", [accessor, i.snippet]), typ.elementType)
     if p.s(cpsStmts).len == oldLen:
       # do not emit dummy long loops for faster debug builds:
       p.s(cpsStmts) = oldCode
@@ -120,12 +120,12 @@ proc genTraverseProcSeq(c: TTraversalClosure, accessor: Rope, typ: PType) =
   var i = getTemp(p, getSysType(c.p.module.g.graph, unknownLineInfo, tyInt))
   var oldCode = p.s(cpsStmts)
   freeze oldCode
-  var a = TLoc(r: accessor)
+  var a = TLoc(snippet: accessor)
 
   lineF(p, cpsStmts, "for ($1 = 0; $1 < $2; $1++) {$n",
-      [i.r, lenExpr(c.p, a)])
+      [i.snippet, lenExpr(c.p, a)])
   let oldLen = p.s(cpsStmts).len
-  genTraverseProc(c, "$1$3[$2]" % [accessor, i.r, dataField(c.p)], typ.elementType)
+  genTraverseProc(c, "$1$3[$2]" % [accessor, i.snippet, dataField(c.p)], typ.elementType)
   if p.s(cpsStmts).len == oldLen:
     # do not emit dummy long loops for faster debug builds:
     p.s(cpsStmts) = oldCode

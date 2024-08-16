@@ -24,10 +24,10 @@ proc specializeResetN(p: BProc, accessor: Rope, n: PNode;
   of nkRecCase:
     if (n[0].kind != nkSym): internalError(p.config, n.info, "specializeResetN")
     let disc = n[0].sym
-    if disc.loc.r == "": fillObjectFields(p.module, typ)
+    if disc.loc.snippet == "": fillObjectFields(p.module, typ)
     if disc.loc.t == nil:
       internalError(p.config, n.info, "specializeResetN()")
-    lineF(p, cpsStmts, "switch ($1.$2) {$n", [accessor, disc.loc.r])
+    lineF(p, cpsStmts, "switch ($1.$2) {$n", [accessor, disc.loc.snippet])
     for i in 1..<n.len:
       let branch = n[i]
       assert branch.kind in {nkOfBranch, nkElse}
@@ -38,14 +38,14 @@ proc specializeResetN(p: BProc, accessor: Rope, n: PNode;
       specializeResetN(p, accessor, lastSon(branch), typ)
       lineF(p, cpsStmts, "break;$n", [])
     lineF(p, cpsStmts, "} $n", [])
-    specializeResetT(p, "$1.$2" % [accessor, disc.loc.r], disc.loc.t)
+    specializeResetT(p, "$1.$2" % [accessor, disc.loc.snippet], disc.loc.t)
   of nkSym:
     let field = n.sym
     if field.typ.kind == tyVoid: return
-    if field.loc.r == "": fillObjectFields(p.module, typ)
+    if field.loc.snippet == "": fillObjectFields(p.module, typ)
     if field.loc.t == nil:
       internalError(p.config, n.info, "specializeResetN()")
-    specializeResetT(p, "$1.$2" % [accessor, field.loc.r], field.loc.t)
+    specializeResetT(p, "$1.$2" % [accessor, field.loc.snippet], field.loc.t)
   else: internalError(p.config, n.info, "specializeResetN()")
 
 proc specializeResetT(p: BProc, accessor: Rope, typ: PType) =
@@ -59,8 +59,8 @@ proc specializeResetT(p: BProc, accessor: Rope, typ: PType) =
     let arraySize = lengthOrd(p.config, typ.indexType)
     var i: TLoc = getTemp(p, getSysType(p.module.g.graph, unknownLineInfo, tyInt))
     linefmt(p, cpsStmts, "for ($1 = 0; $1 < $2; $1++) {$n",
-            [i.r, arraySize])
-    specializeResetT(p, ropecg(p.module, "$1[$2]", [accessor, i.r]), typ.elementType)
+            [i.snippet, arraySize])
+    specializeResetT(p, ropecg(p.module, "$1[$2]", [accessor, i.snippet]), typ.elementType)
     lineF(p, cpsStmts, "}$n", [])
   of tyObject:
     var x = typ.baseClass
@@ -81,7 +81,7 @@ proc specializeResetT(p: BProc, accessor: Rope, typ: PType) =
       lineCg(p, cpsStmts, "$1.ClP_0 = NIM_NIL;$n", [accessor])
     else:
       lineCg(p, cpsStmts, "$1 = NIM_NIL;$n", [accessor])
-  of tyChar, tyBool, tyEnum, tyInt..tyUInt64:
+  of tyChar, tyBool, tyEnum, tyRange, tyInt..tyUInt64:
     lineCg(p, cpsStmts, "$1 = 0;$n", [accessor])
   of tyCstring, tyPointer, tyPtr, tyVar, tyLent:
     lineCg(p, cpsStmts, "$1 = NIM_NIL;$n", [accessor])
@@ -95,7 +95,7 @@ proc specializeResetT(p: BProc, accessor: Rope, typ: PType) =
     else:
       raiseAssert "unexpected set type kind"
   of tyNone, tyEmpty, tyNil, tyUntyped, tyTyped, tyGenericInvocation,
-      tyGenericParam, tyOrdinal, tyRange, tyOpenArray, tyForward, tyVarargs,
+      tyGenericParam, tyOrdinal, tyOpenArray, tyForward, tyVarargs,
       tyUncheckedArray, tyProxy, tyBuiltInTypeClass, tyUserTypeClass,
       tyUserTypeClassInst, tyCompositeTypeClass, tyAnd, tyOr, tyNot,
       tyAnything, tyStatic, tyFromExpr, tyConcept, tyVoid, tyIterable:

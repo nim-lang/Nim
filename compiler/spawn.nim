@@ -109,6 +109,16 @@ stmtList:
 
 """
 
+proc castToVoidPointer(g: ModuleGraph, n: PNode, fvField: PNode): PNode =
+  if g.config.backend == backendCpp:
+    result = fvField
+  else:
+    let ptrType = getSysType(g, n.info, tyPointer)
+    result = newNodeI(nkCast, fvField.info)
+    result.add newNodeI(nkEmpty, fvField.info)
+    result.add fvField
+    result.typ = ptrType
+
 proc createWrapperProc(g: ModuleGraph; f: PNode; threadParam, argsParam: PSym;
                        varSection, varInit, call, barrier, fv: PNode;
                        idgen: IdGenerator;
@@ -156,8 +166,9 @@ proc createWrapperProc(g: ModuleGraph; f: PNode; threadParam, argsParam: PSym;
     if barrier == nil:
       # by now 'fv' is shared and thus might have beeen overwritten! we need
       # to use the thread-local view instead:
+      let castExpr = castToVoidPointer(g, f, threadLocalProm.newSymNode)
       body.add callCodegenProc(g, "nimFlowVarSignal", threadLocalProm.info,
-        threadLocalProm.newSymNode)
+        castExpr)
   else:
     body.add call
   if barrier != nil:
@@ -413,7 +424,8 @@ proc wrapProcForSpawn*(g: ModuleGraph; idgen: IdGenerator; owner: PSym; spawnExp
     # create flowVar:
     result.add newFastAsgnStmt(fvField, callProc(spawnExpr[^1]))
     if barrier == nil:
-      result.add callCodegenProc(g, "nimFlowVarCreateSemaphore", fvField.info, fvField)
+      let castExpr = castToVoidPointer(g, n, fvField)
+      result.add callCodegenProc(g, "nimFlowVarCreateSemaphore", fvField.info, castExpr)
 
   elif spawnKind == srByVar:
     var field = newSym(skField, getIdent(g.cache, "fv"), idgen, owner, n.info, g.config.options)

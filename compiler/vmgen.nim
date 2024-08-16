@@ -1182,7 +1182,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     let size = getSize(c.config, t)
     if t.kind in {tyUInt8..tyUInt32} or (t.kind == tyUInt and size < 8):
       c.gABC(n, opcNarrowU, dest, TRegister(size*8))
-  of mCharToStr, mBoolToStr, mIntToStr, mInt64ToStr, mFloatToStr, mCStrToStr, mStrToStr, mEnumToStr:
+  of mCharToStr, mBoolToStr, mCStrToStr, mStrToStr, mEnumToStr:
     genConv(c, n, n[1], dest)
   of mEqStr: genBinaryABC(c, n, dest, opcEqStr)
   of mEqCString: genBinaryABC(c, n, dest, opcEqCString)
@@ -1229,13 +1229,6 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     c.freeTemp(tmp1)
     c.genAsgnPatch(d2AsNode, d2)
     c.freeTemp(d2)
-  of mReset:
-    unused(c, n, dest)
-    var d = c.genx(n[1])
-    # XXX use ldNullOpcode() here?
-    c.gABx(n, opcLdNull, d, c.genType(n[1].typ))
-    c.gABC(n, opcNodeToReg, d, d)
-    c.genAsgnPatch(n[1], d)
   of mDefault, mZeroDefault:
     if dest < 0: dest = c.getTemp(n.typ)
     c.gABx(n, ldNullOpcode(n.typ), dest, c.genType(n.typ))
@@ -2050,6 +2043,8 @@ proc genSetConstr(c: PCtx, n: PNode, dest: var TDest) =
       c.freeTemp(a)
 
 proc genObjConstr(c: PCtx, n: PNode, dest: var TDest) =
+  if tfUnion in n.typ.flags: # bug #22708 # bug #13481
+    globalError(c.config, n.info, "object with '{.union.}' pragmas is not supported by VM")
   if dest < 0: dest = c.getTemp(n.typ)
   let t = n.typ.skipTypes(abstractRange+{tyOwned}-{tyTypeDesc})
   if t.kind == tyRef:
@@ -2124,7 +2119,7 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
       genRdVar(c, n, dest, flags)
     of skParam:
       if s.typ.kind == tyTypeDesc:
-        genTypeLit(c, s.typ, dest)
+        genTypeLit(c, s.typ.skipTypes({tyTypeDesc}), dest)
       else:
         genRdVar(c, n, dest, flags)
     of skProc, skFunc, skConverter, skMacro, skTemplate, skMethod, skIterator:
@@ -2233,18 +2228,21 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
     #discard genProc(c, s)
     genLit(c, newSymNode(n[namePos].sym), dest)
   of nkChckRangeF, nkChckRange64, nkChckRange:
-    let
-      tmp0 = c.genx(n[0])
-      tmp1 = c.genx(n[1])
-      tmp2 = c.genx(n[2])
-    c.gABC(n, opcRangeChck, tmp0, tmp1, tmp2)
-    c.freeTemp(tmp1)
-    c.freeTemp(tmp2)
-    if dest >= 0:
-      gABC(c, n, whichAsgnOpc(n), dest, tmp0)
-      c.freeTemp(tmp0)
+    if skipTypes(n.typ, abstractVar).kind in {tyUInt..tyUInt64}:
+      genConv(c, n, n[0], dest)
     else:
-      dest = tmp0
+      let
+        tmp0 = c.genx(n[0])
+        tmp1 = c.genx(n[1])
+        tmp2 = c.genx(n[2])
+      c.gABC(n, opcRangeChck, tmp0, tmp1, tmp2)
+      c.freeTemp(tmp1)
+      c.freeTemp(tmp2)
+      if dest >= 0:
+        gABC(c, n, whichAsgnOpc(n), dest, tmp0)
+        c.freeTemp(tmp0)
+      else:
+        dest = tmp0
   of nkEmpty, nkCommentStmt, nkTypeSection, nkConstSection, nkPragma,
      nkTemplateDef, nkIncludeStmt, nkImportStmt, nkFromStmt, nkExportStmt,
      nkMixinStmt, nkBindStmt, declarativeDefs, nkMacroDef:

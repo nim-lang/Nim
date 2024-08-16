@@ -133,7 +133,7 @@ proc createDispatcher(s: PSym; g: ModuleGraph; idgen: IdGenerator): PSym =
   if disp.typ.callConv == ccInline: disp.typ.callConv = ccNimCall
   disp.ast = copyTree(s.ast)
   disp.ast[bodyPos] = newNodeI(nkEmpty, s.info)
-  disp.loc.r = ""
+  disp.loc.snippet = ""
   if s.typ.returnType != nil:
     if disp.ast.len > resultPos:
       disp.ast[resultPos].sym = copySym(s.ast[resultPos].sym, idgen)
@@ -163,6 +163,10 @@ proc methodDef*(g: ModuleGraph; idgen: IdGenerator; s: PSym) =
       g.config.isDefined("nimInternalNonVtablesTesting"):
     localError(g.config, s.info, errGenerated, "method `" & s.name.s &
           "` can be defined only in the same module with its type (" & s.typ.firstParamType.typeToString() & ")")
+  if sfImportc in s.flags:
+    localError(g.config, s.info, errGenerated, "method `" & s.name.s &
+          "` is not allowed to have 'importc' pragmas")
+
   for i in 0..<g.methods.len:
     let disp = g.methods[i].dispatcher
     case sameMethodBucket(disp, s, multimethods = optMultiMethods in g.config.globalOptions)

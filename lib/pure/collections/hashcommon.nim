@@ -58,7 +58,10 @@ proc rawGetKnownHC[X, A](t: X, key: A, hc: Hash): int {.inline.} =
 template genHashImpl(key, hc: typed) =
   hc = hash(key)
   if hc == 0: # This almost never taken branch should be very predictable.
-    hc = 314159265 # Value doesn't matter; Any non-zero favorite is fine.
+    when sizeof(int) < 4:
+      hc = 31415 # Value doesn't matter; Any non-zero favorite is fine <= 16-bit.
+    else:
+      hc = 314159265 # Value doesn't matter; Any non-zero favorite is fine.
 
 template genHash(key: typed): Hash =
   var res: Hash

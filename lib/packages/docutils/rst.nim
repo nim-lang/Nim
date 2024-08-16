@@ -380,8 +380,8 @@ type
     kind: FootnoteType  # discriminator
     number: int         # valid for fnManualNumber (always) and fnAutoNumber,
                         # fnAutoNumberLabel after resolveSubs is called
-    autoNumIdx: int     # order of occurence: fnAutoNumber, fnAutoNumberLabel
-    autoSymIdx: int     # order of occurence: fnAutoSymbol
+    autoNumIdx: int     # order of occurrence: fnAutoNumber, fnAutoNumberLabel
+    autoSymIdx: int     # order of occurrence: fnAutoSymbol
     label: string       # valid for fnAutoNumberLabel
   RstFileTable* = object
     filenameToIdx*: Table[string, FileIndex]

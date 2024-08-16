@@ -4,8 +4,7 @@ import os
 # bug #4462
 block:
   proc foo(t: typedesc) {.compileTime.} =
-    assert sameType(getType(t), getType(typedesc[int]))
-    assert sameType(getType(t), getType(type int))
+    assert sameType(getType(t), getType(int))
 
   static:
     foo(int)
@@ -301,14 +300,6 @@ block: # bug #10815
 
   const a = P()
   doAssert $a == ""
-
-when defined osx: # xxx bug #13481
-  block:
-    type CharSet {.union.} = object
-      cs: set[char]
-      vs: array[4, uint64]
-    const a = Charset(cs: {'a'..'z'})
-    doAssert a.repr.len > 0
 
 import tables
 
