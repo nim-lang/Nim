@@ -47,7 +47,9 @@ proc semTypeOf(c: PContext; n: PNode): PNode =
     else:
       m = mode.intVal
   result = newNodeI(nkTypeOfExpr, n.info)
+  inc c.inTypeofContext
   let typExpr = semExprWithType(c, n[1], if m == 1: {efInTypeof} else: {})
+  dec c.inTypeofContext
   result.add typExpr
   result.typ = makeTypeDesc(c, typExpr.typ)
 
