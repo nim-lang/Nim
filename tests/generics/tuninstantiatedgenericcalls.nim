@@ -181,3 +181,15 @@ block: # deref syntax
   doAssert foo.x == 123
   inc foo.x
   doAssert foo.x == 124
+
+block:
+  type Generic[T] = object
+    field: T
+  macro foo(x: typed): untyped = x
+  type Foo[T] = object
+    field: Generic[int].foo()
+  var x: Foo[int]
+  macro bar[T](x: typedesc[Generic[T]]): untyped = x
+  type Bar[T] = object
+    field: Generic[int].bar()
+  var y: Bar[int]
