@@ -118,6 +118,17 @@ proc replaceTypeVarsT*(cl: var TReplTypeVars, t: PType): PType =
   result = replaceTypeVarsTAux(cl, t)
   checkMetaInvariants(cl, result)
 
+proc isLikeGenericInvocation(n: PNode): int =
+  result = -1
+  if n.kind in nkCallKinds and
+      (let ident = n[0].getPIdent; ident != nil and ident.s == "[]"):
+    result = 1
+  elif n.kind == nkBracketExpr:
+    result = 0
+  if result >= 0 and (result > n.len or
+      n[result].typ == nil or n[result].typ.kind != tyTypeDesc):
+    result = -1
+
 proc prepareNode(cl: var TReplTypeVars, n: PNode): PNode =
   let t = replaceTypeVarsT(cl, n.typ)
   if t != nil and t.kind == tyStatic and t.n != nil:
@@ -132,14 +143,20 @@ proc prepareNode(cl: var TReplTypeVars, n: PNode): PNode =
       else:
         replaceTypeVarsS(cl, n.sym, replaceTypeVarsT(cl, n.sym.typ))
   let isCall = result.kind in nkCallKinds
+  let ignoreUntil = isLikeGenericInvocation(n)
+  let isGenericInvocation = ignoreUntil >= 0
   # don't try to instantiate symchoice symbols, they can be
   # generic procs which the compiler will think are uninstantiated
   # because their type will contain uninstantiated params
   let isSymChoice = result.kind in nkSymChoices
   for i in 0..<n.safeLen:
     # XXX HACK: ``f(a, b)``, avoid to instantiate `f`
-    if isSymChoice or (isCall and i == 0): result.add(n[i])
-    else: result.add(prepareNode(cl, n[i]))
+    # or `Generic` in `Generic[T]`
+    if isSymChoice or (isCall and i == 0) or
+        (isGenericInvocation and i <= ignoreUntil):
+      result.add(n[i])
+    else:
+      result.add(prepareNode(cl, n[i]))
 
 proc isTypeParam(n: PNode): bool =
   # XXX: generic params should use skGenericParam instead of skType

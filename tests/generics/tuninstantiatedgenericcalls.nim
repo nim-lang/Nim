@@ -186,10 +186,17 @@ block:
   type Generic[T] = object
     field: T
   macro foo(x: typed): untyped = x
-  type Foo[T] = object
-    field: Generic[int].foo()
-  var x: Foo[int]
   macro bar[T](x: typedesc[Generic[T]]): untyped = x
-  type Bar[T] = object
-    field: Generic[int].bar()
+  type
+    Foo[T] = object
+      field: Generic[int].foo()
+    Foo2[T] = object
+      field: Generic[T].foo()
+    Bar[T] = object
+      field: Generic[int].bar()
+    Bar2[T] = object
+      field: Generic[T].bar()
+  var x: Foo[int]
+  var x2: Foo2[int]
   var y: Bar[int]
+  var y2: Bar2[int]
