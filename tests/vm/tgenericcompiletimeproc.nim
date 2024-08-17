@@ -24,3 +24,6 @@ block:
     doAssert false
     x
   doAssert typeof(fail(123)) is typeof(123)
+  proc p(x: int): int = x
+
+  type Foo = typeof(p(fail(123)))
