@@ -1603,6 +1603,7 @@ proc parseMarkdownCodeblock(p: var RstParser): PRstNode =
   else:
     args = nil
   var n = newLeaf("")
+  var isFirstLine = true
   while true:
     if currentTok(p).kind == tkEof:
       rstMessage(p, meMissingClosing,
@@ -1614,7 +1615,8 @@ proc parseMarkdownCodeblock(p: var RstParser): PRstNode =
       inc p.idx, 2
       break
     elif currentTok(p).kind == tkIndent:
-      n.text.add "\n"
+      if not isFirstLine:
+        n.text.add "\n"
       if currentTok(p).ival > baseCol:
         n.text.add " ".repeat(currentTok(p).ival - baseCol)
       elif currentTok(p).ival < baseCol:
@@ -1624,6 +1626,7 @@ proc parseMarkdownCodeblock(p: var RstParser): PRstNode =
     else:
       n.text.add(currentTok(p).symbol)
       inc p.idx
+    isFirstLine = false
   result.sons[0] = args
   if result.sons[2] == nil:
     var lb = newRstNode(rnLiteralBlock)
