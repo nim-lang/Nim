@@ -1914,8 +1914,8 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       # when `f` is an unresolved typedesc, `a` could be any
       # type, so we should not perform this check earlier
       if c.c.inGenericContext > 0 and
-          a.skipTypes({tyTypeDesc}).kind == tyGenericParam and
-          not (c.calleeSym != nil and c.calleeSym.kind in {skMacro, skTemplate}):
+          a.skipTypes({tyTypeDesc}).kind == tyGenericParam#[ and
+          not (c.calleeSym != nil and c.calleeSym.kind in {skMacro, skTemplate})]#:
         # generic type bodies can sometimes compile call expressions
         # prevent unresolved generic parameters from being passed to procs as
         # typedesc parameters
