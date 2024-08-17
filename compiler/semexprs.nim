@@ -1119,7 +1119,7 @@ proc afterCallActions(c: PContext; n, orig: PNode, flags: TExprFlags; expectedTy
           not (result.typ.kind == tySequence and result.elementType.kind == tyEmpty):
         liftTypeBoundOps(c, result.typ, n.info)
     #result = patchResolvedTypeBoundOp(c, result)
-  if c.matchedConcept == nil and c.inTypeofContext == 0:
+  if c.matchedConcept == nil and (c.inTypeofContext == 0 or callee.magic != mNone):
     # don't fold calls in concepts and typeof
     result = evalAtCompileTime(c, result)
 
