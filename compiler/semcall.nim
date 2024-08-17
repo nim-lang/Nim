@@ -701,7 +701,7 @@ proc semResolvedCall(c: PContext, x: var TCandidate,
       else:
         c.inheritBindings(x, expectedType)
         finalCallee = generateInstance(c, x.calleeSym, x.bindings, n.info)
-    elif true or c.inGenericContext == 0:
+    elif c.inGenericContext == 0:
       # For macros and templates, the resolved generic params
       # are added as normal params.
       # This is not done in a generic type body context, as typed macros

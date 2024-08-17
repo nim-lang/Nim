@@ -1,3 +1,13 @@
+discard """
+  # XXX not actually fixed
+  disabled: true # cannot instantiate: 'T'
+  # the use of `typedesc` delays the macro unlike `typed` or `untyped`
+  # but this makes it impossible for overloading to infer the type
+  # some code depends on `typedesc` needing to be resolved, e.g. tmacrogenerics
+  # so we can't change it, but maybe we can add a version of `typedesc` that allows generic params
+  # maybe something like `typed{typedesc}` so it doesn't lift to a generic param
+"""
+
 import std/[sequtils, macros]
 
 block: # issue #23432

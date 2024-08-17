@@ -27,7 +27,7 @@ const
 
 proc semTemplateExpr(c: PContext, n: PNode, s: PSym,
                      flags: TExprFlags = {}; expectedType: PType = nil): PNode =
-  if false and c.inGenericContext > 0 and sfAllUntyped notin s.flags:
+  if c.inGenericContext > 0 and sfAllUntyped notin s.flags:
     # in generic type body, typed templates can only be instantiated
     # when the generic type is instantiated 
     result = semGenericStmt(c, n)
