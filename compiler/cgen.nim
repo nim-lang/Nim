@@ -482,7 +482,10 @@ include ccgreset
 proc resetLoc(p: BProc, loc: var TLoc) =
   let containsGcRef = optSeqDestructors notin p.config.globalOptions and containsGarbageCollectedRef(loc.t)
   let typ = skipTypes(loc.t, abstractVarRange)
-  if isImportedCppType(typ): return
+  if isImportedCppType(typ): 
+    var didGenTemp = false
+    linefmt(p, cpsStmts, "$1 = $2;$n", [rdLoc(loc), genCppInitializer(p.module, p, typ, didGenTemp)])
+    return
   if optSeqDestructors in p.config.globalOptions and typ.kind in {tyString, tySequence}:
     assert loc.snippet != ""
 
