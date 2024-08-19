@@ -267,7 +267,7 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0; expectedType: PT
   result = copyNode(n)
   if n.typ != nil:
     if n.typ.kind == tyFromExpr:
-      # type of node should not be evaluated
+      # type of node should not be evaluated as a static value
       n.typ.flags.incl tfNonConstExpr
     result.typ = replaceTypeVarsT(cl, n.typ)
     checkMetaInvariants(cl, result.typ)

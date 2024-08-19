@@ -1139,7 +1139,6 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType
       return semExpr(c, result, flags, expectedType)
     elif n0.typ.kind == tyFromExpr and c.inGenericContext > 0:
       # don't make assumptions, entire expression needs to be tyFromExpr
-      n[0].typ = nil
       result = semGenericStmt(c, n)
       result.typ = makeTypeFromExpr(c, result.copyTree)
       return
@@ -1486,26 +1485,17 @@ proc tryReadingGenericParam(c: PContext, n: PNode, i: PIdent, t: PType): PNode =
   of tyTypeParamsHolders:
     result = readTypeParameter(c, t, i, n.info)
     if result == c.graph.emptyNode:
-      if true or c.inGenericContext > 0:
-        result = semGenericStmt(c, n)
-        result.typ = makeTypeFromExpr(c, result.copyTree)
-      else:
-        result = nil
+      result = semGenericStmt(c, n)
+      result.typ = makeTypeFromExpr(c, result.copyTree)
   of tyUserTypeClasses:
     if t.isResolvedUserTypeClass:
       result = readTypeParameter(c, t, i, n.info)
     else:
-      if true or c.inGenericContext > 0:
-        result = semGenericStmt(c, n)
-        result.typ = makeTypeFromExpr(c, copyTree(result))
-      else:
-        result = nil
-  of tyFromExpr, tyGenericParam, tyAnything:
-    if true or c.inGenericContext > 0:
       result = semGenericStmt(c, n)
       result.typ = makeTypeFromExpr(c, copyTree(result))
-    else:
-      result = nil
+  of tyFromExpr, tyGenericParam, tyAnything:
+    result = semGenericStmt(c, n)
+    result.typ = makeTypeFromExpr(c, copyTree(result))
   else:
     result = nil
 

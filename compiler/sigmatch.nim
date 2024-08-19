@@ -1862,8 +1862,6 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     let prev = idTableGet(c.bindings, f)
     if prev == nil:
       if aOrig.kind == tyStatic:
-        if c.c.inGenericContext > 0 and aOrig.n == nil:
-          result = isNone
         if f.base.kind notin {tyNone, tyGenericParam}:
           result = typeRel(c, f.base, a, flags)
           if result != isNone and f.n != nil:
