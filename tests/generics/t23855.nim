@@ -51,7 +51,11 @@ func new*(T: type ECFFT_Descriptor): T =
 
 # ------------------------------------------------------------------------------
 
+template getBits[bits: static int](x: ptr UncheckedArray[BigInt[bits]]): int = bits
+
 proc main() =
   let ctx = ECFFT_Descriptor[EC_ShortW_Aff[Fp[BLS12_381]]].new()
+  when false: echo getBits(ctx.rootsOfUnity2) # doesn't work yet?
+  doAssert ctx.rootsOfUnity[0].limbs.len == wordsRequired(123)
 
 main()

@@ -449,7 +449,7 @@ const
   tfObjHasKids* = tfEnumHasHoles
   tfReturnsNew* = tfInheritable
   tfNonConstExpr* = tfExplicitCallConv
-    ## tyFromExpr where the expression shouldn't be evaluated as a constant
+    ## tyFromExpr where the expression shouldn't be evaluated as a static value
   skError* = skUnknown
 
 var

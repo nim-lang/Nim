@@ -746,6 +746,7 @@ proc semOverloadedCall(c: PContext, n, nOrig: PNode,
     if c.inGenericContext > 0 and r.matchedUnresolvedStatic and
         r.calleeSym.kind in {skMacro, skTemplate}:
       # macros and templates with unresolved statics should not instantiate
+      # other routines are fine since the static will not be evaluated
       result = semGenericStmt(c, n)
       result.typ = makeTypeFromExpr(c, result.copyTree)
       return
