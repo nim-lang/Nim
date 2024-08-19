@@ -27,13 +27,6 @@ const
 
 proc semTemplateExpr(c: PContext, n: PNode, s: PSym,
                      flags: TExprFlags = {}; expectedType: PType = nil): PNode =
-  if c.inGenericContext > 0 and n.findUnresolvedStatic != nil:
-    # in generic type body, typed templates using unresolved statics
-    # can only be instantiated when the generic type is instantiated 
-    result = semGenericStmt(c, n)
-    result.typ = makeTypeFromExpr(c, result.copyTree)
-    return
-
   rememberExpansion(c, n.info, s)
   let info = getCallLineInfo(n)
   markUsed(c, info, s)

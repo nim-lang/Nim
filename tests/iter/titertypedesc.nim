@@ -1,4 +1,5 @@
 discard """
+  joinable: false # fails to #23977
   output: '''0
 (id: 0)
 @[]
