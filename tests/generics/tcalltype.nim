@@ -1,3 +1,7 @@
+discard """
+  joinable: false # breaks everything because of #23977
+"""
+
 # issue #23406
 
 template helper(_: untyped): untyped =
