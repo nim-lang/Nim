@@ -104,7 +104,7 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
     if s.typ != nil and s.typ.kind == tyStatic:
       if s.typ.n != nil:
         result = s.typ.n
-      elif c.inGenericContext > 0 and c.matchedConcept == nil:
+      elif c.inGenericContext > 0 and withinConcept notin flags:
         result = newSymNodeTypeDesc(s, c.idgen, n.info)
         if canOpenSym(result.sym):
           if genericsOpenSym in c.features:
@@ -136,7 +136,7 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
         else:
           result.flags.incl nfDisabledOpenSym
           result.typ = nil
-    elif c.inGenericContext > 0 and c.matchedConcept == nil:
+    elif c.inGenericContext > 0 and withinConcept notin flags:
       result = newSymNodeTypeDesc(s, c.idgen, n.info)
       if canOpenSym(result.sym):
         if genericsOpenSym in c.features:
