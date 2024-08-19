@@ -747,7 +747,9 @@ proc semOverloadedCall(c: PContext, n, nOrig: PNode,
   var errors: CandidateErrors = @[] # if efExplain in flags: @[] else: nil
   var r = resolveOverloads(c, n, nOrig, filter, flags, errors, efExplain in flags)
   if r.state == csMatch:
-    if c.inGenericContext > 0 and r.matchedUnresolvedStatic:
+    if c.inGenericContext > 0 and r.matchedUnresolvedStatic and
+        r.calleeSym.kind in {skMacro, skTemplate}:
+      # macros and templates with unresolved statics should not instantiate
       result = semGenericStmt(c, n)
       result.typ = makeTypeFromExpr(c, result.copyTree)
       return
