@@ -1,4 +1,4 @@
-# issue #23855
+# issue #23855, not entirely fixed
 
 import std/bitops
 
@@ -25,7 +25,7 @@ type
 
 template getBigInt*[Name: static Algebra](T: type FF[Name]): untyped =
   ## Get the underlying BigInt type.
-  BigInt[123]
+  typeof(default(T).residue_form)
 
 type
   EC_ShortW_Aff*[F] = object
@@ -55,7 +55,7 @@ template getBits[bits: static int](x: ptr UncheckedArray[BigInt[bits]]): int = b
 
 proc main() =
   let ctx = ECFFT_Descriptor[EC_ShortW_Aff[Fp[BLS12_381]]].new()
-  when false: echo getBits(ctx.rootsOfUnity2) # doesn't work yet?
-  doAssert ctx.rootsOfUnity[0].limbs.len == wordsRequired(123)
+  when false: echo getBits(ctx.rootsOfUnity) # doesn't work yet?
+  doAssert ctx.rootsOfUnity[0].limbs.len == wordsRequired(255)
 
 main()

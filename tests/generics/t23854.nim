@@ -1,4 +1,4 @@
-# issue #23854
+# issue #23854, not entirely fixed
 
 import std/bitops
 
@@ -23,6 +23,10 @@ type
 
   FF*[Name: static Algebra] = Fp[Name] or Fr[Name]
 
+template getBigInt*[Name: static Algebra](T: type FF[Name]): untyped =
+  ## Get the underlying BigInt type.
+  typeof(default(T).residue_form)
+
 type
   EC_ShortW_Aff*[F] = object
     ## Elliptic curve point for a curve in Short Weierstrass form
@@ -34,10 +38,6 @@ type
 type FieldKind* = enum
   kBaseField
   kScalarField
-
-template getBigInt*[Name: static Algebra](T: type FF[Name]): untyped =
-  ## Get the underlying BigInt type.
-  BigInt[123]
 
 func bits*[Name: static Algebra](T: type FF[Name]): static int =
   T.getBigInt().bits
@@ -64,7 +64,7 @@ template getBits[bits: static int](x: ptr UncheckedArray[BigInt[bits]]): int = b
 proc main() =
   let ctx = ECFFT_Descriptor[EC_ShortW_Aff[Fp[BLS12_381]]].new()
   when false: echo getBits(ctx.rootsOfUnity2) # doesn't work yet?
-  doAssert ctx.rootsOfUnity1[0].limbs.len == wordsRequired(123)
-  doAssert ctx.rootsOfUnity2[0].limbs.len == wordsRequired(123)
+  doAssert ctx.rootsOfUnity1[0].limbs.len == wordsRequired(255)
+  doAssert ctx.rootsOfUnity2[0].limbs.len == wordsRequired(255)
 
 main()
