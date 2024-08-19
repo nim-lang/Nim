@@ -200,3 +200,24 @@ block:
   var x2: Foo2[int]
   var y: Bar[int]
   var y2: Bar2[int]
+
+block:
+  macro pick(x: static int): untyped =
+    if x < 100:
+      result = bindSym"int"
+    else:
+      result = bindSym"float"
+  
+  type Foo[T: static int] = object
+    fixed1: pick(25)
+    fixed2: pick(125)
+    unknown: pick(T)
+  
+  var a: Foo[123]
+  doAssert a.fixed1 is int
+  doAssert a.fixed2 is float
+  doAssert a.unknown is float
+  var b: Foo[23]
+  doAssert b.fixed1 is int
+  doAssert b.fixed2 is float
+  doAssert b.unknown is int

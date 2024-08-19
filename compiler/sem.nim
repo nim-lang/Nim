@@ -501,9 +501,9 @@ const
 
 proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
                   flags: TExprFlags = {}; expectedType: PType = nil): PNode =
-  if false and c.inGenericContext > 0 and sfAllUntyped notin sym.flags:
-    # in generic type body, typed macros can only be instantiated
-    # when the generic type is instantiated
+  if c.inGenericContext > 0 and n.findUnresolvedStatic != nil:
+    # in generic type body, typed macros using unresolved statics
+    # can only be instantiated when the generic type is instantiated
     result = semGenericStmt(c, n)
     result.typ = makeTypeFromExpr(c, result.copyTree)
     return
