@@ -105,6 +105,8 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
       if s.typ.n != nil:
         result = s.typ.n
       elif c.inGenericContext > 0 and withinConcept notin flags:
+        # fine to give a symbol node a generic type here since
+        # we are in a generic context and `prepareNode` will be called
         result = newSymNodeTypeDesc(s, c.idgen, n.info)
         if canOpenSym(result.sym):
           if genericsOpenSym in c.features:
@@ -137,6 +139,8 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
           result.flags.incl nfDisabledOpenSym
           result.typ = nil
     elif c.inGenericContext > 0 and withinConcept notin flags:
+      # fine to give a symbol node a generic type here since
+      # we are in a generic context and `prepareNode` will be called
       result = newSymNodeTypeDesc(s, c.idgen, n.info)
       if canOpenSym(result.sym):
         if genericsOpenSym in c.features:
