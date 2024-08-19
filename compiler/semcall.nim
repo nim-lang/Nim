@@ -701,7 +701,7 @@ proc semResolvedCall(c: PContext, x: var TCandidate,
       else:
         c.inheritBindings(x, expectedType)
         finalCallee = generateInstance(c, x.calleeSym, x.bindings, n.info)
-    elif c.inGenericContext == 0 or n.findUnresolvedStatic == nil:
+    else:
       # For macros and templates, the resolved generic params
       # are added as normal params.
       # This is not done with unresolved static arguments, as typed macros
@@ -747,6 +747,10 @@ proc semOverloadedCall(c: PContext, n, nOrig: PNode,
   var errors: CandidateErrors = @[] # if efExplain in flags: @[] else: nil
   var r = resolveOverloads(c, n, nOrig, filter, flags, errors, efExplain in flags)
   if r.state == csMatch:
+    if c.inGenericContext > 0 and r.matchedUnresolvedStatic:
+      result = semGenericStmt(c, n)
+      result.typ = makeTypeFromExpr(c, result.copyTree)
+      return
     # this may be triggered, when the explain pragma is used
     if errors.len > 0:
       let (_, candidates) = presentFailedCandidates(c, n, errors)

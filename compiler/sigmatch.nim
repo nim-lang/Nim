@@ -84,6 +84,7 @@ type
     inheritancePenalty: int
     firstMismatch*: MismatchInfo # mismatch info for better error messages
     diagnosticsEnabled*: bool
+    matchedUnresolvedStatic*: bool
 
   TTypeRelFlag* = enum
     trDontBind
@@ -1216,6 +1217,9 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         return isGeneric
   else: discard
 
+  if aOrig.kind == tyStatic and aOrig.n == nil:
+    c.matchedUnresolvedStatic = true
+
   case f.kind
   of tyEnum:
     if a.kind == f.kind and sameEnumTypes(f, a): result = isEqual
@@ -1858,6 +1862,8 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     let prev = idTableGet(c.bindings, f)
     if prev == nil:
       if aOrig.kind == tyStatic:
+        if c.c.inGenericContext > 0 and aOrig.n == nil:
+          result = isNone
         if f.base.kind notin {tyNone, tyGenericParam}:
           result = typeRel(c, f.base, a, flags)
           if result != isNone and f.n != nil:
@@ -1913,9 +1919,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       # proc foo(T: typedesc, x: T)
       # when `f` is an unresolved typedesc, `a` could be any
       # type, so we should not perform this check earlier
-      if c.c.inGenericContext > 0 and
-          a.skipTypes({tyTypeDesc}).kind == tyGenericParam#[ and
-          not (c.calleeSym != nil and c.calleeSym.kind in {skMacro, skTemplate})]#:
+      if c.c.inGenericContext > 0 and a.containsGenericType:
         # generic type bodies can sometimes compile call expressions
         # prevent unresolved generic parameters from being passed to procs as
         # typedesc parameters

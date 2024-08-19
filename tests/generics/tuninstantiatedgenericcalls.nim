@@ -221,3 +221,21 @@ block:
   doAssert b.fixed1 is int
   doAssert b.fixed2 is float
   doAssert b.unknown is int
+
+import std/sequtils
+
+block: # version of #23432 with `typed`, don't delay instantiation
+  type
+    Future[T] = object
+    InternalRaisesFuture[T, E] = object
+  macro Raising[T](F: typedesc[Future[T]], E: varargs[typed]): untyped =
+    let raises = nnkTupleConstr.newTree(E.mapIt(it))
+    nnkBracketExpr.newTree(
+      ident "InternalRaisesFuture",
+      nnkDotExpr.newTree(F, ident"T"),
+      raises
+    )
+  type X[E] = Future[void].Raising(E)
+  proc f(x: X) = discard
+  var v: Future[void].Raising([ValueError])
+  f(v)
