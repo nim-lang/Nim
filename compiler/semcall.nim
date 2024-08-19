@@ -704,10 +704,6 @@ proc semResolvedCall(c: PContext, x: var TCandidate,
     else:
       # For macros and templates, the resolved generic params
       # are added as normal params.
-      # This is not done with unresolved static arguments, as typed macros
-      # cannot be instantiated yet and semMacroExpr/semTemplateExpr will
-      # reject them and delay their instantiation, when fully resolved types
-      # will be added instead.
       c.inheritBindings(x, expectedType)
       for s in instantiateGenericParamList(c, gp, x.bindings):
         case s.kind
