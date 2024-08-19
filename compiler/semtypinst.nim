@@ -118,17 +118,6 @@ proc replaceTypeVarsT*(cl: var TReplTypeVars, t: PType): PType =
   result = replaceTypeVarsTAux(cl, t)
   checkMetaInvariants(cl, result)
 
-proc isLikeGenericInvocation(n: PNode): int =
-  result = -1
-  if n.kind in nkCallKinds and
-      (let ident = n[0].getPIdent; ident != nil and ident.s == "[]"):
-    result = 1
-  elif n.kind == nkBracketExpr:
-    result = 0
-  if result >= 0 and (result > n.len or
-      n[result].typ == nil or n[result].typ.kind != tyTypeDesc):
-    result = -1
-
 proc prepareNode(cl: var TReplTypeVars, n: PNode): PNode =
   let t = replaceTypeVarsT(cl, n.typ)
   if t != nil and t.kind == tyStatic and t.n != nil:
@@ -142,20 +131,58 @@ proc prepareNode(cl: var TReplTypeVars, n: PNode): PNode =
         replaceTypeVarsS(cl, n.sym, result.typ)
       else:
         replaceTypeVarsS(cl, n.sym, replaceTypeVarsT(cl, n.sym.typ))
-  let isCall = result.kind in nkCallKinds
-  let ignoreUntil = isLikeGenericInvocation(n)
-  let isGenericInvocation = ignoreUntil >= 0
-  # don't try to instantiate symchoice symbols, they can be
-  # generic procs which the compiler will think are uninstantiated
-  # because their type will contain uninstantiated params
-  let isSymChoice = result.kind in nkSymChoices
-  for i in 0..<n.safeLen:
-    # XXX HACK: ``f(a, b)``, avoid to instantiate `f`
-    # or `Generic` in `Generic[T]`
-    if isSymChoice or (isCall and i == 0) or
-        (isGenericInvocation and i <= ignoreUntil):
+  case n.kind
+  of nkSymChoices:
+    # don't try to instantiate symchoice symbols, they can be
+    # generic procs which the compiler will think are uninstantiated
+    # because their type will contain uninstantiated params
+    for i in 0..<n.len:
       result.add(n[i])
+  of nkCallKinds:
+    # don't try to instantiate call names since they may be generic proc syms
+    # also bracket expressions can turn into calls with symchoice [] and
+    # we need to not instantiate the Generic in Generic[int]
+    # exception exists for the call name being a dot expression since
+    # dot expressions need their LHS instantiated
+    assert n.len != 0
+    let ignoreFirst = n[0].kind != nkDotExpr
+    let name = n[0].getPIdent
+    let ignoreSecond = name != nil and name.s == "[]" and n.len > 1 and
+      (n[1].typ != nil and n[1].typ.kind == tyTypeDesc)
+    if ignoreFirst:
+      result.add(n[0])
     else:
+      result.add(prepareNode(cl, n[0]))
+    if n.len > 1:
+      if ignoreSecond:
+        result.add(n[1])
+      else:
+        result.add(prepareNode(cl, n[1]))
+    for i in 2..<n.len:
+      result.add(prepareNode(cl, n[i]))
+  of nkBracketExpr:
+    # don't instantiate Generic body type in expression like Generic[T]
+    # exception exists for the call name being a dot expression since
+    # dot expressions need their LHS instantiated
+    assert n.len != 0
+    let ignoreFirst = n[0].kind != nkDotExpr and
+      n[0].typ != nil and n[0].typ.kind == tyTypeDesc
+    if ignoreFirst:
+      result.add(n[0])
+    else:
+      result.add(prepareNode(cl, n[0]))
+    for i in 1..<n.len:
+      result.add(prepareNode(cl, n[i]))
+  of nkDotExpr:
+    # don't try to instantiate RHS of dot expression, it can outright be
+    # undeclared, but definitely instantiate LHS
+    assert n.len >= 2
+    result.add(prepareNode(cl, n[0]))
+    result.add(n[1])
+    for i in 2..<n.len:
+      result.add(prepareNode(cl, n[i]))
+  else:
+    for i in 0..<n.safeLen:
       result.add(prepareNode(cl, n[i]))
 
 proc isTypeParam(n: PNode): bool =
