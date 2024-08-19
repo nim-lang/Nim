@@ -632,9 +632,10 @@ type
 
 const allExceptModule = {low(TSymKind)..high(TSymKind)} - {skModule, skPackage}
 
-proc lookUpCandidates*(c: PContext, ident: PIdent, filter: set[TSymKind]): seq[PSym] =
+proc lookUpCandidates*(c: PContext, ident: PIdent, filter: set[TSymKind],
+                       includePureEnum = false): seq[PSym] =
   result = searchInScopesFilterBy(c, ident, filter)
-  if result.len == 0:
+  if skEnumField in filter and (result.len == 0 or includePureEnum):
     result.add allPureEnumFields(c, ident)
 
 proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =

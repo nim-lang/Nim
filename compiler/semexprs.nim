@@ -970,7 +970,8 @@ proc evalAtCompileTime(c: PContext, n: PNode): PNode =
 
     if callee.magic notin ctfeWhitelist: return
 
-    if callee.kind notin {skProc, skFunc, skConverter, skConst} or callee.isGenericRoutine:
+    if callee.kind notin {skProc, skFunc, skConverter, skConst} or
+        callee.isGenericRoutineStrict:
       return
 
     if n.typ != nil and typeAllowed(n.typ, skConst, c) != nil: return
@@ -1118,7 +1119,8 @@ proc afterCallActions(c: PContext; n, orig: PNode, flags: TExprFlags; expectedTy
           not (result.typ.kind == tySequence and result.elementType.kind == tyEmpty):
         liftTypeBoundOps(c, result.typ, n.info)
     #result = patchResolvedTypeBoundOp(c, result)
-  if c.matchedConcept == nil:
+  if c.matchedConcept == nil and (c.inTypeofContext == 0 or callee.magic != mNone):
+    # don't fold calls in concepts and typeof
     result = evalAtCompileTime(c, result)
 
 proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType = nil): PNode =
@@ -3109,7 +3111,10 @@ proc resolveIdentToSym(c: PContext, n: PNode, resultNode: var PNode,
   if efNoEvaluateGeneric in flags or expectedType != nil:
     # `a[...]` where `a` is a module or package is not possible
     filter.excl {skModule, skPackage}
-  let candidates = lookUpCandidates(c, ident, filter)
+  let includePureEnum = expectedType != nil and
+    expectedType.skipTypes(abstractRange-{tyDistinct}).kind == tyEnum
+  let candidates = lookUpCandidates(c, ident, filter,
+    includePureEnum = includePureEnum)
   if candidates.len == 0:
     result = errorUndeclaredIdentifierHint(c, ident, n.info)
   elif candidates.len == 1 or {efNoEvaluateGeneric, efInCall} * flags != {}:
