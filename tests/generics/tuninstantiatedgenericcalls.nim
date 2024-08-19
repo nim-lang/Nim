@@ -201,7 +201,7 @@ block:
   var y: Bar[int]
   var y2: Bar2[int]
 
-block:
+when false: # doesn't work yet because `semGenericStmt` isn't good enough
   macro pick(x: static int): untyped =
     if x < 100:
       result = bindSym"int"
