@@ -339,15 +339,27 @@ template describeArgImpl(c: PContext, n: PNode, i: int, startIdx = 1; prefer = p
     result.add ": "
     if arg.typ.isNil and arg.kind notin {nkStmtList, nkDo}:
       # XXX we really need to 'tryExpr' here!
-      arg = c.semOperand(c, n[i][1])
-      n[i].typ = arg.typ
-      n[i][1] = arg
+      arg = c.semTryExpr(c, n[i][1])
+      if arg == nil:
+        arg = n[i][1]
+        arg.typ = newTypeS(tyUntyped, c)
+      else:
+        if arg.typ == nil:
+          arg.typ = newTypeS(tyVoid, c)
+        n[i].typ = arg.typ
+        n[i][1] = arg
   else:
     if arg.typ.isNil and arg.kind notin {nkStmtList, nkDo, nkElse,
                                           nkOfBranch, nkElifBranch,
                                           nkExceptBranch}:
-      arg = c.semOperand(c, n[i])
-      n[i] = arg
+      arg = c.semTryExpr(c, n[i])
+      if arg == nil:
+        arg = n[i]
+        arg.typ = newTypeS(tyUntyped, c)
+      else:
+        if arg.typ == nil:
+          arg.typ = newTypeS(tyVoid, c)
+        n[i] = arg
   if arg.typ != nil and arg.typ.kind == tyError: return
   result.add argTypeToString(arg, prefer)
 
