@@ -2686,6 +2686,8 @@ proc semWhen(c: PContext, n: PNode, semCheck = true): PNode =
         if semCheck:
           it[0] = semExpr(c, it[0], flags)
           typ = commonType(c, typ, it[0].typ)
+          if typ != nil and typ.kind != tyUntyped:
+            it[0] = fitNode(c, typ, it[0], it[0].info)
         if result == nil:
           result = it[0]
     else: illFormedAst(n, c.config)
