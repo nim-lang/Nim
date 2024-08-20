@@ -1,9 +1,28 @@
 discard """
-  errormsg: "type mismatch: got <float, untyped>" # `untyped` here is arbitrary
-  line: 9
+  cmd: "nim check $file"
 """
 
-template foo(x: var int, y: untyped) = discard
+block:
+  template foo(x: var int, y: untyped) = discard
+  var a: float
+  foo(a, undeclared) #[tt.Error
+     ^ type mismatch: got <float, untyped>]# # `untyped` is arbitary
+  # previous error: undeclared identifier: 'undeclared'
 
-var a: float
-foo(a, undeclared) # previous error: undeclared identifier: 'undeclared'
+block: # issue #8697
+  type
+    Fruit = enum
+      apple
+      banana
+      orange
+  macro hello(x, y: untyped) = discard
+  hello(apple, banana, orange) #[tt.Error
+       ^ type mismatch: got <Fruit, Fruit, Fruit>]#
+
+block: # issue #23265
+  template declareFoo(fooName: untyped, value: uint16) =
+    const `fooName Value` {.inject.} = value
+
+  declareFoo(FOO, 0xFFFF)
+  declareFoo(BAR, 0xFFFFF) #[tt.Error
+            ^ type mismatch: got <untyped, int literal(1048575)>]#
