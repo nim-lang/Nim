@@ -679,7 +679,7 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
         ident = considerQuotedIdent(c, n[1])
       if ident != nil:
         if m == c.module:
-          var ti: TIdentIter
+          var ti: TIdentIter = default(TIdentIter)
           result = initIdentIter(ti, c.topLevelScope.symbols, ident)
           if result != nil and nextIdentIter(ti, c.topLevelScope.symbols) != nil:
             # another symbol exists with same name

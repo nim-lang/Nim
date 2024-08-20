@@ -287,7 +287,7 @@ proc someSymAmb*(g: ModuleGraph; m: PSym; name: PIdent; amb: var bool): PSym =
         amb = true
         break
   else:
-    var ti: TIdentIter
+    var ti: TIdentIter = default(TIdentIter)
     result = initIdentIter(ti, g.ifaces[m.position].interfSelect(importHidden), name)
     if result != nil and nextIdentIter(ti, g.ifaces[m.position].interfSelect(importHidden)) != nil:
       # another symbol exists with same name
