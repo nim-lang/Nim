@@ -1685,6 +1685,8 @@ proc semTypeExpr(c: PContext, n: PNode; prev: PType): PType =
         let alias = maybeAliasType(c, result, prev)
         if alias != nil: result = alias
   elif n.typ.kind == tyFromExpr and c.inGenericContext > 0:
+    # sometimes not possible to distinguish type from value in generic body,
+    # for example `T.Foo`, so both are handled under `tyFromExpr`
     result = n.typ
   else:
     localError(c.config, n.info, "expected type, but got: " & n.renderTree)

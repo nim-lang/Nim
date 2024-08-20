@@ -743,13 +743,6 @@ proc semOverloadedCall(c: PContext, n, nOrig: PNode,
   var errors: CandidateErrors = @[] # if efExplain in flags: @[] else: nil
   var r = resolveOverloads(c, n, nOrig, filter, flags, errors, efExplain in flags)
   if r.state == csMatch:
-    if c.inGenericContext > 0 and r.matchedUnresolvedStatic and
-        r.calleeSym.kind in {skMacro, skTemplate}:
-      # macros and templates with unresolved statics should not instantiate
-      # other routines are fine since the static will not be evaluated
-      result = semGenericStmt(c, n)
-      result.typ = makeTypeFromExpr(c, result.copyTree)
-      return
     # this may be triggered, when the explain pragma is used
     if errors.len > 0:
       let (_, candidates) = presentFailedCandidates(c, n, errors)

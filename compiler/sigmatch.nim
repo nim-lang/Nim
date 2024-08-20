@@ -84,7 +84,6 @@ type
     inheritancePenalty: int
     firstMismatch*: MismatchInfo # mismatch info for better error messages
     diagnosticsEnabled*: bool
-    matchedUnresolvedStatic*: bool
 
   TTypeRelFlag* = enum
     trDontBind
@@ -1217,9 +1216,6 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         return isGeneric
   else: discard
 
-  if aOrig.kind == tyStatic and aOrig.n == nil:
-    c.matchedUnresolvedStatic = true
-
   case f.kind
   of tyEnum:
     if a.kind == f.kind and sameEnumTypes(f, a): result = isEqual
@@ -1862,7 +1858,12 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     let prev = idTableGet(c.bindings, f)
     if prev == nil:
       if aOrig.kind == tyStatic:
-        if f.base.kind notin {tyNone, tyGenericParam}:
+        if c.c.inGenericContext > 0 and aOrig.n == nil and not c.isNoCall:
+          # don't match unresolved static value to static param to avoid
+          # faulty instantiations in calls in generic bodies
+          # but not for generic invocations as they only check constraints
+          result = isNone
+        elif f.base.kind notin {tyNone, tyGenericParam}:
           result = typeRel(c, f.base, a, flags)
           if result != isNone and f.n != nil:
             if not exprStructuralEquivalent(f.n, aOrig.n):

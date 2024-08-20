@@ -105,6 +105,8 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
       if s.typ.n != nil:
         result = s.typ.n
       elif c.inGenericContext > 0 and withinConcept notin flags:
+        # don't leave generic param as identifier node in generic type,
+        # sigmatch will try to instantiate generic type AST without all params
         # fine to give a symbol node a generic type here since
         # we are in a generic context and `prepareNode` will be called
         result = newSymNodeTypeDesc(s, c.idgen, n.info)
@@ -139,6 +141,8 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
           result.flags.incl nfDisabledOpenSym
           result.typ = nil
     elif c.inGenericContext > 0 and withinConcept notin flags:
+      # don't leave generic param as identifier node in generic type,
+      # sigmatch will try to instantiate generic type AST without all params
       # fine to give a symbol node a generic type here since
       # we are in a generic context and `prepareNode` will be called
       result = newSymNodeTypeDesc(s, c.idgen, n.info)

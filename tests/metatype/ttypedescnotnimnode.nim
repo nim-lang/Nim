@@ -17,3 +17,5 @@ proc getBase2*(bits: static[int]): typedesc =
 
 type
   MpUint2*[bits: static[int]] = getbase2(bits)
+# technically shouldn't error until instantiation, so instantiate it
+var x: MpUint2[123]

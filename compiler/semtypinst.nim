@@ -131,6 +131,8 @@ proc prepareNode(cl: var TReplTypeVars, n: PNode): PNode =
         replaceTypeVarsS(cl, n.sym, result.typ)
       else:
         replaceTypeVarsS(cl, n.sym, replaceTypeVarsT(cl, n.sym.typ))
+  # we need to avoid trying to instantiate nodes that can have uninstantiated
+  # types, like generic proc symbols or raw generic type symbols
   case n.kind
   of nkSymChoices:
     # don't try to instantiate symchoice symbols, they can be
