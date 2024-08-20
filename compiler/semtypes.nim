@@ -1770,12 +1770,15 @@ proc applyTypeSectionPragmas(c: PContext; pragmas, operand: PNode): PNode =
       discard "builtin pragma"
     else:
       trySuggestPragmas(c, key)
-      let ident = considerQuotedIdent(c, key)
-      if strTableGet(c.userPragmas, ident) != nil:
+      let ident =
+        if key.kind in nkIdentKinds:
+          considerQuotedIdent(c, key)
+        else:
+          nil
+      if ident != nil and strTableGet(c.userPragmas, ident) != nil:
         discard "User-defined pragma"
       else:
-        var amb = false
-        let sym = searchInScopes(c, ident, amb)
+        let sym = qualifiedLookUp(c, key, {})
         # XXX: What to do here if amb is true?
         if sym != nil and sfCustomPragma in sym.flags:
           discard "Custom user pragma"

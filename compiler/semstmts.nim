@@ -622,15 +622,15 @@ proc setVarType(c: PContext; v: PSym, typ: PType) =
 proc isPossibleMacroPragma(c: PContext, it: PNode, key: PNode): bool =
   # make sure it's not a normal pragma, and calls an identifier
   # considerQuotedIdent below will fail on non-identifiers
-  result = whichPragma(it) == wInvalid and key.kind in nkIdentKinds
+  result = whichPragma(it) == wInvalid and key.kind in nkIdentKinds+{nkDotExpr}
   if result:
     # make sure it's not a user pragma
-    let ident = considerQuotedIdent(c, key)
-    result = strTableGet(c.userPragmas, ident) == nil
+    if key.kind != nkDotExpr:
+      let ident = considerQuotedIdent(c, key)
+      result = strTableGet(c.userPragmas, ident) == nil
     if result:
       # make sure it's not a custom pragma
-      var amb = false
-      let sym = searchInScopes(c, ident, amb)
+      let sym = qualifiedLookUp(c, key, {})
       result = sym == nil or sfCustomPragma notin sym.flags
 
 proc copyExcept(n: PNode, i: int): PNode =
