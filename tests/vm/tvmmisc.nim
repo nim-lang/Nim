@@ -564,7 +564,7 @@ block:
 block:
   static:
     let x = int 1
-    doAssert $(x.type) == "Foo"  # Foo
+    doAssert $(x.type) == "int"  # Foo
 
 block:
   static:
