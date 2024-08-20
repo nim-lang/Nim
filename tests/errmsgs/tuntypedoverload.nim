@@ -26,3 +26,12 @@ block: # issue #23265
   declareFoo(FOO, 0xFFFF)
   declareFoo(BAR, 0xFFFFF) #[tt.Error
             ^ type mismatch: got <untyped, int literal(1048575)>]#
+
+block: # issue #9620
+  template forLoop(index: untyped, length: int{lvalue}, body: untyped) =
+    for `index`{.inject.} in 0 ..< length:
+      body
+  var x = newSeq[int](10)
+  forLoop(i, x.len): #[tt.Error
+         ^ type mismatch: got <untyped, int, void>]#
+    x[i] = i
