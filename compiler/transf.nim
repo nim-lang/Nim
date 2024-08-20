@@ -632,9 +632,11 @@ proc putArgInto(arg: PNode, formal: PType): TPutArgInto =
   case arg.kind
   of nkEmpty..nkNilLit:
     result = paDirectMapping
-  of nkDotExpr, nkDerefExpr, nkHiddenDeref, nkAddr, nkHiddenAddr:
+  of nkDotExpr, nkDerefExpr, nkHiddenDeref:
     result = putArgInto(arg[0], formal)
-    #if result == paViaIndirection: result = paFastAsgn
+  of nkAddr, nkHiddenAddr:
+    result = putArgInto(arg[0], formal)
+    if result == paViaIndirection: result = paFastAsgn
   of nkCurly, nkBracket:
     for i in 0..<arg.len:
       if putArgInto(arg[i], formal) != paDirectMapping:
