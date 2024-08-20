@@ -1869,7 +1869,12 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     let prev = idTableGet(c.bindings, f)
     if prev == nil:
       if aOrig.kind == tyStatic:
-        if f.base.kind notin {tyNone, tyGenericParam}:
+        if c.c.inGenericContext > 0 and aOrig.n == nil and not c.isNoCall:
+          # don't match unresolved static value to static param to avoid
+          # faulty instantiations in calls in generic bodies
+          # but not for generic invocations as they only check constraints
+          result = isNone
+        elif f.base.kind notin {tyNone, tyGenericParam}:
           result = typeRel(c, f.base, a, flags)
           if result != isNone and f.n != nil:
             if not exprStructuralEquivalent(f.n, aOrig.n):
@@ -1924,8 +1929,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       # proc foo(T: typedesc, x: T)
       # when `f` is an unresolved typedesc, `a` could be any
       # type, so we should not perform this check earlier
-      if c.c.inGenericContext > 0 and
-          a.skipTypes({tyTypeDesc}).kind == tyGenericParam:
+      if c.c.inGenericContext > 0 and a.containsGenericType:
         # generic type bodies can sometimes compile call expressions
         # prevent unresolved generic parameters from being passed to procs as
         # typedesc parameters

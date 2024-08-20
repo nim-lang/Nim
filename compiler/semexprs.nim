@@ -1028,7 +1028,7 @@ proc semOverloadedCallAnalyseEffects(c: PContext, n: PNode, nOrig: PNode,
 
   if result != nil:
     if result[0].kind != nkSym:
-      if not (efDetermineType in flags and c.inGenericContext > 0):
+      if not (c.inGenericContext > 0): # see generic context check in semOverloadedCall
         internalError(c.config, "semOverloadedCallAnalyseEffects")
       return
     let callee = result[0].sym
@@ -1137,6 +1137,11 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType
       result.flags.incl nfExplicitCall
       for i in 1..<n.len: result.add n[i]
       return semExpr(c, result, flags, expectedType)
+    elif n0.typ.kind == tyFromExpr and c.inGenericContext > 0:
+      # don't make assumptions, entire expression needs to be tyFromExpr
+      result = semGenericStmt(c, n)
+      result.typ = makeTypeFromExpr(c, result.copyTree)
+      return
     else:
       n[0] = n0
   else:
@@ -1480,17 +1485,17 @@ proc tryReadingGenericParam(c: PContext, n: PNode, i: PIdent, t: PType): PNode =
   of tyTypeParamsHolders:
     result = readTypeParameter(c, t, i, n.info)
     if result == c.graph.emptyNode:
-      result = n
-      n.typ = makeTypeFromExpr(c, n.copyTree)
+      result = semGenericStmt(c, n)
+      result.typ = makeTypeFromExpr(c, result.copyTree)
   of tyUserTypeClasses:
     if t.isResolvedUserTypeClass:
       result = readTypeParameter(c, t, i, n.info)
     else:
-      n.typ = makeTypeFromExpr(c, copyTree(n))
-      result = n
-  of tyGenericParam, tyAnything:
-    n.typ = makeTypeFromExpr(c, copyTree(n))
-    result = n
+      result = semGenericStmt(c, n)
+      result.typ = makeTypeFromExpr(c, copyTree(result))
+  of tyFromExpr, tyGenericParam, tyAnything:
+    result = semGenericStmt(c, n)
+    result.typ = makeTypeFromExpr(c, copyTree(result))
   else:
     result = nil
 
@@ -1654,18 +1659,20 @@ proc buildOverloadedSubscripts(n: PNode, ident: PIdent): PNode =
   result.add(newIdentNode(ident, n.info))
   for s in n: result.add s
 
-proc semDeref(c: PContext, n: PNode): PNode =
+proc semDeref(c: PContext, n: PNode, flags: TExprFlags): PNode =
   checkSonsLen(n, 1, c.config)
   n[0] = semExprWithType(c, n[0])
   let a = getConstExpr(c.module, n[0], c.idgen, c.graph)
   if a != nil:
-    if a.kind == nkNilLit:
+    if a.kind == nkNilLit and efInTypeof notin flags:
       localError(c.config, n.info, "nil dereference is not allowed")
     n[0] = a
   result = n
   var t = skipTypes(n[0].typ, {tyGenericInst, tyVar, tyLent, tyAlias, tySink, tyOwned})
   case t.kind
   of tyRef, tyPtr: n.typ = t.elementType
+  of tyMetaTypes, tyFromExpr:
+    n.typ = makeTypeFromExpr(c, n.copyTree)
   else: result = nil
   #GlobalError(n[0].info, errCircumNeedsPointer)
 
@@ -1696,8 +1703,11 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
   ## checking of assignments
   result = nil
   if n.len == 1:
-    let x = semDeref(c, n)
+    let x = semDeref(c, n, flags)
     if x == nil: return nil
+    if x.typ.kind == tyFromExpr:
+      # depends on generic type
+      return x
     result = newNodeIT(nkDerefExpr, x.info, x.typ)
     result.add(x[0])
     return
@@ -3394,7 +3404,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
     result = semArrayConstr(c, n, flags, expectedType)
   of nkObjConstr: result = semObjConstr(c, n, flags, expectedType)
   of nkLambdaKinds: result = semProcAux(c, n, skProc, lambdaPragmas, flags)
-  of nkDerefExpr: result = semDeref(c, n)
+  of nkDerefExpr: result = semDeref(c, n, flags)
   of nkAddr:
     result = n
     checkSonsLen(n, 1, c.config)

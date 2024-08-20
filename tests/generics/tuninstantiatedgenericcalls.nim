@@ -163,3 +163,79 @@ block: # issue #23339
       outerField: Inner[O.aToB]
   var x: Outer[A]
   doAssert typeof(x.outerField.innerField) is B
+
+block: # deref syntax
+  type
+    Enqueueable = concept x
+      x is ptr
+    Foo[T: Enqueueable] = object
+      x: typeof(default(T)[])
+
+  proc p[T](f: Foo[T]) =
+    var bar: Foo[T]
+    discard
+  var foo: Foo[ptr int]
+  p(foo)
+  doAssert foo.x is int
+  foo.x = 123
+  doAssert foo.x == 123
+  inc foo.x
+  doAssert foo.x == 124
+
+block:
+  type Generic[T] = object
+    field: T
+  macro foo(x: typed): untyped = x
+  macro bar[T](x: typedesc[Generic[T]]): untyped = x
+  type
+    Foo[T] = object
+      field: Generic[int].foo()
+    Foo2[T] = object
+      field: Generic[T].foo()
+    Bar[T] = object
+      field: Generic[int].bar()
+    Bar2[T] = object
+      field: Generic[T].bar()
+  var x: Foo[int]
+  var x2: Foo2[int]
+  var y: Bar[int]
+  var y2: Bar2[int]
+
+block:
+  macro pick(x: static int): untyped =
+    if x < 100:
+      result = bindSym"int"
+    else:
+      result = bindSym"float"
+  
+  type Foo[T: static int] = object
+    fixed1: pick(25)
+    fixed2: pick(125)
+    unknown: pick(T)
+  
+  var a: Foo[123]
+  doAssert a.fixed1 is int
+  doAssert a.fixed2 is float
+  doAssert a.unknown is float
+  var b: Foo[23]
+  doAssert b.fixed1 is int
+  doAssert b.fixed2 is float
+  doAssert b.unknown is int
+
+import std/sequtils
+
+block: # version of #23432 with `typed`, don't delay instantiation
+  type
+    Future[T] = object
+    InternalRaisesFuture[T, E] = object
+  macro Raising[T](F: typedesc[Future[T]], E: varargs[typed]): untyped =
+    let raises = nnkTupleConstr.newTree(E.mapIt(it))
+    nnkBracketExpr.newTree(
+      ident "InternalRaisesFuture",
+      nnkDotExpr.newTree(F, ident"T"),
+      raises
+    )
+  type X[E] = Future[void].Raising(E)
+  proc f(x: X) = discard
+  var v: Future[void].Raising([ValueError])
+  f(v)
