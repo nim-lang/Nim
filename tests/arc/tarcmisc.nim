@@ -32,6 +32,7 @@ true
 copying
 123
 42
+@["", "d", ""]
 ok
 destroying variable: 20
 destroying variable: 10
@@ -789,3 +790,33 @@ block: # bug #23907
 
   doAssert callback(Thingy(value: 123)) == 123
 
+import std/strutils
+
+block: # bug #23974
+  func g(e: seq[string]): lent seq[string] = result = e
+  proc k(f: string): seq[string] = f.split("/")
+  proc n() =
+    const r = "/d/"
+    let t =
+      if true:
+        k(r).g()
+      else:
+        k("/" & r).g()
+    echo t
+
+  n()
+
+block: # bug #23973
+  func g(e: seq[string]): lent seq[string] = result = e
+  proc k(f: string): seq[string] = f.split("/")
+  proc n() =
+    const r = "/test/empty"  # or "/test/empty/1"
+    let a = k(r).g()
+    let t =
+      if true:
+        k(r).g()
+      else:
+        k("/" & r).g()   # or raiseAssert ""
+    doAssert t == a
+
+  n()
