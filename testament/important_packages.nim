@@ -140,7 +140,7 @@ pkg "pixie"
 pkg "plotly", "nim c examples/all.nim"
 pkg "pnm"
 pkg "polypbren"
-pkg "presto", allowFailure = true
+pkg "presto"
 pkg "prologue", "nimble tcompile"
 pkg "protobuf", "nim c -o:protobuff -r src/protobuf.nim"
 pkg "rbtree"
