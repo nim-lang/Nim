@@ -679,13 +679,18 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
         ident = considerQuotedIdent(c, n[1])
       if ident != nil:
         if m == c.module:
-          result = strTableGet(c.topLevelScope.symbols, ident)
+          var ti: TIdentIter = default(TIdentIter)
+          result = initIdentIter(ti, c.topLevelScope.symbols, ident)
+          if result != nil and nextIdentIter(ti, c.topLevelScope.symbols) != nil:
+            # another symbol exists with same name
+            c.isAmbiguous = true
         else:
+          var amb: bool = false
           if c.importModuleLookup.getOrDefault(m.name.id).len > 1:
-            var amb: bool = false
             result = errorUseQualifier(c, n.info, m, amb)
           else:
-            result = someSym(c.graph, m, ident)
+            result = someSymAmb(c.graph, m, ident, amb)
+            if amb: c.isAmbiguous = true
         if result == nil and checkUndeclared in flags:
           result = errorUndeclaredIdentifierHint(c, ident, n[1].info)
       elif n[1].kind == nkSym:

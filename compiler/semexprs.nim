@@ -3321,12 +3321,13 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
       of skType:
         # XXX think about this more (``set`` procs)
         let ambig = c.isAmbiguous
-        if not (n[0].kind in {nkClosedSymChoice, nkOpenSymChoice, nkIdent} and ambig) and n.len == 2:
+        if not (n[0].kind in nkSymChoices + {nkIdent, nkDotExpr} and ambig) and n.len == 2:
           result = semConv(c, n, flags, expectedType)
-        elif ambig and n.len == 1:
-          errorUseQualifier(c, n.info, s)
         elif n.len == 1:
-          result = semObjConstr(c, n, flags, expectedType)
+          if ambig:
+            errorUseQualifier(c, n.info, s)
+          else:
+            result = semObjConstr(c, n, flags, expectedType)
         elif s.magic == mNone: result = semDirectOp(c, n, flags, expectedType)
         else: result = semMagic(c, n, s, flags, expectedType)
       of skProc, skFunc, skMethod, skConverter, skIterator:
