@@ -362,7 +362,7 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
         result = newSymNode(s, n.info)
         onUse(n.info, s)
       else:
-        if s.kind in {skType, skVar, skLet, skConst}:
+        if s.kind in {skVar, skLet, skConst}:
           discard qualifiedLookUp(c.c, n, {checkAmbiguity, checkModule})
         result = semTemplSymbol(c.c, n, s, c.noGenSym > 0)
   of nkBind:
@@ -572,7 +572,7 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
       elif contains(c.toMixin, s.name.id):
         return symChoice(c.c, n, s, scForceOpen, c.noGenSym > 0)
       else:
-        if s.kind in {skType, skVar, skLet, skConst}:
+        if s.kind in {skVar, skLet, skConst}:
           discard qualifiedLookUp(c.c, n, {checkAmbiguity, checkModule})
         return semTemplSymbol(c.c, n, s, c.noGenSym > 0)
     if n.kind == nkDotExpr:
