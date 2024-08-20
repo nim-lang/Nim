@@ -338,7 +338,6 @@ template describeArgImpl(c: PContext, n: PNode, i: int, startIdx = 1; prefer = p
     result.add renderTree(n[i][0])
     result.add ": "
     if arg.typ.isNil and arg.kind notin {nkStmtList, nkDo}:
-      # XXX we really need to 'tryExpr' here!
       arg = c.semTryExpr(c, n[i][1])
       if arg == nil:
         arg = n[i][1]
