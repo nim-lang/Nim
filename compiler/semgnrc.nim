@@ -297,8 +297,10 @@ proc semGenericStmt(c: PContext, n: PNode,
       of skMacro, skTemplate:
         # unambiguous macros/templates are expanded if all params are untyped
         if sfAllUntyped in s.flags and sc.safeLen <= 1:
+          # even if template is all untyped, we still need to check if it
+          # matches the call, i.e. if the parameter count matches
           onUse(fn.info, s)
-          var errors: CandidateErrors
+          var errors: CandidateErrors = @[]
           var r = resolveOverloads(c, n, n, {skTemplate, skMacro}, {efNoDiagnostics},
                                    errors, false)
           if r.state == csMatch:
