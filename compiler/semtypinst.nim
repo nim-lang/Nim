@@ -690,6 +690,9 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
     propagateToOwner(result, result.last)
 
   else:
+    if cl.c.matchedConcept != nil and t.kind == tyStatic:
+      # allow concepts to not instantiate statics for now
+      return
     if containsGenericType(t):
       #if not cl.allowMetaTypes:
       bailout()
@@ -736,7 +739,8 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
 
       of tyStatic:
         if not cl.allowMetaTypes and result.n != nil:
-          result.n = cl.c.semConstExpr(cl.c, result.n)
+          if result.n.kind notin nkLiterals:
+            result.n = cl.c.semConstExpr(cl.c, result.n)
 
       else: discard
     else:
