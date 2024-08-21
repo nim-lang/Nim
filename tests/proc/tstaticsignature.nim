@@ -120,3 +120,30 @@ block:
   let b: Foo[3] = foo(a)
   doAssert $typeof(foo(a)) == "Foo[3]"
 
+block: # issue #7006
+  type
+    Node[T] = object
+      val: T
+      next: ref Node[T]
+    HHSet[T, Key] = object
+      data: seq[Node[T]]
+  proc rawGet(hhs:HHSet; key: hhs.Key): ptr Node[hhs.T] =
+    return nil # body doesn't matter
+  var hhs: HHSet[string, cstring]
+  discard hhs.rawGet("hello".cstring)
+
+block: # issue #7008
+  type Node[T] = object
+    val: T
+  # Compiles fine
+  proc concreteProc(s: Node[cstring]; key: s.T) = discard
+  # Also fine
+  proc implicitGenericProc1(s: Node; key: s.T) = discard
+  # still fine
+  proc explicitGenericProc1[T](s: Node[T]; key: T) = discard
+  # Internal Compiler Error!
+  proc explicitGenericProc2[T](s: Node[T]; key: s.T) = discard
+  let n = Node[int](val: 5)
+  implicitGenericProc1(n, 5) # works
+  explicitGenericProc1(n, 5) # works
+  explicitGenericProc2(n, 5) # doesn't
