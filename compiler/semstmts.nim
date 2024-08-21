@@ -829,6 +829,11 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
     var typFlags: TTypeAllowedFlags = {}
 
     var def: PNode = c.graph.emptyNode
+    if c.graph.config.isDefined("nimPreviewRangeDefault") and
+            a[^1].kind == nkEmpty and
+            typ != nil and typ.kind == tyRange:
+      a[^1] = firstRange(c.config, typ)
+
     if a[^1].kind != nkEmpty:
       def = semExprWithType(c, a[^1], {efTypeAllowed}, typ)
 
