@@ -2188,7 +2188,11 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
         a = typ
       else:
         if m.callee.kind == tyGenericBody:
-          if f.kind == tyStatic and typeRel(m, f.base, a) != isNone:
+          # we can't use `makeStaticExpr` if `arg` has a generic type
+          # because it generates `tyStatic`, which semtypinst doesn't touch
+          # not sure if checking for `tyFromExpr` is enough
+          if f.kind == tyStatic and typeRel(m, f.base, a) != isNone and
+              a.kind != tyFromExpr:
             result = makeStaticExpr(m.c, arg)
             result.typ.flags.incl tfUnresolved
             result.typ.n = arg

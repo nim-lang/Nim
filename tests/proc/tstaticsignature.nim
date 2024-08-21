@@ -11,6 +11,20 @@ when false: # issue #22607, needs nkWhenStmt to be handled like nkRecWhen
   test[false](1.0)
   doAssert not compiles(test[])
 
+block: # issue #4228
+  template seqType(t: typedesc): typedesc =
+    when t is int:
+      seq[int]
+    else:
+      seq[string]
+
+  proc mkSeq[T: int|string](v: T): seqType(T) =
+    result = newSeq[T](1)
+    result[0] = v
+
+  doAssert mkSeq("a") == @["a"]
+  doAssert mkSeq(1) == @[1]
+
 block: # expanded version of t8545
   template bar(a: static[bool]): untyped =
     when a:
@@ -69,3 +83,40 @@ block: # issue #8551
 
   type T = distinct int
   doAssert distinctBase(T(0)) is int
+
+block:
+  type Foo[T] = object
+    x: T
+
+  proc foo(x: Foo): Foo[x.T] =
+    doAssert typeof(result) is typeof(x)
+
+  var a: Foo[int]
+  let b: Foo[int] = foo(a)
+  doAssert b.x is int
+
+block:
+  type Foo[T: static int] = object
+    x: array[T, int]
+  
+  proc double(x: int): int = x * 2
+
+  proc foo[T: static int](x: Foo[T]): Foo[T.double] =
+    doAssert typeof(result).T == double(typeof(x).T)
+
+  var a: Foo[3]
+  let b: Foo[6] = foo(a)
+  doAssert $typeof(foo(a)) == "Foo[6]"
+
+block:
+  type Foo[T: static int] = object
+    x: array[T, int]
+
+  proc foo(x: Foo): Foo[x.T] =
+    doAssert typeof(result).T == typeof(x).T
+    doAssert typeof(result) is typeof(x)
+
+  var a: Foo[3]
+  let b: Foo[3] = foo(a)
+  doAssert $typeof(foo(a)) == "Foo[3]"
+
