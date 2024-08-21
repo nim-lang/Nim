@@ -1485,17 +1485,25 @@ proc tryReadingGenericParam(c: PContext, n: PNode, i: PIdent, t: PType): PNode =
   of tyGenericInst:
     result = readTypeParameter(c, t, i, n.info)
     if result == c.graph.emptyNode:
-      result = semGenericStmt(c, n)
-      result.typ = makeTypeFromExpr(c, result.copyTree)
+      if c.inGenericContext > 0:
+        result = semGenericStmt(c, n)
+        result.typ = makeTypeFromExpr(c, result.copyTree)
+      else:
+        result = nil
   of tyUserTypeClasses:
     if t.isResolvedUserTypeClass:
       result = readTypeParameter(c, t, i, n.info)
-    else:
+    elif c.inGenericContext > 0:
       result = semGenericStmt(c, n)
       result.typ = makeTypeFromExpr(c, copyTree(result))
+    else:
+      result = nil
   elif t.containsGenericType:
-    result = semGenericStmt(c, n)
-    result.typ = makeTypeFromExpr(c, copyTree(result))
+    if c.inGenericContext > 0:
+      result = semGenericStmt(c, n)
+      result.typ = makeTypeFromExpr(c, copyTree(result))
+    else:
+      result = nil
   else:
     result = nil
 
