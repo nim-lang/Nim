@@ -1,8 +1,3 @@
-discard """
-  # just tests that this doesn't crash the compiler
-  errormsg: "cannot instantiate: 'a:type'"
-"""
-
 # bug #8545
 
 template bar(a: static[bool]): untyped = int
