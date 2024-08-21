@@ -239,3 +239,57 @@ block: # version of #23432 with `typed`, don't delay instantiation
   proc f(x: X) = discard
   var v: Future[void].Raising([ValueError])
   f(v)
+
+block: # issue #22647
+  proc c0(n: static int): int = 8
+  proc c1(n: static int): int = n div 2
+  proc c2(n: static int): int = n * 2
+  proc c3(n: static int, n2: int): int = n * n2
+  proc `**`(n: static int, n2: int): int = n * n2
+  proc c4(n: int, n2: int): int = n * n2
+
+  type
+    a[N: static int] = object
+      f0 : array[N, int]
+
+    b[N: static int] = object
+      f0 : a[c0(N)]  # does not work
+      f1 : a[c1(N)]  # does not work
+      f2 : a[c2(N)]  # does not work
+      f3 : a[N * 2]  # does not work
+      f4 : a[N]      # works
+      f5: a[c3(N, 2)]
+      f6: a[N ** 2]
+      f7: a[2 * N]
+      f8: a[c4(N, 2)]
+
+  proc p[N: static int](x : a[N]) = discard x.f0[0]
+  template check(x, s: untyped) =
+    p(x)
+    doAssert x is a[s]
+    doAssert x.N == s
+    doAssert typeof(x).N == s
+    doAssert x.f0 == default(array[s, int])
+    doAssert x.f0.len == s
+    proc p2[N: static int](y : a[N]) {.gensym.} =
+      doAssert y is a[s]
+      doAssert y.N == s
+      doAssert typeof(y).N == s
+      doAssert y.f0 == default(array[s, int])
+      doAssert y.f0.len == s
+    p2(x)
+    proc p3(z: typeof(x)) {.gensym.} = discard
+    p3(default(a[s]))
+  proc p[N: static int](x : b[N]) =
+    x.f0.check(8)
+    x.f1.check(2)
+    x.f2.check(8)
+    x.f3.check(8)
+    x.f4.check(4)
+    x.f5.check(8)
+    x.f6.check(8)
+    x.f7.check(8)
+    x.f8.check(8)
+
+  var x: b[4]
+  x.p()

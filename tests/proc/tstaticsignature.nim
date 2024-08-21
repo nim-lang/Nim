@@ -147,3 +147,22 @@ block: # issue #7008
   implicitGenericProc1(n, 5) # works
   explicitGenericProc1(n, 5) # works
   explicitGenericProc2(n, 5) # doesn't
+
+block: # issue #20027
+  block:
+    type Test[T] = object
+    proc run(self: Test): self.T = discard
+    discard run(Test[int]())
+  block:
+    type Test[T] = object
+    proc run[T](self: Test[T]): self.T = discard
+    discard run(Test[int]())
+  block:
+    type Test[T] = object
+    proc run(self: Test[auto]): self.T = discard
+    discard run(Test[int]())
+
+block: # issue #11112
+  proc foo[A, B]: type(A.default + B.default) =
+    discard
+  doAssert foo[int, int]() is int

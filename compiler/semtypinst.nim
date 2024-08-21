@@ -678,7 +678,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
     elif t.elementType.kind != tyNone:
       result = makeTypeDesc(cl.c, replaceTypeVarsT(cl, t.elementType))
 
-  of tyUserTypeClass, tyStatic:
+  of tyUserTypeClass:#, tyStatic:
     result = t
 
   of tyGenericInst, tyUserTypeClassInst:
@@ -733,6 +733,10 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
 
       of tyRange:
         result.setIndexType result.indexType.skipTypes({tyStatic, tyDistinct})
+
+      of tyStatic:
+        if not cl.allowMetaTypes and result.n != nil:
+          result.n = cl.c.semConstExpr(cl.c, result.n)
 
       else: discard
     else:
