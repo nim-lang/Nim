@@ -63,7 +63,8 @@ template getBits[bits: static int](x: ptr UncheckedArray[BigInt[bits]]): int = b
 
 proc main() =
   let ctx = ECFFT_Descriptor[EC_ShortW_Aff[Fp[BLS12_381]]].new()
-  when false: echo getBits(ctx.rootsOfUnity2) # doesn't work yet?
+  doAssert getBits(ctx.rootsOfUnity1) == 255
+  doAssert getBits(ctx.rootsOfUnity2) == 255
   doAssert ctx.rootsOfUnity1[0].limbs.len == wordsRequired(255)
   doAssert ctx.rootsOfUnity2[0].limbs.len == wordsRequired(255)
 
