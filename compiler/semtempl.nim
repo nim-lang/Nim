@@ -569,7 +569,6 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
   of nkDotExpr, nkAccQuoted:
     # dotExpr is ambiguous: note that we explicitly allow 'x.TemplateParam',
     # so we use the generic code for nkDotExpr too
-    # used in `semTemplSymbol`:
     c.c.isAmbiguous = false
     let s = qualifiedLookUp(c.c, n, {})
     if s != nil:

@@ -227,7 +227,6 @@ proc fuzzyLookup(c: PContext, n: PNode, flags: TSemGenericFlags,
           var ambig = false
           if candidates.len > 1:
             let s2 = searchInScopes(c, ident, ambig)
-          # used in `semGenericStmtSymbol`:
           result = newDot(result, semGenericStmtSymbol(c, n, s, ctx, flags,
             isAmbiguous = ambig, fromDotExpr = true))
         else:
