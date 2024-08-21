@@ -66,10 +66,7 @@ proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule;
     # (s.kind notin routineKinds or s.magic != mNone):
     # for instance 'nextTry' is both in tables.nim and astalgo.nim ...
     if not isField or sfGenSym notin s.flags:
-      if s.kind == skType:
-        result = newSymNodeTypeDesc(s, c.idgen, info)
-      else:
-        result = newSymNode(s, info)
+      result = newSymNode(s, info)
       markUsed(c, info, s)
       onUse(info, s)
     else:
@@ -88,10 +85,7 @@ proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule;
       if a.kind != skModule and (not isField or sfGenSym notin a.flags):
         incl(a.flags, sfUsed)
         markOwnerModuleAsUsed(c, a)
-        if a.kind == skType:
-          result.add newSymNodeTypeDesc(a, c.idgen, info)
-        else:
-          result.add newSymNode(a, info)
+        result.add newSymNode(a, info)
         onUse(info, a)
       a = nextOverloadIter(o, c, n)
 
