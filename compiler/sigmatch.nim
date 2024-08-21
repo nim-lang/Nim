@@ -966,7 +966,8 @@ proc inferStaticParam*(c: var TCandidate, lhs: PNode, rhs: BiggestInt): bool =
 
     else: discard
 
-  elif lhs.kind == nkSym and lhs.typ.kind == tyStatic and lhs.typ.n == nil:
+  elif lhs.kind == nkSym and lhs.typ.kind == tyStatic and
+      idTableGet(c.bindings, lhs.typ) == nil:
     var inferred = newTypeS(tyStatic, c.c, lhs.typ.elementType)
     inferred.n = newIntNode(nkIntLit, rhs)
     put(c, lhs.typ, inferred)
@@ -1877,7 +1878,11 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         elif f.base.kind notin {tyNone, tyGenericParam}:
           result = typeRel(c, f.base, a, flags)
           if result != isNone and f.n != nil:
-            if not exprStructuralEquivalent(f.n, aOrig.n):
+            var r = tryResolvingStaticExpr(c, f.n)
+            if r == nil: r = f.n
+            if not exprStructuralEquivalent(f.n, aOrig.n) and
+                not (aOrig.n.kind == nkIntLit and
+                  inferStaticParam(c, r, aOrig.n.intVal)):
               result = isNone
         elif f.base.kind == tyGenericParam:
           # Handling things like `type A[T; Y: static T] = object`
