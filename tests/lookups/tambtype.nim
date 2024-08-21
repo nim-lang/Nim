@@ -11,3 +11,10 @@ block: # issue #23898, in template
     discard default(mambtype2.B(0))   # compiles
     discard default(K(0))     # does not compile
   r()
+
+block: # in generics
+  proc foo[T]() =
+    discard default(B(0))     # compiles
+    discard default(mambtype2.B(0))   # compiles
+    discard default(K(0))     # does not compile
+  foo[int]()

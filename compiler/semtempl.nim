@@ -224,7 +224,7 @@ proc addLocalDecl(c: var TemplCtx, n: var PNode, k: TSymKind) =
         if k == skParam and c.inTemplateHeader > 0:
           local.flags.incl sfTemplateParam
 
-proc semTemplSymbol(c: PContext, n: PNode, s: PSym; isField: bool): PNode =
+proc semTemplSymbol(c: PContext, n: PNode, s: PSym; isField, isAmbiguous: bool): PNode =
   incl(s.flags, sfUsed)
   # bug #12885; ideally sem'checking is performed again afterwards marking
   # the symbol as used properly, but the nfSem mechanism currently prevents
@@ -251,10 +251,9 @@ proc semTemplSymbol(c: PContext, n: PNode, s: PSym; isField: bool): PNode =
     result = n
   of skType:
     if isField and sfGenSym in s.flags: result = n
-    elif c.isAmbiguous:
-      # ambiguous types should be symchoices since lookup behaves differently
-      # for them in regular expressions,
-      # make sure c.isAmbiguous is set correctly before calling this proc
+    elif isAmbiguous:
+      # ambiguous types should be symchoices since lookup behaves
+      # differently for them in regular expressions
       result = symChoice(c, n, s, scOpen, isField)
     else: result = newSymNodeTypeDesc(s, c.idgen, n.info)
   else:
@@ -356,7 +355,6 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
   case n.kind
   of nkIdent:
     if n.ident.id in c.toInject: return n
-    # used in `semTemplSymbol`:
     c.c.isAmbiguous = false
     let s = qualifiedLookUp(c.c, n, {})
     if s != nil:
@@ -377,7 +375,7 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
       else:
         if s.kind in {skVar, skLet, skConst}:
           discard qualifiedLookUp(c.c, n, {checkAmbiguity, checkModule})
-        result = semTemplSymbol(c.c, n, s, c.noGenSym > 0)
+        result = semTemplSymbol(c.c, n, s, c.noGenSym > 0, c.c.isAmbiguous)
   of nkBind:
     result = semTemplBody(c, n[0])
   of nkBindStmt:
@@ -589,7 +587,7 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
       else:
         if s.kind in {skVar, skLet, skConst}:
           discard qualifiedLookUp(c.c, n, {checkAmbiguity, checkModule})
-        return semTemplSymbol(c.c, n, s, c.noGenSym > 0)
+        return semTemplSymbol(c.c, n, s, c.noGenSym > 0, c.c.isAmbiguous)
     if n.kind == nkDotExpr:
       result = n
       result[0] = semTemplBody(c, n[0])
