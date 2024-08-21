@@ -738,7 +738,8 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
         result.setIndexType result.indexType.skipTypes({tyStatic, tyDistinct})
 
       of tyStatic:
-        if not cl.allowMetaTypes and result.n != nil:
+        if not cl.allowMetaTypes and result.n != nil and
+            result.base.kind != tyNone:
           if result.n.kind notin nkLiterals:
             result.n = cl.c.semConstExpr(cl.c, result.n)
 

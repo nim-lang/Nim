@@ -967,7 +967,7 @@ proc inferStaticParam*(c: var TCandidate, lhs: PNode, rhs: BiggestInt): bool =
     else: discard
 
   elif lhs.kind == nkSym and lhs.typ.kind == tyStatic and
-      idTableGet(c.bindings, lhs.typ) == nil:
+      (lhs.typ.n == nil or idTableGet(c.bindings, lhs.typ) == nil):
     var inferred = newTypeS(tyStatic, c.c, lhs.typ.elementType)
     inferred.n = newIntNode(nkIntLit, rhs)
     put(c, lhs.typ, inferred)
@@ -1880,7 +1880,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
           if result != isNone and f.n != nil:
             var r = tryResolvingStaticExpr(c, f.n)
             if r == nil: r = f.n
-            if not exprStructuralEquivalent(f.n, aOrig.n) and
+            if not exprStructuralEquivalent(r, aOrig.n) and
                 not (aOrig.n.kind == nkIntLit and
                   inferStaticParam(c, r, aOrig.n.intVal)):
               result = isNone
