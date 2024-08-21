@@ -1123,14 +1123,13 @@ elif not defined(useNimRtl):
       var error: cint
       let sizeRead = read(data.pErrorPipe[readIdx], addr error, sizeof(error))
       if sizeRead == sizeof(error):
-        raiseOSError(osLastError(),
+        raiseOSError(OSErrorCode(error),
                       "Could not find command: '" & $data.sysCommand & "'. OS error: " & $strerror(error))
 
       return pid
 
     {.push stacktrace: off, profiler: off.}
-    proc startProcessFail(data: ptr StartProcessData) =
-      var error: cint = errno
+    proc startProcessFail(data: ptr StartProcessData, error: cint = errno) =
       discard write(data.pErrorPipe[writeIdx], addr error, sizeof(error))
       exitnow(1)
 
@@ -1167,7 +1166,11 @@ elif not defined(useNimRtl):
       if (poUsePath in data.options):
         when defined(uClibc) or defined(linux) or defined(haiku):
           # uClibc environment (OpenWrt included) doesn't have the full execvpe
-          let exe = findExe(data.sysCommand)
+          var exe: string
+          try:
+            exe = findExe(data.sysCommand)
+          except OSError as e:
+            startProcessFail(data, e.errorCode)
           discard execve(exe.cstring, data.sysArgs, data.sysEnv)
         else:
           # MacOSX doesn't have execvpe, so we need workaround.
