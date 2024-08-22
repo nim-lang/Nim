@@ -21,6 +21,13 @@
 
 - `owner` in `std/macros` is deprecated.
 
+- Ambiguous type symbols in generic procs and templates now generate symchoice nodes.
+  Previously; in templates they would error immediately at the template definition,
+  and in generic procs a type symbol would arbitrarily be captured, losing the
+  information of the other symbols. This means that generic code can now give
+  errors for ambiguous type symbols, and macros operating on generic proc AST
+  may encounter symchoice nodes instead of the arbitrarily resolved type symbol nodes.
+
 ## Standard library additions and changes
 
 [//]: # "Changes:"
