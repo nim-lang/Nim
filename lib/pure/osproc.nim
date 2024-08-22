@@ -707,12 +707,25 @@ when defined(windows) and not defined(useNimRtl):
 
     var cmdl: cstring
     var cmdRoot: string
+
     if poEvalCommand in options:
-      cmdl = command
-      assert args.len == 0
+      const useCmdPath {.strdefine.} = ""
+
+      # `poEvalCommand`, which invokes the system shell to run the specified `command`.
+
+      var cmdPath = useCmdPath
+      if useCmdPath.len == 0:
+        cmdPath = getEnv("COMSPEC")
+
+      let newArgs = @["/c", command]
+      assert args.len == 0, "`args` has to be empty when using poEvalCommand."
+
+      cmdRoot = buildCommandLine(cmdPath, newArgs)
+      cmdl = cstring(cmdRoot)
     else:
       cmdRoot = buildCommandLine(command, args)
       cmdl = cstring(cmdRoot)
+
     var wd: cstring = nil
     var e = (str: nil.cstring, len: -1)
     if len(workingDir) > 0: wd = workingDir
