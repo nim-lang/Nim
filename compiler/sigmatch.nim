@@ -885,6 +885,7 @@ proc maybeSkipDistinct(m: TCandidate; t: PType, callee: PSym): PType =
 
 proc tryResolvingStaticExpr(c: var TCandidate, n: PNode,
                             allowUnresolved = false,
+                            allowCalls = false,
                             expectedType: PType = nil): PNode =
   # Consider this example:
   #   type Value[N: static[int]] = object
@@ -894,7 +895,7 @@ proc tryResolvingStaticExpr(c: var TCandidate, n: PNode,
   # This proc is used to evaluate such static expressions.
   let instantiated = replaceTypesInBody(c.c, c.bindings, n, nil,
                                         allowMetaTypes = allowUnresolved)
-  if instantiated.kind in nkCallKinds:
+  if not allowCalls and instantiated.kind in nkCallKinds:
     return nil
   result = c.c.semExpr(c.c, instantiated)
 
@@ -1969,7 +1970,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     # fix the expression, so it contains the already instantiated types
     if f.n == nil or f.n.kind == nkEmpty: return isGeneric
     inc c.c.inGenericContext # to generate tyFromExpr again if unresolved
-    let reevaluated = generateTypeInstance(c.c, c.bindings, f.n, f)
+    let reevaluated = tryResolvingStaticExpr(c, f.n, allowCalls = true).typ
     dec c.c.inGenericContext
     case reevaluated.kind
     of tyFromExpr:

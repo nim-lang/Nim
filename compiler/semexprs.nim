@@ -394,7 +394,11 @@ proc semConv(c: PContext, n: PNode; flags: TExprFlags = {}, expectedType: PType 
       targetType = targetType.base
   of tyAnything, tyUntyped, tyTyped:
     localError(c.config, n.info, "illegal type conversion to '$1'" % typeToString(targetType))
-  else: discard
+  elif c.inGenericContext > 0 and targetType.containsGenericType and 
+      not (targetType.sym != nil and targetType.sym.magic != mNone):
+    result = semGenericStmt(c, n)
+    result.typ = makeTypeFromExpr(c, copyTree(result))
+    return
 
   maybeLiftType(targetType, c, n[0].info)
 
