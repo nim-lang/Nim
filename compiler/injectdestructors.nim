@@ -501,7 +501,7 @@ proc containsConstSeq(n: PNode): bool =
     return true
   result = false
   case n.kind
-  of nkExprEqExpr, nkExprColonExpr, nkHiddenStdConv, nkHiddenSubConv:
+  of nkExprEqExpr, nkExprColonExpr, nkHiddenStdConv, nkHiddenSubConv, nkCast:
     result = containsConstSeq(n[1])
   of nkObjConstr, nkClosure:
     for i in 1..<n.len:
