@@ -293,3 +293,11 @@ block: # issue #22647
 
   var x: b[4]
   x.p()
+
+when false: # issue #22342, type section version of #22607
+  type GenAlias[isInt: static bool] = (
+    when isInt:
+      int
+    else:
+      float
+  )

@@ -1968,23 +1968,25 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
   of tyFromExpr:
     # fix the expression, so it contains the already instantiated types
     if f.n == nil or f.n.kind == nkEmpty: return isGeneric
-    let reevaluated = tryResolvingStaticExpr(c, f.n)
-    if reevaluated == nil:
+    inc c.c.inGenericContext # to generate tyFromExpr again if unresolved
+    let reevaluated = generateTypeInstance(c.c, c.bindings, f.n, f)
+    dec c.c.inGenericContext
+    case reevaluated.kind
+    of tyFromExpr:
+      # not resolved
       result = isNone
-      return
-    case reevaluated.typ.kind
     of tyTypeDesc:
-      result = typeRel(c, a, reevaluated.typ.base, flags)
+      result = typeRel(c, a, reevaluated.base, flags)
     of tyStatic:
-      result = typeRel(c, a, reevaluated.typ.base, flags)
-      if result != isNone and reevaluated.typ.n != nil:
-        if not exprStructuralEquivalent(aOrig.n, reevaluated.typ.n):
+      result = typeRel(c, a, reevaluated.base, flags)
+      if result != isNone and reevaluated.n != nil:
+        if not exprStructuralEquivalent(aOrig.n, reevaluated.n):
           result = isNone
     else:
       # bug #14136: other types are just like 'tyStatic' here:
-      result = typeRel(c, a, reevaluated.typ, flags)
-      if result != isNone and reevaluated.typ.n != nil:
-        if not exprStructuralEquivalent(aOrig.n, reevaluated.typ.n):
+      result = typeRel(c, a, reevaluated, flags)
+      if result != isNone and reevaluated.n != nil:
+        if not exprStructuralEquivalent(aOrig.n, reevaluated.n):
           result = isNone
   of tyNone:
     if a.kind == tyNone: result = isEqual
@@ -2177,10 +2179,7 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
       return argSemantized
 
     if a.kind == tyStatic:
-      if m.callee.kind == tyGenericBody and
-         a.n == nil and
-         tfGenericTypeParam notin a.flags:
-        return newNodeIT(nkType, argOrig.info, makeTypeFromExpr(c, arg))
+      discard
     elif arg.kind != nkEmpty:
       var evaluated = c.semTryConstExpr(c, arg)
       if evaluated != nil:

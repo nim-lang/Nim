@@ -1,16 +1,3 @@
-when false: # issue #22607, needs nkWhenStmt to be handled like nkRecWhen
-  proc test[x: static bool](
-    t: (
-      when x:
-        int
-      else:
-        float
-      )
-  ) = discard
-  test[true](1.int)
-  test[false](1.0)
-  doAssert not compiles(test[])
-
 block: # issue #4228
   template seqType(t: typedesc): typedesc =
     when t is int:
@@ -166,3 +153,25 @@ block: # issue #11112
   proc foo[A, B]: type(A.default + B.default) =
     discard
   doAssert foo[int, int]() is int
+
+block: # tyStatic and tyFromExpr instantiation mid-match
+  proc bar(x: int): int = x * 3
+  proc bar2(x: static int): int = x * 4
+  type Foo[T: static int] = distinct array[T, int]
+  proc foo[T: static int](x: Foo[T], y: Foo[bar(T)]) = discard
+  proc foo2[T: static int](x: Foo[T], y: Foo[bar2(T)]) = discard
+  foo(Foo[1]([1]), Foo[3]([1, 2, 3]))
+  foo2(Foo[1]([1]), Foo[4]([1, 2, 3, 4]))
+
+when false: # issue #22607, needs nkWhenStmt to be handled like nkRecWhen
+  proc test[x: static bool](
+    t: (
+      when x:
+        int
+      else:
+        float
+      )
+  ) = discard
+  test[true](1.int)
+  test[false](1.0)
+  doAssert not compiles(test[])
