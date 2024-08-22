@@ -771,5 +771,10 @@ template main {.dirty.} =
     var s = default(Object)
     doAssert s.id == 1.2
 
+  block: # bug #23943
+    type limited_int = range[1..20]
+    var d: limited_int;
+    doAssert d == 1
+
 static: main()
 main()

@@ -725,7 +725,8 @@ proc semResolvedCall(c: PContext, x: var TCandidate,
   result = x.call
   instGenericConvertersSons(c, result, x)
   result[0] = newSymNode(finalCallee, getCallLineInfo(result[0]))
-  result.typ = finalCallee.typ.returnType
+  if finalCallee.magic notin {mArrGet, mArrPut}:
+    result.typ = finalCallee.typ.returnType
   updateDefaultParams(result)
 
 proc canDeref(n: PNode): bool {.inline.} =
