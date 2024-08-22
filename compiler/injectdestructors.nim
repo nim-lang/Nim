@@ -815,7 +815,7 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
       # Sinked params can be consumed only once. We need to reset the memory
       # to disable the destructor which we have not elided
       result = destructiveMoveVar(n, c, s)
-    elif n.kind in {nkHiddenSubConv, nkHiddenStdConv, nkConv}:
+    elif n.kind in {nkHiddenSubConv, nkHiddenStdConv, nkConv, nkCast}:
       result = copyTree(n)
       if n.typ.skipTypes(abstractInst-{tyOwned}).kind != tyOwned and
           n[1].typ.skipTypes(abstractInst-{tyOwned}).kind == tyOwned:
