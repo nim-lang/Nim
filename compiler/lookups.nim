@@ -63,6 +63,8 @@ proc considerQuotedIdent*(c: PContext; n: PNode, origin: PNode = nil): PIdent =
       result = n[0].sym.name
     else:
       handleError(n, origin)
+  of nkOpenSym:
+    result = considerQuotedIdent(c, n[0], origin)
   else:
     handleError(n, origin)
 
@@ -630,9 +632,10 @@ type
 
 const allExceptModule = {low(TSymKind)..high(TSymKind)} - {skModule, skPackage}
 
-proc lookUpCandidates*(c: PContext, ident: PIdent, filter: set[TSymKind]): seq[PSym] =
+proc lookUpCandidates*(c: PContext, ident: PIdent, filter: set[TSymKind],
+                       includePureEnum = false): seq[PSym] =
   result = searchInScopesFilterBy(c, ident, filter)
-  if result.len == 0:
+  if skEnumField in filter and (result.len == 0 or includePureEnum):
     result.add allPureEnumFields(c, ident)
 
 proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
@@ -676,13 +679,18 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
         ident = considerQuotedIdent(c, n[1])
       if ident != nil:
         if m == c.module:
-          result = strTableGet(c.topLevelScope.symbols, ident)
+          var ti: TIdentIter = default(TIdentIter)
+          result = initIdentIter(ti, c.topLevelScope.symbols, ident)
+          if result != nil and nextIdentIter(ti, c.topLevelScope.symbols) != nil:
+            # another symbol exists with same name
+            c.isAmbiguous = true
         else:
+          var amb: bool = false
           if c.importModuleLookup.getOrDefault(m.name.id).len > 1:
-            var amb: bool = false
             result = errorUseQualifier(c, n.info, m, amb)
           else:
-            result = someSym(c.graph, m, ident)
+            result = someSymAmb(c.graph, m, ident, amb)
+            if amb: c.isAmbiguous = true
         if result == nil and checkUndeclared in flags:
           result = errorUndeclaredIdentifierHint(c, ident, n[1].info)
       elif n[1].kind == nkSym:
@@ -701,6 +709,10 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
     if result != nil and result.kind == skStub: loadStub(result)
 
 proc initOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
+  if n.kind == nkOpenSym:
+    # maybe the logic in semexprs should be mirrored here instead
+    # for now it only seems this is called for `pickSym` in `getTypeIdent` 
+    return initOverloadIter(o, c, n[0])
   o.importIdx = -1
   o.marked = initIntSet()
   case n.kind

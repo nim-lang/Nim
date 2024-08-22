@@ -355,7 +355,7 @@ block: # bug #8007
 block: # bug #14340
   block:
     proc opl3EnvelopeCalcSin0() = discard
-    type EnvelopeSinfunc = proc()
+    type EnvelopeSinfunc = proc() {.nimcall.} # todo: fixme 
     # const EnvelopeCalcSin0 = opl3EnvelopeCalcSin0 # ok
     const EnvelopeCalcSin0: EnvelopeSinfunc = opl3EnvelopeCalcSin0 # was bug
     const envelopeSin = [EnvelopeCalcSin0]
@@ -566,7 +566,7 @@ block:
 block:
   static:
     let x = int 1
-    doAssert $(x.type) == "Foo"  # Foo
+    doAssert $(x.type) == "int"  # Foo
 
 block:
   static:

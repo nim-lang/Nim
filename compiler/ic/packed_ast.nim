@@ -16,7 +16,7 @@ import std/[hashes, tables, strtabs]
 import bitabs, rodfiles
 import ".." / [ast, options]
 
-import ".." / nir / nirlineinfos
+import iclineinfos
 
 when defined(nimPreviewSlimSystem):
   import std/assertions

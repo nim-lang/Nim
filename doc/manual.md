@@ -3788,9 +3788,6 @@ type conversions to unsigned integers and between unsigned integers. The
 rationale for this is mostly better interoperability with the C Programming
 language when algorithms are ported from C to Nim.
 
-Exception: Values that are converted to an unsigned type at compile time
-are checked so that code like `byte(-1)` does not compile.
-
 **Note**: Historically the operations
 were unchecked and the conversions were sometimes checked but starting with
 the revision 1.0.4 of this document and the language implementation the
@@ -6216,9 +6213,12 @@ scope is controlled by the `inject`:idx: and `gensym`:idx: pragmas:
 `gensym`'ed symbols are not exposed but `inject`'ed symbols are.
 
 The default for symbols of entity `type`, `var`, `let` and `const`
-is `gensym` and for `proc`, `iterator`, `converter`, `template`,
-`macro` is `inject`. However, if the name of the entity is passed as a
-template parameter, it is an `inject`'ed symbol:
+is `gensym`. For `proc`, `iterator`, `converter`, `template`,
+`macro`, the default is `inject`, but if a `gensym` symbol with the same name
+is defined in the same syntax-level scope, it will be `gensym` by default.
+This can be overriden by marking the routine as `inject`. 
+
+If the name of the entity is passed as a template parameter, it is an `inject`'ed symbol:
 
   ```nim
   template withFile(f, fn, mode: untyped, actions: untyped): untyped =

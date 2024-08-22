@@ -135,7 +135,7 @@ const
   skipForDiscardable = {nkStmtList, nkStmtListExpr,
     nkOfBranch, nkElse, nkFinally, nkExceptBranch,
     nkElifBranch, nkElifExpr, nkElseExpr, nkBlockStmt, nkBlockExpr,
-    nkHiddenStdConv, nkHiddenDeref}
+    nkHiddenStdConv, nkHiddenSubConv, nkHiddenDeref}
 
 proc implicitlyDiscardable(n: PNode): bool =
   # same traversal as endsInNoReturn
@@ -172,7 +172,7 @@ proc implicitlyDiscardable(n: PNode): bool =
         of nkElse:
           branch[0]
         else:
-          raiseAssert "Malformed `case` statement in endsInNoReturn"
+          raiseAssert "Malformed `case` statement in implicitlyDiscardable"
     # all branches are discardable
     result = true
   of nkTryStmt:
@@ -190,18 +190,19 @@ proc implicitlyDiscardable(n: PNode): bool =
   else:
     result = false
 
-proc endsInNoReturn(n: PNode, returningNode: var PNode): bool =
+proc endsInNoReturn(n: PNode, returningNode: var PNode; discardableCheck = false): bool =
   ## check if expr ends the block like raising or call of noreturn procs do
   result = false # assume it does return
 
   template checkBranch(branch) =
-    if not endsInNoReturn(branch, returningNode):
+    if not endsInNoReturn(branch, returningNode, discardableCheck):
       # proved a branch returns
       return false
 
   var it = n
   # skip these beforehand, no special handling needed
-  while it.kind in skipForDiscardable and it.len > 0:
+  let skips = if discardableCheck: skipForDiscardable else: skipForDiscardable-{nkBlockExpr, nkBlockStmt}
+  while it.kind in skips and it.len > 0:
     it = it.lastSon
 
   case it.kind
@@ -245,7 +246,7 @@ proc endsInNoReturn(n: PNode, returningNode: var PNode): bool =
     var lastIndex = it.len - 1
     if it[lastIndex].kind == nkFinally:
       # if finally is noreturn, then the entire statement is noreturn
-      if endsInNoReturn(it[lastIndex][^1], returningNode):
+      if endsInNoReturn(it[lastIndex][^1], returningNode, discardableCheck):
         return true
       dec lastIndex
     for i in 1 .. lastIndex:
@@ -283,6 +284,7 @@ proc discardCheck(c: PContext, result: PNode, flags: TExprFlags) =
     if implicitlyDiscardable(result):
       var n = newNodeI(nkDiscardStmt, result.info, 1)
       n[0] = result
+      # notes that it doesn't transform nodes into discard statements
     elif result.typ.kind != tyError and c.config.cmd != cmdInteractive:
       if result.typ.kind == tyNone:
         localError(c.config, result.info, "expression has no type: " &
@@ -290,7 +292,7 @@ proc discardCheck(c: PContext, result: PNode, flags: TExprFlags) =
       else:
         # Ignore noreturn procs since they don't have a type
         var n = result
-        if result.endsInNoReturn(n):
+        if result.endsInNoReturn(n, discardableCheck = true):
           return
 
         var s = "expression '" & $n & "' is of type '" &
@@ -620,15 +622,15 @@ proc setVarType(c: PContext; v: PSym, typ: PType) =
 proc isPossibleMacroPragma(c: PContext, it: PNode, key: PNode): bool =
   # make sure it's not a normal pragma, and calls an identifier
   # considerQuotedIdent below will fail on non-identifiers
-  result = whichPragma(it) == wInvalid and key.kind in nkIdentKinds
+  result = whichPragma(it) == wInvalid and key.kind in nkIdentKinds+{nkDotExpr}
   if result:
     # make sure it's not a user pragma
-    let ident = considerQuotedIdent(c, key)
-    result = strTableGet(c.userPragmas, ident) == nil
+    if key.kind != nkDotExpr:
+      let ident = considerQuotedIdent(c, key)
+      result = strTableGet(c.userPragmas, ident) == nil
     if result:
       # make sure it's not a custom pragma
-      var amb = false
-      let sym = searchInScopes(c, ident, amb)
+      let sym = qualifiedLookUp(c, key, {})
       result = sym == nil or sfCustomPragma notin sym.flags
 
 proc copyExcept(n: PNode, i: int): PNode =
@@ -1774,14 +1776,15 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
               assignType(s.typ, t)
               s.typ.itemId = t.itemId     # same id
         var hasError = false
-        if s.typ.kind in {tyObject, tyTuple} and not s.typ.n.isNil:
-          checkForMetaFields(c, s.typ.n, hasError)
+        let baseType = s.typ.safeSkipTypes(abstractPtrs)
+        if baseType.kind in {tyObject, tyTuple} and not baseType.n.isNil and
+          (x.kind in {nkObjectTy, nkTupleTy} or
+           (x.kind in {nkRefTy, nkPtrTy} and x.len == 1 and
+           x[0].kind in {nkObjectTy, nkTupleTy})
+          ):
+          checkForMetaFields(c, baseType.n, hasError)
         if not hasError:
           checkConstructedType(c.config, s.info, s.typ)
-
-        # fix bug #5170, bug #17162, bug #15526: ensure locally scoped types get a unique name:
-        if s.typ.kind in {tyEnum, tyRef, tyObject} and not isTopLevel(c):
-          incl(s.flags, sfGenSym)
   #instAllTypeBoundOp(c, n.info)
 
 

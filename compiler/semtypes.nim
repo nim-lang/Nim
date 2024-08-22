@@ -475,6 +475,13 @@ proc semAnonTuple(c: PContext, n: PNode, prev: PType): PType =
     let t = semTypeNode(c, it, nil)
     addSonSkipIntLitChecked(c, result, t, it, c.idgen)
 
+proc firstRange(config: ConfigRef, t: PType): PNode =
+  if t.skipModifier().kind in tyFloat..tyFloat64:
+    result = newFloatNode(nkFloatLit, firstFloat(t))
+  else:
+    result = newIntNode(nkIntLit, firstOrd(config, t))
+  result.typ = t
+
 proc semTuple(c: PContext, n: PNode, prev: PType): PType =
   var typ: PType
   result = newOrPrevType(tyTuple, prev, c)
@@ -491,8 +498,7 @@ proc semTuple(c: PContext, n: PNode, prev: PType): PType =
     elif a[^2].kind != nkEmpty:
       typ = semTypeNode(c, a[^2], nil)
       if c.graph.config.isDefined("nimPreviewRangeDefault") and typ.skipTypes(abstractInst).kind == tyRange:
-        a[^1] = newIntNode(nkIntLit, firstOrd(c.config, typ))
-        a[^1].typ = typ
+        a[^1] = firstRange(c.config, typ)
         hasDefaultField = true
     else:
       localError(c.config, a.info, errTypeExpected)
@@ -846,8 +852,7 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
     else:
       typ = semTypeNode(c, n[^2], nil)
       if c.graph.config.isDefined("nimPreviewRangeDefault") and typ.skipTypes(abstractInst).kind == tyRange:
-        n[^1] = newIntNode(nkIntLit, firstOrd(c.config, typ))
-        n[^1].typ = typ
+        n[^1] = firstRange(c.config, typ)
         hasDefaultField = true
       propagateToOwner(rectype, typ)
     var fieldOwner = if c.inGenericContext > 0: c.getCurrOwner
@@ -864,8 +869,8 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
       f.options = c.config.options
       if fieldOwner != nil and
          {sfImportc, sfExportc} * fieldOwner.flags != {} and
-         not hasCaseFields and f.loc.r == "":
-        f.loc.r = rope(f.name.s)
+         not hasCaseFields and f.loc.snippet == "":
+        f.loc.snippet = rope(f.name.s)
         f.flags.incl {sfImportc, sfExportc} * fieldOwner.flags
       inc(pos)
       if containsOrIncl(check, f.name.id):
@@ -1166,11 +1171,11 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
         paramType[i] = t
         result = paramType
 
-  of tyAlias, tyOwned, tySink:
+  of tyAlias, tyOwned:
     result = recurse(paramType.base)
 
   of tySequence, tySet, tyArray, tyOpenArray,
-     tyVar, tyLent, tyPtr, tyRef, tyProc:
+     tyVar, tyLent, tyPtr, tyRef, tyProc, tySink:
     # XXX: this is a bit strange, but proc(s: seq)
     # produces tySequence(tyGenericParam, tyNone).
     # This also seems to be true when creating aliases
@@ -1641,7 +1646,8 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
     recomputeFieldPositions(tx, tx.n, position)
 
 proc maybeAliasType(c: PContext; typeExpr, prev: PType): PType =
-  if typeExpr.kind in {tyObject, tyEnum, tyDistinct, tyForward, tyGenericBody} and prev != nil:
+  if prev != nil and (prev.kind == tyGenericBody or
+      typeExpr.kind in {tyObject, tyEnum, tyDistinct, tyForward, tyGenericBody}):
     result = newTypeS(tyAlias, c)
     result.rawAddSon typeExpr
     result.sym = prev.sym
@@ -1679,6 +1685,10 @@ proc semTypeExpr(c: PContext, n: PNode; prev: PType): PType =
         # unnecessary new type creation
         let alias = maybeAliasType(c, result, prev)
         if alias != nil: result = alias
+  elif n.typ.kind == tyFromExpr and c.inGenericContext > 0:
+    # sometimes not possible to distinguish type from value in generic body,
+    # for example `T.Foo`, so both are handled under `tyFromExpr`
+    result = n.typ
   else:
     localError(c.config, n.info, "expected type, but got: " & n.renderTree)
     result = errorType(c)
@@ -1764,12 +1774,15 @@ proc applyTypeSectionPragmas(c: PContext; pragmas, operand: PNode): PNode =
       discard "builtin pragma"
     else:
       trySuggestPragmas(c, key)
-      let ident = considerQuotedIdent(c, key)
-      if strTableGet(c.userPragmas, ident) != nil:
+      let ident =
+        if key.kind in nkIdentKinds:
+          considerQuotedIdent(c, key)
+        else:
+          nil
+      if ident != nil and strTableGet(c.userPragmas, ident) != nil:
         discard "User-defined pragma"
       else:
-        var amb = false
-        let sym = searchInScopes(c, ident, amb)
+        let sym = qualifiedLookUp(c, key, {})
         # XXX: What to do here if amb is true?
         if sym != nil and sfCustomPragma in sym.flags:
           discard "Custom user pragma"
@@ -1836,7 +1849,9 @@ proc semStaticType(c: PContext, childNode: PNode, prev: PType): PType =
 
 proc semTypeOf(c: PContext; n: PNode; prev: PType): PType =
   openScope(c)
+  inc c.inTypeofContext
   let t = semExprWithType(c, n, {efInTypeof})
+  dec c.inTypeofContext
   closeScope(c)
   fixupTypeOf(c, prev, t)
   result = t.typ
@@ -1850,7 +1865,9 @@ proc semTypeOf2(c: PContext; n: PNode; prev: PType): PType =
       localError(c.config, n.info, "typeof: cannot evaluate 'mode' parameter at compile-time")
     else:
       m = mode.intVal
+  inc c.inTypeofContext
   let t = semExprWithType(c, n[1], if m == 1: {efInTypeof} else: {})
+  dec c.inTypeofContext
   closeScope(c)
   fixupTypeOf(c, prev, t)
   result = t.typ
@@ -2040,11 +2057,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       elif op.s == "owned" and optOwnedRefs notin c.config.globalOptions and n.len == 2:
         result = semTypeExpr(c, n[1], prev)
       else:
-        if c.inGenericContext > 0 and n.kind == nkCall:
-          let n = semGenericStmt(c, n)
-          result = makeTypeFromExpr(c, n.copyTree)
-        else:
-          result = semTypeExpr(c, n, prev)
+        result = semTypeExpr(c, n, prev)
   of nkWhenStmt:
     var whenResult = semWhen(c, n, false)
     if whenResult.kind == nkStmtList: whenResult.transitionSonsKind(nkStmtListType)
@@ -2207,6 +2220,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   of nkType: result = n.typ
   of nkStmtListType: result = semStmtListType(c, n, prev)
   of nkBlockType: result = semBlockType(c, n, prev)
+  of nkOpenSym: result = semTypeNode(c, n[0], prev)
   else:
     result = semTypeExpr(c, n, prev)
     when false:

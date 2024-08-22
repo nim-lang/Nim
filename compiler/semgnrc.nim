@@ -59,6 +59,9 @@ template isMixedIn(sym): bool =
 template canOpenSym(s): bool =
   {withinMixin, withinConcept} * flags == {withinMixin} and s.id notin ctx.toBind
 
+proc newOpenSym*(n: PNode): PNode {.inline.} =
+  result = newTreeI(nkOpenSym, n.info, n)
+
 proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
                           ctx: var GenericCtx; flags: TSemGenericFlags,
                           fromDotExpr=false): PNode =
@@ -72,9 +75,12 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
         result.transitionSonsKind(nkClosedSymChoice)
     else:
       result = symChoice(c, n, s, scOpen)
-      if result.kind == nkSym and canOpenSym(result.sym):
-        result.flags.incl nfOpenSym
-        result.typ = nil
+      if canOpenSym(s):
+        if genericsOpenSym in c.features:
+          result = newOpenSym(result)
+        else:
+          result.flags.incl nfDisabledOpenSym
+          result.typ = nil
   case s.kind
   of skUnknown:
     # Introduced in this pass! Leave it as an identifier.
@@ -98,13 +104,28 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
     if s.typ != nil and s.typ.kind == tyStatic:
       if s.typ.n != nil:
         result = s.typ.n
+      elif c.inGenericContext > 0 and withinConcept notin flags:
+        # don't leave generic param as identifier node in generic type,
+        # sigmatch will try to instantiate generic type AST without all params
+        # fine to give a symbol node a generic type here since
+        # we are in a generic context and `prepareNode` will be called
+        result = newSymNodeTypeDesc(s, c.idgen, n.info)
+        if canOpenSym(result.sym):
+          if genericsOpenSym in c.features:
+            result = newOpenSym(result)
+          else:
+            result.flags.incl nfDisabledOpenSym
+            result.typ = nil
       else:
         result = n
     else:
       result = newSymNodeTypeDesc(s, c.idgen, n.info)
       if canOpenSym(result.sym):
-        result.flags.incl nfOpenSym
-        result.typ = nil
+        if genericsOpenSym in c.features:
+          result = newOpenSym(result)
+        else:
+          result.flags.incl nfDisabledOpenSym
+          result.typ = nil
     onUse(n.info, s)
   of skParam:
     result = n
@@ -114,16 +135,34 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
        (s.typ.flags * {tfGenericTypeParam, tfImplicitTypeParam} == {}):
       result = newSymNodeTypeDesc(s, c.idgen, n.info)
       if canOpenSym(result.sym):
-        result.flags.incl nfOpenSym
-        result.typ = nil
+        if genericsOpenSym in c.features:
+          result = newOpenSym(result)
+        else:
+          result.flags.incl nfDisabledOpenSym
+          result.typ = nil
+    elif c.inGenericContext > 0 and withinConcept notin flags:
+      # don't leave generic param as identifier node in generic type,
+      # sigmatch will try to instantiate generic type AST without all params
+      # fine to give a symbol node a generic type here since
+      # we are in a generic context and `prepareNode` will be called
+      result = newSymNodeTypeDesc(s, c.idgen, n.info)
+      if canOpenSym(result.sym):
+        if genericsOpenSym in c.features:
+          result = newOpenSym(result)
+        else:
+          result.flags.incl nfDisabledOpenSym
+          result.typ = nil
     else:
       result = n
     onUse(n.info, s)
   else:
     result = newSymNode(s, n.info)
     if canOpenSym(result.sym):
-      result.flags.incl nfOpenSym
-      result.typ = nil
+      if genericsOpenSym in c.features:
+        result = newOpenSym(result)
+      else:
+        result.flags.incl nfDisabledOpenSym
+        result.typ = nil
     onUse(n.info, s)
 
 proc lookup(c: PContext, n: PNode, flags: TSemGenericFlags,

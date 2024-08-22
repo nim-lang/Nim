@@ -1307,7 +1307,7 @@ func parseEnum*[T: enum](s: string): T =
   ## type contains multiple fields with the same string value.
   ##
   ## Raises `ValueError` for an invalid value in `s`. The comparison is
-  ## done in a style insensitive way.
+  ## done in a style insensitive way (first letter is still case-sensitive).
   runnableExamples:
     type
       MyEnum = enum
@@ -1327,7 +1327,7 @@ func parseEnum*[T: enum](s: string, default: T): T =
   ## type contains multiple fields with the same string value.
   ##
   ## Uses `default` for an invalid value in `s`. The comparison is done in a
-  ## style insensitive way.
+  ## style insensitive way (first letter is still case-sensitive).
   runnableExamples:
     type
       MyEnum = enum

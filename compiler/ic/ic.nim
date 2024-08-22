@@ -16,7 +16,7 @@ from std/os import removeFile, isAbsolute
 
 import ../../dist/checksums/src/checksums/sha1
 
-import ".." / nir / nirlineinfos
+import iclineinfos
 
 when defined(nimPreviewSlimSystem):
   import std/[syncio, assertions, formatfloat]
@@ -414,7 +414,7 @@ proc storeSym*(s: PSym; c: var PackedEncoder; m: var PackedModule): PackedItemId
       p.bitsize = s.bitsize
       p.alignment = s.alignment
 
-    p.externalName = toLitId(s.loc.r, m)
+    p.externalName = toLitId(s.loc.snippet, m)
     p.locFlags = s.loc.flags
     c.addMissing s.typ
     p.typ = s.typ.storeType(c, m)
@@ -837,7 +837,7 @@ proc loadNodes*(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: int;
     result.ident = getIdent(c.cache, g[thisModule].fromDisk.strings[n.litId])
   of nkSym:
     result.sym = loadSym(c, g, thisModule, PackedItemId(module: LitId(0), item: tree[n].soperand))
-    if result.typ == nil and nfOpenSym notin result.flags:
+    if result.typ == nil:
       result.typ = result.sym.typ
   of externIntLit:
     result.intVal = g[thisModule].fromDisk.numbers[n.litId]
@@ -851,7 +851,7 @@ proc loadNodes*(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: int;
     assert n2.kind == nkNone
     transitionNoneToSym(result)
     result.sym = loadSym(c, g, thisModule, PackedItemId(module: n1.litId, item: tree[n2].soperand))
-    if result.typ == nil and nfOpenSym notin result.flags:
+    if result.typ == nil:
       result.typ = result.sym.typ
   else:
     for n0 in sonsReadonly(tree, n):
@@ -945,7 +945,7 @@ proc symBodyFromPacked(c: var PackedDecoder; g: var PackedModuleGraph;
   result.owner = loadSym(c, g, si, s.owner)
   let externalName = g[si].fromDisk.strings[s.externalName]
   if externalName != "":
-    result.loc.r = rope externalName
+    result.loc.snippet = externalName
   result.loc.flags = s.locFlags
   result.instantiatedFrom = loadSym(c, g, si, s.instantiatedFrom)
 

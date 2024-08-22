@@ -420,14 +420,18 @@ proc foldConv(n, a: PNode; idgen: IdGenerator; g: ModuleGraph; check = false): P
       result = newIntNodeT(toInt128(getFloat(a)), n, idgen, g)
     of tyChar, tyUInt..tyUInt64, tyInt..tyInt64:
       var val = a.getOrdValue
-      if check: rangeCheck(n, val, g)
-      result = newIntNodeT(val, n, idgen, g)
       if dstTyp.kind in {tyUInt..tyUInt64}:
+        result = newIntNodeT(maskBytes(val, int getSize(g.config, dstTyp)), n, idgen, g)
         result.transitionIntKind(nkUIntLit)
+        result.typ = dstTyp
+      else:
+        if check: rangeCheck(n, val, g)
+        result = newIntNodeT(val, n, idgen, g)
     else:
       result = a
       result.typ = n.typ
-    if check and result.kind in {nkCharLit..nkUInt64Lit}:
+    if check and result.kind in {nkCharLit..nkUInt64Lit} and
+          dstTyp.kind notin {tyUInt..tyUInt64}:
       rangeCheck(n, getInt(result), g)
   of tyFloat..tyFloat64:
     case srcTyp.kind
@@ -701,10 +705,7 @@ proc getConstExpr(m: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode 
     except DivByZeroDefect:
       localError(g.config, n.info, "division by zero")
   of nkAddr:
-    var a = getConstExpr(m, n[0], idgen, g)
-    if a != nil:
-      result = n
-      n[0] = a
+    result = nil # don't fold paths containing nkAddr
   of nkBracket, nkCurly:
     result = copyNode(n)
     for son in n.items:
@@ -750,6 +751,8 @@ proc getConstExpr(m: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode 
     if leValueConv(n[1], a) and leValueConv(a, n[2]):
       result = a              # a <= x and x <= b
       result.typ = n.typ
+    elif n.typ.kind in {tyUInt..tyUInt64}:
+      discard "don't check uints"
     else:
       localError(g.config, n.info,
         "conversion from $1 to $2 is invalid" %

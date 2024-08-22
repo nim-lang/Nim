@@ -121,7 +121,7 @@ template main {.dirty.} =
       rVal: R = default(R) # Works fine
       objVal = default(Obj)
 
-    doAssert rVal == 0 # it should be 1
+    doAssert rVal == 1
     doAssert objVal.r == 1
 
   block: # bug #16744
@@ -134,7 +134,7 @@ template main {.dirty.} =
       rVal: R = default(R) # Works fine
       objVal = Obj()
 
-    doAssert rVal == 0 # it should be 1
+    doAssert rVal == 1 # it should be 1
     doAssert objVal.r == 1
 
   block: # bug #3608
@@ -744,6 +744,32 @@ template main {.dirty.} =
       var b = default ArrayObj2
       doAssert b.list[North] == 1
 
+  block:
+    type limited_float = range[1.2..20.0]
+    doAssert default(limited_float) == 1.2
+
+
+  block:
+    type
+      range1 = range[1..10]
+      range2 = range[-1..10]
+
+    proc foo =
+      doAssert default(range1) == 1
+      doAssert default(range2) == -1
+
+      let s = default(array[5, range1])
+      doAssert s == [range1 1, 1, 1, 1, 1]
+
+    foo()
+
+  block:
+    type
+      Object = object
+        id: range[1.2..29.3]
+
+    var s = default(Object)
+    doAssert s.id == 1.2
 
 static: main()
 main()
