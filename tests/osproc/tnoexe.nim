@@ -16,7 +16,12 @@ except OSError as e:
 # `poEvalCommand`, invokes the system shell to run the specified command
 try:
   let process = startProcess(command, options = {poUsePath, poEvalCommand})
+  # linux
   let exitCode = process.waitForExit()
   echo exitCode != 0
 except OSError as e:
-  doAssert false, "after #24000 is merged, this will no longer throw an exception"
+  # Because the implementation of `poEvalCommand` on different platforms is inconsistent, 
+  # Linux will not throw an exception, but Windows will throw an exception
+
+  # windows
+  echo e.errorCode != 0
