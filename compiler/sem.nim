@@ -103,7 +103,7 @@ proc fitNode(c: PContext, formal: PType, arg: PNode; info: TLineInfo): PNode =
     result = nil
     for ch in arg:
       if sameType(ch.typ, formal):
-        return getConstExpr(c.module, ch, c.idgen, c.graph)
+        return ch
     typeMismatch(c.config, info, formal, arg.typ, arg)
   else:
     result = indexTypesMatch(c, formal, arg.typ, arg)
