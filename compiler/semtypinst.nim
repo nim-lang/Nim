@@ -702,6 +702,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
     if not cl.allowMetaTypes and result.n != nil and
         result.base.kind != tyNone:
       result.n = cl.c.semConstExpr(cl.c, result.n)
+      result.n.typ = result.base
 
   of tyGenericInst, tyUserTypeClassInst:
     bailout()

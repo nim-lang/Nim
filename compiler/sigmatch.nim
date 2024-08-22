@@ -1969,6 +1969,10 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
   of tyFromExpr:
     # fix the expression, so it contains the already instantiated types
     if f.n == nil or f.n.kind == nkEmpty: return isGeneric
+    if c.c.inGenericContext > 0:
+      # need to delay until instantiation
+      # also prevent infinite recursion below
+      return isNone
     inc c.c.inGenericContext # to generate tyFromExpr again if unresolved
     let reevaluated = tryResolvingStaticExpr(c, f.n, allowCalls = true).typ
     dec c.c.inGenericContext
@@ -2180,7 +2184,10 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
       return argSemantized
 
     if a.kind == tyStatic:
-      discard
+      if m.callee.kind == tyGenericBody and
+         a.n == nil and
+         tfGenericTypeParam notin a.flags:
+        return newNodeIT(nkType, argOrig.info, makeTypeFromExpr(c, arg))
     elif arg.kind != nkEmpty:
       var evaluated = c.semTryConstExpr(c, arg)
       if evaluated != nil:
