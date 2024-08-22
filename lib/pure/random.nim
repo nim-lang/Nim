@@ -80,7 +80,7 @@ when defined(nimPreviewSlimSystem):
 include system/inclrtl
 {.push debugger: off.}
 
-when defined(js):
+when defined(js) and not compileOption("jsbigint64"):
   type Ui = uint32
 
   const randMax = 4_294_967_295u32
@@ -105,7 +105,7 @@ type
                  ## generator are **not** thread-safe!
     a0, a1: Ui
 
-when defined(js):
+when defined(js) and not compileOption("jsbigint64"):
   var state = Rand(
     a0: 0x69B4C98Cu32,
     a1: 0xFED1DD30u32) # global for backwards compatibility
@@ -208,7 +208,7 @@ proc skipRandomNumbers*(s: var Rand) =
     doAssert vals == [501737, 497901, 500683, 500157]
 
 
-  when defined(js):
+  when defined(js) and not compileOption("jsbigint64"):
     const helper = [0xbeac0467u32, 0xd86b048bu32]
   else:
     const helper = [0xbeac0467eba5facbu64, 0xd86b048b86aa9922u64]
@@ -294,7 +294,10 @@ proc rand*(r: var Rand; max: range[0.0 .. high(float)]): float {.benign.} =
 
   let x = next(r)
   when defined(js):
-    result = (float(x) / float(high(uint32))) * max
+    when compileOption("jsbigint64"):
+      result = (float(x) / float(high(uint64))) * max
+    else:
+      result = (float(x) / float(high(uint32))) * max
   else:
     let u = (0x3FFu64 shl 52u64) or (x shr 12u64)
     result = (cast[float](u) - 1.0) * max
