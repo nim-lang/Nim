@@ -253,9 +253,13 @@ proc instantiateProcType(c: PContext, pt: TypeMapping,
     var typeToFit = resulti
 
     let needsStaticSkipping = resulti.kind == tyFromExpr
+    let needsTypeDescSkipping = resulti.kind == tyTypeDesc and tfUnresolved in resulti.flags
     result[i] = replaceTypeVarsT(cl, resulti)
     if needsStaticSkipping:
       result[i] = result[i].skipTypes({tyStatic})
+    if needsTypeDescSkipping:
+      result[i] = result[i].skipTypes({tyTypeDesc})
+      typeToFit = result[i]
 
     # ...otherwise, we use the instantiated type in `fitNode`
     if (typeToFit.kind != tyTypeDesc or typeToFit.base.kind != tyNone) and

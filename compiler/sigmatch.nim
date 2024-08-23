@@ -2795,7 +2795,8 @@ proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
           # The default param value is set to empty in `instantiateProcType`
           # when the type of the default expression doesn't match the type
           # of the instantiated proc param:
-          pushInfoContext(c.config, m.call.info, m.calleeSym.detailedInfo)
+          pushInfoContext(c.config, m.call.info,
+            if m.calleeSym != nil: m.calleeSym.detailedInfo else: "")
           typeMismatch(c.config, formal.ast.info, formal.typ, formal.ast.typ, formal.ast)
           popInfoContext(c.config)
           formal.ast.typ = errorType(c)
