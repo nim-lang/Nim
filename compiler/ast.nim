@@ -898,7 +898,7 @@ const
   nfAllFieldsSet* = nfBase2
 
   nkIdentKinds* = {nkIdent, nkSym, nkAccQuoted, nkOpenSymChoice,
-                   nkClosedSymChoice}
+                   nkClosedSymChoice, nkOpenSym}
 
   nkPragmaCallKinds* = {nkExprColonExpr, nkCall, nkCallStrLit}
   nkLiterals* = {nkCharLit..nkTripleStrLit}
