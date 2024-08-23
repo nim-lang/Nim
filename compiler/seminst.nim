@@ -292,6 +292,8 @@ proc instantiateProcType(c: PContext, pt: TypeMapping,
         # the user calls an explicit instantiation of the proc (this is
         # the only way the default value might be inserted).
         param.ast = errorNode(c, def)
+        # we know the node is empty, we need the actual type for error message
+        param.ast.typ = def.typ
       else:
         param.ast = fitNodePostMatch(c, typeToFit, converted)
       param.typ = result[i]
