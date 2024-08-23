@@ -59,9 +59,6 @@ template isMixedIn(sym): bool =
 template canOpenSym(s): bool =
   {withinMixin, withinConcept} * flags == {withinMixin} and s.id notin ctx.toBind
 
-proc newOpenSym*(n: PNode): PNode {.inline.} =
-  result = newTreeI(nkOpenSym, n.info, n)
-
 proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
                           ctx: var GenericCtx; flags: TSemGenericFlags,
                           isAmbiguous: bool,
@@ -78,7 +75,10 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
       result = symChoice(c, n, s, scOpen)
       if canOpenSym(s):
         if genericsOpenSym in c.features:
-          result = newOpenSym(result)
+          if result.kind == nkSym:
+            result = newOpenSym(result)
+          else:
+            result.typ = nil
         else:
           result.flags.incl nfDisabledOpenSym
           result.typ = nil

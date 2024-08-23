@@ -668,6 +668,8 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
     c.isAmbiguous = amb
   of nkSym:
     result = n.sym
+  of nkOpenSym:
+    result = qualifiedLookUp(c, n[0], flags)
   of nkDotExpr:
     result = nil
     var m = qualifiedLookUp(c, n[0], (flags * {checkUndeclared}) + {checkModule})

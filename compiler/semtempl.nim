@@ -230,29 +230,54 @@ proc semTemplSymbol(c: PContext, n: PNode, s: PSym; isField, isAmbiguous: bool):
   of skUnknown:
     # Introduced in this pass! Leave it as an identifier.
     result = n
-  of OverloadableSyms-{skTemplate,skMacro}:
+  of OverloadableSyms:
     result = symChoice(c, n, s, scOpen, isField)
-  of skTemplate, skMacro:
-    result = symChoice(c, n, s, scOpen, isField)
-    if result.kind == nkSym:
-      # template/macro symbols might need to be semchecked again
-      # prepareOperand etc don't do this without setting the type to nil
-      result.typ = nil
+    if result.kind in {nkSym, nkOpenSymChoice}:
+      if genericsOpenSym in c.features:
+        if result.kind == nkSym:
+          result = newOpenSym(result)
+        else:
+          result.typ = nil
+      else:
+        result.flags.incl nfDisabledOpenSym
+        result.typ = nil
   of skGenericParam:
     if isField and sfGenSym in s.flags: result = n
-    else: result = newSymNodeTypeDesc(s, c.idgen, n.info)
+    else:
+      result = newSymNodeTypeDesc(s, c.idgen, n.info)
+      if genericsOpenSym in c.features:
+        result = newOpenSym(result)
+      else:
+        result.flags.incl nfDisabledOpenSym
+        result.typ = nil
   of skParam:
     result = n
   of skType:
     if isField and sfGenSym in s.flags: result = n
-    elif isAmbiguous:
-      # ambiguous types should be symchoices since lookup behaves
-      # differently for them in regular expressions
-      result = symChoice(c, n, s, scOpen, isField)
-    else: result = newSymNodeTypeDesc(s, c.idgen, n.info)
+    else:
+      if isAmbiguous:
+        # ambiguous types should be symchoices since lookup behaves
+        # differently for them in regular expressions
+        result = symChoice(c, n, s, scOpen, isField)
+      else: result = newSymNodeTypeDesc(s, c.idgen, n.info)
+      if result.kind in {nkSym, nkOpenSymChoice}:
+        if genericsOpenSym in c.features:
+          if result.kind == nkSym:
+            result = newOpenSym(result)
+          else:
+            result.typ = nil
+        else:
+          result.flags.incl nfDisabledOpenSym
+          result.typ = nil
   else:
     if isField and sfGenSym in s.flags: result = n
-    else: result = newSymNode(s, n.info)
+    else:
+      result = newSymNode(s, n.info)
+      if genericsOpenSym in c.features:
+        result = newOpenSym(result)
+      else:
+        result.flags.incl nfDisabledOpenSym
+        result.typ = nil
     # Issue #12832
     when defined(nimsuggest):
       suggestSym(c.graph, n.info, s, c.graph.usageSym, false)

@@ -138,25 +138,6 @@ proc resolveSymChoice(c: PContext, n: var PNode, flags: TExprFlags = {}, expecte
       # to mirror behavior before overloadable enums
       n = n[0]
 
-proc semSymChoice(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType = nil): PNode =
-  result = n
-  resolveSymChoice(c, result, flags, expectedType)
-  if isSymChoice(result) and result.len == 1:
-    # resolveSymChoice can leave 1 sym
-    result = result[0]
-  if isSymChoice(result) and efAllowSymChoice notin flags:
-    var err = "ambiguous identifier: '" & result[0].sym.name.s &
-      "' -- use one of the following:\n"
-    for child in n:
-      let candidate = child.sym
-      err.add "  " & candidate.owner.name.s & "." & candidate.name.s
-      err.add ": " & typeToString(candidate.typ) & "\n"
-    localError(c.config, n.info, err)
-    n.typ = errorType(c)
-    result = n
-  if result.kind == nkSym:
-    result = semSym(c, result, result.sym, flags)
-
 proc semOpenSym(c: PContext, n: PNode, flags: TExprFlags, expectedType: PType,
                 warnDisabled = false): PNode =
   ## sem the child of an `nkOpenSym` node, that is, captured symbols that can be
@@ -205,13 +186,36 @@ proc semOpenSym(c: PContext, n: PNode, flags: TExprFlags, expectedType: PType,
           break
       o = o.owner
   # nothing found
-  if not warnDisabled:
+  if not warnDisabled and isSym:
     result = semExpr(c, n, flags, expectedType)
   else:
     result = nil
     if not isSym:
       # set symchoice node type back to None
       n.typ = newTypeS(tyNone, c)
+
+proc semSymChoice(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType = nil): PNode =
+  if n.kind == nkOpenSymChoice:
+    result = semOpenSym(c, n, flags, expectedType, warnDisabled = nfDisabledOpenSym in n.flags)
+    if result != nil:
+      return
+  result = n
+  resolveSymChoice(c, result, flags, expectedType)
+  if isSymChoice(result) and result.len == 1:
+    # resolveSymChoice can leave 1 sym
+    result = result[0]
+  if isSymChoice(result) and efAllowSymChoice notin flags:
+    var err = "ambiguous identifier: '" & result[0].sym.name.s &
+      "' -- use one of the following:\n"
+    for child in n:
+      let candidate = child.sym
+      err.add "  " & candidate.owner.name.s & "." & candidate.name.s
+      err.add ": " & typeToString(candidate.typ) & "\n"
+    localError(c.config, n.info, err)
+    n.typ = errorType(c)
+    result = n
+  if result.kind == nkSym:
+    result = semSym(c, result, result.sym, flags)
 
 proc inlineConst(c: PContext, n: PNode, s: PSym): PNode {.inline.} =
   result = copyTree(s.astdef)
@@ -3230,9 +3234,6 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
     if isSymChoice(result):
       result = semSymChoice(c, result, flags, expectedType)
   of nkClosedSymChoice, nkOpenSymChoice:
-    if nfDisabledOpenSym in n.flags:
-      let res = semOpenSym(c, n, flags, expectedType, warnDisabled = true)
-      assert res == nil
     result = semSymChoice(c, n, flags, expectedType)
   of nkSym:
     let s = n.sym

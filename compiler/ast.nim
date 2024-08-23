@@ -1287,6 +1287,9 @@ proc newSymNode*(sym: PSym, info: TLineInfo): PNode =
   result.typ = sym.typ
   result.info = info
 
+proc newOpenSym*(n: PNode): PNode {.inline.} =
+  result = newTreeI(nkOpenSym, n.info, n)
+
 proc newIntNode*(kind: TNodeKind, intVal: BiggestInt): PNode =
   result = newNode(kind)
   result.intVal = intVal
