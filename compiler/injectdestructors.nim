@@ -829,7 +829,7 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
     elif n.kind in {nkObjDownConv, nkObjUpConv}:
       result = copyTree(n)
       result[0] = p(n[0], c, s, sinkArg)
-    elif n.kind == nkCast and n.typ.skipTypes(abstractInst).kind != tyRef:
+    elif n.kind == nkCast and n.typ.skipTypes(abstractInst).kind in {tyString, tySeq}:
       result = copyTree(n)
       result[1] = p(n[1], c, s, sinkArg)
     elif n.typ == nil:
