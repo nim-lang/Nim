@@ -2790,14 +2790,16 @@ proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
           m.firstMismatch.formal = formal
           break
       else:
+        # mirrored with updateDefaultParams:
         if formal.ast.kind == nkEmpty:
           # The default param value is set to empty in `instantiateProcType`
           # when the type of the default expression doesn't match the type
           # of the instantiated proc param:
-          localError(c.config, m.call.info,
-                     ("The default parameter '$1' has incompatible type " &
-                      "with the explicitly requested proc instantiation") %
-                      formal.name.s)
+          pushInfoContext(c.config, m.call.info,
+            if m.calleeSym != nil: m.calleeSym.detailedInfo else: "")
+          typeMismatch(c.config, formal.ast.info, formal.typ, formal.ast.typ, formal.ast)
+          popInfoContext(c.config)
+          formal.ast.typ = errorType(c)
         if nfDefaultRefsParam in formal.ast.flags:
           m.call.flags.incl nfDefaultRefsParam
         var defaultValue = copyTree(formal.ast)
