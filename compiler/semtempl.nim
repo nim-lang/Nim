@@ -218,12 +218,12 @@ proc addLocalDecl(c: var TemplCtx, n: var PNode, k: TSymKind) =
         if k == skParam and c.inTemplateHeader > 0:
           local.flags.incl sfTemplateParam
 
-proc semTemplSymbol(c: PContext, n: PNode, s: PSym; isField, isAmbiguous: bool): PNode =
+proc semTemplSymbol(c: var TemplCtx, n: PNode, s: PSym; isField, isAmbiguous: bool): PNode =
   incl(s.flags, sfUsed)
   # bug #12885; ideally sem'checking is performed again afterwards marking
   # the symbol as used properly, but the nfSem mechanism currently prevents
   # that from happening, so we mark the module as used here already:
-  markOwnerModuleAsUsed(c, s)
+  markOwnerModuleAsUsed(c.c, s)
   # we do not call onUse here, as the identifier is not really
   # resolved here. We will fixup the used identifiers later.
   case s.kind
@@ -231,9 +231,9 @@ proc semTemplSymbol(c: PContext, n: PNode, s: PSym; isField, isAmbiguous: bool):
     # Introduced in this pass! Leave it as an identifier.
     result = n
   of OverloadableSyms:
-    result = symChoice(c, n, s, scOpen, isField)
-    if result.kind in {nkSym, nkOpenSymChoice}:
-      if genericsOpenSym in c.features:
+    result = symChoice(c.c, n, s, scOpen, isField)
+    if not isField and result.kind in {nkSym, nkOpenSymChoice}:
+      if genericsOpenSym in c.c.features:
         if result.kind == nkSym:
           result = newOpenSym(result)
         else:
@@ -244,12 +244,13 @@ proc semTemplSymbol(c: PContext, n: PNode, s: PSym; isField, isAmbiguous: bool):
   of skGenericParam:
     if isField and sfGenSym in s.flags: result = n
     else:
-      result = newSymNodeTypeDesc(s, c.idgen, n.info)
-      if genericsOpenSym in c.features:
-        result = newOpenSym(result)
-      else:
-        result.flags.incl nfDisabledOpenSym
-        result.typ = nil
+      result = newSymNodeTypeDesc(s, c.c.idgen, n.info)
+      if not isField and s.owner != c.owner:
+        if genericsOpenSym in c.c.features:
+          result = newOpenSym(result)
+        else:
+          result.flags.incl nfDisabledOpenSym
+          result.typ = nil
   of skParam:
     result = n
   of skType:
@@ -260,7 +261,9 @@ proc semTemplSymbol(c: PContext, n: PNode, s: PSym; isField, isAmbiguous: bool):
         # differently for them in regular expressions
         result = symChoice(c, n, s, scOpen, isField)
       else: result = newSymNodeTypeDesc(s, c.idgen, n.info)
-      if result.kind in {nkSym, nkOpenSymChoice}:
+      if not isField and not (s.owner == c.owner and
+          s.typ != nil and s.typ.kind == tyGenericParam) and
+          result.kind in {nkSym, nkOpenSymChoice}:
         if genericsOpenSym in c.features:
           if result.kind == nkSym:
             result = newOpenSym(result)
@@ -273,17 +276,18 @@ proc semTemplSymbol(c: PContext, n: PNode, s: PSym; isField, isAmbiguous: bool):
     if isField and sfGenSym in s.flags: result = n
     else:
       result = newSymNode(s, n.info)
-      if genericsOpenSym in c.features:
-        result = newOpenSym(result)
-      else:
-        result.flags.incl nfDisabledOpenSym
-        result.typ = nil
+      if not isField:
+        if genericsOpenSym in c.c.features:
+          result = newOpenSym(result)
+        else:
+          result.flags.incl nfDisabledOpenSym
+          result.typ = nil
     # Issue #12832
     when defined(nimsuggest):
-      suggestSym(c.graph, n.info, s, c.graph.usageSym, false)
+      suggestSym(c.c.graph, n.info, s, c.c.graph.usageSym, false)
     # field access (dot expr) will be handled by builtinFieldAccess
     if not isField:
-      styleCheckUse(c, n.info, s)
+      styleCheckUse(c.c, n.info, s)
 
 proc semRoutineInTemplName(c: var TemplCtx, n: PNode, explicitInject: bool): PNode =
   result = n
@@ -394,7 +398,7 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
       else:
         if s.kind in {skVar, skLet, skConst}:
           discard qualifiedLookUp(c.c, n, {checkAmbiguity, checkModule})
-        result = semTemplSymbol(c.c, n, s, c.noGenSym > 0, c.c.isAmbiguous)
+        result = semTemplSymbol(c, n, s, c.noGenSym > 0, c.c.isAmbiguous)
   of nkBind:
     result = semTemplBody(c, n[0])
   of nkBindStmt:
@@ -605,7 +609,7 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
       else:
         if s.kind in {skVar, skLet, skConst}:
           discard qualifiedLookUp(c.c, n, {checkAmbiguity, checkModule})
-        return semTemplSymbol(c.c, n, s, c.noGenSym > 0, c.c.isAmbiguous)
+        return semTemplSymbol(c, n, s, c.noGenSym > 0, c.c.isAmbiguous)
     if n.kind == nkDotExpr:
       result = n
       result[0] = semTemplBody(c, n[0])

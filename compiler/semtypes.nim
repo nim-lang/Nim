@@ -1282,7 +1282,7 @@ proc semParamType(c: PContext, n: PNode, constraint: var PNode): PType =
     result = semTypeNode(c, n[0], nil)
     constraint = semNodeKindConstraints(n, c.config, 1)
   elif n.kind == nkCall and
-      n[0].kind in {nkIdent, nkSym, nkOpenSymChoice, nkClosedSymChoice} and
+      n[0].kind in {nkIdent, nkSym, nkOpenSymChoice, nkClosedSymChoice, nkOpenSym} and
       considerQuotedIdent(c, n[0]).s == "{}":
     result = semTypeNode(c, n[1], nil)
     constraint = semNodeKindConstraints(n, c.config, 2)
@@ -2055,7 +2055,9 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       elif op.id == ord(wType):
         checkSonsLen(n, 2, c.config)
         result = semTypeOf(c, n[1], prev)
-      elif op.s == "typeof" and n[0].kind == nkSym and n[0].sym.magic == mTypeOf:
+      elif op.s == "typeof" and (
+          (n[0].kind == nkSym and n[0].sym.magic == mTypeOf) or
+          (n[0].kind == nkOpenSym and n[0][0].sym.magic == mTypeOf)):
         result = semTypeOf2(c, n, prev)
       elif op.s == "owned" and optOwnedRefs notin c.config.globalOptions and n.len == 2:
         result = semTypeExpr(c, n[1], prev)

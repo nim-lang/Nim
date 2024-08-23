@@ -1784,7 +1784,7 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
       result = nil
   else:
     let s = if n[0].kind == nkSym: n[0].sym
-            elif n[0].kind in nkSymChoices: n[0][0].sym
+            elif n[0].kind in nkSymChoices + {nkOpenSym}: n[0][0].sym
             else: nil
     if s != nil:
       case s.kind
