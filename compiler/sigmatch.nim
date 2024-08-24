@@ -141,26 +141,23 @@ proc fixGenericArg*(c: PContext, formal, arg: PType): PType =
 proc typeRel*(c: var TCandidate, f, aOrig: PType,
               flags: TTypeRelFlags = {}): TTypeRelation
 
-proc explicitGenericSym*(m: var TCandidate, n: PNode, s: PSym): PSym =
-  # binding has to stay 'nil' for this to work!
-  #result = newCandidate(c, s, nil)
-  result = nil
+proc matchGenericParams*(m: var TCandidate, binding: PNode, callee: PSym) =
   let c = m.c
-  let typeParams = s.ast[genericParamsPos]
+  let typeParams = callee.ast[genericParamsPos]
   let paramCount = typeParams.len
-  let bindingCount = n.len-1
+  let bindingCount = binding.len-1
   if bindingCount > paramCount:
     m.state = csNoMatch
     m.firstMismatch.kind = kExtraGenericParam
     return
   for i in 1..min(paramCount, bindingCount):
     let formal = typeParams[i-1].typ
-    var arg = n[i].typ
+    var arg = binding[i].typ
     if arg == nil: continue
     # try transforming the argument into a static one before feeding it into
     # typeRel
     if formal.kind == tyStatic and arg.kind != tyStatic:
-      let evaluated = c.semTryConstExpr(c, n[i], n[i].typ)
+      let evaluated = c.semTryConstExpr(c, binding[i], binding[i].typ)
       if evaluated != nil:
         arg = newTypeS(tyStatic, c, son = evaluated.typ)
         arg.n = evaluated
@@ -196,11 +193,19 @@ proc explicitGenericSym*(m: var TCandidate, n: PNode, s: PSym): PSym =
       m.firstMismatch.arg = i
       m.firstMismatch.formal = paramSym
       return
-  var newInst = c.semGenerateInstance(c, s, m.bindings, n.info)
+
+proc explicitGenericSym*(m: var TCandidate, n: PNode, s: PSym): PSym =
+  # binding has to stay 'nil' for this to work!
+  #result = newCandidate(c, s, nil)
+  result = nil
+  matchGenericParams(m, n, s)
+  if m.state == csNoMatch:
+    return
+  var newInst = m.c.semGenerateInstance(m.c, s, m.bindings, n.info)
   newInst.typ.flags.excl tfUnresolved
   result = newInst
   let info = getCallLineInfo(n)
-  markUsed(c, info, s)
+  markUsed(m.c, info, s)
   onUse(info, s)
 
 proc initCandidate*(ctx: PContext, callee: PSym,
@@ -223,37 +228,7 @@ proc initCandidate*(ctx: PContext, callee: PSym,
         result.calleeSym = s
         result.callee = s.typ
       return
-    # otherwise, do instantiation here
-    var typeParams = callee.ast[genericParamsPos]
-    let paramCount = typeParams.len
-    let bindingCount = binding.len-1
-    if bindingCount > paramCount:
-      result.state = csNoMatch
-      result.firstMismatch.kind = kExtraGenericParam
-      return
-    for i in 1..min(paramCount, bindingCount):
-      var formalTypeParam = typeParams[i-1].typ
-      var bound = binding[i].typ
-      if bound != nil:
-        bound = fixGenericArg(ctx, formalTypeParam, bound)
-        put(result, formalTypeParam, bound)
-    # not enough generic params given, check if remaining have defaults:
-    for i in bindingCount ..< paramCount:
-      let param = typeParams[i]
-      assert param.kind == nkSym
-      let paramSym = param.sym
-      if paramSym.ast != nil:
-        let paramType = param.typ
-        var bound = paramSym.ast.typ
-        if bound != nil:
-          bound = fixGenericArg(ctx, paramType, bound)
-          put(result, paramType, bound)
-      else:
-        result.state = csNoMatch
-        result.firstMismatch.kind = kMissingGenericParam
-        result.firstMismatch.arg = i
-        result.firstMismatch.formal = paramSym
-        return
+    matchGenericParams(result, binding, callee)
 
 proc newCandidate*(ctx: PContext, callee: PSym,
                    binding: PNode, calleeScope = -1): TCandidate =
@@ -799,11 +774,6 @@ proc procParamTypeRel(c: var TCandidate; f, a: PType): TTypeRelation =
 proc procTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
   case a.kind
   of tyProc:
-    #for i, fi in f.ikids:
-    #  if fi != nil:
-    #    let prev = idTableGet(c.bindings, fi)
-    #    if prev != nil: f[i] = prev
-    #eraseVoidParams(f)
     if f.signatureLen != a.signatureLen: return
     result = isEqual      # start with maximum; also correct for no
                           # params at all
