@@ -177,19 +177,29 @@ proc matchGenericParams(m: var TCandidate, binding: PNode, callee: PSym) =
       matchGenericParam(m, paramSym, paramSym.ast, i)
       if m.state == csNoMatch:
         return
-    elif tfImplicitTypeParam notin paramSym.typ.flags:
-      m.state = csNoMatch
-      m.firstMismatch.kind = kMissingGenericParam
-      m.firstMismatch.arg = i
-      m.firstMismatch.formal = paramSym
+    elif tfImplicitTypeParam in paramSym.typ.flags:
+      # not a mismatch, but can't create sym
+      m.state = csEmpty
       return
+    else:
+      when false:
+        m.state = csNoMatch
+        m.firstMismatch.kind = kMissingGenericParam
+        m.firstMismatch.arg = i
+        m.firstMismatch.formal = paramSym
+      else:
+        # only providing some generic parameters is permitted
+        # but a sym still cannot be created
+        m.state = csEmpty
+      return
+  m.state = csMatch
 
 proc explicitGenericSym*(m: var TCandidate, n: PNode, s: PSym): PSym =
   if s.kind in {skTemplate, skMacro}:
     internalError m.c.config, n.info, "cannot get explicitly instantiated symbol of " &
       (if s.kind == skTemplate: "template" else: "macro")
   matchGenericParams(m, n, s)
-  if m.state == csNoMatch:
+  if m.state != csMatch:
     return nil
   var newInst = m.c.semGenerateInstance(m.c, s, m.bindings, n.info)
   newInst.typ.flags.excl tfUnresolved
@@ -217,6 +227,8 @@ proc initCandidate*(ctx: PContext, callee: PSym,
       if s != nil:
         result.calleeSym = s
         result.callee = s.typ
+      if result.state != csNoMatch:
+        result.state = csEmpty
     else:
       matchGenericParams(result, binding, callee)
 
