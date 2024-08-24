@@ -326,7 +326,8 @@ type
     nfHasComment # node has a comment
     nfSkipFieldChecking # node skips field visable checking
     nfDisabledOpenSym # temporary: node should be nkOpenSym but cannot
-                      # because genericsOpenSym experimental switch is disabled
+                      # because genericsOpenSym or templateOpenSym
+                      # experimental switch is disabled
                       # gives warning instead
 
   TNodeFlags* = set[TNodeFlag]

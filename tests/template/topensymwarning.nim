@@ -53,7 +53,7 @@ template g(T: type): string =
     let _ = f
     {.pop.}
     res = $error #[tt.Warning
-           ^ a new symbol 'error' has been injected during instantiation of topensymwarning, however 'error' [enumField declared in topensymwarning.nim(6, 3)] captured at the proc declaration will be used instead; either enable --experimental:genericsOpenSym to use the injected symbol or `bind` this captured symbol explicitly [GenericsIgnoredInjection]]#
+           ^ a new symbol 'error' has been injected during template or generic instantiation, however 'error' [enumField declared in topensymwarning.nim(6, 3)] captured at the proc declaration will be used instead; either enable one of --experimental:genericsOpenSym or --experimental:templateOpenSym to use the injected symbol, or `bind` this captured symbol explicitly [GenericsIgnoredInjection]]#
     123
   res
 

@@ -170,18 +170,21 @@ proc semOpenSym(c: PContext, n: PNode, flags: TExprFlags, expectedType: PType,
         else:
           var msg =
             "a new symbol '" & ident.s & "' has been injected during " &
-            "instantiation of " & c.p.owner.name.s & ", however "
+            # msgContext should show what is being instantiated:
+            "template or generic instantiation, however "
           if isSym:
             msg.add(
               getSymRepr(c.config, n.sym) & " captured at " &
               "the proc declaration will be used instead; " &
-              "either enable --experimental:genericsOpenSym to use the " &
-              "injected symbol or `bind` this captured symbol explicitly")
+              "either enable one of --experimental:genericsOpenSym or " &
+              "--experimental:templateOpenSym to use the injected symbol, " &
+              "or `bind` this captured symbol explicitly")
           else:
             msg.add(
               "overloads of " & ident.s & " will be used instead; " &
-              "either enable --experimental:genericsOpenSym to use the " &
-              "injected symbol or `bind` this symbol explicitly")
+              "either enable one of --experimental:genericsOpenSym or " &
+              "--experimental:templateOpenSym to use the injected symbol, " &
+              "or `bind` this symbol explicitly")
           message(c.config, n.info, warnGenericsIgnoredInjection, msg)
           break
       o = o.owner

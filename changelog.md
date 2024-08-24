@@ -82,21 +82,23 @@ is often an easy workaround.
     let (a, (b, c)): (byte, (float, cstring)) = (1, (2, "abc"))
     ```
 
-- An experimental option `genericsOpenSym` has been added to allow captured
-  symbols in generic routine bodies to be replaced by symbols injected locally
-  by templates/macros at instantiation time. `bind` may be used to keep the
-  captured symbols over the injected ones regardless of enabling the option,
-  but other methods like renaming the captured symbols should be used instead
-  so that the code is not affected by context changes.
+- The experimental options `genericsOpenSym` and `templateOpenSym` have been
+  added to allow captured symbols in generic routine and template bodies
+  respectively to be replaced by symbols injected locally by templates/macros
+  at instantiation time. `bind` may be used to keep the captured symbols over
+  the injected ones regardless of enabling the option, but other methods like
+  renaming the captured symbols should be used instead so that the code is not
+  affected by context changes.
 
-  Since this change may affect runtime behavior, the experimental switch
-  `genericsOpenSym` needs to be enabled, and a warning is given in the case
-  where an injected symbol would replace a captured symbol not bound by `bind`
-  and the experimental switch isn't enabled.
+  Since this change may affect runtime behavior, the experimental switches
+  `genericsOpenSym` and `templateOpenSym` need to be enabled for the respective
+  routines, and a warning is given in the case where an injected symbol would
+  replace a captured symbol not bound by `bind` and the experimental switch
+  isn't enabled.
 
   ```nim
   const value = "captured"
-  template foo(x: int, body: untyped) =
+  template foo(x: int, body: untyped): untyped =
     let value {.inject.} = "injected"
     body
 
@@ -104,6 +106,12 @@ is often an easy workaround.
     foo(123):
       return value # warning: a new `value` has been injected, use `bind` or turn on `experimental:genericsOpenSym`
   echo old[int]() # "captured"
+
+  template oldTempl(): string =
+    block:
+      foo(123):
+        value # warning: a new `value` has been injected, use `bind` or turn on `experimental:templateOpenSym`
+  echo oldTempl() # "captured"
 
   {.experimental: "genericsOpenSym".}
 
@@ -117,14 +125,28 @@ is often an easy workaround.
     foo(123):
       return value
   assert baz[int]() == "captured"
+
+  {.experimental: "templateOpenSym".}
+
+  template barTempl(): string =
+    block:
+      foo(123):
+        value
+  assert barTempl() == "injected" # previously it would be "captured"
+
+  template bazTempl(): string =
+    bind value
+    block:
+      foo(123):
+        value
+  assert bazTempl() == "captured"
   ```
 
   This option also generates a new node kind `nnkOpenSym` which contains
-  exactly 1 of either an `nnkSym` or an `nnkOpenSymChoice` node. In the future
-  this might be merged with a slightly modified `nnkOpenSymChoice` node but
-  macros that want to support the experimental feature should still handle
-  `nnkOpenSym`, as the node kind would simply not be generated as opposed to
-  being removed.
+  exactly 1 `nnkSym` node. In the future this might be merged with a slightly
+  modified `nnkOpenSymChoice` node but macros that want to support the
+  experimental feature should still handle `nnkOpenSym`, as the node kind would
+  simply not be generated as opposed to being removed.
 
 ## Compiler changes
 
