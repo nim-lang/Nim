@@ -1086,6 +1086,18 @@ proc setInfoRecursive*(n: PNode, info: TLineInfo) =
     for i in 0..<n.safeLen: setInfoRecursive(n[i], info)
     n.info = info
 
+proc getCallLineInfo*(n: PNode): TLineInfo =
+  case n.kind
+  of nkAccQuoted, nkBracketExpr, nkCall, nkCallStrLit, nkCommand:
+    if len(n) > 0:
+      return getCallLineInfo(n[0])
+  of nkDotExpr:
+    if len(n) > 1:
+      return getCallLineInfo(n[1])
+  else:
+    discard
+  result = n.info
+
 when defined(useNodeIds):
   const nodeIdToDebug* = -1 # 2322968
   var gNodeId: int

@@ -98,6 +98,16 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
   while true:
     determineType(c, sym)
     z = initCandidate(c, sym, initialBinding, scope, diagnosticsFlag)
+    #if false and initialBinding != nil and sym.kind notin {skTemplate, skMacro}:
+    #  let m = explicitGenericSym(c, initialBinding, sym)
+    #  z.bindings = m.bindings
+    #  if m.state == csNoMatch:
+    #    z.state = csNoMatch
+    #    z.firstMismatch = m.firstMismatch
+    #  else:
+    #    sym = m.calleeSym
+    #    z.calleeSym = sym
+    #    z.callee = sym.typ
 
     # this is kinda backwards as without a check here the described
     # problems in recalc would not happen, but instead it 100%
@@ -269,6 +279,12 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
         of kMissingParam:
           candidates.add("  missing parameter: " & nameParam)
           candidates.add "\n"
+        of kExtraGenericParam:
+          candidates.add("  extra generic param given")
+          candidates.add "\n"
+        of kMissingGenericParam:
+          candidates.add("  missing generic parameter: " & nameParam)
+          candidates.add "\n"
         of kVarNeeded:
           doAssert nArg != nil
           doAssert err.firstMismatch.formal != nil
@@ -306,6 +322,10 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
         of kPositionalAlreadyGiven: candidates.add("\n  positional param was already given as named param")
         of kExtraArg: candidates.add("\n  extra argument given")
         of kMissingParam: candidates.add("\n  missing parameter: " & nameParam)
+        of kExtraGenericParam:
+          candidates.add("\n  extra generic param given")
+        of kMissingGenericParam:
+          candidates.add("\n  missing generic parameter: " & nameParam)
         of kTypeMismatch, kVarNeeded:
           doAssert nArg != nil
           let wanted = err.firstMismatch.formal.typ
@@ -619,18 +639,6 @@ proc updateDefaultParams(c: PContext, call: PNode) =
         def.typ = errorType(c)
       call[i] = def
 
-proc getCallLineInfo(n: PNode): TLineInfo =
-  case n.kind
-  of nkAccQuoted, nkBracketExpr, nkCall, nkCallStrLit, nkCommand:
-    if len(n) > 0:
-      return getCallLineInfo(n[0])
-  of nkDotExpr:
-    if len(n) > 1:
-      return getCallLineInfo(n[1])
-  else:
-    discard
-  result = n.info
-
 proc inheritBindings(c: PContext, x: var TCandidate, expectedType: PType) =
   ## Helper proc to inherit bound generic parameters from expectedType into x.
   ## Does nothing if 'inferGenericTypes' isn't in c.features.
@@ -779,28 +787,67 @@ proc explicitGenericInstError(c: PContext; n: PNode): PNode =
   localError(c.config, getCallLineInfo(n), errCannotInstantiateX % renderTree(n))
   result = n
 
-proc explicitGenericSym(c: PContext, n: PNode, s: PSym): PNode =
-  # binding has to stay 'nil' for this to work!
-  var m = newCandidate(c, s, nil)
-
-  for i in 1..<n.len:
-    let formal = s.ast[genericParamsPos][i-1].typ
-    var arg = n[i].typ
-    # try transforming the argument into a static one before feeding it into
-    # typeRel
-    if formal.kind == tyStatic and arg.kind != tyStatic:
-      let evaluated = c.semTryConstExpr(c, n[i], n[i].typ)
-      if evaluated != nil:
-        arg = newTypeS(tyStatic, c, son = evaluated.typ)
-        arg.n = evaluated
-    let tm = typeRel(m, formal, arg)
-    if tm in {isNone, isConvertible}: return nil
-  var newInst = generateInstance(c, s, m.bindings, n.info)
-  newInst.typ.flags.excl tfUnresolved
-  let info = getCallLineInfo(n)
-  markUsed(c, info, s)
-  onUse(info, s)
-  result = newSymNode(newInst, info)
+#proc explicitGenericSymFake(c: PContext, n: PNode, s: PSym): #TCandidate =
+#  # binding has to stay 'nil' for this to work!
+#  result = newCandidate(c, s, nil)
+#  let typeParams = s.ast[genericParamsPos]
+#  let paramCount = typeParams.len
+#  let bindingCount = n.len-1
+#  if bindingCount > paramCount:
+#    result.state = csNoMatch
+#    result.firstMismatch.kind = kExtraGenericParam
+#    return
+#  for i in 1..min(paramCount, bindingCount):
+#    let formal = typeParams[i-1].typ
+#    var arg = n[i].typ
+#    if arg == nil: continue
+#    # try transforming the argument into a static one before #feeding it into
+#    # typeRel
+#    if formal.kind == tyStatic and arg.kind != tyStatic:
+#      let evaluated = c.semTryConstExpr(c, n[i], n[i].typ)
+#      if evaluated != nil:
+#        arg = newTypeS(tyStatic, c, son = evaluated.typ)
+#        arg.n = evaluated
+#    else:
+#      arg = fixGenericArg(c, formal, arg)
+#    let tm = typeRel(result, formal, arg)
+#    if tm in {isNone, isConvertible}:
+#      result.state = csNoMatch
+#      result.firstMismatch.kind = kTypeMismatch
+#      result.firstMismatch.arg = i
+#      result.firstMismatch.formal = typeParams[i-1].sym
+#      return
+#  # not enough generic params given, check if remaining have #defaults:
+#  for i in bindingCount ..< paramCount:
+#    let param = typeParams[i]
+#    assert param.kind == nkSym
+#    let paramSym = param.sym
+#    if paramSym.ast != nil:
+#      let paramType = param.typ
+#      var bound = paramSym.ast.typ
+#      if bound != nil:
+#        bound = fixGenericArg(c, paramType, bound)
+#        let tm = typeRel(result, paramType, bound)
+#        if tm in {isNone, isConvertible}:
+#          result.state = csNoMatch
+#          result.firstMismatch.kind = kTypeMismatch
+#          result.firstMismatch.arg = i+1
+#          result.firstMismatch.formal = typeParams[i].sym
+#          return
+#    else:
+#      result.state = csNoMatch
+#      result.firstMismatch.kind = kMissingGenericParam
+#      result.firstMismatch.arg = i
+#      result.firstMismatch.formal = paramSym
+#      return
+#  result.state = csMatch
+#  if s.magic == mNone:
+#    var newInst = generateInstance(c, s, result.bindings, n.info)
+#    newInst.typ.flags.excl tfUnresolved
+#    result.calleeSym = newInst
+#  let info = getCallLineInfo(n)
+#  markUsed(c, info, s)
+#  onUse(info, s)
 
 proc setGenericParams(c: PContext, n, expectedParams: PNode) =
   ## sems generic params in subscript expression
@@ -830,13 +877,16 @@ proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
       localError(c.config, getCallLineInfo(n), errGenerated, "cannot instantiate: '" & renderTree(n) &
          "'; got " & $(n.len-1) & " typeof(s) but expected " & $expected)
       return n
-    result = explicitGenericSym(c, n, s)
-    if result == nil: result = explicitGenericInstError(c, n)
+    var m = newCandidate(c, s, nil)
+    let x = explicitGenericSym(m, n, s)
+    if x == nil: result = explicitGenericInstError(c, n)
+    else: result = newSymNode(x, getCallLineInfo(n))
   elif a.kind in {nkClosedSymChoice, nkOpenSymChoice}:
     # choose the generic proc with the proper number of type parameters.
     # XXX I think this could be improved by reusing sigmatch.paramTypesMatch.
     # It's good enough for now.
-    result = newNodeI(a.kind, getCallLineInfo(n))
+    let info = getCallLineInfo(n)
+    result = newNodeI(a.kind, info)
     for i in 0..<a.len:
       var candidate = a[i].sym
       if candidate.kind in {skProc, skMethod, skConverter,
@@ -844,8 +894,9 @@ proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
         # it suffices that the candidate has the proper number of generic
         # type parameters:
         if candidate.ast[genericParamsPos].safeLen == n.len-1:
-          let x = explicitGenericSym(c, n, candidate)
-          if x != nil: result.add(x)
+          var m = newCandidate(c, candidate, nil)
+          let x = explicitGenericSym(m, n, candidate)
+          if x != nil: result.add newSymNode(x, info)
     # get rid of nkClosedSymChoice if not ambiguous:
     if result.len == 1 and a.kind == nkClosedSymChoice:
       result = result[0]
