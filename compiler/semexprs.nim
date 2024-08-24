@@ -1171,14 +1171,6 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType
     let t = n[0].typ
     if t != nil and t.kind in {tyVar, tyLent}:
       n[0] = newDeref(n[0])
-    #elif n[0].kind == nkBracketExpr:
-    #  var s = qualifiedLookUp(c, n[0][0], {})
-    #  if s != nil and s.kind in routineKinds:
-    #    return semDirectOp(c, n, flags, expectedType)
-      #let s = bracketedMacro(n[0])
-      #if s != nil:
-      #  setGenericParams(c, n[0], s.ast[genericParamsPos])
-      #  return semDirectOp(c, n, flags, expectedType)
     elif isSymChoice(n[0]) and nfDotField notin n.flags:
       # overloaded generic procs e.g. newSeq[int] can end up here
       return semDirectOp(c, n, flags, expectedType)

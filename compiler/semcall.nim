@@ -787,68 +787,6 @@ proc explicitGenericInstError(c: PContext; n: PNode): PNode =
   localError(c.config, getCallLineInfo(n), errCannotInstantiateX % renderTree(n))
   result = n
 
-#proc explicitGenericSymFake(c: PContext, n: PNode, s: PSym): #TCandidate =
-#  # binding has to stay 'nil' for this to work!
-#  result = newCandidate(c, s, nil)
-#  let typeParams = s.ast[genericParamsPos]
-#  let paramCount = typeParams.len
-#  let bindingCount = n.len-1
-#  if bindingCount > paramCount:
-#    result.state = csNoMatch
-#    result.firstMismatch.kind = kExtraGenericParam
-#    return
-#  for i in 1..min(paramCount, bindingCount):
-#    let formal = typeParams[i-1].typ
-#    var arg = n[i].typ
-#    if arg == nil: continue
-#    # try transforming the argument into a static one before #feeding it into
-#    # typeRel
-#    if formal.kind == tyStatic and arg.kind != tyStatic:
-#      let evaluated = c.semTryConstExpr(c, n[i], n[i].typ)
-#      if evaluated != nil:
-#        arg = newTypeS(tyStatic, c, son = evaluated.typ)
-#        arg.n = evaluated
-#    else:
-#      arg = fixGenericArg(c, formal, arg)
-#    let tm = typeRel(result, formal, arg)
-#    if tm in {isNone, isConvertible}:
-#      result.state = csNoMatch
-#      result.firstMismatch.kind = kTypeMismatch
-#      result.firstMismatch.arg = i
-#      result.firstMismatch.formal = typeParams[i-1].sym
-#      return
-#  # not enough generic params given, check if remaining have #defaults:
-#  for i in bindingCount ..< paramCount:
-#    let param = typeParams[i]
-#    assert param.kind == nkSym
-#    let paramSym = param.sym
-#    if paramSym.ast != nil:
-#      let paramType = param.typ
-#      var bound = paramSym.ast.typ
-#      if bound != nil:
-#        bound = fixGenericArg(c, paramType, bound)
-#        let tm = typeRel(result, paramType, bound)
-#        if tm in {isNone, isConvertible}:
-#          result.state = csNoMatch
-#          result.firstMismatch.kind = kTypeMismatch
-#          result.firstMismatch.arg = i+1
-#          result.firstMismatch.formal = typeParams[i].sym
-#          return
-#    else:
-#      result.state = csNoMatch
-#      result.firstMismatch.kind = kMissingGenericParam
-#      result.firstMismatch.arg = i
-#      result.firstMismatch.formal = paramSym
-#      return
-#  result.state = csMatch
-#  if s.magic == mNone:
-#    var newInst = generateInstance(c, s, result.bindings, n.info)
-#    newInst.typ.flags.excl tfUnresolved
-#    result.calleeSym = newInst
-#  let info = getCallLineInfo(n)
-#  markUsed(c, info, s)
-#  onUse(info, s)
-
 proc setGenericParams(c: PContext, n, expectedParams: PNode) =
   ## sems generic params in subscript expression
   for i in 1..<n.len:
