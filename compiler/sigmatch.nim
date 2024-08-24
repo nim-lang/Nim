@@ -177,7 +177,7 @@ proc matchGenericParams(m: var TCandidate, binding: PNode, callee: PSym) =
       matchGenericParam(m, paramSym, paramSym.ast, i)
       if m.state == csNoMatch:
         return
-    else:
+    elif tfImplicitTypeParam notin paramSym.typ.flags:
       m.state = csNoMatch
       m.firstMismatch.kind = kMissingGenericParam
       m.firstMismatch.arg = i
