@@ -249,6 +249,7 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
     let nArg = if err.firstMismatch.arg < n.len: n[err.firstMismatch.arg] else: nil
     let nameParam = if err.firstMismatch.formal != nil: err.firstMismatch.formal.name.s else: ""
     if n.len > 1:
+      const genericParamMismatches = {kGenericParamTypeMismatch, kExtraGenericParam, kMissingGenericParam}
       if verboseTypeMismatch notin c.config.legacyFeatures:
         case err.firstMismatch.kind
         of kUnknownNamedParam:
@@ -298,9 +299,36 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
             candidates.addPragmaAndCallConvMismatch(wanted, got, c.config)
             effectProblem(wanted, got, candidates, c)
             candidates.add "\n"
+        of kGenericParamTypeMismatch:
+          let pos = err.firstMismatch.arg
+          doAssert n[0].kind == nkBracketExpr and pos < n[0].len
+          let arg = n[0][pos]
+          doAssert arg != nil
+          var wanted = err.firstMismatch.formal.typ
+          if wanted.kind == tyGenericParam and wanted.genericParamHasConstraints:
+            wanted = wanted.genericConstraint
+          let got = arg.typ
+          doAssert err.firstMismatch.formal != nil
+          doAssert wanted != nil
+          doAssert got != nil
+          candidates.add "  generic parameter mismatch, expected "
+          candidates.addTypeDeclVerboseMaybe(c.config, wanted)
+          candidates.add " but got '"
+          candidates.add renderTree(arg)
+          candidates.add "' of type: "
+          candidates.addTypeDeclVerboseMaybe(c.config, got)
+          if got != nil and got.kind == tyProc and wanted.kind == tyProc:
+            # These are proc mismatches so,
+            # add the extra explict detail of the mismatch
+            candidates.addPragmaAndCallConvMismatch(wanted, got, c.config)
+          if got != nil:
+            effectProblem(wanted, got, candidates, c)
+          candidates.add "\n"
         of kUnknown: discard "do not break 'nim check'"
       else:
         candidates.add("  first type mismatch at position: " & $err.firstMismatch.arg)
+        if err.firstMismatch.kind in genericParamMismatches:
+          candidates.add(" in generic parameters")
         # candidates.add "\n  reason: " & $err.firstMismatch.kind # for debugging
         case err.firstMismatch.kind
         of kUnknownNamedParam:
@@ -316,20 +344,31 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
           candidates.add("\n  extra generic param given")
         of kMissingGenericParam:
           candidates.add("\n  missing generic parameter: " & nameParam)
-        of kTypeMismatch, kVarNeeded:
-          doAssert nArg != nil
-          let wanted = err.firstMismatch.formal.typ
+        of kTypeMismatch, kGenericParamTypeMismatch, kVarNeeded:
+          var arg: PNode = nArg
+          let genericMismatch = err.firstMismatch.kind == kGenericParamTypeMismatch
+          if genericMismatch:
+            let pos = err.firstMismatch.arg
+            doAssert n[0].kind == nkBracketExpr and pos < n[0].len
+            arg = n[0][pos]
+          else:
+            arg = nArg
+          doAssert arg != nil
+          var wanted = err.firstMismatch.formal.typ
+          if genericMismatch and wanted.kind == tyGenericParam and
+              wanted.genericParamHasConstraints:
+            wanted = wanted.genericConstraint
           doAssert err.firstMismatch.formal != nil
           candidates.add("\n  required type for " & nameParam &  ": ")
           candidates.addTypeDeclVerboseMaybe(c.config, wanted)
           candidates.add "\n  but expression '"
           if err.firstMismatch.kind == kVarNeeded:
-            candidates.add renderNotLValue(nArg)
+            candidates.add renderNotLValue(arg)
             candidates.add "' is immutable, not 'var'"
           else:
-            candidates.add renderTree(nArg)
+            candidates.add renderTree(arg)
             candidates.add "' is of type: "
-            let got = nArg.typ
+            let got = arg.typ
             candidates.addTypeDeclVerboseMaybe(c.config, got)
             doAssert wanted != nil
             if got != nil:
@@ -341,8 +380,8 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
 
         of kUnknown: discard "do not break 'nim check'"
         candidates.add "\n"
-      if err.firstMismatch.arg == 1 and nArg.kind == nkTupleConstr and
-          n.kind == nkCommand:
+      if err.firstMismatch.arg == 1 and nArg != nil and
+          nArg.kind == nkTupleConstr and n.kind == nkCommand:
         maybeWrongSpace = true
     for diag in err.diagnostics:
       candidates.add(diag & "\n")
@@ -776,6 +815,20 @@ proc semOverloadedCall(c: PContext, n, nOrig: PNode,
 proc explicitGenericInstError(c: PContext; n: PNode): PNode =
   localError(c.config, getCallLineInfo(n), errCannotInstantiateX % renderTree(n))
   result = n
+
+proc explicitGenericSym(m: var TCandidate, n: PNode, s: PSym): PSym =
+  if s.kind in {skTemplate, skMacro}:
+    internalError m.c.config, n.info, "cannot get explicitly instantiated symbol of " &
+      (if s.kind == skTemplate: "template" else: "macro")
+  matchGenericParams(m, n, s)
+  if m.state != csMatch:
+    return nil
+  var newInst = m.c.semGenerateInstance(m.c, s, m.bindings, n.info)
+  newInst.typ.flags.excl tfUnresolved
+  result = newInst
+  let info = getCallLineInfo(n)
+  markUsed(m.c, info, s)
+  onUse(info, s)
 
 proc setGenericParams(c: PContext, n, expectedParams: PNode) =
   ## sems generic params in subscript expression

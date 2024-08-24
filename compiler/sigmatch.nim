@@ -24,7 +24,7 @@ type
   MismatchKind* = enum
     kUnknown, kAlreadyGiven, kUnknownNamedParam, kTypeMismatch, kVarNeeded,
     kMissingParam, kExtraArg, kPositionalAlreadyGiven,
-    kMissingGenericParam, kExtraGenericParam
+    kGenericParamTypeMismatch, kMissingGenericParam, kExtraGenericParam
 
   MismatchInfo* = object
     kind*: MismatchKind # reason for mismatch
@@ -133,16 +133,19 @@ proc put(c: var TCandidate, key, val: PType) {.inline.} =
 proc typeRel*(c: var TCandidate, f, aOrig: PType,
               flags: TTypeRelFlags = {}): TTypeRelation
 
-proc matchGenericParam(m: var TCandidate, formalSym: PSym, n: PNode, i: int) =
-  let formal = formalSym.typ
+proc matchGenericParam(m: var TCandidate, formal: PType, n: PNode) =
   var arg = n.typ
   # fix up the type to get ready to match formal:
-  if formal.kind == tyStatic and arg.kind != tyStatic:
+  var formalBase = formal
+  while formalBase.kind == tyGenericParam and
+      formalBase.genericParamHasConstraints:
+    formalBase = formalBase.genericConstraint
+  if formalBase.kind == tyStatic and arg.kind != tyStatic:
     let evaluated = m.c.semTryConstExpr(m.c, n, n.typ)
     if evaluated != nil:
       arg = newTypeS(tyStatic, m.c, son = evaluated.typ)
       arg.n = evaluated
-  elif formal.kind == tyTypeDesc:
+  elif formalBase.kind == tyTypeDesc:
     if arg.kind != tyTypeDesc:
       arg = makeTypeDesc(m.c, arg)
   else:
@@ -150,12 +153,10 @@ proc matchGenericParam(m: var TCandidate, formalSym: PSym, n: PNode, i: int) =
   let tm = typeRel(m, formal, arg)
   if tm in {isNone, isConvertible}:
     m.state = csNoMatch
-    m.firstMismatch.kind = kTypeMismatch
-    m.firstMismatch.arg = i
-    m.firstMismatch.formal = formalSym
+    m.firstMismatch.kind = kGenericParamTypeMismatch
     return
 
-proc matchGenericParams(m: var TCandidate, binding: PNode, callee: PSym) =
+proc matchGenericParams*(m: var TCandidate, binding: PNode, callee: PSym) =
   let c = m.c
   let typeParams = callee.ast[genericParamsPos]
   let paramCount = typeParams.len
@@ -165,8 +166,10 @@ proc matchGenericParams(m: var TCandidate, binding: PNode, callee: PSym) =
     m.firstMismatch.kind = kExtraGenericParam
     return
   for i in 1..min(paramCount, bindingCount):
-    matchGenericParam(m, typeParams[i-1].sym, binding[i], i)
+    matchGenericParam(m, typeParams[i-1].typ, binding[i])
     if m.state == csNoMatch:
+      m.firstMismatch.arg = i
+      m.firstMismatch.formal = typeParams[i-1].sym
       return
   # not enough generic params given, check if remaining have defaults:
   for i in bindingCount ..< paramCount:
@@ -174,8 +177,10 @@ proc matchGenericParams(m: var TCandidate, binding: PNode, callee: PSym) =
     assert param.kind == nkSym
     let paramSym = param.sym
     if paramSym.ast != nil:
-      matchGenericParam(m, paramSym, paramSym.ast, i)
+      matchGenericParam(m, param.typ, paramSym.ast)
       if m.state == csNoMatch:
+        m.firstMismatch.arg = i
+        m.firstMismatch.formal = paramSym
         return
     elif tfImplicitTypeParam in paramSym.typ.flags:
       # not a mismatch, but can't create sym
@@ -194,19 +199,28 @@ proc matchGenericParams(m: var TCandidate, binding: PNode, callee: PSym) =
       return
   m.state = csMatch
 
-proc explicitGenericSym*(m: var TCandidate, n: PNode, s: PSym): PSym =
-  if s.kind in {skTemplate, skMacro}:
-    internalError m.c.config, n.info, "cannot get explicitly instantiated symbol of " &
-      (if s.kind == skTemplate: "template" else: "macro")
-  matchGenericParams(m, n, s)
-  if m.state != csMatch:
-    return nil
-  var newInst = m.c.semGenerateInstance(m.c, s, m.bindings, n.info)
-  newInst.typ.flags.excl tfUnresolved
-  result = newInst
-  let info = getCallLineInfo(n)
-  markUsed(m.c, info, s)
-  onUse(info, s)
+proc copyingEraseVoidParams(m: TCandidate, t: var PType) =
+  assert t.kind == tyProc
+  let original = t
+  var copied = false
+  for i in 1 ..< original.len:
+    var f = original[i]
+    var isVoidParam = f.kind == tyVoid
+    if not isVoidParam:
+      let prev = idTableGet(m.bindings, f)
+      if prev != nil: f = prev
+      isVoidParam = f.kind == tyVoid
+    if isVoidParam:
+      if not copied:
+        t = copyType(original, m.c.idgen, t.owner)
+        t.setSonsLen(i)
+        t.n = copyNode(original.n)
+        t.n.sons = original.n.sons
+        t.n.sons.setLen(i)
+        copied = true
+    elif copied:
+      t.add(f)
+      t.n.add(original.n[i])
 
 proc initCandidate*(ctx: PContext, callee: PSym,
                     binding: PNode, calleeScope = -1,
@@ -222,15 +236,11 @@ proc initCandidate*(ctx: PContext, callee: PSym,
   result.magic = result.calleeSym.magic
   result.bindings = initTypeMapping()
   if binding != nil:
-    if callee.kind notin {skTemplate, skMacro}:
-      let s = explicitGenericSym(result, binding, callee)
-      if s != nil:
-        result.calleeSym = s
-        result.callee = s.typ
-      if result.state != csNoMatch:
-        result.state = csEmpty
-    else:
-      matchGenericParams(result, binding, callee)
+    matchGenericParams(result, binding, callee)
+    if result.state != csNoMatch:
+      result.state = csEmpty
+      # createThread[void] requires this:
+      copyingEraseVoidParams(result, result.callee)
 
 proc newCandidate*(ctx: PContext, callee: PSym,
                    binding: PNode, calleeScope = -1): TCandidate =
@@ -776,6 +786,8 @@ proc procParamTypeRel(c: var TCandidate; f, a: PType): TTypeRelation =
 proc procTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
   case a.kind
   of tyProc:
+    var f = f
+    copyingEraseVoidParams(c, f)
     if f.signatureLen != a.signatureLen: return
     result = isEqual      # start with maximum; also correct for no
                           # params at all

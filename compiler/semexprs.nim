@@ -1141,6 +1141,20 @@ proc afterCallActions(c: PContext; n, orig: PNode, flags: TExprFlags; expectedTy
     # don't fold calls in concepts and typeof
     result = evalAtCompileTime(c, result)
 
+proc shouldBeBracketExpr(n: PNode): bool =
+  result = false
+  assert n.kind in nkCallKinds
+  let a = n[0]
+  if a.kind in nkCallKinds:
+    let b = a[0]
+    if b.kind in nkSymChoices:
+      for i in 0..<b.len:
+        if b[i].kind == nkSym and b[i].sym.magic == mArrGet:
+          let be = newNodeI(nkBracketExpr, n.info)
+          for i in 1..<a.len: be.add(a[i])
+          n[0] = be
+          return true
+
 proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType = nil): PNode =
   result = nil
   checkMinSonsLen(n, 1, c.config)
@@ -1163,7 +1177,7 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType
     else:
       n[0] = n0
   else:
-    if n[0].kind == nkBracketExpr:
+    if n[0].kind == nkBracketExpr or shouldBeBracketExpr(n):
       var s = qualifiedLookUp(c, n[0][0], {})
       if s != nil and s.kind in routineKinds:
         return semDirectOp(c, n, flags, expectedType)
@@ -3011,20 +3025,6 @@ proc semTupleConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PTyp
     result.typ = makeTypeDesc(c, typ)
   else:
     result = tupexp
-
-proc shouldBeBracketExpr(n: PNode): bool =
-  result = false
-  assert n.kind in nkCallKinds
-  let a = n[0]
-  if a.kind in nkCallKinds:
-    let b = a[0]
-    if b.kind in nkSymChoices:
-      for i in 0..<b.len:
-        if b[i].kind == nkSym and b[i].sym.magic == mArrGet:
-          let be = newNodeI(nkBracketExpr, n.info)
-          for i in 1..<a.len: be.add(a[i])
-          n[0] = be
-          return true
 
 proc asBracketExpr(c: PContext; n: PNode): PNode =
   proc isGeneric(c: PContext; n: PNode): bool =
