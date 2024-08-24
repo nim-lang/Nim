@@ -416,7 +416,7 @@ proc semConv(c: PContext, n: PNode; flags: TExprFlags = {}, expectedType: PType 
   var op = semExprWithType(c, n[1], flags * {efDetermineType} + {efAllowSymChoice})
   if isSymChoice(op) and op[0].sym.kind notin routineKinds:
     # T(foo) disambiguation syntax only allowed for routines
-    op = semSymChoice(c, op)
+    op = semSymChoice(c, op, expectedType = targetType)
   if targetType.kind != tyGenericParam and targetType.isMetaType:
     let final = inferWithMetatype(c, targetType, op, true)
     result.add final
