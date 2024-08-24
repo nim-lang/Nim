@@ -98,16 +98,6 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
   while true:
     determineType(c, sym)
     z = initCandidate(c, sym, initialBinding, scope, diagnosticsFlag)
-    #if false and initialBinding != nil and sym.kind notin {skTemplate, skMacro}:
-    #  let m = explicitGenericSym(c, initialBinding, sym)
-    #  z.bindings = m.bindings
-    #  if m.state == csNoMatch:
-    #    z.state = csNoMatch
-    #    z.firstMismatch = m.firstMismatch
-    #  else:
-    #    sym = m.calleeSym
-    #    z.calleeSym = sym
-    #    z.callee = sym.typ
 
     # this is kinda backwards as without a check here the described
     # problems in recalc would not happen, but instead it 100%
