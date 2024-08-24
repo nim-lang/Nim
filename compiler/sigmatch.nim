@@ -130,18 +130,32 @@ proc put(c: var TCandidate, key, val: PType) {.inline.} =
       echo "binding ", key, " -> ", val
   idTablePut(c.bindings, key, val.skipIntLit(c.c.idgen))
 
-proc fixGenericArg*(c: PContext, formal, arg: PType): PType =
-  result = arg
-  if formal.kind == tyTypeDesc:
-    if arg.kind != tyTypeDesc:
-      result = makeTypeDesc(c, arg)
-  else:
-    result = arg.skipTypes({tyTypeDesc})
-
 proc typeRel*(c: var TCandidate, f, aOrig: PType,
               flags: TTypeRelFlags = {}): TTypeRelation
 
-proc matchGenericParams*(m: var TCandidate, binding: PNode, callee: PSym) =
+proc matchGenericParam(m: var TCandidate, formalSym: PSym, n: PNode, i: int) =
+  let formal = formalSym.typ
+  var arg = n.typ
+  # fix up the type to get ready to match formal:
+  if formal.kind == tyStatic and arg.kind != tyStatic:
+    let evaluated = m.c.semTryConstExpr(m.c, n, n.typ)
+    if evaluated != nil:
+      arg = newTypeS(tyStatic, m.c, son = evaluated.typ)
+      arg.n = evaluated
+  elif formal.kind == tyTypeDesc:
+    if arg.kind != tyTypeDesc:
+      arg = makeTypeDesc(m.c, arg)
+  else:
+    arg = arg.skipTypes({tyTypeDesc})
+  let tm = typeRel(m, formal, arg)
+  if tm in {isNone, isConvertible}:
+    m.state = csNoMatch
+    m.firstMismatch.kind = kTypeMismatch
+    m.firstMismatch.arg = i
+    m.firstMismatch.formal = formalSym
+    return
+
+proc matchGenericParams(m: var TCandidate, binding: PNode, callee: PSym) =
   let c = m.c
   let typeParams = callee.ast[genericParamsPos]
   let paramCount = typeParams.len
@@ -151,24 +165,8 @@ proc matchGenericParams*(m: var TCandidate, binding: PNode, callee: PSym) =
     m.firstMismatch.kind = kExtraGenericParam
     return
   for i in 1..min(paramCount, bindingCount):
-    let formal = typeParams[i-1].typ
-    var arg = binding[i].typ
-    if arg == nil: continue
-    # try transforming the argument into a static one before feeding it into
-    # typeRel
-    if formal.kind == tyStatic and arg.kind != tyStatic:
-      let evaluated = c.semTryConstExpr(c, binding[i], binding[i].typ)
-      if evaluated != nil:
-        arg = newTypeS(tyStatic, c, son = evaluated.typ)
-        arg.n = evaluated
-    else:
-      arg = fixGenericArg(c, formal, arg)
-    let tm = typeRel(m, formal, arg)
-    if tm in {isNone, isConvertible}:
-      m.state = csNoMatch
-      m.firstMismatch.kind = kTypeMismatch
-      m.firstMismatch.arg = i
-      m.firstMismatch.formal = typeParams[i-1].sym
+    matchGenericParam(m, typeParams[i-1].sym, binding[i], i)
+    if m.state == csNoMatch:
       return
   # not enough generic params given, check if remaining have defaults:
   for i in bindingCount ..< paramCount:
@@ -176,17 +174,9 @@ proc matchGenericParams*(m: var TCandidate, binding: PNode, callee: PSym) =
     assert param.kind == nkSym
     let paramSym = param.sym
     if paramSym.ast != nil:
-      let paramType = param.typ
-      var bound = paramSym.ast.typ
-      if bound != nil:
-        bound = fixGenericArg(c, paramType, bound)
-        let tm = typeRel(m, paramType, bound)
-        if tm in {isNone, isConvertible}:
-          m.state = csNoMatch
-          m.firstMismatch.kind = kTypeMismatch
-          m.firstMismatch.arg = i+1
-          m.firstMismatch.formal = typeParams[i].sym
-          return
+      matchGenericParam(m, paramSym, paramSym.ast, i)
+      if m.state == csNoMatch:
+        return
     else:
       m.state = csNoMatch
       m.firstMismatch.kind = kMissingGenericParam
@@ -195,12 +185,12 @@ proc matchGenericParams*(m: var TCandidate, binding: PNode, callee: PSym) =
       return
 
 proc explicitGenericSym*(m: var TCandidate, n: PNode, s: PSym): PSym =
-  # binding has to stay 'nil' for this to work!
-  #result = newCandidate(c, s, nil)
-  result = nil
+  if s.kind in {skTemplate, skMacro}:
+    internalError m.c.config, n.info, "cannot get explicitly instantiated symbol of " &
+      (if s.kind == skTemplate: "template" else: "macro")
   matchGenericParams(m, n, s)
   if m.state == csNoMatch:
-    return
+    return nil
   var newInst = m.c.semGenerateInstance(m.c, s, m.bindings, n.info)
   newInst.typ.flags.excl tfUnresolved
   result = newInst
@@ -227,8 +217,8 @@ proc initCandidate*(ctx: PContext, callee: PSym,
       if s != nil:
         result.calleeSym = s
         result.callee = s.typ
-      return
-    matchGenericParams(result, binding, callee)
+    else:
+      matchGenericParams(result, binding, callee)
 
 proc newCandidate*(ctx: PContext, callee: PSym,
                    binding: PNode, calleeScope = -1): TCandidate =
