@@ -163,6 +163,16 @@ block: # tyStatic and tyFromExpr instantiation mid-match
   foo(Foo[1]([1]), Foo[3]([1, 2, 3]))
   foo2(Foo[1]([1]), Foo[4]([1, 2, 3, 4]))
 
+block: # issue #4990
+  type Foo[I: static[int], A: static[array[I, int]]] = object
+    curIndex: int
+
+  proc next[I: static[int], A: static[array[I, int]]](f: Foo[I, A]): string =
+    discard
+  const arr = [1, 2, 3]
+  var f: Foo[arr.len, arr]
+  discard next(f)
+
 when false: # issue #22607, needs nkWhenStmt to be handled like nkRecWhen
   proc test[x: static bool](
     t: (
