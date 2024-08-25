@@ -226,9 +226,9 @@ type
     strictDefs,
     strictCaseObjects,
     inferGenericTypes,
-    # remove nfDisabledOpenSym when these 2 are default:
-    genericsOpenSym,
-    templateOpenSym,
+    openSym, # remove nfDisabledOpenSym when this is default
+    # separated alternatives to above:
+    genericsOpenSym, templateOpenSym,
     vtables
 
   LegacyFeature* = enum

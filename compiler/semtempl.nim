@@ -233,7 +233,7 @@ proc semTemplSymbol(c: var TemplCtx, n: PNode, s: PSym; isField, isAmbiguous: bo
   of OverloadableSyms:
     result = symChoice(c.c, n, s, scOpen, isField)
     if not isField and result.kind in {nkSym, nkOpenSymChoice}:
-      if templateOpenSym in c.c.features:
+      if {openSym, templateOpenSym} * c.c.features != {}:
         if result.kind == nkSym:
           result = newOpenSym(result)
         else:
@@ -246,7 +246,7 @@ proc semTemplSymbol(c: var TemplCtx, n: PNode, s: PSym; isField, isAmbiguous: bo
     else:
       result = newSymNodeTypeDesc(s, c.c.idgen, n.info)
       if not isField and s.owner != c.owner:
-        if templateOpenSym in c.c.features:
+        if {openSym, templateOpenSym} * c.c.features != {}:
           result = newOpenSym(result)
         else:
           result.flags.incl nfDisabledOpenSym
@@ -264,7 +264,7 @@ proc semTemplSymbol(c: var TemplCtx, n: PNode, s: PSym; isField, isAmbiguous: bo
       if not isField and not (s.owner == c.owner and
           s.typ != nil and s.typ.kind == tyGenericParam) and
           result.kind in {nkSym, nkOpenSymChoice}:
-        if templateOpenSym in c.features:
+        if {openSym, templateOpenSym} * c.c.features != {}:
           if result.kind == nkSym:
             result = newOpenSym(result)
           else:
@@ -277,7 +277,7 @@ proc semTemplSymbol(c: var TemplCtx, n: PNode, s: PSym; isField, isAmbiguous: bo
     else:
       result = newSymNode(s, n.info)
       if not isField:
-        if templateOpenSym in c.c.features:
+        if {openSym, templateOpenSym} * c.c.features != {}:
           result = newOpenSym(result)
         else:
           result.flags.incl nfDisabledOpenSym

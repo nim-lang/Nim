@@ -47,13 +47,13 @@ proc f(): Result[int, cstring] =
 template g(T: type): string =
   var res = "ok"
   let x = f().valueOr:
-    {.push warningAsError[GenericsIgnoredInjection]: on.}
+    {.push warningAsError[IgnoredSymbolInjection]: on.}
     # test spurious error
     discard true
     let _ = f
     {.pop.}
     res = $error #[tt.Warning
-           ^ a new symbol 'error' has been injected during template or generic instantiation, however 'error' [enumField declared in topensymwarning.nim(6, 3)] captured at the proc declaration will be used instead; either enable one of --experimental:genericsOpenSym or --experimental:templateOpenSym to use the injected symbol, or `bind` this captured symbol explicitly [GenericsIgnoredInjection]]#
+           ^ a new symbol 'error' has been injected during template or generic instantiation, however 'error' [enumField declared in topensymwarning.nim(6, 3)] captured at the proc declaration will be used instead; either enable --experimental:openSym to use the injected symbol, or `bind` this captured symbol explicitly [IgnoredSymbolInjection]]#
     123
   res
 

@@ -2525,19 +2525,18 @@ This allows to easy interop with functions that accepts for example a `const` op
 Injected symbols in generic procs and templates
 ===============================================
 
-With the experimental options `genericsOpenSym` and `templateOpenSym`,
-captured symbols in generic routine and template bodies respectively may be
-replaced by symbols injected locally by templates/macros at instantiation time.
-`bind` may be used to keep the captured symbols over the injected ones
-regardless of enabling the options, but other methods like renaming the
-captured symbols should be used instead so that the code is not affected by
-context changes.
-  
-Since this change may affect runtime behavior, the experimental switches
-`genericsOpenSym` and `templateOpenSym` need to be enabled for the respective
-routines, and a warning is given in the case where an injected symbol would
-replace a captured symbol not bound by `bind` and the experimental switch
-isn't enabled.
+With the experimental option `openSym`, captured symbols in generic routine and
+template bodies may be replaced by symbols injected locally by templates/macros
+at instantiation time. `bind` may be used to keep the captured symbols over the
+injected ones regardless of enabling the options, but other methods like
+renaming the captured symbols should be used instead so that the code is not
+affected by context changes.
+
+Since this change may affect runtime behavior, the experimental switch
+`openSym`, or `genericsOpenSym` and `templateOpenSym` for only the respective
+routines, needs to be enabled; and a warning is given in the case where an
+injected symbol would replace a captured symbol not bound by `bind` and
+the experimental switch isn't enabled.
 
 ```nim
 const value = "captured"
@@ -2547,16 +2546,16 @@ template foo(x: int, body: untyped): untyped =
 
 proc old[T](): string =
   foo(123):
-    return value # warning: a new `value` has been injected, use `bind` or turn on `experimental:genericsOpenSym`
+    return value # warning: a new `value` has been injected, use `bind` or turn on `experimental:openSym`
 echo old[int]() # "captured"
 
 template oldTempl(): string =
   block:
     foo(123):
-      value # warning: a new `value` has been injected, use `bind` or turn on `experimental:templateOpenSym`
+      value # warning: a new `value` has been injected, use `bind` or turn on `experimental:openSym`
 echo oldTempl() # "captured"
 
-{.experimental: "genericsOpenSym".}
+{.experimental: "openSym".} # or {.experimental: "genericsOpenSym".} for just generic procs
 
 proc bar[T](): string =
   foo(123):
@@ -2569,7 +2568,7 @@ proc baz[T](): string =
     return value
 assert baz[int]() == "captured"
 
-{.experimental: "templateOpenSym".}
+# {.experimental: "templateOpenSym".} would be needed here if genericsOpenSym was used
 
 template barTempl(): string =
   block:

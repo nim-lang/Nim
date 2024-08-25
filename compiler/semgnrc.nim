@@ -74,7 +74,7 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
     else:
       result = symChoice(c, n, s, scOpen)
       if canOpenSym(s):
-        if genericsOpenSym in c.features:
+        if {openSym, genericsOpenSym} * c.features != {}:
           if result.kind == nkSym:
             result = newOpenSym(result)
           else:
@@ -112,7 +112,7 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
         # we are in a generic context and `prepareNode` will be called
         result = newSymNodeTypeDesc(s, c.idgen, n.info)
         if canOpenSym(result.sym):
-          if genericsOpenSym in c.features:
+          if {openSym, genericsOpenSym} * c.features != {}:
             result = newOpenSym(result)
           else:
             result.flags.incl nfDisabledOpenSym
@@ -122,7 +122,7 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
     else:
       result = newSymNodeTypeDesc(s, c.idgen, n.info)
       if canOpenSym(result.sym):
-        if genericsOpenSym in c.features:
+        if {openSym, genericsOpenSym} * c.features != {}:
           result = newOpenSym(result)
         else:
           result.flags.incl nfDisabledOpenSym
@@ -141,7 +141,7 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
         return
       result = newSymNodeTypeDesc(s, c.idgen, n.info)
       if canOpenSym(result.sym):
-        if genericsOpenSym in c.features:
+        if {openSym, genericsOpenSym} * c.features != {}:
           result = newOpenSym(result)
         else:
           result.flags.incl nfDisabledOpenSym
@@ -153,7 +153,7 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
       # we are in a generic context and `prepareNode` will be called
       result = newSymNodeTypeDesc(s, c.idgen, n.info)
       if canOpenSym(result.sym):
-        if genericsOpenSym in c.features:
+        if {openSym, genericsOpenSym} * c.features != {}:
           result = newOpenSym(result)
         else:
           result.flags.incl nfDisabledOpenSym
@@ -164,7 +164,7 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
   else:
     result = newSymNode(s, n.info)
     if canOpenSym(result.sym):
-      if genericsOpenSym in c.features:
+      if {openSym, genericsOpenSym} * c.features != {}:
         result = newOpenSym(result)
       else:
         result.flags.incl nfDisabledOpenSym
