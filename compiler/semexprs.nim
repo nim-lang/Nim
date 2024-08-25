@@ -1735,8 +1735,6 @@ proc maybeInstantiateGeneric(c: PContext, n: PNode, s: PSym): PNode =
     result = explicitGenericInstantiation(c, n, s)
     if result == n:
       n[0] = copyTree(result[0])
-    else:
-      n[0] = result
 
 proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
   ## returns nil if not a built-in subscript operator; also called for the

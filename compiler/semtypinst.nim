@@ -170,7 +170,7 @@ proc prepareNode(cl: var TReplTypeVars, n: PNode): PNode =
     assert n.len != 0
     let ignoreFirst = n[0].kind != nkDotExpr and
       ((n[0].typ != nil and n[0].typ.kind == tyTypeDesc) or
-        (n[1].kind == nkSym and n[1].sym.isGenericRoutineStrict))
+        (n[0].kind == nkSym and n[0].sym.isGenericRoutineStrict))
     if ignoreFirst:
       result.add(n[0])
     else:

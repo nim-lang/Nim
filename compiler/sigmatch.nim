@@ -141,7 +141,9 @@ proc matchGenericParam(m: var TCandidate, formal: PType, n: PNode) =
       formalBase.genericParamHasConstraints:
     formalBase = formalBase.genericConstraint
   if formalBase.kind == tyStatic and arg.kind != tyStatic:
-    let evaluated = m.c.semTryConstExpr(m.c, n, n.typ)
+    # maybe call `paramTypesMatch` here, for now be conservative
+    if n.kind in nkSymChoices: n.flags.excl nfSem
+    let evaluated = m.c.semTryConstExpr(m.c, n, formalBase.skipTypes({tyStatic}))
     if evaluated != nil:
       arg = newTypeS(tyStatic, m.c, son = evaluated.typ)
       arg.n = evaluated
@@ -165,7 +167,7 @@ proc matchGenericParams*(m: var TCandidate, binding: PNode, callee: PSym) =
     m.state = csNoMatch
     m.firstMismatch.kind = kExtraGenericParam
     return
-  for i in 1..min(paramCount, bindingCount):
+  for i in 1..bindingCount:
     matchGenericParam(m, typeParams[i-1].typ, binding[i])
     if m.state == csNoMatch:
       m.firstMismatch.arg = i
@@ -187,19 +189,19 @@ proc matchGenericParams*(m: var TCandidate, binding: PNode, callee: PSym) =
       m.state = csEmpty
       return
     else:
+      # only providing some generic parameters is permitted
+      # but a sym still cannot be created
+      m.state = csEmpty
       when false:
         m.state = csNoMatch
         m.firstMismatch.kind = kMissingGenericParam
         m.firstMismatch.arg = i
         m.firstMismatch.formal = paramSym
-      else:
-        # only providing some generic parameters is permitted
-        # but a sym still cannot be created
-        m.state = csEmpty
       return
   m.state = csMatch
 
 proc copyingEraseVoidParams(m: TCandidate, t: var PType) =
+  ## if `t` is a proc type with void parameters, copies it and erases them
   assert t.kind == tyProc
   let original = t
   var copied = false
@@ -212,6 +214,7 @@ proc copyingEraseVoidParams(m: TCandidate, t: var PType) =
       isVoidParam = f.kind == tyVoid
     if isVoidParam:
       if not copied:
+        # keep first i children
         t = copyType(original, m.c.idgen, t.owner)
         t.setSonsLen(i)
         t.n = copyNode(original.n)
@@ -237,12 +240,14 @@ proc initCandidate*(ctx: PContext, callee: PSym,
   result.bindings = initTypeMapping()
   if binding != nil:
     matchGenericParams(result, binding, callee)
-    let state = result.state
-    if state != csNoMatch:
+    let genericMatch = result.state
+    if genericMatch != csNoMatch:
       result.state = csEmpty
-      if state == csMatch:
-        # only instantiate the type
-        # wouldn't be needed if sigmatch could handle complex types
+      if genericMatch == csMatch: # csEmpty if not fully instantiated
+        # instantiate the type, emulates old compiler behavior
+        # wouldn't be needed if sigmatch could handle complex cases,
+        # examples are in texplicitgenerics
+        # might be buggy, see rest of generateInstance if problems occur
         let fakeSym = copySym(callee, ctx.idgen)
         incl(fakeSym.flags, sfFromGeneric)
         fakeSym.instantiatedFrom = callee
@@ -252,7 +257,7 @@ proc initCandidate*(ctx: PContext, callee: PSym,
         closeScope(ctx)
         result.callee = fakeSym.typ
       else:
-        # createThread[void] requires this:
+        # createThread[void] requires this if the above branch is removed:
         copyingEraseVoidParams(result, result.callee)
 
 proc newCandidate*(ctx: PContext, callee: PSym,
