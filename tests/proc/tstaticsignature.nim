@@ -173,6 +173,25 @@ block: # issue #4990
   var f: Foo[arr.len, arr]
   discard next(f)
 
+block: # issue #4990 comment
+  type
+    Foo[A: static[int], B: static[int], TokenType: enum, EofToken: static[TokenType]] = object
+      curIndex: int
+    MyEnum = enum
+      meA, meB
+    Bar = Foo[2, 3, MyEnum, meA]
+  proc next[A: static[int], B: static[int], TokenType: enum,
+            EofToken: static[TokenType]](f: Foo[A, B, TokenType, EofToken],
+      a: static[(array[A, int], array[B, int])]): TokenType =
+    TokenType(a[0][f.curIndex])
+  const
+    a = [1, 2]
+    b = [3, 4, 5]
+  template next(bar: Bar): MyEnum =
+    next(Foo[2, 3, MyEnum, meA](bar), (a, b))
+  let bar = Bar(curIndex: 0)
+  doAssert bar.next() == meA
+
 when false: # issue #22607, needs nkWhenStmt to be handled like nkRecWhen
   proc test[x: static bool](
     t: (
