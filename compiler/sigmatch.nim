@@ -1700,14 +1700,18 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       result = isNone
       let oldInheritancePenalty = c.inheritancePenalty
       var minInheritance = maxInheritancePenalty
+      var intLitConvCount = 0
       for branch in f.kids:
         c.inheritancePenalty = -1
         let x = typeRel(c, branch, aOrig, flags)
+        if x == isFromIntLit:
+          inc intLitConvCount
         if x >= result:
           if  c.inheritancePenalty > -1:
             minInheritance = min(minInheritance, c.inheritancePenalty)
           result = x
-      if result >= isIntConv:
+      if result >= isIntConv and not
+          (result == isFromIntLit and intLitConvCount > 1):
         if minInheritance < maxInheritancePenalty:
           c.inheritancePenalty = oldInheritancePenalty + minInheritance
         if result > isGeneric: result = isGeneric
