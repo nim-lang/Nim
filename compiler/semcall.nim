@@ -64,9 +64,9 @@ proc initCandidateSymbols(c: PContext, headSymbol: PNode,
     symx = nextOverloadIter(o, c, headSymbol)
   if result.len > 0:
     best = initCandidate(c, result[0].s, initialBinding,
-                  result[0].scope, diagnostics)
+                  result[0].scope, result.len == 1, diagnostics)
     alt = initCandidate(c, result[0].s, initialBinding,
-                  result[0].scope, diagnostics)
+                  result[0].scope, result.len == 1, diagnostics)
     best.state = csNoMatch
 
 proc pickBestCandidate(c: PContext, headSymbol: PNode,
@@ -97,7 +97,7 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
   var z: TCandidate # current candidate
   while true:
     determineType(c, sym)
-    z = initCandidate(c, sym, initialBinding, scope, diagnosticsFlag)
+    z = initCandidate(c, sym, initialBinding, scope, syms.len == 1, diagnosticsFlag)
 
     # this is kinda backwards as without a check here the described
     # problems in recalc would not happen, but instead it 100%

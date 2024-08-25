@@ -158,7 +158,8 @@ proc matchGenericParam(m: var TCandidate, formal: PType, n: PNode) =
     m.firstMismatch.kind = kGenericParamTypeMismatch
     return
 
-proc matchGenericParams*(m: var TCandidate, binding: PNode, callee: PSym) =
+proc matchGenericParams*(m: var TCandidate, binding: PNode, callee: PSym,
+    allowPartialInst = true) =
   let c = m.c
   let typeParams = callee.ast[genericParamsPos]
   let paramCount = typeParams.len
@@ -189,10 +190,12 @@ proc matchGenericParams*(m: var TCandidate, binding: PNode, callee: PSym) =
       m.state = csEmpty
       return
     else:
-      # only providing some generic parameters is permitted
-      # but a sym still cannot be created
-      m.state = csEmpty
-      when false:
+      if allowPartialInst:
+        # only providing some generic parameters is permitted
+        # if symbol is not overloaded
+        # but a sym still cannot be created
+        m.state = csEmpty
+      else:
         m.state = csNoMatch
         m.firstMismatch.kind = kMissingGenericParam
         m.firstMismatch.arg = i
@@ -227,6 +230,7 @@ proc copyingEraseVoidParams(m: TCandidate, t: var PType) =
 
 proc initCandidate*(ctx: PContext, callee: PSym,
                     binding: PNode, calleeScope = -1,
+                    singleSym = false,
                     diagnosticsEnabled = false): TCandidate =
   result = initCandidateAux(ctx, callee.typ)
   result.calleeSym = callee
@@ -239,7 +243,7 @@ proc initCandidate*(ctx: PContext, callee: PSym,
   result.magic = result.calleeSym.magic
   result.bindings = initTypeMapping()
   if binding != nil:
-    matchGenericParams(result, binding, callee)
+    matchGenericParams(result, binding, callee, allowPartialInst = singleSym)
     let genericMatch = result.state
     if genericMatch != csNoMatch:
       result.state = csEmpty
