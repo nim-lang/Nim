@@ -2381,7 +2381,7 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
     result = paramTypesMatchAux(m, f, a, arg, argOrig)
   else:
     # symbol kinds that don't participate in symchoice type disambiguation:
-    let matchSet = {low(TSymKind)..high(TSymKind)} - {skModule, skPackage, skType}
+    let matchSet = {low(TSymKind)..high(TSymKind)} - {skModule, skPackage}
 
     var best = -1
     result = arg
@@ -2426,6 +2426,12 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
         if arg[i].sym.kind in matchSet:
           copyCandidate(z, m)
           z.callee = arg[i].typ
+          if arg[i].sym.kind == skType and z.callee.kind != tyTypeDesc:
+            # creating the symchoice with the type sym having typedesc type
+            # breaks a lot of stuff, so we make the typedesc type here
+            # mirrored from `newSymNodeTypeDesc`
+            z.callee = newType(tyTypeDesc, c.idgen, arg[i].sym.owner)
+            z.callee.addSonSkipIntLit(arg[i].sym.typ, c.idgen)
           if tfUnresolved in z.callee.flags: continue
           z.calleeSym = arg[i].sym
           z.calleeScope = cmpScopes(m.c, arg[i].sym)

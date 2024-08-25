@@ -218,7 +218,7 @@ proc addLocalDecl(c: var TemplCtx, n: var PNode, k: TSymKind) =
         if k == skParam and c.inTemplateHeader > 0:
           local.flags.incl sfTemplateParam
 
-proc semTemplSymbol(c: PContext, n: PNode, s: PSym; isField: bool): PNode =
+proc semTemplSymbol(c: PContext, n: PNode, s: PSym; isField, isAmbiguous: bool): PNode =
   incl(s.flags, sfUsed)
   # bug #12885; ideally sem'checking is performed again afterwards marking
   # the symbol as used properly, but the nfSem mechanism currently prevents
@@ -245,6 +245,10 @@ proc semTemplSymbol(c: PContext, n: PNode, s: PSym; isField: bool): PNode =
     result = n
   of skType:
     if isField and sfGenSym in s.flags: result = n
+    elif isAmbiguous:
+      # ambiguous types should be symchoices since lookup behaves
+      # differently for them in regular expressions
+      result = symChoice(c, n, s, scOpen, isField)
     else: result = newSymNodeTypeDesc(s, c.idgen, n.info)
   else:
     if isField and sfGenSym in s.flags: result = n
@@ -345,6 +349,7 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
   case n.kind
   of nkIdent:
     if n.ident.id in c.toInject: return n
+    c.c.isAmbiguous = false
     let s = qualifiedLookUp(c.c, n, {})
     if s != nil:
       if s.owner == c.owner and s.kind == skParam and sfTemplateParam in s.flags:
@@ -362,9 +367,9 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
         result = newSymNode(s, n.info)
         onUse(n.info, s)
       else:
-        if s.kind in {skType, skVar, skLet, skConst}:
+        if s.kind in {skVar, skLet, skConst}:
           discard qualifiedLookUp(c.c, n, {checkAmbiguity, checkModule})
-        result = semTemplSymbol(c.c, n, s, c.noGenSym > 0)
+        result = semTemplSymbol(c.c, n, s, c.noGenSym > 0, c.c.isAmbiguous)
   of nkBind:
     result = semTemplBody(c, n[0])
   of nkBindStmt:
@@ -558,6 +563,7 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
   of nkDotExpr, nkAccQuoted:
     # dotExpr is ambiguous: note that we explicitly allow 'x.TemplateParam',
     # so we use the generic code for nkDotExpr too
+    c.c.isAmbiguous = false
     let s = qualifiedLookUp(c.c, n, {})
     if s != nil:
       # mirror the nkIdent case
@@ -572,9 +578,9 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
       elif contains(c.toMixin, s.name.id):
         return symChoice(c.c, n, s, scForceOpen, c.noGenSym > 0)
       else:
-        if s.kind in {skType, skVar, skLet, skConst}:
+        if s.kind in {skVar, skLet, skConst}:
           discard qualifiedLookUp(c.c, n, {checkAmbiguity, checkModule})
-        return semTemplSymbol(c.c, n, s, c.noGenSym > 0)
+        return semTemplSymbol(c.c, n, s, c.noGenSym > 0, c.c.isAmbiguous)
     if n.kind == nkDotExpr:
       result = n
       result[0] = semTemplBody(c, n[0])
