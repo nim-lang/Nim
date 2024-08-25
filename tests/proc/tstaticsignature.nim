@@ -190,7 +190,7 @@ block: # issue #4990 comment
   template next(bar: Bar): MyEnum =
     next(Foo[2, 3, MyEnum, meA](bar), (a, b))
   let bar = Bar(curIndex: 0)
-  doAssert bar.next() == meA
+  doAssert bar.next() == meB
 
 when false: # issue #22607, needs nkWhenStmt to be handled like nkRecWhen
   proc test[x: static bool](
