@@ -237,10 +237,23 @@ proc initCandidate*(ctx: PContext, callee: PSym,
   result.bindings = initTypeMapping()
   if binding != nil:
     matchGenericParams(result, binding, callee)
-    if result.state != csNoMatch:
+    let state = result.state
+    if state != csNoMatch:
       result.state = csEmpty
-      # createThread[void] requires this:
-      copyingEraseVoidParams(result, result.callee)
+      if state == csMatch:
+        # only instantiate the type
+        # wouldn't be needed if sigmatch could handle complex types
+        let fakeSym = copySym(callee, ctx.idgen)
+        incl(fakeSym.flags, sfFromGeneric)
+        fakeSym.instantiatedFrom = callee
+        openScope(ctx)
+        ctx.instantiateGenericParamList(ctx, callee.ast[genericParamsPos], result.bindings)
+        ctx.instantiateProcType(ctx, result.bindings, fakeSym, binding.info)
+        closeScope(ctx)
+        result.callee = fakeSym.typ
+      else:
+        # createThread[void] requires this:
+        copyingEraseVoidParams(result, result.callee)
 
 proc newCandidate*(ctx: PContext, callee: PSym,
                    binding: PNode, calleeScope = -1): TCandidate =

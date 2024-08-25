@@ -728,6 +728,10 @@ proc preparePContext*(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PCo
   result.semOverloadedCall = semOverloadedCall
   result.semInferredLambda = semInferredLambda
   result.semGenerateInstance = generateInstance
+  result.instantiateProcType = instantiateProcType
+  result.instantiateGenericParamList = proc (c: PContext, n: PNode, pt: TypeMapping) =
+    for s in instantiateGenericParamList(c, n, pt):
+      addDecl(c, s)
   result.semTypeNode = semTypeNode
   result.instTypeBoundOp = sigmatch.instTypeBoundOp
   result.hasUnresolvedArgs = hasUnresolvedArgs

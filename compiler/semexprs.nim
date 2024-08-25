@@ -1180,6 +1180,7 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType
     if n[0].kind == nkBracketExpr or shouldBeBracketExpr(n):
       var s = qualifiedLookUp(c, n[0][0], {})
       if s != nil and s.kind in routineKinds:
+        n[0][0] = semSymGenericInstantiation(c, n[0][0], s)
         return semDirectOp(c, n, flags, expectedType)
     n[0] = semExpr(c, n[0], {efInCall, efAllowSymChoice})
     let t = n[0].typ

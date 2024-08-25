@@ -147,10 +147,11 @@ proc prepareNode(cl: var TReplTypeVars, n: PNode): PNode =
     # exception exists for the call name being a dot expression since
     # dot expressions need their LHS instantiated
     assert n.len != 0
-    let ignoreFirst = n[0].kind != nkDotExpr
+    let ignoreFirst = n[0].kind notin {nkDotExpr, nkBracketExpr} + nkCallKinds
     let name = n[0].getPIdent
     let ignoreSecond = name != nil and name.s == "[]" and n.len > 1 and
-      (n[1].typ != nil and n[1].typ.kind == tyTypeDesc)
+      ((n[1].typ != nil and n[1].typ.kind == tyTypeDesc) or
+        (n[1].kind == nkSym and n[1].sym.isGenericRoutineStrict))
     if ignoreFirst:
       result.add(n[0])
     else:
@@ -168,7 +169,8 @@ proc prepareNode(cl: var TReplTypeVars, n: PNode): PNode =
     # dot expressions need their LHS instantiated
     assert n.len != 0
     let ignoreFirst = n[0].kind != nkDotExpr and
-      n[0].typ != nil and n[0].typ.kind == tyTypeDesc
+      ((n[0].typ != nil and n[0].typ.kind == tyTypeDesc) or
+        (n[1].kind == nkSym and n[1].sym.isGenericRoutineStrict))
     if ignoreFirst:
       result.add(n[0])
     else:
