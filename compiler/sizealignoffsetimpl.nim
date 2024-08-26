@@ -385,6 +385,13 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
         accum.maxAlign = 1
         computeObjectOffsetsFoldFunction(conf, typ.n, true, accum)
       else:
+        if typ.baseClass == nil and lacksMTypeField(typ) and typ.n.len == 1 and
+            typ.n[0].kind == nkSym and
+            typ.n[0].sym.typ.skipTypes(abstractInst).kind == tyUncheckedArray:
+          # a dummy field is generated for an object with a single field
+          # with an UncheckedArray type
+          assert accum.offset == 0
+          accum.offset = 1
         computeObjectOffsetsFoldFunction(conf, typ.n, false, accum)
       let paddingAtEnd = int16(accum.finish())
       if typ.sym != nil and
