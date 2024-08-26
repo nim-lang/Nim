@@ -412,7 +412,7 @@ proc `==`*(x, y: MemSlice): bool =
 proc `$`*(ms: MemSlice): string {.inline.} =
   ## Return a Nim string built from a MemSlice.
   result.setLen(ms.size)
-  copyMem(addr(result[0]), ms.data, ms.size)
+  copyMem(result.cstring, ms.data, ms.size)
 
 iterator memSlices*(mfile: MemFile, delim = '\l', eat = '\r'): MemSlice {.inline.} =
   ## Iterates over \[optional `eat`] `delim`-delimited slices in MemFile `mfile`.
