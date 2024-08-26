@@ -119,8 +119,8 @@ when false: # unsupported
     doAssert x[1] == (cstring"def", 2.0'f32)
 
 block: # enum
-  type Foo {.pure.} = enum a
-  type Bar {.pure.} = enum a, b, c
+  type Foo = enum a
+  type Bar = enum a, b, c
 
   var s: seq[Bar] = @[a, b, c]
 

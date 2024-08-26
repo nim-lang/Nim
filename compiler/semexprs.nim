@@ -3112,14 +3112,6 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
   case n.kind
   of nkIdent, nkAccQuoted:
     var s: PSym
-    if expectedType != nil and (
-        let expected = expectedType.skipTypes(abstractRange-{tyDistinct});
-        expected.kind == tyEnum):
-      let nameId = considerQuotedIdent(c, n).id
-      for f in expected.n:
-        if f.kind == nkSym and f.sym.name.id == nameId:
-          s = f.sym
-          break
     if s == nil:
       let checks = if efNoEvaluateGeneric in flags:
           {checkUndeclared, checkPureEnumFields}
