@@ -259,8 +259,8 @@ proc semTemplSymbol(c: var TemplCtx, n: PNode, s: PSym; isField, isAmbiguous: bo
       if isAmbiguous:
         # ambiguous types should be symchoices since lookup behaves
         # differently for them in regular expressions
-        result = symChoice(c, n, s, scOpen, isField)
-      else: result = newSymNodeTypeDesc(s, c.idgen, n.info)
+        result = symChoice(c.c, n, s, scOpen, isField)
+      else: result = newSymNodeTypeDesc(s, c.c.idgen, n.info)
       if not isField and not (s.owner == c.owner and
           s.typ != nil and s.typ.kind == tyGenericParam) and
           result.kind in {nkSym, nkOpenSymChoice}:
