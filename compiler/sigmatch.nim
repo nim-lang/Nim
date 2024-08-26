@@ -885,6 +885,7 @@ proc maybeSkipDistinct(m: TCandidate; t: PType, callee: PSym): PType =
 
 proc tryResolvingStaticExpr(c: var TCandidate, n: PNode,
                             allowUnresolved = false,
+                            allowCalls = false,
                             expectedType: PType = nil): PNode =
   # Consider this example:
   #   type Value[N: static[int]] = object
@@ -894,7 +895,7 @@ proc tryResolvingStaticExpr(c: var TCandidate, n: PNode,
   # This proc is used to evaluate such static expressions.
   let instantiated = replaceTypesInBody(c.c, c.bindings, n, nil,
                                         allowMetaTypes = allowUnresolved)
-  if instantiated.kind in nkCallKinds:
+  if not allowCalls and instantiated.kind in nkCallKinds:
     return nil
   result = c.c.semExpr(c.c, instantiated)
 
@@ -966,7 +967,8 @@ proc inferStaticParam*(c: var TCandidate, lhs: PNode, rhs: BiggestInt): bool =
 
     else: discard
 
-  elif lhs.kind == nkSym and lhs.typ.kind == tyStatic and lhs.typ.n == nil:
+  elif lhs.kind == nkSym and lhs.typ.kind == tyStatic and
+      (lhs.typ.n == nil or idTableGet(c.bindings, lhs.typ) == nil):
     var inferred = newTypeS(tyStatic, c.c, lhs.typ.elementType)
     inferred.n = newIntNode(nkIntLit, rhs)
     put(c, lhs.typ, inferred)
@@ -1877,7 +1879,11 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         elif f.base.kind notin {tyNone, tyGenericParam}:
           result = typeRel(c, f.base, a, flags)
           if result != isNone and f.n != nil:
-            if not exprStructuralEquivalent(f.n, aOrig.n):
+            var r = tryResolvingStaticExpr(c, f.n)
+            if r == nil: r = f.n
+            if not exprStructuralEquivalent(r, aOrig.n) and
+                not (aOrig.n.kind == nkIntLit and
+                  inferStaticParam(c, r, aOrig.n.intVal)):
               result = isNone
         elif f.base.kind == tyGenericParam:
           # Handling things like `type A[T; Y: static T] = object`
@@ -1963,23 +1969,29 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
   of tyFromExpr:
     # fix the expression, so it contains the already instantiated types
     if f.n == nil or f.n.kind == nkEmpty: return isGeneric
-    let reevaluated = tryResolvingStaticExpr(c, f.n)
-    if reevaluated == nil:
+    if c.c.inGenericContext > 0:
+      # need to delay until instantiation
+      # also prevent infinite recursion below
+      return isNone
+    inc c.c.inGenericContext # to generate tyFromExpr again if unresolved
+    let reevaluated = tryResolvingStaticExpr(c, f.n, allowCalls = true).typ
+    dec c.c.inGenericContext
+    case reevaluated.kind
+    of tyFromExpr:
+      # not resolved
       result = isNone
-      return
-    case reevaluated.typ.kind
     of tyTypeDesc:
-      result = typeRel(c, a, reevaluated.typ.base, flags)
+      result = typeRel(c, a, reevaluated.base, flags)
     of tyStatic:
-      result = typeRel(c, a, reevaluated.typ.base, flags)
-      if result != isNone and reevaluated.typ.n != nil:
-        if not exprStructuralEquivalent(aOrig.n, reevaluated.typ.n):
+      result = typeRel(c, a, reevaluated.base, flags)
+      if result != isNone and reevaluated.n != nil:
+        if not exprStructuralEquivalent(aOrig.n, reevaluated.n):
           result = isNone
     else:
       # bug #14136: other types are just like 'tyStatic' here:
-      result = typeRel(c, a, reevaluated.typ, flags)
-      if result != isNone and reevaluated.typ.n != nil:
-        if not exprStructuralEquivalent(aOrig.n, reevaluated.typ.n):
+      result = typeRel(c, a, reevaluated, flags)
+      if result != isNone and reevaluated.n != nil:
+        if not exprStructuralEquivalent(aOrig.n, reevaluated.n):
           result = isNone
   of tyNone:
     if a.kind == tyNone: result = isEqual
@@ -2188,7 +2200,11 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
         a = typ
       else:
         if m.callee.kind == tyGenericBody:
-          if f.kind == tyStatic and typeRel(m, f.base, a) != isNone:
+          # we can't use `makeStaticExpr` if `arg` has a generic type
+          # because it generates `tyStatic`, which semtypinst doesn't touch
+          # not sure if checking for `tyFromExpr` is enough
+          if f.kind == tyStatic and typeRel(m, f.base, a) != isNone and
+              a.kind != tyFromExpr:
             result = makeStaticExpr(m.c, arg)
             result.typ.flags.incl tfUnresolved
             result.typ.n = arg

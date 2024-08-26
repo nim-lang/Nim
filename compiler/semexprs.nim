@@ -1482,20 +1482,28 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
 
 proc tryReadingGenericParam(c: PContext, n: PNode, i: PIdent, t: PType): PNode =
   case t.kind
-  of tyTypeParamsHolders:
+  of tyGenericInst:
     result = readTypeParameter(c, t, i, n.info)
     if result == c.graph.emptyNode:
-      result = semGenericStmt(c, n)
-      result.typ = makeTypeFromExpr(c, result.copyTree)
+      if c.inGenericContext > 0:
+        result = semGenericStmt(c, n)
+        result.typ = makeTypeFromExpr(c, result.copyTree)
+      else:
+        result = nil
   of tyUserTypeClasses:
     if t.isResolvedUserTypeClass:
       result = readTypeParameter(c, t, i, n.info)
-    else:
+    elif c.inGenericContext > 0:
       result = semGenericStmt(c, n)
       result.typ = makeTypeFromExpr(c, copyTree(result))
-  of tyFromExpr, tyGenericParam, tyAnything:
-    result = semGenericStmt(c, n)
-    result.typ = makeTypeFromExpr(c, copyTree(result))
+    else:
+      result = nil
+  elif t.containsGenericType:
+    if c.inGenericContext > 0:
+      result = semGenericStmt(c, n)
+      result.typ = makeTypeFromExpr(c, copyTree(result))
+    else:
+      result = nil
   else:
     result = nil
 

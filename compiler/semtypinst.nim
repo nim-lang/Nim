@@ -678,8 +678,31 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
     elif t.elementType.kind != tyNone:
       result = makeTypeDesc(cl.c, replaceTypeVarsT(cl, t.elementType))
 
-  of tyUserTypeClass, tyStatic:
+  of tyUserTypeClass:
     result = t
+  
+  of tyStatic:
+    if cl.c.matchedConcept != nil:
+      # allow concepts to not instantiate statics for now
+      # they can't always infer them
+      return
+    if not containsGenericType(t) and (t.n == nil or t.n.kind in nkLiterals):
+      # no need to instantiate
+      return
+    bailout()
+    result = instCopyType(cl, t)
+    cl.localCache[t.itemId] = result
+    for i in FirstGenericParamAt..<result.kidsLen:
+      var r = result[i]
+      if r != nil:
+        r = replaceTypeVarsT(cl, r)
+        result[i] = r
+        propagateToOwner(result, r)
+    result.n = replaceTypeVarsN(cl, result.n)
+    if not cl.allowMetaTypes and result.n != nil and
+        result.base.kind != tyNone:
+      result.n = cl.c.semConstExpr(cl.c, result.n)
+      result.n.typ = result.base
 
   of tyGenericInst, tyUserTypeClassInst:
     bailout()
