@@ -1406,6 +1406,8 @@ proc commonSuperclass*(a, b: PType): PType =
       return t
     y = y.baseClass
 
+proc lacksMTypeField*(typ: PType): bool {.inline.} =
+  (typ.sym != nil and sfPure in typ.sym.flags) or tfFinal in typ.flags
 
 include sizealignoffsetimpl
 
@@ -1854,6 +1856,3 @@ proc isCharArrayPtr*(t: PType; allowPointerToChar: bool): bool =
       result = false
   else:
     result = false
-
-proc lacksMTypeField*(typ: PType): bool {.inline.} =
-  (typ.sym != nil and sfPure in typ.sym.flags) or tfFinal in typ.flags
