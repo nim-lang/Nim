@@ -195,3 +195,15 @@ block: # issue #23865 for templates
       123
     res
   doAssert g(int) == "f"
+
+import std/sequtils
+
+block: # issue #15314
+  var it: string
+  var nums = @[1,2,3]
+
+  template doubleNums() =
+    nums.applyIt(it * 2)
+
+  doubleNums()
+  doAssert nums == @[2, 4, 6]
