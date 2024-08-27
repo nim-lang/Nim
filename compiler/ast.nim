@@ -214,7 +214,8 @@ type
     tyUncheckedArray
       # An array with boundaries [0,+∞]
 
-    tyProxy # used as errornous type (for idetools)
+    tyError # used as erroneous type (for idetools)
+      # as an erroneous node should match everything
 
     tyBuiltInTypeClass
       # Type such as the catch-all object, tuple, seq, etc
@@ -276,10 +277,6 @@ static:
 const
   tyPureObject* = tyTuple
   GcTypeKinds* = {tyRef, tySequence, tyString}
-  tyError* = tyProxy # as an errornous node should match everything
-  tyUnknown* = tyFromExpr
-
-  tyUnknownTypes* = {tyError, tyFromExpr}
 
   tyTypeClasses* = {tyBuiltInTypeClass, tyCompositeTypeClass,
                     tyUserTypeClass, tyUserTypeClassInst,

@@ -2859,7 +2859,7 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags, expectedType: PType =
         let verdict = semConstExpr(c, n[i])
         if verdict == nil or verdict.kind != nkIntLit or verdict.intVal == 0:
           localError(c.config, result.info, "concept predicate failed")
-      of tyUnknown: continue
+      of tyFromExpr: continue
       else: discard
     if n[i].typ == c.enforceVoidContext: #or usesResult(n[i]):
       voidContext = true
