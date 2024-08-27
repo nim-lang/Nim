@@ -32,11 +32,12 @@ block: # sigmatch can't handle this without pre-instantiating the type:
   proc bar[T](f: Foo[T]) = discard
   bar[int](foo)
 
-when false: # ditto, but needs #24005 to show the issue
+block: # ditto but may be wrong minimization
   # minimized from measuremancer
-  proc foo[T](): T = default(T)
+  type Foo[T] = object
+  proc foo[T](): Foo[T] = Foo[T]()
   proc bar[T](x = foo[T]()) = discard
-  bar[int](123)
+  bar[int](Foo[int]())
   # alternative version
   proc baz[T](x: typeof(foo[T]())) = discard
-  baz[int](123)
+  baz[int](Foo[int]())

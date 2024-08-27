@@ -277,9 +277,18 @@ proc instantiateProcType(c: PContext, pt: TypeMapping,
     # call head symbol, because this leads to infinite recursion.
     if oldParam.ast != nil:
       var def = oldParam.ast.copyTree
+      # don't know why this doesn't work:
+      #def = prepareNode(cl, def)
       if def.kind in nkCallKinds:
+        var id: PIdent = nil
+        if def[0].kind == nkBracketExpr or (def[0].kind in nkCallKinds and
+            (id = def[0][0].getPIdent; id != nil and id.s == "[]")):
+          var start = 1
+          if id != nil: inc start
+          for j in start ..< def[0].len:
+            def[0][j] = replaceTypeVarsN(cl, def[0][j])
         for i in 1..<def.len:
-          def[i] = replaceTypeVarsN(cl, def[i], 1)
+          def[i] = replaceTypeVarsN(cl, def[i])
 
       # allow symchoice since node will be fit later
       # although expectedType should cover it

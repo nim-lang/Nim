@@ -668,6 +668,18 @@ proc updateDefaultParams(c: PContext, call: PNode) =
         def.typ = errorType(c)
       call[i] = def
 
+proc getCallLineInfo*(n: PNode): TLineInfo =
+  case n.kind
+  of nkAccQuoted, nkBracketExpr, nkCall, nkCallStrLit, nkCommand:
+    if len(n) > 0:
+      return getCallLineInfo(n[0])
+  of nkDotExpr:
+    if len(n) > 1:
+      return getCallLineInfo(n[1])
+  else:
+    discard
+  result = n.info
+
 proc inheritBindings(c: PContext, x: var TCandidate, expectedType: PType) =
   ## Helper proc to inherit bound generic parameters from expectedType into x.
   ## Does nothing if 'inferGenericTypes' isn't in c.features.
@@ -816,19 +828,20 @@ proc explicitGenericInstError(c: PContext; n: PNode): PNode =
   localError(c.config, getCallLineInfo(n), errCannotInstantiateX % renderTree(n))
   result = n
 
-proc explicitGenericSym(m: var TCandidate, n: PNode, s: PSym): PSym =
+proc explicitGenericSym(c: PContext, n: PNode, s: PSym): PNode =
   if s.kind in {skTemplate, skMacro}:
-    internalError m.c.config, n.info, "cannot get explicitly instantiated symbol of " &
+    internalError c.config, n.info, "cannot get explicitly instantiated symbol of " &
       (if s.kind == skTemplate: "template" else: "macro")
+  var m = newCandidate(c, s, nil)
   matchGenericParams(m, n, s)
   if m.state != csMatch:
     return nil
-  var newInst = m.c.semGenerateInstance(m.c, s, m.bindings, n.info)
+  var newInst = c.semGenerateInstance(c, s, m.bindings, n.info)
   newInst.typ.flags.excl tfUnresolved
-  result = newInst
   let info = getCallLineInfo(n)
-  markUsed(m.c, info, s)
+  markUsed(c, info, s)
   onUse(info, s)
+  result = newSymNode(newInst, info)
 
 proc setGenericParams(c: PContext, n, expectedParams: PNode) =
   ## sems generic params in subscript expression
@@ -858,16 +871,13 @@ proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
       localError(c.config, getCallLineInfo(n), errGenerated, "cannot instantiate: '" & renderTree(n) &
          "'; got " & $(n.len-1) & " typeof(s) but expected " & $expected)
       return n
-    var m = newCandidate(c, s, nil)
-    let x = explicitGenericSym(m, n, s)
-    if x == nil: result = explicitGenericInstError(c, n)
-    else: result = newSymNode(x, getCallLineInfo(n))
+    result = explicitGenericSym(c, n, s)
+    if result == nil: result = explicitGenericInstError(c, n)
   elif a.kind in {nkClosedSymChoice, nkOpenSymChoice}:
     # choose the generic proc with the proper number of type parameters.
     # XXX I think this could be improved by reusing sigmatch.paramTypesMatch.
     # It's good enough for now.
-    let info = getCallLineInfo(n)
-    result = newNodeI(a.kind, info)
+    result = newNodeI(a.kind, getCallLineInfo(n))
     for i in 0..<a.len:
       var candidate = a[i].sym
       if candidate.kind in {skProc, skMethod, skConverter,
@@ -875,9 +885,8 @@ proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
         # it suffices that the candidate has the proper number of generic
         # type parameters:
         if candidate.ast[genericParamsPos].safeLen == n.len-1:
-          var m = newCandidate(c, candidate, nil)
-          let x = explicitGenericSym(m, n, candidate)
-          if x != nil: result.add newSymNode(x, info)
+          let x = explicitGenericSym(c, n, candidate)
+          if x != nil: result.add x
     # get rid of nkClosedSymChoice if not ambiguous:
     if result.len == 1 and a.kind == nkClosedSymChoice:
       result = result[0]
