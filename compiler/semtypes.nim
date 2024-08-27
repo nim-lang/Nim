@@ -1389,7 +1389,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
         # if def.typ != nil and def.typ.kind != tyNone:
         # example code that triggers it:
         # proc sort[T](cmp: proc(a, b: T): int = cmp)
-        if not containsGenericType(typ):
+        if not containsGenericType(typ) and not containsGenericType(def.typ):
           # check type compatibility between def.typ and typ:
           def = fitNode(c, typ, def, def.info)
         elif typ.kind == tyStatic:
