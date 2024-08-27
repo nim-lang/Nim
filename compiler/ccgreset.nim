@@ -96,7 +96,7 @@ proc specializeResetT(p: BProc, accessor: Rope, typ: PType) =
       raiseAssert "unexpected set type kind"
   of tyNone, tyEmpty, tyNil, tyUntyped, tyTyped, tyGenericInvocation,
       tyGenericParam, tyOrdinal, tyOpenArray, tyForward, tyVarargs,
-      tyUncheckedArray, tyProxy, tyBuiltInTypeClass, tyUserTypeClass,
+      tyUncheckedArray, tyError, tyBuiltInTypeClass, tyUserTypeClass,
       tyUserTypeClassInst, tyCompositeTypeClass, tyAnd, tyOr, tyNot,
       tyAnything, tyStatic, tyFromExpr, tyConcept, tyVoid, tyIterable:
     discard

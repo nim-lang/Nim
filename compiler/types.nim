@@ -776,7 +776,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
 
 proc firstOrd*(conf: ConfigRef; t: PType): Int128 =
   case t.kind
-  of tyBool, tyChar, tySequence, tyOpenArray, tyString, tyVarargs, tyProxy:
+  of tyBool, tyChar, tySequence, tyOpenArray, tyString, tyVarargs, tyError:
     result = Zero
   of tySet, tyVar: result = firstOrd(conf, t.elementType)
   of tyArray: result = firstOrd(conf, t.indexType)
@@ -909,7 +909,7 @@ proc lastOrd*(conf: ConfigRef; t: PType): Int128 =
     result = lastOrd(conf, skipModifier(t))
   of tyUserTypeClasses:
     result = lastOrd(conf, last(t))
-  of tyProxy: result = Zero
+  of tyError: result = Zero
   of tyOrdinal:
     if t.hasElementType: result = lastOrd(conf, skipModifier(t))
     else:

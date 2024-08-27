@@ -1962,7 +1962,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     if aOrig != nil:
       put(c, f, aOrig)
     result = isGeneric
-  of tyProxy:
+  of tyError:
     result = isEqual
   of tyFromExpr:
     # fix the expression, so it contains the already instantiated types
@@ -2321,7 +2321,7 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
   of isNone:
     # do not do this in ``typeRel`` as it then can't infer T in ``ref T``:
     if a.kind == tyFromExpr: return nil
-    elif a.kind == tyProxy:
+    elif a.kind == tyError:
       inc(m.genericMatches)
       m.matchedErrorType = true
       return arg
@@ -2493,7 +2493,7 @@ proc setSon(father: PNode, at: int, son: PNode) =
 # we are allowed to modify the calling node in the 'prepare*' procs:
 proc prepareOperand(c: PContext; formal: PType; a: PNode): PNode =
   if formal.kind == tyUntyped and formal.len != 1:
-    # {tyTypeDesc, tyUntyped, tyTyped, tyProxy}:
+    # {tyTypeDesc, tyUntyped, tyTyped, tyError}:
     # a.typ == nil is valid
     result = a
   elif a.typ.isNil:
