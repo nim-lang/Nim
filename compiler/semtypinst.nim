@@ -118,7 +118,7 @@ proc replaceTypeVarsT*(cl: var TReplTypeVars, t: PType): PType =
   result = replaceTypeVarsTAux(cl, t)
   checkMetaInvariants(cl, result)
 
-proc prepareNode(cl: var TReplTypeVars, n: PNode): PNode =
+proc prepareNode*(cl: var TReplTypeVars, n: PNode): PNode =
   let t = replaceTypeVarsT(cl, n.typ)
   if t != nil and t.kind == tyStatic and t.n != nil:
     return if tfUnresolved in t.flags: prepareNode(cl, t.n)
@@ -150,7 +150,9 @@ proc prepareNode(cl: var TReplTypeVars, n: PNode): PNode =
     let ignoreFirst = n[0].kind notin {nkDotExpr, nkBracketExpr} + nkCallKinds
     let name = n[0].getPIdent
     let ignoreSecond = name != nil and name.s == "[]" and n.len > 1 and
+      # generic type instantiation:
       ((n[1].typ != nil and n[1].typ.kind == tyTypeDesc) or
+        # generic proc instantiation:
         (n[1].kind == nkSym and n[1].sym.isGenericRoutineStrict))
     if ignoreFirst:
       result.add(n[0])
@@ -169,7 +171,9 @@ proc prepareNode(cl: var TReplTypeVars, n: PNode): PNode =
     # dot expressions need their LHS instantiated
     assert n.len != 0
     let ignoreFirst = n[0].kind != nkDotExpr and
+      # generic type instantiation:
       ((n[0].typ != nil and n[0].typ.kind == tyTypeDesc) or
+        # generic proc instantiation:
         (n[0].kind == nkSym and n[0].sym.isGenericRoutineStrict))
     if ignoreFirst:
       result.add(n[0])

@@ -668,7 +668,7 @@ proc updateDefaultParams(c: PContext, call: PNode) =
         def.typ = errorType(c)
       call[i] = def
 
-proc getCallLineInfo*(n: PNode): TLineInfo =
+proc getCallLineInfo(n: PNode): TLineInfo =
   case n.kind
   of nkAccQuoted, nkBracketExpr, nkCall, nkCallStrLit, nkCommand:
     if len(n) > 0:
@@ -836,7 +836,7 @@ proc explicitGenericSym(c: PContext, n: PNode, s: PSym): PNode =
   matchGenericParams(m, n, s)
   if m.state != csMatch:
     return nil
-  var newInst = c.semGenerateInstance(c, s, m.bindings, n.info)
+  var newInst = generateInstance(c, s, m.bindings, n.info)
   newInst.typ.flags.excl tfUnresolved
   let info = getCallLineInfo(n)
   markUsed(c, info, s)
@@ -886,7 +886,7 @@ proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
         # type parameters:
         if candidate.ast[genericParamsPos].safeLen == n.len-1:
           let x = explicitGenericSym(c, n, candidate)
-          if x != nil: result.add x
+          if x != nil: result.add(x)
     # get rid of nkClosedSymChoice if not ambiguous:
     if result.len == 1 and a.kind == nkClosedSymChoice:
       result = result[0]

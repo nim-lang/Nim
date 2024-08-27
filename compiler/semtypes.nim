@@ -1358,10 +1358,15 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
           "either use ';' (semicolon) or explicitly write each default value")
         message(c.config, a.info, warnImplicitDefaultValue, msg)
       block determineType:
-        let isGeneric = isCurrentlyGeneric()
-        inc c.inGenericContext, ord(isGeneric)
-        def = semExprWithType(c, def, {efDetermineType, efAllowSymChoice}, typ)
-        dec c.inGenericContext, ord(isGeneric)
+        var defTyp = typ
+        if isCurrentlyGeneric():
+          defTyp = nil
+          def = semGenericStmt(c, def)
+          if hasUnresolvedArgs(c, def):
+            def.typ = makeTypeFromExpr(c, def.copyTree)
+            break determineType
+
+        def = semExprWithType(c, def, {efDetermineType, efAllowSymChoice}, defTyp)
         if def.referencesAnotherParam(getCurrOwner(c)):
           def.flags.incl nfDefaultRefsParam
 

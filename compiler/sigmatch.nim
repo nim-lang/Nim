@@ -165,6 +165,11 @@ proc matchGenericParam(m: var TCandidate, formal: PType, n: PNode) =
     return
 
 proc matchGenericParams*(m: var TCandidate, binding: PNode, callee: PSym) =
+  ## matches explicit generic instantiation `binding` against generic params of
+  ## proc symbol `callee`
+  ## state is set to `csMatch` if all generic params match, `csEmpty` if
+  ## implicit generic parameters are missing (matches but cannot instantiate),
+  ## `csNoMatch` if a constraint fails or param count doesn't match
   let c = m.c
   let typeParams = callee.ast[genericParamsPos]
   let paramCount = typeParams.len
@@ -250,14 +255,8 @@ proc initCandidate*(ctx: PContext, callee: PSym,
         # wouldn't be needed if sigmatch could handle complex cases,
         # examples are in texplicitgenerics
         # might be buggy, see rest of generateInstance if problems occur
-        let fakeSym = copySym(callee, ctx.idgen)
-        incl(fakeSym.flags, sfFromGeneric)
-        fakeSym.instantiatedFrom = callee
-        openScope(ctx)
-        ctx.instantiateGenericParamList(ctx, callee.ast[genericParamsPos], result.bindings)
-        ctx.instantiateProcType(ctx, result.bindings, fakeSym, binding.info)
-        closeScope(ctx)
-        result.callee = fakeSym.typ
+        let typ = ctx.instantiateOnlyProcType(ctx, result.bindings, callee, binding.info)
+        result.callee = typ
       else:
         # createThread[void] requires this if the above branch is removed:
         copyingEraseVoidParams(result, result.callee)
