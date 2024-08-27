@@ -409,9 +409,16 @@ proc handleRange(c: PContext, f, a: PType, min, max: TTypeKind): TTypeRelation =
     let k = ab.kind
     let nf = c.config.normalizeKind(f.kind)
     let na = c.config.normalizeKind(k)
-    if k == f.kind: result = isSubrange
-    elif k == tyInt and f.kind in {tyRange, tyInt..tyInt64,
-                                   tyUInt..tyUInt64} and
+    if k == f.kind:
+      # `a` is a range type matching its base type
+      # see very bottom for range types matching different types
+      if isIntLit(ab):
+        # range type can only give isFromIntLit for base type
+        result = isFromIntLit
+      else:
+        result = isSubrange
+    elif a.kind == tyInt and f.kind in {tyRange, tyInt..tyInt64,
+                                        tyUInt..tyUInt64} and
         isIntLit(ab) and getInt(ab.n) >= firstOrd(nil, f) and
                          getInt(ab.n) <= lastOrd(nil, f):
       # passing 'nil' to firstOrd/lastOrd here as type checking rules should
