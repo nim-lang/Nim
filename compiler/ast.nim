@@ -323,7 +323,7 @@ type
     nfHasComment # node has a comment
     nfSkipFieldChecking # node skips field visable checking
     nfDisabledOpenSym # temporary: node should be nkOpenSym but cannot
-                      # because genericsOpenSym experimental switch is disabled
+                      # because openSym experimental switch is disabled
                       # gives warning instead
 
   TNodeFlags* = set[TNodeFlag]
@@ -895,7 +895,7 @@ const
   nfAllFieldsSet* = nfBase2
 
   nkIdentKinds* = {nkIdent, nkSym, nkAccQuoted, nkOpenSymChoice,
-                   nkClosedSymChoice}
+                   nkClosedSymChoice, nkOpenSym}
 
   nkPragmaCallKinds* = {nkExprColonExpr, nkCall, nkCallStrLit}
   nkLiterals* = {nkCharLit..nkTripleStrLit}
@@ -1283,6 +1283,9 @@ proc newSymNode*(sym: PSym, info: TLineInfo): PNode =
   result.sym = sym
   result.typ = sym.typ
   result.info = info
+
+proc newOpenSym*(n: PNode): PNode {.inline.} =
+  result = newTreeI(nkOpenSym, n.info, n)
 
 proc newIntNode*(kind: TNodeKind, intVal: BiggestInt): PNode =
   result = newNode(kind)
