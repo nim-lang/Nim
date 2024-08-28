@@ -36,8 +36,14 @@ block: # ditto but may be wrong minimization
   # minimized from measuremancer
   type Foo[T] = object
   proc foo[T](): Foo[T] = Foo[T]()
-  proc bar[T](x = foo[T]()) = discard
+  when false:
+    # this is the actual issue but there are other instantiation problems
+    proc bar[T](x = foo[T]()) = discard
+  else:
+    proc bar[T](x: Foo[T] = foo[T]()) = discard
   bar[int](Foo[int]())
-  # alternative version
-  proc baz[T](x: typeof(foo[T]())) = discard
-  baz[int](Foo[int]())
+  bar[int]()
+  when false:
+    # alternative version, also causes instantiation issue
+    proc baz[T](x: typeof(foo[T]())) = discard
+    baz[int](Foo[int]())

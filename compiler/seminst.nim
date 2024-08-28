@@ -277,10 +277,9 @@ proc instantiateProcType(c: PContext, pt: TypeMapping,
     # call head symbol, because this leads to infinite recursion.
     if oldParam.ast != nil:
       var def = oldParam.ast.copyTree
-      if def.typ.kind == tyFromExpr:
-        def.typ.flags.incl tfNonConstExpr
-      if not isIntLit(def.typ):
-        def = prepareNode(cl, def)
+      if def.kind in nkCallKinds:
+        for i in 1..<def.len:
+          def[i] = replaceTypeVarsN(cl, def[i], 1)
 
       # allow symchoice since node will be fit later
       # although expectedType should cover it

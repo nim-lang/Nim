@@ -118,7 +118,7 @@ proc replaceTypeVarsT*(cl: var TReplTypeVars, t: PType): PType =
   result = replaceTypeVarsTAux(cl, t)
   checkMetaInvariants(cl, result)
 
-proc prepareNode*(cl: var TReplTypeVars, n: PNode): PNode =
+proc prepareNode(cl: var TReplTypeVars, n: PNode): PNode =
   let t = replaceTypeVarsT(cl, n.typ)
   if t != nil and t.kind == tyStatic and t.n != nil:
     return if tfUnresolved in t.flags: prepareNode(cl, t.n)

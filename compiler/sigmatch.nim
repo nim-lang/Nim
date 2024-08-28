@@ -135,12 +135,6 @@ proc typeRel*(c: var TCandidate, f, aOrig: PType,
 
 proc matchGenericParam(m: var TCandidate, formal: PType, n: PNode) =
   var arg = n.typ
-  if m.c.inGenericContext > 0:
-    while arg != nil and arg.kind == tyGenericParam:
-      arg = idTableGet(m.bindings, arg)
-    if arg == nil or arg.containsGenericType:
-      m.state = csNoMatch
-      return
   # fix up the type to get ready to match formal:
   var formalBase = formal
   while formalBase.kind == tyGenericParam and
@@ -245,7 +239,7 @@ proc initCandidate*(ctx: PContext, callee: PSym,
   result.diagnosticsEnabled = diagnosticsEnabled
   result.magic = result.calleeSym.magic
   result.bindings = initTypeMapping()
-  if binding != nil:
+  if binding != nil and callee.kind in routineKinds:
     matchGenericParams(result, binding, callee)
     let genericMatch = result.state
     if genericMatch != csNoMatch:
