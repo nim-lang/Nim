@@ -103,7 +103,7 @@ pkg "measuremancer", "nimble testDeps; nimble -y test"
 pkg "memo"
 pkg "msgpack4nim", "nim c -r tests/test_spec.nim"
 pkg "nake", "nim c nakefile.nim"
-pkg "neo", "nim c -d:blas=openblas --mm:refc tests/all.nim", url = "https://github.com/nim-lang/neo"
+pkg "neo", "nim c -d:blas=openblas --mm:refc tests/all.nim"
 pkg "nesm", "nimble tests", "https://github.com/nim-lang/NESM", useHead = true, allowFailure = true
   # inactive, tests not adapted to #23096
 pkg "netty"
