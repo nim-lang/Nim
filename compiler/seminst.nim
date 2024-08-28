@@ -279,7 +279,8 @@ proc instantiateProcType(c: PContext, pt: TypeMapping,
       var def = oldParam.ast.copyTree
       if def.typ.kind == tyFromExpr:
         def.typ.flags.incl tfNonConstExpr
-      def = prepareNode(cl, def)
+      if not isIntLit(def.typ):
+        def = prepareNode(cl, def)
 
       # allow symchoice since node will be fit later
       # although expectedType should cover it
