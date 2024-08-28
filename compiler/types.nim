@@ -984,6 +984,7 @@ type
     AllowCommonBase
     PickyCAliases  # be picky about the distinction between 'cint' and 'int32'
     IgnoreFlags    # used for borrowed functions and methods; ignores the tfVarIsPtr flag
+    PickyBackendAliases # be picky about different aliases
 
   TTypeCmpFlags* = set[TTypeCmpFlag]
 
@@ -1260,6 +1261,11 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
       let symFlagsB = if b.sym != nil: b.sym.flags else: {}
       if (symFlagsA+symFlagsB) * {sfImportc, sfExportc} != {}:
         result = symFlagsA == symFlagsB
+    elif result and PickyBackendAliases in c.flags:
+      let symFlagsA = if a.sym != nil: a.sym.flags else: {}
+      let symFlagsB = if b.sym != nil: b.sym.flags else: {}
+      if (symFlagsA+symFlagsB) * {sfImportc, sfExportc} != {}:
+        result = a.id == b.id
 
   of tyStatic, tyFromExpr:
     result = exprStructuralEquivalent(a.n, b.n) and sameFlags(a, b)
@@ -1343,6 +1349,12 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
 proc sameBackendType*(x, y: PType): bool =
   var c = initSameTypeClosure()
   c.flags.incl IgnoreTupleFields
+  c.cmp = dcEqIgnoreDistinct
+  result = sameTypeAux(x, y, c)
+
+proc sameBackendTypePickyAliases*(x, y: PType): bool =
+  var c = initSameTypeClosure()
+  c.flags.incl {IgnoreTupleFields, PickyCAliases, PickyBackendAliases}
   c.cmp = dcEqIgnoreDistinct
   result = sameTypeAux(x, y, c)
 
