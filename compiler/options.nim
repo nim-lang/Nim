@@ -221,7 +221,9 @@ type
     flexibleOptionalParams,
     strictDefs,
     strictCaseObjects,
-    genericsOpenSym # remove nfDisabledOpenSym when this switch is default
+    openSym, # remove nfDisabledOpenSym when this is default
+    # separated alternatives to above:
+    genericsOpenSym, templateOpenSym
 
   LegacyFeature* = enum
     allowSemcheckedAstModification,

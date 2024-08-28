@@ -30,30 +30,38 @@ slots when enlarging a sequence.
 
 
 
-- An experimental option `genericsOpenSym` has been added to allow captured
-  symbols in generic routine bodies to be replaced by symbols injected locally
-  by templates/macros at instantiation time. `bind` may be used to keep the
-  captured symbols over the injected ones regardless of enabling the option,
-  but other methods like renaming the captured symbols should be used instead
-  so that the code is not affected by context changes.
+- The experimental option `--experimental:openSym` has been added to allow
+  captured symbols in generic routine and template bodies respectively to be
+  replaced by symbols injected locally by templates/macros at instantiation
+  time. `bind` may be used to keep the captured symbols over the injected ones
+  regardless of enabling the option, but other methods like renaming the
+  captured symbols should be used instead so that the code is not affected by
+  context changes.
 
   Since this change may affect runtime behavior, the experimental switch
-  `genericsOpenSym` needs to be enabled, and a warning is given in the case
-  where an injected symbol would replace a captured symbol not bound by `bind`
-  and the experimental switch isn't enabled.
+  `openSym`, or `genericsOpenSym` and `templateOpenSym` for only the respective
+  routines, needs to be enabled; and a warning is given in the case where an
+  injected symbol would replace a captured symbol not bound by `bind` and
+  the experimental switch isn't enabled.
 
   ```nim
   const value = "captured"
-  template foo(x: int, body: untyped) =
+  template foo(x: int, body: untyped): untyped =
     let value {.inject.} = "injected"
     body
 
   proc old[T](): string =
     foo(123):
-      return value # warning: a new `value` has been injected, use `bind` or turn on `experimental:genericsOpenSym`
+      return value # warning: a new `value` has been injected, use `bind` or turn on `experimental:openSym`
   echo old[int]() # "captured"
 
-  {.experimental: "genericsOpenSym".}
+  template oldTempl(): string =
+    block:
+      foo(123):
+        value # warning: a new `value` has been injected, use `bind` or turn on `experimental:openSym`
+  echo oldTempl() # "captured"
+
+  {.experimental: "openSym".} # or {.experimental: "genericsOpenSym".} for just generic procs
 
   proc bar[T](): string =
     foo(123):
@@ -65,14 +73,28 @@ slots when enlarging a sequence.
     foo(123):
       return value
   assert baz[int]() == "captured"
+
+  # {.experimental: "templateOpenSym".} would be needed here if genericsOpenSym was used
+
+  template barTempl(): string =
+    block:
+      foo(123):
+        value
+  assert barTempl() == "injected" # previously it would be "captured"
+
+  template bazTempl(): string =
+    bind value
+    block:
+      foo(123):
+        value
+  assert bazTempl() == "captured"
   ```
 
   This option also generates a new node kind `nnkOpenSym` which contains
-  exactly 1 of either an `nnkSym` or an `nnkOpenSymChoice` node. In the future
-  this might be merged with a slightly modified `nnkOpenSymChoice` node but
-  macros that want to support the experimental feature should still handle
-  `nnkOpenSym`, as the node kind would simply not be generated as opposed to
-  being removed.
+  exactly 1 `nnkSym` node. In the future this might be merged with a slightly
+  modified `nnkOpenSymChoice` node but macros that want to support the
+  experimental feature should still handle `nnkOpenSym`, as the node kind would
+  simply not be generated as opposed to being removed.
 
 ## Compiler changes
 

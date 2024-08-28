@@ -2324,3 +2324,71 @@ proc makeCppClass(): NimClass {.constructor: "NimClass() : CppClass(0, 0)".} =
 In the example above `CppClass` has a deleted default constructor. Notice how by using the constructor syntax, one can call the appropiate constructor.
 
 Notice when calling a constructor in the section of a global variable initialization, it will be called before `NimMain` meaning Nim is not fully initialized.
+
+Injected symbols in generic procs and templates
+===============================================
+
+With the experimental option `openSym`, captured symbols in generic routine and
+template bodies may be replaced by symbols injected locally by templates/macros
+at instantiation time. `bind` may be used to keep the captured symbols over the
+injected ones regardless of enabling the options, but other methods like
+renaming the captured symbols should be used instead so that the code is not
+affected by context changes.
+
+Since this change may affect runtime behavior, the experimental switch
+`openSym`, or `genericsOpenSym` and `templateOpenSym` for only the respective
+routines, needs to be enabled; and a warning is given in the case where an
+injected symbol would replace a captured symbol not bound by `bind` and
+the experimental switch isn't enabled.
+
+```nim
+const value = "captured"
+template foo(x: int, body: untyped): untyped =
+  let value {.inject.} = "injected"
+  body
+
+proc old[T](): string =
+  foo(123):
+    return value # warning: a new `value` has been injected, use `bind` or turn on `experimental:openSym`
+echo old[int]() # "captured"
+
+template oldTempl(): string =
+  block:
+    foo(123):
+      value # warning: a new `value` has been injected, use `bind` or turn on `experimental:openSym`
+echo oldTempl() # "captured"
+
+{.experimental: "openSym".} # or {.experimental: "genericsOpenSym".} for just generic procs
+
+proc bar[T](): string =
+  foo(123):
+    return value
+assert bar[int]() == "injected" # previously it would be "captured"
+
+proc baz[T](): string =
+  bind value
+  foo(123):
+    return value
+assert baz[int]() == "captured"
+
+# {.experimental: "templateOpenSym".} would be needed here if genericsOpenSym was used
+
+template barTempl(): string =
+  block:
+    foo(123):
+      value
+assert barTempl() == "injected" # previously it would be "captured"
+
+template bazTempl(): string =
+  bind value
+  block:
+    foo(123):
+      value
+assert bazTempl() == "captured"
+```
+
+This option also generates a new node kind `nnkOpenSym` which contains
+exactly 1 `nnkSym` node. In the future this might be merged with a slightly
+modified `nnkOpenSymChoice` node but macros that want to support the
+experimental feature should still handle `nnkOpenSym`, as the node kind would
+simply not be generated as opposed to being removed.

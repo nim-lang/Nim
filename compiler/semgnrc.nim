@@ -59,9 +59,6 @@ template isMixedIn(sym): bool =
 template canOpenSym(s): bool =
   {withinMixin, withinConcept} * flags == {withinMixin} and s.id notin ctx.toBind
 
-proc newOpenSym*(n: PNode): PNode {.inline.} =
-  result = newTreeI(nkOpenSym, n.info, n)
-
 proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
                           ctx: var GenericCtx; flags: TSemGenericFlags,
                           fromDotExpr=false): PNode =
@@ -75,8 +72,11 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
     else:
       result = symChoice(c, n, s, scOpen)
       if canOpenSym(s):
-        if genericsOpenSym in c.features:
-          result = newOpenSym(result)
+        if {openSym, genericsOpenSym} * c.features != {}:
+          if result.kind == nkSym:
+            result = newOpenSym(result)
+          else:
+            result.typ = nil
         else:
           result.flags.incl nfDisabledOpenSym
           result.typ = nil
@@ -108,7 +108,7 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
     else:
       result = newSymNodeTypeDesc(s, c.idgen, n.info)
       if canOpenSym(result.sym):
-        if genericsOpenSym in c.features:
+        if {openSym, genericsOpenSym} * c.features != {}:
           result = newOpenSym(result)
         else:
           result.flags.incl nfDisabledOpenSym
@@ -122,7 +122,7 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
        (s.typ.flags * {tfGenericTypeParam, tfImplicitTypeParam} == {}):
       result = newSymNodeTypeDesc(s, c.idgen, n.info)
       if canOpenSym(result.sym):
-        if genericsOpenSym in c.features:
+        if {openSym, genericsOpenSym} * c.features != {}:
           result = newOpenSym(result)
         else:
           result.flags.incl nfDisabledOpenSym
@@ -133,7 +133,7 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
   else:
     result = newSymNode(s, n.info)
     if canOpenSym(result.sym):
-      if genericsOpenSym in c.features:
+      if {openSym, genericsOpenSym} * c.features != {}:
         result = newOpenSym(result)
       else:
         result.flags.incl nfDisabledOpenSym

@@ -91,7 +91,7 @@ type
     warnStmtListLambda = "StmtListLambda",
     warnBareExcept = "BareExcept",
     warnImplicitDefaultValue = "ImplicitDefaultValue",
-    warnGenericsIgnoredInjection = "GenericsIgnoredInjection",
+    warnIgnoredSymbolInjection = "IgnoredSymbolInjection",
     warnUser = "User",
     # hints
     hintSuccess = "Success", hintSuccessX = "SuccessX",
@@ -195,7 +195,7 @@ const
     warnStmtListLambda: "statement list expression assumed to be anonymous proc; this is deprecated, use `do (): ...` or `proc () = ...` instead",
     warnBareExcept: "$1",
     warnImplicitDefaultValue: "$1",
-    warnGenericsIgnoredInjection: "$1",
+    warnIgnoredSymbolInjection: "$1",
     warnUser: "$1",
     hintSuccess: "operation successful: $#",
     # keep in sync with `testament.isSuccess`

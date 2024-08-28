@@ -44,16 +44,17 @@ template valueOr[T: not void, E](self: Result[T, E], def: untyped): untyped =
 proc f(): Result[int, cstring] =
   Result[int, cstring](oResultPrivate: false, eResultPrivate: "f")
 
-proc g(T: type): string =
+template g(T: type): string =
+  var res = "ok"
   let x = f().valueOr:
     {.push warningAsError[IgnoredSymbolInjection]: on.}
     # test spurious error
     discard true
     let _ = f
     {.pop.}
-    return $error #[tt.Warning
-            ^ a new symbol 'error' has been injected during template or generic instantiation, however 'error' [enumField declared in tmacroinjectedsymwarning.nim(6, 3)] captured at the proc declaration will be used instead; either enable --experimental:openSym to use the injected symbol, or `bind` this captured symbol explicitly [IgnoredSymbolInjection]]#
-
-  "ok"
+    res = $error #[tt.Warning
+           ^ a new symbol 'error' has been injected during template or generic instantiation, however 'error' [enumField declared in topensymwarning.nim(6, 3)] captured at the proc declaration will be used instead; either enable --experimental:openSym to use the injected symbol, or `bind` this captured symbol explicitly [IgnoredSymbolInjection]]#
+    123
+  res
 
 discard g(int)
