@@ -195,7 +195,7 @@ proc mapType(typ: PType): TJSTypeKind =
   of tyPointer:
     # treat a tyPointer like a typed pointer to an array of bytes
     result = etyBaseIndex
-  of tyRange, tyDistinct, tyOrdinal, tyProxy, tyLent:
+  of tyRange, tyDistinct, tyOrdinal, tyError, tyLent:
     # tyLent is no-op as JS has pass-by-reference semantics
     result = mapType(skipModifier t)
   of tyInt..tyInt64, tyUInt..tyUInt64, tyEnum, tyChar: result = etyInt
