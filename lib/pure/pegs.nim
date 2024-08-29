@@ -1047,7 +1047,7 @@ template eventParser*(pegAst, handlers: untyped): (proc(s: string): int) =
           `enter hdPostf`(s, pegNode, start)
         else:
           discard
-      let hdPostf = ident(substr(strVal(pegKind), 2))
+      let hdPostf = ident(substr($pegKind, 2))
       getAst(mkDoEnter(hdPostf, s, pegNode, start))
 
     macro leave(pegKind, s, pegNode, start, length: untyped): untyped =
@@ -1058,7 +1058,7 @@ template eventParser*(pegAst, handlers: untyped): (proc(s: string): int) =
           `leave hdPostf`(s, pegNode, start, length)
         else:
           discard
-      let hdPostf = ident(substr(strVal(pegKind), 2))
+      let hdPostf = ident(substr($pegKind, 2))
       getAst(mkDoLeave(hdPostf, s, pegNode, start, length))
 
     matchOrParse(parseIt)

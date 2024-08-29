@@ -138,25 +138,6 @@ proc resolveSymChoice(c: PContext, n: var PNode, flags: TExprFlags = {}, expecte
       # to mirror behavior before overloadable enums
       n = n[0]
 
-proc semSymChoice(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType = nil): PNode =
-  result = n
-  resolveSymChoice(c, result, flags, expectedType)
-  if isSymChoice(result) and result.len == 1:
-    # resolveSymChoice can leave 1 sym
-    result = result[0]
-  if isSymChoice(result) and efAllowSymChoice notin flags:
-    var err = "ambiguous identifier: '" & result[0].sym.name.s &
-      "' -- use one of the following:\n"
-    for child in n:
-      let candidate = child.sym
-      err.add "  " & candidate.owner.name.s & "." & candidate.name.s
-      err.add ": " & typeToString(candidate.typ) & "\n"
-    localError(c.config, n.info, err)
-    n.typ = errorType(c)
-    result = n
-  if result.kind == nkSym:
-    result = semSym(c, result, result.sym, flags)
-
 proc semOpenSym(c: PContext, n: PNode, flags: TExprFlags, expectedType: PType,
                 warnDisabled = false): PNode =
   ## sem the child of an `nkOpenSym` node, that is, captured symbols that can be
@@ -189,29 +170,53 @@ proc semOpenSym(c: PContext, n: PNode, flags: TExprFlags, expectedType: PType,
         else:
           var msg =
             "a new symbol '" & ident.s & "' has been injected during " &
-            "instantiation of " & c.p.owner.name.s & ", however "
+            # msgContext should show what is being instantiated:
+            "template or generic instantiation, however "
           if isSym:
             msg.add(
               getSymRepr(c.config, n.sym) & " captured at " &
               "the proc declaration will be used instead; " &
-              "either enable --experimental:genericsOpenSym to use the " &
-              "injected symbol or `bind` this captured symbol explicitly")
+              "either enable --experimental:openSym to use the injected symbol, " &
+              "or `bind` this captured symbol explicitly")
           else:
             msg.add(
               "overloads of " & ident.s & " will be used instead; " &
-              "either enable --experimental:genericsOpenSym to use the " &
-              "injected symbol or `bind` this symbol explicitly")
-          message(c.config, n.info, warnGenericsIgnoredInjection, msg)
+              "either enable --experimental:openSym to use the injected symbol, " &
+              "or `bind` this symbol explicitly")
+          message(c.config, n.info, warnIgnoredSymbolInjection, msg)
           break
       o = o.owner
   # nothing found
-  if not warnDisabled:
+  if not warnDisabled and isSym:
     result = semExpr(c, n, flags, expectedType)
   else:
     result = nil
     if not isSym:
       # set symchoice node type back to None
       n.typ = newTypeS(tyNone, c)
+
+proc semSymChoice(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType = nil): PNode =
+  if n.kind == nkOpenSymChoice:
+    result = semOpenSym(c, n, flags, expectedType, warnDisabled = nfDisabledOpenSym in n.flags)
+    if result != nil:
+      return
+  result = n
+  resolveSymChoice(c, result, flags, expectedType)
+  if isSymChoice(result) and result.len == 1:
+    # resolveSymChoice can leave 1 sym
+    result = result[0]
+  if isSymChoice(result) and efAllowSymChoice notin flags:
+    var err = "ambiguous identifier: '" & result[0].sym.name.s &
+      "' -- use one of the following:\n"
+    for child in n:
+      let candidate = child.sym
+      err.add "  " & candidate.owner.name.s & "." & candidate.name.s
+      err.add ": " & typeToString(candidate.typ) & "\n"
+    localError(c.config, n.info, err)
+    n.typ = errorType(c)
+    result = n
+  if result.kind == nkSym:
+    result = semSym(c, result, result.sym, flags)
 
 proc inlineConst(c: PContext, n: PNode, s: PSym): PNode {.inline.} =
   result = copyTree(s.astdef)
@@ -1482,20 +1487,28 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
 
 proc tryReadingGenericParam(c: PContext, n: PNode, i: PIdent, t: PType): PNode =
   case t.kind
-  of tyTypeParamsHolders:
+  of tyGenericInst:
     result = readTypeParameter(c, t, i, n.info)
     if result == c.graph.emptyNode:
-      result = semGenericStmt(c, n)
-      result.typ = makeTypeFromExpr(c, result.copyTree)
+      if c.inGenericContext > 0:
+        result = semGenericStmt(c, n)
+        result.typ = makeTypeFromExpr(c, result.copyTree)
+      else:
+        result = nil
   of tyUserTypeClasses:
     if t.isResolvedUserTypeClass:
       result = readTypeParameter(c, t, i, n.info)
-    else:
+    elif c.inGenericContext > 0:
       result = semGenericStmt(c, n)
       result.typ = makeTypeFromExpr(c, copyTree(result))
-  of tyFromExpr, tyGenericParam, tyAnything:
-    result = semGenericStmt(c, n)
-    result.typ = makeTypeFromExpr(c, copyTree(result))
+    else:
+      result = nil
+  elif t.containsGenericType:
+    if c.inGenericContext > 0:
+      result = semGenericStmt(c, n)
+      result.typ = makeTypeFromExpr(c, copyTree(result))
+    else:
+      result = nil
   else:
     result = nil
 
@@ -1772,7 +1785,7 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
       result = nil
   else:
     let s = if n[0].kind == nkSym: n[0].sym
-            elif n[0].kind in nkSymChoices: n[0][0].sym
+            elif n[0].kind in nkSymChoices + {nkOpenSym}: n[0][0].sym
             else: nil
     if s != nil:
       case s.kind
@@ -3131,12 +3144,16 @@ proc resolveIdentToSym(c: PContext, n: PNode, resultNode: var PNode,
     # unambiguous, or we don't care about ambiguity
     result = candidates[0]
   else:
-    # ambiguous symbols have 1 last chance as a symchoice,
-    # but type symbols cannot participate in symchoices
+    # ambiguous symbols have 1 last chance as a symchoice
     var choice = newNodeIT(nkClosedSymChoice, n.info, newTypeS(tyNone, c))
-    for c in candidates:
-      if c.kind notin {skType, skModule, skPackage}:
-        choice.add newSymNode(c, n.info)
+    for cand in candidates:
+      case cand.kind
+      of skModule, skPackage:
+        discard
+      of skType:
+        choice.add newSymNodeTypeDesc(cand, c.idgen, n.info)
+      else:
+        choice.add newSymNode(cand, n.info)
     if choice.len == 0:
       # we know candidates.len > 1, we just couldn't put any in a symchoice
       errorUseQualifier(c, n.info, candidates)
@@ -3218,9 +3235,6 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
     if isSymChoice(result):
       result = semSymChoice(c, result, flags, expectedType)
   of nkClosedSymChoice, nkOpenSymChoice:
-    if nfDisabledOpenSym in n.flags:
-      let res = semOpenSym(c, n, flags, expectedType, warnDisabled = true)
-      assert res == nil
     result = semSymChoice(c, n, flags, expectedType)
   of nkSym:
     let s = n.sym
