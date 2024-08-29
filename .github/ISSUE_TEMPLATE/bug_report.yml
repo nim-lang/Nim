@@ -65,15 +65,9 @@ body:
 - type: markdown
   attributes:
     value: |
-      - Please check whether the problem still exists in the devel branch, \
-        which can be installed via [choosenim](https://github.com/nim-lang/choosenim/), \
-        [nightlies](https://github.com/nim-lang/nightlies/), \
-        or by [creating a temporary build of the compiler](https://nim-lang.github.io/Nim/intern.html#debugging-the-compiler-building-an-instrumented-compiler).
+      - Please check whether the problem still exists in the devel branch, which can be installed via [choosenim](https://github.com/nim-lang/choosenim/), [nightlies](https://github.com/nim-lang/nightlies/), or by [creating a temporary build of the compiler](https://nim-lang.github.io/Nim/intern.html#debugging-the-compiler-building-an-instrumented-compiler).
       - Consider writing a PR targetting devel branch after filing this, see [contributing](https://nim-lang.github.io/Nim/contributing.html).
-      - If it's a pre-existing compiler bug, see [debugging the compiler](https://nim-lang.github.io/Nim/intern.html#debugging-the-compiler) \
-        which should give more context on a compiler crash.
-      - If it's a regression, you can help us by identifying which version introduced the bug \
-        by [bisecting](https://nim-lang.github.io/Nim/intern.html#bisecting-for-regressions) \
-        or at least trying known past releases (e.g. `choosenim 2.0.0`). The Nim repo also supports online bisecting \
-        via making a comment, which contains a code block starting by `!nim c`, `!nim js` etc. , see [nimrun-action](https://github.com/juancarlospaco/nimrun-action).
+      - If it's a pre-existing compiler bug, see [debugging the compiler](https://nim-lang.github.io/Nim/intern.html#debugging-the-compiler) which should give more context on a compiler crash.
+      - If it's a regression, you can help us by identifying which version introduced the bug by [bisecting](https://nim-lang.github.io/Nim/intern.html#bisecting-for-regressions) or at least trying known past releases (e.g. `choosenim 2.0.0`).
+        The Nim repo also supports online bisecting via making a comment, which contains a code block starting by `!nim c`, `!nim js` etc. , see [nimrun-action](https://github.com/juancarlospaco/nimrun-action).
       - [Please, consider a Donation for the Nim project.](https://nim-lang.org/donate.html)
