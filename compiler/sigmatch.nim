@@ -59,8 +59,8 @@ type
     magic*: TMagic           # magic of operation
     baseTypeMatch: bool      # needed for conversions from T to openarray[T]
                              # for example
-    fauxMatch*: TTypeKind    # the match was successful only due to the use
-                             # of error or wildcard (unknown) types.
+    matchedErrorType*: bool  # match is considered successful after matching
+                             # error type to avoid cascading errors
                              # this is used to prevent instantiations.
     genericConverter*: bool  # true if a generic converter needs to
                              # be instantiated
@@ -100,8 +100,6 @@ const
 
 proc markUsed*(c: PContext; info: TLineInfo, s: PSym; checkStyle = true)
 proc markOwnerModuleAsUsed*(c: PContext; s: PSym)
-
-template hasFauxMatch*(c: TCandidate): bool = c.fauxMatch != tyNone
 
 proc initCandidateAux(ctx: PContext,
                       callee: PType): TCandidate {.inline.} =
@@ -409,9 +407,16 @@ proc handleRange(c: PContext, f, a: PType, min, max: TTypeKind): TTypeRelation =
     let k = ab.kind
     let nf = c.config.normalizeKind(f.kind)
     let na = c.config.normalizeKind(k)
-    if k == f.kind: result = isSubrange
-    elif k == tyInt and f.kind in {tyRange, tyInt..tyInt64,
-                                   tyUInt..tyUInt64} and
+    if k == f.kind:
+      # `a` is a range type matching its base type
+      # see very bottom for range types matching different types
+      if isIntLit(ab):
+        # range type can only give isFromIntLit for base type
+        result = isFromIntLit
+      else:
+        result = isSubrange
+    elif a.kind == tyInt and f.kind in {tyRange, tyInt..tyInt64,
+                                        tyUInt..tyUInt64} and
         isIntLit(ab) and getInt(ab.n) >= firstOrd(nil, f) and
                          getInt(ab.n) <= lastOrd(nil, f):
       # passing 'nil' to firstOrd/lastOrd here as type checking rules should
@@ -806,7 +811,7 @@ proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
             param.typ.flags.incl tfInferrableStatic
           else:
             param.ast = typ.n
-        of tyUnknown:
+        of tyFromExpr:
           param = paramSym skVar
           param.typ = typ.exactReplica
           #copyType(typ, c.idgen, typ.owner)
@@ -1964,7 +1969,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     if aOrig != nil:
       put(c, f, aOrig)
     result = isGeneric
-  of tyProxy:
+  of tyError:
     result = isEqual
   of tyFromExpr:
     # fix the expression, so it contains the already instantiated types
@@ -2030,7 +2035,7 @@ proc implicitConv(kind: TNodeKind, f: PType, arg: PNode, m: TCandidate,
                   c: PContext): PNode =
   result = newNodeI(kind, arg.info)
   if containsGenericType(f):
-    if not m.hasFauxMatch:
+    if not m.matchedErrorType:
       result.typ = getInstantiatedType(c, arg, m, f).skipTypes({tySink})
     else:
       result.typ = errorType(c)
@@ -2322,13 +2327,10 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
       result = implicitConv(nkHiddenSubConv, f, arg, m, c)
   of isNone:
     # do not do this in ``typeRel`` as it then can't infer T in ``ref T``:
-    if a.kind in {tyProxy, tyUnknown}:
-      if a.kind == tyUnknown and c.inGenericContext > 0:
-        # don't bother with fauxMatch mechanism in generic type,
-        # reject match, typechecking will be delayed to instantiation
-        return nil
+    if a.kind == tyFromExpr: return nil
+    elif a.kind == tyError:
       inc(m.genericMatches)
-      m.fauxMatch = a.kind
+      m.matchedErrorType = true
       return arg
     elif a.kind == tyVoid and f.matchesVoidProc and argOrig.kind == nkStmtList:
       # lift do blocks without params to lambdas
@@ -2498,7 +2500,7 @@ proc setSon(father: PNode, at: int, son: PNode) =
 # we are allowed to modify the calling node in the 'prepare*' procs:
 proc prepareOperand(c: PContext; formal: PType; a: PNode): PNode =
   if formal.kind == tyUntyped and formal.len != 1:
-    # {tyTypeDesc, tyUntyped, tyTyped, tyProxy}:
+    # {tyTypeDesc, tyUntyped, tyTyped, tyError}:
     # a.typ == nil is valid
     result = a
   elif a.typ.isNil:

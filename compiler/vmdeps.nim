@@ -282,7 +282,7 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
   of tyUInt32: result = atomicType("uint32", mUInt32)
   of tyUInt64: result = atomicType("uint64", mUInt64)
   of tyVarargs: result = mapTypeToBracket("varargs", mVarargs, t, info)
-  of tyProxy: result = atomicType("error", mNone)
+  of tyError: result = atomicType("error", mNone)
   of tyBuiltInTypeClass:
     result = mapTypeToBracket("builtinTypeClass", mNone, t, info)
   of tyUserTypeClass, tyUserTypeClassInst:

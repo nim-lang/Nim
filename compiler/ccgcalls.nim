@@ -353,9 +353,9 @@ proc genArg(p: BProc, n: PNode, param: PSym; call: PNode; result: var Rope; need
       addRdLoc(a, result)
   else:
     a = initLocExprSingleUse(p, n)
-    if param.typ.kind in abstractPtrs:
+    if param.typ.kind in {tyVar, tyPtr, tyRef, tySink}:
       let typ = skipTypes(param.typ, abstractPtrs)
-      if typ.sym != nil and sfImportc in typ.sym.flags:
+      if not sameBackendTypePickyAliases(typ, n.typ.skipTypes(abstractPtrs)):
         a.snippet = "(($1) ($2))" %
           [getTypeDesc(p.module, param.typ), rdCharLoc(a)]
     addRdLoc(withTmpIfNeeded(p, a, needsTmp), result)
