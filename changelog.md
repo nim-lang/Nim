@@ -65,7 +65,7 @@ is often an easy workaround.
 ## Language changes
 
 - `noInit` can be used in types and fields to disable member initializers in the C++ backend.
-- C++ custom constructors initializers see https://nim-lang.org/docs/manual_experimental.htm#constructor-initializer
+- C++ custom constructors initializers see https://nim-lang.org/docs/manual_experimental.html#constructor-initializer
 - `member` can be used to attach a procedure to a C++ type.
 - C++ `constructor` now reuses `result` instead creating `this`.
 
