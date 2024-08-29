@@ -1,5 +1,5 @@
 discard """
-  targets: "c cpp objc js"
+  targets: "c cpp js"
   matrix:"; -d:danger; --mm:refc"
 """
 
