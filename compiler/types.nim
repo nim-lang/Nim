@@ -1739,6 +1739,13 @@ proc processPragmaAndCallConvMismatch(msg: var string, formal, actual: PType, co
     of efTagsIllegal:
       msg.add "\n.notTag catched an illegal effect"
 
+proc typeNameAndDesc*(t: PType): string =
+  result = typeToString(t)
+  let desc = typeToString(t, preferDesc)
+  if result != desc:
+    result.add(" = ")
+    result.add(desc)
+
 proc typeMismatch*(conf: ConfigRef; info: TLineInfo, formal, actual: PType, n: PNode) =
   if formal.kind != tyError and actual.kind != tyError:
     let actualStr = typeToString(actual)
