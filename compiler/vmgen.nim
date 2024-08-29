@@ -900,9 +900,15 @@ proc genCard(c: PCtx; n: PNode; dest: var TDest) =
   c.freeTemp(tmp)
 
 proc genCastIntFloat(c: PCtx; n: PNode; dest: var TDest) =
+  template isSigned(typ: PType): bool {.dirty.} =
+    typ.kind == tyEnum and firstOrd(c.config, typ) < 0 or
+    typ.kind in {tyInt..tyInt64}
+  template isUnsigned(typ: PType): bool {.dirty.} =
+    typ.kind == tyEnum and firstOrd(c.config, typ) >= 0 or
+    typ.kind in {tyUInt..tyUInt64, tyChar, tyBool}
+
   const allowedIntegers = {tyInt..tyInt64, tyUInt..tyUInt64, tyChar, tyEnum, tyBool}
-  var signedIntegers = {tyInt..tyInt64}
-  var unsignedIntegers = {tyUInt..tyUInt64, tyChar, tyEnum, tyBool}
+
   let src = n[1].typ.skipTypes(abstractRange)#.kind
   let dst = n[0].typ.skipTypes(abstractRange)#.kind
   let srcSize = getSize(c.config, src)
@@ -914,12 +920,12 @@ proc genCastIntFloat(c: PCtx; n: PNode; dest: var TDest) =
     if dest < 0: dest = c.getTemp(n[0].typ)
     c.gABC(n, opcAsgnInt, dest, tmp)
     if dstSize != sizeof(BiggestInt): # don't do anything on biggest int types
-      if dst.kind in signedIntegers: # we need to do sign extensions
+      if isSigned(dst): # we need to do sign extensions
         if dstSize <= srcSize:
           # Sign extension can be omitted when the size increases.
           c.gABC(n, opcSignExtend, dest, TRegister(dstSize*8))
-      elif dst.kind in unsignedIntegers:
-        if src.kind in signedIntegers or dstSize < srcSize:
+      elif isUnsigned(dst):
+        if isSigned(src) or dstSize < srcSize:
           # Cast from signed to unsigned always needs narrowing. Cast
           # from unsigned to unsigned only needs narrowing when target
           # is smaller than source.
@@ -947,7 +953,7 @@ proc genCastIntFloat(c: PCtx; n: PNode; dest: var TDest) =
     if dest < 0: dest = c.getTemp(n[0].typ)
     if src.kind == tyFloat32:
       c.gABC(n, opcCastFloatToInt32, dest, tmp)
-      if dst.kind in unsignedIntegers:
+      if isUnsigned(dst):
         # integers are sign extended by default.
         # since there is no opcCastFloatToUInt32, narrowing should do the trick.
         c.gABC(n, opcNarrowU, dest, TRegister(32))

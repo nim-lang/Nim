@@ -47,3 +47,8 @@ block:
   # bug #14522
   doAssert 0xFF000000_00000000.uint64 == 18374686479671623680'u64
 
+block: # bug #23954
+  let testRT_u8 : uint8 = 0x107.uint8
+  doAssert testRT_u8 == 7
+  const testCT_u8 : uint8 = 0x107.uint8
+  doAssert testCT_u8 == 7

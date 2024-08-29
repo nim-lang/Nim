@@ -131,15 +131,61 @@ proc prepareNode(cl: var TReplTypeVars, n: PNode): PNode =
         replaceTypeVarsS(cl, n.sym, result.typ)
       else:
         replaceTypeVarsS(cl, n.sym, replaceTypeVarsT(cl, n.sym.typ))
-  let isCall = result.kind in nkCallKinds
-  # don't try to instantiate symchoice symbols, they can be
-  # generic procs which the compiler will think are uninstantiated
-  # because their type will contain uninstantiated params
-  let isSymChoice = result.kind in nkSymChoices
-  for i in 0..<n.safeLen:
-    # XXX HACK: ``f(a, b)``, avoid to instantiate `f`
-    if isSymChoice or (isCall and i == 0): result.add(n[i])
-    else: result.add(prepareNode(cl, n[i]))
+  # we need to avoid trying to instantiate nodes that can have uninstantiated
+  # types, like generic proc symbols or raw generic type symbols
+  case n.kind
+  of nkSymChoices:
+    # don't try to instantiate symchoice symbols, they can be
+    # generic procs which the compiler will think are uninstantiated
+    # because their type will contain uninstantiated params
+    for i in 0..<n.len:
+      result.add(n[i])
+  of nkCallKinds:
+    # don't try to instantiate call names since they may be generic proc syms
+    # also bracket expressions can turn into calls with symchoice [] and
+    # we need to not instantiate the Generic in Generic[int]
+    # exception exists for the call name being a dot expression since
+    # dot expressions need their LHS instantiated
+    assert n.len != 0
+    let ignoreFirst = n[0].kind != nkDotExpr
+    let name = n[0].getPIdent
+    let ignoreSecond = name != nil and name.s == "[]" and n.len > 1 and
+      (n[1].typ != nil and n[1].typ.kind == tyTypeDesc)
+    if ignoreFirst:
+      result.add(n[0])
+    else:
+      result.add(prepareNode(cl, n[0]))
+    if n.len > 1:
+      if ignoreSecond:
+        result.add(n[1])
+      else:
+        result.add(prepareNode(cl, n[1]))
+    for i in 2..<n.len:
+      result.add(prepareNode(cl, n[i]))
+  of nkBracketExpr:
+    # don't instantiate Generic body type in expression like Generic[T]
+    # exception exists for the call name being a dot expression since
+    # dot expressions need their LHS instantiated
+    assert n.len != 0
+    let ignoreFirst = n[0].kind != nkDotExpr and
+      n[0].typ != nil and n[0].typ.kind == tyTypeDesc
+    if ignoreFirst:
+      result.add(n[0])
+    else:
+      result.add(prepareNode(cl, n[0]))
+    for i in 1..<n.len:
+      result.add(prepareNode(cl, n[i]))
+  of nkDotExpr:
+    # don't try to instantiate RHS of dot expression, it can outright be
+    # undeclared, but definitely instantiate LHS
+    assert n.len >= 2
+    result.add(prepareNode(cl, n[0]))
+    result.add(n[1])
+    for i in 2..<n.len:
+      result.add(prepareNode(cl, n[i]))
+  else:
+    for i in 0..<n.safeLen:
+      result.add(prepareNode(cl, n[i]))
 
 proc isTypeParam(n: PNode): bool =
   # XXX: generic params should use skGenericParam instead of skType
@@ -222,6 +268,9 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0; expectedType: PT
   if n == nil: return
   result = copyNode(n)
   if n.typ != nil:
+    if n.typ.kind == tyFromExpr:
+      # type of node should not be evaluated as a static value
+      n.typ.flags.incl tfNonConstExpr
     result.typ = replaceTypeVarsT(cl, n.typ)
     checkMetaInvariants(cl, result.typ)
   case n.kind
@@ -573,6 +622,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
       result.kind = tyUserTypeClassInst
 
   of tyGenericBody:
+    if cl.allowMetaTypes: return
     localError(
       cl.c.config,
       cl.info,
@@ -591,13 +641,18 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
     assert t.n.typ != t
     var n = prepareNode(cl, t.n)
     if n.kind != nkEmpty:
-      n = cl.c.semConstExpr(cl.c, n)
+      if tfNonConstExpr in t.flags:
+        n = cl.c.semExprWithType(cl.c, n, flags = {efInTypeof})
+      else:
+        n = cl.c.semConstExpr(cl.c, n)
     if n.typ.kind == tyTypeDesc:
       # XXX: sometimes, chained typedescs enter here.
       # It may be worth investigating why this is happening,
       # because it may cause other bugs elsewhere.
       result = n.typ.skipTypes({tyTypeDesc})
       # result = n.typ.base
+    elif tfNonConstExpr in t.flags:
+      result = n.typ
     else:
       if n.typ.kind != tyStatic and n.kind != nkType:
         # XXX: In the future, semConstExpr should
@@ -623,8 +678,31 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
     elif t.elementType.kind != tyNone:
       result = makeTypeDesc(cl.c, replaceTypeVarsT(cl, t.elementType))
 
-  of tyUserTypeClass, tyStatic:
+  of tyUserTypeClass:
     result = t
+  
+  of tyStatic:
+    if cl.c.matchedConcept != nil:
+      # allow concepts to not instantiate statics for now
+      # they can't always infer them
+      return
+    if not containsGenericType(t) and (t.n == nil or t.n.kind in nkLiterals):
+      # no need to instantiate
+      return
+    bailout()
+    result = instCopyType(cl, t)
+    cl.localCache[t.itemId] = result
+    for i in FirstGenericParamAt..<result.kidsLen:
+      var r = result[i]
+      if r != nil:
+        r = replaceTypeVarsT(cl, r)
+        result[i] = r
+        propagateToOwner(result, r)
+    result.n = replaceTypeVarsN(cl, result.n)
+    if not cl.allowMetaTypes and result.n != nil and
+        result.base.kind != tyNone:
+      result.n = cl.c.semConstExpr(cl.c, result.n)
+      result.n.typ = result.base
 
   of tyGenericInst, tyUserTypeClassInst:
     bailout()
@@ -645,7 +723,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
 
       for i, resulti in result.ikids:
         if resulti != nil:
-          if resulti.kind == tyGenericBody:
+          if resulti.kind == tyGenericBody and not cl.allowMetaTypes:
             localError(cl.c.config, if t.sym != nil: t.sym.info else: cl.info,
               "cannot instantiate '" &
               typeToString(result[i], preferDesc) &

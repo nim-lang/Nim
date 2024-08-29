@@ -109,3 +109,12 @@ block: # make sure `hashType` doesn't recurse infinitely
       a, b: PFoo
       c: int
   var a: PFoo
+
+block: # issue #22571
+  macro foo(x: typed) =
+    result = x
+
+  block: # or `proc main =`
+    foo:
+      type Foo = object
+    doAssert $Foo() == "()"

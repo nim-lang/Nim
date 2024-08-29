@@ -622,15 +622,15 @@ proc setVarType(c: PContext; v: PSym, typ: PType) =
 proc isPossibleMacroPragma(c: PContext, it: PNode, key: PNode): bool =
   # make sure it's not a normal pragma, and calls an identifier
   # considerQuotedIdent below will fail on non-identifiers
-  result = whichPragma(it) == wInvalid and key.kind in nkIdentKinds
+  result = whichPragma(it) == wInvalid and key.kind in nkIdentKinds+{nkDotExpr}
   if result:
     # make sure it's not a user pragma
-    let ident = considerQuotedIdent(c, key)
-    result = strTableGet(c.userPragmas, ident) == nil
+    if key.kind != nkDotExpr:
+      let ident = considerQuotedIdent(c, key)
+      result = strTableGet(c.userPragmas, ident) == nil
     if result:
       # make sure it's not a custom pragma
-      var amb = false
-      let sym = searchInScopes(c, ident, amb)
+      let sym = qualifiedLookUp(c, key, {})
       result = sym == nil or sfCustomPragma notin sym.flags
 
 proc copyExcept(n: PNode, i: int): PNode =
@@ -829,6 +829,11 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
     var typFlags: TTypeAllowedFlags = {}
 
     var def: PNode = c.graph.emptyNode
+    if typ != nil and typ.kind == tyRange and
+        c.graph.config.isDefined("nimPreviewRangeDefault") and
+        a[^1].kind == nkEmpty:
+      a[^1] = firstRange(c.config, typ)
+
     if a[^1].kind != nkEmpty:
       def = semExprWithType(c, a[^1], {efTypeAllowed}, typ)
 
@@ -1785,10 +1790,6 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
           checkForMetaFields(c, baseType.n, hasError)
         if not hasError:
           checkConstructedType(c.config, s.info, s.typ)
-
-        # fix bug #5170, bug #17162, bug #15526: ensure locally scoped types get a unique name:
-        if s.typ.kind in {tyEnum, tyRef, tyObject} and not isTopLevel(c):
-          incl(s.flags, sfGenSym)
   #instAllTypeBoundOp(c, n.info)
 
 
@@ -2858,7 +2859,7 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags, expectedType: PType =
         let verdict = semConstExpr(c, n[i])
         if verdict == nil or verdict.kind != nkIntLit or verdict.intVal == 0:
           localError(c.config, result.info, "concept predicate failed")
-      of tyUnknown: continue
+      of tyFromExpr: continue
       else: discard
     if n[i].typ == c.enforceVoidContext: #or usesResult(n[i]):
       voidContext = true

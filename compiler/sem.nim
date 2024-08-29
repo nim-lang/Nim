@@ -103,7 +103,7 @@ proc fitNode(c: PContext, formal: PType, arg: PNode; info: TLineInfo): PNode =
     result = nil
     for ch in arg:
       if sameType(ch.typ, formal):
-        return getConstExpr(c.module, ch, c.idgen, c.graph)
+        return ch
     typeMismatch(c.config, info, formal, arg.typ, arg)
   else:
     result = indexTypesMatch(c, formal, arg.typ, arg)
@@ -689,8 +689,7 @@ proc defaultNodeField(c: PContext, a: PNode, aTyp: PType, checkDefault: bool): P
       result = nil
   of tyRange:
     if c.graph.config.isDefined("nimPreviewRangeDefault"):
-      result = newIntNode(nkIntLit, firstOrd(c.config, aTypSkip))
-      result.typ = aTyp
+      result = firstRange(c.config, aTypSkip)
     else:
       result = nil
   else:

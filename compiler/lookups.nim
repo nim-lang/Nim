@@ -50,7 +50,7 @@ proc considerQuotedIdent*(c: PContext; n: PNode, origin: PNode = nil): PIdent =
         case x.kind
         of nkIdent: id.add(x.ident.s)
         of nkSym: id.add(x.sym.name.s)
-        of nkSymChoices:
+        of nkSymChoices, nkOpenSym:
           if x[0].kind == nkSym:
             id.add(x[0].sym.name.s)
           else:
@@ -632,9 +632,10 @@ type
 
 const allExceptModule = {low(TSymKind)..high(TSymKind)} - {skModule, skPackage}
 
-proc lookUpCandidates*(c: PContext, ident: PIdent, filter: set[TSymKind]): seq[PSym] =
+proc lookUpCandidates*(c: PContext, ident: PIdent, filter: set[TSymKind],
+                       includePureEnum = false): seq[PSym] =
   result = searchInScopesFilterBy(c, ident, filter)
-  if result.len == 0:
+  if skEnumField in filter and (result.len == 0 or includePureEnum):
     result.add allPureEnumFields(c, ident)
 
 proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
@@ -667,6 +668,8 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
     c.isAmbiguous = amb
   of nkSym:
     result = n.sym
+  of nkOpenSym:
+    result = qualifiedLookUp(c, n[0], flags)
   of nkDotExpr:
     result = nil
     var m = qualifiedLookUp(c, n[0], (flags * {checkUndeclared}) + {checkModule})
@@ -678,13 +681,18 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
         ident = considerQuotedIdent(c, n[1])
       if ident != nil:
         if m == c.module:
-          result = strTableGet(c.topLevelScope.symbols, ident)
+          var ti: TIdentIter = default(TIdentIter)
+          result = initIdentIter(ti, c.topLevelScope.symbols, ident)
+          if result != nil and nextIdentIter(ti, c.topLevelScope.symbols) != nil:
+            # another symbol exists with same name
+            c.isAmbiguous = true
         else:
+          var amb: bool = false
           if c.importModuleLookup.getOrDefault(m.name.id).len > 1:
-            var amb: bool = false
             result = errorUseQualifier(c, n.info, m, amb)
           else:
-            result = someSym(c.graph, m, ident)
+            result = someSymAmb(c.graph, m, ident, amb)
+            if amb: c.isAmbiguous = true
         if result == nil and checkUndeclared in flags:
           result = errorUndeclaredIdentifierHint(c, ident, n[1].info)
       elif n[1].kind == nkSym:

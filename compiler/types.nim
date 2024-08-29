@@ -776,7 +776,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
 
 proc firstOrd*(conf: ConfigRef; t: PType): Int128 =
   case t.kind
-  of tyBool, tyChar, tySequence, tyOpenArray, tyString, tyVarargs, tyProxy:
+  of tyBool, tyChar, tySequence, tyOpenArray, tyString, tyVarargs, tyError:
     result = Zero
   of tySet, tyVar: result = firstOrd(conf, t.elementType)
   of tyArray: result = firstOrd(conf, t.indexType)
@@ -909,7 +909,7 @@ proc lastOrd*(conf: ConfigRef; t: PType): Int128 =
     result = lastOrd(conf, skipModifier(t))
   of tyUserTypeClasses:
     result = lastOrd(conf, last(t))
-  of tyProxy: result = Zero
+  of tyError: result = Zero
   of tyOrdinal:
     if t.hasElementType: result = lastOrd(conf, skipModifier(t))
     else:
@@ -984,6 +984,7 @@ type
     AllowCommonBase
     PickyCAliases  # be picky about the distinction between 'cint' and 'int32'
     IgnoreFlags    # used for borrowed functions and methods; ignores the tfVarIsPtr flag
+    PickyBackendAliases # be picky about different aliases
 
   TTypeCmpFlags* = set[TTypeCmpFlag]
 
@@ -1260,6 +1261,11 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
       let symFlagsB = if b.sym != nil: b.sym.flags else: {}
       if (symFlagsA+symFlagsB) * {sfImportc, sfExportc} != {}:
         result = symFlagsA == symFlagsB
+    elif result and PickyBackendAliases in c.flags:
+      let symFlagsA = if a.sym != nil: a.sym.flags else: {}
+      let symFlagsB = if b.sym != nil: b.sym.flags else: {}
+      if (symFlagsA+symFlagsB) * {sfImportc, sfExportc} != {}:
+        result = a.id == b.id
 
   of tyStatic, tyFromExpr:
     result = exprStructuralEquivalent(a.n, b.n) and sameFlags(a, b)
@@ -1346,6 +1352,12 @@ proc sameBackendType*(x, y: PType): bool =
   c.cmp = dcEqIgnoreDistinct
   result = sameTypeAux(x, y, c)
 
+proc sameBackendTypePickyAliases*(x, y: PType): bool =
+  var c = initSameTypeClosure()
+  c.flags.incl {IgnoreTupleFields, PickyCAliases, PickyBackendAliases}
+  c.cmp = dcEqIgnoreDistinct
+  result = sameTypeAux(x, y, c)
+
 proc compareTypes*(x, y: PType,
                    cmp: TDistinctCompare = dcEq,
                    flags: TTypeCmpFlags = {}): bool =
@@ -1406,6 +1418,8 @@ proc commonSuperclass*(a, b: PType): PType =
       return t
     y = y.baseClass
 
+proc lacksMTypeField*(typ: PType): bool {.inline.} =
+  (typ.sym != nil and sfPure in typ.sym.flags) or tfFinal in typ.flags
 
 include sizealignoffsetimpl
 
@@ -1854,6 +1868,3 @@ proc isCharArrayPtr*(t: PType; allowPointerToChar: bool): bool =
       result = false
   else:
     result = false
-
-proc lacksMTypeField*(typ: PType): bool {.inline.} =
-  (typ.sym != nil and sfPure in typ.sym.flags) or tfFinal in typ.flags

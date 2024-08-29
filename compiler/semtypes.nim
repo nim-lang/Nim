@@ -475,6 +475,13 @@ proc semAnonTuple(c: PContext, n: PNode, prev: PType): PType =
     let t = semTypeNode(c, it, nil)
     addSonSkipIntLitChecked(c, result, t, it, c.idgen)
 
+proc firstRange(config: ConfigRef, t: PType): PNode =
+  if t.skipModifier().kind in tyFloat..tyFloat64:
+    result = newFloatNode(nkFloatLit, firstFloat(t))
+  else:
+    result = newIntNode(nkIntLit, firstOrd(config, t))
+  result.typ = t
+
 proc semTuple(c: PContext, n: PNode, prev: PType): PType =
   var typ: PType
   result = newOrPrevType(tyTuple, prev, c)
@@ -491,8 +498,7 @@ proc semTuple(c: PContext, n: PNode, prev: PType): PType =
     elif a[^2].kind != nkEmpty:
       typ = semTypeNode(c, a[^2], nil)
       if c.graph.config.isDefined("nimPreviewRangeDefault") and typ.skipTypes(abstractInst).kind == tyRange:
-        a[^1] = newIntNode(nkIntLit, firstOrd(c.config, typ))
-        a[^1].typ = typ
+        a[^1] = firstRange(c.config, typ)
         hasDefaultField = true
     else:
       localError(c.config, a.info, errTypeExpected)
@@ -846,8 +852,7 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
     else:
       typ = semTypeNode(c, n[^2], nil)
       if c.graph.config.isDefined("nimPreviewRangeDefault") and typ.skipTypes(abstractInst).kind == tyRange:
-        n[^1] = newIntNode(nkIntLit, firstOrd(c.config, typ))
-        n[^1].typ = typ
+        n[^1] = firstRange(c.config, typ)
         hasDefaultField = true
       propagateToOwner(rectype, typ)
     var fieldOwner = if c.inGenericContext > 0: c.getCurrOwner
@@ -1277,7 +1282,7 @@ proc semParamType(c: PContext, n: PNode, constraint: var PNode): PType =
     result = semTypeNode(c, n[0], nil)
     constraint = semNodeKindConstraints(n, c.config, 1)
   elif n.kind == nkCall and
-      n[0].kind in {nkIdent, nkSym, nkOpenSymChoice, nkClosedSymChoice} and
+      n[0].kind in {nkIdent, nkSym, nkOpenSymChoice, nkClosedSymChoice, nkOpenSym} and
       considerQuotedIdent(c, n[0]).s == "{}":
     result = semTypeNode(c, n[1], nil)
     constraint = semNodeKindConstraints(n, c.config, 2)
@@ -1307,6 +1312,9 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
   result = newProcType(c, n.info, prev)
   var check = initIntSet()
   var counter = 0
+  template isCurrentlyGeneric: bool =
+    # genericParams might update as implicit generic params are added
+    genericParams != nil and genericParams.len > 0
 
   for i in 1..<n.len:
     var a = n[i]
@@ -1327,7 +1335,10 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
       hasDefault = a[^1].kind != nkEmpty
 
     if hasType:
+      let isGeneric = isCurrentlyGeneric()
+      inc c.inGenericContext, ord(isGeneric)
       typ = semParamType(c, a[^2], constraint)
+      dec c.inGenericContext, ord(isGeneric)
       # TODO: Disallow typed/untyped in procs in the compiler/stdlib
       if kind in {skProc, skFunc} and (typ.kind == tyTyped or typ.kind == tyUntyped):
         if not isMagic(getCurrOwner(c)):
@@ -1348,7 +1359,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
         message(c.config, a.info, warnImplicitDefaultValue, msg)
       block determineType:
         var defTyp = typ
-        if genericParams != nil and genericParams.len > 0:
+        if isCurrentlyGeneric():
           defTyp = nil
           def = semGenericStmt(c, def)
           if hasUnresolvedArgs(c, def):
@@ -1374,7 +1385,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
           typ = newTypeS(tyTypeDesc, c, newTypeS(tyNone, c))
           typ.flags.incl tfCheckedForDestructor
 
-      else:
+      elif def.typ.kind != tyFromExpr:
         # if def.typ != nil and def.typ.kind != tyNone:
         # example code that triggers it:
         # proc sort[T](cmp: proc(a, b: T): int = cmp)
@@ -1427,11 +1438,12 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
       onDef(a[j].info, arg)
       a[j] = newSymNode(arg)
 
-  var r: PType =
-    if n[0].kind != nkEmpty:
-      semTypeNode(c, n[0], nil)
-    else:
-      nil
+  var r: PType = nil
+  if n[0].kind != nkEmpty:
+    let isGeneric = isCurrentlyGeneric()
+    inc c.inGenericContext, ord(isGeneric)
+    r = semTypeNode(c, n[0], nil)
+    dec c.inGenericContext, ord(isGeneric)
 
   if r != nil and kind in {skMacro, skTemplate} and r.kind == tyTyped:
     # XXX: To implement the proposed change in the warning, just
@@ -1484,7 +1496,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
           result.flags.excl tfHasMeta
       result.n.typ = r
 
-  if genericParams != nil and genericParams.len > 0:
+  if isCurrentlyGeneric():
     for n in genericParams:
       if {sfUsed, sfAnon} * n.sym.flags == {}:
         result.flags.incl tfUnresolved
@@ -1641,7 +1653,8 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
     recomputeFieldPositions(tx, tx.n, position)
 
 proc maybeAliasType(c: PContext; typeExpr, prev: PType): PType =
-  if typeExpr.kind in {tyObject, tyEnum, tyDistinct, tyForward, tyGenericBody} and prev != nil:
+  if prev != nil and (prev.kind == tyGenericBody or
+      typeExpr.kind in {tyObject, tyEnum, tyDistinct, tyForward, tyGenericBody}):
     result = newTypeS(tyAlias, c)
     result.rawAddSon typeExpr
     result.sym = prev.sym
@@ -1679,6 +1692,10 @@ proc semTypeExpr(c: PContext, n: PNode; prev: PType): PType =
         # unnecessary new type creation
         let alias = maybeAliasType(c, result, prev)
         if alias != nil: result = alias
+  elif n.typ.kind == tyFromExpr and c.inGenericContext > 0:
+    # sometimes not possible to distinguish type from value in generic body,
+    # for example `T.Foo`, so both are handled under `tyFromExpr`
+    result = n.typ
   else:
     localError(c.config, n.info, "expected type, but got: " & n.renderTree)
     result = errorType(c)
@@ -1764,12 +1781,15 @@ proc applyTypeSectionPragmas(c: PContext; pragmas, operand: PNode): PNode =
       discard "builtin pragma"
     else:
       trySuggestPragmas(c, key)
-      let ident = considerQuotedIdent(c, key)
-      if strTableGet(c.userPragmas, ident) != nil:
+      let ident =
+        if key.kind in nkIdentKinds:
+          considerQuotedIdent(c, key)
+        else:
+          nil
+      if ident != nil and strTableGet(c.userPragmas, ident) != nil:
         discard "User-defined pragma"
       else:
-        var amb = false
-        let sym = searchInScopes(c, ident, amb)
+        let sym = qualifiedLookUp(c, key, {})
         # XXX: What to do here if amb is true?
         if sym != nil and sfCustomPragma in sym.flags:
           discard "Custom user pragma"
@@ -1836,7 +1856,9 @@ proc semStaticType(c: PContext, childNode: PNode, prev: PType): PType =
 
 proc semTypeOf(c: PContext; n: PNode; prev: PType): PType =
   openScope(c)
+  inc c.inTypeofContext
   let t = semExprWithType(c, n, {efInTypeof})
+  dec c.inTypeofContext
   closeScope(c)
   fixupTypeOf(c, prev, t)
   result = t.typ
@@ -1850,7 +1872,9 @@ proc semTypeOf2(c: PContext; n: PNode; prev: PType): PType =
       localError(c.config, n.info, "typeof: cannot evaluate 'mode' parameter at compile-time")
     else:
       m = mode.intVal
+  inc c.inTypeofContext
   let t = semExprWithType(c, n[1], if m == 1: {efInTypeof} else: {})
+  dec c.inTypeofContext
   closeScope(c)
   fixupTypeOf(c, prev, t)
   result = t.typ
@@ -1941,11 +1965,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   of nkTupleConstr: result = semAnonTuple(c, n, prev)
   of nkCallKinds:
     let x = n[0]
-    let ident = case x.kind
-                of nkIdent: x.ident
-                of nkSym: x.sym.name
-                of nkClosedSymChoice, nkOpenSymChoice: x[0].sym.name
-                else: nil
+    let ident = x.getPIdent
     if ident != nil and ident.s == "[]":
       let b = newNodeI(nkBracketExpr, n.info)
       for i in 1..<n.len: b.add(n[i])
@@ -2035,16 +2055,14 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       elif op.id == ord(wType):
         checkSonsLen(n, 2, c.config)
         result = semTypeOf(c, n[1], prev)
-      elif op.s == "typeof" and n[0].kind == nkSym and n[0].sym.magic == mTypeOf:
+      elif op.s == "typeof" and (
+          (n[0].kind == nkSym and n[0].sym.magic == mTypeOf) or
+          (n[0].kind == nkOpenSym and n[0][0].sym.magic == mTypeOf)):
         result = semTypeOf2(c, n, prev)
       elif op.s == "owned" and optOwnedRefs notin c.config.globalOptions and n.len == 2:
         result = semTypeExpr(c, n[1], prev)
       else:
-        if c.inGenericContext > 0 and n.kind == nkCall:
-          let n = semGenericStmt(c, n)
-          result = makeTypeFromExpr(c, n.copyTree)
-        else:
-          result = semTypeExpr(c, n, prev)
+        result = semTypeExpr(c, n, prev)
   of nkWhenStmt:
     var whenResult = semWhen(c, n, false)
     if whenResult.kind == nkStmtList: whenResult.transitionSonsKind(nkStmtListType)

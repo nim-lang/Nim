@@ -496,7 +496,10 @@ proc transformAddrDeref(c: PTransf, n: PNode, kinds: TNodeKinds): PNode =
       elif n.typ.skipTypes(abstractInst).kind in {tyVar}:
         result.typ = toVar(result.typ, n.typ.skipTypes(abstractInst).kind, c.idgen)
   else:
-    if n[0].kind in kinds:
+    if n[0].kind in kinds and
+        not (n[0][0].kind == nkSym and n[0][0].sym.kind == skForVar and
+          n[0][0].typ.skipTypes(abstractVar).kind == tyTuple
+        ): # elimination is harmful to `for tuple unpack` because of newTupleAccess
       # addr ( deref ( x )) --> x
       result = n[0][0]
       if n.typ.skipTypes(abstractVar).kind != tyOpenArray:
@@ -632,9 +635,11 @@ proc putArgInto(arg: PNode, formal: PType): TPutArgInto =
   case arg.kind
   of nkEmpty..nkNilLit:
     result = paDirectMapping
-  of nkDotExpr, nkDerefExpr, nkHiddenDeref, nkAddr, nkHiddenAddr:
+  of nkDotExpr, nkDerefExpr, nkHiddenDeref:
     result = putArgInto(arg[0], formal)
-    #if result == paViaIndirection: result = paFastAsgn
+  of nkAddr, nkHiddenAddr:
+    result = putArgInto(arg[0], formal)
+    if result == paViaIndirection: result = paFastAsgn
   of nkCurly, nkBracket:
     for i in 0..<arg.len:
       if putArgInto(arg[i], formal) != paDirectMapping:

@@ -595,7 +595,7 @@ proc inferWithMetatype(c: PContext, formal: PType,
     result = copyTree(arg)
     result.typ = formal
 
-proc updateDefaultParams(call: PNode) =
+proc updateDefaultParams(c: PContext, call: PNode) =
   # In generic procs, the default parameter may be unique for each
   # instantiation (see tlateboundgenericparams).
   # After a call is resolved, we need to re-assign any default value
@@ -605,8 +605,18 @@ proc updateDefaultParams(call: PNode) =
   let calleeParams = call[0].sym.typ.n
   for i in 1..<call.len:
     if nfDefaultParam in call[i].flags:
-      let def = calleeParams[i].sym.ast
+      let formal = calleeParams[i].sym
+      let def = formal.ast
       if nfDefaultRefsParam in def.flags: call.flags.incl nfDefaultRefsParam
+      # mirrored with sigmatch:
+      if def.kind == nkEmpty:
+        # The default param value is set to empty in `instantiateProcType`
+        # when the type of the default expression doesn't match the type
+        # of the instantiated proc param:
+        pushInfoContext(c.config, call.info, call[0].sym.detailedInfo)
+        typeMismatch(c.config, def.info, formal.typ, def.typ, formal.ast)
+        popInfoContext(c.config)
+        def.typ = errorType(c)
       call[i] = def
 
 proc getCallLineInfo(n: PNode): TLineInfo =
@@ -686,12 +696,12 @@ proc semResolvedCall(c: PContext, x: var TCandidate,
   markUsed(c, info, finalCallee)
   onUse(info, finalCallee)
   assert finalCallee.ast != nil
-  if x.hasFauxMatch:
+  if x.matchedErrorType:
     result = x.call
     result[0] = newSymNode(finalCallee, getCallLineInfo(result[0]))
-    if containsGenericType(result.typ) or x.fauxMatch == tyUnknown:
-      result.typ = newTypeS(x.fauxMatch, c)
-      if result.typ.kind == tyError: incl result.typ.flags, tfCheckedForDestructor
+    if containsGenericType(result.typ):
+      result.typ = newTypeS(tyError, c)
+      incl result.typ.flags, tfCheckedForDestructor
     return
   let gp = finalCallee.ast[genericParamsPos]
   if gp.isGenericParams:
@@ -725,8 +735,9 @@ proc semResolvedCall(c: PContext, x: var TCandidate,
   result = x.call
   instGenericConvertersSons(c, result, x)
   result[0] = newSymNode(finalCallee, getCallLineInfo(result[0]))
-  result.typ = finalCallee.typ.returnType
-  updateDefaultParams(result)
+  if finalCallee.magic notin {mArrGet, mArrPut}:
+    result.typ = finalCallee.typ.returnType
+  updateDefaultParams(c, result)
 
 proc canDeref(n: PNode): bool {.inline.} =
   result = n.len >= 2 and (let t = n[1].typ;
@@ -751,7 +762,7 @@ proc semOverloadedCall(c: PContext, n, nOrig: PNode,
               candidates)
     result = semResolvedCall(c, r, n, flags, expectedType)
   else:
-    if efDetermineType in flags and c.inGenericContext > 0 and c.matchedConcept == nil:
+    if c.inGenericContext > 0 and c.matchedConcept == nil:
       result = semGenericStmt(c, n)
       result.typ = makeTypeFromExpr(c, result.copyTree)
     elif efExplain notin flags:

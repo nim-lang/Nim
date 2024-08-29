@@ -744,6 +744,10 @@ template main {.dirty.} =
       var b = default ArrayObj2
       doAssert b.list[North] == 1
 
+  block:
+    type limited_float = range[1.2..20.0]
+    doAssert default(limited_float) == 1.2
+
 
   block:
     type
@@ -758,6 +762,19 @@ template main {.dirty.} =
       doAssert s == [range1 1, 1, 1, 1, 1]
 
     foo()
+
+  block:
+    type
+      Object = object
+        id: range[1.2..29.3]
+
+    var s = default(Object)
+    doAssert s.id == 1.2
+
+  block: # bug #23943
+    type limited_int = range[1..20]
+    var d: limited_int;
+    doAssert d == 1
 
 static: main()
 main()
