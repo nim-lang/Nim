@@ -192,6 +192,19 @@ block: # issue #4990 comment
   let bar = Bar(curIndex: 0)
   doAssert bar.next() == meB
 
+block: # issue #14053
+  template returnType(value: static[int]): typedesc =
+    when value == 1:
+      int
+    else:
+      float
+  proc fun(value: static[int]): returnType(value) = discard
+  doAssert fun(1) is int
+  template returnType2(value: static[int]): typedesc =
+    int
+  proc fun2(value: static[int]): returnType2(value) = discard
+  doAssert fun2(1) is int
+
 when false: # issue #22607, needs nkWhenStmt to be handled like nkRecWhen
   proc test[x: static bool](
     t: (
