@@ -305,6 +305,18 @@ block: # issue #1969
   type TripleLike[Generator] = tuple
     a, b, c: typeof(new(Generator)[].next)
 
+import std/atomics
+
+block: # issue #12720
+  const CacheLineSize = 128
+  type
+    Enqueueable = concept x, type T
+      x is ptr
+      x.next is Atomic[pointer]
+    MyChannel[T: Enqueueable] = object
+      pad: array[CacheLineSize - sizeof(default(T)[]), byte]
+      dummy: typeof(default(T)[])
+
 when false: # issue #22342, type section version of #22607
   type GenAlias[isInt: static bool] = (
     when isInt:
