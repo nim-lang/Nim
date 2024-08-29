@@ -7,8 +7,8 @@ body:
 - type: markdown
   attributes:
     value: |
-      - Please provide a minimal code example that reproduces the bug.
-        Reports with a reproducible example or detailed information will likely receive fixes faster.
+      Please provide a minimal code example that reproduces the bug.
+      Reports with a reproducible example or detailed information will likely receive fixes faster.
 
 - type: textarea
   id: description
@@ -66,7 +66,7 @@ body:
       - Please check whether the problem still exists in the devel branch,
         which can be installed via [choosenim](https://github.com/nim-lang/choosenim/),
         [nightlies](https://github.com/nim-lang/nightlies/),
-        or by [bootstrapping the compiler](https://nim-lang.github.io/Nim/intern.html#bootstrapping-the-compiler).
+        or by [creating a temporary build of the compiler](https://nim-lang.github.io/Nim/intern.html#debugging-the-compiler-building-an-instrumented-compiler).
       - Consider writing a PR targetting devel branch after filing this, see [contributing](https://nim-lang.github.io/Nim/contributing.html).
       - If it's a pre-existing compiler bug, see [debugging the compiler](https://nim-lang.github.io/Nim/intern.html#debugging-the-compiler)
         which should give more context on a compiler crash.
