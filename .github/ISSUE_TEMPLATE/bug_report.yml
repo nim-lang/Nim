@@ -25,7 +25,7 @@ body:
   attributes:
     label: Nim Version
     description: |
-      Can be obtained from `nim -v` on the command line, you can just copy paste the output.
+      Can be obtained from `nim -v` on the command line along with the OS/architecture.
       For development versions, make sure to include the commit hash.
   validations:
     required: true
@@ -69,5 +69,5 @@ body:
       - Consider writing a PR targetting devel branch after filing this, see [contributing](https://nim-lang.github.io/Nim/contributing.html).
       - If it's a pre-existing compiler bug, see [debugging the compiler](https://nim-lang.github.io/Nim/intern.html#debugging-the-compiler) which should give more context on a compiler crash.
       - If it's a regression, you can help us by identifying which version introduced the bug by [bisecting](https://nim-lang.github.io/Nim/intern.html#bisecting-for-regressions) or at least trying known past releases (e.g. `choosenim 2.0.0`).
-        The Nim repo also supports online bisecting via making a comment, which contains a code block starting by `!nim c`, `!nim js` etc. , see [nimrun-action](https://github.com/juancarlospaco/nimrun-action).
+        The Nim repo also supports bisecting in issue comments by adding `!nim c`, `!nim js` etc. before a code block, see [nimrun-action](https://github.com/juancarlospaco/nimrun-action).
       - [Please, consider a Donation for the Nim project.](https://nim-lang.org/donate.html)
