@@ -24,7 +24,9 @@ body:
   id: nim-version
   attributes:
     label: Nim Version
-    description: Can be obtained from `nim -v` on the command line. For development versions, make sure to include the commit hash.
+    description: |
+      Can be obtained from `nim -v` on the command line (you can just copy paste the output).
+      For development versions, make sure to include the commit hash.
   validations:
     required: true
 
