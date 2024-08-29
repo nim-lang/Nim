@@ -317,6 +317,14 @@ block: # issue #12720
       pad: array[CacheLineSize - sizeof(default(T)[]), byte]
       dummy: typeof(default(T)[])
 
+block: # issue #12714
+  type
+    Enqueueable = concept x, type T
+      x is ptr
+      x.next is Atomic[pointer]
+    MyChannel[T: Enqueueable] = object
+      dummy: type(default(T)[])
+
 when false: # issue #22342, type section version of #22607
   type GenAlias[isInt: static bool] = (
     when isInt:
