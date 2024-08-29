@@ -205,6 +205,24 @@ block: # issue #14053
   proc fun2(value: static[int]): returnType2(value) = discard
   doAssert fun2(1) is int
 
+block: # issue #7547
+  macro foo(N: static[int]): untyped =
+    result = getType(int)
+  type
+    Foo[N: static[int]] = foo(N)
+    ContainsFoo[N: static[int]] = object
+      Ffoo: Foo[N]
+  proc initFoo(N: static[int]): Foo[N] = discard
+  proc initContainsFoo(size: static[int]): ContainsFoo[size] = discard
+  var a: Foo[10] # Works
+  doAssert a is int
+  let b = initFoo(10) # Works
+  doAssert b is int
+  let c = ContainsFoo[5]() # Works
+  doAssert c.Ffoo is int
+  let z = initContainsFoo(5) # Error: undeclared identifier: 'N'
+  doAssert z.Ffoo is int
+
 when false: # issue #22607, needs nkWhenStmt to be handled like nkRecWhen
   proc test[x: static bool](
     t: (
