@@ -294,6 +294,37 @@ block: # issue #22647
   var x: b[4]
   x.p()
 
+block: # issue #1969
+  type ZeroGenerator = object
+  proc next(g: ZeroGenerator): int = 0
+  # This compiles.
+  type TripleOfInts = tuple
+    a, b, c: typeof(new(ZeroGenerator)[].next)
+  # This raises a compiler error before it's even instantiated.
+  # The `new` proc can't be resolved because `Generator` is not defined.
+  type TripleLike[Generator] = tuple
+    a, b, c: typeof(new(Generator)[].next)
+
+import std/atomics
+
+block: # issue #12720
+  const CacheLineSize = 128
+  type
+    Enqueueable = concept x, type T
+      x is ptr
+      x.next is Atomic[pointer]
+    MyChannel[T: Enqueueable] = object
+      pad: array[CacheLineSize - sizeof(default(T)[]), byte]
+      dummy: typeof(default(T)[])
+
+block: # issue #12714
+  type
+    Enqueueable = concept x, type T
+      x is ptr
+      x.next is Atomic[pointer]
+    MyChannel[T: Enqueueable] = object
+      dummy: type(default(T)[])
+
 when false: # issue #22342, type section version of #22607
   type GenAlias[isInt: static bool] = (
     when isInt:
