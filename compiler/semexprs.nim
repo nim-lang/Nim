@@ -648,7 +648,14 @@ proc overloadedCallOpr(c: PContext, n: PNode): PNode =
 
 proc changeType(c: PContext; n: PNode, newType: PType, check: bool) =
   case n.kind
-  of nkCurly, nkBracket:
+  of nkCurly:
+    for i in 0..<n.len:
+      if n[i].kind == nkRange:
+        changeType(c, n[i][0], elemType(newType), check)
+        changeType(c, n[i][1], elemType(newType), check)
+      else:
+        changeType(c, n[i], elemType(newType), check)
+  of nkBracket:
     for i in 0..<n.len:
       changeType(c, n[i], elemType(newType), check)
   of nkPar, nkTupleConstr:
@@ -685,10 +692,16 @@ proc changeType(c: PContext; n: PNode, newType: PType, check: bool) =
       let value = n.intVal
       if value < firstOrd(c.config, newType) or value > lastOrd(c.config, newType):
         localError(c.config, n.info, "cannot convert " & $value &
-                                         " to " & typeToString(newType))
+                                         " to " & typeNameAndDesc(newType))
   of nkFloatLit..nkFloat64Lit:
     if check and not floatRangeCheck(n.floatVal, newType):
-      localError(c.config, n.info, errFloatToString % [$n.floatVal, typeToString(newType)])
+      localError(c.config, n.info, errFloatToString % [$n.floatVal, typeNameAndDesc(newType)])
+  of nkSym:
+    if check and n.sym.kind == skEnumField and not sameTypeOrNil(n.sym.typ, newType):
+      let value = n.sym.position
+      if value < firstOrd(c.config, newType) or value > lastOrd(c.config, newType):
+        localError(c.config, n.info, "cannot convert '" & n.sym.name.s &
+                                         "' to '" & typeNameAndDesc(newType) & "'")
   else: discard
   n.typ = newType
 
