@@ -1370,6 +1370,12 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
 proc sameBackendType*(x, y: PType): bool =
   var c = initSameTypeClosure()
   c.flags.incl IgnoreTupleFields
+  c.cmp = dcEqIgnoreDistinct
+  result = sameTypeAux(x, y, c)
+
+proc sameBackendTypeIgnoreRange*(x, y: PType): bool =
+  var c = initSameTypeClosure()
+  c.flags.incl IgnoreTupleFields
   c.flags.incl IgnoreRangeShallow
   c.cmp = dcEqIgnoreDistinct
   result = sameTypeAux(x, y, c)

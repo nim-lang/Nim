@@ -2234,7 +2234,7 @@ proc genRangeChck(p: BProc, n: PNode, d: var TLoc) =
       raiseInstr(p, p.s(cpsStmts))
       linefmt p, cpsStmts, "}$n", []
 
-  if sameBackendType(dest, n[1].typ):
+  if sameBackendTypeIgnoreRange(dest, n[1].typ):
     # don't cast so an address can be taken for `var` conversions
     putIntoDest(p, d, n, "($1)" % [rdCharLoc(a)], a.storage)
   else:
@@ -2243,7 +2243,7 @@ proc genRangeChck(p: BProc, n: PNode, d: var TLoc) =
 
 proc genConv(p: BProc, e: PNode, d: var TLoc) =
   let destType = e.typ.skipTypes({tyVar, tyLent, tyGenericInst, tyAlias, tySink})
-  if sameBackendType(destType, e[1].typ):
+  if sameBackendTypeIgnoreRange(destType, e[1].typ):
     expr(p, e[1], d)
   else:
     genSomeCast(p, e, d)
