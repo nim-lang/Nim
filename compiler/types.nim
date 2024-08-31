@@ -1359,8 +1359,9 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     # The type system must distinguish between `T[int] = object #[empty]#`
     # and `T[float] = object #[empty]#`!
     cycleCheck()
-    for ff, aa in underspecifiedPairs(a, b, 1, -1):
-      if not sameTypeAux(ff, aa, c): return false
+    withoutShallowFlags:
+      for ff, aa in underspecifiedPairs(a, b, 1, -1):
+        if not sameTypeAux(ff, aa, c): return false
     result = sameTypeAux(a.skipModifier, b.skipModifier, c)
   of tyNone: result = false
   of tyConcept:
