@@ -2234,7 +2234,7 @@ proc genRangeChck(p: BProc, n: PNode, d: var TLoc) =
       raiseInstr(p, p.s(cpsStmts))
       linefmt p, cpsStmts, "}$n", []
 
-  if sameBackendTypeIgnoreRange(dest, n[1].typ):
+  if sameBackendTypeIgnoreRange(dest, n[0].typ):
     # don't cast so an address can be taken for `var` conversions
     putIntoDest(p, d, n, "($1)" % [rdCharLoc(a)], a.storage)
   else:
