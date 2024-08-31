@@ -1070,14 +1070,6 @@ proc resolveIndirectCall(c: PContext; n, nOrig: PNode;
   result = initCandidate(c, t)
   matches(c, n, nOrig, result)
 
-proc bracketedMacro(n: PNode): PSym =
-  if n.len >= 1 and n[0].kind == nkSym:
-    result = n[0].sym
-    if result.kind notin {skMacro, skTemplate}:
-      result = nil
-  else:
-    result = nil
-
 proc finishOperand(c: PContext, a: PNode): PNode =
   if a.typ.isNil:
     result = c.semOperand(c, a, {efDetermineType})
