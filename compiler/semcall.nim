@@ -832,9 +832,12 @@ proc explicitGenericSym(c: PContext, n: PNode, s: PSym): PNode =
   if s.kind in {skTemplate, skMacro}:
     internalError c.config, n.info, "cannot get explicitly instantiated symbol of " &
       (if s.kind == skTemplate: "template" else: "macro")
+  # binding has to stay 'nil' for this to work!
   var m = newCandidate(c, s, nil)
   matchGenericParams(m, n, s)
   if m.state != csMatch:
+    # state is csMatch only if *all* generic params were matched,
+    # including implicit parameters
     return nil
   var newInst = generateInstance(c, s, m.bindings, n.info)
   newInst.typ.flags.excl tfUnresolved

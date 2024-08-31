@@ -147,6 +147,7 @@ proc prepareNode(cl: var TReplTypeVars, n: PNode): PNode =
     # exception exists for the call name being a dot expression since
     # dot expressions need their LHS instantiated
     assert n.len != 0
+    # avoid instantiating generic proc symbols, refine condition if needed:
     let ignoreFirst = n[0].kind notin {nkDotExpr, nkBracketExpr} + nkCallKinds
     let name = n[0].getPIdent
     let ignoreSecond = name != nil and name.s == "[]" and n.len > 1 and

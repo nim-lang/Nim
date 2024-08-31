@@ -171,6 +171,7 @@ proc matchGenericParams*(m: var TCandidate, binding: PNode, callee: PSym) =
   if bindingCount > paramCount:
     m.state = csNoMatch
     m.firstMismatch.kind = kExtraGenericParam
+    m.firstMismatch.arg = paramCount + 1
     return
   for i in 1..bindingCount:
     matchGenericParam(m, typeParams[i-1].typ, binding[i])
@@ -186,7 +187,7 @@ proc matchGenericParams*(m: var TCandidate, binding: PNode, callee: PSym) =
     if paramSym.ast != nil:
       matchGenericParam(m, param.typ, paramSym.ast)
       if m.state == csNoMatch:
-        m.firstMismatch.arg = i
+        m.firstMismatch.arg = i + 1
         m.firstMismatch.formal = paramSym
         return
     elif tfImplicitTypeParam in paramSym.typ.flags:
@@ -196,7 +197,7 @@ proc matchGenericParams*(m: var TCandidate, binding: PNode, callee: PSym) =
     else:
       m.state = csNoMatch
       m.firstMismatch.kind = kMissingGenericParam
-      m.firstMismatch.arg = i
+      m.firstMismatch.arg = i + 1
       m.firstMismatch.formal = paramSym
       return
   m.state = csMatch

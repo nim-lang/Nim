@@ -55,7 +55,8 @@ pkg "chroma"
 pkg "chronicles", "nim c -o:chr -r chronicles.nim"
 pkg "chronos", "nim c -r -d:release tests/testall"
 pkg "cligen", "nim c --path:. -r cligen.nim"
-pkg "combparser", "nimble test --mm:orc"
+# remove fork after https://github.com/PMunch/combparser/pull/6 is merged:
+pkg "combparser", "nimble test --mm:orc", "https://github.com/metagn/combparser"
 pkg "compactdict"
 pkg "comprehension", "nimble test", "https://github.com/alehander92/comprehension"
 pkg "constantine", "nimble make_lib"
@@ -182,7 +183,7 @@ pkg "unicodeplus", "nim c -d:release -r tests/tests.nim"
 pkg "union", "nim c -r tests/treadme.nim", url = "https://github.com/alaviss/union"
 pkg "unittest2"
 pkg "unpack"
-pkg "weave", "nimble test_gc_arc", useHead = true
+pkg "weave", "nimble install cligen@#HEAD; nimble test_gc_arc", useHead = true
 pkg "websock"
 pkg "websocket", "nim c websocket.nim"
 # pkg "winim", allowFailure = true

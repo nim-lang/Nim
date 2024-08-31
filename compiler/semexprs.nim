@@ -3007,7 +3007,15 @@ proc semTupleConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PTyp
     result = tupexp
 
 proc isExplicitGenericCall(c: PContext, n: PNode): bool =
+  ## checks if a call node `n` is a routine call with explicit generic params
+  ## 
+  ## the callee node needs to be either an nkBracketExpr or a call to a
+  ## symchoice of `[]` in which case it will be transformed into nkBracketExpr
+  ## 
+  ## the LHS of the bracket expr has to either be a symchoice or resolve to
+  ## a routine symbol
   template checkCallee(n: PNode) =
+    # check subscript LHS, `n` must be mutable
     if isSymChoice(n):
       result = true
     else:
@@ -3028,7 +3036,7 @@ proc isExplicitGenericCall(c: PContext, n: PNode): bool =
       if name != nil and name.s == "[]":
         checkCallee(a[1])
         if result:
-          # transform callee into normal bracket expr
+          # transform callee into normal bracket expr, only on success
           let be = newNodeI(nkBracketExpr, a.info)
           for i in 1..<a.len: be.add(a[i])
           n[0] = be
