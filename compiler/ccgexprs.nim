@@ -2234,7 +2234,11 @@ proc genRangeChck(p: BProc, n: PNode, d: var TLoc) =
       raiseInstr(p, p.s(cpsStmts))
       linefmt p, cpsStmts, "}$n", []
 
-  putIntoDest(p, d, n, "(($1) ($2))" %
+  if sameBackendType(dest, n[1].typ):
+    # don't cast so an address can be taken for `var` conversions
+    putIntoDest(p, d, n, "($1)" % [rdCharLoc(a)], a.storage)
+  else:
+    putIntoDest(p, d, n, "(($1) ($2))" %
       [getTypeDesc(p.module, dest), rdCharLoc(a)], a.storage)
 
 proc genConv(p: BProc, e: PNode, d: var TLoc) =
