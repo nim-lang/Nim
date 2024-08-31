@@ -12,7 +12,7 @@ var expected: int
 var x: range[1..10] = 10
 
 try:
-  x += 1
+  inc x, 1
   echo x
 except OverflowDefect, RangeDefect:
   expected += 1
@@ -27,7 +27,7 @@ except OverflowDefect, RangeDefect:
 
 x = 1
 try:
-  x -= 1
+  dec x, 1
   echo x
 except OverflowDefect, RangeDefect:
   expected += 1

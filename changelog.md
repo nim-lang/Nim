@@ -28,6 +28,21 @@
   errors for ambiguous type symbols, and macros operating on generic proc AST
   may encounter symchoice nodes instead of the arbitrarily resolved type symbol nodes.
 
+- With `-d:nimPreviewStrictVarRange`, variables of range types do not match
+  `var` parameters of their base type. This is to prevent implicit operations
+  that can cause values to escape their range, i.e.:
+
+  ```nim
+  type Foo = range[0..5]
+  var foo: Foo = 5
+  proc double(x: var int) =
+    x = x * 2
+  double(foo)
+  echo foo # 10
+  ```
+
+  will give a type mismatch error.
+
 ## Standard library additions and changes
 
 [//]: # "Changes:"
