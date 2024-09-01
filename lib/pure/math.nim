@@ -63,9 +63,8 @@ import system/countbits_impl
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
-const CLike = defined(c) or defined(cpp) or defined(objc)
 
-when CLike:
+when not defined(js): # C
   proc c_isnan(x: float): bool {.importc: "isnan", header: "<math.h>".}
     # a generic like `x: SomeFloat` might work too if this is implemented via a C macro.
 
