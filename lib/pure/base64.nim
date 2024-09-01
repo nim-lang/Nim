@@ -66,13 +66,9 @@ template cbBase(a, b): untyped = [
   'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
   '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', a, b]
 
-let
+const
   cb64 = cbBase('+', '/')
   cb64safe = cbBase('-', '_')
-
-const
-  cb64VM = cbBase('+', '/')
-  cb64safeVM = cbBase('-', '_')
 
 const
   invalidChar = 255
@@ -134,14 +130,10 @@ template encodeInternal(s, alphabet: typed): untyped =
   result.setLen(outputIndex)
 
 template encodeImpl() {.dirty.} =
-  when nimvm:
-    block:
-      let lookupTableVM = if safe: cb64safeVM else: cb64VM
-      encodeInternal(s, lookupTableVM)
+  if safe:
+    encodeInternal(s, cb64safe)
   else:
-    block:
-      let lookupTable = if safe: unsafeAddr(cb64safe) else: unsafeAddr(cb64)
-      encodeInternal(s, lookupTable)
+    encodeInternal(s, cb64)
 
 proc encode*[T: byte|char](s: openArray[T], safe = false): string =
   ## Encodes `s` into base64 representation.
@@ -252,7 +244,7 @@ proc decode*(s: string): string =
     inputLen = s.len
     inputEnds = 0
   # strip trailing characters
-  while s[inputLen - 1] in {'\n', '\r', ' ', '='}:
+  while inputLen > 0 and s[inputLen - 1] in {'\n', '\r', ' ', '='}:
     dec inputLen
   # hot loop: read 4 characters at at time
   inputEnds = inputLen - 4

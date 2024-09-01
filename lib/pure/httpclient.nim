@@ -305,7 +305,7 @@ proc contentLength*(response: Response | AsyncResponse): int =
   ##
   ## A `ValueError` exception will be raised if the value is not an integer.
   ## If the Content-Length header is not set in the response, ContentLength is set to the value -1.
-  var contentLengthHeader = response.headers.getOrDefault("Content-Length", @["-1"])
+  var contentLengthHeader = response.headers.getOrDefault("Content-Length", HttpHeaderValues(@["-1"]))
   result = contentLengthHeader.parseInt()
 
 proc lastModified*(response: Response | AsyncResponse): DateTime =
@@ -359,7 +359,7 @@ type
                                         ## and `postContent` proc,
                                         ## when the server returns an error
 
-const defUserAgent* = "Nim httpclient/" & NimVersion
+const defUserAgent* = "Nim-httpclient/" & NimVersion
 
 proc httpError(msg: string) =
   var e: ref ProtocolError
@@ -856,6 +856,7 @@ proc parseResponse(client: HttpClient | AsyncHttpClient,
   var parsedStatus = false
   var linei = 0
   var fullyRead = false
+  var lastHeaderName = ""
   var line = ""
   result.headers = newHttpHeaders()
   while true:
@@ -890,16 +891,29 @@ proc parseResponse(client: HttpClient | AsyncHttpClient,
       parsedStatus = true
     else:
       # Parse headers
-      var name = ""
-      var le = parseUntil(line, name, ':', linei)
-      if le <= 0: httpError("invalid headers")
-      inc(linei, le)
-      if line[linei] != ':': httpError("invalid headers")
-      inc(linei) # Skip :
-
-      result.headers.add(name, line[linei .. ^1].strip())
-      if result.headers.len > headerLimit:
-        httpError("too many headers")
+      # There's at least one char because empty lines are handled above (with client.close)
+      if line[0] in {' ', '\t'}:
+        # Check if it's a multiline header value, if so, append to the header we're currently parsing
+        # This works because a line with a header must start with the header name without any leading space
+        # See https://datatracker.ietf.org/doc/html/rfc7230, section 3.2 and 3.2.4
+        # Multiline headers are deprecated in the spec, but it's better to parse them than crash
+        if lastHeaderName == "":
+          # Some extra unparsable lines in the HTTP output - we ignore them
+          discard
+        else:
+          result.headers.table[result.headers.toCaseInsensitive(lastHeaderName)][^1].add "\n" & line
+      else:
+        var name = ""
+        var le = parseUntil(line, name, ':', linei)
+        if le <= 0: httpError("Invalid headers - received empty header name")
+        if line.len == le: httpError("Invalid headers - no colon after header name")
+        inc(linei, le) # Skip the parsed header name
+        inc(linei) # Skip :
+        # If we want to be HTTP spec compliant later, error on linei == line.len (for empty header value)
+        lastHeaderName = name # Remember the header name for the possible multi-line header
+        result.headers.add(name, line[linei .. ^1].strip())
+        if result.headers.len > headerLimit:
+          httpError("too many headers")
 
   if not fullyRead:
     httpError("Connection was closed before full request has been made")
@@ -1218,7 +1232,7 @@ proc responseContent(resp: Response | AsyncResponse): Future[string] {.multisync
   ## A `HttpRequestError` will be raised if the server responds with a
   ## client error (status code 4xx) or a server error (status code 5xx).
   if resp.code.is4xx or resp.code.is5xx:
-    raise newException(HttpRequestError, resp.status)
+    raise newException(HttpRequestError, resp.status.move)
   else:
     return await resp.bodyStream.readAll()
 

@@ -13,7 +13,7 @@ consider handling indexing operations, eg:
 doAssert ?.default(seq[int])[3] == default(int)
 ]#
 
-import macros
+import std/macros
 
 runnableExamples:
   type Foo = ref object
@@ -122,7 +122,7 @@ macro `?.`*(a: typed): auto =
     `lhs`
 
 # the code below is not needed for `?.`
-from options import Option, isSome, get, option, unsafeGet, UnpackDefect
+from std/options import Option, isSome, get, option, unsafeGet, UnpackDefect
 
 macro `??.`*(a: typed): Option =
   ## Same as `?.` but returns an `Option`.

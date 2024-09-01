@@ -14,7 +14,7 @@
 # Feel free to test for your excentric platform!
 
 import
-  strutils
+  std/strutils
 
 when defined(nimPreviewSlimSystem):
   import std/assertions

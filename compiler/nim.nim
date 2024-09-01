@@ -28,7 +28,7 @@ import
   commands, options, msgs, extccomp, main, idents, lineinfos, cmdlinehelper,
   pathutils, modulegraphs
 
-from browsers import openDefaultBrowser
+from std/browsers import openDefaultBrowser
 from nodejs import findNodeJs
 
 when hasTinyCBackend:
@@ -116,7 +116,9 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
     conf.backend = backendC
 
   if conf.selectedGC == gcUnselected:
-    if conf.backend in {backendC, backendCpp, backendObjc}:
+    if conf.backend in {backendC, backendCpp, backendObjc} or
+        (conf.cmd in cmdDocLike and conf.backend != backendJs) or
+        conf.cmd == cmdGendepend:
       initOrcDefines(conf)
 
   mainCommand(graph)

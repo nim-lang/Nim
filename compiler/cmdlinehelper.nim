@@ -11,7 +11,9 @@
 
 import
   options, idents, nimconf, extccomp, commands, msgs,
-  lineinfos, modulegraphs, condsyms, os, pathutils, parseopt
+  lineinfos, modulegraphs, condsyms, pathutils
+
+import std/[os, parseopt]
 
 proc prependCurDir*(f: AbsoluteFile): AbsoluteFile =
   when defined(unix):
@@ -55,6 +57,11 @@ proc loadConfigsAndProcessCmdLine*(self: NimProg, cache: IdentCache; conf: Confi
   if conf.cmd == cmdNimscript:
     incl(conf.globalOptions, optWasNimscript)
   loadConfigs(DefaultConfig, cache, conf, graph.idgen) # load all config files
+  # restores `conf.notes` after loading config files
+  # because it has overwrites the notes when compiling the system module which
+  # is a foreign module compared to the project
+  if conf.cmd in cmdBackends:
+    conf.notes = conf.mainPackageNotes
 
   if not self.suggestMode:
     let scriptFile = conf.projectFull.changeFileExt("nims")

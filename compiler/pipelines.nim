@@ -5,13 +5,14 @@ import sem, cgen, modulegraphs, ast, llstream, parser, msgs,
 
 import pipelineutils
 
+import ../dist/checksums/src/checksums/sha1
+
 when not defined(leanCompiler):
   import jsgen, docgen2
 
-import std/[syncio, objectdollar, assertions, tables, strutils]
+import std/[syncio, objectdollar, assertions, tables, strutils, strtabs]
 import renderer
 import ic/replayer
-
 
 proc setPipeLinePass*(graph: ModuleGraph; pass: PipelinePass) =
   graph.pipelinePass = pass
@@ -95,7 +96,7 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
                     stream: PLLStream): bool =
   if graph.stopCompile(): return true
   var
-    p: Parser
+    p: Parser = default(Parser)
     s: PLLStream
     fileIdx = module.fileIdx
 
@@ -140,9 +141,10 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
     if s == nil:
       rawMessage(graph.config, errCannotOpenFile, filename.string)
       return false
+    graph.interactive = false
   else:
     s = stream
-
+    graph.interactive = stream.kind == llsStdIn
   while true:
     syntaxes.openParser(p, fileIdx, s, graph.cache, graph.config)
 
@@ -182,15 +184,16 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
   case graph.pipelinePass
   of CgenPass:
     if bModule != nil:
-      let disps = finalCodegenActions(graph, BModule(bModule), finalNode)
-      if disps != nil:
+      let m = BModule(bModule)
+      finalCodegenActions(graph, m, finalNode)
+      if graph.dispatchers.len > 0:
         let ctx = preparePContext(graph, module, idgen)
-        for disp in disps:
-          let retTyp = disp.sym.typ[0]
+        for disp in getDispatchers(graph):
+          let retTyp = disp.typ.returnType
           if retTyp != nil:
-            # todo properly semcheck the code of dispatcher?
-            createTypeBoundOps(graph, ctx, retTyp, disp.info, idgen)
-          genProcAux(BModule(bModule), disp.sym)
+            # TODO: properly semcheck the code of dispatcher?
+            createTypeBoundOps(graph, ctx, retTyp, disp.ast.info, idgen)
+          genProcAux(m, disp)
         discard closePContext(graph, ctx, nil)
   of JSgenPass:
     when not defined(leanCompiler):
@@ -215,7 +218,7 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
     closeRodFile(graph, module)
   result = true
 
-proc compilePipelineModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymFlags, fromModule: PSym = nil): PSym =
+proc compilePipelineModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymFlags; fromModule: PSym = nil): PSym =
   var flags = flags
   if fileIdx == graph.config.projectMainIdx2: flags.incl sfMainModule
   result = graph.getModule(fileIdx)
@@ -230,7 +233,10 @@ proc compilePipelineModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymF
   if result == nil:
     var cachedModules: seq[FileIndex] = @[]
     result = moduleFromRodFile(graph, fileIdx, cachedModules)
-    let filename = AbsoluteFile toFullPath(graph.config, fileIdx)
+    let path = toFullPath(graph.config, fileIdx)
+    let filename = AbsoluteFile path
+    if fileExists(filename): # it could be a stdinfile
+      graph.cachedFiles[path] = $secureHashFile(path)
     if result == nil:
       result = newModule(graph, fileIdx)
       result.flags.incl flags
@@ -239,11 +245,18 @@ proc compilePipelineModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymF
     else:
       if sfSystemModule in flags:
         graph.systemModule = result
+      if sfMainModule in flags and graph.config.cmd == cmdM:
+        result.flags.incl flags
+        registerModule(graph, result)
+        processModuleAux("import")
       partialInitModule(result, graph, fileIdx, filename)
     for m in cachedModules:
       registerModuleById(graph, m)
-      replayStateChanges(graph.packed[m.int].module, graph)
-      replayGenericCacheInformation(graph, m.int)
+      if sfMainModule in flags and graph.config.cmd == cmdM:
+        discard
+      else:
+        replayStateChanges(graph.packed.pm[m.int].module, graph)
+        replayGenericCacheInformation(graph, m.int)
   elif graph.isDirty(result):
     result.flags.excl sfDirty
     # reset module fields:

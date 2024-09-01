@@ -7,8 +7,8 @@
 
 ## Nim `idx`:idx: file format related definitions.
 
-import strutils, std/syncio, hashes
-from os import splitFile
+import std/[strutils, syncio, hashes]
+from std/os import splitFile
 
 type
   IndexEntryKind* = enum ## discriminator tag

@@ -74,7 +74,7 @@ when defined(nimHasEffectsOf):
 else:
   {.pragma: effectsOf.}
 
-import typetraits
+import std/typetraits
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -82,7 +82,7 @@ when defined(nimPreviewSlimSystem):
 
 when (NimMajor, NimMinor) >= (1, 1):
   type
-    SomePointer = ref | ptr | pointer | proc
+    SomePointer = ref | ptr | pointer | proc | iterator {.closure.}
 else:
   type
     SomePointer = ref | ptr | pointer
@@ -90,7 +90,7 @@ else:
 type
   Option*[T] = object
     ## An optional type that may or may not contain a value of type `T`.
-    ## When `T` is a a pointer type (`ptr`, `pointer`, `ref` or `proc`),
+    ## When `T` is a a pointer type (`ptr`, `pointer`, `ref`, `proc` or `iterator {.closure.}`),
     ## `none(T)` is represented as `nil`.
     when T is SomePointer:
       val: T
@@ -117,9 +117,10 @@ proc option*[T](val: sink T): Option[T] {.inline.} =
     assert option[Foo](nil).isNone
     assert option(42).isSome
 
-  result.val = val
-  when T isnot SomePointer:
-    result.has = true
+  when T is SomePointer:
+    result = Option[T](val: val)
+  else:
+    result = Option[T](has: true, val: val)
 
 proc some*[T](val: sink T): Option[T] {.inline.} =
   ## Returns an `Option` that has the value `val`.
@@ -136,10 +137,9 @@ proc some*[T](val: sink T): Option[T] {.inline.} =
 
   when T is SomePointer:
     assert not val.isNil
-    result.val = val
+    result = Option[T](val: val)
   else:
-    result.has = true
-    result.val = val
+    result = Option[T](has: true, val: val)
 
 proc none*(T: typedesc): Option[T] {.inline.} =
   ## Returns an `Option` for this type that has no value.
@@ -152,7 +152,7 @@ proc none*(T: typedesc): Option[T] {.inline.} =
     assert none(int).isNone
 
   # the default is the none type
-  discard
+  result = Option[T]()
 
 proc none*[T]: Option[T] {.inline.} =
   ## Alias for `none(T) <#none,typedesc>`_.

@@ -1,4 +1,4 @@
-import posix
+import std/posix
 
 ## Flags of `clone` syscall.
 ## See `clone syscall manual

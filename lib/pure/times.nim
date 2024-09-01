@@ -131,9 +131,10 @@
   ===========  =================================================================================  ==============================================
 
   Other strings can be inserted by putting them in `''`. For example
-  `hh'->'mm` will give `01->56`.  The following characters can be
-  inserted without quoting them: `:` `-` `(` `)` `/` `[` `]`
-  `,`. A literal `'` can be specified with `''`.
+  `hh'->'mm` will give `01->56`.  In addition to spaces,
+  the following characters can be inserted without quoting them:
+  `:` `-` `,` `.` `(` `)` `/` `[` `]`.
+  A literal `'` can be specified with `''`.
 
   However you don't need to necessarily separate format patterns, as an
   unambiguous format string like `yyyyMMddhhmmss` is also valid (although
@@ -203,7 +204,7 @@
   * `monotimes module <monotimes.html>`_
 ]##
 
-import strutils, math, options
+import std/[strutils, math, options]
 
 import std/private/since
 include "system/inclrtl"
@@ -213,7 +214,7 @@ when defined(nimPreviewSlimSystem):
 
 
 when defined(js):
-  import jscore
+  import std/jscore
 
   # This is really bad, but overflow checks are broken badly for
   # ints on the JS backend. See #6752.
@@ -237,7 +238,7 @@ when defined(js):
   {.pop.}
 
 elif defined(posix):
-  import posix
+  import std/posix
 
   type CTime = posix.Time
 
@@ -246,7 +247,7 @@ elif defined(posix):
       {.importc: "gettimeofday", header: "<sys/time.h>", sideEffect.}
 
 elif defined(windows):
-  import winlean, std/time_t
+  import std/winlean, std/time_t
 
   type
     CTime = time_t.Time
@@ -1498,11 +1499,11 @@ proc `-=`*(a: var DateTime, b: Duration) =
   a = a - b
 
 proc getDateStr*(dt = now()): string {.rtl, extern: "nt$1", tags: [TimeEffect].} =
-  ## Gets the current local date as a string of the format `YYYY-MM-DD`.
+  ## Gets the current local date as a string of the format `YYYY-MM-dd`.
   runnableExamples:
     echo getDateStr(now() - 1.months)
   assertDateTimeInitialized dt
-  result = newStringOfCap(10)  # len("YYYY-MM-DD") == 10
+  result = newStringOfCap(10)  # len("YYYY-MM-dd") == 10
   result.addInt dt.year
   result.add '-'
   result.add intToStr(dt.monthZero, 2)
@@ -1631,7 +1632,7 @@ const
         "Sunday"],
   )
 
-  FormatLiterals = {' ', '-', '/', ':', '(', ')', '[', ']', ','}
+  FormatLiterals = {' ', '-', '/', ':', '(', ')', '[', ']', ',', '.'}
 
 proc `$`*(f: TimeFormat): string =
   ## Returns the format string that was used to construct `f`.
@@ -2787,7 +2788,9 @@ proc epochTime*(): float {.tags: [TimeEffect].} =
   ##
   ## .. warning:: Unsuitable for benchmarking (but still better than `now`),
   ##    use `monotimes.getMonoTime` or `cpuTime` instead, depending on the use case.
-  when defined(macosx):
+  when defined(js):
+    result = newDate().getTime() / 1000
+  elif defined(macosx):
     var a {.noinit.}: Timeval
     gettimeofday(a)
     result = toBiggestFloat(a.tv_sec.int64) + toBiggestFloat(
@@ -2804,8 +2807,6 @@ proc epochTime*(): float {.tags: [TimeEffect].} =
     var secs = i64 div rateDiff
     var subsecs = i64 mod rateDiff
     result = toFloat(int(secs)) + toFloat(int(subsecs)) * 0.0000001
-  elif defined(js):
-    result = newDate().getTime() / 1000
   else:
     {.error: "unknown OS".}
 

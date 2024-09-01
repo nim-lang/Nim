@@ -49,7 +49,7 @@ type
     wCompleteStruct = "completeStruct", wRequiresInit = "requiresInit", wAlign = "align",
     wNodecl = "nodecl", wPure = "pure", wSideEffect = "sideEffect", wHeader = "header",
     wNoSideEffect = "noSideEffect", wGcSafe = "gcsafe", wNoreturn = "noreturn",
-    wNosinks = "nosinks", wMerge = "merge", wLib = "lib", wDynlib = "dynlib",
+    wNosinks = "nosinks", wLib = "lib", wDynlib = "dynlib",
     wCompilerProc = "compilerproc", wCore = "core", wProcVar = "procvar",
     wBase = "base", wUsed = "used", wFatal = "fatal", wError = "error", wWarning = "warning",
     wHint = "hint",
@@ -84,7 +84,7 @@ type
     wComputedGoto = "computedGoto", wExperimental = "experimental", wDoctype = "doctype",
     wWrite = "write", wGensym = "gensym", wInject = "inject", wDirty = "dirty",
     wInheritable = "inheritable", wThreadVar = "threadvar", wEmit = "emit",
-    wAsmNoStackFrame = "asmNoStackFrame", wImplicitStatic = "implicitStatic",
+    wAsmNoStackFrame = "asmNoStackFrame", wAsmSyntax = "asmSyntax", wImplicitStatic = "implicitStatic",
     wGlobal = "global", wCodegenDecl = "codegenDecl", wUnchecked = "unchecked",
     wGuard = "guard", wLocks = "locks", wPartial = "partial", wExplain = "explain",
     wLiftLocals = "liftlocals", wEnforceNoRaises = "enforceNoRaises", wSystemRaisesDefect = "systemRaisesDefect",
@@ -145,6 +145,6 @@ const
 
 
 from std/enumutils import genEnumCaseStmt
-from strutils import normalize
+from std/strutils import normalize
 proc findStr*[T: enum](a, b: static[T], s: string, default: T): T =
   genEnumCaseStmt(T, s, default, ord(a), ord(b), normalize)

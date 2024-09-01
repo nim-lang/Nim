@@ -12,7 +12,7 @@
 ##
 ## Unstable API.
 import std/private/since
-import tables, strutils, parseutils
+import std/[tables, strutils, parseutils]
 
 type
   HttpHeaders* = ref object
@@ -126,7 +126,8 @@ func toTitleCase(s: string): string =
     result[i] = if upper: toUpperAscii(s[i]) else: toLowerAscii(s[i])
     upper = s[i] == '-'
 
-func toCaseInsensitive(headers: HttpHeaders, s: string): string {.inline.} =
+func toCaseInsensitive*(headers: HttpHeaders, s: string): string {.inline.} =
+  ## For internal usage only. Do not use.
   return if headers.isTitleCase: toTitleCase(s) else: toLowerAscii(s)
 
 func newHttpHeaders*(titleCase=false): HttpHeaders =
@@ -163,7 +164,8 @@ func `[]`*(headers: HttpHeaders, key: string): HttpHeaderValues =
   ## To access multiple values of a key, use the overloaded `[]` below or
   ## to get all of them access the `table` field directly.
   {.cast(noSideEffect).}:
-    return headers.table[headers.toCaseInsensitive(key)].HttpHeaderValues
+    let tmp = headers.table[headers.toCaseInsensitive(key)]
+    return HttpHeaderValues(tmp)
 
 converter toString*(values: HttpHeaderValues): string =
   return seq[string](values)[0]
@@ -233,10 +235,9 @@ func parseList(line: string, list: var seq[string], start: int): int =
   while start+i < line.len and line[start + i] notin {'\c', '\l'}:
     i += line.skipWhitespace(start + i)
     i += line.parseUntil(current, {'\c', '\l', ','}, start + i)
-    list.add(current)
+    list.add(move current)  # implicit current.setLen(0)
     if start+i < line.len and line[start + i] == ',':
       i.inc # Skip ,
-    current.setLen(0)
 
 func parseHeader*(line: string): tuple[key: string, value: seq[string]] =
   ## Parses a single raw header HTTP line into key value pairs.

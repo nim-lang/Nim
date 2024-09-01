@@ -57,7 +57,8 @@ import std/private/since
 {.push debugger: off.} # the user does not want to trace a part
                        # of the standard library!
 
-import bitops, fenv
+import std/[bitops, fenv]
+import system/countbits_impl
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -155,7 +156,7 @@ func fac*(n: int): int =
 
 {.push checks: off, line_dir: off, stack_trace: off.}
 
-when defined(posix) and not defined(genode):
+when defined(posix) and not defined(genode) and not defined(macosx):
   {.passl: "-lm".}
 
 const
@@ -200,7 +201,7 @@ func isNaN*(x: SomeFloat): bool {.inline, since: (1,5,1).} =
   template fn: untyped = result = x != x
   when nimvm: fn()
   else:
-    when defined(js): fn()
+    when defined(js) or defined(nimscript): fn()
     else: result = c_isnan(x)
 
 when defined(js):
@@ -219,13 +220,13 @@ when defined(js):
     let a = newFloat64Array(buffer)
     let b = newUint32Array(buffer)
     a[0] = x
-    asm """
+    {.emit: """
     function updateBit(num, bitPos, bitVal) {
       return (num & ~(1 << bitPos)) | (bitVal << bitPos);
     }
     `b`[1] = updateBit(`b`[1], 31, `sgn`);
-    `result` = `a`[0]
-    """
+    `result` = `a`[0];
+    """.}
 
 proc signbit*(x: SomeFloat): bool {.inline, since: (1, 5, 1).} =
   ## Returns true if `x` is negative, false otherwise.
@@ -270,7 +271,6 @@ func classify*(x: float): FloatClass =
   ## Classifies a floating point value.
   ##
   ## Returns `x`'s class as specified by the `FloatClass enum<#FloatClass>`_.
-  ## Doesn't work with `--passc:-ffast-math`.
   runnableExamples:
     doAssert classify(0.3) == fcNormal
     doAssert classify(0.0) == fcZero
@@ -279,6 +279,7 @@ func classify*(x: float): FloatClass =
     doAssert classify(5.0e-324) == fcSubnormal
 
   # JavaScript and most C compilers have no classify:
+  if isNan(x): return fcNan
   if x == 0.0:
     if 1.0 / x == Inf:
       return fcZero
@@ -287,7 +288,6 @@ func classify*(x: float): FloatClass =
   if x * 0.5 == x:
     if x > 0.0: return fcInf
     else: return fcNegInf
-  if x != x: return fcNan
   if abs(x) < MinFloatNormal:
     return fcSubnormal
   return fcNormal
@@ -1230,40 +1230,42 @@ func gcd*[T](x, y: T): T =
     swap x, y
   abs x
 
-func gcd*(x, y: SomeInteger): SomeInteger =
-  ## Computes the greatest common (positive) divisor of `x` and `y`,
-  ## using the binary GCD (aka Stein's) algorithm.
-  ##
-  ## **See also:**
-  ## * `gcd func <#gcd,T,T>`_ for a float version
-  ## * `lcm func <#lcm,T,T>`_
-  runnableExamples:
-    doAssert gcd(12, 8) == 4
-    doAssert gcd(17, 63) == 1
-
-  when x is SomeSignedInt:
-    var x = abs(x)
-  else:
-    var x = x
-  when y is SomeSignedInt:
-    var y = abs(y)
-  else:
-    var y = y
-
-  if x == 0:
-    return y
-  if y == 0:
-    return x
-
-  let shift = countTrailingZeroBits(x or y)
-  y = y shr countTrailingZeroBits(y)
-  while x != 0:
-    x = x shr countTrailingZeroBits(x)
-    if y > x:
-      swap y, x
-    x -= y
-  y shl shift
-
+when useBuiltins:
+  ## this func uses bitwise comparisons from C compilers, which are not always available.
+  func gcd*(x, y: SomeInteger): SomeInteger =
+    ## Computes the greatest common (positive) divisor of `x` and `y`,
+    ## using the binary GCD (aka Stein's) algorithm.
+    ##
+    ## **See also:**
+    ## * `gcd func <#gcd,T,T>`_ for a float version
+    ## * `lcm func <#lcm,T,T>`_
+    runnableExamples:
+      doAssert gcd(12, 8) == 4
+      doAssert gcd(17, 63) == 1
+  
+    when x is SomeSignedInt:
+      var x = abs(x)
+    else:
+      var x = x
+    when y is SomeSignedInt:
+      var y = abs(y)
+    else:
+      var y = y
+  
+    if x == 0:
+      return y
+    if y == 0:
+      return x
+  
+    let shift = countTrailingZeroBits(x or y)
+    y = y shr countTrailingZeroBits(y)
+    while x != 0:
+      x = x shr countTrailingZeroBits(x)
+      if y > x:
+        swap y, x
+      x -= y
+    y shl shift
+  
 func gcd*[T](x: openArray[T]): T {.since: (1, 1).} =
   ## Computes the greatest common (positive) divisor of the elements of `x`.
   ##

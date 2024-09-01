@@ -47,27 +47,22 @@ else:
   template allocStrNoInit(size: untyped): untyped =
     cast[NimString](newObjNoInit(addr(strDesc), size))
 
-proc rawNewStringNoInit(space: int): NimString {.compilerproc.} =
-  var s = space
-  if s < 7: s = 7
+proc rawNewStringNoInit(space: int): NimString =
+  let s = max(space, 7)
   result = allocStrNoInit(sizeof(TGenericSeq) + s + 1)
   result.reserved = s
-  result.len = 0
   when defined(gogc):
     result.elemSize = 1
 
 proc rawNewString(space: int): NimString {.compilerproc.} =
-  var s = space
-  if s < 7: s = 7
-  result = allocStr(sizeof(TGenericSeq) + s + 1)
-  result.reserved = s
+  result = rawNewStringNoInit(space)
   result.len = 0
-  when defined(gogc):
-    result.elemSize = 1
+  result.data[0] = '\0'
 
 proc mnewString(len: int): NimString {.compilerproc.} =
-  result = rawNewString(len)
+  result = rawNewStringNoInit(len)
   result.len = len
+  zeroMem(addr result.data[0], len + 1)
 
 proc copyStrLast(s: NimString, start, last: int): NimString {.compilerproc.} =
   # This is not used by most recent versions of the compiler anymore, but
@@ -75,13 +70,10 @@ proc copyStrLast(s: NimString, start, last: int): NimString {.compilerproc.} =
   let start = max(start, 0)
   if s == nil: return nil
   let len = min(last, s.len-1) - start + 1
-  if len > 0:
-    result = rawNewStringNoInit(len)
-    result.len = len
-    copyMem(addr(result.data), addr(s.data[start]), len)
-    result.data[len] = '\0'
-  else:
-    result = rawNewString(len)
+  result = rawNewStringNoInit(len)
+  result.len = len
+  copyMem(addr(result.data), addr(s.data[start]), len)
+  result.data[len] = '\0'
 
 proc copyStr(s: NimString, start: int): NimString {.compilerproc.} =
   # This is not used by most recent versions of the compiler anymore, but
@@ -96,7 +88,8 @@ proc nimToCStringConv(s: NimString): cstring {.compilerproc, nonReloadable, inli
 proc toNimStr(str: cstring, len: int): NimString {.compilerproc.} =
   result = rawNewStringNoInit(len)
   result.len = len
-  copyMem(addr(result.data), str, len + 1)
+  copyMem(addr(result.data), str, len)
+  result.data[len] = '\0'
 
 proc cstrToNimstr(str: cstring): NimString {.compilerRtl.} =
   if str == nil: NimString(nil)
@@ -201,7 +194,7 @@ proc addChar(s: NimString, c: char): NimString =
 
 proc resizeString(dest: NimString, addlen: int): NimString {.compilerRtl.} =
   if dest == nil:
-    result = rawNewStringNoInit(addlen)
+    result = rawNewString(addlen)
   elif dest.len + addlen <= dest.space:
     result = dest
   else: # slow path:
@@ -227,15 +220,18 @@ proc appendChar(dest: NimString, c: char) {.compilerproc, inline.} =
 proc setLengthStr(s: NimString, newLen: int): NimString {.compilerRtl.} =
   let n = max(newLen, 0)
   if s == nil:
-    result = mnewString(newLen)
+    if n == 0:
+      return s
+    else:
+      result = mnewString(n)
   elif n <= s.space:
     result = s
   else:
-    let sp = max(resize(s.space), newLen)
+    let sp = max(resize(s.space), n)
     result = rawNewStringNoInit(sp)
     result.len = s.len
-    copyMem(addr result.data[0], unsafeAddr(s.data[0]), s.len+1)
-    zeroMem(addr result.data[s.len], newLen - s.len)
+    copyMem(addr result.data[0], unsafeAddr(s.data[0]), s.len)
+    zeroMem(addr result.data[s.len], n - s.len)
     result.reserved = sp
   result.len = n
   result.data[n] = '\0'
@@ -308,7 +304,10 @@ proc setLengthSeqV2(s: PGenericSeq, typ: PNimType, newLen: int): PGenericSeq {.
     compilerRtl.} =
   sysAssert typ.kind == tySequence, "setLengthSeqV2: type is not a seq"
   if s == nil:
-    result = cast[PGenericSeq](newSeq(typ, newLen))
+    if newLen == 0:
+      result = s
+    else:
+      result = cast[PGenericSeq](newSeq(typ, newLen))
   else:
     let elemSize = typ.base.size
     let elemAlign = typ.base.align
@@ -340,3 +339,25 @@ proc setLengthSeqV2(s: PGenericSeq, typ: PNimType, newLen: int): PGenericSeq {.
       result = s
       zeroMem(dataPointer(result, elemAlign, elemSize, result.len), (newLen-%result.len) *% elemSize)
     result.len = newLen
+
+func capacity*(self: string): int {.inline.} =
+  ## Returns the current capacity of the string.
+  # See https://github.com/nim-lang/RFCs/issues/460
+  runnableExamples:
+    var str = newStringOfCap(cap = 42)
+    str.add "Nim"
+    assert str.capacity == 42
+
+  let str = cast[NimString](self)
+  result = if str != nil: str.space else: 0
+
+func capacity*[T](self: seq[T]): int {.inline.} =
+  ## Returns the current capacity of the seq.
+  # See https://github.com/nim-lang/RFCs/issues/460
+  runnableExamples:
+    var lst = newSeqOfCap[string](cap = 42)
+    lst.add "Nim"
+    assert lst.capacity == 42
+
+  let sek = cast[PGenericSeq](self)
+  result = if sek != nil: sek.space else: 0

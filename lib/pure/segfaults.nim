@@ -26,7 +26,7 @@ se.msg = "Could not access value because it is nil."
 when defined(windows):
   include "../system/ansi_c"
 
-  import winlean
+  import std/winlean
 
   const
     EXCEPTION_ACCESS_VIOLATION = DWORD(0xc0000005'i32)
@@ -65,7 +65,7 @@ when defined(windows):
     c_signal(SIGSEGV, segfaultHandler)
 
 else:
-  import posix
+  import std/posix
 
   var sa: Sigaction
 

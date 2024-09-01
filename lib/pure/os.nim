@@ -52,7 +52,7 @@ import std/private/since
 import std/cmdline
 export cmdline
 
-import strutils, pathnorm
+import std/[strutils, pathnorm]
 
 when defined(nimPreviewSlimSystem):
   import std/[syncio, assertions, widestrs]
@@ -76,9 +76,9 @@ since (1, 1):
 when weirdTarget:
   discard
 elif defined(windows):
-  import winlean, times
+  import std/[winlean, times]
 elif defined(posix):
-  import posix, times
+  import std/[posix, times]
 
   proc toTime(ts: Timespec): times.Time {.inline.} =
     result = initTime(ts.tv_sec.int64, ts.tv_nsec.int)
@@ -424,13 +424,13 @@ proc expandFilename*(filename: string): string {.rtl, extern: "nos$1",
   when defined(windows):
     var bufsize = MAX_PATH.int32
     var unused: WideCString = nil
-    var res = newWideCString("", bufsize)
+    var res = newWideCString(bufsize)
     while true:
       var L = getFullPathNameW(newWideCString(filename), bufsize, res, unused)
       if L == 0'i32:
         raiseOSError(osLastError(), filename)
       elif L > bufsize:
-        res = newWideCString("", L)
+        res = newWideCString(L)
         bufsize = L
       else:
         result = res$L
@@ -453,7 +453,7 @@ proc expandFilename*(filename: string): string {.rtl, extern: "nos$1",
       c_free(cast[pointer](r))
 
 proc getCurrentCompilerExe*(): string {.compileTime.} = discard
-  ## This is `getAppFilename()`_ at compile time.
+  ## Returns the path of the currently running Nim compiler or nimble executable.
   ##
   ## Can be used to retrieve the currently executing
   ## Nim compiler from a Nim or nimscript program, or the nimble binary
@@ -675,7 +675,7 @@ proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect], noW
     elif defined(haiku):
       result = getApplHaiku()
     elif defined(openbsd):
-      result = getApplOpenBsd()
+      result = try: getApplOpenBsd() except OSError: ""
     elif defined(nintendoswitch):
       result = ""
 
@@ -692,7 +692,10 @@ proc getAppDir*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect], noWeirdT
 
 proc sleep*(milsecs: int) {.rtl, extern: "nos$1", tags: [TimeEffect], noWeirdTarget.} =
   ## Sleeps `milsecs` milliseconds.
+  ## A negative `milsecs` causes sleep to return immediately.
   when defined(windows):
+    if milsecs < 0:
+      return  # fixes #23732
     winlean.sleep(int32(milsecs))
   else:
     var a, b: Timespec
@@ -754,14 +757,14 @@ template rawToFormalFileInfo(rawInfo, path, formalInfo): untyped =
   ## 'rawInfo' is either a 'BY_HANDLE_FILE_INFORMATION' structure on Windows,
   ## or a 'Stat' structure on posix
   when defined(windows):
-    template merge(a, b): untyped =
-      int64(
+    template merge[T](a, b): untyped =
+       cast[T](
         (uint64(cast[uint32](a))) or
         (uint64(cast[uint32](b)) shl 32)
        )
     formalInfo.id.device = rawInfo.dwVolumeSerialNumber
-    formalInfo.id.file = merge(rawInfo.nFileIndexLow, rawInfo.nFileIndexHigh)
-    formalInfo.size = merge(rawInfo.nFileSizeLow, rawInfo.nFileSizeHigh)
+    formalInfo.id.file = merge[FileId](rawInfo.nFileIndexLow, rawInfo.nFileIndexHigh)
+    formalInfo.size = merge[BiggestInt](rawInfo.nFileSizeLow, rawInfo.nFileSizeHigh)
     formalInfo.linkCount = rawInfo.nNumberOfLinks
     formalInfo.lastAccessTime = fromWinTime(rdFileTime(rawInfo.ftLastAccessTime))
     formalInfo.lastWriteTime = fromWinTime(rdFileTime(rawInfo.ftLastWriteTime))

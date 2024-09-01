@@ -7,7 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
-import renderer, strutils, ast, types
+import renderer, ast, types
+import std/strutils
 
 when defined(nimPreviewSlimSystem):
   import std/assertions

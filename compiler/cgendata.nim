@@ -10,8 +10,10 @@
 ## This module contains the data structures for the C code generation phase.
 
 import
-  ast, ropes, options, intsets,
-  tables, ndi, lineinfos, pathutils, modulegraphs, sets
+  ast, ropes, options,
+  ndi, lineinfos, pathutils, modulegraphs
+
+import std/[intsets, tables, sets]
 
 type
   TLabel* = Rope              # for the C generator a label is just a rope
@@ -135,6 +137,7 @@ type
                             # unconditionally...
                             # nimtvDeps is VERY hard to cache because it's
                             # not a list of IDs nor can it be made to be one.
+    mangledPrcs*: HashSet[string]
 
   TCGen = object of PPassContext # represents a C source file
     s*: TCFileSections        # sections of the C file
@@ -148,7 +151,7 @@ type
     typeABICache*: HashSet[SigHash] # cache for ABI checks; reusing typeCache
                               # would be ideal but for some reason enums
                               # don't seem to get cached so it'd generate
-                              # 1 ABI check per occurence in code
+                              # 1 ABI check per occurrence in code
     forwTypeCache*: TypeCache # cache for forward declarations of types
     declaredThings*: IntSet   # things we have declared in this .c file
     declaredProtos*: IntSet   # prototypes we have declared in this .c file

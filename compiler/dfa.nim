@@ -22,8 +22,9 @@
 ## "A Graph–Free Approach to Data–Flow Analysis" by Markus Mohnen.
 ## https://link.springer.com/content/pdf/10.1007/3-540-45937-5_6.pdf
 
-import ast, intsets, lineinfos, renderer, aliasanalysis
+import ast, lineinfos, renderer, aliasanalysis
 import std/private/asciitables
+import std/intsets
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -45,10 +46,10 @@ type
     case isTryBlock: bool
     of false:
       label: PSym
-      breakFixups: seq[(TPosition, seq[PNode])] #Contains the gotos for the breaks along with their pending finales
+      breakFixups: seq[(TPosition, seq[PNode])] # Contains the gotos for the breaks along with their pending finales
     of true:
       finale: PNode
-      raiseFixups: seq[TPosition] #Contains the gotos for the raises
+      raiseFixups: seq[TPosition] # Contains the gotos for the raises
 
   Con = object
     code: ControlFlowGraph
@@ -129,10 +130,6 @@ template withBlock(labl: PSym; body: untyped) =
   body
   popBlock(c, oldLen)
 
-proc isTrue(n: PNode): bool =
-  n.kind == nkSym and n.sym.kind == skEnumField and n.sym.position != 0 or
-    n.kind == nkIntLit and n.intVal != 0
-
 template forkT(body) =
   let lab1 = c.forkI()
   body
@@ -184,14 +181,6 @@ proc genIf(c: var Con, n: PNode) =
     goto Lend3
   L3:
     D
-    goto Lend3 # not eliminated to simplify the join generation
-  Lend3:
-    join F3
-  Lend2:
-    join F2
-  Lend:
-    join F1
-
   ]#
   var endings: seq[TPosition] = @[]
   let oldInteresting = c.interestingInstructions
@@ -216,7 +205,6 @@ proc genAndOr(c: var Con; n: PNode) =
   #   fork lab1
   #   asgn dest, b
   # lab1:
-  #   join F1
   c.gen(n[1])
   forkT:
     c.gen(n[2])
@@ -327,7 +315,7 @@ proc genRaise(c: var Con; n: PNode) =
       if c.blocks[i].isTryBlock:
         genBreakOrRaiseAux(c, i, n)
         return
-    assert false #Unreachable
+    assert false # Unreachable
   else:
     genNoReturn(c)
 
@@ -383,7 +371,7 @@ proc genCall(c: var Con; n: PNode) =
   if t != nil: t = t.skipTypes(abstractInst)
   for i in 1..<n.len:
     gen(c, n[i])
-    if t != nil and i < t.len and isOutParam(t[i]):
+    if t != nil and i < t.signatureLen and isOutParam(t[i]):
       # Pass by 'out' is a 'must def'. Good enough for a move optimizer.
       genDef(c, n[i])
   # every call can potentially raise:
@@ -393,7 +381,6 @@ proc genCall(c: var Con; n: PNode) =
     # fork lab1
     # goto exceptionHandler (except or finally)
     # lab1:
-    # join F1
     forkT:
       for i in countdown(c.blocks.high, 0):
         if c.blocks[i].isTryBlock:

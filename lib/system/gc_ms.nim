@@ -27,7 +27,7 @@ when defined(memProfiler):
   proc nimProfile(requestedSize: int)
 
 when hasThreadSupport:
-  import sharedlist
+  import std/sharedlist
 
 type
   WalkOp = enum

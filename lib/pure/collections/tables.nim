@@ -194,7 +194,7 @@ runnableExamples:
 
 
 import std/private/since
-import hashes, math, algorithm
+import std/[hashes, math, algorithm]
 
 
 when not defined(nimHasEffectsOf):
@@ -278,6 +278,7 @@ proc initTable*[A, B](initialSize = defaultInitialSize): Table[A, B] =
     let
       a = initTable[int, string]()
       b = initTable[char, seq[int]]()
+  result = default(Table[A, B])
   initImpl(result, initialSize)
 
 proc `[]=`*[A, B](t: var Table[A, B], key: A, val: sink B) =
@@ -312,7 +313,7 @@ proc toTable*[A, B](pairs: openArray[(A, B)]): Table[A, B] =
   result = initTable[A, B](pairs.len)
   for key, val in items(pairs): result[key] = val
 
-proc `[]`*[A, B](t: Table[A, B], key: A): B =
+proc `[]`*[A, B](t: Table[A, B], key: A): lent B =
   ## Retrieves the value at `t[key]`.
   ##
   ## If `key` is not in `t`, the `KeyError` exception is raised.
@@ -471,6 +472,18 @@ proc mgetOrPut*[A, B](t: var Table[A, B], key: A, val: B): var B =
     # Correct
     t.mgetOrPut(25, @[25]).add(35)
     doAssert t[25] == @[25, 35]
+
+  mgetOrPutImpl(enlarge)
+
+proc mgetOrPut*[A, B](t: var Table[A, B], key: A): var B =
+  ## Retrieves the value at `t[key]` or puts the
+  ## default initialization value for type `B` (e.g. 0 for any
+  ## integer type).
+  runnableExamples:
+    var a = {'a': 5}.newTable
+    doAssert a.mgetOrPut('a') == 5
+    a.mgetOrPut('z').inc
+    doAssert a == {'a': 5, 'z': 1}.newTable
 
   mgetOrPutImpl(enlarge)
 
@@ -1013,6 +1026,18 @@ proc mgetOrPut*[A, B](t: TableRef[A, B], key: A, val: B): var B =
     doAssert t[25] == @[25, 35]
   t[].mgetOrPut(key, val)
 
+proc mgetOrPut*[A, B](t: TableRef[A, B], key: A): var B =
+  ## Retrieves the value at `t[key]` or puts the
+  ## default initialization value for type `B` (e.g. 0 for any
+  ## integer type).
+  runnableExamples:
+    var a = {'a': 5}.newTable
+    doAssert a.mgetOrPut('a') == 5
+    a.mgetOrPut('z').inc
+    doAssert a == {'a': 5, 'z': 1}.newTable
+
+  t[].mgetOrPut(key)
+
 proc len*[A, B](t: TableRef[A, B]): int =
   ## Returns the number of keys in `t`.
   runnableExamples:
@@ -1322,6 +1347,7 @@ proc initOrderedTable*[A, B](initialSize = defaultInitialSize): OrderedTable[A, 
     let
       a = initOrderedTable[int, string]()
       b = initOrderedTable[char, seq[int]]()
+  result = default(OrderedTable[A, B])
   initImpl(result, initialSize)
 
 proc `[]=`*[A, B](t: var OrderedTable[A, B], key: A, val: sink B) =
@@ -1357,7 +1383,7 @@ proc toOrderedTable*[A, B](pairs: openArray[(A, B)]): OrderedTable[A, B] =
   result = initOrderedTable[A, B](pairs.len)
   for key, val in items(pairs): result[key] = val
 
-proc `[]`*[A, B](t: OrderedTable[A, B], key: A): B =
+proc `[]`*[A, B](t: OrderedTable[A, B], key: A): lent B =
   ## Retrieves the value at `t[key]`.
   ##
   ## If `key` is not in `t`, the  `KeyError` exception is raised.
@@ -1413,7 +1439,7 @@ proc hasKey*[A, B](t: OrderedTable[A, B], key: A): bool =
     doAssert a.hasKey('a') == true
     doAssert a.hasKey('z') == false
 
-  var hc: Hash
+  var hc: Hash = default(Hash)
   result = rawGet(t, key, hc) >= 0
 
 proc contains*[A, B](t: OrderedTable[A, B], key: A): bool =
@@ -1500,6 +1526,18 @@ proc mgetOrPut*[A, B](t: var OrderedTable[A, B], key: A, val: B): var B =
     doAssert a.mgetOrPut('a', 99) == 5
     doAssert a.mgetOrPut('z', 99) == 99
     doAssert a == {'a': 5, 'b': 9, 'z': 99}.toOrderedTable
+
+  mgetOrPutImpl(enlarge)
+
+proc mgetOrPut*[A, B](t: var OrderedTable[A, B], key: A): var B =
+  ## Retrieves the value at `t[key]` or puts the
+  ## default initialization value for type `B` (e.g. 0 for any
+  ## integer type).
+  runnableExamples:
+    var a = {'a': 5}.toOrderedTable
+    doAssert a.mgetOrPut('a') == 5
+    a.mgetOrPut('z').inc
+    doAssert a == {'a': 5, 'z': 1}.toOrderedTable
 
   mgetOrPutImpl(enlarge)
 
@@ -1992,6 +2030,18 @@ proc mgetOrPut*[A, B](t: OrderedTableRef[A, B], key: A, val: B): var B =
 
   result = t[].mgetOrPut(key, val)
 
+proc mgetOrPut*[A, B](t: OrderedTableRef[A, B], key: A): var B =
+  ## Retrieves the value at `t[key]` or puts the
+  ## default initialization value for type `B` (e.g. 0 for any
+  ## integer type).
+  runnableExamples:
+    var a = {'a': 5}.toOrderedTable
+    doAssert a.mgetOrPut('a') == 5
+    a.mgetOrPut('z').inc
+    doAssert a == {'a': 5, 'z': 1}.toOrderedTable
+
+  t[].mgetOrPut(key)
+
 proc len*[A, B](t: OrderedTableRef[A, B]): int {.inline.} =
   ## Returns the number of keys in `t`.
   runnableExamples:
@@ -2288,6 +2338,7 @@ proc initCountTable*[A](initialSize = defaultInitialSize): CountTable[A] =
   ## * `toCountTable proc<#toCountTable,openArray[A]>`_
   ## * `newCountTable proc<#newCountTable>`_ for creating a
   ##   `CountTableRef`
+  result = default(CountTable[A])
   initImpl(result, initialSize)
 
 proc toCountTable*[A](keys: openArray[A]): CountTable[A] =

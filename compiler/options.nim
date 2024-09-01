@@ -8,11 +8,12 @@
 #
 
 import
-  os, strutils, strtabs, sets, lineinfos, platform,
-  prefixmatches, pathutils, nimpaths, tables
+  lineinfos, platform,
+  prefixmatches, pathutils, nimpaths
 
-from terminal import isatty
-from times import utc, fromUnix, local, getTime, format, DateTime
+import std/[tables, os, strutils, strtabs, sets]
+from std/terminal import isatty
+from std/times import utc, fromUnix, local, getTime, format, DateTime
 from std/private/globs import nativeToUnixPath
 
 when defined(nimPreviewSlimSystem):
@@ -24,7 +25,7 @@ const
   useEffectSystem* = true
   useWriteTracking* = false
   hasFFI* = defined(nimHasLibFFI)
-  copyrightYear* = "2023"
+  copyrightYear* = "2024"
 
   nimEnableCovariance* = defined(nimEnableCovariance)
 
@@ -85,6 +86,7 @@ type                          # please make sure we have under 32 options
                               # also: generate header file
     optIdeDebug               # idetools: debug mode
     optIdeTerse               # idetools: use terse descriptions
+    optIdeExceptionInlayHints
     optExcessiveStackTrace    # fully qualified module filenames
     optShowAllMismatches      # show all overloading resolution candidates
     optWholeProject           # for 'doc': output any dependency
@@ -143,10 +145,11 @@ type
   Command* = enum  ## Nim's commands
     cmdNone # not yet processed command
     cmdUnknown # command unmapped
-    cmdCompileToC, cmdCompileToCpp, cmdCompileToOC, cmdCompileToJS
+    cmdCompileToC, cmdCompileToCpp, cmdCompileToOC, cmdCompileToJS,
     cmdCrun # compile and run in nimache
     cmdTcc # run the project via TCC backend
     cmdCheck # semantic checking for whole project
+    cmdM     # only compile a single
     cmdParse # parse a single file (for debugging)
     cmdRod # .rod to some text representation (for debugging)
     cmdIdeTools # ide tools (e.g. nimsuggest)
@@ -170,7 +173,8 @@ type
     # old unused: cmdInterpret, cmdDef: def feature (find definition for IDEs)
 
 const
-  cmdBackends* = {cmdCompileToC, cmdCompileToCpp, cmdCompileToOC, cmdCompileToJS, cmdCrun}
+  cmdBackends* = {cmdCompileToC, cmdCompileToCpp, cmdCompileToOC,
+                  cmdCompileToJS, cmdCrun}
   cmdDocLike* = {cmdDoc0, cmdDoc, cmdDoc2tex, cmdJsondoc0, cmdJsondoc,
                  cmdCtags, cmdBuildindex}
 
@@ -195,7 +199,7 @@ type
   IdeCmd* = enum
     ideNone, ideSug, ideCon, ideDef, ideUse, ideDus, ideChk, ideChkFile, ideMod,
     ideHighlight, ideOutline, ideKnown, ideMsg, ideProject, ideGlobalSymbols,
-    ideRecompile, ideChanged, ideType, ideDeclaration, ideExpand
+    ideRecompile, ideChanged, ideType, ideDeclaration, ideExpand, ideInlayHints
 
   Feature* = enum  ## experimental features; DO NOT RENAME THESE!
     dotOperators,
@@ -221,7 +225,11 @@ type
     flexibleOptionalParams,
     strictDefs,
     strictCaseObjects,
-    inferGenericTypes
+    inferGenericTypes,
+    openSym, # remove nfDisabledOpenSym when this is default
+    # separated alternatives to above:
+    genericsOpenSym, templateOpenSym,
+    vtables
 
   LegacyFeature* = enum
     allowSemcheckedAstModification,
@@ -235,13 +243,18 @@ type
     laxEffects
       ## Lax effects system prior to Nim 2.0.
     verboseTypeMismatch
+    emitGenerics
+      ## generics are emitted in the module that contains them.
+      ## Useful for libraries that rely on local passC
+    jsNoLambdaLifting
+      ## Old transformation for closures in JS backend
 
   SymbolFilesOption* = enum
     disabledSf, writeOnlySf, readOnlySf, v2Sf, stressTest
 
   TSystemCC* = enum
     ccNone, ccGcc, ccNintendoSwitch, ccLLVM_Gcc, ccCLang, ccBcc, ccVcc,
-    ccTcc, ccEnv, ccIcl, ccIcc, ccClangCl
+    ccTcc, ccEnv, ccIcl, ccIcc, ccClangCl, ccHipcc, ccNvcc
 
   ExceptionSystem* = enum
     excNone,   # no exception system selected yet
@@ -281,8 +294,24 @@ type
     version*: int
     endLine*: uint16
     endCol*: int
+    inlayHintInfo*: SuggestInlayHint
 
   Suggestions* = seq[Suggest]
+
+  SuggestInlayHintKind* = enum
+    sihkType = "Type",
+    sihkParameter = "Parameter"
+    sihkException = "Exception"
+
+  SuggestInlayHint* = ref object
+    kind*: SuggestInlayHintKind
+    line*: int                   # Starts at 1
+    column*: int                 # Starts at 0
+    label*: string
+    paddingLeft*: bool
+    paddingRight*: bool
+    allowInsert*: bool
+    tooltip*: string
 
   ProfileInfo* = object
     time*: float
@@ -341,7 +370,6 @@ type
     arguments*: string ## the arguments to be passed to the program that
                        ## should be run
     ideCmd*: IdeCmd
-    oldNewlines*: bool
     cCompiler*: TSystemCC # the used compiler
     modifiedyNotes*: TNoteKinds # notes that have been set/unset from either cmdline/configs
     cmdlineNotes*: TNoteKinds # notes that have been set/unset from cmdline
@@ -417,6 +445,9 @@ type
     expandLevels*: int
     expandNodeResult*: string
     expandPosition*: TLineInfo
+
+    currentConfigDir*: string # used for passPP only; absolute dir
+    clientProcessId*: int
 
 
 proc parseNimVersion*(a: string): NimVer =
@@ -582,6 +613,7 @@ proc newConfigRef*(): ConfigRef =
     maxLoopIterationsVM: 10_000_000,
     vmProfileData: newProfileData(),
     spellSuggestMax: spellSuggestSecretSauce,
+    currentConfigDir: ""
   )
   initConfigRefCommon(result)
   setTargetFromSystem(result.target)
@@ -761,7 +793,10 @@ proc setFromProjectName*(conf: ConfigRef; projectName: string) =
     conf.projectFull = AbsoluteFile projectName
   let p = splitFile(conf.projectFull)
   let dir = if p.dir.isEmpty: AbsoluteDir getCurrentDir() else: p.dir
-  conf.projectPath = AbsoluteDir canonicalizePath(conf, AbsoluteFile dir)
+  try:
+    conf.projectPath = AbsoluteDir canonicalizePath(conf, AbsoluteFile dir)
+  except OSError:
+    conf.projectPath = dir
   conf.projectName = p.name
 
 proc removeTrailingDirSep*(path: string): string =
@@ -794,16 +829,17 @@ proc getNimcacheDir*(conf: ConfigRef): AbsoluteDir =
     else: "_d"
 
   # XXX projectName should always be without a file extension!
-  result = if not conf.nimcacheDir.isEmpty:
-             conf.nimcacheDir
-           elif conf.backend == backendJs:
-             if conf.outDir.isEmpty:
-               conf.projectPath / genSubDir
-             else:
-               conf.outDir / genSubDir
-           else:
-            AbsoluteDir(getOsCacheDir() / splitFile(conf.projectName).name &
-               nimcacheSuffix(conf))
+  result =
+    if not conf.nimcacheDir.isEmpty:
+      conf.nimcacheDir
+    elif conf.backend == backendJs:
+      if conf.outDir.isEmpty:
+        conf.projectPath / genSubDir
+      else:
+        conf.outDir / genSubDir
+    else:
+      AbsoluteDir(getOsCacheDir() / splitFile(conf.projectName).name &
+        nimcacheSuffix(conf))
 
 proc pathSubs*(conf: ConfigRef; p, config: string): string =
   let home = removeTrailingDirSep(os.getHomeDir())
@@ -881,7 +917,7 @@ const stdlibDirs* = [
 
 const
   pkgPrefix = "pkg/"
-  stdPrefix = "std/"
+  stdPrefix* = "std/"
 
 proc getRelativePathFromConfigPath*(conf: ConfigRef; f: AbsoluteFile, isTitle = false): RelativeFile =
   result = RelativeFile("")
@@ -1061,6 +1097,7 @@ proc `$`*(c: IdeCmd): string =
   of ideRecompile: "recompile"
   of ideChanged: "changed"
   of ideType: "type"
+  of ideInlayHints: "inlayHints"
 
 proc floatInt64Align*(conf: ConfigRef): int16 =
   ## Returns either 4 or 8 depending on reasons.

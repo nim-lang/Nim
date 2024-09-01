@@ -893,7 +893,7 @@ on what keywords are present. Let's start with the simplest form.
 Concrete syntax:
 
   ```nim
-  import math
+  import std/math
   ```
 
 AST:
@@ -907,7 +907,7 @@ With ``except``, we get ``nnkImportExceptStmt``.
 Concrete syntax:
 
   ```nim
-  import math except pow
+  import std/math except pow
   ```
 
 AST:
@@ -916,13 +916,13 @@ AST:
   nnkImportExceptStmt(nnkIdent("math"),nnkIdent("pow"))
   ```
 
-Note that ``import math as m`` does not use a different node; rather,
+Note that ``import std/math as m`` does not use a different node; rather,
 we use ``nnkImportStmt`` with ``as`` as an infix operator.
 
 Concrete syntax:
 
   ```nim
-  import strutils as su
+  import std/strutils as su
   ```
 
 AST:
@@ -945,7 +945,7 @@ If we use ``from ... import``, the result is different, too.
 Concrete syntax:
 
   ```nim
-  from math import pow
+  from std/math import pow
   ```
 
 AST:
@@ -954,7 +954,7 @@ AST:
   nnkFromStmt(nnkIdent("math"), nnkIdent("pow"))
   ```
 
-Using ``from math as m import pow`` works identically to the ``as`` modifier
+Using ``from std/math as m import pow`` works identically to the ``as`` modifier
 with the ``import`` statement, but wrapped in ``nnkFromStmt``.
 
 Export statement

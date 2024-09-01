@@ -154,6 +154,7 @@ lib/posix/posix_openbsd_amd64.nim
 lib/posix/posix_haiku.nim
 lib/pure/md5.nim
 lib/std/sha1.nim
+lib/pure/htmlparser.nim
 """.splitWhitespace()
 
   officialPackagesList = """
@@ -170,6 +171,7 @@ pkgs/checksums/src/checksums/sha1.nim
 pkgs/checksums/src/checksums/sha2.nim
 pkgs/checksums/src/checksums/sha3.nim
 pkgs/checksums/src/checksums/bcrypt.nim
+pkgs/htmlparser/src/htmlparser.nim
 """.splitWhitespace()
 
   officialPackagesListWithoutIndex = """
@@ -188,6 +190,7 @@ when (NimMajor, NimMinor) < (1, 1) or not declared(isRelativeTo):
     result = path.len > 0 and not ret.startsWith ".."
 
 proc getDocList(): seq[string] =
+  ##
   var docIgnore: HashSet[string]
   for a in withoutIndex: docIgnore.incl a
   for a in ignoredModules: docIgnore.incl a
@@ -322,7 +325,8 @@ proc nim2pdf(src: string, dst: string, nimArgs: string) =
       exec(cmd)
   moveFile(texFile.changeFileExt("pdf"), dst)
 
-proc buildPdfDoc*(nimArgs, destPath: string) =
+proc buildPdfDoc*(args: string, destPath: string) =
+  let args = nimArgs & " " & args
   var pdfList: seq[string]
   createDir(destPath)
   if os.execShellCmd("xelatex -version") != 0:
@@ -331,7 +335,7 @@ proc buildPdfDoc*(nimArgs, destPath: string) =
     for src in items(mdPdfList):
       let dst = destPath / src.lastPathPart.changeFileExt("pdf")
       pdfList.add dst
-      nim2pdf(src, dst, nimArgs)
+      nim2pdf(src, dst, args)
   echo "\nOutput PDF files: \n  ", pdfList.join(" ") # because `nim2pdf` is a bit verbose
 
 proc buildJS(): string =
@@ -344,7 +348,7 @@ proc buildJS(): string =
 proc buildDocsDir*(args: string, dir: string) =
   let args = nimArgs & " " & args
   let docHackJsSource = buildJS()
-  gitClonePackages(@["asyncftpclient", "punycode", "smtp", "db_connector", "checksums", "atlas"])
+  gitClonePackages(@["asyncftpclient", "punycode", "smtp", "db_connector", "checksums", "atlas", "htmlparser"])
   createDir(dir)
   buildDocSamples(args, dir)
 

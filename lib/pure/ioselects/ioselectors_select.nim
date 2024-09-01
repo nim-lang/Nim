@@ -9,10 +9,10 @@
 
 # This module implements Posix and Windows select().
 
-import times, nativesockets
+import std/[times, nativesockets]
 
 when defined(windows):
-  import winlean
+  import std/winlean
   when defined(gcc):
     {.passl: "-lws2_32".}
   elif defined(vcc):
@@ -314,7 +314,7 @@ proc selectInto*[T](s: Selector[T], timeout: int,
 
   if timeout != -1:
     when defined(genode) or defined(freertos) or defined(zephyr) or defined(nuttx):
-      tv.tv_sec = Time(timeout div 1_000)
+      tv.tv_sec = posix.Time(timeout div 1_000)
     else:
       tv.tv_sec = timeout.int32 div 1_000
     tv.tv_usec = (timeout.int32 %% 1_000) * 1_000

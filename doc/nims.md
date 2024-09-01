@@ -124,6 +124,8 @@ Here are few examples of using the `switch` proc:
   switch("define", "release")
   # command-line: --forceBuild
   switch("forceBuild")
+  # command-line: --hint[Conf]:off or --hint:Conf:off
+  switch("hint", "[Conf]:off")
   ```
 
 NimScripts also support `--`:option: templates for convenience, which look

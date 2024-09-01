@@ -14,10 +14,12 @@
 ##     compiler works and less a storage format, you're probably looking for
 ##     the `ic` or `packed_ast` modules to understand the logical format.
 
-from typetraits import supportsCopyMem
+from std/typetraits import supportsCopyMem
 
 when defined(nimPreviewSlimSystem):
   import std/[syncio, assertions]
+
+import std / tables
 
 ## Overview
 ## ========
@@ -92,11 +94,16 @@ type
     typeInstCacheSection
     procInstCacheSection
     attachedOpsSection
-    methodsPerTypeSection
+    methodsPerGenericTypeSection
     enumToStringProcsSection
+    methodsPerTypeSection
+    dispatchersSection
     typeInfoSection  # required by the backend
     backendFlagsSection
     aliveSymsSection # beware, this is stored in a `.alivesyms` file.
+    sideChannelSection
+    namespaceSection
+    symnamesSection
 
   RodFileError* = enum
     ok, tooBig, cannotOpen, ioFailure, wrongHeader, wrongSection, configMismatch,
@@ -109,8 +116,8 @@ type
                        # better than exceptions.
 
 const
-  RodVersion = 1
-  cookie = [byte(0), byte('R'), byte('O'), byte('D'),
+  RodVersion = 2
+  defaultCookie = [byte(0), byte('R'), byte('O'), byte('D'),
             byte(sizeof(int)*8), byte(system.cpuEndian), byte(0), byte(RodVersion)]
 
 proc setError(f: var RodFile; err: RodFileError) {.inline.} =
@@ -165,6 +172,18 @@ proc storeSeq*[T](f: var RodFile; s: seq[T]) =
     for i in 0..<s.len:
       storePrim(f, s[i])
 
+proc storeOrderedTable*[K, T](f: var RodFile; s: OrderedTable[K, T]) =
+  if f.err != ok: return
+  if s.len >= high(int32):
+    setError f, tooBig
+    return
+  var lenPrefix = int32(s.len)
+  if writeBuffer(f.f, addr lenPrefix, sizeof(lenPrefix)) != sizeof(lenPrefix):
+    setError f, ioFailure
+  else:
+    for _, v in s:
+      storePrim(f, v)
+
 proc loadPrim*(f: var RodFile; s: var string) =
   ## Read a string, the length was stored as a prefix
   if f.err != ok: return
@@ -206,13 +225,26 @@ proc loadSeq*[T](f: var RodFile; s: var seq[T]) =
     for i in 0..<lenPrefix:
       loadPrim(f, s[i])
 
-proc storeHeader*(f: var RodFile) =
+proc loadOrderedTable*[K, T](f: var RodFile; s: var OrderedTable[K, T]) =
+  ## `T` must be compatible with `copyMem`, see `loadPrim`
+  if f.err != ok: return
+  var lenPrefix = int32(0)
+  if readBuffer(f.f, addr lenPrefix, sizeof(lenPrefix)) != sizeof(lenPrefix):
+    setError f, ioFailure
+  else:
+    s = initOrderedTable[K, T](lenPrefix)
+    for i in 0..<lenPrefix:
+      var x = default T
+      loadPrim(f, x)
+      s[x.id] = x
+
+proc storeHeader*(f: var RodFile; cookie = defaultCookie) =
   ## stores the header which is described by `cookie`.
   if f.err != ok: return
   if f.f.writeBytes(cookie, 0, cookie.len) != cookie.len:
     setError f, ioFailure
 
-proc loadHeader*(f: var RodFile) =
+proc loadHeader*(f: var RodFile; cookie = defaultCookie) =
   ## Loads the header which is described by `cookie`.
   if f.err != ok: return
   var thisCookie: array[cookie.len, byte] = default(array[cookie.len, byte])

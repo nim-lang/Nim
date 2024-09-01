@@ -17,7 +17,7 @@ interpolation variables:
 Unstable API
 ]##
 
-import os, strutils
+import std/[os, strutils]
 
 when defined(nimPreviewSlimSystem):
   import std/assertions

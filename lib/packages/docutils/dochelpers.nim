@@ -13,7 +13,8 @@
 ## `type LangSymbol`_ in ``rst.nim``, while `match(generated, docLink)`_
 ## matches it with `generated`, produced from `PNode` by ``docgen.rst``.
 
-import rstast, strutils
+import rstast
+import std/strutils
 
 when defined(nimPreviewSlimSystem):
   import std/[assertions, syncio]

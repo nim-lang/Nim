@@ -107,6 +107,10 @@ You can also bisect using custom options to build the compiler, for example if
 you don't need a debug version of the compiler (which runs slower), you can replace
 `./koch temp`:cmd: by explicit compilation command, see [Bootstrapping the compiler].
 
+See also:
+
+- Crossplatform C/Cpp/Valgrind/JS Bisect in GitHub: https://github.com/juancarlospaco/nimrun-action#examples
+
 
 Building an instrumented compiler
 ---------------------------------

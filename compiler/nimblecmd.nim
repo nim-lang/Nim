@@ -9,8 +9,9 @@
 
 ## Implements some helper procs for Nimble (Nim's package manager) support.
 
-import parseutils, strutils, os, options, msgs, sequtils, lineinfos, pathutils,
-  tables
+import options, msgs, lineinfos, pathutils
+
+import std/[parseutils, strutils, os, tables, sequtils]
 
 when defined(nimPreviewSlimSystem):
   import std/[syncio, assertions]
@@ -77,6 +78,8 @@ proc getPathVersionChecksum*(p: string): tuple[name, version, checksum: string] 
   ## Splits path ``p`` in the format
   ## ``/home/user/.nimble/pkgs/package-0.1-febadeaea2345e777f0f6f8433f7f0a52edd5d1b`` into
   ## ``("/home/user/.nimble/pkgs/package", "0.1", "febadeaea2345e777f0f6f8433f7f0a52edd5d1b")``
+
+  result = ("", "", "")
 
   const checksumSeparator = '-'
   const versionSeparator = '-'

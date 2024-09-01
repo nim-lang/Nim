@@ -26,9 +26,8 @@ oneself.
 Void type
 =========
 
-The `void` type denotes the absence of any type. Parameters of
-type `void` are treated as non-existent, `void` as a return type means that
-the procedure does not return a value:
+The `void` type denotes the absence of any value, i.e. it is the type that contains no values. Consequently, no value can be provided for parameters of
+type `void`, and no value can be returned from a function with return type `void`:
 
   ```nim
   proc nothing(x, y: void): void =
@@ -561,12 +560,14 @@ Not nil annotation
 `{.experimental: "notnil".}`.
 
 All types for which `nil` is a valid value can be annotated with the
-`not nil` annotation to exclude `nil` as a valid value:
+`not nil` annotation to exclude `nil` as a valid value. Note that only local
+symbols are checked.
 
   ```nim
   {.experimental: "notnil".}
 
   type
+    TObj = object
     PObject = ref TObj not nil
     TProc = (proc (x, y: int)) not nil
 
@@ -577,8 +578,11 @@ All types for which `nil` is a valid value can be annotated with the
   p(nil)
 
   # and also this:
-  var x: PObject
-  p(x)
+  proc foo =
+    var x: PObject
+    p(x)
+
+  foo()
   ```
 
 The compiler ensures that every code path initializes variables which contain
@@ -919,6 +923,7 @@ The concept matches if:
 
 a) all expressions within the body can be compiled for the tested type
 b) all statically evaluable boolean expressions in the body are true
+c) all type modifiers specified match their respective definitions
 
 The identifiers following the `concept` keyword represent instances of the
 currently matched type. You can apply any of the standard type modifiers such
@@ -1367,7 +1372,7 @@ to be computed dynamically.
   ```nim
   {.experimental: "dynamicBindSym".}
 
-  import macros
+  import std/macros
 
   macro callOp(opName, arg1, arg2): untyped =
     result = newCall(bindSym($opName), arg1, arg2)
@@ -2096,7 +2101,7 @@ for a x86 64 bit machine looks like:
 This is a memory fetch followed by jump. (An ideal implementation would
 use the carry flag and a single instruction like ``jc .L1``.)
 
-This overhead might not be desired and depending on the sematics of the routine may not be required
+This overhead might not be desired and depending on the semantics of the routine may not be required
 either.
 So it can be disabled via a `.quirky` annotation:
 
@@ -2341,11 +2346,10 @@ type Foo* = object
   x: int32
 
 proc makeFoo(x: int32): Foo {.constructor.} =
-  this.x = x
+  result.x = x
 ```
 
-It forward declares the constructor in the type definition. When the constructor has parameters, it also generates a default constructor.
-Notice, inside the body of the constructor one has access to `this` which is of the type `ptr Foo`. No `result` variable is available.
+It forward declares the constructor in the type definition. When the constructor has parameters, it also generates a default constructor. One can avoid this behaviour by using `noDecl` in a default constructor.
 
 Like `virtual`, `constructor` also supports a syntax that allows to express C++ constraints.
 
@@ -2371,16 +2375,93 @@ type
   NimClass* = object of CppClass
 
 proc makeNimClass(x: int32): NimClass {.constructor:"NimClass('1 #1) : CppClass(0, #1)".} =
-  this.x = x
+  result.x = x
 
 # Optional: define the default constructor explicitly
 proc makeCppClass(): NimClass {.constructor: "NimClass() : CppClass(0, 0)".} =
-  this.x = 1
+  result.x = 1
 ```
 
-In the example above `CppClass` has a deleted default constructor. Notice how by using the constructor syntax, one can call the appropiate constructor.
+In the example above `CppClass` has a deleted default constructor. Notice how by using the constructor syntax, one can call the appropriate constructor.
 
 Notice when calling a constructor in the section of a global variable initialization, it will be called before `NimMain` meaning Nim is not fully initialized.
+
+Constructor Initializer
+=======================
+
+By default Nim initializes `importcpp` types with `{}`. This can be problematic when importing
+types with a deleted default constructor. In order to avoid this, one can specify default values for a constructor by specifying default values for the proc params in the `constructor` proc.
+
+For example:
+
+```nim
+
+{.emit: """/*TYPESECTION*/
+struct CppStruct {
+  CppStruct(int x, char* y): x(x), y(y){}
+  int x;
+  char* y;
+};
+""".}
+type
+  CppStruct {.importcpp, inheritable.} = object
+
+proc makeCppStruct(a: cint = 5, b:cstring = "hello"): CppStruct {.importcpp: "CppStruct(@)", constructor.}
+
+(proc (s: CppStruct) = echo "hello")(makeCppStruct()) 
+# If one removes a default value from the constructor and passes it to the call explicitly, the C++ compiler will complain.
+
+```
+Skip initializers in fields members
+===================================
+
+By using `noInit` in a type or field declaration, the compiler will skip the initializer. By doing so one can explicitly initialize those values in the constructor of the type owner.
+
+For example:
+
+```nim
+
+{.emit: """/*TYPESECTION*/
+  struct Foo {
+    Foo(int a){};
+  };
+  struct Boo {
+    Boo(int a){};
+  };
+
+  """.}
+
+type 
+  Foo {.importcpp.} = object
+  Boo {.importcpp, noInit.} = object
+  Test {.exportc.} = object
+    foo {.noInit.}: Foo
+    boo: Boo
+
+proc makeTest(): Test {.constructor: "Test() : foo(10), boo(1)".} = 
+  discard
+
+proc main() = 
+  var t = makeTest()
+
+main()
+
+```
+
+Will produce: 
+
+```cpp
+
+struct Test {
+	Foo foo; 
+	Boo boo;
+  N_LIB_PRIVATE N_NOCONV(, Test)(void);
+};
+
+```
+
+Notice that without `noInit` it would produce `Foo foo {}` and `Boo boo {}`
+
 
 Member pragma
 =============
@@ -2439,3 +2520,125 @@ NimFunctor()(1)
 ```
 Notice we use the overload of `()` to have the same semantics in Nim, but on the `importcpp` we import the functor as a function. 
 This allows to easy interop with functions that accepts for example a `const` operator in its signature. 
+
+
+Injected symbols in generic procs and templates
+===============================================
+
+With the experimental option `openSym`, captured symbols in generic routine and
+template bodies may be replaced by symbols injected locally by templates/macros
+at instantiation time. `bind` may be used to keep the captured symbols over the
+injected ones regardless of enabling the options, but other methods like
+renaming the captured symbols should be used instead so that the code is not
+affected by context changes.
+
+Since this change may affect runtime behavior, the experimental switch
+`openSym`, or `genericsOpenSym` and `templateOpenSym` for only the respective
+routines, needs to be enabled; and a warning is given in the case where an
+injected symbol would replace a captured symbol not bound by `bind` and
+the experimental switch isn't enabled.
+
+```nim
+const value = "captured"
+template foo(x: int, body: untyped): untyped =
+  let value {.inject.} = "injected"
+  body
+
+proc old[T](): string =
+  foo(123):
+    return value # warning: a new `value` has been injected, use `bind` or turn on `experimental:openSym`
+echo old[int]() # "captured"
+
+template oldTempl(): string =
+  block:
+    foo(123):
+      value # warning: a new `value` has been injected, use `bind` or turn on `experimental:openSym`
+echo oldTempl() # "captured"
+
+{.experimental: "openSym".} # or {.experimental: "genericsOpenSym".} for just generic procs
+
+proc bar[T](): string =
+  foo(123):
+    return value
+assert bar[int]() == "injected" # previously it would be "captured"
+
+proc baz[T](): string =
+  bind value
+  foo(123):
+    return value
+assert baz[int]() == "captured"
+
+# {.experimental: "templateOpenSym".} would be needed here if genericsOpenSym was used
+
+template barTempl(): string =
+  block:
+    foo(123):
+      value
+assert barTempl() == "injected" # previously it would be "captured"
+
+template bazTempl(): string =
+  bind value
+  block:
+    foo(123):
+      value
+assert bazTempl() == "captured"
+```
+
+This option also generates a new node kind `nnkOpenSym` which contains
+exactly 1 `nnkSym` node. In the future this might be merged with a slightly
+modified `nnkOpenSymChoice` node but macros that want to support the
+experimental feature should still handle `nnkOpenSym`, as the node kind would
+simply not be generated as opposed to being removed.
+
+
+VTable for methods
+==================
+
+Methods now support implementations based on a VTable by using `--experimental:vtables`. Note that the option needs to enabled
+globally. The virtual method table is stored in the type info of
+an object, which is an array of function pointers.
+
+```nim
+method foo(x: Base, ...) {.base.}
+method foo(x: Derived, ...) {.base.}
+```
+
+It roughly generates a dispatcher like
+
+```nim
+proc foo_dispatch(x: Base, ...) =
+  x.typeinfo.vtable[method_index](x, ...) # method_index is the index of the sorted order of a method
+```
+
+Methods are required to be in the same module where their type has been defined.
+
+```nim
+# types.nim
+type
+  Base* = ref object
+```
+
+```nim
+import types
+
+method foo(x: Base) {.base.} = discard
+```
+
+It gives an error: method `foo` can be defined only in the same module with its type (Base).
+
+
+asmSyntax pragma
+================
+
+The `asmSyntax` pragma is used to specify target inline assembler syntax in an `asm` statement.
+
+It prevents compiling code with different of the target CC inline asm syntax, i.e. it will not allow gcc inline asm code to be compiled with vcc.
+
+```nim
+proc nothing() =
+  asm {.asmSyntax: "gcc".}"""
+    nop
+  """
+```
+
+The current C(C++) backend implementation cannot generate code for gcc and for vcc at the same time. For example, `{.asmSyntax: "vcc".}` with the ICC compiler will not generate code with intel asm syntax, even though ICC can use both gcc-like and vcc-like asm.

@@ -1,5 +1,5 @@
 discard """
-  matrix: "--mm:refc; --backend:cpp --mm:refc; --backend:js --jsbigint64:off; --backend:js --jsbigint64:on"
+  matrix: "; --backend:cpp; --backend:js --jsbigint64:off -d:nimStringHash2; --backend:js --jsbigint64:on"
 """
 
 
@@ -51,7 +51,7 @@ for i in 0 .. 10000:
   except:
     discard
 # memory diff should less than 4M
-doAssert(abs(getOccupiedMem() - startMemory) < 4 * 1024 * 1024) # todo fixme doesn;t work for ORC
+doAssert(abs(getOccupiedMem() - startMemory) < 4 * 1024 * 1024)
 
 
 # test `$`

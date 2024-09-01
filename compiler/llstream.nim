@@ -19,7 +19,7 @@ when defined(nimPreviewSlimSystem):
 const hasRstdin = (defined(nimUseLinenoise) or defined(useLinenoise) or defined(useGnuReadline)) and
   not defined(windows)
 
-when hasRstdin: import rdstdin
+when hasRstdin: import std/rdstdin
 
 type
   TLLRepl* = proc (s: PLLStream, buf: pointer, bufLen: int): int
@@ -68,6 +68,7 @@ when not declared(readLineFromStdin):
   # fallback implementation:
   proc readLineFromStdin(prompt: string, line: var string): bool =
     stdout.write(prompt)
+    stdout.flushFile()
     result = readLine(stdin, line)
     if not result:
       stdout.write("\n")

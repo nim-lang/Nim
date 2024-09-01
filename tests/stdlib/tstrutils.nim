@@ -1,5 +1,5 @@
 discard """
-  matrix: "--mm:refc; --mm:orc; --backend:cpp; --backend:js --jsbigint64:off; --backend:js --jsbigint64:on"
+  matrix: "--mm:refc; --mm:orc; --backend:cpp; --backend:js --jsbigint64:off -d:nimStringHash2; --backend:js --jsbigint64:on"
 """
 
 import std/strutils
@@ -527,9 +527,9 @@ template main() =
 
   block: # toHex
     doAssert(toHex(100i16, 32) == "00000000000000000000000000000064")
-    doAssert(toHex(-100i16, 32) == "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFF9C")
     whenJsNoBigInt64: discard
     do:
+      doAssert(toHex(-100i16, 32) == "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFF9C")
       doAssert(toHex(high(uint64)) == "FFFFFFFFFFFFFFFF")
       doAssert(toHex(high(uint64), 16) == "FFFFFFFFFFFFFFFF")
       doAssert(toHex(high(uint64), 32) == "0000000000000000FFFFFFFFFFFFFFFF")
@@ -679,11 +679,22 @@ template main() =
       doAssert b == f2
       doAssert c == f3
 
-  block: # parseEnum TODO: merge above
-    type MyEnum = enum enA, enB, enC, enuD, enE
-    doAssert parseEnum[MyEnum]("enu_D") == enuD
+    block:
+      type MyEnum = enum enA, enB, enC, enuD, enE
+      doAssert parseEnum[MyEnum]("enu_D") == enuD
 
-    doAssert parseEnum("invalid enum value", enC) == enC
+      doAssert parseEnum("invalid enum value", enC) == enC
+    
+    block: # issue #22726
+      type SomeEnum = enum A, B, C
+
+      proc assignEnum(dest: var enum, s: string) =
+        type ty = typeof(dest)
+        dest = parseEnum[ty](s)
+      
+      var v: SomeEnum
+      v.assignEnum("A")
+      doAssert v == A
 
   block: # indentation
     doAssert 0 == indentation """

@@ -12,7 +12,7 @@
 
 # TODO: Clean up the exports a bit and everything else in general.
 
-import os, options
+import std/[os, options]
 import std/private/since
 import std/strbasics
 
@@ -27,12 +27,12 @@ const useNimNetLite = defined(nimNetLite) or defined(freertos) or defined(zephyr
     defined(nuttx)
 
 when useWinVersion:
-  import winlean
+  import std/winlean
   export WSAEWOULDBLOCK, WSAECONNRESET, WSAECONNABORTED, WSAENETRESET,
          WSANOTINITIALISED, WSAENOTSOCK, WSAEINPROGRESS, WSAEINTR,
          WSAEDISCON, ERROR_NETNAME_DELETED
 else:
-  import posix
+  import std/posix
   export fcntl, F_GETFL, O_NONBLOCK, F_SETFL, EAGAIN, EWOULDBLOCK, MSG_NOSIGNAL,
     EINTR, EINPROGRESS, ECONNRESET, EPIPE, ENETRESET, EBADF
   export Sockaddr_storage, Sockaddr_un, Sockaddr_un_path_length
@@ -67,7 +67,7 @@ type
                    ## some procedures, such as getaddrinfo)
     AF_UNIX = 1,   ## for local socket (using a file). Unsupported on Windows.
     AF_INET = 2,   ## for network protocol IPv4 or
-    AF_INET6 = when defined(macosx): 30 else: 23 ## for network protocol IPv6.
+    AF_INET6 = when defined(macosx): 30 elif defined(windows): 23 else: 10 ## for network protocol IPv6.
 
   SockType* = enum     ## second argument to `socket` proc
     SOCK_STREAM = 1,   ## reliable stream-oriented service or Stream Sockets
@@ -387,21 +387,37 @@ when not useNimNetLite:
 
   proc getHostByAddr*(ip: string): Hostent {.tags: [ReadIOEffect].} =
     ## This function will lookup the hostname of an IP Address.
-    var myaddr: InAddr
-    myaddr.s_addr = inet_addr(ip)
+    var
+      addrInfo = getAddrInfo(ip, Port(0), AF_UNSPEC)
+      myAddr: pointer
+      addrLen = 0
+      family = 0
+    
+    defer: freeAddrInfo(addrInfo)
+
+    if addrInfo.ai_addr.sa_family.cint == nativeAfInet:
+      family = nativeAfInet
+      myAddr = addr cast[ptr Sockaddr_in](addrInfo.ai_addr).sin_addr
+      addrLen = 4
+    elif addrInfo.ai_addr.sa_family.cint == nativeAfInet6:
+      family = nativeAfInet6
+      myAddr = addr cast[ptr Sockaddr_in6](addrInfo.ai_addr).sin6_addr
+      addrLen = 16
+    else:
+      raise newException(IOError, "Unknown socket family in `getHostByAddr()`")
 
     when useWinVersion:
-      var s = winlean.gethostbyaddr(addr(myaddr), sizeof(myaddr).cuint,
-                                    cint(AF_INET))
+      var s = winlean.gethostbyaddr(cast[ptr InAddr](myAddr), addrLen.cuint,
+                                    cint(family))
       if s == nil: raiseOSError(osLastError())
     else:
       var s =
         when defined(android4):
-          posix.gethostbyaddr(cast[cstring](addr(myaddr)), sizeof(myaddr).cint,
-                              cint(posix.AF_INET))
+          posix.gethostbyaddr(cast[cstring](myAddr), addrLen.cint,
+                              cint(family))
         else:
-          posix.gethostbyaddr(addr(myaddr), sizeof(myaddr).SockLen,
-                              cint(posix.AF_INET))
+          posix.gethostbyaddr(myAddr, addrLen.SockLen,
+                              cint(family))
       if s == nil:
         raiseOSError(osLastError(), $hstrerror(h_errno))
 
@@ -424,7 +440,20 @@ when not useNimNetLite:
         result.addrList.add($inet_ntoa(inaddrPtr[]))
         inc(i)
     else:
-      result.addrList = cstringArrayToSeq(s.h_addr_list)
+      let strAddrLen = when not useWinVersion: posix.INET6_ADDRSTRLEN.int
+                       else: 46
+      var i = 0
+      while not isNil(s.h_addr_list[i]):
+        var ipStr = newString(strAddrLen)
+        if inet_ntop(nativeAfInet6, cast[pointer](s.h_addr_list[i]),
+                     cstring(ipStr), len(ipStr).int32) == nil:
+          raiseOSError(osLastError())
+        when not useWinVersion:
+          if posix.IN6_IS_ADDR_V4MAPPED(cast[ptr In6Addr](s.h_addr_list[i])) != 0:
+            ipStr.setSlice("::ffff:".len..<strAddrLen)
+        setLen(ipStr, len(cstring(ipStr)))
+        result.addrList.add(ipStr)
+        inc(i)
     result.length = int(s.h_length)
 
   proc getHostByName*(name: string): Hostent {.tags: [ReadIOEffect].} =

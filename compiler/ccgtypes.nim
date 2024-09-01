@@ -11,8 +11,9 @@
 
 # ------------------------- Name Mangling --------------------------------
 
-import sighashes, modulegraphs, strscans
+import sighashes, modulegraphs, std/strscans
 import ../dist/checksums/src/checksums/md5
+import std/sequtils
 
 type
   TypeDescKind = enum
@@ -24,7 +25,7 @@ type
     dkResult #skResult
     dkConst #skConst
     dkOther #skType, skTemp, skLet and skForVar so far
-   
+
 proc descKindFromSymKind(kind: TSymKind): TypeDescKind =
   case kind
   of skParam: dkParam
@@ -33,7 +34,7 @@ proc descKindFromSymKind(kind: TSymKind): TypeDescKind =
   of skResult: dkResult
   of skConst: dkConst
   else: dkOther
- 
+
 proc isKeyword(w: PIdent): bool =
   # Nim and C++ share some keywords
   # it's more efficient to test the whole Nim keywords range
@@ -54,24 +55,38 @@ proc mangleField(m: BModule; name: PIdent): string =
   if isKeyword(name):
     result.add "_0"
 
+proc mangleProc(m: BModule; s: PSym; makeUnique: bool): string =
+  result = "_Z"  # Common prefix in Itanium ABI
+  result.add encodeSym(m, s, makeUnique)
+  if s.typ.len > 1: #we dont care about the return param
+    for i in 1..<s.typ.len:
+      if s.typ[i].isNil: continue
+      result.add encodeType(m, s.typ[i])
+
+  if result in m.g.mangledPrcs:
+    result = mangleProc(m, s, true)
+  else:
+    m.g.mangledPrcs.incl(result)
+
 proc fillBackendName(m: BModule; s: PSym) =
-  if s.loc.r == "":
-    var result = s.name.s.mangle.rope
-    result.add "__"
-    result.add m.g.graph.ifaces[s.itemId.module].uniqueName
-    result.add "_u"
-    result.addInt s.itemId.item # s.disamb #
+  if s.loc.snippet == "":
+    var result: Rope
+    if not m.compileToCpp and s.kind in routineKinds and optCDebug in m.g.config.globalOptions and
+      m.g.config.symbolFiles == disabledSf:
+      result = mangleProc(m, s, false).rope
+    else:
+      result = s.name.s.mangle.rope
+      result.add mangleProcNameExt(m.g.graph, s)
     if m.hcrOn:
       result.add '_'
       result.add(idOrSig(s, m.module.name.s.mangle, m.sigConflicts, m.config))
-    s.loc.r = result
+    s.loc.snippet = result
     writeMangledName(m.ndi, s, m.config)
 
 proc fillParamName(m: BModule; s: PSym) =
-  if s.loc.r == "":
+  if s.loc.snippet == "":
     var res = s.name.s.mangle
-    res.add "_p"
-    res.addInt s.position
+    res.add mangleParamExt(s)
     #res.add idOrSig(s, res, m.sigConflicts, m.config)
     # Take into account if HCR is on because of the following scenario:
     #   if a module gets imported and it has some more importc symbols in it,
@@ -89,13 +104,13 @@ proc fillParamName(m: BModule; s: PSym) =
     # and a function called in main or proxy uses `socket` as a parameter name.
     # That would lead to either needing to reload `proxy` or to overwrite the
     # executable file for the main module, which is running (or both!) -> error.
-    s.loc.r = res.rope
+    s.loc.snippet = res.rope
     writeMangledName(m.ndi, s, m.config)
 
 proc fillLocalName(p: BProc; s: PSym) =
   assert s.kind in skLocalVars+{skTemp}
   #assert sfGlobal notin s.flags
-  if s.loc.r == "":
+  if s.loc.snippet == "":
     var key = s.name.s.mangle
     let counter = p.sigConflicts.getOrDefault(key)
     var result = key.rope
@@ -105,7 +120,7 @@ proc fillLocalName(p: BProc; s: PSym) =
     elif counter != 0 or isKeyword(s.name) or p.module.g.config.cppDefines.contains(key):
       result.add "_" & rope(counter+1)
     p.sigConflicts.inc(key)
-    s.loc.r = result
+    s.loc.snippet = result
     if s.kind != skTemp: writeMangledName(p.module.ndi, s, p.config)
 
 proc scopeMangledParam(p: BProc; param: PSym) =
@@ -132,23 +147,23 @@ proc getTypeName(m: BModule; typ: PType; sig: SigHash): Rope =
   var t = typ
   while true:
     if t.sym != nil and {sfImportc, sfExportc} * t.sym.flags != {}:
-      return t.sym.loc.r
+      return t.sym.loc.snippet
 
     if t.kind in irrelevantForBackend:
-      t = t.lastSon
+      t = t.skipModifier
     else:
       break
-  let typ = if typ.kind in {tyAlias, tySink, tyOwned}: typ.lastSon else: typ
-  if typ.loc.r == "":
-    typ.typeName(typ.loc.r)
-    typ.loc.r.add $sig
+  let typ = if typ.kind in {tyAlias, tySink, tyOwned}: typ.elementType else: typ
+  if typ.loc.snippet == "":
+    typ.typeName(typ.loc.snippet)
+    typ.loc.snippet.add $sig
   else:
     when defined(debugSigHashes):
       # check consistency:
       var tn = newRopeAppender()
       typ.typeName(tn)
-      assert($typ.loc.r == $(tn & $sig))
-  result = typ.loc.r
+      assert($typ.loc.snippet == $(tn & $sig))
+  result = typ.loc.snippet
   if result == "": internalError(m.config, "getTypeName: " & $typ.kind)
 
 proc mapSetType(conf: ConfigRef; typ: PType): TCTypeKind =
@@ -174,10 +189,10 @@ proc mapType(conf: ConfigRef; typ: PType; isParam: bool): TCTypeKind =
   of tyObject, tyTuple: result = ctStruct
   of tyUserTypeClasses:
     doAssert typ.isResolvedUserTypeClass
-    return mapType(conf, typ.lastSon, isParam)
+    result = mapType(conf, typ.skipModifier, isParam)
   of tyGenericBody, tyGenericInst, tyGenericParam, tyDistinct, tyOrdinal,
      tyTypeDesc, tyAlias, tySink, tyInferred, tyOwned:
-    result = mapType(conf, lastSon(typ), isParam)
+    result = mapType(conf, skipModifier(typ), isParam)
   of tyEnum:
     if firstOrd(conf, typ) < 0:
       result = ctInt32
@@ -188,9 +203,9 @@ proc mapType(conf: ConfigRef; typ: PType; isParam: bool): TCTypeKind =
       of 4: result = ctInt32
       of 8: result = ctInt64
       else: result = ctInt32
-  of tyRange: result = mapType(conf, typ[0], isParam)
+  of tyRange: result = mapType(conf, typ.elementType, isParam)
   of tyPtr, tyVar, tyLent, tyRef:
-    var base = skipTypes(typ.lastSon, typedescInst)
+    var base = skipTypes(typ.elementType, typedescInst)
     case base.kind
     of tyOpenArray, tyArray, tyVarargs, tyUncheckedArray: result = ctPtrToArray
     of tySet:
@@ -205,7 +220,7 @@ proc mapType(conf: ConfigRef; typ: PType; isParam: bool): TCTypeKind =
   of tyInt..tyUInt64:
     result = TCTypeKind(ord(typ.kind) - ord(tyInt) + ord(ctInt))
   of tyStatic:
-    if typ.n != nil: result = mapType(conf, lastSon typ, isParam)
+    if typ.n != nil: result = mapType(conf, typ.skipModifier, isParam)
     else:
       result = ctVoid
       doAssert(false, "mapType: " & $typ.kind)
@@ -230,11 +245,14 @@ proc isImportedCppType(t: PType): bool =
 proc isOrHasImportedCppType(typ: PType): bool =
   searchTypeFor(typ.skipTypes({tyRef}), isImportedCppType)
 
+proc hasNoInit(t: PType): bool =
+  result = t.sym != nil and sfNoInit in t.sym.flags
+
 proc getTypeDescAux(m: BModule; origTyp: PType, check: var IntSet; kind: TypeDescKind): Rope
 
 proc isObjLackingTypeField(typ: PType): bool {.inline.} =
   result = (typ.kind == tyObject) and ((tfFinal in typ.flags) and
-      (typ[0] == nil) or isPureObject(typ))
+      (typ.baseClass == nil) or isPureObject(typ))
 
 proc isInvalidReturnType(conf: ConfigRef; typ: PType, isProc = true): bool =
   # Arrays and sets cannot be returned by a C procedure, because C is
@@ -256,9 +274,15 @@ proc isInvalidReturnType(conf: ConfigRef; typ: PType, isProc = true): bool =
           {tyVar, tyLent, tyRef, tyPtr})
     of ctStruct:
       let t = skipTypes(rettype, typedescInst)
-      if rettype.isImportedCppType or t.isImportedCppType: return false
-      result = containsGarbageCollectedRef(t) or
-          (t.kind == tyObject and not isObjLackingTypeField(t))
+      if rettype.isImportedCppType or t.isImportedCppType or
+          (typ.callConv == ccCDecl and conf.selectedGC in {gcArc, gcAtomicArc, gcOrc}):
+        # prevents nrvo for cdecl procs; # bug #23401
+        result = false
+      else:
+        result = containsGarbageCollectedRef(t) or
+            (t.kind == tyObject and not isObjLackingTypeField(t)) or
+            (getSize(conf, rettype) == szUnknownSize and (t.sym == nil or sfImportc notin t.sym.flags))
+
     else: result = false
 
 const
@@ -266,7 +290,9 @@ const
     "N_STDCALL", "N_CDECL", "N_SAFECALL",
     "N_SYSCALL", # this is probably not correct for all platforms,
                  # but one can #define it to what one wants
-    "N_INLINE", "N_NOINLINE", "N_FASTCALL", "N_THISCALL", "N_CLOSURE", "N_NOCONV"]
+    "N_INLINE", "N_NOINLINE", "N_FASTCALL", "N_THISCALL", "N_CLOSURE", "N_NOCONV",
+    "N_NOCONV" #ccMember is N_NOCONV
+    ]
 
 proc cacheGetType(tab: TypeCache; sig: SigHash): Rope =
   # returns nil if we need to declare this type
@@ -295,7 +321,7 @@ proc fillResult(conf: ConfigRef; param: PNode, proctype: PType) =
 proc typeNameOrLiteral(m: BModule; t: PType, literal: string): Rope =
   if t.sym != nil and sfImportc in t.sym.flags and t.sym.magic == mNone:
     useHeader(m, t.sym)
-    result = t.sym.loc.r
+    result = t.sym.loc.snippet
   else:
     result = rope(literal)
 
@@ -323,14 +349,14 @@ proc getSimpleTypeDesc(m: BModule; typ: PType): Rope =
   of tyNil: result = typeNameOrLiteral(m, typ, "void*")
   of tyInt..tyUInt64:
     result = typeNameOrLiteral(m, typ, NumericalTypeToStr[typ.kind])
-  of tyDistinct, tyRange, tyOrdinal: result = getSimpleTypeDesc(m, typ[0])
+  of tyDistinct, tyRange, tyOrdinal: result = getSimpleTypeDesc(m, typ.skipModifier)
   of tyStatic:
-    if typ.n != nil: result = getSimpleTypeDesc(m, lastSon typ)
+    if typ.n != nil: result = getSimpleTypeDesc(m, skipModifier typ)
     else:
       result = ""
       internalError(m.config, "tyStatic for getSimpleTypeDesc")
   of tyGenericInst, tyAlias, tySink, tyOwned:
-    result = getSimpleTypeDesc(m, lastSon typ)
+    result = getSimpleTypeDesc(m, skipModifier typ)
   else: result = ""
 
   if result != "" and typ.isImportedType():
@@ -351,11 +377,9 @@ proc getTypePre(m: BModule; typ: PType; sig: SigHash): Rope =
     if result == "": result = cacheGetType(m.typeCache, sig)
 
 proc structOrUnion(t: PType): Rope =
-  let cachedUnion = rope("union")
-  let cachedStruct = rope("struct")
   let t = t.skipTypes({tyAlias, tySink})
-  if tfUnion in t.flags: cachedUnion
-  else: cachedStruct
+  if tfUnion in t.flags: "union"
+  else: "struct"
 
 proc addForwardStructFormat(m: BModule; structOrUnion: Rope, typename: Rope) =
   if m.compileToCpp:
@@ -455,8 +479,8 @@ macro unrollChars(x: static openArray[char], name, body: untyped) =
       copy body
     )))
 
-proc multiFormat*(frmt: var string, chars : static openArray[char], args: openArray[seq[string]]) =
-  var res : string
+proc multiFormat*(frmt: var string, chars: static openArray[char], args: openArray[seq[string]]) =
+  var res: string
   unrollChars(chars, c):
     res = ""
     let arg = args[find(chars, c)]
@@ -464,7 +488,7 @@ proc multiFormat*(frmt: var string, chars : static openArray[char], args: openAr
     var num = 0
     while i < frmt.len:
       if frmt[i] == c:
-        inc(i)                  
+        inc(i)
         case frmt[i]
         of c:
           res.add(c)
@@ -498,15 +522,16 @@ proc genMemberProcParams(m: BModule; prc: PSym, superCall, rettype, name, params
                    weakDep=false;) =
   let t = prc.typ
   let isCtor = sfConstructor in prc.flags
-  if isCtor or (name[0] == '~' and sfMember in prc.flags): #destructors cant have void
+  if isCtor or (name[0] == '~' and sfMember in prc.flags):
+    # destructors can't have void
     rettype = ""
-  elif t[0] == nil or isInvalidReturnType(m.config, t):
+  elif t.returnType == nil or isInvalidReturnType(m.config, t):
     rettype = "void"
   else:
     if rettype == "":
-      rettype = getTypeDescAux(m, t[0], check, dkResult)
+      rettype = getTypeDescAux(m, t.returnType, check, dkResult)
     else:
-      rettype = runtimeFormat(rettype.replace("'0", "$1"), [getTypeDescAux(m, t[0], check, dkResult)])
+      rettype = runtimeFormat(rettype.replace("'0", "$1"), [getTypeDescAux(m, t.returnType, check, dkResult)])
   var types, names, args: seq[string] = @[]
   if not isCtor:
     var this = t.n[1].sym
@@ -514,14 +539,14 @@ proc genMemberProcParams(m: BModule; prc: PSym, superCall, rettype, name, params
     fillLoc(this.loc, locParam, t.n[1],
             this.paramStorageLoc)
     if this.typ.kind == tyPtr:
-      this.loc.r = "this"
+      this.loc.snippet = "this"
     else:
-      this.loc.r = "(*this)"
-    names.add this.loc.r
+      this.loc.snippet = "(*this)"
+    names.add this.loc.snippet
     types.add getTypeDescWeak(m, this.typ, check, dkParam)
 
   let firstParam = if isCtor: 1 else: 2
-  for i in firstParam..<t.n.len: 
+  for i in firstParam..<t.n.len:
     if t.n[i].kind != nkSym: internalError(m.config, t.n.info, "genMemberProcParams")
     var param = t.n[i].sym
     var descKind = dkParam
@@ -530,11 +555,11 @@ proc genMemberProcParams(m: BModule; prc: PSym, superCall, rettype, name, params
         descKind = dkRefGenericParam
       else:
         descKind = dkRefParam
-    var typ, name : string
+    var typ, name: string
     fillParamName(m, param)
     fillLoc(param.loc, locParam, t.n[i],
             param.paramStorageLoc)
-    if ccgIntroducedPtr(m.config, param, t[0]) and descKind == dkParam:
+    if ccgIntroducedPtr(m.config, param, t.returnType) and descKind == dkParam:
       typ = getTypeDescWeak(m, param.typ, check, descKind) & "*"
       incl(param.loc.flags, lfIndirect)
       param.loc.storage = OnUnknown
@@ -545,7 +570,7 @@ proc genMemberProcParams(m: BModule; prc: PSym, superCall, rettype, name, params
     if sfNoalias in param.flags:
       typ.add("NIM_NOALIAS ")
 
-    name = param.loc.r
+    name = param.loc.snippet
     types.add typ
     names.add name
     if sfCodegenDecl notin param.flags:
@@ -572,10 +597,10 @@ proc genProcParams(m: BModule; t: PType, rettype, params: var Rope,
                    check: var IntSet, declareEnvironment=true;
                    weakDep=false;) =
   params = "("
-  if t[0] == nil or isInvalidReturnType(m.config, t):
+  if t.returnType == nil or isInvalidReturnType(m.config, t):
     rettype = "void"
   else:
-    rettype = getTypeDescAux(m, t[0], check, dkResult)
+    rettype = getTypeDescAux(m, t.returnType, check, dkResult)
   for i in 1..<t.n.len:
     if t.n[i].kind != nkSym: internalError(m.config, t.n.info, "genProcParams")
     var param = t.n[i].sym
@@ -591,7 +616,7 @@ proc genProcParams(m: BModule; t: PType, rettype, params: var Rope,
     fillLoc(param.loc, locParam, t.n[i],
             param.paramStorageLoc)
     var typ: Rope
-    if ccgIntroducedPtr(m.config, param, t[0]) and descKind == dkParam:
+    if ccgIntroducedPtr(m.config, param, t.returnType) and descKind == dkParam:
       typ = (getTypeDescWeak(m, param.typ, check, descKind))
       typ.add("*")
       incl(param.loc.flags, lfIndirect)
@@ -605,24 +630,24 @@ proc genProcParams(m: BModule; t: PType, rettype, params: var Rope,
       typ.add("NIM_NOALIAS ")
     if sfCodegenDecl notin param.flags:
       params.add(typ)
-      params.add(param.loc.r)
+      params.add(param.loc.snippet)
     else:
-      params.add runtimeFormat(param.cgDeclFrmt, [typ, param.loc.r])
+      params.add runtimeFormat(param.cgDeclFrmt, [typ, param.loc.snippet])
     # declare the len field for open arrays:
     var arr = param.typ.skipTypes({tyGenericInst})
-    if arr.kind in {tyVar, tyLent, tySink}: arr = arr.lastSon
+    if arr.kind in {tyVar, tyLent, tySink}: arr = arr.elementType
     var j = 0
     while arr.kind in {tyOpenArray, tyVarargs}:
       # this fixes the 'sort' bug:
       if param.typ.kind in {tyVar, tyLent}: param.loc.storage = OnUnknown
       # need to pass hidden parameter:
-      params.addf(", NI $1Len_$2", [param.loc.r, j.rope])
+      params.addf(", NI $1Len_$2", [param.loc.snippet, j.rope])
       inc(j)
       arr = arr[0].skipTypes({tySink})
-  if t[0] != nil and isInvalidReturnType(m.config, t):
-    var arr = t[0]
+  if t.returnType != nil and isInvalidReturnType(m.config, t):
+    var arr = t.returnType
     if params != "(": params.add(", ")
-    if mapReturnType(m.config, t[0]) != ctArray:
+    if mapReturnType(m.config, arr) != ctArray:
       if isHeaderFile in m.flags:
         # still generates types for `--header`
         params.add(getTypeDescAux(m, arr, check, dkResult))
@@ -644,10 +669,32 @@ proc genProcParams(m: BModule; t: PType, rettype, params: var Rope,
 
 proc mangleRecFieldName(m: BModule; field: PSym): Rope =
   if {sfImportc, sfExportc} * field.flags != {}:
-    result = field.loc.r
+    result = field.loc.snippet
   else:
     result = rope(mangleField(m, field.name))
   if result == "": internalError(m.config, field.info, "mangleRecFieldName")
+
+proc hasCppCtor(m: BModule; typ: PType): bool =
+  result = false
+  if m.compileToCpp and typ != nil and typ.itemId in m.g.graph.memberProcsPerType:
+    for prc in m.g.graph.memberProcsPerType[typ.itemId]:
+      if sfConstructor in prc.flags:
+        return true
+
+proc genCppParamsForCtor(p: BProc; call: PNode; didGenTemp: var bool): string
+
+proc genCppInitializer(m: BModule, prc: BProc; typ: PType; didGenTemp: var bool): string =
+  #To avoid creating a BProc per test when called inside a struct nil BProc is allowed
+  result = "{}"
+  if typ.itemId in m.g.graph.initializersPerType:
+    let call = m.g.graph.initializersPerType[typ.itemId]
+    if call != nil:
+      var p = prc
+      if p == nil:
+        p = BProc(module: m)
+      result = "{" & genCppParamsForCtor(p, call, didGenTemp) & "}"
+      if prc == nil:
+        assert p.blocks.len == 0, "BProc belongs to a struct doesnt have blocks"
 
 proc genRecordFieldsAux(m: BModule; n: PNode,
                         rectype: PType,
@@ -713,8 +760,11 @@ proc genRecordFieldsAux(m: BModule; n: PNode,
       else:
         # don't use fieldType here because we need the
         # tyGenericInst for C++ template support
-        if fieldType.isOrHasImportedCppType():
-          result.addf("\t$1$3 $2{};$n", [getTypeDescAux(m, field.loc.t, check, dkField), sname, noAlias])
+        let noInit = sfNoInit in field.flags or (field.typ.sym != nil and sfNoInit in field.typ.sym.flags)
+        if not noInit and (fieldType.isOrHasImportedCppType() or hasCppCtor(m, field.owner.typ)):
+          var didGenTemp = false
+          var initializer = genCppInitializer(m, nil, fieldType, didGenTemp)
+          result.addf("\t$1$3 $2$4;$n", [getTypeDescAux(m, field.loc.t, check, dkField), sname, noAlias, initializer])
         else:
           result.addf("\t$1$3 $2;$n", [getTypeDescAux(m, field.loc.t, check, dkField), sname, noAlias])
   else: internalError(m.config, n.info, "genRecordFieldsAux()")
@@ -733,12 +783,13 @@ proc getRecordFields(m: BModule; typ: PType, check: var IntSet): Rope =
         isCtorGen = true
         if prc.typ.n.len == 1:
           isDefaultCtorGen = true
+      if lfNoDecl in prc.loc.flags: continue
       genMemberProcHeader(m, prc, header, false, true)
       result.addf "$1;$n", [header]
     if isCtorGen and not isDefaultCtorGen:
-      var ch: IntSet
+      var ch: IntSet = default(IntSet)
       result.addf "$1() = default;$n", [getTypeDescAux(m, typ, ch, dkOther)]
-    
+
 proc fillObjectFields*(m: BModule; typ: PType) =
   # sometimes generic objects are not consistently merged. We patch over
   # this fact here.
@@ -746,12 +797,12 @@ proc fillObjectFields*(m: BModule; typ: PType) =
   discard getRecordFields(m, typ, check)
 
 proc mangleDynLibProc(sym: PSym): Rope
-  
+
 proc getRecordDescAux(m: BModule; typ: PType, name, baseType: Rope,
                    check: var IntSet, hasField:var bool): Rope =
   result = ""
   if typ.kind == tyObject:
-    if typ[0] == nil:
+    if typ.baseClass == nil:
       if lacksMTypeField(typ):
         appcg(m, result, " {$n", [])
       else:
@@ -791,8 +842,8 @@ proc getRecordDesc(m: BModule; typ: PType, name: Rope,
   else:
     structOrUnion = structOrUnion(typ)
   var baseType: string = ""
-  if typ[0] != nil: 
-    baseType = getTypeDescAux(m, typ[0].skipTypes(skipPtrs), check, dkField)
+  if typ.baseClass != nil:
+    baseType = getTypeDescAux(m, typ.baseClass.skipTypes(skipPtrs), check, dkField)
   if typ.sym == nil or sfCodegenDecl notin typ.sym.flags:
     result = structOrUnion & " " & name
     result.add(getRecordDescAux(m, typ, name, baseType, check, hasField))
@@ -800,7 +851,7 @@ proc getRecordDesc(m: BModule; typ: PType, name: Rope,
     if not hasField and typ.itemId notin m.g.graph.memberProcsPerType:
       if desc == "":
         result.add("\tchar dummy;\n")
-      elif typ.len == 1 and typ.n[0].kind == nkSym:
+      elif typ.n.len == 1 and typ.n[0].kind == nkSym:
         let field = typ.n[0].sym
         let fieldType = field.typ.skipTypes(abstractInst)
         if fieldType.kind == tyUncheckedArray:
@@ -819,9 +870,9 @@ proc getTupleDesc(m: BModule; typ: PType, name: Rope,
                   check: var IntSet): Rope =
   result = "$1 $2 {$n" % [structOrUnion(typ), name]
   var desc: Rope = ""
-  for i in 0..<typ.len:
+  for i, a in typ.ikids:
     desc.addf("$1 Field$2;$n",
-         [getTypeDescAux(m, typ[i], check, dkField), rope(i)])
+         [getTypeDescAux(m, a, check, dkField), rope(i)])
   if desc == "": result.add("char dummy;\L")
   else: result.add(desc)
   result.add("};\L")
@@ -846,25 +897,25 @@ proc scanCppGenericSlot(pat: string, cursor, outIdx, outStars: var int): bool =
 proc resolveStarsInCppType(typ: PType, idx, stars: int): PType =
   # Make sure the index refers to one of the generic params of the type.
   # XXX: we should catch this earlier and report it as a semantic error.
-  if idx >= typ.len:
+  if idx >= typ.kidsLen:
     raiseAssert "invalid apostrophe type parameter index"
 
   result = typ[idx]
   for i in 1..stars:
-    if result != nil and result.len > 0:
-      result = if result.kind == tyGenericInst: result[1]
+    if result != nil and result.kidsLen > 0:
+      result = if result.kind == tyGenericInst: result[FirstGenericParamAt]
                else: result.elemType
 
 proc getOpenArrayDesc(m: BModule; t: PType, check: var IntSet; kind: TypeDescKind): Rope =
   let sig = hashType(t, m.config)
   if kind == dkParam:
-    result = getTypeDescWeak(m, t[0], check, kind) & "*"
+    result = getTypeDescWeak(m, t.elementType, check, kind) & "*"
   else:
     result = cacheGetType(m.typeCache, sig)
     if result == "":
       result = getTypeName(m, t, sig)
       m.typeCache[sig] = result
-      let elemType = getTypeDescWeak(m, t[0], check, kind)
+      let elemType = getTypeDescWeak(m, t.elementType, check, kind)
       m.s[cfsTypes].addf("typedef struct {$n$2* Field0;$nNI Field1;$n} $1;$n",
                          [result, elemType])
 
@@ -896,7 +947,7 @@ proc getTypeDescAux(m: BModule; origTyp: PType, check: var IntSet; kind: TypeDes
   of tyRef, tyPtr, tyVar, tyLent:
     var star = if t.kind in {tyVar} and tfVarIsPtr notin origTyp.flags and
                     compileToCpp(m): "&" else: "*"
-    var et = origTyp.skipTypes(abstractInst).lastSon
+    var et = origTyp.skipTypes(abstractInst).elementType
     var etB = et.skipTypes(abstractInst)
     if mapType(m.config, t, kind == dkParam) == ctPtrToArray and (etB.kind != tyOpenArray or kind == dkParam):
       if etB.kind == tySet:
@@ -988,7 +1039,7 @@ proc getTypeDescAux(m: BModule; origTyp: PType, check: var IntSet; kind: TypeDes
       assert(cacheGetType(m.typeCache, sig) == "")
       m.typeCache[sig] = result & seqStar(m)
       if not isImportedType(t):
-        if skipTypes(t[0], typedescInst).kind != tyEmpty:
+        if skipTypes(t.elementType, typedescInst).kind != tyEmpty:
           const
             cppSeq = "struct $2 : #TGenericSeq {$n"
             cSeq = "struct $2 {$n" &
@@ -996,11 +1047,11 @@ proc getTypeDescAux(m: BModule; origTyp: PType, check: var IntSet; kind: TypeDes
           if m.compileToCpp:
             appcg(m, m.s[cfsSeqTypes],
                 cppSeq & "  $1 data[SEQ_DECL_SIZE];$n" &
-                "};$n", [getTypeDescAux(m, t[0], check, kind), result])
+                "};$n", [getTypeDescAux(m, t.elementType, check, kind), result])
           else:
             appcg(m, m.s[cfsSeqTypes],
                 cSeq & "  $1 data[SEQ_DECL_SIZE];$n" &
-                "};$n", [getTypeDescAux(m, t[0], check, kind), result])
+                "};$n", [getTypeDescAux(m, t.elementType, check, kind), result])
         else:
           result = rope("TGenericSeq")
       result.add(seqStar(m))
@@ -1008,7 +1059,7 @@ proc getTypeDescAux(m: BModule; origTyp: PType, check: var IntSet; kind: TypeDes
     result = getTypeName(m, origTyp, sig)
     m.typeCache[sig] = result
     if not isImportedType(t):
-      let foo = getTypeDescAux(m, t[0], check, kind)
+      let foo = getTypeDescAux(m, t.elementType, check, kind)
       m.s[cfsTypes].addf("typedef $1 $2[1];$n", [foo, result])
   of tyArray:
     var n: BiggestInt = toInt64(lengthOrd(m.config, t))
@@ -1016,9 +1067,9 @@ proc getTypeDescAux(m: BModule; origTyp: PType, check: var IntSet; kind: TypeDes
     result = getTypeName(m, origTyp, sig)
     m.typeCache[sig] = result
     if not isImportedType(t):
-      let foo = getTypeDescAux(m, t[1], check, kind)
+      let e = getTypeDescAux(m, t.elementType, check, kind)
       m.s[cfsTypes].addf("typedef $1 $2[$3];$n",
-           [foo, result, rope(n)])
+           [e, result, rope(n)])
   of tyObject, tyTuple:
     let tt = origTyp.skipTypes({tyDistinct})
     if isImportedCppType(t) and tt.kind == tyGenericInst:
@@ -1053,9 +1104,9 @@ proc getTypeDescAux(m: BModule; origTyp: PType, check: var IntSet; kind: TypeDes
         result.add cppName.substr(chunkStart)
       else:
         result = cppNameAsRope & "<"
-        for i in 1..<tt.len-1:
-          if i > 1: result.add(" COMMA ")
-          addResultType(tt[i])
+        for needsComma, a in tt.genericInstParams:
+          if needsComma: result.add(" COMMA ")
+          addResultType(a)
         result.add("> ")
       # always call for sideeffects:
       assert t.kind != tyTuple
@@ -1086,8 +1137,8 @@ proc getTypeDescAux(m: BModule; origTyp: PType, check: var IntSet; kind: TypeDes
   of tySet:
     # Don't use the imported name as it may be scoped: 'Foo::SomeKind'
     result = rope("tySet_")
-    t.lastSon.typeName(result)
-    result.add $t.lastSon.hashType(m.config)
+    t.elementType.typeName(result)
+    result.add $t.elementType.hashType(m.config)
     m.typeCache[sig] = result
     if not isImportedType(t):
       let s = int(getSize(m.config, t))
@@ -1097,14 +1148,14 @@ proc getTypeDescAux(m: BModule; origTyp: PType, check: var IntSet; kind: TypeDes
              [result, rope(getSize(m.config, t))])
   of tyGenericInst, tyDistinct, tyOrdinal, tyTypeDesc, tyAlias, tySink, tyOwned,
      tyUserTypeClass, tyUserTypeClassInst, tyInferred:
-    result = getTypeDescAux(m, lastSon(t), check, kind)
+    result = getTypeDescAux(m, skipModifier(t), check, kind)
   else:
     internalError(m.config, "getTypeDescAux(" & $t.kind & ')')
     result = ""
   # fixes bug #145:
   excl(check, t.id)
-  
-  
+
+
 proc getTypeDesc(m: BModule; typ: PType; kind = dkParam): Rope =
   var check = initIntSet()
   result = getTypeDescAux(m, typ, check, kind)
@@ -1149,12 +1200,15 @@ proc isReloadable(m: BModule; prc: PSym): bool =
 proc isNonReloadable(m: BModule; prc: PSym): bool =
   return m.hcrOn and sfNonReloadable in prc.flags
 
-proc parseVFunctionDecl(val: string; name, params, retType, superCall: var string; isFnConst, isOverride, isMemberVirtual: var bool; isCtor: bool, isFunctor=false) =
+proc parseVFunctionDecl(val: string; name, params, retType, superCall: var string; isFnConst, isOverride, isMemberVirtual, isStatic: var bool; isCtor: bool, isFunctor=false) =
   var afterParams: string = ""
   if scanf(val, "$*($*)$s$*", name, params, afterParams):
     if name.strip() == "operator" and params == "": #isFunctor?
-      parseVFunctionDecl(afterParams, name, params, retType, superCall, isFnConst, isOverride, isMemberVirtual, isCtor, true)
+      parseVFunctionDecl(afterParams, name, params, retType, superCall, isFnConst, isOverride, isMemberVirtual, isStatic, isCtor, true)
       return
+    if name.find("static ") > -1:
+      isStatic = true
+      name = name.replace("static ", "")
     isFnConst = afterParams.find("const") > -1
     isOverride = afterParams.find("override") > -1
     isMemberVirtual = name.find("virtual ") > -1
@@ -1169,7 +1223,7 @@ proc parseVFunctionDecl(val: string; name, params, retType, superCall: var strin
 
   params = "(" & params & ")"
 
-proc genMemberProcHeader(m: BModule; prc: PSym; result: var Rope; asPtr: bool = false, isFwdDecl : bool = false) =
+proc genMemberProcHeader(m: BModule; prc: PSym; result: var Rope; asPtr: bool = false, isFwdDecl: bool = false) =
   assert sfCppMember * prc.flags != {}
   let isCtor = sfConstructor in prc.flags
   var check = initIntSet()
@@ -1178,18 +1232,18 @@ proc genMemberProcHeader(m: BModule; prc: PSym; result: var Rope; asPtr: bool = 
   var memberOp = "#." #only virtual
   var typ: PType
   if isCtor:
-    typ = prc.typ[0]
+    typ = prc.typ.returnType
   else:
-    typ = prc.typ[1]
+    typ = prc.typ.firstParamType
   if typ.kind == tyPtr:
-    typ = typ[0]
+    typ = typ.elementType
     memberOp = "#->"
   var typDesc = getTypeDescWeak(m, typ, check, dkParam)
   let asPtrStr = rope(if asPtr: "_PTR" else: "")
   var name, params, rettype, superCall: string = ""
-  var isFnConst, isOverride, isMemberVirtual: bool = false
-  parseVFunctionDecl(prc.constraint.strVal, name, params, rettype, superCall, isFnConst, isOverride, isMemberVirtual, isCtor)
-  genMemberProcParams(m, prc, superCall, rettype, name, params, check, true, false) 
+  var isFnConst, isOverride, isMemberVirtual, isStatic: bool = false
+  parseVFunctionDecl(prc.constraint.strVal, name, params, rettype, superCall, isFnConst, isOverride, isMemberVirtual, isStatic, isCtor)
+  genMemberProcParams(m, prc, superCall, rettype, name, params, check, true, false)
   let isVirtual = sfVirtual in prc.flags or isMemberVirtual
   var fnConst, override: string = ""
   if isCtor:
@@ -1197,24 +1251,26 @@ proc genMemberProcHeader(m: BModule; prc: PSym; result: var Rope; asPtr: bool = 
   if isFnConst:
     fnConst = " const"
   if isFwdDecl:
+    if isStatic:
+      result.add "static "
     if isVirtual:
       rettype = "virtual " & rettype
-      if isOverride: 
+      if isOverride:
         override = " override"
     superCall = ""
   else:
     if not isCtor:
-      prc.loc.r = "$1$2(@)" % [memberOp, name]
+      prc.loc.snippet = "$1$2(@)" % [memberOp, name]
     elif superCall != "":
       superCall = " : " & superCall
-    
+
     name = "$1::$2" % [typDesc, name]
 
   result.add "N_LIB_PRIVATE "
   result.addf("$1$2($3, $4)$5$6$7$8",
         [rope(CallingConvToStr[prc.typ.callConv]), asPtrStr, rettype, name,
         params, fnConst, override, superCall])
-  
+
 proc genProcHeader(m: BModule; prc: PSym; result: var Rope; asPtr: bool = false) =
   # using static is needed for inline procs
   var check = initIntSet()
@@ -1225,7 +1281,7 @@ proc genProcHeader(m: BModule; prc: PSym; result: var Rope; asPtr: bool = false)
   # handle the 2 options for hotcodereloading codegen - function pointer
   # (instead of forward declaration) or header for function body with "_actual" postfix
   let asPtrStr = rope(if asPtr: "_PTR" else: "")
-  var name = prc.loc.r
+  var name = prc.loc.snippet
   if not asPtr and isReloadable(m, prc):
     name.add("_actual")
   # careful here! don't access ``prc.ast`` as that could reload large parts of
@@ -1307,8 +1363,8 @@ proc genTypeInfoAuxBase(m: BModule; typ, origType: PType;
 proc genTypeInfoAux(m: BModule; typ, origType: PType, name: Rope;
                     info: TLineInfo) =
   var base: Rope
-  if typ.len > 0 and typ.lastSon != nil:
-    var x = typ.lastSon
+  if typ.hasElementType and typ.last != nil:
+    var x = typ.last
     if typ.kind == tyObject: x = x.skipTypes(skipPtrs)
     if typ.kind == tyPtr and x.kind == tyObject and incompleteType(x):
       base = rope("0")
@@ -1365,13 +1421,13 @@ proc genObjectFields(m: BModule; typ, origType: PType, n: PNode, expr: Rope;
     var tmp = discriminatorTableName(m, typ, field)
     var L = lengthOrd(m.config, field.typ)
     assert L > 0
-    if field.loc.r == "": fillObjectFields(m, typ)
+    if field.loc.snippet == "": fillObjectFields(m, typ)
     if field.loc.t == nil:
       internalError(m.config, n.info, "genObjectFields")
     m.s[cfsTypeInit3].addf("$1.kind = 3;$n" &
         "$1.offset = offsetof($2, $3);$n" & "$1.typ = $4;$n" &
         "$1.name = $5;$n" & "$1.sons = &$6[0];$n" &
-        "$1.len = $7;$n", [expr, getTypeDesc(m, origType, dkVar), field.loc.r,
+        "$1.len = $7;$n", [expr, getTypeDesc(m, origType, dkVar), field.loc.snippet,
                            genTypeInfoV1(m, field.typ, info),
                            makeCString(field.name.s),
                            tmp, rope(L)])
@@ -1403,41 +1459,38 @@ proc genObjectFields(m: BModule; typ, origType: PType, n: PNode, expr: Rope;
     # Do not produce code for void types
     if isEmptyType(field.typ): return
     if field.bitsize == 0:
-      if field.loc.r == "": fillObjectFields(m, typ)
+      if field.loc.snippet == "": fillObjectFields(m, typ)
       if field.loc.t == nil:
         internalError(m.config, n.info, "genObjectFields")
       m.s[cfsTypeInit3].addf("$1.kind = 1;$n" &
           "$1.offset = offsetof($2, $3);$n" & "$1.typ = $4;$n" &
           "$1.name = $5;$n", [expr, getTypeDesc(m, origType, dkVar),
-          field.loc.r, genTypeInfoV1(m, field.typ, info), makeCString(field.name.s)])
+          field.loc.snippet, genTypeInfoV1(m, field.typ, info), makeCString(field.name.s)])
   else: internalError(m.config, n.info, "genObjectFields")
 
 proc genObjectInfo(m: BModule; typ, origType: PType, name: Rope; info: TLineInfo) =
-  if typ.kind == tyObject:
-    if incompleteType(typ):
-      localError(m.config, info, "request for RTTI generation for incomplete object: " &
-                        typeToString(typ))
-    genTypeInfoAux(m, typ, origType, name, info)
-  else:
-    genTypeInfoAuxBase(m, typ, origType, name, rope("0"), info)
+  assert typ.kind == tyObject
+  if incompleteType(typ):
+    localError(m.config, info, "request for RTTI generation for incomplete object: " &
+                      typeToString(typ))
+  genTypeInfoAux(m, typ, origType, name, info)
   var tmp = getNimNode(m)
-  if not isImportedType(typ):
+  if (not isImportedType(typ)) or tfCompleteStruct in typ.flags:
     genObjectFields(m, typ, origType, typ.n, tmp, info)
   m.s[cfsTypeInit3].addf("$1.node = &$2;$n", [tiNameForHcr(m, name), tmp])
-  var t = typ[0]
+  var t = typ.baseClass
   while t != nil:
     t = t.skipTypes(skipPtrs)
     t.flags.incl tfObjHasKids
-    t = t[0]
+    t = t.baseClass
 
 proc genTupleInfo(m: BModule; typ, origType: PType, name: Rope; info: TLineInfo) =
   genTypeInfoAuxBase(m, typ, typ, name, rope("0"), info)
   var expr = getNimNode(m)
-  if typ.len > 0:
-    var tmp = getTempName(m) & "_" & $typ.len
-    genTNimNodeArray(m, tmp, rope(typ.len))
-    for i in 0..<typ.len:
-      var a = typ[i]
+  if not typ.isEmptyTupleType:
+    var tmp = getTempName(m) & "_" & $typ.kidsLen
+    genTNimNodeArray(m, tmp, rope(typ.kidsLen))
+    for i, a in typ.ikids:
       var tmp2 = getNimNode(m)
       m.s[cfsTypeInit3].addf("$1[$2] = &$3;$n", [tmp, rope(i), tmp2])
       m.s[cfsTypeInit3].addf("$1.kind = 1;$n" &
@@ -1446,10 +1499,10 @@ proc genTupleInfo(m: BModule; typ, origType: PType, name: Rope; info: TLineInfo)
           "$1.name = \"Field$3\";$n",
            [tmp2, getTypeDesc(m, origType, dkVar), rope(i), genTypeInfoV1(m, a, info)])
     m.s[cfsTypeInit3].addf("$1.len = $2; $1.kind = 2; $1.sons = &$3[0];$n",
-         [expr, rope(typ.len), tmp])
+         [expr, rope(typ.kidsLen), tmp])
   else:
     m.s[cfsTypeInit3].addf("$1.len = $2; $1.kind = 2;$n",
-         [expr, rope(typ.len)])
+         [expr, rope(typ.kidsLen)])
   m.s[cfsTypeInit3].addf("$1.node = &$2;$n", [tiNameForHcr(m, name), expr])
 
 proc genEnumInfo(m: BModule; typ: PType, name: Rope; info: TLineInfo) =
@@ -1494,20 +1547,20 @@ proc genEnumInfo(m: BModule; typ: PType, name: Rope; info: TLineInfo) =
     m.s[cfsTypeInit3].addf("$1.flags = 1<<2;$n", [tiNameForHcr(m, name)])
 
 proc genSetInfo(m: BModule; typ: PType, name: Rope; info: TLineInfo) =
-  assert(typ[0] != nil)
+  assert(typ.elementType != nil)
   genTypeInfoAux(m, typ, typ, name, info)
   var tmp = getNimNode(m)
   m.s[cfsTypeInit3].addf("$1.len = $2; $1.kind = 0;$n$3.node = &$1;$n",
        [tmp, rope(firstOrd(m.config, typ)), tiNameForHcr(m, name)])
 
 proc genArrayInfo(m: BModule; typ: PType, name: Rope; info: TLineInfo) =
-  genTypeInfoAuxBase(m, typ, typ, name, genTypeInfoV1(m, typ[1], info), info)
+  genTypeInfoAuxBase(m, typ, typ, name, genTypeInfoV1(m, typ.elementType, info), info)
 
 proc fakeClosureType(m: BModule; owner: PSym): PType =
   # we generate the same RTTI as for a tuple[pointer, ref tuple[]]
-  result = newType(tyTuple, nextTypeId m.idgen, owner)
-  result.rawAddSon(newType(tyPointer, nextTypeId m.idgen, owner))
-  var r = newType(tyRef, nextTypeId m.idgen, owner)
+  result = newType(tyTuple, m.idgen, owner)
+  result.rawAddSon(newType(tyPointer, m.idgen, owner))
+  var r = newType(tyRef, m.idgen, owner)
   let obj = createObj(m.g.graph, m.idgen, owner, owner.info, final=false)
   r.rawAddSon(obj)
   result.rawAddSon(r)
@@ -1517,7 +1570,7 @@ include ccgtrav
 proc genDeepCopyProc(m: BModule; s: PSym; result: Rope) =
   genProc(m, s)
   m.s[cfsTypeInit3].addf("$1.deepcopy =(void* (N_RAW_NIMCALL*)(void*))$2;$n",
-     [result, s.loc.r])
+     [result, s.loc.snippet])
 
 proc declareNimType(m: BModule; name: string; str: Rope, module: int) =
   let nr = rope(name)
@@ -1550,10 +1603,6 @@ proc genTypeInfo2Name(m: BModule; t: PType): Rope =
 
 proc isTrivialProc(g: ModuleGraph; s: PSym): bool {.inline.} = getBody(g, s).len == 0
 
-proc makePtrType(baseType: PType; idgen: IdGenerator): PType =
-  result = newType(tyPtr, nextTypeId idgen, baseType.owner)
-  addSonSkipIntLit(result, baseType, idgen)
-
 proc generateRttiDestructor(g: ModuleGraph; typ: PType; owner: PSym; kind: TTypeAttachedOp;
               info: TLineInfo; idgen: IdGenerator; theProc: PSym): PSym =
   # the wrapper is roughly like:
@@ -1565,7 +1614,7 @@ proc generateRttiDestructor(g: ModuleGraph; typ: PType; owner: PSym; kind: TType
 
   dest.typ = getSysType(g, info, tyPointer)
 
-  result.typ = newProcType(info, nextTypeId(idgen), owner)
+  result.typ = newProcType(info, idgen, owner)
   result.typ.addParam dest
 
   var n = newNodeI(nkProcDef, info, bodyPos+1)
@@ -1574,14 +1623,14 @@ proc generateRttiDestructor(g: ModuleGraph; typ: PType; owner: PSym; kind: TType
   n[paramsPos] = result.typ.n
   let body = newNodeI(nkStmtList, info)
   let castType = makePtrType(typ, idgen)
-  if theProc.typ[1].kind != tyVar:
+  if theProc.typ.firstParamType.kind != tyVar:
     body.add newTreeI(nkCall, info, newSymNode(theProc), newDeref(newTreeIT(
       nkCast, info, castType, newNodeIT(nkType, info, castType),
       newSymNode(dest)
     ))
     )
   else:
-    let addrOf = newNodeIT(nkAddr, info, theProc.typ[1])
+    let addrOf = newNodeIT(nkHiddenAddr, info, theProc.typ.firstParamType)
     addrOf.add newDeref(newTreeIT(
       nkCast, info, castType, newNodeIT(nkType, info, castType),
       newSymNode(dest)
@@ -1609,10 +1658,10 @@ proc genHook(m: BModule; t: PType; info: TLineInfo; op: TTypeAttachedOp; result:
       let wrapper = generateRttiDestructor(m.g.graph, t, theProc.owner, attachedDestructor,
                 theProc.info, m.idgen, theProc)
       genProc(m, wrapper)
-      result.add wrapper.loc.r
+      result.add wrapper.loc.snippet
     else:
       genProc(m, theProc)
-      result.add theProc.loc.r
+      result.add theProc.loc.snippet
 
     when false:
       if not canFormAcycle(m.g.graph, t) and op == attachedTrace:
@@ -1656,6 +1705,13 @@ proc genDisplay(m: BModule; t: PType, depth: int): Rope =
   result.add seqs[0]
   result.add "}"
 
+proc genVTable(seqs: seq[PSym]): string =
+  result = "{"
+  for i in 0..<seqs.len:
+    if i > 0: result.add ", "
+    result.add "(void *) " & seqs[i].loc.snippet
+  result.add "}"
+
 proc genTypeInfoV2OldImpl(m: BModule; t, origType: PType, name: Rope; info: TLineInfo) =
   cgsym(m, "TNimTypeV2")
   m.s[cfsStrData].addf("N_LIB_PRIVATE TNimTypeV2 $1;$n", [name])
@@ -1692,9 +1748,17 @@ proc genTypeInfoV2OldImpl(m: BModule; t, origType: PType, name: Rope; info: TLin
     m.s[cfsVars].addf("static $1 $2[$3] = $4;$n", [getTypeDesc(m, getSysType(m.g.graph, unknownLineInfo, tyUInt32), dkVar), objDisplayStore, rope(objDepth+1), objDisplay])
     addf(typeEntry, "$1.display = $2;$n", [name, rope(objDisplayStore)])
 
+  let dispatchMethods = toSeq(getMethodsPerType(m.g.graph, t))
+  if dispatchMethods.len > 0:
+    let vTablePointerName = getTempName(m)
+    m.s[cfsVars].addf("static void* $1[$2] = $3;$n", [vTablePointerName, rope(dispatchMethods.len), genVTable(dispatchMethods)])
+    for i in dispatchMethods:
+      genProcPrototype(m, i)
+    addf(typeEntry, "$1.vTable = $2;$n", [name, vTablePointerName])
+
   m.s[cfsTypeInit3].add typeEntry
 
-  if t.kind == tyObject and t.len > 0 and t[0] != nil and optEnableDeepCopy in m.config.globalOptions:
+  if t.kind == tyObject and t.baseClass != nil and optEnableDeepCopy in m.config.globalOptions:
     discard genTypeInfoV1(m, t, info)
 
 proc genTypeInfoV2Impl(m: BModule; t, origType: PType, name: Rope; info: TLineInfo) =
@@ -1733,10 +1797,18 @@ proc genTypeInfoV2Impl(m: BModule; t, origType: PType, name: Rope; info: TLineIn
   add(typeEntry, ", .traceImpl = (void*)")
   genHook(m, t, info, attachedTrace, typeEntry)
 
-  addf(typeEntry, ", .flags = $1};$n", [rope(flags)])
-  m.s[cfsVars].add typeEntry
+  let dispatchMethods = toSeq(getMethodsPerType(m.g.graph, t))
+  if dispatchMethods.len > 0:
+    addf(typeEntry, ", .flags = $1", [rope(flags)])
+    for i in dispatchMethods:
+      genProcPrototype(m, i)
+    addf(typeEntry, ", .vTable = $1};$n", [genVTable(dispatchMethods)])
+    m.s[cfsVars].add typeEntry
+  else:
+    addf(typeEntry, ", .flags = $1};$n", [rope(flags)])
+    m.s[cfsVars].add typeEntry
 
-  if t.kind == tyObject and t.len > 0 and t[0] != nil and optEnableDeepCopy in m.config.globalOptions:
+  if t.kind == tyObject and t.baseClass != nil and optEnableDeepCopy in m.config.globalOptions:
     discard genTypeInfoV1(m, t, info)
 
 proc genTypeInfoV2(m: BModule; t: PType; info: TLineInfo): Rope =
@@ -1779,10 +1851,10 @@ proc genTypeInfoV2(m: BModule; t: PType; info: TLineInfo): Rope =
   result = prefixTI.rope & result & ")".rope
 
 proc openArrayToTuple(m: BModule; t: PType): PType =
-  result = newType(tyTuple, nextTypeId m.idgen, t.owner)
-  let p = newType(tyPtr, nextTypeId m.idgen, t.owner)
-  let a = newType(tyUncheckedArray, nextTypeId m.idgen, t.owner)
-  a.add t.lastSon
+  result = newType(tyTuple, m.idgen, t.owner)
+  let p = newType(tyPtr, m.idgen, t.owner)
+  let a = newType(tyUncheckedArray, m.idgen, t.owner)
+  a.add t.elementType
   p.add a
   result.add p
   result.add getSysType(m.g.graph, t.owner.info, tyInt)
@@ -1792,8 +1864,7 @@ proc typeToC(t: PType): string =
   ## to be unique.
   let s = typeToString(t)
   result = newStringOfCap(s.len)
-  for i in 0..<s.len:
-    let c = s[i]
+  for c in s:
     case c
     of 'a'..'z':
       result.add c
@@ -1864,11 +1935,11 @@ proc genTypeInfoV1(m: BModule; t: PType; info: TLineInfo): Rope =
   of tyPointer, tyBool, tyChar, tyCstring, tyString, tyInt..tyUInt64, tyVar, tyLent:
     genTypeInfoAuxBase(m, t, t, result, rope"0", info)
   of tyStatic:
-    if t.n != nil: result = genTypeInfoV1(m, lastSon t, info)
+    if t.n != nil: result = genTypeInfoV1(m, skipModifier t, info)
     else: internalError(m.config, "genTypeInfoV1(" & $t.kind & ')')
   of tyUserTypeClasses:
     internalAssert m.config, t.isResolvedUserTypeClass
-    return genTypeInfoV1(m, t.lastSon, info)
+    return genTypeInfoV1(m, t.skipModifier, info)
   of tyProc:
     if t.callConv != ccClosure:
       genTypeInfoAuxBase(m, t, t, result, rope"0", info)
@@ -1921,14 +1992,17 @@ proc genTypeInfo*(config: ConfigRef, m: BModule; t: PType; info: TLineInfo): Rop
   else:
     result = genTypeInfoV1(m, t, info)
 
-proc genTypeSection(m: BModule, n: PNode) = 
+proc genTypeSection(m: BModule, n: PNode) =
   var intSet = initIntSet()
   for i in 0..<n.len:
     if len(n[i]) == 0: continue
     if n[i][0].kind != nkPragmaExpr: continue
     for p in 0..<n[i][0].len:
-      if (n[i][0][p].kind != nkSym): continue
-      if sfExportc in n[i][0][p].sym.flags:        
-        discard getTypeDescAux(m, n[i][0][p].typ, intSet, descKindFromSymKind(n[i][0][p].sym.kind))
+      if (n[i][0][p].kind notin {nkSym, nkPostfix}): continue
+      var s = n[i][0][p]
+      if s.kind == nkPostfix:
+        s = n[i][0][p][1]
+      if {sfExportc, sfCompilerProc} * s.sym.flags == {sfExportc}:
+        discard getTypeDescAux(m, s.typ, intSet, descKindFromSymKind(s.sym.kind))
         if m.g.generatedHeader != nil:
-          discard getTypeDescAux(m.g.generatedHeader, n[i][0][p].typ, intSet, descKindFromSymKind(n[i][0][p].sym.kind))
+          discard getTypeDescAux(m.g.generatedHeader, s.typ, intSet, descKindFromSymKind(s.sym.kind))

@@ -223,3 +223,20 @@ for i in 0..100:
   var test = newSeqOfCap[uint32](1)
   test.setLen(1)
   doAssert test[0] == 0, $(test[0], i)
+
+
+# bug #22560
+doAssert len(newSeqOfCap[int](42)) == 0
+
+block: # bug #17197
+  type Matrix = seq[seq[int]]
+
+  proc needlemanWunsch(sequence1: string, sequence2: string, gap_penal: int8, match: int8, indel_penal: int8): bool =
+    let seq2_len = sequence2.len
+
+    var grid: Matrix
+    for i in sequence1:
+      grid.add(newSeqOfCap[seq[int]](seq2_len))
+    result = true
+
+  doAssert needlemanWunsch("ABC", "DEFG", 1, 2, 3)

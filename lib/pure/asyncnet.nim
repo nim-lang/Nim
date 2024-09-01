@@ -99,7 +99,7 @@ import std/private/since
 when defined(nimPreviewSlimSystem):
   import std/[assertions, syncio]
 
-import asyncdispatch, nativesockets, net, os
+import std/[asyncdispatch, nativesockets, net, os]
 
 export SOBool
 
@@ -110,7 +110,7 @@ const useNimNetLite = defined(nimNetLite) or defined(freertos) or defined(zephyr
     defined(nuttx)
 
 when defineSsl:
-  import openssl
+  import std/openssl
 
 type
   # TODO: I would prefer to just do:
@@ -682,12 +682,12 @@ when defined(posix) and not useNimNetLite:
         elif ret == EINTR:
           return false
         else:
-          retFuture.fail(newException(OSError, osErrorMsg(OSErrorCode(ret))))
+          retFuture.fail(newOSError(OSErrorCode(ret)))
           return true
 
       var socketAddr = makeUnixAddr(path)
       let ret = socket.fd.connect(cast[ptr SockAddr](addr socketAddr),
-                        (sizeof(socketAddr.sun_family) + path.len).SockLen)
+                        (offsetOf(socketAddr, sun_path) + path.len + 1).SockLen)
       if ret == 0:
         # Request to connect completed immediately.
         retFuture.complete()
@@ -696,7 +696,7 @@ when defined(posix) and not useNimNetLite:
         if lastError.int32 == EINTR or lastError.int32 == EINPROGRESS:
           addWrite(AsyncFD(socket.fd), cb)
         else:
-          retFuture.fail(newException(OSError, osErrorMsg(lastError)))
+          retFuture.fail(newOSError(lastError))
 
   proc bindUnix*(socket: AsyncSocket, path: string) {.
     tags: [ReadIOEffect].} =
@@ -705,7 +705,7 @@ when defined(posix) and not useNimNetLite:
     when not defined(nimdoc):
       var socketAddr = makeUnixAddr(path)
       if socket.fd.bindAddr(cast[ptr SockAddr](addr socketAddr),
-          (sizeof(socketAddr.sun_family) + path.len).SockLen) != 0'i32:
+          (offsetOf(socketAddr, sun_path) + path.len + 1).SockLen) != 0'i32:
         raiseOSError(osLastError())
 
 elif defined(nimdoc):

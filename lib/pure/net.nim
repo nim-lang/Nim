@@ -93,9 +93,9 @@ import std/private/since
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
-import nativesockets
-import os, strutils, times, sets, options, std/monotimes
-import ssl_config
+import std/nativesockets
+import std/[os, strutils, times, sets, options, monotimes]
+import std/ssl_config
 export nativesockets.Port, nativesockets.`$`, nativesockets.`==`
 export Domain, SockType, Protocol
 
@@ -105,12 +105,12 @@ const useNimNetLite = defined(nimNetLite) or defined(freertos) or defined(zephyr
 const defineSsl = defined(ssl) or defined(nimdoc)
 
 when useWinVersion:
-  from winlean import WSAESHUTDOWN
+  from std/winlean import WSAESHUTDOWN
 
 when defineSsl:
-  import openssl
+  import std/openssl
   when not defined(nimDisableCertificateValidation):
-    from ssl_certs import scanSSLCertificates
+    from std/ssl_certs import scanSSLCertificates
 
 # Note: The enumerations are mapped to Window's constants.
 
@@ -209,7 +209,7 @@ when defined(nimHasStyleChecks):
 
 
 when defined(posix) and not defined(lwip):
-  from posix import TPollfd, POLLIN, POLLPRI, POLLOUT, POLLWRBAND, Tnfds
+  from std/posix import TPollfd, POLLIN, POLLPRI, POLLOUT, POLLWRBAND, Tnfds
 
   template monitorPollEvent(x: var SocketHandle, y: cint, timeout: int): int =
     var tpollfd: TPollfd
@@ -1154,7 +1154,7 @@ proc accept*(server: Socket, client: var owned(Socket),
   acceptAddr(server, client, addrDummy, flags)
 
 when defined(posix) and not defined(lwip):
-  from posix import Sigset, sigwait, sigismember, sigemptyset, sigaddset,
+  from std/posix import Sigset, sigwait, sigismember, sigemptyset, sigaddset,
     sigprocmask, pthread_sigmask, SIGPIPE, SIG_BLOCK, SIG_UNBLOCK
 
 template blockSigpipe(body: untyped): untyped =
@@ -1268,9 +1268,9 @@ proc close*(socket: Socket, flags = {SocketFlag.SafeDisconn}) =
     socket.fd = osInvalidSocket
 
 when defined(posix):
-  from posix import TCP_NODELAY
+  from std/posix import TCP_NODELAY
 else:
-  from winlean import TCP_NODELAY
+  from std/winlean import TCP_NODELAY
 
 proc toCInt*(opt: SOBool): cint =
   ## Converts a `SOBool` into its Socket Option cint representation.
@@ -1321,7 +1321,7 @@ when defined(nimdoc) or (defined(posix) and not useNimNetLite):
     when not defined(nimdoc):
       var socketAddr = makeUnixAddr(path)
       if socket.fd.connect(cast[ptr SockAddr](addr socketAddr),
-          (sizeof(socketAddr.sun_family) + path.len).SockLen) != 0'i32:
+          (offsetOf(socketAddr, sun_path) + path.len + 1).SockLen) != 0'i32:
         raiseOSError(osLastError())
 
   proc bindUnix*(socket: Socket, path: string) =
@@ -1330,7 +1330,7 @@ when defined(nimdoc) or (defined(posix) and not useNimNetLite):
     when not defined(nimdoc):
       var socketAddr = makeUnixAddr(path)
       if socket.fd.bindAddr(cast[ptr SockAddr](addr socketAddr),
-          (sizeof(socketAddr.sun_family) + path.len).SockLen) != 0'i32:
+          (offsetOf(socketAddr, sun_path) + path.len + 1).SockLen) != 0'i32:
         raiseOSError(osLastError())
 
 when defineSsl:
@@ -2040,8 +2040,10 @@ proc dial*(address: string, port: Port,
   if success:
     result = newSocket(lastFd, domain, sockType, protocol, buffered)
   elif lastError != 0.OSErrorCode:
+    lastFd.close()
     raiseOSError(lastError)
   else:
+    lastFd.close()
     raise newException(IOError, "Couldn't resolve address: " & address)
 
 proc connect*(socket: Socket, address: string,

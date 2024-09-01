@@ -71,7 +71,7 @@ runnableExamples:
 ## * `list of cryptographic and hashing modules <lib.html#pure-libraries-hashing>`_
 ##   in the standard library
 
-import algorithm, math
+import std/[algorithm, math]
 import std/private/[since, jsutils]
 
 when defined(nimPreviewSlimSystem):
@@ -79,15 +79,28 @@ when defined(nimPreviewSlimSystem):
 
 include system/inclrtl
 {.push debugger: off.}
+template whenHasBigInt64(yes64, no64): untyped =
+  when defined(js):
+    when compiles(compileOption("jsbigint64")):
+      when compileOption("jsbigint64"):
+        yes64
+      else:
+        no64
+    else:
+      no64
+  else:
+    yes64
 
-when defined(js):
-  type Ui = uint32
 
-  const randMax = 4_294_967_295u32
-else:
+whenHasBigInt64:
   type Ui = uint64
 
   const randMax = 18_446_744_073_709_551_615u64
+do:
+  type Ui = uint32
+
+  const randMax = 4_294_967_295u32
+
 
 type
   Rand* = object ## State of a random number generator.
@@ -105,17 +118,17 @@ type
                  ## generator are **not** thread-safe!
     a0, a1: Ui
 
-when defined(js):
-  var state = Rand(
-    a0: 0x69B4C98Cu32,
-    a1: 0xFED1DD30u32) # global for backwards compatibility
-else:
+whenHasBigInt64:
   const DefaultRandSeed = Rand(
     a0: 0x69B4C98CB8530805u64,
     a1: 0xFED1DD3004688D67CAu64)
 
   # racy for multi-threading but good enough for now:
   var state = DefaultRandSeed # global for backwards compatibility
+do:
+  var state = Rand(
+    a0: 0x69B4C98Cu32,
+    a1: 0xFED1DD30u32) # global for backwards compatibility
 
 func isValid(r: Rand): bool {.inline.} =
   ## Check whether state of `r` is valid.
@@ -208,10 +221,10 @@ proc skipRandomNumbers*(s: var Rand) =
     doAssert vals == [501737, 497901, 500683, 500157]
 
 
-  when defined(js):
-    const helper = [0xbeac0467u32, 0xd86b048bu32]
-  else:
+  whenHasBigInt64:
     const helper = [0xbeac0467eba5facbu64, 0xd86b048b86aa9922u64]
+  do:
+    const helper = [0xbeac0467u32, 0xd86b048bu32]
   var
     s0 = Ui 0
     s1 = Ui 0
@@ -294,7 +307,13 @@ proc rand*(r: var Rand; max: range[0.0 .. high(float)]): float {.benign.} =
 
   let x = next(r)
   when defined(js):
-    result = (float(x) / float(high(uint32))) * max
+    when compiles(compileOption("jsbigint64")):
+      when compileOption("jsbigint64"):
+        result = (float(x) / float(high(uint64))) * max
+      else:
+        result = (float(x) / float(high(uint32))) * max
+    else:
+      result = (float(x) / float(high(uint32))) * max
   else:
     let u = (0x3FFu64 shl 52u64) or (x shr 12u64)
     result = (cast[float](u) - 1.0) * max
@@ -670,7 +689,7 @@ when not defined(standalone):
       import std/[hashes, os, sysrand, monotimes]
 
       when compileOption("threads"):
-        import locks
+        import std/locks
         var baseSeedLock: Lock
         baseSeedLock.initLock
 

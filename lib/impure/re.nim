@@ -36,7 +36,7 @@ runnableExamples:
     # can't match start of string since we're starting at 1
 
 import
-  pcre, strutils, rtarrays
+  std/[pcre, strutils, rtarrays]
 
 when defined(nimPreviewSlimSystem):
   import std/syncio

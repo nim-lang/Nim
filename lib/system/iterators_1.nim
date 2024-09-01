@@ -31,7 +31,10 @@ iterator countdown*[T](a, b: T, step: Positive = 1): T {.inline.} =
   when T is IntLikeForCount and T is Ordinal:
     var res = int(a)
     while res >= int(b):
-      yield T(res)
+      when defined(nimHasCastExtendedVm):
+        yield cast[T](res)
+      else:
+        yield T(res)
       dec(res, step)
   else:
     var res = a
@@ -64,7 +67,10 @@ iterator countup*[T](a, b: T, step: Positive = 1): T {.inline.} =
   when T is IntLikeForCount and T is Ordinal:
     var res = int(a)
     while res <= int(b):
-      yield T(res)
+      when defined(nimHasCastExtendedVm):
+        yield cast[T](res)
+      else:
+        yield T(res)
       inc(res, step)
   else:
     var res = a
@@ -89,7 +95,10 @@ iterator `..`*[T](a, b: T): T {.inline.} =
   when T is IntLikeForCount and T is Ordinal:
     var res = int(a)
     while res <= int(b):
-      yield T(res)
+      when defined(nimHasCastExtendedVm):
+        yield cast[T](res)
+      else:
+        yield T(res)
       inc(res)
   else:
     var res = a

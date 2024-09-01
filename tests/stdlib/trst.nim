@@ -526,10 +526,76 @@ suite "RST parsing":
             rnFieldBody
               rnLeaf  'Nim'
         rnLiteralBlock
-          rnLeaf  '
-      let a = 1
+          rnLeaf  'let a = 1
       ```'
       """
+
+  test "Markdown footnotes":
+    # Testing also 1) correct order of manually-numbered and automatically-
+    # numbered footnotes; 2) no spaces between references (html & 3 below):
+
+    check(dedent"""
+        Paragraph [^1] [^html-hyphen][^3] and [^latex]
+
+        [^1]: footnote1
+
+        [^html-hyphen]: footnote2
+           continuation2
+
+        [^latex]: footnote4
+
+        [^3]: footnote3
+            continuation3
+        """.toAst ==
+      dedent"""
+        rnInner
+          rnInner
+            rnLeaf  'Paragraph'
+            rnLeaf  ' '
+            rnFootnoteRef
+              rnInner
+                rnLeaf  '1'
+              rnLeaf  'footnote-1'
+            rnLeaf  ' '
+            rnFootnoteRef
+              rnInner
+                rnLeaf  '2'
+              rnLeaf  'footnote-htmlminushyphen'
+            rnFootnoteRef
+              rnInner
+                rnLeaf  '3'
+              rnLeaf  'footnote-3'
+            rnLeaf  ' '
+            rnLeaf  'and'
+            rnLeaf  ' '
+            rnFootnoteRef
+              rnInner
+                rnLeaf  '4'
+              rnLeaf  'footnote-latex'
+          rnFootnoteGroup
+            rnFootnote  anchor='footnote-1'
+              rnInner
+                rnLeaf  '1'
+              rnLeaf  'footnote1'
+            rnFootnote  anchor='footnote-htmlminushyphen'
+              rnInner
+                rnLeaf  '2'
+              rnInner
+                rnLeaf  'footnote2'
+                rnLeaf  ' '
+                rnLeaf  'continuation2'
+            rnFootnote  anchor='footnote-latex'
+              rnInner
+                rnLeaf  '4'
+              rnLeaf  'footnote4'
+            rnFootnote  anchor='footnote-3'
+              rnInner
+                rnLeaf  '3'
+              rnInner
+                rnLeaf  'footnote3'
+                rnLeaf  ' '
+                rnLeaf  'continuation3'
+      """)
 
   test "Markdown code blocks with more > 3 backticks":
     check(dedent"""
@@ -570,8 +636,7 @@ suite "RST parsing":
                 rnLeaf  'test'
               rnFieldBody
           rnLiteralBlock
-            rnLeaf  '
-        let a = 1'
+            rnLeaf  'let a = 1'
         """)
 
     check(dedent"""
@@ -594,8 +659,7 @@ suite "RST parsing":
               rnFieldBody
                 rnLeaf  '1'
           rnLiteralBlock
-            rnLeaf  '
-        let a = 1'
+            rnLeaf  'let a = 1'
         """)
 
   test "additional indentation < 4 spaces is handled fine":
@@ -615,8 +679,7 @@ suite "RST parsing":
                 rnLeaf  'nim'
               [nil]
               rnLiteralBlock
-                rnLeaf  '
-          let a = 1'
+                rnLeaf  '  let a = 1'
       """)
       # | |
       # |  \ indentation of exactly two spaces before 'let a = 1'
@@ -650,8 +713,7 @@ suite "RST parsing":
                   rnFieldBody
                     rnLeaf  'Nim'
               rnLiteralBlock
-                rnLeaf  '
-        CodeBlock()'
+                rnLeaf  'CodeBlock()'
             rnLeaf  ' '
             rnLeaf  'Other'
             rnLeaf  ' '

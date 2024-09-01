@@ -29,7 +29,7 @@ proc doWrite(f: var NdiFile; s: PSym; conf: ConfigRef) =
   f.buf.add "\t"
   f.buf.addInt s.info.col.int
   f.f.write(s.name.s, "\t")
-  f.f.writeRope(s.loc.r)
+  f.f.writeRope(s.loc.snippet)
   f.f.writeLine("\t", toFullPath(conf, s.info), "\t", f.buf)
 
 template writeMangledName*(f: NdiFile; s: PSym; conf: ConfigRef) =
