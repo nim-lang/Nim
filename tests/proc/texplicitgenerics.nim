@@ -47,3 +47,13 @@ block: # ditto but may be wrong minimization
     # alternative version, also causes instantiation issue
     proc baz[T](x: typeof(foo[T]())) = discard
     baz[int](Foo[int]())
+
+block: # auto
+  proc foo[T, U](x: T, y: U): (T, U) = (x, y)
+  doAssert foo(1, 2) is (int, int)
+  doAssert foo[auto, auto](1, 2) is (int, int)
+  doAssert foo[int, auto](1, 2) is (int, int)
+  doAssert foo[auto, int](1, 2) is (int, int)
+  doAssert foo[auto, auto](1, "a") is (int, string)
+  doAssert foo[int, auto](1, "a") is (int, string)
+  doAssert foo[auto, string](1, "a") is (int, string)

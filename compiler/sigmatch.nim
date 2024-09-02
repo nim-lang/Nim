@@ -173,7 +173,11 @@ proc matchGenericParams*(m: var TCandidate, binding: PNode, callee: PSym) =
     m.firstMismatch.kind = kExtraGenericParam
     m.firstMismatch.arg = paramCount + 1
     return
+  var gotAuto = false
   for i in 1..bindingCount:
+    if binding[i].typ.skipTypes(abstractInst).kind in {tyUntyped, tyAnything}:
+      gotAuto = true
+      continue
     matchGenericParam(m, typeParams[i-1].typ, binding[i])
     if m.state == csNoMatch:
       m.firstMismatch.arg = i
@@ -200,7 +204,10 @@ proc matchGenericParams*(m: var TCandidate, binding: PNode, callee: PSym) =
       m.firstMismatch.arg = i + 1
       m.firstMismatch.formal = paramSym
       return
-  m.state = csMatch
+  if gotAuto:
+    m.state = csEmpty
+  else:
+    m.state = csMatch
 
 proc copyingEraseVoidParams(m: TCandidate, t: var PType) =
   ## if `t` is a proc type with void parameters, copies it and erases them
