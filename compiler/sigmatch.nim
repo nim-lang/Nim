@@ -2293,6 +2293,9 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
          a.n == nil and
          tfGenericTypeParam notin a.flags:
         return newNodeIT(nkType, argOrig.info, makeTypeFromExpr(c, arg))
+    elif a.kind == tyFromExpr and c.inGenericContext > 0:
+      # don't try to evaluate
+      discard
     elif arg.kind != nkEmpty:
       var evaluated = c.semTryConstExpr(c, arg)
       if evaluated != nil:
@@ -2305,11 +2308,7 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
         a = typ
       else:
         if m.callee.kind == tyGenericBody:
-          # we can't use `makeStaticExpr` if `arg` has a generic type
-          # because it generates `tyStatic`, which semtypinst doesn't touch
-          # not sure if checking for `tyFromExpr` is enough
-          if f.kind == tyStatic and typeRel(m, f.base, a) != isNone and
-              a.kind != tyFromExpr:
+          if f.kind == tyStatic and typeRel(m, f.base, a) != isNone:
             result = makeStaticExpr(m.c, arg)
             result.typ.flags.incl tfUnresolved
             result.typ.n = arg

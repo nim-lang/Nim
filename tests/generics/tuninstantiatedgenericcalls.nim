@@ -325,6 +325,14 @@ block: # issue #12714
     MyChannel[T: Enqueueable] = object
       dummy: type(default(T)[])
 
+block: # issue #24044
+  type ArrayBuf[N: static int, T = byte] = object
+    buf: array[N, T]
+  template maxLen(T: type): int =
+    sizeof(T) * 2
+  type MyBuf[I] = ArrayBuf[maxLen(I)]
+  var v: MyBuf[int]
+
 when false: # issue #22342, type section version of #22607
   type GenAlias[isInt: static bool] = (
     when isInt:
