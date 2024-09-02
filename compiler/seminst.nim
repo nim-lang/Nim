@@ -321,6 +321,22 @@ proc instantiateProcType(c: PContext, pt: TypeMapping,
   prc.typ = result
   popInfoContext(c.config)
 
+proc instantiateOnlyProcType(c: PContext, pt: TypeMapping, prc: PSym, info: TLineInfo): PType =
+  # instantiates only the type of a given proc symbol
+  # used by sigmatch for explicit generics
+  # wouldn't be needed if sigmatch could handle complex cases,
+  # examples are in texplicitgenerics
+  # might be buggy, see rest of generateInstance if problems occur
+  let fakeSym = copySym(prc, c.idgen)
+  incl(fakeSym.flags, sfFromGeneric)
+  fakeSym.instantiatedFrom = prc
+  openScope(c)
+  for s in instantiateGenericParamList(c, prc.ast[genericParamsPos], pt):
+    addDecl(c, s)
+  instantiateProcType(c, pt, fakeSym, info)
+  closeScope(c)
+  result = fakeSym.typ
+
 proc fillMixinScope(c: PContext) =
   var p = c.p
   while p != nil:

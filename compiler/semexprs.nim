@@ -1070,14 +1070,6 @@ proc resolveIndirectCall(c: PContext; n, nOrig: PNode;
   result = initCandidate(c, t)
   matches(c, n, nOrig, result)
 
-proc bracketedMacro(n: PNode): PSym =
-  if n.len >= 1 and n[0].kind == nkSym:
-    result = n[0].sym
-    if result.kind notin {skMacro, skTemplate}:
-      result = nil
-  else:
-    result = nil
-
 proc finishOperand(c: PContext, a: PNode): PNode =
   if a.typ.isNil:
     result = c.semOperand(c, a, {efDetermineType})
@@ -1167,11 +1159,6 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType
     let t = n[0].typ
     if t != nil and t.kind in {tyVar, tyLent}:
       n[0] = newDeref(n[0])
-    elif n[0].kind == nkBracketExpr:
-      let s = bracketedMacro(n[0])
-      if s != nil:
-        setGenericParams(c, n[0], s.ast[genericParamsPos])
-        return semDirectOp(c, n, flags, expectedType)
     elif isSymChoice(n[0]) and nfDotField notin n.flags:
       # overloaded generic procs e.g. newSeq[int] can end up here
       return semDirectOp(c, n, flags, expectedType)
@@ -1721,8 +1708,6 @@ proc maybeInstantiateGeneric(c: PContext, n: PNode, s: PSym): PNode =
     result = explicitGenericInstantiation(c, n, s)
     if result == n:
       n[0] = copyTree(result[0])
-    else:
-      n[0] = result
 
 proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
   ## returns nil if not a built-in subscript operator; also called for the
@@ -3013,19 +2998,42 @@ proc semTupleConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PTyp
   else:
     result = tupexp
 
-proc shouldBeBracketExpr(n: PNode): bool =
-  result = false
+proc isExplicitGenericCall(c: PContext, n: PNode): bool =
+  ## checks if a call node `n` is a routine call with explicit generic params
+  ## 
+  ## the callee node needs to be either an nkBracketExpr or a call to a
+  ## symchoice of `[]` in which case it will be transformed into nkBracketExpr
+  ## 
+  ## the LHS of the bracket expr has to either be a symchoice or resolve to
+  ## a routine symbol
+  template checkCallee(n: PNode) =
+    # check subscript LHS, `n` must be mutable
+    if isSymChoice(n):
+      result = true
+    else:
+      let s = qualifiedLookUp(c, n, {})
+      if s != nil and s.kind in routineKinds:
+        result = true
+        n = semSymGenericInstantiation(c, n, s)
   assert n.kind in nkCallKinds
+  result = false
   let a = n[0]
-  if a.kind in nkCallKinds:
+  case a.kind
+  of nkBracketExpr:
+    checkCallee(a[0])
+  of nkCallKinds:
     let b = a[0]
     if b.kind in nkSymChoices:
-      for i in 0..<b.len:
-        if b[i].kind == nkSym and b[i].sym.magic == mArrGet:
-          let be = newNodeI(nkBracketExpr, n.info)
+      let name = b.getPIdent
+      if name != nil and name.s == "[]":
+        checkCallee(a[1])
+        if result:
+          # transform callee into normal bracket expr, only on success
+          let be = newNodeI(nkBracketExpr, a.info)
           for i in 1..<a.len: be.add(a[i])
           n[0] = be
-          return true
+  else:
+    result = false
 
 proc asBracketExpr(c: PContext; n: PNode): PNode =
   proc isGeneric(c: PContext; n: PNode): bool =
@@ -3365,11 +3373,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
       else:
         #liMessage(n.info, warnUser, renderTree(n));
         result = semIndirectOp(c, n, flags, expectedType)
-    elif (n[0].kind == nkBracketExpr or shouldBeBracketExpr(n)) and
-        isSymChoice(n[0][0]):
-      # indirectOp can deal with explicit instantiations; the fixes
-      # the 'newSeq[T](x)' bug
-      setGenericParams(c, n[0], nil)
+    elif isExplicitGenericCall(c, n): # this modifies `n` if true
       result = semDirectOp(c, n, flags, expectedType)
     elif nfDotField in n.flags:
       result = semDirectOp(c, n, flags, expectedType)

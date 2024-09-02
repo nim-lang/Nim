@@ -1511,6 +1511,7 @@ proc newType*(kind: TTypeKind; idgen: IdGenerator; owner: PSym; son: sink PType 
 
 proc setSons*(dest: PType; sons: sink seq[PType]) {.inline.} = dest.sons = sons
 proc setSon*(dest: PType; son: sink PType) {.inline.} = dest.sons = @[son]
+proc setSonsLen*(dest: PType; len: int) {.inline.} = setLen(dest.sons, len)
 
 proc mergeLoc(a: var TLoc, b: TLoc) =
   if a.k == low(typeof(a.k)): a.k = b.k

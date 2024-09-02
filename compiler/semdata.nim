@@ -139,6 +139,9 @@ type
     semInferredLambda*: proc(c: PContext, pt: Table[ItemId, PType], n: PNode): PNode
     semGenerateInstance*: proc (c: PContext, fn: PSym, pt: Table[ItemId, PType],
                                 info: TLineInfo): PSym
+    instantiateOnlyProcType*: proc (c: PContext, pt: TypeMapping,
+                                    prc: PSym, info: TLineInfo): PType
+      # used by sigmatch for explicit generic instantiations
     includedFiles*: IntSet    # used to detect recursive include files
     pureEnumFields*: TStrTable   # pure enum fields that can be used unambiguously
     userPragmas*: TStrTable
