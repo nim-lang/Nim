@@ -410,9 +410,15 @@ proc transformYield(c: PTransf, n: PNode): PNode =
       result.add transform(c, v)
 
       for i in 0..<c.transCon.forStmt.len - 2:
-        let lhs = c.transCon.forStmt[i]
-        let rhs = transform(c, newTupleAccess(c.graph, tmp, i))
-        result.add(asgnTo(lhs, rhs))
+        if c.transCon.forStmt[i].kind == nkVarTuple:
+          for j in 0..<c.transCon.forStmt[i].len-1:
+            let lhs = c.transCon.forStmt[i][j]
+            let rhs = transform(c, newTupleAccess(c.graph, newTupleAccess(c.graph, tmp, i), j))
+            result.add(asgnTo(lhs, rhs))
+        else:
+          let lhs = c.transCon.forStmt[i]
+          let rhs = transform(c, newTupleAccess(c.graph, tmp, i))
+          result.add(asgnTo(lhs, rhs))
     else:
       for i in 0..<c.transCon.forStmt.len - 2:
         let lhs = c.transCon.forStmt[i]
