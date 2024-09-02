@@ -789,6 +789,7 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
   of nkRecWhen:
     var a = copyTree(n)
     var branch: PNode = nil   # the branch to take
+    var cannotResolve = false # no branch should be taken
     for i in 0..<a.len:
       var it = a[i]
       if it == nil: illFormedAst(n, c.config)
@@ -806,24 +807,30 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
           let e = semExprWithType(c, it[0], {efDetermineType})
           if e.typ.kind == tyFromExpr:
             it[0] = makeStaticExpr(c, e)
+            cannotResolve = true
           else:
             it[0] = forceBool(c, e)
+            let val = getConstExpr(c.module, it[0], c.idgen, c.graph)
+            if val == nil or val.kind != nkIntLit:
+              cannotResolve = true
+            elif not cannotResolve and val.intVal != 0 and branch == nil:
+              branch = it[1]
       of nkElse:
         checkSonsLen(it, 1, c.config)
-        if branch == nil: branch = it[0]
+        if branch == nil and not cannotResolve: branch = it[0]
         idx = 0
       else: illFormedAst(n, c.config)
-      if c.inGenericContext > 0:
+      if c.inGenericContext > 0 and cannotResolve:
         # use a new check intset here for each branch:
         var newCheck: IntSet = check
         var newPos = pos
         var newf = newNodeI(nkRecList, n.info)
         semRecordNodeAux(c, it[idx], newCheck, newPos, newf, rectype, hasCaseFields)
         it[idx] = if newf.len == 1: newf[0] else: newf
-    if c.inGenericContext > 0:
-      father.add a
-    elif branch != nil:
+    if branch != nil:
       semRecordNodeAux(c, branch, check, pos, father, rectype, hasCaseFields)
+    elif c.inGenericContext > 0:
+      father.add a
     elif father.kind in {nkElse, nkOfBranch}:
       father.add newNodeI(nkRecList, n.info)
   of nkRecCase:
