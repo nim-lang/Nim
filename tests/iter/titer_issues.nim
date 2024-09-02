@@ -407,5 +407,4 @@ block: # bug #24033
   for id, (str, num) in Query():
     collections.add (id, str, $num)
 
-  echo collections[1]
   doAssert collections[1] == (1, "foo", "3.14")
