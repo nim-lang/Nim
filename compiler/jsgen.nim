@@ -1098,14 +1098,19 @@ proc genCaseJS(p: PProc, n: PNode, r: var TCompRes) =
           lineF(p, "break;$n", [])
     of nkElse:
       if transferRange:
-         lineF(p, "else{$n", [])
+        if n.len == 2: # a dangling else for a case statement
+          transferRange = false
+          lineF(p, "switch ($1) {$n", [cond.rdLoc])
+          lineF(p, "default: $n", [])
+        else:
+          lineF(p, "else{$n", [])
       else:
         lineF(p, "default: $n", [])
       p.nested:
         gen(p, it[0], stmt)
         moveInto(p, stmt, r)
         if transferRange:
-           lineF(p, "}$n", [])
+          lineF(p, "}$n", [])
         else:
           lineF(p, "break;$n", [])
     else: internalError(p.config, it.info, "jsgen.genCaseStmt")
