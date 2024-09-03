@@ -1378,7 +1378,11 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       let rb = instr.regB
       let rc = instr.regC
       let bb = regs[rb].node
+      if bb.kind == nkNilLit:
+        stackTrace(c, tos, pc, "attempt to call nil closure")
       let isClosure = bb.kind == nkTupleConstr
+      if isClosure and bb[0].kind == nkNilLit:
+        stackTrace(c, tos, pc, "attempt to call nil closure")
       let prc = if not isClosure: bb.sym else: bb[0].sym
       if prc.offset < -1:
         # it's a callback:
