@@ -162,6 +162,14 @@ block: # rangeBase
   doAssert foo(z) == "ranged(a..z of char) char(g)"
   {.pop.}
 
+  # works only with #24037:
+  var toChange: range[0..3] = 1
+  proc bar[T: int and not range](y: var T) =
+    inc y
+  doAssert not compiles(bar(toChange))
+  bar(rangeBase(toChange))
+  doAssert toChange == 2
+
 block: # tupleLen
   doAssert not compiles(tupleLen(int))
 

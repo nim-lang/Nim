@@ -42,6 +42,8 @@
 - Added `setLenUninit` to system, which doesn't initialize
 slots when enlarging a sequence.
 - Added `hasDefaultValue` to `std/typetraits` to check if a type has a valid default value.
+- Added `rangeBase` to `std/typetraits` to obtain the base type of a range type or
+  convert a value with a range type to its base type.
 - Added Viewport API for the JavaScript targets in the `dom` module.
 - Added `toSinglyLinkedRing` and `toDoublyLinkedRing` to `std/lists` to convert from `openArray`s.
 - ORC: To be enabled via `nimOrcStats` there is a new API called `GC_orcStats` that can be used to query how many
