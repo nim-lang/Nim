@@ -144,6 +144,24 @@ block distinctBase:
         doAssert($distinctBase(typeof(b2)) == "string")
         doAssert($distinctBase(typeof(c2)) == "int")
 
+block: # rangeBase
+  {.push warningAsError[EnumConv]: on.}
+  proc foo[T: not range](x: T): string =
+    $T & "(" & $x & ")"
+  proc foo[T: range](x: T): string =
+    "ranged(" & $low(T) & ".." & $high(T) & " of " & $rangeBase(T) & ") " & foo(rangeBase(x))
+  doAssert foo(123) == "int(123)"
+  type IntRange = range[0..3]
+  let x: IntRange = 2
+  doAssert foo(x) == "ranged(0..3 of int) int(2)"
+  type E = enum a, b, c, d, e, f
+  type EnumRange = range[c..e]
+  let y: EnumRange = d
+  doAssert foo(y) == "ranged(c..e of E) E(d)"
+  let z: range['a'..'z'] = 'g'
+  doAssert foo(z) == "ranged(a..z of char) char(g)"
+  {.pop.}
+
 block: # tupleLen
   doAssert not compiles(tupleLen(int))
 
