@@ -49,7 +49,7 @@ proc filter[T](it: (iterator : T), f: proc(x: T): bool): (iterator : T) =
 
 proc len[T](it : iterator : T) : Natural =
   for i in it():
-    result += 1
+    result.inc 1
 
 proc simpleSeqIterator(s :seq[int]) : iterator : int =
   iterator it: int {.closure.} =

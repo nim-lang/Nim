@@ -1094,6 +1094,8 @@ proc initFromJson[T](dst: var OrderedTable[string, T]; jsonNode: JsonNode; jsonP
 proc initFromJson[T](dst: var ref T; jsonNode: JsonNode; jsonPath: var string)
 proc initFromJson[T](dst: var Option[T]; jsonNode: JsonNode; jsonPath: var string)
 proc initFromJson[T: distinct](dst: var T; jsonNode: JsonNode; jsonPath: var string)
+when defined(nimPreviewStrictVarRange):
+  proc initFromJson[T: range](dst: var T; jsonNode: JsonNode; jsonPath: var string)
 proc initFromJson[T: object|tuple](dst: var T; jsonNode: JsonNode; jsonPath: var string)
 
 # initFromJson definitions
@@ -1223,6 +1225,24 @@ macro assignDistinctImpl[T: distinct](dst: var T;jsonNode: JsonNode; jsonPath: v
 
 proc initFromJson[T: distinct](dst: var T; jsonNode: JsonNode; jsonPath: var string) =
   assignDistinctImpl(dst, jsonNode, jsonPath)
+
+when defined(nimPreviewStrictVarRange):
+  # doesn't work without #24037
+  macro assignRangeImpl[T: range](dst: var T;jsonNode: JsonNode; jsonPath: var string) =
+    let typImpl = getTypeImpl(dst)
+    assert typImpl.kind == nnkBracketExpr and typImpl[0].eqIdent"range"
+    let lowNode =
+      if typImpl[^1].kind == nnkInfix:
+        typImpl[^1][1]
+      else:
+        typImpl[1]
+    let baseTyp = getType(lowNode)
+
+    result = quote do:
+      initFromJson(`baseTyp`(`dst`), `jsonNode`, `jsonPath`)
+
+  proc initFromJson[T: range](dst: var T; jsonNode: JsonNode; jsonPath: var string) =
+    assignRangeImpl(dst, jsonNode, jsonPath)
 
 proc detectIncompatibleType(typeExpr, lineinfoNode: NimNode) =
   if typeExpr.kind == nnkTupleConstr:
