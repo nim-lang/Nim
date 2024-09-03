@@ -290,7 +290,8 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0; expectedType: PT
         replaceTypeVarsS(cl, n.sym, result.typ)
       else:
         replaceTypeVarsS(cl, n.sym, replaceTypeVarsT(cl, n.sym.typ))
-    if result.sym.typ.kind == tyVoid:
+    # sym type can be nil if was gensym created by macro, see #24048
+    if result.sym.typ != nil and result.sym.typ.kind == tyVoid:
       # don't add the 'void' field
       result = newNodeI(nkRecList, n.info)
   of nkRecWhen:
