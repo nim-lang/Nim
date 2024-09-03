@@ -57,3 +57,4 @@ block: # auto
   doAssert foo[auto, auto](1, "a") is (int, string)
   doAssert foo[int, auto](1, "a") is (int, string)
   doAssert foo[auto, string](1, "a") is (int, string)
+  doAssert foo[int, auto](123, ("abc", (false, 1.0))) == (123, ("abc", (false, 1.0)))

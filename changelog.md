@@ -28,6 +28,28 @@
   errors for ambiguous type symbols, and macros operating on generic proc AST
   may encounter symchoice nodes instead of the arbitrarily resolved type symbol nodes.
 
+- Partial generic instantiation of routines is no longer allowed. Previously
+  it compiled in niche situations due to bugs in the compiler.
+
+  ```nim
+  proc foo[T, U](x: T, y: U) = echo (x, y)
+  proc foo[T, U](x: var T, y: U) = echo "var ", (x, y)
+
+  proc bar[T]() =
+    foo[float](1, "abc")
+
+  bar[int]() # before: (1.0, "abc"), now: type mismatch, missing generic parameter
+  ```
+
+  As an experimental feature, in situations where generic parameters can be
+  inferred from arguments in the call, `auto` can be used in place of
+  generic parameters that would be too complex to type normally.
+
+  ```nim
+  proc foo[T, U](x: T, y: U) = echo (x, y)
+  foo[int, auto](123, ("abc", (false, 1.0))) # (123, ("abc", (false, 1.0)))
+  ```
+
 ## Standard library additions and changes
 
 [//]: # "Changes:"

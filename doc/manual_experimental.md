@@ -2642,3 +2642,18 @@ proc nothing() =
 ```
 
 The current C(C++) backend implementation cannot generate code for gcc and for vcc at the same time. For example, `{.asmSyntax: "vcc".}` with the ICC compiler will not generate code with intel asm syntax, even though ICC can use both gcc-like and vcc-like asm.
+
+`auto` in generic routine instantiations
+========================================
+
+When generic parameters are provided to routines in calls, the number of
+parameters must match the number of generic parameters of the routine.
+However, in some cases, some types may be too complex to write as explicit
+type parameters, even though they can be inferred from the arguments of
+the routine call. In such cases, `auto` can be used to infer the type of the
+generic parameter.
+
+```nim
+proc foo[T, U](x: T, y: U) = echo (x, y)
+foo[int, auto](123, ("abc", (false, 1.0))) # (123, ("abc", (false, 1.0)))
+```  
