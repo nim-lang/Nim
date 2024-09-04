@@ -181,7 +181,7 @@ pkg "unicodeplus", "nim c -d:release -r tests/tests.nim"
 pkg "union", "nim c -r tests/treadme.nim", url = "https://github.com/alaviss/union"
 pkg "unittest2"
 pkg "unpack"
-pkg "weave", "nimble install cligen@#HEAD; nimble test_gc_arc", useHead = true
+pkg "weave", "nimble install -y cligen@#HEAD; nimble test_gc_arc", useHead = true
 pkg "websock"
 pkg "websocket", "nim c websocket.nim"
 # pkg "winim", allowFailure = true
