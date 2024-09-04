@@ -179,7 +179,6 @@ const
                  cmdCtags, cmdBuildindex}
 
 type
-  NimVer* = tuple[major: int, minor: int, patch: int]
   TStringSeq* = seq[string]
   TGCMode* = enum             # the selected GC
     gcUnselected = "unselected"
@@ -396,7 +395,6 @@ type
     outDir*: AbsoluteDir
     jsonBuildFile*: AbsoluteFile
     prefixDir*, libpath*, nimcacheDir*: AbsoluteDir
-    nimStdlibVersion*: NimVer
     dllOverrides, moduleOverrides*, cfileSpecificOptions*: StringTableRef
     projectName*: string # holds a name like 'nim'
     projectPath*: AbsoluteDir # holds a path like /home/alice/projects/nim/compiler/
@@ -450,16 +448,6 @@ type
     clientProcessId*: int
 
 
-proc parseNimVersion*(a: string): NimVer =
-  # could be moved somewhere reusable
-  result = default(NimVer)
-  if a.len > 0:
-    let b = a.split(".")
-    assert b.len == 3, a
-    template fn(i) = result[i] = b[i].parseInt # could be optimized if needed
-    fn(0)
-    fn(1)
-    fn(2)
 
 proc assignIfDefault*[T](result: var T, val: T, def = default(T)) =
   ## if `result` was already assigned to a value (that wasn't `def`), this is a noop.
@@ -633,12 +621,6 @@ proc newPartialConfigRef*(): ConfigRef =
 
 proc cppDefine*(c: ConfigRef; define: string) =
   c.cppDefines.incl define
-
-proc getStdlibVersion*(conf: ConfigRef): NimVer =
-  if conf.nimStdlibVersion == (0,0,0):
-    let s = conf.symbols.getOrDefault("nimVersion", "")
-    conf.nimStdlibVersion = s.parseNimVersion
-  result = conf.nimStdlibVersion
 
 proc isDefined*(conf: ConfigRef; symbol: string): bool =
   if conf.symbols.hasKey(symbol):
