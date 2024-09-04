@@ -413,8 +413,6 @@ proc hasForbiddenPragma(n: PNode): bool =
       return true
 
 proc reorder*(graph: ModuleGraph, n: PNode, module: PSym): PNode =
-  if n.hasForbiddenPragma:
-    return n
   var includedFiles = initIntSet()
   let mpath = toFullPath(graph.config, module.fileIdx)
   let n = expandIncludes(graph, module, n, mpath,
