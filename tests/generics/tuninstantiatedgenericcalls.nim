@@ -357,3 +357,23 @@ block: # issue #22342, type section version of #22607
   doAssert not compiles(foo[true](y))
   foo[false](y)
   doAssert y == 2
+
+block: # `when`, test no constant semchecks
+  type Foo[T] = (
+    when false:
+      {.error: "bad".}
+    elif defined(neverDefined):
+      {.error: "bad 2".}
+    else:
+      T
+  )
+  var x: Foo[int]
+  type Bar[T] = (
+    when true:
+      T
+    elif defined(js):
+      {.error: "bad".}
+    else:
+      {.error: "bad 2".}
+  )
+  var y: Bar[int]
