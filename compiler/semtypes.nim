@@ -2073,7 +2073,10 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   of nkWhenStmt:
     var whenResult = semWhen(c, n, false)
     if whenResult.kind == nkStmtList: whenResult.transitionSonsKind(nkStmtListType)
-    result = semTypeNode(c, whenResult, prev)
+    if whenResult.kind == nkWhenStmt:
+      result = whenResult.typ
+    else:
+      result = semTypeNode(c, whenResult, prev)
   of nkBracketExpr:
     checkMinSonsLen(n, 2, c.config)
     var head = n[0]

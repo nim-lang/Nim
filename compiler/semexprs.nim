@@ -2684,6 +2684,7 @@ proc semWhen(c: PContext, n: PNode, semCheck = true): PNode =
       whenNimvm = exprNode.sym.magic == mNimvm
     if whenNimvm: n.flags.incl nfLL
 
+  var cannotResolve = false
   for i in 0..<n.len:
     var it = n[i]
     case it.kind
@@ -2694,6 +2695,20 @@ proc semWhen(c: PContext, n: PNode, semCheck = true): PNode =
           it[1] = semExpr(c, it[1], flags)
           typ = commonType(c, typ, it[1].typ)
         result = n # when nimvm is not elimited until codegen
+      elif c.inGenericContext > 0:
+        let e = semExprWithType(c, it[0])
+        if e.typ.kind == tyFromExpr:
+          it[0] = makeStaticExpr(c, e)
+          cannotResolve = true
+        else:
+          it[0] = forceBool(c, e)
+          let val = getConstExpr(c.module, it[0], c.idgen, c.graph)
+          if val == nil or val.kind != nkIntLit:
+            cannotResolve = true
+          elif not cannotResolve and val.intVal != 0 and result == nil:
+            setResult(it[1])
+            return # we're not in nimvm and we already have a result
+        it[1] = semGenericStmt(c, it[1])
       else:
         let e = forceBool(c, semConstExpr(c, it[0]))
         if e.kind != nkIntLit:
@@ -2705,7 +2720,9 @@ proc semWhen(c: PContext, n: PNode, semCheck = true): PNode =
           return # we're not in nimvm and we already have a result
     of nkElse, nkElseExpr:
       checkSonsLen(it, 1, c.config)
-      if result == nil or whenNimvm:
+      if cannotResolve:
+        it[0] = semGenericStmt(c, it[0])
+      elif result == nil or whenNimvm:
         if semCheck:
           it[0] = semExpr(c, it[0], flags)
           typ = commonType(c, typ, it[0].typ)
@@ -2714,6 +2731,10 @@ proc semWhen(c: PContext, n: PNode, semCheck = true): PNode =
         if result == nil:
           result = it[0]
     else: illFormedAst(n, c.config)
+  if cannotResolve:
+    result = n
+    result.typ = makeTypeFromExpr(c, result.copyTree)
+    return
   if result == nil:
     result = newNodeI(nkEmpty, n.info)
   if whenNimvm:
