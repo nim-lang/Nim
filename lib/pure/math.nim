@@ -64,7 +64,7 @@ when defined(nimPreviewSlimSystem):
   import std/assertions
 
 
-when not defined(js): # C
+when not defined(js) and not defined(nimscript): # C
   proc c_isnan(x: float): bool {.importc: "isnan", header: "<math.h>".}
     # a generic like `x: SomeFloat` might work too if this is implemented via a C macro.
 
