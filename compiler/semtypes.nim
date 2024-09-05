@@ -1864,6 +1864,8 @@ proc semTypeOf(c: PContext; n: PNode; prev: PType): PType =
   closeScope(c)
   fixupTypeOf(c, prev, t)
   result = t.typ
+  if result.kind == tyFromExpr:
+    result.flags.incl tfNonConstExpr
 
 proc semTypeOf2(c: PContext; n: PNode; prev: PType): PType =
   openScope(c)
@@ -1880,6 +1882,8 @@ proc semTypeOf2(c: PContext; n: PNode; prev: PType): PType =
   closeScope(c)
   fixupTypeOf(c, prev, t)
   result = t.typ
+  if result.kind == tyFromExpr:
+    result.flags.incl tfNonConstExpr
 
 proc semTypeIdent(c: PContext, n: PNode): PSym =
   if n.kind == nkSym:
@@ -2116,6 +2120,12 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     of mRef: result = semAnyRef(c, n, tyRef, prev)
     of mPtr: result = semAnyRef(c, n, tyPtr, prev)
     of mTuple: result = semTuple(c, n, prev)
+    of mBuiltinType:
+      case s.name.s
+      of "lent": result = semAnyRef(c, n, tyLent, prev)
+      of "sink": result = semAnyRef(c, n, tySink, prev)
+      of "owned": result = semAnyRef(c, n, tyOwned, prev)
+      else: result = semGeneric(c, n, s, prev)
     else: result = semGeneric(c, n, s, prev)
   of nkDotExpr:
     let typeExpr = semExpr(c, n)

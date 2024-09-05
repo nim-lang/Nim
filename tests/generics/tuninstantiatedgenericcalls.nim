@@ -333,6 +333,18 @@ block: # issue #24044
   type MyBuf[I] = ArrayBuf[maxLen(I)]
   var v: MyBuf[int]
 
+block: # issue #15959
+  proc byLent2[T](a: T): lent type(a[0]) = a[0] # Error: type mismatch: got <T, int literal(0)>
+  proc byLent3[T](a: T): lent typeof(a[0]) = a[0] # ditto
+  proc byLent4[T](a: T): lent[type(a[0])] = a[0] # Error: no generic parameters allowed for lent
+  var x = @[1, 2, 3]
+  doAssert byLent2(x) == 1
+  doAssert byLent2(x) is lent int
+  doAssert byLent3(x) == 1
+  doAssert byLent3(x) is lent int
+  doAssert byLent4(x) == 1
+  doAssert byLent4(x) is lent int
+
 block: # issue #22342, type section version of #22607
   type GenAlias[isInt: static bool] = (
     when isInt:
