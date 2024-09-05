@@ -334,16 +334,24 @@ block: # issue #24044
   var v: MyBuf[int]
 
 block: # issue #15959
+  proc my[T](a: T): typeof(a[0]) = discard
+  proc my2[T](a: T): array[sizeof(a[0]), T] = discard
   proc byLent2[T](a: T): lent type(a[0]) = a[0] # Error: type mismatch: got <T, int literal(0)>
   proc byLent3[T](a: T): lent typeof(a[0]) = a[0] # ditto
   proc byLent4[T](a: T): lent[type(a[0])] = a[0] # Error: no generic parameters allowed for lent
   var x = @[1, 2, 3]
+  doAssert my(x) is int
+  doAssert my2(x) is array[sizeof(int), seq[int]]
   doAssert byLent2(x) == 1
   doAssert byLent2(x) is lent int
   doAssert byLent3(x) == 1
   doAssert byLent3(x) is lent int
   doAssert byLent4(x) == 1
   doAssert byLent4(x) is lent int
+  proc fn[U](a: U): auto = a
+  proc my3[T](a: T, b: typeof(fn(a))) = discard
+  my3(x, x)
+  doAssert not compiles(my3(x, x[0]))
 
 block: # issue #22342, type section version of #22607
   type GenAlias[isInt: static bool] = (

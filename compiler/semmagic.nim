@@ -53,9 +53,9 @@ proc semTypeOf(c: PContext; n: PNode): PNode =
   let typExpr = semExprWithType(c, n[1], if m == 1: {efInTypeof} else: {})
   dec c.inTypeofContext
   result.add typExpr
+  if typExpr.typ.kind == tyFromExpr:
+    typExpr.typ.flags.incl tfNonConstExpr
   result.typ = makeTypeDesc(c, typExpr.typ)
-  if result.typ.kind == tyFromExpr:
-    result.typ.flags.incl tfNonConstExpr
 
 type
   SemAsgnMode = enum asgnNormal, noOverloadedSubscript, noOverloadedAsgn
