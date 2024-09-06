@@ -1992,7 +1992,7 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
       result = buildOverloadedSubscripts(n[0], getIdent(c.cache, "[]="))
       result.add(n[1])
       if mode == noOverloadedSubscript:
-        bracketNotFoundError(c, result)
+        bracketNotFoundError(c, result, {})
         return errorNode(c, n)
       else:
         result = semExprNoType(c, result)
