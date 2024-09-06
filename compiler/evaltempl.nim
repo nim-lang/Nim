@@ -33,6 +33,19 @@ proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
     let x = param
     if x.kind == nkArgList:
       for y in items(x): result.add(y)
+    elif nfDefaultRefsParam in x.flags:
+      # value of default param needs to be evaluated
+      # if it contains other template params
+      var res: PNode
+      if isAtom(x):
+        res = newNodeI(nkPar, x.info)
+        evalTemplateAux(x, actual, c, res)
+        if res.len == 1: res = res[0]
+      else:
+        res = copyNode(x)
+        for i in 0..<x.safeLen:
+          evalTemplateAux(x[i], actual, c, res)
+      result.add res
     else:
       result.add copyTree(x)
 

@@ -743,6 +743,16 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
     c: c,
     owner: s
   )
+  for i in 1..<s.typ.n.len:
+    let param = s.typ.n[i].sym
+    if param.ast != nil:
+      # param default values need to be treated like template body:
+      if sfDirty in s.flags:
+        param.ast = semTemplBodyDirty(ctx, param.ast)
+      else:
+        param.ast = semTemplBody(ctx, param.ast)
+      if param.ast.referencesAnotherParam(s):
+        param.ast.flags.incl nfDefaultRefsParam
   if sfDirty in s.flags:
     n[bodyPos] = semTemplBodyDirty(ctx, n[bodyPos])
   else:
