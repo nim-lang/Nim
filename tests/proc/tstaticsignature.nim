@@ -223,7 +223,7 @@ block: # issue #7547
   let z = initContainsFoo(5) # Error: undeclared identifier: 'N'
   doAssert z.Ffoo is int
 
-when false: # issue #22607, needs nkWhenStmt to be handled like nkRecWhen
+block: # issue #22607, needs nkWhenStmt to be handled like nkRecWhen
   proc test[x: static bool](
     t: (
       when x:

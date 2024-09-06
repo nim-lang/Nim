@@ -333,10 +333,47 @@ block: # issue #24044
   type MyBuf[I] = ArrayBuf[maxLen(I)]
   var v: MyBuf[int]
 
-when false: # issue #22342, type section version of #22607
+block: # issue #22342, type section version of #22607
   type GenAlias[isInt: static bool] = (
     when isInt:
       int
     else:
       float
   )
+  doAssert GenAlias[true] is int
+  doAssert GenAlias[false] is float
+  proc foo(T: static bool): GenAlias[T] = discard
+  doAssert foo(true) is int
+  doAssert foo(false) is float
+  proc foo[T: static bool](v: var GenAlias[T]) =
+    v += 1
+  var x: int
+  foo[true](x)
+  doAssert not compiles(foo[false](x))
+  foo[true](x)
+  doAssert x == 2
+  var y: float
+  foo[false](y)
+  doAssert not compiles(foo[true](y))
+  foo[false](y)
+  doAssert y == 2
+
+block: # `when`, test no constant semchecks
+  type Foo[T] = (
+    when false:
+      {.error: "bad".}
+    elif defined(neverDefined):
+      {.error: "bad 2".}
+    else:
+      T
+  )
+  var x: Foo[int]
+  type Bar[T] = (
+    when true:
+      T
+    elif defined(js):
+      {.error: "bad".}
+    else:
+      {.error: "bad 2".}
+  )
+  var y: Bar[int]
