@@ -894,8 +894,10 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         stackTrace(c, tos, pc, errNilAccess)
       elif dest[shiftedRb].kind == nkExprColonExpr:
         writeField(dest[shiftedRb][1], regs[rc])
+        dest[shiftedRb][1].flags.incl nfSkipFieldChecking
       else:
         writeField(dest[shiftedRb], regs[rc])
+        dest[shiftedRb].flags.incl nfSkipFieldChecking
     of opcWrStrIdx:
       decodeBC(rkNode)
       let idx = regs[rb].intVal.int

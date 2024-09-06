@@ -135,6 +135,13 @@ proc typeRel*(c: var TCandidate, f, aOrig: PType,
 
 proc matchGenericParam(m: var TCandidate, formal: PType, n: PNode) =
   var arg = n.typ
+  if m.c.inGenericContext > 0:
+    # don't match yet-unresolved generic instantiations
+    while arg != nil and arg.kind == tyGenericParam:
+      arg = idTableGet(m.bindings, arg)
+    if arg == nil or arg.containsGenericType:
+      m.state = csNoMatch
+      return
   # fix up the type to get ready to match formal:
   var formalBase = formal
   while formalBase.kind == tyGenericParam and

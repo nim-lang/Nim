@@ -3084,7 +3084,11 @@ proc hoistParamsUsedInDefault(c: PContext, call, letSection, defExpr: var PNode)
   # duty is activated by returning a non-nil value. The caller is responsible
   # for replacing the input to the function with the returned non-nil value.
   # (which is the hoisted symbol)
-  if defExpr.kind == nkSym and defExpr.sym.kind == skParam and defExpr.sym.owner == call[0].sym:
+  if defExpr.kind == nkSym and defExpr.sym.kind == skParam and
+      (defExpr.sym.owner == call[0].sym or
+        # symbol was resolved before proc was instantiated:
+        (sfFromGeneric in call[0].sym.flags and
+          defExpr.sym.owner == call[0].sym.instantiatedFrom)):
     let paramPos = defExpr.sym.position + 1
 
     if call[paramPos].skipAddr.kind != nkSym and not (
