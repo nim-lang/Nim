@@ -68,7 +68,7 @@ proc semArrGet(c: PContext; n: PNode; flags: TExprFlags): PNode =
   if result.isNil:
     let x = copyTree(n)
     x[0] = newIdentNode(getIdent(c.cache, "[]"), n.info)
-    bracketNotFoundError(c, x)
+    bracketNotFoundError(c, x, flags)
     #localError(c.config, n.info, "could not resolve: " & $n)
     result = errorNode(c, n)
 

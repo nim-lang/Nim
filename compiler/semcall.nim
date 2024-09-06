@@ -458,23 +458,6 @@ proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
       result.add("\n" & errExpectedPosition & "\n" & candidates)
     localError(c.config, n.info, result)
 
-proc bracketNotFoundError(c: PContext; n: PNode) =
-  var errors: CandidateErrors = @[]
-  var o: TOverloadIter = default(TOverloadIter)
-  let headSymbol = n[0]
-  var symx = initOverloadIter(o, c, headSymbol)
-  while symx != nil:
-    if symx.kind in routineKinds:
-      errors.add(CandidateError(sym: symx,
-                                firstMismatch: MismatchInfo(),
-                                diagnostics: @[],
-                                enabled: false))
-    symx = nextOverloadIter(o, c, headSymbol)
-  if errors.len == 0:
-    localError(c.config, n.info, "could not resolve: " & $n)
-  else:
-    notFoundError(c, n, errors)
-
 proc getMsgDiagnostic(c: PContext, flags: TExprFlags, n, f: PNode): string =
   result = ""
   if c.compilesContextId > 0:
@@ -602,6 +585,39 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
         getProcHeader(c.config, result.calleeSym),
         getProcHeader(c.config, alt.calleeSym),
         args])
+
+proc bracketNotFoundError(c: PContext; n: PNode; flags: TExprFlags) =
+  var errors: CandidateErrors = @[]
+  let headSymbol = n[0]
+  block:
+    # we build a closed symchoice of all `[]` overloads for their errors,
+    # except add a custom error for the magics which always match
+    var choice = newNodeIT(nkClosedSymChoice, headSymbol.info, newTypeS(tyNone, c))
+    var o: TOverloadIter = default(TOverloadIter)
+    var symx = initOverloadIter(o, c, headSymbol)
+    while symx != nil:
+      if symx.kind in routineKinds:
+        if symx.magic in {mArrGet, mArrPut}:
+          errors.add(CandidateError(sym: symx,
+                                    firstMismatch: MismatchInfo(),
+                                    diagnostics: @[],
+                                    enabled: false))
+        else:
+          choice.add newSymNode(symx, headSymbol.info)
+      symx = nextOverloadIter(o, c, headSymbol)
+    n[0] = choice
+  # copied from semOverloadedCallAnalyzeEffects, might be overkill:
+  const baseFilter = {skProc, skFunc, skMethod, skConverter, skMacro, skTemplate}
+  let filter =
+    if flags*{efInTypeof, efWantIterator, efWantIterable} != {}:
+      baseFilter + {skIterator}
+    else: baseFilter
+  # this will add the errors:
+  var r = resolveOverloads(c, n, n, filter, flags, errors, true)
+  if errors.len == 0:
+    localError(c.config, n.info, "could not resolve: " & $n)
+  else:
+    notFoundError(c, n, errors)
 
 proc instGenericConvertersArg*(c: PContext, a: PNode, x: TCandidate) =
   let a = if a.kind == nkHiddenDeref: a[0] else: a
