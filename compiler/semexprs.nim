@@ -1504,12 +1504,9 @@ proc tryReadingGenericParam(c: PContext, n: PNode, i: PIdent, t: PType): PNode =
       result.typ = makeTypeFromExpr(c, copyTree(result))
     else:
       result = nil
-  elif t.containsGenericType:
-    if c.inGenericContext > 0:
-      result = semGenericStmt(c, n)
-      result.typ = makeTypeFromExpr(c, copyTree(result))
-    else:
-      result = nil
+  elif c.inGenericContext > 0 and t.containsGenericType:
+    result = semGenericStmt(c, n)
+    result.typ = makeTypeFromExpr(c, copyTree(result))
   else:
     result = nil
 
