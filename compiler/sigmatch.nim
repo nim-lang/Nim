@@ -1927,8 +1927,10 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         elif c.isNoCall:
           if doBindGP:
             let concrete = concreteType(c, a, f)
-            if concrete == nil: return isNone
-            put(c, f, concrete)
+            if concrete != nil:
+              put(c, f, concrete)
+            elif c.c.inGenericContext == 0:
+              return isNone
           result = isGeneric
         else:
           result = isNone
@@ -1962,9 +1964,9 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
           # at least validating, bindings can have multiple benefits. This is debatable. I'm not 100% sure.
           # A design that allows a proper complexity analysis of types like `tyOr` would be ideal.
           concrete = concreteType(c, a, f)
-          if concrete == nil:
+          if concrete == nil and c.c.inGenericContext == 0:
             return isNone
-        if doBindGP:
+        if doBindGP and concrete != nil:
           put(c, f, concrete)
       elif result > isGeneric:
         result = isGeneric
