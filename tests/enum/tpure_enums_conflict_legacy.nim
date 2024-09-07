@@ -1,7 +1,3 @@
-discard """
-  matrix: "-d:testsConciseTypeMismatch"
-"""
-
 # bug #8066
 
 when true:
@@ -16,12 +12,14 @@ when true:
   echo valueA # MyEnum.valueA
   echo MyEnum.amb # OK.
   echo amb #[tt.Error
-  ^ type mismatch
-Expression: echo amb
-  [1] amb: MyEnum | OtherEnum
-
-Expected one of (first mismatch at [position]):
-[1] proc echo(x: varargs[typed, `$$`])
+  ^ type mismatch: got <MyEnum | OtherEnum>
+but expected one of:
+proc echo(x: varargs[typed, `$$`])
+  first type mismatch at position: 1
+  required type for x: varargs[typed]
+  but expression 'amb' is of type: None
   ambiguous identifier: 'amb' -- use one of the following:
     MyEnum.amb: MyEnum
-    OtherEnum.amb: OtherEnum]#
+    OtherEnum.amb: OtherEnum
+
+expression: echo amb]#
