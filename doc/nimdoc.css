@@ -660,6 +660,9 @@ table {
   border-collapse: collapse;
   border-color: var(--third-background);
   border-spacing: 0;
+}
+
+table:not(.line-nums-table) {
   font-size: 0.9em;
 }
 
