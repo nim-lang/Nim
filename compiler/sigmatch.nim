@@ -485,6 +485,7 @@ proc concreteType(c: TCandidate, t: PType; f: PType = nil): PType =
     else: result = t
   of tyGenericParam, tyAnything, tyConcept:
     result = t
+    if c.isNoCall: return
     while true:
       result = idTableGet(c.bindings, t)
       if result == nil:
@@ -1927,10 +1928,8 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         elif c.isNoCall:
           if doBindGP:
             let concrete = concreteType(c, a, f)
-            if concrete != nil:
-              put(c, f, concrete)
-            elif c.c.inGenericContext == 0:
-              return isNone
+            if concrete == nil: return isNone
+            put(c, f, concrete)
           result = isGeneric
         else:
           result = isNone
@@ -1964,9 +1963,9 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
           # at least validating, bindings can have multiple benefits. This is debatable. I'm not 100% sure.
           # A design that allows a proper complexity analysis of types like `tyOr` would be ideal.
           concrete = concreteType(c, a, f)
-          if concrete == nil and c.c.inGenericContext == 0:
+          if concrete == nil:
             return isNone
-        if doBindGP and concrete != nil:
+        if doBindGP:
           put(c, f, concrete)
       elif result > isGeneric:
         result = isGeneric
