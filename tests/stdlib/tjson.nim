@@ -180,10 +180,10 @@ block test_tuple:
     test_tuple_anon: tuple = (10, "foo") #tuple without field names = anonymous tuple
 
   doAssert $(% test_tuple_named) == """{"a1":10,"a2":"foo"}"""
-  doAssert $(% test_tuple_anon) == """{"Field0":10,"Field1":"foo"]"""
+  doAssert $(% test_tuple_anon) == """{"Field0":10,"Field1":"foo"}"""
 
   doAssert $(%* test_tuple_named) == """{"a1":10,"a2":"foo"}"""
-  doAssert $(%* test_tuple_anon) == """{"Field0":10,"Field1":"foo"]"""
+  doAssert $(%* test_tuple_anon) == """{"Field0":10,"Field1":"foo"}"""
 
 
 
