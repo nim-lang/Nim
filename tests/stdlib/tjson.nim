@@ -174,16 +174,16 @@ doAssert($ %*[] == "[]")
 doAssert($ %*{} == "{}")
 
 #issue #24082 for more info
-block test_tuple:
+block testTuple:
   let 
-    test_tuple_named: tuple = (a1: 10, a2: "foo") #tuple with field names = named tuple
-    test_tuple_anon: tuple = (10, "foo") #tuple without field names = anonymous tuple
+    testTupleNamed: tuple = (a1: 10, a2: "foo") #tuple with field names = named tuple
+    testTupleAnon: tuple = (10, "foo") #tuple without field names = anonymous tuple
 
-  doAssert $(% test_tuple_named) == """{"a1":10,"a2":"foo"}"""
-  doAssert $(% test_tuple_anon) == """{"Field0":10,"Field1":"foo"}"""
+  doAssert $(% testTupleNamed) == """{"a1":10,"a2":"foo"}"""
+  doAssert $(% testTupleAnon) == """{"Field0":10,"Field1":"foo"}"""
 
-  doAssert $(%* test_tuple_named) == """{"a1":10,"a2":"foo"}"""
-  doAssert $(%* test_tuple_anon) == """{"Field0":10,"Field1":"foo"}"""
+  doAssert $(%* testTupleNamed) == """{"a1":10,"a2":"foo"}"""
+  doAssert $(%* testTupleAnon) == """{"Field0":10,"Field1":"foo"}"""
 
 
 
