@@ -235,3 +235,18 @@ block: # issue #22607, needs nkWhenStmt to be handled like nkRecWhen
   test[true](1.int)
   test[false](1.0)
   doAssert not compiles(test[])
+
+block: # `when` in static signature
+  template ctAnd(a, b): bool =
+    when a:
+      when b: true
+      else: false
+    else: false
+  template test(): untyped =
+    when ctAnd(declared(SharedTable), typeof(result) is SharedTable):
+      result = SharedTable()
+    else:
+      result = 123
+  proc foo[T](): T = test()
+  proc bar[T](x = foo[T]()): T = x
+  doAssert bar[int]() == 123
