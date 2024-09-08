@@ -283,4 +283,7 @@ block:
   proc foo[I: static int](x: array[I, int]) = discard
   foo([1, 2, 3, 4])
   proc bar[I: static int](x: array[I * 2, int]) = discard
-  foo([1, 2, 3, 4])
+  bar([1, 2, 3, 4])
+  proc double(x: int): int = x * 2
+  proc baz[I: static int](x: array[double(I), int]) = discard
+  doAssert not compiles(baz([1, 2, 3, 4]))
