@@ -53,6 +53,8 @@ proc semTypeOf(c: PContext; n: PNode): PNode =
   let typExpr = semExprWithType(c, n[1], if m == 1: {efInTypeof} else: {})
   dec c.inTypeofContext
   result.add typExpr
+  if typExpr.typ.kind == tyFromExpr:
+    typExpr.typ.flags.incl tfNonConstExpr
   result.typ = makeTypeDesc(c, typExpr.typ)
 
 type
@@ -68,6 +70,15 @@ proc semArrGet(c: PContext; n: PNode; flags: TExprFlags): PNode =
   if result.isNil:
     let x = copyTree(n)
     x[0] = newIdentNode(getIdent(c.cache, "[]"), n.info)
+    if c.inGenericContext > 0:
+      for i in 0..<n.len:
+        let a = n[i]
+        if a.typ != nil and a.typ.kind in {tyGenericParam, tyFromExpr}:
+          # expression is compiled early in a generic body
+          result = semGenericStmt(c, x)
+          result.typ = makeTypeFromExpr(c, copyTree(result))
+          result.typ.flags.incl tfNonConstExpr
+          return
     bracketNotFoundError(c, x, flags)
     #localError(c.config, n.info, "could not resolve: " & $n)
     result = errorNode(c, n)

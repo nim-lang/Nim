@@ -1504,12 +1504,9 @@ proc tryReadingGenericParam(c: PContext, n: PNode, i: PIdent, t: PType): PNode =
       result.typ = makeTypeFromExpr(c, copyTree(result))
     else:
       result = nil
-  elif t.containsGenericType:
-    if c.inGenericContext > 0:
-      result = semGenericStmt(c, n)
-      result.typ = makeTypeFromExpr(c, copyTree(result))
-    else:
-      result = nil
+  elif c.inGenericContext > 0 and t.containsGenericType:
+    result = semGenericStmt(c, n)
+    result.typ = makeTypeFromExpr(c, copyTree(result))
   else:
     result = nil
 
@@ -2709,7 +2706,6 @@ proc semWhen(c: PContext, n: PNode, semCheck = true): PNode =
           elif not cannotResolve and val.intVal != 0 and result == nil:
             setResult(it[1])
             return # we're not in nimvm and we already have a result
-        it[1] = semGenericStmt(c, it[1])
       else:
         let e = forceBool(c, semConstExpr(c, it[0]))
         if e.kind != nkIntLit:
@@ -2722,7 +2718,7 @@ proc semWhen(c: PContext, n: PNode, semCheck = true): PNode =
     of nkElse, nkElseExpr:
       checkSonsLen(it, 1, c.config)
       if cannotResolve:
-        it[0] = semGenericStmt(c, it[0])
+        discard
       elif result == nil or whenNimvm:
         if semCheck:
           it[0] = semExpr(c, it[0], flags)
@@ -2733,7 +2729,7 @@ proc semWhen(c: PContext, n: PNode, semCheck = true): PNode =
           result = it[0]
     else: illFormedAst(n, c.config)
   if cannotResolve:
-    result = n
+    result = semGenericStmt(c, n)
     result.typ = makeTypeFromExpr(c, result.copyTree)
     return
   if result == nil:
