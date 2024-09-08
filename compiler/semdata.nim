@@ -123,7 +123,7 @@ type
     patterns*: seq[PSym]       # sequence of pattern matchers
     optionStack*: seq[POptionEntry]
     libs*: seq[PLib]           # all libs used by this module
-    semConstExpr*: proc (c: PContext, n: PNode; expectedType: PType = nil): PNode {.nimcall.} # for the pragmas
+    semConstExpr*: proc (c: PContext, n: PNode; expectedType: PType = nil, owner: PSym = nil): PNode {.nimcall.} # for the pragmas
     semExpr*: proc (c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType = nil): PNode {.nimcall.}
     semExprWithType*: proc (c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType = nil): PNode {.nimcall.}
     semTryExpr*: proc (c: PContext, n: PNode, flags: TExprFlags = {}): PNode {.nimcall.}

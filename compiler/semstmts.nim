@@ -960,6 +960,9 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
           globalVarInitCheck(c, def)
         suggestSym(c.graph, v.info, v, c.graph.usageSym)
 
+proc makeStaticOwner(c: PContext, name: PIdent, info: TLineInfo): PSym =
+  result = newSym(skLabel, name, c.idgen, getCurrOwner(c), info)
+
 proc semConst(c: PContext, n: PNode): PNode =
   result = copyNode(n)
   inc c.inStaticContext
@@ -984,8 +987,16 @@ proc semConst(c: PContext, n: PNode): PNode =
 
     var typFlags: TTypeAllowedFlags = {}
 
-    # don't evaluate here since the type compatibility check below may add a converter
+    var nameNode = a[0]
+    if nameNode.kind == nkPragmaExpr: nameNode = nameNode[0]
+    if nameNode.kind == nkPostfix: nameNode = nameNode[1]
+    var name = nameNode.getPIdent
+    if name == nil: name = c.cache.getIdent(":const")
+    let owner = makeStaticOwner(c, name, a.info)
+    pushOwner(c, owner)
     openScope(c)
+
+    # don't evaluate here since the type compatibility check below may add a converter
     var def = semExprWithType(c, a[^1], {efTypeAllowed}, typ)
 
     if def.kind == nkSym and def.sym.kind in {skTemplate, skMacro}:
@@ -1004,7 +1015,7 @@ proc semConst(c: PContext, n: PNode): PNode =
       typ = def.typ
 
     # evaluate the node
-    def = semConstExpr(c, def)
+    def = semConstExpr(c, def, owner = owner)
     if def == nil:
       localError(c.config, a[^1].info, errConstExprExpected)
       continue
@@ -1012,7 +1023,9 @@ proc semConst(c: PContext, n: PNode): PNode =
       if c.matchedConcept != nil:
         typFlags.incl taConcept
       typeAllowedCheck(c, a.info, typ, skConst, typFlags)
+
     closeScope(c)
+    popOwner(c)
 
     if a.kind == nkVarTuple:
       # generate new section from tuple unpacking and embed it into this one
@@ -2794,12 +2807,15 @@ proc semStaticStmt(c: PContext, n: PNode): PNode =
   #echo "semStaticStmt"
   #writeStackTrace()
   inc c.inStaticContext
+  let owner = makeStaticOwner(c, c.cache.getIdent(":static"), n.info)
+  pushOwner(c, owner)
   openScope(c)
   let a = semStmt(c, n[0], {})
   closeScope(c)
+  popOwner(c)
   dec c.inStaticContext
   n[0] = a
-  evalStaticStmt(c.module, c.idgen, c.graph, a, c.p.owner)
+  evalStaticStmt(c.module, c.idgen, c.graph, a, owner)
   when false:
     # for incremental replays, keep the AST as required for replays:
     result = n
