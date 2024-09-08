@@ -997,7 +997,6 @@ proc maybeSkipDistinct(m: TCandidate; t: PType, callee: PSym): PType =
     result = t
 
 proc tryResolvingStaticExpr(c: var TCandidate, n: PNode,
-                            allowUnresolved = false,
                             allowCalls = false,
                             expectedType: PType = nil): PNode =
   # Consider this example:
@@ -1006,8 +1005,7 @@ proc tryResolvingStaticExpr(c: var TCandidate, n: PNode,
   # Here, N-1 will be initially nkStaticExpr that can be evaluated only after
   # N is bound to a concrete value during the matching of the first param.
   # This proc is used to evaluate such static expressions.
-  let instantiated = replaceTypesInBody(c.c, c.bindings, n, nil,
-                                        allowMetaTypes = allowUnresolved)
+  let instantiated = replaceTypesInBody(c.c, c.bindings, n, nil)
   if not allowCalls and instantiated.kind in nkCallKinds:
     return nil
   result = c.c.semExpr(c.c, instantiated)
@@ -1101,10 +1099,8 @@ proc failureToInferStaticParam(conf: ConfigRef; n: PNode) =
 
 proc inferStaticsInRange(c: var TCandidate,
                          inferred, concrete: PType): TTypeRelation =
-  let lowerBound = tryResolvingStaticExpr(c, inferred.n[0],
-                                          allowUnresolved = true)
-  let upperBound = tryResolvingStaticExpr(c, inferred.n[1],
-                                          allowUnresolved = true)
+  let lowerBound = tryResolvingStaticExpr(c, inferred.n[0], allowCalls = true)
+  let upperBound = tryResolvingStaticExpr(c, inferred.n[1], allowCalls = true)
   template doInferStatic(e: PNode, r: Int128) =
     var exp = e
     var rhs = r
