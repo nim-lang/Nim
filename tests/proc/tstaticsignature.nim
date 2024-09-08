@@ -279,3 +279,8 @@ block: # issue #19923
   var z: array[x.S * 8, int]
   run(x, z)
 
+block:
+  proc foo[I: static int](x: array[I, int]) = discard
+  foo([1, 2, 3, 4])
+  proc bar[I: static int](x: array[I * 2, int]) = discard
+  foo([1, 2, 3, 4])

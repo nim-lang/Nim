@@ -1082,7 +1082,9 @@ proc inferStaticParam*(c: var TCandidate, lhs: PNode, rhs: BiggestInt): bool =
       (lhs.typ.n == nil or lookup(c.bindings, lhs.typ) == nil):
     var inferred = newTypeS(tyStatic, c.c, lhs.typ.elementType)
     inferred.n = newIntNode(nkIntLit, rhs)
-    put(c, lhs.typ, inferred)
+    # lhs.typ might be instantiated copy, use original type instead,
+    # obtained from type sym:
+    put(c, lhs.typ.sym.typ, inferred)
     if c.c.matchedConcept != nil:
       # inside concepts, binding is currently done with
       # direct mutation of the involved types:
