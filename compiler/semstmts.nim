@@ -905,6 +905,8 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
           v.hasUserSpecifiedType = hasUserSpecifiedType
         styleCheckDef(c, v)
         onDef(a[j].info, v)
+        if c.localOwner != nil:
+          v.instantiatedFrom = c.localOwner
         if sfGenSym notin v.flags:
           if not isDiscardUnderscore(v): addInterfaceDecl(c, v)
         else:
@@ -993,7 +995,8 @@ proc semConst(c: PContext, n: PNode): PNode =
     var name = nameNode.getPIdent
     if name == nil: name = c.cache.getIdent(":const")
     let owner = makeStaticOwner(c, name, a.info)
-    pushOwner(c, owner)
+    let oldOwner = c.localOwner
+    c.localOwner = owner
     openScope(c)
 
     # don't evaluate here since the type compatibility check below may add a converter
@@ -1025,7 +1028,7 @@ proc semConst(c: PContext, n: PNode): PNode =
       typeAllowedCheck(c, a.info, typ, skConst, typFlags)
 
     closeScope(c)
-    popOwner(c)
+    c.localOwner = oldOwner
 
     if a.kind == nkVarTuple:
       # generate new section from tuple unpacking and embed it into this one
@@ -2808,11 +2811,12 @@ proc semStaticStmt(c: PContext, n: PNode): PNode =
   #writeStackTrace()
   inc c.inStaticContext
   let owner = makeStaticOwner(c, c.cache.getIdent(":static"), n.info)
-  pushOwner(c, owner)
+  let oldOwner = c.localOwner
+  c.localOwner = owner
   openScope(c)
   let a = semStmt(c, n[0], {})
   closeScope(c)
-  popOwner(c)
+  c.localOwner = oldOwner
   dec c.inStaticContext
   n[0] = a
   evalStaticStmt(c.module, c.idgen, c.graph, a, owner)
