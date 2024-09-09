@@ -397,3 +397,15 @@ block: # `when`, test no constant semchecks
       {.error: "bad 2".}
   )
   var y: Bar[int]
+
+block: # weird regression
+  type
+    Foo[T] = distinct int
+    Bar[T, U] = distinct int
+  proc foo[T, U](x: static Foo[T], y: static Bar[T, U]): Foo[T] =
+    # signature gives:
+    # Error: cannot instantiate Bar
+    # got: <typedesc[T], U>
+    # but expected: <T, U>
+    x
+  doAssert foo(Foo[int](1), Bar[int, int](2)).int == 1
