@@ -357,7 +357,9 @@ proc `%`*(keyVals: openArray[tuple[key: string, val: JsonNode]]): JsonNode =
 
 template `%`*(j: JsonNode): JsonNode = j
 
-proc `%`*[T](elements: openArray[T]): JsonNode =
+#Disallow tuples inside the array to avoid something like %{"test":"test1"} to get converted to [{"Field0":"test","Field1":"test1"}]. 
+#See issue #24082
+proc `%`*[T: not tuple](elements: openArray[T]): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JArray JsonNode`
   result = newJArray()
   for elem in elements: result.add(%elem)
