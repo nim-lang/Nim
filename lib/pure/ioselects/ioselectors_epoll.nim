@@ -47,6 +47,9 @@ proc eventfd(count: cuint, flags: cint): cint
 when not defined(android):
   proc signalfd(fd: cint, mask: var Sigset, flags: cint): cint
        {.cdecl, importc: "signalfd", header: "<sys/signalfd.h>".}
+  proc syscall(number: clong): cint
+       {.varargs, cdecl, importc: "syscall", header: "<sys/syscall.h>".}
+  let SYS_pidfd_open{.importc, header:"<sys/syscall.h>", nodecl.}:clong
 
 when hasThreadSupport:
   type
@@ -229,11 +232,6 @@ proc unregister*[T](s: Selector[T], fd: int|SocketHandle) =
           var epv = EpollEvent()
           if epoll_ctl(s.epollFD, EPOLL_CTL_DEL, fdi.cint, addr epv) != 0:
             raiseIOSelectorsError(osLastError())
-          var nmask, omask: Sigset
-          discard sigemptyset(nmask)
-          discard sigemptyset(omask)
-          discard sigaddset(nmask, SIGCHLD)
-          unblockSignals(nmask, omask)
           dec(s.count)
         if posix.close(cint(fdi)) != 0:
           raiseIOSelectorsError(osLastError())
@@ -331,16 +329,7 @@ when not defined(android):
 
   proc registerProcess*[T](s: Selector, pid: int,
                            data: T): int {.discardable.} =
-    var
-      nmask: Sigset
-      omask: Sigset
-
-    discard sigemptyset(nmask)
-    discard sigemptyset(omask)
-    discard sigaddset(nmask, posix.SIGCHLD)
-    blockSignals(nmask, omask)
-
-    let fdi = signalfd(-1, nmask, O_CLOEXEC or O_NONBLOCK).int
+    let fdi = syscall(SYS_pidfd_open, pid, 0).int
     if fdi == -1:
       raiseIOSelectorsError(osLastError())
 
@@ -428,15 +417,7 @@ proc selectInto*[T](s: Selector[T], timeout: int,
               raiseIOSelectorsError(osLastError())
             rkey.events.incl(Event.Signal)
           elif Event.Process in pkey.events:
-            var data = SignalFdInfo()
-            if posix.read(cint(fdi), addr data,
-                          sizeof(SignalFdInfo)) != sizeof(SignalFdInfo):
-              raiseIOSelectorsError(osLastError())
-            if cast[int](data.ssi_pid) == pkey.param:
-              rkey.events.incl(Event.Process)
-            else:
-              inc(i)
-              continue
+            rkey.events.incl(Event.Process)
           elif Event.User in pkey.events:
             var data: uint64 = 0
             if posix.read(cint(fdi), addr data,
