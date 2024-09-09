@@ -19,6 +19,8 @@
 
 - JS backend now supports lambda lifting for closures. Use `--legacy:jsNoLambdaLifting` to emulate old behavior.
 
+- JS backend now supports closure iterators.
+
 - `owner` in `std/macros` is deprecated.
 
 - Ambiguous type symbols in generic procs and templates now generate symchoice nodes.
@@ -50,6 +52,7 @@
   const bar = a # error
   let baz = a # error
   ```
+
 
 ## Standard library additions and changes
 

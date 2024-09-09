@@ -2350,8 +2350,14 @@ when notJSnotNims:
     `result` = `x`.ClE_0;
     """.}
 
-  proc finished*[T: iterator {.closure.}](x: T): bool {.noSideEffect, inline, magic: "Finished".} =
-    ## It can be used to determine if a first class iterator has finished.
+proc finished*[T: iterator {.closure.}](x: T): bool {.noSideEffect, inline, magic: "Finished".} =
+  ## It can be used to determine if a first class iterator has finished.
+  when defined(js):
+    # TODO: mangle `:state`
+    {.emit: """
+    `result` = (`x`.ClE_0).HEX3Astate < 0;
+    """.}
+  else:
     {.emit: """
     `result` = ((NI*) `x`.ClE_0)[1] < 0;
     """.}
