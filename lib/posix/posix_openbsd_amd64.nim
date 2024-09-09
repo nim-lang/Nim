@@ -131,7 +131,11 @@ type
     ## used for block sizes
   Clock* {.importc: "clock_t", header: "<sys/types.h>".} = int
   ClockId* {.importc: "clockid_t", header: "<sys/types.h>".} = int
-  Dev* {.importc: "dev_t", header: "<sys/types.h>".} = int32
+  Dev* {.importc: "dev_t", header: "<sys/types.h>".} = (
+    when defined(freebsd):
+      uint32
+    else:
+      int32)
   Fsblkcnt* {.importc: "fsblkcnt_t", header: "<sys/types.h>".} = int
   Fsfilcnt* {.importc: "fsfilcnt_t", header: "<sys/types.h>".} = int
   Gid* {.importc: "gid_t", header: "<sys/types.h>".} = uint32
@@ -139,7 +143,7 @@ type
   Ino* {.importc: "ino_t", header: "<sys/types.h>".} = int
   Key* {.importc: "key_t", header: "<sys/types.h>".} = int
   Mode* {.importc: "mode_t", header: "<sys/types.h>".} = uint32
-  Nlink* {.importc: "nlink_t", header: "<sys/types.h>".} = int16
+  Nlink* {.importc: "nlink_t", header: "<sys/types.h>".} = uint32
   Off* {.importc: "off_t", header: "<sys/types.h>".} = int64
   Pid* {.importc: "pid_t", header: "<sys/types.h>".} = int32
   Pthread_attr* {.importc: "pthread_attr_t", header: "<pthread.h>".} = int
