@@ -41,6 +41,16 @@
   bar[int]() # before: (1.0, "abc"), now: type mismatch, missing generic parameter
   ```
 
+- `const` values now open a new scope for each constant, meaning symbols
+  declared in them can no longer be used outside or in the value of
+  other constants.
+
+  ```nim
+  const foo = (var a = 1; a)
+  const bar = a # error
+  let baz = a # error
+  ```
+
 ## Standard library additions and changes
 
 [//]: # "Changes:"
