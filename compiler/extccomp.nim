@@ -429,8 +429,7 @@ proc execWithEcho(conf: ConfigRef; cmd: string, msg = hintExecuting): int =
 
 proc execExternalProgram*(conf: ConfigRef; cmd: string, msg = hintExecuting) =
   if execWithEcho(conf, cmd, msg) != 0:
-    rawMessage(conf, errGenerated, "execution of an external program failed: '$1'" %
-      cmd)
+    rawMessage(conf, errGenerated, "execution of an external program failed: '$1'" % cmd)
 
 proc generateScript(conf: ConfigRef; script: Rope) =
   let (_, name, _) = splitFile(conf.outFile.string)
@@ -525,7 +524,7 @@ proc useCpp(conf: ConfigRef; cfile: AbsoluteFile): bool =
   # List of possible file extensions taken from gcc
   for ext in [".C", ".cc", ".cpp", ".CPP", ".c++", ".cp", ".cxx"]:
     if cfile.string.endsWith(ext): return true
-  false
+  return false
 
 proc envFlags(conf: ConfigRef): string =
   result = if conf.backend == backendCpp:
@@ -813,7 +812,7 @@ proc execLinkCmd(conf: ConfigRef; linkCmd: string) =
     execExternalProgram(conf, linkCmd, hintLinking)
 
 proc execCmdsInParallel(conf: ConfigRef; cmds: seq[string]; prettyCb: proc (idx: int)) =
-  let runCb = proc (idx: int, p: Process) =
+  let runCb = proc (idx: int; p: Process) =
     let exitCode = p.peekExitCode
     if exitCode != 0:
       rawMessage(conf, errGenerated, "execution of an external compiler program '" &
@@ -831,10 +830,9 @@ proc execCmdsInParallel(conf: ConfigRef; cmds: seq[string]; prettyCb: proc (idx:
     tryExceptOSErrorMessage(conf, "invocation of external compiler program failed."):
       res = execProcesses(cmds, {poStdErrToStdOut, poUsePath, poParentStreams},
                             conf.numberOfProcessors, prettyCb, afterRunEvent=runCb)
-  if res != 0:
-    if conf.numberOfProcessors <= 1:
-      rawMessage(conf, errGenerated, "execution of an external program failed: '$1'" %
-        cmds.join())
+  if res != 0 and conf.numberOfProcessors <= 1:
+    rawMessage(conf, errGenerated, "execution of an external program failed: '$1'" %
+      cmds.join())
 
 proc linkViaResponseFile(conf: ConfigRef; cmd: string) =
   # Extracting the linker.exe here is a bit hacky but the best solution
@@ -908,15 +906,14 @@ proc preventLinkCmdMaxCmdLen(conf: ConfigRef, linkCmd: string) =
 
 proc callCCompiler*(conf: ConfigRef) =
   var
-    linkCmd: string = ""
-    extraCmds: seq[string]
+    linkCmd = ""
   if conf.globalOptions * {optCompileOnly, optGenScript} == {optCompileOnly}:
     return # speed up that call if only compiling and no script shall be
            # generated
   #var c = cCompiler
-  var script: Rope = ""
-  var cmds: TStringSeq = default(TStringSeq)
-  var prettyCmds: TStringSeq = default(TStringSeq)
+  var script = ""
+  var cmds = default(TStringSeq)
+  var prettyCmds = default(TStringSeq)
   let prettyCb = proc (idx: int) = writePrettyCmdsStderr(prettyCmds[idx])
 
   for idx, it in conf.toCompile:
@@ -980,7 +977,7 @@ proc callCCompiler*(conf: ConfigRef) =
                        else: AbsoluteFile(conf.outFile)
 
       linkCmd = getLinkCmd(conf, mainOutput, objfiles, removeStaticFile = true)
-      extraCmds = getExtraCmds(conf, mainOutput)
+      let extraCmds = getExtraCmds(conf, mainOutput)
       if optCompileOnly notin conf.globalOptions:
         preventLinkCmdMaxCmdLen(conf, linkCmd)
         for cmd in extraCmds:
@@ -1001,21 +998,23 @@ proc jsonBuildInstructionsFile*(conf: ConfigRef): AbsoluteFile =
   result = getNimcacheDir(conf) / conf.outFile.changeFileExt("json")
 
 const cacheVersion = "D20210525T193831" # update when `BuildCache` spec changes
-type BuildCache = object
-  cacheVersion: string
-  outputFile: string
-  compile: seq[(string, string)]
-  link: seq[string]
-  linkcmd: string
-  extraCmds: seq[string]
-  configFiles: seq[string] # the hash shouldn't be needed
-  stdinInput: bool
-  projectIsCmd: bool
-  cmdInput: string
-  currentDir: string
-  cmdline: string
-  depfiles: seq[(string, string)]
-  nimexe: string
+
+type
+  BuildCache = object
+    cacheVersion: string
+    outputFile: string
+    compile: seq[(string, string)]
+    link: seq[string]
+    linkcmd: string
+    extraCmds: seq[string]
+    configFiles: seq[string] # the hash shouldn't be needed
+    stdinInput: bool
+    projectIsCmd: bool
+    cmdInput: string
+    currentDir: string
+    cmdline: string
+    depfiles: seq[(string, string)]
+    nimexe: string
 
 proc writeJsonBuildInstructions*(conf: ConfigRef; deps: StringTableRef) =
   var linkFiles = collect(for it in conf.externalToLink:
@@ -1053,8 +1052,9 @@ proc writeJsonBuildInstructions*(conf: ConfigRef; deps: StringTableRef) =
 proc changeDetectedViaJsonBuildInstructions*(conf: ConfigRef; jsonFile: AbsoluteFile): bool =
   result = false
   if not fileExists(jsonFile) or not fileExists(conf.absOutFile): return true
-  var bcache: BuildCache = default(BuildCache)
-  try: bcache.fromJson(jsonFile.string.parseFile)
+  var bcache = default(BuildCache)
+  try:
+    bcache.fromJson(jsonFile.string.parseFile)
   except IOError, OSError, ValueError:
     stderr.write "Warning: JSON processing failed for: $#\n" % jsonFile.string
     return true
@@ -1062,15 +1062,17 @@ proc changeDetectedViaJsonBuildInstructions*(conf: ConfigRef; jsonFile: Absolute
      bcache.configFiles != conf.configFiles.mapIt(it.string) or
      bcache.cacheVersion != cacheVersion or bcache.outputFile != conf.absOutFile.string or
      bcache.cmdline != conf.commandLine or bcache.nimexe != hashNimExe() or
-     bcache.projectIsCmd != conf.projectIsCmd or conf.cmdInput != bcache.cmdInput: return true
+     bcache.projectIsCmd != conf.projectIsCmd or conf.cmdInput != bcache.cmdInput:
+      return true
   if bcache.stdinInput or conf.projectIsStdin: return true
     # xxx optimize by returning false if stdin input was the same
   for (file, hash) in bcache.depfiles:
     if $secureHashFile(file) != hash: return true
 
 proc runJsonBuildInstructions*(conf: ConfigRef; jsonFile: AbsoluteFile) =
-  var bcache: BuildCache = default(BuildCache)
-  try: bcache.fromJson(jsonFile.string.parseFile)
+  var bcache = default(BuildCache)
+  try:
+    bcache.fromJson(jsonFile.string.parseFile)
   except ValueError, KeyError, JsonKindError:
     let e = getCurrentException()
     conf.quitOrRaise "\ncaught exception:\n$#\nstacktrace:\n$#error evaluating JSON file: $#" %
@@ -1082,8 +1084,8 @@ proc runJsonBuildInstructions*(conf: ConfigRef; jsonFile: AbsoluteFile) =
     globalError(conf, gCmdLineInfo,
       "jsonscript command outputFile '$1' must match '$2' which was specified during --compileOnly, see \"outputFile\" entry in '$3' " %
       [outputCurrent, output, jsonFile.string])
-  var cmds: TStringSeq = default(TStringSeq)
-  var prettyCmds: TStringSeq= default(TStringSeq)
+  var cmds = default(TStringSeq)
+  var prettyCmds = default(TStringSeq)
   let prettyCb = proc (idx: int) = writePrettyCmdsStderr(prettyCmds[idx])
   for (name, cmd) in bcache.compile:
     cmds.add cmd
@@ -1106,7 +1108,7 @@ proc writeMapping*(conf: ConfigRef; symbolMapping: Rope) =
 
   code.add("\n[Linker]\nFlags=")
   code.add(strutils.escape(getLinkOptions(conf) & " " &
-                            getConfigVar(conf, conf.cCompiler, ".options.linker")))
+                           getConfigVar(conf, conf.cCompiler, ".options.linker")))
 
   code.add("\n[Environment]\nlibpath=")
   code.add(strutils.escape(conf.libpath.string))
