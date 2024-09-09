@@ -401,6 +401,8 @@ proc `[]=`*(obj: JsonNode, key: string, val: JsonNode) {.inline.} =
 
 proc `%`*[T: object | tuple](o: T): JsonNode =
   ## Construct JsonNode from tuples and objects.
+  ## If passed an anonymous tuple, creates `JArray JsonNode`,
+  ## otherwise (named tuples and objects) `JObject JsonNode`.
   when T is object or isNamedTuple(T):
     result = newJObject()
     for k, v in a.fieldPairs: result[k] = toJson(v, opt)
