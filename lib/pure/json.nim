@@ -405,7 +405,7 @@ proc `%`*[T: object | tuple](o: T): JsonNode =
   ## otherwise (named tuples and objects) `JObject JsonNode`.
   when T is object or isNamedTuple(T):
     result = newJObject()
-    for k, v in o.fieldPairs: result[k] = %(v)
+    for k, v in o.fieldPairs: result[k] = %v
   else:
     result = newJArray()
     for v in o.fields: result.add(%v)
