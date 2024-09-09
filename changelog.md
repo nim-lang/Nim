@@ -50,6 +50,12 @@
   const bar = a # error
   let baz = a # error
   ```
+- The following POSIX wrappers have had their type changed from `int32` to
+  `uint32` on OSX and FreeBSD/OpenBSD to correct codegen errors:
+  - `Gid`
+  - `Uid`
+  - `sin6_flowinfo` and `sin6_scope_id` fields of `Sockaddr_in6`
+  - `n_net` field of `Tnetent`
 
 ## Standard library additions and changes
 
