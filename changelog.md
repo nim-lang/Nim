@@ -50,13 +50,15 @@
   const bar = a # error
   let baz = a # error
   ```
-- The following POSIX wrappers have had their type changed from `int32` to
-  `uint32` on OSX and FreeBSD/OpenBSD to correct codegen errors:
-  - `Gid`
-  - `Uid`
+- The following POSIX wrappers have had their types changed from signed to
+  unsigned types on OSX and FreeBSD/OpenBSD to correct codegen errors:
+  - `Gid` (was `int32`, is now `uint32`)
+  - `Uid` (was `int32`, is now `uint32`)
+  - `Dev` (was `int32`, is now `uint32` on FreeBSD)
   - `Nlink` (was `int16`, is now `uint32` on OpenBSD and `uint16` on OSX/other BSD)
   - `sin6_flowinfo` and `sin6_scope_id` fields of `Sockaddr_in6`
-  - `n_net` field of `Tnetent`
+    (were `int32`, are now `uint32`)
+  - `n_net` field of `Tnetent` (was `int32`, is now `uint32`)
 
 ## Standard library additions and changes
 
