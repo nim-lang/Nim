@@ -110,10 +110,10 @@ proc genVarTuple(p: BProc, n: PNode) =
       initLocalVar(p, v, immediateAsgn=isAssignedImmediately(p.config, n[^1]))
     var field = initLoc(locExpr, vn, tup.storage)
     if t.kind == tyTuple:
-      field.r = "$1.Field$2" % [rdLoc(tup), rope(i)]
+      field.snippet = "$1.Field$2" % [rdLoc(tup), rope(i)]
     else:
       if t.n[i].kind != nkSym: internalError(p.config, n.info, "genVarTuple")
-      field.r = "$1.$2" % [rdLoc(tup), mangleRecFieldName(p.module, t.n[i].sym)]
+      field.snippet = "$1.$2" % [rdLoc(tup), mangleRecFieldName(p.module, t.n[i].sym)]
     putLocIntoDest(p, v.loc, field)
     if forHcr or isGlobalInBlock:
       hcrGlobals.add((loc: v.loc, tp: "NULL"))
@@ -128,7 +128,7 @@ proc genVarTuple(p: BProc, n: PNode) =
     lineCg(p, cpsLocals, "NIM_BOOL $1 = NIM_FALSE;$n", [hcrCond])
     for curr in hcrGlobals:
       lineCg(p, cpsLocals, "$1 |= hcrRegisterGlobal($4, \"$2\", sizeof($3), $5, (void**)&$2);$N",
-              [hcrCond, curr.loc.r, rdLoc(curr.loc), getModuleDllPath(p.module, n[0].sym), curr.tp])
+              [hcrCond, curr.loc.snippet, rdLoc(curr.loc), getModuleDllPath(p.module, n[0].sym), curr.tp])
 
 
 proc loadInto(p: BProc, le, ri: PNode, a: var TLoc) {.inline.} =
@@ -267,11 +267,11 @@ proc genBreakState(p: BProc, n: PNode, d: var TLoc) =
 
   if n[0].kind == nkClosure:
     a = initLocExpr(p, n[0][1])
-    d.r = "(((NI*) $1)[1] < 0)" % [rdLoc(a)]
+    d.snippet = "(((NI*) $1)[1] < 0)" % [rdLoc(a)]
   else:
     a = initLocExpr(p, n[0])
     # the environment is guaranteed to contain the 'state' field at offset 1:
-    d.r = "((((NI*) $1.ClE_0)[1]) < 0)" % [rdLoc(a)]
+    d.snippet = "((((NI*) $1.ClE_0)[1]) < 0)" % [rdLoc(a)]
 
 proc genGotoVar(p: BProc; value: PNode) =
   if value.kind notin {nkCharLit..nkUInt64Lit}:
@@ -405,7 +405,7 @@ proc genSingleVar(p: BProc, v: PSym; vn, value: PNode) =
     # put it in the locals section - mainly because of loops which
     # use the var in a call to resetLoc() in the statements section
     lineCg(targetProc, cpsLocals, "hcrRegisterGlobal($3, \"$1\", sizeof($2), $4, (void**)&$1);$n",
-           [v.loc.r, rdLoc(v.loc), getModuleDllPath(p.module, v), traverseProc])
+           [v.loc.snippet, rdLoc(v.loc), getModuleDllPath(p.module, v), traverseProc])
     # nothing special left to do later on - let's avoid closing and reopening blocks
     forHcr = false
 
@@ -414,7 +414,7 @@ proc genSingleVar(p: BProc, v: PSym; vn, value: PNode) =
   # be able to re-run it but without the top level code - just the init of globals
   if forHcr:
     lineCg(targetProc, cpsStmts, "if (hcrRegisterGlobal($3, \"$1\", sizeof($2), $4, (void**)&$1))$N",
-           [v.loc.r, rdLoc(v.loc), getModuleDllPath(p.module, v), traverseProc])
+           [v.loc.snippet, rdLoc(v.loc), getModuleDllPath(p.module, v), traverseProc])
     startBlock(targetProc)
   if value.kind != nkEmpty and valueAsRope.len == 0:
     genLineDir(targetProc, vn)
@@ -1545,7 +1545,7 @@ proc genAsmOrEmitStmt(p: BProc, t: PNode, isAsmStmt=false; result: var Rope) =
       else:
         discard getTypeDesc(p.module, skipTypes(sym.typ, abstractPtrs))
         fillBackendName(p.module, sym)
-        res.add($sym.loc.r)
+        res.add($sym.loc.snippet)
     of nkTypeOfExpr:
       res.add($getTypeDesc(p.module, it.typ))
     else:
@@ -1627,9 +1627,9 @@ proc genPragma(p: BProc, n: PNode) =
     case whichPragma(it)
     of wEmit: genEmit(p, it)
     of wPush:
-      processPushBackendOption(p.optionsStack, p.options, n, i+1)
+      processPushBackendOption(p.config, p.optionsStack, p.options, n, i+1)
     of wPop:
-      processPopBackendOption(p.optionsStack, p.options)
+      processPopBackendOption(p.config, p.optionsStack, p.options)
     else: discard
 
 

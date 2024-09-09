@@ -21,6 +21,39 @@
 
 - JS backend now supports closure iterators.
 
+- `owner` in `std/macros` is deprecated.
+
+- Ambiguous type symbols in generic procs and templates now generate symchoice nodes.
+  Previously; in templates they would error immediately at the template definition,
+  and in generic procs a type symbol would arbitrarily be captured, losing the
+  information of the other symbols. This means that generic code can now give
+  errors for ambiguous type symbols, and macros operating on generic proc AST
+  may encounter symchoice nodes instead of the arbitrarily resolved type symbol nodes.
+
+- Partial generic instantiation of routines is no longer allowed. Previously
+  it compiled in niche situations due to bugs in the compiler.
+
+  ```nim
+  proc foo[T, U](x: T, y: U) = echo (x, y)
+  proc foo[T, U](x: var T, y: U) = echo "var ", (x, y)
+
+  proc bar[T]() =
+    foo[float](1, "abc")
+
+  bar[int]() # before: (1.0, "abc"), now: type mismatch, missing generic parameter
+  ```
+
+- `const` values now open a new scope for each constant, meaning symbols
+  declared in them can no longer be used outside or in the value of
+  other constants.
+
+  ```nim
+  const foo = (var a = 1; a)
+  const bar = a # error
+  let baz = a # error
+  ```
+
+
 ## Standard library additions and changes
 
 [//]: # "Changes:"
@@ -32,15 +65,23 @@
 [//]: # "Additions:"
 
 - Added `newStringUninit` to system, which creates a new string of length `len` like `newString` but with uninitialized content.
-- Added `setLenUninit` to system, which doesn't initalize
+- Added `setLenUninit` to system, which doesn't initialize
 slots when enlarging a sequence.
 - Added `hasDefaultValue` to `std/typetraits` to check if a type has a valid default value.
+- Added `rangeBase` to `std/typetraits` to obtain the base type of a range type or
+  convert a value with a range type to its base type.
 - Added Viewport API for the JavaScript targets in the `dom` module.
 - Added `toSinglyLinkedRing` and `toDoublyLinkedRing` to `std/lists` to convert from `openArray`s.
 - ORC: To be enabled via `nimOrcStats` there is a new API called `GC_orcStats` that can be used to query how many
   objects the cyclic collector did free. If the number is zero that is a strong indicator that you can use `--mm:arc`
   instead of `--mm:orc`.
 - A `$` template is provided for `Path` in `std/paths`.
+- `std/hashes.hash(x:string)` changed to produce a 64-bit string `Hash` (based
+on Google's Farm Hash) which is also often faster than the present one.  Define
+`nimStringHash2` to get the old values back.  `--jsbigint=off` mode always only
+produces the old values.  This may impact your automated tests if they depend
+on hash order in some obvious or indirect way.  Using `sorted` or `OrderedTable`
+is often an easy workaround.
 
 [//]: # "Deprecations:"
 
@@ -52,7 +93,7 @@ slots when enlarging a sequence.
 ## Language changes
 
 - `noInit` can be used in types and fields to disable member initializers in the C++ backend.
-- C++ custom constructors initializers see https://nim-lang.org/docs/manual_experimental.htm#constructor-initializer
+- C++ custom constructors initializers see https://nim-lang.org/docs/manual_experimental.html#constructor-initializer
 - `member` can be used to attach a procedure to a C++ type.
 - C++ `constructor` now reuses `result` instead creating `this`.
 
@@ -69,28 +110,38 @@ slots when enlarging a sequence.
     let (a, (b, c)): (byte, (float, cstring)) = (1, (2, "abc"))
     ```
 
-- An experimental option `genericsOpenSym` has been added to allow captured
-  symbols in generic routine bodies to be replaced by symbols injected locally
-  by templates/macros at instantiation time. `bind` may be used to keep the
-  captured symbols over the injected ones regardless of enabling the option.
+- The experimental option `--experimental:openSym` has been added to allow
+  captured symbols in generic routine and template bodies respectively to be
+  replaced by symbols injected locally by templates/macros at instantiation
+  time. `bind` may be used to keep the captured symbols over the injected ones
+  regardless of enabling the option, but other methods like renaming the
+  captured symbols should be used instead so that the code is not affected by
+  context changes.
 
   Since this change may affect runtime behavior, the experimental switch
-  `genericsOpenSym` needs to be enabled, and a warning is given in the case
-  where an injected symbol would replace a captured symbol not bound by `bind`
-  and the experimental switch isn't enabled.
+  `openSym`, or `genericsOpenSym` and `templateOpenSym` for only the respective
+  routines, needs to be enabled; and a warning is given in the case where an
+  injected symbol would replace a captured symbol not bound by `bind` and
+  the experimental switch isn't enabled.
 
   ```nim
   const value = "captured"
-  template foo(x: int, body: untyped) =
+  template foo(x: int, body: untyped): untyped =
     let value {.inject.} = "injected"
     body
 
   proc old[T](): string =
     foo(123):
-      return value # warning: a new `value` has been injected, use `bind` or turn on `experimental:genericsOpenSym`
+      return value # warning: a new `value` has been injected, use `bind` or turn on `experimental:openSym`
   echo old[int]() # "captured"
 
-  {.experimental: "genericsOpenSym".}
+  template oldTempl(): string =
+    block:
+      foo(123):
+        value # warning: a new `value` has been injected, use `bind` or turn on `experimental:openSym`
+  echo oldTempl() # "captured"
+
+  {.experimental: "openSym".} # or {.experimental: "genericsOpenSym".} for just generic procs
 
   proc bar[T](): string =
     foo(123):
@@ -102,7 +153,28 @@ slots when enlarging a sequence.
     foo(123):
       return value
   assert baz[int]() == "captured"
+
+  # {.experimental: "templateOpenSym".} would be needed here if genericsOpenSym was used
+
+  template barTempl(): string =
+    block:
+      foo(123):
+        value
+  assert barTempl() == "injected" # previously it would be "captured"
+
+  template bazTempl(): string =
+    bind value
+    block:
+      foo(123):
+        value
+  assert bazTempl() == "captured"
   ```
+
+  This option also generates a new node kind `nnkOpenSym` which contains
+  exactly 1 `nnkSym` node. In the future this might be merged with a slightly
+  modified `nnkOpenSymChoice` node but macros that want to support the
+  experimental feature should still handle `nnkOpenSym`, as the node kind would
+  simply not be generated as opposed to being removed.
 
 ## Compiler changes
 

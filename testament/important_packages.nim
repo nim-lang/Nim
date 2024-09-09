@@ -58,6 +58,7 @@ pkg "cligen", "nim c --path:. -r cligen.nim"
 pkg "combparser", "nimble test --mm:orc"
 pkg "compactdict"
 pkg "comprehension", "nimble test", "https://github.com/alehander92/comprehension"
+pkg "constantine", "nimble make_lib"
 pkg "cowstrings"
 pkg "criterion", allowFailure = true # needs testing binary
 pkg "datamancer"
@@ -98,11 +99,10 @@ pkg "macroutils"
 pkg "manu"
 pkg "markdown"
 pkg "measuremancer", "nimble testDeps; nimble -y test"
-# when unchained is version 0.3.7 or higher, use `nimble testDeps;`
 pkg "memo"
 pkg "msgpack4nim", "nim c -r tests/test_spec.nim"
 pkg "nake", "nim c nakefile.nim"
-pkg "neo", "nim c -d:blas=openblas --mm:refc tests/all.nim", url = "https://github.com/nim-lang/neo"
+pkg "neo", "nim c -d:blas=openblas --mm:refc tests/all.nim"
 pkg "nesm", "nimble tests", "https://github.com/nim-lang/NESM", useHead = true, allowFailure = true
   # inactive, tests not adapted to #23096
 pkg "netty"
@@ -143,7 +143,8 @@ pkg "pnm"
 pkg "polypbren"
 pkg "presto"
 pkg "prologue", "nimble tcompile"
-pkg "protobuf", "nim c -o:protobuff -r src/protobuf.nim"
+# remove fork after https://github.com/PMunch/combparser/pull/7 is merged:
+pkg "protobuf", "nimble install -y https://github.com/metagn/combparser@#HEAD; nim c -o:protobuff -r src/protobuf.nim"
 pkg "rbtree"
 pkg "react", "nimble example"
 pkg "regex", "nim c src/regex"
@@ -180,7 +181,7 @@ pkg "unicodeplus", "nim c -d:release -r tests/tests.nim"
 pkg "union", "nim c -r tests/treadme.nim", url = "https://github.com/alaviss/union"
 pkg "unittest2"
 pkg "unpack"
-pkg "weave", "nimble test_gc_arc", useHead = true
+pkg "weave", "nimble install -y cligen@#HEAD; nimble test_gc_arc", useHead = true
 pkg "websock"
 pkg "websocket", "nim c websocket.nim"
 # pkg "winim", allowFailure = true

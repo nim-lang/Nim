@@ -831,7 +831,7 @@ proc getName(n: PNode): string =
     result = "`"
     for i in 0..<n.len: result.add(getName(n[i]))
     result = "`"
-  of nkOpenSymChoice, nkClosedSymChoice:
+  of nkOpenSymChoice, nkClosedSymChoice, nkOpenSym:
     result = getName(n[0])
   else:
     result = ""
@@ -849,7 +849,7 @@ proc getNameIdent(cache: IdentCache; n: PNode): PIdent =
     var r = ""
     for i in 0..<n.len: r.add(getNameIdent(cache, n[i]).s)
     result = getIdent(cache, r)
-  of nkOpenSymChoice, nkClosedSymChoice:
+  of nkOpenSymChoice, nkClosedSymChoice, nkOpenSym:
     result = getNameIdent(cache, n[0])
   else:
     result = nil
@@ -863,7 +863,7 @@ proc getRstName(n: PNode): PRstNode =
   of nkAccQuoted:
     result = getRstName(n[0])
     for i in 1..<n.len: result.text.add(getRstName(n[i]).text)
-  of nkOpenSymChoice, nkClosedSymChoice:
+  of nkOpenSymChoice, nkClosedSymChoice, nkOpenSym:
     result = getRstName(n[0])
   else:
     result = nil
@@ -1206,7 +1206,7 @@ proc genJsonItem(d: PDoc, n, nameNode: PNode, k: TSymKind, nonExports = false): 
         var param = %{"name": %($genericParam)}
         if genericParam.sym.typ.len > 0:
           param["types"] = newJArray()
-        param["types"].add %($genericParam.sym.typ.elementType)
+          param["types"] = %($genericParam.sym.typ.elementType)
         result.json["signature"]["genericParams"].add param
   if optGenIndex in d.conf.globalOptions:
     genItem(d, n, nameNode, k, kForceExport)

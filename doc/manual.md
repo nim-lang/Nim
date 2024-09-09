@@ -3220,6 +3220,15 @@ A const section declares constants whose values are constant expressions:
 
 Once declared, a constant's symbol can be used as a constant expression.
 
+The value part of a constant declaration opens a new scope for each constant,
+so no symbols declared in the constant value are accessible outside of it.
+
+  ```nim
+  const foo = (var a = 1; a)
+  const bar = a # error
+  let baz = a # error
+  ```
+
 See [Constants and Constant Expressions] for details.
 
 Static statement/expression
@@ -3787,9 +3796,6 @@ Since operations on unsigned numbers wrap around and are unchecked so are
 type conversions to unsigned integers and between unsigned integers. The
 rationale for this is mostly better interoperability with the C Programming
 language when algorithms are ported from C to Nim.
-
-Exception: Values that are converted to an unsigned type at compile time
-are checked so that code like `byte(-1)` does not compile.
 
 **Note**: Historically the operations
 were unchecked and the conversions were sometimes checked but starting with
@@ -4457,7 +4463,42 @@ as an example:
 Overloading of the subscript operator
 -------------------------------------
 
-The `[]` subscript operator for arrays/openarrays/sequences can be overloaded.
+The `[]` subscript operator for arrays/openarrays/sequences can be overloaded
+for any type (with some exceptions) by defining a routine with the name `[]`.
+
+  ```nim
+  type Foo = object
+    data: seq[int]
+  
+  proc `[]`(foo: Foo, i: int): int =
+    result = foo.data[i]
+  
+  let foo = Foo(data: @[1, 2, 3])
+  echo foo[1] # 2
+  ```
+
+Assignment to subscripts can also be overloaded by naming a routine `[]=`,
+which has precedence over assigning to the result of `[]`.
+
+  ```nim
+  type Foo = object
+    data: seq[int]
+  
+  proc `[]`(foo: Foo, i: int): int =
+    result = foo.data[i]
+  proc `[]=`(foo: var Foo, i: int, val: int) =
+    foo.data[i] = val
+  
+  var foo = Foo(data: @[1, 2, 3])
+  echo foo[1] # 2
+  foo[1] = 5
+  echo foo.data # @[1, 5, 3]
+  echo foo[1] # 5
+  ```
+
+Overloads of the subscript operator cannot be applied to routine or type
+symbols themselves, as this conflicts with the syntax for instantiating
+generic parameters, i.e. `foo[int](1, 2, 3)` or `Foo[int]`.
 
 
 Methods
@@ -6216,9 +6257,12 @@ scope is controlled by the `inject`:idx: and `gensym`:idx: pragmas:
 `gensym`'ed symbols are not exposed but `inject`'ed symbols are.
 
 The default for symbols of entity `type`, `var`, `let` and `const`
-is `gensym` and for `proc`, `iterator`, `converter`, `template`,
-`macro` is `inject`. However, if the name of the entity is passed as a
-template parameter, it is an `inject`'ed symbol:
+is `gensym`. For `proc`, `iterator`, `converter`, `template`,
+`macro`, the default is `inject`, but if a `gensym` symbol with the same name
+is defined in the same syntax-level scope, it will be `gensym` by default.
+This can be overriden by marking the routine as `inject`. 
+
+If the name of the entity is passed as a template parameter, it is an `inject`'ed symbol:
 
   ```nim
   template withFile(f, fn, mode: untyped, actions: untyped): untyped =

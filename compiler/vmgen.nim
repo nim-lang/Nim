@@ -900,9 +900,15 @@ proc genCard(c: PCtx; n: PNode; dest: var TDest) =
   c.freeTemp(tmp)
 
 proc genCastIntFloat(c: PCtx; n: PNode; dest: var TDest) =
+  template isSigned(typ: PType): bool {.dirty.} =
+    typ.kind == tyEnum and firstOrd(c.config, typ) < 0 or
+    typ.kind in {tyInt..tyInt64}
+  template isUnsigned(typ: PType): bool {.dirty.} =
+    typ.kind == tyEnum and firstOrd(c.config, typ) >= 0 or
+    typ.kind in {tyUInt..tyUInt64, tyChar, tyBool}
+
   const allowedIntegers = {tyInt..tyInt64, tyUInt..tyUInt64, tyChar, tyEnum, tyBool}
-  var signedIntegers = {tyInt..tyInt64}
-  var unsignedIntegers = {tyUInt..tyUInt64, tyChar, tyEnum, tyBool}
+
   let src = n[1].typ.skipTypes(abstractRange)#.kind
   let dst = n[0].typ.skipTypes(abstractRange)#.kind
   let srcSize = getSize(c.config, src)
@@ -914,12 +920,12 @@ proc genCastIntFloat(c: PCtx; n: PNode; dest: var TDest) =
     if dest < 0: dest = c.getTemp(n[0].typ)
     c.gABC(n, opcAsgnInt, dest, tmp)
     if dstSize != sizeof(BiggestInt): # don't do anything on biggest int types
-      if dst.kind in signedIntegers: # we need to do sign extensions
+      if isSigned(dst): # we need to do sign extensions
         if dstSize <= srcSize:
           # Sign extension can be omitted when the size increases.
           c.gABC(n, opcSignExtend, dest, TRegister(dstSize*8))
-      elif dst.kind in unsignedIntegers:
-        if src.kind in signedIntegers or dstSize < srcSize:
+      elif isUnsigned(dst):
+        if isSigned(src) or dstSize < srcSize:
           # Cast from signed to unsigned always needs narrowing. Cast
           # from unsigned to unsigned only needs narrowing when target
           # is smaller than source.
@@ -947,7 +953,7 @@ proc genCastIntFloat(c: PCtx; n: PNode; dest: var TDest) =
     if dest < 0: dest = c.getTemp(n[0].typ)
     if src.kind == tyFloat32:
       c.gABC(n, opcCastFloatToInt32, dest, tmp)
-      if dst.kind in unsignedIntegers:
+      if isUnsigned(dst):
         # integers are sign extended by default.
         # since there is no opcCastFloatToUInt32, narrowing should do the trick.
         c.gABC(n, opcNarrowU, dest, TRegister(32))
@@ -1684,10 +1690,10 @@ proc importcSym(c: PCtx; info: TLineInfo; s: PSym) =
     localError(c.config, info,
                "cannot 'importc' variable at compile time; " & s.name.s)
 
-proc getNullValue*(typ: PType, info: TLineInfo; conf: ConfigRef): PNode
+proc getNullValue*(c: PCtx; typ: PType, info: TLineInfo; conf: ConfigRef): PNode
 
 proc genGlobalInit(c: PCtx; n: PNode; s: PSym) =
-  c.globals.add(getNullValue(s.typ, n.info, c.config))
+  c.globals.add(getNullValue(c, s.typ, n.info, c.config))
   s.position = c.globals.len
   # This is rather hard to support, due to the laziness of the VM code
   # generator. See tests/compile/tmacro2 for why this is necessary:
@@ -1866,21 +1872,21 @@ proc genArrAccess(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
     let opc = if gfNodeAddr in flags: opcLdArrAddr else: opcLdArr
     genArrAccessOpcode(c, n, dest, opc, flags)
 
-proc getNullValueAux(t: PType; obj: PNode, result: PNode; conf: ConfigRef; currPosition: var int) =
+proc getNullValueAux(c: PCtx; t: PType; obj: PNode, result: PNode; conf: ConfigRef; currPosition: var int) =
   if t != nil and t.baseClass != nil:
     let b = skipTypes(t.baseClass, skipPtrs)
-    getNullValueAux(b, b.n, result, conf, currPosition)
+    getNullValueAux(c, b, b.n, result, conf, currPosition)
   case obj.kind
   of nkRecList:
-    for i in 0..<obj.len: getNullValueAux(nil, obj[i], result, conf, currPosition)
+    for i in 0..<obj.len: getNullValueAux(c, nil, obj[i], result, conf, currPosition)
   of nkRecCase:
-    getNullValueAux(nil, obj[0], result, conf, currPosition)
+    getNullValueAux(c, nil, obj[0], result, conf, currPosition)
     for i in 1..<obj.len:
-      getNullValueAux(nil, lastSon(obj[i]), result, conf, currPosition)
+      getNullValueAux(c, nil, lastSon(obj[i]), result, conf, currPosition)
   of nkSym:
     let field = newNodeI(nkExprColonExpr, result.info)
     field.add(obj)
-    let value = getNullValue(obj.sym.typ, result.info, conf)
+    let value = getNullValue(c, obj.sym.typ, result.info, conf)
     value.flags.incl nfSkipFieldChecking
     field.add(value)
     result.add field
@@ -1888,7 +1894,7 @@ proc getNullValueAux(t: PType; obj: PNode, result: PNode; conf: ConfigRef; currP
     inc currPosition
   else: globalError(conf, result.info, "cannot create null element for: " & $obj)
 
-proc getNullValue(typ: PType, info: TLineInfo; conf: ConfigRef): PNode =
+proc getNullValue(c: PCtx; typ: PType, info: TLineInfo; conf: ConfigRef): PNode =
   var t = skipTypes(typ, abstractRange+{tyStatic, tyOwned}-{tyTypeDesc})
   case t.kind
   of tyBool, tyEnum, tyChar, tyInt..tyInt64:
@@ -1908,22 +1914,22 @@ proc getNullValue(typ: PType, info: TLineInfo; conf: ConfigRef): PNode =
       result = newNodeIT(nkNilLit, info, t)
     else:
       result = newNodeIT(nkTupleConstr, info, t)
-      result.add(newNodeIT(nkNilLit, info, t))
-      result.add(newNodeIT(nkNilLit, info, t))
+      result.add(newNodeIT(nkNilLit, info, getSysType(c.graph, info, tyPointer)))
+      result.add(newNodeIT(nkNilLit, info, getSysType(c.graph, info, tyPointer)))
   of tyObject:
     result = newNodeIT(nkObjConstr, info, t)
     result.add(newNodeIT(nkEmpty, info, t))
     # initialize inherited fields, and all in the correct order:
     var currPosition = 0
-    getNullValueAux(t, t.n, result, conf, currPosition)
+    getNullValueAux(c, t, t.n, result, conf, currPosition)
   of tyArray:
     result = newNodeIT(nkBracket, info, t)
     for i in 0..<toInt(lengthOrd(conf, t)):
-      result.add getNullValue(elemType(t), info, conf)
+      result.add getNullValue(c, elemType(t), info, conf)
   of tyTuple:
     result = newNodeIT(nkTupleConstr, info, t)
     for a in t.kids:
-      result.add getNullValue(a, info, conf)
+      result.add getNullValue(c, a, info, conf)
   of tySet:
     result = newNodeIT(nkCurly, info, t)
   of tySequence, tyOpenArray:
@@ -1951,7 +1957,7 @@ proc genVarSection(c: PCtx; n: PNode) =
         if s.position == 0:
           if importcCond(c, s): c.importcSym(a.info, s)
           else:
-            let sa = getNullValue(s.typ, a.info, c.config)
+            let sa = getNullValue(c, s.typ, a.info, c.config)
             #if s.ast.isNil: getNullValue(s.typ, a.info)
             #else: s.ast
             assert sa.kind != nkCall
@@ -1973,7 +1979,7 @@ proc genVarSection(c: PCtx; n: PNode) =
           # the problem is that closure types are tuples in VM, but the types of its children
           # shouldn't have the same type as closure types.
           let tmp = c.genx(a[0], {gfNodeAddr})
-          let sa = getNullValue(s.typ, a.info, c.config)
+          let sa = getNullValue(c, s.typ, a.info, c.config)
           let val = c.genx(sa)
           c.genAdditionalCopy(sa, opcWrDeref, tmp, 0, val)
           c.freeTemp(val)
@@ -2176,7 +2182,7 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
       genLit(c, n, dest)
   of nkUIntLit..pred(nkNilLit): genLit(c, n, dest)
   of nkNilLit:
-    if not n.typ.isEmptyType: genLit(c, getNullValue(n.typ, n.info, c.config), dest)
+    if not n.typ.isEmptyType: genLit(c, getNullValue(c, n.typ, n.info, c.config), dest)
     else: unused(c, n, dest)
   of nkAsgn, nkFastAsgn, nkSinkAsgn:
     unused(c, n, dest)
@@ -2228,18 +2234,21 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
     #discard genProc(c, s)
     genLit(c, newSymNode(n[namePos].sym), dest)
   of nkChckRangeF, nkChckRange64, nkChckRange:
-    let
-      tmp0 = c.genx(n[0])
-      tmp1 = c.genx(n[1])
-      tmp2 = c.genx(n[2])
-    c.gABC(n, opcRangeChck, tmp0, tmp1, tmp2)
-    c.freeTemp(tmp1)
-    c.freeTemp(tmp2)
-    if dest >= 0:
-      gABC(c, n, whichAsgnOpc(n), dest, tmp0)
-      c.freeTemp(tmp0)
+    if skipTypes(n.typ, abstractVar).kind in {tyUInt..tyUInt64}:
+      genConv(c, n, n[0], dest)
     else:
-      dest = tmp0
+      let
+        tmp0 = c.genx(n[0])
+        tmp1 = c.genx(n[1])
+        tmp2 = c.genx(n[2])
+      c.gABC(n, opcRangeChck, tmp0, tmp1, tmp2)
+      c.freeTemp(tmp1)
+      c.freeTemp(tmp2)
+      if dest >= 0:
+        gABC(c, n, whichAsgnOpc(n), dest, tmp0)
+        c.freeTemp(tmp0)
+      else:
+        dest = tmp0
   of nkEmpty, nkCommentStmt, nkTypeSection, nkConstSection, nkPragma,
      nkTemplateDef, nkIncludeStmt, nkImportStmt, nkFromStmt, nkExportStmt,
      nkMixinStmt, nkBindStmt, declarativeDefs, nkMacroDef:

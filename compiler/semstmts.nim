@@ -135,7 +135,7 @@ const
   skipForDiscardable = {nkStmtList, nkStmtListExpr,
     nkOfBranch, nkElse, nkFinally, nkExceptBranch,
     nkElifBranch, nkElifExpr, nkElseExpr, nkBlockStmt, nkBlockExpr,
-    nkHiddenStdConv, nkHiddenDeref}
+    nkHiddenStdConv, nkHiddenSubConv, nkHiddenDeref}
 
 proc implicitlyDiscardable(n: PNode): bool =
   # same traversal as endsInNoReturn
@@ -172,7 +172,7 @@ proc implicitlyDiscardable(n: PNode): bool =
         of nkElse:
           branch[0]
         else:
-          raiseAssert "Malformed `case` statement in endsInNoReturn"
+          raiseAssert "Malformed `case` statement in implicitlyDiscardable"
     # all branches are discardable
     result = true
   of nkTryStmt:
@@ -190,18 +190,19 @@ proc implicitlyDiscardable(n: PNode): bool =
   else:
     result = false
 
-proc endsInNoReturn(n: PNode, returningNode: var PNode): bool =
+proc endsInNoReturn(n: PNode, returningNode: var PNode; discardableCheck = false): bool =
   ## check if expr ends the block like raising or call of noreturn procs do
   result = false # assume it does return
 
   template checkBranch(branch) =
-    if not endsInNoReturn(branch, returningNode):
+    if not endsInNoReturn(branch, returningNode, discardableCheck):
       # proved a branch returns
       return false
 
   var it = n
   # skip these beforehand, no special handling needed
-  while it.kind in skipForDiscardable and it.len > 0:
+  let skips = if discardableCheck: skipForDiscardable else: skipForDiscardable-{nkBlockExpr, nkBlockStmt}
+  while it.kind in skips and it.len > 0:
     it = it.lastSon
 
   case it.kind
@@ -245,7 +246,7 @@ proc endsInNoReturn(n: PNode, returningNode: var PNode): bool =
     var lastIndex = it.len - 1
     if it[lastIndex].kind == nkFinally:
       # if finally is noreturn, then the entire statement is noreturn
-      if endsInNoReturn(it[lastIndex][^1], returningNode):
+      if endsInNoReturn(it[lastIndex][^1], returningNode, discardableCheck):
         return true
       dec lastIndex
     for i in 1 .. lastIndex:
@@ -283,6 +284,7 @@ proc discardCheck(c: PContext, result: PNode, flags: TExprFlags) =
     if implicitlyDiscardable(result):
       var n = newNodeI(nkDiscardStmt, result.info, 1)
       n[0] = result
+      # notes that it doesn't transform nodes into discard statements
     elif result.typ.kind != tyError and c.config.cmd != cmdInteractive:
       if result.typ.kind == tyNone:
         localError(c.config, result.info, "expression has no type: " &
@@ -290,7 +292,7 @@ proc discardCheck(c: PContext, result: PNode, flags: TExprFlags) =
       else:
         # Ignore noreturn procs since they don't have a type
         var n = result
-        if result.endsInNoReturn(n):
+        if result.endsInNoReturn(n, discardableCheck = true):
           return
 
         var s = "expression '" & $n & "' is of type '" &
@@ -480,7 +482,7 @@ proc identWithin(n: PNode, s: PIdent): bool =
 
 proc semIdentDef(c: PContext, n: PNode, kind: TSymKind, reportToNimsuggest = true): PSym =
   if isTopLevel(c):
-    result = semIdentWithPragma(c, kind, n, {sfExported})
+    result = semIdentWithPragma(c, kind, n, {sfExported}, fromTopLevel = true)
     incl(result.flags, sfGlobal)
     #if kind in {skVar, skLet}:
     #  echo "global variable here ", n.info, " ", result.name.s
@@ -620,15 +622,15 @@ proc setVarType(c: PContext; v: PSym, typ: PType) =
 proc isPossibleMacroPragma(c: PContext, it: PNode, key: PNode): bool =
   # make sure it's not a normal pragma, and calls an identifier
   # considerQuotedIdent below will fail on non-identifiers
-  result = whichPragma(it) == wInvalid and key.kind in nkIdentKinds
+  result = whichPragma(it) == wInvalid and key.kind in nkIdentKinds+{nkDotExpr}
   if result:
     # make sure it's not a user pragma
-    let ident = considerQuotedIdent(c, key)
-    result = strTableGet(c.userPragmas, ident) == nil
+    if key.kind != nkDotExpr:
+      let ident = considerQuotedIdent(c, key)
+      result = strTableGet(c.userPragmas, ident) == nil
     if result:
       # make sure it's not a custom pragma
-      var amb = false
-      let sym = searchInScopes(c, ident, amb)
+      let sym = qualifiedLookUp(c, key, {})
       result = sym == nil or sfCustomPragma notin sym.flags
 
 proc copyExcept(n: PNode, i: int): PNode =
@@ -827,6 +829,11 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
     var typFlags: TTypeAllowedFlags = {}
 
     var def: PNode = c.graph.emptyNode
+    if typ != nil and typ.kind == tyRange and
+        c.graph.config.isDefined("nimPreviewRangeDefault") and
+        a[^1].kind == nkEmpty:
+      a[^1] = firstRange(c.config, typ)
+
     if a[^1].kind != nkEmpty:
       def = semExprWithType(c, a[^1], {efTypeAllowed}, typ)
 
@@ -978,6 +985,7 @@ proc semConst(c: PContext, n: PNode): PNode =
     var typFlags: TTypeAllowedFlags = {}
 
     # don't evaluate here since the type compatibility check below may add a converter
+    openScope(c)
     var def = semExprWithType(c, a[^1], {efTypeAllowed}, typ)
 
     if def.kind == nkSym and def.sym.kind in {skTemplate, skMacro}:
@@ -1004,6 +1012,7 @@ proc semConst(c: PContext, n: PNode): PNode =
       if c.matchedConcept != nil:
         typFlags.incl taConcept
       typeAllowedCheck(c, a.info, typ, skConst, typFlags)
+    closeScope(c)
 
     if a.kind == nkVarTuple:
       # generate new section from tuple unpacking and embed it into this one
@@ -1774,14 +1783,15 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
               assignType(s.typ, t)
               s.typ.itemId = t.itemId     # same id
         var hasError = false
-        if s.typ.kind in {tyObject, tyTuple} and not s.typ.n.isNil:
-          checkForMetaFields(c, s.typ.n, hasError)
+        let baseType = s.typ.safeSkipTypes(abstractPtrs)
+        if baseType.kind in {tyObject, tyTuple} and not baseType.n.isNil and
+          (x.kind in {nkObjectTy, nkTupleTy} or
+           (x.kind in {nkRefTy, nkPtrTy} and x.len == 1 and
+           x[0].kind in {nkObjectTy, nkTupleTy})
+          ):
+          checkForMetaFields(c, baseType.n, hasError)
         if not hasError:
           checkConstructedType(c.config, s.info, s.typ)
-
-        # fix bug #5170, bug #17162, bug #15526: ensure locally scoped types get a unique name:
-        if s.typ.kind in {tyEnum, tyRef, tyObject} and not isTopLevel(c):
-          incl(s.flags, sfGenSym)
   #instAllTypeBoundOp(c, n.info)
 
 
@@ -2727,20 +2737,23 @@ proc incMod(c: PContext, n: PNode, it: PNode, includeStmtResult: PNode) =
 proc evalInclude(c: PContext, n: PNode): PNode =
   result = newNodeI(nkStmtList, n.info)
   result.add n
+  template checkAs(it: PNode) =
+    if it.kind == nkInfix and it.len == 3:
+      let op = it[0].getPIdent
+      if op != nil and op.id == ord(wAs):
+        localError(c.config, it.info, "Cannot use '" & it[0].renderTree & "' in 'include'.")
   for i in 0..<n.len:
-    var imp: PNode
     let it = n[i]
-    if it.kind == nkInfix and it.len == 3 and it[0].ident.s != "/":
-      localError(c.config, it.info, "Cannot use '" & it[0].ident.s & "' in 'include'.")
-    if it.kind == nkInfix and it.len == 3 and it[2].kind == nkBracket:
-      let sep = it[0]
-      let dir = it[1]
-      imp = newNodeI(nkInfix, it.info)
-      imp.add sep
-      imp.add dir
-      imp.add sep # dummy entry, replaced in the loop
-      for x in it[2]:
-        imp[2] = x
+    checkAs(it)
+    if it.kind in {nkInfix, nkPrefix} and it[^1].kind == nkBracket:
+      let lastPos = it.len - 1
+      var imp = copyNode(it)
+      newSons(imp, it.len)
+      for i in 0 ..< lastPos: imp[i] = it[i]
+      imp[lastPos] = imp[0] # dummy entry, replaced in the loop
+      for x in it[lastPos]:
+        checkAs(x)
+        imp[lastPos] = x
         incMod(c, n, imp, result)
     else:
       incMod(c, n, it, result)
@@ -2851,7 +2864,7 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags, expectedType: PType =
         let verdict = semConstExpr(c, n[i])
         if verdict == nil or verdict.kind != nkIntLit or verdict.intVal == 0:
           localError(c.config, result.info, "concept predicate failed")
-      of tyUnknown: continue
+      of tyFromExpr: continue
       else: discard
     if n[i].typ == c.enforceVoidContext: #or usesResult(n[i]):
       voidContext = true

@@ -103,7 +103,7 @@ proc fitNode(c: PContext, formal: PType, arg: PNode; info: TLineInfo): PNode =
     result = nil
     for ch in arg:
       if sameType(ch.typ, formal):
-        return getConstExpr(c.module, ch, c.idgen, c.graph)
+        return ch
     typeMismatch(c.config, info, formal, arg.typ, arg)
   else:
     result = indexTypesMatch(c, formal, arg.typ, arg)
@@ -254,6 +254,8 @@ proc newSymG*(kind: TSymKind, n: PNode, c: PContext): PSym =
     result.owner = getCurrOwner(c)
   else:
     result = newSym(kind, considerQuotedIdent(c, n), c.idgen, getCurrOwner(c), n.info)
+    if find(result.name.s, '`') >= 0:
+      result.flags.incl sfWasGenSym
   #if kind in {skForVar, skLet, skVar} and result.owner.kind == skModule:
   #  incl(result.flags, sfGlobal)
   when defined(nimsuggest):
@@ -263,7 +265,7 @@ proc semIdentVis(c: PContext, kind: TSymKind, n: PNode,
                  allowed: TSymFlags): PSym
   # identifier with visibility
 proc semIdentWithPragma(c: PContext, kind: TSymKind, n: PNode,
-                        allowed: TSymFlags): PSym
+                        allowed: TSymFlags, fromTopLevel = false): PSym
 
 proc typeAllowedCheck(c: PContext; info: TLineInfo; typ: PType; kind: TSymKind;
                       flags: TTypeAllowedFlags = {}) =
@@ -649,7 +651,8 @@ proc defaultFieldsForTheUninitialized(c: PContext, recNode: PNode, checkDefault:
 
 proc defaultNodeField(c: PContext, a: PNode, aTyp: PType, checkDefault: bool): PNode =
   let aTypSkip = aTyp.skipTypes(defaultFieldsSkipTypes)
-  if aTypSkip.kind == tyObject:
+  case aTypSkip.kind
+  of tyObject:
     let child = defaultFieldsForTheUninitialized(c, aTypSkip.n, checkDefault)
     if child.len > 0:
       var asgnExpr = newTree(nkObjConstr, newNodeIT(nkType, a.info, aTyp))
@@ -658,7 +661,7 @@ proc defaultNodeField(c: PContext, a: PNode, aTyp: PType, checkDefault: bool): P
       result = semExpr(c, asgnExpr)
     else:
       result = nil
-  elif aTypSkip.kind == tyArray:
+  of tyArray:
     let child = defaultNodeField(c, a, aTypSkip[1], checkDefault)
 
     if child != nil:
@@ -671,7 +674,7 @@ proc defaultNodeField(c: PContext, a: PNode, aTyp: PType, checkDefault: bool): P
       result.typ = aTyp
     else:
       result = nil
-  elif aTypSkip.kind == tyTuple:
+  of tyTuple:
     var hasDefault = false
     if aTypSkip.n != nil:
       let children = defaultFieldsForTuple(c, aTypSkip.n, hasDefault, checkDefault)
@@ -682,6 +685,11 @@ proc defaultNodeField(c: PContext, a: PNode, aTyp: PType, checkDefault: bool): P
         result = semExpr(c, result)
       else:
         result = nil
+    else:
+      result = nil
+  of tyRange:
+    if c.graph.config.isDefined("nimPreviewRangeDefault"):
+      result = firstRange(c.config, aTypSkip)
     else:
       result = nil
   else:
@@ -720,6 +728,7 @@ proc preparePContext*(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PCo
   result.semOverloadedCall = semOverloadedCall
   result.semInferredLambda = semInferredLambda
   result.semGenerateInstance = generateInstance
+  result.instantiateOnlyProcType = instantiateOnlyProcType
   result.semTypeNode = semTypeNode
   result.instTypeBoundOp = sigmatch.instTypeBoundOp
   result.hasUnresolvedArgs = hasUnresolvedArgs

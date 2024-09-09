@@ -1040,7 +1040,7 @@ proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     else:
       discard "cannot copy openArray"
 
-  of tyFromExpr, tyProxy, tyBuiltInTypeClass, tyUserTypeClass,
+  of tyFromExpr, tyError, tyBuiltInTypeClass, tyUserTypeClass,
      tyUserTypeClassInst, tyCompositeTypeClass, tyAnd, tyOr, tyNot, tyAnything,
      tyGenericParam, tyGenericBody, tyNil, tyUntyped, tyTyped,
      tyTypeDesc, tyGenericInvocation, tyForward, tyStatic:

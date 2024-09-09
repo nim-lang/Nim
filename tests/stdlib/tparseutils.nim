@@ -99,3 +99,14 @@ block:  # With this included, static: test() crashes the compiler (from a
   checkParseSize " 12"    , 0, 1          # Leading white
   # Value Edge cases
   checkParseSize "9223372036854775807", 19, int64.high
+
+block: # bug #23936
+  func parsePyFloat(
+      a: openArray[char],  # here must be openArray instead of string to reproduce this bug
+      res: var BiggestFloat): int =
+    result = parseFloat(a, res)
+
+  static:
+    var f = 0.0
+    doAssert "1.0".parsePyFloat(f) == 3
+    doAssert f == 1.0

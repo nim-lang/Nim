@@ -501,7 +501,7 @@ proc containsConstSeq(n: PNode): bool =
     return true
   result = false
   case n.kind
-  of nkExprEqExpr, nkExprColonExpr, nkHiddenStdConv, nkHiddenSubConv:
+  of nkExprEqExpr, nkExprColonExpr, nkHiddenStdConv, nkHiddenSubConv, nkCast:
     result = containsConstSeq(n[1])
   of nkObjConstr, nkClosure:
     for i in 1..<n.len:
@@ -653,7 +653,7 @@ template handleNestedTempl(n, processCall: untyped, willProduceStmt = false,
       for j in 0 ..< it.len-1:
         branch[j] = copyTree(it[j])
       var ofScope = nestedScope(s, it.lastSon)
-      branch[^1] = if it[^1].typ.isEmptyType or willProduceStmt:
+      branch[^1] = if n.typ.isEmptyType or it[^1].typ.isEmptyType or willProduceStmt:
                      processScope(c, ofScope, maybeVoid(it[^1], ofScope))
                    else:
                      processScopeExpr(c, ofScope, it[^1], processCall, tmpFlags)
@@ -701,7 +701,7 @@ template handleNestedTempl(n, processCall: untyped, willProduceStmt = false,
         #Condition needs to be destroyed outside of the condition/branch scope
         branch[0] = p(it[0], c, s, normal)
 
-      branch[^1] = if it[^1].typ.isEmptyType or willProduceStmt:
+      branch[^1] = if n.typ.isEmptyType or it[^1].typ.isEmptyType or willProduceStmt:
                      processScope(c, branchScope, maybeVoid(it[^1], branchScope))
                    else:
                      processScopeExpr(c, branchScope, it[^1], processCall, tmpFlags)
@@ -829,6 +829,9 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
     elif n.kind in {nkObjDownConv, nkObjUpConv}:
       result = copyTree(n)
       result[0] = p(n[0], c, s, sinkArg)
+    elif n.kind == nkCast and n.typ.skipTypes(abstractInst).kind in {tyString, tySequence}:
+      result = copyTree(n)
+      result[1] = p(n[1], c, s, sinkArg)
     elif n.typ == nil:
       # 'raise X' can be part of a 'case' expression. Deal with it here:
       result = p(n, c, s, normal)
@@ -894,7 +897,8 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
       elif c.inSpawn > 0:
         c.inSpawn.dec
 
-      let parameters = n[0].typ
+      # bug #23907; skips tyGenericInst for generic callbacks
+      let parameters = if n[0].typ != nil: n[0].typ.skipTypes(abstractInst) else: n[0].typ
       let L = if parameters != nil: parameters.signatureLen else: 0
 
       when false:

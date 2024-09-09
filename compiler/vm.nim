@@ -507,7 +507,7 @@ proc setLenSeq(c: PCtx; node: PNode; newLen: int; info: TLineInfo) =
   setLen(node.sons, newLen)
   if oldLen < newLen:
     for i in oldLen..<newLen:
-      node[i] = getNullValue(typ.elementType, info, c.config)
+      node[i] = getNullValue(c, typ.elementType, info, c.config)
 
 const
   errNilAccess = "attempt to access a nil address"
@@ -639,6 +639,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
           regs[ra].intVal = cast[int](regs[rb].node.intVal)
         of rkNodeAddr:
           regs[ra].intVal = cast[int](regs[rb].nodeAddr)
+        of rkRegisterAddr:
+          regs[ra].intVal = cast[int](regs[rb].regAddr)
         of rkInt:
           regs[ra].intVal = regs[rb].intVal
         else:
@@ -892,8 +894,10 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         stackTrace(c, tos, pc, errNilAccess)
       elif dest[shiftedRb].kind == nkExprColonExpr:
         writeField(dest[shiftedRb][1], regs[rc])
+        dest[shiftedRb][1].flags.incl nfSkipFieldChecking
       else:
         writeField(dest[shiftedRb], regs[rc])
+        dest[shiftedRb].flags.incl nfSkipFieldChecking
     of opcWrStrIdx:
       decodeBC(rkNode)
       let idx = regs[rb].intVal.int
@@ -1361,7 +1365,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         else:
           internalError(c.config, c.debug[pc], "opcParseFloat: Incorrectly created openarray")
       else:
-        regs[ra].intVal = parseBiggestFloat(regs[ra].node.strVal, rcAddr.floatVal)
+        regs[ra].intVal = parseBiggestFloat(regs[rb].node.strVal, rcAddr.floatVal)
 
     of opcRangeChck:
       let rb = instr.regB
@@ -1376,7 +1380,11 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       let rb = instr.regB
       let rc = instr.regC
       let bb = regs[rb].node
+      if bb.kind == nkNilLit:
+        stackTrace(c, tos, pc, "attempt to call nil closure")
       let isClosure = bb.kind == nkTupleConstr
+      if isClosure and bb[0].kind == nkNilLit:
+        stackTrace(c, tos, pc, "attempt to call nil closure")
       let prc = if not isClosure: bb.sym else: bb[0].sym
       if prc.offset < -1:
         # it's a callback:
@@ -1416,7 +1424,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         var newFrame = PStackFrame(prc: prc, comesFrom: pc, next: tos)
         newSeq(newFrame.slots, prc.offset+ord(isClosure))
         if not isEmptyType(prc.typ.returnType):
-          putIntoReg(newFrame.slots[0], getNullValue(prc.typ.returnType, prc.info, c.config))
+          putIntoReg(newFrame.slots[0], getNullValue(c, prc.typ.returnType, prc.info, c.config))
         for i in 1..rc-1:
           newFrame.slots[i] = regs[rb+i]
         if isClosure:
@@ -1549,7 +1557,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcNew:
       ensureKind(rkNode)
       let typ = c.types[instr.regBx - wordExcess]
-      regs[ra].node = getNullValue(typ, c.debug[pc], c.config)
+      regs[ra].node = getNullValue(c, typ, c.debug[pc], c.config)
       regs[ra].node.flags.incl nfIsRef
     of opcNewSeq:
       let typ = c.types[instr.regBx - wordExcess]
@@ -1561,7 +1569,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       regs[ra].node.typ = typ
       newSeq(regs[ra].node.sons, count)
       for i in 0..<count:
-        regs[ra].node[i] = getNullValue(typ.elementType, c.debug[pc], c.config)
+        regs[ra].node[i] = getNullValue(c, typ.elementType, c.debug[pc], c.config)
     of opcNewStr:
       decodeB(rkNode)
       regs[ra].node = newNodeI(nkStrLit, c.debug[pc])
@@ -1573,7 +1581,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcLdNull:
       ensureKind(rkNode)
       let typ = c.types[instr.regBx - wordExcess]
-      regs[ra].node = getNullValue(typ, c.debug[pc], c.config)
+      regs[ra].node = getNullValue(c, typ, c.debug[pc], c.config)
       # opcLdNull really is the gist of the VM's problems: should it load
       # a fresh null to  regs[ra].node  or to regs[ra].node[]? This really
       # depends on whether regs[ra] represents the variable itself or whether
@@ -2302,7 +2310,7 @@ proc execProc*(c: PCtx; sym: PSym; args: openArray[PNode]): PNode =
 
       # setup parameters:
       if not isEmptyType(sym.typ.returnType) or sym.kind == skMacro:
-        putIntoReg(tos.slots[0], getNullValue(sym.typ.returnType, sym.info, c.config))
+        putIntoReg(tos.slots[0], getNullValue(c, sym.typ.returnType, sym.info, c.config))
       # XXX We could perform some type checking here.
       for i in 0..<sym.typ.paramsLen:
         putIntoReg(tos.slots[i+1], args[i])

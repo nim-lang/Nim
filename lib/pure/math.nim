@@ -58,12 +58,13 @@ import std/private/since
                        # of the standard library!
 
 import std/[bitops, fenv]
+import system/countbits_impl
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
 
-when defined(c) or defined(cpp):
+when not defined(js) and not defined(nimscript): # C
   proc c_isnan(x: float): bool {.importc: "isnan", header: "<math.h>".}
     # a generic like `x: SomeFloat` might work too if this is implemented via a C macro.
 
@@ -224,7 +225,7 @@ when defined(js):
       return (num & ~(1 << bitPos)) | (bitVal << bitPos);
     }
     `b`[1] = updateBit(`b`[1], 31, `sgn`);
-    `result` = `a`[0]
+    `result` = `a`[0];
     """.}
 
 proc signbit*(x: SomeFloat): bool {.inline, since: (1, 5, 1).} =
@@ -1229,40 +1230,42 @@ func gcd*[T](x, y: T): T =
     swap x, y
   abs x
 
-func gcd*(x, y: SomeInteger): SomeInteger =
-  ## Computes the greatest common (positive) divisor of `x` and `y`,
-  ## using the binary GCD (aka Stein's) algorithm.
-  ##
-  ## **See also:**
-  ## * `gcd func <#gcd,T,T>`_ for a float version
-  ## * `lcm func <#lcm,T,T>`_
-  runnableExamples:
-    doAssert gcd(12, 8) == 4
-    doAssert gcd(17, 63) == 1
-
-  when x is SomeSignedInt:
-    var x = abs(x)
-  else:
-    var x = x
-  when y is SomeSignedInt:
-    var y = abs(y)
-  else:
-    var y = y
-
-  if x == 0:
-    return y
-  if y == 0:
-    return x
-
-  let shift = countTrailingZeroBits(x or y)
-  y = y shr countTrailingZeroBits(y)
-  while x != 0:
-    x = x shr countTrailingZeroBits(x)
-    if y > x:
-      swap y, x
-    x -= y
-  y shl shift
-
+when useBuiltins:
+  ## this func uses bitwise comparisons from C compilers, which are not always available.
+  func gcd*(x, y: SomeInteger): SomeInteger =
+    ## Computes the greatest common (positive) divisor of `x` and `y`,
+    ## using the binary GCD (aka Stein's) algorithm.
+    ##
+    ## **See also:**
+    ## * `gcd func <#gcd,T,T>`_ for a float version
+    ## * `lcm func <#lcm,T,T>`_
+    runnableExamples:
+      doAssert gcd(12, 8) == 4
+      doAssert gcd(17, 63) == 1
+  
+    when x is SomeSignedInt:
+      var x = abs(x)
+    else:
+      var x = x
+    when y is SomeSignedInt:
+      var y = abs(y)
+    else:
+      var y = y
+  
+    if x == 0:
+      return y
+    if y == 0:
+      return x
+  
+    let shift = countTrailingZeroBits(x or y)
+    y = y shr countTrailingZeroBits(y)
+    while x != 0:
+      x = x shr countTrailingZeroBits(x)
+      if y > x:
+        swap y, x
+      x -= y
+    y shl shift
+  
 func gcd*[T](x: openArray[T]): T {.since: (1, 1).} =
   ## Computes the greatest common (positive) divisor of the elements of `x`.
   ##

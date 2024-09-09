@@ -43,5 +43,7 @@ switch("define", "nimPreviewRangeDefault")
 switch("define", "nimPreviewNonVarDestructor")
 
 switch("warningAserror", "UnnamedBreak")
-switch("legacy", "verboseTypeMismatch")
+when not defined(testsConciseTypeMismatch):
+  switch("legacy", "verboseTypeMismatch")
 switch("experimental", "vtables")
+switch("experimental", "openSym")
