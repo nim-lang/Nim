@@ -285,6 +285,8 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
           candidates.add "\n"
         of kTypeMismatch:
           doAssert nArg != nil
+          if nArg.kind in nkSymChoices:
+            candidates.add ambiguousIdentifierMsg(nArg, indent = 2)
           let wanted = err.firstMismatch.formal.typ
           doAssert err.firstMismatch.formal != nil
           doAssert wanted != nil
@@ -317,6 +319,9 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
           candidates.add renderTree(arg)
           candidates.add "' of type: "
           candidates.addTypeDeclVerboseMaybe(c.config, got)
+          if nArg.kind in nkSymChoices:
+            candidates.add "\n"
+            candidates.add ambiguousIdentifierMsg(nArg, indent = 2)
           if got != nil and got.kind == tyProc and wanted.kind == tyProc:
             # These are proc mismatches so,
             # add the extra explict detail of the mismatch
@@ -370,6 +375,9 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
             candidates.add "' is of type: "
             let got = arg.typ
             candidates.addTypeDeclVerboseMaybe(c.config, got)
+            if arg.kind in nkSymChoices:
+              candidates.add "\n"
+              candidates.add ambiguousIdentifierMsg(arg, indent = 2)
             doAssert wanted != nil
             if got != nil:
               if got.kind == tyProc and wanted.kind == tyProc:
