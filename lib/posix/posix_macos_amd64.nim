@@ -135,7 +135,7 @@ type
     else:
       uint16
   )
-  Nlink* {.importc: "nlink_t", header: "<sys/types.h>".} = int16
+  Nlink* {.importc: "nlink_t", header: "<sys/types.h>".} = uint16
   Off* {.importc: "off_t", header: "<sys/types.h>".} = int64
   Pid* {.importc: "pid_t", header: "<sys/types.h>".} = int32
   Pthread_attr* {.importc: "pthread_attr_t", header: "<sys/types.h>".} = int

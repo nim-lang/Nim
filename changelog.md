@@ -54,6 +54,7 @@
   `uint32` on OSX and FreeBSD/OpenBSD to correct codegen errors:
   - `Gid`
   - `Uid`
+  - `Nlink` (was `int16`, is now `uint32` on OpenBSD and `uint16` on OSX/other BSD)
   - `sin6_flowinfo` and `sin6_scope_id` fields of `Sockaddr_in6`
   - `n_net` field of `Tnetent`
 
