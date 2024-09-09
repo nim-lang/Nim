@@ -405,10 +405,10 @@ proc `%`*[T: object | tuple](o: T): JsonNode =
   ## otherwise (named tuples and objects) `JObject JsonNode`.
   when T is object or isNamedTuple(T):
     result = newJObject()
-    for k, v in a.fieldPairs: result[k] = toJson(v, opt)
+    for k, v in o.fieldPairs: result[k] = %(v)
   else:
     result = newJArray()
-    for v in a.fields: result.add toJson(v, opt)
+    for v in o.fields: result.add(%v)
 
 proc `%`*(o: ref object): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JObject JsonNode`
