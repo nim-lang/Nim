@@ -324,6 +324,7 @@ when defined(windows) or defined(nimdoc):
     CustomRef* = ref CustomObj
 
     AsyncFD* = distinct int
+      ## A file descriptor which supports asynchronous operations.
 
     PostCallbackData = object
       ioPort: Handle
@@ -338,7 +339,10 @@ when defined(windows) or defined(nimdoc):
       pcd: PostCallbackDataPtr
     AsyncEvent* = ptr AsyncEventImpl
 
-    Callback* = proc (fd: AsyncFD): bool {.closure, gcsafe.}
+    Callback* = proc (fd: AsyncFD): bool {.closure, gcsafe.} ## A closure execute asynchronously. 
+      ## May act upon an Async file descriptor `fd`.
+      ## Returns `true` if the callback shall be deregistered from the dispatcher.
+      ## Returns `false` if the callback shall remain registered with the dispatcher, allowing repeated execution until it is deregistered.
 
   proc hash(x: AsyncFD): Hash {.borrow.}
   proc `==`*(x: AsyncFD, y: AsyncFD): bool {.borrow.}
