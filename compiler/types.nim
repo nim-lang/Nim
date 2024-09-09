@@ -748,6 +748,16 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
       if tfThread in t.flags:
         addSep(prag)
         prag.add("gcsafe")
+      var effectsOfStr = ""
+      for i, a in t.paramTypes:
+        let j = paramTypeToNodeIndex(i)
+        if t.n != nil and j < t.n.len and t.n[j].kind == nkSym and t.n[j].sym.kind == skParam and sfEffectsDelayed in t.n[j].sym.flags:
+          addSep(effectsOfStr)
+          effectsOfStr.add(t.n[j].sym.name.s)
+      if effectsOfStr != "":
+        addSep(prag)
+        prag.add("effectsOf: ")
+        prag.add(effectsOfStr)
       if not hasImplicitRaises and prefer == preferInferredEffects and not isNil(t.owner) and not isNil(t.owner.typ) and not isNil(t.owner.typ.n) and (t.owner.typ.n.len > 0):
         let effects = t.owner.typ.n[0]
         if effects.kind == nkEffectList and effects.len == effectListLen:
