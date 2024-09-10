@@ -79,6 +79,7 @@ type
     info*: TLineInfo
     allowMetaTypes*: bool     # allow types such as seq[Number]
                               # i.e. the result contains unresolved generics
+    allowGenericBody*: bool   # don't error if generic body type found
     skipTypedesc*: bool       # whether we should skip typeDescs
     isReturnType*: bool
     owner*: PSym              # where this instantiation comes from
@@ -118,10 +119,10 @@ proc replaceTypeVarsT*(cl: var TReplTypeVars, t: PType): PType =
   result = replaceTypeVarsTAux(cl, t)
   checkMetaInvariants(cl, result)
 
-proc prepareNode*(cl: var TReplTypeVars, n: PNode): PNode =
+proc prepareNodeAux(cl: var TReplTypeVars, n: PNode): PNode =
   let t = replaceTypeVarsT(cl, n.typ)
   if t != nil and t.kind == tyStatic and t.n != nil:
-    return if tfUnresolved in t.flags: prepareNode(cl, t.n)
+    return if tfUnresolved in t.flags: prepareNodeAux(cl, t.n)
            else: t.n
   result = copyNode(n)
   result.typ = t
@@ -158,14 +159,14 @@ proc prepareNode*(cl: var TReplTypeVars, n: PNode): PNode =
     if ignoreFirst:
       result.add(n[0])
     else:
-      result.add(prepareNode(cl, n[0]))
+      result.add(prepareNodeAux(cl, n[0]))
     if n.len > 1:
       if ignoreSecond:
         result.add(n[1])
       else:
-        result.add(prepareNode(cl, n[1]))
+        result.add(prepareNodeAux(cl, n[1]))
     for i in 2..<n.len:
-      result.add(prepareNode(cl, n[i]))
+      result.add(prepareNodeAux(cl, n[i]))
   of nkBracketExpr:
     # don't instantiate Generic body type in expression like Generic[T]
     # exception exists for the call name being a dot expression since
@@ -179,20 +180,29 @@ proc prepareNode*(cl: var TReplTypeVars, n: PNode): PNode =
     if ignoreFirst:
       result.add(n[0])
     else:
-      result.add(prepareNode(cl, n[0]))
+      result.add(prepareNodeAux(cl, n[0]))
     for i in 1..<n.len:
-      result.add(prepareNode(cl, n[i]))
+      result.add(prepareNodeAux(cl, n[i]))
   of nkDotExpr:
     # don't try to instantiate RHS of dot expression, it can outright be
     # undeclared, but definitely instantiate LHS
     assert n.len >= 2
-    result.add(prepareNode(cl, n[0]))
+    result.add(prepareNodeAux(cl, n[0]))
     result.add(n[1])
     for i in 2..<n.len:
-      result.add(prepareNode(cl, n[i]))
+      result.add(prepareNodeAux(cl, n[i]))
   else:
     for i in 0..<n.safeLen:
-      result.add(prepareNode(cl, n[i]))
+      result.add(prepareNodeAux(cl, n[i]))
+
+proc prepareNode*(cl: var TReplTypeVars, n: PNode): PNode =
+  ## instantiates a given generic expression, not a type node
+  # we allow generic bodies since they can exist in regular user expressions,
+  # if they are uninstantiated param types etc, proc instantiation will fail anyway
+  let oldAllowGenericBody = cl.allowGenericBody
+  cl.allowGenericBody = true
+  result = prepareNodeAux(cl, n)
+  cl.allowGenericBody = oldAllowGenericBody
 
 proc isTypeParam(n: PNode): bool =
   # XXX: generic params should use skGenericParam instead of skType
@@ -631,6 +641,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
 
   of tyGenericBody:
     if cl.allowMetaTypes: return
+    if cl.allowGenericBody: return
     localError(
       cl.c.config,
       cl.info,
@@ -731,7 +742,8 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
 
       for i, resulti in result.ikids:
         if resulti != nil:
-          if resulti.kind == tyGenericBody and not cl.allowMetaTypes:
+          if resulti.kind == tyGenericBody and not cl.allowMetaTypes and
+              not cl.allowGenericBody:
             localError(cl.c.config, if t.sym != nil: t.sym.info else: cl.info,
               "cannot instantiate '" &
               typeToString(result[i], preferDesc) &

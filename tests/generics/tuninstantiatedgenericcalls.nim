@@ -409,3 +409,15 @@ block: # weird regression
     # but expected: <T, U>
     x
   doAssert foo(Foo[int](1), Bar[int, int](2)).int == 1
+
+block: # issue #24090
+  type M[V] = object
+  template y[V](N: type M, v: V): M[V] = default(M[V])
+  proc d(x: int | int, f: M[int] = M.y(0)) = discard
+  d(0, M.y(0))
+  type Foo[T] = object
+    x: typeof(M.y(default(T)))
+  var a: Foo[int]
+  doAssert a.x is M[int]
+  var b: Foo[float]
+  doAssert b.x is M[float]
