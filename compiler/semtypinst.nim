@@ -119,6 +119,11 @@ proc replaceTypeVarsT*(cl: var TReplTypeVars, t: PType): PType =
   checkMetaInvariants(cl, result)
 
 proc prepareNode*(cl: var TReplTypeVars, n: PNode): PNode =
+  ## instantiates a given generic expression, not a type node
+  if n.kind == nkSym and n.sym.kind == skType and
+      n.sym.typ != nil and n.sym.typ.kind == tyGenericBody:
+    # generic body types are allowed as user expressions, see #24090
+    return n
   let t = replaceTypeVarsT(cl, n.typ)
   if t != nil and t.kind == tyStatic and t.n != nil:
     return if tfUnresolved in t.flags: prepareNode(cl, t.n)
