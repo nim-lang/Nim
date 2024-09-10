@@ -34,7 +34,7 @@ proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
     if x.kind == nkArgList:
       for y in items(x): result.add(y)
     elif nfDefaultRefsParam in x.flags:
-      # value of default param needs to be evaluated
+      # value of default param needs to be evaluated like template body
       # if it contains other template params
       var res: PNode
       if isAtom(x):

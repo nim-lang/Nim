@@ -743,6 +743,7 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
     c: c,
     owner: s
   )
+  # handle default params:
   for i in 1..<s.typ.n.len:
     let param = s.typ.n[i].sym
     if param.ast != nil:
