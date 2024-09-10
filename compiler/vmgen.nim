@@ -1564,7 +1564,7 @@ proc checkCanEval(c: PCtx; n: PNode) =
     # are in the right scope:
     if sfGenSym in s.flags and c.prc.sym == nil: discard
     elif s.kind == skParam and s.typ.kind == tyTypeDesc: discard
-    elif s.kind in {skVar, skLet} and s.instantiatedFrom != c.owner: discard
+    elif s.kind in {skVar, skLet} and s.instantiatedFrom == c.owner: discard
     else: cannotEval(c, n)
   elif s.kind in {skProc, skFunc, skConverter, skMethod,
                   skIterator} and sfForward in s.flags:
