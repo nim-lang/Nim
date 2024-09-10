@@ -421,3 +421,6 @@ block: # issue #24090
   doAssert a.x is M[int]
   var b: Foo[float]
   doAssert b.x is M[float]
+  proc foo[T: M](x: T = default(T)) = discard x
+  foo[M[int]]()
+  doAssert not compiles(foo())
