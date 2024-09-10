@@ -278,6 +278,10 @@ proc hasValuelessStatics(n: PNode): bool =
 
 proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0; expectedType: PType = nil): PNode =
   if n == nil: return
+  #if n.kind == nkSym and n.sym.kind == skType and
+  #    n.sym.typ != nil and n.sym.typ.kind == tyGenericBody:
+  #  # generic body types are allowed as user expressions, see #24090
+  #  return n
   result = copyNode(n)
   if n.typ != nil:
     if n.typ.kind == tyFromExpr:
@@ -799,6 +803,14 @@ proc replaceTypesInBody*(p: PContext, pt: TypeMapping, n: PNode;
   cl.allowMetaTypes = allowMetaTypes
   pushInfoContext(p.config, n.info)
   result = replaceTypeVarsN(cl, n, expectedType = expectedType)
+  popInfoContext(p.config)
+
+proc prepareTypesInBody*(p: PContext, pt: TypeMapping, n: PNode;
+                         owner: PSym = nil): PNode =
+  var typeMap = initLayeredTypeMap(pt)
+  var cl = initTypeVars(p, typeMap, n.info, owner)
+  pushInfoContext(p.config, n.info)
+  result = prepareNode(cl, n)
   popInfoContext(p.config)
 
 when false:

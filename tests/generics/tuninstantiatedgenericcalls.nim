@@ -435,3 +435,9 @@ block: # issue #24090
   proc foo[T: M](x: T = default(T)) = discard x
   foo[M[int]]()
   doAssert not compiles(foo())
+
+block: # above but encountered by sigmatch using replaceTypeVarsN
+  type Opt[T] = object
+  proc none[T](x: type Opt, y: typedesc[T]): Opt[T] = discard
+  proc foo[T](x: T, a = Opt.none(int)) = discard
+  foo(1, a = Opt.none(int))
