@@ -1504,6 +1504,15 @@ proc tryReadingGenericParam(c: PContext, n: PNode, i: PIdent, t: PType): PNode =
       result.typ = makeTypeFromExpr(c, copyTree(result))
     else:
       result = nil
+  of tyGenericBody, tyCompositeTypeClass:
+    if c.inGenericContext > 0:
+      result = readTypeParameter(c, t, i, n.info)
+      if result != nil:
+        # generic parameter exists, stop here but delay until instantiation
+        result = semGenericStmt(c, n)
+        result.typ = makeTypeFromExpr(c, copyTree(result))
+    else:
+      result = nil
   elif c.inGenericContext > 0 and t.containsUnresolvedType:
     result = semGenericStmt(c, n)
     result.typ = makeTypeFromExpr(c, copyTree(result))

@@ -278,10 +278,6 @@ proc hasValuelessStatics(n: PNode): bool =
 
 proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0; expectedType: PType = nil): PNode =
   if n == nil: return
-  #if n.kind == nkSym and n.sym.kind == skType and
-  #    n.sym.typ != nil and n.sym.typ.kind == tyGenericBody:
-  #  # generic body types are allowed as user expressions, see #24090
-  #  return n
   result = copyNode(n)
   if n.typ != nil:
     if n.typ.kind == tyFromExpr:

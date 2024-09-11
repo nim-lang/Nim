@@ -2087,8 +2087,9 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       # also prevent infinite recursion below
       return isNone
     inc c.c.inGenericContext # to generate tyFromExpr again if unresolved
+    # use prepareNode for consistency with other tyFromExpr in semtypinst:
     let instantiated = prepareTypesInBody(c.c, c.bindings, f.n)
-    let reevaluated = c.c.semExpr(c.c, instantiated).typ#tryResolvingStaticExpr(c, f.n, allowCalls = true).typ
+    let reevaluated = c.c.semExpr(c.c, instantiated).typ
     dec c.c.inGenericContext
     case reevaluated.kind
     of tyFromExpr:
