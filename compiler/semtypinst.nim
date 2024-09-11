@@ -801,6 +801,14 @@ proc replaceTypesInBody*(p: PContext, pt: TypeMapping, n: PNode;
   result = replaceTypeVarsN(cl, n, expectedType = expectedType)
   popInfoContext(p.config)
 
+proc prepareTypesInBody*(p: PContext, pt: TypeMapping, n: PNode;
+                         owner: PSym = nil): PNode =
+  var typeMap = initLayeredTypeMap(pt)
+  var cl = initTypeVars(p, typeMap, n.info, owner)
+  pushInfoContext(p.config, n.info)
+  result = prepareNode(cl, n)
+  popInfoContext(p.config)
+
 when false:
   # deadcode
   proc replaceTypesForLambda*(p: PContext, pt: TIdTable, n: PNode;

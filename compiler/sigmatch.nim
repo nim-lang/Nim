@@ -139,7 +139,7 @@ proc matchGenericParam(m: var TCandidate, formal: PType, n: PNode) =
     # don't match yet-unresolved generic instantiations
     while arg != nil and arg.kind == tyGenericParam:
       arg = idTableGet(m.bindings, arg)
-    if arg == nil or arg.containsGenericType:
+    if arg == nil or arg.containsUnresolvedType:
       m.state = csNoMatch
       return
   # fix up the type to get ready to match formal:
@@ -2048,7 +2048,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       # proc foo(T: typedesc, x: T)
       # when `f` is an unresolved typedesc, `a` could be any
       # type, so we should not perform this check earlier
-      if c.c.inGenericContext > 0 and a.containsGenericType:
+      if c.c.inGenericContext > 0 and a.containsUnresolvedType:
         # generic type bodies can sometimes compile call expressions
         # prevent unresolved generic parameters from being passed to procs as
         # typedesc parameters
@@ -2087,7 +2087,9 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       # also prevent infinite recursion below
       return isNone
     inc c.c.inGenericContext # to generate tyFromExpr again if unresolved
-    let reevaluated = tryResolvingStaticExpr(c, f.n, allowCalls = true).typ
+    # use prepareNode for consistency with other tyFromExpr in semtypinst:
+    let instantiated = prepareTypesInBody(c.c, c.bindings, f.n)
+    let reevaluated = c.c.semExpr(c.c, instantiated).typ
     dec c.c.inGenericContext
     case reevaluated.kind
     of tyFromExpr:

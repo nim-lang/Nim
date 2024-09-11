@@ -1494,6 +1494,23 @@ proc containsGenericTypeIter(t: PType, closure: RootRef): bool =
 proc containsGenericType*(t: PType): bool =
   result = iterOverType(t, containsGenericTypeIter, nil)
 
+proc containsUnresolvedTypeIter(t: PType, closure: RootRef): bool =
+  if tfUnresolved in t.flags: return true
+  case t.kind
+  of tyStatic:
+    return t.n == nil
+  of tyTypeDesc:
+    if t.base.kind == tyNone: return true
+    if containsUnresolvedTypeIter(t.base, closure): return true
+    return false
+  of tyGenericInvocation, tyGenericParam, tyFromExpr, tyAnything:
+    return true
+  else:
+    return false
+
+proc containsUnresolvedType*(t: PType): bool =
+  result = iterOverType(t, containsUnresolvedTypeIter, nil)
+
 proc baseOfDistinct*(t: PType; g: ModuleGraph; idgen: IdGenerator): PType =
   if t.kind == tyDistinct:
     result = t.elementType
