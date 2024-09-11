@@ -1365,6 +1365,11 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
           "either use ';' (semicolon) or explicitly write each default value")
         message(c.config, a.info, warnImplicitDefaultValue, msg)
       block determineType:
+        if kind == skTemplate and hasUnresolvedArgs(c, def):
+          # template default value depends on other parameter
+          # don't do any typechecking
+          def.typ = makeTypeFromExpr(c, def.copyTree)
+          break determineType
         let isGeneric = isCurrentlyGeneric()
         inc c.inGenericContext, ord(isGeneric)
         def = semExprWithType(c, def, {efDetermineType, efAllowSymChoice}, typ)
