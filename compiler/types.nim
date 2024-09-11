@@ -232,7 +232,11 @@ proc iterOverTypeAux(marker: var IntSet, t: PType, iter: TTypeIter,
   if result: return
   if not containsOrIncl(marker, t.id):
     case t.kind
-    of tyGenericInst, tyGenericBody, tyAlias, tySink, tyInferred:
+    of tyGenericBody:
+      # treat as atomic, containsUnresolvedType wants always false,
+      # containsGenericType always gives true
+      discard
+    of tyGenericInst, tyAlias, tySink, tyInferred:
       result = iterOverTypeAux(marker, skipModifier(t), iter, closure)
     else:
       for a in t.kids:

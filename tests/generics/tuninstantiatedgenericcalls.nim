@@ -438,6 +438,16 @@ block: # issue #24090
 
 block: # above but encountered by sigmatch using replaceTypeVarsN
   type Opt[T] = object
+    x: T
   proc none[T](x: type Opt, y: typedesc[T]): Opt[T] = discard
   proc foo[T](x: T, a = Opt.none(int)) = discard
   foo(1, a = Opt.none(int))
+  foo(1)
+
+block: # real version of above
+  type Opt[T] = object
+    x: T
+  template none(x: type Opt, T: type): Opt[T] = Opt[T]()
+  proc foo[T](x: T, a = Opt.none(int)) = discard
+  foo(1, a = Opt.none(int))
+  foo(1)
