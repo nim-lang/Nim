@@ -20,3 +20,50 @@ block: # issue #20916
     tmp
   a()()
   doAssert val == 42
+
+import std/typetraits
+
+block: # issue #24099, original example
+  type
+    ColorRGBU = distinct array[3, uint8] ## RGB range 0..255
+    ColorRGBAU = distinct array[4, uint8] ## RGB range 0..255
+    ColorRGBUAny = ColorRGBU | ColorRGBAU
+  template componentType(t: typedesc[ColorRGBUAny]): typedesc =
+    ## Returns component type of a given color type.
+    arrayType distinctBase t
+  func `~=`[T: ColorRGBUAny](a, b: T, e = componentType(T)(1.0e-11)): bool =
+    ## Compares colors with given accuracy.
+    abs(a[0] - b[0]) < e and abs(a[1] - b[1]) < e and abs(a[2] - b[2]) < e
+
+block: # issue #24099, modified to actually work
+  type
+    ColorRGBU = distinct array[3, uint8] ## RGB range 0..255
+    ColorRGBAU = distinct array[4, uint8] ## RGB range 0..255
+    ColorRGBUAny = ColorRGBU | ColorRGBAU
+  template arrayType[I, T](t: typedesc[array[I, T]]): typedesc =
+    T
+  template `[]`(a: ColorRGBUAny, i: untyped): untyped = distinctBase(a)[i]
+  proc abs(a: uint8): uint8 = a
+  template componentType(t: typedesc[ColorRGBUAny]): typedesc =
+    ## Returns component type of a given color type.
+    arrayType distinctBase t
+  func `~=`[T: ColorRGBUAny](a, b: T, e = componentType(T)(1.0e-11)): bool =
+    ## Compares colors with given accuracy.
+    abs(a[0] - b[0]) <= e and abs(a[1] - b[1]) <= e and abs(a[2] - b[2]) <= e
+  doAssert ColorRGBU([1.uint8, 1, 1]) ~= ColorRGBU([1.uint8, 1, 1])
+
+block: # issue #24099, modified to work but using float32
+  type
+    ColorRGBU = distinct array[3, float32] ## RGB range 0..255
+    ColorRGBAU = distinct array[4, float32] ## RGB range 0..255
+    ColorRGBUAny = ColorRGBU | ColorRGBAU
+  template arrayType[I, T](t: typedesc[array[I, T]]): typedesc =
+    T
+  template `[]`(a: ColorRGBUAny, i: untyped): untyped = distinctBase(a)[i]
+  template componentType(t: typedesc[ColorRGBUAny]): typedesc =
+    ## Returns component type of a given color type.
+    arrayType distinctBase t
+  func `~=`[T: ColorRGBUAny](a, b: T, e = componentType(T)(1.0e-11)): bool =
+    ## Compares colors with given accuracy.
+    abs(a[0] - b[0]) < e and abs(a[1] - b[1]) < e and abs(a[2] - b[2]) < e
+  doAssert ColorRGBU([1.float32, 1, 1]) ~= ColorRGBU([1.float32, 1, 1])
