@@ -11,7 +11,7 @@
 
 const
   # examples of possible values for repos: Head, ea82b54
-  NimbleStableCommit = "db8245a994f4f7b162f11848d38d7d1862686954" # 0.16.0 (+1 fix in nimble dump)
+  NimbleStableCommit = "4fb6f8e6c33963f6f510fe82d09ad2a61b5e4265" # 0.16.1
   AtlasStableCommit = "5faec3e9a33afe99a7d22377dd1b45a5391f5504"
   ChecksumsStableCommit = "025bcca3915a1b9f19878cea12ad68f9884648fc"
   SatStableCommit = "faf1617f44d7632ee9601ebc13887644925dcc01"
