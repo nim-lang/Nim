@@ -2590,6 +2590,34 @@ modified `nnkOpenSymChoice` node but macros that want to support the
 experimental feature should still handle `nnkOpenSym`, as the node kind would
 simply not be generated as opposed to being removed.
 
+Another experimental switch `openSymOverride` exists that enables this behavior
+at instantiation time, meaning templates etc can enable it specifically when
+they are being called. However this does not generate `nnkOpenSym` nodes
+(unless the other switches are enabled) and so doesn't reflect the regular
+behavior of the switch.
+
+```nim
+const value = "captured"
+template foo(x: int, body: untyped): untyped =
+  let value {.inject.} = "injected"
+  {.push experimental: "openSymOverride".}
+  body
+  {.pop.}
+
+proc bar[T](): string =
+  foo(123):
+    return value
+echo bar[int]() # "injected"
+
+template barTempl(): string =
+  block:
+    var res: string
+    foo(123):
+      res = value
+    res
+assert barTempl() == "injected"
+```
+
 
 VTable for methods
 ==================

@@ -228,6 +228,7 @@ type
     openSym, # remove nfDisabledOpenSym when this is default
     # separated alternatives to above:
     genericsOpenSym, templateOpenSym,
+    openSymOverride
     vtables
 
   LegacyFeature* = enum
