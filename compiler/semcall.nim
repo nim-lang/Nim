@@ -558,7 +558,8 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
     if overloadsState == csEmpty and result.state == csEmpty:
       if efNoUndeclared notin flags: # for tests/pragmas/tcustom_pragma.nim
         result.state = csNoMatch
-        if efNoDiagnostics in flags:
+        if c.inGenericContext > 0 and nfExprCall in n.flags:
+          # untyped expression calls end up here, see #24099
           return
         # xxx adapt/use errorUndeclaredIdentifierHint(c, n, f.ident)
         localError(c.config, n.info, getMsgDiagnostic(c, flags, n, f))
