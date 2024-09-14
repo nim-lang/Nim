@@ -81,6 +81,7 @@ block:
   spaces in keys=allowed
   spaces in values=allowed as well
   spaces around the delimiter = obviously
+  commas, in, keys = and, in, values
   you can also use : to delimit keys from values
   [All Values Are Strings]
   values like this: 19990429
@@ -114,6 +115,7 @@ block:
   doAssert dict.getSectionValue(section1, "spaces in values") == "allowed as well"
   doAssert dict.getSectionValue(section1, "spaces around the delimiter") == "obviously"
   doAssert dict.getSectionValue(section1, "you can also use") == "to delimit keys from values"
+  doAssert dict.getSectionValue(section1, "commas, in, keys") == "and, in, values"
 
   let section2 = "All Values Are Strings"
   doAssert dict.getSectionValue(section2, "values like this") == "19990429"

@@ -120,6 +120,7 @@ runnableExamples:
     spaces in keys=allowed
     spaces in values=allowed as well
     spaces around the delimiter = obviously
+    commas, in, keys = and, in, values
     you can also use : to delimit keys from values
     [All Values Are Strings]
     values like this: 19990429
@@ -153,6 +154,7 @@ runnableExamples:
   assert dict.getSectionValue(section1, "spaces in values") == "allowed as well"
   assert dict.getSectionValue(section1, "spaces around the delimiter") == "obviously"
   assert dict.getSectionValue(section1, "you can also use") == "to delimit keys from values"
+  assert dict.getSectionValue(section1, "commas, in, keys") == "and, in, values"
 
   let section2 = "All Values Are Strings"
   assert dict.getSectionValue(section2, "values like this") == "19990429"
@@ -162,7 +164,7 @@ runnableExamples:
   assert dict.getSectionValue(section2, "can use the API to get converted values directly") == "true"
 
   let section3 = "Seletion A"
-  assert dict.getSectionValue(section3, 
+  assert dict.getSectionValue(section3,
     "space around section name will be ignored", "not an empty value") == ""
 
   let section4 = "Sections Can Be Indented"
@@ -218,7 +220,7 @@ type
 # implementation
 
 const
-  SymChars = {'a'..'z', 'A'..'Z', '0'..'9', '_', ' ', '\x80'..'\xFF', '.', '/', '\\', '-'}
+  SymChars = {'a'..'z', 'A'..'Z', '0'..'9', '_', ' ', '\x80'..'\xFF', '.', '/', '\\', '-', ','}
 
 proc rawGetTok(c: var CfgParser, tok: var Token) {.gcsafe.}
 
