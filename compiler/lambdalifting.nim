@@ -150,7 +150,7 @@ template isIterator*(owner: PSym): bool =
 
 proc createEnvObj(g: ModuleGraph; idgen: IdGenerator; owner: PSym; info: TLineInfo): PType =
   result = createObj(g, idgen, owner, info, final=false)
-  if owner.isIterator:
+  if owner.isIterator or not isDefined(g.config, "nimOptIters"):
     rawAddField(result, createStateField(g, owner, idgen))
 
 proc getClosureIterResult*(g: ModuleGraph; iter: PSym; idgen: IdGenerator): PSym =
@@ -280,6 +280,15 @@ proc liftIterSym*(g: ModuleGraph; n: PNode; idgen: IdGenerator; owner: PSym): PN
   createTypeBoundOpsLL(g, env.typ, n.info, idgen, owner)
   result.add makeClosure(g, idgen, iter, env, n.info)
 
+proc freshVarForClosureIter*(g: ModuleGraph; s: PSym; idgen: IdGenerator; owner: PSym): PNode =
+  let envParam = getHiddenParam(g, owner)
+  let obj = envParam.typ.skipTypes({tyOwned, tyRef, tyPtr})
+  let field = addField(obj, s, g.cache, idgen)
+
+  var access = newSymNode(envParam)
+  assert obj.kind == tyObject
+  result = rawIndirectAccess(access, field, s.info)
+
 # ------------------ new stuff -------------------------------------------
 
 proc markAsClosure(g: ModuleGraph; owner: PSym; n: PNode) =
@@ -328,7 +337,7 @@ proc getEnvTypeForOwner(c: var DetectionPass; owner: PSym;
   result = c.ownerToType.getOrDefault(owner.id)
   if result.isNil:
     let env = getEnvParam(owner)
-    if env.isNil or not owner.isIterator:
+    if env.isNil or not owner.isIterator or not isDefined(c.graph.config, "nimOptIters"):
       result = newType(tyRef, c.idgen, owner)
       let obj = createEnvObj(c.graph, c.idgen, owner, info)
       rawAddSon(result, obj)
@@ -449,7 +458,7 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
       if owner.isIterator:
         c.somethingToDo = true
         addClosureParam(c, owner, n.info)
-        if interestingIterVar(s):
+        if not isDefined(c.graph.config, "nimOptIters") and interestingIterVar(s):
           if not c.capturedVars.contains(s.id):
             if not c.inTypeOf: c.capturedVars.incl(s.id)
             let obj = getHiddenParam(c.graph, owner).typ.skipTypes({tyOwned, tyRef, tyPtr})
@@ -763,7 +772,7 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: var DetectionPass;
     elif s.id in d.capturedVars:
       if s.owner != owner:
         result = accessViaEnvParam(d.graph, n, owner)
-      elif owner.isIterator and interestingIterVar(s):
+      elif owner.isIterator and not isDefined(d.graph.config, "nimOptIters") and interestingIterVar(s):
         result = accessViaEnvParam(d.graph, n, owner)
       else:
         result = accessViaEnvVar(n, owner, d, c)
@@ -882,7 +891,7 @@ proc liftLambdas*(g: ModuleGraph; fn: PSym, body: PNode; tooEarly: var bool;
     # ignore forward declaration:
     result = body
     tooEarly = true
-    if fn.isIterator:
+    if fn.isIterator and isDefined(g.config, "nimOptIters"):
       var d = initDetectionPass(g, fn, idgen)
       addClosureParam(d, fn, body.info)
   else:

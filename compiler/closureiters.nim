@@ -161,6 +161,9 @@ type
                     # is their finally. For finally it is parent finally. Otherwise -1
     idgen: IdGenerator
     varStates: Table[ItemId, int] # Used to detect if local variable belongs to multiple states
+    stateVarSym: PSym # :state variable. nil if env already introduced by lambdalifting
+      # remove if nimOptIters is default
+    nimOptItersEnabled: bool # tracks if nimOptIters is enabled, should be default when issues are fixed
 
 const
   nkSkip = {nkEmpty..nkNilLit, nkTemplateDef, nkTypeSection, nkStaticStmt,
@@ -170,8 +173,11 @@ const
   localRequiresLifting = -2
 
 proc newStateAccess(ctx: var Ctx): PNode =
-  result = rawIndirectAccess(newSymNode(getEnvParam(ctx.fn)),
+  if ctx.stateVarSym.isNil:
+    result = rawIndirectAccess(newSymNode(getEnvParam(ctx.fn)),
       getStateField(ctx.g, ctx.fn), ctx.fn.info)
+  else:
+    result = newSymNode(ctx.stateVarSym)
 
 proc newStateAssgn(ctx: var Ctx, toValue: PNode): PNode =
   # Creates state assignment:
@@ -189,12 +195,22 @@ proc newEnvVar(ctx: var Ctx, name: string, typ: PType): PSym =
   result.flags.incl sfNoInit
   assert(not typ.isNil, "Env var needs a type")
 
-  let envParam = getEnvParam(ctx.fn)
-  # let obj = envParam.typ.lastSon
-  result = addUniqueField(envParam.typ.elementType, result, ctx.g.cache, ctx.idgen)
+  if not ctx.stateVarSym.isNil:
+    # We haven't gone through labmda lifting yet, so just create a local var,
+    # it will be lifted later
+    if ctx.tempVars.isNil:
+      ctx.tempVars = newNodeI(nkVarSection, ctx.fn.info)
+      addVar(ctx.tempVars, newSymNode(result))
+  else:
+    let envParam = getEnvParam(ctx.fn)
+    # let obj = envParam.typ.lastSon
+    result = addUniqueField(envParam.typ.elementType, result, ctx.g.cache, ctx.idgen)
 
 proc newEnvVarAccess(ctx: Ctx, s: PSym): PNode =
-  result = rawIndirectAccess(newSymNode(getEnvParam(ctx.fn)), s, ctx.fn.info)
+  if ctx.stateVarSym.isNil:
+    result = rawIndirectAccess(newSymNode(getEnvParam(ctx.fn)), s, ctx.fn.info)
+  else:
+    result = newSymNode(s)
 
 proc newTempVarAccess(ctx: Ctx, s: PSym): PNode =
   result = newSymNode(s, ctx.fn.info)
@@ -246,12 +262,20 @@ proc newTempVarDef(ctx: Ctx, s: PSym, initialValue: PNode): PNode =
     v = ctx.g.emptyNode
   newTree(nkVarSection, newTree(nkIdentDefs, newSymNode(s), ctx.g.emptyNode, v))
 
+proc newEnvVarAsgn(ctx: Ctx, s: PSym, v: PNode): PNode
+
 proc newTempVar(ctx: var Ctx, typ: PType, parent: PNode, initialValue: PNode = nil): PSym =
-  result = newSym(skVar, getIdent(ctx.g.cache, ":tmpSlLower" & $ctx.tempVarId), ctx.idgen, ctx.fn, ctx.fn.info)
+  if ctx.nimOptItersEnabled:
+    result = newSym(skVar, getIdent(ctx.g.cache, ":tmpSlLower" & $ctx.tempVarId), ctx.idgen, ctx.fn, ctx.fn.info)
+  else:
+    result = ctx.newEnvVar(":tmpSlLower" & $ctx.tempVarId, typ)
   inc ctx.tempVarId
   result.typ = typ
   assert(not typ.isNil, "Temp var needs a type")
-  parent.add(ctx.newTempVarDef(result, initialValue))
+  if ctx.nimOptItersEnabled:
+    parent.add(ctx.newTempVarDef(result, initialValue))
+  elif initialValue != nil:
+    parent.add(ctx.newEnvVarAsgn(result, initialValue))
 
 proc hasYields(n: PNode): bool =
   # TODO: This is very inefficient. It traverses the node, looking for nkYieldStmt.
@@ -430,13 +454,23 @@ proc newTempVarAsgn(ctx: Ctx, s: PSym, v: PNode): PNode =
     result = newTree(nkFastAsgn, ctx.newTempVarAccess(s), v)
     result.info = v.info
 
+proc newEnvVarAsgn(ctx: Ctx, s: PSym, v: PNode): PNode =
+  if isEmptyType(v.typ):
+    result = v
+  else:
+    result = newTree(nkFastAsgn, ctx.newEnvVarAccess(s), v)
+    result.info = v.info
+
 proc addExprAssgn(ctx: Ctx, output, input: PNode, sym: PSym) =
+  var input = input
   if input.kind == nkStmtListExpr:
     let (st, res) = exprToStmtList(input)
     output.add(st)
-    output.add(ctx.newTempVarAsgn(sym, res))
-  else:
+    input = res
+  if ctx.nimOptItersEnabled:
     output.add(ctx.newTempVarAsgn(sym, input))
+  else:
+    output.add(ctx.newEnvVarAsgn(sym, input))
 
 proc convertExprBodyToAsgn(ctx: Ctx, exprBody: PNode, res: PSym): PNode =
   result = newNodeI(nkStmtList, exprBody.info)
@@ -565,7 +599,11 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
         else:
           internalError(ctx.g.config, "lowerStmtListExpr(nkIf): " & $branch.kind)
 
-      if isExpr: result.add(ctx.newTempVarAccess(tmp))
+      if isExpr:
+        if ctx.nimOptItersEnabled:
+          result.add(ctx.newTempVarAccess(tmp))
+        else:
+          result.add(ctx.newEnvVarAccess(tmp))
 
   of nkTryStmt, nkHiddenTryStmt:
     var ns = false
@@ -595,7 +633,10 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
           else:
             internalError(ctx.g.config, "lowerStmtListExpr(nkTryStmt): " & $branch.kind)
         result.add(n)
-        result.add(ctx.newTempVarAccess(tmp))
+        if ctx.nimOptItersEnabled:
+          result.add(ctx.newTempVarAccess(tmp))
+        else:
+          result.add(ctx.newEnvVarAccess(tmp))
 
   of nkCaseStmt:
     var ns = false
@@ -627,7 +668,10 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
           else:
             internalError(ctx.g.config, "lowerStmtListExpr(nkCaseStmt): " & $branch.kind)
         result.add(n)
-        result.add(ctx.newTempVarAccess(tmp))
+        if ctx.nimOptItersEnabled:
+          result.add(ctx.newTempVarAccess(tmp))
+        else:
+          result.add(ctx.newEnvVarAccess(tmp))
       elif n[0].kind == nkStmtListExpr:
         result = newNodeI(nkStmtList, n.info)
         let (st, ex) = exprToStmtList(n[0])
@@ -660,7 +704,11 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
         let tmp = ctx.newTempVar(cond.typ, result, cond)
         # result.add(ctx.newTempVarAsgn(tmp, cond))
 
-        var check = ctx.newTempVarAccess(tmp)
+        var check: PNode
+        if ctx.nimOptItersEnabled:
+          check = ctx.newTempVarAccess(tmp)
+        else:
+          check = ctx.newEnvVarAccess(tmp)
         if n[0].sym.magic == mOr:
           check = ctx.g.newNotCall(check)
 
@@ -670,12 +718,18 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
           let (st, ex) = exprToStmtList(cond)
           ifBody.add(st)
           cond = ex
-        ifBody.add(ctx.newTempVarAsgn(tmp, cond))
+        if ctx.nimOptItersEnabled:
+          ifBody.add(ctx.newTempVarAsgn(tmp, cond))
+        else:
+          ifBody.add(ctx.newEnvVarAsgn(tmp, cond))
 
         let ifBranch = newTree(nkElifBranch, check, ifBody)
         let ifNode = newTree(nkIfStmt, ifBranch)
         result.add(ifNode)
-        result.add(ctx.newTempVarAccess(tmp))
+        if ctx.nimOptItersEnabled:
+          result.add(ctx.newTempVarAccess(tmp))
+        else:
+          result.add(ctx.newEnvVarAccess(tmp))
       else:
         for i in 0..<n.len:
           if n[i].kind == nkStmtListExpr:
@@ -686,7 +740,10 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
           if n[i].kind in nkCallKinds: # XXX: This should better be some sort of side effect tracking
             let tmp = ctx.newTempVar(n[i].typ, result, n[i])
             # result.add(ctx.newTempVarAsgn(tmp, n[i]))
-            n[i] = ctx.newTempVarAccess(tmp)
+            if ctx.nimOptItersEnabled:
+              n[i] = ctx.newTempVarAccess(tmp)
+            else:
+              n[i] = ctx.newEnvVarAccess(tmp)
 
         result.add(n)
 
@@ -1284,6 +1341,13 @@ proc wrapIntoStateLoop(ctx: var Ctx, n: PNode): PNode =
   result.info = n.info
 
   let localVars = newNodeI(nkStmtList, n.info)
+  if not ctx.stateVarSym.isNil:
+    let varSect = newNodeI(nkVarSection, n.info)
+    addVar(varSect, newSymNode(ctx.stateVarSym))
+    localVars.add(varSect)
+
+    if not ctx.tempVars.isNil:
+      localVars.add(ctx.tempVars)
 
   let blockStmt = newNodeI(nkBlockStmt, n.info)
   blockStmt.add(newSymNode(ctx.stateLoopLabel))
@@ -1486,11 +1550,20 @@ proc liftLocals(c: var Ctx, n: PNode): PNode =
       n[i] = liftLocals(c, n[i])
 
 proc transformClosureIterator*(g: ModuleGraph; idgen: IdGenerator; fn: PSym, n: PNode): PNode =
-  var ctx = Ctx(g: g, fn: fn, idgen: idgen)
+  var ctx = Ctx(g: g, fn: fn, idgen: idgen,
+    nimOptItersEnabled: isDefined(g.config, "nimOptIters"))
 
-  # The transformation should always happen after at least partial lambdalifting
-  # is performed, so that the closure iter environment is always created upfront.
-  doAssert(getEnvParam(fn) != nil, "Env param not created before iter transformation")
+  if getEnvParam(fn).isNil:
+    if ctx.nimOptItersEnabled:
+      # The transformation should always happen after at least partial lambdalifting
+      # is performed, so that the closure iter environment is always created upfront.
+      doAssert(false, "Env param not created before iter transformation")
+    else:
+      # Lambda lifting was not done yet. Use temporary :state sym, which will
+      # be handled specially by lambda lifting. Local temp vars (if needed)
+      # should follow the same logic.
+      ctx.stateVarSym = newSym(skVar, getIdent(ctx.g.cache, ":state"), idgen, fn, fn.info)
+      ctx.stateVarSym.typ = g.createClosureIterStateType(fn, idgen)
 
   ctx.stateLoopLabel = newSym(skLabel, getIdent(ctx.g.cache, ":stateLoop"), idgen, fn, fn.info)
   var pc = PreprocessContext(finallys: @[], config: g.config, idgen: idgen)
@@ -1516,9 +1589,10 @@ proc transformClosureIterator*(g: ModuleGraph; idgen: IdGenerator; fn: PSym, n: 
   let caseDispatcher = newTreeI(nkCaseStmt, n.info,
       ctx.newStateAccess())
 
-  # Lamdalifting will not touch our locals, it is our responsibility to lift those that
-  # need it.
-  detectCapturedVars(ctx)
+  if ctx.nimOptItersEnabled:
+    # Lamdalifting will not touch our locals, it is our responsibility to lift those that
+    # need it.
+    detectCapturedVars(ctx)
 
   for s in ctx.states:
     let body = ctx.transformStateAssignments(s.body)
@@ -1527,7 +1601,8 @@ proc transformClosureIterator*(g: ModuleGraph; idgen: IdGenerator; fn: PSym, n: 
   caseDispatcher.add newTreeI(nkElse, n.info, newTreeI(nkReturnStmt, n.info, g.emptyNode))
 
   result = wrapIntoStateLoop(ctx, caseDispatcher)
-  result = liftLocals(ctx, result)
+  if ctx.nimOptItersEnabled:
+    result = liftLocals(ctx, result)
 
   when false:
     echo "TRANSFORM TO STATES: "
