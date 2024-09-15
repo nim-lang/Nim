@@ -229,6 +229,7 @@ proc makeClosure*(g: ModuleGraph; idgen: IdGenerator; prc: PSym; env: PNode; inf
     prc.flags.incl sfInjectDestructors
 
 proc interestingIterVar(s: PSym): bool {.inline.} =
+  # unused with -d:nimOptIters
   # XXX optimization: Only lift the variable if it lives across
   # yield/return boundaries! This can potentially speed up
   # closure iterators quite a bit.
@@ -281,6 +282,7 @@ proc liftIterSym*(g: ModuleGraph; n: PNode; idgen: IdGenerator; owner: PSym): PN
   result.add makeClosure(g, idgen, iter, env, n.info)
 
 proc freshVarForClosureIter*(g: ModuleGraph; s: PSym; idgen: IdGenerator; owner: PSym): PNode =
+  # unused with -d:nimOptIters
   let envParam = getHiddenParam(g, owner)
   let obj = envParam.typ.skipTypes({tyOwned, tyRef, tyPtr})
   let field = addField(obj, s, g.cache, idgen)

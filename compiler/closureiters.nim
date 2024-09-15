@@ -162,8 +162,9 @@ type
     idgen: IdGenerator
     varStates: Table[ItemId, int] # Used to detect if local variable belongs to multiple states
     stateVarSym: PSym # :state variable. nil if env already introduced by lambdalifting
-      # remove if nimOptIters is default
-    nimOptItersEnabled: bool # tracks if nimOptIters is enabled, should be default when issues are fixed
+      # remove if -d:nimOptIters is default, treating it as always nil
+    nimOptItersEnabled: bool # tracks if -d:nimOptIters is enabled
+      # should be default when issues are fixed, see #24094
 
 const
   nkSkip = {nkEmpty..nkNilLit, nkTemplateDef, nkTypeSection, nkStaticStmt,
@@ -455,6 +456,7 @@ proc newTempVarAsgn(ctx: Ctx, s: PSym, v: PNode): PNode =
     result.info = v.info
 
 proc newEnvVarAsgn(ctx: Ctx, s: PSym, v: PNode): PNode =
+  # unused with -d:nimOptIters
   if isEmptyType(v.typ):
     result = v
   else:
@@ -1551,6 +1553,7 @@ proc liftLocals(c: var Ctx, n: PNode): PNode =
 
 proc transformClosureIterator*(g: ModuleGraph; idgen: IdGenerator; fn: PSym, n: PNode): PNode =
   var ctx = Ctx(g: g, fn: fn, idgen: idgen,
+    # should be default when issues are fixed, see #24094:
     nimOptItersEnabled: isDefined(g.config, "nimOptIters"))
 
   if getEnvParam(fn).isNil:
