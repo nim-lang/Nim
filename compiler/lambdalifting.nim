@@ -228,6 +228,12 @@ proc makeClosure*(g: ModuleGraph; idgen: IdGenerator; prc: PSym; env: PNode; inf
   if tfHasAsgn in result.typ.flags or optSeqDestructors in g.config.globalOptions:
     prc.flags.incl sfInjectDestructors
 
+proc interestingIterVar(s: PSym): bool {.inline.} =
+  # XXX optimization: Only lift the variable if it lives across
+  # yield/return boundaries! This can potentially speed up
+  # closure iterators quite a bit.
+  result = s.kind in {skResult, skVar, skLet, skTemp, skForVar} and sfGlobal notin s.flags
+
 template liftingHarmful(conf: ConfigRef; owner: PSym): bool =
   ## lambda lifting can be harmful for JS-like code generators.
   let isCompileTime = sfCompileTime in owner.flags or owner.kind == skMacro
@@ -443,6 +449,17 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
       if owner.isIterator:
         c.somethingToDo = true
         addClosureParam(c, owner, n.info)
+        if interestingIterVar(s):
+          if not c.capturedVars.contains(s.id):
+            if not c.inTypeOf: c.capturedVars.incl(s.id)
+            let obj = getHiddenParam(c.graph, owner).typ.skipTypes({tyOwned, tyRef, tyPtr})
+            #let obj = c.getEnvTypeForOwner(s.owner).skipTypes({tyOwned, tyRef, tyPtr})
+
+            if s.name.id == getIdent(c.graph.cache, ":state").id:
+              obj.n[0].sym.flags.incl sfNoInit
+              obj.n[0].sym.itemId = ItemId(module: s.itemId.module, item: -s.itemId.item)
+            else:
+              discard addField(obj, s, c.graph.cache, c.idgen)
     # direct or indirect dependency:
     elif innerClosure or interested:
       discard """
@@ -745,6 +762,8 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: var DetectionPass;
 
     elif s.id in d.capturedVars:
       if s.owner != owner:
+        result = accessViaEnvParam(d.graph, n, owner)
+      elif owner.isIterator and interestingIterVar(s):
         result = accessViaEnvParam(d.graph, n, owner)
       else:
         result = accessViaEnvVar(n, owner, d, c)
