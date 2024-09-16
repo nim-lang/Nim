@@ -199,7 +199,7 @@ proc semSymChoice(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: P
   if n.kind == nkOpenSymChoice:
     result = semOpenSym(c, n, flags, expectedType,
       warnDisabled = nfDisabledOpenSym in n.flags and
-        openSymOverride notin c.features)
+        genericsOpenSym notin c.features)
     if result != nil:
       return
   result = n
@@ -3295,7 +3295,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
   of nkSym:
     let s = n.sym
     if nfDisabledOpenSym in n.flags:
-      let override = openSymOverride in c.features
+      let override = genericsOpenSym in c.features
       let res = semOpenSym(c, n, flags, expectedType,
         warnDisabled = not override)
       if override:

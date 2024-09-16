@@ -128,8 +128,7 @@ is often an easy workaround.
   context changes.
 
   Since this change may affect runtime behavior, the experimental switch
-  `openSym`, or `genericsOpenSym` and `templateOpenSym` for only the respective
-  routines, needs to be enabled; and a warning is given in the case where an
+  `openSym` needs to be enabled; and a warning is given in the case where an
   injected symbol would replace a captured symbol not bound by `bind` and
   the experimental switch isn't enabled.
 
@@ -150,7 +149,7 @@ is often an easy workaround.
         value # warning: a new `value` has been injected, use `bind` or turn on `experimental:openSym`
   echo oldTempl() # "captured"
 
-  {.experimental: "openSym".} # or {.experimental: "genericsOpenSym".} for just generic procs
+  {.experimental: "openSym".}
 
   proc bar[T](): string =
     foo(123):
@@ -162,8 +161,6 @@ is often an easy workaround.
     foo(123):
       return value
   assert baz[int]() == "captured"
-
-  # {.experimental: "templateOpenSym".} would be needed here if genericsOpenSym was used
 
   template barTempl(): string =
     block:
@@ -185,7 +182,7 @@ is often an easy workaround.
   experimental feature should still handle `nnkOpenSym`, as the node kind would
   simply not be generated as opposed to being removed.
 
-  Another experimental switch `openSymOverride` exists that enables this behavior
+  Another experimental switch `genericsOpenSym` exists that enables this behavior
   at instantiation time, meaning templates etc can enable it specifically when
   they are being called. However this does not generate `nnkOpenSym` nodes
   (unless the other switches are enabled) and so doesn't reflect the regular
@@ -195,7 +192,7 @@ is often an easy workaround.
   const value = "captured"
   template foo(x: int, body: untyped): untyped =
     let value {.inject.} = "injected"
-    {.push experimental: "openSymOverride".}
+    {.push experimental: "genericsOpenSym".}
     body
     {.pop.}
 

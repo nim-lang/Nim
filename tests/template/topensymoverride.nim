@@ -8,7 +8,7 @@ template fooOld(x: int, body: untyped): untyped =
   body
 template foo(x: int, body: untyped): untyped =
   let value {.inject.} = "injected"
-  {.push experimental: "openSymOverride".}
+  {.push experimental: "genericsOpenSym".}
   body
   {.pop.}
 
