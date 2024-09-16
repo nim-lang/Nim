@@ -187,6 +187,7 @@ proc semOpenSym(c: PContext, n: PNode, flags: TExprFlags, expectedType: PType,
           break
       o = o.owner
   # nothing found
+  n.flags.excl nfDisabledOpenSym
   if not warnDisabled and isSym:
     result = semExpr(c, n, flags, expectedType)
   else:
