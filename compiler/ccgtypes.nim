@@ -798,36 +798,59 @@ proc fillObjectFields*(m: BModule; typ: PType) =
 
 proc mangleDynLibProc(sym: PSym): Rope
 
-proc getRecordDescAux(m: BModule; typ: PType, name, baseType: Rope,
-                   check: var IntSet, hasField:var bool): Rope =
-  result = ""
-  if typ.kind == tyObject:
-    if typ.baseClass == nil:
-      if lacksMTypeField(typ):
-        appcg(m, result, " {$n", [])
-      else:
-        if optTinyRtti in m.config.globalOptions:
-          appcg(m, result, " {$n#TNimTypeV2* m_type;$n", [])
+when defined(nimUseCBuilder):
+  proc getRecordDescAux(result: var Builder; m: BModule; typ: PType, name, baseType: Rope,
+                    check: var IntSet, hasField: var bool) =
+    if typ.kind == tyObject:
+      if typ.baseClass == nil:
+        if lacksMTypeField(typ):
+          discard
         else:
-          appcg(m, result, " {$n#TNimType* m_type;$n", [])
+          if optTinyRtti in m.config.globalOptions:
+            var field = "" # TODO: handle #
+            appcg(m, field, "#TNimTypeV2* m_type", [])
+            result.addField field
+          else:
+            var field = ""
+            appcg(m, field, "#TNimType* m_type", [])
+            result.addField field
+          hasField = true
+      else:
+        result.addField "$1 Sup" % [baseType]
         hasField = true
-    elif m.compileToCpp:
-      appcg(m, result, " : public $1 {$n", [baseType])
-      if typ.isException and m.config.exc == excCpp:
-        when false:
-          appcg(m, result, "virtual void raise() { throw *this; }$n", []) # required for polymorphic exceptions
-          if typ.sym.magic == mException:
-            # Add cleanup destructor to Exception base class
-            appcg(m, result, "~$1();$n", [name])
-            # define it out of the class body and into the procs section so we don't have to
-            # artificially forward-declare popCurrentExceptionEx (very VERY troublesome for HCR)
-            appcg(m, cfsProcs, "inline $1::~$1() {if(this->raiseId) #popCurrentExceptionEx(this->raiseId);}$n", [name])
-      hasField = true
     else:
-      appcg(m, result, " {$n  $1 Sup;$n", [baseType])
-      hasField = true
-  else:
-    result.addf(" {$n", [name])
+      discard
+else:
+  proc getRecordDescAux(m: BModule; typ: PType, name, baseType: Rope,
+                   check: var IntSet, hasField:var bool): Rope =
+    result = ""
+    if typ.kind == tyObject:
+      if typ.baseClass == nil:
+        if lacksMTypeField(typ):
+          appcg(m, result, " {$n", [])
+        else:
+          if optTinyRtti in m.config.globalOptions:
+            appcg(m, result, " {$n#TNimTypeV2* m_type;$n", [])
+          else:
+            appcg(m, result, " {$n#TNimType* m_type;$n", [])
+          hasField = true
+      elif m.compileToCpp:
+        appcg(m, result, " : public $1 {$n", [baseType])
+        if typ.isException and m.config.exc == excCpp:
+          when false:
+            appcg(m, result, "virtual void raise() { throw *this; }$n", []) # required for polymorphic exceptions
+            if typ.sym.magic == mException:
+              # Add cleanup destructor to Exception base class
+              appcg(m, result, "~$1();$n", [name])
+              # define it out of the class body and into the procs section so we don't have to
+              # artificially forward-declare popCurrentExceptionEx (very VERY troublesome for HCR)
+              appcg(m, cfsProcs, "inline $1::~$1() {if(this->raiseId) #popCurrentExceptionEx(this->raiseId);}$n", [name])
+        hasField = true
+      else:
+        appcg(m, result, " {$n  $1 Sup;$n", [baseType])
+        hasField = true
+    else:
+      result.addf(" {$n", [name])
 
 proc getRecordDesc(m: BModule; typ: PType, name: Rope,
                    check: var IntSet): Rope =
@@ -845,21 +868,52 @@ proc getRecordDesc(m: BModule; typ: PType, name: Rope,
   if typ.baseClass != nil:
     baseType = getTypeDescAux(m, typ.baseClass.skipTypes(skipPtrs), check, dkField)
   if typ.sym == nil or sfCodegenDecl notin typ.sym.flags:
-    result = structOrUnion & " " & name
-    result.add(getRecordDescAux(m, typ, name, baseType, check, hasField))
-    let desc = getRecordFields(m, typ, check)
-    if not hasField and typ.itemId notin m.g.graph.memberProcsPerType:
-      if desc == "":
-        result.add("\tchar dummy;\n")
-      elif typ.n.len == 1 and typ.n[0].kind == nkSym:
-        let field = typ.n[0].sym
-        let fieldType = field.typ.skipTypes(abstractInst)
-        if fieldType.kind == tyUncheckedArray:
-          result.add("\tchar dummy;\n")
-      result.add(desc)
+    when defined(nimUseCBuilder):
+      result = newBuilder("")
+      let isCppInheritance = typ.kind == tyObject and m.compileToCpp and typ.baseClass != nil
+      withStruct(result, structOrUnion, name, if isCppInheritance: baseType else: ""):
+        if isCppInheritance:
+          hasField = true
+          if typ.isException and m.config.exc == excCpp:
+            when false:
+              appcg(m, result, "virtual void raise() { throw *this; }$n", []) # required for polymorphic exceptions
+              if typ.sym.magic == mException:
+                # Add cleanup destructor to Exception base class
+                appcg(m, result, "~$1();$n", [name])
+                # define it out of the class body and into the procs section so we don't have to
+                # artificially forward-declare popCurrentExceptionEx (very VERY troublesome for HCR)
+                appcg(m, cfsProcs, "inline $1::~$1() {if(this->raiseId) #popCurrentExceptionEx(this->raiseId);}$n", [name])
+        else:
+          getRecordDescAux(result, m, typ, name, baseType, check, hasField)
+        let desc = getRecordFields(m, typ, check)
+        if not hasField and typ.itemId notin m.g.graph.memberProcsPerType:
+          if desc == "":
+            result.add("\tchar dummy;\n")
+          elif typ.n.len == 1 and typ.n[0].kind == nkSym:
+            let field = typ.n[0].sym
+            let fieldType = field.typ.skipTypes(abstractInst)
+            if fieldType.kind == tyUncheckedArray:
+              result.add("\tchar dummy;\n")
+          result.add(desc)
+        else:
+          result.add(desc)
+        result.add("};\L")
     else:
-      result.add(desc)
-    result.add("};\L")
+      result = structOrUnion & " " & name
+      result.add(getRecordDescAux(m, typ, name, baseType, check, hasField))
+      let desc = getRecordFields(m, typ, check)
+      if not hasField and typ.itemId notin m.g.graph.memberProcsPerType:
+        if desc == "":
+          result.add("\tchar dummy;\n")
+        elif typ.n.len == 1 and typ.n[0].kind == nkSym:
+          let field = typ.n[0].sym
+          let fieldType = field.typ.skipTypes(abstractInst)
+          if fieldType.kind == tyUncheckedArray:
+            result.add("\tchar dummy;\n")
+        result.add(desc)
+      else:
+        result.add(desc)
+      result.add("};\L")
   else:
     let desc = getRecordFields(m, typ, check)
     result = runtimeFormat(typ.sym.cgDeclFrmt, [name, desc, baseType])
@@ -868,14 +922,15 @@ proc getRecordDesc(m: BModule; typ: PType, name: Rope,
 
 proc getTupleDesc(m: BModule; typ: PType, name: Rope,
                   check: var IntSet): Rope =
-  result = "$1 $2 {$n" % [structOrUnion(typ), name]
-  var desc: Rope = ""
-  for i, a in typ.ikids:
-    desc.addf("$1 Field$2;$n",
-         [getTypeDescAux(m, a, check, dkField), rope(i)])
-  if desc == "": result.add("char dummy;\L")
-  else: result.add(desc)
-  result.add("};\L")
+  if kidsLen(typ) > 0:
+    result = newBuilder("")
+    withStruct(result, structOrUnion(typ), name, ""):
+      for i, a in typ.ikids:
+        result.addField "$1 Field$2" % [getTypeDescAux(m, a, check, dkField), rope(i)]
+  else:
+    result = newBuilder("")
+    withStruct(result, structOrUnion(typ), name, ""):
+      result.addField "char dummy"
 
 proc scanCppGenericSlot(pat: string, cursor, outIdx, outStars: var int): bool =
   # A helper proc for handling cppimport patterns, involving numeric
