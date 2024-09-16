@@ -52,7 +52,7 @@ import std/private/since
 import std/cmdline
 export cmdline
 
-import std/[strutils, pathnorm]
+import strutils, sequtils, pathnorm
 
 when defined(nimPreviewSlimSystem):
   import std/[syncio, assertions, widestrs]
@@ -221,9 +221,9 @@ const
     ## On Windows ``["exe", "cmd", "bat"]``, on Posix ``[""]``.
     when defined(windows): ["exe", "cmd", "bat"] else: [""]
 
-proc findExe*(exe: string, followSymlinks: bool = true;
-              extensions: openArray[string]=ExeExts): string {.
-  tags: [ReadDirEffect, ReadEnvEffect, ReadIOEffect], noNimJs.} =
+iterator iterExes(exe: string, followSymlinks: bool = true; maxChecksPerDirectory: int = 1000.Positive,
+                  extensions: openArray[string] = ExeExts): string {.
+  tags: [ReadDirEffect, ReadEnvEffect, ReadIOEffect], noNimJs, gcsafe, raises: [OSError].} =
   ## Searches for `exe` in the current working directory and then
   ## in directories listed in the ``PATH`` environment variable.
   ##
@@ -234,46 +234,79 @@ proc findExe*(exe: string, followSymlinks: bool = true;
   ## meets the actual file. This behavior can be disabled if desired
   ## by setting `followSymlinks = false`.
 
-  if exe.len == 0: return
-  template checkCurrentDir() =
-    for ext in extensions:
-      result = addFileExt(exe, ext)
-      if fileExists(result): return
-  when defined(posix):
-    if '/' in exe: checkCurrentDir()
-  else:
-    checkCurrentDir()
-  let path = getEnv("PATH")
-  for candidate in split(path, PathSep):
-    if candidate.len == 0: continue
-    when defined(windows):
-      var x = (if candidate[0] == '"' and candidate[^1] == '"':
-                substr(candidate, 1, candidate.len-2) else: candidate) /
-              exe
+  if exe.len != 0:
+    template checkCurrentDir() =
+     for ext in extensions:
+       var exeWithExt = addFileExt(exe, ext)
+       if fileExists(exeWithExt):
+         yield exeWithExt
+    when defined(posix):
+      if '/' in exe[1..^1]: checkCurrentDir()
     else:
-      var x = expandTilde(candidate) / exe
-    for ext in extensions:
-      var x = addFileExt(x, ext)
-      if fileExists(x):
-        when not (defined(windows) or defined(nintendoswitch)):
-          while followSymlinks: # doubles as if here
-            if x.symlinkExists:
-              var r = newString(maxSymlinkLen)
-              var len = readlink(x.cstring, r.cstring, maxSymlinkLen)
-              if len < 0:
-                raiseOSError(osLastError(), exe)
-              if len > maxSymlinkLen:
-                r = newString(len+1)
-                len = readlink(x.cstring, r.cstring, len)
-              setLen(r, len)
-              if isAbsolute(r):
-                x = r
-              else:
-                x = parentDir(x) / r
-            else:
-              break
-        return x
-  result = ""
+      checkCurrentDir()
+    let path = getEnv("PATH")
+    if path.len != 0:
+      for candidate in split(path, PathSep):
+        if candidate.len == 0: continue
+        when defined(windows):
+          var x = candidate.strip(chars = {'"'}) / exe
+        else:
+          var x = expandTilde(candidate) / exe
+        var checks = 0
+        for ext in extensions:
+          if checks >= maxChecksPerDirectory: break
+          var x = addFileExt(x, ext)
+          if fileExists(x):
+            checks += 1
+            when not (defined(windows) or defined(nintendoswitch)):
+              while followSymlinks: # combines while true & if followSymlinks
+                if x.symlinkExists:
+                  var r = newString(maxSymlinkLen)
+                  var len = readlink(x.cstring, r.cstring, maxSymlinkLen)
+                  if len < 0:
+                    raise newException(OSError, "Failed to follow symlink" & x)
+                  if len > maxSymlinkLen:
+                    r = newString(len + 1)
+                    len = readlink(x.cstring, r.cstring, len)
+                  setLen(r, len)
+                  if isAbsolute(r):
+                    x = r
+                  else:
+                    x = parentDir(x) / r
+                else:
+                  break
+            yield x
+
+proc findExe*(exe: string, followSymlinks: bool=true, maxChecks=1000.Positive,
+              extensions: openArray[string]=ExeExts): string {.
+  tags: [ReadDirEffect, ReadEnvEffect, ReadIOEffect], noNimJs, raises: [OSError].} =
+  ## Searches for `exe` in the current working directory and then
+  ## in directories listed in the ``PATH`` environment variable.
+  ##
+  ## Returns `""` if the `exe` cannot be found. `exe`
+  ## is added the `ExeExts <#ExeExts>`_ file extensions if it has none.
+  ##
+  ## If the system supports symlinks it also resolves them until it
+  ## meets the actual file. This behavior can be disabled if desired
+  ## by setting `followSymlinks = false`.
+  for i in iterExes(exe, followSymlinks, maxChecks, extensions):
+    return i
+
+proc findExeAll*(exe: string, followSymlinks: bool=true, maxChecks=1000.Positive,
+                 extensions: openArray[string]=ExeExts): seq[string] {.
+  tags: [ReadDirEffect, ReadEnvEffect, ReadIOEffect], noNimJs.} =
+  ## Searches for `exe` in the current working directory and then
+  ## in directories listed in the ``PATH`` environment variable.
+  ##
+  ## Returns `""` if the `exe` cannot be found. `exe`
+  ## is added the `ExeExts <#ExeExts>`_ file extensions if it has none.
+  ##
+  ## If the system supports symlinks it also resolves them until it
+  ## meets the actual file. This behavior can be disabled if desired
+  ## by setting `followSymlinks = false`.
+
+  for i in iterExes(exe, followSymlinks, maxChecks, extensions):
+    result.add(i)
 
 when weirdTarget:
   const times = "fake const"

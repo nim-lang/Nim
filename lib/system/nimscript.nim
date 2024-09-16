@@ -335,10 +335,16 @@ proc cd*(dir: string) {.raises: [OSError].} =
   setCurrentDir(dir)
   checkOsError()
 
-proc findExe*(bin: string): string =
+proc findExe*(exe: string, followSymlinks: bool = true): string =
   ## Searches for bin in the current working directory and then in directories
   ## listed in the PATH environment variable. Returns "" if the exe cannot be
   ## found.
+  builtin
+
+proc findExeAll*(exe: string, followSymlinks: bool = true): seq[string] =
+  ## Searches for all instances of bin in the current working directory and then
+  ## in directories listed in the PATH environment variable. Returns @[] if the
+  ## exe cannot be found.
   builtin
 
 template withDir*(dir: string; body: untyped): untyped =
