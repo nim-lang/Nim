@@ -609,7 +609,10 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcYldVal: assert false
     of opcAsgnInt:
       decodeB(rkInt)
-      regs[ra].intVal = regs[rb].intVal
+      if regs[rb].kind == rkInt:
+        regs[ra].intVal = regs[rb].intVal
+      else:
+        stackTrace(c, tos, pc, "opcAsgnInt: got " & $regs[rb].kind)
     of opcAsgnFloat:
       decodeB(rkFloat)
       regs[ra].floatVal = regs[rb].floatVal
@@ -676,16 +679,19 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       else:
         assert regs[rb].kind == rkNode
         let nb = regs[rb].node
-        case nb.kind
-        of nkCharLit..nkUInt64Lit:
-          ensureKind(rkInt)
-          regs[ra].intVal = nb.intVal
-        of nkFloatLit..nkFloat64Lit:
-          ensureKind(rkFloat)
-          regs[ra].floatVal = nb.floatVal
+        if nb == nil:
+          stackTrace(c, tos, pc, errNilAccess)
         else:
-          ensureKind(rkNode)
-          regs[ra].node = nb
+          case nb.kind
+          of nkCharLit..nkUInt64Lit:
+            ensureKind(rkInt)
+            regs[ra].intVal = nb.intVal
+          of nkFloatLit..nkFloat64Lit:
+            ensureKind(rkFloat)
+            regs[ra].floatVal = nb.floatVal
+          else:
+            ensureKind(rkNode)
+            regs[ra].node = nb
     of opcSlice:
       # A bodge, but this takes in `toOpenArray(rb, rc, rc)` and emits
       # nkTupleConstr(x, y, z) into the `regs[ra]`. These can later be used for calculating the slice we have taken.
@@ -850,25 +856,30 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcLdObj:
       # a = b.c
       decodeBC(rkNode)
-      let src = if regs[rb].kind == rkNode: regs[rb].node else: regs[rb].nodeAddr[]
-      case src.kind
-      of nkEmpty..nkNilLit:
-        # for nkPtrLit, this could be supported in the future, use something like:
-        # derefPtrToReg(src.intVal + offsetof(src.typ, rc), typ_field, regs[ra], isAssign = false)
-        # where we compute the offset in bytes for field rc
-        stackTrace(c, tos, pc, errNilAccess & " " & $("kind", src.kind, "typ", typeToString(src.typ), "rc", rc))
-      of nkObjConstr:
-        let n = src[rc + 1].skipColon
-        regs[ra].node = n
-      of nkTupleConstr:
-        let n = if src.typ != nil and tfTriggersCompileTime in src.typ.flags:
-            src[rc]
-          else:
-            src[rc].skipColon
-        regs[ra].node = n
+      if rb >= regs.len or regs[rb].kind == rkNone or 
+        (regs[rb].kind == rkNode and regs[rb].node == nil) or
+        (regs[rb].kind == rkNodeAddr and regs[rb].nodeAddr[] == nil): 
+        stackTrace(c, tos, pc, errNilAccess)
       else:
-        let n = src[rc]
-        regs[ra].node = n
+        let src = if regs[rb].kind == rkNode: regs[rb].node else: regs[rb].nodeAddr[]
+        case src.kind
+        of nkEmpty..nkNilLit:
+          # for nkPtrLit, this could be supported in the future, use something like:
+          # derefPtrToReg(src.intVal + offsetof(src.typ, rc), typ_field, regs[ra], isAssign = false)
+          # where we compute the offset in bytes for field rc
+          stackTrace(c, tos, pc, errNilAccess & " " & $("kind", src.kind, "typ", typeToString(src.typ), "rc", rc))
+        of nkObjConstr:
+          let n = src[rc + 1].skipColon
+          regs[ra].node = n
+        of nkTupleConstr:
+          let n = if src.typ != nil and tfTriggersCompileTime in src.typ.flags:
+              src[rc]
+            else:
+              src[rc].skipColon
+          regs[ra].node = n
+        else:
+          let n = src[rc]
+          regs[ra].node = n
     of opcLdObjAddr:
       # a = addr(b.c)
       decodeBC(rkNodeAddr)

@@ -245,7 +245,7 @@ proc getTemp(cc: PCtx; tt: PType): TRegister =
 
 proc freeTemp(c: PCtx; r: TRegister) =
   let c = c.prc
-  if c.regInfo[r].kind in {slotSomeTemp..slotTempComplex}:
+  if r < c.regInfo.len and c.regInfo[r].kind in {slotSomeTemp..slotTempComplex}:
     # this seems to cause https://github.com/nim-lang/Nim/issues/10647
     c.regInfo[r].inUse = false
 
@@ -357,12 +357,13 @@ proc genBlock(c: PCtx; n: PNode; dest: var TDest) =
     #if c.prc.regInfo[i].kind in {slotFixedVar, slotFixedLet}:
     if i != dest:
       when not defined(release):
-        if c.prc.regInfo[i].inUse and c.prc.regInfo[i].kind in {slotTempUnknown,
-                                  slotTempInt,
-                                  slotTempFloat,
-                                  slotTempStr,
-                                  slotTempComplex}:
-          raiseAssert "leaking temporary " & $i & " " & $c.prc.regInfo[i].kind
+        if c.config.cmd != cmdCheck:
+          if c.prc.regInfo[i].inUse and c.prc.regInfo[i].kind in {slotTempUnknown,
+                                    slotTempInt,
+                                    slotTempFloat,
+                                    slotTempStr,
+                                    slotTempComplex}:
+            raiseAssert "leaking temporary " & $i & " " & $c.prc.regInfo[i].kind
       c.prc.regInfo[i] = (inUse: false, kind: slotEmpty)
 
   c.clearDest(n, dest)
@@ -1529,7 +1530,11 @@ proc setSlot(c: PCtx; v: PSym) =
   if v.position == 0:
     v.position = getFreeRegister(c, if v.kind == skLet: slotFixedLet else: slotFixedVar, start = 1)
 
-proc cannotEval(c: PCtx; n: PNode) {.noinline.} =
+template cannotEval(c: PCtx; n: PNode) =
+  if c.config.cmd == cmdCheck:
+    localError(c.config, n.info, "cannot evaluate at compile time: " & 
+    n.renderTree)
+    return
   globalError(c.config, n.info, "cannot evaluate at compile time: " &
     n.renderTree)
 
@@ -1742,7 +1747,7 @@ proc genRdVar(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
                           s.kind in {skParam, skResult}):
       if dest < 0:
         dest = s.position + ord(s.kind == skParam)
-        internalAssert(c.config, c.prc.regInfo[dest].kind < slotSomeTemp)
+        internalAssert(c.config, c.prc.regInfo.len > dest and c.prc.regInfo[dest].kind < slotSomeTemp)
       else:
         # we need to generate an assignment:
         let requiresCopy = c.prc.regInfo[dest].kind >= slotSomeTemp and
