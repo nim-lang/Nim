@@ -1,5 +1,5 @@
 discard """
-  matrix: "; --experimental:strictdefs"
+  matrix: "; --experimental:strictdefs; -d:nimOptIters"
   targets: "c cpp"
 """
 
@@ -505,7 +505,7 @@ block: # void iterator
       discard
   var a = it
 
-block: # Locals present in only 1 state should be on the stack
+if defined(nimOptIters): # Locals present in only 1 state should be on the stack
   proc checkOnStack(a: pointer, shouldBeOnStack: bool) =
     # Quick and dirty way to check if a points to stack
     var dummy = 0
