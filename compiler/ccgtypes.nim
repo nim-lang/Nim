@@ -932,12 +932,11 @@ proc getTypeDescAux(m: BModule; origTyp: PType, check: var IntSet; kind: TypeDes
   if t != origTyp and origTyp.sym != nil: useHeader(m, origTyp.sym)
   let sig = hashType(origTyp, m.config)
 
-  result = "" # todo move `result = getTypePre(m, t, sig)` here ?
+  result = getTypePre(m, t, sig)
   defer: # defer is the simplest in this case
     if isImportedType(t) and not m.typeABICache.containsOrIncl(sig):
       addAbiCheck(m, t, result)
 
-  result = getTypePre(m, t, sig)
   if result != "" and t.kind != tyOpenArray:
     excl(check, t.id)
     if kind == dkRefParam or kind == dkRefGenericParam and origTyp.kind == tyGenericInst:
