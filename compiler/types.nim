@@ -64,8 +64,6 @@ proc addTypeDeclVerboseMaybe*(result: var string, conf: ConfigRef; typ: PType) =
 
 template `$`*(typ: PType): string = typeToString(typ)
 
-proc base*(t: PType): PType =
-  result = t[0]
 
 # ------------------- type iterator: ----------------------------------------
 type

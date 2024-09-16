@@ -1465,7 +1465,42 @@ proc newIntNode*(kind: TNodeKind, intVal: Int128): PNode =
   result = newNode(kind)
   result.intVal = castToInt64(intVal)
 
-proc lastSon*(n: Indexable): Indexable = n.sons[^1]
+proc lastSon*(n: Indexable): Indexable {.inline.} = n.sons[^1]
+template setLastSon*(n: PNode, s: PNode) = n.sons[^1] = s
+
+template firstSon*(n: PNode): PNode = n.sons[0]
+template secondSon*(n: PNode): PNode = n.sons[1]
+
+template hasSon*(n: PNode): bool = n.len > 0
+template has2Sons*(n: PNode): bool = n.len > 1
+
+proc replaceFirstSon*(n, newson: PNode) {.inline.} =
+  n.sons[0] = newson
+
+proc replaceSon*(n: PNode; i: int; newson: PNode) {.inline.} =
+  n.sons[i] = newson
+
+proc last*(n: PType): PType {.inline.} = n.sons[^1]
+
+proc elementType*(n: PType): PType {.inline.} = n.sons[^1]
+proc skipModifier*(n: PType): PType {.inline.} = n.sons[^1]
+
+proc indexType*(n: PType): PType {.inline.} = n.sons[0]
+proc baseClass*(n: PType): PType {.inline.} = n.sons[0]
+
+proc base*(t: PType): PType {.inline.} =
+  result = t.sons[0]
+
+proc returnType*(n: PType): PType {.inline.} = n.sons[0]
+proc setReturnType*(n, r: PType) {.inline.} = n.sons[0] = r
+proc setIndexType*(n, idx: PType) {.inline.} = n.sons[0] = idx
+
+proc firstParamType*(n: PType): PType {.inline.} = n.sons[1]
+proc firstGenericParam*(n: PType): PType {.inline.} = n.sons[1]
+
+proc typeBodyImpl*(n: PType): PType {.inline.} = n.sons[^1]
+
+proc genericHead*(n: PType): PType {.inline.} = n.sons[0]
 
 proc skipTypes*(t: PType, kinds: TTypeKinds): PType =
   ## Used throughout the compiler code to test whether a type tree contains or
@@ -1473,7 +1508,7 @@ proc skipTypes*(t: PType, kinds: TTypeKinds): PType =
   ## last child nodes of a type tree need to be searched. This is a really hot
   ## path within the compiler!
   result = t
-  while result.kind in kinds: result = lastSon(result)
+  while result.kind in kinds: result = last(result)
 
 proc newIntTypeNode*(intVal: BiggestInt, typ: PType): PNode =
   let kind = skipTypes(typ, abstractVarRange).kind
@@ -1531,6 +1566,107 @@ proc `$`*(s: PSym): string =
     result = s.name.s & "@" & $s.id
   else:
     result = "<nil>"
+
+when false:
+  iterator items*(t: PType): PType =
+    for i in 0..<t.sons.len: yield t.sons[i]
+
+  iterator pairs*(n: PType): tuple[i: int, n: PType] =
+    for i in 0..<n.sons.len: yield (i, n.sons[i])
+
+when true:
+  proc len*(n: PType): int {.inline.} =
+    result = n.sons.len
+
+proc sameTupleLengths*(a, b: PType): bool {.inline.} =
+  result = a.sons.len == b.sons.len
+
+iterator tupleTypePairs*(a, b: PType): (int, PType, PType) =
+  for i in 0 ..< a.sons.len:
+    yield (i, a.sons[i], b.sons[i])
+
+iterator underspecifiedPairs*(a, b: PType; start = 0; without = 0): (PType, PType) =
+  # XXX Figure out with what typekinds this is called.
+  for i in start ..< min(a.sons.len, b.sons.len) + without:
+    yield (a.sons[i], b.sons[i])
+
+proc signatureLen*(t: PType): int {.inline.} =
+  result = t.sons.len
+
+proc paramsLen*(t: PType): int {.inline.} =
+  result = t.sons.len - 1
+
+proc genericParamsLen*(t: PType): int {.inline.} =
+  assert t.kind == tyGenericInst
+  result = t.sons.len - 2 # without 'head' and 'body'
+
+proc genericInvocationParamsLen*(t: PType): int {.inline.} =
+  assert t.kind == tyGenericInvocation
+  result = t.sons.len - 1 # without 'head'
+
+proc kidsLen*(t: PType): int {.inline.} =
+  result = t.sons.len
+
+proc genericParamHasConstraints*(t: PType): bool {.inline.} = t.sons.len > 0
+
+proc hasElementType*(t: PType): bool {.inline.} = t.sons.len > 0
+proc isEmptyTupleType*(t: PType): bool {.inline.} = t.sons.len == 0
+proc isSingletonTupleType*(t: PType): bool {.inline.} = t.sons.len == 1
+
+proc genericConstraint*(t: PType): PType {.inline.} = t.sons[0]
+
+iterator genericInstParams*(t: PType): (bool, PType) =
+  for i in 1..<t.sons.len-1:
+    yield (i!=1, t.sons[i])
+
+iterator genericInstParamPairs*(a, b: PType): (int, PType, PType) =
+  for i in 1..<min(a.sons.len, b.sons.len)-1:
+    yield (i-1, a.sons[i], b.sons[i])
+
+iterator genericInvocationParams*(t: PType): (bool, PType) =
+  for i in 1..<t.sons.len:
+    yield (i!=1, t.sons[i])
+
+iterator genericInvocationAndBodyElements*(a, b: PType): (PType, PType) =
+  for i in 1..<a.sons.len:
+    yield (a.sons[i], b.sons[i-1])
+
+iterator genericInvocationParamPairs*(a, b: PType): (bool, PType, PType) =
+  for i in 1..<a.sons.len:
+    if i >= b.sons.len:
+      yield (false, nil, nil)
+    else:
+      yield (true, a.sons[i], b.sons[i])
+
+iterator genericBodyParams*(t: PType): (int, PType) =
+  for i in 0..<t.sons.len-1:
+    yield (i, t.sons[i])
+
+iterator userTypeClassInstParams*(t: PType): (bool, PType) =
+  for i in 1..<t.sons.len-1:
+    yield (i!=1, t.sons[i])
+
+iterator ikids*(t: PType): (int, PType) =
+  for i in 0..<t.sons.len: yield (i, t.sons[i])
+
+const
+  FirstParamAt* = 1
+  FirstGenericParamAt* = 1
+
+iterator paramTypes*(t: PType): (int, PType) =
+  for i in FirstParamAt..<t.sons.len: yield (i, t.sons[i])
+
+iterator paramTypePairs*(a, b: PType): (PType, PType) =
+  for i in FirstParamAt..<a.sons.len: yield (a.sons[i], b.sons[i])
+
+template paramTypeToNodeIndex*(x: int): int = x
+
+iterator kids*(t: PType): PType =
+  for i in 0..<t.sons.len: yield t.sons[i]
+
+iterator signature*(t: PType): PType =
+  # yields return type + parameter types
+  for i in 0..<t.sons.len: yield t.sons[i]
 
 proc newType*(kind: TTypeKind, id: ItemId; owner: PSym): PType =
   result = PType(kind: kind, owner: owner, size: defaultSize,
@@ -1642,7 +1778,7 @@ proc skipTypes*(t: PType, kinds: TTypeKinds; maxIters: int): PType =
   result = t
   var i = maxIters
   while result.kind in kinds:
-    result = lastSon(result)
+    result = last(result)
     dec i
     if i == 0: return nil
 
@@ -1651,7 +1787,7 @@ proc skipTypesOrNil*(t: PType, kinds: TTypeKinds): PType =
   result = t
   while result != nil and result.kind in kinds:
     if result.len == 0: return nil
-    result = lastSon(result)
+    result = last(result)
 
 proc isGCedMem*(t: PType): bool {.inline.} =
   result = t.kind in {tyString, tyRef, tySequence} or
@@ -1990,7 +2126,7 @@ proc toObject*(typ: PType): PType =
   ## cases should be a ``tyObject``).
   ## Otherwise ``typ`` is simply returned as-is.
   let t = typ.skipTypes({tyAlias, tyGenericInst})
-  if t.kind == tyRef: t.lastSon
+  if t.kind == tyRef: t.elementType
   else: typ
 
 proc toObjectFromRefPtrGeneric*(typ: PType): PType =
@@ -2007,7 +2143,7 @@ proc toObjectFromRefPtrGeneric*(typ: PType): PType =
   result = typ
   while true:
     case result.kind
-    of tyGenericBody: result = result.lastSon
+    of tyGenericBody: result = result.last
     of tyRef, tyPtr, tyGenericInst, tyGenericInvocation, tyAlias: result = result[0]
       # automatic dereferencing is deep, refs #18298.
     else: break
