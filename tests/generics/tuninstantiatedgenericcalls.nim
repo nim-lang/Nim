@@ -451,3 +451,67 @@ block: # real version of above
   proc foo[T](x: T, a = Opt.none(int)) = discard
   foo(1, a = Opt.none(int))
   foo(1)
+
+block: # issue #20880
+  type
+    Child[n: static int] = object
+      data: array[n, int]
+    Parent[n: static int] = object
+      child: Child[3*n]
+  const n = 3
+  doAssert $(typeof Parent[n*3]()) == "Parent[9]"
+  doAssert $(typeof Parent[1]().child) == "Child[3]"
+  doAssert Parent[1]().child.data.len == 3
+
+{.experimental: "dynamicBindSym".}
+block: # issue #16774
+  type SecretWord = distinct uint64
+  const WordBitWidth = 8 * sizeof(uint64)
+  func wordsRequired(bits: int): int {.compileTime.} =
+    ## Compute the number of limbs required
+    # from the **announced** bit length
+    (bits + WordBitWidth - 1) div WordBitWidth
+  type
+    Curve = enum BLS12_381
+    BigInt[bits: static int] = object
+      limbs: array[bits.wordsRequired, SecretWord]
+  const BLS12_381_Modulus = default(BigInt[381])
+  macro Mod(C: static Curve): untyped =
+    ## Get the Modulus associated to a curve
+    result = bindSym($C & "_Modulus")
+  macro getCurveBitwidth(C: static Curve): untyped =
+    result = nnkDotExpr.newTree(
+      getAST(Mod(C)),
+      ident"bits"
+    )
+  type Fp[C: static Curve] = object
+    ## Finite Fields / Modular arithmetic
+    ## modulo the curve modulus
+    mres: BigInt[getCurveBitwidth(C)]
+  var x: Fp[BLS12_381]
+  doAssert x.mres.limbs.len == wordsRequired(getCurveBitWidth(BLS12_381))
+  # minimized, as if we haven't tested it already:
+  macro makeIntLit(c: static int): untyped =
+    result = newLit(c)
+  type Test[T: static int] = object
+    myArray: array[makeIntLit(T), int]
+  var y: Test[2]
+  doAssert y.myArray.len == 2
+  var z: Test[4]
+  doAssert z.myArray.len == 4
+
+block: # issue #16175
+  type
+    Thing[D: static uint] = object
+      when D == 0:
+        kid: char
+      else:
+        kid: Thing[D-1]
+  var t2 = Thing[3]()
+  doAssert t2.kid is Thing[2.uint]
+  doAssert t2.kid.kid is Thing[1.uint]
+  doAssert t2.kid.kid.kid is Thing[0.uint]
+  doAssert t2.kid.kid.kid.kid is char
+  var s = Thing[1]()
+  doAssert s.kid is Thing[0.uint]
+  doAssert s.kid.kid is char

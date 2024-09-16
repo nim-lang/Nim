@@ -67,3 +67,14 @@ block: # issue #24099, modified to work but using float32
     ## Compares colors with given accuracy.
     abs(a[0] - b[0]) < e and abs(a[1] - b[1]) < e and abs(a[2] - b[2]) < e
   doAssert ColorRGBU([1.float32, 1, 1]) ~= ColorRGBU([1.float32, 1, 1])
+
+block: # issue #13270
+  type
+    A = object
+    B = object
+  proc f(a: A) = discard
+  proc g[T](value: T, cb: (proc(a: T)) = f) =
+    cb value
+  g A()
+  # This should fail because there is no f(a: B) overload available
+  doAssert not compiles(g B())
