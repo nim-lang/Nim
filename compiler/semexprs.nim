@@ -3295,13 +3295,10 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
   of nkSym:
     let s = n.sym
     if nfDisabledOpenSym in n.flags:
-      let override = genericsOpenSym in c.features
       let res = semOpenSym(c, n, flags, expectedType,
-        warnDisabled = not override)
-      if override:
+        warnDisabled = genericsOpenSym notin c.features)
+      if res != nil:
         return res
-      else:
-        assert res == nil
     # because of the changed symbol binding, this does not mean that we
     # don't have to check the symbol for semantics here again!
     result = semSym(c, n, s, flags)
