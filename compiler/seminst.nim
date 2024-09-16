@@ -254,6 +254,8 @@ proc instantiateProcType(c: PContext, pt: TypeMapping,
 
     let needsStaticSkipping = resulti.kind == tyFromExpr
     let needsTypeDescSkipping = resulti.kind == tyTypeDesc and tfUnresolved in resulti.flags
+    if resulti.kind == tyFromExpr:
+      resulti.flags.incl tfNonConstExpr
     result[i] = replaceTypeVarsT(cl, resulti)
     if needsStaticSkipping:
       result[i] = result[i].skipTypes({tyStatic})

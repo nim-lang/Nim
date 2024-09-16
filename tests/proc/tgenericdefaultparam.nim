@@ -67,3 +67,21 @@ block: # issue #24099, modified to work but using float32
     ## Compares colors with given accuracy.
     abs(a[0] - b[0]) < e and abs(a[1] - b[1]) < e and abs(a[2] - b[2]) < e
   doAssert ColorRGBU([1.float32, 1, 1]) ~= ColorRGBU([1.float32, 1, 1])
+
+block: # issue #24121
+  type
+    Foo = distinct int
+    Bar = distinct int
+    FooBar = Foo | Bar
+
+  proc foo[T: distinct](x: T): string = "a"
+  proc foo(x: Foo): string = "b"
+  proc foo(x: Bar): string = "c"
+
+  proc bar(x: FooBar, y = foo(x)): string = y
+  doAssert bar(Foo(123)) == "b"
+  doAssert bar(Bar(123)) == "c"
+
+  proc baz[T: FooBar](x: T, y = foo(x)): string = y
+  doAssert baz(Foo(123)) == "b"
+  doAssert baz(Bar(123)) == "c"

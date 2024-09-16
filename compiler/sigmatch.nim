@@ -1279,6 +1279,11 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     if prev == nil: body
     else: return typeRel(c, prev, a, flags)
 
+  if c.c.inGenericContext > 0 and not c.isNoCall and
+      (tfUnresolved in a.flags or a.kind in tyTypeClasses):
+    # cheap check for unresolved arg, not nested
+    return isNone
+
   case a.kind
   of tyOr:
     # XXX: deal with the current dual meaning of tyGenericParam
