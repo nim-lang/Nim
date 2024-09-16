@@ -2590,7 +2590,7 @@ simply not be generated as opposed to being removed.
 Another experimental switch `genericsOpenSym` exists that enables this behavior
 at instantiation time, meaning templates etc can enable it specifically when
 they are being called. However this does not generate `nnkOpenSym` nodes
-(unless the other switches are enabled) and so doesn't reflect the regular
+(unless the other switch is enabled) and so doesn't reflect the regular
 behavior of the switch.
 
 ```nim
