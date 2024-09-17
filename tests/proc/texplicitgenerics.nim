@@ -43,3 +43,13 @@ block: # ditto but may be wrong minimization
   # alternative version, also causes instantiation issue
   proc baz[T](x: typeof(foo[T]())) = discard
   baz[int](Foo[int]())
+
+block: # issue #21346
+  type K[T] = object
+  template s[T](x: int) = doAssert T is K[K[int]]
+  proc b1(n: bool | bool) = s[K[K[int]]](3)
+  proc b2(n: bool)        = s[K[K[int]]](3)
+  template b3(n: bool)    = s[K[K[int]]](3)
+  b1(false)     # Error: cannot instantiate K; got: <T> but expected: <T>
+  b2(false)     # Builds, on its own
+  b3(false)

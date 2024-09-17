@@ -44,3 +44,15 @@ block: # constant condition after dynamic one
   doAssert y.a is int
   var z: Foo[float]
   doAssert z.a is string
+
+block: # issue #4774, but not with threads
+  const hasThreadSupport = not defined(js)
+  when hasThreadSupport:
+    type Channel[T] = object
+      value: T
+  type
+    SomeObj[T] = object
+      when hasThreadSupport:
+        channel: ptr Channel[T]
+  var x: SomeObj[int]
+  doAssert compiles(x.channel) == hasThreadSupport
