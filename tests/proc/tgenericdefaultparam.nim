@@ -78,3 +78,21 @@ block: # issue #13270
   g A()
   # This should fail because there is no f(a: B) overload available
   doAssert not compiles(g B())
+
+block: # issue #24121
+  type
+    Foo = distinct int
+    Bar = distinct int
+    FooBar = Foo | Bar
+
+  proc foo[T: distinct](x: T): string = "a"
+  proc foo(x: Foo): string = "b"
+  proc foo(x: Bar): string = "c"
+
+  proc bar(x: FooBar, y = foo(x)): string = y
+  doAssert bar(Foo(123)) == "b"
+  doAssert bar(Bar(123)) == "c"
+
+  proc baz[T: FooBar](x: T, y = foo(x)): string = y
+  doAssert baz(Foo(123)) == "b"
+  doAssert baz(Bar(123)) == "c"
