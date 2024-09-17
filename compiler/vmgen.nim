@@ -696,6 +696,11 @@ proc genAsgnPatch(c: PCtx; le: PNode, value: TRegister) =
       let dest = c.genx(le, {gfNodeAddr})
       c.gABC(le, opcWrDeref, dest, 0, value)
       c.freeTemp(dest)
+  of nkHiddenStdConv, nkHiddenSubConv, nkConv:
+    if sameBackendType(le.typ, le[1].typ):
+      let dest = c.genx(le[1], {gfNodeAddr})
+      c.gABC(le, opcWrDeref, dest, 0, value)
+      c.freeTemp(dest)
   else:
     discard
 
@@ -868,7 +873,7 @@ proc genAddSubInt(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode) =
     genBinaryABC(c, n, dest, opc)
   c.genNarrow(n, dest)
 
-proc genConv(c: PCtx; n, arg: PNode; dest: var TDest; opc=opcConv) =
+proc genConv(c: PCtx; n, arg: PNode; dest: var TDest, flags: TGenFlags = {}; opc=opcConv) =
   let t2 = n.typ.skipTypes({tyDistinct})
   let targ2 = arg.typ.skipTypes({tyDistinct})
 
@@ -882,7 +887,7 @@ proc genConv(c: PCtx; n, arg: PNode; dest: var TDest; opc=opcConv) =
       result = false
 
   if implicitConv():
-    gen(c, arg, dest)
+    gen(c, arg, dest, flags)
     return
 
   let tmp = c.genx(arg)
@@ -1050,7 +1055,7 @@ proc whichAsgnOpc(n: PNode; requiresCopy = true): TOpcode =
   else:
     (if requiresCopy: opcAsgnComplex else: opcFastAsgnComplex)
 
-proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
+proc genMagic(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}, m: TMagic) =
   case m
   of mAnd: c.genAndOr(n, opcFJmp, dest)
   of mOr:  c.genAndOr(n, opcTJmp, dest)
@@ -1189,7 +1194,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     if t.kind in {tyUInt8..tyUInt32} or (t.kind == tyUInt and size < 8):
       c.gABC(n, opcNarrowU, dest, TRegister(size*8))
   of mCharToStr, mBoolToStr, mCStrToStr, mStrToStr, mEnumToStr:
-    genConv(c, n, n[1], dest)
+    genConv(c, n, n[1], dest, flags)
   of mEqStr: genBinaryABC(c, n, dest, opcEqStr)
   of mEqCString: genBinaryABC(c, n, dest, opcEqCString)
   of mLeStr: genBinaryABC(c, n, dest, opcLeStr)
@@ -1652,6 +1657,13 @@ proc genAsgn(c: PCtx; le, ri: PNode; requiresCopy: bool) =
         c.freeTemp(cc)
       else:
         gen(c, ri, dest)
+  of nkHiddenStdConv, nkHiddenSubConv, nkConv:
+    if sameBackendType(le.typ, le[1].typ):
+      let dest = c.genx(le[1], {gfNode})
+      let tmp = c.genx(ri)
+      c.preventFalseAlias(le, opcWrDeref, dest, 0, tmp)
+      c.freeTemp(dest)
+      c.freeTemp(tmp)
   else:
     let dest = c.genx(le, {gfNodeAddr})
     genAsgn(c, dest, ri, requiresCopy)
@@ -2164,7 +2176,7 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
     if n[0].kind == nkSym:
       let s = n[0].sym
       if s.magic != mNone:
-        genMagic(c, n, dest, s.magic)
+        genMagic(c, n, dest, flags, s.magic)
       elif s.kind == skMethod:
         localError(c.config, n.info, "cannot call method " & s.name.s &
           " at compile time")
@@ -2221,11 +2233,11 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
     unused(c, n, dest)
     gen(c, n[0])
   of nkHiddenStdConv, nkHiddenSubConv, nkConv:
-    genConv(c, n, n[1], dest)
+    genConv(c, n, n[1], dest, flags)
   of nkObjDownConv:
-    genConv(c, n, n[0], dest)
+    genConv(c, n, n[0], dest, flags)
   of nkObjUpConv:
-    genConv(c, n, n[0], dest)
+    genConv(c, n, n[0], dest, flags)
   of nkVarSection, nkLetSection:
     unused(c, n, dest)
     genVarSection(c, n)
@@ -2235,7 +2247,7 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
     genLit(c, newSymNode(n[namePos].sym), dest)
   of nkChckRangeF, nkChckRange64, nkChckRange:
     if skipTypes(n.typ, abstractVar).kind in {tyUInt..tyUInt64}:
-      genConv(c, n, n[0], dest)
+      genConv(c, n, n[0], dest, flags)
     else:
       let
         tmp0 = c.genx(n[0])
@@ -2261,7 +2273,7 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
   of nkPar, nkClosure, nkTupleConstr: genTupleConstr(c, n, dest)
   of nkCast:
     if allowCast in c.features:
-      genConv(c, n, n[1], dest, opcCast)
+      genConv(c, n, n[1], dest, flags, opcCast)
     else:
       genCastIntFloat(c, n, dest)
   of nkTypeOfExpr:
