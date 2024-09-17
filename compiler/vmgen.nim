@@ -698,9 +698,7 @@ proc genAsgnPatch(c: PCtx; le: PNode, value: TRegister) =
       c.freeTemp(dest)
   of nkHiddenStdConv, nkHiddenSubConv, nkConv:
     if sameBackendType(le.typ, le[1].typ):
-      let dest = c.genx(le[1], {gfNodeAddr})
-      c.gABC(le, opcWrDeref, dest, 0, value)
-      c.freeTemp(dest)
+      genAsgnPatch(c, le[1], value)
   else:
     discard
 
@@ -1659,11 +1657,7 @@ proc genAsgn(c: PCtx; le, ri: PNode; requiresCopy: bool) =
         gen(c, ri, dest)
   of nkHiddenStdConv, nkHiddenSubConv, nkConv:
     if sameBackendType(le.typ, le[1].typ):
-      let dest = c.genx(le[1], {gfNode})
-      let tmp = c.genx(ri)
-      c.preventFalseAlias(le, opcWrDeref, dest, 0, tmp)
-      c.freeTemp(dest)
-      c.freeTemp(tmp)
+      genAsgn(c, le[1], ri, requiresCopy)
   else:
     let dest = c.genx(le, {gfNodeAddr})
     genAsgn(c, dest, ri, requiresCopy)

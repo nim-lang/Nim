@@ -36,3 +36,14 @@ block: # issue #24097
     doAssert arr[0].int == 4
     bar(int(arr[0])) # need vmgen flags propagated for this
     doAssert arr[0].int == 5
+  proc testResult(): Foo =
+    result = Foo(1)
+    int(result) = int(result) + 1
+    doAssert result.int == 2
+    int(result) += 1
+    doAssert result.int == 3
+    foo(result)
+    doAssert result.int == 4
+    bar(int(result)) # need vmgen flags propagated for this
+    doAssert result.int == 5
+  doAssert testResult().int == 5
