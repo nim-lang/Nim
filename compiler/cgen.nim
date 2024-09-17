@@ -783,15 +783,11 @@ $1define nimfr_(proc, file) \
   TFrame FR_; \
   FR_.procname = proc; FR_.filename = file; FR_.line = 0; FR_.len = 0; #nimFrame(&FR_);
 
-  $1define nimfrs_(proc, file, slots, length) \
-    struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;VarSlot s[slots];} FR_; \
-    FR_.procname = proc; FR_.filename = file; FR_.line = 0; FR_.len = length; #nimFrame((TFrame*)&FR_);
+$1define nimln_(n) \
+  FR_.line = n;
 
-  $1define nimln_(n) \
-    FR_.line = n;
-
-  $1define nimlf_(n, file) \
-    FR_.line = n; FR_.filename = file;
+$1define nimlf_(n, file) \
+  FR_.line = n; FR_.filename = file;
 
 """
   if p.module.s[cfsFrameDefines].len == 0:
