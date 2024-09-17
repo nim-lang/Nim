@@ -868,9 +868,8 @@ proc getRecordDesc(m: BModule; typ: PType, name: Rope,
 
 proc getTupleDesc(m: BModule; typ: PType, name: Rope,
                   check: var IntSet): Rope =
-  let structOrUnionString = structOrUnion(typ)
   result = newBuilder("")
-  withStruct(result, structOrUnionString, name, ""):
+  withStruct(result, structOrUnion(typ), name, ""):
     if kidsLen(typ) > 0:
       for i, a in typ.ikids:
         result.addField "$1 Field$2" % [getTypeDescAux(m, a, check, dkField), rope(i)]
