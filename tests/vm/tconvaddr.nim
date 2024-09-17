@@ -14,3 +14,25 @@ block: # issue #24097
     doAssert x.int == 4
     bar(int(x)) # need vmgen flags propagated for this
     doAssert x.int == 5
+  type Bar = object
+    x: Foo
+  static:
+    var obj = Bar(x: Foo(1))
+    int(obj.x) = int(obj.x) + 1
+    doAssert obj.x.int == 2
+    int(obj.x) += 1
+    doAssert obj.x.int == 3
+    foo(obj.x)
+    doAssert obj.x.int == 4
+    bar(int(obj.x)) # need vmgen flags propagated for this
+    doAssert obj.x.int == 5
+  static:
+    var arr = @[Foo(1)]
+    int(arr[0]) = int(arr[0]) + 1
+    doAssert arr[0].int == 2
+    int(arr[0]) += 1
+    doAssert arr[0].int == 3
+    foo(arr[0])
+    doAssert arr[0].int == 4
+    bar(int(arr[0])) # need vmgen flags propagated for this
+    doAssert arr[0].int == 5
