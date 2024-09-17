@@ -870,12 +870,11 @@ proc getTupleDesc(m: BModule; typ: PType, name: Rope,
                   check: var IntSet): Rope =
   let structOrUnionString = structOrUnion(typ)
   result = newBuilder("")
-  if kidsLen(typ) > 0:
-    withStruct(result, structOrUnionString, name, ""):
+  withStruct(result, structOrUnionString, name, ""):
+    if kidsLen(typ) > 0:
       for i, a in typ.ikids:
         result.addField "$1 Field$2" % [getTypeDescAux(m, a, check, dkField), rope(i)]
-  else:
-    withStruct(result, structOrUnionString, name, ""):
+    else:
       result.addField "char dummy"
 
 proc scanCppGenericSlot(pat: string, cursor, outIdx, outStars: var int): bool =
