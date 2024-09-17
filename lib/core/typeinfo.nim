@@ -161,16 +161,6 @@ proc newAny(value: pointer, rawType: PNimType): Any {.inline.} =
   result.value = value
   result.rawType = rawType
 
-when declared(system.VarSlot):
-  proc toAny*(x: VarSlot): Any {.inline.} =
-    ## Constructs an `Any` object from a variable slot `x`.
-    ## This captures `x`'s address, so `x` can be modified with its
-    ## `Any` wrapper! The caller needs to ensure that the wrapper
-    ## **does not** live longer than `x`!
-    ## This is provided for easier reflection capabilities of a debugger.
-    result.value = x.address
-    result.rawType = x.typ
-
 proc toAny*[T](x: var T): Any {.inline.} =
   ## Constructs an `Any` object from `x`. This captures `x`'s address, so
   ## `x` can be modified with its `Any` wrapper! The caller needs to ensure
