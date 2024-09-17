@@ -868,14 +868,15 @@ proc getRecordDesc(m: BModule; typ: PType, name: Rope,
 
 proc getTupleDesc(m: BModule; typ: PType, name: Rope,
                   check: var IntSet): Rope =
-  result = "$1 $2 {$n" % [structOrUnion(typ), name]
-  var desc: Rope = ""
-  for i, a in typ.ikids:
-    desc.addf("$1 Field$2;$n",
-         [getTypeDescAux(m, a, check, dkField), rope(i)])
-  if desc == "": result.add("char dummy;\L")
-  else: result.add(desc)
-  result.add("};\L")
+  let structOrUnionString = structOrUnion(typ)
+  result = newBuilder("")
+  if kidsLen(typ) > 0:
+    withStruct(result, structOrUnionString, name, ""):
+      for i, a in typ.ikids:
+        result.addField "$1 Field$2" % [getTypeDescAux(m, a, check, dkField), rope(i)]
+  else:
+    withStruct(result, structOrUnionString, name, ""):
+      result.addField "char dummy"
 
 proc scanCppGenericSlot(pat: string, cursor, outIdx, outStars: var int): bool =
   # A helper proc for handling cppimport patterns, involving numeric
