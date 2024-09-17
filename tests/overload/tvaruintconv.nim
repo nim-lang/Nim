@@ -1,3 +1,7 @@
+discard """
+  action: compile
+"""
+
 # https://github.com/status-im/nimbus-eth2/pull/6554#issuecomment-2354977102
 # failed with "for a 'var' type a variable needs to be passed; but 'uint64(result)' is immutable"
 
@@ -27,7 +31,7 @@ template useDefaultReaderIn(T: untyped, Flavor: type) =
     mixin readRecordValue
     readRecordValue(r, value)
 
-from stew/shims/macros import field, isTuple, recordFields, skipPragma
+import mvaruintconv
 
 type
   FieldTag[RecordType: object; fieldName: static string] = distinct void
