@@ -16,6 +16,8 @@ discard """
 [Suite] RST escaping
 
 [Suite] RST inline markup
+
+[Suite] Misc isssues
 '''
 matrix: "--mm:refc; --mm:orc"
 """
