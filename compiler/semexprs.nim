@@ -187,6 +187,7 @@ proc semOpenSym(c: PContext, n: PNode, flags: TExprFlags, expectedType: PType,
           break
       o = o.owner
   # nothing found
+  n.flags.excl nfDisabledOpenSym
   if not warnDisabled and isSym:
     result = semExpr(c, n, flags, expectedType)
   else:
@@ -197,7 +198,9 @@ proc semOpenSym(c: PContext, n: PNode, flags: TExprFlags, expectedType: PType,
 
 proc semSymChoice(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType = nil): PNode =
   if n.kind == nkOpenSymChoice:
-    result = semOpenSym(c, n, flags, expectedType, warnDisabled = nfDisabledOpenSym in n.flags)
+    result = semOpenSym(c, n, flags, expectedType,
+      warnDisabled = nfDisabledOpenSym in n.flags and
+        genericsOpenSym notin c.features)
     if result != nil:
       return
   result = n
@@ -3210,8 +3213,12 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
   of nkSym:
     let s = n.sym
     if nfDisabledOpenSym in n.flags:
-      let res = semOpenSym(c, n, flags, expectedType, warnDisabled = true)
-      assert res == nil
+      let override = genericsOpenSym in c.features
+      let res = semOpenSym(c, n, flags, expectedType,
+        warnDisabled = not override)
+      if res != nil:
+        assert override
+        return res
     # because of the changed symbol binding, this does not mean that we
     # don't have to check the symbol for semantics here again!
     result = semSym(c, n, s, flags)

@@ -162,3 +162,4 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimHasCastExtendedVm")
   defineSymbol("nimHasGenericsOpenSym2")
   defineSymbol("nimHasNolineTooLong")
+  defineSymbol("nimHasGenericsOpenSym3")

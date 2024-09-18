@@ -232,7 +232,7 @@ proc semTemplSymbol(c: var TemplCtx, n: PNode, s: PSym; isField: bool): PNode =
   of OverloadableSyms:
     result = symChoice(c.c, n, s, scOpen, isField)
     if not isField and result.kind in {nkSym, nkOpenSymChoice}:
-      if {openSym, templateOpenSym} * c.c.features != {}:
+      if openSym in c.c.features:
         if result.kind == nkSym:
           result = newOpenSym(result)
         else:
@@ -245,7 +245,7 @@ proc semTemplSymbol(c: var TemplCtx, n: PNode, s: PSym; isField: bool): PNode =
     else:
       result = newSymNodeTypeDesc(s, c.c.idgen, n.info)
       if not isField and s.owner != c.owner:
-        if {openSym, templateOpenSym} * c.c.features != {}:
+        if openSym in c.c.features:
           result = newOpenSym(result)
         else:
           result.flags.incl nfDisabledOpenSym
@@ -260,7 +260,7 @@ proc semTemplSymbol(c: var TemplCtx, n: PNode, s: PSym; isField: bool): PNode =
     else:
       result = newSymNode(s, n.info)
       if not isField:
-        if {openSym, templateOpenSym} * c.c.features != {}:
+        if openSym in c.c.features:
           result = newOpenSym(result)
         else:
           result.flags.incl nfDisabledOpenSym

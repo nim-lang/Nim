@@ -222,8 +222,8 @@ type
     strictDefs,
     strictCaseObjects,
     openSym, # remove nfDisabledOpenSym when this is default
-    # separated alternatives to above:
-    genericsOpenSym, templateOpenSym
+    # alternative to above:
+    genericsOpenSym
 
   LegacyFeature* = enum
     allowSemcheckedAstModification,

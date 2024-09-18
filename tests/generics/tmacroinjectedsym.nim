@@ -1,4 +1,4 @@
-{.experimental: "genericsOpenSym".}
+{.experimental: "openSym".}
 
 block: # issue #22605, normal call syntax
   const error = "bad"

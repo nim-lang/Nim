@@ -72,7 +72,7 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
     else:
       result = symChoice(c, n, s, scOpen)
       if canOpenSym(s):
-        if {openSym, genericsOpenSym} * c.features != {}:
+        if openSym in c.features:
           if result.kind == nkSym:
             result = newOpenSym(result)
           else:
@@ -108,7 +108,7 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
     else:
       result = newSymNodeTypeDesc(s, c.idgen, n.info)
       if canOpenSym(result.sym):
-        if {openSym, genericsOpenSym} * c.features != {}:
+        if openSym in c.features:
           result = newOpenSym(result)
         else:
           result.flags.incl nfDisabledOpenSym
@@ -122,7 +122,7 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
        (s.typ.flags * {tfGenericTypeParam, tfImplicitTypeParam} == {}):
       result = newSymNodeTypeDesc(s, c.idgen, n.info)
       if canOpenSym(result.sym):
-        if {openSym, genericsOpenSym} * c.features != {}:
+        if openSym in c.features:
           result = newOpenSym(result)
         else:
           result.flags.incl nfDisabledOpenSym
@@ -133,7 +133,7 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
   else:
     result = newSymNode(s, n.info)
     if canOpenSym(result.sym):
-      if {openSym, genericsOpenSym} * c.features != {}:
+      if openSym in c.features:
         result = newOpenSym(result)
       else:
         result.flags.incl nfDisabledOpenSym
