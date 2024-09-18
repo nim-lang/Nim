@@ -2113,15 +2113,15 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       # not resolved
       result = isNone
     of tyTypeDesc:
-      result = typeRel(c, a, reevaluated.base, flags)
+      result = typeRel(c, reevaluated.base, a, flags)
     of tyStatic:
-      result = typeRel(c, a, reevaluated.base, flags)
+      result = typeRel(c, reevaluated.base, a, flags)
       if result != isNone and reevaluated.n != nil:
         if not exprStructuralEquivalent(aOrig.n, reevaluated.n):
           result = isNone
     else:
       # bug #14136: other types are just like 'tyStatic' here:
-      result = typeRel(c, a, reevaluated, flags)
+      result = typeRel(c, reevaluated, a, flags)
       if result != isNone and reevaluated.n != nil:
         if not exprStructuralEquivalent(aOrig.n, reevaluated.n):
           result = isNone
