@@ -1318,12 +1318,6 @@ when defined(nimdoc) or (defined(posix) and not useNimNetLite):
   proc connectUnix*(socket: Socket, path: string) =
     ## Connects to Unix socket on `path`.
     ## This only works on Unix-style systems: Mac OS X, BSD and Linux
-    runnableExamples("-r:off"):
-      let socket = newSocket(AF_UNIX, SOCK_STREAM, IPPROTO_NONE)
-      socket.connectUnix("path/to/socket")
-      socket.send("Greetings from Nim!")
-      socket.close()
-
     when not defined(nimdoc):
       var socketAddr = makeUnixAddr(path)
       if socket.fd.connect(cast[ptr SockAddr](addr socketAddr),
