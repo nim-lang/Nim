@@ -165,7 +165,7 @@ pkg "stew"
 pkg "stint", "nim c stint.nim"
 pkg "strslice"
 pkg "strunicode", "nim c -r --mm:refc src/strunicode.nim",
-  preCmd = "nimble install -y normalize@#HEAD"
+  preCmd = "nimble install -y normalize@#HEAD; nimble uninstall -y normalize; nimble install -y normalize@#HEAD"
 pkg "supersnappy"
 pkg "synthesis"
 pkg "taskpools"
