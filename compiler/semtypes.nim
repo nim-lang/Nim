@@ -619,6 +619,8 @@ proc semCaseBranch(c: PContext, n, branch: PNode, branchIndex: int,
     var b = branch[i]
     if b.kind == nkRange:
       branch[i] = b
+      # same check as in semBranchRange for exhaustiveness
+      covered = covered + getOrdValue(b[1]) + 1 - getOrdValue(b[0])
     elif isRange(b):
       branch[i] = semCaseBranchRange(c, n, b, covered)
     else:
