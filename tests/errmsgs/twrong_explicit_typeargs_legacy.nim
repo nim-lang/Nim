@@ -6,7 +6,7 @@ but expected one of:
 proc newImage[T: int32 | int64](w, h: int): ref Image[T]
   first type mismatch at position: 1 in generic parameters
   required type for T: int32 or int64
-  but expression 'string' is of type: typedesc[string]
+  but expression 'string' is of type: string
 
 expression: newImage[string](320, 200)
 '''
