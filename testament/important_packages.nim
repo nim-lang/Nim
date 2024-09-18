@@ -27,13 +27,11 @@ type NimblePackage* = object
     ## This is useful for packages that currently fail but that we still want to
     ## run in CI, e.g. so that we can monitor when they start working again and
     ## are reminded about those failures without making CI fail for unrelated PRs.
-  preCmd*: string
-    ## command that runs before the package install
 
 var packages*: seq[NimblePackage]
 
-proc pkg(name: string; cmd = "nimble test"; url = "", useHead = true, allowFailure = false, preCmd = "") =
-  packages.add NimblePackage(name: name, cmd: cmd, url: url, useHead: useHead, allowFailure: allowFailure, preCmd: preCmd)
+proc pkg(name: string; cmd = "nimble test"; url = "", useHead = true, allowFailure = false) =
+  packages.add NimblePackage(name: name, cmd: cmd, url: url, useHead: useHead, allowFailure: allowFailure)
 
 pkg "alea"
 pkg "argparse"
@@ -164,8 +162,7 @@ pkg "ssostrings"
 pkg "stew"
 pkg "stint", "nim c stint.nim"
 pkg "strslice"
-pkg "strunicode", "nim c -r --mm:refc src/strunicode.nim",
-  preCmd = "nimble install -y normalize@#HEAD; nimble uninstall -y normalize; nimble install -y normalize@#HEAD"
+pkg "strunicode", "nimble uninstall -i -y normalize; nimble install -y normalize@#HEAD; nimble install --depsOnly -y; nim c -r --mm:refc src/strunicode.nim"
 pkg "supersnappy"
 pkg "synthesis"
 pkg "taskpools"
