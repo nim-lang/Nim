@@ -1125,9 +1125,21 @@ proc inferStaticsInRange(c: var TCandidate,
     doInferStatic(lowerBound, getInt(upperBound) + 1 - lengthOrd(c.c.config, concrete))
 
 template subtypeCheck() =
-  if result <= isSubrange and f.last.skipTypes(abstractInst).kind in {
-      tyRef, tyPtr, tyVar, tyLent, tyOwned}:
+  case result
+  of isIntConv:
     result = isNone
+  of isSubrange:
+    discard # XXX should be isNone with preview define, warnings
+  of isConvertible:
+    if f.last.skipTypes(abstractInst).kind != tyOpenArray:
+      # exclude var openarray which compiler supports
+      result = isNone
+  of isSubtype:
+    if f.last.skipTypes(abstractInst).kind in {
+        tyRef, tyPtr, tyVar, tyLent, tyOwned}:
+      # compiler can't handle subtype conversions with pointer indirection
+      result = isNone
+  else: discard
 
 proc isCovariantPtr(c: var TCandidate, f, a: PType): bool =
   # this proc is always called for a pair of matching types
