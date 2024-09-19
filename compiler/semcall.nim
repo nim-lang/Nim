@@ -246,10 +246,18 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
       candidates.add(getProcHeader(c.config, err.sym, prefer))
     candidates.addDeclaredLocMaybe(c.config, err.sym)
     candidates.add("\n")
-    let nArg = if err.firstMismatch.arg < n.len: n[err.firstMismatch.arg] else: nil
+    const genericParamMismatches = {kGenericParamTypeMismatch, kExtraGenericParam, kMissingGenericParam}
+    let isGenericMismatch = err.firstMismatch.kind in genericParamMismatches
+    var argList = n
+    if isGenericMismatch and n[0].kind == nkBracketExpr:
+      argList = n[0]
+    let nArg =
+      if err.firstMismatch.arg < argList.len:
+        argList[err.firstMismatch.arg]
+      else:
+        nil
     let nameParam = if err.firstMismatch.formal != nil: err.firstMismatch.formal.name.s else: ""
     if n.len > 1:
-      const genericParamMismatches = {kGenericParamTypeMismatch, kExtraGenericParam, kMissingGenericParam}
       if verboseTypeMismatch notin c.config.legacyFeatures:
         case err.firstMismatch.kind
         of kUnknownNamedParam:
@@ -309,7 +317,7 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
           var wanted = err.firstMismatch.formal.typ
           if wanted.kind == tyGenericParam and wanted.genericParamHasConstraints:
             wanted = wanted.genericConstraint
-          let got = arg.typ
+          let got = arg.typ.skipTypes({tyTypeDesc})
           doAssert err.firstMismatch.formal != nil
           doAssert wanted != nil
           doAssert got != nil
@@ -350,17 +358,9 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
         of kMissingGenericParam:
           candidates.add("\n  missing generic parameter: " & nameParam)
         of kTypeMismatch, kGenericParamTypeMismatch, kVarNeeded:
-          var arg: PNode = nArg
-          let genericMismatch = err.firstMismatch.kind == kGenericParamTypeMismatch
-          if genericMismatch:
-            let pos = err.firstMismatch.arg
-            doAssert n[0].kind == nkBracketExpr and pos < n[0].len
-            arg = n[0][pos]
-          else:
-            arg = nArg
-          doAssert arg != nil
+          doAssert nArg != nil
           var wanted = err.firstMismatch.formal.typ
-          if genericMismatch and wanted.kind == tyGenericParam and
+          if isGenericMismatch and wanted.kind == tyGenericParam and
               wanted.genericParamHasConstraints:
             wanted = wanted.genericConstraint
           doAssert err.firstMismatch.formal != nil
@@ -368,16 +368,17 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
           candidates.addTypeDeclVerboseMaybe(c.config, wanted)
           candidates.add "\n  but expression '"
           if err.firstMismatch.kind == kVarNeeded:
-            candidates.add renderNotLValue(arg)
+            candidates.add renderNotLValue(nArg)
             candidates.add "' is immutable, not 'var'"
           else:
-            candidates.add renderTree(arg)
+            candidates.add renderTree(nArg)
             candidates.add "' is of type: "
-            let got = arg.typ
+            var got = nArg.typ
+            if isGenericMismatch: got = got.skipTypes({tyTypeDesc})
             candidates.addTypeDeclVerboseMaybe(c.config, got)
-            if arg.kind in nkSymChoices:
+            if nArg.kind in nkSymChoices:
               candidates.add "\n"
-              candidates.add ambiguousIdentifierMsg(arg, indent = 2)
+              candidates.add ambiguousIdentifierMsg(nArg, indent = 2)
             doAssert wanted != nil
             if got != nil:
               if got.kind == tyProc and wanted.kind == tyProc:

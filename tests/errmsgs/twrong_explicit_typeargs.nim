@@ -9,7 +9,7 @@ Expression: newImage[string](320, 200)
 
 Expected one of (first mismatch at [position]):
 [1] proc newImage[T: int32 | int64](w, h: int): ref Image[T]
-  generic parameter mismatch, expected int32 or int64 but got 'string' of type: typedesc[string]
+  generic parameter mismatch, expected int32 or int64 but got 'string' of type: string
 '''
 """
 
