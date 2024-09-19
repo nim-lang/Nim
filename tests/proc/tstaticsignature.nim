@@ -250,3 +250,19 @@ block: # `when` in static signature
   proc foo[T](): T = test()
   proc bar[T](x = foo[T]()): T = x
   doAssert bar[int]() == 123
+
+block: # issue #22276
+  type Foo = enum A, B
+  macro test(y: static[Foo]): untyped =
+    if y == A:
+      result = parseExpr("proc (x: int)")
+    else:
+      result = parseExpr("proc (x: float)")
+  proc foo(y: static[Foo], x: test(y)) = # We want to make the type of `x` depend on what `y` is
+    x(9)
+  foo(A, proc (x: int) = doAssert x == 9)
+  var a: int
+  foo(A, proc (x: int) =
+    a = x * 2)
+  doAssert a == 18
+  foo(B, proc (x: float) = doAssert x == 9)
