@@ -515,7 +515,7 @@ proc transformAddrDeref(c: PTransf, n: PNode, kinds: TNodeKinds): PNode =
           n.typ.skipTypes(abstractVar).kind == tyOpenArray and
           n[0][0].typ.skipTypes(abstractVar).kind == tyString)
         : # elimination is harmful to `for tuple unpack` because of newTupleAccess
-          # it is also harmful for openArrayLoc for strings
+          # it is also harmful to openArrayLoc for strings
       # addr ( deref ( x )) --> x
       result = n[0][0]
       if n.typ.skipTypes(abstractVar).kind != tyOpenArray:
