@@ -820,3 +820,17 @@ block: # bug #23973
     doAssert t == a
 
   n()
+
+block: # bug #24141
+  func reverse(s: var openArray[char]) =
+    s[0] = 'f'
+
+  func rev(s: var string) =
+    s.reverse
+
+  proc main =
+    var abc = "abc"
+    abc.rev
+    doAssert abc == "fbc"
+
+  main()
