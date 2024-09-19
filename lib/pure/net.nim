@@ -97,7 +97,7 @@ import std/nativesockets
 import std/[os, strutils, times, sets, options, monotimes]
 import std/ssl_config
 export nativesockets.Port, nativesockets.`$`, nativesockets.`==`
-export Domain, SockType, Protocol
+export Domain, SockType, Protocol, IPPROTO_NONE
 
 const useWinVersion = defined(windows) or defined(nimdoc)
 const useNimNetLite = defined(nimNetLite) or defined(freertos) or defined(zephyr) or

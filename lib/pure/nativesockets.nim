@@ -97,6 +97,8 @@ type
     length*: int
     addrList*: seq[string]
 
+const IPPROTO_NONE* = IPPROTO_IP ## Use this if your socket type requires a protocol value of zero (e.g. Unix sockets).
+
 when useWinVersion:
   let
     osInvalidSocket* = winlean.INVALID_SOCKET
