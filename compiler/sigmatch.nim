@@ -1540,7 +1540,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         reduceToBase(a)
     if effectiveArgType.kind == tyObject:
       if sameObjectTypes(f, effectiveArgType):
-        c.inheritancePenalty = 0
+        c.inheritancePenalty = if tfFinal in f.flags: -1 else: 0
         result = isEqual
         # elif tfHasMeta in f.flags: result = recordRel(c, f, a)
       elif trIsOutParam notin flags:
