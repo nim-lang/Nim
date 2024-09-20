@@ -854,7 +854,7 @@ proc removeHandler*(handler: Logger) =
   ## are required to remove that logger.
   for i, hnd in handlers:
     if hnd == handler:
-      handlers.del(i)
+      handlers.delete(i)
       return
 
 proc getHandlers*(): seq[Logger] =
