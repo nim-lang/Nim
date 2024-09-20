@@ -222,6 +222,15 @@ proc copyFile*(source, dest: string, options = {cfSymlinkFollow}; bufferSize = 1
     if copyFileW(s, d, 0'i32) == 0'i32:
       raiseOSError(osLastError(), $(source, dest))
   else:
+    when defined(posix):
+      var sourceSt, destSt: Stat
+      if stat(source, sourceSt) < 0'i32 or stat(dest, destSt) < 0'i32:
+        raiseOSError(osLastError(), "stat")
+      if sourceSt.st_mode.S_ISFIFO() or destSt.st_mode.S_ISFIFO():
+        raise newException(OSError, "Copying FIFOs is not possible")
+    else:
+      discard "XXX: add this check for non-POSIX systems"
+
     if isSymlink and cfSymlinkAsIs in options:
       createSymlink(expandSymlink(source), dest)
     else:

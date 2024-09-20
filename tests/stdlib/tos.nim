@@ -64,6 +64,12 @@ block fileOperations:
     removeFile(file)
     removeFile(file2)
 
+    when defined(posix):
+      # test attempt of copying FIFOs; should fail
+      let fifoName = "unanonymouspipe"
+      doAssert execShellCmd("mkfifo " & fifoName) == 0
+      doAssertRaises(OSError): copyFile(fifoName, todest)
+
   # Test creating files and dirs
   for dir in dirs:
     createDir(dname/dir)
