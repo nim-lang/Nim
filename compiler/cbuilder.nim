@@ -58,7 +58,7 @@ template addStruct(obj: var Builder; m: BModule; typ: PType; name: string; baseT
   obj.add(name)
   type BaseClassKind = enum
     bcNone, bcCppInherit, bcSupField, bcNoneRtti, bcNoneTinyRtti
-  var baseKind: BaseClassKind
+  var baseKind = bcNone
   if typ.kind == tyObject:
     if typ.baseClass == nil:
       if lacksMTypeField(typ):

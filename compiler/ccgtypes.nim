@@ -733,7 +733,7 @@ proc genRecordFieldsAux(m: BModule; n: PNode,
     # with heavily templatized C++ code:
     if not isImportedCppType(rectype):
       let fieldType = field.loc.lode.typ.skipTypes(abstractInst)
-      var typ: Rope
+      var typ: Rope = ""
       var isFlexArray = false
       var initializer = ""
       if fieldType.kind == tyUncheckedArray:
