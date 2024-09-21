@@ -17,7 +17,7 @@ proc addField(obj: var Builder; field: PSym; name, typ: Snippet; isFlexArray: bo
   if field.alignment > 0:
     obj.add("NIM_ALIGN(")
     obj.addInt(field.alignment)
-    obj.add(") ")
+    obj.add(") ") # no space here breaks tmarshalsegfault on cpp somehow
   obj.add(typ)
   if sfNoalias in field.flags:
     obj.add(" NIM_NOALIAS")
