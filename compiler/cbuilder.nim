@@ -79,15 +79,15 @@ template addStruct(obj: var Builder; m: BModule; typ: PType; name: string; baseT
     obj.addField(name = "m_type", typ = ptrType(cgsymValue(m, "TNimTypeV2")))
   of bcSupField:
     obj.addField(name = "Sup", typ = baseType)
-  body
-  if typ.itemId notin m.g.graph.memberProcsPerType:
-    if currLen == obj.len:
-      # no fields were added, add dummy field
-      obj.addField(name = "dummy", typ = "char")
-    elif typ.n != nil and typ.n.len == 1 and typ.n[0].kind == nkSym and
+  if currLen == obj.len and typ.itemId notin m.g.graph.memberProcsPerType:
+    if typ.n != nil and typ.n.len == 1 and typ.n[0].kind == nkSym and
         typ.n[0].sym.typ.skipTypes(abstractInst).kind == tyUncheckedArray:
-      # only consists of flexible array field, add dummy field
+      # only consists of flexible array field, add *initial* dummy field
       obj.addField(name = "dummy", typ = "char")
+  body
+  if currLen == obj.len and typ.itemId notin m.g.graph.memberProcsPerType:
+    # no fields were added, add dummy field
+    obj.addField(name = "dummy", typ = "char")
   obj.add("};\n")
   if tfPacked in typ.flags and hasAttribute notin CC[m.config.cCompiler].props:
     result.add("#pragma pack(pop)\L")
