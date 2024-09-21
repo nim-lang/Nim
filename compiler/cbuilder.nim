@@ -5,10 +5,7 @@ type
 template newBuilder(s: string): Builder =
   s
 
-proc addField(obj: var Builder; typ, name: Snippet; pragmas: Snippet = "") =
-  if pragmas.len != 0:
-    obj.add(pragmas)
-    obj.add(" ")
+proc addField(obj: var Builder; typ, name: Snippet) =
   obj.add(typ)
   obj.add(" ")
   obj.add(name)
