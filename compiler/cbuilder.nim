@@ -5,7 +5,7 @@ type
 template newBuilder(s: string): Builder =
   s
 
-proc addField(obj: var Builder; typ, name: Snippet) =
+proc addField(obj: var Builder; name, typ: Snippet) =
   obj.add('\t')
   obj.add(typ)
   obj.add(" ")
@@ -75,6 +75,9 @@ template addStruct(obj: var Builder; m: BModule; typ: PType; name: string; baseT
   let currLen = obj.len
   case baseKind
   of bcNone:
+    # rest of the options add a field or don't need it due to inheritance,
+    # we need to add the dummy field for uncheckedarray ahead of time
+    # so that it remains trailing
     if typ.itemId notin m.g.graph.memberProcsPerType and
         typ.n != nil and typ.n.len == 1 and typ.n[0].kind == nkSym and
         typ.n[0].sym.typ.skipTypes(abstractInst).kind == tyUncheckedArray:
@@ -96,6 +99,7 @@ template addStruct(obj: var Builder; m: BModule; typ: PType; name: string; baseT
     result.add("#pragma pack(pop)\n")
 
 template addFieldWithStructType(obj: var Builder; m: BModule; parentTyp: PType; fieldName: string, body: typed) =
+  ## adds a field with a `struct { ... }` type, building it according to `body`
   obj.add('\t')
   if tfPacked in parentTyp.flags:
     if hasAttribute in CC[m.config.cCompiler].props:

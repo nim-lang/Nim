@@ -739,9 +739,12 @@ proc genRecordFieldsAux(m: BModule; n: PNode,
         typ = getTypeDescAux(m, fieldType.elemType, check, dkField)
         isFlexArray = true
       elif fieldType.kind == tySequence:
+        # we need to use a weak dependency here for trecursive_table.
         typ = getTypeDescWeak(m, field.loc.t, check, dkField)
       else:
         typ = getTypeDescAux(m, field.loc.t, check, dkField)
+        # don't use fieldType here because we need the
+        # tyGenericInst for C++ template support
         let noInit = sfNoInit in field.flags or (field.typ.sym != nil and sfNoInit in field.typ.sym.flags)
         if not noInit and (fieldType.isOrHasImportedCppType() or hasCppCtor(m, field.owner.typ)):
           var didGenTemp = false
