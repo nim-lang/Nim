@@ -72,25 +72,26 @@ template addStruct(obj: var Builder; m: BModule; typ: PType; name: string; baseT
   obj.add("{\n")
   let currLen = obj.len
   case baseKind
-  of bcNone, bcCppInherit: discard
+  of bcNone:
+    if typ.itemId notin m.g.graph.memberProcsPerType and
+        typ.n != nil and typ.n.len == 1 and typ.n[0].kind == nkSym and
+        typ.n[0].sym.typ.skipTypes(abstractInst).kind == tyUncheckedArray:
+      # only consists of flexible array field, add *initial* dummy field
+      obj.addField(name = "dummy", typ = "char")
+  of bcCppInherit: discard
   of bcNoneRtti:
     obj.addField(name = "m_type", typ = ptrType(cgsymValue(m, "TNimType")))
   of bcNoneTinyRtti:
     obj.addField(name = "m_type", typ = ptrType(cgsymValue(m, "TNimTypeV2")))
   of bcSupField:
     obj.addField(name = "Sup", typ = baseType)
-  if currLen == obj.len and typ.itemId notin m.g.graph.memberProcsPerType:
-    if typ.n != nil and typ.n.len == 1 and typ.n[0].kind == nkSym and
-        typ.n[0].sym.typ.skipTypes(abstractInst).kind == tyUncheckedArray:
-      # only consists of flexible array field, add *initial* dummy field
-      obj.addField(name = "dummy", typ = "char")
   body
-  if currLen == obj.len and typ.itemId notin m.g.graph.memberProcsPerType:
+  if baseKind == bcNone and currLen == obj.len and typ.itemId notin m.g.graph.memberProcsPerType:
     # no fields were added, add dummy field
     obj.addField(name = "dummy", typ = "char")
   obj.add("};\n")
   if tfPacked in typ.flags and hasAttribute notin CC[m.config.cCompiler].props:
-    result.add("#pragma pack(pop)\L")
+    result.add("#pragma pack(pop)\n")
 
 template addFieldWithStructType(obj: var Builder; m: BModule; parentTyp: PType; fieldName: string, body: typed) =
   if tfPacked in parentTyp.flags:
@@ -100,13 +101,12 @@ template addFieldWithStructType(obj: var Builder; m: BModule; parentTyp: PType; 
       obj.add("#pragma pack(push, 1)\nstruct {")
   else:
     obj.add("struct {\n")
-  let currLen = obj.len
   body
   obj.add("} ")
   obj.add(fieldName)
   obj.add(";\n")
   if tfPacked in parentTyp.flags and hasAttribute notin CC[m.config.cCompiler].props:
-    result.add("#pragma pack(pop)\L")
+    result.add("#pragma pack(pop)\n")
 
 template addAnonUnion(obj: var Builder; body: typed) =
   obj.add "union{\n"
