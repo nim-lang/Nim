@@ -376,11 +376,6 @@ proc getTypePre(m: BModule; typ: PType; sig: SigHash): Rope =
     result = getSimpleTypeDesc(m, typ)
     if result == "": result = cacheGetType(m.typeCache, sig)
 
-proc structOrUnion(t: PType): Rope =
-  let t = t.skipTypes({tyAlias, tySink})
-  if tfUnion in t.flags: "union"
-  else: "struct"
-
 proc addForwardStructFormat(m: BModule; structOrUnion: Rope, typename: Rope) =
   if m.compileToCpp:
     m.s[cfsForwardTypes].addf "$1 $2;$n", [structOrUnion, typename]
@@ -869,12 +864,11 @@ proc getRecordDesc(m: BModule; typ: PType, name: Rope,
 proc getTupleDesc(m: BModule; typ: PType, name: Rope,
                   check: var IntSet): Rope =
   result = newBuilder("")
-  withStruct(result, structOrUnion(typ), name, ""):
-    if kidsLen(typ) > 0:
-      for i, a in typ.ikids:
-        result.addField "$1 Field$2" % [getTypeDescAux(m, a, check, dkField), rope(i)]
-    else:
-      result.addField "char dummy"
+  result.addStruct(m, typ, name, ""):
+    for i, a in typ.ikids:
+      result.addField(
+        name = "Field" & $i,
+        typ = getTypeDescAux(m, a, check, dkField))
 
 proc scanCppGenericSlot(pat: string, cursor, outIdx, outStars: var int): bool =
   # A helper proc for handling cppimport patterns, involving numeric
