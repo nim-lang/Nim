@@ -6,12 +6,14 @@ template newBuilder(s: string): Builder =
   s
 
 proc addField(obj: var Builder; typ, name: Snippet) =
+  obj.add('\t')
   obj.add(typ)
   obj.add(" ")
   obj.add(name)
   obj.add(";\n")
 
 proc addField(obj: var Builder; field: PSym; name, typ: Snippet; isFlexArray: bool; initializer: Snippet) =
+  obj.add('\t')
   if field.alignment > 0:
     obj.add("NIM_ALIGN(")
     obj.addInt(field.alignment)
@@ -94,6 +96,7 @@ template addStruct(obj: var Builder; m: BModule; typ: PType; name: string; baseT
     result.add("#pragma pack(pop)\n")
 
 template addFieldWithStructType(obj: var Builder; m: BModule; parentTyp: PType; fieldName: string, body: typed) =
+  obj.add('\t')
   if tfPacked in parentTyp.flags:
     if hasAttribute in CC[m.config.cCompiler].props:
       obj.add("struct __attribute__((__packed__)) {\n")
