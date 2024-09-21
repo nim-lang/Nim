@@ -224,7 +224,7 @@ proc copyFile*(source, dest: string, options = {cfSymlinkFollow}; bufferSize = 1
   else:
     when defined(posix):
       var sourceSt, destSt: Stat
-      if stat(source, sourceSt) < 0'i32 or stat(dest, destSt) < 0'i32:
+      if (stat(source, sourceSt) < 0 or stat(dest, destSt) < 0) and errno != ENOENT:
         raiseOSError(osLastError(), "stat")
       if sourceSt.st_mode.S_ISFIFO() or destSt.st_mode.S_ISFIFO():
         raise newException(OSError, "Copying FIFOs is not possible")
