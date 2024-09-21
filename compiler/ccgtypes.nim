@@ -693,7 +693,7 @@ proc genCppInitializer(m: BModule, prc: BProc; typ: PType; didGenTemp: var bool)
 
 proc genRecordFieldsAux(m: BModule; n: PNode,
                         rectype: PType,
-                        check: var IntSet; result: var Rope; unionPrefix = "") =
+                        check: var IntSet; result: var Builder; unionPrefix = "") =
   case n.kind
   of nkRecList:
     for i in 0..<n.len:
@@ -710,64 +710,49 @@ proc genRecordFieldsAux(m: BModule; n: PNode,
         let k = lastSon(n[i])
         if k.kind != nkSym:
           let structName = "_" & mangleRecFieldName(m, n[0].sym) & "_" & $i
-          var a = newRopeAppender()
+          var a = newBuilder("")
           genRecordFieldsAux(m, k, rectype, check, a, unionPrefix & $structName & ".")
-          if a != "":
-            if tfPacked notin rectype.flags:
-              unionBody.add("struct {")
-            else:
-              if hasAttribute in CC[m.config.cCompiler].props:
-                unionBody.add("struct __attribute__((__packed__)){")
-              else:
-                unionBody.addf("#pragma pack(push, 1)$nstruct{", [])
-            unionBody.add(a)
-            unionBody.addf("} $1;$n", [structName])
-            if tfPacked in rectype.flags and hasAttribute notin CC[m.config.cCompiler].props:
-              unionBody.addf("#pragma pack(pop)$n", [])
+          if a.len != 0:
+            unionBody.addFieldWithType(structName):
+              unionBody.addAnonStruct(m, rectype):
+                unionBody.add(a)
         else:
           genRecordFieldsAux(m, k, rectype, check, unionBody, unionPrefix)
       else: internalError(m.config, "genRecordFieldsAux(record case branch)")
-    if unionBody != "":
-      result.addf("union{\n$1};$n", [unionBody])
+    if unionBody.len != 0:
+      result.addAnonUnion:
+        result.add(unionBody)
   of nkSym:
     let field = n.sym
     if field.typ.kind == tyVoid: return
     #assert(field.ast == nil)
     let sname = mangleRecFieldName(m, field)
     fillLoc(field.loc, locField, n, unionPrefix & sname, OnUnknown)
-    if field.alignment > 0:
-      result.addf "NIM_ALIGN($1) ", [rope(field.alignment)]
     # for importcpp'ed objects, we only need to set field.loc, but don't
     # have to recurse via 'getTypeDescAux'. And not doing so prevents problems
     # with heavily templatized C++ code:
     if not isImportedCppType(rectype):
-      let noAlias = if sfNoalias in field.flags: " NIM_NOALIAS" else: ""
-
       let fieldType = field.loc.lode.typ.skipTypes(abstractInst)
+      var typ: Rope
+      var isFlexArray = false
+      var initializer = ""
       if fieldType.kind == tyUncheckedArray:
-        result.addf("\t$1 $2[SEQ_DECL_SIZE];$n",
-            [getTypeDescAux(m, fieldType.elemType, check, dkField), sname])
+        typ = getTypeDescAux(m, fieldType.elemType, check, dkField)
+        isFlexArray = true
       elif fieldType.kind == tySequence:
-        # we need to use a weak dependency here for trecursive_table.
-        result.addf("\t$1$3 $2;$n", [getTypeDescWeak(m, field.loc.t, check, dkField), sname, noAlias])
-      elif field.bitsize != 0:
-        result.addf("\t$1$4 $2:$3;$n", [getTypeDescAux(m, field.loc.t, check, dkField), sname, rope($field.bitsize), noAlias])
+        typ = getTypeDescWeak(m, field.loc.t, check, dkField)
       else:
-        # don't use fieldType here because we need the
-        # tyGenericInst for C++ template support
+        typ = getTypeDescAux(m, field.loc.t, check, dkField)
         let noInit = sfNoInit in field.flags or (field.typ.sym != nil and sfNoInit in field.typ.sym.flags)
         if not noInit and (fieldType.isOrHasImportedCppType() or hasCppCtor(m, field.owner.typ)):
           var didGenTemp = false
-          var initializer = genCppInitializer(m, nil, fieldType, didGenTemp)
-          result.addf("\t$1$3 $2$4;$n", [getTypeDescAux(m, field.loc.t, check, dkField), sname, noAlias, initializer])
-        else:
-          result.addf("\t$1$3 $2;$n", [getTypeDescAux(m, field.loc.t, check, dkField), sname, noAlias])
+          initializer = genCppInitializer(m, nil, fieldType, didGenTemp)
+      result.addField(field, sname, typ, isFlexArray, initializer)
   else: internalError(m.config, n.info, "genRecordFieldsAux()")
 
 proc genMemberProcHeader(m: BModule; prc: PSym; result: var Rope; asPtr: bool = false, isFwdDecl:bool = false)
 
-proc getRecordFields(m: BModule; typ: PType, check: var IntSet): Rope =
-  result = newRopeAppender()
+proc addRecordFields(result: var Builder; m: BModule; typ: PType, check: var IntSet) =
   genRecordFieldsAux(m, typ.n, typ, check, result)
   if typ.itemId in m.g.graph.memberProcsPerType:
     let procs = m.g.graph.memberProcsPerType[typ.itemId]
@@ -789,77 +774,25 @@ proc fillObjectFields*(m: BModule; typ: PType) =
   # sometimes generic objects are not consistently merged. We patch over
   # this fact here.
   var check = initIntSet()
-  discard getRecordFields(m, typ, check)
+  var ignored = newBuilder("")
+  addRecordFields(ignored, m, typ, check)
 
 proc mangleDynLibProc(sym: PSym): Rope
-
-proc getRecordDescAux(m: BModule; typ: PType, name, baseType: Rope,
-                   check: var IntSet, hasField:var bool): Rope =
-  result = ""
-  if typ.kind == tyObject:
-    if typ.baseClass == nil:
-      if lacksMTypeField(typ):
-        appcg(m, result, " {$n", [])
-      else:
-        if optTinyRtti in m.config.globalOptions:
-          appcg(m, result, " {$n#TNimTypeV2* m_type;$n", [])
-        else:
-          appcg(m, result, " {$n#TNimType* m_type;$n", [])
-        hasField = true
-    elif m.compileToCpp:
-      appcg(m, result, " : public $1 {$n", [baseType])
-      if typ.isException and m.config.exc == excCpp:
-        when false:
-          appcg(m, result, "virtual void raise() { throw *this; }$n", []) # required for polymorphic exceptions
-          if typ.sym.magic == mException:
-            # Add cleanup destructor to Exception base class
-            appcg(m, result, "~$1();$n", [name])
-            # define it out of the class body and into the procs section so we don't have to
-            # artificially forward-declare popCurrentExceptionEx (very VERY troublesome for HCR)
-            appcg(m, cfsProcs, "inline $1::~$1() {if(this->raiseId) #popCurrentExceptionEx(this->raiseId);}$n", [name])
-      hasField = true
-    else:
-      appcg(m, result, " {$n  $1 Sup;$n", [baseType])
-      hasField = true
-  else:
-    result.addf(" {$n", [name])
 
 proc getRecordDesc(m: BModule; typ: PType, name: Rope,
                    check: var IntSet): Rope =
   # declare the record:
-  var hasField = false
-  var structOrUnion: string
-  if tfPacked in typ.flags:
-      if hasAttribute in CC[m.config.cCompiler].props:
-        structOrUnion = structOrUnion(typ) & " __attribute__((__packed__))"
-      else:
-        structOrUnion = "#pragma pack(push, 1)\L" & structOrUnion(typ)
-  else:
-    structOrUnion = structOrUnion(typ)
   var baseType: string = ""
   if typ.baseClass != nil:
     baseType = getTypeDescAux(m, typ.baseClass.skipTypes(skipPtrs), check, dkField)
   if typ.sym == nil or sfCodegenDecl notin typ.sym.flags:
-    result = structOrUnion & " " & name
-    result.add(getRecordDescAux(m, typ, name, baseType, check, hasField))
-    let desc = getRecordFields(m, typ, check)
-    if not hasField and typ.itemId notin m.g.graph.memberProcsPerType:
-      if desc == "":
-        result.add("\tchar dummy;\n")
-      elif typ.n.len == 1 and typ.n[0].kind == nkSym:
-        let field = typ.n[0].sym
-        let fieldType = field.typ.skipTypes(abstractInst)
-        if fieldType.kind == tyUncheckedArray:
-          result.add("\tchar dummy;\n")
-      result.add(desc)
-    else:
-      result.add(desc)
-    result.add("};\L")
+    result = newBuilder("")
+    result.addStruct(m, typ, name, baseType):
+      result.addRecordFields(m, typ, check)
   else:
-    let desc = getRecordFields(m, typ, check)
+    var desc = newBuilder("")
+    desc.addRecordFields(m, typ, check)
     result = runtimeFormat(typ.sym.cgDeclFrmt, [name, desc, baseType])
-  if tfPacked in typ.flags and hasAttribute notin CC[m.config.cCompiler].props:
-    result.add "#pragma pack(pop)\L"
 
 proc getTupleDesc(m: BModule; typ: PType, name: Rope,
                   check: var IntSet): Rope =
