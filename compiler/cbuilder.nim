@@ -11,12 +11,6 @@ proc addField(obj: var Builder; typ, name: Snippet) =
   obj.add(name)
   obj.add(";\n")
 
-template addFieldWithType(obj: var Builder; name: Snippet; body: typed) =
-  body
-  obj.add(" ")
-  obj.add(name)
-  obj.add(";\n")
-
 proc addField(obj: var Builder; field: PSym; name, typ: Snippet; isFlexArray: bool; initializer: Snippet) =
   if field.alignment > 0:
     obj.add("NIM_ALIGN(")
@@ -98,7 +92,7 @@ template addStruct(obj: var Builder; m: BModule; typ: PType; name: string; baseT
   if tfPacked in typ.flags and hasAttribute notin CC[m.config.cCompiler].props:
     result.add("#pragma pack(pop)\L")
 
-template addAnonStruct(obj: var Builder; m: BModule; parentTyp: PType; body: typed) =
+template addFieldWithStructType(obj: var Builder; m: BModule; parentTyp: PType; fieldName: string, body: typed) =
   if tfPacked in parentTyp.flags:
     if hasAttribute in CC[m.config.cCompiler].props:
       obj.add("struct __attribute__((__packed__)) {\n")
@@ -108,7 +102,9 @@ template addAnonStruct(obj: var Builder; m: BModule; parentTyp: PType; body: typ
     obj.add("struct {\n")
   let currLen = obj.len
   body
-  obj.add("};\n")
+  obj.add("} ")
+  obj.add(fieldName)
+  obj.add(";\n")
   if tfPacked in parentTyp.flags and hasAttribute notin CC[m.config.cCompiler].props:
     result.add("#pragma pack(pop)\L")
 

@@ -713,9 +713,8 @@ proc genRecordFieldsAux(m: BModule; n: PNode,
           var a = newBuilder("")
           genRecordFieldsAux(m, k, rectype, check, a, unionPrefix & $structName & ".")
           if a.len != 0:
-            unionBody.addFieldWithType(structName):
-              unionBody.addAnonStruct(m, rectype):
-                unionBody.add(a)
+            unionBody.addFieldWithStructType(m, rectype, structName):
+              unionBody.add(a)
         else:
           genRecordFieldsAux(m, k, rectype, check, unionBody, unionPrefix)
       else: internalError(m.config, "genRecordFieldsAux(record case branch)")
