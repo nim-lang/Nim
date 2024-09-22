@@ -6169,6 +6169,22 @@ As in generics, symbol binding can be influenced via `mixin` or `bind`
 statements.
 
 
+Preventing recursion in templates
+---------------------------------
+
+It may be useful for templates to refer to symbols with the same name,
+such as when shadowing identifiers. However this can cause infinite recursions.
+To prevent this, `bind` can be used to ensure templates never refer to themselves.
+
+  ```nim
+  var a: int = 123
+  block:
+    template a: float =
+      bind a # only binds to outside `a`
+      float(a)
+    echo a # 123.0
+  ```
+
 
 Identifier construction
 -----------------------

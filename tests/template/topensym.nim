@@ -207,3 +207,12 @@ block: # issue #15314
 
   doubleNums()
   doAssert nums == @[2, 4, 6]
+
+block: # shadowing recursion, fixed with `bind`
+  var a: int = 123
+  block:
+    template a: float =
+      bind a 
+      float(a)
+    doAssert a is float
+    doAssert a == 123.0
