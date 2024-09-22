@@ -27,3 +27,10 @@ block:
   proc p(x: int): int = x
 
   type Foo = typeof(p(fail(123)))
+
+block: # issue #24150, related regression
+  proc w(T: type): T {.compileTime.} = default(ptr T)[]
+  template y(v: auto): auto = typeof(v) is int
+  discard compiles(y(w int))
+  proc s(): int {.compileTime.} = discard
+  discard s()
