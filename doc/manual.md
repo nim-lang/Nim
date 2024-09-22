@@ -5187,7 +5187,7 @@ caught by reference. Example:
     except CStdException as e:
       doAssert e is CStdException
       b = e.what()
-    doAssert $b == "foo2"
+    doAssert $b == "foo2", $b
 
     try: raise initStdException()
     except CStdException: discard

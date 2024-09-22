@@ -108,7 +108,10 @@ pkg "nesm", "nimble tests", "https://github.com/nim-lang/NESM", useHead = true, 
 pkg "netty"
 pkg "nico", allowFailure = true
 pkg "nicy", "nim c -r src/nicy.nim"
-pkg "nigui", "nim c -o:niguii -r src/nigui.nim"
+when defined(osx):
+  pkg "nigui", "nim c --clibdir:/usr/local/lib -o:niguii -r src/nigui.nim"
+else:
+  pkg "nigui", "nim c -o:niguii -r src/nigui.nim"
 pkg "nimcrypto", "nim r --path:. tests/testall.nim" # `--path:.` workaround needed, see D20210308T165435
 pkg "NimData", "nim c -o:nimdataa src/nimdata.nim"
 pkg "nimes", "nim c src/nimes.nim"
