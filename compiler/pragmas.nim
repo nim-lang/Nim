@@ -800,13 +800,14 @@ proc pragmaGuard(c: PContext; it: PNode; kind: TSymKind): PSym =
 proc semCustomPragma(c: PContext, n: PNode, sym: PSym): PNode =
   var callNode: PNode
 
-  if n.kind in {nkIdent, nkSym}:
+  case n.kind
+  of nkIdentKinds:
     # pragma -> pragma()
     callNode = newTree(nkCall, n)
-  elif n.kind == nkExprColonExpr:
+  of nkExprColonExpr:
     # pragma: arg -> pragma(arg)
     callNode = newTree(nkCall, n[0], n[1])
-  elif n.kind in nkPragmaCallKinds:
+  of nkPragmaCallKinds - {nkExprColonExpr}:
     callNode = n
   else:
     invalidPragma(c, n)
