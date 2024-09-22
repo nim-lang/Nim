@@ -3,9 +3,9 @@ discard """
   nimout: '''
 tunused_imports.nim(11, 10) Warning: BEGIN [User]
 tunused_imports.nim(38, 10) Warning: END [User]
-tunused_imports.nim(34, 8) Warning: imported and not used: 'strutils' [UnusedImport]
-tunused_imports.nim(36, 13) Warning: imported and not used: 'strtabs' [UnusedImport]
-tunused_imports.nim(36, 22) Warning: imported and not used: 'cstrutils' [UnusedImport]
+tunused_imports.nim(36, 8) Warning: imported and not used: 'strutils' [UnusedImport]
+tunused_imports.nim(37, 13) Warning: imported and not used: 'strtabs' [UnusedImport]
+tunused_imports.nim(37, 22) Warning: imported and not used: 'cstrutils' [UnusedImport]
 '''
   action: "compile"
 """
