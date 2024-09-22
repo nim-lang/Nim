@@ -1866,8 +1866,8 @@ proc semStaticType(c: PContext, childNode: PNode, prev: PType): PType =
 proc semTypeOf(c: PContext; n: PNode; prev: PType): PType =
   openScope(c)
   inc c.inTypeofContext
+  defer: dec c.inTypeofContext # compiles can raise an exception
   let t = semExprWithType(c, n, {efInTypeof})
-  dec c.inTypeofContext
   closeScope(c)
   fixupTypeOf(c, prev, t)
   result = t.typ
@@ -1884,8 +1884,8 @@ proc semTypeOf2(c: PContext; n: PNode; prev: PType): PType =
     else:
       m = mode.intVal
   inc c.inTypeofContext
+  defer: dec c.inTypeofContext # compiles can raise an exception
   let t = semExprWithType(c, n[1], if m == 1: {efInTypeof} else: {})
-  dec c.inTypeofContext
   closeScope(c)
   fixupTypeOf(c, prev, t)
   result = t.typ
