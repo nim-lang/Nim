@@ -18,7 +18,6 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-20.04, macos-14]
-        cpu: [amd64]
         batch: ["allowed_failures", "0_3", "1_3", "2_3"] # list of `index_num`
     name: '${{ matrix.os }} (batch: ${{ matrix.batch }})'
     runs-on: ${{ matrix.os }}
@@ -38,7 +37,7 @@ jobs:
           node-version: '20.x'
 
       - name: 'Install dependencies (Linux amd64)'
-        if: runner.os == 'Linux' && matrix.cpu == 'amd64'
+        if: runner.os == 'Linux' && (runner.arch == 'X86' || runner.arch == 'X64')
         run: |
           sudo apt-fast update -qq
           DEBIAN_FRONTEND='noninteractive' \
@@ -65,9 +64,15 @@ jobs:
         shell: bash
         run: . ci/funs.sh && nimCiSystemInfo
 
-      - name: 'Build csourcesAny'
+      - name: 'Build csourcesAny (amd64)'
+        if: runner.arch == 'X86' || runner.arch == 'X64'
         shell: bash
-        run: . ci/funs.sh && nimBuildCsourcesIfNeeded CC=gcc ucpu='${{ matrix.cpu }}'
+        run: . ci/funs.sh && nimBuildCsourcesIfNeeded CC=gcc ucpu=amd64
+
+      - name: 'Build csourcesAny (arm64)'
+        if: runner.arch == 'ARM' || runner.arch == 'ARM64'
+        shell: bash
+        run: . ci/funs.sh && nimBuildCsourcesIfNeeded CC=gcc ucpu=arm64
 
       - name: 'koch, Run CI'
         shell: bash
