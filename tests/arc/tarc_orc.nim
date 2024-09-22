@@ -171,3 +171,16 @@ block: # bug #23858
     return Object()
   discard fn()
   doAssert x == 1
+
+block: # bug #24147
+  type
+    O = object of RootObj
+      val: string
+    OO = object of O
+
+  proc `=copy`(dest: var O, src: O) =
+      dest.val = src.val
+
+  let oo = OO(val: "hello world")
+  var ooCopy : OO
+  `=copy`(ooCopy, oo)
