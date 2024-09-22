@@ -48,8 +48,7 @@ removeFile("tmarshalsegfault_data")
 state.shows.aired[ 0 ] = AiredEpisodeState( airedAt: now(), tvShowId: "1", seasonNumber: 1, number: 1, title: "string" )
 
 # 4. And formatting the airedAt date will now trigger the exception
-var s = ""
 for ep in state.shows.aired:
     let x = $ep.seasonNumber & "x" & $ep.number & " (" & $ep.airedAt & ")"
-    if s.len == 0: s = x
-    else: doAssert s == x
+    let y = $ep.seasonNumber & "x" & $ep.number & " (" & $ep.airedAt & ")"
+    doAssert x == y
