@@ -226,7 +226,14 @@ proc fillBodyObjTImpl(c: var TLiftCtx; t: PType, body, x, y: PNode) =
     let obj = newNodeIT(nkHiddenSubConv, c.info, t[0])
     obj.add newNodeI(nkEmpty, c.info)
     obj.add x
-    fillBody(c, skipTypes(t[0], abstractPtrs), body, obj, y)
+    var src = y
+
+    if c.kind in {attachedAsgn, attachedDeepCopy, attachedSink}:
+      src = newNodeIT(nkHiddenSubConv, c.info, t[0])
+      src.add newNodeI(nkEmpty, c.info)
+      src.add y
+
+    fillBody(c, skipTypes(t[0], abstractPtrs), body, obj, src)
   fillBodyObj(c, t.n, body, x, y, enforceDefaultOp = false)
 
 proc fillBodyObjT(c: var TLiftCtx; t: PType, body, x, y: PNode) =
