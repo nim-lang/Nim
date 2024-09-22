@@ -66,9 +66,12 @@ block fileOperations:
 
     when defined(posix):
       # test attempt of copying FIFOs; should fail
-      let fifoName = "unanonymouspipe"
+      let
+        fifoName = dname / "unanonymouspipe"
+        toDest = dname / (fifoName & "_pipecopy")
       doAssert execShellCmd("mkfifo " & fifoName) == 0
-      doAssertRaises(OSError): copyFile(fifoName, todest)
+      doAssertRaises(OSError): copyFile(fifoName, toDest)
+      removeFile(fifoName)
 
   # Test creating files and dirs
   for dir in dirs:
