@@ -1474,7 +1474,10 @@ proc genObjectInfo(m: BModule; typ, origType: PType, name: Rope; info: TLineInfo
                       typeToString(typ))
   genTypeInfoAux(m, typ, origType, name, info)
   var tmp = getNimNode(m)
-  if (not isImportedType(typ)) or tfCompleteStruct in typ.flags:
+  if (not isImportedType(typ)) or
+      # don't trust C++ imported fields even if completeStruct to
+      # workaround C++ atomic implementation
+      (tfCompleteStruct in typ.flags and not isImportedCppType(typ)):
     genObjectFields(m, typ, origType, typ.n, tmp, info)
   m.s[cfsTypeInit3].addf("$1.node = &$2;$n", [tiNameForHcr(m, name), tmp])
   var t = typ.baseClass
