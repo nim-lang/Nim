@@ -3314,7 +3314,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
   of nkNilLit:
     if result.typ == nil:
       result.typ = getNilType(c)
-      if expectedType != nil:
+      if expectedType != nil and expectedType.kind notin {tyUntyped, tyTyped}:
         var m = newCandidate(c, result.typ)
         if typeRel(m, expectedType, result.typ) >= isSubtype:
           result.typ = expectedType
