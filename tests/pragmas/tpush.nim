@@ -64,3 +64,9 @@ foo31()
 foo41()
 
 {.pop.}
+
+block:
+  {.push deprecated.}
+  template test() = discard
+  test()
+  {.pop.}
