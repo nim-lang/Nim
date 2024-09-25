@@ -1561,7 +1561,8 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       else:
         result = typeRel(c, f[0], a[0], flags)
         if result < isGeneric:
-          if result <= isConvertible:
+          if result <= isSubrange:
+            # set['a'..'z'] and set[char] have different representations
             result = isNone
           elif tfIsConstructor notin a.flags:
             # set constructors are a bit special...
