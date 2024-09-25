@@ -125,8 +125,20 @@ foo41()
 
 {.pop.}
 
+import macros
+
 block:
   {.push deprecated.}
   template test() = discard
   test()
   {.pop.}
+  macro foo(): bool =
+    let ast = getImpl(bindSym"test")
+    var found = false
+    if ast[4].kind == nnkPragma:
+      for x in ast[4]:
+        if x.eqIdent"deprecated":
+          found = true
+          break
+    result = newLit(found)
+  doAssert foo()
