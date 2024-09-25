@@ -672,7 +672,7 @@ proc semTemplBodyDirty(c: var TemplCtx, n: PNode): PNode =
 # in semstmts.nim:
 proc semProcAnnotation(c: PContext, prc: PNode; validPragmas: TSpecialWords): PNode
 
-proc semTemplateDef(c: PContext, n: PNode): PNode =
+proc semTemplateDef(c: PContext, n: PNode; flags: TExprFlags = {}): PNode =
   result = semProcAnnotation(c, n, templatePragmas)
   if result != nil: return result
   result = n
@@ -701,7 +701,8 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
   s.ast = n
 
   pragmaCallable(c, s, n, templatePragmas)
-  implicitPragmas(c, s, n.info, templatePragmas)
+  if efNoEvalTemplImplicitPragmas notin flags:
+    implicitPragmas(c, s, n.info, templatePragmas)
 
   setGenericParamsMisc(c, n)
   # process parameters:
