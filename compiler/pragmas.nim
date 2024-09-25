@@ -1357,7 +1357,9 @@ proc implicitPragmas*(c: PContext, sym: PSym, info: TLineInfo,
             internalError(c.config, info, "implicitPragmas")
           inc i
         popInfoContext(c.config)
-        if sym.kind in routineKinds and sym.ast != nil: mergePragmas(sym.ast, o)
+        if sym.kind in routineKinds-{skTemplate} and sym.ast != nil and
+            not (sym.kind == skTemplate and sfGenSym in sym.flags):
+          mergePragmas(sym.ast, o)
 
     if lfExportLib in sym.loc.flags and sfExportc notin sym.flags:
       localError(c.config, info, ".dynlib requires .exportc")
