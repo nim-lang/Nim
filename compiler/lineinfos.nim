@@ -257,19 +257,20 @@ type
 proc computeNotesVerbosity(): array[0..3, TNoteKinds] =
   result = default(array[0..3, TNoteKinds])
   {.push warning[EnumConv]: off.}
-  result[3] = {low(TNoteKind)..high(TNoteKind)} - {TNoteKind warnObservableStores, warnResultUsed, warnAnyEnumConv, warnBareExcept, warnStdPrefix}
+  result[3] = {low(TNoteKind)..high(TNoteKind)} - {warnObservableStores, warnResultUsed, warnAnyEnumConv, warnBareExcept, warnStdPrefix}
   {.pop.}
-  result[2] = result[3] - {TNoteKind hintStackTrace, hintExtendedContext, hintDeclaredLoc, hintProcessingStmt}
-  result[1] = result[2] - {TNoteKind warnProveField, warnProveIndex,
+  result[2] = result[3] - {hintStackTrace, hintExtendedContext, hintDeclaredLoc, hintProcessingStmt}
+  result[1] = result[2] - {warnProveField, warnProveIndex,
     warnGcUnsafe, hintPath, hintDependency, hintCodeBegin, hintCodeEnd,
     hintSource, hintGlobalVar, hintGCStats, hintMsgOrigin, hintPerformance}
-  result[0] = result[1] - {TNoteKind hintSuccessX, hintSuccess, hintConf,
+  result[0] = result[1] - {hintSuccessX, hintSuccess, hintConf,
     hintProcessing, hintPattern, hintExecuting, hintLinking, hintCC}
 
 const
   NotesVerbosity* = computeNotesVerbosity()
   errXMustBeCompileTime* = "'$1' can only be used in compile-time context"
   errArgsNeedRunOption* = "arguments can only be given if the '--run' option is selected"
+  errFloatToString* = "cannot convert '$1' to '$2'"
 
 type
   TFileInfo* = object
