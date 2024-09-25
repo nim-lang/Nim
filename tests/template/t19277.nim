@@ -1,3 +1,9 @@
+discard """
+  output: '''
+got: 0
+'''
+"""
+
 # issue #19277
 
 import m19277_1, m19277_2
