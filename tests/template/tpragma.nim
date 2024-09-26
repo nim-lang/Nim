@@ -1,3 +1,5 @@
+# issue #24186
+
 macro mymacro(typ: typedesc; def) =
   def
 
