@@ -442,6 +442,11 @@ proc atom(g: TSrcGen; n: PNode): string =
       result = $n.floatVal & "\'f64"
     else:
       result = litAux(g, n, (cast[ptr int64](addr(n.floatVal)))[], 8) & "\'f64"
+  of nkFloat128Lit:
+    if n.flags * {nfBase2, nfBase8, nfBase16} == {}:
+      result = $n.floatVal & "\'f128"
+    else:
+      result = litAux(g, n, (cast[ptr int64](addr(n.floatVal)))[], 8) & "\'f128"
   of nkNilLit: result = "nil"
   of nkType:
     if (n.typ != nil) and (n.typ.sym != nil): result = n.typ.sym.name.s
