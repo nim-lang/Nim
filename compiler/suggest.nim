@@ -487,13 +487,13 @@ proc suggestFieldAccess(c: PContext, n, field: PNode, outputs: var Suggestions) 
                                     100, PrefixMatch.None, c.inTypeContext > 0,
                                     -99))
 
-  if typ == nil:
+  if typ == nil or typ.kind == tyNone:
     # a module symbol has no type for example:
     if n.kind == nkSym and n.sym.kind == skModule:
       if n.sym == c.module:
         # all symbols accessible, because we are in the current module:
         for it in items(c.topLevelScope.symbols):
-          if filterSym(it, field, pm):
+          if it.owner == n.sym and filterSym(it, field, pm):
             outputs.add(symToSuggest(c.graph, it, isLocal=false, ideSug,
                                       n.info, it.getQuality, pm,
                                       c.inTypeContext > 0, -99))
