@@ -75,6 +75,7 @@ type
       # overload resolution.
     efTypeAllowed # typeAllowed will be called after
     efWantNoDefaults
+    efIgnoreDefaults # var statements without initialization
     efAllowSymChoice # symchoice node should not be resolved
 
   TExprFlags* = set[TExprFlag]
