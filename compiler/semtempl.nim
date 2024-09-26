@@ -693,6 +693,7 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
   pushOwner(c, s)
   openScope(c)
   n[namePos] = newSymNode(s)
+  s.ast = n # for implicitPragmas to use
   pragmaCallable(c, s, n, templatePragmas)
   implicitPragmas(c, s, n.info, templatePragmas)
 
@@ -762,11 +763,6 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
   semIdeForTemplateOrGeneric(c, n[bodyPos], ctx.cursorInBody)
   closeScope(c)
   popOwner(c)
-
-  # set the symbol AST after pragmas, at least. This stops pragma that have
-  # been pushed (implicit) to be explicitly added to the template definition
-  # and misapplied to the body. see #18113
-  s.ast = n
 
   if sfCustomPragma in s.flags:
     if n[bodyPos].kind != nkEmpty:
