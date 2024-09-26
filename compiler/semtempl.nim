@@ -535,13 +535,11 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
   of nkConverterDef:
     result = semRoutineInTemplBody(c, n, skConverter)
   of nkPragmaExpr:
-    result[0] = semTemplBody(c, n[0])
+    result = semTemplBodySons(c, n)
   of nkPostfix:
     result[1] = semTemplBody(c, n[1])
   of nkPragma:
-    for x in n:
-      if x.kind == nkExprColonExpr:
-        x[1] = semTemplBody(c, x[1])
+    result = semTemplBodySons(c, n)
   of nkBracketExpr:
     if n.typ == nil:
       # if a[b] is nested inside a typed expression, don't convert it
