@@ -73,9 +73,9 @@ type
     efNoUndeclared, efIsDotCall, efCannotBeDotCall,
       # Use this if undeclared identifiers should not raise an error during
       # overload resolution.
-    efNoDiagnostics,
     efTypeAllowed # typeAllowed will be called after
     efWantNoDefaults
+    efIgnoreDefaults # var statements without initialization
     efAllowSymChoice # symchoice node should not be resolved
 
   TExprFlags* = set[TExprFlag]
@@ -139,6 +139,9 @@ type
     semInferredLambda*: proc(c: PContext, pt: Table[ItemId, PType], n: PNode): PNode
     semGenerateInstance*: proc (c: PContext, fn: PSym, pt: Table[ItemId, PType],
                                 info: TLineInfo): PSym
+    instantiateOnlyProcType*: proc (c: PContext, pt: TypeMapping,
+                                    prc: PSym, info: TLineInfo): PType
+      # used by sigmatch for explicit generic instantiations
     includedFiles*: IntSet    # used to detect recursive include files
     pureEnumFields*: TStrTable   # pure enum fields that can be used unambiguously
     userPragmas*: TStrTable

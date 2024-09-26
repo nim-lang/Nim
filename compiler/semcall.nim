@@ -246,7 +246,16 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
       candidates.add(getProcHeader(c.config, err.sym, prefer))
     candidates.addDeclaredLocMaybe(c.config, err.sym)
     candidates.add("\n")
-    let nArg = if err.firstMismatch.arg < n.len: n[err.firstMismatch.arg] else: nil
+    const genericParamMismatches = {kGenericParamTypeMismatch, kExtraGenericParam, kMissingGenericParam}
+    let isGenericMismatch = err.firstMismatch.kind in genericParamMismatches
+    var argList = n
+    if isGenericMismatch and n[0].kind == nkBracketExpr:
+      argList = n[0]
+    let nArg =
+      if err.firstMismatch.arg < argList.len:
+        argList[err.firstMismatch.arg]
+      else:
+        nil
     let nameParam = if err.firstMismatch.formal != nil: err.firstMismatch.formal.name.s else: ""
     if n.len > 1:
       if verboseTypeMismatch notin c.config.legacyFeatures:
@@ -269,6 +278,12 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
         of kMissingParam:
           candidates.add("  missing parameter: " & nameParam)
           candidates.add "\n"
+        of kExtraGenericParam:
+          candidates.add("  extra generic param given")
+          candidates.add "\n"
+        of kMissingGenericParam:
+          candidates.add("  missing generic parameter: " & nameParam)
+          candidates.add "\n"
         of kVarNeeded:
           doAssert nArg != nil
           doAssert err.firstMismatch.formal != nil
@@ -278,6 +293,8 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
           candidates.add "\n"
         of kTypeMismatch:
           doAssert nArg != nil
+          if nArg.kind in nkSymChoices:
+            candidates.add ambiguousIdentifierMsg(nArg, indent = 2)
           let wanted = err.firstMismatch.formal.typ
           doAssert err.firstMismatch.formal != nil
           doAssert wanted != nil
@@ -292,9 +309,39 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
             candidates.addPragmaAndCallConvMismatch(wanted, got, c.config)
             effectProblem(wanted, got, candidates, c)
             candidates.add "\n"
+        of kGenericParamTypeMismatch:
+          let pos = err.firstMismatch.arg
+          doAssert n[0].kind == nkBracketExpr and pos < n[0].len
+          let arg = n[0][pos]
+          doAssert arg != nil
+          var wanted = err.firstMismatch.formal.typ
+          if wanted.kind == tyGenericParam and wanted.genericParamHasConstraints:
+            wanted = wanted.genericConstraint
+          let got = arg.typ.skipTypes({tyTypeDesc})
+          doAssert err.firstMismatch.formal != nil
+          doAssert wanted != nil
+          doAssert got != nil
+          candidates.add "  generic parameter mismatch, expected "
+          candidates.addTypeDeclVerboseMaybe(c.config, wanted)
+          candidates.add " but got '"
+          candidates.add renderTree(arg)
+          candidates.add "' of type: "
+          candidates.addTypeDeclVerboseMaybe(c.config, got)
+          if nArg.kind in nkSymChoices:
+            candidates.add "\n"
+            candidates.add ambiguousIdentifierMsg(nArg, indent = 2)
+          if got != nil and got.kind == tyProc and wanted.kind == tyProc:
+            # These are proc mismatches so,
+            # add the extra explict detail of the mismatch
+            candidates.addPragmaAndCallConvMismatch(wanted, got, c.config)
+          if got != nil:
+            effectProblem(wanted, got, candidates, c)
+          candidates.add "\n"
         of kUnknown: discard "do not break 'nim check'"
       else:
         candidates.add("  first type mismatch at position: " & $err.firstMismatch.arg)
+        if err.firstMismatch.kind in genericParamMismatches:
+          candidates.add(" in generic parameters")
         # candidates.add "\n  reason: " & $err.firstMismatch.kind # for debugging
         case err.firstMismatch.kind
         of kUnknownNamedParam:
@@ -306,9 +353,16 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
         of kPositionalAlreadyGiven: candidates.add("\n  positional param was already given as named param")
         of kExtraArg: candidates.add("\n  extra argument given")
         of kMissingParam: candidates.add("\n  missing parameter: " & nameParam)
-        of kTypeMismatch, kVarNeeded:
+        of kExtraGenericParam:
+          candidates.add("\n  extra generic param given")
+        of kMissingGenericParam:
+          candidates.add("\n  missing generic parameter: " & nameParam)
+        of kTypeMismatch, kGenericParamTypeMismatch, kVarNeeded:
           doAssert nArg != nil
-          let wanted = err.firstMismatch.formal.typ
+          var wanted = err.firstMismatch.formal.typ
+          if isGenericMismatch and wanted.kind == tyGenericParam and
+              wanted.genericParamHasConstraints:
+            wanted = wanted.genericConstraint
           doAssert err.firstMismatch.formal != nil
           candidates.add("\n  required type for " & nameParam &  ": ")
           candidates.addTypeDeclVerboseMaybe(c.config, wanted)
@@ -319,8 +373,12 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
           else:
             candidates.add renderTree(nArg)
             candidates.add "' is of type: "
-            let got = nArg.typ
+            var got = nArg.typ
+            if isGenericMismatch: got = got.skipTypes({tyTypeDesc})
             candidates.addTypeDeclVerboseMaybe(c.config, got)
+            if nArg.kind in nkSymChoices:
+              candidates.add "\n"
+              candidates.add ambiguousIdentifierMsg(nArg, indent = 2)
             doAssert wanted != nil
             if got != nil:
               if got.kind == tyProc and wanted.kind == tyProc:
@@ -331,8 +389,8 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
 
         of kUnknown: discard "do not break 'nim check'"
         candidates.add "\n"
-      if err.firstMismatch.arg == 1 and nArg.kind == nkTupleConstr and
-          n.kind == nkCommand:
+      if err.firstMismatch.arg == 1 and nArg != nil and
+          nArg.kind == nkTupleConstr and n.kind == nkCommand:
         maybeWrongSpace = true
     for diag in err.diagnostics:
       candidates.add(diag & "\n")
@@ -408,23 +466,6 @@ proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
     if candidates != "":
       result.add("\n" & errExpectedPosition & "\n" & candidates)
     localError(c.config, n.info, result)
-
-proc bracketNotFoundError(c: PContext; n: PNode) =
-  var errors: CandidateErrors = @[]
-  var o: TOverloadIter = default(TOverloadIter)
-  let headSymbol = n[0]
-  var symx = initOverloadIter(o, c, headSymbol)
-  while symx != nil:
-    if symx.kind in routineKinds:
-      errors.add(CandidateError(sym: symx,
-                                firstMismatch: MismatchInfo(),
-                                diagnostics: @[],
-                                enabled: false))
-    symx = nextOverloadIter(o, c, headSymbol)
-  if errors.len == 0:
-    localError(c.config, n.info, "could not resolve: " & $n)
-  else:
-    notFoundError(c, n, errors)
 
 proc getMsgDiagnostic(c: PContext, flags: TExprFlags, n, f: PNode): string =
   result = ""
@@ -518,7 +559,8 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
     if overloadsState == csEmpty and result.state == csEmpty:
       if efNoUndeclared notin flags: # for tests/pragmas/tcustom_pragma.nim
         result.state = csNoMatch
-        if efNoDiagnostics in flags:
+        if c.inGenericContext > 0 and nfExprCall in n.flags:
+          # untyped expression calls end up here, see #24099
           return
         # xxx adapt/use errorUndeclaredIdentifierHint(c, n, f.ident)
         localError(c.config, n.info, getMsgDiagnostic(c, flags, n, f))
@@ -553,6 +595,39 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
         getProcHeader(c.config, result.calleeSym),
         getProcHeader(c.config, alt.calleeSym),
         args])
+
+proc bracketNotFoundError(c: PContext; n: PNode; flags: TExprFlags) =
+  var errors: CandidateErrors = @[]
+  let headSymbol = n[0]
+  block:
+    # we build a closed symchoice of all `[]` overloads for their errors,
+    # except add a custom error for the magics which always match
+    var choice = newNodeIT(nkClosedSymChoice, headSymbol.info, newTypeS(tyNone, c))
+    var o: TOverloadIter = default(TOverloadIter)
+    var symx = initOverloadIter(o, c, headSymbol)
+    while symx != nil:
+      if symx.kind in routineKinds:
+        if symx.magic in {mArrGet, mArrPut}:
+          errors.add(CandidateError(sym: symx,
+                                    firstMismatch: MismatchInfo(),
+                                    diagnostics: @[],
+                                    enabled: false))
+        else:
+          choice.add newSymNode(symx, headSymbol.info)
+      symx = nextOverloadIter(o, c, headSymbol)
+    n[0] = choice
+  # copied from semOverloadedCallAnalyzeEffects, might be overkill:
+  const baseFilter = {skProc, skFunc, skMethod, skConverter, skMacro, skTemplate}
+  let filter =
+    if flags*{efInTypeof, efWantIterator, efWantIterable} != {}:
+      baseFilter + {skIterator}
+    else: baseFilter
+  # this will add the errors:
+  var r = resolveOverloads(c, n, n, filter, flags, errors, true)
+  if errors.len == 0:
+    localError(c.config, n.info, "could not resolve: " & $n)
+  else:
+    notFoundError(c, n, errors)
 
 proc instGenericConvertersArg*(c: PContext, a: PNode, x: TCandidate) =
   let a = if a.kind == nkHiddenDeref: a[0] else: a
@@ -780,21 +855,16 @@ proc explicitGenericInstError(c: PContext; n: PNode): PNode =
   result = n
 
 proc explicitGenericSym(c: PContext, n: PNode, s: PSym): PNode =
+  if s.kind in {skTemplate, skMacro}:
+    internalError c.config, n.info, "cannot get explicitly instantiated symbol of " &
+      (if s.kind == skTemplate: "template" else: "macro")
   # binding has to stay 'nil' for this to work!
   var m = newCandidate(c, s, nil)
-
-  for i in 1..<n.len:
-    let formal = s.ast[genericParamsPos][i-1].typ
-    var arg = n[i].typ
-    # try transforming the argument into a static one before feeding it into
-    # typeRel
-    if formal.kind == tyStatic and arg.kind != tyStatic:
-      let evaluated = c.semTryConstExpr(c, n[i], n[i].typ)
-      if evaluated != nil:
-        arg = newTypeS(tyStatic, c, son = evaluated.typ)
-        arg.n = evaluated
-    let tm = typeRel(m, formal, arg)
-    if tm in {isNone, isConvertible}: return nil
+  matchGenericParams(m, n, s)
+  if m.state != csMatch:
+    # state is csMatch only if *all* generic params were matched,
+    # including implicit parameters
+    return nil
   var newInst = generateInstance(c, s, m.bindings, n.info)
   newInst.typ.flags.excl tfUnresolved
   let info = getCallLineInfo(n)

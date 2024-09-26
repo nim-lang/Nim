@@ -98,7 +98,10 @@ proc newTemp(c: PTransf, typ: PType, info: TLineInfo): PNode =
   r.typ = typ #skipTypes(typ, {tyGenericInst, tyAlias, tySink})
   incl(r.flags, sfFromGeneric)
   let owner = getCurrOwner(c)
-  result = newSymNode(r)
+  if owner.isIterator and not c.tooEarly and not isDefined(c.graph.config, "nimOptIters"):
+    result = freshVarForClosureIter(c.graph, r, c.idgen, owner)
+  else:
+    result = newSymNode(r)
 
 proc transform(c: PTransf, n: PNode): PNode
 
@@ -174,10 +177,13 @@ proc transformSym(c: PTransf, n: PNode): PNode =
 
 proc freshVar(c: PTransf; v: PSym): PNode =
   let owner = getCurrOwner(c)
-  var newVar = copySym(v, c.idgen)
-  incl(newVar.flags, sfFromGeneric)
-  newVar.owner = owner
-  result = newSymNode(newVar)
+  if owner.isIterator and not c.tooEarly and not isDefined(c.graph.config, "nimOptIters"):
+    result = freshVarForClosureIter(c.graph, v, c.idgen, owner)
+  else:
+    var newVar = copySym(v, c.idgen)
+    incl(newVar.flags, sfFromGeneric)
+    newVar.owner = owner
+    result = newSymNode(newVar)
 
 proc transformVarSection(c: PTransf, v: PNode): PNode =
   result = newTransNode(v)
@@ -410,9 +416,15 @@ proc transformYield(c: PTransf, n: PNode): PNode =
       result.add transform(c, v)
 
       for i in 0..<c.transCon.forStmt.len - 2:
-        let lhs = c.transCon.forStmt[i]
-        let rhs = transform(c, newTupleAccess(c.graph, tmp, i))
-        result.add(asgnTo(lhs, rhs))
+        if c.transCon.forStmt[i].kind == nkVarTuple:
+          for j in 0..<c.transCon.forStmt[i].len-1:
+            let lhs = c.transCon.forStmt[i][j]
+            let rhs = transform(c, newTupleAccess(c.graph, newTupleAccess(c.graph, tmp, i), j))
+            result.add(asgnTo(lhs, rhs))
+        else:
+          let lhs = c.transCon.forStmt[i]
+          let rhs = transform(c, newTupleAccess(c.graph, tmp, i))
+          result.add(asgnTo(lhs, rhs))
     else:
       for i in 0..<c.transCon.forStmt.len - 2:
         let lhs = c.transCon.forStmt[i]
@@ -499,7 +511,12 @@ proc transformAddrDeref(c: PTransf, n: PNode, kinds: TNodeKinds): PNode =
     if n[0].kind in kinds and
         not (n[0][0].kind == nkSym and n[0][0].sym.kind == skForVar and
           n[0][0].typ.skipTypes(abstractVar).kind == tyTuple
-        ): # elimination is harmful to `for tuple unpack` because of newTupleAccess
+        ) and not (n[0][0].kind == nkSym and n[0][0].sym.kind == skParam and
+          n.typ.kind == tyVar and
+          n.typ.skipTypes(abstractVar).kind == tyOpenArray and
+          n[0][0].typ.skipTypes(abstractVar).kind == tyString)
+        : # elimination is harmful to `for tuple unpack` because of newTupleAccess
+          # it is also harmful to openArrayLoc (var openArray) for strings
       # addr ( deref ( x )) --> x
       result = n[0][0]
       if n.typ.skipTypes(abstractVar).kind != tyOpenArray:

@@ -233,7 +233,7 @@ proc semTemplSymbol(c: var TemplCtx, n: PNode, s: PSym; isField, isAmbiguous: bo
   of OverloadableSyms:
     result = symChoice(c.c, n, s, scOpen, isField)
     if not isField and result.kind in {nkSym, nkOpenSymChoice}:
-      if {openSym, templateOpenSym} * c.c.features != {}:
+      if openSym in c.c.features:
         if result.kind == nkSym:
           result = newOpenSym(result)
         else:
@@ -246,7 +246,7 @@ proc semTemplSymbol(c: var TemplCtx, n: PNode, s: PSym; isField, isAmbiguous: bo
     else:
       result = newSymNodeTypeDesc(s, c.c.idgen, n.info)
       if not isField and s.owner != c.owner:
-        if {openSym, templateOpenSym} * c.c.features != {}:
+        if openSym in c.c.features:
           result = newOpenSym(result)
         else:
           result.flags.incl nfDisabledOpenSym
@@ -264,7 +264,7 @@ proc semTemplSymbol(c: var TemplCtx, n: PNode, s: PSym; isField, isAmbiguous: bo
       if not isField and not (s.owner == c.owner and
           s.typ != nil and s.typ.kind == tyGenericParam) and
           result.kind in {nkSym, nkOpenSymChoice}:
-        if {openSym, templateOpenSym} * c.c.features != {}:
+        if openSym in c.c.features:
           if result.kind == nkSym:
             result = newOpenSym(result)
           else:
@@ -277,7 +277,7 @@ proc semTemplSymbol(c: var TemplCtx, n: PNode, s: PSym; isField, isAmbiguous: bo
     else:
       result = newSymNode(s, n.info)
       if not isField:
-        if {openSym, templateOpenSym} * c.c.features != {}:
+        if openSym in c.c.features:
           result = newOpenSym(result)
         else:
           result.flags.incl nfDisabledOpenSym
@@ -693,6 +693,7 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
   pushOwner(c, s)
   openScope(c)
   n[namePos] = newSymNode(s)
+  s.ast = n # for implicitPragmas to use
   pragmaCallable(c, s, n, templatePragmas)
   implicitPragmas(c, s, n.info, templatePragmas)
 
@@ -743,6 +744,17 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
     c: c,
     owner: s
   )
+  # handle default params:
+  for i in 1..<s.typ.n.len:
+    let param = s.typ.n[i].sym
+    if param.ast != nil:
+      # param default values need to be treated like template body:
+      if sfDirty in s.flags:
+        param.ast = semTemplBodyDirty(ctx, param.ast)
+      else:
+        param.ast = semTemplBody(ctx, param.ast)
+      if param.ast.referencesAnotherParam(s):
+        param.ast.flags.incl nfDefaultRefsParam
   if sfDirty in s.flags:
     n[bodyPos] = semTemplBodyDirty(ctx, n[bodyPos])
   else:
@@ -751,11 +763,6 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
   semIdeForTemplateOrGeneric(c, n[bodyPos], ctx.cursorInBody)
   closeScope(c)
   popOwner(c)
-
-  # set the symbol AST after pragmas, at least. This stops pragma that have
-  # been pushed (implicit) to be explicitly added to the template definition
-  # and misapplied to the body. see #18113
-  s.ast = n
 
   if sfCustomPragma in s.flags:
     if n[bodyPos].kind != nkEmpty:

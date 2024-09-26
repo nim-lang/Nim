@@ -15,7 +15,7 @@ import
   ccgutils, ropes, wordrecg, treetab, cgmeth,
   rodutils, renderer, cgendata, aliases,
   lowerings, ndi, lineinfos, pathutils, transf,
-  injectdestructors, astmsgs, modulepaths, backendpragmas,
+  injectdestructors, astmsgs, modulepaths, pushpoppragmas,
   mangleutils
 
 from expanddefaults import caseObjDefaultBranch
@@ -783,15 +783,11 @@ $1define nimfr_(proc, file) \
   TFrame FR_; \
   FR_.procname = proc; FR_.filename = file; FR_.line = 0; FR_.len = 0; #nimFrame(&FR_);
 
-  $1define nimfrs_(proc, file, slots, length) \
-    struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;VarSlot s[slots];} FR_; \
-    FR_.procname = proc; FR_.filename = file; FR_.line = 0; FR_.len = length; #nimFrame((TFrame*)&FR_);
+$1define nimln_(n) \
+  FR_.line = n;
 
-  $1define nimln_(n) \
-    FR_.line = n;
-
-  $1define nimlf_(n, file) \
-    FR_.line = n; FR_.filename = file;
+$1define nimlf_(n, file) \
+  FR_.line = n; FR_.filename = file;
 
 """
   if p.module.s[cfsFrameDefines].len == 0:
@@ -1940,9 +1936,6 @@ proc genInitCode(m: BModule) =
 
     if optStackTrace in m.initProc.options and preventStackTrace notin m.flags:
       prc.add(deinitFrame(m.initProc))
-  elif m.config.exc == excGoto:
-    if getCompilerProc(m.g.graph, "nimTestErrorFlag") != nil:
-      m.appcg(prc, "\t#nimTestErrorFlag();$n", [])
 
   prc.addf("}$N", [])
 

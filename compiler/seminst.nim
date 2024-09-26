@@ -53,7 +53,7 @@ iterator instantiateGenericParamList(c: PContext, n: PNode, pt: TypeMapping): PS
           if q.typ.kind != tyCompositeTypeClass:
             localError(c.config, a.info, errCannotInstantiateX % s.name.s)
           t = errorType(c)
-      elif t.kind in {tyGenericParam, tyConcept}:
+      elif t.kind in {tyGenericParam, tyConcept, tyFromExpr}:
         localError(c.config, a.info, errCannotInstantiateX % q.name.s)
         t = errorType(c)
       elif isUnresolvedStatic(t) and (q.typ.kind == tyStatic or
@@ -254,6 +254,8 @@ proc instantiateProcType(c: PContext, pt: TypeMapping,
 
     let needsStaticSkipping = resulti.kind == tyFromExpr
     let needsTypeDescSkipping = resulti.kind == tyTypeDesc and tfUnresolved in resulti.flags
+    if resulti.kind == tyFromExpr:
+      resulti.flags.incl tfNonConstExpr
     result[i] = replaceTypeVarsT(cl, resulti)
     if needsStaticSkipping:
       result[i] = result[i].skipTypes({tyStatic})
@@ -277,9 +279,10 @@ proc instantiateProcType(c: PContext, pt: TypeMapping,
     # call head symbol, because this leads to infinite recursion.
     if oldParam.ast != nil:
       var def = oldParam.ast.copyTree
-      if def.kind in nkCallKinds:
-        for i in 1..<def.len:
-          def[i] = replaceTypeVarsN(cl, def[i], 1)
+      if def.typ.kind == tyFromExpr:
+        def.typ.flags.incl tfNonConstExpr
+      if not isIntLit(def.typ):
+        def = prepareNode(cl, def)
 
       # allow symchoice since node will be fit later
       # although expectedType should cover it
@@ -320,6 +323,22 @@ proc instantiateProcType(c: PContext, pt: TypeMapping,
 
   prc.typ = result
   popInfoContext(c.config)
+
+proc instantiateOnlyProcType(c: PContext, pt: TypeMapping, prc: PSym, info: TLineInfo): PType =
+  # instantiates only the type of a given proc symbol
+  # used by sigmatch for explicit generics
+  # wouldn't be needed if sigmatch could handle complex cases,
+  # examples are in texplicitgenerics
+  # might be buggy, see rest of generateInstance if problems occur
+  let fakeSym = copySym(prc, c.idgen)
+  incl(fakeSym.flags, sfFromGeneric)
+  fakeSym.instantiatedFrom = prc
+  openScope(c)
+  for s in instantiateGenericParamList(c, prc.ast[genericParamsPos], pt):
+    addDecl(c, s)
+  instantiateProcType(c, pt, fakeSym, info)
+  closeScope(c)
+  result = fakeSym.typ
 
 proc fillMixinScope(c: PContext) =
   var p = c.p

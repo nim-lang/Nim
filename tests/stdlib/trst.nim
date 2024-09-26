@@ -16,6 +16,8 @@ discard """
 [Suite] RST escaping
 
 [Suite] RST inline markup
+
+[Suite] Misc isssues
 '''
 matrix: "--mm:refc; --mm:orc"
 """
@@ -1980,3 +1982,13 @@ suite "RST inline markup":
           rnLeaf  ')'
       """)
     check(warnings[] == @["input(1, 5) Warning: broken link 'f'"])
+
+suite "Misc isssues":
+  test "Markdown CodeblockFields in one line (lacking enclosing ```)":
+    let message = """
+    ```llvm-profdata merge first.profraw second.profraw third.profraw <more stuff maybe> -output data.profdata```"""
+
+    try:
+      echo rstgen.rstToHtml(message, {roSupportMarkdown}, nil)
+    except EParseError:
+      discard

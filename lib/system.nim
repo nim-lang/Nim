@@ -2085,7 +2085,8 @@ when notJSnotNims:
   proc cmpMem(a, b: pointer, size: Natural): int =
     nimCmpMem(a, b, size).int
 
-when not defined(js):
+when not defined(js) or defined(nimscript):
+  # nimscript can be defined if config file for js compilation
   proc cmp(x, y: string): int =
     when nimvm:
       if x < y: result = -1
@@ -2350,8 +2351,14 @@ when notJSnotNims:
     `result` = `x`.ClE_0;
     """.}
 
-  proc finished*[T: iterator {.closure.}](x: T): bool {.noSideEffect, inline, magic: "Finished".} =
-    ## It can be used to determine if a first class iterator has finished.
+proc finished*[T: iterator {.closure.}](x: T): bool {.noSideEffect, inline, magic: "Finished".} =
+  ## It can be used to determine if a first class iterator has finished.
+  when defined(js):
+    # TODO: mangle `:state`
+    {.emit: """
+    `result` = (`x`.ClE_0).HEX3Astate < 0;
+    """.}
+  else:
     {.emit: """
     `result` = ((NI*) `x`.ClE_0)[1] < 0;
     """.}
@@ -2359,7 +2366,8 @@ when notJSnotNims:
 from std/private/digitsutils import addInt
 export addInt
 
-when defined(js):
+when defined(js) and not defined(nimscript):
+  # nimscript can be defined if config file for js compilation
   include "system/jssys"
   include "system/reprjs"
 

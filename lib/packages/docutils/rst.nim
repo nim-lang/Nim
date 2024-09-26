@@ -1526,7 +1526,7 @@ proc parseMarkdownCodeblockFields(p: var RstParser): PRstNode =
     result = nil
   else:
     result = newRstNode(rnFieldList)
-  while currentTok(p).kind != tkIndent:
+  while currentTok(p).kind notin {tkIndent, tkEof}:
     if currentTok(p).kind == tkWhite:
       inc p.idx
     else:

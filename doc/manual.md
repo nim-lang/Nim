@@ -3220,6 +3220,15 @@ A const section declares constants whose values are constant expressions:
 
 Once declared, a constant's symbol can be used as a constant expression.
 
+The value part of a constant declaration opens a new scope for each constant,
+so no symbols declared in the constant value are accessible outside of it.
+
+  ```nim
+  const foo = (var a = 1; a)
+  const bar = a # error
+  let baz = a # error
+  ```
+
 See [Constants and Constant Expressions] for details.
 
 Static statement/expression
@@ -4454,7 +4463,42 @@ as an example:
 Overloading of the subscript operator
 -------------------------------------
 
-The `[]` subscript operator for arrays/openarrays/sequences can be overloaded.
+The `[]` subscript operator for arrays/openarrays/sequences can be overloaded
+for any type (with some exceptions) by defining a routine with the name `[]`.
+
+  ```nim
+  type Foo = object
+    data: seq[int]
+  
+  proc `[]`(foo: Foo, i: int): int =
+    result = foo.data[i]
+  
+  let foo = Foo(data: @[1, 2, 3])
+  echo foo[1] # 2
+  ```
+
+Assignment to subscripts can also be overloaded by naming a routine `[]=`,
+which has precedence over assigning to the result of `[]`.
+
+  ```nim
+  type Foo = object
+    data: seq[int]
+  
+  proc `[]`(foo: Foo, i: int): int =
+    result = foo.data[i]
+  proc `[]=`(foo: var Foo, i: int, val: int) =
+    foo.data[i] = val
+  
+  var foo = Foo(data: @[1, 2, 3])
+  echo foo[1] # 2
+  foo[1] = 5
+  echo foo.data # @[1, 5, 3]
+  echo foo[1] # 5
+  ```
+
+Overloads of the subscript operator cannot be applied to routine or type
+symbols themselves, as this conflicts with the syntax for instantiating
+generic parameters, i.e. `foo[int](1, 2, 3)` or `Foo[int]`.
 
 
 Methods

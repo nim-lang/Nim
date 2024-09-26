@@ -619,6 +619,8 @@ proc semCaseBranch(c: PContext, n, branch: PNode, branchIndex: int,
     var b = branch[i]
     if b.kind == nkRange:
       branch[i] = b
+      # same check as in semBranchRange for exhaustiveness
+      covered = covered + getOrdValue(b[1]) + 1 - getOrdValue(b[0])
     elif isRange(b):
       branch[i] = semCaseBranchRange(c, n, b, covered)
     else:
@@ -789,6 +791,7 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
   of nkRecWhen:
     var a = copyTree(n)
     var branch: PNode = nil   # the branch to take
+    var cannotResolve = false # no branch should be taken
     for i in 0..<a.len:
       var it = a[i]
       if it == nil: illFormedAst(n, c.config)
@@ -806,24 +809,30 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
           let e = semExprWithType(c, it[0], {efDetermineType})
           if e.typ.kind == tyFromExpr:
             it[0] = makeStaticExpr(c, e)
+            cannotResolve = true
           else:
             it[0] = forceBool(c, e)
+            let val = getConstExpr(c.module, it[0], c.idgen, c.graph)
+            if val == nil or val.kind != nkIntLit:
+              cannotResolve = true
+            elif not cannotResolve and val.intVal != 0 and branch == nil:
+              branch = it[1]
       of nkElse:
         checkSonsLen(it, 1, c.config)
-        if branch == nil: branch = it[0]
+        if branch == nil and not cannotResolve: branch = it[0]
         idx = 0
       else: illFormedAst(n, c.config)
-      if c.inGenericContext > 0:
+      if c.inGenericContext > 0 and cannotResolve:
         # use a new check intset here for each branch:
         var newCheck: IntSet = check
         var newPos = pos
         var newf = newNodeI(nkRecList, n.info)
         semRecordNodeAux(c, it[idx], newCheck, newPos, newf, rectype, hasCaseFields)
         it[idx] = if newf.len == 1: newf[0] else: newf
-    if c.inGenericContext > 0:
-      father.add a
-    elif branch != nil:
+    if branch != nil:
       semRecordNodeAux(c, branch, check, pos, father, rectype, hasCaseFields)
+    elif cannotResolve:
+      father.add a
     elif father.kind in {nkElse, nkOfBranch}:
       father.add newNodeI(nkRecList, n.info)
   of nkRecCase:
@@ -1358,15 +1367,15 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
           "either use ';' (semicolon) or explicitly write each default value")
         message(c.config, a.info, warnImplicitDefaultValue, msg)
       block determineType:
-        var defTyp = typ
-        if isCurrentlyGeneric():
-          defTyp = nil
-          def = semGenericStmt(c, def)
-          if hasUnresolvedArgs(c, def):
-            def.typ = makeTypeFromExpr(c, def.copyTree)
-            break determineType
-
-        def = semExprWithType(c, def, {efDetermineType, efAllowSymChoice}, defTyp)
+        if kind == skTemplate and hasUnresolvedArgs(c, def):
+          # template default value depends on other parameter
+          # don't do any typechecking
+          def.typ = makeTypeFromExpr(c, def.copyTree)
+          break determineType
+        let isGeneric = isCurrentlyGeneric()
+        inc c.inGenericContext, ord(isGeneric)
+        def = semExprWithType(c, def, {efDetermineType, efAllowSymChoice}, typ)
+        dec c.inGenericContext, ord(isGeneric)
         if def.referencesAnotherParam(getCurrOwner(c)):
           def.flags.incl nfDefaultRefsParam
 
@@ -1857,11 +1866,13 @@ proc semStaticType(c: PContext, childNode: PNode, prev: PType): PType =
 proc semTypeOf(c: PContext; n: PNode; prev: PType): PType =
   openScope(c)
   inc c.inTypeofContext
+  defer: dec c.inTypeofContext # compiles can raise an exception
   let t = semExprWithType(c, n, {efInTypeof})
-  dec c.inTypeofContext
   closeScope(c)
   fixupTypeOf(c, prev, t)
   result = t.typ
+  if result.kind == tyFromExpr:
+    result.flags.incl tfNonConstExpr
 
 proc semTypeOf2(c: PContext; n: PNode; prev: PType): PType =
   openScope(c)
@@ -1873,11 +1884,13 @@ proc semTypeOf2(c: PContext; n: PNode; prev: PType): PType =
     else:
       m = mode.intVal
   inc c.inTypeofContext
+  defer: dec c.inTypeofContext # compiles can raise an exception
   let t = semExprWithType(c, n[1], if m == 1: {efInTypeof} else: {})
-  dec c.inTypeofContext
   closeScope(c)
   fixupTypeOf(c, prev, t)
   result = t.typ
+  if result.kind == tyFromExpr:
+    result.flags.incl tfNonConstExpr
 
 proc semTypeIdent(c: PContext, n: PNode): PSym =
   if n.kind == nkSym:
@@ -2066,7 +2079,10 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   of nkWhenStmt:
     var whenResult = semWhen(c, n, false)
     if whenResult.kind == nkStmtList: whenResult.transitionSonsKind(nkStmtListType)
-    result = semTypeNode(c, whenResult, prev)
+    if whenResult.kind == nkWhenStmt:
+      result = whenResult.typ
+    else:
+      result = semTypeNode(c, whenResult, prev)
   of nkBracketExpr:
     checkMinSonsLen(n, 2, c.config)
     var head = n[0]
@@ -2111,6 +2127,12 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     of mRef: result = semAnyRef(c, n, tyRef, prev)
     of mPtr: result = semAnyRef(c, n, tyPtr, prev)
     of mTuple: result = semTuple(c, n, prev)
+    of mBuiltinType:
+      case s.name.s
+      of "lent": result = semAnyRef(c, n, tyLent, prev)
+      of "sink": result = semAnyRef(c, n, tySink, prev)
+      of "owned": result = semAnyRef(c, n, tyOwned, prev)
+      else: result = semGeneric(c, n, s, prev)
     else: result = semGeneric(c, n, s, prev)
   of nkDotExpr:
     let typeExpr = semExpr(c, n)

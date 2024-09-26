@@ -192,7 +192,38 @@ block: # issue #4990 comment
   let bar = Bar(curIndex: 0)
   doAssert bar.next() == meB
 
-when false: # issue #22607, needs nkWhenStmt to be handled like nkRecWhen
+block: # issue #14053
+  template returnType(value: static[int]): typedesc =
+    when value == 1:
+      int
+    else:
+      float
+  proc fun(value: static[int]): returnType(value) = discard
+  doAssert fun(1) is int
+  template returnType2(value: static[int]): typedesc =
+    int
+  proc fun2(value: static[int]): returnType2(value) = discard
+  doAssert fun2(1) is int
+
+block: # issue #7547
+  macro foo(N: static[int]): untyped =
+    result = getType(int)
+  type
+    Foo[N: static[int]] = foo(N)
+    ContainsFoo[N: static[int]] = object
+      Ffoo: Foo[N]
+  proc initFoo(N: static[int]): Foo[N] = discard
+  proc initContainsFoo(size: static[int]): ContainsFoo[size] = discard
+  var a: Foo[10] # Works
+  doAssert a is int
+  let b = initFoo(10) # Works
+  doAssert b is int
+  let c = ContainsFoo[5]() # Works
+  doAssert c.Ffoo is int
+  let z = initContainsFoo(5) # Error: undeclared identifier: 'N'
+  doAssert z.Ffoo is int
+
+block: # issue #22607, needs nkWhenStmt to be handled like nkRecWhen
   proc test[x: static bool](
     t: (
       when x:
@@ -204,3 +235,34 @@ when false: # issue #22607, needs nkWhenStmt to be handled like nkRecWhen
   test[true](1.int)
   test[false](1.0)
   doAssert not compiles(test[])
+
+block: # `when` in static signature
+  template ctAnd(a, b): bool =
+    when a:
+      when b: true
+      else: false
+    else: false
+  template test(): untyped =
+    when ctAnd(declared(SharedTable), typeof(result) is SharedTable):
+      result = SharedTable()
+    else:
+      result = 123
+  proc foo[T](): T = test()
+  proc bar[T](x = foo[T]()): T = x
+  doAssert bar[int]() == 123
+
+block: # issue #22276
+  type Foo = enum A, B
+  macro test(y: static[Foo]): untyped =
+    if y == A:
+      result = parseExpr("proc (x: int)")
+    else:
+      result = parseExpr("proc (x: float)")
+  proc foo(y: static[Foo], x: test(y)) = # We want to make the type of `x` depend on what `y` is
+    x(9)
+  foo(A, proc (x: int) = doAssert x == 9)
+  var a: int
+  foo(A, proc (x: int) =
+    a = x * 2)
+  doAssert a == 18
+  foo(B, proc (x: float) = doAssert x == 9)

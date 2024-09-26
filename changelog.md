@@ -19,6 +19,8 @@
 
 - JS backend now supports lambda lifting for closures. Use `--legacy:jsNoLambdaLifting` to emulate old behavior.
 
+- JS backend now supports closure iterators.
+
 - `owner` in `std/macros` is deprecated.
 
 - Ambiguous type symbols in generic procs and templates now generate symchoice nodes.
@@ -27,6 +29,39 @@
   information of the other symbols. This means that generic code can now give
   errors for ambiguous type symbols, and macros operating on generic proc AST
   may encounter symchoice nodes instead of the arbitrarily resolved type symbol nodes.
+
+- Partial generic instantiation of routines is no longer allowed. Previously
+  it compiled in niche situations due to bugs in the compiler.
+
+  ```nim
+  proc foo[T, U](x: T, y: U) = echo (x, y)
+  proc foo[T, U](x: var T, y: U) = echo "var ", (x, y)
+
+  proc bar[T]() =
+    foo[float](1, "abc")
+
+  bar[int]() # before: (1.0, "abc"), now: type mismatch, missing generic parameter
+  ```
+
+- `const` values now open a new scope for each constant, meaning symbols
+  declared in them can no longer be used outside or in the value of
+  other constants.
+
+  ```nim
+  const foo = (var a = 1; a)
+  const bar = a # error
+  let baz = a # error
+  ```
+- The following POSIX wrappers have had their types changed from signed to
+  unsigned types on OSX and FreeBSD/OpenBSD to correct codegen errors:
+  - `Gid` (was `int32`, is now `uint32`)
+  - `Uid` (was `int32`, is now `uint32`)
+  - `Dev` (was `int32`, is now `uint32` on FreeBSD)
+  - `Nlink` (was `int16`, is now `uint32` on OpenBSD and `uint16` on OSX/other BSD)
+  - `sin6_flowinfo` and `sin6_scope_id` fields of `Sockaddr_in6`
+    (were `int32`, are now `uint32`)
+  - `n_net` field of `Tnetent` (was `int32`, is now `uint32`)
+
 
 ## Standard library additions and changes
 
@@ -42,6 +77,8 @@
 - Added `setLenUninit` to system, which doesn't initialize
 slots when enlarging a sequence.
 - Added `hasDefaultValue` to `std/typetraits` to check if a type has a valid default value.
+- Added `rangeBase` to `std/typetraits` to obtain the base type of a range type or
+  convert a value with a range type to its base type.
 - Added Viewport API for the JavaScript targets in the `dom` module.
 - Added `toSinglyLinkedRing` and `toDoublyLinkedRing` to `std/lists` to convert from `openArray`s.
 - ORC: To be enabled via `nimOrcStats` there is a new API called `GC_orcStats` that can be used to query how many
@@ -66,7 +103,7 @@ is often an easy workaround.
 ## Language changes
 
 - `noInit` can be used in types and fields to disable member initializers in the C++ backend.
-- C++ custom constructors initializers see https://nim-lang.org/docs/manual_experimental.htm#constructor-initializer
+- C++ custom constructors initializers see https://nim-lang.org/docs/manual_experimental.html#constructor-initializer
 - `member` can be used to attach a procedure to a C++ type.
 - C++ `constructor` now reuses `result` instead creating `this`.
 
@@ -92,8 +129,7 @@ is often an easy workaround.
   context changes.
 
   Since this change may affect runtime behavior, the experimental switch
-  `openSym`, or `genericsOpenSym` and `templateOpenSym` for only the respective
-  routines, needs to be enabled; and a warning is given in the case where an
+  `openSym` needs to be enabled; and a warning is given in the case where an
   injected symbol would replace a captured symbol not bound by `bind` and
   the experimental switch isn't enabled.
 
@@ -114,7 +150,7 @@ is often an easy workaround.
         value # warning: a new `value` has been injected, use `bind` or turn on `experimental:openSym`
   echo oldTempl() # "captured"
 
-  {.experimental: "openSym".} # or {.experimental: "genericsOpenSym".} for just generic procs
+  {.experimental: "openSym".}
 
   proc bar[T](): string =
     foo(123):
@@ -126,8 +162,6 @@ is often an easy workaround.
     foo(123):
       return value
   assert baz[int]() == "captured"
-
-  # {.experimental: "templateOpenSym".} would be needed here if genericsOpenSym was used
 
   template barTempl(): string =
     block:
@@ -148,6 +182,34 @@ is often an easy workaround.
   modified `nnkOpenSymChoice` node but macros that want to support the
   experimental feature should still handle `nnkOpenSym`, as the node kind would
   simply not be generated as opposed to being removed.
+
+  Another experimental switch `genericsOpenSym` exists that enables this behavior
+  at instantiation time, meaning templates etc can enable it specifically when
+  they are being called. However this does not generate `nnkOpenSym` nodes
+  (unless the other switch is enabled) and so doesn't reflect the regular
+  behavior of the switch.
+
+  ```nim
+  const value = "captured"
+  template foo(x: int, body: untyped): untyped =
+    let value {.inject.} = "injected"
+    {.push experimental: "genericsOpenSym".}
+    body
+    {.pop.}
+
+  proc bar[T](): string =
+    foo(123):
+      return value
+  echo bar[int]() # "injected"
+
+  template barTempl(): string =
+    block:
+      var res: string
+      foo(123):
+        res = value
+      res
+  assert barTempl() == "injected"
+  ```
 
 ## Compiler changes
 
