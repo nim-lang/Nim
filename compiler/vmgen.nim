@@ -53,6 +53,7 @@ type
     gfNode # Affects how variables are loaded - always loads as rkNode
     gfNodeAddr # Affects how variables are loaded - always loads as rkNodeAddr
     gfIsParam # do not deepcopy parameters, they are immutable
+    gfIsSinkParam # deepcopy sink parameters
   TGenFlags = set[TGenFlag]
 
 proc debugInfo(c: PCtx; info: TLineInfo): string =
@@ -620,10 +621,17 @@ proc genCall(c: PCtx; n: PNode; dest: var TDest) =
   let fntyp = skipTypes(n[0].typ, abstractInst)
   for i in 0..<n.len:
     var r: TRegister = x+i
-    c.gen(n[i], r, {gfIsParam})
     if i >= fntyp.signatureLen:
+      c.gen(n[i], r, {gfIsParam})
       internalAssert c.config, tfVarargs in fntyp.flags
       c.gABx(n, opcSetType, r, c.genType(n[i].typ))
+    else:
+      if fntyp[i] != nil and fntyp[i].kind == tySink and
+          fntyp[i].skipTypes({tySink}).kind in {tyObject, tyString, tySequence}:
+        c.gen(n[i], r, {gfIsSinkParam})
+      else:
+        c.gen(n[i], r, {gfIsParam})
+
   if dest < 0:
     c.gABC(n, opcIndCall, 0, x, n.len)
   else:
@@ -1740,6 +1748,8 @@ proc genRdVar(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
         c.gABx(n, opcLdGlobalAddr, dest, s.position)
     elif isImportcVar:
       c.gABx(n, opcLdGlobalDerefFFI, dest, s.position)
+    elif gfIsSinkParam in flags:
+      genAsgn(c, dest, n, requiresCopy = true)
     elif fitsRegister(s.typ) and gfNode notin flags:
       var cc = c.getTemp(n.typ)
       c.gABx(n, opcLdGlobal, cc, s.position)
