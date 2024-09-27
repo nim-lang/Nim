@@ -685,10 +685,12 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
     var m = qualifiedLookUp(c, n[0], (flags * {checkUndeclared}) + {checkModule})
     if m != nil and m.kind == skModule:
       var ident: PIdent = nil
-      if n[1].kind == nkIdent:
-        ident = n[1].ident
-      elif n[1].kind == nkAccQuoted:
+      if n[1].kind == nkAccQuoted:
         ident = considerQuotedIdent(c, n[1])
+      else:
+        # this includes sym and symchoice nodes, but since we are looking in
+        # a module, it shouldn't matter what was captured
+        ident = n[1].getPIdent
       if ident != nil:
         if m == c.module:
           var ti: TIdentIter = default(TIdentIter)
