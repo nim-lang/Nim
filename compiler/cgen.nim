@@ -373,6 +373,7 @@ proc dataField(p: BProc): Rope =
 
 proc genProcPrototype(m: BModule, sym: PSym)
 
+include cbuilder
 include ccgliterals
 include ccgtypes
 
