@@ -1004,6 +1004,7 @@ const cacheVersion = "D20210525T193831" # update when `BuildCache` spec changes
 type BuildCache = object
   cacheVersion: string
   outputFile: string
+  outputChecksum: string
   compile: seq[(string, string)]
   link: seq[string]
   linkcmd: string
@@ -1047,6 +1048,7 @@ proc writeJsonBuildInstructions*(conf: ConfigRef; deps: StringTableRef) =
           bcache.depfiles.add (path, $secureHashFile(path))
 
     bcache.nimexe = hashNimExe()
+    bcache.outputChecksum = $secureHashFile(bcache.outputFile)
   conf.jsonBuildFile = conf.jsonBuildInstructionsFile
   conf.jsonBuildFile.string.writeFile(bcache.toJson.pretty)
 
@@ -1067,6 +1069,8 @@ proc changeDetectedViaJsonBuildInstructions*(conf: ConfigRef; jsonFile: Absolute
     # xxx optimize by returning false if stdin input was the same
   for (file, hash) in bcache.depfiles:
     if $secureHashFile(file) != hash: return true
+  if bcache.outputChecksum != $secureHashFile(bcache.outputFile):
+    return true
 
 proc runJsonBuildInstructions*(conf: ConfigRef; jsonFile: AbsoluteFile) =
   var bcache: BuildCache = default(BuildCache)
@@ -1083,7 +1087,7 @@ proc runJsonBuildInstructions*(conf: ConfigRef; jsonFile: AbsoluteFile) =
       "jsonscript command outputFile '$1' must match '$2' which was specified during --compileOnly, see \"outputFile\" entry in '$3' " %
       [outputCurrent, output, jsonFile.string])
   var cmds: TStringSeq = default(TStringSeq)
-  var prettyCmds: TStringSeq= default(TStringSeq)
+  var prettyCmds: TStringSeq = default(TStringSeq)
   let prettyCb = proc (idx: int) = writePrettyCmdsStderr(prettyCmds[idx])
   for (name, cmd) in bcache.compile:
     cmds.add cmd
