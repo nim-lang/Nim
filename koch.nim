@@ -1,12 +1,12 @@
 #
 #
 #         Maintenance program for Nim
-#        (c) Copyright 2017 Andreas Rumpf
+#        (c) Copyright 2024 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
-#    See doc/koch.txt for documentation.
+#    See doc/koch.md for documentation.
 #
 
 const
@@ -52,7 +52,7 @@ const
 +-----------------------------------------------------------------+
 |         Maintenance program for Nim                             |
 |             Version $1|
-|             (c) 2017 Andreas Rumpf                              |
+|             (c) 2024 Andreas Rumpf                              |
 +-----------------------------------------------------------------+
 Build time: $2, $3
 
@@ -77,6 +77,7 @@ Possible Commands:
                            doesn't require network connectivity
   nimble                   builds the Nimble tool
   atlas                    builds the Atlas tool
+  checksums                installs the checksums dependency
   fusion                   installs fusion via Nimble
 
 Boot options:
