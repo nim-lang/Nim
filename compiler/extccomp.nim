@@ -1000,7 +1000,14 @@ proc jsonBuildInstructionsFile*(conf: ConfigRef): AbsoluteFile =
   # works out of the box with `hashMainCompilationParams`.
   result = getNimcacheDir(conf) / conf.outFile.changeFileExt("json")
 
-const cacheVersion = "D20210525T193831" # update when `BuildCache` spec changes
+const cacheVersion = "D20240927T123134" # update when `BuildCache` spec changes
+
+type
+  OptimizationLevel = enum # TODO: perhaps adds optSpeed and optSize?
+    optNone
+    optRelease
+    optDanger
+
 type BuildCache = object
   cacheVersion: string
   outputFile: string
@@ -1016,6 +1023,15 @@ type BuildCache = object
   cmdline: string
   depfiles: seq[(string, string)]
   nimexe: string
+  optLevel: OptimizationLevel
+
+proc getOptimizationLevel(conf: ConfigRef): OptimizationLevel =
+  if isDefined(conf, "danger"):
+    result = optDanger
+  elif isDefined(conf, "release"):
+    result = optRelease
+  else:
+    result = optNone
 
 proc writeJsonBuildInstructions*(conf: ConfigRef; deps: StringTableRef) =
   var linkFiles = collect(for it in conf.externalToLink:
@@ -1047,6 +1063,7 @@ proc writeJsonBuildInstructions*(conf: ConfigRef; deps: StringTableRef) =
           bcache.depfiles.add (path, $secureHashFile(path))
 
     bcache.nimexe = hashNimExe()
+    bcache.optLevel = getOptimizationLevel(conf)
   conf.jsonBuildFile = conf.jsonBuildInstructionsFile
   conf.jsonBuildFile.string.writeFile(bcache.toJson.pretty)
 
@@ -1061,6 +1078,7 @@ proc changeDetectedViaJsonBuildInstructions*(conf: ConfigRef; jsonFile: Absolute
   if bcache.currentDir != getCurrentDir() or # fixes bug #16271
      bcache.configFiles != conf.configFiles.mapIt(it.string) or
      bcache.cacheVersion != cacheVersion or bcache.outputFile != conf.absOutFile.string or
+     bcache.optLevel != getOptimizationLevel(conf) or
      bcache.cmdline != conf.commandLine or bcache.nimexe != hashNimExe() or
      bcache.projectIsCmd != conf.projectIsCmd or conf.cmdInput != bcache.cmdInput: return true
   if bcache.stdinInput or conf.projectIsStdin: return true
@@ -1083,7 +1101,7 @@ proc runJsonBuildInstructions*(conf: ConfigRef; jsonFile: AbsoluteFile) =
       "jsonscript command outputFile '$1' must match '$2' which was specified during --compileOnly, see \"outputFile\" entry in '$3' " %
       [outputCurrent, output, jsonFile.string])
   var cmds: TStringSeq = default(TStringSeq)
-  var prettyCmds: TStringSeq= default(TStringSeq)
+  var prettyCmds: TStringSeq = default(TStringSeq)
   let prettyCb = proc (idx: int) = writePrettyCmdsStderr(prettyCmds[idx])
   for (name, cmd) in bcache.compile:
     cmds.add cmd
