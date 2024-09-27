@@ -3,9 +3,9 @@
 
 ## Changes affecting backward compatibility
 
-- `-d:nimStrictDelete` becomes the default. An index error is produced when the index passed to `system.delete` was out of bounds. Use `-d:nimAuditDelete` to mimic the old behavior for backwards compatibility.
+- `-d:nimStrictDelete` becomes the default. An index error is produced when the index passed to `system.delete` is out of bounds. Use `-d:nimAuditDelete` to mimic the old behavior for backward compatibility.
 - The default user-agent in `std/httpclient` has been changed to `Nim-httpclient/<version>` instead of `Nim httpclient/<version>` which was incorrect according to the HTTP spec.
-- Methods now support implementations based on a VTable by using `--experimental:vtables`. Methods are then confined to be in the same module where their type has been defined.
+- Methods now support implementations based on a VTable by using `--experimental:vtables`. Methods are then confined to the same module where their type has been defined.
 - With `-d:nimPreviewNonVarDestructor`, non-var destructors become the default.
 - A bug where tuple unpacking assignment with a longer tuple on the RHS than the LHS was allowed has been fixed, i.e. code like:
   ```nim
@@ -13,11 +13,11 @@
   (a, b) = (1, 2, 3, 4)
   ```
   will no longer compile.
-- `internalNew` is removed from system, use `new` instead.
+- `internalNew` is removed from the `system` module, use `new` instead.
 
 - `bindMethod` in `std/jsffi` is deprecated, don't use it with closures.
 
-- JS backend now supports lambda lifting for closures. Use `--legacy:jsNoLambdaLifting` to emulate old behavior.
+- JS backend now supports lambda lifting for closures. Use `--legacy:jsNoLambdaLifting` to emulate old behaviors.
 
 - JS backend now supports closure iterators.
 
@@ -67,14 +67,14 @@
 
 [//]: # "Changes:"
 
-- Changed `std/osfiles.copyFile` to allow to specify `bufferSize` instead of a hardcoded one.
+- Changed `std/osfiles.copyFile` to allow specifying `bufferSize` instead of a hard-coded one.
 - Changed `std/osfiles.copyFile` to use `POSIX_FADV_SEQUENTIAL` hints for kernel-level aggressive sequential read-aheads.
 - `std/htmlparser` has been moved to a nimble package, use `nimble` or `atlas` to install it.
 
 [//]: # "Additions:"
 
-- Added `newStringUninit` to system, which creates a new string of length `len` like `newString` but with uninitialized content.
-- Added `setLenUninit` to system, which doesn't initialize
+- Added `newStringUninit` to the `system` module, which creates a new string of length `len` like `newString` but with uninitialized content.
+- Added `setLenUninit` to the `system` module, which doesn't initialize
 slots when enlarging a sequence.
 - Added `hasDefaultValue` to `std/typetraits` to check if a type has a valid default value.
 - Added `rangeBase` to `std/typetraits` to obtain the base type of a range type or
