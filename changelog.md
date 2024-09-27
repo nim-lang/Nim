@@ -70,6 +70,7 @@
 - Changed `std/osfiles.copyFile` to allow specifying `bufferSize` instead of a hard-coded one.
 - Changed `std/osfiles.copyFile` to use `POSIX_FADV_SEQUENTIAL` hints for kernel-level aggressive sequential read-aheads.
 - `std/htmlparser` has been moved to a nimble package, use `nimble` or `atlas` to install it.
+- Changed `std/os.copyDir` and `copyDirWithPermissions` to allow skipping special "file" objects like FIFOs, device files, etc on Unix by specifying a `skipSpecial` parameter.
 
 [//]: # "Additions:"
 
