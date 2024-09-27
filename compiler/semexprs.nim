@@ -890,6 +890,9 @@ proc analyseIfAddressTaken(c: PContext, n: PNode, isOutParam: bool): PNode =
 
 proc analyseIfAddressTakenInCall(c: PContext, n: PNode, isConverter = false) =
   checkMinSonsLen(n, 1, c.config)
+  if n[0].typ == nil:
+    # n[0] might be erroring node in nimsuggest
+    return
   const
     FakeVarParams = {mNew, mNewFinalize, mInc, ast.mDec, mIncl, mExcl,
       mSetLengthStr, mSetLengthSeq, mAppendStrCh, mAppendStrStr, mSwap,
