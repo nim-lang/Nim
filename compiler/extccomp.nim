@@ -1000,7 +1000,7 @@ proc jsonBuildInstructionsFile*(conf: ConfigRef): AbsoluteFile =
   # works out of the box with `hashMainCompilationParams`.
   result = getNimcacheDir(conf) / conf.outFile.changeFileExt("json")
 
-const cacheVersion = "D20210525T193831" # update when `BuildCache` spec changes
+const cacheVersion = "D20240927T193831" # update when `BuildCache` spec changes
 type BuildCache = object
   cacheVersion: string
   outputFile: string
