@@ -13,7 +13,7 @@
   (a, b) = (1, 2, 3, 4)
   ```
   will no longer compile.
-- `internalNew` is removed from the system, use `new` instead.
+- `internalNew` is removed from the `system` module, use `new` instead.
 
 - `bindMethod` in `std/jsffi` is deprecated, don't use it with closures.
 
@@ -73,8 +73,8 @@
 
 [//]: # "Additions:"
 
-- Added `newStringUninit` to the system, which creates a new string of length `len` like `newString` but with uninitialized content.
-- Added `setLenUninit` to the system, which doesn't initialize
+- Added `newStringUninit` to the `system` module, which creates a new string of length `len` like `newString` but with uninitialized content.
+- Added `setLenUninit` to the `system` module, which doesn't initialize
 slots when enlarging a sequence.
 - Added `hasDefaultValue` to `std/typetraits` to check if a type has a valid default value.
 - Added `rangeBase` to `std/typetraits` to obtain the base type of a range type or
