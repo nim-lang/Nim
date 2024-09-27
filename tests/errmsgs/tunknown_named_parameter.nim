@@ -10,8 +10,8 @@ func rsplit(s: string; sep: string; maxsplit: int = -1): seq[string]
   first type mismatch at position: 2
   required type for sep: string
   but expression '{':'}' is of type: set[char]
-func rsplit(s: string; seps: set[char] = {' ', '\t', '\v', '\r', '\n', '\f'};
-            maxsplit: int = -1): seq[string]
+func rsplit(s: string; seps: set[char] = Whitespace; maxsplit: int = -1): seq[
+    string]
   first type mismatch at position: 3
   unknown named parameter: maxsplits
 
