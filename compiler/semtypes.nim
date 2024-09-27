@@ -586,9 +586,14 @@ proc semBranchRange(c: PContext, n, a, b: PNode, covered: var Int128): PNode =
   let bc = semConstExpr(c, b)
   if ac.kind in {nkStrLit..nkTripleStrLit} or bc.kind in {nkStrLit..nkTripleStrLit}:
     localError(c.config, b.info, "range of string is invalid")
-  let at = fitNode(c, n[0].typ, ac, ac.info).skipConvTakeType
-  let bt = fitNode(c, n[0].typ, bc, bc.info).skipConvTakeType
-
+  var at = fitNode(c, n[0].typ, ac, ac.info).skipConvTakeType
+  var bt = fitNode(c, n[0].typ, bc, bc.info).skipConvTakeType
+  # the calls to fitNode may introduce calls to converters
+  # mirrored with semCaseBranch for single elements
+  if at.kind in {nkHiddenCallConv, nkHiddenStdConv, nkHiddenSubConv}:
+    at = semConstExpr(c, at)
+  if bt.kind in {nkHiddenCallConv, nkHiddenStdConv, nkHiddenSubConv}:
+    bt = semConstExpr(c, bt)
   result = newNodeI(nkRange, a.info)
   result.add(at)
   result.add(bt)
@@ -636,8 +641,8 @@ proc semCaseBranch(c: PContext, n, branch: PNode, branchIndex: int,
         checkMinSonsLen(n, 1, c.config)
         var tmp = fitNode(c, n[0].typ, r, r.info)
         # the call to fitNode may introduce a call to a converter
-        if tmp.kind == nkHiddenCallConv or
-            (tmp.kind == nkHiddenStdConv and n[0].typ.kind == tyCstring):
+        # mirrored with semBranchRange
+        if tmp.kind in {nkHiddenCallConv, nkHiddenStdConv, nkHiddenSubConv}:
           tmp = semConstExpr(c, tmp)
         branch[i] = skipConv(tmp)
         inc(covered)
