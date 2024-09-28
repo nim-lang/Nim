@@ -1250,18 +1250,18 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     b = skipTypes(b.last, aliasSkipSet)
   assert(a != nil)
   assert(b != nil)
-  if a.kind != b.kind:
-    case c.cmp
-    of dcEq: return false
-    of dcEqIgnoreDistinct:
-      let distinctSkipSet = maybeSkipRange({tyDistinct, tyGenericInst})
-      a = a.skipTypes(distinctSkipSet)
-      b = b.skipTypes(distinctSkipSet)
-      if a.kind != b.kind: return false
-    of dcEqOrDistinctOf:
-      let distinctSkipSet = maybeSkipRange({tyDistinct, tyGenericInst})
-      a = a.skipTypes(distinctSkipSet)
-      if a.kind != b.kind: return false
+  case c.cmp
+  of dcEq:
+    if a.kind != b.kind: return false
+  of dcEqIgnoreDistinct:
+    let distinctSkipSet = maybeSkipRange({tyDistinct, tyGenericInst})
+    a = a.skipTypes(distinctSkipSet)
+    b = b.skipTypes(distinctSkipSet)
+    if a.kind != b.kind: return false
+  of dcEqOrDistinctOf:
+    let distinctSkipSet = maybeSkipRange({tyDistinct, tyGenericInst})
+    a = a.skipTypes(distinctSkipSet)
+    if a.kind != b.kind: return false
 
   #[
     The following code should not run in the case either side is an generic alias,
@@ -1269,7 +1269,8 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     objects ie `type A[T] = SomeObject`
   ]#
   # this is required by tunique_type but makes no sense really:
-  if x.kind == tyGenericInst and IgnoreTupleFields notin c.flags and tyDistinct != y.kind:
+  if x.kind == tyGenericInst and IgnoreTupleFields notin c.flags and
+      c.cmp != dcEqIgnoreDistinct and tyDistinct != y.kind:
     let
       lhs = x.skipGenericAlias
       rhs = y.skipGenericAlias
