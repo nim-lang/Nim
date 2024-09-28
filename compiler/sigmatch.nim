@@ -2338,9 +2338,10 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
             # if for some reason the conversion can't be evaluated,
             # like if a converter is runtime-only
             if evaluated == nil: return nil
-        # to avoid creating recursive types, copy the node (#9255, #12864)
-        # original version copied `arg` and not `evaluated`
-        let typ = makeStaticType(c, evaluated.typ, evaluated.copyTree)
+        # Don't build the type in-place because `evaluated` and `arg` may point,
+        # to the same object and we'd end up creating recursive types (#9255)
+        let typ = makeStaticType(c, evaluated.typ, evaluated)
+        arg = copyTree(arg) # fix #12864
         arg.typ = typ
         a = typ
       else:
