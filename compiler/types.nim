@@ -1269,8 +1269,8 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     objects ie `type A[T] = SomeObject`
   ]#
   # this is required by tunique_type but makes no sense really:
-  if x.kind == tyGenericInst and IgnoreTupleFields notin c.flags and
-      c.cmp != dcEqIgnoreDistinct and tyDistinct != y.kind:
+  if c.cmp == dcEq and x.kind == tyGenericInst and
+      IgnoreTupleFields notin c.flags and tyDistinct != y.kind:
     let
       lhs = x.skipGenericAlias
       rhs = y.skipGenericAlias
