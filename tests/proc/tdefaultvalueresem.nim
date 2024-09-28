@@ -1,36 +1,23 @@
-discard """
-  output: '''
-seq[string]
-@[]
-seq[string]
-@[]
-seq[string]
-@[]
-seq[string]
-@[]
-seq[string]
-@[]
-seq[string]
-@[]
-'''
-"""
-
 # regression from #24184, see #24191
 
 const a: seq[string] = @[]
 
 proc foo(x = a) =
-  echo typeof(x)
-  echo x
+  doAssert x is seq[string]
+  doAssert x == @[]
 
 proc bar(x: static seq[string] = a) =
-  echo typeof(x)
-  echo x
+  doAssert x is seq[string]
+  doAssert x == @[]
+  const y = x
+  doAssert y == x
 
 # issue #22793
 proc baz(x: static seq[string] = @[]) =
-  echo typeof(x)
-  echo x
+  doAssert x is seq[string]
+  doAssert x == @[]
+  const y = x
+  doAssert y == x
 
 import macros
 

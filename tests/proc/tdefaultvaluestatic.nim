@@ -20,3 +20,15 @@ block: # issue #22793
     result = x
   doAssert x.myProc4() == @["a", "b"]
   doAssert x.myProc4() == x
+
+block:
+  proc foo(x: static[bool] = false): string =
+    when x:
+      "a"
+    else:
+      "b"
+  
+  doAssert foo() == "b"
+  doAssert foo(true) == "a"
+  doAssert foo(false) == "b"
+  doAssert foo() == "b"

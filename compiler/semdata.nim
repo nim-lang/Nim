@@ -446,6 +446,10 @@ when false:
                         sons: seq[PType]): PType =
     result = newType(kind, c.idgen, getCurrOwner(c), sons = sons)
 
+proc makeStaticType*(c: PContext, baseType: PType, val: PNode): PType =
+  result = newTypeS(tyStatic, c, son = baseType)
+  result.n = val
+
 proc makeStaticExpr*(c: PContext, n: PNode): PNode =
   result = newNodeI(nkStaticExpr, n.info)
   result.sons = @[n]

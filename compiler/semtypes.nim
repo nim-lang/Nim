@@ -1408,10 +1408,11 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
           def = fitNode(c, typ, def, def.info)
         elif typ.kind == tyStatic:
           def = semConstExpr(c, def)
-          # do we need to set `def.typ` to `tyStatic` here?
-          def = fitNode(c, typ.skipTypes({tyStatic}), def, def.info)
+          let baseType = typ.skipTypes({tyStatic})
+          def = fitNode(c, baseType, def, def.info)
+          def.typ = makeStaticType(c, baseType, def.copyTree)
       # keep proc AST updated
-      a[^1] = def.copyTree
+      a[^1] = def
 
     if not hasType and not hasDefault:
       if isType: localError(c.config, a.info, "':' expected")
