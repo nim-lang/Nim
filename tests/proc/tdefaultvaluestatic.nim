@@ -32,3 +32,14 @@ block:
   doAssert foo(true) == "a"
   doAssert foo(false) == "b"
   doAssert foo() == "b"
+
+block:
+  proc foo(x: uint) = discard
+  proc bar(x: static int = 123) =
+    foo(x)
+  bar(123)
+  bar()
+  template baz(x: static int = 123) =
+    foo(x)
+  baz(123)
+  baz()

@@ -2029,6 +2029,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
           result = isGeneric
         if result != isNone: put(c, f, aOrig)
       elif aOrig.n != nil and aOrig.n.typ != nil:
+        # XXX this should use paramTypesMatch
         result = if f.base.kind != tyNone:
                    typeRel(c, f.last, aOrig.n.typ, flags)
                  else: isGeneric
@@ -2328,7 +2329,7 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
     elif arg.kind != nkEmpty:
       var evaluated = c.semTryConstExpr(c, arg)
       if evaluated != nil:
-        if false and f.kind == tyStatic:
+        if f.kind == tyStatic:
           let converted = paramTypesMatch(m, f.base, evaluated.typ, evaluated, argOrig)
           # if for some reason `evaluated` doesn't match `f.base`:
           if converted == nil: return nil
