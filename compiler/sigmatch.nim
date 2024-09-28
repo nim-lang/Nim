@@ -152,7 +152,7 @@ proc matchGenericParam(m: var TCandidate, formal: PType, n: PNode) =
     if n.kind in nkSymChoices: n.flags.excl nfSem
     let evaluated = m.c.semTryConstExpr(m.c, n, formalBase.skipTypes({tyStatic}))
     if evaluated != nil:
-      arg = makeStaticType(m.c, evaluated.typ, evaluated.copyTree)
+      arg = makeStaticType(m.c, evaluated.typ, evaluated)
   elif formalBase.kind == tyTypeDesc:
     if arg.kind != tyTypeDesc:
       arg = makeTypeDesc(m.c, arg)
