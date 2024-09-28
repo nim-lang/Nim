@@ -2012,7 +2012,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
             var r = tryResolvingStaticExpr(c, f.n)
             if r == nil: r = f.n
             if not exprStructuralEquivalent(r, aOrig.n) and
-                not (aOrig.n.kind == nkIntLit and
+                not (aOrig.n != nil and aOrig.n.kind == nkIntLit and
                   inferStaticParam(c, r, aOrig.n.intVal)):
               result = isNone
         elif f.base.kind == tyGenericParam:
