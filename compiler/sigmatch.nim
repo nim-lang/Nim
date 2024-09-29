@@ -270,7 +270,7 @@ proc newCandidate*(ctx: PContext, callee: PSym,
 proc newCandidate*(ctx: PContext, callee: PType): TCandidate =
   result = initCandidate(ctx, callee)
 
-proc copyCandidate(dest: var TCandidate, src: TCandidate) =
+proc inheritCandidate(dest: var TCandidate, src: TCandidate) =
   dest.c = src.c
   dest.exactMatches = src.exactMatches
   dest.subtypeMatches = src.subtypeMatches
@@ -282,7 +282,7 @@ proc copyCandidate(dest: var TCandidate, src: TCandidate) =
   dest.calleeSym = src.calleeSym
   dest.call = copyTree(src.call)
   dest.baseTypeMatch = src.baseTypeMatch
-  dest.bindings = src.bindings
+  dest.bindings = newTypeMapLayer(src.bindings)
 
 proc checkGeneric(a, b: TCandidate): int =
   let c = a.c
@@ -2568,7 +2568,7 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
 
       for i in 0..<arg.len:
         if arg[i].sym.kind in matchSet:
-          copyCandidate(z, m)
+          inheritCandidate(z, m)
           z.callee = arg[i].typ
           if arg[i].sym.kind == skType and z.callee.kind != tyTypeDesc:
             # creating the symchoice with the type sym having typedesc type
