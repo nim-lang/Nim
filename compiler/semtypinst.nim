@@ -785,7 +785,6 @@ proc replaceTypesInBody*(p: PContext, pt: LayeredIdTable, n: PNode;
 proc prepareTypesInBody*(p: PContext, pt: LayeredIdTable, n: PNode;
                          owner: PSym = nil): PNode =
   var typeMap = newTypeMapLayer(pt)
-  defer: 
   var cl = initTypeVars(p, typeMap, n.info, owner)
   pushInfoContext(p.config, n.info)
   result = prepareNode(cl, n)
