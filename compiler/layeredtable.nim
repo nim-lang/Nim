@@ -24,6 +24,7 @@ proc setToPreviousLayer*(pt: var LayeredIdTable) =
   pt = y[]
 
 proc lookup(typeMap: ref LayeredIdTable, key: ItemId): PType =
+  result = nil
   var tm = typeMap
   while tm != nil:
     result = getOrDefault(tm.topLayer, key)
