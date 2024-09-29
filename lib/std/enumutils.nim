@@ -26,7 +26,6 @@ macro genEnumCaseStmt*(typ: typedesc, argSym: typed, default: typed,
   let impl = typSym.getImpl[2]
   expectKind impl, nnkEnumTy
   let normalizerNode = quote: `normalizer`
-  expectKind normalizerNode, nnkSym
   result = nnkCaseStmt.newTree(newCall(normalizerNode, argSym))
   # stores all processed field strings to give error msg for ambiguous enums
   var foundFields: seq[string] = @[]
