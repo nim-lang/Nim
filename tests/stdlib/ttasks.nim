@@ -247,7 +247,7 @@ block:
   block:
     var a1: seq[int]
     var a2: int
-    proc hello(a: int, c: static varargs[int]) =
+    proc hello(a: int, c: static openArray[int]) =
       a1 = @c
       a2 = a
 
@@ -260,7 +260,7 @@ block:
   block:
     var a1: seq[int]
     var a2: int
-    proc hello(a: int, c: static varargs[int]) =
+    proc hello(a: int, c: static openArray[int]) =
       a1 = @c
       a2 = a
 
