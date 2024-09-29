@@ -20,8 +20,8 @@ proc newTypeMapLayer*(pt: LayeredIdTable): LayeredIdTable =
 
 proc setToPreviousLayer*(pt: var LayeredIdTable) =
   # not splitting the expression breaks refc
-  let y = pt.nextLayer
-  pt = y[]
+  let y = pt.nextLayer[]
+  pt = y
 
 proc lookup(typeMap: ref LayeredIdTable, key: ItemId): PType =
   result = nil
