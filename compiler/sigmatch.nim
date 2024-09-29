@@ -2360,8 +2360,7 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
   # anywhere and breaks symmetry. It's hard to get rid of though, my
   # custom seqs example fails to compile without this:
   if r != isNone and m.calleeSym != nil and
-      m.calleeSym.kind in {skMacro, skTemplate} and
-      not m.macroTemplateEnableConv:
+    m.calleeSym.kind in {skMacro, skTemplate}:
     # XXX: duplicating this is ugly, but we cannot (!) move this
     # directly into typeRel using return-like templates
     incMatches(m, r)
