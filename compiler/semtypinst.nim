@@ -775,7 +775,7 @@ proc initTypeVars*(p: PContext, typeMap: LayeredIdTable, info: TLineInfo;
 proc replaceTypesInBody*(p: PContext, pt: LayeredIdTable, n: PNode;
                          owner: PSym, allowMetaTypes = false,
                          fromStaticExpr = false, expectedType: PType = nil): PNode =
-  var typeMap = newTypeMapLayer(pt)
+  var typeMap = shallowCopy(pt)
   var cl = initTypeVars(p, typeMap, n.info, owner)
   cl.allowMetaTypes = allowMetaTypes
   pushInfoContext(p.config, n.info)
@@ -784,7 +784,7 @@ proc replaceTypesInBody*(p: PContext, pt: LayeredIdTable, n: PNode;
 
 proc prepareTypesInBody*(p: PContext, pt: LayeredIdTable, n: PNode;
                          owner: PSym = nil): PNode =
-  var typeMap = newTypeMapLayer(pt)
+  var typeMap = shallowCopy(pt)
   var cl = initTypeVars(p, typeMap, n.info, owner)
   pushInfoContext(p.config, n.info)
   result = prepareNode(cl, n)
@@ -823,7 +823,7 @@ proc generateTypeInstance*(p: PContext, pt: LayeredIdTable, info: TLineInfo,
   # pt: Table with type mappings: T -> int
   # Desired result: Foo[int]
   # proc (x: T = 0); T -> int ---->  proc (x: int = 0)
-  var typeMap = newTypeMapLayer(pt)
+  var typeMap = shallowCopy(pt)
   var cl = initTypeVars(p, typeMap, info, nil)
   pushInfoContext(p.config, info)
   result = replaceTypeVarsT(cl, t)
@@ -835,7 +835,7 @@ proc generateTypeInstance*(p: PContext, pt: LayeredIdTable, info: TLineInfo,
 
 proc prepareMetatypeForSigmatch*(p: PContext, pt: LayeredIdTable, info: TLineInfo,
                                  t: PType): PType =
-  var typeMap = newTypeMapLayer(pt)
+  var typeMap = shallowCopy(pt)
   var cl = initTypeVars(p, typeMap, info, nil)
   cl.allowMetaTypes = true
   pushInfoContext(p.config, info)

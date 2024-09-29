@@ -282,7 +282,7 @@ proc shallowCopyCandidate(dest: var TCandidate, src: TCandidate) =
   dest.calleeSym = src.calleeSym
   dest.call = copyTree(src.call)
   dest.baseTypeMatch = src.baseTypeMatch
-  dest.bindings = src.bindings
+  dest.bindings = shallowCopy(src.bindings)
 
 proc checkGeneric(a, b: TCandidate): int =
   let c = a.c

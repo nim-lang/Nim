@@ -237,7 +237,7 @@ proc instantiateProcType(c: PContext, pt: LayeredIdTable,
   # will need to use openScope, addDecl, etc.
   #addDecl(c, prc)
   pushInfoContext(c.config, info)
-  var typeMap = newTypeMapLayer(pt)
+  var typeMap = shallowCopy(pt)
   var cl = initTypeVars(c, typeMap, info, nil)
   var result = instCopyType(cl, prc.typ)
   let originalParams = result.n
