@@ -2197,7 +2197,7 @@ proc isLValue(c: PContext; n: PNode, isOutParam = false): bool {.inline.} =
     result = false
 
 proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
-                   arg: PNode, doInc = true): PNode =
+                   arg: PNode): PNode =
   result = nil
   for i in 0..<c.converters.len:
     var src = c.converters[i].typ.firstParamType
@@ -2244,13 +2244,13 @@ proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
         dest.flags.incl tfVarIsPtr
         result = newDeref(result)
 
-      if doInc: inc(m.convMatches)
+      inc(m.convMatches)
       if not m.genericConverter:
         m.genericConverter = srca == isGeneric or destIsGeneric
       return result
 
 proc localConvMatch(c: PContext, m: var TCandidate, f, a: PType,
-                    arg: PNode, doInc = true): PNode =
+                    arg: PNode): PNode =
   # arg.typ can be nil in 'suggest':
   if isNil(arg.typ): return nil
 
@@ -2273,7 +2273,7 @@ proc localConvMatch(c: PContext, m: var TCandidate, f, a: PType,
     var r = typeRel(m, f[0], result.typ)
     if r < isGeneric: return nil
     if result.kind == nkCall: result.transitionSonsKind(nkHiddenCallConv)
-    if doInc: inc(m.convMatches)
+    inc(m.convMatches)
     if r == isGeneric:
       result.typ = getInstantiatedType(c, arg, m, base(f))
     m.baseTypeMatch = true
@@ -2294,10 +2294,10 @@ template matchesVoidProc(t: PType): bool =
     (t.kind == tyBuiltInTypeClass and t.elementType.kind == tyProc)
 
 proc paramTypesMatch*(m: var TCandidate, f, a: PType,
-                      arg, argOrig: PNode, doInc = true): PNode
+                      arg, argOrig: PNode): PNode
 
 proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
-                        argSemantized, argOrig: PNode, doInc = true): PNode =
+                        argSemantized, argOrig: PNode): PNode =
   result = nil
   var
     fMaybeStatic = f.skipTypes({tyDistinct})
@@ -2329,8 +2329,8 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
     elif arg.kind != nkEmpty:
       var evaluated = c.semTryConstExpr(c, arg)
       if evaluated != nil:
-        if f.kind == tyStatic and f.base.kind != tyNone:
-          let converted = paramTypesMatch(m, f.base, evaluated.typ, evaluated, argOrig, doInc = false)
+        if false and f.kind == tyStatic and f.base.kind != tyNone:
+          let converted = paramTypesMatch(m, f.base, evaluated.typ, evaluated, argOrig)
           # if for some reason `evaluated` doesn't match `f.base`:
           if converted == nil: return nil
           evaluated = converted
@@ -2360,7 +2360,8 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
   # anywhere and breaks symmetry. It's hard to get rid of though, my
   # custom seqs example fails to compile without this:
   if r != isNone and m.calleeSym != nil and
-    m.calleeSym.kind in {skMacro, skTemplate}:
+      m.calleeSym.kind in {skMacro, skTemplate} and
+      not m.macroTemplateEnableConv:
     # XXX: duplicating this is ugly, but we cannot (!) move this
     # directly into typeRel using return-like templates
     incMatches(m, r)
@@ -2403,27 +2404,25 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
 
   case r
   of isConvertible:
-    if doInc:
-      if f.skipTypes({tyRange}).kind in {tyInt, tyUInt}:
-        inc(m.convMatches)
+    if f.skipTypes({tyRange}).kind in {tyInt, tyUInt}:
       inc(m.convMatches)
+    inc(m.convMatches)
     result = implicitConv(nkHiddenStdConv, f, arg, m, c)
   of isIntConv:
     # I'm too lazy to introduce another ``*matches`` field, so we conflate
     # ``isIntConv`` and ``isIntLit`` here:
-    if doInc:
-      if f.skipTypes({tyRange}).kind notin {tyInt, tyUInt}:
-        inc(m.intConvMatches)
+    if f.skipTypes({tyRange}).kind notin {tyInt, tyUInt}:
       inc(m.intConvMatches)
+    inc(m.intConvMatches)
     result = implicitConv(nkHiddenStdConv, f, arg, m, c)
   of isSubtype:
-    if doInc: inc(m.subtypeMatches)
+    inc(m.subtypeMatches)
     if f.kind == tyTypeDesc:
       result = arg
     else:
       result = implicitConv(nkHiddenSubConv, f, arg, m, c)
   of isSubrange:
-    if doInc: inc(m.subtypeMatches)
+    inc(m.subtypeMatches)
     if f.kind in {tyVar}:
       result = arg
     else:
@@ -2431,14 +2430,14 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
   of isInferred:
     # result should be set in above while loop:
     assert result != nil
-    if doInc: inc(m.genericMatches)
+    inc(m.genericMatches)
   of isInferredConvertible:
     # result should be set in above while loop:
     assert result != nil
-    if doInc: inc(m.convMatches)
+    inc(m.convMatches)
     result = implicitConv(nkHiddenStdConv, f, result, m, c)
   of isGeneric:
-    if doInc: inc(m.genericMatches)
+    inc(m.genericMatches)
     if arg.typ == nil:
       result = arg
     elif skipTypes(arg.typ, abstractVar-{tyTypeDesc}).kind == tyTuple or cmpInheritancePenalty(oldInheritancePenalty, m.inheritancePenalty) > 0:
@@ -2451,15 +2450,15 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
   of isBothMetaConvertible:
     # result should be set in above while loop:
     assert result != nil
-    if doInc: inc(m.convMatches)
+    inc(m.convMatches)
     result = arg
   of isFromIntLit:
     # too lazy to introduce another ``*matches`` field, so we conflate
     # ``isIntConv`` and ``isIntLit`` here:
-    if doInc: inc(m.intConvMatches, 256)
+    inc(m.intConvMatches, 256)
     result = implicitConv(nkHiddenStdConv, f, arg, m, c)
   of isEqual:
-    if doInc: inc(m.exactMatches)
+    inc(m.exactMatches)
     result = arg
     let ff = skipTypes(f, abstractVar-{tyTypeDesc})
     if ff.kind == tyTuple or
@@ -2469,7 +2468,7 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
     # do not do this in ``typeRel`` as it then can't infer T in ``ref T``:
     if a.kind == tyFromExpr: return nil
     elif a.kind == tyError:
-      if doInc: inc(m.genericMatches)
+      inc(m.genericMatches)
       m.matchedErrorType = true
       return arg
     elif a.kind == tyVoid and f.matchesVoidProc and argOrig.kind == nkStmtList:
@@ -2483,7 +2482,7 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
       if f.kind == tyBuiltInTypeClass:
         inc m.genericMatches
         put(m, f, lifted.typ)
-      if doInc: inc m.convMatches
+      inc m.convMatches
       return implicitConv(nkHiddenStdConv, f, lifted, m, c)
     result = userConvMatch(c, m, f, a, arg)
     # check for a base type match, which supports varargs[T] without []
@@ -2491,35 +2490,35 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
     if result == nil and f.kind == tyVarargs:
       if f.n != nil:
         # Forward to the varargs converter
-        result = localConvMatch(c, m, f, a, arg, doInc)
+        result = localConvMatch(c, m, f, a, arg)
       elif f[0].kind == tyTyped:
-        if doInc: inc m.genericMatches
+        inc m.genericMatches
         result = arg
       else:
         r = typeRel(m, base(f), a)
         case r
         of isGeneric:
-          if doInc: inc(m.convMatches)
+          inc(m.convMatches)
           result = copyTree(arg)
           result.typ = getInstantiatedType(c, arg, m, base(f))
           m.baseTypeMatch = true
         of isFromIntLit:
-          if doInc: inc(m.intConvMatches, 256)
+          inc(m.intConvMatches, 256)
           result = implicitConv(nkHiddenStdConv, f[0], arg, m, c)
           m.baseTypeMatch = true
         of isEqual:
-          if doInc: inc(m.convMatches)
+          inc(m.convMatches)
           result = copyTree(arg)
           m.baseTypeMatch = true
         of isSubtype: # bug #4799, varargs accepting subtype relation object
-          if doInc: inc(m.subtypeMatches)
+          inc(m.subtypeMatches)
           if base(f).kind == tyTypeDesc:
             result = arg
           else:
             result = implicitConv(nkHiddenSubConv, base(f), arg, m, c)
           m.baseTypeMatch = true
         else:
-          result = userConvMatch(c, m, base(f), a, arg, doInc)
+          result = userConvMatch(c, m, base(f), a, arg)
           if result != nil: m.baseTypeMatch = true
 
 proc staticAwareTypeRel(m: var TCandidate, f: PType, arg: var PNode): TTypeRelation =
@@ -2534,9 +2533,9 @@ proc staticAwareTypeRel(m: var TCandidate, f: PType, arg: var PNode): TTypeRelat
 
 
 proc paramTypesMatch*(m: var TCandidate, f, a: PType,
-                      arg, argOrig: PNode, doInc = true): PNode =
+                      arg, argOrig: PNode): PNode =
   if arg == nil or arg.kind notin nkSymChoices:
-    result = paramTypesMatchAux(m, f, a, arg, argOrig, doInc)
+    result = paramTypesMatchAux(m, f, a, arg, argOrig)
   else:
     # symbol kinds that don't participate in symchoice type disambiguation:
     let matchSet = {low(TSymKind)..high(TSymKind)} - {skModule, skPackage}

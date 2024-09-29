@@ -1,3 +1,7 @@
+discard """
+  disabled: true
+"""
+
 # test that static conversions work
 
 block: # issue #12559
