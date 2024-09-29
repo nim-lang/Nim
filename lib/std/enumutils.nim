@@ -17,7 +17,7 @@ when defined(nimPreviewSlimSystem):
 # xxx `genEnumCaseStmt` needs tests and runnableExamples
 
 macro genEnumCaseStmt*(typ: typedesc, argSym: typed, default: typed,
-            userMin, userMax: static[int], normalizer: static[proc(s :string): string]): untyped =
+            userMin, userMax: static[int], normalizer: static[proc(s :string): string {.nimcall.}]): untyped =
   # Generates a case stmt, which assigns the correct enum field given
   # a normalized string comparison to the `argSym` input.
   # string normalization is done using passed normalizer.
@@ -26,6 +26,7 @@ macro genEnumCaseStmt*(typ: typedesc, argSym: typed, default: typed,
   let impl = typSym.getImpl[2]
   expectKind impl, nnkEnumTy
   let normalizerNode = quote: `normalizer`
+  expectKind normalizerNode, nnkSym
   result = nnkCaseStmt.newTree(newCall(normalizerNode, argSym))
   # stores all processed field strings to give error msg for ambiguous enums
   var foundFields: seq[string] = @[]

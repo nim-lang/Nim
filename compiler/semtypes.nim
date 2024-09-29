@@ -1408,7 +1408,9 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
           let baseType = typ.skipTypes({tyStatic})
           if not containsGenericType(baseType):
             def = fitNode(c, baseType, def, def.info)
-          def.typ = makeStaticType(c, baseType, def.copyTree)
+            def.typ = makeStaticType(c, baseType, def.copyTree)
+          else:
+            def = fitNode(c, typ, def, def.info)
         elif not containsGenericType(typ):
           # check type compatibility between def.typ and typ:
           def = fitNode(c, typ, def, def.info)
