@@ -967,18 +967,14 @@ proc getTypeDescAux(m: BModule; origTyp: PType, check: var IntSet; kind: TypeDes
       m.typeCache[sig] = result & seqStar(m)
       if not isImportedType(t):
         if skipTypes(t.elementType, typedescInst).kind != tyEmpty:
-          const
-            cppSeq = "struct $2 : #TGenericSeq {$n"
-            cSeq = "struct $2 {$n" &
-                  "  #TGenericSeq Sup;$n"
-          if m.compileToCpp:
-            appcg(m, m.s[cfsSeqTypes],
-                cppSeq & "  $1 data[SEQ_DECL_SIZE];$n" &
-                "};$n", [getTypeDescAux(m, t.elementType, check, kind), result])
-          else:
-            appcg(m, m.s[cfsSeqTypes],
-                cSeq & "  $1 data[SEQ_DECL_SIZE];$n" &
-                "};$n", [getTypeDescAux(m, t.elementType, check, kind), result])
+          var struct = newBuilder("")
+          let baseType = cgsymValue(m, "TGenericSeq")
+          struct.addSimpleStruct(m, name = result, baseType = baseType):
+            struct.addField(
+              name = "data",
+              typ = getTypeDescAux(m, t.elementType, check, kind),
+              isFlexArray = true)
+          result = struct
         else:
           result = rope("TGenericSeq")
       result.add(seqStar(m))
