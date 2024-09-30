@@ -96,6 +96,7 @@ when (defined(cpp) and defined(nimUseCppAtomics)) or defined(nimdoc):
   else:
     type Atomic*[T] {.importcpp: "std::atomic", completeStruct.} = object
       ## An atomic object with underlying type `T`.
+      raw: T
 
   type
     AtomicFlag* {.importcpp: "std::atomic_flag", size: 1.} = object
