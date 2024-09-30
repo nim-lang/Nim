@@ -974,7 +974,7 @@ proc getTypeDescAux(m: BModule; origTyp: PType, check: var IntSet; kind: TypeDes
               name = "data",
               typ = getTypeDescAux(m, t.elementType, check, kind),
               isFlexArray = true)
-          result = struct
+          m.s[cfsSeqTypes].add struct
         else:
           result = rope("TGenericSeq")
       result.add(seqStar(m))
