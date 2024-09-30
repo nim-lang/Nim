@@ -1048,7 +1048,8 @@ proc writeJsonBuildInstructions*(conf: ConfigRef; deps: StringTableRef) =
           bcache.depfiles.add (path, $secureHashFile(path))
 
     bcache.nimexe = hashNimExe()
-    bcache.outputLastModificationTime = $getLastModificationTime(bcache.outputFile)
+    if fileExists(bcache.outputFile):
+      bcache.outputLastModificationTime = $getLastModificationTime(bcache.outputFile)
   conf.jsonBuildFile = conf.jsonBuildInstructionsFile
   conf.jsonBuildFile.string.writeFile(bcache.toJson.pretty)
 
