@@ -46,7 +46,8 @@ type
     wImportc = "importc", wImportJs = "importjs", wExportc = "exportc", wExportCpp = "exportcpp",
     wExportNims = "exportnims",
     wIncompleteStruct = "incompleteStruct", # deprecated
-    wCompleteStruct = "completeStruct", wRequiresInit = "requiresInit", wAlign = "align",
+    wCompleteStruct = "completeStruct", wSizeComplete = "sizeComplete",
+    wRequiresInit = "requiresInit", wAlign = "align",
     wNodecl = "nodecl", wPure = "pure", wSideEffect = "sideEffect", wHeader = "header",
     wNoSideEffect = "noSideEffect", wGcSafe = "gcsafe", wNoreturn = "noreturn",
     wNosinks = "nosinks", wLib = "lib", wDynlib = "dynlib",

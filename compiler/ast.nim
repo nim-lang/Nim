@@ -393,6 +393,7 @@ type
     tfCompleteStruct
       # (for importc types); type is fully specified, allowing to compute
       # sizeof, alignof, offsetof at CT
+    tfSizeComplete
     tfExplicitCallConv
     tfIsConstructor
     tfEffectSystemWorkaround

@@ -88,8 +88,11 @@ when defined(cpp) or defined(nimdoc):
         ## Also guarantees that all threads observe the same total ordering
         ## with other moSequentiallyConsistent operations.
 
+  when not defined(nimHasSizeComplete):
+    {.pragma: sizeComplete, completeStruct.}
+
   type
-    Atomic*[T] {.importcpp: "std::atomic", completeStruct.} = object
+    Atomic*[T] {.importcpp: "std::atomic", sizeComplete.} = object
       ## An atomic object with underlying type `T`.
       raw: T
 

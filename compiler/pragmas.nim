@@ -73,7 +73,7 @@ const
     wGcSafe, wCodegenDecl, wNoInit, wCompileTime}
   typePragmas* = declPragmas + {wMagic, wAcyclic,
     wPure, wHeader, wCompilerProc, wCore, wFinal, wSize, wShallow,
-    wIncompleteStruct, wCompleteStruct, wByCopy, wByRef,
+    wIncompleteStruct, wCompleteStruct, wSizeComplete, wByCopy, wByRef,
     wInheritable, wGensym, wInject, wRequiresInit, wUnchecked, wUnion, wPacked,
     wCppNonPod, wBorrow, wGcSafe, wPartial, wExplain, wPackage, wCodegenDecl,
     wSendable, wNoInit}
@@ -1216,6 +1216,10 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         noVal(c, it)
         if sym.typ == nil: invalidPragma(c, it)
         else: incl(sym.typ.flags, tfCompleteStruct)
+      of wSizeComplete:
+        noVal(c, it)
+        if sym.typ == nil: invalidPragma(c, it)
+        else: incl(sym.typ.flags, tfSizeComplete)
       of wUnchecked:
         noVal(c, it)
         if sym.typ == nil or sym.typ.kind notin {tyArray, tyUncheckedArray}:
