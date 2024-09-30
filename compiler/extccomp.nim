@@ -1004,7 +1004,7 @@ const cacheVersion = "D20240927T193831" # update when `BuildCache` spec changes
 type BuildCache = object
   cacheVersion: string
   outputFile: string
-  outputChecksum: string
+  outputLastModificationTime: string
   compile: seq[(string, string)]
   link: seq[string]
   linkcmd: string
@@ -1048,7 +1048,7 @@ proc writeJsonBuildInstructions*(conf: ConfigRef; deps: StringTableRef) =
           bcache.depfiles.add (path, $secureHashFile(path))
 
     bcache.nimexe = hashNimExe()
-    bcache.outputChecksum = $secureHashFile(bcache.outputFile)
+    bcache.outputLastModificationTime = $getLastModificationTime(bcache.outputFile)
   conf.jsonBuildFile = conf.jsonBuildInstructionsFile
   conf.jsonBuildFile.string.writeFile(bcache.toJson.pretty)
 
@@ -1069,7 +1069,7 @@ proc changeDetectedViaJsonBuildInstructions*(conf: ConfigRef; jsonFile: Absolute
     # xxx optimize by returning false if stdin input was the same
   for (file, hash) in bcache.depfiles:
     if $secureHashFile(file) != hash: return true
-  if bcache.outputChecksum != $secureHashFile(bcache.outputFile):
+  if bcache.outputLastModificationTime != $getLastModificationTime(bcache.outputFile):
     return true
 
 proc runJsonBuildInstructions*(conf: ConfigRef; jsonFile: AbsoluteFile) =
