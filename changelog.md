@@ -63,7 +63,7 @@
   - `n_net` field of `Tnetent` (was `int32`, is now `uint32`)
 
 - The `Atomic[T]` type on C++ now uses C11 primitives by default instead of
-  `std::atomic`. To use `std::atomic` instead, `-d:nimUseCppAtomic` can be defined.
+  `std::atomic`. To use `std::atomic` instead, `-d:nimUseCppAtomics` can be defined.
 
 
 ## Standard library additions and changes
