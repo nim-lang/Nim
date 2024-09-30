@@ -2095,7 +2095,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       if s.kind != skError: localError(c.config, n.info, errTypeExpected)
       result = newOrPrevType(tyError, prev, c)
     elif s.kind == skParam and s.typ.kind == tyTypeDesc:
-      internalAssert c.config, s.typ.base.kind != tyNone and prev == nil
+      internalAssert c.config, s.typ.base.kind != tyNone
       result = s.typ.base
     elif prev == nil:
       result = s.typ
@@ -2119,7 +2119,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
         if s.kind == skType:
           s.typ
         else:
-          internalAssert c.config, s.typ.base.kind != tyNone and prev == nil
+          internalAssert c.config, s.typ.base.kind != tyNone
           s.typ.base
       let alias = maybeAliasType(c, t, prev)
       if alias != nil:
