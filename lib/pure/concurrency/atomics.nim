@@ -90,10 +90,14 @@ when (defined(cpp) and defined(nimUseCppAtomics)) or defined(nimdoc):
         ## Also guarantees that all threads observe the same total ordering
         ## with other moSequentiallyConsistent operations.
 
-  type
-    Atomic*[T] {.importcpp: "std::atomic", size: sizeof(T).} = object
+  when defined(nimHasGenericSize):
+    type Atomic*[T] {.importcpp: "std::atomic", size: sizeof(T).} = object
+      ## An atomic object with underlying type `T`.
+  else:
+    type Atomic*[T] {.importcpp: "std::atomic", completeStruct.} = object
       ## An atomic object with underlying type `T`.
 
+  type
     AtomicFlag* {.importcpp: "std::atomic_flag", size: 1.} = object
       ## An atomic boolean state.
 

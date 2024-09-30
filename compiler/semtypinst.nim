@@ -773,7 +773,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
         result.setIndexType result.indexType.skipTypes({tyStatic, tyDistinct})
 
       else: discard
-      if tfHasUnresolvedProperties in result.flags:
+      if not cl.allowMetaTypes and tfHasUnresolvedProperties in result.flags:
         computeUnresolvedProperties(cl, result, t)
     else:
       # If this type doesn't refer to a generic type we may still want to run it
@@ -788,7 +788,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
         # Invalidate the type size as we may alter its structure
         result.size = -1
         result.n = replaceObjBranches(cl, result.n)
-      if tfHasUnresolvedProperties in result.flags:
+      if not cl.allowMetaTypes and tfHasUnresolvedProperties in result.flags:
         # this can be reached for empty `object` generic bodies
         result = instCopyType(cl, result)
         result.size = -1 # needs to be recomputed
