@@ -6,11 +6,11 @@ const
     ##   ```
     # see also std/private/since
 
-  NimMinor* {.intdefine.}: int = 1
+  NimMinor* {.intdefine.}: int = 2
     ## is the minor number of Nim's version.
     ## Odd for devel, even for releases.
 
-  NimPatch* {.intdefine.}: int = 99
+  NimPatch* {.intdefine.}: int = 0
     ## is the patch number of Nim's version.
     ## Odd for devel, even for releases.
 
