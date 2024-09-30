@@ -394,6 +394,7 @@ type
       # (for importc types); type is fully specified, allowing to compute
       # sizeof, alignof, offsetof at CT
     tfSizeComplete
+      # workaround for C++ atomic, remove when arbitrary expression `size` is supported
     tfExplicitCallConv
     tfIsConstructor
     tfEffectSystemWorkaround
