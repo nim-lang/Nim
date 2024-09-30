@@ -12,12 +12,12 @@
 import std / tables
 
 import ast, astalgo, msgs, types, magicsys, semdata, renderer, options,
-  lineinfos, modulegraphs, layeredtable
+  lineinfos, modulegraphs, layeredtable, trees, wordrecg
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
-const tfInstClearedFlags = {tfHasMeta, tfUnresolved}
+const tfInstClearedFlags = {tfHasMeta, tfUnresolved, tfHasUnresolvedProperties}
 
 proc checkPartialConstructedType(conf: ConfigRef; info: TLineInfo, t: PType) =
   if t.kind in {tyVar, tyLent} and t.elementType.kind in {tyVar, tyLent}:
@@ -573,6 +573,27 @@ proc propagateFieldFlags(t: PType, n: PNode) =
       propagateFieldFlags(t, son)
   else: discard
 
+proc computeUnresolvedProperties(cl: var TReplTypeVars, result, t: PType) =
+  assert t.sym != nil and t.sym.ast != nil and t.sym.ast[0].kind == nkPragmaExpr
+  let pragmas = t.sym.ast[0][1]
+  for prag in pragmas:
+    let key = whichPragma(prag)
+    case key
+    of wSize:
+      if prag.kind notin nkPragmaCallKinds or prag.len != 2:
+        localError(cl.c.config, prag.info, "expected argument for `size` pragma")
+      var e = prepareNode(cl, prag[1])
+      e = cl.c.semConstExpr(cl.c, e)
+      var val = 0
+      case e.kind
+      of nkIntLit..nkInt64Lit:
+        val = int(e.intVal)
+      else:
+        localError(cl.c.config, e.info, "integer value expected for `size`")
+      setImportedTypeSize(cl.c.config, result, val)
+    else: discard
+  result.flags.excl tfHasUnresolvedProperties
+
 proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
   template bailout =
     if (t.sym == nil) or (t.sym != nil and sfGeneratedType in t.sym.flags):
@@ -752,6 +773,8 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
         result.setIndexType result.indexType.skipTypes({tyStatic, tyDistinct})
 
       else: discard
+      if tfHasUnresolvedProperties in result.flags:
+        computeUnresolvedProperties(cl, result, t)
     else:
       # If this type doesn't refer to a generic type we may still want to run it
       # trough replaceObjBranches in order to resolve any pending nkRecWhen nodes
@@ -765,6 +788,11 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
         # Invalidate the type size as we may alter its structure
         result.size = -1
         result.n = replaceObjBranches(cl, result.n)
+      if tfHasUnresolvedProperties in result.flags:
+        # this can be reached for empty `object` generic bodies
+        result = instCopyType(cl, result)
+        result.size = -1 # needs to be recomputed
+        computeUnresolvedProperties(cl, result, t)
 
 proc initTypeVars*(p: PContext, typeMap: LayeredIdTable, info: TLineInfo;
                    owner: PSym): TReplTypeVars =

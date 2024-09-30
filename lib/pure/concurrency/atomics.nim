@@ -91,9 +91,8 @@ when (defined(cpp) and defined(nimUseCppAtomics)) or defined(nimdoc):
         ## with other moSequentiallyConsistent operations.
 
   type
-    Atomic*[T] {.importcpp: "std::atomic", completeStruct.} = object
+    Atomic*[T] {.importcpp: "std::atomic", size: sizeof(T).} = object
       ## An atomic object with underlying type `T`.
-      raw: T
 
     AtomicFlag* {.importcpp: "std::atomic_flag", size: 1.} = object
       ## An atomic boolean state.
