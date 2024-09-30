@@ -10,6 +10,9 @@
 ## Types and operations for atomic operations and lockless algorithms.
 ##
 ## Unstable API.
+## 
+## By default, C++ uses C11 atomic primitives. To use C++ `std::atomic`,
+## `-d:nimUseCppAtomics` can be defined.
 
 runnableExamples:
   # Atomic
@@ -50,7 +53,7 @@ runnableExamples:
   flag.clear(moRelaxed)
   assert not flag.testAndSet
 
-when (defined(cpp) and not defined(nimUseCAtomics)) or defined(nimdoc):
+when (defined(cpp) and defined(nimUseCppAtomics)) or defined(nimdoc):
   # For the C++ backend, types and operations map directly to C++11 atomics.
 
   {.push, header: "<atomic>".}
