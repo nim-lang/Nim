@@ -265,11 +265,25 @@ proc min*[T](x: openArray[T]): T =
   for i in 1..high(x):
     if x[i] < result: result = x[i]
 
+proc min*[T](x: openArray[T], cmp: proc(a, b: T): bool): T {.effectsOf: cmp.} =
+  ## The minimum value of `x`.
+  ## `cmp` should return true if `a` is *less* than `b`.
+  result = x[0]
+  for i in 1..high(x):
+    if cmp(x[i], result): result = x[i]
+
 proc max*[T](x: openArray[T]): T =
   ## The maximum value of `x`. `T` needs to have a `<` operator.
   result = x[0]
   for i in 1..high(x):
     if result < x[i]: result = x[i]
+
+proc max*[T](x: openArray[T], cmp: proc(a, b: T): bool): T {.effectsOf: cmp.} =
+  ## The maximum value of `x`.
+  ## `cmp` should return true if `a` is *less* than `b`.
+  result = x[0]
+  for i in 1..high(x):
+    if cmp(result, x[i]): result = x[i]
 
 {.pop.} # stackTrace: off
 

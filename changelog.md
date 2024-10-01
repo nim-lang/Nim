@@ -89,6 +89,7 @@ slots when enlarging a sequence.
   objects the cyclic collector did free. If the number is zero that is a strong indicator that you can use `--mm:arc`
   instead of `--mm:orc`.
 - A `$` template is provided for `Path` in `std/paths`.
+- `min`, `max`, and `sequtils`' `minIndex`, `maxIndex` and `minmax` for `openArray`s now accept a comparison function.
 - `std/hashes.hash(x:string)` changed to produce a 64-bit string `Hash` (based
 on Google's Farm Hash) which is also often faster than the present one.  Define
 `nimStringHash2` to get the old values back.  `--jsbigint=off` mode always only

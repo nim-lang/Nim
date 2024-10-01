@@ -248,6 +248,21 @@ func minIndex*[T](s: openArray[T]): int {.since: (1, 1).} =
   for i in 1..high(s):
     if s[i] < s[result]: result = i
 
+func minIndex*[T](s: openArray[T], cmp: proc(a, b: T): bool): int {.effectsOf: cmp.} =
+  ## Returns the index of the minimum value of `s`.
+  ## `cmp` should return true if `a` is *less* than `b`.
+  runnableExamples:
+    import std/sugar
+
+    let s1 = @["foo","bar", "hello"]
+    let s2 = @[2..4, 1..3, 6..10]
+    assert minIndex(s1, proc (a, b: string): bool = a.len < b.len) == 0
+    assert minIndex(s2, (a, b) => a.a < b.a) == 1
+
+  for i in 1..high(s):
+    if cmp(s[i], s[result]): result = i
+
+
 func maxIndex*[T](s: openArray[T]): int {.since: (1, 1).} =
   ## Returns the index of the maximum value of `s`.
   ## `T` needs to have a `<` operator.
@@ -265,6 +280,20 @@ func maxIndex*[T](s: openArray[T]): int {.since: (1, 1).} =
   for i in 1..high(s):
     if s[i] > s[result]: result = i
 
+func maxIndex*[T](s: openArray[T], cmp: proc(a, b: T): bool): int {.effectsOf: cmp.} =
+  ## Returns the index of the maximum value of `s`.
+  ## `cmp` should return true if `a` is *less* than `b`.
+  runnableExamples:
+    import std/sugar
+
+    let s1 = @["foo","bar", "hello"]
+    let s2 = @[2..4, 1..3, 6..10]
+    assert maxIndex(s1, proc (a, b: string): bool = a.len < b.len) == 2
+    assert maxIndex(s2, (a, b) => a.a < b.a) == 2
+
+  for i in 1..high(s):
+    if cmp(s[result], s[i]): result = i
+
 func minmax*[T](x: openArray[T]): (T, T) =
   ## The minimum and maximum values of `x`. `T` needs to have a `<` operator.
   var l = x[0]
@@ -273,6 +302,14 @@ func minmax*[T](x: openArray[T]): (T, T) =
     if x[i] < l: l = x[i]
     if h < x[i]: h = x[i]
   result = (l, h)
+
+func minmax*[T](x: openArray[T], cmp: proc(a, b: T): bool): (T, T) {.effectsOf: cmp.} =
+  ## The minimum and maximum values of `x`.
+  ## `cmp` should return true if `a` is *less* than `b`.
+  result = (x[0], x[0])
+  for i in 1..high(x):
+    if cmp(x[i], result[0]): result[0] = x[i]
+    if cmp(result[1], x[i]): result[1] = x[i]
 
 
 template zipImpl(s1, s2, retType: untyped): untyped =
