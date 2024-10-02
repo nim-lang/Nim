@@ -7,7 +7,7 @@ type
     nextLayer*: ref LayeredIdTableObj
     previousLen*: int # used to track if bindings were added
 
-const useRef = defined(gcMarkAndSweep)
+const useRef = not defined(gcDestructors)
 
 when useRef:
   type LayeredIdTable* = ref LayeredIdTableObj
@@ -62,5 +62,26 @@ when not useRef:
   template lookup*(typeMap: LayeredIdTableObj, key: PType): PType =
     lookup(typeMap, key.itemId)
 
-proc put*(typeMap: var LayeredIdTable, key, value: PType) {.inline.} =
-  typeMap.topLayer[key.itemId] = value
+proc put(typeMap: var LayeredIdTable, key: ItemId, value: PType) {.inline.} =
+  typeMap.topLayer[key] = value
+
+template put*(typeMap: var LayeredIdTable, key, value: PType) =
+  put(typeMap, key.itemId, value)
+
+proc putRecursive(typeMap: ref LayeredIdTableObj, key: ItemId, value: PType) =
+  var tm = typeMap
+  while tm != nil:
+    tm.topLayer[key] = value
+    tm = tm.nextLayer
+
+template putRecursive*(typeMap: ref LayeredIdTableObj, key, value: PType) =
+  putRecursive(typeMap, key.itemId, value)
+
+when not useRef:
+  proc putRecursive(typeMap: var LayeredIdTableObj, key: ItemId, value: PType) {.inline.} =
+    put(typeMap, key, value)
+    if typeMap.nextLayer != nil:
+      putRecursive(typeMap.nextLayer, key, value)
+
+  template putRecursive*(typeMap: var LayeredIdTableObj, key, value: PType) =
+    putRecursive(typeMap, key.itemId, value)

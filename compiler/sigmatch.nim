@@ -1286,6 +1286,11 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       put(c, f, bound)
     return res
 
+  template bindingRet(res, bound) =
+    if doBind:
+      put(c, f, bound)
+    return res
+
   template considerPreviousT(body: untyped) =
     var prev = lookup(c.bindings, f)
     if prev == nil: body
@@ -1830,18 +1835,28 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       result = isNone
       let oldInheritancePenalty = c.inheritancePenalty
       var minInheritance = maxInheritancePenalty
+      var bestMatch: PType = nil
       for branch in f.kids:
         c.inheritancePenalty = -1
         let x = typeRel(c, branch, aOrig, flags)
         if x >= result:
           if  c.inheritancePenalty > -1:
-            minInheritance = min(minInheritance, c.inheritancePenalty)
+            if c.inheritancePenalty < minInheritance:
+              minInheritance = c.inheritancePenalty
+              if x > result:
+                bestMatch = branch
+          elif x > result:
+            bestMatch = branch
           result = x
       if result >= isIntConv:
         if minInheritance < maxInheritancePenalty:
           c.inheritancePenalty = oldInheritancePenalty + minInheritance
+        let oldResult = result
         if result > isGeneric: result = isGeneric
-        bindingRet result
+        if bestMatch != nil and oldResult != isGeneric:
+          bindingRet result, bestMatch
+        else:
+          bindingRet result
       else:
         result = isNone
   of tyNot:
@@ -1920,6 +1935,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     let doBindGP = doBind or trBindGenericParam in flags
     var x = lookup(c.bindings, f)
     if x == nil:
+      var bound: PType = nil
       if c.callee.kind == tyGenericBody and not c.typedescMatched:
         # XXX: The fact that generic types currently use tyGenericParam for
         # their parameters is really a misnomer. tyGenericParam means "match
@@ -1953,11 +1969,18 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       else:
         # check if 'T' has a constraint as in 'proc p[T: Constraint](x: T)'
         if f.len > 0 and f[0].kind != tyNone:
-          result = typeRel(c, f[0], a, flags + {trDontBind, trBindGenericParam})
+          c.bindings = newTypeMapLayer(c.bindings)
+          result = typeRel(c, f[0], a, flags + {trBindGenericParam})
+          if result == isGeneric:
+            bound = lookup(c.bindings, f[0])
+          else:
+            bound = f[0]
+          setToPreviousLayer(c.bindings)
           if doBindGP and result notin {isNone, isGeneric}:
-            let concrete = concreteType(c, a, f)
+            if bound == nil: bound = a
+            let concrete = concreteType(c, bound, f)
             if concrete == nil: return isNone
-            put(c, f, concrete)
+            putRecursive(c.bindings, f, concrete)
           if result in {isEqual, isSubtype}:
             result = isGeneric
         elif a.kind == tyTypeDesc:
@@ -1969,7 +1992,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
           result = isGeneric
 
       if result == isGeneric:
-        var concrete = a
+        if bound == nil: bound = a
         if tfWildcard in a.flags:
           a.sym.transitionGenericParamToType()
           a.flags.excl tfWildcard
@@ -1979,11 +2002,11 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
           # reason about and maintain. Refactoring typeRel to not be responsible for setting, or
           # at least validating, bindings can have multiple benefits. This is debatable. I'm not 100% sure.
           # A design that allows a proper complexity analysis of types like `tyOr` would be ideal.
-          concrete = concreteType(c, a, f)
-          if concrete == nil:
+          bound = concreteType(c, bound, f)
+          if bound == nil:
             return isNone
         if doBindGP:
-          put(c, f, concrete)
+          putRecursive(c.bindings, f, bound)
       elif result > isGeneric:
         result = isGeneric
     elif a.kind == tyEmpty:
