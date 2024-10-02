@@ -2622,7 +2622,8 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
 proc determineType(c: PContext, s: PSym) =
   if s.typ != nil: return
   #if s.magic != mNone: return
-  #if s.ast.isNil: return
+  if s.ast.isNil: 
+    globalError(c.config, s.info, errIllFormedAstX, "symbol of kind " & $s.kind)
   discard semProcAux(c, s.ast, s.kind, {})
 
 proc semIterator(c: PContext, n: PNode): PNode =
