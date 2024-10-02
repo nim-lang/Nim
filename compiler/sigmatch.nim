@@ -1282,7 +1282,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
 
   template bindingRet(res) =
     if doBind:
-      let bound = aOrig.skipTypes({tyRange}).skipIntLit(c.c.idgen)
+      let bound = aOrig#[.skipTypes({tyRange})]#.skipIntLit(c.c.idgen)
       put(c, f, bound)
     return res
 
@@ -1853,7 +1853,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
           c.inheritancePenalty = oldInheritancePenalty + minInheritance
         let oldResult = result
         if result > isGeneric: result = isGeneric
-        if bestMatch != nil and oldResult != isGeneric:
+        if bestMatch != nil and oldResult in {isConvertible, isIntConv, isSubtype, isSubrange, isFromIntLit}:
           bindingRet result, bestMatch
         else:
           bindingRet result
@@ -1972,11 +1972,13 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
           c.bindings = newTypeMapLayer(c.bindings)
           result = typeRel(c, f[0], a, flags + {trBindGenericParam})
           bound = lookup(c.bindings, f[0])
-          if bound == nil and result != isGeneric:
-            bound = f[0]
+          if bound == nil:
+            if result in {isConvertible, isIntConv, isSubtype, isSubrange, isFromIntLit}:
+              bound = f[0]
+            else:
+              bound = a
           setToPreviousLayer(c.bindings)
           if doBindGP and result notin {isNone, isGeneric}:
-            if bound == nil: bound = a
             let concrete = concreteType(c, bound, f)
             if concrete == nil: return isNone
             putRecursive(c.bindings, f, concrete)
