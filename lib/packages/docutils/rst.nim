@@ -139,7 +139,8 @@ const
   SandboxDirAllowlist = [
     "image", "code", "code-block", "admonition", "attention", "caution",
     "container", "contents", "danger", "default-role", "error", "figure",
-    "hint", "important", "index", "note", "role", "tip", "title", "warning"]
+    "hint", "important", "index", "math", "note", "role", "tip", "title",
+    "warning"]
 
 type
   TokType = enum
@@ -421,6 +422,7 @@ type
     currFileIdx*: FileIndex     # current index in `filenames`
     tocPart*: seq[PRstNode]     # all the headings of a document
     hasToc*: bool
+    hasMath*: bool
     idxImports*: Table[string, ImportdocInfo]
                                 # map `importdoc`ed filename -> it's info
     nimFileImported*: bool      # Was any ``.nim`` module `importdoc`ed ?
@@ -496,6 +498,7 @@ proc whichRoleAux(sym: string): RstNodeKind =
   # literal and code are the same in our implementation
   of "code": result = rnInlineLiteral
   of "program", "option", "tok": result = rnCodeFragment
+  of "math": result = rnInlineMath
   # c++ currently can be spelled only as cpp, c# only as csharp
   elif getSourceLanguage(r) != langNone:
     result = rnInlineCode
@@ -3407,6 +3410,10 @@ proc dirAdmonition(p: var RstParser, d: string): PRstNode =
   result = parseDirective(p, rnAdmonition, {}, parseSectionWrapper)
   result.adType = d
 
+proc dirMath(p: var RstParser): PRstNode =
+  result = parseDirective(p, rnMath, {}, parseLiteralBlock)
+  p.s.hasMath = true
+
 proc dirDefaultRole(p: var RstParser): PRstNode =
   result = parseDirective(p, rnDefaultRole, {hasArg}, nil)
   if result.sons[0].len == 0: p.s.currRole = defaultRole(p.s.options)
@@ -3489,6 +3496,7 @@ proc selectDir(p: var RstParser, d: string): PRstNode =
   of "importdoc": result = dirImportdoc(p)
   of "include": result = dirInclude(p)
   of "index": result = dirIndex(p)
+  of "math": result = dirMath(p)
   of "note": result = dirAdmonition(p, d)
   of "raw":
     if roSupportRawDirective in p.s.options:

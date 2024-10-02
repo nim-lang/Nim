@@ -1738,9 +1738,13 @@ proc genOutFile(d: PDoc, groupedToc = false): string =
       "body_toc_groupsection", groupsection, "seeSrc", seeSrc]
   if optCompileOnly notin d.conf.globalOptions:
     # XXX what is this hack doing here? 'optCompileOnly' means raw output!?
+    let mathHeader =
+      if d.sharedState.hasMath: getConfigVar(d.conf, "doc.mathHeader")
+      else: ""
     code = getConfigVar(d.conf, "doc.file") % [
         "nimdoccss", relLink(d.conf.outDir, d.destFile.AbsoluteFile,
                              nimdocOutCss.RelativeFile),
+        "optionalMathHeader", mathHeader,
         "dochackjs", relLink(d.conf.outDir, d.destFile.AbsoluteFile,
                              docHackJsFname.RelativeFile),
         "title", title, "subtitle", subtitle, "tableofcontents", toc,
@@ -1928,6 +1932,7 @@ proc commandBuildIndex*(conf: ConfigRef, dir: string, outFile = RelativeFile"") 
   let code = getConfigVar(conf, "doc.file") % [
       "nimdoccss", relLink(conf.outDir, filename, nimdocOutCss.RelativeFile),
       "dochackjs", relLink(conf.outDir, filename, docHackJsFname.RelativeFile),
+      "optionalMathHeader", "",
       "title", "Index",
       "subtitle", "", "tableofcontents", "", "moduledesc", "",
       "date", getDateStr(), "time", getClockStr(),
