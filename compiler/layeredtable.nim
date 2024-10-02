@@ -38,7 +38,9 @@ proc setToPreviousLayer*(pt: var LayeredIdTable) {.inline.} =
     when defined(gcDestructors):
       pt = pt.nextLayer[]
     else:
-      pt = shallowCopy(pt.nextLayer[])
+      # workaround refc
+      let tmp = pt.nextLayer[]
+      pt = tmp
 
 proc lookup(typeMap: ref LayeredIdTableObj, key: ItemId): PType =
   result = nil
