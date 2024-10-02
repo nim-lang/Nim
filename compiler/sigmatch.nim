@@ -1971,9 +1971,8 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         if f.len > 0 and f[0].kind != tyNone:
           c.bindings = newTypeMapLayer(c.bindings)
           result = typeRel(c, f[0], a, flags + {trBindGenericParam})
-          if result == isGeneric:
-            bound = lookup(c.bindings, f[0])
-          else:
+          bound = lookup(c.bindings, f[0])
+          if bound == nil and result != isGeneric:
             bound = f[0]
           setToPreviousLayer(c.bindings)
           if doBindGP and result notin {isNone, isGeneric}:

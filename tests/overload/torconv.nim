@@ -57,3 +57,8 @@ block: # issue #15721, set
 block: # issue #21331
   let a : int8 | uint8 = 3
   doAssert sizeof(a)==sizeof(int8) # this fails
+
+block:
+  let x: range[0..5] = 1
+  proc foo[T: SomeInteger](x: T): string = $typeof(x)
+  discard foo(x)
