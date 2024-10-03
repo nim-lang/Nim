@@ -51,9 +51,6 @@ runnableExamples:
     h = h !& hash(x.bar)
     result = !$h
 
-## .. important:: Use `-d:nimPreviewHashRef` to
-##    enable hashing `ref`s. It is expected that this behavior
-##    becomes the new default in upcoming versions.
 ##
 ## .. note:: If the type has a `==` operator, the following must hold:
 ##    If two values compare equal, their hashes must also be equal.
@@ -244,30 +241,25 @@ proc hash*[T](x: ptr[T]): Hash {.inline.} =
     assert cast[pointer](a[0].addr).hash == a[0].addr.hash
   hash(cast[pointer](x))
 
-when defined(nimPreviewHashRef) or defined(nimdoc):
-  proc hash*[T](x: ref[T]): Hash {.inline.} =
-    ## Efficient `hash` overload.
-    ##
-    ## .. important:: Use `-d:nimPreviewHashRef` to
-    ##    enable hashing `ref`s. It is expected that this behavior
-    ##    becomes the new default in upcoming versions.
-    runnableExamples("-d:nimPreviewHashRef"):
-      type A = ref object
-        x: int
-      let a = A(x: 3)
-      let ha = a.hash
-      assert ha != A(x: 3).hash # A(x: 3) is a different ref object from `a`.
-      a.x = 4
-      assert ha == a.hash # the hash only depends on the address
-    runnableExamples("-d:nimPreviewHashRef"):
-      # you can overload `hash` if you want to customize semantics
-      type A[T] = ref object
-        x, y: T
-      proc hash(a: A): Hash = hash(a.x)
-      assert A[int](x: 3, y: 4).hash == A[int](x: 3, y: 5).hash
-    # xxx pending bug #17733, merge as `proc hash*(pointer | ref | ptr): Hash`
-    # or `proc hash*[T: ref | ptr](x: T): Hash`
-    hash(cast[pointer](x))
+proc hash*[T](x: ref[T]): Hash {.inline.} =
+  ## Efficient `hash` overload.
+  runnableExamples:
+    type A = ref object
+      x: int
+    let a = A(x: 3)
+    let ha = a.hash
+    assert ha != A(x: 3).hash # A(x: 3) is a different ref object from `a`.
+    a.x = 4
+    assert ha == a.hash # the hash only depends on the address
+  runnableExamples:
+    # you can overload `hash` if you want to customize semantics
+    type A[T] = ref object
+      x, y: T
+    proc hash(a: A): Hash = hash(a.x)
+    assert A[int](x: 3, y: 4).hash == A[int](x: 3, y: 5).hash
+  # xxx pending bug #17733, merge as `proc hash*(pointer | ref | ptr): Hash`
+  # or `proc hash*[T: ref | ptr](x: T): Hash`
+  hash(cast[pointer](x))
 
 proc hash*(x: float): Hash {.inline.} =
   ## Efficient hashing of floats.
