@@ -3,6 +3,7 @@
 
 ## Changes affecting backward compatibility
 
+- Non-var destructors become the default. Use `-d:nimLegacyVarDestructor` to emulate old behaviors.
 
 ## Standard library additions and changes
 
