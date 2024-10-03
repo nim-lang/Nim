@@ -1853,7 +1853,9 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
           c.inheritancePenalty = oldInheritancePenalty + minInheritance
         let oldResult = result
         if result > isGeneric: result = isGeneric
-        if bestMatch != nil and oldResult in {isConvertible, isIntConv, isSubtype, isSubrange, isFromIntLit}:
+        if (oldResult in {isConvertible, isIntConv, isSubrange, isFromIntLit} or
+            (oldResult == isSubtype and a.isEmptyContainer)) and
+            bestMatch != nil:
           bindingRet result, bestMatch
         else:
           bindingRet result
@@ -1971,12 +1973,14 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         if f.len > 0 and f[0].kind != tyNone:
           c.bindings = newTypeMapLayer(c.bindings)
           result = typeRel(c, f[0], a, flags + {trBindGenericParam})
-          bound = lookup(c.bindings, f[0])
-          if bound == nil:
-            if result in {isConvertible, isIntConv, isSubtype, isSubrange, isFromIntLit}:
-              bound = f[0]
-            else:
-              bound = a
+          if f[0].skipTypes({tyAlias}).kind == tyOr:
+            bound = lookup(c.bindings, f[0])
+            if bound == nil: bound = a
+          elif result in {isConvertible, isIntConv, isSubrange, isFromIntLit} or
+              (result == isSubtype and a.isEmptyContainer):
+            bound = f[0]
+          else:
+            bound = a
           setToPreviousLayer(c.bindings)
           if doBindGP and result notin {isNone, isGeneric}:
             let concrete = concreteType(c, bound, f)
