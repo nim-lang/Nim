@@ -1735,8 +1735,11 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     var x = a.skipGenericAlias
     if x.kind == tyGenericParam and x.len > 0:
       x = x.last
-    let concpt = f[0].skipTypes({tyGenericBody})
-    var preventHack = concpt.kind == tyConcept
+    let bodyType = f[0].skipTypes({tyGenericBody})
+    # concepts will be handled specially, nominal types can just match params:
+    var preventHack = bodyType.kind in {tyConcept, tyEnum, tyDistinct} or
+      (bodyType.kind == tyObject and tfFinal in bodyType.flags) or
+      tfRefsAnonObj in bodyType.flags
     if x.kind == tyOwned and f[0].kind != tyOwned:
       preventHack = true
       x = x.last
@@ -1764,8 +1767,8 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
           # Workaround for regression #4589
           if f[i].kind != tyTypeDesc: return
       result = isGeneric
-    elif x.kind == tyGenericInst and concpt.kind == tyConcept:
-      result = if concepts.conceptMatch(c.c, concpt, x, c.bindings, f): isGeneric
+    elif x.kind == tyGenericInst and bodyType.kind == tyConcept:
+      result = if concepts.conceptMatch(c.c, bodyType, x, c.bindings, f): isGeneric
                else: isNone
     else:
       let genericBody = f[0]
