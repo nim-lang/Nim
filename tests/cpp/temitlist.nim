@@ -3,7 +3,7 @@ discard """
   output: '''
 6.0
 0'''
-disabled: "windows" # pending bug #18011
+#disabled: "windows" # pending bug #18011
 """
 
 # bug #4730

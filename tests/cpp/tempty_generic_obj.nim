@@ -3,7 +3,7 @@ discard """
   output: '''
 int
 float'''
-disabled: "windows" # pending bug #18011
+#disabled: "windows" # pending bug #18011
 """
 
 import typetraits
