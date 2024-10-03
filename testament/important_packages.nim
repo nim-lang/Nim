@@ -108,7 +108,7 @@ pkg "nesm", "nimble tests", "https://github.com/nim-lang/NESM", useHead = true, 
 pkg "netty"
 pkg "nico", allowFailure = true
 pkg "nicy", "nim c -r src/nicy.nim"
-when defined(osx) and false:
+when defined(osx):
   # gives "could not load: libgtk-3.0.dylib" on macos 13
   # just test compiling instead of running
   pkg "nigui", "nim c -o:niguii src/nigui.nim"
