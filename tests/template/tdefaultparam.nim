@@ -32,3 +32,25 @@ block: # untyped params with default value
   test2:
     s.add "d"
   doAssert s == "abcde"
+  template test3(body: untyped = willNotCompile) =
+    discard
+  test3()
+
+block: # typed params with `void` default value
+  macro foo(x: typed): untyped =
+    result = x
+  template test(body: untyped, alt: typed = (;), maxTries = 3): untyped {.foo.} =
+    body
+    alt
+  var s = "a"
+  test:
+    s.add "b"
+  do:
+    s.add "c"
+  doAssert s == "abc"
+  template test2(body: untyped, alt: typed = s.add("e"), maxTries = 3): untyped =
+    body
+    alt
+  test2:
+    s.add "d"
+  doAssert s == "abcde"
