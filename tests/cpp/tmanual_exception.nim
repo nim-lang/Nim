@@ -1,6 +1,4 @@
 discard """
-  # doesn't work on macos 13 seemingly due to libc++ linking issue https://stackoverflow.com/a/77375947
-  disabled: osx
   targets: cpp
 """
 

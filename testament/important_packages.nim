@@ -109,9 +109,7 @@ pkg "netty"
 pkg "nico", allowFailure = true
 pkg "nicy", "nim c -r src/nicy.nim"
 when defined(osx):
-  # gives "could not load: libgtk-3.0.dylib" on macos 13
-  # just test compiling instead of running
-  pkg "nigui", "nim c -o:niguii src/nigui.nim"
+  pkg "nigui", "nim c --clibdir:/opt/homebrew/lib -o:niguii -r src/nigui.nim"
 else:
   pkg "nigui", "nim c -o:niguii -r src/nigui.nim"
 pkg "nimcrypto", "nim r --path:. tests/testall.nim" # `--path:.` workaround needed, see D20210308T165435
