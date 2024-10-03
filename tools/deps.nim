@@ -41,4 +41,4 @@ proc cloneDependency*(destDirBase: string, url: string, commit = commitHead,
   elif allowBundled:
     discard "this dependency was bundled with Nim, don't do anything"
   else:
-    quit "FAILURE: " & destdir & " already exists but is not a git repo"
+    quit "FAILURE: " & destDir & " already exists but is not a git repo"
