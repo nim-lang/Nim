@@ -1778,6 +1778,11 @@ proc pop*[T](s: var seq[T]): T {.inline, noSideEffect.} =
     result = s[L]
     setLen(s, L)
 
+proc `==`*[T, U](x, y: HSlice[T, U]): bool {.inline.} =
+  ## Equality operator for slices.
+  mixin `==`
+  result = x.a == y.a and x.b == y.b
+
 when defined(nimPreviewSlimSystem):
   # no `object`, moved to std/objectequals
   proc `==`*[T: tuple](x, y: T): bool =
