@@ -130,6 +130,7 @@ jobs:
     - bash: brew install boehmgc make sfml
       displayName: 'Install dependencies (OSX)'
       condition: and(succeeded(), eq(variables['skipci'], 'false'), eq(variables['Agent.OS'], 'Darwin'))
+      # XXX can't find boehm on macos 13
 
     - bash: |
         set -e
