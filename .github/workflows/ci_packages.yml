@@ -47,7 +47,9 @@ jobs:
               valgrind libc6-dbg libblas-dev xorg-dev
       - name: 'Install dependencies (macOS)'
         if: runner.os == 'macOS'
-        run: brew install boehmgc make sfml gtk+3
+        run: |
+          brew install boehmgc make sfml gtk+3
+          brew link gtk+3
         # XXX can't find boehm and gtk on macos 13
       - name: 'Install dependencies (Windows)'
         if: runner.os == 'Windows'
