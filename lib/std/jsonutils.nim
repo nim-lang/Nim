@@ -298,10 +298,8 @@ proc jsonTo*(b: JsonNode, T: typedesc, opt = Joptions()): T =
 proc toJson*[T](a: T, opt = initToJsonOptions()): JsonNode =
   ## serializes `a` to json; uses `toJsonHook(a: T)` if it's in scope to
   ## customize serialization, see strtabs.toJsonHook for an example.
-  ##
-  ## .. note:: With `-d:nimPreviewJsonutilsHoleyEnum`, `toJson` now can 
-  ##    serialize/deserialize holey enums as regular enums (via `ord`) instead of as strings.
-  ##    It is expected that this behavior becomes the new default in upcoming versions.
+  ## `toJson` serialize/deserialize holey enums as regular enums (via `ord`)
+  ## instead of as strings.
   when compiles(toJsonHook(a, opt)): result = toJsonHook(a, opt)
   elif compiles(toJsonHook(a)): result = toJsonHook(a)
   elif T is object | tuple:
@@ -333,14 +331,13 @@ proc toJson*[T](a: T, opt = initToJsonOptions()): JsonNode =
   elif T is enum:
     case opt.enumMode
     of joptEnumOrd:
-      when T is Ordinal or defined(nimPreviewJsonutilsHoleyEnum): %(a.ord)
-      else: toJson($a, opt)
+      result = %(a.ord)
     of joptEnumSymbol:
       when T is OrdinalEnum:
-        toJson(symbolName(a), opt)
+        result = toJson(symbolName(a), opt)
       else:
-        toJson($a, opt)
-    of joptEnumString: toJson($a, opt)
+        result = toJson($a, opt)
+    of joptEnumString: result = toJson($a, opt)
   elif T is Ordinal: result = %(a.ord)
   elif T is cstring: (if a == nil: result = newJNull() else: result = % $a)
   else: result = %a
