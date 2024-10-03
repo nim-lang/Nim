@@ -995,8 +995,11 @@ proc evalAtCompileTime(c: PContext, n: PNode): PNode =
 
     if callee.magic notin ctfeWhitelist: return
 
-    if callee.kind notin {skProc, skFunc, skConverter, skConst} or
-        callee.isGenericRoutineStrict:
+    if callee.kind notin {skProc, skFunc, skConverter, skConst} or (
+        if genericProcCompileTime in c.features:
+          callee.isGenericRoutineStrict
+        else:
+          callee.isGenericRoutine):
       return
 
     if n.typ != nil and typeAllowed(n.typ, skConst, c) != nil: return
@@ -1136,7 +1139,7 @@ proc afterCallActions(c: PContext; n, orig: PNode, flags: TExprFlags; expectedTy
           not (result.typ.kind == tySequence and result.elementType.kind == tyEmpty):
         liftTypeBoundOps(c, result.typ, n.info)
     #result = patchResolvedTypeBoundOp(c, result)
-  if c.matchedConcept == nil and (c.inTypeofContext == 0 or callee.magic != mNone):
+  if c.matchedConcept == nil:
     # don't fold calls in concepts and typeof
     result = evalAtCompileTime(c, result)
 

@@ -1870,8 +1870,6 @@ proc semStaticType(c: PContext, childNode: PNode, prev: PType): PType =
 
 proc semTypeOf(c: PContext; n: PNode; prev: PType): PType =
   openScope(c)
-  inc c.inTypeofContext
-  defer: dec c.inTypeofContext # compiles can raise an exception
   let t = semExprWithType(c, n, {efInTypeof})
   closeScope(c)
   fixupTypeOf(c, prev, t)
@@ -1888,8 +1886,6 @@ proc semTypeOf2(c: PContext; n: PNode; prev: PType): PType =
       localError(c.config, n.info, "typeof: cannot evaluate 'mode' parameter at compile-time")
     else:
       m = mode.intVal
-  inc c.inTypeofContext
-  defer: dec c.inTypeofContext # compiles can raise an exception
   let t = semExprWithType(c, n[1], if m == 1: {efInTypeof} else: {})
   closeScope(c)
   fixupTypeOf(c, prev, t)

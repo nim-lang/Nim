@@ -1,3 +1,15 @@
+block:
+  # don't fold compile time procs in typeof with experimental switch disabled
+  proc fail[T](x: T): T {.compileTime.} =
+    doAssert false
+    x
+  doAssert typeof(fail(123)) is typeof(123)
+  proc p(x: int): int = x
+
+  type Foo = typeof(p(fail(123)))
+
+{.experimental: "genericProcCompileTime".}
+  
 block: # issue #10753
   proc foo(x: int): int {.compileTime.} = x
   const a = foo(123)
@@ -17,16 +29,6 @@ block: # issue #19365
   proc f[T](x: static T): T {.compileTime.} = x + x
   doAssert f(123) == 246
   doAssert f(1.0) == 2.0
-
-block:
-  # don't fold compile time procs in typeof
-  proc fail[T](x: T): T {.compileTime.} =
-    doAssert false
-    x
-  doAssert typeof(fail(123)) is typeof(123)
-  proc p(x: int): int = x
-
-  type Foo = typeof(p(fail(123)))
 
 block: # issue #24150, related regression
   proc w(T: type): T {.compileTime.} = default(ptr T)[]

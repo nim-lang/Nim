@@ -228,6 +228,7 @@ type
     openSym, # remove nfDisabledOpenSym when this is default
     # alternative to above:
     genericsOpenSym
+    genericProcCompileTime
     vtables
 
   LegacyFeature* = enum
