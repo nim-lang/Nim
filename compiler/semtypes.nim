@@ -1403,12 +1403,19 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
         # if def.typ != nil and def.typ.kind != tyNone:
         # example code that triggers it:
         # proc sort[T](cmp: proc(a, b: T): int = cmp)
-        if not containsGenericType(typ):
+        if typ.kind == tyStatic:
+          def = semConstExpr(c, def)
+          let baseType = typ.skipTypes({tyStatic})
+          if not containsGenericType(baseType):
+            def = fitNode(c, baseType, def, def.info)
+            def.typ = makeStaticType(c, baseType, def.copyTree)
+          else:
+            def = fitNode(c, typ, def, def.info)
+        elif not containsGenericType(typ):
           # check type compatibility between def.typ and typ:
           def = fitNode(c, typ, def, def.info)
-        elif typ.kind == tyStatic:
-          def = semConstExpr(c, def)
-          def = fitNode(c, typ, def, def.info)
+      # keep proc AST updated
+      a[^1] = def
 
     if not hasType and not hasDefault:
       if isType: localError(c.config, a.info, "':' expected")

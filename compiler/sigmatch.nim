@@ -152,8 +152,7 @@ proc matchGenericParam(m: var TCandidate, formal: PType, n: PNode) =
     if n.kind in nkSymChoices: n.flags.excl nfSem
     let evaluated = m.c.semTryConstExpr(m.c, n, formalBase.skipTypes({tyStatic}))
     if evaluated != nil:
-      arg = newTypeS(tyStatic, m.c, son = evaluated.typ)
-      arg.n = evaluated
+      arg = makeStaticType(m.c, evaluated.typ, evaluated)
   elif formalBase.kind == tyTypeDesc:
     if arg.kind != tyTypeDesc:
       arg = makeTypeDesc(m.c, arg)
@@ -2030,6 +2029,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
           result = isGeneric
         if result != isNone: put(c, f, aOrig)
       elif aOrig.n != nil and aOrig.n.typ != nil:
+        # XXX this should use paramTypesMatch
         result = if f.base.kind != tyNone:
                    typeRel(c, f.last, aOrig.n.typ, flags)
                  else: isGeneric
@@ -2293,6 +2293,9 @@ template matchesVoidProc(t: PType): bool =
   (t.kind == tyProc and t.len == 1 and t.returnType == nil) or
     (t.kind == tyBuiltInTypeClass and t.elementType.kind == tyProc)
 
+proc paramTypesMatch*(m: var TCandidate, f, a: PType,
+                      arg, argOrig: PNode): PNode
+
 proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
                         argSemantized, argOrig: PNode): PNode =
   result = nil
@@ -2326,10 +2329,19 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
     elif arg.kind != nkEmpty:
       var evaluated = c.semTryConstExpr(c, arg)
       if evaluated != nil:
-        # Don't build the type in-place because `evaluated` and `arg` may point
+        if false and f.kind == tyStatic and f.base.kind != tyNone:
+          let converted = paramTypesMatch(m, f.base, evaluated.typ, evaluated, argOrig)
+          # if for some reason `evaluated` doesn't match `f.base`:
+          if converted == nil: return nil
+          evaluated = converted
+          if evaluated.kind in {nkHiddenStdConv, nkHiddenSubConv, nkHiddenCallConv}:
+            evaluated = c.semTryConstExpr(c, evaluated)
+            # if for some reason the conversion can't be evaluated,
+            # like if a converter is runtime-only
+            if evaluated == nil: return nil
+        # Don't build the type in-place because `evaluated` and `arg` may point,
         # to the same object and we'd end up creating recursive types (#9255)
-        let typ = newTypeS(tyStatic, c, son = evaluated.typ)
-        typ.n = evaluated
+        let typ = makeStaticType(c, evaluated.typ, evaluated)
         arg = copyTree(arg) # fix #12864
         arg.typ = typ
         a = typ

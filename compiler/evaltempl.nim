@@ -143,7 +143,11 @@ proc evalTemplateArgs(n: PNode, s: PSym; conf: ConfigRef; fromHlo: bool): PNode 
 
   result = newNodeI(nkArgList, n.info)
   for i in 1..givenRegularParams:
-    result.add n[i]
+    let arg = n[i]
+    if arg.typ != nil and arg.typ.kind == tyStatic and arg.typ.n != nil:
+      result.add arg.typ.n
+    else:
+      result.add arg
 
   # handle parameters with default values, which were
   # not supplied by the user

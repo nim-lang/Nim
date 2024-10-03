@@ -17,7 +17,7 @@ when defined(nimPreviewSlimSystem):
 # xxx `genEnumCaseStmt` needs tests and runnableExamples
 
 macro genEnumCaseStmt*(typ: typedesc, argSym: typed, default: typed,
-            userMin, userMax: static[int], normalizer: static[proc(s :string): string]): untyped =
+            userMin, userMax: static[int], normalizer: static[proc(s :string): string {.nimcall.}]): untyped =
   # Generates a case stmt, which assigns the correct enum field given
   # a normalized string comparison to the `argSym` input.
   # string normalization is done using passed normalizer.
