@@ -335,10 +335,10 @@ proc lineHeader(filename: string, line: int|string, isMatch: bool,
     if oneline:
       printFile(filename)
       printLineN(":" & lineSym, isMatch)
-      curcol.terminal += filename.len + 1 + lineSym.len
+      curCol.terminal += filename.len + 1 + lineSym.len
     else:
       printLineN(lineSym.align(alignment+1), isMatch)
-      curcol.terminal += lineSym.align(alignment+1).len
+      curCol.terminal += lineSym.align(alignment+1).len
     stdout.write(" "); curCol.terminal += 1
     curCol.terminal = curCol.terminal mod termWidth
     if optLimitChars in options and
@@ -506,7 +506,7 @@ proc printCropped(s: string, curCol: var Column, fromLeft: bool,
         printBold ".".repeat(numDots)
         curCol.terminal = limitChar
 
-proc printMatch(fileName: string, mi: MatchInfo, curCol: var Column) =
+proc printMatch(filename: string, mi: MatchInfo, curCol: var Column) =
   let sLines = mi.match.splitLines()
   for i, l in sLines:
     if i > 0:
@@ -794,11 +794,11 @@ proc compileRegex(initPattern: string): Regex =
            else: re(pattern, reflags)
 
 template declareCompiledPatterns(compiledStruct: untyped,
-                                 StructType: untyped,
+                                 structType: untyped,
                                  body: untyped) =
   {.hint[XDeclaredButNotUsed]: off.}
   if optRegex notin options:
-    var compiledStruct: StructType[Peg]
+    var compiledStruct: structType[Peg]
     template compile1Pattern(p: string, pat: Peg) =
       if p!="": pat = p.compilePeg()
     proc compileArray(initPattern: seq[string]): seq[Peg] =
@@ -806,7 +806,7 @@ template declareCompiledPatterns(compiledStruct: untyped,
         result.add pat.compilePeg()
     body
   else:
-    var compiledStruct: StructType[Regex]
+    var compiledStruct: structType[Regex]
     template compile1Pattern(p: string, pat: Regex) =
       if p!="": pat = p.compileRegex()
     proc compileArray(initPattern: seq[string]): seq[Regex] =

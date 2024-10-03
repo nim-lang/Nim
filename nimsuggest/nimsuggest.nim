@@ -1077,7 +1077,7 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
       if dirtyfile.isEmpty: AbsoluteFile"" else: dirtyfile)
 
     if not dirtyfile.isEmpty:
-      graph.markDirtyIfNeeded(dirtyFile.string, fileInfoIdx(conf, file))
+      graph.markDirtyIfNeeded(dirtyfile.string, fileInfoIdx(conf, file))
 
   # these commands require fully compiled project
   if cmd in {ideUse, ideDus, ideGlobalSymbols, ideChk, ideInlayHints} and graph.needsCompilation():
