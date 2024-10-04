@@ -1,5 +1,4 @@
 discard """
-  matrix: "; -d:nimLegacySprintf"
   targets: "c cpp js"
 """
 
