@@ -22,3 +22,9 @@ block: # issue #24233, modified
 
   let x: int64 = 456
   foo(x, bar)
+
+block:
+  proc foo[I: Ordinal](x: I) = discard
+  foo(123)
+  let x = [0, 1, 2]
+  discard x[0]

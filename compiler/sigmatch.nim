@@ -2429,7 +2429,9 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
       result = arg
     elif skipTypes(arg.typ, abstractVar-{tyTypeDesc}).kind == tyTuple or cmpInheritancePenalty(oldInheritancePenalty, m.inheritancePenalty) > 0:
       result = implicitConv(nkHiddenSubConv, f, arg, m, c)
-    elif arg.typ.isEmptyContainer or arg.typ.isIntLit:
+    elif arg.typ.isEmptyContainer or
+        # mArrGet/mArrPut short circuit and don't bind generic params
+        (arg.typ.isIntLit and m.magic notin {mArrGet, mArrPut}):
       result = arg.copyTree
       result.typ = getInstantiatedType(c, arg, m, f)
     else:
