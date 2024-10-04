@@ -58,7 +58,7 @@ proc genStringLiteralV1(m: BModule; n: PNode; result: var Rope) =
 proc genStringLiteralDataOnlyV2(m: BModule, s: string; result: Rope; isConst: bool) =
   var res = newBuilder("")
   res.addVarWithTypeAndInitializer(
-      if isConst: Const else: Global,
+      if isConst: AlwaysConst else: Global,
       name = result):
     res.addSimpleStruct(m, name = "", baseType = ""):
       res.addField(name = "cap", typ = "NI")

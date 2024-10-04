@@ -1,4 +1,4 @@
-# XXX make these use builder instead
+# XXX make complex ones like bitOr use builder instead
 
 proc ptrType(t: Snippet): Snippet =
   t & "*"

@@ -1,11 +1,16 @@
 type VarKind = enum
-  Local, Global, Threadvar, Const
+  Local
+  Global
+  Threadvar
+  Const
+  AlwaysConst ## const even on C++
 
 proc addVarHeader(builder: var Builder, kind: VarKind) =
   ## adds modifiers for given var kind:
   ## Local has no modifier
   ## Global has `static` modifier
   ## Const has `static NIM_CONST` modifier
+  ## AlwaysConst has `static const` modifier (NIM_CONST is no-op on C++)
   ## Threadvar is unimplemented
   case kind
   of Local: discard
@@ -13,6 +18,8 @@ proc addVarHeader(builder: var Builder, kind: VarKind) =
     builder.add("static ")
   of Const:
     builder.add("static NIM_CONST ")
+  of AlwaysConst:
+    builder.add("static const ")
   of Threadvar:
     doAssert false, "unimplemented"
 
