@@ -682,6 +682,9 @@ proc updateDefaultParams(c: PContext, call: PNode) =
     if nfDefaultParam in call[i].flags:
       let formal = calleeParams[i].sym
       let def = formal.ast
+      if def == nil:
+        # inserted param but not default value
+        continue
       if nfDefaultRefsParam in def.flags: call.flags.incl nfDefaultRefsParam
       # mirrored with sigmatch:
       if def.kind == nkEmpty:

@@ -2942,8 +2942,11 @@ proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
           # container node kind accordingly
           let cnKind = if formal.typ.isVarargsUntyped: nkArgList else: nkBracket
           var container = newNodeIT(cnKind, n.info, arrayConstr(c, n.info))
-          setSon(m.call, formal.position + 1,
-                 implicitConv(nkHiddenStdConv, formal.typ, container, m, c))
+          var arg = implicitConv(nkHiddenStdConv, formal.typ, container, m, c)
+          # inserted, so treat as inserted param, i.e.
+          # `varargs[T]` has default value `[]`:
+          arg.flags.incl nfDefaultParam
+          setSon(m.call, formal.position + 1, arg)
         else:
           # no default value
           m.state = csNoMatch
