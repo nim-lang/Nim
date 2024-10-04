@@ -38,7 +38,6 @@ switch("define", "nimExperimentalLinenoiseExtra")
 switch("define", "nimPreviewFloatRoundtrip")
 #switch("define", "nimPreviewDotLikeOps") # deprecated?
 switch("define", "nimPreviewJsonutilsHoleyEnum")
-switch("define", "nimPreviewHashRef")
 switch("define", "nimPreviewRangeDefault")
 switch("define", "nimPreviewNonVarDestructor")
 
