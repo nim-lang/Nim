@@ -63,11 +63,11 @@ proc initStructInitializer(builder: var Builder, orderCompliant: bool): StructIn
 
 template addField(builder: var Builder, constr: var StructInitializer, name: string, valueBody: typed) =
   ## adds a field to a struct initializer, with the value built in `valueBody`
+  if constr.needsComma:
+    builder.add(", ")
+  else:
+    constr.needsComma = true
   if constr.orderCompliant:
-    if constr.needsComma:
-      builder.add(", ")
-    else:
-      constr.needsComma = true
     # no name, can just add value
     valueBody
   else:
