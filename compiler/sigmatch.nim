@@ -1299,6 +1299,9 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
   case a.kind
   of tyOr:
     # XXX: deal with the current dual meaning of tyGenericParam
+    if c.c.inGenericContext > 0 and not c.isNoCall:
+      # a has unresolved type, don't match call in generic context
+      return isNone
     c.typedescMatched = true
     # seq[int|string] vs seq[number]
     # both int and string must match against number
@@ -1339,6 +1342,9 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     if f.kind == tyAnything: return isGeneric
     else: return isNone
   of tyUserTypeClass, tyUserTypeClassInst:
+    if c.c.inGenericContext > 0 and not c.isNoCall:
+      # a has unresolved type, don't match call in generic context
+      return isNone
     if c.c.matchedConcept != nil and c.c.matchedConcept.depth <= 4:
       # consider this: 'var g: Node' *within* a concept where 'Node'
       # is a concept too (tgraph)
