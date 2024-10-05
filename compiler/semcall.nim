@@ -649,6 +649,7 @@ proc markConvertersUsed*(c: PContext, n: PNode) =
   assert n.kind in nkCallKinds
   for i in 1..<n.len:
     var a = n[i]
+    if a == nil: continue
     if a.kind == nkHiddenDeref: a = a[0]
     if a.kind == nkHiddenCallConv and a[0].kind == nkSym:
       markUsed(c, a.info, a[0].sym)
