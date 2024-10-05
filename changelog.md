@@ -32,7 +32,8 @@
   ```
 
   To keep compatibility, macros can be updated to accept either one of
-  `nnkTypeDef` or `nnkTypeSection` as input.
+  `nnkTypeDef` or `nnkTypeSection` as input. Note that these macros can
+  still only return `nnkTypeDef` or `nnkTypeSection` nodes. 
 
 
 ## Compiler changes
