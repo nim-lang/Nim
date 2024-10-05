@@ -31,6 +31,9 @@
   let obj = Obj(x: 1, y: 2)
   ```
 
+  To keep compatibility, macros can be updated to accept either one of
+  `nnkTypeDef` or `nnkTypeSection` as input.
+
 
 ## Compiler changes
 

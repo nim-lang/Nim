@@ -19,9 +19,9 @@ import macros
 
 block: # changelog entry
   macro foo(def: typed) =
-    assert def.kind == nnkTypeSection # previously nnkTypeDef
-    assert def.len == 1
-    assert def[0].kind == nnkTypeDef
+    doAssert def.kind == nnkTypeSection # previously nnkTypeDef
+    doAssert def.len == 1
+    doAssert def[0].kind == nnkTypeDef
     result = def
     
   type Obj {.foo.} = object
