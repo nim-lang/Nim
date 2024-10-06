@@ -1205,6 +1205,7 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType
     else:
       result = m.call
       instGenericConvertersSons(c, result, m)
+      markConvertersUsed(c, result)
 
   else:
     result = overloadedCallOpr(c, n) # this uses efNoUndeclared
