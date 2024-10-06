@@ -1,11 +1,99 @@
-type
-  Snippet = string
-  Builder = string
+type VarKind = enum
+  Local
+  Global
+  Threadvar
+  Const
+  AlwaysConst ## const even on C++
 
-template newBuilder(s: string): Builder =
-  s
+proc addVarHeader(builder: var Builder, kind: VarKind) =
+  ## adds modifiers for given var kind:
+  ## Local has no modifier
+  ## Global has `static` modifier
+  ## Const has `static NIM_CONST` modifier
+  ## AlwaysConst has `static const` modifier (NIM_CONST is no-op on C++)
+  ## Threadvar is unimplemented
+  case kind
+  of Local: discard
+  of Global:
+    builder.add("static ")
+  of Const:
+    builder.add("static NIM_CONST ")
+  of AlwaysConst:
+    builder.add("static const ")
+  of Threadvar:
+    doAssert false, "unimplemented"
+
+proc addVar(builder: var Builder, kind: VarKind = Local, name: string, typ: Snippet, initializer: Snippet = "") =
+  ## adds a variable declaration to the builder
+  builder.addVarHeader(kind)
+  builder.add(typ)
+  builder.add(" ")
+  builder.add(name)
+  if initializer.len != 0:
+    builder.add(" = ")
+    builder.add(initializer)
+  builder.add(";\n")
+
+template addVarWithType(builder: var Builder, kind: VarKind = Local, name: string, body: typed) =
+  ## adds a variable declaration to the builder, with the `body` building the type
+  builder.addVarHeader(kind)
+  body
+  builder.add(" ")
+  builder.add(name)
+  builder.add(";\n")
+
+template addVarWithTypeAndInitializer(builder: var Builder, kind: VarKind = Local, name: string,
+                                      typeBody, initializerBody: typed) =
+  ## adds a variable declaration to the builder, with `typeBody` building the type, and
+  ## `initializerBody` building the initializer. initializer must be provided
+  builder.addVarHeader(kind)
+  typeBody
+  builder.add(" ")
+  builder.add(name)
+  builder.add(" = ")
+  initializerBody
+  builder.add(";\n")
+
+type StructInitializer = object
+  ## context for building struct initializers, i.e. `{ field1, field2 }`
+  # XXX use in genBracedInit
+  orderCompliant: bool
+    ## if true, fields will not be named, instead values are placed in order
+  needsComma: bool
+
+proc initStructInitializer(builder: var Builder, orderCompliant: bool): StructInitializer =
+  ## starts building a struct initializer, `orderCompliant = true` means
+  ## built fields must be ordered correctly
+  doAssert orderCompliant, "named struct constructors unimplemented"
+  result = StructInitializer(orderCompliant: true, needsComma: false)
+  builder.add("{ ")
+
+template addField(builder: var Builder, constr: var StructInitializer, name: string, valueBody: typed) =
+  ## adds a field to a struct initializer, with the value built in `valueBody`
+  if constr.needsComma:
+    builder.add(", ")
+  else:
+    constr.needsComma = true
+  if constr.orderCompliant:
+    # no name, can just add value
+    valueBody
+  else:
+    doAssert false, "named struct constructors unimplemented"
+
+proc finishStructInitializer(builder: var Builder, constr: StructInitializer) =
+  ## finishes building a struct initializer
+  builder.add(" }")
+
+template addStructInitializer(builder: var Builder, constr: out StructInitializer, orderCompliant: bool, body: typed) =
+  ## builds a struct initializer, i.e. `{ field1, field2 }`
+  ## a `var StructInitializer` must be declared and passed as a parameter so
+  ## that it can be used with `addField`
+  constr = builder.initStructInitializer(orderCompliant)
+  body
+  builder.finishStructInitializer(constr)
 
 proc addField(obj: var Builder; name, typ: Snippet; isFlexArray: bool = false; initializer: Snippet = "") =
+  ## adds a field inside a struct/union type
   obj.add('\t')
   obj.add(typ)
   obj.add(" ")
@@ -16,8 +104,21 @@ proc addField(obj: var Builder; name, typ: Snippet; isFlexArray: bool = false; i
     obj.add(initializer)
   obj.add(";\n")
 
+proc addArrayField(obj: var Builder; name, elementType: Snippet; len: int; initializer: Snippet = "") =
+  ## adds an array field inside a struct/union type
+  obj.add('\t')
+  obj.add(elementType)
+  obj.add(" ")
+  obj.add(name)
+  obj.add("[")
+  obj.addInt(len)
+  obj.add("]")
+  if initializer.len != 0:
+    obj.add(initializer)
+  obj.add(";\n")
+
 proc addField(obj: var Builder; field: PSym; name, typ: Snippet; isFlexArray: bool = false; initializer: Snippet = "") =
-  ## for fields based on an `skField` symbol
+  ## adds an field inside a struct/union type, based on an `skField` symbol
   obj.add('\t')
   if field.alignment > 0:
     obj.add("NIM_ALIGN(")
@@ -39,9 +140,12 @@ proc addField(obj: var Builder; field: PSym; name, typ: Snippet; isFlexArray: bo
 
 type
   BaseClassKind = enum
+    ## denotes how and whether or not the base class/RTTI should be stored
     bcNone, bcCppInherit, bcSupField, bcNoneRtti, bcNoneTinyRtti
   StructBuilderInfo = object
+    ## context for building `struct` types
     baseKind: BaseClassKind
+    named: bool
     preFieldsLen: int
 
 proc structOrUnion(t: PType): Snippet =
@@ -49,13 +153,12 @@ proc structOrUnion(t: PType): Snippet =
   if tfUnion in t.flags: "union"
   else: "struct"
 
-proc ptrType(t: Snippet): Snippet =
-  t & "*"
-
 proc startSimpleStruct(obj: var Builder; m: BModule; name: string; baseType: Snippet): StructBuilderInfo =
-  result = StructBuilderInfo(baseKind: bcNone)
-  obj.add("struct ")
-  obj.add(name)
+  result = StructBuilderInfo(baseKind: bcNone, named: name.len != 0)
+  obj.add("struct")
+  if result.named:
+    obj.add(" ")
+    obj.add(name)
   if baseType.len != 0:
     if m.compileToCpp:
       result.baseKind = bcCppInherit
@@ -74,16 +177,20 @@ proc finishSimpleStruct(obj: var Builder; m: BModule; info: StructBuilderInfo) =
   if info.baseKind == bcNone and info.preFieldsLen == obj.len:
     # no fields were added, add dummy field
     obj.addField(name = "dummy", typ = "char")
-  obj.add("};\n")
+  if info.named:
+    obj.add("};\n")
+  else:
+    obj.add("}")
 
 template addSimpleStruct(obj: var Builder; m: BModule; name: string; baseType: Snippet; body: typed) =
-  ## for independent structs, not directly based on a Nim type
+  ## builds a struct type not based on a Nim type with fields according to `body`,
+  ## `name` can be empty to build as a type expression and not a statement
   let info = startSimpleStruct(obj, m, name, baseType)
   body
   finishSimpleStruct(obj, m, info)
 
 proc startStruct(obj: var Builder; m: BModule; t: PType; name: string; baseType: Snippet): StructBuilderInfo =
-  result = StructBuilderInfo(baseKind: bcNone)
+  result = StructBuilderInfo(baseKind: bcNone, named: name.len != 0)
   if tfPacked in t.flags:
     if hasAttribute in CC[m.config.cCompiler].props:
       obj.add(structOrUnion(t))
@@ -93,8 +200,9 @@ proc startStruct(obj: var Builder; m: BModule; t: PType; name: string; baseType:
       obj.add(structOrUnion(t))
   else:
     obj.add(structOrUnion(t))
-  obj.add(" ")
-  obj.add(name)
+  if result.named:
+    obj.add(" ")
+    obj.add(name)
   if t.kind == tyObject:
     if t.baseClass == nil:
       if lacksMTypeField(t):
@@ -141,18 +249,22 @@ proc finishStruct(obj: var Builder; m: BModule; t: PType; info: StructBuilderInf
       t.itemId notin m.g.graph.memberProcsPerType:
     # no fields were added, add dummy field
     obj.addField(name = "dummy", typ = "char")
-  obj.add("};\n")
+  if info.named:
+    obj.add("};\n")
+  else:
+    obj.add("}")
   if tfPacked in t.flags and hasAttribute notin CC[m.config.cCompiler].props:
     obj.add("#pragma pack(pop)\n")
 
 template addStruct(obj: var Builder; m: BModule; typ: PType; name: string; baseType: Snippet; body: typed) =
-  ## for structs built directly from a Nim type
+  ## builds a struct type directly based on `typ` with fields according to `body`,
+  ## `name` can be empty to build as a type expression and not a statement
   let info = startStruct(obj, m, typ, name, baseType)
   body
   finishStruct(obj, m, typ, info)
 
 template addFieldWithStructType(obj: var Builder; m: BModule; parentTyp: PType; fieldName: string, body: typed) =
-  ## adds a field with a `struct { ... }` type, building it according to `body`
+  ## adds a field with a `struct { ... }` type, building the fields according to `body`
   obj.add('\t')
   if tfPacked in parentTyp.flags:
     if hasAttribute in CC[m.config.cCompiler].props:
@@ -169,6 +281,7 @@ template addFieldWithStructType(obj: var Builder; m: BModule; parentTyp: PType; 
     result.add("#pragma pack(pop)\n")
 
 template addAnonUnion(obj: var Builder; body: typed) =
+  ## adds an anonymous union i.e. `union { ... };` with fields according to `body`
   obj.add "union{\n"
   body
   obj.add("};\n")

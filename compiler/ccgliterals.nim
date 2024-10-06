@@ -56,11 +56,21 @@ proc genStringLiteralV1(m: BModule; n: PNode; result: var Rope) =
 # ------ Version 2: destructor based strings and seqs -----------------------
 
 proc genStringLiteralDataOnlyV2(m: BModule, s: string; result: Rope; isConst: bool) =
-  m.s[cfsStrData].addf("static $4 struct {$n" &
-       "  NI cap; NIM_CHAR data[$2+1];$n" &
-       "} $1 = { $2 | NIM_STRLIT_FLAG, $3 };$n",
-       [result, rope(s.len), makeCString(s),
-       rope(if isConst: "const" else: "")])
+  var res = newBuilder("")
+  res.addVarWithTypeAndInitializer(
+      if isConst: AlwaysConst else: Global,
+      name = result):
+    res.addSimpleStruct(m, name = "", baseType = ""):
+      res.addField(name = "cap", typ = "NI")
+      res.addArrayField(name = "data", elementType = "NIM_CHAR", len = s.len + 1)
+  do:
+    var structInit: StructInitializer
+    res.addStructInitializer(structInit, orderCompliant = true):
+      res.addField(structInit, name = "cap"):
+        res.add(bitOr(rope(s.len), "NIM_STRLIT_FLAG"))
+      res.addField(structInit, name = "data"):
+        res.add(makeCString(s))
+  m.s[cfsStrData].add(res)
 
 proc genStringLiteralV2(m: BModule; n: PNode; isConst: bool; result: var Rope) =
   let id = nodeTableTestOrSet(m.dataCache, n, m.labels)
