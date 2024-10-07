@@ -49,7 +49,7 @@ proc generateThreadLocalStorage(m: BModule) =
     finishTypeDescriptions(m)
     var typedef = newBuilder("")
     typedef.addTypedef(name = "NimThreadVars"):
-      typedef.addSimpleStruct(name = "", baseType = ""):
+      typedef.addSimpleStruct(m, name = "", baseType = ""):
         typedef.add(m.g.nimtv)
 
 proc generateThreadVarsSize(m: BModule) =

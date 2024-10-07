@@ -285,15 +285,6 @@ proc isInvalidReturnType(conf: ConfigRef; typ: PType, isProc = true): bool =
 
     else: result = false
 
-const
-  CallingConvToStr: array[TCallingConvention, string] = ["N_NIMCALL",
-    "N_STDCALL", "N_CDECL", "N_SAFECALL",
-    "N_SYSCALL", # this is probably not correct for all platforms,
-                 # but one can #define it to what one wants
-    "N_INLINE", "N_NOINLINE", "N_FASTCALL", "N_THISCALL", "N_CLOSURE", "N_NOCONV",
-    "N_NOCONV" #ccMember is N_NOCONV
-    ]
-
 proc cacheGetType(tab: TypeCache; sig: SigHash): Rope =
   # returns nil if we need to declare this type
   # since types are now unique via the ``getUniqueType`` mechanism, this slow
@@ -457,7 +448,7 @@ proc seqV2ContentType(m: BModule; t: PType; check: var IntSet) =
     discard getTypeDescAux(m, t, check, dkVar)
   else:
     var struct = newBuilder("")
-    struct.addSimpleStruct(name = result & "_Content", baseType = ""):
+    struct.addSimpleStruct(m, name = result & "_Content", baseType = ""):
       struct.addField(name = "cap", typ = "NI")
       struct.addField(name = "data",
         typ = getTypeDescAux(m, t.skipTypes(abstractInst)[0], check, dkVar),
@@ -851,7 +842,7 @@ proc getOpenArrayDesc(m: BModule; t: PType, check: var IntSet; kind: TypeDescKin
       let elemType = getTypeDescWeak(m, t.elementType, check, kind)
       var typedef = newBuilder("")
       typedef.addTypedef(name = result):
-        typedef.addSimpleStruct(name = "", baseType = ""):
+        typedef.addSimpleStruct(m, name = "", baseType = ""):
           typedef.addField(name = "Field0", typ = ptrType(elemType))
           typedef.addField(name = "Field1", typ = "NI")
       m.s[cfsTypes].add(typedef)
@@ -958,9 +949,9 @@ proc getTypeDescAux(m: BModule; origTyp: PType, check: var IntSet; kind: TypeDes
           typedef.add(procPtrType(t.callConv, rettype = rettype, name = result))
       else:
         typedef.addTypedef(name = result):
-          typedef.addSimpleStruct(name = "", baseType = ""):
+          typedef.addSimpleStruct(m, name = "", baseType = ""):
             typedef.addField(name = desc, typ =
-              procPtrType(ccNimcall, rettype = rettype, name = "ClP_0"))
+              procPtrType(ccNimCall, rettype = rettype, name = "ClP_0"))
             typedef.addField(name = "ClE_0", typ = "void*")
       m.s[cfsTypes].add(typedef)
   of tySequence:
@@ -1114,9 +1105,9 @@ proc getClosureType(m: BModule; t: PType, kind: TClosureTypeKind): Rope =
         typedef.add(procPtrType(t.callConv, rettype = rettype, name = result))
     else:
       typedef.addTypedef(name = result):
-        typedef.addSimpleStruct(name = "", baseType = ""):
+        typedef.addSimpleStruct(m, name = "", baseType = ""):
           typedef.addField(name = desc, typ =
-            procPtrType(ccNimcall, rettype = rettype, name = "ClP_0"))
+            procPtrType(ccNimCall, rettype = rettype, name = "ClP_0"))
           typedef.addField(name = "ClE_0", typ = "void*")
     m.s[cfsTypes].add(typedef)
 
