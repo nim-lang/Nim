@@ -616,7 +616,22 @@ proc semGenericStmt(c: PContext, n: PNode,
     let bodyFlags = if n.kind == nkTemplateDef: flags + {withinMixin} else: flags
     n[bodyPos] = semGenericStmtScope(c, body, bodyFlags, ctx)
     closeScope(c)
-  of nkPragma, nkPragmaExpr: discard
+  of nkPragmaExpr:
+    result[1] = semGenericStmt(c, n[1], flags, ctx)
+  of nkPragma:
+    for i in 0 ..< n.len:
+      let x = n[i]
+      let prag = whichPragma(x)
+      if x.kind in nkPragmaCallKinds:
+        # process each child individually to prevent untyped macros/templates
+        # from instantiating
+        # if pragma is language-level pragma, skip name node:
+        let start = ord(prag != wInvalid)
+        for j in start ..< x.len:
+          x[j] = semGenericStmt(c, x[j], flags, ctx)
+      elif prag == wInvalid:
+        # only sem if not a language-level pragma 
+        result[i] = semGenericStmt(c, x, flags, ctx)
   of nkExprColonExpr, nkExprEqExpr:
     checkMinSonsLen(n, 2, c.config)
     result[1] = semGenericStmt(c, n[1], flags, ctx)
