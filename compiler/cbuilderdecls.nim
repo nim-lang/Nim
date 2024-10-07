@@ -54,6 +54,15 @@ template addVarWithTypeAndInitializer(builder: var Builder, kind: VarKind = Loca
   initializerBody
   builder.add(";\n")
 
+template addTypedef(builder: var Builder, name: string, typeBody: typed) =
+  ## adds a typedef declaration to the builder with name `name` and type as
+  ## built in `typeBody`
+  builder.add("typedef ")
+  typeBody
+  builder.add(" ")
+  builder.add(name)
+  builder.add(";\n")
+
 type StructInitializer = object
   ## context for building struct initializers, i.e. `{ field1, field2 }`
   # XXX use in genBracedInit

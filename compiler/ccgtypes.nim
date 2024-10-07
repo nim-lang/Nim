@@ -285,15 +285,6 @@ proc isInvalidReturnType(conf: ConfigRef; typ: PType, isProc = true): bool =
 
     else: result = false
 
-const
-  CallingConvToStr: array[TCallingConvention, string] = ["N_NIMCALL",
-    "N_STDCALL", "N_CDECL", "N_SAFECALL",
-    "N_SYSCALL", # this is probably not correct for all platforms,
-                 # but one can #define it to what one wants
-    "N_INLINE", "N_NOINLINE", "N_FASTCALL", "N_THISCALL", "N_CLOSURE", "N_NOCONV",
-    "N_NOCONV" #ccMember is N_NOCONV
-    ]
-
 proc cacheGetType(tab: TypeCache; sig: SigHash): Rope =
   # returns nil if we need to declare this type
   # since types are now unique via the ``getUniqueType`` mechanism, this slow
@@ -433,10 +424,11 @@ proc getTypeDescWeak(m: BModule; t: PType; check: var IntSet; kind: TypeDescKind
       if cacheGetType(m.typeCache, sig) == "":
         m.typeCache[sig] = result
         #echo "adding ", sig, " ", typeToString(t), " ", m.module.name.s
-        appcg(m, m.s[cfsTypes],
-          "struct $1 {\n" &
-          "  NI len; $1_Content* p;\n" &
-          "};\n", [result])
+        var struct = newBuilder("")
+        struct.addSimpleStruct(m, name = result, baseType = ""):
+          struct.addField(name = "len", typ = "NI")
+          struct.addField(name = "p", typ = ptrType(result & "_Content"))
+        m.s[cfsTypes].add(struct)
         pushType(m, t)
     else:
       result = getTypeForward(m, t, sig) & seqStar(m)
@@ -455,9 +447,13 @@ proc seqV2ContentType(m: BModule; t: PType; check: var IntSet) =
   if result == "":
     discard getTypeDescAux(m, t, check, dkVar)
   else:
-    appcg(m, m.s[cfsTypes], """
-struct $2_Content { NI cap; $1 data[SEQ_DECL_SIZE]; };
-""", [getTypeDescAux(m, t.skipTypes(abstractInst)[0], check, dkVar), result])
+    var struct = newBuilder("")
+    struct.addSimpleStruct(m, name = result & "_Content", baseType = ""):
+      struct.addField(name = "cap", typ = "NI")
+      struct.addField(name = "data",
+        typ = getTypeDescAux(m, t.skipTypes(abstractInst)[0], check, dkVar),
+        isFlexArray = true)
+    m.s[cfsTypes].add(struct)
 
 proc paramStorageLoc(param: PSym): TStorageLoc =
   if param.typ.skipTypes({tyVar, tyLent, tyTypeDesc}).kind notin {
@@ -844,8 +840,12 @@ proc getOpenArrayDesc(m: BModule; t: PType, check: var IntSet; kind: TypeDescKin
       result = getTypeName(m, t, sig)
       m.typeCache[sig] = result
       let elemType = getTypeDescWeak(m, t.elementType, check, kind)
-      m.s[cfsTypes].addf("typedef struct {$n$2* Field0;$nNI Field1;$n} $1;$n",
-                         [result, elemType])
+      var typedef = newBuilder("")
+      typedef.addTypedef(name = result):
+        typedef.addSimpleStruct(m, name = "", baseType = ""):
+          typedef.addField(name = "Field0", typ = ptrType(elemType))
+          typedef.addField(name = "Field1", typ = "NI")
+      m.s[cfsTypes].add(typedef)
 
 proc getTypeDescAux(m: BModule; origTyp: PType, check: var IntSet; kind: TypeDescKind): Rope =
   # returns only the type's name
@@ -943,14 +943,17 @@ proc getTypeDescAux(m: BModule; origTyp: PType, check: var IntSet; kind: TypeDes
     var rettype, desc: Rope = ""
     genProcParams(m, t, rettype, desc, check, true, true)
     if not isImportedType(t):
+      var typedef = newBuilder("")
       if t.callConv != ccClosure: # procedure vars may need a closure!
-        m.s[cfsTypes].addf("typedef $1_PTR($2, $3) $4;$n",
-             [rope(CallingConvToStr[t.callConv]), rettype, result, desc])
+        typedef.addTypedef(name = desc):
+          typedef.add(procPtrType(t.callConv, rettype = rettype, name = result))
       else:
-        m.s[cfsTypes].addf("typedef struct {$n" &
-            "N_NIMCALL_PTR($2, ClP_0) $3;$n" &
-            "void* ClE_0;$n} $1;$n",
-             [result, rettype, desc])
+        typedef.addTypedef(name = result):
+          typedef.addSimpleStruct(m, name = "", baseType = ""):
+            typedef.addField(name = desc, typ =
+              procPtrType(ccNimCall, rettype = rettype, name = "ClP_0"))
+            typedef.addField(name = "ClE_0", typ = "void*")
+      m.s[cfsTypes].add(typedef)
   of tySequence:
     if optSeqDestructors in m.config.globalOptions:
       result = getTypeDescWeak(m, t, check, kind)
@@ -1096,14 +1099,17 @@ proc getClosureType(m: BModule; t: PType, kind: TClosureTypeKind): Rope =
   var rettype, desc: Rope = ""
   genProcParams(m, t, rettype, desc, check, declareEnvironment=kind != clHalf)
   if not isImportedType(t):
+    var typedef = newBuilder("")
     if t.callConv != ccClosure or kind != clFull:
-      m.s[cfsTypes].addf("typedef $1_PTR($2, $3) $4;$n",
-           [rope(CallingConvToStr[t.callConv]), rettype, result, desc])
+      typedef.addTypedef(name = desc):
+        typedef.add(procPtrType(t.callConv, rettype = rettype, name = result))
     else:
-      m.s[cfsTypes].addf("typedef struct {$n" &
-          "N_NIMCALL_PTR($2, ClP_0) $3;$n" &
-          "void* ClE_0;$n} $1;$n",
-           [result, rettype, desc])
+      typedef.addTypedef(name = result):
+        typedef.addSimpleStruct(m, name = "", baseType = ""):
+          typedef.addField(name = desc, typ =
+            procPtrType(ccNimCall, rettype = rettype, name = "ClP_0"))
+          typedef.addField(name = "ClE_0", typ = "void*")
+    m.s[cfsTypes].add(typedef)
 
 proc finishTypeDescriptions(m: BModule) =
   var i = 0
