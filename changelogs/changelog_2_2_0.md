@@ -125,7 +125,7 @@ is often an easy workaround.
 
 - `member` can be used to attach a procedure to a C++ type.
 
-- Inside a C++ constructor `result` can be used to access the created object rather than `this`.
+- Inside a C++ constructor, `result` can be used to access the created object rather than `this`.
 
 - Tuple unpacking changes:
   - Tuple unpacking assignment now supports using underscores to discard values.
