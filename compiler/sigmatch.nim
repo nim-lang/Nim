@@ -2637,7 +2637,7 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
     if f.kind == tyVarargs:
       if m.calleeSym.kind in {skTemplate, skMacro}:
         actingF = f[0]
-    if actingF.kind in {tyTyped, tyUntyped}:
+    if actingF.kind == tyTyped:
       var
         bestScope = -1
         counts = 0
