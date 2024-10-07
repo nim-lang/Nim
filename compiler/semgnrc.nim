@@ -628,10 +628,12 @@ proc semGenericStmt(c: PContext, n: PNode,
         # if pragma is language-level pragma, skip name node:
         let start = ord(prag != wInvalid)
         for j in start ..< x.len:
-          x[j] = semGenericStmt(c, x[j], flags, ctx)
+          # treat as mixin context for user pragmas & macro args
+          x[j] = semGenericStmt(c, x[j], flags+{withinMixin}, ctx)
       elif prag == wInvalid:
         # only sem if not a language-level pragma 
-        result[i] = semGenericStmt(c, x, flags, ctx)
+        # treat as mixin context for user pragmas & macro args
+        result[i] = semGenericStmt(c, x, flags+{withinMixin}, ctx)
   of nkExprColonExpr, nkExprEqExpr:
     checkMinSonsLen(n, 2, c.config)
     result[1] = semGenericStmt(c, n[1], flags, ctx)
