@@ -2620,8 +2620,6 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
   else:
     # code to resolve symchoices based on type match
     # should be moved to own proc but will mess up commit history
-    # symbol kinds that don't participate in symchoice type disambiguation:
-    let matchSet = {low(TSymKind)..high(TSymKind)} - {skModule, skPackage}
 
     var best: PNode = nil
     proc getNode(choice: PNode, i: int, s: PSym): PNode {.inline.} =
@@ -2647,7 +2645,9 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
       var currentSym = initOverloadIter(o, m.c, arg)
       var i = 0
       while currentSym != nil:
-        if currentSym.kind in matchSet:
+        block currentMatch:
+          if currentSym.kind in {skModule, skPackage}:
+            break currentMatch
           let thisScope = cmpScopes(m.c, currentSym)
           if thisScope > bestScope:
             best = getNode(arg, i, currentSym)
@@ -2680,7 +2680,9 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
       var currentSym = initOverloadIter(o, c, arg)
       var i = 0
       while currentSym != nil:
-        if currentSym.kind in matchSet:
+        block currentMatch:
+          if currentSym.kind in {skModule, skPackage}:
+            break currentMatch
           # we can shallow copy the bindings since they won't be used
           shallowCopyCandidate(z, m)
           z.callee = currentSym.typ
@@ -2690,7 +2692,8 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
             # mirrored from `newSymNodeTypeDesc`
             z.callee = newType(tyTypeDesc, c.idgen, currentSym.owner)
             z.callee.addSonSkipIntLit(currentSym.typ, c.idgen)
-          if tfUnresolved in z.callee.flags: continue
+          if tfUnresolved in z.callee.flags:
+            break currentMatch
           z.calleeSym = currentSym
           z.calleeScope = cmpScopes(m.c, currentSym)
           # XXX this is still all wrong: (T, T) should be 2 generic matches
