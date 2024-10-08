@@ -279,7 +279,7 @@ proc genGotoVar(p: BProc; value: PNode) =
   else:
     lineF(p, cpsStmts, "goto NIMSTATE_$#;$n", [value.intVal.rope])
 
-proc genBracedInit(p: BProc, n: PNode; isConst: bool; optionalType: PType; result: var Rope)
+proc genBracedInit(p: BProc, n: PNode; isConst: bool; optionalType: PType; result: var Builder)
 
 proc potentialValueInit(p: BProc; v: PSym; value: PNode; result: var Rope) =
   if lfDynamicLib in v.loc.flags or sfThread in v.flags or p.hcrOn:

@@ -13,7 +13,7 @@ when defined(nimCompilerStacktraceHints):
   import std/stackframes
 
 proc getNullValueAuxT(p: BProc; orig, t: PType; obj, constOrNil: PNode,
-                      result: var Rope; count: var int;
+                      result: var Builder; init: var StructInitializer;
                       isConst: bool, info: TLineInfo)
 
 # -------------------------- constant expressions ------------------------
@@ -3190,7 +3190,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
   of nkMixinStmt, nkBindStmt: discard
   else: internalError(p.config, n.info, "expr(" & $n.kind & "); unknown node kind")
 
-proc getDefaultValue(p: BProc; typ: PType; info: TLineInfo; result: var Rope) =
+proc getDefaultValue(p: BProc; typ: PType; info: TLineInfo; result: var Builder) =
   var t = skipTypes(typ, abstractRange+{tyOwned}-{tyTypeDesc})
   case t.kind
   of tyBool: result.add rope"NIM_FALSE"
@@ -3201,38 +3201,56 @@ proc getDefaultValue(p: BProc; typ: PType; info: TLineInfo; result: var Rope) =
     result.add rope"NIM_NIL"
   of tyString, tySequence:
     if optSeqDestructors in p.config.globalOptions:
-      result.add "{0, NIM_NIL}"
+      var seqInit: StructInitializer
+      result.addStructInitializer(seqInit, kind = siOrderedStruct):
+        result.addField(seqInit, name = "len"):
+          result.add("0")
+        result.addField(seqInit, name = "p"):
+          result.add("NIM_NIL")
     else:
       result.add "NIM_NIL"
   of tyProc:
     if t.callConv != ccClosure:
       result.add "NIM_NIL"
     else:
-      result.add "{NIM_NIL, NIM_NIL}"
+      var closureInit: StructInitializer
+      result.addStructInitializer(closureInit, kind = siOrderedStruct):
+        result.addField(closureInit, name = "ClP_0"):
+          result.add("NIM_NIL")
+        result.addField(closureInit, name = "ClE_0"):
+          result.add("NIM_NIL")
   of tyObject:
-    var count = 0
-    result.add "{"
-    getNullValueAuxT(p, t, t, t.n, nil, result, count, true, info)
-    result.add "}"
+    var objInit: StructInitializer
+    result.addStructInitializer(objInit, kind = siOrderedStruct):
+      getNullValueAuxT(p, t, t, t.n, nil, result, objInit, true, info)
   of tyTuple:
-    result.add "{"
-    if p.vccAndC and t.isEmptyTupleType:
-      result.add "0"
-    for i, a in t.ikids:
-      if i > 0: result.add ", "
-      getDefaultValue(p, a, info, result)
-    result.add "}"
+    var tupleInit: StructInitializer
+    result.addStructInitializer(tupleInit, kind = siOrderedStruct):
+      if p.vccAndC and t.isEmptyTupleType:
+        result.addField(tupleInit, name = "dummy"):
+          result.add "0"
+      for i, a in t.ikids:
+        result.addField(tupleInit, name = "Field" & $i):
+          getDefaultValue(p, a, info, result)
   of tyArray:
-    result.add "{"
-    for i in 0..<toInt(lengthOrd(p.config, t.indexType)):
-      if i > 0: result.add ", "
-      getDefaultValue(p, t.elementType, info, result)
-    result.add "}"
+    var arrInit: StructInitializer
+    result.addStructInitializer(arrInit, kind = siArray):
+      for i in 0..<toInt(lengthOrd(p.config, t.indexType)):
+        result.addField(arrInit, name = ""):
+          getDefaultValue(p, t.elementType, info, result)
     #result = rope"{}"
   of tyOpenArray, tyVarargs:
-    result.add "{NIM_NIL, 0}"
+    var openArrInit: StructInitializer
+    result.addStructInitializer(openArrInit, kind = siOrderedStruct):
+      result.addField(openArrInit, name = "Field0"):
+        result.add("NIM_NIL")
+      result.addField(openArrInit, name = "Field1"):
+        result.add("0")
   of tySet:
-    if mapSetType(p.config, t) == ctArray: result.add "{}"
+    if mapSetType(p.config, t) == ctArray:
+      var setInit: StructInitializer
+      result.addStructInitializer(setInit, kind = siArray):
+        discard
     else: result.add "0"
   else:
     globalError(p.config, info, "cannot create null element for: " & $t.kind)
@@ -3243,16 +3261,17 @@ proc isEmptyCaseObjectBranch(n: PNode): bool =
   return true
 
 proc getNullValueAux(p: BProc; t: PType; obj, constOrNil: PNode,
-                     result: var Rope; count: var int;
+                     result: var Builder; init: var StructInitializer;
                      isConst: bool, info: TLineInfo) =
   case obj.kind
   of nkRecList:
     for it in obj.sons:
-      getNullValueAux(p, t, it, constOrNil, result, count, isConst, info)
+      getNullValueAux(p, t, it, constOrNil, result, init, isConst, info)
   of nkRecCase:
-    getNullValueAux(p, t, obj[0], constOrNil, result, count, isConst, info)
+    getNullValueAux(p, t, obj[0], constOrNil, result, init, isConst, info)
+    # XXX siNamedStruct needs to be implemented to replace `res` here
     var res = ""
-    if count > 0: res.add ", "
+    if init.needsComma: res.add ", "
     var branch = Zero
     if constOrNil != nil:
       ## find kind value, default is zero if not specified
@@ -3267,139 +3286,173 @@ proc getNullValueAux(p: BProc; t: PType; obj, constOrNil: PNode,
 
     let selectedBranch = caseObjDefaultBranch(obj, branch)
     res.add "{"
-    var countB = 0
+    var branchInit: StructInitializer
     let b = lastSon(obj[selectedBranch])
     # designated initilization is the only way to init non first element of unions
     # branches are allowed to have no members (b.len == 0), in this case they don't need initializer
     if b.kind == nkRecList and not isEmptyCaseObjectBranch(b):
-      res.add "._" & mangleRecFieldName(p.module, obj[0].sym) & "_" & $selectedBranch & " = {"
-      getNullValueAux(p, t,  b, constOrNil, res, countB, isConst, info)
-      res.add "}"
+      res.add "._" & mangleRecFieldName(p.module, obj[0].sym) & "_" & $selectedBranch & " = "
+      result.addStructInitializer(branchInit, kind = siOrderedStruct):
+        getNullValueAux(p, t, b, constOrNil, res, branchInit, isConst, info)
     elif b.kind == nkSym:
       res.add "." & mangleRecFieldName(p.module, b.sym) & " = "
-      getNullValueAux(p, t,  b, constOrNil, res, countB, isConst, info)
+      result.addStructInitializer(branchInit, kind = siWrapper):
+        getNullValueAux(p, t, b, constOrNil, res, branchInit, isConst, info)
     else:
       return
     result.add res
     result.add "}"
 
   of nkSym:
-    if count > 0: result.add ", "
-    inc count
     let field = obj.sym
-    if constOrNil != nil:
-      for i in 1..<constOrNil.len:
-        if constOrNil[i].kind == nkExprColonExpr:
-          assert constOrNil[i][0].kind == nkSym, "illformed object constr; the field is not a sym"
-          if constOrNil[i][0].sym.name.id == field.name.id:
-            genBracedInit(p, constOrNil[i][1], isConst, field.typ, result)
-            return
-        elif i == field.position:
-          genBracedInit(p, constOrNil[i], isConst, field.typ, result)
-          return
-    # not found, produce default value:
-    getDefaultValue(p, field.typ, info, result)
+    let sname = mangleRecFieldName(p.module, field)
+    result.addField(init, name = sname):
+      block fieldInit:
+        if constOrNil != nil:
+          for i in 1..<constOrNil.len:
+            if constOrNil[i].kind == nkExprColonExpr:
+              assert constOrNil[i][0].kind == nkSym, "illformed object constr; the field is not a sym"
+              if constOrNil[i][0].sym.name.id == field.name.id:
+                genBracedInit(p, constOrNil[i][1], isConst, field.typ, result)
+                break fieldInit
+            elif i == field.position:
+              genBracedInit(p, constOrNil[i], isConst, field.typ, result)
+              break fieldInit
+        # not found, produce default value:
+        getDefaultValue(p, field.typ, info, result)
   else:
     localError(p.config, info, "cannot create null element for: " & $obj)
 
 proc getNullValueAuxT(p: BProc; orig, t: PType; obj, constOrNil: PNode,
-                      result: var Rope; count: var int;
+                      result: var Builder; init: var StructInitializer;
                       isConst: bool, info: TLineInfo) =
   var base = t.baseClass
-  let oldRes = result
-  let oldcount = count
+  when false:
+    let oldRes = result
+    let oldcount = count
   if base != nil:
-    result.add "{"
     base = skipTypes(base, skipPtrs)
-    getNullValueAuxT(p, orig, base, base.n, constOrNil, result, count, isConst, info)
-    result.add "}"
+    result.addField(init, name = "Sup"):
+      var baseInit: StructInitializer
+      result.addStructInitializer(baseInit, kind = siOrderedStruct):
+        getNullValueAuxT(p, orig, base, base.n, constOrNil, result, baseInit, isConst, info)
   elif not isObjLackingTypeField(t):
-    if optTinyRtti in p.config.globalOptions:
-      result.add genTypeInfoV2(p.module, orig, obj.info)
-    else:
-      result.add genTypeInfoV1(p.module, orig, obj.info)
-    inc count
-  getNullValueAux(p, t, obj, constOrNil, result, count, isConst, info)
-  # do not emit '{}' as that is not valid C:
-  if oldcount == count: result = oldRes
+    result.addField(init, name = "m_type"):
+      if optTinyRtti in p.config.globalOptions:
+        result.add genTypeInfoV2(p.module, orig, obj.info)
+      else:
+        result.add genTypeInfoV1(p.module, orig, obj.info)
+  getNullValueAux(p, t, obj, constOrNil, result, init, isConst, info)
+  when false: # not sure why this was here, every call to this emits {}
+    # do not emit '{}' as that is not valid C:
+    if oldcount == count: result = oldRes
 
-proc genConstObjConstr(p: BProc; n: PNode; isConst: bool; result: var Rope) =
+proc genConstObjConstr(p: BProc; n: PNode; isConst: bool; result: var Builder) =
   let t = n.typ.skipTypes(abstractInstOwned)
-  var count = 0
   #if not isObjLackingTypeField(t) and not p.module.compileToCpp:
   #  result.addf("{$1}", [genTypeInfo(p.module, t)])
   #  inc count
-  result.add "{"
-  if t.kind == tyObject:
-    getNullValueAuxT(p, t, t, t.n, n, result, count, isConst, n.info)
-  result.add("}\n")
+  var objInit: StructInitializer
+  result.addStructInitializer(objInit, kind = siOrderedStruct):
+    if t.kind == tyObject:
+      getNullValueAuxT(p, t, t, t.n, n, result, objInit, isConst, n.info)
 
-proc genConstSimpleList(p: BProc, n: PNode; isConst: bool; result: var Rope) =
-  result.add "{"
-  if p.vccAndC and n.len == 0 and n.typ.kind == tyArray:
-    getDefaultValue(p, n.typ.elementType, n.info, result)
-  for i in 0..<n.len:
-    let it = n[i]
-    if i > 0: result.add ",\n"
-    if it.kind == nkExprColonExpr: genBracedInit(p, it[1], isConst, it[0].typ, result)
-    else: genBracedInit(p, it, isConst, it.typ, result)
-  result.add("}\n")
-
-proc genConstTuple(p: BProc, n: PNode; isConst: bool; tup: PType; result: var Rope) =
-  result.add "{"
-  if p.vccAndC and n.len == 0:
-    result.add "0"
-  for i in 0..<n.len:
-    let it = n[i]
-    if i > 0: result.add ",\n"
-    if it.kind == nkExprColonExpr: genBracedInit(p, it[1], isConst, tup[i], result)
-    else: genBracedInit(p, it, isConst, tup[i], result)
-  result.add("}\n")
-
-proc genConstSeq(p: BProc, n: PNode, t: PType; isConst: bool; result: var Rope) =
-  var data = "{{$1, $1 | NIM_STRLIT_FLAG}" % [n.len.rope]
-  let base = t.skipTypes(abstractInst)[0]
-  if n.len > 0:
-    # array part needs extra curlies:
-    data.add(", {")
+proc genConstSimpleList(p: BProc, n: PNode; isConst: bool; result: var Builder) =
+  var arrInit: StructInitializer
+  result.addStructInitializer(arrInit, kind = siArray):
+    if p.vccAndC and n.len == 0 and n.typ.kind == tyArray:
+      result.addField(arrInit, name = ""):
+        getDefaultValue(p, n.typ.elementType, n.info, result)
     for i in 0..<n.len:
-      if i > 0: data.addf(",$n", [])
-      genBracedInit(p, n[i], isConst, base, data)
-    data.add("}")
-  data.add("}")
+      let it = n[i]
+      var ind, val: PNode
+      if it.kind == nkExprColonExpr:
+        ind = it[0]
+        val = it[1]
+      else:
+        ind = it
+        val = it
+      result.addField(arrInit, name = ""):
+        genBracedInit(p, val, isConst, ind.typ, result)
 
+proc genConstTuple(p: BProc, n: PNode; isConst: bool; tup: PType; result: var Builder) =
+  var tupleInit: StructInitializer
+  result.addStructInitializer(tupleInit, kind = siOrderedStruct):
+    if p.vccAndC and n.len == 0:
+      result.addField(tupleInit, name = "dummy"):
+        result.add("0")
+    for i in 0..<n.len:
+      var it = n[i]
+      if it.kind == nkExprColonExpr:
+        it = it[1]
+      result.addField(tupleInit, name = "Field" & $i):
+        genBracedInit(p, it, isConst, tup[i], result)
+
+proc genConstSeq(p: BProc, n: PNode, t: PType; isConst: bool; result: var Builder) =
+  let base = t.skipTypes(abstractInst)[0]
   let tmpName = getTempName(p.module)
 
-  appcg(p.module, cfsStrData,
-        "static $5 struct {$n" &
-        "  #TGenericSeq Sup;$n" &
-        "  $1 data[$2];$n" &
-        "} $3 = $4;$n", [
-        getTypeDesc(p.module, base), n.len, tmpName, data,
-        if isConst: "NIM_CONST" else: ""])
+  var def = newBuilder("")
+  def.addVarWithTypeAndInitializer(
+      if isConst: Const else: Global,
+      name = tmpName):
+    def.addSimpleStruct(p.module, name = "", baseType = ""):
+      def.addField(name = "sup", typ = cgsymValue(p.module, "TGenericSeq"))
+      def.addArrayField(name = "data", elementType = getTypeDesc(p.module, base), len = n.len)
+  do:
+    var structInit: StructInitializer
+    def.addStructInitializer(structInit, kind = siOrderedStruct):
+      def.addField(structInit, name = "sup"):
+        var supInit: StructInitializer
+        def.addStructInitializer(supInit, kind = siOrderedStruct):
+          def.addField(supInit, name = "len"):
+            def.add(n.len.rope)
+          def.addField(supInit, name = "reserved"):
+            def.add(bitOr(rope(n.len), "NIM_STRLIT_FLAG"))
+      if n.len > 0:
+        def.addField(structInit, name = "data"):
+          var arrInit: StructInitializer
+          def.addStructInitializer(arrInit, kind = siArray):
+            for i in 0..<n.len:
+              def.addField(arrInit, name = ""):
+                genBracedInit(p, n[i], isConst, base, def)
+  p.module.s[cfsStrData].add def
 
-  result.add "(($1)&$2)" % [getTypeDesc(p.module, t), tmpName]
+  result.add cCast(typ = getTypeDesc(p.module, t), value = cAddr(tmpName))
 
-proc genConstSeqV2(p: BProc, n: PNode, t: PType; isConst: bool; result: var Rope) =
+proc genConstSeqV2(p: BProc, n: PNode, t: PType; isConst: bool; result: var Builder) =
   let base = t.skipTypes(abstractInst)[0]
-  var data = rope""
-  if n.len > 0:
-    data.add(", {")
-    for i in 0..<n.len:
-      if i > 0: data.addf(",$n", [])
-      genBracedInit(p, n[i], isConst, base, data)
-    data.add("}")
-
   let payload = getTempName(p.module)
-  appcg(p.module, cfsStrData,
-    "static $5 struct {$n" &
-    "  NI cap; $1 data[$2];$n" &
-    "} $3 = {$2 | NIM_STRLIT_FLAG$4};$n", [
-    getTypeDesc(p.module, base), n.len, payload, data,
-    if isConst: "const" else: ""])
-  result.add "{$1, ($2*)&$3}" % [rope(n.len), getSeqPayloadType(p.module, t), payload]
 
-proc genBracedInit(p: BProc, n: PNode; isConst: bool; optionalType: PType; result: var Rope) =
+  var def = newBuilder("")
+  def.addVarWithTypeAndInitializer(
+      if isConst: AlwaysConst else: Global,
+      name = payload):
+    def.addSimpleStruct(p.module, name = "", baseType = ""):
+      def.addField(name = "cap", typ = "NI")
+      def.addArrayField(name = "data", elementType = getTypeDesc(p.module, base), len = n.len)
+  do:
+    var structInit: StructInitializer
+    def.addStructInitializer(structInit, kind = siOrderedStruct):
+      def.addField(structInit, name = "cap"):
+        def.add(bitOr(rope(n.len), "NIM_STRLIT_FLAG"))
+      if n.len > 0:
+        def.addField(structInit, name = "data"):
+          var arrInit: StructInitializer
+          def.addStructInitializer(arrInit, kind = siArray):
+            for i in 0..<n.len:
+              def.addField(arrInit, name = ""):
+                genBracedInit(p, n[i], isConst, base, def)
+  p.module.s[cfsStrData].add def
+
+  var resultInit: StructInitializer
+  result.addStructInitializer(resultInit, kind = siOrderedStruct):
+    result.addField(resultInit, name = "len"):
+      result.add(rope(n.len))
+    result.addField(resultInit, name = "p"):
+      result.add cCast(typ = ptrType(getSeqPayloadType(p.module, t)), value = cAddr(payload))
+
+proc genBracedInit(p: BProc, n: PNode; isConst: bool; optionalType: PType; result: var Builder) =
   case n.kind
   of nkHiddenStdConv, nkHiddenSubConv:
     genBracedInit(p, n[1], isConst, n.typ, result)
@@ -3434,11 +3487,16 @@ proc genBracedInit(p: BProc, n: PNode; isConst: bool; optionalType: PType; resul
         # in VM closures are initialized with nkPar(nkNilLit, nkNilLit)
         # leading to duplicate code like this:
         # "{NIM_NIL,NIM_NIL}, {NIM_NIL,NIM_NIL}"
-        if n[0].kind == nkNilLit:
-          result.add "{NIM_NIL,NIM_NIL}"
-        else:
-          var d: TLoc = initLocExpr(p, n[0])
-          result.add "{(($1) $2),NIM_NIL}" % [getClosureType(p.module, typ, clHalfWithEnv), rdLoc(d)]
+        var closureInit: StructInitializer
+        result.addStructInitializer(closureInit, kind = siOrderedStruct):
+          result.addField(closureInit, name = "ClP_0"):
+            if n[0].kind == nkNilLit:
+              result.add("NIM_NIL")
+            else:
+              var d: TLoc = initLocExpr(p, n[0])
+              result.add(cCast(typ = getClosureType(p.module, typ, clHalfWithEnv), value = rdLoc(d)))
+          result.addField(closureInit, name = "ClE_0"):
+            result.add("NIM_NIL")
       else:
         var d: TLoc = initLocExpr(p, n)
         result.add rdLoc(d)
@@ -3460,7 +3518,12 @@ proc genBracedInit(p: BProc, n: PNode; isConst: bool; optionalType: PType; resul
         "static $5 $1 $3[$2] = $4;$n", [
         ctype, arrLen, payload, data,
         if isConst: "const" else: ""])
-      result.add "{($1*)&$2, $3}" % [ctype, payload, rope arrLen]
+      var openArrInit: StructInitializer
+      result.addStructInitializer(openArrInit, kind = siOrderedStruct):
+        result.addField(openArrInit, name = "Field0"):
+          result.add(cCast(typ = ptrType(ctype), value = cAddr(payload)))
+        result.addField(openArrInit, name = "Field1"):
+          result.add(rope arrLen)
 
     of tyObject:
       genConstObjConstr(p, n, isConst, result)
