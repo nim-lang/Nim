@@ -15,7 +15,7 @@ const
   AtlasStableCommit = "5faec3e9a33afe99a7d22377dd1b45a5391f5504"
   ChecksumsStableCommit = "bd9bf4eaea124bf8d01e08f92ac1b14c6879d8d3"
   SatStableCommit = "faf1617f44d7632ee9601ebc13887644925dcc01"
-  NifStableCommit = "HEAD"
+  NifStableCommit = "5a1570de3d9c0f246ba903c6780e5c0ecb6ddbfc"
 
   # examples of possible values for fusion: #head, #ea82b54, 1.2.3
   FusionStableHash = "#372ee4313827ef9f2ea388840f7d6b46c2b1b014"
@@ -213,11 +213,8 @@ proc bundleChecksums(latest: bool) =
   cloneDependency(distDir, "https://github.com/nim-lang/checksums.git", commit, allowBundled = true)
 
 proc bundleNif(latest: bool) =
-  when false:
-    let commit = if latest: "HEAD" else: NifStableCommit
-    cloneDependency(distDir, "https://github.com/nim-lang/nif.git", commit, allowBundled = true)
-  else:
-    cloneDependency(distDir, "https://github.com/metagn/nif.git", "slimsystem", allowBundled = true)
+  let commit = if latest: "HEAD" else: NifStableCommit
+  cloneDependency(distDir, "https://github.com/nim-lang/nif.git", commit, allowBundled = true)
 
 proc zip(latest: bool; args: string) =
   bundleNif(latest)
