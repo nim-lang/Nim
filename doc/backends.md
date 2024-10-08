@@ -96,7 +96,7 @@ to get OS info).
 To compile a Nim module into a ``.js`` file use the `js`:option: command; the
 default is a ``.js`` file that is supposed to be referenced in an ``.html``
 file. However, you can also run the code with `nodejs`:idx:
-(http://nodejs.org):
+(https://nodejs.org):
 
   ```cmd
   nim js -r examples/hallo.nim
