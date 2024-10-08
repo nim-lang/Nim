@@ -3269,9 +3269,6 @@ proc getNullValueAux(p: BProc; t: PType; obj, constOrNil: PNode,
       getNullValueAux(p, t, it, constOrNil, result, init, isConst, info)
   of nkRecCase:
     getNullValueAux(p, t, obj[0], constOrNil, result, init, isConst, info)
-    # XXX siNamedStruct needs to be implemented to replace `res` here
-    var res = ""
-    if init.needsComma: res.add ", "
     var branch = Zero
     if constOrNil != nil:
       ## find kind value, default is zero if not specified
@@ -3285,23 +3282,26 @@ proc getNullValueAux(p: BProc; t: PType; obj, constOrNil: PNode,
           break
 
     let selectedBranch = caseObjDefaultBranch(obj, branch)
-    res.add "{"
+    # XXX siNamedStruct needs to be implemented to replace `res` here
+    var res = "{"
     var branchInit: StructInitializer
     let b = lastSon(obj[selectedBranch])
     # designated initilization is the only way to init non first element of unions
     # branches are allowed to have no members (b.len == 0), in this case they don't need initializer
     if b.kind == nkRecList and not isEmptyCaseObjectBranch(b):
       res.add "._" & mangleRecFieldName(p.module, obj[0].sym) & "_" & $selectedBranch & " = "
-      result.addStructInitializer(branchInit, kind = siOrderedStruct):
+      res.addStructInitializer(branchInit, kind = siOrderedStruct):
         getNullValueAux(p, t, b, constOrNil, res, branchInit, isConst, info)
     elif b.kind == nkSym:
       res.add "." & mangleRecFieldName(p.module, b.sym) & " = "
-      result.addStructInitializer(branchInit, kind = siWrapper):
+      res.addStructInitializer(branchInit, kind = siWrapper):
         getNullValueAux(p, t, b, constOrNil, res, branchInit, isConst, info)
     else:
       return
-    result.add res
-    result.add "}"
+    result.addField(init, name = "<anonymous union>"):
+      # XXX figure out name for the union, see use of `addAnonUnion`
+      result.add res
+      result.add "}"
 
   of nkSym:
     let field = obj.sym
