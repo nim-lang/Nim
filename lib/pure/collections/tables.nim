@@ -434,7 +434,6 @@ proc getOrDefault*[A, B](t: Table[A, B], key: A, default: B): B =
     let a = {'a': 5, 'b': 9}.toTable
     doAssert a.getOrDefault('a', 99) == 5
     doAssert a.getOrDefault('z', 99) == 99
-  result = default(B)
   getOrDefaultImpl(t, key, default)
 
 proc mgetOrPut*[A, B](t: var Table[A, B], key: A, val: B): var B =
