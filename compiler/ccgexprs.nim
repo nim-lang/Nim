@@ -3343,7 +3343,7 @@ proc getNullValueAuxT(p: BProc; orig, t: PType; obj, constOrNil: PNode,
       else:
         result.add genTypeInfoV1(p.module, orig, obj.info)
   getNullValueAux(p, t, obj, constOrNil, result, init, isConst, info)
-  when false: # not sure why this was here, every call to this emits {}
+  when false: # referring to Sup field, hopefully not a problem
     # do not emit '{}' as that is not valid C:
     if oldcount == count: result = oldRes
 
