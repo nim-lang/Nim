@@ -15,6 +15,7 @@ const
   AtlasStableCommit = "5faec3e9a33afe99a7d22377dd1b45a5391f5504"
   ChecksumsStableCommit = "bd9bf4eaea124bf8d01e08f92ac1b14c6879d8d3"
   SatStableCommit = "faf1617f44d7632ee9601ebc13887644925dcc01"
+  NifStableCommit = "HEAD"
 
   # examples of possible values for fusion: #head, #ea82b54, 1.2.3
   FusionStableHash = "#372ee4313827ef9f2ea388840f7d6b46c2b1b014"
@@ -78,6 +79,7 @@ Possible Commands:
   nimble                   builds the Nimble tool
   atlas                    builds the Atlas tool
   checksums                installs the checksums dependency
+  nif                      installs the nif dependency
   fusion                   installs fusion via Nimble
 
 Boot options:
@@ -210,7 +212,15 @@ proc bundleChecksums(latest: bool) =
   let commit = if latest: "HEAD" else: ChecksumsStableCommit
   cloneDependency(distDir, "https://github.com/nim-lang/checksums.git", commit, allowBundled = true)
 
+proc bundleNif(latest: bool) =
+  when false:
+    let commit = if latest: "HEAD" else: NifStableCommit
+    cloneDependency(distDir, "https://github.com/nim-lang/nif.git", commit, allowBundled = true)
+  else:
+    cloneDependency(distDir, "https://github.com/metagn/nif.git", "slimsystem", allowBundled = true)
+
 proc zip(latest: bool; args: string) =
+  bundleNif(latest)
   bundleChecksums(latest)
   bundleNimbleExe(latest, args)
   bundleAtlasExe(latest, args)
@@ -265,6 +275,7 @@ proc testTools(args: string = "") =
   nimCompileFold("Compile testament", "testament/testament.nim", options = "-d:release " & args)
 
 proc nsis(latest: bool; args: string) =
+  bundleNif(latest)
   bundleChecksums(latest)
   bundleNimbleExe(latest, args)
   bundleAtlasExe(latest, args)
@@ -345,6 +356,7 @@ proc boot(args: string, skipIntegrityCheck: bool) =
   let smartNimcache = (if "release" in args or "danger" in args: "nimcache/r_" else: "nimcache/d_") &
                       hostOS & "_" & hostCPU
 
+  bundleNif(false)
   bundleChecksums(false)
 
   let usingLibFFI = "nimHasLibFFI" in args
@@ -508,6 +520,7 @@ proc temp(args: string) =
       result[1].add " " & quoteShell(args[i])
       inc i
 
+  bundleNif(false)
   bundleChecksums(false)
 
   let d = getAppDir()
@@ -764,6 +777,8 @@ when isMainModule:
         bundleAtlasExe(latest, op.cmdLineRest)
       of "checksums":
         bundleChecksums(latest)
+      of "nif":
+        bundleNif(latest)
       of "pushcsource":
         quit "use this instead: https://github.com/nim-lang/csources_v1/blob/master/push_c_code.nim"
       of "valgrind": valgrind(op.cmdLineRest)

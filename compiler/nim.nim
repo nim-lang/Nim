@@ -28,6 +28,8 @@ import
   commands, options, msgs, extccomp, main, idents, lineinfos, cmdlinehelper,
   pathutils, modulegraphs
 
+import ../dist/nif/src/[nifler/nifler, xelim/xelim, nifgram/nifgram, gear2/gear2]
+
 from std/browsers import openDefaultBrowser
 from nodejs import findNodeJs
 
