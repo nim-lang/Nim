@@ -421,7 +421,7 @@ proc getOrDefault*[A, B](t: Table[A, B], key: A): B =
 
 proc getOrDefault*[A, B](t: Table[A, B], key: A, def: B): B =
   ## Retrieves the value at `t[key]` if `key` is in `t`.
-  ## Otherwise, `default` is returned.
+  ## Otherwise, `def` is returned.
   ##
   ## See also:
   ## * `[] proc<#[],Table[A,B],A>`_ for retrieving a value of a key
@@ -973,7 +973,7 @@ proc getOrDefault*[A, B](t: TableRef[A, B], key: A): B =
 
 proc getOrDefault*[A, B](t: TableRef[A, B], key: A, def: B): B =
   ## Retrieves the value at `t[key]` if `key` is in `t`.
-  ## Otherwise, `default` is returned.
+  ## Otherwise, `def` is returned.
   ##
   ## See also:
   ## * `[] proc<#[],TableRef[A,B],A>`_ for retrieving a value of a key
@@ -1492,7 +1492,7 @@ proc getOrDefault*[A, B](t: OrderedTable[A, B], key: A): B =
 
 proc getOrDefault*[A, B](t: OrderedTable[A, B], key: A, def: B): B =
   ## Retrieves the value at `t[key]` if `key` is in `t`.
-  ## Otherwise, `default` is returned.
+  ## Otherwise, `def` is returned.
   ##
   ## See also:
   ## * `[] proc<#[],OrderedTable[A,B],A>`_ for retrieving a value of a key
@@ -1992,7 +1992,7 @@ proc getOrDefault*[A, B](t: OrderedTableRef[A, B], key: A): B =
 
 proc getOrDefault*[A, B](t: OrderedTableRef[A, B], key: A, def: B): B =
   ## Retrieves the value at `t[key]` if `key` is in `t`.
-  ## Otherwise, `default` is returned.
+  ## Otherwise, `def` is returned.
   ##
   ## See also:
   ## * `[] proc<#[],OrderedTableRef[A,B],A>`_ for retrieving a value of a key
@@ -2447,7 +2447,7 @@ proc contains*[A](t: CountTable[A], key: A): bool =
 
 proc getOrDefault*[A](t: CountTable[A], key: A; def: int = 0): int =
   ## Retrieves the value at `t[key]` if `key` is in `t`. Otherwise, the
-  ## integer value of `default` is returned.
+  ## integer value of `def` is returned.
   ##
   ## See also:
   ## * `[] proc<#[],CountTable[A],A>`_ for retrieving a value of a key
@@ -2772,7 +2772,7 @@ proc contains*[A](t: CountTableRef[A], key: A): bool =
 
 proc getOrDefault*[A](t: CountTableRef[A], key: A, def: int): int =
   ## Retrieves the value at `t[key]` if `key` is in `t`. Otherwise, the
-  ## integer value of `default` is returned.
+  ## integer value of `def` is returned.
   ##
   ## See also:
   ## * `[] proc<#[],CountTableRef[A],A>`_ for retrieving a value of a key
