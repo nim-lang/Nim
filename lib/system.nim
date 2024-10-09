@@ -166,6 +166,7 @@ when defined(nimHasEnsureMove):
     discard "implemented in injectdestructors"
 else:
   template ensureMove*[T](x: T): T =
+    # no-op for bootstrapping
     x
 
 type
