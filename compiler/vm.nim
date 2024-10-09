@@ -2396,6 +2396,7 @@ proc evalConstExprAux(module: PSym; idgen: IdGenerator;
   let n = transformExpr(g, idgen, module, n)
   setupGlobalCtx(module, g, idgen)
   var c = PCtx g.vm
+  c.owner = prc
   let oldMode = c.mode
   c.mode = mode
   let start = genExpr(c, n, requiresValue = mode!=emStaticStmt)
@@ -2409,8 +2410,8 @@ proc evalConstExprAux(module: PSym; idgen: IdGenerator;
   if result.info.col < 0: result.info = n.info
   c.mode = oldMode
 
-proc evalConstExpr*(module: PSym; idgen: IdGenerator; g: ModuleGraph; e: PNode): PNode =
-  result = evalConstExprAux(module, idgen, g, nil, e, emConst)
+proc evalConstExpr*(module: PSym; idgen: IdGenerator; g: ModuleGraph; e: PNode, prc: PSym = nil): PNode =
+  result = evalConstExprAux(module, idgen, g, prc, e, emConst)
 
 proc evalStaticExpr*(module: PSym; idgen: IdGenerator; g: ModuleGraph; e: PNode, prc: PSym): PNode =
   result = evalConstExprAux(module, idgen, g, prc, e, emStaticExpr)
