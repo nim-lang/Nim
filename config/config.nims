@@ -21,6 +21,3 @@ when defined(nimStrictMode):
     # future work: XDeclaredButNotUsed
 
 switch("define", "nimVersion:" & NimVersion) # deadcode
-
-when sizeof({0}) == sizeof(set[range[0..255]]):
-  switch("warningAsError", "AboveMaxSizeSet")
