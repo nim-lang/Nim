@@ -35,12 +35,12 @@ proc newEIO(msg: string): ref IOError =
   new(result)
   result.msg = msg
 
-proc setFileSize(fh: FileHandle, newFileSize = -1): OSErrorCode =
-  ## Set the size of open file pointed to by `fh` to `newFileSize` if != -1.
-  ## Space is only allocated if that is cheaper than writing to the file.  This
-  ## routine returns the last OSErrorCode found rather than raising to support
-  ## old rollback/clean-up code style. [ Should maybe move to std/osfiles. ]
-  if newFileSize == -1:
+proc setFileSize(fh: FileHandle, newFileSize = -1, oldSize = -1): OSErrorCode =
+  ## Set the size of open file pointed to by `fh` to `newFileSize` if != -1,
+  ## allocating | freeing space from the file system.  This routine returns the
+  ## last OSErrorCode found rather than raising to support old rollback/clean-up
+  ## code style. [ Should maybe move to std/osfiles. ]
+  if newFileSize < 0 or newFileSize == oldSize:
     return
   when defined(windows):
     var sizeHigh = int32(newFileSize shr 32)
@@ -51,14 +51,18 @@ proc setFileSize(fh: FileHandle, newFileSize = -1): OSErrorCode =
         setEndOfFile(fh) == 0:
       result = lastErr
   else:
-    var e: cint # posix_fallocate truncates up when needed.
-    when declared(posix_fallocate):
-      while (e = posix_fallocate(fh, 0, newFileSize); e == EINTR):
-        discard
-    if e in [EINVAL, EOPNOTSUPP] and ftruncate(fh, newFileSize) == -1:
-      result = osLastError() # fallback arguable; Most portable, but allows SEGV
-    elif e != 0:
-      result = osLastError()
+    if newFileSize > oldSize: # grow the file
+      var e: cint # posix_fallocate truncates up when needed.
+      when declared(posix_fallocate):
+        while (e = posix_fallocate(fh, 0, newFileSize); e == EINTR):
+          discard
+      if e in [EINVAL, EOPNOTSUPP] and ftruncate(fh, newFileSize) == -1:
+        result = osLastError() # fallback arguable; Most portable BUT allows SEGV
+      elif e != 0:
+        result = osLastError()
+    else: # shrink the file
+      if ftruncate(fh.cint, newFileSize) == -1:
+        result = osLastError()
 
 type
   MemFile* = object      ## represents a memory mapped file
@@ -255,41 +259,31 @@ proc open*(filename: string, mode: FileMode = fmRead,
       flags = flags or O_CREAT or O_TRUNC
       var permissionsMode = S_IRUSR or S_IWUSR
       result.handle = open(filename, flags, permissionsMode)
+      if result.handle != -1:
+        if (let e = setFileSize(result.handle.FileHandle, newFileSize);
+            e != 0.OSErrorCode): fail(e, "error setting file size")
     else:
       result.handle = open(filename, flags)
 
     if result.handle == -1:
-      # XXX: errno is supposed to be set here
-      # Is there an exception that wraps it?
       fail(osLastError(), "error opening file")
 
-    if (let e = setFileSize(result.handle.FileHandle, newFileSize);
-        e != 0.OSErrorCode): fail(e, "error setting file size")
-
-    if mappedSize != -1:
-      result.size = mappedSize
-    else:
-      var stat: Stat
+    if mappedSize != -1: #XXX Logic here differs from `when windows` branch ..
+      result.size = mappedSize #.. which always fstats&Uses min(mappedSize, st).
+    else: # if newFileSize!=-1: result.size=newFileSize # if trust setFileSize
+      var stat: Stat  #^^.. BUT some FSes (eg. Linux HugeTLBfs) round to 2MiB.
       if fstat(result.handle, stat) != -1:
-        # XXX: Hmm, this could be unsafe
-        # Why is mmap taking int anyway?
-        result.size = int(stat.st_size)
+        result.size = stat.st_size.int # int may be 32-bit-unsafe for 2..<4 GiB
       else:
         fail(osLastError(), "error getting file size")
 
     result.flags = if mapFlags == cint(-1): MAP_SHARED else: mapFlags
-    #Ensure exactly one of MAP_PRIVATE cr MAP_SHARED is set
+    # Ensure exactly one of MAP_PRIVATE cr MAP_SHARED is set
     if int(result.flags and MAP_PRIVATE) == 0:
       result.flags = result.flags or MAP_SHARED
 
-    result.mem = mmap(
-      nil,
-      result.size,
-      if readonly: PROT_READ else: PROT_READ or PROT_WRITE,
-      result.flags,
-      result.handle,
-      offset)
-
+    let pr = if readonly: PROT_READ else: PROT_READ or PROT_WRITE
+    result.mem = mmap(nil, result.size, pr, result.flags, result.handle, offset)
     if result.mem == cast[pointer](MAP_FAILED):
       fail(osLastError(), "file mapping failed")
 
@@ -353,7 +347,7 @@ proc resize*(f: var MemFile, newFileSize: int) {.raises: [IOError, OSError].} =
       raise newException(IOError,
                          "Cannot resize MemFile opened with allowRemap=false")
     if newFileSize != f.size:
-      if (let e = setFileSize(f.handle.FileHandle, newFileSize);
+      if (let e = setFileSize(f.handle.FileHandle, newFileSize, f.size);
           e != 0.OSErrorCode): raiseOSError(e)
     when defined(linux): #Maybe NetBSD, too?
       # On Linux this can be over 100 times faster than a munmap,mmap cycle.
@@ -418,7 +412,7 @@ proc `==`*(x, y: MemSlice): bool =
 proc `$`*(ms: MemSlice): string {.inline.} =
   ## Return a Nim string built from a MemSlice.
   result.setLen(ms.size)
-  copyMem(addr(result[0]), ms.data, ms.size)
+  copyMem(result.cstring, ms.data, ms.size)
 
 iterator memSlices*(mfile: MemFile, delim = '\l', eat = '\r'): MemSlice {.inline.} =
   ## Iterates over \[optional `eat`] `delim`-delimited slices in MemFile `mfile`.

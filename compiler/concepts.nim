@@ -11,7 +11,7 @@
 ## for details. Note this is a first implementation and only the "Concept matching"
 ## section has been implemented.
 
-import ast, astalgo, semdata, lookups, lineinfos, idents, msgs, renderer, types
+import ast, semdata, lookups, lineinfos, idents, msgs, renderer, types, layeredtable
 
 import std/intsets
 
@@ -96,7 +96,7 @@ proc matchType(c: PContext; f, a: PType; m: var MatchCon): bool =
     ignorableForArgType = {tyVar, tySink, tyLent, tyOwned, tyGenericInst, tyAlias, tyInferred}
   case f.kind
   of tyAlias:
-    result = matchType(c, f.lastSon, a, m)
+    result = matchType(c, f.skipModifier, a, m)
   of tyTypeDesc:
     if isSelf(f):
       #let oldLen = m.inferred.len
@@ -105,18 +105,19 @@ proc matchType(c: PContext; f, a: PType; m: var MatchCon): bool =
       #m.inferred.setLen oldLen
       #echo "A for ", result, " to ", typeToString(a), " to ", typeToString(m.potentialImplementation)
     else:
-      if a.kind == tyTypeDesc and f.len == a.len:
-        for i in 0..<a.len:
-          if not matchType(c, f[i], a[i], m): return false
-        return true
+      if a.kind == tyTypeDesc and f.hasElementType == a.hasElementType:
+        if f.hasElementType:
+          result = matchType(c, f.elementType, a.elementType, m)
+        else:
+          result = true # both lack it
       else:
         result = false
 
   of tyGenericInvocation:
     result = false
-    if a.kind == tyGenericInst and a[0].kind == tyGenericBody:
-      if sameType(f[0], a[0]) and f.len == a.len-1:
-        for i in 1 ..< f.len:
+    if a.kind == tyGenericInst and a.genericHead.kind == tyGenericBody:
+      if sameType(f.genericHead, a.genericHead) and f.kidsLen == a.kidsLen-1:
+        for i in FirstGenericParamAt ..< f.kidsLen:
           if not matchType(c, f[i], a[i], m): return false
         return true
   of tyGenericParam:
@@ -126,17 +127,17 @@ proc matchType(c: PContext; f, a: PType; m: var MatchCon): bool =
     else:
       let old = existingBinding(m, f)
       if old == nil:
-        if f.len > 0 and f[0].kind != tyNone:
+        if f.hasElementType and f.elementType.kind != tyNone:
           # also check the generic's constraints:
           let oldLen = m.inferred.len
-          result = matchType(c, f[0], a, m)
+          result = matchType(c, f.elementType, a, m)
           m.inferred.setLen oldLen
           if result:
             when logBindings: echo "A adding ", f, " ", ak
             m.inferred.add((f, ak))
         elif m.magic == mArrGet and ak.kind in {tyArray, tyOpenArray, tySequence, tyVarargs, tyCstring, tyString}:
           when logBindings: echo "B adding ", f, " ", lastSon ak
-          m.inferred.add((f, lastSon ak))
+          m.inferred.add((f, last ak))
           result = true
         else:
           when logBindings: echo "C adding ", f, " ", ak
@@ -155,9 +156,9 @@ proc matchType(c: PContext; f, a: PType; m: var MatchCon): bool =
     # modifiers in the concept must be there in the actual implementation
     # too but not vice versa.
     if a.kind == f.kind:
-      result = matchType(c, f[0], a[0], m)
+      result = matchType(c, f.elementType, a.elementType, m)
     elif m.magic == mArrPut:
-      result = matchType(c, f[0], a, m)
+      result = matchType(c, f.elementType, a, m)
     else:
       result = false
   of tyEnum, tyObject, tyDistinct:
@@ -167,7 +168,7 @@ proc matchType(c: PContext; f, a: PType; m: var MatchCon): bool =
   of tyBool, tyChar, tyInt..tyUInt64:
     let ak = a.skipTypes(ignorableForArgType)
     result = ak.kind == f.kind or ak.kind == tyOrdinal or
-       (ak.kind == tyGenericParam and ak.len > 0 and ak[0].kind == tyOrdinal)
+       (ak.kind == tyGenericParam and ak.hasElementType and ak.elementType.kind == tyOrdinal)
   of tyConcept:
     let oldLen = m.inferred.len
     let oldPotentialImplementation = m.potentialImplementation
@@ -178,10 +179,11 @@ proc matchType(c: PContext; f, a: PType; m: var MatchCon): bool =
       m.inferred.setLen oldLen
   of tyArray, tyTuple, tyVarargs, tyOpenArray, tyRange, tySequence, tyRef, tyPtr,
      tyGenericInst:
+    # ^ XXX Rewrite this logic, it's more complex than it needs to be.
     result = false
     let ak = a.skipTypes(ignorableForArgType - {f.kind})
-    if ak.kind == f.kind and f.len == ak.len:
-      for i in 0..<ak.len:
+    if ak.kind == f.kind and f.kidsLen == ak.kidsLen:
+      for i in 0..<ak.kidsLen:
         if not matchType(c, f[i], ak[i], m): return false
       return true
   of tyOr:
@@ -190,30 +192,30 @@ proc matchType(c: PContext; f, a: PType; m: var MatchCon): bool =
       # say the concept requires 'int|float|string' if the potentialImplementation
       # says 'int|string' that is good enough.
       var covered = 0
-      for i in 0..<f.len:
-        for j in 0..<a.len:
+      for ff in f.kids:
+        for aa in a.kids:
           let oldLenB = m.inferred.len
-          let r = matchType(c, f[i], a[j], m)
+          let r = matchType(c, ff, aa, m)
           if r:
             inc covered
             break
           m.inferred.setLen oldLenB
 
-      result = covered >= a.len
+      result = covered >= a.kidsLen
       if not result:
         m.inferred.setLen oldLen
     else:
       result = false
-      for i in 0..<f.len:
-        result = matchType(c, f[i], a, m)
+      for ff in f.kids:
+        result = matchType(c, ff, a, m)
         if result: break # and remember the binding!
         m.inferred.setLen oldLen
   of tyNot:
     if a.kind == tyNot:
-      result = matchType(c, f[0], a[0], m)
+      result = matchType(c, f.elementType, a.elementType, m)
     else:
       let oldLen = m.inferred.len
-      result = not matchType(c, f[0], a, m)
+      result = not matchType(c, f.elementType, a, m)
       m.inferred.setLen oldLen
   of tyAnything:
     result = true
@@ -252,7 +254,7 @@ proc matchSym(c: PContext; candidate: PSym, n: PNode; m: var MatchCon): bool =
       m.inferred.setLen oldLen
       return false
 
-  if not matchReturnType(c, n[0].sym.typ[0], candidate.typ[0], m):
+  if not matchReturnType(c, n[0].sym.typ.returnType, candidate.typ.returnType, m):
     m.inferred.setLen oldLen
     return false
 
@@ -307,9 +309,9 @@ proc conceptMatchNode(c: PContext; n: PNode; m: var MatchCon): bool =
     # error was reported earlier.
     result = false
 
-proc conceptMatch*(c: PContext; concpt, arg: PType; bindings: var TIdTable; invocation: PType): bool =
+proc conceptMatch*(c: PContext; concpt, arg: PType; bindings: var LayeredIdTable; invocation: PType): bool =
   ## Entry point from sigmatch. 'concpt' is the concept we try to match (here still a PType but
-  ## we extract its AST via 'concpt.n.lastSon'). 'arg' is the type that might fullfill the
+  ## we extract its AST via 'concpt.n.lastSon'). 'arg' is the type that might fulfill the
   ## concept's requirements. If so, we return true and fill the 'bindings' with pairs of
   ## (typeVar, instance) pairs. ('typeVar' is usually simply written as a generic 'T'.)
   ## 'invocation' can be nil for atomic concepts. For non-atomic concepts, it contains the
@@ -326,16 +328,16 @@ proc conceptMatch*(c: PContext; concpt, arg: PType; bindings: var TIdTable; invo
           dest = existingBinding(m, dest)
           if dest == nil or dest.kind != tyGenericParam: break
         if dest != nil:
-          bindings.idTablePut(a, dest)
+          bindings.put(a, dest)
           when logBindings: echo "A bind ", a, " ", dest
       else:
-        bindings.idTablePut(a, b)
+        bindings.put(a, b)
         when logBindings: echo "B bind ", a, " ", b
     # we have a match, so bind 'arg' itself to 'concpt':
-    bindings.idTablePut(concpt, arg)
+    bindings.put(concpt, arg)
     # invocation != nil means we have a non-atomic concept:
-    if invocation != nil and arg.kind == tyGenericInst and invocation.len == arg.len-1:
+    if invocation != nil and arg.kind == tyGenericInst and invocation.kidsLen == arg.kidsLen-1:
       # bind even more generic parameters
       assert invocation.kind == tyGenericInvocation
-      for i in 1 ..< invocation.len:
-        bindings.idTablePut(invocation[i], arg[i])
+      for i in FirstGenericParamAt ..< invocation.kidsLen:
+        bindings.put(invocation[i], arg[i])

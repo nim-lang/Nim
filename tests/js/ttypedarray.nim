@@ -1,5 +1,5 @@
 discard """
-  matrix: "--jsbigint64:off; --jsbigint64:on"
+  matrix: "--jsbigint64:off -d:nimStringHash2; --jsbigint64:on"
 """
 
 import std/private/jsutils

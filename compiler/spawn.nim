@@ -16,7 +16,7 @@ from trees import getMagic, getRoot
 proc callProc(a: PNode): PNode =
   result = newNodeI(nkCall, a.info)
   result.add a
-  result.typ = a.typ[0]
+  result.typ = a.typ.returnType
 
 # we have 4 cases to consider:
 # - a void proc --> nothing to do
@@ -50,7 +50,7 @@ proc typeNeedsNoDeepCopy(t: PType): bool =
   # note that seq[T] is fine, but 'var seq[T]' is not, so we need to skip 'var'
   # for the stricter check and likewise we can skip 'seq' for a less
   # strict check:
-  if t.kind in {tyVar, tyLent, tySequence}: t = t.lastSon
+  if t.kind in {tyVar, tyLent, tySequence}: t = t.elementType
   result = not containsGarbageCollectedRef(t)
 
 proc addLocalVar(g: ModuleGraph; varSection, varInit: PNode; idgen: IdGenerator; owner: PSym; typ: PType;
@@ -109,6 +109,16 @@ stmtList:
 
 """
 
+proc castToVoidPointer(g: ModuleGraph, n: PNode, fvField: PNode): PNode =
+  if g.config.backend == backendCpp:
+    result = fvField
+  else:
+    let ptrType = getSysType(g, n.info, tyPointer)
+    result = newNodeI(nkCast, fvField.info)
+    result.add newNodeI(nkEmpty, fvField.info)
+    result.add fvField
+    result.typ = ptrType
+
 proc createWrapperProc(g: ModuleGraph; f: PNode; threadParam, argsParam: PSym;
                        varSection, varInit, call, barrier, fv: PNode;
                        idgen: IdGenerator;
@@ -141,10 +151,10 @@ proc createWrapperProc(g: ModuleGraph; f: PNode; threadParam, argsParam: PSym;
   if spawnKind == srByVar:
     body.add newAsgnStmt(genDeref(threadLocalProm.newSymNode), call)
   elif fv != nil:
-    let fk = flowVarKind(g.config, fv.typ[1])
+    let fk = flowVarKind(g.config, fv.typ.firstGenericParam)
     if fk == fvInvalid:
       localError(g.config, f.info, "cannot create a flowVar of type: " &
-        typeToString(fv.typ[1]))
+        typeToString(fv.typ.firstGenericParam))
     body.add newAsgnStmt(indirectAccess(threadLocalProm.newSymNode,
       if fk == fvGC: "data" else: "blob", fv.info, g.cache), call)
     if fk == fvGC:
@@ -156,8 +166,9 @@ proc createWrapperProc(g: ModuleGraph; f: PNode; threadParam, argsParam: PSym;
     if barrier == nil:
       # by now 'fv' is shared and thus might have beeen overwritten! we need
       # to use the thread-local view instead:
+      let castExpr = castToVoidPointer(g, f, threadLocalProm.newSymNode)
       body.add callCodegenProc(g, "nimFlowVarSignal", threadLocalProm.info,
-        threadLocalProm.newSymNode)
+        castExpr)
   else:
     body.add call
   if barrier != nil:
@@ -193,7 +204,7 @@ proc createCastExpr(argsParam: PSym; objType: PType; idgen: IdGenerator): PNode 
   result.typ.rawAddSon(objType)
 
 template checkMagicProcs(g: ModuleGraph, n: PNode, formal: PNode) =
-  if (formal.typ.kind == tyVarargs and formal.typ[0].kind in {tyTyped, tyUntyped}) or
+  if (formal.typ.kind == tyVarargs and formal.typ.elementType.kind in {tyTyped, tyUntyped}) or
           formal.typ.kind in {tyTyped, tyUntyped}:
     localError(g.config, n.info, "'spawn'ed function cannot have a 'typed' or 'untyped' parameter")
 
@@ -413,7 +424,8 @@ proc wrapProcForSpawn*(g: ModuleGraph; idgen: IdGenerator; owner: PSym; spawnExp
     # create flowVar:
     result.add newFastAsgnStmt(fvField, callProc(spawnExpr[^1]))
     if barrier == nil:
-      result.add callCodegenProc(g, "nimFlowVarCreateSemaphore", fvField.info, fvField)
+      let castExpr = castToVoidPointer(g, n, fvField)
+      result.add callCodegenProc(g, "nimFlowVarCreateSemaphore", fvField.info, castExpr)
 
   elif spawnKind == srByVar:
     var field = newSym(skField, getIdent(g.cache, "fv"), idgen, owner, n.info, g.config.options)

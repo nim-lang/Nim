@@ -157,6 +157,7 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimAllowNonVarDestructor")
   defineSymbol("nimHasQuirky")
   defineSymbol("nimHasEnsureMove")
+  defineSymbol("nimHasNoReturnError")
 
   defineSymbol("nimUseStrictDefs")
   defineSymbol("nimHasNolineTooLong")
@@ -165,3 +166,6 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimHasWarnStdPrefix")
 
   defineSymbol("nimHasVtables")
+  defineSymbol("nimHasGenericsOpenSym2")
+  defineSymbol("nimHasGenericsOpenSym3")
+  defineSymbol("nimHasJsNoLambdaLifting")

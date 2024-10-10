@@ -562,7 +562,7 @@ proc main() =
     doAssert &"""{(if true: "'" & "'" & ')' else: "")}""" == "'')"
     doAssert &"{(if true: \"\'\" & \"'\" & ')' else: \"\")}" == "'')"
     doAssert fmt"""{(if true: "'" & ')' else: "")}""" == "')"
-  
+
   block: # issue #20381
     var ss: seq[string]
     template myTemplate(s: string) =
@@ -572,6 +572,19 @@ proc main() =
       myTemplate fmt"hello"
     foo()
     doAssert ss == @["hello", "hello"]
+
+  block:
+    proc noraises() {.raises: [].} =
+      const
+        flt = 0.0
+        str = "str"
+
+      doAssert fmt"{flt} {str}" == "0.0 str"
+
+    noraises()
+
+  block:
+    doAssert not compiles(fmt"{formatting errors detected at compile time")
 
 static: main()
 main()

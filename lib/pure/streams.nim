@@ -15,6 +15,11 @@
 ## Other modules may provide other implementations for this standard
 ## stream interface.
 ##
+## .. warning:: Due to the use of `pointer`, the `readData`, `peekData` and
+## `writeData` interfaces are not available on the compile-time VM, and must
+## be cast from a `ptr string` on the JS backend. However, `readDataStr` is
+## available generally in place of `readData`.
+##
 ## Basic usage
 ## ===========
 ##
@@ -938,10 +943,14 @@ proc peekFloat64*(s: Stream): float64 =
 
 proc readStrPrivate(s: Stream, length: int, str: var string) =
   if length > len(str): setLen(str, length)
-  when defined(js):
-    let L = readData(s, addr(str), length)
+  var L: int
+  when nimvm:
+    L = readDataStr(s, str, 0..length-1)
   else:
-    let L = readData(s, cstring(str), length)
+    when defined(js):
+      L = readData(s, addr(str), length)
+    else:
+      L = readData(s, cstring(str), length)
   if L != len(str): setLen(str, L)
 
 proc readStr*(s: Stream, length: int, str: var string) {.since: (1, 3).} =

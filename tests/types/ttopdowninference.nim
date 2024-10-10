@@ -325,3 +325,9 @@ block: # bug #22180
         else:
           (ref A)(nil)
   doAssert y.isNil
+
+block: # issue #24164, related regression
+  proc foo(x: proc ()) = discard
+  template bar(x: untyped = nil) =
+    foo(x)
+  bar()

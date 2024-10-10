@@ -18,10 +18,10 @@ import
   evaltempl, patterns, parampatterns, sempass2, linter, semmacrosanity,
   lowerings, plugins/active, lineinfos, int128,
   isolation_check, typeallowed, modulegraphs, enumtostr, concepts, astmsgs,
-  extccomp
+  extccomp, layeredtable
 
 import vtables
-import std/[strtabs, math, tables, intsets, strutils]
+import std/[strtabs, math, tables, intsets, strutils, packedsets]
 
 when not defined(leanCompiler):
   import spawn
@@ -89,6 +89,11 @@ proc fitNodePostMatch(c: PContext, formal: PType, arg: PNode): PNode =
     changeType(c, x, formal, check=true)
   result = arg
   result = skipHiddenSubConv(result, c.graph, c.idgen)
+  # mark inserted converter as used:
+  var a = result
+  if a.kind == nkHiddenDeref: a = a[0]
+  if a.kind == nkHiddenCallConv and a[0].kind == nkSym:
+    markUsed(c, a.info, a[0].sym)
 
 
 proc fitNode(c: PContext, formal: PType, arg: PNode; info: TLineInfo): PNode =
@@ -103,7 +108,7 @@ proc fitNode(c: PContext, formal: PType, arg: PNode; info: TLineInfo): PNode =
     result = nil
     for ch in arg:
       if sameType(ch.typ, formal):
-        return getConstExpr(c.module, ch, c.idgen, c.graph)
+        return ch
     typeMismatch(c.config, info, formal, arg.typ, arg)
   else:
     result = indexTypesMatch(c, formal, arg.typ, arg)
@@ -144,7 +149,7 @@ proc commonType*(c: PContext; x, y: PType): PType =
   elif b.kind == tyTyped: result = b
   elif a.kind == tyTypeDesc:
     # turn any concrete typedesc into the abstract typedesc type
-    if a.len == 0: result = a
+    if not a.hasElementType: result = a
     else:
       result = newType(tyTypeDesc, c.idgen, a.owner)
       rawAddSon(result, newType(tyNone, c.idgen, a.owner))
@@ -153,17 +158,17 @@ proc commonType*(c: PContext; x, y: PType): PType =
     # check for seq[empty] vs. seq[int]
     let idx = ord(b.kind == tyArray)
     if a[idx].kind == tyEmpty: return y
-  elif a.kind == tyTuple and b.kind == tyTuple and a.len == b.len:
+  elif a.kind == tyTuple and b.kind == tyTuple and sameTupleLengths(a, b):
     var nt: PType = nil
-    for i in 0..<a.len:
-      let aEmpty = isEmptyContainer(a[i])
-      let bEmpty = isEmptyContainer(b[i])
+    for i, aa, bb in tupleTypePairs(a, b):
+      let aEmpty = isEmptyContainer(aa)
+      let bEmpty = isEmptyContainer(bb)
       if aEmpty != bEmpty:
         if nt.isNil:
           nt = copyType(a, c.idgen, a.owner)
           copyTypeProps(c.graph, c.idgen.module, nt, a)
 
-        nt[i] = if aEmpty: b[i] else: a[i]
+        nt[i] = if aEmpty: bb else: aa
     if not nt.isNil: result = nt
     #elif b[idx].kind == tyEmpty: return x
   elif a.kind == tyRange and b.kind == tyRange:
@@ -196,8 +201,8 @@ proc commonType*(c: PContext; x, y: PType): PType =
       k = a.kind
       if b.kind != a.kind: return x
       # bug #7601, array construction of ptr generic
-      a = a.lastSon.skipTypes({tyGenericInst})
-      b = b.lastSon.skipTypes({tyGenericInst})
+      a = a.elementType.skipTypes({tyGenericInst})
+      b = b.elementType.skipTypes({tyGenericInst})
     if a.kind == tyObject and b.kind == tyObject:
       result = commonSuperclass(a, b)
       # this will trigger an error later:
@@ -222,66 +227,7 @@ proc shouldCheckCaseCovered(caseTyp: PType): bool =
   else:
     discard
 
-proc endsInNoReturn(n: PNode): bool =
-  ## check if expr ends the block like raising or call of noreturn procs do
-  result = false # assume it does return
-
-  template checkBranch(branch) =
-    if not endsInNoReturn(branch):
-      # proved a branch returns
-      return false
-
-  var it = n
-  # skip these beforehand, no special handling needed
-  while it.kind in {nkStmtList, nkStmtListExpr} and it.len > 0:
-    it = it.lastSon
-
-  case it.kind
-  of nkIfStmt:
-    var hasElse = false
-    for branch in it:
-      checkBranch:
-        if branch.len == 2:
-          branch[1]
-        elif branch.len == 1:
-          hasElse = true
-          branch[0]
-        else:
-          raiseAssert "Malformed `if` statement during endsInNoReturn"
-    # none of the branches returned
-    result = hasElse # Only truly a no-return when it's exhaustive
-  of nkCaseStmt:
-    let caseTyp = skipTypes(it[0].typ, abstractVar-{tyTypeDesc})
-    # semCase should already have checked for exhaustiveness in this case
-    # effectively the same as having an else
-    var hasElse = caseTyp.shouldCheckCaseCovered()
-
-    # actual noreturn checks
-    for i in 1 ..< it.len:
-      let branch = it[i]
-      checkBranch:
-        case branch.kind
-        of nkOfBranch:
-          branch[^1]
-        of nkElifBranch:
-          branch[1]
-        of nkElse:
-          hasElse = true
-          branch[0]
-        else:
-          raiseAssert "Malformed `case` statement in endsInNoReturn"
-    # Can only guarantee a noreturn if there is an else or it's exhaustive
-    result = hasElse
-  of nkTryStmt:
-    checkBranch(it[0])
-    for i in 1 ..< it.len:
-      let branch = it[i]
-      checkBranch(branch[^1])
-    # none of the branches returned
-    result = true
-  else:
-    result = it.kind in nkLastBlockStmts or
-      it.kind in nkCallKinds and it[0].kind == nkSym and sfNoReturn in it[0].sym.flags
+proc endsInNoReturn(n: PNode): bool
 
 proc commonType*(c: PContext; x: PType, y: PNode): PType =
   # ignore exception raising branches in case/if expressions
@@ -313,6 +259,8 @@ proc newSymG*(kind: TSymKind, n: PNode, c: PContext): PSym =
     result.owner = getCurrOwner(c)
   else:
     result = newSym(kind, considerQuotedIdent(c, n), c.idgen, getCurrOwner(c), n.info)
+    if find(result.name.s, '`') >= 0:
+      result.flags.incl sfWasGenSym
   #if kind in {skForVar, skLet, skVar} and result.owner.kind == skModule:
   #  incl(result.flags, sfGlobal)
   when defined(nimsuggest):
@@ -322,7 +270,7 @@ proc semIdentVis(c: PContext, kind: TSymKind, n: PNode,
                  allowed: TSymFlags): PSym
   # identifier with visibility
 proc semIdentWithPragma(c: PContext, kind: TSymKind, n: PNode,
-                        allowed: TSymFlags): PSym
+                        allowed: TSymFlags, fromTopLevel = false): PSym
 
 proc typeAllowedCheck(c: PContext; info: TLineInfo; typ: PType; kind: TSymKind;
                       flags: TTypeAllowedFlags = {}) =
@@ -498,15 +446,15 @@ proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
   c.friendModules.add(s.owner.getModule)
   result = macroResult
   resetSemFlag result
-  if s.typ[0] == nil:
+  if s.typ.returnType == nil:
     result = semStmt(c, result, flags)
   else:
-    var retType = s.typ[0]
+    var retType = s.typ.returnType
     if retType.kind == tyTypeDesc and tfUnresolved in retType.flags and
-        retType.len == 1:
+        retType.hasElementType:
       # bug #11941: template fails(T: type X, v: auto): T
       # does not mean we expect a tyTypeDesc.
-      retType = retType[0]
+      retType = retType.skipModifier
     case retType.kind
     of tyUntyped, tyAnything:
       # Not expecting a type here allows templates like in ``tmodulealias.in``.
@@ -530,7 +478,7 @@ proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
         # e.g. template foo(T: typedesc): seq[T]
         # We will instantiate the return type here, because
         # we now know the supplied arguments
-        var paramTypes = initIdTable()
+        var paramTypes = initLayeredTypeMap()
         for param, value in genericParamsInMacroCall(s, call):
           var givenType = value.typ
           # the sym nodes used for the supplied generic arguments for
@@ -538,7 +486,7 @@ proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
           # in this case, get the type directly from the sym
           if givenType == nil and value.kind == nkSym and value.sym.typ != nil:
             givenType = value.sym.typ
-          idTablePut(paramTypes, param.typ, givenType)
+          put(paramTypes, param.typ, givenType)
 
         retType = generateTypeInstance(c, paramTypes,
                                        macroResult.info, retType)
@@ -548,13 +496,12 @@ proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
       else:
         result = semExpr(c, result, flags, expectedType)
         result = fitNode(c, retType, result, result.info)
-      #globalError(s.info, errInvalidParamKindX, typeToString(s.typ[0]))
+      #globalError(s.info, errInvalidParamKindX, typeToString(s.typ.returnType))
   dec(c.config.evalTemplateCounter)
   discard c.friendModules.pop()
 
 const
   errMissingGenericParamsForTemplate = "'$1' has unspecified generic parameters"
-  errFloatToString = "cannot convert '$1' to '$2'"
 
 proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
                   flags: TExprFlags = {}; expectedType: PType = nil): PNode =
@@ -708,7 +655,8 @@ proc defaultFieldsForTheUninitialized(c: PContext, recNode: PNode, checkDefault:
 
 proc defaultNodeField(c: PContext, a: PNode, aTyp: PType, checkDefault: bool): PNode =
   let aTypSkip = aTyp.skipTypes(defaultFieldsSkipTypes)
-  if aTypSkip.kind == tyObject:
+  case aTypSkip.kind
+  of tyObject:
     let child = defaultFieldsForTheUninitialized(c, aTypSkip.n, checkDefault)
     if child.len > 0:
       var asgnExpr = newTree(nkObjConstr, newNodeIT(nkType, a.info, aTyp))
@@ -717,7 +665,7 @@ proc defaultNodeField(c: PContext, a: PNode, aTyp: PType, checkDefault: bool): P
       result = semExpr(c, asgnExpr)
     else:
       result = nil
-  elif aTypSkip.kind == tyArray:
+  of tyArray:
     let child = defaultNodeField(c, a, aTypSkip[1], checkDefault)
 
     if child != nil:
@@ -730,7 +678,7 @@ proc defaultNodeField(c: PContext, a: PNode, aTyp: PType, checkDefault: bool): P
       result.typ = aTyp
     else:
       result = nil
-  elif aTypSkip.kind == tyTuple:
+  of tyTuple:
     var hasDefault = false
     if aTypSkip.n != nil:
       let children = defaultFieldsForTuple(c, aTypSkip.n, hasDefault, checkDefault)
@@ -741,6 +689,11 @@ proc defaultNodeField(c: PContext, a: PNode, aTyp: PType, checkDefault: bool): P
         result = semExpr(c, result)
       else:
         result = nil
+    else:
+      result = nil
+  of tyRange:
+    if c.graph.config.isDefined("nimPreviewRangeDefault"):
+      result = firstRange(c.config, aTypSkip)
     else:
       result = nil
   else:
@@ -779,6 +732,7 @@ proc preparePContext*(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PCo
   result.semOverloadedCall = semOverloadedCall
   result.semInferredLambda = semInferredLambda
   result.semGenerateInstance = generateInstance
+  result.instantiateOnlyProcType = instantiateOnlyProcType
   result.semTypeNode = semTypeNode
   result.instTypeBoundOp = sigmatch.instTypeBoundOp
   result.hasUnresolvedArgs = hasUnresolvedArgs

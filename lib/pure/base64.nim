@@ -73,7 +73,7 @@ const
 const
   invalidChar = 255
 
-template encodeSize(size: int): int = (size * 4 div 3) + 6
+template encodeSize(size: int): int = (size div 3 + size) + 6
 
 template encodeInternal(s, alphabet: typed): untyped =
   ## encodes `s` into base64 representation.
@@ -244,7 +244,7 @@ proc decode*(s: string): string =
     inputLen = s.len
     inputEnds = 0
   # strip trailing characters
-  while s[inputLen - 1] in {'\n', '\r', ' ', '='}:
+  while inputLen > 0 and s[inputLen - 1] in {'\n', '\r', ' ', '='}:
     dec inputLen
   # hot loop: read 4 characters at at time
   inputEnds = inputLen - 4

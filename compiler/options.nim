@@ -25,7 +25,7 @@ const
   useEffectSystem* = true
   useWriteTracking* = false
   hasFFI* = defined(nimHasLibFFI)
-  copyrightYear* = "2023"
+  copyrightYear* = "2024"
 
   nimEnableCovariance* = defined(nimEnableCovariance)
 
@@ -86,6 +86,7 @@ type                          # please make sure we have under 32 options
                               # also: generate header file
     optIdeDebug               # idetools: debug mode
     optIdeTerse               # idetools: use terse descriptions
+    optIdeExceptionInlayHints
     optExcessiveStackTrace    # fully qualified module filenames
     optShowAllMismatches      # show all overloading resolution candidates
     optWholeProject           # for 'doc': output any dependency
@@ -138,7 +139,6 @@ type
     backendCpp = "cpp"
     backendJs = "js"
     backendObjc = "objc"
-    backendNir = "nir"
     # backendNimscript = "nimscript" # this could actually work
     # backendLlvm = "llvm" # probably not well supported; was cmdCompileToLLVM
 
@@ -146,7 +146,6 @@ type
     cmdNone # not yet processed command
     cmdUnknown # command unmapped
     cmdCompileToC, cmdCompileToCpp, cmdCompileToOC, cmdCompileToJS,
-    cmdCompileToNir,
     cmdCrun # compile and run in nimache
     cmdTcc # run the project via TCC backend
     cmdCheck # semantic checking for whole project
@@ -175,12 +174,11 @@ type
 
 const
   cmdBackends* = {cmdCompileToC, cmdCompileToCpp, cmdCompileToOC,
-                  cmdCompileToJS, cmdCrun, cmdCompileToNir}
+                  cmdCompileToJS, cmdCrun}
   cmdDocLike* = {cmdDoc0, cmdDoc, cmdDoc2tex, cmdJsondoc0, cmdJsondoc,
                  cmdCtags, cmdBuildindex}
 
 type
-  NimVer* = tuple[major: int, minor: int, patch: int]
   TStringSeq* = seq[string]
   TGCMode* = enum             # the selected GC
     gcUnselected = "unselected"
@@ -227,6 +225,9 @@ type
     strictDefs,
     strictCaseObjects,
     inferGenericTypes,
+    openSym, # remove nfDisabledOpenSym when this is default
+    # alternative to above:
+    genericsOpenSym
     vtables
 
   LegacyFeature* = enum
@@ -244,13 +245,15 @@ type
     emitGenerics
       ## generics are emitted in the module that contains them.
       ## Useful for libraries that rely on local passC
+    jsNoLambdaLifting
+      ## Old transformation for closures in JS backend
 
   SymbolFilesOption* = enum
     disabledSf, writeOnlySf, readOnlySf, v2Sf, stressTest
 
   TSystemCC* = enum
     ccNone, ccGcc, ccNintendoSwitch, ccLLVM_Gcc, ccCLang, ccBcc, ccVcc,
-    ccTcc, ccEnv, ccIcl, ccIcc, ccClangCl
+    ccTcc, ccEnv, ccIcl, ccIcc, ccClangCl, ccHipcc, ccNvcc
 
   ExceptionSystem* = enum
     excNone,   # no exception system selected yet
@@ -297,6 +300,7 @@ type
   SuggestInlayHintKind* = enum
     sihkType = "Type",
     sihkParameter = "Parameter"
+    sihkException = "Exception"
 
   SuggestInlayHint* = ref object
     kind*: SuggestInlayHintKind
@@ -365,7 +369,6 @@ type
     arguments*: string ## the arguments to be passed to the program that
                        ## should be run
     ideCmd*: IdeCmd
-    oldNewlines*: bool
     cCompiler*: TSystemCC # the used compiler
     modifiedyNotes*: TNoteKinds # notes that have been set/unset from either cmdline/configs
     cmdlineNotes*: TNoteKinds # notes that have been set/unset from cmdline
@@ -392,8 +395,7 @@ type
     outDir*: AbsoluteDir
     jsonBuildFile*: AbsoluteFile
     prefixDir*, libpath*, nimcacheDir*: AbsoluteDir
-    nimStdlibVersion*: NimVer
-    dllOverrides, moduleOverrides*, cfileSpecificOptions*: StringTableRef
+    dllOverrides*, moduleOverrides*, cfileSpecificOptions*: StringTableRef
     projectName*: string # holds a name like 'nim'
     projectPath*: AbsoluteDir # holds a path like /home/alice/projects/nim/compiler/
     projectFull*: AbsoluteFile # projectPath/projectName
@@ -405,7 +407,6 @@ type
     commandArgs*: seq[string] # any arguments after the main command
     commandLine*: string
     extraCmds*: seq[string] # for writeJsonBuildInstructions
-    keepComments*: bool # whether the parser needs to keep comments
     implicitImports*: seq[string] # modules that are to be implicitly imported
     implicitIncludes*: seq[string] # modules that are to be implicitly included
     docSeeSrcUrl*: string # if empty, no seeSrc will be generated. \
@@ -446,16 +447,6 @@ type
     clientProcessId*: int
 
 
-proc parseNimVersion*(a: string): NimVer =
-  # could be moved somewhere reusable
-  result = default(NimVer)
-  if a.len > 0:
-    let b = a.split(".")
-    assert b.len == 3, a
-    template fn(i) = result[i] = b[i].parseInt # could be optimized if needed
-    fn(0)
-    fn(1)
-    fn(2)
 
 proc assignIfDefault*[T](result: var T, val: T, def = default(T)) =
   ## if `result` was already assigned to a value (that wasn't `def`), this is a noop.
@@ -589,7 +580,6 @@ proc newConfigRef*(): ConfigRef =
     command: "", # the main command (e.g. cc, check, scan, etc)
     commandArgs: @[], # any arguments after the main command
     commandLine: "",
-    keepComments: true, # whether the parser needs to keep comments
     implicitImports: @[], # modules that are to be implicitly imported
     implicitIncludes: @[], # modules that are to be implicitly included
     docSeeSrcUrl: "",
@@ -629,12 +619,6 @@ proc newPartialConfigRef*(): ConfigRef =
 
 proc cppDefine*(c: ConfigRef; define: string) =
   c.cppDefines.incl define
-
-proc getStdlibVersion*(conf: ConfigRef): NimVer =
-  if conf.nimStdlibVersion == (0,0,0):
-    let s = conf.symbols.getOrDefault("nimVersion", "")
-    conf.nimStdlibVersion = s.parseNimVersion
-  result = conf.nimStdlibVersion
 
 proc isDefined*(conf: ConfigRef; symbol: string): bool =
   if conf.symbols.hasKey(symbol):

@@ -5,13 +5,14 @@ import sem, cgen, modulegraphs, ast, llstream, parser, msgs,
 
 import pipelineutils
 
+import ../dist/checksums/src/checksums/sha1
+
 when not defined(leanCompiler):
   import jsgen, docgen2
 
-import std/[syncio, objectdollar, assertions, tables, strutils]
+import std/[syncio, objectdollar, assertions, tables, strutils, strtabs]
 import renderer
 import ic/replayer
-import nir/nir
 
 proc setPipeLinePass*(graph: ModuleGraph; pass: PipelinePass) =
   graph.pipelinePass = pass
@@ -43,16 +44,11 @@ proc processPipeline(graph: ModuleGraph; semNode: PNode; bModule: PPassContext):
       result = nil
   of EvalPass, InterpreterPass:
     result = interpreterCode(bModule, semNode)
-  of NirReplPass:
-    result = runCode(bModule, semNode)
-  of NirPass:
-    result = nirBackend(bModule, semNode)
   of NonePass:
     raiseAssert "use setPipeLinePass to set a proper PipelinePass"
 
-proc processImplicitImports(graph: ModuleGraph; implicits: seq[string], nodeKind: TNodeKind,
-                      m: PSym, ctx: PContext, bModule: PPassContext, idgen: IdGenerator,
-                      ) =
+proc processImplicitImports*(graph: ModuleGraph; implicits: seq[string], nodeKind: TNodeKind,
+                             m: PSym, ctx: PContext, bModule: PPassContext, idgen: IdGenerator) =
   # XXX fixme this should actually be relative to the config file!
   let relativeTo = toFullPath(graph.config, m.info)
   for module in items(implicits):
@@ -67,7 +63,7 @@ proc processImplicitImports(graph: ModuleGraph; implicits: seq[string], nodeKind
       if semNode == nil or processPipeline(graph, semNode, bModule) == nil:
         break
 
-proc prePass(c: PContext; n: PNode) =
+proc prePass*(c: PContext; n: PNode) =
   for son in n:
     if son.kind == nkPragma:
       for s in son:
@@ -99,7 +95,7 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
                     stream: PLLStream): bool =
   if graph.stopCompile(): return true
   var
-    p: Parser
+    p: Parser = default(Parser)
     s: PLLStream
     fileIdx = module.fileIdx
 
@@ -109,8 +105,6 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
     case graph.pipelinePass
     of CgenPass:
       setupCgen(graph, module, idgen)
-    of NirPass:
-      openNirBackend(graph, module, idgen)
     of JSgenPass:
       when not defined(leanCompiler):
         setupJSgen(graph, module, idgen)
@@ -118,8 +112,6 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
         nil
     of EvalPass, InterpreterPass:
       setupEvalGen(graph, module, idgen)
-    of NirReplPass:
-      setupNirReplGen(graph, module, idgen)
     of GenDependPass:
       setupDependPass(graph, module, idgen)
     of Docgen2Pass:
@@ -196,7 +188,7 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
       if graph.dispatchers.len > 0:
         let ctx = preparePContext(graph, module, idgen)
         for disp in getDispatchers(graph):
-          let retTyp = disp.typ[0]
+          let retTyp = disp.typ.returnType
           if retTyp != nil:
             # TODO: properly semcheck the code of dispatcher?
             createTypeBoundOps(graph, ctx, retTyp, disp.ast.info, idgen)
@@ -207,10 +199,6 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
       discard finalJSCodeGen(graph, bModule, finalNode)
   of EvalPass, InterpreterPass:
     discard interpreterCode(bModule, finalNode)
-  of NirReplPass:
-    discard runCode(bModule, finalNode)
-  of NirPass:
-    closeNirBackend(bModule, finalNode)
   of SemPass, GenDependPass:
     discard
   of Docgen2Pass, Docgen2TexPass:
@@ -244,7 +232,10 @@ proc compilePipelineModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymF
   if result == nil:
     var cachedModules: seq[FileIndex] = @[]
     result = moduleFromRodFile(graph, fileIdx, cachedModules)
-    let filename = AbsoluteFile toFullPath(graph.config, fileIdx)
+    let path = toFullPath(graph.config, fileIdx)
+    let filename = AbsoluteFile path
+    if fileExists(filename): # it could be a stdinfile
+      graph.cachedFiles[path] = $secureHashFile(path)
     if result == nil:
       result = newModule(graph, fileIdx)
       result.flags.incl flags

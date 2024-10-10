@@ -1063,7 +1063,7 @@ proc pleViaModel(model: TModel; aa, bb: PNode): TImplication =
       let b = fact[2]
       if a.kind == nkSym: replacements.add((a,b))
       else: replacements.add((b,a))
-  var m: TModel
+  var m = TModel()
   var a = aa
   var b = bb
   if replacements.len > 0:

@@ -314,21 +314,21 @@ func capture*(a: Peg = Peg(kind: pkEmpty)): Peg {.rtl, extern: "npegsCapture".} 
 func backref*(index: range[1..MaxSubpatterns], reverse: bool = false): Peg {.
   rtl, extern: "npegs$1".} =
   ## constructs a back reference of the given `index`. `index` starts counting
-  ## from 1. `reverse` specifies wether indexing starts from the end of the
+  ## from 1. `reverse` specifies whether indexing starts from the end of the
   ## capture list.
   result = Peg(kind: pkBackRef, index: (if reverse: -index else: index - 1))
 
 func backrefIgnoreCase*(index: range[1..MaxSubpatterns], reverse: bool = false): Peg {.
   rtl, extern: "npegs$1".} =
   ## constructs a back reference of the given `index`. `index` starts counting
-  ## from 1. `reverse` specifies wether indexing starts from the end of the
+  ## from 1. `reverse` specifies whether indexing starts from the end of the
   ## capture list. Ignores case for matching.
   result = Peg(kind: pkBackRefIgnoreCase, index: (if reverse: -index else: index - 1))
 
 func backrefIgnoreStyle*(index: range[1..MaxSubpatterns], reverse: bool = false): Peg {.
   rtl, extern: "npegs$1".} =
   ## constructs a back reference of the given `index`. `index` starts counting
-  ## from 1. `reverse` specifies wether indexing starts from the end of the
+  ## from 1. `reverse` specifies whether indexing starts from the end of the
   ## capture list. Ignores style for matching.
   result = Peg(kind: pkBackRefIgnoreStyle, index: (if reverse: -index else: index - 1))
 
@@ -1047,7 +1047,7 @@ template eventParser*(pegAst, handlers: untyped): (proc(s: string): int) =
           `enter hdPostf`(s, pegNode, start)
         else:
           discard
-      let hdPostf = ident(substr(strVal(pegKind), 2))
+      let hdPostf = ident(substr($pegKind, 2))
       getAst(mkDoEnter(hdPostf, s, pegNode, start))
 
     macro leave(pegKind, s, pegNode, start, length: untyped): untyped =
@@ -1058,7 +1058,7 @@ template eventParser*(pegAst, handlers: untyped): (proc(s: string): int) =
           `leave hdPostf`(s, pegNode, start, length)
         else:
           discard
-      let hdPostf = ident(substr(strVal(pegKind), 2))
+      let hdPostf = ident(substr($pegKind, 2))
       getAst(mkDoLeave(hdPostf, s, pegNode, start, length))
 
     matchOrParse(parseIt)
@@ -1198,7 +1198,7 @@ template `=~`*(s: string, pattern: Peg): bool =
   ##   ```
   bind MaxSubpatterns
   when not declaredInScope(matches):
-    var matches {.inject.}: array[0..MaxSubpatterns-1, string]
+    var matches {.inject.} = default(array[0..MaxSubpatterns-1, string])
   match(s, pattern, matches)
 
 # ------------------------- more string handling ------------------------------

@@ -732,3 +732,11 @@ type
 
 doAssert sizeof(PackedUnion) == 11
 doAssert alignof(PackedUnion) == 1
+
+# bug #22553
+type
+  ChunkObj = object
+    data: UncheckedArray[byte]
+
+doAssert sizeof(ChunkObj) == 1
+doAssert offsetOf(ChunkObj, data) == 1

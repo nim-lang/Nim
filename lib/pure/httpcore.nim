@@ -22,7 +22,7 @@ type
   HttpHeaderValues* = distinct seq[string]
 
   # The range starts at '0' so that we don't have to explicitly initialise
-  # it. See: http://irclogs.nim-lang.org/19-09-2016.html#19:48:27 for context.
+  # it. See: https://irclogs.nim-lang.org/19-09-2016.html#19:48:27 for context.
   HttpCode* = distinct range[0 .. 599]
 
   HttpVersion* = enum
@@ -164,7 +164,8 @@ func `[]`*(headers: HttpHeaders, key: string): HttpHeaderValues =
   ## To access multiple values of a key, use the overloaded `[]` below or
   ## to get all of them access the `table` field directly.
   {.cast(noSideEffect).}:
-    return headers.table[headers.toCaseInsensitive(key)].HttpHeaderValues
+    let tmp = headers.table[headers.toCaseInsensitive(key)]
+    return HttpHeaderValues(tmp)
 
 converter toString*(values: HttpHeaderValues): string =
   return seq[string](values)[0]

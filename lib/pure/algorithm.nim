@@ -387,7 +387,7 @@ func sort*[T](a: var openArray[T],
   ##   ```
   ##
   ## You can inline adhoc comparison procs with the `do notation
-  ## <manual_experimental.html#do-notation>`_. Example:
+  ## <manual.html#procedures-do-notation>`_. Example:
   ##
   ##   ```nim
   ##   people.sort do (x, y: Person) -> int:
@@ -757,7 +757,7 @@ proc prevPermutation*[T](x: var openArray[T]): bool {.discardable.} =
 
 proc rotateInternal[T](arg: var openArray[T]; first, middle, last: int): int =
   ## A port of std::rotate from C++.
-  ## Ported from [this reference](http://www.cplusplus.com/reference/algorithm/rotate/).
+  ## Ported from [this reference](https://www.cplusplus.com/reference/algorithm/rotate/).
   result = first + last - middle
 
   if first == middle or middle == last:

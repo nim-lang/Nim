@@ -97,7 +97,7 @@ import std/nativesockets
 import std/[os, strutils, times, sets, options, monotimes]
 import std/ssl_config
 export nativesockets.Port, nativesockets.`$`, nativesockets.`==`
-export Domain, SockType, Protocol
+export Domain, SockType, Protocol, IPPROTO_NONE
 
 const useWinVersion = defined(windows) or defined(nimdoc)
 const useNimNetLite = defined(nimNetLite) or defined(freertos) or defined(zephyr) or
@@ -598,7 +598,7 @@ when defineSsl:
       ctx.referencedData.incl(index)
     GC_ref(data)
 
-  # http://simplestcodings.blogspot.co.uk/2010/08/secure-server-client-using-openssl-in-c.html
+  # https://simplestcodings.blogspot.co.uk/2010/08/secure-server-client-using-openssl-in-c.html
   proc loadCertificates(ctx: SslCtx, certFile, keyFile: string) =
     if certFile != "" and not fileExists(certFile):
       raise newException(system.IOError,
@@ -1321,7 +1321,7 @@ when defined(nimdoc) or (defined(posix) and not useNimNetLite):
     when not defined(nimdoc):
       var socketAddr = makeUnixAddr(path)
       if socket.fd.connect(cast[ptr SockAddr](addr socketAddr),
-          (sizeof(socketAddr.sun_family) + path.len).SockLen) != 0'i32:
+          (offsetOf(socketAddr, sun_path) + path.len + 1).SockLen) != 0'i32:
         raiseOSError(osLastError())
 
   proc bindUnix*(socket: Socket, path: string) =
@@ -1330,7 +1330,7 @@ when defined(nimdoc) or (defined(posix) and not useNimNetLite):
     when not defined(nimdoc):
       var socketAddr = makeUnixAddr(path)
       if socket.fd.bindAddr(cast[ptr SockAddr](addr socketAddr),
-          (sizeof(socketAddr.sun_family) + path.len).SockLen) != 0'i32:
+          (offsetOf(socketAddr, sun_path) + path.len + 1).SockLen) != 0'i32:
         raiseOSError(osLastError())
 
 when defineSsl:
@@ -2040,8 +2040,10 @@ proc dial*(address: string, port: Port,
   if success:
     result = newSocket(lastFd, domain, sockType, protocol, buffered)
   elif lastError != 0.OSErrorCode:
+    lastFd.close()
     raiseOSError(lastError)
   else:
+    lastFd.close()
     raise newException(IOError, "Couldn't resolve address: " & address)
 
 proc connect*(socket: Socket, address: string,

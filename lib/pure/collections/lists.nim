@@ -384,9 +384,7 @@ proc prependMoved*[T: SomeLinkedList](a, b: var T) {.since: (1, 5, 1).} =
     assert s == [0, 1, 0, 1, 0, 1]
 
   b.addMoved(a)
-  when defined(js): # XXX: swap broken in js; bug #16771
-    (b, a) = (a, b)
-  else: swap a, b
+  swap a, b
 
 proc add*[T](L: var SinglyLinkedList[T], n: SinglyLinkedNode[T]) {.inline.} =
   ## Appends (adds to the end) a node `n` to `L`. Efficiency: O(1).
@@ -983,6 +981,17 @@ func toSinglyLinkedList*[T](elems: openArray[T]): SinglyLinkedList[T] {.since: (
   for elem in elems.items:
     result.add(elem)
 
+func toSinglyLinkedRing*[T](elems: openArray[T]): SinglyLinkedRing[T] =
+  ## Creates a new `SinglyLinkedRing` from the members of `elems`.
+  runnableExamples:
+    from std/sequtils import toSeq
+    let a = [1, 2, 3, 4, 5].toSinglyLinkedRing
+    assert a.toSeq == [1, 2, 3, 4, 5]
+
+  result = initSinglyLinkedRing[T]()
+  for elem in elems.items:
+    result.add(elem)
+
 func toDoublyLinkedList*[T](elems: openArray[T]): DoublyLinkedList[T] {.since: (1, 5, 1).} =
   ## Creates a new `DoublyLinkedList` from the members of `elems`.
   runnableExamples:
@@ -991,5 +1000,16 @@ func toDoublyLinkedList*[T](elems: openArray[T]): DoublyLinkedList[T] {.since: (
     assert a.toSeq == [1, 2, 3, 4, 5]
 
   result = initDoublyLinkedList[T]()
+  for elem in elems.items:
+    result.add(elem)
+
+func toDoublyLinkedRing*[T](elems: openArray[T]): DoublyLinkedRing[T] =
+  ## Creates a new `DoublyLinkedRing` from the members of `elems`.
+  runnableExamples:
+    from std/sequtils import toSeq
+    let a = [1, 2, 3, 4, 5].toDoublyLinkedRing
+    assert a.toSeq == [1, 2, 3, 4, 5]
+
+  result = initDoublyLinkedRing[T]()
   for elem in elems.items:
     result.add(elem)
