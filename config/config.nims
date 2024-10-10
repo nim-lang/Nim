@@ -22,5 +22,5 @@ when defined(nimStrictMode):
 
 switch("define", "nimVersion:" & NimVersion) # deadcode
 
-when (NimMajor, NimMinor) >= (2, 0):
+when sizeof({0}) == sizeof(set[range[0..255]]):
   switch("warningAsError", "AboveMaxSizeSet")
