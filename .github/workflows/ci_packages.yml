@@ -5,6 +5,7 @@ on:
     branches:
       - 'devel'
       - 'version-2-0'
+      - 'version-20-staging'
       - 'version-1-6'
       - 'version-1-2'
 
