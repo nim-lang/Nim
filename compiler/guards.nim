@@ -110,10 +110,6 @@ proc neg(n: PNode; o: Operators): PNode =
     result = swapArgs(n, o.opLt)
   of mInSet:
     if n[1].kind != nkCurly: return nil
-    # use type of set rather than type of potential element
-    # `buildOf`, `buildElse` give the set a type but the RHS can
-    # lose type information somehow, probably the int node generation
-    # in this module
     let t = n[2].typ.skipTypes(abstractInst)
     result = newNodeI(nkCall, n.info, 3)
     result[0] = n[0]
