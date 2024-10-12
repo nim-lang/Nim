@@ -114,7 +114,7 @@ proc neg(n: PNode; o: Operators): PNode =
     # `buildOf`, `buildElse` give the set a type but the RHS can
     # lose type information somehow, probably the int node generation
     # in this module
-    let t = n[1].typ.skipTypes(abstractInst).elementType
+    let t = n[2].typ.skipTypes(abstractInst)
     result = newNodeI(nkCall, n.info, 3)
     result[0] = n[0]
     result[2] = n[2]
@@ -1169,8 +1169,12 @@ proc buildProperFieldCheck(access, check: PNode; o: Operators): PNode =
   if check[1].kind == nkCurly:
     result = copyTree(check)
     if access.kind == nkDotExpr:
+      # change the access to the discriminator field access
       var a = copyTree(access)
+      # set field name to discriminator field name
       a[1] = check[2]
+      # set discriminator field type: important for `neg`
+      a.typ = check[2].typ
       result[2] = a
       # 'access.kind != nkDotExpr' can happen for object constructors
       # which we don't check yet
