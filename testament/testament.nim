@@ -395,6 +395,7 @@ proc nimoutCheck(expected, given: TSpec): bool =
 
 proc cmpMsgs(r: var TResults, expected, given: TSpec, test: TTest,
              target: TTarget, extraOptions: string): bool =
+  # result has to be checked for retry
   if not checkForInlineErrors(expected, given) or
     (not expected.nimoutFull and not nimoutCheck(expected, given)):
       result = r.finishTestRetryable(test, target, extraOptions, expected.nimout & inlineErrorsMsgs(expected), given.nimout, reMsgsDiffer)
@@ -450,6 +451,7 @@ proc codegenCheck(test: TTest, target: TTarget, spec: TSpec, expectedMsg: var st
 
 proc compilerOutputTests(test: TTest, target: TTarget, extraOptions: string,
                          given: var TSpec, expected: TSpec; r: var TResults): bool =
+  # result has to be checked for retry
   var expectedmsg: string = ""
   var givenmsg: string = ""
   if given.err == reSuccess:
