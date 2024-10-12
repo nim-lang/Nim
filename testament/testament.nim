@@ -357,6 +357,9 @@ proc finishTestRetryable(r: var TResults, test: TTest, target: TTarget,
                          allowFailure = false, givenSpec: ptr TSpec = nil): bool =
   ## if test failed and has remaining retries, return `true`,
   ## otherwise calculate duration and report result
+  ## 
+  ## warning: if `true` is returned, then the result is not reported,
+  ## it has to be retried or `finishTest` should be called instead 
   result = false
   let duration = epochTime() - test.startTime
   let success = if test.spec.timeout > 0.0 and duration > test.spec.timeout: reTimeout
