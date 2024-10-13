@@ -52,7 +52,7 @@ proc genStringLiteralDataOnlyV1(m: BModule, s: string; result: var Rope) =
           res.addField(seqInit, name = "reserved"):
             res.add(cCast("NI", bitOr(cCast("NU", rope(s.len)), "NIM_STRLIT_FLAG")))
       res.addField(strInit, name = "data"):
-        result.add(makeCString(s))
+        res.add(makeCString(s))
   m.s[cfsStrData].add(res)
 
 proc genStringLiteralV1(m: BModule; n: PNode; result: var Rope) =
