@@ -501,7 +501,7 @@ proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
       if retType.kind == tyVoid:
         result = semStmt(c, result, flags)
       else:
-        result = semExpr(c, result, flags, expectedType)
+        result = semExpr(c, result, flags)
         result = fitNode(c, retType, result, result.info)
       #globalError(s.info, errInvalidParamKindX, typeToString(s.typ[0]))
   dec(c.config.evalTemplateCounter)
