@@ -17,10 +17,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: jiro4989/setup-nim-action@v2
+      - uses: jiro4989/setup-nim-action@v1
         with:
-          nim-version: devel
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          nim-version: 'devel'
 
       - uses: juancarlospaco/nimrun-action@nim
         if: |
