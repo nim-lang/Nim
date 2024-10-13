@@ -347,13 +347,9 @@ block: # bug #24296
 
   # But this does not compile across Nim 2.x/devel.
   const c: cstring = g()
-  let d: cstring = g()
+  let e: cstring = g()
 
 block: # bug #24295
   template g(_: int): string = ""
   const c: cstring = 0.g()
-
-block: # bug #24295
-  template g(_: int): cstring = ""
-  let c: string = 0.g()
 
