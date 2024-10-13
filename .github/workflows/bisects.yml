@@ -19,7 +19,7 @@ jobs:
 
       - uses: jiro4989/setup-nim-action@v2
         with:
-          nim-version: 'devel'
+          nim-version: devel
           repo-token: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: juancarlospaco/nimrun-action@nim
