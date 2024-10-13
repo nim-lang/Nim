@@ -22,4 +22,4 @@ proc cAddr(value: Snippet): Snippet =
   "&" & value
 
 proc bitOr(a, b: Snippet): Snippet =
-  a & " | " & b
+  "(" & a & " | " & b & ")"
