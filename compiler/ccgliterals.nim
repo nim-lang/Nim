@@ -65,7 +65,7 @@ proc genStringLiteralDataOnlyV2(m: BModule, s: string; result: Rope; isConst: bo
       res.addArrayField(name = "data", elementType = "NIM_CHAR", len = s.len + 1)
   do:
     var structInit: StructInitializer
-    res.addStructInitializer(structInit, orderCompliant = true):
+    res.addStructInitializer(structInit, kind = siOrderedStruct):
       res.addField(structInit, name = "cap"):
         res.add(bitOr(rope(s.len), "NIM_STRLIT_FLAG"))
       res.addField(structInit, name = "data"):

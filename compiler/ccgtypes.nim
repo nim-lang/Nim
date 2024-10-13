@@ -716,6 +716,7 @@ proc genRecordFieldsAux(m: BModule; n: PNode,
       else: internalError(m.config, "genRecordFieldsAux(record case branch)")
     if unionBody.len != 0:
       result.addAnonUnion:
+        # XXX this has to be a named field for NIFC
         result.add(unionBody)
   of nkSym:
     let field = n.sym

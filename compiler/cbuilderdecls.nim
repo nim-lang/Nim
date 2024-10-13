@@ -63,41 +63,55 @@ template addTypedef(builder: var Builder, name: string, typeBody: typed) =
   builder.add(name)
   builder.add(";\n")
 
-type StructInitializer = object
-  ## context for building struct initializers, i.e. `{ field1, field2 }`
-  # XXX use in genBracedInit
-  orderCompliant: bool
-    ## if true, fields will not be named, instead values are placed in order
-  needsComma: bool
+type
+  StructInitializerKind = enum
+    siOrderedStruct ## struct constructor, but without named fields on C
+    siNamedStruct ## struct constructor, with named fields i.e. C99 designated initializer
+    siArray ## array constructor
+    siWrapper ## wrapper for a single field, generates it verbatim
 
-proc initStructInitializer(builder: var Builder, orderCompliant: bool): StructInitializer =
+  StructInitializer = object
+    ## context for building struct initializers, i.e. `{ field1, field2 }`
+    kind: StructInitializerKind
+      ## if true, fields will not be named, instead values are placed in order
+    needsComma: bool
+
+proc initStructInitializer(builder: var Builder, kind: StructInitializerKind): StructInitializer =
   ## starts building a struct initializer, `orderCompliant = true` means
   ## built fields must be ordered correctly
-  doAssert orderCompliant, "named struct constructors unimplemented"
-  result = StructInitializer(orderCompliant: true, needsComma: false)
-  builder.add("{ ")
+  assert kind != siNamedStruct, "named struct constructors unimplemented"
+  result = StructInitializer(kind: kind, needsComma: false)
+  if kind != siWrapper:
+    builder.add("{")
 
 template addField(builder: var Builder, constr: var StructInitializer, name: string, valueBody: typed) =
   ## adds a field to a struct initializer, with the value built in `valueBody`
   if constr.needsComma:
+    assert constr.kind != siWrapper, "wrapper constructor cannot have multiple fields"
     builder.add(", ")
   else:
     constr.needsComma = true
-  if constr.orderCompliant:
+  case constr.kind
+  of siArray, siWrapper:
     # no name, can just add value
     valueBody
-  else:
-    doAssert false, "named struct constructors unimplemented"
+  of siOrderedStruct:
+    # no name, can just add value on C
+    assert name.len != 0, "name has to be given for struct initializer field"
+    valueBody
+  of siNamedStruct:
+    assert false, "named struct constructors unimplemented"
 
 proc finishStructInitializer(builder: var Builder, constr: StructInitializer) =
   ## finishes building a struct initializer
-  builder.add(" }")
+  if constr.kind != siWrapper:
+    builder.add("}")
 
-template addStructInitializer(builder: var Builder, constr: out StructInitializer, orderCompliant: bool, body: typed) =
+template addStructInitializer(builder: var Builder, constr: out StructInitializer, kind: StructInitializerKind, body: typed) =
   ## builds a struct initializer, i.e. `{ field1, field2 }`
   ## a `var StructInitializer` must be declared and passed as a parameter so
   ## that it can be used with `addField`
-  constr = builder.initStructInitializer(orderCompliant)
+  constr = builder.initStructInitializer(kind)
   body
   builder.finishStructInitializer(constr)
 
