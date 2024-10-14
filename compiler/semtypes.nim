@@ -385,6 +385,7 @@ proc semArrayIndex(c: PContext, n: PNode): PType =
     let e = semExprWithType(c, n, {efDetermineType})
     if e.typ.kind == tyFromExpr:
       result = makeRangeWithStaticExpr(c, e.typ.n)
+      result.flags.incl tfUnresolved
     elif e.kind in {nkIntLit..nkUInt64Lit}:
       if e.intVal < 0:
         localError(c.config, n.info,
@@ -411,6 +412,10 @@ proc semArrayIndex(c: PContext, n: PNode): PType =
       # properly filled-out in semtypinst (see how tyStaticExpr
       # is handled there).
       result = makeRangeWithStaticExpr(c, e)
+      # makeRangeWithStaticExpr doesn't mark range as unresolved unless
+      # type of e is nil or has nil node, but we know it's unresolved
+      # even if it has a type because of hasUnresolvedArgs
+      result.flags.incl tfUnresolved
     elif e.kind == nkIdent:
       result = e.typ.skipTypes({tyTypeDesc})
     else:

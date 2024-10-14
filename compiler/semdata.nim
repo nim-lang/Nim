@@ -487,7 +487,7 @@ proc makeNotType*(c: PContext, t1: PType): PType =
   result.flags.incl tfHasMeta
 
 proc nMinusOne(c: PContext; n: PNode): PNode =
-  result = newTreeI(nkCall, n.info, newSymNode(getSysMagic(c.graph, n.info, "pred", mPred)), n)
+  result = newTreeI(nkCall, n.info, newSymNode(getSysMagic(c.graph, n.info, "pred", mPred), n.info), n)
 
 # Remember to fix the procs below this one when you make changes!
 proc makeRangeWithStaticExpr*(c: PContext, n: PNode): PType =
