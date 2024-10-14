@@ -57,11 +57,11 @@ proc mangleField(m: BModule; name: PIdent): string =
 
 proc mangleProc(m: BModule; s: PSym; makeUnique: bool): string =
   result = "_Z"  # Common prefix in Itanium ABI
-  result.add encodeSym(m, s, makeUnique)
+  result.add encodeSym(m, s, maItanium, makeUnique)
   if s.typ.len > 1: #we dont care about the return param
     for i in 1..<s.typ.len:
       if s.typ[i].isNil: continue
-      result.add encodeType(m, s.typ[i])
+      result.add encodeType(m, s.typ[i], maItanium)
 
   if result in m.g.mangledPrcs:
     result = mangleProc(m, s, true)
@@ -136,12 +136,8 @@ const
                           tyDistinct, tyRange, tyStatic, tyAlias, tySink,
                           tyInferred, tyOwned}
 
-proc typeName(typ: PType; result: var Rope) =
-  let typ = typ.skipTypes(irrelevantForBackend)
-  result.add $typ.kind
-  if typ.sym != nil and typ.kind in {tyObject, tyEnum}:
-    result.add "_"
-    result.add typ.sym.name.s.mangle
+proc typeName(m: BModule; typ: PType; result: var Rope) =
+  result.add m.encodeType(typ, maNone)
 
 proc getTypeName(m: BModule; typ: PType; sig: SigHash): Rope =
   var t = typ
@@ -155,8 +151,10 @@ proc getTypeName(m: BModule; typ: PType; sig: SigHash): Rope =
       break
   let typ = if typ.kind in {tyAlias, tySink, tyOwned}: typ.elementType else: typ
   if typ.loc.snippet == "":
-    typ.typeName(typ.loc.snippet)
-    typ.loc.snippet.add $sig
+    m.typeName(typ, typ.loc.snippet)
+    if typ.kind notin { tyObject, tyEnum } or 
+      typ.len == 1 and typ.kind == tyObject:
+        typ.loc.snippet.add $sig
   else:
     when defined(debugSigHashes):
       # check consistency:
@@ -1038,10 +1036,7 @@ proc getTypeDescAux(m: BModule; origTyp: PType, check: var IntSet; kind: TypeDes
       # always call for sideeffects:
       assert t.kind != tyTuple
       discard getRecordDesc(m, t, result, check)
-      # The resulting type will include commas and these won't play well
-      # with the C macros for defining procs such as N_NIMCALL. We must
-      # create a typedef for the type and use it in the proc signature:
-      let typedefName = "TY" & $sig
+      let typedefName = "TY_$2" % [$sig, m.encodeType(origTyp, maNone)]
       m.s[cfsTypes].addf("typedef $1 $2;$n", [result, typedefName])
       m.typeCache[sig] = typedefName
       result = typedefName
@@ -1064,7 +1059,7 @@ proc getTypeDescAux(m: BModule; origTyp: PType, check: var IntSet; kind: TypeDes
   of tySet:
     # Don't use the imported name as it may be scoped: 'Foo::SomeKind'
     result = rope("tySet_")
-    t.elementType.typeName(result)
+    m.typeName(t.elementType, result)
     result.add $t.elementType.hashType(m.config)
     m.typeCache[sig] = result
     if not isImportedType(t):
