@@ -79,6 +79,30 @@ type
     isReturnType*: bool
     owner*: PSym              # where this instantiation comes from
     recursionLimit: int
+    instError*: InstantiationError
+    softError*: bool
+
+proc `$`*(err: InstantiationError): string =
+  if err == nil or err.errorType == nil:
+    return "unknown instantiation error"
+  let contextExists = err.contextType != nil
+  if contextExists and err.contextType.kind == tyStatic:
+    return "cannot infer the value of the static param '" & err.contextType.sym.name.s & "'"
+  result = "cannot instantiate '" & typeToString(err.errorType, preferDesc) & "'"
+  if contextExists:
+    result.add(" inside of type definition: '")
+    result.add(err.contextType.owner.name.s)
+    result.add("'")
+  if err.errorType.kind == tyGenericBody:
+    result.add("; Maybe generic arguments are missing?")
+
+proc doInstantiationError*(cl: var TReplTypeVars, t: PType, info: TLineInfo = cl.info, owner: PType = nil) =
+  let err = InstantiationError(info: info, errorType: t, contextType: owner)
+  if cl.softError:
+    if cl.instError == nil:
+      cl.instError = err
+  else:
+    localError(cl.c.config, info, $err)
 
 proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType
 proc replaceTypeVarsS(cl: var TReplTypeVars, s: PSym, t: PType): PSym
@@ -370,7 +394,7 @@ proc lookupTypeVar(cl: var TReplTypeVars, t: PType): PType =
   result = cl.typeMap.lookup(t)
   if result == nil:
     if cl.allowMetaTypes or tfRetType in t.flags: return
-    localError(cl.c.config, t.sym.info, "cannot instantiate: '" & typeToString(t) & "'")
+    doInstantiationError(cl, t, t.sym.info)
     result = errorType(cl.c)
     # In order to prevent endless recursions, we must remember
     # this bad lookup and replace it with errorType everywhere.
@@ -617,12 +641,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
 
   of tyGenericBody:
     if cl.allowMetaTypes: return
-    localError(
-      cl.c.config,
-      cl.info,
-      "cannot instantiate: '" &
-      typeToString(t, preferDesc) &
-      "'; Maybe generic arguments are missing?")
+    doInstantiationError(cl, t)
     result = errorType(cl.c)
     #result = replaceTypeVarsT(cl, lastSon(t))
 
@@ -718,11 +737,8 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
       for i, resulti in result.ikids:
         if resulti != nil:
           if resulti.kind == tyGenericBody and not cl.allowMetaTypes:
-            localError(cl.c.config, if t.sym != nil: t.sym.info else: cl.info,
-              "cannot instantiate '" &
-              typeToString(result[i], preferDesc) &
-              "' inside of type definition: '" &
-              t.owner.name.s & "'; Maybe generic arguments are missing?")
+            let info = if t.sym != nil: t.sym.info else: cl.info
+            doInstantiationError(cl, result[i], info, owner = t)
           var r = replaceTypeVarsT(cl, resulti)
           if result.kind == tyObject:
             # carefully coded to not skip the precious tyGenericInst:
@@ -773,14 +789,17 @@ proc initTypeVars*(p: PContext, typeMap: LayeredIdTable, info: TLineInfo;
             info: info, c: p, owner: owner)
 
 proc replaceTypesInBody*(p: PContext, pt: LayeredIdTable, n: PNode;
-                         owner: PSym, allowMetaTypes = false,
+                         owner: PSym, instError: var InstantiationError,
+                         allowMetaTypes = false,
                          fromStaticExpr = false, expectedType: PType = nil): PNode =
   var typeMap = shallowCopy(pt) # use previous bindings without writing to them
   var cl = initTypeVars(p, typeMap, n.info, owner)
   cl.allowMetaTypes = allowMetaTypes
+  cl.softError = true
   pushInfoContext(p.config, n.info)
   result = replaceTypeVarsN(cl, n, expectedType = expectedType)
   popInfoContext(p.config)
+  instError = cl.instError
 
 proc prepareTypesInBody*(p: PContext, pt: LayeredIdTable, n: PNode;
                          owner: PSym = nil): PNode =

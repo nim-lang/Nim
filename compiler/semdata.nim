@@ -90,6 +90,11 @@ type
       imported*: IntSet          # of PIdent.id
     of importExcept:
       exceptSet*: IntSet         # of PIdent.id
+  
+  InstantiationError* = ref object
+    info*: TLineInfo
+    errorType*: PType
+    contextType*: PType
 
   PContext* = ref TContext
   TContext* = object of TPassContext # a context represents the module
@@ -136,7 +141,8 @@ type
     semOverloadedCall*: proc (c: PContext, n, nOrig: PNode,
                               filter: TSymKinds, flags: TExprFlags, expectedType: PType = nil): PNode {.nimcall.}
     semTypeNode*: proc(c: PContext, n: PNode, prev: PType): PType {.nimcall.}
-    semInferredLambda*: proc(c: PContext, pt: LayeredIdTable, n: PNode): PNode
+    semInferredLambda*: proc(c: PContext, pt: LayeredIdTable, n: PNode,
+                             instError: var InstantiationError): PNode
     semGenerateInstance*: proc (c: PContext, fn: PSym, pt: LayeredIdTable,
                                 info: TLineInfo): PSym
     instantiateOnlyProcType*: proc (c: PContext, pt: LayeredIdTable,
@@ -487,7 +493,7 @@ proc makeNotType*(c: PContext, t1: PType): PType =
   result.flags.incl tfHasMeta
 
 proc nMinusOne(c: PContext; n: PNode): PNode =
-  result = newTreeI(nkCall, n.info, newSymNode(getSysMagic(c.graph, n.info, "pred", mPred)), n)
+  result = newTreeI(nkCall, n.info, newSymNode(getSysMagic(c.graph, n.info, "pred", mPred), n.info), n)
 
 # Remember to fix the procs below this one when you make changes!
 proc makeRangeWithStaticExpr*(c: PContext, n: PNode): PType =

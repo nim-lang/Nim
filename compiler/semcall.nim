@@ -123,7 +123,8 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
         errors.add(CandidateError(
           sym: sym,
           firstMismatch: z.firstMismatch,
-          diagnostics: z.diagnostics))
+          diagnostics: z.diagnostics,
+          instError: z.instError))
     else:
       # this branch feels like a ticking timebomb
       # one of two bad things could happen
@@ -389,6 +390,9 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
 
         of kUnknown: discard "do not break 'nim check'"
         candidates.add "\n"
+      if err.instError != nil:
+        candidates.add("  instantiation error at " & (c.config $ err.instError.info) & ":\n")
+        candidates.add("  " & $err.instError & "\n")
       if err.firstMismatch.arg == 1 and nArg != nil and
           nArg.kind == nkTupleConstr and n.kind == nkCommand:
         maybeWrongSpace = true
