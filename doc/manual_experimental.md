@@ -501,10 +501,13 @@ side of the definition. The macro can return either a type section or
 another `nnkTypeDef` node, both of which will replace the original row
 in the type section.
 
-In the future, this `nnkTypeDef` argument may be replaced with a unary
-type section node containing the type definition, or some other node that may
-be more convenient to work with. The ability to return nodes other than type
-definitions may also be supported, however currently this is not convenient
+With the experimental option `--experimental:typedTypeMacroPragma`,
+this `nnkTypeDef` argument is replaced with a unary type section node
+containing the type definition, which allows macros to receive the node
+as a `typed` argument.
+
+In the future, the ability to return nodes other than type definitions may
+also be supported, however currently this is not convenient
 when dealing with mutual type recursion. For now, macros can return an unused
 type definition where the right-hand node is of kind `nnkStmtListType`.
 Declarations in this node will be attached to the same scope as

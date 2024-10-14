@@ -1447,7 +1447,10 @@ proc typeDefLeftSidePass(c: PContext, typeSection: PNode, i: int) =
     s.typ = newTypeS(tyForward, c)
     s.typ.sym = s             # process pragmas:
     if name.kind == nkPragmaExpr:
-      let rewritten = applyTypeSectionPragmas(c, name[1], typeDef)
+      var macroArg = typeDef
+      if typedTypeMacroPragma in c.features:
+        macroArg = newTreeI(nkTypeSection, typeDef.info, typeDef)
+      let rewritten = applyTypeSectionPragmas(c, name[1], macroArg)
       if rewritten != nil:
         case rewritten.kind
         of nkTypeDef:
@@ -1712,8 +1715,8 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
         obj.flags.incl sfPure
       obj.typ = objTy
       objTy.sym = obj
-  for sk in c.skipTypes:
-    discard semTypeNode(c, sk, nil)
+  for i in 0..<c.skipTypes.len:
+    discard semTypeNode(c, c.skipTypes[i], nil)
   c.skipTypes = @[]
 
 proc checkForMetaFields(c: PContext; n: PNode; hasError: var bool) =

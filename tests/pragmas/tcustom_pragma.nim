@@ -332,6 +332,33 @@ TypeDef
 
   static: doAssert Baz.x is string
 
+  {.push experimental: "typedTypeMacroPragma".}
+
+  const typeAst2 = """
+TypeSection
+  TypeDef
+    PragmaExpr
+      Ident "Baz2"
+      Pragma
+    Empty
+    ObjectTy
+      Empty
+      Empty
+      RecList
+        IdentDefs
+          Ident "x"
+          Ident "string"
+          Empty
+"""
+
+  type
+    Baz2 {.expectedAst(typeAst2).} = object
+      x: string
+
+  static: doAssert Baz2.x is string
+
+  {.pop.}
+
   const procAst = """
 ProcDef
   Ident "bar"
