@@ -46,9 +46,11 @@ proc initCandidateSymbols(c: PContext, headSymbol: PNode,
   ## puts all overloads into a seq and prepares best+alt
   result = @[]
   var symx = initOverloadIter(o, c, headSymbol)
+  var symMarker = initIntSet()
   while symx != nil:
     if symx.kind in filter:
       result.add((symx, o.lastOverloadScope))
+      symMarker.incl(symx.id)
     elif symx.kind == skGenericParam:
       #[
         This code handles looking up a generic parameter when it's a static callable.
@@ -62,6 +64,14 @@ proc initCandidateSymbols(c: PContext, headSymbol: PNode,
           result.add((paramTyp.n.sym, o.lastOverloadScope))
 
     symx = nextOverloadIter(o, c, headSymbol)
+  # add all type bound ops with this specific name
+  # may be slow to do this for every single call, but the nominal types
+  # imply a straightforward match
+  let name = considerQuotedIdent(c, headSymbol)
+  for boundOp in c.graph.typeBoundOps.getOrDefault(name, @[]):
+    if boundOp.id notin symMarker:
+      # no need to add to symMarker, type bound ops should be unique already
+      result.add((boundOp, -1))
   if result.len > 0:
     best = initCandidate(c, result[0].s, initialBinding,
                   result[0].scope, diagnostics)

@@ -2468,6 +2468,15 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       addInterfaceOverloadableSymAt(c, declarationScope, s)
     else:
       addInterfaceDeclAt(c, declarationScope, s)
+    if sfExported in s.flags: # also implies top level
+      for i in 1 ..< s.typ.len:
+        let t = nominalRoot(s.typ[i])
+        if t != nil and t.owner == s.owner:
+          # parameter `i` is a nominal type in this module
+          # add this symbol as a global type bound op
+          c.graph.typeBoundOps.mgetOrPut(s.name, @[]).add(s)
+          # only need to add it once
+          break
 
   pragmaCallable(c, s, n, validPragmas)
   if not hasProto:
