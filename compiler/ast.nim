@@ -775,7 +775,7 @@ type
                               # formal param list
                               # for concepts, the concept body
                               # else: unused
-    ownerField: PSym              # the 'owner' of the type
+    ownerField: PSym          # the 'owner' of the type
     sym*: PSym                # types have the sym associated with them
                               # it is used for converting types to strings
     size*: BiggestInt         # the size of the type in bytes
