@@ -68,7 +68,7 @@ type
     siOrderedStruct ## struct constructor, but without named fields on C
     siNamedStruct ## struct constructor, with named fields i.e. C99 designated initializer
     siArray ## array constructor
-    siWrapper ## wrapper for a single field, generates it verbatim
+    siWrapper ## wrapper for a single field, generates it verbatim, now unused
 
   StructInitializer = object
     ## context for building struct initializers, i.e. `{ field1, field2 }`
@@ -77,9 +77,7 @@ type
     needsComma: bool
 
 proc initStructInitializer(builder: var Builder, kind: StructInitializerKind): StructInitializer =
-  ## starts building a struct initializer, `orderCompliant = true` means
-  ## built fields must be ordered correctly
-  assert kind != siNamedStruct, "named struct constructors unimplemented"
+  ## starts building a struct initializer, i.e. braced initializer list
   result = StructInitializer(kind: kind, needsComma: false)
   if kind != siWrapper:
     builder.add("{")
@@ -100,7 +98,11 @@ template addField(builder: var Builder, constr: var StructInitializer, name: str
     assert name.len != 0, "name has to be given for struct initializer field"
     valueBody
   of siNamedStruct:
-    assert false, "named struct constructors unimplemented"
+    assert name.len != 0, "name has to be given for struct initializer field"
+    builder.add(".")
+    builder.add(name)
+    builder.add(" = ")
+    valueBody
 
 proc finishStructInitializer(builder: var Builder, constr: StructInitializer) =
   ## finishes building a struct initializer

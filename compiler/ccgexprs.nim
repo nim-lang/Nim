@@ -3285,26 +3285,31 @@ proc getNullValueAux(p: BProc; t: PType; obj, constOrNil: PNode,
           break
 
     let selectedBranch = caseObjDefaultBranch(obj, branch)
-    # XXX siNamedStruct needs to be implemented to replace `res` here
-    var res = "{"
-    var branchInit: StructInitializer
     let b = lastSon(obj[selectedBranch])
     # designated initilization is the only way to init non first element of unions
     # branches are allowed to have no members (b.len == 0), in this case they don't need initializer
+    var fieldName: string = ""
     if b.kind == nkRecList and not isEmptyCaseObjectBranch(b):
-      res.add "._" & mangleRecFieldName(p.module, obj[0].sym) & "_" & $selectedBranch & " = "
-      res.addStructInitializer(branchInit, kind = siOrderedStruct):
-        getNullValueAux(p, t, b, constOrNil, res, branchInit, isConst, info)
+      fieldName = "_" & mangleRecFieldName(p.module, obj[0].sym) & "_" & $selectedBranch
+      result.addField(init, name = "<anonymous union>"):
+        # XXX figure out name for the union, see use of `addAnonUnion`
+        var branchInit: StructInitializer
+        result.addStructInitializer(branchInit, kind = siNamedStruct):
+          result.addField(branchInit, name = fieldName):
+            var branchObjInit: StructInitializer
+            result.addStructInitializer(branchObjInit, kind = siOrderedStruct):
+              getNullValueAux(p, t, b, constOrNil, result, branchObjInit, isConst, info)
     elif b.kind == nkSym:
-      res.add "." & mangleRecFieldName(p.module, b.sym) & " = "
-      res.addStructInitializer(branchInit, kind = siWrapper):
-        getNullValueAux(p, t, b, constOrNil, res, branchInit, isConst, info)
+      fieldName = mangleRecFieldName(p.module, b.sym)
+      result.addField(init, name = "<anonymous union>"):
+        # XXX figure out name for the union, see use of `addAnonUnion`
+        var branchInit: StructInitializer
+        result.addStructInitializer(branchInit, kind = siNamedStruct):
+          result.addField(branchInit, name = fieldName):
+            getNullValueAux(p, t, b, constOrNil, result, branchInit, isConst, info)
     else:
+      # no fields, don't initialize
       return
-    result.addField(init, name = "<anonymous union>"):
-      # XXX figure out name for the union, see use of `addAnonUnion`
-      result.add res
-      result.add "}"
 
   of nkSym:
     let field = obj.sym
