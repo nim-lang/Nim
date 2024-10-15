@@ -2470,6 +2470,9 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       addInterfaceDeclAt(c, declarationScope, s)
     if sfExported in s.flags: # also implies top level
       for i in 1 ..< s.typ.len:
+        if s.typ.n[i].kind == nkSym and s.typ.n[i].sym.ast != nil:
+          # has default value, ignore
+          continue
         let t = nominalRoot(s.typ[i])
         if t != nil and t.owner == s.owner:
           # parameter `i` is a nominal type in this module
