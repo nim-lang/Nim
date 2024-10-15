@@ -3306,7 +3306,11 @@ proc getNullValueAux(p: BProc; t: PType; obj, constOrNil: PNode,
         var branchInit: StructInitializer
         result.addStructInitializer(branchInit, kind = siNamedStruct):
           result.addField(branchInit, name = fieldName):
-            getNullValueAux(p, t, b, constOrNil, result, branchInit, isConst, info)
+            # we need to generate the default value of the single sym,
+            # to do this create a dummy wrapper initializer and recurse
+            var branchFieldInit: StructInitializer
+            result.addStructInitializer(branchFieldInit, kind = siWrapper):
+              getNullValueAux(p, t, b, constOrNil, result, branchFieldInit, isConst, info)
     else:
       # no fields, don't initialize
       return

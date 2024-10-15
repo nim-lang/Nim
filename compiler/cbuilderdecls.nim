@@ -68,7 +68,7 @@ type
     siOrderedStruct ## struct constructor, but without named fields on C
     siNamedStruct ## struct constructor, with named fields i.e. C99 designated initializer
     siArray ## array constructor
-    siWrapper ## wrapper for a single field, generates it verbatim, now unused
+    siWrapper ## wrapper for a single field, generates it verbatim
 
   StructInitializer = object
     ## context for building struct initializers, i.e. `{ field1, field2 }`
