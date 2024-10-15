@@ -1090,6 +1090,7 @@ proc semOverloadedCallAnalyseEffects(c: PContext, n: PNode, nOrig: PNode,
       elif callee.kind == skIterator:
         if efWantIterable in flags:
           let typ = newTypeS(tyIterable, c)
+          typ.flags.incl tfCheckedForDestructor
           rawAddSon(typ, result.typ)
           result.typ() = typ
 
