@@ -72,7 +72,7 @@ proc initCandidateSymbols(c: PContext, headSymbol: PNode,
     for boundOp in c.graph.typeBoundOps.getOrDefault(name, @[]):
       if boundOp.id notin symMarker:
         # no need to add to symMarker, type bound ops should be unique already
-        result.add((boundOp, -1))
+        result.add((boundOp, -2))
   if result.len > 0:
     best = initCandidate(c, result[0].s, initialBinding,
                   result[0].scope, diagnostics)
