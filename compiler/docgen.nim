@@ -1518,8 +1518,7 @@ proc finishGenerateDoc*(d: var PDoc) =
   for k in TSymKind:
     # add symbols to section for each `k`, while optionally wrapping
     # overloadable items with the same basic name by ``doc.item2``
-    var overloadableNames: seq[string] = @[]
-    for e in keys(d.section[k].secItems): overloadableNames.add(e)
+    let overloadableNames = toSeq(keys(d.section[k].secItems))
     for plainName in overloadableNames.sorted(cmpDecimalsIgnoreCase):
       var overloadChoices = d.section[k].secItems[plainName]
       overloadChoices.sort(cmp)
@@ -1662,8 +1661,7 @@ proc genSection(d: PDoc, kind: TSymKind, groupedToc = false) =
 
   proc cmp(x, y: TocItem): int = cmpDecimalsIgnoreCase(x.sortName, y.sortName)
   if groupedToc:
-    var overloadableNames: seq[string] = @[]
-    for e in keys(d.tocTable[kind]): overloadableNames.add(e)
+    let overloadableNames = toSeq(keys(d.tocTable[kind]))
     for plainName in overloadableNames.sorted(cmpDecimalsIgnoreCase):
       var overloadChoices = d.tocTable[kind][plainName]
       overloadChoices.sort(cmp)
