@@ -169,11 +169,16 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
 
       # Symbol table has been modified. Restart and pre-calculate all syms
       # before any further candidate init and compare. SLOW, but rare case.
-      let newSyms = initCandidateSymbols(c, headSymbol, initialBinding, filter,
-                                         best, alt, o, diagnosticsFlag)
-      for cand in newSyms:
-        if not containsOrIncl(symMarker, cand.s.id):
-          syms.add(cand)
+      syms = initCandidateSymbols(c, headSymbol, initialBinding, filter,
+                                  best, alt, o, diagnosticsFlag)
+      symMarker = initIntSet()
+      for s in syms:
+        symMarker.incl(s.s.id)
+      if typeBoundOps in c.features:
+        for a in 1 ..< n.len:
+          # for every already typed argument, add type bound ops
+          let arg = n[a]
+          addTypeBoundOpsFor(arg)
       # reset counter because syms may be in a new order
       symCount = c.currentScope.symbols.counter
       nextSymIndex = 0
