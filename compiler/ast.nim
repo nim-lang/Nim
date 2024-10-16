@@ -815,7 +815,7 @@ type
 template nodeId(n: PNode): int = cast[int](n)
 
 proc owner*(s: PSym|PType): PSym {.inline.} =
-  s.ownerField
+  result = s.ownerField
 
 proc setOwner*(s: PSym|PType, owner: PSym) {.inline.} =
   s.ownerField = owner

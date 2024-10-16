@@ -111,7 +111,7 @@ proc freshGenSyms(c: PContext; n: PNode, owner, orig: PSym, symMap: var SymMappi
     elif s.owner == nil or s.owner.kind == skPackage:
       #echo "copied this ", s.name.s
       x = copySym(s, c.idgen)
-      setOwner(x.owner, owner)
+      setOwner(x, owner)
       idTablePut(symMap, s, x)
       n.sym = x
   else:
