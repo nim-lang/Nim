@@ -2469,17 +2469,16 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     else:
       addInterfaceDeclAt(c, declarationScope, s)
     if sfExported in s.flags: # also implies top level
+      var typeMarker = initIntSet()
       for i in 1 ..< s.typ.len:
         if s.typ.n[i].kind == nkSym and s.typ.n[i].sym.ast != nil:
           # has default value, ignore
           continue
         let t = nominalRoot(s.typ[i])
-        if t != nil and t.owner == s.owner:
+        if t != nil and t.owner == s.owner and not typeMarker.containsOrIncl(t.id):
           # parameter `i` is a nominal type in this module
           # add this symbol as a global type bound op
-          c.graph.typeBoundOps.mgetOrPut(s.name, @[]).add(s)
-          # only need to add it once
-          break
+          c.graph.typeBoundOps.mgetOrPut(t.itemId, initStrTable()).strTableAdd(s)
 
   pragmaCallable(c, s, n, validPragmas)
   if not hasProto:
