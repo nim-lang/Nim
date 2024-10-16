@@ -75,7 +75,7 @@ type
     typeInstCache*: Table[ItemId, seq[LazyType]] # A symbol's ItemId.
     procInstCache*: Table[ItemId, seq[LazyInstantiation]] # A symbol's ItemId.
     attachedOps*: array[TTypeAttachedOp, Table[ItemId, LazySym]] # Type ID, destructors, etc.
-    typeBoundOps*: Table[PIdent, seq[PSym]]
+    typeBoundOps*: Table[ItemId, TStrTable]
       ## overloads of each symbol name that are defined alongside a nominal type
     methodsPerGenericType*: Table[ItemId, seq[(int, LazySym)]] # Type ID, attached methods
     memberProcsPerType*: Table[ItemId, seq[PSym]] # Type ID, attached member procs (only c++, virtual,member and ctor so far).

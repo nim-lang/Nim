@@ -64,17 +64,6 @@ proc initCandidateSymbols(c: PContext, headSymbol: PNode,
           result.add((paramTyp.n.sym, o.lastOverloadScope))
 
     symx = nextOverloadIter(o, c, headSymbol)
-  if typeBoundOps in c.features:
-    # TODO move this to happen after `prepareOperand` and per type
-    if headSymbol.kind != nkDotExpr: # qualified, maybe whitelist ident/opensymchoice?
-      # add all type bound ops with this specific name
-      # may be slow to do this for every single call, but the nominal types
-      # imply a straightforward match
-      let name = considerQuotedIdent(c, headSymbol)
-      for boundOp in c.graph.typeBoundOps.getOrDefault(name, @[]):
-        if boundOp.id notin symMarker:
-          # no need to add to symMarker, type bound ops should be unique already
-          result.add((boundOp, -2))
   if result.len > 0:
     best = initCandidate(c, result[0].s, initialBinding,
                   result[0].scope, diagnostics)
@@ -101,8 +90,32 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
                                   best, alt, o, diagnosticsFlag)
   if len(syms) == 0:
     return
+  var symMarker = initIntSet()
+  for s in syms:
+    symMarker.incl(s.s.id)
   # current overload being considered
   var sym = syms[0].s
+  let name = sym.name
+  template addTypeBoundOpsFor(arg: PNode) =
+    # add type bound ops for `name` based on the type of the arg `arg`
+    if arg.typ != nil:
+      # argument must be typed first, meaning arguments always
+      # matching `untyped` are ignored
+      let t = nominalRoot(arg.typ)
+      if t != nil:
+        let tid = t.itemId
+        if tid in c.graph.typeBoundOps:
+          var iter = default(TIdentIter)
+          var s = initIdentIter(iter, c.graph.typeBoundOps[tid], name)
+          while s != nil:
+            if not containsOrIncl(symMarker, s.id):
+              # least priority scope, less than explicit imports:
+              syms.add((s, -2))
+            s = nextIdentIter(iter, c.graph.typeBoundOps[tid])
+  if typeBoundOps in c.features:
+    for a in 1 ..< n.len:
+      let arg = n[a]
+      addTypeBoundOpsFor(arg)
   var scope = syms[0].scope
 
   # starts at 1 because 0 is already done with setup, only needs checking
@@ -118,6 +131,13 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
     if c.currentScope.symbols.counter == symCount:
       # may introduce new symbols with caveats described in recalc branch
       matches(c, n, orig, z)
+      if typeBoundOps in c.features:
+        # this match may have given some arguments new types,
+        # in which case add their type bound ops as well
+        # type bound ops of arguments always matching `untyped` are not considered
+        for x in z.newlyTypedOperands:
+          let arg = n[x]
+          addTypeBoundOpsFor(arg)
 
       if z.state == csMatch:
         # little hack so that iterators are preferred over everything else:
@@ -147,16 +167,17 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
 
       # Symbol table has been modified. Restart and pre-calculate all syms
       # before any further candidate init and compare. SLOW, but rare case.
-      syms = initCandidateSymbols(c, headSymbol, initialBinding, filter,
+      let newSyms = initCandidateSymbols(c, headSymbol, initialBinding, filter,
                                   best, alt, o, diagnosticsFlag)
+      for cand in newSyms:
+        if not containsOrIncl(symMarker, cand.s.id):
+          syms.add(cand)
 
       # reset counter because syms may be in a new order
       symCount = c.currentScope.symbols.counter
-      nextSymIndex = 0
-
-      # just in case, should be impossible though
-      if syms.len == 0:
-        break
+      # current sym was not considered
+      # XXX refactor this to be a lone `if` statement
+      continue
 
     if nextSymIndex > high(syms):
       # we have reached the end
