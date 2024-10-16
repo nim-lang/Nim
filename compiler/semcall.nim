@@ -96,7 +96,6 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
   # current overload being considered
   var sym = syms[0].s
   let name = sym.name
-  let wantIterator = flags*{efInTypeof, efWantIterator, efWantIterable} != {}
   template addTypeBoundOpsFor(arg: PNode) =
     # add type bound ops for `name` based on the type of the arg `arg`
     if arg.typ != nil:
@@ -109,8 +108,7 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
           var iter = default(TIdentIter)
           var s = initIdentIter(iter, c.graph.typeBoundOps[tid], name)
           while s != nil:
-            if (s.kind != skIterator or wantIterator) and
-                not containsOrIncl(symMarker, s.id):
+            if s.kind in filter and not containsOrIncl(symMarker, s.id):
               # least priority scope, less than explicit imports:
               syms.add((s, -2))
             s = nextIdentIter(iter, c.graph.typeBoundOps[tid])
