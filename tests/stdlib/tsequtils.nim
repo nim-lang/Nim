@@ -342,14 +342,9 @@ block: # toSeq test
 block:
   # tests https://github.com/nim-lang/Nim/issues/7187
   counter = 0
-  var s: seq[int]
-  for x in @[1, 2, 3].identity().filter(proc (x: int): bool = x < 3):
-    s.add(x)
-  let intendedCounter = counter
-  counter = 0
   let ret = toSeq(@[1, 2, 3].identity().filter(proc (x: int): bool = x < 3))
   doAssert ret == @[1, 2]
-  doAssert counter == intendedCounter
+  doAssert counter == 1
 block: # foldl tests
   let
     numbers = @[5, 9, 11]
