@@ -803,12 +803,6 @@ template anyIt*(s, pred: untyped): bool =
       break
   result
 
-template toSeqIterable[T](s: iterable[T]): seq[T] =
-  var result: seq[T] = @[]
-  for it in s:
-    result.add(it)
-  result
-
 template toSeq1(s: not iterator): untyped =
   # overload for typed but not iterator
   type OutType = typeof(items(s))
@@ -868,9 +862,7 @@ template toSeq*(iter: untyped): untyped =
     assert mySeq1 == @[1, 2, 3, 4, 5]
     assert mySeq2 == @[1'i8, 3, 5]
 
-  when compiles(toSeqIterable(iter)):
-    toSeqIterable(iter)
-  elif compiles(toSeq1(iter)):
+  when compiles(toSeq1(iter)):
     toSeq1(iter)
   elif compiles(toSeq2(iter)):
     toSeq2(iter)
