@@ -175,6 +175,7 @@ proc addHiddenParam(routine: PSym, param: PSym) =
   #echo "produced environment: ", param.id, " for ", routine.id
 
 proc getEnvParam*(routine: PSym): PSym =
+  if routine.ast.isNil: return nil
   let params = routine.ast[paramsPos]
   let hidden = lastSon(params)
   if hidden.kind == nkSym and hidden.sym.kind == skParam and hidden.sym.name.s == paramName:
@@ -419,6 +420,12 @@ proc addClosureParam(c: var DetectionPass; fn: PSym; info: TLineInfo) =
     localError(c.graph.config, fn.info, "internal error: inconsistent environment type")
   #echo "adding closure to ", fn.name.s
 
+proc iterEnvHasUpField(g: ModuleGraph, iter: PSym): bool =
+  let cp = getEnvParam(iter)
+  doAssert(cp != nil, "Env param not present in iter")
+  let upField = lookupInRecord(cp.typ.skipTypes({tyOwned, tyRef, tyPtr}).n, getIdent(g.cache, upName))
+  upField != nil
+
 proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
   case n.kind
   of nkSym:
@@ -437,7 +444,7 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
         let body = transformBody(c.graph, c.idgen, s, {useCache})
         detectCapturedVars(body, s, c)
     let ow = s.skipGenericOwner
-    let innerClosure = innerProc and s.typ.callConv == ccClosure and not s.isIterator
+    let innerClosure = innerProc and s.typ.callConv == ccClosure and (not s.isIterator or iterEnvHasUpField(c.graph, s))
     let interested = interestingVar(s)
     if ow == owner:
       if owner.isIterator:
@@ -642,16 +649,27 @@ proc finishClosureCreation(owner: PSym; d: var DetectionPass; c: LiftingPass;
     res.add newAsgnStmt(unowned, nilLit, info)
     createTypeBoundOpsLL(d.graph, unowned.typ, info, d.idgen, owner)
 
-proc closureCreationForIter(iter: PNode;
+proc getUpForIter(g: ModuleGraph; owner, iterOwner: PSym, expectedUpTyp: PType): PNode =
+  var p = getHiddenParam(g, owner)
+  var res = p.newSymNode
+  while res.typ.skipTypes({tyOwned, tyRef, tyPtr}) != expectedUpTyp:
+    let upField = lookupInRecord(p.typ.skipTypes({tyOwned, tyRef, tyPtr}).n, getIdent(g.cache, upName))
+    if upField == nil:
+      return nil
+    p = upField
+    res = rawIndirectAccess(res, upField, p.info)
+  res
+
+proc closureCreationForIter(owner: PSym, iter: PNode;
                             d: var DetectionPass; c: var LiftingPass): PNode =
   result = newNodeIT(nkStmtListExpr, iter.info, iter.sym.typ)
-  let owner = iter.sym.skipGenericOwner
-  var v = newSym(skVar, getIdent(d.graph.cache, envName), d.idgen, owner, iter.info)
+  let iterOwner = iter.sym.skipGenericOwner
+  var v = newSym(skVar, getIdent(d.graph.cache, envName), d.idgen, iterOwner, iter.info)
   incl(v.flags, sfShadowed)
   v.typ = asOwnedRef(d, getHiddenParam(d.graph, iter.sym).typ)
   var vnode: PNode
-  if owner.isIterator:
-    let it = getHiddenParam(d.graph, owner)
+  if iterOwner.isIterator:
+    let it = getHiddenParam(d.graph, iterOwner)
     addUniqueField(it.typ.skipTypes({tyOwned, tyRef, tyPtr}), v, d.graph.cache, d.idgen)
     vnode = indirectAccess(newSymNode(it), v, v.info)
   else:
@@ -660,12 +678,14 @@ proc closureCreationForIter(iter: PNode;
     addVar(vs, vnode)
     result.add(vs)
   result.add genCreateEnv(vnode)
-  createTypeBoundOpsLL(d.graph, vnode.typ, iter.info, d.idgen, owner)
+  createTypeBoundOpsLL(d.graph, vnode.typ, iter.info, d.idgen, iterOwner)
 
   let upField = lookupInRecord(v.typ.skipTypes({tyOwned, tyRef, tyPtr}).n, getIdent(d.graph.cache, upName))
   if upField != nil:
-    let u = setupEnvVar(owner, d, c, iter.info)
-    if u.typ.skipTypes({tyOwned, tyRef, tyPtr}) == upField.typ.skipTypes({tyOwned, tyRef, tyPtr}):
+    let expectedUpTyp = upField.typ.skipTypes({tyOwned, tyRef, tyPtr})
+    let u = if iterOwner == owner: setupEnvVar(iterOwner, d, c, iter.info)
+            else: getUpForIter(d.graph, owner, iterOwner, expectedUpTyp)
+    if u != nil and u.typ.skipTypes({tyOwned, tyRef, tyPtr}) == expectedUpTyp:
       result.add(newAsgnStmt(rawIndirectAccess(vnode, upField, iter.info),
                  u, iter.info))
     else:
@@ -699,7 +719,7 @@ proc symToClosure(n: PNode; owner: PSym; d: var DetectionPass;
     let available = getHiddenParam(d.graph, owner)
     result = makeClosure(d.graph, d.idgen, s, available.newSymNode, n.info)
   elif s.isIterator:
-    result = closureCreationForIter(n, d, c)
+    result = closureCreationForIter(owner, n, d, c)
   elif s.skipGenericOwner == owner:
     # direct dependency, so use the outer's env variable:
     result = makeClosure(d.graph, d.idgen, s, setupEnvVar(owner, d, c, n.info), n.info)
