@@ -37,8 +37,13 @@ proc sameMethodDispatcher(a, b: PSym): bool =
 
 proc determineType(c: PContext, s: PSym)
 
-proc collectOverloads(c: PContext, headSymbol: PNode, filter: TSymKinds,
-                      o: var TOverloadIter): seq[tuple[s: PSym, scope: int]] =
+proc initCandidateSymbols(c: PContext, headSymbol: PNode,
+                          initialBinding: PNode,
+                          filter: TSymKinds,
+                          best, alt: var TCandidate,
+                          o: var TOverloadIter,
+                          diagnostics: bool): seq[tuple[s: PSym, scope: int]] =
+  ## puts all overloads into a seq and prepares best+alt
   result = @[]
   var symx = initOverloadIter(o, c, headSymbol)
   while symx != nil:
@@ -57,16 +62,6 @@ proc collectOverloads(c: PContext, headSymbol: PNode, filter: TSymKinds,
           result.add((paramTyp.n.sym, o.lastOverloadScope))
 
     symx = nextOverloadIter(o, c, headSymbol)
-  
-
-proc initCandidateSymbols(c: PContext, headSymbol: PNode,
-                          initialBinding: PNode,
-                          filter: TSymKinds,
-                          best, alt: var TCandidate,
-                          o: var TOverloadIter,
-                          diagnostics: bool): seq[tuple[s: PSym, scope: int]] =
-  ## puts all overloads into a seq and prepares best+alt
-  result = collectOverloads(c, headSymbol, filter, o)
   if result.len > 0:
     best = initCandidate(c, result[0].s, initialBinding,
                   result[0].scope, diagnostics)
@@ -99,6 +94,8 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
   # current overload being considered
   var sym = syms[0].s
   let name = sym.name
+  var scope = syms[0].scope
+
   template addTypeBoundOpsFor(arg: PNode) =
     # add type bound ops for `name` based on the type of the arg `arg`
     if arg.typ != nil:
@@ -115,11 +112,12 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
               # least priority scope, less than explicit imports:
               syms.add((s, -2))
             s = nextIdentIter(iter, c.graph.typeBoundOps[tid])
+
   if typeBoundOps in c.features:
     for a in 1 ..< n.len:
+      # for every already typed argument, add type bound ops
       let arg = n[a]
       addTypeBoundOpsFor(arg)
-  var scope = syms[0].scope
 
   # starts at 1 because 0 is already done with setup, only needs checking
   var nextSymIndex = 1
@@ -128,37 +126,40 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
     determineType(c, sym)
     z = initCandidate(c, sym, initialBinding, scope, diagnosticsFlag)
 
-    # may introduce new symbols with caveats described in recalc branch
-    matches(c, n, orig, z)
+    # this is kinda backwards as without a check here the described
+    # problems in recalc would not happen, but instead it 100%
+    # does check forever in some cases
+    if c.currentScope.symbols.counter == symCount:
+      # may introduce new symbols with caveats described in recalc branch
+      matches(c, n, orig, z)
 
-    if typeBoundOps in c.features:
-      # this match may have given some arguments new types,
-      # in which case add their type bound ops as well
-      # type bound ops of arguments always matching `untyped` are not considered
-      for x in z.newlyTypedOperands:
-        let arg = n[x]
-        addTypeBoundOpsFor(arg)
+      if typeBoundOps in c.features:
+        # this match may have given some arguments new types,
+        # in which case add their type bound ops as well
+        # type bound ops of arguments always matching `untyped` are not considered
+        for x in z.newlyTypedOperands:
+          let arg = n[x]
+          addTypeBoundOpsFor(arg)
 
-    if z.state == csMatch:
-      # little hack so that iterators are preferred over everything else:
-      if sym.kind == skIterator:
-        if not (efWantIterator notin flags and efWantIterable in flags):
-          inc(z.exactMatches, 200)
-        else:
-          dec(z.exactMatches, 200)
-      case best.state
-      of csEmpty, csNoMatch: best = z
-      of csMatch:
-        var cmp = cmpCandidates(best, z)
-        if cmp < 0: best = z   # x is better than the best so far
-        elif cmp == 0: alt = z # x is as good as the best so far
-    elif errorsEnabled or z.diagnosticsEnabled:
-      errors.add(CandidateError(
-        sym: sym,
-        firstMismatch: z.firstMismatch,
-        diagnostics: z.diagnostics))
-
-    if c.currentScope.symbols.counter != symCount:
+      if z.state == csMatch:
+        # little hack so that iterators are preferred over everything else:
+        if sym.kind == skIterator:
+          if not (efWantIterator notin flags and efWantIterable in flags):
+            inc(z.exactMatches, 200)
+          else:
+            dec(z.exactMatches, 200)
+        case best.state
+        of csEmpty, csNoMatch: best = z
+        of csMatch:
+          var cmp = cmpCandidates(best, z)
+          if cmp < 0: best = z   # x is better than the best so far
+          elif cmp == 0: alt = z # x is as good as the best so far
+      elif errorsEnabled or z.diagnosticsEnabled:
+        errors.add(CandidateError(
+          sym: sym,
+          firstMismatch: z.firstMismatch,
+          diagnostics: z.diagnostics))
+    else:
       # this branch feels like a ticking timebomb
       # one of two bad things could happen
       # 1) new symbols are discovered but the loop ends before we recalc
@@ -168,14 +169,18 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
 
       # Symbol table has been modified. Restart and pre-calculate all syms
       # before any further candidate init and compare. SLOW, but rare case.
-      o = default(TOverloadIter)
-      let newSyms = collectOverloads(c, headSymbol, filter, o)
+      let newSyms = initCandidateSymbols(c, headSymbol, initialBinding, filter,
+                                         best, alt, o, diagnosticsFlag)
       for cand in newSyms:
         if not containsOrIncl(symMarker, cand.s.id):
-          echo "adding ", cand, " in ", n, " at ", c.config $ n.info
           syms.add(cand)
       # reset counter because syms may be in a new order
       symCount = c.currentScope.symbols.counter
+      nextSymIndex = 0
+
+      # just in case, should be impossible though
+      if syms.len == 0:
+        break
 
     if nextSymIndex > high(syms):
       # we have reached the end
