@@ -168,9 +168,11 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
 
       # Symbol table has been modified. Restart and pre-calculate all syms
       # before any further candidate init and compare. SLOW, but rare case.
+      o = default(TOverloadIter)
       let newSyms = collectOverloads(c, headSymbol, filter, o)
       for cand in newSyms:
         if not containsOrIncl(symMarker, cand.s.id):
+          echo "adding ", cand, " in ", n, " at ", c.config $ n.info
           syms.add(cand)
       # reset counter because syms may be in a new order
       symCount = c.currentScope.symbols.counter
