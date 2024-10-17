@@ -54,6 +54,32 @@ template addVarWithTypeAndInitializer(builder: var Builder, kind: VarKind = Loca
   initializerBody
   builder.add(";\n")
 
+proc addArrayVar(builder: var Builder, kind: VarKind = Local, name: string, elementType: Snippet, len: int, initializer: Snippet = "") =
+  ## adds an array variable declaration to the builder
+  builder.addVarHeader(kind)
+  builder.add(elementType)
+  builder.add(" ")
+  builder.add(name)
+  builder.add("[")
+  builder.addInt(len)
+  builder.add("]")
+  if initializer.len != 0:
+    builder.add(" = ")
+    builder.add(initializer)
+  builder.add(";\n")
+
+template addArrayVarWithInitializer(builder: var Builder, kind: VarKind = Local, name: string, elementType: Snippet, len: int, body: typed) =
+  ## adds an array variable declaration to the builder with the initializer built according to `body`
+  builder.addVarHeader(kind)
+  builder.add(elementType)
+  builder.add(" ")
+  builder.add(name)
+  builder.add("[")
+  builder.addInt(len)
+  builder.add("] = ")
+  body
+  builder.add(";\n")
+
 template addTypedef(builder: var Builder, name: string, typeBody: typed) =
   ## adds a typedef declaration to the builder with name `name` and type as
   ## built in `typeBody`
