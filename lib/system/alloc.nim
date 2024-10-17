@@ -152,7 +152,6 @@ type
     when not defined(gcDestructors):
       minLargeObj, maxLargeObj: int
     freeSmallChunks: array[0..max(1, SmallChunkSize div MemAlign-1), PSmallChunk]
-    filledSmallChunks: array[0..max(1, SmallChunkSize div MemAlign-1), PSmallChunk]
       # List of available chunks per size class. Only one is expected to be active per class.
     when defined(gcDestructors):
       sharedFreeLists: array[0..max(1, SmallChunkSize div MemAlign-1), ptr FreeCell]
@@ -913,9 +912,6 @@ proc rawAlloc(a: var MemRegion, requestedSize: int): pointer =
         # Because removals from `a.freeSmallChunks[s]` only happen in the other alloc branch and during dealloc,
         #  we must not add it to the list if it cannot be used the next time a pointer of `size` bytes is needed.
         a.freeSmallChunks[s] = c
-      else:
-        # The chunk is immediately counted as filled and added to the list
-        listAdd(a.filledSmallChunks[s], c)
       result = addr(c.data)
       sysAssert((cast[int](result) and (MemAlign-1)) == 0, "rawAlloc 4")
     else:
@@ -957,7 +953,6 @@ proc rawAlloc(a: var MemRegion, requestedSize: int): pointer =
         # Even after fetching shared cells the chunk has no usable memory left. It is no longer the active chunk
         sysAssert(allocInv(a), "rawAlloc: before listRemove test")
         a.freeSmallChunks[s] = nil
-        listAdd(a.filledSmallChunks[s], c)
         sysAssert(allocInv(a), "rawAlloc: end listRemove test")
     sysAssert(((cast[int](result) and PageMask) - smallChunkOverhead()) %%
                size == 0, "rawAlloc 21")
@@ -1064,7 +1059,6 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
         if c.free < s:
           # The chunk could not have been active as it didn't have enough space to give
           a.freeSmallChunks[s div MemAlign] = c
-          listRemove(a.filledSmallChunks[s div MemAlign], c)
           inc(c.free, s)
         else:
           inc(c.free, s)
@@ -1072,9 +1066,6 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
           # If the chunk were to be freed while it references foreign cells,
           #  the foreign chunks will leak memory and can never be freed.
           if c.free == SmallChunkSize-smallChunkOverhead() and c.foreignCells == 0:
-            if activeChunk == nil:
-              # This chunk is counted as filled and should be removed
-              listRemove(a.filledSmallChunks[s div MemAlign], c)
             a.freeSmallChunks[s div MemAlign] = nil
             c.size = SmallChunkSize
             freeBigChunk(a, cast[PBigChunk](c))
