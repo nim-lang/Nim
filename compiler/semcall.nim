@@ -89,9 +89,8 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
   if len(syms) == 0:
     return
   let allowTypeBoundOps = typeBoundOps in c.features and
-    # qualified symbols cannot refer to other scopes
-    # (maybe sym and closedsymchoice as well?)
-    headSymbol.kind != nkDotExpr
+    # qualified or bound symbols cannot refer to type bound ops
+    headSymbol.kind in {nkIdent, nkAccQuoted, nkOpenSymChoice, nkOpenSym}
   var symMarker = initIntSet()
   for s in syms:
     symMarker.incl(s.s.id)
