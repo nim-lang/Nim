@@ -32,6 +32,7 @@ true
 copying
 123
 42
+@["", "d", ""]
 ok
 destroying variable: 20
 destroying variable: 10
@@ -764,5 +765,72 @@ block: # bug #23524
     t2 = t1
     doAssert t1.a == 100
     doAssert t2.a == 100
+
+  main()
+
+block: # bug #23907
+  type
+    Thingy = object
+      value: int
+
+    ExecProc[C] = proc(value: sink C): int {.nimcall.}
+
+  proc `=copy`(a: var Thingy, b: Thingy) {.error.}
+
+  var thingyDestroyCount = 0
+
+  proc `=destroy`(thingy: Thingy) =
+    assert(thingyDestroyCount <= 0)
+    thingyDestroyCount += 1
+
+  proc store(value: sink Thingy): int =
+    result = value.value
+
+  let callback: ExecProc[Thingy] = store
+
+  doAssert callback(Thingy(value: 123)) == 123
+
+import std/strutils
+
+block: # bug #23974
+  func g(e: seq[string]): lent seq[string] = result = e
+  proc k(f: string): seq[string] = f.split("/")
+  proc n() =
+    const r = "/d/"
+    let t =
+      if true:
+        k(r).g()
+      else:
+        k("/" & r).g()
+    echo t
+
+  n()
+
+block: # bug #23973
+  func g(e: seq[string]): lent seq[string] = result = e
+  proc k(f: string): seq[string] = f.split("/")
+  proc n() =
+    const r = "/test/empty"  # or "/test/empty/1"
+    let a = k(r).g()
+    let t =
+      if true:
+        k(r).g()
+      else:
+        k("/" & r).g()   # or raiseAssert ""
+    doAssert t == a
+
+  n()
+
+block: # bug #24141
+  func reverse(s: var openArray[char]) =
+    s[0] = 'f'
+
+  func rev(s: var string) =
+    s.reverse
+
+  proc main =
+    var abc = "abc"
+    abc.rev
+    doAssert abc == "fbc"
 
   main()

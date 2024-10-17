@@ -224,10 +224,16 @@ proc fillBodyObj(c: var TLiftCtx; n, body, x, y: PNode; enforceDefaultOp: bool, 
 
 proc fillBodyObjTImpl(c: var TLiftCtx; t: PType, body, x, y: PNode) =
   if t.baseClass != nil:
-    let obj = newNodeIT(nkHiddenSubConv, c.info, t.baseClass)
-    obj.add newNodeI(nkEmpty, c.info)
-    obj.add x
-    fillBody(c, skipTypes(t.baseClass, abstractPtrs), body, obj, y)
+    let dest = newNodeIT(nkHiddenSubConv, c.info, t.baseClass)
+    dest.add newNodeI(nkEmpty, c.info)
+    dest.add x
+    var src = y
+    if c.kind in {attachedAsgn, attachedDeepCopy, attachedSink}:
+      src = newNodeIT(nkHiddenSubConv, c.info, t.baseClass)
+      src.add newNodeI(nkEmpty, c.info)
+      src.add y
+
+    fillBody(c, skipTypes(t.baseClass, abstractPtrs), body, dest, src)
   fillBodyObj(c, t.n, body, x, y, enforceDefaultOp = false)
 
 proc fillBodyObjT(c: var TLiftCtx; t: PType, body, x, y: PNode) =
@@ -1040,7 +1046,7 @@ proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     else:
       discard "cannot copy openArray"
 
-  of tyFromExpr, tyProxy, tyBuiltInTypeClass, tyUserTypeClass,
+  of tyFromExpr, tyError, tyBuiltInTypeClass, tyUserTypeClass,
      tyUserTypeClassInst, tyCompositeTypeClass, tyAnd, tyOr, tyNot, tyAnything,
      tyGenericParam, tyGenericBody, tyNil, tyUntyped, tyTyped,
      tyTypeDesc, tyGenericInvocation, tyForward, tyStatic:

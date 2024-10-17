@@ -190,7 +190,7 @@ proc hashData*(data: pointer, size: int): Hash =
   var h: Hash = 0
   when defined(js):
     var p: cstring
-    {.emit: """`p` = `Data`""".}
+    {.emit: """`p` = `Data`;""".}
   else:
     var p = cast[cstring](data)
   var i = 0

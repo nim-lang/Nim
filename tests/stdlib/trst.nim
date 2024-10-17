@@ -16,6 +16,8 @@ discard """
 [Suite] RST escaping
 
 [Suite] RST inline markup
+
+[Suite] Misc isssues
 '''
 matrix: "--mm:refc; --mm:orc"
 """
@@ -526,8 +528,7 @@ suite "RST parsing":
             rnFieldBody
               rnLeaf  'Nim'
         rnLiteralBlock
-          rnLeaf  '
-      let a = 1
+          rnLeaf  'let a = 1
       ```'
       """
 
@@ -637,8 +638,7 @@ suite "RST parsing":
                 rnLeaf  'test'
               rnFieldBody
           rnLiteralBlock
-            rnLeaf  '
-        let a = 1'
+            rnLeaf  'let a = 1'
         """)
 
     check(dedent"""
@@ -661,8 +661,7 @@ suite "RST parsing":
               rnFieldBody
                 rnLeaf  '1'
           rnLiteralBlock
-            rnLeaf  '
-        let a = 1'
+            rnLeaf  'let a = 1'
         """)
 
   test "additional indentation < 4 spaces is handled fine":
@@ -682,8 +681,7 @@ suite "RST parsing":
                 rnLeaf  'nim'
               [nil]
               rnLiteralBlock
-                rnLeaf  '
-          let a = 1'
+                rnLeaf  '  let a = 1'
       """)
       # | |
       # |  \ indentation of exactly two spaces before 'let a = 1'
@@ -717,8 +715,7 @@ suite "RST parsing":
                   rnFieldBody
                     rnLeaf  'Nim'
               rnLiteralBlock
-                rnLeaf  '
-        CodeBlock()'
+                rnLeaf  'CodeBlock()'
             rnLeaf  ' '
             rnLeaf  'Other'
             rnLeaf  ' '
@@ -1985,3 +1982,13 @@ suite "RST inline markup":
           rnLeaf  ')'
       """)
     check(warnings[] == @["input(1, 5) Warning: broken link 'f'"])
+
+suite "Misc isssues":
+  test "Markdown CodeblockFields in one line (lacking enclosing ```)":
+    let message = """
+    ```llvm-profdata merge first.profraw second.profraw third.profraw <more stuff maybe> -output data.profdata```"""
+
+    try:
+      echo rstgen.rstToHtml(message, {roSupportMarkdown}, nil)
+    except EParseError:
+      discard

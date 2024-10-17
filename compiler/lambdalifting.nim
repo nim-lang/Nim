@@ -150,7 +150,7 @@ template isIterator*(owner: PSym): bool =
 
 proc createEnvObj(g: ModuleGraph; idgen: IdGenerator; owner: PSym; info: TLineInfo): PType =
   result = createObj(g, idgen, owner, info, final=false)
-  if owner.isIterator:
+  if owner.isIterator or not isDefined(g.config, "nimOptIters"):
     rawAddField(result, createStateField(g, owner, idgen))
 
 proc getClosureIterResult*(g: ModuleGraph; iter: PSym; idgen: IdGenerator): PSym =
@@ -228,6 +228,13 @@ proc makeClosure*(g: ModuleGraph; idgen: IdGenerator; prc: PSym; env: PNode; inf
   if tfHasAsgn in result.typ.flags or optSeqDestructors in g.config.globalOptions:
     prc.flags.incl sfInjectDestructors
 
+proc interestingIterVar(s: PSym): bool {.inline.} =
+  # unused with -d:nimOptIters
+  # XXX optimization: Only lift the variable if it lives across
+  # yield/return boundaries! This can potentially speed up
+  # closure iterators quite a bit.
+  result = s.kind in {skResult, skVar, skLet, skTemp, skForVar} and sfGlobal notin s.flags
+
 template liftingHarmful(conf: ConfigRef; owner: PSym): bool =
   ## lambda lifting can be harmful for JS-like code generators.
   let isCompileTime = sfCompileTime in owner.flags or owner.kind == skMacro
@@ -274,6 +281,16 @@ proc liftIterSym*(g: ModuleGraph; n: PNode; idgen: IdGenerator; owner: PSym): PN
   createTypeBoundOpsLL(g, env.typ, n.info, idgen, owner)
   result.add makeClosure(g, idgen, iter, env, n.info)
 
+proc freshVarForClosureIter*(g: ModuleGraph; s: PSym; idgen: IdGenerator; owner: PSym): PNode =
+  # unused with -d:nimOptIters
+  let envParam = getHiddenParam(g, owner)
+  let obj = envParam.typ.skipTypes({tyOwned, tyRef, tyPtr})
+  let field = addField(obj, s, g.cache, idgen)
+
+  var access = newSymNode(envParam)
+  assert obj.kind == tyObject
+  result = rawIndirectAccess(access, field, s.info)
+
 # ------------------ new stuff -------------------------------------------
 
 proc markAsClosure(g: ModuleGraph; owner: PSym; n: PNode) =
@@ -283,8 +300,8 @@ proc markAsClosure(g: ModuleGraph; owner: PSym; n: PNode) =
     localError(g.config, n.info,
       ("'$1' is of type <$2> which cannot be captured as it would violate memory" &
        " safety, declared here: $3; using '-d:nimNoLentIterators' helps in some cases." &
-       " Consider using a <ref $2> which can be captured.") %
-      [s.name.s, typeToString(s.typ), g.config$s.info])
+       " Consider using a <ref T> which can be captured.") %
+      [s.name.s, typeToString(s.typ.skipTypes({tyVar})), g.config$s.info])
   elif not (owner.typ.isClosure or owner.isNimcall and not owner.isExplicitCallConv or isEnv):
     localError(g.config, n.info, "illegal capture '$1' because '$2' has the calling convention: <$3>" %
       [s.name.s, owner.name.s, $owner.typ.callConv])
@@ -322,7 +339,7 @@ proc getEnvTypeForOwner(c: var DetectionPass; owner: PSym;
   result = c.ownerToType.getOrDefault(owner.id)
   if result.isNil:
     let env = getEnvParam(owner)
-    if env.isNil or not owner.isIterator:
+    if env.isNil or not owner.isIterator or not isDefined(c.graph.config, "nimOptIters"):
       result = newType(tyRef, c.idgen, owner)
       let obj = createEnvObj(c.graph, c.idgen, owner, info)
       rawAddSon(result, obj)
@@ -443,6 +460,17 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
       if owner.isIterator:
         c.somethingToDo = true
         addClosureParam(c, owner, n.info)
+        if not isDefined(c.graph.config, "nimOptIters") and interestingIterVar(s):
+          if not c.capturedVars.contains(s.id):
+            if not c.inTypeOf: c.capturedVars.incl(s.id)
+            let obj = getHiddenParam(c.graph, owner).typ.skipTypes({tyOwned, tyRef, tyPtr})
+            #let obj = c.getEnvTypeForOwner(s.owner).skipTypes({tyOwned, tyRef, tyPtr})
+
+            if s.name.id == getIdent(c.graph.cache, ":state").id:
+              obj.n[0].sym.flags.incl sfNoInit
+              obj.n[0].sym.itemId = ItemId(module: s.itemId.module, item: -s.itemId.item)
+            else:
+              discard addField(obj, s, c.graph.cache, c.idgen)
     # direct or indirect dependency:
     elif innerClosure or interested:
       discard """
@@ -746,6 +774,8 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: var DetectionPass;
     elif s.id in d.capturedVars:
       if s.owner != owner:
         result = accessViaEnvParam(d.graph, n, owner)
+      elif owner.isIterator and not isDefined(d.graph.config, "nimOptIters") and interestingIterVar(s):
+        result = accessViaEnvParam(d.graph, n, owner)
       else:
         result = accessViaEnvVar(n, owner, d, c)
   of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit, nkComesFrom,
@@ -863,7 +893,7 @@ proc liftLambdas*(g: ModuleGraph; fn: PSym, body: PNode; tooEarly: var bool;
     # ignore forward declaration:
     result = body
     tooEarly = true
-    if fn.isIterator:
+    if fn.isIterator and isDefined(g.config, "nimOptIters"):
       var d = initDetectionPass(g, fn, idgen)
       addClosureParam(d, fn, body.info)
   else:

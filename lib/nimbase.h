@@ -14,6 +14,7 @@ __GNUC__
 __TINYC__
 __clang__
 __AVR__
+__arm__
 __EMSCRIPTEN__
 */
 
@@ -109,7 +110,7 @@ __EMSCRIPTEN__
 
 /*
   NIM_THREADVAR declaration based on
-  http://stackoverflow.com/questions/18298280/how-to-declare-a-variable-as-thread-local-portably
+  https://stackoverflow.com/questions/18298280/how-to-declare-a-variable-as-thread-local-portably
 */
 #if defined _WIN32
 #  if defined _MSC_VER || defined __BORLANDC__
@@ -468,16 +469,10 @@ typedef char* NCSTRING;
 
 #define NIM_STRLIT_FLAG ((NU)(1) << ((NIM_INTBITS) - 2)) /* This has to be the same as system.strlitFlag! */
 
-#define STRING_LITERAL(name, str, length) \
-   static const struct {                   \
-     TGenericSeq Sup;                      \
-     NIM_CHAR data[(length) + 1];          \
-  } name = {{length, (NI) ((NU)length | NIM_STRLIT_FLAG)}, str}
-
 /* declared size of a sequence/variable length array: */
 #if defined(__cplusplus) && defined(__clang__)
 #  define SEQ_DECL_SIZE 1
-#elif defined(__GNUC__) || defined(__clang__) || defined(_MSC_VER)
+#elif defined(__GNUC__) || defined(_MSC_VER)
 #  define SEQ_DECL_SIZE /* empty is correct! */
 #else
 #  define SEQ_DECL_SIZE 1000000
@@ -584,9 +579,16 @@ NIM_STATIC_ASSERT(sizeof(NI) == sizeof(void*) && NIM_INTBITS == sizeof(NI)*8, "P
   #define nimMulInt64(a, b, res) __builtin_smulll_overflow(a, b, (long long int*)res)
 
   #if NIM_INTBITS == 32
-    #define nimAddInt(a, b, res) __builtin_sadd_overflow(a, b, res)
-    #define nimSubInt(a, b, res) __builtin_ssub_overflow(a, b, res)
-    #define nimMulInt(a, b, res) __builtin_smul_overflow(a, b, res)
+    #if defined(__arm__) && defined(__GNUC__)
+      /* arm-none-eabi-gcc targets defines int32_t as long int */
+      #define nimAddInt(a, b, res) __builtin_saddl_overflow(a, b, res)
+      #define nimSubInt(a, b, res) __builtin_ssubl_overflow(a, b, res)
+      #define nimMulInt(a, b, res) __builtin_smull_overflow(a, b, res)
+    #else
+      #define nimAddInt(a, b, res) __builtin_sadd_overflow(a, b, res)
+      #define nimSubInt(a, b, res) __builtin_ssub_overflow(a, b, res)
+      #define nimMulInt(a, b, res) __builtin_smul_overflow(a, b, res)
+    #endif
   #else
     /* map it to the 'long long' variant */
     #define nimAddInt(a, b, res) __builtin_saddll_overflow(a, b, (long long int*)res)

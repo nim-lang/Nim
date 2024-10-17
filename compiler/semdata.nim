@@ -15,8 +15,8 @@ when defined(nimPreviewSlimSystem):
   import std/assertions
 
 import
-  options, ast, astalgo, msgs, idents, renderer,
-  magicsys, vmdef, modulegraphs, lineinfos, pathutils
+  options, ast, msgs, idents, renderer,
+  magicsys, vmdef, modulegraphs, lineinfos, pathutils, layeredtable
 
 import ic / ic
 
@@ -73,9 +73,9 @@ type
     efNoUndeclared, efIsDotCall, efCannotBeDotCall,
       # Use this if undeclared identifiers should not raise an error during
       # overload resolution.
-    efNoDiagnostics,
     efTypeAllowed # typeAllowed will be called after
     efWantNoDefaults
+    efIgnoreDefaults # var statements without initialization
     efAllowSymChoice # symchoice node should not be resolved
 
   TExprFlags* = set[TExprFlag]
@@ -136,9 +136,12 @@ type
     semOverloadedCall*: proc (c: PContext, n, nOrig: PNode,
                               filter: TSymKinds, flags: TExprFlags, expectedType: PType = nil): PNode {.nimcall.}
     semTypeNode*: proc(c: PContext, n: PNode, prev: PType): PType {.nimcall.}
-    semInferredLambda*: proc(c: PContext, pt: Table[ItemId, PType], n: PNode): PNode
-    semGenerateInstance*: proc (c: PContext, fn: PSym, pt: Table[ItemId, PType],
+    semInferredLambda*: proc(c: PContext, pt: LayeredIdTable, n: PNode): PNode
+    semGenerateInstance*: proc (c: PContext, fn: PSym, pt: LayeredIdTable,
                                 info: TLineInfo): PSym
+    instantiateOnlyProcType*: proc (c: PContext, pt: LayeredIdTable,
+                                    prc: PSym, info: TLineInfo): PType
+      # used by sigmatch for explicit generic instantiations
     includedFiles*: IntSet    # used to detect recursive include files
     pureEnumFields*: TStrTable   # pure enum fields that can be used unambiguously
     userPragmas*: TStrTable
@@ -168,6 +171,7 @@ type
     inUncheckedAssignSection*: int
     importModuleLookup*: Table[int, seq[int]] # (module.ident.id, [module.id])
     skipTypes*: seq[PNode] # used to skip types between passes in type section. So far only used for inheritance, sets and generic bodies.
+    inTypeofContext*: int
   TBorrowState* = enum
     bsNone, bsReturnNotMatch, bsNoDistinct, bsGeneric, bsNotSupported, bsMatch
 
@@ -525,10 +529,11 @@ template localErrorNode*(c: PContext, n: PNode, arg: string): PNode =
   liMessage(c.config, n2.info, errGenerated, arg, doNothing, instLoc())
   errorNode(c, n2)
 
-proc fillTypeS*(dest: PType, kind: TTypeKind, c: PContext) =
-  dest.kind = kind
-  dest.owner = getCurrOwner(c)
-  dest.size = - 1
+when false:
+  proc fillTypeS*(dest: PType, kind: TTypeKind, c: PContext) =
+    dest.kind = kind
+    dest.owner = getCurrOwner(c)
+    dest.size = - 1
 
 proc makeRangeType*(c: PContext; first, last: BiggestInt;
                     info: TLineInfo; intType: PType = nil): PType =

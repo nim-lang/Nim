@@ -2522,31 +2522,39 @@ Notice we use the overload of `()` to have the same semantics in Nim, but on the
 This allows to easy interop with functions that accepts for example a `const` operator in its signature. 
 
 
-Injected symbols in generic procs
-=================================
+Injected symbols in generic procs and templates
+===============================================
 
-With the experimental option `genericsOpenSym`, captured symbols in generic
-routine bodies may be replaced by symbols injected locally by templates/macros
-at instantiation time. `bind` may be used to keep the captured symbols over
-the injected ones regardless of enabling the option.
-  
+With the experimental option `openSym`, captured symbols in generic routine and
+template bodies may be replaced by symbols injected locally by templates/macros
+at instantiation time. `bind` may be used to keep the captured symbols over the
+injected ones regardless of enabling the options, but other methods like
+renaming the captured symbols should be used instead so that the code is not
+affected by context changes.
+
 Since this change may affect runtime behavior, the experimental switch
-`genericsOpenSym` needs to be enabled, and a warning is given in the case
-where an injected symbol would replace a captured symbol not bound by `bind`
-and the experimental switch isn't enabled.
+`openSym` needs to be enabled; and a warning is given in the case where an
+injected symbol would replace a captured symbol not bound by `bind` and
+the experimental switch isn't enabled.
 
 ```nim
 const value = "captured"
-template foo(x: int, body: untyped) =
+template foo(x: int, body: untyped): untyped =
   let value {.inject.} = "injected"
   body
 
 proc old[T](): string =
   foo(123):
-    return value # warning: a new `value` has been injected, use `bind` or turn on `experimental:genericsOpenSym`
+    return value # warning: a new `value` has been injected, use `bind` or turn on `experimental:openSym`
 echo old[int]() # "captured"
 
-{.experimental: "genericsOpenSym".}
+template oldTempl(): string =
+  block:
+    foo(123):
+      value # warning: a new `value` has been injected, use `bind` or turn on `experimental:openSym`
+echo oldTempl() # "captured"
+
+{.experimental: "openSym".}
 
 proc bar[T](): string =
   foo(123):
@@ -2558,6 +2566,53 @@ proc baz[T](): string =
   foo(123):
     return value
 assert baz[int]() == "captured"
+
+template barTempl(): string =
+  block:
+    foo(123):
+      value
+assert barTempl() == "injected" # previously it would be "captured"
+
+template bazTempl(): string =
+  bind value
+  block:
+    foo(123):
+      value
+assert bazTempl() == "captured"
+```
+
+This option also generates a new node kind `nnkOpenSym` which contains
+exactly 1 `nnkSym` node. In the future this might be merged with a slightly
+modified `nnkOpenSymChoice` node but macros that want to support the
+experimental feature should still handle `nnkOpenSym`, as the node kind would
+simply not be generated as opposed to being removed.
+
+Another experimental switch `genericsOpenSym` exists that enables this behavior
+at instantiation time, meaning templates etc can enable it specifically when
+they are being called. However this does not generate `nnkOpenSym` nodes
+(unless the other switch is enabled) and so doesn't reflect the regular
+behavior of the switch.
+
+```nim
+const value = "captured"
+template foo(x: int, body: untyped): untyped =
+  let value {.inject.} = "injected"
+  {.push experimental: "genericsOpenSym".}
+  body
+  {.pop.}
+
+proc bar[T](): string =
+  foo(123):
+    return value
+echo bar[int]() # "injected"
+
+template barTempl(): string =
+  block:
+    var res: string
+    foo(123):
+      res = value
+    res
+assert barTempl() == "injected"
 ```
 
 

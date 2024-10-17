@@ -246,7 +246,8 @@ proc importModuleAs(c: PContext; n: PNode, realModule: PSym, importHidden: bool)
     result = createModuleAliasImpl(realModule.name)
   if importHidden:
     result.options.incl optImportHidden
-  c.unusedImports.add((result, n.info))
+  let moduleIdent = if n.kind == nkInfix: n[^1] else: n
+  c.unusedImports.add((result, moduleIdent.info))
   c.importModuleMap[result.id] = realModule.id
   c.importModuleLookup.mgetOrPut(result.name.id, @[]).addUnique realModule.id
 

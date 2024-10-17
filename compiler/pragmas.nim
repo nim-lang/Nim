@@ -370,7 +370,7 @@ proc processDynLib(c: PContext, n: PNode, sym: PSym) =
 proc processNote(c: PContext, n: PNode) =
   template handleNote(enumVals, notes) =
     let x = findStr(enumVals.a, enumVals.b, n[0][1].ident.s, errUnknown)
-    if x !=  errUnknown:
+    if x != errUnknown:
       nk = TNoteKind(x)
       let x = c.semConstBoolExpr(c, n[1])
       n[1] = x
@@ -800,13 +800,14 @@ proc pragmaGuard(c: PContext; it: PNode; kind: TSymKind): PSym =
 proc semCustomPragma(c: PContext, n: PNode, sym: PSym): PNode =
   var callNode: PNode
 
-  if n.kind in {nkIdent, nkSym}:
+  case n.kind
+  of nkIdentKinds:
     # pragma -> pragma()
     callNode = newTree(nkCall, n)
-  elif n.kind == nkExprColonExpr:
+  of nkExprColonExpr:
     # pragma: arg -> pragma(arg)
     callNode = newTree(nkCall, n[0], n[1])
-  elif n.kind in nkPragmaCallKinds:
+  of nkPragmaCallKinds - {nkExprColonExpr}:
     callNode = n
   else:
     invalidPragma(c, n)
@@ -1343,6 +1344,16 @@ proc mergePragmas(n, pragmas: PNode) =
   else:
     for p in pragmas: n[pragmasPos].add p
 
+proc mergeValidPragmas(n, pragmas: PNode, validPragmas: TSpecialWords) =
+  if n[pragmasPos].kind == nkEmpty:
+    n[pragmasPos] = newNodeI(nkPragma, n.info)
+  for p in pragmas:
+    let prag = whichPragma(p)
+    if prag in validPragmas:
+      let copy = copyTree(p)
+      overwriteLineInfo copy, n.info
+      n[pragmasPos].add copy
+
 proc implicitPragmas*(c: PContext, sym: PSym, info: TLineInfo,
                       validPragmas: TSpecialWords) =
   if sym != nil and sym.kind != skModule:
@@ -1356,7 +1367,8 @@ proc implicitPragmas*(c: PContext, sym: PSym, info: TLineInfo,
             internalError(c.config, info, "implicitPragmas")
           inc i
         popInfoContext(c.config)
-        if sym.kind in routineKinds and sym.ast != nil: mergePragmas(sym.ast, o)
+        if sym.kind in routineKinds and sym.ast != nil:
+          mergeValidPragmas(sym.ast, o, validPragmas)
 
     if lfExportLib in sym.loc.flags and sfExportc notin sym.flags:
       localError(c.config, info, ".dynlib requires .exportc")

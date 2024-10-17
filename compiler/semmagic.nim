@@ -49,8 +49,12 @@ proc semTypeOf(c: PContext; n: PNode): PNode =
     else:
       m = mode.intVal
   result = newNodeI(nkTypeOfExpr, n.info)
+  inc c.inTypeofContext
+  defer: dec c.inTypeofContext # compiles can raise an exception
   let typExpr = semExprWithType(c, n[1], if m == 1: {efInTypeof} else: {})
   result.add typExpr
+  if typExpr.typ.kind == tyFromExpr:
+    typExpr.typ.flags.incl tfNonConstExpr
   result.typ = makeTypeDesc(c, typExpr.typ)
 
 type
@@ -66,7 +70,16 @@ proc semArrGet(c: PContext; n: PNode; flags: TExprFlags): PNode =
   if result.isNil:
     let x = copyTree(n)
     x[0] = newIdentNode(getIdent(c.cache, "[]"), n.info)
-    bracketNotFoundError(c, x)
+    if c.inGenericContext > 0:
+      for i in 0..<n.len:
+        let a = n[i]
+        if a.typ != nil and a.typ.kind in {tyGenericParam, tyFromExpr}:
+          # expression is compiled early in a generic body
+          result = semGenericStmt(c, x)
+          result.typ = makeTypeFromExpr(c, copyTree(result))
+          result.typ.flags.incl tfNonConstExpr
+          return
+    bracketNotFoundError(c, x, flags)
     #localError(c.config, n.info, "could not resolve: " & $n)
     result = errorNode(c, n)
 
@@ -224,8 +237,9 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
   of "rangeBase":
     # return the base type of a range type
     var arg = operand.skipTypes({tyGenericInst})
-    assert arg.kind == tyRange
-    result = getTypeDescNode(c, arg.base, operand.owner, traitCall.info)
+    if arg.kind == tyRange:
+      arg = arg.base
+    result = getTypeDescNode(c, arg, operand.owner, traitCall.info)
   of "isCyclic":
     var operand = operand.skipTypes({tyGenericInst})
     let isCyclic = canFormAcycle(c.graph, operand)
@@ -439,7 +453,7 @@ proc turnFinalizerIntoDestructor(c: PContext; orig: PSym; info: TLineInfo): PSym
   result = copySym(orig, c.idgen)
   result.info = info
   result.flags.incl sfFromGeneric
-  result.owner = orig
+  result.owner() = orig
   let origParamType = orig.typ.firstParamType
   let newParamType = makeVarType(result, origParamType.skipTypes(abstractPtrs), c.idgen)
   let oldParam = orig.typ.n[1].sym
@@ -510,7 +524,7 @@ proc semNewFinalize(c: PContext; n: PNode): PNode =
         discard "already turned this one into a finalizer"
       else:
         if fin.instantiatedFrom != nil and fin.instantiatedFrom != fin.owner: #undo move
-          fin.owner = fin.instantiatedFrom
+          fin.owner() = fin.instantiatedFrom
         let wrapperSym = newSym(skProc, getIdent(c.graph.cache, fin.name.s & "FinalizerWrapper"), c.idgen, fin.owner, fin.info)
         let selfSymNode = newSymNode(copySym(fin.ast[paramsPos][1][0].sym, c.idgen))
         selfSymNode.typ = fin.typ.firstParamType
@@ -525,7 +539,7 @@ proc semNewFinalize(c: PContext; n: PNode): PNode =
           genericParams = fin.ast[genericParamsPos], pragmas = fin.ast[pragmasPos], exceptions = fin.ast[miscPos]), {})
 
         var transFormedSym = turnFinalizerIntoDestructor(c, wrapperSym, wrapper.info)
-        transFormedSym.owner = fin
+        transFormedSym.owner() = fin
         if c.config.backend == backendCpp or sfCompileToCpp in c.module.flags:
           let origParamType = transFormedSym.ast[bodyPos][1].typ
           let selfSymbolType = makePtrType(c, origParamType.skipTypes(abstractPtrs))

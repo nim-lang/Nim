@@ -166,4 +166,7 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimHasWarnStdPrefix")
 
   defineSymbol("nimHasVtables")
+  defineSymbol("nimHasGenericsOpenSym2")
+  defineSymbol("nimHasGenericsOpenSym3")
   defineSymbol("nimHasJsNoLambdaLifting")
+  defineSymbol("nimHasDefaultFloatRoundtrip")

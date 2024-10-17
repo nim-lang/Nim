@@ -2623,12 +2623,12 @@ In a call `p(args)` where `p` may refer to more than one
 candidate, it is said to be a symbol choice. Overload resolution will attempt to
 find the best candidate, thus transforming the symbol choice into a resolved symbol.
 The routine `p` that matches best is selected following a series of trials explained below. 
-In order: Catagory matching, Hierarchical Order Comparison, and finally, Complexity Analysis.
+In order: Category matching, Hierarchical Order Comparison, and finally, Complexity Analysis.
 
 If multiple candidates match equally well after all trials have been tested, the ambiguity 
 is reported during semantic analysis.
 
-First Trial: Catagory matching
+First Trial: Category matching
 --------------------------------
 
 Every arg in `args` needs to match and there are multiple different categories of matches.
@@ -2689,7 +2689,7 @@ Matching formals for this type include `T`, `object`, `A`, `A[...]` and `A[C]` w
 is a generic typeclass composition and `T` is an unconstrained generic type variable. This list is in order of 
 specificity with respect to `A` as each subsequent category narrows the set of types that are members of their match set.
 
-In this trail, the formal parameters of candidates are compared in order (1st parameter, 2nd parameter, etc.) to search for
+In this trial, the formal parameters of candidates are compared in order (1st parameter, 2nd parameter, etc.) to search for
 a candidate that has an unrivaled specificity. If such a formal parameter is found, the candidate it belongs to is chosen 
 as the resolved symbol.
 
@@ -3219,6 +3219,15 @@ A const section declares constants whose values are constant expressions:
   ```
 
 Once declared, a constant's symbol can be used as a constant expression.
+
+The value part of a constant declaration opens a new scope for each constant,
+so no symbols declared in the constant value are accessible outside of it.
+
+  ```nim
+  const foo = (var a = 1; a)
+  const bar = a # error
+  let baz = a # error
+  ```
 
 See [Constants and Constant Expressions] for details.
 
@@ -3787,9 +3796,6 @@ Since operations on unsigned numbers wrap around and are unchecked so are
 type conversions to unsigned integers and between unsigned integers. The
 rationale for this is mostly better interoperability with the C Programming
 language when algorithms are ported from C to Nim.
-
-Exception: Values that are converted to an unsigned type at compile time
-are checked so that code like `byte(-1)` does not compile.
 
 **Note**: Historically the operations
 were unchecked and the conversions were sometimes checked but starting with
@@ -4457,7 +4463,42 @@ as an example:
 Overloading of the subscript operator
 -------------------------------------
 
-The `[]` subscript operator for arrays/openarrays/sequences can be overloaded.
+The `[]` subscript operator for arrays/openarrays/sequences can be overloaded
+for any type (with some exceptions) by defining a routine with the name `[]`.
+
+  ```nim
+  type Foo = object
+    data: seq[int]
+  
+  proc `[]`(foo: Foo, i: int): int =
+    result = foo.data[i]
+  
+  let foo = Foo(data: @[1, 2, 3])
+  echo foo[1] # 2
+  ```
+
+Assignment to subscripts can also be overloaded by naming a routine `[]=`,
+which has precedence over assigning to the result of `[]`.
+
+  ```nim
+  type Foo = object
+    data: seq[int]
+  
+  proc `[]`(foo: Foo, i: int): int =
+    result = foo.data[i]
+  proc `[]=`(foo: var Foo, i: int, val: int) =
+    foo.data[i] = val
+  
+  var foo = Foo(data: @[1, 2, 3])
+  echo foo[1] # 2
+  foo[1] = 5
+  echo foo.data # @[1, 5, 3]
+  echo foo[1] # 5
+  ```
+
+Overloads of the subscript operator cannot be applied to routine or type
+symbols themselves, as this conflicts with the syntax for instantiating
+generic parameters, i.e. `foo[int](1, 2, 3)` or `Foo[int]`.
 
 
 Methods
@@ -5128,7 +5169,7 @@ It is possible to raise/catch imported C++ exceptions. Types imported using
 `importcpp` can be raised or caught. Exceptions are raised by value and
 caught by reference. Example:
 
-  ```nim  test = "nim cpp -r $1"
+  ```nim
   type
     CStdException {.importcpp: "std::exception", header: "<exception>", inheritable.} = object
       ## does not inherit from `RootObj`, so we use `inheritable` instead

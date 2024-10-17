@@ -1,120 +1,28 @@
-# v2.2.0 - yyyy-mm-dd
+# v2.x.x - yyyy-mm-dd
 
 
 ## Changes affecting backward compatibility
 
-- `-d:nimStrictDelete` becomes the default. An index error is produced when the index passed to `system.delete` was out of bounds. Use `-d:nimAuditDelete` to mimic the old behavior for backwards compatibility.
-- The default user-agent in `std/httpclient` has been changed to `Nim-httpclient/<version>` instead of `Nim httpclient/<version>` which was incorrect according to the HTTP spec.
-- Methods now support implementations based on a VTable by using `--experimental:vtables`. Methods are then confined to be in the same module where their type has been defined.
-- With `-d:nimPreviewNonVarDestructor`, non-var destructors become the default.
-- A bug where tuple unpacking assignment with a longer tuple on the RHS than the LHS was allowed has been fixed, i.e. code like:
-  ```nim
-  var a, b: int
-  (a, b) = (1, 2, 3, 4)
-  ```
-  will no longer compile.
-- `internalNew` is removed from system, use `new` instead.
+- `-d:nimPreviewFloatRoundtrip` becomes the default. `system.addFloat` and `system.$` now can produce string representations of
+floating point numbers that are minimal in size and possess round-trip and correct
+rounding guarantees (via the
+[Dragonbox](https://raw.githubusercontent.com/jk-jeon/dragonbox/master/other_files/Dragonbox.pdf) algorithm). Use `-d:nimLegacySprintf` to emulate old behaviors.
 
-- `bindMethod` in `std/jsffi` is deprecated, don't use it with closures.
-
-- JS backend now supports lambda lifting for closures. Use `--legacy:jsNoLambdaLifting` to emulate old behavior.
-
-- `owner` in `std/macros` is deprecated.
+- The `default` parameter of `tables.getOrDefault` has been renamed to `def` to
+  avoid conflicts with `system.default`, so named argument usage for this
+  parameter like `getOrDefault(..., default = ...)` will have to be changed.
 
 ## Standard library additions and changes
 
 [//]: # "Changes:"
-
-- Changed `std/osfiles.copyFile` to allow to specify `bufferSize` instead of a hardcoded one.
-- Changed `std/osfiles.copyFile` to use `POSIX_FADV_SEQUENTIAL` hints for kernel-level aggressive sequential read-aheads.
-- `std/htmlparser` has been moved to a nimble package, use `nimble` or `atlas` to install it.
-
-[//]: # "Additions:"
-
-- Added `newStringUninit` to system, which creates a new string of length `len` like `newString` but with uninitialized content.
-- Added `setLenUninit` to system, which doesn't initialize
-slots when enlarging a sequence.
-- Added `hasDefaultValue` to `std/typetraits` to check if a type has a valid default value.
-- Added Viewport API for the JavaScript targets in the `dom` module.
-- Added `toSinglyLinkedRing` and `toDoublyLinkedRing` to `std/lists` to convert from `openArray`s.
-- ORC: To be enabled via `nimOrcStats` there is a new API called `GC_orcStats` that can be used to query how many
-  objects the cyclic collector did free. If the number is zero that is a strong indicator that you can use `--mm:arc`
-  instead of `--mm:orc`.
-- A `$` template is provided for `Path` in `std/paths`.
-- `std/hashes.hash(x:string)` changed to produce a 64-bit string `Hash` (based
-on Google's Farm Hash) which is also often faster than the present one.  Define
-`nimStringHash2` to get the old values back.  `--jsbigint=off` mode always only
-produces the old values.  This may impact your automated tests if they depend
-on hash order in some obvious or indirect way.  Using `sorted` or `OrderedTable`
-is often an easy workaround.
-
-[//]: # "Deprecations:"
-
-- Deprecates `system.newSeqUninitialized`, which is replaced by `newSeqUninit`.
-
-[//]: # "Removals:"
-
+- `std/math` The `^` symbol now supports floating-point as exponent in addition to the Natural type.
 
 ## Language changes
 
-- `noInit` can be used in types and fields to disable member initializers in the C++ backend.
-- C++ custom constructors initializers see https://nim-lang.org/docs/manual_experimental.htm#constructor-initializer
-- `member` can be used to attach a procedure to a C++ type.
-- C++ `constructor` now reuses `result` instead creating `this`.
-
-- Tuple unpacking changes:
-  - Tuple unpacking assignment now supports using underscores to discard values.
-    ```nim
-    var a, c: int
-    (a, _, c) = (1, 2, 3)
-    ```
-  - Tuple unpacking variable declarations now support type annotations, but
-    only for the entire tuple.
-    ```nim
-    let (a, b): (int, int) = (1, 2)
-    let (a, (b, c)): (byte, (float, cstring)) = (1, (2, "abc"))
-    ```
-
-- An experimental option `genericsOpenSym` has been added to allow captured
-  symbols in generic routine bodies to be replaced by symbols injected locally
-  by templates/macros at instantiation time. `bind` may be used to keep the
-  captured symbols over the injected ones regardless of enabling the option.
-
-  Since this change may affect runtime behavior, the experimental switch
-  `genericsOpenSym` needs to be enabled, and a warning is given in the case
-  where an injected symbol would replace a captured symbol not bound by `bind`
-  and the experimental switch isn't enabled.
-
-  ```nim
-  const value = "captured"
-  template foo(x: int, body: untyped) =
-    let value {.inject.} = "injected"
-    body
-
-  proc old[T](): string =
-    foo(123):
-      return value # warning: a new `value` has been injected, use `bind` or turn on `experimental:genericsOpenSym`
-  echo old[int]() # "captured"
-
-  {.experimental: "genericsOpenSym".}
-
-  proc bar[T](): string =
-    foo(123):
-      return value
-  assert bar[int]() == "injected" # previously it would be "captured"
-
-  proc baz[T](): string =
-    bind value
-    foo(123):
-      return value
-  assert baz[int]() == "captured"
-  ```
 
 ## Compiler changes
 
-- `--nimcache` using a relative path as the argument in a config file is now relative to the config file instead of the current directory.
 
 ## Tool changes
 
-- koch now allows bootstrapping with `-d:nimHasLibFFI`, replacing the older option of building the compiler directly w/ the `libffi` nimble package in tow.
 

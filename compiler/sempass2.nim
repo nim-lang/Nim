@@ -11,7 +11,7 @@ import
   ast, astalgo, msgs, renderer, magicsys, types, idents, trees,
   wordrecg, options, guards, lineinfos, semfold, semdata,
   modulegraphs, varpartitions, typeallowed, nilcheck, errorhandling,
-  semstrictfuncs, suggestsymdb
+  semstrictfuncs, suggestsymdb, pushpoppragmas
 
 import std/[tables, intsets, strutils, sequtils]
 
@@ -85,6 +85,7 @@ type
     isInnerProc: bool
     inEnforcedNoSideEffects: bool
     currOptions: TOptions
+    optionsStack: seq[(TOptions, TNoteKinds)]
     config: ConfigRef
     graph: ModuleGraph
     c: PContext
@@ -615,9 +616,16 @@ proc trackPragmaStmt(tracked: PEffects, n: PNode) =
   for i in 0..<n.len:
     var it = n[i]
     let pragma = whichPragma(it)
-    if pragma == wEffects:
+    case pragma
+    of wEffects:
       # list the computed effects up to here:
       listEffects(tracked)
+    of wPush:
+      processPushBackendOption(tracked.c.config, tracked.optionsStack, tracked.currOptions, n, i+1)
+    of wPop:
+      processPopBackendOption(tracked.c.config, tracked.optionsStack, tracked.currOptions)
+    else:
+      discard
 
 template notGcSafe(t): untyped = {tfGcSafe, tfNoSideEffect} * t.flags == {}
 
@@ -1202,7 +1210,7 @@ proc track(tracked: PEffects, n: PNode) =
     if n.sym.typ != nil and tfHasAsgn in n.sym.typ.flags:
       tracked.owner.flags.incl sfInjectDestructors
       # bug #15038: ensure consistency
-      if not hasDestructor(n.typ) and sameType(n.typ, n.sym.typ): n.typ = n.sym.typ
+      if n.typ == nil or (not hasDestructor(n.typ) and sameType(n.typ, n.sym.typ)): n.typ = n.sym.typ
   of nkHiddenAddr, nkAddr:
     if n[0].kind == nkSym and isLocalSym(tracked, n[0].sym) and
           n.typ.kind notin {tyVar, tyLent}:
@@ -1594,7 +1602,7 @@ proc initEffects(g: ModuleGraph; effects: PNode; s: PSym; c: PContext): TEffects
   result = TEffects(exc: effects[exceptionEffects], tags: effects[tagEffects],
             forbids: effects[forbiddenEffects], owner: s, ownerModule: s.getModule,
             init: @[], locked: @[], graph: g, config: g.config, c: c,
-            currentBlock: 1
+            currentBlock: 1, optionsStack: @[(g.config.options, g.config.notes)]
   )
   result.guards.s = @[]
   result.guards.g = g

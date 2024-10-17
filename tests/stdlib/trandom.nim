@@ -47,6 +47,8 @@ block:
   type DiceRoll = range[0..6]
   when not defined(js):
     doAssert rand(DiceRoll).int == 3
+  elif compileOption("jsbigint64"):
+    doAssert rand(DiceRoll).int == 1
   else:
     doAssert rand(DiceRoll).int == 6
 
@@ -296,10 +298,13 @@ block: # bug #22360
     else:
       inc fc
 
-  when defined(js):
-    when compileOption("jsbigint64"):
-      doAssert (tc, fc) == (517, 483), $(tc, fc)
-    else:
-      doAssert (tc, fc) == (515, 485), $(tc, fc)
+  when defined(js) and not compileOption("jsbigint64"):
+    doAssert (tc, fc) == (515, 485), $(tc, fc)
   else:
     doAssert (tc, fc) == (510, 490), $(tc, fc)
+
+block:
+  when defined(js) and not compileOption("jsbigint64"):
+    doAssert rand(int32.high) == 335507522
+  else:
+    doAssert rand(int32.high) == 607539621

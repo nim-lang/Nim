@@ -15,7 +15,7 @@ import
   ccgutils, ropes, wordrecg, treetab, cgmeth,
   rodutils, renderer, cgendata, aliases,
   lowerings, ndi, lineinfos, pathutils, transf,
-  injectdestructors, astmsgs, modulepaths, backendpragmas,
+  injectdestructors, astmsgs, modulepaths, pushpoppragmas,
   mangleutils
 
 from expanddefaults import caseObjDefaultBranch
@@ -373,6 +373,9 @@ proc dataField(p: BProc): Rope =
 
 proc genProcPrototype(m: BModule, sym: PSym)
 
+include cbuilderbase
+include cbuilderexprs
+include cbuilderdecls
 include ccgliterals
 include ccgtypes
 
@@ -482,7 +485,10 @@ include ccgreset
 proc resetLoc(p: BProc, loc: var TLoc) =
   let containsGcRef = optSeqDestructors notin p.config.globalOptions and containsGarbageCollectedRef(loc.t)
   let typ = skipTypes(loc.t, abstractVarRange)
-  if isImportedCppType(typ): return
+  if isImportedCppType(typ): 
+    var didGenTemp = false
+    linefmt(p, cpsStmts, "$1 = $2;$n", [rdLoc(loc), genCppInitializer(p.module, p, typ, didGenTemp)])
+    return
   if optSeqDestructors in p.config.globalOptions and typ.kind in {tyString, tySequence}:
     assert loc.snippet != ""
 
@@ -780,15 +786,11 @@ $1define nimfr_(proc, file) \
   TFrame FR_; \
   FR_.procname = proc; FR_.filename = file; FR_.line = 0; FR_.len = 0; #nimFrame(&FR_);
 
-  $1define nimfrs_(proc, file, slots, length) \
-    struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;VarSlot s[slots];} FR_; \
-    FR_.procname = proc; FR_.filename = file; FR_.line = 0; FR_.len = length; #nimFrame((TFrame*)&FR_);
+$1define nimln_(n) \
+  FR_.line = n;
 
-  $1define nimln_(n) \
-    FR_.line = n;
-
-  $1define nimlf_(n, file) \
-    FR_.line = n; FR_.filename = file;
+$1define nimlf_(n, file) \
+  FR_.line = n; FR_.filename = file;
 
 """
   if p.module.s[cfsFrameDefines].len == 0:
@@ -1484,15 +1486,13 @@ proc getFileHeader(conf: ConfigRef; cfile: Cfile): Rope =
 
 proc getSomeNameForModule(conf: ConfigRef, filename: AbsoluteFile): Rope =
   ## Returns a mangled module name.
-  result = ""
-  result.add mangleModuleName(conf, filename).mangle
+  result = mangleModuleName(conf, filename).mangle
 
 proc getSomeNameForModule(m: BModule): Rope =
   ## Returns a mangled module name.
   assert m.module.kind == skModule
   assert m.module.owner.kind == skPackage
-  result = ""
-  result.add mangleModuleName(m.g.config, m.filename).mangle
+  result = mangleModuleName(m.g.config, m.filename).mangle
 
 proc getSomeInitName(m: BModule, suffix: string): Rope =
   if not m.hcrOn:
@@ -1939,9 +1939,6 @@ proc genInitCode(m: BModule) =
 
     if optStackTrace in m.initProc.options and preventStackTrace notin m.flags:
       prc.add(deinitFrame(m.initProc))
-  elif m.config.exc == excGoto:
-    if getCompilerProc(m.g.graph, "nimTestErrorFlag") != nil:
-      m.appcg(prc, "\t#nimTestErrorFlag();$n", [])
 
   prc.addf("}$N", [])
 

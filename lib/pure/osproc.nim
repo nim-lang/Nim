@@ -157,7 +157,7 @@ proc close*(p: Process) {.rtl, extern: "nosp$1", raises: [IOError, OSError], tag
   ##
   ## .. warning:: If the process has not finished executing, this will forcibly
   ##   terminate the process. Doing so may result in zombie processes and
-  ##   `pty leaks <http://stackoverflow.com/questions/27021641/how-to-fix-request-failed-on-channel-0>`_.
+  ##   `pty leaks <https://stackoverflow.com/questions/27021641/how-to-fix-request-failed-on-channel-0>`_.
 
 proc suspend*(p: Process) {.rtl, extern: "nosp$1", tags: [].}
   ## Suspends the process `p`.
@@ -740,7 +740,8 @@ when defined(windows) and not defined(useNimRtl):
       if poInteractive in result.options: close(result)
       const errInvalidParameter = 87.int
       const errFileNotFound = 2.int
-      if lastError.int in {errInvalidParameter, errFileNotFound}:
+      case lastError.int
+      of errInvalidParameter, errFileNotFound:
         raiseOSError(lastError,
               "Requested command not found: '" & command & "'. OS error:")
       else:
@@ -1123,14 +1124,13 @@ elif not defined(useNimRtl):
       var error: cint
       let sizeRead = read(data.pErrorPipe[readIdx], addr error, sizeof(error))
       if sizeRead == sizeof(error):
-        raiseOSError(osLastError(),
+        raiseOSError(OSErrorCode(error),
                       "Could not find command: '" & $data.sysCommand & "'. OS error: " & $strerror(error))
 
       return pid
 
     {.push stacktrace: off, profiler: off.}
-    proc startProcessFail(data: ptr StartProcessData) =
-      var error: cint = errno
+    proc startProcessFail(data: ptr StartProcessData, error: cint = errno) =
       discard write(data.pErrorPipe[writeIdx], addr error, sizeof(error))
       exitnow(1)
 
@@ -1167,7 +1167,11 @@ elif not defined(useNimRtl):
       if (poUsePath in data.options):
         when defined(uClibc) or defined(linux) or defined(haiku):
           # uClibc environment (OpenWrt included) doesn't have the full execvpe
-          let exe = findExe(data.sysCommand)
+          var exe: string
+          try:
+            exe = findExe(data.sysCommand)
+          except OSError as e:
+            startProcessFail(data, e.errorCode)
           discard execve(exe.cstring, data.sysArgs, data.sysEnv)
         else:
           # MacOSX doesn't have execvpe, so we need workaround.
