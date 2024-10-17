@@ -1202,7 +1202,6 @@ proc realloc0(allocator: var MemRegion, p: pointer, oldsize, newsize: Natural): 
     zeroMem(cast[pointer](cast[uint](result) + uint(oldsize)), newsize - oldsize)
 
 proc abandonAllocator(a: var MemRegion) =
-  # There may be a race condition here...
   if a.chunksInUse == 0:
     # Deallocating is only safe if all chunks are unused
     deallocOsPages(a)
