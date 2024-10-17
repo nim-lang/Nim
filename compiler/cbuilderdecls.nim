@@ -77,7 +77,7 @@ template addArrayVarWithInitializer(builder: var Builder, kind: VarKind = Local,
   builder.add("[")
   builder.addInt(len)
   builder.add("] = ")
-  initializerBody
+  body
   builder.add(";\n")
 
 template addTypedef(builder: var Builder, name: string, typeBody: typed) =
