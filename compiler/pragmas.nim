@@ -943,16 +943,26 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         processImportObjC(c, sym, getOptionalStr(c, it, "$1"), it.info)
       of wSize:
         if sym.typ == nil: invalidPragma(c, it)
-        var size = expectIntLit(c, it)
-        case size
-        of 1, 2, 4:
-          sym.typ.size = size
-          sym.typ.align = int16 size
-        of 8:
-          sym.typ.size = 8
-          sym.typ.align = floatInt64Align(c.config)
+        if sym.typ.kind == tyForward and tfHasMeta in sym.typ.flags:
+          # generic forward type, value possibly depends on generic types
+          # but generic type symbols aren't defined yet, so assume they are
+          # and ignore expression for now
+          sym.typ.flags.incl tfHasUnresolvedProperties
         else:
-          localError(c.config, it.info, "size may only be 1, 2, 4 or 8")
+          var size = expectIntLit(c, it)
+          if sfImportc in sym.flags:
+            # no restrictions on size for imported types
+            setImportedTypeSize(c.config, sym.typ, size)
+          else:
+            case size
+            of 1, 2, 4:
+              sym.typ.size = size
+              sym.typ.align = int16 size
+            of 8:
+              sym.typ.size = 8
+              sym.typ.align = floatInt64Align(c.config)
+            else:
+              localError(c.config, it.info, "size may only be 1, 2, 4 or 8")
       of wAlign:
         let alignment = expectIntLit(c, it)
         if isPowerOfTwo(alignment) and alignment > 0:

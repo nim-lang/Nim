@@ -365,6 +365,8 @@ type
     tfVarIsPtr,       # 'var' type is translated like 'ptr' even in C++ mode
     tfHasMeta,        # type contains "wildcard" sub-types such as generic params
                       # or other type classes
+                      # also used when checking pragmas of forward types
+                      # to signify that the forward type is generic
     tfHasGCedMem,     # type contains GC'ed memory
     tfPacked
     tfHasStatic
@@ -399,6 +401,9 @@ type
     tfIsOutParam
     tfSendable
     tfImplicitStatic
+    tfHasUnresolvedProperties
+      ## for types that have type properties like `size` that depend on
+      ## generic parameters
 
   TTypeFlags* = set[TTypeFlag]
 
