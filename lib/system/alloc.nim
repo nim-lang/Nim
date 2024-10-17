@@ -843,6 +843,7 @@ when defined(gcDestructors):
         # It must block the current chunk from being freed, as doing so would cause undefined behavior.
         sysAssert(chunk.owner == addr a, "compensateCounters: tried to take ownership of a foreign thread's memory")
         inc c.foreignCells
+      dec a.smallCellsInUse
       it = it.next
     # By not adjusting the foreign chunk we reserve space in it to prevent deallocation
     inc(c.free, total)
@@ -1210,6 +1211,8 @@ proc abandonAllocator(a: var MemRegion) =
   if a.smallCellsInUse == 0 and a.bigChunksInUse == 0:
     # Deallocating is only safe if all pages are unused
     deallocOsPages(a)
+  else:
+    discard #c_printf("Not freeing allocator: smallCellsInUse %ld | bigChunksInUse %ld\n", a.smallCellsInUse, a.bigChunksInUse)
 
 proc getFreeMem(a: MemRegion): int {.inline.} = result = a.freeMem
 proc getTotalMem(a: MemRegion): int {.inline.} = result = a.currMem
