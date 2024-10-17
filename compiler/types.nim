@@ -1936,7 +1936,7 @@ proc isCharArrayPtr*(t: PType; allowPointerToChar: bool): bool =
   else:
     result = false
 
-proc nominalRoot*(t: PType, i = 0): PType =
+proc nominalRoot*(t: PType): PType =
   ## the "name" type of a given instance of a nominal type,
   ## i.e. the type directly associated with the symbol where the root
   ## nominal type of `t` was defined, skipping things like generic instances,
@@ -1944,17 +1944,14 @@ proc nominalRoot*(t: PType, i = 0): PType =
   ## 
   ## instead of returning the uninstantiated body of a generic type,
   ## returns the type of the symbol instead (with tyGenericBody type)
-  let i = i + 1
-  if i > 100:
-    echo (i, t, t.kind)
   result = nil
   case t.kind
   of tyAlias, tyVar, tySink:
     # varargs?
-    result = nominalRoot(t.skipModifier, i)
+    result = nominalRoot(t.skipModifier)
   of tyTypeDesc:
     # for proc foo(_: type T)
-    result = nominalRoot(t.skipModifier, i)
+    result = nominalRoot(t.skipModifier)
   of tyGenericInvocation, tyGenericInst:
     result = t
     # skip aliases, so this works in the same module but not in another module:
@@ -1963,7 +1960,7 @@ proc nominalRoot*(t: PType, i = 0): PType =
     # proc foo[T](x: Bar[T]) = ... # attached to type
     while result.skipModifier.kind in {tyGenericInvocation, tyGenericInst}:
       result = result.skipModifier
-    result = nominalRoot(result[0], i)
+    result = nominalRoot(result[0])
   of tyGenericBody:
     result = t
     # this time skip the aliases but take the generic body
@@ -1975,14 +1972,14 @@ proc nominalRoot*(t: PType, i = 0): PType =
       # atomic nominal types, this generic body is attached to them
       discard
     else:
-      result = nominalRoot(val, i)
+      result = nominalRoot(val)
   of tyCompositeTypeClass:
     # parameter with type Foo
-    result = nominalRoot(t.skipModifier, i)
+    result = nominalRoot(t.skipModifier)
   of tyGenericParam:
     if t.genericParamHasConstraints:
       # T: Foo
-      result = nominalRoot(t.genericConstraint, i)
+      result = nominalRoot(t.genericConstraint)
     else:
       result = nil
   of tyDistinct, tyEnum, tyObject:

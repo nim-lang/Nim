@@ -88,6 +88,10 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
                                   best, alt, o, diagnosticsFlag)
   if len(syms) == 0:
     return
+  let allowTypeBoundOps = typeBoundOps in c.features and
+    # qualified symbols cannot refer to other scopes
+    # (maybe sym and closedsymchoice as well?)
+    headSymbol.kind != nkDotExpr
   var symMarker = initIntSet()
   for s in syms:
     symMarker.incl(s.s.id)
@@ -113,7 +117,7 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
               syms.add((s, -2))
             s = nextIdentIter(iter, c.graph.typeBoundOps[tid])
 
-  if typeBoundOps in c.features:
+  if allowTypeBoundOps:
     for a in 1 ..< n.len:
       # for every already typed argument, add type bound ops
       let arg = n[a]
@@ -133,7 +137,7 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
       # may introduce new symbols with caveats described in recalc branch
       matches(c, n, orig, z)
 
-      if typeBoundOps in c.features:
+      if allowTypeBoundOps:
         # this match may have given some arguments new types,
         # in which case add their type bound ops as well
         # type bound ops of arguments always matching `untyped` are not considered
@@ -174,7 +178,7 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
       symMarker = initIntSet()
       for s in syms:
         symMarker.incl(s.s.id)
-      if typeBoundOps in c.features:
+      if allowTypeBoundOps:
         for a in 1 ..< n.len:
           # for every already typed argument, add type bound ops
           let arg = n[a]
