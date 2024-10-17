@@ -1,0 +1,239 @@
+nimTitle	times	times.html	module std/times		0
+nim	mJan	times.html#mJan	Month.mJan		268
+nim	mFeb	times.html#mFeb	Month.mFeb		268
+nim	mMar	times.html#mMar	Month.mMar		268
+nim	mApr	times.html#mApr	Month.mApr		268
+nim	mMay	times.html#mMay	Month.mMay		268
+nim	mJun	times.html#mJun	Month.mJun		268
+nim	mJul	times.html#mJul	Month.mJul		268
+nim	mAug	times.html#mAug	Month.mAug		268
+nim	mSep	times.html#mSep	Month.mSep		268
+nim	mOct	times.html#mOct	Month.mOct		268
+nim	mNov	times.html#mNov	Month.mNov		268
+nim	mDec	times.html#mDec	Month.mDec		268
+nim	Month	times.html#Month	enum Month		268
+nim	dMon	times.html#dMon	WeekDay.dMon		284
+nim	dTue	times.html#dTue	WeekDay.dTue		284
+nim	dWed	times.html#dWed	WeekDay.dWed		284
+nim	dThu	times.html#dThu	WeekDay.dThu		284
+nim	dFri	times.html#dFri	WeekDay.dFri		284
+nim	dSat	times.html#dSat	WeekDay.dSat		284
+nim	dSun	times.html#dSun	WeekDay.dSun		284
+nim	WeekDay	times.html#WeekDay	enum WeekDay		284
+nim	MonthdayRange	times.html#MonthdayRange	type MonthdayRange		294
+nim	HourRange	times.html#HourRange	type HourRange		295
+nim	MinuteRange	times.html#MinuteRange	type MinuteRange		296
+nim	SecondRange	times.html#SecondRange	type SecondRange		297
+nim	YeardayRange	times.html#YeardayRange	type YeardayRange		300
+nim	NanosecondRange	times.html#NanosecondRange	type NanosecondRange		301
+nim	IsoWeekRange	times.html#IsoWeekRange	type IsoWeekRange		303
+nim	IsoYear	times.html#IsoYear	type IsoYear		305
+nim	Time	times.html#Time	object Time		310
+nim	DateTime	times.html#DateTime	object DateTime		314
+nim	Duration	times.html#Duration	object Duration		332
+nim	Nanoseconds	times.html#Nanoseconds	TimeUnit.Nanoseconds		343
+nim	Microseconds	times.html#Microseconds	TimeUnit.Microseconds		343
+nim	Milliseconds	times.html#Milliseconds	TimeUnit.Milliseconds		343
+nim	Seconds	times.html#Seconds	TimeUnit.Seconds		343
+nim	Minutes	times.html#Minutes	TimeUnit.Minutes		343
+nim	Hours	times.html#Hours	TimeUnit.Hours		343
+nim	Days	times.html#Days	TimeUnit.Days		343
+nim	Weeks	times.html#Weeks	TimeUnit.Weeks		343
+nim	Months	times.html#Months	TimeUnit.Months		343
+nim	Years	times.html#Years	TimeUnit.Years		343
+nim	TimeUnit	times.html#TimeUnit	enum TimeUnit		343
+nim	FixedTimeUnit	times.html#FixedTimeUnit	type FixedTimeUnit		347
+nim	TimeInterval	times.html#TimeInterval	object TimeInterval		351
+nim	Timezone	times.html#Timezone	type Timezone		378
+nim	ZonedTime	times.html#ZonedTime	object ZonedTime		388
+nim	DurationParts	times.html#DurationParts	type DurationParts		396
+nim	TimeIntervalParts	times.html#TimeIntervalParts	type TimeIntervalParts		397
+nim	convert	times.html#convert,FixedTimeUnit,FixedTimeUnit,T	proc convert[T: SomeInteger](unitFrom, unitTo: FixedTimeUnit; quantity: T): T		435
+nim	isLeapYear	times.html#isLeapYear,int	proc isLeapYear(year: int): bool		459
+nim	getDaysInMonth	times.html#getDaysInMonth,Month,int	proc getDaysInMonth(month: Month; year: int): int		466
+nim	getDayOfYear	times.html#getDayOfYear,MonthdayRange,Month,int	proc getDayOfYear(monthday: MonthdayRange; month: Month; year: int): YeardayRange		517
+nim	getDayOfWeek	times.html#getDayOfWeek,MonthdayRange,Month,int	proc getDayOfWeek(monthday: MonthdayRange; month: Month; year: int): WeekDay		537
+nim	getDaysInYear	times.html#getDaysInYear,int	proc getDaysInYear(year: int): int		554
+nim	`==`	times.html#==,IsoYear,IsoYear	proc `==`(a, b: IsoYear): bool		561
+nim	`$`	times.html#$,IsoYear	proc `$`(p: IsoYear): string		562
+nim	getWeeksInIsoYear	times.html#getWeeksInIsoYear,IsoYear	proc getWeeksInIsoYear(y: IsoYear): IsoWeekRange		564
+nim	getIsoWeekAndYear	times.html#getIsoWeekAndYear,DateTime	proc getIsoWeekAndYear(dt: DateTime): tuple[isoweek: IsoWeekRange, isoyear: IsoYear]		582
+nim	DurationZero	times.html#DurationZero	const DurationZero		655
+nim	initDuration	times.html#initDuration,int64,int64,int64,int64,int64,int64,int64,int64	proc initDuration(nanoseconds, microseconds, milliseconds, seconds, minutes, hours,\n             days, weeks: int64 = 0): Duration		662
+nim	inWeeks	times.html#inWeeks,Duration	proc inWeeks(dur: Duration): int64		703
+nim	inDays	times.html#inDays,Duration	proc inDays(dur: Duration): int64		710
+nim	inHours	times.html#inHours,Duration	proc inHours(dur: Duration): int64		717
+nim	inMinutes	times.html#inMinutes,Duration	proc inMinutes(dur: Duration): int64		724
+nim	inSeconds	times.html#inSeconds,Duration	proc inSeconds(dur: Duration): int64		731
+nim	inMilliseconds	times.html#inMilliseconds,Duration	proc inMilliseconds(dur: Duration): int64		738
+nim	inMicroseconds	times.html#inMicroseconds,Duration	proc inMicroseconds(dur: Duration): int64		745
+nim	inNanoseconds	times.html#inNanoseconds,Duration	proc inNanoseconds(dur: Duration): int64		752
+nim	toParts	times.html#toParts,Duration	proc toParts(dur: Duration): DurationParts		759
+nim	`$`	times.html#$,Duration	proc `$`(dur: Duration): string		794
+nim	`+`	times.html#+,Duration,Duration	proc `+`(a, b: Duration): Duration		813
+nim	`-`	times.html#-,Duration,Duration	proc `-`(a, b: Duration): Duration		820
+nim	`-`	times.html#-,Duration	proc `-`(a: Duration): Duration		827
+nim	`<`	times.html#<,Duration,Duration	proc `<`(a, b: Duration): bool		833
+nim	`<=`	times.html#<=,Duration,Duration	proc `<=`(a, b: Duration): bool		845
+nim	`==`	times.html#==,Duration,Duration	proc `==`(a, b: Duration): bool		848
+nim	`*`	times.html#*,int64,Duration	proc `*`(a: int64; b: Duration): Duration		856
+nim	`*`	times.html#*,Duration,int64	proc `*`(a: Duration; b: int64): Duration		864
+nim	`+=`	times.html#+=,Duration,Duration	proc `+=`(d1: var Duration; d2: Duration)		872
+nim	`-=`	times.html#-=,Duration,Duration	proc `-=`(dt: var Duration; ti: Duration)		875
+nim	`*=`	times.html#*=,Duration,int	proc `*=`(a: var Duration; b: int)		878
+nim	`div`	times.html#div,Duration,int64	proc `div`(a: Duration; b: int64): Duration		881
+nim	high	times.html#high,typedesc[Duration]	proc high(typ: typedesc[Duration]): Duration		894
+nim	low	times.html#low,typedesc[Duration]	proc low(typ: typedesc[Duration]): Duration		898
+nim	abs	times.html#abs,Duration	proc abs(a: Duration): Duration		902
+nim	initTime	times.html#initTime,int64,NanosecondRange	proc initTime(unix: int64; nanosecond: NanosecondRange): Time		912
+nim	nanosecond	times.html#nanosecond,Time	proc nanosecond(time: Time): NanosecondRange		917
+nim	fromUnix	times.html#fromUnix,int64	proc fromUnix(unix: int64): Time		922
+nim	toUnix	times.html#toUnix,Time	proc toUnix(t: Time): int64		930
+nim	fromUnixFloat	times.html#fromUnixFloat,float	proc fromUnixFloat(seconds: float): Time		937
+nim	toUnixFloat	times.html#toUnixFloat,Time	proc toUnixFloat(t: Time): float		947
+nim	fromWinTime	times.html#fromWinTime,int64	proc fromWinTime(win: int64): Time		960
+nim	toWinTime	times.html#toWinTime,Time	proc toWinTime(t: Time): int64		968
+nim	getTime	times.html#getTime	proc getTime(): Time		976
+nim	`-`	times.html#-,Time,Time	proc `-`(a, b: Time): Duration		1001
+nim	`+`	times.html#+,Time,Duration	proc `+`(a: Time; b: Duration): Time		1008
+nim	`-`	times.html#-,Time,Duration	proc `-`(a: Time; b: Duration): Time		1014
+nim	`<`	times.html#<,Time,Time	proc `<`(a, b: Time): bool		1020
+nim	`<=`	times.html#<=,Time,Time	proc `<=`(a, b: Time): bool		1026
+nim	`==`	times.html#==,Time,Time	proc `==`(a, b: Time): bool		1030
+nim	`+=`	times.html#+=,Time,Duration	proc `+=`(t: var Time; b: Duration)		1034
+nim	`-=`	times.html#-=,Time,Duration	proc `-=`(t: var Time; b: Duration)		1037
+nim	high	times.html#high,typedesc[Time]	proc high(typ: typedesc[Time]): Time		1040
+nim	low	times.html#low,typedesc[Time]	proc low(typ: typedesc[Time]): Time		1043
+nim	nanosecond	times.html#nanosecond,DateTime	proc nanosecond(dt: DateTime): NanosecondRange		1053
+nim	second	times.html#second,DateTime	proc second(dt: DateTime): SecondRange		1059
+nim	minute	times.html#minute,DateTime	proc minute(dt: DateTime): MinuteRange		1065
+nim	hour	times.html#hour,DateTime	proc hour(dt: DateTime): HourRange		1071
+nim	monthday	times.html#monthday,DateTime	proc monthday(dt: DateTime): MonthdayRange		1077
+nim	month	times.html#month,DateTime	proc month(dt: DateTime): Month		1083
+nim	year	times.html#year,DateTime	proc year(dt: DateTime): int		1090
+nim	weekday	times.html#weekday,DateTime	proc weekday(dt: DateTime): WeekDay		1097
+nim	yearday	times.html#yearday,DateTime	proc yearday(dt: DateTime): YeardayRange		1103
+nim	isDst	times.html#isDst,DateTime	proc isDst(dt: DateTime): bool		1109
+nim	timezone	times.html#timezone,DateTime	proc timezone(dt: DateTime): Timezone		1115
+nim	utcOffset	times.html#utcOffset,DateTime	proc utcOffset(dt: DateTime): int		1121
+nim	isInitialized	times.html#isInitialized,DateTime	proc isInitialized(dt: DateTime): bool		1131
+nim	isLeapDay	times.html#isLeapDay,DateTime	proc isLeapDay(dt: DateTime): bool		1141
+nim	toTime	times.html#toTime,DateTime	proc toTime(dt: DateTime): Time		1155
+nim	newTimezone	times.html#newTimezone,string,proc(Time),proc(Time)	proc newTimezone(name: string; zonedTimeFromTimeImpl: proc (time: Time): ZonedTime {.\n    tags: [], raises: [], gcsafe.}; zonedTimeFromAdjTimeImpl: proc (\n    adjTime: Time): ZonedTime {.tags: [], raises: [], gcsafe.}): owned Timezone		1195
+nim	name	times.html#name,Timezone	proc name(zone: Timezone): string		1223
+nim	zonedTimeFromTime	times.html#zonedTimeFromTime,Timezone,Time	proc zonedTimeFromTime(zone: Timezone; time: Time): ZonedTime		1235
+nim	zonedTimeFromAdjTime	times.html#zonedTimeFromAdjTime,Timezone,Time	proc zonedTimeFromAdjTime(zone: Timezone; adjTime: Time): ZonedTime		1239
+nim	`$`	times.html#$,Timezone	proc `$`(zone: Timezone): string		1247
+nim	`==`	times.html#==,Timezone,Timezone	proc `==`(zone1, zone2: Timezone): bool		1251
+nim	inZone	times.html#inZone,Time,Timezone	proc inZone(time: Time; zone: Timezone): DateTime		1262
+nim	inZone	times.html#inZone,DateTime,Timezone	proc inZone(dt: DateTime; zone: Timezone): DateTime		1267
+nim	utc	times.html#utc	proc utc(): Timezone		1375
+nim	local	times.html#local	proc local(): Timezone		1384
+nim	utc	times.html#utc,DateTime	proc utc(dt: DateTime): DateTime		1394
+nim	local	times.html#local,DateTime	proc local(dt: DateTime): DateTime		1398
+nim	utc	times.html#utc,Time	proc utc(t: Time): DateTime		1402
+nim	local	times.html#local,Time	proc local(t: Time): DateTime		1406
+nim	now	times.html#now	proc now(): DateTime		1410
+nim	dateTime	times.html#dateTime,int,Month,MonthdayRange,HourRange,MinuteRange,SecondRange,NanosecondRange,Timezone	proc dateTime(year: int; month: Month; monthday: MonthdayRange; hour: HourRange = 0;\n         minute: MinuteRange = 0; second: SecondRange = 0;\n         nanosecond: NanosecondRange = 0; zone: Timezone = local()): DateTime		1418
+nim	initDateTime	times.html#initDateTime,MonthdayRange,Month,int,HourRange,MinuteRange,SecondRange,NanosecondRange,Timezone	proc initDateTime(monthday: MonthdayRange; month: Month; year: int; hour: HourRange;\n             minute: MinuteRange; second: SecondRange;\n             nanosecond: NanosecondRange; zone: Timezone = local()): DateTime		1438
+nim	initDateTime	times.html#initDateTime,MonthdayRange,Month,int,HourRange,MinuteRange,SecondRange,Timezone	proc initDateTime(monthday: MonthdayRange; month: Month; year: int; hour: HourRange;\n             minute: MinuteRange; second: SecondRange; zone: Timezone = local()): DateTime		1447
+nim	`+`	times.html#+,DateTime,Duration	proc `+`(dt: DateTime; dur: Duration): DateTime		1455
+nim	`-`	times.html#-,DateTime,Duration	proc `-`(dt: DateTime; dur: Duration): DateTime		1463
+nim	`-`	times.html#-,DateTime,DateTime	proc `-`(dt1, dt2: DateTime): Duration		1471
+nim	`<`	times.html#<,DateTime,DateTime	proc `<`(a, b: DateTime): bool		1481
+nim	`<=`	times.html#<=,DateTime,DateTime	proc `<=`(a, b: DateTime): bool		1485
+nim	`==`	times.html#==,DateTime,DateTime	proc `==`(a, b: DateTime): bool		1489
+nim	`+=`	times.html#+=,DateTime,Duration	proc `+=`(a: var DateTime; b: Duration)		1495
+nim	`-=`	times.html#-=,DateTime,Duration	proc `-=`(a: var DateTime; b: Duration)		1498
+nim	getDateStr	times.html#getDateStr	proc getDateStr(dt = now()): string		1501
+nim	getClockStr	times.html#getClockStr	proc getClockStr(dt = now()): string		1513
+nim	initDateTime	times.html#initDateTime,WeekDay,IsoWeekRange,IsoYear,HourRange,MinuteRange,SecondRange,NanosecondRange,Timezone	proc initDateTime(weekday: WeekDay; isoweek: IsoWeekRange; isoyear: IsoYear;\n             hour: HourRange; minute: MinuteRange; second: SecondRange;\n             nanosecond: NanosecondRange; zone: Timezone = local()): DateTime		1530
+nim	initDateTime	times.html#initDateTime,WeekDay,IsoWeekRange,IsoYear,HourRange,MinuteRange,SecondRange,Timezone	proc initDateTime(weekday: WeekDay; isoweek: IsoWeekRange; isoyear: IsoYear;\n             hour: HourRange; minute: MinuteRange; second: SecondRange;\n             zone: Timezone = local()): DateTime		1535
+nim	DateTimeLocale	times.html#DateTimeLocale	object DateTimeLocale		1547
+nim	TimeFormat	times.html#TimeFormat	object TimeFormat		1605
+nim	TimeParseError	times.html#TimeParseError	object TimeParseError		1618
+nim	TimeFormatParseError	times.html#TimeFormatParseError	object TimeFormatParseError		1621
+nim	DefaultLocale	times.html#DefaultLocale	const DefaultLocale		1625
+nim	`$`	times.html#$,TimeFormat	proc `$`(f: TimeFormat): string		1637
+nim	initTimeFormat	times.html#initTimeFormat,string	proc initTimeFormat(format: string): TimeFormat		1761
+nim	format	times.html#format,DateTime,TimeFormat,DateTimeLocale	proc format(dt: DateTime; f: TimeFormat; loc: DateTimeLocale = DefaultLocale): string		2180
+nim	format	times.html#format,DateTime,string,DateTimeLocale	proc format(dt: DateTime; f: string; loc: DateTimeLocale = DefaultLocale): string		2203
+nim	format	times.html#format,DateTime,static[string]	proc format(dt: DateTime; f: static[string]): string		2215
+nim	formatValue	times.html#formatValue,string,,string	proc formatValue(result: var string; value: DateTime | Time; specifier: string)		2220
+nim	format	times.html#format,Time,string,Timezone	proc format(time: Time; f: string; zone: Timezone = local()): string		2225
+nim	format	times.html#format,Time,static[string],Timezone	proc format(time: Time; f: static[string]; zone: Timezone = local()): string		2238
+nim	parse	times.html#parse,string,TimeFormat,Timezone,DateTimeLocale	proc parse(input: string; f: TimeFormat; zone: Timezone = local();\n      loc: DateTimeLocale = DefaultLocale): DateTime		2244
+nim	parse	times.html#parse,string,string,Timezone,DateTimeLocale	proc parse(input, f: string; tz: Timezone = local();\n      loc: DateTimeLocale = DefaultLocale): DateTime		2292
+nim	parse	times.html#parse,string,static[string],Timezone,DateTimeLocale	proc parse(input: string; f: static[string]; zone: Timezone = local();\n      loc: DateTimeLocale = DefaultLocale): DateTime		2305
+nim	parseTime	times.html#parseTime,string,string,Timezone	proc parseTime(input, f: string; zone: Timezone): Time		2311
+nim	parseTime	times.html#parseTime,string,static[string],Timezone	proc parseTime(input: string; f: static[string]; zone: Timezone): Time		2322
+nim	`$`	times.html#$,DateTime	proc `$`(dt: DateTime): string		2328
+nim	`$`	times.html#$,Time	proc `$`(time: Time): string		2340
+nim	initTimeInterval	times.html#initTimeInterval,int,int,int,int,int,int,int,int,int,int	proc initTimeInterval(nanoseconds, microseconds, milliseconds, seconds, minutes,\n                 hours, days, weeks, months, years: int = 0): TimeInterval		2353
+nim	`+`	times.html#+,TimeInterval,TimeInterval	proc `+`(ti1, ti2: TimeInterval): TimeInterval		2380
+nim	`-`	times.html#-,TimeInterval	proc `-`(ti: TimeInterval): TimeInterval		2393
+nim	`-`	times.html#-,TimeInterval,TimeInterval	proc `-`(ti1, ti2: TimeInterval): TimeInterval		2412
+nim	`+=`	times.html#+=,TimeInterval,TimeInterval	proc `+=`(a: var TimeInterval; b: TimeInterval)		2423
+nim	`-=`	times.html#-=,TimeInterval,TimeInterval	proc `-=`(a: var TimeInterval; b: TimeInterval)		2426
+nim	between	times.html#between,DateTime,DateTime	proc between(startDt, endDt: DateTime): TimeInterval		2442
+nim	toParts	times.html#toParts,TimeInterval	proc toParts(ti: TimeInterval): TimeIntervalParts		2547
+nim	`$`	times.html#$,TimeInterval	proc `$`(ti: TimeInterval): string		2563
+nim	nanoseconds	times.html#nanoseconds,int	proc nanoseconds(nanos: int): TimeInterval		2578
+nim	microseconds	times.html#microseconds,int	proc microseconds(micros: int): TimeInterval		2582
+nim	milliseconds	times.html#milliseconds,int	proc milliseconds(ms: int): TimeInterval		2586
+nim	seconds	times.html#seconds,int	proc seconds(s: int): TimeInterval		2590
+nim	minutes	times.html#minutes,int	proc minutes(m: int): TimeInterval		2596
+nim	hours	times.html#hours,int	proc hours(h: int): TimeInterval		2602
+nim	days	times.html#days,int	proc days(d: int): TimeInterval		2608
+nim	weeks	times.html#weeks,int	proc weeks(w: int): TimeInterval		2614
+nim	months	times.html#months,int	proc months(m: int): TimeInterval		2620
+nim	years	times.html#years,int	proc years(y: int): TimeInterval		2626
+nim	`+`	times.html#+,DateTime,TimeInterval	proc `+`(dt: DateTime; interval: TimeInterval): DateTime		2673
+nim	`-`	times.html#-,DateTime,TimeInterval	proc `-`(dt: DateTime; interval: TimeInterval): DateTime		2702
+nim	`+`	times.html#+,Time,TimeInterval	proc `+`(time: Time; interval: TimeInterval): Time		2713
+nim	`-`	times.html#-,Time,TimeInterval	proc `-`(time: Time; interval: TimeInterval): Time		2726
+nim	`+=`	times.html#+=,DateTime,TimeInterval	proc `+=`(a: var DateTime; b: TimeInterval)		2739
+nim	`-=`	times.html#-=,DateTime,TimeInterval	proc `-=`(a: var DateTime; b: TimeInterval)		2742
+nim	`+=`	times.html#+=,Time,TimeInterval	proc `+=`(t: var Time; b: TimeInterval)		2745
+nim	`-=`	times.html#-=,Time,TimeInterval	proc `-=`(t: var Time; b: TimeInterval)		2748
+nim	epochTime	times.html#epochTime	proc epochTime(): float		2782
+nim	cpuTime	times.html#cpuTime	proc cpuTime(): float		2823
+nim	nanosecond=	times.html#nanosecond=,DateTime,NanosecondRange	proc nanosecond=(dt: var DateTime; value: NanosecondRange)		2855
+nim	second=	times.html#second=,DateTime,SecondRange	proc second=(dt: var DateTime; value: SecondRange)		2858
+nim	minute=	times.html#minute=,DateTime,MinuteRange	proc minute=(dt: var DateTime; value: MinuteRange)		2861
+nim	hour=	times.html#hour=,DateTime,HourRange	proc hour=(dt: var DateTime; value: HourRange)		2864
+nim	monthdayZero=	times.html#monthdayZero=,DateTime,int	proc monthdayZero=(dt: var DateTime; value: int)		2867
+nim	monthZero=	times.html#monthZero=,DateTime,int	proc monthZero=(dt: var DateTime; value: int)		2870
+nim	year=	times.html#year=,DateTime,int	proc year=(dt: var DateTime; value: int)		2873
+nim	weekday=	times.html#weekday=,DateTime,WeekDay	proc weekday=(dt: var DateTime; value: WeekDay)		2876
+nim	yearday=	times.html#yearday=,DateTime,YeardayRange	proc yearday=(dt: var DateTime; value: YeardayRange)		2879
+nim	isDst=	times.html#isDst=,DateTime,bool	proc isDst=(dt: var DateTime; value: bool)		2882
+nim	timezone=	times.html#timezone=,DateTime,Timezone	proc timezone=(dt: var DateTime; value: Timezone)		2885
+nim	utcOffset=	times.html#utcOffset=,DateTime,int	proc utcOffset=(dt: var DateTime; value: int)		2888
+heading	Examples	times.html#examples	 Examples		0
+heading	Parsing and Formatting Dates	times.html#parsing-and-formatting-dates	 Parsing and Formatting Dates		0
+heading	Duration vs TimeInterval	times.html#duration-vs-timeinterval	 Duration vs TimeInterval		0
+heading	Duration	times.html#duration-vs-timeinterval-duration	  Duration		0
+heading	TimeInterval	times.html#duration-vs-timeinterval-timeinterval	  TimeInterval		0
+heading	How long is a day?	times.html#duration-vs-timeinterval-how-long-is-a-dayqmark	  How long is a day?		0
+heading	See also	times.html#see-also	 See also		0
+nimgrp	-	times.html#--procs-all	proc		820
+nimgrp	<	times.html#<-procs-all	proc		833
+nimgrp	parse	times.html#parse-procs-all	proc		2244
+nimgrp	initdatetime	times.html#initDateTime-procs-all	proc		1438
+nimgrp	==	times.html#==-procs-all	proc		561
+nimgrp	format	times.html#format-procs-all	proc		2180
+nimgrp	*	times.html#*-procs-all	proc		856
+nimgrp	+=	times.html#+=-procs-all	proc		872
+nimgrp	parsetime	times.html#parseTime-procs-all	proc		2311
+nimgrp	-=	times.html#-=-procs-all	proc		875
+nimgrp	high	times.html#high-procs-all	proc		894
+nimgrp	<=	times.html#<=-procs-all	proc		845
+nimgrp	nanosecond	times.html#nanosecond-procs-all	proc		917
+nimgrp	low	times.html#low-procs-all	proc		898
+nimgrp	+	times.html#+-procs-all	proc		813
+nimgrp	$	times.html#$-procs-all	proc		562
+nimgrp	inzone	times.html#inZone-procs-all	proc		1262
+nimgrp	local	times.html#local-procs-all	proc		1384
+nimgrp	toparts	times.html#toParts-procs-all	proc		759
+nimgrp	utc	times.html#utc-procs-all	proc		1375
