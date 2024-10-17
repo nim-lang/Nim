@@ -1077,7 +1077,10 @@ proc transform(c: PTransf, n: PNode): PNode =
   of nkCallKinds:
     result = transformCall(c, n)
   of nkHiddenAddr:
+    let oldInAddr = c.inAddr
+    c.inAddr = true
     result = transformAddrDeref(c, n, {nkHiddenDeref})
+    c.inAddr = oldInAddr
   of nkAddr:
     let oldInAddr = c.inAddr
     c.inAddr = true
