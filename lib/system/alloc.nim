@@ -913,7 +913,7 @@ proc rawAlloc(a: var MemRegion, requestedSize: int): pointer =
       if c.free >= size:
         # Because removals from `a.freeSmallChunks[s]` only happen in the other alloc branch and during dealloc,
         #  we must not add it to the list if it cannot be used the next time a pointer of `size` bytes is needed.
-        listAdd(a.freeSmallChunks[s], c)
+        a.freeSmallChunks[s] = c
       result = addr(c.data)
       sysAssert((cast[int](result) and (MemAlign-1)) == 0, "rawAlloc 4")
     else:
@@ -954,7 +954,7 @@ proc rawAlloc(a: var MemRegion, requestedSize: int): pointer =
       if c.free < size:
         # Even after fetching shared cells the chunk has no usable memory left. It is no longer the active chunk
         sysAssert(allocInv(a), "rawAlloc: before listRemove test")
-        listRemove(a.freeSmallChunks[s], c)
+        a.freeSmallChunks[s] = nil
         sysAssert(allocInv(a), "rawAlloc: end listRemove test")
     sysAssert(((cast[int](result) and PageMask) - smallChunkOverhead()) %%
                size == 0, "rawAlloc 21")
@@ -1056,7 +1056,7 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
         c.freeList = f
         if c.free < s:
           # The chunk could not have been active as it didn't have enough space to give
-          listAdd(a.freeSmallChunks[s div MemAlign], c)
+          a.freeSmallChunks[s div MemAlign] = c
           inc(c.free, s)
         else:
           inc(c.free, s)
@@ -1064,7 +1064,7 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
           # If the chunk were to be freed while it references foreign cells,
           #  the foreign chunks will leak memory and can never be freed.
           if c.free == SmallChunkSize-smallChunkOverhead() and c.foreignCells == 0:
-            listRemove(a.freeSmallChunks[s div MemAlign], c)
+            a.freeSmallChunks[s div MemAlign] = nil
             c.size = SmallChunkSize
             freeBigChunk(a, cast[PBigChunk](c))
     else:
