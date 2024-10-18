@@ -39,6 +39,7 @@ type
     sym*: PSym
     firstMismatch*: MismatchInfo
     diagnostics*: seq[string]
+    instError*: InstantiationError
     enabled*: bool
 
   CandidateErrors* = seq[CandidateError]
@@ -84,6 +85,7 @@ type
                               # to prefer closest father object type
     inheritancePenalty: int
     firstMismatch*: MismatchInfo # mismatch info for better error messages
+    instError*: InstantiationError
     diagnosticsEnabled*: bool
 
   TTypeRelFlag* = enum
@@ -1009,9 +1011,10 @@ proc tryResolvingStaticExpr(c: var TCandidate, n: PNode,
   # Here, N-1 will be initially nkStaticExpr that can be evaluated only after
   # N is bound to a concrete value during the matching of the first param.
   # This proc is used to evaluate such static expressions.
-  let instantiated = replaceTypesInBody(c.c, c.bindings, n, nil,
+  var instError: InstantiationError = nil
+  let instantiated = replaceTypesInBody(c.c, c.bindings, n, nil, instError, 
                                         allowMetaTypes = allowUnresolved)
-  if not allowCalls and instantiated.kind in nkCallKinds:
+  if instError != nil or (not allowCalls and instantiated.kind in nkCallKinds):
     return nil
   result = c.c.semExpr(c.c, instantiated)
 
@@ -1096,11 +1099,10 @@ proc inferStaticParam*(c: var TCandidate, lhs: PNode, rhs: BiggestInt): bool =
 
   return false
 
-proc failureToInferStaticParam(conf: ConfigRef; n: PNode) =
+proc failureToInferStaticParam(c: var TCandidate; n: PNode) =
   let staticParam = n.findUnresolvedStatic
-  let name = if staticParam != nil: staticParam.sym.name.s
-             else: "unknown"
-  localError(conf, n.info, "cannot infer the value of the static param '" & name & "'")
+  let t = if staticParam != nil: staticParam.sym.typ else: nil
+  c.instError = InstantiationError(info: n.info, errorType: t, contextType: t)
 
 proc inferStaticsInRange(c: var TCandidate,
                          inferred, concrete: PType): TTypeRelation =
@@ -1114,7 +1116,8 @@ proc inferStaticsInRange(c: var TCandidate,
     if inferStaticParam(c, exp, toInt64(rhs)):
       return isGeneric
     else:
-      failureToInferStaticParam(c.c.config, exp)
+      failureToInferStaticParam(c, exp)
+      return isNone
 
   result = isNone
   if lowerBound.kind == nkIntLit:
@@ -2460,7 +2463,9 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
       lastBindingCount = m.bindings.currentLen
       inc(instantiationCounter)
       if arg.kind in {nkProcDef, nkFuncDef, nkIteratorDef} + nkLambdaKinds:
-        result = c.semInferredLambda(c, m.bindings, arg)
+        result = c.semInferredLambda(c, m.bindings, arg, m.instError)
+        if m.instError != nil:
+          return nil
       elif arg.kind != nkSym:
         return nil
       elif arg.sym.kind in {skMacro, skTemplate}:

@@ -1969,7 +1969,7 @@ proc semProcAnnotation(c: PContext, prc: PNode;
 
       return result
 
-proc semInferredLambda(c: PContext, pt: LayeredIdTable, n: PNode): PNode =
+proc semInferredLambda(c: PContext, pt: LayeredIdTable, n: PNode, instError: var InstantiationError): PNode =
   ## used for resolving 'auto' in lambdas based on their callsite
   var n = n
   let original = n[namePos].sym
@@ -1977,7 +1977,8 @@ proc semInferredLambda(c: PContext, pt: LayeredIdTable, n: PNode): PNode =
   #incl(s.flags, sfFromGeneric)
   #s.owner() = original
 
-  n = replaceTypesInBody(c, pt, n, original)
+  n = replaceTypesInBody(c, pt, n, original, instError)
+  if instError != nil: return
   result = n
   s.ast = result
   n[namePos].sym = s
