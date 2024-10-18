@@ -277,7 +277,8 @@ proc deepAliases(dest, ri: PNode): bool =
 proc genSink(c: var Con; s: var Scope; dest, ri: PNode; flags: set[MoveOrCopyFlag] = {}): PNode =
   if (c.inLoopCond == 0 and (isUnpackedTuple(dest) or IsDecl in flags or
       (isAnalysableFieldAccess(dest, c.owner) and isFirstWrite(dest, c)))) or
-      isNoInit(dest) or IsReturn in flags:
+      isNoInit(dest) or IsReturn in flags or
+      tfByRef in dest.typ.flags:
     # optimize sink call into a bitwise memcopy
     result = newTree(nkFastAsgn, dest, ri)
   else:
