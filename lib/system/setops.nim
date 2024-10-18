@@ -67,12 +67,6 @@ func `-`*[T](x, y: set[T]): set[T] {.magic: "MinusSet".} =
   runnableExamples:
     assert {1, 2, 3} - {2, 3, 4} == {1}
 
-func symmetricDifference*[T](x, y: set[T]): set[T] {.magic: "XorSet".} =
-  ## This operator computes the symmetric difference of two sets,
-  ## equivalent to `x + y - x * y` or `(x - y) + (y - x)`.
-  runnableExamples:
-    assert symmetricDifference({1, 2, 3}, {2, 3, 4}) == {1, 4}
-
 func contains*[T](x: set[T], y: T): bool {.magic: "InSet".} =
   ## One should overload this proc if one wants to overload the `in` operator.
   ##
