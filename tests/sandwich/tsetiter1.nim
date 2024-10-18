@@ -2,7 +2,7 @@
 
 import hashes
 
-import msetiter
+import msetiter1
 
 type
   Choice = object
