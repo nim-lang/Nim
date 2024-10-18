@@ -4,6 +4,7 @@ success
 M1 M2
 ok
 '''
+targets: "c cpp"
 matrix: "--mm:refc;--mm:orc"
 """
 

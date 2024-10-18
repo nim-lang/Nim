@@ -7724,6 +7724,8 @@ The `size pragma` allows specifying the size of the enum type.
   doAssert sizeof(EventType) == sizeof(uint32)
   ```
 
+For this purpose, the `size pragma` accepts only the values 1, 2, 4 or 8.
+
 The `size pragma` can also specify the size of an `importc` incomplete object type
 so that one can get the size of it at compile time even if it was declared without fields.
 
@@ -7735,8 +7737,6 @@ so that one can get the size of it at compile time even if it was declared witho
       # if AtomicFlag didn't have the size pragma, this code would result in a compile time error.
       echo sizeof(AtomicFlag)
   ```
-
-The `size pragma` accepts only the values 1, 2, 4 or 8.
 
 
 Align pragma
