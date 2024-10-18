@@ -1,0 +1,5 @@
+nimTitle	ndi	ndi.html	module ndi		0
+nim	NdiFile	ndi.html#NdiFile	object NdiFile		19
+nim	writeMangledName	ndi.html#writeMangledName.t,NdiFile,PSym,ConfigRef	template writeMangledName(f: NdiFile; s: PSym; conf: ConfigRef)		35
+nim	open	ndi.html#open,NdiFile,AbsoluteFile,ConfigRef	proc open(f: var NdiFile; filename: AbsoluteFile; conf: ConfigRef)		38
+nim	close	ndi.html#close,NdiFile,ConfigRef	proc close(f: var NdiFile; conf: ConfigRef)		44
