@@ -2244,7 +2244,6 @@ Nim supports these `calling conventions`:idx:\:
 `noinline`:idx:
 :   The backend compiler may inline procedures that are not marked as `inline`.
     The noinline convention prevents it.
-    It might helps to reduce code size by adding it to large procedures.
 
 `fastcall`:idx:
 :   Fastcall means different things to different C compilers. One gets whatever
@@ -8653,9 +8652,9 @@ pragma should be used in addition to the `exportc` pragma. See
 
 Exportcpp pragma
 ----------------
-The `exportcpp` pragma works like `exportc` pragma but requires `cpp` backend.
-When compiled with `cpp` backend, `exportc` pragma adds `export "C"` to
-the declaration in generated code so that it can be called from both C and
+The `exportcpp` pragma works like the `exportc` pragma but it requires the `cpp` backend.
+When compiled with the `cpp` backend, the `exportc` pragma adds `export "C"` to
+the declaration in the generated code so that it can be called from both C and
 C++ code. `exportcpp` pragma doesn't add `export "C"`.
 
 
