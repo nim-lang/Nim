@@ -266,3 +266,24 @@ block: # issue #22276
     a = x * 2)
   doAssert a == 18
   foo(B, proc (x: float) = doAssert x == 9)
+
+block: # issue #19923
+  type Test[S: static[Natural]] = object
+  proc run(self: Test, idx: 0..(self.S * 8)) = discard
+  #       This causes segfault ^^^^^^^^^^^^
+  proc run(self: Test, a: array[self.S * 8, int]) = discard
+  #                And this too ^^^^^^^^^^
+  var x = Test[3]()
+  var y: array[24, int]
+  run(x, y.low)
+  var z: array[x.S * 8, int]
+  run(x, z)
+
+block:
+  proc foo[I: static int](x: array[I, int]) = discard
+  foo([1, 2, 3, 4])
+  proc bar[I: static int](x: array[I * 2, int]) = discard
+  bar([1, 2, 3, 4])
+  proc double(x: int): int = x * 2
+  proc baz[I: static int](x: array[double(I), int]) = discard
+  doAssert not compiles(baz([1, 2, 3, 4]))

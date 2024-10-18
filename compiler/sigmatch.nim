@@ -1000,7 +1000,6 @@ proc maybeSkipDistinct(m: TCandidate; t: PType, callee: PSym): PType =
     result = t
 
 proc tryResolvingStaticExpr(c: var TCandidate, n: PNode,
-                            allowUnresolved = false,
                             allowCalls = false,
                             expectedType: PType = nil): PNode =
   # Consider this example:
@@ -1009,8 +1008,7 @@ proc tryResolvingStaticExpr(c: var TCandidate, n: PNode,
   # Here, N-1 will be initially nkStaticExpr that can be evaluated only after
   # N is bound to a concrete value during the matching of the first param.
   # This proc is used to evaluate such static expressions.
-  let instantiated = replaceTypesInBody(c.c, c.bindings, n, nil,
-                                        allowMetaTypes = allowUnresolved)
+  let instantiated = replaceTypesInBody(c.c, c.bindings, n, nil)
   if not allowCalls and instantiated.kind in nkCallKinds:
     return nil
   result = c.c.semExpr(c.c, instantiated)
@@ -1087,7 +1085,9 @@ proc inferStaticParam*(c: var TCandidate, lhs: PNode, rhs: BiggestInt): bool =
       (lhs.typ.n == nil or lookup(c.bindings, lhs.typ) == nil):
     var inferred = newTypeS(tyStatic, c.c, lhs.typ.elementType)
     inferred.n = newIntNode(nkIntLit, rhs)
-    put(c, lhs.typ, inferred)
+    # lhs.typ might be instantiated copy, use original type instead,
+    # obtained from type sym:
+    put(c, lhs.typ.sym.typ, inferred)
     if c.c.matchedConcept != nil:
       # inside concepts, binding is currently done with
       # direct mutation of the involved types:
@@ -1104,10 +1104,8 @@ proc failureToInferStaticParam(conf: ConfigRef; n: PNode) =
 
 proc inferStaticsInRange(c: var TCandidate,
                          inferred, concrete: PType): TTypeRelation =
-  let lowerBound = tryResolvingStaticExpr(c, inferred.n[0],
-                                          allowUnresolved = true)
-  let upperBound = tryResolvingStaticExpr(c, inferred.n[1],
-                                          allowUnresolved = true)
+  let lowerBound = tryResolvingStaticExpr(c, inferred.n[0], allowCalls = true)
+  let upperBound = tryResolvingStaticExpr(c, inferred.n[1], allowCalls = true)
   template doInferStatic(e: PNode, r: Int128) =
     var exp = e
     var rhs = r
