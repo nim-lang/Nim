@@ -1,6 +1,6 @@
 # https://github.com/nim-lang/RFCs/issues/380
 
-from mobjhash import Obj, RefObj, GenericObj1, GenericObj2, GenericObj3, GenericObj4
+from mobjhash import Obj, RefObj, GenericObj1, GenericObj2, GenericObj3, GenericObj4, GenericRefObj
 import tables
 
 block:
@@ -44,3 +44,16 @@ block:
   t[GenericObj4[float](x: 3, y: 4, z: "debug")] = 34
   doAssert t[GenericObj4[float](x: 3, y: 4, z: "ignored")] == 34
   doAssert GenericObj4[float](x: 4, y: 3, z: "debug") notin t
+
+block:
+  var t: Table[GenericRefObj[float], int]
+  t[GenericRefObj[float](x: 3, y: 4, z: "debug")] = 34
+  doAssert t[GenericRefObj[float](x: 3, y: 4, z: "ignored")] == 34
+  doAssert GenericRefObj[float](x: 4, y: 3, z: "debug") notin t
+
+block:
+  type LocalAlias[T] = GenericObj4[T]
+  var t: Table[LocalAlias[float], int]
+  t[LocalAlias[float](x: 3, y: 4, z: "debug")] = 34
+  doAssert t[LocalAlias[float](x: 3, y: 4, z: "ignored")] == 34
+  doAssert LocalAlias[float](x: 4, y: 3, z: "debug") notin t
