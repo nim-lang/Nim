@@ -67,3 +67,14 @@ proc `==`*(a, b: GenericObj4): bool =
 
 proc hash*(a: GenericObj4): Hash =
   !$(hash(a.x) !& hash(a.y))
+
+type
+  GenericRefObj*[T] = ref object
+    x*, y*: T
+    z*: string # to be ignored for equality
+
+proc `==`*[T](a, b: GenericRefObj[T]): bool =
+  a.x == b.x and a.y == b.y
+
+proc hash*[T](a: GenericRefObj[T]): Hash =
+  !$(hash(a.x) !& hash(a.y))
