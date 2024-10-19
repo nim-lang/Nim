@@ -448,8 +448,6 @@ proc semArray(c: PContext, n: PNode, prev: PType): PType =
 
 proc semIterableType(c: PContext, n: PNode, prev: PType): PType =
   result = newOrPrevType(tyIterable, prev, c)
-  if result.kind == tyIterable:
-    result.flags.incl tfCheckedForDestructor
   if n.len == 2:
     let base = semTypeNode(c, n[1], nil)
     addSonSkipIntLit(result, base, c.idgen)
