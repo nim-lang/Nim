@@ -1,4 +1,5 @@
 # XXX make complex ones like bitOr use builder instead
+# XXX add stuff like NI, NIM_NIL as constants
 
 proc ptrType(t: Snippet): Snippet =
   t & "*"
