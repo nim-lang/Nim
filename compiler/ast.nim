@@ -703,6 +703,8 @@ type
     typ*: PType
     name*: PIdent
     info*: TLineInfo
+    when defined(nimGear2):
+      loadFrom*: pointer
     when defined(nimsuggest):
       endInfo*: TLineInfo
       hasUserSpecifiedType*: bool  # used for determining whether to display inlay type hints
@@ -766,6 +768,8 @@ type
     callConv*: TCallingConvention # for procs
     flags*: TTypeFlags        # flags of the type
     sons: TTypeSeq           # base types, etc.
+    when defined(nimGear2):
+      loadFrom*: pointer
     n*: PNode                 # node for types:
                               # for range types a nkRange node
                               # for record types a nkRecord node
