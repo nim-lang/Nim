@@ -15,5 +15,11 @@ const
 proc procPtrType(conv: TCallingConvention, rettype: Snippet, name: string): Snippet =
   CallingConvToStr[conv] & "_PTR(" & rettype & ", " & name & ")"
 
+proc cCast(typ, value: Snippet): Snippet =
+  "((" & typ & ") " & value & ")"
+
+proc cAddr(value: Snippet): Snippet =
+  "&" & value
+
 proc bitOr(a, b: Snippet): Snippet =
-  a & " | " & b
+  "(" & a & " | " & b & ")"

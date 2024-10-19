@@ -636,7 +636,7 @@ proc instGenericConvertersArg*(c: PContext, a: PNode, x: TCandidate) =
     if s.isGenericRoutineStrict:
       let finalCallee = generateInstance(c, s, x.bindings, a.info)
       a[0].sym = finalCallee
-      a[0].typ = finalCallee.typ
+      a[0].typ() = finalCallee.typ
       #a.typ = finalCallee.typ.returnType
 
 proc instGenericConvertersSons*(c: PContext, n: PNode, x: TCandidate) =
@@ -671,13 +671,13 @@ proc inferWithMetatype(c: PContext, formal: PType,
     # This almost exactly replicates the steps taken by the compiler during
     # param matching. It performs an embarrassing amount of back-and-forth
     # type jugling, but it's the price to pay for consistency and correctness
-    result.typ = generateTypeInstance(c, m.bindings, arg.info,
+    result.typ() = generateTypeInstance(c, m.bindings, arg.info,
                                       formal.skipTypes({tyCompositeTypeClass}))
   else:
     typeMismatch(c.config, arg.info, formal, arg.typ, arg)
     # error correction:
     result = copyTree(arg)
-    result.typ = formal
+    result.typ() = formal
 
 proc updateDefaultParams(c: PContext, call: PNode) =
   # In generic procs, the default parameter may be unique for each
@@ -700,7 +700,7 @@ proc updateDefaultParams(c: PContext, call: PNode) =
         pushInfoContext(c.config, call.info, call[0].sym.detailedInfo)
         typeMismatch(c.config, def.info, formal.typ, def.typ, formal.ast)
         popInfoContext(c.config)
-        def.typ = errorType(c)
+        def.typ() = errorType(c)
       call[i] = def
 
 proc getCallLineInfo(n: PNode): TLineInfo =
@@ -784,7 +784,7 @@ proc semResolvedCall(c: PContext, x: var TCandidate,
     result = x.call
     result[0] = newSymNode(finalCallee, getCallLineInfo(result[0]))
     if containsGenericType(result.typ):
-      result.typ = newTypeS(tyError, c)
+      result.typ() = newTypeS(tyError, c)
       incl result.typ.flags, tfCheckedForDestructor
     return
   let gp = finalCallee.ast[genericParamsPos]
@@ -811,7 +811,7 @@ proc semResolvedCall(c: PContext, x: var TCandidate,
           # this node will be used in template substitution,
           # pretend this is an untyped node and let regular sem handle the type
           # to prevent problems where a generic parameter is treated as a value
-          tn.typ = nil
+          tn.typ() = nil
           x.call.add tn
         else:
           internalAssert c.config, false
@@ -821,7 +821,7 @@ proc semResolvedCall(c: PContext, x: var TCandidate,
   markConvertersUsed(c, result)
   result[0] = newSymNode(finalCallee, getCallLineInfo(result[0]))
   if finalCallee.magic notin {mArrGet, mArrPut}:
-    result.typ = finalCallee.typ.returnType
+    result.typ() = finalCallee.typ.returnType
   updateDefaultParams(c, result)
 
 proc canDeref(n: PNode): bool {.inline.} =
@@ -830,7 +830,7 @@ proc canDeref(n: PNode): bool {.inline.} =
 
 proc tryDeref(n: PNode): PNode =
   result = newNodeI(nkHiddenDeref, n.info)
-  result.typ = n.typ.skipTypes(abstractInst)[0]
+  result.typ() = n.typ.skipTypes(abstractInst)[0]
   result.add n
 
 proc semOverloadedCall(c: PContext, n, nOrig: PNode,
@@ -849,7 +849,7 @@ proc semOverloadedCall(c: PContext, n, nOrig: PNode,
   else:
     if c.inGenericContext > 0 and c.matchedConcept == nil:
       result = semGenericStmt(c, n)
-      result.typ = makeTypeFromExpr(c, result.copyTree)
+      result.typ() = makeTypeFromExpr(c, result.copyTree)
     elif efExplain notin flags:
       # repeat the overload resolution,
       # this time enabling all the diagnostic output (this should fail again)
@@ -864,7 +864,7 @@ proc explicitGenericInstError(c: PContext; n: PNode): PNode =
   localError(c.config, getCallLineInfo(n), errCannotInstantiateX % renderTree(n))
   result = n
 
-proc explicitGenericSym(c: PContext, n: PNode, s: PSym): PNode =
+proc explicitGenericSym(c: PContext, n: PNode, s: PSym, errors: var CandidateErrors, doError: bool): PNode =
   if s.kind in {skTemplate, skMacro}:
     internalError c.config, n.info, "cannot get explicitly instantiated symbol of " &
       (if s.kind == skTemplate: "template" else: "macro")
@@ -874,6 +874,11 @@ proc explicitGenericSym(c: PContext, n: PNode, s: PSym): PNode =
   if m.state != csMatch:
     # state is csMatch only if *all* generic params were matched,
     # including implicit parameters
+    if doError:
+      errors.add(CandidateError(
+        sym: s,
+        firstMismatch: m.firstMismatch,
+        diagnostics: m.diagnostics))
     return nil
   var newInst = generateInstance(c, s, m.bindings, n.info)
   newInst.typ.flags.excl tfUnresolved
@@ -893,46 +898,43 @@ proc setGenericParams(c: PContext, n, expectedParams: PNode) =
           nil
       e = semExprWithType(c, n[i], expectedType = constraint)
     if e.typ == nil:
-      n[i].typ = errorType(c)
+      n[i].typ() = errorType(c)
     else:
-      n[i].typ = e.typ.skipTypes({tyTypeDesc})
+      n[i].typ() = e.typ.skipTypes({tyTypeDesc})
 
-proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
+proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym, doError: bool): PNode =
   assert n.kind == nkBracketExpr
   setGenericParams(c, n, s.ast[genericParamsPos])
   var s = s
   var a = n[0]
+  var errors: CandidateErrors = @[]
   if a.kind == nkSym:
     # common case; check the only candidate has the right
     # number of generic type parameters:
-    if s.ast[genericParamsPos].safeLen != n.len-1:
-      let expected = s.ast[genericParamsPos].safeLen
-      localError(c.config, getCallLineInfo(n), errGenerated, "cannot instantiate: '" & renderTree(n) &
-         "'; got " & $(n.len-1) & " typeof(s) but expected " & $expected)
-      return n
-    result = explicitGenericSym(c, n, s)
-    if result == nil: result = explicitGenericInstError(c, n)
+    result = explicitGenericSym(c, n, s, errors, doError)
+    if doError and result == nil:
+      notFoundError(c, n, errors)
   elif a.kind in {nkClosedSymChoice, nkOpenSymChoice}:
     # choose the generic proc with the proper number of type parameters.
-    # XXX I think this could be improved by reusing sigmatch.paramTypesMatch.
-    # It's good enough for now.
     result = newNodeI(a.kind, getCallLineInfo(n))
     for i in 0..<a.len:
       var candidate = a[i].sym
       if candidate.kind in {skProc, skMethod, skConverter,
                             skFunc, skIterator}:
-        # it suffices that the candidate has the proper number of generic
-        # type parameters:
-        if candidate.ast[genericParamsPos].safeLen == n.len-1:
-          let x = explicitGenericSym(c, n, candidate)
-          if x != nil: result.add(x)
+        let x = explicitGenericSym(c, n, candidate, errors, doError)
+        if x != nil: result.add(x)
     # get rid of nkClosedSymChoice if not ambiguous:
-    if result.len == 1 and a.kind == nkClosedSymChoice:
-      result = result[0]
-    elif result.len == 0: result = explicitGenericInstError(c, n)
-    # candidateCount != 1: return explicitGenericInstError(c, n)
+    if result.len == 0:
+      result = nil
+      if doError:
+        notFoundError(c, n, errors)
   else:
-    result = explicitGenericInstError(c, n)
+    # probably unreachable: we are trying to instantiate `a` which is not
+    # a sym/symchoice
+    if doError:
+      result = explicitGenericInstError(c, n)
+    else:
+      result = nil
 
 proc searchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): tuple[s: PSym, state: TBorrowState] =
   # Searches for the fn in the symbol table. If the parameter lists are suitable

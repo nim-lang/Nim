@@ -54,6 +54,32 @@ template addVarWithTypeAndInitializer(builder: var Builder, kind: VarKind = Loca
   initializerBody
   builder.add(";\n")
 
+proc addArrayVar(builder: var Builder, kind: VarKind = Local, name: string, elementType: Snippet, len: int, initializer: Snippet = "") =
+  ## adds an array variable declaration to the builder
+  builder.addVarHeader(kind)
+  builder.add(elementType)
+  builder.add(" ")
+  builder.add(name)
+  builder.add("[")
+  builder.addInt(len)
+  builder.add("]")
+  if initializer.len != 0:
+    builder.add(" = ")
+    builder.add(initializer)
+  builder.add(";\n")
+
+template addArrayVarWithInitializer(builder: var Builder, kind: VarKind = Local, name: string, elementType: Snippet, len: int, body: typed) =
+  ## adds an array variable declaration to the builder with the initializer built according to `body`
+  builder.addVarHeader(kind)
+  builder.add(elementType)
+  builder.add(" ")
+  builder.add(name)
+  builder.add("[")
+  builder.addInt(len)
+  builder.add("] = ")
+  body
+  builder.add(";\n")
+
 template addTypedef(builder: var Builder, name: string, typeBody: typed) =
   ## adds a typedef declaration to the builder with name `name` and type as
   ## built in `typeBody`
@@ -63,41 +89,57 @@ template addTypedef(builder: var Builder, name: string, typeBody: typed) =
   builder.add(name)
   builder.add(";\n")
 
-type StructInitializer = object
-  ## context for building struct initializers, i.e. `{ field1, field2 }`
-  # XXX use in genBracedInit
-  orderCompliant: bool
-    ## if true, fields will not be named, instead values are placed in order
-  needsComma: bool
+type
+  StructInitializerKind = enum
+    siOrderedStruct ## struct constructor, but without named fields on C
+    siNamedStruct ## struct constructor, with named fields i.e. C99 designated initializer
+    siArray ## array constructor
+    siWrapper ## wrapper for a single field, generates it verbatim
 
-proc initStructInitializer(builder: var Builder, orderCompliant: bool): StructInitializer =
-  ## starts building a struct initializer, `orderCompliant = true` means
-  ## built fields must be ordered correctly
-  doAssert orderCompliant, "named struct constructors unimplemented"
-  result = StructInitializer(orderCompliant: true, needsComma: false)
-  builder.add("{ ")
+  StructInitializer = object
+    ## context for building struct initializers, i.e. `{ field1, field2 }`
+    kind: StructInitializerKind
+      ## if true, fields will not be named, instead values are placed in order
+    needsComma: bool
+
+proc initStructInitializer(builder: var Builder, kind: StructInitializerKind): StructInitializer =
+  ## starts building a struct initializer, i.e. braced initializer list
+  result = StructInitializer(kind: kind, needsComma: false)
+  if kind != siWrapper:
+    builder.add("{")
 
 template addField(builder: var Builder, constr: var StructInitializer, name: string, valueBody: typed) =
   ## adds a field to a struct initializer, with the value built in `valueBody`
   if constr.needsComma:
+    assert constr.kind != siWrapper, "wrapper constructor cannot have multiple fields"
     builder.add(", ")
   else:
     constr.needsComma = true
-  if constr.orderCompliant:
+  case constr.kind
+  of siArray, siWrapper:
     # no name, can just add value
     valueBody
-  else:
-    doAssert false, "named struct constructors unimplemented"
+  of siOrderedStruct:
+    # no name, can just add value on C
+    assert name.len != 0, "name has to be given for struct initializer field"
+    valueBody
+  of siNamedStruct:
+    assert name.len != 0, "name has to be given for struct initializer field"
+    builder.add(".")
+    builder.add(name)
+    builder.add(" = ")
+    valueBody
 
 proc finishStructInitializer(builder: var Builder, constr: StructInitializer) =
   ## finishes building a struct initializer
-  builder.add(" }")
+  if constr.kind != siWrapper:
+    builder.add("}")
 
-template addStructInitializer(builder: var Builder, constr: out StructInitializer, orderCompliant: bool, body: typed) =
+template addStructInitializer(builder: var Builder, constr: out StructInitializer, kind: StructInitializerKind, body: typed) =
   ## builds a struct initializer, i.e. `{ field1, field2 }`
   ## a `var StructInitializer` must be declared and passed as a parameter so
   ## that it can be used with `addField`
-  constr = builder.initStructInitializer(orderCompliant)
+  constr = builder.initStructInitializer(kind)
   body
   builder.finishStructInitializer(constr)
 

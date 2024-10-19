@@ -449,7 +449,7 @@ proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string) =
           if pkg.allowFailure:
             inc r.passed
             inc r.failedButAllowed
-          addResult(r, test, targetC, "", "", cmd & "\n" & outp, reFailed, allowFailure = pkg.allowFailure)
+          r.finishTest(test, targetC, "", "", cmd & "\n" & outp, reFailed, allowFailure = pkg.allowFailure)
           continue
         outp
 
@@ -465,21 +465,21 @@ proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string) =
         discard tryCommand(cmds[i], maxRetries = 3)
       discard tryCommand(cmds[^1], reFailed = reBuildFailed)
       inc r.passed
-      r.addResult(test, targetC, "", "", "", reSuccess, allowFailure = pkg.allowFailure)
+      r.finishTest(test, targetC, "", "", "", reSuccess, allowFailure = pkg.allowFailure)
 
     errors = r.total - r.passed
     if errors == 0:
-      r.addResult(packageFileTest, targetC, "", "", "", reSuccess)
+      r.finishTest(packageFileTest, targetC, "", "", "", reSuccess)
     else:
-      r.addResult(packageFileTest, targetC, "", "", "", reBuildFailed)
+      r.finishTest(packageFileTest, targetC, "", "", "", reBuildFailed)
 
   except JsonParsingError:
     errors = 1
-    r.addResult(packageFileTest, targetC, "", "", "Invalid package file", reBuildFailed)
+    r.finishTest(packageFileTest, targetC, "", "", "Invalid package file", reBuildFailed)
     raise
   except ValueError:
     errors = 1
-    r.addResult(packageFileTest, targetC, "", "", "Unknown package", reBuildFailed)
+    r.finishTest(packageFileTest, targetC, "", "", "Unknown package", reBuildFailed)
     raise # bug #18805
   finally:
     if errors == 0: removeDir(packagesDir)
@@ -568,6 +568,7 @@ proc isJoinableSpec(spec: TSpec): bool =
     spec.err != reDisabled and
     not spec.unjoinable and
     spec.exitCode == 0 and
+    spec.retries == 0 and
     spec.input.len == 0 and
     spec.nimout.len == 0 and
     spec.nimoutFull == false and

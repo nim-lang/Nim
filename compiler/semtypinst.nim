@@ -110,7 +110,7 @@ proc prepareNode*(cl: var TReplTypeVars, n: PNode): PNode =
     return if tfUnresolved in t.flags: prepareNode(cl, t.n)
            else: t.n
   result = copyNode(n)
-  result.typ = t
+  result.typ() = t
   if result.kind == nkSym:
     result.sym =
       if n.typ != nil and n.typ == n.sym.typ:
@@ -264,7 +264,7 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0; expectedType: PT
     if n.typ.kind == tyFromExpr:
       # type of node should not be evaluated as a static value
       n.typ.flags.incl tfNonConstExpr
-    result.typ = replaceTypeVarsT(cl, n.typ)
+    result.typ() = replaceTypeVarsT(cl, n.typ)
     checkMetaInvariants(cl, result.typ)
   case n.kind
   of nkNone..pred(nkSym), succ(nkSym)..nkNilLit:
@@ -358,7 +358,7 @@ proc replaceTypeVarsS(cl: var TReplTypeVars, s: PSym, t: PType): PSym =
   result = copySym(s, cl.c.idgen)
   incl(result.flags, sfFromGeneric)
   #idTablePut(cl.symMap, s, result)
-  result.owner = s.owner
+  setOwner(result, s.owner)
   result.typ = t
   if result.kind != skType:
     result.ast = replaceTypeVarsN(cl, s.ast)
@@ -696,7 +696,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
     if not cl.allowMetaTypes and result.n != nil and
         result.base.kind != tyNone:
       result.n = cl.c.semConstExpr(cl.c, result.n)
-      result.n.typ = result.base
+      result.n.typ() = result.base
 
   of tyGenericInst, tyUserTypeClassInst:
     bailout()
