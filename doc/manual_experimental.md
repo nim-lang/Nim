@@ -2761,6 +2761,7 @@ proc makeFoo*(x, y: int): Foo =
 
 proc useFoo*(f: Foo) =
   echo "used: ", f # directly calls `foo.$` from scope
+```
 
 ```nim
 # debugger.nim
