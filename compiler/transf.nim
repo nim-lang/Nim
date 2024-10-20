@@ -635,7 +635,7 @@ proc putArgInto(arg: PNode, formal: PType): TPutArgInto =
   if formal.kind == tyTypeDesc: return paDirectMapping
   if skipTypes(formal, abstractInst).kind in {tyOpenArray, tyVarargs}:
     case arg.kind
-    of nkStmtListExpr:
+    of nkStmtListExpr, nkCall:
       return paComplexOpenarray
     of nkBracket:
       return paFastAsgnTakeTypeFromArg
@@ -803,7 +803,7 @@ proc transformFor(c: PTransf, n: PNode): PNode =
       stmtList.add(newAsgnStmt(c, nkFastAsgn, temp, addrExp, true))
       newC.mapping[formal.itemId] = newDeref(temp)
     of paComplexOpenarray:
-      # arrays will deep copy here (pretty bad).
+      # XXX arrays will deep copy here (pretty bad).
       var temp = newTemp(c, arg.typ, formal.info)
       addVar(v, temp)
       stmtList.add(newAsgnStmt(c, nkFastAsgn, temp, arg, true))
