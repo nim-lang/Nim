@@ -2478,7 +2478,9 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         if t != nil and t.owner == s.owner and not typeMarker.containsOrIncl(t.id):
           # parameter `i` is a nominal type in this module
           # add this symbol as a global type bound op
-          c.graph.typeBoundOps.mgetOrPut(t.itemId, initStrTable()).strTableAdd(s)
+          if t.boundOps.counter == 0:
+            t.boundOps = initStrTable()
+          t.boundOps.strTableAdd(s)
 
   pragmaCallable(c, s, n, validPragmas)
   if not hasProto:
