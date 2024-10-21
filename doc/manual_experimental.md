@@ -2673,17 +2673,17 @@ Type-bound overloads
 
 With the experimental option `--experimental:typeBoundOps`, each "root"
 nominal type (namely `object`, `enum`, `distinct`, direct `Foo = ref object`
-types as well as their generic versions) has an attached scope.
+types as well as their generic versions) can have operations attached to it.
 Exported top-level routines declared in the same scope as a nominal type
 with a parameter having a type directly deriving from that nominal type (i.e.
 with `var`/`sink`/`typedesc` modifiers or being in a generic constraint)
-are added to the attached scope of the respective nominal type.
+are considered "attached" to the respective nominal type.
 This applies to every parameter regardless of placement.
 
 When a call to a symbol is openly overloaded and overload matching starts,
 for all arguments in the call that have already undergone type checking,
-any operation with the same name in the attached scope of the root nominal type
-of each argument (if it exists) is added as a candidate to the overload match.
+routines with the same name attached to the root nominal type (if it exists)
+of each given argument are added as a candidate to the overload match.
 This also happens as arguments gradually get typed after every match to an overload.
 This is so that the only overloads considered out of scope are
 attached to the types of the given arguments, and that matches to

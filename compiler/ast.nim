@@ -787,7 +787,6 @@ type
                               # type.
     uniqueId*: ItemId         # due to a design mistake, we need to keep the real ID here as it
                               # is required by the --incremental:on mode.
-    boundOps*: TStrTable      # attached scope of type bound ops
 
   TPair* = object
     key*, val*: RootRef
