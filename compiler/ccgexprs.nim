@@ -84,7 +84,7 @@ proc genLiteral(p: BProc, n: PNode, ty: PType; result: var Builder) =
               data.add("NIM_NIL")
             data.addField(closureInit, name = "ClE_0"):
               data.add("NIM_NIL")
-          p.module.s[cfsStrData].add(data)
+        p.module.s[cfsStrData].add(data)
       result.add tmpName
     elif k in {tyPointer, tyNil, tyProc}:
       result.add rope("NIM_NIL")
