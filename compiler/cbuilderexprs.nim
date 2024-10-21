@@ -19,6 +19,14 @@ proc procPtrType(conv: TCallingConvention, rettype: Snippet, name: string): Snip
 proc cCast(typ, value: Snippet): Snippet =
   "((" & typ & ") " & value & ")"
 
+template addCast(builder: var Builder, typ: Snippet, valueBody: typed) =
+  ## adds a cast to `typ` with value built by `valueBody`
+  builder.add "(("
+  builder.add typ
+  builder.add ") "
+  valueBody
+  builder.add ")"
+
 proc cAddr(value: Snippet): Snippet =
   "&" & value
 

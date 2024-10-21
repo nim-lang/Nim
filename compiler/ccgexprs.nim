@@ -20,15 +20,16 @@ proc getNullValueAuxT(p: BProc; orig, t: PType; obj, constOrNil: PNode,
 
 proc rdSetElemLoc(conf: ConfigRef; a: TLoc, typ: PType; result: var Rope)
 
-proc int64Literal(i: BiggestInt; result: var Rope) =
+proc int64Literal(i: BiggestInt; result: var Builder) =
   if i > low(int64):
     result.add "IL64($1)" % [rope(i)]
   else:
     result.add "(IL64(-9223372036854775807) - IL64(1))"
 
-proc uint64Literal(i: uint64; result: var Rope) = result.add rope($i & "ULL")
+proc uint64Literal(i: uint64; result: var Builder) =
+  result.add rope($i & "ULL")
 
-proc intLiteral(i: BiggestInt; result: var Rope) =
+proc intLiteral(i: BiggestInt; result: var Builder) =
   if i > low(int32) and i <= high(int32):
     result.add rope(i)
   elif i == low(int32):
@@ -39,10 +40,10 @@ proc intLiteral(i: BiggestInt; result: var Rope) =
   else:
     result.add "(IL64(-9223372036854775807) - IL64(1))"
 
-proc intLiteral(i: Int128; result: var Rope) =
+proc intLiteral(i: Int128; result: var Builder) =
   intLiteral(toInt64(i), result)
 
-proc genLiteral(p: BProc, n: PNode, ty: PType; result: var Rope) =
+proc genLiteral(p: BProc, n: PNode, ty: PType; result: var Builder) =
   case n.kind
   of nkCharLit..nkUInt64Lit:
     var k: TTypeKind
@@ -63,11 +64,8 @@ proc genLiteral(p: BProc, n: PNode, ty: PType; result: var Rope) =
     of tyInt64: int64Literal(n.intVal, result)
     of tyUInt64: uint64Literal(uint64(n.intVal), result)
     else:
-      result.add "(("
-      result.add getTypeDesc(p.module, ty)
-      result.add ")"
-      intLiteral(n.intVal, result)
-      result.add ")"
+      result.addCast(getTypeDesc(p.module, ty)):
+        intLiteral(n.intVal, result)
   of nkNilLit:
     let k = if ty == nil: tyPointer else: skipTypes(ty, abstractVarRange).kind
     if k == tyProc and skipTypes(ty, abstractVarRange).callConv == ccClosure:
@@ -76,14 +74,22 @@ proc genLiteral(p: BProc, n: PNode, ty: PType; result: var Rope) =
       if id == p.module.labels:
         # not found in cache:
         inc(p.module.labels)
-        p.module.s[cfsStrData].addf(
-             "static NIM_CONST $1 $2 = {NIM_NIL,NIM_NIL};$n",
-             [getTypeDesc(p.module, ty), tmpName])
+        var data = newBuilder("")
+        data.addVarWithTypeAndInitializer(kind = Const, name = tmpName):
+          data.add(getTypeDesc(p.module, ty))
+        do:
+          var closureInit: StructInitializer
+          data.addStructInitializer(closureInit, kind = siOrderedStruct):
+            data.addField(closureInit, name = "ClP_0"):
+              data.add("NIM_NIL")
+            data.addField(closureInit, name = "ClE_0"):
+              data.add("NIM_NIL")
+          p.module.s[cfsStrData].add(data)
       result.add tmpName
     elif k in {tyPointer, tyNil, tyProc}:
       result.add rope("NIM_NIL")
     else:
-      result.add "(($1) NIM_NIL)" % [getTypeDesc(p.module, ty)]
+      result.add cCast(getTypeDesc(p.module, ty), "NIM_NIL")
   of nkStrLit..nkTripleStrLit:
     let k = if ty == nil: tyString
             else: skipTypes(ty, abstractVarRange + {tyStatic, tyUserTypeClass, tyUserTypeClassInst}).kind
@@ -109,30 +115,24 @@ proc genLiteral(p: BProc, n: PNode, ty: PType; result: var Rope) =
   else:
     internalError(p.config, n.info, "genLiteral(" & $n.kind & ')')
 
-proc genLiteral(p: BProc, n: PNode; result: var Rope) =
+proc genLiteral(p: BProc, n: PNode; result: var Builder) =
   genLiteral(p, n, n.typ, result)
 
-proc genRawSetData(cs: TBitSet, size: int; result: var Rope) =
+proc genRawSetData(cs: TBitSet, size: int; result: var Builder) =
   if size > 8:
-    var res = "{\n"
-    for i in 0..<size:
-      res.add "0x"
-      res.add "0123456789abcdef"[cs[i] div 16]
-      res.add "0123456789abcdef"[cs[i] mod 16]
-      if i < size - 1:
-        # not last iteration
-        if i mod 8 == 7:
-          res.add ",\n"
-        else:
-          res.add ", "
-      else:
-        res.add "}\n"
-
-    result.add rope(res)
+    var setInit: StructInitializer
+    result.addStructInitializer(setInit, kind = siArray):
+      for i in 0..<size:
+        if i mod 8 == 0:
+          result.add("\n")
+        result.addField(setInit, name = ""):
+          result.add "0x"
+          result.add "0123456789abcdef"[cs[i] div 16]
+          result.add "0123456789abcdef"[cs[i] mod 16]
   else:
     intLiteral(cast[BiggestInt](bitSetToWord(cs, size)), result)
 
-proc genSetNode(p: BProc, n: PNode; result: var Rope) =
+proc genSetNode(p: BProc, n: PNode; result: var Builder) =
   var size = int(getSize(p.config, n.typ))
   let cs = toBitSet(p.config, n)
   if size > 8:
@@ -141,10 +141,12 @@ proc genSetNode(p: BProc, n: PNode; result: var Rope) =
     if id == p.module.labels:
       # not found in cache:
       inc(p.module.labels)
-      p.module.s[cfsStrData].addf("static NIM_CONST $1 $2 = ",
-           [getTypeDesc(p.module, n.typ), tmpName])
-      genRawSetData(cs, size, p.module.s[cfsStrData])
-      p.module.s[cfsStrData].addf(";$n", [])
+      var data = newBuilder("")
+      data.addVarWithTypeAndInitializer(kind = Const, name = tmpName):
+        data.add(getTypeDesc(p.module, n.typ))
+      do:
+        genRawSetData(cs, size, data)
+      p.module.s[cfsStrData].add(data)
     result.add tmpName
   else:
     genRawSetData(cs, size, result)
@@ -1490,12 +1492,14 @@ proc rawConstExpr(p: BProc, n: PNode; d: var TLoc) =
   if id == p.module.labels:
     # expression not found in the cache:
     inc(p.module.labels)
-    var data = "static NIM_CONST $1 $2 = " % [getTypeDesc(p.module, t), d.snippet]
-    # bug #23627; when generating const object fields, it's likely that
-    # we need to generate type infos for the object, which may be an object with
-    # custom hooks. We need to generate potential consts in the hooks first.
-    genBracedInit(p, n, isConst = true, t, data)
-    data.addf(";$n", [])
+    var data = newBuilder("")
+    data.addVarWithTypeAndInitializer(kind = Const, name = d.snippet):
+      data.add(getTypeDesc(p.module, t))
+    do:
+      # bug #23627; when generating const object fields, it's likely that
+      # we need to generate type infos for the object, which may be an object with
+      # custom hooks. We need to generate potential consts in the hooks first.
+      genBracedInit(p, n, isConst = true, t, data)
     p.module.s[cfsData].add data
 
 proc handleConstExpr(p: BProc, n: PNode, d: var TLoc): bool =
@@ -2721,9 +2725,11 @@ proc genClosure(p: BProc, n: PNode, d: var TLoc) =
   if isConstClosure(n):
     inc(p.module.labels)
     var tmp = "CNSTCLOSURE" & rope(p.module.labels)
-    var data = "static NIM_CONST $1 $2 = " % [getTypeDesc(p.module, n.typ), tmp]
-    genBracedInit(p, n, isConst = true, n.typ, data)
-    data.addf(";$n", [])
+    var data = newBuilder("")
+    data.addVarWithTypeAndInitializer(kind = Const, name = tmp):
+      data.add(getTypeDesc(p.module, n.typ))
+    do:
+      genBracedInit(p, n, isConst = true, n.typ, data)
     p.module.s[cfsData].add data
     putIntoDest(p, d, n, tmp, OnStatic)
   else:
