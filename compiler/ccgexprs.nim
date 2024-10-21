@@ -1541,8 +1541,8 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
         box.add Thing(s1: "121") # pass by sink can mutate Thing.
     ]#
     if handleConstExpr(p, e, d): return
-  var t = e[0].typ.skipTypes(abstractInstOwned+{tyTypedesc})
-  let isRef = t.kind == tyRef
+  var t = e.typ.skipTypes(abstractInstOwned)
+  let isRef = e[0].typ.skipTypes(abstractInstOwned+{tyTypedesc}).kind == tyRef
 
   # check if we need to construct the object in a temporary
   var useTemp =
