@@ -89,6 +89,17 @@ template addTypedef(builder: var Builder, name: string, typeBody: typed) =
   builder.add(name)
   builder.add(";\n")
 
+template addArrayTypedef(builder: var Builder, name: string, len: int, typeBody: typed) =
+  ## adds an array typedef declaration to the builder with name `name`,
+  ## length `len`, and element type as built in `typeBody`
+  builder.add("typedef ")
+  typeBody
+  builder.add(" ")
+  builder.add(name)
+  builder.add("[")
+  builder.addInt(len)
+  builder.add("];\n")
+
 type
   StructInitializerKind = enum
     siOrderedStruct ## struct constructor, but without named fields on C

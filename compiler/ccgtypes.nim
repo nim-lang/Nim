@@ -373,6 +373,7 @@ proc getTypePre(m: BModule; typ: PType; sig: SigHash): Rope =
     if result == "": result = cacheGetType(m.typeCache, sig)
 
 proc addForwardStructFormat(m: BModule; structOrUnion: Rope, typename: Rope) =
+  # XXX should be no-op in NIFC
   if m.compileToCpp:
     m.s[cfsForwardTypes].addf "$1 $2;$n", [structOrUnion, typename]
   else:
@@ -923,17 +924,28 @@ proc getTypeDescAux(m: BModule; origTyp: PType, check: var IntSet; kind: TypeDes
           (sfImportc in t.sym.flags and t.sym.magic == mNone)):
         m.typeCache[sig] = result
         var size: int
+        var typedef = newBuilder("")
         if firstOrd(m.config, t) < 0:
-          m.s[cfsTypes].addf("typedef NI32 $1;$n", [result])
+          typedef.addTypedef(name = result):
+            typedef.add("NI32")
           size = 4
         else:
           size = int(getSize(m.config, t))
           case size
-          of 1: m.s[cfsTypes].addf("typedef NU8 $1;$n", [result])
-          of 2: m.s[cfsTypes].addf("typedef NU16 $1;$n", [result])
-          of 4: m.s[cfsTypes].addf("typedef NI32 $1;$n", [result])
-          of 8: m.s[cfsTypes].addf("typedef NI64 $1;$n", [result])
+          of 1:
+            typedef.addTypedef(name = result):
+              typedef.add("NU8")
+          of 2:
+            typedef.addTypedef(name = result):
+              typedef.add("NU16")
+          of 4:
+            typedef.addTypedef(name = result):
+              typedef.add("NI32")
+          of 8:
+            typedef.addTypedef(name = result):
+              typedef.add("NI64")
           else: internalError(m.config, t.sym.info, "getTypeDescAux: enum")
+        m.s[cfsTypes].add(typedef)
         when false:
           let owner = hashOwner(t.sym)
           if not gDebugInfo.hasEnum(t.sym.name.s, t.sym.info.line, owner):
@@ -993,7 +1005,10 @@ proc getTypeDescAux(m: BModule; origTyp: PType, check: var IntSet; kind: TypeDes
     m.typeCache[sig] = result
     if not isImportedType(t):
       let foo = getTypeDescAux(m, t.elementType, check, kind)
-      m.s[cfsTypes].addf("typedef $1 $2[1];$n", [foo, result])
+      var typedef = newBuilder("")
+      typedef.addArrayTypedef(name = result, len = 1):
+        typedef.add(foo)
+      m.s[cfsTypes].add(typedef)
   of tyArray:
     var n: BiggestInt = toInt64(lengthOrd(m.config, t))
     if n <= 0: n = 1   # make an array of at least one element
@@ -1001,8 +1016,10 @@ proc getTypeDescAux(m: BModule; origTyp: PType, check: var IntSet; kind: TypeDes
     m.typeCache[sig] = result
     if not isImportedType(t):
       let e = getTypeDescAux(m, t.elementType, check, kind)
-      m.s[cfsTypes].addf("typedef $1 $2[$3];$n",
-           [e, result, rope(n)])
+      var typedef = newBuilder("")
+      typedef.addArrayTypedef(name = result, len = n):
+        typedef.add(e)
+      m.s[cfsTypes].add(typedef)
   of tyObject, tyTuple:
     let tt = origTyp.skipTypes({tyDistinct})
     if isImportedCppType(t) and tt.kind == tyGenericInst:
@@ -1048,7 +1065,8 @@ proc getTypeDescAux(m: BModule; origTyp: PType, check: var IntSet; kind: TypeDes
       # with the C macros for defining procs such as N_NIMCALL. We must
       # create a typedef for the type and use it in the proc signature:
       let typedefName = "TY" & $sig
-      m.s[cfsTypes].addf("typedef $1 $2;$n", [result, typedefName])
+      m.s[cfsTypes].addTypedef(name = typedefName):
+        m.s[cfsTypes].add(result)
       m.typeCache[sig] = typedefName
       result = typedefName
     else:
@@ -1076,9 +1094,12 @@ proc getTypeDescAux(m: BModule; origTyp: PType, check: var IntSet; kind: TypeDes
     if not isImportedType(t):
       let s = int(getSize(m.config, t))
       case s
-      of 1, 2, 4, 8: m.s[cfsTypes].addf("typedef NU$2 $1;$n", [result, rope(s*8)])
-      else: m.s[cfsTypes].addf("typedef NU8 $1[$2];$n",
-             [result, rope(getSize(m.config, t))])
+      of 1, 2, 4, 8:
+        m.s[cfsTypes].addTypedef(name = result):
+          m.s[cfsTypes].add("NU" & rope(s*8))
+      else:
+        m.s[cfsTypes].addArrayTypedef(name = result, len = s):
+          m.s[cfsTypes].add("NU8")
   of tyGenericInst, tyDistinct, tyOrdinal, tyTypeDesc, tyAlias, tySink, tyOwned,
      tyUserTypeClass, tyUserTypeClassInst, tyInferred:
     result = getTypeDescAux(m, skipModifier(t), check, kind)
