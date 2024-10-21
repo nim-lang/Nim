@@ -306,10 +306,10 @@ else:
       type
         # Atomic*[T] {.importcpp: "_Atomic('0)".} = object
 
-        AtomicInt8 {.importc: "_Atomic NI8".} = int8
-        AtomicInt16 {.importc: "_Atomic NI16".} = int16
-        AtomicInt32 {.importc: "_Atomic NI32".} = int32
-        AtomicInt64 {.importc: "_Atomic NI64".} = int64
+        AtomicInt8 {.importc: "_Atomic NI8".} = distinct int8
+        AtomicInt16 {.importc: "_Atomic NI16".} = distinct int16
+        AtomicInt32 {.importc: "_Atomic NI32".} = distinct int32
+        AtomicInt64 {.importc: "_Atomic NI64".} = distinct int64
 
     type
       AtomicFlag* {.importc: "atomic_flag".maybeWrapStd, size: 1.} = object
