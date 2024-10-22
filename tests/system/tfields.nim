@@ -106,3 +106,24 @@ block timplicit_with_partial:
     echo x
 
   foo(FooTask())
+
+block:
+  var innerCount = 0
+  var outerCount = 0
+  template c(w: int): int =
+    let q = w
+    inc innerCount
+    0
+
+  template t(r: (int, int); x: int) =
+    for _ in r.fields:
+      let w = x
+      doAssert w == 0
+      dec outerCount
+
+  proc k() =
+    t((0, 0), c(0))
+
+  k()
+  doAssert innerCount == 2
+  doAssert outerCount == -2
