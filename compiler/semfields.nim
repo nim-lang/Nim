@@ -17,8 +17,9 @@ type
     field: PSym
     replaceByFieldName: bool
     c: PContext
+    leftPartOfAssign: bool
 
-proc instFieldLoopBody(c: TFieldInstCtx, n: PNode, forLoop: PNode): PNode =
+proc instFieldLoopBody(c: var TFieldInstCtx, n: PNode, forLoop: PNode): PNode =
   if c.field != nil and isEmptyType(c.field.typ):
     result = newNode(nkEmpty)
     return
@@ -29,6 +30,9 @@ proc instFieldLoopBody(c: TFieldInstCtx, n: PNode, forLoop: PNode): PNode =
     let ident = considerQuotedIdent(c.c, n)
     if c.replaceByFieldName:
       if ident.id == considerQuotedIdent(c.c, forLoop[0]).id:
+        if c.leftPartOfAssign:
+          localError(c.c.config, n.info,
+                    "field variable '$1' is not allowed to use as a lvalue in a 'fields' loop" % [ident.s])
         let fieldName = if c.tupleType.isNil: c.field.name.s
                         elif c.tupleType.n.isNil: "Field" & $c.tupleIndex
                         else: c.tupleType.n[c.tupleIndex].sym.name.s
@@ -37,6 +41,9 @@ proc instFieldLoopBody(c: TFieldInstCtx, n: PNode, forLoop: PNode): PNode =
     # other fields:
     for i in ord(c.replaceByFieldName)..<forLoop.len-2:
       if ident.id == considerQuotedIdent(c.c, forLoop[i]).id:
+        if c.leftPartOfAssign:
+          localError(c.c.config, n.info,
+                    "field variable '$1' is not allowed to use as a lvalue in a 'fields' loop" % [ident.s])
         var call = forLoop[^2]
         var tupl = call[i+1-ord(c.replaceByFieldName)]
         if c.field.isNil:
@@ -48,6 +55,14 @@ proc instFieldLoopBody(c: TFieldInstCtx, n: PNode, forLoop: PNode): PNode =
           result.add(tupl)
           result.add(newSymNode(c.field, n.info))
         break
+  of nkIdentDefs, nkVarTuple, nkConstDef,
+      nkAsgn, nkFastAsgn, nkSinkAsgn:
+    result = shallowCopy(n)
+    c.leftPartOfAssign = true
+    result[0] = instFieldLoopBody(c, n[0], forLoop)
+    c.leftPartOfAssign = false
+    for i in 1..<n.len:
+      result[i] = instFieldLoopBody(c, n[i], forLoop)
   else:
     if n.kind == nkContinueStmt:
       localError(c.c.config, n.info,
