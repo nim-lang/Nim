@@ -29,10 +29,10 @@ proc instFieldLoopBody(c: var TFieldInstCtx, n: PNode, forLoop: PNode): PNode =
     result = n
     let ident = considerQuotedIdent(c.c, n)
     if c.replaceByFieldName:
-      if c.leftPartOfDefinition:
-        localError(c.c.config, n.info,
-                  "redefine field variable '$1' in a 'fields' loop" % [ident.s])
       if ident.id == considerQuotedIdent(c.c, forLoop[0]).id:
+        if c.leftPartOfDefinition:
+          localError(c.c.config, n.info,
+                  "redefine field variable '$1' in a 'fields' loop" % [ident.s])
         let fieldName = if c.tupleType.isNil: c.field.name.s
                         elif c.tupleType.n.isNil: "Field" & $c.tupleIndex
                         else: c.tupleType.n[c.tupleIndex].sym.name.s
