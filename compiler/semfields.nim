@@ -18,6 +18,15 @@ type
     replaceByFieldName: bool
     c: PContext
 
+proc wrapNewScope(c: PContext, n: PNode): PNode {.inline.} =
+  # use `if true` to not interfere with `break`
+  # just opening scope via `openScope(c)` isn't enough,
+  # a scope has to be opened in the codegen as well for reused
+  # template instantiations
+  let trueLit = newIntLit(c.graph, n.info, 1)
+  trueLit.typ = getSysType(c.graph, n.info, tyBool)
+  result = newTreeI(nkIfStmt, n.info, newTreeI(nkElifBranch, n.info, trueLit, n))
+
 proc instFieldLoopBody(c: TFieldInstCtx, n: PNode, forLoop: PNode): PNode =
   if c.field != nil and isEmptyType(c.field.typ):
     result = newNode(nkEmpty)
@@ -70,7 +79,9 @@ proc semForObjectFields(c: TFieldsCtx, typ, forLoop, father: PNode) =
     fc.replaceByFieldName = c.m == mFieldPairs
     openScope(c.c)
     inc c.c.inUnrolledContext
-    let body = instFieldLoopBody(fc, lastSon(forLoop), forLoop)
+    var body = instFieldLoopBody(fc, lastSon(forLoop), forLoop)
+    # new scope for each field that codegen should know about:
+    body = wrapNewScope(c.c, body)
     father.add(semStmt(c.c, body, {}))
     dec c.c.inUnrolledContext
     closeScope(c.c)
@@ -145,6 +156,8 @@ proc semForFields(c: PContext, n: PNode, m: TMagic): PNode =
       fc.c = c
       fc.replaceByFieldName = m == mFieldPairs
       var body = instFieldLoopBody(fc, loopBody, n)
+      # new scope for each field that codegen should know about:
+      body = wrapNewScope(c, body)
       inc c.inUnrolledContext
       stmts.add(semStmt(c, body, {}))
       dec c.inUnrolledContext
