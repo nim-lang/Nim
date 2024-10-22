@@ -32,7 +32,7 @@ proc instFieldLoopBody(c: var TFieldInstCtx, n: PNode, forLoop: PNode): PNode =
       if ident.id == considerQuotedIdent(c.c, forLoop[0]).id:
         if c.leftPartOfAssign:
           localError(c.c.config, n.info,
-                    "field variable '$1' is not allowed to use as a lvalue in a 'fields' loop" % [ident.s])
+                    "field variable '$1' is not allowed to be used as a lvalue in a 'fields' loop" % [ident.s])
         let fieldName = if c.tupleType.isNil: c.field.name.s
                         elif c.tupleType.n.isNil: "Field" & $c.tupleIndex
                         else: c.tupleType.n[c.tupleIndex].sym.name.s
@@ -43,7 +43,7 @@ proc instFieldLoopBody(c: var TFieldInstCtx, n: PNode, forLoop: PNode): PNode =
       if ident.id == considerQuotedIdent(c.c, forLoop[i]).id:
         if c.leftPartOfAssign:
           localError(c.c.config, n.info,
-                    "field variable '$1' is not allowed to use as a lvalue in a 'fields' loop" % [ident.s])
+                    "field variable '$1' is not allowed to be used as a lvalue in a 'fields' loop" % [ident.s])
         var call = forLoop[^2]
         var tupl = call[i+1-ord(c.replaceByFieldName)]
         if c.field.isNil:
