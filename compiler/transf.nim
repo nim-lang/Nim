@@ -507,7 +507,8 @@ proc transformAddrDeref(c: PTransf, n: PNode, kinds: TNodeKinds, isAddr = false)
         ) and not (n[0][0].kind == nkSym and n[0][0].sym.kind == skParam and
           n.typ.kind == tyVar and
           n.typ.skipTypes(abstractVar).kind == tyOpenArray and
-          n[0][0].typ.skipTypes(abstractVar).kind == tyString)
+          n[0][0].typ.skipTypes(abstractVar).kind == tyString) and
+          not (n.typ.kind == tyVar and n[0][0].typ.kind == tyRef)
         : # elimination is harmful to `for tuple unpack` because of newTupleAccess
           # it is also harmful to openArrayLoc (var openArray) for strings
       # addr ( deref ( x )) --> x
