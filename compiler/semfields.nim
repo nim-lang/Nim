@@ -30,9 +30,6 @@ proc instFieldLoopBody(c: var TFieldInstCtx, n: PNode, forLoop: PNode): PNode =
     let ident = considerQuotedIdent(c.c, n)
     if c.replaceByFieldName:
       if ident.id == considerQuotedIdent(c.c, forLoop[0]).id:
-        if c.leftPartOfAssign:
-          localError(c.c.config, n.info,
-                    "field variable '$1' is not allowed to be used as a lvalue in a 'fields' loop" % [ident.s])
         let fieldName = if c.tupleType.isNil: c.field.name.s
                         elif c.tupleType.n.isNil: "Field" & $c.tupleIndex
                         else: c.tupleType.n[c.tupleIndex].sym.name.s
