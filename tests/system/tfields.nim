@@ -107,7 +107,7 @@ block timplicit_with_partial:
 
   foo(FooTask())
 
-block:
+block: # issue #24338
   var innerCount = 0
   var outerCount = 0
   template c(w: int): int =
@@ -123,6 +123,29 @@ block:
 
   proc k() =
     t((0, 0), c(0))
+
+  k()
+  doAssert innerCount == 2
+  doAssert outerCount == -2
+
+block: # issue #24338 with object
+  type Foo = object
+    x, y: int
+  var innerCount = 0
+  var outerCount = 0
+  template c(w: int): int =
+    let q = w
+    inc innerCount
+    0
+
+  template t(r: Foo; x: int) =
+    for _ in r.fields:
+      let w = x
+      doAssert w == 0
+      dec outerCount
+
+  proc k() =
+    t(Foo(x: 0, y: 0), c(0))
 
   k()
   doAssert innerCount == 2
