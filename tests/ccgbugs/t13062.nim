@@ -56,3 +56,14 @@ block:
 
     proc baz(state: var Bar) = discard
     baz((ref Bar)(x: (new Foo)[])[])
+
+  block: # bug #18080
+    type
+      Foo = object
+        discard
+
+      Bar = object
+        x: Foo
+
+    proc baz(state: var Bar) = discard
+    baz((ref Bar)(x: Foo())[])
