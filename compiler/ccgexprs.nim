@@ -1532,7 +1532,9 @@ proc genFieldObjConstr(p: BProc; ty: PType; useTemp, isRef: bool; nField, val, c
 proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
   # inheritance in C++ does not allow struct initialization so
   # we skip this step here:
-  if not p.module.compileToCpp and optSeqDestructors notin p.config.globalOptions:
+  let isFromAddrDeref = e.typ.kind == tyVar and e[0].typ.skipTypes({tyTypedesc}).kind == tyRef
+  if not p.module.compileToCpp and optSeqDestructors notin p.config.globalOptions and
+      not isFromAddrDeref:
     # disabled optimization: it is wrong for C++ and now also
     # causes trouble for --gc:arc, see bug #13240
     #[
@@ -1541,8 +1543,8 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
         box.add Thing(s1: "121") # pass by sink can mutate Thing.
     ]#
     if handleConstExpr(p, e, d): return
-  var t = if e.typ.kind == tyVar and
-          e[0].typ.skipTypes({tyTypedesc}).kind == tyRef:
+
+  var t = if isFromAddrDeref:
         e[0].typ.skipTypes(abstractInstOwned+{tyTypedesc})
       else:
         e.typ.skipTypes(abstractInstOwned)
