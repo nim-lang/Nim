@@ -3075,7 +3075,8 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
   of nkCast: genCast(p, n, d)
   of nkHiddenStdConv, nkHiddenSubConv, nkConv: genConv(p, n, d)
   of nkHiddenAddr:
-    if n[0].kind == nkDerefExpr:
+    if n[0].kind == nkDerefExpr and
+        not (n.typ.kind == tyVar and n[0][0].typ.kind == tyRef):
       # addr ( deref ( x )) --> x
       var x = n[0][0]
       if n.typ.skipTypes(abstractVar).kind != tyOpenArray:
