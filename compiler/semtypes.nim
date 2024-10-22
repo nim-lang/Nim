@@ -480,7 +480,7 @@ proc firstRange(config: ConfigRef, t: PType): PNode =
     result = newFloatNode(nkFloatLit, firstFloat(t))
   else:
     result = newIntNode(nkIntLit, firstOrd(config, t))
-  result.typ = t
+  result.typ() = t
 
 proc semTuple(c: PContext, n: PNode, prev: PType): PType =
   var typ: PType
@@ -1096,7 +1096,7 @@ proc addParamOrResult(c: PContext, param: PSym, kind: TSymKind) =
     if sfGenSym in param.flags:
       # bug #XXX, fix the gensym'ed parameters owner:
       if param.owner == nil:
-        param.owner = getCurrOwner(c)
+        setOwner(param, getCurrOwner(c))
     else: addDecl(c, param)
 
 template shouldHaveMeta(t) =
@@ -1372,14 +1372,25 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
           "either use ';' (semicolon) or explicitly write each default value")
         message(c.config, a.info, warnImplicitDefaultValue, msg)
       block determineType:
-        if kind == skTemplate and hasUnresolvedArgs(c, def):
-          # template default value depends on other parameter
-          # don't do any typechecking
-          def.typ = makeTypeFromExpr(c, def.copyTree)
-          break determineType
+        var canBeVoid = false
+        if kind == skTemplate:
+          if typ != nil and typ.kind == tyUntyped:
+            # don't do any typechecking or assign a type for
+            # `untyped` parameter default value
+            break determineType
+          elif hasUnresolvedArgs(c, def):
+            # template default value depends on other parameter
+            # don't do any typechecking
+            def.typ() = makeTypeFromExpr(c, def.copyTree)
+            break determineType
+          elif typ != nil and typ.kind == tyTyped:
+            canBeVoid = true
         let isGeneric = isCurrentlyGeneric()
         inc c.inGenericContext, ord(isGeneric)
-        def = semExprWithType(c, def, {efDetermineType, efAllowSymChoice}, typ)
+        if canBeVoid:
+          def = semExpr(c, def, {efDetermineType, efAllowSymChoice}, typ)
+        else:
+          def = semExprWithType(c, def, {efDetermineType, efAllowSymChoice}, typ)
         dec c.inGenericContext, ord(isGeneric)
         if def.referencesAnotherParam(getCurrOwner(c)):
           def.flags.incl nfDefaultRefsParam
@@ -1399,7 +1410,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
           typ = newTypeS(tyTypeDesc, c, newTypeS(tyNone, c))
           typ.flags.incl tfCheckedForDestructor
 
-      elif def.typ.kind != tyFromExpr:
+      elif def.typ != nil and def.typ.kind != tyFromExpr: # def.typ can be void
         # if def.typ != nil and def.typ.kind != tyNone:
         # example code that triggers it:
         # proc sort[T](cmp: proc(a, b: T): int = cmp)
@@ -1508,7 +1519,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
         # XXX This rather hacky way keeps 'tflatmap' compiling:
         if tfHasMeta notin oldFlags:
           result.flags.excl tfHasMeta
-      result.n.typ = r
+      result.n.typ() = r
 
   if isCurrentlyGeneric():
     for n in genericParams:
@@ -1525,8 +1536,8 @@ proc semStmtListType(c: PContext, n: PNode, prev: PType): PType =
     n[i] = semStmt(c, n[i], {})
   if n.len > 0:
     result = semTypeNode(c, n[^1], prev)
-    n.typ = result
-    n[^1].typ = result
+    n.typ() = result
+    n[^1].typ() = result
   else:
     result = nil
 
@@ -1539,15 +1550,15 @@ proc semBlockType(c: PContext, n: PNode, prev: PType): PType =
   if n[0].kind notin {nkEmpty, nkSym}:
     addDecl(c, newSymS(skLabel, n[0], c))
   result = semStmtListType(c, n[1], prev)
-  n[1].typ = result
-  n.typ = result
+  n[1].typ() = result
+  n.typ() = result
   closeScope(c)
   c.p.breakInLoop = oldBreakInLoop
   dec(c.p.nestedBlockCounter)
 
 proc semGenericParamInInvocation(c: PContext, n: PNode): PType =
   result = semTypeNode(c, n, nil)
-  n.typ = makeTypeDesc(c, result)
+  n.typ() = makeTypeDesc(c, result)
 
 proc trySemObjectTypeForInheritedGenericInst(c: PContext, n: PNode, t: PType): bool =
   var
@@ -1959,7 +1970,7 @@ proc semTypeIdent(c: PContext, n: PNode): PSym =
         n.transitionNoneToSym()
         n.sym = result
         n.info = oldInfo
-        n.typ = result.typ
+        n.typ() = result.typ
     else:
       localError(c.config, n.info, "identifier expected")
       result = errorSym(c, n)
@@ -2258,7 +2269,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     when false:
       localError(c.config, n.info, "type expected, but got: " & renderTree(n))
       result = newOrPrevType(tyError, prev, c)
-  n.typ = result
+  n.typ() = result
   dec c.inTypeContext
 
 proc setMagicType(conf: ConfigRef; m: PSym, kind: TTypeKind, size: int) =
@@ -2405,7 +2416,7 @@ proc semGenericParamList(c: PContext, n: PNode, father: PType = nil): PNode =
         else:
           # the following line fixes ``TV2*[T:SomeNumber=TR] = array[0..1, T]``
           # from manyloc/named_argument_bug/triengine:
-          def.typ = def.typ.skipTypes({tyTypeDesc})
+          def.typ() = def.typ.skipTypes({tyTypeDesc})
           if not containsGenericType(def.typ):
             def = fitNode(c, typ, def, def.info)
 

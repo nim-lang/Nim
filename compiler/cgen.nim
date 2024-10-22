@@ -97,7 +97,7 @@ proc t(a: TLoc): PType {.inline.} =
 
 proc lodeTyp(t: PType): PNode =
   result = newNode(nkEmpty)
-  result.typ = t
+  result.typ() = t
 
 proc isSimpleConst(typ: PType): bool =
   let t = skipTypes(typ, abstractVar)
@@ -373,7 +373,9 @@ proc dataField(p: BProc): Rope =
 
 proc genProcPrototype(m: BModule, sym: PSym)
 
-include cbuilder
+include cbuilderbase
+include cbuilderexprs
+include cbuilderdecls
 include ccgliterals
 include ccgtypes
 

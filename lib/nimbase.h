@@ -110,7 +110,7 @@ __EMSCRIPTEN__
 
 /*
   NIM_THREADVAR declaration based on
-  http://stackoverflow.com/questions/18298280/how-to-declare-a-variable-as-thread-local-portably
+  https://stackoverflow.com/questions/18298280/how-to-declare-a-variable-as-thread-local-portably
 */
 #if defined _WIN32
 #  if defined _MSC_VER || defined __BORLANDC__
@@ -468,12 +468,6 @@ typedef char* NCSTRING;
 #endif
 
 #define NIM_STRLIT_FLAG ((NU)(1) << ((NIM_INTBITS) - 2)) /* This has to be the same as system.strlitFlag! */
-
-#define STRING_LITERAL(name, str, length) \
-   static const struct {                   \
-     TGenericSeq Sup;                      \
-     NIM_CHAR data[(length) + 1];          \
-  } name = {{length, (NI) ((NU)length | NIM_STRLIT_FLAG)}, str}
 
 /* declared size of a sequence/variable length array: */
 #if defined(__cplusplus) && defined(__clang__)
