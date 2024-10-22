@@ -1542,7 +1542,7 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
     ]#
     if handleConstExpr(p, e, d): return
   var t = e.typ.skipTypes(abstractInstOwned)
-  let isRef = e[0].typ.skipTypes(abstractInstOwned+{tyTypedesc}).kind == tyRef
+  let isRef = e[0].typ.skipTypes(abstractInstOwned+{tyTypeDesc}).kind == tyRef
 
   # check if we need to construct the object in a temporary
   var useTemp =
