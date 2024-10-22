@@ -1542,8 +1542,8 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
     ]#
     if handleConstExpr(p, e, d): return
   var t = if e.typ.kind == tyVar and
-          e[0].typ.skipTypes({tyTypedesc}).kind == tyRef:
-        e[0].typ.skipTypes(abstractInstOwned+{tyTypedesc})
+          e[0].typ.skipTypes({tyTypeDesc}).kind == tyRef:
+        e[0].typ.skipTypes(abstractInstOwned+{tyTypeDesc})
       else:
         e.typ.skipTypes(abstractInstOwned)
   let isRef = t.kind == tyRef
