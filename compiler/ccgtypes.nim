@@ -1706,10 +1706,10 @@ proc genTypeInfoV2OldImpl(m: BModule; t, origType: PType, name: Rope; info: TLin
   if not canFormAcycle(m.g.graph, t): flags = flags or 1
 
   var typeEntry = newRopeAppender()
-  typeEntry.addSubscriptAssignment(name, "destructor"):
+  typeEntry.addFieldAssignment(name, "destructor"):
     typeEntry.addCast("void*"):
       genHook(m, t, info, attachedDestructor, typeEntry)
-  typeEntry.addSubscriptAssignment(name, "traceImpl"):
+  typeEntry.addFieldAssignment(name, "traceImpl"):
     typeEntry.addCast("void*"):
       genHook(m, t, info, attachedTrace, typeEntry)
 
