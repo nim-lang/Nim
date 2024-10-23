@@ -138,6 +138,19 @@ when not defined(gcArc) and not defined(gcOrc) and not defined(gcAtomicArc):
     ##
     ## **Note**: The `finalizer` refers to the type `T`, not to the object!
     ## This means that for each object of type `T` the finalizer will be called!
+else:
+  proc new*[T](a: var ref T, finalizer: proc (x: ref T) {.nimcall.}) {.
+    magic: "NewFinalize", noSideEffect, deprecated: "`finalizer` is not supported by arc/orc".}
+    ## Creates a new object of type `T` and returns a safe (traced)
+    ## reference to it in `a`.
+    ##
+    ## When the garbage collector frees the object, `finalizer` is called.
+    ## The `finalizer` may not keep a reference to the
+    ## object pointed to by `x`. The `finalizer` cannot prevent the GC from
+    ## freeing the object.
+    ##
+    ## **Note**: The `finalizer` refers to the type `T`, not to the object!
+    ## This means that for each object of type `T` the finalizer will be called!
 
 proc `=wasMoved`*[T](obj: var T) {.magic: "WasMoved", noSideEffect.} =
   ## Generic `wasMoved`:idx: implementation that can be overridden.
