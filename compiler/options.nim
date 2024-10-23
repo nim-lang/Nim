@@ -229,6 +229,7 @@ type
     # alternative to above:
     genericsOpenSym
     vtables
+    typedTypeMacroPragma
 
   LegacyFeature* = enum
     allowSemcheckedAstModification,

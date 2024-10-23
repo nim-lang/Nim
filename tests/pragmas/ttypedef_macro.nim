@@ -1,7 +1,20 @@
+discard """
+  matrix: "; -d:typeSectionInput"
+"""
+
+const typeSectionInput = defined(typeSectionInput)
+
+when typeSectionInput:
+  {.experimental: "typedTypeMacroPragma".}
+
 import macros
 
 macro makeref(s): untyped =
-  expectKind s, nnkTypeDef
+  when typeSectionInput:
+    expectKind s, nnkTypeSection
+    let s = s[0]
+  else:
+    expectKind s, nnkTypeDef
   result = newTree(nnkTypeDef, s[0], s[1], newTree(nnkRefTy, s[2]))
 
 type
@@ -12,6 +25,11 @@ doAssert Obj is ref
 doAssert Obj(a: 3)[].a == 3
 
 macro multiply(amount: static int, s): untyped =
+  when typeSectionInput:
+    expectKind s, nnkTypeSection
+    let s = s[0]
+  else:
+    expectKind s, nnkTypeDef
   let name = $s[0].basename
   result = newNimNode(nnkTypeSection)
   for i in 1 .. amount:
@@ -32,6 +50,11 @@ doAssert not declared(Bar3)
 # https://github.com/nim-lang/RFCs/issues/219
 
 macro inferKind(td): untyped =
+  when typeSectionInput:
+    expectKind td, nnkTypeSection
+    let td = td[0]
+  else:
+    expectKind td, nnkTypeDef
   let name = $td[0].basename
   var rhs = td[2]
   while rhs.kind in {nnkPtrTy, nnkRefTy}: rhs = rhs[0]
