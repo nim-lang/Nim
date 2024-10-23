@@ -1445,7 +1445,12 @@ proc typeDefLeftSidePass(c: PContext, typeSection: PNode, i: int) =
     s = semIdentDef(c, name, skType)
     onDef(name.info, s)
     s.typ = newTypeS(tyForward, c)
-    s.typ.sym = s             # process pragmas:
+    let isGeneric = typeDef[1].kind != nkEmpty
+    if isGeneric:
+      # mark as tfHasMeta for pragmas to know this type is generic
+      s.typ.flags.incl tfHasMeta
+    s.typ.sym = s
+    # process pragmas:
     if name.kind == nkPragmaExpr:
       let rewritten = applyTypeSectionPragmas(c, name[1], typeDef)
       if rewritten != nil:
@@ -1458,6 +1463,9 @@ proc typeDefLeftSidePass(c: PContext, typeSection: PNode, i: int) =
         typeDefLeftSidePass(c, typeSection, i)
         return
       pragma(c, s, name[1], typePragmas)
+    if isGeneric:
+      # remove previously set tfHasMeta to mark generic parameters
+      s.typ.flags.excl tfHasMeta
     if sfForward in s.flags:
       # check if the symbol already exists:
       let pkg = c.module.owner
