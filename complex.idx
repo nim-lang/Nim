@@ -1,0 +1,77 @@
+nimTitle	complex	complex.html	module std/complex		0
+nim	Complex	complex.html#Complex	object Complex		39
+nim	Complex64	complex.html#Complex64	type Complex64		42
+nim	Complex32	complex.html#Complex32	type Complex32		44
+nim	complex	complex.html#complex,T,T	proc complex[T: SomeFloat](re: T; im: T = 0.0): Complex[T]		47
+nim	complex32	complex.html#complex32,float32,float32	proc complex32(re: float32; im: float32 = 0.0): Complex32		52
+nim	complex64	complex.html#complex64,float64,float64	proc complex64(re: float64; im: float64 = 0.0): Complex64		57
+nim	im	complex.html#im.t,typedesc[float32]	template im(arg: typedesc[float32]): Complex32		62
+nim	im	complex.html#im.t,typedesc[float64]	template im(arg: typedesc[float64]): Complex64		64
+nim	im	complex.html#im.t,float32	template im(arg: float32): Complex32		66
+nim	im	complex.html#im.t,float64	template im(arg: float64): Complex64		68
+nim	abs	complex.html#abs,Complex[T]	proc abs[T](z: Complex[T]): T		71
+nim	abs2	complex.html#abs2,Complex[T]	proc abs2[T](z: Complex[T]): T		76
+nim	sgn	complex.html#sgn,Complex[T]	proc sgn[T](z: Complex[T]): Complex[T]		82
+nim	conjugate	complex.html#conjugate,Complex[T]	proc conjugate[T](z: Complex[T]): Complex[T]		89
+nim	inv	complex.html#inv,Complex[T]	proc inv[T](z: Complex[T]): Complex[T]		94
+nim	`==`	complex.html#==,Complex[T],Complex[T]	proc `==`[T](x, y: Complex[T]): bool		98
+nim	`+`	complex.html#+,T,Complex[T]	proc `+`[T](x: T; y: Complex[T]): Complex[T]		102
+nim	`+`	complex.html#+,Complex[T],T	proc `+`[T](x: Complex[T]; y: T): Complex[T]		107
+nim	`+`	complex.html#+,Complex[T],Complex[T]	proc `+`[T](x, y: Complex[T]): Complex[T]		112
+nim	`-`	complex.html#-,Complex[T]	proc `-`[T](z: Complex[T]): Complex[T]		117
+nim	`-`	complex.html#-,T,Complex[T]	proc `-`[T](x: T; y: Complex[T]): Complex[T]		122
+nim	`-`	complex.html#-,Complex[T],T	proc `-`[T](x: Complex[T]; y: T): Complex[T]		127
+nim	`-`	complex.html#-,Complex[T],Complex[T]	proc `-`[T](x, y: Complex[T]): Complex[T]		132
+nim	`*`	complex.html#*,T,Complex[T]	proc `*`[T](x: T; y: Complex[T]): Complex[T]		137
+nim	`*`	complex.html#*,Complex[T],T	proc `*`[T](x: Complex[T]; y: T): Complex[T]		142
+nim	`*`	complex.html#*,Complex[T],Complex[T]	proc `*`[T](x, y: Complex[T]): Complex[T]		147
+nim	`/`	complex.html#/,Complex[T],T	proc `/`[T](x: Complex[T]; y: T): Complex[T]		152
+nim	`/`	complex.html#/,T,Complex[T]	proc `/`[T](x: T; y: Complex[T]): Complex[T]		157
+nim	`/`	complex.html#/,Complex[T],Complex[T]	proc `/`[T](x, y: Complex[T]): Complex[T]		161
+nim	`+=`	complex.html#+=,Complex[T],Complex[T]	proc `+=`[T](x: var Complex[T]; y: Complex[T])		165
+nim	`-=`	complex.html#-=,Complex[T],Complex[T]	proc `-=`[T](x: var Complex[T]; y: Complex[T])		170
+nim	`*=`	complex.html#*=,Complex[T],Complex[T]	proc `*=`[T](x: var Complex[T]; y: Complex[T])		175
+nim	`/=`	complex.html#/=,Complex[T],Complex[T]	proc `/=`[T](x: var Complex[T]; y: Complex[T])		181
+nim	sqrt	complex.html#sqrt,Complex[T]	proc sqrt[T](z: Complex[T]): Complex[T]		186
+nim	exp	complex.html#exp,Complex[T]	proc exp[T](z: Complex[T]): Complex[T]		211
+nim	ln	complex.html#ln,Complex[T]	proc ln[T](z: Complex[T]): Complex[T]		219
+nim	log10	complex.html#log10,Complex[T]	proc log10[T](z: Complex[T]): Complex[T]		226
+nim	log2	complex.html#log2,Complex[T]	proc log2[T](z: Complex[T]): Complex[T]		233
+nim	pow	complex.html#pow,Complex[T],Complex[T]	proc pow[T](x, y: Complex[T]): Complex[T]		240
+nim	pow	complex.html#pow,Complex[T],T	proc pow[T](x: Complex[T]; y: T): Complex[T]		283
+nim	sin	complex.html#sin,Complex[T]	proc sin[T](z: Complex[T]): Complex[T]		288
+nim	arcsin	complex.html#arcsin,Complex[T]	proc arcsin[T](z: Complex[T]): Complex[T]		293
+nim	cos	complex.html#cos,Complex[T]	proc cos[T](z: Complex[T]): Complex[T]		297
+nim	arccos	complex.html#arccos,Complex[T]	proc arccos[T](z: Complex[T]): Complex[T]		302
+nim	tan	complex.html#tan,Complex[T]	proc tan[T](z: Complex[T]): Complex[T]		306
+nim	arctan	complex.html#arctan,Complex[T]	proc arctan[T](z: Complex[T]): Complex[T]		310
+nim	cot	complex.html#cot,Complex[T]	proc cot[T](z: Complex[T]): Complex[T]		314
+nim	arccot	complex.html#arccot,Complex[T]	proc arccot[T](z: Complex[T]): Complex[T]		318
+nim	sec	complex.html#sec,Complex[T]	proc sec[T](z: Complex[T]): Complex[T]		322
+nim	arcsec	complex.html#arcsec,Complex[T]	proc arcsec[T](z: Complex[T]): Complex[T]		326
+nim	csc	complex.html#csc,Complex[T]	proc csc[T](z: Complex[T]): Complex[T]		330
+nim	arccsc	complex.html#arccsc,Complex[T]	proc arccsc[T](z: Complex[T]): Complex[T]		334
+nim	sinh	complex.html#sinh,Complex[T]	proc sinh[T](z: Complex[T]): Complex[T]		338
+nim	arcsinh	complex.html#arcsinh,Complex[T]	proc arcsinh[T](z: Complex[T]): Complex[T]		342
+nim	cosh	complex.html#cosh,Complex[T]	proc cosh[T](z: Complex[T]): Complex[T]		346
+nim	arccosh	complex.html#arccosh,Complex[T]	proc arccosh[T](z: Complex[T]): Complex[T]		350
+nim	tanh	complex.html#tanh,Complex[T]	proc tanh[T](z: Complex[T]): Complex[T]		354
+nim	arctanh	complex.html#arctanh,Complex[T]	proc arctanh[T](z: Complex[T]): Complex[T]		358
+nim	coth	complex.html#coth,Complex[T]	proc coth[T](z: Complex[T]): Complex[T]		362
+nim	arccoth	complex.html#arccoth,Complex[T]	proc arccoth[T](z: Complex[T]): Complex[T]		366
+nim	sech	complex.html#sech,Complex[T]	proc sech[T](z: Complex[T]): Complex[T]		370
+nim	arcsech	complex.html#arcsech,Complex[T]	proc arcsech[T](z: Complex[T]): Complex[T]		374
+nim	csch	complex.html#csch,Complex[T]	proc csch[T](z: Complex[T]): Complex[T]		378
+nim	arccsch	complex.html#arccsch,Complex[T]	proc arccsch[T](z: Complex[T]): Complex[T]		382
+nim	phase	complex.html#phase,Complex[T]	proc phase[T](z: Complex[T]): T		386
+nim	polar	complex.html#polar,Complex[T]	proc polar[T](z: Complex[T]): tuple[r, phi: T]		392
+nim	rect	complex.html#rect,T,T	proc rect[T](r, phi: T): Complex[T]		402
+nim	almostEqual	complex.html#almostEqual,Complex[T: SomeFloat],Complex[T: SomeFloat],Natural	proc almostEqual[T: SomeFloat](x, y: Complex[T]; unitsInLastPlace: Natural = 4): bool		412
+nim	`$`	complex.html#$,Complex	proc `$`(z: Complex): string		431
+nim	formatValue	complex.html#formatValue,string,Complex,string	proc formatValue(result: var string; value: Complex; specifier: string)		460
+nimgrp	pow	complex.html#pow-procs-all	proc		240
+nimgrp	-	complex.html#--procs-all	proc		117
+nimgrp	+	complex.html#+-procs-all	proc		102
+nimgrp	/	complex.html#/-procs-all	proc		152
+nimgrp	*	complex.html#*-procs-all	proc		137
+nimgrp	im	complex.html#im-templates-all	template		62

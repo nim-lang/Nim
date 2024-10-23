@@ -1,0 +1,21 @@
+nimTitle	threadpool	threadpool.html	module std/threadpool		0
+nim	FlowVarBase	threadpool.html#FlowVarBase	type FlowVarBase		106
+nim	FlowVar	threadpool.html#FlowVar	type FlowVar		119
+nim	blockUntil	threadpool.html#blockUntil,FlowVarBaseObj	proc blockUntil(fv: var FlowVarBaseObj)		142
+nim	awaitAndThen	threadpool.html#awaitAndThen,FlowVar[T],proc(T)	proc awaitAndThen[T](fv: FlowVar[T]; action: proc (x: T) {.closure.})		234
+nim	unsafeRead	threadpool.html#unsafeRead,FlowVar[ref.T]	proc unsafeRead[T](fv: FlowVar[ref T]): ptr T		252
+nim	`^`	threadpool.html#^,FlowVar[T]	proc `^`[T](fv: FlowVar[T]): T		261
+nim	blockUntilAny	threadpool.html#blockUntilAny,openArray[FlowVarBase]	proc blockUntilAny(flowVars: openArray[FlowVarBase]): int		270
+nim	isReady	threadpool.html#isReady,FlowVarBase	proc isReady(fv: FlowVarBase): bool		299
+nim	MaxThreadPoolSize	threadpool.html#MaxThreadPoolSize	const MaxThreadPoolSize		315
+nim	MaxDistinguishedThread	threadpool.html#MaxDistinguishedThread	const MaxDistinguishedThread		317
+nim	ThreadId	threadpool.html#ThreadId	type ThreadId		320
+nim	setMinPoolSize	threadpool.html#setMinPoolSize,range[]	proc setMinPoolSize(size: range[1 .. MaxThreadPoolSize])		401
+nim	setMaxPoolSize	threadpool.html#setMaxPoolSize,range[]	proc setMaxPoolSize(size: range[1 .. MaxThreadPoolSize])		405
+nim	preferSpawn	threadpool.html#preferSpawn	proc preferSpawn(): bool		446
+nim	spawn	threadpool.html#spawn,sinktyped	proc spawn(call: sink typed)		455
+nim	pinnedSpawn	threadpool.html#pinnedSpawn,ThreadId,sinktyped	proc pinnedSpawn(id: ThreadId; call: sink typed)		463
+nim	spawnX	threadpool.html#spawnX.t	template spawnX(call)		471
+nim	parallel	threadpool.html#parallel,untyped	proc parallel(body: untyped)		482
+nim	sync	threadpool.html#sync	proc sync()		591
+heading	See also	threadpool.html#see-also	 See also		0

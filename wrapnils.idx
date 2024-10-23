@@ -1,0 +1,7 @@
+nimTitle	wrapnils	wrapnils.html	module std/wrapnils		0
+nim	`?.`	wrapnils.html#?..m,typed	macro `?.`(a: typed): auto		111
+nim	`??.`	wrapnils.html#??..m,typed	macro `??.`(a: typed): Option		127
+nim	fakeDot	wrapnils.html#fakeDot.t,Option,	template fakeDot(a: Option; b): untyped		158
+nim	`[]`	wrapnils.html#[],Option[T],I	proc `[]`[T, I](a: Option[T]; i: I): auto		177
+nim	`[]`	wrapnils.html#[],Option[U]	proc `[]`[U](a: Option[U]): auto		183
+nimgrp	[]	wrapnils.html#[]-procs-all	proc		177

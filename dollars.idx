@@ -1,0 +1,21 @@
+nimTitle	dollars	dollars.html	module system/dollars		0
+nim	`$`	dollars.html#$,int	proc `$`(x: int): string		16
+nim	`$`	dollars.html#$,int64	proc `$`(x: int64): string		20
+nim	`$`	dollars.html#$,uint64	proc `$`(x: uint64): string		24
+nim	`$`	dollars.html#$	proc `$`(x`gensym0: `{}`(int, lit)): string		32
+nim	`$`	dollars.html#$_2	proc `$`(x`gensym1: `{}`(uint64, lit)): string		33
+nim	`$`	dollars.html#$_3	proc `$`(x`gensym2: `{}`(int64, lit)): string		34
+nim	`$`	dollars.html#$,bool	proc `$`(x: bool): string		37
+nim	`$`	dollars.html#$,char	proc `$`(x: char): string		41
+nim	`$`	dollars.html#$,cstring	proc `$`(x: cstring): string		48
+nim	`$`	dollars.html#$,string	proc `$`(x: string): string		52
+nim	`$`	dollars.html#$,Enum	proc `$`[Enum: enum](x: Enum): string		57
+nim	`$`	dollars.html#$,typedesc	proc `$`(t: typedesc): string		64
+nim	`$`	dollars.html#$,T	proc `$`[T: tuple](x: T): string		76
+nim	`$`	dollars.html#$,set[T]	proc `$`[T](x: set[T]): string		109
+nim	`$`	dollars.html#$,seq[T]	proc `$`[T](x: seq[T]): string		117
+nim	`$`	dollars.html#$,HSlice[T,U]	proc `$`[T, U](x: HSlice[T, U]): string		125
+nim	`$`	dollars.html#$,array[IDX,T]	proc `$`[T, IDX](x: array[IDX, T]): string		137
+nim	`$`	dollars.html#$,openArray[T]	proc `$`[T](x: openArray[T]): string		141
+idx	toString	dollars.html#tostring_1	Module dollars		0
+nimgrp	$	dollars.html#$-procs-all	proc		16
