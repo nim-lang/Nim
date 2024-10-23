@@ -125,7 +125,7 @@ proc unsafeAddr*[T](x: T): ptr T {.magic: "Addr", noSideEffect.} =
 
 const ThisIsSystem = true
 
-when false:
+when not defined(gcArc) and not defined(gcOrc) and not defined(gcAtomicArc):
   proc new*[T](a: var ref T, finalizer: proc (x: ref T) {.nimcall.}) {.
     magic: "NewFinalize", noSideEffect.}
     ## Creates a new object of type `T` and returns a safe (traced)
