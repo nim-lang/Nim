@@ -89,7 +89,7 @@ template addTypedef(builder: var Builder, name: string, typeBody: typed) =
   builder.add(name)
   builder.add(";\n")
 
-template addArrayTypedef(builder: var Builder, name: string, len: int, typeBody: typed) =
+template addArrayTypedef(builder: var Builder, name: string, len: BiggestInt, typeBody: typed) =
   ## adds an array typedef declaration to the builder with name `name`,
   ## length `len`, and element type as built in `typeBody`
   builder.add("typedef ")
