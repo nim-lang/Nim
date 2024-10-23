@@ -19,6 +19,10 @@ proc procPtrType(conv: TCallingConvention, rettype: Snippet, name: string): Snip
 proc cCast(typ, value: Snippet): Snippet =
   "((" & typ & ") " & value & ")"
 
+proc wrapPar(value: Snippet): Snippet =
+  # used for expression group, no-op on sexp
+  "(" & value & ")"
+
 template addCast(builder: var Builder, typ: Snippet, valueBody: typed) =
   ## adds a cast to `typ` with value built by `valueBody`
   builder.add "(("
@@ -29,6 +33,18 @@ template addCast(builder: var Builder, typ: Snippet, valueBody: typed) =
 
 proc cAddr(value: Snippet): Snippet =
   "&" & value
+
+proc cDeref(value: Snippet): Snippet =
+  "(*" & value & ")"
+
+proc subscript(a, b: Snippet): Snippet =
+  a & "[" & b & "]"
+
+proc dotField(a, b: Snippet): Snippet =
+  a & "." & b
+
+proc derefField(a, b: Snippet): Snippet =
+  a & "->" & b
 
 proc bitOr(a, b: Snippet): Snippet =
   "(" & a & " | " & b & ")"
