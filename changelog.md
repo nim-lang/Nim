@@ -3,6 +3,9 @@
 
 ## Changes affecting backward compatibility
 
+
+- Non-var destructors become the default. Use `-d:nimLegacyVarDestructor` to emulate old behaviors.
+
 - `-d:nimPreviewFloatRoundtrip` becomes the default. `system.addFloat` and `system.$` now can produce string representations of
 floating point numbers that are minimal in size and possess round-trip and correct
 rounding guarantees (via the
@@ -11,6 +14,7 @@ rounding guarantees (via the
 - The `default` parameter of `tables.getOrDefault` has been renamed to `def` to
   avoid conflicts with `system.default`, so named argument usage for this
   parameter like `getOrDefault(..., default = ...)` will have to be changed.
+
 
 ## Standard library additions and changes
 

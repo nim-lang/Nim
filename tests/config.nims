@@ -36,7 +36,6 @@ hint("Processing", off)
 switch("define", "nimPreviewJsonutilsHoleyEnum")
 switch("define", "nimPreviewHashRef")
 switch("define", "nimPreviewRangeDefault")
-switch("define", "nimPreviewNonVarDestructor")
 
 switch("warningAserror", "UnnamedBreak")
 when not defined(testsConciseTypeMismatch):
