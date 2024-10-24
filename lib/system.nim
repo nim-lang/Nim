@@ -142,7 +142,7 @@ when defined(nimAllowNonVarDestructor) and arcLikeMem:
     ## This means that for each object of type `T` the finalizer will be called!
 
   proc new*[T](a: var ref T, finalizer: proc (x: ref T) {.nimcall.}) {.
-    magic: "NewFinalize", noSideEffect, deprecated: "use the non `ref T` version".}
+    magic: "NewFinalize", noSideEffect, deprecated: "pass a finalizer of the 'proc (x: T) {.nimcall.}' type".}
 
 else:
   proc new*[T](a: var ref T, finalizer: proc (x: ref T) {.nimcall.}) {.
