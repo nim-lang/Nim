@@ -376,6 +376,7 @@ proc genProcPrototype(m: BModule, sym: PSym)
 include cbuilderbase
 include cbuilderexprs
 include cbuilderdecls
+include cbuilderstmts
 include ccgliterals
 include ccgtypes
 
