@@ -537,7 +537,7 @@ proc semNewFinalize(c: PContext; n: PNode): PNode =
         if fin.instantiatedFrom != nil and fin.instantiatedFrom != fin.owner: #undo move
           setOwner(fin, fin.instantiatedFrom)
 
-        if fin.typ[1].kind != tyRef:
+        if fin.typ[1].skipTypes(abstractInst).kind != tyRef:
           bindTypeHook(c, fin, n, attachedDestructor)
         else:
           let wrapperSym = newSym(skProc, getIdent(c.graph.cache, fin.name.s & "FinalizerWrapper"), c.idgen, fin.owner, fin.info)
