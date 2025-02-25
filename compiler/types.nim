@@ -1425,6 +1425,17 @@ proc matchType*(a: PType, pattern: openArray[tuple[k:TTypeKind, i:int]],
     a = a[i]
   result = a.kind == last
 
+proc lacksMTypeField*(typ: PType): bool {.inline.} =
+  ## Returns true if the type is an object that lacks a m_type field.
+  ## It doesn't check base classes.
+  (typ.sym != nil and sfPure in typ.sym.flags) or tfFinal in typ.flags
+
+proc isObjLackingTypeField*(typ: PType): bool {.inline.} =
+  ## Returns true if the type is an object that lacks a type field.
+  ## Object types that store type headers are not final or pure and
+  ## have inheritable root types, which are not pure, neither.
+  result = (typ.kind == tyObject) and ((tfFinal in typ.flags) and
+      (typ.baseClass == nil) or isPureObject(typ))
 
 include sizealignoffsetimpl
 
@@ -1867,6 +1878,3 @@ proc isCharArrayPtr*(t: PType; allowPointerToChar: bool): bool =
       result = allowPointerToChar
     else:
       discard
-
-proc lacksMTypeField*(typ: PType): bool {.inline.} =
-  (typ.sym != nil and sfPure in typ.sym.flags) or tfFinal in typ.flags
