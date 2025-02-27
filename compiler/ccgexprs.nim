@@ -1925,6 +1925,13 @@ proc genArrayLen(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     else: putIntoDest(p, d, e, rope(lengthOrd(p.config, typ)))
   else: internalError(p.config, e.info, "genArrayLen()")
 
+proc isTrivialTypesToSnippet(t: PType): Rope =
+  if containsGarbageCollectedRef(t) or
+                     hasDestructor(t):
+    result = rope"NIM_FALSE"
+  else:
+    result = rope"NIM_TRUE"
+
 proc genSetLengthSeq(p: BProc, e: PNode, d: var TLoc) =
   if optSeqDestructors in p.config.globalOptions:
     e[1] = makeAddr(e[1], p.module.idgen)
@@ -1945,10 +1952,11 @@ proc genSetLengthSeq(p: BProc, e: PNode, d: var TLoc) =
       genTypeInfoV1(p.module, t.skipTypes(abstractInst), e.info)])
 
   else:
-    const setLenPattern = "($3) #setLengthSeqV2($1, $4, $2)"
+    const setLenPattern = "($3) #setLengthSeqV2($1, $4, $2, $5)"
     call.snippet = ropecg(p.module, setLenPattern, [
       rdLoc(a), rdLoc(b), getTypeDesc(p.module, t),
-      genTypeInfoV1(p.module, t.skipTypes(abstractInst), e.info)])
+      genTypeInfoV1(p.module, t.skipTypes(abstractInst), e.info),
+      isTrivialTypesToSnippet(t.skipTypes(abstractInst)[0])])
 
   genAssignment(p, a, call, {})
   gcUsage(p.config, e)
