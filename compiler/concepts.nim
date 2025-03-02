@@ -206,13 +206,14 @@ proc matchConceptToImpl(c: PContext, f, potentialImpl: PType; m: var MatchCon): 
   m.concpt = concpt
   
   var invocation: PType = nil
-  if f.kind == tyGenericInvocation:
+  if f.kind in {tyGenericInvocation, tyGenericInst}:
     invocation = f
   inc m.depthCount
   result = processConcept(c, concpt, invocation, oldBindings, m)
   dec m.depthCount
   m.potentialImplementation = oldPotentialImplementation
   m.concpt = oldConcept
+  m.bindings = oldBindings
 
 proc cmpConceptDefs(c: PContext, fn, an: PNode, m: var MatchCon): bool=
   if fn.kind != an.kind:
@@ -283,7 +284,7 @@ proc matchType(c: PContext; fo, ao: PType; m: var MatchCon): bool =
       # if f is a subset of a then any match to a will also match f. Not the other way around
       return conceptsMatch(c, a.reduceToBase, f.reduceToBase, m) >= mkSubset
     else:
-      return matchConceptToImpl(c, f.reduceToBase, a, m)
+      return matchConceptToImpl(c, f, a, m)
   
   result = false
 
@@ -359,6 +360,7 @@ proc matchType(c: PContext; fo, ao: PType; m: var MatchCon): bool =
       result = matchType(c, scomp, a, m)
   of tyGenericParam:
     if a.acceptsAllTypes:
+      discard bindParam(c, m, f, a)
       result = f.acceptsAllTypes
     else:
       result = bindParam(c, m, f, a)

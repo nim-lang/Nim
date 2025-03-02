@@ -12,6 +12,8 @@ c
 a
 b
 c
+1
+2
 '''
 """
 import conceptsv2_helper
@@ -426,3 +428,30 @@ block:
 
   assert spring(Impl()) == 2
 
+# this code fails inside a block for some reason
+type Indexable[T] = concept
+  proc `[]`(t: Self, i: int): T
+  proc len(t: Self): int
+
+iterator items[T](t: Indexable[T]): T =
+  for i in 0 ..< t.len:
+    yield t[i]
+
+type Enumerable[T] = concept
+  iterator items(t: Self): T
+
+proc echoAll[T](t: Enumerable[T]) =
+  for item in t:
+    echo item
+
+type DummyIndexable[T] = distinct seq[T]
+
+proc `[]`[T](t: DummyIndexable[T], i: int): T =
+  seq[T](t)[i]
+
+proc len[T](t: DummyIndexable[T]): int =
+  seq[T](t).len
+
+
+let dummyIndexable = DummyIndexable(@[1, 2])
+echoAll(dummyIndexable)
