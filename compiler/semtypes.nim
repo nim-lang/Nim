@@ -1933,11 +1933,17 @@ proc semTypeOf(c: PContext; n: PNode; prev: PType): PType =
   defer: dec c.inTypeofContext # compiles can raise an exception
   let ex = semExprWithType(c, n, {efInTypeof})
   closeScope(c)
-  let t = ex.typ.skipTypes({tyStatic})
-  fixupTypeOf(c, prev, t)
-  result = t
+  result = ex.typ
   if result.kind == tyFromExpr:
     result.flags.incl tfNonConstExpr
+  elif result.kind == tyStatic:
+    let base = result.skipTypes({tyStatic})
+    if c.inGenericContext > 0 and base.containsGenericType:
+      result = makeTypeFromExpr(c, copyTree(ex))
+      result.flags.incl tfNonConstExpr
+    else:
+      result = base
+  fixupTypeOf(c, prev, result)
 
 proc semTypeOf2(c: PContext; n: PNode; prev: PType): PType =
   openScope(c)
@@ -1952,11 +1958,17 @@ proc semTypeOf2(c: PContext; n: PNode; prev: PType): PType =
   defer: dec c.inTypeofContext # compiles can raise an exception
   let ex = semExprWithType(c, n[1], if m == 1: {efInTypeof} else: {})
   closeScope(c)
-  let t = ex.typ.skipTypes({tyStatic})
-  fixupTypeOf(c, prev, t)
-  result = t
+  result = ex.typ
   if result.kind == tyFromExpr:
     result.flags.incl tfNonConstExpr
+  elif result.kind == tyStatic:
+    let base = result.skipTypes({tyStatic})
+    if c.inGenericContext > 0 and base.containsGenericType:
+      result = makeTypeFromExpr(c, copyTree(ex))
+      result.flags.incl tfNonConstExpr
+    else:
+      result = base
+  fixupTypeOf(c, prev, result)
 
 proc semTypeIdent(c: PContext, n: PNode): PSym =
   if n.kind == nkSym:
