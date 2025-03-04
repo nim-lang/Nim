@@ -17,7 +17,7 @@ import
   ast, astalgo, msgs, renderer, magicsys, types, idents,
   options, lowerings, modulegraphs,
   lineinfos, parampatterns, sighashes, liftdestructors, optimizer,
-  varpartitions, aliasanalysis, dfa, wordrecg
+  varpartitions, aliasanalysis, dfa, wordrecg, trees
 
 import std/[strtabs, tables, strutils, intsets]
 
@@ -47,6 +47,7 @@ type
     wasMoved: seq[PNode]
     final: seq[PNode] # finally section
     locals: seq[PSym]
+    sinkParams: seq[PSym]
     body: PNode
     needsTry: bool
     parent: ptr Scope
@@ -1244,6 +1245,86 @@ when false:
       for i in 0..<n.safeLen:
         injectDefaultCalls(n[i], c)
 
+proc analyzeMutaion(n: PNode; mutate: bool; mapping: var IntSet) =
+  # TODO: Improve this
+  case n.kind:
+  of nkLiterals, nkIdent, nkFormalParams: discard
+  of nkSym:
+    if mutate:
+      mapping.incl n.sym.id
+  of nkAsgn, nkFastAsgn, nkSinkAsgn:
+    analyzeMutaion(n[0], true, mapping)
+    analyzeMutaion(n[1], mutate, mapping)
+  of nkAddr, nkHiddenAddr:
+    analyzeMutaion(n[0], true, mapping)
+  of nkBracketExpr, nkDotExpr, nkCheckedFieldExpr:
+    analyzeMutaion(n[0], mutate, mapping)
+  of nkCallKinds:
+    case n.getMagic:
+    of mIncl, mExcl, mInc, mDec, mAppendStrCh, mAppendStrStr, mAppendSeqElem,
+        mAddr, mNew, mNewFinalize, mWasMoved, mDestroy:
+      analyzeMutaion(n[1], true, mapping)
+      for i in 2..<n.len:
+        analyzeMutaion(n[i], mutate, mapping)
+    of mSwap:
+      for i in 1..<n.len:
+        analyzeMutaion(n[i], true, mapping)
+    else:
+      for i in 1..<n.len:
+        analyzeMutaion(n[i], mutate, mapping)
+  else:
+    for s in n:
+      analyzeMutaion(s, mutate, mapping)
+
+proc replaceSinkParam(n: PNode, mapping: Table[int, PSym]): PNode =
+  case n.kind
+  of nkSym:
+    if n.sym.id in mapping:
+      result = newSymNode(mapping[n.sym.id])
+    else:
+      result = n
+  of nkVarSection, nkLetSection:
+    result = copyNode(n)
+    newSons(result, n.len)
+    for i in 0..<n.len:
+      result[i] = copyNode(n[i])
+      for j in 0..<n[i].len-1:
+        result[i].add n[i][j]
+      result[i].add replaceSinkParam(n[i][^1], mapping)
+  of {nkNone..nkNilLit}-{nkSym}, nkTypeSection, nkProcDef, nkConverterDef,
+      nkMethodDef, nkIteratorDef, nkMacroDef, nkTemplateDef, nkLambda, nkDo,
+      nkFuncDef, nkConstSection, nkConstDef, nkIncludeStmt, nkImportStmt,
+      nkExportStmt, nkPragma, nkCommentStmt, nkBreakState,
+      nkTypeOfExpr, nkMixinStmt, nkBindStmt:
+    result = n
+  else:
+    result = copyNode(n)
+    for i in 0..<n.len:
+      result.add replaceSinkParam(n[i], mapping)
+
+proc addSinkCopy(c: var Con; s: var Scope; n: PNode): PNode =
+  result = newNodeI(nkStmtList, n.info)
+  var mapping = initTable[int, PSym]()
+
+  var idSets = initIntSet()
+  analyzeMutaion(n, false, idSets)
+  for param in s.sinkParams:
+    if param.id notin idSets:
+      continue
+    let newSym = newSym(skLet, getIdent(c.graph.cache, "sinkCopy"), c.idgen, param.owner, n.info)
+    newSym.flags.incl sfNoInit
+    newSym.typ = param.typ.elementType
+    mapping[param.id] = newSym
+    let v = newNodeI(nkLetSection, n.info)
+    let newSymNode = newSymNode(newSym)
+    var vpart = newNodeI(nkIdentDefs, newSymNode.info, 3)
+    vpart[0] = newSymNode
+    vpart[1] = newNodeI(nkEmpty, newSymNode.info)
+    vpart[2] = newSymNode(param)
+    v.add(vpart)
+    result.add v
+  result.add replaceSinkParam(n, mapping)
+
 proc injectDestructorCalls*(g: ModuleGraph; idgen: IdGenerator; owner: PSym; n: PNode): PNode =
   when toDebug.len > 0:
     shouldDebug = toDebug == owner.name.s or toDebug == "always"
@@ -1261,11 +1342,17 @@ proc injectDestructorCalls*(g: ModuleGraph; idgen: IdGenerator; owner: PSym; n: 
     let params = owner.typ.n
     for i in 1..<params.len:
       let t = params[i].sym.typ
-      if isSinkTypeForParam(t) and hasDestructor(c, t.skipTypes({tySink})):
-        scope.final.add c.genDestroy(params[i])
+      if isSinkTypeForParam(t):
+        if t.skipTypes({tySink}).kind == tyTuple:
+          scope.sinkParams.add params[i].sym
+        if hasDestructor(c, t.skipTypes({tySink})):
+          scope.final.add c.genDestroy(params[i])
   #if optNimV2 in c.graph.config.globalOptions:
   #  injectDefaultCalls(n, c)
   result = optimize processScope(c, scope, body)
+  if scope.sinkParams.len > 0:
+    result = addSinkCopy(c, scope, result)
+
   dbg:
     echo ">---------transformed-to--------->"
     echo renderTree(result, {renderIds})
