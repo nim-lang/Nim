@@ -1245,37 +1245,6 @@ when false:
       for i in 0..<n.safeLen:
         injectDefaultCalls(n[i], c)
 
-proc analyzeMutaion(n: PNode; mutate: bool; mapping: var IntSet) =
-  # TODO: Improve this
-  case n.kind:
-  of nkLiterals, nkIdent, nkFormalParams: discard
-  of nkSym:
-    if mutate:
-      mapping.incl n.sym.id
-  of nkAsgn, nkFastAsgn, nkSinkAsgn:
-    analyzeMutaion(n[0], true, mapping)
-    analyzeMutaion(n[1], mutate, mapping)
-  of nkAddr, nkHiddenAddr:
-    analyzeMutaion(n[0], true, mapping)
-  of nkBracketExpr, nkDotExpr, nkCheckedFieldExpr:
-    analyzeMutaion(n[0], mutate, mapping)
-  of nkCallKinds:
-    case n.getMagic:
-    of mIncl, mExcl, mInc, mDec, mAppendStrCh, mAppendStrStr, mAppendSeqElem,
-        mAddr, mNew, mNewFinalize, mWasMoved, mDestroy:
-      analyzeMutaion(n[1], true, mapping)
-      for i in 2..<n.len:
-        analyzeMutaion(n[i], mutate, mapping)
-    of mSwap:
-      for i in 1..<n.len:
-        analyzeMutaion(n[i], true, mapping)
-    else:
-      for i in 1..<n.len:
-        analyzeMutaion(n[i], mutate, mapping)
-  else:
-    for s in n:
-      analyzeMutaion(s, mutate, mapping)
-
 proc replaceSinkParam(n: PNode, mapping: Table[int, PSym]): PNode =
   case n.kind
   of nkSym:
@@ -1306,24 +1275,22 @@ proc addSinkCopy(c: var Con; s: var Scope; n: PNode): PNode =
   result = newNodeI(nkStmtList, n.info)
   var mapping = initTable[int, PSym]()
 
-  var idSets = initIntSet()
-  analyzeMutaion(n, false, idSets)
+  var mutated = newSeq[PNode]()
+  getPotentialWrites(n, false, mutated)
+  var mutatedSet = initIntSet()
+  for m in mutated:
+    mutatedSet.incl m.sym.id
   for param in s.sinkParams:
-    if param.id notin idSets:
-      continue
-    let newSym = newSym(skLet, getIdent(c.graph.cache, "sinkCopy"), c.idgen, param.owner, n.info)
-    newSym.flags.incl sfNoInit
-    newSym.typ = param.typ.elementType
-    mapping[param.id] = newSym
-    let v = newNodeI(nkLetSection, n.info)
-    let newSymNode = newSymNode(newSym)
-    var vpart = newNodeI(nkIdentDefs, newSymNode.info, 3)
-    vpart[0] = newSymNode
-    vpart[1] = newNodeI(nkEmpty, newSymNode.info)
-    vpart[2] = newSymNode(param)
-    v.add(vpart)
-    result.add v
-  result.add replaceSinkParam(n, mapping)
+    if param.id in mutatedSet:
+      let newSym = newSym(skTemp, getIdent(c.graph.cache, "sinkCopy"), c.idgen, param.owner, n.info)
+      newSym.flags.incl sfFromGeneric
+      newSym.typ = param.typ.elementType
+      mapping[param.id] = newSym
+      let v = newNodeI(nkVarSection, n.info)
+      v.addVar(newSymNode(newSym), newSymNode(param))
+      result.add v
+  if mapping.len > 0:
+    result.add replaceSinkParam(n, mapping)
 
 proc injectDestructorCalls*(g: ModuleGraph; idgen: IdGenerator; owner: PSym; n: PNode): PNode =
   when toDebug.len > 0:
