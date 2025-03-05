@@ -1290,6 +1290,8 @@ proc addSinkCopy(c: var Con; s: var Scope; sinkParams: seq[PSym]; n: PNode): PNo
       result.add v
   if mapping.len > 0:
     result.add replaceSinkParam(n, mapping)
+  else:
+    result = n
 
 proc injectDestructorCalls*(g: ModuleGraph; idgen: IdGenerator; owner: PSym; n: PNode): PNode =
   when toDebug.len > 0:
