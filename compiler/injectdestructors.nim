@@ -47,7 +47,6 @@ type
     wasMoved: seq[PNode]
     final: seq[PNode] # finally section
     locals: seq[PSym]
-    sinkParams: seq[PSym]
     body: PNode
     needsTry: bool
     parent: ptr Scope
@@ -1271,7 +1270,7 @@ proc replaceSinkParam(n: PNode, mapping: Table[int, PSym]): PNode =
     for i in 0..<n.len:
       result.add replaceSinkParam(n[i], mapping)
 
-proc addSinkCopy(c: var Con; s: var Scope; n: PNode): PNode =
+proc addSinkCopy(c: var Con; s: var Scope; sinkParams: seq[PSym]; n: PNode): PNode =
   result = newNodeI(nkStmtList, n.info)
   var mapping = initTable[int, PSym]()
 
@@ -1280,7 +1279,7 @@ proc addSinkCopy(c: var Con; s: var Scope; n: PNode): PNode =
   var mutatedSet = initIntSet()
   for m in mutated:
     mutatedSet.incl m.sym.id
-  for param in s.sinkParams:
+  for param in sinkParams:
     if param.id in mutatedSet:
       let newSym = newSym(skTemp, getIdent(c.graph.cache, "sinkCopy"), c.idgen, param.owner, n.info)
       newSym.flags.incl sfFromGeneric
@@ -1305,20 +1304,23 @@ proc injectDestructorCalls*(g: ModuleGraph; idgen: IdGenerator; owner: PSym; n: 
   var scope = Scope(body: n)
   let body = p(n, c, scope, normal)
 
+  var sinkParams = newSeq[PSym]()
+
   if owner.kind in {skProc, skFunc, skMethod, skIterator, skConverter}:
     let params = owner.typ.n
     for i in 1..<params.len:
       let t = params[i].sym.typ
       if isSinkTypeForParam(t):
-        if t.skipTypes({tySink}).kind == tyTuple:
-          scope.sinkParams.add params[i].sym
-        if hasDestructor(c, t.skipTypes({tySink})):
+        let baseType = t.skipTypes({tySink})
+        if baseType.kind == tyTuple:
+          sinkParams.add params[i].sym
+        if hasDestructor(c, baseType):
           scope.final.add c.genDestroy(params[i])
   #if optNimV2 in c.graph.config.globalOptions:
   #  injectDefaultCalls(n, c)
   result = optimize processScope(c, scope, body)
-  if scope.sinkParams.len > 0:
-    result = addSinkCopy(c, scope, result)
+  if sinkParams.len > 0:
+    result = addSinkCopy(c, scope, sinkParams, result)
 
   dbg:
     echo ">---------transformed-to--------->"
