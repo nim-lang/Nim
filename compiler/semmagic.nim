@@ -55,7 +55,15 @@ proc semTypeOf(c: PContext; n: PNode): PNode =
   result.add typExpr
   if typExpr.typ.kind == tyFromExpr:
     typExpr.typ.flags.incl tfNonConstExpr
-  result.typ() = makeTypeDesc(c, typExpr.typ.skipTypes({tyStatic}))
+  var t = typExpr.typ
+  if t.kind == tyStatic:
+    let base = t.skipTypes({tyStatic})
+    if c.inGenericContext > 0 and base.containsGenericType:
+      t = makeTypeFromExpr(c, copyTree(typExpr))
+      t.flags.incl tfNonConstExpr
+    else:
+      t = base
+  result.typ() = makeTypeDesc(c, t)
 
 type
   SemAsgnMode = enum asgnNormal, noOverloadedSubscript, noOverloadedAsgn
