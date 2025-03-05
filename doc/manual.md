@@ -2941,6 +2941,9 @@ type
     proc `[]`(x: Self; at: I): T
     proc `[]=`(x: var Self; at: I; newVal: T)
     proc len(x: Self): I
+  Index = concept
+    proc inc(x: var Self)
+    proc `<`(a, b: Self): bool
 proc sort*[I: Index; T: Comparable](x: var Indexable[I, T])
 ```
 
