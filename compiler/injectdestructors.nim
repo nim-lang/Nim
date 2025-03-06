@@ -1314,7 +1314,7 @@ proc injectDestructorCalls*(g: ModuleGraph; idgen: IdGenerator; owner: PSym; n: 
       let t = params[i].sym.typ
       if isSinkTypeForParam(t):
         let baseType = t.skipTypes({tySink})
-        if baseType.kind == tyTuple:
+        if baseType.kind in {tyString, tySequence, tyArray, tyTuple, tyObject}:
           sinkParams.add params[i].sym
         if hasDestructor(c, baseType):
           scope.final.add c.genDestroy(params[i])
