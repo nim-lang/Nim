@@ -263,7 +263,7 @@ proc getPotentialWrites*(n: PNode; mutate: bool; result: var seq[PNode]) =
       getPotentialWrites(n[1], true, result)
       for i in 2..<n.len:
         getPotentialWrites(n[i], mutate, result)
-    of mSwap:
+    of mSwap, mMove:
       for i in 1..<n.len:
         getPotentialWrites(n[i], true, result)
     else:
