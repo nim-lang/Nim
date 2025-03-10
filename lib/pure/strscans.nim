@@ -512,7 +512,7 @@ macro scanTuple*(input: untyped; pattern: static[string]; matcherTypes: varargs[
           inc userMatches
       else: discard
     inc p
-  result.add nnkTupleConstr.newTree(newCall(ident("scanf"), input, newStrLitNode(pattern)))
+  result.add nnkTupleConstr.newTree(newCall(bindSym("scanf"), input, newStrLitNode(pattern)))
   for arg in arguments:
     result[^1][0].add arg
     result[^1].add arg
