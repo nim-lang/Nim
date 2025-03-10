@@ -1,8 +1,6 @@
 discard """
-  matrix: "--mm:orc"
+  matrix: "--mm:orc; --mm:refc"
 """
-
-# TODO: --mm:refc
 
 import std/marshal
 import std/[assertions, objectdollar, streams]
