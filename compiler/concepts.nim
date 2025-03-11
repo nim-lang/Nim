@@ -280,7 +280,7 @@ proc matchType(c: PContext; fo, ao: PType; m: var MatchCon): bool =
   if f.isConcept:
     if a.acceptsAllTypes:
       return false
-    if a.isConcept:
+    if a.skipTypes(ignorableForArgType).isConcept:
       # if f is a subset of a then any match to a will also match f. Not the other way around
       return conceptsMatch(c, a.reduceToBase, f.reduceToBase, m) >= mkSubset
     else:
