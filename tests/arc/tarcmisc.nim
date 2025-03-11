@@ -882,3 +882,17 @@ proc test_18070() = # bug #18070
   doAssert msg == "", "expected empty string but got: " & $msg
 
 test_18070()
+
+block: # bug #24754
+  type NoCopy = object
+    id: int
+
+  proc `=copy`(a: var NoCopy, b: NoCopy) {.error.}
+
+
+  proc foo(): NoCopy =
+    {.gcsafe.}:
+      let s = 12
+      NoCopy(id: s)
+
+  doAssert foo().id == 12
