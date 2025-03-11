@@ -348,6 +348,7 @@ type
     unitSep*: string
     evalTemplateCounter*: int
     evalMacroCounter*: int
+    disableFoldErrorCounter*: int
     exitcode*: int8
     cmd*: Command  # raw command parsed as enum
     cmdInput*: string  # input command

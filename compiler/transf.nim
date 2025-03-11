@@ -1181,7 +1181,9 @@ proc transform(c: PTransf, n: PNode, noConstFold = false): PNode =
                           n.typ != nil and
                           n.typ.kind == tyPointer
   if not exprIsPointerCast and not noConstFold:
+    inc c.graph.config.disableFoldErrorCounter, ord(c.inlining > 0)
     var cnst = getConstExpr(c.module, result, c.idgen, c.graph)
+    dec c.graph.config.disableFoldErrorCounter, ord(c.inlining > 0)
     # we inline constants if they are not complex constants:
     if cnst != nil and not dontInlineConstant(n, cnst):
       result = cnst # do not miss an optimization
