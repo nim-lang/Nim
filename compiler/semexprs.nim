@@ -2951,7 +2951,7 @@ proc semTupleFieldsConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType
     let conversion = indexTypesMatch(c, oldType, typ, result)
     # ignore matching error, the goal is just to keep the original type info
     if conversion != nil:
-      result = conversion
+      result.typ() = oldType
 
 proc semTuplePositionsConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType = nil): PNode =
   result = n                  # we don't modify n, but compute the type:
@@ -2982,7 +2982,7 @@ proc semTuplePositionsConstr(c: PContext, n: PNode, flags: TExprFlags; expectedT
     let conversion = indexTypesMatch(c, oldType, typ, result)
     # ignore matching error, the goal is just to keep the original type info
     if conversion != nil:
-      result = conversion
+      result.typ() = oldType
 
 include semobjconstr
 
@@ -3073,7 +3073,7 @@ proc semExport(c: PContext, n: PNode): PNode =
 proc semTupleConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType = nil): PNode =
   result = semTuplePositionsConstr(c, n, flags, expectedType)
   var tupexp = result
-  while tupexp.kind == nkHiddenSubConv: tupexp = tupexp[1] 
+  while tupexp.kind == nkHiddenSubConv: tupexp = tupexp[1]
   var isTupleType: bool = false
   if tupexp.len > 0: # don't interpret () as type
     internalAssert c.config, tupexp.kind == nkTupleConstr
