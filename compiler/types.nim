@@ -364,15 +364,6 @@ proc containsGarbageCollectedRef*(typ: PType): bool =
   # things that are garbage-collected)
   result = searchTypeFor(typ, isGCRef)
 
-proc isGCRefRefc(t: PType): bool =
-  result = t.kind in GcTypeKinds or
-    (t.kind == tyProc and t.callConv == ccClosure)
-
-proc containsGarbageCollectedRefRefc*(typ: PType): bool =
-  # returns true if typ contains a reference, sequence or string (all the
-  # things that are garbage-collected)
-  result = searchTypeFor(typ, isGCRefRefc)
-
 proc isManagedMemory(t: PType): bool =
   result = t.kind in GcTypeKinds or
     (t.kind == tyProc and t.callConv == ccClosure)
