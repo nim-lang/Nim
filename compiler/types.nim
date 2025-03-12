@@ -291,7 +291,7 @@ proc searchTypeForAux(t: PType, predicate: TTypePredicate,
     if not result: result = searchTypeNodeForAux(t.n, predicate, marker)
   of tyGenericInst, tyDistinct, tyAlias, tySink:
     result = searchTypeForAux(skipModifier(t), predicate, marker)
-  of tyArray, tySet, tyTuple, tySequence:
+  of tyArray, tySet, tyTuple:
     for a in t.kids:
       result = searchTypeForAux(a, predicate, marker)
       if result: return
