@@ -164,7 +164,7 @@ proc isLastReadImpl(n: PNode; c: var Con; scope: var Scope): bool =
 
 template hasDestructorOrAsgn(c: var Con, typ: PType): bool =
   # bug #23354; an object type could have a non-trival assignements when it is passed to a sink parameter
-  hasDestructor(c, typ) or (typ.kind == tyObject and not isTrival(getAttachedOp(c.graph, typ, attachedAsgn)))
+  hasDestructor(c, typ) or (typ.kind == tyObject and not isTrivial(getAttachedOp(c.graph, typ, attachedAsgn)))
 
 proc isLastRead(n: PNode; c: var Con; s: var Scope): bool =
   if not hasDestructorOrAsgn(c, n.typ): return true
