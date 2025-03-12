@@ -1540,12 +1540,14 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         reduceToBase(a)
     if effectiveArgType.kind == tyObject:
       if sameObjectTypes(f, effectiveArgType):
-        c.inheritancePenalty = if tfFinal in f.flags: -1 else: 0
+        if tfFinal notin f.flags:
+          inc c.inheritancePenalty, 0 + ord(c.inheritancePenalty < 0)
         result = isEqual
         # elif tfHasMeta in f.flags: result = recordRel(c, f, a)
       elif trIsOutParam notin flags:
-        c.inheritancePenalty = isObjectSubtype(c, effectiveArgType, f, nil)
-        if c.inheritancePenalty > 0:
+        let depth = isObjectSubtype(c, effectiveArgType, f, nil)
+        if depth > 0:
+          inc c.inheritancePenalty, depth + ord(c.inheritancePenalty < 0)
           result = isSubtype
   of tyDistinct:
     a = a.skipTypes({tyOwned, tyGenericInst, tyRange})
@@ -1845,9 +1847,10 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
           if  c.inheritancePenalty > -1:
             minInheritance = min(minInheritance, c.inheritancePenalty)
           result = x
+      c.inheritancePenalty = oldInheritancePenalty
       if result >= isIntConv:
         if minInheritance < maxInheritancePenalty:
-          c.inheritancePenalty = oldInheritancePenalty + minInheritance
+          inc c.inheritancePenalty, minInheritance + ord(c.inheritancePenalty < 0)
         if result > isGeneric: result = isGeneric
         bindingRet result
       else:
