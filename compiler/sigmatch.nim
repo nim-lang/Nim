@@ -1234,9 +1234,10 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     else:
       var candidate = f
 
-      case f.kind
+      let fType = f.skipTypes({tySink})
+      case fType.kind
       of tyGenericParam:
-        var prev = lookup(c.bindings, f)
+        var prev = lookup(c.bindings, fType)
         if prev != nil: candidate = prev
       of tyFromExpr:
         let computedType = tryResolvingStaticExpr(c, f.n).typ
