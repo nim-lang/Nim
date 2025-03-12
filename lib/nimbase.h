@@ -485,13 +485,16 @@ typedef char* NCSTRING;
 
 #define paramCount() cmdCount
 
-// NAN definition copied from math.h included in the Windows SDK version 10.0.14393.0
 #ifndef NAN
-#  ifndef _HUGE_ENUF
-#    define _HUGE_ENUF  1e+300  // _HUGE_ENUF*_HUGE_ENUF must overflow
+#  if defined(__GNUC__) || (defined(__clang__) && __has_builtin(__builtin_nanf))
+#    define NAN (__builtin_nanf(""))
+#  else  // modified from math.h included in the Windows SDK version 10.0.26100.0
+#    ifndef _HUGE_ENUF
+#      define _HUGE_ENUF  1e+300  // _HUGE_ENUF*_HUGE_ENUF must overflow
+#    endif
+#    define NAN_INFINITY ((float)(_HUGE_ENUF * _HUGE_ENUF))
+#    define NAN (-(float)(NAN_INFINITY * 0.0F))
 #  endif
-#  define NAN_INFINITY ((float)(_HUGE_ENUF * _HUGE_ENUF))
-#  define NAN ((float)(NAN_INFINITY * 0.0F))
 #endif
 
 #ifndef INF
