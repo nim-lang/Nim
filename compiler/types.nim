@@ -291,7 +291,7 @@ proc searchTypeForAux(t: PType, predicate: TTypePredicate,
     if not result: result = searchTypeNodeForAux(t.n, predicate, marker)
   of tyGenericInst, tyDistinct, tyAlias, tySink:
     result = searchTypeForAux(skipModifier(t), predicate, marker)
-  of tyArray, tySet, tyTuple:
+  of tyArray, tySet, tyTuple, tySequence:
     for a in t.kids:
       result = searchTypeForAux(a, predicate, marker)
       if result: return
@@ -363,6 +363,15 @@ proc containsGarbageCollectedRef*(typ: PType): bool =
   # returns true if typ contains a reference, sequence or string (all the
   # things that are garbage-collected)
   result = searchTypeFor(typ, isGCRef)
+
+proc isGCRefRefc(t: PType): bool =
+  result = t.kind in GcTypeKinds or
+    (t.kind == tyProc and t.callConv == ccClosure)
+
+proc containsGarbageCollectedRefRefc*(typ: PType): bool =
+  # returns true if typ contains a reference, sequence or string (all the
+  # things that are garbage-collected)
+  result = searchTypeFor(typ, isGCRefRefc)
 
 proc isManagedMemory(t: PType): bool =
   result = t.kind in GcTypeKinds or
