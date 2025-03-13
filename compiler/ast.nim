@@ -2089,14 +2089,16 @@ proc canRaise*(fn: PNode): bool =
     result = false
   elif fn.kind == nkSym and fn.sym.magic == mEcho:
     result = true
-  else:
+  elif fn.typ != nil and fn.typ.kind == tyProc and fn.typ.n != nil:
     # TODO check for n having sons? or just return false for now if not
-    if fn.typ != nil and fn.typ.n != nil and fn.typ.n[0].kind == nkSym:
+    if fn.typ.n[0].kind == nkSym:
       result = false
     else:
-      result = fn.typ != nil and fn.typ.n != nil and ((fn.typ.n[0].len < effectListLen) or
+      result = ((fn.typ.n[0].len < effectListLen) or
         (fn.typ.n[0][exceptionEffects] != nil and
         fn.typ.n[0][exceptionEffects].safeLen > 0))
+  else:
+    result = false
 
 proc toHumanStrImpl[T](kind: T, num: static int): string =
   result = $kind

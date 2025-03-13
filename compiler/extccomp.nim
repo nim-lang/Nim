@@ -257,8 +257,8 @@ compiler tcc:
     linkerExe: "tcc",
     linkTmpl: "-o $exefile $options $buildgui $builddll $objfiles",
     includeCmd: " -I",
-    linkDirCmd: "", # XXX: not supported yet
-    linkLibCmd: "", # XXX: not supported yet
+    linkDirCmd: " -L",
+    linkLibCmd: " -l$1",
     debug: " -g ",
     pic: "",
     asmStmtFrmt: "asm($1);$n",

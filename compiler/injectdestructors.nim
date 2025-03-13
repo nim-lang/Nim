@@ -493,25 +493,6 @@ proc passCopyToSink(n: PNode; c: var Con; s: var Scope): PNode =
   # no need to destroy it.
   result.add tmp
 
-proc isDangerousSeq(t: PType): bool {.inline.} =
-  let t = t.skipTypes(abstractInst)
-  result = t.kind == tySequence and tfHasOwned notin t.elementType.flags
-
-proc containsConstSeq(n: PNode): bool =
-  if n.kind == nkBracket and n.len > 0 and n.typ != nil and isDangerousSeq(n.typ):
-    return true
-  result = false
-  case n.kind
-  of nkExprEqExpr, nkExprColonExpr, nkHiddenStdConv, nkHiddenSubConv, nkCast:
-    result = containsConstSeq(n[1])
-  of nkObjConstr, nkClosure:
-    for i in 1..<n.len:
-      if containsConstSeq(n[i]): return true
-  of nkCurly, nkBracket, nkPar, nkTupleConstr:
-    for son in n:
-      if containsConstSeq(son): return true
-  else: discard
-
 proc ensureDestruction(arg, orig: PNode; c: var Con; s: var Scope): PNode =
   # it can happen that we need to destroy expression contructors
   # like [], (), closures explicitly in order to not leak them.
@@ -795,12 +776,7 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
     template process(child, s): untyped = p(child, c, s, mode)
     handleNestedTempl(n, process, tmpFlags = tmpFlags)
   elif mode == sinkArg:
-    if n.containsConstSeq:
-      # const sequences are not mutable and so we need to pass a copy to the
-      # sink parameter (bug #11524). Note that the string implementation is
-      # different and can deal with 'const string sunk into var'.
-      result = passCopyToSink(n, c, s)
-    elif n.kind in {nkBracket, nkObjConstr, nkTupleConstr, nkClosure, nkNilLit} +
+    if n.kind in {nkBracket, nkObjConstr, nkTupleConstr, nkClosure, nkNilLit} +
          nkCallKinds + nkLiterals:
       result = p(n, c, s, consumed)
     elif ((n.kind == nkSym and isSinkParam(n.sym)) or isAnalysableFieldAccess(n, c.owner)) and
@@ -1167,17 +1143,7 @@ proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope, flags: set[MoveOrCopy
         dec c.inEnsureMove, isEnsureMove
         result.add p(ri, c, s, consumed)
         c.finishCopy(result, dest, flags, isFromSink = false)
-    of nkBracket:
-      # array constructor
-      if ri.len > 0 and isDangerousSeq(ri.typ):
-        inc c.inEnsureMove, isEnsureMove
-        result = c.genCopy(dest, ri, flags)
-        dec c.inEnsureMove, isEnsureMove
-        result.add p(ri, c, s, consumed)
-        c.finishCopy(result, dest, flags, isFromSink = false)
-      else:
-        result = c.genSink(s, dest, p(ri, c, s, consumed), flags)
-    of nkObjConstr, nkTupleConstr, nkClosure, nkCharLit..nkNilLit:
+    of nkBracket, nkObjConstr, nkTupleConstr, nkClosure, nkCharLit..nkNilLit:
       result = c.genSink(s, dest, p(ri, c, s, consumed), flags)
     of nkSym:
       if isSinkParam(ri.sym) and isLastRead(ri, c, s):
@@ -1198,7 +1164,7 @@ proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope, flags: set[MoveOrCopy
         c.finishCopy(result, dest, flags, isFromSink = false)
     of nkHiddenSubConv, nkHiddenStdConv, nkConv, nkObjDownConv, nkObjUpConv, nkCast:
       result = c.genSink(s, dest, p(ri, c, s, sinkArg), flags)
-    of nkStmtListExpr, nkBlockExpr, nkIfExpr, nkCaseStmt, nkTryStmt:
+    of nkStmtListExpr, nkBlockExpr, nkIfExpr, nkCaseStmt, nkTryStmt, nkPragmaBlock:
       template process(child, s): untyped = moveOrCopy(dest, child, c, s, flags)
       # We know the result will be a stmt so we use that fact to optimize
       handleNestedTempl(ri, process, willProduceStmt = true)
