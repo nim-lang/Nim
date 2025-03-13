@@ -17,6 +17,16 @@ doAssert typeOf(myInt16 + 2i32) is int32  # of type `int32`
 doAssert int32 isnot int64
 doAssert int32 isnot int
 
+block: # bug #23947
+  template foo =
+    let test_u64 : uint64 =   0xFF07.uint64
+    let test_u8  : uint8  = test_u64.uint8
+        # Error: illegal conversion from '65287' to '[0..255]'
+    doAssert test_u8 == 7
+
+  static: foo()
+  foo()
+
 block:
   # bug #22085
   const
@@ -37,3 +47,15 @@ block:
   # bug #14522
   doAssert 0xFF000000_00000000.uint64 == 18374686479671623680'u64
 
+block: # bug #23954
+  let testRT_u8 : uint8 = 0x107.uint8
+  doAssert testRT_u8 == 7
+  const testCT_u8 : uint8 = 0x107.uint8
+  doAssert testCT_u8 == 7
+
+block: # issue #24104
+  type P = distinct uint  # uint, uint8, uint16, uint32, uint64 
+  let v = 0.P
+  case v
+  of 0.P: discard
+  else:   discard

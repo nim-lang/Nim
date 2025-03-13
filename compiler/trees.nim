@@ -147,6 +147,13 @@ proc whichPragma*(n: PNode): TSpecialWord =
   of nkCast: return wCast
   of nkClosedSymChoice, nkOpenSymChoice:
     return whichPragma(key[0])
+  of nkBracketExpr:
+    if n.kind notin nkPragmaCallKinds: return wInvalid
+    result = whichPragma(key[0])
+    if result notin {wHint, wHintAsError, wWarning, wWarningAsError}:
+      # note bracket pragmas, see processNote
+      result = wInvalid
+    return
   else: return wInvalid
   if result in nonPragmaWordsLow..nonPragmaWordsHigh:
     result = wInvalid
@@ -236,3 +243,32 @@ proc isRunnableExamples*(n: PNode): bool =
 
 proc skipAddr*(n: PNode): PNode {.inline.} =
   result = if n.kind in {nkAddr, nkHiddenAddr}: n[0] else: n
+
+proc getPotentialWrites*(n: PNode; mutate: bool; result: var seq[PNode]) =
+  case n.kind:
+  of nkLiterals, nkIdent, nkFormalParams: discard
+  of nkSym:
+    if mutate: result.add n
+  of nkAsgn, nkFastAsgn, nkSinkAsgn:
+    getPotentialWrites(n[0], true, result)
+    getPotentialWrites(n[1], mutate, result)
+  of nkAddr, nkHiddenAddr:
+    getPotentialWrites(n[0], true, result)
+  of nkBracketExpr, nkDotExpr, nkCheckedFieldExpr:
+    getPotentialWrites(n[0], mutate, result)
+  of nkCallKinds:
+    case n.getMagic:
+    of mIncl, mExcl, mInc, mDec, mAppendStrCh, mAppendStrStr, mAppendSeqElem,
+        mAddr, mNew, mNewFinalize, mWasMoved, mDestroy:
+      getPotentialWrites(n[1], true, result)
+      for i in 2..<n.len:
+        getPotentialWrites(n[i], mutate, result)
+    of mSwap, mMove:
+      for i in 1..<n.len:
+        getPotentialWrites(n[i], true, result)
+    else:
+      for i in 1..<n.len:
+        getPotentialWrites(n[i], mutate, result)
+  else:
+    for s in n:
+      getPotentialWrites(s, mutate, result)
