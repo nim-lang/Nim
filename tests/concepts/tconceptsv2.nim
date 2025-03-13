@@ -443,6 +443,22 @@ block:
 
   spring("hi")
 
+block:
+  type
+    RawWriter = concept
+      proc write(s: Self; data: pointer; length: int)
+    ArrayBuffer[N: static int] = object
+    SeqBuffer = object
+    CompatBuffer = ArrayBuffer | SeqBuffer
+
+  proc write[T:CompatBuffer](a: var T; data: pointer; length: int) =
+    discard
+
+  proc spring(r:RawWriter, i: byte)=discard
+
+  var s = ArrayBuffer[1500]()
+  spring(s, 8.uint8)
+
 # this code fails inside a block for some reason
 type Indexable[T] = concept
   proc `[]`(t: Self, i: int): T
