@@ -280,7 +280,7 @@ proc matchType(c: PContext; fo, ao: PType; m: var MatchCon): bool =
   if f.isConcept:
     if a.acceptsAllTypes:
       return false
-    if a.isConcept:
+    if a.skipTypes(ignorableForArgType).isConcept:
       # if f is a subset of a then any match to a will also match f. Not the other way around
       return conceptsMatch(c, a.reduceToBase, f.reduceToBase, m) >= mkSubset
     else:
@@ -319,7 +319,11 @@ proc matchType(c: PContext; fo, ao: PType; m: var MatchCon): bool =
     if a.kind in ignorableForArgType:
       result = matchType(c, f, a.skipTypes(ignorableForArgType), m)
     else:
-      result = sameType(f, a)
+      if a.kind == tyGenericInst:
+        # tyOr does this to generic typeclasses
+        result = a.base.sym == f.sym
+      else:
+        result = sameType(f, a)
   of tyEmpty, tyString, tyCstring, tyPointer, tyNil, tyUntyped, tyTyped, tyVoid:
     result = a.skipTypes(ignorableForArgType).kind == f.kind
   of tyBool, tyChar, tyInt..tyUInt64:

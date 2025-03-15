@@ -392,7 +392,7 @@ block:
 
   proc p[X, Y](z: var A[int, float]) = discard
   proc g[X, Y](z: var A[X, Y], y: int) = discard
-  proc h[X, Y](z: var A[X, Y]): A[X, Y] = discard
+  proc h[X, Y](z: A[X, Y]): A[X, Y] = discard
 
   proc spring(x: C4) = discard
   var d = A[int, float]()
@@ -427,6 +427,37 @@ block:
   proc spring(x: C2): int = 2
 
   assert spring(Impl()) == 2
+
+block:
+  type
+    C1[T] = concept
+      proc p(s: var Self; x: T)
+    FreakString = concept
+      proc p(w: var C1; s: Self)
+      proc a(x: Self)
+    DynArray[CT, T] = object
+
+  proc p[CT; T; W; ](w: C1[T]; o: DynArray[CT, T]): int = discard
+  proc spring(s: auto) = discard
+  proc spring(s: FreakString) = discard
+
+  spring("hi")
+
+block:
+  type
+    RawWriter = concept
+      proc write(s: Self; data: pointer; length: int)
+    ArrayBuffer[N: static int] = object
+    SeqBuffer = object
+    CompatBuffer = ArrayBuffer | SeqBuffer
+
+  proc write[T:CompatBuffer](a: var T; data: pointer; length: int) =
+    discard
+
+  proc spring(r:RawWriter, i: byte)=discard
+
+  var s = ArrayBuffer[1500]()
+  spring(s, 8.uint8)
 
 # this code fails inside a block for some reason
 type Indexable[T] = concept
