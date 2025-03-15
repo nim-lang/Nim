@@ -11,7 +11,7 @@
 
 import
   pathutils
-
+import std/strutils
 when defined(nimPreviewSlimSystem):
   import std/syncio
 
@@ -86,6 +86,36 @@ const
   LineContinuationOprs = {'+', '-', '*', '/', '\\', '<', '>', '!', '?', '^',
                           '|', '%', '&', '$', '@', '~', ','}
   AdditionalLineContinuationOprs = {'#', ':', '='}
+  LineContinuationTokens = [
+    "let", "var", "const", "type",  # section
+    "object", "tuple",
+    "and", "or", "xor",  
+  ]
+
+proc endsWith(s, subs: string, endIdx: var int): bool =
+  endIdx.dec subs.len
+  result = s.continuesWith(subs, endIdx+1)
+
+proc containsObjectOf(x: string): bool =
+  const sep = ' '
+  var idx = x.rfind(sep)
+  if idx == -1: return
+
+  template eatWord(word) =  
+    while x[idx] == sep: idx.dec
+    result = x.endsWith(word, idx)
+    if not result: return
+
+  eatWord "of"
+  eatWord "object"
+  result = true
+
+proc endsWithLineContinuationToken(x: string): bool =
+  result = false
+  for tok in LineContinuationTokens:
+    if x.endsWith(tok):
+      return true
+  result = x.containsObjectOf
 
 proc endsWithOpr*(x: string): bool =
   result = x.endsWith(LineContinuationOprs)
@@ -93,7 +123,9 @@ proc endsWithOpr*(x: string): bool =
 proc continueLine(line: string, inTripleString: bool): bool {.inline.} =
   result = inTripleString or line.len > 0 and (
         line[0] == ' ' or
-        line.endsWith(LineContinuationOprs+AdditionalLineContinuationOprs))
+        line.endsWith(LineContinuationOprs+AdditionalLineContinuationOprs) or
+        line.endsWithLineContinuationToken()
+      )
 
 proc countTriples(s: string): int =
   result = 0
