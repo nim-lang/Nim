@@ -90,24 +90,33 @@ const
     "let", "var", "const", "type",  # section
     "object", "tuple",
     # from ./layouter.oprSet
-    "div", "mod", "shl", "shr", "in", "not_in", "is",
-    "is_not", "not", "of", "as", "from", "..", "and", "or", "xor", 
-  ]
+    "div", "mod", "shl", "shr", "in", "notin", "is",
+    "isnot", "not", "of", "as", "from", "..", "and", "or", "xor", 
+  ]  # must be all `nimIdentNormalized`-ed
 
-proc endsWith(s, subs: string, endIdx: var int): bool =
+proc eqIdent(a, bNormalized: string): bool =
+  a.nimIdentNormalize == bNormalized
+
+proc endsWithIdent(s, subs: string): bool =
+  let le = subs.len
+  if le > s.len: return false
+  s[^le .. ^1].eqIdent subs
+
+proc continuesWithIdent(s, subs: string, start: int): bool =
+  s.substr(start, start+subs.high).eqIdent subs
+
+proc endsWithIdent(s, subs: string, endIdx: var int): bool =
   endIdx.dec subs.len
-  result = s.continuesWith(subs, endIdx+1)
+  result = s.continuesWithIdent(subs, endIdx+1)
 
 proc containsObjectOf(x: string): bool =
   const sep = ' '
   var idx = x.rfind(sep)
   if idx == -1: return
-
   template eatWord(word) =  
     while x[idx] == sep: idx.dec
-    result = x.endsWith(word, idx)
+    result = x.endsWithIdent(word, idx)
     if not result: return
-
   eatWord "of"
   eatWord "object"
   result = true
@@ -115,7 +124,7 @@ proc containsObjectOf(x: string): bool =
 proc endsWithLineContinuationToken(x: string): bool =
   result = false
   for tok in LineContinuationTokens:
-    if x.endsWith(tok):
+    if x.endsWithIdent(tok):
       return true
   result = x.containsObjectOf
 
