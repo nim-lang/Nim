@@ -89,7 +89,9 @@ const
   LineContinuationTokens = [
     "let", "var", "const", "type",  # section
     "object", "tuple",
-    "and", "or", "xor",  
+    # from ./layouter.oprSet
+    "div", "mod", "shl", "shr", "in", "not_in", "is",
+    "is_not", "not", "of", "as", "from", "..", "and", "or", "xor", 
   ]
 
 proc endsWith(s, subs: string, endIdx: var int): bool =
