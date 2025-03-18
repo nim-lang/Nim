@@ -452,6 +452,11 @@ proc noAbsolutePaths(conf: ConfigRef): bool {.inline.} =
 proc cFileSpecificOptions(conf: ConfigRef; nimname, fullNimFile: string): string =
   result = conf.compileOptions
 
+  if (conf.cCompiler == ccGcc or conf.cCompiler == ccCLang) and
+       conf.selectedGC == gcRefc:
+    # bug #10625
+    addOpt(result, "-fno-omit-frame-pointer")
+
   for option in conf.compileOptionsCmd:
     if strutils.find(result, option, 0) < 0:
       addOpt(result, option)
