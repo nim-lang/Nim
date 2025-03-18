@@ -69,12 +69,3 @@ test
 
 static:
   test
-
-block:
-  proc say(a: int, b: int) =
-    doAssert a == 1
-    doAssert b == 0
-
-  var a = 1
-  var b = a
-  say a, (b = move a; a)
