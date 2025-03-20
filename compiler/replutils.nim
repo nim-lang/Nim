@@ -1,10 +1,8 @@
 
 import std/strutils
+from lexer import OpChars
 
 const
-  LineContinuationOprs = {'+', '-', '*', '/', '\\', '<', '>', '!', '?', '^',
-                          '|', '%', '&', '$', '@', '~', ','}
-  AdditionalLineContinuationOprs = {'#', ':', '='}
   LineContinuationTokens = [
     "let", "var", "const", "type",  # section
     "object", "tuple",
@@ -57,12 +55,12 @@ proc endsWithLineContinuationToken(x: string): bool =
   result = x.containsObjectOf
 
 proc endsWithOpr*(x: string): bool =
-  result = x.endsWith(LineContinuationOprs)
+  result = x.endsWith(OpChars)
 
 proc continueLine*(line: string, inTripleString: bool): bool {.inline.} =
   result = inTripleString or line.len > 0 and (
         line[0] == ' ' or
-        line.endsWith(LineContinuationOprs+AdditionalLineContinuationOprs) or
+        line.endsWithOpr() or
         line.endsWithLineContinuationToken()
       )
 
