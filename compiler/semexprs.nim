@@ -1361,7 +1361,7 @@ const
   tyDotOpTransparent = {tyVar, tyLent, tyPtr, tyRef, tyOwned, tyAlias, tySink}
 
 proc readTypeParameter(c: PContext, typ: PType,
-                       paramName: PIdent, info: TLineInfo): PNode =
+                       paramName: PIdent, info: TLineInfo, skip = true): PNode =
   # Note: This function will return emptyNode when attempting to read
   # a static type parameter that is not yet resolved (e.g. this may
   # happen in proc signatures such as `proc(x: T): array[T.sizeParam, U]`
@@ -1388,7 +1388,10 @@ proc readTypeParameter(c: PContext, typ: PType,
 
   if typ.kind != tyUserTypeClass:
     let ty = if typ.kind == tyCompositeTypeClass: typ.firstGenericParam.skipGenericAlias
-             else: typ.skipGenericAlias
+             elif skip: typ.skipGenericAlias
+             else: typ
+    if isCompilerDebug():
+      echo "Type is this ", typ, " ", ty, " ", typ.kind
     let tbody = ty[0]
     for s in 0..<tbody.len-1:
       let tParam = tbody[s]
@@ -1517,9 +1520,13 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
     result = newSymNode(s, info)
 
 proc tryReadingGenericParam(c: PContext, n: PNode, i: PIdent, t: PType): PNode =
+  if isCompilerDebug():
+    echo t.kind
   case t.kind
   of tyGenericInst:
-    result = readTypeParameter(c, t, i, n.info)
+    result = readTypeParameter(c, t, i, n.info, skip=false)
+    if isCompilerDebug():
+      echo "Type param: ", result
     if result == c.graph.emptyNode:
       if c.inGenericContext > 0:
         result = semGenericStmt(c, n)
@@ -1576,6 +1583,8 @@ proc tryReadingTypeField(c: PContext, n: PNode, i: PIdent, ty: PType): PNode =
     result = tryReadingTypeField(c, n, i, ty.skipModifier)
     if result == nil:
       result = tryReadingGenericParam(c, n, i, ty)
+    if isCompilerDebug():
+      echo "Got ", result
   else:
     result = tryReadingGenericParam(c, n, i, ty)
 
