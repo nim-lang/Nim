@@ -313,7 +313,7 @@ proc toTable*[A, B](pairs: openArray[(A, B)]): Table[A, B] =
   result = initTable[A, B](pairs.len)
   for key, val in items(pairs): result[key] = val
 
-proc `[]`*[A, B](t: Table[A, B], key: sink A): lent B =
+proc `[]`*[A, B](t: Table[A, B], key: A): lent B =
   ## Retrieves the value at `t[key]`.
   ##
   ## If `key` is not in `t`, the `KeyError` exception is raised.
@@ -336,7 +336,7 @@ proc `[]`*[A, B](t: Table[A, B], key: sink A): lent B =
       echo a['z']
   get(t, key)
 
-proc `[]`*[A, B](t: var Table[A, B], key: sink A): var B =
+proc `[]`*[A, B](t: var Table[A, B], key: A): var B =
   ## Retrieves the value at `t[key]`. The value can be modified.
   ##
   ## If `key` is not in `t`, the `KeyError` exception is raised.
@@ -864,7 +864,7 @@ proc newTableFrom*[A, B, C](collection: A, index: proc(x: B): C): TableRef[C, B]
     for item in collection:
       result[index(item)] = item
 
-proc `[]`*[A, B](t: TableRef[A, B], key: sink A): var B =
+proc `[]`*[A, B](t: TableRef[A, B], key: A): var B =
   ## Retrieves the value at `t[key]`.
   ##
   ## If `key` is not in `t`, the  `KeyError` exception is raised.
@@ -1382,7 +1382,7 @@ proc toOrderedTable*[A, B](pairs: openArray[(A, B)]): OrderedTable[A, B] =
   result = initOrderedTable[A, B](pairs.len)
   for key, val in items(pairs): result[key] = val
 
-proc `[]`*[A, B](t: OrderedTable[A, B], key: sink A): lent B =
+proc `[]`*[A, B](t: OrderedTable[A, B], key: A): lent B =
   ## Retrieves the value at `t[key]`.
   ##
   ## If `key` is not in `t`, the  `KeyError` exception is raised.
@@ -1406,7 +1406,7 @@ proc `[]`*[A, B](t: OrderedTable[A, B], key: sink A): lent B =
 
   get(t, key)
 
-proc `[]`*[A, B](t: var OrderedTable[A, B], key: sink A): var B =
+proc `[]`*[A, B](t: var OrderedTable[A, B], key: A): var B =
   ## Retrieves the value at `t[key]`. The value can be modified.
   ##
   ## If `key` is not in `t`, the `KeyError` exception is raised.
@@ -1884,7 +1884,7 @@ proc newOrderedTable*[A, B](pairs: openArray[(A, B)]): OrderedTableRef[A, B] =
     for key, val in items(pairs): result[key] = val
 
 
-proc `[]`*[A, B](t: OrderedTableRef[A, B], key: sink A): var B =
+proc `[]`*[A, B](t: OrderedTableRef[A, B], key: A): var B =
   ## Retrieves the value at `t[key]`.
   ##
   ## If `key` is not in `t`, the  `KeyError` exception is raised.
@@ -2345,7 +2345,7 @@ proc toCountTable*[A](keys: openArray[A]): CountTable[A] =
   result = initCountTable[A](keys.len)
   for key in items(keys): result.inc(key)
 
-proc `[]`*[A](t: CountTable[A], key: sink A): int =
+proc `[]`*[A](t: CountTable[A], key: A): int =
   ## Retrieves the value at `t[key]` if `key` is in `t`.
   ## Otherwise `0` is returned.
   ##
@@ -2703,7 +2703,7 @@ proc newCountTable*[A](keys: openArray[A]): CountTableRef[A] =
   {.noSideEffect.}:
     for key in items(keys): result.inc(key)
 
-proc `[]`*[A](t: CountTableRef[A], key: sink A): int =
+proc `[]`*[A](t: CountTableRef[A], key: A): int =
   ## Retrieves the value at `t[key]` if `key` is in `t`.
   ## Otherwise `0` is returned.
   ##
