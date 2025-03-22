@@ -112,9 +112,6 @@ const useNimNetLite = defined(nimNetLite) or defined(freertos) or defined(zephyr
 when defineSsl:
   import std/openssl
 
-func raiseSslHandleError =
-  raiseSSLError("The SSL Handle is closed/unset")
-
 type
   # TODO: I would prefer to just do:
   # AsyncSocket* {.borrow: `.`.} = distinct Socket. But that doesn't work.
@@ -210,6 +207,9 @@ proc newAsyncSocket*(domain, sockType, protocol: cint,
                           Protocol(protocol), buffered, inheritable)
 
 when defineSsl:
+  proc raiseSslHandleError =
+    raiseSSLError("The SSL Handle is closed/unset")
+
   proc getSslError(socket: AsyncSocket, err: cint): cint =
     assert socket.isSsl
     assert err < 0
