@@ -1154,6 +1154,12 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     handleStdinInput(conf)
   of "nilseqs", "nilchecks", "symbol", "taintmode", "cs", "deadcodeelim": warningOptionNoop(switch)
   of "nimmainprefix": conf.nimMainPrefix = arg
+  of "compilecmdjson":
+    conf.compileCommandsJson = true
+  of "projectcompilecmdjson":
+    conf.projectCompileCommandJsons = true
+  of "copycommandjson":
+    conf.copyCompileCommandsJsonToCurDir = true
   else:
     if strutils.find(switch, '.') >= 0: options.setConfigVar(conf, switch, arg)
     else: invalidCmdLineOption(conf, pass, switch, info)

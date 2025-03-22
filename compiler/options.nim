@@ -448,6 +448,10 @@ type
     currentConfigDir*: string # used for passPP only; absolute dir
     clientProcessId*: int
 
+    compileCommandsJson*: bool
+    projectCompileCommandJsons*: bool
+    copyCompileCommandsJsonToCurDir*: bool
+
 
 
 proc assignIfDefault*[T](result: var T, val: T, def = default(T)) =

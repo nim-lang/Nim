@@ -1003,6 +1003,22 @@ proc callCCompiler*(conf: ConfigRef) =
 
 template hashNimExe(): string = $secureHashFile(os.getAppFilename())
 
+iterator compileCommandsJsonFiles*(conf: ConfigRef): AbsoluteFile =
+  # `outFile` is better than `projectName`, as it allows having different json
+  # files for a given source file compiled with different options; it also
+  # works out of the box with `hashMainCompilationParams`.
+  var rf = if conf.projectCompileCommandJsons:
+    ("compile_commands_" & conf.outFile.changeFileExt("json").string).RelativeFile
+  else:
+    "compile_commands".RelativeFile
+
+  yield getNimcacheDir(conf) / rf
+
+  if conf.copyCompileCommandsJsonToCurDir:
+    # TODO
+    yield getNimcacheDir(conf) / rf
+  
+
 proc jsonBuildInstructionsFile*(conf: ConfigRef): AbsoluteFile =
   # `outFile` is better than `projectName`, as it allows having different json
   # files for a given source file compiled with different options; it also
@@ -1026,6 +1042,16 @@ type BuildCache = object
   cmdline: string
   depfiles: seq[(string, string)]
   nimexe: string
+
+proc jsonCompileCommands*(conf: ConfigRef): JsonNode =
+  # ref: https://clang.llvm.org/docs/JSONCompilationDatabase.html
+  result = %*[]
+  for it in conf.toCompile:
+    result.add %*{
+      "file": it.cname.string,
+      "command": getCompileCFileCmd(conf, it),
+      "directory": conf.outDir.string,
+    }
 
 proc writeJsonBuildInstructions*(conf: ConfigRef; deps: StringTableRef) =
   var linkFiles = collect(for it in conf.externalToLink:
@@ -1060,7 +1086,14 @@ proc writeJsonBuildInstructions*(conf: ConfigRef; deps: StringTableRef) =
     if fileExists(bcache.outputFile):
       bcache.outputLastModificationTime = $getLastModificationTime(bcache.outputFile)
   conf.jsonBuildFile = conf.jsonBuildInstructionsFile
+
   conf.jsonBuildFile.string.writeFile(bcache.toJson.pretty)
+
+  # NOTE: compile_commands.json uses indent of 2 by convention
+  if conf.compileCommandsJson:
+    let compileCmds = conf.jsonCompileCommands.pretty(2)
+    for p in conf.compileCommandsJsonFiles:
+      p.writeFile(compileCmds)
 
 proc changeDetectedViaJsonBuildInstructions*(conf: ConfigRef; jsonFile: AbsoluteFile): bool =
   result = false
