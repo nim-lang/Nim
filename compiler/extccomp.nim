@@ -257,8 +257,8 @@ compiler tcc:
     linkerExe: "tcc",
     linkTmpl: "-o $exefile $options $buildgui $builddll $objfiles",
     includeCmd: " -I",
-    linkDirCmd: "", # XXX: not supported yet
-    linkLibCmd: "", # XXX: not supported yet
+    linkDirCmd: " -L",
+    linkLibCmd: " -l$1",
     debug: " -g ",
     pic: "",
     asmStmtFrmt: "asm($1);$n",
@@ -473,6 +473,11 @@ proc noAbsolutePaths(conf: ConfigRef): bool {.inline.} =
 
 proc cFileSpecificOptions(conf: ConfigRef; nimname, fullNimFile: string): string =
   result = conf.compileOptions
+
+  if (conf.cCompiler == ccGcc or conf.cCompiler == ccCLang) and
+       conf.selectedGC == gcRefc:
+    # bug #10625
+    addOpt(result, "-fno-omit-frame-pointer")
 
   for option in conf.compileOptionsCmd:
     if strutils.find(result, option, 0) < 0:

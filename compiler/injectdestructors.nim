@@ -17,7 +17,7 @@ import
   ast, astalgo, msgs, renderer, magicsys, types, idents,
   options, lowerings, modulegraphs,
   lineinfos, parampatterns, sighashes, liftdestructors, optimizer,
-  varpartitions, aliasanalysis, dfa, wordrecg
+  varpartitions, aliasanalysis, dfa, wordrecg, trees
 
 import std/[strtabs, tables, strutils, intsets]
 
@@ -493,25 +493,6 @@ proc passCopyToSink(n: PNode; c: var Con; s: var Scope): PNode =
   # no need to destroy it.
   result.add tmp
 
-proc isDangerousSeq(t: PType): bool {.inline.} =
-  let t = t.skipTypes(abstractInst)
-  result = t.kind == tySequence and tfHasOwned notin t.elementType.flags
-
-proc containsConstSeq(n: PNode): bool =
-  if n.kind == nkBracket and n.len > 0 and n.typ != nil and isDangerousSeq(n.typ):
-    return true
-  result = false
-  case n.kind
-  of nkExprEqExpr, nkExprColonExpr, nkHiddenStdConv, nkHiddenSubConv, nkCast:
-    result = containsConstSeq(n[1])
-  of nkObjConstr, nkClosure:
-    for i in 1..<n.len:
-      if containsConstSeq(n[i]): return true
-  of nkCurly, nkBracket, nkPar, nkTupleConstr:
-    for son in n:
-      if containsConstSeq(son): return true
-  else: discard
-
 proc ensureDestruction(arg, orig: PNode; c: var Con; s: var Scope): PNode =
   # it can happen that we need to destroy expression contructors
   # like [], (), closures explicitly in order to not leak them.
@@ -795,12 +776,7 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
     template process(child, s): untyped = p(child, c, s, mode)
     handleNestedTempl(n, process, tmpFlags = tmpFlags)
   elif mode == sinkArg:
-    if n.containsConstSeq:
-      # const sequences are not mutable and so we need to pass a copy to the
-      # sink parameter (bug #11524). Note that the string implementation is
-      # different and can deal with 'const string sunk into var'.
-      result = passCopyToSink(n, c, s)
-    elif n.kind in {nkBracket, nkObjConstr, nkTupleConstr, nkClosure, nkNilLit} +
+    if n.kind in {nkBracket, nkObjConstr, nkTupleConstr, nkClosure, nkNilLit} +
          nkCallKinds + nkLiterals:
       result = p(n, c, s, consumed)
     elif ((n.kind == nkSym and isSinkParam(n.sym)) or isAnalysableFieldAccess(n, c.owner)) and
@@ -1167,17 +1143,7 @@ proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope, flags: set[MoveOrCopy
         dec c.inEnsureMove, isEnsureMove
         result.add p(ri, c, s, consumed)
         c.finishCopy(result, dest, flags, isFromSink = false)
-    of nkBracket:
-      # array constructor
-      if ri.len > 0 and isDangerousSeq(ri.typ):
-        inc c.inEnsureMove, isEnsureMove
-        result = c.genCopy(dest, ri, flags)
-        dec c.inEnsureMove, isEnsureMove
-        result.add p(ri, c, s, consumed)
-        c.finishCopy(result, dest, flags, isFromSink = false)
-      else:
-        result = c.genSink(s, dest, p(ri, c, s, consumed), flags)
-    of nkObjConstr, nkTupleConstr, nkClosure, nkCharLit..nkNilLit:
+    of nkBracket, nkObjConstr, nkTupleConstr, nkClosure, nkCharLit..nkNilLit:
       result = c.genSink(s, dest, p(ri, c, s, consumed), flags)
     of nkSym:
       if isSinkParam(ri.sym) and isLastRead(ri, c, s):
@@ -1198,7 +1164,7 @@ proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope, flags: set[MoveOrCopy
         c.finishCopy(result, dest, flags, isFromSink = false)
     of nkHiddenSubConv, nkHiddenStdConv, nkConv, nkObjDownConv, nkObjUpConv, nkCast:
       result = c.genSink(s, dest, p(ri, c, s, sinkArg), flags)
-    of nkStmtListExpr, nkBlockExpr, nkIfExpr, nkCaseStmt, nkTryStmt:
+    of nkStmtListExpr, nkBlockExpr, nkIfExpr, nkCaseStmt, nkTryStmt, nkPragmaBlock:
       template process(child, s): untyped = moveOrCopy(dest, child, c, s, flags)
       # We know the result will be a stmt so we use that fact to optimize
       handleNestedTempl(ri, process, willProduceStmt = true)
@@ -1244,6 +1210,55 @@ when false:
       for i in 0..<n.safeLen:
         injectDefaultCalls(n[i], c)
 
+proc replaceSinkParam(n: PNode, mapping: Table[int, PSym]): PNode =
+  case n.kind
+  of nkSym:
+    if n.sym.id in mapping:
+      result = newSymNode(mapping[n.sym.id])
+    else:
+      result = n
+  of nkVarSection, nkLetSection:
+    result = copyNode(n)
+    newSons(result, n.len)
+    for i in 0..<n.len:
+      result[i] = copyNode(n[i])
+      for j in 0..<n[i].len-1:
+        result[i].add n[i][j]
+      result[i].add replaceSinkParam(n[i][^1], mapping)
+  of {nkNone..nkNilLit}-{nkSym}, nkTypeSection, nkProcDef, nkConverterDef,
+      nkMethodDef, nkIteratorDef, nkMacroDef, nkTemplateDef, nkLambda, nkDo,
+      nkFuncDef, nkConstSection, nkConstDef, nkIncludeStmt, nkImportStmt,
+      nkExportStmt, nkPragma, nkCommentStmt, nkBreakState,
+      nkTypeOfExpr, nkMixinStmt, nkBindStmt:
+    result = n
+  else:
+    result = copyNode(n)
+    for i in 0..<n.len:
+      result.add replaceSinkParam(n[i], mapping)
+
+proc addSinkCopy(c: var Con; s: var Scope; sinkParams: seq[PSym]; n: PNode): PNode =
+  result = newNodeI(nkStmtList, n.info)
+  var mapping = initTable[int, PSym]()
+
+  var mutated = newSeq[PNode]()
+  getPotentialWrites(n, false, mutated)
+  var mutatedSet = initIntSet()
+  for m in mutated:
+    mutatedSet.incl m.sym.id
+  for param in sinkParams:
+    if param.id in mutatedSet:
+      let newSym = newSym(skTemp, getIdent(c.graph.cache, "sinkCopy"), c.idgen, param.owner, n.info)
+      newSym.flags.incl sfFromGeneric
+      newSym.typ = param.typ.elementType
+      mapping[param.id] = newSym
+      let v = newNodeI(nkVarSection, n.info)
+      v.addVar(newSymNode(newSym), newSymNode(param))
+      result.add v
+  if mapping.len > 0:
+    result.add replaceSinkParam(n, mapping)
+  else:
+    result = n
+
 proc injectDestructorCalls*(g: ModuleGraph; idgen: IdGenerator; owner: PSym; n: PNode): PNode =
   when toDebug.len > 0:
     shouldDebug = toDebug == owner.name.s or toDebug == "always"
@@ -1257,15 +1272,24 @@ proc injectDestructorCalls*(g: ModuleGraph; idgen: IdGenerator; owner: PSym; n: 
   var scope = Scope(body: n)
   let body = p(n, c, scope, normal)
 
+  var sinkParams = newSeq[PSym]()
+
   if owner.kind in {skProc, skFunc, skMethod, skIterator, skConverter}:
     let params = owner.typ.n
     for i in 1..<params.len:
       let t = params[i].sym.typ
-      if isSinkTypeForParam(t) and hasDestructor(c, t.skipTypes({tySink})):
-        scope.final.add c.genDestroy(params[i])
+      if isSinkTypeForParam(t):
+        let baseType = t.skipTypes({tySink})
+        if baseType.kind in {tyString, tySequence, tyArray, tyTuple, tyObject}:
+          sinkParams.add params[i].sym
+        if hasDestructor(c, baseType):
+          scope.final.add c.genDestroy(params[i])
   #if optNimV2 in c.graph.config.globalOptions:
   #  injectDefaultCalls(n, c)
   result = optimize processScope(c, scope, body)
+  if sinkParams.len > 0:
+    result = addSinkCopy(c, scope, sinkParams, result)
+
   dbg:
     echo ">---------transformed-to--------->"
     echo renderTree(result, {renderIds})

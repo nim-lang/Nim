@@ -2016,7 +2016,6 @@ proc parsePattern(input: string, pattern: FormatPattern, i: var int,
     var year = takeInt(2..2)
     var thisCen = now().year div 100
     parsed.year = some(thisCen*100 + year)
-    result = year > 0
   of yyyy:
     let year =
       if input[i] in {'+', '-'}:

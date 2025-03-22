@@ -84,6 +84,7 @@ type
     gcUnsafe, isRecursive, isTopLevel, hasSideEffect, inEnforcedGcSafe: bool
     isInnerProc: bool
     inEnforcedNoSideEffects: bool
+    unknownRaises: seq[(PSym, TLineInfo)]
     currOptions: TOptions
     optionsStack: seq[(TOptions, TNoteKinds)]
     config: ConfigRef
@@ -137,8 +138,9 @@ proc createTypeBoundOps(tracked: PEffects, typ: PType; info: TLineInfo; explicit
       createTypeBoundOps(tracked.graph, tracked.c, realType.lastSon, info)
 
   createTypeBoundOps(tracked.graph, tracked.c, typ, info, tracked.c.idgen)
-  if (tfHasAsgn in typ.flags) or
-      optSeqDestructors in tracked.config.globalOptions:
+  if tracked.config.selectedGC == gcRefc or
+      optSeqDestructors in tracked.config.globalOptions or
+      tfHasAsgn in typ.flags:
     tracked.owner.flags.incl sfInjectDestructors
 
 proc isLocalSym(a: PEffects, s: PSym): bool =
@@ -638,6 +640,8 @@ proc importedFromC(n: PNode): bool =
 proc propagateEffects(tracked: PEffects, n: PNode, s: PSym) =
   let pragma = s.ast[pragmasPos]
   let spec = effectSpec(pragma, wRaises)
+  if spec.isNil and sfForward in s.flags:
+    tracked.unknownRaises.add (s, n.info)
   mergeRaises(tracked, spec, n)
 
   let tagSpec = effectSpec(pragma, wTags)
@@ -1505,7 +1509,7 @@ proc subtypeRelation(g: ModuleGraph; spec, real: PNode): bool =
 
 proc checkRaisesSpec(g: ModuleGraph; emitWarnings: bool; spec, real: PNode, msg: string, hints: bool;
                      effectPredicate: proc (g: ModuleGraph; a, b: PNode): bool {.nimcall.};
-                     hintsArg: PNode = nil; isForbids: bool = false) =
+                     hintsArg: PNode = nil; isForbids: bool = false; unknownRaises: seq[(PSym, TLineInfo)] = @[]) =
   # check that any real exception is listed in 'spec'; mark those as used;
   # report any unused exception
   var used = initIntSet()
@@ -1522,6 +1526,8 @@ proc checkRaisesSpec(g: ModuleGraph; emitWarnings: bool; spec, real: PNode, msg:
       pushInfoContext(g.config, spec.info)
       var rr = if r.kind == nkRaiseStmt: r[0] else: r
       while rr.kind in {nkStmtList, nkStmtListExpr} and rr.len > 0: rr = rr.lastSon
+      for (s, info) in unknownRaises.items:
+        message(g.config, info, hintUnknownRaises, s.name.s)
       message(g.config, r.info, if emitWarnings: warnEffect else: errGenerated,
               renderTree(rr) & " " & msg & typeToString(r.typ))
       popInfoContext(g.config)
@@ -1679,7 +1685,7 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
   if not isNil(raisesSpec):
     let useWarning = s.name.s == "=destroy"
     checkRaisesSpec(g, useWarning, raisesSpec, t.exc, "can raise an unlisted exception: ",
-                    hints=on, subtypeRelation, hintsArg=s.ast[0])
+                    hints=on, subtypeRelation, hintsArg=s.ast[0], unknownRaises = t.unknownRaises)
     # after the check, use the formal spec:
     effects[exceptionEffects] = raisesSpec
   else:

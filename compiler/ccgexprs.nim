@@ -357,7 +357,7 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
   of tyString:
     if optSeqDestructors in p.config.globalOptions:
       genGenericAsgn(p, dest, src, flags)
-    elif ({needToCopy, needToCopySinkParam} * flags == {} and src.storage != OnStatic) or canMove(p, src.lode, dest):
+    elif (needToCopy notin flags and src.storage != OnStatic) or canMove(p, src.lode, dest):
       genRefAssign(p, dest, src)
     else:
       if (dest.storage == OnStack and p.config.selectedGC != gcGo) or not usesWriteBarrier(p.config):
@@ -2198,6 +2198,13 @@ proc genArrayLen(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     else: putIntoDest(p, d, e, cIntValue(lengthOrd(p.config, typ)))
   else: internalError(p.config, e.info, "genArrayLen()")
 
+proc isTrivialTypesToSnippet(t: PType): Snippet =
+  if containsGarbageCollectedRef(t) or
+                     hasDestructor(t):
+    result = NimFalse
+  else:
+    result = NimTrue
+
 proc genSetLengthSeq(p: BProc, e: PNode, d: var TLoc) =
   if optSeqDestructors in p.config.globalOptions:
     e[1] = makeAddr(e[1], p.module.idgen)
@@ -2220,7 +2227,8 @@ proc genSetLengthSeq(p: BProc, e: PNode, d: var TLoc) =
     pExpr = cIfExpr(ra, cAddr(derefField(ra, "Sup")), NimNil)
   else:
     pExpr = ra
-  call.snippet = cCast(rt, cgCall(p, "setLengthSeqV2", pExpr, rti, rb))
+  call.snippet = cCast(rt, cgCall(p, "setLengthSeqV2", pExpr, rti, rb,
+          isTrivialTypesToSnippet(t.skipTypes(abstractInst)[0])))
 
   genAssignment(p, a, call, {})
   gcUsage(p.config, e)
@@ -2749,13 +2757,7 @@ proc genMove(p: BProc; n: PNode; d: var TLoc) =
           let val = if p.module.compileToCpp: rdLoc(a) else: byRefLoc(p, a)
           p.s(cpsStmts).addCallStmt(rdLoc(b), val)
     else:
-      if n[1].kind == nkSym and isSinkParam(n[1].sym):
-        var tmp = getTemp(p, n[1].typ.skipTypes({tySink}))
-        genAssignment(p, tmp, a, {needToCopySinkParam})
-        genAssignment(p, d, tmp, {})
-        resetLoc(p, tmp)
-      else:
-        genAssignment(p, d, a, {})
+      genAssignment(p, d, a, {})
       resetLoc(p, a)
 
 proc genDestroy(p: BProc; n: PNode) =

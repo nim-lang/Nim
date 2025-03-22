@@ -1289,12 +1289,14 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
         paramType[i] = lifted
         result = paramType
         result.last.shouldHaveMeta
-
-    let liftBody = recurse(paramType.skipModifier, true)
-    if liftBody != nil:
-      result = liftBody
-      result.flags.incl tfHasMeta
-      #result.shouldHaveMeta
+    if paramType.isConcept:
+      return addImplicitGeneric(c, paramType, paramTypId, info, genericParams, paramName)
+    else:
+      let liftBody = recurse(paramType.skipModifier, true)
+      if liftBody != nil:
+        result = liftBody
+        result.flags.incl tfHasMeta
+        #result.shouldHaveMeta
 
   of tyGenericInvocation:
     result = nil
@@ -1308,7 +1310,6 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
       # this may happen for proc type appearing in a type section
       # before one of its param types
       return
-
     if body.last.kind == tyUserTypeClass:
       let expanded = instGenericContainer(c, info, paramType,
                                           allowMetaTypes = true)
@@ -1501,7 +1502,10 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
       addParamOrResult(c, arg, kind)
       styleCheckDef(c, a[j].info, arg)
       onDef(a[j].info, arg)
-      a[j] = newSymNode(arg)
+      if a[j].kind == nkPragmaExpr:
+        a[j][0] = newSymNode(arg)
+      else:
+        a[j] = newSymNode(arg)
 
   var r: PType = nil
   if n[0].kind != nkEmpty:
@@ -1733,10 +1737,10 @@ proc maybeAliasType(c: PContext; typeExpr, prev: PType): PType =
   else:
     result = nil
 
-proc fixupTypeOf(c: PContext, prev: PType, typExpr: PNode) =
+proc fixupTypeOf(c: PContext, prev: PType, typ: PType) =
   if prev != nil:
     let result = newTypeS(tyAlias, c)
-    result.rawAddSon typExpr.typ
+    result.rawAddSon typ
     result.sym = prev.sym
     if prev.kind != tyGenericBody:
       assignType(prev, result)
@@ -1928,12 +1932,19 @@ proc semTypeOf(c: PContext; n: PNode; prev: PType): PType =
   openScope(c)
   inc c.inTypeofContext
   defer: dec c.inTypeofContext # compiles can raise an exception
-  let t = semExprWithType(c, n, {efInTypeof})
+  let ex = semExprWithType(c, n, {efInTypeof})
   closeScope(c)
-  fixupTypeOf(c, prev, t)
-  result = t.typ
+  result = ex.typ
   if result.kind == tyFromExpr:
     result.flags.incl tfNonConstExpr
+  elif result.kind == tyStatic:
+    let base = result.skipTypes({tyStatic})
+    if c.inGenericContext > 0 and base.containsGenericType:
+      result = makeTypeFromExpr(c, copyTree(ex))
+      result.flags.incl tfNonConstExpr
+    else:
+      result = base
+  fixupTypeOf(c, prev, result)
 
 proc semTypeOf2(c: PContext; n: PNode; prev: PType): PType =
   openScope(c)
@@ -1946,12 +1957,19 @@ proc semTypeOf2(c: PContext; n: PNode; prev: PType): PType =
       m = mode.intVal
   inc c.inTypeofContext
   defer: dec c.inTypeofContext # compiles can raise an exception
-  let t = semExprWithType(c, n[1], if m == 1: {efInTypeof} else: {})
+  let ex = semExprWithType(c, n[1], if m == 1: {efInTypeof} else: {})
   closeScope(c)
-  fixupTypeOf(c, prev, t)
-  result = t.typ
+  result = ex.typ
   if result.kind == tyFromExpr:
     result.flags.incl tfNonConstExpr
+  elif result.kind == tyStatic:
+    let base = result.skipTypes({tyStatic})
+    if c.inGenericContext > 0 and base.containsGenericType:
+      result = makeTypeFromExpr(c, copyTree(ex))
+      result.flags.incl tfNonConstExpr
+    else:
+      result = base
+  fixupTypeOf(c, prev, result)
 
 proc semTypeIdent(c: PContext, n: PNode): PSym =
   if n.kind == nkSym:
