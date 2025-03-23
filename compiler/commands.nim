@@ -1154,11 +1154,17 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     handleStdinInput(conf)
   of "nilseqs", "nilchecks", "symbol", "taintmode", "cs", "deadcodeelim": warningOptionNoop(switch)
   of "nimmainprefix": conf.nimMainPrefix = arg
-  of "compilecmdjson":
+  of "compilecmdsjson":
+    # TODO
+    # processOnOffSwitch(conf, {optCursorInference}, arg, pass, info)
     conf.compileCommandsJson = true
   of "projectcompilecmdjson":
+    # TODO
+    # processOnOffSwitch(conf, {optCursorInference}, arg, pass, info)
     conf.projectCompileCommandJsons = true
-  of "copycommandjson":
+  of "rootcompilecmdsjson":
+    # TODO
+    # processOnOffSwitch(conf, {optCursorInference}, arg, pass, info)
     conf.copyCompileCommandsJsonToCurDir = true
   else:
     if strutils.find(switch, '.') >= 0: options.setConfigVar(conf, switch, arg)

@@ -1,1 +1,2 @@
 --nimcache:"./nimcache"
+--compileCmdsJson:on
