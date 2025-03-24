@@ -55,7 +55,8 @@ elif defined(gogc):
   include system / mm / go
 
 elif (defined(nogc) or defined(gcDestructors)) and defined(useMalloc):
-  include system / mm / malloc
+  when not defined(useNimRtl):
+    include system / mm / malloc
 
   when defined(nogc):
     proc GC_getStatistics(): string = ""
