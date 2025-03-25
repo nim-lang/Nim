@@ -177,6 +177,19 @@ type
     when defined(nimTypeNames):
       allocCounter, deallocCounter: int
 
+
+proc asanPoisonMemoryRegion(p: pointer, size: int) {.importc: "ASAN_POISON_MEMORY_REGION", header: "<sanitizer/asan_interface.h>".}
+proc asanUnpoisonMemoryRegion(p: pointer, size: int) {.importc: "ASAN_UNPOISON_MEMORY_REGION", header: "<sanitizer/asan_interface.h>".}
+
+template poison(p: pointer, size: int) =
+  when defined(useAsan):
+    asanPoisonMemoryRegion(p, size)
+
+template unpoison(p: pointer, size: int) =
+  when defined(useAsan):
+    asanUnpoisonMemoryRegion(p, size)
+
+
 template smallChunkOverhead(): untyped = sizeof(SmallChunk)
 template bigChunkOverhead(): untyped = sizeof(BigChunk)
 
@@ -319,13 +332,15 @@ proc allocPages(a: var MemRegion, size: int): pointer =
   when nimMaxHeap != 0:
     if a.occ + size > nimMaxHeap * 1024 * 1024:
       raiseOutOfMem()
-  osAllocPages(size)
+  result = osAllocPages(size)
+  poison(result, size)
 
 proc tryAllocPages(a: var MemRegion, size: int): pointer =
   when nimMaxHeap != 0:
     if a.occ + size > nimMaxHeap * 1024 * 1024:
       raiseOutOfMem()
-  osTryAllocPages(size)
+  result = osTryAllocPages(size)
+  poison(result, size)
 
 proc llAlloc(a: var MemRegion, size: int): pointer =
   # *low-level* alloc for the memory managers data structures. Deallocation
@@ -337,6 +352,7 @@ proc llAlloc(a: var MemRegion, size: int): pointer =
     sysAssert roundup(size+sizeof(LLChunk), PageSize) == PageSize, "roundup 6"
     var old = a.llmem # can be nil and is correct with nil
     a.llmem = cast[PLLChunk](allocPages(a, PageSize))
+    unpoison(a.llmem, sizeof(LLChunk))
     when defined(nimAvlcorruption):
       trackLocation(a.llmem, PageSize)
     incCurrMem(a, PageSize)
@@ -346,6 +362,7 @@ proc llAlloc(a: var MemRegion, size: int): pointer =
   result = cast[pointer](cast[int](a.llmem) + a.llmem.acc)
   dec(a.llmem.size, size)
   inc(a.llmem.acc, size)
+  unpoison(result, size)
   zeroMem(result, size)
 
 when not defined(gcDestructors):
@@ -527,6 +544,7 @@ proc requestOsChunks(a: var MemRegion, size: int): PBigChunk =
   var size = size
   if size > a.nextChunkSize:
     result = cast[PBigChunk](allocPages(a, size))
+    unpoison(result, sizeof(BigChunk))
   else:
     result = cast[PBigChunk](tryAllocPages(a, a.nextChunkSize))
     if result == nil:
@@ -613,6 +631,7 @@ proc updatePrevSize(a: var MemRegion, c: PBigChunk,
 
 proc splitChunk2(a: var MemRegion, c: PBigChunk, size: int): PBigChunk =
   result = cast[PBigChunk](cast[int](c) +% size)
+  unpoison(result, sizeof(BigChunk))
   result.size = c.size - size
   track("result.size", addr result.size, sizeof(int))
   when not defined(nimOptimizedSplitChunk):
@@ -893,6 +912,7 @@ proc rawAlloc(a: var MemRegion, requestedSize: int): pointer =
     if c == nil:
       # There is no free chunk of the requested size available, we need a new one.
       c = getSmallChunk(a)
+      unpoison(c, sizeof(SmallChunk))
       # init all fields in case memory didn't get zeroed
       c.freeList = nil
       c.foreignCells = 0
@@ -911,6 +931,7 @@ proc rawAlloc(a: var MemRegion, requestedSize: int): pointer =
         #  we must not add it to the list if it cannot be used the next time a pointer of `size` bytes is needed.
         listAdd(a.freeSmallChunks[s], c)
       result = addr(c.data)
+      unpoison(result, size)
       sysAssert((cast[int](result) and (MemAlign-1)) == 0, "rawAlloc 4")
     else:
       # There is a free chunk of the requested size available, use it.
@@ -923,10 +944,12 @@ proc rawAlloc(a: var MemRegion, requestedSize: int): pointer =
         sysAssert(c.acc.int + smallChunkOverhead() + size <= SmallChunkSize,
                   "rawAlloc 7")
         result = cast[pointer](cast[int](addr(c.data)) +% c.acc.int)
+        unpoison(result, size)
         inc(c.acc, size)
       else:
         # There are free cells available, prefer them over the accumulator
         result = c.freeList
+        unpoison(result, size)
         when not defined(gcDestructors):
           sysAssert(c.freeList.zeroField == 0, "rawAlloc 8")
         c.freeList = c.freeList.next
@@ -1018,6 +1041,7 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
         # set to 0xff to check for usage after free bugs:
         nimSetMem(cast[pointer](cast[int](p) +% sizeof(FreeCell)), -1'i32,
                 s -% sizeof(FreeCell))
+      poison(addr c.data, c.size)
       let activeChunk = a.freeSmallChunks[s div MemAlign]
       if activeChunk != nil and c != activeChunk:
         # This pointer is not part of the active chunk, lend it out
