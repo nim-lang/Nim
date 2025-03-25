@@ -2638,7 +2638,8 @@ proc genRangeChck(p: BProc, n: PNode, d: var TLoc) =
 
 proc genConv(p: BProc, e: PNode, d: var TLoc) =
   let destType = e.typ.skipTypes({tyVar, tyLent, tyGenericInst, tyAlias, tySink})
-  if sameBackendTypeIgnoreRange(destType, e[1].typ):
+  let srcType = e[1].typ.skipTypes({tyVar, tyLent, tyGenericInst, tyAlias, tySink})
+  if sameBackendTypeIgnoreRange(destType, srcType):
     expr(p, e[1], d)
   else:
     genSomeCast(p, e, d)
