@@ -182,12 +182,19 @@ proc asanPoisonMemoryRegion(p: pointer, size: int) {.importc: "ASAN_POISON_MEMOR
 proc asanUnpoisonMemoryRegion(p: pointer, size: int) {.importc: "ASAN_UNPOISON_MEMORY_REGION", header: "<sanitizer/asan_interface.h>".}
 
 template poison(p: pointer, size: int) =
+  #cprintf("-%p %lld\n", p, size)
   when defined(useAsan):
     asanPoisonMemoryRegion(p, size)
 
 template unpoison(p: pointer, size: int) =
+  #cprintf("+%p %lld\n", p, size)
   when defined(useAsan):
     asanUnpoisonMemoryRegion(p, size)
+
+template poisonGuard(p: pointer, size: int, body: untyped) =
+  unpoison(p, size)
+  body
+  poison(p, size)
 
 
 template smallChunkOverhead(): untyped = sizeof(SmallChunk)
@@ -544,7 +551,6 @@ proc requestOsChunks(a: var MemRegion, size: int): PBigChunk =
   var size = size
   if size > a.nextChunkSize:
     result = cast[PBigChunk](allocPages(a, size))
-    unpoison(result, sizeof(BigChunk))
   else:
     result = cast[PBigChunk](tryAllocPages(a, a.nextChunkSize))
     if result == nil:
@@ -552,6 +558,7 @@ proc requestOsChunks(a: var MemRegion, size: int): PBigChunk =
       a.blockChunkSizeIncrease = true
     else:
       size = a.nextChunkSize
+  unpoison(result, sizeof(BigChunk))
 
   incCurrMem(a, size)
   inc(a.freeMem, size)
@@ -997,6 +1004,7 @@ proc rawAlloc(a: var MemRegion, requestedSize: int): pointer =
     sysAssert c.prev == nil, "rawAlloc 10"
     sysAssert c.next == nil, "rawAlloc 11"
     result = addr(c.data)
+    unpoison(result, size)
     sysAssert((cast[int](c) and (MemAlign-1)) == 0, "rawAlloc 13")
     sysAssert((cast[int](c) and PageMask) == 0, "rawAlloc: Not aligned on a page boundary")
     when not defined(gcDestructors):
@@ -1041,7 +1049,7 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
         # set to 0xff to check for usage after free bugs:
         nimSetMem(cast[pointer](cast[int](p) +% sizeof(FreeCell)), -1'i32,
                 s -% sizeof(FreeCell))
-      poison(addr c.data, c.size)
+      poison(f, s)
       let activeChunk = a.freeSmallChunks[s div MemAlign]
       if activeChunk != nil and c != activeChunk:
         # This pointer is not part of the active chunk, lend it out
@@ -1049,12 +1057,14 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
         # Put the cell into the active chunk,
         #  may prevent a queue of available chunks from forming in a.freeSmallChunks[s div MemAlign].
         #  This queue would otherwise waste memory in the form of free cells until we return to those chunks.
-        f.next = activeChunk.freeList
+        poisonGuard(f, sizeof(FreeCell)):
+          f.next = activeChunk.freeList
         activeChunk.freeList = f # lend the cell
         inc(activeChunk.free, s) # By not adjusting the current chunk's capacity it is prevented from being freed
         inc(activeChunk.foreignCells) # The cell is now considered foreign from the perspective of the active chunk
       else:
-        f.next = c.freeList
+        poisonGuard(f, sizeof(FreeCell)):
+          f.next = c.freeList
         c.freeList = f
         if c.free < s:
           # The chunk could not have been active as it didn't have enough space to give
