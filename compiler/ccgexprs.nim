@@ -401,6 +401,7 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
         # uses a temp if `src` is an expression because the address of
         # `src` needs to be taken
         tmp = getTemp(p, src.t)
+        tmp.storage = src.storage
         simpleAsgn(p.s(cpsStmts), tmp, src)
       if dest.t.kidsLen <= 4: genOptAsgnTuple(p, dest, tmp, flags)
       else: genGenericAsgn(p, dest, tmp, flags)
