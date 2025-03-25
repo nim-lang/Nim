@@ -34,6 +34,7 @@ errors.
 - `std/math` The `^` symbol now supports floating-point as exponent in addition to the Natural type.
 
 - `system.substr` implementation now uses `copymem` (wrapped C `memcpy`) for copying data, if available at compilation.
+- `system.newStringUninit` is now considered free of side-effects allowing it to be used with `--experimental:strictFuncs`.
 
 ## Language changes
 
