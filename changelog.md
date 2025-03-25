@@ -22,6 +22,7 @@ errors.
 ## Standard library additions and changes
 
 [//]: # "Additions:"
+
 - `setutils.symmetricDifference` along with its operator version
   `` setutils.`-+-` `` and in-place version `setutils.toggle` have been added
   to more efficiently calculate the symmetric difference of bitsets.
@@ -29,7 +30,10 @@ errors.
 	Useful for string sanitation. Follows existing multiReplace semantics.
 
 [//]: # "Changes:"
+
 - `std/math` The `^` symbol now supports floating-point as exponent in addition to the Natural type.
+
+- `system.substr` implementation now uses `copymem` (wrapped C `memcpy`) for copying data, if available at compilation.
 
 ## Language changes
 
