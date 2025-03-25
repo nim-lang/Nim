@@ -395,8 +395,15 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
       simpleAsgn(p.s(cpsStmts), dest, src)
   of tyTuple:
     if containsGarbageCollectedRef(dest.t):
-      if dest.t.kidsLen <= 4: genOptAsgnTuple(p, dest, src, flags)
-      else: genGenericAsgn(p, dest, src, flags)
+      var tmp = src
+      if optSeqDestructors notin p.config.globalOptions and
+          src.k == locExpr:
+        # uses a temp if `src` is an expression because the address of
+        # `src` needs to be taken
+        tmp = getTemp(p, src.t)
+        simpleAsgn(p.s(cpsStmts), tmp, src)
+      if dest.t.kidsLen <= 4: genOptAsgnTuple(p, dest, tmp, flags)
+      else: genGenericAsgn(p, dest, tmp, flags)
     else:
       simpleAsgn(p.s(cpsStmts), dest, src)
   of tyObject:
