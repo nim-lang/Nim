@@ -25,6 +25,8 @@ errors.
 - `setutils.symmetricDifference` along with its operator version
   `` setutils.`-+-` `` and in-place version `setutils.toggle` have been added
   to more efficiently calculate the symmetric difference of bitsets.
+- `strutils.multiReplace` overload for character set replacements in a single pass.
+	Useful for string sanitation. Follows existing multiReplace semantics.
 
 [//]: # "Changes:"
 - `std/math` The `^` symbol now supports floating-point as exponent in addition to the Natural type.
