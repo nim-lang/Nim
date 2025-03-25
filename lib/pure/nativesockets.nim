@@ -723,7 +723,7 @@ when useNimNetLite:
     ##
     ## Similar to POSIX's `getsockname`:idx:.
     template sockGetNameOrRaiseError(socket: untyped, name: untyped) =
-      var namelen = sizeof(socket).SockLen
+      var namelen = sizeof(name).SockLen
       if getsockname(socket, cast[ptr SockAddr](addr(name)),
                     addr(namelen)) == -1'i32:
         raiseOSError(osLastError())
