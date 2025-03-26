@@ -1,4 +1,5 @@
 discard """
+targets: "c cpp"
 output: '''
 it's nil
 @[1, 2, 3]
