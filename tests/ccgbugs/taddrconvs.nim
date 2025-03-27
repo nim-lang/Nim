@@ -13,8 +13,7 @@ block:
   proc foo(x: var culonglong) {.importc: "foo", nodecl.}
 
   proc main(x: var uint64) =
-    var m = uint64(12)
-    foo(culonglong m)
+    foo(culonglong x)
 
   var u = uint64(12)
   main(u)
