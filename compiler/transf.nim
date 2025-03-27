@@ -484,6 +484,35 @@ proc transformYield(c: PTransf, n: PNode): PNode =
     result.add(introduceNewLocalVars(c, c.transCon.forLoopBody))
     c.isIntroducingNewLocalVars = false
 
+proc transformAddrConv(c: PTransf, n: PNode): PNode =
+  # transform addr ( conv ( x ) ) -> conv ( addr ( x ) )
+  # because `conv(x)` is not a lvalue, you are not supposed to
+  # address an expression. So we move `conv` chains outside the
+  # address
+  var p = n[0]
+  let typeKind = n.typ.kind
+  var nodes = newSeq[PNode]()
+  while p.kind in {nkHiddenStdConv, nkHiddenSubConv, nkConv}:
+    var newNode = newTransNode(p.kind, p, 2)
+    let newType = toVar(p.typ, typeKind, c.idgen)
+    newType.flags.incl tfVarIsPtr
+    newNode.typ() = newType
+    newNode[0] = p[0]
+    newNode[0].typ() = newType
+    nodes.add newNode
+    p = p[1]
+
+  if nodes.len > 0:
+    result = newTransNode(n.kind, n.info, 1)
+    result.typ() = toVar(p.typ, typeKind, c.idgen)
+    result.typ.flags.incl tfVarIsPtr
+    result[0] = p
+    for i in countdown(nodes.high, 0):
+      nodes[i][1] = result
+      result = nodes[i]
+  else:
+    result = n
+
 proc transformAddrDeref(c: PTransf, n: PNode, kinds: TNodeKinds, isAddr = false): PNode =
   result = transformSons(c, n, noConstFold = isAddr)
   # inlining of 'var openarray' iterators; bug #19977
@@ -1098,6 +1127,8 @@ proc transform(c: PTransf, n: PNode, noConstFold = false): PNode =
     result = transformCall(c, n)
   of nkAddr, nkHiddenAddr:
     result = transformAddrDeref(c, n, {nkDerefExpr, nkHiddenDeref}, isAddr = true)
+    if result.kind in {nkAddr, nkHiddenAddr}:
+      result = transformAddrConv(c, result)
   of nkDerefExpr:
     result = transformAddrDeref(c, n, {nkAddr, nkHiddenAddr})
   of nkHiddenDeref:
