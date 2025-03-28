@@ -155,7 +155,7 @@ proc raiseException(e: ref Exception, ename: cstring) {.
   {.emit: "throw `e`;".}
 
 proc raiseDefect(e: ref Exception) {.compilerproc, asmNoStackFrame.} =
-  if isNimException and e of Defect:
+  if isNimException() and e of Defect:
     if excHandler == 0:
       unhandledException(e)
     when NimStackTrace:
