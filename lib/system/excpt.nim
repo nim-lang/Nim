@@ -516,6 +516,11 @@ proc reraiseException() {.compilerRtl.} =
     else:
       raiseExceptionAux(currException)
 
+proc raiseDefect(e: sink(ref Exception)) {.compilerRtl, nodestroy.} =
+  if e of Defect:
+    reportUnhandledError(e)
+    rawQuit(1)
+
 proc threadTrouble() =
   # also forward declared, it is 'raises: []' hence the try-except.
   try:

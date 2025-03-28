@@ -957,6 +957,28 @@ proc transformCall(c: PTransf, n: PNode): PNode =
     else:
       result = s
 
+proc transformBareExcept(c: PTransf, n: PNode): PNode =
+  result = newTransNode(nkExceptBranch, n, 1)
+  result[0] = newNodeI(nkStmtList, n[0].info)
+  # Generating `let exc = getCurrentException(); raiseDefect(exc)`
+  # -> getCurrentException()
+  let excCall = callCodegenProc(c.graph, "getCurrentException")
+  let identDefs = newTransNode(nkIdentDefs, n[0].info, 3)
+  let exc = newTemp(c, excCall.typ, n[0].info)
+  identDefs[0] = exc
+  identDefs[1] = newNodeI(nkEmpty, n.info)
+  identDefs[2] = excCall
+
+  let letSection = newTransNode(nkLetSection, n[0].info, 1)
+  letSection[0] = identDefs
+
+  # -> getCurrentException(exc)
+  let raiseDefectCall = callCodegenProc(c.graph, "raiseDefect", n[0].info, arg1 = exc)
+
+  result[0].add letSection
+  result[0].add raiseDefectCall
+  result[0].add transform(c, n[0])
+
 proc transformExceptBranch(c: PTransf, n: PNode): PNode =
   if n[0].isInfixAs() and not isImportedException(n[0][1].typ, c.graph.config):
     let excTypeNode = n[0][1]
@@ -985,6 +1007,8 @@ proc transformExceptBranch(c: PTransf, n: PNode): PNode =
     # Replace the `Exception as foobar` with just `Exception`.
     result[0] = transform(c, n[0][1])
     result[1] = actions
+  elif n.len == 1:
+    result = transformBareExcept(c, n)
   else:
     result = transformSons(c, n)
 
