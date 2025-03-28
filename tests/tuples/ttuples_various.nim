@@ -1,4 +1,6 @@
 discard """
+targets: "c cpp"
+matrix: "--mm:refc; --mm:arc"
 output: '''
 it's nil
 @[1, 2, 3]
