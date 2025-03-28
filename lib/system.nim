@@ -1685,7 +1685,7 @@ when not defined(js):
     else:
       {.error: "The type T cannot contain managed memory or have destructors".}
 
-  proc newStringUninit*(len: Natural): string =
+  proc newStringUninit*(len: Natural): string {.noSideEffect.} =
     ## Returns a new string of length `len` but with uninitialized
     ## content. One needs to fill the string character after character
     ## with the index operator `s[i]`.
@@ -1696,15 +1696,16 @@ when not defined(js):
       result = newString(len)
     else:
       result = newStringOfCap(len)
-      when defined(nimSeqsV2):
-        let s = cast[ptr NimStringV2](addr result)
-        if len > 0:
+      {.cast(noSideEffect).}:
+        when defined(nimSeqsV2):
+          let s = cast[ptr NimStringV2](addr result)
+          if len > 0:
+            s.len = len
+            s.p.data[len] = '\0'
+        else:
+          let s = cast[NimString](result)
           s.len = len
-          s.p.data[len] = '\0'
-      else:
-        let s = cast[NimString](result)
-        s.len = len
-        s.data[len] = '\0'
+          s.data[len] = '\0'
 else:
   proc newStringUninit*(len: Natural): string {.
     magic: "NewString", importc: "mnewString", noSideEffect.}
@@ -2794,8 +2795,7 @@ proc substr*(a: openArray[char]): string =
     assert a.toOpenArray(2, 5).substr() == "cdef"
     assert a.toOpenArray(2, high(a)).substr() == "cdefgh"  # From index 2 to `high(a)`
     doAssertRaises(IndexDefect): discard a.toOpenArray(5, 99).substr()
-  {.cast(noSideEffect).}:
-    result = newStringUninit(a.len)
+  result = newStringUninit(a.len)
   when NotJSnotVMnotNims:
     if a.len > 0:
       copyMem(result[0].addr, a[0].unsafeAddr, a.len)
@@ -2830,8 +2830,7 @@ proc substr*(s: string; first, last: int): string = # A bug with `magic: Slice` 
     first = max(first, 0)
     last = min(last, high(s))
     L = max(last - first + 1, 0)
-  {.cast(noSideEffect).}:
-    result = newStringUninit(L)
+  result = newStringUninit(L)
   when NotJSnotVMnotNims:
     if L > 0:
       copyMem(result[0].addr, s[first].unsafeAddr, L)
