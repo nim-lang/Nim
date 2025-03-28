@@ -2314,6 +2314,7 @@ when notJSnotNims and hostOS != "standalone":
     currException = exc
 elif defined(nimscript):
   proc getCurrentException*(): ref Exception {.compilerRtl.} = discard
+  proc raiseDefect*(exc: ref Exception) {.compilerRtl.} = discard
 
 when notJSnotNims:
   {.push stackTrace: off, profiler: off.}
