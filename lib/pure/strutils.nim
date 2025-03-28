@@ -2356,8 +2356,7 @@ func multiReplace*(s: openArray[char]; replacements: varargs[(set[char], char)])
     # Sanitize a filename with Windows-incompatible characters
     const file = "a/file:with?invalid*chars.txt"
     doAssert file.multiReplace(WinSanitationRules) == "a-file-with_invalid_chars.txt"
-  {.cast(noSideEffect).}:
-    result = newStringUninit(s.len)
+  result = newStringUninit(s.len)
   for i in 0..<s.len:
     var nextChar = s[i]
     for subs, by in replacements.items:
