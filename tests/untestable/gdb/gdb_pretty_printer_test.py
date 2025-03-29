@@ -32,9 +32,9 @@ outputs = [
   '("hello", 42)'
 ]
 
-argRegex = re.compile("^.* = (?:No suitable Nim \$ operator found for type: \w+\s*)*(.*)$")
+argRegex = re.compile(r"^.* = (?:No suitable Nim \$ operator found for type: \w+\s*)*(.*)$")
 # Remove this error message which can pop up
-noSuitableRegex = re.compile("(No suitable Nim \$ operator found for type: \w+\s*)")
+noSuitableRegex = re.compile(r"(No suitable Nim \$ operator found for type: \w+\s*)")
 
 for i, expected in enumerate(outputs):
   gdb.write(f"\x1b[38;5;105m{i+1}) expecting: {expected}: \x1b[0m", gdb.STDLOG)
