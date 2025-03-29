@@ -1390,8 +1390,6 @@ proc readTypeParameter(c: PContext, typ: PType,
     let ty = if typ.kind == tyCompositeTypeClass: typ.firstGenericParam.skipGenericAlias
              elif skip: typ.skipGenericAlias
              else: typ
-    if isCompilerDebug():
-      echo "Type is this ", typ, " ", ty, " ", typ.kind
     let tbody = ty[0]
     for s in 0..<tbody.len-1:
       let tParam = tbody[s]
@@ -1520,13 +1518,9 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
     result = newSymNode(s, info)
 
 proc tryReadingGenericParam(c: PContext, n: PNode, i: PIdent, t: PType): PNode =
-  if isCompilerDebug():
-    echo t.kind
   case t.kind
   of tyGenericInst:
     result = readTypeParameter(c, t, i, n.info, skip=false)
-    if isCompilerDebug():
-      echo "Type param: ", result
     if result == c.graph.emptyNode:
       if c.inGenericContext > 0:
         result = semGenericStmt(c, n)
@@ -1583,8 +1577,6 @@ proc tryReadingTypeField(c: PContext, n: PNode, i: PIdent, ty: PType): PNode =
     result = tryReadingTypeField(c, n, i, ty.skipModifier)
     if result == nil:
       result = tryReadingGenericParam(c, n, i, ty)
-    if isCompilerDebug():
-      echo "Got ", result
   else:
     result = tryReadingGenericParam(c, n, i, ty)
 
@@ -3304,8 +3296,6 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
   when defined(nimCompilerStacktraceHints):
     setFrameMsg c.config$n.info & " " & $n.kind
   when false: # see `tdebugutils`
-    if isCompilerDebug():
-      echo (">", c.config$n.info, n, flags, n.kind)
     defer:
       if isCompilerDebug():
         echo ("<", c.config$n.info, n, ?.result.typ)
