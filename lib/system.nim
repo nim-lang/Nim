@@ -1685,7 +1685,7 @@ when not defined(js):
     else:
       {.error: "The type T cannot contain managed memory or have destructors".}
 
-  proc newStringUninit*(len: Natural): string =
+  proc newStringUninit*(len: Natural): string {.noSideEffect.} =
     ## Returns a new string of length `len` but with uninitialized
     ## content. One needs to fill the string character after character
     ## with the index operator `s[i]`.
@@ -1696,15 +1696,16 @@ when not defined(js):
       result = newString(len)
     else:
       result = newStringOfCap(len)
-      when defined(nimSeqsV2):
-        let s = cast[ptr NimStringV2](addr result)
-        if len > 0:
+      {.cast(noSideEffect).}:
+        when defined(nimSeqsV2):
+          let s = cast[ptr NimStringV2](addr result)
+          if len > 0:
+            s.len = len
+            s.p.data[len] = '\0'
+        else:
+          let s = cast[NimString](result)
           s.len = len
-          s.p.data[len] = '\0'
-      else:
-        let s = cast[NimString](result)
-        s.len = len
-        s.data[len] = '\0'
+          s.data[len] = '\0'
 else:
   proc newStringUninit*(len: Natural): string {.
     magic: "NewString", importc: "mnewString", noSideEffect.}
@@ -2769,41 +2770,87 @@ template once*(body: untyped): untyped =
 
 {.pop.} # warning[GcMem]: off, warning[Uninit]: off
 
-proc substr*(s: openArray[char]): string =
-  ## Copies a slice of `s` into a new string and returns this new
-  ## string.
-  runnableExamples:
-    let a = "abcdefgh"
-    assert a.substr(2, 5) == "cdef"
-    assert a.substr(2) == "cdefgh"
-    assert a.substr(5, 99) == "fgh"
-  result = newString(s.len)
-  for i, ch in s:
-    result[i] = ch
+template NotJSnotVMnotNims(): static bool = # hack, see: #12517 #12518
+  when nimvm:
+    false
+  else:
+    notJSnotNims
 
-proc substr*(s: string, first, last: int): string = # A bug with `magic: Slice` requires this to exist this way
-  ## Copies a slice of `s` into a new string and returns this new
-  ## string.
+proc substr*(a: openArray[char]): string =
+  ## Returns a new string, copying contents of `a`.
   ##
-  ## The bounds `first` and `last` denote the indices of
-  ## the first and last characters that shall be copied. If `last`
-  ## is omitted, it is treated as `high(s)`. If `last >= s.len`, `s.len`
-  ## is used instead: This means `substr` can also be used to `cut`:idx:
-  ## or `limit`:idx: a string's length.
+  ## .. warning:: As opposed to other `substr` overloads, no additional input
+  ##    validation and clamping is performed!
+  ##
+  ## This proc does not prevent raising an `IndexDefect` when `a` is being
+  ## passed using a `toOpenArray` call with out-of-bounds indexes:
+  ## * `doAssertRaises(IndexDefect): discard "abc".toOpenArray(-9, 9).substr()`
+  ##
+  ## If clamping is required, consider using
+  ## `substr(s: string; first, last: int) <#substr,string,int,int>`_:
+  ## * `doAssert "abc".substr(-9, 9) == "abc"`
+  runnableExamples:
+    let a = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
+    assert a.substr() == "abcdefgh"
+    assert a.toOpenArray(2, 5).substr() == "cdef"
+    assert a.toOpenArray(2, high(a)).substr() == "cdefgh"  # From index 2 to `high(a)`
+    doAssertRaises(IndexDefect): discard a.toOpenArray(5, 99).substr()
+  result = newStringUninit(a.len)
+  when NotJSnotVMnotNims:
+    if a.len > 0:
+      copyMem(result[0].addr, a[0].unsafeAddr, a.len)
+  else:
+    for i, ch in a:
+      result[i] = ch
+
+proc substr*(s: string; first, last: int): string = # A bug with `magic: Slice` requires this to exist this way
+  ## Returns a new string containing a substring (slice) of `s`,
+  ## copying characters from index `first` to index `last` inclusive.
+  ##
+  ## Index values are validated and capped:
+  ## - Negative `first` is clamped to 0
+  ## - If `last >= s.len`, it is clamped to `high(s)`
+  ## - If `last < first`, returns an empty string
+  ## This means `substr` can also be used to `cut`:idx: or `limit`:idx:
+  ## a string's length.
+  ##
+  ## .. note::
+  ##   If index values are ensured to be in-bounds, for performance
+  ##   critical cases consider using a non-clamping overload
+  ##   `substr(a: openArray[char]) <#substr,openArray[char]>`_
   runnableExamples:
     let a = "abcdefgh"
-    assert a.substr(2, 5) == "cdef"
-    assert a.substr(2) == "cdefgh"
-    assert a.substr(5, 99) == "fgh"
-
-  let first = max(first, 0)
-  let L = max(min(last, high(s)) - first + 1, 0)
-  result = newString(L)
-  for i in 0 .. L-1:
-    result[i] = s[i+first]
+    assert a.substr(2, 5) == "cdef" # Normal substring
+    # Invalid indexes
+    assert a.substr(5, 99) == "fgh" # From index 5 to `high(a)`
+    assert a.substr(42, 99) == ""   # `first` out of bounds
+    assert a.substr(100, 5) == ""   # `first > last`
+    assert a.substr(-1, 2) == "abc" # Negative `first` clamped to 0
+  let
+    first = max(first, 0)
+    last = min(last, high(s))
+    L = max(last - first + 1, 0)
+  result = newStringUninit(L)
+  when NotJSnotVMnotNims:
+    if L > 0:
+      copyMem(result[0].addr, s[first].unsafeAddr, L)
+  else:
+    for i in 0..<L:
+      result[i] = s[i + first]
 
 proc substr*(s: string, first = 0): string =
-  result = substr(s, first, high(s))
+  ## Convenience `substr <#substr,string,int,int>`_ overload that returns
+  ## a substring from `first` to the end of the string.
+  ##
+  ## `first` value is validated and capped:
+  ## - `first >= s.len` returns an empty string
+  ## - Negative `first` is clamped to 0.
+  runnableExamples:
+    let a = "abcdefgh"
+    assert a.substr(2) == "cdefgh"    # From index 2 to string end (`high(a)`)
+    assert a.substr(100) == ""        # `first` out of bounds
+    assert a.substr(-1) == "abcdefgh" # Negative `first` clamped to 0
+  substr(s, first, high(s))
 
 when defined(nimconfig):
   include "system/nimscript"
@@ -2818,8 +2865,10 @@ when not defined(js):
 
 proc toOpenArray*[T](x: seq[T]; first, last: int): openArray[T] {.
   magic: "Slice".}
-  ## Allows passing the slice of `x` from the element at `first` to the element
-  ## at `last` to `openArray[T]` parameters without copying it.
+  ## Returns a non-owning slice (a `view`:idx:) of `x` from the element at
+  ## index `first` to `last` inclusive. Allows passing slices without copying,
+  ## as opposed to using the slice operator
+  ## `\`[]\` <#[],openArray[T],HSlice[U: Ordinal,V: Ordinal]>`_.
   ##
   ## Example:
   ##   ```nim
