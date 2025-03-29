@@ -676,6 +676,68 @@ template withValue*[A, B](t: var Table[A, B], key: A,
   else:
     body2
 
+template withValue*[A, B](t: Table[A, B], key: A,
+                          value, body1, body2: untyped) =
+  ## Retrieves the value at `t[key]` if it exists, assigns
+  ## it to the variable `value` and executes `body`
+  runnableExamples:
+    type
+      User = object
+        name: string
+
+    proc `=copy`(dest: var User, source: User) {.error.}
+
+    proc exec(t: Table[int, User]) =
+      t.withValue(1, value):
+        assert value.name == "Hello"
+      do:
+        doAssert false
+
+      var executedElseBranch = false
+      t.withValue(521, value):
+        doAssert false
+      do:
+        executedElseBranch = true
+      assert executedElseBranch
+
+    var t = initTable[int, User]()
+    t[1] = User(name: "Hello")
+    t.exec()
+
+  mixin rawGet
+  var hc: Hash
+  var index = rawGet(t, key, hc)
+  if index > 0:
+    let value {.cursor, inject.} = t.data[index].val
+    body1
+  else:
+    body2
+
+template withValue*[A, B](t: Table[A, B], key: A,
+                          value, body: untyped) =
+  ## Retrieves the value at `t[key]` if it exists, assigns
+  ## it to the variable `value` and executes `body`
+  runnableExamples:
+    type
+      User = object
+        name: string
+
+    proc `=copy`(dest: var User, source: User) {.error.}
+
+    proc exec(t: Table[int, User]) =
+      t.withValue(1, value):
+        assert value.name == "Hello"
+
+      t.withValue(521, value):
+        doAssert false
+
+    var t = initTable[int, User]()
+    t[1] = User(name: "Hello")
+    t.exec()
+
+  withValue(t, key, value, body):
+    discard
+
 
 iterator pairs*[A, B](t: Table[A, B]): (A, B) =
   ## Iterates over any `(key, value)` pair in the table `t`.
