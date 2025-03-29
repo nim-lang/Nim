@@ -46,11 +46,11 @@ for i, expected in enumerate(outputs):
   if i == 6:
     # myArray is passed as pointer to int to myDebug. I look up myArray up in the stack
     gdb.execute("up")
-    raw = gdb.parse_and_eval("myArray")    
+    raw = gdb.parse_and_eval("myArray_1")
   elif i == 9:
     # myOtherArray is passed as pointer to int to myDebug. I look up myOtherArray up in the stack
     gdb.execute("up")
-    raw = gdb.parse_and_eval("myOtherArray")
+    raw = gdb.parse_and_eval("myOtherArray_1")
   else:
     rawArg = re.sub(noSuitableRegex, "", gdb.execute("info args", to_string = True))
     raw = rawArg.split("=", 1)[-1].strip()
