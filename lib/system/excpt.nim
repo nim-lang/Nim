@@ -516,7 +516,7 @@ proc reraiseException() {.compilerRtl.} =
     else:
       raiseExceptionAux(currException)
 
-proc raiseDefect(e: sink(ref Exception)) {.compilerRtl, nodestroy.} =
+proc raiseDefect(e: sink(ref Exception)) {.compilerRtl.} =
   if e of Defect:
     reportUnhandledError(e)
     rawQuit(1)
