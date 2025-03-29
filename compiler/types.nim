@@ -1204,7 +1204,6 @@ proc sameChildrenAux(a, b: PType, c: var TSameTypeClosure): bool =
     if not result: return
 
 proc isGenericAlias*(t: PType): bool =
-  # TODO: Check that it is just passing everything
   return t.kind == tyGenericInst and t.skipModifier.skipTypes({tyAlias}).kind == tyGenericInst
 
 proc genericAliasDepth*(t: PType): int =

@@ -1362,6 +1362,7 @@ const
 
 proc readTypeParameter(c: PContext, typ: PType,
                        paramName: PIdent, info: TLineInfo, skip = true): PNode =
+  ## - **skip**: Skips generic aliases and tries to get the parameter from the aliased type.
   # Note: This function will return emptyNode when attempting to read
   # a static type parameter that is not yet resolved (e.g. this may
   # happen in proc signatures such as `proc(x: T): array[T.sizeParam, U]`
@@ -1387,9 +1388,12 @@ proc readTypeParameter(c: PContext, typ: PType,
         discard
 
   if typ.kind != tyUserTypeClass:
-    let ty = if typ.kind == tyCompositeTypeClass: typ.firstGenericParam.skipGenericAlias
-             elif skip: typ.skipGenericAlias
-             else: typ
+    let ty = block:
+      let ty = if typ.kind == tyCompositeTypeClass: typ.firstGenericParam
+               else: typ
+      if skip: typ.skipGenericAlias()
+      else: typ
+
     let tbody = ty[0]
     for s in 0..<tbody.len-1:
       let tParam = tbody[s]
@@ -1520,6 +1524,7 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
 proc tryReadingGenericParam(c: PContext, n: PNode, i: PIdent, t: PType): PNode =
   case t.kind
   of tyGenericInst:
+    # Parameter could exist on the alias, don't skip past it
     result = readTypeParameter(c, t, i, n.info, skip=false)
     if result == c.graph.emptyNode:
       if c.inGenericContext > 0:
@@ -3296,6 +3301,8 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
   when defined(nimCompilerStacktraceHints):
     setFrameMsg c.config$n.info & " " & $n.kind
   when false: # see `tdebugutils`
+    if isCompilerDebug():
+      echo (">", c.config$n.info, n, flags, n.kind)
     defer:
       if isCompilerDebug():
         echo ("<", c.config$n.info, n, ?.result.typ)

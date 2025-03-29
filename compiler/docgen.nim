@@ -1202,7 +1202,6 @@ proc genJsonItem(d: PDoc, n, nameNode: PNode, k: TSymKind, nonExports = false): 
         result.json["signature"]["pragmas"].add %($pragma)
     if n[genericParamsPos].kind != nkEmpty:
       result.json["signature"]["genericParams"] = newJArray()
-      echo result.json.pretty()
       for genericParam in n[genericParamsPos]:
         var param = %{"name": %($genericParam)}
         if genericParam.sym.typ.len > 0:
