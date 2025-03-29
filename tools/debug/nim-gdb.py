@@ -1,4 +1,5 @@
 import gdb
+import gdb.types
 import re
 import sys
 import traceback
