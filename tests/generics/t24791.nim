@@ -6,6 +6,9 @@ type
   Bizz = Foo[1, string]
   Buzz = Foo[2, Option[string]]
 
-assert  Bar[string].D is string
+  CheckPriority[T: static int; D] = Option[D]
+
+assert Bar[string].D is string
 assert Bizz.D == 1
 assert Buzz.D == 2
+assert CheckPriority[3, string].T is string
