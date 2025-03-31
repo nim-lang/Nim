@@ -978,7 +978,7 @@ proc transformBareExcept(c: PTransf, n: PNode): PNode =
   result[0].add letSection
   result[0].add raiseDefectCall
   result[0].add n[0]
-  result = transform(c, n[0])
+  result[0] = transform(c, result[0])
 
 proc transformExceptBranch(c: PTransf, n: PNode): PNode =
   if n[0].isInfixAs() and not isImportedException(n[0][1].typ, c.graph.config):
