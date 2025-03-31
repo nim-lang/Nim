@@ -448,7 +448,15 @@ proc isCapturedVar(n: PNode): bool =
 proc genDup(dest: PNode; n: PNode; c: var Con; s: var Scope; isFromSink: bool): PNode =
   let nTyp = n.typ.skipTypes(tyUserTypeClasses)
   let typ = nTyp.skipTypes({tyGenericInst, tyAlias, tySink})
-  let op = getAttachedOp(c.graph, typ, attachedDup)
+  var op = getAttachedOp(c.graph, typ, attachedDup)
+
+  if op == nil or op.ast.isGenericRoutine:
+    # give up and find the canonical type instead:
+    let h = sighashes.hashType(typ, c.graph.config, {CoType, CoConsiderOwned, CoDistinct})
+    let canon = c.graph.canonTypes.getOrDefault(h)
+    if canon != nil:
+      op = getAttachedOp(c.graph, canon, attachedDup)
+
   if op != nil and tfHasOwned notin typ.flags:
     if sfError in op.flags:
       c.checkForErrorPragma(nTyp, n, "=dup")
