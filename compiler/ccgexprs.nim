@@ -962,7 +962,7 @@ proc cowBracket(p: BProc; n: PNode) =
 proc cow(p: BProc; n: PNode) {.inline.} =
   if n.kind == nkHiddenAddr: cowBracket(p, n[0])
 
-template noSomeCast(e: PNode): bool =
+template ignoreConv(e: PNode): bool =
   let destType = e.typ.skipTypes({tyVar, tyLent, tyGenericInst, tyAlias, tySink})
   let srcType = e[1].typ.skipTypes({tyVar, tyLent, tyGenericInst, tyAlias, tySink})
   sameBackendTypePickyAliases(destType, srcType)
@@ -979,7 +979,7 @@ proc genAddr(p: BProc, e: PNode, d: var TLoc) =
     d.lode = e
   else:
     var a: TLoc = initLocExpr(p, e[0])
-    if e[0].kind in {nkHiddenStdConv, nkHiddenSubConv, nkConv} and not noSomeCast(e[0]):
+    if e[0].kind in {nkHiddenStdConv, nkHiddenSubConv, nkConv} and not ignoreConv(e[0]):
       # addr (conv x) introduces a temp because `conv x` is not a rvalue
       putIntoDest(p, d, e, addrLoc(p.config, expressionsNeedsTmp(p, a)), a.storage)
     else:
@@ -2646,7 +2646,7 @@ proc genRangeChck(p: BProc, n: PNode, d: var TLoc) =
     putIntoDest(p, d, n, cCast(destType, wrapPar(val)), a.storage)
 
 proc genConv(p: BProc, e: PNode, d: var TLoc) =
-  if noSomeCast(e):
+  if ignoreConv(e):
     expr(p, e[1], d)
   else:
     genSomeCast(p, e, d)
