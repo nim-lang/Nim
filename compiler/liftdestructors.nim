@@ -575,12 +575,14 @@ proc forallElements(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     body.sons.setLen counterIdx
 
 proc checkSelfAssignment(c: var TLiftCtx; t: PType; body, x, y: PNode) =
+  let addrX = newTreeIT(nkAddr, c.info, makePtrType(c.fn, x.typ, c.idgen), x)
+  let addrY = newTreeIT(nkAddr, c.info, makePtrType(c.fn, y.typ, c.idgen), y)
   var cond = callCodegenProc(c.g, "sameSeqPayload", c.info,
-      newTreeIT(nkAddr, c.info, makePtrType(c.fn, x.typ, c.idgen), x),
-      newTreeIT(nkAddr, c.info, makePtrType(c.fn, y.typ, c.idgen), y)
+      addrX, addrY
       )
   cond.typ() = getSysType(c.g, c.info, tyBool)
-  body.add genIf(c, cond, newTreeI(nkReturnStmt, c.info, newNodeI(nkEmpty, c.info)))
+  body.add genIf(c, cond, 
+    genBuiltin(c, mWasMoved, "`=wasMoved`", addrX))
 
 proc fillSeqOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   case c.kind
@@ -590,10 +592,10 @@ proc fillSeqOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   of attachedAsgn, attachedDeepCopy:
     # we generate:
     # if x.p == y.p:
-    #   return
-    # setLen(dest, y.len)
+    #   wasMoved(x)
+    # setLen(x, y.len)
     # var i = 0
-    # while i < y.len: dest[i] = y[i]; inc(i)
+    # while i < y.len: x[i] = y[i]; inc(i)
     # This is usually more efficient than a destroy/create pair.
     checkSelfAssignment(c, t, body, x, y)
     body.add setLenSeqCall(c, t, x, y)
