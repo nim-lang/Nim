@@ -445,31 +445,38 @@ proc isCapturedVar(n: PNode): bool =
   if root != nil: result = root.name.s[0] == ':'
   else: result = false
 
+proc genDup(dest: PNode; n: PNode; c: var Con; s: var Scope; isFromSink: bool): PNode =
+  let nTyp = n.typ.skipTypes(tyUserTypeClasses)
+  let typ = nTyp.skipTypes({tyGenericInst, tyAlias, tySink})
+  let op = getAttachedOp(c.graph, typ, attachedDup)
+  if op != nil and tfHasOwned notin typ.flags:
+    if sfError in op.flags:
+      c.checkForErrorPragma(nTyp, n, "=dup")
+    else:
+      let copyOp = getAttachedOp(c.graph, typ, attachedAsgn)
+      if copyOp != nil and sfError in copyOp.flags and
+          sfOverridden notin op.flags:
+        c.checkForErrorPragma(nTyp, n, "=dup", inferredFromCopy = true)
+    let src = p(n, c, s, normal)
+    var newCall = newTreeIT(nkCall, src.info, src.typ,
+          newSymNode(op),
+          src)
+    c.finishCopy(newCall, n, {}, isFromSink = isFromSink)
+    result = newTreeI(nkFastAsgn,
+          src.info, dest,
+          newCall
+      )
+  else:
+    result = nil
+
 proc passCopyToSink(n: PNode; c: var Con; s: var Scope): PNode =
   result = newNodeIT(nkStmtListExpr, n.info, n.typ)
   let nTyp = n.typ.skipTypes(tyUserTypeClasses)
   let tmp = c.getTemp(s, nTyp, n.info)
   if hasDestructor(c, nTyp):
-    let typ = nTyp.skipTypes({tyGenericInst, tyAlias, tySink})
-    let op = getAttachedOp(c.graph, typ, attachedDup)
-    if op != nil and tfHasOwned notin typ.flags:
-      if sfError in op.flags:
-        c.checkForErrorPragma(nTyp, n, "=dup")
-      else:
-        let copyOp = getAttachedOp(c.graph, typ, attachedAsgn)
-        if copyOp != nil and sfError in copyOp.flags and
-           sfOverridden notin op.flags:
-          c.checkForErrorPragma(nTyp, n, "=dup", inferredFromCopy = true)
-
-      let src = p(n, c, s, normal)
-      var newCall = newTreeIT(nkCall, src.info, src.typ,
-            newSymNode(op),
-            src)
-      c.finishCopy(newCall, n, {}, isFromSink = true)
-      result.add newTreeI(nkFastAsgn,
-          src.info, tmp,
-          newCall
-      )
+    let dupCall = genDup(tmp, n, c, s, true)
+    if dupCall != nil:
+      result.add dupCall
     else:
       result.add c.genWasMoved(tmp)
       var m = c.genCopy(tmp, n, {})
@@ -1161,6 +1168,9 @@ proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope, flags: set[MoveOrCopy
             result = genFieldAccessSideEffects(c, s, dest, ri, flags)
         else:
           result = c.genSink(s, dest, destructiveMoveVar(ri, c, s), flags)
+      elif isEnsureMove == 0 and isDangerousSeq(ri.typ):
+        # ensures to produces a full copy of sequences
+        result = genDup(dest, ri, c, s, false)
       else:
         inc c.inEnsureMove, isEnsureMove
         result = c.genCopy(dest, ri, flags)
@@ -1210,6 +1220,9 @@ proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope, flags: set[MoveOrCopy
         # Rule 3: `=sink`(x, z); wasMoved(z)
         let snk = c.genSink(s, dest, ri, flags)
         result = newTree(nkStmtList, snk, c.genWasMoved(ri))
+      elif isEnsureMove == 0 and isDangerousSeq(ri.typ):
+        # ensures to produces a full copy of sequences
+        result = genDup(dest, ri, c, s, false)
       else:
         inc c.inEnsureMove, isEnsureMove
         result = c.genCopy(dest, ri, flags)
