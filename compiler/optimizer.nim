@@ -66,6 +66,7 @@ proc mergeBasicBlockInfo(parent: var BasicBlock; this: BasicBlock) {.inline.} =
     parent.wasMovedLocs.setLen 0
     parent.hasReturn = true
   elif this.symToDel.len > 0:
+    parent.symToDel = this.symToDel
     for i in this.symToDel:
       invalidateWasMoved(parent, i)
 
