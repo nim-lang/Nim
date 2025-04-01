@@ -962,6 +962,11 @@ proc cowBracket(p: BProc; n: PNode) =
 proc cow(p: BProc; n: PNode) {.inline.} =
   if n.kind == nkHiddenAddr: cowBracket(p, n[0])
 
+template ignoreConv(e: PNode): bool =
+  let destType = e.typ.skipTypes({tyVar, tyLent, tyGenericInst, tyAlias, tySink})
+  let srcType = e[1].typ.skipTypes({tyVar, tyLent, tyGenericInst, tyAlias, tySink})
+  sameBackendTypePickyAliases(destType, srcType)
+
 proc genAddr(p: BProc, e: PNode, d: var TLoc) =
   # careful  'addr(myptrToArray)' needs to get the ampersand:
   if e[0].typ.skipTypes(abstractInstOwned).kind in {tyRef, tyPtr}:
@@ -974,7 +979,11 @@ proc genAddr(p: BProc, e: PNode, d: var TLoc) =
     d.lode = e
   else:
     var a: TLoc = initLocExpr(p, e[0])
-    putIntoDest(p, d, e, addrLoc(p.config, a), a.storage)
+    if e[0].kind in {nkHiddenStdConv, nkHiddenSubConv, nkConv} and not ignoreConv(e[0]):
+      # addr (conv x) introduces a temp because `conv x` is not a rvalue
+      putIntoDest(p, d, e, addrLoc(p.config, expressionsNeedsTmp(p, a)), a.storage)
+    else:
+      putIntoDest(p, d, e, addrLoc(p.config, a), a.storage)
 
 template inheritLocation(d: var TLoc, a: TLoc) =
   if d.k == locNone: d.storage = a.storage
@@ -2637,9 +2646,7 @@ proc genRangeChck(p: BProc, n: PNode, d: var TLoc) =
     putIntoDest(p, d, n, cCast(destType, wrapPar(val)), a.storage)
 
 proc genConv(p: BProc, e: PNode, d: var TLoc) =
-  let destType = e.typ.skipTypes({tyVar, tyLent, tyGenericInst, tyAlias, tySink})
-  let srcType = e[1].typ.skipTypes({tyVar, tyLent, tyGenericInst, tyAlias, tySink})
-  if sameBackendTypeIgnoreRange(destType, srcType):
+  if ignoreConv(e):
     expr(p, e[1], d)
   else:
     genSomeCast(p, e, d)
