@@ -959,7 +959,10 @@ proc transformCall(c: PTransf, n: PNode): PNode =
 
 proc transformBareExcept(c: PTransf, n: PNode): PNode =
   result = newTransNode(nkExceptBranch, n, 1)
-  result[0] = newNodeI(nkStmtList, n[0].info)
+  if isEmptyType(n[0].typ):
+    result[0] = newNodeI(nkStmtList, n[0].info)
+  else:
+    result[0] = newNodeIT(nkStmtListExpr, n[0].info, n[0].typ)
   # Generating `let exc = getCurrentException(); raiseDefect(exc)`
   # -> getCurrentException()
   let excCall = callCodegenProc(c.graph, "getCurrentException")
@@ -977,7 +980,12 @@ proc transformBareExcept(c: PTransf, n: PNode): PNode =
 
   result[0].add letSection
   result[0].add raiseDefectCall
-  result[0].add n[0]
+  if n[0].kind in {nkStmtList, nkStmtListExpr}:
+    # flattens stmtList
+    for son in n[0]:
+      result[0].add son
+  else:
+    result[0].add n[0]
   result[0] = transform(c, result[0])
 
 proc transformExceptBranch(c: PTransf, n: PNode): PNode =
