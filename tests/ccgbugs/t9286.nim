@@ -8,7 +8,7 @@ type Foo  = ref object
 
 proc next(foo: Foo): Option[Foo] =
   try:    doAssert(foo.i == 0)
-  except: return      # 2º: none
+  except Exception: return      # 2º: none
   return some(foo)    # 1º: some
 
 proc test =

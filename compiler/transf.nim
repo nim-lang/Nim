@@ -963,22 +963,8 @@ proc transformBareExcept(c: PTransf, n: PNode): PNode =
     result[0] = newNodeI(nkStmtList, n[0].info)
   else:
     result[0] = newNodeIT(nkStmtListExpr, n[0].info, n[0].typ)
-  # Generating `let exc = getCurrentException(); raiseDefect(exc)`
-  # -> getCurrentException()
-  let excCall = callCodegenProc(c.graph, "getCurrentException")
-  let identDefs = newTransNode(nkIdentDefs, n[0].info, 3)
-  let exc = newTemp(c, excCall.typ, n[0].info)
-  identDefs[0] = exc
-  identDefs[1] = newNodeI(nkEmpty, n.info)
-  identDefs[2] = excCall
-
-  let letSection = newTransNode(nkLetSection, n[0].info, 1)
-  letSection[0] = identDefs
-
-  # -> getCurrentException(exc)
-  let raiseDefectCall = callCodegenProc(c.graph, "raiseDefect", n[0].info, arg1 = exc)
-
-  result[0].add letSection
+  # Generating `raiseDefect()`
+  let raiseDefectCall = callCodegenProc(c.graph, "raiseDefect", n[0].info)
   result[0].add raiseDefectCall
   if n[0].kind in {nkStmtList, nkStmtListExpr}:
     # flattens stmtList

@@ -2312,9 +2312,16 @@ when notJSnotNims and hostOS != "standalone":
     ##
     ## .. warning:: Only use this if you know what you are doing.
     currException = exc
+
+  proc raiseDefect() {.compilerRtl.} =
+    let e = getCurrentException()
+    if e of Defect:
+      reportUnhandledError(e)
+      rawQuit(1)
+
 elif defined(nimscript):
   proc getCurrentException*(): ref Exception {.compilerRtl.} = discard
-  proc raiseDefect*(exc: ref Exception) {.compilerRtl.} = discard
+  proc raiseDefect*() {.compilerRtl.} = discard
 
 when notJSnotNims:
   {.push stackTrace: off, profiler: off.}

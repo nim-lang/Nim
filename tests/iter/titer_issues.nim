@@ -385,6 +385,9 @@ iterator tryFinally() {.closure.} =
     try:
       echo "trying"
       raise
+    except ReraiseDefect:
+      echo "exception caught"
+      break route
     except:
       echo "exception caught"
       break route
