@@ -514,6 +514,10 @@ template suite*(name, body) {.dirty.} =
     finally:
       suiteEnded()
 
+proc exceptionTypeName(e: ref Exception): string {.inline.} =
+  if e == nil: "<foreign exception>"
+  else: $e.name
+
 when not declared(setProgramResult):
   {.warning: "setProgramResult not available on platform, unittest will not" &
     " give failing exit code on test failure".}
@@ -532,7 +536,7 @@ template test*(name, body) {.dirty.} =
   ## The above code outputs:
   ##
   ##     [OK] roses are red
-  bind shouldRun, checkpoints, formatters, ensureInitialized, testEnded, setProgramResult
+  bind shouldRun, checkpoints, formatters, ensureInitialized, testEnded, exceptionTypeName, setProgramResult
 
   ensureInitialized()
 
@@ -554,7 +558,8 @@ template test*(name, body) {.dirty.} =
 
     except Exception:
       let e = getCurrentException()
-      checkpoint("Unhandled exception: " & getCurrentExceptionMsg() & " " & "[" & $e.name & "]")
+      let eTypeDesc = "[" & exceptionTypeName(e) & "]"
+      checkpoint("Unhandled exception: " & getCurrentExceptionMsg() & " " & eTypeDesc)
       var stackTrace {.inject.} = e.getStackTrace()
       fail()
 
