@@ -11,7 +11,7 @@ import
   ast, astalgo, msgs, renderer, magicsys, types, idents, trees,
   wordrecg, options, guards, lineinfos, semfold, semdata,
   modulegraphs, varpartitions, typeallowed, nilcheck, errorhandling,
-  semstrictfuncs, suggestsymdb, pushpoppragmas
+  semstrictfuncs, suggestsymdb, pushpoppragmas, lowerings
 
 import std/[tables, intsets, strutils, sequtils]
 
@@ -1080,6 +1080,13 @@ proc trackCall(tracked: PEffects; n: PNode) =
         let op = getAttachedOp(tracked.graph, t, TTypeAttachedOp(opKind))
         if op != nil:
           n[0].sym = op
+          if TTypeAttachedOp(opKind) == attachedDestructor and
+              op.typ.len == 2 and op.typ.firstParamType.kind != tyVar:
+            if n[1].kind == nkSym and n[1].sym.kind == skParam and
+                n[1].typ.kind == tyVar:
+              n[1] = genDeref(n[1])
+            else:
+              n[1] = skipAddr(n[1])
 
   if op != nil and op.kind == tyProc:
     for i in 1..<min(n.safeLen, op.signatureLen):
