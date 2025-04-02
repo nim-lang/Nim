@@ -1,5 +1,5 @@
 discard """
-  action: run
+  matrix: "--legacy:noPanicOnExcept"
 """
 
 import options
@@ -8,7 +8,7 @@ type Foo  = ref object
 
 proc next(foo: Foo): Option[Foo] =
   try:    doAssert(foo.i == 0)
-  except Exception: return      # 2º: none
+  except: return      # 2º: none
   return some(foo)    # 1º: some
 
 proc test =

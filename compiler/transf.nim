@@ -1002,7 +1002,8 @@ proc transformExceptBranch(c: PTransf, n: PNode): PNode =
     # Replace the `Exception as foobar` with just `Exception`.
     result[0] = transform(c, n[0][1])
     result[1] = actions
-  elif n.len == 1:
+  elif n.len == 1 and
+      noPanicOnExcept notin c.graph.config.legacyFeatures:
     result = transformBareExcept(c, n)
   else:
     result = transformSons(c, n)
