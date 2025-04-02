@@ -49,3 +49,17 @@ proc main() =
   echo s
 
 main()
+
+block:
+  proc foo =
+    var x = "1234"
+    var y = x
+    when nimvm:
+      discard
+    else:
+      var s = x
+      doAssert s == "1234"
+    doAssert y == "1234"
+
+  static: foo()
+  foo()
