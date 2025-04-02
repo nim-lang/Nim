@@ -514,10 +514,6 @@ template suite*(name, body) {.dirty.} =
     finally:
       suiteEnded()
 
-proc exceptionTypeName(e: ref Exception): string {.inline.} =
-  if e == nil: "<foreign exception>"
-  else: $e.name
-
 when not declared(setProgramResult):
   {.warning: "setProgramResult not available on platform, unittest will not" &
     " give failing exit code on test failure".}
@@ -536,7 +532,7 @@ template test*(name, body) {.dirty.} =
   ## The above code outputs:
   ##
   ##     [OK] roses are red
-  bind shouldRun, checkpoints, formatters, ensureInitialized, testEnded, exceptionTypeName, setProgramResult
+  bind shouldRun, checkpoints, formatters, ensureInitialized, testEnded, setProgramResult
 
   ensureInitialized()
 
@@ -556,15 +552,15 @@ template test*(name, body) {.dirty.} =
       body
       {.pop.}
 
-    except:
+    except Exception:
       let e = getCurrentException()
-      let eTypeDesc = "[" & exceptionTypeName(e) & "]"
-      checkpoint("Unhandled exception: " & getCurrentExceptionMsg() & " " & eTypeDesc)
-      if e == nil: # foreign
-        fail()
-      else:
-        var stackTrace {.inject.} = e.getStackTrace()
-        fail()
+      checkpoint("Unhandled exception: " & getCurrentExceptionMsg() & " " & "[" & $e.name & "]")
+      var stackTrace {.inject.} = e.getStackTrace()
+      fail()
+
+    except:
+      checkpoint("Unhandled exception: " & getCurrentExceptionMsg() & " [<foreign exception>]")
+      fail()
 
     finally:
       if testStatusIMPL == TestStatus.FAILED:
@@ -761,20 +757,16 @@ macro expect*(exceptions: varargs[typed], body: untyped): untyped =
       defectiveRobot()
 
   template expectBody(errorTypes, lineInfoLit, body): NimNode {.dirty.} =
-    {.push warning[BareExcept]:off.}
     try:
-      {.push warning[BareExcept]:on.}
       body
-      {.pop.}
       checkpoint(lineInfoLit & ": Expect Failed, no exception was thrown.")
       fail()
     except errorTypes:
       discard
-    except:
+    except Exception:
       let err = getCurrentException()
       checkpoint(lineInfoLit & ": Expect Failed, " & $err.name & " was thrown.")
       fail()
-    {.pop.}
 
   var errorTypes = newNimNode(nnkBracket)
   for exp in exceptions:
