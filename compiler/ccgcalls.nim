@@ -338,7 +338,7 @@ proc withTmpIfNeeded(p: BProc, a: TLoc, needsTmp: bool): TLoc =
   else:
     result = a
 
-proc literalsNeedsTmp(p: BProc, a: TLoc): TLoc =
+proc expressionsNeedsTmp(p: BProc, a: TLoc): TLoc =
   result = getTemp(p, a.lode.typ, needsInit=false)
   genAssignment(p, result, a, {})
 
@@ -358,7 +358,7 @@ proc genArg(p: BProc, n: PNode, param: PSym; call: PNode; result: var Builder; n
     (optByRef notin param.options or not p.module.compileToCpp):
     a = initLocExpr(p, n)
     if n.kind in {nkCharLit..nkNilLit}:
-      addAddrLoc(p.config, literalsNeedsTmp(p, a), result)
+      addAddrLoc(p.config, expressionsNeedsTmp(p, a), result)
     else:
       addAddrLoc(p.config, withTmpIfNeeded(p, a, needsTmp), result)
   elif p.module.compileToCpp and param.typ.kind in {tyVar} and
