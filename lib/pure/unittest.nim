@@ -761,6 +761,14 @@ macro expect*(exceptions: varargs[typed], body: untyped): untyped =
     expect IOError, OSError, ValueError, AssertionDefect:
       defectiveRobot()
 
+  template expectException(errorTypes, lineInfoLit, body): NimNode {.dirty.} =
+    try:
+      body
+      checkpoint(lineInfoLit & ": Expect Failed, no exception was thrown.")
+      fail()
+    except errorTypes:
+      discard
+
   template expectBody(errorTypes, lineInfoLit, body): NimNode {.dirty.} =
     try:
       body
@@ -774,10 +782,16 @@ macro expect*(exceptions: varargs[typed], body: untyped): untyped =
       fail()
 
   var errorTypes = newNimNode(nnkBracket)
+  var hasException = false
   for exp in exceptions:
+    if exp.strVal == "Exception":
+      hasException = true
     errorTypes.add(exp)
 
-  result = getAst(expectBody(errorTypes, errorTypes.lineInfo, body))
+  if hasException:
+    result = getAst(expectException(errorTypes, errorTypes.lineInfo, body))
+  else:
+    result = getAst(expectBody(errorTypes, errorTypes.lineInfo, body))
 
 proc disableParamFiltering* =
   ## disables filtering tests with the command line params
