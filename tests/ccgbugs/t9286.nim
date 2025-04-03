@@ -1,5 +1,5 @@
 discard """
-  action: run
+  matrix: "--legacy:noPanicOnExcept"
 """
 
 import options

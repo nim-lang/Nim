@@ -957,6 +957,23 @@ proc transformCall(c: PTransf, n: PNode): PNode =
     else:
       result = s
 
+proc transformBareExcept(c: PTransf, n: PNode): PNode =
+  result = newTransNode(nkExceptBranch, n, 1)
+  if isEmptyType(n[0].typ):
+    result[0] = newNodeI(nkStmtList, n[0].info)
+  else:
+    result[0] = newNodeIT(nkStmtListExpr, n[0].info, n[0].typ)
+  # Generating `raiseDefect()`
+  let raiseDefectCall = callCodegenProc(c.graph, "raiseDefect", n[0].info)
+  result[0].add raiseDefectCall
+  if n[0].kind in {nkStmtList, nkStmtListExpr}:
+    # flattens stmtList
+    for son in n[0]:
+      result[0].add son
+  else:
+    result[0].add n[0]
+  result[0] = transform(c, result[0])
+
 proc transformExceptBranch(c: PTransf, n: PNode): PNode =
   if n[0].isInfixAs() and not isImportedException(n[0][1].typ, c.graph.config):
     let excTypeNode = n[0][1]
@@ -985,6 +1002,9 @@ proc transformExceptBranch(c: PTransf, n: PNode): PNode =
     # Replace the `Exception as foobar` with just `Exception`.
     result[0] = transform(c, n[0][1])
     result[1] = actions
+  elif n.len == 1 and
+      noPanicOnExcept notin c.graph.config.legacyFeatures:
+    result = transformBareExcept(c, n)
   else:
     result = transformSons(c, n)
 

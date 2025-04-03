@@ -248,6 +248,8 @@ type
       ## Useful for libraries that rely on local passC
     jsNoLambdaLifting
       ## Old transformation for closures in JS backend
+    noPanicOnExcept
+      ## don't panic on bare except
 
   SymbolFilesOption* = enum
     disabledSf, writeOnlySf, readOnlySf, v2Sf, stressTest
