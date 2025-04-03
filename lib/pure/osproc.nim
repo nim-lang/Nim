@@ -1459,13 +1459,15 @@ elif not defined(useNimRtl):
   proc peekableOutputStream(p: Process): Stream =
     streamAccess(p)
     if p.outStream == nil:
-      p.outStream = createStream(p.outHandle, fmRead).newPipeOutStream
+      {.cast(raises: []), cast(tags: []).}:
+        p.outStream = createStream(p.outHandle, fmRead).newPipeOutStream
     return p.outStream
 
   proc peekableErrorStream(p: Process): Stream =
     streamAccess(p)
     if p.errStream == nil:
-      p.errStream = createStream(p.errHandle, fmRead).newPipeOutStream
+      {.cast(raises: []), cast(tags: []).}:
+        p.errStream = createStream(p.errHandle, fmRead).newPipeOutStream
     return p.errStream
 
   proc csystem(cmd: cstring): cint {.nodecl, importc: "system",

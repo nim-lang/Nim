@@ -917,8 +917,7 @@ proc analyseIfAddressTakenInCall(c: PContext, n: PNode, isConverter = false) =
   const
     FakeVarParams = {mNew, mNewFinalize, mInc, ast.mDec, mIncl, mExcl,
       mSetLengthStr, mSetLengthSeq, mAppendStrCh, mAppendStrStr, mSwap,
-      mAppendSeqElem, mNewSeq, mShallowCopy, mDeepCopy, mMove,
-      mWasMoved}
+      mAppendSeqElem, mNewSeq, mShallowCopy, mDeepCopy, mMove}
 
   template checkIfConverterCalled(c: PContext, n: PNode) =
     ## Checks if there is a converter call which wouldn't be checked otherwise

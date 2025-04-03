@@ -16,7 +16,8 @@ when defined(nimPreviewSlimSystem):
 
 import
   options, ast, msgs, idents, renderer,
-  magicsys, vmdef, modulegraphs, lineinfos, pathutils, layeredtable
+  magicsys, vmdef, modulegraphs, lineinfos, pathutils, layeredtable,
+  types, lowerings, trees
 
 import ic / ic
 
@@ -635,3 +636,52 @@ proc rememberExpansion*(c: PContext; info: TLineInfo; expandedSym: PSym) =
   ## delegated to the "rod" file mechanism.
   if c.config.symbolFiles != disabledSf:
     storeExpansion(c.encoder, c.packedRepr, info, expandedSym)
+
+proc replaceHookMagic*(c: PContext, n: PNode, kind: TTypeAttachedOp): PNode =
+  ## Replaces builtin generic hooks with lifted hooks.
+  case kind
+  of attachedDestructor:
+    result = n
+    let t = n[1].typ.skipTypes(abstractVar)
+    let op = getAttachedOp(c.graph, t, attachedDestructor)
+    if op != nil:
+      result[0] = newSymNode(op)
+      if op.typ != nil and op.typ.len == 2 and op.typ.firstParamType.kind != tyVar:
+        if n[1].kind == nkSym and n[1].sym.kind == skParam and
+            n[1].typ.kind == tyVar:
+          result[1] = genDeref(n[1])
+        else:
+          result[1] = skipAddr(n[1])
+  of attachedTrace:
+    result = n
+    let t = n[1].typ.skipTypes(abstractVar)
+    let op = getAttachedOp(c.graph, t, attachedTrace)
+    if op != nil:
+      result[0] = newSymNode(op)
+  of attachedDup:
+    result = n
+    let t = n[1].typ.skipTypes(abstractVar)
+    let op = getAttachedOp(c.graph, t, attachedDup)
+    if op != nil:
+      result[0] = newSymNode(op)
+      if op.typ.len == 3:
+        let boolLit = newIntLit(c.graph, n.info, 1)
+        boolLit.typ() = getSysType(c.graph, n.info, tyBool)
+        result.add boolLit
+  of attachedWasMoved:
+    result = n
+    let t = n[1].typ.skipTypes(abstractVar)
+    let op = getAttachedOp(c.graph, t, attachedWasMoved)
+    if op != nil:
+      result[0] = newSymNode(op)
+      # TODO:
+      # let addrExp = newNodeIT(nkHiddenAddr, result[1].info, makePtrType(c, t))
+      # addrExp.add result[1]
+      # result[1] = addrExp
+  of attachedSink, attachedAsgn, attachedDeepCopy:
+    # TODO: `nkSinkAsgn`, `nkAsgn`
+    result = n
+    let t = n[1].typ.skipTypes(abstractVar)
+    let op = getAttachedOp(c.graph, t, kind)
+    if op != nil:
+      result[0] = newSymNode(op)
