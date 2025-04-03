@@ -35,9 +35,9 @@ proc test_arrayboundscheck() =
       let idx = indices[i]
       try:
         echo months[idx]
-      except:
+      except IndexDefect:
         echo "month out of bounds: ", idx
-    except:
+    except IndexDefect:
       echo "idx out of bounds: ", i
   
   # #13966

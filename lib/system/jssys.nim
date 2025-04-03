@@ -154,6 +154,16 @@ proc raiseException(e: ref Exception, ename: cstring) {.
     e.trace = rawWriteStackTrace()
   {.emit: "throw `e`;".}
 
+proc raiseDefect() {.compilerproc, asmNoStackFrame.} =
+  if isNimException():
+    let e = getCurrentException()
+    if e of Defect:
+      if excHandler == 0:
+        unhandledException(e)
+      when NimStackTrace:
+        e.trace = rawWriteStackTrace()
+      {.emit: "throw `e`;".}
+
 proc reraiseException() {.compilerproc, asmNoStackFrame.} =
   if lastJSError == nil:
     raise newException(ReraiseDefect, "no exception to reraise")
