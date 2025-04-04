@@ -331,8 +331,8 @@ func cfgIdentNormalize*(s: string): string {.rtl, extern: "nsuNormalize".} =
       inc j
   if j != s.len: setLen(result, j)
 
-func normalize*(s: string): string {.depreciated.} =
-  cfgIdentNormalize(s)
+#func normalize*(s: string): string {.deprecated.} =
+#  cfgIdentNormalize(s)
 
 func cmpIgnoreCase*(a, b: string): int {.rtl, extern: "nsuCmpIgnoreCase".} =
   ## Compares two strings in a case insensitive manner. Returns:
