@@ -132,7 +132,7 @@ proc parseDirective(L: var Lexer, tok: var Token; config: ConfigRef; condStack: 
                                 {useEnvironment, useKey}))
     ppGetTok(L, tok)
   else:
-    case tok.ident.s.normalize
+    case tok.ident.s.cfgIdentNormalize
     of "putenv":
       ppGetTok(L, tok)
       var key = $tok

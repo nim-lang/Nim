@@ -232,7 +232,7 @@ func toLowerAscii*(s: string): string {.rtl, extern: "nsuToLowerAsciiStr".} =
   ## character.
   ##
   ## See also:
-  ## * `normalize func<#normalize,string>`_
+  ## * `cfgIdentNormalize func<#cfgIdentNormalize,string>`_
   runnableExamples:
     doAssert toLowerAscii("FooBar!") == "foobar!"
   toImpl toLowerAscii
@@ -309,7 +309,7 @@ func nimIdentNormalize*(s: string): string =
       inc j
   if j != s.len: setLen(result, j)
 
-func normalize*(s: string): string {.rtl, extern: "nsuNormalize".} =
+func cfgIdentNormalize*(s: string): string {.rtl, extern: "nsuNormalize".} =
   ## Normalizes the string `s`.
   ##
   ## That means to convert it to lower case and remove any '_'. This
@@ -318,8 +318,8 @@ func normalize*(s: string): string {.rtl, extern: "nsuNormalize".} =
   ## See also:
   ## * `toLowerAscii func<#toLowerAscii,string>`_
   runnableExamples:
-    doAssert normalize("Foo_bar") == "foobar"
-    doAssert normalize("Foo Bar") == "foo bar"
+    doAssert cfgIdentNormalize("Foo_bar") == "foobar"
+    doAssert cfgIdentNormalize("Foo Bar") == "foo bar"
   result = newString(s.len)
   var j = 0
   for i in 0..len(s) - 1:
@@ -330,6 +330,9 @@ func normalize*(s: string): string {.rtl, extern: "nsuNormalize".} =
       result[j] = s[i]
       inc j
   if j != s.len: setLen(result, j)
+
+func normalize*(s: string): string {.depreciated.} =
+  cfgIdentNormalize(s)
 
 func cmpIgnoreCase*(a, b: string): int {.rtl, extern: "nsuCmpIgnoreCase".} =
   ## Compares two strings in a case insensitive manner. Returns:
@@ -347,7 +350,7 @@ func cmpIgnoreCase*(a, b: string): int {.rtl, extern: "nsuCmpIgnoreCase".} =
                                       # thus we compile without checks here
 
 func cmpIgnoreStyle*(a, b: string): int {.rtl, extern: "nsuCmpIgnoreStyle".} =
-  ## Semantically the same as `cmp(normalize(a), normalize(b))`. It
+  ## Semantically the same as `cmp(cfgIdentNormalize(a), cfgIdentNormalize(b))`. It
   ## is just optimized to not allocate temporary strings. This should
   ## NOT be used to compare Nim identifier names.
   ## Use `macros.eqIdent<macros.html#eqIdent,string,string>`_ for that.
@@ -1297,7 +1300,7 @@ func parseBool*(s: string): bool =
     let a = "n"
     doAssert parseBool(a) == false
 
-  case normalize(s)
+  case toLowerAscii(s)
   of "y", "yes", "true", "1", "on": result = true
   of "n", "no", "false", "0", "off": result = false
   else: raise newException(ValueError, "cannot interpret as a bool: " & s)
@@ -2818,7 +2821,7 @@ func formatEng*(f: BiggestFloat,
     result &= "e" & $exponent
   result &= suffix
 
-func findNormalized(x: string, inArray: openArray[string]): int =
+func findIngoreStyle(x: string, inArray: openArray[string]): int =
   var i = 0
   while i < high(inArray):
     if cmpIgnoreStyle(x, inArray[i]) == 0: return i
@@ -2875,14 +2878,14 @@ func addf*(s: var string, formatstr: string, a: varargs[string, `$`]) {.rtl,
           if idx < 0 or idx > a.high: invalidFormatString(formatstr)
           add s, a[idx]
         else:
-          var x = findNormalized(substr(formatstr, i+2, j-1), a)
+          var x = findIngoreStyle(substr(formatstr, i+2, j-1), a)
           if x >= 0 and x < high(a): add s, a[x+1]
           else: invalidFormatString(formatstr)
         i = j+1
       of 'a'..'z', 'A'..'Z', '\128'..'\255', '_':
         var j = i+1
         while j < formatstr.len and formatstr[j] in PatternChars: inc(j)
-        var x = findNormalized(substr(formatstr, i+1, j-1), a)
+        var x = findIngoreStyle(substr(formatstr, i+1, j-1), a)
         if x >= 0 and x < high(a): add s, a[x+1]
         else: invalidFormatString(formatstr)
         i = j

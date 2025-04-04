@@ -550,7 +550,7 @@ proc isOpImpl(c: PContext, n: PNode, flags: TExprFlags): PNode =
     t1 = t1.base
 
   if n[2].kind in {nkStrLit..nkTripleStrLit}:
-    case n[2].strVal.normalize
+    case n[2].strVal.toLowerAscii
     of "closure":
       let t = skipTypes(t1, abstractRange)
       res = t.kind == tyProc and

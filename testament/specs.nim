@@ -125,7 +125,7 @@ proc defaultOptions*(a: TTarget): string =
 when not declared(parseCfgBool):
   # candidate for the stdlib:
   proc parseCfgBool(s: string): bool =
-    case normalize(s)
+    case toLowerAscii(s)
     of "y", "yes", "true", "1", "on": result = true
     of "n", "no", "false", "0", "off": result = false
     else: raise newException(ValueError, "cannot interpret as a bool: " & s)
@@ -300,7 +300,7 @@ proc extractSpec(filename: string; spec: var TSpec): string =
 
 proc parseTargets*(value: string): set[TTarget] =
   result = default(set[TTarget])
-  for v in value.normalize.splitWhitespace:
+  for v in value.cfgIdentNormalize.splitWhitespace:
     case v
     of "c": result.incl(targetC)
     of "cpp", "c++": result.incl(targetCpp)
@@ -329,7 +329,7 @@ proc parseSpec*(filename: string): TSpec =
     var e = next(p)
     case e.kind
     of cfgKeyValuePair:
-      let key = e.key.normalize
+      let key = e.key.cfgIdentNormalize
       const whiteListMulti = ["disabled", "ccodecheck"]
         ## list of flags that are correctly handled when passed multiple times
         ## (instead of being overwritten)
@@ -338,7 +338,7 @@ proc parseSpec*(filename: string): TSpec =
       flags.incl key
       case key
       of "action":
-        case e.value.normalize
+        case e.value.cfgIdentNormalize
         of "compile":
           result.action = actionCompile
         of "run":
@@ -390,7 +390,7 @@ proc parseSpec*(filename: string): TSpec =
         result.unjoinable = not parseCfgBool(e.value)
       of "valgrind":
         when defined(linux) and sizeof(int) == 8:
-          result.useValgrind = if e.value.normalize == "leaks": leaking
+          result.useValgrind = if e.value.cfgIdentNormalize == "leaks": leaking
                                else: ValgrindSpec(parseCfgBool(e.value))
           result.unjoinable = true
           if result.useValgrind != disabled:
@@ -400,7 +400,7 @@ proc parseSpec*(filename: string): TSpec =
           # Valgrind only supports OSX <= 17.x
           result.useValgrind = disabled
       of "disabled":
-        let value = e.value.normalize
+        let value = e.value.cfgIdentNormalize
         case value
         of "y", "yes", "true", "1", "on": result.err = reDisabled
         of "n", "no", "false", "0", "off": discard
@@ -442,9 +442,9 @@ proc parseSpec*(filename: string): TSpec =
           block checkHost:
             for os in platform.OS:
               # Check if the value exists as OS.
-              if value == os.name.normalize:
+              if value == os.name.cfgIdentNormalize:
                 # The value exists; is it the same as the current host?
-                if value == hostOS.normalize:
+                if value == hostOS.cfgIdentNormalize:
                   # The value exists and is the same as the current host,
                   # so disable the test.
                   result.err = reDisabled
@@ -453,9 +453,9 @@ proc parseSpec*(filename: string): TSpec =
                 break checkHost
             for cpu in platform.CPU:
               # Check if the value exists as CPU.
-              if value == cpu.name.normalize:
+              if value == cpu.name.cfgIdentNormalize:
                 # The value exists; is it the same as the current host?
-                if value == hostCPU.normalize:
+                if value == hostCPU.cfgIdentNormalize:
                   # The value exists and is the same as the current host,
                   # so disable the test.
                   result.err = reDisabled

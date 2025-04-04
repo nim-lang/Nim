@@ -716,7 +716,7 @@ when isMainModule:
     op.next()
     case op.kind
     of cmdLongOption, cmdShortOption:
-      case normalize(op.key)
+      case cfgIdentNormalize(op.key)
       of "help", "h": showHelp(success = true)
       of "latest": latest = true
       of "stable": latest = false
@@ -729,7 +729,7 @@ when isMainModule:
         skipIntegrityCheck = true
       else: showHelp(success = false)
     of cmdArgument:
-      case normalize(op.key)
+      case cfgIdentNormalize(op.key)
       of "boot": boot(op.cmdLineRest, skipIntegrityCheck)
       of "clean": clean(op.cmdLineRest)
       of "doc", "docs": buildDocs(op.cmdLineRest & " --d:nimPreviewSlimSystem " & paCode, localDocsOnly, localDocsOut)

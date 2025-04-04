@@ -633,7 +633,7 @@ proc isDefined*(conf: ConfigRef; symbol: string): bool =
   elif cmpIgnoreStyle(symbol, platform.OS[conf.target.targetOS].name) == 0:
     result = true
   else:
-    case symbol.normalize
+    case symbol.cfgIdentNormalize
     of "x86": result = conf.target.targetCPU == cpuI386
     of "itanium": result = conf.target.targetCPU == cpuIa64
     of "x8664": result = conf.target.targetCPU == cpuAmd64

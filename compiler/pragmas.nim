@@ -462,7 +462,7 @@ proc tryProcessOption(c: PContext, n: PNode, resOptions: var TOptions): bool =
         if n[1].kind != nkIdent:
           invalidPragma(c, n)
         else:
-          case n[1].ident.s.normalize
+          case n[1].ident.s.toLowerAscii
           of "speed":
             incl(resOptions, optOptimizeSpeed)
             excl(resOptions, optOptimizeSize)

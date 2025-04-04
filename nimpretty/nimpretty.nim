@@ -142,7 +142,7 @@ proc main =
         infiles.add(key.addFileExt(".nim"))
 
     of cmdLongOption, cmdShortOption:
-      case normalize(key)
+      case cfgIdentNormalize(key)
       of "help", "h": writeHelp()
       of "version", "v": writeVersion()
       of "backup": backup = parseBool(val)

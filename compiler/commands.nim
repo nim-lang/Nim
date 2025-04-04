@@ -144,7 +144,7 @@ proc splitSwitch(conf: ConfigRef; switch: string, cmd, arg: var string, pass: TC
 
 template switchOn(arg: string): bool =
   # xxx use `switchOn` wherever appropriate
-  case arg.normalize
+  case arg.cfgIdentNormalize
   of "", "on": true
   of "off": false
   else:
@@ -153,7 +153,7 @@ template switchOn(arg: string): bool =
 
 proc processOnOffSwitch(conf: ConfigRef; op: TOptions, arg: string, pass: TCmdLinePass,
                         info: TLineInfo) =
-  case arg.normalize
+  case arg.cfgIdentNormalize
   of "", "on": conf.options.incl op
   of "off": conf.options.excl op
   else: localError(conf, info, errOnOrOffExpectedButXFound % arg)
@@ -161,7 +161,7 @@ proc processOnOffSwitch(conf: ConfigRef; op: TOptions, arg: string, pass: TCmdLi
 proc processOnOffSwitchOrList(conf: ConfigRef; op: TOptions, arg: string, pass: TCmdLinePass,
                               info: TLineInfo): bool =
   result = false
-  case arg.normalize
+  case arg.cfgIdentNormalize
   of "on": conf.options.incl op
   of "off": conf.options.excl op
   of "list": result = true
@@ -169,7 +169,7 @@ proc processOnOffSwitchOrList(conf: ConfigRef; op: TOptions, arg: string, pass: 
 
 proc processOnOffSwitchG(conf: ConfigRef; op: TGlobalOptions, arg: string, pass: TCmdLinePass,
                          info: TLineInfo) =
-  case arg.normalize
+  case arg.cfgIdentNormalize
   of "", "on": conf.globalOptions.incl op
   of "off": conf.globalOptions.excl op
   else: localError(conf, info, errOnOrOffExpectedButXFound % arg)
@@ -213,12 +213,12 @@ proc processSpecificNote*(arg: string, state: TSpecialWord, pass: TCmdLinePass,
         message(conf, info, warnUnknownNotes, "unknown $#: $#" % [name, id])
       else:
         localError(conf, info, "unknown $#: $#" % [name, id])
-  case id.normalize
+  case id.cfgIdentNormalize
   of "all": # other note groups would be easy to support via additional cases
     notes = if isSomeHint: {hintMin..hintMax} else: {warnMin..warnMax}
   elif isSomeHint: findNote(hintMin, hintMax, "hint")
   else: findNote(warnMin, warnMax, "warning")
-  var val = substr(arg, i).normalize
+  var val = substr(arg, i).cfgIdentNormalize
   if val == "": val = "on"
   if val notin ["on", "off"]:
     # xxx in future work we should also allow users to have control over `foreignPackageNotes`
@@ -226,7 +226,7 @@ proc processSpecificNote*(arg: string, state: TSpecialWord, pass: TCmdLinePass,
     localError(conf, info, errOnOrOffExpectedButXFound % arg)
   else:
     let isOn = val == "on"
-    if isOn and id.normalize == "all":
+    if isOn and id.cfgIdentNormalize == "all":
       localError(conf, info, "only 'all:off' is supported")
     for n in notes:
       if n notin conf.cmdlineNotes or pass == passCmd1:
@@ -258,9 +258,9 @@ template deprecatedAlias(oldName, newName: string) =
   warningDeprecated(conf, info, "'$#' is a deprecated alias for '$#'" % [oldName, newName])
 
 proc testCompileOptionArg*(conf: ConfigRef; switch, arg: string, info: TLineInfo): bool =
-  case switch.normalize
+  case switch.cfgIdentNormalize
   of "gc", "mm":
-    case arg.normalize
+    case arg.cfgIdentNormalize
     of "boehm": result = conf.selectedGC == gcBoehm
     of "refc": result = conf.selectedGC == gcRefc
     of "markandsweep": result = conf.selectedGC == gcMarkAndSweep
@@ -275,7 +275,7 @@ proc testCompileOptionArg*(conf: ConfigRef; switch, arg: string, info: TLineInfo
       result = false
       localError(conf, info, errNoneBoehmRefcExpectedButXFound % arg)
   of "opt":
-    case arg.normalize
+    case arg.cfgIdentNormalize
     of "speed": result = contains(conf.options, optOptimizeSpeed)
     of "size": result = contains(conf.options, optOptimizeSize)
     of "none": result = conf.options * {optOptimizeSpeed, optOptimizeSize} == {}
@@ -284,7 +284,7 @@ proc testCompileOptionArg*(conf: ConfigRef; switch, arg: string, info: TLineInfo
       localError(conf, info, errNoneSpeedOrSizeExpectedButXFound % arg)
   of "verbosity": result = $conf.verbosity == arg
   of "app":
-    case arg.normalize
+    case arg.cfgIdentNormalize
     of "gui": result = contains(conf.globalOptions, optGenGuiApp)
     of "console": result = not contains(conf.globalOptions, optGenGuiApp)
     of "lib": result = contains(conf.globalOptions, optGenDynLib) and
@@ -297,7 +297,7 @@ proc testCompileOptionArg*(conf: ConfigRef; switch, arg: string, info: TLineInfo
   of "dynliboverride":
     result = isDynlibOverride(conf, arg)
   of "exceptions":
-    case arg.normalize
+    case arg.cfgIdentNormalize
     of "cpp": result = conf.exc == excCpp
     of "setjmp": result = conf.exc == excSetjmp
     of "quirky": result = conf.exc == excQuirky
@@ -316,7 +316,7 @@ proc testCompileOptionArg*(conf: ConfigRef; switch, arg: string, info: TLineInfo
     invalidCmdLineOption(conf, passCmd1, switch, info)
 
 proc testCompileOption*(conf: ConfigRef; switch: string, info: TLineInfo): bool =
-  case switch.normalize
+  case switch.cfgIdentNormalize
   of "debuginfo": result = contains(conf.globalOptions, optCDebug)
   of "compileonly", "c": result = contains(conf.globalOptions, optCompileOnly)
   of "nolinking": result = contains(conf.globalOptions, optNoLinking)
@@ -356,7 +356,7 @@ proc testCompileOption*(conf: ConfigRef; switch: string, info: TLineInfo): bool 
   of "tlsemulation": result = contains(conf.globalOptions, optTlsEmulation)
   of "implicitstatic": result = contains(conf.options, optImplicitStatic)
   of "patterns", "trmacros":
-    if switch.normalize == "patterns": deprecatedAlias(switch, "trmacros")
+    if switch.cfgIdentNormalize == "patterns": deprecatedAlias(switch, "trmacros")
     result = contains(conf.options, optTrMacros)
   of "excessivestacktrace": result = contains(conf.globalOptions, optExcessiveStackTrace)
   of "nilseqs", "nilchecks", "taintmode":
@@ -468,7 +468,7 @@ proc handleCmdInput*(conf: ConfigRef) =
   handleStdinOrCmdInput()
 
 proc parseCommand*(command: string): Command =
-  case command.normalize
+  case command.cfgIdentNormalize
   of "c", "cc", "compile", "compiletoc": cmdCompileToC
   of "cpp", "compiletocpp": cmdCompileToCpp
   of "objc", "compiletooc": cmdCompileToOC
@@ -572,7 +572,7 @@ proc processMemoryManagementOption(switch, arg: string, pass: TCmdLinePass,
   if conf.backend == backendJs: return # for: bug #16033
   expectArg(conf, switch, arg, pass, info)
   if pass in {passCmd2, passPP}:
-    case arg.normalize
+    case arg.cfgIdentNormalize
     of "boehm":
       unregisterArcOrc(conf)
       conf.selectedGC = gcBoehm
@@ -630,7 +630,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
                     conf: ConfigRef) =
   var key = ""
   var val = ""
-  case switch.normalize
+  case switch.cfgIdentNormalize
   of "eval":
     expectArg(conf, switch, arg, pass, info)
     conf.projectIsCmd = true
@@ -688,7 +688,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "docroot":
     conf.docRoot = if arg.len == 0: docRootDefault else: arg
   of "backend", "b":
-    let backend = parseEnum(arg.normalize, TBackend.default)
+    let backend = parseEnum(arg.cfgIdentNormalize, TBackend.default)
     if backend == TBackend.default: localError(conf, info, "invalid backend: '$1'" % arg)
     if backend == backendJs: # bug #21209
       conf.globalOptions.excl {optThreadAnalysis, optThreads}
@@ -751,7 +751,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "excessivestacktrace": processOnOffSwitchG(conf, {optExcessiveStackTrace}, arg, pass, info)
   of "linetrace": processOnOffSwitch(conf, {optLineTrace}, arg, pass, info)
   of "debugger":
-    case arg.normalize
+    case arg.cfgIdentNormalize
     of "on", "native", "gdb":
       conf.globalOptions.incl optCDebug
       conf.options.incl optLineDir
@@ -812,11 +812,11 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "implicitstatic":
     processOnOffSwitch(conf, {optImplicitStatic}, arg, pass, info)
   of "patterns", "trmacros":
-    if switch.normalize == "patterns": deprecatedAlias(switch, "trmacros")
+    if switch.cfgIdentNormalize == "patterns": deprecatedAlias(switch, "trmacros")
     processOnOffSwitch(conf, {optTrMacros}, arg, pass, info)
   of "opt":
     expectArg(conf, switch, arg, pass, info)
-    case arg.normalize
+    case arg.cfgIdentNormalize
     of "speed":
       incl(conf.options, optOptimizeSpeed)
       excl(conf.options, optOptimizeSize)
@@ -829,7 +829,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     else: localError(conf, info, errNoneSpeedOrSizeExpectedButXFound % arg)
   of "app":
     expectArg(conf, switch, arg, pass, info)
-    case arg.normalize
+    case arg.cfgIdentNormalize
     of "gui":
       incl(conf.globalOptions, optGenGuiApp)
       defineSymbol(conf.symbols, "executable")
@@ -872,7 +872,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "nimbasepattern":
     if conf != nil: conf.nimbasePattern = arg
   of "index":
-    case arg.normalize
+    case arg.cfgIdentNormalize
     of "", "on": conf.globalOptions.incl {optGenIndex}
     of "only": conf.globalOptions.incl {optGenIndexOnly, optGenIndex}
     of "off": conf.globalOptions.excl {optGenIndex, optGenIndexOnly}
@@ -964,10 +964,10 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     expectNoArg(conf, switch, arg, pass, info)
     helpOnError(conf, pass)
   of "symbolfiles", "incremental", "ic":
-    if switch.normalize == "symbolfiles": deprecatedAlias(switch, "incremental")
+    if switch.cfgIdentNormalize == "symbolfiles": deprecatedAlias(switch, "incremental")
       # xxx maybe also ic, since not in help?
     if pass in {passCmd2, passPP}:
-      case arg.normalize
+      case arg.cfgIdentNormalize
       of "on": conf.symbolFiles = v2Sf
       of "off": conf.symbolFiles = disabledSf
       of "writeonly": conf.symbolFiles = writeOnlySf
@@ -985,7 +985,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "skipparentcfg":
     processOnOffSwitchG(conf, {optSkipParentConfigFiles}, arg, pass, info)
   of "genscript", "gendeps":
-    if switch.normalize == "gendeps": deprecatedAlias(switch, "genscript")
+    if switch.cfgIdentNormalize == "gendeps": deprecatedAlias(switch, "genscript")
     processOnOffSwitchG(conf, {optGenScript}, arg, pass, info)
     processOnOffSwitchG(conf, {optCompileOnly}, arg, pass, info)
   of "gencdeps":
@@ -1026,7 +1026,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "stdout":
     processOnOffSwitchG(conf, {optStdout}, arg, pass, info)
   of "filenames":
-    case arg.normalize
+    case arg.cfgIdentNormalize
     of "abs": conf.filenameOption = foAbs
     of "canonical": conf.filenameOption = foCanonical
     of "legacyrelproj": conf.filenameOption = foLegacyRelProj
@@ -1034,7 +1034,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "processing":
     incl(conf.notes, hintProcessing)
     incl(conf.mainPackageNotes, hintProcessing)
-    case arg.normalize
+    case arg.cfgIdentNormalize
     of "dots": conf.hintProcessingDots = true
     of "filenames": conf.hintProcessingDots = false
     of "off":
@@ -1077,7 +1077,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     expectNoArg(conf, switch, arg, pass, info)
     showNonExportedFields(conf)
   of "exceptions":
-    case arg.normalize
+    case arg.cfgIdentNormalize
     of "cpp": conf.exc = excCpp
     of "setjmp": conf.exc = excSetjmp
     of "quirky": conf.exc = excQuirky
@@ -1106,7 +1106,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     if pass in {passCmd2, passPP}:
       defineSymbol(conf.symbols, "nimSeqsV2")
   of "stylecheck":
-    case arg.normalize
+    case arg.cfgIdentNormalize
     of "off": conf.globalOptions = conf.globalOptions - {optStyleHint, optStyleError}
     of "hint": conf.globalOptions = conf.globalOptions + {optStyleHint} - {optStyleError}
     of "error": conf.globalOptions = conf.globalOptions + {optStyleError}

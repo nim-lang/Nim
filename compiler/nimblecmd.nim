@@ -50,12 +50,12 @@ proc `<`*(ver: Version, ver2: Version): bool =
   result = false
   # Handling for special versions such as "#head" or "#branch".
   if ver.isSpecial or ver2.isSpecial:
-    if ver2.isSpecial and ($ver2).normalize == "#head":
-      return ($ver).normalize != "#head"
+    if ver2.isSpecial and ($ver2).toLowerAscii == "#head":
+      return ($ver).toLowerAscii != "#head"
 
     if not ver2.isSpecial:
       # `#aa111 < 1.1`
-      return ($ver).normalize != "#head"
+      return ($ver).toLowerAscii != "#head"
 
   # Handling for normal versions such as "0.1.0" or "1.0".
   var sVer = string(ver).split('.')

@@ -71,7 +71,7 @@ when defined(windows):
       return true
     while true:
       try:
-        let answer = stdin.readLine().normalize
+        let answer = stdin.readLine().toLowerAscii
         case answer
         of "y", "yes":
           return true

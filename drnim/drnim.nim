@@ -1229,7 +1229,7 @@ proc processCmdLine(pass: TCmdLinePass, cmd: string; config: ConfigRef) =
         p.key = "-"
         if processArgument(pass, p, argsCount, config): break
       else:
-        case p.key.normalize
+        case p.key.cfgIdentNormalize
         of "assumeunique":
           assumeUniqueness = true
         else:

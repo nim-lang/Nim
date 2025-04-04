@@ -513,7 +513,7 @@ proc execCmd(cmd: string; graph: ModuleGraph; cachedMsgs: CachedMsgs) =
 
   var opc = ""
   var i = parseIdent(cmd, opc, 0)
-  case opc.normalize
+  case opc.cfgIdentNormalize
   of "sug": conf.ideCmd = ideSug
   of "con": conf.ideCmd = ideCon
   of "def": conf.ideCmd = ideDef
@@ -675,7 +675,7 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string; conf: ConfigRef) =
     case p.kind
     of cmdEnd: break
     of cmdLongOption, cmdShortOption:
-      case p.key.normalize
+      case p.key.cfgIdentNormalize
       of "help", "h":
         stdout.writeLine(Usage)
         quit()
@@ -706,7 +706,7 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string; conf: ConfigRef) =
       of "v3": conf.suggestVersion = 3
       of "v4": conf.suggestVersion = 4
       of "info":
-        case p.val.normalize
+        case p.val.cfgIdentNormalize
         of "protocolver":
           stdout.writeLine(HighestSuggestProtocolVersion)
           quit 0
@@ -719,7 +719,7 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string; conf: ConfigRef) =
         else:
           processSwitch(pass, p, conf)
       of "exceptioninlayhints":
-        case p.val.normalize
+        case p.val.cfgIdentNormalize
         of "", "on": incl(conf.globalOptions, optIdeExceptionInlayHints)
         of "off": excl(conf.globalOptions, optIdeExceptionInlayHints)
         else: processSwitch(pass, p, conf)

@@ -166,7 +166,7 @@ proc ask(msg: string): string =
 
 proc confirm: TConfirmEnum =
   while true:
-    case normalize(ask("     [a]bort; [y]es, a[l]l, [n]o, non[e]: "))
+    case toLowerAscii(ask("     [a]bort; [y]es, a[l]l, [n]o, non[e]: "))
     of "a", "abort": return ceAbort
     of "y", "yes": return ceYes
     of "l", "all": return ceAll
@@ -1263,7 +1263,7 @@ for kind, key, val in getopt():
         reportError("empty string given for option --" & key &
                     " (did you forget `:`?)")
       s.add name
-    case normalize(key)
+    case cfgIdentNormalize(key)
     of "find", "f": incl(options, optFind)
     of "replace", "!": incl(options, optReplace)
     of "peg":
@@ -1327,7 +1327,7 @@ for kind, key, val in getopt():
     of "text", "t": searchOpt.checkBin = biOff
     of "count": incl(options, optCount)
     of "sorttime", "sort-time", "s":
-      case normalize(val)
+      case toLowerAscii(val)
       of "off": sortTime = false
       of "", "on", "asc", "ascending":
         sortTime = true
@@ -1344,7 +1344,7 @@ for kind, key, val in getopt():
       of "", "on", "always", "true": useWriteStyled = true
       else: reportError("invalid value '" & val & "' for --color")
     of "colortheme", "color-theme":
-      colortheme = normalize(val)
+      colortheme = cfgIdentNormalize(val)
       if colortheme notin ["simple", "bnw", "ack", "gnu"]:
         reportError("unknown colortheme '" & val & "'")
     of "beforecontext", "before-context", "b":
