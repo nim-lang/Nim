@@ -17,14 +17,14 @@ import
   ast, astalgo, msgs, renderer, magicsys, types, idents,
   options, lowerings, modulegraphs,
   lineinfos, parampatterns, sighashes, liftdestructors, optimizer,
-  varpartitions, aliasanalysis, dfa, wordrecg, trees
+  varpartitions, aliasanalysis, dfa, wordrecg
 
 import std/[strtabs, tables, strutils, intsets]
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
-from trees import exprStructuralEquivalent, getRoot, whichPragma
+from trees import exprStructuralEquivalent, getRoot, whichPragma, getPotentialWrites
 
 type
   Con = object

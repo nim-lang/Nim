@@ -244,14 +244,6 @@ proc effectProblem(f, a: PType; result: var string; c: PContext) =
         if not c.graph.compatibleProps(c.graph, f, a):
           result.add "\n  The `.requires` or `.ensures` properties are incompatible."
 
-proc renderNotLValue(n: PNode): string =
-  result = $n
-  let n = if n.kind == nkHiddenDeref: n[0] else: n
-  if n.kind == nkHiddenCallConv and n.len > 1:
-    result = $n[0] & "(" & result & ")"
-  elif n.kind in {nkHiddenStdConv, nkHiddenSubConv} and n.len == 2:
-    result = typeToString(n.typ.skipTypes(abstractVar)) & "(" & result & ")"
-
 proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
                             (TPreferedDesc, string) =
   var prefer = preferName

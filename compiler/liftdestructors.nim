@@ -157,7 +157,7 @@ proc genWasMovedCall(c: var TLiftCtx; op: PSym; x: PNode): PNode =
   result = newNodeIT(nkCall, x.info, op.typ.returnType)
   result.add(newSymNode(op))
   result.add x
-  # result.add genAddr(c, x)
+  result.add genAddr(c, x)
 
 proc fillBodyObj(c: var TLiftCtx; n, body, x, y: PNode; enforceDefaultOp: bool, enforceWasMoved = false) =
   case n.kind
