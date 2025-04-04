@@ -172,7 +172,7 @@ proc parseCmdLine(c: var ConfigData) =
     case kind
     of cmdArgument:
       if c.actions == {}:
-        for a in split(cfgIdentNormalize(key), {';', ','}):
+        for a in split(normalizeStyle(key), {';', ','}):
           case a
           of "csource": incl(c.actions, actionCSource)
           of "scripts": incl(c.actions, actionScripts)
@@ -314,14 +314,14 @@ proc parseIniFile(c: var ConfigData) =
       case k.kind
       of cfgEof: break
       of cfgSectionStart:
-        section = cfgIdentNormalize(k.section)
+        section = normalizeStyle(k.section)
       of cfgKeyValuePair:
         var v = `%`(k.value, c.vars, {useEnvironment, useEmpty})
         c.vars[k.key] = v
 
         case section
         of "project":
-          case cfgIdentNormalize(k.key)
+          case normalizeStyle(k.key)
           of "name": c.name = v
           of "displayname": c.displayName = v
           of "version": c.version = v
@@ -343,7 +343,7 @@ proc parseIniFile(c: var ConfigData) =
           of "authors": c.authors = split(v, {';'})
           of "description": c.description = v
           of "app":
-            case cfgIdentNormalize(v)
+            case normalizeStyle(v)
             of "console": c.app = appConsole
             of "gui": c.app = appGUI
             else: quit(errorStr(p, "expected: console or gui"))
@@ -354,21 +354,21 @@ proc parseIniFile(c: var ConfigData) =
         of "config": filesOnly(p, k.key, v, c.cat[fcConfig])
         of "data": filesOnly(p, k.key, v, c.cat[fcData])
         of "documentation":
-          case cfgIdentNormalize(k.key)
+          case normalizeStyle(k.key)
           of "files": addFiles(c.cat[fcDoc], split(v, {';'}))
           of "start": addFiles(c.cat[fcDocStart], split(v, {';'}))
           else: quit(errorStr(p, "unknown variable: " & k.key))
         of "lib": filesOnly(p, k.key, v, c.cat[fcLib])
         of "other": filesOnly(p, k.key, v, c.cat[fcOther])
         of "windows":
-          case cfgIdentNormalize(k.key)
+          case normalizeStyle(k.key)
           of "files": addFiles(c.cat[fcWindows], split(v, {';'}))
           of "binpath": c.binPaths = split(v, {';'})
           of "innosetup": c.innoSetupFlag = yesno(p, v)
           of "download": c.downloads.add(v)
           else: quit(errorStr(p, "unknown variable: " & k.key))
         of "unix":
-          case cfgIdentNormalize(k.key)
+          case normalizeStyle(k.key)
           of "files": addFiles(c.cat[fcUnix], split(v, {';'}))
           of "installscript": c.installScript = yesno(p, v)
           of "uninstallscript": c.uninstallScript = yesno(p, v)
@@ -379,7 +379,7 @@ proc parseIniFile(c: var ConfigData) =
         of "ccompiler": pathFlags(p, k.key, v, c.ccompiler)
         of "linker": pathFlags(p, k.key, v, c.linker)
         of "deb":
-          case cfgIdentNormalize(k.key)
+          case normalizeStyle(k.key)
           of "builddepends":
             c.debOpts.buildDepends = v
           of "packagedepends", "pkgdepends":
@@ -409,7 +409,7 @@ proc parseIniFile(c: var ConfigData) =
               inc(i)
           else: quit(errorStr(p, "unknown variable: " & k.key))
         of "nimble":
-          case cfgIdentNormalize(k.key)
+          case normalizeStyle(k.key)
           of "pkgname":
             c.nimblePkgName = v
           of "pkgfiles":
@@ -441,7 +441,7 @@ proc readCFiles(c: var ConfigData, osA, cpuA: int) =
       case k.kind
       of cfgEof: break
       of cfgSectionStart:
-        section = cfgIdentNormalize(k.section)
+        section = normalizeStyle(k.section)
       of cfgKeyValuePair:
         case section
         of "ccompiler": pathFlags(p, k.key, k.value, c.ccompiler)

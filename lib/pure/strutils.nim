@@ -232,7 +232,7 @@ func toLowerAscii*(s: string): string {.rtl, extern: "nsuToLowerAsciiStr".} =
   ## character.
   ##
   ## See also:
-  ## * `cfgIdentNormalize func<#cfgIdentNormalize,string>`_
+  ## * `normalizeStyle func<#normalizeStyle,string>`_
   runnableExamples:
     doAssert toLowerAscii("FooBar!") == "foobar!"
   toImpl toLowerAscii
@@ -309,7 +309,7 @@ func nimIdentNormalize*(s: string): string =
       inc j
   if j != s.len: setLen(result, j)
 
-func cfgIdentNormalize*(s: string): string {.rtl, extern: "nsuNormalize".} =
+func normalizeStyle*(s: string): string {.rtl, extern: "nsuNormalize".} =
   ## Normalizes the string `s`.
   ##
   ## That means to convert it to lower case and remove any '_'. This
@@ -318,8 +318,8 @@ func cfgIdentNormalize*(s: string): string {.rtl, extern: "nsuNormalize".} =
   ## See also:
   ## * `toLowerAscii func<#toLowerAscii,string>`_
   runnableExamples:
-    doAssert cfgIdentNormalize("Foo_bar") == "foobar"
-    doAssert cfgIdentNormalize("Foo Bar") == "foo bar"
+    doAssert normalizeStyle("Foo_bar") == "foobar"
+    doAssert normalizeStyle("Foo Bar") == "foo bar"
   result = newString(s.len)
   var j = 0
   for i in 0..len(s) - 1:
@@ -331,8 +331,8 @@ func cfgIdentNormalize*(s: string): string {.rtl, extern: "nsuNormalize".} =
       inc j
   if j != s.len: setLen(result, j)
 
-#func normalize*(s: string): string {.deprecated.} =
-#  cfgIdentNormalize(s)
+func normalize*(s: string): string {.deprecated.} =
+  normalizeStyle(s)
 
 func cmpIgnoreCase*(a, b: string): int {.rtl, extern: "nsuCmpIgnoreCase".} =
   ## Compares two strings in a case insensitive manner. Returns:
@@ -350,7 +350,7 @@ func cmpIgnoreCase*(a, b: string): int {.rtl, extern: "nsuCmpIgnoreCase".} =
                                       # thus we compile without checks here
 
 func cmpIgnoreStyle*(a, b: string): int {.rtl, extern: "nsuCmpIgnoreStyle".} =
-  ## Semantically the same as `cmp(cfgIdentNormalize(a), cfgIdentNormalize(b))`. It
+  ## Semantically the same as `cmp(normalizeStyle(a), normalizeStyle(b))`. It
   ## is just optimized to not allocate temporary strings. This should
   ## NOT be used to compare Nim identifier names.
   ## Use `macros.eqIdent<macros.html#eqIdent,string,string>`_ for that.

@@ -580,7 +580,7 @@ proc changeTarget(extraOptions: string; defaultTarget: TTarget): TTarget =
     of cmdEnd: break
     of cmdLongOption, cmdShortOption:
       if p.key == "b" or p.key == "backend":
-        result = parseEnum[TTarget](p.val.cfgIdentNormalize)
+        result = parseEnum[TTarget](p.val.normalizeStyle)
         # chooses the last one
     else:
       discard
@@ -693,7 +693,7 @@ proc main() =
   var p = initOptParser()
   p.next()
   while p.kind in {cmdLongOption, cmdShortOption}:
-    case p.key.cfgIdentNormalize
+    case p.key.normalizeStyle
     of "print": optPrintResults = true
     of "verbose": optVerbose = true
     of "failing": optFailing = true
@@ -756,7 +756,7 @@ proc main() =
     p.next()
   if p.kind != cmdArgument:
     quit Usage
-  var action = p.key.cfgIdentNormalize
+  var action = p.key.normalizeStyle
   p.next()
   var r = initResults()
   case action

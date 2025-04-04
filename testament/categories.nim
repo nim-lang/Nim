@@ -550,7 +550,7 @@ proc `&.?`(a, b: string): string =
 proc processSingleTest(r: var TResults, cat: Category, options, test: string, targets: set[TTarget], targetsSet: bool) =
   var targets = targets
   if not targetsSet:
-    let target = if cat.string.cfgIdentNormalize == "js": targetJS else: targetC
+    let target = if cat.string.normalizeStyle == "js": targetJS else: targetC
     targets = {target}
   doAssert fileExists(test), test & " test does not exist"
   testSpec r, makeTest(test, options, cat), targets
@@ -681,7 +681,7 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string, options: st
 proc processCategory(r: var TResults, cat: Category,
                      options, testsDir: string,
                      runJoinableTests: bool) =
-  let cat2 = cat.string.cfgIdentNormalize
+  let cat2 = cat.string.normalizeStyle
   var handled = false
   if isNimRepoTests():
     handled = true

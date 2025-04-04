@@ -1263,7 +1263,7 @@ for kind, key, val in getopt():
         reportError("empty string given for option --" & key &
                     " (did you forget `:`?)")
       s.add name
-    case cfgIdentNormalize(key)
+    case normalizeStyle(key)
     of "find", "f": incl(options, optFind)
     of "replace", "!": incl(options, optReplace)
     of "peg":
@@ -1344,7 +1344,7 @@ for kind, key, val in getopt():
       of "", "on", "always", "true": useWriteStyled = true
       else: reportError("invalid value '" & val & "' for --color")
     of "colortheme", "color-theme":
-      colortheme = cfgIdentNormalize(val)
+      colortheme = normalizeStyle(val)
       if colortheme notin ["simple", "bnw", "ack", "gnu"]:
         reportError("unknown colortheme '" & val & "'")
     of "beforecontext", "before-context", "b":

@@ -60,7 +60,7 @@ const
 proc getIdent(e: NimNode): string =
   case e.kind
   of nnkIdent:
-    result = e.strVal.cfgIdentNormalize
+    result = e.strVal.normalizeStyle
   of nnkAccQuoted:
     result = getIdent(e[0])
     for i in 1 .. e.len-1:

@@ -2189,7 +2189,7 @@ proc bindTypeHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp) =
   incl(s.flags, sfOverridden)
 
 proc semOverride(c: PContext, s: PSym, n: PNode) =
-  let name = s.name.s.cfgIdentNormalize
+  let name = s.name.s.normalizeStyle
   case name
   of "=destroy":
     bindTypeHook(c, s, n, attachedDestructor)

@@ -73,7 +73,7 @@ func endsWith*(s, suffix: cstring): bool {.rtl, extern: "csuEndsWith".} =
       if suffix[i] == '\0': return true
 
 func cmpIgnoreStyle*(a, b: cstring): int {.rtl, extern: "csuCmpIgnoreStyle".} =
-  ## Semantically the same as `cmp(cfgIdentNormalize($a), cfgIdentNormalize($b))`. It
+  ## Semantically the same as `cmp(normalizeStyle($a), normalizeStyle($b))`. It
   ## is just optimized to not allocate temporary strings. This should
   ## NOT be used to compare Nim identifier names, use `macros.eqIdent`
   ## for that. Returns:

@@ -1071,7 +1071,7 @@ proc trackCall(tracked: PEffects; n: PNode) =
 
   if a.kind == nkSym and a.sym.name.s.len > 0 and a.sym.name.s[0] == '=' and
         tracked.owner.kind != skMacro:
-    var opKind = find(AttachedOpToStr, a.sym.name.s.cfgIdentNormalize)
+    var opKind = find(AttachedOpToStr, a.sym.name.s.normalizeStyle)
     if a.sym.name.s == "=": opKind = attachedAsgn.int
     if opKind != -1:
       # rebind type bounds operations after createTypeBoundOps call

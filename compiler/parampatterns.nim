@@ -85,7 +85,7 @@ proc compileConstraints(p: PNode, result: var TPatternCode; conf: ConfigRef) =
     else:
       patternError(p, conf)
   of nkIdent:
-    let spec = p.ident.s.cfgIdentNormalize
+    let spec = p.ident.s.normalizeStyle
     case spec
     of "atom": result.add(ppAtom)
     of "lit": result.add(ppLit)
