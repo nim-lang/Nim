@@ -20,6 +20,12 @@ template main =
     type A = distinct char
     doAssert [A('x')].toSet == {A('x')}
 
+  block: # emptySet
+    doAssert emptySet(Colors) == {}
+    doAssert emptySet(char) == {}
+    doAssert emptySet(Bar) == {}
+    doAssert emptySet(bool) == {}
+
   block: # fullSet
     doAssert fullSet(Colors) == {red, green, blue}
     doAssert fullSet(char) == {0.chr..255.chr}
@@ -34,6 +40,17 @@ template main =
     doAssert {range[0..10](0), 1, 2, 3}.complement == {range[0..10](4), 5, 6, 7, 8, 9, 10}
     doAssert {'0'..'9'}.complement == {0.char..255.char} - {'0'..'9'}
 
+  block: # isEmpty
+    doAssert emptySet(Colors).isEmpty() == true
+    doAssert fullSet(Colors).isEmpty() == false
+    doAssert {red, blue}.isEmpty() == false
+
+  block: # isFull
+    doAssert fullSet(Colors).isFull() == true
+    doAssert {red, blue, green}.isFull() == true
+    doAssert emptySet(Colors).isFull() == false
+    doAssert {red, blue}.isFull() == false
+
   block: # `[]=`
     type A = enum
       a0, a1, a2, a3
@@ -45,6 +62,13 @@ template main =
     s[a3] = true
     doAssert s == {a2, a3}
   
+  block: # `[]`
+    type A = enum
+      a0, a1, a2, a3
+    var s = {a0, a3}
+    doAssert s[a0] == true
+    doAssert s[a1] == false
+
   block: # set symmetric difference (xor), https://github.com/nim-lang/RFCs/issues/554
     type T = set[range[0..15]]
     let x: T = {1, 4, 5, 8, 9}
@@ -63,6 +87,13 @@ template main =
     z.toggle({1, 5})
     doAssert z == {4, 8, 9}
     z.toggle({3, 8})
+    doAssert z == {3, 4, 9}
+    # Toggle with the enum item
+    z.toggle(3)
+    z.toggle(8)
+    doAssert z == {4, 8, 9}
+    z.toggle(3)
+    z.toggle(8)
     doAssert z == {3, 4, 9}
 
 main()

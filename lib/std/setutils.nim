@@ -38,6 +38,16 @@ template toSet*(iter: untyped): untyped =
 
 macro enumElementsAsSet(enm: typed): untyped = result = newNimNode(nnkCurly).add(enm.getType[1][1..^1])
 
+func emptySet*[T](U: typedesc[T]): set[T] {.inline.} =
+  ## Returns an empty `set[T]`,
+  ## same as `var x: set[T] = {}`
+  runnableExamples:
+    type A = enum
+      a0, a1, a2, a3
+    let s = emptySet(A)
+    assert s == {}
+  result = {}
+
 # func fullSet*(T: typedesc): set[T] {.inline.} = # xxx would give: Error: ordinal type expected
 func fullSet*[T](U: typedesc[T]): set[T] {.inline.} =
   ## Returns a set containing all elements in `U`.
@@ -62,6 +72,26 @@ func complement*[T](s: set[T]): set[T] {.inline.} =
     assert complement({'0'..'9'}) == {0.char..255.char} - {'0'..'9'}
   fullSet(T) - s
 
+func isEmpty*[T](s: set[T]): bool {.inline.} =
+  ## Check if the `set[T]` is empty,
+  ## same as `s == {}`
+  runnableExamples:
+    var a: set[char] = {}
+    var b: set[char] = {'a', 'b'}
+    assert a.isEmpty() == true
+    assert b.isEmpty() == false
+  s == {}
+
+func isFull*[T](s: set[T]): bool {.inline.} =
+  ## Check if the `set[T]` has all the elements,
+  ## same as `s == fullSet(set[T])`
+  runnableExamples:
+    type A = enum
+      a0, a1, a2, a3
+    assert isFull({a0, a3}) == false
+    assert isFull({a0, a1, a2, a3}) == true
+  s == fullSet(T)
+
 func `[]=`*[T](t: var set[T], key: T, val: bool) {.inline.} =
   ## Syntax sugar for `if val: t.incl key else: t.excl key`
   runnableExamples:
@@ -75,6 +105,17 @@ func `[]=`*[T](t: var set[T], key: T, val: bool) {.inline.} =
     s[a3] = true
     assert s == {a2, a3}
   if val: t.incl key else: t.excl key
+
+func `[]`*[T](x: set[T], key: T): bool {.inline.} =
+  ## Check if an element is inside the `set[T]`
+  ## Syntax sugar of `x.contains(element)`
+  runnableExamples:
+    type A = enum
+      a0, a1, a2, a3
+    var s = {a0, a3}
+    assert s[a0] == true
+    assert s[a1] == false
+  x.contains(key)
 
 when defined(nimHasXorSet):
   func symmetricDifference*[T](x, y: set[T]): set[T] {.magic: "XorSet".} =
@@ -92,6 +133,19 @@ proc `-+-`*[T](x, y: set[T]): set[T] {.inline.} =
   runnableExamples:
     assert {1, 2, 3} -+- {2, 3, 4} == {1, 4}
   result = symmetricDifference(x, y)
+
+proc toggle*[T](x: var set[T], y: T) {.inline.} =
+  ## Toggles the element `y` in the set `x`.
+  ## If the element `y` is in `x`, it is excluded from `x`;
+  ## otherwise it is included.
+  ## Equivalent to `x = symmetricDifference(x, {y})`.
+  runnableExamples:
+    var x = {1, 2, 3}
+    x.toggle(2)
+    x.toggle(3)
+    x.toggle(4)
+    assert x == {1, 4}
+  x = symmetricDifference(x, {y})
 
 proc toggle*[T](x: var set[T], y: set[T]) {.inline.} =
   ## Toggles the existence of each value of `y` in `x`.
