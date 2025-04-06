@@ -40,7 +40,7 @@ macro enumElementsAsSet(enm: typed): untyped = result = newNimNode(nnkCurly).add
 
 func emptySet*[T](U: typedesc[T]): set[T] {.inline.} =
   ## Returns an empty `set[T]`,
-  ## same as `var x: set[T] = {}`
+  ## same as `default(set[T])`
   runnableExamples:
     type A = enum
       a0, a1, a2, a3
@@ -145,7 +145,9 @@ proc toggle*[T](x: var set[T], y: T) {.inline.} =
     x.toggle(3)
     x.toggle(4)
     assert x == {1, 4}
-  x = symmetricDifference(x, {y})
+  if y in x:
+    x.excl(y)
+  else: x.incl(y)
 
 proc toggle*[T](x: var set[T], y: set[T]) {.inline.} =
   ## Toggles the existence of each value of `y` in `x`.
