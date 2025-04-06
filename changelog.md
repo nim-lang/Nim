@@ -28,6 +28,11 @@ errors.
 - `setutils.symmetricDifference` along with its operator version
   `` setutils.`-+-` `` and in-place version `setutils.toggle` have been added
   to more efficiently calculate the symmetric difference of bitsets.
+
+- `setutils.isFull` along with `setutils.isEmpty` to check if a set has all elements possible or is empty.
+- `` setutils.`[]` `` companion to `` setutils.`[]=` `` to check if an element is inside.
+- `setutils.emptySet` alternative to `default(set[T])` to create an empty set with similar usage of it's opposite `setutils.fullSet`.
+
 - `strutils.multiReplace` overload for character set replacements in a single pass.
 	Useful for string sanitation. Follows existing multiReplace semantics.
 

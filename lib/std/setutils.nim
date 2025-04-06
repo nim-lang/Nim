@@ -138,7 +138,7 @@ proc toggle*[T](x: var set[T], y: T) {.inline.} =
   ## Toggles the element `y` in the set `x`.
   ## If the element `y` is in `x`, it is excluded from `x`;
   ## otherwise it is included.
-  ## Equivalent to `x = symmetricDifference(x, {y})`.
+  ## Equivalent to `if y in x: x.excl(y) else: x.incl(y)`.
   runnableExamples:
     var x = {1, 2, 3}
     x.toggle(2)
