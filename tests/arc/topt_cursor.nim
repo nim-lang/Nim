@@ -9,7 +9,8 @@ var
 try:
   x_cursor = ("hi", 5)
   if cond:
-    x_cursor = ("different", 54) else:
+    x_cursor = ("different", 54)
+  else:
     x_cursor = ("string here", 80)
   echo [
     :tmpD = `$$`(x_cursor)
