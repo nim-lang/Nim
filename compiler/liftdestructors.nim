@@ -149,14 +149,12 @@ proc destructorCall(c: var TLiftCtx; op: PSym; x: PNode): PNode =
     c.canRaise = true
   if c.addMemReset:
     result = newTree(nkStmtList, destroy, genBuiltin(c, mWasMoved,  "wasMoved", x))
-    # result = newTree(nkStmtList, destroy, genBuiltin(c, mWasMoved,  "`=wasMoved`", x))
   else:
     result = destroy
 
 proc genWasMovedCall(c: var TLiftCtx; op: PSym; x: PNode): PNode =
   result = newNodeIT(nkCall, x.info, op.typ.returnType)
   result.add(newSymNode(op))
-  result.add x
   result.add genAddr(c, x)
 
 proc fillBodyObj(c: var TLiftCtx; n, body, x, y: PNode; enforceDefaultOp: bool, enforceWasMoved = false) =
@@ -171,7 +169,6 @@ proc fillBodyObj(c: var TLiftCtx; n, body, x, y: PNode; enforceDefaultOp: bool, 
     else:
       if enforceWasMoved:
         body.add genBuiltin(c, mWasMoved, "wasMoved", x.dotField(f))
-        # body.add genBuiltin(c, mWasMoved, "`=wasMoved`", x.dotField(f))
       fillBody(c, f.typ, body, x.dotField(f), b)
   of nkNilLit: discard
   of nkRecCase:
@@ -282,7 +279,6 @@ proc fillBodyObjT(c: var TLiftCtx; t: PType, body, x, y: PNode) =
     var wasMovedCall = newNodeI(nkCall, c.info)
     wasMovedCall.add(newSymNode(createMagic(c.g, c.idgen, "wasMoved", mWasMoved)))
 
-    # wasMovedCall.add(newSymNode(createMagic(c.g, c.idgen, "`=wasMoved`", mWasMoved)))
     wasMovedCall.add x # mWasMoved does not take the address
     body.add wasMovedCall
 
