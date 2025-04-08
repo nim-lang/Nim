@@ -780,6 +780,8 @@ proc fillObjectFields*(m: BModule; typ: PType) =
   var check = initIntSet()
   var ignored = newBuilder("")
   addRecordFields(ignored, m, typ, check)
+  if typ.baseClass != nil:
+    fillObjectFields(m, typ.baseClass.skipTypes(skipPtrs))
 
 proc mangleDynLibProc(sym: PSym): Rope
 
