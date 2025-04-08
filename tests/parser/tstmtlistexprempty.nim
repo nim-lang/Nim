@@ -20,4 +20,4 @@ StmtList
 import std/macros
 
 dumpTree:
-  return (x.add("123"); x.add("123"); x)
+  return (x.add("123"); x.add("123");; x)

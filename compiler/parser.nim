@@ -634,7 +634,7 @@ proc semiStmtList(p: var Parser, result: PNode) =
     result.add a
 
     while p.tok.tokType != tkEof:
-      if p.tok.tokType == tkSemiColon:
+      while p.tok.tokType == tkSemiColon:
         getTok(p)
       if p.tok.tokType == tkParRi:
         break
