@@ -700,7 +700,6 @@ proc parsePar(p: var Parser): PNode =
       result.add(asgn)
       if p.tok.tokType == tkSemiColon:
         getTok(p)
-        optInd(p, result)
         semiStmtList(p, result)
     elif p.tok.tokType == tkSemiColon:
       # stmt context:
