@@ -653,42 +653,13 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
   of mNewFinalize:
     result = semNewFinalize(c, n)
   of mDestroy:
-    result = n
-    let t = n[1].typ.skipTypes(abstractVar)
-    let op = getAttachedOp(c.graph, t, attachedDestructor)
-    if op != nil:
-      result[0] = newSymNode(op)
-      if op.typ != nil and op.typ.len == 2 and op.typ.firstParamType.kind != tyVar:
-        if n[1].kind == nkSym and n[1].sym.kind == skParam and
-            n[1].typ.kind == tyVar:
-          result[1] = genDeref(n[1])
-        else:
-          result[1] = skipAddr(n[1])
+    result = replaceHookMagic(c, n, attachedDestructor)
   of mTrace:
-    result = n
-    let t = n[1].typ.skipTypes(abstractVar)
-    let op = getAttachedOp(c.graph, t, attachedTrace)
-    if op != nil:
-      result[0] = newSymNode(op)
+    result = replaceHookMagic(c, n, attachedTrace)
   of mDup:
-    result = n
-    let t = n[1].typ.skipTypes(abstractVar)
-    let op = getAttachedOp(c.graph, t, attachedDup)
-    if op != nil:
-      result[0] = newSymNode(op)
-      if op.typ.len == 3:
-        let boolLit = newIntLit(c.graph, n.info, 1)
-        boolLit.typ() = getSysType(c.graph, n.info, tyBool)
-        result.add boolLit
+    result = replaceHookMagic(c, n, attachedDup)
   of mWasMoved:
-    result = n
-    let t = n[1].typ.skipTypes(abstractVar)
-    let op = getAttachedOp(c.graph, t, attachedWasMoved)
-    if op != nil:
-      result[0] = newSymNode(op)
-      let addrExp = newNodeIT(nkHiddenAddr, result[1].info, makePtrType(c, t))
-      addrExp.add result[1]
-      result[1] = addrExp
+    result = replaceHookMagic(c, n, attachedWasMoved)
   of mUnown:
     result = semUnown(c, n)
   of mExists, mForall:
