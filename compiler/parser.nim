@@ -705,7 +705,6 @@ proc parsePar(p: var Parser): PNode =
       # stmt context:
       result.add(a)
       getTok(p)
-      optInd(p, result)
       semiStmtList(p, result)
     else:
       a = colonOrEquals(p, a)
