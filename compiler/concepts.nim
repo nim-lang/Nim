@@ -347,10 +347,11 @@ proc matchType(c: PContext; fo, ao: PType; m: var MatchCon): bool =
         k1 = f.kidsLen - ord(f.kind == tyGenericInst)
         k2 = ea.kidsLen - ord(ea.kind == tyGenericInst)
       if sameType(f.genericHead, ea.genericHead) and k1 == k2:
+        result = true
         for i in 1 ..< k2:
           if not matchType(c, f[i], ea[i], m):
+            result = false
             break
-        result = true
   of tyOrdinal:
     result = isOrdinalType(a, allowEnumWithHoles = false) or a.kind == tyGenericParam
   of tyStatic:
