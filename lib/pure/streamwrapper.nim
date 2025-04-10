@@ -105,7 +105,8 @@ proc newPipeOutStream*[T](s: sink (ref T)): owned PipeOutStream[T] =
   new(result)
   for dest, src in fields((ref T)(result)[], s[]):
     dest = src
-  wasMoved(s[])
+  {.cast(raises: []), cast(tags: []).}:
+    wasMoved(s[])
   if result.readLineImpl != nil:
     result.baseReadLineImpl = result.readLineImpl
     result.readLineImpl = posReadLine[T]
