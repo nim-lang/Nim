@@ -164,7 +164,7 @@ type
 
 const
   nkSkip = {nkEmpty..nkNilLit, nkTemplateDef, nkTypeSection, nkStaticStmt,
-            nkCommentStmt, nkMixinStmt, nkBindStmt} + procDefs
+            nkCommentStmt, nkMixinStmt, nkBindStmt, nkTypeOfExpr} + procDefs
   emptyStateLabel = -1
   localNotSeen = -1
   localRequiresLifting = -2
