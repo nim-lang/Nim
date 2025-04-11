@@ -2883,26 +2883,27 @@ proc semTuplePositionsConstr(c: PContext, n: PNode, flags: TExprFlags; expectedT
   var typ = newTypeS(tyTuple, c)  # leave typ.n nil!
   for i in 0..<n.len:
     let expectedElemType = if expected != nil: expected[i] else: nil
-    if typ.kind == tyFromExpr:
-      n[i] = semGenericStmt(c, n[i])
-    else:
-      n[i] = semExprWithType(c, n[i], {}, expectedElemType)
-      if n[i].typ != nil and n[i].typ.kind == tyFromExpr and c.inGenericContext > 0:
-        typ = makeTypeFromExpr(c, n.copyTree)
-      else:
-        if expectedElemType != nil and
-            (expectedElemType.kind != tyNil and not hasEmpty(expectedElemType)):
-          # hasEmpty/nil check is to not break existing code like
-          # `const foo = [(1, {}), (2, {false})]`,
-          # `const foo = if true: (0, nil) else: (1, new(int))`
-          let conversion = indexTypesMatch(c, expectedElemType, n[i].typ, n[i])
-          # ignore matching error, full tuple will be matched later which may call converter, see #24609
-          if conversion != nil:
-            n[i] = conversion
-        addSonSkipIntLit(typ, n[i].typ.skipTypes({tySink}), c.idgen)
+    n[i] = semExprWithType(c, n[i], {}, expectedElemType)
+    if c.inGenericContext > 0 and n[i].typ != nil and
+        n[i].typ.kind == tyFromExpr:
+      # tuple field depends on generic expression, consider remainder of tuple as such
+      for j in (i + 1) ..< n.len:
+        n[j] = semGenericStmt(c, n[j])
+      result.typ() = makeTypeFromExpr(c, n.copyTree)
+      return
+    if expectedElemType != nil and
+        (expectedElemType.kind != tyNil and not hasEmpty(expectedElemType)):
+      # hasEmpty/nil check is to not break existing code like
+      # `const foo = [(1, {}), (2, {false})]`,
+      # `const foo = if true: (0, nil) else: (1, new(int))`
+      let conversion = indexTypesMatch(c, expectedElemType, n[i].typ, n[i])
+      # ignore matching error, full tuple will be matched later which may call converter, see #24609
+      if conversion != nil:
+        n[i] = conversion
+    addSonSkipIntLit(typ, n[i].typ.skipTypes({tySink}), c.idgen)
   let oldType = n.typ
   result.typ() = typ
-  if oldType != nil and not hasEmpty(oldType) and typ.kind != tyFromExpr: # see hasEmpty comment above
+  if oldType != nil and not hasEmpty(oldType): # see hasEmpty comment above
     # convert back to old type
     let conversion = indexTypesMatch(c, oldType, typ, result)
     # ignore matching error, the goal is just to keep the original type info
