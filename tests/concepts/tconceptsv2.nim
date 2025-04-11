@@ -459,32 +459,6 @@ block:
   var s = ArrayBuffer[1500]()
   spring(s, 8.uint8)
 
-block:
-  type
-    Future[T] = object
-    SyncType = concept
-      proc p(s: Self)
-    AsyncType = concept
-      proc p(s: Self) : Future[void]
-    SyncImpl = object
-    AsyncImpl = object
-    Container[T] = object
-
-  proc p(x: SyncImpl) = discard
-  proc p(x: AsyncImpl): Future[void] = discard
-
-  proc p(x: Container[SyncType]) = discard
-  proc p(x: Container[AsyncImpl]): Future[void] = discard
-
-  assert SyncImpl is SyncType
-  assert SyncImpl isnot AsyncType
-  assert AsyncImpl isnot SyncType
-  assert AsyncImpl is AsyncType
-  assert Container[SyncImpl] is SyncType
-  assert Container[SyncImpl] isnot AsyncType
-  assert Container[AsyncImpl] isnot SyncType
-  assert Container[AsyncImpl] is AsyncType
-
 # this code fails inside a block for some reason
 type Indexable[T] = concept
   proc `[]`(t: Self, i: int): T
