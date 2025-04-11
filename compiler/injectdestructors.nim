@@ -17,14 +17,14 @@ import
   ast, astalgo, msgs, renderer, magicsys, types, idents,
   options, lowerings, modulegraphs,
   lineinfos, parampatterns, sighashes, liftdestructors, optimizer,
-  varpartitions, aliasanalysis, dfa, wordrecg, trees
+  varpartitions, aliasanalysis, dfa, wordrecg
 
 import std/[strtabs, tables, strutils, intsets]
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
-from trees import exprStructuralEquivalent, getRoot, whichPragma
+from trees import exprStructuralEquivalent, getRoot, whichPragma, getPotentialWrites
 
 type
   Con = object
@@ -400,7 +400,7 @@ proc genWasMoved(c: var Con, n: PNode): PNode =
     result = genOp(c, op, n)
   else:
     result = newNodeI(nkCall, n.info)
-    result.add(newSymNode(createMagic(c.graph, c.idgen, "`=wasMoved`", mWasMoved)))
+    result.add(newSymNode(createMagic(c.graph, c.idgen, "wasMoved", mWasMoved)))
     result.add copyTree(n) #mWasMoved does not take the address
     #if n.kind != nkSym:
     #  message(c.graph.config, n.info, warnUser, "wasMoved(" & $n & ")")

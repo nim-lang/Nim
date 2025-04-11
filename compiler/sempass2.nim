@@ -981,6 +981,25 @@ proc markCaughtExceptions(tracked: PEffects; g: ModuleGraph; info: TLineInfo; s:
     if optIdeExceptionInlayHints in tracked.config.globalOptions:
       internalMarkCaughtExceptions(tracked, g.suggestSymbols.mgetOrPut(info.fileIndex, newSuggestFileSymbolDatabase(info.fileIndex, true)), info)
 
+proc findHookKind(name: string): (bool, TTypeAttachedOp) =
+  case name.normalize
+  of "=wasmoved":
+    result = (true, attachedWasMoved)
+  of "=destroy":
+    result = (true, attachedDestructor)
+  of "=copy", "=":
+    result = (true, attachedAsgn)
+  of "=dup":
+    result = (true, attachedDup)
+  of "=sink":
+    result = (true, attachedSink)
+  of "=trace":
+    result = (true, attachedTrace)
+  of "=deepcopy":
+    result = (true, attachedDeepCopy)
+  else:
+    result = (false, attachedWasMoved)
+
 proc trackCall(tracked: PEffects; n: PNode) =
   template gcsafeAndSideeffectCheck() =
     if notGcSafe(op) and not importedFromC(a):
@@ -1069,25 +1088,17 @@ proc trackCall(tracked: PEffects; n: PNode) =
       checkBounds(tracked, n[1], n[2])
 
 
+  var n = n
   if a.kind == nkSym and a.sym.name.s.len > 0 and a.sym.name.s[0] == '=' and
         tracked.owner.kind != skMacro:
-    var opKind = find(AttachedOpToStr, a.sym.name.s.normalize)
-    if a.sym.name.s == "=": opKind = attachedAsgn.int
-    if opKind != -1:
+    var (isHook, opKind) = findHookKind(a.sym.name.s)
+    if isHook:
       # rebind type bounds operations after createTypeBoundOps call
       let t = n[1].typ.skipTypes({tyAlias, tyVar})
-      if a.sym != getAttachedOp(tracked.graph, t, TTypeAttachedOp(opKind)):
+      if a.sym != getAttachedOp(tracked.graph, t, opKind):
         createTypeBoundOps(tracked, t, n.info, explicit = true)
-        let op = getAttachedOp(tracked.graph, t, TTypeAttachedOp(opKind))
-        if op != nil:
-          n[0].sym = op
-          if TTypeAttachedOp(opKind) == attachedDestructor and
-              op.typ.len == 2 and op.typ.firstParamType.kind != tyVar:
-            if n[1].kind == nkSym and n[1].sym.kind == skParam and
-                n[1].typ.kind == tyVar:
-              n[1] = genDeref(n[1])
-            else:
-              n[1] = skipAddr(n[1])
+        # replace builtin hooks with lifted ones
+        n = replaceHookMagic(tracked.c, n, opKind)
 
   if op != nil and op.kind == tyProc:
     for i in 1..<min(n.safeLen, op.signatureLen):
