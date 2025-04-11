@@ -1011,7 +1011,7 @@ proc genBindSym(c: PCtx; n: PNode; dest: var TDest) =
   # if dynamicBindSym notin c.config.features:
   if n.len == 2: # hmm, reliable?
     # bindSym with static input
-    if n[1].kind in {nkClosedSymChoice, nkOpenSymChoice, nkSym}:
+    if n[1].kind in {nkClosedSymChoice, nkOpenSymChoice, nkOpenSym, nkSym}:
       let idx = c.genLiteral(n[1])
       if dest < 0: dest = c.getTemp(n.typ)
       c.gABx(n, opcNBindSym, dest, idx)

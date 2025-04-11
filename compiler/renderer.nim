@@ -410,7 +410,7 @@ proc atom(g: TSrcGen; n: PNode): string =
   of nkEmpty: result = ""
   of nkIdent: result = n.ident.s
   of nkSym: result = n.sym.name.s
-  of nkClosedSymChoice, nkOpenSymChoice: result = n[0].sym.name.s
+  of nkClosedSymChoice, nkOpenSymChoice, nkOpenSym: result = n[0].sym.name.s
   of nkStrLit: result = ""; result.addQuoted(n.strVal)
   of nkRStrLit: result = "r\"" & replace(n.strVal, "\"", "\"\"") & '\"'
   of nkTripleStrLit: result = "\"\"\"" & n.strVal & "\"\"\""
@@ -1008,7 +1008,7 @@ type
 proc bracketKind*(g: TSrcGen, n: PNode): BracketKind =
   if renderIds notin g.flags:
     case n.kind
-    of nkClosedSymChoice, nkOpenSymChoice:
+    of nkClosedSymChoice, nkOpenSymChoice, nkOpenSym:
       if n.len > 0: result = bracketKind(g, n[0])
       else: result = bkNone
     of nkSym:
@@ -1421,10 +1421,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
   of nkPrefix:
     gsub(g, n, 0)
     if n.len > 1:
-      let opr = if n[0].kind == nkIdent: n[0].ident
-                elif n[0].kind == nkSym: n[0].sym.name
-                elif n[0].kind in {nkOpenSymChoice, nkClosedSymChoice}: n[0][0].sym.name
-                else: nil
+      let opr = getPIdent(n[0])
       let nNext = skipHiddenNodes(n[1])
       if nNext.kind == nkPrefix or (opr != nil and renderer.isKeyword(opr)):
         put(g, tkSpaces, Space)
