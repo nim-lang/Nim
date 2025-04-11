@@ -2202,7 +2202,8 @@ func replace*(s, sub: string, by = ""): string {.rtl,
   ## * `replace func<#replace,string,char,char>`_ for replacing
   ##   single characters
   ## * `replaceWord func<#replaceWord,string,string,string>`_
-  ## * `multiReplace func<#multiReplace,string,varargs[]>`_
+  ## * `multiReplace func<#multiReplace,string,varargs[]>`_ for substrings
+  ## * `multiReplace func<#multiReplace,openArray[char],varargs[]>`_ for single characters
   result = ""
   let subLen = sub.len
   if subLen == 0:
@@ -2245,7 +2246,8 @@ func replace*(s: string, sub, by: char): string {.rtl,
   ## See also:
   ## * `find func<#find,string,char,Natural,int>`_
   ## * `replaceWord func<#replaceWord,string,string,string>`_
-  ## * `multiReplace func<#multiReplace,string,varargs[]>`_
+  ## * `multiReplace func<#multiReplace,string,varargs[]>`_ for substrings
+  ## * `multiReplace func<#multiReplace,openArray[char],varargs[]>`_ for single characters
   result = newString(s.len)
   var i = 0
   while i < s.len:
@@ -2330,7 +2332,38 @@ func multiReplace*(s: string, replacements: varargs[(string, string)]): string =
       add result, s[i]
       inc(i)
 
-
+func multiReplace*(s: openArray[char]; replacements: varargs[(set[char], char)]): string {.noinit.} =
+  ## Performs multiple character replacements in a single pass through the input.
+  ##
+  ## `multiReplace` scans the input `s` from left to right and replaces
+  ## characters based on character sets, applying the first matching replacement
+  ## at each position. Useful for sanitizing or transforming strings with
+  ## predefined character mappings.
+  ##
+  ## The order of the `replacements` matters:
+  ##   - First matching replacement is applied
+  ##   - Subsequent replacements are not considered for the same character
+  ##
+  ## See also:
+  ## - `multiReplace(s: string; replacements: varargs[(string, string)]) <#multiReplace,string,varargs[]>`_,
+  runnableExamples:
+    const WinSanitationRules = [
+      ({'\0'..'\31'}, ' '),
+      ({'"'}, '\''),
+      ({'/', '\\', ':', '|'}, '-'),
+      ({'*', '?', '<', '>'}, '_'),
+    ]
+    # Sanitize a filename with Windows-incompatible characters
+    const file = "a/file:with?invalid*chars.txt"
+    doAssert file.multiReplace(WinSanitationRules) == "a-file-with_invalid_chars.txt"
+  result = newStringUninit(s.len)
+  for i in 0..<s.len:
+    var nextChar = s[i]
+    for subs, by in replacements.items:
+      if nextChar in subs:
+        nextChar = by
+        break
+    result[i] = nextChar
 
 func insertSep*(s: string, sep = '_', digits = 3): string {.rtl,
     extern: "nsuInsertSep".} =

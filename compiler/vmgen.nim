@@ -1583,6 +1583,7 @@ proc checkCanEval(c: PCtx; n: PNode) =
     # are in the right scope:
     if sfGenSym in s.flags and c.prc.sym == nil: discard
     elif s.kind == skParam and s.typ.kind == tyTypeDesc: discard
+    elif s.kind in {skVar, skLet} and s.id in c.locals: discard
     else: cannotEval(c, n)
   elif s.kind in {skProc, skFunc, skConverter, skMethod,
                   skIterator} and sfForward in s.flags:
@@ -1975,7 +1976,7 @@ proc genVarSection(c: PCtx; n: PNode) =
       c.gen(lowerTupleUnpacking(c.graph, a, c.idgen, c.getOwner))
     elif a[0].kind == nkSym:
       let s = a[0].sym
-      checkCanEval(c, a[0])
+      c.locals.incl(s.id)
       if s.isGlobal:
         let runtimeAccessToCompileTime = c.mode == emRepl and
               sfCompileTime in s.flags and s.position > 0
@@ -2312,9 +2313,11 @@ proc genStmt*(c: PCtx; n: PNode): int =
   result = c.code.len
   var d: TDest = -1
   c.gen(n, d)
-  c.gABC(n, opcEof)
   if d >= 0:
-    globalError(c.config, n.info, "VM problem: dest register is set")
+    # for discardable calls etc, otherwise not valid
+    freeTemp(c, d)
+    #globalError(c.config, n.info, "VM problem: dest register is set")
+  c.gABC(n, opcEof)
 
 proc genExpr*(c: PCtx; n: PNode, requiresValue = true): int =
   c.removeLastEof

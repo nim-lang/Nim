@@ -109,7 +109,7 @@ import std/private/since
 import std/exitprocs
 
 when defined(nimPreviewSlimSystem):
-  import std/assertions
+  import std/[assertions, syncio]
 
 import std/[macros, strutils, streams, times, sets, sequtils]
 
@@ -556,15 +556,16 @@ template test*(name, body) {.dirty.} =
       body
       {.pop.}
 
-    except:
+    except Exception:
       let e = getCurrentException()
       let eTypeDesc = "[" & exceptionTypeName(e) & "]"
       checkpoint("Unhandled exception: " & getCurrentExceptionMsg() & " " & eTypeDesc)
-      if e == nil: # foreign
-        fail()
-      else:
-        var stackTrace {.inject.} = e.getStackTrace()
-        fail()
+      var stackTrace {.inject.} = e.getStackTrace()
+      fail()
+
+    except:
+      checkpoint("Unhandled exception: " & getCurrentExceptionMsg() & " [<foreign exception>]")
+      fail()
 
     finally:
       if testStatusIMPL == TestStatus.FAILED:
@@ -760,6 +761,14 @@ macro expect*(exceptions: varargs[typed], body: untyped): untyped =
     expect IOError, OSError, ValueError, AssertionDefect:
       defectiveRobot()
 
+  template expectException(errorTypes, lineInfoLit, body): NimNode {.dirty.} =
+    try:
+      body
+      checkpoint(lineInfoLit & ": Expect Failed, no exception was thrown.")
+      fail()
+    except errorTypes:
+      discard
+
   template expectBody(errorTypes, lineInfoLit, body): NimNode {.dirty.} =
     {.push warning[BareExcept]:off.}
     try:
@@ -770,17 +779,23 @@ macro expect*(exceptions: varargs[typed], body: untyped): untyped =
       fail()
     except errorTypes:
       discard
-    except:
+    except Exception:
       let err = getCurrentException()
       checkpoint(lineInfoLit & ": Expect Failed, " & $err.name & " was thrown.")
       fail()
     {.pop.}
 
   var errorTypes = newNimNode(nnkBracket)
+  var hasException = false
   for exp in exceptions:
+    if exp.strVal == "Exception":
+      hasException = true
     errorTypes.add(exp)
 
-  result = getAst(expectBody(errorTypes, errorTypes.lineInfo, body))
+  if hasException:
+    result = getAst(expectException(errorTypes, errorTypes.lineInfo, body))
+  else:
+    result = getAst(expectBody(errorTypes, errorTypes.lineInfo, body))
 
 proc disableParamFiltering* =
   ## disables filtering tests with the command line params

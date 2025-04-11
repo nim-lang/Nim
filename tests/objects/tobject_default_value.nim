@@ -811,3 +811,11 @@ template main {.dirty.} =
 
 static: main()
 main()
+
+block:
+  type
+    MyTyp = ref object
+      thing = initTable[string,string]()
+
+  var t = MyTyp()
+  t.thing[""] = ""

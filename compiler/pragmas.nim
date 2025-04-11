@@ -107,7 +107,7 @@ proc getPragmaVal*(procAst: PNode; name: TSpecialWord): PNode =
       return it[1]
 
 proc pragma*(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords;
-            isStatement: bool = false)
+            isStatement: bool = false; comesFromPush = false)
 
 proc recordPragma(c: PContext; n: PNode; args: varargs[string]) =
   var recorded = newNodeI(nkReplayAction, n.info)
@@ -893,7 +893,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
     if keyDeep:
       localError(c.config, it.info, "user pragma cannot have arguments")
 
-    pragma(c, sym, userPragma.ast, validPragmas, isStatement)
+    pragma(c, sym, userPragma.ast, validPragmas, isStatement, comesFromPush)
     n.sons[i..i] = userPragma.ast.sons # expand user pragma with its content
     i.inc(userPragma.ast.len - 1) # inc by -1 is ok, user pragmas was empty
   else:
@@ -1318,8 +1318,12 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         pragmaProposition(c, it)
       of wEnsures:
         pragmaEnsures(c, it)
-      of wEnforceNoRaises, wQuirky:
+      of wEnforceNoRaises:
         sym.flags.incl sfNeverRaises
+      of wQuirky:
+        sym.flags.incl sfNeverRaises
+        if sym.kind in {skProc, skMethod, skConverter, skFunc, skIterator}:
+          sym.options.incl optQuirky
       of wSystemRaisesDefect:
         sym.flags.incl sfSystemRaisesDefect
       of wVirtual:
@@ -1401,11 +1405,12 @@ proc pragmaRec(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords;
     inc i
 
 proc pragma(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords;
-            isStatement: bool) =
+            isStatement: bool; comesFromPush = false) =
   if n == nil: return
   pragmaRec(c, sym, n, validPragmas, isStatement)
   # XXX: in the case of a callable def, this should use its info
-  implicitPragmas(c, sym, n.info, validPragmas)
+  if not comesFromPush:
+    implicitPragmas(c, sym, n.info, validPragmas)
 
 proc pragmaCallable*(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords,
                     isStatement: bool = false) =

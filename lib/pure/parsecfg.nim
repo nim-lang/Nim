@@ -540,10 +540,17 @@ proc loadConfig*(stream: Stream, filename: string = "[stream]"): Config =
 
 proc loadConfig*(filename: string): Config =
   ## Loads the specified configuration file into a new Config instance.
-  let file = open(filename, fmRead)
-  let fileStream = newFileStream(file)
-  defer: fileStream.close()
-  result = fileStream.loadConfig(filename)
+  when nimvm:
+    # HACK: As a workaround,
+    # since open() using {.importc.} is not available on NimScript.
+    let stringStream = newStringStream(readFile(filename))
+    defer: stringStream.close()
+    result = stringStream.loadConfig(filename)
+  else:
+    let file = open(filename, fmRead)
+    let fileStream = newFileStream(file)
+    defer: fileStream.close()
+    result = fileStream.loadConfig(filename)
 
 proc replace(s: string): string =
   var d = ""

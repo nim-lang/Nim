@@ -42,6 +42,9 @@ proc raiseExceptionEx(e: sink(ref Exception), ename, procname, filename: cstring
 proc reraiseException() {.compilerRtl.} =
   sysFatal(ReraiseDefect, "no exception to reraise")
 
+proc raiseDefect() {.compilerRtl.} =
+  sysFatal(ReraiseDefect, "exception handling is not available")
+
 proc writeStackTrace() = discard
 
 proc unsetControlCHook() = discard

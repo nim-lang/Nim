@@ -1420,7 +1420,7 @@ proc sameBackendTypeIgnoreRange*(x, y: PType): bool =
 
 proc sameBackendTypePickyAliases*(x, y: PType): bool =
   var c = initSameTypeClosure()
-  c.flags.incl {IgnoreTupleFields, PickyCAliases, PickyBackendAliases}
+  c.flags.incl {IgnoreTupleFields, IgnoreRangeShallow, PickyCAliases, PickyBackendAliases}
   c.cmp = dcEqIgnoreDistinct
   result = sameTypeAux(x, y, c)
 
@@ -1485,7 +1485,16 @@ proc commonSuperclass*(a, b: PType): PType =
     y = y.baseClass
 
 proc lacksMTypeField*(typ: PType): bool {.inline.} =
+  ## Returns true if the type is an object that lacks a m_type field.
+  ## It doesn't check base classes.
   (typ.sym != nil and sfPure in typ.sym.flags) or tfFinal in typ.flags
+
+proc isObjLackingTypeField*(typ: PType): bool {.inline.} =
+  ## Returns true if the type is an object that lacks a type field.
+  ## Object types that store type headers are not final or pure and
+  ## have inheritable root types, which are not pure, neither.
+  result = (typ.kind == tyObject) and ((tfFinal in typ.flags) and
+      (typ.baseClass == nil) or isPureObject(typ))
 
 include sizealignoffsetimpl
 
@@ -1506,6 +1515,20 @@ proc getSize*(conf: ConfigRef; typ: PType): BiggestInt =
   computeSizeAlign(conf, typ)
   result = typ.size
 
+proc isConcept*(t: PType): bool=
+  case t.kind
+  of tyConcept: true
+  of tyCompositeTypeClass:
+    t.hasElementType and isConcept(t.elementType)
+  of tyGenericBody:
+    t.typeBodyImpl.kind == tyConcept
+  of tyGenericInvocation, tyGenericInst:
+    if t.baseClass.kind == tyGenericBody:
+      t.baseClass.typeBodyImpl.kind == tyConcept
+    else:
+      t.baseClass.kind == tyConcept
+  else: false
+
 proc containsGenericTypeIter(t: PType, closure: RootRef): bool =
   case t.kind
   of tyStatic:
@@ -1516,6 +1539,8 @@ proc containsGenericTypeIter(t: PType, closure: RootRef): bool =
     return false
   of GenericTypes + tyTypeClasses + {tyFromExpr}:
     return true
+  of tyGenericInst:
+    return t.isConcept
   else:
     return false
 
@@ -2044,6 +2069,7 @@ proc genericRoot*(t: PType): PType =
 
 proc reduceToBase*(f: PType): PType =
   #[
+    Not recursion safe
     Returns the lowest order (most general) type that that is compatible with the input.
     E.g.
     A[T] = ptr object ... A -> ptr object
@@ -2068,7 +2094,7 @@ proc reduceToBase*(f: PType): PType =
     result = reduceToBase(f.typeBodyImpl)
   of tyUserTypeClass:
     if f.isResolvedUserTypeClass:
-      result = f.base  # ?? idk if this is right
+      result = f.base
     else:
       result = f.skipModifier
   of tyStatic, tyOwned, tyVar, tyLent, tySink:
