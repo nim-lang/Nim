@@ -724,7 +724,7 @@ proc semArrayConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PTyp
   # nkBracket nodes can also be produced by the VM as seq constant nodes
   # in which case, we cannot produce a new array type for the node,
   # as this might lose type info even when the node has array type
-  let constructType = n.typ.isNil
+  let constructType = n.typ.isNil or n.typ.kind == tyFromExpr
   var expectedElementType, expectedIndexType: PType = nil
   var expectedBase: PType = nil
   if constructType:
@@ -773,7 +773,11 @@ proc semArrayConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PTyp
 
     let yy = semExprWithType(c, x, {efTypeAllowed}, expectedElementType)
     var typ: PType
-    if constructType:
+    var isGeneric = false
+    if yy.typ != nil and yy.typ.kind == tyFromExpr:
+      isGeneric = true
+      typ = nil # will not be used
+    elif constructType:
       typ = yy.typ
       if expectedElementType == nil:
         expectedElementType = typ
@@ -798,11 +802,21 @@ proc semArrayConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PTyp
 
       let xx = semExprWithType(c, x, {efTypeAllowed}, expectedElementType)
       result.add xx
-      if constructType:
+      if xx.typ != nil and xx.typ.kind == tyFromExpr:
+        isGeneric = true
+      elif constructType:
         typ = commonType(c, typ, xx.typ)
       #n[i] = semExprWithType(c, x, {})
       #result.add fitNode(c, typ, n[i])
       inc(lastIndex)
+    if isGeneric:
+      for i in 0..<result.len:
+        if isIntLit(result[i].typ):
+          # generic instantiation strips int lit type which makes conversions fail
+          result[i].typ() = nil
+      result.typ() = nil # current result.typ is invalid, index type is nil
+      result.typ() = makeTypeFromExpr(c, result.copyTree)
+      return
     if constructType:
       addSonSkipIntLit(result.typ, typ, c.idgen)
     for i in 0..<result.len:
@@ -2708,16 +2722,21 @@ proc semSetConstr(c: PContext, n: PNode, expectedType: PType = nil): PNode =
   else:
     # only semantic checking for all elements, later type checking:
     var typ: PType = nil
+    var isGeneric = false
     for i in 0..<n.len:
       let doSetType = typ == nil
       if isRange(n[i]):
         checkSonsLen(n[i], 3, c.config)
         n[i][1] = semExprWithType(c, n[i][1], {efTypeAllowed}, expectedElementType)
         n[i][2] = semExprWithType(c, n[i][2], {efTypeAllowed}, expectedElementType)
-        if doSetType:
-          typ = skipTypes(n[i][1].typ,
-                          {tyGenericInst, tyVar, tyLent, tyOrdinal, tyAlias, tySink})
-        n[i].typ() = n[i][2].typ # range node needs type too
+        if (n[i][1].typ != nil and n[i][1].typ.kind == tyFromExpr) or
+            (n[i][2].typ != nil and n[i][2].typ.kind == tyFromExpr):
+          isGeneric = true
+        else:
+          if doSetType:
+            typ = skipTypes(n[i][1].typ,
+                            {tyGenericInst, tyVar, tyLent, tyOrdinal, tyAlias, tySink})
+          n[i].typ() = n[i][2].typ # range node needs type too
       elif n[i].kind == nkRange:
         # already semchecked
         if doSetType:
@@ -2725,9 +2744,11 @@ proc semSetConstr(c: PContext, n: PNode, expectedType: PType = nil): PNode =
                           {tyGenericInst, tyVar, tyLent, tyOrdinal, tyAlias, tySink})
       else:
         n[i] = semExprWithType(c, n[i], {efTypeAllowed}, expectedElementType)
-        if doSetType:
+        if n[i].typ != nil and n[i].typ.kind == tyFromExpr:
+          isGeneric = true
+        elif doSetType:
           typ = skipTypes(n[i].typ, {tyGenericInst, tyVar, tyLent, tyOrdinal, tyAlias, tySink})
-      if doSetType:
+      if doSetType and not isGeneric:
         if not isOrdinalType(typ, allowEnumWithHoles=true):
           localError(c.config, n.info, errOrdinalTypeExpected % typeToString(typ, preferDesc))
           typ = makeRangeType(c, 0, MaxSetElements-1, n.info)
@@ -2742,6 +2763,14 @@ proc semSetConstr(c: PContext, n: PNode, expectedType: PType = nil): PNode =
           typ = makeRangeType(c, 0, MaxSetElements-1, n.info)
         if expectedElementType == nil:
           expectedElementType = typ
+    if isGeneric:
+      for i in 0..<n.len:
+        if isIntLit(n[i].typ):
+          # generic instantiation strips int lit type which makes conversions fail
+          n[i].typ() = nil
+        result.add n[i]
+      result.typ() = makeTypeFromExpr(c, result.copyTree)
+      return
     addSonSkipIntLit(result.typ, typ, c.idgen)
     for i in 0..<n.len:
       var m: PNode
@@ -2814,6 +2843,7 @@ proc semTupleFieldsConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType
   var typ = newTypeS(tyTuple, c)
   typ.n = newNodeI(nkRecList, n.info) # nkIdentDefs
   var ids = initIntSet()
+  var isGeneric = false
   for i in 0..<n.len:
     if n[i].kind != nkExprColonExpr:
       illFormedAst(n[i], c.config)
@@ -2823,7 +2853,9 @@ proc semTupleFieldsConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType
     # can check if field name matches expected type here
     let expectedElemType = if expected != nil: expected[i] else: nil
     n[i][1] = semExprWithType(c, n[i][1], {}, expectedElemType)
-    if expectedElemType != nil and
+    if n[i][1].typ != nil and n[i][1].typ.kind == tyFromExpr:
+      isGeneric = true
+    elif expectedElemType != nil and
         (expectedElemType.kind != tyNil and not hasEmpty(expectedElemType)):
       # hasEmpty/nil check is to not break existing code like
       # `const foo = [(1, {}), (2, {false})]`,
@@ -2844,6 +2876,13 @@ proc semTupleFieldsConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType
     typ.n.add newSymNode(f)
     n[i][0] = newSymNode(f)
     result.add n[i]
+  if isGeneric:
+    for i in 0..<result.len:
+      if isIntLit(result[i][1].typ):
+        # generic instantiation strips int lit type which makes conversions fail
+        result[i][1].typ() = nil
+    result.typ() = makeTypeFromExpr(c, result.copyTree)
+    return
   let oldType = n.typ
   result.typ() = typ
   if oldType != nil and not hasEmpty(oldType): # see hasEmpty comment above
@@ -2862,10 +2901,13 @@ proc semTuplePositionsConstr(c: PContext, n: PNode, flags: TExprFlags; expectedT
     if not (expected.kind == tyTuple and expected.len == n.len):
       expected = nil
   var typ = newTypeS(tyTuple, c)  # leave typ.n nil!
+  var isGeneric = false
   for i in 0..<n.len:
     let expectedElemType = if expected != nil: expected[i] else: nil
     n[i] = semExprWithType(c, n[i], {}, expectedElemType)
-    if expectedElemType != nil and
+    if n[i].typ != nil and n[i].typ.kind == tyFromExpr:
+      isGeneric = true
+    elif expectedElemType != nil and
         (expectedElemType.kind != tyNil and not hasEmpty(expectedElemType)):
       # hasEmpty/nil check is to not break existing code like
       # `const foo = [(1, {}), (2, {false})]`,
@@ -2875,6 +2917,13 @@ proc semTuplePositionsConstr(c: PContext, n: PNode, flags: TExprFlags; expectedT
       if conversion != nil:
         n[i] = conversion
     addSonSkipIntLit(typ, n[i].typ.skipTypes({tySink}), c.idgen)
+  if isGeneric:
+    for i in 0..<result.len:
+      if isIntLit(result[i].typ):
+        # generic instantiation strips int lit type which makes conversions fail
+        result[i].typ() = nil
+    result.typ() = makeTypeFromExpr(c, result.copyTree)
+    return
   let oldType = n.typ
   result.typ() = typ
   if oldType != nil and not hasEmpty(oldType): # see hasEmpty comment above
@@ -2972,6 +3021,9 @@ proc semExport(c: PContext, n: PNode): PNode =
 
 proc semTupleConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType = nil): PNode =
   result = semTuplePositionsConstr(c, n, flags, expectedType)
+  if result.typ.kind == tyFromExpr:
+    # tyFromExpr is already ambivalent between types and values
+    return
   var tupexp = result
   while tupexp.kind == nkHiddenSubConv: tupexp = tupexp[1]
   var isTupleType: bool = false
