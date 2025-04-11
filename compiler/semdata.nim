@@ -174,6 +174,9 @@ type
     importModuleLookup*: Table[int, seq[int]] # (module.ident.id, [module.id])
     skipTypes*: seq[PNode] # used to skip types between passes in type section. So far only used for inheritance, sets and generic bodies.
     inTypeofContext*: int
+
+    semAsgnOpr*: proc (c: PContext; n: PNode; k: TNodeKind): PNode {.nimcall.}
+
   TBorrowState* = enum
     bsNone, bsReturnNotMatch, bsNoDistinct, bsGeneric, bsNotSupported, bsMatch
 
@@ -789,8 +792,11 @@ proc replaceHookMagic*(c: PContext, n: PNode, kind: TTypeAttachedOp): PNode =
     if op != nil:
       result[0] = newSymNode(op)
       analyseIfAddressTakenInCall(c, result, false)
-  of attachedSink, attachedAsgn, attachedDeepCopy:
-    # TODO: `nkSinkAsgn`, `nkAsgn`
+  of attachedSink:
+    result = c.semAsgnOpr(c, n, nkSinkAsgn)
+  of attachedAsgn:
+    result = c.semAsgnOpr(c, n, nkAsgn)
+  of attachedDeepCopy:
     result = n
     let t = n[1].typ.skipTypes(abstractVar)
     let op = getAttachedOp(c.graph, t, kind)
