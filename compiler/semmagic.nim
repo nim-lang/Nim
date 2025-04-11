@@ -612,9 +612,10 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
   of mArrPut:
     result = semArrPut(c, n, flags)
   of mAsgn:
-    if n[0].sym.name.s == "=":
+    case n[0].sym.name.s
+    of "=", "=copy":
       result = semAsgnOpr(c, n, nkAsgn)
-    elif n[0].sym.name.s == "=sink":
+    of "=sink":
       result = semAsgnOpr(c, n, nkSinkAsgn)
     else:
       result = semShallowCopy(c, n, flags)
