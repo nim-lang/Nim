@@ -1515,6 +1515,17 @@ proc getSize*(conf: ConfigRef; typ: PType): BiggestInt =
   computeSizeAlign(conf, typ)
   result = typ.size
 
+proc setImportedTypeSize*(conf: ConfigRef, t: PType, size: int) =
+  t.size = size
+  if tfPacked in t.flags or size <= 1:
+    t.align = 1
+  elif size <= 2:
+    t.align = 2
+  elif size <= 4:
+    t.align = 4
+  else:
+    t.align = floatInt64Align(conf)
+
 proc isConcept*(t: PType): bool=
   case t.kind
   of tyConcept: true
