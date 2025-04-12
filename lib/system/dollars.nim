@@ -14,20 +14,24 @@ when not defined(nimPreviewSlimSystem):
     result = ""
     result.addFloat(x)
 
-proc `$`*(x: int): string {.raises: [].} =
-  ## Outplace version of `addInt`.
-  result = ""
-  result.addInt(x)
+template addIntAlias(T: typedesc) =
+  proc `$`*(x: T): string {.raises: [].} =
+    ## Outplace version of `addInt`.
+    result = ""
+    result.addInt(x)
 
-proc `$`*(x: int64): string {.raises: [].} =
-  ## Outplace version of `addInt`.
-  result = ""
-  result.addInt(x)
+# need to declare for bit types as well to not clash with converters:
+addIntAlias int
+addIntAlias int8
+addIntAlias int16
+addIntAlias int32
+addIntAlias int64
 
-proc `$`*(x: uint64): string {.raises: [].} =
-  ## Outplace version of `addInt`.
-  result = ""
-  addInt(result, x)
+addIntAlias uint
+addIntAlias uint8
+addIntAlias uint16
+addIntAlias uint32
+addIntAlias uint64
 
 # same as old `ctfeWhitelist` behavior, whether or not this is a good idea.
 template gen(T) =
