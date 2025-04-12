@@ -2051,7 +2051,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         aStrVal = aNode.ident.s.cstring
       of nkSym:
         aStrVal = aNode.sym.name.s.cstring
-      of nkOpenSymChoice, nkClosedSymChoice:
+      of nkOpenSymChoice, nkClosedSymChoice, nkOpenSym:
         aStrVal = aNode[0].sym.name.s.cstring
       else:
         discard
@@ -2063,7 +2063,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         bStrVal = bNode.ident.s.cstring
       of nkSym:
         bStrVal = bNode.sym.name.s.cstring
-      of nkOpenSymChoice, nkClosedSymChoice:
+      of nkOpenSymChoice, nkClosedSymChoice, nkOpenSym:
         bStrVal = bNode[0].sym.name.s.cstring
       else:
         discard

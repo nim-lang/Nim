@@ -58,13 +58,11 @@ proc considerQuotedIdent*(c: PContext; n: PNode, origin: PNode = nil): PIdent =
         of nkLiterals - nkFloatLiterals: id.add(x.renderTree)
         else: handleError(n, origin)
       result = getIdent(c.cache, id)
-  of nkOpenSymChoice, nkClosedSymChoice:
+  of nkOpenSymChoice, nkClosedSymChoice, nkOpenSym:
     if n[0].kind == nkSym:
       result = n[0].sym.name
     else:
       handleError(n, origin)
-  of nkOpenSym:
-    result = considerQuotedIdent(c, n[0], origin)
   else:
     handleError(n, origin)
 
