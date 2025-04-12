@@ -933,8 +933,7 @@ proc getPIdent*(a: PNode): PIdent {.inline.} =
   case a.kind
   of nkSym: a.sym.name
   of nkIdent: a.ident
-  of nkOpenSymChoice, nkClosedSymChoice: a.sons[0].sym.name
-  of nkOpenSym: getPIdent(a.sons[0])
+  of nkOpenSymChoice, nkClosedSymChoice, nkOpenSym: a.sons[0].sym.name
   else: nil
 
 const
