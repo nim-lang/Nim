@@ -437,7 +437,7 @@ type
     fd_count*: cint # unsigned
     fd_array*: array[0..FD_SETSIZE-1, SocketHandle]
 
-  AddrInfo* = object
+  AddrInfo* {.importc: "ADDRINFOA", header: "ws2tcpip.h".} = object
     ai_flags*: cint         ## Input flags.
     ai_family*: cint        ## Address family of socket.
     ai_socktype*: cint      ## Socket type.
