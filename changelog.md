@@ -80,4 +80,4 @@ errors.
 
 ## Tool changes
 
-
+- Added `--stdinfile` flag to name of the file used when running program from stdin (defaults to `stdinfile.nim`)
