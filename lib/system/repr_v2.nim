@@ -14,21 +14,26 @@ proc rangeBase(T: typedesc): typedesc {.magic: "TypeTrait".}
 
 proc repr*(x: NimNode): string {.magic: "Repr", noSideEffect.}
 
-proc repr*(x: int): string =
-  ## Same as $x
-  $x
+template dollarAlias(T: typedesc) =
+  proc repr*(x: T): string {.noSideEffect.} =
+    ## Same as $x
+    $x
 
-proc repr*(x: int64): string =
-  ## Same as $x
-  $x
+# need to declare for bit types as well to not clash with converters:
+dollarAlias int
+dollarAlias int8
+dollarAlias int16
+dollarAlias int32
+dollarAlias int64
 
-proc repr*(x: uint64): string {.noSideEffect.} =
-  ## Same as $x
-  $x
+dollarAlias uint
+dollarAlias uint8
+dollarAlias uint16
+dollarAlias uint32
+dollarAlias uint64
 
-proc repr*(x: float): string =
-  ## Same as $x
-  $x
+dollarAlias float
+dollarAlias float32
 
 proc repr*(x: bool): string {.magic: "BoolToStr", noSideEffect.}
   ## repr for a boolean argument. Returns `x`
@@ -140,6 +145,8 @@ proc repr*[T: tuple|object](x: T): string {.noSideEffect, raises: [].} =
   ##   ```
   when T is object:
     result = $typeof(x)
+  else:
+    result = ""
   reprObject(result, x)
 
 proc repr*[T](x: ref T | ptr T): string {.noSideEffect, raises: [].} =

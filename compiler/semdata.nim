@@ -9,14 +9,15 @@
 
 ## This module contains the data structures for the semantic checking phase.
 
-import std/[tables, intsets, sets]
+import std/[tables, intsets, sets, strutils]
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
 import
-  options, ast, astalgo, msgs, idents, renderer,
-  magicsys, vmdef, modulegraphs, lineinfos, pathutils
+  options, ast, msgs, idents, renderer,
+  magicsys, vmdef, modulegraphs, lineinfos, pathutils, layeredtable,
+  types, lowerings, trees, parampatterns
 
 import ic / ic
 
@@ -136,12 +137,13 @@ type
     semOverloadedCall*: proc (c: PContext, n, nOrig: PNode,
                               filter: TSymKinds, flags: TExprFlags, expectedType: PType = nil): PNode {.nimcall.}
     semTypeNode*: proc(c: PContext, n: PNode, prev: PType): PType {.nimcall.}
-    semInferredLambda*: proc(c: PContext, pt: Table[ItemId, PType], n: PNode): PNode
-    semGenerateInstance*: proc (c: PContext, fn: PSym, pt: Table[ItemId, PType],
+    semInferredLambda*: proc(c: PContext, pt: LayeredIdTable, n: PNode): PNode
+    semGenerateInstance*: proc (c: PContext, fn: PSym, pt: LayeredIdTable,
                                 info: TLineInfo): PSym
-    instantiateOnlyProcType*: proc (c: PContext, pt: TypeMapping,
+    instantiateOnlyProcType*: proc (c: PContext, pt: LayeredIdTable,
                                     prc: PSym, info: TLineInfo): PType
       # used by sigmatch for explicit generic instantiations
+    fitDefaultNode*: proc (c: PContext, n: var PNode, expectedType: PType)
     includedFiles*: IntSet    # used to detect recursive include files
     pureEnumFields*: TStrTable   # pure enum fields that can be used unambiguously
     userPragmas*: TStrTable
@@ -172,6 +174,9 @@ type
     importModuleLookup*: Table[int, seq[int]] # (module.ident.id, [module.id])
     skipTypes*: seq[PNode] # used to skip types between passes in type section. So far only used for inheritance, sets and generic bodies.
     inTypeofContext*: int
+
+    semAsgnOpr*: proc (c: PContext; n: PNode; k: TNodeKind): PNode {.nimcall.}
+
   TBorrowState* = enum
     bsNone, bsReturnNotMatch, bsNoDistinct, bsGeneric, bsNotSupported, bsMatch
 
@@ -195,29 +200,29 @@ proc getIntLitType*(c: PContext; literal: PNode): PType =
 proc setIntLitType*(c: PContext; result: PNode) =
   let i = result.intVal
   case c.config.target.intSize
-  of 8: result.typ = getIntLitType(c, result)
+  of 8: result.typ() = getIntLitType(c, result)
   of 4:
     if i >= low(int32) and i <= high(int32):
-      result.typ = getIntLitType(c, result)
+      result.typ() = getIntLitType(c, result)
     else:
-      result.typ = getSysType(c.graph, result.info, tyInt64)
+      result.typ() = getSysType(c.graph, result.info, tyInt64)
   of 2:
     if i >= low(int16) and i <= high(int16):
-      result.typ = getIntLitType(c, result)
+      result.typ() = getIntLitType(c, result)
     elif i >= low(int32) and i <= high(int32):
-      result.typ = getSysType(c.graph, result.info, tyInt32)
+      result.typ() = getSysType(c.graph, result.info, tyInt32)
     else:
-      result.typ = getSysType(c.graph, result.info, tyInt64)
+      result.typ() = getSysType(c.graph, result.info, tyInt64)
   of 1:
     # 8 bit CPUs are insane ...
     if i >= low(int8) and i <= high(int8):
-      result.typ = getIntLitType(c, result)
+      result.typ() = getIntLitType(c, result)
     elif i >= low(int16) and i <= high(int16):
-      result.typ = getSysType(c.graph, result.info, tyInt16)
+      result.typ() = getSysType(c.graph, result.info, tyInt16)
     elif i >= low(int32) and i <= high(int32):
-      result.typ = getSysType(c.graph, result.info, tyInt32)
+      result.typ() = getSysType(c.graph, result.info, tyInt32)
     else:
-      result.typ = getSysType(c.graph, result.info, tyInt64)
+      result.typ() = getSysType(c.graph, result.info, tyInt64)
   else:
     internalError(c.config, result.info, "invalid int size")
 
@@ -449,7 +454,7 @@ when false:
 proc makeStaticExpr*(c: PContext, n: PNode): PNode =
   result = newNodeI(nkStaticExpr, n.info)
   result.sons = @[n]
-  result.typ = if n.typ != nil and n.typ.kind == tyStatic: n.typ
+  result.typ() = if n.typ != nil and n.typ.kind == tyStatic: n.typ
                else: newTypeS(tyStatic, c, n.typ)
 
 proc makeAndType*(c: PContext, t1, t2: PType): PType =
@@ -508,7 +513,7 @@ proc errorType*(c: PContext): PType =
 
 proc errorNode*(c: PContext, n: PNode): PNode =
   result = newNodeI(nkEmpty, n.info)
-  result.typ = errorType(c)
+  result.typ() = errorType(c)
 
 # These mimic localError
 template localErrorNode*(c: PContext, n: PNode, info: TLineInfo, msg: TMsgKind, arg: string): PNode =
@@ -529,10 +534,11 @@ template localErrorNode*(c: PContext, n: PNode, arg: string): PNode =
   liMessage(c.config, n2.info, errGenerated, arg, doNothing, instLoc())
   errorNode(c, n2)
 
-proc fillTypeS*(dest: PType, kind: TTypeKind, c: PContext) =
-  dest.kind = kind
-  dest.owner = getCurrOwner(c)
-  dest.size = - 1
+when false:
+  proc fillTypeS*(dest: PType, kind: TTypeKind, c: PContext) =
+    dest.kind = kind
+    dest.owner = getCurrOwner(c)
+    dest.size = - 1
 
 proc makeRangeType*(c: PContext; first, last: BiggestInt;
                     info: TLineInfo; intType: PType = nil): PType =
@@ -563,7 +569,7 @@ proc symFromType*(c: PContext; t: PType, info: TLineInfo): PSym =
 
 proc symNodeFromType*(c: PContext, t: PType, info: TLineInfo): PNode =
   result = newSymNode(symFromType(c, t, info), info)
-  result.typ = makeTypeDesc(c, t)
+  result.typ() = makeTypeDesc(c, t)
 
 proc markIndirect*(c: PContext, s: PSym) {.inline.} =
   if s.kind in {skProc, skFunc, skConverter, skMethod, skIterator}:
@@ -633,3 +639,166 @@ proc rememberExpansion*(c: PContext; info: TLineInfo; expandedSym: PSym) =
   ## delegated to the "rod" file mechanism.
   if c.config.symbolFiles != disabledSf:
     storeExpansion(c.encoder, c.packedRepr, info, expandedSym)
+
+const
+  errVarForOutParamNeededX = "for a 'var' type a variable needs to be passed; but '$1' is immutable"
+  errXStackEscape = "address of '$1' may not escape its stack frame"
+
+proc renderNotLValue*(n: PNode): string =
+  result = $n
+  let n = if n.kind == nkHiddenDeref: n[0] else: n
+  if n.kind == nkHiddenCallConv and n.len > 1:
+    result = $n[0] & "(" & result & ")"
+  elif n.kind in {nkHiddenStdConv, nkHiddenSubConv} and n.len == 2:
+    result = typeToString(n.typ.skipTypes(abstractVar)) & "(" & result & ")"
+
+proc isAssignable(c: PContext, n: PNode): TAssignableResult =
+  result = parampatterns.isAssignable(c.p.owner, n)
+
+proc newHiddenAddrTaken(c: PContext, n: PNode, isOutParam: bool): PNode =
+  if n.kind == nkHiddenDeref and not (c.config.backend == backendCpp or
+                                      sfCompileToCpp in c.module.flags):
+    checkSonsLen(n, 1, c.config)
+    result = n[0]
+  else:
+    result = newNodeIT(nkHiddenAddr, n.info, makeVarType(c, n.typ))
+    result.add n
+    let aa = isAssignable(c, n)
+    let sym = getRoot(n)
+    if aa notin {arLValue, arLocalLValue}:
+      if aa == arDiscriminant and c.inUncheckedAssignSection > 0:
+        discard "allow access within a cast(unsafeAssign) section"
+      elif strictDefs in c.features and aa == arAddressableConst and
+              sym != nil and sym.kind == skLet and isOutParam:
+        discard "allow let varaibles to be passed to out parameters"
+      else:
+        localError(c.config, n.info, errVarForOutParamNeededX % renderNotLValue(n))
+
+proc analyseIfAddressTaken(c: PContext, n: PNode, isOutParam: bool): PNode =
+  result = n
+  case n.kind
+  of nkSym:
+    # n.sym.typ can be nil in 'check' mode ...
+    if n.sym.typ != nil and
+        skipTypes(n.sym.typ, abstractInst-{tyTypeDesc}).kind notin {tyVar, tyLent}:
+      incl(n.sym.flags, sfAddrTaken)
+      result = newHiddenAddrTaken(c, n, isOutParam)
+  of nkDotExpr:
+    checkSonsLen(n, 2, c.config)
+    if n[1].kind != nkSym:
+      internalError(c.config, n.info, "analyseIfAddressTaken")
+      return
+    if skipTypes(n[1].sym.typ, abstractInst-{tyTypeDesc}).kind notin {tyVar, tyLent}:
+      incl(n[1].sym.flags, sfAddrTaken)
+      result = newHiddenAddrTaken(c, n, isOutParam)
+  of nkBracketExpr:
+    checkMinSonsLen(n, 1, c.config)
+    if skipTypes(n[0].typ, abstractInst-{tyTypeDesc}).kind notin {tyVar, tyLent}:
+      if n[0].kind == nkSym: incl(n[0].sym.flags, sfAddrTaken)
+      result = newHiddenAddrTaken(c, n, isOutParam)
+  else:
+    result = newHiddenAddrTaken(c, n, isOutParam)
+
+proc analyseIfAddressTakenInCall*(c: PContext, n: PNode, isConverter = false) =
+  checkMinSonsLen(n, 1, c.config)
+  if n[0].typ == nil:
+    # n[0] might be erroring node in nimsuggest
+    return
+  const
+    FakeVarParams = {mNew, mNewFinalize, mInc, ast.mDec, mIncl, mExcl,
+      mSetLengthStr, mSetLengthSeq, mAppendStrCh, mAppendStrStr, mSwap,
+      mAppendSeqElem, mNewSeq, mShallowCopy, mDeepCopy, mMove, mWasMoved}
+
+  template checkIfConverterCalled(c: PContext, n: PNode) =
+    ## Checks if there is a converter call which wouldn't be checked otherwise
+    # Call can sometimes be wrapped in a deref
+    let node = if n.kind == nkHiddenDeref: n[0] else: n
+    if node.kind == nkHiddenCallConv:
+      analyseIfAddressTakenInCall(c, node, true)
+  # get the real type of the callee
+  # it may be a proc var with a generic alias type, so we skip over them
+  var t = n[0].typ.skipTypes({tyGenericInst, tyAlias, tySink})
+  if n[0].kind == nkSym and n[0].sym.magic in FakeVarParams:
+    # BUGFIX: check for L-Value still needs to be done for the arguments!
+    # note sometimes this is eval'ed twice so we check for nkHiddenAddr here:
+    for i in 1..<n.len:
+      if i < t.len and t[i] != nil and
+          skipTypes(t[i], abstractInst-{tyTypeDesc}).kind in {tyVar}:
+        let it = n[i]
+        let aa = isAssignable(c, it)
+        if aa notin {arLValue, arLocalLValue}:
+          if it.kind != nkHiddenAddr:
+            if aa == arDiscriminant and c.inUncheckedAssignSection > 0:
+              discard "allow access within a cast(unsafeAssign) section"
+            else:
+              localError(c.config, it.info, errVarForOutParamNeededX % $it)
+        # Make sure to still check arguments for converters
+        c.checkIfConverterCalled(n[i])
+    # bug #5113: disallow newSeq(result) where result is a 'var T':
+    if n[0].sym.magic in {mNew, mNewFinalize, mNewSeq}:
+      var arg = n[1] #.skipAddr
+      if arg.kind == nkHiddenDeref: arg = arg[0]
+      if arg.kind == nkSym and arg.sym.kind == skResult and
+          arg.typ.skipTypes(abstractInst).kind in {tyVar, tyLent}:
+        localError(c.config, n.info, errXStackEscape % renderTree(n[1], {renderNoComments}))
+
+    return
+  for i in 1..<n.len:
+    let n = if n.kind == nkHiddenDeref: n[0] else: n
+    c.checkIfConverterCalled(n[i])
+    if i < t.len and
+        skipTypes(t[i], abstractInst-{tyTypeDesc}).kind in {tyVar}:
+      # Converters wrap var parameters in nkHiddenAddr but they haven't been analysed yet.
+      # So we need to make sure we are checking them still when in a converter call
+      if n[i].kind != nkHiddenAddr or isConverter:
+        n[i] = analyseIfAddressTaken(c, n[i].skipAddr(), isOutParam(skipTypes(t[i], abstractInst-{tyTypeDesc})))
+
+
+proc replaceHookMagic*(c: PContext, n: PNode, kind: TTypeAttachedOp): PNode =
+  ## Replaces builtin generic hooks with lifted hooks.
+  case kind
+  of attachedDestructor:
+    result = n
+    let t = n[1].typ.skipTypes(abstractVar)
+    let op = getAttachedOp(c.graph, t, attachedDestructor)
+    if op != nil:
+      result[0] = newSymNode(op)
+      if op.typ != nil and op.typ.len == 2 and op.typ.firstParamType.kind != tyVar:
+        if n[1].kind == nkSym and n[1].sym.kind == skParam and
+            n[1].typ.kind == tyVar:
+          result[1] = genDeref(n[1])
+        else:
+          result[1] = skipAddr(n[1])
+  of attachedTrace:
+    result = n
+    let t = n[1].typ.skipTypes(abstractVar)
+    let op = getAttachedOp(c.graph, t, attachedTrace)
+    if op != nil:
+      result[0] = newSymNode(op)
+  of attachedDup:
+    result = n
+    let t = n[1].typ.skipTypes(abstractVar)
+    let op = getAttachedOp(c.graph, t, attachedDup)
+    if op != nil:
+      result[0] = newSymNode(op)
+      if op.typ.len == 3:
+        let boolLit = newIntLit(c.graph, n.info, 1)
+        boolLit.typ() = getSysType(c.graph, n.info, tyBool)
+        result.add boolLit
+  of attachedWasMoved:
+    result = n
+    let t = n[1].typ.skipTypes(abstractVar)
+    let op = getAttachedOp(c.graph, t, attachedWasMoved)
+    if op != nil:
+      result[0] = newSymNode(op)
+      analyseIfAddressTakenInCall(c, result, false)
+  of attachedSink:
+    result = c.semAsgnOpr(c, n, nkSinkAsgn)
+  of attachedAsgn:
+    result = c.semAsgnOpr(c, n, nkAsgn)
+  of attachedDeepCopy:
+    result = n
+    let t = n[1].typ.skipTypes(abstractVar)
+    let op = getAttachedOp(c.graph, t, kind)
+    if op != nil:
+      result[0] = newSymNode(op)

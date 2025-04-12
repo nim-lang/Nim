@@ -25,7 +25,7 @@ proc dataPointer(a: PGenericSeq, elemAlign, elemSize, index: int): pointer =
 proc resize(old: int): int {.inline.} =
   if old <= 0: result = 4
   elif old < 65536: result = old * 2
-  else: result = old * 3 div 2 # for large arrays * 3/2 is better
+  else: result = old div 2 + old # for large arrays * 3/2 is better
 
 when declared(allocAtomic):
   template allocStr(size: untyped): untyped =
@@ -300,7 +300,7 @@ proc setLengthSeq(seq: PGenericSeq, elemSize, elemAlign, newLen: int): PGenericS
     zeroMem(dataPointer(result, elemAlign, elemSize, newLen), (result.len-%newLen) *% elemSize)
   result.len = newLen
 
-proc setLengthSeqV2(s: PGenericSeq, typ: PNimType, newLen: int): PGenericSeq {.
+proc setLengthSeqV2(s: PGenericSeq, typ: PNimType, newLen: int, isTrivial: bool): PGenericSeq {.
     compilerRtl.} =
   sysAssert typ.kind == tySequence, "setLengthSeqV2: type is not a seq"
   if s == nil:
@@ -334,7 +334,8 @@ proc setLengthSeqV2(s: PGenericSeq, typ: PNimType, newLen: int): PGenericSeq {.
       # presence of user defined destructors, the user will expect the cell to be
       # "destroyed" thus creating the same problem. We can destroy the cell in the
       # finalizer of the sequence, but this makes destruction non-deterministic.
-      zeroMem(dataPointer(result, elemAlign, elemSize, newLen), (result.len-%newLen) *% elemSize)
+      if not isTrivial: # optimization for trivial types
+        zeroMem(dataPointer(result, elemAlign, elemSize, newLen), (result.len-%newLen) *% elemSize)
     else:
       result = s
       zeroMem(dataPointer(result, elemAlign, elemSize, result.len), (newLen-%result.len) *% elemSize)

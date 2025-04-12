@@ -11,24 +11,34 @@ when not defined(nimPreviewSlimSystem):
 
   func `$`*(x: float | float32): string =
     ## Outplace version of `addFloat`.
+    result = ""
     result.addFloat(x)
 
-proc `$`*(x: int): string {.raises: [].} =
-  ## Outplace version of `addInt`.
-  result.addInt(x)
+template addIntAlias(T: typedesc) =
+  proc `$`*(x: T): string {.raises: [].} =
+    ## Outplace version of `addInt`.
+    result = ""
+    result.addInt(x)
 
-proc `$`*(x: int64): string {.raises: [].} =
-  ## Outplace version of `addInt`.
-  result.addInt(x)
+# need to declare for bit types as well to not clash with converters:
+addIntAlias int
+addIntAlias int8
+addIntAlias int16
+addIntAlias int32
+addIntAlias int64
 
-proc `$`*(x: uint64): string {.raises: [].} =
-  ## Outplace version of `addInt`.
-  addInt(result, x)
+addIntAlias uint
+addIntAlias uint8
+addIntAlias uint16
+addIntAlias uint32
+addIntAlias uint64
 
 # same as old `ctfeWhitelist` behavior, whether or not this is a good idea.
 template gen(T) =
   # xxx simplify this by supporting this in compiler: int{lit} | uint64{lit} | int64{lit}
-  func `$`*(x: T{lit}): string {.compileTime.} = result.addInt(x)
+  func `$`*(x: T{lit}): string {.compileTime.} =
+    result = ""
+    result.addInt(x)
 gen(int)
 gen(uint64)
 gen(int64)
