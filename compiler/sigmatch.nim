@@ -2296,7 +2296,8 @@ proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
     # for generic type converters we need to check 'src <- a' before
     # 'f <- dest' in order to not break the unification:
     # see tests/tgenericconverter:
-    let srca = typeRel(m, src, a)
+    var convMatch = newCandidate(c, src)
+    let srca = typeRel(convMatch, src, a)
     if srca notin {isEqual, isGeneric, isSubtype}: continue
 
     # What's done below matches the logic in ``matchesAux``
@@ -2308,7 +2309,7 @@ proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
 
     let destIsGeneric = containsGenericType(dest)
     if destIsGeneric:
-      dest = generateTypeInstance(c, m.bindings, arg, dest)
+      dest = generateTypeInstance(c, convMatch.bindings, arg, dest)
     let fdest = typeRel(m, f, dest)
     if fdest in {isEqual, isGeneric} and not (dest.kind == tyLent and f.kind in {tyVar}):
       # can't fully mark used yet, may not be used in final call
