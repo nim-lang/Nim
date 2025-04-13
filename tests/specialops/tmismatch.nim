@@ -14,4 +14,4 @@ template `.=`*(flags: Flags, key: Flag, val: bool) =
 var flags: Flags
 
 flags.A = 123 #[tt.Error
-        ^ undeclared field: 'A=' for type tmismatch.Flags [type declared in tmismatch.nim(9, 5)]]#
+     ^ undeclared field: 'A' for type tmismatch.Flags [type declared in tmismatch.nim(9, 5)]]#
