@@ -1963,7 +1963,7 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
   of nkCurlyExpr:
     # a{i} = x -->  `{}=`(a, i, x)
     let nOrig = n.copyTree
-    var asgnCall = buildOverloadedSubscripts(n[0], getIdent(c.cache, "[]="))
+    var asgnCall = buildOverloadedSubscripts(n[0], getIdent(c.cache, "{}="))
     asgnCall.add(n[1])
     result = semOverloadedCallAnalyseEffects(c, asgnCall, asgnCall.copyTree, {efNoUndeclared})
     if result != nil:
