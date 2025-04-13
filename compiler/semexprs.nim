@@ -1787,7 +1787,7 @@ proc propertyWriteAccess(c: PContext, n, nOrig, a: PNode): PNode =
   result = newTreeI(nkCall, n.info, setterId, a[0], n[1])
   result.flags.incl nfDotSetter
   let orig = newTreeI(nkCall, n.info, setterId, aOrig[0], nOrig[1])
-  result = semOverloadedCallAnalyseEffects(c, result, orig, {})
+  result = semOverloadedCallAnalyseEffects(c, result, orig, {efNoUndeclared})
 
   if result != nil:
     result = afterCallActions(c, result, nOrig, {})
