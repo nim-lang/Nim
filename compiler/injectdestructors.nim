@@ -24,7 +24,7 @@ import std/[strtabs, tables, strutils, intsets]
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
-from trees import exprStructuralEquivalent, getRoot, whichPragma, getPotentialWrites
+from trees import exprStructuralEquivalent, getRoot, whichPragma
 
 type
   Con = object
