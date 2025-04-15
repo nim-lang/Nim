@@ -1451,6 +1451,8 @@ proc detectCapturedVars(c: var Ctx, n: PNode, stateIdx: int) =
       detectCapturedVars(c, n[0][1], stateIdx)
     else:
       detectCapturedVars(c, n[0], stateIdx)
+  of nkIdentDefs:
+    detectCapturedVars(c, n[^1], stateIdx)
   of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit,
      nkTemplateDef, nkTypeSection, nkProcDef, nkMethodDef,
      nkConverterDef, nkMacroDef, nkFuncDef, nkCommentStmt,
@@ -1493,6 +1495,8 @@ proc liftLocals(c: var Ctx, n: PNode): PNode =
      nkTypeOfExpr, nkMixinStmt, nkBindStmt,
      nkLambdaKinds, nkIteratorDef:
     discard
+  of nkIdentDefs:
+    n[^1] = liftLocals(c, n[^1])
   else:
     for i in 0 ..< n.safeLen:
       n[i] = liftLocals(c, n[i])
