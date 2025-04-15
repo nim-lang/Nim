@@ -1487,6 +1487,12 @@ proc liftLocals(c: var Ctx, n: PNode): PNode =
       n[0][1] = liftLocals(c, n[0][1])
     else:
       n[0] = liftLocals(c, n[0])
+  of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit,
+     nkTemplateDef, nkTypeSection, nkProcDef, nkMethodDef,
+     nkConverterDef, nkMacroDef, nkFuncDef, nkCommentStmt,
+     nkTypeOfExpr, nkMixinStmt, nkBindStmt,
+     nkLambdaKinds, nkIteratorDef:
+    discard
   else:
     for i in 0 ..< n.safeLen:
       n[i] = liftLocals(c, n[i])

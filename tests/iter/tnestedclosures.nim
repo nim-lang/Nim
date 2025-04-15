@@ -160,7 +160,7 @@ block: # issue #12487
 
   main()
 
-block: # issue #24863
+block: # minimized issue #24863
   echo "Test 8:"
   proc c() =
     iterator b(): int {.closure.} =
