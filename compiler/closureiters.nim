@@ -133,9 +133,9 @@
 import
   ast, msgs, idents,
   renderer, magicsys, lowerings, lambdalifting, modulegraphs, lineinfos,
-  options, transf
+  options
 
-import std/[tables, intsets]
+import std/tables
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -161,7 +161,6 @@ type
                     # is their finally. For finally it is parent finally. Otherwise -1
     idgen: IdGenerator
     varStates: Table[ItemId, int] # Used to detect if local variable belongs to multiple states
-    processedInnerProcs: IntSet
 
 const
   nkSkip = {nkEmpty..nkNilLit, nkTemplateDef, nkTypeSection, nkStaticStmt,
@@ -1432,17 +1431,13 @@ proc preprocess(c: var PreprocessContext; n: PNode): PNode =
     for i in 0 ..< n.len:
       result[i] = preprocess(c, n[i])
 
-proc detectCapturedVars(c: var Ctx, n: PNode, owner: PSym, stateIdx: int) =
+proc detectCapturedVars(c: var Ctx, n: PNode, stateIdx: int) =
   case n.kind
   of nkSym:
     let s = n.sym
-    if isInnerProc(s):
-      if not c.processedInnerProcs.containsOrIncl(s.id):
-        let body = transformBody(c.g, c.idgen, s, {useCache})
-        detectCapturedVars(c, body, s, localRequiresLifting)
-    elif s.kind in {skResult, skVar, skLet, skForVar, skTemp} and sfGlobal notin s.flags and s.owner == c.fn:
+    if s.kind in {skResult, skVar, skLet, skForVar, skTemp} and sfGlobal notin s.flags and s.owner == c.fn:
       let vs = c.varStates.getOrDefault(s.itemId, localNotSeen)
-      if vs == localNotSeen and stateIdx != localRequiresLifting: # First seing this variable
+      if vs == localNotSeen: # First seing this variable
         c.varStates[s.itemId] = stateIdx
       elif vs == localRequiresLifting:
         discard # Sym already marked
@@ -1453,9 +1448,9 @@ proc detectCapturedVars(c: var Ctx, n: PNode, owner: PSym, stateIdx: int) =
       # we have a `result = result` expression produced by the closure
       # transform, let's not touch the LHS in order to make the lifting pass
       # correct when `result` is lifted
-      detectCapturedVars(c, n[0][1], owner, stateIdx)
+      detectCapturedVars(c, n[0][1], stateIdx)
     else:
-      detectCapturedVars(c, n[0], owner, stateIdx)
+      detectCapturedVars(c, n[0], stateIdx)
   of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit,
      nkTemplateDef, nkTypeSection, nkProcDef, nkMethodDef,
      nkConverterDef, nkMacroDef, nkFuncDef, nkCommentStmt,
@@ -1463,14 +1458,14 @@ proc detectCapturedVars(c: var Ctx, n: PNode, owner: PSym, stateIdx: int) =
     discard
   of nkLambdaKinds, nkIteratorDef:
     if n.typ != nil:
-      detectCapturedVars(c, n[namePos], owner, stateIdx)
+      detectCapturedVars(c, n[namePos], stateIdx)
   else:
     for i in 0 ..< n.safeLen:
-      detectCapturedVars(c, n[i], owner, stateIdx)
+      detectCapturedVars(c, n[i], stateIdx)
 
 proc detectCapturedVars(c: var Ctx) =
   for i, s in c.states:
-    detectCapturedVars(c, s.body, c.fn, i)
+    detectCapturedVars(c, s.body, i)
 
 proc liftLocals(c: var Ctx, n: PNode): PNode =
   result = n
