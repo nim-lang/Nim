@@ -5,7 +5,7 @@ type M = object
 
 template h(f: M): int =
   yield f
-  0
+  456
 
 proc s(): M =
   iterator g(): M {.closure.} = discard
@@ -17,7 +17,7 @@ proc s(): M =
 proc c(): M =
   iterator b(): M {.closure.} =
     let r = h(s())
-    doAssert r == 0
+    doAssert r == 456
     proc n(): M =
       iterator y(): M {.closure.} =
         let _ = r

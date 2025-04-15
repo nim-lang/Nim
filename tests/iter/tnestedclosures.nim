@@ -27,7 +27,7 @@ Test 7:
 2
 Test 8:
 123
-0
+456
 '''
 """
 
@@ -164,7 +164,7 @@ block: # minimized issue #24863
   echo "Test 8:"
   proc c() =
     iterator b(): int {.closure.} =
-      let r = 0
+      let r = 456
       yield 123
       proc n() =
         echo r
