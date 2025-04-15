@@ -25,6 +25,9 @@ Test 7:
 0
 1
 2
+Test 8:
+123
+0
 '''
 """
 
@@ -156,3 +159,20 @@ block: # issue #12487
     doAssert s == @["something"]
 
   main()
+
+block: # issue #24863
+  echo "Test 8:"
+  proc c() =
+    iterator b(): int {.closure.} =
+      let r = 0
+      yield 123
+      proc n() =
+        echo r
+      let a = proc () = n()
+      a()
+
+    let j = b
+    echo j()
+    discard j()
+
+  c()

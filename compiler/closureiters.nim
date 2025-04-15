@@ -1451,6 +1451,12 @@ proc detectCapturedVars(c: var Ctx, n: PNode, stateIdx: int) =
       detectCapturedVars(c, n[0][1], stateIdx)
     else:
       detectCapturedVars(c, n[0], stateIdx)
+  of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit,
+     nkTemplateDef, nkTypeSection, nkProcDef, nkMethodDef,
+     nkConverterDef, nkMacroDef, nkFuncDef, nkCommentStmt,
+     nkTypeOfExpr, nkMixinStmt, nkBindStmt,
+     nkLambdaKinds, nkIteratorDef:
+    discard
   else:
     for i in 0 ..< n.safeLen:
       detectCapturedVars(c, n[i], stateIdx)
