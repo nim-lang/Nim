@@ -133,9 +133,9 @@
 import
   ast, msgs, idents,
   renderer, magicsys, lowerings, lambdalifting, modulegraphs, lineinfos,
-  options
+  options, transf
 
-import std/[tables, sets]
+import std/[tables, intsets]
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -161,7 +161,7 @@ type
                     # is their finally. For finally it is parent finally. Otherwise -1
     idgen: IdGenerator
     varStates: Table[ItemId, int] # Used to detect if local variable belongs to multiple states
-    processedInnerProcStates: HashSet[(int, int)] # tracks which inner procs were processed in which state
+    processedInnerProcs: IntSet
 
 const
   nkSkip = {nkEmpty..nkNilLit, nkTemplateDef, nkTypeSection, nkStaticStmt,
@@ -1437,11 +1437,12 @@ proc detectCapturedVars(c: var Ctx, n: PNode, owner: PSym, stateIdx: int) =
   of nkSym:
     let s = n.sym
     if isInnerProc(s):
-      if not c.processedInnerProcStates.containsOrIncl((s.id, stateIdx)):
-        detectCapturedVars(c, s.ast, s, stateIdx)
+      if not c.processedInnerProcs.containsOrIncl(s.id):
+        let body = transformBody(c.g, c.idgen, s, {useCache})
+        detectCapturedVars(c, body, s, localRequiresLifting)
     elif s.kind in {skResult, skVar, skLet, skForVar, skTemp} and sfGlobal notin s.flags and s.owner == c.fn:
       let vs = c.varStates.getOrDefault(s.itemId, localNotSeen)
-      if vs == localNotSeen: # First seing this variable
+      if vs == localNotSeen and stateIdx != localRequiresLifting: # First seing this variable
         c.varStates[s.itemId] = stateIdx
       elif vs == localRequiresLifting:
         discard # Sym already marked
@@ -1455,8 +1456,6 @@ proc detectCapturedVars(c: var Ctx, n: PNode, owner: PSym, stateIdx: int) =
       detectCapturedVars(c, n[0][1], owner, stateIdx)
     else:
       detectCapturedVars(c, n[0], owner, stateIdx)
-  of nkIdentDefs:
-    detectCapturedVars(c, n[^1], owner, stateIdx)
   of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit,
      nkTemplateDef, nkTypeSection, nkProcDef, nkMethodDef,
      nkConverterDef, nkMacroDef, nkFuncDef, nkCommentStmt,
@@ -1501,8 +1500,6 @@ proc liftLocals(c: var Ctx, n: PNode): PNode =
      nkTypeOfExpr, nkMixinStmt, nkBindStmt,
      nkLambdaKinds, nkIteratorDef:
     discard
-  of nkIdentDefs:
-    n[^1] = liftLocals(c, n[^1])
   else:
     for i in 0 ..< n.safeLen:
       n[i] = liftLocals(c, n[i])
