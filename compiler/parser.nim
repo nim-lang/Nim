@@ -638,7 +638,7 @@ proc semiStmtList(p: var Parser, result: PNode) =
         getTok(p)
       if p.tok.tokType == tkParRi:
         break
-      elif not (sameInd(p) or realInd(p)):
+      elif not (sameOrNoInd(p) or realInd(p)):
         parMessage(p, errInvalidIndentation)
       let a = complexOrSimpleStmt(p)
       if a.kind == nkEmpty:
