@@ -1885,6 +1885,10 @@ proc genCheckedObjAccess(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
   c.freeTemp(objR)
 
 proc genArrAccess(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
+  if n[0].typ == nil: 
+    globalError(c.config, n.info, "cannot access array with nil type")
+    return
+
   let arrayType = n[0].typ.skipTypes(abstractVarRange-{tyTypeDesc}).kind
   case arrayType
   of tyString, tyCstring:
