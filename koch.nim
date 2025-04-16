@@ -176,7 +176,12 @@ proc bundleAtlasExe(latest: bool, args: string) =
   nimCompile("dist/atlas/src/atlas.nim",
              options = "-d:release --noNimblePath -d:nimAtlasBootstrap " & args)
 
+proc bundleChecksums(latest: bool) =
+  let commit = if latest: "HEAD" else: ChecksumsStableCommit
+  cloneDependency(distDir, "https://github.com/nim-lang/checksums.git", commit, allowBundled = true)
+
 proc bundleNimsuggest(args: string) =
+  bundleChecksums(false)
   nimCompileFold("Compile nimsuggest", "nimsuggest/nimsuggest.nim",
                  options = "-d:danger " & args)
 
@@ -204,10 +209,6 @@ proc bundleWinTools(args: string) =
     # not yet a tool worth including
     nimCompile(r"tools\downloader.nim",
                options = r"--cc:vcc --app:gui -d:ssl --noNimblePath --path:..\ui " & args)
-
-proc bundleChecksums(latest: bool) =
-  let commit = if latest: "HEAD" else: ChecksumsStableCommit
-  cloneDependency(distDir, "https://github.com/nim-lang/checksums.git", commit, allowBundled = true)
 
 proc zip(latest: bool; args: string) =
   bundleChecksums(latest)
