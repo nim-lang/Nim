@@ -1003,9 +1003,13 @@ proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
       # 'selectedGC' here to determine if we have the new runtime.
       discard considerUserDefinedOp(c, t, body, x, y)
     elif tfHasAsgn in t.flags:
+      # seqs with elements using custom hooks in refc
       if c.kind in {attachedAsgn, attachedSink, attachedDeepCopy}:
         body.add newSeqCall(c, x, y)
-      forallElements(c, t, body, x, y)
+      if c.kind == attachedWasMoved:
+        body.add genBuiltin(c, mWasMoved, "wasMoved", x)
+      else:
+        forallElements(c, t, body, x, y)
     else:
       defaultOp(c, t, body, x, y)
   of tyString:
