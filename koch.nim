@@ -11,13 +11,13 @@
 
 const
   # examples of possible values for repos: Head, ea82b54
-  NimbleStableCommit = "123f97a5e4ee9ba35720c0869e19a047c43c797e" # 0.16.4
-  AtlasStableCommit = "5faec3e9a33afe99a7d22377dd1b45a5391f5504"
-  ChecksumsStableCommit = "bd9bf4eaea124bf8d01e08f92ac1b14c6879d8d3"
+  NimbleStableCommit = "b1dc28450f028aead0b7cf5da8adf2267db65f89" # 0.18.2
+  AtlasStableCommit = "dd9961b1f8da8d1e8759860bc24c1bf3b1df423e" # 0.9
+  ChecksumsStableCommit = "f8f6bd34bfa3fe12c64b919059ad856a96efcba0" # 2.0.1
   SatStableCommit = "faf1617f44d7632ee9601ebc13887644925dcc01"
 
   # examples of possible values for fusion: #head, #ea82b54, 1.2.3
-  FusionStableHash = "#372ee4313827ef9f2ea388840f7d6b46c2b1b014"
+  FusionStableHash = "#562467452b32cb7a97410ea177f083e6d8405734"
   HeadHash = "#head"
 when not defined(windows):
   const
