@@ -2110,7 +2110,7 @@ proc parseObjectCase(p: var Parser): PNode =
   #| objectBranches = objectBranch (IND{=} objectBranch)*
   #|                       (IND{=} 'elif' expr colcom objectPart)*
   #|                       (IND{=} 'else' colcom objectPart)?
-  #| objectCase = 'case' (declColonEquals / pragma?) ':'? COMMENT?
+  #| objectCase = 'case' (declColonEquals / pragma)? ':'? COMMENT?
   #|             (IND{>} objectBranches DED
   #|             | IND{=} objectBranches)
   result = newNodeP(nkRecCase, p)
