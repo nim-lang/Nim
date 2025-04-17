@@ -2110,12 +2110,28 @@ proc parseObjectCase(p: var Parser): PNode =
   #| objectBranches = objectBranch (IND{=} objectBranch)*
   #|                       (IND{=} 'elif' expr colcom objectPart)*
   #|                       (IND{=} 'else' colcom objectPart)?
-  #| objectCase = 'case' declColonEquals ':'? COMMENT?
+  #| objectCase = 'case' (declColonEquals / pragma?) ':'? COMMENT?
   #|             (IND{>} objectBranches DED
   #|             | IND{=} objectBranches)
   result = newNodeP(nkRecCase, p)
-  getTokNoInd(p)
-  var a = parseIdentColonEquals(p, {withPragma})
+  getTok(p)
+  if p.tok.tokType != tkOf:
+    # of case will be handled later
+    if p.tok.indent >= 0: parMessage(p, errInvalidIndentation)
+  var a: PNode
+  if p.tok.tokType in {tkSymbol, tkAccent}:
+    a = parseIdentColonEquals(p, {withPragma})
+  else:
+    a = newNodeP(nkIdentDefs, p)
+    if p.tok.tokType == tkCurlyDotLe:
+      var prag = newNodeP(nkPragmaExpr, p)
+      prag.add(p.emptyNode)
+      prag.add(parsePragma(p))
+      a.add(prag)
+    else:
+      a.add(p.emptyNode)
+    a.add(p.emptyNode)
+    a.add(p.emptyNode)
   result.add(a)
   if p.tok.tokType == tkColon: getTok(p)
   flexComment(p, result)
