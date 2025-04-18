@@ -1129,9 +1129,7 @@ proc sameTuple(a, b: PType, c: var TSameTypeClosure): bool =
 template ifFastObjectTypeCheckFailed(a, b: PType, body: untyped) =
   if tfFromGeneric notin a.flags + b.flags:
     # fast case: id comparison suffices:
-    result = a.id == b.id or
-      # resem can cause the type to have different IDs but belong to the same symbol (#24887):
-      (a.sym != nil and b.sym != nil and a.sym.id == b.sym.id)
+    result = a.id == b.id
   else:
     # expensive structural equality test; however due to the way generic and
     # objects work, if one of the types does **not** contain tfFromGeneric,

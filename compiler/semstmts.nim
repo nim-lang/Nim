@@ -1460,8 +1460,9 @@ proc typeDefLeftSidePass(c: PContext, typeSection: PNode, i: int) =
   else:
     s = semIdentDef(c, name, skType)
     onDef(name.info, s)
-    s.typ = newTypeS(tyForward, c)
-    s.typ.sym = s             # process pragmas:
+    if s.typ == nil:
+      s.typ = newTypeS(tyForward, c)
+      s.typ.sym = s             # process pragmas:
     if name.kind == nkPragmaExpr:
       let rewritten = applyTypeSectionPragmas(c, name[1], typeDef)
       if rewritten != nil:
