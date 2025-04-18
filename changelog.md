@@ -25,25 +25,6 @@ errors.
 
 [//]: # "Additions:"
 
-- Added `newStringUninit` to system, which creates a new string of length `len` like `newString` but with uninitialized content.
-- Added `setLenUninit` to system, which doesn't initialize
-slots when enlarging a sequence.
-- Added `hasDefaultValue` to `std/typetraits` to check if a type has a valid default value.
-- Added `rangeBase` to `std/typetraits` to obtain the base type of a range type or
-  convert a value with a range type to its base type.
-- Added Viewport API for the JavaScript targets in the `dom` module.
-- Added `toSinglyLinkedRing` and `toDoublyLinkedRing` to `std/lists` to convert from `openArray`s.
-- ORC: To be enabled via `nimOrcStats` there is a new API called `GC_orcStats` that can be used to query how many
-  objects the cyclic collector did free. If the number is zero that is a strong indicator that you can use `--mm:arc`
-  instead of `--mm:orc`.
-- A `$` template is provided for `Path` in `std/paths`.
-- `min`, `max`, and `sequtils`' `minIndex`, `maxIndex` and `minmax` for `openArray`s now accept a comparison function.
-- `std/hashes.hash(x:string)` changed to produce a 64-bit string `Hash` (based
-on Google's Farm Hash) which is also often faster than the present one.  Define
-`nimStringHash2` to get the old values back.  `--jsbigint=off` mode always only
-produces the old values.  This may impact your automated tests if they depend
-on hash order in some obvious or indirect way.  Using `sorted` or `OrderedTable`
-is often an easy workaround.
 - `setutils.symmetricDifference` along with its operator version
   `` setutils.`-+-` `` and in-place version `setutils.toggle` have been added
   to more efficiently calculate the symmetric difference of bitsets.
@@ -53,7 +34,7 @@ is often an easy workaround.
 [//]: # "Changes:"
 
 - `std/math` The `^` symbol now supports floating-point as exponent in addition to the Natural type.
-
+- `min`, `max`, and `sequtils`' `minIndex`, `maxIndex` and `minmax` for `openArray`s now accept a comparison function.
 - `system.substr` implementation now uses `copymem` (wrapped C `memcpy`) for copying data, if available at compilation.
 - `system.newStringUninit` is now considered free of side-effects allowing it to be used with `--experimental:strictFuncs`.
 
