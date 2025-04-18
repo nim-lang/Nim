@@ -1,9 +1,3 @@
-discard """
-  output: '''
-invalid data
-'''
-"""
-
 # issue #24875
 
 type
@@ -11,4 +5,5 @@ type
     One = 1
 
 var x = cast[MyEnum](0)
-echo x
+let s = $x
+doAssert s == ""

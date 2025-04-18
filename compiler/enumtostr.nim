@@ -36,7 +36,7 @@ proc genEnumToStrProc*(t: PType; info: TLineInfo; g: ModuleGraph; idgen: IdGener
   # safety branch for invalid data:
   caseStmt.add newTree(nkElse,
     newTree(nkStmtList, newTree(nkFastAsgn, newSymNode(res),
-      newStrNode("invalid data", info))))
+      newStrNode("", info))))
 
   body.add(caseStmt)
 
