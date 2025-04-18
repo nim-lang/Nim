@@ -25,7 +25,7 @@ const
   useEffectSystem* = true
   useWriteTracking* = false
   hasFFI* = defined(nimHasLibFFI)
-  copyrightYear* = "2024"
+  copyrightYear* = "2025"
 
   nimEnableCovariance* = defined(nimEnableCovariance)
 
@@ -222,13 +222,14 @@ type
     strictEffects,
     unicodeOperators, # deadcode
     flexibleOptionalParams,
-    strictDefs,
+    strictDefs, # deadcode
     strictCaseObjects,
     inferGenericTypes,
     openSym, # remove nfDisabledOpenSym when this is default
     # alternative to above:
     genericsOpenSym
     vtables
+    typeBoundOps
 
   LegacyFeature* = enum
     allowSemcheckedAstModification,
@@ -247,6 +248,8 @@ type
       ## Useful for libraries that rely on local passC
     jsNoLambdaLifting
       ## Old transformation for closures in JS backend
+    noPanicOnExcept
+      ## don't panic on bare except
 
   SymbolFilesOption* = enum
     disabledSf, writeOnlySf, readOnlySf, v2Sf, stressTest
@@ -382,6 +385,7 @@ type
     warnCounter*: int
     errorMax*: int
     maxLoopIterationsVM*: int ## VM: max iterations of all loops
+    maxCallDepthVM*: int ## VM: max call depth
     isVmTrace*: bool
     configVars*: StringTableRef
     symbols*: StringTableRef ## We need to use a StringTableRef here as defined
@@ -400,6 +404,7 @@ type
     projectPath*: AbsoluteDir # holds a path like /home/alice/projects/nim/compiler/
     projectFull*: AbsoluteFile # projectPath/projectName
     projectIsStdin*: bool # whether we're compiling from stdin
+    stdinFile*: AbsoluteFile # Filename to use in messages for stdin
     lastMsgWasDot*: set[StdOrrKind] # the last compiler message was a single '.'
     projectMainIdx*: FileIndex # the canonical path id of the main module
     projectMainIdx2*: FileIndex # consider merging with projectMainIdx
@@ -576,6 +581,7 @@ proc newConfigRef*(): ConfigRef =
     projectPath: AbsoluteDir"", # holds a path like /home/alice/projects/nim/compiler/
     projectFull: AbsoluteFile"", # projectPath/projectName
     projectIsStdin: false, # whether we're compiling from stdin
+    stdinFile: AbsoluteFile"stdinfile",
     projectMainIdx: FileIndex(0'i32), # the canonical path id of the main module
     command: "", # the main command (e.g. cc, check, scan, etc)
     commandArgs: @[], # any arguments after the main command
@@ -597,6 +603,7 @@ proc newConfigRef*(): ConfigRef =
     arguments: "",
     suggestMaxResults: 10_000,
     maxLoopIterationsVM: 10_000_000,
+    maxCallDepthVM: 2_000,
     vmProfileData: newProfileData(),
     spellSuggestMax: spellSuggestSecretSauce,
     currentConfigDir: ""

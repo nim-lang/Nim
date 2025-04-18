@@ -77,7 +77,7 @@ proc inSymChoice(sc, x: PNode): bool =
     result = false
     for i in 0..<sc.len:
       if sc[i].sym == x.sym: return true
-  elif sc.kind == nkOpenSymChoice:
+  elif sc.kind in {nkOpenSymChoice, nkOpenSym}:
     # same name suffices for open sym choices!
     result = sc[0].sym.name.id == x.sym.name.id
   else:

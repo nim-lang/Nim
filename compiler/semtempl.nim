@@ -67,7 +67,12 @@ proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule;
     # for instance 'nextTry' is both in tables.nim and astalgo.nim ...
     if not isField or sfGenSym notin s.flags:
       result = newSymNode(s, info)
-      markUsed(c, info, s)
+      if isField:
+        # possibly not final field sym
+        incl(s.flags, sfUsed)
+        markOwnerModuleAsUsed(c, s)
+      else:
+        markUsed(c, info, s)
       onUse(info, s)
     else:
       result = n
@@ -237,10 +242,10 @@ proc semTemplSymbol(c: var TemplCtx, n: PNode, s: PSym; isField, isAmbiguous: bo
         if result.kind == nkSym:
           result = newOpenSym(result)
         else:
-          result.typ = nil
+          result.typ() = nil
       else:
         result.flags.incl nfDisabledOpenSym
-        result.typ = nil
+        result.typ() = nil
   of skGenericParam:
     if isField and sfGenSym in s.flags: result = n
     else:
@@ -250,7 +255,7 @@ proc semTemplSymbol(c: var TemplCtx, n: PNode, s: PSym; isField, isAmbiguous: bo
           result = newOpenSym(result)
         else:
           result.flags.incl nfDisabledOpenSym
-          result.typ = nil
+          result.typ() = nil
   of skParam:
     result = n
   of skType:
@@ -268,10 +273,10 @@ proc semTemplSymbol(c: var TemplCtx, n: PNode, s: PSym; isField, isAmbiguous: bo
           if result.kind == nkSym:
             result = newOpenSym(result)
           else:
-            result.typ = nil
+            result.typ() = nil
         else:
           result.flags.incl nfDisabledOpenSym
-          result.typ = nil
+          result.typ() = nil
   else:
     if isField and sfGenSym in s.flags: result = n
     else:
@@ -281,7 +286,7 @@ proc semTemplSymbol(c: var TemplCtx, n: PNode, s: PSym; isField, isAmbiguous: bo
           result = newOpenSym(result)
         else:
           result.flags.incl nfDisabledOpenSym
-          result.typ = nil
+          result.typ() = nil
     # Issue #12832
     when defined(nimsuggest):
       suggestSym(c.c.graph, n.info, s, c.c.graph.usageSym, false)
@@ -535,13 +540,20 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
   of nkConverterDef:
     result = semRoutineInTemplBody(c, n, skConverter)
   of nkPragmaExpr:
-    result[0] = semTemplBody(c, n[0])
+    result = semTemplBodySons(c, n)
   of nkPostfix:
     result[1] = semTemplBody(c, n[1])
   of nkPragma:
-    for x in n:
-      if x.kind == nkExprColonExpr:
-        x[1] = semTemplBody(c, x[1])
+    for i in 0 ..< n.len:
+      let x = n[i]
+      let prag = whichPragma(x)
+      if prag == wInvalid:
+        # only sem if not a language-level pragma 
+        result[i] = semTemplBody(c, x)
+      elif x.kind in nkPragmaCallKinds:
+        # is pragma, but value still needs to be checked
+        for j in 1 ..< x.len:
+          x[j] = semTemplBody(c, x[j])
   of nkBracketExpr:
     if n.typ == nil:
       # if a[b] is nested inside a typed expression, don't convert it
@@ -683,6 +695,9 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
   else:
     s = semIdentVis(c, skTemplate, n[namePos], {})
   assert s.kind == skTemplate
+
+  let info = getLineInfo(n[namePos])
+  suggestSym(c.graph, info, s, c.graph.usageSym)
 
   styleCheckDef(c, s)
   onDef(n[namePos].info, s)

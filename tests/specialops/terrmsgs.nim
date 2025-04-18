@@ -26,8 +26,7 @@ block:
   block:
     template `.=`(a: Foo, b: untyped, c: untyped) = b = c
     b.x = 123 #[tt.Error
-        ^ undeclared field: 'x=' for type terrmsgs.Bar [type declared in terrmsgs.nim(15, 8)]]#
-    # yeah it says x= but does it matter in practice
+     ^ undeclared field: 'x' for type terrmsgs.Bar [type declared in terrmsgs.nim(15, 8)]]#
   block:
     template `()`(a: Foo, b: untyped, c: untyped) = echo "something"
 

@@ -94,6 +94,7 @@ type
     warnImplicitDefaultValue = "ImplicitDefaultValue",
     warnIgnoredSymbolInjection = "IgnoredSymbolInjection",
     warnStdPrefix = "StdPrefix"
+    warnUnknownNotes = "UnknownNotes"
     warnUser = "User",
     warnGlobalVarConstructorTemporary = "GlobalVarConstructorTemporary",
     # hints
@@ -109,9 +110,9 @@ type
     hintSource = "Source", hintPerformance = "Performance", hintStackTrace = "StackTrace",
     hintGCStats = "GCStats", hintGlobalVar = "GlobalVar", hintExpandMacro = "ExpandMacro",
     hintUser = "User", hintUserRaw = "UserRaw", hintExtendedContext = "ExtendedContext",
+    hintUnknownRaises = "UnknownRaises",
     hintMsgOrigin = "MsgOrigin", # since 1.3.5
     hintDeclaredLoc = "DeclaredLoc", # since 1.5.1
-    hintUnknownHint = "UnknownHint"
 
 const
   MsgKindToStr*: array[TMsgKind, string] = [
@@ -200,6 +201,7 @@ const
     warnImplicitDefaultValue: "$1",
     warnIgnoredSymbolInjection: "$1",
     warnStdPrefix: "$1 needs the 'std' prefix",
+    warnUnknownNotes: "$1",
     warnUser: "$1",
     warnGlobalVarConstructorTemporary: "global variable '$1' initialization requires a temporary variable",
     hintSuccess: "operation successful: $#",
@@ -235,9 +237,9 @@ const
     hintUser: "$1",
     hintUserRaw: "$1",
     hintExtendedContext: "$1",
+    hintUnknownRaises: "$1 is a forward declaration without explicit .raises, assuming it can raise anything",
     hintMsgOrigin: "$1",
-    hintDeclaredLoc: "$1",
-    hintUnknownHint: "unknown hint: $1"
+    hintDeclaredLoc: "$1"
   ]
 
 const
@@ -268,6 +270,7 @@ const
   NotesVerbosity* = computeNotesVerbosity()
   errXMustBeCompileTime* = "'$1' can only be used in compile-time context"
   errArgsNeedRunOption* = "arguments can only be given if the '--run' option is selected"
+  errFloatToString* = "cannot convert '$1' to '$2'"
 
 type
   TFileInfo* = object

@@ -5,5 +5,5 @@ discard """
 
 try:
   raise
-except:
+except ReraiseDefect:
   echo "Hi!"

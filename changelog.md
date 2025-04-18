@@ -1,75 +1,27 @@
-# v2.2.0 - yyyy-mm-dd
+# v2.x.x - yyyy-mm-dd
 
 
 ## Changes affecting backward compatibility
 
-- `-d:nimStrictDelete` becomes the default. An index error is produced when the index passed to `system.delete` was out of bounds. Use `-d:nimAuditDelete` to mimic the old behavior for backwards compatibility.
-- The default user-agent in `std/httpclient` has been changed to `Nim-httpclient/<version>` instead of `Nim httpclient/<version>` which was incorrect according to the HTTP spec.
-- Methods now support implementations based on a VTable by using `--experimental:vtables`. Methods are then confined to be in the same module where their type has been defined.
-- With `-d:nimPreviewNonVarDestructor`, non-var destructors become the default.
-- A bug where tuple unpacking assignment with a longer tuple on the RHS than the LHS was allowed has been fixed, i.e. code like:
-  ```nim
-  var a, b: int
-  (a, b) = (1, 2, 3, 4)
-  ```
-  will no longer compile.
-- `internalNew` is removed from system, use `new` instead.
+- `-d:nimPreviewFloatRoundtrip` becomes the default. `system.addFloat` and `system.$` now can produce string representations of
+floating point numbers that are minimal in size and possess round-trip and correct
+rounding guarantees (via the
+[Dragonbox](https://raw.githubusercontent.com/jk-jeon/dragonbox/master/other_files/Dragonbox.pdf) algorithm). Use `-d:nimLegacySprintf` to emulate old behaviors.
 
-- `bindMethod` in `std/jsffi` is deprecated, don't use it with closures.
+- The `default` parameter of `tables.getOrDefault` has been renamed to `def` to
+  avoid conflicts with `system.default`, so named argument usage for this
+  parameter like `getOrDefault(..., default = ...)` will have to be changed.
 
-- JS backend now supports lambda lifting for closures. Use `--legacy:jsNoLambdaLifting` to emulate old behavior.
+- With `-d:nimPreviewCheckedClose`, the `close` function in the `std/syncio` module now raises an IO exception in case of an error.
 
-- JS backend now supports closure iterators.
+- Unknown warnings and hints now gives warnings `warnUnknownNotes` instead of
+errors.
 
-- `owner` in `std/macros` is deprecated.
+- With `-d:nimPreviewAsmSemSymbol`, backticked symbols are type checked in the `asm/emit` statements.
 
-- Ambiguous type symbols in generic procs and templates now generate symchoice nodes.
-  Previously; in templates they would error immediately at the template definition,
-  and in generic procs a type symbol would arbitrarily be captured, losing the
-  information of the other symbols. This means that generic code can now give
-  errors for ambiguous type symbols, and macros operating on generic proc AST
-  may encounter symchoice nodes instead of the arbitrarily resolved type symbol nodes.
-
-- Partial generic instantiation of routines is no longer allowed. Previously
-  it compiled in niche situations due to bugs in the compiler.
-
-  ```nim
-  proc foo[T, U](x: T, y: U) = echo (x, y)
-  proc foo[T, U](x: var T, y: U) = echo "var ", (x, y)
-
-  proc bar[T]() =
-    foo[float](1, "abc")
-
-  bar[int]() # before: (1.0, "abc"), now: type mismatch, missing generic parameter
-  ```
-
-- `const` values now open a new scope for each constant, meaning symbols
-  declared in them can no longer be used outside or in the value of
-  other constants.
-
-  ```nim
-  const foo = (var a = 1; a)
-  const bar = a # error
-  let baz = a # error
-  ```
-- The following POSIX wrappers have had their types changed from signed to
-  unsigned types on OSX and FreeBSD/OpenBSD to correct codegen errors:
-  - `Gid` (was `int32`, is now `uint32`)
-  - `Uid` (was `int32`, is now `uint32`)
-  - `Dev` (was `int32`, is now `uint32` on FreeBSD)
-  - `Nlink` (was `int16`, is now `uint32` on OpenBSD and `uint16` on OSX/other BSD)
-  - `sin6_flowinfo` and `sin6_scope_id` fields of `Sockaddr_in6`
-    (were `int32`, are now `uint32`)
-  - `n_net` field of `Tnetent` (was `int32`, is now `uint32`)
-
+- The bare `except:` now panics on `Defect`. Use `except Exception:` or `except Defect:` to catch `Defect`. `--legacy:noPanicOnExcept` is provided for a transition period.
 
 ## Standard library additions and changes
-
-[//]: # "Changes:"
-
-- Changed `std/osfiles.copyFile` to allow to specify `bufferSize` instead of a hardcoded one.
-- Changed `std/osfiles.copyFile` to use `POSIX_FADV_SEQUENTIAL` hints for kernel-level aggressive sequential read-aheads.
-- `std/htmlparser` has been moved to a nimble package, use `nimble` or `atlas` to install it.
 
 [//]: # "Additions:"
 
@@ -92,130 +44,59 @@ on Google's Farm Hash) which is also often faster than the present one.  Define
 produces the old values.  This may impact your automated tests if they depend
 on hash order in some obvious or indirect way.  Using `sorted` or `OrderedTable`
 is often an easy workaround.
+- `setutils.symmetricDifference` along with its operator version
+  `` setutils.`-+-` `` and in-place version `setutils.toggle` have been added
+  to more efficiently calculate the symmetric difference of bitsets.
+- `strutils.multiReplace` overload for character set replacements in a single pass.
+	Useful for string sanitation. Follows existing multiReplace semantics.
 
-[//]: # "Deprecations:"
+[//]: # "Changes:"
 
-- Deprecates `system.newSeqUninitialized`, which is replaced by `newSeqUninit`.
+- `std/math` The `^` symbol now supports floating-point as exponent in addition to the Natural type.
 
-[//]: # "Removals:"
-
+- `system.substr` implementation now uses `copymem` (wrapped C `memcpy`) for copying data, if available at compilation.
+- `system.newStringUninit` is now considered free of side-effects allowing it to be used with `--experimental:strictFuncs`.
 
 ## Language changes
 
-- `noInit` can be used in types and fields to disable member initializers in the C++ backend.
-- C++ custom constructors initializers see https://nim-lang.org/docs/manual_experimental.html#constructor-initializer
-- `member` can be used to attach a procedure to a C++ type.
-- C++ `constructor` now reuses `result` instead creating `this`.
-
-- Tuple unpacking changes:
-  - Tuple unpacking assignment now supports using underscores to discard values.
-    ```nim
-    var a, c: int
-    (a, _, c) = (1, 2, 3)
-    ```
-  - Tuple unpacking variable declarations now support type annotations, but
-    only for the entire tuple.
-    ```nim
-    let (a, b): (int, int) = (1, 2)
-    let (a, (b, c)): (byte, (float, cstring)) = (1, (2, "abc"))
-    ```
-
-- The experimental option `--experimental:openSym` has been added to allow
-  captured symbols in generic routine and template bodies respectively to be
-  replaced by symbols injected locally by templates/macros at instantiation
-  time. `bind` may be used to keep the captured symbols over the injected ones
-  regardless of enabling the option, but other methods like renaming the
-  captured symbols should be used instead so that the code is not affected by
-  context changes.
-
-  Since this change may affect runtime behavior, the experimental switch
-  `openSym` needs to be enabled; and a warning is given in the case where an
-  injected symbol would replace a captured symbol not bound by `bind` and
-  the experimental switch isn't enabled.
+- An experimental option `--experimental:typeBoundOps` has been added that
+  implements the RFC https://github.com/nim-lang/RFCs/issues/380.
+  This makes the behavior of interfaces like `hash`, `$`, `==` etc. more
+  reliable for nominal types across indirect/restricted imports.
 
   ```nim
-  const value = "captured"
-  template foo(x: int, body: untyped): untyped =
-    let value {.inject.} = "injected"
-    body
+  # objs.nim
+  import std/hashes
 
-  proc old[T](): string =
-    foo(123):
-      return value # warning: a new `value` has been injected, use `bind` or turn on `experimental:openSym`
-  echo old[int]() # "captured"
+  type
+    Obj* = object
+      x*, y*: int
+      z*: string # to be ignored for equality
 
-  template oldTempl(): string =
-    block:
-      foo(123):
-        value # warning: a new `value` has been injected, use `bind` or turn on `experimental:openSym`
-  echo oldTempl() # "captured"
+  proc `==`*(a, b: Obj): bool =
+    a.x == b.x and a.y == b.y
 
-  {.experimental: "openSym".}
-
-  proc bar[T](): string =
-    foo(123):
-      return value
-  assert bar[int]() == "injected" # previously it would be "captured"
-
-  proc baz[T](): string =
-    bind value
-    foo(123):
-      return value
-  assert baz[int]() == "captured"
-
-  template barTempl(): string =
-    block:
-      foo(123):
-        value
-  assert barTempl() == "injected" # previously it would be "captured"
-
-  template bazTempl(): string =
-    bind value
-    block:
-      foo(123):
-        value
-  assert bazTempl() == "captured"
+  proc hash*(a: Obj): Hash =
+    $!(hash(a.x) &! hash(a.y))
   ```
-
-  This option also generates a new node kind `nnkOpenSym` which contains
-  exactly 1 `nnkSym` node. In the future this might be merged with a slightly
-  modified `nnkOpenSymChoice` node but macros that want to support the
-  experimental feature should still handle `nnkOpenSym`, as the node kind would
-  simply not be generated as opposed to being removed.
-
-  Another experimental switch `genericsOpenSym` exists that enables this behavior
-  at instantiation time, meaning templates etc can enable it specifically when
-  they are being called. However this does not generate `nnkOpenSym` nodes
-  (unless the other switch is enabled) and so doesn't reflect the regular
-  behavior of the switch.
 
   ```nim
-  const value = "captured"
-  template foo(x: int, body: untyped): untyped =
-    let value {.inject.} = "injected"
-    {.push experimental: "genericsOpenSym".}
-    body
-    {.pop.}
+  # main.nim
+  {.experimental: "typeBoundOps".}
+  from objs import Obj # objs.hash, objs.`==` not imported
+  import std/tables
 
-  proc bar[T](): string =
-    foo(123):
-      return value
-  echo bar[int]() # "injected"
-
-  template barTempl(): string =
-    block:
-      var res: string
-      foo(123):
-        res = value
-      res
-  assert barTempl() == "injected"
+  var t: Table[Obj, int]
+  t[Obj(x: 3, y: 4, z: "debug")] = 34
+  echo t[Obj(x: 3, y: 4, z: "ignored")] # 34
   ```
+
+  See the [experimental manual](https://nim-lang.github.io/Nim/manual_experimental.html#typeminusbound-overloads)
+  for more information.
 
 ## Compiler changes
 
-- `--nimcache` using a relative path as the argument in a config file is now relative to the config file instead of the current directory.
 
 ## Tool changes
 
-- koch now allows bootstrapping with `-d:nimHasLibFFI`, replacing the older option of building the compiler directly w/ the `libffi` nimble package in tow.
-
+- Added `--stdinfile` flag to name of the file used when running program from stdin (defaults to `stdinfile.nim`)
