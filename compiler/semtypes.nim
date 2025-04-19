@@ -59,11 +59,29 @@ proc newConstraint(c: PContext, k: TTypeKind): PType =
   result.flags.incl tfCheckedForDestructor
   result.addSonSkipIntLit(newTypeS(k, c), c.idgen)
 
+proc skipGenericPrev(prev: PType): PType =
+  result = prev
+  if prev.kind == tyGenericBody and prev.last.kind != tyNone:
+    result = prev.last
+
+proc prevIsKind(prev: PType, kind: TTypeKind): bool =
+  result = prev != nil and skipGenericPrev(prev).kind == kind
+
 proc semEnum(c: PContext, n: PNode, prev: PType): PType =
   if n.len == 0: return newConstraint(c, tyEnum)
   elif n.len == 1:
     # don't create an empty tyEnum; fixes #3052
     return errorType(c)
+  if prevIsKind(prev, tyEnum):
+    let isPure = sfPure in prev.sym.flags
+    for enumField in prev.n:
+      assert enumField.kind == nkSym
+      let e = enumField.sym
+      if not isPure:
+        addInterfaceOverloadableSymAt(c, c.currentScope, e)
+      else:
+        declarePureEnumField(c, e)
+    return prev
   var
     counter, x: BiggestInt = 0
     e: PSym = nil
@@ -307,6 +325,8 @@ proc addSonSkipIntLitChecked(c: PContext; father, son: PType; it: PNode, id: IdG
 
 proc semDistinct(c: PContext, n: PNode, prev: PType): PType =
   if n.len == 0: return newConstraint(c, tyDistinct)
+  if prevIsKind(prev, tyDistinct):
+    return skipGenericPrev(prev)
   result = newOrPrevType(tyDistinct, prev, c)
   addSonSkipIntLitChecked(c, result, semTypeNode(c, n[0], nil), n[0], c.idgen)
   if n.len > 1: result.n = n[1]
@@ -994,6 +1014,8 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType; flags: TTypeFlags): PType
   result = nil
   if n.len == 0:
     return newConstraint(c, tyObject)
+  if prevIsKind(prev, tyObject) and sfForward notin prev.sym.flags:
+    return skipGenericPrev(prev)
   var check = initIntSet()
   var pos = 0
   var base, realBase: PType = nil
@@ -1056,6 +1078,8 @@ proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
   if n.len < 1:
     result = newConstraint(c, kind)
   else:
+    if prevIsKind(prev, kind) and tfRefsAnonObj in prev.skipTypes({tyGenericBody}).flags:
+      return skipGenericPrev(prev)
     let isCall = int ord(n.kind in nkCallKinds+{nkBracketExpr})
     let n = if n[0].kind == nkBracket: n[0] else: n
     checkMinSonsLen(n, 1, c.config)

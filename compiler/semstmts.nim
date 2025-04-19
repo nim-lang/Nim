@@ -1603,25 +1603,19 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
       localError(c.config, a.info, errImplOfXexpected % s.name.s)
     if s.magic != mNone: processMagicType(c, s)
     let oldFlags = s.typ.flags
-    if s.typ != nil and s.typ.kind != tyForward and sfForward notin s.flags and
-        s.magic == mNone: # magic might have received type above but still needs processing
-      # symbol already has type, probably resem, ignore RHS
-      # but emulate what semchecking would do the first time the type was declared:
-      if s.typ.kind == tyEnum:
-        let isPure = sfPure in s.flags
-        for enumField in s.typ.n:
-          assert enumField.kind == nkSym
-          let e = enumField.sym
-          if not isPure:
-            addInterfaceOverloadableSymAt(c, c.currentScope, e)
-          else:
-            declarePureEnumField(c, e)
-    elif a[1].kind != nkEmpty:
+    let preserveSym = s.typ != nil and s.typ.kind != tyForward and sfForward notin s.flags and
+        s.magic == mNone # magic might have received type above but still needs processing
+    if a[1].kind != nkEmpty:
       # We have a generic type declaration here. In generic types,
       # symbol lookup needs to be done here.
       openScope(c)
       pushOwner(c, s)
-      if s.magic == mNone: s.typ.kind = tyGenericBody
+      if s.magic == mNone:
+        if preserveSym:
+          if s.typ.kind != tyGenericBody:
+            internalError(c.config, "type with generic params is not generic type during resem")
+        else:
+          s.typ.kind = tyGenericBody
       # XXX for generic type aliases this is not correct! We need the
       # underlying Id really:
       #
@@ -1629,18 +1623,19 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
       #   TGObj[T] = object
       #   TAlias[T] = TGObj[T]
       #
-      s.typ.n = semGenericParamList(c, a[1], s.typ)
+      s.typ.n = semGenericParamList(c, a[1], if preserveSym: nil else: s.typ)
       a[1] = s.typ.n
-      s.typ.size = -1 # could not be computed properly
-      # we fill it out later. For magic generics like 'seq', it won't be filled
-      # so we use tyNone instead of nil to not crash for strange conversions
-      # like: mydata.seq
-      if s.typ.kind in {tyOpenArray, tyVarargs} and s.typ.len == 1:
-        # XXX investigate why `tySequence` cannot be added here for now.
-        discard
-      else:
-        rawAddSon(s.typ, newTypeS(tyNone, c))
-      s.ast = a
+      if not preserveSym:
+        s.typ.size = -1 # could not be computed properly
+        # we fill it out later. For magic generics like 'seq', it won't be filled
+        # so we use tyNone instead of nil to not crash for strange conversions
+        # like: mydata.seq
+        if s.typ.kind in {tyOpenArray, tyVarargs} and s.typ.len == 1:
+          # XXX investigate why `tySequence` cannot be added here for now.
+          discard
+        else:
+          rawAddSon(s.typ, newTypeS(tyNone, c))
+        s.ast = a
       inc c.inGenericContext
       var body = semTypeNode(c, a[2], s.typ)
       dec c.inGenericContext
@@ -1677,13 +1672,14 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
       # process the type's body:
       pushOwner(c, s)
       var t = semTypeNode(c, a[2], s.typ)
-      if s.typ == nil:
-        s.typ = t
-      elif t != s.typ and (s.typ == nil or s.typ.kind != tyAlias):
-        # this can happen for e.g. tcan_alias_specialised_generic:
-        assignType(s.typ, t)
-        #debug s.typ
-      s.ast = a
+      if not preserveSym:
+        if s.typ == nil:
+          s.typ = t
+        elif t != s.typ and (s.typ == nil or s.typ.kind != tyAlias):
+          # this can happen for e.g. tcan_alias_specialised_generic:
+          assignType(s.typ, t)
+          #debug s.typ
+        s.ast = a
       popOwner(c)
       # If the right hand side expression was a macro call we replace it with
       # its evaluated result here so that we don't execute it once again in the

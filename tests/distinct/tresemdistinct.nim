@@ -36,5 +36,9 @@ foo:
   discard Foo(x: 123)
   type Enum = enum a, b, c
   echo a
+  type Bar[T] = object
+    x: T
+  discard Bar[int](x: 123)
+  discard Bar[string](x: "abc")
 echo $NONE
 echo a
