@@ -1460,7 +1460,10 @@ proc typeDefLeftSidePass(c: PContext, typeSection: PNode, i: int) =
   else:
     s = semIdentDef(c, name, skType)
     onDef(name.info, s)
-    if s.typ == nil:
+    if s.typ != nil:
+      # name node is a symbol with a type already, don't touch it
+      discard
+    else:
       s.typ = newTypeS(tyForward, c)
       s.typ.sym = s             # process pragmas:
     if name.kind == nkPragmaExpr:
@@ -1600,7 +1603,8 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
       localError(c.config, a.info, errImplOfXexpected % s.name.s)
     if s.magic != mNone: processMagicType(c, s)
     let oldFlags = s.typ.flags
-    if s.typ != nil and s.typ.kind != tyForward and s.magic == mNone and sfForward notin s.flags:
+    if s.typ != nil and s.typ.kind != tyForward and sfForward notin s.flags and
+        s.magic == mNone: # magic might have received type above but still needs processing
       # symbol already has type, ignore RHS
       discard
     elif a[1].kind != nkEmpty:
