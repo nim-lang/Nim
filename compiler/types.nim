@@ -1911,7 +1911,7 @@ proc isRecursiveStructuralType(t: PType, cycleDetector: var IntSet): bool =
       if isRecursiveStructuralType(a, cycleDetectorCopy):
         return true
   of tyRef, tyPtr, tyVar, tyLent, tySink, tyProc,
-      tyArray, tyUncheckedArray, tySequence:
+      tyArray, tyUncheckedArray, tySequence, tyDistinct:
     return isRecursiveStructuralType(t.elementType, cycleDetector)
   of tyAlias, tyGenericInst:
     return isRecursiveStructuralType(t.skipModifier, cycleDetector)
