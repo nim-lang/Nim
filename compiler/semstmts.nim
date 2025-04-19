@@ -1605,17 +1605,26 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
     let oldFlags = s.typ.flags
     let preserveSym = s.typ != nil and s.typ.kind != tyForward and sfForward notin s.flags and
         s.magic == mNone # magic might have received type above but still needs processing
-    if a[1].kind != nkEmpty:
+    if preserveSym:
+      if a[1].kind != nkEmpty:
+        openScope(c)
+        pushOwner(c, s)
+        a[1] = semGenericParamList(c, a[1], nil)
+        inc c.inGenericContext
+        discard semTypeNode(c, a[2], s.typ)
+        dec c.inGenericContext
+        popOwner(c)
+        closeScope(c)
+      elif a[2].kind != nkEmpty:
+        pushOwner(c, s)
+        discard semTypeNode(c, a[2], s.typ)
+        popOwner(c)
+    elif a[1].kind != nkEmpty:
       # We have a generic type declaration here. In generic types,
       # symbol lookup needs to be done here.
       openScope(c)
       pushOwner(c, s)
-      if s.magic == mNone:
-        if preserveSym:
-          if s.typ.kind != tyGenericBody:
-            internalError(c.config, "type with generic params is not generic type during resem")
-        else:
-          s.typ.kind = tyGenericBody
+      if s.magic == mNone: s.typ.kind = tyGenericBody
       # XXX for generic type aliases this is not correct! We need the
       # underlying Id really:
       #
@@ -1623,19 +1632,18 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
       #   TGObj[T] = object
       #   TAlias[T] = TGObj[T]
       #
-      s.typ.n = semGenericParamList(c, a[1], if preserveSym: nil else: s.typ)
+      s.typ.n = semGenericParamList(c, a[1], s.typ)
       a[1] = s.typ.n
-      if not preserveSym:
-        s.typ.size = -1 # could not be computed properly
-        # we fill it out later. For magic generics like 'seq', it won't be filled
-        # so we use tyNone instead of nil to not crash for strange conversions
-        # like: mydata.seq
-        if s.typ.kind in {tyOpenArray, tyVarargs} and s.typ.len == 1:
-          # XXX investigate why `tySequence` cannot be added here for now.
-          discard
-        else:
-          rawAddSon(s.typ, newTypeS(tyNone, c))
-        s.ast = a
+      s.typ.size = -1 # could not be computed properly
+      # we fill it out later. For magic generics like 'seq', it won't be filled
+      # so we use tyNone instead of nil to not crash for strange conversions
+      # like: mydata.seq
+      if s.typ.kind in {tyOpenArray, tyVarargs} and s.typ.len == 1:
+        # XXX investigate why `tySequence` cannot be added here for now.
+        discard
+      else:
+        rawAddSon(s.typ, newTypeS(tyNone, c))
+      s.ast = a
       inc c.inGenericContext
       var body = semTypeNode(c, a[2], s.typ)
       dec c.inGenericContext
@@ -1672,14 +1680,13 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
       # process the type's body:
       pushOwner(c, s)
       var t = semTypeNode(c, a[2], s.typ)
-      if not preserveSym:
-        if s.typ == nil:
-          s.typ = t
-        elif t != s.typ and (s.typ == nil or s.typ.kind != tyAlias):
-          # this can happen for e.g. tcan_alias_specialised_generic:
-          assignType(s.typ, t)
-          #debug s.typ
-        s.ast = a
+      if s.typ == nil:
+        s.typ = t
+      elif t != s.typ and (s.typ == nil or s.typ.kind != tyAlias):
+        # this can happen for e.g. tcan_alias_specialised_generic:
+        assignType(s.typ, t)
+        #debug s.typ
+      s.ast = a
       popOwner(c)
       # If the right hand side expression was a macro call we replace it with
       # its evaluated result here so that we don't execute it once again in the
@@ -1702,48 +1709,47 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
           localError(c.config, name.info, "only a 'distinct' type can borrow `.`")
     let aa = a[2]
     if aa.kind in {nkRefTy, nkPtrTy} and aa.len == 1 and
-       aa[0].kind == nkObjectTy:
+       aa[0].kind == nkObjectTy and not preserveSym:
       # give anonymous object a dummy symbol:
       var st = s.typ
       if st.kind == tyGenericBody: st = st.typeBodyImpl
       internalAssert c.config, st.kind in {tyPtr, tyRef}
-      if tfRefsAnonObj notin st.flags: # not already processed
-        internalAssert c.config, st.last.sym == nil
-        incl st.flags, tfRefsAnonObj
-        let objTy = st.last
-        # add flags for `ref object` etc to underlying `object`
-        incl(objTy.flags, oldFlags)
-        # {.inheritable, final.} is already disallowed, but
-        # object might have been assumed to be final
-        if tfInheritable in oldFlags and tfFinal in objTy.flags:
-          excl(objTy.flags, tfFinal)
-        let obj = newSym(skType, getIdent(c.cache, s.name.s & ":ObjectType"),
-                        c.idgen, getCurrOwner(c), s.info)
-        obj.flags.incl sfGeneratedType
-        let symNode = newSymNode(obj)
-        obj.ast = a.shallowCopy
-        case a[0].kind
-        of nkSym: obj.ast[0] = symNode
-        of nkPragmaExpr:
-          obj.ast[0] = a[0].shallowCopy
-          if a[0][0].kind == nkPostfix:
-            obj.ast[0][0] = a[0][0].shallowCopy
-            obj.ast[0][0][0] = a[0][0][0] # ident "*"
-            obj.ast[0][0][1] = symNode
-          else:
-            obj.ast[0][0] = symNode
-          obj.ast[0][1] = a[0][1]
-        of nkPostfix:
-          obj.ast[0] = a[0].shallowCopy
-          obj.ast[0][0] = a[0][0] # ident "*"
-          obj.ast[0][1] = symNode
-        else: assert(false)
-        obj.ast[1] = a[1]
-        obj.ast[2] = a[2][0]
-        if sfPure in s.flags:
-          obj.flags.incl sfPure
-        obj.typ = objTy
-        objTy.sym = obj
+      internalAssert c.config, st.last.sym == nil
+      incl st.flags, tfRefsAnonObj
+      let objTy = st.last
+      # add flags for `ref object` etc to underlying `object`
+      incl(objTy.flags, oldFlags)
+      # {.inheritable, final.} is already disallowed, but
+      # object might have been assumed to be final
+      if tfInheritable in oldFlags and tfFinal in objTy.flags:
+        excl(objTy.flags, tfFinal)
+      let obj = newSym(skType, getIdent(c.cache, s.name.s & ":ObjectType"),
+                      c.idgen, getCurrOwner(c), s.info)
+      obj.flags.incl sfGeneratedType
+      let symNode = newSymNode(obj)
+      obj.ast = a.shallowCopy
+      case a[0].kind
+      of nkSym: obj.ast[0] = symNode
+      of nkPragmaExpr:
+        obj.ast[0] = a[0].shallowCopy
+        if a[0][0].kind == nkPostfix:
+          obj.ast[0][0] = a[0][0].shallowCopy
+          obj.ast[0][0][0] = a[0][0][0] # ident "*"
+          obj.ast[0][0][1] = symNode
+        else:
+          obj.ast[0][0] = symNode
+        obj.ast[0][1] = a[0][1]
+      of nkPostfix:
+        obj.ast[0] = a[0].shallowCopy
+        obj.ast[0][0] = a[0][0] # ident "*"
+        obj.ast[0][1] = symNode
+      else: assert(false)
+      obj.ast[1] = a[1]
+      obj.ast[2] = a[2][0]
+      if sfPure in s.flags:
+        obj.flags.incl sfPure
+      obj.typ = objTy
+      objTy.sym = obj
   for sk in c.skipTypes:
     discard semTypeNode(c, sk, nil)
   c.skipTypes = @[]
