@@ -553,7 +553,7 @@ proc semTuple(c: PContext, n: PNode, prev: PType): PType =
       styleCheckDef(c, a[j].info, field)
       onDef(field.info, field)
   if result.n.len == 0: result.n = nil
-  if isTupleRecursive(result):
+  if isRecursiveStructuralType(result):
     localError(c.config, n.info, errIllegalRecursionInTypeX % typeToString(result))
 
 proc semIdentVis(c: PContext, kind: TSymKind, n: PNode,
@@ -1486,7 +1486,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
       var nameForLift = arg.name.s
       if sfGenSym in arg.flags:
         nameForLift.add("`gensym" & $arg.id)
-      if isTupleRecursive(typ):
+      if isRecursiveStructuralType(typ):
         localError(c.config, n.info, errIllegalRecursionInTypeX % typeToString(typ))
       let lifted = liftParamType(c, kind, genericParams, typ,
                                  nameForLift, arg.info)
@@ -1532,7 +1532,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
     # turn explicit 'void' return type into 'nil' because the rest of the
     # compiler only checks for 'nil':
     if skipTypes(r, {tyGenericInst, tyAlias, tySink}).kind != tyVoid:
-      if isTupleRecursive(r):
+      if isRecursiveStructuralType(r):
         localError(c.config, n.info, errIllegalRecursionInTypeX % typeToString(r))
       if kind notin {skMacro, skTemplate} and r.kind in {tyTyped, tyUntyped}:
         localError(c.config, n[0].info, "return type '" & typeToString(r) &
@@ -1720,7 +1720,7 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
   # special check for generic object with
   # generic/partial specialized parent
   let tx = result.skipTypes(abstractPtrs, 50)
-  if tx.isNil or isTupleRecursive(tx):
+  if tx.isNil or isRecursiveStructuralType(tx):
     localError(c.config, n.info, "illegal recursion in type '$1'" % typeToString(result[0]))
     return errorType(c)
   if tx != result and tx.kind == tyObject:

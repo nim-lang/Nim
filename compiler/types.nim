@@ -1897,7 +1897,7 @@ proc typeMismatch*(conf: ConfigRef; info: TLineInfo, formal, actual: PType, n: P
       processPragmaAndCallConvMismatch(msg, a, b, conf)
     localError(conf, info, msg)
 
-proc isTupleRecursive(t: PType, cycleDetector: var IntSet): bool =
+proc isRecursiveStructuralType(t: PType, cycleDetector: var IntSet): bool =
   if t == nil:
     return false
   if cycleDetector.containsOrIncl(t.id):
@@ -1908,19 +1908,19 @@ proc isTupleRecursive(t: PType, cycleDetector: var IntSet): bool =
     var cycleDetectorCopy: IntSet
     for a in t.kids:
       cycleDetectorCopy = cycleDetector
-      if isTupleRecursive(a, cycleDetectorCopy):
+      if isRecursiveStructuralType(a, cycleDetectorCopy):
         return true
   of tyRef, tyPtr, tyVar, tyLent, tySink, tyProc,
       tyArray, tyUncheckedArray, tySequence, tyDistinct:
-    return isTupleRecursive(t.elementType, cycleDetector)
+    return isRecursiveStructuralType(t.elementType, cycleDetector)
   of tyAlias, tyGenericInst:
-    return isTupleRecursive(t.skipModifier, cycleDetector)
+    return isRecursiveStructuralType(t.skipModifier, cycleDetector)
   else:
     return false
 
-proc isTupleRecursive*(t: PType): bool =
+proc isRecursiveStructuralType*(t: PType): bool =
   var cycleDetector = initIntSet()
-  isTupleRecursive(t, cycleDetector)
+  isRecursiveStructuralType(t, cycleDetector)
 
 proc isException*(t: PType): bool =
   # check if `y` is object type and it inherits from Exception
