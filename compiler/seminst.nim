@@ -317,10 +317,10 @@ proc instantiateProcType(c: PContext, pt: LayeredIdTable,
   cl.isReturnType = true
   result.setReturnType replaceTypeVarsT(cl, result.returnType)
   cl.isReturnType = false
-  checkConstructedType(c.config, originalParams[0].info, result[0])
   result.n[0] = originalParams[0].copyTree
   if result[0] != nil:
     propagateToOwner(result, result[0])
+    checkConstructedType(c.config, originalParams[0].info, result[0])
 
   eraseVoidParams(result)
   skipIntLiteralParams(result, c.idgen)
