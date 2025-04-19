@@ -1600,7 +1600,7 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
       localError(c.config, a.info, errImplOfXexpected % s.name.s)
     if s.magic != mNone: processMagicType(c, s)
     let oldFlags = s.typ.flags
-    if s.typ != nil and s.typ.kind != tyForward and s.magic == mNone:
+    if s.typ != nil and s.typ.kind != tyForward and s.magic == mNone and sfForward notin s.flags:
       # symbol already has type, ignore RHS
       discard
     elif a[1].kind != nkEmpty:
