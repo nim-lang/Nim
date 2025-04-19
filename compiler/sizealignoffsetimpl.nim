@@ -303,6 +303,10 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
     if typ.elementType.kind == tyGenericParam:
       typ.size = szUncomputedSize
       typ.align = szUncomputedSize
+    elif not isOrdinalType(typ.elementType, allowEnumWithHoles = true):
+      # prevent crash with `lengthOrd`, should error somewhere else
+      typ.size = szUncomputedSize
+      typ.align = szUncomputedSize
     else:
       let length = toInt64(lengthOrd(conf, typ.elementType))
       if length <= 8:
