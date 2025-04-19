@@ -1,6 +1,9 @@
 discard """
   output: '''
 NONE
+a
+NONE
+a
 '''
 """
 
@@ -29,3 +32,9 @@ foo:
 
   echo $NONE
   type Foo = ref object
+    x: int
+  discard Foo(x: 123)
+  type Enum = enum a, b, c
+  echo a
+echo $NONE
+echo a

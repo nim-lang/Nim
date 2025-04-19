@@ -1605,8 +1605,17 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
     let oldFlags = s.typ.flags
     if s.typ != nil and s.typ.kind != tyForward and sfForward notin s.flags and
         s.magic == mNone: # magic might have received type above but still needs processing
-      # symbol already has type, ignore RHS
-      discard
+      # symbol already has type, probably resem, ignore RHS
+      # but emulate what semchecking would do the first time the type was declared:
+      if s.typ.kind == tyEnum:
+        let isPure = sfPure in s.flags
+        for enumField in s.typ.n:
+          assert enumField.kind == nkSym
+          let e = enumField.sym
+          if not isPure:
+            addInterfaceOverloadableSymAt(c, c.currentScope, e)
+          else:
+            declarePureEnumField(c, e)
     elif a[1].kind != nkEmpty:
       # We have a generic type declaration here. In generic types,
       # symbol lookup needs to be done here.
