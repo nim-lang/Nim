@@ -1910,7 +1910,18 @@ proc isRecursiveStructuralType(t: PType, cycleDetector: var IntSet): bool =
       cycleDetectorCopy = cycleDetector
       if isRecursiveStructuralType(a, cycleDetectorCopy):
         return true
-  of tyRef, tyPtr, tyVar, tyLent, tySink, tyProc,
+  of tyProc:
+    result = false
+    var cycleDetectorCopy: IntSet
+    if t.returnType != nil:
+      cycleDetectorCopy = cycleDetector
+      if isRecursiveStructuralType(t.returnType, cycleDetectorCopy):
+        return true
+    for _, a in t.paramTypes:
+      cycleDetectorCopy = cycleDetector
+      if isRecursiveStructuralType(a, cycleDetectorCopy):
+        return true
+  of tyRef, tyPtr, tyVar, tyLent, tySink,
       tyArray, tyUncheckedArray, tySequence, tyDistinct:
     return isRecursiveStructuralType(t.elementType, cycleDetector)
   of tyAlias, tyGenericInst:

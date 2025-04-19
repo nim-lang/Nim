@@ -1,6 +1,6 @@
 discard """
   errormsg: "illegal recursion in type 'B'"
-  line: 10
+  line: 9
 """
 
 # issue #8938
