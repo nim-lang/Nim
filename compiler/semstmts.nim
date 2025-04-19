@@ -1600,7 +1600,10 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
       localError(c.config, a.info, errImplOfXexpected % s.name.s)
     if s.magic != mNone: processMagicType(c, s)
     let oldFlags = s.typ.flags
-    if a[1].kind != nkEmpty:
+    if s.typ != nil and s.typ.kind != tyForward and s.magic == mNone:
+      # symbol already has type, ignore RHS
+      discard
+    elif a[1].kind != nkEmpty:
       # We have a generic type declaration here. In generic types,
       # symbol lookup needs to be done here.
       openScope(c)
@@ -1695,42 +1698,43 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
       var st = s.typ
       if st.kind == tyGenericBody: st = st.typeBodyImpl
       internalAssert c.config, st.kind in {tyPtr, tyRef}
-      internalAssert c.config, st.last.sym == nil
-      incl st.flags, tfRefsAnonObj
-      let objTy = st.last
-      # add flags for `ref object` etc to underlying `object`
-      incl(objTy.flags, oldFlags)
-      # {.inheritable, final.} is already disallowed, but
-      # object might have been assumed to be final
-      if tfInheritable in oldFlags and tfFinal in objTy.flags:
-        excl(objTy.flags, tfFinal)
-      let obj = newSym(skType, getIdent(c.cache, s.name.s & ":ObjectType"),
-                       c.idgen, getCurrOwner(c), s.info)
-      obj.flags.incl sfGeneratedType
-      let symNode = newSymNode(obj)
-      obj.ast = a.shallowCopy
-      case a[0].kind
-      of nkSym: obj.ast[0] = symNode
-      of nkPragmaExpr:
-        obj.ast[0] = a[0].shallowCopy
-        if a[0][0].kind == nkPostfix:
-          obj.ast[0][0] = a[0][0].shallowCopy
-          obj.ast[0][0][0] = a[0][0][0] # ident "*"
-          obj.ast[0][0][1] = symNode
-        else:
-          obj.ast[0][0] = symNode
-        obj.ast[0][1] = a[0][1]
-      of nkPostfix:
-        obj.ast[0] = a[0].shallowCopy
-        obj.ast[0][0] = a[0][0] # ident "*"
-        obj.ast[0][1] = symNode
-      else: assert(false)
-      obj.ast[1] = a[1]
-      obj.ast[2] = a[2][0]
-      if sfPure in s.flags:
-        obj.flags.incl sfPure
-      obj.typ = objTy
-      objTy.sym = obj
+      if tfRefsAnonObj notin st.flags: # not already processed
+        internalAssert c.config, st.last.sym == nil
+        incl st.flags, tfRefsAnonObj
+        let objTy = st.last
+        # add flags for `ref object` etc to underlying `object`
+        incl(objTy.flags, oldFlags)
+        # {.inheritable, final.} is already disallowed, but
+        # object might have been assumed to be final
+        if tfInheritable in oldFlags and tfFinal in objTy.flags:
+          excl(objTy.flags, tfFinal)
+        let obj = newSym(skType, getIdent(c.cache, s.name.s & ":ObjectType"),
+                        c.idgen, getCurrOwner(c), s.info)
+        obj.flags.incl sfGeneratedType
+        let symNode = newSymNode(obj)
+        obj.ast = a.shallowCopy
+        case a[0].kind
+        of nkSym: obj.ast[0] = symNode
+        of nkPragmaExpr:
+          obj.ast[0] = a[0].shallowCopy
+          if a[0][0].kind == nkPostfix:
+            obj.ast[0][0] = a[0][0].shallowCopy
+            obj.ast[0][0][0] = a[0][0][0] # ident "*"
+            obj.ast[0][0][1] = symNode
+          else:
+            obj.ast[0][0] = symNode
+          obj.ast[0][1] = a[0][1]
+        of nkPostfix:
+          obj.ast[0] = a[0].shallowCopy
+          obj.ast[0][0] = a[0][0] # ident "*"
+          obj.ast[0][1] = symNode
+        else: assert(false)
+        obj.ast[1] = a[1]
+        obj.ast[2] = a[2][0]
+        if sfPure in s.flags:
+          obj.flags.incl sfPure
+        obj.typ = objTy
+        objTy.sym = obj
   for sk in c.skipTypes:
     discard semTypeNode(c, sk, nil)
   c.skipTypes = @[]

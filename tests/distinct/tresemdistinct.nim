@@ -28,3 +28,4 @@ foo:
   let okay = Flags64(128'u64)
 
   echo $NONE
+  type Foo = ref object
