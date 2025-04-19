@@ -1486,6 +1486,8 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
       var nameForLift = arg.name.s
       if sfGenSym in arg.flags:
         nameForLift.add("`gensym" & $arg.id)
+      if isTupleRecursive(typ):
+        localError(c.config, n.info, errIllegalRecursionInTypeX % typeToString(typ))
       let lifted = liftParamType(c, kind, genericParams, typ,
                                  nameForLift, arg.info)
       let finalType = if lifted != nil: lifted else: typ.skipIntLit(c.idgen)
@@ -1530,6 +1532,8 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
     # turn explicit 'void' return type into 'nil' because the rest of the
     # compiler only checks for 'nil':
     if skipTypes(r, {tyGenericInst, tyAlias, tySink}).kind != tyVoid:
+      if isTupleRecursive(r):
+        localError(c.config, n.info, errIllegalRecursionInTypeX % typeToString(r))
       if kind notin {skMacro, skTemplate} and r.kind in {tyTyped, tyUntyped}:
         localError(c.config, n[0].info, "return type '" & typeToString(r) &
             "' is only valid for macros and templates")

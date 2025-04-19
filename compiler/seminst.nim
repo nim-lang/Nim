@@ -264,6 +264,7 @@ proc instantiateProcType(c: PContext, pt: LayeredIdTable,
     if needsTypeDescSkipping:
       result[i] = result[i].skipTypes({tyTypeDesc})
       typeToFit = result[i]
+    checkConstructedType(c.config, originalParams[i].sym.info, result[i])
 
     # ...otherwise, we use the instantiated type in `fitNode`
     if (typeToFit.kind != tyTypeDesc or typeToFit.base.kind != tyNone) and
@@ -316,6 +317,7 @@ proc instantiateProcType(c: PContext, pt: LayeredIdTable,
   cl.isReturnType = true
   result.setReturnType replaceTypeVarsT(cl, result.returnType)
   cl.isReturnType = false
+  checkConstructedType(c.config, originalParams[0].info, result[0])
   result.n[0] = originalParams[0].copyTree
   if result[0] != nil:
     propagateToOwner(result, result[0])
