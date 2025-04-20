@@ -1406,11 +1406,14 @@ proc generateDoc*(d: PDoc, n, orig: PNode, config: ConfigRef, docFlags: DocFlags
     for it in n: traceDeps(d, it)
   of nkExportStmt:
     for it in n:
-      # bug #23051; don't generate documentation for exported symbols again
-      if it.kind == nkSym and sfExported notin it.sym.flags:
-        if d.module != nil and d.module == it.sym.owner:
-          generateDoc(d, it.sym.ast, orig, config, kForceExport)
+      if it.kind == nkSym:
+        if d.module != nil and d.module == it.sym.owner:  # in current module
+          # bug #23051; don't generate documentation for exported symbols again
+          if sfExported notin it.sym.flags:
+            generateDoc(d, it.sym.ast, orig, config, kForceExport)
+          # else it's to be handled in `of XxxSection` branch
         elif it.sym.ast != nil:
+          # only export symbols in imported modules, not in current module
           exportSym(d, it.sym)
   of nkExportExceptStmt: discard "transformed into nkExportStmt by semExportExcept"
   of nkFromStmt, nkImportExceptStmt: traceDeps(d, n[0])
