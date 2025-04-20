@@ -126,8 +126,6 @@ type
     when defineSsl:
       sslHandle: SslPtr
       sslContext: SslContext
-      bioIn: BIO
-      bioOut: BIO
       sslNoShutdown: bool
     domain: Domain
     sockType: SockType
@@ -228,42 +226,23 @@ when defineSsl:
       raiseSSLError()
     else: raiseSSLError("Unknown Error")
 
-  proc sendPendingSslData(socket: AsyncSocket,
-      flags: set[SocketFlag]) {.async.} =
-    if socket.sslHandle == nil:
-      raiseSslHandleError()
-    let len = bioCtrlPending(socket.bioOut)
-    if len > 0:
-      var data = newString(len)
-      let read = bioRead(socket.bioOut, cast[cstring](addr data[0]), len)
-      assert read != 0
-      if read < 0:
-        raiseSSLError()
-      data.setLen(read)
-      await socket.fd.AsyncFD.send(data, flags)
-
-  proc appeaseSsl(socket: AsyncSocket, flags: set[SocketFlag],
-                  sslError: cint): owned(Future[bool]) {.async.} =
+  proc appeaseSsl(socket: AsyncSocket, flags: set[SocketFlag], sslError: cint): Future[bool] =
     ## Returns `true` if `socket` is still connected, otherwise `false`.
-    result = true
+    let retFut = newFuture[bool]()
     case sslError
     of SSL_ERROR_WANT_WRITE:
-      await sendPendingSslData(socket, flags)
+      addWrite(socket.fd.AsyncFD, proc (sock: AsyncFD): bool =
+        retFut.complete(true)
+        return true
+      )
     of SSL_ERROR_WANT_READ:
-      var data = await recv(socket.fd.AsyncFD, BufferSize, flags)
-      if socket.sslHandle == nil:
-        raiseSslHandleError()
-      let length = len(data)
-      if length > 0:
-        let ret = bioWrite(socket.bioIn, cast[cstring](addr data[0]), length.cint)
-        if ret < 0:
-          raiseSSLError()
-      elif length == 0:
-        # connection not properly closed by remote side or connection dropped
-        SSL_set_shutdown(socket.sslHandle, SSL_RECEIVED_SHUTDOWN)
-        result = false
+      addRead(socket.fd.AsyncFD, proc (sock: AsyncFD): bool =
+        retFut.complete(true)
+        return true
+      )
     else:
       raiseSSLError("Cannot appease SSL.")
+    return retFut
 
   template sslLoop(socket: AsyncSocket, flags: set[SocketFlag],
                    op: untyped) =
@@ -279,15 +258,12 @@ when defineSsl:
           getSslError(socket, opResult.cint)
         else:
           SSL_ERROR_NONE
-      # Send any remaining pending SSL data.
-      await sendPendingSslData(socket, flags)
 
       # If the operation failed, try to see if SSL has some data to read
       # or write.
       if opResult < 0:
-        let fut = appeaseSsl(socket, flags, err.cint)
-        yield fut
-        if not fut.read():
+        let connected = await appeaseSsl(socket, flags, err.cint)
+        if not connected:
           # Socket disconnected.
           if SocketFlag.SafeDisconn in flags:
             opResult = 0.cint
@@ -323,8 +299,7 @@ proc connect*(socket: AsyncSocket, address: string, port: Port) {.async.} =
         discard SSL_set_tlsext_host_name(socket.sslHandle, address)
 
       let flags = {SocketFlag.SafeDisconn}
-      sslSetConnectState(socket.sslHandle)
-      sslLoop(socket, flags, sslDoHandshake(socket.sslHandle))
+      sslLoop(socket, flags, SSL_connect(socket.sslHandle))
 
 template readInto(buf: pointer, size: int, socket: AsyncSocket,
                   flags: set[SocketFlag]): int =
@@ -461,7 +436,6 @@ proc send*(socket: AsyncSocket, buf: pointer, size: int,
     when defineSsl:
       sslLoop(socket, flags,
               sslWrite(socket.sslHandle, cast[cstring](buf), size.cint))
-      await sendPendingSslData(socket, flags)
   else:
     await send(socket.fd.AsyncFD, buf, size, flags)
 
@@ -475,51 +449,8 @@ proc send*(socket: AsyncSocket, data: string,
       var copy = data
       sslLoop(socket, flags,
         sslWrite(socket.sslHandle, cast[cstring](addr copy[0]), copy.len.cint))
-      await sendPendingSslData(socket, flags)
   else:
     await send(socket.fd.AsyncFD, data, flags)
-
-proc acceptAddr*(socket: AsyncSocket, flags = {SocketFlag.SafeDisconn},
-                 inheritable = defined(nimInheritHandles)):
-      owned(Future[tuple[address: string, client: AsyncSocket]]) =
-  ## Accepts a new connection. Returns a future containing the client socket
-  ## corresponding to that connection and the remote address of the client.
-  ##
-  ## If `inheritable` is false (the default), the resulting client socket will
-  ## not be inheritable by child processes.
-  ##
-  ## The future will complete when the connection is successfully accepted.
-  var retFuture = newFuture[tuple[address: string, client: AsyncSocket]]("asyncnet.acceptAddr")
-  var fut = acceptAddr(socket.fd.AsyncFD, flags, inheritable)
-  fut.callback =
-    proc (future: Future[tuple[address: string, client: AsyncFD]]) =
-      assert future.finished
-      if future.failed:
-        retFuture.fail(future.readError)
-      else:
-        let resultTup = (future.read.address,
-                         newAsyncSocket(future.read.client, socket.domain,
-                         socket.sockType, socket.protocol, socket.isBuffered, inheritable))
-        retFuture.complete(resultTup)
-  return retFuture
-
-proc accept*(socket: AsyncSocket,
-    flags = {SocketFlag.SafeDisconn}): owned(Future[AsyncSocket]) =
-  ## Accepts a new connection. Returns a future containing the client socket
-  ## corresponding to that connection.
-  ## If `inheritable` is false (the default), the resulting client socket will
-  ## not be inheritable by child processes.
-  ## The future will complete when the connection is successfully accepted.
-  var retFut = newFuture[AsyncSocket]("asyncnet.accept")
-  var fut = acceptAddr(socket, flags)
-  fut.callback =
-    proc (future: Future[tuple[address: string, client: AsyncSocket]]) =
-      assert future.finished
-      if future.failed:
-        retFut.fail(future.readError)
-      else:
-        retFut.complete(future.read.client)
-  return retFut
 
 proc recvLineInto*(socket: AsyncSocket, resString: FutureVar[string],
     flags = {SocketFlag.SafeDisconn}, maxLength = MaxLineLength) {.async.} =
@@ -776,9 +707,7 @@ when defineSsl:
     if socket.sslHandle == nil:
       raiseSSLError()
 
-    socket.bioIn = bioNew(bioSMem())
-    socket.bioOut = bioNew(bioSMem())
-    sslSetBio(socket.sslHandle, socket.bioIn, socket.bioOut)
+    discard SSL_set_fd(socket.sslHandle, socket.fd)
 
     socket.sslNoShutdown = true
 
@@ -795,6 +724,8 @@ when defineSsl:
     ##
     ## **Disclaimer**: This code is not well tested, may be very unsafe and
     ## prone to security vulnerabilities.
+    if socket.isSsl:
+      return
     wrapSocket(ctx, socket)
 
     case handshake
@@ -817,6 +748,64 @@ when defineSsl:
       result = newSeq[Certificate]()
     else:
       result = getPeerCertificates(socket.sslHandle)
+
+proc acceptAddrImpl(socket: AsyncSocket, flags = {SocketFlag.SafeDisconn},
+                 inheritable = defined(nimInheritHandles)):
+      owned(Future[tuple[address: string, client: AsyncSocket]]) =
+  var retFuture = newFuture[tuple[address: string, client: AsyncSocket]]("asyncnet.acceptAddr")
+  var fut = acceptAddr(socket.fd.AsyncFD, flags, inheritable)
+  fut.callback =
+    proc (future: Future[tuple[address: string, client: AsyncFD]]) =
+      assert future.finished
+      if future.failed:
+        retFuture.fail(future.readError)
+      else:
+        let resultTup = (future.read.address,
+                         newAsyncSocket(future.read.client, socket.domain,
+                         socket.sockType, socket.protocol, socket.isBuffered, inheritable))
+        retFuture.complete(resultTup)
+  return retFuture
+
+proc acceptAddr*(
+  socket: AsyncSocket,
+  flags = {SocketFlag.SafeDisconn},
+  inheritable = defined(nimInheritHandles)
+): owned(Future[tuple[address: string, client: AsyncSocket]]) {.async.} =
+  ## Accepts a new connection. Returns a future containing the client socket
+  ## corresponding to that connection and the remote address of the client.
+  ##
+  ## If `inheritable` is false (the default), the resulting client socket will
+  ## not be inheritable by child processes.
+  ##
+  ## The future will complete when the connection is successfully accepted.
+  result = await acceptAddrImpl(socket, flags, inheritable)
+  if socket.isSsl:
+    when defineSsl:
+      if socket.sslContext == nil:
+        raiseSSLError("The SSL Context is closed/unset")
+      wrapSocket(socket.sslContext, result.client)
+      if result.client.sslHandle == nil:
+        raiseSslHandleError()
+      let flags = {SocketFlag.SafeDisconn}
+      sslLoop(result.client, flags, SSL_accept(result.client.sslHandle))
+
+proc accept*(socket: AsyncSocket,
+    flags = {SocketFlag.SafeDisconn}): owned(Future[AsyncSocket]) =
+  ## Accepts a new connection. Returns a future containing the client socket
+  ## corresponding to that connection.
+  ## If `inheritable` is false (the default), the resulting client socket will
+  ## not be inheritable by child processes.
+  ## The future will complete when the connection is successfully accepted.
+  var retFut = newFuture[AsyncSocket]("asyncnet.accept")
+  var fut = acceptAddr(socket, flags)
+  fut.callback =
+    proc (future: Future[tuple[address: string, client: AsyncSocket]]) =
+      assert future.finished
+      if future.failed:
+        retFut.fail(future.readError)
+      else:
+        retFut.complete(future.read.client)
+  return retFut
 
 proc getSockOpt*(socket: AsyncSocket, opt: SOBool, level = SOL_SOCKET): bool {.
   tags: [ReadIOEffect].} =
