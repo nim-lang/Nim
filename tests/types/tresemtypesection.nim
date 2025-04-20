@@ -40,5 +40,15 @@ foo:
     x: T
   discard Bar[int](x: 123)
   discard Bar[string](x: "abc")
+
+  template templ(): untyped =
+    proc injected() {.inject.} = discard
+    int
+
+  type TestInject = templ()
+  var x1: TestInject
+  injected() # normally works
 echo $NONE
 echo a
+var x2: TestInject
+injected()

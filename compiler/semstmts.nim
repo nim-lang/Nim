@@ -1606,6 +1606,9 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
     let preserveSym = s.typ != nil and s.typ.kind != tyForward and sfForward notin s.flags and
         s.magic == mNone # magic might have received type above but still needs processing
     if preserveSym:
+      # symbol already has a type, probably in resem, do not modify it
+      # but still semcheck the RHS to handle any defined symbols
+      # nominal type nodes are still ignored
       if a[1].kind != nkEmpty:
         openScope(c)
         pushOwner(c, s)
@@ -1724,7 +1727,7 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
       if tfInheritable in oldFlags and tfFinal in objTy.flags:
         excl(objTy.flags, tfFinal)
       let obj = newSym(skType, getIdent(c.cache, s.name.s & ":ObjectType"),
-                      c.idgen, getCurrOwner(c), s.info)
+                       c.idgen, getCurrOwner(c), s.info)
       obj.flags.incl sfGeneratedType
       let symNode = newSymNode(obj)
       obj.ast = a.shallowCopy
@@ -1814,14 +1817,15 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
       else:
         while x.kind in {nkStmtList, nkStmtListExpr} and x.len > 0:
           x = x.lastSon
-        # we need the 'safeSkipTypes' here because illegally recursive types
-        # can enter at this point, see bug #13763
-        if x.kind notin {nkObjectTy, nkDistinctTy, nkEnumTy, nkEmpty} and
-            s.typ.safeSkipTypes(abstractPtrs).kind notin {tyObject, tyEnum}:
-          # type aliases are hard:
-          var t = semTypeNode(c, x, nil)
-          assert t != nil
-          if s.typ != nil and s.typ.kind notin {tyAlias, tySink}:
+        when false:
+          # we need the 'safeSkipTypes' here because illegally recursive types
+          # can enter at this point, see bug #13763
+          if x.kind notin {nkObjectTy, nkDistinctTy, nkEnumTy, nkEmpty} and
+              s.typ != nil and s.typ.kind notin {tyAlias, tySink} and
+              s.typ.safeSkipTypes(abstractPtrs).kind notin {tyObject, tyEnum}:
+            # type aliases are hard:
+            var t = semTypeNode(c, x, nil)
+            assert t != nil
             if t.kind in {tyProc, tyGenericInst} and not t.isMetaType:
               assignType(s.typ, t)
               s.typ.itemId = t.itemId

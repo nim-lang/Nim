@@ -73,6 +73,8 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
     # don't create an empty tyEnum; fixes #3052
     return errorType(c)
   if prevIsKind(prev, tyEnum):
+    # the symbol already has an enum type (likely resem), don't define a new enum
+    # but add the enum fields to scope from the original type
     let isPure = sfPure in prev.sym.flags
     for enumField in prev.n:
       assert enumField.kind == nkSym
@@ -326,6 +328,7 @@ proc addSonSkipIntLitChecked(c: PContext; father, son: PType; it: PNode, id: IdG
 proc semDistinct(c: PContext, n: PNode, prev: PType): PType =
   if n.len == 0: return newConstraint(c, tyDistinct)
   if prevIsKind(prev, tyDistinct):
+    # the symbol already has a distinct type (likely resem), don't create a new type
     return skipGenericPrev(prev)
   result = newOrPrevType(tyDistinct, prev, c)
   addSonSkipIntLitChecked(c, result, semTypeNode(c, n[0], nil), n[0], c.idgen)
@@ -1015,6 +1018,7 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType; flags: TTypeFlags): PType
   if n.len == 0:
     return newConstraint(c, tyObject)
   if prevIsKind(prev, tyObject) and sfForward notin prev.sym.flags:
+    # the symbol already has an object type (likely resem), don't create a new type
     return skipGenericPrev(prev)
   var check = initIntSet()
   var pos = 0
@@ -1079,6 +1083,7 @@ proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
     result = newConstraint(c, kind)
   else:
     if prevIsKind(prev, kind) and tfRefsAnonObj in prev.skipTypes({tyGenericBody}).flags:
+      # the symbol already has an object type (likely resem), don't create a new type
       return skipGenericPrev(prev)
     let isCall = int ord(n.kind in nkCallKinds+{nkBracketExpr})
     let n = if n[0].kind == nkBracket: n[0] else: n
