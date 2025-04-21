@@ -41,6 +41,7 @@ foo:
   discard Bar[int](x: 123)
   discard Bar[string](x: "abc")
 
+  # regression test:
   template templ(): untyped =
     proc injected() {.inject.} = discard
     int

@@ -64,7 +64,7 @@ proc skipGenericPrev(prev: PType): PType =
   if prev.kind == tyGenericBody and prev.last.kind != tyNone:
     result = prev.last
 
-proc prevIsKind(prev: PType, kind: TTypeKind): bool =
+proc prevIsKind(prev: PType, kind: TTypeKind): bool {.inline.} =
   result = prev != nil and skipGenericPrev(prev).kind == kind
 
 proc semEnum(c: PContext, n: PNode, prev: PType): PType =
@@ -217,7 +217,7 @@ proc semSet(c: PContext, n: PNode, prev: PType): PType =
     if base.kind in {tyGenericInst, tyAlias, tySink}: base = skipModifier(base)
     if base.kind notin {tyGenericParam, tyGenericInvocation}:
       if base.kind == tyForward:
-        c.skipTypes.add n
+        c.skipTypes.add (base, n[1])
       elif not isOrdinalType(base, allowEnumWithHoles = true):
         localError(c.config, n.info, errOrdinalTypeExpected % typeToString(base, preferDesc))
       elif lengthOrd(c.config, base) > MaxSetElements:
@@ -1046,7 +1046,7 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType; flags: TTypeFlags): PType
             return newType(tyError, c.idgen, result.owner)
 
       elif concreteBase.kind == tyForward:
-        c.skipTypes.add n #we retry in the final pass
+        c.skipTypes.add (realBase, n[1][0]) #we retry in the final pass
       else:
         if concreteBase.kind != tyError:
           localError(c.config, n[1].info, "inheritance only works with non-final objects; " &
@@ -1689,6 +1689,7 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
     for i in 1..<n.len:
       var elem = semGenericParamInInvocation(c, n[i])
       addToResult(elem, true)
+    c.skipTypes.add (result, n)
     return
   elif t.kind != tyGenericBody:
     # we likely got code of the form TypeA[TypeB] where TypeA is
@@ -1737,7 +1738,7 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
         localError(c.config, n.info, errCannotInstantiateX % s.name.s)
         result = newOrPrevType(tyError, prev, c)
       elif containsGenericInvocationWithForward(n[0]):
-        c.skipTypes.add n #fixes 1500
+        c.skipTypes.add (result, n) #fixes 1500
       else:
         result = instGenericContainer(c, n.info, result,
                                       allowMetaTypes = false)

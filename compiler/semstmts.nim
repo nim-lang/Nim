@@ -1753,9 +1753,6 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
         obj.flags.incl sfPure
       obj.typ = objTy
       objTy.sym = obj
-  for sk in c.skipTypes:
-    discard semTypeNode(c, sk, nil)
-  c.skipTypes = @[]
 
 proc checkForMetaFields(c: PContext; n: PNode; hasError: var bool) =
   proc checkMeta(c: PContext; n: PNode; t: PType; hasError: var bool; parent: PType) =
@@ -1791,6 +1788,12 @@ proc checkForMetaFields(c: PContext; n: PNode; hasError: var bool) =
     internalAssert c.config, false
 
 proc typeSectionFinalPass(c: PContext, n: PNode) =
+  for (typ, typeNode) in c.skipTypes:
+    var reified = semTypeNode(c, typeNode, nil)
+    assert reified != nil
+    assignType(typ, reified)
+    typ.itemId = reified.itemId     # same id
+  c.skipTypes = @[]
   for i in 0..<n.len:
     var a = n[i]
     if a.kind == nkCommentStmt: continue
@@ -1817,30 +1820,13 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
       else:
         while x.kind in {nkStmtList, nkStmtListExpr} and x.len > 0:
           x = x.lastSon
-        when false:
-          # we need the 'safeSkipTypes' here because illegally recursive types
-          # can enter at this point, see bug #13763
-          if x.kind notin {nkObjectTy, nkDistinctTy, nkEnumTy, nkEmpty} and
-              s.typ != nil and s.typ.kind notin {tyAlias, tySink} and
-              s.typ.safeSkipTypes(abstractPtrs).kind notin {tyObject, tyEnum}:
-            # type aliases are hard:
-            var t = semTypeNode(c, x, nil)
-            assert t != nil
-            if t.kind in {tyProc, tyGenericInst} and not t.isMetaType:
-              assignType(s.typ, t)
-              s.typ.itemId = t.itemId
-            elif t.kind in {tyObject, tyEnum, tyDistinct}:
-              assert s.typ != nil
-              assignType(s.typ, t)
-              s.typ.itemId = t.itemId     # same id
         var hasError = false
-        let baseType = s.typ.safeSkipTypes(abstractPtrs)
-        if baseType.kind in {tyObject, tyTuple} and not baseType.n.isNil and
-          (x.kind in {nkObjectTy, nkTupleTy} or
+        if x.kind in {nkObjectTy, nkTupleTy} or
            (x.kind in {nkRefTy, nkPtrTy} and x.len == 1 and
-           x[0].kind in {nkObjectTy, nkTupleTy})
-          ):
-          checkForMetaFields(c, baseType.n, hasError)
+            x[0].kind in {nkObjectTy, nkTupleTy}):
+          let baseType = s.typ.safeSkipTypes(abstractPtrs)
+          if baseType.kind in {tyObject, tyTuple} and not baseType.n.isNil:
+            checkForMetaFields(c, baseType.n, hasError)
         if not hasError:
           checkConstructedType(c.config, s.info, s.typ)
   #instAllTypeBoundOp(c, n.info)

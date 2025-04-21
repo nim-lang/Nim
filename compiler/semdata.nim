@@ -172,7 +172,7 @@ type
     sideEffects*: Table[int, seq[(TLineInfo, PSym)]] # symbol.id index
     inUncheckedAssignSection*: int
     importModuleLookup*: Table[int, seq[int]] # (module.ident.id, [module.id])
-    skipTypes*: seq[PNode] # used to skip types between passes in type section. So far only used for inheritance, sets and generic bodies.
+    skipTypes*: seq[(PType, PNode)] # used to skip types between passes in type section. So far only used for inheritance, sets and generic bodies.
     inTypeofContext*: int
 
     semAsgnOpr*: proc (c: PContext; n: PNode; k: TNodeKind): PNode {.nimcall.}
