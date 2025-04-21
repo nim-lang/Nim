@@ -526,7 +526,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
     let t = typ
     if t == nil: return
     if prefer in preferToResolveSymbols and t.sym != nil and
-         sfAnon notin t.sym.flags and t.kind notin {tySequence, tyInferred}:
+         sfAnon notin t.sym.flags and t.kind != tySequence:
       if t.kind == tyInt and isIntLit(t):
         if prefer == preferInlayHint:
           result = t.sym.name.s

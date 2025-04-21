@@ -1460,13 +1460,8 @@ proc typeDefLeftSidePass(c: PContext, typeSection: PNode, i: int) =
   else:
     s = semIdentDef(c, name, skType)
     onDef(name.info, s)
-    if s.typ != nil:
-      # name node is a symbol with a type already, probably in resem, don't touch it
-      discard
-    else:
-      s.typ = newTypeS(tyForward, c)
-      s.typ.sym = s
-    # process pragmas:
+    s.typ = newTypeS(tyForward, c)
+    s.typ.sym = s             # process pragmas:
     if name.kind == nkPragmaExpr:
       let rewritten = applyTypeSectionPragmas(c, name[1], typeDef)
       if rewritten != nil:
@@ -1604,26 +1599,7 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
       localError(c.config, a.info, errImplOfXexpected % s.name.s)
     if s.magic != mNone: processMagicType(c, s)
     let oldFlags = s.typ.flags
-    let preserveSym = s.typ != nil and s.typ.kind != tyForward and sfForward notin s.flags and
-        s.magic == mNone # magic might have received type above but still needs processing
-    if preserveSym:
-      # symbol already has a type, probably in resem, do not modify it
-      # but still semcheck the RHS to handle any defined symbols
-      # nominal type nodes are still ignored in semtypes
-      if a[1].kind != nkEmpty:
-        openScope(c)
-        pushOwner(c, s)
-        a[1] = semGenericParamList(c, a[1], nil)
-        inc c.inGenericContext
-        discard semTypeNode(c, a[2], s.typ)
-        dec c.inGenericContext
-        popOwner(c)
-        closeScope(c)
-      elif a[2].kind != nkEmpty:
-        pushOwner(c, s)
-        discard semTypeNode(c, a[2], s.typ)
-        popOwner(c)
-    elif a[1].kind != nkEmpty:
+    if a[1].kind != nkEmpty:
       # We have a generic type declaration here. In generic types,
       # symbol lookup needs to be done here.
       openScope(c)
@@ -1713,7 +1689,7 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
           localError(c.config, name.info, "only a 'distinct' type can borrow `.`")
     let aa = a[2]
     if aa.kind in {nkRefTy, nkPtrTy} and aa.len == 1 and
-       aa[0].kind == nkObjectTy and not preserveSym:
+       aa[0].kind == nkObjectTy:
       # give anonymous object a dummy symbol:
       var st = s.typ
       if st.kind == tyGenericBody: st = st.typeBodyImpl
@@ -1754,6 +1730,9 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
         obj.flags.incl sfPure
       obj.typ = objTy
       objTy.sym = obj
+  for sk in c.skipTypes:
+    discard semTypeNode(c, sk, nil)
+  c.skipTypes = @[]
 
 proc checkForMetaFields(c: PContext; n: PNode; hasError: var bool) =
   proc checkMeta(c: PContext; n: PNode; t: PType; hasError: var bool; parent: PType) =
@@ -1789,15 +1768,6 @@ proc checkForMetaFields(c: PContext; n: PNode; hasError: var bool) =
     internalAssert c.config, false
 
 proc typeSectionFinalPass(c: PContext, n: PNode) =
-  for (typ, typeNode) in c.forwardTypeUpdates:
-    # types that need to be updated due to containing forward types
-    # and their corresponding type nodes
-    # for example generic invocations of forward types end up here
-    var reified = semTypeNode(c, typeNode, nil)
-    assert reified != nil
-    assignType(typ, reified)
-    typ.itemId = reified.itemId     # same id
-  c.forwardTypeUpdates = @[]
   for i in 0..<n.len:
     var a = n[i]
     if a.kind == nkCommentStmt: continue
@@ -1824,15 +1794,29 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
       else:
         while x.kind in {nkStmtList, nkStmtListExpr} and x.len > 0:
           x = x.lastSon
+        # we need the 'safeSkipTypes' here because illegally recursive types
+        # can enter at this point, see bug #13763
+        if x.kind notin {nkObjectTy, nkDistinctTy, nkEnumTy, nkEmpty} and
+            s.typ.safeSkipTypes(abstractPtrs).kind notin {tyObject, tyEnum}:
+          # type aliases are hard:
+          var t = semTypeNode(c, x, nil)
+          assert t != nil
+          if s.typ != nil and s.typ.kind notin {tyAlias, tySink}:
+            if t.kind in {tyProc, tyGenericInst} and not t.isMetaType:
+              assignType(s.typ, t)
+              s.typ.itemId = t.itemId
+            elif t.kind in {tyObject, tyEnum, tyDistinct}:
+              assert s.typ != nil
+              assignType(s.typ, t)
+              s.typ.itemId = t.itemId     # same id
         var hasError = false
-        if x.kind in {nkObjectTy, nkTupleTy} or
+        let baseType = s.typ.safeSkipTypes(abstractPtrs)
+        if baseType.kind in {tyObject, tyTuple} and not baseType.n.isNil and
+          (x.kind in {nkObjectTy, nkTupleTy} or
            (x.kind in {nkRefTy, nkPtrTy} and x.len == 1 and
-            x[0].kind in {nkObjectTy, nkTupleTy}):
-          # we need the 'safeSkipTypes' here because illegally recursive types
-          # can enter at this point, see bug #13763
-          let baseType = s.typ.safeSkipTypes(abstractPtrs)
-          if baseType.kind in {tyObject, tyTuple} and not baseType.n.isNil:
-            checkForMetaFields(c, baseType.n, hasError)
+           x[0].kind in {nkObjectTy, nkTupleTy})
+          ):
+          checkForMetaFields(c, baseType.n, hasError)
         if not hasError:
           checkConstructedType(c.config, s.info, s.typ)
   #instAllTypeBoundOp(c, n.info)
