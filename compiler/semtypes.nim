@@ -576,7 +576,7 @@ proc semTuple(c: PContext, n: PNode, prev: PType): PType =
       styleCheckDef(c, a[j].info, field)
       onDef(field.info, field)
   if result.n.len == 0: result.n = nil
-  if isTupleRecursive(result):
+  if isRecursiveStructuralType(result):
     localError(c.config, n.info, errIllegalRecursionInTypeX % typeToString(result))
 
 proc semIdentVis(c: PContext, kind: TSymKind, n: PNode,
@@ -1500,6 +1500,8 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
       if isType: localError(c.config, a.info, "':' expected")
       if kind in {skTemplate, skMacro}:
         typ = newTypeS(tyUntyped, c)
+    elif isRecursiveStructuralType(typ):
+      localError(c.config, a[^2].info, errIllegalRecursionInTypeX % typeToString(typ))
     elif skipTypes(typ, {tyGenericInst, tyAlias, tySink}).kind == tyVoid:
       continue
 
@@ -1563,7 +1565,9 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
   if r != nil:
     # turn explicit 'void' return type into 'nil' because the rest of the
     # compiler only checks for 'nil':
-    if skipTypes(r, {tyGenericInst, tyAlias, tySink}).kind != tyVoid:
+    if isRecursiveStructuralType(r):
+      localError(c.config, n.info, errIllegalRecursionInTypeX % typeToString(r))
+    elif skipTypes(r, {tyGenericInst, tyAlias, tySink}).kind != tyVoid:
       if kind notin {skMacro, skTemplate} and r.kind in {tyTyped, tyUntyped}:
         localError(c.config, n[0].info, "return type '" & typeToString(r) &
             "' is only valid for macros and templates")
@@ -1751,7 +1755,7 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
   # special check for generic object with
   # generic/partial specialized parent
   let tx = result.skipTypes(abstractPtrs, 50)
-  if tx.isNil or isTupleRecursive(tx):
+  if tx.isNil or isRecursiveStructuralType(tx):
     localError(c.config, n.info, "illegal recursion in type '$1'" % typeToString(result[0]))
     return errorType(c)
   if tx != result and tx.kind == tyObject:
