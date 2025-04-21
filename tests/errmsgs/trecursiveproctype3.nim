@@ -1,5 +1,5 @@
 discard """
-  errormsg: "illegal recursion in type 'ptr MyFunc'"
+  errormsg: "illegal recursion in type 'MyFunc'"
   line: 9
 """
 
