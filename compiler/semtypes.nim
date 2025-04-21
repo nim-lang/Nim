@@ -1466,6 +1466,8 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
       if isType: localError(c.config, a.info, "':' expected")
       if kind in {skTemplate, skMacro}:
         typ = newTypeS(tyUntyped, c)
+    elif isRecursiveStructuralType(typ):
+      localError(c.config, a[^2].info, errIllegalRecursionInTypeX % typeToString(typ))
     elif skipTypes(typ, {tyGenericInst, tyAlias, tySink}).kind == tyVoid:
       continue
 
@@ -1486,8 +1488,6 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
       var nameForLift = arg.name.s
       if sfGenSym in arg.flags:
         nameForLift.add("`gensym" & $arg.id)
-      if isRecursiveStructuralType(typ):
-        localError(c.config, n.info, errIllegalRecursionInTypeX % typeToString(typ))
       let lifted = liftParamType(c, kind, genericParams, typ,
                                  nameForLift, arg.info)
       let finalType = if lifted != nil: lifted else: typ.skipIntLit(c.idgen)
@@ -1531,9 +1531,9 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
   if r != nil:
     # turn explicit 'void' return type into 'nil' because the rest of the
     # compiler only checks for 'nil':
-    if skipTypes(r, {tyGenericInst, tyAlias, tySink}).kind != tyVoid:
-      if isRecursiveStructuralType(r):
-        localError(c.config, n.info, errIllegalRecursionInTypeX % typeToString(r))
+    if isRecursiveStructuralType(r):
+      localError(c.config, n.info, errIllegalRecursionInTypeX % typeToString(r))
+    elif skipTypes(r, {tyGenericInst, tyAlias, tySink}).kind != tyVoid:
       if kind notin {skMacro, skTemplate} and r.kind in {tyTyped, tyUntyped}:
         localError(c.config, n[0].info, "return type '" & typeToString(r) &
             "' is only valid for macros and templates")
