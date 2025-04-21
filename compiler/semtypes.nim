@@ -1025,6 +1025,7 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType; flags: TTypeFlags): PType
   var base, realBase: PType = nil
   # n[0] contains the pragmas (if any). We process these later...
   checkSonsLen(n, 3, c.config)
+  var needsSkip = false
   if n[1].kind != nkEmpty:
     realBase = semTypeNode(c, n[1][0], nil)
     base = skipTypesOrNil(realBase, skipPtrs)
@@ -1046,7 +1047,7 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType; flags: TTypeFlags): PType
             return newType(tyError, c.idgen, result.owner)
 
       elif concreteBase.kind == tyForward:
-        c.skipTypes.add (realBase, n[1][0]) #we retry in the final pass
+        needsSkip = true
       else:
         if concreteBase.kind != tyError:
           localError(c.config, n[1].info, "inheritance only works with non-final objects; " &
@@ -1056,6 +1057,8 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType; flags: TTypeFlags): PType
         realBase = nil
   if n.kind != nkObjectTy: internalError(c.config, n.info, "semObjectNode")
   result = newOrPrevType(tyObject, prev, c)
+  if needsSkip:
+    c.skipTypes.add (result, n) #we retry in the final pass
   rawAddSon(result, realBase)
   if realBase == nil and tfInheritable in flags:
     result.flags.incl tfInheritable
