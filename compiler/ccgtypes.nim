@@ -597,7 +597,7 @@ proc genProcParams(m: BModule; t: PType, rettype, params: var Rope,
   if t.returnType == nil or isInvalidReturnType(m.config, t):
     rettype = "void"
   else:
-    rettype = getTypeDescAux(m, t.returnType, check, dkResult)
+    rettype = getTypeDescWeak(m, t.returnType, check, dkResult)
   for i in 1..<t.n.len:
     if t.n[i].kind != nkSym: internalError(m.config, t.n.info, "genProcParams")
     var param = t.n[i].sym
