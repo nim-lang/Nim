@@ -230,7 +230,7 @@ when defineSsl:
     ## Returns `true` if `socket` is still connected, otherwise `false`.
     let retFut = newFuture[bool]()
     case sslError
-    of SSL_ERROR_WANT_WRITE:
+    of SSL_ERROR_WANT_WRITE, SSL_ERROR_WANT_CONNECT, SSL_ERROR_WANT_ACCEPT:
       addWrite(socket.fd.AsyncFD, proc (sock: AsyncFD): bool =
         retFut.complete(true)
         return true
@@ -707,7 +707,8 @@ when defineSsl:
     if socket.sslHandle == nil:
       raiseSSLError()
 
-    discard SSL_set_fd(socket.sslHandle, socket.fd)
+    if SSL_set_fd(socket.sslHandle, socket.fd) != 1:
+      raiseSSLError()
 
     socket.sslNoShutdown = true
 
