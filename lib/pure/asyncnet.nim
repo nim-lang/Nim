@@ -208,7 +208,7 @@ when defineSsl:
   proc raiseSslHandleError =
     raiseSSLError("The SSL Handle is closed/unset")
 
-  proc getSslError(socket: AsyncSocket, err: cint): cint =
+  proc getSslError(socket: AsyncSocket, flags: set[SocketFlag], err: cint): cint =
     assert socket.isSsl
     assert err < 0
     var ret = SSL_get_error(socket.sslHandle, err.cint)
@@ -221,7 +221,25 @@ when defineSsl:
       return ret
     of SSL_ERROR_WANT_X509_LOOKUP:
       raiseSSLError("Function for x509 lookup has been called.")
-    of SSL_ERROR_SYSCALL, SSL_ERROR_SSL:
+    of SSL_ERROR_SYSCALL:
+      socket.sslNoShutdown = true
+      let osErr = osLastError()
+      if not flags.isDisconnectionError(osErr):
+        var errStr = "IO error has occurred"
+        let sslErr = ERR_peek_last_error()
+        if sslErr == 0 and err == 0:
+          errStr.add ' '
+          errStr.add "because an EOF was observed that violates the protocol"
+        elif sslErr == 0 and err == -1:
+          errStr.add ' '
+          errStr.add "in the BIO layer"
+        else:
+          let errStr = $ERR_error_string(sslErr, nil)
+          raiseSSLError(errStr & ": " & errStr)
+        raiseOSError(osErr, errStr)
+      else:
+        return ret
+    of SSL_ERROR_SSL:
       socket.sslNoShutdown = true
       raiseSSLError()
     else: raiseSSLError("Unknown Error")
@@ -240,6 +258,9 @@ when defineSsl:
         retFut.complete(true)
         return true
       )
+    of SSL_ERROR_SYSCALL:
+      assert flags.isDisconnectionError(osLastError())
+      retFut.complete(false)
     else:
       raiseSSLError("Cannot appease SSL.")
     return retFut
@@ -253,15 +274,10 @@ when defineSsl:
       ErrClearError()
       # Call the desired operation.
       opResult = op
-      let err =
-        if opResult < 0:
-          getSslError(socket, opResult.cint)
-        else:
-          SSL_ERROR_NONE
-
       # If the operation failed, try to see if SSL has some data to read
       # or write.
       if opResult < 0:
+        let err = getSslError(socket, flags, opResult.cint)
         let connected = await appeaseSsl(socket, flags, err.cint)
         if not connected:
           # Socket disconnected.
