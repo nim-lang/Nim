@@ -1461,11 +1461,12 @@ proc typeDefLeftSidePass(c: PContext, typeSection: PNode, i: int) =
     s = semIdentDef(c, name, skType)
     onDef(name.info, s)
     if s.typ != nil:
-      # name node is a symbol with a type already, don't touch it
+      # name node is a symbol with a type already, probably in resem, don't touch it
       discard
     else:
       s.typ = newTypeS(tyForward, c)
-      s.typ.sym = s             # process pragmas:
+      s.typ.sym = s
+    # process pragmas:
     if name.kind == nkPragmaExpr:
       let rewritten = applyTypeSectionPragmas(c, name[1], typeDef)
       if rewritten != nil:
@@ -1608,7 +1609,7 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
     if preserveSym:
       # symbol already has a type, probably in resem, do not modify it
       # but still semcheck the RHS to handle any defined symbols
-      # nominal type nodes are still ignored
+      # nominal type nodes are still ignored in semtypes
       if a[1].kind != nkEmpty:
         openScope(c)
         pushOwner(c, s)
@@ -1788,12 +1789,15 @@ proc checkForMetaFields(c: PContext; n: PNode; hasError: var bool) =
     internalAssert c.config, false
 
 proc typeSectionFinalPass(c: PContext, n: PNode) =
-  for (typ, typeNode) in c.skipTypes:
+  for (typ, typeNode) in c.forwardTypeUpdates:
+    # types that need to be updated due to containing forward types
+    # and their corresponding type nodes
+    # for example generic invocations of forward types end up here
     var reified = semTypeNode(c, typeNode, nil)
     assert reified != nil
     assignType(typ, reified)
     typ.itemId = reified.itemId     # same id
-  c.skipTypes = @[]
+  c.forwardTypeUpdates = @[]
   for i in 0..<n.len:
     var a = n[i]
     if a.kind == nkCommentStmt: continue
@@ -1824,6 +1828,8 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
         if x.kind in {nkObjectTy, nkTupleTy} or
            (x.kind in {nkRefTy, nkPtrTy} and x.len == 1 and
             x[0].kind in {nkObjectTy, nkTupleTy}):
+          # we need the 'safeSkipTypes' here because illegally recursive types
+          # can enter at this point, see bug #13763
           let baseType = s.typ.safeSkipTypes(abstractPtrs)
           if baseType.kind in {tyObject, tyTuple} and not baseType.n.isNil:
             checkForMetaFields(c, baseType.n, hasError)
