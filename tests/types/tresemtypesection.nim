@@ -53,3 +53,8 @@ echo $NONE
 echo a
 var x2: TestInject
 injected()
+
+block: # issue #24898
+  type V[W] = object
+  template g(d: int) = discard d
+  g((; type J = V[int]; 0))
