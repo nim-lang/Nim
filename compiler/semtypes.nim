@@ -39,7 +39,9 @@ const
   errInOutFlagNotExtern = "the '$1' modifier can be used only with imported types"
 
 proc reusePrev(prev: PType): bool {.inline.} =
+  # only overwrite `prev` if it is a forward type, partial object or magic type
   result = prev != nil and (prev.kind == tyForward or (prev.sym != nil and
+    # partial object marks sym as `sfForward`
     (sfForward in prev.sym.flags or prev.sym.magic != mNone)))
 
 proc newOrPrevType(kind: TTypeKind, prev: PType, c: PContext, son: sink PType): PType =

@@ -41,6 +41,16 @@ foo:
   discard Bar[int](x: 123)
   discard Bar[string](x: "abc")
 
+  type
+    Generic1[T] = object
+    Generic2[T] = ref int
+    Generic3[T] = ref Generic1[T]
+    Generic4[T] = Generic2[T]
+    GenericInst1 = Generic1[int]
+    GenericInst2 = Generic2[int]
+    GenericInst3 = Generic3[int]
+    GenericInst4 = Generic4[int]
+
   # regression test:
   template templ(): untyped =
     proc injected() {.inject.} = discard
@@ -49,6 +59,7 @@ foo:
   type TestInject = templ()
   var x1: TestInject
   injected() # normally works
+
 echo $NONE
 echo a
 var x2: TestInject
