@@ -59,10 +59,6 @@ template isMixedIn(sym): bool =
 template canOpenSym(s): bool =
   {withinMixin, withinConcept} * flags == {withinMixin} and s.id notin ctx.toBind
 
-template symChoiceInGenerics(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule;
-               isField = false): PNode =
-  symChoice(c, n, s, r, isField, true)
-
 proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
                           ctx: var GenericCtx; flags: TSemGenericFlags,
                           isAmbiguous: bool,
