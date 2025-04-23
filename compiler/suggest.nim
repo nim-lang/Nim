@@ -710,7 +710,7 @@ proc markUsed(c: PContext; info: TLineInfo; s: PSym; checkStyle = true) =
         warnAboutDeprecated(conf, info, s)
         c.lastTLineInfo = info
 
-      if sfError in s.flags: userError(conf, info, s)
+    if sfError in s.flags: userError(conf, info, s)
   when defined(nimsuggest):
     suggestSym(c.graph, info, s, c.graph.usageSym, false)
   if checkStyle:
