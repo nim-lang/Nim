@@ -634,6 +634,9 @@ proc semGenericStmt(c: PContext, n: PNode,
         # only sem if not a language-level pragma 
         # treat as mixin context for user pragmas & macro args
         result[i] = semGenericStmt(c, x, flags+{withinMixin}, ctx)
+      elif prag in {wPush, wPop}:
+        # resolves push/pop pragmas; i.e. options
+        pragma(c, c.p.owner, n, stmtPragmas, true)
   of nkExprColonExpr, nkExprEqExpr:
     checkMinSonsLen(n, 2, c.config)
     result[1] = semGenericStmt(c, n[1], flags, ctx)
