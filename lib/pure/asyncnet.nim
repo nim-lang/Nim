@@ -246,7 +246,7 @@ when defineSsl:
 
   proc handleSslFailure(socket: AsyncSocket, flags: set[SocketFlag], sslError: cint): Future[bool] =
     ## Returns `true` if `socket` is still connected, otherwise `false`.
-    let retFut = newFuture[bool]()
+    let retFut = newFuture[bool]("asyncnet.handleSslFailure")
     case sslError
     of SSL_ERROR_WANT_WRITE, SSL_ERROR_WANT_CONNECT, SSL_ERROR_WANT_ACCEPT:
       addWrite(socket.fd.AsyncFD, proc (sock: AsyncFD): bool =
