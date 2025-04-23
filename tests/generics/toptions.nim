@@ -26,3 +26,14 @@ block: # bug #24903
     proc y() {.error.} = discard
     proc m(_: int | int) =
       when true: y()
+
+block: # bug #15650
+  proc bar() {.deprecated.} = discard
+
+  template foo() =
+    when false:
+      bar()
+    else:
+      discard
+
+  foo()
