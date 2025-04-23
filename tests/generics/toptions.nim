@@ -21,3 +21,8 @@ block: # bug #24903
     proc y() {.error.} = discard
     proc m(_: int | int) =
       when false: y()
+
+  block:
+    proc y() {.error.} = discard
+    proc m(_: int | int) =
+      when true: y()
