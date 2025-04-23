@@ -113,6 +113,8 @@ proc semExprNoDeref(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
 
 proc semSymGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
   result = symChoice(c, n, s, scClosed)
+  if result.kind == nkSym:
+    markUsed(c, n.info, s)
 
 proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode
 

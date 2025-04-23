@@ -49,7 +49,7 @@ type
     scClosed, scOpen, scForceOpen
 
 proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule;
-               isField = false; inGenerics = false): PNode =
+               isField = false): PNode =
   var
     a: PSym
     o: TOverloadIter = default(TOverloadIter)
@@ -67,12 +67,9 @@ proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule;
     # for instance 'nextTry' is both in tables.nim and astalgo.nim ...
     if not isField or sfGenSym notin s.flags:
       result = newSymNode(s, info)
-      if isField:
-        # possibly not final field sym
-        incl(s.flags, sfUsed)
-        markOwnerModuleAsUsed(c, s)
-      else:
-        markUsed(c, info, s, inGenerics = inGenerics)
+      # possibly not final field sym
+      incl(s.flags, sfUsed)
+      markOwnerModuleAsUsed(c, s)
       onUse(info, s)
     else:
       result = n
@@ -94,10 +91,6 @@ proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule;
         onUse(info, a)
       a = nextOverloadIter(o, c, n)
 
-template symChoiceInGenerics(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule;
-               isField = false): PNode =
-  symChoice(c, n, s, r, isField, true)
-
 proc semBindStmt(c: PContext, n: PNode, toBind: var IntSet): PNode =
   result = copyNode(n)
   for i in 0..<n.len:
@@ -110,7 +103,7 @@ proc semBindStmt(c: PContext, n: PNode, toBind: var IntSet): PNode =
     let s = qualifiedLookUp(c, a, {checkUndeclared})
     if s != nil:
       # we need to mark all symbols:
-      let sc = symChoiceInGenerics(c, n, s, scClosed)
+      let sc = symChoice(c, n, s, scClosed)
       if sc.kind == nkSym:
         toBind.incl(sc.sym.id)
         result.add sc
@@ -125,7 +118,7 @@ proc semMixinStmt(c: PContext, n: PNode, toMixin: var IntSet): PNode =
   result = copyNode(n)
   for i in 0..<n.len:
     toMixin.incl(considerQuotedIdent(c, n[i]).id)
-    let x = symChoiceInGenerics(c, n[i], nil, scForceOpen)
+    let x = symChoice(c, n[i], nil, scForceOpen)
     result.add x
 
 proc replaceIdentBySym(c: PContext; n: var PNode, s: PNode) =
@@ -240,7 +233,7 @@ proc semTemplSymbol(c: var TemplCtx, n: PNode, s: PSym; isField, isAmbiguous: bo
     # Introduced in this pass! Leave it as an identifier.
     result = n
   of OverloadableSyms:
-    result = symChoiceInGenerics(c.c, n, s, scOpen, isField)
+    result = symChoice(c.c, n, s, scOpen, isField)
     if not isField and result.kind in {nkSym, nkOpenSymChoice}:
       if openSym in c.c.features:
         if result.kind == nkSym:
@@ -268,7 +261,7 @@ proc semTemplSymbol(c: var TemplCtx, n: PNode, s: PSym; isField, isAmbiguous: bo
       if isAmbiguous:
         # ambiguous types should be symchoices since lookup behaves
         # differently for them in regular expressions
-        result = symChoiceInGenerics(c.c, n, s, scOpen, isField)
+        result = symChoice(c.c, n, s, scOpen, isField)
       else: result = newSymNodeTypeDesc(s, c.c.idgen, n.info)
       if not isField and not (s.owner == c.owner and
           s.typ != nil and s.typ.kind == tyGenericParam) and
@@ -395,9 +388,9 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
         result = newSymNode(s, n.info)
         onUse(n.info, s)
       elif contains(c.toBind, s.id):
-        result = symChoiceInGenerics(c.c, n, s, scClosed, c.noGenSym > 0)
+        result = symChoice(c.c, n, s, scClosed, c.noGenSym > 0)
       elif contains(c.toMixin, s.name.id):
-        result = symChoiceInGenerics(c.c, n, s, scForceOpen, c.noGenSym > 0)
+        result = symChoice(c.c, n, s, scForceOpen, c.noGenSym > 0)
       elif s.owner == c.owner and sfGenSym in s.flags and c.noGenSym == 0:
         # template tmp[T](x: var seq[T]) =
         # var yz: T
@@ -619,9 +612,9 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
         onUse(n.info, s)
         return newSymNode(s, n.info)
       elif contains(c.toBind, s.id):
-        return symChoiceInGenerics(c.c, n, s, scClosed, c.noGenSym > 0)
+        return symChoice(c.c, n, s, scClosed, c.noGenSym > 0)
       elif contains(c.toMixin, s.name.id):
-        return symChoiceInGenerics(c.c, n, s, scForceOpen, c.noGenSym > 0)
+        return symChoice(c.c, n, s, scForceOpen, c.noGenSym > 0)
       else:
         if s.kind in {skVar, skLet, skConst}:
           discard qualifiedLookUp(c.c, n, {checkAmbiguity, checkModule})
@@ -667,7 +660,7 @@ proc semTemplBodyDirty(c: var TemplCtx, n: PNode): PNode =
       if s.owner == c.owner and s.kind == skParam:
         result = newSymNode(s, n.info)
       elif contains(c.toBind, s.id):
-        result = symChoiceInGenerics(c.c, n, s, scClosed)
+        result = symChoice(c.c, n, s, scClosed)
   of nkBind:
     result = semTemplBodyDirty(c, n[0])
   of nkBindStmt:
@@ -680,7 +673,7 @@ proc semTemplBodyDirty(c: var TemplCtx, n: PNode): PNode =
     if n.kind == nkDotExpr or n.kind == nkAccQuoted:
       let s = qualifiedLookUp(c.c, n, {})
       if s != nil and contains(c.toBind, s.id):
-        return symChoiceInGenerics(c.c, n, s, scClosed)
+        return symChoice(c.c, n, s, scClosed)
     result = n
     for i in 0..<n.len:
       result[i] = semTemplBodyDirty(c, n[i])
@@ -820,7 +813,7 @@ proc semPatternBody(c: var TemplCtx, n: PNode): PNode =
       if s.owner == c.owner and s.kind == skParam:
         result = newParam(c, n, s)
       elif contains(c.toBind, s.id):
-        result = symChoiceInGenerics(c.c, n, s, scClosed)
+        result = symChoice(c.c, n, s, scClosed)
       elif templToExpand(s):
         result = semPatternBody(c, semTemplateExpr(c.c, n, s, {efNoSemCheck}))
       else:
@@ -908,7 +901,7 @@ proc semPatternBody(c: var TemplCtx, n: PNode): PNode =
       let s = qualifiedLookUp(c.c, n, {})
       if s != nil:
         if contains(c.toBind, s.id):
-          return symChoiceInGenerics(c.c, n, s, scClosed)
+          return symChoice(c.c, n, s, scClosed)
         else:
           return newIdentNode(s.name, n.info)
     of nkPar:
