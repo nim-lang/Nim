@@ -696,21 +696,23 @@ proc markOwnerModuleAsUsed(c: PContext; s: PSym) =
       else:
         inc i
 
-proc markUsed(c: PContext; info: TLineInfo; s: PSym; checkStyle = true) =
+proc markUsed(c: PContext; info: TLineInfo; s: PSym; checkStyle = true; inGenerics = false) =
   let conf = c.config
   incl(s.flags, sfUsed)
-  if s.kind == skEnumField and s.owner != nil:
-    incl(s.owner.flags, sfUsed)
-    if sfDeprecated in s.owner.flags:
-      warnAboutDeprecated(conf, info, s)
-  if {sfDeprecated, sfError} * s.flags != {}:
-    if sfDeprecated in s.flags:
-      if not (c.lastTLineInfo.line == info.line and
-              c.lastTLineInfo.col == info.col):
+  if not inGenerics:
+    # we cannot resolve symbols in generic procs yet
+    if s.kind == skEnumField and s.owner != nil:
+      incl(s.owner.flags, sfUsed)
+      if sfDeprecated in s.owner.flags:
         warnAboutDeprecated(conf, info, s)
-        c.lastTLineInfo = info
+    if {sfDeprecated, sfError} * s.flags != {}:
+      if sfDeprecated in s.flags:
+        if not (c.lastTLineInfo.line == info.line and
+                c.lastTLineInfo.col == info.col):
+          warnAboutDeprecated(conf, info, s)
+          c.lastTLineInfo = info
 
-    if sfError in s.flags: userError(conf, info, s)
+      if sfError in s.flags: userError(conf, info, s)
   when defined(nimsuggest):
     suggestSym(c.graph, info, s, c.graph.usageSym, false)
   if checkStyle:

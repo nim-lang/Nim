@@ -49,7 +49,7 @@ type
     scClosed, scOpen, scForceOpen
 
 proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule;
-               isField = false): PNode =
+               isField = false; inGenerics = false): PNode =
   var
     a: PSym
     o: TOverloadIter = default(TOverloadIter)
@@ -72,7 +72,7 @@ proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule;
         incl(s.flags, sfUsed)
         markOwnerModuleAsUsed(c, s)
       else:
-        markUsed(c, info, s)
+        markUsed(c, info, s, inGenerics = inGenerics)
       onUse(info, s)
     else:
       result = n

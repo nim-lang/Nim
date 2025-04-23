@@ -59,6 +59,10 @@ template isMixedIn(sym): bool =
 template canOpenSym(s): bool =
   {withinMixin, withinConcept} * flags == {withinMixin} and s.id notin ctx.toBind
 
+template symChoiceInGenerics(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule;
+               isField = false): PNode =
+  symChoice(c, n, s, r, isField, true)
+
 proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
                           ctx: var GenericCtx; flags: TSemGenericFlags,
                           isAmbiguous: bool,
@@ -68,11 +72,11 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
   incl(s.flags, sfUsed)
   template maybeDotChoice(c: PContext, n: PNode, s: PSym, fromDotExpr: bool) =
     if fromDotExpr:
-      result = symChoice(c, n, s, scForceOpen)
+      result = symChoiceInGenerics(c, n, s, scForceOpen)
       if result.kind == nkOpenSymChoice and result.len == 1:
         result.transitionSonsKind(nkClosedSymChoice)
     else:
-      result = symChoice(c, n, s, scOpen)
+      result = symChoiceInGenerics(c, n, s, scOpen)
       if canOpenSym(s):
         if openSym in c.features:
           if result.kind == nkSym:
@@ -186,9 +190,9 @@ proc lookup(c: PContext, n: PNode, flags: TSemGenericFlags,
       errorUndeclaredIdentifier(c, n.info, ident.s)
   else:
     if withinBind in flags or s.id in ctx.toBind:
-      result = symChoice(c, n, s, scClosed)
+      result = symChoiceInGenerics(c, n, s, scClosed)
     elif s.isMixedIn:
-      result = symChoice(c, n, s, scForceOpen)
+      result = symChoiceInGenerics(c, n, s, scForceOpen)
     else:
       result = semGenericStmtSymbol(c, n, s, ctx, flags, amb)
   # else: leave as nkIdent
@@ -230,9 +234,9 @@ proc fuzzyLookup(c: PContext, n: PNode, flags: TSemGenericFlags,
           result = newDot(result, semGenericStmtSymbol(c, n, s, ctx, flags,
             isAmbiguous = ambig, fromDotExpr = true))
         else:
-          result = newDot(result, symChoice(c, n, s, scClosed))
+          result = newDot(result, symChoiceInGenerics(c, n, s, scClosed))
       elif s.isMixedIn:
-        result = newDot(result, symChoice(c, n, s, scForceOpen))
+        result = newDot(result, symChoiceInGenerics(c, n, s, scForceOpen))
       else:
         var ambig = false
         if s.kind == skType and candidates.len > 1:
@@ -274,7 +278,7 @@ proc semGenericStmt(c: PContext, n: PNode,
     result = lookup(c, n, flags, ctx)
     if result != nil and result.kind == nkSym:
       assert result.sym != nil
-      markUsed(c, n.info, result.sym)
+      markUsed(c, n.info, result.sym, inGenerics = true)
   of nkDotExpr:
     #let luf = if withinMixin notin flags: {checkUndeclared} else: {}
     #var s = qualifiedLookUp(c, n, luf)
@@ -322,7 +326,7 @@ proc semGenericStmt(c: PContext, n: PNode,
       let whichChoice = if s.id in ctx.toBind: scClosed
                         elif s.isMixedIn: scForceOpen
                         else: scOpen
-      let sc = symChoice(c, fn, s, whichChoice)
+      let sc = symChoiceInGenerics(c, fn, s, whichChoice)
       case s.kind
       of skMacro, skTemplate:
         # unambiguous macros/templates are expanded if all params are untyped
