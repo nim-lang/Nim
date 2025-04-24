@@ -688,7 +688,9 @@ proc instGenericConvertersArg*(c: PContext, a: PNode, x: TCandidate) =
     if s.isGenericRoutineStrict:
       var src = s.typ.firstParamType
       var convMatch = newCandidate(c, src)
-      let srca = typeRel(convMatch, src, a[1].typ)
+      var arg = a[1]
+      if arg.kind in {nkHiddenAddr, nkHiddenSubConv}: arg = arg[^1]
+      let srca = typeRel(convMatch, src, arg.typ)
       if srca notin {isEqual, isGeneric, isSubtype}:
         internalError(c.config, a.info, "generic converter failed rematch")
       let finalCallee = generateInstance(c, s, convMatch.bindings, a.info)
