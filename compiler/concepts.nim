@@ -419,6 +419,10 @@ proc matchType(c: PContext; fo, ao: PType; m: var MatchCon): bool =
         result = matchType(c, ff, a, m)
         if result: break # and remember the binding!
         m.bindings.setToPreviousLayer()
+  of tySet:
+    result = false
+    if a.kind == tySet:
+      result = matchType(c, f.elementType, a.elementType, m)
   else:
     result = false
   if result and ao.kind == tyGenericParam:
