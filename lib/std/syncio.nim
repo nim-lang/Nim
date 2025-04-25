@@ -50,6 +50,7 @@ type
 when defined(windows):
   type FileHandle* = distinct int
     ## Windows `HANDLE` type.
+  proc `==`*(x, y: FileHandle): bool {.borrow.}
 else:
   type FileHandle* = cint ## The type that represents an OS file handle; this is
                       ## useful for low-level file access.
