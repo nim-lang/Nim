@@ -546,7 +546,7 @@ when defined(windows) and not defined(useNimRtl):
       raiseOSError(osLastError())
 
   proc fileClose[T: Handle | FileHandle](h: var T) {.inline.} =
-    if h > 4:
+    if h.int > 4:
       closeHandleCheck(h)
       h = INVALID_HANDLE_VALUE.T
 
