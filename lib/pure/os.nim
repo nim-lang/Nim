@@ -849,7 +849,7 @@ when weirdTarget or defined(windows) or defined(posix) or defined(nintendoswitch
       # To transform the C file descriptor to a native file handle.
       var realHandle = get_osfhandle(handle.cint)
       if getFileInformationByHandle(realHandle, addr rawInfo) == 0:
-        raiseOSError(osLastError(), $handle)
+        raiseOSError(osLastError(), $(int handle))
       rawToFormalFileInfo(rawInfo, "", result)
     else:
       var rawInfo: Stat = default(Stat)
