@@ -46,10 +46,10 @@ proc setFileSize(fh: FileHandle, newFileSize = -1, oldSize = -1): OSErrorCode =
   when defined(windows):
     var sizeHigh = int32(newFileSize shr 32)
     let sizeLow = int32(newFileSize and 0xffffffff)
-    let status = setFilePointer(fh, sizeLow, addr(sizeHigh), FILE_BEGIN)
+    let status = setFilePointer(Handle fh, sizeLow, addr(sizeHigh), FILE_BEGIN)
     let lastErr = osLastError()
     if (status == INVALID_SET_FILE_POINTER and lastErr.int32 != NO_ERROR) or
-        setEndOfFile(fh) == 0:
+        setEndOfFile(Handle fh) == 0:
       result = lastErr
   else:
     if newFileSize > oldSize: # grow the file
