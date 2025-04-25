@@ -574,8 +574,8 @@ when defined(windows) and not defined(useNimRtl):
                               addr bytesWritten, nil)
     if a == 0: raiseOSError(osLastError())
 
-  proc newFileHandleStream(handle: Handle): owned FileHandleStream =
-    result = FileHandleStream(handle: handle, closeImpl: hsClose, atEndImpl: hsAtEnd,
+  proc newFileHandleStream(handle: FileHandle): owned FileHandleStream =
+    result = FileHandleStream(handle: Handle handle, closeImpl: hsClose, atEndImpl: hsAtEnd,
       readDataImpl: hsReadData, writeDataImpl: hsWriteData)
 
   proc buildCommandLine(a: string, args: openArray[string]): string =
