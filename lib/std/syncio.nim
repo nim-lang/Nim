@@ -360,7 +360,7 @@ proc getFileHandle*(f: File): FileHandle =
   ## Note that on Windows this doesn't return the Windows-specific handle,
   ## but the C library's notion of a handle, whatever that means.
   ## Use `getOsFileHandle` instead.
-  c_fileno(f)
+  FileHandle c_fileno(f)
 
 proc getOsFileHandle*(f: File): FileHandle =
   ## Returns the OS file handle of the file `f`. This is only useful for
