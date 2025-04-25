@@ -547,7 +547,7 @@ when defined(windows) and not defined(useNimRtl):
 
   proc fileClose[T: Handle | FileHandle](h: var T) {.inline.} =
     if h.int > 4:
-      closeHandleCheck(h)
+      closeHandleCheck(Handle h)
       h = INVALID_HANDLE_VALUE.T
 
   proc hsClose(s: Stream) =
