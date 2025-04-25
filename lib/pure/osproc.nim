@@ -888,7 +888,7 @@ when defined(windows) and not defined(useNimRtl):
     assert readfds.len <= MAXIMUM_WAIT_OBJECTS
     var rfds: WOHandleArray
     for i in 0..readfds.len()-1:
-      rfds[i] = readfds[i].outHandle #fProcessHandle
+      rfds[i] = readfds[i].outHandle.Handle #fProcessHandle
 
     var ret = waitForMultipleObjects(readfds.len.int32,
                                      addr(rfds), 0'i32, timeout.int32)
@@ -904,7 +904,7 @@ when defined(windows) and not defined(useNimRtl):
 
   proc hasData*(p: Process): bool =
     var x: int32
-    if peekNamedPipe(p.outHandle, lpTotalBytesAvail = addr x):
+    if peekNamedPipe(p.outHandle.Handle, lpTotalBytesAvail = addr x):
       result = x > 0
 
 elif not defined(useNimRtl):
