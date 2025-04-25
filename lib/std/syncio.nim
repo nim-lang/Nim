@@ -51,7 +51,7 @@ when defined(windows):
   type FileHandle* = distinct int
     ## Windows `HANDLE` type.
 else:
-  FileHandle* = cint ## The type that represents an OS file handle; this is
+  type FileHandle* = cint ## The type that represents an OS file handle; this is
                       ## useful for low-level file access.
 
 # text file handling:
