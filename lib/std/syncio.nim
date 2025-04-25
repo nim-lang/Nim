@@ -422,12 +422,18 @@ proc readLine*(f: File, line: var string): bool {.tags: [ReadIOEffect],
       importc: "LocalFree", stdcall, dynlib: "kernel32".}
 
     proc isatty(f: File): bool =
+      # terminal module also has isatty
       when defined(posix):
         proc isatty(fildes: FileHandle): cint {.
           importc: "isatty", header: "<unistd.h>".}
-      else:
-        proc isatty(fildes: FileHandle): cint {.
+      elif defined(windows):
+        proc c_isatty(fildes: cint): cint {.
           importc: "_isatty", header: "<io.h>".}
+        proc isatty(fildes: FileHandle): cint =
+          c_isatty(cint(fildes))
+      else:
+        {.error: "isatty is not supported on your operating system!".}
+
       result = isatty(getFileHandle(f)) != 0'i32
 
     # this implies the file is open
@@ -771,7 +777,7 @@ proc open*(f: var File, filehandle: FileHandle,
         cint filehandle) else: filehandle
     if not setInheritable(oshandle, false):
       return false
-  f = c_fdopen(filehandle, RawFormatOpen[mode])
+  f = c_fdopen(cint filehandle, RawFormatOpen[mode])
   result = f != nil
 
 proc open*(filename: string,
