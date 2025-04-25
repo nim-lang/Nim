@@ -768,7 +768,7 @@ proc open*(f: var File, filehandle: FileHandle,
   ## The passed file handle will no longer be inheritable.
   when not defined(nimInheritHandles) and declared(setInheritable):
     let oshandle = when defined(windows): FileHandle getOsfhandle(
-        filehandle) else: filehandle
+        cint filehandle) else: filehandle
     if not setInheritable(oshandle, false):
       return false
   f = c_fdopen(filehandle, RawFormatOpen[mode])
