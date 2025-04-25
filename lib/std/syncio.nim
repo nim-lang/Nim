@@ -40,15 +40,19 @@ type
                          ## at the end. If the file does not exist, it
                          ## will be created.
 
-  FileHandle* = cint ## The type that represents an OS file handle; this is
-                      ## useful for low-level file access.
-
   FileSeekPos* = enum ## Position relative to which seek should happen.
                       # The values are ordered so that they match with stdio
                       # SEEK_SET, SEEK_CUR and SEEK_END respectively.
     fspSet            ## Seek to absolute value
     fspCur            ## Seek relative to current position
     fspEnd            ## Seek relative to end
+
+when defined(windows):
+  type FileHandle* = distinct int
+    ## Windows `HANDLE` type.
+else:
+  FileHandle* = cint ## The type that represents an OS file handle; this is
+                      ## useful for low-level file access.
 
 # text file handling:
 when not defined(nimscript) and not defined(js):
@@ -310,12 +314,7 @@ elif defined(windows):
   proc getOsfhandle(fd: cint): int {.
     importc: "_get_osfhandle", header: "<io.h>".}
 
-  type
-    IoHandle = distinct pointer
-      ## Windows' HANDLE type. Defined as an untyped pointer but is **not**
-      ## one. Named like this to avoid collision with other `system` modules.
-
-  proc setHandleInformation(hObject: IoHandle, dwMask, dwFlags: WinDWORD):
+  proc setHandleInformation(hObject: FileHandle, dwMask, dwFlags: WinDWORD):
                            WinBOOL {.stdcall, dynlib: "kernel32",
                                   importc: "SetHandleInformation".}
 
@@ -390,7 +389,7 @@ when defined(nimdoc) or (defined(posix) and not defined(nimscript)) or defined(w
       flags = if inheritable: flags and not FD_CLOEXEC else: flags or FD_CLOEXEC
       result = c_fcntl(f, F_SETFD, flags) != -1
     else:
-      result = setHandleInformation(cast[IoHandle](f), HANDLE_FLAG_INHERIT,
+      result = setHandleInformation(f, HANDLE_FLAG_INHERIT,
                                     inheritable.WinDWORD) != 0
 
 proc readLine*(f: File, line: var string): bool {.tags: [ReadIOEffect],

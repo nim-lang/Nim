@@ -806,8 +806,10 @@ proc isatty*(f: File): bool =
     proc isatty(fildes: FileHandle): cint {.
       importc: "isatty", header: "<unistd.h>".}
   else:
-    proc isatty(fildes: FileHandle): cint {.
+    proc c_isatty(fildes: cint): cint {.
       importc: "_isatty", header: "<io.h>".}
+    proc isatty(fildes: FileHandle): cint =
+      c_isatty(cint(fildes))
 
   result = isatty(getFileHandle(f)) != 0'i32
 
