@@ -2,6 +2,8 @@ discard """
 action: run
 """
 
+doAssert false # is this test even running??
+
 #24913
 block: 
   type
