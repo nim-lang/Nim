@@ -27,7 +27,7 @@ block:
   proc p(x: Rule[int]; y: float): int = 5
   proc sp(y: int): int = 3
 
-  proc spring*[T](rule: Rule[T]) =
+  proc spring[T](rule: Rule[T]) =
     let p = proc (text: T) =
       doAssert rule.p(text) == 3
     p(default(T))
@@ -42,7 +42,7 @@ block:
 
   proc p(x: Rule[int]; y: int): int = 5
 
-  proc spring*[T](rule: Rule[T]) =
+  proc spring[T](rule: Rule[T]) =
     let p = proc (x: T) =
       doAssert rule.p(x) == 5
     p(default(T))
