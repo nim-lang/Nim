@@ -2,8 +2,6 @@ discard """
 action: run
 """
 
-doAssert false # is this test even running??
-
 #24913
 block: 
   type
@@ -36,17 +34,17 @@ block:
 
   Rule[int](p: sp).spring()
 
-block:
-  type
-    Cont[T] = ref RootObj
-    Rule[T] = object
-      p: Cont[T]
+# cant be in a block
+type
+  Cont[T] = ref RootObj
+  Rule[T] = object
+    p: Cont[T]
 
-  proc p(x: Rule[int]; y: int): int = 5
+proc p(x: Rule[int]; y: int): int = 5
 
-  proc spring[T](rule: Rule[T]) =
-    let p = proc (x: T) =
-      doAssert rule.p(x) == 5
-    p(default(T))
+proc spring[T](rule: Rule[T]) =
+  let p = proc (x: T) =
+    doAssert rule.p(x) == 5
+  p(default(T))
 
-  Rule[int]().spring()
+Rule[int]().spring()
