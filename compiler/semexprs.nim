@@ -1094,6 +1094,14 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType
       result = semGenericStmt(c, n)
       result.typ() = makeTypeFromExpr(c, result.copyTree)
       return
+    elif n0.kind == nkDotExpr and n[0].typ().kind == tyTypeDesc:
+      result = n0
+      result.transitionSonsKind(nkCall)
+      for i in 1..<n.len: result.add n[i]
+      let tmp = result[1]
+      result[1] = result[0]
+      result[0] = tmp
+      return semDirectOp(c, result, flags, expectedType)
     else:
       n[0] = n0
   else:
