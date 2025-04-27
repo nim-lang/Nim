@@ -1175,14 +1175,14 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType
             return semConv(c, n, flags)
           elif n.len == 1:
             return semObjConstr(c, n, flags, expectedType)
-          else:
-            return errorNode(c, n)
         else:
           result = semOverloadedCallAnalyseEffects(c, tcall, nOrig, flags + {efExplain})
     elif result.kind notin nkCallKinds:
       # the semExpr() in overloadedCallOpr can even break this condition!
       # See bug #904 of how to trigger it:
       return result
+  if result == nil:
+    return errorNode(c, n)
   if result.typ != nil and result.typ.kind == tyFromExpr and t != nil and t.kind == tyTypeDesc:
     # this is wrong but tyFromExpr doesn't always seem to be a valid result
     # anecdotally, this is what the compiler is trying to do but I think 
