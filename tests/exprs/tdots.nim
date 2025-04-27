@@ -34,6 +34,19 @@ block:
 
   Rule[int](p: sp).spring()
 
+block:
+  type
+    A = object
+
+  proc new(T: type A): ref A =
+    let c = (ref T)()
+    c
+
+  proc p[K](rng=A.new()) = 
+    discard new(A)
+
+  p[int]()
+
 # cant be in a block
 type
   Cont[T] = ref RootObj

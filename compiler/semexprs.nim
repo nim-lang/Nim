@@ -1104,11 +1104,11 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType
     elif isSymChoice(n[0]) and nfDotField notin n.flags:
       # overloaded generic procs e.g. newSeq[int] can end up here
       return semDirectOp(c, n, flags, expectedType)
-
   var t: PType = nil
   if n[0].typ != nil:
     t = skipTypes(n[0].typ, abstractInst+{tyOwned}-{tyTypeDesc, tyDistinct})
 
+  # think this might not be needed now
   if t != nil and t.kind == tyTypeDesc and n[0] != nil and
      n[0].kind == nkBracketExpr and n.len == 1:
     # we don't overload `[]` on generic typeclasses
@@ -1183,6 +1183,8 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType
             return semObjConstr(c, n, flags, expectedType)
           else:
             result = semOverloadedCallAnalyseEffects(c, n, nOrig, flags)
+            #if result == nil:
+            #  return errorNode(c, n)
         else:
           result = semOverloadedCallAnalyseEffects(c, tcall, nOrig, flags + {efExplain})
           return errorNode(c, n)
@@ -1190,6 +1192,11 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType
       # the semExpr() in overloadedCallOpr can even break this condition!
       # See bug #904 of how to trigger it:
       return result
+  if result.typ != nil and result.typ.kind == tyFromExpr and t.kind == tyTypeDesc:
+    # this is wrong but tyFromExpr doesn't always seem to be a valid result
+    # anecdotally, this is what the compiler is trying to do but I think 
+    # tyFromExpr needs to be handled elsewhere
+    return semObjConstr(c, n, flags, expectedType)
   if result[0].kind == nkSym:
     result = afterCallActions(c, result, nOrig, flags, expectedType)
   else:
