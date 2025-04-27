@@ -1107,12 +1107,6 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType
   var t: PType = nil
   if n[0].typ != nil:
     t = skipTypes(n[0].typ, abstractInst+{tyOwned}-{tyTypeDesc, tyDistinct})
-
-  # think this might not be needed now
-  if t != nil and t.kind == tyTypeDesc and n[0] != nil and
-     n[0].kind == nkBracketExpr and n.len == 1:
-    # we don't overload `[]` on generic typeclasses
-    return semObjConstr(c, n, flags, expectedType)
   
   var nOrig = n.copyTree
   semOpAux(c, n)
@@ -1176,23 +1170,20 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType
       
       result = semOverloadedCallAnalyseEffects(c, tcall, nOrig, flags + {efPreferNilResult})
       if result == nil:
-        if t.kind in {tyFromExpr, tyTypeDesc}:
+        if t != nil and t.kind in {tyFromExpr, tyTypeDesc}:
           if n.len == 2:
             return semConv(c, n, flags)
           elif n.len == 1:
             return semObjConstr(c, n, flags, expectedType)
           else:
-            result = semOverloadedCallAnalyseEffects(c, n, nOrig, flags)
-            #if result == nil:
-            #  return errorNode(c, n)
+            return errorNode(c, n)
         else:
           result = semOverloadedCallAnalyseEffects(c, tcall, nOrig, flags + {efExplain})
-          return errorNode(c, n)
     elif result.kind notin nkCallKinds:
       # the semExpr() in overloadedCallOpr can even break this condition!
       # See bug #904 of how to trigger it:
       return result
-  if result.typ != nil and result.typ.kind == tyFromExpr and t.kind == tyTypeDesc:
+  if result.typ != nil and result.typ.kind == tyFromExpr and t != nil and t.kind == tyTypeDesc:
     # this is wrong but tyFromExpr doesn't always seem to be a valid result
     # anecdotally, this is what the compiler is trying to do but I think 
     # tyFromExpr needs to be handled elsewhere
