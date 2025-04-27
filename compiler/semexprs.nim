@@ -1159,7 +1159,7 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType
     if result == nil or result.kind == nkEmpty:
       var tcall = n.copyTree
       if n[0].kind == nkDotExpr and n[0].typ.kind notin {tyProc, tyGenericInst, tyOwned}:
-        tcall = n[0] #semFieldAccess(c, n[0], {efIsDotCall})
+        tcall = n[0]
         tcall.transitionSonsKind(nkCall)
         for i in 1..<n.len: tcall.add n[i]
         let tmp = tcall[1]
@@ -1182,7 +1182,7 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType
           elif n.len == 1:
             return semObjConstr(c, n, flags, expectedType)
           else:
-            result = semOverloadedCallAnalyseEffects(c, n, nOrig, flags - {efPreferNilResult})
+            result = semOverloadedCallAnalyseEffects(c, n, nOrig, flags)
         else:
           result = semOverloadedCallAnalyseEffects(c, tcall, nOrig, flags + {efExplain})
           return errorNode(c, n)
