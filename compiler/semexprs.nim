@@ -994,18 +994,18 @@ proc semOverloadedCallAnalyseEffects(c: PContext, n: PNode, nOrig: PNode,
     let callee = result[0].sym
     case callee.kind
     of skMacro, skTemplate: discard
-    else:
-      if callee.kind == skIterator and callee.id == c.p.owner.id and
-          not isClosureIterator(c.p.owner.typ):
+    of skIterator:
+      if callee.id == c.p.owner.id and not isClosureIterator(c.p.owner.typ):
         localError(c.config, n.info, errRecursiveDependencyIteratorX % callee.name.s)
         # error correction, prevents endless for loop elimination in transf.
         # See bug #2051:
         result[0] = newSymNode(errorSym(c, n))
-      elif callee.kind == skIterator:
-        if efWantIterable in flags:
-          let typ = newTypeS(tyIterable, c)
-          rawAddSon(typ, result.typ)
-          result.typ() = typ
+      elif efWantIterable in flags:
+        let typ = newTypeS(tyIterable, c)
+        rawAddSon(typ, result.typ)
+        result.typ() = typ
+    else:
+      discard
 
 proc resolveIndirectCall(c: PContext; n, nOrig: PNode;
                          t: PType): TCandidate =
@@ -1094,14 +1094,6 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType
       result = semGenericStmt(c, n)
       result.typ() = makeTypeFromExpr(c, result.copyTree)
       return
-    elif n0.kind == nkDotExpr and n0.typ.kind notin {tyProc, tyGenericInst, tyOwned}:
-      result = n0
-      result.transitionSonsKind(nkCall)
-      for i in 1..<n.len: result.add n[i]
-      let tmp = result[1]
-      result[1] = result[0]
-      result[0] = tmp
-      return semDirectOp(c, result, flags, expectedType)
     else:
       n[0] = n0
   else:
@@ -1116,11 +1108,13 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType
   var t: PType = nil
   if n[0].typ != nil:
     t = skipTypes(n[0].typ, abstractInst+{tyOwned}-{tyTypeDesc, tyDistinct})
-  if t != nil and t.kind == tyTypeDesc:
-    if n.len == 1: return semObjConstr(c, n, flags, expectedType)
-    return semConv(c, n, flags)
 
-  let nOrig = n.copyTree
+  if t != nil and t.kind == tyTypeDesc and n[0] != nil and
+     n[0].kind == nkBracketExpr and n.len == 1:
+    # we don't overload `[]` on generic typeclasses
+    return semObjConstr(c, n, flags, expectedType)
+  
+  var nOrig = n.copyTree
   semOpAux(c, n)
   if t != nil and t.kind == tyProc:
     # This is a proc variable, apply normal overload resolution
@@ -1162,21 +1156,40 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType
 
   else:
     result = overloadedCallOpr(c, n) # this uses efNoUndeclared
-    # Now that nkSym does not imply an iteration over the proc/iterator space,
-    # the old ``prc`` (which is likely an nkIdent) has to be restored:
     if result == nil or result.kind == nkEmpty:
-      # XXX: hmm, what kind of symbols will end up here?
-      # do we really need to try the overload resolution?
-      n[0] = prc
-      nOrig[0] = prc
-      n.flags.incl nfExprCall
-      result = semOverloadedCallAnalyseEffects(c, n, nOrig, flags)
-      if result == nil: return errorNode(c, n)
+      var tcall = n.copyTree
+      if n[0].kind == nkDotExpr and n[0].typ.kind notin {tyProc, tyGenericInst, tyOwned}:
+        tcall = n[0] #semFieldAccess(c, n[0], {efIsDotCall})
+        tcall.transitionSonsKind(nkCall)
+        for i in 1..<n.len: tcall.add n[i]
+        let tmp = tcall[1]
+        tcall[1] = tcall[0]
+        tcall[0] = tmp
+        tcall.typ() = nil
+        nOrig = tcall.copyTree
+      else:
+        # Now that nkSym does not imply an iteration over the proc/iterator space,
+        # the old ``prc`` (which is likely an nkIdent) has to be restored:
+        tcall[0] = prc
+        nOrig[0] = prc
+        tcall.flags.incl nfExprCall
+      
+      result = semOverloadedCallAnalyseEffects(c, tcall, nOrig, flags + {efPreferNilResult})
+      if result == nil:
+        if t.kind in {tyFromExpr, tyTypeDesc}:
+          if n.len == 2:
+            return semConv(c, n, flags)
+          elif n.len == 1:
+            return semObjConstr(c, n, flags, expectedType)
+          else:
+            result = semOverloadedCallAnalyseEffects(c, n, nOrig, flags - {efPreferNilResult})
+        else:
+          result = semOverloadedCallAnalyseEffects(c, tcall, nOrig, flags + {efExplain})
+          return errorNode(c, n)
     elif result.kind notin nkCallKinds:
       # the semExpr() in overloadedCallOpr can even break this condition!
       # See bug #904 of how to trigger it:
       return result
-  #result = afterCallActions(c, result, nOrig, flags)
   if result[0].kind == nkSym:
     result = afterCallActions(c, result, nOrig, flags, expectedType)
   else:

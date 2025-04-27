@@ -614,11 +614,19 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
         if c.inGenericContext > 0 and nfExprCall in n.flags:
           # untyped expression calls end up here, see #24099
           return
+        if efPreferNilResult in flags:
+          result.state = csEmpty
+          #result.call = nil
+          return
         # xxx adapt/use errorUndeclaredIdentifierHint(c, n, f.ident)
         localError(c.config, n.info, getMsgDiagnostic(c, flags, n, f))
       return
     elif result.state != csMatch:
       if nfExprCall in n.flags:
+        if efPreferNilResult in flags:
+          result.state = csEmpty
+          #result.call = nil
+          return
         localError(c.config, n.info, "expression '$1' cannot be called" %
                    renderTree(n, {renderNoComments}))
       else:
@@ -629,6 +637,10 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
       return
   if alt.state == csMatch and cmpCandidates(result, alt) == 0 and
       not sameMethodDispatcher(result.calleeSym, alt.calleeSym):
+    if efPreferNilResult in flags:
+      result.state = csEmpty
+      #result.call = nil
+      return
     internalAssert c.config, result.state == csMatch
     #writeMatches(result)
     #writeMatches(alt)
@@ -909,13 +921,15 @@ proc semOverloadedCall(c: PContext, n, nOrig: PNode,
     if c.inGenericContext > 0 and c.matchedConcept == nil:
       result = semGenericStmt(c, n)
       result.typ() = makeTypeFromExpr(c, result.copyTree)
-    elif efExplain notin flags:
+    elif {efPreferNilResult, efExplain} * flags == {}:
+      
       # repeat the overload resolution,
       # this time enabling all the diagnostic output (this should fail again)
       result = semOverloadedCall(c, n, nOrig, filter, flags + {efExplain})
     elif efNoUndeclared notin flags:
       result = nil
-      notFoundError(c, n, errors)
+      if efPreferNilResult notin flags:
+        notFoundError(c, n, errors)
     else:
       result = nil
 
