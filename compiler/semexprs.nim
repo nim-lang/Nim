@@ -1167,16 +1167,17 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType
         tcall[0] = prc
         nOrig[0] = prc
         tcall.flags.incl nfExprCall
-      
-      result = semOverloadedCallAnalyseEffects(c, tcall, nOrig, flags + {efPreferNilResult})
+      let canspec = t != nil and t.kind in {tyFromExpr, tyTypeDesc}
+      var fflags = flags
+      if canspec:
+        fflags.incl efPreferNilResult
+      result = semOverloadedCallAnalyseEffects(c, tcall, nOrig, fflags)
       if result == nil:
-        if t != nil and t.kind in {tyFromExpr, tyTypeDesc}:
+        if canspec:
           if n.len == 2:
             return semConv(c, n, flags)
           elif n.len == 1:
             return semObjConstr(c, n, flags, expectedType)
-        else:
-          result = semOverloadedCallAnalyseEffects(c, tcall, nOrig, flags + {efExplain})
     elif result.kind notin nkCallKinds:
       # the semExpr() in overloadedCallOpr can even break this condition!
       # See bug #904 of how to trigger it:
