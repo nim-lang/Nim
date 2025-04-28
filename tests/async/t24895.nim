@@ -41,7 +41,7 @@ proc server {.async.} =
   echo "recv"
   let rLen = await rfut  # it hang here until the client closes the connection or sends more data
   doAssert rLen == 42, $rLen
-  doAssert rdata[0] == 'x', rdata[0]
+  doAssert rdata[0] == 'x', $rdata[0]
   echo "ok"
   inc checked
 
@@ -65,7 +65,7 @@ proc client {.async.} =
   echo "recv"
   let rLen = await sock.recvInto(addr rdata[0], rdata.len)
   doAssert rLen == 42, $rLen
-  doAssert rdata[0] == 'x', rdata[0]
+  doAssert rdata[0] == 'x', $rdata[0]
   #await sleepAsync(10_000)
   #await sock.send("x")
   echo "ok"
@@ -76,3 +76,4 @@ let serverFut = server()
 waitFor client()
 waitFor serverFut
 doAssert checked == 2
+doAssert not hasPendingOperations()
