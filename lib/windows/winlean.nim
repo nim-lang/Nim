@@ -815,7 +815,7 @@ proc WSASendTo*(s: SocketHandle, buf: ptr TWSABuf, bufCount: DWORD,
                 completionProc: POVERLAPPED_COMPLETION_ROUTINE): cint {.
      stdcall, importc: "WSASendTo", dynlib: "Ws2_32.dll".}
 
-proc get_osfhandle*(fd:FileHandle): Handle {.
+proc get_osfhandle*(fd: cint): Handle {.
   importc: "_get_osfhandle", header:"<io.h>".}
 
 proc getSystemTimes*(lpIdleTime, lpKernelTime,
