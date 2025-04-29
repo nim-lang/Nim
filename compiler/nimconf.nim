@@ -223,6 +223,7 @@ proc readConfigFile*(filename: AbsoluteFile; cache: IdentCache;
   stream = llStreamOpen(filename, fmRead)
   if stream != nil:
     openLexer(L, filename, stream, cache, config)
+    setConfigVar(config, "srcDir", parentDir(filename.string))
     tok = Token(tokType: tkEof)       # to avoid a pointless warning
     var condStack: seq[bool] = @[]
     confTok(L, tok, config, condStack)           # read in the first token
