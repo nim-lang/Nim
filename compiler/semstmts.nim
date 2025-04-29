@@ -2137,13 +2137,17 @@ proc bindDupHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp) =
 proc bindTypeHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp) =
   let t = s.typ
   var noError = false
+  template notRefc: bool =
+    # fixes refc with non-var destructor; cancel warnings (#23156)
+    c.config.backend == backendJs or
+      c.config.selectedGC in {gcArc, gcAtomicArc, gcOrc}
   let cond = case op
              of attachedWasMoved:
                t.len == 2 and t.returnType == nil and t.firstParamType.kind == tyVar
              of attachedTrace:
                t.len == 3 and t.returnType == nil and t.firstParamType.kind == tyVar and t[2].kind == tyPointer
              of attachedDestructor:
-               if c.config.selectedGC in {gcArc, gcAtomicArc, gcOrc}:
+               if notRefc:
                  t.len == 2 and t.returnType == nil
                else:
                  t.len == 2 and t.returnType == nil and t.firstParamType.kind == tyVar
@@ -2176,7 +2180,7 @@ proc bindTypeHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp) =
       localError(c.config, n.info, errGenerated,
         "signature for '=trace' must be proc[T: object](x: var T; env: pointer)")
     of attachedDestructor:
-      if c.config.selectedGC in {gcArc, gcAtomicArc, gcOrc}:
+      if notRefc:
         localError(c.config, n.info, errGenerated,
           "signature for '=destroy' must be proc[T: object](x: var T) or proc[T: object](x: T)")
       else:
