@@ -1081,7 +1081,7 @@ func fromBin*[T: SomeInteger](s: string): T =
     doAssert fromBin[uint8](s) == 153
     doAssert s.fromBin[:int16] == 0b1110_1110_1001_1001'i16
     doAssert s.fromBin[:uint64] == 1216933529'u64
-
+  result = T(0)
   let p = parseutils.parseBin(s, result)
   if p != s.len or p == 0:
     raise newException(ValueError, "invalid binary integer: " & s)
@@ -1104,7 +1104,7 @@ func fromOct*[T: SomeInteger](s: string): T =
     doAssert fromOct[uint8](s) == 255'u8
     doAssert s.fromOct[:int16] == 24063'i16
     doAssert s.fromOct[:uint64] == 21913087'u64
-
+  result = T(0)
   let p = parseutils.parseOct(s, result)
   if p != s.len or p == 0:
     raise newException(ValueError, "invalid oct integer: " & s)
@@ -1127,7 +1127,7 @@ func fromHex*[T: SomeInteger](s: string): T =
     doAssert fromHex[uint8](s) == 246'u8
     doAssert s.fromHex[:int16] == -29194'i16
     doAssert s.fromHex[:uint64] == 305499638'u64
-
+  result = T(0)
   let p = parseutils.parseHex(s, result)
   if p != s.len or p == 0:
     raise newException(ValueError, "invalid hex integer: " & s)
