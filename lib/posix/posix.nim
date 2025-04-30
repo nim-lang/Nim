@@ -196,8 +196,6 @@ proc open*(a1: cstring, a2: cint, mode: Mode | cint = 0.Mode): cint {.inline.} =
 proc posix_fadvise*(a1: cint, a2, a3: Off, a4: cint): cint {.
   importc, header: "<fcntl.h>".}
 
-proc lseek*(a1: cint, a2: Off, a3: cint): Off {.importc, header: "<unistd.h>".}
-proc write*(a1: cint, a2: pointer, a3: int): int {.importc, header: "<unistd.h>".}
 proc ftruncate*(a1: cint, a2: Off): cint {.importc, header: "<unistd.h>".}
 when defined(osx):              # 2001 POSIX evidently does not concern Apple
   type FStore {.importc: "fstore_t", header: "<fcntl.h>", bycopy.} = object
@@ -578,7 +576,7 @@ proc lchown*(a1: cstring, a2: Uid, a3: Gid): cint {.importc, header: "<unistd.h>
 proc link*(a1, a2: cstring): cint {.importc, header: "<unistd.h>".}
 
 proc lockf*(a1, a2: cint, a3: Off): cint {.importc, header: "<unistd.h>".}
-# proc lseek*(a1: cint, a2: Off, a3: cint): Off {.importc, header: "<unistd.h>".}
+proc lseek*(a1: cint, a2: Off, a3: cint): Off {.importc, header: "<unistd.h>".}
 proc nice*(a1: cint): cint {.importc, header: "<unistd.h>".}
 proc pathconf*(a1: cstring, a2: cint): int {.importc, header: "<unistd.h>".}
 
@@ -627,7 +625,7 @@ proc ualarm*(a1, a2: Useconds): Useconds {.importc, header: "<unistd.h>".}
 proc unlink*(a1: cstring): cint {.importc, header: "<unistd.h>".}
 proc usleep*(a1: Useconds): cint {.importc, header: "<unistd.h>".}
 proc vfork*(): Pid {.importc, header: "<unistd.h>".}
-# proc write*(a1: cint, a2: pointer, a3: int): int {.importc, header: "<unistd.h>".}
+proc write*(a1: cint, a2: pointer, a3: int): int {.importc, header: "<unistd.h>".}
 
 proc sem_close*(a1: ptr Sem): cint {.importc, header: "<semaphore.h>".}
 proc sem_destroy*(a1: ptr Sem): cint {.importc, header: "<semaphore.h>".}
