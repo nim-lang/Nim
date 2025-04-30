@@ -215,6 +215,11 @@ when defined(osx):              # 2001 POSIX evidently does not concern Apple
     # present size & has no good reason to call this unless it is growing.
     if fcntl(a1, F_PREALLOCATE, fst.addr) != cint(-1): ftruncate(a1, a2 + a3)
     else: cint(-1)
+elif defined(openbsd):
+  proc posix_fallocate*(a1: cint, a2, a3: Off): cint =
+    # above assumption: "has no good reason to call this unless it is growing."
+    # man ftruncate "it will be extended as if by writing bytes with the value zero."
+    return ftruncate(a1, a2 + a3)
 else:
   proc posix_fallocate*(a1: cint, a2, a3: Off): cint {.
     importc, header: "<fcntl.h>".}
