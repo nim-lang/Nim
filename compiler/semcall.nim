@@ -910,7 +910,6 @@ proc semOverloadedCall(c: PContext, n, nOrig: PNode,
       result = semGenericStmt(c, n)
       result.typ() = makeTypeFromExpr(c, result.copyTree)
     elif efExplain notin flags:
-      
       # repeat the overload resolution,
       # this time enabling all the diagnostic output (this should fail again)
       result = semOverloadedCall(c, n, nOrig, filter, flags + {efExplain})
