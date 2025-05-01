@@ -909,15 +909,14 @@ proc semOverloadedCall(c: PContext, n, nOrig: PNode,
     if c.inGenericContext > 0 and c.matchedConcept == nil:
       result = semGenericStmt(c, n)
       result.typ() = makeTypeFromExpr(c, result.copyTree)
-    elif {efPreferNilResult, efExplain} * flags == {}:
+    elif efExplain notin flags:
       
       # repeat the overload resolution,
       # this time enabling all the diagnostic output (this should fail again)
       result = semOverloadedCall(c, n, nOrig, filter, flags + {efExplain})
     elif efNoUndeclared notin flags:
       result = nil
-      if efPreferNilResult notin flags:
-        notFoundError(c, n, errors)
+      notFoundError(c, n, errors)
     else:
       result = nil
 
