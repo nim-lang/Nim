@@ -614,19 +614,11 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
         if c.inGenericContext > 0 and nfExprCall in n.flags:
           # untyped expression calls end up here, see #24099
           return
-        if efPreferNilResult in flags:
-          result.state = csEmpty
-          #result.call = nil
-          return
         # xxx adapt/use errorUndeclaredIdentifierHint(c, n, f.ident)
         localError(c.config, n.info, getMsgDiagnostic(c, flags, n, f))
       return
     elif result.state != csMatch:
       if nfExprCall in n.flags:
-        if efPreferNilResult in flags:
-          result.state = csEmpty
-          #result.call = nil
-          return
         localError(c.config, n.info, "expression '$1' cannot be called" %
                    renderTree(n, {renderNoComments}))
       else:
@@ -637,10 +629,6 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
       return
   if alt.state == csMatch and cmpCandidates(result, alt) == 0 and
       not sameMethodDispatcher(result.calleeSym, alt.calleeSym):
-    if efPreferNilResult in flags:
-      result.state = csEmpty
-      #result.call = nil
-      return
     internalAssert c.config, result.state == csMatch
     #writeMatches(result)
     #writeMatches(alt)

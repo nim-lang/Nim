@@ -1170,7 +1170,7 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType
       let canspec = t != nil and t.kind in {tyFromExpr, tyTypeDesc}
       var fflags = flags
       if canspec:
-        fflags.incl efPreferNilResult
+        fflags.incl efNoUndeclared
       result = semOverloadedCallAnalyseEffects(c, tcall, nOrig, fflags)
       if result == nil:
         if canspec:
