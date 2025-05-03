@@ -2524,7 +2524,7 @@ a subtype to its parent type to prevent "object slicing".
 Convertible relation
 --------------------
 
-A type `a` is **implicitly** convertible to type `b` iff the following
+A type `a` is **implicitly** convertible to type `b` if the following
 algorithm returns true:
 
   ```nim
@@ -2574,7 +2574,7 @@ exists if `a0 >= low(F) and b0 <= high(F)` and both `T` and `F`
 are signed integers or if both are unsigned integers.
 
 
-A type `a` is **explicitly** convertible to type `b` iff the following
+A type `a` is **explicitly** convertible to type `b` if the following
 algorithm returns true:
 
   ```nim
@@ -2616,7 +2616,7 @@ The type conversion `T(a)` is an L-value if `a` is an L-value and
 Assignment compatibility
 ------------------------
 
-An expression `b` can be assigned to an expression `a` iff `a` is an
+An expression `b` can be assigned to an expression `a` if `a` is an
 `l-value` and `isImplicitlyConvertible(b.typ, a.typ)` holds.
 
 
