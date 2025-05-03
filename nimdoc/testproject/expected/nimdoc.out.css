@@ -120,11 +120,17 @@ Modified by Boyd Greenfield and narimiran
 }
 
 html {
+  overflow-x: hidden; 
+  max-width: 100%; 
+  box-sizing: border-box;
   font-size: 100%;
   -webkit-text-size-adjust: 100%;
   -ms-text-size-adjust: 100%; }
 
 body {
+  overflow-x: hidden; 
+  max-width: 100%; 
+  box-sizing: border-box;
   font-family: "Lato", "Helvetica Neue", "HelveticaNeue", Helvetica, Arial, sans-serif;
   font-weight: 400;
   font-size: 1.125em;
@@ -561,6 +567,8 @@ blockquote.markdown-quote {
   padding-left: 3px;
   padding-right: 3px;
   border-radius: 4px;
+  white-space: normal; 
+  word-break: break-all;
 }
 
 span.tok {
@@ -580,13 +588,14 @@ pre {
   display: inline-block;
   box-sizing: border-box;
   min-width: 100%;
+  max-width: 100%;
   padding: 0.5em;
   margin-top: 0.5em;
   margin-bottom: 0.5em;
   font-size: 0.85em;
   white-space: pre !important;
   overflow-y: hidden;
-  overflow-x: visible;
+  overflow-x: auto;
   background-color: var(--secondary-background);
   border: 1px solid var(--border);
   -webkit-border-radius: 6px;
