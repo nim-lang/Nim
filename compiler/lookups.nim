@@ -75,10 +75,13 @@ proc addUniqueSym*(scope: PScope, s: PSym): PSym =
 proc openScope*(c: PContext): PScope {.discardable.} =
   result = PScope(parent: c.currentScope,
                   symbols: initStrTable(),
-                  depthLevel: c.scopeDepth + 1)
+                  depthLevel: c.scopeDepth + 1,
+                  optionStackLen: c.optionStack.len)
   c.currentScope = result
 
 proc rawCloseScope*(c: PContext) =
+  if c.currentScope.optionStackLen >= 1:
+    c.optionStack.setLen(c.currentScope.optionStackLen)
   c.currentScope = c.currentScope.parent
 
 proc closeScope*(c: PContext) =

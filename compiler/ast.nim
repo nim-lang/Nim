@@ -684,6 +684,7 @@ type
     symbols*: TStrTable
     parent*: PScope
     allowPrivateAccess*: seq[PSym] #  # enable access to private fields
+    optionStackLen*: int
 
   PScope* = ref TScope
 
