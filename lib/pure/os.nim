@@ -845,11 +845,11 @@ when weirdTarget or defined(windows) or defined(posix) or defined(nintendoswitch
     result = default(FileInfo)
     when defined(windows):
       var rawInfo: BY_HANDLE_FILE_INFORMATION
-      # We have to use the super special '_get_osfhandle' call (wrapped above)
+      # We have to use the super special '_get_osfhandle' call (wrapped in winlean)
       # To transform the C file descriptor to a native file handle.
-      var realHandle = get_osfhandle(handle)
+      var realHandle = get_osfhandle(handle.cint)
       if getFileInformationByHandle(realHandle, addr rawInfo) == 0:
-        raiseOSError(osLastError(), $handle)
+        raiseOSError(osLastError(), $(int handle))
       rawToFormalFileInfo(rawInfo, "", result)
     else:
       var rawInfo: Stat = default(Stat)

@@ -274,7 +274,8 @@ proc semGenericStmt(c: PContext, n: PNode,
     result = lookup(c, n, flags, ctx)
     if result != nil and result.kind == nkSym:
       assert result.sym != nil
-      markUsed(c, n.info, result.sym)
+      incl result.sym.flags, sfUsed
+      markOwnerModuleAsUsed(c, result.sym)
   of nkDotExpr:
     #let luf = if withinMixin notin flags: {checkUndeclared} else: {}
     #var s = qualifiedLookUp(c, n, luf)

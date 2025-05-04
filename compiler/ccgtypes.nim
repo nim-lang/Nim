@@ -587,7 +587,7 @@ proc genProcParams(m: BModule; t: PType, rettype: var Rope, params: var Builder,
   if t.returnType == nil or isInvalidReturnType(m.config, t):
     rettype = CVoid
   else:
-    rettype = getTypeDescAux(m, t.returnType, check, dkResult)
+    rettype = getTypeDescWeak(m, t.returnType, check, dkResult)
   var paramBuilder: ProcParamBuilder
   params.addProcParams(paramBuilder):
     for i in 1..<t.n.len:

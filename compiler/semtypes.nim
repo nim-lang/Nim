@@ -38,32 +38,58 @@ const
   errNoGenericParamsAllowedForX = "no generic parameters allowed for $1"
   errInOutFlagNotExtern = "the '$1' modifier can be used only with imported types"
 
+proc reusePrev(prev: PType): bool {.inline.} =
+  # only overwrite `prev` if it is a forward type, partial object or magic type
+  result = prev != nil and (prev.kind == tyForward or (prev.sym != nil and
+    # partial object marks sym as `sfForward`
+    (sfForward in prev.sym.flags or prev.sym.magic != mNone)))
+
 proc newOrPrevType(kind: TTypeKind, prev: PType, c: PContext, son: sink PType): PType =
-  if prev == nil or prev.kind == tyGenericBody:
-    result = newTypeS(kind, c, son)
-  else:
+  if reusePrev(prev):
     result = prev
     result.setSon(son)
     if result.kind == tyForward: result.kind = kind
+  else:
+    result = newTypeS(kind, c, son)
   #if kind == tyError: result.flags.incl tfCheckedForDestructor
 
 proc newOrPrevType(kind: TTypeKind, prev: PType, c: PContext): PType =
-  if prev == nil or prev.kind == tyGenericBody:
-    result = newTypeS(kind, c)
-  else:
+  if reusePrev(prev):
     result = prev
     if result.kind == tyForward: result.kind = kind
+  else:
+    result = newTypeS(kind, c)
 
 proc newConstraint(c: PContext, k: TTypeKind): PType =
   result = newTypeS(tyBuiltInTypeClass, c)
   result.flags.incl tfCheckedForDestructor
   result.addSonSkipIntLit(newTypeS(k, c), c.idgen)
 
+proc skipGenericPrev(prev: PType): PType =
+  result = prev
+  if prev.kind == tyGenericBody and prev.last.kind != tyNone:
+    result = prev.last
+
+proc prevIsKind(prev: PType, kind: TTypeKind): bool {.inline.} =
+  result = prev != nil and skipGenericPrev(prev).kind == kind
+
 proc semEnum(c: PContext, n: PNode, prev: PType): PType =
   if n.len == 0: return newConstraint(c, tyEnum)
   elif n.len == 1:
     # don't create an empty tyEnum; fixes #3052
     return errorType(c)
+  if prevIsKind(prev, tyEnum):
+    # the symbol already has an enum type (likely resem), don't define a new enum
+    # but add the enum fields to scope from the original type
+    let isPure = sfPure in prev.sym.flags
+    for enumField in prev.n:
+      assert enumField.kind == nkSym
+      let e = enumField.sym
+      if not isPure:
+        addInterfaceOverloadableSymAt(c, c.currentScope, e)
+      else:
+        declarePureEnumField(c, e)
+    return prev
   var
     counter, x: BiggestInt = 0
     e: PSym = nil
@@ -197,7 +223,7 @@ proc semSet(c: PContext, n: PNode, prev: PType): PType =
     if base.kind in {tyGenericInst, tyAlias, tySink}: base = skipModifier(base)
     if base.kind notin {tyGenericParam, tyGenericInvocation}:
       if base.kind == tyForward:
-        c.skipTypes.add n
+        c.forwardTypeUpdates.add (base, n[1])
       elif not isOrdinalType(base, allowEnumWithHoles = true):
         localError(c.config, n.info, errOrdinalTypeExpected % typeToString(base, preferDesc))
       elif lengthOrd(c.config, base) > MaxSetElements:
@@ -307,6 +333,9 @@ proc addSonSkipIntLitChecked(c: PContext; father, son: PType; it: PNode, id: IdG
 
 proc semDistinct(c: PContext, n: PNode, prev: PType): PType =
   if n.len == 0: return newConstraint(c, tyDistinct)
+  if prevIsKind(prev, tyDistinct):
+    # the symbol already has a distinct type (likely resem), don't create a new type
+    return skipGenericPrev(prev)
   result = newOrPrevType(tyDistinct, prev, c)
   addSonSkipIntLitChecked(c, result, semTypeNode(c, n[0], nil), n[0], c.idgen)
   if n.len > 1: result.n = n[1]
@@ -553,7 +582,7 @@ proc semTuple(c: PContext, n: PNode, prev: PType): PType =
       styleCheckDef(c, a[j].info, field)
       onDef(field.info, field)
   if result.n.len == 0: result.n = nil
-  if isTupleRecursive(result):
+  if isRecursiveStructuralType(result):
     localError(c.config, n.info, errIllegalRecursionInTypeX % typeToString(result))
 
 proc semIdentVis(c: PContext, kind: TSymKind, n: PNode,
@@ -994,11 +1023,15 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType; flags: TTypeFlags): PType
   result = nil
   if n.len == 0:
     return newConstraint(c, tyObject)
+  if prevIsKind(prev, tyObject) and sfForward notin prev.sym.flags:
+    # the symbol already has an object type (likely resem), don't create a new type
+    return skipGenericPrev(prev)
   var check = initIntSet()
   var pos = 0
   var base, realBase: PType = nil
   # n[0] contains the pragmas (if any). We process these later...
   checkSonsLen(n, 3, c.config)
+  var needsForwardUpdate = false
   if n[1].kind != nkEmpty:
     realBase = semTypeNode(c, n[1][0], nil)
     base = skipTypesOrNil(realBase, skipPtrs)
@@ -1020,7 +1053,7 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType; flags: TTypeFlags): PType
             return newType(tyError, c.idgen, result.owner)
 
       elif concreteBase.kind == tyForward:
-        c.skipTypes.add n #we retry in the final pass
+        needsForwardUpdate = true
       else:
         if concreteBase.kind != tyError:
           localError(c.config, n[1].info, "inheritance only works with non-final objects; " &
@@ -1030,6 +1063,10 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType; flags: TTypeFlags): PType
         realBase = nil
   if n.kind != nkObjectTy: internalError(c.config, n.info, "semObjectNode")
   result = newOrPrevType(tyObject, prev, c)
+  if needsForwardUpdate:
+    # if the inherited object is a forward type,
+    # the entire object needs to be checked again
+    c.forwardTypeUpdates.add (result, n) #we retry in the final pass
   rawAddSon(result, realBase)
   if realBase == nil and tfInheritable in flags:
     result.flags.incl tfInheritable
@@ -1056,6 +1093,9 @@ proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
   if n.len < 1:
     result = newConstraint(c, kind)
   else:
+    if prevIsKind(prev, kind) and tfRefsAnonObj in prev.skipTypes({tyGenericBody}).flags:
+      # the symbol already has an object type (likely resem), don't create a new type
+      return skipGenericPrev(prev)
     let isCall = int ord(n.kind in nkCallKinds+{nkBracketExpr})
     let n = if n[0].kind == nkBracket: n[0] else: n
     checkMinSonsLen(n, 1, c.config)
@@ -1466,6 +1506,8 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
       if isType: localError(c.config, a.info, "':' expected")
       if kind in {skTemplate, skMacro}:
         typ = newTypeS(tyUntyped, c)
+    elif isRecursiveStructuralType(typ):
+      localError(c.config, a[^2].info, errIllegalRecursionInTypeX % typeToString(typ))
     elif skipTypes(typ, {tyGenericInst, tyAlias, tySink}).kind == tyVoid:
       continue
 
@@ -1529,7 +1571,9 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
   if r != nil:
     # turn explicit 'void' return type into 'nil' because the rest of the
     # compiler only checks for 'nil':
-    if skipTypes(r, {tyGenericInst, tyAlias, tySink}).kind != tyVoid:
+    if isRecursiveStructuralType(r):
+      localError(c.config, n.info, errIllegalRecursionInTypeX % typeToString(r))
+    elif skipTypes(r, {tyGenericInst, tyAlias, tySink}).kind != tyVoid:
       if kind notin {skMacro, skTemplate} and r.kind in {tyTyped, tyUntyped}:
         localError(c.config, n[0].info, "return type '" & typeToString(r) &
             "' is only valid for macros and templates")
@@ -1660,6 +1704,7 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
     for i in 1..<n.len:
       var elem = semGenericParamInInvocation(c, n[i])
       addToResult(elem, true)
+    c.forwardTypeUpdates.add (result, n)
     return
   elif t.kind != tyGenericBody:
     # we likely got code of the form TypeA[TypeB] where TypeA is
@@ -1708,7 +1753,7 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
         localError(c.config, n.info, errCannotInstantiateX % s.name.s)
         result = newOrPrevType(tyError, prev, c)
       elif containsGenericInvocationWithForward(n[0]):
-        c.skipTypes.add n #fixes 1500
+        c.forwardTypeUpdates.add (result, n) #fixes 1500
       else:
         result = instGenericContainer(c, n.info, result,
                                       allowMetaTypes = false)
@@ -1716,7 +1761,7 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
   # special check for generic object with
   # generic/partial specialized parent
   let tx = result.skipTypes(abstractPtrs, 50)
-  if tx.isNil or isTupleRecursive(tx):
+  if tx.isNil or isRecursiveStructuralType(tx):
     localError(c.config, n.info, "illegal recursion in type '$1'" % typeToString(result[0]))
     return errorType(c)
   if tx != result and tx.kind == tyObject:

@@ -38,7 +38,7 @@ proc semAddr(c: PContext; n: PNode): PNode =
   if isAssignable(c, x) notin {arLValue, arLocalLValue, arAddressableConst, arLentValue}:
     localError(c.config, n.info, errExprHasNoAddress)
   result.add x
-  result.typ() = makePtrType(c, x.typ)
+  result.typ() = makePtrType(c, x.typ.skipTypes({tySink}))
 
 proc semTypeOf(c: PContext; n: PNode): PNode =
   var m = BiggestInt 1 # typeOfIter
