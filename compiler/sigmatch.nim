@@ -13,7 +13,7 @@
 import
   intsets, ast, astalgo, semdata, types, msgs, renderer, lookups, semtypinst,
   magicsys, idents, lexer, options, parampatterns, strutils, trees,
-  linter, lineinfos, lowerings, modulegraphs, concepts
+  linter, lineinfos, lowerings, modulegraphs, concepts, tables
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
