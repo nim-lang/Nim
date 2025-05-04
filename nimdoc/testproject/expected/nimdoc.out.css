@@ -120,16 +120,16 @@ Modified by Boyd Greenfield and narimiran
 }
 
 html {
-  overflow-x: hidden; 
-  max-width: 100%; 
+  overflow-x: hidden;
+  max-width: 100%;
   box-sizing: border-box;
   font-size: 100%;
   -webkit-text-size-adjust: 100%;
   -ms-text-size-adjust: 100%; }
 
 body {
-  overflow-x: hidden; 
-  max-width: 100%; 
+  overflow-x: hidden;
+  max-width: 100%;
   box-sizing: border-box;
   font-family: "Lato", "Helvetica Neue", "HelveticaNeue", Helvetica, Arial, sans-serif;
   font-weight: 400;
@@ -567,7 +567,7 @@ blockquote.markdown-quote {
   padding-left: 3px;
   padding-right: 3px;
   border-radius: 4px;
-  white-space: normal; 
+  white-space: normal;
   word-break: break-all;
 }
 
