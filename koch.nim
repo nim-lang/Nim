@@ -604,6 +604,7 @@ proc runCI(cmd: string) =
     exec("make -j 4")
     exec("nim -v")
     exec("../bin/nim -v")
+    exec("./env.sh nim -v")
     exec("./env.sh time ../bin/nim check beacon_chain/nimbus_beacon_node")
     exec("./env.sh time ../bin/nim check tests/all_tests")
     setCurrentDir("..")
