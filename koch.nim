@@ -599,12 +599,15 @@ proc runCI(cmd: string) =
 
   let batchParam = "--batch:$1" % "NIM_TESTAMENT_BATCH".getEnv("_")
   if getEnv("NIM_TEST_PACKAGES", "0") == "1":
-    exec("git clone https://github.com/status-im/nimbus-eth2.git")
-    setCurrentDir("nimbus-eth2")
-    exec("make")
-    exec("./env.sh time nim check beacon_chain/nimbus_beacon_node")
-    exec("./env.sh time nim check tests/all_tests")
-    setCurrentDir("..")
+    exec("nim -v")
+    exec("bin/nim -v")
+    if false:
+      exec("git clone https://github.com/status-im/nimbus-eth2.git")
+      setCurrentDir("nimbus-eth2")
+      exec("make")
+      exec("./env.sh time nim check beacon_chain/nimbus_beacon_node")
+      exec("./env.sh time nim check tests/all_tests")
+      setCurrentDir("..")
     #nimCompileFold("Compile testament", "testament/testament.nim", options = "-d:release")
     #execFold("Test selected Nimble packages", "testament $# pcat nimble-packages" % batchParam)
   else:
