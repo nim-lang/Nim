@@ -17,7 +17,7 @@ when defined(nimPreviewSlimSystem):
 import
   options, ast, msgs, idents, renderer,
   magicsys, vmdef, modulegraphs, lineinfos, pathutils, layeredtable,
-  types, lowerings, trees, parampatterns, astalgo
+  types, lowerings, trees, parampatterns
 
 import ic / ic
 
@@ -42,7 +42,7 @@ type
     breakInLoop*: bool        # whether we are in a loop without block
     next*: PProcCon           # used for stacking procedure contexts
     mappingExists*: bool
-    mapping*: SymMapping
+    mapping*: Table[ItemId, PSym]
     caseContext*: seq[tuple[n: PNode, idx: int]]
     localBindStmts*: seq[PNode]
 
@@ -258,7 +258,7 @@ proc popProcCon*(c: PContext) {.inline.} = c.p = c.p.next
 
 proc put*(p: PProcCon; key, val: PSym) =
   if not p.mappingExists:
-    p.mapping = initSymMapping()
+    p.mapping = initTable[ItemId, PSym]()
     p.mappingExists = true
   #echo "put into table ", key.info
   p.mapping[key.itemId] = val

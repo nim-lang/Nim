@@ -40,7 +40,7 @@ import closureiters, lambdalifting
 
 type
   PTransCon = ref object # part of TContext; stackable
-    mapping: TIdTable[PNode]  # mapping from symbols to nodes
+    mapping: Table[ItemId, PNode]     # mapping from symbols to nodes
     owner: PSym               # current owner
     forStmt: PNode            # current for stmt
     forLoopBody: PNode   # transformed for loop body
@@ -78,7 +78,7 @@ proc newTransNode(kind: TNodeKind, n: PNode,
 
 proc newTransCon(owner: PSym): PTransCon =
   assert owner != nil
-  result = PTransCon(mapping: initIdTable[PNode](), owner: owner)
+  result = PTransCon(mapping: initTable[ItemId, PNode](), owner: owner)
 
 proc pushTransCon(c: PTransf, t: PTransCon) =
   t.next = c.transCon
