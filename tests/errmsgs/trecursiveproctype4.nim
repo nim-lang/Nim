@@ -1,5 +1,5 @@
 discard """
-  errormsg: "illegal recursion in type 'EventHandler'"
+  errormsg: "illegal recursion in type 'BB'"
   line: 9
 """
 
