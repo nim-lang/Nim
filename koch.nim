@@ -603,7 +603,7 @@ proc runCI(cmd: string) =
     setCurrentDir("nimbus-eth2")
     exec("make")
     exec("./env.sh time nim check beacon_chain/nimbus_beacon_node")
-    exec("./env.sh time nim check beacon_chain/tests/all_tests")
+    exec("./env.sh time nim check tests/all_tests")
     setCurrentDir("..")
     #nimCompileFold("Compile testament", "testament/testament.nim", options = "-d:release")
     #execFold("Test selected Nimble packages", "testament $# pcat nimble-packages" % batchParam)
