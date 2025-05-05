@@ -601,7 +601,7 @@ proc runCI(cmd: string) =
   if getEnv("NIM_TEST_PACKAGES", "0") == "1":
     exec("git clone https://github.com/status-im/nimbus-eth2.git")
     setCurrentDir("nimbus-eth2")
-    exec("make")
+    exec("make -j 4")
     exec("nim -v")
     exec("../bin/nim -v")
     exec("./env.sh time ../bin/nim check beacon_chain/nimbus_beacon_node")
