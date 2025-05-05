@@ -292,22 +292,24 @@ proc considerGenSyms*(c: PContext; n: PNode) =
       considerGenSyms(c, n[i])
 
 proc newOptionEntry*(conf: ConfigRef): POptionEntry =
-  new(result)
-  result.options = conf.options
-  result.defaultCC = ccNimCall
-  result.dynlib = nil
-  result.notes = conf.notes
-  result.warningAsErrors = conf.warningAsErrors
+  result = POptionEntry(
+    options: conf.options,
+    defaultCC: ccNimCall,
+    dynlib: nil,
+    notes: conf.notes,
+    warningAsErrors: conf.warningAsErrors
+  )
 
 proc pushOptionEntry*(c: PContext): POptionEntry =
-  new(result)
-  var prev = c.optionStack[^1]
-  result.options = c.config.options
-  result.defaultCC = prev.defaultCC
-  result.dynlib = prev.dynlib
-  result.notes = c.config.notes
-  result.warningAsErrors = c.config.warningAsErrors
-  result.features = c.features
+  let prev = c.optionStack[^1]
+  result = POptionEntry(
+    options: c.config.options,
+    defaultCC: prev.defaultCC,
+    dynlib: prev.dynlib,
+    notes: c.config.notes,
+    warningAsErrors: c.config.warningAsErrors,
+    features: c.features
+  )
   c.optionStack.add(result)
 
 proc popOptionEntry*(c: PContext) =
@@ -318,22 +320,23 @@ proc popOptionEntry*(c: PContext) =
   c.optionStack.setLen(c.optionStack.len - 1)
 
 proc newContext*(graph: ModuleGraph; module: PSym): PContext =
-  new(result)
-  result.optionStack = @[newOptionEntry(graph.config)]
-  result.libs = @[]
-  result.module = module
-  result.friendModules = @[module]
-  result.converters = @[]
-  result.patterns = @[]
-  result.includedFiles = initIntSet()
-  result.pureEnumFields = initStrTable()
-  result.userPragmas = initStrTable()
-  result.generics = @[]
-  result.unknownIdents = initIntSet()
-  result.cache = graph.cache
-  result.graph = graph
-  result.signatures = initStrTable()
-  result.features = graph.config.features
+  result = PContext(
+    optionStack: @[newOptionEntry(graph.config)],
+    libs: @[],
+    module: module,
+    friendModules: @[module],
+    converters: @[],
+    patterns: @[],
+    includedFiles: initIntSet(),
+    pureEnumFields: initStrTable(),
+    userPragmas: initStrTable(),
+    generics: @[],
+    unknownIdents: initIntSet(),
+    cache: graph.cache,
+    graph: graph,
+    signatures: initStrTable(),
+    features: graph.config.features
+  )
   if graph.config.symbolFiles != disabledSf:
     let id = module.position
     if graph.config.cmd != cmdM:
@@ -397,8 +400,7 @@ proc reexportSym*(c: PContext; s: PSym) =
     addReexport(c.encoder, c.packedRepr, s)
 
 proc newLib*(kind: TLibKind): PLib =
-  new(result)
-  result.kind = kind          #result.syms = initObjectSet()
+  result = PLib(kind: kind)   #result.syms = initObjectSet()
 
 proc addToLib*(lib: PLib, sym: PSym) =
   #if sym.annex != nil and not isGenericRoutine(sym):
