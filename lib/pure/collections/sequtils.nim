@@ -267,7 +267,7 @@ func minIndex*[T](s: openArray[T], cmp: proc(a, b: T): int): int {.effectsOf: cm
 
     let s1 = @["foo","bar", "hello"]
     let s2 = @[2..4, 1..3, 6..10]
-    assert minIndex(s1, proc (a, b: string): bool = a.len - b.len) == 0
+    assert minIndex(s1, proc (a, b: string): int = a.len - b.len) == 0
     assert minIndex(s2, (a, b) => a.a - b.a) == 1
 
   for i in 1..high(s):
