@@ -2821,9 +2821,24 @@ proc recursiveSetFlag(n: PNode, flag: TNodeFlag) =
     for i in 0..<n.safeLen: recursiveSetFlag(n[i], flag)
     incl(n.flags, flag)
 
+proc enterPragmaBlock(c: PContext): POptionEntry =
+  result = POptionEntry(options: c.config.options,
+    notes: c.config.notes,
+    warningAsErrors: c.config.warningAsErrors,
+    features: c.features)
+
+proc leavePragmaBlock(c: PContext, p: POptionEntry) =
+  c.config.options = p.options
+  c.config.notes = p.notes
+  c.config.warningAsErrors = p.warningAsErrors
+  c.features = p.features
+
 proc semPragmaBlock(c: PContext, n: PNode; expectedType: PType = nil): PNode =
   checkSonsLen(n, 2, c.config)
   let pragmaList = n[0]
+
+  let oldOptionEntry = enterPragmaBlock(c)
+
   pragma(c, nil, pragmaList, exprPragmas, isStatement = true)
 
   var inUncheckedAssignSection = 0
@@ -2847,6 +2862,8 @@ proc semPragmaBlock(c: PContext, n: PNode; expectedType: PType = nil): PNode =
     of wLine: setInfoRecursive(result, pragmaList[i].info)
     of wNoRewrite: recursiveSetFlag(result, nfNoRewrite)
     else: discard
+
+  leavePragmaBlock(c, oldOptionEntry)
 
 proc semStaticStmt(c: PContext, n: PNode): PNode =
   #echo "semStaticStmt"
