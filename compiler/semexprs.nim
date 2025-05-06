@@ -1075,6 +1075,17 @@ proc afterCallActions(c: PContext; n, orig: PNode, flags: TExprFlags; expectedTy
     # don't fold calls in concepts and typeof
     result = evalAtCompileTime(c, result)
 
+proc normalizeMethodCallSyntax(n: PNode): PNode =
+  # transforms A.b(C) to b(A, C)
+  # does not check if `b` is a field
+  result = n[0]
+  result.transitionSonsKind(nkCall)
+  for i in 1..<n.len: result.add n[i]
+  let tmp = result[1]
+  result[1] = result[0]
+  result[0] = tmp
+  result.typ() = nil
+
 proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType = nil): PNode =
   result = nil
   checkMinSonsLen(n, 1, c.config)
@@ -1153,13 +1164,7 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType
     if result == nil or result.kind == nkEmpty:
       var tcall = n.copyTree
       if n[0].kind == nkDotExpr and n[0].typ.kind notin {tyProc, tyGenericInst, tyOwned}:
-        tcall = n[0]
-        tcall.transitionSonsKind(nkCall)
-        for i in 1..<n.len: tcall.add n[i]
-        let tmp = tcall[1]
-        tcall[1] = tcall[0]
-        tcall[0] = tmp
-        tcall.typ() = nil
+        tcall = normalizeMethodCallSyntax(tcall)
         nOrig = tcall.copyTree
       else:
         # Now that nkSym does not imply an iteration over the proc/iterator space,
