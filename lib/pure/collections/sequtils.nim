@@ -310,7 +310,7 @@ func minmax*[T](x: openArray[T]): (T, T) =
   var h = x[0]
   for i in 1..high(x):
     if x[i] < l: l = x[i]
-    if h < x[i]: h = x[i]
+    elif h < x[i]: h = x[i]
   result = (l, h)
 
 func minmax*[T](x: openArray[T], cmp: proc(a, b: T): int): (T, T) {.effectsOf: cmp.} =
@@ -318,7 +318,7 @@ func minmax*[T](x: openArray[T], cmp: proc(a, b: T): int): (T, T) {.effectsOf: c
   result = (x[0], x[0])
   for i in 1..high(x):
     if cmp(x[i], result[0]) < 0: result[0] = x[i]
-    if cmp(result[1], x[i]) < 0: result[1] = x[i]
+    elif cmp(result[1], x[i]) < 0: result[1] = x[i]
 
 
 template zipImpl(s1, s2, retType: untyped): untyped =
