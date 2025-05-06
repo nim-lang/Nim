@@ -68,8 +68,8 @@ type
   TReplTypeVars* = object
     c*: PContext
     typeMap*: LayeredIdTable  # map PType to PType
-    symMap*: SymMapping         # map PSym to PSym
-    localCache*: TypeMapping     # local cache for remembering already replaced
+    symMap*: SymMapping       # map PSym to PSym
+    localCache*: TypeMapping  # local cache for remembering already replaced
                               # types during instantiation of meta types
                               # (they are not stored in the global cache)
     info*: TLineInfo
