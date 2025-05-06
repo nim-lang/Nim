@@ -1084,7 +1084,6 @@ proc normalizeMethodCallSyntax(n: PNode): PNode =
   let tmp = result[1]
   result[1] = result[0]
   result[0] = tmp
-  result.typ() = nil
 
 proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType = nil): PNode =
   result = nil
