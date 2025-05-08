@@ -21,9 +21,9 @@ const
 
   # set excluded here as the semantics are vastly different:
   someLe = {mLeI, mLeF64, mLeU, mLeEnum,
-            mLeCh, mLeB, mLePtr, mLeStr}
+            mLeCh, mLeB, mLePtr, mLeStr, mLeCString}
   someLt = {mLtI, mLtF64, mLtU, mLtEnum,
-            mLtCh, mLtB, mLtPtr, mLtStr}
+            mLtCh, mLtB, mLtPtr, mLtStr, mLtCString}
 
   someLen = {mLengthOpenArray, mLengthStr, mLengthArray, mLengthSeq}
 

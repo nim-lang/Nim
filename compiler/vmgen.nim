@@ -1206,6 +1206,8 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}, m: TMag
   of mEqCString: genBinaryABC(c, n, dest, opcEqCString)
   of mLeStr: genBinaryABC(c, n, dest, opcLeStr)
   of mLtStr: genBinaryABC(c, n, dest, opcLtStr)
+  of mLeCString: genBinaryABC(c, n, dest, opcLeCString)
+  of mLtCString: genBinaryABC(c, n, dest, opcLtCString)
   of mEqSet: genBinarySet(c, n, dest, opcEqSet)
   of mLeSet: genBinarySet(c, n, dest, opcLeSet)
   of mLtSet: genBinarySet(c, n, dest, opcLtSet)

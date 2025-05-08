@@ -2722,12 +2722,26 @@ proc procCall*(x: untyped) {.magic: "ProcCall", compileTime.} =
   ##   ```
   discard
 
+proc strcmp(a, b: cstring): cint {.noSideEffect,
+  importc, header: "<string.h>".}
+
+proc `<`*(x, y: cstring): bool {.magic: "LtCString", noSideEffect,
+                                   inline.} =
+  if pointer(x) == nil or pointer(y) == nil:
+    result = false
+  else:
+    result = strcmp(x, y) < 0
+
+proc `<=`*(x, y: cstring): bool {.magic: "LeCString", noSideEffect,
+                                   inline.} =
+  if pointer(x) == pointer(y): result = true
+  elif pointer(x) == nil or pointer(y) == nil: result = false
+  else:
+    result = strcmp(x, y) <= 0
 
 proc `==`*(x, y: cstring): bool {.magic: "EqCString", noSideEffect,
                                    inline.} =
   ## Checks for equality between two `cstring` variables.
-  proc strcmp(a, b: cstring): cint {.noSideEffect,
-    importc, header: "<string.h>".}
   if pointer(x) == pointer(y): result = true
   elif pointer(x) == nil or pointer(y) == nil: result = false
   else: result = strcmp(x, y) == 0

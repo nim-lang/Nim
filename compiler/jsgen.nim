@@ -458,6 +458,8 @@ const # magic checked op; magic unchecked op;
     mLtPtr: ["", ""],
     mXor: ["", ""],
     mEqCString: ["", ""],
+    mLeCString: ["", ""],
+    mLtCString: ["", ""],
     mEqProc: ["", ""],
     mUnaryMinusI: ["negInt", ""],
     mUnaryMinusI64: ["negInt64", ""],
@@ -798,6 +800,8 @@ proc arithAux(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
   of mLtPtr: applyFormat("($1 < $2)", "($1 < $2)")
   of mXor: applyFormat("($1 != $2)", "($1 != $2)")
   of mEqCString: applyFormat("($1 == $2)", "($1 == $2)")
+  of mLeCString: applyFormat("($1 <= $2)", "($1 <= $2)")
+  of mLtCString: applyFormat("($1 < $2)", "($1 < $2)")
   of mEqProc: applyFormat("($1 == $2)", "($1 == $2)")
   of mUnaryMinusI: applyFormat("negInt($1)", "-($1)")
   of mUnaryMinusI64: applyFormat("negInt64($1)", "-($1)")

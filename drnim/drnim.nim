@@ -378,7 +378,7 @@ proc nodeToZ3(c: var DrCon; n: PNode; scope: VersionScope; vars: var seq[PNode])
     let operator = getMagic(n)
     case operator
     of mEqI, mEqF64, mEqEnum, mEqCh, mEqB, mEqRef, mEqProc,
-        mEqStr, mEqSet, mEqCString:
+        mEqStr, mEqSet, mEqCString, mLeCString, mLtCString:
       result = Z3_mk_eq(ctx, rec n[1], rec n[2])
     of mLeI, mLeEnum, mLeCh, mLeB, mLePtr, mLeStr:
       result = Z3_mk_le(ctx, rec n[1], rec n[2])
