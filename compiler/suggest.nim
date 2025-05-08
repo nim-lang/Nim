@@ -823,8 +823,6 @@ proc findModuleFile(c: PContext, partialPath: string): seq[string] =
       collectImportModulesFromDir(searchPath.string, result)
 
 proc suggestModuleNames(c: PContext, n: PNode) =
-  if c.config.ideCmd != ideSug: 
-    return
   var suggestions: Suggestions = @[]
   let partialPath = if n.kind == nkIdent: n.ident.s else: ""
   proc addModuleSuggestion(path: string) =
