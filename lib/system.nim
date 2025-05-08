@@ -2727,7 +2727,11 @@ proc strcmp(a, b: cstring): cint {.noSideEffect,
 
 proc `<`*(x, y: cstring): bool {.magic: "LtCString", noSideEffect,
                                    inline.} =
-  if pointer(x) == nil or pointer(y) == nil:
+  if pointer(x) == pointer(y):
+    result = false
+  elif pointer(x) == nil:
+    result = true
+  elif pointer(y) == nil:
     result = false
   else:
     result = strcmp(x, y) < 0
@@ -2735,7 +2739,10 @@ proc `<`*(x, y: cstring): bool {.magic: "LtCString", noSideEffect,
 proc `<=`*(x, y: cstring): bool {.magic: "LeCString", noSideEffect,
                                    inline.} =
   if pointer(x) == pointer(y): result = true
-  elif pointer(x) == nil or pointer(y) == nil: result = false
+  elif pointer(x) == nil:
+    result = true
+  elif pointer(y) == nil:
+    result = false
   else:
     result = strcmp(x, y) <= 0
 

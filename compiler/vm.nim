@@ -1257,14 +1257,26 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeBC(rkInt)
       let bNil = regs[rb].node.kind == nkNilLit
       let cNil = regs[rc].node.kind == nkNilLit
-      regs[ra].intVal = ord((bNil and cNil) or
-        (not bNil and not cNil and regs[rb].node.strVal <= regs[rc].node.strVal))
+      if bNil and cNil:
+        regs[ra].intVal = 1
+      elif bNil:
+        regs[ra].intVal = 1
+      elif cNil:
+        regs[ra].intVal = 0
+      else:
+        regs[ra].intVal = ord(regs[rb].node.strVal <= regs[rc].node.strVal)
     of opcLtCString:
       decodeBC(rkInt)
       let bNil = regs[rb].node.kind == nkNilLit
       let cNil = regs[rc].node.kind == nkNilLit
-      regs[ra].intVal = ord(
-        not bNil and not cNil and regs[rb].node.strVal < regs[rc].node.strVal)
+      if bNil and cNil:
+        regs[ra].intVal = 0
+      elif bNil:
+        regs[ra].intVal = 1
+      elif cNil:
+        regs[ra].intVal = 0
+      else:
+        regs[ra].intVal = ord(regs[rb].node.strVal < regs[rc].node.strVal)
     of opcLeSet:
       decodeBC(rkInt)
       regs[ra].intVal = ord(containsSets(c.config, regs[rb].node, regs[rc].node))

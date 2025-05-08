@@ -219,5 +219,22 @@ proc bar2() =
   doAssert c != d
   doAssert not (c == d)
 
+  when not defined(js):
+    doAssert cstring(nil) < cstring""
+    doAssert cstring(nil) <= cstring""
+    doAssert not (cstring"" < cstring(nil))
+    doAssert not (cstring"" <= cstring(nil))
+    doAssert not (cstring(nil) > cstring"")
+    doAssert not (cstring(nil) >= cstring"")
+    doAssert cstring"" > cstring(nil)
+    doAssert cstring"" >= cstring(nil)
+    doAssert not (cstring"" == cstring(nil))
+    doAssert cstring(nil) != cstring""
+    doAssert cstring(nil) == cstring(nil)
+    doAssert cstring(nil) >= cstring(nil)
+    doAssert cstring("") >= cstring("")
+    doAssert cstring(nil) <= cstring(nil)
+    doAssert cstring("") <= cstring("")
+
 static: bar2()
 bar2()
