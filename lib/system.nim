@@ -2725,7 +2725,7 @@ proc procCall*(x: untyped) {.magic: "ProcCall", compileTime.} =
 proc strcmp(a, b: cstring): cint {.noSideEffect,
   importc, header: "<string.h>".}
 
-proc `<`*(x, y: cstring): bool {.magic: "LtCString", noSideEffect,
+proc `<`*(x, y: cstring): bool {.noSideEffect,
                                    inline.} =
   if pointer(x) == pointer(y):
     result = false
@@ -2736,7 +2736,7 @@ proc `<`*(x, y: cstring): bool {.magic: "LtCString", noSideEffect,
   else:
     result = strcmp(x, y) < 0
 
-proc `<=`*(x, y: cstring): bool {.magic: "LeCString", noSideEffect,
+proc `<=`*(x, y: cstring): bool {.noSideEffect,
                                    inline.} =
   if pointer(x) == pointer(y): result = true
   elif pointer(x) == nil:

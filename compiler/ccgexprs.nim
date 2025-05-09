@@ -3036,7 +3036,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     var a = initLocExpr(p, x)
     var b = initLocExpr(p, e[2])
     genDeepCopy(p, a, b)
-  of mDotDot, mEqCString, mLeCString, mLtCString: genCall(p, e, d)
+  of mDotDot, mEqCString: genCall(p, e, d)
   of mWasMoved: genWasMoved(p, e)
   of mMove: genMove(p, e, d)
   of mDestroy: genDestroy(p, e)
