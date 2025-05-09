@@ -1892,6 +1892,9 @@ proc commandJson*(cache: IdentCache, conf: ConfigRef) =
   else:
     #echo getOutFile(gProjectFull, JsonExt)
     let filename = getOutFile(conf, RelativeFile conf.projectName, JsonExt)
+    conf.outFile = filename.relativeTo(conf.outDir)
+    let dir = filename.splitFile.dir
+    createDir(dir)
     try:
       writeFile(filename, content)
     except IOError:
@@ -1912,8 +1915,10 @@ proc commandTags*(cache: IdentCache, conf: ConfigRef) =
   if optStdout in d.conf.globalOptions:
     write(stdout, content)
   else:
-    #echo getOutFile(gProjectFull, TagsExt)
     let filename = getOutFile(conf, RelativeFile conf.projectName, TagsExt)
+    conf.outFile = filename.relativeTo(conf.outDir)
+    let dir = filename.splitFile.dir
+    createDir(dir)
     try:
       writeFile(filename, content)
     except IOError:
