@@ -2732,6 +2732,12 @@ proc `==`*(x, y: cstring): bool {.magic: "EqCString", noSideEffect,
   elif pointer(x) == nil or pointer(y) == nil: result = false
   else: result = strcmp(x, y) == 0
 
+func ltCStringVm(x, y: cstring): bool {.inline.} =
+  discard "implemented in the vm ops"
+
+func leCStringVm(x, y: cstring): bool {.inline.} =
+  discard "implemented in the vm ops"
+
 func `<`*(x, y: cstring): bool {.inline.} =
   if x == y:
     result = false
@@ -2740,10 +2746,13 @@ func `<`*(x, y: cstring): bool {.inline.} =
   elif y == nil:
     result = false
   else:
-    when defined(js):
-      result = pointer(x) < pointer(y)
+    when nimvm:
+      result = ltCStringVm(x, y)
     else:
-      result = strcmp(x, y) < 0
+      when defined(js):
+        result = pointer(x) < pointer(y)
+      else:
+        result = strcmp(x, y) < 0
 
 func `<=`*(x, y: cstring): bool {.inline.} =
   if x == y: result = true
@@ -2752,10 +2761,13 @@ func `<=`*(x, y: cstring): bool {.inline.} =
   elif y == nil:
     result = false
   else:
-    when defined(js):
-      result = pointer(x) <= pointer(y)
+    when nimvm:
+      result = leCStringVm(x, y)
     else:
-      result = strcmp(x, y) <= 0
+      when defined(js):
+        result = pointer(x) <= pointer(y)
+      else:
+        result = strcmp(x, y) <= 0
 
 template closureScope*(body: untyped): untyped =
   ## Useful when creating a closure in a loop to capture local loop variables by
