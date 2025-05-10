@@ -198,3 +198,43 @@ block: # bug #6549
       doAssert $v == "18446744073709551615"
       doAssert $float32(v) == "1.8446744e+19"
       doAssert $float64(v) == "1.8446744073709552e+19"
+
+proc bar2() =
+  var a = cstring"1233"
+  var b = cstring"1233"
+
+  if a == b: doAssert not(a<b)
+  doAssert not (a != b)
+  doAssert a <= b
+  doAssert not (a > b)
+  doAssert a >= b
+  doAssert not (a < b)
+
+  var c = cstring"a1345"
+  var d = cstring"hwr"
+  doAssert c < d
+  doAssert c <= d
+  doAssert not (c > d)
+  doAssert not (c > d)
+  doAssert c != d
+  doAssert not (c == d)
+
+  when not defined(js):
+    doAssert cstring(nil) < cstring""
+    doAssert cstring(nil) <= cstring""
+    doAssert not (cstring"" < cstring(nil))
+    doAssert not (cstring"" <= cstring(nil))
+    doAssert not (cstring(nil) > cstring"")
+    doAssert not (cstring(nil) >= cstring"")
+    doAssert cstring"" > cstring(nil)
+    doAssert cstring"" >= cstring(nil)
+    doAssert not (cstring"" == cstring(nil))
+    doAssert cstring(nil) != cstring""
+    doAssert cstring(nil) == cstring(nil)
+    doAssert cstring(nil) >= cstring(nil)
+    doAssert cstring("") >= cstring("")
+    doAssert cstring(nil) <= cstring(nil)
+    doAssert cstring("") <= cstring("")
+
+static: bar2()
+bar2()
