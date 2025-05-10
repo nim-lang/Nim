@@ -2335,9 +2335,9 @@ iterator mvalues*[A, B](t: OrderedTableRef[A, B]): var B =
 
 type
   CountTable*[A] = object
-    ## Hash table that counts the number of each key.  Uses zero count to signal
-    ## empty & so does not cache hash values for comparison reduction or resize
-    ## acceleration.
+    ## Hash table that counts the number of each key.  Unlike `Table<#Table>`_,
+    ## this uses a zero count to signal "empty" & so does not cache hash values
+    ## for comparison reduction or resize acceleration.
     ##
     ## For creating an empty CountTable, use `initCountTable proc
     ## <#initCountTable>`_.
