@@ -7,7 +7,7 @@ proc `<`[T](x, y: set[T]): bool
   first type mismatch at position: 2
   required type for y: set[T]
   but expression 'x' is of type: set[range 1..5(uint8)]
-20 other mismatching symbols have been suppressed; compile with --showAllMismatches:on to see them
+21 other mismatching symbols have been suppressed; compile with --showAllMismatches:on to see them
 
 expression: {1'u8, 5} < x'''
 """
