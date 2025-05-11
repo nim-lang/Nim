@@ -3540,6 +3540,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
   of nkMacroDef: result = semMacroDef(c, n)
   of nkTemplateDef: result = semTemplateDef(c, n)
   of nkImportStmt:
+    trySuggestModuleNames(c, n)
     # this particular way allows 'import' in a 'compiles' context so that
     # template canImport(x): bool =
     #   compiles:
