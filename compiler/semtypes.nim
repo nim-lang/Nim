@@ -813,7 +813,7 @@ proc semRecordCase(c: PContext, n: PNode, check: var IntSet, pos: var int,
   case typ.kind
   of shouldChckCovered:
     chckCovered = true
-  of tyFloat..tyFloat128, tyError:
+  of tyError:
     discard
   of tyRange:
     if skipTypes(typ.elementType, abstractInst).kind in shouldChckCovered:
@@ -821,7 +821,8 @@ proc semRecordCase(c: PContext, n: PNode, check: var IntSet, pos: var int,
   of tyForward:
     errorUndeclaredIdentifier(c, n[0].info, typ.sym.name.s)
   elif not isOrdinalType(typ):
-    localError(c.config, n[0].info, "selector must be of an ordinal type, float")
+    localError(c.config, n[0].info, "selector must be of an ordinal type")
+
   if firstOrd(c.config, typ) != 0:
     localError(c.config, n.info, "low(" & $a[0].sym.name.s &
                                      ") must be 0 for discriminant")
