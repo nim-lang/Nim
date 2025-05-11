@@ -107,7 +107,7 @@ runnableExamples:
 ## container (e.g. string, sequence or array), as it is a mapping where the
 ## items are the keys, and their number of occurrences are the values.
 ## For that purpose `toCountTable proc<#toCountTable,openArray[A]>`_
-## comes handy:
+## comes in handy:
 
 runnableExamples:
   let myString = "abracadabra"
@@ -2329,19 +2329,15 @@ iterator mvalues*[A, B](t: OrderedTableRef[A, B]): var B =
     yield t.data[h].val
     assert(len(t) == L, "the length of the table changed while iterating over it")
 
-
-
-
-
-
-
 # -------------------------------------------------------------------------
 # ------------------------------ CountTable -------------------------------
 # -------------------------------------------------------------------------
 
 type
   CountTable*[A] = object
-    ## Hash table that counts the number of each key.
+    ## Hash table that counts the number of each key.  Unlike `Table<#Table>`_,
+    ## this uses a zero count to signal "empty" & so does not cache hash values
+    ## for comparison reduction or resize acceleration.
     ##
     ## For creating an empty CountTable, use `initCountTable proc
     ## <#initCountTable>`_.
@@ -2733,10 +2729,6 @@ iterator mvalues*[A](t: var CountTable[A]): var int =
     if t.data[h].val != 0:
       yield t.data[h].val
       assert(len(t) == L, "the length of the table changed while iterating over it")
-
-
-
-
 
 
 
