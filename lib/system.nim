@@ -2738,36 +2738,37 @@ func ltCStringVm(x, y: cstring): bool {.inline.} =
 func leCStringVm(x, y: cstring): bool {.inline.} =
   discard "implemented in the vm ops"
 
-func `<`*(x, y: cstring): bool {.inline.} =
-  if x == y:
-    result = false
-  elif x == nil:
-    result = true
-  elif y == nil:
-    result = false
-  else:
-    when nimvm:
-      result = ltCStringVm(x, y)
+when defined(nimPreviewCStringComparisons):
+  func `<`*(x, y: cstring): bool {.inline.} =
+    if x == y:
+      result = false
+    elif x == nil:
+      result = true
+    elif y == nil:
+      result = false
     else:
-      when defined(js):
-        result = pointer(x) < pointer(y)
+      when nimvm:
+        result = ltCStringVm(x, y)
       else:
-        result = strcmp(x, y) < 0
+        when defined(js):
+          result = pointer(x) < pointer(y)
+        else:
+          result = strcmp(x, y) < 0
 
-func `<=`*(x, y: cstring): bool {.inline.} =
-  if x == y: result = true
-  elif x == nil:
-    result = true
-  elif y == nil:
-    result = false
-  else:
-    when nimvm:
-      result = leCStringVm(x, y)
+  func `<=`*(x, y: cstring): bool {.inline.} =
+    if x == y: result = true
+    elif x == nil:
+      result = true
+    elif y == nil:
+      result = false
     else:
-      when defined(js):
-        result = pointer(x) <= pointer(y)
+      when nimvm:
+        result = leCStringVm(x, y)
       else:
-        result = strcmp(x, y) <= 0
+        when defined(js):
+          result = pointer(x) <= pointer(y)
+        else:
+          result = strcmp(x, y) <= 0
 
 template closureScope*(body: untyped): untyped =
   ## Useful when creating a closure in a loop to capture local loop variables by
