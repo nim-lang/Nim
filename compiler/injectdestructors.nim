@@ -185,13 +185,6 @@ proc isCursor(n: PNode): bool =
   else:
     false
 
-template isUnpackedTuple(n: PNode): bool =
-  ## we move out all elements of unpacked tuples,
-  ## hence unpacked tuples themselves don't need to be destroyed
-  ## except it's already a cursor
-  (n.kind == nkSym and n.sym.kind == skTemp and
-   n.sym.typ.kind == tyTuple and sfCursor notin n.sym.flags)
-
 proc checkForErrorPragma(c: Con; t: PType; ri: PNode; opname: string; inferredFromCopy = false) =
   var m = "'" & opname & "' is not available for type <" & typeToString(t) & ">"
   if inferredFromCopy:
@@ -275,7 +268,7 @@ proc deepAliases(dest, ri: PNode): bool =
     return aliases(dest, ri) != no
 
 proc genSink(c: var Con; s: var Scope; dest, ri: PNode; flags: set[MoveOrCopyFlag] = {}): PNode =
-  if (c.inLoopCond == 0 and (isUnpackedTuple(dest) or IsDecl in flags or
+  if (c.inLoopCond == 0 and (IsDecl in flags or
       (isAnalysableFieldAccess(dest, c.owner) and isFirstWrite(dest, c)))) or
       isNoInit(dest) or IsReturn in flags:
     # optimize sink call into a bitwise memcopy
@@ -559,11 +552,7 @@ proc cycleCheck(n: PNode; c: var Con) =
 proc pVarTopLevel(v: PNode; c: var Con; s: var Scope; res: PNode) =
   # move the variable declaration to the top of the frame:
   s.vars.add v.sym
-  if isUnpackedTuple(v):
-    if c.inLoop > 0:
-      # unpacked tuple needs reset at every loop iteration
-      res.add newTree(nkFastAsgn, v, genDefaultCall(v.typ, c, v.info))
-  elif sfThread notin v.sym.flags and sfCursor notin v.sym.flags:
+  if sfThread notin v.sym.flags and sfCursor notin v.sym.flags:
     # do not destroy thread vars for now at all for consistency.
     if {sfGlobal, sfPure} <= v.sym.flags or sfGlobal in v.sym.flags and s.parent == nil:
       c.graph.globalDestructors.add c.genDestroy(v)
@@ -1148,10 +1137,7 @@ proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope, flags: set[MoveOrCopy
     of nkCallKinds:
       result = c.genSink(s, dest, p(ri, c, s, consumed), flags)
     of nkBracketExpr:
-      if isUnpackedTuple(ri[0]):
-        # unpacking of tuple: take over the elements
-        result = c.genSink(s, dest, p(ri, c, s, consumed), flags)
-      elif isAnalysableFieldAccess(ri, c.owner) and isLastRead(ri, c, s):
+      if isAnalysableFieldAccess(ri, c.owner) and isLastRead(ri, c, s):
         if aliases(dest, ri) == no:
           # Rule 3: `=sink`(x, z); wasMoved(z)
           if isAtom(ri[1]):
