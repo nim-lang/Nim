@@ -1923,8 +1923,22 @@ proc makeTupleAssignments(c: PContext; n: PNode): PNode =
 
   for i in 0..<lhs.len:
     if lhs[i].kind == nkIdent and lhs[i].ident.id == ord(wUnderscore):
-      # skip _ assignments if we are using a temp as they are already evaluated
-      discard
+      when false:
+        # disabled due to tuple unpacking behavior with destructors expecting all fields to be unpacked:
+        # skip _ assignments if we are using a temp as they are already evaluated
+        discard
+      # instead generate `let _ = temp[i]` so it gets destroyed
+      let utemp = newSym(skLet, lhs[i].ident, c.idgen, getCurrOwner(c), lhs[i].info)
+      utemp.typ = value.typ[i]
+      temp.flags.incl(sfGenSym)
+      var uv = newNodeI(nkLetSection, lhs[i].info)
+      let utempNode = newSymNode(utemp)
+      var uvpart = newNodeI(nkIdentDefs, v.info, 3)
+      uvpart[0] = utempNode
+      uvpart[1] = c.graph.emptyNode
+      uvpart[2] = newTupleAccessRaw(tempNode, i)
+      uv.add uvpart
+      result.add(uv)
     else:
       result.add newAsgnStmt(lhs[i], newTupleAccessRaw(tempNode, i))
 
