@@ -563,7 +563,7 @@ proc pVarTopLevel(v: PNode; c: var Con; s: var Scope; res: PNode) =
     if c.inLoop > 0:
       # unpacked tuple needs reset at every loop iteration
       res.add newTree(nkFastAsgn, v, genDefaultCall(v.typ, c, v.info))
-  elif sfThread notin v.sym.flags and sfCursor notin v.sym.flags:
+  if sfThread notin v.sym.flags and sfCursor notin v.sym.flags:
     # do not destroy thread vars for now at all for consistency.
     if {sfGlobal, sfPure} <= v.sym.flags or sfGlobal in v.sym.flags and s.parent == nil:
       c.graph.globalDestructors.add c.genDestroy(v)
