@@ -111,7 +111,7 @@ proc handleStdinInput(opt: PrettyOptions) =
 
   prettyPrint(path, path, opt)
 
-  echo(readAll(cfile))
+  stdout.write(readAll(cfile))
 
   close(cfile)
   removeFile(path)
