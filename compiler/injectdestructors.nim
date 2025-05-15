@@ -185,10 +185,11 @@ proc isCursor(n: PNode): bool =
   else:
     false
 
-template isUnpackedTuple(n: PNode): bool =
+template isFullyUnpackedTuple(n: PNode): bool =
   ## we move out all elements of unpacked tuples,
   ## hence unpacked tuples themselves don't need to be destroyed
   ## except it's already a cursor
+  ## restricted to `skTemp`, tuple temps where not every field is unpacked should not use `skTemp`
   (n.kind == nkSym and n.sym.kind == skTemp and
    n.sym.typ.kind == tyTuple and sfCursor notin n.sym.flags)
 
@@ -275,7 +276,7 @@ proc deepAliases(dest, ri: PNode): bool =
     return aliases(dest, ri) != no
 
 proc genSink(c: var Con; s: var Scope; dest, ri: PNode; flags: set[MoveOrCopyFlag] = {}): PNode =
-  if (c.inLoopCond == 0 and (isUnpackedTuple(dest) or IsDecl in flags or
+  if (c.inLoopCond == 0 and (isFullyUnpackedTuple(dest) or IsDecl in flags or
       (isAnalysableFieldAccess(dest, c.owner) and isFirstWrite(dest, c)))) or
       isNoInit(dest) or IsReturn in flags:
     # optimize sink call into a bitwise memcopy
@@ -559,7 +560,7 @@ proc cycleCheck(n: PNode; c: var Con) =
 proc pVarTopLevel(v: PNode; c: var Con; s: var Scope; res: PNode) =
   # move the variable declaration to the top of the frame:
   s.vars.add v.sym
-  if isUnpackedTuple(v):
+  if isFullyUnpackedTuple(v):
     if c.inLoop > 0:
       # unpacked tuple needs reset at every loop iteration
       res.add newTree(nkFastAsgn, v, genDefaultCall(v.typ, c, v.info))
@@ -1148,7 +1149,7 @@ proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope, flags: set[MoveOrCopy
     of nkCallKinds:
       result = c.genSink(s, dest, p(ri, c, s, consumed), flags)
     of nkBracketExpr:
-      if isUnpackedTuple(ri[0]):
+      if isFullyUnpackedTuple(ri[0]):
         # unpacking of tuple: take over the elements
         result = c.genSink(s, dest, p(ri, c, s, consumed), flags)
       elif isAnalysableFieldAccess(ri, c.owner) and isLastRead(ri, c, s):
