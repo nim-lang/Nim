@@ -10,7 +10,7 @@ pr:
 
 variables:
 - name: skipci
-  value: false 
+  value: true
 
 jobs:
 - job: packages

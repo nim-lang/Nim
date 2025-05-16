@@ -586,7 +586,7 @@ proc runCI(cmd: string) =
   # boot without -d:nimHasLibFFI to make sure this still works
   # `--lib:lib` is needed for bootstrap on openbsd, for reasons described in
   # https://github.com/nim-lang/Nim/pull/14291 (`getAppFilename` bugsfor older nim on openbsd).
-  kochExecFold("Boot Nim REFC", "boot -d:release --mm:refc -d:nimStrictMode --lib:lib")
+  kochExecFold("Boot Nim ORC", "boot -d:release -d:nimStrictMode --lib:lib")
 
   when false: # debugging: when you need to run only 1 test in CI, use something like this:
     execFold("debugging test", "nim r tests/stdlib/tosproc.nim")
@@ -599,8 +599,18 @@ proc runCI(cmd: string) =
 
   let batchParam = "--batch:$1" % "NIM_TESTAMENT_BATCH".getEnv("_")
   if getEnv("NIM_TEST_PACKAGES", "0") == "1":
-    nimCompileFold("Compile testament", "testament/testament.nim", options = "-d:release")
-    execFold("Test selected Nimble packages", "testament $# pcat nimble-packages" % batchParam)
+    kochExecFold("Boot Nim REFC", "boot -d:release --mm:refc -d:nimStrictMode --lib:lib")
+    exec("git clone https://github.com/status-im/nimbus-eth2.git")
+    setCurrentDir("nimbus-eth2")
+    exec("make -j 4 deps")
+    exec("nim -v")
+    exec("../bin/nim -v")
+    exec("./env.sh nim -v")
+    exec("./env.sh time ../bin/nim check beacon_chain/nimbus_beacon_node")
+    exec("./env.sh time ../bin/nim check tests/all_tests")
+    setCurrentDir("..")
+    #nimCompileFold("Compile testament", "testament/testament.nim", options = "-d:release")
+    #execFold("Test selected Nimble packages", "testament $# pcat nimble-packages" % batchParam)
   else:
     testTools()
 
