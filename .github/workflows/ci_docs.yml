@@ -99,7 +99,7 @@ jobs:
 
       - name: 'Build the real compiler'
         shell: bash
-        run: ./koch boot -d:release
+        run: ./koch boot -d:release --mm:refc
 
       - name: 'Build documentation'
         shell: bash
