@@ -83,7 +83,7 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string, isOrc =
 
   if "boehm" notin options and not isOrc:
     # hcr tests
-    
+
     testSpec r, makeTest("tests/dll/nimhcr_basic.nim", options & " --threads:off --forceBuild --hotCodeReloading:on " & rpath, cat)
 
     # force build required - see the comments in the .nim file for more details
@@ -162,6 +162,7 @@ proc gcTests(r: var TResults, cat: Category, options: string) =
   test "stackrefleak"
   test "cyclecollector"
   testWithoutBoehm "trace_globals"
+  test "tfinalizers"
 
 # ------------------------- threading tests -----------------------------------
 
