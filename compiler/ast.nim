@@ -563,9 +563,9 @@ const
     mEqStr, mLeStr, mLtStr,
     mEqSet, mLeSet, mLtSet, mMulSet, mPlusSet, mMinusSet, mXorSet,
     mConStrStr, mAppendStrCh, mAppendStrStr, mAppendSeqElem,
-    mInSet, mRepr, mOpenArrayToSeq}
+    mInSet, mRepr, mOpenArrayToSeq, mArrToSeq}
 
-  generatedMagics* = {mNone, mIsolate, mFinished, mOpenArrayToSeq}
+  generatedMagics* = {mNone, mIsolate, mFinished, mOpenArrayToSeq, mArrToSeq}
     ## magics that are generated as normal procs in the backend
 
 type

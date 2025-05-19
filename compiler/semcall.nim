@@ -851,6 +851,13 @@ proc semResolvedCall(c: PContext, x: var TCandidate,
     if x.calleeSym.kind notin {skMacro, skTemplate}:
       if x.calleeSym.magic in {mArrGet, mArrPut}:
         finalCallee = x.calleeSym
+      elif x.calleeSym.magic == mArrToSeq:
+        if expectedType != nil:
+          c.inheritBindings(x, expectedType)
+          x.bindings.put(x.callee.returnType.base, expectedType.base)
+          finalCallee = generateInstance(c, x.calleeSym, x.bindings, n.info)
+        else:
+          finalCallee = x.calleeSym
       else:
         c.inheritBindings(x, expectedType)
         finalCallee = generateInstance(c, x.calleeSym, x.bindings, n.info)

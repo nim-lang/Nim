@@ -3012,7 +3012,6 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     genCall(p, e, d)
   of mDefault, mZeroDefault: genDefault(p, e, d)
   of mEcho: genEcho(p, e[1].skipConv)
-  of mArrToSeq: genArrToSeq(p, e, d)
   of mNLen..mNError, mSlurp..mQuoteAst:
     localError(p.config, e.info, strutils.`%`(errXMustBeCompileTime, e[0].sym.name.s))
   of mSpawn:

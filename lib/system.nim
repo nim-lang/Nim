@@ -897,21 +897,7 @@ proc cmp*(x, y: string): int {.noSideEffect.}
   ## **Note**: The precise result values depend on the used C runtime library and
   ## can differ between operating systems!
 
-proc `@`* [IDX, T](a: sink array[IDX, T]): seq[T] {.magic: "ArrToSeq", noSideEffect.}
-  ## Turns an array into a sequence.
-  ##
-  ## This most often useful for constructing
-  ## sequences with the array constructor: `@[1, 2, 3]` has the type
-  ## `seq[int]`, while `[1, 2, 3]` has the type `array[0..2, int]`.
-  ##
-  ##   ```nim
-  ##   let
-  ##     a = [1, 3, 5]
-  ##     b = "foo"
-  ##
-  ##   echo @a # => @[1, 3, 5]
-  ##   echo @b # => @['f', 'o', 'o']
-  ##   ```
+
 
 proc default*[T](_: typedesc[T]): T {.magic: "Default", noSideEffect.} =
   ## Returns the default value of the type `T`. Contrary to `zeroDefault`, it takes default fields
@@ -1448,6 +1434,10 @@ proc isNil*(x: cstring): bool {.noSideEffect, magic: "IsNil".}
 proc isNil*[T: proc | iterator {.closure.}](x: T): bool {.noSideEffect, magic: "IsNil".}
   ## Fast check whether `x` is nil. This is sometimes more efficient than
   ## `== nil`.
+
+proc `@`* [IDX, T](a: array[IDX, T]): seq[T] {.magic: "ArrToSeq", noSideEffect.} =
+  newSeq(result, a.len)
+  for i in 0..a.len-1: result[i] = a[i]
 
 when defined(nimHasTopDownInference):
   # magic used for seq type inference
