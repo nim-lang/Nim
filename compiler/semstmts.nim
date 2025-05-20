@@ -727,9 +727,6 @@ template isLocalSym(sym: PSym): bool =
       sym.kind in {skProc, skFunc, skIterator} and
       sfGlobal notin sym.flags
 
-template isLocalVarSym(n: PNode): bool =
-  n.kind == nkSym and isLocalSym(n.sym)
-
 proc usesLocalVar(n: PNode): bool =
   case n.kind
   of nkSym:
@@ -754,7 +751,7 @@ proc usesLocalVar(n: PNode): bool =
     result = false
 
 proc globalVarInitCheck(c: PContext, n: PNode) =
-  if n.isLocalVarSym or usesLocalVar(n):
+  if usesLocalVar(n):
     localError(c.config, n.info, errCannotAssignToGlobal)
 
 const
