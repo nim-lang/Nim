@@ -362,7 +362,7 @@ proc rawCreateDir(dir: string): bool {.noWeirdTarget.} =
   # This is a thin wrapper over mkDir (or alternatives on other systems),
   # so in case of a pre-existing path we don't check that it is a directory.
   when defined(solaris):
-    let res = mkdir(dir, 0o777)
+    let res = mkdir(dir, Mode(0o777))
     if res == 0'i32:
       result = true
     elif errno in {EEXIST, ENOSYS}:
@@ -370,7 +370,7 @@ proc rawCreateDir(dir: string): bool {.noWeirdTarget.} =
     else:
       raiseOSError(osLastError(), dir)
   elif defined(haiku):
-    let res = mkdir(dir, 0o777)
+    let res = mkdir(dir, Mode(0o777))
     if res == 0'i32:
       result = true
     elif errno == EEXIST or errno == EROFS:
@@ -378,7 +378,7 @@ proc rawCreateDir(dir: string): bool {.noWeirdTarget.} =
     else:
       raiseOSError(osLastError(), dir)
   elif defined(posix):
-    let res = mkdir(dir, 0o777)
+    let res = mkdir(dir, Mode(0o777))
     if res == 0'i32:
       result = true
     elif errno == EEXIST:

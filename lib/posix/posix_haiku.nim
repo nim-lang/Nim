@@ -157,9 +157,9 @@ type
   Mode* {.importc: "mode_t", header: "<sys/types.h>".} = (
     when defined(android) or defined(macos) or defined(macosx) or
         (defined(bsd) and not defined(openbsd) and not defined(netbsd)):
-      uint16
+      distinct uint16
     else:
-      uint32
+      distinct uint32
   )
   Nlink* {.importc: "nlink_t", header: "<sys/types.h>".} = int32
   Off* {.importc: "off_t", header: "<sys/types.h>".} = int64

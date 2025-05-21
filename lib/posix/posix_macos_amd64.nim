@@ -135,9 +135,9 @@ type
   Key* {.importc: "key_t", header: "<sys/types.h>".} = int
   Mode* {.importc: "mode_t", header: "<sys/types.h>".} = (
     when defined(openbsd) or defined(netbsd):
-      uint32
+      distinct uint32
     else:
-      uint16
+      distinct uint16
   )
   Nlink* {.importc: "nlink_t", header: "<sys/types.h>".} = uint16
   Off* {.importc: "off_t", header: "<sys/types.h>".} = int64

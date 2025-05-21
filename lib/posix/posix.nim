@@ -136,6 +136,10 @@ else:
     ## Nanosecond-granularity time of last data modification.
     result.tv_sec = s.st_ctime
 
+proc `and`*(x, y: Mode): Mode {.borrow.}
+proc `or`*(x, y: Mode): Mode {.borrow.}
+proc `==`*(x, y: Mode): bool {.borrow.}
+
 when hasAioH:
   proc aio_cancel*(a1: cint, a2: ptr Taiocb): cint {.importc, header: "<aio.h>".}
   proc aio_error*(a1: ptr Taiocb): cint {.importc, header: "<aio.h>".}

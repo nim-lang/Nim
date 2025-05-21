@@ -142,7 +142,7 @@ type
   Id* {.importc: "id_t", header: "<sys/types.h>".} = int
   Ino* {.importc: "ino_t", header: "<sys/types.h>".} = int
   Key* {.importc: "key_t", header: "<sys/types.h>".} = int
-  Mode* {.importc: "mode_t", header: "<sys/types.h>".} = uint32
+  Mode* {.importc: "mode_t", header: "<sys/types.h>".} = distinct uint32
   Nlink* {.importc: "nlink_t", header: "<sys/types.h>".} = uint32
   Off* {.importc: "off_t", header: "<sys/types.h>".} = int64
   Pid* {.importc: "pid_t", header: "<sys/types.h>".} = int32
