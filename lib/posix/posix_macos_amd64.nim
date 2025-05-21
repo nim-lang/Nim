@@ -133,11 +133,11 @@ type
   Id* {.importc: "id_t", header: "<sys/types.h>".} = int
   Ino* {.importc: "ino_t", header: "<sys/types.h>".} = int
   Key* {.importc: "key_t", header: "<sys/types.h>".} = int
-  Mode* {.importc: "mode_t", header: "<sys/types.h>".} = (
+  Mode* {.importc: "mode_t", header: "<sys/types.h>".} = distinct (
     when defined(openbsd) or defined(netbsd):
-      distinct uint32
+      uint32
     else:
-      distinct uint16
+      uint16
   )
   Nlink* {.importc: "nlink_t", header: "<sys/types.h>".} = uint16
   Off* {.importc: "off_t", header: "<sys/types.h>".} = int64
