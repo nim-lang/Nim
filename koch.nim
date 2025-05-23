@@ -16,6 +16,11 @@ const
   ChecksumsStableCommit = "f8f6bd34bfa3fe12c64b919059ad856a96efcba0" # 2.0.1
   SatStableCommit = "faf1617f44d7632ee9601ebc13887644925dcc01"
 
+  NimonyStableCommit = "1dbabac403ae32e185ee4c29f006d04e04b50c6d" # unversioned \
+    # Note that Nimony uses Nim as a git submodule but we don't want to install
+    # Nimony's dependency to Nim as we are Nim. So a `git clone` without --recursive
+    # is **required** here.
+
   # examples of possible values for fusion: #head, #ea82b54, 1.2.3
   FusionStableHash = "#562467452b32cb7a97410ea177f083e6d8405734"
   HeadHash = "#head"
@@ -177,8 +182,11 @@ proc bundleAtlasExe(latest: bool, args: string) =
              options = "-d:release --noNimblePath -d:nimAtlasBootstrap " & args)
 
 proc bundleChecksums(latest: bool) =
-  let commit = if latest: "HEAD" else: ChecksumsStableCommit
-  cloneDependency(distDir, "https://github.com/nim-lang/checksums.git", commit, allowBundled = true)
+  let checksumsCommit = if latest: "HEAD" else: ChecksumsStableCommit
+  cloneDependency(distDir, "https://github.com/nim-lang/checksums.git", checksumsCommit, allowBundled = true)
+
+  let nimonyCommit = if latest: "HEAD" else: NimonyStableCommit
+  cloneDependency(distDir, "https://github.com/nim-lang/nimony.git", nimonyCommit, allowBundled = true)
 
 proc bundleNimsuggest(args: string) =
   bundleChecksums(false)
