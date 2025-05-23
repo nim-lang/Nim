@@ -473,6 +473,7 @@ proc parseCommand*(command: string): Command =
   of "cpp", "compiletocpp": cmdCompileToCpp
   of "objc", "compiletooc": cmdCompileToOC
   of "js", "compiletojs": cmdCompileToJS
+  of "nif": cmdCompileToNif
   of "r": cmdCrun
   of "m": cmdM
   of "run": cmdTcc

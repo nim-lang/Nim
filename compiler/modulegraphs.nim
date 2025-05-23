@@ -60,6 +60,7 @@ type
     SemPass
     JSgenPass
     CgenPass
+    NifgenPass
     EvalPass
     InterpreterPass
     GenDependPass
