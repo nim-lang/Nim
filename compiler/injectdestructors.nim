@@ -936,6 +936,9 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
     of nkVarSection, nkLetSection:
       # transform; var x = y to  var x; x op y  where op is a move or copy
       result = newNodeI(nkStmtList, n.info)
+
+      let isInProc = c.owner.kind in {skProc, skFunc, skMethod, skIterator, skConverter}
+
       for it in n:
         var ri = it[^1]
         if it.kind == nkVarTuple and hasDestructor(c, ri.typ):
@@ -951,7 +954,15 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
               s.locals.add v.sym
               pVarTopLevel(v, c, s, result)
             if ri.kind != nkEmpty:
-              result.add moveOrCopy(v, ri, c, s, if v.kind == nkSym: {IsDecl} else: {})
+              let isGlobalPragma = v.kind == nkSym and 
+                      {sfPure, sfGlobal} <= v.sym.flags and
+                      isInProc
+
+              let value = moveOrCopy(v, ri, c, s, if v.kind == nkSym: {IsDecl} else: {})
+              if isGlobalPragma:
+                c.graph.procGlobals.add value
+              else:
+                result.add value
             elif ri.kind == nkEmpty and c.inLoop > 0:
               let skipInit = v.kind == nkDotExpr and # Closure var
                              sfNoInit in v[1].sym.flags
