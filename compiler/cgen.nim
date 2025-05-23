@@ -2433,6 +2433,9 @@ proc genTopLevelStmt*(m: BModule; n: PNode) =
   else:
     genProcBody(m.initProc, transformedN)
 
+  for g in m.g.graph.procGlobals:
+    genStmts(m.preInitProc, g)
+
 proc shouldRecompile(m: BModule; code: Rope, cfile: Cfile): bool =
   if optForceFullMake notin m.config.globalOptions:
     if not moduleHasChanged(m.g.graph, m.module):
