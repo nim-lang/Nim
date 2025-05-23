@@ -1963,21 +1963,34 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
   of nkBracketExpr:
     # a[i] = x
     # --> `[]=`(a, i, x)
+    # try builtin subscript for LHS first:
     a = semSubscript(c, a, {efLValue})
     if a == nil:
-      result = buildOverloadedSubscripts(n[0], getIdent(c.cache, "[]="))
-      result.add(n[1])
       if mode == noOverloadedSubscript:
-        bracketNotFoundError(c, result, {})
-        return errorNode(c, n)
+        # `[]=` overloads failed and builtin subscript failed, try `[]` overloads for LHS
+        # will error if not found:
+        a = semExprWithType(c, n[0], {efLValue})
       else:
+        # magic overload of `[]=` will always match so cannot check for mismatch here,
+        # will go to above `if` branch instead
+        result = buildOverloadedSubscripts(n[0], getIdent(c.cache, "[]="))
+        result.add(n[1])
         result = semExprNoType(c, result)
         return result
   of nkCurlyExpr:
     # a{i} = x -->  `{}=`(a, i, x)
+    # no builtin behavior/magic overloads for curly subscript,
+    # try `{}=` overloads first then try `{}` overloads for LHS:
+    let nOrig = n.copyTree
     result = buildOverloadedSubscripts(n[0], getIdent(c.cache, "{}="))
     result.add(n[1])
-    return semExprNoType(c, result)
+    result = semOverloadedCallAnalyseEffects(c, result, result.copyTree, {efNoUndeclared})
+    if result != nil:
+      result = afterCallActions(c, result, nOrig, {})
+      return
+    else:
+      # will error if `{}` overloads not found:
+      a = semExprWithType(c, a, {efLValue})
   of nkPar, nkTupleConstr:
     if a.len >= 2 or a.kind == nkTupleConstr:
       # unfortunately we need to rewrite ``(x, y) = foo()`` already here so
