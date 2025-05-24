@@ -12,9 +12,10 @@
 import
   ast, astalgo, modulegraphs, options, pathutils, lineinfos, idents, msgs
 
-import std / [assertions, syncio, os]
+import std / [assertions, syncio, os, tables]
 import "../dist/nimony/src/lib" / nifbuilder
 import "../dist/nimony/src/models" / nifler_tags
+import "../dist/nimony/src/gear2" / modnames
 
 ## This was copied from Nifler's bridge.nim. However, this code will evolve
 ## in a different direction as it needs to translate the semchecked AST which
@@ -27,6 +28,7 @@ type
     b, deps: Builder
     portablePaths: bool
     depsEnabled, lineInfoEnabled: bool
+    toSuffix: Table[string, string]
 
   NifModule* = ref object of PPassContext
     graph*: ModuleGraph
@@ -192,7 +194,7 @@ proc symToNif(s: PSym; c: var TranslationContext; isDef = false) =
     let fp = toFullPath(c.conf, FileIndex ow.position)
     var suf = c.toSuffix.getOrDefault(fp)
     if suf.len == 0:
-      suf = moduleSuffix(fp)
+      suf = moduleSuffix(fp, cast[seq[string]](c.conf.searchPaths))
       m.add suf
       c.toSuffix[fp] = ensureMove suf
     else:
@@ -230,17 +232,19 @@ proc handleCaseIdentDefs(n, parent: PNode; c: var TranslationContext) =
     toNif(n, parent, c)
 
 const
-  NoMagic = -1
   NewOperator = -2
   TypedMagic = -3
   TypedMagicOp1 = -4
+  NoMagic = -5
+  ArrayType = -6
+  StringType = -7
 
 proc toNifTag(s: TMagic): (string, int) =
   case s
   of mNone: ("bug", NoMagic)
   of mDefined: ("defined", 0)
   of mDeclared: ("declared", 0)
-  of mDeclaredInScope: ("declaredinscope", 0)
+  of mDeclaredInScope: ("declaredinscope", NoMagic)
   of mCompiles: ("compiles", 0)
   of mArrGet: ("arrat", 0)
   of mArrPut: ("arrat", 0)
@@ -261,7 +265,7 @@ proc toNifTag(s: TMagic): (string, int) =
   of mShallowCopy: ("asgn", 0)
   of mSlurp: ("slurp", NoMagic)
   of mStaticExec: ("staticexec", NoMagic)
-  of mStatic: ("staticm", NoMagic)
+  of mStatic: ("static", NoMagic)
   of mParseExprToAst: ("parseexprtoast", NoMagic)
   of mParseStmtToAst: ("parsestmttoast", NoMagic)
   of mExpandToAst: ("expandtoast", NoMagic)
@@ -269,8 +273,8 @@ proc toNifTag(s: TMagic): (string, int) =
   of mInc: ("inc", NoMagic)
   of mDec: ("dec", NoMagic)
   of mOrd: ("ord", NoMagic)
-  of mNew: ("new", NewOperator)
-  of mNewFinalize: ("newfinalize", NewOperator)
+  of mNew: ("newref", NewOperator)
+  of mNewFinalize: ("newref", NewOperator)
   of mNewSeq: ("newseq", NoMagic)
   of mNewSeqOfCap: ("newseqofcap", NoMagic)
   of mLengthOpenArray: ("lenopenarray", NoMagic)
@@ -288,8 +292,8 @@ proc toNifTag(s: TMagic): (string, int) =
   of mMulI: ("mul", TypedMagic)
   of mDivI: ("div", TypedMagic)
   of mModI: ("mod", TypedMagic)
-  of mSucc: ("succ", TypedMagic)
-  of mPred: ("pred", TypedMagic)
+  of mSucc: ("add", TypedMagic)
+  of mPred: ("sub", TypedMagic)
   of mAddF64: ("add", TypedMagic)
   of mSubF64: ("sub", TypedMagic)
   of mMulF64: ("mul", TypedMagic)
@@ -327,7 +331,7 @@ proc toNifTag(s: TMagic): (string, int) =
   of mEqRef: ("eq", TypedMagicOp1)
   of mLePtr: ("le", TypedMagicOp1)
   of mLtPtr: ("lt", TypedMagicOp1)
-  of mXor: ("xor", TypedMagic)
+  of mXor: ("xor", 0)
   of mEqCString: ("eq", TypedMagicOp1)
   of mEqProc: ("eq", TypedMagicOp1)
   of mUnaryMinusI: ("neg", 0)
@@ -338,182 +342,519 @@ proc toNifTag(s: TMagic): (string, int) =
   of mBitnotI: ("bitnot", TypedMagic)
   of mUnaryPlusF64: ("unaryplusf64", NoMagic)
   of mUnaryMinusF64: ("neg", 0)
-  of mCharToStr: ("chartostr", 0)
-  of mBoolToStr: ("booltostr", 0)
-  of mCStrToStr: ("cstrtostr", 0)
-  of mStrToStr: ("strtostr", 0)
+  of mCharToStr: ("chartostr", NoMagic)
+  of mBoolToStr: ("booltostr", NoMagic)
+  of mCStrToStr: ("cstrtostr", NoMagic)
+  of mStrToStr: ("strtostr", NoMagic)
   of mEnumToStr: ("enumtostr", 0)
   of mAnd: ("and", 0)
   of mOr: ("or", 0)
-  of mImplies: ("implies", 0)
-  of mIff: ("iff", 0)
-  of mExists: ("exists", 0)
-  of mForall: ("forall", 0)
-  of mOld: ("old", 0)
-  of mEqStr: ("eqstr", 0)
-  of mLeStr: ("lestr", 0)
-  of mLtStr: ("ltstr", 0)
-  of mEqSet: ("eqset", 0)
-  of mLeSet: ("leset", 0)
-  of mLtSet: ("ltset", 0)
-  of mMulSet: ("mulset", 0)
-  of mPlusSet: ("plusset", 0)
-  of mMinusSet: ("minusset", 0)
-  of mXorSet: ("xorset", 0)
-  of mConStrStr: ("constrstr", 0)
-  of mSlice: ("slice", 0)
-  of mDotDot: ("dotdot", 0)
+  of mImplies: ("implies", NoMagic)
+  of mIff: ("iff", NoMagic)
+  of mExists: ("exists", NoMagic)
+  of mForall: ("forall", NoMagic)
+  of mOld: ("old", NoMagic)
+  of mEqStr: ("eqstr", NoMagic)
+  of mLeStr: ("lestr", NoMagic)
+  of mLtStr: ("ltstr", NoMagic)
+  of mEqSet: ("eqset", TypedMagicOp1)
+  of mLeSet: ("leset", TypedMagicOp1)
+  of mLtSet: ("ltset", TypedMagicOp1)
+  of mMulSet: ("mulset", TypedMagic)
+  of mPlusSet: ("plusset", TypedMagic)
+  of mMinusSet: ("minusset", TypedMagic)
+  of mXorSet: ("xorset", TypedMagic)
+  of mConStrStr: ("constrstr", NoMagic)
+  of mSlice: ("slice", NoMagic)
+  of mDotDot: ("dotdot", NoMagic)
   of mFields: ("fields", 0)
   of mFieldPairs: ("fieldpairs", 0)
-  of mOmpParFor: ("ompparfor", 0)
-  of mAppendStrCh: ("addstrch", 0)
-  of mAppendStrStr: ("addstrstr", 0)
-  of mAppendSeqElem: ("addseqelem", 0)
-  of mInSet: ("contains", 0)
-  of mRepr: ("repr", 0)
-  of mExit: ("exit", 0)
-  of mSetLengthStr: ("setlenstr", 0)
-  of mSetLengthSeq: ("setlenseq", 0)
-  of mIsPartOf: ("ispartof", 0)
-  of mAstToStr: ("asttostr", 0)
-  of mParallel: ("parallel", 0)
-  of mSwap: ("swap", 0)
-  of mIsNil: ("isnil", 0)
-  of mArrToSeq: ("arrtoseq", 0)
-  of mOpenArrayToSeq: ("openarraytoseq", 0)
-  of mNewString: ("newstring", 0)
-  of mNewStringOfCap: ("newstringofcap", 0)
-  of mParseBiggestFloat: ("parsebiggestfloat", 0)
-  of mMove: ("move", 0)
-  of mEnsureMove: ("ensuremove", 0)
+  of mOmpParFor: ("ompparfor", NoMagic)
+  of mAppendStrCh: ("addstrch", NoMagic)
+  of mAppendStrStr: ("addstrstr", NoMagic)
+  of mAppendSeqElem: ("addseqelem", NoMagic)
+  of mInSet: ("inset", TypedMagicOp1)
+  of mRepr: ("repr", NoMagic)
+  of mExit: ("exit", NoMagic)
+  of mSetLengthStr: ("setlenstr", NoMagic)
+  of mSetLengthSeq: ("setlenseq", NoMagic)
+  of mIsPartOf: ("ispartof", NoMagic)
+  of mAstToStr: ("asttostr", NoMagic)
+  of mParallel: ("parallel", NoMagic)
+  of mSwap: ("swap", NoMagic)
+  of mIsNil: ("isnil", NoMagic)
+  of mArrToSeq: ("arrtoseq", NoMagic)
+  of mOpenArrayToSeq: ("openarraytoseq", NoMagic)
+  of mNewString: ("newstring", NoMagic)
+  of mNewStringOfCap: ("newstringofcap", NoMagic)
+  of mParseBiggestFloat: ("parsebiggestfloat", NoMagic)
+  of mMove: ("move", NoMagic)
+  of mEnsureMove: ("emove", 0)
   of mWasMoved: ("wasmoved", 0)
   of mDup: ("dup", 0)
   of mDestroy: ("destroy", 0)
   of mTrace: ("trace", 0)
-  of mDefault: ("default", 0)
-  of mUnown: ("unown", 0)
-  of mFinished: ("finished", 0)
-  of mIsolate: ("isolate", 0)
-  of mAccessEnv: ("accessenv", 0)
-  of mAccessTypeField: ("accesstypefield", 0)
-  of mArray: ("array", 0)
-  of mOpenArray: ("openarray", 0)
-  of mRange: ("rangem", 0)
+  of mDefault: ("defaultobj", NoMagic)
+  of mUnown: ("unown", NoMagic)
+  of mFinished: ("finished", NoMagic)
+  of mIsolate: ("isolate", NoMagic)
+  of mAccessEnv: ("accessenv", NoMagic)
+  of mAccessTypeField: ("accesstypefield", NoMagic)
+  of mArray: ("array", ArrayType)
+  of mOpenArray: ("flexarray", NoMagic)
+  of mRange: ("range", NoMagic)
   of mSet: ("set", 0)
-  of mSeq: ("seq", 0)
+  of mSeq: ("seq", NoMagic)
   of mVarargs: ("varargs", 0)
   of mRef: ("ref", 0)
   of mPtr: ("ptr", 0)
-  of mVar: ("varm", 0)
+  of mVar: ("mut", 0)
   of mDistinct: ("distinct", 0)
   of mVoid: ("void", 0)
   of mTuple: ("tuple", 0)
-  of mOrdinal: ("ordinal", 0)
-  of mIterableType: ("iterabletype", 0)
-  of mInt: ("int", 0)
-  of mInt8: ("int8", 0)
-  of mInt16: ("int16", 0)
-  of mInt32: ("int32", 0)
-  of mInt64: ("int64", 0)
-  of mUInt: ("uint", 0)
-  of mUInt8: ("uint8", 0)
-  of mUInt16: ("uint16", 0)
-  of mUInt32: ("uint32", 0)
-  of mUInt64: ("uint64", 0)
-  of mFloat: ("float", 0)
-  of mFloat32: ("float32", 0)
-  of mFloat64: ("float64", 0)
-  of mFloat128: ("float128", 0)
+  of mOrdinal: ("ordinal", NoMagic)
+  of mIterableType: ("iterabletype", NoMagic)
+  of mInt: ("i", -1)
+  of mInt8: ("i", 8)
+  of mInt16: ("i", 16)
+  of mInt32: ("i", 32)
+  of mInt64: ("i", 64)
+  of mUInt: ("u", -1)
+  of mUInt8: ("u", 8)
+  of mUInt16: ("u", 16)
+  of mUInt32: ("u", 32)
+  of mUInt64: ("u", 64)
+  of mFloat: ("f", 64)
+  of mFloat32: ("f", 32)
+  of mFloat64: ("f", 64)
+  of mFloat128: ("f", 128)
   of mBool: ("bool", 0)
-  of mChar: ("char", 0)
-  of mString: ("string", 0)
+  of mChar: ("c", 8)
+  of mString: ("string", StringType)
   of mCstring: ("cstring", 0)
   of mPointer: ("pointer", 0)
   of mNil: ("nil", 0)
-  of mExpr: ("exprm", 0)
-  of mStmt: ("stmtm", 0)
+  of mExpr: ("expr", NoMagic)
+  of mStmt: ("stmt", NoMagic)
   of mTypeDesc: ("typedesc", 0)
-  of mVoidType: ("voidtype", 0)
-  of mPNimrodNode: ("nimnode", 0)
-  of mSpawn: ("spawn", 0)
-  of mDeepCopy: ("deepcopy", 0)
+  of mVoidType: ("void", 0)
+  of mPNimrodNode: ("nimnode", NoMagic)
+  of mSpawn: ("spawn", NoMagic)
+  of mDeepCopy: ("deepcopy", NoMagic)
   of mIsMainModule: ("ismainmodule", 0)
-  of mCompileDate: ("compiledate", 0)
-  of mCompileTime: ("compiletime", 0)
+  of mCompileDate: ("compiledate", NoMagic)
+  of mCompileTime: ("compiletime", NoMagic)
   of mProcCall: ("proccall", 0)
-  of mCpuEndian: ("cpuendian", 0)
-  of mHostOS: ("hostos", 0)
-  of mHostCPU: ("hostcpu", 0)
-  of mBuildOS: ("buildos", 0)
-  of mBuildCPU: ("buildcpu", 0)
-  of mAppType: ("apptype", 0)
-  of mCompileOption: ("compileoption", 0)
-  of mCompileOptionArg: ("compileoptionarg", 0)
-  of mNLen: ("nlen", 0)
-  of mNChild: ("nchild", 0)
-  of mNSetChild: ("nsetchild", 0)
-  of mNAdd: ("nadd", 0)
-  of mNAddMultiple: ("naddmultiple", 0)
-  of mNDel: ("ndel", 0)
-  of mNKind: ("nkind", 0)
-  of mNSymKind: ("nsymkind", 0)
-  of mNccValue: ("nccvalue", 0)
-  of mNccInc: ("nccinc", 0)
-  of mNcsAdd: ("ncsadd", 0)
-  of mNcsIncl: ("ncsincl", 0)
-  of mNcsLen: ("ncslen", 0)
-  of mNcsAt: ("ncsat", 0)
-  of mNctPut: ("nctput", 0)
-  of mNctLen: ("nctlen", 0)
-  of mNctGet: ("nctget", 0)
-  of mNctHasNext: ("ncthasnext", 0)
-  of mNctNext: ("nctnext", 0)
-  of mNIntVal: ("nintval", 0)
-  of mNFloatVal: ("nfloatval", 0)
-  of mNSymbol: ("nsymbol", 0)
-  of mNIdent: ("nident", 0)
-  of mNGetType: ("ngettype", 0)
-  of mNStrVal: ("nstrval", 0)
-  of mNSetIntVal: ("nsetintval", 0)
-  of mNSetFloatVal: ("nsetfloatval", 0)
-  of mNSetSymbol: ("nsetsymbol", 0)
-  of mNSetIdent: ("nsetident", 0)
-  of mNSetStrVal: ("nsetstrval", 0)
-  of mNLineInfo: ("nlineinfo", 0)
-  of mNNewNimNode: ("nnewnimnode", 0)
-  of mNCopyNimNode: ("ncopynimnode", 0)
-  of mNCopyNimTree: ("ncopynimtree", 0)
-  of mStrToIdent: ("strtoident", 0)
-  of mNSigHash: ("nsighash", 0)
-  of mNSizeOf: ("nsizeof", 0)
-  of mNBindSym: ("nbindsym", 0)
-  of mNCallSite: ("ncallsite", 0)
-  of mEqIdent: ("eqident", 0)
-  of mEqNimrodNode: ("eqnimnode", 0)
-  of mSameNodeType: ("samenodetype", 0)
-  of mGetImpl: ("getimpl", 0)
-  of mNGenSym: ("ngensym", 0)
-  of mNHint: ("nhint", 0)
-  of mNWarning: ("nwarning", 0)
-  of mNError: ("nerror", 0)
-  of mInstantiationInfo: ("instantiationinfo", 0)
-  of mGetTypeInfo: ("gettypeinfo", 0)
-  of mGetTypeInfoV2: ("gettypeinfov2", 0)
-  of mNimvm: ("nimvm", 0)
-  of mIntDefine: ("intdefine", 0)
-  of mStrDefine: ("strdefine", 0)
-  of mBoolDefine: ("booldefine", 0)
-  of mGenericDefine: ("genericdefine", 0)
-  of mRunnableExamples: ("runnableexamples", 0)
-  of mException: ("exception", 0)
-  of mBuiltinType: ("builtintype", 0)
-  of mSymOwner: ("symowner", 0)
-  of mUncheckedArray: ("uncheckedarray", 0)
-  of mGetImplTransf: ("getimpltransf", 0)
-  of mSymIsInstantiationOf: ("symisinstantiationof", 0)
-  of mNodeId: ("nodeid", 0)
-  of mPrivateAccess: ("privateaccess", 0)
-  of mZeroDefault: ("zerodefault", 0)
+  of mCpuEndian: ("cpuendian", NoMagic)
+  of mHostOS: ("hostos", NoMagic)
+  of mHostCPU: ("hostcpu", NoMagic)
+  of mBuildOS: ("buildos", NoMagic)
+  of mBuildCPU: ("buildcpu", NoMagic)
+  of mAppType: ("apptype", NoMagic)
+  of mCompileOption: ("compileoption", NoMagic)
+  of mCompileOptionArg: ("compileoptionarg", NoMagic)
+  of mNLen: ("nlen", NoMagic)
+  of mNChild: ("nchild", NoMagic)
+  of mNSetChild: ("nsetchild", NoMagic)
+  of mNAdd: ("nadd", NoMagic)
+  of mNAddMultiple: ("naddmultiple", NoMagic)
+  of mNDel: ("ndel", NoMagic)
+  of mNKind: ("nkind", NoMagic)
+  of mNSymKind: ("nsymkind", NoMagic)
+  of mNccValue: ("nccvalue", NoMagic)
+  of mNccInc: ("nccinc", NoMagic)
+  of mNcsAdd: ("ncsadd", NoMagic)
+  of mNcsIncl: ("ncsincl", NoMagic)
+  of mNcsLen: ("ncslen", NoMagic)
+  of mNcsAt: ("ncsat", NoMagic)
+  of mNctPut: ("nctput", NoMagic)
+  of mNctLen: ("nctlen", NoMagic)
+  of mNctGet: ("nctget", NoMagic)
+  of mNctHasNext: ("ncthasnext", NoMagic)
+  of mNctNext: ("nctnext", NoMagic)
+  of mNIntVal: ("nintval", NoMagic)
+  of mNFloatVal: ("nfloatval", NoMagic)
+  of mNSymbol: ("nsymbol", NoMagic)
+  of mNIdent: ("nident", NoMagic)
+  of mNGetType: ("ngettype", NoMagic)
+  of mNStrVal: ("nstrval", NoMagic)
+  of mNSetIntVal: ("nsetintval", NoMagic)
+  of mNSetFloatVal: ("nsetfloatval", NoMagic)
+  of mNSetSymbol: ("nsetsymbol", NoMagic)
+  of mNSetIdent: ("nsetident", NoMagic)
+  of mNSetStrVal: ("nsetstrval", NoMagic)
+  of mNLineInfo: ("nlineinfo", NoMagic)
+  of mNNewNimNode: ("nnewnimnode", NoMagic)
+  of mNCopyNimNode: ("ncopynimnode", NoMagic)
+  of mNCopyNimTree: ("ncopynimtree", NoMagic)
+  of mStrToIdent: ("strtoident", NoMagic)
+  of mNSigHash: ("nsighash", NoMagic)
+  of mNSizeOf: ("nsizeof", NoMagic)
+  of mNBindSym: ("nbindsym", NoMagic)
+  of mNCallSite: ("ncallsite", NoMagic)
+  of mEqIdent: ("eqident", NoMagic)
+  of mEqNimrodNode: ("eqnimnode", NoMagic)
+  of mSameNodeType: ("samenodetype", NoMagic)
+  of mGetImpl: ("getimpl", NoMagic)
+  of mNGenSym: ("ngensym", NoMagic)
+  of mNHint: ("nhint", NoMagic)
+  of mNWarning: ("nwarning", NoMagic)
+  of mNError: ("nerror", NoMagic)
+  of mInstantiationInfo: ("instantiationinfo", NoMagic)
+  of mGetTypeInfo: ("gettypeinfo", NoMagic)
+  of mGetTypeInfoV2: ("gettypeinfov2", NoMagic)
+  of mNimvm: ("nimvm", NoMagic)
+  of mIntDefine: ("intdefine", NoMagic)
+  of mStrDefine: ("strdefine", NoMagic)
+  of mBoolDefine: ("booldefine", NoMagic)
+  of mGenericDefine: ("genericdefine", NoMagic)
+  of mRunnableExamples: ("runnableexamples", NoMagic)
+  of mException: ("exception", NoMagic)
+  of mBuiltinType: ("builtintype", NoMagic)
+  of mSymOwner: ("symowner", NoMagic)
+  of mUncheckedArray: ("uarray", 0)
+  of mGetImplTransf: ("getimpltransf", NoMagic)
+  of mSymIsInstantiationOf: ("symisinstantiationof", NoMagic)
+  of mNodeId: ("nodeid", NoMagic)
+  of mPrivateAccess: ("privateaccess", NoMagic)
+  of mZeroDefault: ("zerodefault", NoMagic)
+
+template writeTypeFlags(c: var TranslationContext; t: PType) =
+  discard "maybe we need type flags later"
+
+proc isNominalRef(t: PType): bool {.inline.} =
+  let e = t.elementType
+  t.sym != nil and e.kind == tyObject and (e.sym == nil or sfAnon in e.sym.flags)
+
+template singleElement(keyw: string) {.dirty.} =
+  c.b.withTree keyw:
+    writeTypeFlags(c, t)
+    if t.hasElementType:
+      toNifType t.elementType, parent, c
+    else:
+      c.b.addEmpty
+
+proc atom(t: PType; c: var TranslationContext; tag: string) =
+  c.b.withTree tag:
+    writeTypeFlags(c, t)
+
+proc toNifTag(s: TTypeKind): string =
+  case s
+  of tyNone: "none"
+  of tyBool: "bool"
+  of tyChar: "c"
+  of tyEmpty: "empty"
+  of tyAlias: "alias"
+  of tyNil: "nil"
+  of tyUntyped: "untyped"
+  of tyTyped: "typed"
+  of tyTypeDesc: "typedesc"
+  of tyGenericInvocation: "at"
+  of tyGenericBody: "gbody"
+  of tyGenericInst: "at"
+  of tyGenericParam: "gparam"
+  of tyDistinct: "distinct"
+  of tyEnum: "enum"
+  of tyOrdinal: "ordinal"
+  of tyArray: "array"
+  of tyObject: "object"
+  of tyTuple: "tuple"
+  of tySet: "set"
+  of tyRange: "range"
+  of tyPtr: "ptr"
+  of tyRef: "ref"
+  of tyVar: "mut"
+  of tySequence: "seq"
+  of tyProc: "proctype"
+  of tyPointer: "pointer"
+  of tyOpenArray: "openarray"
+  of tyString: "string"
+  of tyCstring: "cstring"
+  of tyForward: "forward"
+  of tyInt: "int"
+  of tyInt8: "int8"
+  of tyInt16: "int16"
+  of tyInt32: "int32"
+  of tyInt64: "int64"
+  of tyFloat: "float"
+  of tyFloat32: "float32"
+  of tyFloat64: "float64"
+  of tyFloat128: "float128"
+  of tyUInt: "uint"
+  of tyUInt8: "uint8"
+  of tyUInt16: "uint16"
+  of tyUInt32: "uint32"
+  of tyUInt64: "uint64"
+  of tyOwned: "owned"
+  of tySink: "sink"
+  of tyLent: "lent"
+  of tyVarargs: "varargs"
+  of tyUncheckedArray: "uarray"
+  of tyError: "error"
+  of tyBuiltInTypeClass: "bconcept"
+  of tyUserTypeClass: "uconcept"
+  of tyUserTypeClassInst: "uconceptinst"
+  of tyCompositeTypeClass: "cconcept"
+  of tyInferred: "inferred"
+  of tyAnd: "and"
+  of tyOr: "or"
+  of tyNot: "not"
+  of tyAnything: "anything"
+  of tyStatic: "static"
+  of tyFromExpr: "typeof"
+  of tyConcept: "concept"
+  of tyVoid: "void"
+  of tyIterable: "iterable"
+
+proc atom(t: PType; c: var TranslationContext) =
+  c.b.withTree toNifTag(t.kind):
+    writeTypeFlags(c, t)
+
+template typeHead(c: var TranslationContext; t: PType; body: untyped) =
+  c.b.withTree toNifTag(t.kind):
+    writeTypeFlags(c, t)
+    body
+
+proc toNifTag(s: TCallingConvention): string =
+  case s
+  of ccNimCall: "nimcall"
+  of ccStdCall: "stdcall"
+  of ccCDecl: "cdecl"
+  of ccSafeCall: "safecall"
+  of ccSysCall: "syscall"
+  of ccInline: "inline"
+  of ccNoInline: "noinline"
+  of ccFastCall: "fastcall"
+  of ccThisCall: "thiscall"
+  of ccClosure: "closure"
+  of ccNoConvention: "noconv"
+  of ccMember: "member"
+
+proc toNifType(t: PType; parent: PNode; c: var TranslationContext) =
+  if t == nil:
+    c.b.addKeyw "nil"
+    return
+
+  case t.kind
+  of tyNone: atom t, c
+  of tyBool: atom t, c
+  of tyChar: atom t, c, "c 8"
+  of tyEmpty: c.b.addEmpty
+  of tyInt: atom t, c, "i -1"
+  of tyInt8: atom t, c, "i 8"
+  of tyInt16: atom t, c, "i 16"
+  of tyInt32: atom t, c, "i 32"
+  of tyInt64: atom t, c, "i 64"
+  of tyUInt: atom t, c, "u -1"
+  of tyUInt8: atom t, c, "u 8"
+  of tyUInt16: atom t, c, "u 16"
+  of tyUInt32: atom t, c, "u 32"
+  of tyUInt64: atom t, c, "u 64"
+  of tyFloat, tyFloat64: atom t, c, "f 64"
+  of tyFloat32: atom t, c, "f 32"
+  of tyFloat128: atom t, c, "f 128"
+  of tyAlias:
+    c.typeHead t:
+      toNifType t.skipModifier, parent, c
+  of tyNil: atom t, c
+  of tyUntyped: atom t, c
+  of tyTyped: atom t, c
+  of tyTypeDesc:
+    c.typeHead t:
+      if t.kidsLen == 0 or t.elementType.kind == tyNone:
+        c.b.addEmpty
+      else:
+        toNifType t.elementType, parent, c
+  of tyGenericParam:
+    # See the nim-sem spec:
+    c.typeHead t:
+      symToNif t.sym, c
+      #c.b.addIntLit t.sym.position
+
+  of tyGenericInst:
+    c.typeHead t:
+      toNifType t.genericHead, parent, c
+      for _, a in t.genericInstParams:
+        toNifType a, parent, c
+  of tyGenericInvocation:
+    c.typeHead t:
+      toNifType t.genericHead, parent, c
+      for _, a in t.genericInvocationParams:
+        toNifType a, parent, c
+  of tyGenericBody:
+    #toNifType t.last, parent, c
+    c.typeHead t:
+      for _, son in t.ikids: toNifType son, parent, c
+  of tyDistinct, tyEnum:
+    if t.sym != nil:
+      symToNif t.sym, c
+    else:
+      c.typeHead t:
+        for _, son in t.ikids: toNifType son, parent, c
+  of tyPtr:
+    if isNominalRef(t):
+      symToNif t.sym, c
+    else:
+      c.typeHead t:
+        toNifType t.elementType, parent, c
+  of tyRef:
+    if isNominalRef(t):
+      symToNif t.sym, c
+    else:
+      c.typeHead t:
+        toNifType t.elementType, parent, c
+  of tyVar:
+    c.b.withTree(if isOutParam(t): "out" else: "mut"):
+      toNifType t.elementType, parent, c
+  of tyAnd:
+    c.typeHead t:
+      for _, son in t.ikids: toNifType son, parent, c
+  of tyOr:
+    c.typeHead t:
+      for _, son in t.ikids: toNifType son, parent, c
+  of tyNot:
+    c.typeHead t: toNifType t.elementType, parent, c
+
+  of tyFromExpr:
+    if t.n == nil:
+      atom t, c, "err"
+    else:
+      c.typeHead t:
+        toNif t.n, parent, c
+
+  of tyArray:
+    c.typeHead t:
+      if t.hasElementType:
+        toNifType t.elementType, parent, c
+        toNifType t.indexType, parent, c
+      else:
+        c.b.addEmpty 2
+  of tyUncheckedArray:
+    c.typeHead t:
+      if t.hasElementType:
+        toNifType t.elementType, parent, c
+      else:
+        c.b.addEmpty
+
+  of tySequence:
+    singleElement toNifTag(t.kind)
+
+  of tyOrdinal:
+    c.typeHead t:
+      if t.hasElementType:
+        toNifType t.skipModifier, parent, c
+      else:
+        c.b.addEmpty
+
+  of tySet: singleElement toNifTag(t.kind)
+  of tyOpenArray: singleElement toNifTag(t.kind)
+  of tyIterable: singleElement toNifTag(t.kind)
+  of tyLent: singleElement toNifTag(t.kind)
+
+  of tyTuple:
+    c.typeHead t:
+      if t.n != nil:
+        for i in 0..<t.n.len:
+          assert(t.n[i].kind == nkSym)
+          c.b.withTree "kv":
+            c.b.addIdent t.n[i].sym.name.s
+            toNifType t.n[i].sym.typ, parent, c
+      else:
+        for _, son in t.ikids: toNifType son, parent, c
+
+  of tyRange:
+    c.typeHead t:
+      toNifType t.elementType, parent, c
+      if t.n != nil and t.n.kind == nkRange and t.n.len == 2:
+        toNif t.n[0], parent, c
+        toNif t.n[1], parent, c
+      else:
+        c.b.addEmpty 2
+
+  of tyProc:
+    let kind = if tfIterator in t.flags: "iteratortype"
+               else: "proctype"
+    c.b.withTree kind:
+
+      c.b.addEmpty # name
+      for i, a in t.paramTypes:
+        let j = paramTypeToNodeIndex(i)
+        if t.n != nil and j < t.n.len and t.n[j].kind == nkSym:
+          c.b.addIdent(t.n[j].sym.name.s)
+          toNifType a, parent, c
+      if tfUnresolved in t.flags:
+        c.b.addRaw "[*missing parameters*]"
+      if t.returnType != nil:
+        toNifType t.returnType, parent, c
+      else:
+        c.b.addEmpty
+
+      c.b.withTree "effects":
+        # XXX model explicit .raises and .tags annotations
+        if tfNoSideEffect in t.flags:
+          c.b.addKeyw "noside"
+        if tfThread in t.flags:
+          c.b.addKeyw "gcsafe"
+
+      c.b.withTree "pragmas":
+        if t.callConv == ccNimCall and tfExplicitCallConv notin t.flags:
+          discard "no calling convention to generate"
+        else:
+          c.b.addKeyw toNifTag(t.callConv)
+
+  of tyVarargs:
+    c.typeHead t:
+      if t.hasElementType:
+        toNifType t.elementType, parent, c
+      else:
+        c.b.addEmpty
+      if t.n != nil:
+        toNif t.n, parent, c
+      else:
+        c.b.addEmpty
+
+  of tySink: singleElement toNifTag(t.kind)
+  of tyOwned: singleElement toNifTag(t.kind)
+  of tyVoid: atom t, c
+  of tyPointer: atom t, c
+  of tyString: atom t, c
+  of tyCstring: atom t, c
+  of tyObject: symToNif t.sym, c
+  of tyForward: atom t, c
+  of tyError: atom t, c
+  of tyBuiltInTypeClass:
+    # XXX See what to do with this.
+    c.typeHead t:
+      if t.kidsLen == 0 or t.genericHead.kind == tyNone:
+        c.b.addEmpty
+      else:
+        toNifType t.genericHead, parent, c
+
+  of tyUserTypeClass, tyConcept:
+    # ^ old style concept.  ^ new style concept.
+    if t.sym != nil:
+      symToNif t.sym, c
+    else:
+      atom t, c, "err"
+  of tyUserTypeClassInst:
+    # "instantiated" old style concept. Whatever that even means.
+    if t.sym != nil:
+      symToNif t.sym, c
+    else:
+      atom t, c, "err"
+  of tyCompositeTypeClass: toNifType t.last, parent, c
+  of tyInferred: toNifType t.skipModifier, parent, c
+  of tyAnything: atom t, c
+  of tyStatic:
+    c.typeHead t:
+      if t.hasElementType:
+        toNifType t.skipModifier, parent, c
+      else:
+        c.b.addEmpty
+      if t.n != nil:
+        toNif t.n, parent, c
+      else:
+        c.b.addEmpty
 
 proc magicCall(m: TMagic; n: PNode; c: var TranslationContext) =
   let (tag, bits) = toNifTag(m)
@@ -522,13 +863,21 @@ proc magicCall(m: TMagic; n: PNode; c: var TranslationContext) =
     for i in 0..<n.len:
       toNif(n[i], n, c)
     c.b.endTree()
+  elif bits == ArrayType and n.len == 2:
+    c.b.addTree(tag)
+    # reverse order:
+    toNif n[1], n, c
+    toNif n[0], n, c
+    c.b.endTree()
   else:
     c.b.addTree(tag)
     if bits == TypedMagic:
-      toNifType n.typ, c
+      toNifType n.typ, n, c
+    elif bits == TypedMagicOp1:
+      toNifType n[1].typ, n, c
     for i in 1..<n.len:
       toNif(n[i], n, c)
-    c.b.endTree
+    c.b.endTree()
 
 proc toNif*(n, parent: PNode; c: var TranslationContext; allowEmpty = false) =
   case n.kind
@@ -988,6 +1337,9 @@ proc toNif*(n, parent: PNode; c: var TranslationContext; allowEmpty = false) =
     for i in 0..<n.len:
       toNif(n[i], n, c)
     c.b.endTree()
+  of nkBracket, nkTupleConstr, nkObjConstr,
+     nkCast, nkConv, nkObjUpConv, nkObjDownConv:
+    discard "XXX to implement"
   else:
     relLineInfo(n, parent, c)
     c.b.addTree(nodeKindTranslation(n.kind))
