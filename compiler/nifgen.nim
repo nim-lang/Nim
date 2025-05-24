@@ -9,10 +9,11 @@
 
 ## This module implements the NIF code generator.
 
-import
-  ast, astalgo, modulegraphs, options, pathutils, lineinfos, idents, msgs
-
 import std / [assertions, syncio, os, tables]
+
+import
+  ast, astalgo, modulegraphs, options, pathutils, lineinfos, idents, msgs, types
+
 import "../dist/nimony/src/lib" / nifbuilder
 import "../dist/nimony/src/models" / nifler_tags
 import "../dist/nimony/src/gear2" / modnames
@@ -24,10 +25,11 @@ import "../dist/nimony/src/gear2" / modnames
 type
   TranslationContext = object
     conf: ConfigRef
-    section: NiflerKind
     b, deps: Builder
+    section: NiflerKind
     portablePaths: bool
     depsEnabled, lineInfoEnabled: bool
+    hasHoles: bool
     toSuffix: Table[string, string]
 
   NifModule* = ref object of PPassContext
@@ -967,8 +969,12 @@ proc toNif*(n, parent: PNode; c: var TranslationContext; allowEmpty = false) =
     else:
       c.b.addEmpty
 
+    let oldHasHoles = c.hasHoles
+    c.hasHoles = split.name.kind == nkSym and split.name.sym.typ != nil and
+      tfEnumHasHoles in split.name.sym.typ.flags
     for i in 2..<n.len:
       toNif(n[i], n, c, allowEmpty = true)
+    c.hasHoles = oldHasHoles
     c.b.endTree()
 
   of nkTypeSection:
@@ -1112,7 +1118,10 @@ proc toNif*(n, parent: PNode; c: var TranslationContext; allowEmpty = false) =
       # typeclass, compiles to identifier for nimony
       c.b.addIdent "enum"
     else:
-      c.b.addTree(EnumL)
+      if c.hasHoles:
+        c.b.addTree("onum")
+      else:
+        c.b.addTree(EnumL)
       assert n[0].kind == nkEmpty
       c.b.addEmpty # base type
       for i in 1..<n.len:
@@ -1337,9 +1346,61 @@ proc toNif*(n, parent: PNode; c: var TranslationContext; allowEmpty = false) =
     for i in 0..<n.len:
       toNif(n[i], n, c)
     c.b.endTree()
-  of nkBracket, nkTupleConstr, nkObjConstr,
-     nkCast, nkConv, nkObjUpConv, nkObjDownConv:
-    discard "XXX to implement"
+  of nkCurly:
+    relLineInfo(n, parent, c)
+    c.b.addTree("setconstr")
+    toNifType(n.typ, n, c)
+    for i in 0..<n.len:
+      toNif(n[i], n, c)
+    c.b.endTree()
+  of nkBracket:
+    relLineInfo(n, parent, c)
+    c.b.addTree("aconstr")
+    toNifType(n.typ, n, c)
+    for i in 0..<n.len:
+      toNif(n[i], n, c)
+    c.b.endTree()
+  of nkTupleConstr:
+    relLineInfo(n, parent, c)
+    c.b.addTree("tupconstr")
+    toNifType(n.typ, n, c)
+    for i in 0..<n.len:
+      toNif(n[i], n, c)
+    c.b.endTree()
+  of nkCast:
+    relLineInfo(n, parent, c)
+    c.b.addTree("cast")
+    toNifType(n.typ, n, c)
+    toNif(n[1], n, c)
+    c.b.endTree()
+  of nkHiddenSubConv, nkHiddenStdConv, nkConv:
+    # XXX Special case conversions to and from OpenArray which are not builtin for Nimony
+    relLineInfo(n, parent, c)
+    c.b.addTree("conv")
+    toNifType(n.typ, n, c)
+    toNif(n[1], n, c)
+    c.b.endTree()
+  of nkCheckedFieldExpr:
+    toNif(n[0], n, c)
+  of nkObjUpConv, nkObjDownConv:
+    let diff = inheritanceDiff(n.typ, n[0].typ)
+    relLineInfo(n, parent, c)
+    c.b.addTree("baseobj")
+    toNifType(n.typ, n, c)
+    c.b.addIntLit diff
+    toNif(n[0], n, c)
+    c.b.endTree()
+  of nkObjConstr:
+    relLineInfo(n, parent, c)
+    c.b.addTree("oconstr")
+    # starts with the type as we need it. But maybe it got inferred:
+    var start = 0
+    if n.len > 0 and n[0].kind == nkEmpty:
+      toNifType(n.typ, n, c)
+      start = 1
+    for i in start..<n.len:
+      toNif(n[i], n, c)
+    c.b.endTree()
   else:
     relLineInfo(n, parent, c)
     c.b.addTree(nodeKindTranslation(n.kind))
