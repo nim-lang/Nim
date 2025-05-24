@@ -196,7 +196,7 @@ proc symToNif(s: PSym; c: var TranslationContext; isDef = false) =
     if suf.len == 0:
       suf = moduleSuffix(fp, cast[seq[string]](c.conf.searchPaths))
       m.add suf
-      c.toSuffix[fp] = ensureMove suf
+      c.toSuffix[fp] = suf
     else:
       m.add suf
   if isDef:
