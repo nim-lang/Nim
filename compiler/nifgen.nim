@@ -22,6 +22,9 @@ import "../dist/nimony/src/gear2" / modnames
 ## in a different direction as it needs to translate the semchecked AST which
 ## is way more complex. For example, all magics need to be special cased.
 
+const
+  SystemModuleSuffix = "sysvq0asl"
+
 type
   TranslationContext = object
     conf: ConfigRef
@@ -30,7 +33,9 @@ type
     portablePaths: bool
     depsEnabled, lineInfoEnabled: bool
     hasHoles: bool
-    toSuffix: Table[string, string]
+    toSuffix: Table[FileIndex, string]
+    tempFilename, finalFilename: string  # for atomic file creation
+    tempDepsFilename, finalDepsFilename: string  # for atomic deps file creation
 
   NifModule* = ref object of PPassContext
     graph*: ModuleGraph
@@ -188,19 +193,19 @@ proc splitIdentDefName(n: PNode): IdentDefName =
 
 proc toNif*(n, parent: PNode; c: var TranslationContext; allowEmpty = false)
 
+proc modname(c: var TranslationContext; idx: FileIndex): string =
+  result = c.toSuffix.getOrDefault(idx)
+  if result.len == 0:
+    let fp = toFullPath(c.conf, idx)
+    result = moduleSuffix(fp, cast[seq[string]](c.conf.searchPaths))
+    c.toSuffix[idx] = result
+
 proc symToNif(s: PSym; c: var TranslationContext; isDef = false) =
   var m = s.name.s & '.' & $s.disamb
   let ow = s.skipGenericOwner()
   if ow.kind == skModule:
     m.add '.'
-    let fp = toFullPath(c.conf, FileIndex ow.position)
-    var suf = c.toSuffix.getOrDefault(fp)
-    if suf.len == 0:
-      suf = moduleSuffix(fp, cast[seq[string]](c.conf.searchPaths))
-      m.add suf
-      c.toSuffix[fp] = suf
-    else:
-      m.add suf
+    m.add modname(c, FileIndex ow.position)
   if isDef:
     c.b.addSymbolDef m
   else:
@@ -569,7 +574,7 @@ proc toNifTag(s: TTypeKind): string =
   of tySequence: "seq"
   of tyProc: "proctype"
   of tyPointer: "pointer"
-  of tyOpenArray: "openarray"
+  of tyOpenArray: "openArray"
   of tyString: "string"
   of tyCstring: "cstring"
   of tyForward: "forward"
@@ -631,6 +636,16 @@ proc toNifTag(s: TCallingConvention): string =
   of ccClosure: "closure"
   of ccNoConvention: "noconv"
   of ccMember: "member"
+
+proc symbolType(name: string; t: PType; c: var TranslationContext) =
+  c.b.addSymbol name
+
+proc toNifType(t: PType; parent: PNode; c: var TranslationContext)
+
+proc genericAt(name: string; parent: PNode; t: PType; c: var TranslationContext) =
+  c.b.withTree "at":
+    c.b.addSymbol name
+    for _, son in t.ikids: toNifType son, parent, c
 
 proc toNifType(t: PType; parent: PNode; c: var TranslationContext) =
   if t == nil:
@@ -739,7 +754,7 @@ proc toNifType(t: PType; parent: PNode; c: var TranslationContext) =
         c.b.addEmpty
 
   of tySequence:
-    singleElement toNifTag(t.kind)
+    genericAt "seq.0." & SystemModuleSuffix, parent, t, c
 
   of tyOrdinal:
     c.typeHead t:
@@ -749,7 +764,7 @@ proc toNifType(t: PType; parent: PNode; c: var TranslationContext) =
         c.b.addEmpty
 
   of tySet: singleElement toNifTag(t.kind)
-  of tyOpenArray: singleElement toNifTag(t.kind)
+  of tyOpenArray: genericAt "openArray.0." & SystemModuleSuffix, parent, t, c
   of tyIterable: singleElement toNifTag(t.kind)
   of tyLent: singleElement toNifTag(t.kind)
 
@@ -819,7 +834,7 @@ proc toNifType(t: PType; parent: PNode; c: var TranslationContext) =
   of tyOwned: singleElement toNifTag(t.kind)
   of tyVoid: atom t, c
   of tyPointer: atom t, c
-  of tyString: atom t, c
+  of tyString: symbolType "string.0." & SystemModuleSuffix, t, c
   of tyCstring: atom t, c
   of tyObject: symToNif t.sym, c
   of tyForward: atom t, c
@@ -1408,12 +1423,6 @@ proc toNif*(n, parent: PNode; c: var TranslationContext; allowEmpty = false) =
       toNif(n[i], n, c)
     c.b.endTree()
 
-proc initTranslationContext*(conf: ConfigRef; outfile: string; portablePaths, depsEnabled: bool): TranslationContext =
-  result = TranslationContext(conf: conf, b: nifbuilder.open(outfile),
-    portablePaths: portablePaths, depsEnabled: depsEnabled, lineInfoEnabled: true)
-  if depsEnabled:
-    result.deps = nifbuilder.open(outfile.changeFileExt(".deps.nif"))
-
 proc close*(c: var TranslationContext) =
   c.b.close()
   if c.depsEnabled:
@@ -1436,14 +1445,19 @@ proc setupNifgen*(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassCo
   let conf = graph.config
   let modname = module.name.s
   let nimcacheDir = getNimcacheDir(conf).string
-  let outfile = nimcacheDir / modname & ".nif"
+  var c = TranslationContext(conf: conf,
+    portablePaths: true, depsEnabled: false, lineInfoEnabled: true)
+
+  let outfile = nimcacheDir / modname(c, FileIndex module.position) & ".nim2.nif"
+  c.b = nifbuilder.open(outfile)
+  if c.depsEnabled:
+    c.deps = nifbuilder.open(outfile.changeFileExt(".nim2.deps.nif"))
 
   # Ensure nimcache directory exists
   if not dirExists(nimcacheDir):
     createDir(nimcacheDir)
 
-  var tc = initTranslationContext(conf, outfile, portablePaths = true, depsEnabled = false)
-  var m = NifModule(graph: graph, module: module, idgen: idgen, tc: tc)
+  var m = NifModule(graph: graph, module: module, idgen: idgen, tc: c)
   result = m
 
 proc genTopLevelNif*(bModule: PPassContext; finalNode: PNode) =
