@@ -246,7 +246,7 @@ const
   ArrayType = -6
   StringType = -7
 
-proc toNifTag(s: TMagic): (string, int) =
+proc magicToNifTag(s: TMagic): (string, int) =
   case s
   of mNone: ("bug", NoMagic)
   of mDefined: ("defined", 0)
@@ -874,7 +874,7 @@ proc toNifType(t: PType; parent: PNode; c: var TranslationContext) =
         c.b.addEmpty
 
 proc magicCall(m: TMagic; n: PNode; c: var TranslationContext) =
-  let (tag, bits) = toNifTag(m)
+  let (tag, bits) = magicToNifTag(m)
   if bits == NoMagic:
     c.b.addTree(nodeKindTranslation(n.kind))
     for i in 0..<n.len:
@@ -1415,6 +1415,19 @@ proc toNif*(n, parent: PNode; c: var TranslationContext; allowEmpty = false) =
       start = 1
     for i in start..<n.len:
       toNif(n[i], n, c)
+    c.b.endTree()
+  of nkStringToCString:
+    relLineInfo(n, parent, c)
+    c.b.addTree("call")
+    c.b.addSymbol("toCString.0." & SystemModuleSuffix)
+    c.b.withTree "haddr":
+      toNif(n[0], n, c)
+    c.b.endTree()
+  of nkCStringToString:
+    relLineInfo(n, parent, c)
+    c.b.addTree("call")
+    c.b.addSymbol("fromCString.0." & SystemModuleSuffix)
+    toNif(n[0], n, c)
     c.b.endTree()
   else:
     relLineInfo(n, parent, c)
