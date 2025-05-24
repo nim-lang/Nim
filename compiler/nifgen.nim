@@ -245,6 +245,7 @@ const
   NoMagic = -5
   ArrayType = -6
   StringType = -7
+  BecomesCall = -8
 
 proc magicToNifTag(s: TMagic): (string, int) =
   case s
@@ -339,7 +340,7 @@ proc magicToNifTag(s: TMagic): (string, int) =
   of mLePtr: ("le", TypedMagicOp1)
   of mLtPtr: ("lt", TypedMagicOp1)
   of mXor: ("xor", 0)
-  of mEqCString: ("eq", TypedMagicOp1)
+  of mEqCString: ("eq", NoMagic)
   of mEqProc: ("eq", TypedMagicOp1)
   of mUnaryMinusI: ("neg", 0)
   of mUnaryMinusI64: ("neg", 0)
@@ -351,7 +352,7 @@ proc magicToNifTag(s: TMagic): (string, int) =
   of mUnaryMinusF64: ("neg", 0)
   of mCharToStr: ("chartostr", NoMagic)
   of mBoolToStr: ("booltostr", NoMagic)
-  of mCStrToStr: ("cstrtostr", NoMagic)
+  of mCStrToStr: ("fromCString.0." & SystemModuleSuffix, BecomesCall)
   of mStrToStr: ("strtostr", NoMagic)
   of mEnumToStr: ("enumtostr", 0)
   of mAnd: ("and", 0)
@@ -361,9 +362,9 @@ proc magicToNifTag(s: TMagic): (string, int) =
   of mExists: ("exists", NoMagic)
   of mForall: ("forall", NoMagic)
   of mOld: ("old", NoMagic)
-  of mEqStr: ("eqstr", NoMagic)
-  of mLeStr: ("lestr", NoMagic)
-  of mLtStr: ("ltstr", NoMagic)
+  of mEqStr: ("==.15." & SystemModuleSuffix, BecomesCall) # XXX find a better solution
+  of mLeStr: ("<=.15." & SystemModuleSuffix, BecomesCall)
+  of mLtStr: ("<.15." & SystemModuleSuffix, BecomesCall)
   of mEqSet: ("eqset", TypedMagicOp1)
   of mLeSet: ("leset", TypedMagicOp1)
   of mLtSet: ("ltset", TypedMagicOp1)
@@ -371,7 +372,7 @@ proc magicToNifTag(s: TMagic): (string, int) =
   of mPlusSet: ("plusset", TypedMagic)
   of mMinusSet: ("minusset", TypedMagic)
   of mXorSet: ("xorset", TypedMagic)
-  of mConStrStr: ("constrstr", NoMagic)
+  of mConStrStr: ("&.0." & SystemModuleSuffix, BecomesCall)
   of mSlice: ("slice", NoMagic)
   of mDotDot: ("dotdot", NoMagic)
   of mFields: ("fields", 0)
@@ -392,8 +393,8 @@ proc magicToNifTag(s: TMagic): (string, int) =
   of mIsNil: ("isnil", NoMagic)
   of mArrToSeq: ("arrtoseq", NoMagic)
   of mOpenArrayToSeq: ("openarraytoseq", NoMagic)
-  of mNewString: ("newstring", NoMagic)
-  of mNewStringOfCap: ("newstringofcap", NoMagic)
+  of mNewString: ("newString.0." & SystemModuleSuffix, BecomesCall)
+  of mNewStringOfCap: ("newStringOfCap.0." & SystemModuleSuffix, BecomesCall)
   of mParseBiggestFloat: ("parsebiggestfloat", NoMagic)
   of mMove: ("move", NoMagic)
   of mEnsureMove: ("emove", 0)
@@ -885,6 +886,12 @@ proc magicCall(m: TMagic; n: PNode; c: var TranslationContext) =
     # reverse order:
     toNif n[1], n, c
     toNif n[0], n, c
+    c.b.endTree()
+  elif bits == BecomesCall:
+    c.b.addTree("call")
+    c.b.addSymbol(tag)
+    for i in 1..<n.len:
+      toNif(n[i], n, c)
     c.b.endTree()
   else:
     c.b.addTree(tag)
