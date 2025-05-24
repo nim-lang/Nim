@@ -173,8 +173,9 @@ proc addFloatLit*(b: var Builder; u: BiggestFloat; suffix: string) =
     b.addFloatLit u
     b.addStrLit suffix
 
-type IdentDefName = object
-  name, visibility, pragma: PNode
+type
+  IdentDefName = object
+    name, visibility, pragma: PNode
 
 proc splitIdentDefName(n: PNode): IdentDefName =
   result = IdentDefName(visibility: nil, pragma: nil)
@@ -190,6 +191,8 @@ proc splitIdentDefName(n: PNode): IdentDefName =
     result.name = n[1]
   else:
     result.name = n
+    if n.kind == nkSym and sfExported in n.sym.flags:
+      result.visibility = n # anything other than `nil` will do here
 
 proc toNif*(n, parent: PNode; c: var TranslationContext; allowEmpty = false)
 
@@ -1204,6 +1207,8 @@ proc toNif*(n, parent: PNode; c: var TranslationContext; allowEmpty = false) =
       name = n[0][1]
     else:
       name = n[0]
+      if name.kind == nkSym and sfExported in name.sym.flags:
+        visibility = name # anything other than nil will do
 
     toNifDecl(name, n, c)
     if visibility != nil:
