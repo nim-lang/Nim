@@ -9,7 +9,7 @@
 
 ## This module implements the NIF code generator.
 
-import std / [assertions, syncio, os, tables]
+import std / [assertions, syncio, os, tables, intsets]
 
 import
   ast, astalgo, modulegraphs, options, pathutils, lineinfos, idents, msgs, types
@@ -37,6 +37,7 @@ type
     toSuffix: Table[FileIndex, string]
     tempFilename, finalFilename: string  # for atomic file creation
     tempDepsFilename, finalDepsFilename: string  # for atomic deps file creation
+    handled: IntSet
 
   NifModule* = ref object of PPassContext
     graph*: ModuleGraph
@@ -1234,7 +1235,8 @@ proc toNif(n, parent: PNode; c: var TranslationContext; allowEmpty = false) =
       name = n[0]
       if name.kind == nkSym and sfExported in name.sym.flags:
         visibility = name # anything other than nil will do
-    if name.kind == nkSym and {sfForward, sfFromGeneric} * name.sym.flags != {}:
+    if name.kind == nkSym and
+      ({sfForward, sfFromGeneric} * name.sym.flags != {} or c.handled.containsOrIncl(name.sym.id)):
       # forward declaration, skip the body:
       return
 
