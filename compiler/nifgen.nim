@@ -1225,9 +1225,6 @@ proc toNif(n, parent: PNode; c: var TranslationContext; allowEmpty = false) =
       c.b.endTree()
 
   of nkProcDef, nkFuncDef, nkConverterDef, nkMacroDef, nkTemplateDef, nkIteratorDef, nkMethodDef:
-    relLineInfo(n, parent, c)
-    c.b.addTree(nodeKindTranslation(n.kind))
-
     var name: PNode
     var visibility: PNode = nil
     if n[0].kind == nkPostfix:
@@ -1237,6 +1234,12 @@ proc toNif(n, parent: PNode; c: var TranslationContext; allowEmpty = false) =
       name = n[0]
       if name.kind == nkSym and sfExported in name.sym.flags:
         visibility = name # anything other than nil will do
+    if name.kind == nkSym and {sfForward, sfFromGeneric} * name.sym.flags != {}:
+      # forward declaration, skip the body:
+      return
+
+    relLineInfo(n, parent, c)
+    c.b.addTree(nodeKindTranslation(n.kind))
 
     toNifDecl(name, n, c)
     if visibility != nil:
@@ -1244,8 +1247,12 @@ proc toNif(n, parent: PNode; c: var TranslationContext; allowEmpty = false) =
     else:
       c.b.addEmpty
 
-    for i in 1..<n.len:
-      toNif(n[i], n, c, allowEmpty = true)
+    for i in 1..min(bodyPos, n.len-1):
+      if i == bodyPos and name.kind == nkSym and name.sym.ast != nil:
+        # use the semchecked body:
+        toNif(c.graph.getBody(name.sym), n, c, allowEmpty = true)
+      else:
+        toNif(n[i], n, c, allowEmpty = true)
     c.b.endTree()
 
   of nkVarTuple:
