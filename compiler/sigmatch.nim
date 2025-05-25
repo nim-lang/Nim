@@ -1561,10 +1561,10 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
           inc c.inheritancePenalty, depth + ord(c.inheritancePenalty < 0)
           result = isSubtype
   of tyDistinct:
-    a = a.skipTypes({tyOwned, tyGenericInst, tyRange})
+    let af = a.skipTypes({tyOwned, tyGenericInst, tyRange})
     let coerceDistincts = c.coerceDistincts or tfWeakened in f.flags
     if a.kind == tyDistinct:
-      if sameDistinctTypes(f, a): result = isEqual
+      if sameDistinctTypes(f, af): result = isEqual
       #elif f.base.kind == tyAnything: result = isGeneric  # issue 4435
       elif coerceDistincts:
         inc c.inheritancePenalty
