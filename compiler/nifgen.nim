@@ -1486,15 +1486,23 @@ proc toNif(n, parent: PNode; c: var TranslationContext; allowEmpty = false) =
     c.b.endTree()
 
 proc close*(c: var TranslationContext) =
+  c.b.endTree()
   c.b.close()
   if c.depsEnabled:
     c.deps.endTree()
     c.deps.close()
 
+proc toNifStmts(n: PNode, c: var TranslationContext) =
+  if n.kind == nkStmtList:
+    for i in 0..<n.len:
+      toNif(n[i], nil, c)
+  else:
+    toNif(n, nil, c)
+
 proc closeNif*(graph: ModuleGraph; bModule: PPassContext; finalNode: PNode) =
   let m = NifModule(bModule)
   if finalNode != nil and finalNode.kind != nkEmpty:
-    toNif(finalNode, nil, m.tc)
+    toNifStmts(finalNode, m.tc)
   m.tc.close()
 
 proc setupNifgen*(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext =
@@ -1512,6 +1520,7 @@ proc setupNifgen*(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassCo
   c.b.addRaw "(.original "
   c.b.addStrLit module.name.s
   c.b.addRaw ")\n"
+  c.b.addTree "stmts"
   if c.depsEnabled:
     c.deps.addHeader "nim2", "nim-deps"
     c.deps.addTree "stmts"
@@ -1525,4 +1534,4 @@ proc setupNifgen*(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassCo
 
 proc genTopLevelNif*(bModule: PPassContext; n: PNode) =
   let m = NifModule(bModule)
-  toNif(n, nil, m.tc)
+  toNifStmts(n, m.tc)
