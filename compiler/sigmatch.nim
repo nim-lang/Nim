@@ -319,7 +319,7 @@ proc sumGeneric(t: PType): int =
   while true:
     case t.kind
     of tyAlias, tySink, tyNot: t = t.skipModifier
-    of tyArray, tyRef, tyPtr, tyDistinct, tyUncheckedArray,
+    of tyArray, tyRef, tyPtr, tyUncheckedArray,
         tyOpenArray, tyVarargs, tySet, tyRange, tySequence,
         tyLent, tyOwned, tyVar:
       t = t.elementType
@@ -364,6 +364,9 @@ proc sumGeneric(t: PType): int =
       for _, a in t.paramTypes:
         result += sumGeneric(a)
       break
+    of tyDistinct:
+      result += ord(tfWeakened notin t.flags)
+      t = t.base
     else:
       if t.isConcept:
         result += t.reduceToBase.conceptBody.len
@@ -1357,6 +1360,13 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         # Foo[templateCall(T)] shouldn't fail early if Foo has a constraint
         # and we can't evaluate `templateCall(T)` yet
         return isGeneric
+  of tyDistinct:
+    if f.kind != tyDistinct:
+      let coerceDistincts = c.coerceDistincts or tfWeakened in a.flags
+      if coerceDistincts:
+        inc c.inheritancePenalty
+        return typeRel(c, f, a.base, flags)
+    
   else: discard
 
   case f.kind
@@ -1552,11 +1562,16 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
           result = isSubtype
   of tyDistinct:
     a = a.skipTypes({tyOwned, tyGenericInst, tyRange})
+    let coerceDistincts = c.coerceDistincts or tfWeakened in f.flags
     if a.kind == tyDistinct:
       if sameDistinctTypes(f, a): result = isEqual
       #elif f.base.kind == tyAnything: result = isGeneric  # issue 4435
-      elif c.coerceDistincts: result = typeRel(c, f.base, a, flags)
-    elif c.coerceDistincts: result = typeRel(c, f.base, a, flags)
+      elif coerceDistincts:
+        inc c.inheritancePenalty
+        result = typeRel(c, f.base, a, flags)
+    elif coerceDistincts:
+      inc c.inheritancePenalty
+      result = typeRel(c, f.base, a, flags)
   of tySet:
     if a.kind == tySet:
       if f[0].kind != tyGenericParam and a[0].kind == tyEmpty:

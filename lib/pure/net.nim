@@ -1374,7 +1374,7 @@ proc uniRecv(socket: Socket, buffer: pointer, size, flags: cint): int =
 
 proc readIntoBuf(socket: Socket, flags: int32): int =
   result = 0
-  result = uniRecv(socket, addr(socket.buffer), socket.buffer.high, flags)
+  result = uniRecv(socket, addr(socket.buffer), socket.buffer.high.cint, flags)
   if result < 0:
     # Save it in case it gets reset (the Nim codegen occasionally may call
     # Win API functions which reset it).

@@ -399,6 +399,7 @@ type
     tfIsOutParam
     tfSendable
     tfImplicitStatic
+    tfWeakened        # for tyDistinct means "weak distinct"
 
   TTypeFlags* = set[TTypeFlag]
 
