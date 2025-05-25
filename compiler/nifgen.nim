@@ -1470,21 +1470,14 @@ proc close*(c: var TranslationContext) =
     c.deps.endTree()
     c.deps.close()
 
-proc moduleToIr*(n: PNode; c: var TranslationContext) =
-  c.b.addHeader "Nifler", "nim-parsed"
-  if c.depsEnabled:
-    c.deps.addHeader "Nifler", "nim-deps"
-    c.deps.addTree StmtsL
-  toNif(n, nil, c)
-
 proc closeNif*(graph: ModuleGraph; bModule: PPassContext; finalNode: PNode) =
   let m = NifModule(bModule)
-  moduleToIr(finalNode, m.tc)
+  if finalNode != nil and finalNode.kind != nkEmpty:
+    toNif(finalNode, nil, m.tc)
   m.tc.close()
 
 proc setupNifgen*(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext =
   let conf = graph.config
-  let modname = module.name.s
   let nimcacheDir = getNimcacheDir(conf).string
   var c = TranslationContext(conf: conf,
     portablePaths: true, depsEnabled: false, lineInfoEnabled: true, graph: graph)
@@ -1494,6 +1487,14 @@ proc setupNifgen*(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassCo
   if c.depsEnabled:
     c.deps = nifbuilder.open(outfile.changeFileExt(".nim2.deps.nif"))
 
+  c.b.addHeader "nim2", "nim-parsed"
+  c.b.addRaw "(.original "
+  c.b.addStrLit module.name.s
+  c.b.addRaw ")\n"
+  if c.depsEnabled:
+    c.deps.addHeader "nim2", "nim-deps"
+    c.deps.addTree StmtsL
+
   # Ensure nimcache directory exists
   if not dirExists(nimcacheDir):
     createDir(nimcacheDir)
@@ -1501,6 +1502,6 @@ proc setupNifgen*(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassCo
   var m = NifModule(graph: graph, module: module, idgen: idgen, tc: c)
   result = m
 
-proc genTopLevelNif*(bModule: PPassContext; finalNode: PNode) =
-  # This is called for each top-level node, but we'll handle everything in closeNif
-  discard
+proc genTopLevelNif*(bModule: PPassContext; n: PNode) =
+  let m = NifModule(bModule)
+  toNif(n, nil, m.tc)
