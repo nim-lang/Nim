@@ -508,6 +508,7 @@ proc setCmd*(conf: ConfigRef, cmd: Command) =
   of cmdCompileToCpp: conf.backend = backendCpp
   of cmdCompileToOC: conf.backend = backendObjc
   of cmdCompileToJS: conf.backend = backendJs
+  of cmdCompileToNif: conf.backend = backendNif
   else: discard
 
 proc setCommandEarly*(conf: ConfigRef, command: string) =
