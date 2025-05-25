@@ -209,69 +209,6 @@ proc splitIdentDefName(n: PNode): IdentDefName =
 proc toNif(n, parent: PNode; c: var TranslationContext; allowEmpty = false)
 proc toNifType(t: PType; parent: PNode; c: var TranslationContext)
 
-proc modname(c: var TranslationContext; idx: FileIndex): string =
-  result = c.toSuffix.getOrDefault(idx)
-  if result.len == 0:
-    let fp = toFullPath(c.conf, idx)
-    result = moduleSuffix(fp, cast[seq[string]](c.conf.searchPaths))
-    c.toSuffix[idx] = result
-
-proc symToNif(orig: PSym; parent: PNode; c: var TranslationContext; isDef = false) =
-  # We do not want to use generic instantiations as the names! We instead want
-  # Nimony to re-instantiate the generic symbol:
-  let isInstantiated = orig.kind in skProcKinds and sfFromGeneric in orig.flags
-  let s = if isInstantiated: orig.owner else: orig
-  # Unfortunately, this is not enough. Code like `myGeneric[int, char]()` will
-  # have lost the explicit type parameters. We can get these from the instance cache.
-
-  var m = s.name.s & '.' & $s.disamb
-  var ow = s.skipGenericOwner()
-  if ow == nil:
-    ow = c.graph.systemModule # can happen for magics created by the createMagic
-  if ow.kind == skModule:
-    m.add '.'
-    m.add modname(c, FileIndex ow.position)
-  if isDef:
-    c.b.addSymbolDef m
-  elif isInstantiated:
-    c.b.addTree "at"
-    c.b.addSymbol m
-    for inst in procInstCacheItems(c.graph, s):
-      if inst.sym == orig:
-        for i in 0..<inst.concreteTypes.len:
-          toNifType(inst.concreteTypes[i], parent, c)
-        break
-    c.b.endTree()
-  else:
-    c.b.addSymbol m
-
-proc toNifDecl(n, parent: PNode; c: var TranslationContext) =
-  if n.kind == nkSym:
-    relLineInfo(n, parent, c)
-    symToNif(n.sym, parent, c, true)
-  else:
-    toNif n, parent, c
-
-proc toVarTuple(v: PNode, n: PNode; c: var TranslationContext) =
-  c.b.addTree("unpacktup")
-  for i in 0..<v.len-1: # ignores typedesc
-    c.b.addTree("let")
-
-    toNifDecl(v[i], n, c) # name
-
-    c.b.addEmpty 4 # export marker, pragmas, type, value
-    c.b.endTree() # LetDecl
-  c.b.endTree() # UnpackIntoTuple
-
-proc handleCaseIdentDefs(n, parent: PNode; c: var TranslationContext) =
-  if n.kind == nkIdentDefs and n.len > 3:
-    # multiple ident defs, we need to add StmtsL
-    c.b.addTree("stmts")
-    toNif(n, parent, c)
-    c.b.endTree()
-  else:
-    toNif(n, parent, c)
-
 const
   NewOperator = -2
   TypedMagic = -3
@@ -560,6 +497,78 @@ proc magicToNifTag(s: TMagic): (string, int) =
   of mNodeId: ("nodeid", NoMagic)
   of mPrivateAccess: ("privateaccess", NoMagic)
   of mZeroDefault: ("zerodefault", NoMagic)
+
+proc modname(c: var TranslationContext; idx: FileIndex): string =
+  result = c.toSuffix.getOrDefault(idx)
+  if result.len == 0:
+    let fp = toFullPath(c.conf, idx)
+    result = moduleSuffix(fp, cast[seq[string]](c.conf.searchPaths))
+    c.toSuffix[idx] = result
+
+proc symToNif(orig: PSym; parent: PNode; c: var TranslationContext; isDef = false) =
+  # We do not want to use generic instantiations as the names! We instead want
+  # Nimony to re-instantiate the generic symbol:
+  let isInstantiated = orig.kind in skProcKinds and sfFromGeneric in orig.flags
+  let s = if isInstantiated: orig.owner else: orig
+  # Unfortunately, this is not enough. Code like `myGeneric[int, char]()` will
+  # have lost the explicit type parameters. We can get these from the instance cache.
+
+  var m = s.name.s & '.' & $s.disamb
+  var ow = if orig.kind in {skField, skEnumField}: s.originatingModule() else: s.skipGenericOwner()
+  if ow == nil:
+    ow = c.graph.systemModule # can happen for magics created by the createMagic
+  if ow.kind == skModule:
+    m.add '.'
+    m.add modname(c, FileIndex ow.position)
+  if isDef:
+    c.b.addSymbolDef m
+  elif isInstantiated:
+    c.b.addTree "at"
+    c.b.addSymbol m
+    for inst in procInstCacheItems(c.graph, s):
+      if inst.sym == orig:
+        for i in 0..<inst.concreteTypes.len:
+          toNifType(inst.concreteTypes[i], parent, c)
+        break
+    c.b.endTree()
+  elif s.kind == skType and sfImportc notin s.flags and s.magic != mNone:
+    let (tag, bits) = magicToNifTag(s.magic)
+    if bits >= -1:
+      c.b.addTree tag
+      if bits != 0:
+        c.b.addIntLit bits
+      c.b.endTree()
+    else:
+      c.b.addSymbol m
+  else:
+    c.b.addSymbol m
+
+proc toNifDecl(n, parent: PNode; c: var TranslationContext) =
+  if n.kind == nkSym:
+    relLineInfo(n, parent, c)
+    symToNif(n.sym, parent, c, true)
+  else:
+    toNif n, parent, c
+
+proc toVarTuple(v: PNode, n: PNode; c: var TranslationContext) =
+  c.b.addTree("unpacktup")
+  for i in 0..<v.len-1: # ignores typedesc
+    c.b.addTree("let")
+
+    toNifDecl(v[i], n, c) # name
+
+    c.b.addEmpty 4 # export marker, pragmas, type, value
+    c.b.endTree() # LetDecl
+  c.b.endTree() # UnpackIntoTuple
+
+proc handleCaseIdentDefs(n, parent: PNode; c: var TranslationContext) =
+  if n.kind == nkIdentDefs and n.len > 3:
+    # multiple ident defs, we need to add StmtsL
+    c.b.addTree("stmts")
+    toNif(n, parent, c)
+    c.b.endTree()
+  else:
+    toNif(n, parent, c)
 
 template writeTypeFlags(c: var TranslationContext; t: PType) =
   discard "maybe we need type flags later"
@@ -1087,7 +1096,10 @@ proc toNif(n, parent: PNode; c: var TranslationContext; allowEmpty = false) =
       else:
         c.b.addEmpty
 
-      toNif(n[last-1], n[i], c, allowEmpty = true) # type
+      if split.name.kind == nkSym and split.name.sym.typ != nil:
+        toNifType split.name.sym.typ, n[i], c
+      else:
+        toNif(n[last-1], n[i], c, allowEmpty = true) # type
 
       toNif(n[last], n[i], c, allowEmpty = true) # value
       c.b.endTree()

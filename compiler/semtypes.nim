@@ -948,6 +948,9 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
                  else:
                    n[i].info
       suggestSym(c.graph, info, f, c.graph.usageSym)
+      # XXX this must only be enabled for cmd == cmdNif as its a minor breaking
+      # change otherwise
+      n[i] = newSymNode(f)
       f.typ = typ
       f.position = pos
       f.options = c.config.options
@@ -1067,7 +1070,7 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType; flags: TTypeFlags): PType
   if needsForwardUpdate:
     # if the inherited object is a forward type,
     # the entire object needs to be checked again
-    c.forwardTypeUpdates.add (result, n) #we retry in the final pass
+    c.forwardTypeUpdates.add (result, n) # we retry in the final pass
   rawAddSon(result, realBase)
   if realBase == nil and tfInheritable in flags:
     result.flags.incl tfInheritable
