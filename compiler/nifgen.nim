@@ -33,6 +33,7 @@ type
     portablePaths: bool
     depsEnabled, lineInfoEnabled: bool
     hasHoles: bool
+    graph: ModuleGraph
     toSuffix: Table[FileIndex, string]
     tempFilename, finalFilename: string  # for atomic file creation
     tempDepsFilename, finalDepsFilename: string  # for atomic deps file creation
@@ -194,7 +195,8 @@ proc splitIdentDefName(n: PNode): IdentDefName =
     if n.kind == nkSym and sfExported in n.sym.flags:
       result.visibility = n # anything other than `nil` will do here
 
-proc toNif*(n, parent: PNode; c: var TranslationContext; allowEmpty = false)
+proc toNif(n, parent: PNode; c: var TranslationContext; allowEmpty = false)
+proc toNifType(t: PType; parent: PNode; c: var TranslationContext)
 
 proc modname(c: var TranslationContext; idx: FileIndex): string =
   result = c.toSuffix.getOrDefault(idx)
@@ -203,7 +205,14 @@ proc modname(c: var TranslationContext; idx: FileIndex): string =
     result = moduleSuffix(fp, cast[seq[string]](c.conf.searchPaths))
     c.toSuffix[idx] = result
 
-proc symToNif(s: PSym; c: var TranslationContext; isDef = false) =
+proc symToNif(orig: PSym; parent: PNode; c: var TranslationContext; isDef = false) =
+  # We do not want to use generic instantiations as the names! We instead want
+  # Nimony to re-instantiate the generic symbol:
+  let isInstantiated = orig.kind in skProcKinds and sfFromGeneric in orig.flags
+  let s = if isInstantiated: orig.owner else: orig
+  # Unfortunately, this is not enough. Code like `myGeneric[int, char]()` will
+  # have lost the explicit type parameters. We can get these from the instance cache.
+
   var m = s.name.s & '.' & $s.disamb
   let ow = s.skipGenericOwner()
   if ow.kind == skModule:
@@ -211,13 +220,22 @@ proc symToNif(s: PSym; c: var TranslationContext; isDef = false) =
     m.add modname(c, FileIndex ow.position)
   if isDef:
     c.b.addSymbolDef m
+  elif isInstantiated:
+    c.b.addTree "at"
+    c.b.addSymbol m
+    for inst in procInstCacheItems(c.graph, s):
+      if inst.sym == orig:
+        for i in 0..<inst.concreteTypes.len:
+          toNifType(inst.concreteTypes[i], parent, c)
+        break
+    c.b.endTree()
   else:
     c.b.addSymbol m
 
 proc toNifDecl(n, parent: PNode; c: var TranslationContext) =
   if n.kind == nkSym:
     relLineInfo(n, parent, c)
-    symToNif(n.sym, c, true)
+    symToNif(n.sym, parent, c, true)
   else:
     toNif n, parent, c
 
@@ -644,8 +662,6 @@ proc toNifTag(s: TCallingConvention): string =
 proc symbolType(name: string; t: PType; c: var TranslationContext) =
   c.b.addSymbol name
 
-proc toNifType(t: PType; parent: PNode; c: var TranslationContext)
-
 proc genericAt(name: string; parent: PNode; t: PType; c: var TranslationContext) =
   c.b.withTree "at":
     c.b.addSymbol name
@@ -689,7 +705,7 @@ proc toNifType(t: PType; parent: PNode; c: var TranslationContext) =
   of tyGenericParam:
     # See the nim-sem spec:
     c.typeHead t:
-      symToNif t.sym, c
+      symToNif t.sym, parent, c
       #c.b.addIntLit t.sym.position
 
   of tyGenericInst:
@@ -708,19 +724,19 @@ proc toNifType(t: PType; parent: PNode; c: var TranslationContext) =
       for _, son in t.ikids: toNifType son, parent, c
   of tyDistinct, tyEnum:
     if t.sym != nil:
-      symToNif t.sym, c
+      symToNif t.sym, parent, c
     else:
       c.typeHead t:
         for _, son in t.ikids: toNifType son, parent, c
   of tyPtr:
     if isNominalRef(t):
-      symToNif t.sym, c
+      symToNif t.sym, parent, c
     else:
       c.typeHead t:
         toNifType t.elementType, parent, c
   of tyRef:
     if isNominalRef(t):
-      symToNif t.sym, c
+      symToNif t.sym, parent, c
     else:
       c.typeHead t:
         toNifType t.elementType, parent, c
@@ -840,7 +856,7 @@ proc toNifType(t: PType; parent: PNode; c: var TranslationContext) =
   of tyPointer: atom t, c
   of tyString: symbolType "string.0." & SystemModuleSuffix, t, c
   of tyCstring: atom t, c
-  of tyObject: symToNif t.sym, c
+  of tyObject: symToNif t.sym, parent, c
   of tyForward: atom t, c
   of tyError: atom t, c
   of tyBuiltInTypeClass:
@@ -854,13 +870,13 @@ proc toNifType(t: PType; parent: PNode; c: var TranslationContext) =
   of tyUserTypeClass, tyConcept:
     # ^ old style concept.  ^ new style concept.
     if t.sym != nil:
-      symToNif t.sym, c
+      symToNif t.sym, parent, c
     else:
       atom t, c, "err"
   of tyUserTypeClassInst:
     # "instantiated" old style concept. Whatever that even means.
     if t.sym != nil:
-      symToNif t.sym, c
+      symToNif t.sym, parent, c
     else:
       atom t, c, "err"
   of tyCompositeTypeClass: toNifType t.last, parent, c
@@ -906,10 +922,10 @@ proc magicCall(m: TMagic; n: PNode; c: var TranslationContext) =
       toNif(n[i], n, c)
     c.b.endTree()
 
-proc toNif*(n, parent: PNode; c: var TranslationContext; allowEmpty = false) =
+proc toNif(n, parent: PNode; c: var TranslationContext; allowEmpty = false) =
   case n.kind
   of nkSym:
-    symToNif(n.sym, c)
+    symToNif(n.sym, parent, c)
   of nkNone:
     assert false, "unexpected nkNone"
   of nkEmpty:
@@ -1471,7 +1487,7 @@ proc setupNifgen*(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassCo
   let modname = module.name.s
   let nimcacheDir = getNimcacheDir(conf).string
   var c = TranslationContext(conf: conf,
-    portablePaths: true, depsEnabled: false, lineInfoEnabled: true)
+    portablePaths: true, depsEnabled: false, lineInfoEnabled: true, graph: graph)
 
   let outfile = nimcacheDir / modname(c, FileIndex module.position) & ".nim2.nif"
   c.b = nifbuilder.open(outfile)
