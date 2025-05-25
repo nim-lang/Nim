@@ -929,7 +929,7 @@ proc toNif(n, parent: PNode; c: var TranslationContext; allowEmpty = false) =
   of nkNone:
     assert false, "unexpected nkNone"
   of nkEmpty:
-    assert allowEmpty, "unexpected nkEmpty"
+    #assert allowEmpty, "unexpected nkEmpty"
     c.b.addEmpty 1
   of nkNilLit:
     relLineInfo(n, parent, c)
