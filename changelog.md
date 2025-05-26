@@ -19,15 +19,26 @@ errors.
 
 - With `-d:nimPreviewAsmSemSymbol`, backticked symbols are type checked in the `asm/emit` statements.
 
+- The bare `except:` now panics on `Defect`. Use `except Exception:` or `except Defect:` to catch `Defect`. `--legacy:noPanicOnExcept` is provided for a transition period.
+
+- With `-d:nimPreviewCStringComparisons`, comparsions (`<`, `>`, `<=`, `>=`) between cstrings switch from reference semantics to value semantics like `==` and `!=`.
+
 ## Standard library additions and changes
 
 [//]: # "Additions:"
+
 - `setutils.symmetricDifference` along with its operator version
   `` setutils.`-+-` `` and in-place version `setutils.toggle` have been added
   to more efficiently calculate the symmetric difference of bitsets.
+- `strutils.multiReplace` overload for character set replacements in a single pass.
+	Useful for string sanitation. Follows existing multiReplace semantics.
 
 [//]: # "Changes:"
+
 - `std/math` The `^` symbol now supports floating-point as exponent in addition to the Natural type.
+- `min`, `max`, and `sequtils`' `minIndex`, `maxIndex` and `minmax` for `openArray`s now accept a comparison function.
+- `system.substr` implementation now uses `copymem` (wrapped C `memcpy`) for copying data, if available at compilation.
+- `system.newStringUninit` is now considered free of side-effects allowing it to be used with `--experimental:strictFuncs`.
 
 ## Language changes
 
@@ -71,4 +82,4 @@ errors.
 
 ## Tool changes
 
-
+- Added `--stdinfile` flag to name of the file used when running program from stdin (defaults to `stdinfile.nim`)

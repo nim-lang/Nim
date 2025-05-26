@@ -144,7 +144,6 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
   while true:
     determineType(c, sym)
     z = initCandidate(c, sym, initialBinding, scope, diagnosticsFlag)
-
     # this is kinda backwards as without a check here the described
     # problems in recalc would not happen, but instead it 100%
     # does check forever in some cases
@@ -184,7 +183,7 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
       # 1) new symbols are discovered but the loop ends before we recalc
       # 2) new symbols are discovered and resemmed forever
       # not 100% sure if these are possible though as they would rely
-      #  on somehow introducing a new overload during overload resolution
+      # on somehow introducing a new overload during overload resolution
 
       # Symbol table has been modified. Restart and pre-calculate all syms
       # before any further candidate init and compare. SLOW, but rare case.
@@ -244,14 +243,6 @@ proc effectProblem(f, a: PType; result: var string; c: PContext) =
       when defined(drnim):
         if not c.graph.compatibleProps(c.graph, f, a):
           result.add "\n  The `.requires` or `.ensures` properties are incompatible."
-
-proc renderNotLValue(n: PNode): string =
-  result = $n
-  let n = if n.kind == nkHiddenDeref: n[0] else: n
-  if n.kind == nkHiddenCallConv and n.len > 1:
-    result = $n[0] & "(" & result & ")"
-  elif n.kind in {nkHiddenStdConv, nkHiddenSubConv} and n.len == 2:
-    result = typeToString(n.typ.skipTypes(abstractVar)) & "(" & result & ")"
 
 proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
                             (TPreferedDesc, string) =
@@ -695,7 +686,14 @@ proc instGenericConvertersArg*(c: PContext, a: PNode, x: TCandidate) =
   if a.kind == nkHiddenCallConv and a[0].kind == nkSym:
     let s = a[0].sym
     if s.isGenericRoutineStrict:
-      let finalCallee = generateInstance(c, s, x.bindings, a.info)
+      var src = s.typ.firstParamType
+      var convMatch = newCandidate(c, src)
+      var arg = a[1]
+      if arg.kind in {nkHiddenAddr, nkHiddenSubConv}: arg = arg[^1]
+      let srca = typeRel(convMatch, src, arg.typ)
+      if srca notin {isEqual, isGeneric, isSubtype}:
+        internalError(c.config, a.info, "generic converter failed rematch")
+      let finalCallee = generateInstance(c, s, convMatch.bindings, a.info)
       a[0].sym = finalCallee
       a[0].typ() = finalCallee.typ
       #a.typ = finalCallee.typ.returnType
@@ -911,15 +909,15 @@ proc semOverloadedCall(c: PContext, n, nOrig: PNode,
     if c.inGenericContext > 0 and c.matchedConcept == nil:
       result = semGenericStmt(c, n)
       result.typ() = makeTypeFromExpr(c, result.copyTree)
+    elif efNoUndeclared in flags:
+      result = nil
     elif efExplain notin flags:
       # repeat the overload resolution,
       # this time enabling all the diagnostic output (this should fail again)
       result = semOverloadedCall(c, n, nOrig, filter, flags + {efExplain})
-    elif efNoUndeclared notin flags:
-      result = nil
-      notFoundError(c, n, errors)
     else:
       result = nil
+      notFoundError(c, n, errors)
 
 proc explicitGenericInstError(c: PContext; n: PNode): PNode =
   localError(c.config, getCallLineInfo(n), errCannotInstantiateX % renderTree(n))

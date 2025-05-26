@@ -199,7 +199,7 @@ proc interestingVar(s: PSym): bool {.inline.} =
 proc illegalCapture(s: PSym): bool {.inline.} =
   result = classifyViewType(s.typ) != noView or s.kind == skResult
 
-proc isInnerProc(s: PSym): bool =
+proc isInnerProc*(s: PSym): bool =
   if s.kind in {skProc, skFunc, skMethod, skConverter, skIterator} and s.magic == mNone:
     result = s.skipGenericOwner.kind in routineKinds
   else:

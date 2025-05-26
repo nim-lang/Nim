@@ -136,6 +136,8 @@ type
 
     cachedFiles*: StringTableRef
 
+    procGlobals*: seq[PNode]
+
   TPassContext* = object of RootObj # the pass's context
     idgen*: IdGenerator
   PPassContext* = ref TPassContext

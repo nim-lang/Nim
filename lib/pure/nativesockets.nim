@@ -285,6 +285,19 @@ proc listen*(socket: SocketHandle, backlog = SOMAXCONN): cint {.tags: [
   else:
     result = posix.listen(socket, cint(backlog))
 
+proc getAddrInfo*(address: string, port: Port, hints: AddrInfo): ptr AddrInfo =
+  ##
+  ##
+  ## .. warning:: The resulting `ptr AddrInfo` must be freed using `freeAddrInfo`!
+  result = nil
+  let socketPort = if hints.ai_socktype == toInt(SOCK_RAW): "" else: $port
+  var gaiResult = getaddrinfo(address, socketPort.cstring, addr(hints), result)
+  if gaiResult != 0'i32:
+    when useWinVersion or defined(freertos) or defined(nuttx):
+      raiseOSError(osLastError())
+    else:
+      raiseOSError(osLastError(), $gai_strerror(gaiResult))
+
 proc getAddrInfo*(address: string, port: Port, domain: Domain = AF_INET,
                   sockType: SockType = SOCK_STREAM,
                   protocol: Protocol = IPPROTO_TCP): ptr AddrInfo =
@@ -296,7 +309,7 @@ proc getAddrInfo*(address: string, port: Port, domain: Domain = AF_INET,
     ai_socktype: toInt(sockType),
     ai_protocol: toInt(protocol)
   )
-  result = nil
+  
   # OpenBSD doesn't support AI_V4MAPPED and doesn't define the macro AI_V4MAPPED.
   # FreeBSD, Haiku don't support AI_V4MAPPED but defines the macro.
   # https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=198092
@@ -305,13 +318,7 @@ proc getAddrInfo*(address: string, port: Port, domain: Domain = AF_INET,
       not defined(android) and not defined(haiku):
     if domain == AF_INET6:
       hints.ai_flags = AI_V4MAPPED
-  let socketPort = if sockType == SOCK_RAW: "" else: $port
-  var gaiResult = getaddrinfo(address, socketPort.cstring, addr(hints), result)
-  if gaiResult != 0'i32:
-    when useWinVersion or defined(freertos) or defined(nuttx):
-      raiseOSError(osLastError())
-    else:
-      raiseOSError(osLastError(), $gai_strerror(gaiResult))
+  result = getAddrInfo(address, port, hints)
 
 proc ntohl*(x: uint32): uint32 =
   ## Converts 32-bit unsigned integers from network to host byte order.
@@ -723,7 +730,7 @@ when useNimNetLite:
     ##
     ## Similar to POSIX's `getsockname`:idx:.
     template sockGetNameOrRaiseError(socket: untyped, name: untyped) =
-      var namelen = sizeof(socket).SockLen
+      var namelen = sizeof(name).SockLen
       if getsockname(socket, cast[ptr SockAddr](addr(name)),
                     addr(namelen)) == -1'i32:
         raiseOSError(osLastError())

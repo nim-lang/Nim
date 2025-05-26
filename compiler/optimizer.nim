@@ -28,10 +28,13 @@ type
     hasReturn, hasBreak: bool
     label: PSym # can be nil
     parent: ptr BasicBlock
+    symToDel: seq[PNode]
 
   Con = object
     somethingTodo: bool
     inFinally: int
+
+proc invalidateWasMoved(c: var BasicBlock; x: PNode)
 
 proc nestedBlock(parent: var BasicBlock; kind: TNodeKind): BasicBlock =
   BasicBlock(wasMovedLocs: @[], kind: kind, hasReturn: false, hasBreak: false,
@@ -62,6 +65,10 @@ proc mergeBasicBlockInfo(parent: var BasicBlock; this: BasicBlock) {.inline.} =
   if this.hasReturn:
     parent.wasMovedLocs.setLen 0
     parent.hasReturn = true
+  elif this.symToDel.len > 0:
+    parent.symToDel = this.symToDel
+    for i in this.symToDel:
+      invalidateWasMoved(parent, i)
 
 proc wasMovedTarget(matches: var IntSet; branch: seq[PNode]; moveTarget: PNode): bool =
   result = false
@@ -149,6 +156,7 @@ proc analyse(c: var Con; b: var BasicBlock; n: PNode) =
     # any usage of the location before destruction implies we
     # cannot elide the 'wasMoved(x)':
     b.invalidateWasMoved n
+    b.symToDel.add n
 
   of nkNone..pred(nkSym), succ(nkSym)..nkNilLit, nkTypeSection, nkProcDef, nkConverterDef,
       nkMethodDef, nkIteratorDef, nkMacroDef, nkTemplateDef, nkLambda, nkDo,

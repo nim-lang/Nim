@@ -46,3 +46,5 @@ when not defined(testsConciseTypeMismatch):
 switch("experimental", "vtables")
 switch("experimental", "openSym")
 switch("experimental", "typeBoundOps")
+
+switch("define", "nimPreviewCStringComparisons")

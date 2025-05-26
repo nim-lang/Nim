@@ -28,7 +28,7 @@ proc checkConstructedType*(conf: ConfigRef; info: TLineInfo, typ: PType) =
   if t.kind in tyTypeClasses: discard
   elif t.kind in {tyVar, tyLent} and t.elementType.kind in {tyVar, tyLent}:
     localError(conf, info, "type 'var var' is not allowed")
-  elif computeSize(conf, t) == szIllegalRecursion or isTupleRecursive(t):
+  elif computeSize(conf, t) == szIllegalRecursion or isRecursiveStructuralType(t):
     localError(conf, info, "illegal recursion in type '" & typeToString(t) & "'")
 
 proc searchInstTypes*(g: ModuleGraph; key: PType): PType =
@@ -68,8 +68,8 @@ type
   TReplTypeVars* = object
     c*: PContext
     typeMap*: LayeredIdTable  # map PType to PType
-    symMap*: SymMapping         # map PSym to PSym
-    localCache*: TypeMapping     # local cache for remembering already replaced
+    symMap*: SymMapping       # map PSym to PSym
+    localCache*: TypeMapping  # local cache for remembering already replaced
                               # types during instantiation of meta types
                               # (they are not stored in the global cache)
     info*: TLineInfo
@@ -608,10 +608,13 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType, isInstValue = false): 
   result = t
   if t == nil: return
 
+  var et = t
+  if t.isConcept:
+    et = t.reduceToBase
   const lookupMetas = {tyStatic, tyGenericParam, tyConcept} + tyTypeClasses - {tyAnything}
-  if t.kind in lookupMetas or
-      (t.kind == tyAnything and tfRetType notin t.flags):
-    let lookup = cl.typeMap.lookup(t)
+  if et.kind in lookupMetas or
+      (et.kind == tyAnything and tfRetType notin et.flags):
+    let lookup = cl.typeMap.lookup(et)
     if lookup != nil: return lookup
 
   case t.kind

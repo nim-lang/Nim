@@ -164,7 +164,7 @@ type
 
 const
   nkSkip = {nkEmpty..nkNilLit, nkTemplateDef, nkTypeSection, nkStaticStmt,
-            nkCommentStmt, nkMixinStmt, nkBindStmt} + procDefs
+            nkCommentStmt, nkMixinStmt, nkBindStmt, nkTypeOfExpr} + procDefs
   emptyStateLabel = -1
   localNotSeen = -1
   localRequiresLifting = -2
@@ -1451,6 +1451,14 @@ proc detectCapturedVars(c: var Ctx, n: PNode, stateIdx: int) =
       detectCapturedVars(c, n[0][1], stateIdx)
     else:
       detectCapturedVars(c, n[0], stateIdx)
+  of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit,
+     nkTemplateDef, nkTypeSection, nkProcDef, nkMethodDef,
+     nkConverterDef, nkMacroDef, nkFuncDef, nkCommentStmt,
+     nkTypeOfExpr, nkMixinStmt, nkBindStmt:
+    discard
+  of nkLambdaKinds, nkIteratorDef:
+    if n.typ != nil:
+      detectCapturedVars(c, n[namePos], stateIdx)
   else:
     for i in 0 ..< n.safeLen:
       detectCapturedVars(c, n[i], stateIdx)
@@ -1481,6 +1489,12 @@ proc liftLocals(c: var Ctx, n: PNode): PNode =
       n[0][1] = liftLocals(c, n[0][1])
     else:
       n[0] = liftLocals(c, n[0])
+  of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit,
+     nkTemplateDef, nkTypeSection, nkProcDef, nkMethodDef,
+     nkConverterDef, nkMacroDef, nkFuncDef, nkCommentStmt,
+     nkTypeOfExpr, nkMixinStmt, nkBindStmt,
+     nkLambdaKinds, nkIteratorDef:
+    discard
   else:
     for i in 0 ..< n.safeLen:
       n[i] = liftLocals(c, n[i])

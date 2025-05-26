@@ -11,13 +11,13 @@
 
 const
   # examples of possible values for repos: Head, ea82b54
-  NimbleStableCommit = "123f97a5e4ee9ba35720c0869e19a047c43c797e" # 0.16.4
-  AtlasStableCommit = "5faec3e9a33afe99a7d22377dd1b45a5391f5504"
-  ChecksumsStableCommit = "bd9bf4eaea124bf8d01e08f92ac1b14c6879d8d3"
+  NimbleStableCommit = "b1dc28450f028aead0b7cf5da8adf2267db65f89" # 0.18.2
+  AtlasStableCommit = "26cecf4d0cc038d5422fc1aa737eec9c8803a82b" # 0.9
+  ChecksumsStableCommit = "f8f6bd34bfa3fe12c64b919059ad856a96efcba0" # 2.0.1
   SatStableCommit = "faf1617f44d7632ee9601ebc13887644925dcc01"
 
   # examples of possible values for fusion: #head, #ea82b54, 1.2.3
-  FusionStableHash = "#372ee4313827ef9f2ea388840f7d6b46c2b1b014"
+  FusionStableHash = "#562467452b32cb7a97410ea177f083e6d8405734"
   HeadHash = "#head"
 when not defined(windows):
   const
@@ -171,12 +171,17 @@ proc bundleAtlasExe(latest: bool, args: string) =
   cloneDependency(distDir, "https://github.com/nim-lang/atlas.git",
                   commit = commit, allowBundled = true)
   cloneDependency(distDir / "atlas" / distDir, "https://github.com/nim-lang/sat.git",
-                commit = SatStableCommit, allowBundled = true)
+                  commit = SatStableCommit, allowBundled = true)
   # installer.ini expects it under $nim/bin
   nimCompile("dist/atlas/src/atlas.nim",
              options = "-d:release --noNimblePath -d:nimAtlasBootstrap " & args)
 
+proc bundleChecksums(latest: bool) =
+  let commit = if latest: "HEAD" else: ChecksumsStableCommit
+  cloneDependency(distDir, "https://github.com/nim-lang/checksums.git", commit, allowBundled = true)
+
 proc bundleNimsuggest(args: string) =
+  bundleChecksums(false)
   nimCompileFold("Compile nimsuggest", "nimsuggest/nimsuggest.nim",
                  options = "-d:danger " & args)
 
@@ -204,10 +209,6 @@ proc bundleWinTools(args: string) =
     # not yet a tool worth including
     nimCompile(r"tools\downloader.nim",
                options = r"--cc:vcc --app:gui -d:ssl --noNimblePath --path:..\ui " & args)
-
-proc bundleChecksums(latest: bool) =
-  let commit = if latest: "HEAD" else: ChecksumsStableCommit
-  cloneDependency(distDir, "https://github.com/nim-lang/checksums.git", commit, allowBundled = true)
 
 proc zip(latest: bool; args: string) =
   bundleChecksums(latest)

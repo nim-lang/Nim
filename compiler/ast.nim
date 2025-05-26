@@ -684,6 +684,7 @@ type
     symbols*: TStrTable
     parent*: PScope
     allowPrivateAccess*: seq[PSym] #  # enable access to private fields
+    optionStackLen*: int
 
   PScope* = ref TScope
 
@@ -794,6 +795,15 @@ type
     key*, val*: RootRef
 
   TPairSeq* = seq[TPair]
+
+  TIdPair*[T] = object
+    key*: ItemId
+    val*: T
+
+  TIdPairSeq*[T] = seq[TIdPair[T]]
+  TIdTable*[T] = object
+    counter*: int
+    data*: TIdPairSeq[T]
 
   TNodePair* = object
     h*: Hash                 # because it is expensive to compute!
@@ -933,16 +943,17 @@ proc getPIdent*(a: PNode): PIdent {.inline.} =
   case a.kind
   of nkSym: a.sym.name
   of nkIdent: a.ident
-  of nkOpenSymChoice, nkClosedSymChoice: a.sons[0].sym.name
-  of nkOpenSym: getPIdent(a.sons[0])
+  of nkOpenSymChoice, nkClosedSymChoice, nkOpenSym: a.sons[0].sym.name
   else: nil
 
 const
   moduleShift = when defined(cpu32): 20 else: 24
 
-template id*(a: PType | PSym): int =
+template toId*(a: ItemId): int =
   let x = a
-  (x.itemId.module.int shl moduleShift) + x.itemId.item.int
+  (x.module.int shl moduleShift) + x.item.int
+
+template id*(a: PType | PSym): int = toId(a.itemId)
 
 type
   IdGenerator* = ref object # unfortunately, we really need the 'shared mutable' aspect here.
@@ -1267,6 +1278,11 @@ const                         # for all kind of hash tables:
 proc copyStrTable*(dest: var TStrTable, src: TStrTable) =
   dest.counter = src.counter
   setLen(dest.data, src.data.len)
+  for i in 0..high(src.data): dest.data[i] = src.data[i]
+
+proc copyIdTable*[T](dest: var TIdTable[T], src: TIdTable[T]) =
+  dest.counter = src.counter
+  newSeq(dest.data, src.data.len)
   for i in 0..high(src.data): dest.data[i] = src.data[i]
 
 proc copyObjectSet*(dest: var TObjectSet, src: TObjectSet) =
@@ -1606,6 +1622,16 @@ proc createModuleAlias*(s: PSym, idgen: IdGenerator, newIdent: PIdent, info: TLi
 proc initStrTable*(): TStrTable =
   result = TStrTable(counter: 0)
   newSeq(result.data, StartSize)
+
+proc initIdTable*[T](): TIdTable[T] =
+  result = TIdTable[T](counter: 0)
+  newSeq(result.data, StartSize)
+
+proc resetIdTable*[T](x: var TIdTable[T]) =
+  x.counter = 0
+  # clear and set to old initial size:
+  setLen(x.data, 0)
+  setLen(x.data, StartSize)
 
 proc initObjectSet*(): TObjectSet =
   result = TObjectSet(counter: 0)
@@ -2089,14 +2115,16 @@ proc canRaise*(fn: PNode): bool =
     result = false
   elif fn.kind == nkSym and fn.sym.magic == mEcho:
     result = true
-  else:
+  elif fn.typ != nil and fn.typ.kind == tyProc and fn.typ.n != nil:
     # TODO check for n having sons? or just return false for now if not
-    if fn.typ != nil and fn.typ.n != nil and fn.typ.n[0].kind == nkSym:
+    if fn.typ.n[0].kind == nkSym:
       result = false
     else:
-      result = fn.typ != nil and fn.typ.n != nil and ((fn.typ.n[0].len < effectListLen) or
+      result = ((fn.typ.n[0].len < effectListLen) or
         (fn.typ.n[0][exceptionEffects] != nil and
         fn.typ.n[0][exceptionEffects].safeLen > 0))
+  else:
+    result = false
 
 proc toHumanStrImpl[T](kind: T, num: static int): string =
   result = $kind
@@ -2133,14 +2161,8 @@ proc isTrue*(n: PNode): bool =
     n.kind == nkIntLit and n.intVal != 0
 
 type
-  TypeMapping* = Table[ItemId, PType]
-  SymMapping* = Table[ItemId, PSym]
+  TypeMapping* = TIdTable[PType]
+  SymMapping* = TIdTable[PSym]
 
-template idTableGet*(tab: typed; key: PSym | PType): untyped = tab.getOrDefault(key.itemId)
-template idTablePut*(tab: typed; key, val: PSym | PType) = tab[key.itemId] = val
-
-template initSymMapping*(): Table[ItemId, PSym] = initTable[ItemId, PSym]()
-template initTypeMapping*(): Table[ItemId, PType] = initTable[ItemId, PType]()
-
-template resetIdTable*(tab: Table[ItemId, PSym]) = tab.clear()
-template resetIdTable*(tab: Table[ItemId, PType]) = tab.clear()
+template initSymMapping*(): SymMapping = initIdTable[PSym]()
+template initTypeMapping*(): TypeMapping = initIdTable[PType]()

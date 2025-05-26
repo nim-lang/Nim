@@ -575,11 +575,28 @@ template main() =
     doAssert "-lda-ldz -ld abc".replaceWord("-ld") == "-lda-ldz  abc"
     doAssert "-lda-ldz -ld abc".replaceWord("") == "-lda-ldz -ld abc"
 
-  block: # multiReplace
+  block: # multiReplace substrings
     doAssert "abba".multiReplace(("a", "b"), ("b", "a")) == "baab"
     doAssert "Hello World.".multiReplace(("ello", "ELLO"), ("World.",
         "PEOPLE!")) == "HELLO PEOPLE!"
     doAssert "aaaa".multiReplace(("a", "aa"), ("aa", "bb")) == "aaaaaaaa"
+
+  block: # multiReplace characters
+    # https://learn.microsoft.com/en-us/windows/win32/fileio/naming-a-file#naming-conventions
+    const SanitationRules = [
+        ({'\0'..'\31'}, ' '),
+        ({'"'}, '\''),
+        ({'/', '\\', ':', '|'}, '-'),
+        ({'*', '?', '<', '>'}, '_'),
+      ]
+    # Basic character set replacements
+    doAssert multiReplace("abba", SanitationRules) == "abba"
+    doAssert multiReplace("a/b\\c:d", SanitationRules) == "a-b-c-d"
+    doAssert multiReplace("a*b?c", SanitationRules) == "a_b_c"
+    doAssert multiReplace("\0\3test", SanitationRules) == "  test"
+    doAssert multiReplace("testquote\"", SanitationRules) == "testquote'"
+    doAssert multiReplace("", SanitationRules) == ""
+    doAssert multiReplace("/\\:*?\"\0<>", ({'\0'..'\255'}, '.')) == "........."
 
   # `parseEnum`, ref issue #14030
   # check enum defined at top level # xxx this is probably irrelevant, and pollutes scope

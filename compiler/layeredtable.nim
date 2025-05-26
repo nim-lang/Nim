@@ -1,5 +1,5 @@
-import std/tables
-import ast
+import std/[tables]
+import ast, astalgo
 
 type
   LayeredIdTableObj* {.acyclic.} = object
@@ -28,14 +28,15 @@ proc shallowCopy*(pt: LayeredIdTable): LayeredIdTable {.inline.} =
   ## copies only the type bindings of the current layer, but not any parent layers,
   ## useful for write-only bindings
   result = LayeredIdTable(topLayer: pt.topLayer, nextLayer: pt.nextLayer, previousLen: pt.previousLen)
+  #copyIdTable(result.topLayer, pt.topLayer)
 
 proc currentLen*(pt: LayeredIdTable): int =
   ## the sum of the cached total binding count of the parents and
   ## the current binding count, just used to track if bindings were added
-  pt.previousLen + pt.topLayer.len
+  pt.previousLen + pt.topLayer.counter
 
 proc newTypeMapLayer*(pt: LayeredIdTable): LayeredIdTable =
-  result = LayeredIdTable(topLayer: initTable[ItemId, PType](), previousLen: pt.currentLen)
+  result = LayeredIdTable(topLayer: initTypeMapping(), previousLen: pt.currentLen)
   when useRef:
     result.nextLayer = pt
   else:
@@ -52,6 +53,15 @@ proc setToPreviousLayer*(pt: var LayeredIdTable) {.inline.} =
       # workaround refc
       let tmp = pt.nextLayer[]
       pt = tmp
+
+iterator pairs*(pt: LayeredIdTable): (ItemId, PType) =
+  var tm = pt
+  while true:
+    for (k, v) in idTablePairs(tm.topLayer):
+      yield (k, v)
+    if tm.nextLayer == nil:
+      break
+    tm.setToPreviousLayer
 
 proc lookup(typeMap: ref LayeredIdTableObj, key: ItemId): PType =
   result = nil

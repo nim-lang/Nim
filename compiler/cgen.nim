@@ -430,7 +430,6 @@ proc rdCharLoc(a: TLoc): Rope =
 type
   TAssignmentFlag = enum
     needToCopy
-    needToCopySinkParam
     needTempForOpenArray
     needAssignCall
   TAssignmentFlags = set[TAssignmentFlag]
@@ -2433,6 +2432,9 @@ proc genTopLevelStmt*(m: BModule; n: PNode) =
     addHcrInitGuards(m.initProc, transformedN, m.inHcrInitGuard, m.hcrInitGuard)
   else:
     genProcBody(m.initProc, transformedN)
+
+  for g in m.g.graph.procGlobals:
+    genStmts(m.preInitProc, g)
 
 proc shouldRecompile(m: BModule; code: Rope, cfile: Cfile): bool =
   if optForceFullMake notin m.config.globalOptions:
