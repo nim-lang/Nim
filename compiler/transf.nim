@@ -406,7 +406,7 @@ proc makeTupleUnpack(c: PTransf; lhs: PNode; rhs: PNode): PNode =
     var field: PNode = nil
     if rhs.typ[i].kind in {tyVar, tyLent}:
       let tupleType = newTupleAccessRaw(tempNode, i)
-      tupleType.typ = rhs.typ[i]
+      tupleType.typ() = rhs.typ[i]
       field = newDeref(tupleType)
     else:
       field = newTupleAccessRaw(tempNode, i)
