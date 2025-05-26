@@ -3,6 +3,7 @@ Advanced commands:
   //compileToCpp, cpp       compile project to C++ code
   //compileToOC, objc       compile project to Objective C code
   //js                      compile project to Javascript
+  //nif                     compile project to NIF
   //e                       run a Nimscript file
   //md2html                 convert a Markdown file to HTML
                             use `--docCmd:skip` to skip compiling snippets
