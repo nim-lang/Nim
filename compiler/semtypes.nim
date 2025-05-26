@@ -948,9 +948,10 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
                  else:
                    n[i].info
       suggestSym(c.graph, info, f, c.graph.usageSym)
-      # XXX this must only be enabled for cmd == cmdNif as its a minor breaking
-      # change otherwise
-      n[i] = newSymNode(f)
+      # this must only be enabled for cmd == cmdNif as its a minor breaking
+      # change otherwise :-(
+      if c.config.cmd == cmdCompileToNif:
+        n[i] = newSymNode(f)
       f.typ = typ
       f.position = pos
       f.options = c.config.options
