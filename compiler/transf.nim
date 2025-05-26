@@ -411,7 +411,7 @@ proc makeTupleUnpack(c: PTransf; lhs: PNode; rhs: PNode): PNode =
     else:
       field = newTupleAccessRaw(tempNode, i)
 
-    field.typ = rhs.typ[i].skipTypes({tyVar, tyLent})
+    field.typ() = rhs.typ[i].skipTypes({tyVar, tyLent})
 
     tupleConstr.add field
 
