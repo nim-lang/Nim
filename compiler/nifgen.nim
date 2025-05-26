@@ -977,6 +977,51 @@ proc genericParamToNif(n: PNode; parent: PNode; c: var TranslationContext) =
   else:
     toNif n, parent, c
 
+proc addExternName(sym: PSym; c: var TranslationContext) =
+  if sym.loc.snippet != nil:
+    c.b.addStrLit sym.loc.snippet
+  else:
+    c.b.addStrLit sym.name.s
+
+proc takePragmasFromSym(sym: PSym; parent: PNode; c: var TranslationContext) =
+  if sfImportc in sym.flags:
+    c.b.withTree "importc":
+      addExternName(sym, c)
+  elif sfExportc in sym.flags:
+    c.b.withTree "exportc":
+      addExternName(sym, c)
+  if sfCursor in sym.flags:
+    c.b.addKeyw "cursor"
+  if sym.typ != nil:
+    let t = sym.typ
+    if t.callConv == ccNimCall and tfExplicitCallConv notin t.flags:
+      discard "no calling convention to generate"
+    else:
+      c.b.addKeyw toNifTag(t.callConv)
+
+  # XXX Add more pragmas here
+  var isUntyped = false
+  if sym.kind in routineKinds and sym.ast != nil and sym.ast[genericParamsPos].kind == nkGenericParams:
+    isUntyped = true
+  elif sym.kind == skTemplate:
+    isUntyped = true
+  if isUntyped:
+    c.b.addKeyw "untyped"
+
+proc toNifPragmas(n: PNode; parent: PNode; c: var TranslationContext; name: PNode) =
+  if n == nil:
+    if name.kind == nkSym:
+      c.b.withTree "pragmas":
+        takePragmasFromSym(name.sym, parent, c)
+    else:
+      c.b.addEmpty
+  else:
+    c.b.withTree "pragmas":
+      for child in n:
+        toNif child, n, c
+      if name.kind == nkSym:
+        takePragmasFromSym(name.sym, parent, c)
+
 proc toNif(n, parent: PNode; c: var TranslationContext; allowEmpty = false) =
   case n.kind
   of nkSym:
@@ -1124,10 +1169,7 @@ proc toNif(n, parent: PNode; c: var TranslationContext; allowEmpty = false) =
       else:
         c.b.addEmpty
 
-      if split.pragma != nil:
-        toNif(split.pragma, n[i], c)
-      else:
-        c.b.addEmpty
+      toNifPragmas(split.pragma, n[i], c, split.name)
 
       if split.name.kind == nkSym and split.name.sym.typ != nil:
         toNifType split.name.sym.typ, n[i], c
@@ -1255,10 +1297,7 @@ proc toNif(n, parent: PNode; c: var TranslationContext; allowEmpty = false) =
         toNifDecl name, it, c
         c.b.addEmpty # export marker
 
-        if pragma == nil:
-          c.b.addEmpty
-        else:
-          toNif(pragma, it, c)
+        toNifPragmas(pragma, it, c, name)
 
         c.b.addEmpty # type (filled by sema)
 
@@ -1295,7 +1334,9 @@ proc toNif(n, parent: PNode; c: var TranslationContext; allowEmpty = false) =
       c.b.addEmpty
 
     for i in 1..min(bodyPos, n.len-1):
-      if i == miscPos:
+      if i == pragmasPos:
+        toNifPragmas(n[i], n, c, name)
+      elif i == miscPos:
         c.b.addEmpty
       elif i == bodyPos and name.kind == nkSym and name.sym.ast != nil:
         # use the semchecked body:
