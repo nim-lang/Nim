@@ -332,7 +332,7 @@ proc addSonSkipIntLitChecked(c: PContext; father, son: PType; it: PNode, id: IdG
     propagateToOwner(father, s)
 
 proc semDistinct(c: PContext, n: PNode, prev: PType): PType =
-  if n.kind != nkDistinctTy or n.len == 0: return newConstraint(c, tyDistinct)
+  if n.len == 0: return newConstraint(c, tyDistinct)
   if prevIsKind(prev, tyDistinct):
     # the symbol already has a distinct type (likely resem), don't create a new type
     return skipGenericPrev(prev)
@@ -2344,8 +2344,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   of nkPtrTy: result = semAnyRef(c, n, tyPtr, prev)
   of nkVarTy: result = semVarOutType(c, n, prev, {})
   of nkOutTy: result = semVarOutType(c, n, prev, {tfIsOutParam})
-  of nkDistinctTy:
-    result = semDistinct(c, n, prev)
+  of nkDistinctTy: result = semDistinct(c, n, prev)
   of nkStaticTy: result = semStaticType(c, n[0], prev)
   of nkProcTy, nkIteratorTy:
     if n.len == 0 or n[0].kind == nkEmpty:
