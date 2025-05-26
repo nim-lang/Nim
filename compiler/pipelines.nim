@@ -1,7 +1,7 @@
 import sem, cgen, modulegraphs, ast, llstream, parser, msgs,
        lineinfos, reorder, options, semdata, cgendata, modules, pathutils,
        packages, syntaxes, depends, vm, pragmas, idents, lookups, wordrecg,
-       liftdestructors
+       liftdestructors, nifgen
 
 import pipelineutils
 
@@ -23,6 +23,10 @@ proc processPipeline(graph: ModuleGraph; semNode: PNode; bModule: PPassContext):
     result = semNode
     if bModule != nil:
       genTopLevelStmt(BModule(bModule), result)
+  of NifgenPass:
+    result = semNode
+    if bModule != nil:
+      genTopLevelNif(bModule, result)
   of JSgenPass:
     when not defined(leanCompiler):
       result = processJSCodeGen(bModule, semNode)
@@ -131,6 +135,8 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
         nil
     of SemPass:
       nil
+    of NifgenPass:
+      setupNifgen(graph, module, idgen)
     of NonePass:
       raiseAssert "use setPipeLinePass to set a proper PipelinePass"
 
@@ -207,6 +213,8 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
   of Docgen2JsonPass:
     when not defined(leanCompiler):
       discard closeJson(graph, bModule, finalNode)
+  of NifgenPass:
+    closeNif(graph, bModule, finalNode)
   of NonePass:
     raiseAssert "use setPipeLinePass to set a proper PipelinePass"
 

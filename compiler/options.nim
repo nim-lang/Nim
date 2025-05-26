@@ -139,6 +139,7 @@ type
     backendCpp = "cpp"
     backendJs = "js"
     backendObjc = "objc"
+    backendNif = "nif"
     # backendNimscript = "nimscript" # this could actually work
     # backendLlvm = "llvm" # probably not well supported; was cmdCompileToLLVM
 
@@ -171,10 +172,11 @@ type
     cmdNop
     cmdJsonscript # compile a .json build file
     # old unused: cmdInterpret, cmdDef: def feature (find definition for IDEs)
+    cmdCompileToNif
 
 const
   cmdBackends* = {cmdCompileToC, cmdCompileToCpp, cmdCompileToOC,
-                  cmdCompileToJS, cmdCrun}
+                  cmdCompileToJS, cmdCrun, cmdCompileToNif}
   cmdDocLike* = {cmdDoc0, cmdDoc, cmdDoc2tex, cmdJsondoc0, cmdJsondoc,
                  cmdCtags, cmdBuildindex}
 
