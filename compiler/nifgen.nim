@@ -992,6 +992,12 @@ proc takePragmasFromSym(sym: PSym; parent: PNode; c: var TranslationContext) =
       addExternName(sym, c)
   if sfCursor in sym.flags:
     c.b.addKeyw "cursor"
+  if sfNoInit in sym.flags:
+    c.b.addKeyw "noinit"
+  if lfNoDecl in sym.loc.flags:
+    c.b.addKeyw "nodecl"
+  if sfNoReturn in sym.flags:
+    c.b.addKeyw "noreturn"
   if sym.typ != nil:
     let t = sym.typ
     if t.callConv == ccNimCall and tfExplicitCallConv notin t.flags:
@@ -1021,6 +1027,33 @@ proc toNifPragmas(n: PNode; parent: PNode; c: var TranslationContext; name: PNod
         toNif child, n, c
       if name.kind == nkSym:
         takePragmasFromSym(name.sym, parent, c)
+
+proc toNifProcBody(n: PNode; parent: PNode; c: var TranslationContext; name: PNode) =
+  if n.kind == nkEmpty:
+    c.b.addEmpty
+  else:
+    c.b.withTree "stmts":
+      #if name.kind == nkSym and name.sym.kind notin {skTemplate, skIterator} and name.sym.typ != nil and
+      var ast = parent
+      if name.kind == nkSym and name.sym.ast != nil:
+        ast = name.sym.ast
+      if resultPos < ast.len and ast[resultPos].kind == nkSym:
+        let resultSym = ast[resultPos].sym
+        c.b.withTree "result":
+          toNifDecl(ast[resultPos], parent, c)
+          c.b.addEmpty # export marker
+          if name.kind == nkSym and sfNoInit in name.sym.flags:
+            c.b.withTree "pragmas":
+              c.b.addKeyw "noinit"
+          else:
+            c.b.addEmpty # pragmas
+          toNifType resultSym.typ, parent, c
+          c.b.addEmpty # value
+      if n.kind == nkStmtList:
+        for child in n:
+          toNif child, n, c
+      else:
+        toNif n, parent, c
 
 proc toNif(n, parent: PNode; c: var TranslationContext; allowEmpty = false) =
   case n.kind
@@ -1338,11 +1371,14 @@ proc toNif(n, parent: PNode; c: var TranslationContext; allowEmpty = false) =
         toNifPragmas(n[i], n, c, name)
       elif i == miscPos:
         c.b.addEmpty
-      elif i == bodyPos and name.kind == nkSym and name.sym.ast != nil:
-        # use the semchecked body:
-        toNif(c.graph.getBody(name.sym), n, c, allowEmpty = true)
+      elif i == bodyPos:
+        if name.kind == nkSym and name.sym.ast != nil:
+          # use the semchecked body:
+          toNifProcBody(c.graph.getBody(name.sym), n, c, name)
+        else:
+          toNifProcBody(n[i], n, c, name)
       else:
-        toNif(n[i], n, c, allowEmpty = true)
+        toNif(n[i], n, c)
     c.b.endTree()
 
   of nkVarTuple:
