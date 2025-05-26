@@ -675,6 +675,9 @@ type
   TInstantiation* = object
     sym*: PSym
     concreteTypes*: seq[PType]
+    genericParamsCount*: int   # for terrible reasons `concreteTypes` contains all the types,
+                               # so we need to know how many generic params there were
+                               # this is not serialized for IC and that is fine.
     compilesId*: CompilesId
 
   PInstantiation* = ref TInstantiation

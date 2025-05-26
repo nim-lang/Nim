@@ -527,7 +527,9 @@ proc symToNif(orig: PSym; parent: PNode; c: var TranslationContext; isDef = fals
     c.b.addSymbol m
     for inst in procInstCacheItems(c.graph, s):
       if inst.sym == orig:
-        for i in 0..<inst.concreteTypes.len:
+        # for terrible reasons `concreteTypes` contains all the types,
+        # so we need to know how many generic params there were:
+        for i in 0..<inst.genericParamsCount:
           toNifType(inst.concreteTypes[i], parent, c)
         break
     c.b.endTree()
@@ -574,8 +576,11 @@ template writeTypeFlags(c: var TranslationContext; t: PType) =
   discard "maybe we need type flags later"
 
 proc isNominalRef(t: PType): bool {.inline.} =
-  let e = t.elementType
-  t.sym != nil and e.kind == tyObject and (e.sym == nil or sfAnon in e.sym.flags)
+  if t.hasElementType:
+    let e = t.elementType
+    t.sym != nil and e.kind == tyObject and (e.sym == nil or sfAnon in e.sym.flags)
+  else:
+    false
 
 template singleElement(keyw: string) {.dirty.} =
   c.b.withTree keyw:
@@ -725,10 +730,11 @@ proc toNifType(t: PType; parent: PNode; c: var TranslationContext) =
       else:
         toNifType t.elementType, parent, c
   of tyGenericParam:
-    # See the nim-sem spec:
-    c.typeHead t:
+    if t.sym != nil:
       symToNif t.sym, parent, c
-      #c.b.addIntLit t.sym.position
+    else:
+      c.typeHead t:
+        discard
 
   of tyGenericInst:
     c.typeHead t:
@@ -755,13 +761,19 @@ proc toNifType(t: PType; parent: PNode; c: var TranslationContext) =
       symToNif t.sym, parent, c
     else:
       c.typeHead t:
-        toNifType t.elementType, parent, c
+        if t.hasElementType:
+          toNifType t.elementType, parent, c
+        else:
+          c.b.addEmpty
   of tyRef:
     if isNominalRef(t):
       symToNif t.sym, parent, c
     else:
       c.typeHead t:
-        toNifType t.elementType, parent, c
+        if t.hasElementType:
+          toNifType t.elementType, parent, c
+        else:
+          c.b.addEmpty
   of tyVar:
     c.b.withTree(if isOutParam(t): "out" else: "mut"):
       toNifType t.elementType, parent, c
@@ -843,7 +855,7 @@ proc toNifType(t: PType; parent: PNode; c: var TranslationContext) =
           toNifType a, parent, c
       if tfUnresolved in t.flags:
         c.b.addRaw "[*missing parameters*]"
-      if t.returnType != nil:
+      if t.hasElementType and t.returnType != nil:
         toNifType t.returnType, parent, c
       else:
         c.b.addEmpty
@@ -878,7 +890,11 @@ proc toNifType(t: PType; parent: PNode; c: var TranslationContext) =
   of tyPointer: atom t, c
   of tyString: symbolType "string.0." & SystemModuleSuffix, t, c
   of tyCstring: atom t, c
-  of tyObject: symToNif t.sym, parent, c
+  of tyObject:
+    if t.sym != nil:
+      symToNif t.sym, parent, c
+    else:
+      c.b.addEmpty
   of tyForward: atom t, c
   of tyError: atom t, c
   of tyBuiltInTypeClass:
@@ -943,6 +959,23 @@ proc magicCall(m: TMagic; n: PNode; c: var TranslationContext) =
     for i in 1..<n.len:
       toNif(n[i], n, c)
     c.b.endTree()
+
+proc genericParamToNif(n: PNode; parent: PNode; c: var TranslationContext) =
+  if n.kind == nkSym:
+    c.b.addTree("typevar")
+    toNifDecl n, parent, c
+    c.b.addEmpty # export
+    c.b.addEmpty # pragmas
+    let t = n.sym.typ
+    if t != nil and t.len > 0:
+      # generic constraints:
+      toNifType t[0], n, c
+    else:
+      c.b.addEmpty
+    c.b.addEmpty # value
+    c.b.endTree()
+  else:
+    toNif n, parent, c
 
 proc toNif(n, parent: PNode; c: var TranslationContext; allowEmpty = false) =
   case n.kind
@@ -1071,7 +1104,7 @@ proc toNif(n, parent: PNode; c: var TranslationContext; allowEmpty = false) =
     relLineInfo(n, parent, c)
     c.b.addTree("typevars")
     for i in 0..<n.len:
-      toNif(n[i], n, c)
+      genericParamToNif(n[i], n, c)
     c.b.endTree()
 
   of nkIdentDefs, nkConstDef:
@@ -1262,7 +1295,9 @@ proc toNif(n, parent: PNode; c: var TranslationContext; allowEmpty = false) =
       c.b.addEmpty
 
     for i in 1..min(bodyPos, n.len-1):
-      if i == bodyPos and name.kind == nkSym and name.sym.ast != nil:
+      if i == miscPos:
+        c.b.addEmpty
+      elif i == bodyPos and name.kind == nkSym and name.sym.ast != nil:
         # use the semchecked body:
         toNif(c.graph.getBody(name.sym), n, c, allowEmpty = true)
       else:

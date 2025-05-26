@@ -429,6 +429,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: LayeredIdTable,
     addDecl(c, s)
     entry.concreteTypes[i] = s.typ
     inc i
+  entry.genericParamsCount = i
   c.matchedConcept = nil
   pushProcCon(c, result)
   instantiateProcType(c, pt, result, info)
