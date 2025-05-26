@@ -1712,10 +1712,11 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags, afterOverloading = f
         result = n
         result.typ() = elemType(arr)
     # Other types have a bit more of leeway
-    elif n[1].typ.skipTypes(abstractRange-{tyDistinct}).kind in
+    elif n[1].typ.skipTypes(abstractRange).kind in
         {tyInt..tyInt64, tyUInt..tyUInt64}:
-      result = n
-      result.typ() = elemType(arr)
+      if n[1].typ.kind != tyDistinct or tfWeakened in n[1].typ.flags:
+        result = n
+        result.typ() = elemType(arr)
   of tyTypeDesc:
     # The result so far is a tyTypeDesc bound
     # a tyGenericBody. The line below will substitute
