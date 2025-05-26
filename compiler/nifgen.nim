@@ -1037,8 +1037,9 @@ proc toNifProcBody(n: PNode; parent: PNode; c: var TranslationContext; name: PNo
       var ast = parent
       if name.kind == nkSym and name.sym.ast != nil:
         ast = name.sym.ast
+      var resultSym = PSym(nil)
       if resultPos < ast.len and ast[resultPos].kind == nkSym:
-        let resultSym = ast[resultPos].sym
+        resultSym = ast[resultPos].sym
         c.b.withTree "result":
           toNifDecl(ast[resultPos], parent, c)
           c.b.addEmpty # export marker
@@ -1049,11 +1050,17 @@ proc toNifProcBody(n: PNode; parent: PNode; c: var TranslationContext; name: PNo
             c.b.addEmpty # pragmas
           toNifType resultSym.typ, parent, c
           c.b.addEmpty # value
+      var endsInReturn = false
       if n.kind == nkStmtList:
         for child in n:
           toNif child, n, c
+          endsInReturn = child.kind == nkReturnStmt
       else:
+        endsInReturn = n.kind == nkReturnStmt
         toNif n, parent, c
+      if not endsInReturn and resultSym != nil:
+        c.b.withTree "ret":
+          symToNif resultSym, parent, c
 
 proc toNif(n, parent: PNode; c: var TranslationContext; allowEmpty = false) =
   case n.kind
