@@ -128,7 +128,6 @@ html {
   -ms-text-size-adjust: 100%; }
 
 body {
-  overflow-x: hidden;
   max-width: 100%;
   box-sizing: border-box;
   font-family: "Lato", "Helvetica Neue", "HelveticaNeue", Helvetica, Arial, sans-serif;
