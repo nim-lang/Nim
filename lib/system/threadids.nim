@@ -66,7 +66,7 @@ elif defined(freebsd):
   else:
     var SYS_thr_self {.importc:"SYS_thr_self", header:"<sys/syscall.h>".}: cint
 
-  when sizeof(int) == 8:
+  when defined(cpu64):
     type
       Off {.importc: "off_t", header: "<sys/types.h>".} = int64
       Quad {.importc: "quad_t", header: "<sys/types.h>".} = int64
@@ -76,7 +76,7 @@ elif defined(freebsd):
 
   proc getThreadId*(): int =
     ## Gets the ID of the currently running thread.
-    var tid = when sizeof(int) == 8: Off(0) else: cint(0)
+    var tid = when defined(cpu64): Off(0) else: cint(0)
     if threadId == 0:
       discard syscall(SYS_thr_self, addr tid)
       threadId = int(tid)
