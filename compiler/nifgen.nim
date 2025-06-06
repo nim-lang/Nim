@@ -1526,7 +1526,16 @@ proc toNif(n, parent: PNode; c: var TranslationContext; allowEmpty = false) =
         toNif(n[i], n, c)
       c.b.endTree()
     c.depsEnabled = oldDepsEnabled
-  of nkDiscardStmt, nkBreakStmt, nkContinueStmt, nkReturnStmt, nkRaiseStmt,
+  of nkReturnStmt:
+    relLineInfo(n, parent, c)
+    c.b.addTree(nodeKindTranslation(n.kind))
+    if n.len > 0 and n[0].kind in {nkAsgn, nkFastAsgn}:
+      toNif(n[0][1], n, c)
+    else:
+      for i in 0..<n.len:
+        toNif(n[i], n, c, allowEmpty = true)
+    c.b.endTree()
+  of nkDiscardStmt, nkBreakStmt, nkContinueStmt, nkRaiseStmt,
       nkBlockStmt, nkBlockExpr, nkBlockType, nkTypeClassTy, nkAsmStmt:
     relLineInfo(n, parent, c)
     c.b.addTree(nodeKindTranslation(n.kind))
