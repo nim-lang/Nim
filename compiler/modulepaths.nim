@@ -79,6 +79,10 @@ proc checkModuleName*(conf: ConfigRef; n: PNode; doLocalError=true): FileIndex =
   else:
     result = fileInfoIdx(conf, fullPath)
 
+type
+  SelectedBase = enum
+    FromProject, FromSearchPath, FromNimblePath
+
 proc mangleModuleName*(conf: ConfigRef; path: AbsoluteFile): string =
   ## Mangle a relative module path to avoid path and symbol collisions.
   ##
@@ -87,9 +91,27 @@ proc mangleModuleName*(conf: ConfigRef; path: AbsoluteFile): string =
   ##
   ## Example:
   ## `foo-#head/../bar` becomes `@foo-@hhead@s..@sbar`
-  "@m" & relativeTo(path, conf.projectPath).string.multiReplace(
+  var best = relativeTo(path, conf.projectPath).string
+  var selectedBase = FromProject
+  for x in conf.searchPaths:
+    let other = relativeTo(path, x).string
+    if other.len < best.len:
+      best = other
+      selectedBase = FromSearchPath
+  for x in conf.nimblePaths:
+    let other = relativeTo(path, x).string
+    if other.len < best.len:
+      best = other
+      selectedBase = FromNimblePath
+  let prefix =
+    case selectedBase
+    of FromProject: "@m"
+    of FromSearchPath: "@p"
+    of FromNimblePath: "@n"
+
+  prefix & best.multiReplace(
     {$os.DirSep: "@s", $os.AltSep: "@s", "#": "@h", "@": "@@", ":": "@c"})
 
 proc demangleModuleName*(path: string): string =
   ## Demangle a relative module path.
-  result = path.multiReplace({"@@": "@", "@h": "#", "@s": "/", "@m": "", "@c": ":"})
+  result = path.multiReplace({"@@": "@", "@h": "#", "@s": "/", "@m": "", "@p": "", "@n": "", "@c": ":"})
