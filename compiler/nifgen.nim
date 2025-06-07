@@ -43,6 +43,7 @@ type
     graph*: ModuleGraph
     module*: PSym
     tc: TranslationContext
+    outfile: string
 
 proc nodeKindTranslation(k: TNodeKind): string =
   case k
@@ -504,6 +505,9 @@ proc modname(c: var TranslationContext; idx: FileIndex): string =
     let fp = toFullPath(c.conf, idx)
     result = moduleSuffix(fp, cast[seq[string]](c.conf.searchPaths))
     c.toSuffix[idx] = result
+
+proc projectHash(c: var TranslationContext): string =
+  result = moduleSuffix(c.conf.projectFull.string, [])
 
 proc symToNif(orig: PSym; parent: PNode; c: var TranslationContext; isDef = false) =
   # We do not want to use generic instantiations as the names! We instead want
@@ -1645,13 +1649,25 @@ proc closeNif*(graph: ModuleGraph; bModule: PPassContext; finalNode: PNode) =
     toNifStmts(finalNode, m.tc)
   m.tc.close()
 
+  # Rename the file to `.nim2.nif` as file renames are atomic on the OSes we care about.
+  moveFile(m.outfile, m.outfile.changeFileExt(".nim2.nif"))
+
 proc setupNifgen*(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext =
   let conf = graph.config
   let nimcacheDir = getNimcacheDir(conf).string
+
+  # Ensure nimcache directory exists
+  if not dirExists(nimcacheDir):
+    createDir(nimcacheDir)
+
   var c = TranslationContext(conf: conf,
     portablePaths: true, depsEnabled: false, lineInfoEnabled: true, graph: graph)
 
-  let outfile = nimcacheDir / modname(c, FileIndex module.position) & ".nim2.nif"
+  # `nim nif` can run in parallel writing to the same nimcache/. So we produce
+  # a unique name here and then rename the file in `closeNif` to `.nim2.nif` as
+  # file renames are atomic on the OSes we care about:
+  let outfile = nimcacheDir / modname(c, FileIndex module.position) & "." & c.projectHash & ".nif"
+
   c.b = nifbuilder.open(outfile)
   if c.depsEnabled:
     c.deps = nifbuilder.open(outfile.changeFileExt(".nim2.deps.nif"))
@@ -1665,11 +1681,7 @@ proc setupNifgen*(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassCo
     c.deps.addHeader "nim2", "nim-deps"
     c.deps.addTree "stmts"
 
-  # Ensure nimcache directory exists
-  if not dirExists(nimcacheDir):
-    createDir(nimcacheDir)
-
-  var m = NifModule(graph: graph, module: module, idgen: idgen, tc: c)
+  var m = NifModule(graph: graph, module: module, idgen: idgen, tc: c, outfile: outfile)
   result = m
 
 proc genTopLevelNif*(bModule: PPassContext; n: PNode) =
