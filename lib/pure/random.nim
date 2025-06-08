@@ -435,6 +435,7 @@ proc sample*[T](r: var Rand; s: set[T]): T =
     let s = {1, 3, 5, 7, 9}
     assert r.sample(s) in s
 
+  result = default(T)
   assert card(s) != 0
   var i = rand(r, card(s) - 1)
   for e in s:
