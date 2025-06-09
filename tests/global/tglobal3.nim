@@ -28,3 +28,16 @@ proc f(v: static string): int =
 
 doAssert f("1") == 1
 doAssert f("1") == 1
+
+block: # bug #24981
+  func p(T: type): T {.compileTime.} = default(ptr T)[]
+  type W = ref object
+  proc g(T: type): W
+  proc m(T: type) =
+    let a {.global.} = g(T)
+  proc g(T: type): W =
+    when T is object:
+      m(typeof(p(T).i))
+  type Foo = object
+    i: int
+  m(Foo)
