@@ -2183,8 +2183,13 @@ proc genTopLevelStmt*(m: BModule; n: PNode) =
   else:
     genProcBody(m.initProc, transformedN)
 
-  for g in m.g.graph.procGlobals:
-    genStmts(m.preInitProc, g)
+  var procGloals = move m.g.graph.procGlobals
+  while true:
+    if procGloals.len == 0:
+      procGloals = move m.g.graph.procGlobals
+      if procGloals.len == 0:
+        break
+    genStmts(m.preInitProc, procGloals.pop())
 
 proc shouldRecompile(m: BModule; code: Rope, cfile: Cfile): bool =
   if optForceFullMake notin m.config.globalOptions:
