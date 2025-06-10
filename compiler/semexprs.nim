@@ -1947,7 +1947,9 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
   of nkDotExpr:
     # r.f = x
     # --> `f=` (r, x)
-    let nOrig = n#.copyTree
+    #let nOrig = #n.copyTree
+    let nOrig = shallowCopy(n)
+    for i in 0 ..< n.len: nOrig[i] = n[i]
     var flags = {efLValue}
     let initialDerefDepth = hiddenDerefDepth(a[0])
     a = builtinFieldAccess(c, a, flags)
