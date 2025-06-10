@@ -1114,7 +1114,7 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType
     if n.len == 1: return semObjConstr(c, n, flags, expectedType)
     return semConv(c, n, flags)
 
-  let nOrig = n.copyTree
+  let nOrig = n#.copyTree
   semOpAux(c, n)
   if t != nil and t.kind == tyProc:
     # This is a proc variable, apply normal overload resolution
@@ -1179,7 +1179,7 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType
 
 proc semDirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType = nil): PNode =
   # this seems to be a hotspot in the compiler!
-  let nOrig = n.copyTree
+  let nOrig = n#.copyTree
   #semLazyOpAux(c, n)
   result = semOverloadedCallAnalyseEffects(c, n, nOrig, flags, expectedType)
   if result != nil: result = afterCallActions(c, result, nOrig, flags, expectedType)
@@ -1947,7 +1947,7 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
   of nkDotExpr:
     # r.f = x
     # --> `f=` (r, x)
-    let nOrig = n.copyTree
+    let nOrig = n#.copyTree
     var flags = {efLValue}
     let initialDerefDepth = hiddenDerefDepth(a[0])
     a = builtinFieldAccess(c, a, flags)
@@ -1981,10 +1981,10 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
     # a{i} = x -->  `{}=`(a, i, x)
     # no builtin behavior/magic overloads for curly subscript,
     # try `{}=` overloads first then try `{}` overloads for LHS:
-    let nOrig = n.copyTree
+    let nOrig = n#.copyTree
     result = buildOverloadedSubscripts(n[0], getIdent(c.cache, "{}="))
     result.add(n[1])
-    result = semOverloadedCallAnalyseEffects(c, result, result.copyTree, {efNoUndeclared})
+    result = semOverloadedCallAnalyseEffects(c, result, result#[.copyTree]#, {efNoUndeclared})
     if result != nil:
       result = afterCallActions(c, result, nOrig, {})
       return
