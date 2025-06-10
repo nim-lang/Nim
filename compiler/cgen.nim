@@ -1234,7 +1234,9 @@ proc allPathsAsgnResult(p: BProc; n: PNode): InitResultEnum =
       else:
         allPathsInBranch(n[i].lastSon)
   of nkCallKinds:
-    if canRaiseDisp(p, n[0]):
+    if canRaiseDisp(p, n[0]) or
+        (n[0].kind == nkSym and sfNoReturn in n[0].sym.flags):
+      # requires initializations when encountering unreachable code
       result = InitRequired
     else:
       for i in 0..<n.safeLen:
