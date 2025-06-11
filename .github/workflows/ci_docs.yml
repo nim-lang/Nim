@@ -43,7 +43,7 @@ jobs:
           - target: linux
             os: ubuntu-22.04
           - target: windows
-            os: windows-2019
+            os: windows-latest
           - target: osx
             os: macos-13
 
