@@ -1292,7 +1292,9 @@ proc readTypeParameter(c: PContext, typ: PType,
             # This seems semantically correct and then we'll be able
             # to return the section symbol directly here
             let foundType = makeTypeDesc(c, def[2].typ)
-            return newSymNode(copySym(def[0].sym, c.idgen).linkTo(foundType), info)
+            let s = copySym(def[0].sym, c.idgen)
+            s.typ = foundType
+            return newSymNode(s, info)
 
       of nkConstSection:
         for def in statement:
@@ -1317,7 +1319,9 @@ proc readTypeParameter(c: PContext, typ: PType,
             return c.graph.emptyNode
         else:
           let foundTyp = makeTypeDesc(c, rawTyp)
-          return newSymNode(copySym(tParam.sym, c.idgen).linkTo(foundTyp), info)
+          let s = copySym(tParam.sym, c.idgen)
+          s.typ = foundTyp
+          return newSymNode(s, info)
 
   return nil
 
