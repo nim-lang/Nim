@@ -538,3 +538,16 @@ block: # https://forum.nim-lang.org/t/12522, backticks
   type Test = object
     field {.`mypragma`.}: int
   doAssert Test().field.hasCustomPragma(mypragma)
+
+
+block:
+  template p {.pragma.}
+
+  proc foo[T0](v: T0): bool =
+    type T = T0
+    echo T.hasCustomPragma(p)
+    echo T0.hasCustomPragma(p)
+    result = false
+
+  type X {.p.} = object
+  discard $foo(X())

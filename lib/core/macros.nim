@@ -1578,6 +1578,14 @@ proc extractTypeImpl(n: NimNode): NimNode =
 proc customPragmaNode(n: NimNode): NimNode =
   result = nil
   expectKind(n, {nnkSym, nnkDotExpr, nnkBracketExpr, nnkTypeOfExpr, nnkType, nnkCheckedFieldExpr})
+
+  var n = n
+
+  if n.kind == nnkSym:
+    let impl = getImpl(n)
+    if impl.kind == nnkTypeDef and impl[0].typeKind == ntyAlias:
+      n = getType(n)[1]
+
   let
     typ = n.getTypeInst()
 
