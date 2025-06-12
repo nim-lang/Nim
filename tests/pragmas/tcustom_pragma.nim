@@ -543,11 +543,11 @@ block: # https://forum.nim-lang.org/t/12522, backticks
 block:
   template p {.pragma.}
 
-  proc foo[T0](v: T0): bool =
+  template p {.pragma.}
+
+  func foo[T0](v: T0): bool =
     type T = T0
-    echo T.hasCustomPragma(p)
-    echo T0.hasCustomPragma(p)
-    result = false
+    T.hasCustomPragma(p)
 
   type X {.p.} = object
-  discard $foo(X())
+  doAssert foo(X())
