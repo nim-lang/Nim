@@ -1579,15 +1579,12 @@ proc customPragmaNode(n: NimNode): NimNode =
   result = nil
   expectKind(n, {nnkSym, nnkDotExpr, nnkBracketExpr, nnkTypeOfExpr, nnkType, nnkCheckedFieldExpr})
 
-  var n = n
-
-  if n.kind == nnkSym:
+  var typ = n.getTypeInst()
+  if n.kind == nnkSym and n.symKind == nskType:
     let impl = getImpl(n)
     if impl.kind == nnkTypeDef and impl[0].typeKind == ntyAlias:
-      n = getType(n)[1]
-
-  let
-    typ = n.getTypeInst()
+      # use getType to skip alias types
+      typ = getType(n)
 
   if typ.kind == nnkBracketExpr and typ.len > 1 and typ[1].kind == nnkProcTy:
     return typ[1][1]
