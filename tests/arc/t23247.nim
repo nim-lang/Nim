@@ -50,3 +50,16 @@ var nim_gc_mem_bytes = Gauge()
 let threadID = $getThreadId()
 setGauge(nim_gc_mem_bytes, @[threadID])
 setGauge(nim_gc_mem_bytes, @[threadID])
+
+
+type
+  Callback*[C] = proc(value: sink C): uint
+  Person = object
+
+proc invoke[C](target: Callback[C], values: sink C): uint =
+  return target(values)
+
+proc operation(value: sink (Person, string, int)): uint =
+  return 123
+
+doAssert invoke(operation, (Person(), "Jack", 25)) == 123
