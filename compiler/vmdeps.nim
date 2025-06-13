@@ -74,7 +74,7 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
   var allowRecursion = allowRecursionX
   template atomicType(name, m): untyped = atomicTypeX(cache, name, m, t, info, idgen)
   template atomicType(s): untyped = atomicTypeX(s, info)
-  template mapTypeToAst(t, info): untyped = mapTypeToAstX(cache, t, info, idgen, inst, skipAlias = skipAlias)
+  template mapTypeToAst(t, info): untyped = mapTypeToAstX(cache, t, info, idgen, inst)
   template mapTypeToAstR(t, info): untyped = mapTypeToAstX(cache, t, info, idgen, inst, true)
   template mapTypeToAst(t, i, info): untyped =
     if i<t.len and t[i]!=nil: mapTypeToAstX(cache, t[i], info, idgen, inst)
@@ -125,7 +125,7 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
     if t.base != nil:
       result = newNodeIT(nkBracketExpr, if t.n.isNil: info else: t.n.info, t)
       result.add atomicType("typeDesc", mTypeDesc)
-      result.add mapTypeToAst(t.base, info)
+      result.add mapTypeToAstX(cache, t.base, info, idgen, inst, skipAlias = skipAlias)
     else:
       result = atomicType("typeDesc", mTypeDesc)
   of tyGenericInvocation:
