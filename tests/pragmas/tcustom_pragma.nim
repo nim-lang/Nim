@@ -543,8 +543,6 @@ block: # https://forum.nim-lang.org/t/12522, backticks
 block:
   template p {.pragma.}
 
-  template p {.pragma.}
-
   func foo[T0](v: T0): bool =
     type T = T0
     T.hasCustomPragma(p)
