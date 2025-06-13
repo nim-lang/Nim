@@ -154,7 +154,7 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
     else:
       result = mapTypeToAst(t.typeBodyImpl, info)
   of tyAlias:
-    result = mapTypeToAstX(cache, t.skipModifier, info, idgen, inst, allowRecursion)
+    result = mapTypeToAstX(cache, t.skipModifier, info, idgen, inst, allowRecursion, skipAlias = skipAlias)
   of tyOrdinal:
     result = mapTypeToAst(t.skipModifier, info)
   of tyDistinct:
