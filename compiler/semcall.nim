@@ -581,7 +581,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
   let overloadsState = result.state
   if overloadsState != csMatch:
     if nfDotField in n.flags:
-      internalAssert c.config, f.kind == nkIdent and n.len >= 2
+      internalAssert c.config, f.kind in nkIdentKinds and n.len >= 2
 
       # leave the op head symbol empty,
       # we are going to try multiple variants
