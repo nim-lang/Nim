@@ -198,7 +198,8 @@ proc checkForErrorPragma(c: Con; t: PType; ri: PNode; opname: string; inferredFr
   if inferredFromCopy:
     m.add ", which is inferred from unavailable '=copy'"
 
-  if (opname == "=" or opname == "=copy" or opname == "=dup") and ri != nil:
+  if (opname == "=" or opname == "=copy" or opname == "=dup") and
+       ri != nil:
     m.add "; requires a copy because it's not the last read of '"
     m.add renderTree(ri)
     m.add '\''
@@ -248,7 +249,12 @@ proc genOp(c: var Con; t: PType; kind: TTypeAttachedOp; dest, ri: PNode): PNode 
   dbg:
     if kind == attachedDestructor:
       echo "destructor is ", op.id, " ", op.ast
-  if sfError in op.flags: checkForErrorPragma(c, t, ri, AttachedOpToStr[kind])
+  if sfError in op.flags:
+    if ri != nil:
+      checkForErrorPragma(c, t, ri, AttachedOpToStr[kind])
+    else:
+      # uses the lineinfos of `dest` is `ri` is not available
+      checkForErrorPragma(c, t, dest, AttachedOpToStr[kind])
   c.genOp(op, dest)
 
 proc genDestroy(c: var Con; dest: PNode): PNode =
