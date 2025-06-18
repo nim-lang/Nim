@@ -14,6 +14,8 @@ at offset 0 then. The ``ref`` object header is independent from the
 runtime type and only contains a reference count.
 ]#
 
+{.push raises: [].}
+
 when defined(gcOrc):
   const
     rcIncrement = 0b10000 # so that lowest 4 bits are not touched
@@ -239,3 +241,5 @@ template tearDownForeignThreadGc* =
 
 proc isObjDisplayCheck(source: PNimTypeV2, targetDepth: int16, token: uint32): bool {.compilerRtl, inl.} =
   result = targetDepth <= source.depth and source.display[targetDepth] == token
+
+{.pop.} # raises: []
