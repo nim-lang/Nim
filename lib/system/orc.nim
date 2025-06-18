@@ -14,6 +14,8 @@
 # R.D. Lins / Information Processing Letters 109 (2008) 71–78
 #
 
+{.push raises: [].}
+
 include cellseqs_v2
 
 const
@@ -545,3 +547,5 @@ proc nimDecRefIsLastCyclicStatic(p: pointer; desc: PNimTypeV2): bool {.compilerR
       dec cell.rc, rcIncrement
     #if cell.color == colPurple:
     rememberCycle(result, cell, desc)
+
+{.pop.} # raises: []
