@@ -62,6 +62,7 @@ comparisons).
 ]#
 
 {.push profiler:off.}
+{.push raises: [].}
 
 const
   CycleIncrease = 2 # is a multiplicative increase
@@ -914,4 +915,5 @@ when not defined(useNimRtl):
         result.add "[GC] stack bottom: " & gch.stack.bottom.repr
       result.add "[GC] max stack size: " & $gch.stat.maxStackSize & "\n"
 
+{.pop.} # raises: []
 {.pop.} # profiler: off, stackTrace: off
