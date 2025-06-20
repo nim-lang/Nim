@@ -1568,8 +1568,11 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
             # set['a'..'z'] and set[char] have different representations
             result = isNone
           else:
-            # but we can convert individual elements of the constructor
-            result = isConvertible
+            if result >= isConvertible:
+              # but we can convert individual elements of the constructor
+              result = isConvertible
+            else:
+              result = isNone
   of tyPtr, tyRef:
     a = reduceToBase(a)
     if a.kind == f.kind:
