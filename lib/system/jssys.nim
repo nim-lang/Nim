@@ -72,8 +72,10 @@ proc getCurrentExceptionMsg*(): string =
 proc setCurrentException*(exc: ref Exception) =
   lastJSError = cast[PJSError](exc)
 
-proc closureIterSetupExc(e: ref Exception) {.compilerproc, inline.} =
-  ## Used to set up exception handling for closure iterators
+proc pushCurrentException(e: sink(ref Exception)) {.compilerRtl, inline.} =
+  ## Used to set up exception handling for closure iterators.
+
+  # XXX Shouldn't there be exception stack like in excpt.nim?
   setCurrentException(e)
 
 proc auxWriteStackTrace(f: PCallFrame): string =

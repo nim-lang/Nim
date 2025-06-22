@@ -161,9 +161,6 @@ proc popCurrentException {.compilerRtl, inl.} =
 proc popCurrentExceptionEx(id: uint) {.compilerRtl.} =
   discard "only for bootstrapping compatbility"
 
-proc closureIterSetupExc(e: ref Exception) {.compilerproc, inline.} =
-  currException = e
-
 # some platforms have native support for stack traces:
 const
   nativeStackTraceSupported = (defined(macosx) or defined(linux)) and
@@ -464,11 +461,9 @@ proc raiseExceptionAux(e: sink(ref Exception)) {.nodestroy.} =
   if globalRaiseHook != nil:
     if not globalRaiseHook(e): return
   when defined(cpp) and not defined(noCppExceptions) and not gotoBasedExceptions:
-    if e == currException:
-      {.emit: "throw;".}
-    else:
+    if e != currException:
       pushCurrentException(e)
-      {.emit: "throw `e`;".}
+    {.emit: "throw `e`;".}
   elif quirkyExceptions or gotoBasedExceptions:
     pushCurrentException(e)
     when gotoBasedExceptions:
