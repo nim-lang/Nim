@@ -21,14 +21,22 @@ when defined(windows):
   type
     clong* {.importc: "long", nodecl.} = int32
       ## This is the same as the type `long` in *C*.
+      ##
+      ## .. warning:: OS-dependent: `int` on non-Windows.
     culong* {.importc: "unsigned long", nodecl.} = uint32
       ## This is the same as the type `unsigned long` in *C*.
+      ##
+      ## .. warning:: OS-dependent: `uint` on non-Windows.
 else:
   type
     clong* {.importc: "long", nodecl.} = int
       ## This is the same as the type `long` in *C*.
+      ##
+      ## .. warning:: OS-dependent: `int32` on Windows.
     culong* {.importc: "unsigned long", nodecl.} = uint
       ## This is the same as the type `unsigned long` in *C*.
+      ##
+      ## .. warning:: OS-dependent: `uint32` on Windows.
 
 type # these work for most platforms:
   cchar* {.importc: "char", nodecl.} = char
