@@ -19,8 +19,9 @@ type
 
 when defined(nimdoc):
   type
-    ImplDefined = distinct object
-    clong* = ImplDefined
+    ClongImpl = (when defined(windows): int32 else: int)
+    CulongImpl = (when defined(windows): uint32 else: uint)
+    clong* = ClongImpl
       ## Represents the *C* `long` type, used for interoperability.
       ##
       ## Its purpose is to match the *C* `long` for the target
@@ -35,7 +36,7 @@ when defined(nimdoc):
       ##
       ## .. warning:: The underlying Nim type is an implementation detail and
       ##    should not be relied upon.
-    culong* = ImplDefined
+    culong* = CulongImpl
       ## Represents the *C* `unsigned long` type, used for interoperability.
       ##
       ## Its purpose is to match the *C* `unsigned long` for the target
@@ -80,8 +81,7 @@ type # these work for most platforms:
     ## This is the same as the type `long double` in *C*.
     ## This C type is not supported by Nim's code generator.
 
-  cuchar* {.importc: "unsigned char", nodecl, deprecated: "use `char` or `uint8` instead".} = char
-    ## Deprecated: Use `uint8` instead.
+  cuchar* {.importc: "unsigned char", nodecl, deprecated: "Use `char` or `uint8` instead".} = char
   cushort* {.importc: "unsigned short", nodecl.} = uint16
     ## This is the same as the type `unsigned short` in *C*.
   cuint* {.importc: "unsigned int", nodecl.} = uint32
