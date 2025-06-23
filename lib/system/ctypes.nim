@@ -17,26 +17,47 @@ type
     ## supports. Currently this is `uint64`, but it is platform-dependent
     ## in general.
 
-when defined(windows):
+when defined(nimdoc):
+  type
+    ImplDefined = distinct object
+    clong* = ImplDefined
+      ## Represents the *C* `long` type, used for interoperability.
+      ##
+      ## Its purpose is to match the *C* `long` for the target
+      ## platform's Application Binary Interface (ABI).
+      ##
+      ## Typically, the compiler resolves it to one of the following Nim types
+      ## based on the target:
+      ## - `int32 <system.html#int32>`_ on Windows using MSVC or MinGW compilers.
+      ## - `int <system.html#int>`_ on Linux, macOS and other platforms that use the
+      ##    LP64 or ILP32 `data models
+      ## <https://en.wikipedia.org/wiki/64-bit_computing#64-bit_data_models>`_.
+      ##
+      ## .. warning:: The underlying Nim type is an implementation detail and
+      ##    should not be relied upon.
+    culong* = ImplDefined
+      ## Represents the *C* `unsigned long` type, used for interoperability.
+      ##
+      ## Its purpose is to match the *C* `unsigned long` for the target
+      ## platform's Application Binary Interface (ABI).
+      ##
+      ## Typically, the compiler resolves it to one of the following Nim types
+      ## based on the target:
+      ## - `uint32 <system.html#uint32>`_ on Windows using MSVC or MinGW compilers.
+      ## - `uint <system.html#uint>`_ on Linux, macOS and other platforms that use the
+      ##    LP64 or ILP32 `data models
+      ## <https://en.wikipedia.org/wiki/64-bit_computing#64-bit_data_models>`_.
+      ##
+      ## .. warning:: The underlying Nim type is an implementation detail and
+      ##    should not be relied upon.
+elif defined(windows):
   type
     clong* {.importc: "long", nodecl.} = int32
-      ## This is the same as the type `long` in *C*.
-      ##
-      ## .. warning:: OS-dependent: `int` on non-Windows.
     culong* {.importc: "unsigned long", nodecl.} = uint32
-      ## This is the same as the type `unsigned long` in *C*.
-      ##
-      ## .. warning:: OS-dependent: `uint` on non-Windows.
 else:
   type
     clong* {.importc: "long", nodecl.} = int
-      ## This is the same as the type `long` in *C*.
-      ##
-      ## .. warning:: OS-dependent: `int32` on Windows.
     culong* {.importc: "unsigned long", nodecl.} = uint
-      ## This is the same as the type `unsigned long` in *C*.
-      ##
-      ## .. warning:: OS-dependent: `uint32` on Windows.
 
 type # these work for most platforms:
   cchar* {.importc: "char", nodecl.} = char
