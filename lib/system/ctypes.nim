@@ -19,6 +19,8 @@ type
 
 when defined(nimdoc):
   type
+    # "Opaque" types defined only in the `nimdoc` branch to not show in error
+    # messages in regular code with `clong` and `culong` resolving to base types
     ClongImpl = (when defined(windows): int32 else: int)
     CulongImpl = (when defined(windows): uint32 else: uint)
     clong* = ClongImpl
