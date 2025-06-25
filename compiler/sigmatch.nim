@@ -2328,7 +2328,8 @@ proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
       # it is correct
       var param: PNode = nil
       if srca == isSubtype:
-        param = implicitConv(nkHiddenSubConv, src, copyTree(arg), m, c)
+        # convMatch used here to use its bindings to instantiate subtype:
+        param = implicitConv(nkHiddenSubConv, src, copyTree(arg), convMatch, c)
       elif src.kind in {tyVar}:
         # Analyse the converter return type.
         param = newNodeIT(nkHiddenAddr, arg.info, s.typ.firstParamType)
