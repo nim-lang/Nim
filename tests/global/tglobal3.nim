@@ -41,3 +41,17 @@ block: # bug #24981
   type Foo = object
     i: int
   m(Foo)
+
+block: # bug #24997
+  type R = ref object
+  type B = object
+    j: int
+  proc y(T: type): R
+  proc u(T: type): R =
+    let res {.global.} = y(T)
+    res
+  proc y(T: type): R =
+    when T is object:
+      doAssert not isNil(u(typeof(B.j)))
+    R()
+  discard u(B)
