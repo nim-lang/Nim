@@ -42,7 +42,7 @@ proc atomicTypeX(s: PSym; info: TLineInfo): PNode =
   result.info = info
 
 proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo; idgen: IdGenerator;
-                   inst=false; allowRecursionX=false): PNode
+                   inst=false; allowRecursionX=false; skipAlias = false): PNode
 
 proc mapTypeToBracketX(cache: IdentCache; name: string; m: TMagic; t: PType; info: TLineInfo;
                        idgen: IdGenerator;
@@ -70,7 +70,7 @@ proc objectNode(cache: IdentCache; n: PNode; idgen: IdGenerator): PNode =
 
 proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
                    idgen: IdGenerator;
-                   inst=false; allowRecursionX=false): PNode =
+                   inst=false; allowRecursionX=false; skipAlias = false): PNode =
   var allowRecursion = allowRecursionX
   template atomicType(name, m): untyped = atomicTypeX(cache, name, m, t, info, idgen)
   template atomicType(s): untyped = atomicTypeX(s, info)
@@ -91,7 +91,8 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
     id
   template newIdentDefs(s): untyped = newIdentDefs(s, s.typ)
 
-  if inst and not allowRecursion and t.sym != nil:
+  if inst and not allowRecursion and t.sym != nil and
+      not (skipAlias and t.kind == tyAlias):
     # getTypeInst behavior: return symbol
     return atomicType(t.sym)
 
@@ -124,7 +125,7 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
     if t.base != nil:
       result = newNodeIT(nkBracketExpr, if t.n.isNil: info else: t.n.info, t)
       result.add atomicType("typeDesc", mTypeDesc)
-      result.add mapTypeToAst(t.base, info)
+      result.add mapTypeToAstX(cache, t.base, info, idgen, inst, skipAlias = skipAlias)
     else:
       result = atomicType("typeDesc", mTypeDesc)
   of tyGenericInvocation:
@@ -153,7 +154,7 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
     else:
       result = mapTypeToAst(t.typeBodyImpl, info)
   of tyAlias:
-    result = mapTypeToAstX(cache, t.skipModifier, info, idgen, inst, allowRecursion)
+    result = mapTypeToAstX(cache, t.skipModifier, info, idgen, inst, allowRecursion, skipAlias = skipAlias)
   of tyOrdinal:
     result = mapTypeToAst(t.skipModifier, info)
   of tyDistinct:
@@ -325,8 +326,9 @@ proc opMapTypeToAst*(cache: IdentCache; t: PType; info: TLineInfo; idgen: IdGene
 
 # the "Inst" version includes generic parameters in the resulting type tree
 # and also tries to look like the corresponding Nim type declaration
-proc opMapTypeInstToAst*(cache: IdentCache; t: PType; info: TLineInfo; idgen: IdGenerator): PNode =
-  result = mapTypeToAstX(cache, t, info, idgen, inst=true, allowRecursionX=false)
+proc opMapTypeInstToAst*(cache: IdentCache; t: PType; info: TLineInfo; idgen: IdGenerator; skipAlias = false): PNode =
+  # skipAlias: skips aliases and typedesc
+  result = mapTypeToAstX(cache, t, info, idgen, inst=true, allowRecursionX=false, skipAlias = skipAlias)
 
 # the "Impl" version includes generic parameters in the resulting type tree
 # and also tries to look like the corresponding Nim type implementation

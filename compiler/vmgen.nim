@@ -1337,7 +1337,8 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}, m: TMag
       of "getType": 0
       of "typeKind": 1
       of "getTypeInst": 2
-      else: 3  # "getTypeImpl"
+      of "getTypeImpl": 3  # "getTypeImpl"
+      else: 4 # getTypeInstSkipAlias
     c.gABC(n, opcNGetType, dest, tmp, rc)
     c.freeTemp(tmp)
     #genUnaryABC(c, n, dest, opcNGetType)
