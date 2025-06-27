@@ -538,3 +538,14 @@ block: # https://forum.nim-lang.org/t/12522, backticks
   type Test = object
     field {.`mypragma`.}: int
   doAssert Test().field.hasCustomPragma(mypragma)
+
+
+block:
+  template p {.pragma.}
+
+  func foo[T0](v: T0): bool =
+    type T = T0
+    T.hasCustomPragma(p)
+
+  type X {.p.} = object
+  doAssert foo(X())

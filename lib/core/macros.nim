@@ -1575,11 +1575,14 @@ proc extractTypeImpl(n: NimNode): NimNode =
     result = n[2]
   else: error("Invalid node to retrieve type implementation of: " & $n.kind)
 
+
+proc getTypeInstSkipAlias(n: NimNode): NimNode {.magic: "NGetType", noSideEffect.}
+
 proc customPragmaNode(n: NimNode): NimNode =
   result = nil
   expectKind(n, {nnkSym, nnkDotExpr, nnkBracketExpr, nnkTypeOfExpr, nnkType, nnkCheckedFieldExpr})
-  let
-    typ = n.getTypeInst()
+
+  let typ = n.getTypeInstSkipAlias()
 
   if typ.kind == nnkBracketExpr and typ.len > 1 and typ[1].kind == nnkProcTy:
     return typ[1][1]
