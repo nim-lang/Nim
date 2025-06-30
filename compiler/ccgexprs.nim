@@ -2214,7 +2214,7 @@ proc isTrivialTypesToSnippet(t: PType): Snippet =
   else:
     result = NimTrue
 
-proc genSetLengthSeq(p: BProc, e: PNode, d: var TLoc) =
+proc genSetLengthSeq(p: BProc, e: PNode, d: var TLoc, noinit = false) =
   if optSeqDestructors in p.config.globalOptions:
     e[1] = makeAddr(e[1], p.module.idgen)
     genCall(p, e, d)
@@ -2236,7 +2236,9 @@ proc genSetLengthSeq(p: BProc, e: PNode, d: var TLoc) =
     pExpr = cIfExpr(ra, cAddr(derefField(ra, "Sup")), NimNil)
   else:
     pExpr = ra
-  call.snippet = cCast(rt, cgCall(p, "setLengthSeqV2", pExpr, rti, rb,
+
+  let name = if noinit: "setLengthSeqUninit" else: "setLengthSeqV2"
+  call.snippet = cCast(rt, cgCall(p, name, pExpr, rti, rb,
           isTrivialTypesToSnippet(t.skipTypes(abstractInst)[0])))
 
   genAssignment(p, a, call, {})
@@ -2975,6 +2977,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       p.s(cpsStmts).addCallStmt(cgsymValue(p.module, "nimGCunref"), ra)
   of mSetLengthStr: genSetLengthStr(p, e, d)
   of mSetLengthSeq: genSetLengthSeq(p, e, d)
+  of mSetLengthSeqUninit: genSetLengthSeq(p, e, d, noinit = true)
   of mIncl, mExcl, mCard, mLtSet, mLeSet, mEqSet, mMulSet, mPlusSet, mMinusSet,
      mInSet, mXorSet:
     genSetOp(p, e, d, op)
