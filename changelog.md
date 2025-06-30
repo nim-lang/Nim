@@ -33,6 +33,8 @@ errors.
 - `strutils.multiReplace` overload for character set replacements in a single pass.
 	Useful for string sanitation. Follows existing multiReplace semantics.
 
+- `system.setLenUninit` now supports refc, JS and VM backends.
+
 [//]: # "Changes:"
 
 - `std/math` The `^` symbol now supports floating-point as exponent in addition to the Natural type.
