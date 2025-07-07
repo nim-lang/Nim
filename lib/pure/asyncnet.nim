@@ -468,48 +468,6 @@ proc send*(socket: AsyncSocket, data: string,
   else:
     await send(socket.fd.AsyncFD, data, flags)
 
-proc acceptAddr*(socket: AsyncSocket, flags = {SocketFlag.SafeDisconn},
-                 inheritable = defined(nimInheritHandles)):
-      owned(Future[tuple[address: string, client: AsyncSocket]]) =
-  ## Accepts a new connection. Returns a future containing the client socket
-  ## corresponding to that connection and the remote address of the client.
-  ##
-  ## If `inheritable` is false (the default), the resulting client socket will
-  ## not be inheritable by child processes.
-  ##
-  ## The future will complete when the connection is successfully accepted.
-  var retFuture = newFuture[tuple[address: string, client: AsyncSocket]]("asyncnet.acceptAddr")
-  var fut = acceptAddr(socket.fd.AsyncFD, flags, inheritable)
-  fut.callback =
-    proc (future: Future[tuple[address: string, client: AsyncFD]]) =
-      assert future.finished
-      if future.failed:
-        retFuture.fail(future.readError)
-      else:
-        let resultTup = (future.read.address,
-                         newAsyncSocket(future.read.client, socket.domain,
-                         socket.sockType, socket.protocol, socket.isBuffered, inheritable))
-        retFuture.complete(resultTup)
-  return retFuture
-
-proc accept*(socket: AsyncSocket,
-    flags = {SocketFlag.SafeDisconn}): owned(Future[AsyncSocket]) =
-  ## Accepts a new connection. Returns a future containing the client socket
-  ## corresponding to that connection.
-  ## If `inheritable` is false (the default), the resulting client socket will
-  ## not be inheritable by child processes.
-  ## The future will complete when the connection is successfully accepted.
-  var retFut = newFuture[AsyncSocket]("asyncnet.accept")
-  var fut = acceptAddr(socket, flags)
-  fut.callback =
-    proc (future: Future[tuple[address: string, client: AsyncSocket]]) =
-      assert future.finished
-      if future.failed:
-        retFut.fail(future.readError)
-      else:
-        retFut.complete(future.read.client)
-  return retFut
-
 proc recvLineInto*(socket: AsyncSocket, resString: FutureVar[string],
     flags = {SocketFlag.SafeDisconn}, maxLength = MaxLineLength) {.async.} =
   ## Reads a line of data from `socket` into `resString`.
@@ -807,6 +765,48 @@ when defineSsl:
       result = newSeq[Certificate]()
     else:
       result = getPeerCertificates(socket.sslHandle)
+
+
+proc acceptAddr*(socket: AsyncSocket, flags = {SocketFlag.SafeDisconn},
+                 inheritable = defined(nimInheritHandles)):
+      owned(Future[tuple[address: string, client: AsyncSocket]]) {.async.} =
+  ## Accepts a new connection. Returns a future containing the client socket
+  ## corresponding to that connection and the remote address of the client.
+  ##
+  ## If `inheritable` is false (the default), the resulting client socket will
+  ## not be inheritable by child processes.
+  ##
+  ## The future will complete when the connection is successfully accepted.
+  let (address, fd) = await acceptAddr(socket.fd.AsyncFD, flags, inheritable)
+  let client = newAsyncSocket(fd, socket.domain, socket.sockType,
+                              socket.protocol, socket.isBuffered, inheritable)
+  result = (address, client)
+  if socket.isSsl:
+    when defineSsl:
+      if socket.sslContext == nil:
+        raiseSSLError("The SSL Context is closed/unset")
+      wrapSocket(socket.sslContext, result.client)
+      if result.client.sslHandle == nil:
+        raiseSslHandleError()
+      let flags = {SocketFlag.SafeDisconn}
+      sslLoop(result.client, flags, SSL_accept(result.client.sslHandle))
+proc accept*(socket: AsyncSocket,
+    flags = {SocketFlag.SafeDisconn}): owned(Future[AsyncSocket]) =
+  ## Accepts a new connection. Returns a future containing the client socket
+  ## corresponding to that connection.
+  ## If `inheritable` is false (the default), the resulting client socket will
+  ## not be inheritable by child processes.
+  ## The future will complete when the connection is successfully accepted.
+  var retFut = newFuture[AsyncSocket]("asyncnet.accept")
+  var fut = acceptAddr(socket, flags)
+  fut.callback =
+    proc (future: Future[tuple[address: string, client: AsyncSocket]]) =
+      assert future.finished
+      if future.failed:
+        retFut.fail(future.readError)
+      else:
+        retFut.complete(future.read.client)
+  return retFut
 
 proc getSockOpt*(socket: AsyncSocket, opt: SOBool, level = SOL_SOCKET): bool {.
   tags: [ReadIOEffect].} =
