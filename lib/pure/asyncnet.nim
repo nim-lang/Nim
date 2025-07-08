@@ -130,7 +130,7 @@ type
     domain: Domain
     sockType: SockType
     protocol: Protocol
-    writers, readers: seq[Future[bool]]  # workaorund #25034
+    writers, readers: seq[Future[bool]]  # workaround #25034
   AsyncSocket* = ref AsyncSocketDesc
 
 proc newAsyncSocket*(fd: AsyncFD, domain: Domain = AF_INET,
