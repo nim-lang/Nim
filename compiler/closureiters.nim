@@ -850,6 +850,9 @@ proc newEndFinallyNode(ctx: var Ctx, info: TLineInfo): PNode =
                            newSymNode(getClosureIterResult(ctx.g, ctx.fn, ctx.idgen), info),
                            ctx.newTmpResultAccess())
       newTree(nkReturnStmt, retValue)
+
+  # XXX: nfNoRewrite flag is also used for term rewriting, which should not intersect
+  # with how it is used in closureiters transformation
   retStmt.flags.incl(nfNoRewrite)
 
   let ifBody = newTree(nkIfStmt,
@@ -1044,7 +1047,6 @@ proc transformClosureIteratorBody(ctx: var Ctx, n: PNode, gotoOut: PNode): PNode
     discard ctx.finallyPathStack.pop()
 
   of nkTryStmt, nkHiddenTryStmt:
-    # echo "TRY: ", renderTree(n)
     # See explanation above about how this works
     ctx.hasExceptions = true
 
