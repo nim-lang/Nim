@@ -130,6 +130,7 @@ type
     domain: Domain
     sockType: SockType
     protocol: Protocol
+    writers, readers: seq[Future[bool]]
   AsyncSocket* = ref AsyncSocketDesc
 
 proc newAsyncSocket*(fd: AsyncFD, domain: Domain = AF_INET,
@@ -249,15 +250,23 @@ when defineSsl:
     let retFut = newFuture[bool]("asyncnet.handleSslFailure")
     case sslError
     of SSL_ERROR_WANT_WRITE, SSL_ERROR_WANT_CONNECT, SSL_ERROR_WANT_ACCEPT:
-      addWrite(socket.fd.AsyncFD, proc (sock: AsyncFD): bool =
-        retFut.complete(true)
-        return true
-      )
+      socket.writers.add retFut
+      if socket.writers.len == 1:
+        addWrite(socket.fd.AsyncFD, proc (sock: AsyncFD): bool =
+          for f in socket.writers:
+            f.complete(true)
+          socket.writers.setLen 0
+          return true
+        )
     of SSL_ERROR_WANT_READ:
-      addRead(socket.fd.AsyncFD, proc (sock: AsyncFD): bool =
-        retFut.complete(true)
-        return true
-      )
+      socket.readers.add retFut
+      if socket.readers.len == 1:
+        addRead(socket.fd.AsyncFD, proc (sock: AsyncFD): bool =
+          for f in socket.readers:
+            f.complete(true)
+          socket.readers.setLen 0
+          return true
+        )
     of SSL_ERROR_SYSCALL:
       assert flags.isDisconnectionError(osLastError())
       retFut.complete(false)
