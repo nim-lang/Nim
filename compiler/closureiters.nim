@@ -944,19 +944,19 @@ proc transformReturnStmt(ctx: var Ctx, n: PNode): PNode =
     # There are no (split) finallies on the path, so we can return right away
     result.add(n)
 
-proc transformBreaksContinuesAndReturns(ctx: var Ctx, n: PNode): PNode =
+proc transformBreaksAndReturns(ctx: var Ctx, n: PNode): PNode =
   result = n
   case n.kind
   of nkSkip: discard
   of nkBreakStmt: result = ctx.transformBreakStmt(n)
-  of nkContinueStmt:
-    internalError(ctx.g.config, n.info, "Continue not lowered")
+  # of nkContinueStmt: # By this point all relevant continues should be
+  # lowered to breaks in transf.nim.
   of nkReturnStmt:
     if ctx.curFinallyLevel > 0 and nfNoRewrite notin n.flags:
       result = ctx.transformReturnStmt(n)
   else:
     for i in 0..<n.len:
-      n[i] = ctx.transformBreaksContinuesAndReturns(n[i])
+      n[i] = ctx.transformBreaksAndReturns(n[i])
 
 proc transformClosureIteratorBody(ctx: var Ctx, n: PNode, gotoOut: PNode): PNode =
   result = n
@@ -982,7 +982,7 @@ proc transformClosureIteratorBody(ctx: var Ctx, n: PNode, gotoOut: PNode): PNode
           internalError(ctx.g.config, "transformClosureIteratorBody != s")
         break
       else:
-        n[i] = ctx.transformBreaksContinuesAndReturns(n[i])
+        n[i] = ctx.transformBreaksAndReturns(n[i])
 
   of nkYieldStmt:
     result = addGotoOut(result, gotoOut)
