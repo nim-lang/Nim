@@ -126,6 +126,8 @@ type
     when defineSsl:
       sslHandle: SslPtr
       sslContext: SslContext
+      bioIn: BIO
+      bioOut: BIO
       sslNoShutdown: bool
     domain: Domain
     sockType: SockType
@@ -208,7 +210,7 @@ when defineSsl:
   proc raiseSslHandleError =
     raiseSSLError("The SSL Handle is closed/unset")
 
-  proc getSslError(socket: AsyncSocket, flags: set[SocketFlag], err: cint): cint =
+  proc getSslError(socket: AsyncSocket, err: cint): cint =
     assert socket.isSsl
     assert err < 0
     var ret = SSL_get_error(socket.sslHandle, err.cint)
@@ -221,49 +223,47 @@ when defineSsl:
       return ret
     of SSL_ERROR_WANT_X509_LOOKUP:
       raiseSSLError("Function for x509 lookup has been called.")
-    of SSL_ERROR_SYSCALL:
-      socket.sslNoShutdown = true
-      let osErr = osLastError()
-      if not flags.isDisconnectionError(osErr):
-        var errStr = "IO error has occurred"
-        let sslErr = ERR_peek_last_error()
-        if sslErr == 0 and err == 0:
-          errStr.add ' '
-          errStr.add "because an EOF was observed that violates the protocol"
-        elif sslErr == 0 and err == -1:
-          errStr.add ' '
-          errStr.add "in the BIO layer"
-        else:
-          let errStr = $ERR_error_string(sslErr, nil)
-          raiseSSLError(errStr & ": " & errStr)
-        raiseOSError(osErr, errStr)
-      else:
-        return ret
-    of SSL_ERROR_SSL:
+    of SSL_ERROR_SYSCALL, SSL_ERROR_SSL:
       socket.sslNoShutdown = true
       raiseSSLError()
     else: raiseSSLError("Unknown Error")
 
-  proc handleSslFailure(socket: AsyncSocket, flags: set[SocketFlag], sslError: cint): Future[bool] =
+  proc sendPendingSslData(socket: AsyncSocket,
+      flags: set[SocketFlag]) {.async.} =
+    if socket.sslHandle == nil:
+      raiseSslHandleError()
+    let len = bioCtrlPending(socket.bioOut)
+    if len > 0:
+      var data = newString(len)
+      let read = bioRead(socket.bioOut, cast[cstring](addr data[0]), len)
+      assert read != 0
+      if read < 0:
+        raiseSSLError()
+      data.setLen(read)
+      await socket.fd.AsyncFD.send(data, flags)
+
+  proc appeaseSsl(socket: AsyncSocket, flags: set[SocketFlag],
+                  sslError: cint): owned(Future[bool]) {.async.} =
     ## Returns `true` if `socket` is still connected, otherwise `false`.
-    let retFut = newFuture[bool]("asyncnet.handleSslFailure")
+    result = true
     case sslError
-    of SSL_ERROR_WANT_WRITE, SSL_ERROR_WANT_CONNECT, SSL_ERROR_WANT_ACCEPT:
-      addWrite(socket.fd.AsyncFD, proc (sock: AsyncFD): bool =
-        retFut.complete(true)
-        return true
-      )
+    of SSL_ERROR_WANT_WRITE:
+      await sendPendingSslData(socket, flags)
     of SSL_ERROR_WANT_READ:
-      addRead(socket.fd.AsyncFD, proc (sock: AsyncFD): bool =
-        retFut.complete(true)
-        return true
-      )
-    of SSL_ERROR_SYSCALL:
-      assert flags.isDisconnectionError(osLastError())
-      retFut.complete(false)
+      var data = await recv(socket.fd.AsyncFD, BufferSize, flags)
+      if socket.sslHandle == nil:
+        raiseSslHandleError()
+      let length = len(data)
+      if length > 0:
+        let ret = bioWrite(socket.bioIn, cast[cstring](addr data[0]), length.cint)
+        if ret < 0:
+          raiseSSLError()
+      elif length == 0:
+        # connection not properly closed by remote side or connection dropped
+        SSL_set_shutdown(socket.sslHandle, SSL_RECEIVED_SHUTDOWN)
+        result = false
     else:
-      raiseSSLError("Cannot handle SSL failure.")
-    return retFut
+      raiseSSLError("Cannot appease SSL.")
 
   template sslLoop(socket: AsyncSocket, flags: set[SocketFlag],
                    op: untyped) =
@@ -274,12 +274,20 @@ when defineSsl:
       ErrClearError()
       # Call the desired operation.
       opResult = op
+      let err =
+        if opResult < 0:
+          getSslError(socket, opResult.cint)
+        else:
+          SSL_ERROR_NONE
+      # Send any remaining pending SSL data.
+      await sendPendingSslData(socket, flags)
+
       # If the operation failed, try to see if SSL has some data to read
       # or write.
       if opResult < 0:
-        let err = getSslError(socket, flags, opResult.cint)
-        let connected = await handleSslFailure(socket, flags, err.cint)
-        if not connected:
+        let fut = appeaseSsl(socket, flags, err.cint)
+        yield fut
+        if not fut.read():
           # Socket disconnected.
           if SocketFlag.SafeDisconn in flags:
             opResult = 0.cint
@@ -315,7 +323,8 @@ proc connect*(socket: AsyncSocket, address: string, port: Port) {.async.} =
         discard SSL_set_tlsext_host_name(socket.sslHandle, address)
 
       let flags = {SocketFlag.SafeDisconn}
-      sslLoop(socket, flags, SSL_connect(socket.sslHandle))
+      sslSetConnectState(socket.sslHandle)
+      sslLoop(socket, flags, sslDoHandshake(socket.sslHandle))
 
 template readInto(buf: pointer, size: int, socket: AsyncSocket,
                   flags: set[SocketFlag]): int =
@@ -452,6 +461,7 @@ proc send*(socket: AsyncSocket, buf: pointer, size: int,
     when defineSsl:
       sslLoop(socket, flags,
               sslWrite(socket.sslHandle, cast[cstring](buf), size.cint))
+      await sendPendingSslData(socket, flags)
   else:
     await send(socket.fd.AsyncFD, buf, size, flags)
 
@@ -465,6 +475,7 @@ proc send*(socket: AsyncSocket, data: string,
       var copy = data
       sslLoop(socket, flags,
         sslWrite(socket.sslHandle, cast[cstring](addr copy[0]), copy.len.cint))
+      await sendPendingSslData(socket, flags)
   else:
     await send(socket.fd.AsyncFD, data, flags)
 
@@ -765,8 +776,9 @@ when defineSsl:
     if socket.sslHandle == nil:
       raiseSSLError()
 
-    if SSL_set_fd(socket.sslHandle, socket.fd) != 1:
-      raiseSSLError()
+    socket.bioIn = bioNew(bioSMem())
+    socket.bioOut = bioNew(bioSMem())
+    sslSetBio(socket.sslHandle, socket.bioIn, socket.bioOut)
 
     socket.sslNoShutdown = true
 
@@ -783,8 +795,6 @@ when defineSsl:
     ##
     ## **Disclaimer**: This code is not well tested, may be very unsafe and
     ## prone to security vulnerabilities.
-    if socket.isSsl:
-      return
     wrapSocket(ctx, socket)
 
     case handshake
