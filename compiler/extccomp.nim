@@ -1049,9 +1049,7 @@ proc callCCompiler*(conf: ConfigRef) =
           execExternalProgram(conf, cmd, hintExecuting)
         # create Mac app bundle for GUI apps on macOS
         when defined(macosx):
-          if optGenGuiApp in conf.globalOptions and
-             optGenDynLib notin conf.globalOptions and
-             optGenStaticLib notin conf.globalOptions:
+          if conf.globalOptions * {optGenGuiApp, optGenDynLib, optGenStaticLib} == {openGenGuiApp}:
             createMacAppBundle(conf, mainOutput)
   else:
     linkCmd = ""
