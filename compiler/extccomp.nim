@@ -810,6 +810,59 @@ template tryExceptOSErrorMessage(conf: ConfigRef; errorPrefix: string = "", body
         (ose.msg & " " & $ose.errorCode))
     raise
 
+proc createMacAppBundle(conf: ConfigRef; exefile: AbsoluteFile) =
+  let (dir, name, _) = splitFile(exefile.string)
+  let appBundleName = name & ".app"
+  let appBundlePath = dir / appBundleName
+  let contentsPath = appBundlePath / "Contents"
+  let macosPath = contentsPath / "MacOS"
+
+  createDir(macosPath)
+
+  let bundleExePath = macosPath / name
+  copyFileWithPermissions(exefile.string, bundleExePath)
+
+  let infoPlistPath = contentsPath / "Info.plist"
+
+  proc xmlEscape(s: string): string =
+    result = newStringOfCap(s.len)
+    for c in items(s):
+      case c:
+      of '<': result.add("&lt;")
+      of '>': result.add("&gt;")
+      of '&': result.add("&amp;")
+      of '"': result.add("&quot;")
+      of '\'': result.add("&apos;")
+      else:
+        if ord(c) < 32:
+          result.add("&#" & $ord(c) & ';')
+        else:
+          result.add(c)
+
+  let escapedName = xmlEscape(name)
+  let infoPlistContent = """<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleExecutable</key>
+  <string>$1</string>
+  <key>CFBundleIdentifier</key>
+  <string>com.nim.$1</string>
+  <key>CFBundleName</key>
+  <string>$1</string>
+  <key>CFBundlePackageType</key>
+  <string>APPL</string>
+  <key>LSUIElement</key>
+  <string>1</string>
+</dict>
+</plist>""" % [escapedName]
+
+  writeFile(infoPlistPath, infoPlistContent)
+
+  removeFile(exefile.string)
+
+  rawMessage(conf, hintUserRaw, "Created Mac app bundle: " & appBundlePath)
+
 proc getExtraCmds(conf: ConfigRef; output: AbsoluteFile): seq[string] =
   result = @[]
   when defined(macosx):
@@ -994,6 +1047,12 @@ proc callCCompiler*(conf: ConfigRef) =
         preventLinkCmdMaxCmdLen(conf, linkCmd)
         for cmd in extraCmds:
           execExternalProgram(conf, cmd, hintExecuting)
+        # create Mac app bundle for GUI apps on macOS
+        when defined(macosx):
+          if optGenGuiApp in conf.globalOptions and
+             optGenDynLib notin conf.globalOptions and
+             optGenStaticLib notin conf.globalOptions:
+            createMacAppBundle(conf, mainOutput)
   else:
     linkCmd = ""
   if optGenScript in conf.globalOptions:
