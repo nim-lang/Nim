@@ -739,3 +739,16 @@ block: # break in for without yield in try
       checkpoint(5)
 
   test(it, 1, 2, 3, 4, 5)
+
+block: #25038
+  template m(w: untyped): untyped =
+    var g: typeof(w)
+    g
+
+  iterator d(): int {.closure.} =
+    discard m:
+      for _ in [0]:
+        continue
+      0
+
+  test(d)
