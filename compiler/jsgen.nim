@@ -2439,7 +2439,7 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
     binaryExpr(p, n, r, "mnewString",
       """if ($1.length < $2) { for (var i = $3.length; i < $4; ++i) $3.push(0); }
          else {$3.length = $4; }""")
-  of mSetLengthSeq:
+  of mSetLengthSeq, mSetLengthSeqUninit:
     var x, y: TCompRes = default(TCompRes)
     gen(p, n[1], x)
     gen(p, n[2], y)

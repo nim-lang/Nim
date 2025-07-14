@@ -1230,7 +1230,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}, m: TMag
     var tmp = c.genx(n[1])
     c.gABC(n, opcQuit, tmp)
     c.freeTemp(tmp)
-  of mSetLengthStr, mSetLengthSeq:
+  of mSetLengthStr, mSetLengthSeq, mSetLengthSeqUninit:
     unused(c, n, dest)
     var d = c.genx(n[1])
     var tmp = c.genx(n[2])

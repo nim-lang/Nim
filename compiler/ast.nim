@@ -500,6 +500,7 @@ type
     mAppendStrCh, mAppendStrStr, mAppendSeqElem,
     mInSet, mRepr, mExit,
     mSetLengthStr, mSetLengthSeq,
+    mSetLengthSeqUninit,
     mIsPartOf, mAstToStr, mParallel,
     mSwap, mIsNil, mArrToSeq, mOpenArrayToSeq,
     mNewString, mNewStringOfCap, mParseBiggestFloat,

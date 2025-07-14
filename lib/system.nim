@@ -955,6 +955,22 @@ proc setLen*[T](s: var seq[T], newlen: Natural) {.
   ##   assert x == @[10]
   ##   ```
 
+when defined(nimHasSetLengthSeqUninitMagic):
+  func setLenUninit*[T](s: var seq[T], newlen: Natural) {.magic: "SetLengthSeqUninit", nodestroy.} =
+    ## Sets the length of seq `s` to `newlen`. `T` may be any sequence type.
+    ## New slots will not be initialized.
+    ##
+    ## If the current length is greater than the new length,
+    ## `s` will be truncated.
+    ##   ```nim
+    ##   var x = @[10, 20]
+    ##   x.setLenUninit(5)
+    ##   x[4] = 50
+    ##   assert x[4] == 50Add commentMore actions
+    ##   x.setLenUninit(1)
+    ##   assert x == @[10]
+    ##   ```
+
 proc setLen*(s: var string, newlen: Natural) {.
   magic: "SetLengthStr", noSideEffect.}
   ## Sets the length of string `s` to `newlen`.

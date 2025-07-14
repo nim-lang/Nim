@@ -708,7 +708,7 @@ proc analyseIfAddressTakenInCall*(c: PContext, n: PNode, isConverter = false) =
     return
   const
     FakeVarParams = {mNew, mNewFinalize, mInc, ast.mDec, mIncl, mExcl,
-      mSetLengthStr, mSetLengthSeq, mAppendStrCh, mAppendStrStr, mSwap,
+      mSetLengthStr, mSetLengthSeq, mSetLengthSeqUninit, mAppendStrCh, mAppendStrStr, mSwap,
       mAppendSeqElem, mNewSeq, mShallowCopy, mDeepCopy, mMove, mWasMoved}
 
   template checkIfConverterCalled(c: PContext, n: PNode) =

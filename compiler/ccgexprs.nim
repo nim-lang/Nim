@@ -1932,7 +1932,7 @@ proc isTrivialTypesToSnippet(t: PType): Rope =
   else:
     result = rope"NIM_TRUE"
 
-proc genSetLengthSeq(p: BProc, e: PNode, d: var TLoc) =
+proc genSetLengthSeq(p: BProc, e: PNode, d: var TLoc, noinit = false) =
   if optSeqDestructors in p.config.globalOptions:
     e[1] = makeAddr(e[1], p.module.idgen)
     genCall(p, e, d)
@@ -1945,18 +1945,22 @@ proc genSetLengthSeq(p: BProc, e: PNode, d: var TLoc) =
   let t = skipTypes(e[1].typ, {tyVar})
 
   var call = initLoc(locCall, e, OnHeap)
+  let name = if noinit: "setLengthSeqUninit" else: "setLengthSeqV2"
   if not p.module.compileToCpp:
-    const setLenPattern = "($3) #setLengthSeqV2(($1)?&($1)->Sup:NIM_NIL, $4, $2)"
-    call.snippet = ropecg(p.module, setLenPattern, [
-      rdLoc(a), rdLoc(b), getTypeDesc(p.module, t),
-      genTypeInfoV1(p.module, t.skipTypes(abstractInst), e.info)])
-
-  else:
-    const setLenPattern = "($3) #setLengthSeqV2($1, $4, $2, $5)"
+    const setLenPattern = "($3) #$6(($1)?&($1)->Sup:NIM_NIL, $4, $2, $5)"
     call.snippet = ropecg(p.module, setLenPattern, [
       rdLoc(a), rdLoc(b), getTypeDesc(p.module, t),
       genTypeInfoV1(p.module, t.skipTypes(abstractInst), e.info),
-      isTrivialTypesToSnippet(t.skipTypes(abstractInst)[0])])
+      isTrivialTypesToSnippet(t.skipTypes(abstractInst)[0]),
+      name])
+
+  else:
+    const setLenPattern = "($3) #$6($1, $4, $2, $5)"
+    call.snippet = ropecg(p.module, setLenPattern, [
+      rdLoc(a), rdLoc(b), getTypeDesc(p.module, t),
+      genTypeInfoV1(p.module, t.skipTypes(abstractInst), e.info),
+      isTrivialTypesToSnippet(t.skipTypes(abstractInst)[0]),
+      name])
 
   genAssignment(p, a, call, {})
   gcUsage(p.config, e)
@@ -2579,6 +2583,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     unaryStmt(p, e, d, "if ($1) { #nimGCunref($1); }$n")
   of mSetLengthStr: genSetLengthStr(p, e, d)
   of mSetLengthSeq: genSetLengthSeq(p, e, d)
+  of mSetLengthSeqUninit: genSetLengthSeq(p, e, d, noinit = true)
   of mIncl, mExcl, mCard, mLtSet, mLeSet, mEqSet, mMulSet, mPlusSet, mMinusSet,
      mInSet, mXorSet:
     genSetOp(p, e, d, op)

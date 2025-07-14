@@ -173,3 +173,4 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimHasXorSet")
 
   defineSymbol("nimHasPreviewDuplicateModuleError")
+  defineSymbol("nimHasSetLengthSeqUninitMagic")
