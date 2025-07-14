@@ -1156,7 +1156,7 @@ proc parseParamList(p: var Parser, retColon = true): PNode =
         parMessage(p, errGenerated, "the syntax is 'parameter: var T', not 'var parameter: T'")
         break
       else:
-        if p.tok.tokType > tokKeywordLow and p.tok.tokType < tokKeywordHigh:
+        if p.tok.tokType in tokKeywordLow..tokKeywordHigh:
           parMessage(p, errGenerated, "'" & $p.tok.ident.s & "' is a keyword and cannot be used as a parameter name")
         else:
           parMessage(p, "expected closing ')'")
