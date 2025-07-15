@@ -557,7 +557,7 @@ proc transformConv(c: PTransf, n: PNode): PNode =
         if dest.kind == tyInt64 or source.kind == tyInt64:
           result = newTransNode(nkChckRange64, n, 3)
         else:
-          result = newTransNode(nkChckRange64, n, 3)
+          result = newTransNode(nkChckRange, n, 3)
         dest = skipTypes(n.typ, abstractVar)
 
         if dest.size < source.size:
