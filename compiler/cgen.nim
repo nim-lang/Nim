@@ -2174,7 +2174,7 @@ proc handleProcGlobals(m: BModule) =
   var procGlobals: seq[PNode] = move m.g.graph.procGlobals
 
   for i in 0..<procGlobals.len:
-    var stmts = newBuilder("")
+    var stmts = ""
 
     # fixes recursive calls #24997
     swap stmts, m.preInitProc.s(cpsStmts)
@@ -2182,7 +2182,7 @@ proc handleProcGlobals(m: BModule) =
     swap stmts, m.preInitProc.s(cpsStmts)
 
     handleProcGlobals(m)
-    m.preInitProc.s(cpsStmts).add stmts.extract()
+    m.preInitProc.s(cpsStmts).add stmts
 
 proc genTopLevelStmt*(m: BModule; n: PNode) =
   ## Also called from `ic/cbackend.nim`.
