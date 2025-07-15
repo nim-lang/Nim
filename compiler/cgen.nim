@@ -2170,6 +2170,20 @@ proc addHcrInitGuards(p: BProc, n: PNode, inInitGuard: var bool) =
 
     genStmts(p, n)
 
+proc handleProcGlobals(m: BModule) =
+  var procGlobals: seq[PNode] = move m.g.graph.procGlobals
+
+  for i in 0..<procGlobals.len:
+    var stmts = ""
+
+    # fixes recursive calls #24997
+    swap stmts, m.preInitProc.s(cpsStmts)
+    genStmts(m.preInitProc, procGlobals[i])
+    swap stmts, m.preInitProc.s(cpsStmts)
+
+    handleProcGlobals(m)
+    m.preInitProc.s(cpsStmts).add stmts
+
 proc genTopLevelStmt*(m: BModule; n: PNode) =
   ## Also called from `ic/cbackend.nim`.
   if pipelineutils.skipCodegen(m.config, n): return
@@ -2185,13 +2199,7 @@ proc genTopLevelStmt*(m: BModule; n: PNode) =
   else:
     genProcBody(m.initProc, transformedN)
 
-  var procGloals = move m.g.graph.procGlobals
-  while true:
-    if procGloals.len == 0:
-      procGloals = move m.g.graph.procGlobals
-      if procGloals.len == 0:
-        break
-    genStmts(m.preInitProc, procGloals.pop())
+  handleProcGlobals(m)
 
 proc shouldRecompile(m: BModule; code: Rope, cfile: Cfile): bool =
   if optForceFullMake notin m.config.globalOptions:
