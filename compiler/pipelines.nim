@@ -1,7 +1,7 @@
 import sem, cgen, modulegraphs, ast, llstream, parser, msgs,
        lineinfos, reorder, options, semdata, cgendata, modules, pathutils,
        packages, syntaxes, depends, vm, pragmas, idents, lookups, wordrecg,
-       liftdestructors
+       liftdestructors, nifgen
 
 import pipelineutils
 
@@ -13,7 +13,6 @@ when not defined(leanCompiler):
 import std/[syncio, objectdollar, assertions, tables, strutils, strtabs]
 import renderer
 import ic/replayer
-import nir/nir
 
 proc setPipeLinePass*(graph: ModuleGraph; pass: PipelinePass) =
   graph.pipelinePass = pass
@@ -24,6 +23,10 @@ proc processPipeline(graph: ModuleGraph; semNode: PNode; bModule: PPassContext):
     result = semNode
     if bModule != nil:
       genTopLevelStmt(BModule(bModule), result)
+  of NifgenPass:
+    result = semNode
+    if bModule != nil:
+      genTopLevelNif(bModule, result)
   of JSgenPass:
     when not defined(leanCompiler):
       result = processJSCodeGen(bModule, semNode)
@@ -45,16 +48,11 @@ proc processPipeline(graph: ModuleGraph; semNode: PNode; bModule: PPassContext):
       result = nil
   of EvalPass, InterpreterPass:
     result = interpreterCode(bModule, semNode)
-  of NirReplPass:
-    result = runCode(bModule, semNode)
-  of NirPass:
-    result = nirBackend(bModule, semNode)
   of NonePass:
     raiseAssert "use setPipeLinePass to set a proper PipelinePass"
 
-proc processImplicitImports(graph: ModuleGraph; implicits: seq[string], nodeKind: TNodeKind,
-                      m: PSym, ctx: PContext, bModule: PPassContext, idgen: IdGenerator,
-                      ) =
+proc processImplicitImports*(graph: ModuleGraph; implicits: seq[string], nodeKind: TNodeKind,
+                             m: PSym, ctx: PContext, bModule: PPassContext, idgen: IdGenerator) =
   # XXX fixme this should actually be relative to the config file!
   let relativeTo = toFullPath(graph.config, m.info)
   for module in items(implicits):
@@ -69,7 +67,7 @@ proc processImplicitImports(graph: ModuleGraph; implicits: seq[string], nodeKind
       if semNode == nil or processPipeline(graph, semNode, bModule) == nil:
         break
 
-proc prePass(c: PContext; n: PNode) =
+proc prePass*(c: PContext; n: PNode) =
   for son in n:
     if son.kind == nkPragma:
       for s in son:
@@ -111,8 +109,6 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
     case graph.pipelinePass
     of CgenPass:
       setupCgen(graph, module, idgen)
-    of NirPass:
-      openNirBackend(graph, module, idgen)
     of JSgenPass:
       when not defined(leanCompiler):
         setupJSgen(graph, module, idgen)
@@ -120,8 +116,6 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
         nil
     of EvalPass, InterpreterPass:
       setupEvalGen(graph, module, idgen)
-    of NirReplPass:
-      setupNirReplGen(graph, module, idgen)
     of GenDependPass:
       setupDependPass(graph, module, idgen)
     of Docgen2Pass:
@@ -141,6 +135,8 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
         nil
     of SemPass:
       nil
+    of NifgenPass:
+      setupNifgen(graph, module, idgen)
     of NonePass:
       raiseAssert "use setPipeLinePass to set a proper PipelinePass"
 
@@ -209,10 +205,6 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
       discard finalJSCodeGen(graph, bModule, finalNode)
   of EvalPass, InterpreterPass:
     discard interpreterCode(bModule, finalNode)
-  of NirReplPass:
-    discard runCode(bModule, finalNode)
-  of NirPass:
-    closeNirBackend(bModule, finalNode)
   of SemPass, GenDependPass:
     discard
   of Docgen2Pass, Docgen2TexPass:
@@ -221,6 +213,8 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
   of Docgen2JsonPass:
     when not defined(leanCompiler):
       discard closeJson(graph, bModule, finalNode)
+  of NifgenPass:
+    closeNif(graph, bModule, finalNode)
   of NonePass:
     raiseAssert "use setPipeLinePass to set a proper PipelinePass"
 
@@ -248,7 +242,8 @@ proc compilePipelineModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymF
     result = moduleFromRodFile(graph, fileIdx, cachedModules)
     let path = toFullPath(graph.config, fileIdx)
     let filename = AbsoluteFile path
-    if fileExists(filename): # it could be a stdinfile
+    # it could be a stdinfile/cmdfile
+    if fileExists(filename) and not graph.config.projectIsStdin:
       graph.cachedFiles[path] = $secureHashFile(path)
     if result == nil:
       result = newModule(graph, fileIdx)

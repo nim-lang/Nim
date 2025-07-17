@@ -27,6 +27,7 @@ from std/envvars import getEnv, existsEnv, delEnv, putEnv, envPairs
 from std/os import getAppFilename
 from std/private/oscommon import dirExists, fileExists
 from std/private/osdirs import walkDir, createDir
+from std/private/ospaths2 import getCurrentDir
 
 from std/times import cpuTime
 from std/hashes import hash
@@ -141,6 +142,9 @@ proc getCurrentExceptionMsgWrapper(a: VmArgs) {.nimcall.} =
 
 proc getCurrentExceptionWrapper(a: VmArgs) {.nimcall.} =
   setResult(a, a.currentException)
+
+proc raiseDefectWrapper(a: VmArgs) {.nimcall.} =
+  discard
 
 proc staticWalkDirImpl(path: string, relative: bool): PNode =
   result = newNode(nkBracket)
@@ -262,7 +266,8 @@ proc registerAdditionalOps*(c: PCtx) =
     wrap2si(readLines, ioop)
     systemop getCurrentExceptionMsg
     systemop getCurrentException
-    registerCallback c, "stdlib.osdirs.staticWalkDir", proc (a: VmArgs) {.nimcall.} =
+    systemop raiseDefect
+    registerCallback c, "stdlib.staticos.staticWalkDir", proc (a: VmArgs) {.nimcall.} =
       setResult(a, staticWalkDirImpl(getString(a, 0), getBool(a, 1)))
     registerCallback c, "stdlib.staticos.staticDirExists", proc (a: VmArgs) {.nimcall.} =
       setResult(a, dirExists(getString(a, 0)))
@@ -330,6 +335,12 @@ proc registerAdditionalOps*(c: PCtx) =
   registerCallback c, "stdlib.hashes.hashVmImplByte", hashVmImplByte
   registerCallback c, "stdlib.hashes.hashVmImplChar", hashVmImplByte
 
+  registerCallback c, "stdlib.system.ltCStringVm", proc (a: VmArgs) =
+    setResult(a, getString(a, 0) < getString(a, 1))
+
+  registerCallback c, "stdlib.system.leCStringVm", proc (a: VmArgs) =
+    setResult(a, getString(a, 0) <= getString(a, 1))
+
   if optBenchmarkVM in c.config.globalOptions or vmopsDanger in c.config.features:
     wrap0(cpuTime, timesop)
   else:
@@ -341,8 +352,8 @@ proc registerAdditionalOps*(c: PCtx) =
     ## reproducible builds and users need to understand that this runs at CT.
     ## Note that `staticExec` can already do equal amount of damage so it's more
     ## of a semantic issue than a security issue.
-    registerCallback c, "stdlib.os.getCurrentDir", proc (a: VmArgs) {.nimcall.} =
-      setResult(a, os.getCurrentDir())
+    registerCallback c, "stdlib.ospaths2.getCurrentDir", proc (a: VmArgs) {.nimcall.} =
+      setResult(a, getCurrentDir())
     registerCallback c, "stdlib.osproc.execCmdEx", proc (a: VmArgs) {.nimcall.} =
       let options = getNode(a, 1).fromLit(set[osproc.ProcessOption])
       a.setResult osproc.execCmdEx(getString(a, 0), options).toLit

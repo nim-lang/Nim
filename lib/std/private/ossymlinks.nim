@@ -2,7 +2,8 @@ include system/inclrtl
 import std/oserrors
 
 import oscommon
-export symlinkExists
+when supportedSystem:
+  export symlinkExists
 
 when defined(nimPreviewSlimSystem):
   import std/[syncio, assertions, widestrs]
@@ -13,8 +14,6 @@ elif defined(windows):
   import std/[winlean, times]
 elif defined(posix):
   import std/posix
-else:
-  {.error: "OS module not ported to your operating system!".}
 
 
 when weirdTarget:
@@ -66,11 +65,13 @@ proc expandSymlink*(symlinkPath: string): string {.noWeirdTarget.} =
   when defined(windows) or defined(nintendoswitch):
     result = symlinkPath
   else:
-    result = newString(maxSymlinkLen)
-    var len = readlink(symlinkPath, result.cstring, maxSymlinkLen)
-    if len < 0:
-      raiseOSError(osLastError(), symlinkPath)
-    if len > maxSymlinkLen:
-      result = newString(len+1)
-      len = readlink(symlinkPath, result.cstring, len)
-    setLen(result, len)
+    var bufLen = 1024
+    while true:
+      result = newString(bufLen)
+      let len = readlink(symlinkPath.cstring, result.cstring, bufLen)
+      if len < 0:
+        raiseOSError(osLastError(), symlinkPath)
+      if len < bufLen:
+        result.setLen(len)
+        break
+      bufLen = bufLen shl 1

@@ -35,14 +35,14 @@ proc atomicTypeX(cache: IdentCache; name: string; m: TMagic; t: PType; info: TLi
   sym.magic = m
   sym.typ = t
   result = newSymNode(sym)
-  result.typ = t
+  result.typ() = t
 
 proc atomicTypeX(s: PSym; info: TLineInfo): PNode =
   result = newSymNode(s)
   result.info = info
 
 proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo; idgen: IdGenerator;
-                   inst=false; allowRecursionX=false): PNode
+                   inst=false; allowRecursionX=false; skipAlias = false): PNode
 
 proc mapTypeToBracketX(cache: IdentCache; name: string; m: TMagic; t: PType; info: TLineInfo;
                        idgen: IdGenerator;
@@ -52,7 +52,7 @@ proc mapTypeToBracketX(cache: IdentCache; name: string; m: TMagic; t: PType; inf
   for a in t.kids:
     if a == nil:
       let voidt = atomicTypeX(cache, "void", mVoid, t, info, idgen)
-      voidt.typ = newType(tyVoid, idgen, t.owner)
+      voidt.typ() = newType(tyVoid, idgen, t.owner)
       result.add voidt
     else:
       result.add mapTypeToAstX(cache, a, info, idgen, inst)
@@ -70,7 +70,7 @@ proc objectNode(cache: IdentCache; n: PNode; idgen: IdGenerator): PNode =
 
 proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
                    idgen: IdGenerator;
-                   inst=false; allowRecursionX=false): PNode =
+                   inst=false; allowRecursionX=false; skipAlias = false): PNode =
   var allowRecursion = allowRecursionX
   template atomicType(name, m): untyped = atomicTypeX(cache, name, m, t, info, idgen)
   template atomicType(s): untyped = atomicTypeX(s, info)
@@ -91,7 +91,8 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
     id
   template newIdentDefs(s): untyped = newIdentDefs(s, s.typ)
 
-  if inst and not allowRecursion and t.sym != nil:
+  if inst and not allowRecursion and t.sym != nil and
+      not (skipAlias and t.kind == tyAlias):
     # getTypeInst behavior: return symbol
     return atomicType(t.sym)
 
@@ -124,7 +125,7 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
     if t.base != nil:
       result = newNodeIT(nkBracketExpr, if t.n.isNil: info else: t.n.info, t)
       result.add atomicType("typeDesc", mTypeDesc)
-      result.add mapTypeToAst(t.base, info)
+      result.add mapTypeToAstX(cache, t.base, info, idgen, inst, skipAlias = skipAlias)
     else:
       result = atomicType("typeDesc", mTypeDesc)
   of tyGenericInvocation:
@@ -136,7 +137,7 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
       if allowRecursion:
         result = mapTypeToAstR(t.skipModifier, info)
         # keep original type info for getType calls on the output node:
-        result.typ = t
+        result.typ() = t
       else:
         result = newNodeX(nkBracketExpr)
         #result.add mapTypeToAst(t.last, info)
@@ -146,14 +147,14 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
     else:
       result = mapTypeToAstX(cache, t.skipModifier, info, idgen, inst, allowRecursion)
       # keep original type info for getType calls on the output node:
-      result.typ = t
+      result.typ() = t
   of tyGenericBody:
     if inst:
       result = mapTypeToAstR(t.typeBodyImpl, info)
     else:
       result = mapTypeToAst(t.typeBodyImpl, info)
   of tyAlias:
-    result = mapTypeToAstX(cache, t.skipModifier, info, idgen, inst, allowRecursion)
+    result = mapTypeToAstX(cache, t.skipModifier, info, idgen, inst, allowRecursion, skipAlias = skipAlias)
   of tyOrdinal:
     result = mapTypeToAst(t.skipModifier, info)
   of tyDistinct:
@@ -237,7 +238,7 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
   of tySequence: result = mapTypeToBracket("seq", mSeq, t, info)
   of tyProc:
     if inst:
-      result = newNodeX(nkProcTy)
+      result = newNodeX(if tfIterator in t.flags: nkIteratorTy else: nkProcTy)
       var fp = newNodeX(nkFormalParams)
       if t.returnType == nil:
         fp.add newNodeI(nkEmpty, info)
@@ -246,8 +247,15 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
       for i in FirstParamAt..<t.kidsLen:
         fp.add newIdentDefs(t.n[i], t[i])
       result.add fp
-      result.add if t.n[0].len > 0: t.n[0][pragmasEffects].copyTree
-                 else: newNodeI(nkEmpty, info)
+      var prag =
+        if t.n[0].len > 0:
+          t.n[0][pragmasEffects].copyTree
+        else:
+          newNodeI(nkEmpty, info)
+      if t.callConv != ccClosure or tfExplicitCallConv in t.flags:
+        if prag.kind == nkEmpty: prag = newNodeI(nkPragma, info)
+        prag.add newIdentNode(getIdent(cache, $t.callConv), info)
+      result.add prag
     else:
       result = mapTypeToBracket("proc", mNone, t, info)
   of tyOpenArray: result = mapTypeToBracket("openArray", mOpenArray, t, info)
@@ -282,7 +290,7 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
   of tyUInt32: result = atomicType("uint32", mUInt32)
   of tyUInt64: result = atomicType("uint64", mUInt64)
   of tyVarargs: result = mapTypeToBracket("varargs", mVarargs, t, info)
-  of tyProxy: result = atomicType("error", mNone)
+  of tyError: result = atomicType("error", mNone)
   of tyBuiltInTypeClass:
     result = mapTypeToBracket("builtinTypeClass", mNone, t, info)
   of tyUserTypeClass, tyUserTypeClassInst:
@@ -318,8 +326,9 @@ proc opMapTypeToAst*(cache: IdentCache; t: PType; info: TLineInfo; idgen: IdGene
 
 # the "Inst" version includes generic parameters in the resulting type tree
 # and also tries to look like the corresponding Nim type declaration
-proc opMapTypeInstToAst*(cache: IdentCache; t: PType; info: TLineInfo; idgen: IdGenerator): PNode =
-  result = mapTypeToAstX(cache, t, info, idgen, inst=true, allowRecursionX=false)
+proc opMapTypeInstToAst*(cache: IdentCache; t: PType; info: TLineInfo; idgen: IdGenerator; skipAlias = false): PNode =
+  # skipAlias: skips aliases and typedesc
+  result = mapTypeToAstX(cache, t, info, idgen, inst=true, allowRecursionX=false, skipAlias = skipAlias)
 
 # the "Impl" version includes generic parameters in the resulting type tree
 # and also tries to look like the corresponding Nim type implementation

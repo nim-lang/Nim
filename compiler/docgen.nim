@@ -115,7 +115,7 @@ proc add(dest: var ItemPre, str: string) = dest.add ItemFragment(isRst: false, s
 
 proc addRstFileIndex(d: PDoc, fileIndex: lineinfos.FileIndex): rstast.FileIndex =
   let invalid = rstast.FileIndex(-1)
-  result = d.nimToRstFid.getOrDefault(fileIndex, default = invalid)
+  result = d.nimToRstFid.getOrDefault(fileIndex, invalid)
   if result == invalid:
     let fname = toFullPath(d.conf, fileIndex)
     result = addFilename(d.sharedState, fname)
@@ -830,8 +830,8 @@ proc getName(n: PNode): string =
   of nkAccQuoted:
     result = "`"
     for i in 0..<n.len: result.add(getName(n[i]))
-    result = "`"
-  of nkOpenSymChoice, nkClosedSymChoice:
+    result.add('`')
+  of nkOpenSymChoice, nkClosedSymChoice, nkOpenSym:
     result = getName(n[0])
   else:
     result = ""
@@ -849,7 +849,7 @@ proc getNameIdent(cache: IdentCache; n: PNode): PIdent =
     var r = ""
     for i in 0..<n.len: r.add(getNameIdent(cache, n[i]).s)
     result = getIdent(cache, r)
-  of nkOpenSymChoice, nkClosedSymChoice:
+  of nkOpenSymChoice, nkClosedSymChoice, nkOpenSym:
     result = getNameIdent(cache, n[0])
   else:
     result = nil
@@ -863,7 +863,7 @@ proc getRstName(n: PNode): PRstNode =
   of nkAccQuoted:
     result = getRstName(n[0])
     for i in 1..<n.len: result.text.add(getRstName(n[i]).text)
-  of nkOpenSymChoice, nkClosedSymChoice:
+  of nkOpenSymChoice, nkClosedSymChoice, nkOpenSym:
     result = getRstName(n[0])
   else:
     result = nil
@@ -1206,7 +1206,7 @@ proc genJsonItem(d: PDoc, n, nameNode: PNode, k: TSymKind, nonExports = false): 
         var param = %{"name": %($genericParam)}
         if genericParam.sym.typ.len > 0:
           param["types"] = newJArray()
-        param["types"].add %($genericParam.sym.typ.elementType)
+          param["types"] = %($genericParam.sym.typ.elementType)
         result.json["signature"]["genericParams"].add param
   if optGenIndex in d.conf.globalOptions:
     genItem(d, n, nameNode, k, kForceExport)
@@ -1320,7 +1320,7 @@ proc documentEffect(cache: IdentCache; n, x: PNode, effectType: TSpecialWord, id
       if t.startsWith("ref "): t = substr(t, 4)
       effects[i] = newIdentNode(getIdent(cache, t), n.info)
       # set the type so that the following analysis doesn't screw up:
-      effects[i].typ = real[i].typ
+      effects[i].typ() = real[i].typ
 
     result = newTreeI(nkExprColonExpr, n.info,
       newIdentNode(getIdent(cache, $effectType), n.info), effects)
@@ -1406,11 +1406,14 @@ proc generateDoc*(d: PDoc, n, orig: PNode, config: ConfigRef, docFlags: DocFlags
     for it in n: traceDeps(d, it)
   of nkExportStmt:
     for it in n:
-      # bug #23051; don't generate documentation for exported symbols again
-      if it.kind == nkSym and sfExported notin it.sym.flags:
-        if d.module != nil and d.module == it.sym.owner:
-          generateDoc(d, it.sym.ast, orig, config, kForceExport)
+      if it.kind == nkSym:
+        if d.module != nil and d.module == it.sym.owner:  # in current module
+          # bug #23051; don't generate documentation for exported symbols again
+          if sfExported notin it.sym.flags:
+            generateDoc(d, it.sym.ast, orig, config, kForceExport)
+          # else it's to be handled in `of XxxSection` branch
         elif it.sym.ast != nil:
+          # only export symbols in imported modules, not in current module
           exportSym(d, it.sym)
   of nkExportExceptStmt: discard "transformed into nkExportStmt by semExportExcept"
   of nkFromStmt, nkImportExceptStmt: traceDeps(d, n[0])
@@ -1889,6 +1892,9 @@ proc commandJson*(cache: IdentCache, conf: ConfigRef) =
   else:
     #echo getOutFile(gProjectFull, JsonExt)
     let filename = getOutFile(conf, RelativeFile conf.projectName, JsonExt)
+    conf.outFile = filename.relativeTo(conf.outDir)
+    let dir = filename.splitFile.dir
+    createDir(dir)
     try:
       writeFile(filename, content)
     except IOError:
@@ -1909,8 +1915,10 @@ proc commandTags*(cache: IdentCache, conf: ConfigRef) =
   if optStdout in d.conf.globalOptions:
     write(stdout, content)
   else:
-    #echo getOutFile(gProjectFull, TagsExt)
     let filename = getOutFile(conf, RelativeFile conf.projectName, TagsExt)
+    conf.outFile = filename.relativeTo(conf.outDir)
+    let dir = filename.splitFile.dir
+    createDir(dir)
     try:
       writeFile(filename, content)
     except IOError:

@@ -410,7 +410,7 @@ proc atom(g: TSrcGen; n: PNode): string =
   of nkEmpty: result = ""
   of nkIdent: result = n.ident.s
   of nkSym: result = n.sym.name.s
-  of nkClosedSymChoice, nkOpenSymChoice: result = n[0].sym.name.s
+  of nkClosedSymChoice, nkOpenSymChoice, nkOpenSym: result = n[0].sym.name.s
   of nkStrLit: result = ""; result.addQuoted(n.strVal)
   of nkRStrLit: result = "r\"" & replace(n.strVal, "\"", "\"\"") & '\"'
   of nkTripleStrLit: result = "\"\"\"" & n.strVal & "\"\"\""
@@ -442,6 +442,11 @@ proc atom(g: TSrcGen; n: PNode): string =
       result = $n.floatVal & "\'f64"
     else:
       result = litAux(g, n, (cast[ptr int64](addr(n.floatVal)))[], 8) & "\'f64"
+  of nkFloat128Lit:
+    if n.flags * {nfBase2, nfBase8, nfBase16} == {}:
+      result = $n.floatVal & "\'f128"
+    else:
+      result = litAux(g, n, (cast[ptr int64](addr(n.floatVal)))[], 8) & "\'f128"
   of nkNilLit: result = "nil"
   of nkType:
     if (n.typ != nil) and (n.typ.sym != nil): result = n.typ.sym.name.s
@@ -514,6 +519,7 @@ proc lsub(g: TSrcGen; n: PNode): int =
     result = if n.len > 0: lcomma(g, n) + 2 else: len("{:}")
   of nkClosedSymChoice, nkOpenSymChoice:
     if n.len > 0: result += lsub(g, n[0])
+  of nkOpenSym: result = lsub(g, n[0])
   of nkTupleTy: result = lcomma(g, n) + len("tuple[]")
   of nkTupleClassTy: result = len("tuple")
   of nkDotExpr: result = lsons(g, n) + 1
@@ -559,8 +565,16 @@ proc lsub(g: TSrcGen; n: PNode): int =
   of nkIfExpr:
     result = lsub(g, n[0][0]) + lsub(g, n[0][1]) + lsons(g, n, 1) +
         len("if_:_")
-  of nkElifExpr: result = lsons(g, n) + len("_elif_:_")
-  of nkElseExpr: result = lsub(g, n[0]) + len("_else:_") # type descriptions
+  of nkElifExpr, nkElifBranch:
+    if isEmptyType(n[1].typ):
+      result = lsons(g, n) + len("elif_:_")
+    else:
+      result = lsons(g, n) + len("_elif_:_")
+  of nkElseExpr, nkElse:
+    if isEmptyType(n[0].typ):
+      result = lsub(g, n[0]) + len("else:_")
+    else:
+      result = lsub(g, n[0]) + len("_else:_") # type descriptions
   of nkTypeOfExpr: result = (if n.len > 0: lsub(g, n[0]) else: 0)+len("typeof()")
   of nkRefTy: result = (if n.len > 0: lsub(g, n[0])+1 else: 0) + len("ref")
   of nkPtrTy: result = (if n.len > 0: lsub(g, n[0])+1 else: 0) + len("ptr")
@@ -603,8 +617,6 @@ proc lsub(g: TSrcGen; n: PNode): int =
   of nkCommentStmt: result = n.comment.len
   of nkOfBranch: result = lcomma(g, n, 0, - 2) + lsub(g, lastSon(n)) + len("of_:_")
   of nkImportAs: result = lsub(g, n[0]) + len("_as_") + lsub(g, n[1])
-  of nkElifBranch: result = lsons(g, n) + len("elif_:_")
-  of nkElse: result = lsub(g, n[0]) + len("else:_")
   of nkFinally: result = lsub(g, n[0]) + len("finally:_")
   of nkGenericParams: result = lcomma(g, n) + 2
   of nkFormalParams:
@@ -996,7 +1008,7 @@ type
 proc bracketKind*(g: TSrcGen, n: PNode): BracketKind =
   if renderIds notin g.flags:
     case n.kind
-    of nkClosedSymChoice, nkOpenSymChoice:
+    of nkClosedSymChoice, nkOpenSymChoice, nkOpenSym:
       if n.len > 0: result = bracketKind(g, n[0])
       else: result = bkNone
     of nkSym:
@@ -1013,7 +1025,7 @@ proc bracketKind*(g: TSrcGen, n: PNode): BracketKind =
 proc skipHiddenNodes(n: PNode): PNode =
   result = n
   while result != nil:
-    if result.kind in {nkHiddenStdConv, nkHiddenSubConv, nkHiddenCallConv} and result.len > 1:
+    if result.kind in {nkHiddenStdConv, nkHiddenSubConv, nkHiddenCallConv, nkOpenSym} and result.len > 1:
       result = result[1]
     elif result.kind in {nkCheckedFieldExpr, nkHiddenAddr, nkHiddenDeref, nkStringToCString, nkCStringToString} and
         result.len > 0:
@@ -1275,6 +1287,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
       put(g, tkParRi, if n.kind == nkOpenSymChoice: "|...)" else: ")")
     else:
       gsub(g, n, 0)
+  of nkOpenSym: gsub(g, n, 0)
   of nkPar, nkClosure:
     put(g, tkParLe, "(")
     gcomma(g, n, c)
@@ -1304,10 +1317,11 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
       put(g, tkCustomLit, n[0].strVal)
       gsub(g, n, 1)
     else:
-      gsub(g, n, 0)
+      for i in 0..<n.len-1:
+        gsub(g, n, i)
       put(g, tkDot, ".")
-      assert n.len == 2, $n.len
-      accentedName(g, n[1])
+      if n.len > 1:
+        accentedName(g, n[^1])
   of nkBind:
     putWithSpace(g, tkBind, "bind")
     gsub(g, n, 0)
@@ -1407,10 +1421,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
   of nkPrefix:
     gsub(g, n, 0)
     if n.len > 1:
-      let opr = if n[0].kind == nkIdent: n[0].ident
-                elif n[0].kind == nkSym: n[0].sym.name
-                elif n[0].kind in {nkOpenSymChoice, nkClosedSymChoice}: n[0][0].sym.name
-                else: nil
+      let opr = getPIdent(n[0])
       let nNext = skipHiddenNodes(n[1])
       if nNext.kind == nkPrefix or (opr != nil and renderer.isKeyword(opr)):
         put(g, tkSpaces, Space)
@@ -1461,15 +1472,30 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
     putWithSpace(g, tkColon, ":")
     if n.len > 0: gsub(g, n[0], 1)
     gsons(g, n, emptyContext, 1)
-  of nkElifExpr:
-    putWithSpace(g, tkElif, " elif")
-    gcond(g, n[0])
-    putWithSpace(g, tkColon, ":")
-    gsub(g, n, 1)
-  of nkElseExpr:
-    put(g, tkElse, " else")
-    putWithSpace(g, tkColon, ":")
-    gsub(g, n, 0)
+  of nkElifExpr, nkElifBranch:
+    if isEmptyType(n[1].typ):
+      optNL(g)
+      putWithSpace(g, tkElif, "elif")
+      gsub(g, n, 0)
+      putWithSpace(g, tkColon, ":")
+      gcoms(g)
+      gstmts(g, n[1], c)
+    else:
+      putWithSpace(g, tkElif, " elif")
+      gcond(g, n[0])
+      putWithSpace(g, tkColon, ":")
+      gsub(g, n, 1)
+  of nkElseExpr, nkElse:
+    if isEmptyType(n[0].typ):
+      optNL(g)
+      put(g, tkElse, "else")
+      putWithSpace(g, tkColon, ":")
+      gcoms(g)
+      gstmts(g, n[0], c)
+    else:
+      put(g, tkElse, " else")
+      putWithSpace(g, tkColon, ":")
+      gsub(g, n, 0)
   of nkTypeOfExpr:
     put(g, tkType, "typeof")
     put(g, tkParLe, "(")
@@ -1731,19 +1757,6 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
   of nkMixinStmt:
     putWithSpace(g, tkMixin, "mixin")
     gcomma(g, n, c)
-  of nkElifBranch:
-    optNL(g)
-    putWithSpace(g, tkElif, "elif")
-    gsub(g, n, 0)
-    putWithSpace(g, tkColon, ":")
-    gcoms(g)
-    gstmts(g, n[1], c)
-  of nkElse:
-    optNL(g)
-    put(g, tkElse, "else")
-    putWithSpace(g, tkColon, ":")
-    gcoms(g)
-    gstmts(g, n[0], c)
   of nkFinally, nkDefer:
     optNL(g)
     if n.kind == nkFinally:

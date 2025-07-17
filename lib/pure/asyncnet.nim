@@ -26,7 +26,7 @@
 ## Each builds on top of the layers below it. The selectors module is an
 ## abstraction for the various system `select()` mechanisms such as epoll or
 ## kqueue. If you wish you can use it directly, and some people have done so
-## `successfully <http://goran.krampe.se/2014/10/25/nim-socketserver/>`_.
+## `successfully <https://goran.krampe.se/2014/10/25/nim-socketserver/>`_.
 ## But you must be aware that on Windows it only supports
 ## `select()`.
 ##
@@ -207,6 +207,9 @@ proc newAsyncSocket*(domain, sockType, protocol: cint,
                           Protocol(protocol), buffered, inheritable)
 
 when defineSsl:
+  proc raiseSslHandleError =
+    raiseSSLError("The SSL Handle is closed/unset")
+
   proc getSslError(socket: AsyncSocket, err: cint): cint =
     assert socket.isSsl
     assert err < 0
@@ -227,6 +230,8 @@ when defineSsl:
 
   proc sendPendingSslData(socket: AsyncSocket,
       flags: set[SocketFlag]) {.async.} =
+    if socket.sslHandle == nil:
+      raiseSslHandleError()
     let len = bioCtrlPending(socket.bioOut)
     if len > 0:
       var data = newString(len)
@@ -246,6 +251,8 @@ when defineSsl:
       await sendPendingSslData(socket, flags)
     of SSL_ERROR_WANT_READ:
       var data = await recv(socket.fd.AsyncFD, BufferSize, flags)
+      if socket.sslHandle == nil:
+        raiseSslHandleError()
       let length = len(data)
       if length > 0:
         let ret = bioWrite(socket.bioIn, cast[cstring](addr data[0]), length.cint)
@@ -262,6 +269,8 @@ when defineSsl:
                    op: untyped) =
     var opResult {.inject.} = -1.cint
     while opResult < 0:
+      if socket.sslHandle == nil:
+        raiseSslHandleError()
       ErrClearError()
       # Call the desired operation.
       opResult = op
@@ -306,6 +315,8 @@ proc connect*(socket: AsyncSocket, address: string, port: Port) {.async.} =
   await connect(socket.fd.AsyncFD, address, port, socket.domain)
   if socket.isSsl:
     when defineSsl:
+      if socket.sslHandle == nil:
+        raiseSslHandleError()
       if not isIpAddress(address):
         # Set the SNI address for this connection. This call can fail if
         # we're not using TLSv1+.
@@ -687,7 +698,7 @@ when defined(posix) and not useNimNetLite:
 
       var socketAddr = makeUnixAddr(path)
       let ret = socket.fd.connect(cast[ptr SockAddr](addr socketAddr),
-                        (sizeof(socketAddr.sun_family) + path.len).SockLen)
+                        (offsetOf(socketAddr, sun_path) + path.len + 1).SockLen)
       if ret == 0:
         # Request to connect completed immediately.
         retFuture.complete()
@@ -705,7 +716,7 @@ when defined(posix) and not useNimNetLite:
     when not defined(nimdoc):
       var socketAddr = makeUnixAddr(path)
       if socket.fd.bindAddr(cast[ptr SockAddr](addr socketAddr),
-          (sizeof(socketAddr.sun_family) + path.len).SockLen) != 0'i32:
+          (offsetOf(socketAddr, sun_path) + path.len + 1).SockLen) != 0'i32:
         raiseOSError(osLastError())
 
 elif defined(nimdoc):
@@ -727,6 +738,8 @@ proc close*(socket: AsyncSocket) =
   defer:
     socket.fd.AsyncFD.closeSocket()
     socket.closed = true # TODO: Add extra debugging checks for this.
+    when defineSsl:
+      socket.sslHandle = nil
 
   when defineSsl:
     if socket.isSsl:
@@ -850,7 +863,7 @@ proc sendTo*(socket: AsyncSocket, address: string, port: Port, data: string,
   var
     it = aiList
     success = false
-    lastException: ref Exception
+    lastException: ref Exception = nil
 
   while it != nil:
     let fut = sendTo(socket.fd.AsyncFD, cstring(data), len(data), it.ai_addr,
@@ -915,16 +928,16 @@ proc recvFrom*(socket: AsyncSocket, data: FutureVar[string], size: int,
          "Cannot `recvFrom` on a TCP socket. Use `recv` or `recvInto` instead")
   assert(not socket.closed, "Cannot `recvFrom` on a closed socket")
   assert(size == len(data.mget()),
-         "`date` was not initialized correctly. `size` != `len(data.mget())`")
+         "`data` was not initialized correctly. `size` != `len(data.mget())`")
   assert(46 == len(address.mget()),
          "`address` was not initialized correctly. 46 != `len(address.mget())`")
 
   case socket.domain
   of AF_INET6:
-    var sAddr: Sockaddr_in6
+    var sAddr: Sockaddr_in6 = default(Sockaddr_in6)
     adaptRecvFromToDomain(AF_INET6)
   of AF_INET:
-    var sAddr: Sockaddr_in
+    var sAddr: Sockaddr_in = default(Sockaddr_in)
     adaptRecvFromToDomain(AF_INET)
   else:
     raise newException(ValueError, "Unknown socket address family")

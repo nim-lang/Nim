@@ -80,8 +80,6 @@ proc `[]`*[T, U: Ordinal](s: string, x: HSlice[T, U]): string {.inline, systemRa
   ##   var s = "abcdef"
   ##   assert s[1..3] == "bcd"
   ##   ```
-  # Workaround bug #22852
-  result = ""
   let a = s ^^ x.a
   let L = (s ^^ x.b) - a + 1
   result = newString(L)
@@ -112,13 +110,13 @@ proc `[]`*[Idx, T; U, V: Ordinal](a: array[Idx, T], x: HSlice[U, V]): seq[T] {.s
   ##   var a = [1, 2, 3, 4]
   ##   assert a[0..2] == @[1, 2, 3]
   ##   ```
+  ##
+  ## See also:
+  ## * `toOpenArray(array[I, T];I,I) <#toOpenArray,array[I,T],I,I>`_
   let xa = a ^^ x.a
   let L = (a ^^ x.b) - xa + 1
-  # Workaround bug #22852:
-  result = newSeq[T](if L < 0: 0 else: L)
+  result = newSeq[T](L)
   for i in 0..<L: result[i] = a[Idx(i + xa)]
-  # Workaround bug #22852
-  discard Natural(L)
 
 proc `[]=`*[Idx, T; U, V: Ordinal](a: var array[Idx, T], x: HSlice[U, V], b: openArray[T]) {.systemRaisesDefect.} =
   ## Slice assignment for arrays.
@@ -141,6 +139,9 @@ proc `[]`*[T; U, V: Ordinal](s: openArray[T], x: HSlice[U, V]): seq[T] {.systemR
   ##   var s = @[1, 2, 3, 4]
   ##   assert s[0..2] == @[1, 2, 3]
   ##   ```
+  ##
+  ## See also:
+  ## * `toOpenArray(openArray[T];int,int) <#toOpenArray,openArray[T],int,int>`_
   let a = s ^^ x.a
   let L = (s ^^ x.b) - a + 1
   newSeq(result, L)

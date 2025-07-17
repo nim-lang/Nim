@@ -46,5 +46,3 @@ else:
   {.pragma: compilerRtl, compilerproc.}
 
 {.pragma: benign, gcsafe.}
-
-{.push sinkInference: on.}

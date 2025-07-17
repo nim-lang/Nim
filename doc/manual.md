@@ -2241,6 +2241,10 @@ Nim supports these `calling conventions`:idx:\:
     only a hint for the compiler: it may completely ignore it, and
     it may inline procedures that are not marked as `inline`.
 
+`noinline`:idx:
+:   The backend compiler may inline procedures that are not marked as `inline`.
+    The noinline convention prevents it.
+
 `fastcall`:idx:
 :   Fastcall means different things to different C compilers. One gets whatever
     the C `__fastcall` means.
@@ -2623,12 +2627,12 @@ In a call `p(args)` where `p` may refer to more than one
 candidate, it is said to be a symbol choice. Overload resolution will attempt to
 find the best candidate, thus transforming the symbol choice into a resolved symbol.
 The routine `p` that matches best is selected following a series of trials explained below. 
-In order: Catagory matching, Hierarchical Order Comparison, and finally, Complexity Analysis.
+In order: Category matching, Hierarchical Order Comparison, and finally, Complexity Analysis.
 
 If multiple candidates match equally well after all trials have been tested, the ambiguity 
 is reported during semantic analysis.
 
-First Trial: Catagory matching
+First Trial: Category matching
 --------------------------------
 
 Every arg in `args` needs to match and there are multiple different categories of matches.
@@ -2689,7 +2693,7 @@ Matching formals for this type include `T`, `object`, `A`, `A[...]` and `A[C]` w
 is a generic typeclass composition and `T` is an unconstrained generic type variable. This list is in order of 
 specificity with respect to `A` as each subsequent category narrows the set of types that are members of their match set.
 
-In this trail, the formal parameters of candidates are compared in order (1st parameter, 2nd parameter, etc.) to search for
+In this trial, the formal parameters of candidates are compared in order (1st parameter, 2nd parameter, etc.) to search for
 a candidate that has an unrivaled specificity. If such a formal parameter is found, the candidate it belongs to is chosen 
 as the resolved symbol.
 
@@ -2923,6 +2927,97 @@ a parameter has different names between them.
 Not supplying the parameter name in such cases results in an
 ambiguity error.
 
+Concepts
+=========
+
+Concepts are a mechanism for users to define custom type classes that match other
+types based on a given set of bindings.
+
+```nim
+type
+  Comparable = concept # Atomic concept
+    proc cmp(a, b: Self): int
+  Indexable[I, T] = concept # Container concept
+    proc `[]`(x: Self; at: I): T
+    proc `[]=`(x: var Self; at: I; newVal: T)
+    proc len(x: Self): I
+  Index = concept
+    proc inc(x: var Self)
+    proc `<`(a, b: Self): bool
+proc sort*[I: Index; T: Comparable](x: var Indexable[I, T])
+```
+
+In the above example, `Comparable` and `Indexable` are types that will match any type that
+can can bind each definition declared in the concept body. The special `Self` type defined
+in the concept body refers to the type being matched, also called the "implementation" of 
+the concept. Implementations that match the concept are generic matches, and the concept 
+typeclasses themselves work in a similar way to generic type variables in that they are never
+concrete types themselves (even if they have concrete type parameters such as `Indexable[int, int]`)
+and expressions like `typeof(x)` in the body of `proc sort` from the above example will return the 
+type of the implementation, not the concept typeclass. Concepts are useful for providing information
+to the compiler in generic contexts, most notably for generic type checking, and as a tool for 
+[Overload resolution]. Generic type checking is forthcoming, so this will only explain overload
+resolution for now.
+
+In the example above, "atomic" and "container" concepts are mentioned. These kinds of concept
+are determined by the generic type variables of the concept. Atomic concepts` definitions contain
+only concrete types, and the `Self` type is inferred to be concrete. Container types are the same,
+under the condition that their generic variables are bound to concrete types and substituted appropriately.
+The programmer is free to define a concept that breaks these concreteness rules, thus making a "gray" concept:
+
+```nim
+type
+  Processor = concept
+    proc process[T](s: Self; data: T)
+```
+
+The above concept does not have generic variables, and its definition contains `T` which is not concrete.
+This kind of concept may disrupt the compiler's ability to type check generic contexts, but it is useful for
+overload resolution. The difference between `Indexable[I, T]` and `Processor` is that a given implementation
+is effectively described as an instantiation of `Indexable` (as in `Indexable[int, int]`) whereas a `Processor`
+concept describes an implementation designed to handle multiple different types of data `T`.
+
+Concept overload resolution
+-----------------------------
+
+When an operand's type is being matched to a concept, the operand's type  is set as the "potential
+implementation". For each definition in the concept body, overload resolution is performed by substituting `Self`
+for the potential implementation to try and find a match for each definition. If this succeeds, the concept 
+matches. Implementations do not need to exactly match the definitions in the concept. For example:
+
+```nim
+type
+  C1 = concept
+    proc p(s: Self; x: int)
+  Implementation = object
+
+proc p(x: Implementation; y: SomeInteger)
+proc spring(x: C1)
+spring(Implementation())
+```
+This will bind because `p(Implementation(), 0)` will bind. Conversely, container types will bind to
+less specific definitions if the generic constraints and bindings allow it, as per usual generic matching.
+
+Things start to get more complicated when overload resolution starts "Hierarchical Order Comparison"
+I.E. specificity comparison as per [Overload resolution]. In this state the compiler may be comparing
+all kinds of types and typeclasses with concepts as defined in the `proc` definitions of each overload.
+This leads to confusing and impractical behavior in most situations, so the rules are simplified. They are:
+
+1. if a concept is being compared with `T` or any type that accepts all other types (`auto`) the concept
+is more specific
+2. if the concept is being compared with another concept the result is deferred to [Concept subset matching]
+3. in any other case the concept is less specific then it's competitor 
+
+
+Concept subset matching
+-------------------------
+
+This type of matching is simple. When comparing concepts `C1` and `C2`, if all valid implementations of `C1`
+are also valid implementations of `C2` but not vice versa then `C1` is a subset of `C2`. This means that
+`C1` will match to `C2` and therefore the disambiguation process will prefer `C2` as it is more specific.
+If neither of them are subsets of one another, then the disambiguation proceeds to complexity analysis
+and the concept with the most definitions wins, if any. No definite winner is an ambiguity error at
+compile time.
 
 Statements and expressions
 ==========================
@@ -3219,6 +3314,15 @@ A const section declares constants whose values are constant expressions:
   ```
 
 Once declared, a constant's symbol can be used as a constant expression.
+
+The value part of a constant declaration opens a new scope for each constant,
+so no symbols declared in the constant value are accessible outside of it.
+
+  ```nim
+  const foo = (var a = 1; a)
+  const bar = a # error
+  let baz = a # error
+  ```
 
 See [Constants and Constant Expressions] for details.
 
@@ -3787,9 +3891,6 @@ Since operations on unsigned numbers wrap around and are unchecked so are
 type conversions to unsigned integers and between unsigned integers. The
 rationale for this is mostly better interoperability with the C Programming
 language when algorithms are ported from C to Nim.
-
-Exception: Values that are converted to an unsigned type at compile time
-are checked so that code like `byte(-1)` does not compile.
 
 **Note**: Historically the operations
 were unchecked and the conversions were sometimes checked but starting with
@@ -4457,7 +4558,42 @@ as an example:
 Overloading of the subscript operator
 -------------------------------------
 
-The `[]` subscript operator for arrays/openarrays/sequences can be overloaded.
+The `[]` subscript operator for arrays/openarrays/sequences can be overloaded
+for any type (with some exceptions) by defining a routine with the name `[]`.
+
+  ```nim
+  type Foo = object
+    data: seq[int]
+  
+  proc `[]`(foo: Foo, i: int): int =
+    result = foo.data[i]
+  
+  let foo = Foo(data: @[1, 2, 3])
+  echo foo[1] # 2
+  ```
+
+Assignment to subscripts can also be overloaded by naming a routine `[]=`,
+which has precedence over assigning to the result of `[]`.
+
+  ```nim
+  type Foo = object
+    data: seq[int]
+  
+  proc `[]`(foo: Foo, i: int): int =
+    result = foo.data[i]
+  proc `[]=`(foo: var Foo, i: int, val: int) =
+    foo.data[i] = val
+  
+  var foo = Foo(data: @[1, 2, 3])
+  echo foo[1] # 2
+  foo[1] = 5
+  echo foo.data # @[1, 5, 3]
+  echo foo[1] # 5
+  ```
+
+Overloads of the subscript operator cannot be applied to routine or type
+symbols themselves, as this conflicts with the syntax for instantiating
+generic parameters, i.e. `foo[int](1, 2, 3)` or `Foo[int]`.
 
 
 Methods
@@ -5128,7 +5264,7 @@ It is possible to raise/catch imported C++ exceptions. Types imported using
 `importcpp` can be raised or caught. Exceptions are raised by value and
 caught by reference. Example:
 
-  ```nim  test = "nim cpp -r $1"
+  ```nim
   type
     CStdException {.importcpp: "std::exception", header: "<exception>", inheritable.} = object
       ## does not inherit from `RootObj`, so we use `inheritable` instead
@@ -5141,22 +5277,22 @@ caught by reference. Example:
   proc fn() =
     let a = initRuntimeError("foo")
     doAssert $a.what == "foo"
-    var b: cstring
+    var b = ""
     try: raise initRuntimeError("foo2")
     except CStdException as e:
       doAssert e is CStdException
-      b = e.what()
-    doAssert $b == "foo2"
+      b = $e.what()
+    doAssert b == "foo2"
 
     try: raise initStdException()
     except CStdException: discard
 
     try: raise initRuntimeError("foo3")
     except CRuntimeError as e:
-      b = e.what()
+      b = $e.what()
     except CStdException:
       doAssert false
-    doAssert $b == "foo3"
+    doAssert b == "foo3"
 
   fn()
   ```
@@ -6216,9 +6352,12 @@ scope is controlled by the `inject`:idx: and `gensym`:idx: pragmas:
 `gensym`'ed symbols are not exposed but `inject`'ed symbols are.
 
 The default for symbols of entity `type`, `var`, `let` and `const`
-is `gensym` and for `proc`, `iterator`, `converter`, `template`,
-`macro` is `inject`. However, if the name of the entity is passed as a
-template parameter, it is an `inject`'ed symbol:
+is `gensym`. For `proc`, `iterator`, `converter`, `template`,
+`macro`, the default is `inject`, but if a `gensym` symbol with the same name
+is defined in the same syntax-level scope, it will be `gensym` by default.
+This can be overridden by marking the routine as `inject`. 
+
+If the name of the entity is passed as a template parameter, it is an `inject`'ed symbol:
 
   ```nim
   template withFile(f, fn, mode: untyped, actions: untyped): untyped =
@@ -7676,6 +7815,8 @@ The `size pragma` allows specifying the size of the enum type.
   doAssert sizeof(EventType) == sizeof(uint32)
   ```
 
+When used for enum types, the `size pragma` accepts only the values 1, 2, 4 or 8.
+
 The `size pragma` can also specify the size of an `importc` incomplete object type
 so that one can get the size of it at compile time even if it was declared without fields.
 
@@ -7687,8 +7828,6 @@ so that one can get the size of it at compile time even if it was declared witho
       # if AtomicFlag didn't have the size pragma, this code would result in a compile time error.
       echo sizeof(AtomicFlag)
   ```
-
-The `size pragma` accepts only the values 1, 2, 4 or 8.
 
 
 Align pragma
@@ -8602,6 +8741,14 @@ pragma should be used in addition to the `exportc` pragma. See
 [Dynlib pragma for export].
 
 
+Exportcpp pragma
+----------------
+The `exportcpp` pragma works like the `exportc` pragma but it requires the `cpp` backend.
+When compiled with the `cpp` backend, the `exportc` pragma adds `export "C"` to
+the declaration in the generated code so that it can be called from both C and
+C++ code. `exportcpp` pragma doesn't add `export "C"`.
+
+
 Extern pragma
 -------------
 Like `exportc` or `importc`, the `extern` pragma affects name
@@ -8703,7 +8850,7 @@ after the last specified parameter. Nim string values will be converted to C
 strings automatically:
 
   ```Nim
-  proc printf(formatstr: cstring) {.nodecl, varargs.}
+  proc printf(formatstr: cstring) {.header: "<stdio.h>", varargs.}
 
   printf("hallo %s", "world") # "world" will be passed as C string
   ```
@@ -8987,3 +9134,119 @@ This means the following compiles (for now) even though it really should not:
     inc i
     access a[i].v
   ```
+
+Strict definitions and `out` parameters
+=======================================
+
+*every* local variable must be initialized explicitly before it can be used:
+
+  ```nim
+  proc test =
+    var s: seq[string]
+    s.add "abc" # invalid!
+  ```
+
+Needs to be written as:
+
+  ```nim
+  proc test =
+    var s: seq[string] = @[]
+    s.add "abc" # valid!
+  ```
+
+A control flow analysis is performed in order to prove that a variable has been written to
+before it is used. Thus the following is valid:
+
+  ```nim
+  proc test(cond: bool) =
+    var s: seq[string]
+    if cond:
+      s = @["y"]
+    else:
+      s = @[]
+    s.add "abc" # valid!
+  ```
+
+In this example every path does set `s` to a value before it is used.
+
+  ```nim
+  proc test(cond: bool) =
+    let s: seq[string]
+    if cond:
+      s = @["y"]
+    else:
+      s = @[]
+  ```
+
+`let` statements are allowed to not have an initial value, but every path should set `s` to a value before it is used.
+
+
+`out` parameters
+----------------
+
+An `out` parameter is like a `var` parameter but it must be written to before it can be used:
+
+  ```nim
+  proc myopen(f: out File; name: string): bool =
+    f = default(File)
+    result = open(f, name)
+  ```
+
+While it is usually the better style to use the return type in order to return results API and ABI
+considerations might make this infeasible. Like for `var T` Nim maps `out T` to a hidden pointer.
+For example POSIX's `stat` routine can be wrapped as:
+
+  ```nim
+  proc stat*(a1: cstring, a2: out Stat): cint {.importc, header: "<sys/stat.h>".}
+  ```
+
+When the implementation of a routine with output parameters is analysed, the compiler
+checks that every path before the (implicit or explicit) return does set every output
+parameter:
+
+  ```nim
+  proc p(x: out int; y: out string; cond: bool) =
+    x = 4
+    if cond:
+      y = "abc"
+    # error: not every path initializes 'y'
+  ```
+
+
+Out parameters and exception handling
+-------------------------------------
+
+The analysis should take exceptions into account (but currently does not):
+
+  ```nim
+  proc p(x: out int; y: out string; cond: bool) =
+    x = canRaise(45)
+    y = "abc" # <-- error: not every path initializes 'y'
+  ```
+
+Once the implementation takes exceptions into account it is easy enough to
+use `outParam = default(typeof(outParam))` in the beginning of the proc body.
+
+Out parameters and inheritance
+------------------------------
+
+It is not valid to pass an lvalue of a supertype to an `out T` parameter:
+
+  ```nim
+  type
+    Superclass = object of RootObj
+      a: int
+    Subclass = object of Superclass
+      s: string
+
+  proc init(x: out Superclass) =
+    x = Superclass(a: 8)
+
+  var v: Subclass
+  init v
+  use v.s # the 's' field was never initialized!
+  ```
+
+However, in the future this could be allowed and provide a better way to write object
+constructors that take inheritance into account.
+

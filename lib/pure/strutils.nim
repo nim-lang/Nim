@@ -334,9 +334,9 @@ func normalize*(s: string): string {.rtl, extern: "nsuNormalize".} =
 func cmpIgnoreCase*(a, b: string): int {.rtl, extern: "nsuCmpIgnoreCase".} =
   ## Compares two strings in a case insensitive manner. Returns:
   ##
-  ## | 0 if a == b
-  ## | < 0 if a < b
-  ## | > 0 if a > b
+  ## | `0` if a == b
+  ## | `< 0` if a < b
+  ## | `> 0` if a > b
   runnableExamples:
     doAssert cmpIgnoreCase("FooBar", "foobar") == 0
     doAssert cmpIgnoreCase("bar", "Foo") < 0
@@ -354,9 +354,9 @@ func cmpIgnoreStyle*(a, b: string): int {.rtl, extern: "nsuCmpIgnoreStyle".} =
   ##
   ## Returns:
   ##
-  ## | 0 if a == b
-  ## | < 0 if a < b
-  ## | > 0 if a > b
+  ## | `0` if a == b
+  ## | `< 0` if a < b
+  ## | `> 0` if a > b
   runnableExamples:
     doAssert cmpIgnoreStyle("foo_bar", "FooBar") == 0
     doAssert cmpIgnoreStyle("foo_bar_5", "FooBar4") > 0
@@ -998,9 +998,9 @@ func toHex*[T: SomeInteger](x: T, len: Positive): string =
     doAssert b.toHex(4) == "1001"
     doAssert toHex(62, 3) == "03E"
     doAssert toHex(-8, 6) == "FFFFF8"
-  whenJsNoBigInt64:
+  when jsNoBigInt64:
     toHexImpl(cast[BiggestUInt](x), len, x < 0)
-  do:
+  else:
     when T is SomeSignedInt:
       toHexImpl(cast[BiggestUInt](BiggestInt(x)), len, x < 0)
     else:
@@ -1011,9 +1011,9 @@ func toHex*[T: SomeInteger](x: T): string =
   runnableExamples:
     doAssert toHex(1984'i64) == "00000000000007C0"
     doAssert toHex(1984'i16) == "07C0"
-  whenJsNoBigInt64:
+  when jsNoBigInt64:
     toHexImpl(cast[BiggestUInt](x), 2*sizeof(T), x < 0)
-  do:
+  else:
     when T is SomeSignedInt:
       toHexImpl(cast[BiggestUInt](BiggestInt(x)), 2*sizeof(T), x < 0)
     else:
@@ -1081,7 +1081,7 @@ func fromBin*[T: SomeInteger](s: string): T =
     doAssert fromBin[uint8](s) == 153
     doAssert s.fromBin[:int16] == 0b1110_1110_1001_1001'i16
     doAssert s.fromBin[:uint64] == 1216933529'u64
-
+  result = T(0)
   let p = parseutils.parseBin(s, result)
   if p != s.len or p == 0:
     raise newException(ValueError, "invalid binary integer: " & s)
@@ -1104,7 +1104,7 @@ func fromOct*[T: SomeInteger](s: string): T =
     doAssert fromOct[uint8](s) == 255'u8
     doAssert s.fromOct[:int16] == 24063'i16
     doAssert s.fromOct[:uint64] == 21913087'u64
-
+  result = T(0)
   let p = parseutils.parseOct(s, result)
   if p != s.len or p == 0:
     raise newException(ValueError, "invalid oct integer: " & s)
@@ -1127,7 +1127,7 @@ func fromHex*[T: SomeInteger](s: string): T =
     doAssert fromHex[uint8](s) == 246'u8
     doAssert s.fromHex[:int16] == -29194'i16
     doAssert s.fromHex[:uint64] == 305499638'u64
-
+  result = T(0)
   let p = parseutils.parseHex(s, result)
   if p != s.len or p == 0:
     raise newException(ValueError, "invalid hex integer: " & s)
@@ -1307,7 +1307,7 @@ func parseEnum*[T: enum](s: string): T =
   ## type contains multiple fields with the same string value.
   ##
   ## Raises `ValueError` for an invalid value in `s`. The comparison is
-  ## done in a style insensitive way.
+  ## done in a style insensitive way (first letter is still case-sensitive).
   runnableExamples:
     type
       MyEnum = enum
@@ -1327,7 +1327,7 @@ func parseEnum*[T: enum](s: string, default: T): T =
   ## type contains multiple fields with the same string value.
   ##
   ## Uses `default` for an invalid value in `s`. The comparison is done in a
-  ## style insensitive way.
+  ## style insensitive way (first letter is still case-sensitive).
   runnableExamples:
     type
       MyEnum = enum
@@ -1643,6 +1643,7 @@ func startsWith*(s, prefix: string): bool {.rtl, extern: "nsuStartsWith".} =
     let a = "abracadabra"
     doAssert a.startsWith("abra") == true
     doAssert a.startsWith("bra") == false
+  result = false
   startsWithImpl(s, prefix)
 
 func endsWith*(s: string, suffix: char): bool {.inline.} =
@@ -1671,6 +1672,7 @@ func endsWith*(s, suffix: string): bool {.rtl, extern: "nsuEndsWith".} =
     let a = "abracadabra"
     doAssert a.endsWith("abra") == true
     doAssert a.endsWith("dab") == false
+  result = false
   endsWithImpl(s, suffix)
 
 func continuesWith*(s, substr: string, start: Natural): bool {.rtl,
@@ -1687,6 +1689,7 @@ func continuesWith*(s, substr: string, start: Natural): bool {.rtl,
     doAssert a.continuesWith("ca", 4) == true
     doAssert a.continuesWith("ca", 5) == false
     doAssert a.continuesWith("dab", 6) == true
+  result = false
   var i = 0
   while true:
     if i >= substr.len: return true
@@ -1947,8 +1950,8 @@ func find*(a: SkipTable, s, sub: string, start: Natural = 0, last = -1): int {.
     inc skip, a[s[skip + subLast]]
 
 when not (defined(js) or defined(nimdoc) or defined(nimscript)):
-  func c_memchr(cstr: pointer, c: char, n: csize_t): pointer {.
-                importc: "memchr", header: "<string.h>".}
+  from system/ansi_c import c_memchr
+
   const hasCStringBuiltin = true
 else:
   const hasCStringBuiltin = false
@@ -1979,7 +1982,7 @@ func find*(s: string, sub: char, start: Natural = 0, last = -1): int {.rtl,
     when hasCStringBuiltin:
       let length = last-start+1
       if length > 0:
-        let found = c_memchr(s[start].unsafeAddr, sub, cast[csize_t](length))
+        let found = c_memchr(s[start].unsafeAddr, cint(sub), cast[csize_t](length))
         if not found.isNil:
           return cast[int](found) -% cast[int](s.cstring)
     else:
@@ -2199,7 +2202,8 @@ func replace*(s, sub: string, by = ""): string {.rtl,
   ## * `replace func<#replace,string,char,char>`_ for replacing
   ##   single characters
   ## * `replaceWord func<#replaceWord,string,string,string>`_
-  ## * `multiReplace func<#multiReplace,string,varargs[]>`_
+  ## * `multiReplace func<#multiReplace,string,varargs[]>`_ for substrings
+  ## * `multiReplace func<#multiReplace,openArray[char],varargs[]>`_ for single characters
   result = ""
   let subLen = sub.len
   if subLen == 0:
@@ -2242,7 +2246,8 @@ func replace*(s: string, sub, by: char): string {.rtl,
   ## See also:
   ## * `find func<#find,string,char,Natural,int>`_
   ## * `replaceWord func<#replaceWord,string,string,string>`_
-  ## * `multiReplace func<#multiReplace,string,varargs[]>`_
+  ## * `multiReplace func<#multiReplace,string,varargs[]>`_ for substrings
+  ## * `multiReplace func<#multiReplace,openArray[char],varargs[]>`_ for single characters
   result = newString(s.len)
   var i = 0
   while i < s.len:
@@ -2327,7 +2332,38 @@ func multiReplace*(s: string, replacements: varargs[(string, string)]): string =
       add result, s[i]
       inc(i)
 
-
+func multiReplace*(s: openArray[char]; replacements: varargs[(set[char], char)]): string {.noinit.} =
+  ## Performs multiple character replacements in a single pass through the input.
+  ##
+  ## `multiReplace` scans the input `s` from left to right and replaces
+  ## characters based on character sets, applying the first matching replacement
+  ## at each position. Useful for sanitizing or transforming strings with
+  ## predefined character mappings.
+  ##
+  ## The order of the `replacements` matters:
+  ##   - First matching replacement is applied
+  ##   - Subsequent replacements are not considered for the same character
+  ##
+  ## See also:
+  ## - `multiReplace(s: string; replacements: varargs[(string, string)]) <#multiReplace,string,varargs[]>`_,
+  runnableExamples:
+    const WinSanitationRules = [
+      ({'\0'..'\31'}, ' '),
+      ({'"'}, '\''),
+      ({'/', '\\', ':', '|'}, '-'),
+      ({'*', '?', '<', '>'}, '_'),
+    ]
+    # Sanitize a filename with Windows-incompatible characters
+    const file = "a/file:with?invalid*chars.txt"
+    doAssert file.multiReplace(WinSanitationRules) == "a-file-with_invalid_chars.txt"
+  result = newStringUninit(s.len)
+  for i in 0..<s.len:
+    var nextChar = s[i]
+    for subs, by in replacements.items:
+      if nextChar in subs:
+        nextChar = by
+        break
+    result[i] = nextChar
 
 func insertSep*(s: string, sep = '_', digits = 3): string {.rtl,
     extern: "nsuInsertSep".} =
@@ -2340,7 +2376,7 @@ func insertSep*(s: string, sep = '_', digits = 3): string {.rtl,
     doAssert insertSep("1000000") == "1_000_000"
   result = newStringOfCap(s.len)
   let hasPrefix = isDigit(s[s.low]) == false
-  var idx: int
+  var idx: int = 0
   if hasPrefix:
     result.add s[s.low]
     for i in (s.low + 1)..s.high:
@@ -2445,7 +2481,7 @@ func validIdentifier*(s: string): bool {.rtl, extern: "nsuValidIdentifier".} =
   ## and is followed by any number of characters of the set `IdentChars`.
   runnableExamples:
     doAssert "abc_def08".validIdentifier
-
+  result = false
   if s.len > 0 and s[0] in IdentStartChars:
     for i in 1..s.len-1:
       if s[i] notin IdentChars: return false

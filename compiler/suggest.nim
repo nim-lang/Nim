@@ -35,13 +35,19 @@
 import prefixmatches, suggestsymdb
 from wordrecg import wDeprecated, wError, wAddr, wYield
 
-import std/[algorithm, sets, parseutils, tables]
+import std/[algorithm, sets, parseutils, tables, os]
 
 when defined(nimsuggest):
   import pathutils # importer
 
 const
   sep = '\t'
+
+type 
+  ImportContext = object
+    isMultiImport: bool      # True if we're in a [...] context
+    baseDir: string          # e.g., "folder/" in "import folder/[..."
+    partialModule: string    # The actual module name being typed
 
 #template sectionSuggest(): expr = "##begin\n" & getStackTrace() & "##end\n"
 
@@ -750,6 +756,123 @@ proc sugExpr(c: PContext, n: PNode, outputs: var Suggestions) =
     let prefix = if c.config.m.trackPosAttached: nil else: n
     suggestEverything(c, n, prefix, outputs)
 
+proc extractImportContextFromAst(n: PNode, cursorCol: int): ImportContext =
+  result = ImportContext()
+  if n.kind != nkImportStmt: return
+  for child in n:
+    case child.kind
+    of nkIdent:
+      # Single import, e.g. import foo
+      if child.info.col <= cursorCol:
+        result.baseDir = ""
+        result.partialModule = child.ident.s
+        result.isMultiImport = false
+    of nkInfix:
+      # Directory or multi-import, e.g. import std/[os, strutils]
+      if child.len == 3 and child[0].kind == nkIdent and child[0].ident.s == "/":
+        let dir = child[1].ident.s
+        if child[2].kind == nkBracket:
+          result.baseDir = dir
+          result.isMultiImport = true
+          for modNode in child[2]:
+            if modNode.kind == nkIdent and modNode.info.col <= cursorCol:
+              result.partialModule = modNode.ident.s
+        elif child[2].kind == nkIdent:
+          if child[2].info.col <= cursorCol:
+            result.baseDir = dir
+            result.partialModule = child[2].ident.s
+            result.isMultiImport = false
+    else:
+      discard
+
+proc findModuleFile(c: PContext, partialPath: string): seq[string] =
+  result = @[]
+  let currentModuleDir = parentDir(toFullPath(c.config, FileIndex(c.module.position)))
+  
+  proc tryAddModule(path, baseName: string) =
+    if fileExists(path & ".nim"):
+      result.add(baseName)
+
+  proc addModulesFromDir(dir, file: string; result: var seq[string]) =
+    if dirExists(dir):
+      for kind, path in walkDir(dir):
+        if kind in {pcFile, pcDir}:
+          let (_, name, ext) = splitFile(path)
+          if kind == pcFile:
+            if ext == ".nim" and name.startsWith(file):
+              result.add(name) 
+
+  proc collectImportModulesFromDir(dir: string, result: var seq[string]) =
+    for kind, path in walkDir(dir):
+      if kind in {pcFile, pcDir}:
+        let (_, name, ext) = splitFile(path)
+        if kind == pcFile:
+          if ext == ".nim" and name.startsWith(partialPath):
+            result.add(name)
+        else: 
+          if name.startsWith(partialPath):
+            result.add(name)
+    
+  if '/' in partialPath:
+    let parts = partialPath.split('/')
+    let dir = parts[0]
+    let file = parts[1]
+    addModulesFromDir(currentModuleDir / dir, file, result)
+    for searchPath in c.config.searchPaths:
+      let searchDir = searchPath.string / dir
+      addModulesFromDir(searchDir, file, result)
+  else:
+    collectImportModulesFromDir(currentModuleDir, result)
+    for searchPath in c.config.searchPaths:
+      collectImportModulesFromDir(searchPath.string, result)
+
+proc suggestModuleNames(c: PContext, n: PNode) =
+  var suggestions: Suggestions = @[]
+  let partialPath = if n.kind == nkIdent: n.ident.s else: ""
+  proc addModuleSuggestion(path: string) =
+    var suggest = Suggest(
+      section: ideSug,
+      qualifiedPath: @[path],
+      name: addr path,
+      filePath: path,
+      line: n.info.line.int,
+      column: n.info.col.int,
+      doc: "",
+      quality: 100,
+      contextFits: true, 
+      prefix: if partialPath.len > 0: prefixMatch(path, partialPath)
+             else: PrefixMatch.None,
+      symkind: byte skModule
+    )
+    suggestions.add(suggest)
+    
+  let importCtx = extractImportContextFromAst(n, c.config.m.trackPos.col)
+  var searchPath = ""
+  if importCtx.baseDir.len > 0:
+    searchPath = importCtx.baseDir & "/"
+
+  let possibleModules = findModuleFile(c, searchPath & importCtx.partialModule)
+  for moduleName in possibleModules:
+    if moduleName != c.module.name.s:
+      addModuleSuggestion(moduleName)
+
+  produceOutput(suggestions, c.config)
+  suggestQuit()
+
+proc findImportStmtOnLine(n: PNode, line: uint16): PNode =
+  if n.kind in {nkImportStmt, nkFromStmt} and n.info.line == line:
+    return n
+  for i in 0..<n.safeLen:
+    let res = findImportStmtOnLine(n[i], line)
+    if res != nil: return res
+  return nil
+
+template trySuggestModuleNames*(c: PContext, n: PNode) =
+  if c.config.ideCmd == ideSug:
+    let importNode = findImportStmtOnLine(n, c.config.m.trackPos.line)
+    if importNode != nil:
+      suggestModuleNames(c, importNode)
+
 proc suggestExprNoCheck*(c: PContext, n: PNode) =
   # This keeps semExpr() from coming here recursively:
   if c.compilesContextId > 0: return
@@ -778,7 +901,7 @@ proc suggestExprNoCheck*(c: PContext, n: PNode) =
   if outputs.len > 0 and c.config.ideCmd in {ideSug, ideCon, ideDef}:
     produceOutput(outputs, c.config)
     suggestQuit()
-
+ 
 proc suggestExpr*(c: PContext, n: PNode) =
   if exactEquals(c.config.m.trackPos, n.info): suggestExprNoCheck(c, n)
 

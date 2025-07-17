@@ -4,6 +4,7 @@ success
 M1 M2
 ok
 '''
+matrix: "--mm:refc;--mm:orc"
 """
 
 type
@@ -133,3 +134,48 @@ proc foo = # bug #23280
   doAssert L mod 6 == 0 
 
 foo()
+
+block: # bug #9940
+  {.emit:"""/*TYPESECTION*/
+typedef struct { int base; } S;
+""".}
+
+  type S {.importc: "S", completeStruct.} = object
+    base: cint
+  proc init(x:ptr S) =
+    x.base = 1
+
+  type
+    Foo = object
+      a: seq[float]
+      b: seq[float]
+      c: seq[float]
+      d: seq[float]
+      s: S
+
+  proc newT(): Foo =
+    var t: Foo
+    t.s.addr.init
+    doAssert t.s.base == 1
+    t
+
+  var t = newT()
+  doAssert t.s.base == 1
+
+type QObject* {.inheritable, pure.} = object
+  h*: pointer
+
+proc `=destroy`(self: var QObject) =discard
+
+proc `=copy`(dest: var QObject, source: QObject) {.error.}
+
+type QAbstractItemModel* = object of QObject
+
+type VTable = ref object
+  inst:  QAbstractItemModel
+
+proc g() =
+  var x: VTable = VTable()
+  x.inst = QAbstractItemModel()
+
+g()

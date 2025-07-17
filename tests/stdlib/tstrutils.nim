@@ -1,5 +1,5 @@
 discard """
-  matrix: "--mm:refc; --mm:orc; --backend:cpp; --backend:js --jsbigint64:off; --backend:js --jsbigint64:on"
+  matrix: "--mm:refc; --mm:orc; --backend:cpp; --backend:js --jsbigint64:off -d:nimStringHash2; --backend:js --jsbigint64:on"
 """
 
 import std/strutils
@@ -527,8 +527,7 @@ template main() =
 
   block: # toHex
     doAssert(toHex(100i16, 32) == "00000000000000000000000000000064")
-    whenJsNoBigInt64: discard
-    do:
+    when hasWorkingInt64:
       doAssert(toHex(-100i16, 32) == "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFF9C")
       doAssert(toHex(high(uint64)) == "FFFFFFFFFFFFFFFF")
       doAssert(toHex(high(uint64), 16) == "FFFFFFFFFFFFFFFF")
@@ -550,9 +549,8 @@ template main() =
     doAssert(spaces(0) == "")
 
   block: # toBin, toOct
-    whenJsNoBigInt64: # bug #11369
-      discard
-    do:
+    when hasWorkingInt64:
+      # bug #11369
       var num: int64 = -1
       doAssert num.toBin(64) == "1111111111111111111111111111111111111111111111111111111111111111"
       doAssert num.toOct(24) == "001777777777777777777777"
@@ -577,11 +575,28 @@ template main() =
     doAssert "-lda-ldz -ld abc".replaceWord("-ld") == "-lda-ldz  abc"
     doAssert "-lda-ldz -ld abc".replaceWord("") == "-lda-ldz -ld abc"
 
-  block: # multiReplace
+  block: # multiReplace substrings
     doAssert "abba".multiReplace(("a", "b"), ("b", "a")) == "baab"
     doAssert "Hello World.".multiReplace(("ello", "ELLO"), ("World.",
         "PEOPLE!")) == "HELLO PEOPLE!"
     doAssert "aaaa".multiReplace(("a", "aa"), ("aa", "bb")) == "aaaaaaaa"
+
+  block: # multiReplace characters
+    # https://learn.microsoft.com/en-us/windows/win32/fileio/naming-a-file#naming-conventions
+    const SanitationRules = [
+        ({'\0'..'\31'}, ' '),
+        ({'"'}, '\''),
+        ({'/', '\\', ':', '|'}, '-'),
+        ({'*', '?', '<', '>'}, '_'),
+      ]
+    # Basic character set replacements
+    doAssert multiReplace("abba", SanitationRules) == "abba"
+    doAssert multiReplace("a/b\\c:d", SanitationRules) == "a-b-c-d"
+    doAssert multiReplace("a*b?c", SanitationRules) == "a_b_c"
+    doAssert multiReplace("\0\3test", SanitationRules) == "  test"
+    doAssert multiReplace("testquote\"", SanitationRules) == "testquote'"
+    doAssert multiReplace("", SanitationRules) == ""
+    doAssert multiReplace("/\\:*?\"\0<>", ({'\0'..'\255'}, '.')) == "........."
 
   # `parseEnum`, ref issue #14030
   # check enum defined at top level # xxx this is probably irrelevant, and pollutes scope
@@ -773,8 +788,7 @@ bar
 
   block: # formatSize
     disableVm:
-      whenJsNoBigInt64: discard
-      do:
+      when hasWorkingInt64:
         doAssert formatSize((1'i64 shl 31) + (300'i64 shl 20)) == "2.293GiB" # <=== bug #8231
       doAssert formatSize((2.234*1024*1024).int) == "2.234MiB"
       doAssert formatSize(4096) == "4KiB"
