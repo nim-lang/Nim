@@ -358,6 +358,7 @@ proc magicToNifTag(s: TMagic): (string, int) =
   of mExit: ("exit", NoMagic)
   of mSetLengthStr: ("setlenstr", NoMagic)
   of mSetLengthSeq: ("setlenseq", NoMagic)
+  of mSetLengthSeqUninit: ("setlensequninit", NoMagic)
   of mIsPartOf: ("ispartof", NoMagic)
   of mAstToStr: ("asttostr", NoMagic)
   of mParallel: ("parallel", NoMagic)

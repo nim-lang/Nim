@@ -236,6 +236,13 @@ proc bar2() =
     doAssert cstring(nil) <= cstring(nil)
     doAssert cstring("") <= cstring("")
 
+  var x = @[10, 20]
+  x.setLenUninit(5)
+  x[4] = 50
+  doAssert x[4] == 50
+  x.setLenUninit(1)
+  doAssert x == @[10]
+
 static: bar2()
 bar2()
 

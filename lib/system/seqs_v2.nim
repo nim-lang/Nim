@@ -202,7 +202,7 @@ func capacity*[T](self: seq[T]): int {.inline.} =
   let sek = cast[ptr NimSeqV2[T]](unsafeAddr self)
   result = if sek.p != nil: sek.p.cap and not strlitFlag else: 0
 
-func setLenUninit*[T](s: var seq[T], newlen: Natural) {.nodestroy.} =
+func setLenUninit[T](s: var seq[T], newlen: Natural) {.nodestroy.} =
   ## Sets the length of seq `s` to `newlen`. `T` may be any sequence type.
   ## New slots will not be initialized.
   ##
