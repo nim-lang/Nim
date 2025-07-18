@@ -552,7 +552,34 @@ proc transformConv(c: PTransf, n: PNode): PNode =
     # we don't include uint and uint64 here as these are no ordinal types ;-)
     if not isOrdinalType(source):
       # float -> int conversions. ugh.
-      result = transformSons(c, n)
+      # generate a range check:
+      if dest.kind in tyInt..tyInt64:
+        if dest.kind == tyInt64 or source.kind == tyInt64:
+          result = newTransNode(nkChckRange64, n, 3)
+        else:
+          result = newTransNode(nkChckRange, n, 3)
+        dest = skipTypes(n.typ, abstractVar)
+
+        if dest.size < source.size:
+          let intType =
+            if source.size == 4:
+              getSysType(c.graph, n.info, tyInt32)
+            else:
+              getSysType(c.graph, n.info, tyInt64)
+          result[0] = 
+            newTreeIT(n.kind, n.info, n.typ, n[0],
+              newTreeIT(nkConv, n.info, intType,
+              newNodeIT(nkType, n.info, intType), transform(c, n[1]))
+            )
+
+        else:
+          result[0] = transformSons(c, n)
+
+        result[1] = newIntTypeNode(firstOrd(c.graph.config, dest), dest)
+        result[2] = newIntTypeNode(lastOrd(c.graph.config, dest), dest)
+      else:
+        result = transformSons(c, n)
+
     elif firstOrd(c.graph.config, n.typ) <= firstOrd(c.graph.config, n[1].typ) and
         lastOrd(c.graph.config, n[1].typ) <= lastOrd(c.graph.config, n.typ):
       # BUGFIX: simply leave n as it is; we need a nkConv node,
