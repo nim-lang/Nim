@@ -104,7 +104,7 @@ const
   isNilConversion = isConvertible # maybe 'isIntConv' fits better?
   maxInheritancePenalty = high(int) div 2
 
-proc markUsed*(c: PContext; info: TLineInfo, s: PSym; checkStyle = true)
+proc markUsed*(c: PContext; info: TLineInfo, s: PSym; checkStyle = true; isGenericInstance = false)
 proc markOwnerModuleAsUsed*(c: PContext; s: PSym)
 
 proc initCandidateAux(ctx: PContext,
