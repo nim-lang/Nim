@@ -218,23 +218,38 @@ proc fillBodyObj(c: var TLiftCtx; n, body, x, y: PNode; enforceDefaultOp: bool, 
       fillBodyObj(c, n[0], body, x, y, enforceDefaultOp = false)
     c.filterDiscriminator = oldfilterDiscriminator
   of nkRecList:
-    for t in items(n): fillBodyObj(c, t, body, x, y, enforceDefaultOp, enforceWasMoved)
+    # destroys in reverse order #24719
+    if c.kind == attachedDestructor:
+      for i in countdown(n.len-1, 0):
+        fillBodyObj(c, n[i], body, x, y, enforceDefaultOp, enforceWasMoved)
+    else:
+      for t in items(n): fillBodyObj(c, t, body, x, y, enforceDefaultOp, enforceWasMoved)
   else:
     illFormedAstLocal(n, c.g.config)
 
 proc fillBodyObjTImpl(c: var TLiftCtx; t: PType, body, x, y: PNode) =
-  if t.baseClass != nil:
-    let dest = newNodeIT(nkHiddenSubConv, c.info, t.baseClass)
-    dest.add newNodeI(nkEmpty, c.info)
-    dest.add x
-    var src = y
-    if c.kind in {attachedAsgn, attachedDeepCopy, attachedSink}:
-      src = newNodeIT(nkHiddenSubConv, c.info, t.baseClass)
-      src.add newNodeI(nkEmpty, c.info)
-      src.add y
+  template fillBase =
+    if t.baseClass != nil:
+      let dest = newNodeIT(nkHiddenSubConv, c.info, t.baseClass)
+      dest.add newNodeI(nkEmpty, c.info)
+      dest.add x
+      var src = y
+      if c.kind in {attachedAsgn, attachedDeepCopy, attachedSink}:
+        src = newNodeIT(nkHiddenSubConv, c.info, t.baseClass)
+        src.add newNodeI(nkEmpty, c.info)
+        src.add y
 
-    fillBody(c, skipTypes(t.baseClass, abstractPtrs), body, dest, src)
-  fillBodyObj(c, t.n, body, x, y, enforceDefaultOp = false)
+      fillBody(c, skipTypes(t.baseClass, abstractPtrs), body, dest, src)
+  template fillFields =
+    fillBodyObj(c, t.n, body, x, y, enforceDefaultOp = false)
+
+  if c.kind == attachedDestructor:
+    # destroys in reverse order #24719
+    fillFields()
+    fillBase()
+  else:
+    fillBase()
+    fillFields()
 
 proc fillBodyObjT(c: var TLiftCtx; t: PType, body, x, y: PNode) =
   var hasCase = isCaseObj(t.n)
