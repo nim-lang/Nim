@@ -18,8 +18,7 @@
 
 ## Default seq implementation used by Nim's core.
 type
-  NimSeqPayloadBase = object
-    cap: int
+  NimSeqPayloadBase = distinct int
 
   NimSeqPayload[T] = object
     cap: int
@@ -30,9 +29,21 @@ type
     len: int
     p: ptr NimSeqPayload[T]
 
-  NimRawSeq = object
+  NimRawSeq* = object
     len: int
-    p: pointer
+    p: ptr NimSeqPayloadBase
+
+template cap(p: ptr NimSeqPayloadBase): int =
+  int(p[])
+
+template `cap=`(p: ptr NimSeqPayloadBase; n: int) =
+  p[] = NimSeqPayloadBase(n)
+
+template readNimRawSeq*[T](xu: var NimRawSeq; x: seq[T]) =
+  c_memcpy(addr xu, unsafeAddr x, csize_t(sizeof(xu)))
+
+template storeNimRawSeq[T](x: var seq[T]; xu: NimRawSeq) =
+  c_memcpy(addr x, unsafeAddr xu, csize_t(sizeof(xu)))
 
 const nimSeqVersion {.core.} = 2
 
@@ -133,22 +144,27 @@ proc shrink*[T](x: var seq[T]; newLen: Natural) {.tags: [], raises: [].} =
         reset x[i]
     # XXX This is wrong for const seqs that were moved into 'x'!
     {.noSideEffect.}:
-      cast[ptr NimSeqV2[T]](addr x).len = newLen
+      cast[ptr int](addr x)[] = newLen
 
 proc grow*[T](x: var seq[T]; newLen: Natural; value: T) {.nodestroy.} =
   let oldLen = x.len
   #sysAssert newLen >= x.len, "invalid newLen parameter for 'grow'"
   if newLen <= oldLen: return
-  var xu = cast[ptr NimSeqV2[T]](addr x)
+  var xu {.noinit.}: NimRawSeq
+  xu.readNimRawSeq x
   if xu.p == nil or (xu.p.cap and not strlitFlag) < newLen:
     xu.p = cast[typeof(xu.p)](prepareSeqAddUninit(oldLen, xu.p, newLen - oldLen, sizeof(T), alignof(T)))
   xu.len = newLen
+  x.storeNimRawSeq xu
+  {.push boundChecks: off.}
+  let data = cast[ptr UncheckedArray[T]](addr x[0])
+  {.pop.}
   for i in oldLen .. newLen-1:
     when (NimMajor, NimMinor, NimPatch) >= (2, 3, 1):
-      xu.p.data[i] = `=dup`(value)
+      data[i] = `=dup`(value)
     else:
-      wasMoved(xu.p.data[i])
-      `=copy`(xu.p.data[i], value)
+      wasMoved(data[i])
+      `=copy`(data[i], value)
 
 proc add*[T](x: var seq[T]; y: sink T) {.magic: "AppendSeqElem", noSideEffect, nodestroy.} =
   ## Generic proc for adding a data item `y` to a container `x`.
@@ -159,15 +175,21 @@ proc add*[T](x: var seq[T]; y: sink T) {.magic: "AppendSeqElem", noSideEffect, n
   ## respected.
   {.cast(noSideEffect).}:
     let oldLen = x.len
-    var xu = cast[ptr NimSeqV2[T]](addr x)
-    if xu.p == nil or (xu.p.cap and not strlitFlag) < oldLen+1:
+    let newLen = oldLen+1
+    var xu {.noinit.}: NimRawSeq
+    xu.readNimRawSeq x
+    if xu.p == nil or (xu.p.cap and not strlitFlag) < newLen:
       xu.p = cast[typeof(xu.p)](prepareSeqAddUninit(oldLen, xu.p, 1, sizeof(T), alignof(T)))
-    xu.len = oldLen+1
+    xu.len = newLen
+    x.storeNimRawSeq xu
     # .nodestroy means `xu.p.data[oldLen] = value` is compiled into a
     # copyMem(). This is fine as know by construction that
     # in `xu.p.data[oldLen]` there is nothing to destroy.
     # We also save the `wasMoved + destroy` pair for the sink parameter.
-    xu.p.data[oldLen] = y
+    {.push boundChecks: off.}
+    let data = cast[ptr UncheckedArray[T]](addr x[0])
+    {.pop.}
+    data[oldLen] = y
 
 proc setLen[T](s: var seq[T], newlen: Natural) {.nodestroy.} =
   {.noSideEffect.}:
@@ -176,19 +198,28 @@ proc setLen[T](s: var seq[T], newlen: Natural) {.nodestroy.} =
     else:
       let oldLen = s.len
       if newlen <= oldLen: return
-      var xu = cast[ptr NimSeqV2[T]](addr s)
+      var xu {.noinit.}: NimRawSeq
+      xu.readNimRawSeq s
       if xu.p == nil or (xu.p.cap and not strlitFlag) < newlen:
         xu.p = cast[typeof(xu.p)](prepareSeqAddUninit(oldLen, xu.p, newlen - oldLen, sizeof(T), alignof(T)))
       xu.len = newlen
+      s.storeNimRawSeq xu
+      {.push boundChecks: off.}
+      let data = cast[ptr UncheckedArray[T]](addr s[0])
+      {.pop.}
       for i in oldLen..<newlen:
-        xu.p.data[i] = default(T)
+        data[i] = default(T)
 
 proc newSeq[T](s: var seq[T], len: Natural) =
   shrink(s, 0)
   setLen(s, len)
 
 proc sameSeqPayload(x: pointer, y: pointer): bool {.compilerRtl, inl.} =
-  result = cast[ptr NimRawSeq](x)[].p == cast[ptr NimRawSeq](y)[].p
+  var xr {.noinit.}: NimRawSeq
+  var yr {.noinit.}: NimRawSeq
+  c_memcpy(addr xr, x, csize_t(sizeof(xr)))
+  c_memcpy(addr yr, y, csize_t(sizeof(yr)))
+  result = xr.p == yr.p
 
 
 func capacity*[T](self: seq[T]): int {.inline.} =
@@ -199,7 +230,8 @@ func capacity*[T](self: seq[T]): int {.inline.} =
     lst.add "Nim"
     assert lst.capacity == 42
 
-  let sek = cast[ptr NimSeqV2[T]](unsafeAddr self)
+  var sek {.noinit.}: NimRawSeq
+  sek.readNimRawSeq self
   result = if sek.p != nil: sek.p.cap and not strlitFlag else: 0
 
 func setLenUninit[T](s: var seq[T], newlen: Natural) {.nodestroy.} =
@@ -222,9 +254,11 @@ func setLenUninit[T](s: var seq[T], newlen: Natural) {.nodestroy.} =
     else:
       let oldLen = s.len
       if newlen <= oldLen: return
-      var xu = cast[ptr NimSeqV2[T]](addr s)
+      var xu {.noinit.}: NimRawSeq
+      xu.readNimRawSeq s
       if xu.p == nil or (xu.p.cap and not strlitFlag) < newlen:
         xu.p = cast[typeof(xu.p)](prepareSeqAddUninit(oldLen, xu.p, newlen - oldLen, sizeof(T), alignof(T)))
       xu.len = newlen
+      s.storeNimRawSeq xu
 
 {.pop.}  # See https://github.com/nim-lang/Nim/issues/21401
