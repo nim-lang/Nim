@@ -316,8 +316,8 @@ proc `==`*[T](x, y: seq[T]): bool {.noSideEffect.} =
     when not defined(js):
       proc seqToPtr[T](x: seq[T]): pointer {.inline, noSideEffect.} =
         when defined(nimSeqsV2):
-          var xu {.noinit.}: NimRawSeq
-          xu.readNimRawSeq x
+          var xu {.noinit.}: NimSeqV2[T]
+          xu.readNimSeqV2 x
           result = xu.p
         else:
           result = cast[pointer](x)

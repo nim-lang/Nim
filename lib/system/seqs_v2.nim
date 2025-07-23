@@ -39,10 +39,10 @@ template cap(p: ptr NimSeqPayloadBase): int =
 template `cap=`(p: ptr NimSeqPayloadBase; n: int) =
   p[] = NimSeqPayloadBase(n)
 
-template readNimRawSeq*[T](xu: var NimRawSeq; x: seq[T]) =
+template readNimSeqV2*[T](xu: var NimSeqV2[T]; x: seq[T]) =
   c_memcpy(addr xu, unsafeAddr x, csize_t(sizeof(xu)))
 
-template storeNimRawSeq[T](x: var seq[T]; xu: NimRawSeq) =
+template storeNimSeqV2[T](x: var seq[T]; xu: NimSeqV2[T]) =
   c_memcpy(addr x, unsafeAddr xu, csize_t(sizeof(xu)))
 
 const nimSeqVersion {.core.} = 2
@@ -151,11 +151,11 @@ proc grow*[T](x: var seq[T]; newLen: Natural; value: T) {.nodestroy.} =
   #sysAssert newLen >= x.len, "invalid newLen parameter for 'grow'"
   if newLen <= oldLen: return
   var xu {.noinit.}: NimRawSeq
-  xu.readNimRawSeq x
+  xu.readNimSeqV2 x
   if xu.p == nil or (xu.p.cap and not strlitFlag) < newLen:
     xu.p = cast[typeof(xu.p)](prepareSeqAddUninit(oldLen, xu.p, newLen - oldLen, sizeof(T), alignof(T)))
   xu.len = newLen
-  x.storeNimRawSeq xu
+  x.storeNimSeqV2 xu
   {.push boundChecks: off.}
   let data = cast[ptr UncheckedArray[T]](addr x[0])
   {.pop.}
@@ -176,12 +176,12 @@ proc add*[T](x: var seq[T]; y: sink T) {.magic: "AppendSeqElem", noSideEffect, n
   {.cast(noSideEffect).}:
     let oldLen = x.len
     let newLen = oldLen+1
-    var xu {.noinit.}: NimRawSeq
-    xu.readNimRawSeq x
+    var xu {.noinit.}: NimSeqV2[T]
+    xu.readNimSeqV2 x
     if xu.p == nil or (xu.p.cap and not strlitFlag) < newLen:
       xu.p = cast[typeof(xu.p)](prepareSeqAddUninit(oldLen, xu.p, 1, sizeof(T), alignof(T)))
     xu.len = newLen
-    x.storeNimRawSeq xu
+    x.storeNimSeqV2 xu
     # .nodestroy means `xu.p.data[oldLen] = value` is compiled into a
     # copyMem(). This is fine as know by construction that
     # in `xu.p.data[oldLen]` there is nothing to destroy.
@@ -198,12 +198,12 @@ proc setLen[T](s: var seq[T], newlen: Natural) {.nodestroy.} =
     else:
       let oldLen = s.len
       if newlen <= oldLen: return
-      var xu {.noinit.}: NimRawSeq
-      xu.readNimRawSeq s
+      var xu {.noinit.}: NimSeqV2[T]
+      xu.readNimSeqV2 s
       if xu.p == nil or (xu.p.cap and not strlitFlag) < newlen:
         xu.p = cast[typeof(xu.p)](prepareSeqAddUninit(oldLen, xu.p, newlen - oldLen, sizeof(T), alignof(T)))
       xu.len = newlen
-      s.storeNimRawSeq xu
+      s.storeNimSeqV2 xu
       {.push boundChecks: off.}
       let data = cast[ptr UncheckedArray[T]](addr s[0])
       {.pop.}
@@ -230,8 +230,8 @@ func capacity*[T](self: seq[T]): int {.inline.} =
     lst.add "Nim"
     assert lst.capacity == 42
 
-  var sek {.noinit.}: NimRawSeq
-  sek.readNimRawSeq self
+  var sek {.noinit.}: NimSeqV2[T]
+  sek.readNimSeqV2 self
   result = if sek.p != nil: sek.p.cap and not strlitFlag else: 0
 
 func setLenUninit[T](s: var seq[T], newlen: Natural) {.nodestroy.} =
@@ -254,11 +254,11 @@ func setLenUninit[T](s: var seq[T], newlen: Natural) {.nodestroy.} =
     else:
       let oldLen = s.len
       if newlen <= oldLen: return
-      var xu {.noinit.}: NimRawSeq
-      xu.readNimRawSeq s
+      var xu {.noinit.}: NimSeqV2[T]
+      xu.readNimSeqV2 s
       if xu.p == nil or (xu.p.cap and not strlitFlag) < newlen:
         xu.p = cast[typeof(xu.p)](prepareSeqAddUninit(oldLen, xu.p, newlen - oldLen, sizeof(T), alignof(T)))
       xu.len = newlen
-      s.storeNimRawSeq xu
+      s.storeNimSeqV2 xu
 
 {.pop.}  # See https://github.com/nim-lang/Nim/issues/21401
