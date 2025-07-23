@@ -88,7 +88,7 @@ Nim, composition is as efficient as inheritance.
 
 Interfaces
 ----------
-Closely related concepts of abstract classes, protocols, traits, and interfaces are
+Concepts like abstract classes, protocols, traits, and interfaces can be
 simulated in nim as objects of closures:
 
 ```nim
