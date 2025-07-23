@@ -86,6 +86,26 @@ Student(id: 123)` will truncate subclass fields.
 (*is-a* relation) for simple code reuse. Since objects are value types in
 Nim, composition is as efficient as inheritance.
 
+Interfaces
+----------
+Closely related concepts of abstract classes, protocols, traits, and interfaces are
+simulated in nim as objects of closures:
+
+```nim
+
+type
+  IntFieldInterface = object
+    getter: proc (): int
+    setter: proc (x: int)
+
+
+proc outer: IntFieldInterface =
+  var captureMe = 0
+  proc getter(): int = result = captureMe
+  proc setter(x: int) = captureMe = x
+  
+  result = IntFieldInterface(getter: getter, setter: setter)
+```
 
 Mutually recursive types
 ------------------------
