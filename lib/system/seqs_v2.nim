@@ -29,7 +29,7 @@ type
     len: int
     p: ptr NimSeqPayload[T]
 
-  NimRawSeq* = object
+  NimRawSeq = object
     len: int
     p: ptr NimSeqPayloadBase
 
@@ -150,7 +150,7 @@ proc grow*[T](x: var seq[T]; newLen: Natural; value: T) {.nodestroy.} =
   let oldLen = x.len
   #sysAssert newLen >= x.len, "invalid newLen parameter for 'grow'"
   if newLen <= oldLen: return
-  var xu {.noinit.}: NimRawSeq
+  var xu {.noinit.}: NimSeqV2[T]
   xu.readNimSeqV2 x
   if xu.p == nil or (xu.p.cap and not strlitFlag) < newLen:
     xu.p = cast[typeof(xu.p)](prepareSeqAddUninit(oldLen, xu.p, newLen - oldLen, sizeof(T), alignof(T)))
