@@ -7,9 +7,13 @@
 #    distribution, for details about the copyright.
 #
 
-import os, tables, strutils, times, heapqueue, options, deques, cstrutils
+import std/[os, sets, tables, strutils, times, heapqueue, options, deques, cstrutils, typetraits]
 
 import system/stacktraces
+
+when defined(nimPreviewSlimSystem):
+  import std/objectdollar # for StackTraceEntry
+  import std/assertions
 
 # TODO: This shouldn't need to be included, but should ideally be exported.
 type
@@ -25,7 +29,7 @@ type
     finished: bool
     error*: ref Exception              ## Stored exception
     errorStackTrace*: string
-    when not defined(release):
+    when not defined(release) or defined(futureLogging):
       stackTrace: seq[StackTraceEntry] ## For debugging purposes only.
       id: int
       fromProc: string
@@ -47,7 +51,7 @@ const
   NimAsyncContinueSuffix* = "NimAsyncContinue" ## For internal usage. Do not use.
 
 when isFutureLoggingEnabled:
-  import hashes
+  import std/hashes
   type
     FutureInfo* = object
       stackTrace*: seq[StackTraceEntry]
@@ -189,7 +193,7 @@ proc add(callbacks: var CallbackList, function: CallbackFunc) =
         last = last.next
       last.next = newCallback
 
-proc completeImpl[T, U](future: Future[T], val: U, isVoid: static bool) =
+proc completeImpl[T, U](future: Future[T], val: sink U, isVoid: static bool) =
   #assert(not future.finished, "Future already finished, cannot finish twice.")
   checkFinished(future)
   assert(future.error == nil)
@@ -199,7 +203,7 @@ proc completeImpl[T, U](future: Future[T], val: U, isVoid: static bool) =
   future.callbacks.call()
   when isFutureLoggingEnabled: logFutureFinish(future)
 
-proc complete*[T](future: Future[T], val: T) =
+proc complete*[T](future: Future[T], val: sink T) =
   ## Completes `future` with value `val`.
   completeImpl(future, val, false)
 
@@ -215,7 +219,7 @@ proc complete*[T](future: FutureVar[T]) =
   fut.callbacks.call()
   when isFutureLoggingEnabled: logFutureFinish(Future[T](future))
 
-proc complete*[T](future: FutureVar[T], val: T) =
+proc complete*[T](future: FutureVar[T], val: sink T) =
   ## Completes a `FutureVar` with value `val`.
   ##
   ## Any previously stored value will be overwritten.
@@ -289,65 +293,47 @@ template getFilenameProcname(entry: StackTraceEntry): (string, string) =
   else:
     ($entry.filename, $entry.procname)
 
-proc getHint(entry: StackTraceEntry): string =
-  ## We try to provide some hints about stack trace entries that the user
-  ## may not be familiar with, in particular calls inside the stdlib.
-
+proc format(entry: StackTraceEntry): string =
   let (filename, procname) = getFilenameProcname(entry)
+  let left = "$#($#)" % [filename, $entry.line]
+  result = spaces(2) & "$# $#\n" % [left, procname]
 
-  result = ""
-  if procname == "processPendingCallbacks":
-    if cmpIgnoreStyle(filename, "asyncdispatch.nim") == 0:
-      return "Executes pending callbacks"
-  elif procname == "poll":
-    if cmpIgnoreStyle(filename, "asyncdispatch.nim") == 0:
-      return "Processes asynchronous completion events"
-
-  if procname.endsWith(NimAsyncContinueSuffix):
-    if cmpIgnoreStyle(filename, "asyncmacro.nim") == 0:
-      return "Resumes an async procedure"
+proc isInternal(entry: StackTraceEntry): bool =
+  # --excessiveStackTrace:off
+  const internals = [
+    "asyncdispatch.nim",
+    "asyncfutures.nim",
+    "threadimpl.nim",  # XXX ?
+  ]
+  let (filename, procname) = getFilenameProcname(entry)
+  for line in internals:
+    if filename.endsWith line:
+      return true
+  return false
 
 proc `$`*(stackTraceEntries: seq[StackTraceEntry]): string =
+  result = ""
   when defined(nimStackTraceOverride):
     let entries = addDebuggingInfo(stackTraceEntries)
   else:
     let entries = stackTraceEntries
-
-  result = ""
-  # Find longest filename & line number combo for alignment purposes.
-  var longestLeft = 0
-  for entry in entries:
-    let (filename, procname) = getFilenameProcname(entry)
-
-    if procname == "": continue
-
-    let leftLen = filename.len + len($entry.line)
-    if leftLen > longestLeft:
-      longestLeft = leftLen
-
-  var indent = 2
-  # Format the entries.
-  for entry in entries:
-    let (filename, procname) = getFilenameProcname(entry)
-
-    if procname == "":
-      if entry.line == reraisedFromBegin:
-        result.add(spaces(indent) & "#[\n")
-        indent.inc(2)
-      elif entry.line == reraisedFromEnd:
-        indent.dec(2)
-        result.add(spaces(indent) & "]#\n")
-      continue
-
-    let left = "$#($#)" % [filename, $entry.line]
-    result.add((spaces(indent) & "$#$# $#\n") % [
-      left,
-      spaces(longestLeft - left.len + 2),
-      procname
-    ])
-    let hint = getHint(entry)
-    if hint.len > 0:
-      result.add(spaces(indent+2) & "## " & hint & "\n")
+  var seenEntries = initHashSet[StackTraceEntry]()
+  let L = entries.len-1
+  var i = L
+  var j = 0
+  while i >= 0:
+    if entries[i].line == reraisedFromBegin or i == 0:
+      j = i + int(i != 0)
+      while j < L:
+        if entries[j].line == reraisedFromBegin:
+          break
+        if entries[j].line >= 0 and not isInternal(entries[j]):
+          # this skips recursive calls sadly
+          if entries[j] notin seenEntries:
+            result.add format(entries[j])
+            seenEntries.incl entries[j]
+        inc j
+    dec i
 
 proc injectStacktrace[T](future: Future[T]) =
   when not defined(release):
@@ -359,7 +345,6 @@ proc injectStacktrace[T](future: Future[T]) =
       # containing the async traceback.
       let start = exceptionMsg.find(header)
       exceptionMsg = exceptionMsg[0..<start]
-
 
     var newMsg = exceptionMsg & header
 
@@ -374,11 +359,7 @@ proc injectStacktrace[T](future: Future[T]) =
     #   newMsg.add "\n" & $entry
     future.error.msg = newMsg
 
-proc read*[T](future: Future[T] | FutureVar[T]): T =
-  ## Retrieves the value of `future`. Future must be finished otherwise
-  ## this function will fail with a `ValueError` exception.
-  ##
-  ## If the result of the future is an error then that error will be raised.
+template readImpl(future, T) =
   when future is Future[T]:
     let fut {.cursor.} = future
   else:
@@ -388,10 +369,20 @@ proc read*[T](future: Future[T] | FutureVar[T]): T =
       injectStacktrace(fut)
       raise fut.error
     when T isnot void:
-      result = fut.value
+      result = distinctBase(future).value
   else:
     # TODO: Make a custom exception type for this?
     raise newException(ValueError, "Future still in progress.")
+
+proc read*[T](future: Future[T] | FutureVar[T]): lent T =
+  ## Retrieves the value of `future`. Future must be finished otherwise
+  ## this function will fail with a `ValueError` exception.
+  ##
+  ## If the result of the future is an error then that error will be raised.
+  readImpl(future, T)
+
+proc read*(future: Future[void] | FutureVar[void]) =
+  readImpl(future, void)
 
 proc readError*[T](future: Future[T]): ref Exception =
   ## Retrieves the exception stored in `future`.

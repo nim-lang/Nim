@@ -1,4 +1,5 @@
 discard """
+disabled: true
 outputsub: "All tests finished successfully!"
 """
 

@@ -1,10 +1,15 @@
-import os, uri, strformat, strutils
+import std/[os, uri, strformat, strutils]
 import std/private/gitutils
 
-proc exec(cmd: string) =
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
+proc tryexec(cmd: string): int =
   echo "deps.cmd: " & cmd
-  let status = execShellCmd(cmd)
-  doAssert status == 0, cmd
+  execShellCmd(cmd)
+
+proc exec(cmd: string) =
+  doAssert tryexec(cmd) == 0, cmd
 
 proc execRetry(cmd: string) =
   let ok = retryCall(call = block:
@@ -31,11 +36,26 @@ proc cloneDependency*(destDirBase: string, url: string, commit = commitHead,
     let oldDir = getCurrentDir()
     setCurrentDir(destDir)
     try:
-      execRetry "git fetch -q"
-      exec fmt"git checkout -q {commit}"
+      let checkoutCmd = fmt"git checkout -q {commit}"
+      if tryexec(checkoutCmd) != 0:
+        execRetry "git fetch -q"
+        exec checkoutCmd
     finally:
       setCurrentDir(oldDir)
   elif allowBundled:
     discard "this dependency was bundled with Nim, don't do anything"
   else:
     quit "FAILURE: " & destdir & " already exists but is not a git repo"
+
+proc updateSubmodules*(dir: string, allowBundled = false) =
+  if isGitRepo(dir):
+    let oldDir = getCurrentDir()
+    setCurrentDir(dir)
+    try:
+      exec "git submodule update --init"
+    finally:
+      setCurrentDir(oldDir)
+  elif allowBundled:
+    discard "this dependency was bundled with Nim, don't do anything"
+  else:
+    quit "FAILURE: " & dir & " already exists but is not a git repo"

@@ -41,7 +41,7 @@ Regular expression syntax and semantics
 =======================================
 
 As the regular expressions supported by this module are enormous,
-the reader is referred to http://perldoc.perl.org/perlre.html for the
+the reader is referred to https://perldoc.perl.org/perlre.html for the
 full documentation of Perl's regular expressions.
 
 Because the backslash ``\`` is a meta character both in the Nim
@@ -56,9 +56,9 @@ backslashes are interpreted by the regular expression engine:
 A regular expression is a pattern that is matched against a subject string
 from left to right. Most characters stand for themselves in a pattern, and
 match the corresponding characters in the subject. As a trivial example,
-the pattern::
+the pattern:
 
-  The quick brown fox
+    The quick brown fox
 
 matches a portion of a subject string that is identical to itself.
 The power of regular expressions comes from the ability to include
@@ -130,7 +130,7 @@ in patterns in a visible manner. There is no restriction on the appearance of
 non-printing characters, apart from the binary zero that terminates a pattern,
 but when a pattern is being prepared by text editing, it is usually easier to
 use one of the following escape sequences than the binary character it
-represents::
+represents:
 
 ==============     ============================================================
 character          meaning
@@ -246,7 +246,7 @@ The fourth use of backslash is for certain `simple assertions`:idx:. An
 assertion specifies a condition that has to be met at a particular point in
 a match, without consuming any characters from the subject string. The use of
 subpatterns for more complicated assertions is described below. The
-backslashed assertions are::
+backslashed assertions are:
 
 ==============     ============================================================
 assertion          meaning

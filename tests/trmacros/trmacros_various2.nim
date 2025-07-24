@@ -33,8 +33,8 @@ block tpartial:
   proc p(x, y: int; cond: bool): int =
     result = if cond: x + y else: x - y
 
-  template optP{p(x, y, true)}(x, y): untyped = x - y
-  template optP{p(x, y, false)}(x, y): untyped = x + y
+  template optPTrue{p(x, y, true)}(x, y): untyped = x - y
+  template optPFalse{p(x, y, false)}(x, y): untyped = x + y
 
   echo p(2, 4, true)
 
@@ -70,7 +70,9 @@ block tstar:
     for i in 1..len(s)-1: result.add s[i]
     inc calls
 
-  template optConc{ `&&` * a }(a: string): string = &&a
+  template optConc{ `&&` * a }(a: string): string =
+    {.noRewrite.}:
+      &&a
 
   let space = " "
   echo "my" && (space & "awe" && "some " ) && "concat"

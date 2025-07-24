@@ -1,7 +1,7 @@
-# bug #4462
 import macros
 import os
 
+# bug #4462
 block:
   proc foo(t: typedesc) {.compileTime.} =
     assert sameType(getType(t), getType(int))
@@ -9,14 +9,14 @@ block:
   static:
     foo(int)
 
-# #4412
+# bug #4412
 block:
   proc default[T](t: typedesc[T]): T {.inline.} = discard
 
   static:
     var x = default(type(0))
 
-# #6379
+# bug #6379
 import algorithm
 
 static:
@@ -28,7 +28,7 @@ static:
   str.sort(cmp)
   doAssert str == "abc"
 
-# #6086
+# bug #6086
 import math, sequtils, sugar
 
 block:
@@ -82,8 +82,10 @@ block:
 
     doAssert fileExists("MISSINGFILE") == false
     doAssert dirExists("MISSINGDIR") == false
+    doAssert fileExists(currentSourcePath())
+    doAssert dirExists(currentSourcePath().parentDir)
 
-# #7210
+# bug #7210
 block:
   static:
     proc f(size: int): int =
@@ -91,7 +93,7 @@ block:
       result = size
     doAssert f(4) == 4
 
-# #6689
+# bug #6689
 block:
   static:
     proc foo(): int = 0
@@ -106,7 +108,7 @@ block:
     new(x)
     doAssert(not x.isNil)
 
-# #7871
+# bug #7871
 static:
   type Obj = object
     field: int
@@ -116,11 +118,11 @@ static:
   o.field = 2
   doAssert s[0].field == 0
 
-# #8125
+# bug #8125
 static:
    let def_iter_var = ident("it")
 
-# #8142
+# bug #8142
 static:
   type Obj = object
     names: string
@@ -136,7 +138,7 @@ static:
   o.pushName()
   doAssert o.names == "FOOBARFOOBAR"
 
-# #8154
+# bug #8154
 import parseutils
 
 static:
@@ -149,7 +151,7 @@ static:
   static:
     doAssert foo().i == 1
 
-# #10333
+# bug #10333
 block:
   const
     encoding: auto = [
@@ -160,7 +162,7 @@ block:
     ]
   doAssert encoding.len == 4
 
-# #10886
+# bug #10886
 
 proc tor(): bool =
   result = true
@@ -229,6 +231,14 @@ block: # bug #15595
   static: main()
   main()
 
+block: # issue #20543
+  type F = proc()
+  const myArray = block:
+    var r: array[1, F]
+    r[0] = nil
+    r
+  doAssert isNil(myArray[0])
+
 # bug #15363
 import sequtils
 
@@ -291,14 +301,6 @@ block: # bug #10815
   const a = P()
   doAssert $a == ""
 
-when defined osx: # xxx bug https://github.com/nim-lang/Nim/issues/10815#issuecomment-476380734
-  block:
-    type CharSet {.union.} = object
-      cs: set[char]
-      vs: array[4, uint64]
-    const a = Charset(cs: {'a'..'z'})
-    doAssert a.repr.len > 0
-
 import tables
 
 block: # bug #8007
@@ -353,7 +355,7 @@ block: # bug #8007
 block: # bug #14340
   block:
     proc opl3EnvelopeCalcSin0() = discard
-    type EnvelopeSinfunc = proc()
+    type EnvelopeSinfunc = proc() {.nimcall.} # todo: fixme 
     # const EnvelopeCalcSin0 = opl3EnvelopeCalcSin0 # ok
     const EnvelopeCalcSin0: EnvelopeSinfunc = opl3EnvelopeCalcSin0 # was bug
     const envelopeSin = [EnvelopeCalcSin0]
@@ -361,7 +363,7 @@ block: # bug #14340
     envelopeSin[a]()
 
   block:
-    type Mutator = proc() {.noSideEffect, gcsafe, locks: 0.}
+    type Mutator = proc() {.noSideEffect, gcsafe.}
     proc mutator0() = discard
     const mTable = [Mutator(mutator0)]
     var i=0
@@ -564,11 +566,231 @@ block:
 block:
   static:
     let x = int 1
-    echo x.type   # Foo
+    doAssert $(x.type) == "int"  # Foo
 
 block:
   static:
     let x = int 1
     let y = x + 1
     # Error: unhandled exception: value out of range: -8 notin 0 .. 65535 [RangeDefect]
-    echo y
+    doAssert y == 2
+
+
+type Atom* = object
+  bar: int
+
+proc main() = # bug #12994
+  var s: seq[Atom]
+  var atom: Atom
+  var checked = 0
+  for i in 0..<2:
+    atom.bar = 5
+    s.add atom
+    atom.reset
+    if i == 0:
+      checked += 1
+      doAssert $s == "@[(bar: 5)]"
+    else:
+      checked += 1
+      doAssert $s == "@[(bar: 5), (bar: 5)]"
+  doAssert checked == 2
+
+static: main()
+main()
+
+# bug #19201
+proc foo(s: sink string) = doAssert s.len == 3
+
+static:
+  foo("abc")
+
+
+static:
+  for i in '1' .. '2': # bug #10938
+    var s: set[char]
+    doAssert s == {}
+    incl(s, i)
+
+  for _ in 0 ..< 3: # bug #13312
+    var s: string
+    s.add("foo")
+    doAssert s == "foo"
+
+  for i in 1 .. 5: # bug #13918
+    var arr: array[3, int]
+    var val: int
+    doAssert arr == [0, 0, 0] and val == 0
+    for j in 0 ..< len(arr):
+      arr[j] = i
+      val = i
+
+# bug #20985
+let a = block:
+  var groups: seq[seq[int]]
+  for i in 0 ..< 3:
+    var group: seq[int]
+    for j in 0 ..< 3:
+      group.add j
+    groups.add group
+  groups
+
+const b = block:
+  var groups: seq[seq[int]]
+  for i in 0 ..< 3:
+    var group: seq[int]
+    for j in 0 ..< 3:
+      group.add j
+    groups.add group
+  groups
+
+doAssert a == @[@[0, 1, 2], @[0, 1, 2], @[0, 1, 2]]
+doAssert b == @[@[0, 1, 2], @[0, 1, 2], @[0, 1, 2]]
+
+macro m1(s: string): int =
+  var ProcID {.global, compileTime.}: int
+  inc(ProcID)
+  result = newLit(ProcID)
+
+proc macroGlobal =
+  doAssert m1("Macro argument") == 1
+  doAssert m1("Macro argument") == 2
+  doAssert m1("Macro argument") == 3
+
+static: macroGlobal()
+macroGlobal()
+
+block: # bug #10108
+  template reject(x) =
+    static: doAssert(not compiles(x))
+
+  static:
+    let x: int = 2
+    proc deliver_x(): int = x
+    var y2 = deliver_x()
+    discard y2
+    reject:
+      const c5 = deliver_x()
+
+block: # bug #7590
+  proc doInit[T]():auto=
+    var a: T
+    return a
+
+  proc fun2[T](tup1:T)=
+    const tup0=doInit[T]()
+
+    # var tup=tup0 #ok
+    const tup=tup0 #causes bug
+
+    doAssert tup is tuple
+    doAssert tup[0] is tuple
+    for ai in tup.fields:
+      doAssert ai is tuple, "BUG2"
+
+  # const c=(foo:(bar1: 0.0))
+  const c=(foo:(bar1:"foo1"))
+  fun2(c)
+
+block: # bug #21708
+  type
+    Tup = tuple[name: string]
+
+  const X: array[2, Tup] = [(name: "foo",), (name: "bar",)]
+
+  static:
+    let s = X[0]
+    doAssert s[0] == "foo"
+
+block:
+  proc swap[T](x: var T): T =
+    result = x
+    x = default(T)
+
+  proc merge[T](a, b: var openArray[T]) =
+    a[0] = swap b[0]
+
+  static:
+    var x = "abc"
+    var y = "356"
+    merge(x, y)
+    doAssert x == "3bc"
+
+block: # bug #22190
+  type
+    EVMFork = enum
+      Berlin
+      Istanbul
+      Shanghai
+
+  const
+    Vm2OpAllForks =
+      {EVMFork.low .. EVMFork.high}
+
+    vm2OpExecBlockData = [(forks: Vm2OpAllForks)]
+
+  proc mkOpTable(selected: EVMFork): bool =
+    selected notin vm2OpExecBlockData[0].forks
+
+  const
+    tab = mkOpTable(Berlin)
+
+  doAssert not tab
+
+block: # issue #22524
+  const cnst = cstring(nil)
+  doAssert cnst.isNil
+  doAssert cnst == nil
+  let b = cnst
+  doAssert b.isNil
+  doAssert b == nil
+
+  let a = static: cstring(nil)
+  doAssert a.isNil
+
+  static:
+    var x: cstring
+    doAssert x.isNil
+    doAssert x == nil
+    doAssert x != ""
+
+block: # issue #15730
+  const s: cstring = ""
+  doAssert s != nil
+
+  static:
+    let s: cstring = ""
+    doAssert not s.isNil
+    doAssert s != nil
+    doAssert s == ""
+
+static: # more nil cstring issues
+  let x = cstring(nil)
+  doAssert x.len == 0
+
+block: # bug #23925
+  type Foo = enum A = -1
+  proc foo =
+    doAssert cast[Foo](-1) == A
+    doAssert ord(A) == -1
+
+  static: foo()
+  foo()
+
+  type E = enum
+    e0 e1 e2 e3 e4 e5 e6 e7 e8 e9 e10 e11 e12 e13 e14 e15 e16 e17 e18 e19 e20
+    e21 e22 e23 e24 e25 e26 e27 e28 e29 e30 e31 e32 e33 e34 e35 e36 e37 e38
+    e39 e40 e41 e42 e43 e44 e45 e46 e47 e48 e49 e50 e51 e52 e53 e54 e55 e56
+    e57 e58 e59 e60 e61 e62 e63 e64 e65 e66 e67 e68 e69 e70 e71 e72 e73 e74
+    e75 e76 e77 e78 e79 e80 e81 e82 e83 e84 e85 e86 e87 e88 e89 e90 e91 e92
+    e93 e94 e95 e96 e97 e98 e99 e100 e101 e102 e103 e104 e105 e106 e107 e108
+    e109 e110 e111 e112 e113 e114 e115 e116 e117 e118 e119 e120 e121 e122
+    e123 e124 e125 e126 e127 e128
+  proc bar =
+    doAssert cast[E](int(e128)) == e128
+
+  static: bar()
+  bar()
+
+static: # bug #21353
+  var s: proc () = default(proc ())
+  doAssert s == nil

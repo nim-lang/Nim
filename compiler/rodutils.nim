@@ -8,7 +8,10 @@
 #
 
 ## Serialization utilities for the compiler.
-import strutils, math
+import std/[strutils, math]
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
 
 # bcc on windows doesn't have C99 functions
 when defined(windows) and defined(bcc):
@@ -31,7 +34,7 @@ when defined(windows) and defined(bcc):
   #endif
   """.}
 
-proc c_snprintf(s: cstring; n:uint; frmt: cstring): cint {.importc: "snprintf", header: "<stdio.h>", nodecl, varargs.}
+proc c_snprintf(s: cstring; n: uint; frmt: cstring): cint {.importc: "snprintf", header: "<stdio.h>", nodecl, varargs.}
 
 
 when not declared(signbit):
@@ -39,7 +42,7 @@ when not declared(signbit):
   proc signbit*(x: SomeFloat): bool {.inline.} =
     result = c_signbit(x) != 0
 
-import system/formatfloat
+import std/formatfloat
 
 proc toStrMaxPrecision*(f: BiggestFloat | float32): string =
   const literalPostfix = when f is float32: "f" else: ""
@@ -58,6 +61,7 @@ proc toStrMaxPrecision*(f: BiggestFloat | float32): string =
   of fcNegInf:
     result = "-INF"
   else:
+    result = ""
     result.addFloatRoundtrip(f)
     result.add literalPostfix
 

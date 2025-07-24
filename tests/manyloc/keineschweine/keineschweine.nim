@@ -691,7 +691,7 @@ when true:
 
   block:
     var bPlayOffline = false
-    for kind, key, val in getOpt():
+    for kind, key, val in getopt():
       case kind
       of cmdArgument:
         if key == "offline": bPlayOffline = true

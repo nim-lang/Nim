@@ -1,9 +1,6 @@
 discard """
-  errormsg: "'mutate' can have side effects"
-  nimout: '''an object reachable from 'n' is potentially mutated
-tfuncs_cannot_mutate.nim(39, 15) the mutation is here
-tfuncs_cannot_mutate.nim(37, 7) is the statement that connected the mutation to the parameter
-'''
+  errormsg: "cannot mutate location select(x, z).data within a strict func"
+  line: 35
 """
 
 {.experimental: "strictFuncs".}
@@ -25,8 +22,7 @@ func len(n: Node): int =
     it = it.ri
 
 func doNotDistract(n: Node) =
-  var m = Node()
-  m.data = "abc"
+  var m = Node(data: "abc")
 
 func select(a, b: Node): Node = b
 

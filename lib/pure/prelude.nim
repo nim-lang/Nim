@@ -14,7 +14,7 @@ when defined(nimdoc) and isMainModule:
     runnableExamples:
       include std/prelude
         # same as:
-        # import std/[os, strutils, times, parseutils, hashes, tables, sets, sequtils, parseopt]
+        # import std/[os, strutils, times, parseutils, hashes, tables, sets, sequtils, parseopt, strformat]
       let x = 1
       assert "foo $# $#" % [$x, "bar"] == "foo 1 bar"
       assert toSeq(1..3) == @[1, 2, 3]

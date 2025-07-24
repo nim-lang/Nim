@@ -1,8 +1,13 @@
+discard """
+  matrix: "--mm:orc; --mm:refc"
+"""
+
 # xxx also test on js
 
 import std/genasts
 import std/macros
 from std/strformat import `&`
+import std/assertions
 import ./mgenast
 
 proc main =
@@ -49,7 +54,7 @@ proc main =
           x.a = val
 
     m1()
-    var x0: Foo
+    var x0: Foo = Foo()
     x0.a1 = 10
     doAssert x0 == Foo(a: 10)
 

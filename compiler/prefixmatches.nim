@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-from strutils import toLowerAscii
+from std/strutils import toLowerAscii
 
 type
   PrefixMatch* {.pure.} = enum

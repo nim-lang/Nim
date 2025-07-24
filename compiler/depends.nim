@@ -9,10 +9,17 @@
 
 # This module implements a dependency file generator.
 
-import
-  options, ast, ropes, idents, passes, modulepaths, pathutils
+import options, ast, ropes, pathutils, msgs, lineinfos
 
-from modulegraphs import ModuleGraph, PPassContext
+import modulegraphs
+
+import std/[os, parseutils]
+import std/strutils except addf
+import std/private/globs
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 
 type
   TGen = object of PPassContext
@@ -28,18 +35,64 @@ proc addDependencyAux(b: Backend; importing, imported: string) =
   b.dotGraph.addf("\"$1\" -> \"$2\";$n", [rope(importing), rope(imported)])
   # s1 -> s2_4[label="[0-9]"];
 
-proc addDotDependency(c: PPassContext, n: PNode): PNode =
+proc toNimblePath(s: string, isStdlib: bool): string =
+  const stdPrefix = "std/"
+  const pkgPrefix = "pkg/"
+  if isStdlib:
+    let sub = "lib/"
+    var start = s.find(sub)
+    if start < 0:
+      raiseAssert "unreachable"
+    else:
+      start += sub.len
+      let base = s[start..^1]
+
+      if base.startsWith("system") or base.startsWith("std"):
+        result = base
+      else:
+        for dir in stdlibDirs:
+          if base.startsWith(dir):
+            return stdPrefix & base.splitFile.name
+
+        result = stdPrefix & base
+  else:
+    var sub = getEnv("NIMBLE_DIR")
+    if sub.len == 0:
+      sub = ".nimble/pkgs/"
+    else:
+      sub.add "/pkgs/"
+    var start = s.find(sub)
+    if start < 0:
+      sub[^1] = '2'
+      sub.add '/'
+      start = s.find(sub) # /pkgs2
+      if start < 0:
+        return s
+
+    start += sub.len
+    start += skipUntil(s, '/', start)
+    start += 1
+    result = pkgPrefix & s[start..^1]
+
+proc addDependency(c: PPassContext, g: PGen, b: Backend, n: PNode) =
+  doAssert n.kind == nkSym, $n.kind
+
+  let path = splitFile(toProjPath(g.config, n.sym.position.FileIndex))
+  let modulePath = splitFile(toProjPath(g.config, g.module.position.FileIndex))
+  let parent = nativeToUnixPath(modulePath.dir / modulePath.name).toNimblePath(belongsToStdlib(g.graph, g.module))
+  let child = nativeToUnixPath(path.dir / path.name).toNimblePath(belongsToStdlib(g.graph, n.sym))
+  addDependencyAux(b, parent, child)
+
+proc addDotDependency*(c: PPassContext, n: PNode): PNode =
   result = n
   let g = PGen(c)
   let b = Backend(g.graph.backend)
   case n.kind
   of nkImportStmt:
     for i in 0..<n.len:
-      var imported = getModuleName(g.config, n[i])
-      addDependencyAux(b, g.module.name.s, imported)
+      addDependency(c, g, b, n[i])
   of nkFromStmt, nkImportExceptStmt:
-    var imported = getModuleName(g.config, n[0])
-    addDependencyAux(b, g.module.name.s, imported)
+    addDependency(c, g, b, n[0])
   of nkStmtList, nkBlockStmt, nkStmtListExpr, nkBlockExpr:
     for i in 0..<n.len: discard addDotDependency(c, n[i])
   else:
@@ -51,18 +104,7 @@ proc generateDot*(graph: ModuleGraph; project: AbsoluteFile) =
       rope(project.splitFile.name), b.dotGraph],
             changeFileExt(project, "dot"))
 
-when not defined(nimHasSinkInference):
-  {.pragma: nosinks.}
-
-proc myOpen(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext {.nosinks.} =
-  var g: PGen
-  new(g)
-  g.module = module
-  g.config = graph.config
-  g.graph = graph
+proc setupDependPass*(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext =
+  result = PGen(module: module, config: graph.config, graph: graph)
   if graph.backend == nil:
-    graph.backend = Backend(dotGraph: nil)
-  result = g
-
-const gendependPass* = makePass(open = myOpen, process = addDotDependency)
-
+    graph.backend = Backend(dotGraph: "")

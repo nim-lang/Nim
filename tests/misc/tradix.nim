@@ -40,8 +40,8 @@ type
   TRadixNode {.pure, inheritable.} = object
     kind: TRadixNodeKind
   TRadixNodeLinear = object of TRadixNode
-    len: int8
-    keys: array[0..31, int8]
+    len: uint8
+    keys: array[0..31, uint8]
     vals: array[0..31, PRadixNode]
 
   TRadixNodeFull = object of TRadixNode
@@ -49,8 +49,8 @@ type
   TRadixNodeLeafBits = object of TRadixNode
     b: array[0..7, int]
   TRadixNodeLeafLinear = object of TRadixNode
-    len: int8
-    keys: array[0..31, int8]
+    len: uint8
+    keys: array[0..31, uint8]
 
 var
   root: PRadixNode
@@ -59,8 +59,8 @@ proc searchInner(r: PRadixNode, a: int): PRadixNode =
   case r.kind
   of rnLinear:
     var x = cast[ptr TRadixNodeLinear](r)
-    for i in 0..ze(x.len)-1:
-      if ze(x.keys[i]) == a: return x.vals[i]
+    for i in 0..int(x.len)-1:
+      if int(x.keys[i]) == a: return x.vals[i]
   of rnFull:
     var x = cast[ptr TRadixNodeFull](r)
     return x.b[a]
@@ -87,8 +87,8 @@ proc searchLeaf(r: PRadixNode, a: int): bool =
     return testBit(x.b[a /% BitsPerUnit], a)
   of rnLeafLinear:
     var x = cast[ptr TRadixNodeLeafLinear](r)
-    for i in 0..ze(x.len)-1:
-      if ze(x.keys[i]) == a: return true
+    for i in 0..int(x.len)-1:
+      if int(x.keys[i]) == a: return true
   else: assert(false)
 
 proc exclLeaf(r: PRadixNode, a: int) =
@@ -98,9 +98,9 @@ proc exclLeaf(r: PRadixNode, a: int) =
     resetBit(x.b[a /% BitsPerUnit], a)
   of rnLeafLinear:
     var x = cast[ptr TRadixNodeLeafLinear](r)
-    var L = ze(x.len)
+    var L = int(x.len)
     for i in 0..L-1:
-      if ze(x.keys[i]) == a:
+      if int(x.keys[i]) == a:
         x.keys[i] = x.keys[L-1]
         dec(x.len)
         return
@@ -131,8 +131,8 @@ proc addLeaf(r: var PRadixNode, a: int): bool =
     # a linear node:
     var x = cast[ptr TRadixNodeLinear](alloc0(sizeof(TRadixNodeLinear)))
     x.kind = rnLeafLinear
-    x.len = 1'i8
-    x.keys[0] = toU8(a)
+    x.len = 1'u8
+    x.keys[0] = uint8(a)
     r = x
     return false # not already in set
   case r.kind
@@ -141,18 +141,18 @@ proc addLeaf(r: var PRadixNode, a: int): bool =
     return testOrSetBit(x.b[a /% BitsPerUnit], a)
   of rnLeafLinear:
     var x = cast[ptr TRadixNodeLeafLinear](r)
-    var L = ze(x.len)
+    var L = int(x.len)
     for i in 0..L-1:
-      if ze(x.keys[i]) == a: return true
+      if int(x.keys[i]) == a: return true
     if L <= high(x.keys):
-      x.keys[L] = toU8(a)
+      x.keys[L] = uint8(a)
       inc(x.len)
     else:
       # transform into a full node:
       var y = cast[ptr TRadixNodeLeafBits](alloc0(sizeof(TRadixNodeLeafBits)))
       y.kind = rnLeafBits
-      for i in 0..ze(x.len)-1:
-        var u = ze(x.keys[i])
+      for i in 0..int(x.len)-1:
+        var u = int(x.keys[i])
         setBit(y.b[u /% BitsPerUnit], u)
       setBit(y.b[a /% BitsPerUnit], a)
       dealloc(r)
@@ -167,26 +167,26 @@ proc addInner(r: var PRadixNode, a: int, d: int): bool =
     # a linear node:
     var x = cast[ptr TRadixNodeLinear](alloc0(sizeof(TRadixNodeLinear)))
     x.kind = rnLinear
-    x.len = 1'i8
-    x.keys[0] = toU8(k)
+    x.len = 1'u8
+    x.keys[0] = uint8(k)
     r = x
     return addInner(x.vals[0], a, d-8)
   case r.kind
   of rnLinear:
     var x = cast[ptr TRadixNodeLinear](r)
-    var L = ze(x.len)
+    var L = int(x.len)
     for i in 0..L-1:
-      if ze(x.keys[i]) == k: # already exists
+      if int(x.keys[i]) == k: # already exists
         return addInner(x.vals[i], a, d-8)
     if L <= high(x.keys):
-      x.keys[L] = toU8(k)
+      x.keys[L] = uint8(k)
       inc(x.len)
       return addInner(x.vals[L], a, d-8)
     else:
       # transform into a full node:
       var y = cast[ptr TRadixNodeFull](alloc0(sizeof(TRadixNodeFull)))
       y.kind = rnFull
-      for i in 0..L-1: y.b[ze(x.keys[i])] = x.vals[i]
+      for i in 0..L-1: y.b[int(x.keys[i])] = x.vals[i]
       dealloc(r)
       r = y
       return addInner(y.b[k], a, d-8)
@@ -211,8 +211,8 @@ iterator innerElements(r: PRadixNode): tuple[prefix: int, n: PRadixNode] =
           yield (i, r.b[i])
     of rnLinear:
       var r = cast[ptr TRadixNodeLinear](r)
-      for i in 0..ze(r.len)-1:
-        yield (ze(r.keys[i]), r.vals[i])
+      for i in 0..int(r.len)-1:
+        yield (int(r.keys[i]), r.vals[i])
     else: assert(false)
 
 iterator leafElements(r: PRadixNode): int =
@@ -228,8 +228,8 @@ iterator leafElements(r: PRadixNode): int =
               yield i*BitsPerUnit+j
     of rnLeafLinear:
       var r = cast[ptr TRadixNodeLeafLinear](r)
-      for i in 0..ze(r.len)-1:
-        yield ze(r.keys[i])
+      for i in 0..int(r.len)-1:
+        yield int(r.keys[i])
     else: assert(false)
 
 iterator elements*(r: PRadixNode): ByteAddress {.inline.} =

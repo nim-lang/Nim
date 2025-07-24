@@ -1,11 +1,5 @@
 import macros
 
-discard """
-  output: '''
-when - test
-'''
-"""
-
 # test that when stmt works from within a macro
 
 macro output(s: string, xs: varargs[untyped]): auto =
@@ -21,4 +15,4 @@ macro output(s: string, xs: varargs[untyped]): auto =
       # should never get here so this should not break
       more.broken.xs
 
-echo output("test")
+doAssert output("test") == "when - test"

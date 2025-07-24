@@ -78,9 +78,9 @@ proc write*(buffer: PBuffer; val: var string) =
   setLen buffer.data, buffer.pos + length.int
   copyMem(addr buffer.data[buffer.pos], addr val[0], length.int)
   inc buffer.pos, length.int
-proc write*[T: SomeNumber|bool|char|byte](buffer: PBuffer; val: T) =
+proc write*[T: SomeNumber|bool|char|byte](buffer: PBuffer; val: sink T) =
   var v: T
-  shallowCopy v, val
+  v = val
   writeBE buffer, v
 
 proc readInt8*(buffer: PBuffer): int8 =

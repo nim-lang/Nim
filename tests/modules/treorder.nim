@@ -1,5 +1,5 @@
 discard """
-  cmd: "nim -d:testdef $target $file"
+  matrix: "-d:testdef"
   output: '''works 34
 34
 defined
@@ -7,6 +7,8 @@ defined
 """
 
 {.experimental: "codeReordering".}
+
+{.push callconv: stdcall.}
 
 proc bar(x: T)
 
@@ -41,3 +43,5 @@ using
   my, omy: int
 
 goo(3, 4)
+
+{.pop.}

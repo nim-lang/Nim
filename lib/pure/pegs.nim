@@ -17,16 +17,16 @@
 
 include "system/inclrtl"
 when defined(nimPreviewSlimSystem):
-  import std/syncio
+  import std/[syncio, assertions]
 
 const
   useUnicode = true ## change this to deactivate proper UTF-8 support
 
-import strutils, macros
+import std/[strutils, macros]
 import std/private/decode_helpers
 
 when useUnicode:
-  import unicode
+  import std/unicode
   export unicode.`==`
 
 const
@@ -168,8 +168,9 @@ func charSet*(s: set[char]): Peg {.rtl, extern: "npegs$1".} =
   ## constructs a PEG from a character set `s`
   assert '\0' notin s
   result = Peg(kind: pkCharChoice)
-  new(result.charChoice)
-  result.charChoice[] = s
+  {.cast(noSideEffect).}:
+    new(result.charChoice)
+    result.charChoice[] = s
 
 func len(a: Peg): int {.inline.} = return a.sons.len
 func add(d: var Peg, s: Peg) {.inline.} = add(d.sons, s)
@@ -233,8 +234,7 @@ func `*`*(a: Peg): Peg {.rtl, extern: "npegsGreedyRep".} =
   ## constructs a "greedy repetition" for the PEG `a`
   case a.kind
   of pkGreedyRep, pkGreedyRepChar, pkGreedyRepSet, pkGreedyAny, pkOption:
-    assert false
-    # produces endless loop!
+    raiseAssert "unreachable"  # produces endless loop!
   of pkChar:
     result = Peg(kind: pkGreedyRepChar, ch: a.ch)
   of pkCharChoice:
@@ -313,27 +313,27 @@ func capture*(a: Peg = Peg(kind: pkEmpty)): Peg {.rtl, extern: "npegsCapture".} 
 func backref*(index: range[1..MaxSubpatterns], reverse: bool = false): Peg {.
   rtl, extern: "npegs$1".} =
   ## constructs a back reference of the given `index`. `index` starts counting
-  ## from 1. `reverse` specifies wether indexing starts from the end of the
+  ## from 1. `reverse` specifies whether indexing starts from the end of the
   ## capture list.
   result = Peg(kind: pkBackRef, index: (if reverse: -index else: index - 1))
 
 func backrefIgnoreCase*(index: range[1..MaxSubpatterns], reverse: bool = false): Peg {.
   rtl, extern: "npegs$1".} =
   ## constructs a back reference of the given `index`. `index` starts counting
-  ## from 1. `reverse` specifies wether indexing starts from the end of the
+  ## from 1. `reverse` specifies whether indexing starts from the end of the
   ## capture list. Ignores case for matching.
   result = Peg(kind: pkBackRefIgnoreCase, index: (if reverse: -index else: index - 1))
 
 func backrefIgnoreStyle*(index: range[1..MaxSubpatterns], reverse: bool = false): Peg {.
   rtl, extern: "npegs$1".} =
   ## constructs a back reference of the given `index`. `index` starts counting
-  ## from 1. `reverse` specifies wether indexing starts from the end of the
+  ## from 1. `reverse` specifies whether indexing starts from the end of the
   ## capture list. Ignores style for matching.
   result = Peg(kind: pkBackRefIgnoreStyle, index: (if reverse: -index else: index - 1))
 
 func spaceCost(n: Peg): int =
   case n.kind
-  of pkEmpty: discard
+  of pkEmpty: result = 0
   of pkTerminal, pkTerminalIgnoreCase, pkTerminalIgnoreStyle, pkChar,
      pkGreedyRepChar, pkCharChoice, pkGreedyRepSet,
      pkAny..pkWhitespace, pkGreedyAny, pkBackRef..pkBackRefIgnoreStyle:
@@ -342,6 +342,7 @@ func spaceCost(n: Peg): int =
     # we cannot inline a rule with a non-terminal
     result = InlineThreshold+1
   else:
+    result = 0
     for i in 0..n.len-1:
       inc(result, spaceCost(n.sons[i]))
       if result >= InlineThreshold: break
@@ -561,7 +562,9 @@ template matchOrParse(mopProc: untyped) =
   # procs. For the former, *enter* and *leave* event handler code generators
   # are provided which just return *discard*.
 
-  proc mopProc(s: string, p: Peg, start: int, c: var Captures): int =
+  proc mopProc(s: string, p: Peg, start: int, c: var Captures): int {.gcsafe, raises: [].} =
+    result = 0
+
     proc matchBackRef(s: string, p: Peg, start: int, c: var Captures): int =
       # Parse handler code must run in an *of* clause of its own for each
       # *PegKind*, so we encapsulate the identical clause body for
@@ -578,7 +581,7 @@ template matchOrParse(mopProc: untyped) =
         n = Peg(kind: pkTerminalIgnoreStyle, term: s.substr(a, b))
       of pkBackRefIgnoreCase:
         n = Peg(kind: pkTerminalIgnoreCase, term: s.substr(a, b))
-      else: assert(false, "impossible case")
+      else: raiseAssert "impossible case"
       mopProc(s, n, start, c)
 
     case p.kind
@@ -694,7 +697,7 @@ template matchOrParse(mopProc: untyped) =
       enter(pkTerminalIgnoreStyle, s, p, start)
       var
         i = 0
-        a, b: Rune
+        a, b: Rune = default(Rune)
       result = start
       while i < len(p.term):
         while i < len(p.term):
@@ -838,10 +841,13 @@ template matchOrParse(mopProc: untyped) =
         var idx = c.ml # reserve a slot for the subpattern
         result = mopProc(s, p.sons[0], start, c)
         if result >= 0:
-          inc(c.ml)
           if idx < MaxSubpatterns:
+            if idx != c.ml:
+              for i in countdown(c.ml, idx):
+                c.matches[i+1] = c.matches[i]
             c.matches[idx] = (start, start+result-1)
           #else: silently ignore the capture
+          inc(c.ml)
       leave(pkCapture, s, p, start, result)
     of pkBackRef:
       enter(pkBackRef, s, p, start)
@@ -885,7 +891,7 @@ macro mkHandlerTplts(handlers: untyped): untyped =
   # Transforms the handler spec in *handlers* into handler templates.
   # The AST structure of *handlers[0]*:
   #
-  # .. code-block::
+  #   ```
   #   StmtList
   #     Call
   #       Ident "pkNonTerminal"
@@ -906,6 +912,7 @@ macro mkHandlerTplts(handlers: untyped): untyped =
   #           StmtList
   #             <handler code block>
   #     ...
+  #   ```
   func mkEnter(hdName, body: NimNode): NimNode =
     template helper(hdName, body) {.dirty.} =
       template hdName(s, p, start) =
@@ -955,60 +962,61 @@ template eventParser*(pegAst, handlers: untyped): (proc(s: string): int) =
   ## match, else the length of the total match. The following example code
   ## evaluates an arithmetic expression defined by a simple PEG:
   ##
-  ## .. code-block:: nim
-  ##  import std/[strutils, pegs]
+  ##   ```nim
+  ##   import std/[strutils, pegs]
   ##
-  ##  let
-  ##    pegAst = """
-  ##  Expr    <- Sum
-  ##  Sum     <- Product (('+' / '-')Product)*
-  ##  Product <- Value (('*' / '/')Value)*
-  ##  Value   <- [0-9]+ / '(' Expr ')'
-  ##    """.peg
-  ##    txt = "(5+3)/2-7*22"
+  ##   let
+  ##     pegAst = """
+  ##   Expr    <- Sum
+  ##   Sum     <- Product (('+' / '-')Product)*
+  ##   Product <- Value (('*' / '/')Value)*
+  ##   Value   <- [0-9]+ / '(' Expr ')'
+  ##     """.peg
+  ##     txt = "(5+3)/2-7*22"
   ##
-  ##  var
-  ##    pStack: seq[string] = @[]
-  ##    valStack: seq[float] = @[]
-  ##    opStack = ""
-  ##  let
-  ##    parseArithExpr = pegAst.eventParser:
-  ##      pkNonTerminal:
-  ##        enter:
-  ##          pStack.add p.nt.name
-  ##        leave:
-  ##          pStack.setLen pStack.high
-  ##          if length > 0:
-  ##            let matchStr = s.substr(start, start+length-1)
-  ##            case p.nt.name
-  ##            of "Value":
-  ##              try:
-  ##                valStack.add matchStr.parseFloat
-  ##                echo valStack
-  ##              except ValueError:
-  ##                discard
-  ##            of "Sum", "Product":
-  ##              try:
-  ##                let val = matchStr.parseFloat
-  ##              except ValueError:
-  ##                if valStack.len > 1 and opStack.len > 0:
-  ##                  valStack[^2] = case opStack[^1]
-  ##                  of '+': valStack[^2] + valStack[^1]
-  ##                  of '-': valStack[^2] - valStack[^1]
-  ##                  of '*': valStack[^2] * valStack[^1]
-  ##                  else: valStack[^2] / valStack[^1]
-  ##                  valStack.setLen valStack.high
-  ##                  echo valStack
-  ##                  opStack.setLen opStack.high
-  ##                  echo opStack
-  ##      pkChar:
-  ##        leave:
-  ##          if length == 1 and "Value" != pStack[^1]:
-  ##            let matchChar = s[start]
-  ##            opStack.add matchChar
-  ##            echo opStack
+  ##   var
+  ##     pStack: seq[string] = @[]
+  ##     valStack: seq[float] = @[]
+  ##     opStack = ""
+  ##   let
+  ##     parseArithExpr = pegAst.eventParser:
+  ##       pkNonTerminal:
+  ##         enter:
+  ##           pStack.add p.nt.name
+  ##         leave:
+  ##           pStack.setLen pStack.high
+  ##           if length > 0:
+  ##             let matchStr = s.substr(start, start+length-1)
+  ##             case p.nt.name
+  ##             of "Value":
+  ##               try:
+  ##                 valStack.add matchStr.parseFloat
+  ##                 echo valStack
+  ##               except ValueError:
+  ##                 discard
+  ##             of "Sum", "Product":
+  ##               try:
+  ##                 let val = matchStr.parseFloat
+  ##               except ValueError:
+  ##                 if valStack.len > 1 and opStack.len > 0:
+  ##                   valStack[^2] = case opStack[^1]
+  ##                   of '+': valStack[^2] + valStack[^1]
+  ##                   of '-': valStack[^2] - valStack[^1]
+  ##                   of '*': valStack[^2] * valStack[^1]
+  ##                   else: valStack[^2] / valStack[^1]
+  ##                   valStack.setLen valStack.high
+  ##                   echo valStack
+  ##                   opStack.setLen opStack.high
+  ##                   echo opStack
+  ##       pkChar:
+  ##         leave:
+  ##           if length == 1 and "Value" != pStack[^1]:
+  ##             let matchChar = s[start]
+  ##             opStack.add matchChar
+  ##             echo opStack
   ##
-  ##  let pLen = parseArithExpr(txt)
+  ##   let pLen = parseArithExpr(txt)
+  ##   ```
   ##
   ## The *handlers* parameter consists of code blocks for *PegKinds*,
   ## which define the grammar elements of interest. Each block can contain
@@ -1023,7 +1031,7 @@ template eventParser*(pegAst, handlers: untyped): (proc(s: string): int) =
   ## Symbols  declared in an *enter* handler can be made visible in the
   ## corresponding *leave* handler by annotating them with an *inject* pragma.
   proc rawParse(s: string, p: Peg, start: int, c: var Captures): int
-      {.genSym.} =
+      {.gensym.} =
 
     # binding from *macros*
     bind strVal
@@ -1038,10 +1046,10 @@ template eventParser*(pegAst, handlers: untyped): (proc(s: string): int) =
       # by *mkHandlerTplts*.
       template mkDoEnter(hdPostf, s, pegNode, start) =
         when declared(`enter hdPostf`):
-          `enter hdPostf`(s, pegNode, start):
+          `enter hdPostf`(s, pegNode, start)
         else:
           discard
-      let hdPostf = ident(substr(strVal(pegKind), 2))
+      let hdPostf = ident(substr($pegKind, 2))
       getAst(mkDoEnter(hdPostf, s, pegNode, start))
 
     macro leave(pegKind, s, pegNode, start, length: untyped): untyped =
@@ -1049,19 +1057,19 @@ template eventParser*(pegAst, handlers: untyped): (proc(s: string): int) =
       # a grammar element of kind *pegKind*.
       template mkDoLeave(hdPostf, s, pegNode, start, length) =
         when declared(`leave hdPostf`):
-          `leave hdPostf`(s, pegNode, start, length):
+          `leave hdPostf`(s, pegNode, start, length)
         else:
           discard
-      let hdPostf = ident(substr(strVal(pegKind), 2))
+      let hdPostf = ident(substr($pegKind, 2))
       getAst(mkDoLeave(hdPostf, s, pegNode, start, length))
 
     matchOrParse(parseIt)
     parseIt(s, p, start, c)
 
-  proc parser(s: string): int {.genSym.} =
+  proc parser(s: string): int {.gensym.} =
     # the proc to be returned
     var
-      ms: array[MaxSubpatterns, (int, int)]
+      ms: array[MaxSubpatterns, (int, int)] = default(array[MaxSubpatterns, (int, int)])
       cs = Captures(matches: ms, ml: 0, origStart: 0)
     rawParse(s, pegAst, 0, cs)
   parser
@@ -1081,8 +1089,7 @@ func matchLen*(s: string, pattern: Peg, matches: var openArray[string],
   ## if there is no match, -1 is returned. Note that a match length
   ## of zero can happen. It's possible that a suffix of `s` remains
   ## that does not belong to the match.
-  var c: Captures
-  c.origStart = start
+  var c: Captures = Captures(origStart: start)
   result = rawMatch(s, pattern, start, c)
   if result >= 0: fillMatches(s, matches, c)
 
@@ -1092,8 +1099,7 @@ func matchLen*(s: string, pattern: Peg,
   ## if there is no match, -1 is returned. Note that a match length
   ## of zero can happen. It's possible that a suffix of `s` remains
   ## that does not belong to the match.
-  var c: Captures
-  c.origStart = start
+  var c: Captures = Captures(origStart: start)
   result = rawMatch(s, pattern, start, c)
 
 func match*(s: string, pattern: Peg, matches: var openArray[string],
@@ -1115,8 +1121,7 @@ func find*(s: string, pattern: Peg, matches: var openArray[string],
   ## returns the starting position of ``pattern`` in ``s`` and the captured
   ## substrings in the array ``matches``. If it does not match, nothing
   ## is written into ``matches`` and -1 is returned.
-  var c: Captures
-  c.origStart = start
+  var c: Captures = Captures(origStart: start)
   for i in start .. s.len-1:
     c.ml = 0
     if rawMatch(s, pattern, i, c) >= 0:
@@ -1132,8 +1137,7 @@ func findBounds*(s: string, pattern: Peg, matches: var openArray[string],
   ## and the captured
   ## substrings in the array ``matches``. If it does not match, nothing
   ## is written into ``matches`` and (-1,0) is returned.
-  var c: Captures
-  c.origStart = start
+  var c: Captures = Captures(origStart: start)
   for i in start .. s.len-1:
     c.ml = 0
     var L = rawMatch(s, pattern, i, c)
@@ -1146,16 +1150,14 @@ func find*(s: string, pattern: Peg,
            start = 0): int {.rtl, extern: "npegs$1".} =
   ## returns the starting position of ``pattern`` in ``s``. If it does not
   ## match, -1 is returned.
-  var c: Captures
-  c.origStart = start
+  var c: Captures = Captures(origStart: start)
   for i in start .. s.len-1:
     if rawMatch(s, pattern, i, c) >= 0: return i
   return -1
 
 iterator findAll*(s: string, pattern: Peg, start = 0): string =
   ## yields all matching *substrings* of `s` that match `pattern`.
-  var c: Captures
-  c.origStart = start
+  var c: Captures = Captures(origStart: start)
   var i = start
   while i < s.len:
     c.ml = 0
@@ -1169,7 +1171,7 @@ iterator findAll*(s: string, pattern: Peg, start = 0): string =
 func findAll*(s: string, pattern: Peg, start = 0): seq[string] {.
   rtl, extern: "npegs$1".} =
   ## returns all matching *substrings* of `s` that match `pattern`.
-  ## If it does not match, @[] is returned.
+  ## If it does not match, `@[]` is returned.
   result = @[]
   for it in findAll(s, pattern, start): result.add it
 
@@ -1177,8 +1179,7 @@ template `=~`*(s: string, pattern: Peg): bool =
   ## This calls ``match`` with an implicit declared ``matches`` array that
   ## can be used in the scope of the ``=~`` call:
   ##
-  ## .. code-block:: nim
-  ##
+  ##   ```nim
   ##   if line =~ peg"\s* {\w+} \s* '=' \s* {\w+}":
   ##     # matches a key=value pair:
   ##     echo("Key: ", matches[0])
@@ -1190,10 +1191,10 @@ template `=~`*(s: string, pattern: Peg): bool =
   ##     echo("comment: ", matches[0])
   ##   else:
   ##     echo("syntax error")
-  ##
+  ##   ```
   bind MaxSubpatterns
   when not declaredInScope(matches):
-    var matches {.inject.}: array[0..MaxSubpatterns-1, string]
+    var matches {.inject.} = default(array[0..MaxSubpatterns-1, string])
   match(s, pattern, matches)
 
 # ------------------------- more string handling ------------------------------
@@ -1216,8 +1217,8 @@ func startsWith*(s: string, prefix: Peg, start = 0): bool {.
 func endsWith*(s: string, suffix: Peg, start = 0): bool {.
   rtl, extern: "npegs$1".} =
   ## returns true if `s` ends with the pattern `suffix`
-  var c: Captures
-  c.origStart = start
+  result = false
+  var c: Captures = Captures(origStart: start)
   for i in start .. s.len-1:
     if rawMatch(s, suffix, i, c) == s.len - i: return true
 
@@ -1226,18 +1227,19 @@ func replacef*(s: string, sub: Peg, by: string): string {.
   ## Replaces `sub` in `s` by the string `by`. Captures can be accessed in `by`
   ## with the notation ``$i`` and ``$#`` (see strutils.`%`). Examples:
   ##
-  ## .. code-block:: nim
+  ##   ```nim
   ##   "var1=key; var2=key2".replacef(peg"{\ident}'='{\ident}", "$1<-$2$2")
+  ##   ```
   ##
   ## Results in:
   ##
-  ## .. code-block:: nim
-  ##
+  ##   ```nim
   ##   "var1<-keykey; val2<-key2key2"
+  ##   ```
   result = ""
   var i = 0
-  var caps: array[0..MaxSubpatterns-1, string]
-  var c: Captures
+  var caps: array[0..MaxSubpatterns-1, string] = default(array[0..MaxSubpatterns-1, string])
+  var c: Captures = default(Captures)
   while i < s.len:
     c.ml = 0
     var x = rawMatch(s, sub, i, c)
@@ -1256,7 +1258,7 @@ func replace*(s: string, sub: Peg, by = ""): string {.
   ## in `by`.
   result = ""
   var i = 0
-  var c: Captures
+  var c: Captures = default(Captures)
   while i < s.len:
     var x = rawMatch(s, sub, i, c)
     if x <= 0:
@@ -1274,8 +1276,8 @@ func parallelReplace*(s: string, subs: varargs[
   ## applied in parallel.
   result = ""
   var i = 0
-  var c: Captures
-  var caps: array[0..MaxSubpatterns-1, string]
+  var c: Captures = default(Captures)
+  var caps: array[0..MaxSubpatterns-1, string] = default(array[0..MaxSubpatterns-1, string])
   while i < s.len:
     block searchSubs:
       for j in 0..high(subs):
@@ -1301,8 +1303,7 @@ func replace*(s: string, sub: Peg, cb: proc(
   ## The callback proc receives the index of the current match (starting with 0),
   ## the count of captures and an open array with the captures of each match. Examples:
   ##
-  ## .. code-block:: nim
-  ##
+  ##   ```nim
   ##   func handleMatches*(m: int, n: int, c: openArray[string]): string =
   ##     result = ""
   ##     if m > 0:
@@ -1314,16 +1315,17 @@ func replace*(s: string, sub: Peg, cb: proc(
   ##
   ##   let s = "Var1=key1;var2=Key2;   VAR3"
   ##   echo s.replace(peg"{\ident}('='{\ident})* ';'* \s*", handleMatches)
+  ##   ```
   ##
   ## Results in:
   ##
-  ## .. code-block:: nim
-  ##
+  ##   ```nim
   ##   "var1: 'key1', var2: 'Key2', var3: ''"
+  ##   ```
   result = ""
   var i = 0
-  var caps: array[0..MaxSubpatterns-1, string]
-  var c: Captures
+  var caps: array[0..MaxSubpatterns-1, string] = default(array[0..MaxSubpatterns-1, string])
+  var c: Captures = default(Captures)
   var m = 0
   while i < s.len:
     c.ml = 0
@@ -1357,19 +1359,20 @@ iterator split*(s: string, sep: Peg): string =
   ## Substrings are separated by the PEG `sep`.
   ## Examples:
   ##
-  ## .. code-block:: nim
+  ##   ```nim
   ##   for word in split("00232this02939is39an22example111", peg"\d+"):
   ##     writeLine(stdout, word)
+  ##   ```
   ##
   ## Results in:
   ##
-  ## .. code-block:: nim
+  ##   ```nim
   ##   "this"
   ##   "is"
   ##   "an"
   ##   "example"
-  ##
-  var c: Captures
+  ##   ```
+  var c: Captures = default(Captures)
   var
     first = 0
     last = 0
@@ -1819,10 +1822,8 @@ type
     identIsVerbatim: bool
     skip: Peg
 
-func pegError(p: PegParser, msg: string, line = -1, col = -1) =
-  var e: ref EInvalidPeg
-  new(e)
-  e.msg = errorStr(p, msg, line, col)
+func pegError(p: PegParser, msg: string, line = -1, col = -1) {.noreturn.} =
+  var e = (ref EInvalidPeg)(msg: errorStr(p, msg, line, col))
   raise e
 
 func getTok(p: var PegParser) =
@@ -1906,7 +1907,8 @@ func primary(p: var PegParser): Peg =
       getTok(p)
     elif not arrowIsNextTok(p):
       var nt = getNonTerminal(p, p.tok.literal)
-      incl(nt.flags, ntUsed)
+      {.cast(noSideEffect).}:
+        incl(nt.flags, ntUsed)
       result = nonterminal(nt).token(p)
       getTok(p)
     else:
@@ -1960,7 +1962,7 @@ func primary(p: var PegParser): Peg =
     getTok(p)
   else:
     pegError(p, "expression expected, but found: " & p.tok.literal)
-    getTok(p) # we must consume a token here to prevent endless loops!
+    # getTok(p) # we must consume a token here to prevent endless loops!
   while true:
     case p.tok.kind
     of tkOption:
@@ -1999,12 +2001,14 @@ func parseRule(p: var PegParser): NonTerminal =
     result = getNonTerminal(p, p.tok.literal)
     if ntDeclared in result.flags:
       pegError(p, "attempt to redefine: " & result.name)
-    result.line = getLine(p)
-    result.col = getColumn(p)
+    {.cast(noSideEffect).}:
+      result.line = getLine(p)
+      result.col = getColumn(p)
     getTok(p)
     eat(p, tkArrow)
-    result.rule = parseExpr(p)
-    incl(result.flags, ntDeclared) # NOW inlining may be attempted
+    {.cast(noSideEffect).}:
+      result.rule = parseExpr(p)
+      incl(result.flags, ntDeclared) # NOW inlining may be attempted
   else:
     pegError(p, "rule expected, but found: " & p.tok.literal)
 
@@ -2042,7 +2046,7 @@ func parsePeg*(pattern: string, filename = "pattern", line = 1, col = 0): Peg =
   ## constructs a Peg object from `pattern`. `filename`, `line`, `col` are
   ## used for error messages, but they only provide start offsets. `parsePeg`
   ## keeps track of line and column numbers within `pattern`.
-  var p: PegParser
+  var p: PegParser = default(PegParser)
   init(PegLexer(p), pattern, filename, line, col)
   p.tok.kind = tkInvalid
   p.tok.modifier = modNone
@@ -2055,9 +2059,9 @@ func parsePeg*(pattern: string, filename = "pattern", line = 1, col = 0): Peg =
 
 func peg*(pattern: string): Peg =
   ## constructs a Peg object from the `pattern`. The short name has been
-  ## chosen to encourage its use as a raw string modifier::
+  ## chosen to encourage its use as a raw string modifier:
   ##
-  ##   peg"{\ident} \s* '=' \s* {.*}"
+  ##     peg"{\ident} \s* '=' \s* {.*}"
   result = parsePeg(pattern, "pattern")
 
 func escapePeg*(s: string): string =

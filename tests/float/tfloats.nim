@@ -1,5 +1,4 @@
 discard """
-  matrix: "-d:nimPreviewFloatRoundtrip; -u:nimPreviewFloatRoundtrip"
   targets: "c cpp js"
 """
 
@@ -41,8 +40,7 @@ template main =
     test ".1", 0.1
     test "-.1", -0.1
     test "-0", -0.0
-    when false: # pending bug #18246
-      test "-0", -0.0
+    test "-0", -0'f # see #18246, -0 won't work
     test ".1e-1", 0.1e-1
     test "0_1_2_3.0_1_2_3E+0_1_2", 123.0123e12
     test "0_1_2.e-0", 12e0
@@ -67,29 +65,18 @@ template main =
     block: # example 1
       let a = 0.1+0.2
       doAssert a != 0.3
-      when defined(nimPreviewFloatRoundtrip):
-        doAssert $a == "0.30000000000000004"
-      else:
-        whenRuntimeJs: discard
-        do: doAssert $a == "0.3"
+      doAssert $a == "0.30000000000000004"
     block: # example 2
       const a = 0.1+0.2
-      when defined(nimPreviewFloatRoundtrip):
-        doAssert $($a, a) == """("0.30000000000000004", 0.30000000000000004)"""
-      else:
-        whenRuntimeJs: discard
-        do: doAssert $($a, a) == """("0.3", 0.3)"""
+      doAssert $($a, a) == """("0.30000000000000004", 0.30000000000000004)"""
     block: # example 3
       const a1 = 0.1+0.2
       let a2 = a1
       doAssert a1 != 0.3
-      when defined(nimPreviewFloatRoundtrip):
-        doAssert $[$a1, $a2] == """["0.30000000000000004", "0.30000000000000004"]"""
-      else:
-        whenRuntimeJs: discard
-        do: doAssert $[$a1, $a2] == """["0.3", "0.3"]"""
+      doAssert $[$a1, $a2] == """["0.30000000000000004", "0.30000000000000004"]"""
 
-  when defined(nimPreviewFloatRoundtrip):
+
+  when true:
     block: # bug #18148
       var a = 1.1'f32
       doAssert $a == "1.1", $a # was failing
@@ -157,9 +144,8 @@ template main =
         when nimvm:
           discard # xxx, refs #12884
         else:
-          when not defined(js):
-            doAssert x == 1.2345679'f32
-            doAssert $x == "1.2345679"
+          doAssert x == 1.2345679'f32
+          doAssert $x == "1.2345679"
 
 static: main()
 main()

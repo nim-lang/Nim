@@ -90,6 +90,7 @@ proc loadLibPattern*(pattern: string, globalSymbols = false): LibHandle =
   ## pragma does. Returns nil if the library could not be loaded.
   ##
   ## .. warning:: this proc uses the GC and so cannot be used to load the GC.
+  result = default(LibHandle)
   var candidates = newSeq[string]()
   libCandidates(pattern, candidates)
   for c in candidates:
@@ -105,7 +106,7 @@ when defined(posix) and not defined(nintendoswitch):
   # as an emulation layer on top of native functions.
   # =========================================================================
   #
-  import posix
+  import std/posix
 
   proc loadLib(path: string, globalSymbols = false): LibHandle =
     let flags =
@@ -148,7 +149,7 @@ elif defined(genode):
   #
 
   template raiseErr(prc: string) =
-    raise newException(OSError, prc & " not implemented, compile with POSIX suport")
+    raise newException(OSError, prc & " not implemented, compile with POSIX support")
 
   proc dlclose(lib: LibHandle) =
     raiseErr(OSError, "dlclose")

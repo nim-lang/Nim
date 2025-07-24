@@ -1,6 +1,6 @@
 discard """
   matrix: "--gc:arc"
-  errormsg: "expression cannot be cast to int"
+  errormsg: "expression cannot be cast to 'int'"
 """
 
 block: # bug #16558

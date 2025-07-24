@@ -144,7 +144,7 @@ proc poll*(timeout: int = 250) =
 when true:
   import parseopt, strutils
   var zoneCfgFile = "./server_settings.json"
-  for kind, key, val in getOpt():
+  for kind, key, val in getopt():
     case kind
     of cmdShortOption, cmdLongOption:
       case key

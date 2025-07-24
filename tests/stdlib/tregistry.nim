@@ -1,10 +1,11 @@
 discard """
   disabled: "unix"
-  matrix: "--gc:refc; --gc:arc"
+  matrix: "--mm:refc; --mm:orc"
 """
 
 when defined(windows):
   import std/registry
+  import std/assertions
 
   block: # bug #14010
     let path = "Environment"

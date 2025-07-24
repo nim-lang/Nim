@@ -1,7 +1,6 @@
 discard """
   output: '''
 20.0 USD
-Printable
 true
 true
 true
@@ -27,6 +26,8 @@ false
 true
 -1
 Meow
+10 0.0
+1 2.0
 '''
 joinable: false
 """
@@ -74,55 +75,6 @@ block t3414:
 
   var s1 = @[1, 2, 3]
   let s2 = s1.find(10)
-
-
-
-type
-  Obj1[T] = object
-      v: T
-converter toObj1[T](t: T): Obj1[T] =
-  return Obj1[T](v: t)
-block t976:
-  type
-    int1 = distinct int
-    int2 = distinct int
-    int1g = concept x
-      x is int1
-    int2g = concept x
-      x is int2
-
-  proc take[T: int1g](value: int1) =
-    when T is int2:
-      static: error("killed in take(int1)")
-
-  proc take[T: int2g](vale: int2) =
-    when T is int1:
-      static: error("killed in take(int2)")
-
-  var i1: int1 = 1.int1
-  var i2: int2 = 2.int2
-
-  take[int1](i1)
-  take[int2](i2)
-
-  template reject(e) =
-    static: assert(not compiles(e))
-
-  reject take[string](i2)
-  reject take[int1](i2)
-
-  # bug #6249
-  type
-      Obj2 = ref object
-      PrintAble = concept x
-          $x is string
-
-  proc `$`[T](nt: Obj1[T]): string =
-      when T is PrintAble: result = "Printable"
-      else: result = "Non Printable"
-
-  echo Obj2()
-
 
 
 block t1128:
@@ -500,3 +452,105 @@ var r, b: Fp2[6, uint64]
 
 prod(r, b)
 
+
+block: # bug #21263
+  type
+    DateDayFraction = concept # no T, an atom
+      proc date(a: Self): int
+      proc fraction(b: Self): float
+    Date = distinct int
+    DateDayFractionImpl = object
+      date : int
+      fraction : float
+
+  proc date(a: Date): int = a.int
+  proc fraction(a:Date): float = 0.0
+
+  proc date(a: DateDayFractionImpl): int = a.date
+  proc fraction(b: DateDayFractionImpl): float = b.fraction
+
+
+  proc print(a: DateDayFraction) =
+    echo a.date, " ", a.fraction
+
+  print(10.Date) # ok
+  print(DateDayFractionImpl(date: 1, fraction: 2))  # error
+
+import sets
+import deques
+
+type AnyTree[V] = concept t, type T
+  for v in t.leaves(V):
+    v is V
+
+type BreadthOrder[V] = ref object
+  frontier: Deque[V]
+  visited: HashSet[V]
+
+proc expand[V, T](order: ref BreadthOrder[T], tree: AnyTree[V], node: V, transform: (V) -> (T)) =
+  for leaf in tree.leaves(node):
+    if not order.visited.containsOrIncl(transform(leaf)):
+      order.frontier.addLast(transform(leaf))
+
+proc hasNext[V](order: ref BreadthOrder[V]): bool =
+  order.frontier.len > 0
+
+proc init[V](_: typedesc[BreadthOrder]): ref BreadthOrder[V] =
+  result.new()
+  result[] = BreadthOrder[V](frontier: initDeque[V](), visited: initHashSet[V]())
+
+proc popNext[V](order: ref BreadthOrder[V]): V =
+  order.frontier.popFirst()
+
+type LevelNode[V] = tuple
+  depth: uint
+  node: V
+
+proc depthOf*[V](orderType: typedesc[BreadthOrder], tree: AnyTree[V], root, goal: V): uint =
+  if root == goal:
+    return 0
+  var order = init[LevelNode[V]](orderType)
+  order.expand(tree, root, (leaf) => (1.uint, leaf))
+  while order.hasNext():
+    let depthNode: LevelNode[V] = order.popNext()
+    if depthNode.node == goal:
+      return depthNode.depth
+    order.expand(tree, depthNode.node, (leaf) => (depthNode.depth + 1, leaf))
+
+type CappedStringTree = ref object
+  symbols: string
+  cap: Natural
+
+iterator leaves*(t: CappedStringTree, s: string): string =
+  if s.len < t.cap:
+    for c in t.symbols:
+      yield s & c
+
+block: # bug #12852
+  var tree = CappedStringTree(symbols: "^v><", cap: 5)
+
+  doAssert BreadthOrder.depthOf(tree, "", ">>>") == 3
+
+block: #bug #22723
+  type
+    Node  = concept n, type T 
+      for i in n.children:
+        i is T
+      n.parent is T
+
+    Nd = ref object
+      parent: Nd
+      children: seq[Nd]
+
+  proc addChild(parent, child: Node) =
+    parent.children.add(child)
+    child.parent = parent
+
+  proc foo =
+    var
+      a = Nd()
+      b = Nd()
+    a.addChild(b)
+    doAssert a.children.len == 1
+
+  foo()

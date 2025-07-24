@@ -1,4 +1,5 @@
 discard """
+  matrix: "--mm:refc; --mm:orc"
   targets: "c cpp js"
 """
 
@@ -7,13 +8,14 @@ import std/json
 from std/math import isNaN, signbit
 from std/fenv import epsilon
 from stdtest/testutils import whenRuntimeJs
+import std/[assertions, objectdollar]
 
 proc testRoundtrip[T](t: T, expected: string) =
   # checks that `T => json => T2 => json2` is such that json2 = json
   let j = t.toJson
   doAssert $j == expected, "\n" & $j & "\n" & expected
   doAssert j.jsonTo(T).toJson == j
-  var t2: T
+  var t2: T = default(T)
   t2.fromJson(j)
   doAssert t2.toJson == j
 
@@ -59,8 +61,7 @@ template fn() =
         testRoundtrip(pointer(nil)): """0"""
         testRoundtrip(cast[pointer](nil)): """0"""
 
-    # causes workaround in `fromJson` potentially related to
-    # https://github.com/nim-lang/Nim/issues/12282
+    # refs bug #9423
     testRoundtrip(Foo(1.5)): """1.5"""
 
   block: # OrderedTable
@@ -205,6 +206,19 @@ template fn() =
     # sanity check: nesting inside a tuple
     testRoundtrip((Foo[int](x0: 1.5, t1: false, z2: 6), "foo")): """[{"x0":1.5,"t1":false,"z2":6,"x1":""},"foo"]"""
 
+  block: # generic case object using generic type
+    type Foo[T] = ref object
+      x0: float
+      case t1: bool
+      of true: z1: int8
+      of false: z2: uint16
+      x1: string
+      x2: T
+    testRoundtrip(Foo[float](t1: true, z1: 5, x1: "bar", x2: 2.5)): """{"x0":0.0,"t1":true,"z1":5,"x1":"bar","x2":2.5}"""
+    testRoundtrip(Foo[int](x0: 1.5, t1: false, z2: 6, x2: 2)): """{"x0":1.5,"t1":false,"z2":6,"x1":"","x2":2}"""
+    # sanity check: nesting inside a tuple
+    testRoundtrip((Foo[int](x0: 1.5, t1: false, z2: 6, x2: 2), "foo")): """[{"x0":1.5,"t1":false,"z2":6,"x1":"","x2":2},"foo"]"""
+
   block: # case object: 2 discriminants, `when` branch, range discriminant
     type Foo[T] = object
       case t1: bool
@@ -320,7 +334,7 @@ template fn() =
             b: int
 
         var a = A()
-        fromJson(a, """{"is_a": true, "a":1, "extra_key": 1}""".parse_json, Joptions(allowExtraKeys: true))
+        fromJson(a, """{"is_a": true, "a":1, "extra_key": 1}""".parseJson, Joptions(allowExtraKeys: true))
         doAssert $a[] == "(is_a: true, a: 1)"
 
     block testAllowMissingKeys:
@@ -408,6 +422,39 @@ template fn() =
       doAssert foo.f == 3.14159
       doAssert foo.c == 0
       doAssert foo.c0 == 42
+
+
+    block testInvalidTupleLength:
+      let json = parseJson("[0]")
+      # Should raise ValueError instead of index error
+      doAssertRaises(ValueError):
+        discard json.jsonTo((int, int))
+
+    type
+      InnerEnum = enum
+        A
+        B
+        C
+      InnerObject = object
+        x: string
+        y: InnerEnum
+
+    block testOptionsArePassedWhenDeserialising:
+      let json = parseJson("""{"x": "hello"}""")
+      let inner = json.jsonTo(Option[InnerObject], Joptions(allowMissingKeys: true))
+      doAssert inner.isSome()
+      doAssert inner.get().x == "hello"
+      doAssert inner.get().y == A
+
+    block testOptionsArePassedWhenSerialising:
+      let inner = some InnerObject(x: "hello", y: A)
+      let json = inner.toJson(ToJsonOptions(enumMode: joptEnumSymbol))
+      doAssert $json == """{"x":"hello","y":"A"}"""
+
+    block: # bug #21638
+      type Something = object
+
+      doAssert "{}".parseJson.jsonTo(Something) == Something()
 
     when false:
       ## TODO: Implement support for nested variant objects allowing the tests

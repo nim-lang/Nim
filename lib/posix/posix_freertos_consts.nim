@@ -500,3 +500,7 @@ const F_TEST* = cint(3)
 const F_TLOCK* = cint(2)
 const F_ULOCK* = cint(0)
 
+# <stdio.h>
+const SEEK_SET* = cint(0)
+const SEEK_CUR* = cint(1)
+const SEEK_END* = cint(2)

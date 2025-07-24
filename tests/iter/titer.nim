@@ -112,3 +112,36 @@ let res = collect:
       fn2(v2)
 
 doAssert res == @[42, 43, 43, 44]
+
+block: # bug #21110
+  iterator p(): int =
+    when nimvm:
+      yield 0
+    else:
+      yield 0
+
+  template foo =
+    for k in p():
+      let m = ""
+      proc e() = discard m & ""
+      e()
+  static: foo()
+  foo()
+
+
+# bug #15924
+iterator walk(): (int, int) {.closure.} =
+  yield (10,11)
+
+for (i,j) in walk():
+  doAssert i == 10
+
+proc main123() =
+  let x = false
+  iterator it(): (bool, bool) {.closure.} = # normally {.closure.} here makes #21476 work
+    discard x
+
+  for (_, _) in it():
+    discard
+
+main123()

@@ -1,13 +1,9 @@
 discard """
-cmd: "nim check $file"
-errormsg: "'t' has unspecified generic parameters"
-nimout: '''
-t5167_5.nim(10, 16) Error: expression 'system' has no type (or is ambiguous)
-t5167_5.nim(21, 9) Error: 't' has unspecified generic parameters
-'''
+cmd: "nim check --mm:refc $file"
 """
 # issue #11942
-discard newSeq[system]()
+discard newSeq[system]() #[tt.Error
+               ^ expression 'system' has no type (or is ambiguous)]#
 
 # issue #5167
 template t[B]() =
@@ -18,8 +14,12 @@ macro m[T]: untyped = nil
 proc bar(x: proc (x: int)) =
   echo "bar"
 
-let x = t
-bar t
+let x = t #[tt.Error
+        ^ 't' has unspecified generic parameters]#
+bar t #[tt.Error
+^ type mismatch: got <template [*missing parameters*]()>]#
 
-let y = m
-bar m
+let y = m #[tt.Error
+        ^ 'm' has unspecified generic parameters]#
+bar m #[tt.Error
+^ type mismatch: got <macro [*missing parameters*](): untyped{.noSideEffect, gcsafe.}>]#

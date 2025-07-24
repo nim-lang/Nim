@@ -90,23 +90,27 @@ runnableExamples("-r:off"):
 
 import std/private/since
 
-import nativesockets
-import os, strutils, times, sets, options, std/monotimes
-import ssl_config
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
+import std/nativesockets
+import std/[os, strutils, times, sets, options, monotimes]
+import std/ssl_config
 export nativesockets.Port, nativesockets.`$`, nativesockets.`==`
-export Domain, SockType, Protocol
+export Domain, SockType, Protocol, IPPROTO_NONE
 
 const useWinVersion = defined(windows) or defined(nimdoc)
-const useNimNetLite = defined(nimNetLite) or defined(freertos) or defined(zephyr)
+const useNimNetLite = defined(nimNetLite) or defined(freertos) or defined(zephyr) or
+    defined(nuttx)
 const defineSsl = defined(ssl) or defined(nimdoc)
 
 when useWinVersion:
-  from winlean import WSAESHUTDOWN
+  from std/winlean import WSAESHUTDOWN
 
 when defineSsl:
-  import openssl
+  import std/openssl
   when not defined(nimDisableCertificateValidation):
-    from ssl_certs import scanSSLCertificates
+    from std/ssl_certs import scanSSLCertificates
 
 # Note: The enumerations are mapped to Window's constants.
 
@@ -203,6 +207,30 @@ type
 when defined(nimHasStyleChecks):
   {.pop.}
 
+
+when defined(posix) and not defined(lwip):
+  from std/posix import TPollfd, POLLIN, POLLPRI, POLLOUT, POLLWRBAND, Tnfds
+
+  template monitorPollEvent(x: var SocketHandle, y, timeout: cint): int =
+    var tpollfd: TPollfd = default(TPollfd)
+    tpollfd.fd = cast[cint](x)
+    tpollfd.events = y
+    posix.poll(addr(tpollfd), Tnfds(1), timeout)
+
+proc timeoutRead(fd: var SocketHandle, timeout = 500): int =
+  when defined(windows) or defined(lwip):
+    var fds = @[fd]
+    selectRead(fds, timeout)
+  else:
+    monitorPollEvent(fd, POLLIN or POLLPRI, cint(timeout))
+
+proc timeoutWrite(fd: var SocketHandle, timeout = 500): int =
+  when defined(windows) or defined(lwip):
+    var fds = @[fd]
+    selectWrite(fds, timeout)
+  else:
+    monitorPollEvent(fd, POLLOUT or POLLWRBAND, cint(timeout))
+
 proc socketError*(socket: Socket, err: int = -1, async = false,
                   lastError = (-1).OSErrorCode,
                   flags: set[SocketFlag] = {}) {.gcsafe.}
@@ -227,6 +255,7 @@ proc isDisconnectionError*(flags: set[SocketFlag],
 
 proc toOSFlags*(socketFlags: set[SocketFlag]): cint =
   ## Converts the flags into the underlying OS representation.
+  result = cint(0)
   for f in socketFlags:
     case f
     of SocketFlag.Peek:
@@ -453,8 +482,8 @@ proc parseIPv6Address(addressStr: string): IpAddress =
 proc parseIpAddress*(addressStr: string): IpAddress =
   ## Parses an IP address
   ##
-  ## Raises ValueError on error. 
-  ## 
+  ## Raises ValueError on error.
+  ##
   ## For IPv4 addresses, only the strict form as
   ## defined in RFC 6943 is considered valid, see
   ## https://datatracker.ietf.org/doc/html/rfc6943#section-3.1.1.
@@ -519,18 +548,20 @@ proc fromSockAddr*(sa: Sockaddr_storage | SockAddr | Sockaddr_in | Sockaddr_in6,
   fromSockAddrAux(cast[ptr Sockaddr_storage](unsafeAddr sa), sl, address, port)
 
 when defineSsl:
-  CRYPTO_malloc_init()
-  doAssert SslLibraryInit() == 1
-  SSL_load_error_strings()
-  ERR_load_BIO_strings()
-  OpenSSL_add_all_algorithms()
+  # OpenSSL >= 1.1.0 does not need explicit init.
+  when not useOpenssl3:
+    CRYPTO_malloc_init()
+    doAssert SslLibraryInit() == 1
+    SSL_load_error_strings()
+    ERR_load_BIO_strings()
+    OpenSSL_add_all_algorithms()
 
   proc sslHandle*(self: Socket): SslPtr =
     ## Retrieve the ssl pointer of `socket`.
     ## Useful for interfacing with `openssl`.
     self.sslHandle
 
-  proc raiseSSLError*(s = "") =
+  proc raiseSSLError*(s = "") {.raises: [SslError].}=
     ## Raises a new SSL error.
     if s != "":
       raise newException(SslError, s)
@@ -568,7 +599,7 @@ when defineSsl:
       ctx.referencedData.incl(index)
     GC_ref(data)
 
-  # http://simplestcodings.blogspot.co.uk/2010/08/secure-server-client-using-openssl-in-c.html
+  # https://simplestcodings.blogspot.co.uk/2010/08/secure-server-client-using-openssl-in-c.html
   proc loadCertificates(ctx: SslCtx, certFile, keyFile: string) =
     if certFile != "" and not fileExists(certFile):
       raise newException(system.IOError,
@@ -592,12 +623,11 @@ when defineSsl:
 
   proc newContext*(protVersion = protSSLv23, verifyMode = CVerifyPeer,
                    certFile = "", keyFile = "", cipherList = CiphersIntermediate,
-                   caDir = "", caFile = ""): SslContext =
+                   caDir = "", caFile = "", ciphersuites = CiphersModern): SslContext =
     ## Creates an SSL context.
     ##
-    ## Protocol version specifies the protocol to use. SSLv2, SSLv3, TLSv1
-    ## are available with the addition of `protSSLv23` which allows for
-    ## compatibility with all of them.
+    ## Protocol version is currently ignored by default and TLS is used.
+    ## With `-d:openssl10`, only SSLv23 and TLSv1 may be used.
     ##
     ## There are three options for verify mode:
     ## `CVerifyNone`: certificates are not verified;
@@ -624,31 +654,39 @@ when defineSsl:
     ## or using ECDSA:
     ## - `openssl ecparam -out mykey.pem -name secp256k1 -genkey`
     ## - `openssl req -new -key mykey.pem -x509 -nodes -days 365 -out mycert.pem`
-    var newCTX: SslCtx
-    case protVersion
-    of protSSLv23:
-      newCTX = SSL_CTX_new(SSLv23_method()) # SSlv2,3 and TLS1 support.
-    of protSSLv2:
-      raiseSSLError("SSLv2 is no longer secure and has been deprecated, use protSSLv23")
-    of protSSLv3:
-      raiseSSLError("SSLv3 is no longer secure and has been deprecated, use protSSLv23")
-    of protTLSv1:
-      newCTX = SSL_CTX_new(TLSv1_method())
+    var mtd: PSSL_METHOD
+    when defined(openssl10):
+      case protVersion
+      of protSSLv23:
+        mtd = SSLv23_method()
+      of protSSLv2:
+        raiseSSLError("SSLv2 is no longer secure and has been deprecated, use protSSLv23")
+      of protSSLv3:
+        raiseSSLError("SSLv3 is no longer secure and has been deprecated, use protSSLv23")
+      of protTLSv1:
+        mtd = TLSv1_method()
+    else:
+      mtd = TLS_method()
+    if mtd == nil:
+      raiseSSLError("Failed to create TLS context")
+    var newCTX = SSL_CTX_new(mtd)
+    if newCTX == nil:
+      raiseSSLError("Failed to create TLS context")
 
     if newCTX.SSL_CTX_set_cipher_list(cipherList) != 1:
       raiseSSLError()
     when not defined(openssl10) and not defined(libressl):
       let sslVersion = getOpenSSLVersion()
-      if sslVersion >= 0x010101000 and not sslVersion == 0x020000000:
+      if sslVersion >= 0x010101000 and sslVersion != 0x020000000:
         # In OpenSSL >= 1.1.1, TLSv1.3 cipher suites can only be configured via
         # this API.
-        if newCTX.SSL_CTX_set_ciphersuites(cipherList) != 1:
+        if newCTX.SSL_CTX_set_ciphersuites(ciphersuites) != 1:
           raiseSSLError()
     # Automatically the best ECDH curve for client exchange. Without this, ECDH
     # ciphers will be ignored by the server.
     #
     # From OpenSSL >= 1.1.0, this setting is set by default and can't be
-    # overriden.
+    # overridden.
     if newCTX.SSL_CTX_set_ecdh_auto(1) != 1:
       raiseSSLError()
 
@@ -682,7 +720,11 @@ when defineSsl:
           var found = false
           let useEnvVars = (if verifyMode == CVerifyPeerUseEnvVars: true else: false)
           for fn in scanSSLCertificates(useEnvVars = useEnvVars):
-            if newCTX.SSL_CTX_load_verify_locations(fn, nil) == VerifySuccess:
+            if fn.extractFilename == "":
+              if newCTX.SSL_CTX_load_verify_locations(nil, cstring(fn.normalizePathEnd(false))) == VerifySuccess:
+                found = true
+                break
+            elif newCTX.SSL_CTX_load_verify_locations(cstring(fn), nil) == VerifySuccess:
               found = true
               break
           if not found:
@@ -788,24 +830,28 @@ when defineSsl:
     if SSL_set_fd(socket.sslHandle, socket.fd) != 1:
       raiseSSLError()
 
-  proc checkCertName(socket: Socket, hostname: string) =
+  proc checkCertName(socket: Socket, hostname: string) {.raises: [SslError], tags:[RootEffect].} =
     ## Check if the certificate Subject Alternative Name (SAN) or Subject CommonName (CN) matches hostname.
     ## Wildcards match only in the left-most label.
     ## When name starts with a dot it will be matched by a certificate valid for any subdomain
     when not defined(nimDisableCertificateValidation) and not defined(windows):
       assert socket.isSsl
-      let certificate = socket.sslHandle.SSL_get_peer_certificate()
-      if certificate.isNil:
-        raiseSSLError("No SSL certificate found.")
+      try:
+        let certificate = socket.sslHandle.SSL_get_peer_certificate()
+        if certificate.isNil:
+          raiseSSLError("No SSL certificate found.")
 
-      const X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT = 0x1.cuint
-      # https://www.openssl.org/docs/man1.1.1/man3/X509_check_host.html
-      let match = certificate.X509_check_host(hostname.cstring, hostname.len.cint,
-        X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT, nil)
-      # https://www.openssl.org/docs/man1.1.1/man3/SSL_get_peer_certificate.html
-      X509_free(certificate)
-      if match != 1:
-        raiseSSLError("SSL Certificate check failed.")
+        const X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT = 0x1.cuint
+        # https://www.openssl.org/docs/man1.1.1/man3/X509_check_host.html
+        let match = certificate.X509_check_host(hostname.cstring, hostname.len.cint,
+          X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT, nil)
+        # https://www.openssl.org/docs/man1.1.1/man3/SSL_get_peer_certificate.html
+        X509_free(certificate)
+        if match != 1:
+          raiseSSLError("SSL Certificate check failed.")
+
+      except LibraryError:
+        raiseSSLError("SSL import failed")
 
   proc wrapConnectedSocket*(ctx: SslContext, socket: Socket,
                             handshake: SslHandshakeType,
@@ -832,6 +878,7 @@ when defineSsl:
       let ret = SSL_connect(socket.sslHandle)
       socketError(socket, ret)
       when not defined(nimDisableCertificateValidation) and not defined(windows):
+        # FIXME: this should be skipped on CVerifyNone
         if hostname.len > 0 and not isIpAddress(hostname):
           socket.checkCertName(hostname)
     of handshakeAsServer:
@@ -984,16 +1031,16 @@ proc bindAddr*(socket: Socket, port = Port(0), address = "") {.
 
   var aiList = getAddrInfo(realaddr, port, socket.domain)
   if bindAddr(socket.fd, aiList.ai_addr, aiList.ai_addrlen.SockLen) < 0'i32:
-    freeaddrinfo(aiList)
-    var address2: string
+    freeAddrInfo(aiList)
+    var address2: string = ""
     address2.addQuoted address
     raiseOSError(osLastError(), "address: $# port: $#" % [address2, $port])
-  freeaddrinfo(aiList)
+  freeAddrInfo(aiList)
 
 proc acceptAddr*(server: Socket, client: var owned(Socket), address: var string,
                  flags = {SocketFlag.SafeDisconn},
                  inheritable = defined(nimInheritHandles)) {.
-                 tags: [ReadIOEffect], gcsafe, locks: 0.} =
+                 tags: [ReadIOEffect], gcsafe.} =
   ## Blocks until a connection is being made from a client. When a connection
   ## is made sets `client` to the client socket and `address` to the address
   ## of the connecting client.
@@ -1108,7 +1155,7 @@ proc accept*(server: Socket, client: var owned(Socket),
   acceptAddr(server, client, addrDummy, flags)
 
 when defined(posix) and not defined(lwip):
-  from posix import Sigset, sigwait, sigismember, sigemptyset, sigaddset,
+  from std/posix import Sigset, sigwait, sigismember, sigemptyset, sigaddset,
     sigprocmask, pthread_sigmask, SIGPIPE, SIG_BLOCK, SIG_UNBLOCK
 
 template blockSigpipe(body: untyped): untyped =
@@ -1222,9 +1269,9 @@ proc close*(socket: Socket, flags = {SocketFlag.SafeDisconn}) =
     socket.fd = osInvalidSocket
 
 when defined(posix):
-  from posix import TCP_NODELAY
+  from std/posix import TCP_NODELAY
 else:
-  from winlean import TCP_NODELAY
+  from std/winlean import TCP_NODELAY
 
 proc toCInt*(opt: SOBool): cint =
   ## Converts a `SOBool` into its Socket Option cint representation.
@@ -1275,7 +1322,7 @@ when defined(nimdoc) or (defined(posix) and not useNimNetLite):
     when not defined(nimdoc):
       var socketAddr = makeUnixAddr(path)
       if socket.fd.connect(cast[ptr SockAddr](addr socketAddr),
-          (sizeof(socketAddr.sun_family) + path.len).SockLen) != 0'i32:
+          (offsetOf(socketAddr, sun_path) + path.len + 1).SockLen) != 0'i32:
         raiseOSError(osLastError())
 
   proc bindUnix*(socket: Socket, path: string) =
@@ -1284,10 +1331,10 @@ when defined(nimdoc) or (defined(posix) and not useNimNetLite):
     when not defined(nimdoc):
       var socketAddr = makeUnixAddr(path)
       if socket.fd.bindAddr(cast[ptr SockAddr](addr socketAddr),
-          (sizeof(socketAddr.sun_family) + path.len).SockLen) != 0'i32:
+          (offsetOf(socketAddr, sun_path) + path.len + 1).SockLen) != 0'i32:
         raiseOSError(osLastError())
 
-when defined(ssl):
+when defineSsl:
   proc gotHandshake*(socket: Socket): bool =
     ## Determines whether a handshake has occurred between a client (`socket`)
     ## and the server that `socket` is connected to.
@@ -1307,14 +1354,6 @@ proc hasDataBuffered*(s: Socket): bool =
   when defineSsl:
     if s.isSsl and not result:
       result = s.sslHasPeekChar
-
-proc select(readfd: Socket, timeout = 500): int =
-  ## Used for socket operation timeouts.
-  if readfd.hasDataBuffered:
-    return 1
-
-  var fds = @[readfd.fd]
-  result = selectRead(fds, timeout)
 
 proc isClosed(socket: Socket): bool =
   socket.fd == osInvalidSocket
@@ -1429,7 +1468,9 @@ proc waitFor(socket: Socket, waited: var Duration, timeout, size: int,
           return min(sslPending, size)
 
     var startTime = getMonoTime()
-    let selRet = select(socket, (timeout - waited.inMilliseconds).int)
+    let selRet = if socket.hasDataBuffered: 1
+      else:
+        timeoutRead(socket.fd, (timeout - waited.inMilliseconds).int)
     if selRet < 0: raiseOSError(osLastError())
     if selRet != 1:
       raise newException(TimeoutError, "Call to '" & funcName & "' timed out.")
@@ -1438,7 +1479,7 @@ proc waitFor(socket: Socket, waited: var Duration, timeout, size: int,
 proc recv*(socket: Socket, data: pointer, size: int, timeout: int): int {.
   tags: [ReadIOEffect, TimeEffect].} =
   ## overload with a `timeout` parameter in milliseconds.
-  var waited: Duration # duration already waited
+  var waited: Duration = default(Duration) # duration already waited
 
   var read = 0
   while read < size:
@@ -1565,7 +1606,7 @@ proc readLine*(socket: Socket, line: var string, timeout = -1,
     socket.socketError(n, lastError = lastError, flags = flags)
     return
 
-  var waited: Duration
+  var waited: Duration = default(Duration) # duration already waited
 
   setLen(line, 0)
   while true:
@@ -1668,7 +1709,7 @@ proc skip*(socket: Socket, size: int, timeout = -1) =
   ## bytes takes longer than specified a TimeoutError exception will be raised.
   ##
   ## Returns the number of skipped bytes.
-  var waited: Duration
+  var waited: Duration = default(Duration) # duration already waited
   var dummy = alloc(size)
   var bytesSkipped = 0
   while bytesSkipped != size:
@@ -1696,15 +1737,36 @@ proc send*(socket: Socket, data: pointer, size: int): int {.
     result = send(socket.fd, data, size, int32(MSG_NOSIGNAL))
 
 proc send*(socket: Socket, data: string,
-           flags = {SocketFlag.SafeDisconn}) {.tags: [WriteIOEffect].} =
-  ## sends data to a socket.
-  let sent = send(socket, cstring(data), data.len)
-  if sent < 0:
-    let lastError = osLastError()
-    socketError(socket, lastError = lastError, flags = flags)
+           flags = {SocketFlag.SafeDisconn}, maxRetries = 100) {.tags: [WriteIOEffect].} =
+  ## Sends data to a socket. Will try to send all the data by handling interrupts
+  ## and incomplete writes up to `maxRetries`.
+  var written = 0
+  var attempts = 0
+  while data.len - written > 0:
+    let sent = send(socket, cstring(data), data.len)
 
-  if sent != data.len:
-    raiseOSError(osLastError(), "Could not send all data.")
+    if sent < 0:
+      let lastError = osLastError()
+      let isBlockingErr =
+        when defined(nimdoc):
+          false
+        elif useWinVersion:
+          lastError.int32 == WSAEINTR or
+          lastError.int32 == WSAEWOULDBLOCK
+        else:
+          lastError.int32 == EINTR or
+          lastError.int32 == EWOULDBLOCK or
+          lastError.int32 == EAGAIN
+
+      if not isBlockingErr:
+        let lastError = osLastError()
+        socketError(socket, lastError = lastError, flags = flags)
+      else:
+        attempts.inc()
+        if attempts > maxRetries:
+          raiseOSError(osLastError(), "Could not send all data.")
+    else:
+      written.inc(sent)
 
 template `&=`*(socket: Socket; data: typed) =
   ## an alias for 'send'.
@@ -1745,7 +1807,7 @@ proc sendTo*(socket: Socket, address: string, port: Port, data: pointer,
     it = it.ai_next
 
   let osError = osLastError()
-  freeaddrinfo(aiList)
+  freeAddrInfo(aiList)
 
   if not success:
     raiseOSError(osError)
@@ -1755,7 +1817,7 @@ proc sendTo*(socket: Socket, address: string, port: Port,
   ## This proc sends `data` to the specified `address`,
   ## which may be an IP address or a hostname, if a hostname is specified
   ## this function will try each IP of that hostname.
-  ## 
+  ##
   ## Generally for use with connection-less (UDP) sockets.
   ##
   ## If an error occurs an OSError exception will be raised.
@@ -1767,9 +1829,9 @@ proc sendTo*(socket: Socket, address: IpAddress, port: Port,
              data: string, flags = 0'i32): int {.
               discardable, tags: [WriteIOEffect].} =
   ## This proc sends `data` to the specified `IpAddress` and returns
-  ## the number of bytes written. 
+  ## the number of bytes written.
   ##
-  ## Generally for use with connection-less (UDP) sockets. 
+  ## Generally for use with connection-less (UDP) sockets.
   ##
   ## If an error occurs an OSError exception will be raised.
   ##
@@ -1777,8 +1839,8 @@ proc sendTo*(socket: Socket, address: IpAddress, port: Port,
   assert(socket.protocol != IPPROTO_TCP, "Cannot `sendTo` on a TCP socket")
   assert(not socket.isClosed, "Cannot `sendTo` on a closed socket")
 
-  var sa: Sockaddr_storage
-  var sl: SockLen
+  var sa: Sockaddr_storage = default(Sockaddr_storage)
+  var sl: SockLen = default(SockLen)
   toSockAddr(address, port, sa, sl)
   result = sendto(socket.fd, cstring(data), data.len().cint, flags.cint,
                   cast[ptr SockAddr](addr sa), sl)
@@ -1797,6 +1859,16 @@ proc isSsl*(socket: Socket): bool =
 
 proc getFd*(socket: Socket): SocketHandle = return socket.fd
   ## Returns the socket's file descriptor
+
+when defined(zephyr) or defined(nimNetSocketExtras): # Remove in future
+  proc getDomain*(socket: Socket): Domain = return socket.domain
+    ## Returns the socket's domain
+
+  proc getType*(socket: Socket): SockType = return socket.sockType
+    ## Returns the socket's type
+
+  proc getProtocol*(socket: Socket): Protocol = return socket.protocol
+    ## Returns the socket's protocol
 
 when defined(nimHasStyleChecks):
   {.push styleChecks: off.}
@@ -1849,14 +1921,18 @@ proc `==`*(lhs, rhs: IpAddress): bool =
 
 proc `$`*(address: IpAddress): string =
   ## Converts an IpAddress into the textual representation
-  result = ""
   case address.family
   of IpAddressFamily.IPv4:
-    for i in 0 .. 3:
-      if i != 0:
-        result.add('.')
-      result.add($address.address_v4[i])
+    result = newStringOfCap(15)
+    result.addInt address.address_v4[0]
+    result.add '.'
+    result.addInt address.address_v4[1]
+    result.add '.'
+    result.addInt address.address_v4[2]
+    result.add '.'
+    result.addInt address.address_v4[3]
   of IpAddressFamily.IPv6:
+    result = newStringOfCap(39)
     var
       currentZeroStart = -1
       currentZeroCount = 0
@@ -1923,7 +1999,7 @@ proc dial*(address: string, port: Port,
 
   let aiList = getAddrInfo(address, port, AF_UNSPEC, sockType, protocol)
 
-  var fdPerDomain: array[low(Domain).ord..high(Domain).ord, SocketHandle]
+  var fdPerDomain = default(array[low(Domain).ord..high(Domain).ord, SocketHandle])
   for i in low(fdPerDomain)..high(fdPerDomain):
     fdPerDomain[i] = osInvalidSocket
   template closeUnusedFds(domainToKeep = -1) {.dirty.} =
@@ -1932,10 +2008,10 @@ proc dial*(address: string, port: Port,
         fd.close()
 
   var success = false
-  var lastError: OSErrorCode
+  var lastError: OSErrorCode = default(OSErrorCode)
   var it = aiList
-  var domain: Domain
-  var lastFd: SocketHandle
+  var domain: Domain = default(Domain)
+  var lastFd: SocketHandle = default(SocketHandle)
   while it != nil:
     let domainOpt = it.ai_family.toKnownDomain()
     if domainOpt.isNone:
@@ -1950,7 +2026,7 @@ proc dial*(address: string, port: Port,
         # network system problem (e.g. not enough FDs), and not an unreachable
         # address.
         let err = osLastError()
-        freeaddrinfo(aiList)
+        freeAddrInfo(aiList)
         closeUnusedFds()
         raiseOSError(err)
       fdPerDomain[ord(domain)] = lastFd
@@ -1959,18 +2035,21 @@ proc dial*(address: string, port: Port,
       break
     lastError = osLastError()
     it = it.ai_next
-  freeaddrinfo(aiList)
+  freeAddrInfo(aiList)
   closeUnusedFds(ord(domain))
 
   if success:
-    result = newSocket(lastFd, domain, sockType, protocol)
+    result = newSocket(lastFd, domain, sockType, protocol, buffered)
   elif lastError != 0.OSErrorCode:
+    lastFd.close()
+    result = default(Socket)
     raiseOSError(lastError)
   else:
+    lastFd.close()
     raise newException(IOError, "Couldn't resolve address: " & address)
 
 proc connect*(socket: Socket, address: string,
-    port = Port(0)) {.tags: [ReadIOEffect].} =
+    port = Port(0)) {.tags: [ReadIOEffect, RootEffect].} =
   ## Connects socket to `address`:`port`. `Address` can be an IP address or a
   ## host name. If `address` is a host name, this function will try each IP
   ## of that host name. `htons` is already performed on `port` so you must
@@ -1980,7 +2059,7 @@ proc connect*(socket: Socket, address: string,
   var aiList = getAddrInfo(address, port, socket.domain)
   # try all possibilities:
   var success = false
-  var lastError: OSErrorCode
+  var lastError: OSErrorCode = default(OSErrorCode)
   var it = aiList
   while it != nil:
     if connect(socket.fd, it.ai_addr, it.ai_addrlen.SockLen) == 0'i32:
@@ -1989,7 +2068,7 @@ proc connect*(socket: Socket, address: string,
     else: lastError = osLastError()
     it = it.ai_next
 
-  freeaddrinfo(aiList)
+  freeAddrInfo(aiList)
   if not success: raiseOSError(lastError)
 
   when defineSsl:
@@ -2020,7 +2099,7 @@ proc connectAsync(socket: Socket, name: string, port = Port(0),
   var aiList = getAddrInfo(name, port, af)
   # try all possibilities:
   var success = false
-  var lastError: OSErrorCode
+  var lastError: OSErrorCode = default(OSErrorCode)
   var it = aiList
   while it != nil:
     var ret = connect(socket.fd, it.ai_addr, it.ai_addrlen.SockLen)
@@ -2041,11 +2120,11 @@ proc connectAsync(socket: Socket, name: string, port = Port(0),
 
     it = it.ai_next
 
-  freeaddrinfo(aiList)
+  freeAddrInfo(aiList)
   if not success: raiseOSError(lastError)
 
 proc connect*(socket: Socket, address: string, port = Port(0),
-    timeout: int) {.tags: [ReadIOEffect, WriteIOEffect].} =
+    timeout: int) {.tags: [ReadIOEffect, WriteIOEffect, RootEffect].} =
   ## Connects to server as specified by `address` on port specified by `port`.
   ##
   ## The `timeout` parameter specifies the time in milliseconds to allow for
@@ -2053,8 +2132,7 @@ proc connect*(socket: Socket, address: string, port = Port(0),
   socket.fd.setBlocking(false)
 
   socket.connectAsync(address, port, socket.domain)
-  var s = @[socket.fd]
-  if selectWrite(s, timeout) != 1:
+  if timeoutWrite(socket.fd, timeout) != 1:
     raise newException(TimeoutError, "Call to 'connect' timed out.")
   else:
     let res = getSockOptInt(socket.fd, SOL_SOCKET, SO_ERROR)

@@ -155,7 +155,7 @@ block nonzero: # bug #6959
     C
   let slice = SomeEnum.low..SomeEnum.high
 
-block size_one_byte: #issue 15752
+block size_one_byte: # bug #15752
   type
     Flag = enum
       Disabled = 0x00
@@ -163,3 +163,123 @@ block size_one_byte: #issue 15752
 
   static:
     assert 1 == sizeof(Flag)
+
+block: # bug #12589
+  when not defined(i386):
+    type
+      OGRwkbGeometryType {.size: sizeof(cuint).} = enum
+        wkbPoint25D = 0x80000001.cuint, wkbLineString25D = 0x80000002,
+        wkbPolygon25D = 0x80000003
+
+    proc typ(): OGRwkbGeometryType =
+      return wkbPoint25D
+
+    when not defined(gcRefc):
+      doAssert $typ() == "wkbPoint25D"
+
+    block: # bug #21280
+      type
+        Test = enum
+          B = 19
+          A = int64.high()
+
+      doAssert ord(A) == int64.high()
+
+import std/enumutils
+from std/sequtils import toSeq
+import std/macros
+
+block: # unordered enum
+  block:
+    type
+      unordered_enum = enum
+        a = 1
+        b = 0
+
+    doAssert (ord(a), ord(b)) == (1, 0)
+    doAssert unordered_enum.toSeq == @[b, a]
+
+  block:
+    type
+      unordered_enum = enum
+        a = 1
+        b = 0
+        c
+
+    doAssert (ord(a), ord(b), ord(c)) == (1, 0, 2)
+
+  block:
+    type
+      unordered_enum = enum
+        a = 100
+        b
+        c = 50
+        d
+
+    doAssert (ord(a), ord(b), ord(c), ord(d)) == (100, 101, 50, 51)
+
+  block:
+    type
+      unordered_enum = enum
+        a = 7
+        b = 6
+        c = 5
+        d
+
+    doAssert (ord(a), ord(b), ord(c), ord(d)) == (7, 6, 5, 8)
+    doAssert unordered_enum.toSeq == @[c, b, a, d]
+
+  block:
+    type
+      unordered_enum = enum
+        a = 100
+        b
+        c = 500
+        d
+        e
+        f = 50
+        g
+        h
+
+    doAssert (ord(a), ord(b), ord(c), ord(d), ord(e), ord(f), ord(g), ord(h)) == 
+             (100, 101, 500, 501, 502, 50, 51, 52)
+
+  block:
+    type
+      unordered_enum = enum
+        A
+        B
+        C = -1
+        D
+        E
+        G = -999
+
+    doAssert (ord(A), ord(B), ord(C), ord(D), ord(E), ord(G)) ==
+             (0, 1, -1, 2, 3, -999)
+
+  block:
+    type
+      SomeEnum = enum
+        seA = 3
+        seB = 2
+        seC = "foo"
+
+    doAssert (ord(seA), ord(seB), ord(seC)) == (3, 2, 4)
+
+block: # bug #23952
+  block:
+    proc foo =
+      type Foo = enum A B = -1
+      doAssert cast[Foo](-1) == B
+      doAssert ord(A) == 0
+    static: foo()
+    foo()
+
+  block:
+    proc foo =
+      type Foo = enum A B=8, C=1
+      let s1 = {A}
+      let s2 = {B}
+      doAssert s1 != s2
+    static: foo()
+    foo()

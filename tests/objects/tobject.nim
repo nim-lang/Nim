@@ -1,4 +1,3 @@
-import unittest
 
 type Obj = object
   foo: int
@@ -10,9 +9,9 @@ block: # object basic methods
   block: # it should convert an object to a string
     var obj = makeObj(1)
     # Should be "obj: (foo: 1)" or similar.
-    check($obj == "(foo: 1)")
+    doAssert($obj == "(foo: 1)")
   block: # it should test equality based on fields
-    check(makeObj(1) == makeObj(1))
+    doAssert(makeObj(1) == makeObj(1))
 
 # bug #10203
 
@@ -58,3 +57,18 @@ block: # bug #14698
     x1: int
     x3: seq[int]
   doAssert t[].sizeof == Foo1.sizeof
+
+# bug #147
+type
+  TValue* {.pure, final.} = object of RootObj
+    a: int
+  PValue = ref TValue
+  PPValue = ptr PValue
+
+
+var x: PValue
+new x
+var sp: PPValue = addr x
+
+sp.a = 2
+doAssert sp.a == 2

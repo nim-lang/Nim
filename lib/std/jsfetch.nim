@@ -2,7 +2,8 @@
 when not defined(js):
   {.fatal: "Module jsfetch is designed to be used with the JavaScript backend.".}
 
-import std/[asyncjs, jsheaders, jsformdata]
+import std/[asyncjs, jsformdata, jsheaders]
+export jsformdata, jsheaders
 from std/httpcore import HttpMethod
 from std/jsffi import JsObject
 
@@ -84,14 +85,15 @@ proc unsafeNewFetchOptions*(metod, body, mode, credentials, cache, referrerPolic
     "{method: #, body: #, mode: #, credentials: #, cache: #, referrerPolicy: #, keepalive: #, redirect: #, referrer: #, integrity: #, headers: #}".}
   ## .. warning:: Unsafe `newfetchOptions`.
 
-func newfetchOptions*(metod: HttpMethod; body: cstring;
-    mode: FetchModes; credentials: FetchCredentials; cache: FetchCaches; referrerPolicy: FetchReferrerPolicies;
-    keepalive: bool; redirect = frFollow; referrer = "client".cstring; integrity = "".cstring,
+func newfetchOptions*(metod = HttpGet; body: cstring = nil;
+    mode = fmCors; credentials = fcSameOrigin; cache = fchDefault; referrerPolicy = frpNoReferrerWhenDowngrade;
+    keepalive = false; redirect = frFollow; referrer = "client".cstring; integrity = "".cstring,
     headers: Headers = newHeaders()): FetchOptions =
   ## Constructor for `FetchOptions`.
   result = FetchOptions(
-    body: body, mode: cstring($mode), credentials: cstring($credentials), cache: cstring($cache), referrerPolicy: cstring($referrerPolicy),
-    keepalive: keepalive, redirect: cstring($redirect), referrer: referrer, integrity: integrity,
+    body: if metod notin {HttpHead, HttpGet}: body else: nil, 
+    mode: cstring($mode), credentials: cstring($credentials), cache: cstring($cache), referrerPolicy: cstring($referrerPolicy),
+    keepalive: keepalive, redirect: cstring($redirect), referrer: referrer, integrity: integrity, headers: headers,
     metod: (case metod
       of HttpHead:   "HEAD".cstring
       of HttpGet:    "GET".cstring
@@ -115,7 +117,7 @@ func `$`*(self: Request | Response | FetchOptions): string = $toCstring(self)
 
 
 runnableExamples("-r:off"):
-  import std/[asyncjs, jsconsole, jsheaders, jsformdata]
+  import std/[asyncjs, jsconsole, jsformdata, jsheaders]
   from std/httpcore import HttpMethod
   from std/jsffi import JsObject
   from std/sugar import `=>`

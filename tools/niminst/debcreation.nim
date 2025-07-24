@@ -9,6 +9,10 @@
 
 import osproc, times, os, strutils
 
+
+when defined(nimPreviewSlimSystem):
+  import std/[assertions, syncio]
+
 # http://www.debian.org/doc/manuals/maint-guide/
 
 # Required files for debhelper.

@@ -2,6 +2,9 @@ discard """
   matrix: "--warningAsError:EnumConv --warningAsError:CStringConv"
 """
 
+from std/enumutils import items  # missing from the example code
+from std/sequtils import toSeq
+
 template reject(x) =
   static: doAssert(not compiles(x))
 template accept(x) =
@@ -85,6 +88,13 @@ block: # https://github.com/nim-lang/RFCs/issues/294
   reject: Goo(k2)
   reject: k2.Goo
 
+  type KooRange = range[k2..k2]
+  accept: KooRange(k2)
+  accept: k2.KooRange
+  let k2ranged: KooRange = k2
+  accept: Koo(k2ranged)
+  accept: k2ranged.Koo
+
 reject:
   # bug #18550
   proc f(c: char): cstring =
@@ -116,5 +126,18 @@ reject:
 
   var va = 2
   var vb = va.Hole
+
+block: # bug #22844
+  type
+    A = enum
+      a0 = 2
+      a1 = 4
+      a2
+    B[T] = enum
+      b0 = 2
+      b1 = 4
+
+  doAssert A.toSeq == [a0, a1, a2]
+  doAssert B[float].toSeq == [B[float].b0, B[float].b1]
 
 {.pop.}

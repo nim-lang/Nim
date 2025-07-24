@@ -10,7 +10,7 @@
 ## This module contains helpers that deal with different byte orders
 ## (`endian`:idx:).
 ##
-## Endianess is the order of bytes of a value in memory. Big-endian means that
+## Endianness is the order of bytes of a value in memory. Big-endian means that
 ## the most significant byte is stored at the smallest memory address,
 ## while little endian means that the least-significant byte is stored
 ## at the smallest address. See also https://en.wikipedia.org/wiki/Endianness.
@@ -55,7 +55,7 @@ when useBuiltinSwap:
     ## We have to use `copyMem` here instead of a simple dereference because they
     ## may point to a unaligned address. A sufficiently smart compiler _should_
     ## be able to elide them when they're not necessary.
-    var tmp: T
+    var tmp: T = default(T)
     copyMem(addr tmp, inp, sizeof(T))
     tmp = op(tmp)
     copyMem(outp, addr tmp, sizeof(T))

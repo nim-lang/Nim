@@ -2,17 +2,21 @@
 when not defined(js):
   {.fatal: "Module jsformdata is designed to be used with the JavaScript backend.".}
 
+from std/dom import Blob
+
 type FormData* = ref object of JsRoot ## FormData API.
 
 func newFormData*(): FormData {.importjs: "new FormData()".}
 
-func add*(self: FormData; name: cstring; value: SomeNumber | bool | cstring) {.importjs: "#.append(#, #)".}
+func add*(self: FormData; name: cstring; value: SomeNumber | bool | cstring | Blob) {.importjs: "#.append(#, #)".}
   ## https://developer.mozilla.org/en-US/docs/Web/API/FormData/append
-  ## Duplicate keys are allowed and order is preserved.
+  ##
+  ## .. hint:: Duplicate keys are allowed and order is preserved.
 
-func add*(self: FormData; name: cstring; value: SomeNumber | bool | cstring, filename: cstring) {.importjs: "#.append(#, #, #)".}
+func add*(self: FormData; name: cstring; value: SomeNumber | bool | cstring | Blob; filename: cstring) {.importjs: "#.append(#, #, #)".}
   ## https://developer.mozilla.org/en-US/docs/Web/API/FormData/append
-  ## Duplicate keys are allowed and order is preserved.
+  ##
+  ## .. hint:: Duplicate keys are allowed and order is preserved.
 
 func delete*(self: FormData; name: cstring) {.importjs: "#.$1(#)".}
   ## https://developer.mozilla.org/en-US/docs/Web/API/FormData/delete
@@ -34,10 +38,10 @@ func values*(self: FormData): seq[cstring] {.importjs: "Array.from(#.$1())".}
 func pairs*(self: FormData): seq[tuple[key, val: cstring]] {.importjs: "Array.from(#.entries())".}
   ## https://developer.mozilla.org/en-US/docs/Web/API/FormData/entries
 
-func put*(self: FormData; name, value, filename: cstring) {.importjs: "#.set(#, #, #)".}
+func put*(self: FormData; name: cstring; value: SomeNumber | bool | cstring | Blob; filename: cstring) {.importjs: "#.set(#, #, #)".}
   ## https://developer.mozilla.org/en-US/docs/Web/API/FormData/set
 
-func `[]=`*(self: FormData; name, value: cstring) {.importjs: "#.set(#, #)".}
+func `[]=`*(self: FormData; name: cstring; value: SomeNumber | bool | cstring | Blob) {.importjs: "#.set(#, #)".}
   ## https://developer.mozilla.org/en-US/docs/Web/API/FormData/set
 
 func `[]`*(self: FormData; name: cstring): cstring {.importjs: "#.get(#)".}

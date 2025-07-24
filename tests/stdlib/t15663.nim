@@ -3,5 +3,7 @@ discard """
   output: "Test"
 """
 
+import std/widestrs
+
 let ws = newWideCString("Test")
 echo ws

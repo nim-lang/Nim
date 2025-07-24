@@ -24,7 +24,7 @@ proc nimRegisterGlobalMarker(markerProc: GlobalMarkerProc) {.compilerproc.} =
     inc globalMarkersLen
   else:
     cstderr.rawWrite("[GC] cannot register global variable; too many global variables")
-    quit 1
+    rawQuit 1
 
 proc nimRegisterThreadLocalMarker(markerProc: GlobalMarkerProc) {.compilerproc.} =
   if threadLocalMarkersLen <= high(threadLocalMarkers):
@@ -32,7 +32,7 @@ proc nimRegisterThreadLocalMarker(markerProc: GlobalMarkerProc) {.compilerproc.}
     inc threadLocalMarkersLen
   else:
     cstderr.rawWrite("[GC] cannot register thread local variable; too many thread local variables")
-    quit 1
+    rawQuit 1
 
 proc traverseGlobals*() =
   for i in 0..globalMarkersLen-1:

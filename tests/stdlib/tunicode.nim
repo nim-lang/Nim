@@ -1,5 +1,9 @@
-import std/unicode
+discard """
+  matrix: "--mm:refc; --mm:orc"
+"""
 
+import std/unicode
+import std/assertions
 
 proc asRune(s: static[string]): Rune =
   ## Compile-time conversion proc for converting string literals to a Rune
@@ -53,6 +57,7 @@ doAssert isAlpha("r")
 doAssert isAlpha("α")
 doAssert isAlpha("ϙ")
 doAssert isAlpha("ஶ")
+doAssert isAlpha("网")
 doAssert(not isAlpha("$"))
 doAssert(not isAlpha(""))
 
@@ -62,6 +67,7 @@ doAssert isAlpha("𐌼𐌰𐌲𐌲𐌻𐌴𐍃𐍄𐌰𐌽")
 doAssert isAlpha("ὕαλονϕαγεῖνδύναμαιτοῦτοοὔμεβλάπτει")
 doAssert isAlpha("Јамогујестистаклоитоминештети")
 doAssert isAlpha("Կրնամապակիուտեևինծիանհանգիստչըներ")
+doAssert isAlpha("编程语言")
 doAssert(not isAlpha("$Foo✓"))
 doAssert(not isAlpha("⠙⠕⠑⠎⠝⠞"))
 
@@ -218,5 +224,5 @@ block: # bug #17768
   let s1 = "abcdef"
   let s2 = "abcdéf"
 
-  doAssert s1.runeSubstr(0, -1) == "abcde"
-  doAssert s2.runeSubstr(0, -1) == "abcdé"
+  doAssert s1.runeSubStr(0, -1) == "abcde"
+  doAssert s2.runeSubStr(0, -1) == "abcdé"

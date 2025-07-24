@@ -79,6 +79,34 @@ template main =
       foobar3
       foobar4
     doAssert a2 == (1, 20, "\nfoobar1\nfoobar2", "\nfoobar3\nfoobar4")
+  
+  block: # issue #19015
+    template hi(a: untyped, b: varargs[untyped]): untyped =
+      a
+
+    var worked = false
+    hi:
+      worked = true
+    doAssert worked
+    worked = false
+    hi(doAssert(not worked)):
+      doesntCompile
+    hi(doAssert(not worked), doesntCompile, againDoesntCompile):
+      definitelyDoesntCompile
+
+    template hi2(a: bool, b: untyped, c: varargs[untyped]): untyped =
+      b
+      doAssert a
+
+    hi2 worked:
+      worked = true
+    doAssert worked
+    hi2 worked, doAssert(worked):
+      doesntCompile
+    hi2 worked, doAssert(worked), doesntCompile, againDoesntCompile:
+      definitelyDoesntCompile
+    hi2 worked, doAssert(worked), againDoesntCompile:
+      definitelyDoesntCompile
 
 static: main()
 main()

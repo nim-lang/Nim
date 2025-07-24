@@ -56,16 +56,16 @@ proc processContent(content: string) =
   var officialPkgListDiv = document.getElementById("officialPkgList")
 
   officialPkgListDiv.innerHTML =
-    p("There are currently " & $officialCount &
+    (p("There are currently " & $officialCount &
       " official packages in the Nimble package repository.") &
-    ul(officialList)
+    ul(officialList)).cstring
 
   var unofficialPkgListDiv = document.getElementById("unofficialPkgList")
 
   unofficialPkgListDiv.innerHTML =
-    p("There are currently " & $unofficialCount &
+    (p("There are currently " & $unofficialCount &
       " unofficial packages in the Nimble package repository.") &
-    ul(unofficialList)
+    ul(unofficialList)).cstring
 
 proc gotPackageList(apiReply: TData) {.exportc.} =
   let decoded = decodeContent($apiReply.content)
@@ -76,5 +76,5 @@ proc gotPackageList(apiReply: TData) {.exportc.} =
     var unofficialPkgListDiv = document.getElementById("unofficialPkgList")
     let msg = p("Unable to retrieve package list: ",
       code(getCurrentExceptionMsg()))
-    officialPkgListDiv.innerHTML = msg
-    unofficialPkgListDiv.innerHTML = msg
+    officialPkgListDiv.innerHTML = msg.cstring
+    unofficialPkgListDiv.innerHTML = msg.cstring

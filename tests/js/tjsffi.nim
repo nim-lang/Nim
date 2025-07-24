@@ -1,4 +1,5 @@
 discard """
+matrix: "--legacy:jsnolambdalifting;"
 output: '''
 3
 2
@@ -180,7 +181,7 @@ block: # Test lit
 block: # Test bindMethod
   type TestObject = object
     a: int
-    onWhatever: proc(e: int): int
+    onWhatever: proc(e: int): int {.nimcall.}
   proc handleWhatever(this: TestObject, e: int): int =
     e + this.a
   block:
@@ -217,7 +218,7 @@ block:
   on("click") do (e: Event):
     console.log e
 
-  jslib.on("reloaded") do:
+  jslib.on("reloaded") do ():
     console.log jsarguments[0]
 
   # this test case is different from the above, because
@@ -265,3 +266,9 @@ block: # test **
   doAssert to(`**`(a + a, b), int) == 2
 
   doAssert to(`**`(toJs(1) + toJs(1), toJs(2)), int) == 4
+
+block: # issue #21208
+  type MyEnum = enum baz
+  var obj: JsObject
+  {.emit: "`obj` = {bar: {baz: 123}};".}
+  discard obj.bar.baz

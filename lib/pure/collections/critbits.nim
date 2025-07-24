@@ -36,6 +36,9 @@ runnableExamples:
 
 import std/private/since
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 type
   NodeObj[T] {.acyclic.} = object
     byte: int ## byte index of the difference
@@ -64,6 +67,7 @@ func len*[T](c: CritBitTree[T]): int {.inline.} =
   result = c.count
 
 proc rawGet[T](c: CritBitTree[T], key: string): Node[T] =
+  result = nil
   var it = c.root
   while it != nil:
     if not it.isLeaf:
@@ -142,7 +146,7 @@ func exclImpl[T](c: var CritBitTree[T], key: string): int =
   var whereq: ptr Node[T] = nil
   if p == nil: return c.count
   var dir = 0
-  var q: Node[T]
+  var q: Node[T] = nil
   while not p.isLeaf:
     whereq = wherep
     q = p
@@ -197,7 +201,7 @@ proc missingOrExcl*[T](c: var CritBitTree[T], key: string): bool =
   discard exclImpl(c, key)
   result = c.count == oldCount
 
-proc containsOrIncl*[T](c: var CritBitTree[T], key: string, val: T): bool =
+proc containsOrIncl*[T](c: var CritBitTree[T], key: string, val: sink T): bool =
   ## Returns true if `c` contains the given `key`. If the key does not exist,
   ## `c[key] = val` is performed.
   ##
@@ -270,7 +274,7 @@ proc incl*(c: var CritBitTree[void], key: string) =
 
   discard rawInsert(c, key)
 
-proc incl*[T](c: var CritBitTree[T], key: string, val: T) =
+proc incl*[T](c: var CritBitTree[T], key: string, val: sink T) =
   ## Inserts `key` with value `val` into `c`.
   ##
   ## **See also:**
@@ -284,7 +288,7 @@ proc incl*[T](c: var CritBitTree[T], key: string, val: T) =
   var n = rawInsert(c, key)
   n.val = val
 
-proc `[]=`*[T](c: var CritBitTree[T], key: string, val: T) =
+proc `[]=`*[T](c: var CritBitTree[T], key: string, val: sink T) =
   ## Alias for `incl <#incl,CritBitTree[T],string,T>`_.
   ##
   ## **See also:**
@@ -300,7 +304,7 @@ template get[T](c: CritBitTree[T], key: string): T =
 
   n.val
 
-func `[]`*[T](c: CritBitTree[T], key: string): T {.inline.} =
+func `[]`*[T](c: CritBitTree[T], key: string): lent T {.inline.} =
   ## Retrieves the value at `c[key]`. If `key` is not in `t`, the
   ## `KeyError` exception is raised. One can check with `hasKey` whether
   ## the key exists.
@@ -342,7 +346,7 @@ iterator keys*[T](c: CritBitTree[T]): string =
 
   for x in leaves(c.root): yield x.key
 
-iterator values*[T](c: CritBitTree[T]): T =
+iterator values*[T](c: CritBitTree[T]): lent T =
   ## Yields all values of `c` in the lexicographical order of the
   ## corresponding keys.
   ##
@@ -391,6 +395,7 @@ iterator mpairs*[T](c: var CritBitTree[T]): tuple[key: string, val: var T] =
   for x in leaves(c.root): yield (x.key, x.val)
 
 proc allprefixedAux[T](c: CritBitTree[T], key: string): Node[T] =
+  result = nil
   var p = c.root
   var top = p
   if p != nil:
@@ -415,7 +420,7 @@ iterator keysWithPrefix*[T](c: CritBitTree[T], prefix: string): string =
   let top = allprefixedAux(c, prefix)
   for x in leaves(top): yield x.key
 
-iterator valuesWithPrefix*[T](c: CritBitTree[T], prefix: string): T =
+iterator valuesWithPrefix*[T](c: CritBitTree[T], prefix: string): lent T =
   ## Yields all values of `c` starting with `prefix` of the
   ## corresponding keys.
   ##
@@ -518,7 +523,7 @@ func commonPrefixLen*[T](c: CritBitTree[T]): int {.inline, since((1, 3)).} =
     else: c.root.byte
   else: 0
 
-proc toCritBitTree*[T](pairs: openArray[(string, T)]): CritBitTree[T] {.since: (1, 3).} =
+proc toCritBitTree*[T](pairs: sink openArray[(string, T)]): CritBitTree[T] {.since: (1, 3).} =
   ## Creates a new `CritBitTree` that contains the given `pairs`.
   runnableExamples:
     doAssert {"a": "0", "b": "1", "c": "2"}.toCritBitTree is CritBitTree[string]
@@ -526,9 +531,9 @@ proc toCritBitTree*[T](pairs: openArray[(string, T)]): CritBitTree[T] {.since: (
 
   for item in pairs: result.incl item[0], item[1]
 
-proc toCritBitTree*(items: openArray[string]): CritBitTree[void] {.since: (1, 3).} =
+proc toCritBitTree*(items: sink openArray[string]): CritBitTree[void] {.since: (1, 3).} =
   ## Creates a new `CritBitTree` that contains the given `items`.
   runnableExamples:
     doAssert ["a", "b", "c"].toCritBitTree is CritBitTree[void]
-
+  result = default(CritBitTree[void])
   for item in items: result.incl item

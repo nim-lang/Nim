@@ -9,22 +9,23 @@
 ## This module implements color handling for Nim,
 ## namely color mixing and parsing the CSS color names.
 
-import strutils
-from algorithm import binarySearch
+import std/strutils
+from std/algorithm import binarySearch
 
 type
   Color* = distinct int ## A color stored as RGB, e.g. `0xff00cc`.
 
-proc `==` *(a, b: Color): bool {.borrow.}
+proc `==`*(a, b: Color): bool {.borrow.}
   ## Compares two colors.
   ##
-  ## .. code-block::
+  ##   ```Nim
   ##   var
   ##     a = Color(0xff_00_ff)
   ##     b = colFuchsia
   ##     c = Color(0x00_ff_cc)
   ##   assert a == b
-  ##   assert not a == c
+  ##   assert not (a == c)
+  ##   ```
 
 template extract(a: Color, r, g, b: untyped) =
   var r = a.int shr 16 and 0xff
@@ -90,7 +91,7 @@ proc extractRGB*(a: Color): tuple[r, g, b: range[0..255]] =
     echo typeof(extractRGB(a))
     echo extractRGB(b)
     echo typeof(extractRGB(b))
-
+  result = default(tuple[r, g, b: range[0..255]])
   result.r = a.int shr 16 and 0xff
   result.g = a.int shr 8 and 0xff
   result.b = a.int and 0xff
@@ -200,8 +201,8 @@ const
   colGoldenRod* = Color(0xDAA520)
   colGray* = Color(0x808080)
   colGreen* = Color(0x008000)
-  colGrey* = Color(0x808080)
   colGreenYellow* = Color(0xADFF2F)
+  colGrey* = Color(0x808080)
   colHoneyDew* = Color(0xF0FFF0)
   colHotPink* = Color(0xFF69B4)
   colIndianRed* = Color(0xCD5C5C)
@@ -350,8 +351,8 @@ const
     "goldenrod": colGoldenRod,
     "gray": colGray,
     "green": colGreen,
-    "grey": colGrey,
     "greenyellow": colGreenYellow,
+    "grey": colGrey,
     "honeydew": colHoneyDew,
     "hotpink": colHotPink,
     "indianred": colIndianRed,

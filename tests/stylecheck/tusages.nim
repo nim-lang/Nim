@@ -1,10 +1,8 @@
 discard """
   action: reject
-  nimout: '''tusages.nim(22, 5) Error: 'BAD_STYLE' should be: 'BADSTYLE' [proc declared in tusages.nim(11, 6)]'''
-  matrix: "--styleCheck:error --styleCheck:usages"
+  nimout: '''tusages.nim(20, 5) Error: 'BAD_STYLE' should be: 'BADSTYLE' [proc declared in tusages.nim(9, 6)]'''
+  matrix: "--styleCheck:error --styleCheck:usages --hint:all:off --hint:Name:on"
 """
-
-
 
 import strutils
 

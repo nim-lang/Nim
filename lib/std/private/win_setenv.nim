@@ -3,7 +3,7 @@ Copyright (c) Facebook, Inc. and its affiliates.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-    http://www.apache.org/licenses/LICENSE-2.0
+    https://www.apache.org/licenses/LICENSE-2.0
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -23,29 +23,35 @@ check errno_t vs cint
 
 when not defined(windows): discard
 else:
+  when defined(nimPreviewSlimSystem):
+    import std/widestrs
+
   type wchar_t  {.importc: "wchar_t".} = int16
 
-  proc setEnvironmentVariableA*(lpName, lpValue: cstring): int32 {.
-    stdcall, dynlib: "kernel32", importc: "SetEnvironmentVariableA", sideEffect.}
+  proc setEnvironmentVariableW*(lpName, lpValue: WideCString): int32 {.
+    stdcall, dynlib: "kernel32", importc: "SetEnvironmentVariableW", sideEffect.}
     # same as winlean.setEnvironmentVariableA
 
-  proc c_getenv(env: cstring): cstring {.importc: "getenv", header: "<stdlib.h>".}
-  proc c_putenv(envstring: cstring): cint {.importc: "_putenv", header: "<stdlib.h>".}
+  proc c_getenv(varname: cstring): cstring {.importc: "getenv", header: "<stdlib.h>".}
+  proc c_wputenv(envstring: ptr wchar_t): cint {.importc: "_wputenv", header: "<stdlib.h>".}
   proc c_wgetenv(varname: ptr wchar_t): ptr wchar_t {.importc: "_wgetenv", header: "<stdlib.h>".}
 
   var errno {.importc, header: "<errno.h>".}: cint
-  var gWenviron {.importc: "_wenviron".}: ptr ptr wchar_t
+  var genviron {.importc: "_environ".}: ptr ptr char
     # xxx `ptr UncheckedArray[WideCString]` did not work
 
-  proc mbstowcs(wcstr: ptr wchar_t, mbstr: cstring, count: csize_t): csize_t {.importc: "mbstowcs", header: "<stdlib.h>".}
+  proc wcstombs(wcstr: ptr char, mbstr: ptr wchar_t, count: csize_t): csize_t {.importc, header: "<stdlib.h>".}
     # xxx cint vs errno_t?
 
   proc setEnvImpl*(name: string, value: string, overwrite: cint): cint =
     const EINVAL = cint(22)
-    if overwrite == 0 and c_getenv(cstring(name)) != nil: return 0
+    let wideName: WideCString = newWideCString(name)
+    if overwrite == 0 and c_wgetenv(cast[ptr wchar_t](wideName)) != nil:
+      return 0
+
     if value != "":
-      let envstring = name & "=" & value
-      let e = c_putenv(cstring(envstring))
+      let envstring: WideCString = newWideCString(name & "=" & value)
+      let e = c_wputenv(cast[ptr wchar_t](envstring))
       if e != 0:
         errno = EINVAL
         return -1
@@ -56,41 +62,45 @@ else:
     SetEnvironmentVariableA doesn't update `_environ`,
     so we have to do these terrible things.
     ]#
-    let envstring = name & "=  "
-    if c_putenv(cstring(envstring)) != 0:
+    let envstring: WideCString = newWideCString(name & "=  ")
+    if c_wputenv(cast[ptr wchar_t](envstring)) != 0:
       errno = EINVAL
       return -1
     # Here lies the documentation we blatently ignore to make this work.
-    var s = c_getenv(cstring(name))
-    s[0] = '\0'
+    var s = cast[WideCString](c_wgetenv(cast[ptr wchar_t](wideName)))
+    s[0] = Utf16Char('\0')
     #[
     This would result in a double null termination, which normally signifies the
     end of the environment variable list, so we stick a completely empty
     environment variable into the list instead.
     ]#
-    s = c_getenv(cstring(name))
-    s[1] = '='
+    s = cast[WideCString](c_wgetenv(cast[ptr wchar_t](wideName)))
+    s[1] = Utf16Char('=')
     #[
-    If gWenviron is null, the wide environment has not been initialized
+    If genviron is null, the MBCS environment has not been initialized
     yet, and we don't need to try to update it. We have to do this otherwise
-    we'd be forcing the initialization and maintenance of the wide environment
+    we'd be forcing the initialization and maintenance of the MBCS environment
     even though it's never actually used in most programs.
     ]#
-    if gWenviron != nil:
-      # var buf: array[MAX_ENV + 1, WideCString]
-      let requiredSize = mbstowcs(nil, cstring(name), 0).int
-      var buf = newSeq[Utf16Char](requiredSize + 1)
-      let buf2 = cast[ptr wchar_t](buf[0].addr)
-      if mbstowcs(buf2, cstring(name), csize_t(requiredSize + 1)) == csize_t(high(uint)):
-        errno = EINVAL
-        return -1
-      var ptrToEnv = cast[WideCString](c_wgetenv(buf2))
-      ptrToEnv[0] = '\0'.Utf16Char
-      ptrToEnv = cast[WideCString](c_wgetenv(buf2))
-      ptrToEnv[1] = '='.Utf16Char
+    if genviron != nil:
+
+      # wcstombs returns `high(csize_t)` if any characters cannot be represented
+      # in the current codepage. Skip updating MBCS environment in this case.
+      # For some reason, second `wcstombs` can find non-convertible characters
+      # that the first `wcstombs` cannot.
+      let requiredSizeS = wcstombs(nil, cast[ptr wchar_t](wideName), 0)
+      if requiredSizeS != high(csize_t):
+        let requiredSize = requiredSizeS.int
+        var buf = newSeq[char](requiredSize + 1)
+        let buf2 = buf[0].addr
+        if wcstombs(buf2, cast[ptr wchar_t](wideName), csize_t(requiredSize + 1)) != high(csize_t):
+          var ptrToEnv = c_getenv(cast[cstring](buf2))
+          ptrToEnv[0] = '\0'
+          ptrToEnv = c_getenv(cast[cstring](buf2))
+          ptrToEnv[1] = '='
 
     # And now, we have to update the outer environment to have a proper empty value.
-    if setEnvironmentVariableA(cstring(name), cstring(value)) == 0:
+    if setEnvironmentVariableW(wideName, value.newWideCString) == 0:
       errno = EINVAL
       return -1
     return 0

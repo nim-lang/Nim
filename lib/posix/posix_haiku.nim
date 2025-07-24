@@ -304,7 +304,7 @@ type
   Stack* {.importc: "stack_t",
             header: "<signal.h>", final, pure.} = object ## stack_t
     ss_sp*: pointer  ## Stack base or pointer.
-    ss_size*: csize  ## Stack size.
+    ss_size*: csize_t ## Stack size.
     ss_flags*: cint  ## Flags.
 
   SigInfo* {.importc: "siginfo_t",
@@ -372,7 +372,7 @@ elif defined(haiku):
   # from sys/un.h
   const Sockaddr_un_path_length* = 126
 else:
-  # according to http://pubs.opengroup.org/onlinepubs/009604499/basedefs/sys/un.h.html
+  # according to https://pubs.opengroup.org/onlinepubs/009604499/basedefs/sys/un.h.html
   # this is >=92
   const Sockaddr_un_path_length* = 92
 
@@ -404,7 +404,7 @@ type
   IOVec* {.importc: "struct iovec", pure, final,
             header: "<sys/uio.h>".} = object ## struct iovec
     iov_base*: pointer ## Base address of a memory region for input or output.
-    iov_len*: csize    ## The size of the memory pointed to by iov_base.
+    iov_len*: csize_t  ## The size of the memory pointed to by iov_base.
 
   Tmsghdr* {.importc: "struct msghdr", pure, final,
              header: "<sys/socket.h>".} = object  ## struct msghdr
@@ -518,8 +518,6 @@ type
     fd*: cint        ## The following descriptor being polled.
     events*: cshort  ## The input event flags (see below).
     revents*: cshort ## The output event flags (see below).
-
-  Tnfds* {.importc: "nfds_t", header: "<poll.h>".} = culong
 
 var
   errno* {.importc, header: "<errno.h>".}: cint ## error variable

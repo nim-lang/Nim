@@ -1,14 +1,9 @@
-discard """
-  exitcode: 0
-  disabled: '''true'''
-"""
 import moverloading_typedesc
 import tables
 
 type
   LFoo = object
   LBar = object
-
 
 when true:
   doAssert FBar.new() == 3

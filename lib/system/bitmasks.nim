@@ -10,7 +10,7 @@
 # Page size of the system; in most cases 4096 bytes. For exotic OS or
 # CPU this needs to be changed:
 const
-  PageShift = when defined(nimPage256) or defined(cpu16): 8
+  PageShift = when defined(nimPage256) or defined(cpu16): 3
               elif defined(nimPage512): 9
               elif defined(nimPage1k): 10
               else: 12 # \ # my tests showed no improvements for using larger page sizes.

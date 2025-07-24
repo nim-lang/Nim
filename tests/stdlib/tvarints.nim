@@ -1,4 +1,9 @@
+discard """
+  matrix: "--mm:refc; --mm:orc"
+"""
+
 import std/varints
+import std/assertions
 
 # xxx doesn't work with js: tvarints.nim(18, 14) `wrLen == rdLen`  [AssertionDefect]
 
@@ -28,7 +33,7 @@ block:
     doAssert cast[float64](got) == test
 
 block:
-  var hugeIntArray: array[50, byte]
+  var hugeIntArray: array[9, byte]
   var readedInt: uint64
 
   template chk(a) =
@@ -48,7 +53,7 @@ block:
   chk 0.1
   chk Inf
   chk NegInf
-  chk Nan
+  chk NaN
   chk 3.1415926535897932384626433
 
 block:

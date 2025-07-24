@@ -20,22 +20,24 @@ when defined(js):
 ## search the internet for a wide variety of third-party documentation and
 ## tools.
 ##
-## **Note**: If you love `sequtils.toSeq` we have bad news for you. This
-## library doesn't work with it due to documented compiler limitations. As
-## a workaround, use this:
+## .. warning:: If you love `sequtils.toSeq` we have bad news for you. This
+##   library doesn't work with it due to documented compiler limitations. As
+##   a workaround, use this:
 runnableExamples:
   # either `import std/nre except toSeq` or fully qualify `sequtils.toSeq`:
   import std/sequtils
   iterator iota(n: int): int =
     for i in 0..<n: yield i
   assert sequtils.toSeq(iota(3)) == @[0, 1, 2]
+## .. note:: There are also alternative nimble packages such as [tinyre](https://github.com/khchen/tinyre)
+##   and [regex](https://github.com/nitely/nim-regex).
 ## Licencing
 ## ---------
 ##
 ## PCRE has `some additional terms`_ that you must agree to in order to use
 ## this module.
 ##
-## .. _`some additional terms`: http://pcre.sourceforge.net/license.txt
+## .. _`some additional terms`: https://pcre.sourceforge.net/license.txt
 runnableExamples:
   import std/sugar
   let vowels = re"[aeoui]"
@@ -59,32 +61,42 @@ runnableExamples:
   assert find("uxabc", re"(?<=x|y)ab", start = 1).get.captures[-1] == "ab"
   assert find("uxabc", re"ab", start = 3).isNone
 
-from pcre import nil
+from std/pcre import nil
 import nre/private/util
-import tables
-from strutils import `%`
-import options
-from unicode import runeLenAt
+import std/tables
+from std/strutils import `%`
+import std/options
+from std/unicode import runeLenAt
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
 
 export options
 
 type
-  Regex* = ref object
+  RegexDesc* = object
+    pattern*: string
+    pcreObj: ptr pcre.Pcre  ## not nil
+    pcreExtra: ptr pcre.ExtraData  ## nil
+
+    captureNameToId: Table[string, int]
+
+  Regex* = ref RegexDesc
     ## Represents the pattern that things are matched against, constructed with
     ## `re(string)`. Examples: `re"foo"`, `re(r"(*ANYCRLF)(?x)foo #
     ## comment".`
     ##
     ## `pattern: string`
-    ##     the string that was used to create the pattern. For details on how
+    ## :   the string that was used to create the pattern. For details on how
     ##     to write a pattern, please see `the official PCRE pattern
     ##     documentation.
     ##     <https://www.pcre.org/original/doc/html/pcrepattern.html>`_
     ##
     ## `captureCount: int`
-    ##     the number of captures that the pattern has.
+    ## :   the number of captures that the pattern has.
     ##
     ## `captureNameId: Table[string, int]`
-    ##     a table from the capture names to their numeric id.
+    ## :   a table from the capture names to their numeric id.
     ##
     ##
     ## Options
@@ -129,58 +141,53 @@ type
     ## -  `(*NO_STUDY)` - turn off studying; study is enabled by default
     ##
     ## For more details on the leading option groups, see the `Option
-    ## Setting <http://man7.org/linux/man-pages/man3/pcresyntax.3.html#OPTION_SETTING>`_
+    ## Setting <https://man7.org/linux/man-pages/man3/pcresyntax.3.html#OPTION_SETTING>`_
     ## and the `Newline
-    ## Convention <http://man7.org/linux/man-pages/man3/pcresyntax.3.html#NEWLINE_CONVENTION>`_
+    ## Convention <https://man7.org/linux/man-pages/man3/pcresyntax.3.html#NEWLINE_CONVENTION>`_
     ## sections of the `PCRE syntax
-    ## manual <http://man7.org/linux/man-pages/man3/pcresyntax.3.html>`_.
+    ## manual <https://man7.org/linux/man-pages/man3/pcresyntax.3.html>`_.
     ##
     ## Some of these options are not part of PCRE and are converted by nre
     ## into PCRE flags. These include `NEVER_UTF`, `ANCHORED`,
     ## `DOLLAR_ENDONLY`, `FIRSTLINE`, `NO_AUTO_CAPTURE`,
     ## `JAVASCRIPT_COMPAT`, `U`, `NO_STUDY`. In other PCRE wrappers, you
     ## will need to pass these as separate flags to PCRE.
-    pattern*: string
-    pcreObj: ptr pcre.Pcre  ## not nil
-    pcreExtra: ptr pcre.ExtraData  ## nil
-
-    captureNameToId: Table[string, int]
 
   RegexMatch* = object
     ## Usually seen as Option[RegexMatch], it represents the result of an
     ## execution. On failure, it is none, on success, it is some.
     ##
     ## `pattern: Regex`
-    ##     the pattern that is being matched
+    ## :   the pattern that is being matched
     ##
     ## `str: string`
-    ##     the string that was matched against
+    ## :   the string that was matched against
     ##
     ## `captures[]: string`
-    ##     the string value of whatever was captured at that id. If the value
+    ## :   the string value of whatever was captured at that id. If the value
     ##     is invalid, then behavior is undefined. If the id is `-1`, then
     ##     the whole match is returned. If the given capture was not matched,
     ##     `nil` is returned. See examples for `match`.
     ##
     ## `captureBounds[]: HSlice[int, int]`
-    ##     gets the bounds of the given capture according to the same rules as
+    ## :   gets the bounds of the given capture according to the same rules as
     ##     the above. If the capture is not filled, then `None` is returned.
     ##     The bounds are both inclusive.  See examples for `match`.
     ##
     ## `match: string`
-    ##     the full text of the match.
+    ## :   the full text of the match.
     ##
     ## `matchBounds: HSlice[int, int]`
-    ##     the bounds of the match, as in `captureBounds[]`
+    ## :   the bounds of the match, as in `captureBounds[]`
     ##
     ## `(captureBounds|captures).toTable`
-    ##     returns a table with each named capture as a key.
+    ## :   returns a table with each named capture as a key.
     ##
     ## `(captureBounds|captures).toSeq`
-    ##     returns all the captures by their number.
+    ## :   returns all the captures by their number.
     ##
     ## `$: string`
-    ##     same as `match`
+    ## :   same as `match`
     pattern*: Regex  ## The regex doing the matching.
                      ## Not nil.
     str*: string  ## The string that was matched against.
@@ -211,12 +218,31 @@ type
     ## for whatever reason. The message contains the error
     ## code.
 
-proc destroyRegex(pattern: Regex) =
-  pcre.free_substring(cast[cstring](pattern.pcreObj))
-  if pattern.pcreExtra != nil:
-    pcre.free_study(pattern.pcreExtra)
+when defined(gcDestructors):
+  when defined(nimAllowNonVarDestructor) and defined(nimPreviewNonVarDestructor):
+    proc `=destroy`(pattern: RegexDesc) =
+      `=destroy`(pattern.pattern)
+      pcre.free_substring(cast[cstring](pattern.pcreObj))
+      if pattern.pcreExtra != nil:
+        pcre.free_study(pattern.pcreExtra)
+      `=destroy`(pattern.captureNameToId)
+  else:
+    proc `=destroy`(pattern: var RegexDesc) =
+      `=destroy`(pattern.pattern)
+      pcre.free_substring(cast[cstring](pattern.pcreObj))
+      if pattern.pcreExtra != nil:
+        pcre.free_study(pattern.pcreExtra)
+      `=destroy`(pattern.captureNameToId)
+else:
+  proc destroyRegex(pattern: Regex) =
+    `=destroy`(pattern.pattern)
+    pcre.free_substring(cast[cstring](pattern.pcreObj))
+    if pattern.pcreExtra != nil:
+      pcre.free_study(pattern.pcreExtra)
+    `=destroy`(pattern.captureNameToId)
 
 proc getinfo[T](pattern: Regex, opt: cint): T =
+  result = default(T)
   let retcode = pcre.fullinfo(pattern.pcreObj, pattern.pcreExtra, opt, addr result)
 
   if retcode < 0:
@@ -244,11 +270,14 @@ proc getNameToNumberTable(pattern: Regex): Table[string, int] =
     result[name] = num
 
 proc initRegex(pattern: string, flags: int, study = true): Regex =
-  new(result, destroyRegex)
+  when defined(gcDestructors):
+    result = Regex()
+  else:
+    new(result, destroyRegex)
   result.pattern = pattern
 
-  var errorMsg: cstring
-  var errOffset: cint
+  var errorMsg: cstring = ""
+  var errOffset: cint = 0
 
   result.pcreObj = pcre.compile(cstring(pattern),
                                 # better hope int is at least 4 bytes..
@@ -260,7 +289,7 @@ proc initRegex(pattern: string, flags: int, study = true): Regex =
 
   if study:
     var options: cint = 0
-    var hasJit: cint
+    var hasJit: cint = cint(0)
     if pcre.config(pcre.CONFIG_JIT, addr hasJit) == 0:
       if hasJit == 1'i32:
         options = pcre.STUDY_JIT_COMPILE
@@ -285,7 +314,7 @@ proc matchesCrLf(pattern: Regex): bool =
     return true
 
   # get flags from build config
-  var confFlags: cint
+  var confFlags: cint = cint(0)
   if pcre.config(pcre.CONFIG_NEWLINE, addr confFlags) != 0:
     assert(false, "CONFIG_NEWLINE apparently got screwed up")
 
@@ -545,7 +574,7 @@ iterator findIter*(str: string, pattern: Regex, start = 0, endpos = int.high): R
     pcre.UTF8) > 0u32
   let strlen = if endpos == int.high: str.len else: endpos+1
   var offset = start
-  var match: Option[RegexMatch]
+  var match: Option[RegexMatch] = default(Option[RegexMatch])
   var neverMatched = true
 
   while true:
@@ -583,11 +612,11 @@ proc find*(str: string, pattern: Regex, start = 0, endpos = int.high): Option[Re
   ## positions.
   ##
   ## `start`
-  ##     The start point at which to start matching. `|abc` is `0`;
+  ## :   The start point at which to start matching. `|abc` is `0`;
   ##     `a|bc` is `1`
   ##
   ## `endpos`
-  ##     The maximum index for a match; `int.high` means the end of the
+  ## :   The maximum index for a match; `int.high` means the end of the
   ##     string, otherwise it’s an inclusive upper bound.
   return str.matchImpl(pattern, start, endpos, 0)
 
@@ -695,8 +724,7 @@ proc replace*(str: string, pattern: Regex,
   ## each match and the return value is the replacement value.
   ##
   ## If `subproc` is a `proc (string): string`, then it is executed with the
-  ## full text of the match and and the return value is the replacement
-  ## value.
+  ## full text of the match and the return value is the replacement value.
   ##
   ## If `subproc` is a string, the syntax is as follows:
   ##
@@ -735,7 +763,7 @@ proc escapeRe*(str: string): string {.gcsafe.} =
   const SpecialCharMatcher = {'\\', '+', '*', '?', '[', '^', ']', '$', '(',
                               ')', '{', '}', '=', '!', '<', '>', '|', ':',
                               '-'}
-
+  result = ""
   for c in items(str):
     case c
     of SpecialCharMatcher:

@@ -29,16 +29,16 @@ echo "2"
 try:
   raise newException(OSError, "Problem")
 except OSError:
-  block:
-    break
+  block label:
+    break label
 
 echo "3"
 
 # Fourth Variety
-block:
+block label:
   try:
     raise newException(OSError, "Problem")
   except OSError:
-    break
+    break label
 
 echo "4"

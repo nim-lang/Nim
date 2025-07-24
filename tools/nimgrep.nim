@@ -11,7 +11,7 @@ import
   os, strutils, parseopt, pegs, re, terminal, osproc, tables, algorithm, times
 
 const
-  Version = "1.6.0"
+  Version = "2.0.0"
   Usage = "nimgrep - Nim Grep Searching and Replacement Utility Version " &
   Version & """
 
@@ -95,26 +95,34 @@ type
                   filename: string, fileResult: FileResult]
   WalkOpt = tuple  # used for walking directories/producing paths
     extensions: seq[string]
-    skipExtensions: seq[string]
-    excludeFile: seq[string]
-    includeFile: seq[string]
-    includeDir : seq[string]
-    excludeDir : seq[string]
+    notExtensions: seq[string]
+    filename: seq[string]
+    notFilename: seq[string]
+    dirPath: seq[string]
+    notDirPath: seq[string]
+    dirname : seq[string]
+    notDirname : seq[string]
   WalkOptComp[Pat] = tuple  # a compiled version of the previous
-    excludeFile: seq[Pat]
-    includeFile: seq[Pat]
-    includeDir : seq[Pat]
-    excludeDir : seq[Pat]
+    filename: seq[Pat]
+    notFilename: seq[Pat]
+    dirname : seq[Pat]
+    notDirname : seq[Pat]
+    dirPath: seq[Pat]
+    notDirPath: seq[Pat]
   SearchOpt = tuple  # used for searching inside a file
-    patternSet: bool     # to distinguish uninitialized 'pattern' and empty one
-    pattern: string      # main PATTERN
-    checkMatch: string   # --match
-    checkNoMatch: string # --nomatch
-    checkBin: Bin        # --bin
+    patternSet: bool           # To distinguish uninitialized/empty 'pattern'
+    pattern: string            # Main PATTERN
+    inFile: seq[string]        # --inFile, --inf
+    notInFile: seq[string]     # --notinFile, --ninf
+    inContext: seq[string]     # --inContext, --inc
+    notInContext: seq[string]  # --notinContext, --ninc
+    checkBin: Bin              # --bin, --text
   SearchOptComp[Pat] = tuple  # a compiled version of the previous
     pattern: Pat
-    checkMatch: Pat
-    checkNoMatch: Pat
+    inFile: seq[Pat]
+    notInFile: seq[Pat]
+    inContext: seq[Pat]
+    notInContext: seq[Pat]
   SinglePattern[PAT] = tuple  # compile single pattern for replacef
     pattern: PAT
   Column = tuple  # current column info for the cropping (--limit) feature
@@ -807,6 +815,33 @@ template declareCompiledPatterns(compiledStruct: untyped,
     body
   {.hint[XDeclaredButNotUsed]: on.}
 
+template ensureIncluded(includePat: seq[Pattern], str: string,
+                                body: untyped) =
+  if includePat.len != 0:
+    var matched = false
+    for pat in includePat:
+      if str.contains(pat):
+        matched = true
+        break
+    if not matched:
+      body
+
+template ensureExcluded(excludePat: seq[Pattern], str: string,
+                                body: untyped) =
+  {.warning[UnreachableCode]: off.}
+  for pat in excludePat:
+    if str.contains(pat, 0):
+      body
+      break
+  {.warning[UnreachableCode]: on.}
+
+func checkContext(context: string, searchOptC: SearchOptComp[Pattern]): bool =
+  ensureIncluded searchOptC.inContext, context:
+    return false
+  ensureExcluded searchOptC.notInContext, context:
+    return false
+  result = true
+
 iterator processFile(searchOptC: SearchOptComp[Pattern], filename: string,
                      yieldContents=false): Output =
   var buffer: string
@@ -836,13 +871,13 @@ iterator processFile(searchOptC: SearchOptComp[Pattern], filename: string,
         reason = "text file"
 
     if not reject:
-      if searchOpt.checkMatch != "":
-        reject = not contains(buffer, searchOptC.checkMatch, 0)
+      ensureIncluded searchOptC.inFile, buffer:
+        reject = true
         reason = "doesn't contain a requested match"
 
     if not reject:
-      if searchOpt.checkNoMatch != "":
-        reject = contains(buffer, searchOptC.checkNoMatch, 0)
+      ensureExcluded searchOptC.notInFile, buffer:
+        reject = true
         reason = "contains a forbidden match"
 
     if reject:
@@ -852,20 +887,50 @@ iterator processFile(searchOptC: SearchOptComp[Pattern], filename: string,
     else:
       var found = false
       var cnt = 0
-      for output in searchFile(searchOptC.pattern, buffer):
-        found = true
-        if optCount notin options:
-          yield output
-        else:
-          if output.kind in {blockFirstMatch, blockNextMatch}:
-            inc(cnt)
+      let skipCheckContext = (searchOpt.notInContext.len == 0 and
+                              searchOpt.inContext.len == 0)
+      if skipCheckContext:
+        for output in searchFile(searchOptC.pattern, buffer):
+          found = true
+          if optCount notin options:
+            yield output
+          else:
+            if output.kind in {blockFirstMatch, blockNextMatch}:
+              inc(cnt)
+      else:
+        var context: string
+        var outputAccumulator: seq[Output]
+        for outp in searchFile(searchOptC.pattern, buffer):
+          if outp.kind in {blockFirstMatch, blockNextMatch}:
+            outputAccumulator.add outp
+            context.add outp.pre
+            context.add outp.match.match
+          elif outp.kind == blockEnd:
+            outputAccumulator.add outp
+            context.add outp.blockEnding
+            # context has been formed, now check it:
+            if checkContext(context, searchOptC):
+              found = true
+              for output in outputAccumulator:
+                if optCount notin options:
+                  yield output
+                else:
+                  if output.kind in {blockFirstMatch, blockNextMatch}:
+                    inc(cnt)
+            context = ""
+            outputAccumulator.setLen 0
+      # end `if skipCheckContext`.
       if optCount in options and cnt > 0:
         yield Output(kind: justCount, matches: cnt)
       if yieldContents and found and optCount notin options:
         yield Output(kind: fileContents, buffer: move(buffer))
 
-
-proc hasRightFileName(path: string, walkOptC: WalkOptComp[Pattern]): bool =
+proc hasRightPath(path: string, walkOptC: WalkOptComp[Pattern]): bool =
+  if not (
+      walkOpt.extensions.len > 0 or walkOpt.notExtensions.len > 0 or
+      walkOpt.filename.len > 0 or walkOpt.notFilename.len > 0 or
+      walkOpt.notDirPath.len > 0 or walkOpt.dirPath.len > 0):
+    return true
   let filename = path.lastPathPart
   let ex = filename.splitFile.ext.substr(1) # skip leading '.'
   if walkOpt.extensions.len != 0:
@@ -875,31 +940,44 @@ proc hasRightFileName(path: string, walkOptC: WalkOptComp[Pattern]): bool =
         matched = true
         break
     if not matched: return false
-  for x in walkOpt.skipExtensions:
+  for x in walkOpt.notExtensions:
     if os.cmpPaths(x, ex) == 0: return false
-  if walkOptC.includeFile.len != 0:
-    var matched = false
-    for pat in walkOptC.includeFile:
-      if filename.contains(pat):
-        matched = true
-        break
-    if not matched: return false
-  for pat in walkOptC.excludeFile:
-    if filename.contains(pat): return false
-  let dirname = path.parentDir
-  if walkOptC.includeDir.len != 0:
-    var matched = false
-    for pat in walkOptC.includeDir:
-      if dirname.contains(pat):
-        matched = true
-        break
-    if not matched: return false
+  ensureIncluded walkOptC.filename, filename:
+    return false
+  ensureExcluded walkOptC.notFilename, filename:
+    return false
+  let parent = path.parentDir
+  ensureExcluded walkOptC.notDirPath, parent:
+    return false
+  ensureIncluded walkOptC.dirPath, parent:
+    return false
   result = true
 
-proc hasRightDirectory(path: string, walkOptC: WalkOptComp[Pattern]): bool =
-  let dirname = path.lastPathPart
-  for pat in walkOptC.excludeDir:
-    if dirname.contains(pat): return false
+proc isRightDirectory(path: string, walkOptC: WalkOptComp[Pattern]): bool =
+  ## --dirname can be only checked when the final path is known
+  ## so this proc is suitable for files only.
+  if walkOptC.dirname.len > 0:
+    var badDirname = false
+    var (nextParent, dirname) = splitPath(path)
+    # check that --dirname matches for one of directories in parent path:
+    while dirname != "":
+      badDirname = false
+      ensureIncluded walkOptC.dirname, dirname:
+        badDirname = true
+      if not badDirname:
+        break
+      (nextParent, dirname) = splitPath(nextParent)
+    if badDirname:  # badDirname was set to true for all the dirs
+      return false
+  result = true
+
+proc descendToDirectory(path: string, walkOptC: WalkOptComp[Pattern]): bool =
+  ## --notdirname can be checked for directories immediately for optimization to
+  ## prevent descending into undesired directories.
+  if walkOptC.notDirname.len > 0:
+    let dirname = path.lastPathPart
+    ensureExcluded walkOptC.notDirname, dirname:
+      return false
   result = true
 
 iterator walkDirBasic(dir: string, walkOptC: WalkOptComp[Pattern]): string
@@ -908,22 +986,24 @@ iterator walkDirBasic(dir: string, walkOptC: WalkOptComp[Pattern]): string
   var timeFiles = newSeq[(times.Time, string)]()
   while dirStack.len > 0:
     let d = dirStack.pop()
+    let rightDirForFiles = d.isRightDirectory(walkOptC)
     var files = newSeq[string]()
     var dirs = newSeq[string]()
-    for kind, path in walkDir(d):
+    for kind, path in walkDir(d, skipSpecial = true):
       case kind
       of pcFile:
-        if path.hasRightFileName(walkOptC):
+        if path.hasRightPath(walkOptC) and rightDirForFiles:
           files.add(path)
       of pcLinkToFile:
-        if optFollow in options and path.hasRightFileName(walkOptC):
+        if optFollow in options and path.hasRightPath(walkOptC) and
+            rightDirForFiles:
           files.add(path)
       of pcDir:
-        if optRecursive in options and path.hasRightDirectory(walkOptC):
+        if optRecursive in options and path.descendToDirectory(walkOptC):
           dirs.add path
       of pcLinkToDir:
         if optFollow in options and optRecursive in options and
-           path.hasRightDirectory(walkOptC):
+            path.descendToDirectory(walkOptC):
           dirs.add path
     if sortTime:  # sort by time - collect files before yielding
       for file in files:
@@ -948,10 +1028,12 @@ iterator walkDirBasic(dir: string, walkOptC: WalkOptComp[Pattern]): string
 iterator walkRec(paths: seq[string]): tuple[error: string, filename: string]
          {.closure.} =
   declareCompiledPatterns(walkOptC, WalkOptComp):
-    walkOptC.excludeFile.add walkOpt.excludeFile.compileArray()
-    walkOptC.includeFile.add walkOpt.includeFile.compileArray()
-    walkOptC.includeDir.add  walkOpt.includeDir.compileArray()
-    walkOptC.excludeDir.add  walkOpt.excludeDir.compileArray()
+    walkOptC.notFilename.add walkOpt.notFilename.compileArray()
+    walkOptC.filename.add    walkOpt.filename.compileArray()
+    walkOptC.dirname.add     walkOpt.dirname.compileArray()
+    walkOptC.notDirname.add  walkOpt.notDirname.compileArray()
+    walkOptC.dirPath.add     walkOpt.dirPath.compileArray()
+    walkOptC.notDirPath.add  walkOpt.notDirPath.compileArray()
     for path in paths:
       if dirExists(path):
         for p in walkDirBasic(path, walkOptC):
@@ -1030,8 +1112,10 @@ template processFileResult(pattern: Pattern; filename: string,
 proc run1Thread() =
   declareCompiledPatterns(searchOptC, SearchOptComp):
     compile1Pattern(searchOpt.pattern, searchOptC.pattern)
-    compile1Pattern(searchOpt.checkMatch, searchOptC.checkMatch)
-    compile1Pattern(searchOpt.checkNoMatch, searchOptC.checkNoMatch)
+    searchOptC.inFile.add searchOpt.inFile.compileArray()
+    searchOptC.notInFile.add searchOpt.notInFile.compileArray()
+    searchOptC.inContext.add searchOpt.inContext.compileArray()
+    searchOptC.notInContext.add searchOpt.notInContext.compileArray()
     if optPipe in options:
       processFileResult(searchOptC.pattern, "-",
                         processFile(searchOptC, "-",
@@ -1073,8 +1157,10 @@ proc worker(initSearchOpt: SearchOpt) {.thread.} =
   searchOpt = initSearchOpt  # init thread-local var
   declareCompiledPatterns(searchOptC, SearchOptComp):
     compile1Pattern(searchOpt.pattern, searchOptC.pattern)
-    compile1Pattern(searchOpt.checkMatch, searchOptC.checkMatch)
-    compile1Pattern(searchOpt.checkNoMatch, searchOptC.checkNoMatch)
+    searchOptC.inFile.add searchOpt.inFile.compileArray()
+    searchOptC.notInFile.add searchOpt.notInFile.compileArray()
+    searchOptC.inContext.add searchOpt.inContext.compileArray()
+    searchOptC.notInContext.add searchOpt.notInContext.compileArray()
     while true:
       let (fileNo, filename) = searchRequestsChan.recv()
       var fileResult: FileResult
@@ -1172,6 +1258,11 @@ for kind, key, val in getopt():
     else:
       paths.add(key)
   of cmdLongOption, cmdShortOption:
+    proc addNotEmpty(s: var seq[string], name: string) =
+      if name == "":
+        reportError("empty string given for option --" & key &
+                    " (did you forget `:`?)")
+      s.add name
     case normalize(key)
     of "find", "f": incl(options, optFind)
     of "replace", "!": incl(options, optReplace)
@@ -1197,15 +1288,36 @@ for kind, key, val in getopt():
         nWorkers = countProcessors()
       else:
         nWorkers = parseNonNegative(val, key)
-    of "ext": walkOpt.extensions.add val.split('|')
-    of "noext", "no-ext": walkOpt.skipExtensions.add val.split('|')
-    of "excludedir", "exclude-dir",   "ed": walkOpt.excludeDir.add val
-    of "includedir", "include-dir",   "id": walkOpt.includeDir.add val
-    of "includefile", "include-file", "if": walkOpt.includeFile.add val
-    of "excludefile", "exclude-file", "ef": walkOpt.excludeFile.add val
-    of "match": searchOpt.checkMatch = val
-    of "nomatch":
-      searchOpt.checkNoMatch = val
+    of "extensions", "ex", "ext": walkOpt.extensions.add val.split('|')
+    of "nextensions", "notextensions", "nex", "notex",
+       "noext", "no-ext":  # 2 deprecated options
+      walkOpt.notExtensions.add val.split('|')
+    of "dirname",  "di":
+      walkOpt.dirname.addNotEmpty val
+    of "ndirname", "notdirname", "ndi", "notdi",
+       "excludedir", "exclude-dir", "ed":  # 3 deprecated options
+      walkOpt.notDirname.addNotEmpty val
+    of "dirpath", "dirp",
+       "includedir", "include-dir", "id":  # 3 deprecated options
+      walkOpt.dirPath.addNotEmpty val
+    of "ndirpath", "notdirpath", "ndirp", "notdirp":
+      walkOpt.notDirPath.addNotEmpty val
+    of "filename", "fi",
+       "includefile", "include-file", "if":  # 3 deprecated options
+      walkOpt.filename.addNotEmpty val
+    of "nfilename", "nfi", "notfilename", "notfi",
+       "excludefile", "exclude-file", "ef":  # 3 deprecated options
+      walkOpt.notFilename.addNotEmpty val
+    of "infile", "inf",
+       "matchfile", "match", "mf":  # 3 deprecated options
+      searchOpt.inFile.addNotEmpty val
+    of "ninfile", "notinfile", "ninf", "notinf",
+       "nomatchfile", "nomatch", "nf":  # 3 options are deprecated
+      searchOpt.notInFile.addNotEmpty val
+    of "incontext", "inc":
+      searchOpt.inContext.addNotEmpty val
+    of "nincontext", "notincontext", "ninc", "notinc":
+      searchOpt.notInContext.addNotEmpty val
     of "bin":
       case val
       of "on": searchOpt.checkBin = biOn

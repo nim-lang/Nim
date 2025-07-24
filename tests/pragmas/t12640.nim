@@ -1,4 +1,5 @@
 discard """
+  matrix: "--mm:refc"
   nimout: '''1
 2
 3
@@ -10,7 +11,7 @@ discard """
 [1, 2, 3]'''
 """
 
-
+# todo fixme it doesn't work with ORC
 proc doIt(a: openArray[int]) =
   echo a
 

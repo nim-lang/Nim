@@ -22,7 +22,7 @@ heyho
 Val1
 Val1
 '''
-matrix: "--hints:off"
+matrix: "--hints:off --warnings:off --mm:orc; --hints:off --warnings:off --mm:refc"
 """
 
 import macros
@@ -391,3 +391,69 @@ var sorted = newSeq[int](1000)
 for i in 0..<sorted.len: sorted[i] = i*2
 doAssert isSorted2(sorted, compare)
 doAssert isSorted2(sorted, proc (a, b: int): bool {.inline.} = a < b)
+
+
+block: # Ensure static descriminated objects compile
+  type
+    ObjKind = enum
+      KindA, KindB, KindC
+
+    MyObject[kind: static[ObjKind]] = object of RootObj
+      myNumber: int
+      when kind != KindA:
+        driverType: int
+        otherField: int
+      elif kind == KindC:
+        driverType: uint
+        otherField: int
+
+  var instance: MyObject[KindA]
+  discard instance
+  discard MyObject[KindC]()
+
+block: # more cases of above, issue #8446
+  type
+    Color = enum
+      red, green, blue
+    Blah[color: static[Color]] = object
+      when color == red:
+        a: string
+      else:
+        b: int
+
+  proc foo(blah: Blah) = discard
+  foo(Blah[red](a: "abc"))
+
+  type
+    Mytype[K: static[int]] = object
+      when K < 16:
+        data: uint8
+      else:
+        data: uint64
+  proc usingMyt(k: Mytype) = discard  # triggers Error: cannot generate code for: K
+
+block: # bug #22600
+  proc f(n: static int): int = n * 2 # same for template
+
+  type
+    a[N: static int] = object
+      field : array[N, uint8]
+
+    b[N: static int] = object
+      field : a[N]
+
+    c[N: static int] = object
+      f0    : a[N     ]         # works
+      f1    : a[N + 1 ]         # asserts
+      f2    : a[f(N)  ]         # asserts
+
+      f3    : b[N     ]         # works
+      f4    : b[N + 1 ]         # asserts
+      f5    : b[f(N)  ]         # asserts
+
+  proc init[N: static int](x : var a[N]) = discard
+  proc init[N: static int](x : var b[N]) = discard
+  proc init[N: static int](x : var c[N]) = x.f1.init() # this is needed
+
+  var x: c[2]
+  x.init()

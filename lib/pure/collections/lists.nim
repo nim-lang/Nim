@@ -59,8 +59,8 @@ runnableExamples:
 
 import std/private/since
 
-when not defined(nimHasCursor):
-  {.pragma: cursor.}
+when defined(nimPreviewSlimSystem):
+  import std/assertions
 
 type
   DoublyLinkedNodeObj*[T] = object
@@ -115,7 +115,7 @@ proc initSinglyLinkedList*[T](): SinglyLinkedList[T] =
   runnableExamples:
     let a = initSinglyLinkedList[int]()
 
-  discard
+  result = default(SinglyLinkedList[T])
 
 proc initDoublyLinkedList*[T](): DoublyLinkedList[T] =
   ## Creates a new doubly linked list that is empty.
@@ -125,7 +125,7 @@ proc initDoublyLinkedList*[T](): DoublyLinkedList[T] =
   runnableExamples:
     let a = initDoublyLinkedList[int]()
 
-  discard
+  result = default(DoublyLinkedList[T])
 
 proc initSinglyLinkedRing*[T](): SinglyLinkedRing[T] =
   ## Creates a new singly linked ring that is empty.
@@ -135,7 +135,7 @@ proc initSinglyLinkedRing*[T](): SinglyLinkedRing[T] =
   runnableExamples:
     let a = initSinglyLinkedRing[int]()
 
-  discard
+  result = default(SinglyLinkedRing[T])
 
 proc initDoublyLinkedRing*[T](): DoublyLinkedRing[T] =
   ## Creates a new doubly linked ring that is empty.
@@ -145,7 +145,7 @@ proc initDoublyLinkedRing*[T](): DoublyLinkedRing[T] =
   runnableExamples:
     let a = initDoublyLinkedRing[int]()
 
-  discard
+  result = default(DoublyLinkedRing[T])
 
 proc newDoublyLinkedNode*[T](value: T): DoublyLinkedNode[T] =
   ## Creates a new doubly linked node with the given `value`.
@@ -165,36 +165,14 @@ proc newSinglyLinkedNode*[T](value: T): SinglyLinkedNode[T] =
   new(result)
   result.value = value
 
-func toSinglyLinkedList*[T](elems: openArray[T]): SinglyLinkedList[T] {.since: (1, 5, 1).} =
-  ## Creates a new `SinglyLinkedList` from the members of `elems`.
-  runnableExamples:
-    from std/sequtils import toSeq
-    let a = [1, 2, 3, 4, 5].toSinglyLinkedList
-    assert a.toSeq == [1, 2, 3, 4, 5]
-
-  result = initSinglyLinkedList[T]()
-  for elem in elems.items:
-    result.add(elem)
-
-func toDoublyLinkedList*[T](elems: openArray[T]): DoublyLinkedList[T] {.since: (1, 5, 1).} =
-  ## Creates a new `DoublyLinkedList` from the members of `elems`.
-  runnableExamples:
-    from std/sequtils import toSeq
-    let a = [1, 2, 3, 4, 5].toDoublyLinkedList
-    assert a.toSeq == [1, 2, 3, 4, 5]
-
-  result = initDoublyLinkedList[T]()
-  for elem in elems.items:
-    result.add(elem)
-
 template itemsListImpl() {.dirty.} =
-  var it = L.head
+  var it {.cursor.} = L.head
   while it != nil:
     yield it.value
     it = it.next
 
 template itemsRingImpl() {.dirty.} =
-  var it = L.head
+  var it {.cursor.} = L.head
   if it != nil:
     while true:
       yield it.value
@@ -286,7 +264,7 @@ iterator nodes*[T](L: SomeLinkedList[T]): SomeLinkedNode[T] =
         x.value = 5 * x.value - 1
     assert $a == "[49, 99, 199, 249]"
 
-  var it = L.head
+  var it {.cursor.} = L.head
   while it != nil:
     let nxt = it.next
     yield it
@@ -311,7 +289,7 @@ iterator nodes*[T](L: SomeLinkedRing[T]): SomeLinkedNode[T] =
         x.value = 5 * x.value - 1
     assert $a == "[49, 99, 199, 249]"
 
-  var it = L.head
+  var it {.cursor.} = L.head
   if it != nil:
     while true:
       let nxt = it.next
@@ -341,6 +319,10 @@ proc find*[T](L: SomeLinkedCollection[T], value: T): SomeLinkedNode[T] =
     let a = [9, 8].toSinglyLinkedList
     assert a.find(9).value == 9
     assert a.find(1) == nil
+  when typeof(nodes(L)) is SinglyLinkedNode[T]:
+    result = SinglyLinkedNode[T](nil)
+  else:
+    result = DoublyLinkedNode[T](nil)
 
   for x in nodes(L):
     if x.value == value: return x
@@ -406,9 +388,7 @@ proc prependMoved*[T: SomeLinkedList](a, b: var T) {.since: (1, 5, 1).} =
     assert s == [0, 1, 0, 1, 0, 1]
 
   b.addMoved(a)
-  when defined(js): # XXX: swap broken in js; bug #16771
-    (b, a) = (a, b)
-  else: swap a, b
+  swap a, b
 
 proc add*[T](L: var SinglyLinkedList[T], n: SinglyLinkedNode[T]) {.inline.} =
   ## Appends (adds to the end) a node `n` to `L`. Efficiency: O(1).
@@ -733,7 +713,7 @@ proc remove*[T](L: var SinglyLinkedList[T], n: SinglyLinkedNode[T]): bool {.disc
     if L.tail.next == n:
       L.tail.next = L.head # restore cycle
   else:
-    var prev = L.head
+    var prev {.cursor.} = L.head
     while prev.next != n and prev.next != nil:
       prev = prev.next
     if prev.next == nil:
@@ -993,3 +973,47 @@ proc appendMoved*[T: SomeLinkedList](a, b: var T) {.since: (1, 5, 1).} =
   ## * `addMoved proc <#addMoved,SinglyLinkedList[T],SinglyLinkedList[T]>`_
   ## * `addMoved proc <#addMoved,DoublyLinkedList[T],DoublyLinkedList[T]>`_
   a.addMoved(b)
+
+func toSinglyLinkedList*[T](elems: openArray[T]): SinglyLinkedList[T] {.since: (1, 5, 1).} =
+  ## Creates a new `SinglyLinkedList` from the members of `elems`.
+  runnableExamples:
+    from std/sequtils import toSeq
+    let a = [1, 2, 3, 4, 5].toSinglyLinkedList
+    assert a.toSeq == [1, 2, 3, 4, 5]
+
+  result = initSinglyLinkedList[T]()
+  for elem in elems.items:
+    result.add(elem)
+
+func toSinglyLinkedRing*[T](elems: openArray[T]): SinglyLinkedRing[T] =
+  ## Creates a new `SinglyLinkedRing` from the members of `elems`.
+  runnableExamples:
+    from std/sequtils import toSeq
+    let a = [1, 2, 3, 4, 5].toSinglyLinkedRing
+    assert a.toSeq == [1, 2, 3, 4, 5]
+
+  result = initSinglyLinkedRing[T]()
+  for elem in elems.items:
+    result.add(elem)
+
+func toDoublyLinkedList*[T](elems: openArray[T]): DoublyLinkedList[T] {.since: (1, 5, 1).} =
+  ## Creates a new `DoublyLinkedList` from the members of `elems`.
+  runnableExamples:
+    from std/sequtils import toSeq
+    let a = [1, 2, 3, 4, 5].toDoublyLinkedList
+    assert a.toSeq == [1, 2, 3, 4, 5]
+
+  result = initDoublyLinkedList[T]()
+  for elem in elems.items:
+    result.add(elem)
+
+func toDoublyLinkedRing*[T](elems: openArray[T]): DoublyLinkedRing[T] =
+  ## Creates a new `DoublyLinkedRing` from the members of `elems`.
+  runnableExamples:
+    from std/sequtils import toSeq
+    let a = [1, 2, 3, 4, 5].toDoublyLinkedRing
+    assert a.toSeq == [1, 2, 3, 4, 5]
+
+  result = initDoublyLinkedRing[T]()
+  for elem in elems.items:
+    result.add(elem)

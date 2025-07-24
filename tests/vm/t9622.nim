@@ -1,6 +1,6 @@
 discard """
   targets: "c cpp"
-  matrix: "--gc:refc; --gc:arc"
+  matrix: "--mm:refc; --mm:arc"
 """
 
 type

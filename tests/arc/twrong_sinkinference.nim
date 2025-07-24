@@ -1,6 +1,6 @@
 discard """
   cmd: "nim c --gc:arc $file"
-  errormsg: "type mismatch: got <proc (a: string, b: sink string){.noSideEffect, gcsafe, locks: 0.}>"
+  errormsg: "type mismatch: got <proc (a: string, b: sink string){.noSideEffect, gcsafe.}>"
   line: 18
 """
 

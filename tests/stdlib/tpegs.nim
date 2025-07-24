@@ -1,4 +1,5 @@
 discard """
+  matrix: "--mm:refc; --mm:orc; --exceptions:goto"
   targets: "c cpp js"
   output: '''
 PEG AST traversal output
@@ -54,7 +55,7 @@ Event parser output
 when defined(nimHasEffectsOf):
   {.experimental: "strictEffects".}
 
-import std/[strutils, streams, pegs]
+import std/[strutils, streams, pegs, assertions]
 
 const
   indent = "  "
@@ -106,9 +107,9 @@ block:
 
 block:
   var
-    pStack: seq[string] = @[]
-    valStack: seq[float] = @[]
-    opStack = ""
+    pStack {.threadvar.}: seq[string]
+    valStack {.threadvar.}: seq[float]
+    opStack {.threadvar.}: string
   let
     parseArithExpr = pegAst.eventParser:
       pkNonTerminal:
@@ -158,6 +159,10 @@ block:
     privateAccess(NonTerminal)
     privateAccess(Captures)
 
+    if "test" =~ peg"s <- {{\ident}}": # bug #19104
+      doAssert matches[0] == "test"
+      doAssert matches[1] == "test", $matches[1]
+
     doAssert escapePeg("abc''def'") == r"'abc'\x27\x27'def'\x27"
     doAssert match("(a b c)", peg"'(' @ ')'")
     doAssert match("W_HI_Le", peg"\y 'while'")
@@ -187,7 +192,7 @@ block:
     expr.rule = sequence(capture(ident), *sequence(
                   nonterminal(ws), term('+'), nonterminal(ws), nonterminal(expr)))
 
-    var c: Captures
+    var c: Captures = default(Captures)
     var s = "a+b +  c +d+e+f"
     doAssert rawMatch(s, expr.rule, 0, c) == len(s)
     var a = ""
@@ -203,7 +208,7 @@ block:
     doAssert match("_______ana", peg"A <- 'ana' / . A")
     doAssert match("abcs%%%", peg"A <- ..A / .A / '%'")
 
-    var matches: array[0..MaxSubpatterns-1, string]
+    var matches: array[0..MaxSubpatterns-1, string] = default(array[0..MaxSubpatterns-1, string])
     if "abc" =~ peg"{'a'}'bc' 'xyz' / {\ident}":
       doAssert matches[0] == "abc"
     else:
@@ -320,11 +325,20 @@ block:
   call()
 call()
 """
-      var c: Captures
+      var c: Captures = default(Captures)
       doAssert program.len == program.rawMatch(grammar, 0, c)
       doAssert c.ml == 1
+
+    block:
+      # bug #21632
+
+      let p = peg"""
+        atext <- \w / \d
+      """
+
+      doAssert "a".match(p)
+      doAssert "1".match(p)
 
   pegsTest()
   static:
     pegsTest()
-

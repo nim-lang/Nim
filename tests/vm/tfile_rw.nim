@@ -1,7 +1,3 @@
-discard """
-  output: '''ok'''
-"""
-
 # test file read write in vm
 
 import os, strutils
@@ -24,4 +20,3 @@ static:
 
 
 removeFile(filename)
-echo "ok"

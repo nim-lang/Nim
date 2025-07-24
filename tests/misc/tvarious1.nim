@@ -46,3 +46,13 @@ echo value
 var ys = @[4.1, 5.6, 7.2, 1.7, 9.3, 4.4, 3.2]
 #var x = int(ys.high / 2) #echo ys[x] # Works
 echo ys[int(ys.high / 2)] # Doesn't work
+
+
+# bug #19680
+var here = ""
+when stderr is static:
+  doAssert false
+else:
+  here = "works"
+
+doAssert here == "works"

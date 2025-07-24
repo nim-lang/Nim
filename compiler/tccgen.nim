@@ -14,7 +14,7 @@ const tinyPrefix = "dist/nim-tinyc-archive".unixToNativePath
 const nimRoot = currentSourcePath.parentDir.parentDir
 const tinycRoot = nimRoot / tinyPrefix
 when not dirExists(tinycRoot):
-  static: doAssert false, $(tinycRoot, "requires: ./koch installdeps tinyc")
+  static: raiseAssert $(tinycRoot, "requires: ./koch installdeps tinyc")
 {.compile: tinycRoot / "tinyc/libtcc.c".}
 
 var
@@ -48,15 +48,15 @@ proc setupEnvironment =
   var tinycRoot = nimDir / tinyPrefix
   let libpath = nimDir / "lib"
 
-  addIncludePath(gTinyC, libpath)
+  addIncludePath(gTinyC, cstring(libpath))
   when defined(windows):
-    addSysincludePath(gTinyC, tinycRoot / "tinyc/win32/include")
-  addSysincludePath(gTinyC, tinycRoot / "tinyc/include")
+    addSysincludePath(gTinyC, cstring(tinycRoot / "tinyc/win32/include"))
+  addSysincludePath(gTinyC, cstring(tinycRoot / "tinyc/include"))
   when defined(windows):
     defineSymbol(gTinyC, "_WIN32", nil)
     # we need Mingw's headers too:
     var gccbin = getConfigVar("gcc.path") % ["nim", tinycRoot]
-    addSysincludePath(gTinyC, gccbin /../ "include")
+    addSysincludePath(gTinyC, cstring(gccbin /../ "include"))
     #addFile(tinycRoot / r"tinyc\win32\wincrt1.o")
     addFile(tinycRoot / r"tinyc\win32\alloca86.o")
     addFile(tinycRoot / r"tinyc\win32\chkstk.o")

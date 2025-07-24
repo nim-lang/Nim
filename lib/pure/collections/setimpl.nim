@@ -45,7 +45,7 @@ proc enlarge[A](s: var HashSet[A]) =
 template inclImpl() {.dirty.} =
   if s.data.len == 0:
     initImpl(s, defaultInitialSize)
-  var hc: Hash
+  var hc: Hash = default(Hash)
   var index = rawGet(s, key, hc)
   if index < 0:
     if mustRehash(s):
@@ -62,6 +62,7 @@ template containsOrInclImpl() {.dirty.} =
   if index >= 0:
     result = true
   else:
+    result = false
     if mustRehash(s):
       enlarge(s)
       index = rawGetKnownHC(s, key, hc)
@@ -86,7 +87,9 @@ proc exclImpl[A](s: var HashSet[A], key: A): bool {.inline.} =
       var j = i # The correctness of this depends on (h+1) in nextTry,
       var r = j # though may be adaptable to other simple sequences.
       s.data[i].hcode = 0 # mark current EMPTY
-      s.data[i].key = default(typeof(s.data[i].key))
+      {.push warning[UnsafeDefault]:off.}
+      reset(s.data[i].key)
+      {.pop.}
       doWhile((i >= r and r > j) or (r > j and j > i) or (j > i and i >= r)):
         i = (i + 1) and msk # increment mod table size
         if isEmpty(s.data[i].hcode): # end of collision cluster; So all done

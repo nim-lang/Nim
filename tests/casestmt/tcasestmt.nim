@@ -41,6 +41,11 @@ block t8333:
   case 0
   of 'a': echo 0
   else: echo 1
+block: # issue #11422
+  var c: int = 5
+  case c
+  of 'a' .. 'c': discard
+  else: discard
 
 
 block emptyset_when:
@@ -287,3 +292,28 @@ doAssert(foo2("Y", "a2") == 0)
 doAssert(foo2("Y", "2a") == 2)
 doAssert(foo2("N", "a3") == 3)
 doAssert(foo2("z", "2") == 0)
+
+
+# bug #20031
+proc main(a: uint64) =
+  case a
+  else:
+    discard
+
+static:
+  main(10)
+main(10)
+
+block:
+  # Just needs to compile
+  proc bar(): int {.discardable.} = discard
+
+  proc foo() {.noreturn.} = discard
+
+  case "*"
+  of "*":
+    bar()
+  else:
+    # Make sure this noreturn doesn't
+    # cause the discardable to not discard
+    foo()

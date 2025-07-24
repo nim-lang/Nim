@@ -1,10 +1,12 @@
 discard """
+  matrix: "--mm:refc; --mm:orc"
   targets:  "c js"
 """
 
 import std/uri
 from std/uri {.all.} as uri2 import removeDotSegments
 from std/sequtils import toSeq
+import std/assertions
 
 template main() =
   block: # encodeUrl, decodeUrl
@@ -274,7 +276,9 @@ template main() =
     doAssert encodeQuery({"foo": ""}) == "foo"
     doAssert encodeQuery({"foo": ""}, omitEq = false) == "foo="
     doAssert encodeQuery({"a": "1", "b": "", "c": "3"}) == "a=1&b&c=3"
+    doAssert encodeQuery({"a": "1", "b": "", "c": "3"}, sep = ';') == "a=1;b;c=3"
     doAssert encodeQuery({"a": "1", "b": "", "c": "3"}, omitEq = false) == "a=1&b=&c=3"
+    doAssert encodeQuery({"a": "1", "b": "", "c": "3"}, omitEq = false, sep = ';') == "a=1;b=;c=3"
 
   block: # `?`
     block:
@@ -300,7 +304,9 @@ template main() =
 
   block: # decodeQuery
     doAssert toSeq(decodeQuery("a=1&b=0")) == @[("a", "1"), ("b", "0")]
+    doAssert toSeq(decodeQuery("a=1;b=0", sep = ';')) == @[("a", "1"), ("b", "0")]
     doAssert toSeq(decodeQuery("a=1&b=2c=6")) == @[("a", "1"), ("b", "2c=6")]
+    doAssert toSeq(decodeQuery("a=1;b=2c=6", sep = ';')) == @[("a", "1"), ("b", "2c=6")]
 
   block: # bug #17481
     let u1 = parseUri("./")

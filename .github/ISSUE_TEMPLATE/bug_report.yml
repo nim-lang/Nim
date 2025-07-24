@@ -1,0 +1,73 @@
+name:        "Bug Report"
+description: "Create a new bug report. Have you found an unexpected behavior? Use this form."
+title:       "Think about the title, twice."
+labels:      ["unconfirmed"]
+body:
+
+- type: markdown
+  attributes:
+    value: |
+      Please provide a minimal code example that reproduces the bug if possible.
+      Reports with a reproducible example or detailed information will likely receive fixes faster.
+
+- type: textarea
+  id: nim-version
+  attributes:
+    label: Nim Version
+    description: |
+      Can be obtained from `nim -v` on the command line along with the OS/architecture.
+      For development versions, including the commit hash may help.
+  validations:
+    required: true
+
+- type: textarea
+  id: description
+  attributes:
+    label: Description
+    description: |
+      Describe the problem. Code example can be given here.
+    placeholder: Bug reports with reproducible code or detailed information will be fixed faster.
+  validations:
+    required: true
+
+- type: textarea
+  id: current-logs
+  attributes:
+    label: Current Output
+    description: Please copy and paste any relevant log output. This will be automatically formatted into code, so no need for backticks.
+    placeholder: Bug reports with reproducible code or detailed information will be fixed faster.
+    render: text
+
+- type: textarea
+  id: expected-logs
+  attributes:
+    label: Expected Output
+    description: Please copy and paste any relevant log output. This will be automatically formatted into code, so no need for backticks.
+    placeholder: Bug reports with reproducible code or detailed information will be fixed faster.
+    render: text
+
+- type: textarea
+  id: known-workarounds
+  attributes:
+    label: Known Workarounds
+    description: Provide any known workarounds.
+  validations:
+    required: false
+
+- type: textarea
+  id: extra-info
+  attributes:
+    label: Additional Information
+    description: Any additional relevant information.
+  validations:
+    required: false
+
+- type: markdown
+  attributes:
+    value: |
+      - Please check whether the problem still exists in the devel branch, which can be installed via [choosenim](https://github.com/nim-lang/choosenim/), [nightlies](https://github.com/nim-lang/nightlies/), or by [creating a temporary build of the compiler](https://nim-lang.github.io/Nim/intern.html#debugging-the-compiler-building-an-instrumented-compiler).
+      - Consider writing a PR targetting devel branch after filing this, see [contributing](https://nim-lang.github.io/Nim/contributing.html).
+      - If it's a pre-existing compiler bug, see [debugging the compiler](https://nim-lang.github.io/Nim/intern.html#debugging-the-compiler) which should give more context on a compiler crash.
+      - If it's a regression, you can help us by identifying which version introduced the bug by [bisecting](https://nim-lang.github.io/Nim/intern.html#bisecting-for-regressions) or at least trying known past releases (e.g. `choosenim 2.0.0`).
+        The Nim repo also supports bisecting in issue comments by adding `!nim c`, `!nim js` etc. before a code block, see [nimrun-action](https://github.com/juancarlospaco/nimrun-action).
+      - [Please, consider a Donation for the Nim project.](https://nim-lang.org/donate.html)

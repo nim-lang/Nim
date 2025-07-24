@@ -158,7 +158,7 @@ template dim2: int =
    else:
     int.high)
 
-template dim: int =
+template dim3: int =
   (
    if int.high == 0:
      int.high

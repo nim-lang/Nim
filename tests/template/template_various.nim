@@ -274,10 +274,10 @@ parse9:
 block gensym1:
   template x: untyped = -1
   template t1() =
-    template x: untyped {.gensym.} = 1
+    template x: untyped {.gensym, redefine.} = 1
     echo x()  # 1
   template t2() =
-    template x: untyped = 1  # defaults to {.inject.}
+    template x: untyped {.redefine.} = 1  # defaults to {.inject.}
     echo x()  # -1  injected x not available during template definition
   t1()
   t2()
@@ -353,3 +353,54 @@ block gensym3:
   echo a ! b ! c ! d
   echo a ! b ! c ! d ! e
   echo x,y,z
+
+block: # issue #2465
+  template t() =
+    template declX(str: string) {.gensym.} =
+      var x {.inject.} : string = str
+
+  t()
+  doAssert not declared(declX)
+  doAssert not compiles(declX("a string"))
+
+  template t2() =
+    template fooGensym() {.gensym.} =
+      echo 42
+
+  t2()
+  doAssert not declared(fooGensym)
+  doAssert not compiles(fooGensym())
+
+
+block identifier_construction_with_overridden_symbol:
+  # could use add, but wanna make sure it's an override no matter what
+  func examplefn = discard
+  func examplefn(x: int) = discard
+
+  # the function our template wants to use
+  func examplefn1 = discard
+
+  template exampletempl(n) =
+    # attempt to build a name using the overridden symbol "examplefn"
+    `examplefn n`()
+
+  exampletempl(1)
+
+import typetraits
+
+block: # issue #4596
+  type
+    T0 = object
+    T1 = object
+
+  template printFuncsT() =
+    proc getV[A](a: typedesc[A]): string =
+      var s {. global .} = name(A)
+      return s
+
+  printFuncsT()
+
+  doAssert getV(T1) == "T1"
+  doAssert getV(T0) == "T0"
+  doAssert getV(T0) == "T0"
+  doAssert getV(T1) == "T1"

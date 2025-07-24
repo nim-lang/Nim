@@ -1,9 +1,11 @@
 discard """
+  matrix: "--mm:refc; --mm:orc"
   output: "pcDir\npcFile\npcLinkToDir\npcLinkToFile\n"
   joinable: false
 """
 
 import os, strutils
+import std/[syncio, assertions]
 # Cases
 #  1 - String : Existing File : Symlink true
 #  2 - String : Existing File : Symlink false
@@ -126,10 +128,37 @@ proc testGetFileInfo =
       echo pcLinkToDir
       echo pcLinkToFile
 
+    doAssert dirInfo.isSpecial == false
+    doAssert fileInfo.isSpecial == false
+    when defined(posix):
+      doAssert linkDirInfo.isSpecial == false
+      doAssert linkFileInfo.isSpecial == false
+
     removeDir(dirPath)
     removeFile(filePath)
     when defined(posix):
       removeFile(linkDirPath)
       removeFile(linkFilePath)
+
+  # Test that `isSpecial` is set correctly
+  block:
+    when defined(posix):
+      let
+        tmp = getTempDir()
+        fifoPath     = tmp / "test-fifo"
+        linkFifoPath = tmp / "test-link-fifo"
+
+      doAssert execShellCmd("mkfifo " & fifoPath) == 0
+      createSymlink(fifoPath, linkFifoPath)
+
+      let
+        fifoInfo = getFileInfo(fifoPath)
+        linkFifoInfo = getFileInfo(linkFifoPath)
+
+      doAssert fifoInfo.isSpecial == true
+      doAssert linkFifoInfo.isSpecial == true
+
+      removeFile(fifoPath)
+      removeFile(linkFifoPath)
 
 testGetFileInfo()

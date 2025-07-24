@@ -286,7 +286,7 @@ type
             header: "<signal.h>", final, pure.} = object ## stack_t
     ss_sp*: pointer  ## Stack base or pointer.
     ss_flags*: cint  ## Flags.
-    ss_size*: csize  ## Stack size.
+    ss_size*: csize_t ## Stack size.
 
   SigInfo* {.importc: "siginfo_t",
               header: "<signal.h>", final, pure.} = object ## siginfo_t
@@ -321,7 +321,7 @@ type
     aio_lio_opcode*: cint     ## Operation to be performed.
     aio_reqprio*: cint        ## Request priority offset.
     aio_buf*: pointer         ## Location of buffer.
-    aio_nbytes*: csize        ## Length of transfer.
+    aio_nbytes*: csize_t      ## Length of transfer.
     aio_sigevent*: SigEvent   ## Signal number and value.
     next_prio: pointer
     abs_prio: cint
@@ -378,15 +378,15 @@ type
     msg_name*: pointer  ## Optional address.
     msg_namelen*: SockLen  ## Size of address.
     msg_iov*: ptr IOVec    ## Scatter/gather array.
-    msg_iovlen*: csize   ## Members in msg_iov.
+    msg_iovlen*: csize_t   ## Members in msg_iov.
     msg_control*: pointer  ## Ancillary data; see below.
-    msg_controllen*: csize ## Ancillary data buffer len.
+    msg_controllen*: csize_t ## Ancillary data buffer len.
     msg_flags*: cint ## Flags on received message.
 
 
   Tcmsghdr* {.importc: "struct cmsghdr", pure, final,
               header: "<sys/socket.h>".} = object ## struct cmsghdr
-    cmsg_len*: csize ## Data byte count, including the cmsghdr.
+    cmsg_len*: csize_t ## Data byte count, including the cmsghdr.
     cmsg_level*: cint   ## Originating protocol.
     cmsg_type*: cint    ## Protocol-specific type.
 
@@ -483,8 +483,6 @@ type
     fd*: cint        ## The following descriptor being polled.
     events*: cshort  ## The input event flags (see below).
     revents*: cshort ## The output event flags (see below).
-
-  Tnfds* {.importc: "nfds_t", header: "<poll.h>".} = culong
 
 var
   errno* {.importc, header: "<errno.h>".}: cint ## error variable

@@ -5,7 +5,7 @@ output: "90"
 
 when false:
   template lock(a, b: ptr Lock; body: stmt) =
-    if cast[ByteAddress](a) < cast[ByteAddress](b):
+    if cast[int](a) < cast[int](b):
       pthread_mutex_lock(a)
       pthread_mutex_lock(b)
     else:

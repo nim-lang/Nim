@@ -71,12 +71,12 @@ block tissue7104:
   proc sp(cb: proc())=
       cb()
 
-  sp:
+  sp do ():
       var i = 0
       echo "ok ", i
-      sp():
+      sp do ():
           inc i
           echo "ok ", i
-          sp do:
+          sp do ():
               inc i
               echo "ok ", i

@@ -1,3 +1,7 @@
+discard """
+  matrix: "--mm:refc"
+"""
+
 type
   Concrete* = object
     a*, b*: string

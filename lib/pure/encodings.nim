@@ -39,7 +39,9 @@ runnableExamples:
     assert fromGB2312.convert(second) == "有白头如新，倾盖如故"
 
 
-import os
+import std/os
+when defined(nimPreviewSlimSystem):
+  import std/assertions
 
 when not defined(windows):
   type
@@ -57,7 +59,7 @@ type
                                         ## for encoding errors.
 
 when defined(windows):
-  import parseutils, strutils
+  import std/[parseutils, strutils]
   proc eqEncodingNames(a, b: string): bool =
     var i = 0
     var j = 0
@@ -337,10 +339,10 @@ proc getCurrentEncoding*(uiApp = false): string =
 
 proc open*(destEncoding = "UTF-8", srcEncoding = "CP1252"): EncodingConverter =
   ## Opens a converter that can convert from `srcEncoding` to `destEncoding`.
-  ## Raises `IOError` if it cannot fulfill the request.
+  ## Raises `EncodingError` if it cannot fulfill the request.
   when not defined(windows):
     result = iconvOpen(destEncoding, srcEncoding)
-    if result == nil:
+    if result == cast[EncodingConverter](-1):
       raise newException(EncodingError,
         "cannot create encoding converter from " &
         srcEncoding & " to " & destEncoding)
@@ -462,7 +464,7 @@ else:
     var outLen = csize_t len(result)
     var src = cstring(s)
     var dst = cstring(result)
-    var iconvres: csize_t
+    var iconvres: csize_t = csize_t(0)
     while inLen > 0:
       iconvres = iconv(c, addr src, addr inLen, addr dst, addr outLen)
       if iconvres == high(csize_t):

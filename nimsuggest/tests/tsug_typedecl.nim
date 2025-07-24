@@ -21,6 +21,6 @@ $nimsuggest --tester $file
 >sug $1
 sug;;skType;;tsug_typedecl.someType;;someType;;*nimsuggest/tests/tsug_typedecl.nim;;7;;2;;"";;100;;Prefix
 sug;;skType;;tsug_typedecl.super;;super;;*nimsuggest/tests/tsug_typedecl.nim;;6;;2;;"";;100;;Prefix
-sug;;skType;;system.string;;string;;*lib/system.nim;;*;;*;;*;;100;;Prefix
+sug;;skType;;system.string;;string;;*lib/system/basic_types.nim;;*;;*;;*;;100;;Prefix
 sug;;skType;;system.seq;;seq;;*lib/system.nim;;*;;*;;*;;100;;Prefix
 """

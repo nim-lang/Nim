@@ -1,0 +1,4 @@
+nimTitle	main	main.html	module nimdoc/extlinks/project/main		0
+nim	A	main.html#A	object A		17
+nim	mainfunction	main.html#mainfunction	proc mainfunction(): int		20
+heading	my heading	main.html#my-heading	 my heading		0

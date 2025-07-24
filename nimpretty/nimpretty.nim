@@ -12,9 +12,11 @@
 when not defined(nimpretty):
   {.error: "This needs to be compiled with --define:nimPretty".}
 
-import ../compiler / [idents, msgs, syntaxes, options, pathutils, layouter]
+import ../compiler / [idents, llstream, ast, msgs, syntaxes, options, pathutils, layouter]
 
 import parseopt, strutils, os, sequtils
+
+import std/tempfiles
 
 const
   Version = "0.2"
@@ -26,6 +28,7 @@ Usage:
 Options:
   --out:file            set the output file (default: overwrite the input file)
   --outDir:dir          set the output dir (default: overwrite the input files)
+  --stdin               read input from stdin and write output to stdout
   --indent:N[=0]        set the number of spaces that is used for indentation
                         --indent:0 means autodetection (default behaviour)
   --maxLineLen:N        set the desired maximum line length (default: 80)
@@ -48,7 +51,43 @@ type
     indWidth*: Natural
     maxLineLen*: Positive
 
-proc prettyPrint*(infile, outfile: string, opt: PrettyOptions) =
+proc goodEnough(a, b: PNode): bool =
+  if a.kind == b.kind and a.safeLen == b.safeLen:
+    case a.kind
+    of nkNone, nkEmpty, nkNilLit: result = true
+    of nkIdent: result = a.ident.id == b.ident.id
+    of nkSym: result = a.sym == b.sym
+    of nkType: result = true
+    of nkCharLit, nkIntLit..nkInt64Lit, nkUIntLit..nkUInt64Lit:
+      result = a.intVal == b.intVal
+    of nkFloatLit..nkFloat128Lit:
+      result = a.floatVal == b.floatVal
+    of nkStrLit, nkRStrLit, nkTripleStrLit:
+      result = a.strVal == b.strVal
+    else:
+      for i in 0 ..< a.len:
+        if not goodEnough(a[i], b[i]): return false
+      return true
+  elif a.kind == nkStmtList and a.len == 1:
+    result = goodEnough(a[0], b)
+  elif b.kind == nkStmtList and b.len == 1:
+    result = goodEnough(a, b[0])
+  else:
+    result = false
+
+proc finalCheck(content: string; origAst: PNode): bool {.nimcall.} =
+  var conf = newConfigRef()
+  let oldErrors = conf.errorCounter
+  var parser: Parser
+  parser.em.indWidth = 2
+  let fileIdx = fileInfoIdx(conf, AbsoluteFile "nimpretty_bug.nim")
+
+  openParser(parser, fileIdx, llStreamOpen(content), newIdentCache(), conf)
+  let newAst = parseAll(parser)
+  closeParser(parser)
+  result = conf.errorCounter == oldErrors # and goodEnough(newAst, origAst)
+
+proc prettyPrint*(infile, outfile: string; opt: PrettyOptions) =
   var conf = newConfigRef()
   let fileIdx = fileInfoIdx(conf, AbsoluteFile infile)
   let f = splitFile(outfile.expandTilde)
@@ -58,14 +97,32 @@ proc prettyPrint*(infile, outfile: string, opt: PrettyOptions) =
   parser.em.indWidth = opt.indWidth
   if setupParser(parser, fileIdx, newIdentCache(), conf):
     parser.em.maxLineLen = opt.maxLineLen
-    discard parseAll(parser)
+    let fullAst = parseAll(parser)
     closeParser(parser)
+    when defined(nimpretty):
+      closeEmitter(parser.em, fullAst, finalCheck)
+
+proc handleStdinInput(opt: PrettyOptions) =
+  var content = readAll(stdin)
+
+  var (cfile, path) = createTempFile("nimpretty_", ".nim")
+
+  writeFile(path, content)
+
+  prettyPrint(path, path, opt)
+
+  stdout.write(readAll(cfile))
+
+  close(cfile)
+  removeFile(path)
 
 proc main =
   var outfile, outdir: string
 
   var infiles = newSeq[string]()
   var outfiles = newSeq[string]()
+
+  var isStdin = false
 
   var backup = false
     # when `on`, create a backup file of input in case
@@ -74,11 +131,16 @@ proc main =
     # --backup was un-documented (rely on git instead).
   var opt = PrettyOptions(indWidth: 0, maxLineLen: 80)
 
-
   for kind, key, val in getopt():
     case kind
     of cmdArgument:
-      infiles.add(key.addFileExt(".nim"))
+      if dirExists(key):
+        for file in walkDirRec(key, skipSpecial = true):
+          if file.endsWith(".nim") or file.endsWith(".nimble"):
+            infiles.add(file)
+      else:
+        infiles.add(key.addFileExt(".nim"))
+
     of cmdLongOption, cmdShortOption:
       case normalize(key)
       of "help", "h": writeHelp()
@@ -88,8 +150,15 @@ proc main =
       of "outDir", "outdir": outdir = val
       of "indent": opt.indWidth = parseInt(val)
       of "maxlinelen": opt.maxLineLen = parseInt(val)
+      # "" is equal to '-' as input
+      of "stdin", "": isStdin = true
       else: writeHelp()
     of cmdEnd: assert(false) # cannot happen
+
+  if isStdin:
+    handleStdinInput(opt)
+    return
+
   if infiles.len == 0:
     quit "[Error] no input file."
 

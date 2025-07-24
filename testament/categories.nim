@@ -13,7 +13,7 @@
 # included from testament.nim
 
 import important_packages
-import std/strformat
+import std/[strformat, strutils]
 from std/sequtils import filterIt
 
 const
@@ -47,7 +47,7 @@ proc isTestFile*(file: string): bool =
 
 # --------------------- DLL generation tests ----------------------------------
 
-proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
+proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string, isOrc = false) =
   const rpath = when defined(macosx):
       " --passL:-rpath --passL:@loader_path"
     else:
@@ -59,10 +59,11 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
   var test2 = makeTest("tests/dll/server.nim", options & " --threads:on" & rpath, cat)
   test2.spec.action = actionCompile
   testSpec c, test2
-  var test3 = makeTest("lib/nimhcr.nim", options & " --outdir:tests/dll" & rpath, cat)
+
+  var test3 = makeTest("lib/nimhcr.nim", options & " --threads:off --outdir:tests/dll" & rpath, cat)
   test3.spec.action = actionCompile
   testSpec c, test3
-  var test4 = makeTest("tests/dll/visibility.nim", options & " --app:lib" & rpath, cat)
+  var test4 = makeTest("tests/dll/visibility.nim", options & " --threads:off --app:lib" & rpath, cat)
   test4.spec.action = actionCompile
   testSpec c, test4
 
@@ -77,13 +78,20 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
     defer: putEnv(libpathenv, libpath)
 
   testSpec r, makeTest("tests/dll/client.nim", options & " --threads:on" & rpath, cat)
-  testSpec r, makeTest("tests/dll/nimhcr_unit.nim", options & rpath, cat)
-  testSpec r, makeTest("tests/dll/visibility.nim", options & rpath, cat)
+  testSpec r, makeTest("tests/dll/nimhcr_unit.nim", options & " --threads:off" & rpath, cat)
+  testSpec r, makeTest("tests/dll/visibility.nim", options & " --threads:off" & rpath, cat)
 
   if "boehm" notin options:
+    # hcr tests
+
+    var basicHcrTest = makeTest("tests/dll/nimhcr_basic.nim", options & " --threads:off --forceBuild --hotCodeReloading:on " & rpath, cat)
+    # test segfaults for now but compiles:
+    if isOrc: basicHcrTest.spec.action = actionCompile
+    testSpec r, basicHcrTest
+
     # force build required - see the comments in the .nim file for more details
     var hcri = makeTest("tests/dll/nimhcr_integration.nim",
-                                   options & " --forceBuild --hotCodeReloading:on" & rpath, cat)
+                                   options & " --threads:off --forceBuild --hotCodeReloading:on" & rpath, cat)
     let nimcache = nimcacheDir(hcri.name, hcri.options, getTestSpecTarget())
     let cmd = prepareTestCmd(hcri.spec.getCmd, hcri.name,
                                 hcri.options, nimcache, getTestSpecTarget())
@@ -94,9 +102,12 @@ proc dllTests(r: var TResults, cat: Category, options: string) =
   # dummy compile result:
   var c = initResults()
 
-  runBasicDLLTest c, r, cat, options
-  runBasicDLLTest c, r, cat, options & " -d:release"
-  when not defined(windows):
+  runBasicDLLTest c, r, cat, options & " --mm:refc"
+  runBasicDLLTest c, r, cat, options & " -d:release --mm:refc"
+  runBasicDLLTest c, r, cat, options, isOrc = true
+  runBasicDLLTest c, r, cat, options & " -d:release", isOrc = true
+  when not defined(windows) and not defined(osx):
+    # boehm library linking broken on macos 13
     # still cannot find a recent Windows version of boehm.dll:
     runBasicDLLTest c, r, cat, options & " --gc:boehm"
     runBasicDLLTest c, r, cat, options & " -d:release --gc:boehm"
@@ -105,11 +116,12 @@ proc dllTests(r: var TResults, cat: Category, options: string) =
 
 proc gcTests(r: var TResults, cat: Category, options: string) =
   template testWithoutMs(filename: untyped) =
-    testSpec r, makeTest("tests/gc" / filename, options, cat)
+    testSpec r, makeTest("tests/gc" / filename, options & "--mm:refc", cat)
     testSpec r, makeTest("tests/gc" / filename, options &
-                  " -d:release -d:useMalloc", cat)
+                  " -d:release -d:useMalloc --mm:refc", cat)
     testSpec r, makeTest("tests/gc" / filename, options &
-                  " -d:release -d:useRealtimeGC", cat)
+                  " -d:release -d:useRealtimeGC --mm:refc", cat)
+                  
     when filename != "gctest":
       testSpec r, makeTest("tests/gc" / filename, options &
                     " --gc:orc", cat)
@@ -125,7 +137,8 @@ proc gcTests(r: var TResults, cat: Category, options: string) =
 
   template test(filename: untyped) =
     testWithoutBoehm filename
-    when not defined(windows) and not defined(android):
+    when not defined(windows) and not defined(android) and not defined(osx):
+      # boehm library linking broken on macos 13
       # AR: cannot find any boehm.dll on the net, right now, so disabled
       # for windows:
       testSpec r, makeTest("tests/gc" / filename, options &
@@ -155,6 +168,7 @@ proc gcTests(r: var TResults, cat: Category, options: string) =
   test "stackrefleak"
   test "cyclecollector"
   testWithoutBoehm "trace_globals"
+  test "tfinalizers"
 
 # ------------------------- threading tests -----------------------------------
 
@@ -210,9 +224,9 @@ proc jsTests(r: var TResults, cat: Category, options: string) =
   for testfile in ["exception/texceptions", "exception/texcpt1",
                    "exception/texcsub", "exception/tfinally",
                    "exception/tfinally2", "exception/tfinally3",
-                   "actiontable/tactiontable", "method/tmultimjs",
+                   "collections/tactiontable", "method/tmultimjs",
                    "varres/tvarres0", "varres/tvarres3", "varres/tvarres4",
-                   "varres/tvartup", "misc/tints", "misc/tunsignedinc",
+                   "varres/tvartup", "int/tints", "int/tunsignedinc",
                    "async/tjsandnativeasync"]:
     test "tests/" & testfile & ".nim"
 
@@ -337,7 +351,7 @@ proc compileExample(r: var TResults, pattern, options: string, cat: Category) =
     testSpec r, test
 
 proc testStdlib(r: var TResults, pattern, options: string, cat: Category) =
-  var files: seq[string]
+  var files: seq[string] = @[]
 
   proc isValid(file: string): bool =
     for dir in parentDirs(file, inclusive = false):
@@ -373,11 +387,13 @@ proc testStdlib(r: var TResults, pattern, options: string, cat: Category) =
 
 # ----------------------------- nimble ----------------------------------------
 proc listPackagesAll(): seq[NimblePackage] =
+  result = @[]
   var nimbleDir = getEnv("NIMBLE_DIR")
   if nimbleDir.len == 0: nimbleDir = getHomeDir() / ".nimble"
   let packageIndex = nimbleDir / "packages_official.json"
   let packageList = parseFile(packageIndex)
   proc findPackage(name: string): JsonNode =
+    result = nil
     for a in packageList:
       if a["name"].str == name: return a
   for pkg in important_packages.packages.items:
@@ -401,17 +417,15 @@ proc listPackages(packageFilter: string): seq[NimblePackage] =
     elif testamentData0.testamentNumBatch == 0:
       result = pkgs
     else:
+      result = @[]
       let pkgs2 = pkgs.filterIt(not it.allowFailure)
       for i in 0..<pkgs2.len:
         if i mod testamentData0.testamentNumBatch == testamentData0.testamentBatch:
           result.add pkgs2[i]
 
 proc makeSupTest(test, options: string, cat: Category, debugInfo = ""): TTest =
-  result.cat = cat
-  result.name = test
-  result.options = options
-  result.debugInfo = debugInfo
-  result.startTime = epochTime()
+  result = TTest(cat: cat, name: test, options: options, debugInfo: debugInfo,
+                startTime: epochTime())
 
 import std/private/gitutils
 
@@ -430,7 +444,7 @@ proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string) =
       var test = makeSupTest(pkg.name, "", cat, "[$#/$#] " % [$i, $pkgs.len])
       let buildPath = packagesDir / pkg.name
       template tryCommand(cmd: string, workingDir2 = buildPath, reFailed = reInstallFailed, maxRetries = 1): string =
-        var outp: string
+        var outp: string = ""
         let ok = retryCall(maxRetry = maxRetries, backoffDuration = 10.0):
           var status: int
           (outp, status) = execCmdEx(cmd, workingDir = workingDir2)
@@ -439,7 +453,7 @@ proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string) =
           if pkg.allowFailure:
             inc r.passed
             inc r.failedButAllowed
-          addResult(r, test, targetC, "", cmd & "\n" & outp, reFailed, allowFailure = pkg.allowFailure)
+          r.finishTest(test, targetC, "", "", cmd & "\n" & outp, reFailed, allowFailure = pkg.allowFailure)
           continue
         outp
 
@@ -450,23 +464,26 @@ proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string) =
           let describeOutput = tryCommand("git describe --tags --abbrev=0")
           discard tryCommand("git checkout $#" % [describeOutput.strip.quoteShell])
         discard tryCommand("nimble install --depsOnly -y", maxRetries = 3)
-      discard tryCommand(pkg.cmd, reFailed = reBuildFailed)
+      let cmds = pkg.cmd.split(';')
+      for i in 0 ..< cmds.len - 1:
+        discard tryCommand(cmds[i], maxRetries = 3)
+      discard tryCommand(cmds[^1], reFailed = reBuildFailed)
       inc r.passed
-      r.addResult(test, targetC, "", "", reSuccess, allowFailure = pkg.allowFailure)
+      r.finishTest(test, targetC, "", "", "", reSuccess, allowFailure = pkg.allowFailure)
 
     errors = r.total - r.passed
     if errors == 0:
-      r.addResult(packageFileTest, targetC, "", "", reSuccess)
+      r.finishTest(packageFileTest, targetC, "", "", "", reSuccess)
     else:
-      r.addResult(packageFileTest, targetC, "", "", reBuildFailed)
+      r.finishTest(packageFileTest, targetC, "", "", "", reBuildFailed)
 
   except JsonParsingError:
     errors = 1
-    r.addResult(packageFileTest, targetC, "", "Invalid package file", reBuildFailed)
+    r.finishTest(packageFileTest, targetC, "", "", "Invalid package file", reBuildFailed)
     raise
   except ValueError:
     errors = 1
-    r.addResult(packageFileTest, targetC, "", "Unknown package", reBuildFailed)
+    r.finishTest(packageFileTest, targetC, "", "", "Unknown package", reBuildFailed)
     raise # bug #18805
   finally:
     if errors == 0: removeDir(packagesDir)
@@ -555,6 +572,7 @@ proc isJoinableSpec(spec: TSpec): bool =
     spec.err != reDisabled and
     not spec.unjoinable and
     spec.exitCode == 0 and
+    spec.retries == 0 and
     spec.input.len == 0 and
     spec.nimout.len == 0 and
     spec.nimoutFull == false and
@@ -569,7 +587,8 @@ proc isJoinableSpec(spec: TSpec): bool =
       result = false
 
 proc quoted(a: string): string =
-  # todo: consider moving to system.nim
+  # TODO: consider moving to system.nim
+  result = ""
   result.addQuoted(a)
 
 proc runJoinedTest(r: var TResults, cat: Category, testsDir: string, options: string) =
@@ -586,7 +605,7 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string, options: st
     if kind == pcDir and cat notin specialCategories:
       for file in walkDirRec(testsDir / cat):
         if isTestFile(file):
-          var spec: TSpec
+          var spec: TSpec = default(TSpec)
           try:
             spec = parseSpec(file)
           except ValueError:
@@ -607,7 +626,7 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string, options: st
     echo s
     return
 
-  var megatest: string
+  var megatest: string = ""
   # xxx (minor) put outputExceptedFile, outputGottenFile, megatestFile under here or `buildDir`
   var outDir = nimcacheDir(testsDir / "megatest", "", targetC)
   template toMarker(file, i): string =
@@ -679,7 +698,7 @@ proc processCategory(r: var TResults, cat: Category,
       else:
         jsTests(r, cat, options)
     of "dll":
-      dllTests(r, cat, options)
+      dllTests(r, cat, options & " -d:nimDebugDlOpen")
     of "gc":
       gcTests(r, cat, options)
     of "debugger":
@@ -717,9 +736,11 @@ proc processCategory(r: var TResults, cat: Category,
     case cat2
     of "megatest":
       runJoinedTest(r, cat, testsDir, options)
+      if isNimRepoTests():
+        runJoinedTest(r, cat, testsDir, options & " --mm:refc")
     else:
       var testsRun = 0
-      var files: seq[string]
+      var files: seq[string] = @[]
       for file in walkDirRec(testsDir &.? cat.string):
         if isTestFile(file): files.add file
       files.sort # give reproducible order

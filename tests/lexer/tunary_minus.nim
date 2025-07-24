@@ -5,6 +5,7 @@ discard """
 # Test numeric literals and handling of minus symbol
 
 import std/[macros, strutils]
+import std/private/jsutils
 
 import mlexerutils
 
@@ -60,7 +61,7 @@ template main =
     doAssert -2147483648'i32 == int32.low
     when int.sizeof > 4:
       doAssert -9223372036854775808 == int.low
-    when not defined(js):
+    when hasWorkingInt64:
       doAssert -9223372036854775808 == int64.low
 
   block: # check when a minus (-) is an unary op

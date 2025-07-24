@@ -5,9 +5,11 @@ The System module imports several separate modules, and their documentation
 is in separate files:
 
 * `iterators <iterators.html>`_
+* `exceptions <exceptions.html>`_
 * `assertions <assertions.html>`_
 * `dollars <dollars.html>`_
-* `widestrs <widestrs.html>`_
+* `ctypes <ctypes.html>`_
+* `repr_v2 <repr_v2.html>`_
 
 
 Here is a short overview of the most commonly used functions from the
@@ -98,6 +100,7 @@ Proc                                Usage
 ===============================     ======================================
 
 **See also:**
+* `setutils module <setutils.html>`_ for bit set convenience functions
 * `sets module <sets.html>`_ for hash sets
 * `intsets module <intsets.html>`_ for efficient int sets
 
@@ -141,10 +144,10 @@ types, as well as their subtypes.
 =====================     =======================================
 Proc                      Usage
 =====================     =======================================
-`succ<#succ,T,int>`_      Successor of the value
-`pred<#pred,T,int>`_      Predecessor of the value
-`inc<#inc,T,int>`_        Increment the ordinal
-`dec<#dec,T,int>`_        Decrement the ordinal
+succ_                     Successor of the value
+pred_                     Predecessor of the value
+inc_                      Increment the ordinal
+dec_                      Decrement the ordinal
 `high<#high,T>`_          Return the highest possible value
 `low<#low,T>`_            Return the lowest possible value
 `ord<#ord,T>`_            Return `int` value of an ordinal value

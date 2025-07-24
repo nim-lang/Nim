@@ -46,7 +46,7 @@ else:
 proc raiseOutOfMem() {.noinline.} =
   if outOfMemHook != nil: outOfMemHook()
   cstderr.rawWrite("out of memory\n")
-  quit(1)
+  rawQuit(1)
 
 when defined(boehmgc):
   include system / mm / boehm
@@ -55,7 +55,8 @@ elif defined(gogc):
   include system / mm / go
 
 elif (defined(nogc) or defined(gcDestructors)) and defined(useMalloc):
-  include system / mm / malloc
+  when not defined(useNimRtl):
+    include system / mm / malloc
 
   when defined(nogc):
     proc GC_getStatistics(): string = ""

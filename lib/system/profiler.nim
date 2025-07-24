@@ -60,13 +60,13 @@ proc captureStackTrace(f: PFrame, st: var StackTrace) =
     b = b.prev
 
 var
-  profilingRequestedHook*: proc (): bool {.nimcall, locks: 0, gcsafe.}
+  profilingRequestedHook*: proc (): bool {.nimcall, gcsafe.}
     ## set this variable to provide a procedure that implements a profiler in
     ## user space. See the `nimprof` module for a reference implementation.
 
 when defined(memProfiler):
   type
-    MemProfilerHook* = proc (st: StackTrace, requestedSize: int) {.nimcall, locks: 0, gcsafe.}
+    MemProfilerHook* = proc (st: StackTrace, requestedSize: int) {.nimcall, gcsafe.}
 
   var
     profilerHook*: MemProfilerHook

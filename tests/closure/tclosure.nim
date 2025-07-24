@@ -65,7 +65,7 @@ block tclosure:
 
   # bug #5015
 
-  type Mutator = proc(matched: string): string {.noSideEffect, gcsafe, locks: 0.}
+  type Mutator = proc(matched: string): string {.noSideEffect, gcsafe.}
 
   proc putMutated(
       MutatorCount: static[int],
@@ -239,19 +239,19 @@ block doNotation:
   b.onClick do (e: Event):
     echo "click at ", e.x, ",", e.y
 
-  b.onFocusLost:
+  b.onFocusLost do ():
     echo "lost focus 1"
 
-  b.onFocusLost do:
+  b.onFocusLost do ():
     echo "lost focus 2"
 
-  b.onUserEvent("UserEvent 1") do:
+  b.onUserEvent("UserEvent 1") do ():
     discard
 
-  b.onUserEvent "UserEvent 2":
+  onUserEvent(b, "UserEvent 2") do ():
     discard
 
-  b.onUserEvent("UserEvent 3"):
+  b.onUserEvent("UserEvent 3") do ():
     discard
 
   b.onUserEvent("UserEvent 4", () => echo "event 4")
@@ -491,3 +491,64 @@ block tnoclosure:
       row = zip(row & @[0], @[0] & row).mapIt(it[0] + it[1])
     echo row
   pascal(10)
+
+block: # bug #22297
+  iterator f: int {.closure.} =
+    try:
+      yield 12
+    finally:
+      return 14
+
+  let s = f
+  doAssert s() == 12
+  doAssert s() == 14
+
+# bug #19984
+import std/[sets]
+
+block:
+  type
+    i8 = int8
+    seq8 = seq[int8]
+    Cell    = seq8
+    NODE    = tuple[d_in:int8,Strong:bool,link:Cell]
+    PATH    = seq[NODE]
+
+  var
+    max_level : int
+
+  var
+    Seen:HashSet[NODE]
+    path:PATH
+
+  iterator Loop_next(strong_link:bool, d_in:int8, node:Cell, head:int8, 
+                Seen:var HashSet[NODE], path: var PATH, level:int ) : PATH {.closure.} = 
+
+    if level > max_level :
+      return
+    let GNode= len(node) > 1   # without this line, the code compiles
+    
+    var
+      rt, ct, st : seq8
+      column_type : bool
+
+  #[ with this code commented out the compiler error does not occurs ]#
+      
+    st= filter(st, proc(x:int8) : bool = x notin node)
+    if column_type :
+      rt= @[]
+      ct= filter(ct, proc(x:int8) : bool = x notin node)
+    else :  # row type
+      rt= filter(rt, proc(x:int8) : bool = x notin node)
+      ct= @[]
+
+  #[]#
+  iterator Nice_Loop( ) : PATH {.closure.} =
+    for cell in 0i8..80i8 :
+      let head= cell
+
+      for pt in  Loop_next(true,0.i8,@[cell], head,Seen,path,0) :
+        yield pt
+
+  for P in  Nice_Loop() :
+    continue

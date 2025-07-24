@@ -18,7 +18,7 @@ try:
 except JsEvalError:
   doAssert false
 except JsSyntaxError as se:
-  doAssert se.message == "Unexpected token ; in JSON at position 0"
+  doAssert se.message == "Unexpected token ';', \";;\" is not valid JSON"
 except JsError as e:
   doAssert false
 

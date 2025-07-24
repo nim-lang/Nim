@@ -1,4 +1,9 @@
+discard """
+  matrix: "--mm:refc; --mm:orc"
+"""
+
 import std/wordwrap
+import std/assertions
 
 when true:
   let

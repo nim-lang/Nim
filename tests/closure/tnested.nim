@@ -1,4 +1,5 @@
 discard """
+targets: "c js"
 output: '''
 foo88
 23 24foo 88
@@ -33,7 +34,7 @@ py
 py
 px
 6
-proc (){.closure, gcsafe, locks: 0.}
+proc (){.closure, noSideEffect, gcsafe.}
 '''
 """
 
@@ -183,14 +184,32 @@ block tclosure2:
 
 import typetraits
 
-proc myDiscard[T](a: T) = discard
+block:
+  proc myDiscard[T](a: T) = discard
 
-proc foo() =
-  let a = 5
-  let f = (proc() =
-             myDiscard (proc() = echo a)
-          )
-  echo name(typeof(f))
+  proc foo() =
+    let a = 5
+    let f = (proc() =
+              myDiscard (proc() = echo a)
+            )
+    echo name(typeof(f))
 
-foo()
+  foo()
 
+
+block:
+  iterator foo: int {.closure.} =
+    yield 1
+    yield 2
+    yield 3
+
+  proc pork =
+    let call = foo
+    for i in call():
+      discard i
+
+    let call2 = foo
+    while not finished(call2):
+      discard call2()
+
+  pork()

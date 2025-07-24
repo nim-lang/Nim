@@ -47,8 +47,7 @@ Notation                meaning
 Examples
 ========
 
-.. code-block:: nim
-
+  ```nim
   subex"$1($', '{2..})" % ["f", "a", "b", "c"] == "f(a, b, c)"
 
   subex"$1 $[files|file|files]{1} copied" % ["1"] == "1 file copied"
@@ -57,5 +56,5 @@ Examples
 
   subex("type\n  TEnum = enum\n    $', '40c'\n    '{..}") % [
     "fieldNameA", "fieldNameB", "fieldNameC", "fieldNameD"]
-
+  ```
 

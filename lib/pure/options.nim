@@ -53,7 +53,7 @@ Pattern matching
 supports pattern matching on `Option`s, with the `Some(<pattern>)` and
 `None()` patterns.
 
-.. code-block:: nim
+  ```nim
   {.experimental: "caseStmtMacros".}
 
   import fusion/matching
@@ -65,15 +65,24 @@ supports pattern matching on `Option`s, with the `Some(<pattern>)` and
     assert false
 
   assertMatch(some(some(none(int))), Some(Some(None())))
+  ```
 ]##
 # xxx pending https://github.com/timotheecour/Nim/issues/376 use `runnableExamples` and `whichModule`
 
+when defined(nimHasEffectsOf):
+  {.experimental: "strictEffects".}
+else:
+  {.pragma: effectsOf.}
 
-import typetraits
+import std/typetraits
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 
 when (NimMajor, NimMinor) >= (1, 1):
   type
-    SomePointer = ref | ptr | pointer | proc
+    SomePointer = ref | ptr | pointer | proc | iterator {.closure.}
 else:
   type
     SomePointer = ref | ptr | pointer
@@ -81,7 +90,7 @@ else:
 type
   Option*[T] = object
     ## An optional type that may or may not contain a value of type `T`.
-    ## When `T` is a a pointer type (`ptr`, `pointer`, `ref` or `proc`),
+    ## When `T` is a a pointer type (`ptr`, `pointer`, `ref`, `proc` or `iterator {.closure.}`),
     ## `none(T)` is represented as `nil`.
     when T is SomePointer:
       val: T
@@ -108,9 +117,10 @@ proc option*[T](val: sink T): Option[T] {.inline.} =
     assert option[Foo](nil).isNone
     assert option(42).isSome
 
-  result.val = val
-  when T isnot SomePointer:
-    result.has = true
+  when T is SomePointer:
+    result = Option[T](val: val)
+  else:
+    result = Option[T](has: true, val: val)
 
 proc some*[T](val: sink T): Option[T] {.inline.} =
   ## Returns an `Option` that has the value `val`.
@@ -127,10 +137,9 @@ proc some*[T](val: sink T): Option[T] {.inline.} =
 
   when T is SomePointer:
     assert not val.isNil
-    result.val = val
+    result = Option[T](val: val)
   else:
-    result.has = true
-    result.val = val
+    result = Option[T](has: true, val: val)
 
 proc none*(T: typedesc): Option[T] {.inline.} =
   ## Returns an `Option` for this type that has no value.
@@ -143,7 +152,7 @@ proc none*(T: typedesc): Option[T] {.inline.} =
     assert none(int).isNone
 
   # the default is the none type
-  discard
+  result = Option[T]()
 
 proc none*[T]: Option[T] {.inline.} =
   ## Alias for `none(T) <#none,typedesc>`_.
@@ -222,7 +231,7 @@ proc get*[T](self: var Option[T]): var T {.inline.} =
     raise newException(UnpackDefect, "Can't obtain a value from a `none`")
   return self.val
 
-proc map*[T](self: Option[T], callback: proc (input: T)) {.inline.} =
+proc map*[T](self: Option[T], callback: proc (input: T)) {.inline, effectsOf: callback.} =
   ## Applies a `callback` function to the value of the `Option`, if it has one.
   ##
   ## **See also:**
@@ -241,7 +250,7 @@ proc map*[T](self: Option[T], callback: proc (input: T)) {.inline.} =
   if self.isSome:
     callback(self.val)
 
-proc map*[T, R](self: Option[T], callback: proc (input: T): R): Option[R] {.inline.} =
+proc map*[T, R](self: Option[T], callback: proc (input: T): R): Option[R] {.inline, effectsOf: callback.} =
   ## Applies a `callback` function to the value of the `Option` and returns an
   ## `Option` containing the new value.
   ##
@@ -278,7 +287,7 @@ proc flatten*[T](self: Option[Option[T]]): Option[T] {.inline.} =
     none(T)
 
 proc flatMap*[T, R](self: Option[T],
-                    callback: proc (input: T): Option[R]): Option[R] {.inline.} =
+                    callback: proc (input: T): Option[R]): Option[R] {.inline, effectsOf: callback.} =
   ## Applies a `callback` function to the value of the `Option` and returns the new value.
   ##
   ## If the `Option` has no value, `none(R)` will be returned.
@@ -303,7 +312,7 @@ proc flatMap*[T, R](self: Option[T],
 
   map(self, callback).flatten()
 
-proc filter*[T](self: Option[T], callback: proc (input: T): bool): Option[T] {.inline.} =
+proc filter*[T](self: Option[T], callback: proc (input: T): bool): Option[T] {.inline, effectsOf: callback.} =
   ## Applies a `callback` to the value of the `Option`.
   ##
   ## If the `callback` returns `true`, the option is returned as `some`.

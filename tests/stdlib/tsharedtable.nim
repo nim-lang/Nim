@@ -1,10 +1,11 @@
 discard """
-cmd: "nim $target --threads:on $options $file"
+matrix: "--mm:refc; --mm:orc"
 output: '''
 '''
 """
 
 import sharedtables
+import std/assertions
 
 block:
   var table: SharedTable[int, int]

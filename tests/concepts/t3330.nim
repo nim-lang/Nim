@@ -1,4 +1,5 @@
 discard """
+matrix: "--mm:refc"
 errormsg: "type mismatch: got <Bar[system.int]>"
 nimout: '''
 t3330.nim(70, 4) Error: type mismatch: got <Bar[system.int]>
@@ -36,7 +37,6 @@ t3330.nim(63, 6) Foo: 'bar.x' cannot be assigned to
 
 expression: test(bar)'''
 """
-
 
 
 

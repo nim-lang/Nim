@@ -1,4 +1,5 @@
 discard """
+matrix: "--mm:refc"
 output: '''
 Future is no longer empty, 42
 '''

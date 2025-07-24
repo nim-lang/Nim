@@ -1,7 +1,3 @@
-discard """
-  output: "56"
-"""
-
 # bug #1781
 
 proc initCombinations: array[11, array[11, int]] =
@@ -14,4 +10,4 @@ proc initCombinations: array[11, array[11, int]] =
   result[6][6 .. 10] =             [52,53,54,55,56]
 
 const combinations = initCombinations()
-echo combinations[6][10]
+doAssert combinations[6][10] == 56

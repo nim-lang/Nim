@@ -10,8 +10,13 @@ template forwardImpl*(impl, arg) {.dirty.} =
     else:
       impl(x.uint64)
 
-template toUnsigned*(x: int8): uint8 = cast[uint8](x)
-template toUnsigned*(x: int16): uint16 = cast[uint16](x)
-template toUnsigned*(x: int32): uint32 = cast[uint32](x)
-template toUnsigned*(x: int64): uint64 = cast[uint64](x)
-template toUnsigned*(x: int): uint = cast[uint](x)
+# this could also be implemented via:
+# import std/typetraits
+# template castToUnsigned*(x: SomeInteger): auto = cast[toUnsigned(typeof(x))](x)
+
+template castToUnsigned*(x: int8): uint8 = cast[uint8](x)
+template castToUnsigned*(x: int16): uint16 = cast[uint16](x)
+template castToUnsigned*(x: int32): uint32 = cast[uint32](x)
+template castToUnsigned*(x: int64): uint64 = cast[uint64](x)
+template castToUnsigned*(x: int): uint = cast[uint](x)
+template castToUnsigned*[T: SomeUnsignedInt](x: T): T = x

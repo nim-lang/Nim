@@ -191,14 +191,14 @@ template myAttr3() {.pragma.}
 template serializationKey(key: string) {.pragma.}
 
 type
-  MyObj = object {.packed,myAttr,serializationKey: "one".}
+  MyObj {.packed,myAttr,serializationKey: "one".} = object
     myField {.myAttr2,serializationKey: "two".}: int
     myField2 {.myAttr3,serializationKey: "three".}: float
 
 # field pragmas not currently supported
 test(MyObj):
   type
-    _ = object {.packed,myAttr,serializationKey: "one".}
+    _ {.packed,myAttr,serializationKey: "one".} = object
       myField: int
       myField2: float
 

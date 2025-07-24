@@ -418,7 +418,7 @@ elif defined(freertos) or defined(lwip):
   const Sockaddr_un_path_length* = 108
 else:
   const Sockaddr_max_length* = 255
-  # according to http://pubs.opengroup.org/onlinepubs/009604499/basedefs/sys/un.h.html
+  # according to https://pubs.opengroup.org/onlinepubs/009604499/basedefs/sys/un.h.html
   # this is >=92
   const Sockaddr_un_path_length* = 92
 
@@ -604,13 +604,6 @@ when not defined(lwip):
       events*: cshort  ## The input event flags (see below).
       revents*: cshort ## The output event flags (see below).
 
-  when defined(zephyr):
-    type
-      Tnfds* = distinct cint
-  else:
-    type
-      Tnfds* {.importc: "nfds_t", header: "<poll.h>".} = cint
-
 var
   errno* {.importc, header: "<errno.h>".}: cint ## error variable
   h_errno* {.importc, header: "<netdb.h>".}: cint
@@ -640,10 +633,13 @@ when defined(linux) or defined(nimdoc):
       ## or UDP packets. (Requires Linux kernel > 3.9)
   else:
     const SO_REUSEPORT* = cint(15)
+elif defined(nuttx):
+  # Not supported, use SO_REUSEADDR to avoid compilation errors.
+  var SO_REUSEPORT* {.importc: "SO_REUSEADDR", header: "<sys/socket.h>".}: cint
 else:
   var SO_REUSEPORT* {.importc, header: "<sys/socket.h>".}: cint
 
-when defined(linux) or defined(bsd):
+when defined(linux) or defined(bsd) or defined(nuttx):
   var SOCK_CLOEXEC* {.importc, header: "<sys/socket.h>".}: cint
 
 when defined(macosx):
@@ -672,14 +668,14 @@ when defined(haiku):
 
 when hasSpawnH:
   when defined(linux):
-    # better be safe than sorry; Linux has this flag, macosx doesn't, don't
-    # know about the other OSes
+    # better be safe than sorry; Linux has this flag, macosx and NuttX don't,
+    # don't know about the other OSes
 
-    # Non-GNU systems like TCC and musl-libc  don't define __USE_GNU, so we
+    # Non-GNU systems like TCC and musl-libc don't define __USE_GNU, so we
     # can't get the magic number from spawn.h
     const POSIX_SPAWN_USEVFORK* = cint(0x40)
   else:
-    # macosx lacks this, so we define the constant to be 0 to not affect
+    # macosx and NuttX lack this, so we define the constant to be 0 to not affect
     # OR'ing of flags:
     const POSIX_SPAWN_USEVFORK* = cint(0)
 

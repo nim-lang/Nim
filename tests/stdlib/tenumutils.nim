@@ -1,9 +1,11 @@
 discard """
+  matrix: "--mm:refc; --mm:orc"
   targets: "c js"
 """
 
 import std/enumutils
 from std/sequtils import toSeq
+import std/assertions
 
 template main =
   block: # items
@@ -32,6 +34,16 @@ template main =
     doAssert b.symbolName == "b0"
     doAssert $b == "kb0"
     static: doAssert B.high.symbolName == "b2"
+
+  block:
+    type
+      Color = enum
+        Red = "red", Yellow = "yellow", Blue = "blue"
+
+    var s = Red
+    doAssert symbolName(s) == "Red"
+    var x: range[Red..Blue] = Yellow
+    doAssert symbolName(x) == "Yellow"
 
 static: main()
 main()

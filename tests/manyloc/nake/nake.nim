@@ -65,7 +65,7 @@ else:
     var
       task: string
       printTaskList: bool
-    for kind, key, val in getOpt():
+    for kind, key, val in getopt():
       case kind
       of cmdLongOption, cmdShortOption:
         case key.tolowerAscii

@@ -1,0 +1,7 @@
+switch("styleCheck", "usages")
+switch("styleCheck", "error")
+switch("define", "nimPreviewSlimSystem")
+switch("define", "nimPreviewCstringConversion")
+switch("define", "nimPreviewProcConversion")
+switch("warningAserror", "ProveInit")
+switch("warningAserror", "Uninit")

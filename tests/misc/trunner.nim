@@ -64,7 +64,7 @@ when defined(nimTrunnerFfi):
 hello world stderr
 hi stderr
 """
-    let output = runNimCmdChk("vm/mevalffi.nim", fmt"{opt} --experimental:compiletimeFFI")
+    let output = runNimCmdChk("vm/mevalffi.nim", fmt"{opt} --warnings:off --experimental:compiletimeFFI")
     doAssert output == fmt"""
 {prefix}foo
 foo:100
@@ -216,6 +216,41 @@ sub/mmain.idx""", context
       let cmd = fmt"{nim} r --backend:{mode} --hints:off --nimcache:{nimcache} {file}"
       check execCmdEx(cmd) == ("ok3\n", 0)
 
+  block: # nim jsondoc # bug #20132
+    let file = testsDir / "misc/mjsondoc.nim"
+    let output = "nimcache_tjsondoc.json"
+    defer: removeFile(output)
+    let (msg, exitCode) = execCmdEx(fmt"{nim} jsondoc -o:{output} {file}")
+    doAssert exitCode == 0, msg
+
+    let data = parseJson(readFile(output))["entries"]
+    doAssert data.len == 5
+    let doSomething = data[0]
+    doAssert doSomething["name"].getStr == "doSomething"
+    doAssert doSomething["type"].getStr == "skProc"
+    doAssert doSomething["line"].getInt == 1
+    doAssert doSomething["col"].getInt == 0
+    doAssert doSomething["code"].getStr == "proc doSomething(x, y: int): int {.raises: [], tags: [], forbids: [].}"
+    let foo2 = data[4]
+    doAssert $foo2["signature"] == """{"arguments":[{"name":"x","type":"T"},{"name":"y","type":"U"},{"name":"z","type":"M"}],"genericParams":[{"name":"T","types":"int"},{"name":"M","types":"string"},{"name":"U"}]}"""
+
+  block: # nim jsondoc # bug #11953
+    let file = testsDir / "misc/mjsondoc.nim"
+    let destDir = testsDir / "misc/htmldocs"
+    removeDir(destDir)
+    defer: removeDir(destDir)
+    let (msg, exitCode) = execCmdEx(fmt"{nim} jsondoc {file}")
+    doAssert exitCode == 0, msg
+
+    let data = parseJson(readFile(destDir / "mjsondoc.json"))["entries"]
+    doAssert data.len == 5
+    let doSomething = data[0]
+    doAssert doSomething["name"].getStr == "doSomething"
+    doAssert doSomething["type"].getStr == "skProc"
+    doAssert doSomething["line"].getInt == 1
+    doAssert doSomething["col"].getInt == 0
+    doAssert doSomething["code"].getStr == "proc doSomething(x, y: int): int {.raises: [], tags: [], forbids: [].}"
+
   block: # further issues with `--backend`
     let file = testsDir / "misc/mbackend.nim"
     var cmd = fmt"{nim} doc -b:cpp --hints:off --nimcache:{nimcache} {file}"
@@ -231,6 +266,21 @@ sub/mmain.idx""", context
     let file = testsDir / "misc/mimportc.nim"
     let cmd = fmt"{nim} r -b:cpp --hints:off --nimcache:{nimcache} --warningAsError:ProveInit {file}"
     check execCmdEx(cmd) == ("witness\n", 0)
+
+  block: # bug #20149
+    let file = testsDir / "misc/m20149.nim"
+    let cmd = fmt"{nim} r --hints:off --nimcache:{nimcache} --hintAsError:XDeclaredButNotUsed {file}"
+    check execCmdEx(cmd) == ("12\n", 0)
+
+  block: # bug #15316
+    when not defined(windows):
+      # This never worked reliably on Windows. Needs further investigation but it is hard to reproduce.
+      # Looks like a mild stack corruption when bailing out of nested exception handling.
+      let file = testsDir / "misc/m15316.nim"
+      let cmd = fmt"{nim} check --hints:off --nimcache:{nimcache} {file}"
+      check execCmdEx(cmd) == ("m15316.nim(1, 15) Error: expression expected, but found \')\'\nm15316.nim(2, 1) Error: expected: \':\', but got: \'[EOF]\'\nm15316.nim(2, 1) Error: expression expected, but found \'[EOF]\'\nm15316.nim(2, 1) " &
+            "Error: expected: \')\', but got: \'[EOF]\'\nError: illformed AST: \n", 1)
+
 
   block: # config.nims, nim.cfg, hintConf, bug #16557
     let cmd = fmt"{nim} r --hint:all:off --hint:conf tests/newconfig/bar/mfoo.nim"
@@ -248,6 +298,11 @@ tests/newconfig/bar/mfoo.nims""".splitLines
       let b = dir / a
       expected.add &"Hint: used config file '{b}' [Conf]\n"
     doAssert outp.endsWith expected, outp & "\n" & expected
+
+  block: # bug #8219
+    let file = "tests/newconfig/mconfigcheck.nims"
+    let cmd = fmt"{nim} check --hints:off {file}"
+    check execCmdEx(cmd) == ("", 0)
 
   block: # mfoo2.customext
     let filename = testsDir / "newconfig/foo2/mfoo2.customext"
@@ -292,8 +347,8 @@ tests/newconfig/bar/mfoo.nims""".splitLines
         when not defined(windows):
           check3 lines.len == 5
           check3 lines[0].isDots
-          check3 lines[1].dup(removePrefix(">>> ")) == "3" # prompt depends on `nimUseLinenoise`
-          check3 lines[2].isDots
+          # check3 lines[1].isDots # todo nim secret might use parsing pipeline
+          check3 lines[2].dup(removePrefix(">>> ")) == "3" # prompt depends on `nimUseLinenoise`
           check3 lines[3] == "ab"
           check3 lines[4] == ""
         else:
@@ -354,7 +409,7 @@ running: v2
 
   block: # UnusedImport
     proc fn(opt: string, expected: string) =
-      let output = runNimCmdChk("pragmas/mused3.nim", fmt"--warning:all:off --warning:UnusedImport --hint:DuplicateModuleImport {opt}")
+      let output = runNimCmdChk("msgs/mused3.nim", fmt"--warning:all:off --warning:UnusedImport --hint:DuplicateModuleImport {opt}")
       doAssert output == expected, opt & "\noutput:\n" & output & "expected:\n" & expected
     fn("-d:case1"): """
 mused3.nim(13, 8) Warning: imported and not used: 'mused3b' [UnusedImport]
@@ -384,7 +439,6 @@ mused3.nim(75, 10) Hint: duplicate import of 'mused3a'; previous import here: mu
     fn("-d:case2 --gc:refc"): """mfield_defect.nim(25, 15) field 'f2' is not accessible for type 'Foo' [discriminant declared in mfield_defect.nim(14, 8)] using 'kind = k3'"""
     fn("-d:case1 -b:js"): """mfield_defect.nim(25, 15) Error: field 'f2' is not accessible for type 'Foo' [discriminant declared in mfield_defect.nim(14, 8)] using 'kind = k3'"""
     fn("-d:case2 -b:js"): """field 'f2' is not accessible for type 'Foo' [discriminant declared in mfield_defect.nim(14, 8)] using 'kind = k3'"""
-    # 3 instead of k3, because of lack of RTTI
-    fn("-d:case2 --gc:arc"): """mfield_defect.nim(25, 15) field 'f2' is not accessible for type 'Foo' [discriminant declared in mfield_defect.nim(14, 8)] using 'kind = 3'"""
+    fn("-d:case2 --gc:arc"): """mfield_defect.nim(25, 15) field 'f2' is not accessible for type 'Foo' [discriminant declared in mfield_defect.nim(14, 8)] using 'kind = k3'"""
 else:
   discard # only during debugging, tests added here will run with `-d:nimTestsTrunnerDebugging` enabled

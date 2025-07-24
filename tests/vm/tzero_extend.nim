@@ -5,10 +5,10 @@ proc get_values(): (seq[int8], seq[int16], seq[int32]) =
   let i8 = -3'i8
   let i16 = -3'i16
   let i32 = -3'i32
-  doAssert i8.ze == 0xFD
-  doAssert i8.ze64 == 0xFD
-  doAssert i16.ze == 0xFFFD
-  doAssert i16.ze64 == 0xFFFD
+  doAssert int(cast[uint8](i8)) == 0xFD
+  doAssert int64(cast[uint8](i8)) == 0xFD
+  doAssert int(cast[uint16](i16)) == 0xFFFD
+  doAssert int64(cast[uint16](i16)) == 0xFFFD
 
   result[0] = @[]; result[1] = @[]; result[2] = @[]
 

@@ -53,7 +53,10 @@ runnableExamples:
   doAssert statistics.kurtosis() ~= -1.0
   doAssert statistics.kurtosisS() ~= -0.7000000000000008
 
-from math import FloatClass, sqrt, pow, round
+from std/math import FloatClass, sqrt, pow, round
+
+when defined(nimPreviewSlimSystem):
+  import std/[assertions, formatfloat]
 
 {.push debugger: off.} # the user does not want to trace a part
                        # of the standard library!
@@ -132,6 +135,7 @@ proc variance*(s: RunningStat): float =
 proc varianceS*(s: RunningStat): float =
   ## Computes the current sample variance of `s`.
   if s.n > 1: result = s.mom2 / toFloat(s.n - 1)
+  else: result = 0.0
 
 proc standardDeviation*(s: RunningStat): float =
   ## Computes the current population standard deviation of `s`.
@@ -164,6 +168,7 @@ proc `+`*(a, b: RunningStat): RunningStat =
   ##
   ## Useful when performing parallel analysis of data series
   ## and needing to re-combine parallel result sets.
+  result = default(RunningStat)
   result.clear()
   result.n = a.n + b.n
 
@@ -314,6 +319,7 @@ proc `+`*(a, b: RunningRegress): RunningRegress =
   ##
   ## Useful when performing parallel analysis of data series
   ## and needing to re-combine parallel result sets
+  result = default(RunningRegress)
   result.clear()
   result.x_stats = a.x_stats + b.x_stats
   result.y_stats = a.y_stats + b.y_stats

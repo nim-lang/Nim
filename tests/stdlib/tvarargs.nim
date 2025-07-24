@@ -1,12 +1,12 @@
 discard """
   targets: "c js"
-  matrix: "--gc:refc; --gc:arc"
+  matrix: "--mm:refc; --mm:orc"
 """
-
+import std/assertions
 
 template main =
   proc hello(x: varargs[string]): seq[string] =
-    var s: seq[string]
+    var s: seq[string] = @[]
     s.add x
     s
 

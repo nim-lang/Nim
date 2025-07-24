@@ -12,17 +12,15 @@
 ##
 ## Supports any Ordinal type.
 ##
-## .. note:: Currently the assignment operator `=` for `PackedSet[A]`
-##   performs some rather meaningless shallow copy. Since Nim currently does
-##   not allow the assignment operator to be overloaded, use the `assign proc
-##   <#assign,PackedSet[A],PackedSet[A]>`_ to get a deep copy.
-##
 ## See also
 ## ========
 ## * `sets module <sets.html>`_ for more general hash sets
 
 import std/private/since
-import hashes
+import std/hashes
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
 
 type
   BitScalar = uint
@@ -111,7 +109,6 @@ proc intSetPut[A](t: var PackedSet[A], key: int): Trunk =
   t.data[h] = result
 
 proc bitincl[A](s: var PackedSet[A], key: int) {.inline.} =
-  var ret: Trunk
   var t = intSetPut(s, key shr TrunkShift)
   var u = key and TrunkMask
   t.bits[u shr IntShift] = t.bits[u shr IntShift] or
@@ -201,6 +198,7 @@ proc contains*[A](s: PackedSet[A], key: A): bool =
     assert B notin letters
 
   if s.elems <= s.a.len:
+    result = false
     for i in 0..<s.elems:
       if s.a[i] == ord(key): return true
   else:
@@ -409,18 +407,9 @@ proc isNil*[A](x: PackedSet[A]): bool {.inline.} =
 
   x.head.isNil and x.elems == 0
 
-proc assign*[A](dest: var PackedSet[A], src: PackedSet[A]) =
+proc `=copy`*[A](dest: var PackedSet[A], src: PackedSet[A]) =
   ## Copies `src` to `dest`.
   ## `dest` does not need to be initialized by the `initPackedSet proc <#initPackedSet>`_.
-  runnableExamples:
-    var
-      a = initPackedSet[int]()
-      b = initPackedSet[int]()
-    b.incl(5)
-    b.incl(7)
-    a.assign(b)
-    assert len(a) == 2
-
   if src.elems <= src.a.len:
     dest.data = @[]
     dest.max = 0
@@ -449,6 +438,19 @@ proc assign*[A](dest: var PackedSet[A], src: PackedSet[A]) =
       dest.data[h] = n
       it = it.next
 
+proc assign*[A](dest: var PackedSet[A], src: PackedSet[A]) {.inline, deprecated.} =
+  ## Copies `src` to `dest`.
+  ## `dest` does not need to be initialized by the `initPackedSet proc <#initPackedSet>`_.
+  runnableExamples:
+    var
+      a = initPackedSet[int]()
+      b = initPackedSet[int]()
+    b.incl(5)
+    b.incl(7)
+    a.assign(b)
+    assert len(a) == 2
+  `=copy`(dest, src)
+
 proc union*[A](s1, s2: PackedSet[A]): PackedSet[A] =
   ## Returns the union of the sets `s1` and `s2`.
   ##
@@ -460,7 +462,7 @@ proc union*[A](s1, s2: PackedSet[A]): PackedSet[A] =
       c = union(a, b)
     assert c.len == 5
     assert c == [1, 2, 3, 4, 5].toPackedSet
-
+  result = default(PackedSet[A])
   result.assign(s1)
   incl(result, s2)
 
@@ -507,7 +509,7 @@ proc symmetricDifference*[A](s1, s2: PackedSet[A]): PackedSet[A] =
       c = symmetricDifference(a, b)
     assert c.len == 4
     assert c == [1, 2, 4, 5].toPackedSet
-
+  result = default(PackedSet[A])
   result.assign(s1)
   for item in s2.items:
     if containsOrIncl(result, item):
@@ -543,7 +545,7 @@ proc disjoint*[A](s1, s2: PackedSet[A]): bool =
 proc card*[A](s: PackedSet[A]): int {.inline.} =
   ## Alias for `len() <#len,PackedSet[A]>`_.
   ##
-  ## Card stands for the [cardinality](http://en.wikipedia.org/wiki/Cardinality)
+  ## Card stands for the [cardinality](https://en.wikipedia.org/wiki/Cardinality)
   ## of a set.
   result = s.len()
 

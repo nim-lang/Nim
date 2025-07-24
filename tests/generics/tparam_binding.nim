@@ -1,6 +1,7 @@
 discard """
+  matrix: "--mm:arc; --mm:refc"
   errormsg: "got <ref Matrix[2, 2, system.float], ref Matrix[2, 1, system.float]>"
-  line: 27
+  line: 28
 """
 
 type

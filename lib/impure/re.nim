@@ -13,10 +13,14 @@ when defined(js):
 ## Regular expression support for Nim.
 ##
 ## This module is implemented by providing a wrapper around the
-## `PCRE (Perl-Compatible Regular Expressions) <http://www.pcre.org>`_
+## `PCRE (Perl-Compatible Regular Expressions) <https://www.pcre.org>`_
 ## C library. This means that your application will depend on the PCRE
 ## library's licence when using this module, which should not be a problem
 ## though.
+##
+## .. note:: There are also alternative nimble packages such as [tinyre](https://github.com/khchen/tinyre)
+##   and [regex](https://github.com/nitely/nim-regex).
+##
 ## PCRE's licence follows:
 ##
 ## .. include:: ../../doc/regexprs.txt
@@ -32,7 +36,10 @@ runnableExamples:
     # can't match start of string since we're starting at 1
 
 import
-  pcre, strutils, rtarrays
+  std/[pcre, strutils, rtarrays]
+
+when defined(nimPreviewSlimSystem):
+  import std/syncio
 
 const
   MaxSubpatterns* = 20
@@ -58,10 +65,16 @@ type
     ## is raised if the pattern is no valid regular expression.
 
 when defined(gcDestructors):
-  proc `=destroy`(x: var RegexDesc) =
-    pcre.free_substring(cast[cstring](x.h))
-    if not isNil(x.e):
-      pcre.free_study(x.e)
+  when defined(nimAllowNonVarDestructor):
+    proc `=destroy`(x: RegexDesc) =
+      pcre.free_substring(cast[cstring](x.h))
+      if not isNil(x.e):
+        pcre.free_study(x.e)
+  else:
+    proc `=destroy`(x: var RegexDesc) =
+      pcre.free_substring(cast[cstring](x.h))
+      if not isNil(x.e):
+        pcre.free_study(x.e)
 
 proc raiseInvalidRegex(msg: string) {.noinline, noreturn.} =
   var e: ref RegexError
@@ -433,7 +446,7 @@ iterator findAll*(buf: cstring, pattern: Regex, start = 0, bufSize: int): string
 
 proc findAll*(s: string, pattern: Regex, start = 0): seq[string] {.inline.} =
   ## returns all matching `substrings` of `s` that match `pattern`.
-  ## If it does not match, @[] is returned.
+  ## If it does not match, `@[]` is returned.
   result = @[]
   for x in findAll(s, pattern, start): result.add x
 
@@ -447,13 +460,13 @@ template `=~` *(s: string, pattern: Regex): untyped =
       elif line =~ re"\s*(\#.*)": # matches a comment
         # note that the implicit `matches` array is different from 1st branch
         result = $(matches[0],)
-      else: doAssert false
+      else: raiseAssert "unreachable"
       doAssert not declared(matches)
     doAssert parse("NAME = LENA") == """("NAME", "LENA")"""
     doAssert parse("   # comment ... ") == """("# comment ... ",)"""
   bind MaxSubpatterns
   when not declaredInScope(matches):
-    var matches {.inject.}: array[MaxSubpatterns, string]
+    var matches {.inject.}: array[MaxSubpatterns, string] = default(array[MaxSubpatterns, string])
   match(s, pattern, matches)
 
 # ------------------------- more string handling ------------------------------

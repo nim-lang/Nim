@@ -68,3 +68,8 @@ block: # issue #10994
 
   proc a {.bar.} = discard # works
   proc b {.bar, foo.} = discard # doesn't
+
+block: # issue #22525
+  macro catch(x: typed) = x
+  proc thing {.catch.} = discard
+  thing()

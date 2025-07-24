@@ -26,7 +26,7 @@
 ## The following is a simple example of two different ways to use channels:
 ## blocking and non-blocking.
 ##
-## .. code-block:: Nim
+##   ```Nim
 ##   # Be sure to compile with --threads:on.
 ##   # The channels and threads modules are part of system and should not be
 ##   # imported.
@@ -87,18 +87,20 @@
 ##
 ##   # Clean up the channel.
 ##   chan.close()
+##   ```
 ##
 ## Sample output
 ## -------------
 ## The program should output something similar to this, but keep in mind that
-## exact results may vary in the real world::
-##   Hello World!
-##   Pretend I'm doing useful work...
-##   Pretend I'm doing useful work...
-##   Pretend I'm doing useful work...
-##   Pretend I'm doing useful work...
-##   Pretend I'm doing useful work...
-##   Another message
+## exact results may vary in the real world:
+##
+##     Hello World!
+##     Pretend I'm doing useful work...
+##     Pretend I'm doing useful work...
+##     Pretend I'm doing useful work...
+##     Pretend I'm doing useful work...
+##     Pretend I'm doing useful work...
+##     Another message
 ##
 ## Passing Channels Safely
 ## -----------------------
@@ -112,7 +114,7 @@
 ## using e.g. `system.allocShared0` and pass these pointers through thread
 ## arguments:
 ##
-## .. code-block:: Nim
+##   ```Nim
 ##   proc worker(channel: ptr Channel[string]) =
 ##     let greeting = channel[].recv()
 ##     echo greeting
@@ -134,9 +136,12 @@
 ##     deallocShared(channel)
 ##
 ##   localChannelExample() # "Hello from the main thread!"
+##   ```
 
 when not declared(ThisIsSystem):
   {.error: "You must not import this module explicitly".}
+
+import std/private/syslocks
 
 type
   pbytes = ptr UncheckedArray[byte]
@@ -182,8 +187,8 @@ when not usesDestructors:
   proc storeAux(dest, src: pointer, n: ptr TNimNode, t: PRawChannel,
                 mode: LoadStoreMode) {.benign.} =
     var
-      d = cast[ByteAddress](dest)
-      s = cast[ByteAddress](src)
+      d = cast[int](dest)
+      s = cast[int](src)
     case n.kind
     of nkSlot: storeAux(cast[pointer](d +% n.offset),
                         cast[pointer](s +% n.offset), n.typ, t, mode)
@@ -202,8 +207,8 @@ when not usesDestructors:
       cast[pointer](cast[int](p) +% x)
 
     var
-      d = cast[ByteAddress](dest)
-      s = cast[ByteAddress](src)
+      d = cast[int](dest)
+      s = cast[int](src)
     sysAssert(mt != nil, "mt == nil")
     case mt.kind
     of tyString:
@@ -242,14 +247,14 @@ when not usesDestructors:
           x[] = alloc0(t.region, align(GenericSeqSize, mt.base.align) +% seq.len *% mt.base.size)
         else:
           unsureAsgnRef(x, newSeq(mt, seq.len))
-        var dst = cast[ByteAddress](cast[PPointer](dest)[])
+        var dst = cast[int](cast[PPointer](dest)[])
         var dstseq = cast[PGenericSeq](dst)
         dstseq.len = seq.len
         dstseq.reserved = seq.len
         for i in 0..seq.len-1:
           storeAux(
             cast[pointer](dst +% align(GenericSeqSize, mt.base.align) +% i *% mt.base.size),
-            cast[pointer](cast[ByteAddress](s2) +% align(GenericSeqSize, mt.base.align) +%
+            cast[pointer](cast[int](s2) +% align(GenericSeqSize, mt.base.align) +%
                           i *% mt.base.size),
             mt.base, t, mode)
         if mode != mStore: dealloc(t.region, s2)
@@ -360,8 +365,8 @@ proc sendImpl(q: PRawChannel, typ: PNimType, msg: pointer, noBlock: bool): bool 
 
   rawSend(q, msg, typ)
   q.elemType = typ
-  releaseSys(q.lock)
   signalSysCond(q.cond)
+  releaseSys(q.lock)
   result = true
 
 proc send*[TMsg](c: var Channel[TMsg], msg: sink TMsg) {.inline.} =
@@ -389,7 +394,7 @@ proc llRecv(q: PRawChannel, res: pointer, typ: PNimType) =
   q.ready = false
   if typ != q.elemType:
     releaseSys(q.lock)
-    sysFatal(ValueError, "cannot receive message of wrong type")
+    raise newException(ValueError, "cannot receive message of wrong type")
   rawRecv(q, res, typ)
   if q.maxItems > 0 and q.count == q.maxItems - 1:
     # Parent thread is awaiting in send. Wake it up.
@@ -400,6 +405,7 @@ proc recv*[TMsg](c: var Channel[TMsg]): TMsg =
   ##
   ## This blocks until a message has arrived!
   ## You may use `peek proc <#peek,Channel[TMsg]>`_ to avoid the blocking.
+  result = default(TMsg)
   var q = cast[PRawChannel](addr(c))
   acquireSys(q.lock)
   llRecv(q, addr(result), cast[PNimType](getTypeInfo(result)))
@@ -412,6 +418,7 @@ proc tryRecv*[TMsg](c: var Channel[TMsg]): tuple[dataAvailable: bool,
   ##
   ## If it fails, it returns `(false, default(msg))` otherwise it
   ## returns `(true, msg)`.
+  result = default(tuple[dataAvailable: bool, msg: TMsg])
   var q = cast[PRawChannel](addr(c))
   if q.mask != ChannelDeadMask:
     if tryAcquireSys(q.lock):

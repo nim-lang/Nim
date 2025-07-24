@@ -14,6 +14,9 @@ import
 
 import std/private/decode_helpers
 
+when defined(nimPreviewSlimSystem):
+  import std/[assertions, formatfloat]
+
 type
   SexpEventKind* = enum  ## enumeration of all events that may occur when parsing
     sexpError,           ## an error occurred during parsing
@@ -149,7 +152,7 @@ proc parseString(my: var SexpParser): TTokKind =
         inc(pos, 2)
       of 'u':
         inc(pos, 2)
-        var r: int
+        var r: int = 0
         if handleHexChar(my.buf[pos], r): inc(pos)
         if handleHexChar(my.buf[pos], r): inc(pos)
         if handleHexChar(my.buf[pos], r): inc(pos)
@@ -288,10 +291,6 @@ proc newSString*(s: string): SexpNode =
   ## Creates a new `SString SexpNode`.
   result = SexpNode(kind: SString, str: s)
 
-proc newSStringMove(s: string): SexpNode =
-  result = SexpNode(kind: SString)
-  shallowCopy(result.str, s)
-
 proc newSInt*(n: BiggestInt): SexpNode =
   ## Creates a new `SInt SexpNode`.
   result = SexpNode(kind: SInt, num: n)
@@ -314,10 +313,6 @@ proc newSList*(): SexpNode =
 
 proc newSSymbol*(s: string): SexpNode =
   result = SexpNode(kind: SSymbol, symbol: s)
-
-proc newSSymbolMove(s: string): SexpNode =
-  result = SexpNode(kind: SSymbol)
-  shallowCopy(result.symbol, s)
 
 proc getStr*(n: SexpNode, default: string = ""): string =
   ## Retrieves the string value of a `SString SexpNode`.
@@ -409,7 +404,7 @@ macro convertSexp*(x: untyped): untyped =
   ## `%` for every element.
   result = toSexp(x)
 
-proc `==`* (a, b: SexpNode): bool {.noSideEffect.} =
+func `==`* (a, b: SexpNode): bool =
   ## Check two nodes for equality
   if a.isNil:
     if b.isNil: return true
@@ -457,7 +452,7 @@ proc len*(n: SexpNode): int =
   ## Else it returns 0.
   case n.kind
   of SList: result = n.elems.len
-  else: discard
+  else: result = 0
 
 proc `[]`*(node: SexpNode, index: int): SexpNode =
   ## Gets the node at `index` in a List. Result is undefined if `index`
@@ -596,8 +591,7 @@ proc parseSexp(p: var SexpParser): SexpNode =
   case p.tok
   of tkString:
     # we capture 'p.a' here, so we need to give it a fresh buffer afterwards:
-    result = newSStringMove(p.a)
-    p.a = ""
+    result = SexpNode(kind: SString, str: move p.a)
     discard getTok(p)
   of tkInt:
     result = newSInt(parseBiggestInt(p.a))
@@ -609,8 +603,7 @@ proc parseSexp(p: var SexpParser): SexpNode =
     result = newSNil()
     discard getTok(p)
   of tkSymbol:
-    result = newSSymbolMove(p.a)
-    p.a = ""
+    result = SexpNode(kind: SSymbol, symbol: move p.a)
     discard getTok(p)
   of tkParensLe:
     result = newSList()
@@ -636,7 +629,7 @@ proc open*(my: var SexpParser, input: Stream) =
 
 proc parseSexp*(s: Stream): SexpNode =
   ## Parses from a buffer `s` into a `SexpNode`.
-  var p: SexpParser
+  var p: SexpParser = SexpParser()
   p.open(s)
   discard getTok(p) # read first token
   result = p.parseSexp()

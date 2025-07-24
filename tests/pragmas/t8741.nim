@@ -1,7 +1,7 @@
 discard """
   cmd: "nim check --hint:processing:off $file"
   errormsg: "3 is not two"
-  nimout: '''t8741.nim(13, 9) Error: cannot attach a custom pragma to 'a'
+  nimout: '''t8741.nim(13, 9) Error: invalid pragma: foobar
 t8741.nim(29, 15) template/generic instantiation of `onlyTwo` from here
 t8741.nim(25, 12) Error: 3 is not two
 '''

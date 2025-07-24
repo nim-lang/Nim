@@ -1,8 +1,10 @@
 discard """
+  matrix: "--mm:refc; --mm:orc"
   targets: "c js"
 """
 
 import std/[sequtils,critbits]
+import std/assertions
 
 template main =
   var r: CritBitTree[void]

@@ -1,4 +1,5 @@
 discard """
+  matrix: "--multimethods:on"
   output: '''
 collide: unit, thing
 collide: unit, thing
@@ -16,7 +17,7 @@ do nothing
 
 # tmultim2
 type
-  TThing = object {.inheritable.}
+  TThing {.inheritable.} = object
   TUnit = object of TThing
     x: int
   TParticle = object of TThing
@@ -49,7 +50,7 @@ staticCollide(a, b)
 
 # tmultim6
 type
-  Thing = object {.inheritable.}
+  Thing {.inheritable.} = object
   Unit[T] = object of Thing
     x: T
   Particle = object of Thing
@@ -81,7 +82,7 @@ method somethin(obj: RootObj) {.base.} =
   echo "do nothing"
 
 type
-  TNode* = object {.inheritable.}
+  TNode* {.inheritable.} = object
   PNode* = ref TNode
 
   PNodeFoo* = ref object of TNode

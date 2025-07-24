@@ -1,6 +1,10 @@
-import strutils
+import std/strutils
 
 import ast, options, msgs
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 
 const isDebug = false
 when isDebug:
@@ -36,6 +40,7 @@ type LineData = object
 
 proc tripleStrLitStartsAtNextLine(conf: ConfigRef, n: PNode): bool =
   # enabling TLineInfo.offsetA,offsetB would probably make this easier
+  result = false
   const tripleQuote = "\"\"\""
   let src = sourceLine(conf, n.info)
   let col = n.info.col

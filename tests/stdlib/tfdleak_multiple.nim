@@ -3,6 +3,7 @@ joinable: false
 """
 
 import os, osproc, strutils
+import std/assertions
 
 const Iterations = 200
 

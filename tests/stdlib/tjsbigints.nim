@@ -2,7 +2,7 @@ discard """
   targets: "js"
 """
 
-import std/jsbigints
+import std/[jsbigints, assertions]
 
 
 let big1: JsBigInt = big"2147483647"

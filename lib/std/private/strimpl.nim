@@ -74,3 +74,38 @@ template endsWithImpl*[T: string | cstring](s, suffix: T) =
 
 func cmpNimIdentifier*[T: string | cstring](a, b: T): int =
   cmpIgnoreStyleImpl(a, b, true)
+
+from system/ansi_c import c_memchr, c_strstr
+
+func find*(s: cstring, sub: char, start: Natural = 0, last = 0): int =
+  ## Searches for `sub` in `s` inside the range `start..last` (both ends included).
+  ## If `last` is unspecified, it defaults to `s.high` (the last element).
+  ##
+  ## Searching is case-sensitive. If `sub` is not in `s`, -1 is returned.
+  ## Otherwise the index returned is relative to `s[0]`, not `start`.
+  ## Use `s[start..last].rfind` for a `start`-origin index.
+  let last = if last == 0: s.high else: last
+  let L = last-start+1
+  if L > 0:
+    let found = c_memchr(s[start].unsafeAddr, cint(sub), cast[csize_t](L))
+    if not found.isNil:
+      return cast[int](found) -% cast[int](s)
+  return -1
+
+func find*(s, sub: cstring, start: Natural = 0, last = 0): int =
+  ## Searches for `sub` in `s` inside the range `start..last` (both ends included).
+  ## If `last` is unspecified, it defaults to `s.high` (the last element).
+  ##
+  ## Searching is case-sensitive. If `sub` is not in `s`, -1 is returned.
+  ## Otherwise the index returned is relative to `s[0]`, not `start`.
+  ## Use `s[start..last].find` for a `start`-origin index.
+  if sub.len > s.len - start: return -1
+  if sub.len == 1: return find(s, sub[0], start, last)
+  if last == 0 and s.len > start:
+    let found = c_strstr(cast[cstring](s[start].unsafeAddr), sub)
+    if not found.isNil:
+      result = cast[int](found) -% cast[int](s)
+    else:
+      result = -1
+  else:
+    result = 0

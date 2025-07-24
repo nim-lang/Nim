@@ -4,7 +4,7 @@ discard """
 """
 
 type
-  TObj = object {.pure, inheritable.}
+  TObj {.pure, inheritable.} = object
   TObjB = object of TObj
     a, b, c: string
     fn: proc (): int {.tags: [].}

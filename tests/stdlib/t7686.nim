@@ -1,4 +1,5 @@
-import strutils
+import std/strutils
+import std/assertions
 
 type
   MyEnum = enum

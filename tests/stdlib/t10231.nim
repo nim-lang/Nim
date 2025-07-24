@@ -5,6 +5,7 @@ discard """
 """
 
 import os
+import std/assertions
 
 # consider moving this inside tosproc (taking care that it's for cpp mode)
 

@@ -58,16 +58,16 @@ runnableExamples("-r:off"):
 
   stdout.styledWriteLine(fgRed, "red text ", styleBright, "bold red", fgDefault, " bold text")
 
-import macros
-import strformat
-from strutils import toLowerAscii, `%`
-import colors
+import std/macros
+import std/strformat
+from std/strutils import toLowerAscii, `%`, parseInt
+import std/colors
 
 when defined(windows):
-  import winlean
+  import std/winlean
 
 when defined(nimPreviewSlimSystem):
-  import std/syncio
+  import std/[syncio, assertions]
 
 type
   PTerminal = ref object
@@ -96,10 +96,11 @@ const
   fgPrefix = "\e[38;2;"
   bgPrefix = "\e[48;2;"
   ansiResetCode* = "\e[0m"
+  getPos = "\e[6n"
   stylePrefix = "\e["
 
 when defined(windows):
-  import winlean, os
+  import std/[winlean, os]
 
   const
     DUPLICATE_SAME_ACCESS = 2
@@ -220,6 +221,9 @@ when defined(windows):
       raiseOSError(osLastError())
     return (int(c.dwCursorPosition.x), int(c.dwCursorPosition.y))
 
+  proc getCursorPos*(): tuple [x, y: int] {.raises: [ValueError, IOError, OSError].} =
+    return getCursorPos(getStdHandle(STD_OUTPUT_HANDLE))
+
   proc setCursorPos(h: Handle, x, y: int) =
     var c: COORD
     c.x = int16(x)
@@ -253,10 +257,10 @@ when defined(windows):
     if f == stderr: term.hStderr else: term.hStdout
 
 else:
-  import termios, posix, os, parseutils
+  import std/[termios, posix, os, parseutils]
 
   proc setRaw(fd: FileHandle, time: cint = TCSAFLUSH) =
-    var mode: Termios
+    var mode: Termios = default(Termios)
     discard fd.tcGetAttr(addr mode)
     mode.c_iflag = mode.c_iflag and not Cflag(BRKINT or ICRNL or INPCK or
       ISTRIP or IXON)
@@ -267,10 +271,52 @@ else:
     mode.c_cc[VTIME] = 0.cuchar
     discard fd.tcSetAttr(time, addr mode)
 
+  proc getCursorPos*(): tuple [x, y: int] {.raises: [ValueError, IOError].} =
+    ## Returns cursor position (x, y)
+    ## writes to stdout and expects the terminal to respond via stdin
+    var
+      xStr = ""
+      yStr = ""
+      ch: char = '\0'
+      ct: int = 0
+      readX = false
+
+    # use raw mode to ask terminal for cursor position
+    let fd = getFileHandle(stdin)
+    var oldMode: Termios
+    discard fd.tcGetAttr(addr oldMode)
+    fd.setRaw()
+    stdout.write(getPos)
+    flushFile(stdout)
+
+    try:
+      # parse response format: [yyy;xxxR
+      while true:
+        let n = readBuffer(stdin, addr ch, 1)
+        if n == 0 or ch == 'R':
+          if xStr == "" or yStr == "":
+            raise newException(ValueError, "Got character position message that was missing data")
+          break
+        ct += 1
+        if ct > 16:
+          raise newException(ValueError, "Got unterminated character position message from terminal")
+        if ch == ';':
+          readX = true
+        elif ch in {'0'..'9'}:
+          if readX:
+            xStr.add(ch)
+          else:
+            yStr.add(ch)
+    finally:
+      # restore previous terminal mode
+      discard fd.tcSetAttr(TCSADRAIN, addr oldMode)
+
+    return (parseInt(xStr), parseInt(yStr))
+
   proc terminalWidthIoctl*(fds: openArray[int]): int =
     ## Returns terminal width from first fd that supports the ioctl.
 
-    var win: IOctl_WinSize
+    var win: IOctl_WinSize = default(IOctl_WinSize)
     for fd in fds:
       if ioctl(cint(fd), TIOCGWINSZ, addr win) != -1:
         return int(win.ws_col)
@@ -279,7 +325,7 @@ else:
   proc terminalHeightIoctl*(fds: openArray[int]): int =
     ## Returns terminal height from first fd that supports the ioctl.
 
-    var win: IOctl_WinSize
+    var win: IOctl_WinSize = default(IOctl_WinSize)
     for fd in fds:
       if ioctl(cint(fd), TIOCGWINSZ, addr win) != -1:
         return int(win.ws_row)
@@ -291,25 +337,57 @@ else:
     ## Returns some reasonable terminal width from either standard file
     ## descriptors, controlling terminal, environment variables or tradition.
 
-    var w = terminalWidthIoctl([0, 1, 2]) #Try standard file descriptors
+    # POSIX environment variable takes precendence.
+    # _COLUMNS_: This variable shall represent a decimal integer >0 used
+    # to indicate the user's preferred width in column positions for
+    # the terminal screen or window. If this variable is unset or null,
+    # the implementation determines the number of columns, appropriate
+    # for the terminal or window, in an unspecified manner.
+    # When COLUMNS is set, any terminal-width information implied by TERM
+    # is overridden. Users and conforming applications should not set COLUMNS
+    # unless they wish to override the system selection and produce output
+    # unrelated to the terminal characteristics.
+    # See POSIX Base Definitions Section 8.1 Environment Variable Definition
+
+    var w: int = 0
+    var s = getEnv("COLUMNS") # Try standard env var
+    if len(s) > 0 and parseSaturatedNatural(s, w) > 0 and w > 0:
+      return w
+    w = terminalWidthIoctl([0, 1, 2]) # Try standard file descriptors
     if w > 0: return w
-    var cterm = newString(L_ctermid) #Try controlling tty
+    var cterm = newString(L_ctermid) # Try controlling tty
     var fd = open(ctermid(cstring(cterm)), O_RDONLY)
     if fd != -1:
       w = terminalWidthIoctl([int(fd)])
     discard close(fd)
     if w > 0: return w
-    var s = getEnv("COLUMNS") #Try standard env var
-    if len(s) > 0 and parseInt(s, w) > 0 and w > 0:
-      return w
-    return 80 #Finally default to venerable value
+    return 80 # Finally default to venerable value
 
   proc terminalHeight*(): int =
     ## Returns some reasonable terminal height from either standard file
     ## descriptors, controlling terminal, environment variables or tradition.
     ## Zero is returned if the height could not be determined.
 
-    var h = terminalHeightIoctl([0, 1, 2]) # Try standard file descriptors
+    # POSIX environment variable takes precendence.
+    # _LINES_: This variable shall represent a decimal integer >0 used
+    # to indicate the user's preferred number of lines on a page or
+    # the vertical screen or window size in lines. A line in this case
+    # is a vertical measure large enough to hold the tallest character
+    # in the character set being displayed. If this variable is unset or null,
+    # the implementation determines the number of lines, appropriate
+    # for the terminal or window (size, terminal baud rate, and so on),
+    # in an unspecified manner.
+    # When LINES is set, any terminal-height information implied by TERM
+    # is overridden. Users and conforming applications should not set LINES
+    # unless they wish to override the system selection and produce output
+    # unrelated to the terminal characteristics.
+    # See POSIX Base Definitions Section 8.1 Environment Variable Definition
+
+    var h: int = 0
+    var s = getEnv("LINES") # Try standard env var
+    if len(s) > 0 and parseSaturatedNatural(s, h) > 0 and h > 0:
+      return h
+    h = terminalHeightIoctl([0, 1, 2]) # Try standard file descriptors
     if h > 0: return h
     var cterm = newString(L_ctermid) # Try controlling tty
     var fd = open(ctermid(cstring(cterm)), O_RDONLY)
@@ -317,9 +395,6 @@ else:
       h = terminalHeightIoctl([int(fd)])
     discard close(fd)
     if h > 0: return h
-    var s = getEnv("LINES") # Try standard env var
-    if len(s) > 0 and parseInt(s, h) > 0 and h > 0:
-      return h
     return 0 # Could not determine height
 
 proc terminalSize*(): tuple[w, h: int] =
@@ -644,9 +719,9 @@ proc setForegroundColor*(f: File, fg: ForegroundColor, bright = false) =
       0, # fg8Bit not supported, see `enableTrueColors` instead.
       0] # unused
     if fg == fgDefault:
-      discard setConsoleTextAttribute(h, toU16(old or defaultForegroundColor))
+      discard setConsoleTextAttribute(h, cast[int16](cast[uint16](old) or cast[uint16](defaultForegroundColor)))
     else:
-      discard setConsoleTextAttribute(h, toU16(old or lookup[fg]))
+      discard setConsoleTextAttribute(h, cast[int16](cast[uint16](old) or cast[uint16](lookup[fg])))
   else:
     gFG = ord(fg)
     if bright: inc(gFG, 60)
@@ -673,9 +748,9 @@ proc setBackgroundColor*(f: File, bg: BackgroundColor, bright = false) =
       0, # bg8Bit not supported, see `enableTrueColors` instead.
       0] # unused
     if bg == bgDefault:
-      discard setConsoleTextAttribute(h, toU16(old or defaultBackgroundColor))
+      discard setConsoleTextAttribute(h, cast[int16](cast[uint16](old) or cast[uint16](defaultBackgroundColor)))
     else:
-      discard setConsoleTextAttribute(h, toU16(old or lookup[bg]))
+      discard setConsoleTextAttribute(h, cast[int16](cast[uint16](old) or cast[uint16](lookup[bg])))
   else:
     gBG = ord(bg)
     if bright: inc(gBG, 60)
@@ -730,9 +805,13 @@ proc isatty*(f: File): bool =
   when defined(posix):
     proc isatty(fildes: FileHandle): cint {.
       importc: "isatty", header: "<unistd.h>".}
-  else:
-    proc isatty(fildes: FileHandle): cint {.
+  elif defined(windows):
+    proc c_isatty(fildes: cint): cint {.
       importc: "_isatty", header: "<io.h>".}
+    proc isatty(fildes: FileHandle): cint =
+      c_isatty(cint(fildes))
+  else:
+    {.error: "isatty is not supported on your operating system!".}
 
   result = isatty(getFileHandle(f)) != 0'i32
 
@@ -847,13 +926,13 @@ when defined(windows):
     stdout.write "\n"
 
 else:
-  import termios
+  import std/termios
 
   proc readPasswordFromStdin*(prompt: string, password: var string):
                             bool {.tags: [ReadIOEffect, WriteIOEffect].} =
     password.setLen(0)
     let fd = stdin.getFileHandle()
-    var cur, old: Termios
+    var cur, old: Termios = default(Termios)
     discard fd.tcGetAttr(cur.addr)
     old = cur
     cur.c_lflag = cur.c_lflag and not Cflag(ECHO)
@@ -903,7 +982,7 @@ proc isTrueColorSupported*(): bool =
   return getTerminal().trueColorIsSupported
 
 when defined(windows):
-  import os
+  import std/os
 
 proc enableTrueColors*() =
   ## Enables true color.

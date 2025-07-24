@@ -61,3 +61,15 @@ maino() # Doesn't work outside a proc
 
 when true:
   main()
+
+block two:
+  proc f(a: openArray[int]) =
+    discard
+
+  proc main() =
+    var a: array[0..9, int] = [0,1,2,3,4,5,6,7,8,9]
+    parallel:
+      spawn f(a[0..2])
+
+
+  main()

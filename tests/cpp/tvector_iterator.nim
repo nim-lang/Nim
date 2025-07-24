@@ -12,8 +12,8 @@ struct Vector {
 """.}
 
 type
-  Vector {.importcpp: "Vector".} [T] = object
-  VectorIterator {.importcpp: "Vector<'0>::Iterator".} [T] = object
+  Vector[T] {.importcpp: "Vector".} = object
+  VectorIterator[T] {.importcpp: "Vector<'0>::Iterator".} = object
 
 var x: VectorIterator[void]
 

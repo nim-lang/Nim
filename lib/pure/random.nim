@@ -11,8 +11,8 @@
 ##
 ## Its implementation is based on the `xoroshiro128+`
 ## (xor/rotate/shift/rotate) library.
-## * More information: http://xoroshiro.di.unimi.it
-## * C implementation: http://xoroshiro.di.unimi.it/xoroshiro128plus.c
+## * More information: https://xoroshiro.di.unimi.it
+## * C implementation: https://xoroshiro.di.unimi.it/xoroshiro128plus.c
 ##
 ## **Do not use this module for cryptographic purposes!**
 ##
@@ -66,26 +66,30 @@ runnableExamples:
 ## See also
 ## ========
 ## * `std/sysrand module <sysrand.html>`_ for a cryptographically secure pseudorandom number generator
-## * `mersenne module <mersenne.html>`_ for the Mersenne Twister random number generator
 ## * `math module <math.html>`_ for basic math routines
 ## * `stats module <stats.html>`_ for statistical analysis
 ## * `list of cryptographic and hashing modules <lib.html#pure-libraries-hashing>`_
 ##   in the standard library
 
-import algorithm, math
-import std/private/since
+import std/[algorithm, math]
+import std/private/[since, jsutils]
+
+when defined(nimPreviewSlimSystem):
+  import std/[assertions]
 
 include system/inclrtl
 {.push debugger: off.}
 
-when defined(js):
-  type Ui = uint32
 
-  const randMax = 4_294_967_295u32
-else:
+when hasWorkingInt64:
   type Ui = uint64
 
   const randMax = 18_446_744_073_709_551_615u64
+else:
+  type Ui = uint32
+
+  const randMax = 4_294_967_295u32
+
 
 type
   Rand* = object ## State of a random number generator.
@@ -103,17 +107,17 @@ type
                  ## generator are **not** thread-safe!
     a0, a1: Ui
 
-when defined(js):
-  var state = Rand(
-    a0: 0x69B4C98Cu32,
-    a1: 0xFED1DD30u32) # global for backwards compatibility
-else:
+when hasWorkingInt64:
   const DefaultRandSeed = Rand(
     a0: 0x69B4C98CB8530805u64,
     a1: 0xFED1DD3004688D67CAu64)
 
   # racy for multi-threading but good enough for now:
   var state = DefaultRandSeed # global for backwards compatibility
+else:
+  var state = Rand(
+    a0: 0x69B4C98Cu32,
+    a1: 0xFED1DD30u32) # global for backwards compatibility
 
 func isValid(r: Rand): bool {.inline.} =
   ## Check whether state of `r` is valid.
@@ -178,29 +182,38 @@ proc skipRandomNumbers*(s: var Rand) =
   ## **See also:**
   ## * `next proc<#next,Rand>`_
   runnableExamples("--threads:on"):
-    import std/[random, threadpool]
+    import std/random
 
-    const spawns = 4
     const numbers = 100000
 
-    proc randomSum(r: Rand): int =
-      var r = r
+    var
+      thr: array[0..3, Thread[(Rand, int)]]
+      vals: array[0..3, int]
+
+    proc randomSum(params: tuple[r: Rand, index: int]) {.thread.} =
+      var r = params.r
+      var s = 0 # avoid cache thrashing
       for i in 1..numbers:
-        result += r.rand(0..10)
+        s += r.rand(0..10)
+      vals[params.index] = s
 
     var r = initRand(2019)
-    var vals: array[spawns, FlowVar[int]]
-    for val in vals.mitems:
-      val = spawn randomSum(r)
+    for i in 0..<thr.len:
+      createThread(thr[i], randomSum, (r, i))
       r.skipRandomNumbers()
 
-    for val in vals:
-      doAssert abs(^val - numbers * 5) / numbers < 0.1
+    joinThreads(thr)
 
-  when defined(js):
-    const helper = [0xbeac0467u32, 0xd86b048bu32]
-  else:
+    for val in vals:
+      doAssert abs(val - numbers * 5) / numbers < 0.1
+
+    doAssert vals == [501737, 497901, 500683, 500157]
+
+
+  when hasWorkingInt64:
     const helper = [0xbeac0467eba5facbu64, 0xd86b048b86aa9922u64]
+  else:
+    const helper = [0xbeac0467u32, 0xd86b048bu32]
   var
     s0 = Ui 0
     s1 = Ui 0
@@ -215,16 +228,20 @@ proc skipRandomNumbers*(s: var Rand) =
 
 proc rand[T: uint | uint64](r: var Rand; max: T): T =
   # xxx export in future work
+  result = default(T)
   if max == 0: return
   else:
     let max = uint64(max)
     when T.high.uint64 == uint64.high:
       if max == uint64.high: return T(next(r))
+    var iters = 0
     while true:
       let x = next(r)
       # avoid `mod` bias
-      if x <= randMax - (randMax mod max):
+      if x <= randMax - (randMax mod max) or iters > 20:
         return T(x mod (max + 1))
+      else:
+        inc iters
 
 proc rand*(r: var Rand; max: Natural): int {.benign.} =
   ## Returns a random integer in the range `0..max` using the given state.
@@ -280,7 +297,13 @@ proc rand*(r: var Rand; max: range[0.0 .. high(float)]): float {.benign.} =
 
   let x = next(r)
   when defined(js):
-    result = (float(x) / float(high(uint32))) * max
+    when compiles(compileOption("jsbigint64")):
+      when compileOption("jsbigint64"):
+        result = (float(x) / float(high(uint64))) * max
+      else:
+        result = (float(x) / float(high(uint32))) * max
+    else:
+      result = (float(x) / float(high(uint32))) * max
   else:
     let u = (0x3FFu64 shl 52u64) or (x shr 12u64)
     result = (cast[float](u) - 1.0) * max
@@ -326,7 +349,7 @@ proc rand*[T: Ordinal or SomeFloat](r: var Rand; x: HSlice[T, T]): T =
   when T is SomeFloat:
     result = rand(r, x.b - x.a) + x.a
   else: # Integers and Enum types
-    when defined(js):
+    when jsNoBigInt64:
       result = cast[T](rand(r, cast[uint](x.b) - cast[uint](x.a)) + cast[uint](x.a))
     else:
       result = cast[T](rand(r, cast[uint64](x.b) - cast[uint64](x.a)) + cast[uint64](x.a))
@@ -353,8 +376,29 @@ proc rand*[T: Ordinal or SomeFloat](x: HSlice[T, T]): T =
 
   result = rand(state, x)
 
-proc rand*[T: SomeInteger](t: typedesc[T]): T =
-  ## Returns a random integer in the range `low(T)..high(T)`.
+proc rand*[T: Ordinal](r: var Rand; t: typedesc[T]): T {.since: (1, 7, 1).} =
+  ## Returns a random Ordinal in the range `low(T)..high(T)`.
+  ##
+  ## If `randomize <#randomize>`_ has not been called, the sequence of random
+  ## numbers returned from this proc will always be the same.
+  ##
+  ## **See also:**
+  ## * `rand proc<#rand,int>`_ that returns an integer
+  ## * `rand proc<#rand,float>`_ that returns a floating point number
+  ## * `rand proc<#rand,HSlice[T: Ordinal or float or float32 or float64,T: Ordinal or float or float32 or float64]>`_
+  ##   that accepts a slice
+  when T is range or T is enum:
+    result = rand(r, low(T)..high(T))
+  elif T is bool:
+    result = r.next < randMax div 2
+  else:
+    when jsNoBigInt64:
+      result = cast[T](r.next shr (sizeof(uint)*8 - sizeof(T)*8))
+    else:
+      result = cast[T](r.next shr (sizeof(uint64)*8 - sizeof(T)*8))
+
+proc rand*[T: Ordinal](t: typedesc[T]): T =
+  ## Returns a random Ordinal in the range `low(T)..high(T)`.
   ##
   ## If `randomize <#randomize>`_ has not been called, the sequence of random
   ## numbers returned from this proc will always be the same.
@@ -368,16 +412,15 @@ proc rand*[T: SomeInteger](t: typedesc[T]): T =
   ##   that accepts a slice
   runnableExamples:
     randomize(567)
-    if false: # implementation defined
-      assert rand(int8) == -42
-      assert rand(uint32) == 578980729'u32
-      assert rand(range[1..16]) == 11
-  # pending csources >= 1.4.0 or fixing https://github.com/timotheecour/Nim/issues/251#issuecomment-831599772,
-  # use `runnableExamples("-r:off")` instead of `if false`
-  when T is range:
-    result = rand(state, low(T)..high(T))
-  else:
-    result = cast[T](state.next)
+    type E = enum a, b, c, d
+
+    assert rand(E) in a..d
+    assert rand(char) in low(char)..high(char)
+    assert rand(int8) in low(int8)..high(int8)
+    assert rand(uint32) in low(uint32)..high(uint32)
+    assert rand(range[1..16]) in 1..16
+
+  result = rand(state, t)
 
 proc sample*[T](r: var Rand; s: set[T]): T =
   ## Returns a random element from the set `s` using the given state.
@@ -562,8 +605,7 @@ proc initRand*(seed: int64): Rand =
     var r2 = initRand(now.toUnix * 1_000_000_000 + now.nanosecond)
   const seedFallback0 = int32.high # arbitrary
   let seed = if seed != 0: seed else: seedFallback0 # because 0 is a fixed point
-  result.a0 = Ui(seed shr 16)
-  result.a1 = Ui(seed and 0xffff)
+  result = Rand(a0: Ui(seed shr 16), a1: Ui(seed and 0xffff))
   when not defined(nimLegacyRandomInitRand):
     # calling `discard next(result)` (even a few times) would still produce
     # skewed numbers for the 1st call to `rand()`.
@@ -636,7 +678,7 @@ when not defined(standalone):
       import std/[hashes, os, sysrand, monotimes]
 
       when compileOption("threads"):
-        import locks
+        import std/locks
         var baseSeedLock: Lock
         baseSeedLock.initLock
 
@@ -665,7 +707,8 @@ when not defined(standalone):
           if not result.isValid:
             result = DefaultRandSeed
         else:
-          var urand: array[sizeof(Rand), byte]
+          result = default(Rand)
+          var urand = default(array[sizeof(Rand), byte])
 
           for i in 0 .. 7:
             if sysrand.urandom(urand):

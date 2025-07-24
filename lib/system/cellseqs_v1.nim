@@ -16,18 +16,21 @@ type
     d: PCellArray
 
 proc contains(s: CellSeq, c: PCell): bool {.inline.} =
-  for i in 0 .. s.len-1:
-    if s.d[i] == c: return true
+  for i in 0 ..< s.len:
+    if s.d[i] == c:
+      return true
   return false
+
+proc resize(s: var CellSeq) =
+  s.cap = s.cap div 2 + s.cap
+  let d = cast[PCellArray](alloc(s.cap * sizeof(PCell)))
+  copyMem(d, s.d, s.len * sizeof(PCell))
+  dealloc(s.d)
+  s.d = d
 
 proc add(s: var CellSeq, c: PCell) {.inline.} =
   if s.len >= s.cap:
-    s.cap = s.cap * 3 div 2
-    var d = cast[PCellArray](alloc(s.cap * sizeof(PCell)))
-    copyMem(d, s.d, s.len * sizeof(PCell))
-    dealloc(s.d)
-    s.d = d
-    # XXX: realloc?
+    resize(s)
   s.d[s.len] = c
   inc(s.len)
 

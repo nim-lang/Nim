@@ -14,14 +14,19 @@
 ##     compiler works and less a storage format, you're probably looking for
 ##     the `ic` or `packed_ast` modules to understand the logical format.
 
-from typetraits import supportsCopyMem
+from std/typetraits import supportsCopyMem
+
+when defined(nimPreviewSlimSystem):
+  import std/[syncio, assertions]
+
+import std / tables
 
 ## Overview
 ## ========
 ## `RodFile` represents a Rod File (versioned binary format), and the
 ## associated data for common interactions such as IO and error tracking
 ## (`RodFileError`). The file format broken up into sections (`RodSection`)
-## and preceeded by a header (see: `cookie`). The precise layout, section
+## and preceded by a header (see: `cookie`). The precise layout, section
 ## ordering and data following the section are determined by the user. See
 ## `ic.loadRodFile`.
 ##
@@ -34,8 +39,7 @@ from typetraits import supportsCopyMem
 ##
 ## Now read the bits below to understand what's missing.
 ##
-## Issues with the Example
-## ```````````````````````
+## ### Issues with the Example
 ## Missing Sections:
 ## This is a low level API, so headers and sections need to be stored and
 ## loaded by the user, see `storeHeader` & `loadHeader` and `storeSection` &
@@ -82,7 +86,6 @@ type
     convertersSection
     methodsSection
     pureEnumsSection
-    macroUsagesSection
     toReplaySection
     topLevelSection
     bodiesSection
@@ -91,11 +94,16 @@ type
     typeInstCacheSection
     procInstCacheSection
     attachedOpsSection
-    methodsPerTypeSection
+    methodsPerGenericTypeSection
     enumToStringProcsSection
+    methodsPerTypeSection
+    dispatchersSection
     typeInfoSection  # required by the backend
     backendFlagsSection
     aliveSymsSection # beware, this is stored in a `.alivesyms` file.
+    sideChannelSection
+    namespaceSection
+    symnamesSection
 
   RodFileError* = enum
     ok, tooBig, cannotOpen, ioFailure, wrongHeader, wrongSection, configMismatch,
@@ -108,8 +116,8 @@ type
                        # better than exceptions.
 
 const
-  RodVersion = 1
-  cookie = [byte(0), byte('R'), byte('O'), byte('D'),
+  RodVersion = 2
+  defaultCookie = [byte(0), byte('R'), byte('O'), byte('D'),
             byte(sizeof(int)*8), byte(system.cpuEndian), byte(0), byte(RodVersion)]
 
 proc setError(f: var RodFile; err: RodFileError) {.inline.} =
@@ -164,6 +172,18 @@ proc storeSeq*[T](f: var RodFile; s: seq[T]) =
     for i in 0..<s.len:
       storePrim(f, s[i])
 
+proc storeOrderedTable*[K, T](f: var RodFile; s: OrderedTable[K, T]) =
+  if f.err != ok: return
+  if s.len >= high(int32):
+    setError f, tooBig
+    return
+  var lenPrefix = int32(s.len)
+  if writeBuffer(f.f, addr lenPrefix, sizeof(lenPrefix)) != sizeof(lenPrefix):
+    setError f, ioFailure
+  else:
+    for _, v in s:
+      storePrim(f, v)
+
 proc loadPrim*(f: var RodFile; s: var string) =
   ## Read a string, the length was stored as a prefix
   if f.err != ok: return
@@ -205,16 +225,29 @@ proc loadSeq*[T](f: var RodFile; s: var seq[T]) =
     for i in 0..<lenPrefix:
       loadPrim(f, s[i])
 
-proc storeHeader*(f: var RodFile) =
+proc loadOrderedTable*[K, T](f: var RodFile; s: var OrderedTable[K, T]) =
+  ## `T` must be compatible with `copyMem`, see `loadPrim`
+  if f.err != ok: return
+  var lenPrefix = int32(0)
+  if readBuffer(f.f, addr lenPrefix, sizeof(lenPrefix)) != sizeof(lenPrefix):
+    setError f, ioFailure
+  else:
+    s = initOrderedTable[K, T](lenPrefix)
+    for i in 0..<lenPrefix:
+      var x = default T
+      loadPrim(f, x)
+      s[x.id] = x
+
+proc storeHeader*(f: var RodFile; cookie = defaultCookie) =
   ## stores the header which is described by `cookie`.
   if f.err != ok: return
   if f.f.writeBytes(cookie, 0, cookie.len) != cookie.len:
     setError f, ioFailure
 
-proc loadHeader*(f: var RodFile) =
+proc loadHeader*(f: var RodFile; cookie = defaultCookie) =
   ## Loads the header which is described by `cookie`.
   if f.err != ok: return
-  var thisCookie: array[cookie.len, byte]
+  var thisCookie: array[cookie.len, byte] = default(array[cookie.len, byte])
   if f.f.readBytes(thisCookie, 0, thisCookie.len) != thisCookie.len:
     setError f, ioFailure
   elif thisCookie != cookie:
@@ -230,13 +263,14 @@ proc storeSection*(f: var RodFile; s: RodSection) =
 proc loadSection*(f: var RodFile; expected: RodSection) =
   ## read the bytes value of s, sets and error if the section is incorrect.
   if f.err != ok: return
-  var s: RodSection
+  var s: RodSection = default(RodSection)
   loadPrim(f, s)
   if expected != s and f.err == ok:
     setError f, wrongSection
 
 proc create*(filename: string): RodFile =
   ## create the file and open it for writing
+  result = default(RodFile)
   if not open(result.f, filename, fmWrite):
     setError result, cannotOpen
 
@@ -244,5 +278,6 @@ proc close*(f: var RodFile) = close(f.f)
 
 proc open*(filename: string): RodFile =
   ## open the file for reading
+  result = default(RodFile)
   if not open(result.f, filename, fmRead):
     setError result, cannotOpen

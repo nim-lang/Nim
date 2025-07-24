@@ -27,7 +27,7 @@ template decRef(x): untyped = atomicDec(x.refcount)
 
 proc makeShared*[T](x: sink T): SharedPtr[T] =
   # XXX could benefit from a macro that generates it.
-  result = cast[SharedPtr[T]](allocShared(sizeof(x)))
+  result = cast[SharedPtr[T]](allocShared0(sizeof(x)))
   result.x[] = x
   echo "allocating"
 
@@ -39,7 +39,7 @@ proc `=destroy`*[T](dest: var SharedPtr[T]) =
     echo "deallocating"
     dest.x = nil
 
-proc `=`*[T](dest: var SharedPtr[T]; src: SharedPtr[T]) =
+proc `=copy`*[T](dest: var SharedPtr[T]; src: SharedPtr[T]) =
   var s = src.x
   if s != nil: incRef(s)
   #atomicSwap(dest, s)
@@ -49,6 +49,9 @@ proc `=`*[T](dest: var SharedPtr[T]; src: SharedPtr[T]) =
     `=destroy`(s[])
     deallocShared(s)
     echo "deallocating"
+
+proc `=dup`*[T](src: SharedPtr[T]): SharedPtr[T] =
+  `=copy`(result, src)
 
 proc `=sink`*[T](dest: var SharedPtr[T]; src: SharedPtr[T]) =
   ## XXX make this an atomic store:
@@ -120,7 +123,7 @@ proc `=destroy`*[T](m: var MySeq[T]) {.inline.} =
     deallocShared(m.data)
     m.data = nil
 
-proc `=`*[T](m: var MySeq[T], m2: MySeq[T]) =
+proc `=copy`*[T](m: var MySeq[T], m2: MySeq[T]) =
   if m.data == m2.data: return
   if m.data != nil:
     `=destroy`(m)
@@ -131,17 +134,22 @@ proc `=`*[T](m: var MySeq[T], m2: MySeq[T]) =
     m.data = cast[ptr UncheckedArray[T]](allocShared(bytes))
     copyMem(m.data, m2.data, bytes)
 
+proc `=dup`*[T](m: MySeq[T]): MySeq[T] =
+  `=copy`[T](result, m)
+
 proc `=sink`*[T](m: var MySeq[T], m2: MySeq[T]) {.inline.} =
   if m.data != m2.data:
     if m.data != nil:
       `=destroy`(m)
     m.len = m2.len
     m.data = m2.data
+    m.refcount = m2.refcount
 
 proc len*[T](m: MySeq[T]): int {.inline.} = m.len
 
 proc newMySeq*[T](size: int, initial_value: T): MySeq[T] =
   result.len = size
+  result.refcount = 1
   if size > 0:
     result.data = cast[ptr UncheckedArray[T]](allocShared(sizeof(T) * size))
 

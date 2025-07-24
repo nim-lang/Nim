@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-from posix import Timespec
+from std/posix import Timespec
 
 when defined(macosx) or defined(freebsd) or defined(openbsd) or
      defined(dragonfly):

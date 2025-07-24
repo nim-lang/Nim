@@ -1,13 +1,13 @@
 when notJSnotNims:
   proc zeroMem*(p: pointer, size: Natural) {.inline, noSideEffect,
-    tags: [], locks: 0, raises: [].}
+    tags: [], raises: [].}
     ## Overwrites the contents of the memory at `p` with the value 0.
     ##
     ## Exactly `size` bytes will be overwritten. Like any procedure
     ## dealing with raw memory this is **unsafe**.
 
   proc copyMem*(dest, source: pointer, size: Natural) {.inline, benign,
-    tags: [], locks: 0, raises: [].}
+    tags: [], raises: [].}
     ## Copies the contents from the memory at `source` to the memory
     ## at `dest`.
     ## Exactly `size` bytes will be copied. The memory
@@ -15,7 +15,7 @@ when notJSnotNims:
     ## memory this is **unsafe**.
 
   proc moveMem*(dest, source: pointer, size: Natural) {.inline, benign,
-    tags: [], locks: 0, raises: [].}
+    tags: [], raises: [].}
     ## Copies the contents from the memory at `source` to the memory
     ## at `dest`.
     ##
@@ -25,7 +25,7 @@ when notJSnotNims:
     ## dealing with raw memory this is still **unsafe**, though.
 
   proc equalMem*(a, b: pointer, size: Natural): bool {.inline, noSideEffect,
-    tags: [], locks: 0, raises: [].}
+    tags: [], raises: [].}
     ## Compares the memory blocks `a` and `b`. `size` bytes will
     ## be compared.
     ##
@@ -34,7 +34,7 @@ when notJSnotNims:
     ## **unsafe**.
 
   proc cmpMem*(a, b: pointer, size: Natural): int {.inline, noSideEffect,
-    tags: [], locks: 0, raises: [].}
+    tags: [], raises: [].}
     ## Compares the memory blocks `a` and `b`. `size` bytes will
     ## be compared.
     ##
@@ -80,12 +80,12 @@ when hasAlloc and not defined(js):
 
   when defined(nimAllocStats):
     var stats: AllocStats
-    template incStat(what: untyped) = inc stats.what
+    template incStat(what: untyped) = atomicInc stats.what
     proc getAllocStats*(): AllocStats = stats
 
   else:
     template incStat(what: untyped) = discard
-    proc getAllocStats*(): AllocStats = discard
+    proc getAllocStats*(): AllocStats = result = default(AllocStats)
 
   template alloc*(size: Natural): pointer =
     ## Allocates a new memory block with at least `size` bytes.
@@ -116,9 +116,6 @@ when hasAlloc and not defined(js):
     ##
     ## See also:
     ## * `create <#create,typedesc>`_
-    static:
-      when sizeof(T) <= 0:
-        {.fatal: "createU does not support types T where sizeof(T) == 0".}
     cast[ptr T](alloc(T.sizeof * size))
 
   template alloc0*(size: Natural): pointer =
@@ -144,9 +141,6 @@ when hasAlloc and not defined(js):
     ##
     ## The allocated memory belongs to its allocating thread!
     ## Use `createShared <#createShared,typedesc>`_ to allocate from a shared heap.
-    static:
-      when sizeof(T) <= 0:
-        {.fatal: "create does not support types T where sizeof(T) == 0".}
     cast[ptr T](alloc0(sizeof(T) * size))
 
   template realloc*(p: pointer, newSize: Natural): pointer =

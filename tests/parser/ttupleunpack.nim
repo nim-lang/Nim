@@ -27,3 +27,68 @@ proc main() =
 
 main()
 main2()
+
+block: # nested unpacking
+  block: # simple let
+    let (a, (b, c), d) = (1, (2, 3), 4)
+    doAssert (a, b, c, d) == (1, 2, 3, 4)
+    let foo = (a, (b, c), d)
+    let (a2, (b2, c2), d2) = foo
+    doAssert (a, b, c, d) == (a2, b2, c2, d2)
+
+  block: # var and assignment
+    var (x, (y, z), t) = ('a', (true, @[123]), "abc")
+    doAssert (x, y, z, t) == ('a', true, @[123], "abc")
+    (x, (y, z), t) = ('b', (false, @[456]), "def")
+    doAssert (x, y, z, t) == ('b', false, @[456], "def")
+
+  block: # very nested
+    let (_, (_, (_, (_, (_, a))))) = (1, (2, (3, (4, (5, 6)))))
+    doAssert a == 6
+
+  block: # const
+    const (a, (b, c), d) = (1, (2, 3), 4)
+    doAssert (a, b, c, d) == (1, 2, 3, 4)
+    const foo = (a, (b, c), d)
+    const (a2, (b2, c2), d2) = foo
+    doAssert (a, b, c, d) == (a2, b2, c2, d2)
+  
+  block: # evaluation semantics preserved between literal and not literal
+    var s: seq[string]
+    block: # literal
+      let (a, (b, c), d) = ((s.add("a"); 1), ((s.add("b"); 2), (s.add("c"); 3)), (s.add("d"); 4))
+      doAssert (a, b, c, d) == (1, 2, 3, 4)
+      doAssert s == @["a", "b", "c", "d"]
+    block: # underscore
+      s = @[]
+      let (a, (_, c), _) = ((s.add("a"); 1), ((s.add("b"); 2), (s.add("c"); 3)), (s.add("d"); 4))
+      doAssert (a, c) == (1, 3)
+      doAssert s == @["a", "b", "c", "d"]
+    block: # temp
+      s = @[]
+      let foo = ((s.add("a"); 1), ((s.add("b"); 2), (s.add("c"); 3)), (s.add("d"); 4))
+      let (a, (b, c), d) = foo
+      doAssert (a, b, c, d) == (1, 2, 3, 4)
+      doAssert s == @["a", "b", "c", "d"]
+
+block: # unary assignment unpacking
+  var a: int
+  (a,) = (1,)
+  doAssert a == 1
+
+block: # type annotations
+  block: # basic
+    let (a, b): (int, int) = (1, 2)
+    doAssert (a, b) == (1, 2)
+  block: # type inference
+    let (a, b): (byte, float) = (1, 2)
+    doAssert (a, b) == (1.byte, 2.0)
+  block: # type mismatch
+    doAssert not (compiles do:
+      let (a, b): (int, string) = (1, 2))
+  block: # nested
+    let (a, (b, c)): (int, (int, int)) = (1, (2, 3))
+    doAssert (a, b, c) == (1, 2, 3)
+  block: # nested type inference
+    let (a, (b, c)): (byte, (float, cstring)) = (1, (2, "abc"))
+    doAssert (a, b, c) == (1.byte, 2.0, cstring"abc")

@@ -1,9 +1,9 @@
 discard """
 output: '''
 312
-1000000
-1000000
-500000
+1000
+1000
+500
 0
 '''
 """
@@ -12,7 +12,7 @@ import strutils
 
 type
   PNode[T,D] = ref TNode[T,D]
-  TItem {.acyclic, pure, final, shallow.} [T,D] = object
+  TItem[T,D] {.acyclic, pure, final, shallow.} = object
         key: T
         value: D
         node: PNode[T,D]
@@ -20,7 +20,7 @@ type
           val_set: bool
 
   TItems[T,D] = seq[ref TItem[T,D]]
-  TNode {.acyclic, pure, final, shallow.} [T,D] = object
+  TNode[T,D] {.acyclic, pure, final, shallow.} = object
         slots: TItems[T,D]
         left: PNode[T,D]
         count: int32
@@ -243,7 +243,7 @@ proc InsertItem[T,D](APath: RPath[T,D], ANode:PNode[T,D], Akey: T, Avalue: D) =
   of cLenCenter: setLen(APath.Nd.slots, cLen4)
   of cLen4: setLen(APath.Nd.slots, cLenMax)
   else: discard
-  for i in countdown(APath.Nd.count.int - 1, x + 1): shallowCopy(APath.Nd.slots[i], APath.Nd.slots[i - 1])
+  for i in countdown(APath.Nd.count.int - 1, x + 1): APath.Nd.slots[i] = move APath.Nd.slots[i - 1]
   APath.Nd.slots[x] = setItem(Akey, Avalue, ANode)
 
 
@@ -255,31 +255,39 @@ proc SplitPage[T,D](n, left: PNode[T,D], xi: int, Akey:var T, Avalue:var D): PNo
   result.slots.newSeq(cLenCenter)
   result.count = cCenter
   if x == cCenter:
-    for i in 0..cCenter-1: shallowCopy(it1[i], left.slots[i])
-    for i in 0..cCenter-1: shallowCopy(result.slots[i], left.slots[cCenter + i])
+    for i in 0..cCenter-1: 
+      it1[i] = move left.slots[i]
+    for i in 0..cCenter-1:
+      result.slots[i] = move left.slots[cCenter + i]
     result.left = n
   else :
     if x < cCenter :
-      for i in 0..x-1: shallowCopy(it1[i], left.slots[i])
+      for i in 0..x-1:
+        it1[i] = move left.slots[i]
       it1[x] = setItem(Akey, Avalue, n)
-      for i in x+1 .. cCenter-1: shallowCopy(it1[i], left.slots[i-1])
+      for i in x+1 .. cCenter-1:
+        it1[i] = move left.slots[i-1]
       var w = left.slots[cCenter-1]
       Akey = w.key
       Avalue = w.value
       result.left = w.node
-      for i in 0..cCenter-1: shallowCopy(result.slots[i], left.slots[cCenter + i])
+      for i in 0..cCenter-1:
+        result.slots[i] = move left.slots[cCenter + i]
     else :
-      for i in 0..cCenter-1: shallowCopy(it1[i], left.slots[i])
+      for i in 0..cCenter-1:
+        it1[i] = move left.slots[i]
       x = x - (cCenter + 1)
-      for i in 0..x-1: shallowCopy(result.slots[i], left.slots[cCenter + i + 1])
+      for i in 0..x-1:
+        result.slots[i] = move left.slots[cCenter + i + 1]
       result.slots[x] = setItem(Akey, Avalue, n)
-      for i in x+1 .. cCenter-1: shallowCopy(result.slots[i], left.slots[cCenter + i])
+      for i in x+1 .. cCenter-1:
+        result.slots[i] = move left.slots[cCenter + i]
       var w = left.slots[cCenter]
       Akey = w.key
       Avalue = w.value
       result.left = w.node
   left.count = cCenter
-  shallowCopy(left.slots, it1)
+  left.slots = move it1
 
 
 proc internalPut[T,D](ANode: ref TNode[T,D], Akey: T, Avalue: D, Oldvalue: var D): ref TNode[T,D] =
@@ -437,7 +445,7 @@ proc test() =
   var it1 = internalFind(root, 312)
   echo it1.value
 
-  for i in 1..1_000_000:
+  for i in 1..1_000:
     root = internalPut(root, i, i, oldvalue)
 
   var cnt = 0

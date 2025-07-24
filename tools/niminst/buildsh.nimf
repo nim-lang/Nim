@@ -122,6 +122,7 @@ case $uos in
   *netbsd* )
     myos="netbsd"
     LINK_FLAGS="$LINK_FLAGS -lm"
+    ucpu=`uname -p`
     ;;
   *darwin* )
     myos="macosx"
@@ -164,7 +165,7 @@ esac
 
 case $ucpu in
   *i386* | *i486* | *i586* | *i686* | *bepc* | *i86pc* )
-    if [ "$isOpenIndiana" = "yes" ] ; then
+    if [ "$isOpenIndiana" = "yes" ] || [ `uname -o` == "illumos" ] ; then
       mycpu="amd64"
     else
       mycpu="i386"

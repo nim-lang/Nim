@@ -1,7 +1,8 @@
 discard """
+  matrix: "--mm:refc; --mm:orc"
   targets: "c cpp js"
 """
-
+import std/assertions
 # TODO: in future work move existing arithmetic tests (tests/arithm/*) into this file
 # FYI https://github.com/nim-lang/Nim/pull/17767
 

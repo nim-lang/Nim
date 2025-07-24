@@ -1,5 +1,5 @@
 discard """
-  matrix: "--threads:on"
+  matrix: "--mm:refc; --mm:orc"
   errormsg: "'spawn'ed function cannot have a 'typed' or 'untyped' parameter"
 """
 

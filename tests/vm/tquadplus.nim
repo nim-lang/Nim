@@ -1,8 +1,5 @@
 # bug #1023
 
-discard """
-  output: "1 == 1"
-"""
 
 type Quadruple = tuple[a, b, c, d: int]
 
@@ -14,4 +11,4 @@ const
   B = (a: 0, b: -2, c: 1, d: 0)
   C = A + B
 
-echo C.d, " == ", (A+B).d
+doAssert $C.d & " == " & $(A+B).d == "1 == 1"

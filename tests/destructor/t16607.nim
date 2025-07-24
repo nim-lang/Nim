@@ -15,8 +15,7 @@ proc initO(): O =
   O(initialized: true)
 
 proc pair(): tuple[a, b: O] =
-  result.a = initO()
-  result.b = initO()
+  result = (a: initO(), b: initO())
 
 proc main() =
   discard pair()

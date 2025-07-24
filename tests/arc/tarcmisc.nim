@@ -1,5 +1,7 @@
 discard """
   output: '''
+Destructor for TestTestObj
+=destroy called
 123xyzabc
 destroyed: false
 destroyed: false
@@ -26,23 +28,99 @@ new line after - @['a']
 finalizer
 aaaaa
 hello
-ok
 true
 copying
 123
 42
-closed
+@["", "d", ""]
+mutate: 1
+ok
 destroying variable: 20
 destroying variable: 10
+closed
 '''
-  cmd: "nim c --gc:arc --deepcopy:on -d:nimAllocPagesViaMalloc $file"
+  cmd: "nim c --mm:arc --deepcopy:on -d:nimAllocPagesViaMalloc $file"
 """
+
+block: # bug #23627
+  type
+    TestObj = object of RootObj
+
+    Test2 = object of RootObj
+      foo: TestObj
+
+    TestTestObj = object of RootObj
+      shit: TestObj
+
+  proc `=destroy`(x: TestTestObj) =
+    echo "Destructor for TestTestObj"
+    let test = Test2(foo: TestObj())
+
+  proc testCaseT() =
+    let tt1 {.used.} = TestTestObj(shit: TestObj())
+
+
+  proc main() =
+    testCaseT()
+
+  main()
+
+
+# bug #9401
+
+type
+  MyObj = object
+    len: int
+    data: ptr UncheckedArray[float]
+
+proc `=destroy`*(m: MyObj) =
+
+  echo "=destroy called"
+
+  if m.data != nil:
+    deallocShared(m.data)
+
+type
+  MyObjDistinct = distinct MyObj
+
+proc `=copy`*(m: var MyObj, m2: MyObj) =
+  if m.data == m2.data: return
+  if m.data != nil:
+    `=destroy`(m)
+  m.len = m2.len
+  if m.len > 0:
+    m.data = cast[ptr UncheckedArray[float]](allocShared(sizeof(float) * m.len))
+    copyMem(m.data, m2.data, sizeof(float) * m.len)
+
+
+proc `=sink`*(m: var MyObj, m2: MyObj) =
+  if m.data != m2.data:
+    if m.data != nil:
+      `=destroy`(m)
+    m.len = m2.len
+    m.data = m2.data
+
+proc newMyObj(len: int): MyObj =
+  result = MyObj()
+  result.len = len
+  result.data = cast[ptr UncheckedArray[float]](allocShared(sizeof(float) * len))
+
+proc newMyObjDistinct(len: int): MyObjDistinct =
+  MyObjDistinct(newMyObj(len))
+
+proc fooDistinct =
+  doAssert newMyObjDistinct(2).MyObj.len == 2
+
+fooDistinct()
+
 
 proc takeSink(x: sink string): bool = true
 
 proc b(x: sink string): string =
   if takeSink(x):
     return x & "abc"
+  else:
+    result = ""
 
 proc bbb(inp: string) =
   let y = inp & "xyz"
@@ -55,7 +133,7 @@ bbb("123")
 type Variable = ref object
   value: int
 
-proc `=destroy`(self: var typeof(Variable()[])) =
+proc `=destroy`(self: typeof(Variable()[])) =
   echo "destroying variable: ",self.value
 
 proc newVariable(value: int): Variable =
@@ -75,7 +153,7 @@ proc test(count: int) =
 test(3)
 
 proc test2(count: int) =
-  #block: #XXX: Fails with block currently
+  block: #XXX: Fails with block currently
     var v {.global.} = newVariable(20)
 
     var count = count - 1
@@ -109,7 +187,7 @@ type
   B = ref object of A
     x: int
 
-proc `=destroy`(x: var AObj) =
+proc `=destroy`(x: AObj) =
   close(x.io)
   echo "closed"
 
@@ -193,11 +271,11 @@ type
     x: string
 
 proc bug14495 =
-  var owners: seq[Gah]
+  var owners: seq[Gah] = @[]
   for i in 0..10:
     owners.add Gah(x: $i)
 
-  var x: seq[Gah]
+  var x: seq[Gah] = @[]
   for i in 0..10:
     x.add owners[i]
 
@@ -497,3 +575,340 @@ proc fooz(sec: var InputSectionBase) =
 var sec = create(InputSection)
 sec[] = InputSection(relocations: newSeq[int]())
 fooz sec[]
+
+block:
+  type
+    Data = ref object
+      id: int
+  proc main =
+    var x = Data(id: 99)
+    var y = x
+    x[] = Data(id: 778)[]
+    doAssert y.id == 778
+    doAssert x[].id == 778
+  main()
+
+block: # bug #19857
+  type
+    ValueKind = enum VNull, VFloat, VObject # need 3 elements. Cannot remove VNull or VObject
+
+    Value = object
+      case kind: ValueKind
+      of VFloat: fnum: float
+      of VObject: tab: Table[int, int] # OrderedTable[T, U] also makes it fail.
+                                      # "simpler" types also work though
+      else: discard # VNull can be like this, but VObject must be filled
+
+    # required. Pure proc works
+    FormulaNode = proc(c: OrderedTable[string, int]): Value
+
+  proc toF(v: Value): float =
+    doAssert v.kind == VFloat
+    case v.kind
+    of VFloat: result = v.fnum
+    else: result = 0.0
+
+
+  proc foo() =
+    let fuck = initOrderedTable[string, int]()
+    proc cb(fuck: OrderedTable[string, int]): Value =
+                            # works:
+                            #result = Value(kind: VFloat, fnum: fuck["field_that_does_not_exist"].float)
+                            # broken:
+      result = Value()
+      discard "actuall runs!"
+      let t = fuck["field_that_does_not_exist"]
+      echo "never runs, but we crash after! ", t
+
+    doAssertRaises(KeyError):
+      let fn = FormulaNode(cb)
+      let v = fn(fuck)
+      #echo v
+      let res = v.toF()
+
+  foo()
+
+import std/options
+
+# bug #21592
+type Event* = object
+  code*: string
+
+type App* = ref object of RootObj
+  id*: string
+
+method process*(self: App): Option[Event] {.base.} =
+  raise Exception.new_exception("not impl")
+
+# bug #21617
+type Test2 = ref object of RootObj
+
+method bug(t: Test2): seq[float] {.base.} = result = @[]
+
+block: # bug #22664
+  type
+    ElementKind = enum String, Number
+    Element = object
+      case kind: ElementKind
+      of String:
+        str: string
+      of Number:
+        num: float
+    Calc = ref object
+      stack: seq[Element]
+
+  var calc = new Calc
+
+  calc.stack.add Element(kind: Number, num: 200.0)
+  doAssert $calc.stack == "@[(kind: Number, num: 200.0)]"
+  let calc2 = calc
+  calc2.stack = calc.stack # This nulls out the object in the stack
+  doAssert $calc.stack == "@[(kind: Number, num: 200.0)]"
+  doAssert $calc2.stack == "@[(kind: Number, num: 200.0)]"
+
+block: # bug #19250
+  type
+    Bar[T] = object
+      err: proc(): string
+
+    Foo[T] = object
+      run: proc(): Bar[T]
+
+  proc bar[T](err: proc(): string): Bar[T] =
+    assert not err.isNil
+    Bar[T](err: err)
+
+  proc foo(): Foo[char] = 
+    result = Foo[char]()
+    result.run = proc(): Bar[char] =
+      # works
+      # result = Bar[char](err: proc(): string = "x")
+      # not work
+      result = bar[char](proc(): string = "x")
+
+  proc bug[T](fs: Foo[T]): Foo[T] =
+    result = Foo[T]()
+    result.run = proc(): Bar[T] =
+      let res = fs.run()
+      
+      # works
+      # var errors = @[res.err] 
+      
+      # not work
+      var errors: seq[proc(): string] = @[]
+      errors.add res.err
+      
+      return bar[T] do () -> string:
+        result = ""
+        for err in errors:
+          result.add res.err()
+
+  doAssert bug(foo()).run().err() == "x"
+
+block: # bug #22259
+  type
+    ProcWrapper = tuple
+      p: proc() {.closure.}
+
+
+  proc f(wrapper: ProcWrapper) =
+    let s = @[wrapper.p]
+    let a = [wrapper.p]
+
+  proc main =
+    # let wrapper: ProcWrapper = ProcWrapper(p: proc {.closure.} = echo 10)
+    let wrapper: ProcWrapper = (p: proc {.closure.} = echo 10)
+    f(wrapper)
+
+  main()
+
+block:
+  block: # bug #22923
+    block:
+      let
+        a: int = 100
+        b: int32 = 200'i32
+
+      let
+        x = arrayWith(a, 8) # compiles
+        y = arrayWith(b, 8) # internal error
+        z = arrayWith(14, 8) # integer literal also results in a crash
+
+      doAssert x == [100, 100, 100, 100, 100, 100, 100, 100]
+      doAssert $y == "[200, 200, 200, 200, 200, 200, 200, 200]"
+      doAssert z == [14, 14, 14, 14, 14, 14, 14, 14]
+
+    block:
+      let a: string = "nim"
+      doAssert arrayWith(a, 3) == ["nim", "nim", "nim"]
+
+      let b: char = 'c'
+      doAssert arrayWith(b, 3) == ['c', 'c', 'c']
+
+      let c: uint = 300'u
+      doAssert $arrayWith(c, 3) == "[300, 300, 300]"
+
+block: # bug #23505
+  type
+    K = object
+    C = object
+      value: ptr K
+
+  proc init(T: type C): C =
+    let tmp = new K
+    C(value: addr tmp[])
+
+  discard init(C)
+
+block: # bug #23524
+  type MyType = object
+    a: int
+
+  proc `=destroy`(typ: MyType) = discard
+
+  var t1 = MyType(a: 100)
+  var t2 = t1 # Should be a copy?
+
+  proc main() =
+    t2 = t1
+    doAssert t1.a == 100
+    doAssert t2.a == 100
+
+  main()
+
+block: # bug #23907
+  type
+    Thingy = object
+      value: int
+
+    ExecProc[C] = proc(value: sink C): int {.nimcall.}
+
+  proc `=copy`(a: var Thingy, b: Thingy) {.error.}
+
+  var thingyDestroyCount = 0
+
+  proc `=destroy`(thingy: Thingy) =
+    assert(thingyDestroyCount <= 0)
+    thingyDestroyCount += 1
+
+  proc store(value: sink Thingy): int =
+    result = value.value
+
+  let callback: ExecProc[Thingy] = store
+
+  doAssert callback(Thingy(value: 123)) == 123
+
+import std/strutils
+
+block: # bug #23974
+  func g(e: seq[string]): lent seq[string] = result = e
+  proc k(f: string): seq[string] = f.split("/")
+  proc n() =
+    const r = "/d/"
+    let t =
+      if true:
+        k(r).g()
+      else:
+        k("/" & r).g()
+    echo t
+
+  n()
+
+block: # bug #23973
+  func g(e: seq[string]): lent seq[string] = result = e
+  proc k(f: string): seq[string] = f.split("/")
+  proc n() =
+    const r = "/test/empty"  # or "/test/empty/1"
+    let a = k(r).g()
+    let t =
+      if true:
+        k(r).g()
+      else:
+        k("/" & r).g()   # or raiseAssert ""
+    doAssert t == a
+
+  n()
+
+block: # bug #24141
+  func reverse(s: var openArray[char]) =
+    s[0] = 'f'
+
+  func rev(s: var string) =
+    s.reverse
+
+  proc main =
+    var abc = "abc"
+    abc.rev
+    doAssert abc == "fbc"
+
+  main()
+
+block:
+  type
+    FooObj = object
+      data: int
+    Foo = ref FooObj
+
+
+  proc delete(self: FooObj) =
+    discard
+
+  var s = Foo()
+  new(s, delete)
+
+block:
+  type
+    FooObj = object
+      data: int
+      i1, i2, i3, i4: float
+    Foo = ref FooObj
+
+
+  proc delete(self: FooObj) =
+    discard
+
+  var s = Foo()
+  new(s, delete)
+
+proc test_18070() = # bug #18070
+  try:
+    try:
+      raise newException(CatchableError, "something")
+    except:
+      raise newException(CatchableError, "something else")
+  except:
+    doAssert getCurrentExceptionMsg() == "something else"
+
+  let msg = getCurrentExceptionMsg()
+  doAssert msg == "", "expected empty string but got: " & $msg
+
+test_18070()
+
+type AnObject = tuple
+  a: string
+  b: int
+  c: int
+
+proc mutate(a: sink AnObject) =
+  `=wasMoved`(a)
+  echo "mutate: 1"
+
+# echo "Value is: ", obj.value
+proc bar =
+  mutate(("1.2", 0, 0))
+
+bar()
+
+block: # bug #24754
+  type NoCopy = object
+    id: int
+
+  proc `=copy`(a: var NoCopy, b: NoCopy) {.error.}
+
+
+  proc foo(): NoCopy =
+    {.gcsafe.}:
+      let s = 12
+      NoCopy(id: s)
+
+  doAssert foo().id == 12

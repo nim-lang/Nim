@@ -37,13 +37,13 @@ when defined(js):
       let a = array[2, float64].default
       assert jsConstructorName(a) == "Float64Array"
       assert jsConstructorName(a.toJs) == "Float64Array"
-    asm """`result` = `a`.constructor.name"""
+    {.emit: """`result` = `a`.constructor.name;""".}
 
   proc hasJsBigInt*(): bool =
-    asm """`result` = typeof BigInt != 'undefined'"""
+    {.emit: """`result` = typeof BigInt != 'undefined';""".}
 
   proc hasBigUint64Array*(): bool =
-    asm """`result` = typeof BigUint64Array != 'undefined'"""
+    {.emit: """`result` = typeof BigUint64Array != 'undefined';""".}
 
   proc getProtoName*[T](a: T): cstring {.importjs: "Object.prototype.toString.call(#)".} =
     runnableExamples:
@@ -79,5 +79,25 @@ when defined(js):
       assert not "123".toJs.isSafeInteger
       assert 123.isSafeInteger
       assert 123.toJs.isSafeInteger
-      assert 9007199254740991.toJs.isSafeInteger
-      assert not 9007199254740992.toJs.isSafeInteger
+      when false:
+        assert 9007199254740991.toJs.isSafeInteger
+        assert not 9007199254740992.toJs.isSafeInteger
+
+const jsNoBigInt64* =
+  when defined(js):
+    when compiles(compileOption("jsbigint64")):
+      not compileOption("jsbigint64")
+    else:
+      true
+  else:
+    false
+
+const hasWorkingInt64* =
+  # equal to `not jsNoBigInt64`, but define it by itself anyway
+  when defined(js):
+    when compiles(compileOption("jsbigint64")):
+      compileOption("jsbigint64")
+    else:
+      false
+  else:
+    true

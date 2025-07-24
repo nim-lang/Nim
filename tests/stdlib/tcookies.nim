@@ -1,9 +1,11 @@
 discard """
+  matrix: "--mm:refc; --mm:orc"
   targets: "c js"
 """
 
 
 import std/[cookies, times, strtabs]
+import std/assertions
 
 let expire = fromUnix(0) + 1.seconds
 

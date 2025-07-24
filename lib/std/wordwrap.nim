@@ -9,7 +9,7 @@
 
 ## This module contains an algorithm to wordwrap a Unicode string.
 
-import strutils, unicode
+import std/[strutils, unicode]
 
 proc olen(s: string; start, lastExclusive: int): int =
   var i = start

@@ -1,5 +1,5 @@
 discard """
-cmd: "nim doc --doccmd:--hints:off --hints:off $file"
+cmd: '''nim doc --doccmd:"-d:testFooExternal --hints:off" --hints:off $file'''
 action: "compile"
 nimoutFull: true
 nimout: '''
@@ -7,7 +7,6 @@ foo1
 foo2
 foo3
 foo5
-foo6
 foo7
 in examplesInTemplate1
 doc in outer
@@ -15,16 +14,11 @@ doc in inner1
 doc in inner2
 foo8
 foo9
+foo6
 '''
 joinable: false
 """
 
-#[
-pending bug #18077, use instead:
-cmd: "nim doc --doccmd:'-d:testFooExternal --hints:off' --hints:off $file"
-and merge trunnableexamples2 back here
-]#
-{.define(testFooExternal).}
 
 proc fun*() =
   runnableExamples:
@@ -43,7 +37,7 @@ proc fun*() =
     proc fun*()=echo "foo5"
     fun()
 
-  runnableExamples:
+  runnableExamples("--experimental:codeReordering --warnings:off"):
     # `codeReordering` only allowed at top level
     {.experimental: "codeReordering".}
     proc fun1() = fun2()
@@ -65,7 +59,7 @@ when true: # issue #12746
     runnableExamples:
       try:
         discard
-      except:
+      except CatchableError:
         # just the general except will work
         discard
 
@@ -170,7 +164,9 @@ runnableExamples:
 
   # bug #13491
   block:
-    proc fun(): int = doAssert false
+    proc fun(): int =
+      result = 0
+      doAssert false
     doAssertRaises(AssertionDefect, (discard fun()))
 
   block:
@@ -196,6 +192,10 @@ runnableExamples:
   proc fun*()=echo "foo9"
   fun()
 
+# import std/assertions by default
+runnableExamples("-d:nimPreviewSlimSystem"):
+  doAssert true
+
 # note: there are yet other examples where putting runnableExamples at module
 # scope is needed, for example when using an `include` before an `import`, etc.
 
@@ -208,3 +208,8 @@ snippet:
   doAssert defined(testFooExternal)
 
 ]##
+
+when true: # runnableExamples with rdoccmd
+  runnableExamples "-d:testFoo -d:testBar":
+    doAssert defined(testFoo) and defined(testBar)
+    doAssert defined(testFooExternal)

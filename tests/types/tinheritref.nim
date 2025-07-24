@@ -11,11 +11,11 @@ ob = T[int](elem: 23)
 doAssert ob.elem == 23
 
 type
-  TTreeIteratorA* = ref object {.inheritable.}
-
   TKeysIteratorA* = ref object of TTreeIteratorA  #compiles
 
-  TTreeIterator* [T,D] = ref object {.inheritable.}
+  TTreeIteratorA* {.inheritable.} = ref object
+
+  TTreeIterator* [T,D] {.inheritable.} = ref object
 
   TKeysIterator* [T,D] = ref object of TTreeIterator[T,D]  #this not
 

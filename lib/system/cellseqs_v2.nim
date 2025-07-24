@@ -16,20 +16,17 @@ type
     len, cap: int
     d: CellArray[T]
 
-proc add[T](s: var CellSeq[T], c: T; t: PNimTypeV2) {.inline.} =
+proc resize[T](s: var CellSeq[T]) =
+  s.cap = s.cap div 2 + s.cap
+  var newSize = s.cap * sizeof(CellTuple[T])
+  when compileOption("threads"):
+    s.d = cast[CellArray[T]](reallocShared(s.d, newSize))
+  else:
+    s.d = cast[CellArray[T]](realloc(s.d, newSize))
+
+proc add[T](s: var CellSeq[T], c: T, t: PNimTypeV2) {.inline.} =
   if s.len >= s.cap:
-    s.cap = s.cap * 3 div 2
-    when compileOption("threads"):
-      var d = cast[CellArray[T]](allocShared(uint(s.cap * sizeof(CellTuple[T]))))
-    else:
-      var d = cast[CellArray[T]](alloc(s.cap * sizeof(CellTuple[T])))
-    copyMem(d, s.d, s.len * sizeof(CellTuple[T]))
-    when compileOption("threads"):
-      deallocShared(s.d)
-    else:
-      dealloc(s.d)
-    s.d = d
-    # XXX: realloc?
+    s.resize()
   s.d[s.len] = (c, t)
   inc(s.len)
 

@@ -25,7 +25,9 @@
 ##   `difference <#difference,HashSet[A],HashSet[A]>`_, and
 ##   `symmetric difference <#symmetricDifference,HashSet[A],HashSet[A]>`_
 ##
-## .. code-block::
+## **Examples:**
+##
+##   ```Nim
 ##   echo toHashSet([9, 5, 1])     # {9, 1, 5}
 ##   echo toOrderedSet([9, 5, 1])  # {9, 5, 1}
 ##
@@ -37,7 +39,7 @@
 ##   echo s1 - s2    # {1, 9}
 ##   echo s1 * s2    # {5}
 ##   echo s1 -+- s2  # {9, 1, 3, 7}
-##
+##   ```
 ##
 ## Note: The data types declared here have *value semantics*: This means
 ## that `=` performs a copy of the set.
@@ -48,7 +50,10 @@
 
 
 import
-  hashes, math
+  std/[hashes, math]
+
+when not defined(nimHasEffectsOf):
+  {.pragma: effectsOf.}
 
 {.pragma: myShallow.}
 # For "integer-like A" that are too big for intsets/bit-vectors to be practical,
@@ -61,7 +66,7 @@ type
   HashSet*[A] {.myShallow.} = object ## \
     ## A generic hash set.
     ##
-    ## Use `init proc <#init,HashSet[A]>`_ or `initHashSet proc <#initHashSet,int>`_
+    ## Use `init proc <#init,HashSet[A]>`_ or `initHashSet proc <#initHashSet>`_
     ## before calling other procs on it.
     data: KeyValuePairSeq[A]
     counter: int
@@ -125,7 +130,7 @@ proc initHashSet*[A](initialSize = defaultInitialSize): HashSet[A] =
     var a = initHashSet[int]()
     a.incl(3)
     assert len(a) == 1
-
+  result = default(HashSet[A])
   result.init(initialSize)
 
 proc `[]`*[A](s: var HashSet[A], key: A): var A =
@@ -182,7 +187,7 @@ proc card*[A](s: HashSet[A]): int =
   ## Alias for `len() <#len,HashSet[A]>`_.
   ##
   ## Card stands for the `cardinality
-  ## <http://en.wikipedia.org/wiki/Cardinality>`_ of a set.
+  ## <https://en.wikipedia.org/wiki/Cardinality>`_ of a set.
   result = s.counter
 
 proc incl*[A](s: var HashSet[A], key: A) =
@@ -246,7 +251,7 @@ iterator items*[A](s: HashSet[A]): A =
   ## If you need a sequence with the elements you can use `sequtils.toSeq
   ## template <sequtils.html#toSeq.t,untyped>`_.
   ##
-  ## .. code-block::
+  ##   ```Nim
   ##   type
   ##     pair = tuple[a, b: int]
   ##   var
@@ -259,6 +264,7 @@ iterator items*[A](s: HashSet[A]): A =
   ##   assert a.len == 2
   ##   echo b
   ##   # --> {(a: 1, b: 3), (a: 0, b: 4)}
+  ##   ```
   let length = s.len
   for h in 0 .. high(s.data):
     if isFilled(s.data[h].hcode):
@@ -344,7 +350,7 @@ proc missingOrExcl*[A](s: var HashSet[A], key: A): bool =
 proc pop*[A](s: var HashSet[A]): A =
   ## Removes and returns an arbitrary element from the set `s`.
   ##
-  ## Raises KeyError if the set `s` is empty.
+  ## Raises `KeyError` if the set `s` is empty.
   ##
   ## See also:
   ## * `clear proc <#clear,HashSet[A]>`_
@@ -376,7 +382,9 @@ proc clear*[A](s: var HashSet[A]) =
   s.counter = 0
   for i in 0 ..< s.data.len:
     s.data[i].hcode = 0
-    s.data[i].key = default(typeof(s.data[i].key))
+    {.push warning[UnsafeDefault]:off.}
+    reset(s.data[i].key)
+    {.pop.}
 
 
 proc union*[A](s1, s2: HashSet[A]): HashSet[A] =
@@ -422,7 +430,7 @@ proc intersection*[A](s1, s2: HashSet[A]): HashSet[A] =
     assert c == toHashSet(["b"])
 
   result = initHashSet[A](max(min(s1.data.len, s2.data.len), 2))
-  
+
   # iterate over the elements of the smaller set
   if s1.data.len < s2.data.len:
     for item in s1:
@@ -430,7 +438,7 @@ proc intersection*[A](s1, s2: HashSet[A]): HashSet[A] =
   else:
     for item in s2:
       if item in s1: incl(result, item)
-  
+
 
 proc difference*[A](s1, s2: HashSet[A]): HashSet[A] =
   ## Returns the difference of the sets `s1` and `s2`.
@@ -556,7 +564,7 @@ proc `==`*[A](s, t: HashSet[A]): bool =
 
   s.counter == t.counter and s <= t
 
-proc map*[A, B](data: HashSet[A], op: proc (x: A): B {.closure.}): HashSet[B] =
+proc map*[A, B](data: HashSet[A], op: proc (x: A): B {.closure.}): HashSet[B] {.effectsOf: op.} =
   ## Returns a new set after applying `op` proc on each of the elements of
   ##`data` set.
   ##
@@ -583,12 +591,12 @@ proc `$`*[A](s: HashSet[A]): string =
   ## any moment and values are not escaped.
   ##
   ## **Examples:**
-  ##
-  ## .. code-block::
+  ##   ```Nim
   ##   echo toHashSet([2, 4, 5])
   ##   # --> {2, 4, 5}
   ##   echo toHashSet(["no", "esc'aping", "is \" provided"])
   ##   # --> {no, esc'aping, is " provided}
+  ##   ```
   dollarImpl()
 
 
@@ -662,7 +670,7 @@ proc initOrderedSet*[A](initialSize = defaultInitialSize): OrderedSet[A] =
     var a = initOrderedSet[int]()
     a.incl(3)
     assert len(a) == 1
-
+  result = OrderedSet[A]()
   result.init(initialSize)
 
 proc toOrderedSet*[A](keys: openArray[A]): OrderedSet[A] =
@@ -810,7 +818,9 @@ proc clear*[A](s: var OrderedSet[A]) =
   for i in 0 ..< s.data.len:
     s.data[i].hcode = 0
     s.data[i].next = 0
-    s.data[i].key = default(typeof(s.data[i].key))
+    {.push warning[UnsafeDefault]:off.}
+    reset(s.data[i].key)
+    {.pop.}
 
 proc len*[A](s: OrderedSet[A]): int {.inline.} =
   ## Returns the number of elements in `s`.
@@ -830,7 +840,7 @@ proc card*[A](s: OrderedSet[A]): int {.inline.} =
   ## Alias for `len() <#len,OrderedSet[A]>`_.
   ##
   ## Card stands for the `cardinality
-  ## <http://en.wikipedia.org/wiki/Cardinality>`_ of a set.
+  ## <https://en.wikipedia.org/wiki/Cardinality>`_ of a set.
   result = s.counter
 
 proc `==`*[A](s, t: OrderedSet[A]): bool =
@@ -871,12 +881,12 @@ proc `$`*[A](s: OrderedSet[A]): string =
   ## any moment and values are not escaped.
   ##
   ## **Examples:**
-  ##
-  ## .. code-block::
+  ##   ```Nim
   ##   echo toOrderedSet([2, 4, 5])
   ##   # --> {2, 4, 5}
   ##   echo toOrderedSet(["no", "esc'aping", "is \" provided"])
   ##   # --> {no, esc'aping, is " provided}
+  ##   ```
   dollarImpl()
 
 
@@ -887,7 +897,7 @@ iterator items*[A](s: OrderedSet[A]): A =
   ## If you need a sequence with the elements you can use `sequtils.toSeq
   ## template <sequtils.html#toSeq.t,untyped>`_.
   ##
-  ## .. code-block::
+  ##   ```Nim
   ##   var a = initOrderedSet[int]()
   ##   for value in [9, 2, 1, 5, 1, 8, 4, 2]:
   ##     a.incl(value)
@@ -899,6 +909,7 @@ iterator items*[A](s: OrderedSet[A]): A =
   ##   # --> Got 5
   ##   # --> Got 8
   ##   # --> Got 4
+  ##   ```
   let length = s.len
   forAllOrderedPairs:
     yield s.data[h].key

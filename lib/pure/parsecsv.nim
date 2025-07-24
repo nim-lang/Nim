@@ -13,7 +13,7 @@
 ## Basic usage
 ## ===========
 ##
-## .. code-block:: nim
+##   ```nim
 ##   import std/parsecsv
 ##   from std/os import paramStr
 ##   from std/streams import newFileStream
@@ -29,11 +29,12 @@
 ##     for val in items(x.row):
 ##       echo "##", val, "##"
 ##   close(x)
+##   ```
 ##
 ## For CSV files with a header row, the header can be read and then used as a
 ## reference for item access with `rowEntry <#rowEntry,CsvParser,string>`_:
 ##
-## .. code-block:: nim
+##   ```nim
 ##   import std/parsecsv
 ##
 ##   # Prepare a file
@@ -52,6 +53,7 @@
 ##     for col in items(p.headers):
 ##       echo "##", col, ":", p.rowEntry(col), "##"
 ##   p.close()
+##   ```
 ##
 ## See also
 ## ========
@@ -65,7 +67,7 @@
 ## * `parsesql module <parsesql.html>`_ for a SQL parser
 ## * `other parsers <lib.html#pure-libraries-parsers>`_ for other parsers
 
-import lexbase, streams
+import std/[lexbase, streams]
 
 when defined(nimPreviewSlimSystem):
   import std/syncio
@@ -347,7 +349,7 @@ proc rowEntry*(self: var CsvParser, entry: string): var string =
     raise newException(KeyError, "Entry `" & entry & "` doesn't exist")
 
 when not defined(testing) and isMainModule:
-  import os
+  import std/os
   var s = newFileStream(paramStr(1), fmRead)
   if s == nil: quit("cannot open the file" & paramStr(1))
   var x: CsvParser

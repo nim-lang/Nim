@@ -13,7 +13,7 @@
 ##
 ## You can use this to build your own syntax highlighting, check this example:
 ##
-## .. code:: Nim
+##   ```Nim
 ##   let code = """for x in $int.high: echo x.ord mod 2 == 0"""
 ##   var toknizr: GeneralTokenizer
 ##   initGeneralTokenizer(toknizr, code)
@@ -31,19 +31,20 @@
 ##     else:
 ##       echo toknizr.kind # All the kinds of tokens can be processed here.
 ##       echo substr(code, toknizr.start, toknizr.length + toknizr.start - 1)
+##   ```
 ##
 ## The proc `getSourceLanguage` can get the language `enum` from a string:
-##
-## .. code:: Nim
+##   ```Nim
 ##   for l in ["C", "c++", "jAvA", "Nim", "c#"]: echo getSourceLanguage(l)
+##   ```
 ##
 ## There is also a `Cmd` pseudo-language supported, which is a simple generic
 ## shell/cmdline tokenizer (UNIX shell/Powershell/Windows Command):
 ## no escaping, no programming language constructs besides variable definition
 ## at the beginning of line. It supports these operators:
-##
-## .. code:: Cmd
-##    &  &&  |  ||  (  )  ''  ""  ;  # for comments
+##   ```Cmd
+##   &  &&  |  ||  (  )  ''  ""  ;  # for comments
+##   ```
 ##
 ## Instead of escaping always use quotes like here
 ## `nimgrep --ext:'nim|nims' file.name`:cmd: shows how to input ``|``.
@@ -56,8 +57,12 @@
 ## as program output.
 
 import
-  strutils
-from algorithm import binarySearch
+  std/strutils
+from std/algorithm import binarySearch
+
+when defined(nimPreviewSlimSystem):
+  import std/[assertions, syncio]
+
 
 type
   SourceLanguage* = enum
@@ -125,9 +130,7 @@ proc initGeneralTokenizer*(g: var GeneralTokenizer, buf: cstring) =
   g.length = 0
   g.state = low(TokenClass)
   g.lang = low(SourceLanguage)
-  var pos = 0                     # skip initial whitespace:
-  while g.buf[pos] in {' ', '\t'..'\r'}: inc(pos)
-  g.pos = pos
+  g.pos = 0
 
 proc initGeneralTokenizer*(g: var GeneralTokenizer, buf: string) =
   initGeneralTokenizer(g, cstring(buf))
@@ -298,6 +301,8 @@ proc nimNextToken(g: var GeneralTokenizer, keywords: openArray[string] = @[]) =
           g.kind = nimGetKeyword(id)
         elif isKeyword(keywords, id) >= 0:
           g.kind = gtKeyword
+        else:
+          g.kind = gtIdentifier
     of '0':
       inc(pos)
       case g.buf[pos]
@@ -321,17 +326,18 @@ proc nimNextToken(g: var GeneralTokenizer, keywords: openArray[string] = @[]) =
       pos = nimNumber(g, pos)
     of '\'':
       inc(pos)
-      g.kind = gtCharLit
-      while true:
-        case g.buf[pos]
-        of '\0', '\r', '\n':
-          break
-        of '\'':
-          inc(pos)
-          break
-        of '\\':
-          inc(pos, 2)
-        else: inc(pos)
+      if g.kind != gtPunctuation:
+        g.kind = gtCharLit
+        while true:
+          case g.buf[pos]
+          of '\0', '\r', '\n':
+            break
+          of '\'':
+            inc(pos)
+            break
+          of '\\':
+            inc(pos, 2)
+          else: inc(pos)
     of '\"':
       inc(pos)
       if (g.buf[pos] == '\"') and (g.buf[pos + 1] == '\"'):
@@ -495,6 +501,9 @@ proc clikeNextToken(g: var GeneralTokenizer, keywords: openArray[string],
           of '\0':
             break
           else: inc(pos)
+      else:
+        g.kind = gtOperator
+        while g.buf[pos] in OpChars: inc(pos)
     of '#':
       inc(pos)
       if hasPreprocessor in flags:

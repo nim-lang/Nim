@@ -39,10 +39,13 @@ runnableExamples("-r:off"):
 
   waitFor main()
 
-import asyncnet, asyncdispatch, parseutils, uri, strutils
-import httpcore
-from nativesockets import getLocalAddr, Domain, AF_INET, AF_INET6
+import std/[asyncnet, asyncdispatch, parseutils, uri, strutils]
+import std/httpcore
+from std/nativesockets import getLocalAddr, Domain, AF_INET, AF_INET6
 import std/private/since
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
 
 export httpcore except parseHeader
 
@@ -107,16 +110,16 @@ proc respond*(req: Request, code: HttpCode, content: string,
   ## This procedure will **not** close the client socket.
   ##
   ## Example:
-  ##
-  ## .. code-block:: Nim
-  ##    import std/json
-  ##    proc handler(req: Request) {.async.} =
-  ##      if req.url.path == "/hello-world":
-  ##        let msg = %* {"message": "Hello World"}
-  ##        let headers = newHttpHeaders([("Content-Type","application/json")])
-  ##        await req.respond(Http200, $msg, headers)
-  ##      else:
-  ##        await req.respond(Http404, "Not Found")
+  ##   ```Nim
+  ##   import std/json
+  ##   proc handler(req: Request) {.async.} =
+  ##     if req.url.path == "/hello-world":
+  ##       let msg = %* {"message": "Hello World"}
+  ##       let headers = newHttpHeaders([("Content-Type","application/json")])
+  ##       await req.respond(Http200, $msg, headers)
+  ##     else:
+  ##       await req.respond(Http404, "Not Found")
+  ##   ```
   var msg = "HTTP/1.1 " & $code & "\c\L"
 
   if headers != nil:
@@ -143,6 +146,7 @@ proc respondError(req: Request, code: HttpCode): Future[void] =
   result = req.client.send(msg)
 
 proc parseProtocol(protocol: string): tuple[orig: string, major, minor: int] =
+  result = default(tuple[orig: string, major, minor: int])
   var i = protocol.skipIgnoreCase("HTTP/")
   if i != 5:
     raise newException(ValueError, "Invalid request protocol. Got: " &
@@ -155,7 +159,7 @@ proc parseProtocol(protocol: string): tuple[orig: string, major, minor: int] =
 proc sendStatus(client: AsyncSocket, status: string): Future[void] =
   client.send("HTTP/1.1 " & status & "\c\L\c\L")
 
-func hasChunkedEncoding(request: Request): bool = 
+func hasChunkedEncoding(request: Request): bool =
   ## Searches for a chunked transfer encoding
   const transferEncoding = "Transfer-Encoding"
 
@@ -170,7 +174,7 @@ proc processRequest(
   server: AsyncHttpServer,
   req: FutureVar[Request],
   client: AsyncSocket,
-  address: string,
+  address: sink string,
   lineFut: FutureVar[string],
   callback: proc (request: Request): Future[void] {.closure, gcsafe.},
 ): Future[bool] {.async.} =
@@ -184,7 +188,10 @@ proc processRequest(
   # \n
   request.headers.clear()
   request.body = ""
-  request.hostname.shallowCopy(address)
+  when defined(gcArc) or defined(gcOrc) or defined(gcAtomicArc):
+    request.hostname = address
+  else:
+    request.hostname.shallowCopy(address)
   assert client != nil
   request.client = client
 
@@ -294,7 +301,7 @@ proc processRequest(
     while true:
       lineFut.mget.setLen(0)
       lineFut.clean()
-      
+
       # The encoding format alternates between specifying a number of bytes to read
       # and the data to be read, of the previously specified size
       if sizeOrData mod 2 == 0:
@@ -381,8 +388,9 @@ proc listen*(server: AsyncHttpServer; port: Port; address = ""; domain = AF_INET
   server.socket = newAsyncSocket(domain)
   if server.reuseAddr:
     server.socket.setSockOpt(OptReuseAddr, true)
-  if server.reusePort:
-    server.socket.setSockOpt(OptReusePort, true)
+  when not defined(nuttx):
+    if server.reusePort:
+      server.socket.setSockOpt(OptReusePort, true)
   server.socket.bindAddr(port, address)
   server.socket.listen()
 

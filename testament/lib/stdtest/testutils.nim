@@ -40,7 +40,7 @@ when not defined(js) and not defined(nimscript):
         yield line
     template isMatch(lhsi, rhsi): bool =
       if allowPrefixMatch:
-        startsWith(rhsi, lhsi):
+        startsWith(rhsi, lhsi)
       else:
         lhsi == rhsi
 
@@ -65,6 +65,11 @@ template enableRemoteNetworking*: bool =
   ## process calls, e.g. `testament all` calls itself, which in turns invokes
   ## a `nim` invocation (possibly via additional intermediate processes).
   getEnv("NIM_TESTAMENT_REMOTE_NETWORKING") == "1"
+
+template disableSSLTesting*: bool =
+  ## TODO: workaround for GitHub Action gcc 14 matrix; remove this
+  ## matrix and the flag after Azure agent supports ubuntu 24.04
+  getEnv("NIM_TESTAMENT_DISABLE_SSL") == "1"
 
 template whenRuntimeJs*(bodyIf, bodyElse) =
   ##[

@@ -1,4 +1,5 @@
 discard """
+  targets: "c js"
   output: '''0
 1
 2
@@ -21,6 +22,15 @@ discard """
 2
 70
 0
+(1, 1)
+(1, 2)
+(1, 3)
+(2, 1)
+(2, 2)
+(2, 3)
+(3, 1)
+(3, 2)
+(3, 3)
 '''
 """
 
@@ -143,12 +153,24 @@ iterator filesIt(path: string): auto {.closure.} =
       yield prefix / f
 
 # bug #13815
-var love = iterator: int {.closure.} =
-  yield cast[type(
-    block:
-      var a = 0
-      yield a
-      a)](0)
+when not defined(js):
+  var love = iterator: int {.closure.} =
+    yield cast[type(
+      block:
+        var a = 0
+        yield a
+        a)](0)
 
-for i in love():
-  echo i
+  for i in love():
+    echo i
+else:
+  echo 0
+
+# bug #18474
+iterator pairs(): (int, int) {.closure.} =
+  for i in 1..3:
+    for j in 1..3:
+      yield (i, j)
+
+for pair in pairs():
+  echo pair

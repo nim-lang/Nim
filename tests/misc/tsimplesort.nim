@@ -10,7 +10,7 @@ type
   TSlotEnum = enum seEmpty, seFilled, seDeleted
   TKeyValuePair[A, B] = tuple[slot: TSlotEnum, key: A, val: B]
   TKeyValuePairSeq[A, B] = seq[TKeyValuePair[A, B]]
-  TTable* {.final, myShallow.}[A, B] = object
+  TTable*[A, B] {.final, myShallow.} = object
     data: TKeyValuePairSeq[A, B]
     counter: int
 
@@ -137,8 +137,7 @@ proc `$`*[A, B](t: TTable[A, B]): string =
 # ------------------------------ count tables -------------------------------
 
 type
-  TCountTable* {.final, myShallow.}[
-      A] = object ## table that counts the number of each key
+  TCountTable*[A] {.final, myShallow.} = object ## table that counts the number of each key
     data: seq[tuple[key: A, val: int]]
     counter: int
 

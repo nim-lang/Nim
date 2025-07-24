@@ -11,7 +11,7 @@
 
 when defined(hotcodereloading):
   import
-    macros
+    std/macros
 
   template beforeCodeReload*(body: untyped) =
     hcrAddEventHandler(true, proc = body) {.executeOnReload.}

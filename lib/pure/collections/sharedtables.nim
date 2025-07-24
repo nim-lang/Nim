@@ -17,7 +17,7 @@
 {.deprecated.}
 
 import
-  hashes, math, locks
+  std/[hashes, math, locks]
 
 type
   KeyValuePair[A, B] = tuple[hcode: Hash, key: A, val: B]
@@ -139,12 +139,15 @@ template withValue*[A, B](t: var SharedTable[A, B], key: A,
 proc mget*[A, B](t: var SharedTable[A, B], key: A): var B =
   ## Retrieves the value at `t[key]`. The value can be modified.
   ## If `key` is not in `t`, the `KeyError` exception is raised.
-  withLock t:
-    var hc: Hash
-    var index = rawGet(t, key, hc)
-    let hasKey = index >= 0
-    if hasKey: result = t.data[index].val
-  if not hasKey:
+  acquire(t.lock)
+  var hc: Hash = Hash(0)
+  var index = rawGet(t, key, hc)
+  let hasKey = index >= 0
+  if hasKey:
+    result = t.data[index].val
+    release(t.lock)
+  else:
+    release(t.lock)
     when compiles($key):
       raise newException(KeyError, "key not found: " & $key)
     else:
@@ -191,8 +194,7 @@ proc withKey*[A, B](t: var SharedTable[A, B], key: A,
   ##
   ## Example usage:
   ##
-  ## .. code-block:: nim
-  ##
+  ##   ```nim
   ##   # If value exists, decrement it.
   ##   # If it becomes zero or less, delete the key
   ##   t.withKey(1'i64) do (k: int64, v: var int, pairExists: var bool):
@@ -200,6 +202,7 @@ proc withKey*[A, B](t: var SharedTable[A, B], key: A,
   ##       dec v
   ##       if v <= 0:
   ##         pairExists = false
+  ##   ```
   withLock t:
     var hc: Hash
     var index = rawGet(t, key, hc)

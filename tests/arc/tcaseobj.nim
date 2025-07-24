@@ -10,6 +10,7 @@ begin
 end
 prevented
 (ok: true, value: "ok")
+@[(kind: P, pChildren: @[])]
 myobj destroyed
 '''
 """
@@ -59,7 +60,7 @@ proc `=destroy`(o: var TMyObj) =
     o.p = nil
     echo "myobj destroyed"
 
-proc `=`(dst: var TMyObj, src: TMyObj) =
+proc `=copy`(dst: var TMyObj, src: TMyObj) =
   `=destroy`(dst)
   dst.p = alloc(src.len)
   dst.len = src.len
@@ -165,22 +166,28 @@ type
     x2: string
 
 proc test_myobject =
-  var x: MyObject
+  var x: MyObject = MyObject()
   x.x1 = "x1"
   x.x2 = "x2"
   x.y1 = "ljhkjhkjh"
-  x.kind1 = true
+  {.cast(uncheckedAssign).}:
+    x.kind1 = true
   x.y2 = @["1", "2"]
-  x.kind2 = true
+  {.cast(uncheckedAssign).}:
+    x.kind2 = true
   x.z1 = "yes"
-  x.kind2 = false
+  {.cast(uncheckedAssign).}:
+    x.kind2 = false
   x.z2 = @["1", "2"]
-  x.kind2 = true
+  {.cast(uncheckedAssign).}:
+    x.kind2 = true
   x.z1 = "yes"
   x.kind2 = true # should be no effect
   doAssert(x.z1 == "yes")
-  x.kind2 = false
-  x.kind1 = x.kind2 # support self assignment with effect
+  {.cast(uncheckedAssign).}:
+    x.kind2 = false
+  {.cast(uncheckedAssign).}:
+    x.kind1 = x.kind2 # support self assignment with effect
 
   try:
     x.kind1 = x.flag # flag is not accesible
@@ -206,8 +213,10 @@ type
       error*: string
 
 proc init(): RocksDBResult[string] =
-  result.ok = true
-  result.value = "ok"
+  result = default(RocksDBResult[string])
+  {.cast(uncheckedAssign).}:
+    result.ok = true
+    result.value = "ok"
 
 echo init()
 
@@ -221,7 +230,8 @@ type MyObj = object
     of true: x1: string
 
 var a = MyObj(kind: false, x0: 1234)
-a.kind = true
+{.cast(uncheckedAssign).}:
+  a.kind = true
 doAssert(a.x1 == "")
 
 block:
@@ -244,3 +254,114 @@ block:
 
   doAssert j1.x1 == 2
   doAssert j0.x0 == 2
+
+# ------------------------------------
+# bug #20305
+
+type
+  ContentNodeKind = enum
+    P, Br, Text
+  ContentNode = object
+    case kind: ContentNodeKind
+    of P: pChildren: seq[ContentNode]
+    of Br: discard
+    of Text: textStr: string
+
+proc bug20305 =
+  var x = ContentNode(kind: P, pChildren: @[
+    ContentNode(kind: P, pChildren: @[ContentNode(kind: Text, textStr: "brrr")])
+  ])
+  x.pChildren.add ContentNode(kind: Br)
+  x.pChildren.del(0)
+  {.cast(uncheckedAssign).}:
+    x.pChildren[0].kind = P
+  echo x.pChildren
+
+bug20305()
+
+# bug #21023
+block:
+  block:
+    type
+      MGErrorKind = enum
+        mgeUnexpected, mgeNotFound
+
+    type Foo = object
+      kind: MGErrorKind
+      ex: Exception
+
+    type Boo = object
+      a: seq[int]
+
+    type
+      Result2 = object
+        case o: bool
+        of false:
+          e: Foo
+        of true:
+          v: Boo
+
+    proc startSessionSync(): Result2 =
+      return Result2(o: true)
+
+    proc mainSync =
+      let ff = startSessionSync()
+      doAssert ff.o == true
+
+    mainSync()
+
+  block:
+    type
+      MGErrorKind = enum
+        mgeUnexpected, mgeNotFound
+
+    type Foo = object
+      kind: MGErrorKind
+      ex: Exception
+
+    type Boo = object
+      a: seq[int]
+
+    type
+      Result2 = object
+        case o: bool
+        of false:
+          e: Foo
+        of true:
+          v: Boo
+          s: int
+
+    proc startSessionSync(): Result2 =
+      return Result2(o: true, s: 12)
+
+    proc mainSync =
+      let ff = startSessionSync()
+      doAssert ff.s == 12
+
+    mainSync()
+
+import std/sequtils
+
+# bug #23690
+type
+  SomeObj* = object of RootObj
+
+  Item* = object
+    case kind*: 0..1
+    of 0:
+      a*: int
+      b*: SomeObj
+    of 1:
+      c*: string
+
+  ItemExt* = object
+    a*: Item
+    b*: string
+
+proc do1(x: int): seq[(string, Item)] =
+  result = @[("zero", Item(kind: 1, c: "first"))]
+
+proc do2(x: int, e: ItemExt): seq[(string, ItemExt)] =
+  do1(x).map(proc(v: (string, Item)): auto = (v[0], ItemExt(a: v[1], b: e.b)))
+
+doAssert $do2(0, ItemExt(a: Item(kind: 1, c: "second"), b: "third")) == """@[("zero", (a: (kind: 1, c: "first"), b: "third"))]"""

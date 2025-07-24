@@ -1,9 +1,33 @@
 discard """
+  targets: "c js"
+  matrix: "--mm:refc; --mm:orc"
   output: '''
 x + y = 30
 '''
 """
-import std/[sugar, algorithm, random, sets, tables, strutils]
+import std/[sugar, algorithm, random, sets, tables, strutils, sequtils]
+import std/[syncio, assertions]
+
+type # for capture test, ref #20679
+  FooCapture = ref object
+    x: int
+
+proc mainProc() =
+  block: # bug #16967
+    var s = newSeq[proc (): int](5)
+    {.push exportc.}
+    proc bar() =
+      for i in 0 ..< s.len:
+        let foo = i + 1
+        capture foo:
+          s[i] = proc(): int = foo
+    {.pop.}
+
+    bar()
+
+    for i, p in s.pairs:
+      let foo = i + 1
+      doAssert p() == foo
 
 template main() =
   block: # `=>`
@@ -79,21 +103,61 @@ template main() =
             closure2 = () => (i, j)
     doAssert closure2() == (5, 3)
 
-    block: # bug #16967
-      var s = newSeq[proc (): int](5)
-      {.push exportc.}
-      proc bar() =
-        for i in 0 ..< s.len:
-          let foo = i + 1
-          capture foo:
-            s[i] = proc(): int = foo
-      {.pop.}
+    block: # issue #20679
+      # this should compile. Previously was broken as `var int` is an `nnkHiddenDeref`
+      # which was not handled correctly
 
-      bar()
+      block:
+        var x = 5
+        var s1 = newSeq[proc (): int](2)
+        proc function(data: var int) =
+          for i in 0 ..< 2:
+            data = (i+1) * data
+            capture data:
+              s1[i] = proc(): int = data
+        function(x)
+        doAssert s1[0]() == 5
+        doAssert s1[1]() == 10
 
-      for i, p in s.pairs:
-        let foo = i + 1
-        doAssert p() == foo
+
+      block:
+        var y = @[5, 10]
+        var s2 = newSeq[proc (): seq[int]](2)
+        proc functionS(data: var seq[int]) =
+          for i in 0 ..< 2:
+            data.add (i+1) * 5
+            capture data:
+              s2[i] = proc(): seq[int] = data
+        functionS(y)
+        doAssert s2[0]() == @[5, 10, 5]
+        doAssert s2[1]() == @[5, 10, 5, 10]
+
+
+      template typeT(typ, val: untyped): untyped =
+        var x = val
+        var s = newSeq[proc (): typ](2)
+
+        proc functionT[T](data: var T) =
+          for i in 0 ..< 2:
+            if i == 1:
+              data = default(T)
+            capture data:
+              s[i] = proc (): T = data
+
+        functionT(x)
+        doAssert s[0]() == val
+        doAssert s[1]() == x # == default
+        doAssert s[1]() == default(typ)
+
+      block:
+        var x = 1.1
+        typeT(float, x)
+      block:
+        var x = "hello"
+        typeT(string, x)
+      block:
+        var f = FooCapture(x: 5)
+        typeT(FooCapture, f)
 
   block: # dup
     block dup_with_field:
@@ -208,17 +272,16 @@ template main() =
         discard collect(newSeq, for i in 1..3: i)
       foo()
 
-proc mainProc() =
   block: # dump
     # symbols in templates are gensym'd
     let
-      x = 10
-      y = 20
+      x {.inject.} = 10
+      y {.inject.} = 20
     dump(x + y) # x + y = 30
 
   block: # dumpToString
     template square(x): untyped = x * x
-    let x = 10
+    let x {.inject.} = 10
     doAssert dumpToString(square(x)) == "square(x): x * x = 100"
     let s = dumpToString(doAssert 1+1 == 2)
     doAssert "failedAssertImpl" in s
@@ -226,8 +289,22 @@ proc mainProc() =
       doAssertRaises(AssertionDefect): doAssert false
     doAssert "except AssertionDefect" in s2
 
-static:
-  main()
+  block: # bug #20704
+    proc test() =
+      var xs, ys: seq[int] = @[]
+      for i in 0..5:
+        xs.add(i)
+
+      xs.apply(proc (d: auto) = ys.add(d))
+      # ^ can be turned into d => ys.add(d) when we can infer void return type, #16906
+      doAssert ys == @[0, 1, 2, 3, 4, 5]
+
+    test()
+
   mainProc()
+
+when not defined(js): # TODO fixme JS VM
+  static:
+    main()
+
 main()
-mainProc()

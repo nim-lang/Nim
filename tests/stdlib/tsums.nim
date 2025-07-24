@@ -1,5 +1,10 @@
+discard """
+  matrix: "--mm:refc; --mm:orc"
+"""
+
 import std/sums
 from math import pow
+import std/assertions
 
 var epsilon = 1.0
 while 1.0 + epsilon != 1.0:

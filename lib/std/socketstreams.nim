@@ -31,39 +31,40 @@
 ## Examples
 ## ========
 ##
-## .. code-block:: Nim
-##  import std/socketstreams
+##   ```Nim
+##   import std/socketstreams
 ##
-##  var
-##    socket = newSocket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
-##    stream = newReadSocketStream(socket)
-##  socket.sendTo("127.0.0.1", Port(12345), "SOME REQUEST")
-##  echo stream.readLine() # Will call `recv`
-##  stream.setPosition(0)
-##  echo stream.readLine() # Will return the read line from the buffer
-##  stream.resetStream() # Buffer is now empty, position is 0
-##  echo stream.readLine() # Will call `recv` again
-##  stream.close() # Closes the socket
+##   var
+##     socket = newSocket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
+##     stream = newReadSocketStream(socket)
+##   socket.sendTo("127.0.0.1", Port(12345), "SOME REQUEST")
+##   echo stream.readLine() # Will call `recv`
+##   stream.setPosition(0)
+##   echo stream.readLine() # Will return the read line from the buffer
+##   stream.resetStream() # Buffer is now empty, position is 0
+##   echo stream.readLine() # Will call `recv` again
+##   stream.close() # Closes the socket
+##   ```
 ##
-## .. code-block:: Nim
+##   ```Nim
+##   import std/socketstreams
 ##
-##  import std/socketstreams
-##
-##  var socket = newSocket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
-##  socket.connect("127.0.0.1", Port(12345))
-##  var sendStream = newWriteSocketStream(socket)
-##  sendStream.write "NOM"
-##  sendStream.setPosition(1)
-##  echo sendStream.peekStr(2) # OM
-##  sendStream.write "I"
-##  sendStream.setPosition(0)
-##  echo sendStream.readStr(3) # NIM
-##  echo sendStream.getPosition() # 3
-##  sendStream.flush() # This actually performs the writing to the socket
-##  sendStream.setPosition(1)
-##  sendStream.write "I" # Throws an error as we can't write into an already sent buffer
+##   var socket = newSocket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
+##   socket.connect("127.0.0.1", Port(12345))
+##   var sendStream = newWriteSocketStream(socket)
+##   sendStream.write "NOM"
+##   sendStream.setPosition(1)
+##   echo sendStream.peekStr(2) # OM
+##   sendStream.write "I"
+##   sendStream.setPosition(0)
+##   echo sendStream.readStr(3) # NIM
+##   echo sendStream.getPosition() # 3
+##   sendStream.flush() # This actually performs the writing to the socket
+##   sendStream.setPosition(1)
+##   sendStream.write "I" # Throws an error as we can't write into an already sent buffer
+##   ```
 
-import net, streams
+import std/[net, streams]
 
 type
   ReadSocketStream* = ref ReadSocketStreamObj
@@ -87,6 +88,7 @@ proc rsGetPosition(s: Stream): int =
   return s.pos
 
 proc rsPeekData(s: Stream, buffer: pointer, bufLen: int): int =
+  result = 0
   let s = ReadSocketStream(s)
   if bufLen > 0:
     let oldLen = s.buf.len
@@ -146,7 +148,7 @@ proc wsFlush(s: Stream) =
   s.lastFlush = s.buf.len
 
 proc rsClose(s: Stream) =
-  {.cast(tags: []).}:
+  {.cast(raises: [IOError, OSError]), cast(tags: []).}: # todo fixme maybe do something?
     var s = ReadSocketStream(s)
     s.data.close()
 

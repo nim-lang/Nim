@@ -1,9 +1,9 @@
 ..
   Usage of this file:
-     Add this in the beginning of *.rst file::
+     Add this in the beginning of *.rst file:
 
-       .. default-role:: code
-       .. include:: rstcommon.rst
+         .. default-role:: code
+         .. include:: rstcommon.rst
 
      It's the current trick for brevity and compatibility with both Github and
      rst2html.py, considering that Github cannot highlight Nim in

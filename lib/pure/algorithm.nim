@@ -44,6 +44,10 @@ runnableExamples:
 
 import std/private/since
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
+
 type
   SortOrder* = enum
     Descending, Ascending
@@ -139,6 +143,7 @@ proc reversed*[T](a: openArray[T]): seq[T] {.inline.} =
   runnableExamples:
     assert [10, 11, 12].reversed == @[12, 11, 10]
     assert seq[string].default.reversed == @[]
+  result = @[]
   let n = a.len
   result.setLen(n)
   for i in 0..<n: result[i] = a[n - (i + 1)]
@@ -375,22 +380,22 @@ func sort*[T](a: var openArray[T],
   ## `cmp`, you may use `system.cmp` or instead call the overloaded
   ## version of `sort`, which uses `system.cmp`.
   ##
-  ## .. code-block:: nim
-  ##
-  ##    sort(myIntArray, system.cmp[int])
-  ##    # do not use cmp[string] here as we want to use the specialized
-  ##    # overload:
-  ##    sort(myStrArray, system.cmp)
+  ##   ```nim
+  ##   sort(myIntArray, system.cmp[int])
+  ##   # do not use cmp[string] here as we want to use the specialized
+  ##   # overload:
+  ##   sort(myStrArray, system.cmp)
+  ##   ```
   ##
   ## You can inline adhoc comparison procs with the `do notation
-  ## <manual_experimental.html#do-notation>`_. Example:
+  ## <manual.html#procedures-do-notation>`_. Example:
   ##
-  ## .. code-block:: nim
-  ##
+  ##   ```nim
   ##   people.sort do (x, y: Person) -> int:
   ##     result = cmp(x.surname, y.surname)
   ##     if result == 0:
   ##       result = cmp(x.name, y.name)
+  ##   ```
   ##
   ## **See also:**
   ## * `sort proc<#sort,openArray[T]>`_
@@ -753,7 +758,7 @@ proc prevPermutation*[T](x: var openArray[T]): bool {.discardable.} =
 
 proc rotateInternal[T](arg: var openArray[T]; first, middle, last: int): int =
   ## A port of std::rotate from C++.
-  ## Ported from [this reference](http://www.cplusplus.com/reference/algorithm/rotate/).
+  ## Ported from [this reference](https://www.cplusplus.com/reference/algorithm/rotate/).
   result = first + last - middle
 
   if first == middle or middle == last:
@@ -821,10 +826,10 @@ proc rotateLeft*[T](arg: var openArray[T]; slice: HSlice[int, int];
   ## If an invalid range (`HSlice`) is passed, it raises `IndexDefect`.
   ##
   ## `slice`
-  ##   The indices of the element range that should be rotated.
+  ## : The indices of the element range that should be rotated.
   ##
   ## `dist`
-  ##   The distance in amount of elements that the data should be rotated.
+  ## : The distance in amount of elements that the data should be rotated.
   ##   Can be negative, can be any number.
   ##
   ## **See also:**
@@ -872,10 +877,10 @@ proc rotatedLeft*[T](arg: openArray[T]; slice: HSlice[int, int],
   ## If an invalid range (`HSlice`) is passed, it raises `IndexDefect`.
   ##
   ## `slice`
-  ##   The indices of the element range that should be rotated.
+  ## : The indices of the element range that should be rotated.
   ##
   ## `dist`
-  ##   The distance in amount of elements that the data should be rotated.
+  ## : The distance in amount of elements that the data should be rotated.
   ##   Can be negative, can be any number.
   ##
   ## **See also:**

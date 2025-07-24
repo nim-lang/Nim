@@ -1,5 +1,5 @@
 discard """
-  errormsg: "undeclared identifier: '_'"
+  errormsg: "the special identifier '_' is ignored in declarations and cannot be used"
 """
 
 iterator iter(): (int, int, int) =

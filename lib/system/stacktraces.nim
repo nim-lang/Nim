@@ -22,26 +22,26 @@ when defined(nimStackTraceOverride):
       ## This is the same as the type `uintptr_t` in C.
 
     StackTraceOverrideGetTracebackProc* = proc (): string {.
-      nimcall, gcsafe, locks: 0, raises: [], tags: [], noinline.}
+      nimcall, gcsafe, raises: [], tags: [], noinline.}
     StackTraceOverrideGetProgramCountersProc* = proc (maxLength: cint): seq[cuintptr_t] {.
-      nimcall, gcsafe, locks: 0, raises: [], tags: [], noinline.}
+      nimcall, gcsafe, raises: [], tags: [], noinline.}
     StackTraceOverrideGetDebuggingInfoProc* =
       proc (programCounters: seq[cuintptr_t], maxLength: cint): seq[StackTraceEntry] {.
-        nimcall, gcsafe, locks: 0, raises: [], tags: [], noinline.}
+        nimcall, gcsafe, raises: [], tags: [], noinline.}
 
   # Default procedures (not normally used, because people opting in on this
   # override are supposed to register their own versions).
   var
     stackTraceOverrideGetTraceback: StackTraceOverrideGetTracebackProc =
-      proc (): string {.nimcall, gcsafe, locks: 0, raises: [], tags: [], noinline.} =
+      proc (): string {.nimcall, gcsafe, raises: [], tags: [], noinline.} =
         discard
         #result = "Stack trace override procedure not registered.\n"
     stackTraceOverrideGetProgramCounters: StackTraceOverrideGetProgramCountersProc =
-      proc (maxLength: cint): seq[cuintptr_t] {.nimcall, gcsafe, locks: 0, raises: [], tags: [], noinline.} =
+      proc (maxLength: cint): seq[cuintptr_t] {.nimcall, gcsafe, raises: [], tags: [], noinline.} =
         discard
     stackTraceOverrideGetDebuggingInfo: StackTraceOverrideGetDebuggingInfoProc =
       proc (programCounters: seq[cuintptr_t], maxLength: cint): seq[StackTraceEntry] {.
-        nimcall, gcsafe, locks: 0, raises: [], tags: [], noinline.} =
+        nimcall, gcsafe, raises: [], tags: [], noinline.} =
           discard
 
   # Custom procedure registration.

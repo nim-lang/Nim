@@ -1,4 +1,9 @@
+discard """
+  matrix: "--mm:refc; --mm:orc"
+"""
+
 import std/enumerate
+import std/assertions
 
 let a = @[1, 3, 5, 7]
 

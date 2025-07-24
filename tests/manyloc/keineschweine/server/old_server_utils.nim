@@ -1,5 +1,7 @@
+import ../../../dist/checksums/src/checksums/md5
+
 import
-  streams, md5, sockets,
+  streams, sockets,
   sg_packets, zlib_helpers, idgen
 type
   TClientType* = enum

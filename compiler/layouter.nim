@@ -9,7 +9,7 @@
 
 ## Layouter for nimpretty.
 
-import idents, lexer, lineinfos, llstream, options, msgs, strutils, pathutils
+import idents, lexer, ast, lineinfos, llstream, options, msgs, strutils, pathutils
 
 const
   MinLineLen = 15
@@ -243,23 +243,28 @@ proc renderTokens*(em: var Emitter): string =
 
   return content
 
-proc writeOut*(em: Emitter, content: string)  =
+type
+  FinalCheck = proc (content: string; origAst: PNode): bool {.nimcall.}
+
+proc writeOut*(em: Emitter; content: string; origAst: PNode; check: FinalCheck) =
   ## Write to disk
   let outFile = em.config.absOutFile
   if fileExists(outFile) and readFile(outFile.string) == content:
     discard "do nothing, see #9499"
     return
-  var f = llStreamOpen(outFile, fmWrite)
-  if f == nil:
-    rawMessage(em.config, errGenerated, "cannot open file: " & outFile.string)
-    return
-  f.llStreamWrite content
-  llStreamClose(f)
 
-proc closeEmitter*(em: var Emitter) =
+  if check(content, origAst):
+    var f = llStreamOpen(outFile, fmWrite)
+    if f == nil:
+      rawMessage(em.config, errGenerated, "cannot open file: " & outFile.string)
+      return
+    f.llStreamWrite content
+    llStreamClose(f)
+
+proc closeEmitter*(em: var Emitter; origAst: PNode; check: FinalCheck) =
   ## Renders emitter tokens and write to a file
   let content = renderTokens(em)
-  em.writeOut(content)
+  em.writeOut(content, origAst, check)
 
 proc wr(em: var Emitter; x: string; lt: LayoutToken) =
   em.tokens.add x
@@ -510,7 +515,7 @@ proc emitTok*(em: var Emitter; L: Lexer; tok: Token) =
     rememberSplit(splitComma)
     wrSpace em
   of openPars:
-    if tok.strongSpaceA > 0 and not em.endsInWhite and
+    if tsLeading in tok.spacing and not em.endsInWhite and
         (not em.wasExportMarker or tok.tokType == tkCurlyDotLe):
       wrSpace em
     wr(em, $tok.tokType, ltSomeParLe)
@@ -528,7 +533,7 @@ proc emitTok*(em: var Emitter; L: Lexer; tok: Token) =
     wr(em, $tok.tokType, ltOther)
     if not em.inquote: wrSpace(em)
   of tkOpr, tkDotDot:
-    if em.inquote or ((tok.strongSpaceA == 0 and tok.strongSpaceB == 0) and
+    if em.inquote or (tok.spacing == {} and
         tok.ident.s notin ["<", ">", "<=", ">=", "==", "!="]):
       # bug #9504: remember to not spacify a keyword:
       lastTokWasTerse = true
@@ -538,7 +543,7 @@ proc emitTok*(em: var Emitter; L: Lexer; tok: Token) =
       if not em.endsInWhite: wrSpace(em)
       wr(em, tok.ident.s, ltOpr)
       template isUnary(tok): bool =
-        tok.strongSpaceB == 0 and tok.strongSpaceA > 0
+        tok.spacing == {tsLeading}
 
       if not isUnary(tok):
         rememberSplit(splitBinary)
@@ -551,11 +556,15 @@ proc emitTok*(em: var Emitter; L: Lexer; tok: Token) =
     if not preventComment:
       emitComment(em, tok, dontIndent = false)
   of tkIntLit..tkStrLit, tkRStrLit, tkTripleStrLit, tkGStrLit, tkGTripleStrLit, tkCharLit:
-    let lit = fileSection(em.config, em.fid, tok.offsetA, tok.offsetB)
-    if endsInAlpha(em) and tok.tokType notin {tkGStrLit, tkGTripleStrLit}: wrSpace(em)
-    em.lineSpan = countNewlines(lit)
-    if em.lineSpan > 0: calcCol(em, lit)
-    wr em, lit, ltLit
+    if not em.inquote:
+      let lit = fileSection(em.config, em.fid, tok.offsetA, tok.offsetB)
+      if endsInAlpha(em) and tok.tokType notin {tkGStrLit, tkGTripleStrLit}: wrSpace(em)
+      em.lineSpan = countNewlines(lit)
+      if em.lineSpan > 0: calcCol(em, lit)
+      wr em, lit, ltLit
+    else:
+      if endsInAlpha(em): wrSpace(em)
+      wr em, tok.literal, ltLit
   of tkEof: discard
   else:
     let lit = if tok.ident != nil: tok.ident.s else: tok.literal

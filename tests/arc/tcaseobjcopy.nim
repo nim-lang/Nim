@@ -165,22 +165,27 @@ type
     x2: string
 
 proc test_myobject =
-  var x: MyObject
+  var x: MyObject = MyObject()
   x.x1 = "x1"
   x.x2 = "x2"
   x.y1 = "ljhkjhkjh"
-  x.kind1 = true
+  {.cast(uncheckedAssign).}:
+    x.kind1 = true
   x.y2 = @["1", "2"]
-  x.kind2 = true
+  {.cast(uncheckedAssign).}:
+    x.kind2 = true
   x.z1 = "yes"
-  x.kind2 = false
+  {.cast(uncheckedAssign).}:
+    x.kind2 = false
   x.z2 = @["1", "2"]
-  x.kind2 = true
+  {.cast(uncheckedAssign).}:
+    x.kind2 = true
   x.z1 = "yes"
   x.kind2 = true # should be no effect
   doAssert(x.z1 == "yes")
-  x.kind2 = false
-  x.kind1 = x.kind2 # support self assignment with effect
+  {.cast(uncheckedAssign).}:
+    x.kind2 = false
+    x.kind1 = x.kind2 # support self assignment with effect
 
   try:
     x.kind1 = x.flag # flag is not accesible
@@ -206,7 +211,9 @@ type
       error*: string
 
 proc init(): RocksDBResult[string] =
-  result.ok = true
+  result = default(RocksDBResult[string])
+  {.cast(uncheckedAssign).}:
+    result.ok = true
   result.value = "ok"
 
 echo init()
@@ -221,7 +228,8 @@ type MyObj = object
     of true: x1: string
 
 var a = MyObj(kind: false, x0: 1234)
-a.kind = true
+{.cast(uncheckedAssign).}:
+  a.kind = true
 doAssert(a.x1 == "")
 
 block:

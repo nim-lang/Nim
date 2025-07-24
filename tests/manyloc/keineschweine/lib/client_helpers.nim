@@ -1,6 +1,8 @@
+import ../../../../dist/checksums/src/checksums/md5
+
 import
   tables, sg_packets, enet, estreams, sg_gui, sfml,
-  zlib_helpers, md5, sg_assets, os
+  zlib_helpers, sg_assets, os
 type
   PServer* = ptr TServer
   TServer* = object

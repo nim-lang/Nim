@@ -1,11 +1,23 @@
 discard """
-  output: '''0
+  output: '''
+3
+30
 true
-3'''
+'''
 """
 
+
+# bug #798
+template t012{(0|1|2){x}}(x: untyped): untyped = x+1
+let z = 1
+# outputs 3 thanks to fixpoint iteration:
+echo z
+
+
 template arithOps: untyped = (`+` | `-` | `*`)
-template testOr{ (arithOps{f})(a, b) }(a, b, f: untyped): untyped = f(a mod 10, b)
+template testOr{ (arithOps{f})(a, b) }(a, b, f: untyped): untyped =
+  {.noRewrite.}:
+    f(a mod 10, b)
 
 let xx = 10
 echo 10*xx
@@ -20,9 +32,3 @@ var
   c = false
 a = b and a
 echo a
-
-# bug #798
-template t012{(0|1|2){x}}(x: untyped): untyped = x+1
-let z = 1
-# outputs 3 thanks to fixpoint iteration:
-echo z

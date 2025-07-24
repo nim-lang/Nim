@@ -1,4 +1,6 @@
-import genpacket_enet, nativesockets, net, md5, enet
+import ../../../../dist/checksums/src/checksums/md5
+
+import genpacket_enet, nativesockets, net, enet
 defPacketImports()
 
 type

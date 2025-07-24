@@ -1,7 +1,6 @@
 discard """
-  errormsg: "'edit' can have side effects"
-  nimout: '''an object reachable from 'x' is potentially mutated
-tfuncs_cannot_mutate_simple.nim(16, 4) the mutation is here'''
+  errormsg: '''cannot mutate location x.data within a strict func'''
+  line: 15
 """
 
 {.experimental: "strictFuncs".}

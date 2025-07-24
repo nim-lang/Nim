@@ -12,6 +12,9 @@
 import
   ast, astalgo, lineinfos, bitsets, types, options
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 proc inSet*(s: PNode, elem: PNode): bool =
   assert s.kind == nkCurly
   if s.kind != nkCurly:
@@ -59,8 +62,10 @@ proc someInSet*(s: PNode, a, b: PNode): bool =
   result = false
 
 proc toBitSet*(conf: ConfigRef; s: PNode): TBitSet =
-  var first, j: Int128
-  first = firstOrd(conf, s.typ[0])
+  result = @[]
+  var first: Int128 = Zero
+  var j: Int128 = Zero
+  first = firstOrd(conf, s.typ.elementType)
   bitSetInit(result, int(getSize(conf, s.typ)))
   for i in 0..<s.len:
     if s[i].kind == nkRange:
@@ -79,7 +84,7 @@ proc toTreeSet*(conf: ConfigRef; s: TBitSet, settype: PType, info: TLineInfo): P
   elemType = settype[0]
   first = firstOrd(conf, elemType).toInt64
   result = newNodeI(nkCurly, info)
-  result.typ = settype
+  result.typ() = settype
   result.info = info
   e = 0
   while e < s.len * ElemSize:
@@ -96,7 +101,7 @@ proc toTreeSet*(conf: ConfigRef; s: TBitSet, settype: PType, info: TLineInfo): P
         result.add aa
       else:
         n = newNodeI(nkRange, info)
-        n.typ = elemType
+        n.typ() = elemType
         n.add aa
         let bb = newIntTypeNode(b + first, elemType)
         bb.info = info

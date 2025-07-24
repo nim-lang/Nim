@@ -27,3 +27,31 @@ func mkEnter() =
     helper()
   else:
     let ast = getAst(helper())
+
+
+# bug #6559
+type
+  SafeFn = proc (): void {. raises: [] }
+
+proc ok() {. raises: [] .} = discard
+proc fail() {. raises: [] .}
+
+let f1 : SafeFn = ok
+let f2 : SafeFn = fail
+
+
+proc fail() = discard
+f1()
+f2()
+
+import std/json
+
+# bug #22254
+proc senri(a, b: seq[JsonNode]) {.raises: [].} = discard a == b
+
+# bug #22253
+proc serika() {.raises: [].} = discard default(JsonNode) == nil
+
+senri(@[newJBool(true)], @[newJBool(false)])
+serika()
+

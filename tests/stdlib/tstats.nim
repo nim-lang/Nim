@@ -1,7 +1,13 @@
-import std/stats
+discard """
+  matrix: "--mm:refc; --mm:orc"
+"""
 
-proc `~=`(x, y: float): bool =
-  abs(x - y) < 10e-8
+import std/[stats, assertions]
+import std/math
+
+
+func `~=`(x, y: float32): bool =
+  math.almostEqual(x, y)
 
 template main() =
   var rs: RunningStat
@@ -28,21 +34,21 @@ template main() =
   doAssert rs1.kurtosis ~= rs.kurtosis
   rs1.clear()
   rs1.push(@[1.0, 2.2, 1.4, 4.9])
-  doAssert(rs1.sum == 9.5)
-  doAssert(rs1.mean() == 2.375)
+  doAssert rs1.sum ~= 9.5
+  doAssert rs1.mean() ~= 2.375
 
   when not defined(cpu32):
     # XXX For some reason on 32bit CPUs these results differ
     var rr: RunningRegress
     rr.push(@[0.0, 1.0, 2.8, 3.0, 4.0], @[0.0, 1.0, 2.3, 3.0, 4.0])
-    doAssert(rr.slope() == 0.9695585996955861)
-    doAssert(rr.intercept() == -0.03424657534246611)
-    doAssert(rr.correlation() == 0.9905100362239381)
+    doAssert rr.slope() ~= 0.9695585996955861
+    doAssert rr.intercept() ~= -0.03424657534246611
+    doAssert rr.correlation() ~= 0.9905100362239381
     var rr1, rr2: RunningRegress
     rr1.push(@[0.0, 1.0], @[0.0, 1.0])
     rr2.push(@[2.8, 3.0, 4.0], @[2.3, 3.0, 4.0])
     let rr3 = rr1 + rr2
-    doAssert(rr3.correlation() == rr.correlation())
+    doAssert rr3.correlation() ~= rr.correlation()
     doAssert rr3.slope() ~= rr.slope()
     doAssert rr3.intercept() ~= rr.intercept()
 

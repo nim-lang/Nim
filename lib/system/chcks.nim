@@ -9,12 +9,17 @@
 
 # Implementation of some runtime checks.
 include system/indexerrors
+when defined(nimPreviewSlimSystem):
+  import std/formatfloat
 
 proc raiseRangeError(val: BiggestInt) {.compilerproc, noinline.} =
   when hostOS == "standalone":
     sysFatal(RangeDefect, "value out of range")
   else:
     sysFatal(RangeDefect, "value out of range: ", $val)
+
+proc raiseIndexError4(l1, h1, h2: int) {.compilerproc, noinline.} =
+  sysFatal(IndexDefect, "index out of bounds: " & $l1 & ".." & $h1 & " notin 0.." & $(h2 - 1))
 
 proc raiseIndexError3(i, a, b: int) {.compilerproc, noinline.} =
   sysFatal(IndexDefect, formatErrorIndexBound(i, a, b))
@@ -32,11 +37,15 @@ proc raiseFieldError(f: string) {.compilerproc, noinline.} =
 when defined(nimV2):
   proc raiseFieldError2(f: string, discVal: int) {.compilerproc, noinline.} =
     ## raised when field is inaccessible given runtime value of discriminant
-    sysFatal(FieldError, f & $discVal & "'")
+    sysFatal(FieldDefect, f & $discVal & "'")
+
+  proc raiseFieldErrorStr(f: string, discVal: string) {.compilerproc, noinline.} =
+    ## raised when field is inaccessible given runtime value of discriminant
+    sysFatal(FieldDefect, formatFieldDefect(f, discVal))
 else:
   proc raiseFieldError2(f: string, discVal: string) {.compilerproc, noinline.} =
     ## raised when field is inaccessible given runtime value of discriminant
-    sysFatal(FieldError, formatFieldDefect(f, discVal))
+    sysFatal(FieldDefect, formatFieldDefect(f, discVal))
 
 proc raiseRangeErrorI(i, a, b: BiggestInt) {.compilerproc, noinline.} =
   when defined(standalone):
@@ -64,30 +73,35 @@ proc chckIndx(i, a, b: int): int =
   if i >= a and i <= b:
     return i
   else:
+    result = 0
     raiseIndexError3(i, a, b)
 
 proc chckRange(i, a, b: int): int =
   if i >= a and i <= b:
     return i
   else:
+    result = 0
     raiseRangeError(i)
 
 proc chckRange64(i, a, b: int64): int64 {.compilerproc.} =
   if i >= a and i <= b:
     return i
   else:
+    result = 0
     raiseRangeError(i)
 
 proc chckRangeU(i, a, b: uint64): uint64 {.compilerproc.} =
   if i >= a and i <= b:
     return i
   else:
+    result = 0
     sysFatal(RangeDefect, "value out of range")
 
 proc chckRangeF(x, a, b: float): float =
   if x >= a and x <= b:
     return x
   else:
+    result = 0.0
     when hostOS == "standalone":
       sysFatal(RangeDefect, "value out of range")
     else:

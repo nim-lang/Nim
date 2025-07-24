@@ -1,0 +1,79 @@
+name: Tracking orc-booting compiler memory usage
+
+on:
+  pull_request_target:
+    types: [closed]
+
+
+jobs:
+  build:
+    if: github.event.pull_request.merged == true
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04]
+        cpu: [amd64]
+    name: '${{ matrix.os }}'
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: 'Checkout'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: 'Install node.js'
+        uses: actions/setup-node@v4
+        with:
+          node-version: ''
+
+      - name: 'Install dependencies (Linux amd64)'
+        if: runner.os == 'Linux' && matrix.cpu == 'amd64'
+        run: |
+          sudo apt-fast update -qq
+          DEBIAN_FRONTEND='noninteractive' \
+            sudo apt-fast install --no-install-recommends -yq \
+              libcurl4-openssl-dev libgc-dev libsdl1.2-dev libsfml-dev \
+              valgrind libc6-dbg libblas-dev xorg-dev
+
+      - name: 'Add build binaries to PATH'
+        shell: bash
+        run: echo "${{ github.workspace }}/bin" >> "${GITHUB_PATH}"
+
+      - name: 'System information'
+        shell: bash
+        run: . ci/funs.sh && nimCiSystemInfo
+
+      - name: 'Build csourcesAny'
+        shell: bash
+        run: . ci/funs.sh && nimBuildCsourcesIfNeeded CC=gcc ucpu='${{ matrix.cpu }}'
+
+      - name: 'Build koch'
+        shell: bash
+        run: nim c koch
+
+      - name: 'Build Nim'
+        shell: bash
+        run: ./koch boot -d:release -d:nimStrictMode --lib:lib
+
+      - name: 'Action'
+        shell: bash
+        run: nim c -r -d:release ci/action.nim
+
+      - name: 'Comment'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+
+            try {
+              const data = fs.readFileSync('ci/nimcache/results.txt', 'utf8');
+              github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: data
+            })
+            } catch (err) {
+              console.error(err);
+            }
+

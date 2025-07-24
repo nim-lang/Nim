@@ -1,1 +1,2 @@
-foo	index.html#foo	foo: foo()	
+nimTitle	foo	index.html	module nimdoc/test_out_index_dot_html/foo		0
+nim	foo	index.html#foo	proc foo()		1

@@ -33,7 +33,8 @@ block tcse:
 
 block hoist:
   template optPeg{peg(pattern)}(pattern: string{lit}): Peg =
-    var gl {.global, gensym.} = peg(pattern)
+    {.noRewrite.}:
+      var gl {.global, gensym.} = peg(pattern)
     gl
   doAssert match("(a b c)", peg"'(' @ ')'")
   doAssert match("W_HI_Le", peg"\y 'while'")

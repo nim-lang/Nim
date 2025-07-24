@@ -1,4 +1,5 @@
 discard """
+  matrix: "--mm:refc"
   ccodecheck: "!@('{' \\s* 'NI HEX3Astate;' \\s* '}')"
   output: '''
 a1 10

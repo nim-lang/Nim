@@ -45,9 +45,7 @@ runnableExamples("-r:off"):
 ## Configuration file example
 ]##
 
-##
-## .. code-block:: nim
-##
+##     ```none
 ##     charset = "utf-8"
 ##     [Package]
 ##     name = "hello"
@@ -55,6 +53,7 @@ runnableExamples("-r:off"):
 ##     [Author]
 ##     name = "nim-lang"
 ##     website = "nim-lang.org"
+##     ```
 
 ##[
 ## Creating a configuration file
@@ -171,7 +170,7 @@ runnableExamples:
   assert dict.getSectionValue(section4, "does_that_mean_anything_special") == "False"
   assert dict.getSectionValue(section4, "purpose") == "formatting for readability"
 
-import strutils, lexbase, streams, tables
+import std/[strutils, lexbase, streams, tables]
 import std/private/decode_helpers
 import std/private/since
 
@@ -453,8 +452,8 @@ proc getKeyValPair(c: var CfgParser, kind: CfgEventKind): CfgEvent =
   if c.tok.kind == tkSymbol:
     case kind
     of cfgOption, cfgKeyValuePair:
-      result = CfgEvent(kind: kind, key: c.tok.literal, value: "")
-    else: discard
+      result = CfgEvent(kind: kind, key: c.tok.literal.move, value: "")
+    else: result = CfgEvent()
     rawGetTok(c, c.tok)
     if c.tok.kind in {tkEquals, tkColon}:
       rawGetTok(c, c.tok)
@@ -482,7 +481,7 @@ proc next*(c: var CfgParser): CfgEvent {.rtl, extern: "npc$1".} =
   of tkBracketLe:
     rawGetTok(c, c.tok)
     if c.tok.kind == tkSymbol:
-      result = CfgEvent(kind: cfgSectionStart, section: c.tok.literal)
+      result = CfgEvent(kind: cfgSectionStart, section: c.tok.literal.move)
     else:
       result = CfgEvent(kind: cfgError,
         msg: errorStr(c, "symbol expected, but found: " & c.tok.literal))
@@ -513,7 +512,7 @@ proc loadConfig*(stream: Stream, filename: string = "[stream]"): Config =
   var curSection = "" ## Current section,
                       ## the default value of the current section is "",
                       ## which means that the current section is a common
-  var p: CfgParser
+  var p: CfgParser = default(CfgParser)
   open(p, stream, filename)
   while true:
     var e = next(p)
@@ -541,10 +540,17 @@ proc loadConfig*(stream: Stream, filename: string = "[stream]"): Config =
 
 proc loadConfig*(filename: string): Config =
   ## Loads the specified configuration file into a new Config instance.
-  let file = open(filename, fmRead)
-  let fileStream = newFileStream(file)
-  defer: fileStream.close()
-  result = fileStream.loadConfig(filename)
+  when nimvm:
+    # HACK: As a workaround,
+    # since open() using {.importc.} is not available on NimScript.
+    let stringStream = newStringStream(readFile(filename))
+    defer: stringStream.close()
+    result = stringStream.loadConfig(filename)
+  else:
+    let file = open(filename, fmRead)
+    let fileStream = newFileStream(file)
+    defer: fileStream.close()
+    result = fileStream.loadConfig(filename)
 
 proc replace(s: string): string =
   var d = ""
@@ -575,7 +581,7 @@ proc writeConfig*(dict: Config, stream: Stream) =
       else:
         stream.writeLine("[" & section & "]")
     for key, value in sectionData.pairs():
-      var kv, segmentChar: string
+      var kv, segmentChar: string = ""
       if key.len > 1 and key[0] == '-' and key[1] == '-': ## If it is a command key
         segmentChar = ":"
         if not allCharsInSet(key[2..key.len()-1], SymChars):

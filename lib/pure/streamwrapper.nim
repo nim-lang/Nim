@@ -11,7 +11,11 @@
 ##
 ## **Since** version 1.2.
 
-import deques, streams
+import std/[deques, streams]
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 
 type
   PipeOutStream*[T] = ref object of T
@@ -87,21 +91,22 @@ proc newPipeOutStream*[T](s: sink (ref T)): owned PipeOutStream[T] =
   ## when setPosition/getPosition is called or write operation is performed.
   ##
   ## Example:
-  ##
-  ## .. code-block:: Nim
+  ##   ```Nim
   ##   import std/[osproc, streamwrapper]
   ##   var
   ##     p = startProcess(exePath)
   ##     outStream = p.outputStream().newPipeOutStream()
   ##   echo outStream.peekChar
   ##   p.close()
+  ##   ```
 
   assert s.readDataImpl != nil
 
   new(result)
   for dest, src in fields((ref T)(result)[], s[]):
     dest = src
-  wasMoved(s[])
+  {.cast(raises: []), cast(tags: []).}:
+    wasMoved(s[])
   if result.readLineImpl != nil:
     result.baseReadLineImpl = result.readLineImpl
     result.readLineImpl = posReadLine[T]

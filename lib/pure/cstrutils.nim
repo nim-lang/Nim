@@ -34,11 +34,13 @@ func startsWith*(s, prefix: cstring): bool {.rtl, extern: "csuStartsWith".} =
     assert startsWith(cstring"Hello", cstring"")
 
   when nimvm:
+    result = false
     startsWithImpl(s, prefix)
   else:
     when defined(js):
       result = jsStartsWith(s, prefix)
     else:
+      result = false
       var i = 0
       while true:
         if prefix[i] == '\0': return true
@@ -55,11 +57,13 @@ func endsWith*(s, suffix: cstring): bool {.rtl, extern: "csuEndsWith".} =
     assert endsWith(cstring"Hello", cstring"")
 
   when nimvm:
+    result = false
     endsWithImpl(s, suffix)
   else:
     when defined(js):
       result = jsEndsWith(s, suffix)
     else:
+      result = false
       let slen = s.len
       var i = 0
       var j = slen - len(suffix)
@@ -75,7 +79,7 @@ func cmpIgnoreStyle*(a, b: cstring): int {.rtl, extern: "csuCmpIgnoreStyle".} =
   ## for that. Returns:
   ## * 0 if `a == b`
   ## * < 0 if `a < b`
-  ## * > 0 if `a > b`
+  ## * \> 0 if `a > b`
   runnableExamples:
     assert cmpIgnoreStyle(cstring"hello", cstring"H_e_L_Lo") == 0
 
@@ -101,7 +105,7 @@ func cmpIgnoreCase*(a, b: cstring): int {.rtl, extern: "csuCmpIgnoreCase".} =
   ## Compares two strings in a case insensitive manner. Returns:
   ## * 0 if `a == b`
   ## * < 0 if `a < b`
-  ## * > 0 if `a > b`
+  ## * \> 0 if `a > b`
   runnableExamples:
     assert cmpIgnoreCase(cstring"hello", cstring"HeLLo") == 0
     assert cmpIgnoreCase(cstring"echo", cstring"hello") < 0

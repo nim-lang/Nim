@@ -14,7 +14,7 @@
 
 # Yes, this uses import here, not include so that
 # we don't end up exporting these symbols from pathnorm and os:
-import includes/osseps
+import std/private/osseps
 
 type
   PathIter* = object
@@ -25,14 +25,11 @@ proc hasNext*(it: PathIter; x: string): bool =
   it.i < x.len
 
 proc next*(it: var PathIter; x: string): (int, int) =
+  result = (0, 0)
   it.prev = it.i
   if not it.notFirst and x[it.i] in {DirSep, AltSep}:
     # absolute path:
     inc it.i
-    when doslikeFileSystem: # UNC paths have leading `\\`
-      if hasNext(it, x) and x[it.i] == DirSep and
-          it.i+1 < x.len and x[it.i+1] != DirSep:
-        inc it.i
   else:
     while it.i < x.len and x[it.i] notin {DirSep, AltSep}: inc it.i
   if it.i > it.prev:
@@ -56,13 +53,26 @@ proc isDotDot(x: string; bounds: (int, int)): bool =
 proc isSlash(x: string; bounds: (int, int)): bool =
   bounds[1] == bounds[0] and x[bounds[0]] in {DirSep, AltSep}
 
+when doslikeFileSystem:
+  import std/private/ntpath
+
 proc addNormalizePath*(x: string; result: var string; state: var int;
     dirSep = DirSep) =
   ## Low level proc. Undocumented.
 
+  when doslikeFileSystem: # Add Windows drive at start without normalization
+    var x = x
+    if result == "":
+      let (drive, file) = splitDrive(x)
+      x = file
+      result.add drive
+      for c in result.mitems:
+        if c in {DirSep, AltSep}:
+          c = dirSep
+
   # state: 0th bit set if isAbsolute path. Other bits count
   # the number of path components.
-  var it: PathIter
+  var it: PathIter = default(PathIter)
   it.notFirst = (state shr 1) > 0
   if it.notFirst:
     while it.i < x.len and x[it.i] in {DirSep, AltSep}: inc it.i

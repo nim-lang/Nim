@@ -17,13 +17,22 @@ proc cmpStrings(a, b: string): int {.inline, compilerproc.} =
   let blen = b.len
   let minlen = min(alen, blen)
   if minlen > 0:
-    result = c_memcmp(unsafeAddr a[0], unsafeAddr b[0], cast[csize_t](minlen))
+    result = c_memcmp(unsafeAddr a[0], unsafeAddr b[0], cast[csize_t](minlen)).int
     if result == 0:
       result = alen - blen
   else:
     result = alen - blen
 
+proc leStrings(a, b: string): bool {.inline, compilerproc.} =
+  # required by upcoming backends (NIR).
+  cmpStrings(a, b) <= 0
+
+proc ltStrings(a, b: string): bool {.inline, compilerproc.} =
+  # required by upcoming backends (NIR).
+  cmpStrings(a, b) < 0
+
 proc eqStrings(a, b: string): bool {.inline, compilerproc.} =
+  result = false
   let alen = a.len
   let blen = b.len
   if alen == blen:
@@ -33,11 +42,34 @@ proc eqStrings(a, b: string): bool {.inline, compilerproc.} =
 proc hashString(s: string): int {.compilerproc.} =
   # the compiler needs exactly the same hash function!
   # this used to be used for efficient generation of string case statements
-  var h : uint = 0
+  var h = 0'u
   for i in 0..len(s)-1:
     h = h + uint(s[i])
     h = h + h shl 10
     h = h xor (h shr 6)
+  h = h + h shl 3
+  h = h xor (h shr 11)
+  h = h + h shl 15
+  result = cast[int](h)
+
+proc eqCstrings(a, b: cstring): bool {.inline, compilerproc.} =
+  if pointer(a) == pointer(b): result = true
+  elif a.isNil or b.isNil: result = false
+  else: result = c_strcmp(a, b) == 0
+
+proc hashCstring(s: cstring): int {.compilerproc.} =
+  # the compiler needs exactly the same hash function!
+  # this used to be used for efficient generation of cstring case statements
+  if s.isNil: return 0
+  var h : uint = 0
+  var i = 0
+  while true:
+    let c = s[i]
+    if c == '\0': break
+    h = h + uint(c)
+    h = h + h shl 10
+    h = h xor (h shr 6)
+    inc i
   h = h + h shl 3
   h = h xor (h shr 11)
   h = h + h shl 15
@@ -52,20 +84,20 @@ const
               1e10, 1e11, 1e12, 1e13, 1e14, 1e15, 1e16, 1e17, 1e18, 1e19,
               1e20, 1e21, 1e22]
 
-when defined(nimHasInvariant):
-  {.push staticBoundChecks: off.}
 
-proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
-                          start = 0): int {.compilerproc.} =
+{.push staticBoundChecks: off.}
+
+proc nimParseBiggestFloat(s: openArray[char], number: var BiggestFloat,
+                         ): int {.compilerproc.} =
   # This routine attempt to parse float that can parsed quickly.
   # i.e. whose integer part can fit inside a 53bits integer.
   # their real exponent must also be <= 22. If the float doesn't follow
   # these restrictions, transform the float into this form:
   #  INTEGER * 10 ^ exponent and leave the work to standard `strtod()`.
   # This avoid the problems of decimal character portability.
-  # see: http://www.exploringbinary.com/fast-path-decimal-to-floating-point-conversion/
+  # see: https://www.exploringbinary.com/fast-path-decimal-to-floating-point-conversion/
   var
-    i = start
+    i = 0
     sign = 1.0
     kdigits, fdigits = 0
     exponent = 0
@@ -88,7 +120,7 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
       if s[i+2] == 'N' or s[i+2] == 'n':
         if i+3 >= s.len or s[i+3] notin IdentChars:
           number = NaN
-          return i+3 - start
+          return i+3
     return 0
 
   # Inf?
@@ -97,7 +129,7 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
       if s[i+2] == 'F' or s[i+2] == 'f':
         if i+3 >= s.len or s[i+3] notin IdentChars:
           number = Inf*sign
-          return i+3 - start
+          return i+3
     return 0
 
   if i < s.len and s[i] in {'0'..'9'}:
@@ -131,8 +163,8 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
 
   # if has no digits: return error
   if kdigits + fdigits <= 0 and
-     (i == start or # no char consumed (empty string).
-     (i == start + 1 and hasSign)): # or only '+' or '-
+     (i == 0 or # no char consumed (empty string).
+     (i == 1 and hasSign)): # or only '+' or '-
     return 0
 
   if i+1 < s.len and s[i] in {'e', 'E'}:
@@ -155,11 +187,13 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
 
   # if exponent greater than can be represented: +/- zero or infinity
   if absExponent > 999:
-    if expNegative:
+    if integer == 0:
+      number = 0.0
+    elif expNegative:
       number = 0.0*sign
     else:
       number = Inf*sign
-    return i - start
+    return i
 
   # if integer is representable in 53 bits:  fast path
   # max fast path integer is  1<<53 - 1 or  8999999999999999 (16 digits)
@@ -171,14 +205,14 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
         number = sign * integer.float / powtens[absExponent]
       else:
         number = sign * integer.float * powtens[absExponent]
-      return i - start
+      return i
 
     # if exponent is greater try to fit extra exponent above 22 by multiplying
     # integer part is there is space left.
     let slop = 15 - kdigits - fdigits
     if absExponent <= 22 + slop and not expNegative:
       number = sign * integer.float * powtens[slop] * powtens[absExponent-slop]
-      return i - start
+      return i
 
   # if failed: slow path with strtod.
   var t: array[500, char] # flaviu says: 325 is the longest reasonable literal
@@ -186,8 +220,8 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
   let maxlen = t.high - "e+000".len # reserve enough space for exponent
 
   let endPos = i
-  result = endPos - start
-  i = start
+  result = endPos
+  i = 0
   # re-parse without error checking, any error should be handled by the code above.
   if i < endPos and s[i] == '.': i.inc
   while i < endPos and s[i] in {'0'..'9','+','-'}:
@@ -209,10 +243,9 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
   t[ti-2] = ('0'.ord + absExponent mod 10).char
   absExponent = absExponent div 10
   t[ti-3] = ('0'.ord + absExponent mod 10).char
-  number = c_strtod(addr t, nil)
+  number = c_strtod(cast[cstring](addr t), nil)
 
-when defined(nimHasInvariant):
-  {.pop.} # staticBoundChecks
+{.pop.} # staticBoundChecks
 
 proc nimBoolToStr(x: bool): string {.compilerRtl.} =
   return if x: "true" else: "false"

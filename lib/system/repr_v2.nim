@@ -1,40 +1,52 @@
 include system/inclrtl
 
+when defined(nimPreviewSlimSystem):
+  import std/formatfloat
+
 proc isNamedTuple(T: typedesc): bool {.magic: "TypeTrait".}
   ## imported from typetraits
 
 proc distinctBase(T: typedesc, recursive: static bool = true): typedesc {.magic: "TypeTrait".}
   ## imported from typetraits
 
+proc rangeBase(T: typedesc): typedesc {.magic: "TypeTrait".}
+  # skip one level of range; return the base type of a range type
+
 proc repr*(x: NimNode): string {.magic: "Repr", noSideEffect.}
 
-proc repr*(x: int): string =
-  ## Same as $x
-  $x
+template dollarAlias(T: typedesc) =
+  proc repr*(x: T): string {.noSideEffect.} =
+    ## Same as $x
+    $x
 
-proc repr*(x: int64): string =
-  ## Same as $x
-  $x
+# need to declare for bit types as well to not clash with converters:
+dollarAlias int
+dollarAlias int8
+dollarAlias int16
+dollarAlias int32
+dollarAlias int64
 
-proc repr*(x: uint64): string {.noSideEffect.} =
-  ## Same as $x
-  $x
+dollarAlias uint
+dollarAlias uint8
+dollarAlias uint16
+dollarAlias uint32
+dollarAlias uint64
 
-proc repr*(x: float): string =
-  ## Same as $x
-  $x
+dollarAlias float
+dollarAlias float32
 
 proc repr*(x: bool): string {.magic: "BoolToStr", noSideEffect.}
   ## repr for a boolean argument. Returns `x`
   ## converted to the string "false" or "true".
 
-proc repr*(x: char): string {.noSideEffect.} =
+proc repr*(x: char): string {.noSideEffect, raises: [].} =
   ## repr for a character argument. Returns `x`
   ## converted to an escaped string.
   ##
-  ## .. code-block:: Nim
+  ##   ```Nim
   ##   assert repr('c') == "'c'"
-  result.add '\''
+  ##   ```
+  result = "'"
   # Elides string creations if not needed
   if x in {'\\', '\0'..'\31', '\127'..'\255'}:
     result.add '\\'
@@ -44,10 +56,10 @@ proc repr*(x: char): string {.noSideEffect.} =
     result.add x
   result.add '\''
 
-proc repr*(x: string | cstring): string {.noSideEffect.} =
+proc repr*(x: string | cstring): string {.noSideEffect, raises: [].} =
   ## repr for a string argument. Returns `x`
   ## converted to a quoted and escaped string.
-  result.add '\"'
+  result = "\""
   for i in 0..<x.len:
     if x[i] in {'"', '\\', '\0'..'\31', '\127'..'\255'}:
       result.add '\\'
@@ -60,7 +72,7 @@ proc repr*(x: string | cstring): string {.noSideEffect.} =
       result.add x[i]
   result.add '\"'
 
-proc repr*[Enum: enum](x: Enum): string {.magic: "EnumToStr", noSideEffect.}
+proc repr*[Enum: enum](x: Enum): string {.magic: "EnumToStr", noSideEffect, raises: [].}
   ## repr for an enumeration argument. This works for
   ## any enumeration type thanks to compiler magic.
   ##
@@ -88,16 +100,21 @@ proc repr*(p: pointer): string =
         result[j] = HexChars[n and 0xF]
         n = n shr 4
 
-proc repr*(p: proc): string =
+proc repr*(p: proc | iterator {.closure.}): string =
   ## repr of a proc as its address
   repr(cast[ptr pointer](unsafeAddr p)[])
 
-template repr*(x: distinct): string =
-  repr(distinctBase(typeof(x))(x))
+template repr*[T: distinct|(range and not enum)](x: T): string =
+  when T is range: # add a branch to handle range
+    repr(rangeBase(typeof(x))(x))
+  elif T is distinct:
+    repr(distinctBase(typeof(x))(x))
+  else:
+    {.error: "cannot happen".}
 
 template repr*(t: typedesc): string = $t
 
-proc reprObject[T: tuple|object](res: var string, x: T) =
+proc reprObject[T: tuple|object](res: var string, x: T) {.noSideEffect, raises: [].} =
   res.add '('
   var firstElement = true
   const isNamed = T is object or isNamedTuple(T)
@@ -118,19 +135,21 @@ proc reprObject[T: tuple|object](res: var string, x: T) =
   res.add(')')
 
 
-proc repr*[T: tuple|object](x: T): string =
+proc repr*[T: tuple|object](x: T): string {.noSideEffect, raises: [].} =
   ## Generic `repr` operator for tuples that is lifted from the components
   ## of `x`. Example:
-  ##
-  ## .. code-block:: Nim
+  ##   ```Nim
   ##   $(23, 45) == "(23, 45)"
   ##   $(a: 23, b: 45) == "(a: 23, b: 45)"
   ##   $() == "()"
+  ##   ```
   when T is object:
     result = $typeof(x)
+  else:
+    result = ""
   reprObject(result, x)
 
-proc repr*[T](x: ref T | ptr T): string =
+proc repr*[T](x: ref T | ptr T): string {.noSideEffect, raises: [].} =
   if isNil(x): return "nil"
   when T is object:
     result = $typeof(x)
@@ -139,7 +158,7 @@ proc repr*[T](x: ref T | ptr T): string =
     result = when typeof(x) is ref: "ref " else: "ptr "
     result.add repr(x[])
 
-proc collectionToRepr[T](x: T, prefix, separator, suffix: string): string =
+proc collectionToRepr[T](x: T, prefix, separator, suffix: string): string {.noSideEffect, raises: [].} =
   result = prefix
   var firstElement = true
   for value in items(x):
@@ -153,28 +172,18 @@ proc collectionToRepr[T](x: T, prefix, separator, suffix: string): string =
 proc repr*[T](x: set[T]): string =
   ## Generic `repr` operator for sets that is lifted from the components
   ## of `x`. Example:
-  ##
-  ## .. code-block:: Nim
+  ##   ```Nim
   ##   ${23, 45} == "{23, 45}"
+  ##   ```
   collectionToRepr(x, "{", ", ", "}")
 
 proc repr*[T](x: seq[T]): string =
   ## Generic `repr` operator for seqs that is lifted from the components
   ## of `x`. Example:
-  ##
-  ## .. code-block:: Nim
+  ##   ```Nim
   ##   $(@[23, 45]) == "@[23, 45]"
+  ##   ```
   collectionToRepr(x, "@[", ", ", "]")
-
-proc repr*[T, U](x: HSlice[T, U]): string =
-  ## Generic `repr` operator for slices that is lifted from the components
-  ## of `x`. Example:
-  ##
-  ## .. code-block:: Nim
-  ##  $(1 .. 5) == "1 .. 5"
-  result = repr(x.a)
-  result.add(" .. ")
-  result.add(repr(x.b))
 
 proc repr*[T, IDX](x: array[IDX, T]): string =
   ## Generic `repr` operator for arrays that is lifted from the components.
@@ -183,7 +192,10 @@ proc repr*[T, IDX](x: array[IDX, T]): string =
 proc repr*[T](x: openArray[T]): string =
   ## Generic `repr` operator for openarrays that is lifted from the components
   ## of `x`. Example:
-  ##
-  ## .. code-block:: Nim
+  ##   ```Nim
   ##   $(@[23, 45].toOpenArray(0, 1)) == "[23, 45]"
+  ##   ```
   collectionToRepr(x, "[", ", ", "]")
+
+proc repr*[T](x: UncheckedArray[T]): string =
+  "[...]"

@@ -42,7 +42,45 @@ template main() =
       discard (x, increment, a)
     mytemp()
 
+  block: # bug #12334
+    block:
+      const b: cstring = "foo"
+      var c = b
+      doAssert c == "foo"
+    block:
+      const a = "foo"
+      const b: cstring = a
+      var c = b
+      doAssert c == "foo"
 
+
+  when not defined(js):
+    block: # bug #19698
+      type
+        FormatInfo = object
+          readproc: ReadProc
+          writeproc: WriteProc
+
+        ReadProc = proc (s: pointer)
+        WriteProc = proc (s: pointer)
+
+      func initFormatInfo(readproc: ReadProc, writeproc: WriteProc = nil): FormatInfo {.compileTime.} =
+        result = FormatInfo(readproc: readproc, writeproc: nil)
+
+      proc readSampleImage(s: pointer) = discard
+
+      const SampleFormatInfo = initFormatInfo(readproc = readSampleImage)
+
+      const KnownFormats = [SampleFormatInfo]
+
+      func sortedFormatInfos(): array[len KnownFormats, FormatInfo] {.compileTime.} =
+        result = default(array[len KnownFormats, FormatInfo])
+        for i, info in KnownFormats:
+          result[i] = info
+
+      const SortedFormats = sortedFormatInfos()
+
+      discard SortedFormats
 
 static: main()
 main()

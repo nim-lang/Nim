@@ -1,4 +1,5 @@
 discard """
+  matrix: "--mm:refc"
   outputsub: "EVEN 28"
 """
 

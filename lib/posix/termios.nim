@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-import posix
+import std/posix
 
 type
   Speed* = cuint

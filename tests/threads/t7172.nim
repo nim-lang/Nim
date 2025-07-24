@@ -1,15 +1,17 @@
 discard """
+  disabled: i386
   output: '''
 In doStuff()
 In initProcess()
-initProcess() done
 TEST
+initProcess() done
 Crashes before getting here!
 '''
   joinable: false
 """
 
 import std/os
+import std/typedthreads
 
 proc whatever() {.thread, nimcall.} =
   echo("TEST")
@@ -18,8 +20,8 @@ proc initProcess(): void =
   echo("In initProcess()")
   var thread: Thread[void]
   createThread(thread, whatever)
-  echo("initProcess() done")
   joinThread(thread)
+  echo("initProcess() done")
 
 proc doStuff(): void =
   echo("In doStuff()")

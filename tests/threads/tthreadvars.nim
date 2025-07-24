@@ -1,4 +1,5 @@
 discard """
+disabled: i386
 output: '''
 10
 1111

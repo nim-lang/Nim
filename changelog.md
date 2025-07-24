@@ -1,104 +1,87 @@
-# v1.8.x - yyyy-mm-dd
+# v2.x.x - yyyy-mm-dd
 
 
 ## Changes affecting backward compatibility
 
-- The `Math.trunc` polyfill for targeting Internet Explorer was
-  previously emitted for every JavaScript output file except if
-  the symbol `nodejs` was defined via `-d:nodejs`. Now, it is only
-  emitted if the symbol `nimJsMathTruncPolyfill` is defined. If you are
-  targeting Internet Explorer, you may choose to enable this option
-  or define your own `Math.trunc` polyfill using the [`emit` pragma](https://nim-lang.org/docs/manual.html#implementation-specific-pragmas-emit-pragma). Nim uses
-  `Math.trunc` for the division and modulo operators for integers.
+- `-d:nimPreviewFloatRoundtrip` becomes the default. `system.addFloat` and `system.$` now can produce string representations of
+floating point numbers that are minimal in size and possess round-trip and correct
+rounding guarantees (via the
+[Dragonbox](https://raw.githubusercontent.com/jk-jeon/dragonbox/master/other_files/Dragonbox.pdf) algorithm). Use `-d:nimLegacySprintf` to emulate old behaviors.
 
-- Optional parameters in combination with `: body` syntax (RFC #405) are now opt-in via
-  `experimental:flexibleOptionalParams`.
+- The `default` parameter of `tables.getOrDefault` has been renamed to `def` to
+  avoid conflicts with `system.default`, so named argument usage for this
+  parameter like `getOrDefault(..., default = ...)` will have to be changed.
 
-- `std/sharedstrings` module is removed.
-- Constants `colors.colPaleVioletRed` and `colors.colMediumPurple` changed to match the CSS color standard.
+- With `-d:nimPreviewCheckedClose`, the `close` function in the `std/syncio` module now raises an IO exception in case of an error.
 
-- `addr` is now available for all addressable locations, `unsafeAddr` is deprecated and
-becomes an alias for `addr`.
+- Unknown warnings and hints now gives warnings `warnUnknownNotes` instead of
+errors.
 
-- io is about to move out of system; use `-d:nimPreviewSlimSystem` and import `std/syncio`.
+- With `-d:nimPreviewAsmSemSymbol`, backticked symbols are type checked in the `asm/emit` statements.
+
+- The bare `except:` now panics on `Defect`. Use `except Exception:` or `except Defect:` to catch `Defect`. `--legacy:noPanicOnExcept` is provided for a transition period.
+
+- With `-d:nimPreviewCStringComparisons`, comparsions (`<`, `>`, `<=`, `>=`) between cstrings switch from reference semantics to value semantics like `==` and `!=`.
 
 ## Standard library additions and changes
 
-- `macros.parseExpr` and `macros.parseStmt` now accept an optional
-  filename argument for more informative errors.
-- Module `colors` expanded with missing colors from the CSS color standard.
-- Fixed `lists.SinglyLinkedList` being broken after removing the last node ([#19353](https://github.com/nim-lang/Nim/pull/19353)).
-- `md5` now works at compile time and in JavaScript.
+[//]: # "Additions:"
 
-- `std/smtp` sends `ehlo` first. If the mail server does not understand, it sends `helo` as a fallback.
+- `setutils.symmetricDifference` along with its operator version
+  `` setutils.`-+-` `` and in-place version `setutils.toggle` have been added
+  to more efficiently calculate the symmetric difference of bitsets.
+- `strutils.multiReplace` overload for character set replacements in a single pass.
+	Useful for string sanitation. Follows existing multiReplace semantics.
 
-- Added `IsoWeekRange`, a range type to represent the number of weeks in an ISO week-based year.
-- Added `IsoYear`, a distinct int type to prevent bugs from confusing the week-based year and the regular year.
-- Added `initDateTime` in `times` to create a datetime from a weekday, and ISO 8601 week number and week-based year.
-- Added `getIsoWeekAndYear` in `times` to get an ISO week number along with the corresponding ISO week-based year from a datetime.
-- Added `getIsoWeeksInYear` in `times` to return the number of weeks in an ISO week-based year.
+- `system.setLenUninit` now supports refc, JS and VM backends.
 
-- Added `std/oserrors` for OS error reporting. Added `std/envvars` for environment variables handling.
-- Removed deprecated `oids.oidToString`.
-- Remove define `nimExperimentalAsyncjsThen` for `std/asyncjs.then` and `std/jsfetch`.
+[//]: # "Changes:"
 
-- Changed mimedb to use an `OrderedTable` instead of `OrderedTableRef`, to use it in a const.
-- Removed deprecated `jsre.test` and `jsre.toString`.
-- Removed deprecated `math.c_frexp`.
-
+- `std/math` The `^` symbol now supports floating-point as exponent in addition to the Natural type.
+- `min`, `max`, and `sequtils`' `minIndex`, `maxIndex` and `minmax` for `openArray`s now accept a comparison function.
+- `system.substr` implementation now uses `copymem` (wrapped C `memcpy`) for copying data, if available at compilation.
+- `system.newStringUninit` is now considered free of side-effects allowing it to be used with `--experimental:strictFuncs`.
 
 ## Language changes
 
-- Pragma macros on type definitions can now return `nnkTypeSection` nodes as well as `nnkTypeDef`,
-  allowing multiple type definitions to be injected in place of the original type definition.
+- An experimental option `--experimental:typeBoundOps` has been added that
+  implements the RFC https://github.com/nim-lang/RFCs/issues/380.
+  This makes the behavior of interfaces like `hash`, `$`, `==` etc. more
+  reliable for nominal types across indirect/restricted imports.
 
   ```nim
-  import macros
-
-  macro multiply(amount: static int, s: untyped): untyped =
-    let name = $s[0].basename
-    result = newNimNode(nnkTypeSection)
-    for i in 1 .. amount:
-      result.add(newTree(nnkTypeDef, ident(name & $i), s[1], s[2]))
+  # objs.nim
+  import std/hashes
 
   type
-    Foo = object
-    Bar {.multiply: 3.} = object
-      x, y, z: int
-    Baz = object
+    Obj* = object
+      x*, y*: int
+      z*: string # to be ignored for equality
 
-  # becomes
+  proc `==`*(a, b: Obj): bool =
+    a.x == b.x and a.y == b.y
 
-  type
-    Foo = object
-    Bar1 = object
-      x, y, z: int
-    Bar2 = object
-      x, y, z: int
-    Bar3 = object
-      x, y, z: int
-    Baz = object
+  proc hash*(a: Obj): Hash =
+    $!(hash(a.x) &! hash(a.y))
   ```
-- [Case statement macros](manual.html#macros-case-statement-macros) are no longer experimental,
-  meaning you no longer need to enable the experimental switch `caseStmtMacros` to use them.
-- Full command syntax and block arguments i.e. `foo a, b: c` are now allowed
-  for the right-hand side of type definitions in type sections. Previously
-  they would error with "invalid indentation".
+
+  ```nim
+  # main.nim
+  {.experimental: "typeBoundOps".}
+  from objs import Obj # objs.hash, objs.`==` not imported
+  import std/tables
+
+  var t: Table[Obj, int]
+  t[Obj(x: 3, y: 4, z: "debug")] = 34
+  echo t[Obj(x: 3, y: 4, z: "ignored")] # 34
+  ```
+
+  See the [experimental manual](https://nim-lang.github.io/Nim/manual_experimental.html#typeminusbound-overloads)
+  for more information.
 
 ## Compiler changes
-
-- `nim` can now compile version 1.4.0 as follows: `nim c --lib:lib --stylecheck:off compiler/nim`,
-  without requiring `-d:nimVersion140` which is now a noop.
 
 
 ## Tool changes
 
-- The `gc` switch has been renamed to `mm` ("memory management") in order to reflect the
-  reality better. (Nim moved away from all techniques based on "tracing".)
-
-- Nim now supports Nimble version 0.14 which added support for lock-files. This is done by
-  a simple configuration change setting that you can do yourself too. In `$nim/config/nim.cfg`
-  replace `pkgs` by `pkgs2`.
-
-- There is a new switch `--nimMainPrefix:prefix` to influence the `NimMain` that the
-  compiler produces. This is particularly useful for generating static libraries.
+- Added `--stdinfile` flag to name of the file used when running program from stdin (defaults to `stdinfile.nim`)

@@ -148,8 +148,6 @@ proc overloadedProc[T](x: T) =
   echo x
 
 """
-  # XXX: There seems to be a repr rendering problem above.
-  # Notice that `echo [x]`
 
 inspectSymbol overloadedProc[float], """
 proc overloadedProc(x: T) =

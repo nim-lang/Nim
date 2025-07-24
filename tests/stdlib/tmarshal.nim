@@ -1,4 +1,11 @@
+discard """
+  matrix: "--mm:orc"
+"""
+
+# TODO: --mm:refc
+
 import std/marshal
+import std/[assertions, objectdollar, streams]
 
 # TODO: add static tests
 
@@ -136,6 +143,16 @@ block:
   let test = to[LegacyEntry](str)
   doAssert $test == """(numeric: "")"""
 
+block:
+  let str = """{"numeric": null}"""
+
+  type
+    LegacyEntry = object
+      numeric: seq[int]
+
+  var test = to[LegacyEntry](str)
+  doAssert $test == """(numeric: @[])"""
+
 # bug #16022
 block:
   let p: proc (): string = proc (): string = "hello world"
@@ -150,6 +167,46 @@ block:
 
   let a: ref A = new(B)
   doAssert $$a[] == "{}" # not "{f: 0}"
+
+# bug #16496
+block:
+  type
+    A = ref object
+      data: seq[int]
+
+    B = ref object
+      x: A
+  let o = A(data: @[1, 2, 3, 4])
+  let s1 = @[B(x: o), B(x: o)]
+  let m  = $$ s1
+  let s2 = to[seq[B]](m)
+  doAssert s2[0].x.data == s2[1].x.data
+  doAssert s1[0].x.data == s2[1].x.data
+
+
+block:
+  type
+    Obj = ref object
+      i: int
+      b: bool
+
+  let
+    strm = newStringStream()
+
+  var
+    o = Obj(i: 1, b: false)
+    t1 = @[o, o]
+    t2: seq[Obj]
+
+  doAssert t1[0] == t1[1]
+
+  strm.store(t1)
+  strm.setPosition(0)
+  strm.load(t2)
+  strm.close()
+
+  doAssert t2[0] == t2[1]
+
 
 template checkMarshal(data: typed) =
   let orig = data

@@ -3,6 +3,9 @@
 
 import std / [strutils, sets]
 
+when defined(nimPreviewSlimSystem):
+  import std/syncio
+
 import ".." / compiler / [
   llstream, lexer, options, msgs, idents,
   lineinfos, pathutils]
@@ -19,7 +22,6 @@ proc checkGrammarFileImpl(cache: IdentCache, config: ConfigRef) =
     var
       L: Lexer
       tok: Token
-    initToken(tok)
     openLexer(L, f, stream, cache, config)
     # load the first token:
     rawGetTok(L, tok)

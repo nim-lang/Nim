@@ -93,6 +93,7 @@ destroy
 destroy
 destroy
 sink
+sink
 destroy
 copy
 (f: 1)
@@ -767,8 +768,7 @@ proc initC(): C =
   C(o: initO())
 
 proc pair(): tuple[a: C, b: C] =
-  result.a = initC() # <- when firstWrite tries to find this node to start its analysis it fails, because injectdestructors uses copyTree/shallowCopy
-  result.b = initC()
+  result = (a: initC(), b: initC())# <- when firstWrite tries to find this node to start its analysis it fails, because injectdestructors uses copyTree/shallowCopy
 
 discard pair()
 
@@ -786,6 +786,7 @@ main3()
 
 # misc
 proc smoltest(x: bool): bool =
+  result = false
   while true:
     if true: return x
 
@@ -818,3 +819,25 @@ proc atomicClosureOp =
 
 atomicClosureOp()
 
+
+template assertEq(a, b: untyped): untyped =
+  block:
+    let
+      aval = a
+      bval = b
+
+    if aval != bval:
+      quit "bug!"
+
+proc convoluted =
+  let _ = (;
+    var val1: string;
+    if true: val1 = "22"
+    else: val1 = ""
+    true
+  )
+
+  assertEq val1, "22"
+  assertEq val1, "22"
+
+convoluted()

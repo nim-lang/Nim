@@ -1,8 +1,12 @@
 discard """
+  matrix: "--mm:refc; --mm:orc"
   targets: "c js"
 """
 
 import std/[json, options]
+
+import std/assertions
+import std/objectdollar
 
 
 # RefPerson is used to test that overloaded `==` operator is not called by
@@ -43,6 +47,7 @@ proc main() =
 
     block example:
       proc find(haystack: string, needle: char): Option[int] =
+        result = none(int)
         for i, c in haystack:
           if c == needle:
             return some i
@@ -101,7 +106,7 @@ proc main() =
     block filter:
       doAssert(some(123).filter(proc (v: int): bool = v == 123) == some(123))
       doAssert(some(456).filter(proc (v: int): bool = v == 123).isNone)
-      doAssert(intNone.filter(proc (v: int): bool = doAssert false).isNone)
+      doAssert(intNone.filter(proc (v: int): bool = raiseAssert "false").isNone)
 
     block flatMap:
       proc addOneIfNotZero(v: int): Option[int] =
@@ -132,7 +137,7 @@ proc main() =
       doAssert(some(0).flatMap(maybeToString).flatMap(maybeExclaim) == none(string))
 
     block SomePointer:
-      var intref: ref int
+      var intref: ref int = nil
       doAssert(option(intref).isNone)
       intref.new
       doAssert(option(intref).isSome)
@@ -192,6 +197,12 @@ proc main() =
         doAssert x.isNone
         doAssert $x == "none(cstring)"
 
-
 static: main()
 main()
+
+when not defined(js):
+  block: # bug #22932
+    var it = iterator: int {.closure.} = discard
+    doAssert it.option.isSome # Passes.
+    it = nil
+    doAssert it.option.isNone # Passes.

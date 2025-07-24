@@ -1,4 +1,5 @@
 discard """
+  matrix: "--mm:refc"
   output: '''Sortable
 Sortable
 Container
@@ -8,6 +9,8 @@ int
 (id: @[1, 2, 3], name: @["Vas", "Pas", "NafNaf"], age: @[10, 16, 18])
 '''
 """
+
+# todo wait for https://github.com/nim-lang/Nim/pull/20380
 
 import typetraits
 

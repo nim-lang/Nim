@@ -14,6 +14,8 @@
 ## as a locator, a name, or both. The term "Uniform Resource Locator"
 ## (URL) refers to the subset of URIs.
 ##
+## .. warning:: URI parsers in this module do not perform security validation.
+##
 ## # Basic usage
 
 
@@ -32,12 +34,15 @@ runnableExamples:
 
 ## ## Data URI Base64
 runnableExamples:
-  doAssert getDataUri("Hello World", "text/plain") == "data:text/plain;charset=utf-8;base64,SGVsbG8gV29ybGQ="
-  doAssert getDataUri("Nim", "text/plain") == "data:text/plain;charset=utf-8;base64,Tmlt"
+  assert getDataUri("Hello World", "text/plain") == "data:text/plain;charset=utf-8;base64,SGVsbG8gV29ybGQ="
+  assert getDataUri("Nim", "text/plain") == "data:text/plain;charset=utf-8;base64,Tmlt"
 
 
-import strutils, parseutils, base64
+import std/[strutils, parseutils, base64]
 import std/private/[since, decode_helpers]
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
 
 
 type
@@ -47,7 +52,7 @@ type
     scheme*, username*, password*: string
     hostname*, port*, path*, query*, anchor*: string
     opaque*: bool
-    isIpv6: bool # not expose it for compatibility.
+    isIpv6*: bool
 
   UriParseError* = object of ValueError
 
@@ -123,13 +128,13 @@ func decodeUrl*(s: string, decodePlus = true): string =
   setLen(result, j)
 
 func encodeQuery*(query: openArray[(string, string)], usePlus = true,
-    omitEq = true): string =
+    omitEq = true, sep = '&'): string =
   ## Encodes a set of (key, value) parameters into a URL query string.
   ##
   ## Every (key, value) pair is URL-encoded and written as `key=value`. If the
   ## value is an empty string then the `=` is omitted, unless `omitEq` is
   ## false.
-  ## The pairs are joined together by a `&` character.
+  ## The pairs are joined together by the `sep` character.
   ##
   ## The `usePlus` parameter is passed down to the `encodeUrl` function that
   ## is used for the URL encoding of the string values.
@@ -140,9 +145,11 @@ func encodeQuery*(query: openArray[(string, string)], usePlus = true,
     assert encodeQuery({: }) == ""
     assert encodeQuery({"a": "1", "b": "2"}) == "a=1&b=2"
     assert encodeQuery({"a": "1", "b": ""}) == "a=1&b"
+    assert encodeQuery({"a": "1", "b": ""}, omitEq = false, sep = ';') == "a=1;b="
+  result = ""
   for elem in query:
-    # Encode the `key = value` pairs and separate them with a '&'
-    if result.len > 0: result.add('&')
+    # Encode the `key = value` pairs and separate them with 'sep'
+    if result.len > 0: result.add(sep)
     let (key, val) = elem
     result.add(encodeUrl(key, usePlus))
     # Omit the '=' if the value string is empty
@@ -150,7 +157,7 @@ func encodeQuery*(query: openArray[(string, string)], usePlus = true,
       result.add('=')
       result.add(encodeUrl(val, usePlus))
 
-iterator decodeQuery*(data: string): tuple[key, value: string] =
+iterator decodeQuery*(data: string, sep = '&'): tuple[key, value: string] =
   ## Reads and decodes the query string `data` and yields the `(key, value)` pairs
   ## the data consists of. If compiled with `-d:nimLegacyParseQueryStrict`,
   ## a `UriParseError` is raised when there is an unencoded `=` character in a decoded
@@ -158,6 +165,7 @@ iterator decodeQuery*(data: string): tuple[key, value: string] =
   runnableExamples:
     import std/sequtils
     assert toSeq(decodeQuery("foo=1&bar=2=3")) == @[("foo", "1"), ("bar", "2=3")]
+    assert toSeq(decodeQuery("foo=1;bar=2=3", ';')) == @[("foo", "1"), ("bar", "2=3")]
     assert toSeq(decodeQuery("&a&=b&=&&")) == @[("", ""), ("a", ""), ("", "b"), ("", ""), ("", "")]
 
   proc parseData(data: string, i: int, field: var string, sep: char): int =
@@ -186,7 +194,7 @@ iterator decodeQuery*(data: string): tuple[key, value: string] =
       when defined(nimLegacyParseQueryStrict):
         i = parseData(data, i, value, '=')
       else:
-        i = parseData(data, i, value, '&')
+        i = parseData(data, i, value, sep)
     yield (name, value)
     if i < data.len:
       when defined(nimLegacyParseQueryStrict):
@@ -375,7 +383,7 @@ func combine*(base: Uri, reference: Uri): Uri =
   ## Combines a base URI with a reference URI.
   ##
   ## This uses the algorithm specified in
-  ## `section 5.2.2 of RFC 3986 <http://tools.ietf.org/html/rfc3986#section-5.2.2>`_.
+  ## `section 5.2.2 of RFC 3986 <https://tools.ietf.org/html/rfc3986#section-5.2.2>`_.
   ##
   ## This means that the slashes inside the base URIs path as well as reference
   ## URIs path affect the resulting URI.
@@ -489,42 +497,61 @@ func `$`*(u: Uri): string =
   ## Returns the string representation of the specified URI object.
   runnableExamples:
     assert $parseUri("https://nim-lang.org") == "https://nim-lang.org"
-  result = ""
-  if u.scheme.len > 0:
-    result.add(u.scheme)
-    if u.opaque:
-      result.add(":")
-    else:
-      result.add("://")
-  if u.username.len > 0:
-    result.add(u.username)
-    if u.password.len > 0:
-      result.add(":")
-      result.add(u.password)
-    result.add("@")
+  # Get the len of all the parts.
+  let schemeLen = u.scheme.len
+  let usernameLen = u.username.len
+  let passwordLen = u.password.len
+  let hostnameLen = u.hostname.len
+  let portLen = u.port.len
+  let pathLen = u.path.len
+  let queryLen = u.query.len
+  let anchorLen = u.anchor.len
+  # Prepare a string that fits all the parts and all punctuation chars.
+  # 12 is the max len required by all possible punctuation chars.
+  result = newStringOfCap(
+    schemeLen + usernameLen + passwordLen + hostnameLen + portLen + pathLen + queryLen + anchorLen + 12
+  )
+  # Insert to result.
+  if schemeLen > 0:
+    result.add u.scheme
+    result.add ':'
+    if not u.opaque:
+      result.add '/'
+      result.add '/'
+  if usernameLen > 0:
+    result.add u.username
+    if passwordLen > 0:
+      result.add ':'
+      result.add u.password
+    result.add '@'
   if u.hostname.endsWith('/'):
     if u.isIpv6:
-      result.add("[" & u.hostname[0 .. ^2] & "]")
+      result.add '['
+      result.add u.hostname[0 .. ^2]
+      result.add ']'
     else:
-      result.add(u.hostname[0 .. ^2])
+      result.add u.hostname[0 .. ^2]
   else:
     if u.isIpv6:
-      result.add("[" & u.hostname & "]")
+      result.add '['
+      result.add u.hostname
+      result.add ']'
     else:
-      result.add(u.hostname)
-  if u.port.len > 0:
-    result.add(":")
-    result.add(u.port)
-  if u.path.len > 0:
-    if u.hostname.len > 0 and u.path[0] != '/':
-      result.add('/')
-    result.add(u.path)
-  if u.query.len > 0:
-    result.add("?")
-    result.add(u.query)
-  if u.anchor.len > 0:
-    result.add("#")
-    result.add(u.anchor)
+      result.add u.hostname
+  if portLen > 0:
+    result.add ':'
+    result.add u.port
+  if pathLen > 0:
+    if hostnameLen > 0 and u.path[0] != '/':
+      result.add '/'
+    result.add u.path
+  if queryLen > 0:
+    result.add '?'
+    result.add u.query
+  if anchorLen > 0:
+    result.add '#'
+    result.add u.anchor
+
 
 proc getDataUri*(data, mime: string, encoding = "utf-8"): string {.since: (1, 3).} =
   ## Convenience proc for `base64.encode` returns a standard Base64 Data URI (RFC-2397)
@@ -535,4 +562,12 @@ proc getDataUri*(data, mime: string, encoding = "utf-8"): string {.since: (1, 3)
   ## * https://en.wikipedia.org/wiki/Data_URI_scheme
   runnableExamples: static: assert getDataUri("Nim", "text/plain") == "data:text/plain;charset=utf-8;base64,Tmlt"
   assert encoding.len > 0 and mime.len > 0 # Must *not* be URL-Safe, see RFC-2397
-  result = "data:" & mime & ";charset=" & encoding & ";base64," & base64.encode(data)
+  let base64encoded: string = base64.encode(data)
+  # ("data:".len + ";charset=".len + ";base64,".len) == 22
+  result = newStringOfCap(22 + mime.len + encoding.len + base64encoded.len)
+  result.add "data:"
+  result.add mime
+  result.add ";charset="
+  result.add encoding
+  result.add ";base64,"
+  result.add base64encoded
