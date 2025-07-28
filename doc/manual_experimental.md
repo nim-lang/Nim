@@ -980,6 +980,24 @@ to describe usage protocols that do not reveal implementation details.
 Much like generics, concepts are instantiated exactly once for each tested type
 and any static code included within the body is executed only once.
 
+Concepts were overhauled with RFC #168 <https://github.com/nim-lang/RFCs/issues/168>, 
+so that generic code can be type-checked at declaration time rather than only at instantiation. 
+The redesign focuses on making concepts easier to understand and implement, 
+while providing an escape hatch that allows adding debug or log statements in generic code 
+without requiring extensive type constraint modifications. 
+It ensures backward compatibility by allowing old code with unconstrained generic parameters to continue working. 
+The implementation avoids relying on system.compiles, which is under-specified, 
+tightly coupled to Nim’s current implementation, and slow.
+
+The redesign does not aim to support every detail of the old concept design, 
+relying instead on the escape hatch and underspecified types for flexibility. 
+It does not support accidental or 'hacky' features (e.g., specifying calling conventions within concepts), 
+nor does it support complex cross-parameter constraints like comparing sizes of parameters. 
+Such cases can be handled separately with `enableif` without complicating the core concept design. 
+Finally, the redesign does not turn concepts into interfaces, as this can already be done with macros; 
+instead, the declarative nature of the new concepts makes them easier to process with tooling and macros.
+
+The new style is covered below in subsections with a star (`*`) in the name.
 
 Concept diagnostics
 -------------------
@@ -1249,7 +1267,7 @@ object inheritance syntax involving the `of` keyword:
                                 # matching the BidirectionalGraph concept
   ```
 
-..
+
   Converter type classes
   ----------------------
 
@@ -1284,7 +1302,7 @@ object inheritance syntax involving the `of` keyword:
     ```
 
 
-..
+
   VTable types
   ------------
 
@@ -1342,7 +1360,7 @@ object inheritance syntax involving the `of` keyword:
   the `vtptr` magic produced types bound to `ptr` types.
 
 
-..
+
   deepCopy
   --------
   `=deepCopy` is a builtin that is invoked whenever data is passed to
@@ -1362,6 +1380,186 @@ object inheritance syntax involving the `of` keyword:
   The builtin `deepCopy` can even clone closures and their environments. See
   the documentation of [spawn][spawn statement] for details.
 
+Atoms and containers*
+--------------------
+Concepts come in two forms: Atoms and containers. A container is a generic
+concept like `Iterable[T]`, an atom always lacks any kind of generic parameter
+(as in `Comparable`).
+
+Syntactically a concept consists of a list of proc and iterator declarations.
+There are 3 syntatic additions:
+
+- `Self` is a builtin type within the concept's body stands for the current concept.
+- `each` is used to introduce a generic parameter `T` within the concept's body
+  that is not listed within the concept's generic parameter list.
+- `either orelse` is used to provide basic support for optional procs within a concept.
+
+We will see how these are used in the examples.
+
+Atoms*
+-----
+  ```nim
+  type
+    Comparable = concept # no T, an atom
+      proc cmp(a, b: Self): int
+
+    ToStringable = concept
+      proc `$`(a: Self): string
+
+    Hashable = concept
+      proc hash(x: Self): int
+      proc `==`(x, y: Self): bool
+
+    Swapable = concept
+      proc swap(x, y: var Self)
+  ```
+`Self` stands for the currently defined concept itself. It is used to avoid a
+recursion, `proc cmp(a, b: Comparable): int` is invalid.
+
+Containers*
+----------
+A container has at least one generic parameter (most often called `T`).
+The first syntactic usage of the generic parameter specifies how to infer and
+bind `T`. Other usages of `T` are then checked to match what it was bound to.
+
+  ```nim
+  type
+    Indexable[T] = concept # has a T, a collection
+      proc `[]`(a: Self; index: int): T # we need to describe how to infer 'T'
+      # and then we can use the 'T' and it must match:
+      proc `[]=`(a: var Self; index: int; value: T)
+      proc len(a: Self): int
+  ```
+Nothing interesting happens when we use multiple generic parameters:
+  ```nim
+  type
+    Dictionary[K, V] = concept
+      proc `[]`(a: Self; key: K): V
+      proc `[]=`(a: var Self; key: K; value: V)
+  ```
+The usual `: Constraint` syntax can be used to add generic constraints to the
+involved generic parameters:
+  ```nim
+  type
+    Dictionary[K: Hashable; V] = concept
+      proc `[]`(a: Self; key: K): V
+      proc `[]=`(a: var Self; key: K; value: V)
+  ```
+
+each T*
+------
+Note: `each T` is currently not implemented.
+
+`each T` allows to introduce generic parameters that are not part of a concept's
+generic parameter list. It is furthermore a special case to allow for the
+common "every field has to fulfill property P" scenario:
+
+  ```nim
+  type
+    Serializable = concept
+      iterator fieldPairs(x: Self): (string, each T)
+        proc write(x: T)
+
+  proc writeStuff[T: Serializable](x: T) =
+    for name, field in fieldPairs(x):
+      write name
+      write field
+  ```
+
+either orelse*
+-------------
+Note: `either orelse` is currently not implemented.
+
+In generic code it's often desirable to specialize the code in an ad-hoc
+manner. `system.addQuoted` is an example of this:
+  ```nim
+  proc addQuoted[T](dest: var string; x: T) =
+    when compiles(dest.add(x)):
+      dest.add(x)
+    else:
+      dest.add($x)
+  ```
+If we want to describe `T` with a concept we need some way to describe optional
+aspects. `either orelse` can be used:
+  ```nim
+  type
+    Quatable = concept
+      either:
+        proc $(x: Self): string
+      orelse:
+        proc add(s: var string; elem: self)
+
+  proc addQuoted[T: Quotable](s: var string; x: T) =
+    when compiles(s.add(x)):
+      s.add(x)
+    else:
+      s.add($x)
+  ```
+
+More examples
+-------------
+**system.find**
+
+  ```nim
+  type
+    Findable[T] = concept
+      iterator items(x: Self): T
+      proc `==`(a, b: T): bool
+
+  proc find[T](x: Findable[T]; elem: T): int =
+    var i = 0
+    for a in x:
+      if a == elem: return i
+      inc i
+    result = -1
+  ```
+
+**Sortable**
+
+Note that a declaration like
+  ```nim
+  type
+    Sortable[T] = Indexable[T] and T is Comparable and T is Swapable
+  ```
+is possible but unwise. The reason is that `Indexable` either contains too many
+procs we don't need or accessors that are slightly off as they don't offer the
+right kind of mutability access. Here is the proper definition:
+  ```nim
+  type
+    Sortable[T] = concept
+      proc `[]`(a: var Self; b: int): var T
+      proc len(a: Self): int
+      proc swap(x, y: var T)
+      proc cmp(a, b: T): int
+  ```
+
+Concept matching*
+----------------
+A type `T` matches a concept `C` if every proc and iterator header `H` of `C`
+matches an entity `E` in the current scope.
+
+The matching process is forgiving:
+
+- If `H` is a proc, `E` can be a proc, a func, a method, a template, a converter or a macro.
+- `E` can have more parameters than `H` as long as these parameters have default values.
+- The parameter names do not have to match.
+- If `H` has the form `proc p(x: Self): T` then `E` can be a public object field of name `p` and of type `T`.
+- If `H` is an iterator, `E` must be an iterator too, but `E`'s parameter names do not have to match and it can have additional default parameters.
+
+Escape hatch*
+------------
+Generic routines that have at least one concept parameter are type-checked at
+declaration time. To disable type-checking in certain code sections an
+`untyped` block can be used:
+  ```nim
+  proc sort(x: var Sortable) =
+    ...
+    # damn this sort doesn't work, let's find out why:
+    untyped:
+      # no need to change 'Sortable' so that it mentions '$' for the involved
+      # element type!
+      echo x[i], " ", x[j]
+  ```
 
 Dynamic arguments for bindSym
 =============================
