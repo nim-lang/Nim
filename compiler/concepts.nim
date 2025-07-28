@@ -271,7 +271,8 @@ proc matchType(c: PContext; fo, ao: PType; m: var MatchCon): bool =
   var
     a = ao
     f = fo
-  
+  if a.isSelf:
+    a = m.potentialImplementation
   if a.kind in bindableTypes:
     a = existingBinding(m, ao)
     if a == ao and a.kind == tyGenericParam and a.hasElementType and a.elementType.kind != tyNone:
@@ -337,8 +338,11 @@ proc matchType(c: PContext; fo, ao: PType; m: var MatchCon): bool =
       result = true
     else:
       let ak = a.skipTypes(ignorableForArgType - {f.kind})
-      if ak.kind == f.kind and f.kidsLen == ak.kidsLen:
-        result = matchKids(c, f, ak, m)
+      if ak.kind == f.kind:
+        if f.base.kind == tyNone:
+          result = true
+        elif f.kidsLen == ak.kidsLen:
+          result = matchKids(c, f, ak, m)
   of tyGenericInvocation, tyGenericInst:
     result = false
     let ea = a.skipTypes(ignorableForArgType)
