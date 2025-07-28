@@ -272,6 +272,8 @@ proc matchType(c: PContext; fo, ao: PType; m: var MatchCon): bool =
     a = ao
     f = fo
   if a.isSelf:
+    if m.magic in {mArrPut, mArrGet}:
+      return false
     a = m.potentialImplementation
   if a.kind in bindableTypes:
     a = existingBinding(m, ao)
