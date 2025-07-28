@@ -1381,7 +1381,7 @@ object inheritance syntax involving the `of` keyword:
   the documentation of [spawn][spawn statement] for details.
 
 Atoms and containers*
---------------------
+---------------------
 Concepts come in two forms: Atoms and containers. A container is a generic
 concept like `Iterable[T]`, an atom always lacks any kind of generic parameter
 (as in `Comparable`).
@@ -1447,7 +1447,7 @@ involved generic parameters:
   ```
 
 each T*
-------
+-------
 Note: `each T` is currently not implemented.
 
 `each T` allows to introduce generic parameters that are not part of a concept's
@@ -1467,7 +1467,7 @@ common "every field has to fulfill property P" scenario:
   ```
 
 either orelse*
--------------
+--------------
 Note: `either orelse` is currently not implemented.
 
 In generic code it's often desirable to specialize the code in an ad-hoc
@@ -1496,8 +1496,8 @@ aspects. `either orelse` can be used:
       s.add($x)
   ```
 
-More examples
--------------
+More examples*
+--------------
 **system.find**
 
   ```nim
@@ -1534,7 +1534,7 @@ right kind of mutability access. Here is the proper definition:
   ```
 
 Concept matching*
-----------------
+-----------------
 A type `T` matches a concept `C` if every proc and iterator header `H` of `C`
 matches an entity `E` in the current scope.
 
@@ -1547,7 +1547,7 @@ The matching process is forgiving:
 - If `H` is an iterator, `E` must be an iterator too, but `E`'s parameter names do not have to match and it can have additional default parameters.
 
 Escape hatch*
-------------
+-------------
 Generic routines that have at least one concept parameter are type-checked at
 declaration time. To disable type-checking in certain code sections an
 `untyped` block can be used:
