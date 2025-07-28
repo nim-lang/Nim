@@ -1397,7 +1397,7 @@ There are 3 syntatic additions:
 We will see how these are used in the examples.
 
 Atoms*
------
+------
   ```nim
   type
     Comparable = concept # no T, an atom
@@ -1417,7 +1417,7 @@ Atoms*
 recursion, `proc cmp(a, b: Comparable): int` is invalid.
 
 Containers*
-----------
+-----------
 A container has at least one generic parameter (most often called `T`).
 The first syntactic usage of the generic parameter specifies how to infer and
 bind `T`. Other usages of `T` are then checked to match what it was bound to.
