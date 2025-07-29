@@ -982,15 +982,12 @@ and any static code included within the body is executed only once.
 
 Concepts were overhauled with RFC #168 <https://github.com/nim-lang/RFCs/issues/168>, 
 so that generic code can be type-checked at declaration time rather than only at instantiation. 
-The redesign focuses on making concepts easier to understand and implement, 
-while providing an escape hatch that allows adding debug or log statements in generic code 
-without requiring extensive type constraint modifications. 
+The redesign focuses on making concepts easier to understand and implement.
 It ensures backward compatibility by allowing old code with unconstrained generic parameters to continue working. 
 The implementation avoids relying on system.compiles, which is under-specified, 
 tightly coupled to Nim’s current implementation, and slow.
 
-The redesign does not aim to support every detail of the old concept design, 
-relying instead on the escape hatch and underspecified types for flexibility. 
+The redesign does not aim to support every detail of the old concept design.
 It does not support accidental or 'hacky' features (e.g., specifying calling conventions within concepts), 
 nor does it support complex cross-parameter constraints like comparing sizes of parameters. 
 Such cases can be handled separately with `enableif` without complicating the core concept design. 
@@ -1267,119 +1264,6 @@ object inheritance syntax involving the `of` keyword:
                                 # matching the BidirectionalGraph concept
   ```
 
-
-  Converter type classes
-  ----------------------
-
-  Concepts can also be used to convert a whole range of types to a single type or
-  a small set of simpler types. This is achieved with a `return` statement within
-  the concept body:
-
-    ```nim
-    type
-      Stringable = concept x
-        $x is string
-        return $x
-
-      StringRefValue[CharType] = object
-        base: ptr CharType
-        len: int
-
-      StringRef = concept x
-        # the following would be an overloaded proc for cstring, string, seq and
-        # other user-defined types, returning either a StringRefValue[char] or
-        # StringRefValue[wchar]
-        return makeStringRefValue(x)
-
-    # the varargs param will here be converted to an array of StringRefValues
-    # the proc will have only two instantiations for the two character types
-    proc log(format: static string, varargs[StringRef])
-
-    # this proc will allow char and wchar values to be mixed in
-    # the same call at the cost of additional instantiations
-    # the varargs param will be converted to a tuple
-    proc log(format: static string, varargs[distinct StringRef])
-    ```
-
-
-
-  VTable types
-  ------------
-
-  Concepts allow Nim to define a great number of algorithms, using only
-  static polymorphism and without erasing any type information or sacrificing
-  any execution speed. But when polymorphic collections of objects are required,
-  the user must use one of the provided type erasure techniques - either common
-  base types or VTable types.
-
-  VTable types are represented as "fat pointers" storing a reference to an
-  object together with a reference to a table of procs implementing a set of
-  required operations (the so called vtable).
-
-  In contrast to other programming languages, the vtable in Nim is stored
-  externally to the object, allowing you to create multiple different vtable
-  views for the same object. Thus, the polymorphism in Nim is unbounded -
-  any type can implement an unlimited number of protocols or interfaces not
-  originally envisioned by the type's author.
-
-  Any concept type can be turned into a VTable type by using the `vtref`
-  or the `vtptr` compiler magics. Under the hood, these magics generate
-  a converter type class, which converts the regular instances of the matching
-  types to the corresponding VTable type.
-
-    ```nim
-    type
-      IntEnumerable = vtref Enumerable[int]
-
-      MyObject = object
-        enumerables: seq[IntEnumerable]
-        streams: seq[OutputStream.vtref]
-
-    proc addEnumerable(o: var MyObject, e: IntEnumerable) =
-      o.enumerables.add e
-
-    proc addStream(o: var MyObject, e: OutputStream.vtref) =
-      o.streams.add e
-    ```
-
-  The procs that will be included in the vtable are derived from the concept
-  body and include all proc calls for which all param types were specified as
-  concrete types. All such calls should include exactly one param of the type
-  matched against the concept (not necessarily in the first position), which
-  will be considered the value bound to the vtable.
-
-  Overloads will be created for all captured procs, accepting the vtable type
-  in the position of the captured underlying object.
-
-  Under these rules, it's possible to obtain a vtable type for a concept with
-  unbound type parameters or one instantiated with metatypes (type classes),
-  but it will include a smaller number of captured procs. A completely empty
-  vtable will be reported as an error.
-
-  The `vtref` magic produces types which can be bound to `ref` types and
-  the `vtptr` magic produced types bound to `ptr` types.
-
-
-
-  deepCopy
-  --------
-  `=deepCopy` is a builtin that is invoked whenever data is passed to
-  a `spawn`'ed proc to ensure memory safety. The programmer can override its
-  behaviour for a specific `ref` or `ptr` type `T`. (Later versions of the
-  language may weaken this restriction.)
-
-  The signature has to be:
-
-    ```nim
-    proc `=deepCopy`(x: T): T
-    ```
-
-  This mechanism will be used by most data structures that support shared memory,
-  like channels, to implement thread safe automatic memory management.
-
-  The builtin `deepCopy` can even clone closures and their environments. See
-  the documentation of [spawn][spawn statement] for details.
-
 Atoms and containers*
 ---------------------
 Concepts come in two forms: Atoms and containers. A container is a generic
@@ -1446,56 +1330,6 @@ involved generic parameters:
       proc `[]=`(a: var Self; key: K; value: V)
   ```
 
-each T*
--------
-Note: `each T` is currently not implemented.
-
-`each T` allows to introduce generic parameters that are not part of a concept's
-generic parameter list. It is furthermore a special case to allow for the
-common "every field has to fulfill property P" scenario:
-
-  ```nim
-  type
-    Serializable = concept
-      iterator fieldPairs(x: Self): (string, each T)
-        proc write(x: T)
-
-  proc writeStuff[T: Serializable](x: T) =
-    for name, field in fieldPairs(x):
-      write name
-      write field
-  ```
-
-either orelse*
---------------
-Note: `either orelse` is currently not implemented.
-
-In generic code it's often desirable to specialize the code in an ad-hoc
-manner. `system.addQuoted` is an example of this:
-  ```nim
-  proc addQuoted[T](dest: var string; x: T) =
-    when compiles(dest.add(x)):
-      dest.add(x)
-    else:
-      dest.add($x)
-  ```
-If we want to describe `T` with a concept we need some way to describe optional
-aspects. `either orelse` can be used:
-  ```nim
-  type
-    Quatable = concept
-      either:
-        proc $(x: Self): string
-      orelse:
-        proc add(s: var string; elem: self)
-
-  proc addQuoted[T: Quotable](s: var string; x: T) =
-    when compiles(s.add(x)):
-      s.add(x)
-    else:
-      s.add($x)
-  ```
-
 More examples*
 --------------
 **system.find**
@@ -1545,21 +1379,6 @@ The matching process is forgiving:
 - The parameter names do not have to match.
 - If `H` has the form `proc p(x: Self): T` then `E` can be a public object field of name `p` and of type `T`.
 - If `H` is an iterator, `E` must be an iterator too, but `E`'s parameter names do not have to match and it can have additional default parameters.
-
-Escape hatch*
--------------
-Generic routines that have at least one concept parameter are type-checked at
-declaration time. To disable type-checking in certain code sections an
-`untyped` block can be used:
-  ```nim
-  proc sort(x: var Sortable) =
-    ...
-    # damn this sort doesn't work, let's find out why:
-    untyped:
-      # no need to change 'Sortable' so that it mentions '$' for the involved
-      # element type!
-      echo x[i], " ", x[j]
-  ```
 
 Dynamic arguments for bindSym
 =============================
