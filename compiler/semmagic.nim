@@ -667,7 +667,7 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     result = semQuantifier(c, n)
   of mOld:
     result = semOld(c, n)
-  of mSetLengthSeq:
+  of mSetLengthSeq, mSetLengthSeqUninit:
     result = n
     let seqType = result[1].typ.skipTypes({tyPtr, tyRef, # in case we had auto-dereferencing
                                            tyVar, tyGenericInst, tyOwned, tySink,

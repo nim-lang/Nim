@@ -100,6 +100,7 @@ when false:
 proc isLastReadImpl(n: PNode; c: var Con; scope: var Scope): bool =
   let root = parampatterns.exprRoot(n, allowCalls=false)
   if root == nil: return false
+  elif sfSingleUsedTemp in root.flags: return true
 
   var s = addr(scope)
   while s != nil:
@@ -167,8 +168,7 @@ proc isLastRead(n: PNode; c: var Con; s: var Scope): bool =
   if not hasDestructor(c, n.typ) and (n.typ.kind != tyObject or isTrival(getAttachedOp(c.graph, n.typ, attachedAsgn))): return true
 
   let m = skipConvDfa(n)
-  result = (m.kind == nkSym and sfSingleUsedTemp in m.sym.flags) or
-      isLastReadImpl(n, c, s)
+  result = isLastReadImpl(n, c, s)
 
 proc isFirstWrite(n: PNode; c: var Con): bool =
   let m = skipConvDfa(n)
@@ -1140,6 +1140,25 @@ proc genFieldAccessSideEffects(c: var Con; s: var Scope; dest, ri: PNode; flags:
   var snk = c.genSink(s, dest, newAccess, flags)
   result = newTree(nkStmtList, v, snk, c.genWasMoved(newAccess))
 
+proc ownsData(c: var Con; s: var Scope; orig: PNode; flags: set[MoveOrCopyFlag]): PNode =
+  var n = orig
+  while true:
+    case n.kind
+    of nkDotExpr, nkCheckedFieldExpr, nkBracketExpr:
+      n = n[0]
+    else:
+      break
+  if n.kind in nkCallKinds and n.typ != nil and hasDestructor(c, n.typ):
+    result = newNodeIT(nkStmtListExpr, orig.info, orig.typ)
+    let tmp = c.getTemp(s, n.typ, n.info)
+    tmp.sym.flags.incl sfSingleUsedTemp
+    result.add newTree(nkFastAsgn, tmp, copyTree(n))
+    s.final.add c.genDestroy(tmp)
+    n[] = tmp[]
+    result.add copyTree(orig)
+  else:
+    result = nil
+
 proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope, flags: set[MoveOrCopyFlag] = {}): PNode =
   var ri = ri
   var isEnsureMove = 0
@@ -1226,7 +1245,11 @@ proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope, flags: set[MoveOrCopy
     of nkRaiseStmt:
       result = pRaiseStmt(ri, c, s)
     else:
-      if isAnalysableFieldAccess(ri, c.owner) and isLastRead(ri, c, s) and
+      let isOwnsData = ownsData(c, s, ri2, flags)
+
+      if isOwnsData != nil:
+        result = moveOrCopy(dest, isOwnsData, c, s, flags)
+      elif isAnalysableFieldAccess(ri, c.owner) and isLastRead(ri, c, s) and
           canBeMoved(c, dest.typ):
         # Rule 3: `=sink`(x, z); wasMoved(z)
         let snk = c.genSink(s, dest, ri, flags)

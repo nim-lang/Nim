@@ -836,9 +836,12 @@ proc semResolvedCall(c: PContext, x: var TCandidate,
   assert x.state == csMatch
   var finalCallee = x.calleeSym
   let info = getCallLineInfo(n)
-  markUsed(c, info, finalCallee)
-  onUse(info, finalCallee)
+  markUsed(c, info, finalCallee, isGenericInstance = false)
+  onUse(info, finalCallee, isGenericInstance = false)
   assert finalCallee.ast != nil
+  if x.matchedErrorType:
+    markUsed(c, info, finalCallee, isGenericInstance = true)
+    onUse(info, finalCallee, isGenericInstance = true)
   if x.matchedErrorType:
     result = x.call
     result[0] = newSymNode(finalCallee, getCallLineInfo(result[0]))
@@ -874,6 +877,8 @@ proc semResolvedCall(c: PContext, x: var TCandidate,
           x.call.add tn
         else:
           internalAssert c.config, false
+  markUsed(c, info, finalCallee, isGenericInstance = true)
+  onUse(info, finalCallee, isGenericInstance = true)
 
   result = x.call
   instGenericConvertersSons(c, result, x)
@@ -942,8 +947,10 @@ proc explicitGenericSym(c: PContext, n: PNode, s: PSym, errors: var CandidateErr
   var newInst = generateInstance(c, s, m.bindings, n.info)
   newInst.typ.flags.excl tfUnresolved
   let info = getCallLineInfo(n)
-  markUsed(c, info, s)
-  onUse(info, s)
+  markUsed(c, info, s, isGenericInstance = false)
+  onUse(info, s, isGenericInstance = false)
+  markUsed(c, info, newInst, isGenericInstance = true)
+  onUse(info, newInst, isGenericInstance = true)
   result = newSymNode(newInst, info)
 
 proc setGenericParams(c: PContext, n, expectedParams: PNode) =
