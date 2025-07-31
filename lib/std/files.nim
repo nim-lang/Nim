@@ -14,7 +14,7 @@ from std/private/osfiles import fileExists, removeFile,
 export CopyFlag, FilePermission
 
 
-proc getFilePermissions*(filename: Path): set[FilePermission] {.tags: [ReadDirEffect].} =
+proc getFilePermissions*(filename: Path): set[FilePermission] {.inline, tags: [ReadDirEffect].} =
   ## Retrieves file permissions for `filename`.
   ##
   ## `OSError` is raised in case of an error.
