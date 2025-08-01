@@ -33,6 +33,20 @@ errors.
 - `strutils.multiReplace` overload for character set replacements in a single pass.
 	Useful for string sanitation. Follows existing multiReplace semantics.
 
+- `std/files` adds:
+  - Exports `CopyFlag` enum and `FilePermission` type for fine-grained control of file operations
+  - New file operation procs with `Path` support:
+    - `getFilePermissions`, `setFilePermissions` for managing permissions
+    - `tryRemoveFile` for file deletion
+    - `copyFile` with configurable buffer size and symlink handling
+    - `copyFileWithPermissions` to preserve file attributes
+    - `copyFileToDir` for copying files into directories
+
+- `std/dirs` adds:
+  - New directory operation procs with `Path` support:
+    - `copyDir` with special file handling options
+    - `copyDirWithPermissions` to recursively preserve attributes
+
 - `system.setLenUninit` now supports refc, JS and VM backends.
 
 [//]: # "Changes:"
