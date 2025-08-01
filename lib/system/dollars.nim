@@ -106,7 +106,7 @@ proc collectionToString[T](x: T, prefix, separator, suffix: string): string =
     else:
       result.add(separator)
 
-    when value isnot string and value isnot seq and compiles(value.isNil):
+    when compiles(value.isNil):
       # this branch should not be necessary
       if value.isNil:
         result.add "nil"

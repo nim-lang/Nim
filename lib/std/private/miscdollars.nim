@@ -26,7 +26,7 @@ template tupleObjectDollar*[T: tuple | object](result: var string, x: T) =
       result.add(": ")
     count.inc
     when compiles($value):
-      when value isnot string and value isnot seq and compiles(value.isNil):
+      when compiles(value.isNil):
         if value.isNil: result.add "nil"
         else: result.addQuoted(value)
       else:
