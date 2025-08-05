@@ -45,7 +45,7 @@ const
 
 proc nimIncRefCyclic(p: pointer; cyclic: bool) {.compilerRtl, inl.} =
   let h = head(p)
-  inc h.rc, rcIncrement
+  h.rc = h.rc +% rcIncrement
   when optimizedOrc:
     if cyclic:
       h.rc = h.rc or maybeCycle
@@ -145,14 +145,17 @@ var
 
 proc unregisterCycle(s: Cell) =
   # swap with the last element. O(1)
-  let idx = s.rootIdx-1
+  let
+    rootIdx = s.rootIdx
+    idx = rootIdx -% 1
+    last = roots.len -% 1
   when false:
     if idx >= roots.len or idx < 0:
       cprintf("[Bug!] %ld %ld\n", idx, roots.len)
       rawQuit 1
-  roots.d[idx] = roots.d[roots.len-1]
-  roots.d[idx][0].rootIdx = idx+1
-  dec roots.len
+  roots.d[idx] = roots.d[last]
+  roots.d[idx][0].rootIdx = rootIdx
+  roots.len = last
   s.rootIdx = 0
 
 proc scanBlack(s: Cell; desc: PNimTypeV2; j: var GcEnv) =
@@ -171,7 +174,7 @@ proc scanBlack(s: Cell; desc: PNimTypeV2; j: var GcEnv) =
   while j.traceStack.len > until:
     let (entry, desc) = j.traceStack.pop()
     let t = head entry[]
-    inc t.rc, rcIncrement
+    t.rc = t.rc +% rcIncrement
     if t.color != colBlack:
       t.setColor colBlack
       trace(t, desc, j)
@@ -189,16 +192,16 @@ proc markGray(s: Cell; desc: PNimTypeV2; j: var GcEnv) =
   ]#
   if s.color != colGray:
     s.setColor colGray
-    inc j.touched
+    j.touched = j.touched +% 1
     # keep in mind that refcounts are zero based so add 1 here:
-    inc j.rcSum, (s.rc shr rcShift) + 1
+    j.rcSum = j.rcSum +% (s.rc shr rcShift) +% 1
     orcAssert(j.traceStack.len == 0, "markGray: trace stack not empty")
     trace(s, desc, j)
     while j.traceStack.len > 0:
       let (entry, desc) = j.traceStack.pop()
       let t = head entry[]
-      dec t.rc, rcIncrement
-      inc j.edges
+      t.rc = t.rc -% rcIncrement
+      j.edges = j.edges +% 1
       when useJumpStack:
         if (t.rc shr rcShift) >= 0 and (t.rc and jumpStackFlag) == 0:
           t.rc = t.rc or jumpStackFlag
@@ -207,9 +210,9 @@ proc markGray(s: Cell; desc: PNimTypeV2; j: var GcEnv) =
           j.jumpStack.add(entry, desc)
       if t.color != colGray:
         t.setColor colGray
-        inc j.touched
+        j.touched = j.touched +% 1
         # we already decremented its refcount so account for that:
-        inc j.rcSum, (t.rc shr rcShift) + 2
+        j.rcSum = j.rcSum +% (t.rc shr rcShift) +% 2
         trace(t, desc, j)
 
 proc scan(s: Cell; desc: PNimTypeV2; j: var GcEnv) =
@@ -327,7 +330,8 @@ proc collectCyclesBacon(j: var GcEnv; lowMark: int) =
       s.buffered = false
       collectWhite(s)
   ]#
-  let last = roots.len - 1
+  let last = roots.len -% 1
+
   when logOrc:
     for i in countdown(last, lowMark):
       writeCell("root", roots.d[i][0], roots.d[i][1])
@@ -368,7 +372,7 @@ proc collectCyclesBacon(j: var GcEnv; lowMark: int) =
   when not defined(nimStressOrc):
     rootsThreshold = oldThreshold
 
-  inc j.freed, j.toFree.len
+  j.freed = j.freed +% j.toFree.len
   deinit j.toFree
 
 when defined(nimOrcStats):
@@ -419,15 +423,15 @@ proc collectCycles() =
     # we touched. If we're effective, we can reset the threshold:
     if j.keepThreshold:
       discard
-    elif j.freed * 2 >= j.touched:
+    elif j.freed *% 2 >= j.touched:
       when not defined(nimFixedOrc):
-        rootsThreshold = max(rootsThreshold div 3 * 2, 16)
+        rootsThreshold = max(rootsThreshold div 2 +% rootsThreshold, 16)
       else:
         rootsThreshold = 0
       #cfprintf(cstderr, "[collectCycles] freed %ld, touched %ld new threshold %ld\n", j.freed, j.touched, rootsThreshold)
     elif rootsThreshold < high(int) div 4:
       rootsThreshold = (if rootsThreshold <= 0: defaultThreshold else: rootsThreshold)
-      rootsThreshold = rootsThreshold div 2 + rootsThreshold
+      rootsThreshold = rootsThreshold div 2 +% rootsThreshold
   when logOrc:
     cfprintf(cstderr, "[collectCycles] end; freed %ld new threshold %ld touched: %ld mem: %ld rcSum: %ld edges: %ld\n", j.freed, rootsThreshold, j.touched,
       getOccupiedMem(), j.rcSum, j.edges)
@@ -443,11 +447,11 @@ when defined(nimOrcStats):
     result = OrcStats(freedCyclicObjects: freedCyclicObjects)
 
 proc registerCycle(s: Cell; desc: PNimTypeV2) =
-  s.rootIdx = roots.len+1
+  s.rootIdx = roots.len +% 1
   if roots.d == nil: init(roots)
   add(roots, s, desc)
 
-  if roots.len - defaultThreshold >= rootsThreshold:
+  if roots.len -% defaultThreshold >= rootsThreshold:
     collectCycles()
   when logOrc:
     writeCell("[added root]", s, desc)
@@ -518,7 +522,7 @@ proc nimDecRefIsLastCyclicDyn(p: pointer): bool {.compilerRtl, inl.} =
       result = true
       #cprintf("[DESTROY] %p\n", p)
     else:
-      dec cell.rc, rcIncrement
+      cell.rc = cell.rc -% rcIncrement
     #if cell.color == colPurple:
     rememberCycle(result, cell, cast[ptr PNimTypeV2](p)[])
 
@@ -530,7 +534,7 @@ proc nimDecRefIsLastDyn(p: pointer): bool {.compilerRtl, inl.} =
       result = true
       #cprintf("[DESTROY] %p\n", p)
     else:
-      dec cell.rc, rcIncrement
+      cell.rc = cell.rc -% rcIncrement
     #if cell.color == colPurple:
     if result:
       if cell.rootIdx > 0:
@@ -544,7 +548,7 @@ proc nimDecRefIsLastCyclicStatic(p: pointer; desc: PNimTypeV2): bool {.compilerR
       result = true
       #cprintf("[DESTROY] %p %s\n", p, desc.name)
     else:
-      dec cell.rc, rcIncrement
+      cell.rc = cell.rc -% rcIncrement
     #if cell.color == colPurple:
     rememberCycle(result, cell, desc)
 

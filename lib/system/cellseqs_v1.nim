@@ -22,9 +22,9 @@ proc contains(s: CellSeq, c: PCell): bool {.inline.} =
   return false
 
 proc resize(s: var CellSeq) =
-  s.cap = s.cap div 2 + s.cap
-  let d = cast[PCellArray](alloc(s.cap * sizeof(PCell)))
-  copyMem(d, s.d, s.len * sizeof(PCell))
+  s.cap = s.cap div 2 +% s.cap
+  let d = cast[PCellArray](alloc(uint(s.cap *% sizeof(PCell))))
+  copyMem(d, s.d, s.len *% sizeof(PCell))
   dealloc(s.d)
   s.d = d
 
@@ -37,7 +37,7 @@ proc add(s: var CellSeq, c: PCell) {.inline.} =
 proc init(s: var CellSeq, cap: int = 1024) =
   s.len = 0
   s.cap = cap
-  s.d = cast[PCellArray](alloc0(cap * sizeof(PCell)))
+  s.d = cast[PCellArray](alloc0(cap *% sizeof(PCell)))
 
 proc deinit(s: var CellSeq) =
   dealloc(s.d)

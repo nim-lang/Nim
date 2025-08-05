@@ -173,11 +173,11 @@ proc addZCT(s: var CellSeq, c: PCell) {.noinline.} =
 
 proc cellToUsr(cell: PCell): pointer {.inline.} =
   # convert object (=pointer to refcount) to pointer to userdata
-  result = cast[pointer](cast[int](cell)+%ByteAddress(sizeof(Cell)))
+  result = cast[pointer](cast[uint](cell)+uint(sizeof(Cell)))
 
 proc usrToCell(usr: pointer): PCell {.inline.} =
   # convert pointer to userdata to object (=pointer to refcount)
-  result = cast[PCell](cast[int](usr)-%ByteAddress(sizeof(Cell)))
+  result = cast[PCell](cast[uint](usr)-uint(sizeof(Cell)))
 
 proc extGetCellType(c: pointer): PNimType {.compilerproc.} =
   # used for code generation concerning debugging
