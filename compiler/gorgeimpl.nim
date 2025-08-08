@@ -19,14 +19,21 @@ when defined(nimPreviewSlimSystem):
 import ../dist/checksums/src/checksums/sha1
 
 proc readOutput(p: Process): (string, int) =
-  result[0] = ""
-  var output = p.outputStream
-  while not output.atEnd:
-    result[0].add(output.readLine)
-    result[0].add("\n")
-  if result[0].len > 0:
-    result[0].setLen(result[0].len - "\n".len)
-  result[1] = p.waitForExit
+  var outp = p.outputStream
+  # the following code is copied from osproc.execCmdEx
+  #   @eea4ce0e2cf1dfdd2a90c2ab7f93888
+
+  # consider `p.lines(keepNewLines=true)` to avoid exit code test
+  result = ("", -1)
+  var line = newStringOfCap(120)
+  while true:
+    if outp.readLine(line):
+      result[0].add(line)
+      result[0].add("\n")
+    else:
+      result[1] = peekExitCode(p)
+      if result[1] != -1: break
+  close(p)
 
 proc opGorge*(cmd, input, cache: string, info: TLineInfo; conf: ConfigRef): (string, int) =
   let workingDir = parentDir(toFullPath(conf, info))
