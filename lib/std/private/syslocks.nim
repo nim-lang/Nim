@@ -51,20 +51,20 @@ when defined(windows):
 
   proc initializeConditionVariable(
     conditionVariable: var SysCond
-  ) {.stdcall, noSideEffect, header: "<windows.h>", importc: "InitializeConditionVariable".}
+  ) {.stdcall, noSideEffect, dynlib: "kernel32", importc: "InitializeConditionVariable".}
 
   proc sleepConditionVariableCS(
     conditionVariable: var SysCond,
     PCRITICAL_SECTION: var SysLock,
     dwMilliseconds: int
-  ): int32 {.stdcall, noSideEffect, header: "<windows.h>", importc: "SleepConditionVariableCS".}
+  ): int32 {.stdcall, noSideEffect, dynlib: "kernel32", importc: "SleepConditionVariableCS".}
 
 
   proc signalSysCond*(hEvent: var SysCond) {.stdcall, noSideEffect,
-    header: "<windows.h>", importc: "WakeConditionVariable".}
+    dynlib: "kernel32", importc: "WakeConditionVariable".}
 
   proc broadcastSysCond*(hEvent: var SysCond) {.stdcall, noSideEffect,
-    header: "<windows.h>", importc: "WakeAllConditionVariable".}
+    dynlib: "kernel32", importc: "WakeAllConditionVariable".}
 
   proc initSysCond*(cond: var SysCond) {.inline.} =
     initializeConditionVariable(cond)
