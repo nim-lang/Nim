@@ -3234,3 +3234,12 @@ when hostOS == "standalone":
 
 when not declared(newStringUninitWasDeclared):
   proc newStringUninitImpl(len: Natural): string {.noSideEffect, inline.} = discard
+
+var compileTimeExitProc {.compileTime.}: proc(): NimNode
+
+proc nimSetCompileTimeExit*(cb: proc(): NimNode) {.compileTime.} =
+  compileTimeExitProc = cb
+
+macro nimAtCompileTimeExit*(): untyped =
+  if compileTimeExitProc != nil:
+    result = compileTimeExitProc()
