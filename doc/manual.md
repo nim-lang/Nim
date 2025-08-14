@@ -4062,7 +4062,7 @@ notation. (Thus an operator can have more than two parameters):
     # Multiply and add
     result = a * b + c
 
-  assert `*+`(3, 4, 6) == `+`(`*`(a, b), c)
+  assert `*+`(3, 4, 6) == `+`(`*`(3, 4), 6)
   ```
 
 
