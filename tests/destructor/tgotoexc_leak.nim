@@ -1,7 +1,7 @@
 discard """
   output: '''0
 true'''
-  cmd: "nim c --gc:arc $file"
+  cmd: "nim c --gc:arc -d:noSignalHandler $file"
 """
 
 # bug #22398

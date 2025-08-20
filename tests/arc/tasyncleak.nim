@@ -1,6 +1,6 @@
 discard """
   outputsub: "(allocCount: 4011, deallocCount: 4009)"
-  cmd: "nim c --gc:orc -d:nimAllocStats $file"
+  cmd: "nim c --gc:orc -d:nimAllocStats -d:noSignalHandler $file"
 """
 
 import asyncdispatch

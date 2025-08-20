@@ -1,5 +1,5 @@
 discard """
-  cmd: "nim c --gc:orc $file"
+  cmd: "nim c --gc:orc -d:noSignalHandler $file"
   output: '''
 {"age": 12, "bio": "Я Cletus", "blob": [65, 66, 67, 128], "name": "Cletus"}
 true

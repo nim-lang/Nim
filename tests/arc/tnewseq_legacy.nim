@@ -1,6 +1,6 @@
 discard """
   output: "(allocCount: 201, deallocCount: 201)"
-  cmd: "nim c --gc:orc -d:nimAllocStats $file"
+  cmd: "nim c --gc:orc -d:nimAllocStats -d:noSignalHandler $file"
 """
 
 proc main(prefix: string) =

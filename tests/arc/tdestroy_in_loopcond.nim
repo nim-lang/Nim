@@ -1,6 +1,6 @@
 discard """
   output: '''400 true'''
-  cmd: "nim c --gc:orc $file"
+  cmd: "nim c --gc:orc -d:noSignalHandler $file"
 """
 
 type HeapQueue*[T] = object

@@ -17,7 +17,7 @@ const noStacktraceAvailable = "No stack traceback available\n"
 
 var
   errorMessageWriter*: (proc(msg: string) {.tags: [WriteIOEffect], benign,
-                                            nimcall.})
+                                            nimcall, raises: [].})
     ## Function that will be called
     ## instead of `stdmsg.write` when printing stacktrace.
     ## Unstable API.
@@ -58,6 +58,7 @@ proc showErrorMessage(data: cstring, length: int) {.gcsafe, raises: [].} =
       writeToStdErr(data, length)
 
 proc showErrorMessage2(data: string) {.inline.} =
+  # TODO showErrorMessage will turn it back to a string when a hook is set (!)
   showErrorMessage(data.cstring, data.len)
 
 proc chckIndx(i, a, b: int): int {.inline, compilerproc, benign.}
@@ -619,7 +620,19 @@ when not defined(noSignalHandler) and not defined(useNimRtl):
   type Sighandler = proc (a: cint) {.noconv, benign.}
     # xxx factor with ansi_c.CSighandlerT, posix.Sighandler
 
-  proc signalHandler(sign: cint) {.exportc: "signalHandler", noconv.} =
+  # TODO this allocation happens in the main thread while the CTRL-C handler
+  #      runs in any thread - since we're about to quit, hopefully nobody will
+  #      notice.
+  #      32kb is hopefully enough to not cause further allocations, since
+  #      allocations are not well-defined in a signal handler.
+  #      Unfortunately, `showErrorMessage2` and `rawWriteStackTrace` may still
+  #      perform allocations on their own which will continue to cause crashes.
+  #      Fixing this requires changing the API which in turn requires a larger
+  #      refactor of the stack trace handling mechanism, including its support
+  #      for libbacktrace.
+  var sigHandlerBuf = newStringOfCap(32*1024)
+
+  proc signalHandler(sign: cint) {.exportc: "signalHandler", noconv, raises: [].} =
     template processSignal(s, action: untyped) {.dirty.} =
       if s == SIGINT: action("SIGINT: Interrupted by Ctrl-C.\n")
       elif s == SIGSEGV:
@@ -641,26 +654,35 @@ when not defined(noSignalHandler) and not defined(useNimRtl):
     # print stack trace and quit
     when defined(memtracker):
       logPendingOps()
+    # On windows, it is common that the signal handler is called from a non-Nim
+    # thread and any allocation will (likely) cause a crash.
+    # On other platforms, if memory needs to be allocated and the signal happens
+    # during memory allocation, we'll alos (likely) see a crash and corrupt the
+    # memory allocator - less frequently than on windows but still.
+    # However, since we're about to go down anyway, YOLO.
+
     when hasSomeStackTrace:
       when not usesDestructors: GC_disable()
-      var buf = newStringOfCap(2000)
-      rawWriteStackTrace(buf)
-      processSignal(sign, buf.add) # nice hu? currying a la Nim :-)
-      showErrorMessage2(buf)
+      rawWriteStackTrace(sigHandlerBuf)
+      processSignal(sign, sigHandlerBuf.add) # nice hu? currying a la Nim :-)
+      showErrorMessage2(sigHandlerBuf)
       when not usesDestructors: GC_enable()
     else:
       var msg: cstring
       template asgn(y) =
         msg = y
       processSignal(sign, asgn)
-      # xxx use string for msg instead of cstring, and here use showErrorMessage2(msg)
-      # unless there's a good reason to use cstring in signal handler to avoid
-      # using gc?
+      # showErrorMessage may allocate, which may cause a crash, and calls C
+      # library functions which is undefined behavior, ie it may also crash.
+      # Nevertheless, we sometimes manage to emit the message regardless which
+      # pragmatically makes this attempt "useful enough".
+      # See also https://en.cppreference.com/w/c/program/signal
       showErrorMessage(msg, msg.len)
 
     when defined(posix):
       # reset the signal handler to OS default
-      c_signal(sign, SIG_DFL)
+      {.cast(raises: []).}: # Work around -d:laxEffects bugs
+        discard c_signal(sign, SIG_DFL)
 
       # re-raise the signal, which will arrive once this handler exit.
       # this lets the OS perform actions like core dumping and will
@@ -697,4 +719,5 @@ proc setControlCHook(hook: proc () {.noconv.}) =
 when not defined(noSignalHandler) and not defined(useNimRtl):
   proc unsetControlCHook() =
     # proc to unset a hook set by setControlCHook
-    c_signal(SIGINT, signalHandler)
+    {.gcsafe.}: # Work around -d:laxEffects bugs
+      discard c_signal(SIGINT, signalHandler)

@@ -1,5 +1,5 @@
 discard """
-  cmd: '''nim c -d:nimAllocStats --newruntime $file'''
+  cmd: '''nim c -d:nimAllocStats -d:noSignalHandler --newruntime $file'''
   output: '''0
 (allocCount: 5, deallocCount: 5)'''
 """

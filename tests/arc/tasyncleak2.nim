@@ -1,6 +1,6 @@
 discard """
   output: "success"
-  cmd: "nim c --gc:orc $file"
+  cmd: "nim c --gc:orc -d:noSignalHandler $file"
 """
 
 # issue #15076

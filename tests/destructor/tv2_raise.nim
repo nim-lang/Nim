@@ -1,6 +1,6 @@
 discard """
   valgrind: true
-  cmd: '''nim c -d:nimAllocStats --newruntime $file'''
+  cmd: '''nim c -d:nimAllocStats -d:noSignalHandler --newruntime $file'''
   output: '''OK 3
 (allocCount: 7, deallocCount: 4)'''
 """
