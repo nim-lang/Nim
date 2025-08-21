@@ -827,7 +827,11 @@ proc genAddr(p: BProc, e: PNode, d: var TLoc) =
     var a: TLoc = initLocExpr(p, e[0])
     if e[0].kind in {nkHiddenStdConv, nkHiddenSubConv, nkConv} and not ignoreConv(e[0]):
       # addr (conv x) introduces a temp because `conv x` is not a rvalue
-      putIntoDest(p, d, e, addrLoc(p.config, expressionsNeedsTmp(p, a)), a.storage)
+      # transform addr ( conv ( x ) ) -> conv ( addr ( x ) )
+      var exprLoc: TLoc = initLocExpr(p, e[0][1])
+      var tmp = getTemp(p, e.typ, needsInit=false)
+      putIntoDest(p, tmp, e, cCast(getTypeDesc(p.module, e.typ), addrLoc(p.config, exprLoc)))
+      putIntoDest(p, d, e, rdLoc(tmp))
     else:
       putIntoDest(p, d, e, addrLoc(p.config, a), a.storage)
 
