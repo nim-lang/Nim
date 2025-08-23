@@ -830,7 +830,7 @@ proc genAddr(p: BProc, e: PNode, d: var TLoc) =
       # transform addr ( conv ( x ) ) -> conv ( addr ( x ) )
       var exprLoc: TLoc = initLocExpr(p, e[0][1])
       var tmp = getTemp(p, e.typ, needsInit=false)
-      putIntoDest(p, tmp, e, cCast(getTypeDesc(p.module, e.typ), addrLoc(p.config, exprLoc)))
+      putIntoDest(p, tmp, e, "(($1) $2)" % [getTypeDesc(p.module, e.typ), addrLoc(p.config, exprLoc)])
       putIntoDest(p, d, e, rdLoc(tmp))
     else:
       putIntoDest(p, d, e, addrLoc(p.config, a), a.storage)
