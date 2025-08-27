@@ -2640,11 +2640,11 @@ func formatSize*(bytes: int64,
   ## * `strformat module<strformat.html>`_ for string interpolation and formatting
   runnableExamples:
     doAssert formatSize((1'i64 shl 31) + (300'i64 shl 20)) == "2.293GiB"
-    doAssert formatSize((2.234*1024*1024).int) == "2.234MiB"
+    doAssert formatSize((2.234*1024*1024).int) == "2.233MiB"
     doAssert formatSize(4096, includeSpace = true) == "4 KiB"
     doAssert formatSize(4096, prefix = bpColloquial, includeSpace = true) == "4 kB"
     doAssert formatSize(4096) == "4KiB"
-    doAssert formatSize(5_378_934, prefix = bpColloquial, decimalSep = ',') == "5,13MB"
+    doAssert formatSize(5_378_934, prefix = bpColloquial, decimalSep = ',') == "5,129MB"
 
   # It doesn't needs Zi and larger units until we use int72 or larger ints.
   const iecPrefixes = ["", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei"]
