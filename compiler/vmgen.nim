@@ -1182,8 +1182,10 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}, m: TMag
   of mEqF64: genBinaryABC(c, n, dest, opcEqFloat)
   of mLeF64: genBinaryABC(c, n, dest, opcLeFloat)
   of mLtF64: genBinaryABC(c, n, dest, opcLtFloat)
-  of mLePtr, mLeU: genBinaryABC(c, n, dest, opcLeu)
-  of mLtPtr, mLtU: genBinaryABC(c, n, dest, opcLtu)
+  of mLeU: genBinaryABC(c, n, dest, opcLeu)
+  of mLtU: genBinaryABC(c, n, dest, opcLtu)
+  of mLePtr, mLtPtr:
+    globalError(c.config, n.info, "pointer comparisons are not available at compile-time")
   of mEqProc, mEqRef:
     genBinaryABC(c, n, dest, opcEqRef)
   of mXor: genBinaryABC(c, n, dest, opcXor)
