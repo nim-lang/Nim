@@ -42,34 +42,37 @@ proc hashTree*(n: PNode): Hash =
   #echo "hashTree ", result
   #echo n
 
-proc treesEquivalent(a, b: PNode): bool =
+proc treesEquivalent(a, b: PNode; ignoreTypes: bool): bool =
   if a == b:
     result = true
   elif (a != nil) and (b != nil) and (a.kind == b.kind):
     case a.kind
-    of nkEmpty, nkNilLit, nkType: result = true
+    of nkEmpty: result = true
     of nkSym: result = a.sym.id == b.sym.id
     of nkIdent: result = a.ident.id == b.ident.id
     of nkCharLit..nkUInt64Lit: result = a.intVal == b.intVal
     of nkFloatLit..nkFloat64Lit:
-      #result = cast[uint64](a.floatVal) == cast[uint64](b.floatVal)
-      result = a.floatVal == b.floatVal
+      result = cast[uint64](a.floatVal) == cast[uint64](b.floatVal)
+      #result = a.floatVal == b.floatVal
     of nkStrLit..nkTripleStrLit: result = a.strVal == b.strVal
+    of nkType, nkNilLit:
+      result = a.typ == b.typ
     else:
       if a.len == b.len:
         for i in 0..<a.len:
-          if not treesEquivalent(a[i], b[i]): return
+          if not treesEquivalent(a[i], b[i], ignoreTypes): return
         result = true
       else:
         result = false
-    if result: result = sameTypeOrNil(a.typ, b.typ)
+    if result and not ignoreTypes:
+      result = sameTypeOrNil(a.typ, b.typ)
   else:
     result = false
 
 proc nodeTableRawGet(t: TNodeTable, k: Hash, key: PNode): int =
   var h: Hash = k and high(t.data)
   while t.data[h].key != nil:
-    if (t.data[h].h == k) and treesEquivalent(t.data[h].key, key):
+    if (t.data[h].h == k) and treesEquivalent(t.data[h].key, key, t.ignoreTypes):
       return h
     h = nextTry(h, high(t.data))
   result = -1

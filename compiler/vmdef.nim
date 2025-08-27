@@ -300,7 +300,7 @@ proc newCtx*(module: PSym; cache: IdentCache; g: ModuleGraph; idgen: IdGenerator
     callDepth: g.config.maxCallDepthVM,
     comesFromHeuristic: unknownLineInfo, callbacks: @[], callbackIndex: initTable[string, int](), errorFlag: "",
     cache: cache, config: g.config, graph: g, idgen: idgen,
-    contstantTab: initNodeTable())
+    contstantTab: initNodeTable(true))
 
 proc refresh*(c: PCtx, module: PSym; idgen: IdGenerator) =
   c.module = module
