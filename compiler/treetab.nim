@@ -51,7 +51,9 @@ proc treesEquivalent(a, b: PNode): bool =
     of nkSym: result = a.sym.id == b.sym.id
     of nkIdent: result = a.ident.id == b.ident.id
     of nkCharLit..nkUInt64Lit: result = a.intVal == b.intVal
-    of nkFloatLit..nkFloat64Lit: result = a.floatVal == b.floatVal
+    of nkFloatLit..nkFloat64Lit:
+      #result = cast[uint64](a.floatVal) == cast[uint64](b.floatVal)
+      result = a.floatVal == b.floatVal
     of nkStrLit..nkTripleStrLit: result = a.strVal == b.strVal
     else:
       if a.len == b.len:

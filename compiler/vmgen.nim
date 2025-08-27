@@ -33,7 +33,8 @@ when defined(nimPreviewSlimSystem):
 
 import
   ast, types, msgs, renderer, vmdef, trees,
-  magicsys, options, lowerings, lineinfos, transf, astmsgs
+  magicsys, options, lowerings, lineinfos, transf, astmsgs,
+  treetab
 
 from modulegraphs import getBody
 
@@ -478,10 +479,16 @@ proc sameConstant*(a, b: PNode): bool =
         result = true
 
 proc genLiteral(c: PCtx; n: PNode): int =
-  # types do not matter here:
-  for i in 0..<c.constants.len:
-    if sameConstant(c.constants[i], n): return i
-  result = rawGenLiteral(c, n)
+  result = nodeTableTestOrSet(c.contstantTab, n, c.constants.len)
+  if result == c.constants.len:
+    let lit = rawGenLiteral(c, n)
+    assert lit == result
+
+  when false:
+    # types do not matter here:
+    for i in 0..<c.constants.len:
+      if sameConstant(c.constants[i], n): return i
+    result = rawGenLiteral(c, n)
 
 proc unused(c: PCtx; n: PNode; x: TDest) {.inline.} =
   if x >= 0:
@@ -1547,8 +1554,7 @@ template cannotEval(c: PCtx; n: PNode) =
   if c.config.cmd == cmdCheck and c.config.m.errorOutputs != {}:
     # nim check command with no error outputs doesn't need to cascade here,
     # includes `tryConstExpr` case which should not continue generating code
-    localError(c.config, n.info, "cannot evaluate at compile time: " & 
-    n.renderTree)
+    localError(c.config, n.info, "cannot evaluate at compile time: " & n.renderTree)
     c.cannotEval = true
     return
   globalError(c.config, n.info, "cannot evaluate at compile time: " &
@@ -1886,7 +1892,7 @@ proc genCheckedObjAccess(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
   c.freeTemp(objR)
 
 proc genArrAccess(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
-  if n[0].typ == nil: 
+  if n[0].typ == nil:
     globalError(c.config, n.info, "cannot access array with nil type")
     return
 
