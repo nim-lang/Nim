@@ -259,7 +259,8 @@ proc transformBlock(c: PTransf, n: PNode): PNode =
   var labl: PSym
   if c.inlining > 0:
     labl = newLabel(c, n[0])
-    c.transCon.mapping[n[0].sym.itemId] = newSymNode(labl)
+    if n[0].kind != nkEmpty:
+      c.transCon.mapping[n[0].sym.itemId] = newSymNode(labl)
   else:
     labl =
       if n[0].kind != nkEmpty:
