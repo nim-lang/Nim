@@ -2650,7 +2650,13 @@ func formatSize*(bytes: int64,
   const iecPrefixes = ["", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei"]
   const collPrefixes = ["", "k", "M", "G", "T", "P", "E"]
 
-  let lg2 = if bytes == 0: 0 else: fastLog2(bytes)
+  let lg2 = if bytes == 0:
+      0
+    else:
+      when hasWorkingInt64:
+        fastLog2(bytes)
+      else:
+        fastLog2(int32 bytes)
   let matchedIndex = lg2 div 10
   # Lower bits that are smaller than 0.001 when `bytes` is converted to a real number and added prefix, are discard.
   # Then it is converted to float with round down.
