@@ -62,8 +62,8 @@ const
   colorMask = 0b011
 
 type
-  TraceProc = proc (p, env: pointer) {.nimcall, benign.}
-  DisposeProc = proc (p: pointer) {.nimcall, benign.}
+  TraceProc = proc (p, env: pointer) {.nimcall, benign, raises: [].}
+  DisposeProc = proc (p: pointer) {.nimcall, benign, raises: [].}
 
 template color(c): untyped = c.rc and colorMask
 template setColor(c, col) =

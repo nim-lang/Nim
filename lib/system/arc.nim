@@ -14,6 +14,8 @@ at offset 0 then. The ``ref`` object header is independent from the
 runtime type and only contains a reference count.
 ]#
 
+{.push raises: [].}
+
 when defined(gcOrc):
   const
     rcIncrement = 0b10000 # so that lowest 4 bits are not touched
@@ -269,3 +271,5 @@ when defined(gcDestructors):
   proc nimGetVTable(p: pointer, index: int): pointer
         {.compilerRtl, inline, raises: [].} =
     result = cast[ptr PNimTypeV2](p).vTable[index]
+
+{.pop.} # raises: []

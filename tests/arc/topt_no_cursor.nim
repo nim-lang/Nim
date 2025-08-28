@@ -129,7 +129,8 @@ if dirExists(this.value):
   var :tmpD
   par = (dir:
     :tmpD = `=dup`(this.value)
-    :tmpD, front: "") else:
+    :tmpD, front: "")
+else:
   var
     :tmpD_1
     :tmpD_2

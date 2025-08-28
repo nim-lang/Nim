@@ -57,11 +57,15 @@ proc mangleField(m: BModule; name: PIdent): string =
 
 proc mangleProc(m: BModule; s: PSym; makeUnique: bool): string =
   result = "_Z"  # Common prefix in Itanium ABI
-  result.add encodeSym(m, s, makeUnique)
+  var params = ""
+  var staticLists = ""
   if s.typ.len > 1: #we dont care about the return param
     for i in 1..<s.typ.len:
       if s.typ[i].isNil: continue
-      result.add encodeType(m, s.typ[i])
+      params.add encodeType(m, s.typ[i], staticLists)
+
+  result.add encodeSym(m, s, makeUnique, staticLists)
+  result.add params
 
   if result in m.g.mangledPrcs:
     result = mangleProc(m, s, true)
@@ -583,7 +587,7 @@ proc genProcParams(m: BModule; t: PType, rettype: var Rope, params: var Builder,
   if t.returnType == nil or isInvalidReturnType(m.config, t):
     rettype = CVoid
   else:
-    rettype = getTypeDescAux(m, t.returnType, check, dkResult)
+    rettype = getTypeDescWeak(m, t.returnType, check, dkResult)
   var paramBuilder: ProcParamBuilder
   params.addProcParams(paramBuilder):
     for i in 1..<t.n.len:
@@ -755,6 +759,8 @@ proc fillObjectFields*(m: BModule; typ: PType) =
   var check = initIntSet()
   var ignored = newBuilder("")
   addRecordFields(ignored, m, typ, check)
+  if typ.baseClass != nil:
+    fillObjectFields(m, typ.baseClass.skipTypes(skipPtrs))
 
 proc mangleDynLibProc(sym: PSym): Rope
 

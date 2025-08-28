@@ -459,7 +459,7 @@ template handleStdinOrCmdInput =
     conf.outDir = getNimcacheDir(conf)
 
 proc handleStdinInput*(conf: ConfigRef) =
-  conf.projectName = "stdinfile"
+  conf.projectName = conf.stdinFile.string
   conf.projectIsStdin = true
   handleStdinOrCmdInput()
 
@@ -473,6 +473,7 @@ proc parseCommand*(command: string): Command =
   of "cpp", "compiletocpp": cmdCompileToCpp
   of "objc", "compiletooc": cmdCompileToOC
   of "js", "compiletojs": cmdCompileToJS
+  of "nif": cmdCompileToNif
   of "r": cmdCrun
   of "m": cmdM
   of "run": cmdTcc
@@ -507,6 +508,7 @@ proc setCmd*(conf: ConfigRef, cmd: Command) =
   of cmdCompileToCpp: conf.backend = backendCpp
   of cmdCompileToOC: conf.backend = backendObjc
   of cmdCompileToJS: conf.backend = backendJs
+  of cmdCompileToNif: conf.backend = backendNif
   else: discard
 
 proc setCommandEarly*(conf: ConfigRef, command: string) =
@@ -935,6 +937,10 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     var value: int = 0
     discard parseSaturatedNatural(arg, value)
     conf.errorMax = if value == 0: high(int) else: value
+  of "stdinfile":
+    expectArg(conf, switch, arg, pass, info)
+    conf.stdinFile = if os.isAbsolute(arg): AbsoluteFile(arg)
+                     else: AbsoluteFile(getCurrentDir() / arg)
   of "verbosity":
     expectArg(conf, switch, arg, pass, info)
     let verbosity = parseInt(arg)

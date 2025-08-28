@@ -755,6 +755,7 @@ proc preparePContext*(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PCo
   result.semTypeNode = semTypeNode
   result.instTypeBoundOp = sigmatch.instTypeBoundOp
   result.hasUnresolvedArgs = hasUnresolvedArgs
+  result.semAsgnOpr = semAsgnOpr
   result.templInstCounter = new int
 
   pushProcCon(result, module)

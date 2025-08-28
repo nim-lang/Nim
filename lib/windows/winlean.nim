@@ -437,7 +437,7 @@ type
     fd_count*: cint # unsigned
     fd_array*: array[0..FD_SETSIZE-1, SocketHandle]
 
-  AddrInfo* = object
+  AddrInfo* {.importc: "ADDRINFOA", header: "ws2tcpip.h".} = object
     ai_flags*: cint         ## Input flags.
     ai_family*: cint        ## Address family of socket.
     ai_socktype*: cint      ## Socket type.
@@ -815,7 +815,7 @@ proc WSASendTo*(s: SocketHandle, buf: ptr TWSABuf, bufCount: DWORD,
                 completionProc: POVERLAPPED_COMPLETION_ROUTINE): cint {.
      stdcall, importc: "WSASendTo", dynlib: "Ws2_32.dll".}
 
-proc get_osfhandle*(fd:FileHandle): Handle {.
+proc get_osfhandle*(fd: cint): Handle {.
   importc: "_get_osfhandle", header:"<io.h>".}
 
 proc getSystemTimes*(lpIdleTime, lpKernelTime,
