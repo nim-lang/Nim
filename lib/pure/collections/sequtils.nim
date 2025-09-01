@@ -116,6 +116,11 @@ macro evalOnceAs(expAlias, exp: untyped,
     newProc(name = genSym(nskTemplate, $expAlias), params = [getType(untyped)],
       body = val, procType = nnkTemplateDef))
 
+template unCheckedInc(x) =
+  {.push overflowChecks: off.}
+  inc(x)
+  {.pop.}
+
 func concat*[T](seqs: varargs[seq[T]]): seq[T] =
   ## Takes several sequences' items and returns them inside a new sequence.
   ## All sequences must be of the same type.
@@ -320,10 +325,6 @@ func minmax*[T](x: openArray[T], cmp: proc(a, b: T): int): (T, T) {.effectsOf: c
     if cmp(x[i], result[0]) < 0: result[0] = x[i]
     elif cmp(result[1], x[i]) < 0: result[1] = x[i]
 
-template unCheckedInc(x) =
-  {.push overflowChecks: off.}
-  inc(x)
-  {.pop.}
 
 template findIt*(s, predicate: untyped): int =
   ## Iterates through a container and returns the index of the first item that
