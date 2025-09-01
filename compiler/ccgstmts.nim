@@ -135,7 +135,7 @@ proc genVarTuple(p: BProc, n: PNode) =
       initLocalVar(p, v, immediateAsgn=isAssignedImmediately(p.config, n[^1]))
     var field = initLoc(locExpr, vn, tup.storage)
     let rtup = rdLoc(tup)
-    let fieldName = 
+    let fieldName =
       if t.kind == tyTuple:
         "Field" & $i
       else:
@@ -858,8 +858,12 @@ proc genRaiseStmt(p: BProc, t: PNode) =
     of excCpp:
       blockLeaveActions(p, howManyTrys = 0, howManyExcepts = p.inExceptBlockLen)
     of excGoto:
-      blockLeaveActions(p, howManyTrys = 0,
-        howManyExcepts = (if p.nestedTryStmts.len > 0 and p.nestedTryStmts[^1].inExcept: 1 else: 0))
+      var inExcept = 0
+      for i in 0..<p.nestedTryStmts.len:
+        if p.nestedTryStmts[i].inExcept:
+          inExcept = 1
+          break
+      blockLeaveActions(p, howManyTrys = 0, howManyExcepts = inExcept)
     else:
       discard
     genLineDir(p, t)
