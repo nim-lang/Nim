@@ -789,8 +789,8 @@ bar
   block: # formatSize
     disableVm:
       when hasWorkingInt64:
-        doAssert formatSize(1024 * 1024 * 1024 * 2 - 1) == "1.999GiB"
-        doAssert formatSize(1024 * 1024 * 1024 * 2) == "2GiB"
+        doAssert formatSize(1024'i64 * 1024 * 1024 * 2 - 1) == "1.999GiB"
+        doAssert formatSize(1024'i64 * 1024 * 1024 * 2) == "2GiB"
         doAssert formatSize((1'i64 shl 31) + (300'i64 shl 20)) == "2.293GiB" # <=== bug #8231
         doAssert formatSize(int64.high) == "7.999EiB"
         doAssert formatSize(int64.high div 2 + 1) == "4EiB"
