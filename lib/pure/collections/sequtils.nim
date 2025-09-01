@@ -320,6 +320,18 @@ func minmax*[T](x: openArray[T], cmp: proc(a, b: T): int): (T, T) {.effectsOf: c
     if cmp(x[i], result[0]) < 0: result[0] = x[i]
     elif cmp(result[1], x[i]) < 0: result[1] = x[i]
 
+template findIt*(s, predicate: untyped): int =
+  ## Iterates through a container and returns the index of the first item that
+  ## fulfills the predicate, or -1
+  ##
+  ## Unlike the `find`, the predicate needs to be an expression using
+  ## the `it` variable for testing, like: `findIt([3, 2, 1], it == 2)`.
+  var res = -1
+  for i, it {.inject.} in items(s):
+    if predicate:
+      res = i
+      break
+  res
 
 template zipImpl(s1, s2, retType: untyped): untyped =
   proc zip*[S, T](s1: openArray[S], s2: openArray[T]): retType =
@@ -842,12 +854,7 @@ template anyIt*(s, pred: untyped): bool =
     assert numbers.anyIt(it > 8) == true
     assert numbers.anyIt(it > 9) == false
 
-  var result = false
-  for it {.inject.} in items(s):
-    if pred:
-      result = true
-      break
-  result
+  findIt(s, pred) != -1
 
 template toSeq1(s: not iterator): untyped =
   # overload for typed but not iterator
