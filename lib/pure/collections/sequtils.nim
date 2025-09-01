@@ -320,17 +320,29 @@ func minmax*[T](x: openArray[T], cmp: proc(a, b: T): int): (T, T) {.effectsOf: c
     if cmp(x[i], result[0]) < 0: result[0] = x[i]
     elif cmp(result[1], x[i]) < 0: result[1] = x[i]
 
+template unCheckedInc(x) =
+  {.push overflowChecks: off.}
+  inc(x)
+  {.pop.}
+
 template findIt*(s, predicate: untyped): int =
   ## Iterates through a container and returns the index of the first item that
   ## fulfills the predicate, or -1
   ##
   ## Unlike the `find`, the predicate needs to be an expression using
   ## the `it` variable for testing, like: `findIt([3, 2, 1], it == 2)`.
-  var res = -1
-  for i, it {.inject.} in items(s):
+  var
+    res = -1
+    i = 0
+
+  # We must use items here since both `find` and `anyIt` are defined in terms
+  # of `items`
+  # (and not `pairs`)
+  for it {.inject.} in items(s):
     if predicate:
       res = i
       break
+    unCheckedInc(i)
   res
 
 template zipImpl(s1, s2, retType: untyped): untyped =
