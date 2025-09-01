@@ -139,7 +139,7 @@ func concat*[T](seqs: varargs[seq[T]]): seq[T] =
   for s in items(seqs):
     for itm in items(s):
       result[i] = itm
-      inc(i)
+      unCheckedInc(i)
 
 func addUnique*[T](s: var seq[T], x: sink T) =
   ## Adds `x` to the container `s` if it is not already present. 
@@ -170,7 +170,7 @@ func count*[T](s: openArray[T], x: T): int =
   result = 0
   for itm in items(s):
     if itm == x:
-      inc result
+      unCheckedInc result
 
 func cycle*[T](s: openArray[T], n: Natural): seq[T] =
   ## Returns a new sequence with the items of the container `s` repeated
@@ -188,7 +188,7 @@ func cycle*[T](s: openArray[T], n: Natural): seq[T] =
   for x in 0 ..< n:
     for e in s:
       result[o] = e
-      inc o
+      unCheckedInc o
 
 proc repeat*[T](x: T, n: Natural): seq[T] =
   ## Returns a new sequence with the item `x` repeated `n` times.
@@ -441,7 +441,7 @@ func distribute*[T](s: seq[T], num: Positive, spread = true): seq[seq[T]] =
 
   if extra == 0 or spread == false:
     # Use an algorithm which overcounts the stride and minimizes reading limits.
-    if extra > 0: inc(stride)
+    if extra > 0: unCheckedInc(stride)
     for i in 0 ..< num:
       result[i] = newSeq[T]()
       for g in first ..< min(s.len, first + stride):
@@ -453,7 +453,7 @@ func distribute*[T](s: seq[T], num: Positive, spread = true): seq[seq[T]] =
       last = first + stride
       if extra > 0:
         extra -= 1
-        inc(last)
+        unCheckedInc(last)
       result[i] = newSeq[T]()
       for g in first ..< last:
         result[i].add(s[g])
@@ -610,7 +610,7 @@ proc keepIf*[T](s: var seq[T], pred: proc(x: T): bool {.closure.})
           s[pos] = move(s[i])
         else:
           shallowCopy(s[pos], s[i])
-      inc(pos)
+      unCheckedInc(pos)
   setLen(s, pos)
 
 func delete*[T](s: var seq[T]; slice: Slice[int]) =
@@ -641,8 +641,8 @@ func delete*[T](s: var seq[T]; slice: Slice[int]) =
           s[i] = move(s[j])
         else:
           s[i].shallowCopy(s[j])
-        inc(i)
-        inc(j)
+        unCheckedInc(i)
+        unCheckedInc(j)
       setLen(s, newLen)
     when nimvm: defaultImpl()
     else:
@@ -673,8 +673,8 @@ func delete*[T](s: var seq[T]; first, last: Natural) {.deprecated: "use `delete(
       s[i] = move(s[j])
     else:
       s[i].shallowCopy(s[j])
-    inc(i)
-    inc(j)
+    unCheckedInc(i)
+    unCheckedInc(j)
   setLen(s, newLen)
 
 func insert*[T](dest: var seq[T], src: openArray[T], pos = 0) =
@@ -705,10 +705,10 @@ func insert*[T](dest: var seq[T], src: openArray[T], pos = 0) =
     dec(i)
     dec(j)
   # Insert items from `dest` into `dest` at `pos`
-  inc(j)
+  unCheckedInc(j)
   for item in src:
     dest[j] = item
-    inc(j)
+    unCheckedInc(j)
 
 
 template filterIt*(s, pred: untyped): untyped =
@@ -767,7 +767,7 @@ template keepItIf*(varSeq: seq, pred: untyped) =
           varSeq[pos] = move(varSeq[i])
         else:
           shallowCopy(varSeq[pos], varSeq[i])
-      inc(pos)
+      unCheckedInc(pos)
   setLen(varSeq, pos)
 
 since (1, 1):
@@ -894,7 +894,7 @@ template toSeq2(iter: iterator): untyped =
     var result = newSeq[typeof(iter2)](iter2.len)
     for x in iter2:
       result[i] = x
-      inc i
+      unCheckedInc i
     result
   else:
     type OutType = typeof(iter2())
@@ -939,7 +939,7 @@ template toSeq*(iter: untyped): untyped =
         var i = 0
         for x in iter2:
           result[i] = x
-          inc i
+          unCheckedInc i
         result
     else:
       var result: seq[typeof(iter)] = @[]
