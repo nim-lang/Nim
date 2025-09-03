@@ -57,7 +57,7 @@ proc nonStaticTests =
     doAssert formatSize(4096) == "4KiB"
     doAssert formatSize(4096, prefix=bpColloquial, includeSpace=true) == "4 kB"
     doAssert formatSize(4096, includeSpace=true) == "4 KiB"
-    doAssert formatSize(5_378_934, prefix=bpColloquial, decimalSep=',') == "5,13MB"
+    doAssert formatSize(5_378_934, prefix=bpColloquial, decimalSep=',') == "5,129MB"
 
   block: # formatEng tests
     doAssert formatEng(0, 2, trim=false) == "0.00"
