@@ -14,7 +14,6 @@ import
   semdata, modulepaths, sigmatch, lineinfos,
   modulegraphs, wordrecg
 from std/strutils import `%`, startsWith
-from std/sequtils import addUnique
 import std/[sets, tables, intsets]
 
 when defined(nimPreviewSlimSystem):
@@ -231,6 +230,11 @@ proc importForwarded(c: PContext, n: PNode, exceptSet: IntSet; fromMod: PSym; im
     for i in 0..n.safeLen-1:
       importForwarded(c, n[i], exceptSet, fromMod, importSet)
 
+func addUniqueModule(s: var seq[(int, TLineInfo)]; x: int, info: TLineInfo) =
+  for y in items(s):
+    if y[0] == x: return
+  s.add (x, info)
+
 proc importModuleAs(c: PContext; n: PNode, realModule: PSym, importHidden, trackUnusedImport: bool): PSym =
   result = realModule
   template createModuleAliasImpl(ident): untyped =
@@ -251,7 +255,7 @@ proc importModuleAs(c: PContext; n: PNode, realModule: PSym, importHidden, track
   if trackUnusedImport:
     c.unusedImports.add((result, result.info))
   c.importModuleMap[result.id] = realModule.id
-  c.importModuleLookup.mgetOrPut(result.name.id, @[]).addUnique realModule.id
+  c.importModuleLookup.mgetOrPut(result.name.id, @[]).addUniqueModule(realModule.id, result.info)
 
 proc transformImportAs(c: PContext; n: PNode): tuple[node: PNode, importHidden: bool] =
   result = (nil, false)
