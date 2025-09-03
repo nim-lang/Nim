@@ -397,6 +397,9 @@ proc addDeclAt*(c: PContext; scope: PScope, sym: PSym, info: TLineInfo) =
         localError(c.config, info, hintDuplicateModuleImport,
           "duplicate import of '$1'; previous import here: $2" %
           [sym.name.s, c.config $ conflict.info])
+      elif c.importModuleMap[sym.id] in c.importModuleLookup[sym.name.id]:
+                localError(c.config, info, hintDuplicateModuleImport,
+          "duplicate import of '$1'" % [sym.name.s])
     else:
       wrongRedefinition(c, info, sym.name.s, conflict.info, errGenerated)
 

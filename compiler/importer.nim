@@ -335,10 +335,13 @@ proc afterImport(c: PContext, m: PSym) =
 
 proc impMod(c: PContext; it: PNode; importStmtResult: PNode) =
   var it = it
+  var oldImportModuleMap = c.importModuleLookup
   let m = myImportModule(c, it, importStmtResult)
   if m != nil:
     # ``addDecl`` needs to be done before ``importAllSymbols``!
+    swap oldImportModuleMap, c.importModuleLookup
     addDecl(c, m) # add symbol to symbol table of module
+    swap oldImportModuleMap, c.importModuleLookup
     importAllSymbols(c, m)
     #importForwarded(c, m.ast, emptySet, m)
     afterImport(c, m)

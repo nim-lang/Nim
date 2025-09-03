@@ -1,0 +1,2 @@
+proc bar =
+  discard
