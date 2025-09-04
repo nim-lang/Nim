@@ -831,8 +831,7 @@ proc transformFor(c: PTransf, n: PNode): PNode =
 
       if arg.kind in {nkDerefExpr, nkHiddenDeref}:
         # optimizes for `[]` # bug #24093
-        let valueType = arg[0].typ
-        var temp = newTemp(c, valueType, formal.info)
+        var temp = newTemp(c, arg[0].typ, formal.info)
         addVar(v, temp)
         stmtList.add(newAsgnStmt(c, nkFastAsgn, temp, arg[0], true))
         newC.mapping[formal.itemId] = newDeref(temp)
