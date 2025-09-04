@@ -832,7 +832,7 @@ proc transformFor(c: PTransf, n: PNode): PNode =
         t = arg.typ
 
       if arg.kind in {nkDerefExpr, nkHiddenDeref}:
-        # optimizes for `[]` of `array`s
+        # optimizes for `[]` # bug #24093
         let valueType = arg[0].typ
         var temp = newTemp(c, valueType, formal.info)
         addVar(v, temp)
