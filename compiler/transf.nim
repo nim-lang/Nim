@@ -755,8 +755,6 @@ proc isSimpleIteratorVar(c: PTransf; iter: PSym; call: PNode; owner: PSym): bool
 
 template destructor(t: PType): PSym = getAttachedOp(c.graph, t, attachedDestructor)
 
-import std/strutils
-
 proc transformFor(c: PTransf, n: PNode): PNode =
   # generate access statements for the parameters (unless they are constant)
   # put mapping from formal parameters to actual parameters
