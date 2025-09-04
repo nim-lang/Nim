@@ -755,6 +755,8 @@ proc isSimpleIteratorVar(c: PTransf; iter: PSym; call: PNode; owner: PSym): bool
 
 template destructor(t: PType): PSym = getAttachedOp(c.graph, t, attachedDestructor)
 
+import std/strutils
+
 proc transformFor(c: PTransf, n: PNode): PNode =
   # generate access statements for the parameters (unless they are constant)
   # put mapping from formal parameters to actual parameters
@@ -828,12 +830,21 @@ proc transformFor(c: PTransf, n: PNode): PNode =
         t = formal.ast.typ # better use the type that actually has a destructor.
       elif t.destructor == nil and arg.typ.destructor != nil:
         t = arg.typ
-      # generate a temporary and produce an assignment statement:
-      var temp = newTemp(c, t, formal.info)
-      #incl(temp.sym.flags, sfCursor)
-      addVar(v, temp)
-      stmtList.add(newAsgnStmt(c, nkFastAsgn, temp, arg, true))
-      newC.mapping[formal.itemId] = temp
+
+      if arg.kind in {nkDerefExpr, nkHiddenDeref}:
+        # optimizes for `[]` of `array`s
+        let valueType = arg[0].typ
+        var temp = newTemp(c, valueType, formal.info)
+        addVar(v, temp)
+        stmtList.add(newAsgnStmt(c, nkFastAsgn, temp, arg[0], true))
+        newC.mapping[formal.itemId] = newDeref(temp)
+      else:
+        # generate a temporary and produce an assignment statement:
+        var temp = newTemp(c, t, formal.info)
+        #incl(temp.sym.flags, sfCursor)
+        addVar(v, temp)
+        stmtList.add(newAsgnStmt(c, nkFastAsgn, temp, arg, true))
+        newC.mapping[formal.itemId] = temp
     of paVarAsgn:
       assert(skipTypes(formal.typ, abstractInst).kind in {tyVar, tyLent})
       newC.mapping[formal.itemId] = arg
