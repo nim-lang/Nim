@@ -224,6 +224,8 @@ directories (in this order; later files overwrite previous settings):
    command-line option.
 
 
+[NimScript files](nims.html) can also be used for configuration.
+
 Command-line settings have priority over configuration file settings.
 
 The default build of a project is a `debug build`:idx:. To compile a
