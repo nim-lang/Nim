@@ -302,3 +302,9 @@ SELECT `SELECT`, `FROM` as `GROUP` FROM `WHERE`;
 doAssert $parseSql("""
 SELECT "SELECT", "FROM" as "GROUP" FROM "WHERE";
 """) == """select "SELECT", "FROM" as "GROUP" from "WHERE";"""
+
+# foreign key should parse
+
+doAssert $parseSql("""
+CREATE TABLE content(artist_id_artist integer, FOREIGN KEY (artist_id_artist) REFERENCES artist(artist_id))
+""") == "create table content(artist_id_artist  integer , foreign key (artist_id_artist ) references artist (artist_id ) );;"

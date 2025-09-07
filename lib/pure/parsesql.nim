@@ -876,6 +876,32 @@ proc parseIfNotExists(p: var SqlParser, k: SqlNodeKind): SqlNode =
   else:
     result = newNode(k)
 
+
+proc parseForeignKey(p: var SqlParser): SqlNode =
+  getTok(p)
+  eat(p, "key")
+  result = newNode(nkForeignKey)
+
+  var n = newNode(nkColumnList)
+  parseParIdentList(p, n)
+  result.add(n)
+
+
+  eat(p, "references")
+  var m = newNode(nkReferences)
+
+  expectIdent(p)
+  m.add(newNode(nkIdent, p.tok.literal))
+  getTok(p)
+
+  var l = newNode(nkColumnList)
+  parseParIdentList(p, l)
+
+  m.add(l)
+
+  result.add(m)
+
+
 proc parseTableConstraint(p: var SqlParser): SqlNode =
   if isKeyw(p, "primary"):
     getTok(p)
@@ -883,14 +909,7 @@ proc parseTableConstraint(p: var SqlParser): SqlNode =
     result = newNode(nkPrimaryKey)
     parseParIdentList(p, result)
   elif isKeyw(p, "foreign"):
-    getTok(p)
-    eat(p, "key")
-    result = newNode(nkForeignKey)
-    parseParIdentList(p, result)
-    eat(p, "references")
-    var m = newNode(nkReferences)
-    m.add(parseColumnReference(p))
-    result.add(m)
+    result = parseForeignKey(p)
   elif isKeyw(p, "unique"):
     getTok(p)
     eat(p, "key")
@@ -1324,7 +1343,7 @@ proc ra(n: SqlNode, s: var SqlWriter) =
     rs(n, s)
   of nkForeignKey:
     s.addKeyw("foreign key")
-    rs(n, s)
+    rs(n, s, "", "", "")
   of nkNotNull:
     s.addKeyw("not null")
   of nkNull:
@@ -1360,7 +1379,7 @@ proc ra(n: SqlNode, s: var SqlWriter) =
     s.add(')')
   of nkReferences:
     s.addKeyw("references")
-    ra(n.sons[0], s)
+    rs(n, s, "", "", "")
   of nkDefault:
     s.addKeyw("default")
     ra(n.sons[0], s)
