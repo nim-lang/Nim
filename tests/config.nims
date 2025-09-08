@@ -38,6 +38,7 @@ switch("define", "nimPreviewHashRef")
 switch("define", "nimPreviewRangeDefault")
 switch("define", "nimPreviewNonVarDestructor")
 switch("define", "nimPreviewCheckedClose")
+switch("define", "nimPreviewAsmSemSymbol")
 
 switch("warningAserror", "UnnamedBreak")
 when not defined(testsConciseTypeMismatch):
@@ -45,3 +46,5 @@ when not defined(testsConciseTypeMismatch):
 switch("experimental", "vtables")
 switch("experimental", "openSym")
 switch("experimental", "typeBoundOps")
+
+switch("define", "nimPreviewCStringComparisons")

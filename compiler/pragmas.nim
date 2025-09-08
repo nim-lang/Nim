@@ -107,7 +107,7 @@ proc getPragmaVal*(procAst: PNode; name: TSpecialWord): PNode =
       return it[1]
 
 proc pragma*(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords;
-            isStatement: bool = false)
+            isStatement: bool = false; comesFromPush = false)
 
 proc recordPragma(c: PContext; n: PNode; args: varargs[string]) =
   var recorded = newNodeI(nkReplayAction, n.info)
@@ -590,7 +590,7 @@ proc processCompile(c: PContext, n: PNode) =
     var customArgs = ""
     if n.kind in nkCallKinds:
       s = getStrLit(c, n, 1)
-      if n.len <= 3:
+      if n.len == 3:
         customArgs = getStrLit(c, n, 2)
       else:
         localError(c.config, n.info, "'.compile' pragma takes up 2 arguments")
@@ -637,7 +637,10 @@ proc semAsmOrEmit*(con: PContext, n: PNode, marker: char): PNode =
         # XXX what to do here if 'amb' is true?
         if e != nil:
           incl(e.flags, sfUsed)
-          result.add newSymNode(e)
+          if isDefined(con.config, "nimPreviewAsmSemSymbol"):
+            result.add con.semExprWithType(con, newSymNode(e), {efTypeAllowed})
+          else:
+            result.add newSymNode(e)
         else:
           result.add newStrNode(nkStrLit, sub)
       else:
@@ -890,7 +893,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
     if keyDeep:
       localError(c.config, it.info, "user pragma cannot have arguments")
 
-    pragma(c, sym, userPragma.ast, validPragmas, isStatement)
+    pragma(c, sym, userPragma.ast, validPragmas, isStatement, comesFromPush)
     n.sons[i..i] = userPragma.ast.sons # expand user pragma with its content
     i.inc(userPragma.ast.len - 1) # inc by -1 is ok, user pragmas was empty
   else:
@@ -944,15 +947,19 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wSize:
         if sym.typ == nil: invalidPragma(c, it)
         var size = expectIntLit(c, it)
-        case size
-        of 1, 2, 4:
-          sym.typ.size = size
-          sym.typ.align = int16 size
-        of 8:
-          sym.typ.size = 8
-          sym.typ.align = floatInt64Align(c.config)
+        if sfImportc in sym.flags:
+          # no restrictions on size for imported types
+          setImportedTypeSize(c.config, sym.typ, size)
         else:
-          localError(c.config, it.info, "size may only be 1, 2, 4 or 8")
+          case size
+          of 1, 2, 4:
+            sym.typ.size = size
+            sym.typ.align = int16 size
+          of 8:
+            sym.typ.size = 8
+            sym.typ.align = floatInt64Align(c.config)
+          else:
+            localError(c.config, it.info, "size may only be 1, 2, 4 or 8")
       of wAlign:
         let alignment = expectIntLit(c, it)
         if isPowerOfTwo(alignment) and alignment > 0:
@@ -1315,8 +1322,12 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         pragmaProposition(c, it)
       of wEnsures:
         pragmaEnsures(c, it)
-      of wEnforceNoRaises, wQuirky:
+      of wEnforceNoRaises:
         sym.flags.incl sfNeverRaises
+      of wQuirky:
+        sym.flags.incl sfNeverRaises
+        if sym.kind in {skProc, skMethod, skConverter, skFunc, skIterator}:
+          sym.options.incl optQuirky
       of wSystemRaisesDefect:
         sym.flags.incl sfSystemRaisesDefect
       of wVirtual:
@@ -1398,11 +1409,12 @@ proc pragmaRec(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords;
     inc i
 
 proc pragma(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords;
-            isStatement: bool) =
+            isStatement: bool; comesFromPush = false) =
   if n == nil: return
   pragmaRec(c, sym, n, validPragmas, isStatement)
   # XXX: in the case of a callable def, this should use its info
-  implicitPragmas(c, sym, n.info, validPragmas)
+  if not comesFromPush:
+    implicitPragmas(c, sym, n.info, validPragmas)
 
 proc pragmaCallable*(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords,
                     isStatement: bool = false) =

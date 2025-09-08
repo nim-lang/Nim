@@ -74,6 +74,7 @@ import std/parseutils
 from std/math import pow, floor, log10
 from std/algorithm import fill, reverse
 import std/enumutils
+from std/bitops import fastLog2
 
 from std/unicode import toLower, toUpper
 export toLower, toUpper
@@ -1081,7 +1082,7 @@ func fromBin*[T: SomeInteger](s: string): T =
     doAssert fromBin[uint8](s) == 153
     doAssert s.fromBin[:int16] == 0b1110_1110_1001_1001'i16
     doAssert s.fromBin[:uint64] == 1216933529'u64
-
+  result = T(0)
   let p = parseutils.parseBin(s, result)
   if p != s.len or p == 0:
     raise newException(ValueError, "invalid binary integer: " & s)
@@ -1104,7 +1105,7 @@ func fromOct*[T: SomeInteger](s: string): T =
     doAssert fromOct[uint8](s) == 255'u8
     doAssert s.fromOct[:int16] == 24063'i16
     doAssert s.fromOct[:uint64] == 21913087'u64
-
+  result = T(0)
   let p = parseutils.parseOct(s, result)
   if p != s.len or p == 0:
     raise newException(ValueError, "invalid oct integer: " & s)
@@ -1127,7 +1128,7 @@ func fromHex*[T: SomeInteger](s: string): T =
     doAssert fromHex[uint8](s) == 246'u8
     doAssert s.fromHex[:int16] == -29194'i16
     doAssert s.fromHex[:uint64] == 305499638'u64
-
+  result = T(0)
   let p = parseutils.parseHex(s, result)
   if p != s.len or p == 0:
     raise newException(ValueError, "invalid hex integer: " & s)
@@ -1643,6 +1644,7 @@ func startsWith*(s, prefix: string): bool {.rtl, extern: "nsuStartsWith".} =
     let a = "abracadabra"
     doAssert a.startsWith("abra") == true
     doAssert a.startsWith("bra") == false
+  result = false
   startsWithImpl(s, prefix)
 
 func endsWith*(s: string, suffix: char): bool {.inline.} =
@@ -1671,6 +1673,7 @@ func endsWith*(s, suffix: string): bool {.rtl, extern: "nsuEndsWith".} =
     let a = "abracadabra"
     doAssert a.endsWith("abra") == true
     doAssert a.endsWith("dab") == false
+  result = false
   endsWithImpl(s, suffix)
 
 func continuesWith*(s, substr: string, start: Natural): bool {.rtl,
@@ -1687,6 +1690,7 @@ func continuesWith*(s, substr: string, start: Natural): bool {.rtl,
     doAssert a.continuesWith("ca", 4) == true
     doAssert a.continuesWith("ca", 5) == false
     doAssert a.continuesWith("dab", 6) == true
+  result = false
   var i = 0
   while true:
     if i >= substr.len: return true
@@ -1947,8 +1951,8 @@ func find*(a: SkipTable, s, sub: string, start: Natural = 0, last = -1): int {.
     inc skip, a[s[skip + subLast]]
 
 when not (defined(js) or defined(nimdoc) or defined(nimscript)):
-  func c_memchr(cstr: pointer, c: char, n: csize_t): pointer {.
-                importc: "memchr", header: "<string.h>".}
+  from system/ansi_c import c_memchr
+
   const hasCStringBuiltin = true
 else:
   const hasCStringBuiltin = false
@@ -1979,7 +1983,7 @@ func find*(s: string, sub: char, start: Natural = 0, last = -1): int {.rtl,
     when hasCStringBuiltin:
       let length = last-start+1
       if length > 0:
-        let found = c_memchr(s[start].unsafeAddr, sub, cast[csize_t](length))
+        let found = c_memchr(s[start].unsafeAddr, cint(sub), cast[csize_t](length))
         if not found.isNil:
           return cast[int](found) -% cast[int](s.cstring)
     else:
@@ -2199,7 +2203,8 @@ func replace*(s, sub: string, by = ""): string {.rtl,
   ## * `replace func<#replace,string,char,char>`_ for replacing
   ##   single characters
   ## * `replaceWord func<#replaceWord,string,string,string>`_
-  ## * `multiReplace func<#multiReplace,string,varargs[]>`_
+  ## * `multiReplace func<#multiReplace,string,varargs[]>`_ for substrings
+  ## * `multiReplace func<#multiReplace,openArray[char],varargs[]>`_ for single characters
   result = ""
   let subLen = sub.len
   if subLen == 0:
@@ -2242,7 +2247,8 @@ func replace*(s: string, sub, by: char): string {.rtl,
   ## See also:
   ## * `find func<#find,string,char,Natural,int>`_
   ## * `replaceWord func<#replaceWord,string,string,string>`_
-  ## * `multiReplace func<#multiReplace,string,varargs[]>`_
+  ## * `multiReplace func<#multiReplace,string,varargs[]>`_ for substrings
+  ## * `multiReplace func<#multiReplace,openArray[char],varargs[]>`_ for single characters
   result = newString(s.len)
   var i = 0
   while i < s.len:
@@ -2327,7 +2333,38 @@ func multiReplace*(s: string, replacements: varargs[(string, string)]): string =
       add result, s[i]
       inc(i)
 
-
+func multiReplace*(s: openArray[char]; replacements: varargs[(set[char], char)]): string {.noinit.} =
+  ## Performs multiple character replacements in a single pass through the input.
+  ##
+  ## `multiReplace` scans the input `s` from left to right and replaces
+  ## characters based on character sets, applying the first matching replacement
+  ## at each position. Useful for sanitizing or transforming strings with
+  ## predefined character mappings.
+  ##
+  ## The order of the `replacements` matters:
+  ##   - First matching replacement is applied
+  ##   - Subsequent replacements are not considered for the same character
+  ##
+  ## See also:
+  ## - `multiReplace(s: string; replacements: varargs[(string, string)]) <#multiReplace,string,varargs[]>`_,
+  runnableExamples:
+    const WinSanitationRules = [
+      ({'\0'..'\31'}, ' '),
+      ({'"'}, '\''),
+      ({'/', '\\', ':', '|'}, '-'),
+      ({'*', '?', '<', '>'}, '_'),
+    ]
+    # Sanitize a filename with Windows-incompatible characters
+    const file = "a/file:with?invalid*chars.txt"
+    doAssert file.multiReplace(WinSanitationRules) == "a-file-with_invalid_chars.txt"
+  result = newStringUninit(s.len)
+  for i in 0..<s.len:
+    var nextChar = s[i]
+    for subs, by in replacements.items:
+      if nextChar in subs:
+        nextChar = by
+        break
+    result[i] = nextChar
 
 func insertSep*(s: string, sep = '_', digits = 3): string {.rtl,
     extern: "nsuInsertSep".} =
@@ -2340,7 +2377,7 @@ func insertSep*(s: string, sep = '_', digits = 3): string {.rtl,
     doAssert insertSep("1000000") == "1_000_000"
   result = newStringOfCap(s.len)
   let hasPrefix = isDigit(s[s.low]) == false
-  var idx: int
+  var idx: int = 0
   if hasPrefix:
     result.add s[s.low]
     for i in (s.low + 1)..s.high:
@@ -2445,7 +2482,7 @@ func validIdentifier*(s: string): bool {.rtl, extern: "nsuValidIdentifier".} =
   ## and is followed by any number of characters of the set `IdentChars`.
   runnableExamples:
     doAssert "abc_def08".validIdentifier
-
+  result = false
   if s.len > 0 and s[0] in IdentStartChars:
     for i in 1..s.len-1:
       if s[i] notin IdentChars: return false
@@ -2603,37 +2640,35 @@ func formatSize*(bytes: int64,
   ## * `strformat module<strformat.html>`_ for string interpolation and formatting
   runnableExamples:
     doAssert formatSize((1'i64 shl 31) + (300'i64 shl 20)) == "2.293GiB"
-    doAssert formatSize((2.234*1024*1024).int) == "2.234MiB"
+    doAssert formatSize((2.234*1024*1024).int) == "2.233MiB"
     doAssert formatSize(4096, includeSpace = true) == "4 KiB"
     doAssert formatSize(4096, prefix = bpColloquial, includeSpace = true) == "4 kB"
     doAssert formatSize(4096) == "4KiB"
-    doAssert formatSize(5_378_934, prefix = bpColloquial, decimalSep = ',') == "5,13MB"
+    doAssert formatSize(5_378_934, prefix = bpColloquial, decimalSep = ',') == "5,129MB"
 
-  const iecPrefixes = ["", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi", "Yi"]
-  const collPrefixes = ["", "k", "M", "G", "T", "P", "E", "Z", "Y"]
-  var
-    xb: int64 = bytes
-    fbytes: float
-    lastXb: int64 = bytes
-    matchedIndex = 0
-    prefixes: array[9, string]
+  # It doesn't needs Zi and larger units until we use int72 or larger ints.
+  const iecPrefixes = ["", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei"]
+  const collPrefixes = ["", "k", "M", "G", "T", "P", "E"]
+
+  let lg2 = if bytes == 0:
+      0
+    else:
+      when hasWorkingInt64:
+        fastLog2(bytes)
+      else:
+        fastLog2(int32 bytes)
+  let matchedIndex = lg2 div 10
+  # Lower bits that are smaller than 0.001 when `bytes` is converted to a real number and added prefix, are discard.
+  # Then it is converted to float with round down.
+  let discardBits = (lg2 div 10 - 1) * 10
+
+  var prefixes: array[7, string]
   if prefix == bpColloquial:
     prefixes = collPrefixes
   else:
     prefixes = iecPrefixes
 
-  # Iterate through prefixes seeing if value will be greater than
-  # 0 in each case
-  for index in 1..<prefixes.len:
-    lastXb = xb
-    xb = bytes div (1'i64 shl (index*10))
-    matchedIndex = index
-    if xb == 0:
-      xb = lastXb
-      matchedIndex = index - 1
-      break
-  # xb has the integer number for the latest value; index should be correct
-  fbytes = bytes.float / (1'i64 shl (matchedIndex*10)).float
+  let fbytes = if lg2 < 10: bytes.float elif lg2 < 20: bytes.float / 1024.0 else: (bytes shr discardBits).float / 1024.0
   result = formatFloat(fbytes, format = ffDecimal, precision = 3,
       decimalSep = decimalSep)
   result.trimZeros(decimalSep)

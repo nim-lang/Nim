@@ -500,6 +500,21 @@ proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
   dec(c.config.evalTemplateCounter)
   discard c.friendModules.pop()
 
+proc getLineInfo(n: PNode): TLineInfo =
+  case n.kind
+  of nkPostfix:
+    if len(n) > 1:
+      result = getLineInfo(n[1])
+    else:
+      result = n.info
+  of nkAccQuoted, nkPragmaExpr:
+    if len(n) > 0:
+      result = getLineInfo(n[0])
+    else:
+      result = n.info
+  else:
+    result = n.info
+
 const
   errMissingGenericParamsForTemplate = "'$1' has unspecified generic parameters"
 
@@ -526,7 +541,9 @@ proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
   if efNoSemCheck notin flags:
     result = semAfterMacroCall(c, n, result, sym, flags, expectedType)
   if c.config.macrosToExpand.hasKey(sym.name.s):
-    message(c.config, nOrig.info, hintExpandMacro, renderTree(result))
+    message(c.config, nOrig.info, hintExpandMacro, renderTree(result, {
+      renderNonExportedFields, renderDocComments, renderNoComments
+    }))
   result = wrapInComesFrom(nOrig.info, sym, result)
   popInfoContext(c.config)
 
@@ -738,6 +755,7 @@ proc preparePContext*(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PCo
   result.semTypeNode = semTypeNode
   result.instTypeBoundOp = sigmatch.instTypeBoundOp
   result.hasUnresolvedArgs = hasUnresolvedArgs
+  result.semAsgnOpr = semAsgnOpr
   result.templInstCounter = new int
 
   pushProcCon(result, module)
@@ -855,9 +873,9 @@ proc semWithPContext*(c: PContext, n: PNode): PNode =
 
 proc reportUnusedModules(c: PContext) =
   if c.config.cmd == cmdM: return
-  for i in 0..high(c.unusedImports):
-    if sfUsed notin c.unusedImports[i][0].flags:
-      message(c.config, c.unusedImports[i][1], warnUnusedImportX, c.unusedImports[i][0].name.s)
+  for (s, info) in c.unusedImports:
+    if sfUsed notin s.flags:
+      message(c.config, info, warnUnusedImportX, s.name.s)
 
 proc closePContext*(graph: ModuleGraph; c: PContext, n: PNode): PNode =
   if c.config.cmd == cmdIdeTools and not c.suggestionsMade:

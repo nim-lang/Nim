@@ -30,6 +30,7 @@ import std/oserrors
 when defined(nimPreviewSlimSystem):
   import std/[syncio, assertions]
 
+from system/ansi_c import c_memchr
 
 proc newEIO(msg: string): ref IOError =
   result = (ref IOError)(msg: msg)
@@ -45,14 +46,14 @@ proc setFileSize(fh: FileHandle, newFileSize = -1, oldSize = -1): OSErrorCode =
   when defined(windows):
     var sizeHigh = int32(newFileSize shr 32)
     let sizeLow = int32(newFileSize and 0xffffffff)
-    let status = setFilePointer(fh, sizeLow, addr(sizeHigh), FILE_BEGIN)
+    let status = setFilePointer(Handle fh, sizeLow, addr(sizeHigh), FILE_BEGIN)
     let lastErr = osLastError()
     if (status == INVALID_SET_FILE_POINTER and lastErr.int32 != NO_ERROR) or
-        setEndOfFile(fh) == 0:
+        setEndOfFile(Handle fh) == 0:
       result = lastErr
   else:
     if newFileSize > oldSize: # grow the file
-      var e: cint # posix_fallocate truncates up when needed.
+      var e: cint = cint(0) # posix_fallocate truncates up when needed.
       when declared(posix_fallocate):
         while (e = posix_fallocate(fh, 0, newFileSize); e == EINTR):
           discard
@@ -167,7 +168,7 @@ proc open*(filename: string, mode: FileMode = fmRead,
   ##   # Read the first 512 bytes
   ##   mm_half = memfiles.open("/tmp/test.mmap", mode = fmReadWrite, mappedSize = 512)
   ##   ```
-
+  result = default(MemFile)
   # The file can be resized only when write mode is used:
   if mode == fmAppend:
     raise newEIO("The append mode is not supported.")
@@ -271,7 +272,7 @@ proc open*(filename: string, mode: FileMode = fmRead,
     if mappedSize != -1: # XXX Logic here differs from `when windows` branch ..
       result.size = mappedSize # .. which always fstats&Uses min(mappedSize, st).
     else: # if newFileSize!=-1: result.size=newFileSize # if trust setFileSize
-      var stat: Stat  # ^^.. BUT some FSes (eg. Linux HugeTLBfs) round to 2MiB.
+      var stat: Stat = default(Stat) # ^^.. BUT some FSes (eg. Linux HugeTLBfs) round to 2MiB.
       if fstat(result.handle, stat) != -1:
         result.size = stat.st_size.int # int may be 32-bit-unsafe for 2..<4 GiB
       else:
@@ -448,14 +449,12 @@ iterator memSlices*(mfile: MemFile, delim = '\l', eat = '\r'): MemSlice {.inline
   ##   echo count
   ##   ```
 
-  proc c_memchr(cstr: pointer, c: char, n: csize_t): pointer {.
-       importc: "memchr", header: "<string.h>".}
   proc `-!`(p, q: pointer): int {.inline.} = return cast[int](p) -% cast[int](q)
   var ending: pointer
   var ms = MemSlice(data: mfile.mem, size: 0)
   var remaining = mfile.size
   while remaining > 0:
-    ending = c_memchr(ms.data, delim, csize_t(remaining))
+    ending = c_memchr(ms.data, cint(delim), csize_t(remaining))
     if ending == nil: # unterminated final slice
       ms.size = remaining # Weird case..check eat?
       yield ms

@@ -12,7 +12,7 @@
 
 import semmacrosanity
 import
-  std/[strutils, tables, parseutils],
+  std/[strutils, tables, intsets, parseutils],
   msgs, vmdef, vmgen, nimsets, types,
   parser, vmdeps, idents, trees, renderer, options, transf,
   gorgeimpl, lineinfos, btrees, macrocacheimpl,
@@ -516,6 +516,8 @@ const
   errIllegalConvFromXtoY = "illegal conversion from '$1' to '$2'"
   errTooManyIterations = "interpretation requires too many iterations; " &
     "if you are sure this is not a bug in your code, compile with `--maxLoopIterationsVM:number` (current value: $1)"
+  errCallDepthExceeded = "maximum call depth for the VM exceeded; " &
+    "if you are sure this is not a bug in your code, compile with `--maxCallDepthVM:number` (current value: $1)"
   errFieldXNotFound = "node lacks field: "
 
 
@@ -590,6 +592,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       let newPc = c.cleanUpOnReturn(tos)
       # Perform any cleanup action before returning
       if newPc < 0:
+        inc(c.callDepth)
         pc = tos.comesFrom
         let retVal = regs[0]
         tos = tos.next
@@ -1445,6 +1448,14 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
           newFrame.slots[i] = regs[rb+i]
         if isClosure:
           newFrame.slots[rc] = TFullReg(kind: rkNode, node: regs[rb].node[1])
+        if c.callDepth <= 0:
+          if allowInfiniteRecursion in c.features:
+            c.callDepth = c.config.maxCallDepthVM
+          else:
+            msgWriteln(c.config, "stack trace: (most recent call last)", {msgNoUnitSep})
+            stackTraceAux(c, tos, pc)
+            globalError(c.config, c.debug[pc], errCallDepthExceeded % $c.config.maxCallDepthVM)
+        dec(c.callDepth)
         tos = newFrame
         updateRegsAlias
         # -1 for the following 'inc pc'
@@ -1862,13 +1873,22 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
           regs[ra].node = opMapTypeInstToAst(c.cache, regs[rb].node.sym.typ, c.debug[pc], c.idgen)
         else:
           stackTrace(c, tos, pc, "node has no type")
-      else:
+      of 3:
         # getTypeImpl opcode:
         ensureKind(rkNode)
         if regs[rb].kind == rkNode and regs[rb].node.typ != nil:
           regs[ra].node = opMapTypeImplToAst(c.cache, regs[rb].node.typ, c.debug[pc], c.idgen)
         elif regs[rb].kind == rkNode and regs[rb].node.kind == nkSym and regs[rb].node.sym.typ != nil:
           regs[ra].node = opMapTypeImplToAst(c.cache, regs[rb].node.sym.typ, c.debug[pc], c.idgen)
+        else:
+          stackTrace(c, tos, pc, "node has no type")
+      else:
+        # getTypeInstSkipAlias opcode:
+        ensureKind(rkNode)
+        if regs[rb].kind == rkNode and regs[rb].node.typ != nil:
+          regs[ra].node = opMapTypeInstToAst(c.cache, regs[rb].node.typ, c.debug[pc], c.idgen, skipAlias = true)
+        elif regs[rb].kind == rkNode and regs[rb].node.kind == nkSym and regs[rb].node.sym.typ != nil:
+          regs[ra].node = opMapTypeInstToAst(c.cache, regs[rb].node.sym.typ, c.debug[pc], c.idgen, skipAlias = true)
         else:
           stackTrace(c, tos, pc, "node has no type")
     of opcNGetSize:
@@ -2040,7 +2060,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         aStrVal = aNode.ident.s.cstring
       of nkSym:
         aStrVal = aNode.sym.name.s.cstring
-      of nkOpenSymChoice, nkClosedSymChoice:
+      of nkOpenSymChoice, nkClosedSymChoice, nkOpenSym:
         aStrVal = aNode[0].sym.name.s.cstring
       else:
         discard
@@ -2052,7 +2072,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         bStrVal = bNode.ident.s.cstring
       of nkSym:
         bStrVal = bNode.sym.name.s.cstring
-      of nkOpenSymChoice, nkClosedSymChoice:
+      of nkOpenSymChoice, nkClosedSymChoice, nkOpenSym:
         bStrVal = bNode[0].sym.name.s.cstring
       else:
         discard
@@ -2311,6 +2331,7 @@ proc execute(c: PCtx, start: int): PNode =
 
 proc execProc*(c: PCtx; sym: PSym; args: openArray[PNode]): PNode =
   c.loopIterations = c.config.maxLoopIterationsVM
+  c.callDepth = c.config.maxCallDepthVM
   if sym.kind in routineKinds:
     if sym.typ.paramsLen != args.len:
       result = nil
@@ -2413,9 +2434,12 @@ proc evalConstExprAux(module: PSym; idgen: IdGenerator;
   setupGlobalCtx(module, g, idgen)
   var c = PCtx g.vm
   let oldMode = c.mode
+  let oldLocals = c.locals
   c.mode = mode
+  c.locals = initIntSet()
   c.cannotEval = false
   let start = genExpr(c, n, requiresValue = mode!=emStaticStmt)
+  c.locals = oldLocals
   if c.cannotEval:
     return errorNode(idgen, prc, n)
   if c.code[start].opcode == opcEof: return newNodeI(nkEmpty, n.info)

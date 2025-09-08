@@ -14,6 +14,8 @@
 # R.D. Lins / Information Processing Letters 109 (2008) 71–78
 #
 
+{.push raises: [].}
+
 include cellseqs_v2
 
 const
@@ -27,8 +29,8 @@ const
   logOrc = defined(nimArcIds)
 
 type
-  TraceProc = proc (p, env: pointer) {.nimcall, benign.}
-  DisposeProc = proc (p: pointer) {.nimcall, benign.}
+  TraceProc = proc (p, env: pointer) {.nimcall, benign, raises: [].}
+  DisposeProc = proc (p: pointer) {.nimcall, benign, raises: [].}
 
 template color(c): untyped = c.rc and colorMask
 template setColor(c, col) =
@@ -509,6 +511,7 @@ proc rememberCycle(isDestroyAction: bool; s: Cell; desc: PNimTypeV2) {.noinline.
       registerCycle(s, desc)
 
 proc nimDecRefIsLastCyclicDyn(p: pointer): bool {.compilerRtl, inl.} =
+  result = false
   if p != nil:
     var cell = head(p)
     if (cell.rc and not rcMask) == 0:
@@ -520,6 +523,7 @@ proc nimDecRefIsLastCyclicDyn(p: pointer): bool {.compilerRtl, inl.} =
     rememberCycle(result, cell, cast[ptr PNimTypeV2](p)[])
 
 proc nimDecRefIsLastDyn(p: pointer): bool {.compilerRtl, inl.} =
+  result = false
   if p != nil:
     var cell = head(p)
     if (cell.rc and not rcMask) == 0:
@@ -533,6 +537,7 @@ proc nimDecRefIsLastDyn(p: pointer): bool {.compilerRtl, inl.} =
         unregisterCycle(cell)
 
 proc nimDecRefIsLastCyclicStatic(p: pointer; desc: PNimTypeV2): bool {.compilerRtl, inl.} =
+  result = false
   if p != nil:
     var cell = head(p)
     if (cell.rc and not rcMask) == 0:
@@ -542,3 +547,5 @@ proc nimDecRefIsLastCyclicStatic(p: pointer; desc: PNimTypeV2): bool {.compilerR
       dec cell.rc, rcIncrement
     #if cell.color == colPurple:
     rememberCycle(result, cell, desc)
+
+{.pop.} # raises: []

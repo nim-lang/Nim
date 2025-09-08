@@ -1,4 +1,5 @@
 import gdb
+import gdb.types
 import re
 import sys
 import traceback
@@ -151,8 +152,8 @@ class DollarPrintFunction (gdb.Function):
   "Nim's equivalent of $ operator as a gdb function, available in expressions `print $dollar(myvalue)"
 
   dollar_functions = re.findall(
-    r'(?:NimStringDesc \*|NimStringV2)\s?(dollar__[A-z0-9_]+?)\(([^,)]*)\);',
-    gdb.execute("info functions dollar__", True, True)
+    r'(?:NimStringDesc \*|NimStringV2)\s?([A-z0-9_]+?dollar_[A-z0-9_]+?)\(([^,)]*)\);',
+    gdb.execute("info functions dollar_", True, True)
   )
 
   def __init__ (self):
