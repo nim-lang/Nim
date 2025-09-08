@@ -7,8 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
-## Do yourself a favor and import the module
-## as `from std/htmlgen import nil` and then fully qualify the macros.
+## Do yourself a favor and import the module as `from std/htmlgen as X import nil`
+## (with any alias of your choice) and then fully qualify the macros.
 ##
 ## *Note*: The Karax project (`nimble install karax`) has a better
 ## way to achieve the same, see https://github.com/pragmagic/karax/blob/master/tests/nativehtmlgen.nim
@@ -31,8 +31,9 @@
 ## ========
 ##
 ##   ```Nim
+##   from std/htmlgen as H import nil
 ##   var nim = "Nim"
-##   echo h1(a(href="https://nim-lang.org", nim))
+##   echo H.h1(a(href="https://nim-lang.org", nim))
 ##   ```
 ##
 ## Writes the string:
@@ -789,26 +790,28 @@ macro `annotation-xml`*(e: varargs[untyped]): untyped =
 
 
 runnableExamples:
+  from std/htmlgen as H import nil
+
   let nim = "Nim"
-  assert h1(a(href = "https://nim-lang.org", nim)) ==
+  assert H.h1(a(href = "https://nim-lang.org", nim)) ==
     """<h1><a href="https://nim-lang.org">Nim</a></h1>"""
-  assert form(action = "test", `accept-charset` = "Content-Type") ==
+  assert H.form(action = "test", `accept-charset` = "Content-Type") ==
     """<form action="test" accept-charset="Content-Type"></form>"""
 
 
-  assert math(
-    semantics(
-      mrow(
-        msup(
-          mi("x"),
-          mn("42")
+  assert H.math(
+    H.semantics(
+      H.mrow(
+        H.msup(
+          H.mi("x"),
+          H.mn("42")
         )
       )
     )
   ) == "<math><semantics><mrow><msup><mi>x</mi><mn>42</mn></msup></mrow></semantics></math>"
 
-  assert math(
-    semantics(
-      annotation(encoding = "application/x-tex", title = "Latex on Web", r"x^{2} + y")
+  assert H.math(
+    H.semantics(
+      H.annotation(encoding = "application/x-tex", title = "Latex on Web", r"x^{2} + y")
     )
   ) == """<math><semantics><annotation encoding="application/x-tex" title="Latex on Web">x^{2} + y</annotation></semantics></math>"""
