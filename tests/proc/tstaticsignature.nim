@@ -135,6 +135,22 @@ block: # issue #7008
   explicitGenericProc1(n, 5) # works
   explicitGenericProc2(n, 5) # doesn't
 
+block: # issue #7009
+  type Node[T] = object
+    val: T
+
+  proc genericProc(s: Node; key: s.T) =
+    discard # body doesn't matter
+  proc explicitGenericProc[T](s: Node[T]; key: T) =
+    discard # body doesn't matter
+  proc concreteProc(s: Node[cstring]; key: s.T) =
+    discard # body doesn't matter 
+    
+  var strs: Node[cstring]
+  concreteProc(strs, "string") # string converts to cstring
+  explicitGenericProc(strs, "string") # still converts
+  genericProc(strs, "string") # doesn't convert: COMPILE ERROR
+
 block: # issue #20027
   block:
     type Test[T] = object
@@ -223,7 +239,7 @@ block: # issue #7547
   let z = initContainsFoo(5) # Error: undeclared identifier: 'N'
   doAssert z.Ffoo is int
 
-when false: # issue #22607, needs nkWhenStmt to be handled like nkRecWhen
+block: # issue #22607, needs nkWhenStmt to be handled like nkRecWhen
   proc test[x: static bool](
     t: (
       when x:
@@ -235,3 +251,40 @@ when false: # issue #22607, needs nkWhenStmt to be handled like nkRecWhen
   test[true](1.int)
   test[false](1.0)
   doAssert not compiles(test[])
+
+block: # `when` in static signature
+  template ctAnd(a, b): bool =
+    when a:
+      when b: true
+      else: false
+    else: false
+  template test(): untyped =
+    when ctAnd(declared(SharedTable), typeof(result) is SharedTable):
+      result = SharedTable()
+    else:
+      result = 123
+  proc foo[T](): T = test()
+  proc bar[T](x = foo[T]()): T = x
+  doAssert bar[int]() == 123
+
+block: # issue #22276
+  type Foo = enum A, B
+  macro test(y: static[Foo]): untyped =
+    if y == A:
+      result = parseExpr("proc (x: int)")
+    else:
+      result = parseExpr("proc (x: float)")
+  proc foo(y: static[Foo], x: test(y)) = # We want to make the type of `x` depend on what `y` is
+    x(9)
+  foo(A, proc (x: int) = doAssert x == 9)
+  var a: int
+  foo(A, proc (x: int) =
+    a = x * 2)
+  doAssert a == 18
+  foo(B, proc (x: float) = doAssert x == 9)
+
+block: # issue #9190
+  func foo[T, U]: type(T.low + U.low) = 
+    T.low + U.low
+  
+  doAssert foo[uint8, uint8]() == uint8.low

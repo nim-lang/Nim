@@ -144,7 +144,7 @@ proc cellSetPut(t: var CellSet, key: uint): PPageDesc =
     if x.key == key: return x
     h = nextTry(h, t.max)
 
-  if ((t.max+1)*2 < t.counter*3) or ((t.max+1)-t.counter < 4):
+  if ((t.max+1) < t.counter div 2 + t.counter) or ((t.max+1)-t.counter < 4):
     cellSetEnlarge(t)
   inc(t.counter)
   h = cast[int](key) and t.max
@@ -252,12 +252,12 @@ iterator elementsExcept(t, s: CellSet): PCell {.inline.} =
   var r = t.head
   while r != nil:
     let ss = cellSetGet(s, r.key)
-    var i:uint = 0
+    var i = 0'u
     while int(i) <= high(r.bits):
       var w = r.bits[i]
       if ss != nil:
         w = w and not ss.bits[i]
-      var j:uint = 0
+      var j = 0'u
       while w != 0:
         if (w and 1) != 0:
           yield cast[PCell]((r.key shl PageShift) or

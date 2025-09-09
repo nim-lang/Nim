@@ -790,3 +790,7 @@ block: # bug #23925
 
   static: bar()
   bar()
+
+static: # bug #21353
+  var s: proc () = default(proc ())
+  doAssert s == nil

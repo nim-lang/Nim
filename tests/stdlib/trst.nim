@@ -16,6 +16,8 @@ discard """
 [Suite] RST escaping
 
 [Suite] RST inline markup
+
+[Suite] Misc isssues
 '''
 matrix: "--mm:refc; --mm:orc"
 """
@@ -39,11 +41,13 @@ proc toAst(input: string,
             warnings: ref seq[string] = nil): string =
   ## If `error` is nil then no errors should be generated.
   ## The same goes for `warnings`.
+  result = ""
+
   proc testMsgHandler(filename: string, line, col: int, msgkind: MsgKind,
                       arg: string) =
     let mc = msgkind.whichMsgClass
     let a = $msgkind % arg
-    var message: string
+    var message: string = ""
     toLocation(message, filename, line, col + ColRstOffset)
     message.add " $1: $2" % [$mc, a]
     if mc == mcError:
@@ -1980,3 +1984,13 @@ suite "RST inline markup":
           rnLeaf  ')'
       """)
     check(warnings[] == @["input(1, 5) Warning: broken link 'f'"])
+
+suite "Misc isssues":
+  test "Markdown CodeblockFields in one line (lacking enclosing ```)":
+    let message = """
+    ```llvm-profdata merge first.profraw second.profraw third.profraw <more stuff maybe> -output data.profdata```"""
+
+    try:
+      echo rstgen.rstToHtml(message, {roSupportMarkdown}, nil)
+    except EParseError:
+      discard

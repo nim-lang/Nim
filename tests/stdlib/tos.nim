@@ -27,9 +27,11 @@ Raises
 """
 # test os path creation, iteration, and deletion
 
-import os, strutils, pathnorm
 from stdtest/specialpaths import buildDir
-import std/[syncio, assertions]
+import std/[syncio, assertions, osproc, os, strutils, pathnorm]
+
+import std/paths except getCurrentDir
+import std/[files, dirs]
 
 block fileOperations:
   let files = @["these.txt", "are.x", "testing.r", "files.q"]
@@ -53,11 +55,11 @@ block fileOperations:
     doAssertRaises(OSError): copyFile(file, dname/sub/fname2)
     doAssertRaises(OSError): copyFileToDir(file, dname/sub)
     doAssertRaises(ValueError): copyFileToDir(file, "")
-    copyFile(file, file2)
+    copyFile(Path file, Path file2)
     doAssert fileExists(file2)
     doAssert readFile(file2) == str
     createDir(dname/sub)
-    copyFileToDir(file, dname/sub)
+    copyFileToDir(Path file, Path dname/sub)
     doAssert fileExists(dname/sub/fname)
     removeDir(dname/sub)
     doAssert not dirExists(dname/sub)
@@ -132,12 +134,13 @@ block fileOperations:
   removeDir(dname)
 
   # test copyDir:
-  createDir("a/b")
+  createDir(Path "a/b")
   open("a/b/file.txt", fmWrite).close
   createDir("a/b/c")
   open("a/b/c/fileC.txt", fmWrite).close
 
-  copyDir("a", "../dest/a")
+  createDir(Path"a/b")
+  copyDir(Path "a",  Path "../dest/a")
   removeDir("a")
 
   doAssert dirExists("../dest/a/b")
@@ -160,6 +163,18 @@ block fileOperations:
 
   # createDir should not fail if `dir` is empty
   createDir("")
+
+
+  when defined(linux): # bug #24174
+    createDir("a/b")
+    open("a/file.txt", fmWrite).close
+
+    if not fileExists("a/fifoFile"):
+      doAssert execCmd("mkfifo -m 600 a/fifoFile") == 0
+
+    copyDir("a/", "../dest/a/", skipSpecial = true)
+    copyDirWithPermissions(Path "a/", Path "../dest2/a/", skipSpecial = true)
+    removeDir("a")
 
   # Symlink handling in `copyFile`, `copyFileWithPermissions`, `copyFileToDir`,
   # `copyDir`, `copyDirWithPermissions`, `moveFile`, and `moveDir`.

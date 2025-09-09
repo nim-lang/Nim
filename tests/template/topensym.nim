@@ -1,4 +1,4 @@
-{.experimental: "templateOpenSym".}
+{.experimental: "openSym".}
 
 block: # issue #24002
   type Result[T, E] = object

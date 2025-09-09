@@ -27,3 +27,31 @@ block:
   proc p(x: int): int = x
 
   type Foo = typeof(p(fail(123)))
+
+block: # issue #24150, related regression
+  proc w(T: type): T {.compileTime.} = default(ptr T)[]
+  template y(v: auto): auto = typeof(v) is int
+  discard compiles(y(w int))
+  proc s(): int {.compileTime.} = discard
+  discard s()
+
+block: # issue #24228, also related regression
+  proc d(_: static[string]) = discard $0
+  proc m(_: static[string]) = d("")
+  iterator v(): int {.closure.} =
+    template a(n: untyped) =
+      when typeof(n) is void:
+        n
+      else:
+        n
+    a(m(""))
+  let _ = v
+
+block: # issue #24228 simplified
+  proc d[T]() =
+    let x = $0
+  proc v() =
+    when typeof(d[string]()) is void:
+      d[string]()
+  v()
+
