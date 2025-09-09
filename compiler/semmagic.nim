@@ -580,12 +580,16 @@ proc semPrivateAccess(c: PContext, n: PNode): PNode =
     c.currentScope.allowPrivateAccess.add t.sym
   result = newNodeIT(nkEmpty, n.info, getSysType(c.graph, n.info, tyVoid))
 
-proc checkDefault(c: PContext, n: PNode): PNode =
+proc checkDefault(c: PContext, n: PNode; isDefault: bool): PNode =
   result = n
   c.config.internalAssert result[1].typ.kind == tyTypeDesc
   let constructed = result[1].typ.base
   if constructed.requiresInit:
-    message(c.config, n.info, warnUnsafeDefault, typeToString(constructed))
+    # TODO: sorts out `nimPreviewRangeDefault` with `ranges` in the future
+    if isDefault:
+      localError(c.config, n.info, "The '$1' type doesn't have a valid default value" % typeToString(constructed))
+    else:
+      message(c.config, n.info, warnUnsafeDefault, typeToString(constructed))
 
 proc magicsAfterOverloadResolution(c: PContext, n: PNode,
                                    flags: TExprFlags; expectedType: PType = nil): PNode =
@@ -675,13 +679,13 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     if seqType.kind == tySequence and seqType.base.requiresInit:
       message(c.config, n.info, warnUnsafeSetLen, typeToString(seqType.base))
   of mDefault:
-    result = checkDefault(c, n)
+    result = checkDefault(c, n, true)
     let typ = result[^1].typ.skipTypes({tyTypeDesc})
     let defaultExpr = defaultNodeField(c, result[^1], typ, false)
     if defaultExpr != nil:
       result = defaultExpr
   of mZeroDefault:
-    result = checkDefault(c, n)
+    result = checkDefault(c, n, false)
   of mIsolate:
     if not checkIsolate(n[1]):
       localError(c.config, n.info, "expression cannot be isolated: " & $n[1])
