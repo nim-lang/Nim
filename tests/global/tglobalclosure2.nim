@@ -12,6 +12,6 @@ proc main() =
     echo x
 
   let a {.global.} = X(p: p)
-  b.p()
+  a.p()
 
 main()
