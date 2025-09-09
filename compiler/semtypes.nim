@@ -1109,7 +1109,9 @@ proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
       let t = newTypeS(tySink, c, result)
       result = t
     else: discard
-    if result.kind == tyRef and c.config.selectedGC in {gcArc, gcOrc, gcAtomicArc}:
+    if result.kind == tyRef and 
+        c.config.selectedGC in {gcArc, gcOrc, gcAtomicArc} and
+        tfTriggersCompileTime notin result.flags:
       result.flags.incl tfHasAsgn
 
 proc findEnforcedStaticType(t: PType): PType =
