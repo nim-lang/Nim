@@ -1,6 +1,5 @@
 discard """
-output: hi
-hi
+output: "hi\nhi"
 """
 
 type X = object
