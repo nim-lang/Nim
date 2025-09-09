@@ -12,7 +12,7 @@ proc main() =
 
   let a {.global.} = p
   let b {.global.} = X(p: p)
-  p()
+  a()
   b.p()
 
 main()
