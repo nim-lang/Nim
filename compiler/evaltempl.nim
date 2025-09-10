@@ -10,9 +10,16 @@
 ## Template evaluation engine. Now hygienic.
 
 import options, ast, astalgo, msgs, renderer, lineinfos, idents, trees
-import std/strutils
+import std/[intsets, strutils]
 
 type
+  TemplScope = object
+    usedSyms: IntSet  # issue #15637
+                      # Used to detect parameters that is used twice in one scope in the template body
+                      # and got an argument contains a variable declaration without opening a scope.
+                      # When detected, prints variable redefinition error.
+                      # Subset of TemplCtx.declParams
+
   TemplCtx = object
     owner, genSymOwner: PSym
     instLines: bool   # use the instantiation lines numbers
@@ -23,10 +30,30 @@ type
     ic: IdentCache
     instID: int
     idgen: IdGenerator
+    declParams: IntSet  # issue #15637.
+                        # Symbol ids of typed parameters takes an argument contains
+                        # variable declarations without opening a scope
+    scopes: seq[TemplScope]
 
 proc copyNode(ctx: TemplCtx, a, b: PNode): PNode =
   result = copyNode(a)
   if ctx.instLines: setInfoRecursive(result, b.info)
+
+const nkOpenScopeKinds = {nkProcDef..nkIteratorDef, nkOfBranch, nkElifBranch, nkExceptBranch,
+                          nkElse, nkIfStmt, nkForStmt, nkWhileStmt, nkCaseStmt, nkTryStmt,
+                          nkFinally, nkBlockStmt, nkBlockExpr}
+
+proc findDecl(n: PNode): PNode =
+  result = nil
+  if n.kind in {nkVarSection, nkLetSection, nkConstSection}:
+    if n[0].kind == nkIdentDefs and n[0][0].kind == nkSym:
+      result = n[0][0]
+  else:
+    for i in 0..<n.safeLen:
+      if n[i].kind notin nkOpenScopeKinds:
+        result = findDecl(n[i])
+        if result != nil:
+          break
 
 proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
   template handleParam(param) =
@@ -52,6 +79,11 @@ proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
   case templ.kind
   of nkSym:
     var s = templ.sym
+    if s.id in c.declParams:
+      if c.scopes[^1].usedSyms.containsOrIncl s.id:
+        let redefined = actual[s.position].findDecl()
+        localError(c.config, redefined.info, errGenerated,
+                   "redefinition of '$1'" % [redefined.sym.name.s])
     if (s.owner == nil and s.kind == skParam) or s.owner == c.owner:
       if s.kind == skParam and {sfGenSym, sfTemplateParam} * s.flags == {sfTemplateParam}:
         handleParam actual[s.position]
@@ -90,6 +122,10 @@ proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
     else:
       result.add newNodeI(nkEmpty, templ.info)
   else:
+    let isOpenScope = templ.kind in nkOpenScopeKinds
+    if isOpenScope:
+      c.scopes.add TemplScope()
+
     var isDeclarative = false
     if templ.kind in {nkProcDef, nkFuncDef, nkMethodDef, nkIteratorDef,
                       nkMacroDef, nkTemplateDef, nkConverterDef, nkTypeSection,
@@ -106,6 +142,9 @@ proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
         evalTemplateAux(templ[i], actual, c, res)
       result.add res
     if isDeclarative: c.isDeclarative = false
+
+    if isOpenScope:
+      discard c.scopes.pop
 
 const
   errWrongNumberOfArguments = "wrong number of arguments"
@@ -184,6 +223,26 @@ proc wrapInComesFrom*(info: TLineInfo; sym: PSym; res: PNode): PNode =
     result.add res
     result.typ() = res.typ
 
+proc hasDeclWithoutOpeningScope(arg: PNode): bool =
+  # return true if `arg` contains variable declarations without opening a scope
+
+  result = false
+  if arg.kind in {nkVarSection, nkLetSection, nkConstSection}:
+    result = true
+  else:
+    for i in 0..<arg.safeLen:
+      if arg[i].kind in nkOpenScopeKinds:
+        discard
+      elif hasDeclWithoutOpeningScope(arg[i]):
+        result = true
+        break
+
+proc updateDeclParams(ctx: var TemplCtx; args: PNode) =
+  for i in 1..<ctx.owner.typ.n.len:
+    let param = ctx.owner.typ.n[i].sym
+    if param.typ.kind != tyUntyped and hasDeclWithoutOpeningScope(args[param.position]):
+      ctx.declParams.incl param.id
+
 proc evalTemplate*(n: PNode, tmpl, genSymOwner: PSym;
                    conf: ConfigRef;
                    ic: IdentCache; instID: ref int;
@@ -202,8 +261,12 @@ proc evalTemplate*(n: PNode, tmpl, genSymOwner: PSym;
     ic: ic,
     mapping: initSymMapping(),
     instID: instID[],
-    idgen: idgen
+    idgen: idgen,
+    declParams: initIntSet(),
+    scopes: @[TemplScope(usedSyms: initIntSet())]
   )
+
+  updateDeclParams(ctx, args)
 
   let body = tmpl.ast[bodyPos]
   #echo "instantion of ", renderTree(body, {renderIds})
