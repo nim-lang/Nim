@@ -23,7 +23,7 @@ jobs:
         include:
           - os: ubuntu-latest
             cpu: amd64
-          - os: macos-latest
+          - os: macos-14
             cpu: arm64
     name: '${{ matrix.os }} (batch: ${{ matrix.batch }})'
     runs-on: ${{ matrix.os }}
