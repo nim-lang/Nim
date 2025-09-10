@@ -740,7 +740,7 @@ template filterIt*(s, pred: untyped): untyped =
   var result = newSeq[typeof(s[0])]()
   for it {.inject.} in items(s):
     if pred: result.add(it)
-  result
+  move result
 
 template keepItIf*(varSeq: seq, pred: untyped) =
   ## Keeps the items in the passed sequence (must be declared as a `var`)
