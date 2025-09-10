@@ -397,8 +397,8 @@ proc addDeclAt*(c: PContext; scope: PScope, sym: PSym, info: TLineInfo) =
         localError(c.config, info, hintDuplicateModuleImport,
           "duplicate import of '$1'; previous import here: $2" %
           [sym.name.s, c.config $ conflict.info])
-      else:
-        for (module, prevInfo) in c.importModuleLookup[sym.name.id]:
+      elif sym.name.id in c.importModuleLookupInfo:
+        for (module, prevInfo) in c.importModuleLookupInfo[sym.name.id]:
           if c.importModuleMap[sym.id] == module:
             localError(c.config, info, hintDuplicateModuleImport,
               "duplicate import of '$1'; previous import here: $2" %

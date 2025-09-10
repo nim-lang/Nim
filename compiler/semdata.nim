@@ -171,7 +171,8 @@ type
     lastTLineInfo*: TLineInfo
     sideEffects*: Table[int, seq[(TLineInfo, PSym)]] # symbol.id index
     inUncheckedAssignSection*: int
-    importModuleLookup*: Table[int, seq[(int, TLineInfo)]] # (module.ident.id, [module.id])
+    importModuleLookup*: Table[int, seq[int]] # (module.ident.id, [module.id])
+    importModuleLookupInfo*: Table[int, seq[(int, TLineInfo)]] # (module.ident.id, [module.id])
     forwardTypeUpdates*: seq[(PType, PNode)]
       # types that need to be updated in a type section
       # due to containing forward types, and their corresponding nodes

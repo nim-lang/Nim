@@ -14,6 +14,7 @@ import
   semdata, modulepaths, sigmatch, lineinfos,
   modulegraphs, wordrecg
 from std/strutils import `%`, startsWith
+from std/sequtils import addUnique
 import std/[sets, tables, intsets]
 
 when defined(nimPreviewSlimSystem):
@@ -255,7 +256,7 @@ proc importModuleAs(c: PContext; n: PNode, realModule: PSym, importHidden, track
   if trackUnusedImport:
     c.unusedImports.add((result, result.info))
   c.importModuleMap[result.id] = realModule.id
-  c.importModuleLookup.mgetOrPut(result.name.id, @[]).addUniqueModule(realModule.id, result.info)
+  c.importModuleLookup.mgetOrPut(result.name.id, @[]).addUnique realModule.id
 
 proc transformImportAs(c: PContext; n: PNode): tuple[node: PNode, importHidden: bool] =
   result = (nil, false)
@@ -339,13 +340,13 @@ proc afterImport(c: PContext, m: PSym) =
 
 proc impMod(c: PContext; it: PNode; importStmtResult: PNode) =
   var it = it
-  var oldImportModuleMap = c.importModuleLookup
   let m = myImportModule(c, it, importStmtResult)
   if m != nil:
     # ``addDecl`` needs to be done before ``importAllSymbols``!
-    swap oldImportModuleMap, c.importModuleLookup
     addDecl(c, m) # add symbol to symbol table of module
-    swap oldImportModuleMap, c.importModuleLookup
+
+    let realModuleId = c.importModuleMap[m.id]
+    c.importModuleLookupInfo.mgetOrPut(m.name.id, @[]).addUniqueModule(realModuleId, m.info)
     importAllSymbols(c, m)
     #importForwarded(c, m.ast, emptySet, m)
     afterImport(c, m)
