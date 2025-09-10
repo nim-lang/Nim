@@ -338,15 +338,18 @@ proc afterImport(c: PContext, m: PSym) =
     if s.owner.id != realModuleId:
       c.exportIndirections.incl((m.id, s.id))
 
+proc addModuleDecl(c: PContext, m: PSym) =
+  addDecl(c, m) # add symbol to symbol table of module
+  let realModuleId = c.importModuleMap[m.id]
+  c.importModuleLookupInfo.mgetOrPut(m.name.id, @[]).addUniqueModule(realModuleId, m.info)
+
 proc impMod(c: PContext; it: PNode; importStmtResult: PNode) =
   var it = it
   let m = myImportModule(c, it, importStmtResult)
   if m != nil:
     # ``addDecl`` needs to be done before ``importAllSymbols``!
-    addDecl(c, m) # add symbol to symbol table of module
+    addModuleDecl(c, m)
 
-    let realModuleId = c.importModuleMap[m.id]
-    c.importModuleLookupInfo.mgetOrPut(m.name.id, @[]).addUniqueModule(realModuleId, m.info)
     importAllSymbols(c, m)
     #importForwarded(c, m.ast, emptySet, m)
     afterImport(c, m)
@@ -383,7 +386,7 @@ proc evalFrom*(c: PContext, n: PNode): PNode =
   var m = myImportModule(c, n[0], result)
   if m != nil:
     n[0] = newSymNode(m)
-    addDecl(c, m)               # add symbol to symbol table of module
+    addModuleDecl(c, m)               # add symbol to symbol table of module
 
     var im = ImportedModule(m: m, mode: importSet, imported: initIntSet())
     for i in 1..<n.len:
@@ -398,7 +401,7 @@ proc evalImportExcept*(c: PContext, n: PNode): PNode =
   var m = myImportModule(c, n[0], result)
   if m != nil:
     n[0] = newSymNode(m)
-    addDecl(c, m)               # add symbol to symbol table of module
+    addModuleDecl(c, m)               # add symbol to symbol table of module
     importAllSymbolsExcept(c, m, readExceptSet(c, n))
     #importForwarded(c, m.ast, exceptSet, m)
     afterImport(c, m)
