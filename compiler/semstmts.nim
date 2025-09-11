@@ -725,7 +725,7 @@ template isLocalSym(sym: PSym): bool =
       sym.typ.kind == tyTypeDesc or
       sfCompileTime in sym.flags) or
       sym.kind in {skProc, skFunc, skIterator} and
-      sfGlobal notin sym.flags
+      sfGlobal notin sym.flags and sym.typ.callConv == ccClosure
 
 proc usesLocalVar(n: PNode): bool =
   case n.kind
