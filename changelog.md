@@ -23,6 +23,8 @@ errors.
 
 - With `-d:nimPreviewCStringComparisons`, comparsions (`<`, `>`, `<=`, `>=`) between cstrings switch from reference semantics to value semantics like `==` and `!=`.
 
+- `std/parsesql` has been moved to a nimble package, use `nimble` or `atlas` to install it.
+
 ## Standard library additions and changes
 
 [//]: # "Additions:"

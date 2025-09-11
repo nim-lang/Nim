@@ -819,6 +819,7 @@ type
                                 # nodes are compared by structure!
     counter*: int
     data*: TNodePairSeq
+    ignoreTypes*: bool
 
   TObjectSeq* = seq[RootRef]
   TObjectSet* = object
@@ -1641,8 +1642,8 @@ proc initObjectSet*(): TObjectSet =
   result = TObjectSet(counter: 0)
   newSeq(result.data, StartSize)
 
-proc initNodeTable*(): TNodeTable =
-  result = TNodeTable(counter: 0)
+proc initNodeTable*(ignoreTypes=false): TNodeTable =
+  result = TNodeTable(counter: 0, ignoreTypes: ignoreTypes)
   newSeq(result.data, StartSize)
 
 proc skipTypes*(t: PType, kinds: TTypeKinds; maxIters: int): PType =
