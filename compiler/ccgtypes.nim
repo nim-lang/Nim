@@ -2001,8 +2001,8 @@ proc genTypeInfoV1(m: BModule; t: PType; info: TLineInfo): Rope =
   of tyRef:
     genTypeInfoAux(m, t, t, result, info)
     if m.config.selectedGC in {gcMarkAndSweep, gcRefc, gcGo}:
-      # it may not be used in other places exccept in `genTraverseProc`,
-      # we have to generate a typedesc for this case
+      # it may not be used in other places except in `genTraverseProc`,
+      # we have to generate a typedesc for this case, not a weak one
       discard getTypeDesc(m, origType.base)
       let markerProc = genTraverseProc(m, origType, sig)
       m.s[cfsTypeInit3].addFieldAssignment(tiNameForHcr(m, result), "marker", markerProc)
