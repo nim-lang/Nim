@@ -245,3 +245,32 @@ proc bar2() =
 
 static: bar2()
 bar2()
+
+when not defined(js):
+  proc foo =
+    block:
+      var s1:int = -10
+      doAssertRaises(RangeDefect):
+        var n2:Natural = s1.Natural
+
+    block:
+      var f = 751.0
+      let m = f.int8
+
+    block:
+      var s2:float = -10
+      doAssertRaises(RangeDefect):
+        var n2:Natural = s2.Natural
+
+
+    block:
+      type A = range[0..10]
+
+      let f = 156.0
+
+      doAssertRaises(RangeDefect):
+        let a = f.A
+
+        echo a # 156
+
+  foo()

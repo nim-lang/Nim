@@ -63,10 +63,10 @@
 #    `i` should exception be raised in state `i`. For all states in `try` block
 #    the target state is `except` block. For all states in `except` block
 #    the target state is `finally` block. For all other states there is no
-#    target state (0, as the first block can never be neither except nor finally).
+#    target state (0, as the first state can never be except nor finally).
 #  - env var :curExcLevel is created, finallies use it to decide their exit logic
 #  - if there are finallies, env var :finallyPath is created. It contains exit state labels
-#    for every finally level, and is changed in runtime in try, except, break, and continue
+#    for every finally level, and is changed in runtime in try, except, break, and return
 #    nodes to control finally exit behavior.
 #  - the iter body is wrapped into a
 #      var :tmp: Exception
@@ -133,7 +133,7 @@
 # of 3:
 #   somethingElse()
 #   :state = -1 # Exit
-#   break :staleLoop
+#   break :stateLoop
 # else:
 #   return
 
@@ -172,7 +172,7 @@ type
     stateLoopLabel: PSym # Label to break on, when jumping between states.
     tempVarId: int # unique name counter
     hasExceptions: bool # Does closure have yield in try?
-    curExcLandingState: PNode # Negative for except, positive for finally
+    curExcLandingState: PNode
     curFinallyLevel: int
     idgen: IdGenerator
     varStates: Table[ItemId, int] # Used to detect if local variable belongs to multiple states
