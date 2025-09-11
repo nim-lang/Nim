@@ -1465,6 +1465,8 @@ proc isNil*[T: proc | iterator {.closure.}](x: T): bool {.noSideEffect, magic: "
   ## Fast check whether `x` is nil. This is sometimes more efficient than
   ## `== nil`.
 
+proc supportsCopyMem(t: typedesc): bool {.magic: "TypeTrait".}
+
 when defined(nimHasTopDownInference):
   # magic used for seq type inference
   proc `@`*[T](a: openArray[T]): seq[T] {.magic: "OpenArrayToSeq".} =
@@ -1472,8 +1474,17 @@ when defined(nimHasTopDownInference):
     ##
     ## This is not as efficient as turning a fixed length array into a sequence
     ## as it always copies every element of `a`.
-    newSeq(result, a.len)
-    for i in 0..a.len-1: result[i] = a[i]
+    let sz = a.len
+    when supportsCopyMem(T) and not defined(js):
+      result = newSeqUninit[T](sz)
+      when nimvm:
+        for i in 0..sz-1: result[i] = a[i]
+      else:
+        if sz != 0:
+          copyMem(addr result[0], addr a[0], sizeof(T) * sz)
+    else:
+      newSeq(result, sz)
+      for i in 0..sz-1: result[i] = a[i]
 else:
   proc `@`*[T](a: openArray[T]): seq[T] =
     ## Turns an *openArray* into a sequence.
@@ -1643,8 +1654,6 @@ when not defined(js) and defined(nimV2):
         else:
           vTable: UncheckedArray[pointer] # vtable for types
     PNimTypeV2 = ptr TNimTypeV2
-
-proc supportsCopyMem(t: typedesc): bool {.magic: "TypeTrait".}
 
 when notJSnotNims and defined(nimSeqsV2):
   include "system/strs_v2"
