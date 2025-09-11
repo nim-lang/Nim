@@ -379,7 +379,9 @@ proc useVar(a: PEffects, n: PNode) =
       # If the variable is explicitly marked as .noinit. do not emit any error
       a.init.add s.id
     elif s.id notin a.init:
-      if s.typ.requiresInit:
+      if s.kind == skResult and tfRequiresInit in s.typ.flags:
+        localError(a.config, n.info, "'result' requires explicit initialization")
+      elif s.typ.requiresInit:
         message(a.config, n.info, warnProveInit, s.name.s)
       elif a.leftPartOfAsgn <= 0:
         if strictDefs in a.c.features:

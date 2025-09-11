@@ -249,6 +249,7 @@ type
                             # to not slow down interpretation
     globals*: PNode         #
     constants*: PNode       # constant data
+    contstantTab*: TNodeTable
     types*: seq[PType]      # some instructions reference types (e.g. 'except')
     currentExceptionA*, currentExceptionB*: PNode
     exceptionInstr*: int # index of instruction that raised the exception
@@ -298,7 +299,8 @@ proc newCtx*(module: PSym; cache: IdentCache; g: ModuleGraph; idgen: IdGenerator
     prc: PProc(blocks: @[]), module: module, loopIterations: g.config.maxLoopIterationsVM,
     callDepth: g.config.maxCallDepthVM,
     comesFromHeuristic: unknownLineInfo, callbacks: @[], callbackIndex: initTable[string, int](), errorFlag: "",
-    cache: cache, config: g.config, graph: g, idgen: idgen)
+    cache: cache, config: g.config, graph: g, idgen: idgen,
+    contstantTab: initNodeTable(true))
 
 proc refresh*(c: PCtx, module: PSym; idgen: IdGenerator) =
   c.module = module
