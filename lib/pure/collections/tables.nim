@@ -707,7 +707,7 @@ template withValue*[A, B](t: Table[A, B], key: A,
   mixin rawGet
   var hc: Hash
   var index = rawGet(t, key, hc)
-  if index > 0:
+  if index >= 0:
     let value {.cursor, inject.} = t.data[index].val
     body1
   else:
