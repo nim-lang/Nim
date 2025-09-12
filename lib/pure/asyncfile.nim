@@ -428,7 +428,7 @@ proc write*(f: AsyncFile, data: string): Future[void] =
           dealloc buffer
           buffer = nil
     )
-    ol.offset = DWORD(f.offset and 0xffffffff)
+    ol.offset = cast[DWORD](f.offset and 0xffffffff)
     ol.offsetHigh = DWORD(f.offset shr 32)
     f.offset.inc(data.len)
 

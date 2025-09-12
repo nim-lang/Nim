@@ -32,7 +32,7 @@ doAssert(sqrt(x) == 3.0)
 var z = -10.0
 try:
   myoverload(StrictPositive(z))
-except:
+except Exception:
   echo "range fail expected"
 
 
@@ -45,6 +45,6 @@ doAssert(strictOnlyProc(x2))
 try:
   let x4 = 0.0.Positive
   discard strictOnlyProc(x4)
-except:
+except Exception:
   echo "range fail expected"
 

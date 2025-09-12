@@ -713,6 +713,70 @@ iterator items*(tab: TStrTable): PSym =
     yield s
     s = nextIter(it, tab)
 
+proc isNil(x: ItemId): bool {.inline.} =
+  x.module == 0 and x.item == 0
+
+proc hasEmptySlot[T](data: TIdPairSeq[T]): bool =
+  for h in 0..high(data):
+    if isNil(data[h].key):
+      return true
+  result = false
+
+proc idTableRawGet[T](t: TIdTable[T], key: int): int =
+  var h: Hash
+  h = key and high(t.data)    # start with real hash value
+  while not isNil(t.data[h].key):
+    if toId(t.data[h].key) == key:
+      return h
+    h = nextTry(h, high(t.data))
+  result = - 1
+
+proc getOrDefault*[T](t: TIdTable[T], key: ItemId): T =
+  var index = idTableRawGet(t, toId(key))
+  if index >= 0: result = t.data[index].val
+  else: result = default(T)
+
+template idTableGet*[T](t: TIdTable[T], key: PType | PSym): T =
+  getOrDefault(t, key.itemId)
+
+proc idTableRawInsert[T](data: var TIdPairSeq[T], key: ItemId, val: T) =
+  var h: Hash
+  let keyId = toId(key)
+  h = keyId and high(data)
+  while not isNil(data[h].key):
+    assert(toId(data[h].key) != keyId)
+    h = nextTry(h, high(data))
+  assert(isNil(data[h].key))
+  data[h].key = key
+  data[h].val = val
+
+proc `[]=`*[T](t: var TIdTable[T], key: ItemId, val: T) =
+  var
+    index: int
+    n: TIdPairSeq[T]
+  index = idTableRawGet(t, toId(key))
+  if index >= 0:
+    assert(not isNil(t.data[index].key))
+    t.data[index].val = val
+  else:
+    if mustRehash(t.data.len, t.counter):
+      newSeq(n, t.data.len * GrowthFactor)
+      for i in 0..high(t.data):
+        if not isNil(t.data[i].key):
+          idTableRawInsert(n, t.data[i].key, t.data[i].val)
+      assert(hasEmptySlot(n))
+      swap(t.data, n)
+    idTableRawInsert(t.data, key, val)
+    inc(t.counter)
+
+template idTablePut*[T](t: var TIdTable[T], key: PType | PSym, val: T) =
+  t[key.itemId] = val
+
+iterator idTablePairs*[T](t: TIdTable[T]): tuple[key: ItemId, val: T] =
+  for i in 0..high(t.data):
+    if not isNil(t.data[i].key):
+      yield (t.data[i].key, t.data[i].val)
+
 proc initIITable(x: var TIITable) =
   x.counter = 0
   newSeq(x.data, StartSize)
