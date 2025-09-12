@@ -4,6 +4,18 @@ import re
 import sys
 import traceback
 
+# Add compatibility for older GDB versions
+if not hasattr(gdb, 'SYMBOL_FUNCTION_DOMAIN'):
+    gdb.SYMBOL_FUNCTION_DOMAIN = 0  # This is the value used in newer GDB versions
+
+# Configure demangling for Itanium C++ ABI (which Nim uses)
+try:
+    gdb.execute("set demangle-style gnu-v3")  # GNU v3 style handles Itanium mangling
+    gdb.execute("set print asm-demangle on")
+    gdb.execute("set print demangle on")
+except Exception as e:
+    gdb.write(f"Warning: Could not configure demangling: {str(e)}\n", gdb.STDERR)
+
 # some feedback that the nim runtime support is loading, isn't a bad
 # thing at all.
 gdb.write("Loading Nim Runtime support.\n", gdb.STDERR)
@@ -70,12 +82,12 @@ class NimTypeRecognizer:
   type_map_static = {
     'NI': 'system.int',  'NI8': 'int8', 'NI16': 'int16',  'NI32': 'int32',
     'NI64': 'int64',
-    
+
     'NU': 'uint', 'NU8': 'uint8','NU16': 'uint16', 'NU32': 'uint32',
     'NU64': 'uint64',
-    
+
     'NF': 'float', 'NF32': 'float32', 'NF64': 'float64',
-    
+
     'NIM_BOOL': 'bool',
 
     'NIM_CHAR': 'char', 'NCSTRING': 'cstring', 'NimStringDesc': 'string', 'NimStringV2': 'string'
@@ -556,7 +568,7 @@ class NimSeqPrinter:
         except RuntimeError:
           inaccessible = True
           yield "data[{0}]".format(i), "inaccessible"
-      
+
 ################################################################################
 
 class NimArrayPrinter:
