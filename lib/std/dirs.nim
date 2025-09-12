@@ -4,6 +4,7 @@ from std/paths import Path, ReadDirEffect, WriteDirEffect
 
 from std/private/osdirs import dirExists, createDir, existsOrCreateDir, removeDir,
                                moveDir, walkDir, setCurrentDir,
+                               copyDir, copyDirWithPermissions,
                                walkDirRec, PathComponent
 
 export PathComponent
@@ -133,3 +134,59 @@ proc setCurrentDir*(newDir: Path) {.inline, tags: [].} =
   ## See also:
   ## * `getCurrentDir proc <paths.html#getCurrentDir>`_
   osdirs.setCurrentDir(newDir.string)
+
+proc copyDir*(source, dest: Path; skipSpecial = false) {.inline,
+  tags: [ReadDirEffect, WriteIOEffect, ReadIOEffect].} =
+  ## Copies a directory from `source` to `dest`.
+  ##
+  ## On non-Windows OSes, symlinks are copied as symlinks. On Windows, symlinks
+  ## are skipped.
+  ##
+  ## If `skipSpecial` is true, then (besides all directories) only *regular*
+  ## files (**without** special "file" objects like FIFOs, device files,
+  ## etc) will be copied on Unix.
+  ##
+  ## If this fails, `OSError` is raised.
+  ##
+  ## On the Windows platform this proc will copy the attributes from
+  ## `source` into `dest`.
+  ##
+  ## On other platforms created files and directories will inherit the
+  ## default permissions of a newly created file/directory for the user.
+  ## Use `copyDirWithPermissions proc`_
+  ## to preserve attributes recursively on these platforms.
+  ##
+  ## See also:
+  ## * `copyDirWithPermissions proc`_
+  copyDir(source.string, dest.string, skipSpecial)
+
+proc copyDirWithPermissions*(source, dest: Path;
+                             ignorePermissionErrors = true,
+                             skipSpecial = false)
+  {.inline, tags: [ReadDirEffect, WriteIOEffect, ReadIOEffect].} =
+  ## Copies a directory from `source` to `dest` preserving file permissions.
+  ##
+  ## On non-Windows OSes, symlinks are copied as symlinks. On Windows, symlinks
+  ## are skipped.
+  ##
+  ## If `skipSpecial` is true, then (besides all directories) only *regular*
+  ## files (**without** special "file" objects like FIFOs, device files,
+  ## etc) will be copied on Unix.
+  ##
+  ## If this fails, `OSError` is raised. This is a wrapper proc around
+  ## `copyDir`_ and `copyFileWithPermissions`_ procs
+  ## on non-Windows platforms.
+  ##
+  ## On Windows this proc is just a wrapper for `copyDir proc`_ since
+  ## that proc already copies attributes.
+  ##
+  ## On non-Windows systems permissions are copied after the file or directory
+  ## itself has been copied, which won't happen atomically and could lead to a
+  ## race condition. If `ignorePermissionErrors` is true (default), errors while
+  ## reading/setting file attributes will be ignored, otherwise will raise
+  ## `OSError`.
+  ##
+  ## See also:
+  ## * `copyDir proc`_
+  copyDirWithPermissions(source.string, dest.string,
+                              ignorePermissionErrors, skipSpecial)

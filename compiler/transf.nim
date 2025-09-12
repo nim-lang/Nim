@@ -259,7 +259,8 @@ proc transformBlock(c: PTransf, n: PNode): PNode =
   var labl: PSym
   if c.inlining > 0:
     labl = newLabel(c, n[0])
-    c.transCon.mapping[n[0].sym.itemId] = newSymNode(labl)
+    if n[0].kind != nkEmpty:
+      c.transCon.mapping[n[0].sym.itemId] = newSymNode(labl)
   else:
     labl =
       if n[0].kind != nkEmpty:
@@ -552,7 +553,34 @@ proc transformConv(c: PTransf, n: PNode): PNode =
     # we don't include uint and uint64 here as these are no ordinal types ;-)
     if not isOrdinalType(source):
       # float -> int conversions. ugh.
-      result = transformSons(c, n)
+      # generate a range check:
+      if dest.kind in tyInt..tyInt64:
+        if dest.kind == tyInt64 or source.kind == tyInt64:
+          result = newTransNode(nkChckRange64, n, 3)
+        else:
+          result = newTransNode(nkChckRange, n, 3)
+        dest = skipTypes(n.typ, abstractVar)
+
+        if dest.size < source.size:
+          let intType =
+            if source.size == 4:
+              getSysType(c.graph, n.info, tyInt32)
+            else:
+              getSysType(c.graph, n.info, tyInt64)
+          result[0] = 
+            newTreeIT(n.kind, n.info, n.typ, n[0],
+              newTreeIT(nkConv, n.info, intType,
+              newNodeIT(nkType, n.info, intType), transform(c, n[1]))
+            )
+
+        else:
+          result[0] = transformSons(c, n)
+
+        result[1] = newIntTypeNode(firstOrd(c.graph.config, dest), dest)
+        result[2] = newIntTypeNode(lastOrd(c.graph.config, dest), dest)
+      else:
+        result = transformSons(c, n)
+
     elif firstOrd(c.graph.config, n.typ) <= firstOrd(c.graph.config, n[1].typ) and
         lastOrd(c.graph.config, n[1].typ) <= lastOrd(c.graph.config, n.typ):
       # BUGFIX: simply leave n as it is; we need a nkConv node,
@@ -800,12 +828,20 @@ proc transformFor(c: PTransf, n: PNode): PNode =
         t = formal.ast.typ # better use the type that actually has a destructor.
       elif t.destructor == nil and arg.typ.destructor != nil:
         t = arg.typ
-      # generate a temporary and produce an assignment statement:
-      var temp = newTemp(c, t, formal.info)
-      #incl(temp.sym.flags, sfCursor)
-      addVar(v, temp)
-      stmtList.add(newAsgnStmt(c, nkFastAsgn, temp, arg, true))
-      newC.mapping[formal.itemId] = temp
+
+      if arg.kind in {nkDerefExpr, nkHiddenDeref}:
+        # optimizes for `[]` # bug #24093
+        var temp = newTemp(c, arg[0].typ, formal.info)
+        addVar(v, temp)
+        stmtList.add(newAsgnStmt(c, nkFastAsgn, temp, arg[0], true))
+        newC.mapping[formal.itemId] = newDeref(temp)
+      else:
+        # generate a temporary and produce an assignment statement:
+        var temp = newTemp(c, t, formal.info)
+        #incl(temp.sym.flags, sfCursor)
+        addVar(v, temp)
+        stmtList.add(newAsgnStmt(c, nkFastAsgn, temp, arg, true))
+        newC.mapping[formal.itemId] = temp
     of paVarAsgn:
       assert(skipTypes(formal.typ, abstractInst).kind in {tyVar, tyLent})
       newC.mapping[formal.itemId] = arg

@@ -74,6 +74,7 @@ import std/parseutils
 from std/math import pow, floor, log10
 from std/algorithm import fill, reverse
 import std/enumutils
+from std/bitops import fastLog2
 
 from std/unicode import toLower, toUpper
 export toLower, toUpper
@@ -2639,37 +2640,35 @@ func formatSize*(bytes: int64,
   ## * `strformat module<strformat.html>`_ for string interpolation and formatting
   runnableExamples:
     doAssert formatSize((1'i64 shl 31) + (300'i64 shl 20)) == "2.293GiB"
-    doAssert formatSize((2.234*1024*1024).int) == "2.234MiB"
+    doAssert formatSize((2.234*1024*1024).int) == "2.233MiB"
     doAssert formatSize(4096, includeSpace = true) == "4 KiB"
     doAssert formatSize(4096, prefix = bpColloquial, includeSpace = true) == "4 kB"
     doAssert formatSize(4096) == "4KiB"
-    doAssert formatSize(5_378_934, prefix = bpColloquial, decimalSep = ',') == "5,13MB"
+    doAssert formatSize(5_378_934, prefix = bpColloquial, decimalSep = ',') == "5,129MB"
 
-  const iecPrefixes = ["", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi", "Yi"]
-  const collPrefixes = ["", "k", "M", "G", "T", "P", "E", "Z", "Y"]
-  var
-    xb: int64 = bytes
-    fbytes: float
-    lastXb: int64 = bytes
-    matchedIndex = 0
-    prefixes: array[9, string]
+  # It doesn't needs Zi and larger units until we use int72 or larger ints.
+  const iecPrefixes = ["", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei"]
+  const collPrefixes = ["", "k", "M", "G", "T", "P", "E"]
+
+  let lg2 = if bytes == 0:
+      0
+    else:
+      when hasWorkingInt64:
+        fastLog2(bytes)
+      else:
+        fastLog2(int32 bytes)
+  let matchedIndex = lg2 div 10
+  # Lower bits that are smaller than 0.001 when `bytes` is converted to a real number and added prefix, are discard.
+  # Then it is converted to float with round down.
+  let discardBits = (lg2 div 10 - 1) * 10
+
+  var prefixes: array[7, string]
   if prefix == bpColloquial:
     prefixes = collPrefixes
   else:
     prefixes = iecPrefixes
 
-  # Iterate through prefixes seeing if value will be greater than
-  # 0 in each case
-  for index in 1..<prefixes.len:
-    lastXb = xb
-    xb = bytes div (1'i64 shl (index*10))
-    matchedIndex = index
-    if xb == 0:
-      xb = lastXb
-      matchedIndex = index - 1
-      break
-  # xb has the integer number for the latest value; index should be correct
-  fbytes = bytes.float / (1'i64 shl (matchedIndex*10)).float
+  let fbytes = if lg2 < 10: bytes.float elif lg2 < 20: bytes.float / 1024.0 else: (bytes shr discardBits).float / 1024.0
   result = formatFloat(fbytes, format = ffDecimal, precision = 3,
       decimalSep = decimalSep)
   result.trimZeros(decimalSep)

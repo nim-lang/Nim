@@ -25,3 +25,23 @@ block:
     var m = uint64(12)
     foo(culonglong(m))
   main()
+
+block: # bug #25109
+  type T = culonglong
+  proc r(c: var T) = c = 1
+  proc h(a: var culonglong) = r(T(a))
+  var a: culonglong
+  h(a)
+  doAssert a == 1
+
+block: # bug #25111
+  type T = culonglong
+  proc r(c: var T) = c = 1
+
+  proc foo =
+    var a: uint64
+    r(T(a))
+    doAssert a == 1
+
+  foo()
+
