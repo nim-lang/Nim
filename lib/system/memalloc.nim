@@ -330,9 +330,9 @@ when hasAlloc and not defined(js):
       # plus 2 bytes to store offset
       let base =
         when compileOption("threads"):
-          allocShared(size +% align -% 1 +% sizeof(uint16))
+          allocShared(cast[Natural](size +% align -% 1 +% sizeof(uint16)))
         else:
-          alloc(size +% align -% 1 +% sizeof(uint16))
+          alloc(cast[Natural](size +% align -% 1 +% sizeof(uint16)))
       # memory layout: padding + offset (2 bytes) + user_data
       # in order to deallocate: read offset at user_data - 2 bytes,
       # then deallocate user_data - offset
