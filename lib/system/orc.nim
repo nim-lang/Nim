@@ -425,7 +425,7 @@ proc collectCycles() =
       discard
     elif j.freed *% 2 >= j.touched:
       when not defined(nimFixedOrc):
-        rootsThreshold = max(rootsThreshold div 2 +% rootsThreshold, 16)
+        rootsThreshold = max(rootsThreshold div 3 *% 2, 16)
       else:
         rootsThreshold = 0
       #cfprintf(cstderr, "[collectCycles] freed %ld, touched %ld new threshold %ld\n", j.freed, j.touched, rootsThreshold)
