@@ -25,6 +25,10 @@ template hasTypeof(x: typed) =
   discard x
   discard typeof(x)(1)
 
+template hasCastTypeof(x: typed) =
+  discard x
+  discard cast[typeof(x)](1)
+
 proc test =
   foo:
     block:
@@ -49,5 +53,8 @@ proc test =
 
   block:
     hasTypeof((var a = 0; a))
+
+  block:
+    hasCastTypeof((var a = 0; a))
 
 test()

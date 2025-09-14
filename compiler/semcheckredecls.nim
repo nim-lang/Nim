@@ -25,7 +25,7 @@ proc semCheckRedeclsImpl(c: var CheckRedeclsContext; n: PNode) =
 
         # n2[^1] is an initializer can have var/let sections
         semCheckRedeclsImpl(c, n2[^1])
-  elif n.kind == nkTypeOfExpr:
+  elif n.kind == nkTypeOfExpr or (n.kind == nkCall and n.len > 0 and (let i = n[0].getPIdent; i != nil and i.s == "typeof")):
     #[
       ```nim
       proc foo =
