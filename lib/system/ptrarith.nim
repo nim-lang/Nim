@@ -5,10 +5,13 @@ proc align(address, alignment: int): int {.used.} =
                      # hide problems.
     address
   else:
-    (address +% (alignment -% 1)) and not (alignment -% 1)
+    let
+      address = cast[uint](address)
+      alignment1 = cast[uint](alignment) - 1
+    cast[int]((address + alignment1) and not alignment1)
 
 template `+!`(p: pointer, s: SomeInteger): pointer {.used.} =
-  cast[pointer](cast[int](p) +% cast[int](s))
+  cast[pointer](cast[uint](p) + cast[uint](s))
 
 template `-!`(p: pointer, s: SomeInteger): pointer {.used.} =
-  cast[pointer](cast[int](p) -% cast[int](s))
+  cast[pointer](cast[uint](p) - cast[uint](s))
