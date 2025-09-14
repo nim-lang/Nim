@@ -648,7 +648,11 @@ when not defined(noSignalHandler) and not defined(useNimRtl):
     # not use the GC at all in signal handlers but that requires redesigning
     # the stack trace mechanism
     when defined(windows):
-      setupForeignThreadGc()
+      when declared(initStackBottom):
+        initStackBottom()
+      when declared(initGC):
+        initGC()
+
     # On other platforms, if memory needs to be allocated and the signal happens
     # during memory allocation, we'll also (likely) see a crash and corrupt the
     # memory allocator - less frequently than on windows but still.
