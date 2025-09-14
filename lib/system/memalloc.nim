@@ -330,32 +330,19 @@ when hasAlloc and not defined(js):
       # plus 2 bytes to store offset
       let base =
         when compileOption("threads"):
-          allocShared(uint(size +% align -% 1 +% sizeof(uint16)))
+          allocShared(size +% align -% 1 +% sizeof(uint16))
         else:
-          alloc(uint(size +% align -% 1 +% sizeof(uint16)))
+          alloc(size +% align -% 1 +% sizeof(uint16))
       # memory layout: padding + offset (2 bytes) + user_data
       # in order to deallocate: read offset at user_data - 2 bytes,
       # then deallocate user_data - offset
       let offset = align -% cast[int](cast[uint](base) and uint(align -% 1))
-      cast[ptr uint16](base +! (offset -% sizeof(uint16)))[] = uint16(offset)
       result = base +! offset
+      cast[ptr uint16](result -! sizeof(uint16))[] = uint16(offset)
 
   proc alignedAlloc0(size, align: Natural): pointer =
-    if align <= MemAlign:
-      when compileOption("threads"):
-        result = allocShared0(size)
-      else:
-        result = alloc0(size)
-    else:
-      # see comments for alignedAlloc
-      let base =
-        when compileOption("threads"):
-          allocShared0(size +% align -% 1 +% sizeof(uint16))
-        else:
-          alloc0(size +% align -% 1 +% sizeof(uint16))
-      let offset = align -% cast[int](cast[uint](base) and uint(align -% 1))
-      cast[ptr uint16](base +! (offset -% sizeof(uint16)))[] = uint16(offset)
-      result = base +! offset
+    result = alignedAlloc(size, align)
+    zeroMem(result, size)
 
   proc alignedDealloc(p: pointer, align: int) {.compilerproc.} =
     if align <= MemAlign:

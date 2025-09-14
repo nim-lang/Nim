@@ -8,7 +8,7 @@ proc align(address, alignment: int): int {.used.} =
     (address +% (alignment -% 1)) and not (alignment -% 1)
 
 template `+!`(p: pointer, s: SomeInteger): pointer {.used.} =
-  cast[pointer](cast[uint](p) + cast[uint](s))
+  cast[pointer](cast[int](p) +% cast[int](s))
 
 template `-!`(p: pointer, s: SomeInteger): pointer {.used.} =
-  cast[pointer](cast[uint](p) - cast[uint](s))
+  cast[pointer](cast[int](p) -% cast[int](s))

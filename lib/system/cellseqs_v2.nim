@@ -18,7 +18,7 @@ type
 
 proc resize[T](s: var CellSeq[T]) =
   s.cap = s.cap div 2 +% s.cap
-  let newSize = uint(s.cap *% sizeof(CellTuple[T]))
+  let newSize = s.cap *% sizeof(CellTuple[T])
   when compileOption("threads"):
     s.d = cast[CellArray[T]](reallocShared(s.d, newSize))
   else:
@@ -34,9 +34,9 @@ proc init[T](s: var CellSeq[T], cap: int = 1024) =
   s.len = 0
   s.cap = cap
   when compileOption("threads"):
-    s.d = cast[CellArray[T]](allocShared(uint(s.cap *% sizeof(CellTuple[T]))))
+    s.d = cast[CellArray[T]](allocShared(s.cap *% sizeof(CellTuple[T])))
   else:
-    s.d = cast[CellArray[T]](alloc(uint(s.cap *% sizeof(CellTuple[T]))))
+    s.d = cast[CellArray[T]](alloc(s.cap *% sizeof(CellTuple[T])))
 
 proc deinit[T](s: var CellSeq[T]) =
   if s.d != nil:
