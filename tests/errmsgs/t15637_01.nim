@@ -21,6 +21,10 @@ template bar(x, y, z: typed) =
   if true:
     z
 
+template hasTypeof(x: typed) =
+  discard x
+  discard typeof(x)(1)
+
 proc test =
   foo:
     block:
@@ -42,5 +46,8 @@ proc test =
     var b = 1
   do:
     const c = 1
+
+  block:
+    hasTypeof((var a = 0; a))
 
 test()
