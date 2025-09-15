@@ -287,7 +287,7 @@ block gensym2:
   template `!`(xx,yy: typed): untyped =
     template x: untyped {.gensym.} = xx
     template y: untyped {.gensym.} = yy
-    let z = x + x + y
+    let z = x + y
     z
   var
     a = 1
