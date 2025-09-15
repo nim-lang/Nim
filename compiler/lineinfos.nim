@@ -110,6 +110,7 @@ type
     hintSource = "Source", hintPerformance = "Performance", hintStackTrace = "StackTrace",
     hintGCStats = "GCStats", hintGlobalVar = "GlobalVar", hintExpandMacro = "ExpandMacro",
     hintUser = "User", hintUserRaw = "UserRaw", hintExtendedContext = "ExtendedContext",
+    hintUnknownRaises = "UnknownRaises",
     hintMsgOrigin = "MsgOrigin", # since 1.3.5
     hintDeclaredLoc = "DeclaredLoc", # since 1.5.1
 
@@ -236,6 +237,7 @@ const
     hintUser: "$1",
     hintUserRaw: "$1",
     hintExtendedContext: "$1",
+    hintUnknownRaises: "$1 is a forward declaration without explicit .raises, assuming it can raise anything",
     hintMsgOrigin: "$1",
     hintDeclaredLoc: "$1"
   ]
