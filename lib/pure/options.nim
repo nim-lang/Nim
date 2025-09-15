@@ -379,3 +379,12 @@ proc unsafeGet*[T](self: Option[T]): lent T {.inline.}=
   ## Generally, using the `get proc <#get,Option[T]>`_ is preferred.
   assert self.isSome
   result = self.val
+
+proc unsafeGet*[T](self: var Option[T]): var T {.inline.}=
+  ## Returns the value of a `some` mutably. The behavior is undefined for `none`.
+  ##
+  ## **Note:** Use this only when you are **absolutely sure** the value is present
+  ## (e.g. after checking with `isSome <#isSome,Option[T]>`_).
+  ## Generally, using the `get proc <#get,Option[T]_2>`_ is preferred.
+  assert self.isSome
+  result = self.val
