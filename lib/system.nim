@@ -1132,12 +1132,7 @@ import std/private/since
 import system/ctypes
 export ctypes
 
-proc align(address, alignment: int): int =
-  if alignment == 0: # Actually, this is illegal. This branch exists to actively
-                     # hide problems.
-    result = address
-  else:
-    result = (address + (alignment - 1)) and not (alignment - 1)
+include system/ptrarith
 
 include system/rawquits
 when defined(genode):
