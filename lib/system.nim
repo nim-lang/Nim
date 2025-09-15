@@ -2166,8 +2166,6 @@ when notJSnotNims and not gotoBasedExceptions:
     SafePoint = TSafePoint
 
 when not defined(js):
-  when declared(initAllocator):
-    initAllocator()
   when hasThreadSupport:
     when hostOS != "standalone":
       include system/threadimpl
