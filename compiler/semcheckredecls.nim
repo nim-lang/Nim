@@ -25,7 +25,7 @@ proc semCheckRedeclsImpl(c: var CheckRedeclsContext; n: PNode) =
 
         # n2[^1] is an initializer can have var/let sections
         semCheckRedeclsImpl(c, n2[^1])
-  elif n.kind == nkTypeOfExpr or (n.kind == nkCall and n.len > 0 and (let i = n[0].getPIdent; i != nil and i.s == "typeof")):
+  elif n.kind == nkTypeOfExpr or (n.kind == nkCall and n.len > 0 and (let i = n[namePos].getPIdent; i != nil and i.s == "typeof")):
     #[
       ```nim
       proc foo =
@@ -43,6 +43,9 @@ proc semCheckRedeclsImpl(c: var CheckRedeclsContext; n: PNode) =
           foo((var a = 0; a))
       ```
     ]#
+    discard
+  elif n.kind in {nkMacroDef, nkTemplateDef}:
+    # ignores macros and templates as they do nothing after sem.
     discard
   else:
     let isOpenScope = n.kind in nkOpenScopeKinds
