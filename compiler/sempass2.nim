@@ -11,7 +11,7 @@ import
   ast, astalgo, msgs, renderer, magicsys, types, idents, trees,
   wordrecg, options, guards, lineinfos, semfold, semdata,
   modulegraphs, varpartitions, typeallowed, nilcheck, errorhandling,
-  semstrictfuncs, suggestsymdb, pushpoppragmas
+  semstrictfuncs, suggestsymdb, pushpoppragmas, lowerings
 
 import std/[tables, intsets, strutils, sequtils]
 
@@ -379,7 +379,9 @@ proc useVar(a: PEffects, n: PNode) =
       # If the variable is explicitly marked as .noinit. do not emit any error
       a.init.add s.id
     elif s.id notin a.init:
-      if s.typ.requiresInit:
+      if s.kind == skResult and tfRequiresInit in s.typ.flags:
+        localError(a.config, n.info, "'result' requires explicit initialization")
+      elif s.typ.requiresInit:
         message(a.config, n.info, warnProveInit, s.name.s)
       elif a.leftPartOfAsgn <= 0:
         if strictDefs in a.c.features:
@@ -971,7 +973,7 @@ proc checkForSink(tracked: PEffects; n: PNode) =
 proc markCaughtExceptions(tracked: PEffects; g: ModuleGraph; info: TLineInfo; s: PSym; usageSym: var PSym) =
   when defined(nimsuggest):
     proc internalMarkCaughtExceptions(tracked: PEffects; q: var SuggestFileSymbolDatabase; info: TLineInfo) =
-      var si = q.findSymInfoIndex(info)
+      var si = q.findSymInfoIndex(info, true)
       if si != -1:
         q.caughtExceptionsSet[si] = true
         for w1 in tracked.caughtExceptions.nodes:
@@ -980,6 +982,25 @@ proc markCaughtExceptions(tracked: PEffects; g: ModuleGraph; info: TLineInfo; s:
 
     if optIdeExceptionInlayHints in tracked.config.globalOptions:
       internalMarkCaughtExceptions(tracked, g.suggestSymbols.mgetOrPut(info.fileIndex, newSuggestFileSymbolDatabase(info.fileIndex, true)), info)
+
+proc findHookKind(name: string): (bool, TTypeAttachedOp) =
+  case name.normalize
+  of "=wasmoved":
+    result = (true, attachedWasMoved)
+  of "=destroy":
+    result = (true, attachedDestructor)
+  of "=copy", "=":
+    result = (true, attachedAsgn)
+  of "=dup":
+    result = (true, attachedDup)
+  of "=sink":
+    result = (true, attachedSink)
+  of "=trace":
+    result = (true, attachedTrace)
+  of "=deepcopy":
+    result = (true, attachedDeepCopy)
+  else:
+    result = (false, attachedWasMoved)
 
 proc trackCall(tracked: PEffects; n: PNode) =
   template gcsafeAndSideeffectCheck() =
@@ -1069,18 +1090,17 @@ proc trackCall(tracked: PEffects; n: PNode) =
       checkBounds(tracked, n[1], n[2])
 
 
+  var n = n
   if a.kind == nkSym and a.sym.name.s.len > 0 and a.sym.name.s[0] == '=' and
         tracked.owner.kind != skMacro:
-    var opKind = find(AttachedOpToStr, a.sym.name.s.normalize)
-    if a.sym.name.s == "=": opKind = attachedAsgn.int
-    if opKind != -1:
+    var (isHook, opKind) = findHookKind(a.sym.name.s)
+    if isHook:
       # rebind type bounds operations after createTypeBoundOps call
       let t = n[1].typ.skipTypes({tyAlias, tyVar})
-      if a.sym != getAttachedOp(tracked.graph, t, TTypeAttachedOp(opKind)):
+      if a.sym != getAttachedOp(tracked.graph, t, opKind):
         createTypeBoundOps(tracked, t, n.info, explicit = true)
-        let op = getAttachedOp(tracked.graph, t, TTypeAttachedOp(opKind))
-        if op != nil:
-          n[0].sym = op
+        # replace builtin hooks with lifted ones
+        n = replaceHookMagic(tracked.c, n, opKind)
 
   if op != nil and op.kind == tyProc:
     for i in 1..<min(n.safeLen, op.signatureLen):

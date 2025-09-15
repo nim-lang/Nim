@@ -97,9 +97,6 @@ type
     key, upperBound: int
     level: int
 
-const
-  RegionHasLock = false # hasThreadSupport and defined(gcDestructors)
-
 type
   FreeCell {.final, pure.} = object
     # A free cell is a pointer that has been freed, meaning it became available for reuse.
@@ -161,8 +158,6 @@ type
     llmem: PLLChunk
     currMem, maxMem, freeMem, occ: int # memory sizes (allocated from OS)
     lastSize: int # needed for the case that OS gives us pages linearly
-    when RegionHasLock:
-      lock: SysLock
     when defined(gcDestructors):
       sharedFreeListBigChunks: PBigChunk # make no attempt at avoiding false sharing for now for this object field
 
@@ -680,12 +675,6 @@ proc getBigChunk(a: var MemRegion, size: int): PBigChunk =
   sysAssert((size and PageMask) == 0, "getBigChunk: unaligned chunk")
   result = findSuitableBlock(a, fl, sl)
 
-  when RegionHasLock:
-    if not a.lockActive:
-      a.lockActive = true
-      initSysLock(a.lock)
-    acquireSys a.lock
-
   if result == nil:
     if size < nimMinHeapPages * PageSize:
       result = requestOsChunks(a, nimMinHeapPages * PageSize)
@@ -707,16 +696,9 @@ proc getBigChunk(a: var MemRegion, size: int): PBigChunk =
 
   incl(a, a.chunkStarts, pageIndex(result))
   dec(a.freeMem, size)
-  when RegionHasLock:
-    releaseSys a.lock
 
 proc getHugeChunk(a: var MemRegion; size: int): PBigChunk =
   result = cast[PBigChunk](allocPages(a, size))
-  when RegionHasLock:
-    if not a.lockActive:
-      a.lockActive = true
-      initSysLock(a.lock)
-    acquireSys a.lock
   incCurrMem(a, size)
   # XXX add this to the heap links. But also remove it from it later.
   when false: a.addHeapLink(result, size)
@@ -728,8 +710,6 @@ proc getHugeChunk(a: var MemRegion; size: int): PBigChunk =
   result.prevSize = 1
   result.owner = addr a
   incl(a, a.chunkStarts, pageIndex(result))
-  when RegionHasLock:
-    releaseSys a.lock
 
 proc freeHugeChunk(a: var MemRegion; c: PBigChunk) =
   let size = c.size
@@ -794,8 +774,6 @@ else:
   template untrackSize(x) = discard
 
 proc deallocBigChunk(a: var MemRegion, c: PBigChunk) =
-  when RegionHasLock:
-    acquireSys a.lock
   dec a.occ, c.size
   untrackSize(c.size)
   sysAssert a.occ >= 0, "rawDealloc: negative occupied memory (case B)"
@@ -804,8 +782,6 @@ proc deallocBigChunk(a: var MemRegion, c: PBigChunk) =
     del(a, a.root, cast[int](addr(c.data)))
   if c.size >= HugeChunkSize: freeHugeChunk(a, c)
   else: freeBigChunk(a, c)
-  when RegionHasLock:
-    releaseSys a.lock
 
 when defined(gcDestructors):
   template atomicPrepend(head, elem: untyped) =

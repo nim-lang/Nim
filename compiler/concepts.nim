@@ -271,7 +271,10 @@ proc matchType(c: PContext; fo, ao: PType; m: var MatchCon): bool =
   var
     a = ao
     f = fo
-  
+  if a.isSelf:
+    if m.magic in {mArrPut, mArrGet}:
+      return false
+    a = m.potentialImplementation
   if a.kind in bindableTypes:
     a = existingBinding(m, ao)
     if a == ao and a.kind == tyGenericParam and a.hasElementType and a.elementType.kind != tyNone:
@@ -280,7 +283,7 @@ proc matchType(c: PContext; fo, ao: PType; m: var MatchCon): bool =
   if f.isConcept:
     if a.acceptsAllTypes:
       return false
-    if a.isConcept:
+    if a.skipTypes(ignorableForArgType).isConcept:
       # if f is a subset of a then any match to a will also match f. Not the other way around
       return conceptsMatch(c, a.reduceToBase, f.reduceToBase, m) >= mkSubset
     else:
@@ -319,7 +322,11 @@ proc matchType(c: PContext; fo, ao: PType; m: var MatchCon): bool =
     if a.kind in ignorableForArgType:
       result = matchType(c, f, a.skipTypes(ignorableForArgType), m)
     else:
-      result = sameType(f, a)
+      if a.kind == tyGenericInst:
+        # tyOr does this to generic typeclasses
+        result = a.base.sym == f.sym
+      else:
+        result = sameType(f, a)
   of tyEmpty, tyString, tyCstring, tyPointer, tyNil, tyUntyped, tyTyped, tyVoid:
     result = a.skipTypes(ignorableForArgType).kind == f.kind
   of tyBool, tyChar, tyInt..tyUInt64:
@@ -333,8 +340,11 @@ proc matchType(c: PContext; fo, ao: PType; m: var MatchCon): bool =
       result = true
     else:
       let ak = a.skipTypes(ignorableForArgType - {f.kind})
-      if ak.kind == f.kind and f.kidsLen == ak.kidsLen:
-        result = matchKids(c, f, ak, m)
+      if ak.kind == f.kind:
+        if f.base.kind == tyNone:
+          result = true
+        elif f.kidsLen == ak.kidsLen:
+          result = matchKids(c, f, ak, m)
   of tyGenericInvocation, tyGenericInst:
     result = false
     let ea = a.skipTypes(ignorableForArgType)
@@ -343,10 +353,11 @@ proc matchType(c: PContext; fo, ao: PType; m: var MatchCon): bool =
         k1 = f.kidsLen - ord(f.kind == tyGenericInst)
         k2 = ea.kidsLen - ord(ea.kind == tyGenericInst)
       if sameType(f.genericHead, ea.genericHead) and k1 == k2:
+        result = true
         for i in 1 ..< k2:
           if not matchType(c, f[i], ea[i], m):
+            result = false
             break
-        result = true
   of tyOrdinal:
     result = isOrdinalType(a, allowEnumWithHoles = false) or a.kind == tyGenericParam
   of tyStatic:
@@ -414,6 +425,10 @@ proc matchType(c: PContext; fo, ao: PType; m: var MatchCon): bool =
         result = matchType(c, ff, a, m)
         if result: break # and remember the binding!
         m.bindings.setToPreviousLayer()
+  of tySet:
+    result = false
+    if a.kind == tySet:
+      result = matchType(c, f.elementType, a.elementType, m)
   else:
     result = false
   if result and ao.kind == tyGenericParam:

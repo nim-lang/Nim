@@ -104,7 +104,7 @@ const
   isNilConversion = isConvertible # maybe 'isIntConv' fits better?
   maxInheritancePenalty = high(int) div 2
 
-proc markUsed*(c: PContext; info: TLineInfo, s: PSym; checkStyle = true)
+proc markUsed*(c: PContext; info: TLineInfo, s: PSym; checkStyle = true; isGenericInstance = false)
 proc markOwnerModuleAsUsed*(c: PContext; s: PSym)
 
 proc initCandidateAux(ctx: PContext,
@@ -1568,8 +1568,11 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
             # set['a'..'z'] and set[char] have different representations
             result = isNone
           else:
-            # but we can convert individual elements of the constructor
-            result = isConvertible
+            if result >= isConvertible:
+              # but we can convert individual elements of the constructor
+              result = isConvertible
+            else:
+              result = isNone
   of tyPtr, tyRef:
     a = reduceToBase(a)
     if a.kind == f.kind:
@@ -2185,6 +2188,8 @@ proc implicitConv(kind: TNodeKind, f: PType, arg: PNode, m: TCandidate,
   # keep varness
   if arg.typ != nil and arg.typ.kind == tyVar:
     result.typ() = toVar(result.typ, tyVar, c.idgen)
+    # copy the tfVarIsPtr flag
+    result.typ.flags = arg.typ.flags
   else:
     result.typ() = result.typ.skipTypes({tyVar})
 
@@ -2294,7 +2299,8 @@ proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
     # for generic type converters we need to check 'src <- a' before
     # 'f <- dest' in order to not break the unification:
     # see tests/tgenericconverter:
-    let srca = typeRel(m, src, a)
+    var convMatch = newCandidate(c, src)
+    let srca = typeRel(convMatch, src, a)
     if srca notin {isEqual, isGeneric, isSubtype}: continue
 
     # What's done below matches the logic in ``matchesAux``
@@ -2306,7 +2312,7 @@ proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
 
     let destIsGeneric = containsGenericType(dest)
     if destIsGeneric:
-      dest = generateTypeInstance(c, m.bindings, arg, dest)
+      dest = generateTypeInstance(c, convMatch.bindings, arg, dest)
     let fdest = typeRel(m, f, dest)
     if fdest in {isEqual, isGeneric} and not (dest.kind == tyLent and f.kind in {tyVar}):
       # can't fully mark used yet, may not be used in final call
@@ -2322,7 +2328,8 @@ proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
       # it is correct
       var param: PNode = nil
       if srca == isSubtype:
-        param = implicitConv(nkHiddenSubConv, src, copyTree(arg), m, c)
+        # convMatch used here to use its bindings to instantiate subtype:
+        param = implicitConv(nkHiddenSubConv, src, copyTree(arg), convMatch, c)
       elif src.kind in {tyVar}:
         # Analyse the converter return type.
         param = newNodeIT(nkHiddenAddr, arg.info, s.typ.firstParamType)

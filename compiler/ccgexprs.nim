@@ -962,6 +962,11 @@ proc cowBracket(p: BProc; n: PNode) =
 proc cow(p: BProc; n: PNode) {.inline.} =
   if n.kind == nkHiddenAddr: cowBracket(p, n[0])
 
+template ignoreConv(e: PNode): bool =
+  let destType = e.typ.skipTypes({tyVar, tyLent, tyGenericInst, tyAlias, tySink})
+  let srcType = e[1].typ.skipTypes({tyVar, tyLent, tyGenericInst, tyAlias, tySink})
+  sameBackendTypePickyAliases(destType, srcType)
+
 proc genAddr(p: BProc, e: PNode, d: var TLoc) =
   # careful  'addr(myptrToArray)' needs to get the ampersand:
   if e[0].typ.skipTypes(abstractInstOwned).kind in {tyRef, tyPtr}:
@@ -974,7 +979,15 @@ proc genAddr(p: BProc, e: PNode, d: var TLoc) =
     d.lode = e
   else:
     var a: TLoc = initLocExpr(p, e[0])
-    putIntoDest(p, d, e, addrLoc(p.config, a), a.storage)
+    if e[0].kind in {nkHiddenStdConv, nkHiddenSubConv, nkConv} and not ignoreConv(e[0]):
+      # addr (conv x) introduces a temp because `conv x` is not a rvalue
+      # transform addr ( conv ( x ) ) -> conv ( addr ( x ) )
+      var exprLoc: TLoc = initLocExpr(p, e[0][1])
+      var tmp = getTemp(p, e.typ, needsInit=false)
+      putIntoDest(p, tmp, e, cCast(getTypeDesc(p.module, e.typ), addrLoc(p.config, exprLoc)))
+      putIntoDest(p, d, e, rdLoc(tmp))
+    else:
+      putIntoDest(p, d, e, addrLoc(p.config, a), a.storage)
 
 template inheritLocation(d: var TLoc, a: TLoc) =
   if d.k == locNone: d.storage = a.storage
@@ -2205,7 +2218,7 @@ proc isTrivialTypesToSnippet(t: PType): Snippet =
   else:
     result = NimTrue
 
-proc genSetLengthSeq(p: BProc, e: PNode, d: var TLoc) =
+proc genSetLengthSeq(p: BProc, e: PNode, d: var TLoc, noinit = false) =
   if optSeqDestructors in p.config.globalOptions:
     e[1] = makeAddr(e[1], p.module.idgen)
     genCall(p, e, d)
@@ -2227,7 +2240,9 @@ proc genSetLengthSeq(p: BProc, e: PNode, d: var TLoc) =
     pExpr = cIfExpr(ra, cAddr(derefField(ra, "Sup")), NimNil)
   else:
     pExpr = ra
-  call.snippet = cCast(rt, cgCall(p, "setLengthSeqV2", pExpr, rti, rb,
+
+  let name = if noinit: "setLengthSeqUninit" else: "setLengthSeqV2"
+  call.snippet = cCast(rt, cgCall(p, name, pExpr, rti, rb,
           isTrivialTypesToSnippet(t.skipTypes(abstractInst)[0])))
 
   genAssignment(p, a, call, {})
@@ -2637,8 +2652,7 @@ proc genRangeChck(p: BProc, n: PNode, d: var TLoc) =
     putIntoDest(p, d, n, cCast(destType, wrapPar(val)), a.storage)
 
 proc genConv(p: BProc, e: PNode, d: var TLoc) =
-  let destType = e.typ.skipTypes({tyVar, tyLent, tyGenericInst, tyAlias, tySink})
-  if sameBackendTypeIgnoreRange(destType, e[1].typ):
+  if ignoreConv(e):
     expr(p, e[1], d)
   else:
     genSomeCast(p, e, d)
@@ -2967,6 +2981,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       p.s(cpsStmts).addCallStmt(cgsymValue(p.module, "nimGCunref"), ra)
   of mSetLengthStr: genSetLengthStr(p, e, d)
   of mSetLengthSeq: genSetLengthSeq(p, e, d)
+  of mSetLengthSeqUninit: genSetLengthSeq(p, e, d, noinit = true)
   of mIncl, mExcl, mCard, mLtSet, mLeSet, mEqSet, mMulSet, mPlusSet, mMinusSet,
      mInSet, mXorSet:
     genSetOp(p, e, d, op)

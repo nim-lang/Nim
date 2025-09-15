@@ -28,7 +28,7 @@ proc checkConstructedType*(conf: ConfigRef; info: TLineInfo, typ: PType) =
   if t.kind in tyTypeClasses: discard
   elif t.kind in {tyVar, tyLent} and t.elementType.kind in {tyVar, tyLent}:
     localError(conf, info, "type 'var var' is not allowed")
-  elif computeSize(conf, t) == szIllegalRecursion or isTupleRecursive(t):
+  elif computeSize(conf, t) == szIllegalRecursion or isRecursiveStructuralType(t):
     localError(conf, info, "illegal recursion in type '" & typeToString(t) & "'")
 
 proc searchInstTypes*(g: ModuleGraph; key: PType): PType =
@@ -68,8 +68,8 @@ type
   TReplTypeVars* = object
     c*: PContext
     typeMap*: LayeredIdTable  # map PType to PType
-    symMap*: SymMapping         # map PSym to PSym
-    localCache*: TypeMapping     # local cache for remembering already replaced
+    symMap*: SymMapping       # map PSym to PSym
+    localCache*: TypeMapping  # local cache for remembering already replaced
                               # types during instantiation of meta types
                               # (they are not stored in the global cache)
     info*: TLineInfo

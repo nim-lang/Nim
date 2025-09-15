@@ -526,7 +526,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
     let t = typ
     if t == nil: return
     if prefer in preferToResolveSymbols and t.sym != nil and
-         sfAnon notin t.sym.flags and t.kind != tySequence:
+         sfAnon notin t.sym.flags and t.kind notin {tySequence, tyInferred}:
       if t.kind == tyInt and isIntLit(t):
         if prefer == preferInlayHint:
           result = t.sym.name.s
@@ -766,7 +766,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
         prag.add("effectsOf: ")
         prag.add(effectsOfStr)
       if not hasImplicitRaises and prefer == preferInferredEffects and not isNil(t.owner) and not isNil(t.owner.typ) and not isNil(t.owner.typ.n) and (t.owner.typ.n.len > 0):
-        let effects = t.owner.typ.n[0]
+        let effects = t.n[0]
         if effects.kind == nkEffectList and effects.len == effectListLen:
           var inferredRaisesStr = ""
           let effs = effects[exceptionEffects]
@@ -1420,7 +1420,7 @@ proc sameBackendTypeIgnoreRange*(x, y: PType): bool =
 
 proc sameBackendTypePickyAliases*(x, y: PType): bool =
   var c = initSameTypeClosure()
-  c.flags.incl {IgnoreTupleFields, PickyCAliases, PickyBackendAliases}
+  c.flags.incl {IgnoreTupleFields, IgnoreRangeShallow, PickyCAliases, PickyBackendAliases}
   c.cmp = dcEqIgnoreDistinct
   result = sameTypeAux(x, y, c)
 
@@ -1514,6 +1514,17 @@ proc getAlign*(conf: ConfigRef; typ: PType): BiggestInt =
 proc getSize*(conf: ConfigRef; typ: PType): BiggestInt =
   computeSizeAlign(conf, typ)
   result = typ.size
+
+proc setImportedTypeSize*(conf: ConfigRef, t: PType, size: int) =
+  t.size = size
+  if tfPacked in t.flags or size <= 1:
+    t.align = 1
+  elif size <= 2:
+    t.align = 2
+  elif size <= 4:
+    t.align = 4
+  else:
+    t.align = floatInt64Align(conf)
 
 proc isConcept*(t: PType): bool=
   case t.kind
@@ -1886,7 +1897,7 @@ proc typeMismatch*(conf: ConfigRef; info: TLineInfo, formal, actual: PType, n: P
       processPragmaAndCallConvMismatch(msg, a, b, conf)
     localError(conf, info, msg)
 
-proc isTupleRecursive(t: PType, cycleDetector: var IntSet): bool =
+proc isRecursiveStructuralType(t: PType, cycleDetector: var IntSet): bool =
   if t == nil:
     return false
   if cycleDetector.containsOrIncl(t.id):
@@ -1897,19 +1908,30 @@ proc isTupleRecursive(t: PType, cycleDetector: var IntSet): bool =
     var cycleDetectorCopy: IntSet
     for a in t.kids:
       cycleDetectorCopy = cycleDetector
-      if isTupleRecursive(a, cycleDetectorCopy):
+      if isRecursiveStructuralType(a, cycleDetectorCopy):
+        return true
+  of tyProc:
+    result = false
+    var cycleDetectorCopy: IntSet
+    if t.returnType != nil:
+      cycleDetectorCopy = cycleDetector
+      if isRecursiveStructuralType(t.returnType, cycleDetectorCopy):
+        return true
+    for _, a in t.paramTypes:
+      cycleDetectorCopy = cycleDetector
+      if isRecursiveStructuralType(a, cycleDetectorCopy):
         return true
   of tyRef, tyPtr, tyVar, tyLent, tySink,
       tyArray, tyUncheckedArray, tySequence, tyDistinct:
-    return isTupleRecursive(t.elementType, cycleDetector)
+    return isRecursiveStructuralType(t.elementType, cycleDetector)
   of tyAlias, tyGenericInst:
-    return isTupleRecursive(t.skipModifier, cycleDetector)
+    return isRecursiveStructuralType(t.skipModifier, cycleDetector)
   else:
     return false
 
-proc isTupleRecursive*(t: PType): bool =
+proc isRecursiveStructuralType*(t: PType): bool =
   var cycleDetector = initIntSet()
-  isTupleRecursive(t, cycleDetector)
+  isRecursiveStructuralType(t, cycleDetector)
 
 proc isException*(t: PType): bool =
   # check if `y` is object type and it inherits from Exception

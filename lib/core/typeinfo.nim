@@ -134,19 +134,17 @@ else:
   proc zeroNewElements(len: int; p: pointer; addlen, elemSize, elemAlign: int) {.
     importCompilerProc.}
 
-template `+!!`(a, b): untyped = cast[pointer](cast[int](a) + b)
+include system/ptrarith
 
 proc getDiscriminant(aa: pointer, n: ptr TNimNode): int =
   assert(n.kind == nkCase)
-  var d: int
-  let a = cast[int](aa)
+  let a = aa +! n.offset
   case n.typ.size
-  of 1: d = int(cast[ptr uint8](a +% n.offset)[])
-  of 2: d = int(cast[ptr uint16](a +% n.offset)[])
-  of 4: d = int(cast[ptr uint32](a +% n.offset)[])
-  of 8: d = int(cast[ptr uint64](a +% n.offset)[])
+  of 1: int(cast[ptr uint8](a)[])
+  of 2: int(cast[ptr uint16](a)[])
+  of 4: int(cast[ptr uint32](a)[])
+  of 8: cast[int](cast[ptr uint64](a)[])
   else: raiseAssert "unreachable"
-  return d
 
 proc selectBranch(aa: pointer, n: ptr TNimNode): ptr TNimNode =
   let discr = getDiscriminant(aa, n)
@@ -240,9 +238,6 @@ proc skipRange(x: PNimType): PNimType {.inline.} =
   result = x
   if result.kind == tyRange: result = result.base
 
-proc align(address, alignment: int): int =
-  result = (address + (alignment - 1)) and not (alignment - 1)
-
 proc `[]`*(x: Any, i: int): Any =
   ## Accessor for an any `x` that represents an array or a sequence.
   case x.rawType.kind
@@ -250,7 +245,7 @@ proc `[]`*(x: Any, i: int): Any =
     let bs = x.rawType.base.size
     if i >=% x.rawType.size div bs:
       raise newException(IndexDefect, formatErrorIndexBound(i, x.rawType.size div bs))
-    return newAny(x.value +!! i*bs, x.rawType.base)
+    return newAny(x.value +! i*bs, x.rawType.base)
   of tySequence:
     when defined(gcDestructors):
       var s = cast[ptr NimSeqV2Reimpl](x.value)
@@ -259,14 +254,14 @@ proc `[]`*(x: Any, i: int): Any =
       let bs = x.rawType.base.size
       let ba = x.rawType.base.align
       let headerSize = align(sizeof(int), ba)
-      return newAny(s.p +!! (headerSize+i*bs), x.rawType.base)
+      return newAny(s.p +! (headerSize+i*bs), x.rawType.base)
     else:
       var s = cast[ppointer](x.value)[]
       if s == nil: raise newException(ValueError, "sequence is nil")
       let bs = x.rawType.base.size
       if i >=% cast[PGenSeq](s).len:
         raise newException(IndexDefect, formatErrorIndexBound(i, cast[PGenSeq](s).len-1))
-      return newAny(s +!! (align(GenericSeqSize, x.rawType.base.align)+i*bs), x.rawType.base)
+      return newAny(s +! (align(GenericSeqSize, x.rawType.base.align)+i*bs), x.rawType.base)
   else: raiseAssert "unreachable"
 
 proc `[]=`*(x: Any, i: int, y: Any) =
@@ -277,7 +272,7 @@ proc `[]=`*(x: Any, i: int, y: Any) =
     if i >=% x.rawType.size div bs:
       raise newException(IndexDefect, formatErrorIndexBound(i, x.rawType.size div bs))
     assert y.rawType == x.rawType.base
-    genericAssign(x.value +!! i*bs, y.value, y.rawType)
+    genericAssign(x.value +! i*bs, y.value, y.rawType)
   of tySequence:
     when defined(gcDestructors):
       var s = cast[ptr NimSeqV2Reimpl](x.value)
@@ -287,7 +282,7 @@ proc `[]=`*(x: Any, i: int, y: Any) =
       let ba = x.rawType.base.align
       let headerSize = align(sizeof(int), ba)
       assert y.rawType == x.rawType.base
-      genericAssign(s.p +!! (headerSize+i*bs), y.value, y.rawType)
+      genericAssign(s.p +! (headerSize+i*bs), y.value, y.rawType)
     else:
       var s = cast[ppointer](x.value)[]
       if s == nil: raise newException(ValueError, "sequence is nil")
@@ -295,7 +290,7 @@ proc `[]=`*(x: Any, i: int, y: Any) =
       if i >=% cast[PGenSeq](s).len:
         raise newException(IndexDefect, formatErrorIndexBound(i, cast[PGenSeq](s).len-1))
       assert y.rawType == x.rawType.base
-      genericAssign(s +!! (align(GenericSeqSize, x.rawType.base.align)+i*bs), y.value, y.rawType)
+      genericAssign(s +! (align(GenericSeqSize, x.rawType.base.align)+i*bs), y.value, y.rawType)
   else: raiseAssert "unreachable"
 
 proc len*(x: Any): int =
@@ -352,13 +347,13 @@ proc fieldsAux(p: pointer, n: ptr TNimNode,
   case n.kind
   of nkNone: assert(false)
   of nkSlot:
-    ret.add((n.name, newAny(p +!! n.offset, n.typ)))
+    ret.add((n.name, newAny(p +! n.offset, n.typ)))
     assert ret[ret.len()-1][0] != nil
   of nkList:
     for i in 0..n.len-1: fieldsAux(p, n.sons[i], ret)
   of nkCase:
     var m = selectBranch(p, n)
-    ret.add((n.name, newAny(p +!! n.offset, n.typ)))
+    ret.add((n.name, newAny(p +! n.offset, n.typ)))
     if m != nil: fieldsAux(p, m, ret)
 
 iterator fields*(x: Any): tuple[name: string, any: Any] =
@@ -409,7 +404,7 @@ proc `[]=`*(x: Any, fieldName: string, value: Any) =
   let n = getFieldNode(x.value, t.node, fieldName)
   if n != nil:
     assert n.typ == value.rawType
-    genericAssign(x.value +!! n.offset, value.value, value.rawType)
+    genericAssign(x.value +! n.offset, value.value, value.rawType)
   else:
     raise newException(ValueError, "invalid field name: " & fieldName)
 
@@ -422,7 +417,7 @@ proc `[]`*(x: Any, fieldName: string): Any =
   assert x.rawType.kind in {tyTuple, tyObject}
   let n = getFieldNode(x.value, t.node, fieldName)
   if n != nil:
-    result = Any(value: x.value +!! n.offset)
+    result = Any(value: x.value +! n.offset)
     result.rawType = n.typ
   elif x.rawType.kind == tyObject and x.rawType.base != nil:
     return `[]`(newAny(x.value, x.rawType.base), fieldName)

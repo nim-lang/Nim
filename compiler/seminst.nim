@@ -308,6 +308,8 @@ proc instantiateProcType(c: PContext, pt: LayeredIdTable,
       param.typ = result[i]
 
     result.n[i] = newSymNode(param)
+    if isRecursiveStructuralType(result[i]):
+      localError(c.config, originalParams[i].sym.info, "illegal recursion in type '" & typeToString(result[i]) & "'")
     propagateToOwner(result, result[i])
     addDecl(c, param)
 
@@ -318,6 +320,8 @@ proc instantiateProcType(c: PContext, pt: LayeredIdTable,
   cl.isReturnType = false
   result.n[0] = originalParams[0].copyTree
   if result[0] != nil:
+    if isRecursiveStructuralType(result[0]):
+      localError(c.config, originalParams[0].info, "illegal recursion in type '" & typeToString(result[0]) & "'")
     propagateToOwner(result, result[0])
 
   eraseVoidParams(result)
@@ -425,6 +429,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: LayeredIdTable,
     addDecl(c, s)
     entry.concreteTypes[i] = s.typ
     inc i
+  entry.genericParamsCount = i
   c.matchedConcept = nil
   pushProcCon(c, result)
   instantiateProcType(c, pt, result, info)
