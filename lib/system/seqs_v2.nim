@@ -57,12 +57,6 @@ proc newSeqPayloadUninit(cap, elemSize, elemAlign: int): pointer {.compilerRtl, 
   else:
     result = nil
 
-template `+!`(p: pointer, s: int): pointer =
-  cast[pointer](cast[int](p) +% s)
-
-template `-!`(p: pointer, s: int): pointer =
-  cast[pointer](cast[int](p) -% s)
-
 proc prepareSeqAdd(len: int; p: pointer; addlen, elemSize, elemAlign: int): pointer {.
     noSideEffect, tags: [], raises: [], compilerRtl.} =
   {.noSideEffect.}:
