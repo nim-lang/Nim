@@ -396,6 +396,19 @@ block: # mapIt + applyIt test
   doAssert nums[0] + nums[3] == 15
   doAssert strings[2] == "12"
 
+  proc testApplyItWithVarDecl() =
+    (var i = @[1, 2];i).applyIt(it + 10)
+    doAssert i == @[11, 12]
+
+  testApplyItWithVarDecl()
+
+  proc testApplyItReadsLocals(x: int): seq[int] =
+    result = @[1, 2]
+    let y = x
+    result.applyIt(it + x + y)
+
+  doAssert testApplyItReadsLocals(10) == @[21, 22]
+
 block: # newSeqWith tests
   var seq2D = newSeqWith(4, newSeq[bool](2))
   seq2D[0][0] = true

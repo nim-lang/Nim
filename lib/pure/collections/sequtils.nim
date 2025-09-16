@@ -1147,12 +1147,12 @@ template applyIt*(varSeq, op: untyped) =
     nums.applyIt(it * 3)
     assert nums[0] + nums[3] == 15
 
-  # Use anonymous proc so that `varSeq` is evaluated only once.
+  # Use pointer so that `varSeq` is evaluated only once and `applyIt` can modify it.
   # So `(var i = @[""];i).applyIt(it)` compiles without redeclaring the same variable many times.
-  (proc (s: var typeof(varSeq)) {.inline.} =
-    for i in low(s) .. high(s):
-      let it {.inject.} = s[i]
-      s[i] = op)(varSeq)
+  var ps = addr varSeq
+  for i in low(ps[]) .. high(ps[]):
+    let it {.inject.} = ps[][i]
+    ps[][i] = op
 
 template newSeqWith*(len: int, init: untyped): untyped =
   ## Creates a new `seq` of length `len`, calling `init` to initialize
