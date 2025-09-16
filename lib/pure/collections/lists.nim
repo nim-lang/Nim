@@ -712,6 +712,8 @@ proc remove*[T](L: var SinglyLinkedList[T], n: SinglyLinkedNode[T]): bool {.disc
     L.head = n.next
     if L.tail.next == n:
       L.tail.next = L.head # restore cycle
+    if L.tail == n:
+      L.tail = nil # reset tail if we removed the last node
   else:
     var prev {.cursor.} = L.head
     while prev.next != n and prev.next != nil:
