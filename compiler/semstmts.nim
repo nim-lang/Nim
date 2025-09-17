@@ -2305,6 +2305,8 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
   of "=wasmoved":
     if s.magic != mWasMoved:
       bindTypeHook(c, s, n, attachedWasMoved)
+      # nodestroy for `=wasmoved`
+      incl(s.flags, sfGeneratedOp)
   of "=dup":
     if s.magic != mDup:
       bindDupHook(c, s, n, attachedDup)
