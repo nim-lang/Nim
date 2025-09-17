@@ -2178,18 +2178,33 @@ when not defined(js):
     when declared(initGC): initGC()
 
 when notJSnotNims:
-  proc setControlCHook*(hook: proc () {.noconv.})
+  proc setControlCHook*(hook: proc () {.noconv.}) {.raises: [], gcsafe.}
     ## Allows you to override the behaviour of your application when CTRL+C
     ## is pressed. Only one such hook is supported.
-    ## Example:
     ##
-    ##   ```nim
+    ## The handler runs inside a C signal handler and comes with similar
+    ## limitations.
+    ##
+    ## Allocating memory and interacting with most system calls, including using
+    ## `echo`, `string`, `seq`, raising or catching exceptions etc is undefined
+    ## behavior and will likely lead to application crashes.
+    ##
+    ## The OS may call the ctrl-c handler from any thread, including threads
+    ## that were not created by Nim, such as happens on Windows.
+    ##
+    ## ## Example:
+    ##
+    ## ```nim
+    ##   var stop: Atomic[bool]
     ##   proc ctrlc() {.noconv.} =
-    ##     echo "Ctrl+C fired!"
-    ##     # do clean up stuff
-    ##     quit()
+    ##     # Using atomics types is safe!
+    ##     stop.store(true)
     ##
     ##   setControlCHook(ctrlc)
+    ##
+    ##   while not stop.load():
+    ##     echo "Still running.."
+    ##     sleep(1000)
     ##   ```
 
   when not defined(noSignalHandler) and not defined(useNimRtl):
