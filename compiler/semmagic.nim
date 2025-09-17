@@ -588,7 +588,7 @@ proc checkDefault(c: PContext, n: PNode; isDefault: bool): PNode =
   if constructed.requiresInit and constructed.skipTypes({tyGenericInst}).kind != tyRange:
     # TODO: sorts out `nimPreviewRangeDefault` with `ranges` in the future
     # TODO: be lenient with views and notnil types for now
-    if isDefault and c.config.features * {views, notnil} != {}:
+    if isDefault and c.config.features * {views, notnil} == {}:
       localError(c.config, n.info, "The '$1' type doesn't have a valid default value" % typeToString(constructed))
     else:
       message(c.config, n.info, warnUnsafeDefault, typeToString(constructed))
