@@ -1891,6 +1891,21 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
             return isNone
         if doBind: put(c, f, a)
         return isGeneric
+      elif effectiveArgType.kind == tyOr:
+        let oldInheritancePenalty = c.inheritancePenalty
+        var
+          bestPenatly = maxInheritancePenalty
+          bestMatch = isNone
+        for kid in effectiveArgType.kids:
+          let x = typeRel(c, f, kid, flags)
+          if x > bestMatch:
+            bestMatch = x
+            bestPenatly = c.inheritancePenalty
+          c.inheritancePenalty = oldInheritancePenalty
+        c.inheritancePenalty = oldInheritancePenalty
+        if bestMatch > isNone:
+          c.inheritancePenalty = bestPenatly
+          result = bestMatch
       else:
         return isNone
   of tyUserTypeClassInst, tyUserTypeClass:
