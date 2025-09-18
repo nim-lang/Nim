@@ -2303,6 +2303,9 @@ when notJSnotNims:
     else:
       result = n.sons[n.len]
 
+import std/private/digitsutils
+export addInt
+
 when notJSnotNims and hasAlloc:
   {.push profiler: off.}
   include "system/mmdisp"
