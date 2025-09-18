@@ -100,7 +100,7 @@ const
   stylePrefix = "\e["
 
 when defined(windows):
-  import std/[winlean, os]
+  import std/os
 
   const
     DUPLICATE_SAME_ACCESS = 2
@@ -978,9 +978,6 @@ proc resetAttributes*() {.noconv.} =
 proc isTrueColorSupported*(): bool =
   ## Returns true if a terminal supports true color.
   return getTerminal().trueColorIsSupported
-
-when defined(windows):
-  import std/os
 
 proc enableTrueColors*() =
   ## Enables true color.
