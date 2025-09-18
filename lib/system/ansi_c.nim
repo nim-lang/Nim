@@ -11,7 +11,7 @@
 # and definitions of Ansi C types in Nim syntax
 # All symbols are prefixed with 'c_' to avoid ambiguities
 
-{.push hints:off, stack_trace: off, profiler: off.}
+{.push hints:off, stack_trace: off, profiler: off, raises: [].}
 
 proc c_memchr*(s: pointer, c: cint, n: csize_t): pointer {.
   importc: "memchr", header: "<string.h>".}
