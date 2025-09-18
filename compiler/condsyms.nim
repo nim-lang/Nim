@@ -171,3 +171,5 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimHasJsNoLambdaLifting")
   defineSymbol("nimHasDefaultFloatRoundtrip")
   defineSymbol("nimHasXorSet")
+
+  defineSymbol("nimHasPreviewDuplicateModuleError")

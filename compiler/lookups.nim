@@ -388,7 +388,7 @@ proc addDeclAt*(c: PContext; scope: PScope, sym: PSym, info: TLineInfo) =
   if sym.name.id == ord(wUnderscore): return
   let conflict = scope.addUniqueSym(sym)
   if conflict != nil:
-    if sym.kind == skModule and conflict.kind == skModule:
+    if sym.kind == skModule and conflict.kind == skModule and not c.config.isDefined("nimPreviewDuplicateModuleError"):
       # e.g.: import foo; import foo
       # xxx we could refine this by issuing a different hint for the case
       # where a duplicate import happens inside an include.

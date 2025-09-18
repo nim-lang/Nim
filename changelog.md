@@ -25,6 +25,8 @@ errors.
 
 - `std/parsesql` has been moved to a nimble package, use `nimble` or `atlas` to install it.
 
+- With `-d:nimPreviewDuplicateModuleError`, importing two modules that share the same name becomes a compile-time error. This includes importing the same module more than once. Use `import foo as foo1` (or other aliases) to avoid collisions.
+
 ## Standard library additions and changes
 
 [//]: # "Additions:"
