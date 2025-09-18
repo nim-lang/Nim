@@ -858,12 +858,28 @@ proc genRaiseStmt(p: BProc, t: PNode) =
     of excCpp:
       blockLeaveActions(p, howManyTrys = 0, howManyExcepts = p.inExceptBlockLen)
     of excGoto:
-      var inExcept = 0
-      for i in 0..<p.nestedTryStmts.len:
-        if p.nestedTryStmts[i].inExcept:
-          inExcept = 1
-          break
-      blockLeaveActions(p, howManyTrys = 0, howManyExcepts = inExcept)
+      #[
+      There is a difference between:
+
+        try:
+          something()
+        except:
+          # bug #25037
+          try:
+            let tmp = someValue()
+            raise E(tmp)
+          finally:
+            destroy(tmp)
+
+      And:
+
+        try:
+          something()
+        except:
+          raise E
+      ]#
+      if noSafePoints notin p.flags:
+        p.s(cpsStmts).addCallStmt(cgsymValue(p.module, "popAllButOneCurrentExceptions"))
     else:
       discard
     genLineDir(p, t)

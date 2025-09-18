@@ -158,6 +158,10 @@ proc popCurrentException {.compilerRtl, inl.} =
   currException = currException.up
   #showErrorMessage2 "B"
 
+proc popAllButOneCurrentExceptions {.compilerRtl, inl.} =
+  while currException != nil and currException.up != nil:
+    currException = currException.up
+
 proc popCurrentExceptionEx(id: uint) {.compilerRtl.} =
   discard "only for bootstrapping compatbility"
 
