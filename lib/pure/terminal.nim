@@ -926,8 +926,6 @@ when defined(windows):
     stdout.write "\n"
 
 else:
-  import std/termios
-
   proc readPasswordFromStdin*(prompt: string, password: var string):
                             bool {.tags: [ReadIOEffect, WriteIOEffect].} =
     password.setLen(0)

@@ -10,7 +10,7 @@
 # Compilerprocs for strings that do not depend on the string implementation.
 
 import std/private/digitsutils
-
+export addInt
 
 proc cmpStrings(a, b: string): int {.inline, compilerproc.} =
   let alen = a.len
