@@ -333,7 +333,6 @@ proc fixupTypeAfterEval(c: PContext, evaluated, eOrig: PNode; producedClosure: v
       if hasCycle(result):
         result = localErrorNode(c, eOrig, "the resulting AST is cyclic and cannot be processed further")
       else:
-        echo "annotateType: ", renderTree(result, {renderNoComments})
         semmacrosanity.annotateType(result, expectedType, c.config, producedClosure)
   else:
     result = semExprWithType(c, evaluated)
