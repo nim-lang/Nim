@@ -2423,7 +2423,7 @@ proc finished*[T: iterator {.closure.}](x: T): bool {.noSideEffect, inline, magi
     `result` = ((NI*) `x`.ClE_0)[1] < 0;
     """.}
 
-import std/private/digitsutils
+from std/private/digitsutils import addInt
 export addInt
 
 when defined(js) and not defined(nimscript):
