@@ -86,7 +86,7 @@ proc ithField(t: PType, field: var FieldTracker): FieldInfo =
     base = b.baseClass
   result = ithField(t.n, field)
 
-proc annotateType*(n: PNode, t: PType; conf: ConfigRef) =
+proc annotateType*(n: PNode, t: PType; conf: ConfigRef; producedClosure: var bool) =
   let x = t.skipTypes(abstractInst+{tyRange})
   # Note: x can be unequal to t and we need to be careful to use 't'
   # to not to skip tyGenericInst
@@ -102,7 +102,7 @@ proc annotateType*(n: PNode, t: PType; conf: ConfigRef) =
         globalError conf, n.info, "invalid field at index " & $i
       else:
         internalAssert(conf, n[i].kind == nkExprColonExpr)
-        annotateType(n[i][1], field.sym.typ, conf)
+        annotateType(n[i][1], field.sym.typ, conf, producedClosure)
         if field.delete:
           # only codegen fields from active case branches
           incl(n[i].flags, nfPreventCg)
@@ -111,9 +111,11 @@ proc annotateType*(n: PNode, t: PType; conf: ConfigRef) =
       n.typ() = t
       for i in 0..<n.len:
         if i >= x.kidsLen: globalError conf, n.info, "invalid field at index " & $i
-        else: annotateType(n[i], x[i], conf)
+        else: annotateType(n[i], x[i], conf, producedClosure)
     elif x.kind == tyProc and x.callConv == ccClosure:
       n.typ() = t
+      if n.len > 1 and n[1].kind notin {nkEmpty, nkNilLit}:
+        producedClosure = true
     elif x.kind == tyOpenArray: # `opcSlice` transforms slices into tuples
       if n.kind == nkTupleConstr:
         let
@@ -125,11 +127,11 @@ proc annotateType*(n: PNode, t: PType; conf: ConfigRef) =
         of nkStrKinds:
           for i in left..right:
             bracketExpr.add newIntNode(nkCharLit, BiggestInt n[0].strVal[i])
-            annotateType(bracketExpr[^1], x.elementType, conf)
+            annotateType(bracketExpr[^1], x.elementType, conf, producedClosure)
         of nkBracket:
           for i in left..right:
             bracketExpr.add n[0][i]
-            annotateType(bracketExpr[^1], x.elementType, conf)
+            annotateType(bracketExpr[^1], x.elementType, conf, producedClosure)
         else:
           globalError(conf, n.info, "Incorrectly generated tuple constr")
         n[] = bracketExpr[]
@@ -140,7 +142,7 @@ proc annotateType*(n: PNode, t: PType; conf: ConfigRef) =
   of nkBracket:
     if x.kind in {tyArray, tySequence, tyOpenArray}:
       n.typ() = t
-      for m in n: annotateType(m, x.elemType, conf)
+      for m in n: annotateType(m, x.elemType, conf, producedClosure)
     else:
       globalError(conf, n.info, "[] must have some form of array type")
   of nkCurly:
@@ -148,10 +150,10 @@ proc annotateType*(n: PNode, t: PType; conf: ConfigRef) =
       n.typ() = t
       for m in n:
         if m.kind == nkRange:
-          annotateType(m[0], x.elemType, conf)
-          annotateType(m[1], x.elemType, conf)
+          annotateType(m[0], x.elemType, conf, producedClosure)
+          annotateType(m[1], x.elemType, conf, producedClosure)
         else:
-          annotateType(m, x.elemType, conf)
+          annotateType(m, x.elemType, conf, producedClosure)
     else:
       globalError(conf, n.info, "{} must have the set type")
   of nkFloatLit..nkFloat128Lit:
