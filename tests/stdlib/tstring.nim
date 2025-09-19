@@ -120,5 +120,42 @@ proc main() =
       doAssert c.len == 0
       doAssert c.high == -1
 
+  block: # setLen #setLenUninit
+    proc checkStrInternals(s: string; expectedLen: int) =
+      doAssert s.len == expectedLen, "expected:" & $expectedLen & " s.len:" & $s.len
+      when nimvm: discard
+      else:
+        when defined(UncheckedArray): # skip JS
+          let cs = s.cstring # allows to get data address without IndexDefect
+          let arr = cast[ptr UncheckedArray[char]](unsafeAddr cs[0])
+          doAssert arr[expectedLen] == '\0', "(no terminating zero)"
+
+    const numbers = "1234567890"
+    block setLen:
+      var s = numbers
+      s.setLen(0) # trim
+      s.checkStrInternals(expectedLen = 0)
+      doAssert s == ""
+
+      s = numbers
+      s.setLen(numbers.len+1) # growth
+      s.checkStrInternals(expectedLen = numbers.len+1)
+      doAssert s[0..9] == numbers[0..9], "(contents not copied)"
+      doAssert s[numbers.len] == '\0',   "(new space not zeroed)"
+
+    block setLenUninit:
+      var s = numbers
+      s.setLenUninit(numbers.len) # noop
+      s.checkStrInternals(expectedLen = numbers.len)
+      doAssert s == numbers
+
+      s.setLenUninit(5) # trim
+      s.checkStrInternals(expectedLen = 5)
+      doAssert s == "12345"
+
+      s.setLenUninit(11) # growth
+      s.checkStrInternals(expectedLen = 11)
+      doAssert s[0..4] == numbers[0..4]
+
 static: main()
 main()

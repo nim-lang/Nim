@@ -158,6 +158,26 @@ proc setLengthStrV2(s: var NimStringV2, newLen: int) {.compilerRtl.} =
     s.p.data[newLen] = '\0'
   s.len = newLen
 
+proc setLengthStrV2Uninit(s: var NimStringV2, newLen: int) =
+  if newLen == 0:
+    discard "do not free the buffer here, pattern 's.setLen 0' is common for avoiding allocations"
+  else:
+    if isLiteral(s):
+      let oldP = s.p
+      s.p = allocPayload(newLen)
+      s.p.cap = newLen
+      if s.len > 0:
+        copyMem(unsafeAddr s.p.data[0], unsafeAddr oldP.data[0], min(s.len, newLen))
+      s.p.data[newLen] = '\0'
+    elif newLen > s.len:
+      let oldCap = s.p.cap and not strlitFlag
+      if newLen > oldCap:
+        let newCap = max(newLen, resize(oldCap))
+        s.p = reallocPayload0(s.p, oldCap, newCap)
+        s.p.cap = newCap
+    s.p.data[newLen] = '\0'
+  s.len = newLen
+
 proc nimAsgnStrV2(a: var NimStringV2, b: NimStringV2) {.compilerRtl.} =
   if a.p == b.p and a.len == b.len: return
   if isLiteral(b):
