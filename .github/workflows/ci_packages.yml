@@ -18,9 +18,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-22.04, macos-13]
-        cpu: [amd64]
+        os: [ubuntu-latest, macos-14]
         batch: ["allowed_failures", "0_3", "1_3", "2_3"] # list of `index_num`
+        include:
+          - os: ubuntu-latest
+            cpu: amd64
+          - os: macos-14
+            cpu: arm64
     name: '${{ matrix.os }} (batch: ${{ matrix.batch }})'
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60 # refs bug #18178
@@ -41,11 +45,11 @@ jobs:
       - name: 'Install dependencies (Linux amd64)'
         if: runner.os == 'Linux' && matrix.cpu == 'amd64'
         run: |
-          sudo apt-fast update -qq
+          sudo apt-get update -qq
           DEBIAN_FRONTEND='noninteractive' \
-            sudo apt-fast install --no-install-recommends -yq \
+            sudo apt-get install --no-install-recommends -yq \
               libcurl4-openssl-dev libgc-dev libsdl1.2-dev libsfml-dev \
-              valgrind libc6-dbg libblas-dev xorg-dev
+              valgrind libc6-dbg libblas-dev liblapack-dev libpcre3 xorg-dev
       - name: 'Install dependencies (macOS)'
         if: runner.os == 'macOS'
         run: brew install boehmgc make sfml gtk+3

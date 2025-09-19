@@ -1043,15 +1043,6 @@ proc toDecimal64*(ieeeSignificand: uint64; ieeeExponent: uint64): FloatingDecima
 #  ToChars
 # ==================================================================================================
 
-when false:
-  template `+!`(x: cstring; offset: int): cstring = cast[cstring](cast[uint](x) + uint(offset))
-
-  template dec(x: cstring; offset=1) = x = cast[cstring](cast[uint](x) - uint(offset))
-  template inc(x: cstring; offset=1) = x = cast[cstring](cast[uint](x) + uint(offset))
-
-  proc memset(x: cstring; ch: char; L: int) {.importc, nodecl.}
-  proc memmove(a, b: cstring; L: int) {.importc, nodecl.}
-
 proc utoa8DigitsSkipTrailingZeros*(buf: var openArray[char]; pos: int; digits: uint32): int {.inline.} =
   dragonbox_Assert(digits >= 1)
   dragonbox_Assert(digits <= 99999999'u32)

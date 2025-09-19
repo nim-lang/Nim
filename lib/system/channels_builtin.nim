@@ -180,7 +180,6 @@ proc deinitRawChannel(p: pointer) =
   deinitSysCond(c.cond)
 
 when not usesDestructors:
-
   proc storeAux(dest, src: pointer, mt: PNimType, t: PRawChannel,
                 mode: LoadStoreMode) {.benign.}
 
@@ -203,9 +202,6 @@ when not usesDestructors:
 
   proc storeAux(dest, src: pointer, mt: PNimType, t: PRawChannel,
                 mode: LoadStoreMode) =
-    template `+!`(p: pointer; x: int): pointer =
-      cast[pointer](cast[int](p) +% x)
-
     var
       d = cast[int](dest)
       s = cast[int](src)

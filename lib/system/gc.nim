@@ -62,6 +62,7 @@ comparisons).
 ]#
 
 {.push profiler:off.}
+{.push raises: [].}
 
 const
   CycleIncrease = 2 # is a multiplicative increase
@@ -172,11 +173,11 @@ proc addZCT(s: var CellSeq, c: PCell) {.noinline.} =
 
 proc cellToUsr(cell: PCell): pointer {.inline.} =
   # convert object (=pointer to refcount) to pointer to userdata
-  result = cast[pointer](cast[int](cell)+%ByteAddress(sizeof(Cell)))
+  cell +! sizeof(Cell)
 
 proc usrToCell(usr: pointer): PCell {.inline.} =
   # convert pointer to userdata to object (=pointer to refcount)
-  result = cast[PCell](cast[int](usr)-%ByteAddress(sizeof(Cell)))
+  cast[PCell](usr -! sizeof(Cell))
 
 proc extGetCellType(c: pointer): PNimType {.compilerproc.} =
   # used for code generation concerning debugging
@@ -597,7 +598,13 @@ proc sweep(gch: var GcHeap) =
     if isCell(x):
       # cast to PCell is correct here:
       var c = cast[PCell](x)
-      if c notin gch.marked: freeCyclicCell(gch, c)
+      if c notin gch.marked:
+        # Don't free objects that have the ZctFlag set (created in finalizers)
+        if (c.refcount and ZctFlag) == 0:
+          freeCyclicCell(gch, c)
+        else:
+          # Clear the ZctFlag for the next collection cycle
+          c.refcount = c.refcount and not ZctFlag
 
 proc markS(gch: var GcHeap, c: PCell) =
   gcAssert isAllocatedPtr(gch.region, c), "markS: foreign heap root detected A!"
@@ -908,4 +915,5 @@ when not defined(useNimRtl):
         result.add "[GC] stack bottom: " & gch.stack.bottom.repr
       result.add "[GC] max stack size: " & $gch.stat.maxStackSize & "\n"
 
+{.pop.} # raises: []
 {.pop.} # profiler: off, stackTrace: off

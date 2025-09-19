@@ -107,6 +107,13 @@ proc asyncTest() {.async.} =
   #  client = newAsyncHttpClient(proxy = newProxy("http://51.254.106.76:80/"))
   #  var resp = await client.request("https://github.com")
   #  echo resp
+  #
+  # SOCKS5H proxy test
+  # when manualTests:
+  #   block:
+  #     client = newAsyncHttpClient(proxy = newProxy("socks5h://user:blabla@127.0.0.1:9050"))
+  #     var resp = await client.request("https://api.my-ip.io/v2/ip.txt")
+  #     echo await resp.body
 
 proc syncTest() =
   var client = newHttpClient()

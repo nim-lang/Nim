@@ -117,6 +117,22 @@ when not defined(leanCompiler):
     else: raiseAssert $ext
     compilePipelineProject(graph)
 
+proc commandCompileToNif(graph: ModuleGraph) =
+  let conf = graph.config
+  extccomp.initVars(conf)
+  if conf.symbolFiles == disabledSf:
+    if {optRun, optForceFullMake} * conf.globalOptions == {optRun} or isDefined(conf, "nimBetterRun"):
+      if not changeDetectedViaJsonBuildInstructions(conf, conf.jsonBuildInstructionsFile):
+        # nothing changed
+        graph.config.notes = graph.config.mainPackageNotes
+        return
+
+  if not extccomp.ccHasSaneOverflow(conf):
+    conf.symbols.defineSymbol("nimEmulateOverflowChecks")
+
+  setPipeLinePass(graph, NifgenPass)
+  compilePipelineProject(graph)
+
 proc commandCompileToC(graph: ModuleGraph) =
   let conf = graph.config
   extccomp.initVars(conf)
@@ -257,7 +273,7 @@ proc mainCommand*(graph: ModuleGraph) =
       if conf.exc == excNone: conf.exc = excSetjmp
     of backendCpp:
       if conf.exc == excNone: conf.exc = excCpp
-    of backendObjc: discard
+    of backendObjc, backendNif: discard
     of backendJs:
       if conf.hcrOn:
         # XXX: At the moment, system.nim cannot be compiled in JS mode
@@ -275,6 +291,7 @@ proc mainCommand*(graph: ModuleGraph) =
     of backendCpp: commandCompileToC(graph)
     of backendObjc: commandCompileToC(graph)
     of backendJs: commandCompileToJS(graph)
+    of backendNif: commandCompileToNif(graph)
     of backendInvalid: raiseAssert "unreachable"
 
   template docLikeCmd(body) =

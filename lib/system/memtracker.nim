@@ -35,7 +35,7 @@ type
     count*: int
     disabled: bool
     data*: array[400, LogEntry]
-  TrackLogger* = proc (log: TrackLog) {.nimcall, tags: [], gcsafe.}
+  TrackLogger* = proc (log: TrackLog) {.nimcall, tags: [], gcsafe, raises: [].}
 
 var
   gLog*: TrackLog
