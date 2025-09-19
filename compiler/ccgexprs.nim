@@ -368,7 +368,7 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
       elif dest.storage == OnHeap:
         let rd = rdLoc(dest)
         let rs = rdLoc(src)
-        if dest.lode.typ.kind == tySink:
+        if dest.lode.typ != nil and dest.lode.typ.kind == tySink:
           p.s(cpsStmts).addAssignment(rd, rs)
         else:
           # we use a temporary to care for the dreaded self assignment:
