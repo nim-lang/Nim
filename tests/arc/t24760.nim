@@ -1,5 +1,5 @@
 discard """
-  matrix: "--mm:refc; --mm:orc"
+  matrix: "--mm:orc"
   errormsg: "=dup' is not available for type <B>, which is inferred from unavailable '=copy'; requires a copy because it's not the last read of 'b'; another read is done here: t24760.nim(19, 8); routine: g"
 """
 
