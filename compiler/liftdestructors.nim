@@ -1286,7 +1286,7 @@ proc inst(g: ModuleGraph; c: PContext; t: PType; kind: TTypeAttachedOp; idgen: I
     else:
       localError(g.config, info, "unresolved generic parameter")
 
-proc isTrival*(s: PSym): bool {.inline.} =
+proc isTrivial*(s: PSym): bool {.inline.} =
   s == nil or (s.ast != nil and s.ast[bodyPos].len == 0)
 
 proc createTypeBoundOps(g: ModuleGraph; c: PContext; orig: PType; info: TLineInfo;
@@ -1341,8 +1341,8 @@ proc createTypeBoundOps(g: ModuleGraph; c: PContext; orig: PType; info: TLineInf
     if canon != orig:
       setAttachedOp(g, idgen.module, orig, k, getAttachedOp(g, canon, k))
 
-  if not isTrival(getAttachedOp(g, orig, attachedDestructor)):
-    #or not isTrival(orig.assignment) or
-    # not isTrival(orig.sink):
+  if not isTrivial(getAttachedOp(g, orig, attachedDestructor)):
+    #or not isTrivial(orig.assignment) or
+    # not isTrivial(orig.sink):
     orig.flags.incl tfHasAsgn
     # ^ XXX Breaks IC!

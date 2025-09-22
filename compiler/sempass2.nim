@@ -706,7 +706,7 @@ proc isNoEffectList(n: PNode): bool {.inline.} =
   assert n.kind == nkEffectList
   n.len == 0 or (n[tagEffects] == nil and n[exceptionEffects] == nil and n[forbiddenEffects] == nil)
 
-proc isTrival(caller: PNode): bool {.inline.} =
+proc isTrivial(caller: PNode): bool {.inline.} =
   result = caller.kind == nkSym and caller.sym.magic in {mEqProc, mIsNil, mMove, mWasMoved, mSwap}
 
 proc trackOperandForIndirectCall(tracked: PEffects, n: PNode, formals: PType; argIndex: int; caller: PNode) =
@@ -715,7 +715,7 @@ proc trackOperandForIndirectCall(tracked: PEffects, n: PNode, formals: PType; ar
   let param = if formals != nil and formals.n != nil and argIndex < formals.n.len: formals.n[argIndex].sym else: nil
   # assume indirect calls are taken here:
   if op != nil and op.kind == tyProc and n.skipConv.kind != nkNilLit and
-      not isTrival(caller) and
+      not isTrivial(caller) and
       ((param != nil and sfEffectsDelayed in param.flags) or laxEffects in tracked.c.config.legacyFeatures):
 
     internalAssert tracked.config, op.n[0].kind == nkEffectList
