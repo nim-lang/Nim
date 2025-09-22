@@ -2847,11 +2847,15 @@ template once*(body: untyped): untyped =
 
 {.pop.} # warning[GcMem]: off, warning[Uninit]: off
 
-template NotJSnotVMnotNims(): static bool = # hack, see: #12517 #12518
+template whenNotVmJsNims(normalBody, restrictedBody: untyped) =
+  ## hack, see: #12517 #12518
   when nimvm:
-    false
+    restrictedBody
   else:
-    notJSnotNims
+    when notJSnotNims:
+      normalBody
+    else:
+      restrictedBody
 
 proc substr*(a: openArray[char]): string =
   ## Returns a new string, copying contents of `a`.
@@ -2873,10 +2877,10 @@ proc substr*(a: openArray[char]): string =
     assert a.toOpenArray(2, high(a)).substr() == "cdefgh"  # From index 2 to `high(a)`
     doAssertRaises(IndexDefect): discard a.toOpenArray(5, 99).substr()
   result = newStringUninit(a.len)
-  when NotJSnotVMnotNims:
+  whenNotVmJsNims():
     if a.len > 0:
       copyMem(result[0].addr, a[0].unsafeAddr, a.len)
-  else:
+  do:
     for i, ch in a:
       result[i] = ch
 
@@ -2908,10 +2912,10 @@ proc substr*(s: string; first, last: int): string = # A bug with `magic: Slice` 
     last = min(last, high(s))
     L = max(last - first + 1, 0)
   result = newStringUninit(L)
-  when NotJSnotVMnotNims:
+  whenNotVmJsNims():
     if L > 0:
       copyMem(result[0].addr, s[first].unsafeAddr, L)
-  else:
+  do:
     for i in 0..<L:
       result[i] = s[i + first]
 
