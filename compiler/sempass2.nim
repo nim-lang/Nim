@@ -887,8 +887,9 @@ proc trackIf(tracked: PEffects, n: PNode) =
   setLen(tracked.guards.s, oldFacts)
   dec tracked.inIfStmt
 
-proc trackBlock(tracked: PEffects, n: PNode) =
+proc trackBlock(tracked: PEffects, n: PNode; typ: PType) =
   if n.kind in {nkStmtList, nkStmtListExpr}:
+    let myBlock = tracked.currentBlock
     var oldState = -1
     for i in 0..<n.len:
       if hasSubnodeWith(n[i], nkBreakStmt):
@@ -900,6 +901,14 @@ proc trackBlock(tracked: PEffects, n: PNode) =
         if oldState < 0: oldState = tracked.init.len
       track(tracked, n[i])
     if oldState > 0: setLen(tracked.init, oldState)
+    if typ != nil and typ.kind in {tyVar, tyLent, tyOpenArray, tyVarargs}:
+      let last = lastSon(n)
+      let root = getRoot(last)
+      if root != nil:
+        let owner = tracked.scopes.getOrDefault(root.id, -1)
+        if owner >= 0:
+          localError(tracked.config, last.info, "'" & renderTree(last) & "' borrows from location '" & root.name.s &
+            "' which does not live long enough")
   else:
     track(tracked, n)
 
@@ -1332,12 +1341,12 @@ proc track(tracked: PEffects, n: PNode) =
     tracked.init.setLen(oldState)
     track(tracked, n[1][0])
   of nkIfStmt, nkIfExpr: trackIf(tracked, n)
-  of nkBlockStmt, nkBlockExpr: trackBlock(tracked, n[1])
+  of nkBlockStmt, nkBlockExpr: trackBlock(tracked, n[1], n.typ)
   of nkWhileStmt:
     # 'while true' loop?
     inc tracked.currentBlock
     if isTrue(n[0]):
-      trackBlock(tracked, n[1])
+      trackBlock(tracked, n[1], nil)
     else:
       # loop may never execute:
       let oldState = tracked.init.len
