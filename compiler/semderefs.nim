@@ -1,6 +1,9 @@
 import ast, lineinfos, msgs, options, renderer
 import std/[strutils]
 
+when defined(nimPreviewSlimSystem):
+  import std/assertions
+
 type
   Expects = enum
     WantT
@@ -108,7 +111,7 @@ proc borrowsFromReadonly(c: var Context; n: PNode; allowLet = false): bool =
       result = tk notin {tyVar, tyLent, tySink}
     else:
       result = false
-  elif n.kind in nkLiterals + {nkObjConstr}:
+  elif n.kind in nkLiterals + {nkBracket, nkObjConstr}:
     result = true
   else:
     result = false
@@ -141,8 +144,58 @@ proc trProcDecl(c: var Context; n: PNode): PNode =
     result[bodyPos] = tr(c, n[bodyPos], c.r.returnExpects)
     swap c.r, r
 
+proc trCallArgs(c: var Context; n: PNode; fnType: PType): PNode =
+  result = n
+  var p = 1
+  for i in 1 ..< n.len:
+    var e = WantT
+    if p >= fnType.len:
+      if tfVarargs in fnType.flags:
+        discard "call proc with varargs pragma"
+      else:
+        assert false
+    else:
+      let param = fnType[p]
+      let pk = param.kind
+      if pk in {tyVar, tyLent}:
+        e = WantVarT
+      if pk != tyVarargs:
+        # do not advance formal parameter when it is tyVarargs
+        inc p
+    result[i] = tr(c, n[i], e)
+
+proc firstArgIsMutable(c: var Context; n: PNode): bool =
+  assert n.kind in nkCallKinds
+
+  if n.len > 1:
+    result = not borrowsFromReadonly(c, n[1])
+  else:
+    result = false
+
 proc cannotPassToVar(c: var Context; info: TLineInfo; arg: PNode) =
   localError(c.config, info, "cannot pass '$1' to var/out T parameter" % [renderTree(arg, {renderNoComments})])
+
+proc trCall(c: var Context; n: PNode; e: Expects): PNode =
+  result = n
+  assert n.len > 0
+  let fnType = if n[0].kind == nkOpenSymChoice: n[0][0].typ else: n[0].typ
+  let retType = if fnType != nil and fnType.len > 0: fnType[0] else: nil
+  result[0] = tr(c, n[0], WantT)
+
+  if fnType == nil:
+    discard
+  elif retType != nil and retType.kind in {tyVar, tyLent}:
+    if e in {WantT, WantForwarding}:
+      result = trCallArgs(c, n, fnType)
+    elif e in {WantVarTResult, WantTButSkipDeref} or firstArgIsMutable(c, n):
+      result = trCallArgs(c, n, fnType)
+    else:
+      cannotPassToVar c, n.info, n
+      result = n
+  elif e.wantMutable:
+    cannotPassToVar c, n.info, n
+  else:
+    result = trCallArgs(c, n, fnType)
 
 type
   LvalueStatus = enum
@@ -154,6 +207,7 @@ proc trAsgn(c: var Context; n: PNode): PNode =
   var e = WantT
   var err = Valid
   if n[0].kind == nkSym and n[0].sym.kind == skResult and n[0].sym == c.r.resultSym:
+    e = c.r.returnExpects
     if c.r.returnExpects == WantVarTResult:
       if not validBorrowsFrom(c, n[1]):
         err = InvalidBorrow
@@ -203,6 +257,8 @@ proc tr(c: var Context; n: PNode; e: Expects): PNode =
     if e.wantMutable:
       cannotPassToVar c, n.info, n
     result = n
+  of nkCallKinds:
+    result = trCall(c, n, e)
   of nkDotExpr, nkCheckedFieldExpr, nkBracketExpr:
     result = trLocation(c, n, e)
   of nkAsgn:
