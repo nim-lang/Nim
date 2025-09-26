@@ -329,7 +329,7 @@ proc introduceNewLocalVars(c: PTransf, n: PNode): PNode =
     if a.kind == nkSym:
       n[1] = transformSymAux(c, a)
     return n
-  of nkProcDef, nkFuncDef: # todo optimize nosideeffects?
+  of nkProcDef, nkFuncDef, nkMethodDef, nkConverterDef: # todo optimize nosideeffects?
     result = newTransNode(n)
     let x = newSymNode(copySym(n[namePos].sym, c.idgen))
     c.transCon.mapping[n[namePos].sym.itemId] = x
