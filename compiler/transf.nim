@@ -834,7 +834,9 @@ proc transformFor(c: PTransf, n: PNode): PNode =
         var temp = newTemp(c, arg[0].typ, formal.info)
         addVar(v, temp)
         stmtList.add(newAsgnStmt(c, nkFastAsgn, temp, arg[0], true))
-        newC.mapping[formal.itemId] = newDeref(temp)
+        let newD = newDeref(temp)
+        newD.typ() = t
+        newC.mapping[formal.itemId] = newD
       else:
         # generate a temporary and produce an assignment statement:
         var temp = newTemp(c, t, formal.info)

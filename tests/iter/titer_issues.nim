@@ -424,3 +424,11 @@ block: # bug #25121
   for _ in k():
     (proc() = (; let _ = block: 0))()
 
+let aaa = new array[1000, byte]
+block:
+  for _ in cast[typeof(aaa)](aaa)[]:
+    discard
+block:
+  let x = cast[typeof(aaa)](aaa)   # not even var
+  for _ in x[]:
+    discard
