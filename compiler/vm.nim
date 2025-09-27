@@ -12,7 +12,7 @@
 
 import semmacrosanity
 import
-  std/[strutils, tables, parseutils],
+  std/[strutils, tables, intsets, parseutils],
   msgs, vmdef, vmgen, nimsets, types,
   parser, vmdeps, idents, trees, renderer, options, transf,
   gorgeimpl, lineinfos, btrees, macrocacheimpl,
@@ -859,9 +859,9 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcLdObj:
       # a = b.c
       decodeBC(rkNode)
-      if rb >= regs.len or regs[rb].kind == rkNone or 
+      if rb >= regs.len or regs[rb].kind == rkNone or
         (regs[rb].kind == rkNode and regs[rb].node == nil) or
-        (regs[rb].kind == rkNodeAddr and regs[rb].nodeAddr[] == nil): 
+        (regs[rb].kind == rkNodeAddr and regs[rb].nodeAddr[] == nil):
         stackTrace(c, tos, pc, errNilAccess)
       else:
         let src = if regs[rb].kind == rkNode: regs[rb].node else: regs[rb].nodeAddr[]
@@ -1472,7 +1472,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
           let node = regs[rb+i].regToNode
           node.info = c.debug[pc]
           if prc.typ[i].kind notin {tyTyped, tyUntyped}:
-            node.annotateType(prc.typ[i], c.config)
+            var producedClosure = false
+            node.annotateType(prc.typ[i], c.config, producedClosure)
 
           macroCall.add(node)
         var a = evalTemplate(macroCall, prc, genSymOwner, c.config, c.cache, c.templInstCounter, c.idgen)
@@ -1873,13 +1874,22 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
           regs[ra].node = opMapTypeInstToAst(c.cache, regs[rb].node.sym.typ, c.debug[pc], c.idgen)
         else:
           stackTrace(c, tos, pc, "node has no type")
-      else:
+      of 3:
         # getTypeImpl opcode:
         ensureKind(rkNode)
         if regs[rb].kind == rkNode and regs[rb].node.typ != nil:
           regs[ra].node = opMapTypeImplToAst(c.cache, regs[rb].node.typ, c.debug[pc], c.idgen)
         elif regs[rb].kind == rkNode and regs[rb].node.kind == nkSym and regs[rb].node.sym.typ != nil:
           regs[ra].node = opMapTypeImplToAst(c.cache, regs[rb].node.sym.typ, c.debug[pc], c.idgen)
+        else:
+          stackTrace(c, tos, pc, "node has no type")
+      else:
+        # getTypeInstSkipAlias opcode:
+        ensureKind(rkNode)
+        if regs[rb].kind == rkNode and regs[rb].node.typ != nil:
+          regs[ra].node = opMapTypeInstToAst(c.cache, regs[rb].node.typ, c.debug[pc], c.idgen, skipAlias = true)
+        elif regs[rb].kind == rkNode and regs[rb].node.kind == nkSym and regs[rb].node.sym.typ != nil:
+          regs[ra].node = opMapTypeInstToAst(c.cache, regs[rb].node.sym.typ, c.debug[pc], c.idgen, skipAlias = true)
         else:
           stackTrace(c, tos, pc, "node has no type")
     of opcNGetSize:
@@ -2051,7 +2061,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         aStrVal = aNode.ident.s.cstring
       of nkSym:
         aStrVal = aNode.sym.name.s.cstring
-      of nkOpenSymChoice, nkClosedSymChoice:
+      of nkOpenSymChoice, nkClosedSymChoice, nkOpenSym:
         aStrVal = aNode[0].sym.name.s.cstring
       else:
         discard
@@ -2063,7 +2073,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         bStrVal = bNode.ident.s.cstring
       of nkSym:
         bStrVal = bNode.sym.name.s.cstring
-      of nkOpenSymChoice, nkClosedSymChoice:
+      of nkOpenSymChoice, nkClosedSymChoice, nkOpenSym:
         bStrVal = bNode[0].sym.name.s.cstring
       else:
         discard
@@ -2425,9 +2435,12 @@ proc evalConstExprAux(module: PSym; idgen: IdGenerator;
   setupGlobalCtx(module, g, idgen)
   var c = PCtx g.vm
   let oldMode = c.mode
+  let oldLocals = c.locals
   c.mode = mode
+  c.locals = initIntSet()
   c.cannotEval = false
   let start = genExpr(c, n, requiresValue = mode!=emStaticStmt)
+  c.locals = oldLocals
   if c.cannotEval:
     return errorNode(idgen, prc, n)
   if c.code[start].opcode == opcEof: return newNodeI(nkEmpty, n.info)

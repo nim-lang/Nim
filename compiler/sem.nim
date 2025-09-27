@@ -321,7 +321,7 @@ proc hasCycle(n: PNode): bool =
       break
   excl n.flags, nfNone
 
-proc fixupTypeAfterEval(c: PContext, evaluated, eOrig: PNode): PNode =
+proc fixupTypeAfterEval(c: PContext, evaluated, eOrig: PNode; producedClosure: var bool): PNode =
   # recompute the types as 'eval' isn't guaranteed to construct types nor
   # that the types are sound:
   when true:
@@ -333,7 +333,7 @@ proc fixupTypeAfterEval(c: PContext, evaluated, eOrig: PNode): PNode =
       if hasCycle(result):
         result = localErrorNode(c, eOrig, "the resulting AST is cyclic and cannot be processed further")
       else:
-        semmacrosanity.annotateType(result, expectedType, c.config)
+        semmacrosanity.annotateType(result, expectedType, c.config, producedClosure)
   else:
     result = semExprWithType(c, evaluated)
     #result = fitNode(c, e.typ, result) inlined with special case:
@@ -370,7 +370,10 @@ proc tryConstExpr(c: PContext, n: PNode; expectedType: PType = nil): PNode =
     if result == nil or result.kind == nkEmpty:
       result = nil
     else:
-      result = fixupTypeAfterEval(c, result, e)
+      var producedClosure = false
+      result = fixupTypeAfterEval(c, result, e, producedClosure)
+      if producedClosure:
+        result = nil
 
   except ERecoverableError:
     result = nil
@@ -407,7 +410,10 @@ proc semConstExpr(c: PContext, n: PNode; expectedType: PType = nil): PNode =
       # error correction:
       result = e
     else:
-      result = fixupTypeAfterEval(c, result, e)
+      var producedClosure = false
+      result = fixupTypeAfterEval(c, result, e, producedClosure)
+      if producedClosure:
+        result = nil
 
 proc semExprFlagDispatched(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType = nil): PNode =
   if efNeedStatic in flags:
@@ -499,6 +505,21 @@ proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
       #globalError(s.info, errInvalidParamKindX, typeToString(s.typ.returnType))
   dec(c.config.evalTemplateCounter)
   discard c.friendModules.pop()
+
+proc getLineInfo(n: PNode): TLineInfo =
+  case n.kind
+  of nkPostfix:
+    if len(n) > 1:
+      result = getLineInfo(n[1])
+    else:
+      result = n.info
+  of nkAccQuoted, nkPragmaExpr:
+    if len(n) > 0:
+      result = getLineInfo(n[0])
+    else:
+      result = n.info
+  else:
+    result = n.info
 
 const
   errMissingGenericParamsForTemplate = "'$1' has unspecified generic parameters"
@@ -740,6 +761,7 @@ proc preparePContext*(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PCo
   result.semTypeNode = semTypeNode
   result.instTypeBoundOp = sigmatch.instTypeBoundOp
   result.hasUnresolvedArgs = hasUnresolvedArgs
+  result.semAsgnOpr = semAsgnOpr
   result.templInstCounter = new int
 
   pushProcCon(result, module)

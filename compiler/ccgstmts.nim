@@ -18,7 +18,7 @@ proc registerTraverseProc(p: BProc, v: PSym) =
   var traverseProc = ""
   if p.config.selectedGC in {gcMarkAndSweep, gcHooks, gcRefc} and
       optOwnedRefs notin p.config.globalOptions and
-      containsGarbageCollectedRef(v.loc.t):
+      containsManagedMemory(v.loc.t):
     # we register a specialized marked proc here; this has the advantage
     # that it works out of the box for thread local storage then :-)
     traverseProc = genTraverseProcForGlobal(p.module, v, v.info)

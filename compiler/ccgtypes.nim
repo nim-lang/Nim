@@ -57,11 +57,15 @@ proc mangleField(m: BModule; name: PIdent): string =
 
 proc mangleProc(m: BModule; s: PSym; makeUnique: bool): string =
   result = "_Z"  # Common prefix in Itanium ABI
-  result.add encodeSym(m, s, makeUnique)
+  var params = ""
+  var staticLists = ""
   if s.typ.len > 1: #we dont care about the return param
     for i in 1..<s.typ.len:
       if s.typ[i].isNil: continue
-      result.add encodeType(m, s.typ[i])
+      params.add encodeType(m, s.typ[i], staticLists)
+
+  result.add encodeSym(m, s, makeUnique, staticLists)
+  result.add params
 
   if result in m.g.mangledPrcs:
     result = mangleProc(m, s, true)
@@ -115,7 +119,7 @@ proc fillLocalName(p: BProc; s: PSym) =
     if s.kind == skTemp:
       # speed up conflict search for temps (these are quite common):
       if counter != 0: result.add "_" & rope(counter+1)
-    elif counter != 0 or isKeyword(s.name) or p.module.g.config.cppDefines.contains(key):
+    elif s.kind != skResult:
       result.add "_" & rope(counter+1)
     p.sigConflicts.inc(key)
     s.loc.snippet = result
@@ -246,10 +250,6 @@ proc hasNoInit(t: PType): bool =
   result = t.sym != nil and sfNoInit in t.sym.flags
 
 proc getTypeDescAux(m: BModule; origTyp: PType, check: var IntSet; kind: TypeDescKind): Rope
-
-proc isObjLackingTypeField(typ: PType): bool {.inline.} =
-  result = (typ.kind == tyObject) and ((tfFinal in typ.flags) and
-      (typ.baseClass == nil) or isPureObject(typ))
 
 proc isInvalidReturnType(conf: ConfigRef; typ: PType, isProc = true): bool =
   # Arrays and sets cannot be returned by a C procedure, because C is
@@ -587,7 +587,7 @@ proc genProcParams(m: BModule; t: PType, rettype: var Rope, params: var Builder,
   if t.returnType == nil or isInvalidReturnType(m.config, t):
     rettype = CVoid
   else:
-    rettype = getTypeDescAux(m, t.returnType, check, dkResult)
+    rettype = getTypeDescWeak(m, t.returnType, check, dkResult)
   var paramBuilder: ProcParamBuilder
   params.addProcParams(paramBuilder):
     for i in 1..<t.n.len:
@@ -759,6 +759,8 @@ proc fillObjectFields*(m: BModule; typ: PType) =
   var check = initIntSet()
   var ignored = newBuilder("")
   addRecordFields(ignored, m, typ, check)
+  if typ.baseClass != nil:
+    fillObjectFields(m, typ.baseClass.skipTypes(skipPtrs))
 
 proc mangleDynLibProc(sym: PSym): Rope
 
@@ -1999,6 +2001,9 @@ proc genTypeInfoV1(m: BModule; t: PType; info: TLineInfo): Rope =
   of tyRef:
     genTypeInfoAux(m, t, t, result, info)
     if m.config.selectedGC in {gcMarkAndSweep, gcRefc, gcGo}:
+      # it may not be used in other places except in `genTraverseProc`,
+      # we have to generate a typedesc for this case, not a weak one
+      discard getTypeDesc(m, origType.last)
       let markerProc = genTraverseProc(m, origType, sig)
       m.s[cfsTypeInit3].addFieldAssignment(tiNameForHcr(m, result), "marker", markerProc)
   of tyPtr, tyRange, tyUncheckedArray: genTypeInfoAux(m, t, t, result, info)

@@ -46,7 +46,7 @@ template createCb(futTyp, strName, identName, futureVarCompletions: untyped) =
           {.gcsafe.}:
             next.addCallback(cast[proc() {.closure, gcsafe.}](proc =
               identName(fut, it)))
-    except:
+    except Exception:
       futureVarCompletions
       if fut.finished:
         # Take a look at tasyncexceptions for the bug which this fixes.
@@ -170,7 +170,8 @@ template await*[T](f: Future[T]): auto {.used.} =
   when compiles(yieldFuture):
     var internalTmpFuture: FutureBase = f
     yield internalTmpFuture
-    (cast[typeof(f)](internalTmpFuture)).read()
+    {.line: instantiationInfo(fullPaths = true).}:
+      (cast[typeof(f)](internalTmpFuture)).read()
   else:
     macro errorAsync(futureError: Future[T]) =
       error(

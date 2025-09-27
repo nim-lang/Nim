@@ -40,7 +40,7 @@ import closureiters, lambdalifting
 
 type
   PTransCon = ref object # part of TContext; stackable
-    mapping: Table[ItemId, PNode]     # mapping from symbols to nodes
+    mapping: TIdTable[PNode]  # mapping from symbols to nodes
     owner: PSym               # current owner
     forStmt: PNode            # current for stmt
     forLoopBody: PNode   # transformed for loop body
@@ -78,7 +78,7 @@ proc newTransNode(kind: TNodeKind, n: PNode,
 
 proc newTransCon(owner: PSym): PTransCon =
   assert owner != nil
-  result = PTransCon(mapping: initTable[ItemId, PNode](), owner: owner)
+  result = PTransCon(mapping: initIdTable[PNode](), owner: owner)
 
 proc pushTransCon(c: PTransf, t: PTransCon) =
   t.next = c.transCon
@@ -104,6 +104,13 @@ proc transform(c: PTransf, n: PNode, noConstFold = false): PNode
 proc transformSons(c: PTransf, n: PNode, noConstFold = false): PNode =
   result = newTransNode(n)
   for i in 0..<n.len:
+    result[i] = transform(c, n[i], noConstFold)
+
+proc transformSonsAfterType(c: PTransf, n: PNode, noConstFold = false): PNode =
+  result = newTransNode(n)
+  assert n.len != 0
+  result[0] = copyTree(n[0])
+  for i in 1..<n.len:
     result[i] = transform(c, n[i], noConstFold)
 
 proc newAsgnStmt(c: PTransf, kind: TNodeKind, le: PNode, ri: PNode; isFirstWrite: bool): PNode =
@@ -252,7 +259,8 @@ proc transformBlock(c: PTransf, n: PNode): PNode =
   var labl: PSym
   if c.inlining > 0:
     labl = newLabel(c, n[0])
-    c.transCon.mapping[n[0].sym.itemId] = newSymNode(labl)
+    if n[0].kind != nkEmpty:
+      c.transCon.mapping[n[0].sym.itemId] = newSymNode(labl)
   else:
     labl =
       if n[0].kind != nkEmpty:
@@ -321,7 +329,7 @@ proc introduceNewLocalVars(c: PTransf, n: PNode): PNode =
     if a.kind == nkSym:
       n[1] = transformSymAux(c, a)
     return n
-  of nkProcDef: # todo optimize nosideeffects?
+  of nkProcDef, nkFuncDef, nkMethodDef, nkConverterDef: # todo optimize nosideeffects?
     result = newTransNode(n)
     let x = newSymNode(copySym(n[namePos].sym, c.idgen))
     c.transCon.mapping[n[namePos].sym.itemId] = x
@@ -545,7 +553,34 @@ proc transformConv(c: PTransf, n: PNode): PNode =
     # we don't include uint and uint64 here as these are no ordinal types ;-)
     if not isOrdinalType(source):
       # float -> int conversions. ugh.
-      result = transformSons(c, n)
+      # generate a range check:
+      if dest.kind in tyInt..tyInt64:
+        if dest.kind == tyInt64 or source.kind == tyInt64:
+          result = newTransNode(nkChckRange64, n, 3)
+        else:
+          result = newTransNode(nkChckRange, n, 3)
+        dest = skipTypes(n.typ, abstractVar)
+
+        if dest.size < source.size:
+          let intType =
+            if source.size == 4:
+              getSysType(c.graph, n.info, tyInt32)
+            else:
+              getSysType(c.graph, n.info, tyInt64)
+          result[0] = 
+            newTreeIT(n.kind, n.info, n.typ, n[0],
+              newTreeIT(nkConv, n.info, intType,
+              newNodeIT(nkType, n.info, intType), transform(c, n[1]))
+            )
+
+        else:
+          result[0] = transformSons(c, n)
+
+        result[1] = newIntTypeNode(firstOrd(c.graph.config, dest), dest)
+        result[2] = newIntTypeNode(lastOrd(c.graph.config, dest), dest)
+      else:
+        result = transformSons(c, n)
+
     elif firstOrd(c.graph.config, n.typ) <= firstOrd(c.graph.config, n[1].typ) and
         lastOrd(c.graph.config, n[1].typ) <= lastOrd(c.graph.config, n.typ):
       # BUGFIX: simply leave n as it is; we need a nkConv node,
@@ -793,12 +828,22 @@ proc transformFor(c: PTransf, n: PNode): PNode =
         t = formal.ast.typ # better use the type that actually has a destructor.
       elif t.destructor == nil and arg.typ.destructor != nil:
         t = arg.typ
-      # generate a temporary and produce an assignment statement:
-      var temp = newTemp(c, t, formal.info)
-      #incl(temp.sym.flags, sfCursor)
-      addVar(v, temp)
-      stmtList.add(newAsgnStmt(c, nkFastAsgn, temp, arg, true))
-      newC.mapping[formal.itemId] = temp
+
+      if arg.kind in {nkDerefExpr, nkHiddenDeref}:
+        # optimizes for `[]` # bug #24093
+        var temp = newTemp(c, arg[0].typ, formal.info)
+        addVar(v, temp)
+        stmtList.add(newAsgnStmt(c, nkFastAsgn, temp, arg[0], true))
+        let newD = newDeref(temp)
+        newD.typ() = t
+        newC.mapping[formal.itemId] = newD
+      else:
+        # generate a temporary and produce an assignment statement:
+        var temp = newTemp(c, t, formal.info)
+        #incl(temp.sym.flags, sfCursor)
+        addVar(v, temp)
+        stmtList.add(newAsgnStmt(c, nkFastAsgn, temp, arg, true))
+        newC.mapping[formal.itemId] = temp
     of paVarAsgn:
       assert(skipTypes(formal.typ, abstractInst).kind in {tyVar, tyLent})
       newC.mapping[formal.itemId] = arg
@@ -950,6 +995,23 @@ proc transformCall(c: PTransf, n: PNode): PNode =
     else:
       result = s
 
+proc transformBareExcept(c: PTransf, n: PNode): PNode =
+  result = newTransNode(nkExceptBranch, n, 1)
+  if isEmptyType(n[0].typ):
+    result[0] = newNodeI(nkStmtList, n[0].info)
+  else:
+    result[0] = newNodeIT(nkStmtListExpr, n[0].info, n[0].typ)
+  # Generating `raiseDefect()`
+  let raiseDefectCall = callCodegenProc(c.graph, "raiseDefect", n[0].info)
+  result[0].add raiseDefectCall
+  if n[0].kind in {nkStmtList, nkStmtListExpr}:
+    # flattens stmtList
+    for son in n[0]:
+      result[0].add son
+  else:
+    result[0].add n[0]
+  result[0] = transform(c, result[0])
+
 proc transformExceptBranch(c: PTransf, n: PNode): PNode =
   if n[0].isInfixAs() and not isImportedException(n[0][1].typ, c.graph.config):
     let excTypeNode = n[0][1]
@@ -978,6 +1040,9 @@ proc transformExceptBranch(c: PTransf, n: PNode): PNode =
     # Replace the `Exception as foobar` with just `Exception`.
     result[0] = transform(c, n[0][1])
     result[1] = actions
+  elif n.len == 1 and
+      noPanicOnExcept notin c.graph.config.legacyFeatures:
+    result = transformBareExcept(c, n)
   else:
     result = transformSons(c, n)
 
@@ -1102,6 +1167,9 @@ proc transform(c: PTransf, n: PNode, noConstFold = false): PNode =
       result = transformAddrDeref(c, n, {nkAddr, nkHiddenAddr})
   of nkHiddenStdConv, nkHiddenSubConv, nkConv:
     result = transformConv(c, n)
+  of nkObjConstr, nkCast:
+    # don't try to transform type node
+    result = transformSonsAfterType(c, n)
   of nkDiscardStmt:
     result = n
     if n[0].kind != nkEmpty:
