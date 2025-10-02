@@ -13,6 +13,7 @@ when not defined(leanCompiler):
 import std/[syncio, objectdollar, assertions, tables, strutils, strtabs]
 import renderer
 import ic/replayer
+import icnif/nifencoder, astalgo
 
 proc setPipeLinePass*(graph: ModuleGraph; pass: PipelinePass) =
   graph.pipelinePass = pass
@@ -182,6 +183,13 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
         message(graph.config, sl.info, hintProcessingStmt, $idgen[])
       var semNode = semWithPContext(ctx, sl)
       discard processPipeline(graph, semNode, bModule)
+      when false:
+        # encode the asts of specific modules to NIF files for debug or tests.
+        if module.name.s.substr(0, 3) == "test":
+          echo "saveNifFile: ", module.name.s
+          echo "n:"
+          debug(n)
+          nifencoder.saveNifFile(module, semNode)
 
     closeParser(p)
     if s.kind != llsStdIn: break
