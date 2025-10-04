@@ -187,9 +187,9 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
         # encode the asts of specific modules to NIF files for debug or tests.
         if module.name.s.substr(0, 3) == "test":
           echo "saveNifFile: ", module.name.s
-          echo "n:"
-          debug(n)
-          nifencoder.saveNifFile(module, semNode)
+          echo "semNode:"
+          debug(semNode)
+          nifencoder.saveNifFile(module, semNode, graph.config)
 
     closeParser(p)
     if s.kind != llsStdIn: break

@@ -1,18 +1,63 @@
-import std / [assertions]
-import ".." / [ast, astalgo, idents]
+import std / [assertions, tables]
+import ".." / [ast, astalgo, idents, lineinfos, msgs, options]
 import "../../dist/nimony/src/lib" / nifbuilder
+import "../../dist/nimony/src/gear2" / modnames
 import enum2nif
 
 type
   EncodeContext = object
     b: Builder
+    conf: ConfigRef
+    toSuffix: Table[FileIndex, string]
+    moduleToNifSuffix: Table[ItemId, string] # module PSym -> module suffix
 
-proc toNifSymDef(c: var EncodeContext; n: PNode) =
+proc modname(c: var EncodeContext; idx: FileIndex): string =
+  # copied from ../nifgen.nim
+  result = c.toSuffix.getOrDefault(idx)
+  if result.len == 0:
+    let fp = toFullPath(c.conf, idx)
+    result = moduleSuffix(fp, cast[seq[string]](c.conf.searchPaths))
+    c.toSuffix[idx] = result
+
+proc toNifSym(c: var EncodeContext; sym: PSym): string =
+  result = sym.name.s & '.' & $sym.itemId.item
+  if sym.owner.kind == skModule:
+    result.add '.'
+    var modsuf = c.moduleToNifSuffix.getOrDefault(sym.owner.itemId)
+    if modsuf.len == 0:
+      modsuf = modname(c, sym.owner.position.FileIndex)
+      c.moduleToNifSuffix[sym.owner.itemId] = modsuf
+    result.add modsuf
+
+proc symdefToNif(c: var EncodeContext; n: PNode) =
   assert n.kind == nkSym
   let sym = n.sym
   c.b.addTree toNifTag(n.kind)
-  c.b.addIdent sym.name.s
-  c.b.addIntLit sym.itemId.item
+  var name = toNifSym(c, sym)
+  c.b.addSymbolDef name
+  if sym.flags == {}:
+    c.b.addEmpty()
+  else:
+    var flags: string = ""
+    genFlags(sym.flags, flags)
+    c.b.addIdent flags
+  if sym.kind == skModule:
+    # position is module's FileIndex but it cannot be directly encoded
+    # as the uniqueness of it can broke
+    # if any import/include statements are changed.
+    let path = toFullPath(c.conf, sym.position.FileIndex)
+    c.b.addStrLit path
+  else:
+    c.b.addIntLit sym.position
+  c.b.endTree()
+
+proc toNifImport(c: var EncodeContext; n: PNode) =
+  c.b.addTree toNifTag(n.kind)
+  for i in 0 ..< n.len:
+    assert n[i].kind == nkSym
+    let sym = n[i].sym
+    assert sym.kind == skModule
+    symdefToNif(c, n[i])
   c.b.endTree()
 
 proc toNif(c: var EncodeContext; n: PNode) =
@@ -24,10 +69,28 @@ proc toNif(c: var EncodeContext; n: PNode) =
   of nkIdentDefs:
     c.b.addTree toNifTag(n.kind)
     assert n.len == 3
-    toNifSymDef(c, n[0])
+    symdefToNif(c, n[0])
     toNif c, n[1]
     toNif c, n[2]
     c.b.endTree()
+  of nkSym:
+    when false:
+      echo "nkSym: ", n.sym.name.s
+      if n.sym.kind == skModule:
+        echo "position = ", n.sym.position
+      debug(n.sym)
+      var o = n.sym.owner
+      for i in 0 .. 20:
+        if o == nil:
+          break
+        echo "owner ", i, ":"
+        if o.kind == skModule:
+          echo "position = ", o.position
+        debug(o)
+        o = o.owner
+    c.b.addSymbol toNifSym(c, n.sym)
+  of nkImportStmt:
+    toNifImport(c, n)
   else:
     assert n.len > 0, $n.kind
     c.b.addTree toNifTag(n.kind)
@@ -37,20 +100,16 @@ proc toNif(c: var EncodeContext; n: PNode) =
 
 proc saveNif(c: var EncodeContext; n: PNode) =
   c.b.addHeader "nim2", "nim2-ic-nif"
-  c.b.addTree "stmts"
-  assert n.kind == nkStmtList
-  for i in 0 ..< n.len:
-    toNif c, n[i]
-  c.b.endTree()
+  toNif c, n
 
-proc saveNifFile*(module: PSym; n: PNode) =
+proc saveNifFile*(module: PSym; n: PNode; conf: ConfigRef) =
   let outfile = module.name.s & ".nif"
-  var c = EncodeContext(b: nifbuilder.open(outfile))
+  var c = EncodeContext(b: nifbuilder.open(outfile), conf: conf)
   saveNif(c, n)
   c.b.close()
 
-proc saveNifToBuffer*(n: PNode): string =
-  var c = EncodeContext(b: nifbuilder.open(100))
+proc saveNifToBuffer*(n: PNode; conf: ConfigRef): string =
+  var c = EncodeContext(b: nifbuilder.open(100), conf: conf)
   saveNif(c, n)
   c.b.close()
   result = c.b.extract
