@@ -945,7 +945,7 @@ elif not defined(useNimRtl):
       options: set[ProcessOption]
 
   const useProcessAuxSpawn = declared(posix_spawn) and not defined(useFork) and
-                             not defined(useClone) and not defined(linux)
+                             not (defined(useClone) and defined(linux))
   when useProcessAuxSpawn:
     proc startProcessAuxSpawn(data: StartProcessData): Pid {.
       raises: [OSError], tags: [ExecIOEffect, ReadEnvEffect, ReadDirEffect, RootEffect], gcsafe.}
@@ -1103,7 +1103,7 @@ elif not defined(useNimRtl):
       var pid: Pid
       var dataCopy = data
 
-      when defined(useClone):
+      when defined(useClone) and defined(linux):
         const stackSize = 65536
         let stackEnd = cast[clong](alloc(stackSize))
         let stack = cast[pointer](stackEnd + stackSize)
