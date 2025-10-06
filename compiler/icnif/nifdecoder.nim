@@ -1,6 +1,7 @@
 import std / [assertions, tables, parseutils]
-import "../../dist/nimony/src/lib" / [bitabs, nifreader, nifstreams, nifcursors, symparser]
-import ".." / [ast, astalgo, idents, lineinfos, options, modulegraphs, msgs, pathutils]
+import "../../dist/nimony/src/lib" / [bitabs, nifreader, nifstreams, nifcursors]
+import ".." / [ast, astalgo, idents, lineinfos, options, modules, modulegraphs, msgs, pathutils]
+import "../../dist/nimony/src/gear2" / modnames
 import enum2nif
 
 type
@@ -47,6 +48,10 @@ proc splitNifSym(s: string): SplittedNifSym =
 
 proc fromNif(c: var DecodeContext; n: var Cursor): PNode
 
+proc fromNifSymbol(c: var DecodeContext; n: var Cursor): PSym =
+  result = c.nifSymToPSym[pool.syms[n.symId]]
+  inc n
+
 proc fromNifSymDef(c: var DecodeContext; n: var Cursor; kind: TNodeKind): PNode =
   assert n.nodeKind == nkSym
   let symKind = case kind:
@@ -61,20 +66,34 @@ proc fromNifSymDef(c: var DecodeContext; n: var Cursor; kind: TNodeKind): PNode 
   assert symdef.name.len != 0
   let ident = c.graph.cache.getIdent(symdef.name)
   inc n
+  assert n.kind == IntLit
+  let itemId = pool.integers[n.intId].int32
+  inc n
+  assert n.kind in {Symbol, DotToken}, $n.kind
+  let owner = if n.kind == Symbol:
+      fromNifSymbol(c, n)
+    else:
+      inc n
+      nil
   assert n.kind in {Ident, DotToken}, $n.kind
   let flags = if n.kind == Ident: pool.strings[n.litId].parseSymFlags else: {}
   inc n
-  var position = 0
-  if symKind == skModule:
-    assert n.kind == StringLit
-    let path = pool.strings[n.litId].AbsoluteFile
-    position = fileInfoIdx(c.graph.config, path).int
-  else:
-    assert n.kind == IntLit
-    position = pool.integers[n.intId]
+  var position = if symKind == skModule:
+      assert n.kind == StringLit
+      let path = pool.strings[n.litId].AbsoluteFile
+      fileInfoIdx(c.graph.config, path).int
+    else:
+      assert n.kind == IntLit
+      pool.integers[n.intId]
   inc n
 
-  let psym = PSym(itemId: ItemId(module: 0, item: symdef.id.int32), kind: symKind, name: ident, flags: flags, position: position)
+  var psym = PSym(itemId: ItemId(module: 0, item: itemId),
+    kind: symKind,
+    name: ident,
+    flags: flags,
+    position: position,
+    disamb: symdef.id.int32)
+  psym.setOwner(owner)
   result = newSymNode(psym)
   let hasSym = c.nifSymToPSym.hasKeyOrPut(nifSym, psym)
   assert not hasSym
@@ -113,9 +132,7 @@ proc fromNif(c: var DecodeContext; n: var Cursor): PNode =
     result = newIntTypeNode(pool.integers[n.intId], getSysType(tyInt))
     inc n
   of Symbol:
-    let sym = c.nifSymToPSym[pool.syms[n.symId]]
-    result = newSymNode(sym)
-    inc n
+    result = newSymNode(fromNifSymbol(c, n))
   of ParLe:
     let kind = n.nodeKind
     case kind:
@@ -134,30 +151,36 @@ proc fromNif(c: var DecodeContext; n: var Cursor): PNode =
   else:
     assert false, "Not yet implemented " & $n.kind
 
-proc loadNif(stream: var Stream; graph: ModuleGraph): PNode =
+proc loadNif(stream: var Stream; modulePath: AbsoluteFile; graph: ModuleGraph): PNode =
   discard processDirectives(stream.r)
 
   var buf = fromStream(stream)
   var n = beginRead(buf)
 
   var c = DecodeContext(graph: graph)
+
+  let modSym = newModule(graph, fileInfoIdx(graph.config, modulePath))
+  let modSuffix = moduleSuffix(modulePath.string, cast[seq[string]](graph.config.searchPaths))
+  let nifModSym = modSym.name.s & '.' & $modSym.disamb & '.' & modSuffix
+  c.nifSymToPSym[nifModSym] = modSym
+
   result = fromNif(c, n)
 
   endRead(buf)
 
 proc loadNifFile*(infile: AbsoluteFile; graph: ModuleGraph): PNode =
   var stream = nifstreams.open(infile.string)
-  result = loadNif(stream, graph)
+  result = loadNif(stream, infile.changeFileExt("nim"), graph)
   stream.close
 
-proc loadNifFromBuffer*(strbuf: sink string; graph: ModuleGraph): PNode =
+proc loadNifFromBuffer*(strbuf: sink string; modulePath: AbsoluteFile; graph: ModuleGraph): PNode =
   var stream = nifstreams.openFromBuffer(strbuf)
-  result = loadNif(stream, graph)
+  result = loadNif(stream, modulePath, graph)
 
 when isMainModule:
   import std/cmdline
 
   if paramCount() > 0:
     var graph = newModuleGraph(newIdentCache(), newConfigRef())
-    var node = loadNifFile(paramStr(1).AbsoluteFile, graph)
+    var node = loadNifFile(paramStr(1).toAbsolute(toAbsoluteDir(".")), graph)
     debug(node)

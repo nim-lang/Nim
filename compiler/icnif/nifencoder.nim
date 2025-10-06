@@ -9,7 +9,7 @@ type
     b: Builder
     conf: ConfigRef
     toSuffix: Table[FileIndex, string]
-    moduleToNifSuffix: Table[ItemId, string] # module PSym -> module suffix
+    moduleToNifSuffix: Table[FileIndex, string] # FileIndex (PSym.position) -> module suffix
 
 proc modname(c: var EncodeContext; idx: FileIndex): string =
   # copied from ../nifgen.nim
@@ -20,14 +20,19 @@ proc modname(c: var EncodeContext; idx: FileIndex): string =
     c.toSuffix[idx] = result
 
 proc toNifSym(c: var EncodeContext; sym: PSym): string =
-  result = sym.name.s & '.' & $sym.itemId.item
-  if sym.owner.kind == skModule:
+  result = sym.name.s & '.' & $sym.disamb
+  let owner = sym.skipGenericOwner()
+  if owner.kind == skModule:
     result.add '.'
-    var modsuf = c.moduleToNifSuffix.getOrDefault(sym.owner.itemId)
+    let fileIndex = FileIndex owner.position
+    var modsuf = c.moduleToNifSuffix.getOrDefault(fileIndex)
     if modsuf.len == 0:
-      modsuf = modname(c, sym.owner.position.FileIndex)
-      c.moduleToNifSuffix[sym.owner.itemId] = modsuf
+      modsuf = modname(c, fileIndex)
+      c.moduleToNifSuffix[fileIndex] = modsuf
     result.add modsuf
+
+proc symToNif(c: var EncodeContext; sym: PSym) =
+  c.b.addSymbol toNifSym(c, sym)
 
 proc symdefToNif(c: var EncodeContext; n: PNode) =
   assert n.kind == nkSym
@@ -35,6 +40,11 @@ proc symdefToNif(c: var EncodeContext; n: PNode) =
   c.b.addTree toNifTag(n.kind)
   var name = toNifSym(c, sym)
   c.b.addSymbolDef name
+  c.b.addIntLit sym.itemId.item
+  if sym.owner == nil or sym.owner.kind == skPackage:
+    c.b.addEmpty
+  else:
+    symToNif(c, sym.owner)
   if sym.flags == {}:
     c.b.addEmpty()
   else:
@@ -88,7 +98,7 @@ proc toNif(c: var EncodeContext; n: PNode) =
           echo "position = ", o.position
         debug(o)
         o = o.owner
-    c.b.addSymbol toNifSym(c, n.sym)
+    symToNif(c, n.sym)
   of nkImportStmt:
     toNifImport(c, n)
   else:
