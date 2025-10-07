@@ -97,7 +97,7 @@ proc eql(x, y: PNode): bool =
     result = false
 
 proc testNifEncDec(graph: ModuleGraph; src: string) =
-  let fullPath = TestCodeDir / RelativeFile("testmod.nim")
+  let fullPath = TestCodeDir / RelativeFile(src)
   let n = sem(graph, fullPath)
   let nif = saveNifToBuffer(n, graph.config)
   # Don't reuse the ModuleGraph used for semcheck when load NIF.
@@ -110,4 +110,4 @@ proc testNifEncDec(graph: ModuleGraph; src: string) =
 var conf = newConfigRefForTest()
 var cache = newIdentCache()
 var graph = newModuleGraphForSem(cache, conf)
-testNifEncDec(graph, "testmod.nim")
+testNifEncDec(graph, "modtest1.nim")
