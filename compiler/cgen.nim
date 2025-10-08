@@ -1238,6 +1238,11 @@ proc allPathsAsgnResult(p: BProc; n: PNode): InitResultEnum =
         (n[0].kind == nkSym and sfNoReturn in n[0].sym.flags):
       # requires initializations when encountering unreachable code
       result = InitRequired
+    elif n[0].kind == nkSym and
+        n[0].sym.magic in {mUnaryMinusI..mAbsI, mAddI..mPred} and
+          optOverflowCheck in p.config.options:
+      # arithmetic operations may raise exceptions
+      result = InitRequired
     else:
       for i in 0..<n.safeLen:
         allPathsInBranch(n[i])
