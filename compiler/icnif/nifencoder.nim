@@ -19,6 +19,16 @@ proc modname(c: var EncodeContext; idx: FileIndex): string =
     result = moduleSuffix(fp, cast[seq[string]](c.conf.searchPaths))
     c.toSuffix[idx] = result
 
+proc addIntLit(b: var Builder; i: int64; suffix: string) =
+  withTree(b, "suf"):
+    addIntLit(b, i)
+    addStrLit(b, suffix)
+
+proc addFloatLit(b: var Builder; f: float; suffix: string) =
+  withTree(b, "suf"):
+    addFloatLit(b, f)
+    addStrLit(b, suffix)
+
 proc toNifSym(c: var EncodeContext; sym: PSym): string =
   result = sym.name.s & '.' & $sym.disamb
   let owner = sym.skipGenericOwner()
@@ -74,8 +84,42 @@ proc toNif(c: var EncodeContext; n: PNode) =
   case n.kind:
   of nkEmpty:
     c.b.addEmpty()
+  of nkCharLit:
+    c.b.addCharLit n.intVal.char
   of nkIntLit:
     c.b.addIntLit n.intVal
+  of nkInt8Lit:
+    c.b.addIntLit n.intVal, "i8"
+  of nkInt16Lit:
+    c.b.addIntLit n.intVal, "i16"
+  of nkInt32Lit:
+    c.b.addIntLit n.intVal, "i32"
+  of nkInt64Lit:
+    c.b.addIntLit n.intVal, "i64"
+  of nkUIntLit:
+    c.b.addUIntLit cast[BiggestUInt](n.intVal)
+  of nkUInt8Lit:
+    c.b.addUIntLit cast[BiggestUInt](n.intVal), "u8"
+  of nkUInt16Lit:
+    c.b.addUIntLit cast[BiggestUInt](n.intVal), "u16"
+  of nkUInt32Lit:
+    c.b.addUIntLit cast[BiggestUInt](n.intVal), "u32"
+  of nkUInt64Lit:
+    c.b.addUIntLit cast[BiggestUInt](n.intVal), "u64"
+  of nkFloatLit:
+    c.b.addFloatLit n.floatVal
+  of nkFloat32Lit:
+    c.b.addFloatLit n.floatVal, "f32"
+  of nkFloat64Lit:
+    c.b.addFloatLit n.floatVal, "f64"
+  of nkFloat128Lit:
+    c.b.addFloatLit n.floatVal, "f128"
+  of nkStrLit:
+    c.b.addStrLit n.strVal
+  of nkRStrLit:
+    c.b.addStrLit n.strVal, "R"
+  of nkTripleStrLit:
+    c.b.addStrLit n.strVal, "T"
   of nkIdentDefs:
     c.b.addTree toNifTag(n.kind)
     assert n.len == 3

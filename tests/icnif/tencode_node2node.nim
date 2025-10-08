@@ -2,12 +2,17 @@ import std/assertions
 import "../../compiler/icnif" / [nifencoder, nifdecoder]
 import "../../compiler" / [idents, ast, astalgo, options, pathutils, modulegraphs, modules, msgs, pipelines, syntaxes, sem, llstream, lineinfos]
 
+# This test generates PNode by semchecks test code.
+# Then it is used to test icnif/nifencoder and nifdecoder.
+
 const TestCodeDir = currentSourcePath().AbsoluteFile.splitFile().dir / RelativeDir"testcode"
 
 proc newConfigRefForTest(): ConfigRef =
   var conf = newConfigRef()
   conf.setDefaultLibpath()
   conf.searchPaths.add(conf.libpath)
+  excl(conf.notes, hintProcessing)
+  excl(conf.mainPackageNotes, hintProcessing)
   result = conf
  
 proc newModuleGraphForSem(cache: IdentCache; conf: ConfigRef): ModuleGraph =
@@ -105,9 +110,12 @@ proc testNifEncDec(graph: ModuleGraph; src: string) =
   let n2 = loadNifFromBuffer(nif, fullPath, graphForLoad)
   #debug(n)
   #debug(n2)
+  #if src == "modtestliterals.nim":
+  #  echo nif
   assert eql(n, n2)
 
 var conf = newConfigRefForTest()
 var cache = newIdentCache()
 var graph = newModuleGraphForSem(cache, conf)
 testNifEncDec(graph, "modtest1.nim")
+testNifEncDec(graph, "modtestliterals.nim")
