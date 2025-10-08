@@ -15,6 +15,8 @@ import std/formatfloat
 when defined(windows):
   import std/widestrs
 
+from system/ansi_c import c_memchr
+
 # ----------------- IO Part ------------------------------------------------
 type
   CFile {.importc: "FILE", header: "<stdio.h>",
@@ -38,15 +40,19 @@ type
                          ## at the end. If the file does not exist, it
                          ## will be created.
 
-  FileHandle* = cint ## The type that represents an OS file handle; this is
-                      ## useful for low-level file access.
-
   FileSeekPos* = enum ## Position relative to which seek should happen.
                       # The values are ordered so that they match with stdio
                       # SEEK_SET, SEEK_CUR and SEEK_END respectively.
     fspSet            ## Seek to absolute value
     fspCur            ## Seek relative to current position
     fspEnd            ## Seek relative to end
+
+when defined(windows):
+  type FileHandle* = int
+    ## Windows `HANDLE` type, convertible to `winlean.Handle`.
+else:
+  type FileHandle* = cint ## The type that represents an OS file handle; this is
+                      ## useful for low-level file access.
 
 # text file handling:
 when not defined(nimscript) and not defined(js):
@@ -308,22 +314,32 @@ elif defined(windows):
   proc getOsfhandle(fd: cint): int {.
     importc: "_get_osfhandle", header: "<io.h>".}
 
-  type
-    IoHandle = distinct pointer
-      ## Windows' HANDLE type. Defined as an untyped pointer but is **not**
-      ## one. Named like this to avoid collision with other `system` modules.
-
-  proc setHandleInformation(hObject: IoHandle, dwMask, dwFlags: WinDWORD):
+  proc setHandleInformation(hObject: FileHandle, dwMask, dwFlags: WinDWORD):
                            WinBOOL {.stdcall, dynlib: "kernel32",
                                   importc: "SetHandleInformation".}
 
 const
   BufSize = 4000
 
-proc close*(f: File) {.tags: [], gcsafe, sideEffect.} =
+template closeIgnoreError(f: File) =
   ## Closes the file.
   if not f.isNil:
     discard c_fclose(f)
+
+
+when defined(nimPreviewCheckedClose):
+  proc close*(f: File) {.tags: [], gcsafe, sideEffect.} =
+    ## Closes the file.
+    ##
+    ## Raises an IO exception in case of an error.
+    if not f.isNil:
+      let x = c_fclose(f)
+      if x < 0:
+        checkErr(f)
+else:
+  proc close*(f: File) {.tags: [], gcsafe, sideEffect.} =
+    ## Closes the file.
+    closeIgnoreError(f)
 
 proc readChar*(f: File): char {.tags: [ReadIOEffect].} =
   ## Reads a single character from the stream `f`. Should not be used in
@@ -344,7 +360,7 @@ proc getFileHandle*(f: File): FileHandle =
   ## Note that on Windows this doesn't return the Windows-specific handle,
   ## but the C library's notion of a handle, whatever that means.
   ## Use `getOsFileHandle` instead.
-  c_fileno(f)
+  FileHandle c_fileno(f)
 
 proc getOsFileHandle*(f: File): FileHandle =
   ## Returns the OS file handle of the file `f`. This is only useful for
@@ -373,7 +389,7 @@ when defined(nimdoc) or (defined(posix) and not defined(nimscript)) or defined(w
       flags = if inheritable: flags and not FD_CLOEXEC else: flags or FD_CLOEXEC
       result = c_fcntl(f, F_SETFD, flags) != -1
     else:
-      result = setHandleInformation(cast[IoHandle](f), HANDLE_FLAG_INHERIT,
+      result = setHandleInformation(f, HANDLE_FLAG_INHERIT,
                                     inheritable.WinDWORD) != 0
 
 proc readLine*(f: File, line: var string): bool {.tags: [ReadIOEffect],
@@ -384,8 +400,7 @@ proc readLine*(f: File, line: var string): bool {.tags: [ReadIOEffect],
   ## character(s) are not part of the returned string. Returns `false`
   ## if the end of the file has been reached, `true` otherwise. If
   ## `false` is returned `line` contains no new data.
-  proc c_memchr(s: pointer, c: cint, n: csize_t): pointer {.
-    importc: "memchr", header: "<string.h>".}
+  result = false
 
   when defined(windows):
     proc readConsole(hConsoleInput: FileHandle, lpBuffer: pointer,
@@ -407,12 +422,18 @@ proc readLine*(f: File, line: var string): bool {.tags: [ReadIOEffect],
       importc: "LocalFree", stdcall, dynlib: "kernel32".}
 
     proc isatty(f: File): bool =
+      # terminal module also has isatty
       when defined(posix):
         proc isatty(fildes: FileHandle): cint {.
           importc: "isatty", header: "<unistd.h>".}
-      else:
-        proc isatty(fildes: FileHandle): cint {.
+      elif defined(windows):
+        proc c_isatty(fildes: cint): cint {.
           importc: "_isatty", header: "<io.h>".}
+        proc isatty(fildes: FileHandle): cint =
+          c_isatty(cint(fildes))
+      else:
+        {.error: "isatty is not supported on your operating system!".}
+
       result = isatty(getFileHandle(f)) != 0'i32
 
     # this implies the file is open
@@ -474,7 +495,7 @@ proc readLine*(f: File, line: var string): bool {.tags: [ReadIOEffect],
       checkErr(f)
       break
 
-    let m = c_memchr(addr line[pos], '\L'.ord, cast[csize_t](sp))
+    let m = c_memchr(addr line[pos], cint('\L'), cast[csize_t](sp))
     if m != nil:
       # \l found: Could be our own or the one by fgets, in any case, we're done
       var last = cast[int](m) - cast[int](addr line[0])
@@ -708,12 +729,12 @@ proc open*(f: var File, filename: string,
       # be opened.
       var res {.noinit.}: Stat
       if c_fstat(getFileHandle(f2), res) >= 0'i32 and modeIsDir(res.st_mode):
-        close(f2)
+        closeIgnoreError(f2)
         return false
     when not defined(nimInheritHandles) and declared(setInheritable) and
          NoInheritFlag.len == 0:
       if not setInheritable(getOsFileHandle(f2), false):
-        close(f2)
+        closeIgnoreError(f2)
         return false
 
     result = true
@@ -722,6 +743,8 @@ proc open*(f: var File, filename: string,
       discard c_setvbuf(f, nil, IOFBF, cast[csize_t](bufSize))
     elif bufSize == 0:
       discard c_setvbuf(f, nil, IONBF, 0)
+  else:
+    result = false
 
 proc reopen*(f: File, filename: string, mode: FileMode = fmRead): bool {.
   tags: [], benign.} =
@@ -736,9 +759,11 @@ proc reopen*(f: File, filename: string, mode: FileMode = fmRead): bool {.
     when not defined(nimInheritHandles) and declared(setInheritable) and
          NoInheritFlag.len == 0:
       if not setInheritable(getOsFileHandle(f), false):
-        close(f)
+        closeIgnoreError(f)
         return false
     result = true
+  else:
+    result = false
 
 proc open*(f: var File, filehandle: FileHandle,
            mode: FileMode = fmRead): bool {.tags: [], raises: [], benign.} =
@@ -749,10 +774,10 @@ proc open*(f: var File, filehandle: FileHandle,
   ## The passed file handle will no longer be inheritable.
   when not defined(nimInheritHandles) and declared(setInheritable):
     let oshandle = when defined(windows): FileHandle getOsfhandle(
-        filehandle) else: filehandle
+        cint filehandle) else: filehandle
     if not setInheritable(oshandle, false):
       return false
-  f = c_fdopen(filehandle, RawFormatOpen[mode])
+  f = c_fdopen(cint filehandle, RawFormatOpen[mode])
   result = f != nil
 
 proc open*(filename: string,
@@ -763,6 +788,7 @@ proc open*(filename: string,
   ## could not be opened.
   ##
   ## The file handle associated with the resulting `File` is not inheritable.
+  result = default(File)
   if not open(result, filename, mode, bufSize):
     raise newException(IOError, "cannot open: " & filename)
 

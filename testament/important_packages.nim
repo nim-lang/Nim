@@ -30,23 +30,22 @@ type NimblePackage* = object
 
 var packages*: seq[NimblePackage]
 
-proc pkg(name: string; cmd = "nimble test"; url = "", useHead = true, allowFailure = false) =
+proc pkg(name: string; cmd = "nimble test -l"; url = "", useHead = true, allowFailure = false) =
   packages.add NimblePackage(name: name, cmd: cmd, url: url, useHead: useHead, allowFailure: allowFailure)
 
 pkg "alea"
 pkg "argparse"
-pkg "arraymancer", "nim c tests/tests_cpu.nim"
+pkg "arraymancer", "nimble install -y; nimble uninstall -i -y nimcuda; nimble install nimcuda@0.2.1; nim c tests/tests_cpu.nim"
 pkg "ast_pattern_matching", "nim c -r tests/test1.nim"
 pkg "asyncftpclient", "nimble compileExample"
-pkg "asyncthreadpool", "nimble test --mm:refc"
+when not defined(arm64):
+  pkg "asyncthreadpool", "nimble test --mm:refc"
 pkg "awk"
 pkg "bigints"
 pkg "binaryheap", "nim c -r binaryheap.nim"
-pkg "BipBuffer"
-pkg "blscurve", allowFailure = true
+pkg "BipBuffer", url = "https://github.com/nim-lang/BipBuffer"
 pkg "bncurve"
 pkg "brainfuck", "nim c -d:release -r tests/compile.nim"
-pkg "bump", "nim c --mm:arc --path:. -r tests/tbump.nim", "https://github.com/disruptek/bump", allowFailure = true
 pkg "c2nim", "nim c testsuite/tester.nim"
 pkg "cascade"
 pkg "cello", url = "https://github.com/nim-lang/cello", useHead = true
@@ -58,34 +57,31 @@ pkg "cligen", "nim c --path:. -r cligen.nim"
 pkg "combparser", "nimble test --mm:orc"
 pkg "compactdict"
 pkg "comprehension", "nimble test", "https://github.com/alehander92/comprehension"
+pkg "confutils", "nimble install -y toml_serialization json_serialization unittest2; nimble test"
 pkg "constantine", "nimble make_lib"
-pkg "cowstrings"
-pkg "criterion", allowFailure = true # needs testing binary
-pkg "datamancer"
+pkg "cowstrings", "nim c -r tests/tcowstrings.nim"
+when not defined(arm64):
+  pkg "criterion"
 pkg "dashing", "nim c tests/functional.nim"
+pkg "datamancer"
 pkg "delaunay"
-pkg "dnsclient", allowFailure = true # super fragile
 pkg "docopt"
 pkg "dotenv"
-# when defined(linux): pkg "drchaos"
 pkg "easygl", "nim c -o:egl -r src/easygl.nim", "https://github.com/jackmott/easygl"
-pkg "elvis"
+pkg "elvis", url = "https://github.com/nim-lang/elvis"
+pkg "eth", "nim c -o:common -r tests/common/all_tests"
 pkg "faststreams"
 pkg "fidget"
-pkg "fragments", "nim c -r fragments/dsl.nim", allowFailure = true # pending https://github.com/nim-lang/packages/issues/2115 
 pkg "fusion"
 pkg "gara"
-pkg "glob"
 pkg "ggplotnim", "nim c -d:noCairo -r tests/tests.nim"
-pkg "gittyup", "nimble test", "https://github.com/disruptek/gittyup", allowFailure = true
+pkg "glob"
 pkg "gnuplot", "nim c gnuplot.nim"
-# pkg "gram", "nim c -r --mm:arc --define:danger tests/test.nim", "https://github.com/disruptek/gram"
-  # pending https://github.com/nim-lang/Nim/issues/16509
 pkg "hts", "nim c -o:htss src/hts.nim"
 pkg "httpauth"
 pkg "httputils"
 pkg "illwill", "nimble examples"
-pkg "inim"
+# pkg "inim"
 pkg "itertools", "nim doc src/itertools.nim"
 pkg "iterutils"
 pkg "json_rpc"
@@ -93,22 +89,26 @@ pkg "json_serialization"
 pkg "jstin"
 pkg "karax", "nim c -r tests/tester.nim"
 pkg "kdtree", "nimble test -d:nimLegacyRandomInitRand", "https://github.com/jblindsay/kdtree"
-pkg "loopfusion"
 pkg "lockfreequeues"
+pkg "loopfusion"
 pkg "macroutils"
 pkg "manu"
 pkg "markdown"
 pkg "measuremancer", "nimble testDeps; nimble -y test"
 pkg "memo"
+pkg "metrics"
 pkg "msgpack4nim", "nim c -r tests/test_spec.nim"
 pkg "nake", "nim c nakefile.nim"
+pkg "nat_traversal"
 pkg "neo", "nim c -d:blas=openblas --mm:refc tests/all.nim"
-pkg "nesm", "nimble tests", "https://github.com/nim-lang/NESM", useHead = true, allowFailure = true
-  # inactive, tests not adapted to #23096
 pkg "netty"
-pkg "nico", allowFailure = true
 pkg "nicy", "nim c -r src/nicy.nim"
-pkg "nigui", "nim c -o:niguii -r src/nigui.nim"
+when defined(osx):
+  # gives "could not load: libgtk-3.0.dylib" on macos 13
+  # just test compiling instead of running
+  pkg "nigui", "nim c -o:niguii src/nigui.nim"
+else:
+  pkg "nigui", "nim c -o:niguii -r src/nigui.nim"
 pkg "nimcrypto", "nim r --path:. tests/testall.nim" # `--path:.` workaround needed, see D20210308T165435
 pkg "NimData", "nim c -o:nimdataa src/nimdata.nim"
 pkg "nimes", "nim c src/nimes.nim"
@@ -118,17 +118,16 @@ pkg "nimgen", "nim c -o:nimgenn -r src/nimgen/runcfg.nim"
 pkg "nimib"
 pkg "nimlsp"
 pkg "nimly", "nim c -r tests/test_readme_example.nim"
-pkg "nimongo", "nimble test_ci", allowFailure = true
-pkg "nimph", "nimble test", "https://github.com/disruptek/nimph", allowFailure = true
 pkg "nimPNG", useHead = true
 pkg "nimpy", "nim c -r tests/nimfrompy.nim"
 pkg "nimquery"
 pkg "nimsl"
 pkg "nimsvg"
-pkg "nimterop", "nimble minitest", url = "https://github.com/nim-lang/nimterop"
+when not defined(arm64):
+  pkg "nimterop", "nimble minitest", url = "https://github.com/nim-lang/nimterop"
 pkg "nimwc", "nim c nimwc.nim"
-pkg "nimx", "nim c test/main.nim", allowFailure = true
 pkg "nitter", "nim c src/nitter.nim", "https://github.com/zedeus/nitter"
+pkg "noise"
 pkg "norm", "testament r tests/common/tmodel.nim"
 pkg "normalize"
 pkg "npeg", "nimble testarc"
@@ -137,14 +136,14 @@ pkg "optionsutils"
 pkg "ormin", "nim c -o:orminn ormin.nim"
 pkg "parsetoml"
 pkg "patty"
-pkg "pixie"
+when not defined(arm64):
+  pkg "pixie"
 pkg "plotly", "nim c examples/all.nim"
 pkg "pnm"
 pkg "polypbren"
 pkg "presto"
 pkg "prologue", "nimble tcompile"
-# remove fork after https://github.com/PMunch/combparser/pull/7 is merged:
-pkg "protobuf", "nimble install -y https://github.com/metagn/combparser@#HEAD; nim c -o:protobuff -r src/protobuf.nim"
+pkg "protobuf", "nim c -o:protobuff -r src/protobuf.nim"
 pkg "rbtree"
 pkg "react", "nimble example"
 pkg "regex", "nim c src/regex"
@@ -158,9 +157,9 @@ pkg "sigv4", "nim c --mm:arc -r sigv4.nim", "https://github.com/disruptek/sigv4"
 pkg "sim"
 pkg "smtp", "nimble compileExample"
 pkg "snip", "nimble test", "https://github.com/genotrance/snip"
-pkg "ssostrings"
+pkg "ssostrings", "nim c -r tests/tssostrings.nim"
 pkg "stew"
-pkg "stint", "nim c stint.nim"
+pkg "stint", "nimble test_internal"
 pkg "strslice"
 pkg "strunicode", "nim c -r --mm:refc src/strunicode.nim"
 pkg "supersnappy"
@@ -176,17 +175,17 @@ pkg "testutils"
 pkg "timeit"
 pkg "timezones"
 pkg "tiny_sqlite"
+pkg "toml_serialization", "nimble install -y stint unittest2; nimble test"
 pkg "unicodedb", "nim c -d:release -r tests/tests.nim"
 pkg "unicodeplus", "nim c -d:release -r tests/tests.nim"
 pkg "union", "nim c -r tests/treadme.nim", url = "https://github.com/alaviss/union"
 pkg "unittest2"
 pkg "unpack"
-pkg "weave", "nimble install -y cligen@#HEAD; nimble test_gc_arc", useHead = true
-pkg "websock"
+when not defined(arm64):
+  pkg "weave", "nimble install -y cligen@#HEAD; nimble test_gc_arc", useHead = true
+pkg "websock", "nim c -d:chronosStrictException -d:chronicles_log_level=INFO --mm:refc tests/all_tests.nim"
 pkg "websocket", "nim c websocket.nim"
-# pkg "winim", allowFailure = true
 pkg "with"
-pkg "ws", allowFailure = true
 pkg "yaml"
 pkg "zero_functional", "nim c -r test.nim"
 pkg "zippy"

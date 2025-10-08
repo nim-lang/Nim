@@ -24,7 +24,7 @@ on the different supported platforms. It is not a definition of the Nim
 programming language (which is covered in the [manual](manual.html)).
 
 Nim is free software; it is licensed under the
-[MIT License](http://www.opensource.org/licenses/mit-license.php).
+[MIT License](https://www.opensource.org/licenses/mit-license.php).
 
 
 Compiler Usage
@@ -223,6 +223,8 @@ directories (in this order; later files overwrite previous settings):
    This file can be skipped with the `--skipProjCfg`:option:
    command-line option.
 
+
+[NimScript files](nims.html) can also be used for configuration.
 
 Command-line settings have priority over configuration file settings.
 

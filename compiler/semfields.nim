@@ -18,6 +18,15 @@ type
     replaceByFieldName: bool
     c: PContext
 
+proc wrapNewScope(c: PContext, n: PNode): PNode {.inline.} =
+  # use `if true` to not interfere with `break`
+  # just opening scope via `openScope(c)` isn't enough,
+  # a scope has to be opened in the codegen as well for reused
+  # template instantiations
+  let trueLit = newIntLit(c.graph, n.info, 1)
+  trueLit.typ() = getSysType(c.graph, n.info, tyBool)
+  result = newTreeI(nkIfStmt, n.info, newTreeI(nkElifBranch, n.info, trueLit, n))
+
 proc instFieldLoopBody(c: TFieldInstCtx, n: PNode, forLoop: PNode): PNode =
   if c.field != nil and isEmptyType(c.field.typ):
     result = newNode(nkEmpty)
@@ -27,7 +36,8 @@ proc instFieldLoopBody(c: TFieldInstCtx, n: PNode, forLoop: PNode): PNode =
   of nkIdent, nkSym:
     result = n
     let ident = considerQuotedIdent(c.c, n)
-    if c.replaceByFieldName:
+    if c.replaceByFieldName and
+        ident.id != ord(wUnderscore):
       if ident.id == considerQuotedIdent(c.c, forLoop[0]).id:
         let fieldName = if c.tupleType.isNil: c.field.name.s
                         elif c.tupleType.n.isNil: "Field" & $c.tupleIndex
@@ -36,7 +46,8 @@ proc instFieldLoopBody(c: TFieldInstCtx, n: PNode, forLoop: PNode): PNode =
         return
     # other fields:
     for i in ord(c.replaceByFieldName)..<forLoop.len-2:
-      if ident.id == considerQuotedIdent(c.c, forLoop[i]).id:
+      if ident.id == considerQuotedIdent(c.c, forLoop[i]).id and
+            ident.id != ord(wUnderscore):
         var call = forLoop[^2]
         var tupl = call[i+1-ord(c.replaceByFieldName)]
         if c.field.isNil:
@@ -72,7 +83,9 @@ proc semForObjectFields(c: TFieldsCtx, typ, forLoop, father: PNode) =
     )
     openScope(c.c)
     inc c.c.inUnrolledContext
-    let body = instFieldLoopBody(fc, lastSon(forLoop), forLoop)
+    var body = instFieldLoopBody(fc, lastSon(forLoop), forLoop)
+    # new scope for each field that codegen should know about:
+    body = wrapNewScope(c.c, body)
     father.add(semStmt(c.c, body, {}))
     dec c.c.inUnrolledContext
     closeScope(c.c)
@@ -148,6 +161,8 @@ proc semForFields(c: PContext, n: PNode, m: TMagic): PNode =
           replaceByFieldName: m == mFieldPairs
       )
       var body = instFieldLoopBody(fc, loopBody, n)
+      # new scope for each field that codegen should know about:
+      body = wrapNewScope(c, body)
       inc c.inUnrolledContext
       stmts.add(semStmt(c, body, {}))
       dec c.inUnrolledContext
