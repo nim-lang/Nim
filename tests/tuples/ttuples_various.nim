@@ -1,11 +1,13 @@
 discard """
+targets: "c cpp"
+matrix: "--mm:refc; --mm:arc"
 output: '''
 it's nil
 @[1, 2, 3]
 '''
 """
 
-import macros
+import std/[options, macros]
 
 
 block anontuples:
@@ -209,3 +211,21 @@ block: # tuple unpacking assignment with underscore
   doAssert (a, b) == (6, 2)
   (b, _) = (7, 8)
   doAssert (a, b) == (6, 7)
+
+# bug #24800
+type
+  B[T] = object
+    case r: bool
+    of false:
+      v: ref int
+    of true:
+      x: T
+  U = ref object of RootObj
+
+method y(_: U) {.base.} =
+  var s = default(B[tuple[f: B[int], w: B[int]]])
+  discard some(s.x)
+
+proc foo =
+  var s = U()
+  y(s)

@@ -1,0 +1,47 @@
+discard """
+  targets: "c cpp"
+  matrix: "--mm:refc; --mm:orc"
+"""
+
+{.emit:"""
+void foo(unsigned long long* x)
+{
+}
+""".}
+
+block:
+  proc foo(x: var culonglong) {.importc: "foo", nodecl.}
+
+  proc main(x: var uint64) =
+    foo(culonglong x)
+
+  var u = uint64(12)
+  main(u)
+
+block:
+  proc foo(x: var culonglong) {.importc: "foo", nodecl.}
+
+  proc main() =
+    var m = uint64(12)
+    foo(culonglong(m))
+  main()
+
+block: # bug #25109
+  type T = culonglong
+  proc r(c: var T) = c = 1
+  proc h(a: var culonglong) = r(T(a))
+  var a: culonglong
+  h(a)
+  doAssert a == 1
+
+block: # bug #25111
+  type T = culonglong
+  proc r(c: var T) = c = 1
+
+  proc foo =
+    var a: uint64
+    r(T(a))
+    doAssert a == 1
+
+  foo()
+

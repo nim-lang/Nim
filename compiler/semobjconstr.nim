@@ -236,7 +236,7 @@ proc semConstructFields(c: PContext, n: PNode, constrCtx: var ObjConstrContext,
           let prevFields = fieldsPresentInBranch(selectedBranch)
           let currentFields = fieldsPresentInBranch(i)
           localError(c.config, constrCtx.initExpr.info,
-            ("The fields '$1' and '$2' cannot be initialized together, " &
+            ("The fields $1 and $2 cannot be initialized together, " &
             "because they are from conflicting branches in the case object.") %
             [prevFields, currentFields])
           result.status = initConflict

@@ -1406,11 +1406,14 @@ proc generateDoc*(d: PDoc, n, orig: PNode, config: ConfigRef, docFlags: DocFlags
     for it in n: traceDeps(d, it)
   of nkExportStmt:
     for it in n:
-      # bug #23051; don't generate documentation for exported symbols again
-      if it.kind == nkSym and sfExported notin it.sym.flags:
-        if d.module != nil and d.module == it.sym.owner:
-          generateDoc(d, it.sym.ast, orig, config, kForceExport)
+      if it.kind == nkSym:
+        if d.module != nil and d.module == it.sym.owner:  # in current module
+          # bug #23051; don't generate documentation for exported symbols again
+          if sfExported notin it.sym.flags:
+            generateDoc(d, it.sym.ast, orig, config, kForceExport)
+          # else it's to be handled in `of XxxSection` branch
         elif it.sym.ast != nil:
+          # only export symbols in imported modules, not in current module
           exportSym(d, it.sym)
   of nkExportExceptStmt: discard "transformed into nkExportStmt by semExportExcept"
   of nkFromStmt, nkImportExceptStmt: traceDeps(d, n[0])
@@ -1889,6 +1892,9 @@ proc commandJson*(cache: IdentCache, conf: ConfigRef) =
   else:
     #echo getOutFile(gProjectFull, JsonExt)
     let filename = getOutFile(conf, RelativeFile conf.projectName, JsonExt)
+    conf.outFile = filename.relativeTo(conf.outDir)
+    let dir = filename.splitFile.dir
+    createDir(dir)
     try:
       writeFile(filename, content)
     except IOError:
@@ -1909,8 +1915,10 @@ proc commandTags*(cache: IdentCache, conf: ConfigRef) =
   if optStdout in d.conf.globalOptions:
     write(stdout, content)
   else:
-    #echo getOutFile(gProjectFull, TagsExt)
     let filename = getOutFile(conf, RelativeFile conf.projectName, TagsExt)
+    conf.outFile = filename.relativeTo(conf.outDir)
+    let dir = filename.splitFile.dir
+    createDir(dir)
     try:
       writeFile(filename, content)
     except IOError:

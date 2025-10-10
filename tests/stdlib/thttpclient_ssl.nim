@@ -1,6 +1,6 @@
 discard """
   cmd: "nim $target --mm:refc -d:ssl $options $file"
-  disabled: "openbsd"
+  disabled: "true"
   retries: 2
 """
 

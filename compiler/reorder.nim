@@ -93,7 +93,7 @@ proc computeDeps(cache: IdentCache; n: PNode, declares, uses: var IntSet; topLev
   of nkIdent: uses.incl n.ident.id
   of nkSym: uses.incl n.sym.name.id
   of nkAccQuoted: uses.incl accQuoted(cache, n).id
-  of nkOpenSymChoice, nkClosedSymChoice:
+  of nkOpenSymChoice, nkClosedSymChoice, nkOpenSym:
     uses.incl n[0].sym.name.id
   of nkStmtList, nkStmtListExpr, nkWhenStmt, nkElifBranch, nkElse, nkStaticStmt:
     for i in 0..<n.len: computeDeps(cache, n[i], declares, uses, topLevel)
