@@ -10,10 +10,16 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-    # nimrun-action requires Nim installed.
-    - uses: jiro4989/setup-nim-action@v1
-      with:
-        nim-version: 'devel'
+      - name: Install OpenSSL (Windows)
+        if: |
+          runner.os == 'Windows'
+        run: choco install openssl.light --version=1.1.1.0  # OpenSSL 3.x removed SSL_library_init
+        shell: 'powershell'
+
+      # v2 wont work here, because uses "hardcoded" nim versions, action "dynamically" finds version with bug.
+      - uses: jiro4989/setup-nim-action@v1
+        with:
+          nim-version: 'devel'
 
     - name: Install Dependencies
       run: sudo apt-get install --no-install-recommends -yq valgrind
