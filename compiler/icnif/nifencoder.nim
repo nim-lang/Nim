@@ -29,6 +29,9 @@ proc addFloatLit(b: var Builder; f: float; suffix: string) =
     addFloatLit(b, f)
     addStrLit(b, suffix)
 
+proc toNif(c: var EncodeContext; n: PNode)
+proc toNif(c: var EncodeContext; t: PType)
+
 proc toNifSym(c: var EncodeContext; sym: PSym): string =
   result = sym.name.s & '.' & $sym.disamb
   let owner = sym.skipGenericOwner()
@@ -42,7 +45,10 @@ proc toNifSym(c: var EncodeContext; sym: PSym): string =
     result.add modsuf
 
 proc symToNif(c: var EncodeContext; sym: PSym) =
-  c.b.addSymbol toNifSym(c, sym)
+  if sym.kind == skType and sym.typ != nil:
+    toNif c, sym.typ
+  else:
+    c.b.addSymbol toNifSym(c, sym)
 
 proc symdefToNif(c: var EncodeContext; n: PNode) =
   assert n.kind == nkSym
@@ -71,6 +77,52 @@ proc symdefToNif(c: var EncodeContext; n: PNode) =
     c.b.addIntLit sym.position
   c.b.endTree()
 
+include nifencodertypes
+
+proc toNifTypeSection(c: var EncodeContext; n: PNode) =
+  assert n.len == 3
+
+  var name: PNode
+  var visibility: PNode
+  var pragma: PNode
+  if n[0].kind == nkPragmaExpr:
+    pragma = n[0][1]
+    if n[0][0].kind == nkPostfix:
+      visibility = n[0][0][0]
+      name = n[0][0][1]
+    else:
+      name = n[0][0]
+  elif n[0].kind == nkPostfix:
+    visibility = n[0][0]
+    name = n[0][1]
+  else:
+    name = n[0]
+
+  c.b.withTree(toNifTag(n.kind)):
+    symdefToNif(c, name)
+
+    if visibility != nil:
+      c.b.addIdent "x"
+    else:
+      c.b.addEmpty
+
+    # TODO: pragma
+    c.b.addEmpty
+
+    # TODO: Generics
+    toNif c, n[1]
+
+    let last = n[2]
+    if name.kind == nkSym:
+      if last.kind == nkEmpty and name.sym.typ != nil:
+        toNif c, name.sym.typ
+      elif name.sym.typ != nil and name.sym.typ.kind in {tyEnum, tyObject} and name.sym.typ.n != nil:
+        toNif c, name.sym.typ
+      else:
+        toNif c, last
+    else:
+      toNif c, last
+
 proc toNifImport(c: var EncodeContext; n: PNode) =
   c.b.addTree toNifTag(n.kind)
   for i in 0 ..< n.len:
@@ -84,6 +136,22 @@ proc toNif(c: var EncodeContext; n: PNode) =
   case n.kind:
   of nkEmpty:
     c.b.addEmpty()
+  of nkSym:
+    when false:
+      echo "nkSym: ", n.sym.name.s
+      if n.sym.kind == skModule:
+        echo "position = ", n.sym.position
+      debug(n.sym)
+      var o = n.sym.owner
+      for i in 0 .. 20:
+        if o == nil:
+          break
+        echo "owner ", i, ":"
+        if o.kind == skModule:
+          echo "position = ", o.position
+        debug(o)
+        o = o.owner
+    symToNif(c, n.sym)
   of nkCharLit:
     c.b.addCharLit n.intVal.char
   of nkIntLit:
@@ -124,25 +192,14 @@ proc toNif(c: var EncodeContext; n: PNode) =
     c.b.addTree toNifTag(n.kind)
     assert n.len == 3
     symdefToNif(c, n[0])
-    toNif c, n[1]
+    if n[0].kind == nkSym:
+      toNif c, n[0].sym.typ
+    else:
+      toNif c, n[1]
     toNif c, n[2]
     c.b.endTree()
-  of nkSym:
-    when false:
-      echo "nkSym: ", n.sym.name.s
-      if n.sym.kind == skModule:
-        echo "position = ", n.sym.position
-      debug(n.sym)
-      var o = n.sym.owner
-      for i in 0 .. 20:
-        if o == nil:
-          break
-        echo "owner ", i, ":"
-        if o.kind == skModule:
-          echo "position = ", o.position
-        debug(o)
-        o = o.owner
-    symToNif(c, n.sym)
+  of nkTypeDef:
+    toNifTypeSection(c, n)
   of nkImportStmt:
     toNifImport(c, n)
   else:

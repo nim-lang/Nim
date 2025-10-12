@@ -56,22 +56,43 @@ proc sem(graph: ModuleGraph; path: AbsoluteFile): PNode =
 
     return semNode
 
-# Compare PSym and PNode but ignores fields nifencoder and nifdecoder doesn't support
+const SysTypeKinds = {tyBool, tyChar, tyString, tyInt .. tyUInt64}
+
+# Compare PType, PSym and PNode but ignores fields nifencoder and nifdecoder doesn't support
+proc eql(x, y: PType): bool =
+  if x == nil and y == nil:
+    result = true
+  elif x == nil or y == nil:
+    result = false
+  elif x.kind == y.kind:
+    result = true
+  else:
+    echo "type kind mismatch: ", x.kind, "/", y.kind
+    result = false
+
 proc eql(x, y: PSym): bool =
   if x == nil and y == nil:
     result = true
   elif x == nil or y == nil:
     result = false
-  elif x.itemId.item == y.itemId.item and x.kind == y.kind and x.name.s == y.name.s and x.flags == y.flags and x.disamb == y.disamb:
-    if x.owner == nil and y.owner == nil:
-      result = true
-    elif x.owner == nil or y.owner == nil:
-      result = false
-    elif x.owner.kind == y.owner.kind and x.owner.name.s == y.owner.name.s:
-      if x.kind == skModule:
+  elif x.kind == y.kind and eql(x.typ, y.typ) and x.name.s == y.name.s:
+    if (x.itemId.item == y.itemId.item and x.disamb == y.disamb and x.flags == y.flags) or (x.kind == skType and x.typ.kind in SysTypeKinds):
+      if x.owner == nil and y.owner == nil:
         result = true
+      elif x.owner == nil or y.owner == nil:
+        echo "missing owner"
+        result = false
+      elif (x.owner.kind == y.owner.kind and x.owner.name.s == y.owner.name.s) or x.owner.name.s == "system":
+        # Current system types in nifdecoder doesn't have system module owner
+        if x.kind == skModule:
+          result = true
+        else:
+          result = x.position == y.position
       else:
-        result = x.position == y.position
+        echo "Symbol owner mismatch: "
+        debug(x.owner)
+        debug(y.owner)
+        result = false
     else:
       result = false
   else:
@@ -88,10 +109,21 @@ proc eql(x, y: PNode): bool =
       result = eql(x.sym, y.sym)
       if not result:
         echo "Symbol mismatch:"
-        #debug(x)
-        #debug(y)
+        debug(x.sym)
+        debug(y.sym)
+        debug(x.sym.typ)
+        debug(y.sym.typ)
     of nkCharLit .. nkTripleStrLit:
       result = sameValue(x, y)
+    of nkIdentDefs:
+      assert x.len == 3
+      if eql(x[0], y[0]) and eql(x[2], y[2]):
+        if x[1].kind == nkEmpty:
+          result = true
+        else:
+          result = eql(x[1], y[1])
+      else:
+        result = false
     else:
       result = true
       for i in 0 ..< x.safeLen:
@@ -105,13 +137,13 @@ proc testNifEncDec(graph: ModuleGraph; src: string) =
   let fullPath = TestCodeDir / RelativeFile(src)
   let n = sem(graph, fullPath)
   let nif = saveNifToBuffer(n, graph.config)
+  #debug(n)
+  #echo nif
+
   # Don't reuse the ModuleGraph used for semcheck when load NIF.
   var graphForLoad = newModuleGraph(newIdentCache(), newConfigRefForTest())
   let n2 = loadNifFromBuffer(nif, fullPath, graphForLoad)
-  #debug(n)
   #debug(n2)
-  #if src == "modtestliterals.nim":
-  #  echo nif
   assert eql(n, n2)
 
 var conf = newConfigRefForTest()
@@ -119,3 +151,4 @@ var cache = newIdentCache()
 var graph = newModuleGraphForSem(cache, conf)
 testNifEncDec(graph, "modtest1.nim")
 testNifEncDec(graph, "modtestliterals.nim")
+testNifEncDec(graph, "modtesttypesections.nim")

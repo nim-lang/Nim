@@ -8,21 +8,33 @@ type
   DecodeContext = object
     graph: ModuleGraph
     nifSymToPSym: Table[string, PSym] # foo.1.modsuffix -> PSym
+    types: Table[SymId, PType]
+    owner: PSym
+    sysTypes: Table[TTypeKind, PSym]
+    idgen: IdGenerator
 
 proc nodeKind(n: Cursor): TNodeKind {.inline.} =
   assert n.kind == ParLe
   pool.tags[n.tagId].parseNodeKind()
 
-var sysTypes: Table[TTypeKind, PType]
+const SysTypeKinds = {tyBool, tyChar, tyString, tyInt .. tyUInt64}
 
-proc getSysType(typeKind: TTypeKind): PType =
-  # This will be replaced with magicsys.getSysType
-  assert typeKind in {tyBool, tyChar, tyInt .. tyUInt64}
-  if typeKind in sysTypes:
-    result = sysTypes[typeKind]
+proc getSysTypeSym(c: var DecodeContext; typeKind: TTypeKind): PSym =
+  assert typeKind in SysTypeKinds
+  if typeKind in c.sysTypes:
+    result = c.sysTypes[typeKind]
   else:
-    result = PType(itemId: ItemId(module: 0, item: typeKind.int32), kind: typeKind)
-    sysTypes[typeKind] = result
+    let ident = c.graph.cache.getIdent(toNifTag typeKind)
+    result = newSym(skType, ident, c.idgen, c.owner, unknownLineInfo)
+    var typ = newType(typeKind, c.idgen, nil)
+    typ.sym = result
+    result.typ = typ
+    c.sysTypes[typeKind] = result
+
+proc getSysType(c: var DecodeContext; typeKind: TTypeKind): PType =
+  # This will be replaced with magicsys.getSysType
+  assert typeKind in SysTypeKinds
+  getSysTypeSym(c, typeKind).typ
 
 type
   SplittedNifSym = object
@@ -48,6 +60,9 @@ proc splitNifSym(s: string): SplittedNifSym =
     dec i
 
 proc fromNif(c: var DecodeContext; n: var Cursor): PNode
+proc fromNifType(c: var DecodeContext; n: var Cursor): PType
+
+include nifdecodertypes
 
 proc fromNifSymbol(c: var DecodeContext; n: var Cursor): PSym =
   result = c.nifSymToPSym[pool.syms[n.symId]]
@@ -56,6 +71,7 @@ proc fromNifSymbol(c: var DecodeContext; n: var Cursor): PSym =
 proc fromNifSymDef(c: var DecodeContext; n: var Cursor; kind: TNodeKind): PNode =
   assert n.nodeKind == nkSym
   let symKind = case kind:
+    of nkTypeSection: skType
     of nkVarSection: skVar
     of nkLetSection: skLet
     of nkImportStmt: skModule
@@ -109,10 +125,45 @@ proc fromNifLocal(c: var DecodeContext; n: var Cursor; kind: TNodeKind): PNode =
   result[0] = newNodeI(nkIdentDefs, unknownLineInfo, 3)
   inc n
   result[0][0] = fromNifSymDef(c, n, kind)
-  result[0][1] = fromNif(c, n)
+  if n.kind == DotToken:
+    result[0][1] = newNode(nkEmpty)
+    inc n
+  else:
+    let typeSym = fromNifType(c, n).sym
+    assert typeSym != nil
+    result[0][1] = typeSym.newSymNode
+    result[0][0].sym.typ = typeSym.typ
   result[0][2] = fromNif(c, n)
   assert n.kind == ParRi  # nkIdentDefs
   inc n
+  assert n.kind == ParRi
+  inc n
+
+proc fromNifTypeSection(c: var DecodeContext; n: var Cursor): PNode =
+  result = newNodeI(nkTypeDef, unknownLineInfo, 3)
+  inc n
+  let sym = fromNifSymDef(c, n, nkTypeSection)
+  if n.kind == DotToken:
+    result[0] = sym
+  else:
+    var postfix = newNodeI(nkPostfix, unknownLineInfo, 2)
+    postfix.add newIdentNode(c.graph.cache.getIdent("*"), unknownLineInfo)
+    postfix.add sym
+    result[0] = postfix
+  inc n
+
+  # TODO: pragma
+  #result.add fromNif(c, n)
+  assert n.kind == DotToken
+  inc n
+
+  # TODO: generics
+  result[1] = fromNif(c, n)
+
+  # type body
+  result[2] = fromNifType(c, n).sym.newSymNode
+  sym.sym.typ = result[2].sym.typ
+
   assert n.kind == ParRi
   inc n
 
@@ -157,7 +208,7 @@ proc fromNifSuf(c: var DecodeContext; n: var Cursor): PNode =
       else:
         assert false, "Unknown int literal suffix " & suffix
         tyNone
-    result = newIntTypeNode(v, getSysType(kind))
+    result = newIntTypeNode(v, c.getSysType(kind))
   of UIntLit:
     let v = pool.uintegers[n.uintId]
     inc n
@@ -175,7 +226,7 @@ proc fromNifSuf(c: var DecodeContext; n: var Cursor): PNode =
       else:
         assert false, "Unknown uint literal suffix " & suffix
         tyNone
-    result = newIntTypeNode(cast[BiggestInt](v), getSysType(kind))
+    result = newIntTypeNode(cast[BiggestInt](v), c.getSysType(kind))
   of FloatLit:
     let v = pool.floats[n.floatId]
     inc n
@@ -192,7 +243,7 @@ proc fromNifSuf(c: var DecodeContext; n: var Cursor): PNode =
         assert false, "Unknown uint literal suffix " & suffix
         (nkNone, tyNone)
     result = newFloatNode(kind[0], v)
-    result.typ() = getSysType(kind[1])
+    result.typ() = c.getSysType(kind[1])
   else:
     assert false, "invalid node in suf node " & $n.kind
   inc n
@@ -214,26 +265,28 @@ proc fromNif(c: var DecodeContext; n: var Cursor): PNode =
     result = newIntNode(nkCharLit, n.charLit.int)
     inc n
   of IntLit:
-    result = newIntTypeNode(pool.integers[n.intId], getSysType(tyInt))
+    result = newIntTypeNode(pool.integers[n.intId], c.getSysType(tyInt))
     inc n
   of UIntLit:
-    result = newIntTypeNode(cast[BiggestInt](pool.uintegers[n.uintId]), getSysType(tyUInt))
+    result = newIntTypeNode(cast[BiggestInt](pool.uintegers[n.uintId]), c.getSysType(tyUInt))
     inc n
   of FloatLit:
     result = newFloatNode(nkFloatLit, pool.floats[n.floatId])
-    result.typ() = getSysType(tyFloat)
+    result.typ() = c.getSysType(tyFloat)
     inc n
   of ParLe:
     let kind = n.nodeKind
     case kind:
-    of nkStmtList:
-      result = newNode(nkStmtList)
+    of nkPostfix, nkTypeSection, nkStmtList:
+      result = newNode(kind)
       inc n
       while n.kind != ParRi:
         result.add fromNif(c, n)
       inc n
     of nkVarSection, nkLetSection:
       result = fromNifLocal(c, n, kind)
+    of nkTypeDef:
+      result = fromNifTypeSection(c, n)
     of nkImportStmt:
       result = fromNifImport(c, n)
     of nkNone:
@@ -259,6 +312,8 @@ proc loadNif(stream: var Stream; modulePath: AbsoluteFile; graph: ModuleGraph): 
   let modSuffix = moduleSuffix(modulePath.string, cast[seq[string]](graph.config.searchPaths))
   let nifModSym = modSym.name.s & '.' & $modSym.disamb & '.' & modSuffix
   c.nifSymToPSym[nifModSym] = modSym
+  c.owner = modSym
+  c.idgen = idGeneratorFromModule(modSym)
 
   result = fromNif(c, n)
 
