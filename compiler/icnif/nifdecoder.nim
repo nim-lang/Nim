@@ -7,7 +7,7 @@ import enum2nif
 type
   DecodeContext = object
     graph: ModuleGraph
-    nifSymToPSym: Table[string, PSym] # foo.1.modsuffix -> PSym
+    nifSymToPSym: Table[SymId, PSym]
     types: Table[SymId, PType]
     owner: PSym
     sysTypes: Table[TTypeKind, PSym]
@@ -46,7 +46,7 @@ proc fromNifType(c: var DecodeContext; n: var Cursor): PType
 include nifdecodertypes
 
 proc fromNifSymbol(c: var DecodeContext; n: var Cursor): PSym =
-  result = c.nifSymToPSym[pool.syms[n.symId]]
+  result = c.nifSymToPSym[n.symId]
   inc n
 
 proc fromNifSymDef(c: var DecodeContext; n: var Cursor; kind: TNodeKind): PNode =
@@ -59,8 +59,8 @@ proc fromNifSymDef(c: var DecodeContext; n: var Cursor; kind: TNodeKind): PNode 
     else: skConst
   inc n
   assert n.kind == SymbolDef
-  let nifSym = pool.syms[n.symId]
-  let symdef = nifSym.splitNifSym
+  let nifSymId = n.symId
+  let symdef = pool.syms[nifSymId].splitNifSym
   assert symdef.name.len != 0
   let ident = c.graph.cache.getIdent(symdef.name)
   inc n
@@ -93,7 +93,7 @@ proc fromNifSymDef(c: var DecodeContext; n: var Cursor; kind: TNodeKind): PNode 
     disamb: symdef.id.int32)
   psym.setOwner(owner)
   result = newSymNode(psym)
-  let hasSym = c.nifSymToPSym.hasKeyOrPut(nifSym, psym)
+  let hasSym = c.nifSymToPSym.hasKeyOrPut(nifSymId, psym)
   assert not hasSym
 
   assert n.kind == ParRi
@@ -292,7 +292,8 @@ proc loadNif(stream: var Stream; modulePath: AbsoluteFile; graph: ModuleGraph): 
   let modSym = newModule(graph, fileInfoIdx(graph.config, modulePath))
   let modSuffix = moduleSuffix(modulePath.string, cast[seq[string]](graph.config.searchPaths))
   let nifModSym = modSym.name.s & '.' & $modSym.disamb & '.' & modSuffix
-  c.nifSymToPSym[nifModSym] = modSym
+  let nifModSymId = pool.syms.getOrIncl(nifModSym)
+  c.nifSymToPSym[nifModSymId] = modSym
   c.owner = modSym
   c.idgen = idGeneratorFromModule(modSym)
 
