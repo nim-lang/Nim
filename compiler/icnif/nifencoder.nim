@@ -83,8 +83,8 @@ proc toNifTypeSection(c: var EncodeContext; n: PNode) =
   assert n.len == 3
 
   var name: PNode
-  var visibility: PNode
-  var pragma: PNode
+  var visibility: PNode = nil
+  var pragma: PNode = nil
   if n[0].kind == nkPragmaExpr:
     pragma = n[0][1]
     if n[0][0].kind == nkPostfix:

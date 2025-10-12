@@ -17,25 +17,6 @@ proc nodeKind(n: Cursor): TNodeKind {.inline.} =
   assert n.kind == ParLe
   pool.tags[n.tagId].parseNodeKind()
 
-const SysTypeKinds = {tyBool, tyChar, tyString, tyInt .. tyUInt64}
-
-proc getSysTypeSym(c: var DecodeContext; typeKind: TTypeKind): PSym =
-  assert typeKind in SysTypeKinds
-  if typeKind in c.sysTypes:
-    result = c.sysTypes[typeKind]
-  else:
-    let ident = c.graph.cache.getIdent(toNifTag typeKind)
-    result = newSym(skType, ident, c.idgen, c.owner, unknownLineInfo)
-    var typ = newType(typeKind, c.idgen, nil)
-    typ.sym = result
-    result.typ = typ
-    c.sysTypes[typeKind] = result
-
-proc getSysType(c: var DecodeContext; typeKind: TTypeKind): PType =
-  # This will be replaced with magicsys.getSysType
-  assert typeKind in SysTypeKinds
-  getSysTypeSym(c, typeKind).typ
-
 type
   SplittedNifSym = object
     name: string

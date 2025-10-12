@@ -14,7 +14,7 @@ proc newConfigRefForTest(): ConfigRef =
   excl(conf.notes, hintProcessing)
   excl(conf.mainPackageNotes, hintProcessing)
   result = conf
- 
+
 proc newModuleGraphForSem(cache: IdentCache; conf: ConfigRef): ModuleGraph =
   var graph = newModuleGraph(cache, conf)
   graph.setPipeLinePass(SemPass)

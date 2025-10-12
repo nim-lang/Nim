@@ -8,6 +8,25 @@ proc expect(n: var Cursor; k: NifKind) =
       writeStackTrace()
     quit "[NIF decoder] expected: " & $k & " but got: " & $n.kind & toString n
 
+const SysTypeKinds = {tyBool, tyChar, tyString, tyInt .. tyUInt64}
+
+proc getSysTypeSym(c: var DecodeContext; typeKind: TTypeKind): PSym =
+  assert typeKind in SysTypeKinds
+  if typeKind in c.sysTypes:
+    result = c.sysTypes[typeKind]
+  else:
+    let ident = c.graph.cache.getIdent(toNifTag typeKind)
+    result = newSym(skType, ident, c.idgen, c.owner, unknownLineInfo)
+    var typ = newType(typeKind, c.idgen, nil)
+    typ.sym = result
+    result.typ = typ
+    c.sysTypes[typeKind] = result
+
+proc getSysType(c: var DecodeContext; typeKind: TTypeKind): PType =
+  # This will be replaced with magicsys.getSysType
+  assert typeKind in SysTypeKinds
+  getSysTypeSym(c, typeKind).typ
+
 proc readTypeKind(n: var Cursor; tag: string): TTypeKind =
   if tag.len == 1:
     case tag[0]

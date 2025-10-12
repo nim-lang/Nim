@@ -41,8 +41,8 @@ proc toNif(c: var EncodeContext; t: PType) =
     return
 
   case t.kind
-  of tyNone: atom c, t 
-  of tyBool: atom c, t 
+  of tyNone: atom c, t
+  of tyBool: atom c, t
   of tyChar: atom c, t, "c +8"
   of tyEmpty: c.b.addEmpty
   of tyInt: atom c, t, "i -1"
