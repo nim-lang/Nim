@@ -236,5 +236,41 @@ proc bar2() =
     doAssert cstring(nil) <= cstring(nil)
     doAssert cstring("") <= cstring("")
 
+  var x = @[10, 20]
+  x.setLenUninit(5)
+  x[4] = 50
+  doAssert x[4] == 50
+  x.setLenUninit(1)
+  doAssert x == @[10]
+
 static: bar2()
 bar2()
+
+when not defined(js):
+  proc foo =
+    block:
+      var s1:int = -10
+      doAssertRaises(RangeDefect):
+        var n2:Natural = s1.Natural
+
+    block:
+      var f = 751.0
+      let m = f.int8
+
+    block:
+      var s2:float = -10
+      doAssertRaises(RangeDefect):
+        var n2:Natural = s2.Natural
+
+
+    block:
+      type A = range[0..10]
+
+      let f = 156.0
+
+      doAssertRaises(RangeDefect):
+        let a = f.A
+
+        echo a # 156
+
+  foo()

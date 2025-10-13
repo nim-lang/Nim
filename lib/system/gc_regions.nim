@@ -101,16 +101,10 @@ template withRegion*(r: var MemRegion; body: untyped) =
     tlRegion = oldRegion
 
 template inc(p: pointer, s: int) =
-  p = cast[pointer](cast[int](p) +% s)
+  p = p +! s
 
 template dec(p: pointer, s: int) =
-  p = cast[pointer](cast[int](p) -% s)
-
-template `+!`(p: pointer, s: int): pointer =
-  cast[pointer](cast[int](p) +% s)
-
-template `-!`(p: pointer, s: int): pointer =
-  cast[pointer](cast[int](p) -% s)
+  p = p -! s
 
 const nimMinHeapPages {.intdefine.} = 4
 

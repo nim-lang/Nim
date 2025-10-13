@@ -104,7 +104,7 @@ const
   isNilConversion = isConvertible # maybe 'isIntConv' fits better?
   maxInheritancePenalty = high(int) div 2
 
-proc markUsed*(c: PContext; info: TLineInfo, s: PSym; checkStyle = true)
+proc markUsed*(c: PContext; info: TLineInfo, s: PSym; checkStyle = true; isGenericInstance = false)
 proc markOwnerModuleAsUsed*(c: PContext; s: PSym)
 
 proc initCandidateAux(ctx: PContext,
@@ -1568,8 +1568,11 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
             # set['a'..'z'] and set[char] have different representations
             result = isNone
           else:
-            # but we can convert individual elements of the constructor
-            result = isConvertible
+            if result >= isConvertible:
+              # but we can convert individual elements of the constructor
+              result = isConvertible
+            else:
+              result = isNone
   of tyPtr, tyRef:
     a = reduceToBase(a)
     if a.kind == f.kind:
@@ -2325,7 +2328,8 @@ proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
       # it is correct
       var param: PNode = nil
       if srca == isSubtype:
-        param = implicitConv(nkHiddenSubConv, src, copyTree(arg), m, c)
+        # convMatch used here to use its bindings to instantiate subtype:
+        param = implicitConv(nkHiddenSubConv, src, copyTree(arg), convMatch, c)
       elif src.kind in {tyVar}:
         # Analyse the converter return type.
         param = newNodeIT(nkHiddenAddr, arg.info, s.typ.firstParamType)

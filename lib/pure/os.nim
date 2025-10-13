@@ -565,6 +565,8 @@ when not weirdTarget and (defined(linux) or defined(solaris) or defined(bsd) or 
     if len > maxSymlinkLen:
       result = newString(len+1)
       len = readlink(procPath, result.cstring, len)
+    if len < 0: # error in readlink
+      len = 0
     setLen(result, len)
 
 when not weirdTarget and defined(openbsd):

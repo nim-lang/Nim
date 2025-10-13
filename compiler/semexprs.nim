@@ -951,11 +951,15 @@ proc evalAtCompileTime(c: PContext, n: PNode): PNode =
         result = evalStaticExpr(c.module, c.idgen, c.graph, call, c.p.owner)
         if result.isNil:
           localError(c.config, n.info, errCannotInterpretNodeX % renderTree(call))
-        else: result = fixupTypeAfterEval(c, result, n)
+        else:
+          var producedClosure = false
+          result = fixupTypeAfterEval(c, result, n, producedClosure)
       else:
         result = evalConstExpr(c.module, c.idgen, c.graph, call)
         if result.isNil: result = n
-        else: result = fixupTypeAfterEval(c, result, n)
+        else:
+          var producedClosure = false
+          result = fixupTypeAfterEval(c, result, n, producedClosure)
     else:
       result = n
     #if result != n:
@@ -973,7 +977,8 @@ proc semStaticExpr(c: PContext, n: PNode; expectedType: PType = nil): PNode =
     localError(c.config, n.info, errCannotInterpretNodeX % renderTree(n))
     result = c.graph.emptyNode
   else:
-    result = fixupTypeAfterEval(c, result, a)
+    var producedClosure = false
+    result = fixupTypeAfterEval(c, result, a, producedClosure)
 
 proc semOverloadedCallAnalyseEffects(c: PContext, n: PNode, nOrig: PNode,
                                      flags: TExprFlags; expectedType: PType = nil): PNode =
@@ -1292,7 +1297,9 @@ proc readTypeParameter(c: PContext, typ: PType,
             # This seems semantically correct and then we'll be able
             # to return the section symbol directly here
             let foundType = makeTypeDesc(c, def[2].typ)
-            return newSymNode(copySym(def[0].sym, c.idgen).linkTo(foundType), info)
+            let s = copySym(def[0].sym, c.idgen)
+            s.typ = foundType
+            return newSymNode(s, info)
 
       of nkConstSection:
         for def in statement:
@@ -1317,7 +1324,9 @@ proc readTypeParameter(c: PContext, typ: PType,
             return c.graph.emptyNode
         else:
           let foundTyp = makeTypeDesc(c, rawTyp)
-          return newSymNode(copySym(tParam.sym, c.idgen).linkTo(foundTyp), info)
+          let s = copySym(tParam.sym, c.idgen)
+          s.typ = foundTyp
+          return newSymNode(s, info)
 
   return nil
 
@@ -3066,10 +3075,10 @@ proc semTupleConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PTyp
 
 proc isExplicitGenericCall(c: PContext, n: PNode): bool =
   ## checks if a call node `n` is a routine call with explicit generic params
-  ## 
+  ##
   ## the callee node needs to be either an nkBracketExpr or a call to a
   ## symchoice of `[]` in which case it will be transformed into nkBracketExpr
-  ## 
+  ##
   ## the LHS of the bracket expr has to either be a symchoice or resolve to
   ## a routine symbol
   template checkCallee(n: PNode) =

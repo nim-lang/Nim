@@ -379,7 +379,9 @@ proc useVar(a: PEffects, n: PNode) =
       # If the variable is explicitly marked as .noinit. do not emit any error
       a.init.add s.id
     elif s.id notin a.init:
-      if s.typ.requiresInit:
+      if s.kind == skResult and tfRequiresInit in s.typ.flags:
+        localError(a.config, n.info, "'result' requires explicit initialization")
+      elif s.typ.requiresInit:
         message(a.config, n.info, warnProveInit, s.name.s)
       elif a.leftPartOfAsgn <= 0:
         if strictDefs in a.c.features:
@@ -705,7 +707,7 @@ proc isNoEffectList(n: PNode): bool {.inline.} =
   assert n.kind == nkEffectList
   n.len == 0 or (n[tagEffects] == nil and n[exceptionEffects] == nil and n[forbiddenEffects] == nil)
 
-proc isTrival(caller: PNode): bool {.inline.} =
+proc isTrivial(caller: PNode): bool {.inline.} =
   result = caller.kind == nkSym and caller.sym.magic in {mEqProc, mIsNil, mMove, mWasMoved, mSwap}
 
 proc trackOperandForIndirectCall(tracked: PEffects, n: PNode, formals: PType; argIndex: int; caller: PNode) =
@@ -714,7 +716,7 @@ proc trackOperandForIndirectCall(tracked: PEffects, n: PNode, formals: PType; ar
   let param = if formals != nil and formals.n != nil and argIndex < formals.n.len: formals.n[argIndex].sym else: nil
   # assume indirect calls are taken here:
   if op != nil and op.kind == tyProc and n.skipConv.kind != nkNilLit and
-      not isTrival(caller) and
+      not isTrivial(caller) and
       ((param != nil and sfEffectsDelayed in param.flags) or laxEffects in tracked.c.config.legacyFeatures):
 
     internalAssert tracked.config, op.n[0].kind == nkEffectList
@@ -886,8 +888,9 @@ proc trackIf(tracked: PEffects, n: PNode) =
   setLen(tracked.guards.s, oldFacts)
   dec tracked.inIfStmt
 
-proc trackBlock(tracked: PEffects, n: PNode) =
+proc trackBlock(tracked: PEffects, n: PNode; typ: PType) =
   if n.kind in {nkStmtList, nkStmtListExpr}:
+    let myBlock = tracked.currentBlock
     var oldState = -1
     for i in 0..<n.len:
       if hasSubnodeWith(n[i], nkBreakStmt):
@@ -899,6 +902,14 @@ proc trackBlock(tracked: PEffects, n: PNode) =
         if oldState < 0: oldState = tracked.init.len
       track(tracked, n[i])
     if oldState > 0: setLen(tracked.init, oldState)
+    if typ != nil and typ.kind in {tyVar, tyLent, tyOpenArray, tyVarargs}:
+      let last = lastSon(n)
+      let root = getRoot(last)
+      if root != nil:
+        let owner = tracked.scopes.getOrDefault(root.id, -1)
+        if owner >= 0:
+          localError(tracked.config, last.info, "'" & renderTree(last) & "' borrows from location '" & root.name.s &
+            "' which does not live long enough")
   else:
     track(tracked, n)
 
@@ -971,7 +982,7 @@ proc checkForSink(tracked: PEffects; n: PNode) =
 proc markCaughtExceptions(tracked: PEffects; g: ModuleGraph; info: TLineInfo; s: PSym; usageSym: var PSym) =
   when defined(nimsuggest):
     proc internalMarkCaughtExceptions(tracked: PEffects; q: var SuggestFileSymbolDatabase; info: TLineInfo) =
-      var si = q.findSymInfoIndex(info)
+      var si = q.findSymInfoIndex(info, true)
       if si != -1:
         q.caughtExceptionsSet[si] = true
         for w1 in tracked.caughtExceptions.nodes:
@@ -1331,12 +1342,12 @@ proc track(tracked: PEffects, n: PNode) =
     tracked.init.setLen(oldState)
     track(tracked, n[1][0])
   of nkIfStmt, nkIfExpr: trackIf(tracked, n)
-  of nkBlockStmt, nkBlockExpr: trackBlock(tracked, n[1])
+  of nkBlockStmt, nkBlockExpr: trackBlock(tracked, n[1], n.typ)
   of nkWhileStmt:
     # 'while true' loop?
     inc tracked.currentBlock
     if isTrue(n[0]):
-      trackBlock(tracked, n[1])
+      trackBlock(tracked, n[1], nil)
     else:
       # loop may never execute:
       let oldState = tracked.init.len

@@ -981,7 +981,11 @@ proc genAddr(p: BProc, e: PNode, d: var TLoc) =
     var a: TLoc = initLocExpr(p, e[0])
     if e[0].kind in {nkHiddenStdConv, nkHiddenSubConv, nkConv} and not ignoreConv(e[0]):
       # addr (conv x) introduces a temp because `conv x` is not a rvalue
-      putIntoDest(p, d, e, addrLoc(p.config, expressionsNeedsTmp(p, a)), a.storage)
+      # transform addr ( conv ( x ) ) -> conv ( addr ( x ) )
+      var exprLoc: TLoc = initLocExpr(p, e[0][1])
+      var tmp = getTemp(p, e.typ, needsInit=false)
+      putIntoDest(p, tmp, e, cCast(getTypeDesc(p.module, e.typ), addrLoc(p.config, exprLoc)))
+      putIntoDest(p, d, e, rdLoc(tmp))
     else:
       putIntoDest(p, d, e, addrLoc(p.config, a), a.storage)
 
@@ -2214,7 +2218,7 @@ proc isTrivialTypesToSnippet(t: PType): Snippet =
   else:
     result = NimTrue
 
-proc genSetLengthSeq(p: BProc, e: PNode, d: var TLoc) =
+proc genSetLengthSeq(p: BProc, e: PNode, d: var TLoc, noinit = false) =
   if optSeqDestructors in p.config.globalOptions:
     e[1] = makeAddr(e[1], p.module.idgen)
     genCall(p, e, d)
@@ -2236,7 +2240,9 @@ proc genSetLengthSeq(p: BProc, e: PNode, d: var TLoc) =
     pExpr = cIfExpr(ra, cAddr(derefField(ra, "Sup")), NimNil)
   else:
     pExpr = ra
-  call.snippet = cCast(rt, cgCall(p, "setLengthSeqV2", pExpr, rti, rb,
+
+  let name = if noinit: "setLengthSeqUninit" else: "setLengthSeqV2"
+  call.snippet = cCast(rt, cgCall(p, name, pExpr, rti, rb,
           isTrivialTypesToSnippet(t.skipTypes(abstractInst)[0])))
 
   genAssignment(p, a, call, {})
@@ -2975,6 +2981,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       p.s(cpsStmts).addCallStmt(cgsymValue(p.module, "nimGCunref"), ra)
   of mSetLengthStr: genSetLengthStr(p, e, d)
   of mSetLengthSeq: genSetLengthSeq(p, e, d)
+  of mSetLengthSeqUninit: genSetLengthSeq(p, e, d, noinit = true)
   of mIncl, mExcl, mCard, mLtSet, mLeSet, mEqSet, mMulSet, mPlusSet, mMinusSet,
      mInSet, mXorSet:
     genSetOp(p, e, d, op)

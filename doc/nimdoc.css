@@ -11,6 +11,7 @@ Modified by Boyd Greenfield and narimiran
 */
 
 :root {
+  color-scheme: light;
   --primary-background: #fff;
   --secondary-background: ghostwhite;
   --third-background: #e8e8e8;
@@ -45,6 +46,7 @@ Modified by Boyd Greenfield and narimiran
 }
 
 [data-theme="dark"] {
+  color-scheme: dark;
   --primary-background: #171921;
   --secondary-background: #1e202a;
   --third-background: #2b2e3b;
@@ -80,6 +82,7 @@ Modified by Boyd Greenfield and narimiran
 
 @media (prefers-color-scheme: dark) {
   [data-theme="auto"] {
+    color-scheme: dark;
     --primary-background: #171921;
     --secondary-background: #1e202a;
     --third-background: #2b2e3b;
@@ -128,7 +131,6 @@ html {
   -ms-text-size-adjust: 100%; }
 
 body {
-  overflow-x: hidden;
   max-width: 100%;
   box-sizing: border-box;
   font-family: "Lato", "Helvetica Neue", "HelveticaNeue", Helvetica, Arial, sans-serif;

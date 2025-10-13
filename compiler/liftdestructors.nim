@@ -218,23 +218,38 @@ proc fillBodyObj(c: var TLiftCtx; n, body, x, y: PNode; enforceDefaultOp: bool, 
       fillBodyObj(c, n[0], body, x, y, enforceDefaultOp = false)
     c.filterDiscriminator = oldfilterDiscriminator
   of nkRecList:
-    for t in items(n): fillBodyObj(c, t, body, x, y, enforceDefaultOp, enforceWasMoved)
+    # destroys in reverse order #24719
+    if c.kind == attachedDestructor:
+      for i in countdown(n.len-1, 0):
+        fillBodyObj(c, n[i], body, x, y, enforceDefaultOp, enforceWasMoved)
+    else:
+      for t in items(n): fillBodyObj(c, t, body, x, y, enforceDefaultOp, enforceWasMoved)
   else:
     illFormedAstLocal(n, c.g.config)
 
 proc fillBodyObjTImpl(c: var TLiftCtx; t: PType, body, x, y: PNode) =
-  if t.baseClass != nil:
-    let dest = newNodeIT(nkHiddenSubConv, c.info, t.baseClass)
-    dest.add newNodeI(nkEmpty, c.info)
-    dest.add x
-    var src = y
-    if c.kind in {attachedAsgn, attachedDeepCopy, attachedSink}:
-      src = newNodeIT(nkHiddenSubConv, c.info, t.baseClass)
-      src.add newNodeI(nkEmpty, c.info)
-      src.add y
+  template fillBase =
+    if t.baseClass != nil:
+      let dest = newNodeIT(nkHiddenSubConv, c.info, t.baseClass)
+      dest.add newNodeI(nkEmpty, c.info)
+      dest.add x
+      var src = y
+      if c.kind in {attachedAsgn, attachedDeepCopy, attachedSink}:
+        src = newNodeIT(nkHiddenSubConv, c.info, t.baseClass)
+        src.add newNodeI(nkEmpty, c.info)
+        src.add y
 
-    fillBody(c, skipTypes(t.baseClass, abstractPtrs), body, dest, src)
-  fillBodyObj(c, t.n, body, x, y, enforceDefaultOp = false)
+      fillBody(c, skipTypes(t.baseClass, abstractPtrs), body, dest, src)
+  template fillFields =
+    fillBodyObj(c, t.n, body, x, y, enforceDefaultOp = false)
+
+  if c.kind == attachedDestructor:
+    # destroys in reverse order #24719
+    fillFields()
+    fillBase()
+  else:
+    fillBase()
+    fillFields()
 
 proc fillBodyObjT(c: var TLiftCtx; t: PType, body, x, y: PNode) =
   var hasCase = isCaseObj(t.n)
@@ -1271,7 +1286,7 @@ proc inst(g: ModuleGraph; c: PContext; t: PType; kind: TTypeAttachedOp; idgen: I
     else:
       localError(g.config, info, "unresolved generic parameter")
 
-proc isTrival*(s: PSym): bool {.inline.} =
+proc isTrivial*(s: PSym): bool {.inline.} =
   s == nil or (s.ast != nil and s.ast[bodyPos].len == 0)
 
 proc createTypeBoundOps(g: ModuleGraph; c: PContext; orig: PType; info: TLineInfo;
@@ -1326,8 +1341,8 @@ proc createTypeBoundOps(g: ModuleGraph; c: PContext; orig: PType; info: TLineInf
     if canon != orig:
       setAttachedOp(g, idgen.module, orig, k, getAttachedOp(g, canon, k))
 
-  if not isTrival(getAttachedOp(g, orig, attachedDestructor)):
-    #or not isTrival(orig.assignment) or
-    # not isTrival(orig.sink):
+  if not isTrivial(getAttachedOp(g, orig, attachedDestructor)):
+    #or not isTrivial(orig.assignment) or
+    # not isTrivial(orig.sink):
     orig.flags.incl tfHasAsgn
     # ^ XXX Breaks IC!

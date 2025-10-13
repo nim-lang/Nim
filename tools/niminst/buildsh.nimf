@@ -183,6 +183,8 @@ case $ucpu in
       fi
     fi
     ;;
+  *s390x* )
+    mycpu="s390x" ;;
   *ppc64le* )
     mycpu="powerpc64el" ;;
   *ppc64* )

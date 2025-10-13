@@ -23,6 +23,10 @@ errors.
 
 - With `-d:nimPreviewCStringComparisons`, comparsions (`<`, `>`, `<=`, `>=`) between cstrings switch from reference semantics to value semantics like `==` and `!=`.
 
+- `std/parsesql` has been moved to a nimble package, use `nimble` or `atlas` to install it.
+
+- With `-d:nimPreviewDuplicateModuleError`, importing two modules that share the same name becomes a compile-time error. This includes importing the same module more than once. Use `import foo as foo1` (or other aliases) to avoid collisions.
+
 ## Standard library additions and changes
 
 [//]: # "Additions:"
@@ -32,6 +36,22 @@ errors.
   to more efficiently calculate the symmetric difference of bitsets.
 - `strutils.multiReplace` overload for character set replacements in a single pass.
 	Useful for string sanitation. Follows existing multiReplace semantics.
+
+- `std/files` adds:
+  - Exports `CopyFlag` enum and `FilePermission` type for fine-grained control of file operations
+  - New file operation procs with `Path` support:
+    - `getFilePermissions`, `setFilePermissions` for managing permissions
+    - `tryRemoveFile` for file deletion
+    - `copyFile` with configurable buffer size and symlink handling
+    - `copyFileWithPermissions` to preserve file attributes
+    - `copyFileToDir` for copying files into directories
+
+- `std/dirs` adds:
+  - New directory operation procs with `Path` support:
+    - `copyDir` with special file handling options
+    - `copyDirWithPermissions` to recursively preserve attributes
+
+- `system.setLenUninit` now supports refc, JS and VM backends.
 
 [//]: # "Changes:"
 

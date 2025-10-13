@@ -104,7 +104,7 @@ block: # issue #24484
   foo[E]()
 
   proc bar[T](t: set[T] = {T(0), 5}) =
-    doAssert t == {0, 5}
+    doAssert t == {T(0), 5}
   bar[uint8]()
   doAssert not compiles(bar[string]())
 
