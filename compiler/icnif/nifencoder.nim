@@ -45,7 +45,7 @@ proc toNifSym(c: var EncodeContext; sym: PSym): string =
     result.add modsuf
 
 proc symToNif(c: var EncodeContext; sym: PSym) =
-  if sym.kind == skType and sym.typ != nil:
+  if sfSystemModule in sym.owner.flags and sym.kind == skType and sym.typ != nil:
     toNif c, sym.typ
   else:
     c.b.addSymbol toNifSym(c, sym)
@@ -192,10 +192,11 @@ proc toNif(c: var EncodeContext; n: PNode) =
     c.b.addTree toNifTag(n.kind)
     assert n.len == 3
     symdefToNif(c, n[0])
-    if n[0].kind == nkSym:
-      toNif c, n[0].sym.typ
+    if n[1].kind == nkSym:
+      symToNif c, n[1].sym
     else:
-      toNif c, n[1]
+      assert n[0].kind == nkSym
+      toNif c, n[0].sym.typ
     toNif c, n[2]
     c.b.endTree()
   of nkTypeDef:

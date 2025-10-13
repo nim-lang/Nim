@@ -106,14 +106,11 @@ proc fromNifLocal(c: var DecodeContext; n: var Cursor; kind: TNodeKind): PNode =
   result[0] = newNodeI(nkIdentDefs, unknownLineInfo, 3)
   inc n
   result[0][0] = fromNifSymDef(c, n, kind)
+  result[0][1] = newNode(nkEmpty)
   if n.kind == DotToken:
-    result[0][1] = newNode(nkEmpty)
     inc n
   else:
-    let typeSym = fromNifType(c, n).sym
-    assert typeSym != nil
-    result[0][1] = typeSym.newSymNode
-    result[0][0].sym.typ = typeSym.typ
+    result[0][0].sym.typ = fromNifType(c, n)
   result[0][2] = fromNif(c, n)
   assert n.kind == ParRi  # nkIdentDefs
   inc n
@@ -142,8 +139,8 @@ proc fromNifTypeSection(c: var DecodeContext; n: var Cursor): PNode =
   result[1] = fromNif(c, n)
 
   # type body
-  result[2] = fromNifType(c, n).sym.newSymNode
-  sym.sym.typ = result[2].sym.typ
+  result[2] = newNode(nkEmpty)
+  sym.sym.typ = fromNifType(c, n)
 
   assert n.kind == ParRi
   inc n

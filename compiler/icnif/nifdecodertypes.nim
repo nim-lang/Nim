@@ -96,17 +96,18 @@ proc fromNifType(c: var DecodeContext; n: var Cursor): PType =
   of Symbol:
     let s = n.symId
     result = c.types.getOrDefault(s)
-    when true:
-      assert result != nil
-    else:
-      if result == nil:
-        let symA = c.syms.getOrDefault(s).sym
-        if symA != nil:
-          assert symA.kind == skType
-          result = symA.typ
-        else:
-          result = loadType(s, c)
-          c.types[s] = LoadedType(state: Loaded, typ: result)
+    if result == nil:
+      let symA = c.nifSymToPSym.getOrDefault(s)
+      if symA != nil:
+        assert symA.kind == skType
+        result = symA.typ
+      assert symA != nil
+      #[
+      else:
+        result = loadType(s, c)
+        c.types[s] = LoadedType(state: Loaded, typ: result)
+      ]#
+    inc n
   of ParLe:
     let tag = pool.tags[n.tag]
     if tag == "missing":

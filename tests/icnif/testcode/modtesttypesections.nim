@@ -1,4 +1,4 @@
 type
   TestInt = int
 
-#var x: TestInt
+var x: TestInt
