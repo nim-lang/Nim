@@ -385,39 +385,6 @@ template assignTupleUnpacking(c: PTransf, e: PNode) =
       let rhs = transform(c, newTupleAccess(c.graph, e, i))
       result.add(asgnTo(lhs, rhs))
 
-proc makeTupleUnpack(c: PTransf; lhs: PNode; rhs: PNode): PNode =
-  result = newNodeI(nkStmtList, lhs.info)
-
-  let temp = newSym(skTemp, getIdent(c.graph.cache, "tmpTupleAsgn"), c.idgen, getCurrOwner(c), rhs.info)
-  temp.typ = rhs.typ
-  temp.flags.incl(sfGenSym)
-  var v = newNodeI(nkLetSection, rhs.info)
-  let tempNode = newSymNode(temp) #newIdentNode(getIdent(genPrefix & $temp.id), value.info)
-  var vpart = newNodeI(nkIdentDefs, v.info, 3)
-  vpart[0] = tempNode
-  vpart[1] = c.graph.emptyNode
-  vpart[2] = rhs
-  v.add vpart
-  result.add(v)
-
-  var tupleConstr = newNodeIT(nkTupleConstr, lhs.info, lhs.typ)
-
-  for i in 0..<rhs.typ.len:
-    var field: PNode = nil
-    if rhs.typ[i].kind in {tyVar, tyLent}:
-      let tupleType = newTupleAccessRaw(tempNode, i)
-      tupleType.typ() = rhs.typ[i]
-      field = newDeref(tupleType)
-    else:
-      field = newTupleAccessRaw(tempNode, i)
-
-    field.typ() = rhs.typ[i].skipTypes({tyVar, tyLent})
-
-    tupleConstr.add field
-
-  result.add newAsgnStmt(c, nkFastAsgn, lhs, tupleConstr, false)
-  result = transform(c, result)
-
 proc hasViewTypes(typ: PType): bool =
   if typ.kind == tyTuple:
     result = false
@@ -435,10 +402,7 @@ proc transformYield(c: PTransf, n: PNode): PNode =
     case lhs.kind
     of nkSym:
       internalAssert c.graph.config, lhs.sym.kind == skForVar
-      if rhs.typ.kind == tyTuple and hasViewTypes(rhs.typ):
-        result = makeTupleUnpack(c, lhs, rhs)
-      else:
-        result = newAsgnStmt(c, nkFastAsgn, lhs, rhs, false)
+      result = newAsgnStmt(c, nkFastAsgn, lhs, rhs, false)
     of nkDotExpr:
       result = newAsgnStmt(c, nkAsgn, lhs, rhs, false)
     else:

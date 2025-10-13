@@ -1787,23 +1787,6 @@ proc maybeAliasType(c: PContext; typeExpr, prev: PType): PType =
   else:
     result = nil
 
-proc makeIterTupleType(c: PContext; typ: PType): PType =
-  if typ.kind == tyTuple:
-    var hasView = false
-    result = newTypeS(tyTuple, c)
-
-    for i in 0..<typ.len:
-      if typ[i].kind in {tyVar, tyLent}:
-        hasView = true
-      rawAddSon(result, typ[i].skipTypes({tyVar, tyLent}))
-
-    if hasView:
-      result.n = typ.n
-    else:
-      result = typ
-  else:
-    result = typ
-
 proc fixupTypeOf(c: PContext, prev: PType, typ: PType) =
   if prev != nil:
     let result = newTypeS(tyAlias, c)
@@ -2037,9 +2020,6 @@ proc semTypeOf2(c: PContext; n: PNode; prev: PType): PType =
     else:
       result = base
   fixupTypeOf(c, prev, result)
-
-  if result.kind == tyTuple:
-    result = makeIterTupleType(c, result)
 
 proc semTypeIdent(c: PContext, n: PNode): PSym =
   if n.kind == nkSym:

@@ -1131,7 +1131,7 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
         # BUGFIX: don't use `iter` here as that would strip away
         # the ``tyGenericInst``! See ``tests/compile/tgeneric.nim``
         # for an example:
-        v.typ = makeIterTupleType(c, iterBase)
+        v.typ = iterBase
         n[0] = newSymNode(v)
         if sfGenSym notin v.flags and not isDiscardUnderscore(v): addDecl(c, v)
         elif v.owner == nil: setOwner(v, getCurrOwner(c))
