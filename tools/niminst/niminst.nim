@@ -20,7 +20,7 @@ when not defined(nimHasEffectsOf):
 
 const
   maxOS = 20 # max number of OSes
-  maxCPU = 20 # max number of CPUs
+  maxCPU = 30 # max number of CPUs
   buildShFile = "build.sh"
   buildBatFile = "build.bat"
   buildBatFile32 = "build32.bat"
