@@ -30,7 +30,7 @@ proc addFloatLit(b: var Builder; f: float; suffix: string) =
     addStrLit(b, suffix)
 
 proc toNif(c: var EncodeContext; n: PNode)
-proc toNif(c: var EncodeContext; t: PType)
+proc toNif(c: var EncodeContext; t: PType; isTypeSection = false)
 
 proc toNifSym(c: var EncodeContext; sym: PSym): string =
   result = sym.name.s & '.' & $sym.disamb
@@ -115,9 +115,9 @@ proc toNifTypeSection(c: var EncodeContext; n: PNode) =
     let last = n[2]
     if name.kind == nkSym:
       if last.kind == nkEmpty and name.sym.typ != nil:
-        toNif c, name.sym.typ
+        toNif c, name.sym.typ, true
       elif name.sym.typ != nil and name.sym.typ.kind in {tyEnum, tyObject} and name.sym.typ.n != nil:
-        toNif c, name.sym.typ
+        toNif c, name.sym.typ, true
       else:
         toNif c, last
     else:

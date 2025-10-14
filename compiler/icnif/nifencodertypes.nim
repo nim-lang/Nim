@@ -35,7 +35,7 @@ template typeHead(c: var EncodeContext; t: PType; body: untyped) =
     writeTypeFlags(c, t)
     body
 
-proc toNif(c: var EncodeContext; t: PType) =
+proc toNif(c: var EncodeContext; t: PType; isTypeSection = false) =
   if t == nil:
     c.b.addKeyw "missing"
     return
@@ -91,11 +91,12 @@ proc toNif(c: var EncodeContext; t: PType) =
     c.typeHead t:
       for _, son in t.ikids: toNif c, son
   of tyDistinct, tyEnum:
-    if t.sym != nil:
-      symToNif c, t.sym
-    else:
+    if isTypeSection:
       c.typeHead t:
-        for _, son in t.ikids: toNif c, son
+        for son in t.n:
+          symdefToNif c, son
+    else:
+      symToNif c, t.sym
   of tyPtr:
     if isNominalRef(t):
       symToNif c, t.sym

@@ -77,7 +77,14 @@ proc readTypeKind(n: var Cursor; tag: string): TTypeKind =
 
 proc fromNifTypeImpl(c: var DecodeContext; n: var Cursor; kind: TTypeKind; res: PType) =
   case kind
-  of tyFromExpr, tyEnum:
+  of tyEnum:
+    res.n = newNode(nkEnumTy)
+    while n.kind != ParRi:
+      var sym = fromNifSymDef(c, n, nkEnumTy)
+      sym.sym.typ = res
+      res.n.add sym
+    expect n, ParRi
+  of tyFromExpr:
     res.n = fromNif(c, n)
   of tyStatic:
     res.addAllowNil fromNifType(c, n)

@@ -43,8 +43,6 @@ proc splitNifSym(s: string): SplittedNifSym =
 proc fromNif(c: var DecodeContext; n: var Cursor): PNode
 proc fromNifType(c: var DecodeContext; n: var Cursor): PType
 
-include nifdecodertypes
-
 proc fromNifSymbol(c: var DecodeContext; n: var Cursor): PSym =
   result = c.nifSymToPSym[n.symId]
   inc n
@@ -56,6 +54,7 @@ proc fromNifSymDef(c: var DecodeContext; n: var Cursor; kind: TNodeKind): PNode 
     of nkVarSection: skVar
     of nkLetSection: skLet
     of nkImportStmt: skModule
+    of nkEnumTy: skEnumField
     else: skConst
   inc n
   assert n.kind == SymbolDef
@@ -98,6 +97,8 @@ proc fromNifSymDef(c: var DecodeContext; n: var Cursor; kind: TNodeKind): PNode 
 
   assert n.kind == ParRi
   inc n
+
+include nifdecodertypes
 
 proc fromNifLocal(c: var DecodeContext; n: var Cursor; kind: TNodeKind): PNode =
   result = newNodeI(kind, unknownLineInfo, 1)
