@@ -1,13 +1,5 @@
 # included from nifdecoder.nim
 
-proc expect(n: var Cursor; k: NifKind) =
-  if n.kind == k:
-    inc n
-  else:
-    when defined(debug):
-      writeStackTrace()
-    quit "[NIF decoder] expected: " & $k & " but got: " & $n.kind & toString n
-
 const SysTypeKinds = {tyBool, tyChar, tyString, tyInt .. tyUInt64}
 
 proc getSysTypeSym(c: var DecodeContext; typeKind: TTypeKind): PSym =
@@ -31,8 +23,7 @@ proc readTypeKind(n: var Cursor; tag: string): TTypeKind =
   if tag.len == 1:
     case tag[0]
     of 'i':
-      inc n
-      assert n.kind == IntLit
+      incExpect n, IntLit
       case pool.integers[n.intId]
       of -1: result = tyInt
       of 8: result = tyInt8
@@ -42,8 +33,7 @@ proc readTypeKind(n: var Cursor; tag: string): TTypeKind =
       else: assert false
       inc n
     of 'u':
-      inc n
-      assert n.kind == IntLit
+      incExpect n, IntLit
       case pool.integers[n.intId]
       of -1: result = tyUInt
       of 8: result = tyUInt8
@@ -53,8 +43,7 @@ proc readTypeKind(n: var Cursor; tag: string): TTypeKind =
       else: assert false
       inc n
     of 'f':
-      inc n
-      assert n.kind == IntLit
+      incExpect n, IntLit
       case pool.integers[n.intId]
       of -1: result = tyFloat
       of 32: result = tyFloat32
@@ -62,8 +51,7 @@ proc readTypeKind(n: var Cursor; tag: string): TTypeKind =
       else: assert false
       inc n
     of 'c':
-      inc n
-      assert n.kind == IntLit
+      incExpect n, IntLit
       case pool.integers[n.intId]
       of 8: result = tyChar
       else: assert false
@@ -83,7 +71,7 @@ proc fromNifTypeImpl(c: var DecodeContext; n: var Cursor; kind: TTypeKind; res: 
       var sym = fromNifSymDef(c, n, nkEnumTy)
       sym.sym.typ = res
       res.n.add sym
-    expect n, ParRi
+    inc n
   of tyFromExpr:
     res.n = fromNif(c, n)
   of tyStatic:
@@ -96,7 +84,7 @@ proc fromNifTypeImpl(c: var DecodeContext; n: var Cursor; kind: TTypeKind; res: 
   else:
     while n.kind != ParRi:
       res.addAllowNil fromNifType(c, n)
-    expect n, ParRi
+    inc n
 
 proc fromNifType(c: var DecodeContext; n: var Cursor): PType =
   case n.kind
@@ -128,13 +116,11 @@ proc fromNifType(c: var DecodeContext; n: var Cursor): PType =
         #echo "Create non SysTypeKinds type: ", k, ": ", tag
         result = newType(k, c.idgen, c.owner)
       if n.kind == ParLe and pool.tags[n.tag] == "tf":
+        incExpect n, Ident
+        result.flags = parseTypeFlags pool.strings[n.litId]
         inc n
-        if n.kind == Ident:
-          result.flags = parseTypeFlags pool.strings[n.litId]
-          inc n
-        else:
-          expect n, Ident
-        expect n, ParRi
+        skipParRi n
       fromNifTypeImpl c, n, k, result
   else:
     expect n, ParLe
+    inc n

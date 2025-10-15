@@ -17,6 +17,26 @@ proc nodeKind(n: Cursor): TNodeKind {.inline.} =
   assert n.kind == ParLe
   pool.tags[n.tagId].parseNodeKind()
 
+proc expect(n: Cursor; k: set[NifKind]) =
+  if n.kind notin k:
+    when defined(debug):
+      writeStackTrace()
+    quit "[NIF decoder] expected: " & $k & " but got: " & $n.kind & toString n
+
+proc expect(n: Cursor; k: NifKind) {.inline.} =
+  expect n, {k}
+
+proc incExpect(n: var Cursor; k: set[NifKind]) =
+  inc n
+  expect n, k
+
+proc incExpect(n: var Cursor; k: NifKind) {.inline.} =
+  incExpect n, {k}
+
+proc skipParRi(n: var Cursor) =
+  expect n, {ParRi}
+  inc n
+
 type
   SplittedNifSym = object
     name: string
@@ -56,14 +76,12 @@ proc fromNifSymDef(c: var DecodeContext; n: var Cursor; kind: TNodeKind): PNode 
     of nkImportStmt: skModule
     of nkEnumTy: skEnumField
     else: skConst
-  inc n
-  assert n.kind == SymbolDef
+  incExpect n, SymbolDef
   let nifSymId = n.symId
   let symdef = pool.syms[nifSymId].splitNifSym
   assert symdef.name.len != 0
   let ident = c.graph.cache.getIdent(symdef.name)
-  inc n
-  assert n.kind == IntLit
+  incExpect n, IntLit
   let itemId = pool.integers[n.intId].int32
   inc n
   assert n.kind in {Symbol, DotToken}, $n.kind
@@ -95,8 +113,7 @@ proc fromNifSymDef(c: var DecodeContext; n: var Cursor; kind: TNodeKind): PNode 
   let hasSym = c.nifSymToPSym.hasKeyOrPut(nifSymId, psym)
   assert not hasSym
 
-  assert n.kind == ParRi
-  inc n
+  skipParRi n
 
 include nifdecodertypes
 
@@ -107,7 +124,7 @@ proc fromNifNodeFlags(n: var Cursor): set[TNodeFlag] =
     assert n.kind == Ident
     result = parseNodeFlags(pool.strings[n.litId])
     inc n
-    expect n, ParRi
+    skipParRi n
 
 proc fromNifLocal(c: var DecodeContext; n: var Cursor; kind: TNodeKind): PNode =
   result = newNodeI(kind, unknownLineInfo, 1)
@@ -123,10 +140,8 @@ proc fromNifLocal(c: var DecodeContext; n: var Cursor; kind: TNodeKind): PNode =
   else:
     result[0][0].sym.typ = fromNifType(c, n)
   result[0][2] = fromNif(c, n)
-  assert n.kind == ParRi  # nkIdentDefs
-  inc n
-  assert n.kind == ParRi
-  inc n
+  skipParRi n  # nkIdentDefs
+  skipParRi n
 
 proc fromNifTypeSection(c: var DecodeContext; n: var Cursor): PNode =
   result = newNodeI(nkTypeDef, unknownLineInfo, 3)
@@ -153,8 +168,7 @@ proc fromNifTypeSection(c: var DecodeContext; n: var Cursor): PNode =
   result[2] = newNode(nkEmpty)
   sym.sym.typ = fromNifType(c, n)
 
-  assert n.kind == ParRi
-  inc n
+  skipParRi n
 
 proc fromNifImport(c: var DecodeContext; n: var Cursor): PNode =
   result = newNode(nkImportStmt)
@@ -236,8 +250,7 @@ proc fromNifSuf(c: var DecodeContext; n: var Cursor): PNode =
   else:
     assert false, "invalid node in suf node " & $n.kind
   inc n
-  assert n.kind == ParRi
-  inc n
+  skipParRi n
 
 proc fromNif(c: var DecodeContext; n: var Cursor): PNode =
   result = nil
