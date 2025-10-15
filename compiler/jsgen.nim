@@ -1586,7 +1586,11 @@ proc genAddr(p: PProc, n: PNode, r: var TCompRes) =
     of nkObjDownConv:
       gen(p, n[0], r)
     of nkHiddenDeref, nkDerefExpr:
-      gen(p, n[0], r)
+      if n.kind in {nkAddr, nkHiddenAddr}:
+        # addr ( deref ( x )) --> x
+        gen(p, n[0][0], r)
+      else:
+        gen(p, n[0], r)
     of nkHiddenAddr:
       gen(p, n[0], r)
     of nkConv:
