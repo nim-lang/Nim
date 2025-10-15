@@ -975,6 +975,20 @@ proc liftForLoop*(g: ModuleGraph; body: PNode; idgen: IdGenerator; owner: PSym):
       for i in 0..<op.len-1:
         result.add op[i]
 
+  elif op.kind != nkSym: # might have side effects
+    # bug #25046
+    # create a temp for the closure
+    # var :closureTemp
+    # :closureTemp = ...
+    let tempSym = newSym(skLet, getIdent(g.cache, ":closureTemp"), idgen, owner, body.info)
+    tempSym.typ = call[0].typ
+    let temp = newSymNode(tempSym)
+    var v = newNodeI(nkVarSection, body.info)
+    addVar(v, temp)
+    result.add(v)
+    result.add newAsgnStmt(temp, call[0], body.info)
+    call[0] = temp
+
   var loopBody = newNodeI(nkStmtList, body.info, 3)
   var whileLoop = newNodeI(nkWhileStmt, body.info, 2)
   whileLoop[0] = newIntTypeNode(1, getSysType(g, body.info, tyBool))
