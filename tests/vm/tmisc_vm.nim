@@ -457,3 +457,25 @@ proc publish*(): void {.transform.} =
   map["k"].incl "d"
 
 publish()
+
+
+iterator it(x: var int): var int =
+  yield x
+
+proc it(x: var int): var int =
+  x
+
+proc xxx() =
+  type Obj = object
+    field: ref int
+  var obj = Obj(field: new(int))
+  obj.field[] = 123
+  assert it(obj.field[]) == 123 # fails
+  for x in it(obj.field[]): # fails
+    assert x == 123
+
+static:
+  xxx()
+
+xxx()
+
