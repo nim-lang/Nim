@@ -1,12 +1,5 @@
 # included from nifencoder
 
-proc writeFlags[E](b: var Builder; flags: set[E]; tag: string) =
-  var flagsAsIdent = ""
-  genFlags(flags, flagsAsIdent)
-  if flagsAsIdent.len > 0:
-    b.withTree tag:
-      b.addIdent flagsAsIdent
-
 proc writeTypeFlags(c: var EncodeContext; t: PType) =
   writeFlags c.b, t.flags, "tf"
 

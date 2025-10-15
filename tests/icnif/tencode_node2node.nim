@@ -105,7 +105,7 @@ proc eql(x, y: PNode): bool =
     result = true
   elif x == nil or y == nil:
     result = false
-  elif x.kind == y.kind and x.safeLen == y.safeLen:
+  elif x.kind == y.kind and x.safeLen == y.safeLen and x.flags == y.flags:
     case x.kind:
     of nkSym:
       result = eql(x.sym, y.sym)

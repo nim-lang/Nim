@@ -29,6 +29,13 @@ proc addFloatLit(b: var Builder; f: float; suffix: string) =
     addFloatLit(b, f)
     addStrLit(b, suffix)
 
+proc writeFlags[E](b: var Builder; flags: set[E]; tag: string) =
+  var flagsAsIdent = ""
+  genFlags(flags, flagsAsIdent)
+  if flagsAsIdent.len > 0:
+    b.withTree tag:
+      b.addIdent flagsAsIdent
+
 proc toNif(c: var EncodeContext; n: PNode)
 proc toNif(c: var EncodeContext; t: PType; isTypeSection = false)
 
@@ -78,6 +85,15 @@ proc symdefToNif(c: var EncodeContext; n: PNode) =
   c.b.endTree()
 
 include nifencodertypes
+
+proc writeNodeFlags(b: var Builder; flags: set[TNodeFlag]) {.inline.} =
+  writeFlags b, flags, "nf"
+
+template withNode(b: var Builder; n: PNode; body: untyped) =
+  addTree b, toNifTag(n.kind)
+  writeNodeFlags(b, n.flags)
+  body
+  endTree b
 
 proc toNifTypeSection(c: var EncodeContext; n: PNode) =
   assert n.len == 3
@@ -187,26 +203,24 @@ proc toNif(c: var EncodeContext; n: PNode) =
   of nkTripleStrLit:
     c.b.addStrLit n.strVal, "T"
   of nkIdentDefs:
-    c.b.addTree toNifTag(n.kind)
-    assert n.len == 3
-    symdefToNif(c, n[0])
-    if n[1].kind == nkSym:
-      symToNif c, n[1].sym
-    else:
-      assert n[0].kind == nkSym
-      toNif c, n[0].sym.typ
-    toNif c, n[2]
-    c.b.endTree()
+    c.b.withNode n:
+      assert n.len == 3
+      symdefToNif(c, n[0])
+      if n[1].kind == nkSym:
+        symToNif c, n[1].sym
+      else:
+        assert n[0].kind == nkSym
+        toNif c, n[0].sym.typ
+      toNif c, n[2]
   of nkTypeDef:
     toNifTypeSection(c, n)
   of nkImportStmt:
     toNifImport(c, n)
   else:
     assert n.len > 0, $n.kind
-    c.b.addTree toNifTag(n.kind)
-    for i in 0 ..< n.len:
-      toNif c, n[i]
-    c.b.endTree()
+    c.b.withNode(n):
+      for i in 0 ..< n.len:
+        toNif c, n[i]
 
 proc saveNif(c: var EncodeContext; n: PNode) =
   c.b.addHeader "nim2", "nim2-ic-nif"

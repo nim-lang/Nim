@@ -100,9 +100,19 @@ proc fromNifSymDef(c: var DecodeContext; n: var Cursor; kind: TNodeKind): PNode 
 
 include nifdecodertypes
 
+proc fromNifNodeFlags(n: var Cursor): set[TNodeFlag] =
+  result = {}
+  if n.kind == ParLe and pool.tags[n.tag] == "nf":
+    inc n
+    assert n.kind == Ident
+    result = parseNodeFlags(pool.strings[n.litId])
+    inc n
+    expect n, ParRi
+
 proc fromNifLocal(c: var DecodeContext; n: var Cursor; kind: TNodeKind): PNode =
   result = newNodeI(kind, unknownLineInfo, 1)
   inc n
+  result.flags = fromNifNodeFlags(n)
   assert n.nodeKind == nkIdentDefs
   result[0] = newNodeI(nkIdentDefs, unknownLineInfo, 3)
   inc n
@@ -259,6 +269,7 @@ proc fromNif(c: var DecodeContext; n: var Cursor): PNode =
     of nkPostfix, nkTypeSection, nkStmtList:
       result = newNode(kind)
       inc n
+      result.flags = fromNifNodeFlags(n)
       while n.kind != ParRi:
         result.add fromNif(c, n)
       inc n
