@@ -83,22 +83,21 @@ proc fromNifSymDef(c: var DecodeContext; n: var Cursor; kind: TNodeKind): PNode 
   let ident = c.graph.cache.getIdent(symdef.name)
   incExpect n, IntLit
   let itemId = pool.integers[n.intId].int32
-  inc n
-  assert n.kind in {Symbol, DotToken}, $n.kind
+  incExpect n, {Symbol, DotToken}
   let owner = if n.kind == Symbol:
       fromNifSymbol(c, n)
     else:
       inc n
       nil
-  assert n.kind in {Ident, DotToken}, $n.kind
+  expect n, {Ident, DotToken}
   let flags = if n.kind == Ident: pool.strings[n.litId].parseSymFlags else: {}
   inc n
   var position = if symKind == skModule:
-      assert n.kind == StringLit
+      expect n, StringLit
       let path = pool.strings[n.litId].AbsoluteFile
       fileInfoIdx(c.graph.config, path).int
     else:
-      assert n.kind == IntLit
+      expect n, IntLit
       pool.integers[n.intId]
   inc n
 
@@ -120,8 +119,7 @@ include nifdecodertypes
 proc fromNifNodeFlags(n: var Cursor): set[TNodeFlag] =
   result = {}
   if n.kind == ParLe and pool.tags[n.tag] == "nf":
-    inc n
-    assert n.kind == Ident
+    incExpect n, Ident
     result = parseNodeFlags(pool.strings[n.litId])
     inc n
     skipParRi n
@@ -182,8 +180,7 @@ proc fromNifSuf(c: var DecodeContext; n: var Cursor): PNode =
   case n.kind:
   of StringLit:
     let v = pool.strings[n.litId]
-    inc n
-    assert n.kind == StringLit
+    incExpect n, StringLit
     let suffix = pool.strings[n.litId]
     let kind = case suffix
       of "R":
@@ -196,8 +193,7 @@ proc fromNifSuf(c: var DecodeContext; n: var Cursor): PNode =
     result = newStrNode(kind, v)
   of IntLit:
     let v = pool.integers[n.intId]
-    inc n
-    assert n.kind == StringLit
+    incExpect n, StringLit
     let suffix = pool.strings[n.litId]
     let kind = case suffix
       of "i8":
@@ -214,8 +210,7 @@ proc fromNifSuf(c: var DecodeContext; n: var Cursor): PNode =
     result = newIntTypeNode(v, c.getSysType(kind))
   of UIntLit:
     let v = pool.uintegers[n.uintId]
-    inc n
-    assert n.kind == StringLit
+    incExpect n, StringLit
     let suffix = pool.strings[n.litId]
     let kind = case suffix
       of "u8":
@@ -232,8 +227,7 @@ proc fromNifSuf(c: var DecodeContext; n: var Cursor): PNode =
     result = newIntTypeNode(cast[BiggestInt](v), c.getSysType(kind))
   of FloatLit:
     let v = pool.floats[n.floatId]
-    inc n
-    assert n.kind == StringLit
+    incExpect n, StringLit
     let suffix = pool.strings[n.litId]
     let kind = case suffix
       of "f32":
