@@ -90,11 +90,18 @@ proc toNif(c: var EncodeContext; t: PType; isTypeSection = false) =
     #toNif c, t.last
     c.typeHead t:
       for _, son in t.ikids: toNif c, son
-  of tyDistinct, tyEnum:
+  of tyEnum:
     if isTypeSection:
       c.typeHead t:
         for son in t.n:
           symdefToNif c, son
+    else:
+      symToNif c, t.sym
+  of tyDistinct:
+    if isTypeSection:
+      c.typeHead t:
+        for son in t.kids:
+          toNif c, son
     else:
       symToNif c, t.sym
   of tyPtr:

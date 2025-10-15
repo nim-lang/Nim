@@ -121,6 +121,7 @@ proc fromNifType(c: var DecodeContext; n: var Cursor): PType =
       result = nil
     else:
       let k = readTypeKind(n, tag)
+      assert k != tyNone
       if k in SysTypeKinds:
         result = getSysType(c, k)
       else:
