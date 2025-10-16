@@ -244,7 +244,7 @@ export asyncstreams
 type
   PDispatcherBase = ref object of RootRef
     timers*: HeapQueue[tuple[finishAt: MonoTime, fut: Future[void]]]
-    callbacks*: Deque[proc () {.gcsafe.}]
+    callbacks*: Deque[proc () {.closure, gcsafe.}]
 
 proc processTimers(
   p: PDispatcherBase, didSomeWork: var bool
@@ -283,7 +283,7 @@ proc adjustTimeout(
 
 proc runOnce(timeout: int): bool {.gcsafe.}
 
-proc callSoon*(cbproc: proc () {.gcsafe.}) {.gcsafe.}
+proc callSoon*(cbproc: proc () {.closure, gcsafe.}) {.gcsafe.}
   ## Schedule `cbproc` to be called as soon as possible.
   ## The callback is called when control returns to the event loop.
 
@@ -2009,7 +2009,7 @@ proc readAll*(future: FutureStream[string]): owned(Future[string]) {.async.} =
     else:
       break
 
-proc callSoon(cbproc: proc () {.gcsafe.}) =
+proc callSoon(cbproc: proc () {.closure, gcsafe.}) =
   getGlobalDispatcher().callbacks.addLast(cbproc)
 
 proc runForever*() =

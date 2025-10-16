@@ -87,17 +87,17 @@ when isFutureLoggingEnabled:
   proc logFutureFinish(fut: FutureBase) =
     getFuturesInProgress()[getFutureInfo(fut)].dec()
 
-var callSoonProc {.threadvar.}: proc (cbproc: proc ()) {.gcsafe.}
+var callSoonProc {.threadvar.}: proc (cbproc: proc () {.closure, gcsafe.}) {.gcsafe.}
 
-proc getCallSoonProc*(): (proc(cbproc: proc ()) {.gcsafe.}) =
+proc getCallSoonProc*(): (proc(cbproc: proc () {.closure, gcsafe.}) {.gcsafe.}) =
   ## Get current implementation of `callSoon`.
   return callSoonProc
 
-proc setCallSoonProc*(p: (proc(cbproc: proc ()) {.gcsafe.})) =
+proc setCallSoonProc*(p: (proc(cbproc: proc () {.closure, gcsafe.}) {.gcsafe.})) =
   ## Change current implementation of `callSoon`. This is normally called when dispatcher from `asyncdispatcher` is initialized.
   callSoonProc = p
 
-proc callSoon*(cbproc: proc () {.gcsafe.}) =
+proc callSoon*(cbproc: proc () {.closure, gcsafe.}) =
   ## Call `cbproc` "soon".
   ##
   ## If async dispatcher is running, `cbproc` will be executed during next dispatcher tick.
