@@ -778,15 +778,13 @@ proc atomicRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     body.add genIf(c, cond, actions)
   of attachedDeepCopy: assert(false, "cannot happen")
   of attachedTrace:
-    if isCyclic:
-      if isFinal(elemType):
-        let typInfo = genBuiltin(c, mGetTypeInfoV2, "getTypeInfoV2", newNodeIT(nkType, x.info, elemType))
-        typInfo.typ() = getSysType(c.g, c.info, tyPointer)
-        body.add callCodegenProc(c.g, "nimTraceRef", c.info, genAddrOf(x, c.idgen), typInfo, y)
-      else:
-        # If the ref is polymorphic we have to account for this
-        body.add callCodegenProc(c.g, "nimTraceRefDyn", c.info, genAddrOf(x, c.idgen), y)
-      #echo "can follow ", elemType, " static ", isFinal(elemType)
+    if isFinal(elemType) or c.g.config.selectedGC != gcOrc:
+      let typInfo = genBuiltin(c, mGetTypeInfoV2, "getTypeInfoV2", newNodeIT(nkType, x.info, elemType))
+      typInfo.typ() = getSysType(c.g, c.info, tyPointer)
+      body.add callCodegenProc(c.g, "nimTraceRef", c.info, genAddrOf(x, c.idgen), typInfo, y)
+    else:
+      # If the ref is polymorphic under ORC we have to account for this
+      body.add callCodegenProc(c.g, "nimTraceRefDyn", c.info, genAddrOf(x, c.idgen), y)
   of attachedWasMoved: body.add genBuiltin(c, mWasMoved, "wasMoved", x)
   of attachedDup:
     if isCyclic:
@@ -1319,7 +1317,7 @@ proc createTypeBoundOps(g: ModuleGraph; c: PContext; orig: PType; info: TLineInf
 
   # we do not generate '=trace' procs if we
   # have the cycle detection disabled, saves code size.
-  let lastAttached = if g.config.selectedGC == gcOrc: attachedTrace
+  let lastAttached = if g.config.selectedGC in {gcArc, gcOrc, gcAtomicArc}: attachedTrace
                      else: attachedSink
 
   # bug #15122: We need to produce all prototypes before entering the

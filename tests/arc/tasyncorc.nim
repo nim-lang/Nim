@@ -13,12 +13,13 @@ proc cb(req: Request) {.async, gcsafe.} =
   await req.respond(Http200, html)
 
 var server = newAsyncHttpServer()
-asyncCheck server.serve(Port(8080), cb)
+asyncCheck server.serve(Port(0), cb)
+let port = server.getPort
 
 proc test {.async.} =
   var
     client = newAsyncHttpClient()
-    resp = await client.get("http://localhost:8080")
+    resp = await client.get("http://localhost:" & $port)
 
   let x = (await resp.body).len
   echo x # crash

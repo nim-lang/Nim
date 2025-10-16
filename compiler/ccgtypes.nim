@@ -1648,6 +1648,11 @@ proc generateRttiDestructor(g: ModuleGraph; typ: PType; owner: PSym; kind: TType
   incl result.flags, sfGeneratedOp
 
 proc genHook(m: BModule; t: PType; info: TLineInfo; op: TTypeAttachedOp; result: var Builder) =
+  if op == attachedTrace and t.kind == tyProc and t.callConv == ccClosure:
+    cgsym(m, "nimTraceClosure")
+    result.add cgsymValue(m, "nimTraceClosure")
+    return
+
   let theProc = getAttachedOp(m.g.graph, t, op)
   if theProc != nil and not isTrivialProc(m.g.graph, theProc):
     # the prototype of a destructor is ``=destroy(x: var T)`` and that of a

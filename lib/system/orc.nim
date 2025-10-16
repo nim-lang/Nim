@@ -140,15 +140,25 @@ proc nimTraceRefDyn(q: pointer; env: pointer) {.compilerRtl, inl.} =
     var j = cast[ptr GcEnv](env)
     j.traceStack.add(p, cast[ptr PNimTypeV2](p[])[])
 
+when not declared(nimTraceClosure):
+  proc nimTraceClosure(p, env: pointer) {.compilerRtl, nimcall, benign, gcsafe, raises: [].} =
+    let slot = cast[ptr pointer](cast[int](p) +% sizeof(pointer))
+    nimTraceRef(slot, cast[ptr PNimTypeV2](slot[])[], env)
+
 var
   roots {.threadvar.}: CellSeq[Cell]
 
 proc unregisterCycle(s: Cell) =
   # swap with the last element. O(1)
+  if s.rootIdx == 0:
+    return
   let
     rootIdx = s.rootIdx
     idx = rootIdx -% 1
     last = roots.len -% 1
+  if roots.len <= 0 or idx < 0 or idx > last:
+    s.rootIdx = 0
+    return
   when false:
     if idx >= roots.len or idx < 0:
       cprintf("[Bug!] %ld %ld\n", idx, roots.len)

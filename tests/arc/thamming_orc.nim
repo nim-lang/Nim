@@ -1,5 +1,5 @@
 discard """
-  output: '''(allocCount: 1114, deallocCount: 1112)
+  output: '''(allocCount: 1111, deallocCount: 1109)
 created 491 destroyed 491'''
   cmd: "nim c --gc:orc -d:nimAllocStats $file"
 """

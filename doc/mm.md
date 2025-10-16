@@ -52,6 +52,11 @@ where code size matters and you know that your code does not produce cycles, you
 use `--mm:arc`. Notice that the default `async`:idx: implementation produces cycles
 and leaks memory with `--mm:arc`, in other words, for `async` you need to use `--mm:orc`.
 
+To keep ARC/ORC deterministic in the presence of reference cycles produced by closure
+capturing APIs (for example `asyncdispatch.callSoon`), the runtime now integrates the
+`cyclebreaker.thinout` helper. The helper first releases captured references via the
+type-aware tracing metadata and then disconnects the cycle, ensuring the environment
+is freed once the callback finishes.
 
 
 Other MM modes

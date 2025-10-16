@@ -9,6 +9,29 @@
 
 # Cell seqs for cyclebreaker and cyclicrefs_v2.
 
+when not declared(ansi_c):
+  import system/ansi_c
+
+when not declared(PNimTypeV2):
+  type
+    TNimTypeV2* {.compilerproc.} = object
+      destructor*: pointer
+      size*: int
+      align*: int16
+      depth*: int16
+      display*: ptr UncheckedArray[uint32]
+      when defined(nimTypeNames) or defined(nimArcIds) or defined(nimOrcLeakDetector):
+        name*: cstring
+      traceImpl*: pointer
+      typeInfoV1*: pointer
+      flags*: int
+      when defined(gcDestructors):
+        when defined(cpp):
+          vTable*: ptr UncheckedArray[pointer]
+        else:
+          vTable*: UncheckedArray[pointer]
+    PNimTypeV2* = ptr TNimTypeV2
+
 type
   CellTuple[T] = (T, PNimTypeV2)
   CellArray[T] = ptr UncheckedArray[CellTuple[T]]
@@ -18,11 +41,13 @@ type
 
 proc resize[T](s: var CellSeq[T]) =
   s.cap = s.cap div 2 +% s.cap
-  let newSize = s.cap *% sizeof(CellTuple[T])
-  when compileOption("threads"):
-    s.d = cast[CellArray[T]](reallocShared(s.d, cast[Natural](newSize)))
+  if s.cap < 4:
+    s.cap = 4
+  let newSize = cast[csize_t](s.cap *% sizeof(CellTuple[T]))
+  if s.d == nil:
+    s.d = cast[CellArray[T]](c_malloc(newSize))
   else:
-    s.d = cast[CellArray[T]](realloc(s.d, cast[Natural](newSize)))
+    s.d = cast[CellArray[T]](c_realloc(s.d, newSize))
 
 proc add[T](s: var CellSeq[T], c: T, t: PNimTypeV2) {.inline.} =
   if s.len >= s.cap:
@@ -32,18 +57,12 @@ proc add[T](s: var CellSeq[T], c: T, t: PNimTypeV2) {.inline.} =
 
 proc init[T](s: var CellSeq[T], cap: int = 1024) =
   s.len = 0
-  s.cap = cap
-  when compileOption("threads"):
-    s.d = cast[CellArray[T]](allocShared(cast[Natural](s.cap *% sizeof(CellTuple[T]))))
-  else:
-    s.d = cast[CellArray[T]](alloc(cast[Natural](s.cap *% sizeof(CellTuple[T]))))
+  s.cap = max(4, cap)
+  s.d = cast[CellArray[T]](c_malloc(cast[csize_t](s.cap *% sizeof(CellTuple[T]))))
 
 proc deinit[T](s: var CellSeq[T]) =
   if s.d != nil:
-    when compileOption("threads"):
-      deallocShared(s.d)
-    else:
-      dealloc(s.d)
+    c_free(s.d)
     s.d = nil
   s.len = 0
   s.cap = 0

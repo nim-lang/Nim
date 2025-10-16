@@ -1630,6 +1630,19 @@ when not defined(js) and hasThreadSupport and hostOS != "standalone":
   import std/private/syslocks
   include "system/threadlocalstorage"
 
+when not defined(js):
+  import system/cyclebreaker as cyclebreaker
+
+  when not defined(gcOrc):
+    proc nimTraceRef*(q: pointer; desc: PNimTypeV2; env: pointer) {.inline, compilerRtl, benign, raises: [].} =
+      cyclebreaker.nimTraceRefImpl(q, desc, env)
+
+    proc nimTraceRefDyn*(q: pointer; env: pointer) {.inline, compilerRtl, benign, raises: [].} =
+      cyclebreaker.nimTraceRefDynImpl(q, env)
+
+    proc nimTraceClosure*(p, env: pointer) {.inline, compilerRtl, nimcall, benign, raises: [].} =
+      cyclebreaker.nimTraceClosureImpl(p, env)
+
 when not defined(js) and defined(nimV2):
   type
     DestructorProc = proc (p: pointer) {.nimcall, benign, raises: [].}
