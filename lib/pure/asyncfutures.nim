@@ -87,17 +87,17 @@ when isFutureLoggingEnabled:
   proc logFutureFinish(fut: FutureBase) =
     getFuturesInProgress()[getFutureInfo(fut)].dec()
 
-var callSoonProc {.threadvar.}: proc (cbproc: proc () {.closure, gcsafe.}) {.gcsafe.}
+var callSoonProc {.threadvar.}: proc (cbproc: sink proc () {.closure, gcsafe.}) {.gcsafe.}
 
-proc getCallSoonProc*(): (proc(cbproc: proc () {.closure, gcsafe.}) {.gcsafe.}) =
+proc getCallSoonProc*(): (proc(cbproc: sink proc () {.closure, gcsafe.}) {.gcsafe.}) =
   ## Get current implementation of `callSoon`.
   return callSoonProc
 
-proc setCallSoonProc*(p: (proc(cbproc: proc () {.closure, gcsafe.}) {.gcsafe.})) =
+proc setCallSoonProc*(p: (proc(cbproc: sink proc () {.closure, gcsafe.}) {.gcsafe.})) =
   ## Change current implementation of `callSoon`. This is normally called when dispatcher from `asyncdispatcher` is initialized.
   callSoonProc = p
 
-proc callSoon*(cbproc: proc () {.closure, gcsafe.}) =
+proc callSoonImpl(cbproc: sink proc () {.closure, gcsafe.}) {.gcsafe.} =
   ## Call `cbproc` "soon".
   ##
   ## If async dispatcher is running, `cbproc` will be executed during next dispatcher tick.
@@ -108,6 +108,11 @@ proc callSoon*(cbproc: proc () {.closure, gcsafe.}) =
     cbproc()
   else:
     callSoonProc(cbproc)
+
+template callSoon*(cbproc: untyped) =
+  ## Helper that transfers ownership of `cbproc` to the dispatcher, ensuring
+  ## ARC/ORC can reclaim the closure environment once the callback runs.
+  callSoonImpl(cbproc)
 
 template setupFutureBase(fromProc: string) =
   new(result)

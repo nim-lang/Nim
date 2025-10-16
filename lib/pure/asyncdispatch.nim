@@ -245,6 +245,9 @@ type
   PDispatcherBase = ref object of RootRef
     timers*: HeapQueue[tuple[finishAt: MonoTime, fut: Future[void]]]
     callbacks*: Deque[proc () {.closure, gcsafe.}]
+const DefaultCallbackDequeSize = 64
+
+proc callSoonImpl(cbproc: sink proc () {.closure, gcsafe.}) {.gcsafe.}
 
 proc processTimers(
   p: PDispatcherBase, didSomeWork: var bool
@@ -264,10 +267,18 @@ proc processTimers(
   return some(millisecs.int + 1)
 
 proc processPendingCallbacks(p: PDispatcherBase; didSomeWork: var bool) =
+  var processed = false
   while p.callbacks.len > 0:
     var cb = p.callbacks.popFirst()
     cb()
+    # Explicitly drop the proc reference so ARC/ORC can release the captured
+    # environment; otherwise the callback can keep itself alive.
+    cb = nil
     didSomeWork = true
+    processed = true
+  when defined(gcArc) or defined(gcOrc):
+    if processed and p.callbacks.len == 0:
+      p.callbacks = initDeque[proc () {.closure, gcsafe.}](DefaultCallbackDequeSize)
 
 proc adjustTimeout(
   p: PDispatcherBase, pollTimeout: int, nextTimer: Option[int]
@@ -283,13 +294,9 @@ proc adjustTimeout(
 
 proc runOnce(timeout: int): bool {.gcsafe.}
 
-proc callSoon*(cbproc: proc () {.closure, gcsafe.}) {.gcsafe.}
-  ## Schedule `cbproc` to be called as soon as possible.
-  ## The callback is called when control returns to the event loop.
-
 proc initCallSoonProc =
   if asyncfutures.getCallSoonProc().isNil:
-    asyncfutures.setCallSoonProc(callSoon)
+    asyncfutures.setCallSoonProc(callSoonImpl)
 
 template implementSetInheritable() {.dirty.} =
   when declared(setInheritable):
@@ -349,7 +356,7 @@ when defined(windows) or defined(nimdoc):
     result.ioPort = createIoCompletionPort(INVALID_HANDLE_VALUE, 0, 0, 1)
     result.handles = initHashSet[AsyncFD]()
     result.timers.clear()
-    result.callbacks = initDeque[proc () {.closure, gcsafe.}](64)
+    result.callbacks = initDeque[proc () {.closure, gcsafe.}](DefaultCallbackDequeSize)
 
   var gDisp{.threadvar.}: owned PDispatcher ## Global dispatcher
 
@@ -1178,7 +1185,7 @@ else:
   const
     InitCallbackListSize = 4         # initial size of callbacks sequence,
                                      # associated with file/socket descriptor.
-    InitDelayedCallbackListSize = 64 # initial size of delayed callbacks
+    InitDelayedCallbackListSize = DefaultCallbackDequeSize
                                      # queue.
   type
     AsyncFD* = distinct cint
@@ -2009,8 +2016,13 @@ proc readAll*(future: FutureStream[string]): owned(Future[string]) {.async.} =
     else:
       break
 
-proc callSoon(cbproc: proc () {.closure, gcsafe.}) =
-  getGlobalDispatcher().callbacks.addLast(cbproc)
+proc callSoonImpl(cbproc: sink proc () {.closure, gcsafe.}) {.gcsafe.} =
+  getGlobalDispatcher().callbacks.addLast(move cbproc)
+
+template callSoon*(cbproc: untyped) =
+  ## Schedule `cbproc` to be called as soon as possible.
+  ## The callback is called when control returns to the event loop.
+  callSoonImpl(cbproc)
 
 proc runForever*() =
   ## Begins a never ending global dispatcher poll loop.
