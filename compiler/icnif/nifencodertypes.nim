@@ -225,7 +225,19 @@ proc toNif(c: var EncodeContext; t: PType; isTypeSection = false) =
   of tyPointer: atom c, t
   of tyString: atom c, t
   of tyCstring: atom c, t
-  of tyObject: symToNif c, t.sym
+  of tyObject:
+    if isTypeSection:
+      c.typeHead t:
+        # TODO: inheritance:
+        c.b.addEmpty
+        for son in t.n:
+          symdefToNif c, son
+          if son.typ == nil:
+            c.b.addEmpty
+          else:
+            toNif c, son.typ
+    else:
+      symToNif c, t.sym
   of tyForward: atom c, t
   of tyError: atom c, t
   of tyBuiltInTypeClass:

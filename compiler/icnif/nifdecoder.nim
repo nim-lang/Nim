@@ -75,6 +75,7 @@ proc fromNifSymDef(c: var DecodeContext; n: var Cursor; kind: TNodeKind): PNode 
     of nkLetSection: skLet
     of nkImportStmt: skModule
     of nkEnumTy: skEnumField
+    of nkRecList: skField
     else: skConst
   incExpect n, SymbolDef
   let nifSymId = n.symId

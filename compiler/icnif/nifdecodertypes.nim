@@ -12,6 +12,9 @@ proc getSysTypeSym(c: var DecodeContext; typeKind: TTypeKind): PSym =
     var typ = newType(typeKind, c.idgen, nil)
     typ.sym = result
     result.typ = typ
+    if typeKind == tyString:
+      var charSym = getSysTypeSym(c, tyChar)
+      result.typ.add charSym.typ
     c.sysTypes[typeKind] = result
 
 proc getSysType(c: var DecodeContext; typeKind: TTypeKind): PType =
@@ -72,15 +75,25 @@ proc fromNifTypeImpl(c: var DecodeContext; n: var Cursor; kind: TTypeKind; res: 
       sym.sym.typ = res
       res.n.add sym
     inc n
+    res.addAllowNil nil
   of tyFromExpr:
     res.n = fromNif(c, n)
   of tyStatic:
     res.addAllowNil fromNifType(c, n)
     res.n = fromNif(c, n)
   of tyObject:
-    # inheritance:
-    res.addAllowNil fromNifType(c, n)
-    res.n = fromNif(c, n)
+    # TODO: inheritance:
+    if n.kind == DotToken:
+      res.addAllowNil nil
+      inc n
+    else:
+      res.addAllowNil fromNifType(c, n)
+    res.n = newNode(nkRecList)
+    while n.kind != ParRi:
+      var sym = fromNifSymDef(c, n, nkRecList)
+      res.n.add sym
+      sym.sym.typ = fromNifType(c, n)
+    inc n
   else:
     while n.kind != ParRi:
       res.addAllowNil fromNifType(c, n)
