@@ -1609,12 +1609,12 @@ proc genAdditionalCopy(c: PCtx; n: PNode; opc: TOpcode;
   c.freeTemp(cc)
 
 proc preventFalseAlias(c: PCtx; n: PNode; opc: TOpcode;
-                       dest, idx, value: TRegister) =
+                       dest, idx, value: TRegister; enforceCopy = false) =
   # opcLdObj et al really means "load address". We sometimes have to create a
   # copy in order to not introduce false aliasing:
   # mylocal = a.b  # needs a copy of the data!
   assert n.typ != nil
-  if needsAdditionalCopy(n):
+  if needsAdditionalCopy(n) or enforceCopy:
     genAdditionalCopy(c, n, opc, dest, idx, value)
   else:
     c.gABC(n, opc, dest, idx, value)
@@ -1663,11 +1663,14 @@ proc genAsgn(c: PCtx; le, ri: PNode; requiresCopy: bool) =
   of nkSym:
     let s = le.sym
     checkCanEval(c, le)
+    let isLdConst = ri.kind == nkSym and ri.sym.kind == skConst and
+        dontInlineConstant(ri, if ri.sym.astdef != nil: ri.sym.astdef else: ri.sym.typ.n)
+      # assigning a constant (opcLdConst) to something; need to copy its value
     if s.isGlobal:
       withTemp(tmp, le.typ):
         c.gen(le, tmp, {gfNodeAddr})
         let val = c.genx(ri)
-        c.preventFalseAlias(le, opcWrDeref, tmp, 0, val)
+        c.preventFalseAlias(le, opcWrDeref, tmp, 0, val, isLdConst)
         c.freeTemp(val)
     else:
       if s.kind == skForVar: c.setSlot s
