@@ -31,6 +31,10 @@ errors.
 
 [//]: # "Additions:"
 
+- Added an ARC/ORC regression test for `std/asyncdispatch.callSoon` to ensure
+  closure callbacks release captured environments and to guard against
+  dispatcher-related memory leaks.
+
 - `setutils.symmetricDifference` along with its operator version
   `` setutils.`-+-` `` and in-place version `setutils.toggle` have been added
   to more efficiently calculate the symmetric difference of bitsets.
