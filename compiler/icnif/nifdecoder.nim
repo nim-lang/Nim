@@ -150,8 +150,8 @@ proc fromNifTypeSection(c: var DecodeContext; n: var Cursor): PNode =
     result[0] = sym
   else:
     var postfix = newNodeI(nkPostfix, unknownLineInfo, 2)
-    postfix.add newIdentNode(c.graph.cache.getIdent("*"), unknownLineInfo)
-    postfix.add sym
+    postfix[0] = newIdentNode(c.graph.cache.getIdent("*"), unknownLineInfo)
+    postfix[1] = sym
     result[0] = postfix
   inc n
 

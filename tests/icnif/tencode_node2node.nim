@@ -140,7 +140,13 @@ proc eql(x, y: PNode; c: var EqlContext): bool =
     result = true
   elif x == nil or y == nil:
     result = false
-  elif x.kind == y.kind and x.safeLen == y.safeLen and x.flags == y.flags:
+  elif x.kind != y.kind:
+    echo "node kind mismatch: ", x.kind, "/", y.kind
+    result = false
+  elif x.flags != y.flags:
+    echo "node flag mismatch: ", x.flags, "/", y.flags
+    result = false
+  elif x.safeLen == y.safeLen:
     if c.nodeStack.len != 0:
       for i in countDown(c.nodeStack.len - 1, 0):
         if x == c.nodeStack[i]:
@@ -160,16 +166,23 @@ proc eql(x, y: PNode; c: var EqlContext): bool =
       result = sameValue(x, y)
     of nkIdentDefs:
       assert x.len == 3 and y.len == 3
-      if eql(x[0], y[0], c) and eql(x[2], y[2], c):
-        result = y[1].kind == nkEmpty and y[0].sym.typ != nil
+      if eql(x[0], y[0], c) and eql(x[2], y[2], c) and y[1].kind == nkEmpty and y[0].sym.typ != nil:
+        result = true
       else:
+        echo "nkIdentDefs mismatch"
         result = false
     of nkTypeDef:
       assert x.len == 3 and y.len == 3
       if eql(x[0], y[0], c) and eql(x[1], y[1], c):
-        result = y[2].kind == nkEmpty and y[0].sym.typ != nil
+        let sym = if y[0].kind == nkPostfix:
+          y[0][1].sym
+        else:
+          y[0].sym
+        result = y[2].kind == nkEmpty and sym.typ != nil
       else:
         result = false
+      if not result:
+        echo "nkTypeDef mismatch"
     else:
       result = true
       for i in 0 ..< x.safeLen:
@@ -178,6 +191,9 @@ proc eql(x, y: PNode; c: var EqlContext): bool =
           break
     discard c.nodeStack.pop
   else:
+    echo "node length mismatch"
+    debug(x)
+    debug(y)
     result = false
 
 proc testNifEncDec(graph: ModuleGraph; src: string) =
