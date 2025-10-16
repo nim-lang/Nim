@@ -31,9 +31,6 @@ errors.
 
 [//]: # "Additions:"
 
-- Fixed `std/asyncdispatch` callback processing to clear closure references
-  immediately after invocation, ensuring ARC/ORC can reclaim captured
-  environments.
 - Added an ARC/ORC regression test for `std/asyncdispatch.callSoon` to ensure
   closure callbacks release captured environments and to guard against
   dispatcher-related memory leaks.
