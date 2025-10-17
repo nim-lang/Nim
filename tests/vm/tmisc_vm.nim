@@ -479,3 +479,10 @@ static:
 
 xxx()
 
+
+static:
+  var foo: string
+  for _ in 0 ..< 100_000:
+    foo.add 'a'
+  doAssert repr(foo).len == 100_002
+

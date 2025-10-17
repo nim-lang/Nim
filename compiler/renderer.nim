@@ -30,7 +30,7 @@ type
   TRenderFlags* = set[TRenderFlag]
   TRenderTok* = object
     kind*: TokType
-    length*: int16
+    length*: int32
     sym*: PSym
 
   Section = enum
@@ -154,7 +154,7 @@ proc initSrcGen(renderFlags: TRenderFlags; config: ConfigRef): TSrcGen =
                    )
 
 proc addTok(g: var TSrcGen, kind: TokType, s: string; sym: PSym = nil) =
-  g.tokens.add TRenderTok(kind: kind, length: int16(s.len), sym: sym)
+  g.tokens.add TRenderTok(kind: kind, length: int32(s.len), sym: sym)
   g.buf.add(s)
   if kind != tkSpaces:
     inc g.col, s.len
