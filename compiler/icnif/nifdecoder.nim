@@ -274,6 +274,10 @@ proc fromNif(c: var DecodeContext; n: var Cursor): PNode =
   of ParLe:
     let kind = n.nodeKind
     case kind:
+    of nkNilLit:
+      result = newNode(nkNilLit)
+      inc n
+      skipParRi n
     of nkPostfix, nkTypeSection, nkStmtList:
       result = newNode(kind)
       inc n

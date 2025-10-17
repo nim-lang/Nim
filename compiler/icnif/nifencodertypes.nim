@@ -3,10 +3,6 @@
 proc writeTypeFlags(c: var EncodeContext; t: PType) =
   writeFlags c.b, t.flags, "tf"
 
-proc isNominalRef(t: PType): bool {.inline.} =
-  let e = t.elementType
-  t.sym != nil and e.kind == tyObject and (e.sym == nil or sfAnon in e.sym.flags)
-
 template singleElement(keyw: string) {.dirty.} =
   c.b.withTree keyw:
     writeTypeFlags(c, t)
@@ -97,18 +93,12 @@ proc toNif(c: var EncodeContext; t: PType; isTypeSection = false) =
           toNif c, son
     else:
       symToNif c, t.sym
-  of tyPtr:
-    if isNominalRef(t):
+  of tyRef, tyPtr:
+    if tfRefsAnonObj in t.flags and not isTypeSection:
       symToNif c, t.sym
     else:
       c.typeHead t:
-        toNif c, t.elementType
-  of tyRef:
-    if isNominalRef(t):
-      symToNif c, t.sym
-    else:
-      c.typeHead t:
-        toNif c, t.elementType
+        toNif c, t.elementType, isTypeSection
   of tyVar:
     c.b.withTree(if isOutParam(t): "out" else: "mut"):
       toNif c, t.elementType

@@ -25,3 +25,5 @@ var uint64litH = 18446744073709551615'u64
 var floatlit = 1.25
 var float32lit = 1.25'f32
 var float64lit = 1.25'f64
+
+var nillit: ptr int = nil

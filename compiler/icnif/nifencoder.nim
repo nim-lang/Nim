@@ -202,6 +202,8 @@ proc toNif(c: var EncodeContext; n: PNode) =
     c.b.addStrLit n.strVal, "R"
   of nkTripleStrLit:
     c.b.addStrLit n.strVal, "T"
+  of nkNilLit:
+    c.b.addKeyw toNifTag(nkNilLit)
   of nkIdentDefs:
     c.b.withNode n:
       assert n.len == 3
