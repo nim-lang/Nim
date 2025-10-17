@@ -53,10 +53,10 @@ use `--mm:arc`. Notice that the default `async`:idx: implementation produces cyc
 and leaks memory with `--mm:arc`, in other words, for `async` you need to use `--mm:orc`.
 
 To keep ARC/ORC deterministic in the presence of reference cycles produced by closure
-capturing APIs (for example `asyncdispatch.callSoon`), the runtime now integrates the
-`cyclebreaker.thinout` helper. The helper first releases captured references via the
-type-aware tracing metadata and then disconnects the cycle, ensuring the environment
-is freed once the callback finishes.
+capturing APIs (for example `asyncdispatch.callSoon`), the runtime now integrates a
+callback-queue cleanup path. Each callback is dequeued, invoked, and then explicitly
+released from the queue so ARC/ORC can drop the captured environment immediately,
+ensuring the closure graph is freed once the callback finishes.
 
 
 Other MM modes
