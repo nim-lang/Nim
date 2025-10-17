@@ -1,5 +1,5 @@
 discard """
-  cmd: '''nim r --threads:on $file'''
+  cmd: '''nim c --threads:on $file'''
 """
 
 import std/[asyncdispatch, os, strutils]

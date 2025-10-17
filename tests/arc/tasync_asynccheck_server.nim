@@ -1,5 +1,5 @@
 discard """
-  cmd: '''nim r --mm:orc $file'''
+  cmd: '''nim c --mm:orc $file'''
 """
 
 import std/[asyncdispatch, asyncnet, strutils]
