@@ -148,9 +148,28 @@ when not declared(nimTraceClosure):
 var
   roots {.threadvar.}: CellSeq[Cell]
 
+proc thinOut(s: var CellSeq[Cell]) =
+  ## Compact the roots set by dropping detached entries and fixing rootIdx.
+  if s.len == 0 or s.d == nil:
+    return
+  var dst = 0
+  for src in 0 ..< s.len:
+    let cell = s.d[src][0]
+    if cell != nil and cell.rootIdx > 0:
+      if dst != src:
+        s.d[dst] = s.d[src]
+      s.d[dst][0].rootIdx = dst +% 1
+      dst = dst +% 1
+    else:
+      if cell != nil:
+        cell.rootIdx = 0
+  if dst < s.len:
+    s.len = dst
+
 proc unregisterCycle(s: Cell) =
   # swap with the last element. O(1)
-  if s.rootIdx == 0:
+  if s.rootIdx <= 0:
+    thinOut(roots)
     return
   let
     rootIdx = s.rootIdx
@@ -158,13 +177,14 @@ proc unregisterCycle(s: Cell) =
     last = roots.len -% 1
   if roots.len <= 0 or idx < 0 or idx > last:
     s.rootIdx = 0
+    thinOut(roots)
     return
   when false:
     if idx >= roots.len or idx < 0:
       cprintf("[Bug!] %ld %ld\n", idx, roots.len)
       rawQuit 1
   roots.d[idx] = roots.d[last]
-  roots.d[idx][0].rootIdx = rootIdx
+  roots.d[idx][0].rootIdx = idx +% 1
   roots.len = last
   s.rootIdx = 0
 
