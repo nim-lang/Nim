@@ -1658,9 +1658,12 @@ proc genHook(m: BModule; t: PType; info: TLineInfo; op: TTypeAttachedOp; result:
     # the prototype of a destructor is ``=destroy(x: var T)`` and that of a
     # finalizer is: ``proc (x: ref T) {.nimcall.}``. We need to check the calling
     # convention at least:
-    if theProc.typ == nil or theProc.typ.callConv != ccNimCall:
+    if theProc.typ == nil or theProc.typ.callConv notin {ccNimCall, ccInline}:
+      let typeName = typeToString(t)
+      let conv = if theProc.typ != nil: $theProc.typ.callConv else: "unknown"
       localError(m.config, info,
-        theProc.name.s & " needs to have the 'nimcall' calling convention")
+        theProc.name.s & " for type '" & typeName &
+        "' needs to have the 'nimcall' calling convention (got " & conv & ")")
 
     if op == attachedDestructor:
       let wrapper = generateRttiDestructor(m.g.graph, t, theProc.owner, attachedDestructor,
