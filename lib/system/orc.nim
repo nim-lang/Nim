@@ -148,7 +148,7 @@ when not declared(nimTraceClosure):
 var
   roots {.threadvar.}: CellSeq[Cell]
 
-proc thinOut(s: var CellSeq[Cell]) =
+proc compactRoots(s: var CellSeq[Cell]) =
   ## Compact the roots set by dropping detached entries and fixing rootIdx.
   if s.len == 0 or s.d == nil:
     return
@@ -169,22 +169,43 @@ proc thinOut(s: var CellSeq[Cell]) =
 proc unregisterCycle(s: Cell) =
   # swap with the last element. O(1)
   if s.rootIdx <= 0:
-    thinOut(roots)
-    return
-  let
-    rootIdx = s.rootIdx
-    idx = rootIdx -% 1
-    last = roots.len -% 1
-  if roots.len <= 0 or idx < 0 or idx > last:
     s.rootIdx = 0
-    thinOut(roots)
+    compactRoots(roots)
     return
-  when false:
-    if idx >= roots.len or idx < 0:
-      cprintf("[Bug!] %ld %ld\n", idx, roots.len)
-      rawQuit 1
-  roots.d[idx] = roots.d[last]
-  roots.d[idx][0].rootIdx = idx +% 1
+  if roots.len <= 0:
+    s.rootIdx = 0
+    return
+  var
+    idx = s.rootIdx -% 1
+    last = roots.len -% 1
+  template ensureValidIndex(): bool =
+    (idx >= 0) and (idx <= last) and roots.d[idx][0] == s
+  if not ensureValidIndex():
+    compactRoots(roots)
+    if s.rootIdx <= 0 or roots.len <= 0:
+      s.rootIdx = 0
+      return
+    idx = s.rootIdx -% 1
+    last = roots.len -% 1
+    if not ensureValidIndex():
+      var found = false
+      for i in countdown(last, 0):
+        if roots.d[i][0] == s:
+          idx = i
+          s.rootIdx = i +% 1
+          last = roots.len -% 1
+          found = true
+          break
+      if not found or not ensureValidIndex():
+        s.rootIdx = 0
+        compactRoots(roots)
+        return
+  let moved = roots.d[last]
+  roots.d[idx] = moved
+  if idx != last:
+    let movedCell = moved[0]
+    if movedCell != nil:
+      movedCell.rootIdx = idx +% 1
   roots.len = last
   s.rootIdx = 0
 

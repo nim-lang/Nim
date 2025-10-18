@@ -10,12 +10,13 @@ Core Changes
 - `lib/system/orc.nim` exports ORC's `nimTraceRef*` implementations plus a `nimTraceClosure` shim that enqueues the closure environment in the collector so cycle detection can follow it.
 - `lib/system.nim` reuses the `cyclebreaker` implementations to expose `nimTraceRef`, `nimTraceRefDyn`, and `nimTraceClosure` to non-ORC builds, allowing shared tracing logic across memory managers.
 - `lib/pure/asyncdispatch.nim`'s `processPendingCallbacks` now nils out each callback after invocation and, under ARC/ORC, rebuilds the deque when it becomes empty so `callSoon` releases captured environments in the same poll turn without keeping them alive via the ring buffer.
-- `doc/mm.md` still describes closure cleanup via `cyclebreaker.thinout`; update it to match the callback-queue cleanup that the runtime actually performs.
+- `doc/mm.md` now documents the callback-queue cleanup path that the runtime uses instead of referring to `cyclebreaker.thinout`, keeping the manual aligned with the implementation.
 - `tests/arc/tasync_callsoon_closure.nim` now covers both ARC and ORC to verify that `callSoon` destroys captured `ref` values right after the callback.
 - `tests/arc/tasync_future_cycle.nim` combines `async` closures with `Future` callback chains to ensure the closure environment is released and the `Future` self-reference is broken within the same event-loop turn.
 - `tests/arc/tasync_threaded_exception.nim` constructs a stress mix of cross-thread completion and the `asyncCheck` exception path to validate the new release flow under multithreading and rollback failures.
 - `tests/arc/tasync_asynccheck_server.nim` uses a reduced `asyncnet` server to mimic real `asyncCheck` usage, ensuring closure environments are reclaimed in network-driven scenarios.
 - `tests/arc/tasyncleak.nim`, `tests/arc/tasyncorc.nim`, and `tests/arc/thamming_orc.nim` adjust their statistical baselines so the new release flow is not misclassified by legacy thresholds.
+- `lib/system/orc.nim` now has an internal `compactRoots` helper that re-compacts the ORC `roots` array and repairs `rootIdx` after thin-out runs.  Matching fixups in `unregisterCycle` guard against stale `rootIdx == 0` values that showed up despite thin-out support—destructors and partial collections can reorder or shrink `roots`, so a zero index no longer signals "already removed" but instead triggers a re-scan before unlinking.
 
 Validation
 ----------
@@ -29,3 +30,5 @@ Validation
 - `nim c --mm:orc -d:nimAllocStats tests/arc/thamming_orc.nim`
 - `nim r --threads:on --mm:arc tests/arc/tasync_threaded_exception.nim`
 - `nim r --threads:on --mm:orc tests/arc/tasync_threaded_exception.nim`
+- `testament/testament --nim:bin/nim c arc "--mm:arc"`
+- `testament/testament --nim:bin/nim c arc "--mm:orc"`
