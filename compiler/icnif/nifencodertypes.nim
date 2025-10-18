@@ -44,8 +44,9 @@ proc toNif(c: var EncodeContext; t: PType; isTypeSection = false) =
   of tyUInt16: atom c, t, "u +16"
   of tyUInt32: atom c, t, "u +32"
   of tyUInt64: atom c, t, "u +64"
-  of tyFloat, tyFloat64: atom c, t, "f -1"
+  of tyFloat: atom c, t, "f -1"
   of tyFloat32: atom c, t, "f +32"
+  of tyFloat64: atom c, t, "f +64"
   of tyFloat128: atom c, t, "f +128"
   of tyAlias:
     c.typeHead t:

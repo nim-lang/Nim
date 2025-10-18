@@ -73,6 +73,7 @@ proc fromNifTypeImpl(c: var DecodeContext; n: var Cursor; kind: TTypeKind; res: 
     while n.kind != ParRi:
       var sym = fromNifSymDef(c, n, nkEnumTy)
       sym.sym.typ = res
+      sym.typ = res
       res.n.add sym
     inc n
     res.addAllowNil nil
@@ -92,7 +93,9 @@ proc fromNifTypeImpl(c: var DecodeContext; n: var Cursor; kind: TTypeKind; res: 
     while n.kind != ParRi:
       var sym = fromNifSymDef(c, n, nkRecList)
       res.n.add sym
-      sym.sym.typ = fromNifType(c, n)
+      let typ = fromNifType(c, n)
+      sym.sym.typ = typ
+      sym.typ = typ
     inc n
   else:
     while n.kind != ParRi:

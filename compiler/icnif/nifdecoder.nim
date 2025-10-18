@@ -125,6 +125,17 @@ proc fromNifNodeFlags(n: var Cursor): set[TNodeFlag] =
     inc n
     skipParRi n
 
+proc fromNifIntLit(c: var DecodeContext; n: var Cursor): PNode =
+  # See `getIntLitType` proc in semdata.nim
+  # Use intTypeCache?
+  let sysType = c.getSysType(tyInt)
+  var typ = copyType(sysType, c.idgen, sysType.owner)
+  let val = pool.integers[n.intId]
+  inc n
+  result = newIntTypeNode(val, typ)
+  typ.n = newIntTypeNode(val, typ)
+  typ.n.flags = {nfSem}
+
 proc fromNifLocal(c: var DecodeContext; n: var Cursor; kind: TNodeKind): PNode =
   result = newNodeI(kind, unknownLineInfo, 1)
   inc n
@@ -137,7 +148,9 @@ proc fromNifLocal(c: var DecodeContext; n: var Cursor; kind: TNodeKind): PNode =
   if n.kind == DotToken:
     inc n
   else:
-    result[0][0].sym.typ = fromNifType(c, n)
+    let typ = fromNifType(c, n)
+    result[0][0].sym.typ = typ
+    result[0][0].typ = typ
   result[0][2] = fromNif(c, n)
   skipParRi n  # nkIdentDefs
   skipParRi n
@@ -165,7 +178,9 @@ proc fromNifTypeSection(c: var DecodeContext; n: var Cursor): PNode =
 
   # type body
   result[2] = newNode(nkEmpty)
-  sym.sym.typ = fromNifType(c, n)
+  let typ = fromNifType(c, n)
+  sym.sym.typ = typ
+  sym.typ = typ
 
   skipParRi n
 
@@ -192,6 +207,7 @@ proc fromNifSuf(c: var DecodeContext; n: var Cursor): PNode =
         assert false, "Unknown string literal suffix " & suffix
         nkNone
     result = newStrNode(kind, v)
+    result.typ = c.getSysType(tyString)
   of IntLit:
     let v = pool.integers[n.intId]
     incExpect n, StringLit
@@ -234,7 +250,7 @@ proc fromNifSuf(c: var DecodeContext; n: var Cursor): PNode =
       of "f32":
         (nkFloat32Lit, tyFloat32)
       of "f64":
-        (nkFloat64Lit, tyFloat64)
+        (nkFloat64Lit, tyFloat)
       of "f128":
         (nkFloat128Lit, tyFloat128)
       else:
@@ -257,13 +273,14 @@ proc fromNif(c: var DecodeContext; n: var Cursor): PNode =
     result = newSymNode(fromNifSymbol(c, n))
   of StringLit:
     result = newStrNode(nkStrLit, pool.strings[n.litId])
+    result.typ = c.getSysType(tyString)
     inc n
   of CharLit:
     result = newIntNode(nkCharLit, n.charLit.int)
+    result.typ = c.getSysType(tyChar)
     inc n
   of IntLit:
-    result = newIntTypeNode(pool.integers[n.intId], c.getSysType(tyInt))
-    inc n
+    result = fromNifIntLit(c, n)
   of UIntLit:
     result = newIntTypeNode(cast[BiggestInt](pool.uintegers[n.uintId]), c.getSysType(tyUInt))
     inc n
