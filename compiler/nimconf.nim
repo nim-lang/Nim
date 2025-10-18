@@ -223,7 +223,6 @@ proc readConfigFile*(filename: AbsoluteFile; cache: IdentCache;
   stream = llStreamOpen(filename, fmRead)
   if stream != nil:
     openLexer(L, filename, stream, cache, config)
-    setConfigVar(config, "srcDir", parentDir(filename.string))
     tok = Token(tokType: tkEof)       # to avoid a pointless warning
     var condStack: seq[bool] = @[]
     confTok(L, tok, config, condStack)           # read in the first token
@@ -250,6 +249,7 @@ proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef; idgen: 
   setDefaultLibpath(conf)
   template readConfigFile(path) =
     let configPath = path
+    setConfigVar(conf, "selfDir", configPath.splitFile.dir.string)
     if readConfigFile(configPath, cache, conf):
       conf.configFiles.add(configPath)
 
