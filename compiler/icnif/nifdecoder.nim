@@ -100,20 +100,39 @@ proc fromNifSymDef(c: var DecodeContext; n: var Cursor; kind: TNodeKind): PNode 
     else:
       expect n, IntLit
       pool.integers[n.intId]
+  incExpect n, ParLe
+  var loc = TLoc()
+  loc.k = pool.tags[n.tagId].parseLocKind()
+  incExpect n, StringLit
+  loc.snippet.add pool.strings[n.litId]
   inc n
+  skipParRi n
 
   var psym = PSym(itemId: ItemId(module: 0, item: itemId),
     kind: symKind,
     name: ident,
     flags: flags,
     position: position,
-    disamb: symdef.id.int32)
+    disamb: symdef.id.int32,
+    loc: loc)
   psym.setOwner(owner)
   result = newSymNode(psym)
   let hasSym = c.nifSymToPSym.hasKeyOrPut(nifSymId, psym)
   assert not hasSym
 
   skipParRi n
+
+proc createPragmaNode(c: var DecodeContext; sym: PSym): PNode =
+  var pragmas = newNode(nkPragma)
+  if sfImportc in sym.flags:
+    let ident = newNode(nkIdent)
+    ident.ident = c.graph.cache.getIdent("importc")
+    pragmas.add ident
+
+  if pragmas.len == 0:
+    result = nil
+  else:
+    result = pragmas
 
 include nifdecodertypes
 
@@ -143,14 +162,23 @@ proc fromNifLocal(c: var DecodeContext; n: var Cursor; kind: TNodeKind): PNode =
   assert n.nodeKind == nkIdentDefs
   result[0] = newNodeI(nkIdentDefs, unknownLineInfo, 3)
   inc n
-  result[0][0] = fromNifSymDef(c, n, kind)
+  var symNode = fromNifSymDef(c, n, kind)
+  let pragmas = createPragmaNode(c, symNode.sym)
+  if pragmas == nil:
+    result[0][0] = symNode
+  else:
+    var pragmaExpr = newNode(nkPragmaExpr)
+    pragmaExpr.add symNode
+    pragmaExpr.add pragmas
+    result[0][0] = pragmaExpr
+
   result[0][1] = newNode(nkEmpty)
   if n.kind == DotToken:
     inc n
   else:
     let typ = fromNifType(c, n)
-    result[0][0].sym.typ = typ
-    result[0][0].typ = typ
+    symNode.sym.typ = typ
+    symNode.typ = typ
   result[0][2] = fromNif(c, n)
   skipParRi n  # nkIdentDefs
   skipParRi n

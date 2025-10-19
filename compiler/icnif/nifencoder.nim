@@ -82,6 +82,8 @@ proc symdefToNif(c: var EncodeContext; n: PNode) =
     c.b.addStrLit path
   else:
     c.b.addIntLit sym.position
+  c.b.withTree toNifTag(sym.loc.k):
+    c.b.addStrLit sym.loc.snippet
   c.b.endTree()
 
 include nifencodertypes
@@ -207,7 +209,10 @@ proc toNif(c: var EncodeContext; n: PNode) =
   of nkIdentDefs:
     c.b.withNode n:
       assert n.len == 3
-      symdefToNif(c, n[0])
+      if n[0].kind == nkPragmaExpr:
+        symdefToNif(c, n[0][0])
+      else:
+        symdefToNif(c, n[0])
       if n[1].kind == nkSym:
         symToNif c, n[1].sym
       else:
