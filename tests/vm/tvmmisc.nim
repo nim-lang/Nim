@@ -813,3 +813,9 @@ static:
   conf = defaultConf  # removing this results in the expected output
   conf.val = 2
   foo2323(defaultConf)
+
+
+proc g1314(_: static bool) = discard
+proc g1314(_: int) = discard
+proc y1314() = g1314((; let k = 0; k))
+y1314()
