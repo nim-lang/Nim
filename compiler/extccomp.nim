@@ -603,19 +603,6 @@ proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile,
     options.add ' '
     options.add cfile.customArgs
 
-  var compilePattern: string
-  # compute include paths:
-  var includeCmd = CC[c].includeCmd & quoteShell(conf.libpath)
-  if not noAbsolutePaths(conf):
-    for includeDir in items(conf.cIncludes):
-      includeCmd.add(join([CC[c].includeCmd, includeDir.quoteShell]))
-
-    compilePattern = joinPath(conf.cCompilerPath, exe)
-  else:
-    compilePattern = exe
-
-  includeCmd.add(join([CC[c].includeCmd, quoteShell(conf.projectPath.string)]))
-
   let cf = if noAbsolutePaths(conf): AbsoluteFile extractFilename(cfile.cname.string)
            else: cfile.cname
 
@@ -635,12 +622,29 @@ proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile,
   let dfile = objfile.changeFileExt(".d").quoteShell
 
   let cfsh = quoteShell(cf)
-  result = quoteShell(compilePattern % [
+  # compute include paths:
+  var includeCmd = CC[c].includeCmd & quoteShell(conf.libpath)
+  let confAbsPaths = not noAbsolutePaths(conf)
+  if confAbsPaths:
+    for includeDir in items(conf.cIncludes):
+      includeCmd.add(join([CC[c].includeCmd, includeDir.quoteShell]))
+  includeCmd.add(join([CC[c].includeCmd, quoteShell(conf.projectPath.string)]))
+  proc subsVar(s: string): string =
+    s % [
     "dfile", dfile,
     "file", cfsh, "objfile", quoteShell(objfile), "options", options,
     "include", includeCmd, "nim", getPrefixDir(conf).string,
     "lib", conf.libpath.string,
-    "ccenvflags", envFlags(conf)])
+    "ccenvflags", envFlags(conf)]
+  var compilePattern: string
+  exe = exe.subsVar
+  if confAbsPaths:
+    compilePattern = joinPath(conf.cCompilerPath.subsVar, exe)
+  else:
+    compilePattern = exe
+
+
+  result = quoteShell(compilePattern)
 
   if optProduceAsm in conf.globalOptions:
     if CC[conf.cCompiler].produceAsm.len > 0:
@@ -717,10 +721,6 @@ proc getLinkCmd(conf: ConfigRef; output: AbsoluteFile,
   else:
     var linkerExe = getConfigVar(conf, conf.cCompiler, ".linkerexe")
     if linkerExe.len == 0: linkerExe = getLinkerExe(conf, conf.cCompiler)
-    # bug #6452: We must not use ``quoteShell`` here for ``linkerExe``
-    if needsExeExt(conf): linkerExe = addFileExt(linkerExe, "exe")
-    if noAbsolutePaths(conf): result = linkerExe
-    else: result = joinPath(conf.cCompilerPath, linkerExe)
     let buildgui = if optGenGuiApp in conf.globalOptions and conf.target.targetOS == osWindows:
                      CC[conf.cCompiler].buildGui
                    else:
@@ -741,10 +741,17 @@ proc getLinkCmd(conf: ConfigRef; output: AbsoluteFile,
     var linkTmpl = getConfigVar(conf, conf.cCompiler, ".linkTmpl")
     if linkTmpl.len == 0:
       linkTmpl = CC[conf.cCompiler].linkTmpl
-    result = quoteShell(result % ["builddll", builddll,
+    proc subsVar(s: string): string =
+      s % ["builddll", builddll,
         "mapfile", mapfile,
         "buildgui", buildgui, "options", linkOptions, "objfiles", objfiles,
-        "exefile", exefile, "nim", getPrefixDir(conf).string, "lib", conf.libpath.string])
+        "exefile", exefile, "nim", getPrefixDir(conf).string, "lib", conf.libpath.string]
+    linkerExe = linkerExe.subsVar
+    # bug #6452: We must not use ``quoteShell`` here for ``linkerExe``
+    if needsExeExt(conf): linkerExe = addFileExt(linkerExe, "exe")
+    if noAbsolutePaths(conf): result = linkerExe
+    else: result = joinPath(conf.cCompilerPath.subsVar, linkerExe)
+    result = quoteShell(result)
     result.add ' '
     strutils.addf(result, linkTmpl, ["builddll", builddll,
         "mapfile", mapfile,
