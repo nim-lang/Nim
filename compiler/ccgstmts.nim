@@ -135,7 +135,7 @@ proc genVarTuple(p: BProc, n: PNode) =
       initLocalVar(p, v, immediateAsgn=isAssignedImmediately(p.config, n[^1]))
     var field = initLoc(locExpr, vn, tup.storage)
     let rtup = rdLoc(tup)
-    let fieldName = 
+    let fieldName =
       if t.kind == tyTuple:
         "Field" & $i
       else:
@@ -858,8 +858,28 @@ proc genRaiseStmt(p: BProc, t: PNode) =
     of excCpp:
       blockLeaveActions(p, howManyTrys = 0, howManyExcepts = p.inExceptBlockLen)
     of excGoto:
-      blockLeaveActions(p, howManyTrys = 0,
-        howManyExcepts = (if p.nestedTryStmts.len > 0 and p.nestedTryStmts[^1].inExcept: 1 else: 0))
+      #[
+      There is a difference between:
+
+        try:
+          something()
+        except:
+          # bug #25037
+          try:
+            let tmp = someValue()
+            raise E(tmp)
+          finally:
+            destroy(tmp)
+
+      And:
+
+        try:
+          something()
+        except:
+          raise E
+      ]#
+      if noSafePoints notin p.flags:
+        p.s(cpsStmts).addCallStmt(cgsymValue(p.module, "popAllButOneCurrentExceptions"))
     else:
       discard
     genLineDir(p, t)
