@@ -1044,6 +1044,8 @@ proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
           body.add genBuiltin(c, mWasMoved, "wasMoved", x)
         else:
           fillBodyObjT(c, t, body, x, y)
+      elif tfUnion in t.flags: # bug #25236
+        defaultOp(c, t, body, x, y)
       else:
         if c.kind == attachedDup:
           var op2 = getAttachedOp(c.g, t, attachedAsgn)
