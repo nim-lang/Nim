@@ -629,17 +629,16 @@ proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile,
     for includeDir in items(conf.cIncludes):
       includeCmd.add(join([CC[c].includeCmd, includeDir.quoteShell]))
   includeCmd.add(join([CC[c].includeCmd, quoteShell(conf.projectPath.string)]))
-  proc subsVar(s: string): string =
-    s % [
+  let subsVars = [
     "dfile", dfile,
     "file", cfsh, "objfile", quoteShell(objfile), "options", options,
     "include", includeCmd, "nim", getPrefixDir(conf).string,
     "lib", conf.libpath.string,
     "ccenvflags", envFlags(conf)]
   var compilePattern: string
-  exe = exe.subsVar
+  exe = exe % subsVars
   if confAbsPaths:
-    compilePattern = joinPath(conf.cCompilerPath.subsVar, exe)
+    compilePattern = joinPath(conf.cCompilerPath % subsVars, exe)
   else:
     compilePattern = exe
 
@@ -741,16 +740,15 @@ proc getLinkCmd(conf: ConfigRef; output: AbsoluteFile,
     var linkTmpl = getConfigVar(conf, conf.cCompiler, ".linkTmpl")
     if linkTmpl.len == 0:
       linkTmpl = CC[conf.cCompiler].linkTmpl
-    proc subsVar(s: string): string =
-      s % ["builddll", builddll,
+    let subsVars = ["builddll", builddll,
         "mapfile", mapfile,
         "buildgui", buildgui, "options", linkOptions, "objfiles", objfiles,
         "exefile", exefile, "nim", getPrefixDir(conf).string, "lib", conf.libpath.string]
-    linkerExe = linkerExe.subsVar
+    linkerExe = linkerExe % subsVars
     # bug #6452: We must not use ``quoteShell`` here for ``linkerExe``
     if needsExeExt(conf): linkerExe = addFileExt(linkerExe, "exe")
     if noAbsolutePaths(conf): result = linkerExe
-    else: result = joinPath(conf.cCompilerPath.subsVar, linkerExe)
+    else: result = joinPath(conf.cCompilerPath % subsVars, linkerExe)
     result = quoteShell(result)
     result.add ' '
     strutils.addf(result, linkTmpl, ["builddll", builddll,
