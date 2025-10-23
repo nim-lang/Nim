@@ -327,6 +327,10 @@ proc pushCom(g: var TSrcGen, n: PNode) =
   setLen(g.comStack, g.comStack.len + 1)
   g.comStack[^1] = n
 
+proc popCom(g: var TSrcGen): PNode =
+  result = g.comStack[^1]
+  setLen(g.comStack, g.comStack.len - 1)
+
 proc popAllComs(g: var TSrcGen) =
   setLen(g.comStack, 0)
 
@@ -1353,6 +1357,10 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
       if not n[0].isExported() and renderNonExportedFields notin g.flags:
         # Skip if this is a property in a type and its not exported
         # (While also not allowing rendering of non exported fields)
+        if shouldRenderComment(g, n):
+          # `shouldRenderComment` indicts that we have comments to render
+          # but it's a non-exported field, so we just pop without rendering any comment
+          discard popCom(g)
         return
       # render postfix for object fields:
       exclFlags = g.flags * {renderNoPostfix}
