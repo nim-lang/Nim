@@ -1,0 +1,177 @@
+import std / [assertions, sets]
+import ".." / [ast, idents, lineinfos, msgs, options]
+import "../../dist/nimony/src/lib" / [bitabs, nifstreams, nifcursors, lineinfos]
+import enum2nif, icniftags
+
+type
+  EncodeContext = object
+    conf: ConfigRef
+    decodedSyms: HashSet[PSym]
+    decodedTypes: HashSet[PType]
+    dest: TokenBuf
+
+proc initEncodeContext(conf: ConfigRef): EncodeContext =
+  result = EncodeContext(conf: conf,
+                         dest: createTokenBuf())
+
+template buildTree(dest: var TokenBuf; tag: TagId; body: untyped) =
+  dest.addParLe tag
+  body
+  dest.addParRi
+
+template buildTree(dest: var TokenBuf; tag: string; body: untyped) =
+  buildTree dest, pool.tags.getOrIncl(tag), body
+
+proc writeFlags[E](dest: var TokenBuf; flags: set[E]) =
+  var flagsAsIdent = ""
+  genFlags(flags, flagsAsIdent)
+  if flagsAsIdent.len > 0:
+    dest.addIdent flagsAsIdent
+  else:
+    dest.addDotToken
+
+proc toNif(c: var EncodeContext; sym: PSym)
+proc toNif(c: var EncodeContext; typ: PType)
+proc toNif(c: var EncodeContext; n: PNode)
+
+proc toNifDef(c: var EncodeContext; sym: PSym) =
+  c.dest.buildTree symIdTag:
+    c.dest.addIntLit sym.id
+    c.dest.addIdent sym.name.s
+    c.dest.addIntLit sym.itemId.item
+    c.dest.buildTree sym.kind.toNifTag:
+      # TODO: add kind specific data
+      discard
+    c.dest.writeFlags sym.flags
+    if sym.kind == skModule:
+      # position is module's FileIndex but it cannot be directly encoded
+      # as the uniqueness of it can broke
+      # if any import/include statements are changed.
+      let path = toFullPath(c.conf, sym.position.FileIndex)
+      c.dest.addStrLit path
+    else:
+      c.dest.addIntLit sym.position
+    c.dest.addIntLit sym.disamb
+    c.toNif sym.typ
+    c.toNif sym.owner
+    c.dest.addIdent toNifTag(sym.loc.k)
+    c.dest.addStrLit sym.loc.snippet
+
+proc toNifDef(c: var EncodeContext; typ: PType) =
+  c.dest.buildTree typeIdTag:
+    c.dest.addIntLit typ.id
+    c.dest.addIntLit typ.itemId.item
+    c.dest.addIdent toNifTag(typ.kind)
+    c.dest.writeFlags typ.flags
+    # following PType or PSym type field can have cycles but this proc should not called recursively
+    # as c.decodedTypes prevents it.
+    if typ.len == 0:
+      c.dest.addDotToken
+    else:
+      c.dest.buildTree sonsTag:
+        for ch in typ.kids:
+          c.toNif ch
+    c.toNif typ.n
+    c.toNif typ.owner
+    c.toNif typ.sym
+
+#include nifencodertypes
+
+proc toNif(c: var EncodeContext; sym: PSym) =
+  if sym == nil:
+    c.dest.addDotToken()
+  else:
+    if not c.decodedSyms.containsOrIncl(sym):
+      c.toNifDef sym
+    else:
+      c.dest.buildTree symTag:
+        c.dest.addIntLit sym.id
+
+proc toNif(c: var EncodeContext; typ: PType) =
+  if typ == nil:
+    c.dest.addDotToken()
+  else:
+    if not c.decodedTypes.containsOrIncl(typ):
+      c.toNifDef typ
+    else:
+      c.dest.buildTree typeTag:
+        c.dest.addIntLit typ.id
+
+proc writeNodeFlags(dest: var TokenBuf; flags: set[TNodeFlag]) {.inline.} =
+  writeFlags dest, flags
+
+template withNode(c: var EncodeContext; n: PNode; body: untyped) =
+  c.dest.addParLe pool.tags.getOrIncl(toNifTag(n.kind))
+  writeNodeFlags(c.dest, n.flags)
+  c.toNif n.typ
+  body
+  c.dest.addParRi
+
+proc toNif(c: var EncodeContext; n: PNode) =
+  if n == nil:
+    c.dest.addDotToken
+  else:
+    case n.kind:
+    of nkEmpty:
+      c.dest.addParLe pool.tags.getOrIncl(toNifTag(nkEmpty))
+      c.dest.addParRi
+    of nkIdent:
+      c.dest.addParLe pool.tags.getOrIncl(toNifTag(nkIdent))
+      c.dest.addIdent n.ident.s
+      c.dest.addParRi
+    of nkSym:
+      when false:
+        echo "nkSym: ", n.sym.name.s
+        if n.sym.kind == skModule:
+          echo "position = ", n.sym.position
+        debug(n.sym)
+        var o = n.sym.owner
+        for i in 0 .. 20:
+          if o == nil:
+            break
+          echo "owner ", i, ":"
+          if o.kind == skModule:
+            echo "position = ", o.position
+          debug(o)
+          o = o.owner
+      # PNode.typ and PNode.sym.typ are different in `int` nkSym Node in following statement:
+      # type TestInt = int
+      c.withNode n:
+        c.toNif n.sym
+    of nkCharLit:
+      c.withNode n:
+        c.dest.add charToken(n.intVal.char, NoLineInfo)
+    of nkIntLit .. nkInt64Lit:
+      c.withNode n:
+        c.dest.addIntLit n.intVal
+    of nkUIntLit .. nkUInt64Lit:
+      c.withNode n:
+        c.dest.addUIntLit cast[BiggestUInt](n.intVal)
+    of nkFloatLit .. nkFloat128Lit:
+      c.withNode n:
+        c.dest.add floatToken(pool.floats.getOrIncl(n.floatVal), NoLineInfo)
+    of nkStrLit .. nkTripleStrLit:
+      c.withNode n:
+        c.dest.addStrLit n.strVal
+    of nkNilLit:
+      c.withNode n:
+        discard
+    else:
+      assert n.len > 0, $n.kind
+      c.withNode(n):
+        for i in 0 ..< n.len:
+          c.toNif n[i]
+
+proc saveNif(c: var EncodeContext; n: PNode): string =
+  toNif c, n
+
+  result = "(.nif24)\n" & toString(c.dest)
+
+proc saveNifFile*(module: PSym; n: PNode; conf: ConfigRef) =
+  let outfile = module.name.s & ".nif"
+  var c = initEncodeContext(conf)
+  writeFile outfile, saveNif(c, n)
+
+proc saveNifToBuffer*(n: PNode; conf: ConfigRef): string =
+  var c = initEncodeContext(conf)
+  result = saveNif(c, n)
