@@ -49,10 +49,9 @@ proc toNif(c: var EncodeContext; n: PNode)
 
 proc toNifDef(c: var EncodeContext; sym: PSym) =
   c.dest.buildTree symIdTag:
-    c.dest.addIntLit sym.id
-    c.dest.addIdent sym.name.s
     c.toNifModuleId sym.itemId.module
     c.dest.addIntLit sym.itemId.item
+    c.dest.addIdent sym.name.s
     c.dest.buildTree sym.kind.toNifTag:
       # TODO: add kind specific data
       discard
@@ -69,7 +68,6 @@ proc toNifDef(c: var EncodeContext; sym: PSym) =
 
 proc toNifDef(c: var EncodeContext; typ: PType) =
   c.dest.buildTree typeIdTag:
-    c.dest.addIntLit typ.id
     c.toNifModuleId typ.itemId.module
     c.dest.addIntLit typ.itemId.item
     c.dest.addIdent toNifTag(typ.kind)
@@ -94,7 +92,8 @@ proc toNif(c: var EncodeContext; sym: PSym) =
       c.toNifDef sym
     else:
       c.dest.buildTree symTag:
-        c.dest.addIntLit sym.id
+        c.dest.addIntLit sym.itemId.module
+        c.dest.addIntLit sym.itemId.item
 
 proc toNif(c: var EncodeContext; typ: PType) =
   if typ == nil:
@@ -104,7 +103,8 @@ proc toNif(c: var EncodeContext; typ: PType) =
       c.toNifDef typ
     else:
       c.dest.buildTree typeTag:
-        c.dest.addIntLit typ.id
+        c.dest.addIntLit typ.itemId.module
+        c.dest.addIntLit typ.itemId.item
 
 proc writeNodeFlags(dest: var TokenBuf; flags: set[TNodeFlag]) {.inline.} =
   writeFlags dest, flags

@@ -6,8 +6,8 @@ import enum2nif, icniftags
 type
   DecodeContext = object
     graph: ModuleGraph
-    symbols: Table[int, PSym]
-    types: Table[int, PType]
+    symbols: Table[ItemId, PSym]
+    types: Table[ItemId, PType]
     modules: Table[int, FileIndex] # maps module id in NIF to FileIndex of the module
 
 proc nodeKind(n: Cursor): TNodeKind {.inline.} =
@@ -59,21 +59,22 @@ when false:
     else:
       expectTag(n, id)
 
-proc fromNifModuleId(c: var DecodeContext; n: var Cursor): FileIndex =
+proc fromNifModuleId(c: var DecodeContext; n: var Cursor): (FileIndex, int32) =
+  expect n, {ParLe, IntLit}
   if n.kind == ParLe:
     expectTag n, modIdTag
     incExpect n, IntLit
     let id = pool.integers[n.intId]
     incExpect n, StringLit
     let path = pool.strings[n.litId].AbsoluteFile
-    result = fileInfoIdx(c.graph.config, path)
+    result = (fileInfoIdx(c.graph.config, path), id.int32)
     assert id notin c.modules
-    c.modules[id] = result
+    c.modules[id] = result[0]
     inc n
     skipParRi n
   elif n.kind == IntLit:
     let id = pool.integers[n.intId]
-    result = c.modules[id]
+    result = (c.modules[id], id.int32)
     inc n
 
 proc fromNifSymbol(c: var DecodeContext; n: var Cursor): PSym
@@ -82,14 +83,12 @@ proc fromNif(c: var DecodeContext; n: var Cursor): PNode
 
 proc fromNifSymDef(c: var DecodeContext; n: var Cursor): PSym =
   expectTag n, symIdTag
-  incExpect n, IntLit
-  let id = pool.integers[n.intId]
-  incExpect n, Ident
-  let ident = c.graph.cache.getIdent(pool.strings[n.litId])
   inc n
-  let itemIdModule = c.fromNifModuleId(n).int32
+  let (itemIdModule, nifModId) = c.fromNifModuleId(n)
   expect n, IntLit
   let itemId = pool.integers[n.intId].int32
+  incExpect n, Ident
+  let ident = c.graph.cache.getIdent(pool.strings[n.litId])
   incExpect n, ParLe
   let kind = parseSymKind(pool.tags[n.tagId])
   # TODO: add kind specific data
@@ -99,7 +98,7 @@ proc fromNifSymDef(c: var DecodeContext; n: var Cursor): PSym =
   let flags = if n.kind == Ident: pool.strings[n.litId].parseSymFlags else: {}
   inc n
   var position = if kind == skModule:
-      c.fromNifModuleId(n).int
+      c.fromNifModuleId(n)[0].int
     else:
       expect n, IntLit
       let p = pool.integers[n.intId]
@@ -109,7 +108,7 @@ proc fromNifSymDef(c: var DecodeContext; n: var Cursor): PSym =
   let disamb = pool.integers[n.intId].int32
   inc n
 
-  result = PSym(itemId: ItemId(module: itemIdModule, item: itemId),
+  result = PSym(itemId: ItemId(module: itemIdModule.int32, item: itemId),
     kind: kind,
     name: ident,
     flags: flags,
@@ -119,8 +118,9 @@ proc fromNifSymDef(c: var DecodeContext; n: var Cursor): PSym =
   # PNode, PSym or PType type fields in PSym can have cycles.
   # Add PSym to `c.symbols` before parsing these fields so that 
   # they can refer this PSym.
-  assert id notin c.symbols
-  c.symbols[id] = result
+  let nifItemId = ItemId(module: nifModId, item: itemId)
+  assert nifItemId notin c.symbols
+  c.symbols[nifItemId] = result
 
   result.typ = c.fromNifType n
   result.setOwner(c.fromNifSymbol n)
@@ -134,10 +134,8 @@ proc fromNifSymDef(c: var DecodeContext; n: var Cursor): PSym =
 
 proc fromNifTypeDef(c: var DecodeContext; n: var Cursor): PType =
   expectTag n, typeIdTag
-  incExpect n, IntLit
-  let id = pool.integers[n.intId]
   inc n
-  let itemIdModule = c.fromNifModuleId(n).int32
+  let (itemIdModule, nifModId) = c.fromNifModuleId(n)
   expect n, IntLit
   let itemId = pool.integers[n.intId].int32
   incExpect n, Ident
@@ -146,11 +144,12 @@ proc fromNifTypeDef(c: var DecodeContext; n: var Cursor): PType =
   let flags = if n.kind == Ident: pool.strings[n.litId].parseTypeFlags else: {}
   inc n
 
-  result = PType(itemId: ItemId(module: itemIdModule, item: itemId),
+  result = PType(itemId: ItemId(module: itemIdModule.int32, item: itemId),
     kind: kind,
     flags: flags)
-  assert id notin c.types
-  c.types[id] = result
+  let nifItemId = ItemId(module: nifModId, item: itemId)
+  assert nifItemId notin c.types
+  c.types[nifItemId] = result
 
   expect n, {DotToken, ParLe}
   if n.kind == DotToken:
@@ -186,7 +185,11 @@ proc fromNifSymbol(c: var DecodeContext; n: var Cursor): PSym =
       result = c.fromNifSymDef n
     elif n.tagId == symTag:
       incExpect n, IntLit
-      result = c.symbols[pool.integers[n.intId]]
+      let nifModId = pool.integers[n.intId].int32
+      incExpect n, IntLit
+      let item = pool.integers[n.intId].int32
+      let nifItemId = ItemId(module: nifModId, item: item)
+      result = c.symbols[nifItemId]
       inc n
       skipParRi n
     else:
@@ -202,7 +205,11 @@ proc fromNifType(c: var DecodeContext; n: var Cursor): PType =
       result = c.fromNifTypeDef n
     elif n.tagId == typeTag:
       incExpect n, IntLit
-      result = c.types[pool.integers[n.intId]]
+      let nifModId = pool.integers[n.intId].int32
+      incExpect n, IntLit
+      let item = pool.integers[n.intId].int32
+      let nifItemId = ItemId(module: nifModId, item: item)
+      result = c.types[nifItemId]
       inc n
       skipParRi n
     else:
