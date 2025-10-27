@@ -432,3 +432,29 @@ block:
   let x = cast[typeof(aaa)](aaa)   # not even var
   for _ in x[]:
     discard
+
+iterator v(): int =
+  when nimvm:
+    yield 0
+  else:
+    yield 0
+for _ in v():
+  for c in v():
+    (; let _: proc() = proc() = discard c)
+
+proc foo =
+  for _ in v():
+    for c in v():
+      (; let _: proc() = proc() = discard c)
+
+foo()
+
+import std/[os, sugar]
+
+for file in walkDirRec("./"):
+  let multiplier = 5
+  discard(toSeq(1..4).map(x => x * multiplier))
+
+for unused_var in walkDir("."):
+  let outside = "x"
+  let closure = proc(): string = outside

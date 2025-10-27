@@ -321,6 +321,13 @@ proc introduceNewLocalVars(c: PTransf, n: PNode): PNode =
     result = n
   of nkVarSection, nkLetSection:
     result = transformVarSection(c, n)
+    for i in 0..<result.len:
+      result[i] = introduceNewLocalVars(c, result[i])
+  of nkIdentDefs, nkVarTuple:
+    result = newTransNode(n)
+    for i in 0..<n.len-1:
+      result[i] = n[i]
+    result[^1] = introduceNewLocalVars(c, n[^1])
   of nkClosure:
     # it can happen that for-loop-inlining produced a fresh
     # set of variables, including some computed environment
@@ -328,12 +335,24 @@ proc introduceNewLocalVars(c: PTransf, n: PNode): PNode =
     let a = n[1]
     if a.kind == nkSym:
       n[1] = transformSymAux(c, a)
-    return n
+    if n[0].kind == nkSym:
+      result = n
+    else:
+      # introduces local vars for the lambda closures
+      result = newTransNode(n)
+      result[0] = introduceNewLocalVars(c, n[0])
+      result[1] = n[1]
   of nkProcDef, nkFuncDef, nkMethodDef, nkConverterDef: # todo optimize nosideeffects?
     result = newTransNode(n)
     let x = newSymNode(copySym(n[namePos].sym, c.idgen))
     c.transCon.mapping[n[namePos].sym.itemId] = x
     result[namePos] = x # we have to copy proc definitions for iters
+    for i in 1..<n.len:
+      result[i] = introduceNewLocalVars(c, n[i])
+    result[namePos].sym.ast = result
+  of nkLambda:
+    result = newTransNode(n)
+    result[namePos] = n[namePos]
     for i in 1..<n.len:
       result[i] = introduceNewLocalVars(c, n[i])
     result[namePos].sym.ast = result
