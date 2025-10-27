@@ -8,6 +8,7 @@ type
     conf: ConfigRef
     decodedSyms: HashSet[PSym]
     decodedTypes: HashSet[PType]
+    decodedFileIndices: HashSet[FileIndex]
     dest: TokenBuf
 
 proc initEncodeContext(conf: ConfigRef): EncodeContext =
@@ -30,6 +31,18 @@ proc writeFlags[E](dest: var TokenBuf; flags: set[E]) =
   else:
     dest.addDotToken
 
+proc toNifModuleId(c: var EncodeContext; moduleId: int) =
+  # `ItemId.module` in PType and PSym (and `PSym.position` when it is skModule) are module's FileIndex
+  # but it cannot be directly encoded as the uniqueness of it can broke
+  # if any import/include statements are changed.
+  if not c.decodedFileIndices.containsOrIncl(moduleId.FileIndex):
+    c.dest.buildTree modIdTag:
+      c.dest.addIntLit moduleId
+      let path = toFullPath(c.conf, moduleId.FileIndex)
+      c.dest.addStrLit path
+  else:
+    c.dest.addIntLit moduleId
+
 proc toNif(c: var EncodeContext; sym: PSym)
 proc toNif(c: var EncodeContext; typ: PType)
 proc toNif(c: var EncodeContext; n: PNode)
@@ -38,17 +51,14 @@ proc toNifDef(c: var EncodeContext; sym: PSym) =
   c.dest.buildTree symIdTag:
     c.dest.addIntLit sym.id
     c.dest.addIdent sym.name.s
+    c.toNifModuleId sym.itemId.module
     c.dest.addIntLit sym.itemId.item
     c.dest.buildTree sym.kind.toNifTag:
       # TODO: add kind specific data
       discard
     c.dest.writeFlags sym.flags
     if sym.kind == skModule:
-      # position is module's FileIndex but it cannot be directly encoded
-      # as the uniqueness of it can broke
-      # if any import/include statements are changed.
-      let path = toFullPath(c.conf, sym.position.FileIndex)
-      c.dest.addStrLit path
+      c.toNifModuleId sym.position
     else:
       c.dest.addIntLit sym.position
     c.dest.addIntLit sym.disamb
@@ -60,6 +70,7 @@ proc toNifDef(c: var EncodeContext; sym: PSym) =
 proc toNifDef(c: var EncodeContext; typ: PType) =
   c.dest.buildTree typeIdTag:
     c.dest.addIntLit typ.id
+    c.toNifModuleId typ.itemId.module
     c.dest.addIntLit typ.itemId.item
     c.dest.addIdent toNifTag(typ.kind)
     c.dest.writeFlags typ.flags
@@ -74,8 +85,6 @@ proc toNifDef(c: var EncodeContext; typ: PType) =
     c.toNif typ.n
     c.toNif typ.owner
     c.toNif typ.sym
-
-#include nifencodertypes
 
 proc toNif(c: var EncodeContext; sym: PSym) =
   if sym == nil:

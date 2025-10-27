@@ -6,3 +6,5 @@ let
   typeIdTag* = registerTag("typeId")
   typeTag* = registerTag("t")
   sonsTag* = registerTag("sons")
+
+  modIdTag* = registerTag("modId")

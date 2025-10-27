@@ -81,17 +81,29 @@ proc eql(x, y: TLoc): bool =
   else:
     result = true
 
+proc eqlFileIndex(x, y: int; c: EqlContext): bool =
+  let xpath = c.confX.toFullPath(x.FileIndex)
+  let ypath = c.confY.toFullPath(y.FileIndex)
+  if xpath != ypath:
+    echo "file index mismatch: ", xpath, "/", ypath
+    result = false
+  else:
+    result = true
+
 proc eqlSymPos(x, y: PSym; c: EqlContext): bool =
   if x.kind == skModule:
-    let xpath = c.confX.toFullPath(x.position.FileIndex)
-    let ypath = c.confY.toFullPath(y.position.FileIndex)
-    if xpath != ypath:
-      echo "symbol position mismatch: ", xpath, "/", ypath
-      result = false
-    else:
-      result = true
+    result = eqlFileIndex(x.position, y.position, c)
   elif x.position != y.position:
     echo "symbol position mismatch: ", x.position, "/", y.position
+    result = false
+  else:
+    result = true
+
+proc eqlItemId(x, y: ItemId; c: EqlContext): bool =
+  if x.item != y.item:
+    echo "itemId.item mismatch: ", x.item, "/", y.item
+    result = false
+  elif not eqlFileIndex(x.module, y.module, c):
     result = false
   else:
     result = true
@@ -105,8 +117,8 @@ proc eql(x, y: PSym; c: var EqlContext): bool =
   elif x.name.s != y.name.s:
     echo "symbol name mismatch: ", x.name.s, "/", y.name.s
     result = false
-  elif x.itemId.item != y.itemId.item:
-    echo "symbol itemId.item mismatch: ", x.itemId.item, "/", y.itemId.item
+  elif not eqlItemId(x.itemId, y.itemId, c):
+    echo "symbol itemId mismatch"
     result = false
   elif x.kind != y.kind:
     echo "symbol kind mismatch: ", x.kind, "/", y.kind
@@ -146,8 +158,8 @@ proc eql(x, y: PType; c: var EqlContext): bool =
   elif x == nil or y == nil:
     echo "type is missing"
     result = false
-  elif x.itemId.item != y.itemId.item:
-    echo "type itemId.item mismatch: ", x.itemId.item, "/", y.itemId.item
+  elif not eqlItemId(x.itemId, y.itemId, c):
+    echo "type itemId mismatch"
     result = false
   elif x.kind != y.kind:
     echo "type kind mismatch: ", x.kind, "/", y.kind
