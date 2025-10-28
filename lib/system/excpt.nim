@@ -159,6 +159,9 @@ proc popCurrentException {.compilerRtl, inl.} =
   currException = currException.up
   #showErrorMessage2 "B"
 
+proc closureIterSetExc(e: ref Exception) {.compilerRtl, inl.} =
+  currException = e
+
 proc popCurrentExceptionEx(id: uint) {.compilerRtl.} =
   discard "only for bootstrapping compatbility"
 
