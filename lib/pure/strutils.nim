@@ -2009,7 +2009,9 @@ func find*(s: string, chars: set[char], start: Natural = 0, last = -1): int {.
 
 when defined(linux):
   proc memmem(haystack: pointer, haystacklen: csize_t,
-              needle: pointer, needlelen: csize_t): pointer {.importc, header: """#define _GNU_SOURCE
+              needle: pointer, needlelen: csize_t): pointer {.importc, header: """#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
 #include <string.h>""".}
 elif defined(bsd) or (defined(macosx) and not defined(ios)):
   proc memmem(haystack: pointer, haystacklen: csize_t,
