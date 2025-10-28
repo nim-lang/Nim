@@ -346,6 +346,19 @@ proc fixupTypeAfterEval(c: PContext, evaluated, eOrig: PNode; producedClosure: v
          isArrayConstr(arg):
         arg.typ = eOrig.typ
 
+proc resetEvalPosition(n: PNode) =
+  # resets the eval position of variables because `tryConstExpr` may be
+  # called multiple times on the same node
+  case n.kind
+  of {nkNone..nkNilLit}-{nkSym}:
+    discard
+  of nkSym:
+    if n.sym.kind in {skVar, skLet} and sfGlobal notin n.sym.flags:
+      n.sym.position = 0
+  else:
+    for i in 0..<n.safeLen:
+      resetEvalPosition(n[i])
+
 proc tryConstExpr(c: PContext, n: PNode; expectedType: PType = nil): PNode =
   var e = semExprWithType(c, n, expectedType = expectedType)
   if e == nil: return
@@ -381,6 +394,8 @@ proc tryConstExpr(c: PContext, n: PNode; expectedType: PType = nil): PNode =
   when defined(nimsuggest):
     # Restore the error hook
     c.graph.config.structuredErrorHook = tempHook
+
+  resetEvalPosition(n)
 
   c.config.errorCounter = oldErrorCount
   c.config.errorMax = oldErrorMax
