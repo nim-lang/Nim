@@ -149,7 +149,20 @@ proc eql(x, y: PSym; c: var EqlContext): bool =
       debug(y.owner)
       result = false
     else:
-      result = true
+      if x.kind in {skLet, skVar, skField, skForVar}:
+        if not eql(x.guard, y.guard, c):
+          echo "symbol guard mismatch"
+          result = false
+        elif x.bitsize != y.bitsize:
+          echo "symbol bitsize mismatch: ", x.bitsize, "/", y.bitsize
+          result = false
+        elif x.alignment != y.alignment:
+          echo "symbol alignment mismatch: ", x.alignment, "/", y.alignment
+          result = false
+        else:
+          result = true
+      else:
+        result = true
     discard c.symStack.pop
 
 proc eql(x, y: PType; c: var EqlContext): bool =

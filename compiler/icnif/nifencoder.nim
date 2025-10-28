@@ -52,15 +52,20 @@ proc toNifDef(c: var EncodeContext; sym: PSym) =
     c.toNifModuleId sym.itemId.module
     c.dest.addIntLit sym.itemId.item
     c.dest.addIdent sym.name.s
-    c.dest.buildTree sym.kind.toNifTag:
-      # TODO: add kind specific data
-      discard
     c.dest.writeFlags sym.flags
+    c.dest.addIntLit sym.disamb
+    c.dest.buildTree sym.kind.toNifTag:
+      case sym.kind
+      of skLet, skVar, skField, skForVar:
+        c.toNif sym.guard
+        c.dest.addIntLit sym.bitsize
+        c.dest.addIntLit sym.alignment
+      else:
+        discard
     if sym.kind == skModule:
       c.toNifModuleId sym.position
     else:
       c.dest.addIntLit sym.position
-    c.dest.addIntLit sym.disamb
     c.toNif sym.typ
     c.toNif sym.owner
     c.dest.addIdent toNifTag(sym.loc.k)

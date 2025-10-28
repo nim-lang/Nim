@@ -89,30 +89,18 @@ proc fromNifSymDef(c: var DecodeContext; n: var Cursor): PSym =
   let itemId = pool.integers[n.intId].int32
   incExpect n, Ident
   let ident = c.graph.cache.getIdent(pool.strings[n.litId])
+  incExpect n, {Ident, DotToken}
+  let flags = if n.kind == Ident: pool.strings[n.litId].parseSymFlags else: {}
+  incExpect n, IntLit
+  let disamb = pool.integers[n.intId].int32
   incExpect n, ParLe
   let kind = parseSymKind(pool.tags[n.tagId])
-  # TODO: add kind specific data
-  inc n
-  skipParRi n
-  expect n, {Ident, DotToken}
-  let flags = if n.kind == Ident: pool.strings[n.litId].parseSymFlags else: {}
-  inc n
-  var position = if kind == skModule:
-      c.fromNifModuleId(n)[0].int
-    else:
-      expect n, IntLit
-      let p = pool.integers[n.intId]
-      inc n
-      p
-  expect n, IntLit
-  let disamb = pool.integers[n.intId].int32
   inc n
 
   result = PSym(itemId: ItemId(module: itemIdModule.int32, item: itemId),
     kind: kind,
     name: ident,
     flags: flags,
-    position: position,
     disamb: disamb)
 
   # PNode, PSym or PType type fields in PSym can have cycles.
@@ -121,6 +109,25 @@ proc fromNifSymDef(c: var DecodeContext; n: var Cursor): PSym =
   let nifItemId = ItemId(module: nifModId, item: itemId)
   assert nifItemId notin c.symbols
   c.symbols[nifItemId] = result
+
+  case kind
+  of skLet, skVar, skField, skForVar:
+    result.guard = c.fromNifSymbol n
+    expect n, IntLit
+    result.bitsize = pool.integers[n.intId]
+    incExpect n, IntLit
+    result.alignment = pool.integers[n.intId]
+    inc n
+  else:
+    discard
+  skipParRi n
+  result.position = if kind == skModule:
+      c.fromNifModuleId(n)[0].int
+    else:
+      expect n, IntLit
+      let p = pool.integers[n.intId]
+      inc n
+      p
 
   result.typ = c.fromNifType n
   result.setOwner(c.fromNifSymbol n)
