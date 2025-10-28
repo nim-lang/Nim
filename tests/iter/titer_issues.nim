@@ -449,12 +449,14 @@ proc foo =
 
 foo()
 
-import std/[os, sugar]
 
-for file in walkDirRec("./"):
-  let multiplier = 5
-  discard(toSeq(1..4).map(x => x * multiplier))
-
-for unused_var in walkDir("."):
-  let outside = "x"
-  let closure = proc(): string = outside
+when not defined(js):
+  import std/[os, sugar]
+  
+  for file in walkDirRec("./"):
+    let multiplier = 5
+    discard(toSeq(1..4).map(x => x * multiplier))
+  
+  for unused_var in walkDir("."):
+    let outside = "x"
+    let closure = proc(): string = outside
