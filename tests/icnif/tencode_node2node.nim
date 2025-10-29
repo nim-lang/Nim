@@ -90,6 +90,26 @@ proc eqlFileIndex(x, y: int; c: EqlContext): bool =
   else:
     result = true
 
+proc eql(x, y: TLineInfo; c: EqlContext): bool =
+  # If parent PNode has a valid line info but it's child doesn't have one,
+  # cannot translate such a tree to NIF.
+  # Because in NIF, if a child node doesn't have line info,
+  # nifstream assign the parent's line info to it.
+  # So cannot have child node without line info if parent has a valid line info.
+  if x == unknownLineInfo:
+    result = true
+  elif x.line != y.line:
+    echo "line number mismatch: ", x.line, "/", y.line
+    result = false
+  elif x.col != y.col:
+    echo "column number mismatch: ", x.col, "/", y.col
+    result = false
+  elif not eqlFileIndex(x.fileIndex.int, y.fileIndex.int, c):
+    echo "file in line info mismatch"
+    result = false
+  else:
+    result = true
+
 proc eqlSymPos(x, y: PSym; c: EqlContext): bool =
   if x.kind == skModule:
     result = eqlFileIndex(x.position, y.position, c)
@@ -122,6 +142,9 @@ proc eql(x, y: PSym; c: var EqlContext): bool =
     result = false
   elif x.kind != y.kind:
     echo "symbol kind mismatch: ", x.kind, "/", y.kind
+    result = false
+  elif not eql(x.info, y.info, c):
+    echo "symbol line info mismatch"
     result = false
   elif x.flags != y.flags:
     echo "symbol flag mismatch: ", x.flags, "/", y.flags
@@ -228,6 +251,10 @@ proc eql(x, y: PNode; c: var EqlContext): bool =
     echo "node flag mismatch: ", x.flags, "/", y.flags
     debug(x)
     debug(y)
+    result = false
+  elif not eql(x.info, y. info, c):
+    echo "node lineinfo mismatch at ", `$`(c.confX, x.info)
+    debug(x)
     result = false
   elif x.safeLen == y.safeLen:
     if c.nodeStack.len != 0:

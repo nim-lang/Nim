@@ -31,6 +31,13 @@ proc writeFlags[E](dest: var TokenBuf; flags: set[E]) =
   else:
     dest.addDotToken
 
+proc toNif(c: var EncodeContext; info: TLineInfo): PackedLineInfo =
+  if info == unknownLineInfo:
+    NoLineInfo
+  else:
+    let fileId = pool.files.getOrIncl(c.conf.toFullPath(info.fileIndex))
+    pack(pool.man, fileId, info.line.int32, info.col)
+
 proc toNifModuleId(c: var EncodeContext; moduleId: int) =
   # `ItemId.module` in PType and PSym (and `PSym.position` when it is skModule) are module's FileIndex
   # but it cannot be directly encoded as the uniqueness of it can broke
@@ -48,28 +55,29 @@ proc toNif(c: var EncodeContext; typ: PType)
 proc toNif(c: var EncodeContext; n: PNode)
 
 proc toNifDef(c: var EncodeContext; sym: PSym) =
-  c.dest.buildTree symIdTag:
-    c.toNifModuleId sym.itemId.module
-    c.dest.addIntLit sym.itemId.item
-    c.dest.addIdent sym.name.s
-    c.dest.writeFlags sym.flags
-    c.dest.addIntLit sym.disamb
-    c.dest.buildTree sym.kind.toNifTag:
-      case sym.kind
-      of skLet, skVar, skField, skForVar:
-        c.toNif sym.guard
-        c.dest.addIntLit sym.bitsize
-        c.dest.addIntLit sym.alignment
-      else:
-        discard
-    if sym.kind == skModule:
-      c.toNifModuleId sym.position
+  c.dest.addParLe symIdTag, c.toNif sym.info
+  c.toNifModuleId sym.itemId.module
+  c.dest.addIntLit sym.itemId.item
+  c.dest.addIdent sym.name.s
+  c.dest.writeFlags sym.flags
+  c.dest.addIntLit sym.disamb
+  c.dest.buildTree sym.kind.toNifTag:
+    case sym.kind
+    of skLet, skVar, skField, skForVar:
+      c.toNif sym.guard
+      c.dest.addIntLit sym.bitsize
+      c.dest.addIntLit sym.alignment
     else:
-      c.dest.addIntLit sym.position
-    c.toNif sym.typ
-    c.toNif sym.owner
-    c.dest.addIdent toNifTag(sym.loc.k)
-    c.dest.addStrLit sym.loc.snippet
+      discard
+  if sym.kind == skModule:
+    c.toNifModuleId sym.position
+  else:
+    c.dest.addIntLit sym.position
+  c.toNif sym.typ
+  c.toNif sym.owner
+  c.dest.addIdent toNifTag(sym.loc.k)
+  c.dest.addStrLit sym.loc.snippet
+  c.dest.addParRi
 
 proc toNifDef(c: var EncodeContext; typ: PType) =
   c.dest.buildTree typeIdTag:
@@ -115,7 +123,7 @@ proc writeNodeFlags(dest: var TokenBuf; flags: set[TNodeFlag]) {.inline.} =
   writeFlags dest, flags
 
 template withNode(c: var EncodeContext; n: PNode; body: untyped) =
-  c.dest.addParLe pool.tags.getOrIncl(toNifTag(n.kind))
+  c.dest.addParLe pool.tags.getOrIncl(toNifTag(n.kind)), c.toNif n.info
   writeNodeFlags(c.dest, n.flags)
   c.toNif n.typ
   body
@@ -127,10 +135,12 @@ proc toNif(c: var EncodeContext; n: PNode) =
   else:
     case n.kind:
     of nkEmpty:
-      c.dest.addParLe pool.tags.getOrIncl(toNifTag(nkEmpty))
+      let info = c.toNif n.info
+      c.dest.addParLe pool.tags.getOrIncl(toNifTag(nkEmpty)), info
       c.dest.addParRi
     of nkIdent:
-      c.dest.addParLe pool.tags.getOrIncl(toNifTag(nkIdent))
+      let info = c.toNif n.info
+      c.dest.addParLe pool.tags.getOrIncl(toNifTag(nkIdent)), info
       c.dest.addIdent n.ident.s
       c.dest.addParRi
     of nkSym:

@@ -1,5 +1,5 @@
 import std / [assertions, tables]
-import "../../dist/nimony/src/lib" / [bitabs, nifreader, nifstreams, nifcursors]
+import "../../dist/nimony/src/lib" / [bitabs, nifreader, nifstreams, nifcursors, lineinfos]
 import ".." / [ast, idents, lineinfos, options, modules, modulegraphs, msgs, pathutils]
 import enum2nif, icniftags
 
@@ -59,6 +59,13 @@ when false:
     else:
       expectTag(n, id)
 
+proc fromNifLineInfo(c: var DecodeContext; n: Cursor): TLineInfo =
+  if n.info == NoLineInfo:
+    unknownLineInfo
+  else:
+    let info = pool.man.unpack(n.info)
+    c.graph.config.newLineInfo(pool.files[info.file].AbsoluteFile, info.line, info.col)
+
 proc fromNifModuleId(c: var DecodeContext; n: var Cursor): (FileIndex, int32) =
   expect n, {ParLe, IntLit}
   if n.kind == ParLe:
@@ -83,6 +90,7 @@ proc fromNif(c: var DecodeContext; n: var Cursor): PNode
 
 proc fromNifSymDef(c: var DecodeContext; n: var Cursor): PSym =
   expectTag n, symIdTag
+  let info = c.fromNifLineInfo n
   inc n
   let (itemIdModule, nifModId) = c.fromNifModuleId(n)
   expect n, IntLit
@@ -100,6 +108,7 @@ proc fromNifSymDef(c: var DecodeContext; n: var Cursor): PSym =
   result = PSym(itemId: ItemId(module: itemIdModule.int32, item: itemId),
     kind: kind,
     name: ident,
+    info: info,
     flags: flags,
     disamb: disamb)
 
@@ -223,9 +232,10 @@ proc fromNifType(c: var DecodeContext; n: var Cursor): PType =
       assert false, "expected type tag but got " & pool.tags[n.tagId]
 
 template withNode(c: var DecodeContext; n: var Cursor; result: PNode; kind: TNodeKind; body: untyped) =
+  let info = c.fromNifLineInfo(n)
   incExpect n, {DotToken, Ident}
   let flags = fromNifNodeFlags n
-  result = newNode(kind)
+  result = newNodeI(kind, info)
   result.flags = flags
   result.typ = c.fromNifType n
   body
@@ -241,12 +251,12 @@ proc fromNif(c: var DecodeContext; n: var Cursor): PNode =
     let kind = n.nodeKind
     case kind:
     of nkEmpty:
-      result = newNode(nkEmpty)
+      result = newNodeI(nkEmpty, c.fromNifLineInfo(n))
       inc n
       skipParRi n
     of nkIdent:
       incExpect n, Ident
-      result = newIdentNode(c.graph.cache.getIdent(pool.strings[n.litId]), unknownLineInfo)
+      result = newIdentNode(c.graph.cache.getIdent(pool.strings[n.litId]), c.fromNifLineInfo(n))
       inc n
       skipParRi n
     of nkSym:
