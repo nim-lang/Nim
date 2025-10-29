@@ -59,7 +59,13 @@ proc toNifDef(c: var EncodeContext; sym: PSym) =
   c.toNifModuleId sym.itemId.module
   c.dest.addIntLit sym.itemId.item
   c.dest.addIdent sym.name.s
+  if sym.magic == mNone:
+    c.dest.addDotToken
+  else:
+    c.dest.addIdent toNifTag(sym.magic)
   c.dest.writeFlags sym.flags
+  c.dest.writeFlags sym.options
+  c.dest.addIntLit sym.offset
   c.dest.addIntLit sym.disamb
   c.dest.buildTree sym.kind.toNifTag:
     case sym.kind

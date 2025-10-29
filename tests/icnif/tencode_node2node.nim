@@ -143,13 +143,22 @@ proc eql(x, y: PSym; c: var EqlContext): bool =
   elif x.kind != y.kind:
     echo "symbol kind mismatch: ", x.kind, "/", y.kind
     result = false
+  elif x.magic != y.magic:
+    echo "symbol magic mismatch: ", x.magic, "/", y.magic
+    result = false
   elif not eql(x.info, y.info, c):
     echo "symbol line info mismatch"
     result = false
   elif x.flags != y.flags:
     echo "symbol flag mismatch: ", x.flags, "/", y.flags
     result = false
+  elif x.options != y.options:
+    echo "symbol options mismatch: ", x.options, "/", y.options
+    result = false
   elif not eqlSymPos(x, y, c):
+    result = false
+  elif x.offset != y.offset:
+    echo "symbol offset mismatch: ", x.offset, "/", y.offset
     result = false
   elif x.disamb != y.disamb:
     echo "symbol disamb mismatch: ", x.disamb, "/", y.disamb

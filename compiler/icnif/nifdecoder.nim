@@ -98,7 +98,13 @@ proc fromNifSymDef(c: var DecodeContext; n: var Cursor): PSym =
   incExpect n, Ident
   let ident = c.graph.cache.getIdent(pool.strings[n.litId])
   incExpect n, {Ident, DotToken}
+  let magic = if n.kind == Ident: pool.strings[n.litId].parseMagic else: mNone
+  incExpect n, {Ident, DotToken}
   let flags = if n.kind == Ident: pool.strings[n.litId].parseSymFlags else: {}
+  incExpect n, {Ident, DotToken}
+  let options = if n.kind == Ident: pool.strings[n.litId].parseOptions else: {}
+  incExpect n, IntLit
+  let offset = pool.integers[n.intId].int32
   incExpect n, IntLit
   let disamb = pool.integers[n.intId].int32
   incExpect n, ParLe
@@ -107,9 +113,12 @@ proc fromNifSymDef(c: var DecodeContext; n: var Cursor): PSym =
 
   result = PSym(itemId: ItemId(module: itemIdModule.int32, item: itemId),
     kind: kind,
+    magic: magic,
     name: ident,
     info: info,
     flags: flags,
+    options: options,
+    offset: offset,
     disamb: disamb)
 
   # PNode, PSym or PType type fields in PSym can have cycles.
