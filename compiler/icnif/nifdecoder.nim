@@ -261,7 +261,9 @@ proc fromNif(c: var DecodeContext; n: var Cursor): PNode =
     case kind:
     of nkEmpty:
       result = newNodeI(nkEmpty, c.fromNifLineInfo(n))
-      inc n
+      incExpect n, {Ident, DotToken}
+      let flags = fromNifNodeFlags n
+      result.flags = flags
       skipParRi n
     of nkIdent:
       incExpect n, Ident
@@ -304,7 +306,7 @@ proc fromNif(c: var DecodeContext; n: var Cursor): PNode =
     else:
       c.withNode n, result, kind:
         while n.kind != ParRi:
-          result.add c.fromNif n
+          result.addAllowNil c.fromNif n
   else:
     assert false, "Not yet implemented " & $n.kind
 
