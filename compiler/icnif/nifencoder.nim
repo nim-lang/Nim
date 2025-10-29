@@ -99,6 +99,7 @@ proc toNifDef(c: var EncodeContext; typ: PType) =
       c.dest.buildTree sonsTag:
         for ch in typ.kids:
           c.toNif ch
+
     c.toNif typ.n
     c.toNif typ.owner
     c.toNif typ.sym
@@ -188,7 +189,7 @@ proc toNif(c: var EncodeContext; n: PNode) =
       c.withNode n:
         discard
     else:
-      assert n.kind in {nkArgList, nkBracket} or n.len > 0, $n.kind
+      assert n.kind in {nkArgList, nkBracket, nkRecList} or n.len > 0, $n.kind
       c.withNode(n):
         for i in 0 ..< n.len:
           c.toNif n[i]

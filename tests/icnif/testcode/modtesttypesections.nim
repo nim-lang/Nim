@@ -21,6 +21,8 @@ type
   TestPtrObj = ptr object
     x: int
 
+  TestEmptyObj = object
+
 var x: TestInt
 var testEnum: TestEnum
 var testEnum1 = X
@@ -34,3 +36,4 @@ var testPtrInt: TestPtrInt = nil
 var testPtrInt2: ptr int = nil
 var testRefObj: TestRefObj = nil
 var testPtrObj: TestPtrObj = nil
+var testEmptyObj: TestEmptyObj
