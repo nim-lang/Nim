@@ -149,6 +149,7 @@ proc toNif(c: var EncodeContext; n: PNode) =
     of nkIdent:
       let info = c.toNif n.info
       c.dest.addParLe pool.tags.getOrIncl(toNifTag(nkIdent)), info
+      c.toNif n.typ
       c.dest.addIdent n.ident.s
       c.dest.addParRi
     of nkSym:
@@ -189,7 +190,7 @@ proc toNif(c: var EncodeContext; n: PNode) =
       c.withNode n:
         discard
     else:
-      assert n.kind in {nkArgList, nkBracket, nkRecList} or n.len > 0, $n.kind
+      assert n.kind in {nkArgList, nkBracket, nkRecList, nkPragma} or n.len > 0, $n.kind
       c.withNode(n):
         for i in 0 ..< n.len:
           c.toNif n[i]
