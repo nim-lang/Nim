@@ -72,6 +72,9 @@ proc getCurrentExceptionMsg*(): string =
 proc setCurrentException*(exc: ref Exception) =
   lastJSError = cast[PJSError](exc)
 
+proc closureIterSetExc(e: ref Exception) {.compilerRtl, benign.} =
+  setCurrentException(e)
+
 proc pushCurrentException(e: sink(ref Exception)) {.compilerRtl, inline.} =
   ## Used to set up exception handling for closure iterators.
 

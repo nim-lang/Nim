@@ -752,3 +752,49 @@ block: #25038
       0
 
   test(d)
+
+block: #25202
+  proc p() =
+    iterator p_1073741828(checkpoints: var seq[int]): int {.
+        closure, raises: [].} =
+      var closureSucceeded_1073741827 = true
+      try:
+        try:
+          try:
+            yield 0
+            raise newException(ValueError, "value error")
+          except ValueError:
+            checkpoints.add(1)
+            raise newException(IOError, "io error")
+        finally:
+          yield 2
+      except IOError as exc:
+        closureSucceeded_1073741827 = false
+        checkpoints.add(3)
+      finally:
+        checkpoints.add(4)
+        if closureSucceeded_1073741827:
+          discard
+
+    var internalClosure = p_1073741828
+    var internalClosure2 = p_1073741828
+
+    var checkpoints1 = newSeq[int]()
+    var checkpoints2 = newSeq[int]()
+
+    while true:
+      if not internalClosure.finished():
+        checkpoints1.add internalClosure(checkpoints1)
+        doAssert(getCurrentException() == nil)
+      if not internalClosure2.finished():
+        checkpoints2.add internalClosure2(checkpoints2)
+        doAssert(getCurrentException() == nil)
+      if internalClosure.finished() and internalClosure2.finished():
+        break
+
+    if checkpoints1[^1] == 0: checkpoints1.del(checkpoints1.high)
+    if checkpoints2[^1] == 0: checkpoints2.del(checkpoints2.high)
+    doAssert(checkpoints1 == @[0, 1, 2, 3, 4])
+    doAssert(checkpoints1 == checkpoints2)
+
+  p()

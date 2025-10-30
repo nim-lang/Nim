@@ -2644,9 +2644,18 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
           else:
             nil
         # semantic checking also needed with importc in case used in VM
+
+        let isInlineIterator = isInlineIterator(s.typ)
         s.ast[bodyPos] = hloBody(c, semProcBody(c, n[bodyPos], resultType))
         # unfortunately we cannot skip this step when in 'system.compiles'
         # context as it may even be evaluated in 'system.compiles':
+
+        if isInlineIterator and s.typ.callConv == ccClosure:
+          # iterators without explicit callconvs are lifted to closure,
+          # we need to add a result symbol for them
+          maybeAddResult(c, s, n)
+
+ 
         trackProc(c, s, s.ast[bodyPos])
       else:
         if (s.typ.returnType != nil and s.kind != skIterator):

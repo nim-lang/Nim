@@ -1586,7 +1586,11 @@ proc genAddr(p: PProc, n: PNode, r: var TCompRes) =
     of nkObjDownConv:
       gen(p, n[0], r)
     of nkHiddenDeref, nkDerefExpr:
-      gen(p, n[0], r)
+      if n.kind in {nkAddr, nkHiddenAddr}:
+        # addr ( deref ( x )) --> x
+        gen(p, n[0][0], r)
+      else:
+        gen(p, n[0], r)
     of nkHiddenAddr:
       gen(p, n[0], r)
     of nkConv:
@@ -2875,6 +2879,8 @@ proc genCast(p: PProc, n: PNode, r: var TCompRes) =
   elif dest.kind in tyFloat..tyFloat64:
     if src.kind in {tyInt64, tyUInt64} and optJsBigInt64 in p.config.globalOptions:
       r.res = "Number($1)" % [r.res]
+  elif dest.kind == tyChar and (fromInt or fromUint):
+    r.res = "($1 & 255)" % [r.res]
   elif (src.kind == tyPtr and mapType(p, src) == etyObject) and dest.kind == tyPointer:
     r.address = r.res
     r.res = "null"

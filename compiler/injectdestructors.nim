@@ -163,9 +163,13 @@ proc isLastReadImpl(n: PNode; c: var Con; scope: var Scope): bool =
   else:
     result = false
 
+template hasDestructorOrAsgn(c: var Con, typ: PType): bool =
+  # bug #23354; an object type could have a non-trivial assignements when it is passed to a sink parameter
+  hasDestructor(c, typ) or (c.graph.config.selectedGC in {gcArc, gcOrc, gcAtomicArc} and
+        typ.kind == tyObject and not isTrivial(getAttachedOp(c.graph, typ, attachedAsgn)))
+
 proc isLastRead(n: PNode; c: var Con; s: var Scope): bool =
-  # bug #23354; an object type could have a non-trival assignements when it is passed to a sink parameter
-  if not hasDestructor(c, n.typ) and (n.typ.kind != tyObject or isTrival(getAttachedOp(c.graph, n.typ, attachedAsgn))): return true
+  if not hasDestructorOrAsgn(c, n.typ): return true
 
   let m = skipConvDfa(n)
   result = isLastReadImpl(n, c, s)
@@ -456,7 +460,7 @@ proc passCopyToSink(n: PNode; c: var Con; s: var Scope): PNode =
   result = newNodeIT(nkStmtListExpr, n.info, n.typ)
   let nTyp = n.typ.skipTypes(tyUserTypeClasses)
   let tmp = c.getTemp(s, nTyp, n.info)
-  if hasDestructor(c, nTyp):
+  if hasDestructorOrAsgn(c, nTyp):
     let typ = nTyp.skipTypes({tyGenericInst, tyAlias, tySink})
     let op = getAttachedOp(c.graph, typ, attachedDup)
     if op != nil and tfHasOwned notin typ.flags:

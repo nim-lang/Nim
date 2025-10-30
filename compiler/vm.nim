@@ -859,9 +859,9 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcLdObj:
       # a = b.c
       decodeBC(rkNode)
-      if rb >= regs.len or regs[rb].kind == rkNone or 
+      if rb >= regs.len or regs[rb].kind == rkNone or
         (regs[rb].kind == rkNode and regs[rb].node == nil) or
-        (regs[rb].kind == rkNodeAddr and regs[rb].nodeAddr[] == nil): 
+        (regs[rb].kind == rkNodeAddr and regs[rb].nodeAddr[] == nil):
         stackTrace(c, tos, pc, errNilAccess)
       else:
         let src = if regs[rb].kind == rkNode: regs[rb].node else: regs[rb].nodeAddr[]
@@ -1472,7 +1472,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
           let node = regs[rb+i].regToNode
           node.info = c.debug[pc]
           if prc.typ[i].kind notin {tyTyped, tyUntyped}:
-            node.annotateType(prc.typ[i], c.config)
+            var producedClosure = false
+            node.annotateType(prc.typ[i], c.config, producedClosure)
 
           macroCall.add(node)
         var a = evalTemplate(macroCall, prc, genSymOwner, c.config, c.cache, c.templInstCounter, c.idgen)

@@ -1069,7 +1069,8 @@ const
     ## Possible values:
     ## `"i386"`, `"alpha"`, `"powerpc"`, `"powerpc64"`, `"powerpc64el"`,
     ## `"sparc"`, `"amd64"`, `"mips"`, `"mipsel"`, `"arm"`, `"arm64"`,
-    ## `"mips64"`, `"mips64el"`, `"riscv32"`, `"riscv64"`, `"loongarch64"`.
+    ## `"mips64"`, `"mips64el"`, `"riscv32"`, `"riscv64"`, `"loongarch64"`,
+    ## `"s390x"`.
 
   seqShallowFlag = low(int)
   strlitFlag = 1 shl (sizeof(int)*8 - 2) # later versions of the codegen \
@@ -1132,12 +1133,7 @@ import std/private/since
 import system/ctypes
 export ctypes
 
-proc align(address, alignment: int): int =
-  if alignment == 0: # Actually, this is illegal. This branch exists to actively
-                     # hide problems.
-    result = address
-  else:
-    result = (address + (alignment - 1)) and not (alignment - 1)
+include system/ptrarith
 
 include system/rawquits
 when defined(genode):
@@ -2187,8 +2183,6 @@ when notJSnotNims and not gotoBasedExceptions:
     SafePoint = TSafePoint
 
 when not defined(js):
-  when declared(initAllocator):
-    initAllocator()
   when hasThreadSupport:
     when hostOS != "standalone":
       include system/threadimpl
@@ -2201,18 +2195,33 @@ when not defined(js):
     when declared(initGC): initGC()
 
 when notJSnotNims:
-  proc setControlCHook*(hook: proc () {.noconv.})
+  proc setControlCHook*(hook: proc () {.noconv.}) {.raises: [], gcsafe.}
     ## Allows you to override the behaviour of your application when CTRL+C
     ## is pressed. Only one such hook is supported.
-    ## Example:
     ##
-    ##   ```nim
+    ## The handler runs inside a C signal handler and comes with similar
+    ## limitations.
+    ##
+    ## Allocating memory and interacting with most system calls, including using
+    ## `echo`, `string`, `seq`, raising or catching exceptions etc is undefined
+    ## behavior and will likely lead to application crashes.
+    ##
+    ## The OS may call the ctrl-c handler from any thread, including threads
+    ## that were not created by Nim, such as happens on Windows.
+    ##
+    ## ## Example:
+    ##
+    ## ```nim
+    ##   var stop: Atomic[bool]
     ##   proc ctrlc() {.noconv.} =
-    ##     echo "Ctrl+C fired!"
-    ##     # do clean up stuff
-    ##     quit()
+    ##     # Using atomics types is safe!
+    ##     stop.store(true)
     ##
     ##   setControlCHook(ctrlc)
+    ##
+    ##   while not stop.load():
+    ##     echo "Still running.."
+    ##     sleep(1000)
     ##   ```
 
   when not defined(noSignalHandler) and not defined(useNimRtl):
@@ -2839,11 +2848,15 @@ template once*(body: untyped): untyped =
 
 {.pop.} # warning[GcMem]: off, warning[Uninit]: off
 
-template NotJSnotVMnotNims(): static bool = # hack, see: #12517 #12518
+template whenNotVmJsNims(normalBody, restrictedBody: untyped) =
+  ## hack, see: #12517 #12518
   when nimvm:
-    false
+    restrictedBody
   else:
-    notJSnotNims
+    when notJSnotNims:
+      normalBody
+    else:
+      restrictedBody
 
 proc substr*(a: openArray[char]): string =
   ## Returns a new string, copying contents of `a`.
@@ -2865,10 +2878,10 @@ proc substr*(a: openArray[char]): string =
     assert a.toOpenArray(2, high(a)).substr() == "cdefgh"  # From index 2 to `high(a)`
     doAssertRaises(IndexDefect): discard a.toOpenArray(5, 99).substr()
   result = newStringUninit(a.len)
-  when NotJSnotVMnotNims:
+  whenNotVmJsNims():
     if a.len > 0:
       copyMem(result[0].addr, a[0].unsafeAddr, a.len)
-  else:
+  do:
     for i, ch in a:
       result[i] = ch
 
@@ -2900,10 +2913,10 @@ proc substr*(s: string; first, last: int): string = # A bug with `magic: Slice` 
     last = min(last, high(s))
     L = max(last - first + 1, 0)
   result = newStringUninit(L)
-  when NotJSnotVMnotNims:
+  whenNotVmJsNims():
     if L > 0:
       copyMem(result[0].addr, s[first].unsafeAddr, L)
-  else:
+  do:
     for i in 0..<L:
       result[i] = s[i + first]
 

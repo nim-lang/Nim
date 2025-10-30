@@ -657,10 +657,6 @@ macro check*(conditions: untyped): untyped =
 
   let checked = callsite()[1]
 
-  template asgn(a: untyped, value: typed) =
-    var a = value # XXX: we need "var: var" here in order to
-                  # preserve the semantics of var params
-
   template print(name: untyped, value: typed) =
     when compiles(string($value)):
       checkpoint(name & " was " & $value)
@@ -684,8 +680,16 @@ macro check*(conditions: untyped): untyped =
           if exp[i].kind in nnkCallKinds + {nnkDotExpr, nnkBracketExpr, nnkPar} and
                   (exp[i].typeKind notin {ntyTypeDesc} or $exp[0] notin ["is", "isnot"]):
             let callVar = newIdentNode(":c" & $counter)
-            result.assigns.add getAst(asgn(callVar, paramAst))
+            # Construct AST directly instead of using getAst to preserve line info
+            let asgnNode = newNimNode(nnkVarSection, exp[i])
+            let identDef = newNimNode(nnkIdentDefs, exp[i])
+            identDef.add callVar
+            identDef.add newEmptyNode()
+            identDef.add paramAst
+            asgnNode.add identDef
+            result.assigns.add asgnNode
             result.check[i] = callVar
+            result.check[^1].setLineInfo exp.lineInfoObj
             result.printOuts.add getAst(print(argStr, callVar))
           if exp[i].kind == nnkExprEqExpr:
             # ExprEqExpr
@@ -694,8 +698,16 @@ macro check*(conditions: untyped): untyped =
             result.check[i] = exp[i][1]
           if exp[i].typeKind notin {ntyTypeDesc}:
             let arg = newIdentNode(":p" & $counter)
-            result.assigns.add getAst(asgn(arg, paramAst))
+            # Construct AST directly instead of using getAst to preserve line info
+            let asgnNode = newNimNode(nnkVarSection, exp[i])
+            let identDef = newNimNode(nnkIdentDefs, exp[i])
+            identDef.add arg
+            identDef.add newEmptyNode()
+            identDef.add paramAst
+            asgnNode.add identDef
+            result.assigns.add asgnNode
             result.printOuts.add getAst(print(argStr, arg))
+            result.printOuts[^1].setLineInfo exp.lineInfoObj
             if exp[i].kind != nnkExprEqExpr:
               result.check[i] = arg
             else:
@@ -707,9 +719,28 @@ macro check*(conditions: untyped): untyped =
     let (assigns, check, printOuts) = inspectArgs(checked)
     let lineinfo = newStrLitNode(checked.lineInfo)
     let callLit = checked.toStrLit
+
+    # Wrap assigns in a line pragma block to preserve stack trace location
+    let pragmaBlock = newNimNode(nnkPragmaBlock)
+    let pragma = newNimNode(nnkPragma)
+    let exprColonExpr = newNimNode(nnkExprColonExpr)
+    exprColonExpr.add newIdentNode("line")
+
+    # Create a tuple literal with (filename, line, column) from checked
+    let lineInfoObj = checked.lineInfoObj
+    let tupleLit = newNimNode(nnkTupleConstr)
+    tupleLit.add newLit(lineInfoObj.filename)
+    tupleLit.add newLit(lineInfoObj.line.int)
+    tupleLit.add newLit(lineInfoObj.column.int)
+    exprColonExpr.add tupleLit
+
+    pragma.add exprColonExpr
+    pragmaBlock.add pragma
+    pragmaBlock.add assigns
+
     result = quote do:
       block:
-        `assigns`
+        `pragmaBlock`
         if `check`:
           discard
         else:
