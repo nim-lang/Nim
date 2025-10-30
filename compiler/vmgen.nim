@@ -33,7 +33,8 @@ when defined(nimPreviewSlimSystem):
 
 import
   ast, types, msgs, renderer, vmdef, trees,
-  magicsys, options, lowerings, lineinfos, transf, astmsgs
+  magicsys, options, lowerings, lineinfos, transf, astmsgs,
+  treetab
 
 from modulegraphs import getBody
 
@@ -478,10 +479,16 @@ proc sameConstant*(a, b: PNode): bool =
         result = true
 
 proc genLiteral(c: PCtx; n: PNode): int =
-  # types do not matter here:
-  for i in 0..<c.constants.len:
-    if sameConstant(c.constants[i], n): return i
-  result = rawGenLiteral(c, n)
+  result = nodeTableTestOrSet(c.contstantTab, n, c.constants.len)
+  if result == c.constants.len:
+    let lit = rawGenLiteral(c, n)
+    assert lit == result
+
+  when false:
+    # types do not matter here:
+    for i in 0..<c.constants.len:
+      if sameConstant(c.constants[i], n): return i
+    result = rawGenLiteral(c, n)
 
 proc unused(c: PCtx; n: PNode; x: TDest) {.inline.} =
   if x >= 0:
@@ -1011,7 +1018,7 @@ proc genBindSym(c: PCtx; n: PNode; dest: var TDest) =
   # if dynamicBindSym notin c.config.features:
   if n.len == 2: # hmm, reliable?
     # bindSym with static input
-    if n[1].kind in {nkClosedSymChoice, nkOpenSymChoice, nkSym}:
+    if n[1].kind in {nkClosedSymChoice, nkOpenSymChoice, nkOpenSym, nkSym}:
       let idx = c.genLiteral(n[1])
       if dest < 0: dest = c.getTemp(n.typ)
       c.gABx(n, opcNBindSym, dest, idx)
@@ -1182,8 +1189,10 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}, m: TMag
   of mEqF64: genBinaryABC(c, n, dest, opcEqFloat)
   of mLeF64: genBinaryABC(c, n, dest, opcLeFloat)
   of mLtF64: genBinaryABC(c, n, dest, opcLtFloat)
-  of mLePtr, mLeU: genBinaryABC(c, n, dest, opcLeu)
-  of mLtPtr, mLtU: genBinaryABC(c, n, dest, opcLtu)
+  of mLeU: genBinaryABC(c, n, dest, opcLeu)
+  of mLtU: genBinaryABC(c, n, dest, opcLtu)
+  of mLePtr, mLtPtr:
+    globalError(c.config, n.info, "pointer comparisons are not available at compile-time")
   of mEqProc, mEqRef:
     genBinaryABC(c, n, dest, opcEqRef)
   of mXor: genBinaryABC(c, n, dest, opcXor)
@@ -1221,7 +1230,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}, m: TMag
     var tmp = c.genx(n[1])
     c.gABC(n, opcQuit, tmp)
     c.freeTemp(tmp)
-  of mSetLengthStr, mSetLengthSeq:
+  of mSetLengthStr, mSetLengthSeq, mSetLengthSeqUninit:
     unused(c, n, dest)
     var d = c.genx(n[1])
     var tmp = c.genx(n[2])
@@ -1337,7 +1346,8 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}, m: TMag
       of "getType": 0
       of "typeKind": 1
       of "getTypeInst": 2
-      else: 3  # "getTypeImpl"
+      of "getTypeImpl": 3  # "getTypeImpl"
+      else: 4 # getTypeInstSkipAlias
     c.gABC(n, opcNGetType, dest, tmp, rc)
     c.freeTemp(tmp)
     #genUnaryABC(c, n, dest, opcNGetType)
@@ -1546,8 +1556,7 @@ template cannotEval(c: PCtx; n: PNode) =
   if c.config.cmd == cmdCheck and c.config.m.errorOutputs != {}:
     # nim check command with no error outputs doesn't need to cascade here,
     # includes `tryConstExpr` case which should not continue generating code
-    localError(c.config, n.info, "cannot evaluate at compile time: " & 
-    n.renderTree)
+    localError(c.config, n.info, "cannot evaluate at compile time: " & n.renderTree)
     c.cannotEval = true
     return
   globalError(c.config, n.info, "cannot evaluate at compile time: " &
@@ -1600,12 +1609,12 @@ proc genAdditionalCopy(c: PCtx; n: PNode; opc: TOpcode;
   c.freeTemp(cc)
 
 proc preventFalseAlias(c: PCtx; n: PNode; opc: TOpcode;
-                       dest, idx, value: TRegister) =
+                       dest, idx, value: TRegister; enforceCopy = false) =
   # opcLdObj et al really means "load address". We sometimes have to create a
   # copy in order to not introduce false aliasing:
   # mylocal = a.b  # needs a copy of the data!
   assert n.typ != nil
-  if needsAdditionalCopy(n):
+  if needsAdditionalCopy(n) or enforceCopy:
     genAdditionalCopy(c, n, opc, dest, idx, value)
   else:
     c.gABC(n, opc, dest, idx, value)
@@ -1654,11 +1663,14 @@ proc genAsgn(c: PCtx; le, ri: PNode; requiresCopy: bool) =
   of nkSym:
     let s = le.sym
     checkCanEval(c, le)
+    let isLdConst = ri.kind == nkSym and ri.sym.kind == skConst and
+        dontInlineConstant(ri, if ri.sym.astdef != nil: ri.sym.astdef else: ri.sym.typ.n)
+      # assigning a constant (opcLdConst) to something; need to copy its value
     if s.isGlobal:
       withTemp(tmp, le.typ):
         c.gen(le, tmp, {gfNodeAddr})
         let val = c.genx(ri)
-        c.preventFalseAlias(le, opcWrDeref, tmp, 0, val)
+        c.preventFalseAlias(le, opcWrDeref, tmp, 0, val, isLdConst)
         c.freeTemp(val)
     else:
       if s.kind == skForVar: c.setSlot s
@@ -1885,6 +1897,10 @@ proc genCheckedObjAccess(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
   c.freeTemp(objR)
 
 proc genArrAccess(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
+  if n[0].typ == nil:
+    globalError(c.config, n.info, "cannot access array with nil type")
+    return
+
   let arrayType = n[0].typ.skipTypes(abstractVarRange-{tyTypeDesc}).kind
   case arrayType
   of tyString, tyCstring:
@@ -2313,9 +2329,11 @@ proc genStmt*(c: PCtx; n: PNode): int =
   result = c.code.len
   var d: TDest = -1
   c.gen(n, d)
-  c.gABC(n, opcEof)
   if d >= 0:
-    globalError(c.config, n.info, "VM problem: dest register is set")
+    # for discardable calls etc, otherwise not valid
+    freeTemp(c, d)
+    #globalError(c.config, n.info, "VM problem: dest register is set")
+  c.gABC(n, opcEof)
 
 proc genExpr*(c: PCtx; n: PNode, requiresValue = true): int =
   c.removeLastEof

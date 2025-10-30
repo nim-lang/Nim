@@ -252,12 +252,12 @@ iterator elementsExcept(t, s: CellSet): PCell {.inline.} =
   var r = t.head
   while r != nil:
     let ss = cellSetGet(s, r.key)
-    var i:uint = 0
+    var i = 0'u
     while int(i) <= high(r.bits):
       var w = r.bits[i]
       if ss != nil:
         w = w and not ss.bits[i]
-      var j:uint = 0
+      var j = 0'u
       while w != 0:
         if (w and 1) != 0:
           yield cast[PCell]((r.key shl PageShift) or

@@ -150,6 +150,7 @@ template isIterator*(owner: PSym): bool =
 
 proc createEnvObj(g: ModuleGraph; idgen: IdGenerator; owner: PSym; info: TLineInfo): PType =
   result = createObj(g, idgen, owner, info, final=false)
+  result.flags.incl tfFinal
   if owner.isIterator:
     rawAddField(result, createStateField(g, owner, idgen))
 
@@ -199,7 +200,7 @@ proc interestingVar(s: PSym): bool {.inline.} =
 proc illegalCapture(s: PSym): bool {.inline.} =
   result = classifyViewType(s.typ) != noView or s.kind == skResult
 
-proc isInnerProc(s: PSym): bool =
+proc isInnerProc*(s: PSym): bool =
   if s.kind in {skProc, skFunc, skMethod, skConverter, skIterator} and s.magic == mNone:
     result = s.skipGenericOwner.kind in routineKinds
   else:
@@ -973,6 +974,20 @@ proc liftForLoop*(g: ModuleGraph; body: PNode; idgen: IdGenerator; owner: PSym):
       call[0] = closure
       for i in 0..<op.len-1:
         result.add op[i]
+
+  elif op.kind != nkSym: # might have side effects
+    # bug #25046
+    # create a temp for the closure
+    # var :closureTemp
+    # :closureTemp = ...
+    let tempSym = newSym(skLet, getIdent(g.cache, ":closureTemp"), idgen, owner, body.info)
+    tempSym.typ = call[0].typ
+    let temp = newSymNode(tempSym)
+    var v = newNodeI(nkVarSection, body.info)
+    addVar(v, temp)
+    result.add(v)
+    result.add newAsgnStmt(temp, call[0], body.info)
+    call[0] = temp
 
   var loopBody = newNodeI(nkStmtList, body.info, 3)
   var whileLoop = newNodeI(nkWhileStmt, body.info, 2)

@@ -587,7 +587,7 @@ proc genProcParams(m: BModule; t: PType, rettype: var Rope, params: var Builder,
   if t.returnType == nil or isInvalidReturnType(m.config, t):
     rettype = CVoid
   else:
-    rettype = getTypeDescAux(m, t.returnType, check, dkResult)
+    rettype = getTypeDescWeak(m, t.returnType, check, dkResult)
   var paramBuilder: ProcParamBuilder
   params.addProcParams(paramBuilder):
     for i in 1..<t.n.len:
@@ -759,6 +759,8 @@ proc fillObjectFields*(m: BModule; typ: PType) =
   var check = initIntSet()
   var ignored = newBuilder("")
   addRecordFields(ignored, m, typ, check)
+  if typ.baseClass != nil:
+    fillObjectFields(m, typ.baseClass.skipTypes(skipPtrs))
 
 proc mangleDynLibProc(sym: PSym): Rope
 
@@ -1999,6 +2001,9 @@ proc genTypeInfoV1(m: BModule; t: PType; info: TLineInfo): Rope =
   of tyRef:
     genTypeInfoAux(m, t, t, result, info)
     if m.config.selectedGC in {gcMarkAndSweep, gcRefc, gcGo}:
+      # it may not be used in other places except in `genTraverseProc`,
+      # we have to generate a typedesc for this case, not a weak one
+      discard getTypeDesc(m, origType.last)
       let markerProc = genTraverseProc(m, origType, sig)
       m.s[cfsTypeInit3].addFieldAssignment(tiNameForHcr(m, result), "marker", markerProc)
   of tyPtr, tyRange, tyUncheckedArray: genTypeInfoAux(m, t, t, result, info)

@@ -12,6 +12,8 @@
 ##
 ## Unstable API.
 
+{.deprecated: "use `nimble install parsesql` and import `pkg/parsesql` instead".}
+
 import std/[strutils, lexbase]
 import std/private/decode_helpers
 

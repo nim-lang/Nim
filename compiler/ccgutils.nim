@@ -90,9 +90,6 @@ proc ccgIntroducedPtr*(conf: ConfigRef; s: PSym, retType: PType): bool =
     if s.typ.sym != nil and sfForward in s.typ.sym.flags:
       # forwarded objects are *always* passed by pointers for consistency!
       result = true
-    elif s.typ.kind == tySink and conf.selectedGC notin {gcArc, gcAtomicArc, gcOrc, gcHooks}:
-      # bug #23354:
-      result = false
     elif (optByRef in s.options) or (getSize(conf, pt) > conf.target.floatSize * 3):
       result = true           # requested anyway
     elif (tfFinal in pt.flags) and (pt[0] == nil):
@@ -101,11 +98,7 @@ proc ccgIntroducedPtr*(conf: ConfigRef; s: PSym, retType: PType): bool =
       result = true           # ordinary objects are always passed by reference,
                               # otherwise casting doesn't work
   of tyTuple:
-    if s.typ.kind == tySink:
-      # it's a sink, so we pass it by value
-      result = false
-    else:
-      result = (getSize(conf, pt) > conf.target.floatSize*3) or (optByRef in s.options)
+    result = (getSize(conf, pt) > conf.target.floatSize*3) or (optByRef in s.options)
   else:
     result = false
   # first parameter and return type is 'lent T'? --> use pass by pointer

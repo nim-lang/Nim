@@ -122,7 +122,7 @@ proc genEnumInfo(p: PProc, typ: PType, name: Rope) =
          [name, genTypeInfo(p, typ.baseClass)])
 
 proc genTypeInfo(p: PProc, typ: PType): Rope =
-  let t = typ.skipTypes({tyGenericInst, tyDistinct, tyAlias, tySink, tyOwned})
+  let t = typ.skipTypes({tyGenericInst, tyDistinct, tyAlias, tySink, tyOwned} + tyUserTypeClasses)
   result = "NTI$1" % [rope(t.id)]
   if containsOrIncl(p.g.typeInfoGenerated, t.id): return
   case t.kind

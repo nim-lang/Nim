@@ -898,3 +898,42 @@ proc bar =
   mutate(("1.2", 0, 0))
 
 bar()
+
+block: # bug #24754
+  type NoCopy = object
+    id: int
+
+  proc `=copy`(a: var NoCopy, b: NoCopy) {.error.}
+
+
+  proc foo(): NoCopy =
+    {.gcsafe.}:
+      let s = 12
+      NoCopy(id: s)
+
+  doAssert foo().id == 12
+
+
+type
+  Sinn* {.union.} = object
+    c*: C
+    b*: bool
+
+  Regen* = object
+    case x*: bool
+    of false:
+      a*: Sinn
+    of true:
+      cvar*: RootRef
+
+  C* = enum
+    wrong1, wrong2, right
+
+proc mainRegen() =
+  var xs: seq[Regen]
+  let a = Regen(x: false, a: Sinn(c: right))
+  var b = a
+  xs.add(a)
+  doAssert b.a.c == right
+
+mainRegen()

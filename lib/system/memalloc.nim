@@ -319,12 +319,6 @@ when hasAlloc and not defined(js):
 
   include bitmasks
 
-  template `+!`(p: pointer, s: SomeInteger): pointer =
-    cast[pointer](cast[int](p) +% int(s))
-
-  template `-!`(p: pointer, s: SomeInteger): pointer =
-    cast[pointer](cast[int](p) -% int(s))
-
   proc alignedAlloc(size, align: Natural): pointer =
     if align <= MemAlign:
       when compileOption("threads"):
@@ -334,32 +328,21 @@ when hasAlloc and not defined(js):
     else:
       # allocate (size + align - 1) necessary for alignment,
       # plus 2 bytes to store offset
-      when compileOption("threads"):
-        let base = allocShared(size + align - 1 + sizeof(uint16))
-      else:
-        let base = alloc(size + align - 1 + sizeof(uint16))
+      let base =
+        when compileOption("threads"):
+          allocShared(cast[Natural](size +% align -% 1 +% sizeof(uint16)))
+        else:
+          alloc(cast[Natural](size +% align -% 1 +% sizeof(uint16)))
       # memory layout: padding + offset (2 bytes) + user_data
       # in order to deallocate: read offset at user_data - 2 bytes,
       # then deallocate user_data - offset
-      let offset = align - (cast[int](base) and (align - 1))
-      cast[ptr uint16](base +! (offset - sizeof(uint16)))[] = uint16(offset)
+      let offset = align -% cast[int](cast[uint](base) and uint(align -% 1))
       result = base +! offset
+      cast[ptr uint16](result -! sizeof(uint16))[] = uint16(offset)
 
   proc alignedAlloc0(size, align: Natural): pointer =
-    if align <= MemAlign:
-      when compileOption("threads"):
-        result = allocShared0(size)
-      else:
-        result = alloc0(size)
-    else:
-      # see comments for alignedAlloc
-      when compileOption("threads"):
-        let base = allocShared0(size + align - 1 + sizeof(uint16))
-      else:
-        let base = alloc0(size + align - 1 + sizeof(uint16))
-      let offset = align - (cast[int](base) and (align - 1))
-      cast[ptr uint16](base +! (offset - sizeof(uint16)))[] = uint16(offset)
-      result = base +! offset
+    result = alignedAlloc(size, align)
+    zeroMem(result, size)
 
   proc alignedDealloc(p: pointer, align: int) {.compilerproc.} =
     if align <= MemAlign:
@@ -395,7 +378,7 @@ when hasAlloc and not defined(js):
     else:
       result = alignedAlloc(newSize, align)
       copyMem(result, p, oldSize)
-      zeroMem(result +! oldSize, newSize - oldSize)
+      zeroMem(result +! oldSize, newSize -% oldSize)
       alignedDealloc(p, align)
 
   {.pop.}
