@@ -190,7 +190,7 @@ proc toNif(c: var EncodeContext; n: PNode) =
       c.withNode n:
         discard
     else:
-      assert n.kind in {nkArgList, nkBracket, nkRecList, nkPragma} or n.len > 0, $n.kind
+      assert n.kind in {nkArgList, nkBracket, nkRecList, nkPragma, nkType} or n.len > 0, $n.kind
       c.withNode(n):
         for i in 0 ..< n.len:
           c.toNif n[i]
