@@ -21,7 +21,7 @@ proc catch() {.async.} =
   # TODO: Create a test for when exceptions are not caught.
   try:
     await foobar()
-  except:
+  except Exception:
     echo("Generic except: ", getCurrentExceptionMsg().splitLines[0])
 
   try:

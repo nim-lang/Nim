@@ -300,7 +300,47 @@ proc setLengthSeq(seq: PGenericSeq, elemSize, elemAlign, newLen: int): PGenericS
     zeroMem(dataPointer(result, elemAlign, elemSize, newLen), (result.len-%newLen) *% elemSize)
   result.len = newLen
 
-proc setLengthSeqV2(s: PGenericSeq, typ: PNimType, newLen: int): PGenericSeq {.
+proc setLengthSeqUninit(s: PGenericSeq, typ: PNimType, newLen: int, isTrivial: bool): PGenericSeq {.
+    compilerRtl.} =
+  sysAssert typ.kind == tySequence, "setLengthSeqUninit: type is not a seq"
+  if s == nil:
+    if newLen == 0:
+      result = s
+    else:
+      result = cast[PGenericSeq](newSeq(typ, newLen))
+  else:
+    let elemSize = typ.base.size
+    let elemAlign = typ.base.align
+    if s.space < newLen:
+      let r = max(resize(s.space), newLen)
+      result = cast[PGenericSeq](newSeq(typ, r))
+      copyMem(dataPointer(result, elemAlign), dataPointer(s, elemAlign), s.len * elemSize)
+      # since we steal the content from 's', it's crucial to set s's len to 0.
+      s.len = 0
+    elif newLen < s.len:
+      result = s
+      # we need to decref here, otherwise the GC leaks!
+      when not defined(boehmGC) and not defined(nogc) and
+          not defined(gcMarkAndSweep) and not defined(gogc) and
+          not defined(gcRegions):
+        if ntfNoRefs notin typ.base.flags:
+          for i in newLen..result.len-1:
+            forAllChildrenAux(dataPointer(result, elemAlign, elemSize, i),
+                              extGetCellType(result).base, waZctDecRef)
+
+      # XXX: zeroing out the memory can still result in crashes if a wiped-out
+      # cell is aliased by another pointer (ie proc parameter or a let variable).
+      # This is a tough problem, because even if we don't zeroMem here, in the
+      # presence of user defined destructors, the user will expect the cell to be
+      # "destroyed" thus creating the same problem. We can destroy the cell in the
+      # finalizer of the sequence, but this makes destruction non-deterministic.
+      if not isTrivial: # optimization for trivial types
+        zeroMem(dataPointer(result, elemAlign, elemSize, newLen), (result.len-%newLen) *% elemSize)
+    else:
+      result = s
+    result.len = newLen
+
+proc setLengthSeqV2(s: PGenericSeq, typ: PNimType, newLen: int, isTrivial: bool): PGenericSeq {.
     compilerRtl.} =
   sysAssert typ.kind == tySequence, "setLengthSeqV2: type is not a seq"
   if s == nil:
@@ -334,7 +374,8 @@ proc setLengthSeqV2(s: PGenericSeq, typ: PNimType, newLen: int): PGenericSeq {.
       # presence of user defined destructors, the user will expect the cell to be
       # "destroyed" thus creating the same problem. We can destroy the cell in the
       # finalizer of the sequence, but this makes destruction non-deterministic.
-      zeroMem(dataPointer(result, elemAlign, elemSize, newLen), (result.len-%newLen) *% elemSize)
+      if not isTrivial: # optimization for trivial types
+        zeroMem(dataPointer(result, elemAlign, elemSize, newLen), (result.len-%newLen) *% elemSize)
     else:
       result = s
       zeroMem(dataPointer(result, elemAlign, elemSize, result.len), (newLen-%result.len) *% elemSize)

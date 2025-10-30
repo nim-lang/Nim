@@ -26,10 +26,10 @@ proc testClosureIterAux(it: iterator(): int, exceptionExpected: bool, expectedRe
   if closureIterResult != @expectedResults or exceptionCaught != exceptionExpected:
     if closureIterResult != @expectedResults:
       echo "Expected: ", @expectedResults
-      echo "Actual: ", closureIterResult
+      echo "Actual:   ", closureIterResult
     if exceptionCaught != exceptionExpected:
       echo "Expected exception: ", exceptionExpected
-      echo "Got exception: ", exceptionCaught
+      echo "Got exception:      ", exceptionCaught
     doAssert(false)
 
 proc test(it: iterator(): int, expectedResults: varargs[int]) =
@@ -181,6 +181,57 @@ block:
     checkpoint(123)
 
   test(it, 0, 1, 2, 3)
+
+block: # Wrong except
+  iterator it(): int {.closure.} =
+    try:
+      try:
+        yield 0
+        raiseTestError()
+      except ValueError:
+        doAssert(false, "Unreachable")
+      finally:
+        checkpoint(1)
+    except ValueError:
+      yield 123
+      return
+
+    checkpoint(123)
+
+  testExc(it, 0, 1)
+
+block: # Nested except without finally
+  iterator it(): int {.closure.} =
+    try:
+      try:
+        yield 0
+        raiseTestError()
+      except ValueError:
+        doAssert(false, "Unreachable")
+    except ValueError:
+      yield 123
+
+    checkpoint(123)
+
+  testExc(it, 0)
+
+block: # Return in except with no finallies around
+  iterator it(): int {.closure.} =
+    try:
+      try:
+        yield 0
+        raiseTestError()
+      except ValueError:
+        doAssert(false, "Unreachable")
+      finally:
+        checkpoint(1)
+    except TestError:
+      yield 2
+      return
+
+    checkpoint(123)
+
+  test(it, 0, 1, 2)
 
 block:
   iterator it(): int {.closure.} =
@@ -527,3 +578,223 @@ block: # Locals present in only 1 state should be on the stack
     yield a
     yield b
   test(it, 1, 2)
+
+block: # Complex finallies (#24978)
+  iterator it(): int {.closure.} =
+    try:
+      for i in 1..2:
+        try:
+          yield i + 10
+        except:
+          doAssert(false, "Should not get here")
+        checkpoint(i + 20)
+      raiseTestError()
+    finally:
+      for i in 3..4:
+        try:
+          yield i + 30
+        except:
+          doAssert(false, "Should not get here")
+        finally:
+          checkpoint(i + 40)
+        checkpoint(i + 50)
+      checkpoint(100)
+
+  testExc(it, 11, 21, 12, 22, 33, 43, 53, 34, 44, 54, 100)
+
+block: # break
+  iterator it(): int {.closure.} =
+    while true:
+      try:
+        yield 1
+        while true:
+          yield 2
+          if true:
+            break
+        break
+      finally:
+        var localHere = 3
+        checkpoint(localHere)
+
+  test(it, 1, 2, 3)
+
+block: # break
+  iterator it(): int {.closure.} =
+    while true:
+      try:
+        try:
+          yield 1
+          while true:
+            yield 2
+            break
+          break
+        finally:
+          var localHere = 4
+          yield 3
+          checkpoint(localHere)
+        doAssert(false, "Should not get here")
+      finally:
+        yield 5
+        checkpoint(6)
+      doAssert(false, "Should not reach here")
+
+  test(it, 1, 2, 3, 4, 5, 6)
+
+block: # continue
+  iterator it(): int {.closure.} =
+    for i in 1 .. 3:
+      try:
+        try:
+          yield i + 10
+          while true:
+            yield i + 20
+            break
+          if i == 2:
+            continue
+          checkpoint(i + 30)
+        finally:
+          yield 3
+          checkpoint(4)
+        checkpoint(5)
+      finally:
+        yield 6
+        checkpoint(7)
+
+  test(it, 11, 21, 31, 3, 4, 5, 6, 7, 12, 22, 3, 4, 6, 7, 13, 23, 33, 3, 4, 5, 6, 7)
+
+block: # return without finally
+  iterator it(): int {.closure.} =
+    try:
+      yield 1
+      if true:
+        return
+    except:
+      doAssert(false, "Unreachable")
+    yield 2
+
+  test(it, 1)
+
+block: # return in finally
+  iterator it(): int {.closure.} =
+    try:
+      yield 1
+    except:
+      doAssert(false, "Unreachable")
+    finally:
+      return
+    yield 2
+
+  test(it, 1)
+
+block: # launch iter with current exception
+  iterator it(): int {.closure.} =
+    try:
+      yield 1
+    finally:
+      discard
+
+  try:
+    raise newException(ValueError, "")
+  except:
+    test(it, 1)
+
+block: #21235
+  proc myFunc() =
+    iterator myFuncIter(): int {.closure.} =
+      if false:
+        try:
+          yield 5
+        except:
+          discard
+    var nameIterVar = myFuncIter
+    discard nameIterVar()
+
+  var ok = false
+  try:
+    try:
+      raise ValueError.newException("foo")
+    finally:
+      myFunc()
+  except ValueError:
+    ok = true
+  doAssert(ok)
+
+block: # break in for without yield in try
+  iterator it(): int {.closure.} =
+    try:
+      block:
+        checkpoint(1)
+        for i in 0 .. 10:
+          checkpoint(2)
+          break
+        checkpoint(3)
+
+      try:
+        yield 4
+      except:
+        checkpoint(123)
+    except:
+      discard
+    finally:
+      checkpoint(5)
+
+  test(it, 1, 2, 3, 4, 5)
+
+block: #25038
+  template m(w: untyped): untyped =
+    var g: typeof(w)
+    g
+
+  iterator d(): int {.closure.} =
+    discard m:
+      for _ in [0]:
+        continue
+      0
+
+  test(d)
+
+block: #25202
+  proc p() =
+    iterator p_1073741828(checkpoints: var seq[int]): int {.
+        closure, raises: [].} =
+      var closureSucceeded_1073741827 = true
+      try:
+        try:
+          try:
+            yield 0
+            raise newException(ValueError, "value error")
+          except ValueError:
+            checkpoints.add(1)
+            raise newException(IOError, "io error")
+        finally:
+          yield 2
+      except IOError as exc:
+        closureSucceeded_1073741827 = false
+        checkpoints.add(3)
+      finally:
+        checkpoints.add(4)
+        if closureSucceeded_1073741827:
+          discard
+
+    var internalClosure = p_1073741828
+    var internalClosure2 = p_1073741828
+
+    var checkpoints1 = newSeq[int]()
+    var checkpoints2 = newSeq[int]()
+
+    while true:
+      if not internalClosure.finished():
+        checkpoints1.add internalClosure(checkpoints1)
+        doAssert(getCurrentException() == nil)
+      if not internalClosure2.finished():
+        checkpoints2.add internalClosure2(checkpoints2)
+        doAssert(getCurrentException() == nil)
+      if internalClosure.finished() and internalClosure2.finished():
+        break
+
+    if checkpoints1[^1] == 0: checkpoints1.del(checkpoints1.high)
+    if checkpoints2[^1] == 0: checkpoints2.del(checkpoints2.high)
+    doAssert(checkpoints1 == @[0, 1, 2, 3, 4])
+    doAssert(checkpoints1 == checkpoints2)
+
+  p()

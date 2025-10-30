@@ -18,7 +18,8 @@ when defined(nimPreviewSlimSystem):
 
 type
   TTypeAllowedFlag* = enum
-    taField,
+    taTupField, # field of a tuple
+    taObjField, # field of an object
     taHeap,
     taConcept,
     taIsOpenArray,
@@ -69,8 +70,8 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
       result = t
     elif taIsOpenArray in flags:
       result = t
-    elif t.kind == tyLent and ((kind != skResult and views notin c.features) or
-      (kind == skParam and {taIsCastable, taField} * flags == {})): # lent cannot be used as parameters.
+    elif t.kind == tyLent and (((kind != skResult or taObjField in flags) and views notin c.features) or
+      (kind == skParam and {taIsCastable, taObjField, taTupField} * flags == {})): # lent cannot be used as parameters.
                                                        # except in the cast environment and as the field of an object
       result = t
     elif isOutParam(t) and kind != skParam:
@@ -187,12 +188,12 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
         t.baseClass != nil and taIsDefaultField notin flags:
       result = t
     else:
-      let flags = flags+{taField, taVoid}
+      let flags = flags+{taObjField, taVoid}
       result = typeAllowedAux(marker, t.baseClass, kind, c, flags)
       if result.isNil and t.n != nil:
         result = typeAllowedNode(marker, t.n, kind, c, flags)
   of tyTuple:
-    let flags = flags+{taField, taVoid}
+    let flags = flags+{taTupField, taVoid}
     for a in t.kids:
       result = typeAllowedAux(marker, a, kind, c, flags)
       if result != nil: break

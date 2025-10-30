@@ -385,6 +385,9 @@ iterator tryFinally() {.closure.} =
     try:
       echo "trying"
       raise
+    except ReraiseDefect:
+      echo "exception caught"
+      break route
     except:
       echo "exception caught"
       break route
@@ -409,3 +412,23 @@ block: # bug #24033
     collections.add (id, str, $num)
 
   doAssert collections[1] == (1, "foo", "3.14")
+
+
+block: # bug #25121
+  iterator k(): int =
+    when nimvm:
+      yield 0
+    else:
+      yield 0
+
+  for _ in k():
+    (proc() = (; let _ = block: 0))()
+
+let aaa = new array[1000, byte]
+block:
+  for _ in cast[typeof(aaa)](aaa)[]:
+    discard
+block:
+  let x = cast[typeof(aaa)](aaa)   # not even var
+  for _ in x[]:
+    discard
