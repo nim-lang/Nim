@@ -6,8 +6,8 @@ import enum2nif, icniftags
 type
   EncodeContext = object
     conf: ConfigRef
-    decodedSyms: HashSet[PSym]
-    decodedTypes: HashSet[PType]
+    decodedSyms: HashSet[ItemId]
+    decodedTypes: HashSet[ItemId]
     decodedFileIndices: HashSet[FileIndex]
     dest: TokenBuf
 
@@ -108,7 +108,7 @@ proc toNif(c: var EncodeContext; sym: PSym) =
   if sym == nil:
     c.dest.addDotToken()
   else:
-    if not c.decodedSyms.containsOrIncl(sym):
+    if not c.decodedSyms.containsOrIncl(sym.itemId):
       c.toNifDef sym
     else:
       c.dest.buildTree symTag:
@@ -119,7 +119,7 @@ proc toNif(c: var EncodeContext; typ: PType) =
   if typ == nil:
     c.dest.addDotToken()
   else:
-    if not c.decodedTypes.containsOrIncl(typ):
+    if not c.decodedTypes.containsOrIncl(typ.itemId):
       c.toNifDef typ
     else:
       c.dest.buildTree typeTag:
@@ -190,7 +190,7 @@ proc toNif(c: var EncodeContext; n: PNode) =
       c.withNode n:
         discard
     else:
-      assert n.kind in {nkArgList, nkBracket, nkRecList, nkPragma, nkType} or n.len > 0, $n.kind
+      #assert n.kind in {nkArgList, nkBracket, nkRecList, nkPragma, nkType} or n.len > 0, $n.kind
       c.withNode(n):
         for i in 0 ..< n.len:
           c.toNif n[i]
