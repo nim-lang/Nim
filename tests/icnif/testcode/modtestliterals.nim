@@ -23,7 +23,14 @@ var uint32litH = 4294967295'u32
 var uint64litH = 18446744073709551615'u64
 
 var floatlit = 1.25
+var floatlit2 = -1.25
 var float32lit = 1.25'f32
 var float64lit = 1.25'f64
+var floatZero = 0.0
+# Needs newer Nimony to save `-0.0` to NIF correclty
+#var floatNegZero = -0.0
+var floatInf = Inf
+var floatNaN = NaN
+var floatNegInf = NegInf
 
 var nillit: ptr int = nil

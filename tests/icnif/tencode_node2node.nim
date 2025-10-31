@@ -1,4 +1,4 @@
-import std/assertions
+import std/[assertions, math]
 import "../../compiler/icnif" / [nifencoder, nifdecoder]
 import "../../compiler" / [idents, ast, astalgo, options, pathutils, modulegraphs, modules, msgs, pipelines, syntaxes, sem, llstream, lineinfos]
 
@@ -294,8 +294,25 @@ proc eql(x, y: PNode; c: var EqlContext): bool =
           debug(y.sym)
           debug(x.sym.typ)
           debug(y.sym.typ)
-      of nkCharLit .. nkTripleStrLit:
+      of nkCharLit .. nkUInt64Lit, nkStrLit .. nkTripleStrLit:
         result = sameValue(x, y)
+      of nkFloatLit .. nkFloat128Lit:
+        # want to know if x and y are identical float value.
+        # so x == y doesn't work if both x and y are NaN or x == 0 and y == -0.
+        let xc = classify(x.floatVal)
+        let yc = classify(y.floatVal)
+        if xc == yc:
+          if xc in {fcNormal, fcSubnormal}:
+            if x.floatVal != y.floatVal:
+              echo "float literal mismatch: ", x.floatVal, "/", y.floatVal
+              result = false
+            else:
+              result = true
+          else:
+            result = true
+        else:
+          echo "float literal mismatch: ", xc, "/", yc
+          result = false
       else:
         result = true
         for i in 0 ..< x.safeLen:

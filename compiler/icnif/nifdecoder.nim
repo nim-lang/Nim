@@ -293,9 +293,23 @@ proc fromNif(c: var DecodeContext; n: var Cursor): PNode =
         inc n
     of nkFloatLit .. nkFloat128Lit:
       c.withNode n, result, kind:
-        expect n, FloatLit
-        result.floatVal = pool.floats[n.floatId]
-        inc n
+        if n.kind == FloatLit:
+          result.floatVal = pool.floats[n.floatId]
+          inc n
+        elif n.kind == ParLe:
+          case pool.tags[n.tagId]
+          of "inf":
+            result.floatVal = Inf
+          of "nan":
+            result.floatVal = NaN
+          of "neginf":
+            result.floatVal = NegInf
+          else:
+            assert false, "expected float literal but got " & pool.tags[n.tagId]
+          inc n
+          skipParRi n
+        else:
+          assert false, "expected float literal but got " & $n.kind
     of nkStrLit .. nkTripleStrLit:
       c.withNode n, result, kind:
         expect n, StringLit
