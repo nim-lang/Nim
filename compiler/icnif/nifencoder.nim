@@ -81,8 +81,11 @@ proc toNifDef(c: var EncodeContext; sym: PSym) =
     c.dest.addIntLit sym.position
   c.toNif sym.typ
   c.toNif sym.owner
+  c.toNif sym.ast   # drastically increase output NIF size!
   c.dest.addIdent toNifTag(sym.loc.k)
   c.dest.addStrLit sym.loc.snippet
+  c.toNif sym.constraint
+  c.toNif sym.instantiatedFrom
   c.dest.addParRi
 
 proc toNifDef(c: var EncodeContext; typ: PType) =

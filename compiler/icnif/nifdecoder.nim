@@ -149,12 +149,15 @@ proc fromNifSymDef(c: var DecodeContext; n: var Cursor): PSym =
 
   result.typ = c.fromNifType n
   result.setOwner(c.fromNifSymbol n)
+  result.ast = c.fromNif n
 
   expect n, Ident
   result.loc.k = pool.strings[n.litId].parseLocKind()
   incExpect n, StringLit
   result.loc.snippet.add pool.strings[n.litId]
   inc n
+  result.constraint = c.fromNif n
+  result.instantiatedFrom = c.fromNifSymbol n
   skipParRi n
 
 proc fromNifTypeDef(c: var DecodeContext; n: var Cursor): PType =

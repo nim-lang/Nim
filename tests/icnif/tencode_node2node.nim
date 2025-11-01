@@ -185,6 +185,15 @@ proc eql(x, y: PSym; c: var EqlContext): bool =
       debug(x.owner)
       debug(y.owner)
       result = false
+    elif not eql(x.ast, y.ast, c):
+      echo "symbol ast mismatch"
+      result = false
+    elif not eql(x.constraint, y.constraint, c):
+      echo "symbol constraint mismatch"
+      result = false
+    elif not eql(x.instantiatedFrom, y.instantiatedFrom, c):
+      echo "symbol instantiatedFrom mismatch"
+      result = false
     else:
       if x.kind in {skLet, skVar, skField, skForVar}:
         if not eql(x.guard, y.guard, c):
@@ -338,6 +347,8 @@ proc testNifEncDec(graph: ModuleGraph; src: string) =
   #debug(n)
   let nif = saveNifToBuffer(n, graph.config)
   #echo nif
+  #echo "NIF size of ", src, ": ", nif.len
+  #writeFile(src & ".nif", nif)
 
   # Don't reuse the ModuleGraph used for semcheck when load NIF.
   var graphForLoad = newModuleGraph(newIdentCache(), newConfigRefForTest())
