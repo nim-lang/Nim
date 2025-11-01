@@ -1,4 +1,4 @@
-import std/[assertions, math]
+import std/[assertions, math, tables]
 import "../../compiler/icnif" / [nifencoder, nifdecoder]
 import "../../compiler" / [idents, ast, astalgo, options, pathutils, modulegraphs, modules, msgs, pipelines, syntaxes, sem, llstream, lineinfos]
 
@@ -61,8 +61,9 @@ type
   # this is used to prevent that happen.
   EqlContext = object
     nodeStack: seq[PNode]
-    symStack: seq[PSym]
-    typStack: seq[PType]
+    checkedSyms: Table[ItemId, PSym]  # used to check if each PSym has unique ItemId
+                                      # and also prevents inifinite loop
+    checkedTypes: Table[ItemId, PType]# used like checkedSyms
     confX, confY: ConfigRef   # used to print the line info when there is a mismatch
                               # and get path from FileIndex
 
@@ -134,11 +135,20 @@ proc eql(x, y: PSym; c: var EqlContext): bool =
   elif x == nil or y == nil:
     echo "symbol is missing"
     result = false
-  elif x.name.s != y.name.s:
-    echo "symbol name mismatch: ", x.name.s, "/", y.name.s
-    result = false
   elif not eqlItemId(x.itemId, y.itemId, c):
     echo "symbol itemId mismatch"
+    result = false
+  elif c.checkedSyms.hasKeyOrPut(y.itemId, y):
+    if c.checkedSyms[y.itemId] == y:
+      result = true
+    else:
+      echo "detected duplicated symbol ItemId:"
+      debug(x)
+      debug(c.checkedSyms[y.itemId])
+      debug(y)
+      result = false
+  elif x.name.s != y.name.s:
+    echo "symbol name mismatch: ", x.name.s, "/", y.name.s
     result = false
   elif x.kind != y.kind:
     echo "symbol kind mismatch: ", x.kind, "/", y.kind
@@ -167,11 +177,6 @@ proc eql(x, y: PSym; c: var EqlContext): bool =
     echo "symbol.loc mismatch"
     result = false
   else:
-    if c.symStack.len != 0:
-      for i in countDown(c.symStack.len - 1, 0):
-        if x == c.symStack[i]:
-          return true
-    c.symStack.add x
     if not eql(x.typ, y.typ, c):
       echo "symbol type mismatch:"
       result = false
@@ -195,7 +200,6 @@ proc eql(x, y: PSym; c: var EqlContext): bool =
           result = true
       else:
         result = true
-    discard c.symStack.pop
 
 proc eql(x, y: PType; c: var EqlContext): bool =
   if x == nil and y == nil:
@@ -206,6 +210,15 @@ proc eql(x, y: PType; c: var EqlContext): bool =
   elif not eqlItemId(x.itemId, y.itemId, c):
     echo "type itemId mismatch"
     result = false
+  elif c.checkedTypes.hasKeyOrPut(y.itemId, y):
+    if c.checkedTypes[y.itemId] == y:
+      result = true
+    else:
+      echo "detected duplicated type ItemId:"
+      debug(x)
+      debug(c.checkedTypes[y.itemId])
+      debug(y)
+      result = false
   elif x.kind != y.kind:
     echo "type kind mismatch: ", x.kind, "/", y.kind
     result = false
@@ -213,12 +226,6 @@ proc eql(x, y: PType; c: var EqlContext): bool =
     echo "type flag mismatch: ", x.flags, "/", y.flags
     result = false
   else:
-    if c.typStack.len != 0:
-      for i in countDown(c.typStack.len - 1, 0):
-        if x == c.typStack[i]:
-          # echo "cycle is detected in PType"
-          return true
-    c.typStack.add x
     if not eql(x.n, y.n, c):
       echo "type.n mismatch"
       debug(x.n)
@@ -246,7 +253,6 @@ proc eql(x, y: PType; c: var EqlContext): bool =
           debug(y[i])
           result = false
           break
-    discard c.typStack.pop
 
 proc eql(x, y: PNode; c: var EqlContext): bool =
   if x == nil and y == nil:
