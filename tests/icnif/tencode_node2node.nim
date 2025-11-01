@@ -257,7 +257,7 @@ proc eql(x, y: PNode; c: var EqlContext): bool =
     echo "node kind mismatch: ", x.kind, "/", y.kind
     result = false
   elif x.flags != y.flags:
-    echo "node flag mismatch: ", x.flags, "/", y.flags
+    echo "node flag mismatch: ", x.flags, "/", y.flags, " at ", `$`(c.confX, x.info)
     debug(x)
     debug(y)
     result = false
@@ -338,7 +338,7 @@ proc testNifEncDec(graph: ModuleGraph; src: string) =
   let n2 = loadNifFromBuffer(nif, graphForLoad)
   #debug(n2)
   var c = EqlContext(confX: graph.config, confY: graphForLoad.config)
-  assert eql(n, n2, c)
+  assert eql(n, n2, c), "test failed: " & $fullPath
 
 var conf = newConfigRefForTest()
 var cache = newIdentCache()

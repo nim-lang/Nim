@@ -147,11 +147,9 @@ proc toNif(c: var EncodeContext; n: PNode) =
       c.dest.writeNodeFlags(n.flags)
       c.dest.addParRi
     of nkIdent:
-      let info = c.toNif n.info
-      c.dest.addParLe pool.tags.getOrIncl(toNifTag(nkIdent)), info
-      c.toNif n.typ
-      c.dest.addIdent n.ident.s
-      c.dest.addParRi
+      # nkIdent uses flags and typ when it is a generic parameter
+      c.withNode n:
+        c.dest.addIdent n.ident.s
     of nkSym:
       when false:
         echo "nkSym: ", n.sym.name.s

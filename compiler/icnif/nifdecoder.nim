@@ -266,11 +266,14 @@ proc fromNif(c: var DecodeContext; n: var Cursor): PNode =
       result.flags = flags
       skipParRi n
     of nkIdent:
-      inc n
+      let info = c.fromNifLineInfo(n)
+      incExpect n, {DotToken, Ident}
+      let flags = fromNifNodeFlags n
       let typ = c.fromNifType n
       expect n, Ident
-      result = newIdentNode(c.graph.cache.getIdent(pool.strings[n.litId]), c.fromNifLineInfo(n))
+      result = newIdentNode(c.graph.cache.getIdent(pool.strings[n.litId]), info)
       inc n
+      result.flags = flags
       result.typ = typ
       skipParRi n
     of nkSym:
