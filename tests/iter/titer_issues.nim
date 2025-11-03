@@ -432,3 +432,28 @@ block:
   let x = cast[typeof(aaa)](aaa)   # not even var
   for _ in x[]:
     discard
+
+import std/[tables, unicode, sequtils]
+
+const
+    myTable = {
+        "en": "abcdefghijklmnopqrstuvwxyz",
+    }.toTable
+
+proc buggyVersion(locale: string): seq[Rune] =
+    result = toSeq(runes(myTable[locale]))
+
+proc workingVersion(locale: string): seq[Rune] =
+    # string lifetime is extended
+    let str = myTable[locale]
+    result = toSeq(runes(str))
+
+# echo "Testing working version..."
+let runes2 = workingVersion("en")
+# echo "Got ", runes2.len, " runes"
+
+# echo "Testing buggy version..."
+let runes1 = buggyVersion("en")  # <-- CRASHES HERE
+
+doAssert runes1.len == runes2.len
+# echo "Got ", runes1.len, " runes"
