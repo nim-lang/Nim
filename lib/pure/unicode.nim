@@ -331,7 +331,7 @@ proc runeOffset*(s: openArray[char], pos: Natural, start: Natural = 0): int =
     i = 0
     o = start
   while i < pos:
-    o += runeLenAt(s, o)
+    inc o, runeLenAt(s, o)
     if o >= s.len:
       return -1
     inc i

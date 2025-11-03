@@ -1110,7 +1110,8 @@ template subtypeCheck() =
   of isIntConv:
     result = isNone
   of isSubrange:
-    discard # XXX should be isNone with preview define, warnings
+    if c.c.config.isDefined("nimPreviewStrictVarRange"):
+      result = isNone
   of isConvertible:
     if f.last.skipTypes(abstractInst).kind != tyOpenArray:
       # exclude var openarray which compiler supports

@@ -27,6 +27,21 @@ errors.
 
 - With `-d:nimPreviewDuplicateModuleError`, importing two modules that share the same name becomes a compile-time error. This includes importing the same module more than once. Use `import foo as foo1` (or other aliases) to avoid collisions.
 
+- With `-d:nimPreviewStrictVarRange`, variables of range types do not match
+  `var` parameters of their base type. This is to prevent implicit operations
+  that can cause values to escape their range, i.e.:
+
+  ```nim
+  type Foo = range[0..5]
+  var foo: Foo = 5
+  proc double(x: var int) =
+    x = x * 2
+  double(foo)
+  echo foo # 10
+  ```
+
+  will give a type mismatch error.
+
 ## Standard library additions and changes
 
 [//]: # "Additions:"
