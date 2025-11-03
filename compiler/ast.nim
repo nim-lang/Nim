@@ -279,7 +279,7 @@ const
   GcTypeKinds* = {tyRef, tySequence, tyString}
 
   tyTypeClasses* = {tyBuiltInTypeClass, tyCompositeTypeClass,
-                    tyUserTypeClass, tyUserTypeClassInst,
+                    tyUserTypeClass, tyUserTypeClassInst, tyConcept,
                     tyAnd, tyOr, tyNot, tyAnything}
 
   tyMetaTypes* = {tyGenericParam, tyTypeDesc, tyUntyped} + tyTypeClasses
@@ -447,6 +447,8 @@ const
   tfReturnsNew* = tfInheritable
   tfNonConstExpr* = tfExplicitCallConv
     ## tyFromExpr where the expression shouldn't be evaluated as a static value
+  tfGenericHasDestructor* = tfExplicitCallConv
+    ## tyGenericBody where an instance has a generated destructor
   skError* = skUnknown
 
 var
@@ -491,13 +493,14 @@ type
     mAnd, mOr,
     mImplies, mIff, mExists, mForall, mOld,
     mEqStr, mLeStr, mLtStr,
-    mEqSet, mLeSet, mLtSet, mMulSet, mPlusSet, mMinusSet,
+    mEqSet, mLeSet, mLtSet, mMulSet, mPlusSet, mMinusSet, mXorSet,
     mConStrStr, mSlice,
     mDotDot, # this one is only necessary to give nice compile time warnings
     mFields, mFieldPairs, mOmpParFor,
     mAppendStrCh, mAppendStrStr, mAppendSeqElem,
     mInSet, mRepr, mExit,
     mSetLengthStr, mSetLengthSeq,
+    mSetLengthSeqUninit,
     mIsPartOf, mAstToStr, mParallel,
     mSwap, mIsNil, mArrToSeq, mOpenArrayToSeq,
     mNewString, mNewStringOfCap, mParseBiggestFloat,
@@ -559,7 +562,7 @@ const
     mStrToStr, mEnumToStr,
     mAnd, mOr,
     mEqStr, mLeStr, mLtStr,
-    mEqSet, mLeSet, mLtSet, mMulSet, mPlusSet, mMinusSet,
+    mEqSet, mLeSet, mLtSet, mMulSet, mPlusSet, mMinusSet, mXorSet,
     mConStrStr, mAppendStrCh, mAppendStrStr, mAppendSeqElem,
     mInSet, mRepr, mOpenArrayToSeq}
 
@@ -591,7 +594,7 @@ type
   TNode*{.final, acyclic.} = object # on a 32bit machine, this takes 32 bytes
     when defined(useNodeIds):
       id*: int
-    typ*: PType
+    typField: PType
     info*: TLineInfo
     flags*: TNodeFlags
     case kind*: TNodeKind
@@ -673,6 +676,9 @@ type
   TInstantiation* = object
     sym*: PSym
     concreteTypes*: seq[PType]
+    genericParamsCount*: int   # for terrible reasons `concreteTypes` contains all the types,
+                               # so we need to know how many generic params there were
+                               # this is not serialized for IC and that is fine.
     compilesId*: CompilesId
 
   PInstantiation* = ref TInstantiation
@@ -682,6 +688,7 @@ type
     symbols*: TStrTable
     parent*: PScope
     allowPrivateAccess*: seq[PSym] #  # enable access to private fields
+    optionStackLen*: int
 
   PScope* = ref TScope
 
@@ -706,7 +713,7 @@ type
     when defined(nimsuggest):
       endInfo*: TLineInfo
       hasUserSpecifiedType*: bool  # used for determining whether to display inlay type hints
-    owner*: PSym
+    ownerField: PSym
     flags*: TSymFlags
     ast*: PNode               # syntax tree of proc, iterator, etc.:
                               # the whole proc including header; this is used
@@ -775,7 +782,7 @@ type
                               # formal param list
                               # for concepts, the concept body
                               # else: unused
-    owner*: PSym              # the 'owner' of the type
+    ownerField: PSym          # the 'owner' of the type
     sym*: PSym                # types have the sym associated with them
                               # it is used for converting types to strings
     size*: BiggestInt         # the size of the type in bytes
@@ -793,6 +800,15 @@ type
 
   TPairSeq* = seq[TPair]
 
+  TIdPair*[T] = object
+    key*: ItemId
+    val*: T
+
+  TIdPairSeq*[T] = seq[TIdPair[T]]
+  TIdTable*[T] = object
+    counter*: int
+    data*: TIdPairSeq[T]
+
   TNodePair* = object
     h*: Hash                 # because it is expensive to compute!
     key*: PNode
@@ -803,6 +819,7 @@ type
                                 # nodes are compared by structure!
     counter*: int
     data*: TNodePairSeq
+    ignoreTypes*: bool
 
   TObjectSeq* = seq[RootRef]
   TObjectSet* = object
@@ -813,6 +830,15 @@ type
     impUnknown, impNo, impYes
 
 template nodeId(n: PNode): int = cast[int](n)
+
+template typ*(n: PNode): PType =
+  n.typField
+
+proc owner*(s: PSym|PType): PSym {.inline.} =
+  result = s.ownerField
+
+proc setOwner*(s: PSym|PType, owner: PSym) {.inline.} =
+  s.ownerField = owner
 
 type Gconfig = object
   # we put comments in a side channel to avoid increasing `sizeof(TNode)`, which
@@ -922,16 +948,17 @@ proc getPIdent*(a: PNode): PIdent {.inline.} =
   case a.kind
   of nkSym: a.sym.name
   of nkIdent: a.ident
-  of nkOpenSymChoice, nkClosedSymChoice: a.sons[0].sym.name
-  of nkOpenSym: getPIdent(a.sons[0])
+  of nkOpenSymChoice, nkClosedSymChoice, nkOpenSym: a.sons[0].sym.name
   else: nil
 
 const
   moduleShift = when defined(cpu32): 20 else: 24
 
-template id*(a: PType | PSym): int =
+template toId*(a: ItemId): int =
   let x = a
-  (x.itemId.module.int shl moduleShift) + x.itemId.item.int
+  (x.module.int shl moduleShift) + x.item.int
+
+template id*(a: PType | PSym): int = toId(a.itemId)
 
 type
   IdGenerator* = ref object # unfortunately, we really need the 'shared mutable' aspect here.
@@ -1057,8 +1084,11 @@ proc getDeclPragma*(n: PNode): PNode =
 
 proc extractPragma*(s: PSym): PNode =
   ## gets the pragma node of routine/type/var/let/const symbol `s`
-  if s.kind in routineKinds:
-    result = s.ast[pragmasPos]
+  if s.kind in routineKinds: # bug #24167
+    if s.ast[pragmasPos] != nil and s.ast[pragmasPos].kind != nkEmpty:
+      result = s.ast[pragmasPos]
+    else:
+      result = nil
   elif s.kind in {skType, skVar, skLet, skConst}:
     if s.ast != nil and s.ast.len > 0:
       if s.ast[0].kind == nkPragmaExpr and s.ast[0].len > 1:
@@ -1129,7 +1159,7 @@ proc newNodeIT*(kind: TNodeKind, info: TLineInfo, typ: PType): PNode =
   ## new node with line info, type, and no children
   result = newNode(kind)
   result.info = info
-  result.typ = typ
+  result.typ() = typ
 
 proc newNode*(kind: TNodeKind, info: TLineInfo): PNode =
   ## new node with line info, no type, and no children
@@ -1194,7 +1224,7 @@ proc newSym*(symKind: TSymKind, name: PIdent, idgen: IdGenerator; owner: PSym,
   assert not name.isNil
   let id = nextSymId idgen
   result = PSym(name: name, kind: symKind, flags: {}, info: info, itemId: id,
-                options: options, owner: owner, offset: defaultOffset,
+                options: options, ownerField: owner, offset: defaultOffset,
                 disamb: getOrDefault(idgen.disambTable, name).int32)
   idgen.disambTable.inc name
   when false:
@@ -1255,6 +1285,11 @@ proc copyStrTable*(dest: var TStrTable, src: TStrTable) =
   setLen(dest.data, src.data.len)
   for i in 0..high(src.data): dest.data[i] = src.data[i]
 
+proc copyIdTable*[T](dest: var TIdTable[T], src: TIdTable[T]) =
+  dest.counter = src.counter
+  newSeq(dest.data, src.data.len)
+  for i in 0..high(src.data): dest.data[i] = src.data[i]
+
 proc copyObjectSet*(dest: var TObjectSet, src: TObjectSet) =
   dest.counter = src.counter
   setLen(dest.data, src.data.len)
@@ -1275,13 +1310,13 @@ proc newIdentNode*(ident: PIdent, info: TLineInfo): PNode =
 proc newSymNode*(sym: PSym): PNode =
   result = newNode(nkSym)
   result.sym = sym
-  result.typ = sym.typ
+  result.typ() = sym.typ
   result.info = sym.info
 
 proc newSymNode*(sym: PSym, info: TLineInfo): PNode =
   result = newNode(nkSym)
   result.sym = sym
-  result.typ = sym.typ
+  result.typ() = sym.typ
   result.info = info
 
 proc newOpenSym*(n: PNode): PNode {.inline.} =
@@ -1361,7 +1396,7 @@ proc newIntTypeNode*(intVal: BiggestInt, typ: PType): PNode =
     result = newNode(nkIntLit)
   else: raiseAssert $kind
   result.intVal = intVal
-  result.typ = typ
+  result.typ() = typ
 
 proc newIntTypeNode*(intVal: Int128, typ: PType): PNode =
   # XXX: introduce range check
@@ -1500,7 +1535,7 @@ iterator signature*(t: PType): PType =
 
 proc newType*(kind: TTypeKind; idgen: IdGenerator; owner: PSym; son: sink PType = nil): PType =
   let id = nextTypeId idgen
-  result = PType(kind: kind, owner: owner, size: defaultSize,
+  result = PType(kind: kind, ownerField: owner, size: defaultSize,
                  align: defaultAlignment, itemId: id,
                  uniqueId: id, sons: @[])
   if son != nil: result.sons.add son
@@ -1511,6 +1546,7 @@ proc newType*(kind: TTypeKind; idgen: IdGenerator; owner: PSym; son: sink PType 
 
 proc setSons*(dest: PType; sons: sink seq[PType]) {.inline.} = dest.sons = sons
 proc setSon*(dest: PType; son: sink PType) {.inline.} = dest.sons = @[son]
+proc setSonsLen*(dest: PType; len: int) {.inline.} = setLen(dest.sons, len)
 
 proc mergeLoc(a: var TLoc, b: TLoc) =
   if a.k == low(typeof(a.k)): a.k = b.k
@@ -1554,7 +1590,7 @@ proc copyType*(t: PType, idgen: IdGenerator, owner: PSym): PType =
   result.sym = t.sym          # backend-info should not be copied
 
 proc exactReplica*(t: PType): PType =
-  result = PType(kind: t.kind, owner: t.owner, size: defaultSize,
+  result = PType(kind: t.kind, ownerField: t.owner, size: defaultSize,
                  align: defaultAlignment, itemId: t.itemId,
                  uniqueId: t.uniqueId)
   assignType(result, t)
@@ -1592,12 +1628,22 @@ proc initStrTable*(): TStrTable =
   result = TStrTable(counter: 0)
   newSeq(result.data, StartSize)
 
+proc initIdTable*[T](): TIdTable[T] =
+  result = TIdTable[T](counter: 0)
+  newSeq(result.data, StartSize)
+
+proc resetIdTable*[T](x: var TIdTable[T]) =
+  x.counter = 0
+  # clear and set to old initial size:
+  setLen(x.data, 0)
+  setLen(x.data, StartSize)
+
 proc initObjectSet*(): TObjectSet =
   result = TObjectSet(counter: 0)
   newSeq(result.data, StartSize)
 
-proc initNodeTable*(): TNodeTable =
-  result = TNodeTable(counter: 0)
+proc initNodeTable*(ignoreTypes=false): TNodeTable =
+  result = TNodeTable(counter: 0, ignoreTypes: ignoreTypes)
   newSeq(result.data, StartSize)
 
 proc skipTypes*(t: PType, kinds: TTypeKinds; maxIters: int): PType =
@@ -1632,7 +1678,7 @@ proc propagateToOwner*(owner, elem: PType; propagateHasAsgn = true) =
   if mask != {} and propagateHasAsgn:
     let o2 = owner.skipTypes({tyGenericInst, tyAlias, tySink})
     if o2.kind in {tyTuple, tyObject, tyArray,
-                   tySequence, tySet, tyDistinct}:
+                   tySequence, tyString, tySet, tyDistinct}:
       o2.flags.incl mask
       owner.flags.incl mask
 
@@ -1662,7 +1708,7 @@ proc copyNode*(src: PNode): PNode =
     return nil
   result = newNode(src.kind)
   result.info = src.info
-  result.typ = src.typ
+  result.typ() = src.typ
   result.flags = src.flags * PersistentNodeFlags
   result.comment = src.comment
   when defined(useNodeIds):
@@ -1680,7 +1726,7 @@ proc copyNode*(src: PNode): PNode =
 
 template transitionNodeKindCommon(k: TNodeKind) =
   let obj {.inject.} = n[]
-  n[] = TNode(kind: k, typ: obj.typ, info: obj.info, flags: obj.flags)
+  n[] = TNode(kind: k, typField: n.typ, info: obj.info, flags: obj.flags)
   # n.comment = obj.comment # shouldn't be needed, the address doesnt' change
   when defined(useNodeIds):
     n.id = obj.id
@@ -1703,7 +1749,7 @@ proc transitionNoneToSym*(n: PNode) =
 template transitionSymKindCommon*(k: TSymKind) =
   let obj {.inject.} = s[]
   s[] = TSym(kind: k, itemId: obj.itemId, magic: obj.magic, typ: obj.typ, name: obj.name,
-             info: obj.info, owner: obj.owner, flags: obj.flags, ast: obj.ast,
+             info: obj.info, ownerField: obj.ownerField, flags: obj.flags, ast: obj.ast,
              options: obj.options, position: obj.position, offset: obj.offset,
              loc: obj.loc, annex: obj.annex, constraint: obj.constraint)
   when hasFFI:
@@ -1731,7 +1777,7 @@ template copyNodeImpl(dst, src, processSonsStmt) =
   dst.info = src.info
   when defined(nimsuggest):
     result.endInfo = src.endInfo
-  dst.typ = src.typ
+  dst.typ() = src.typ
   dst.flags = src.flags * PersistentNodeFlags
   dst.comment = src.comment
   when defined(useNodeIds):
@@ -2074,14 +2120,16 @@ proc canRaise*(fn: PNode): bool =
     result = false
   elif fn.kind == nkSym and fn.sym.magic == mEcho:
     result = true
-  else:
+  elif fn.typ != nil and fn.typ.kind == tyProc and fn.typ.n != nil:
     # TODO check for n having sons? or just return false for now if not
-    if fn.typ != nil and fn.typ.n != nil and fn.typ.n[0].kind == nkSym:
+    if fn.typ.n[0].kind == nkSym:
       result = false
     else:
-      result = fn.typ != nil and fn.typ.n != nil and ((fn.typ.n[0].len < effectListLen) or
+      result = ((fn.typ.n[0].len < effectListLen) or
         (fn.typ.n[0][exceptionEffects] != nil and
         fn.typ.n[0][exceptionEffects].safeLen > 0))
+  else:
+    result = false
 
 proc toHumanStrImpl[T](kind: T, num: static int): string =
   result = $kind
@@ -2118,14 +2166,8 @@ proc isTrue*(n: PNode): bool =
     n.kind == nkIntLit and n.intVal != 0
 
 type
-  TypeMapping* = Table[ItemId, PType]
-  SymMapping* = Table[ItemId, PSym]
+  TypeMapping* = TIdTable[PType]
+  SymMapping* = TIdTable[PSym]
 
-template idTableGet*(tab: typed; key: PSym | PType): untyped = tab.getOrDefault(key.itemId)
-template idTablePut*(tab: typed; key, val: PSym | PType) = tab[key.itemId] = val
-
-template initSymMapping*(): Table[ItemId, PSym] = initTable[ItemId, PSym]()
-template initTypeMapping*(): Table[ItemId, PType] = initTable[ItemId, PType]()
-
-template resetIdTable*(tab: Table[ItemId, PSym]) = tab.clear()
-template resetIdTable*(tab: Table[ItemId, PType]) = tab.clear()
+template initSymMapping*(): SymMapping = initIdTable[PSym]()
+template initTypeMapping*(): TypeMapping = initIdTable[PType]()

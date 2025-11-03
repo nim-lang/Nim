@@ -27,14 +27,14 @@ outputs = [
   'seq(3, 3) = {1, 2, 3}',
   'seq(3, 3) = {"one", "two", "three"}',
   'Table(3, 64) = {[4] = "four", [5] = "five", [6] = "six"}',
-  'Table(3, 8) = {["two"] = 2, ["three"] = 3, ["one"] = 1}',
+  'Table(3, 8) = {["three"] = 3, ["one"] = 1, ["two"] = 2}',
   '{a = 1, b = "some string"}',
   '("hello", 42)'
 ]
 
-argRegex = re.compile("^.* = (?:No suitable Nim \$ operator found for type: \w+\s*)*(.*)$")
+argRegex = re.compile(r"^.* = (?:No suitable Nim \$ operator found for type: \w+\s*)*(.*)$")
 # Remove this error message which can pop up
-noSuitableRegex = re.compile("(No suitable Nim \$ operator found for type: \w+\s*)")
+noSuitableRegex = re.compile(r"(No suitable Nim \$ operator found for type: \w+\s*)")
 
 for i, expected in enumerate(outputs):
   gdb.write(f"\x1b[38;5;105m{i+1}) expecting: {expected}: \x1b[0m", gdb.STDLOG)
@@ -46,11 +46,11 @@ for i, expected in enumerate(outputs):
   if i == 6:
     # myArray is passed as pointer to int to myDebug. I look up myArray up in the stack
     gdb.execute("up")
-    raw = gdb.parse_and_eval("myArray")    
+    raw = gdb.parse_and_eval("myArray_1")
   elif i == 9:
     # myOtherArray is passed as pointer to int to myDebug. I look up myOtherArray up in the stack
     gdb.execute("up")
-    raw = gdb.parse_and_eval("myOtherArray")
+    raw = gdb.parse_and_eval("myOtherArray_1")
   else:
     rawArg = re.sub(noSuitableRegex, "", gdb.execute("info args", to_string = True))
     raw = rawArg.split("=", 1)[-1].strip()

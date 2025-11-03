@@ -1,7 +1,20 @@
 import gdb
+import gdb.types
 import re
 import sys
 import traceback
+
+# Add compatibility for older GDB versions
+if not hasattr(gdb, 'SYMBOL_FUNCTION_DOMAIN'):
+    gdb.SYMBOL_FUNCTION_DOMAIN = 0  # This is the value used in newer GDB versions
+
+# Configure demangling for Itanium C++ ABI (which Nim uses)
+try:
+    gdb.execute("set demangle-style gnu-v3")  # GNU v3 style handles Itanium mangling
+    gdb.execute("set print asm-demangle on")
+    gdb.execute("set print demangle on")
+except Exception as e:
+    gdb.write(f"Warning: Could not configure demangling: {str(e)}\n", gdb.STDERR)
 
 # some feedback that the nim runtime support is loading, isn't a bad
 # thing at all.
@@ -69,12 +82,12 @@ class NimTypeRecognizer:
   type_map_static = {
     'NI': 'system.int',  'NI8': 'int8', 'NI16': 'int16',  'NI32': 'int32',
     'NI64': 'int64',
-    
+
     'NU': 'uint', 'NU8': 'uint8','NU16': 'uint16', 'NU32': 'uint32',
     'NU64': 'uint64',
-    
+
     'NF': 'float', 'NF32': 'float32', 'NF64': 'float64',
-    
+
     'NIM_BOOL': 'bool',
 
     'NIM_CHAR': 'char', 'NCSTRING': 'cstring', 'NimStringDesc': 'string', 'NimStringV2': 'string'
@@ -151,8 +164,8 @@ class DollarPrintFunction (gdb.Function):
   "Nim's equivalent of $ operator as a gdb function, available in expressions `print $dollar(myvalue)"
 
   dollar_functions = re.findall(
-    '(?:NimStringDesc \*|NimStringV2)\s?(dollar__[A-z0-9_]+?)\(([^,)]*)\);',
-    gdb.execute("info functions dollar__", True, True)
+    r'(?:NimStringDesc \*|NimStringV2)\s?([A-z0-9_]+?dollar_[A-z0-9_]+?)\(([^,)]*)\);',
+    gdb.execute("info functions dollar_", True, True)
   )
 
   def __init__ (self):
@@ -168,11 +181,11 @@ class DollarPrintFunction (gdb.Function):
       # this way of overload resolution cannot deal with type aliases,
       # therefore it won't find all overloads.
       if arg_typ == argTypeName:
-        func_value = gdb.lookup_global_symbol(func, gdb.SYMBOL_FUNCTIONS_DOMAIN).value()
+        func_value = gdb.lookup_global_symbol(func, gdb.SYMBOL_FUNCTION_DOMAIN).value()
         return func_value(arg)
 
       elif arg_typ == argTypeName + " *":
-        func_value = gdb.lookup_global_symbol(func, gdb.SYMBOL_FUNCTIONS_DOMAIN).value()
+        func_value = gdb.lookup_global_symbol(func, gdb.SYMBOL_FUNCTION_DOMAIN).value()
         return func_value(arg.address)
 
     if not ignore_errors:
@@ -387,7 +400,7 @@ def enumNti(typeNimName, idString):
 
 class NimEnumPrinter:
   pattern = re.compile(r'^tyEnum_([A-Za-z0-9]+)__([A-Za-z0-9]*)$')
-  enumReprProc = gdb.lookup_global_symbol("reprEnum", gdb.SYMBOL_FUNCTIONS_DOMAIN)
+  enumReprProc = gdb.lookup_global_symbol("reprEnum", gdb.SYMBOL_FUNCTION_DOMAIN)
 
   def __init__(self, val):
     self.val = val
@@ -555,7 +568,7 @@ class NimSeqPrinter:
         except RuntimeError:
           inaccessible = True
           yield "data[{0}]".format(i), "inaccessible"
-      
+
 ################################################################################
 
 class NimArrayPrinter:
@@ -677,7 +690,7 @@ def makematcher(klass):
   return matcher
 
 def register_nim_pretty_printers_for_object(objfile):
-  nimMainSym = gdb.lookup_global_symbol("NimMain", gdb.SYMBOL_FUNCTIONS_DOMAIN)
+  nimMainSym = gdb.lookup_global_symbol("NimMain", gdb.SYMBOL_FUNCTION_DOMAIN)
   if nimMainSym and nimMainSym.symtab.objfile == objfile:
     print("set Nim pretty printers for ", objfile.filename)
 

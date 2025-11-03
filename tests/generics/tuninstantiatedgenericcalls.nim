@@ -294,10 +294,263 @@ block: # issue #22647
   var x: b[4]
   x.p()
 
-when false: # issue #22342, type section version of #22607
+block: # issue #1969
+  type ZeroGenerator = object
+  proc next(g: ZeroGenerator): int = 0
+  # This compiles.
+  type TripleOfInts = tuple
+    a, b, c: typeof(new(ZeroGenerator)[].next)
+  # This raises a compiler error before it's even instantiated.
+  # The `new` proc can't be resolved because `Generator` is not defined.
+  type TripleLike[Generator] = tuple
+    a, b, c: typeof(new(Generator)[].next)
+
+import std/atomics
+
+block: # issue #12720
+  const CacheLineSize = 128
+  type
+    Enqueueable = concept x, type T
+      x is ptr
+      x.next is Atomic[pointer]
+    MyChannel[T: Enqueueable] = object
+      pad: array[CacheLineSize - sizeof(default(T)[]), byte]
+      dummy: typeof(default(T)[])
+
+block: # issue #12714
+  type
+    Enqueueable = concept x, type T
+      x is ptr
+      x.next is Atomic[pointer]
+    MyChannel[T: Enqueueable] = object
+      dummy: type(default(T)[])
+
+block: # issue #24044
+  type ArrayBuf[N: static int, T = byte] = object
+    buf: array[N, T]
+  template maxLen(T: type): int =
+    sizeof(T) * 2
+  type MyBuf[I] = ArrayBuf[maxLen(I)]
+  var v: MyBuf[int]
+
+block: # issue #15959
+  proc my[T](a: T): typeof(a[0]) = discard
+  proc my2[T](a: T): array[sizeof(a[0]), T] = discard
+  proc byLent2[T](a: T): lent type(a[0]) = a[0] # Error: type mismatch: got <T, int literal(0)>
+  proc byLent3[T](a: T): lent typeof(a[0]) = a[0] # ditto
+  proc byLent4[T](a: T): lent[type(a[0])] = a[0] # Error: no generic parameters allowed for lent
+  var x = @[1, 2, 3]
+  doAssert my(x) is int
+  doAssert my2(x) is array[sizeof(int), seq[int]]
+  doAssert byLent2(x) == 1
+  doAssert byLent2(x) is lent int
+  doAssert byLent3(x) == 1
+  doAssert byLent3(x) is lent int
+  doAssert byLent4(x) == 1
+  doAssert byLent4(x) is lent int
+  proc fn[U](a: U): auto = a
+  proc my3[T](a: T, b: typeof(fn(a))) = discard
+  my3(x, x)
+  doAssert not compiles(my3(x, x[0]))
+
+block: # issue #14877
+  proc fn[T](a: T, index: int): typeof(a.x) = a.x # ok
+  proc fn2(a: seq[int], index: int): typeof(a[0]) = a[index] # ok
+  proc fn3[T](a: T, index: int): typeof(a[0]) = a[index] # Error: type mismatch: got <T, int literal(0)>
+
+block: # issue #22342, type section version of #22607
   type GenAlias[isInt: static bool] = (
     when isInt:
       int
     else:
       float
   )
+  doAssert GenAlias[true] is int
+  doAssert GenAlias[false] is float
+  proc foo(T: static bool): GenAlias[T] = discard
+  doAssert foo(true) is int
+  doAssert foo(false) is float
+  proc foo[T: static bool](v: var GenAlias[T]) =
+    v += 1
+  var x: int
+  foo[true](x)
+  doAssert not compiles(foo[false](x))
+  foo[true](x)
+  doAssert x == 2
+  var y: float
+  foo[false](y)
+  doAssert not compiles(foo[true](y))
+  foo[false](y)
+  doAssert y == 2
+
+block: # `when`, test no constant semchecks
+  type Foo[T] = (
+    when false:
+      {.error: "bad".}
+    elif defined(neverDefined):
+      {.error: "bad 2".}
+    else:
+      T
+  )
+  var x: Foo[int]
+  type Bar[T] = (
+    when true:
+      T
+    elif defined(js):
+      {.error: "bad".}
+    else:
+      {.error: "bad 2".}
+  )
+  var y: Bar[int]
+
+block: # weird regression
+  type
+    Foo[T] = distinct int
+    Bar[T, U] = distinct int
+  proc foo[T, U](x: static Foo[T], y: static Bar[T, U]): Foo[T] =
+    # signature gives:
+    # Error: cannot instantiate Bar
+    # got: <typedesc[T], U>
+    # but expected: <T, U>
+    x
+  doAssert foo(Foo[int](1), Bar[int, int](2)).int == 1
+
+block: # issue #24090
+  type M[V] = object
+  template y[V](N: type M, v: V): M[V] = default(M[V])
+  proc d(x: int | int, f: M[int] = M.y(0)) = discard
+  d(0, M.y(0))
+  type Foo[T] = object
+    x: typeof(M.y(default(T)))
+  var a: Foo[int]
+  doAssert a.x is M[int]
+  var b: Foo[float]
+  doAssert b.x is M[float]
+  # related to #24091:
+  doAssert not (compiles do:
+    type Bar[T] = object
+      # ideally fails here immediately since the inside of `typeof` does not
+      # depend on an unresolved parameter
+      # but if typechecking gets too lazy, then we need to instantiate to error
+      x: typeof(M()))
+  doAssert not (compiles do:
+    type Bar[T] = object
+      # again, ideally fails here immediately
+      x: typeof(default(M)))
+  proc foo[T: M](x: T = default(T)) = discard x
+  foo[M[int]]()
+  doAssert not compiles(foo())
+
+block: # above but encountered by sigmatch using replaceTypeVarsN
+  type Opt[T] = object
+    x: T
+  proc none[T](x: type Opt, y: typedesc[T]): Opt[T] = discard
+  proc foo[T](x: T, a = Opt.none(int)) = discard
+  foo(1, a = Opt.none(int))
+  foo(1)
+
+block: # real version of above
+  type Opt[T] = object
+    x: T
+  template none(x: type Opt, T: type): Opt[T] = Opt[T]()
+  proc foo[T](x: T, a = Opt.none(int)) = discard
+  foo(1, a = Opt.none(int))
+  foo(1)
+
+block: # issue #20880
+  type
+    Child[n: static int] = object
+      data: array[n, int]
+    Parent[n: static int] = object
+      child: Child[3*n]
+  const n = 3
+  doAssert $(typeof Parent[n*3]()) == "Parent[9]"
+  doAssert $(typeof Parent[1]().child) == "Child[3]"
+  doAssert Parent[1]().child.data.len == 3
+
+{.experimental: "dynamicBindSym".}
+block: # issue #16774
+  type SecretWord = distinct uint64
+  const WordBitWidth = 8 * sizeof(uint64)
+  func wordsRequired(bits: int): int {.compileTime.} =
+    ## Compute the number of limbs required
+    # from the **announced** bit length
+    (bits + WordBitWidth - 1) div WordBitWidth
+  type
+    Curve = enum BLS12_381
+    BigInt[bits: static int] = object
+      limbs: array[bits.wordsRequired, SecretWord]
+  const BLS12_381_Modulus = default(BigInt[381])
+  macro Mod(C: static Curve): untyped =
+    ## Get the Modulus associated to a curve
+    result = bindSym($C & "_Modulus")
+  macro getCurveBitwidth(C: static Curve): untyped =
+    result = nnkDotExpr.newTree(
+      getAST(Mod(C)),
+      ident"bits"
+    )
+  type Fp[C: static Curve] = object
+    ## Finite Fields / Modular arithmetic
+    ## modulo the curve modulus
+    mres: BigInt[getCurveBitwidth(C)]
+  var x: Fp[BLS12_381]
+  doAssert x.mres.limbs.len == wordsRequired(getCurveBitWidth(BLS12_381))
+  # minimized, as if we haven't tested it already:
+  macro makeIntLit(c: static int): untyped =
+    result = newLit(c)
+  type Test[T: static int] = object
+    myArray: array[makeIntLit(T), int]
+  var y: Test[2]
+  doAssert y.myArray.len == 2
+  var z: Test[4]
+  doAssert z.myArray.len == 4
+
+block: # issue #16175
+  type
+    Thing[D: static uint] = object
+      when D == 0:
+        kid: char
+      else:
+        kid: Thing[D-1]
+  var t2 = Thing[3]()
+  doAssert t2.kid is Thing[2.uint]
+  doAssert t2.kid.kid is Thing[1.uint]
+  doAssert t2.kid.kid.kid is Thing[0.uint]
+  doAssert t2.kid.kid.kid.kid is char
+  var s = Thing[1]()
+  doAssert s.kid is Thing[0.uint]
+  doAssert s.kid.kid is char
+
+block: # issue #23287
+  template emitTupleType(trait: typedesc): untyped =
+    trait
+
+  type
+    Traitor[Traits] = ref object of RootObj ##
+      vtable: emitTupleType(Traits)
+
+  type Generic[X] = object
+
+  proc test2[Traits](val: Traitor[Generic[Traits]]) =
+    static: assert val.vtable is Generic[int]
+
+  proc test[X](val: Traitor[Generic[X]]) = discard
+
+  test2 Traitor[Generic[int]]() # This should error,  but passes
+  test Traitor[Generic[int]]()
+
+block: # issue #20367, example 1
+  template someTemp(T:type):typedesc = T
+  type
+    Foo[T2] = someTemp(T2)
+    Bar[T1] = Foo[T1]
+  var u:Foo[float] # works
+  var v:Bar[float] # Error: invalid type: 'None' in this context: 'Bar[system.float]' for var
+
+block: # issue #20367, example 2
+  template someOtherTemp(p:static[int]):untyped = array[p,int]
+  type
+    Foo2[n:static[int]] = someOtherTemp(n)
+    Bar2[m:static[int]] = Foo2[m]
+  var x:Foo2[1] # works
+  var y:Bar2[1] # Error: undeclared identifier: 'n'

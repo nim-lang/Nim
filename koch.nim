@@ -1,23 +1,28 @@
 #
 #
 #         Maintenance program for Nim
-#        (c) Copyright 2017 Andreas Rumpf
+#        (c) Copyright 2024 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
-#    See doc/koch.txt for documentation.
+#    See doc/koch.md for documentation.
 #
 
 const
   # examples of possible values for repos: Head, ea82b54
-  NimbleStableCommit = "db8245a994f4f7b162f11848d38d7d1862686954" # 0.16.0 (+1 fix in nimble dump)
-  AtlasStableCommit = "5faec3e9a33afe99a7d22377dd1b45a5391f5504"
-  ChecksumsStableCommit = "bd9bf4eaea124bf8d01e08f92ac1b14c6879d8d3"
+  NimbleStableCommit = "9207e8b2bbdf66b5a4d1020214cff44d2d30df92"    # 0.20.1
+  AtlasStableCommit = "2aa62121b40d580aa2fb27920a37b938d36c5f57"     # 0.9.4
+  ChecksumsStableCommit = "0b8e46379c5bc1bf73d8b3011908389c60fb9b98" # 2.0.1
   SatStableCommit = "faf1617f44d7632ee9601ebc13887644925dcc01"
 
+  NimonyStableCommit = "3660f375dc0ec25da3401d3eb28603864340dc6d" # unversioned \
+    # Note that Nimony uses Nim as a git submodule but we don't want to install
+    # Nimony's dependency to Nim as we are Nim. So a `git clone` without --recursive
+    # is **required** here.
+
   # examples of possible values for fusion: #head, #ea82b54, 1.2.3
-  FusionStableHash = "#372ee4313827ef9f2ea388840f7d6b46c2b1b014"
+  FusionStableHash = "#562467452b32cb7a97410ea177f083e6d8405734"
   HeadHash = "#head"
 when not defined(windows):
   const
@@ -52,7 +57,7 @@ const
 +-----------------------------------------------------------------+
 |         Maintenance program for Nim                             |
 |             Version $1|
-|             (c) 2017 Andreas Rumpf                              |
+|             (c) 2024 Andreas Rumpf                              |
 +-----------------------------------------------------------------+
 Build time: $2, $3
 
@@ -77,6 +82,7 @@ Possible Commands:
                            doesn't require network connectivity
   nimble                   builds the Nimble tool
   atlas                    builds the Atlas tool
+  checksums                installs the checksums dependency
   fusion                   installs fusion via Nimble
 
 Boot options:
@@ -158,25 +164,32 @@ proc bundleNimbleExe(latest: bool, args: string) =
   let commit = if latest: "HEAD" else: NimbleStableCommit
   cloneDependency(distDir, "https://github.com/nim-lang/nimble.git",
                   commit = commit, allowBundled = true)
-  cloneDependency(distDir / "nimble" / distDir, "https://github.com/nim-lang/checksums.git",
-                commit = ChecksumsStableCommit, allowBundled = true) # or copy it from dist?
-  cloneDependency(distDir / "nimble" / distDir, "https://github.com/nim-lang/sat.git",
-                commit = SatStableCommit, allowBundled = true)
-  # installer.ini expects it under $nim/bin
+  updateSubmodules(distDir / "nimble", allowBundled = true)
   nimCompile("dist/nimble/src/nimble.nim",
-             options = "-d:release -d:nimNimbleBootstrap --noNimblePath " & args)
+             options = "-d:release --noNimblePath " & args)
+  const zippyTests = "dist/nimble/vendor/zippy/tests"
+  if dirExists(zippyTests):
+    removeDir(zippyTests)
 
 proc bundleAtlasExe(latest: bool, args: string) =
   let commit = if latest: "HEAD" else: AtlasStableCommit
   cloneDependency(distDir, "https://github.com/nim-lang/atlas.git",
                   commit = commit, allowBundled = true)
   cloneDependency(distDir / "atlas" / distDir, "https://github.com/nim-lang/sat.git",
-                commit = SatStableCommit, allowBundled = true)
+                  commit = SatStableCommit, allowBundled = true)
   # installer.ini expects it under $nim/bin
   nimCompile("dist/atlas/src/atlas.nim",
              options = "-d:release --noNimblePath -d:nimAtlasBootstrap " & args)
 
+proc bundleChecksums(latest: bool) =
+  let checksumsCommit = if latest: "HEAD" else: ChecksumsStableCommit
+  cloneDependency(distDir, "https://github.com/nim-lang/checksums.git", checksumsCommit, allowBundled = true)
+
+  let nimonyCommit = if latest: "HEAD" else: NimonyStableCommit
+  cloneDependency(distDir, "https://github.com/nim-lang/nimony.git", nimonyCommit, allowBundled = true)
+
 proc bundleNimsuggest(args: string) =
+  bundleChecksums(false)
   nimCompileFold("Compile nimsuggest", "nimsuggest/nimsuggest.nim",
                  options = "-d:danger " & args)
 
@@ -204,10 +217,6 @@ proc bundleWinTools(args: string) =
     # not yet a tool worth including
     nimCompile(r"tools\downloader.nim",
                options = r"--cc:vcc --app:gui -d:ssl --noNimblePath --path:..\ui " & args)
-
-proc bundleChecksums(latest: bool) =
-  let commit = if latest: "HEAD" else: ChecksumsStableCommit
-  cloneDependency(distDir, "https://github.com/nim-lang/checksums.git", commit, allowBundled = true)
 
 proc zip(latest: bool; args: string) =
   bundleChecksums(latest)
@@ -344,8 +353,7 @@ proc boot(args: string, skipIntegrityCheck: bool) =
   let smartNimcache = (if "release" in args or "danger" in args: "nimcache/r_" else: "nimcache/d_") &
                       hostOS & "_" & hostCPU
 
-  if not dirExists("dist/checksums"):
-    bundleChecksums(false)
+  bundleChecksums(false)
 
   let usingLibFFI = "nimHasLibFFI" in args
   if usingLibFFI and not dirExists("dist/libffi"):
@@ -508,8 +516,7 @@ proc temp(args: string) =
       result[1].add " " & quoteShell(args[i])
       inc i
 
-  if not dirExists("dist/checksums"):
-    bundleChecksums(false)
+  bundleChecksums(false)
 
   let d = getAppDir()
   let output = d / "compiler" / "nim".exe

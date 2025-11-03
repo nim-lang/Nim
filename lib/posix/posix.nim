@@ -215,6 +215,11 @@ when defined(osx):              # 2001 POSIX evidently does not concern Apple
     # present size & has no good reason to call this unless it is growing.
     if fcntl(a1, F_PREALLOCATE, fst.addr) != cint(-1): ftruncate(a1, a2 + a3)
     else: cint(-1)
+elif defined(openbsd):
+  proc posix_fallocate*(a1: cint, a2, a3: Off): cint =
+    # above assumption: "has no good reason to call this unless it is growing."
+    # man ftruncate "it will be extended as if by writing bytes with the value zero."
+    return ftruncate(a1, a2 + a3)
 else:
   proc posix_fallocate*(a1: cint, a2, a3: Off): cint {.
     importc, header: "<fcntl.h>".}
@@ -503,7 +508,7 @@ proc pthread_spin_unlock*(a1: ptr Pthread_spinlock): cint {.
 proc pthread_testcancel*() {.importc, header: "<pthread.h>".}
 
 
-proc exitnow*(code: int) {.importc: "_exit", header: "<unistd.h>".}
+proc exitnow*(code: cint) {.importc: "_exit", header: "<unistd.h>", noreturn.}
 proc access*(a1: cstring, a2: cint): cint {.importc, header: "<unistd.h>".}
 proc alarm*(a1: cint): cint {.importc, header: "<unistd.h>".}
 proc chdir*(a1: cstring): cint {.importc, header: "<unistd.h>".}
@@ -778,8 +783,6 @@ const
 proc getrusage*(who: cint, rusage: ptr Rusage): cint
   {.importc, header: "<sys/resource.h>", discardable.}
 
-proc bsd_signal*(a1: cint, a2: proc (x: pointer) {.noconv.}) {.
-  importc, header: "<signal.h>".}
 proc kill*(a1: Pid, a2: cint): cint {.importc, header: "<signal.h>", sideEffect.}
 proc killpg*(a1: Pid, a2: cint): cint {.importc, header: "<signal.h>", sideEffect.}
 proc pthread_kill*(a1: Pthread, a2: cint): cint {.importc, header: "<signal.h>".}
@@ -801,8 +804,8 @@ proc sighold*(a1: cint): cint {.importc, header: "<signal.h>".}
 proc sigignore*(a1: cint): cint {.importc, header: "<signal.h>".}
 proc siginterrupt*(a1, a2: cint): cint {.importc, header: "<signal.h>".}
 proc sigismember*(a1: var Sigset, a2: cint): cint {.importc, header: "<signal.h>".}
-proc signal*(a1: cint, a2: Sighandler) {.
-  importc, header: "<signal.h>".}
+proc signal*(a1: cint, a2: Sighandler): Sighandler {.
+  importc, discardable, header: "<signal.h>".}
 proc sigpause*(a1: cint): cint {.importc, header: "<signal.h>".}
 proc sigpending*(a1: var Sigset): cint {.importc, header: "<signal.h>".}
 proc sigprocmask*(a1: cint, a2, a3: var Sigset): cint {.
@@ -1095,7 +1098,23 @@ proc setprotoent*(a1: cint) {.importc, header: "<netdb.h>".}
 proc setservent*(a1: cint) {.importc, header: "<netdb.h>".}
 
 when not defined(lwip):
-  proc poll*(a1: ptr TPollfd, a2: Tnfds, a3: int): cint {.
+  # Linux and Haiku emulate SVR4, which used unsigned long.
+  # Meanwhile, BSD derivatives had used unsigned int; we will use this
+  # for the else case, because it is more widely cloned than SVR4's
+  # behavior.
+  # Finally, bionic libc (Android) also uses unsigned int, despite being
+  # a Linux.
+  when defined(linux) and not defined(android) or defined(haiku):
+    type
+      Tnfds* {.importc: "nfds_t", header: "<poll.h>".} = culong
+  elif defined(zephyr):
+    type
+      Tnfds* = distinct cint
+  else:
+    type
+      Tnfds* {.importc: "nfds_t", header: "<poll.h>".} = cuint
+
+  proc poll*(a1: ptr TPollfd, a2: Tnfds, a3: cint): cint {.
     importc, header: "<poll.h>", sideEffect.}
 
 proc realpath*(name, resolved: cstring): cstring {.
@@ -1133,7 +1152,7 @@ proc utimes*(path: cstring, times: ptr array[2, Timeval]): int {.
   ##
   ## Returns zero on success.
   ##
-  ## For more information read http://www.unix.com/man-page/posix/3/utimes/.
+  ## For more information read https://www.unix.com/man-page/posix/3/utimes/.
 
 proc handle_signal(sig: cint, handler: proc (a: cint) {.noconv.}) {.importc: "signal", header: "<signal.h>".}
 

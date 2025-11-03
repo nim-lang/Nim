@@ -62,6 +62,7 @@
 ## validated to the server.
 ##
 ##   ```Nim
+##   import std/[httpclient]
 ##   var client = newHttpClient()
 ##   var data = newMultipartData()
 ##   data["output"] = "soap12"
@@ -79,6 +80,7 @@
 ## it, you can pass your own via the `mimeDb` parameter to avoid this.
 ##
 ##   ```Nim
+##   import std/[httpclient, mimetypes]
 ##   let mimes = newMimetypes()
 ##   var client = newHttpClient()
 ##   var data = newMultipartData()
@@ -160,7 +162,7 @@
 ## Example of setting SSL verification parameters in a new client:
 ##
 ##   ```Nim
-##   import httpclient
+##   import std/[net, httpclient]
 ##   var client = newHttpClient(sslContext=newContext(verifyMode=CVerifyPeer))
 ##   ```
 ##
@@ -218,7 +220,16 @@
 ##   ```Nim
 ##   import std/httpclient
 ##
-##   let myProxy = newProxy("http://myproxy.network", auth="user:password")
+##   let myProxy = newProxy("http://user:password@myproxy.network")
+##   let client = newHttpClient(proxy = myProxy)
+##   ```
+##
+## SOCKS5 proxy with proxy-side DNS resolving:
+##
+##   ```Nim
+##   import std/httpclient
+##
+##   let myProxy = newProxy("socks5h://user:password@myproxy.network")
 ##   let client = newHttpClient(proxy = myProxy)
 ##   ```
 ##
@@ -336,7 +347,6 @@ proc body*(response: AsyncResponse): Future[string] {.async.} =
 type
   Proxy* = ref object
     url*: Uri
-    auth*: string
 
   MultipartEntry = object
     name, content: string
@@ -385,13 +395,30 @@ proc getDefaultSSL(): SslContext =
       result = defaultSslContext
       doAssert result != nil, "failure to initialize the SSL context"
 
-proc newProxy*(url: string; auth = ""): Proxy =
+proc newProxy*(url: Uri): Proxy =
   ## Constructs a new `TProxy` object.
-  result = Proxy(url: parseUri(url), auth: auth)
+  result = Proxy(url: url)
 
-proc newProxy*(url: Uri; auth = ""): Proxy =
+proc newProxy*(url: string): Proxy =
   ## Constructs a new `TProxy` object.
-  result = Proxy(url: url, auth: auth)
+  result = Proxy(url: parseUri(url))
+
+proc newProxy*(url: Uri; auth: string): Proxy {.deprecated: "Provide auth in url instead".} =
+  result = Proxy(url: url)
+  if auth != "":
+    let parts = auth.split(':')
+    if parts.len != 2:
+      raise newException(ValueError, "Invalid auth string")
+    result.url.username = parts[0]
+    result.url.password = parts[1]
+
+proc newProxy*(url: string; auth: string): Proxy {.deprecated: "Provide auth in url instead".} =
+  result = newProxy(parseUri(url), auth)
+
+proc auth*(p: Proxy): string {.deprecated: "Get auth from p.url.username and p.url.password".} =
+  result = ""
+  if p.url.username != "" or p.url.password != "":
+    result = p.url.username & ":" & p.url.password
 
 proc newMultipartData*: MultipartData {.inline.} =
   ## Constructs a new `MultipartData` object.
@@ -401,6 +428,7 @@ proc `$`*(data: MultipartData): string {.since: (1, 1).} =
   ## convert MultipartData to string so it's human readable when echo
   ## see https://github.com/nim-lang/Nim/issues/11863
   const sep = "-".repeat(30)
+  result = ""
   for pos, entry in data.content:
     result.add(sep & center($pos, 3) & sep)
     result.add("\nname=\"" & entry.name & "\"")
@@ -474,7 +502,7 @@ proc addFiles*(p: MultipartData, xs: openArray[tuple[name, file: string]],
   ##   data.addFiles({"uploaded_file": "public/test.html"})
   ##   ```
   for name, file in xs.items:
-    var contentType: string
+    var contentType: string = ""
     let (_, fName, ext) = splitFile(file)
     if ext.len > 0:
       contentType = mimeDb.getMimetype(ext[1..ext.high], "")
@@ -545,7 +573,7 @@ proc generateHeaders(requestUrl: Uri, httpMethod: HttpMethod, headers: HttpHeade
   result = $httpMethod
   result.add ' '
 
-  if proxy.isNil or requestUrl.scheme == "https":
+  if proxy.isNil or (requestUrl.scheme == "https" and proxy.url.scheme == "socks5h"):
     # /path?query
     if not requestUrl.path.startsWith("/"): result.add '/'
     result.add(requestUrl.path)
@@ -572,8 +600,8 @@ proc generateHeaders(requestUrl: Uri, httpMethod: HttpMethod, headers: HttpHeade
     add(result, "Connection: Keep-Alive" & httpNewLine)
 
   # Proxy auth header.
-  if not proxy.isNil and proxy.auth != "":
-    let auth = base64.encode(proxy.auth)
+  if not proxy.isNil and proxy.url.username != "":
+    let auth = base64.encode(proxy.url.username & ":" & proxy.url.password)
     add(result, "Proxy-Authorization: Basic " & auth & httpNewLine)
 
   for key, val in headers:
@@ -686,7 +714,7 @@ proc newAsyncHttpClient*(userAgent = defUserAgent, maxRedirects = 5,
     let exampleHtml = waitFor asyncProc()
     assert "Example Domain" in exampleHtml
     assert "Pizza" notin exampleHtml
-  
+
   new result
   result.headers = headers
   result.userAgent = userAgent
@@ -862,7 +890,7 @@ proc parseResponse(client: HttpClient | AsyncHttpClient,
   while true:
     linei = 0
     when client is HttpClient:
-      line = await client.socket.recvLine(client.timeout)
+      line = client.socket.recvLine(client.timeout)
     else:
       line = await client.socket.recvLine()
     if line == "":
@@ -938,17 +966,75 @@ proc parseResponse(client: HttpClient | AsyncHttpClient,
     when client is AsyncHttpClient:
       result.bodyStream.complete()
 
+proc startSsl(client: HttpClient | AsyncHttpClient, hostname: string) =
+  when defined(ssl):
+    try:
+      client.sslContext.wrapConnectedSocket(
+        client.socket, handshakeAsClient, hostname)
+    except:
+      client.socket.close()
+      raise getCurrentException()
+
+proc socks5hHandshake(client: HttpClient | AsyncHttpClient,
+                      url: Uri) {.multisync.} =
+  var hasAuth = client.proxy.url.username != ""
+  if hasAuth:
+    await client.socket.send("\x05\x02\x00\x02") # Propose auth
+  else:
+    await client.socket.send("\x05\x01\x00") # Connect with no auth
+
+  when client.socket is Socket:
+    var resp = client.socket.recv(2, client.timeout)
+  else:
+    var resp = await client.socket.recv(2)
+
+  if resp == "\x05\x02" and hasAuth:
+    # Perform auth
+    let authStr = "\x01" &
+      char(client.proxy.url.username.len) & client.proxy.url.username &
+      char(client.proxy.url.password.len) & client.proxy.url.password
+    await client.socket.send(authStr)
+    when client.socket is Socket:
+      resp = client.socket.recv(2, client.timeout)
+    else:
+      resp = await client.socket.recv(2)
+    if resp != "\x01\x00":
+      httpError("Proxy authentication failed")
+  elif resp != "\x05\x00":
+    httpError("Unexpected proxy response: " & resp.toHex())
+
+  let port = if url.port != "": parseInt(url.port)
+              elif url.scheme == "http": 80
+              else: 443
+  var p = "  "
+  p[0] = cast[char](port.uint16 shr 8)
+  p[1] = cast[char](port)
+  await client.socket.send("\x05\x01\x00\x03" & url.hostname.len.char & url.hostname & p)
+  when client.socket is Socket:
+    resp = client.socket.recv(10, client.timeout)
+  else:
+    resp = await client.socket.recv(10)
+  if resp.len != 10 or resp[0] != '\x05' or resp[1] != '\x00':
+    httpError("Unexpected proxy response: " & resp.toHex())
+
 proc newConnection(client: HttpClient | AsyncHttpClient,
                    url: Uri) {.multisync.} =
   if client.currentURL.hostname != url.hostname or
       client.currentURL.scheme != url.scheme or
       client.currentURL.port != url.port or
       (not client.connected):
-    # Connect to proxy if specified
-    let connectionUrl =
-      if client.proxy.isNil: url else: client.proxy.url
 
-    let isSsl = connectionUrl.scheme.toLowerAscii() == "https"
+    var isSsl = false
+    var connectionUrl = url
+    if client.proxy.isNil:
+      isSsl = url.scheme.toLowerAscii() == "https"
+    else:
+      connectionUrl = client.proxy.url
+      let proxyScheme = connectionUrl.scheme.toLowerAscii()
+      if proxyScheme == "https":
+        isSsl = true
+      elif proxyScheme == "socks5h":
+        isSsl = url.scheme.toLowerAscii() == "https"
 
     if isSsl and not defined(ssl):
       raise newException(HttpRequestError,
@@ -968,42 +1054,38 @@ proc newConnection(client: HttpClient | AsyncHttpClient,
       else: nativesockets.Port(connectionUrl.port.parseInt)
 
     when client is HttpClient:
-      client.socket = await net.dial(connectionUrl.hostname, port)
+      client.socket = net.dial(connectionUrl.hostname, port)
     elif client is AsyncHttpClient:
       client.socket = await asyncnet.dial(connectionUrl.hostname, port)
     else: {.fatal: "Unsupported client type".}
 
-    when defined(ssl):
-      if isSsl:
-        try:
+    if not client.proxy.isNil and client.proxy.url.scheme.toLowerAscii() == "socks5h":
+      await socks5hHandshake(client, url)
+      if isSsl: startSsl(client, url.hostname)
+    else:
+      if isSsl: startSsl(client, connectionUrl.hostname)
+      # If need to CONNECT through http(s) proxy
+      if url.scheme == "https" and not client.proxy.isNil:
+        when defined(ssl):
+          # Pass only host:port for CONNECT
+          var connectUrl = initUri()
+          connectUrl.hostname = url.hostname
+          connectUrl.port = if url.port != "": url.port else: "443"
+
+          let proxyHeaderString = generateHeaders(connectUrl, HttpConnect,
+              newHttpHeaders(), client.proxy)
+          await client.socket.send(proxyHeaderString)
+          let proxyResp = await parseResponse(client, false)
+
+          if not proxyResp.status.startsWith("200"):
+            raise newException(HttpRequestError,
+                              "The proxy server rejected a CONNECT request, " &
+                              "so a secure connection could not be established.")
           client.sslContext.wrapConnectedSocket(
-            client.socket, handshakeAsClient, connectionUrl.hostname)
-        except:
-          client.socket.close()
-          raise getCurrentException()
-
-    # If need to CONNECT through proxy
-    if url.scheme == "https" and not client.proxy.isNil:
-      when defined(ssl):
-        # Pass only host:port for CONNECT
-        var connectUrl = initUri()
-        connectUrl.hostname = url.hostname
-        connectUrl.port = if url.port != "": url.port else: "443"
-
-        let proxyHeaderString = generateHeaders(connectUrl, HttpConnect,
-            newHttpHeaders(), client.proxy)
-        await client.socket.send(proxyHeaderString)
-        let proxyResp = await parseResponse(client, false)
-
-        if not proxyResp.status.startsWith("200"):
+            client.socket, handshakeAsClient, url.hostname)
+        else:
           raise newException(HttpRequestError,
-                            "The proxy server rejected a CONNECT request, " &
-                            "so a secure connection could not be established.")
-        client.sslContext.wrapConnectedSocket(
-          client.socket, handshakeAsClient, url.hostname)
-      else:
-        raise newException(HttpRequestError,
-        "SSL support is not available. Cannot connect over SSL. Compile with -d:ssl to enable.")
+          "SSL support is not available. Cannot connect over SSL. Compile with -d:ssl to enable.")
 
     # May be connected through proxy but remember actual URL being accessed
     client.currentURL = url
@@ -1032,12 +1114,13 @@ proc format(entry: MultipartEntry, boundary: string): string =
 
 proc format(client: HttpClient | AsyncHttpClient,
             multipart: MultipartData): Future[seq[string]] {.multisync.} =
+  result = @[]
   let bound = getBoundary(multipart)
   client.headers["Content-Type"] = "multipart/form-data; boundary=" & bound
 
   await client.readFileSizes(multipart)
 
-  var length: int64
+  var length: int64 = int64(0)
   for entry in multipart.content:
     result.add(format(entry, bound) & httpNewLine)
     if entry.isFile:
@@ -1080,9 +1163,9 @@ proc requestAux(client: HttpClient | AsyncHttpClient, url: Uri,
 
   var newHeaders: HttpHeaders
 
-  var data: seq[string]
+  var data: seq[string] = @[]
   if multipart != nil and multipart.content.len > 0:
-    # `format` modifies `client.headers`, see 
+    # `format` modifies `client.headers`, see
     # https://github.com/nim-lang/Nim/pull/18208#discussion_r647036979
     data = await client.format(multipart)
     newHeaders = client.headers.override(headers)
@@ -1103,7 +1186,7 @@ proc requestAux(client: HttpClient | AsyncHttpClient, url: Uri,
   await client.socket.send(headerString)
 
   if data.len > 0:
-    var buffer: string
+    var buffer: string = ""
     for i, entry in multipart.content:
       buffer.add data[i]
       if not entry.isFile: continue
@@ -1209,7 +1292,7 @@ proc request*(client: HttpClient | AsyncHttpClient, url: Uri | string,
       redirectBody = body
     else:
       # Unreachable
-      doAssert(false)
+      raiseAssert "unreachable"
 
     # Check if the redirection is to the same domain or a sub-domain (foo.com
     # -> sub.foo.com)
@@ -1315,7 +1398,7 @@ proc downloadFile*(client: HttpClient, url: Uri | string, filename: string) =
   defer:
     client.getBody = true
   let resp = client.get(url)
-  
+
   if resp.code.is4xx or resp.code.is5xx:
     raise newException(HttpRequestError, resp.status)
 
@@ -1330,7 +1413,7 @@ proc downloadFileEx(client: AsyncHttpClient,
   ## Downloads `url` and saves it to `filename`.
   client.getBody = false
   let resp = await client.get(url)
-  
+
   if resp.code.is4xx or resp.code.is5xx:
     raise newException(HttpRequestError, resp.status)
 

@@ -83,6 +83,8 @@ proc getEncodedData(allowedMethods: set[RequestMethod]): string =
   else:
     if methodNone notin allowedMethods:
       cgiError("'REQUEST_METHOD' must be 'POST' or 'GET'")
+    else:
+      result = ""
 
 iterator decodeData*(data: string): tuple[key, value: string] =
   ## Reads and decodes CGI data and yields the (name, value) pairs the
@@ -287,11 +289,14 @@ Content-Type: text/html
 proc writeErrorMessage*(data: string) =
   ## Tries to reset browser state and writes `data` to stdout in
   ## <plaintext> tag.
-  resetForStacktrace()
-  # We use <plaintext> here, instead of escaping, so stacktrace can
-  # be understood by human looking at source.
-  stdout.write("<plaintext>\n")
-  stdout.write(data)
+  try:
+    resetForStacktrace()
+    # We use <plaintext> here, instead of escaping, so stacktrace can
+    # be understood by human looking at source.
+    stdout.write("<plaintext>\n")
+    stdout.write(data)
+  except IOError as exc:
+    discard # Too bad..
 
 proc setStackTraceStdout*() =
   ## Makes Nim output stacktraces to stdout, instead of server log.

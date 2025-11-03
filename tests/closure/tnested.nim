@@ -1,4 +1,5 @@
 discard """
+targets: "c js"
 output: '''
 foo88
 23 24foo 88
@@ -183,14 +184,52 @@ block tclosure2:
 
 import typetraits
 
-proc myDiscard[T](a: T) = discard
+block:
+  proc myDiscard[T](a: T) = discard
 
-proc foo() =
-  let a = 5
-  let f = (proc() =
-             myDiscard (proc() = echo a)
-          )
-  echo name(typeof(f))
+  proc foo() =
+    let a = 5
+    let f = (proc() =
+              myDiscard (proc() = echo a)
+            )
+    echo name(typeof(f))
 
-foo()
+  foo()
+
+
+block:
+  iterator foo: int {.closure.} =
+    yield 1
+    yield 2
+    yield 3
+
+  proc pork =
+    let call = foo
+    for i in call():
+      discard i
+
+    let call2 = foo
+    while not finished(call2):
+      discard call2()
+
+  pork()
+
+# bug #25046
+proc makeiter(v: string): iterator(): string =
+  return iterator(): string =
+    yield v
+
+var flag = ""
+
+var iter = makeiter("test1")
+for c in iter():
+  flag = c
+
+assert flag == "test1"
+
+# loops
+for c in makeiter("test2")():
+  flag = c
+
+assert flag == "test2"
 
