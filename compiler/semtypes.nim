@@ -556,7 +556,7 @@ proc semTuple(c: PContext, n: PNode, prev: PType): PType =
           typ = a[^1].typ
       else:
         fitDefaultNode(c, a[^1], typ)
-        typ = a[^1].typ
+        typ = a[^1].typ.skipIntLit(c.idgen)
     elif a[^2].kind != nkEmpty:
       typ = semTypeNode(c, a[^2], nil)
       if c.graph.config.isDefined("nimPreviewRangeDefault") and typ.skipTypes(abstractInst).kind == tyRange:
@@ -928,7 +928,7 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
           typ = n[^1].typ
       else:
         fitDefaultNode(c, n[^1], typ)
-        typ = n[^1].typ
+        typ = n[^1].typ.skipIntLit(c.idgen)
         propagateToOwner(rectype, typ)
     elif n[^2].kind == nkEmpty:
       localError(c.config, n.info, errTypeExpected)
