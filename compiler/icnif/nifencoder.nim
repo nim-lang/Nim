@@ -1,18 +1,21 @@
-import std / [assertions, sets]
+import std / [assertions, sets, tables]
 import ".." / [ast, idents, lineinfos, msgs, options]
 import "../../dist/nimony/src/lib" / [bitabs, nifstreams, nifcursors, lineinfos]
-import enum2nif, icniftags
+import enum2nif, icniftags, nifbasics
 
 type
   EncodeContext = object
     conf: ConfigRef
+    currentModule: PSym
     decodedSyms: HashSet[ItemId]
     decodedTypes: HashSet[ItemId]
     decodedFileIndices: HashSet[FileIndex]
     dest: TokenBuf
+    moduleToNifSuffix: Table[FileIndex, string] # FileIndex (PSym.position) -> module suffix
 
-proc initEncodeContext(conf: ConfigRef): EncodeContext =
+proc initEncodeContext(conf: ConfigRef; currentModule: PSym): EncodeContext =
   result = EncodeContext(conf: conf,
+                         currentModule: currentModule,
                          dest: createTokenBuf())
 
 template buildTree(dest: var TokenBuf; tag: TagId; body: untyped) =
@@ -110,6 +113,9 @@ proc toNifDef(c: var EncodeContext; typ: PType) =
 proc toNif(c: var EncodeContext; sym: PSym) =
   if sym == nil:
     c.dest.addDotToken()
+  elif sym.owner != nil and sym.originatingModule != c.currentModule:
+    let nifSym = toNifSym(sym, c.moduleToNifSuffix, c.conf)
+    c.dest.addSymUse(pool.syms.getOrIncl(nifSym), NoLineInfo)
   else:
     if not c.decodedSyms.containsOrIncl(sym.itemId):
       c.toNifDef sym
@@ -201,11 +207,11 @@ proc saveNif(c: var EncodeContext; n: PNode): string =
 
   result = "(.nif24)\n" & toString(c.dest)
 
-proc saveNifFile*(module: PSym; n: PNode; conf: ConfigRef) =
+proc saveNifFile*(n: PNode; conf: ConfigRef; module: PSym) =
   let outfile = module.name.s & ".nif"
-  var c = initEncodeContext(conf)
+  var c = initEncodeContext(conf, module)
   writeFile outfile, saveNif(c, n)
 
-proc saveNifToBuffer*(n: PNode; conf: ConfigRef): string =
-  var c = initEncodeContext(conf)
+proc saveNifToBuffer*(n: PNode; conf: ConfigRef; module: PSym): string =
+  var c = initEncodeContext(conf, module)
   result = saveNif(c, n)

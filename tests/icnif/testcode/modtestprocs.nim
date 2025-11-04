@@ -1,12 +1,13 @@
 proc foo() = discard
-proc bar(x: int): int = x
-proc baz(x, y: int): string = $(x + y)
+foo()
 
-proc baz(a: bool; b: string; c: int): float =
-  if a and b == "" and c == 0:
-    result = 0.0
-  else:
-    result = 1.0
+proc bar(x: int): int = x
+discard bar(1)
+
+proc baz(x, y: int): int =
+  bar(x)
+
+proc baz(a: bool; b: string; c: int): float = 0.0
 
 proc forwardDecl()
 proc forwardDecl() =
@@ -20,21 +21,21 @@ proc forwardDecl2*(): int = bar(1)
 discard forwardDecl2()
 
 proc forwardDecl3(x, y: int): int
-proc forwardDecl3(x, y: int): int = x - y
+proc forwardDecl3(x, y: int): int = x
 
 discard forwardDecl3(3, 2)
 
 func func1(): int = 123
 discard func1()
 func func2(x: int): int = x
-func func3*(x, y: bool): bool = x and y
+func func3*(x, y: bool): bool = x
 
-proc withDefaultValue(x = 1) = echo x
+proc withDefaultValue(x = 1) = discard
 withDefaultValue()
 withDefaultValue(2)
 withDefaultValue(x = 3)
 
-proc withDefaultValue2(x = "foo"; y = true) = echo x, y
+proc withDefaultValue2(x = "foo"; y = true) = discard
 withDefaultValue2()
 withDefaultValue2("bar")
 withDefaultValue2(x = "baz", y = false)

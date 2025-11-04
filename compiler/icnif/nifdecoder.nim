@@ -1,14 +1,19 @@
 import std / [assertions, tables]
 import "../../dist/nimony/src/lib" / [bitabs, nifreader, nifstreams, nifcursors, lineinfos]
 import ".." / [ast, idents, lineinfos, options, modules, modulegraphs, msgs, pathutils]
-import enum2nif, icniftags
+import enum2nif, icniftags, nifbasics
 
 type
+  NifProgram* = ref object
+    nifSymIdToPSym: Table[SymId, PSym]
+    moduleToNifSuffix: Table[FileIndex, string] # FileIndex (PSym.position) -> module suffix
+
   DecodeContext = object
     graph: ModuleGraph
     symbols: Table[ItemId, PSym]
     types: Table[ItemId, PType]
     modules: Table[int, FileIndex] # maps module id in NIF to FileIndex of the module
+    prog: NifProgram
 
 proc nodeKind(n: Cursor): TNodeKind {.inline.} =
   assert n.kind == ParLe
@@ -160,6 +165,11 @@ proc fromNifSymDef(c: var DecodeContext; n: var Cursor): PSym =
   result.instantiatedFrom = c.fromNifSymbol n
   skipParRi n
 
+  if sfExported in flags or kind == skModule:
+    let nifSym = toNifSym(result, c.prog.moduleToNifSuffix, c.graph.config)
+    let symId = pool.syms.getOrIncl(nifSym)
+    c.prog.nifSymIdToPSym[symId] = result
+
 proc fromNifTypeDef(c: var DecodeContext; n: var Cursor): PType =
   expectTag n, typeIdTag
   inc n
@@ -206,6 +216,14 @@ proc fromNifNodeFlags(n: var Cursor): set[TNodeFlag] =
 proc fromNifSymbol(c: var DecodeContext; n: var Cursor): PSym =
   if n.kind == DotToken:
     result = nil
+    inc n
+  elif n.kind == Symbol:
+    if n.symId notin c.prog.nifSymIdToPSym:
+      # TODO: Support import statement and remove this branch
+      #echo pool.syms[n.symId], " is not found"
+      result = nil
+    else:
+      result = c.prog.nifSymIdToPSym[n.symId]
     inc n
   else:
     expect n, ParLe
@@ -333,26 +351,26 @@ proc fromNif(c: var DecodeContext; n: var Cursor): PNode =
   else:
     assert false, "Not yet implemented " & $n.kind
 
-proc loadNif(stream: var Stream; graph: ModuleGraph): PNode =
+proc loadNif(stream: var Stream; graph: ModuleGraph; prog: NifProgram): PNode =
   discard processDirectives(stream.r)
 
   var buf = fromStream(stream)
   var n = beginRead(buf)
 
-  var c = DecodeContext(graph: graph)
+  var c = DecodeContext(graph: graph, prog: prog)
 
   result = fromNif(c, n)
 
   endRead(buf)
 
-proc loadNifFile*(infile: AbsoluteFile; graph: ModuleGraph): PNode =
+proc loadNifFile*(infile: AbsoluteFile; graph: ModuleGraph; prog: NifProgram): PNode =
   var stream = nifstreams.open(infile.string)
-  result = loadNif(stream, graph)
+  result = loadNif(stream, graph, prog)
   stream.close
 
-proc loadNifFromBuffer*(strbuf: sink string; graph: ModuleGraph): PNode =
+proc loadNifFromBuffer*(strbuf: sink string; graph: ModuleGraph; prog: NifProgram): PNode =
   var stream = nifstreams.openFromBuffer(strbuf)
-  result = loadNif(stream, graph)
+  result = loadNif(stream, graph, prog)
 
 when isMainModule:
   import std/cmdline
