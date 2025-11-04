@@ -882,11 +882,19 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "import":
     expectArg(conf, switch, arg, pass, info)
     if pass in {passCmd2, passPP}:
-      conf.implicitImports.add findModule(conf, arg, toFullPath(conf, info)).string
+      let m = findModule(conf, arg, toFullPath(conf, info)).string
+      if m.len == 0:
+        localError(conf, info, "Cannot resolve filename: " & arg)
+      else:
+        conf.implicitImports.add m
   of "include":
     expectArg(conf, switch, arg, pass, info)
     if pass in {passCmd2, passPP}:
-      conf.implicitIncludes.add findModule(conf, arg, toFullPath(conf, info)).string
+      let m = findModule(conf, arg, toFullPath(conf, info)).string
+      if m.len == 0:
+        localError(conf, info, "Cannot resolve filename: " & arg)
+      else:
+        conf.implicitIncludes.add m
   of "listcmd":
     processOnOffSwitchG(conf, {optListCmd}, arg, pass, info)
   of "asm":
