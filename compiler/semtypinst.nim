@@ -280,7 +280,7 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0; expectedType: PT
         (cl.owner == nil or result.sym.owner == cl.owner):
       # instantiate default value of object/tuple field
       cl.c.fitDefaultNode(cl.c, result.sym.ast, result.sym.typ)
-      result.sym.typ = result.sym.ast.typ
+      result.sym.typ = result.sym.ast.typ.skipIntLit(cl.c.idgen)
     # sym type can be nil if was gensym created by macro, see #24048
     if result.sym.typ != nil and result.sym.typ.kind == tyVoid:
       # don't add the 'void' field
