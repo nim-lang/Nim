@@ -250,7 +250,7 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
     var arg = operand.skipTypes({tyGenericInst})
     let rec = semConstExpr(c, traitCall[2]).intVal != 0
     while arg.kind == tyDistinct:
-      arg = arg.base.skipTypes(skippedTypes + {tyGenericInst})
+      arg = arg.base.skipTypes(skippedTypes)
       if not rec: break
     result = getTypeDescNode(c, arg, operand.owner, traitCall.info)
   of "rangeBase":
