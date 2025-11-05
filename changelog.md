@@ -19,6 +19,8 @@ errors.
 
 - With `-d:nimPreviewAsmSemSymbol`, backticked symbols are type checked in the `asm/emit` statements.
 
+- `importc` no longer implies `nodecl` for imported types. Use `header` or `nodecl` pragmas so that it doesn't generate a declaration for the type symbol.
+
 - The bare `except:` now panics on `Defect`. Use `except Exception:` or `except Defect:` to catch `Defect`. `--legacy:noPanicOnExcept` is provided for a transition period.
 
 - With `-d:nimPreviewCStringComparisons`, comparsions (`<`, `>`, `<=`, `>=`) between cstrings switch from reference semantics to value semantics like `==` and `!=`.
@@ -26,6 +28,7 @@ errors.
 - `std/parsesql` has been moved to a nimble package, use `nimble` or `atlas` to install it.
 
 - With `-d:nimPreviewDuplicateModuleError`, importing two modules that share the same name becomes a compile-time error. This includes importing the same module more than once. Use `import foo as foo1` (or other aliases) to avoid collisions.
+
 
 ## Standard library additions and changes
 
