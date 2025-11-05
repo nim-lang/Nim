@@ -28,7 +28,6 @@ type
 template createCb(futTyp, strName, identName, futureVarCompletions: untyped) =
   bind finished
   {.push stackTrace: off.}
-  {.push warning[BareExcept]: off.}
   proc identName(fut: Future[futTyp], it: ClosureIt[futTyp]) {.effectsOf: it.} =
     try:
       if not it.finished:
@@ -47,8 +46,7 @@ template createCb(futTyp, strName, identName, futureVarCompletions: untyped) =
           {.gcsafe.}:
             next.addCallback(cast[proc() {.closure, gcsafe.}](proc =
               identName(fut, it)))
-    except Exception:
-      {.pop.}
+    except CatchableError, Defect:
       futureVarCompletions
       if fut.finished:
         # Take a look at tasyncexceptions for the bug which this fixes.
