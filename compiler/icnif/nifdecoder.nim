@@ -129,7 +129,7 @@ proc fromNifSymDef(c: var DecodeContext; n: var Cursor): PSym =
   # PNode, PSym or PType type fields in PSym can have cycles.
   # Add PSym to `c.symbols` before parsing these fields so that 
   # they can refer this PSym.
-  let nifItemId = ItemId(module: nifModId, item: itemId)
+  let nifItemId = ItemId(module: itemIdModule.int32, item: itemId)
   assert nifItemId notin c.symbols
   c.symbols[nifItemId] = result
 
@@ -231,10 +231,10 @@ proc fromNifSymbol(c: var DecodeContext; n: var Cursor): PSym =
       result = c.fromNifSymDef n
     elif n.tagId == symTag:
       incExpect n, IntLit
-      let nifModId = pool.integers[n.intId].int32
+      let nifModId = c.modules[pool.integers[n.intId].int32]
       incExpect n, IntLit
       let item = pool.integers[n.intId].int32
-      let nifItemId = ItemId(module: nifModId, item: item)
+      let nifItemId = ItemId(module: nifModId.int32, item: item)
       result = c.symbols[nifItemId]
       inc n
       skipParRi n
@@ -356,8 +356,32 @@ proc loadNif(stream: var Stream; graph: ModuleGraph; prog: NifProgram): PNode =
 
   var buf = fromStream(stream)
   var n = beginRead(buf)
-
   var c = DecodeContext(graph: graph, prog: prog)
+
+  var n2 = n
+  var nested = 0
+  while true:
+    if n2.info != NoLineInfo:
+      break
+    elif n2.kind == EofToken:
+      break
+    elif n2.kind == ParLe:
+      inc nested
+    elif n2.kind == ParRi:
+      dec nested
+      if nested == 0: break
+    inc n2
+  assert n2.info != NoLineInfo
+  let info = pool.man.unpack(n2.info)
+  let fileIdx = c.graph.config.fileInfoIdx(pool.files[info.file].AbsoluteFile)
+  var currentModule = graph.newModule(fileIdx)
+  if currentModule.itemId.module == 0'i32:
+    currentModule.flags = {sfMainModule, sfSystemModule}
+
+  c.symbols[currentModule.itemId] = currentModule
+  let nifSym = toNifSym(currentModule, c.prog.moduleToNifSuffix, c.graph.config)
+  let symId = pool.syms.getOrIncl(nifSym)
+  c.prog.nifSymIdToPSym[symId] = currentModule
 
   result = fromNif(c, n)
 

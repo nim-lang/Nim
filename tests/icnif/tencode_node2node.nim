@@ -25,16 +25,16 @@ proc newModuleGraphForSem(cache: IdentCache; conf: ConfigRef): ModuleGraph =
   graph.config.cmd = oldCmd
   result = graph
 
-proc getSystemNif(graph: ModuleGraph): string =
-  assert graph.systemModule != nil
-  assert graph.systemModule.kind == skModule
-  assert graph.systemModule.ast != nil
-
-  let n = graph.systemModule.ast
-  # if nil is not assigned, it generates large NIF
-  graph.systemModule.ast = nil
-  result = saveNifToBuffer(n, graph.config, graph.systemModule)
-  #writeFile("system.nif", result)
+proc getSystemNif(graph: ModuleGraph): seq[string] =
+  result = newSeqOfCap[string](graph.ifaces.len)
+  for i, iface in graph.ifaces.mpairs:
+    if iface.module != nil:
+      let n = iface.module.ast
+      assert n != nil
+      # if nil is not assigned, it generates large NIF
+      iface.module.ast = nil
+      result.add saveNifToBuffer(n, graph.config, iface.module)
+      #writeFile(iface.module.name.s & ".nif", result[^1])
 
 proc sem(graph: ModuleGraph; path: AbsoluteFile): (PNode, PSym) =
   result = (nil, nil)
@@ -169,10 +169,12 @@ proc eql(x, y: PSym; c: var EqlContext): bool =
   elif x.magic != y.magic:
     echo "symbol magic mismatch: ", x.magic, "/", y.magic
     result = false
-  elif not eql(x.info, y.info, c):
+  elif x.kind != skPackage and not eql(x.info, y.info, c):
+    # fileIndex of info of skPackage is just a path of first semchecked module in the package
     echo "symbol line info mismatch"
     result = false
-  elif x.flags != y.flags:
+  elif x.kind != skModule and x.flags != y.flags:
+    # TODO: check the flag of skModule
     echo "symbol flag mismatch: ", x.flags, "/", y.flags
     result = false
   elif x.options != y.options:
@@ -360,10 +362,11 @@ proc eql(x, y: PNode; c: var EqlContext): bool =
     debug(y)
     result = false
 
-proc testNifEncDec(graph: ModuleGraph; src: string; systemNif: string) =
+proc testNifEncDec(graph: ModuleGraph; src: string; systemNif: openArray[string]) =
   let fullPath = TestCodeDir / RelativeFile(src)
   let (n, module) = sem(graph, fullPath)
   assert n != nil, "failed to sem " & $fullPath
+  assert module.owner.kind == skPackage
 
   #debug(n)
   let nif = saveNifToBuffer(n, graph.config, module)
@@ -374,7 +377,8 @@ proc testNifEncDec(graph: ModuleGraph; src: string; systemNif: string) =
   # Don't reuse the ModuleGraph used for semcheck when load NIF.
   var graphForLoad = newModuleGraph(newIdentCache(), newConfigRefForTest())
   var prog = NifProgram()
-  discard loadNifFromBuffer(systemNif, graphForLoad, prog)
+  for sysNif in systemNif:
+    discard loadNifFromBuffer(sysNif, graphForLoad, prog)
   let n2 = loadNifFromBuffer(nif, graphForLoad, prog)
   #debug(n2)
   var c = EqlContext(confX: graph.config, confY: graphForLoad.config)

@@ -17,6 +17,7 @@ proc initEncodeContext(conf: ConfigRef; currentModule: PSym): EncodeContext =
   result = EncodeContext(conf: conf,
                          currentModule: currentModule,
                          dest: createTokenBuf())
+  result.decodedSyms.incl(currentModule.itemId)
 
 template buildTree(dest: var TokenBuf; tag: TagId; body: untyped) =
   dest.addParLe tag
