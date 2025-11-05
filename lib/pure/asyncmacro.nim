@@ -46,7 +46,7 @@ template createCb(futTyp, strName, identName, futureVarCompletions: untyped) =
           {.gcsafe.}:
             next.addCallback(cast[proc() {.closure, gcsafe.}](proc =
               identName(fut, it)))
-    except CatchableError, Defect:
+    except Exception:
       futureVarCompletions
       if fut.finished:
         # Take a look at tasyncexceptions for the bug which this fixes.
