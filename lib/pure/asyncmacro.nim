@@ -28,6 +28,7 @@ type
 template createCb(futTyp, strName, identName, futureVarCompletions: untyped) =
   bind finished
   {.push stackTrace: off.}
+  {.push warning[BareExcept]: off.}
   proc identName(fut: Future[futTyp], it: ClosureIt[futTyp]) {.effectsOf: it.} =
     try:
       if not it.finished:
