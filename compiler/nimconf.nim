@@ -207,7 +207,6 @@ proc parseAssignment(L: var Lexer, tok: var Token;
       checkSymbol(L, tok)
       val.add($tok)
       confTok(L, tok, config, condStack)
-  config.currentConfigDir = parentDir(filename.string)
   if percent:
     processSwitch(s, strtabs.`%`(val, config.configVars,
                                 {useEnvironment, useEmpty}), passPP, info, config)
@@ -249,6 +248,8 @@ proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef; idgen: 
   setDefaultLibpath(conf)
   template readConfigFile(path) =
     let configPath = path
+    conf.currentConfigDir = configPath.splitFile.dir.string
+    setConfigVar(conf, "selfDir", conf.currentConfigDir)
     if readConfigFile(configPath, cache, conf):
       conf.configFiles.add(configPath)
 

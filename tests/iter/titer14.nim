@@ -5,3 +5,11 @@ proc f() =
 
   iterator b(): int =
     for x in a(): yield x
+
+proc y(n: ref int) = discard
+
+proc w(n: ref int) =
+  iterator a(): int = y(n)
+  let x = a
+
+w(nil)

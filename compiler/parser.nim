@@ -638,8 +638,9 @@ proc semiStmtList(p: var Parser, result: PNode) =
         getTok(p)
       if p.tok.tokType == tkParRi:
         break
-      elif not (sameInd(p) or realInd(p)):
-        parMessage(p, errInvalidIndentation)
+      # ignore indent:
+      #elif not (sameOrNoInd(p) or realInd(p)):
+      #  parMessage(p, errInvalidIndentation)
       let a = complexOrSimpleStmt(p)
       if a.kind == nkEmpty:
         parMessage(p, errExprExpected, p.tok)
@@ -699,10 +700,12 @@ proc parsePar(p: var Parser): PNode =
       asgn.add b
       result.add(asgn)
       if p.tok.tokType == tkSemiColon:
+        getTok(p)
         semiStmtList(p, result)
     elif p.tok.tokType == tkSemiColon:
       # stmt context:
       result.add(a)
+      getTok(p)
       semiStmtList(p, result)
     else:
       a = colonOrEquals(p, a)
@@ -1153,7 +1156,10 @@ proc parseParamList(p: var Parser, retColon = true): PNode =
         parMessage(p, errGenerated, "the syntax is 'parameter: var T', not 'var parameter: T'")
         break
       else:
-        parMessage(p, "expected closing ')'")
+        if p.tok.tokType in tokKeywordLow..tokKeywordHigh:
+          parMessage(p, errGenerated, "'" & $p.tok.ident.s & "' is a keyword and cannot be used as a parameter name")
+        else:
+          parMessage(p, "expected closing ')'")
         break
       result.add(a)
       if p.tok.tokType notin {tkComma, tkSemiColon}: break
@@ -2107,12 +2113,28 @@ proc parseObjectCase(p: var Parser): PNode =
   #| objectBranches = objectBranch (IND{=} objectBranch)*
   #|                       (IND{=} 'elif' expr colcom objectPart)*
   #|                       (IND{=} 'else' colcom objectPart)?
-  #| objectCase = 'case' declColonEquals ':'? COMMENT?
+  #| objectCase = 'case' (declColonEquals / pragma)? ':'? COMMENT?
   #|             (IND{>} objectBranches DED
   #|             | IND{=} objectBranches)
   result = newNodeP(nkRecCase, p)
-  getTokNoInd(p)
-  var a = parseIdentColonEquals(p, {withPragma})
+  getTok(p)
+  if p.tok.tokType != tkOf:
+    # of case will be handled later
+    if p.tok.indent >= 0: parMessage(p, errInvalidIndentation)
+  var a: PNode
+  if p.tok.tokType in {tkSymbol, tkAccent}:
+    a = parseIdentColonEquals(p, {withPragma})
+  else:
+    a = newNodeP(nkIdentDefs, p)
+    if p.tok.tokType == tkCurlyDotLe:
+      var prag = newNodeP(nkPragmaExpr, p)
+      prag.add(p.emptyNode)
+      prag.add(parsePragma(p))
+      a.add(prag)
+    else:
+      a.add(p.emptyNode)
+    a.add(p.emptyNode)
+    a.add(p.emptyNode)
   result.add(a)
   if p.tok.tokType == tkColon: getTok(p)
   flexComment(p, result)

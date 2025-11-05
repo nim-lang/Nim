@@ -258,6 +258,17 @@ block: # any
   doAssert any(anumbers, proc (x: int): bool = return x > 8) == true
   doAssert any(anumbers, proc (x: int): bool = return x > 9) == false
 
+block: # findIt
+  let
+    numbers = @[1, 4, 5, 8, 9, 7, 4]
+    anumbers = [1, 4, 5, 8, 9, 7, 4]
+    len0seq: seq[int] = @[]
+  doAssert findIt(numbers, it == 4) == 1
+  doAssert findIt(numbers, it > 9) == -1
+  doAssert findIt(len0seq, true) == -1
+  doAssert findIt(anumbers, it > 8) == 4
+  doAssert findIt(anumbers, it > 9) == -1
+
 block: # anyIt
   let
     numbers = @[1, 4, 5, 8, 9, 7, 4]
@@ -275,7 +286,10 @@ block: # toSeq test
       numeric = @[1, 2, 3, 4, 5, 6, 7, 8, 9]
       oddNumbers = toSeq(filter(numeric) do (x: int) -> bool:
         if x mod 2 == 1:
-          result = true)
+          result = true
+        else:
+          result = false
+      )
     doAssert oddNumbers == @[1, 3, 5, 7, 9]
 
   block:

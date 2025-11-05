@@ -58,13 +58,11 @@ proc considerQuotedIdent*(c: PContext; n: PNode, origin: PNode = nil): PIdent =
         of nkLiterals - nkFloatLiterals: id.add(x.renderTree)
         else: handleError(n, origin)
       result = getIdent(c.cache, id)
-  of nkOpenSymChoice, nkClosedSymChoice:
+  of nkOpenSymChoice, nkClosedSymChoice, nkOpenSym:
     if n[0].kind == nkSym:
       result = n[0].sym.name
     else:
       handleError(n, origin)
-  of nkOpenSym:
-    result = considerQuotedIdent(c, n[0], origin)
   else:
     handleError(n, origin)
 
@@ -77,10 +75,13 @@ proc addUniqueSym*(scope: PScope, s: PSym): PSym =
 proc openScope*(c: PContext): PScope {.discardable.} =
   result = PScope(parent: c.currentScope,
                   symbols: initStrTable(),
-                  depthLevel: c.scopeDepth + 1)
+                  depthLevel: c.scopeDepth + 1,
+                  optionStackLen: c.optionStack.len)
   c.currentScope = result
 
 proc rawCloseScope*(c: PContext) =
+  if c.currentScope.optionStackLen >= 1:
+    c.optionStack.setLen(c.currentScope.optionStackLen)
   c.currentScope = c.currentScope.parent
 
 proc closeScope*(c: PContext) =
@@ -221,7 +222,14 @@ proc debugScopes*(c: PContext; limit=0, max = int.high) {.deprecated.} =
     if i == limit: return
     inc i
 
-proc searchInScopesAllCandidatesFilterBy*(c: PContext, s: PIdent, filter: TSymKinds): seq[PSym] =
+proc searchImportsAll*(c: PContext, s: PIdent, filter: TSymKinds, holding: var seq[PSym]) =
+  var marked = initIntSet()
+  for im in c.imports.mitems:
+    for s in symbols(im, marked, s, c.graph):
+      if s.kind in filter:
+        holding.add s
+
+proc searchScopes*(c: PContext, s: PIdent, filter: TSymKinds): seq[PSym] =
   result = @[]
   for scope in allScopes(c.currentScope):
     var ti: TIdentIter = default(TIdentIter)
@@ -231,14 +239,12 @@ proc searchInScopesAllCandidatesFilterBy*(c: PContext, s: PIdent, filter: TSymKi
         result.add candidate
       candidate = nextIdentIter(ti, scope.symbols)
 
+proc searchScopesAll*(c: PContext, s: PIdent, filter: TSymKinds): seq[PSym] =
+  result = searchScopes(c,s,filter)
   if result.len == 0:
-    var marked = initIntSet()
-    for im in c.imports.mitems:
-      for s in symbols(im, marked, s, c.graph):
-        if s.kind in filter:
-          result.add s
+    searchImportsAll(c, s, filter, result)
 
-proc searchInScopesFilterBy*(c: PContext, s: PIdent, filter: TSymKinds): seq[PSym] =
+proc selectFromScopesElseAll*(c: PContext, s: PIdent, filter: TSymKinds): seq[PSym] =
   result = @[]
   block outer:
     for scope in allScopes(c.currentScope):
@@ -252,11 +258,7 @@ proc searchInScopesFilterBy*(c: PContext, s: PIdent, filter: TSymKinds): seq[PSy
         candidate = nextIdentIter(ti, scope.symbols)
 
   if result.len == 0:
-    var marked = initIntSet()
-    for im in c.imports.mitems:
-      for s in symbols(im, marked, s, c.graph):
-        if s.kind in filter:
-          result.add s
+    searchImportsAll(c, s, filter, result)
 
 proc cmpScopes*(ctx: PContext, s: PSym): int =
   # Do not return a negative number
@@ -386,7 +388,7 @@ proc addDeclAt*(c: PContext; scope: PScope, sym: PSym, info: TLineInfo) =
   if sym.name.id == ord(wUnderscore): return
   let conflict = scope.addUniqueSym(sym)
   if conflict != nil:
-    if sym.kind == skModule and conflict.kind == skModule:
+    if sym.kind == skModule and conflict.kind == skModule and not c.config.isDefined("nimPreviewDuplicateModuleError"):
       # e.g.: import foo; import foo
       # xxx we could refine this by issuing a different hint for the case
       # where a duplicate import happens inside an include.
@@ -644,7 +646,7 @@ const allExceptModule = {low(TSymKind)..high(TSymKind)} - {skModule, skPackage}
 
 proc lookUpCandidates*(c: PContext, ident: PIdent, filter: set[TSymKind],
                        includePureEnum = false): seq[PSym] =
-  result = searchInScopesFilterBy(c, ident, filter)
+  result = selectFromScopesElseAll(c, ident, filter)
   if skEnumField in filter and (result.len == 0 or includePureEnum):
     result.add allPureEnumFields(c, ident)
 
@@ -725,7 +727,7 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
 proc initOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
   if n.kind == nkOpenSym:
     # maybe the logic in semexprs should be mirrored here instead
-    # for now it only seems this is called for `pickSym` in `getTypeIdent` 
+    # for now it only seems this is called for `pickSym` in `getTypeIdent`
     return initOverloadIter(o, c, n[0])
   o.importIdx = -1
   o.marked = initIntSet()

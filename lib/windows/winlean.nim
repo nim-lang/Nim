@@ -437,7 +437,7 @@ type
     fd_count*: cint # unsigned
     fd_array*: array[0..FD_SETSIZE-1, SocketHandle]
 
-  AddrInfo* = object
+  AddrInfo* {.importc: "ADDRINFOA", header: "ws2tcpip.h".} = object
     ai_flags*: cint         ## Input flags.
     ai_family*: cint        ## Address family of socket.
     ai_socktype*: cint      ## Socket type.
@@ -449,14 +449,9 @@ type
 
   SockLen* = cuint
 
-when defined(cpp):
-  type
-    Timeval* {.importc: "timeval", header: "<time.h>".} = object
-      tv_sec*, tv_usec*: int32
-else:
-  type
-    Timeval* = object
-      tv_sec*, tv_usec*: int32
+type
+  Timeval* {.importc: "struct timeval", header: "<time.h>".} = object
+    tv_sec*, tv_usec*: int32
 
 var
   SOMAXCONN* {.importc, header: "winsock2.h".}: cint
@@ -820,7 +815,7 @@ proc WSASendTo*(s: SocketHandle, buf: ptr TWSABuf, bufCount: DWORD,
                 completionProc: POVERLAPPED_COMPLETION_ROUTINE): cint {.
      stdcall, importc: "WSASendTo", dynlib: "Ws2_32.dll".}
 
-proc get_osfhandle*(fd:FileHandle): Handle {.
+proc get_osfhandle*(fd: cint): Handle {.
   importc: "_get_osfhandle", header:"<io.h>".}
 
 proc getSystemTimes*(lpIdleTime, lpKernelTime,
@@ -848,7 +843,7 @@ proc inet_ntop_emulated(family: cint, paddr: pointer, pStringBuffer: cstring,
                   stringBufSize: int32): cstring {.stdcall.} =
   case family
   of AF_INET:
-    var sa: Sockaddr_in
+    var sa: Sockaddr_in = default(Sockaddr_in)
     sa.sin_family = AF_INET
     sa.sin_addr = cast[ptr InAddr](paddr)[]
     var bs = stringBufSize.DWORD
@@ -858,7 +853,7 @@ proc inet_ntop_emulated(family: cint, paddr: pointer, pStringBuffer: cstring,
     else:
       result = pStringBuffer
   of AF_INET6:
-    var sa: Sockaddr_in6
+    var sa: Sockaddr_in6 = default(Sockaddr_in6)
     sa.sin6_family = AF_INET6
     sa.sin6_addr = cast[ptr In6_addr](paddr)[]
     var bs = stringBufSize.DWORD
@@ -873,7 +868,7 @@ proc inet_ntop_emulated(family: cint, paddr: pointer, pStringBuffer: cstring,
 
 proc inet_ntop*(family: cint, paddr: pointer, pStringBuffer: cstring,
                   stringBufSize: int32): cstring {.stdcall.} =
-  var ver: OSVERSIONINFO
+  var ver: OSVERSIONINFO = default(OSVERSIONINFO)
   ver.dwOSVersionInfoSize = sizeof(ver).DWORD
   let res = getVersionExW(ver.addr)
   if res == 0:

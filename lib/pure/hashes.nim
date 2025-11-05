@@ -62,7 +62,7 @@ runnableExamples:
 ## * `sha1 module <sha1.html>`_ for the SHA-1 checksum algorithm
 ## * `tables module <tables.html>`_ for hash tables
 
-import std/private/since
+import std/private/[since, jsutils]
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -119,6 +119,7 @@ proc hiXorLo(a, b: uint64): uint64 {.inline.} =
     when Hash.sizeof < 8:
       result = hiXorLoFallback64(a, b)
     elif defined(gcc) or defined(llvm_gcc) or defined(clang):
+      result = uint64(0)
       {.emit: """__uint128_t r = `a`; r *= `b`; `result` = (r >> 64) ^ r;""".}
     elif defined(windows) and not defined(tcc):
       proc umul128(a, b: uint64, c: ptr uint64): uint64 {.importc: "_umul128", header: "intrin.h".}
@@ -308,7 +309,7 @@ proc murmurHash(x: openArray[byte]): Hash =
     stepSize = 4 # 32-bit
     n = size div stepSize
   var
-    h1: uint32
+    h1: uint32 = uint32(0)
     i = 0
 
 
@@ -320,7 +321,7 @@ proc murmurHash(x: openArray[byte]): Hash =
 
   # body
   while i < n * stepSize:
-    var k1: uint32
+    var k1: uint32 = uint32(0)
 
     when nimvm:
       impl()
@@ -340,7 +341,7 @@ proc murmurHash(x: openArray[byte]): Hash =
     h1 = h1*5 + n1
 
   # tail
-  var k1: uint32
+  var k1: uint32 = uint32(0)
   var rem = size mod stepSize
   while rem > 0:
     dec rem
@@ -388,13 +389,17 @@ proc load8e(s: openArray[byte], o=0): uint64 {.inline.} =
 proc load4(s: openArray[byte], o=0): uint32 {.inline.} =
   when nimvm: result = load4e(s, o)
   else:
-    when declared copyMem: copyMem result.addr, s[o].addr, result.sizeof
+    when declared copyMem:
+      result = uint32(0)
+      copyMem result.addr, s[o].addr, result.sizeof
     else: result = load4e(s, o)
 
 proc load8(s: openArray[byte], o=0): uint64 {.inline.} =
   when nimvm: result = load8e(s, o)
   else:
-    when declared copyMem: copyMem result.addr, s[o].addr, result.sizeof
+    when declared copyMem:
+      result = uint64(0)
+      copyMem result.addr, s[o].addr, result.sizeof
     else: result = load8e(s, o)
 
 proc lenU(s: openArray[byte]): uint64 {.inline.} = s.len.uint64
@@ -480,9 +485,9 @@ proc hashFarm(s: openArray[byte]): uint64 {.inline.} =
     x = seed
     y = seed*k1 + 113
     z = shiftMix(y*k2 + 113)*k2
-    v, w: Pair
+    v, w: Pair = default(Pair)
   x = x*k2 + load8(s)
-  let eos    = ((s.len - 1) div 64)*64
+  let eos = ((s.len - 1) div 64)*64
   let last64 = eos + ((s.len - 1) and 63) - 63
   while true:
     x = rotR(x + y + v[0] + load8(s, o+8), 37)*k1
@@ -510,17 +515,10 @@ proc hashFarm(s: openArray[byte]): uint64 {.inline.} =
   swap z, x
   len16 len16(v[0],w[0],mul) + shiftMix(y)*k0 + z, len16(v[1],w[1],mul) + x, mul
 
-template jsNoInt64: untyped =
-  when defined js:
-    when compiles(compileOption("jsbigint64")):
-      when not compileOption("jsbigint64"): true
-      else: false
-    else: false
-  else: false
-const sHash2 = (when defined(nimStringHash2) or jsNoInt64(): true else: false)
+const sHash2 = defined(nimStringHash2) or jsNoBigInt64
 
 template maybeFailJS_Number =
-  when jsNoInt64() and not defined(nimStringHash2):
+  when jsNoBigInt64 and not defined(nimStringHash2):
     {.error: "Must use `-d:nimStringHash2` when using `--jsbigint64:off`".}
 
 proc hash*(x: string): Hash =

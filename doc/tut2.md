@@ -86,6 +86,26 @@ Student(id: 123)` will truncate subclass fields.
 (*is-a* relation) for simple code reuse. Since objects are value types in
 Nim, composition is as efficient as inheritance.
 
+Interfaces
+----------
+Concepts like abstract classes, protocols, traits, and interfaces can be
+simulated as objects of closures:
+
+```nim
+
+type
+  IntFieldInterface = object
+    getter: proc (): int
+    setter: proc (x: int)
+
+
+proc outer: IntFieldInterface =
+  var captureMe = 0
+  proc getter(): int = result = captureMe
+  proc setter(x: int) = captureMe = x
+  
+  result = IntFieldInterface(getter: getter, setter: setter)
+```
 
 Mutually recursive types
 ------------------------
@@ -327,10 +347,12 @@ As the example demonstrates, invocation of a multi-method cannot be ambiguous:
 Collide 2 is preferred over collide 1 because the resolution works from left to
 right. Thus `Unit, Thing` is preferred over `Thing, Unit`.
 
-**Performance note**: Nim does not produce a virtual method table, but
-generates dispatch trees. This avoids the expensive indirect branch for method
-calls and enables inlining. However, other optimizations like compile time
-evaluation or dead code elimination do not work with methods.
+**Performance note**: Nim generates dispatch trees for methods by default.
+With `--experimental:vtables`, it also provides an option to generate
+a virtual method table for methods,
+which tends to produce better performance in general, 
+especially for deep object hierarchies.
+However, other optimizations like compile time evaluation or dead code elimination do not work with methods.
 
 
 Exceptions
