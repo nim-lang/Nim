@@ -91,6 +91,7 @@ Advanced options:
   --os:SYMBOL               set the target operating system (cross-compilation)
   --cpu:SYMBOL              set the target processor (cross-compilation)
   --debuginfo:on|off        enables debug information
+  --mangle:nim|cpp          selects nim or cpp style name mangling, defaults to `nim`
   -t, --passC:OPTION        pass an option to the C compiler
   -l, --passL:OPTION        pass an option to the linker
   --cc:SYMBOL               specify the C compiler
