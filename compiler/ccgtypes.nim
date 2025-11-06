@@ -75,7 +75,7 @@ proc mangleProc(m: BModule; s: PSym; makeUnique: bool): string =
 proc fillBackendName(m: BModule; s: PSym) =
   if s.loc.snippet == "":
     var result: Rope
-    if not m.compileToCpp and s.kind in routineKinds and optCDebug in m.g.config.globalOptions and
+    if s.kind in routineKinds and {optCDebug, optItaniumMangle} * m.g.config.globalOptions == {optCDebug, optItaniumMangle} and
       m.g.config.symbolFiles == disabledSf:
       result = mangleProc(m, s, false).rope
     else:
