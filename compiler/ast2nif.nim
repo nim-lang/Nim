@@ -13,7 +13,8 @@ import std / [assertions, tables, sets]
 import ast, idents, msgs, options
 import lineinfos as astli
 import pathutils
-import "../dist/nimony/src/lib" / [bitabs, nifstreams, nifcursors, lineinfos]
+import "../dist/nimony/src/lib" / [bitabs, nifstreams, nifcursors, lineinfos,
+  nifindexes]
 import "../dist/nimony/src/gear2" / modnames
 
 import icnif / [enum2nif, icniftags]
@@ -97,10 +98,10 @@ We produce NIF from the PNode structure as the single source of truth. NIF nodes
 however, refer to PSym and PType, these get NIF names. If the PSym/PType belongs to
 the module that we are currently writing, we emit these fields as an inner NIF
 structure via the special tags `sd` and `td`. In fact it is only these tags
-that get the NIF `SymbolDef` kinds so that the lazy loading mechanism cannot 
+that get the NIF `SymbolDef` kinds so that the lazy loading mechanism cannot
 be confused.
 
-We could also emit non-local symbols and types later as the index structure 
+We could also emit non-local symbols and types later as the index structure
 will tell us the precise offsets anyway.
 
 ]#
@@ -109,6 +110,7 @@ let
   sdefTag = registerTag("sd")
   tdefTag = registerTag("td")
   tuseTag = registerTag("t")
+  hiddenTypeTag = registerTag("ht")
 
 type
   Writer = object
@@ -123,7 +125,7 @@ type
     inProc: int
 
 proc toNifSymName(w: var Writer; sym: PSym): string =
-  ## Generate NIF name for a symbol: local names are `ident.disamb`, 
+  ## Generate NIF name for a symbol: local names are `ident.disamb`,
   ## global names are `ident.disamb.moduleSuffix`
   result = sym.name.s
   result.add '.'
@@ -230,12 +232,31 @@ proc writeSymDef(w: var Writer; sym: PSym) =
 proc writeSym(w: var Writer; sym: PSym) =
   if sym == nil:
     w.dest.addDotToken()
-  elif sym.itemId.module == w.currentModule and not w.writtenTypes.containsOrIncl(sym.itemId):
+  elif sym.itemId.module == w.currentModule and not w.writtenSyms.containsOrIncl(sym.itemId):
     writeSymDef(w, sym)
   else:
     # NIF has direct support for symbol references so we don't need to use a tag here,
     # unlike what we do for types!
     w.dest.addSymUse pool.syms.getOrIncl(w.toNifSymName(sym)), NoLineInfo
+
+proc writeSymNode(w: var Writer; n: PNode; sym: PSym) =
+  if sym == nil:
+    w.dest.addDotToken()
+  elif sym.itemId.module == w.currentModule and not w.writtenSyms.containsOrIncl(sym.itemId):
+    if n.typ != n.sym.typ:
+      w.dest.buildTree hiddenTypeTag, trLineInfo(w, n.info):
+        writeSymDef(w, sym)
+    else:
+      writeSymDef(w, sym)
+  else:
+    # NIF has direct support for symbol references so we don't need to use a tag here,
+    # unlike what we do for types!
+    let info = trLineInfo(w, n.info)
+    if n.typ != n.sym.typ:
+      w.dest.buildTree hiddenTypeTag, info:
+        w.dest.addSymUse pool.syms.getOrIncl(w.toNifSymName(sym)), info
+    else:
+      w.dest.addSymUse pool.syms.getOrIncl(w.toNifSymName(sym)), info
 
 proc writeNodeFlags(w: var Writer; flags: set[TNodeFlag]) {.inline.} =
   writeFlags(w, flags)
@@ -276,10 +297,7 @@ proc writeNode(w: var Writer; n: PNode) =
       w.withNode n:
         w.dest.addIdent n.ident.s
     of nkSym:
-      # PNode.typ and PNode.sym.typ are different in `int` nkSym Node in following statement:
-      # type TestInt = int
-      w.withNode n:
-        writeSym(w, n.sym)
+      writeSymNode(w, n, n.sym)
     of nkCharLit:
       w.withNode n:
         w.dest.add charToken(n.intVal.char, NoLineInfo)
@@ -340,6 +358,4 @@ proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode) =
   w.writeNode n
   let m = modname(w.moduleToNifSuffix, w.currentModule, w.inner.config)
   let d = toGeneratedFile(config, AbsoluteFile(m), ".nif").string
-  writeFile w.dest, d, OnlyIfChanged
-
-
+  writeFileAndIndex d, w.dest
