@@ -85,7 +85,7 @@ proc toNifDef(c: var EncodeContext; sym: PSym) =
     c.dest.addIntLit sym.position
   c.toNif sym.typ
   c.toNif sym.owner
-  c.toNif sym.ast   # drastically increase output NIF size!
+  c.toNif sym.ast   # drastically increase output NIF size! -- Yeah, no shit Sherlock.
   c.dest.addIdent toNifTag(sym.loc.k)
   c.dest.addStrLit sym.loc.snippet
   c.toNif sym.constraint

@@ -1,4 +1,4 @@
-import std/[tables]
+import std/[assertions, tables]
 import ".." / [ast, lineinfos, msgs, options]
 import "../../dist/nimony/src/gear2" / modnames
 

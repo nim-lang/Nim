@@ -1,7 +1,7 @@
 import sem, cgen, modulegraphs, ast, llstream, parser, msgs,
        lineinfos, reorder, options, semdata, cgendata, modules, pathutils,
        packages, syntaxes, depends, vm, pragmas, idents, lookups, wordrecg,
-       liftdestructors, nifgen
+       liftdestructors, nifgen, ast2nif
 
 import pipelineutils
 
@@ -217,6 +217,9 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
     closeNif(graph, bModule, finalNode)
   of NonePass:
     raiseAssert "use setPipeLinePass to set a proper PipelinePass"
+
+  if optCompress in graph.config.globalOptions:
+    writeNifModule(graph.config, module.position.int32, finalNode)
 
   if graph.config.backend notin {backendC, backendCpp, backendObjc}:
     # We only write rod files here if no C-like backend is active.

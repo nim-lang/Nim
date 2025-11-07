@@ -111,7 +111,7 @@ type                          # please make sure we have under 32 options
     optShowNonExportedFields  # for documentation: show fields that are not exported
     optJsBigInt64             # use bigints for 64-bit integers in JS
     optItaniumMangle          # mangling follows the Itanium spec
-    optCompress
+    optCompress               # turn on AST compression by converting it to NIF
 
   TGlobalOptions* = set[TGlobalOption]
 
