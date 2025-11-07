@@ -1442,8 +1442,16 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         #echo "new pc ", newPc, " calling: ", prc.name.s
         var newFrame = PStackFrame(prc: prc, comesFrom: pc, next: tos)
         newSeq(newFrame.slots, prc.offset+ord(isClosure))
-        if not isEmptyType(prc.typ.returnType):
-          putIntoReg(newFrame.slots[0], getNullValue(c, prc.typ.returnType, prc.info, c.config))
+        # setup slot for proc result:
+        let ret {.cursor.} = prc.typ.returnType
+        # hot spot ahead!
+        if ret != nil:
+          if fitsRegister(ret):
+            # same logic as opcLdNullReg here:
+            ensureKind(newFrame.slots[0], rkInt)
+            newFrame.slots[0].intVal = 0
+          elif not isEmptyType(ret):
+            putIntoReg(newFrame.slots[0], getNullValue(c, ret, prc.info, c.config))
         for i in 1..rc-1:
           newFrame.slots[i] = regs[rb+i]
         if isClosure:
