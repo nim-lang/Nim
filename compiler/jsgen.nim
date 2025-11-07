@@ -2333,8 +2333,8 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
       r.res = "if (null != $1) { if (null == $2) $2 = $3; else $2 += $3; }" %
         [b, lhs.rdLoc, tmp]
     else:
-      let (a, tmp) = maybeMakeTemp(p, n[1], lhs)
-      r.res = "$1.push.apply($3, $2);" % [a, rhs.rdLoc, tmp]
+      useMagic(p, "nimAddStrStr")
+      r.res = "nimAddStrStr($1, $2);" % [lhs.rdLoc, rhs.rdLoc]
     r.kind = resExpr
   of mAppendSeqElem:
     var x, y: TCompRes = default(TCompRes)
