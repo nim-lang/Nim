@@ -828,8 +828,11 @@ proc transformFor(c: PTransf, n: PNode): PNode =
       elif t.destructor == nil and arg.typ.destructor != nil:
         t = arg.typ
 
-      if arg.kind in {nkDerefExpr, nkHiddenDeref}:
+      if arg.kind in {nkDerefExpr, nkHiddenDeref} and
+          arg[0].typ.skipTypes(abstractInst).kind != tyLent:
         # optimizes for `[]` # bug #24093
+        # bug #25251: enforce a copy if the arg is a deref of a lent pointer
+        # since the arg could be a temporary that will go out of scope
         var temp = newTemp(c, arg[0].typ, formal.info)
         addVar(v, temp)
         stmtList.add(newAsgnStmt(c, nkFastAsgn, temp, arg[0], true))
