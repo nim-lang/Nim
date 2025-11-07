@@ -53,7 +53,9 @@ iterator instantiateGenericParamList(c: PContext, n: PNode, pt: LayeredIdTable):
           if q.typ.kind != tyCompositeTypeClass:
             localError(c.config, a.info, errCannotInstantiateX % s.name.s)
           t = errorType(c)
-      elif t.kind in {tyGenericParam, tyConcept, tyFromExpr}:
+      elif t.kind in {tyGenericParam, tyConcept, tyFromExpr} or
+          # generic body types are accepted as typedesc arguments
+          (t.kind == tyGenericBody and q.typ.kind != tyTypeDesc):
         localError(c.config, a.info, errCannotInstantiateX % q.name.s)
         t = errorType(c)
       elif isUnresolvedStatic(t) and (q.typ.kind == tyStatic or
@@ -109,7 +111,7 @@ proc freshGenSyms(c: PContext; n: PNode, owner, orig: PSym, symMap: var SymMappi
     elif s.owner == nil or s.owner.kind == skPackage:
       #echo "copied this ", s.name.s
       x = copySym(s, c.idgen)
-      x.owner = owner
+      setOwner(x, owner)
       idTablePut(symMap, s, x)
       n.sym = x
   else:
@@ -271,7 +273,7 @@ proc instantiateProcType(c: PContext, pt: LayeredIdTable,
     internalAssert c.config, originalParams[i].kind == nkSym
     let oldParam = originalParams[i].sym
     let param = copySym(oldParam, c.idgen)
-    param.owner = prc
+    setOwner(param, prc)
     param.typ = result[i]
 
     # The default value is instantiated and fitted against the final
@@ -300,12 +302,14 @@ proc instantiateProcType(c: PContext, pt: LayeredIdTable,
         # the only way the default value might be inserted).
         param.ast = errorNode(c, def)
         # we know the node is empty, we need the actual type for error message
-        param.ast.typ = def.typ
+        param.ast.typ() = def.typ
       else:
         param.ast = fitNodePostMatch(c, typeToFit, converted)
       param.typ = result[i]
 
     result.n[i] = newSymNode(param)
+    if isRecursiveStructuralType(result[i]):
+      localError(c.config, originalParams[i].sym.info, "illegal recursion in type '" & typeToString(result[i]) & "'")
     propagateToOwner(result, result[i])
     addDecl(c, param)
 
@@ -316,6 +320,8 @@ proc instantiateProcType(c: PContext, pt: LayeredIdTable,
   cl.isReturnType = false
   result.n[0] = originalParams[0].copyTree
   if result[0] != nil:
+    if isRecursiveStructuralType(result[0]):
+      localError(c.config, originalParams[0].info, "illegal recursion in type '" & typeToString(result[0]) & "'")
     propagateToOwner(result, result[0])
 
   eraseVoidParams(result)
@@ -393,9 +399,9 @@ proc generateInstance(c: PContext, fn: PSym, pt: LayeredIdTable,
     let passc = getLocalPassC(c, producer)
     if passc != "": #pass the local compiler options to the consumer module too
       extccomp.addLocalCompileOption(c.config, passc, toFullPathConsiderDirty(c.config, c.module.info.fileIndex))
-    result.owner = c.module
+    setOwner(result, c.module)
   else:
-    result.owner = fn
+    setOwner(result, fn)
   result.ast = n
   pushOwner(c, result)
 
@@ -423,6 +429,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: LayeredIdTable,
     addDecl(c, s)
     entry.concreteTypes[i] = s.typ
     inc i
+  entry.genericParamsCount = i
   c.matchedConcept = nil
   pushProcCon(c, result)
   instantiateProcType(c, pt, result, info)

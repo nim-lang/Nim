@@ -107,7 +107,7 @@ runnableExamples:
 ## container (e.g. string, sequence or array), as it is a mapping where the
 ## items are the keys, and their number of occurrences are the values.
 ## For that purpose `toCountTable proc<#toCountTable,openArray[A]>`_
-## comes handy:
+## comes in handy:
 
 runnableExamples:
   let myString = "abracadabra"
@@ -281,7 +281,7 @@ proc initTable*[A, B](initialSize = defaultInitialSize): Table[A, B] =
   result = default(Table[A, B])
   initImpl(result, initialSize)
 
-proc `[]=`*[A, B](t: var Table[A, B], key: A, val: sink B) =
+proc `[]=`*[A, B](t: var Table[A, B], key: sink A, val: sink B) =
   ## Inserts a `(key, value)` pair into `t`.
   ##
   ## See also:
@@ -419,9 +419,9 @@ proc getOrDefault*[A, B](t: Table[A, B], key: A): B =
   result = default(B)
   getOrDefaultImpl(t, key)
 
-proc getOrDefault*[A, B](t: Table[A, B], key: A, default: B): B =
+proc getOrDefault*[A, B](t: Table[A, B], key: A, def: B): B =
   ## Retrieves the value at `t[key]` if `key` is in `t`.
-  ## Otherwise, `default` is returned.
+  ## Otherwise, `def` is returned.
   ##
   ## See also:
   ## * `[] proc<#[],Table[A,B],A>`_ for retrieving a value of a key
@@ -434,8 +434,7 @@ proc getOrDefault*[A, B](t: Table[A, B], key: A, default: B): B =
     let a = {'a': 5, 'b': 9}.toTable
     doAssert a.getOrDefault('a', 99) == 5
     doAssert a.getOrDefault('z', 99) == 99
-  result = default(B)
-  getOrDefaultImpl(t, key, default)
+  getOrDefaultImpl(t, key, def)
 
 proc mgetOrPut*[A, B](t: var Table[A, B], key: A, val: B): var B =
   ## Retrieves value at `t[key]` or puts `val` if not present, either way
@@ -495,7 +494,7 @@ proc len*[A, B](t: Table[A, B]): int =
 
   result = t.counter
 
-proc add*[A, B](t: var Table[A, B], key: A, val: sink B) {.deprecated:
+proc add*[A, B](t: var Table[A, B], key: sink A, val: sink B) {.deprecated:
     "Deprecated since v1.4; it was more confusing than useful, use `[]=`".} =
   ## Puts a new `(key, value)` pair into `t` even if `t[key]` already exists.
   ##
@@ -629,7 +628,7 @@ template withValue*[A, B](t: var Table[A, B], key: A, value, body: untyped) =
     assert t[1].uid == 1314
 
   mixin rawGet
-  var hc: Hash
+  var hc: Hash = default(Hash)
   var index = rawGet(t, key, hc)
   let hasKey = index >= 0
   if hasKey:
@@ -676,6 +675,68 @@ template withValue*[A, B](t: var Table[A, B], key: A,
     body1
   else:
     body2
+
+template withValue*[A, B](t: Table[A, B], key: A,
+                          value, body1, body2: untyped) =
+  ## Retrieves the value at `t[key]` if it exists, assigns
+  ## it to the variable `value` and executes `body`
+  runnableExamples:
+    type
+      User = object
+        name: string
+
+    proc `=copy`(dest: var User, source: User) {.error.}
+
+    proc exec(t: Table[int, User]) =
+      t.withValue(1, value):
+        assert value.name == "Hello"
+      do:
+        doAssert false
+
+      var executedElseBranch = false
+      t.withValue(521, value):
+        doAssert false
+      do:
+        executedElseBranch = true
+      assert executedElseBranch
+
+    var t = initTable[int, User]()
+    t[1] = User(name: "Hello")
+    t.exec()
+
+  mixin rawGet
+  var hc: Hash
+  var index = rawGet(t, key, hc)
+  if index >= 0:
+    let value {.cursor, inject.} = t.data[index].val
+    body1
+  else:
+    body2
+
+template withValue*[A, B](t: Table[A, B], key: A,
+                          value, body: untyped) =
+  ## Retrieves the value at `t[key]` if it exists, assigns
+  ## it to the variable `value` and executes `body`
+  runnableExamples:
+    type
+      User = object
+        name: string
+
+    proc `=copy`(dest: var User, source: User) {.error.}
+
+    proc exec(t: Table[int, User]) =
+      t.withValue(1, value):
+        assert value.name == "Hello"
+
+      t.withValue(521, value):
+        doAssert false
+
+    var t = initTable[int, User]()
+    t[1] = User(name: "Hello")
+    t.exec()
+
+  withValue(t, key, value, body):
+    discard
 
 
 iterator pairs*[A, B](t: Table[A, B]): (A, B) =
@@ -889,7 +950,7 @@ proc `[]`*[A, B](t: TableRef[A, B], key: A): var B =
 
   result = t[][key]
 
-proc `[]=`*[A, B](t: TableRef[A, B], key: A, val: sink B) =
+proc `[]=`*[A, B](t: TableRef[A, B], key: sink A, val: sink B) =
   ## Inserts a `(key, value)` pair into `t`.
   ##
   ## See also:
@@ -972,9 +1033,9 @@ proc getOrDefault*[A, B](t: TableRef[A, B], key: A): B =
 
   getOrDefault(t[], key)
 
-proc getOrDefault*[A, B](t: TableRef[A, B], key: A, default: B): B =
+proc getOrDefault*[A, B](t: TableRef[A, B], key: A, def: B): B =
   ## Retrieves the value at `t[key]` if `key` is in `t`.
-  ## Otherwise, `default` is returned.
+  ## Otherwise, `def` is returned.
   ##
   ## See also:
   ## * `[] proc<#[],TableRef[A,B],A>`_ for retrieving a value of a key
@@ -988,7 +1049,7 @@ proc getOrDefault*[A, B](t: TableRef[A, B], key: A, default: B): B =
     doAssert a.getOrDefault('a', 99) == 5
     doAssert a.getOrDefault('z', 99) == 99
 
-  getOrDefault(t[], key, default)
+  getOrDefault(t[], key, def)
 
 proc mgetOrPut*[A, B](t: TableRef[A, B], key: A, val: B): var B =
   ## Retrieves value at `t[key]` or puts `val` if not present, either way
@@ -1046,7 +1107,7 @@ proc len*[A, B](t: TableRef[A, B]): int =
 
   result = t.counter
 
-proc add*[A, B](t: TableRef[A, B], key: A, val: sink B) {.deprecated:
+proc add*[A, B](t: TableRef[A, B], key: sink A, val: sink B) {.deprecated:
     "Deprecated since v1.4; it was more confusing than useful, use `[]=`".} =
   ## Puts a new `(key, value)` pair into `t` even if `t[key]` already exists.
   ##
@@ -1298,7 +1359,7 @@ proc rawGet[A, B](t: OrderedTable[A, B], key: A, hc: var Hash): int =
 
 proc rawInsert[A, B](t: var OrderedTable[A, B],
                      data: var OrderedKeyValuePairSeq[A, B],
-                     key: A, val: sink B, hc: Hash, h: Hash) =
+                     key: sink A, val: sink B, hc: Hash, h: Hash) =
   rawInsertImpl()
   data[h].next = -1
   if t.first < 0: t.first = h
@@ -1350,7 +1411,7 @@ proc initOrderedTable*[A, B](initialSize = defaultInitialSize): OrderedTable[A, 
   result = default(OrderedTable[A, B])
   initImpl(result, initialSize)
 
-proc `[]=`*[A, B](t: var OrderedTable[A, B], key: A, val: sink B) =
+proc `[]=`*[A, B](t: var OrderedTable[A, B], key: sink A, val: sink B) =
   ## Inserts a `(key, value)` pair into `t`.
   ##
   ## See also:
@@ -1491,9 +1552,9 @@ proc getOrDefault*[A, B](t: OrderedTable[A, B], key: A): B =
   result = default(B)
   getOrDefaultImpl(t, key)
 
-proc getOrDefault*[A, B](t: OrderedTable[A, B], key: A, default: B): B =
+proc getOrDefault*[A, B](t: OrderedTable[A, B], key: A, def: B): B =
   ## Retrieves the value at `t[key]` if `key` is in `t`.
-  ## Otherwise, `default` is returned.
+  ## Otherwise, `def` is returned.
   ##
   ## See also:
   ## * `[] proc<#[],OrderedTable[A,B],A>`_ for retrieving a value of a key
@@ -1506,8 +1567,7 @@ proc getOrDefault*[A, B](t: OrderedTable[A, B], key: A, default: B): B =
     let a = {'a': 5, 'b': 9}.toOrderedTable
     doAssert a.getOrDefault('a', 99) == 5
     doAssert a.getOrDefault('z', 99) == 99
-  result = default(B)
-  getOrDefaultImpl(t, key, default)
+  getOrDefaultImpl(t, key, def)
 
 proc mgetOrPut*[A, B](t: var OrderedTable[A, B], key: A, val: B): var B =
   ## Retrieves value at `t[key]` or puts `val` if not present, either way
@@ -1549,7 +1609,7 @@ proc len*[A, B](t: OrderedTable[A, B]): int {.inline.} =
 
   result = t.counter
 
-proc add*[A, B](t: var OrderedTable[A, B], key: A, val: sink B) {.deprecated:
+proc add*[A, B](t: var OrderedTable[A, B], key: sink A, val: sink B) {.deprecated:
     "Deprecated since v1.4; it was more confusing than useful, use `[]=`".} =
   ## Puts a new `(key, value)` pair into `t` even if `t[key]` already exists.
   ##
@@ -1909,7 +1969,7 @@ proc `[]`*[A, B](t: OrderedTableRef[A, B], key: A): var B =
       echo a['z']
   result = t[][key]
 
-proc `[]=`*[A, B](t: OrderedTableRef[A, B], key: A, val: sink B) =
+proc `[]=`*[A, B](t: OrderedTableRef[A, B], key: sink A, val: sink B) =
   ## Inserts a `(key, value)` pair into `t`.
   ##
   ## See also:
@@ -1992,9 +2052,9 @@ proc getOrDefault*[A, B](t: OrderedTableRef[A, B], key: A): B =
 
   getOrDefault(t[], key)
 
-proc getOrDefault*[A, B](t: OrderedTableRef[A, B], key: A, default: B): B =
+proc getOrDefault*[A, B](t: OrderedTableRef[A, B], key: A, def: B): B =
   ## Retrieves the value at `t[key]` if `key` is in `t`.
-  ## Otherwise, `default` is returned.
+  ## Otherwise, `def` is returned.
   ##
   ## See also:
   ## * `[] proc<#[],OrderedTableRef[A,B],A>`_ for retrieving a value of a key
@@ -2008,7 +2068,7 @@ proc getOrDefault*[A, B](t: OrderedTableRef[A, B], key: A, default: B): B =
     doAssert a.getOrDefault('a', 99) == 5
     doAssert a.getOrDefault('z', 99) == 99
 
-  getOrDefault(t[], key, default)
+  getOrDefault(t[], key, def)
 
 proc mgetOrPut*[A, B](t: OrderedTableRef[A, B], key: A, val: B): var B =
   ## Retrieves value at `t[key]` or puts `val` if not present, either way
@@ -2050,7 +2110,7 @@ proc len*[A, B](t: OrderedTableRef[A, B]): int {.inline.} =
 
   result = t.counter
 
-proc add*[A, B](t: OrderedTableRef[A, B], key: A, val: sink B) {.deprecated:
+proc add*[A, B](t: OrderedTableRef[A, B], key: sink A, val: sink B) {.deprecated:
     "Deprecated since v1.4; it was more confusing than useful, use `[]=`".} =
   ## Puts a new `(key, value)` pair into `t` even if `t[key]` already exists.
   ##
@@ -2269,19 +2329,15 @@ iterator mvalues*[A, B](t: OrderedTableRef[A, B]): var B =
     yield t.data[h].val
     assert(len(t) == L, "the length of the table changed while iterating over it")
 
-
-
-
-
-
-
 # -------------------------------------------------------------------------
 # ------------------------------ CountTable -------------------------------
 # -------------------------------------------------------------------------
 
 type
   CountTable*[A] = object
-    ## Hash table that counts the number of each key.
+    ## Hash table that counts the number of each key.  Unlike `Table<#Table>`_,
+    ## this uses a zero count to signal "empty" & so does not cache hash values
+    ## for comparison reduction or resize acceleration.
     ##
     ## For creating an empty CountTable, use `initCountTable proc
     ## <#initCountTable>`_.
@@ -2320,9 +2376,9 @@ proc rawGet[A](t: CountTable[A], key: A): int =
     h = nextTry(h, high(t.data))
   result = -1 - h # < 0 => MISSING; insert idx = -1 - result
 
-template ctget(t, key, default: untyped): untyped =
+template ctget(t, key, def: untyped): untyped =
   var index = rawGet(t, key)
-  result = if index >= 0: t.data[index].val else: default
+  result = if index >= 0: t.data[index].val else: def
 
 proc inc*[A](t: var CountTable[A], key: A, val = 1)
 
@@ -2415,8 +2471,7 @@ proc smallest*[A](t: CountTable[A]): tuple[key: A, val: int] =
   for h in 0 .. high(t.data):
     if t.data[h].val > 0 and (minIdx == -1 or t.data[minIdx].val > t.data[h].val):
       minIdx = h
-  result.key = t.data[minIdx].key
-  result.val = t.data[minIdx].val
+  result = (t.data[minIdx].key, t.data[minIdx].val)
 
 proc largest*[A](t: CountTable[A]): tuple[key: A, val: int] =
   ## Returns the `(key, value)` pair with the largest `val`. Efficiency: O(n)
@@ -2427,8 +2482,7 @@ proc largest*[A](t: CountTable[A]): tuple[key: A, val: int] =
   var maxIdx = 0
   for h in 1 .. high(t.data):
     if t.data[maxIdx].val < t.data[h].val: maxIdx = h
-  result.key = t.data[maxIdx].key
-  result.val = t.data[maxIdx].val
+  result = (t.data[maxIdx].key, t.data[maxIdx].val)
 
 proc hasKey*[A](t: CountTable[A], key: A): bool =
   ## Returns true if `key` is in the table `t`.
@@ -2447,15 +2501,15 @@ proc contains*[A](t: CountTable[A], key: A): bool =
   ## the `in` operator.
   return hasKey[A](t, key)
 
-proc getOrDefault*[A](t: CountTable[A], key: A; default: int = 0): int =
+proc getOrDefault*[A](t: CountTable[A], key: A; def: int = 0): int =
   ## Retrieves the value at `t[key]` if `key` is in `t`. Otherwise, the
-  ## integer value of `default` is returned.
+  ## integer value of `def` is returned.
   ##
   ## See also:
   ## * `[] proc<#[],CountTable[A],A>`_ for retrieving a value of a key
   ## * `hasKey proc<#hasKey,CountTable[A],A>`_ for checking if a key
   ##   is in the table
-  ctget(t, key, default)
+  ctget(t, key, def)
 
 proc del*[A](t: var CountTable[A], key: A) {.since: (1, 1).} =
   ## Deletes `key` from table `t`. Does nothing if the key does not exist.
@@ -2678,10 +2732,6 @@ iterator mvalues*[A](t: var CountTable[A]): var int =
 
 
 
-
-
-
-
 # ---------------------------------------------------------------------------
 # ---------------------------- CountTableRef --------------------------------
 # ---------------------------------------------------------------------------
@@ -2772,15 +2822,15 @@ proc contains*[A](t: CountTableRef[A], key: A): bool =
   ## the `in` operator.
   return hasKey[A](t, key)
 
-proc getOrDefault*[A](t: CountTableRef[A], key: A, default: int): int =
+proc getOrDefault*[A](t: CountTableRef[A], key: A, def: int): int =
   ## Retrieves the value at `t[key]` if `key` is in `t`. Otherwise, the
-  ## integer value of `default` is returned.
+  ## integer value of `def` is returned.
   ##
   ## See also:
   ## * `[] proc<#[],CountTableRef[A],A>`_ for retrieving a value of a key
   ## * `hasKey proc<#hasKey,CountTableRef[A],A>`_ for checking if a key
   ##   is in the table
-  result = t[].getOrDefault(key, default)
+  result = t[].getOrDefault(key, def)
 
 proc len*[A](t: CountTableRef[A]): int =
   ## Returns the number of keys in `t`.
@@ -2957,16 +3007,19 @@ iterator mvalues*[A](t: CountTableRef[A]): var int =
       assert(len(t) == L, "the length of the table changed while iterating over it")
 
 proc hash*[K,V](s: Table[K,V]): Hash =
+  result = Hash(0)
   for p in pairs(s):
     result = result xor hash(p)
   result = !$result
 
 proc hash*[K,V](s: OrderedTable[K,V]): Hash =
+  result = Hash(0)
   for p in pairs(s):
     result = result !& hash(p)
   result = !$result
 
 proc hash*[V](s: CountTable[V]): Hash =
+  result = Hash(0)
   for p in pairs(s):
     result = result xor hash(p)
   result = !$result

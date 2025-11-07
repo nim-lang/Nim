@@ -75,11 +75,11 @@ const
 const
   signMask*: BitsType = not (not BitsType(0) shr 1)
 
-proc constructDouble*(bits: BitsType): Double  =
-  result.bits = bits
+proc constructDouble*(bits: BitsType): Double =
+  result = Double(bits: bits)
 
-proc constructDouble*(value: ValueType): Double  =
-  result.bits = cast[typeof(result.bits)](value)
+proc constructDouble*(value: ValueType): Double =
+  result = Double(bits: cast[typeof(result.bits)](value))
 
 proc physicalSignificand*(this: Double): BitsType {.noSideEffect.} =
   return this.bits and significandMask
@@ -1043,15 +1043,6 @@ proc toDecimal64*(ieeeSignificand: uint64; ieeeExponent: uint64): FloatingDecima
 #  ToChars
 # ==================================================================================================
 
-when false:
-  template `+!`(x: cstring; offset: int): cstring = cast[cstring](cast[uint](x) + uint(offset))
-
-  template dec(x: cstring; offset=1) = x = cast[cstring](cast[uint](x) - uint(offset))
-  template inc(x: cstring; offset=1) = x = cast[cstring](cast[uint](x) + uint(offset))
-
-  proc memset(x: cstring; ch: char; L: int) {.importc, nodecl.}
-  proc memmove(a, b: cstring; L: int) {.importc, nodecl.}
-
 proc utoa8DigitsSkipTrailingZeros*(buf: var openArray[char]; pos: int; digits: uint32): int {.inline.} =
   dragonbox_Assert(digits >= 1)
   dragonbox_Assert(digits <= 99999999'u32)
@@ -1234,7 +1225,7 @@ proc formatDigits*[T: Ordinal](buffer: var openArray[char]; pos: T; digits: uint
       when true: #defined(vcc) and not defined(clang):
         ##  VC does not inline the memmove call below. (Even if compiled with /arch:AVX2.)
         ##  However, memcpy will be inlined.
-        var tmp: array[16, char]
+        var tmp = default(array[16, char])
         for i in 0..<16: tmp[i] = buffer[i+pos+decimalPoint]
         for i in 0..<16: buffer[i+pos+decimalPoint+1] = tmp[i]
       else:

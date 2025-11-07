@@ -180,7 +180,6 @@ proc deinitRawChannel(p: pointer) =
   deinitSysCond(c.cond)
 
 when not usesDestructors:
-
   proc storeAux(dest, src: pointer, mt: PNimType, t: PRawChannel,
                 mode: LoadStoreMode) {.benign.}
 
@@ -203,9 +202,6 @@ when not usesDestructors:
 
   proc storeAux(dest, src: pointer, mt: PNimType, t: PRawChannel,
                 mode: LoadStoreMode) =
-    template `+!`(p: pointer; x: int): pointer =
-      cast[pointer](cast[int](p) +% x)
-
     var
       d = cast[int](dest)
       s = cast[int](src)
@@ -405,6 +401,7 @@ proc recv*[TMsg](c: var Channel[TMsg]): TMsg =
   ##
   ## This blocks until a message has arrived!
   ## You may use `peek proc <#peek,Channel[TMsg]>`_ to avoid the blocking.
+  result = default(TMsg)
   var q = cast[PRawChannel](addr(c))
   acquireSys(q.lock)
   llRecv(q, addr(result), cast[PNimType](getTypeInfo(result)))
@@ -417,6 +414,7 @@ proc tryRecv*[TMsg](c: var Channel[TMsg]): tuple[dataAvailable: bool,
   ##
   ## If it fails, it returns `(false, default(msg))` otherwise it
   ## returns `(true, msg)`.
+  result = default(tuple[dataAvailable: bool, msg: TMsg])
   var q = cast[PRawChannel](addr(c))
   if q.mask != ChannelDeadMask:
     if tryAcquireSys(q.lock):

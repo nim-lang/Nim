@@ -3,6 +3,7 @@ Advanced commands:
   //compileToCpp, cpp       compile project to C++ code
   //compileToOC, objc       compile project to Objective C code
   //js                      compile project to Javascript
+  //nif                     compile project to NIF
   //e                       run a Nimscript file
   //md2html                 convert a Markdown file to HTML
                             use `--docCmd:skip` to skip compiling snippets
@@ -51,7 +52,7 @@ Advanced options:
   --spellSuggest:num        show at most `num >= 0` spelling suggestions on typos.
                             if `num` is not specified (or `auto`), return
                             an implementation defined set of suggestions.
-  --hints:on|off|list.      `on|off` enables or disables hints.
+  --hints:on|off|list       `on|off` enables or disables hints.
                             `list` reports which hints are selected.
   --hint:X:on|off           turn specific hint X on|off. `hint:X` means `hint:X:on`,
                             as with similar flags. `all` is the set of all hints
@@ -90,6 +91,7 @@ Advanced options:
   --os:SYMBOL               set the target operating system (cross-compilation)
   --cpu:SYMBOL              set the target processor (cross-compilation)
   --debuginfo:on|off        enables debug information
+  --mangle:nim|cpp          selects `nim` or `cpp` style name mangling, defaults to `nim`
   -t, --passC:OPTION        pass an option to the C compiler
   -l, --passL:OPTION        pass an option to the linker
   --cc:SYMBOL               specify the C compiler
@@ -165,6 +167,7 @@ Advanced options:
   --verbosity:0|1|2|3       set Nim's verbosity level (1 is default)
   --errorMax:N              stop compilation after N errors; 0 means unlimited
   --maxLoopIterationsVM:N   set max iterations for all VM loops
+  --maxCallDepthVM:N        set max call depth in the VM
   --experimental:$1
                             enable experimental language feature
   --legacy:$2

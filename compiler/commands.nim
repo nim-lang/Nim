@@ -203,13 +203,14 @@ proc processSpecificNote*(arg: string, state: TSpecialWord, pass: TCmdLinePass,
   else: invalidCmdLineOption(conf, pass, orig, info)
 
   let isSomeHint = state in {wHint, wHintAsError}
+  let isSomeWarning = state in {wWarning, wWarningAsError}
   template findNote(noteMin, noteMax, name) =
     # unfortunately, hintUser and warningUser clash, otherwise implementation would simplify a bit
     let x = findStr(noteMin, noteMax, id, errUnknown)
     if x != errUnknown: notes = {TNoteKind(x)}
     else:
-      if isSomeHint:
-        message(conf, info, hintUnknownHint, id)
+      if isSomeHint or isSomeWarning:
+        message(conf, info, warnUnknownNotes, "unknown $#: $#" % [name, id])
       else:
         localError(conf, info, "unknown $#: $#" % [name, id])
   case id.normalize
@@ -363,6 +364,7 @@ proc testCompileOption*(conf: ConfigRef; switch: string, info: TLineInfo): bool 
     result = false
   of "panics": result = contains(conf.globalOptions, optPanics)
   of "jsbigint64": result = contains(conf.globalOptions, optJsBigInt64)
+  of "mangle": result = contains(conf.globalOptions, optItaniumMangle)
   else:
     result = false
     invalidCmdLineOption(conf, passCmd1, switch, info)
@@ -458,7 +460,7 @@ template handleStdinOrCmdInput =
     conf.outDir = getNimcacheDir(conf)
 
 proc handleStdinInput*(conf: ConfigRef) =
-  conf.projectName = "stdinfile"
+  conf.projectName = conf.stdinFile.string
   conf.projectIsStdin = true
   handleStdinOrCmdInput()
 
@@ -472,6 +474,7 @@ proc parseCommand*(command: string): Command =
   of "cpp", "compiletocpp": cmdCompileToCpp
   of "objc", "compiletooc": cmdCompileToOC
   of "js", "compiletojs": cmdCompileToJS
+  of "nif": cmdCompileToNif
   of "r": cmdCrun
   of "m": cmdM
   of "run": cmdTcc
@@ -506,6 +509,7 @@ proc setCmd*(conf: ConfigRef, cmd: Command) =
   of cmdCompileToCpp: conf.backend = backendCpp
   of cmdCompileToOC: conf.backend = backendObjc
   of cmdCompileToJS: conf.backend = backendJs
+  of cmdCompileToNif: conf.backend = backendNif
   else: discard
 
 proc setCommandEarly*(conf: ConfigRef, command: string) =
@@ -759,6 +763,14 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       conf.globalOptions.excl optCDebug
     else:
       localError(conf, info, "expected native|gdb|on|off but found " & arg)
+  of "mangle":
+    case arg.normalize
+    of "nim":
+      conf.globalOptions.excl optItaniumMangle
+    of "cpp":
+      conf.globalOptions.incl optItaniumMangle
+    else:
+      localError(conf, info, "expected nim|cpp but found " & arg)
   of "g": # alias for --debugger:native
     conf.globalOptions.incl optCDebug
     conf.options.incl optLineDir
@@ -881,11 +893,19 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "import":
     expectArg(conf, switch, arg, pass, info)
     if pass in {passCmd2, passPP}:
-      conf.implicitImports.add findModule(conf, arg, toFullPath(conf, info)).string
+      let m = findModule(conf, arg, toFullPath(conf, info)).string
+      if m.len == 0:
+        localError(conf, info, "Cannot resolve filename: " & arg)
+      else:
+        conf.implicitImports.add m
   of "include":
     expectArg(conf, switch, arg, pass, info)
     if pass in {passCmd2, passPP}:
-      conf.implicitIncludes.add findModule(conf, arg, toFullPath(conf, info)).string
+      let m = findModule(conf, arg, toFullPath(conf, info)).string
+      if m.len == 0:
+        localError(conf, info, "Cannot resolve filename: " & arg)
+      else:
+        conf.implicitIncludes.add m
   of "listcmd":
     processOnOffSwitchG(conf, {optListCmd}, arg, pass, info)
   of "asm":
@@ -919,6 +939,12 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     discard parseSaturatedNatural(arg, value)
     if not value > 0: localError(conf, info, "maxLoopIterationsVM must be a positive integer greater than zero")
     conf.maxLoopIterationsVM = value
+  of "maxcalldepthvm":
+    expectArg(conf, switch, arg, pass, info)
+    var value: int = 2_000
+    discard parseSaturatedNatural(arg, value)
+    if value <= 0: localError(conf, info, "maxCallDepthVM must be a positive integer greater than zero")
+    conf.maxCallDepthVM = value
   of "errormax":
     expectArg(conf, switch, arg, pass, info)
     # Note: `nim check` (etc) can overwrite this.
@@ -928,6 +954,10 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     var value: int = 0
     discard parseSaturatedNatural(arg, value)
     conf.errorMax = if value == 0: high(int) else: value
+  of "stdinfile":
+    expectArg(conf, switch, arg, pass, info)
+    conf.stdinFile = if os.isAbsolute(arg): AbsoluteFile(arg)
+                     else: AbsoluteFile(getCurrentDir() / arg)
   of "verbosity":
     expectArg(conf, switch, arg, pass, info)
     let verbosity = parseInt(arg)
