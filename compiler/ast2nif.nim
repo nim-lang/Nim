@@ -17,7 +17,7 @@ import "../dist/nimony/src/lib" / [bitabs, nifstreams, nifcursors, lineinfos,
   nifindexes]
 import "../dist/nimony/src/gear2" / modnames
 
-import icnif / [enum2nif, icniftags]
+import icnif / [enum2nif]
 
 # ---------------- Line info handling -----------------------------------------
 
@@ -114,9 +114,8 @@ let
 
 type
   Writer = object
-    dest: TokenBuf
-    deps: TokenBuf
-    inner: LineInfoWriter
+    deps: TokenBuf  # include&import deps
+    infos: LineInfoWriter
     currentModule: int32
     writtenSyms: HashSet[ItemId]
     writtenTypes: HashSet[ItemId]
@@ -135,7 +134,7 @@ proc toNifSymName(w: var Writer; sym: PSym): string =
     # Global symbol: ident.disamb.moduleSuffix
     let module = sym.itemId.module
     result.add '.'
-    result.add modname(w.moduleToNifSuffix, module, w.inner.config)
+    result.add modname(w.moduleToNifSuffix, module, w.infos.config)
 
 template buildTree(dest: var TokenBuf; tag: TagId; body: untyped) =
   dest.addParLe tag
@@ -145,129 +144,129 @@ template buildTree(dest: var TokenBuf; tag: TagId; body: untyped) =
 template buildTree(dest: var TokenBuf; tag: string; body: untyped) =
   buildTree dest, pool.tags.getOrIncl(tag), body
 
-proc writeFlags[E](w: var Writer; flags: set[E]) =
+proc writeFlags[E](dest: var TokenBuf; flags: set[E]) =
   var flagsAsIdent = ""
   genFlags(flags, flagsAsIdent)
   if flagsAsIdent.len > 0:
-    w.dest.addIdent flagsAsIdent
+    dest.addIdent flagsAsIdent
   else:
-    w.dest.addDotToken
+    dest.addDotToken
 
 proc trLineInfo(w: var Writer; info: TLineInfo): PackedLineInfo {.inline.} =
-  result = nifLineInfo(w.inner, info)
+  result = nifLineInfo(w.infos, info)
 
-proc writeNode(w: var Writer; n: PNode)
-proc writeType(w: var Writer; typ: PType)
-proc writeSym(w: var Writer; sym: PSym)
+proc writeNode(w: var Writer; dest: var TokenBuf; n: PNode)
+proc writeType(w: var Writer; dest: var TokenBuf; typ: PType)
+proc writeSym(w: var Writer; dest: var TokenBuf; sym: PSym)
 
 proc typeToNifSym(w: var Writer; typ: PType): string =
   result = "`t."
   result.addInt typ.uniqueId.item
   result.add '.'
-  result.add modname(w.moduleToNifSuffix, typ.uniqueId.module, w.inner.config)
+  result.add modname(w.moduleToNifSuffix, typ.uniqueId.module, w.infos.config)
 
-proc writeTypeDef(w: var Writer; typ: PType) =
-  w.dest.buildTree tdefTag:
-    w.dest.addSymDef pool.syms.getOrIncl(w.typeToNifSym(typ)), NoLineInfo
+proc writeTypeDef(w: var Writer; dest: var TokenBuf; typ: PType) =
+  dest.buildTree tdefTag:
+    dest.addSymDef pool.syms.getOrIncl(w.typeToNifSym(typ)), NoLineInfo
 
-    w.dest.addIdent toNifTag(typ.kind)
-    writeFlags(w, typ.flags)
-    w.dest.addIdent toNifTag(typ.callConv)
-    w.dest.addIntLit typ.size
-    w.dest.addIntLit typ.align
-    w.dest.addIntLit typ.paddingAtEnd
-    w.dest.addIntLit typ.itemId.item  # nonUniqueId
+    dest.addIdent toNifTag(typ.kind)
+    writeFlags(dest, typ.flags)
+    dest.addIdent toNifTag(typ.callConv)
+    dest.addIntLit typ.size
+    dest.addIntLit typ.align
+    dest.addIntLit typ.paddingAtEnd
+    dest.addIntLit typ.itemId.item  # nonUniqueId
 
-    writeType(w, typ.typeInst)
-    writeNode(w, typ.n)
-    writeSym(w, typ.owner)
-    writeSym(w, typ.sym)
+    writeType(w, dest, typ.typeInst)
+    writeNode(w, dest, typ.n)
+    writeSym(w, dest, typ.owner)
+    writeSym(w, dest, typ.sym)
     # we store the type's elements here at the end so that
     # it is not ambiguous and saves space:
     for ch in typ.kids:
-      writeType(w, ch)
+      writeType(w, dest, ch)
 
 
-proc writeType(w: var Writer; typ: PType) =
+proc writeType(w: var Writer; dest: var TokenBuf; typ: PType) =
   if typ == nil:
-    w.dest.addDotToken()
+    dest.addDotToken()
   elif typ.itemId.module == w.currentModule and not w.writtenTypes.containsOrIncl(typ.uniqueId):
-    writeTypeDef(w, typ)
+    writeTypeDef(w, dest, typ)
   else:
-    w.dest.buildTree tuseTag:
-      w.dest.addSymUse pool.syms.getOrIncl(w.typeToNifSym(typ)), NoLineInfo
+    dest.buildTree tuseTag:
+      dest.addSymUse pool.syms.getOrIncl(w.typeToNifSym(typ)), NoLineInfo
 
-proc writeSymDef(w: var Writer; sym: PSym) =
-  w.dest.addParLe sdefTag, trLineInfo(w, sym.info)
-  w.dest.addSymDef pool.syms.getOrIncl(w.toNifSymName(sym)), NoLineInfo
+proc writeSymDef(w: var Writer; dest: var TokenBuf; sym: PSym) =
+  dest.addParLe sdefTag, trLineInfo(w, sym.info)
+  dest.addSymDef pool.syms.getOrIncl(w.toNifSymName(sym)), NoLineInfo
   if sym.magic == mNone:
-    w.dest.addDotToken
+    dest.addDotToken
   else:
-    w.dest.addIdent toNifTag(sym.magic)
-  writeFlags(w, sym.flags)
-  writeFlags(w, sym.options)
-  w.dest.addIntLit sym.offset
-  w.dest.addIntLit sym.disamb
-  w.dest.buildTree sym.kind.toNifTag:
+    dest.addIdent toNifTag(sym.magic)
+  writeFlags(dest, sym.flags)
+  writeFlags(dest, sym.options)
+  dest.addIntLit sym.offset
+  dest.addIntLit sym.disamb
+  dest.buildTree sym.kind.toNifTag:
     case sym.kind
     of skLet, skVar, skField, skForVar:
-      writeSym(w, sym.guard)
-      w.dest.addIntLit sym.bitsize
-      w.dest.addIntLit sym.alignment
+      writeSym(w, dest, sym.guard)
+      dest.addIntLit sym.bitsize
+      dest.addIntLit sym.alignment
     else:
       discard
   if sym.kind == skModule:
-    w.dest.addDotToken() # position will be set by the loader!
+    dest.addDotToken() # position will be set by the loader!
   else:
-    w.dest.addIntLit sym.position
-  writeType(w, sym.typ)
-  writeSym(w, sym.owner)
+    dest.addIntLit sym.position
+  writeType(w, dest, sym.typ)
+  writeSym(w, dest, sym.owner)
   # We do not store `sym.ast` here but instead set it in the deserializer
   #writeNode(w, sym.ast)
-  w.dest.addIdent toNifTag(sym.loc.k)
-  w.dest.addStrLit sym.loc.snippet
-  writeNode(w, sym.constraint)
-  writeSym(w, sym.instantiatedFrom)
-  w.dest.addParRi
+  dest.addIdent toNifTag(sym.loc.k)
+  dest.addStrLit sym.loc.snippet
+  writeNode(w, dest, sym.constraint)
+  writeSym(w, dest, sym.instantiatedFrom)
+  dest.addParRi
 
-proc writeSym(w: var Writer; sym: PSym) =
+proc writeSym(w: var Writer; dest: var TokenBuf; sym: PSym) =
   if sym == nil:
-    w.dest.addDotToken()
+    dest.addDotToken()
   elif sym.itemId.module == w.currentModule and not w.writtenSyms.containsOrIncl(sym.itemId):
-    writeSymDef(w, sym)
+    writeSymDef(w, dest, sym)
   else:
     # NIF has direct support for symbol references so we don't need to use a tag here,
     # unlike what we do for types!
-    w.dest.addSymUse pool.syms.getOrIncl(w.toNifSymName(sym)), NoLineInfo
+    dest.addSymUse pool.syms.getOrIncl(w.toNifSymName(sym)), NoLineInfo
 
-proc writeSymNode(w: var Writer; n: PNode; sym: PSym) =
+proc writeSymNode(w: var Writer; dest: var TokenBuf; n: PNode; sym: PSym) =
   if sym == nil:
-    w.dest.addDotToken()
+    dest.addDotToken()
   elif sym.itemId.module == w.currentModule and not w.writtenSyms.containsOrIncl(sym.itemId):
     if n.typ != n.sym.typ:
-      w.dest.buildTree hiddenTypeTag, trLineInfo(w, n.info):
-        writeSymDef(w, sym)
+      dest.buildTree hiddenTypeTag, trLineInfo(w, n.info):
+        writeSymDef(w, dest, sym)
     else:
-      writeSymDef(w, sym)
+      writeSymDef(w, dest, sym)
   else:
     # NIF has direct support for symbol references so we don't need to use a tag here,
     # unlike what we do for types!
     let info = trLineInfo(w, n.info)
     if n.typ != n.sym.typ:
-      w.dest.buildTree hiddenTypeTag, info:
-        w.dest.addSymUse pool.syms.getOrIncl(w.toNifSymName(sym)), info
+      dest.buildTree hiddenTypeTag, info:
+        dest.addSymUse pool.syms.getOrIncl(w.toNifSymName(sym)), info
     else:
-      w.dest.addSymUse pool.syms.getOrIncl(w.toNifSymName(sym)), info
+      dest.addSymUse pool.syms.getOrIncl(w.toNifSymName(sym)), info
 
-proc writeNodeFlags(w: var Writer; flags: set[TNodeFlag]) {.inline.} =
-  writeFlags(w, flags)
+proc writeNodeFlags(dest: var TokenBuf; flags: set[TNodeFlag]) {.inline.} =
+  writeFlags(dest, flags)
 
-template withNode(w: var Writer; n: PNode; body: untyped) =
-  w.dest.addParLe pool.tags.getOrIncl(toNifTag(n.kind)), trLineInfo(w, n.info)
-  writeNodeFlags(w, n.flags)
-  writeType(w, n.typ)
+template withNode(w: var Writer; dest: var TokenBuf; n: PNode; body: untyped) =
+  dest.addParLe pool.tags.getOrIncl(toNifTag(n.kind)), trLineInfo(w, n.info)
+  writeNodeFlags(dest, n.flags)
+  writeType(w, dest, n.typ)
   body
-  w.dest.addParRi
+  dest.addParRi
 
 proc addLocalSym(w: var Writer; n: PNode) =
   ## Add symbol from a node to locals set if it's a symbol node
@@ -284,76 +283,87 @@ proc addLocalSyms(w: var Writer; n: PNode) =
     addLocalSym(w, n)
 
 proc trInclude(w: var Writer; n: PNode) =
-  discard
+  w.deps.addParLe pool.tags.getOrIncl(toNifTag(n.kind)), trLineInfo(w, n.info)
+  for child in n:
+    assert child.kind == nkStrLit
+    w.deps.addStrLit child.strVal
+  w.deps.addParRi
 
 proc trImport(w: var Writer; n: PNode) =
-  discard
+  w.deps.addParLe pool.tags.getOrIncl(toNifTag(n.kind)), trLineInfo(w, n.info)
+  for child in n:
+    assert child.kind == nkSym
+    let s = child.sym
+    assert s.kind == skModule
+    let fp = toFullPath(w.infos.config, s.position.FileIndex)
+    w.deps.addStrLit fp
+  w.deps.addParRi
 
-proc writeNode(w: var Writer; n: PNode) =
+proc writeNode(w: var Writer; dest: var TokenBuf; n: PNode) =
   if n == nil:
-    w.dest.addDotToken
+    dest.addDotToken
   else:
     case n.kind:
     of nkEmpty:
       let info = trLineInfo(w, n.info)
-      w.dest.addParLe pool.tags.getOrIncl(toNifTag(nkEmpty)), info
-      writeNodeFlags(w, n.flags)
-      w.dest.addParRi
+      dest.addParLe pool.tags.getOrIncl(toNifTag(nkEmpty)), info
+      writeNodeFlags(dest, n.flags)
+      dest.addParRi
     of nkIdent:
       # nkIdent uses flags and typ when it is a generic parameter
-      w.withNode n:
-        w.dest.addIdent n.ident.s
+      w.withNode dest, n:
+        dest.addIdent n.ident.s
     of nkSym:
-      writeSymNode(w, n, n.sym)
+      writeSymNode(w, dest, n, n.sym)
     of nkCharLit:
-      w.withNode n:
-        w.dest.add charToken(n.intVal.char, NoLineInfo)
+      w.withNode dest, n:
+        dest.add charToken(n.intVal.char, NoLineInfo)
     of nkIntLit .. nkInt64Lit:
-      w.withNode n:
-        w.dest.addIntLit n.intVal
+      w.withNode dest, n:
+        dest.addIntLit n.intVal
     of nkUIntLit .. nkUInt64Lit:
-      w.withNode n:
-        w.dest.addUIntLit cast[BiggestUInt](n.intVal)
+      w.withNode dest, n:
+        dest.addUIntLit cast[BiggestUInt](n.intVal)
     of nkFloatLit .. nkFloat128Lit:
-      w.withNode n:
-        w.dest.add floatToken(pool.floats.getOrIncl(n.floatVal), NoLineInfo)
+      w.withNode dest, n:
+        dest.add floatToken(pool.floats.getOrIncl(n.floatVal), NoLineInfo)
     of nkStrLit .. nkTripleStrLit:
-      w.withNode n:
-        w.dest.addStrLit n.strVal
+      w.withNode dest, n:
+        dest.addStrLit n.strVal
     of nkNilLit:
-      w.withNode n:
+      w.withNode dest, n:
         discard
     of nkLetSection, nkVarSection, nkConstSection, nkGenericParams:
       # Track local variables declared in let/var sections
-      w.withNode(n):
+      w.withNode dest, n:
         for child in n:
           addLocalSyms w, child
           # Process the child node
-          writeNode(w, child)
+          writeNode(w, dest, child)
     of nkForStmt, nkTypeDef:
       # Track for loop variable (first child is the loop variable)
-      w.withNode(n):
+      w.withNode dest, n:
         if n.len > 0:
           addLocalSyms(w, n[0])
         for i in 0 ..< n.len:
-          writeNode(w, n[i])
+          writeNode(w, dest, n[i])
     of nkFormalParams:
       # Track parameters (first child is return type, rest are parameters)
-      w.withNode(n):
+      w.withNode dest, n:
         for i in 0 ..< n.len:
           if i > 0:  # Skip return type
             addLocalSyms(w, n[i])
-          writeNode(w, n[i])
+          writeNode(w, dest, n[i])
     of nkProcDef, nkFuncDef, nkMethodDef, nkIteratorDef, nkConverterDef, nkLambda, nkDo, nkMacroDef:
       inc w.inProc
       # Entering a proc/function body - parameters are local
       var ast = n
       if n[namePos].kind == nkSym:
         ast = n[namePos].sym.ast
-      w.withNode(ast):
+      w.withNode dest, ast:
         # Process body and other parts
         for i in 0 ..< ast.len:
-          writeNode(w, ast[i])
+          writeNode(w, dest, ast[i])
       dec w.inProc
     of nkImportStmt:
       # this has been transformed for us, see `importer.nim` to contain a list of module syms:
@@ -361,13 +371,48 @@ proc writeNode(w: var Writer; n: PNode) =
     of nkIncludeStmt:
       trInclude w, n
     else:
-      w.withNode(n):
+      w.withNode dest, n:
         for i in 0 ..< n.len:
-          writeNode(w, n[i])
+          writeNode(w, dest, n[i])
+
+proc writeToplevelNode(w: var Writer; outer, inner: var TokenBuf; n: PNode) =
+  case n.kind
+  of nkStmtList, nkStmtListExpr:
+    for son in n: writeToplevelNode(w, outer, inner, son)
+  of nkProcDef, nkFuncDef, nkMethodDef, nkIteratorDef, nkConverterDef, nkLambda, nkDo, nkMacroDef:
+    # Delegate to `w.topLevel`!
+    writeNode w, inner, n
+  of nkConstSection, nkTypeSection, nkTypeDef:
+    writeNode w, inner, n
+  else:
+    writeNode w, outer, n
 
 proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode) =
-  var w = Writer(inner: LineInfoWriter(config: config), currentModule: thisModule)
-  w.writeNode n
-  let m = modname(w.moduleToNifSuffix, w.currentModule, w.inner.config)
+  var w = Writer(infos: LineInfoWriter(config: config), currentModule: thisModule)
+  var outer = createTokenBuf(300)
+  var inner = createTokenBuf(300)
+
+  w.writeToplevelNode outer, inner, n
+  let m = modname(w.moduleToNifSuffix, w.currentModule, w.infos.config)
   let d = toGeneratedFile(config, AbsoluteFile(m), ".nif").string
-  writeFileAndIndex d, w.dest
+
+  var dest = createTokenBuf(600)
+  let rootInfo = if outer.len > 0: outer[0].info else: NoLineInfo
+  dest.addParLe pool.tags.getOrIncl(toNifTag(nkStmtList)), rootInfo
+  dest.add w.deps
+  dest.add outer
+  dest.add inner
+  dest.addParRi()
+
+  writeFileAndIndex d, dest
+
+
+# --------------------------- Loader (lazy!) -----------------------------------------------
+
+proc loadNifModule*(config: ConfigRef; f: FileIndex): PNode =
+  var moduleToNifSuffix = initTable[FileIndex, string]()
+
+  let m = modname(moduleToNifSuffix, f.int, config)
+  let d = toGeneratedFile(config, AbsoluteFile(m), ".nif").string
+
+  result = nil
