@@ -2801,7 +2801,7 @@ proc semMacroDef(c: PContext, n: PNode): PNode =
   if n[bodyPos].kind == nkEmpty:
     localError(c.config, n.info, errImplOfXexpected % s.name.s)
 
-proc incMod(c: PContext, n: PNode, it: PNode, includeStmtResult: PNode) =
+proc incMod(c: PContext, n: PNode, it: PNode, includeStmtResult, resolvedIncStmt: PNode) =
   var f = checkModuleName(c.config, it)
   if f != InvalidFileIdx:
     addIncludeFileDep(c, f)
@@ -2809,12 +2809,22 @@ proc incMod(c: PContext, n: PNode, it: PNode, includeStmtResult: PNode) =
     if containsOrIncl(c.includedFiles, f.int):
       localError(c.config, n.info, errRecursiveDependencyX % toMsgFilename(c.config, f))
     else:
+      if resolvedIncStmt != nil:
+        resolvedIncStmt.add newStrNode(toFullPath(c.config, f), it.info)
       includeStmtResult.add semStmt(c, c.graph.includeFileCallback(c.graph, c.module, f), {})
       excl(c.includedFiles, f.int)
 
 proc evalInclude(c: PContext, n: PNode): PNode =
   result = newNodeI(nkStmtList, n.info)
-  result.add n
+  var resolvedIncStmt: PNode = nil
+  if optCompress in c.config.globalOptions:
+    # New resolve the include filenames to string literals that contain absolute paths,
+    # nicer for IC:
+    resolvedIncStmt = newNodeI(nkIncludeStmt, n.info)
+    result.add resolvedIncStmt
+  else:
+    # Legacy: Keep `include` statement as is:
+    result.add n
   template checkAs(it: PNode) =
     if it.kind == nkInfix and it.len == 3:
       let op = it[0].getPIdent
@@ -2832,9 +2842,9 @@ proc evalInclude(c: PContext, n: PNode): PNode =
       for x in it[lastPos]:
         checkAs(x)
         imp[lastPos] = x
-        incMod(c, n, imp, result)
+        incMod(c, n, imp, result, resolvedIncStmt)
     else:
-      incMod(c, n, it, result)
+      incMod(c, n, it, result, resolvedIncStmt)
 
 proc recursiveSetFlag(n: PNode, flag: TNodeFlag) =
   if n != nil:

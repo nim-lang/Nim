@@ -115,6 +115,7 @@ let
 type
   Writer = object
     dest: TokenBuf
+    deps: TokenBuf
     inner: LineInfoWriter
     currentModule: int32
     writtenSyms: HashSet[ItemId]
@@ -282,6 +283,12 @@ proc addLocalSyms(w: var Writer; n: PNode) =
   elif n.kind == nkSym:
     addLocalSym(w, n)
 
+proc trInclude(w: var Writer; n: PNode) =
+  discard
+
+proc trImport(w: var Writer; n: PNode) =
+  discard
+
 proc writeNode(w: var Writer; n: PNode) =
   if n == nil:
     w.dest.addDotToken
@@ -348,6 +355,11 @@ proc writeNode(w: var Writer; n: PNode) =
         for i in 0 ..< ast.len:
           writeNode(w, ast[i])
       dec w.inProc
+    of nkImportStmt:
+      # this has been transformed for us, see `importer.nim` to contain a list of module syms:
+      trImport w, n
+    of nkIncludeStmt:
+      trInclude w, n
     else:
       w.withNode(n):
         for i in 0 ..< n.len:
