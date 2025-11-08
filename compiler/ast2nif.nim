@@ -181,6 +181,12 @@ proc writeTypeDef(w: var Writer; dest: var TokenBuf; typ: PType) =
     writeNode(w, dest, typ.n)
     writeSym(w, dest, typ.owner)
     writeSym(w, dest, typ.sym)
+
+    # Write TLoc structure
+    dest.addIdent toNifTag(typ.loc.k)
+    dest.addIntLit ord(typ.loc.storage)  # TStorageLoc: OnUnknown=0, OnStatic=1, OnStack=2, OnHeap=3
+    writeFlags(dest, typ.loc.flags)  # TLocFlags
+
     # we store the type's elements here at the end so that
     # it is not ambiguous and saves space:
     for ch in typ.kids:
@@ -223,7 +229,10 @@ proc writeSymDef(w: var Writer; dest: var TokenBuf; sym: PSym) =
   writeSym(w, dest, sym.owner)
   # We do not store `sym.ast` here but instead set it in the deserializer
   #writeNode(w, sym.ast)
+  # Write TLoc structure
   dest.addIdent toNifTag(sym.loc.k)
+  dest.addIntLit ord(sym.loc.storage)  # TStorageLoc: OnUnknown=0, OnStatic=1, OnStack=2, OnHeap=3
+  writeFlags(dest, sym.loc.flags)  # TLocFlags
   dest.addStrLit sym.loc.snippet
   writeNode(w, dest, sym.constraint)
   writeSym(w, dest, sym.instantiatedFrom)
