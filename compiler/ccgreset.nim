@@ -112,7 +112,7 @@ proc specializeResetT(p: BProc, accessor: Rope, typ: PType) =
       tyGenericParam, tyOrdinal, tyOpenArray, tyForward, tyVarargs,
       tyUncheckedArray, tyError, tyBuiltInTypeClass, tyUserTypeClass,
       tyUserTypeClassInst, tyCompositeTypeClass, tyAnd, tyOr, tyNot,
-      tyAnything, tyStatic, tyFromExpr, tyConcept, tyVoid, tyIterable:
+      tyAnything, tyStatic, tyFromExpr, tyConcept, tyVoid, tyIterable, tyStub:
     discard
 
 proc specializeReset(p: BProc, a: TLoc) =

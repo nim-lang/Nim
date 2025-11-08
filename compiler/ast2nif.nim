@@ -10,6 +10,7 @@
 ## AST to NIF bridge.
 
 import std / [assertions, tables, sets]
+from std / strutils import startsWith
 import ast, idents, msgs, options
 import lineinfos as astli
 import pathutils
@@ -165,6 +166,12 @@ proc typeToNifSym(w: var Writer; typ: PType): string =
   result.add '.'
   result.add modname(w.moduleToNifSuffix, typ.uniqueId.module, w.infos.config)
 
+proc writeLoc(w: var Writer; dest: var TokenBuf; loc: TLoc) =
+  dest.addIdent toNifTag(loc.k)
+  dest.addIntLit ord(loc.storage)  # TStorageLoc: OnUnknown=0, OnStatic=1, OnStack=2, OnHeap=3
+  writeFlags(dest, loc.flags)  # TLocFlags
+  dest.addStrLit loc.snippet
+
 proc writeTypeDef(w: var Writer; dest: var TokenBuf; typ: PType) =
   dest.buildTree tdefTag:
     dest.addSymDef pool.syms.getOrIncl(w.typeToNifSym(typ)), NoLineInfo
@@ -183,10 +190,7 @@ proc writeTypeDef(w: var Writer; dest: var TokenBuf; typ: PType) =
     writeSym(w, dest, typ.sym)
 
     # Write TLoc structure
-    dest.addIdent toNifTag(typ.loc.k)
-    dest.addIntLit ord(typ.loc.storage)  # TStorageLoc: OnUnknown=0, OnStatic=1, OnStack=2, OnHeap=3
-    writeFlags(dest, typ.loc.flags)  # TLocFlags
-
+    writeLoc w, dest, typ.loc
     # we store the type's elements here at the end so that
     # it is not ambiguous and saves space:
     for ch in typ.kids:
@@ -201,6 +205,20 @@ proc writeType(w: var Writer; dest: var TokenBuf; typ: PType) =
   else:
     dest.buildTree tuseTag:
       dest.addSymUse pool.syms.getOrIncl(w.typeToNifSym(typ)), NoLineInfo
+
+proc writeBool(dest: var TokenBuf; b: bool) =
+  dest.buildTree (if b: "true" else: "false"):
+    discard
+
+proc writeLib(w: var Writer; dest: var TokenBuf; lib: PLib) =
+  if lib == nil:
+    dest.addDotToken()
+  else:
+    dest.buildTree $lib.kind:
+      dest.writeBool lib.generated
+      dest.writeBool lib.isOverridden
+      dest.addStrLit lib.name
+      writeNode w, dest, lib.path
 
 proc writeSymDef(w: var Writer; dest: var TokenBuf; sym: PSym) =
   dest.addParLe sdefTag, trLineInfo(w, sym.info)
@@ -229,11 +247,7 @@ proc writeSymDef(w: var Writer; dest: var TokenBuf; sym: PSym) =
   writeSym(w, dest, sym.owner)
   # We do not store `sym.ast` here but instead set it in the deserializer
   #writeNode(w, sym.ast)
-  # Write TLoc structure
-  dest.addIdent toNifTag(sym.loc.k)
-  dest.addIntLit ord(sym.loc.storage)  # TStorageLoc: OnUnknown=0, OnStatic=1, OnStack=2, OnHeap=3
-  writeFlags(dest, sym.loc.flags)  # TLocFlags
-  dest.addStrLit sym.loc.snippet
+  writeLoc w, dest, sym.loc
   writeNode(w, dest, sym.constraint)
   writeSym(w, dest, sym.instantiatedFrom)
   dest.addParRi
@@ -401,12 +415,19 @@ proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode) =
   var outer = createTokenBuf(300)
   var inner = createTokenBuf(300)
 
+  let rootInfo = trLineInfo(w, n.info)
+  outer.addParLe pool.tags.getOrIncl(toNifTag(nkStmtList)), rootInfo
+  inner.addParLe pool.tags.getOrIncl(toNifTag(nkStmtList)), rootInfo
+
   w.writeToplevelNode outer, inner, n
+
+  outer.addParRi()
+  inner.addParRi()
+
   let m = modname(w.moduleToNifSuffix, w.currentModule, w.infos.config)
   let d = toGeneratedFile(config, AbsoluteFile(m), ".nif").string
 
   var dest = createTokenBuf(600)
-  let rootInfo = if outer.len > 0: outer[0].info else: NoLineInfo
   dest.addParLe pool.tags.getOrIncl(toNifTag(nkStmtList)), rootInfo
   dest.add w.deps
   dest.add outer
@@ -417,6 +438,222 @@ proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode) =
 
 
 # --------------------------- Loader (lazy!) -----------------------------------------------
+
+proc nodeKind(n: Cursor): TNodeKind {.inline.} =
+  assert n.kind == ParLe
+  pool.tags[n.tagId].parseNodeKind()
+
+proc expect(n: Cursor; k: set[NifKind]) =
+  if n.kind notin k:
+    when defined(debug):
+      writeStackTrace()
+    quit "[NIF decoder] expected: " & $k & " but got: " & $n.kind & toString n
+
+proc expect(n: Cursor; k: NifKind) {.inline.} =
+  expect n, {k}
+
+proc incExpect(n: var Cursor; k: set[NifKind]) =
+  inc n
+  expect n, k
+
+proc incExpect(n: var Cursor; k: NifKind) {.inline.} =
+  incExpect n, {k}
+
+proc skipParRi(n: var Cursor) =
+  expect n, {ParRi}
+  inc n
+
+proc firstSon*(n: Cursor): Cursor {.inline.} =
+  result = n
+  inc result
+
+proc expectTag(n: Cursor; tagId: TagId) =
+  if n.kind == ParLe and n.tagId == tagId:
+    discard
+  else:
+    when defined(debug):
+      writeStackTrace()
+    if n.kind != ParLe:
+      quit "[NIF decoder] expected: ParLe but got: " & $n.kind & toString n
+    else:
+      quit "[NIF decoder] expected: " & pool.tags[tagId] & " but got: " & pool.tags[n.tagId] & toString n
+
+proc incExpectTag(n: var Cursor; tagId: TagId) =
+  inc n
+  expectTag(n, tagId)
+
+type
+  DecodeContext* = object
+    infos: LineInfoWriter
+    moduleIds: Table[string, int32]
+    types: Table[ItemId, (PType, TLineInfo)]
+    indexes: seq[NifIndex]
+    cache: IdentCache
+
+proc createDecodeContext*(config: ConfigRef; cache: IdentCache): DecodeContext =
+  ## Supposed to be a global variable
+  result = DecodeContext(infos: LineInfoWriter(config: config), cache: cache)
+
+proc moduleId(c: var DecodeContext; suffix: string): int32 =
+  # We don't know the "real" FileIndex due to our mapping to a short "Module suffix"
+  # This is not a problem, we use negative `ItemId.module` values here and then 
+  # there is no interference with in-memory-modules. Modulegraphs.nim already uses -1
+  # so we start at -2 here.
+  result = c.moduleIds.getOrDefault(suffix)
+  if result == 0:
+    result = -int32(c.moduleIds.len + 2) # negative index!
+    c.moduleIds[suffix] = result
+    c.indexes.add readIndex((getNimcacheDir(c.infos.config) / RelativeFile(suffix & ".idx.nif")).string)
+
+proc getOffset(c: var DecodeContext; module: int32; nifName: string): NifIndexEntry =
+  assert module < 0'i32
+  let index = (-module) - 2'i32
+  let ii = addr c.indexes[index]
+  result = ii.public.getOrDefault(nifName)
+  if result.offset == 0:
+    result = ii.private.getOrDefault(nifName) 
+    if result.offset == 0:
+      raiseAssert "symbol has no offset: " & nifName
+
+proc fromNifNodeFlags(n: var Cursor): set[TNodeFlag] =
+  if n.kind == DotToken:
+    result = {}
+    inc n
+  elif n.kind == Ident:
+    result = parseNodeFlags(pool.strings[n.litId])
+    inc n
+  else:
+    raiseAssert "expected Node flag (`ident`) but got " & $n.kind
+
+proc loadTypeStub(c: var DecodeContext; t: SymId): PType =
+  let name = pool.syms[t]
+  assert name.startsWith("`t.")
+  var i = len("`t.")
+  var itemId = 0'i32
+  while i < name.len and name[i] in {'0'..'9'}:
+    itemId = itemId * 10'i32 + int32(name[i].ord - ord('0'))
+    inc i
+  if i < name.len and name[i] == '.': inc i
+  let suffix = name.substr(i)
+  let id = ItemId(module: moduleId(c, suffix), item: itemId)
+  result = c.types.getOrDefault(id)[0]
+  if result == nil:
+    let offs = c.getOffset(id.module, name)
+    result = PType(itemId: id, uniqueId: id, kind: tyStub, size: -offs.offset)
+    c.types[id] = (result, c.infos.oldLineInfo(offs.info))
+
+proc loadTypeStub(c: var DecodeContext; n: var Cursor): PType =
+  if n.kind == DotToken:
+    result = nil
+    inc n
+  elif n.kind == Symbol:
+    let s = n.symId
+    result = loadTypeStub(c, s)
+    inc n
+  elif n.kind == ParLe and n.tagId == tdefTag:
+    let s = n.firstSon.symId
+    skip n
+    result = loadTypeStub(c, s)
+  else:
+    raiseAssert "type expected but got " & $n.kind
+
+proc isStub*(t: PType): bool = t.kind == tyStub
+
+proc loadTypeBody(c: var DecodeContext; t: PType) =
+  if t.kind != tyStub: return
+  assert t.size < 0, "type has no offset"
+  
+
+template withNode(c: var DecodeContext; n: var Cursor; result: PNode; kind: TNodeKind; body: untyped) =
+  let info = c.infos.oldLineInfo(n.info)
+  let flags = fromNifNodeFlags n
+  result = newNodeI(kind, info)
+  result.flags = flags
+  result.typ = c.loadTypeStub n
+  body
+  skipParRi n
+
+proc fromNif(c: var DecodeContext; n: var Cursor): PNode =
+  result = nil
+  case n.kind:
+  of DotToken:
+    result = nil
+    inc n
+  of ParLe:
+    let kind = n.nodeKind
+    case kind:
+    of nkEmpty:
+      result = newNodeI(nkEmpty, c.infos.oldLineInfo(n.info))
+      incExpect n, {Ident, DotToken}
+      let flags = fromNifNodeFlags n
+      result.flags = flags
+      skipParRi n
+    of nkIdent:
+      let info = c.infos.oldLineInfo(n.info)
+      incExpect n, {DotToken, Ident}
+      let flags = fromNifNodeFlags n
+      let typ = c.loadTypeStub n
+      expect n, Ident
+      result = newIdentNode(c.cache.getIdent(pool.strings[n.litId]), info)
+      inc n
+      result.flags = flags
+      result.typ = typ
+      skipParRi n
+    of nkSym:
+      c.withNode n, result, kind:
+        #result.sym = c.fromNifSymbol n
+        discard
+    of nkCharLit:
+      c.withNode n, result, kind:
+        expect n, CharLit
+        result.intVal = n.charLit.int
+        inc n
+    of nkIntLit .. nkInt64Lit:
+      c.withNode n, result, kind:
+        expect n, IntLit
+        result.intVal = pool.integers[n.intId]
+        inc n
+    of nkUIntLit .. nkUInt64Lit:
+      c.withNode n, result, kind:
+        expect n, UIntLit
+        result.intVal = cast[BiggestInt](pool.uintegers[n.uintId])
+        inc n
+    of nkFloatLit .. nkFloat128Lit:
+      c.withNode n, result, kind:
+        if n.kind == FloatLit:
+          result.floatVal = pool.floats[n.floatId]
+          inc n
+        elif n.kind == ParLe:
+          case pool.tags[n.tagId]
+          of "inf":
+            result.floatVal = Inf
+          of "nan":
+            result.floatVal = NaN
+          of "neginf":
+            result.floatVal = NegInf
+          else:
+            raiseAssert "expected float literal but got " & pool.tags[n.tagId]
+          inc n
+          skipParRi n
+        else:
+          raiseAssert "expected float literal but got " & $n.kind
+    of nkStrLit .. nkTripleStrLit:
+      c.withNode n, result, kind:
+        expect n, StringLit
+        result.strVal = pool.strings[n.litId]
+        inc n
+    of nkNilLit:
+      c.withNode n, result, kind:
+        discard
+    of nkNone:
+      raiseAssert "Unknown tag " & pool.tags[n.tagId]
+    else:
+      c.withNode n, result, kind:
+        while n.kind != ParRi:
+          result.addAllowNil c.fromNif n
+  else:
+    raiseAssert "Not yet implemented " & $n.kind
+
 
 proc loadNifModule*(config: ConfigRef; f: FileIndex): PNode =
   var moduleToNifSuffix = initTable[FileIndex, string]()

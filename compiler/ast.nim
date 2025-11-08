@@ -268,6 +268,7 @@ type
     tyVoid
       # now different from tyEmpty, hurray!
     tyIterable
+    tyStub
 
 static:
   # remind us when TTypeKind stops to fit in a single 64-bit word
@@ -786,7 +787,7 @@ type
     sym*: PSym                # types have the sym associated with them
                               # it is used for converting types to strings
     size*: BiggestInt         # the size of the type in bytes
-                              # -1 means that the size is unkwown
+                              # -1 means that the size is unknown
     align*: int16             # the type's alignment requirements
     paddingAtEnd*: int16      #
     loc*: TLoc

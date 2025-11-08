@@ -97,7 +97,7 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
     return atomicType(t.sym)
 
   case t.kind
-  of tyNone: result = atomicType("none", mNone)
+  of tyNone, tyStub: result = atomicType("none", mNone)
   of tyBool: result = atomicType("bool", mBool)
   of tyChar: result = atomicType("char", mChar)
   of tyNil: result = atomicType("nil", mNil)
