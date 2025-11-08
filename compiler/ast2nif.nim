@@ -137,6 +137,25 @@ proc toNifSymName(w: var Writer; sym: PSym): string =
     result.add '.'
     result.add modname(w.moduleToNifSuffix, module, w.infos.config)
 
+type
+  ParsedSymName* = object
+    name*: string
+    module*: string
+
+proc parseSymName*(s: string): ParsedSymName =
+  var i = s.len - 2
+  while i > 0:
+    if s[i] == '.':
+      if s[i+1] in {'0'..'9'}:
+        return ParsedSymName(name: substr(s, 0, i-1), module: "")
+      else:
+        let mend = s.high
+        var b = i-1
+        while b > 0 and s[b] != '.': dec b
+        return ParsedSymName(name: substr(s, 0, b-1), module: substr(s, i+1, mend))
+    dec i
+  return ParsedSymName(name: s, module: "")
+
 template buildTree(dest: var TokenBuf; tag: TagId; body: untyped) =
   dest.addParLe tag
   body
@@ -168,7 +187,7 @@ proc typeToNifSym(w: var Writer; typ: PType): string =
 
 proc writeLoc(w: var Writer; dest: var TokenBuf; loc: TLoc) =
   dest.addIdent toNifTag(loc.k)
-  dest.addIntLit ord(loc.storage)  # TStorageLoc: OnUnknown=0, OnStatic=1, OnStack=2, OnHeap=3
+  dest.addIdent toNifTag(loc.storage)
   writeFlags(dest, loc.flags)  # TLocFlags
   dest.addStrLit loc.snippet
 
@@ -486,7 +505,8 @@ type
   DecodeContext* = object
     infos: LineInfoWriter
     moduleIds: Table[string, int32]
-    types: Table[ItemId, (PType, TLineInfo)]
+    types: Table[ItemId, (PType, NifIndexEntry)]
+    syms: Table[ItemId, (PSym, NifIndexEntry)]
     indexes: seq[NifIndex]
     cache: IdentCache
 
@@ -539,8 +559,8 @@ proc loadTypeStub(c: var DecodeContext; t: SymId): PType =
   result = c.types.getOrDefault(id)[0]
   if result == nil:
     let offs = c.getOffset(id.module, name)
-    result = PType(itemId: id, uniqueId: id, kind: tyStub, size: -offs.offset)
-    c.types[id] = (result, c.infos.oldLineInfo(offs.info))
+    result = PType(itemId: id, uniqueId: id, kind: tyStub)
+    c.types[id] = (result, offs)
 
 proc loadTypeStub(c: var DecodeContext; n: var Cursor): PType =
   if n.kind == DotToken:
@@ -557,12 +577,94 @@ proc loadTypeStub(c: var DecodeContext; n: var Cursor): PType =
   else:
     raiseAssert "type expected but got " & $n.kind
 
+proc loadSymStub(c: var DecodeContext; t: SymId): PSym =
+  let name = parseSymName(pool.syms[t])
+  let id = ItemId(module: moduleId(c, name.module), item: itemId)
+  result = c.types.getOrDefault(id)[0]
+  if result == nil:
+    let offs = c.getOffset(id.module, name)
+    result = PType(itemId: id, uniqueId: id, kind: tyStub)
+    c.types[id] = (result, offs)
+
+proc loadSymStub(c: var DecodeContext; n: var Cursor): PSym =
+  if n.kind == DotToken:
+    result = nil
+    inc n
+  elif n.kind == Symbol:
+    let s = n.symId
+    result = loadSymStub(c, s)
+    inc n
+  elif n.kind == ParLe and n.tagId == sdefTag:
+    let s = n.firstSon.symId
+    skip n
+    result = loadSymStub(c, s)
+  else:
+    raiseAssert "sym expected but got " & $n.kind
+
 proc isStub*(t: PType): bool = t.kind == tyStub
+
+proc loadLoc(c: var DecodeContext; n: var Cursor; loc: var TLoc) =
+  expect n, Ident
+  loc.k = pool.strings[n.litId].parseLocKind()
+  inc n
+  expect n, Ident
+  loc.storage = pool.strings[n.litId].parseStorageLoc()
+  inc n
+  expect n, Ident
+  loc.flags = pool.strings[n.litId].parseLocFlags()
+  inc n
+  expect n, StringLit
+  loc.snippet = pool.strings[n.litId]
+  inc n
 
 proc loadTypeBody(c: var DecodeContext; t: PType) =
   if t.kind != tyStub: return
   assert t.size < 0, "type has no offset"
-  
+  var n = getCursorAt()
+
+  expect n, ParLe
+  if n.tagId != tdefTag:
+    raiseAssert "(td) expected"
+  inc n
+  expect n, SymbolDef
+  # ignore the type's name, we have already used it to create this PType's itemId!
+  inc n
+  expect n, Ident
+  t.kind = parseTypeKind(pool.strings[n.litId])
+  inc n
+  expect n, Ident
+  t.flags = parseTypeFlags(pool.strings[n.litId])
+  inc n
+  expect n, Ident
+  t.callConv = parseCallingConvention(pool.strings[n.litId])
+  inc n
+  expect n, IntLit
+  typ.size = pool.integers[n.intId]
+  inc n
+
+  expect n, IntLit
+  typ.align = pool.integers[n.intId]
+  inc n
+
+  expect n, IntLit
+  typ.paddingAtEnd = pool.integers[n.intId]
+  inc n
+
+  expect n, IntLit
+  typ.itemId.item = pool.integers[n.intId]
+  inc n
+
+  loadTypeStub c, n, typ.typeInst
+  loadNode c, n, typ.n
+  loadSymStub c, n, typ.owner
+  loadSymStub c, n, typ.sym
+  loadLoc c, n, typ.loc
+
+  while n.kind != ParRi:
+    t.typ.kids.add loadTypeStub(c, n)
+
+  skipParRi n
+
 
 template withNode(c: var DecodeContext; n: var Cursor; result: PNode; kind: TNodeKind; body: untyped) =
   let info = c.infos.oldLineInfo(n.info)
@@ -662,3 +764,10 @@ proc loadNifModule*(config: ConfigRef; f: FileIndex): PNode =
   let d = toGeneratedFile(config, AbsoluteFile(m), ".nif").string
 
   result = nil
+
+when isMainModule:
+  import std / syncio
+  let obj = parseSymName("a.123.sys")
+  echo obj.name, " ", obj.module
+  let objb = parseSymName("abcdef.0121")
+  echo objb.name, " ", objb.module

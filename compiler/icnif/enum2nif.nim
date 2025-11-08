@@ -1172,6 +1172,23 @@ proc parseMagic*(s: string): TMagic =
   else: mNone
 
 
+proc toNifTag*(s: TStorageLoc): string =
+  case s
+  of OnUnknown: "unknown"
+  of OnStatic: "static"
+  of OnStack: "stack"
+  of OnHeap: "heap"
+
+
+proc parseStorageLoc*(s: string): TStorageLoc =
+  case s
+  of "unknown": OnUnknown
+  of "static": OnStatic
+  of "stack": OnStack
+  of "heap": OnHeap
+  else: OnUnknown
+
+
 proc genFlags*(s: set[TSymFlag]; dest: var string) =
   for e in s:
     case e
