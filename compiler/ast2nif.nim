@@ -15,7 +15,7 @@ import ast, idents, msgs, options
 import lineinfos as astli
 import pathutils
 import "../dist/nimony/src/lib" / [bitabs, nifstreams, nifcursors, lineinfos,
-  nifindexes]
+  nifindexes, nifreader]
 import "../dist/nimony/src/gear2" / modnames
 
 import icnif / [enum2nif]
@@ -522,18 +522,36 @@ proc loadBool(n: var Cursor): bool =
     raiseAssert "(true)/(false) expected"
 
 type
+  NifModule = object
+    stream: nifstreams.Stream
+    symCounter: int32
+    index: NifIndex
+
   DecodeContext* = object
     infos: LineInfoWriter
     moduleIds: Table[string, int32]
     types: Table[ItemId, (PType, NifIndexEntry)]
     syms: Table[ItemId, (PSym, NifIndexEntry)]
-    indexes: seq[NifIndex]
-    symCounters: Table[int32, int32] # Module ID -> counter
+    mods: seq[NifModule]
     cache: IdentCache
+    moduleToNifSuffix: Table[FileIndex, string]
 
 proc createDecodeContext*(config: ConfigRef; cache: IdentCache): DecodeContext =
   ## Supposed to be a global variable
   result = DecodeContext(infos: LineInfoWriter(config: config), cache: cache)
+
+proc idToIdx(x: int32): int {.inline.} =
+  assert x <= -2'i32
+  result = -(x+2)
+
+proc cursorFromIndexEntry(c: var DecodeContext; module: int32; entry: NifIndexEntry;
+                          buf: var TokenBuf): Cursor =
+  let m = idToIdx(module)
+  let s = addr c.mods[m].stream
+  s.r.jumpTo entry.offset
+  var buf = createTokenBuf(30)
+  nifcursors.parse(s[], buf, entry.info)
+  result = cursorAt(buf, 0)
 
 proc moduleId(c: var DecodeContext; suffix: string): int32 =
   # We don't know the "real" FileIndex due to our mapping to a short "Module suffix"
@@ -543,13 +561,16 @@ proc moduleId(c: var DecodeContext; suffix: string): int32 =
   result = c.moduleIds.getOrDefault(suffix)
   if result == 0:
     result = -int32(c.moduleIds.len + 2) # negative index!
+    let modFile = (getNimcacheDir(c.infos.config) / RelativeFile(suffix & ".nif")).string
+    let idxFile = (getNimcacheDir(c.infos.config) / RelativeFile(suffix & ".idx.nif")).string
     c.moduleIds[suffix] = result
-    c.indexes.add readIndex((getNimcacheDir(c.infos.config) / RelativeFile(suffix & ".idx.nif")).string)
+    c.mods.add NifModule(stream: nifstreams.open(modFile), index: readIndex(idxFile))
+    assert c.mods.len-1 == idToIdx(result)
 
 proc getOffset(c: var DecodeContext; module: int32; nifName: string): NifIndexEntry =
   assert module < 0'i32
-  let index = (-module) - 2'i32
-  let ii = addr c.indexes[index]
+  let index = idToIdx(module)
+  let ii = addr c.mods[index].index
   result = ii.public.getOrDefault(nifName)
   if result.offset == 0:
     result = ii.private.getOrDefault(nifName) 
@@ -594,7 +615,7 @@ proc loadSymStub(c: var DecodeContext; t: SymId): PSym =
   let symAsStr = pool.syms[t]
   let sn = parseSymName(symAsStr)
   let module = moduleId(c, sn.module)
-  let val = addr c.symCounters.mgetOrPut(module, 0)
+  let val = addr c.mods[idToIdx(module)].symCounter
   inc val[]
 
   let id = ItemId(module: module, item: val[])
@@ -661,7 +682,8 @@ proc loadLoc(c: var DecodeContext; n: var Cursor; loc: var TLoc) =
 
 proc loadType*(c: var DecodeContext; t: PType) =
   if t.kind != tyStub: return
-  var n = default(Cursor) # getCursorAt()
+  var buf = createTokenBuf(30)
+  var n = cursorFromIndexEntry(c, t.itemId.module, c.types[t.itemId][1], buf)
 
   expect n, ParLe
   if n.tagId != tdefTag:
@@ -711,7 +733,8 @@ proc loadAnnex(c: var DecodeContext; n: var Cursor): PLib =
 
 proc loadSym*(c: var DecodeContext; s: PSym) =
   if s.kind != skStub: return
-  var n = default(Cursor) # getCursorAt()
+  var buf = createTokenBuf(30)
+  var n = cursorFromIndexEntry(c, s.itemId.module, c.syms[s.itemId][1], buf)
 
   expect n, ParLe
   if n.tagId != sdefTag:
@@ -841,13 +864,19 @@ proc loadNode(c: var DecodeContext; n: var Cursor): PNode =
     raiseAssert "Not yet implemented " & $n.kind
 
 
-proc loadNifModule*(config: ConfigRef; f: FileIndex): PNode =
-  var moduleToNifSuffix = initTable[FileIndex, string]()
+proc loadNifModule*(c: var DecodeContext; f: FileIndex): PNode =
+  let moduleSuffix = modname(c.moduleToNifSuffix, f.int, c.infos.config)
+  let modFile = toGeneratedFile(c.infos.config, AbsoluteFile(moduleSuffix), ".nif").string
 
-  let m = modname(moduleToNifSuffix, f.int, config)
-  let d = toGeneratedFile(config, AbsoluteFile(m), ".nif").string
-
-  result = nil
+  var buf = createTokenBuf(300)
+  var s = nifstreams.open(modFile)
+  # XXX We can optimize this here and only load the top level entries!
+  try:
+    nifcursors.parse(s, buf, NoLineInfo)
+  finally:
+    nifstreams.close(s)
+  var n = cursorAt(buf, 0)
+  result = loadNode(c, n)
 
 when isMainModule:
   import std / syncio
