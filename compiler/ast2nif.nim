@@ -555,7 +555,7 @@ proc cursorFromIndexEntry(c: var DecodeContext; module: int32; entry: NifIndexEn
 
 proc moduleId(c: var DecodeContext; suffix: string): int32 =
   # We don't know the "real" FileIndex due to our mapping to a short "Module suffix"
-  # This is not a problem, we use negative `ItemId.module` values here and then 
+  # This is not a problem, we use negative `ItemId.module` values here and then
   # there is no interference with in-memory-modules. Modulegraphs.nim already uses -1
   # so we start at -2 here.
   result = c.moduleIds.getOrDefault(suffix)
@@ -573,7 +573,7 @@ proc getOffset(c: var DecodeContext; module: int32; nifName: string): NifIndexEn
   let ii = addr c.mods[index].index
   result = ii.public.getOrDefault(nifName)
   if result.offset == 0:
-    result = ii.private.getOrDefault(nifName) 
+    result = ii.private.getOrDefault(nifName)
     if result.offset == 0:
       raiseAssert "symbol has no offset: " & nifName
 
@@ -702,7 +702,7 @@ proc loadType*(c: var DecodeContext; t: PType) =
 
   t.typeInst = loadTypeStub(c, n)
   t.n = loadNode(c, n)
-  t.setOwner loadSymStub(c, n) 
+  t.setOwner loadSymStub(c, n)
   t.sym = loadSymStub(c, n)
   loadLoc c, n, t.loc
 
@@ -810,8 +810,7 @@ proc loadNode(c: var DecodeContext; n: var Cursor): PNode =
       skipParRi n
     of nkSym:
       c.withNode n, result, kind:
-        #result.sym = c.fromNifSymbol n
-        discard
+        result.sym = c.loadSymStub n
     of nkCharLit:
       c.withNode n, result, kind:
         expect n, CharLit
