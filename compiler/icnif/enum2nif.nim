@@ -1189,6 +1189,19 @@ proc parse*(t: typedesc[TStorageLoc]; s: string): TStorageLoc =
   else: OnUnknown
 
 
+proc toNifTag*(s: TLibKind): string =
+  case s
+  of libHeader: "bheader"
+  of libDynamic: "bdynamic"
+
+
+proc parse*(t: typedesc[TLibKind]; s: string): TLibKind =
+  case s
+  of "bheader": libHeader
+  of "bdynamic": libDynamic
+  else: libHeader
+
+
 proc genFlags*(s: set[TSymFlag]; dest: var string) =
   for e in s:
     case e
@@ -1257,7 +1270,7 @@ proc genFlags*(s: set[TSymFlag]; dest: var string) =
     of sfTemplateRedefinition: dest.add "t1"
 
 
-proc parseSymFlags*(s: string): set[TSymFlag] =
+proc parse*(t: typedesc[TSymFlag]; s: string): set[TSymFlag] =
   result = {}
   var i = 0
   while i < s.len:
@@ -1463,7 +1476,7 @@ proc genFlags*(s: set[TNodeFlag]; dest: var string) =
     of nfDisabledOpenSym: dest.add "d3"
 
 
-proc parseNodeFlags*(s: string): set[TNodeFlag] =
+proc parse*(t: typedesc[TNodeFlag]; s: string): set[TNodeFlag] =
   result = {}
   var i = 0
   while i < s.len:
@@ -1575,7 +1588,7 @@ proc genFlags*(s: set[TTypeFlag]; dest: var string) =
     of tfImplicitStatic: dest.add "i6"
 
 
-proc parseTypeFlags*(s: string): set[TTypeFlag] =
+proc parse*(t: typedesc[TTypeFlag]; s: string): set[TTypeFlag] =
   result = {}
   var i = 0
   while i < s.len:
@@ -1718,7 +1731,7 @@ proc genFlags*(s: set[TLocFlag]; dest: var string) =
     of lfPrepareForMutation: dest.add "p"
 
 
-proc parseLocFlags*(s: string): set[TLocFlag] =
+proc parse*(t: typedesc[TLocFlag]; s: string): set[TLocFlag] =
   result = {}
   var i = 0
   while i < s.len:
@@ -1773,7 +1786,7 @@ proc genFlags*(s: set[TOption]; dest: var string) =
     of optQuirky: dest.add "q"
 
 
-proc parseOptions*(s: string): set[TOption] =
+proc parse*(t: typedesc[TOption]; s: string): set[TOption] =
   result = {}
   var i = 0
   while i < s.len:

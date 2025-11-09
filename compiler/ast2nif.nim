@@ -245,7 +245,7 @@ proc writeLib(w: var Writer; dest: var TokenBuf; lib: PLib) =
   if lib == nil:
     dest.addDotToken()
   else:
-    dest.buildTree $lib.kind:
+    dest.buildTree toNifTag(lib.kind):
       dest.writeBool lib.generated
       dest.writeBool lib.isOverridden
       dest.addStrLit lib.name
@@ -261,7 +261,7 @@ proc writeSymDef(w: var Writer; dest: var TokenBuf; sym: PSym) =
   writeFlags(dest, sym.flags)
   writeFlags(dest, sym.options)
   dest.addIntLit sym.offset
-  dest.addIntLit sym.disamb
+  # field `disamb` made part of the name, so do not store it here
   dest.buildTree sym.kind.toNifTag:
     case sym.kind
     of skLet, skVar, skField, skForVar:
@@ -513,7 +513,7 @@ proc incExpectTag(n: var Cursor; tagId: TagId) =
   inc n
   expectTag(n, tagId)
 
-proc parseBool(n: var Cursor): bool =
+proc loadBool(n: var Cursor): bool =
   if n.kind == ParLe:
     result = pool.tags[n.tagId] == "true"
     inc n
@@ -555,16 +555,6 @@ proc getOffset(c: var DecodeContext; module: int32; nifName: string): NifIndexEn
     result = ii.private.getOrDefault(nifName) 
     if result.offset == 0:
       raiseAssert "symbol has no offset: " & nifName
-
-proc fromNifNodeFlags(n: var Cursor): set[TNodeFlag] =
-  if n.kind == DotToken:
-    result = {}
-    inc n
-  elif n.kind == Ident:
-    result = parseNodeFlags(pool.strings[n.litId])
-    inc n
-  else:
-    raiseAssert "expected Node flag (`ident`) but got " & $n.kind
 
 proc loadNode(c: var DecodeContext; n: var Cursor): PNode
 
@@ -632,19 +622,42 @@ proc loadSymStub(c: var DecodeContext; n: var Cursor): PSym =
 proc isStub*(t: PType): bool {.inline.} = t.kind == tyStub
 proc isStub*(s: PSym): bool {.inline.} = s.kind == skStub
 
-proc loadLoc(c: var DecodeContext; n: var Cursor; loc: var TLoc) =
-  expect n, Ident
-  loc.k = parse(TLocKind, pool.strings[n.litId])
-  inc n
-  expect n, Ident
-  loc.storage = parse(TStorageLoc, pool.strings[n.litId])
-  inc n
-  expect n, Ident
-  loc.flags = pool.strings[n.litId].parseLocFlags()
-  inc n
+proc loadAtom[T](t: typedesc[set[T]]; n: var Cursor): set[T] =
+  if n.kind == DotToken:
+    result = {}
+    inc n
+  else:
+    expect n, Ident
+    result = parse(T, pool.strings[n.litId])
+    inc n
+
+proc loadAtom[T: enum](t: typedesc[T]; n: var Cursor): T =
+  if n.kind == DotToken:
+    result = default(T)
+    inc n
+  else:
+    expect n, Ident
+    result = parse(T, pool.strings[n.litId])
+    inc n
+
+proc loadAtom(t: typedesc[string]; n: var Cursor): string =
   expect n, StringLit
-  loc.snippet = pool.strings[n.litId]
+  result = pool.strings[n.litId]
   inc n
+
+proc loadAtom[T: int16|int32|int64](t: typedesc[T]; n: var Cursor): T =
+  expect n, IntLit
+  result = pool.integers[n.intId].T
+  inc n
+
+template loadField(field) =
+  field = loadAtom(typeof(field), n)
+
+proc loadLoc(c: var DecodeContext; n: var Cursor; loc: var TLoc) =
+  loadField loc.k
+  loadField loc.storage
+  loadField loc.flags
+  loadField loc.snippet
 
 proc loadType*(c: var DecodeContext; t: PType) =
   if t.kind != tyStub: return
@@ -657,30 +670,13 @@ proc loadType*(c: var DecodeContext; t: PType) =
   expect n, SymbolDef
   # ignore the type's name, we have already used it to create this PType's itemId!
   inc n
-  expect n, Ident
-  t.kind = parse(TTypeKind, pool.strings[n.litId])
-  inc n
-  expect n, Ident
-  t.flags = parseTypeFlags(pool.strings[n.litId])
-  inc n
-  expect n, Ident
-  t.callConv = parse(TCallingConvention, pool.strings[n.litId])
-  inc n
-  expect n, IntLit
-  t.size = pool.integers[n.intId]
-  inc n
-
-  expect n, IntLit
-  t.align = pool.integers[n.intId].int16
-  inc n
-
-  expect n, IntLit
-  t.paddingAtEnd = pool.integers[n.intId].int16
-  inc n
-
-  expect n, IntLit
-  t.itemId.item = pool.integers[n.intId].int32
-  inc n
+  loadField t.kind
+  loadField t.flags
+  loadField t.callConv
+  loadField t.size
+  loadField t.align
+  loadField t.paddingAtEnd
+  loadField t.itemId.item
 
   t.typeInst = loadTypeStub(c, n)
   t.n = loadNode(c, n)
@@ -696,6 +692,22 @@ proc loadType*(c: var DecodeContext; t: PType) =
 
   skipParRi n
 
+proc loadAnnex(c: var DecodeContext; n: var Cursor): PLib =
+  if n.kind == DotToken:
+    result = nil
+    inc n
+  elif n.kind == ParLe:
+    result = PLib(kind: parse(TLibKind, pool.tags[n.tagId]))
+    inc n
+    result.generated = loadBool(n)
+    result.isOverridden = loadBool(n)
+    expect n, StringLit
+    result.name = pool.strings[n.litId]
+    inc n
+    result.path = loadNode(c, n)
+    skipParRi n
+  else:
+    raiseAssert "`lib/annex` information expected"
 
 proc loadSym*(c: var DecodeContext; s: PSym) =
   if s.kind != skStub: return
@@ -708,12 +720,42 @@ proc loadSym*(c: var DecodeContext; s: PSym) =
   expect n, SymbolDef
   # ignore the symbol's name, we have already used it to create this PSym instance!
   inc n
-  
+  loadField s.magic
+  loadField s.flags
+  loadField s.options
+  loadField s.offset
+
+  expect n, ParLe
+  s.kind = parse(TSymKind, pool.tags[n.tagId])
+  inc n
+
+  case s.kind
+  of skLet, skVar, skField, skForVar:
+    s.guard = loadSymStub(c, n)
+    loadField s.bitsize
+    loadField s.alignment
+  else:
+    discard
+  skipParRi n
+
+  if s.kind == skModule:
+    expect n, DotToken
+    inc n
+  else:
+    loadField s.position
+  s.typ = loadTypeStub(c, n)
+  s.setOwner loadSymStub(c, n)
+  # We do not store `sym.ast` here but instead set it in the deserializer
+  #writeNode(w, sym.ast)
+  loadLoc c, n, s.loc
+  s.constraint = loadNode(c, n)
+  s.instantiatedFrom = loadSymStub(c, n)
+  skipParRi n
 
 
 template withNode(c: var DecodeContext; n: var Cursor; result: PNode; kind: TNodeKind; body: untyped) =
   let info = c.infos.oldLineInfo(n.info)
-  let flags = fromNifNodeFlags n
+  let flags = loadAtom(TNodeFlags, n)
   result = newNodeI(kind, info)
   result.flags = flags
   result.typ = c.loadTypeStub n
@@ -731,14 +773,11 @@ proc loadNode(c: var DecodeContext; n: var Cursor): PNode =
     case kind:
     of nkEmpty:
       result = newNodeI(nkEmpty, c.infos.oldLineInfo(n.info))
-      incExpect n, {Ident, DotToken}
-      let flags = fromNifNodeFlags n
-      result.flags = flags
+      result.flags = loadAtom(TNodeFlags, n)
       skipParRi n
     of nkIdent:
       let info = c.infos.oldLineInfo(n.info)
-      incExpect n, {DotToken, Ident}
-      let flags = fromNifNodeFlags n
+      let flags = loadAtom(TNodeFlags, n)
       let typ = c.loadTypeStub n
       expect n, Ident
       result = newIdentNode(c.cache.getIdent(pool.strings[n.litId]), info)

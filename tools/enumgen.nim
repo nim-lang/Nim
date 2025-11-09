@@ -189,8 +189,7 @@ proc genFlags[E](f: var File; enumName: string; prefixLen = 2) =
   code.add "    case e\n"
   code.add cases
   code.add "\n\n"
-  let procname = "parse" & enumName.substr(1) & "s"
-  code.add "proc " & procname & "*(s: string): set[" & enumName & "] =\n"
+  code.add "proc parse*(t: typedesc[" & enumName & "]; s: string): set[" & enumName & "] =\n"
   code.add "  result = {}\n"
   code.add "  var i = 0\n"
   code.add "  while i < s.len:\n"
@@ -238,6 +237,7 @@ genEnum[TLocKind](f, "TLocKind", 3)
 genEnum[TCallingConventionMirror](f, "TCallingConvention", 2)
 genEnum[TMagic](f, "TMagic", nodeTags, 1)
 genEnum[TStorageLoc](f, "TStorageLoc")
+genEnum[TLibKind](f, "TLibKind")
 genFlags[TSymFlag](f, "TSymFlag")
 genFlags[TNodeFlag](f, "TNodeFlag")
 genFlags[TTypeFlag](f, "TTypeFlag")
