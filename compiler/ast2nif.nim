@@ -141,18 +141,30 @@ type
   ParsedSymName* = object
     name*: string
     module*: string
+    count*: int
 
 proc parseSymName*(s: string): ParsedSymName =
   var i = s.len - 2
   while i > 0:
     if s[i] == '.':
       if s[i+1] in {'0'..'9'}:
-        return ParsedSymName(name: substr(s, 0, i-1), module: "")
+        var count = ord(s[i+1]) - ord('0')
+        var j = i+2
+        while j < s.len and s[j] in {'0'..'9'}:
+          count = count * 10 + ord(s[j]) - ord('0')
+          inc j
+        return ParsedSymName(name: substr(s, 0, i-1), module: "", count: count)
       else:
         let mend = s.high
         var b = i-1
         while b > 0 and s[b] != '.': dec b
-        return ParsedSymName(name: substr(s, 0, b-1), module: substr(s, i+1, mend))
+        var j = b+1
+        var count = 0
+        while j < s.len and s[j] in {'0'..'9'}:
+          count = count * 10 + ord(s[j]) - ord('0')
+          inc j
+
+        return ParsedSymName(name: substr(s, 0, b-1), module: substr(s, i+1, mend), count: count)
     dec i
   return ParsedSymName(name: s, module: "")
 
@@ -460,7 +472,7 @@ proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode) =
 
 proc nodeKind(n: Cursor): TNodeKind {.inline.} =
   assert n.kind == ParLe
-  pool.tags[n.tagId].parseNodeKind()
+  parse(TNodeKind, pool.tags[n.tagId])
 
 proc expect(n: Cursor; k: set[NifKind]) =
   if n.kind notin k:
@@ -501,6 +513,14 @@ proc incExpectTag(n: var Cursor; tagId: TagId) =
   inc n
   expectTag(n, tagId)
 
+proc parseBool(n: var Cursor): bool =
+  if n.kind == ParLe:
+    result = pool.tags[n.tagId] == "true"
+    inc n
+    skipParRi n
+  else:
+    raiseAssert "(true)/(false) expected"
+
 type
   DecodeContext* = object
     infos: LineInfoWriter
@@ -508,6 +528,7 @@ type
     types: Table[ItemId, (PType, NifIndexEntry)]
     syms: Table[ItemId, (PSym, NifIndexEntry)]
     indexes: seq[NifIndex]
+    symCounters: Table[int32, int32] # Module ID -> counter
     cache: IdentCache
 
 proc createDecodeContext*(config: ConfigRef; cache: IdentCache): DecodeContext =
@@ -545,6 +566,8 @@ proc fromNifNodeFlags(n: var Cursor): set[TNodeFlag] =
   else:
     raiseAssert "expected Node flag (`ident`) but got " & $n.kind
 
+proc loadNode(c: var DecodeContext; n: var Cursor): PNode
+
 proc loadTypeStub(c: var DecodeContext; t: SymId): PType =
   let name = pool.syms[t]
   assert name.startsWith("`t.")
@@ -578,13 +601,18 @@ proc loadTypeStub(c: var DecodeContext; n: var Cursor): PType =
     raiseAssert "type expected but got " & $n.kind
 
 proc loadSymStub(c: var DecodeContext; t: SymId): PSym =
-  let name = parseSymName(pool.syms[t])
-  let id = ItemId(module: moduleId(c, name.module), item: itemId)
-  result = c.types.getOrDefault(id)[0]
+  let symAsStr = pool.syms[t]
+  let sn = parseSymName(symAsStr)
+  let module = moduleId(c, sn.module)
+  let val = addr c.symCounters.mgetOrPut(module, 0)
+  inc val[]
+
+  let id = ItemId(module: module, item: val[])
+  result = c.syms.getOrDefault(id)[0]
   if result == nil:
-    let offs = c.getOffset(id.module, name)
-    result = PType(itemId: id, uniqueId: id, kind: tyStub)
-    c.types[id] = (result, offs)
+    let offs = c.getOffset(module, symAsStr)
+    result = PSym(itemId: id, kind: skStub, name: c.cache.getIdent(sn.name), disamb: sn.count.int32)
+    c.syms[id] = (result, offs)
 
 proc loadSymStub(c: var DecodeContext; n: var Cursor): PSym =
   if n.kind == DotToken:
@@ -601,14 +629,15 @@ proc loadSymStub(c: var DecodeContext; n: var Cursor): PSym =
   else:
     raiseAssert "sym expected but got " & $n.kind
 
-proc isStub*(t: PType): bool = t.kind == tyStub
+proc isStub*(t: PType): bool {.inline.} = t.kind == tyStub
+proc isStub*(s: PSym): bool {.inline.} = s.kind == skStub
 
 proc loadLoc(c: var DecodeContext; n: var Cursor; loc: var TLoc) =
   expect n, Ident
-  loc.k = pool.strings[n.litId].parseLocKind()
+  loc.k = parse(TLocKind, pool.strings[n.litId])
   inc n
   expect n, Ident
-  loc.storage = pool.strings[n.litId].parseStorageLoc()
+  loc.storage = parse(TStorageLoc, pool.strings[n.litId])
   inc n
   expect n, Ident
   loc.flags = pool.strings[n.litId].parseLocFlags()
@@ -617,10 +646,9 @@ proc loadLoc(c: var DecodeContext; n: var Cursor; loc: var TLoc) =
   loc.snippet = pool.strings[n.litId]
   inc n
 
-proc loadTypeBody(c: var DecodeContext; t: PType) =
+proc loadType*(c: var DecodeContext; t: PType) =
   if t.kind != tyStub: return
-  assert t.size < 0, "type has no offset"
-  var n = getCursorAt()
+  var n = default(Cursor) # getCursorAt()
 
   expect n, ParLe
   if n.tagId != tdefTag:
@@ -630,40 +658,57 @@ proc loadTypeBody(c: var DecodeContext; t: PType) =
   # ignore the type's name, we have already used it to create this PType's itemId!
   inc n
   expect n, Ident
-  t.kind = parseTypeKind(pool.strings[n.litId])
+  t.kind = parse(TTypeKind, pool.strings[n.litId])
   inc n
   expect n, Ident
   t.flags = parseTypeFlags(pool.strings[n.litId])
   inc n
   expect n, Ident
-  t.callConv = parseCallingConvention(pool.strings[n.litId])
+  t.callConv = parse(TCallingConvention, pool.strings[n.litId])
   inc n
   expect n, IntLit
-  typ.size = pool.integers[n.intId]
-  inc n
-
-  expect n, IntLit
-  typ.align = pool.integers[n.intId]
+  t.size = pool.integers[n.intId]
   inc n
 
   expect n, IntLit
-  typ.paddingAtEnd = pool.integers[n.intId]
+  t.align = pool.integers[n.intId].int16
   inc n
 
   expect n, IntLit
-  typ.itemId.item = pool.integers[n.intId]
+  t.paddingAtEnd = pool.integers[n.intId].int16
   inc n
 
-  loadTypeStub c, n, typ.typeInst
-  loadNode c, n, typ.n
-  loadSymStub c, n, typ.owner
-  loadSymStub c, n, typ.sym
-  loadLoc c, n, typ.loc
+  expect n, IntLit
+  t.itemId.item = pool.integers[n.intId].int32
+  inc n
 
+  t.typeInst = loadTypeStub(c, n)
+  t.n = loadNode(c, n)
+  t.setOwner loadSymStub(c, n) 
+  t.sym = loadSymStub(c, n)
+  loadLoc c, n, t.loc
+
+  var kids: seq[PType] = @[]
   while n.kind != ParRi:
-    t.typ.kids.add loadTypeStub(c, n)
+    kids.add loadTypeStub(c, n)
+
+  t.setSons kids
 
   skipParRi n
+
+
+proc loadSym*(c: var DecodeContext; s: PSym) =
+  if s.kind != skStub: return
+  var n = default(Cursor) # getCursorAt()
+
+  expect n, ParLe
+  if n.tagId != sdefTag:
+    raiseAssert "(sd) expected"
+  inc n
+  expect n, SymbolDef
+  # ignore the symbol's name, we have already used it to create this PSym instance!
+  inc n
+  
 
 
 template withNode(c: var DecodeContext; n: var Cursor; result: PNode; kind: TNodeKind; body: untyped) =
@@ -675,7 +720,7 @@ template withNode(c: var DecodeContext; n: var Cursor; result: PNode; kind: TNod
   body
   skipParRi n
 
-proc fromNif(c: var DecodeContext; n: var Cursor): PNode =
+proc loadNode(c: var DecodeContext; n: var Cursor): PNode =
   result = nil
   case n.kind:
   of DotToken:
@@ -752,7 +797,7 @@ proc fromNif(c: var DecodeContext; n: var Cursor): PNode =
     else:
       c.withNode n, result, kind:
         while n.kind != ParRi:
-          result.addAllowNil c.fromNif n
+          result.addAllowNil c.loadNode n
   else:
     raiseAssert "Not yet implemented " & $n.kind
 
@@ -768,6 +813,6 @@ proc loadNifModule*(config: ConfigRef; f: FileIndex): PNode =
 when isMainModule:
   import std / syncio
   let obj = parseSymName("a.123.sys")
-  echo obj.name, " ", obj.module
+  echo obj.name, " ", obj.module, " ", obj.count
   let objb = parseSymName("abcdef.0121")
-  echo objb.name, " ", objb.module
+  echo objb.name, " ", objb.module, " ", objb.count
