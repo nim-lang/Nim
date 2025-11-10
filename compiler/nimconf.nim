@@ -11,7 +11,7 @@
 
 import
   llstream, commands, msgs, lexer, ast,
-  options, idents, wordrecg, lineinfos, pathutils, scriptconfig
+  options, idents, wordrecg, lineinfos, pathutils, scriptconfig, nimconfcache
 
 import std/[os, strutils, strtabs]
 
@@ -244,7 +244,7 @@ proc getSystemConfigPath*(conf: ConfigRef; filename: RelativeFile): AbsoluteFile
     if not fileExists(result): result = p / RelativeDir"etc/nim" / filename
     if not fileExists(result): result = AbsoluteDir"/etc/nim" / filename
 
-proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef; idgen: IdGenerator) =
+proc loadConfigsImpl(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef; idgen: IdGenerator) =
   setDefaultLibpath(conf)
   template readConfigFile(path) =
     let configPath = path
@@ -319,3 +319,8 @@ proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef; idgen: 
       # `nim check foo.nims' means to check the syntax of the NimScript file
       discard
   showHintConf()
+
+proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef; idgen: IdGenerator) =
+  if optForceFullMake in conf.globalOptions or not loadConfigsFromCache(conf):
+    loadConfigsImpl(cfg, cache, conf, idgen)
+    storeConfigs(conf)
