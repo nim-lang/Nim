@@ -124,7 +124,7 @@ proc expandDefault(t: PType; info: TLineInfo): PNode =
     result = newZero(t, info, nkBracket)
   of tyString:
     result = newZero(t, info, nkStrLit)
-  of tyNone, tyEmpty, tyUntyped, tyTyped, tyTypeDesc, tyStub,
+  of tyNone, tyEmpty, tyUntyped, tyTyped, tyTypeDesc,
      tyNil, tyGenericInvocation, tyError, tyBuiltInTypeClass,
      tyUserTypeClass, tyUserTypeClassInst, tyCompositeTypeClass,
      tyAnd, tyOr, tyNot, tyAnything, tyConcept, tyIterable, tyForward:

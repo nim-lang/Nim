@@ -491,7 +491,7 @@ const
     "BuiltInTypeClass", "UserTypeClass",
     "UserTypeClassInst", "CompositeTypeClass", "inferred",
     "and", "or", "not", "any", "static", "TypeFromExpr", "concept", # xxx bugfix
-    "void", "iterable", "stub"]
+    "void", "iterable"]
 
 const preferToResolveSymbols = {preferName, preferTypeName, preferModuleInfo,
   preferGenericArg, preferResolved, preferMixed, preferInlayHint, preferInferredEffects}
@@ -1344,8 +1344,6 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     result = a.id == b.id and sameFlags(a, b)
   of tyError:
     result = b.kind == tyError
-  of tyStub:
-    result = false
   of tyTuple:
     withoutShallowFlags:
       cycleCheck()

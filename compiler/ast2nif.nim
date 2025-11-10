@@ -192,7 +192,9 @@ proc writeType(w: var Writer; dest: var TokenBuf; typ: PType)
 proc writeSym(w: var Writer; dest: var TokenBuf; sym: PSym)
 
 proc typeToNifSym(w: var Writer; typ: PType): string =
-  result = "`t."
+  result = "`t"
+  result.addInt ord(typ.kind)
+  result.add '.'
   result.addInt typ.uniqueId.item
   result.add '.'
   result.add modname(w.moduleToNifSuffix, typ.uniqueId.module, w.infos.config)
@@ -207,7 +209,7 @@ proc writeTypeDef(w: var Writer; dest: var TokenBuf; typ: PType) =
   dest.buildTree tdefTag:
     dest.addSymDef pool.syms.getOrIncl(w.typeToNifSym(typ)), NoLineInfo
 
-    dest.addIdent toNifTag(typ.kind)
+    #dest.addIdent toNifTag(typ.kind)
     writeFlags(dest, typ.flags)
     dest.addIdent toNifTag(typ.callConv)
     dest.addIntLit typ.size
@@ -581,8 +583,13 @@ proc loadNode(c: var DecodeContext; n: var Cursor): PNode
 
 proc loadTypeStub(c: var DecodeContext; t: SymId): PType =
   let name = pool.syms[t]
-  assert name.startsWith("`t.")
-  var i = len("`t.")
+  assert name.startsWith("`t")
+  var i = len("`t")
+  var k = 0
+  while i < name.len and name[i] in {'0'..'9'}:
+    k = k * 10 + name[i].ord - ord('0')
+    inc i
+  if i < name.len and name[i] == '.': inc i
   var itemId = 0'i32
   while i < name.len and name[i] in {'0'..'9'}:
     itemId = itemId * 10'i32 + int32(name[i].ord - ord('0'))
@@ -593,7 +600,7 @@ proc loadTypeStub(c: var DecodeContext; t: SymId): PType =
   result = c.types.getOrDefault(id)[0]
   if result == nil:
     let offs = c.getOffset(id.module, name)
-    result = PType(itemId: id, uniqueId: id, kind: tyStub)
+    result = PType(itemId: id, uniqueId: id, kind: TTypeKind(k), state: Partial)
     c.types[id] = (result, offs)
 
 proc loadTypeStub(c: var DecodeContext; n: var Cursor): PType =
@@ -622,7 +629,7 @@ proc loadSymStub(c: var DecodeContext; t: SymId): PSym =
   result = c.syms.getOrDefault(id)[0]
   if result == nil:
     let offs = c.getOffset(module, symAsStr)
-    result = PSym(itemId: id, kind: skStub, name: c.cache.getIdent(sn.name), disamb: sn.count.int32)
+    result = PSym(itemId: id, kind: skStub, name: c.cache.getIdent(sn.name), disamb: sn.count.int32, state: Partial)
     c.syms[id] = (result, offs)
 
 proc loadSymStub(c: var DecodeContext; n: var Cursor): PSym =
@@ -640,8 +647,8 @@ proc loadSymStub(c: var DecodeContext; n: var Cursor): PSym =
   else:
     raiseAssert "sym expected but got " & $n.kind
 
-proc isStub*(t: PType): bool {.inline.} = t.kind == tyStub
-proc isStub*(s: PSym): bool {.inline.} = s.kind == skStub
+proc isStub*(t: PType): bool {.inline.} = t.state == Partial
+proc isStub*(s: PSym): bool {.inline.} = s.state == Partial
 
 proc loadAtom[T](t: typedesc[set[T]]; n: var Cursor): set[T] =
   if n.kind == DotToken:
@@ -681,7 +688,7 @@ proc loadLoc(c: var DecodeContext; n: var Cursor; loc: var TLoc) =
   loadField loc.snippet
 
 proc loadType*(c: var DecodeContext; t: PType) =
-  if t.kind != tyStub: return
+  if t.state != Partial: return
   var buf = createTokenBuf(30)
   var n = cursorFromIndexEntry(c, t.itemId.module, c.types[t.itemId][1], buf)
 
@@ -692,7 +699,7 @@ proc loadType*(c: var DecodeContext; t: PType) =
   expect n, SymbolDef
   # ignore the type's name, we have already used it to create this PType's itemId!
   inc n
-  loadField t.kind
+  #loadField t.kind
   loadField t.flags
   loadField t.callConv
   loadField t.size

@@ -219,7 +219,7 @@ proc mapType(typ: PType): TJSTypeKind =
     else: result = etyNone
   of tyProc: result = etyProc
   of tyCstring: result = etyString
-  of tyConcept, tyIterable, tyStub:
+  of tyConcept, tyIterable:
     raiseAssert "unreachable"
 
 proc mapType(p: PProc; typ: PType): TJSTypeKind =

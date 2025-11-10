@@ -268,7 +268,6 @@ type
     tyVoid
       # now different from tyEmpty, hurray!
     tyIterable
-    tyStub
 
 static:
   # remind us when TTypeKind stops to fit in a single 64-bit word
@@ -693,10 +692,15 @@ type
 
   PScope* = ref TScope
 
+  ItemState* = enum
+    Complete # completely in memory
+    Partial  # partially in memory
+
   PLib* = ref TLib
   TSym* {.acyclic.} = object # Keep in sync with PackedSym
     itemId*: ItemId
     # proc and type instantiations are cached in the generic symbol
+    state*: ItemState
     case kind*: TSymKind
     of routineKinds:
       #procInstCache*: seq[PInstantiation]
@@ -771,6 +775,7 @@ type
                               # Keep in sync with PackedType
     itemId*: ItemId
     kind*: TTypeKind          # kind of type
+    state*: ItemState
     callConv*: TCallingConvention # for procs
     flags*: TTypeFlags        # flags of the type
     sons: TTypeSeq           # base types, etc.

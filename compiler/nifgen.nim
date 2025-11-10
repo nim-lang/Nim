@@ -666,7 +666,6 @@ proc toNifTag(s: TTypeKind): string =
   of tyConcept: "concept"
   of tyVoid: "void"
   of tyIterable: "iterable"
-  of tyStub: "stub"
 
 proc atom(t: PType; c: var TranslationContext) =
   c.b.withTree toNifTag(t.kind):
@@ -925,7 +924,7 @@ proc toNifType(t: PType; parent: PNode; c: var TranslationContext) =
       atom t, c, "err"
   of tyCompositeTypeClass: toNifType t.last, parent, c
   of tyInferred: toNifType t.skipModifier, parent, c
-  of tyAnything, tyStub: atom t, c
+  of tyAnything: atom t, c
   of tyStatic:
     c.typeHead t:
       if t.hasElementType:

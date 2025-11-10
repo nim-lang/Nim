@@ -469,7 +469,6 @@ proc toNifTag*(s: TTypeKind): string =
   of tyConcept: "concept"
   of tyVoid: "void"
   of tyIterable: "iterable"
-  of tyStub: "stub"
 
 
 proc parse*(t: typedesc[TTypeKind]; s: string): TTypeKind =
@@ -539,7 +538,6 @@ proc parse*(t: typedesc[TTypeKind]; s: string): TTypeKind =
   of "concept": tyConcept
   of "void": tyVoid
   of "iterable": tyIterable
-  of "stub": tyStub
   else: tyNone
 
 
