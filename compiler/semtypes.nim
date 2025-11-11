@@ -184,7 +184,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
       identToReplace[] = symNode
     if e.position == 0: hasNull = true
     if result.sym != nil and sfExported in result.sym.flags:
-      e.flags.incl {sfUsed, sfExported}
+      e.incl {sfUsed, sfExported}
 
     result.n.add symNode
     styleCheckDef(c, e)
@@ -595,7 +595,7 @@ proc semIdentVis(c: PContext, kind: TSymKind, n: PNode,
       result = newSymG(kind, n[1], c)
       var v = considerQuotedIdent(c, n[0])
       if sfExported in allowed and v.id == ord(wStar):
-        incl(result.flags, sfExported)
+        incl(result, sfExported)
       else:
         if not (sfExported in allowed):
           localError(c.config, n[0].info, errXOnlyAtModuleScope % "export")
@@ -805,7 +805,7 @@ proc semRecordCase(c: PContext, n: PNode, check: var IntSet, pos: var int,
   if a[0].kind != nkSym:
     internalError(c.config, "semRecordCase: discriminant is no symbol")
     return
-  incl(a[0].sym.flags, sfDiscriminant)
+  incl(a[0].sym, sfDiscriminant)
   var covered = toInt128(0)
   var chckCovered = false
   var typ = skipTypes(a[0].typ, abstractVar-{tyTypeDesc})
@@ -958,8 +958,9 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
       if fieldOwner != nil and
          {sfImportc, sfExportc} * fieldOwner.flags != {} and
          not hasCaseFields and f.loc.snippet == "":
-        f.loc.snippet = rope(f.name.s)
-        f.flags.incl {sfImportc, sfExportc} * fieldOwner.flags
+        ensureMutable f
+        f.locImpl.snippet = rope(f.name.s)
+        f.incl {sfImportc, sfExportc} * fieldOwner.flags
       inc(pos)
       if containsOrIncl(check, f.name.id):
         localError(c.config, info, "attempt to redefine: '" & f.name.s & "'")
@@ -1207,8 +1208,8 @@ proc addImplicitGeneric(c: PContext; typeClass: PType, typId: PIdent;
   let owner = if typeClass.sym != nil: typeClass.sym
               else: getCurrOwner(c)
   var s = newSym(skType, finalTypId, c.idgen, owner, info)
-  if sfExplain in owner.flags: s.flags.incl sfExplain
-  if typId == nil: s.flags.incl(sfAnon)
+  if sfExplain in owner.flags: s.incl sfExplain
+  if typId == nil: s.incl(sfAnon)
   s.linkTo(typeClass)
   typeClass.flags.incl tfImplicitTypeParam
   s.position = genericParams.len
@@ -1521,7 +1522,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
     for j in 0..<a.len-2:
       var arg = newSymG(skParam, if a[j].kind == nkPragmaExpr: a[j][0] else: a[j], c)
       if arg.name.id == ord(wUnderscore):
-        arg.flags.incl(sfGenSym)
+        arg.incl(sfGenSym)
       elif containsOrIncl(check, arg.name.id):
         localError(c.config, a[j].info, "attempt to redefine: '" & arg.name.s & "'")
       if a[j].kind == nkPragmaExpr:
@@ -1893,7 +1894,7 @@ proc semTypeClass(c: PContext, n: PNode, prev: PType): PType =
     var dummyParam = newSym(if modifier == tyTypeDesc: skType else: skVar,
                             dummyName.ident, c.idgen, owner, param.info)
     dummyParam.typ = dummyType
-    incl dummyParam.flags, sfUsed
+    incl dummyParam.flagsImpl, sfUsed
     addDecl(c, dummyParam)
 
   result.n[3] = semConceptBody(c, n[3])

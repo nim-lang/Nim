@@ -126,9 +126,10 @@ proc genVarTuple(p: BProc, n: PNode) =
     let vn = n[i]
     let v = vn.sym
     if sfCompileTime in v.flags: continue
+    ensureMutable v
     if sfGlobal in v.flags:
       assignGlobalVar(p, vn, "")
-      genObjectInit(p, cpsInit, v.typ, v.loc, constructObj)
+      genObjectInit(p, cpsInit, v.typ, v.locImpl, constructObj)
       registerTraverseProc(p, v)
     else:
       assignLocalVar(p, vn)
@@ -142,9 +143,9 @@ proc genVarTuple(p: BProc, n: PNode) =
         if t.n[i].kind != nkSym: internalError(p.config, n.info, "genVarTuple")
         mangleRecFieldName(p.module, t.n[i].sym)
     field.snippet = dotField(rtup, fieldName)
-    putLocIntoDest(p, v.loc, field)
+    putLocIntoDest(p, v.locImpl, field)
     if forHcr or isGlobalInBlock:
-      hcrGlobals.add((loc: v.loc, tp: CNil))
+      hcrGlobals.add((loc: v.locImpl, tp: CNil))
 
   if forHcr:
     # end the block where the tuple gets initialized
@@ -460,7 +461,8 @@ proc genSingleVar(p: BProc, v: PSym; vn, value: PNode) =
   if value.kind != nkEmpty and valueAsRope.len == 0:
     genLineDir(targetProc, vn)
     if not isCppCtorCall:
-      loadInto(targetProc, vn, value, v.loc)
+      ensureMutable v
+      loadInto(targetProc, vn, value, v.locImpl)
   if forHcr:
     endBlockWith(targetProc):
       finishBranch(p.s(cpsStmts), hcrInit)
@@ -736,7 +738,8 @@ proc genBlock(p: BProc, n: PNode, d: var TLoc) =
       # named block?
       assert(n[0].kind == nkSym)
       var sym = n[0].sym
-      sym.loc.k = locOther
+      ensureMutable sym
+      sym.locImpl.k = locOther
       sym.position = p.breakIdx+1
     expr(p, n[1], d)
     endSimpleBlock(p, scope)
@@ -1250,7 +1253,8 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
           initElifBranch(p.s(cpsStmts), ifStmt, orExpr)
         if exvar != nil:
           fillLocalName(p, exvar.sym)
-          fillLoc(exvar.sym.loc, locTemp, exvar, OnStack)
+          ensureMutable exvar.sym
+          fillLoc(exvar.sym.locImpl, locTemp, exvar, OnStack)
           linefmt(p, cpsStmts, "$1 $2 = T$3_;$n", [getTypeDesc(p.module, exvar.sym.typ),
             rdLoc(exvar.sym.loc), rope(etmp+1)])
         # we handled the error:
@@ -1298,7 +1302,8 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
             if isImportedException(typeNode.typ, p.config):
               let exvar = t[i][j][2] # ex1 in `except ExceptType as ex1:`
               fillLocalName(p, exvar.sym)
-              fillLoc(exvar.sym.loc, locTemp, exvar, OnStack)
+              ensureMutable exvar.sym
+              fillLoc(exvar.sym.locImpl, locTemp, exvar, OnStack)
               startBlockWith(p):
                 lineCg(p, cpsStmts, "catch ($1& $2) {$n", [getTypeDesc(p.module, typeNode.typ), rdLoc(exvar.sym.loc)])
               genExceptBranchBody(t[i][^1])  # exception handler body will duplicated for every type
@@ -1389,7 +1394,8 @@ proc genTryCppOld(p: BProc, t: PNode, d: var TLoc) =
         if t[i][j].isInfixAs():
           let exvar = t[i][j][2] # ex1 in `except ExceptType as ex1:`
           fillLocalName(p, exvar.sym)
-          fillLoc(exvar.sym.loc, locTemp, exvar, OnUnknown)
+          ensureMutable exvar.sym
+          fillLoc(exvar.sym.locImpl, locTemp, exvar, OnUnknown)
           startBlockWith(p):
             lineCg(p, cpsStmts, "catch ($1& $2) {$n", [getTypeDesc(p.module, t[i][j][1].typ), rdLoc(exvar.sym.loc)])
         else:

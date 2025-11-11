@@ -123,8 +123,8 @@ proc attachDispatcher(s: PSym, dispatcher: PNode) =
 
 proc createDispatcher(s: PSym; g: ModuleGraph; idgen: IdGenerator): PSym =
   var disp = copySym(s, idgen)
-  incl(disp.flags, sfDispatcher)
-  excl(disp.flags, sfExported)
+  incl(disp, sfDispatcher)
+  excl(disp, sfExported)
   let old = disp.typ
   disp.typ = copyType(disp.typ, idgen, disp.typ.owner)
   copyTypeProps(g, idgen.module, disp.typ, old)
@@ -133,7 +133,7 @@ proc createDispatcher(s: PSym; g: ModuleGraph; idgen: IdGenerator): PSym =
   if disp.typ.callConv == ccInline: disp.typ.callConv = ccNimCall
   disp.ast = copyTree(s.ast)
   disp.ast[bodyPos] = newNodeI(nkEmpty, s.info)
-  disp.loc.snippet = ""
+  disp.locImpl.snippet = ""
   if s.typ.returnType != nil:
     if disp.ast.len > resultPos:
       disp.ast[resultPos].sym = copySym(s.ast[resultPos].sym, idgen)

@@ -180,9 +180,9 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]; conf: Confi
           # Hack to prevent endless recursion
           # xxx instead, use a hash table to indicate we've already visited a type, which
           # would also be more efficient.
-          symWithFlags.flags.excl {sfAnon, sfGenSym}
+          symWithFlags.flagsImpl.excl {sfAnon, sfGenSym}
           hashTree(c, t.n, flags + {CoHashTypeInsideNode}, conf)
-          symWithFlags.flags = oldFlags
+          symWithFlags.flagsImpl = oldFlags
         else:
           # The object has no fields: we _must_ add something here in order to
           # make the hash different from the one we produce by hashing only the

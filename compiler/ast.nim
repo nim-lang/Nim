@@ -846,6 +846,10 @@ proc loadSym*(s: PSym) {.inline.} =
   ## This is a forward declaration - implementation should be provided elsewhere.
   discard
 
+proc ensureMutable*(s: PSym) {.inline.} =
+  assert s.state != Sealed
+  if s.state == Partial: loadSym(s)
+
 proc owner*(s: PSym|PType): PSym {.inline.} =
   when s is PSym:
     if s.state == Partial: loadSym(s)
@@ -855,6 +859,7 @@ proc owner*(s: PSym|PType): PSym {.inline.} =
 
 proc setOwner*(s: PSym|PType, owner: PSym) {.inline.} =
   when s is PSym:
+    assert s.state != Sealed
     if s.state == Partial: loadSym(s)
     s.ownerFieldImpl = owner
   else:
@@ -868,6 +873,7 @@ proc kind*(s: PSym): TSymKind {.inline.} =
   result = s.kind
 
 proc `kind=`*(s: PSym, val: TSymKind) {.inline.} =
+  assert s.state != Sealed
   if s.state == Partial: loadSym(s)
   s.kind = val
 
@@ -876,6 +882,7 @@ proc gcUnsafetyReason*(s: PSym): PSym {.inline.} =
   result = s.gcUnsafetyReasonImpl
 
 proc `gcUnsafetyReason=`*(s: PSym, val: PSym) {.inline.} =
+  assert s.state != Sealed
   if s.state == Partial: loadSym(s)
   s.gcUnsafetyReasonImpl = val
 
@@ -884,6 +891,7 @@ proc transformedBody*(s: PSym): PNode {.inline.} =
   result = s.transformedBodyImpl
 
 proc `transformedBody=`*(s: PSym, val: PNode) {.inline.} =
+  assert s.state != Sealed
   if s.state == Partial: loadSym(s)
   s.transformedBodyImpl = val
 
@@ -892,6 +900,7 @@ proc guard*(s: PSym): PSym {.inline.} =
   result = s.guardImpl
 
 proc `guard=`*(s: PSym, val: PSym) {.inline.} =
+  assert s.state != Sealed
   if s.state == Partial: loadSym(s)
   s.guardImpl = val
 
@@ -900,6 +909,7 @@ proc bitsize*(s: PSym): int {.inline.} =
   result = s.bitsizeImpl
 
 proc `bitsize=`*(s: PSym, val: int) {.inline.} =
+  assert s.state != Sealed
   if s.state == Partial: loadSym(s)
   s.bitsizeImpl = val
 
@@ -908,6 +918,7 @@ proc alignment*(s: PSym): int {.inline.} =
   result = s.alignmentImpl
 
 proc `alignment=`*(s: PSym, val: int) {.inline.} =
+  assert s.state != Sealed
   if s.state == Partial: loadSym(s)
   s.alignmentImpl = val
 
@@ -916,6 +927,7 @@ proc magic*(s: PSym): TMagic {.inline.} =
   result = s.magicImpl
 
 proc `magic=`*(s: PSym, val: TMagic) {.inline.} =
+  assert s.state != Sealed
   if s.state == Partial: loadSym(s)
   s.magicImpl = val
 
@@ -924,6 +936,7 @@ proc typ*(s: PSym): PType {.inline.} =
   result = s.typImpl
 
 proc `typ=`*(s: PSym, val: PType) {.inline.} =
+  assert s.state != Sealed
   if s.state == Partial: loadSym(s)
   s.typImpl = val
 
@@ -932,6 +945,7 @@ proc info*(s: PSym): TLineInfo {.inline.} =
   result = s.infoImpl
 
 proc `info=`*(s: PSym, val: TLineInfo) {.inline.} =
+  assert s.state != Sealed
   if s.state == Partial: loadSym(s)
   s.infoImpl = val
 
@@ -941,6 +955,7 @@ when defined(nimsuggest):
     result = s.endInfoImpl
 
   proc `endInfo=`*(s: PSym, val: TLineInfo) {.inline.} =
+    assert s.state != Sealed
     if s.state == Partial: loadSym(s)
     s.endInfoImpl = val
 
@@ -949,6 +964,7 @@ when defined(nimsuggest):
     result = s.hasUserSpecifiedTypeImpl
 
   proc `hasUserSpecifiedType=`*(s: PSym, val: bool) {.inline.} =
+    assert s.state != Sealed
     if s.state == Partial: loadSym(s)
     s.hasUserSpecifiedTypeImpl = val
 
@@ -957,6 +973,7 @@ proc flags*(s: PSym): TSymFlags {.inline.} =
   result = s.flagsImpl
 
 proc `flags=`*(s: PSym, val: TSymFlags) {.inline.} =
+  assert s.state != Sealed
   if s.state == Partial: loadSym(s)
   s.flagsImpl = val
 
@@ -965,6 +982,7 @@ proc ast*(s: PSym): PNode {.inline.} =
   result = s.astImpl
 
 proc `ast=`*(s: PSym, val: PNode) {.inline.} =
+  assert s.state != Sealed
   if s.state == Partial: loadSym(s)
   s.astImpl = val
 
@@ -973,6 +991,7 @@ proc options*(s: PSym): TOptions {.inline.} =
   result = s.optionsImpl
 
 proc `options=`*(s: PSym, val: TOptions) {.inline.} =
+  assert s.state != Sealed
   if s.state == Partial: loadSym(s)
   s.optionsImpl = val
 
@@ -981,6 +1000,7 @@ proc position*(s: PSym): int {.inline.} =
   result = s.positionImpl
 
 proc `position=`*(s: PSym, val: int) {.inline.} =
+  assert s.state != Sealed
   if s.state == Partial: loadSym(s)
   s.positionImpl = val
 
@@ -989,6 +1009,7 @@ proc offset*(s: PSym): int32 {.inline.} =
   result = s.offsetImpl
 
 proc `offset=`*(s: PSym, val: int32) {.inline.} =
+  assert s.state != Sealed
   if s.state == Partial: loadSym(s)
   s.offsetImpl = val
 
@@ -997,6 +1018,7 @@ proc loc*(s: PSym): TLoc {.inline.} =
   result = s.locImpl
 
 proc `loc=`*(s: PSym, val: TLoc) {.inline.} =
+  assert s.state != Sealed
   if s.state == Partial: loadSym(s)
   s.locImpl = val
 
@@ -1005,6 +1027,7 @@ proc annex*(s: PSym): PLib {.inline.} =
   result = s.annexImpl
 
 proc `annex=`*(s: PSym, val: PLib) {.inline.} =
+  assert s.state != Sealed
   if s.state == Partial: loadSym(s)
   s.annexImpl = val
 
@@ -1014,6 +1037,7 @@ when hasFFI:
     result = s.cnameImpl
 
   proc `cname=`*(s: PSym, val: string) {.inline.} =
+    assert s.state != Sealed
     if s.state == Partial: loadSym(s)
     s.cnameImpl = val
 
@@ -1022,6 +1046,7 @@ proc constraint*(s: PSym): PNode {.inline.} =
   result = s.constraintImpl
 
 proc `constraint=`*(s: PSym, val: PNode) {.inline.} =
+  assert s.state != Sealed
   if s.state == Partial: loadSym(s)
   s.constraintImpl = val
 
@@ -1030,26 +1055,32 @@ proc instantiatedFrom*(s: PSym): PSym {.inline.} =
   result = s.instantiatedFromImpl
 
 proc `instantiatedFrom=`*(s: PSym, val: PSym) {.inline.} =
+  assert s.state != Sealed
   if s.state == Partial: loadSym(s)
   s.instantiatedFromImpl = val
 
 proc setSnippet*(s: PSym; val: sink string) {.inline.} =
+  assert s.state != Sealed
   if s.state == Partial: loadSym(s)
   s.locImpl.snippet = val
 
 proc incl*(s: PSym; flag: TSymFlag) {.inline.} =
+  assert s.state != Sealed
   if s.state == Partial: loadSym(s)
   s.flagsImpl.incl(flag)
 
 proc incl*(s: PSym; flags: set[TSymFlag]) {.inline.} =
+  assert s.state != Sealed
   if s.state == Partial: loadSym(s)
-  s.flagsImpl.incl(flag)
+  s.flagsImpl.incl(flags)
 
 proc incl*(s: PSym; flag: TLocFlag) {.inline.} =
+  assert s.state != Sealed
   if s.state == Partial: loadSym(s)
   s.locImpl.flags.incl(flag)
 
 proc excl*(s: PSym; flag: TSymFlag) {.inline.} =
+  assert s.state != Sealed
   if s.state == Partial: loadSym(s)
   s.flagsImpl.excl(flag)
 
@@ -1059,6 +1090,7 @@ when defined(nimsuggest):
     result = s.allUsagesImpl
 
   proc `allUsages=`*(s: PSym, val: seq[TLineInfo]) {.inline.} =
+    assert s.state != Sealed
     if s.state == Partial: loadSym(s)
     s.allUsagesImpl = val
 
@@ -2290,7 +2322,7 @@ template incompleteType*(t: PType): bool =
   t.sym != nil and {sfForward, sfNoForward} * t.sym.flags == {sfForward}
 
 template typeCompleted*(s: PSym) =
-  incl s.flags, sfNoForward
+  incl s, sfNoForward
 
 template detailedInfo*(sym: PSym): string =
   sym.name.s

@@ -1920,7 +1920,7 @@ proc makeTupleAssignments(c: PContext; n: PNode): PNode =
 
   let temp = newSym(skTemp, getIdent(c.cache, "tmpTupleAsgn"), c.idgen, getCurrOwner(c), n.info)
   temp.typ = value.typ
-  temp.flags.incl(sfGenSym)
+  temp.flagsImpl.incl(sfGenSym)
   var v = newNodeI(nkLetSection, value.info)
   let tempNode = newSymNode(temp) #newIdentNode(getIdent(genPrefix & $temp.id), value.info)
   var vpart = newNodeI(nkIdentDefs, v.info, 3)
@@ -1937,7 +1937,7 @@ proc makeTupleAssignments(c: PContext; n: PNode): PNode =
       # generate `let _ = temp[i]` which should generate a destructor
       let utemp = newSym(skLet, lhs[i].ident, c.idgen, getCurrOwner(c), lhs[i].info)
       utemp.typ = value.typ[i]
-      temp.flags.incl(sfGenSym)
+      temp.flagsImpl.incl(sfGenSym)
       var uv = newNodeI(nkLetSection, lhs[i].info)
       let utempNode = newSymNode(utemp)
       var uvpart = newNodeI(nkIdentDefs, v.info, 3)
@@ -2376,7 +2376,7 @@ proc semQuoteAst(c: PContext, n: PNode): PNode =
   processQuotations(c, quotedBlock, op, quotes, ids)
 
   let dummyTemplateSym = newAnonSym(c, skTemplate, n.info)
-  incl(dummyTemplateSym.flags, sfTemplateRedefinition)
+  incl(dummyTemplateSym.flagsImpl, sfTemplateRedefinition)
   var dummyTemplate = newProcNode(
     nkTemplateDef, quotedBlock.info, body = quotedBlock,
     params = c.graph.emptyNode,
@@ -2505,8 +2505,9 @@ proc instantiateCreateFlowVarCall(c: PContext; t: PType;
   # since it's an instantiation, we unmark it as a compilerproc. Otherwise
   # codegen would fail:
   if sfCompilerProc in result.flags:
-    result.flags.excl {sfCompilerProc, sfExportc, sfImportc}
-    result.loc.snippet = ""
+    ensureMutable result
+    result.flagsImpl.excl {sfCompilerProc, sfExportc, sfImportc}
+    result.locImpl.snippet = ""
 
 proc setMs(n: PNode, s: PSym): PNode =
   result = n
@@ -3216,7 +3217,7 @@ proc enumFieldSymChoice(c: PContext, n: PNode, s: PSym; flags: TExprFlags): PNod
     a = initOverloadIter(o, c, n)
     while a != nil:
       if a.kind == skEnumField:
-        incl(a.flags, sfUsed)
+        incl(a.flagsImpl, sfUsed)
         markOwnerModuleAsUsed(c, a)
         result.add newSymNode(a, info)
         onUse(info, a)

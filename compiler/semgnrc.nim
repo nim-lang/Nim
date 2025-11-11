@@ -50,13 +50,13 @@ proc semGenericStmtScope(c: PContext, n: PNode,
   result = semGenericStmt(c, n, flags, ctx)
   closeScope(c)
 
-template isMixedIn(sym): bool =
+template isMixedIn(sym): bool {.dirty.} =
   let s = sym
   s.name.id in ctx.toMixin or (withinConcept in flags and
                                s.magic == mNone and
                                s.kind in OverloadableSyms)
 
-template canOpenSym(s): bool =
+template canOpenSym(s): bool {.dirty.} =
   {withinMixin, withinConcept} * flags == {withinMixin} and s.id notin ctx.toBind
 
 proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
@@ -65,7 +65,7 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
                           fromDotExpr=false): PNode =
   result = nil
   semIdeForTemplateOrGenericCheck(c.config, n, ctx.cursorInBody)
-  incl(s.flags, sfUsed)
+  incl(s.flagsImpl, sfUsed)
   template maybeDotChoice(c: PContext, n: PNode, s: PSym, fromDotExpr: bool) =
     if fromDotExpr:
       result = symChoice(c, n, s, scForceOpen)
@@ -274,7 +274,7 @@ proc semGenericStmt(c: PContext, n: PNode,
     result = lookup(c, n, flags, ctx)
     if result != nil and result.kind == nkSym:
       assert result.sym != nil
-      incl result.sym.flags, sfUsed
+      incl result.sym.flagsImpl, sfUsed
       markOwnerModuleAsUsed(c, result.sym)
   of nkDotExpr:
     #let luf = if withinMixin notin flags: {checkUndeclared} else: {}
@@ -318,7 +318,7 @@ proc semGenericStmt(c: PContext, n: PNode,
     var first = int ord(withinConcept in flags)
     var mixinContext = false
     if s != nil:
-      incl(s.flags, sfUsed)
+      incl(s.flagsImpl, sfUsed)
       mixinContext = s.magic in {mDefined, mDeclared, mDeclaredInScope, mCompiles, mAstToStr}
       let whichChoice = if s.id in ctx.toBind: scClosed
                         elif s.isMixedIn: scForceOpen

@@ -34,7 +34,7 @@ proc semAddr(c: PContext; n: PNode): PNode =
   result = newNodeI(nkAddr, n.info)
   let x = semExprWithType(c, n)
   if x.kind == nkSym:
-    x.sym.flags.incl(sfAddrTaken)
+    x.sym.flagsImpl.incl(sfAddrTaken)
   if isAssignable(c, x) notin {arLValue, arLocalLValue, arAddressableConst, arLentValue}:
     localError(c.config, n.info, errExprHasNoAddress)
   result.add x
@@ -471,7 +471,7 @@ proc turnFinalizerIntoDestructor(c: PContext; orig: PSym; info: TLineInfo): PSym
 
   result = copySym(orig, c.idgen)
   result.info = info
-  result.flags.incl sfFromGeneric
+  result.incl sfFromGeneric
   setOwner(result, orig)
   let origParamType = orig.typ.firstParamType
   let newParamType = makeVarType(result, origParamType.skipTypes(abstractPtrs), c.idgen)
@@ -551,7 +551,7 @@ proc semNewFinalize(c: PContext; n: PNode): PNode =
           let wrapperSym = newSym(skProc, getIdent(c.graph.cache, fin.name.s & "FinalizerWrapper"), c.idgen, fin.owner, fin.info)
           let selfSymNode = newSymNode(copySym(fin.ast[paramsPos][1][0].sym, c.idgen))
           selfSymNode.typ() = fin.typ.firstParamType
-          wrapperSym.flags.incl sfUsed
+          wrapperSym.flagsImpl.incl sfUsed
 
           let wrapper = c.semExpr(c, newProcNode(nkProcDef, fin.info, body = newTree(nkCall, newSymNode(fin), selfSymNode),
             params = nkFormalParams.newTree(c.graph.emptyNode,

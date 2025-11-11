@@ -2214,7 +2214,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       if k < 0 or k > ord(high(TSymKind)):
         internalError(c.config, c.debug[pc], "request to create symbol of invalid kind")
       var sym = newSym(k.TSymKind, getIdent(c.cache, name), c.idgen, c.module.owner, c.debug[pc])
-      incl(sym.flags, sfGenSym)
+      incl(sym.flagsImpl, sfGenSym)
       regs[ra].node = newSymNode(sym)
       regs[ra].node.flags.incl nfIsRef
     of opcNccValue:

@@ -95,7 +95,7 @@ proc getCurrOwner(c: PTransf): PSym =
 proc newTemp(c: PTransf, typ: PType, info: TLineInfo): PNode =
   let r = newSym(skTemp, getIdent(c.graph.cache, genPrefix), c.idgen, getCurrOwner(c), info)
   r.typ = typ #skipTypes(typ, {tyGenericInst, tyAlias, tySink})
-  incl(r.flags, sfFromGeneric)
+  incl(r.flagsImpl, sfFromGeneric)
   let owner = getCurrOwner(c)
   result = newSymNode(r)
 
@@ -181,7 +181,7 @@ proc transformSym(c: PTransf, n: PNode): PNode =
 proc freshVar(c: PTransf; v: PSym): PNode =
   let owner = getCurrOwner(c)
   var newVar = copySym(v, c.idgen)
-  incl(newVar.flags, sfFromGeneric)
+  incl(newVar.flagsImpl, sfFromGeneric)
   setOwner(newVar, owner)
   result = newSymNode(newVar)
 
@@ -795,7 +795,7 @@ proc transformFor(c: PTransf, n: PNode): PNode =
         addVar(v, copyTree(n[i][j])) # declare new vars
     else:
       if n[i].kind == nkSym and isSimpleIteratorVar(c, iter, call, n[i].sym.owner):
-        incl n[i].sym.flags, sfCursor
+        incl n[i].sym, sfCursor
       addVar(v, copyTree(n[i])) # declare new vars
   stmtList.add(v)
 

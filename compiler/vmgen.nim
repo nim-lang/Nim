@@ -1790,7 +1790,7 @@ proc genRdVar(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
       # see tests/t99bott for an example that triggers it:
       cannotEval(c, n)
 
-template needsRegLoad(): untyped =
+template needsRegLoad(): untyped {.dirty.} =
   {gfNode, gfNodeAddr} * flags == {} and
     fitsRegister(n.typ.skipTypes({tyVar, tyLent, tyStatic}))
 

@@ -24,7 +24,7 @@ proc addObjFieldsToLocalScope(c: PContext; n: PNode) =
     let f = n.sym
     if f.kind == skField and fieldVisible(c, f):
       c.currentScope.symbols.strTableIncl(f, onConflictKeepOld=true)
-      incl(f.flags, sfUsed)
+      incl(f.flagsImpl, sfUsed)
       # it is not an error to shadow fields via parameters
   else: discard
 
@@ -42,7 +42,7 @@ iterator instantiateGenericParamList(c: PContext, n: PNode, pt: LayeredIdTable):
     if q.typ.kind in {tyTypeDesc, tyGenericParam, tyStatic, tyConcept}+tyTypeClasses:
       let symKind = if q.typ.kind == tyStatic: skConst else: skType
       var s = newSym(symKind, q.name, c.idgen, getCurrOwner(c), q.info)
-      s.flags.incl {sfUsed, sfFromGeneric}
+      s.flagsImpl.incl {sfUsed, sfFromGeneric}
       var t = lookup(pt, q.typ)
       if t == nil:
         if tfRetType in q.typ.flags:
@@ -149,7 +149,7 @@ proc instantiateBody(c: PContext, n, params: PNode, result, orig: PSym) =
           nil
       b = semProcBody(c, b, resultType)
     result.ast[bodyPos] = hloBody(c, b)
-    excl(result.flags, sfForward)
+    excl(result, sfForward)
     trackProc(c, result, result.ast[bodyPos])
     dec c.inGenericInst
 
@@ -208,7 +208,7 @@ proc instGenericContainer(c: PContext, info: TLineInfo, header: PType,
 
     # this scope was not created by the user,
     # unused params shouldn't be reported.
-    param.flags.incl sfUsed
+    param.flagsImpl.incl sfUsed
     addDecl(c, param)
 
   result = replaceTypeVarsT(cl, header)
@@ -337,7 +337,7 @@ proc instantiateOnlyProcType(c: PContext, pt: LayeredIdTable, prc: PSym, info: T
   # examples are in texplicitgenerics
   # might be buggy, see rest of generateInstance if problems occur
   let fakeSym = copySym(prc, c.idgen)
-  incl(fakeSym.flags, sfFromGeneric)
+  incl(fakeSym.flagsImpl, sfFromGeneric)
   fakeSym.instantiatedFrom = prc
   openScope(c)
   for s in instantiateGenericParamList(c, prc.ast[genericParamsPos], pt):
@@ -393,7 +393,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: LayeredIdTable,
   let oldScope = c.currentScope
   while not isTopLevel(c): c.currentScope = c.currentScope.parent
   result = copySym(fn, c.idgen)
-  incl(result.flags, sfFromGeneric)
+  incl(result, sfFromGeneric)
   result.instantiatedFrom = fn
   if sfGlobal in result.flags and c.config.symbolFiles != disabledSf:
     let passc = getLocalPassC(c, producer)
@@ -438,7 +438,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: LayeredIdTable,
     inc i
   #echo "INSTAN ", fn.name.s, " ", typeToString(result.typ), " ", entry.concreteTypes.len
   if tfTriggersCompileTime in result.typ.flags:
-    incl(result.flags, sfCompileTime)
+    incl(result, sfCompileTime)
   n[genericParamsPos] = c.graph.emptyNode
   var oldPrc = genericCacheGet(c.graph, fn, entry[], c.compilesContextId)
   if oldPrc == nil:

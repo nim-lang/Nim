@@ -90,7 +90,7 @@ proc prePass*(c: PContext; n: PNode) =
                 let feature = parseEnum[Feature](name.strVal)
                 if feature == codeReordering:
                   c.features.incl feature
-                  c.module.flags.incl sfReorder
+                  c.module.incl sfReorder
               except ValueError:
                 discard
             else:
@@ -254,14 +254,14 @@ proc compilePipelineModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymF
       graph.cachedFiles[path] = $secureHashFile(path)
     if result == nil:
       result = newModule(graph, fileIdx)
-      result.flags.incl flags
+      result.incl flags
       registerModule(graph, result)
       processModuleAux("import")
     else:
       if sfSystemModule in flags:
         graph.systemModule = result
       if sfMainModule in flags and graph.config.cmd == cmdM:
-        result.flags.incl flags
+        result.incl flags
         registerModule(graph, result)
         processModuleAux("import")
       partialInitModule(result, graph, fileIdx, filename)
@@ -273,7 +273,7 @@ proc compilePipelineModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymF
         replayStateChanges(graph.packed.pm[m.int].module, graph)
         replayGenericCacheInformation(graph, m.int)
   elif graph.isDirty(result):
-    result.flags.excl sfDirty
+    result.excl sfDirty
     # reset module fields:
     initStrTables(graph, result)
     result.ast = nil

@@ -245,7 +245,8 @@ proc importModuleAs(c: PContext; n: PNode, realModule: PSym, importHidden, track
     # avoids modifying `realModule`, see D20201209T194412 for `import {.all.}`
     result = createModuleAliasImpl(realModule.name)
   if importHidden:
-    result.options.incl optImportHidden
+    ensureMutable result
+    result.optionsImpl.incl optImportHidden
   let moduleIdent = if n.kind in {nkInfix, nkImportAs}: n[^1] else: n
   result.info = moduleIdent.info
   if trackUnusedImport:
