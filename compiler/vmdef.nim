@@ -10,7 +10,7 @@
 ## This module contains the type definitions for the new evaluation engine.
 ## An instruction is 1-3 int32s in memory, it is a register based VM.
 
-import std/[tables, strutils]
+import std/[tables, strutils, intsets]
 
 import ast, idents, options, modulegraphs, lineinfos
 
@@ -201,6 +201,7 @@ type
   TSandboxFlag* = enum        ## what the evaluation engine should allow
     allowCast,                ## allow unsafe language feature: 'cast'
     allowInfiniteLoops        ## allow endless loops
+    allowInfiniteRecursion    ## allow infinite recursion
   TSandboxFlags* = set[TSandboxFlag]
 
   TSlotKind* = enum   # We try to re-use slots in a smart way to
@@ -248,6 +249,7 @@ type
                             # to not slow down interpretation
     globals*: PNode         #
     constants*: PNode       # constant data
+    contstantTab*: TNodeTable
     types*: seq[PType]      # some instructions reference types (e.g. 'except')
     currentExceptionA*, currentExceptionB*: PNode
     exceptionInstr*: int # index of instruction that raised the exception
@@ -257,7 +259,7 @@ type
     mode*: TEvalMode
     features*: TSandboxFlags
     traceActive*: bool
-    loopIterations*: int
+    loopIterations*, callDepth*: int
     comesFromHeuristic*: TLineInfo # Heuristic for better macro stack traces
     callbacks*: seq[VmCallback]
     callbackIndex*: Table[string, int]
@@ -271,6 +273,7 @@ type
     vmstateDiff*: seq[(PSym, PNode)] # we remember the "diff" to global state here (feature for IC)
     procToCodePos*: Table[int, int]
     cannotEval*: bool
+    locals*: IntSet
 
   PStackFrame* = ref TStackFrame
   TStackFrame* {.acyclic.} = object
@@ -294,13 +297,16 @@ proc newCtx*(module: PSym; cache: IdentCache; g: ModuleGraph; idgen: IdGenerator
   PCtx(code: @[], debug: @[],
     globals: newNode(nkStmtListExpr), constants: newNode(nkStmtList), types: @[],
     prc: PProc(blocks: @[]), module: module, loopIterations: g.config.maxLoopIterationsVM,
+    callDepth: g.config.maxCallDepthVM,
     comesFromHeuristic: unknownLineInfo, callbacks: @[], callbackIndex: initTable[string, int](), errorFlag: "",
-    cache: cache, config: g.config, graph: g, idgen: idgen)
+    cache: cache, config: g.config, graph: g, idgen: idgen,
+    contstantTab: initNodeTable(true))
 
 proc refresh*(c: PCtx, module: PSym; idgen: IdGenerator) =
   c.module = module
   c.prc = PProc(blocks: @[])
   c.loopIterations = c.config.maxLoopIterationsVM
+  c.callDepth = c.config.maxCallDepthVM
   c.idgen = idgen
 
 proc reverseName(s: string): string =

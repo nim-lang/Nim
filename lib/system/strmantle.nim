@@ -8,9 +8,7 @@
 #
 
 # Compilerprocs for strings that do not depend on the string implementation.
-
-import std/private/digitsutils
-
+import std/private/digitsutils as digitsutils2
 
 proc cmpStrings(a, b: string): int {.inline, compilerproc.} =
   let alen = a.len
@@ -32,6 +30,7 @@ proc ltStrings(a, b: string): bool {.inline, compilerproc.} =
   cmpStrings(a, b) < 0
 
 proc eqStrings(a, b: string): bool {.inline, compilerproc.} =
+  result = false
   let alen = a.len
   let blen = b.len
   if alen == blen:

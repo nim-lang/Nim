@@ -1,5 +1,6 @@
 discard """
-  output: '''----1
+  output: '''
+----1
 myobj constructed
 myobj destroyed
 ----2
@@ -14,8 +15,8 @@ mygeneric3 constructed
 mygeneric1 destroyed
 ----5
 mydistinctObj constructed
-myobj destroyed
 mygeneric2 destroyed
+myobj destroyed
 ------------------8
 mygeneric1 destroyed
 ----6

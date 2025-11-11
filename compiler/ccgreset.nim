@@ -67,7 +67,14 @@ proc specializeResetT(p: BProc, accessor: Rope, typ: PType) =
     var x = typ.baseClass
     if x != nil: x = x.skipTypes(skipPtrs)
     specializeResetT(p, accessor.parentObj(p.module), x)
-    if typ.n != nil: specializeResetN(p, accessor, typ.n, typ)
+    if typ.n != nil:
+      if typ.sym != nil and sfImportc in typ.sym.flags:
+        # imported C struct, nimZeroMem
+        p.s(cpsStmts).addCallStmt(cgsymValue(p.module, "nimZeroMem"),
+          cCast(ptrType(CPointer), cAddr(accessor)),
+          cSizeof(getTypeDesc(p.module, typ)))
+      else:
+        specializeResetN(p, accessor, typ.n, typ)
   of tyTuple:
     let typ = getUniqueType(typ)
     for i, a in typ.ikids:
@@ -75,21 +82,21 @@ proc specializeResetT(p: BProc, accessor: Rope, typ: PType) =
 
   of tyString, tyRef, tySequence:
     p.s(cpsStmts).addCallStmt(cgsymValue(p.module, "unsureAsgnRef"),
-      cCast("void**", cAddr(accessor)),
-      "NIM_NIL")
+      cCast(ptrType(CPointer), cAddr(accessor)),
+      NimNil)
 
   of tyProc:
     if typ.callConv == ccClosure:
       p.s(cpsStmts).addCallStmt(cgsymValue(p.module, "unsureAsgnRef"),
-        cCast("void**", cAddr(dotField(accessor, "ClE_0"))),
-        "NIM_NIL")
-      p.s(cpsStmts).addFieldAssignment(accessor, "ClP_0", "NIM_NIL")
+        cCast(ptrType(CPointer), cAddr(dotField(accessor, "ClE_0"))),
+        NimNil)
+      p.s(cpsStmts).addFieldAssignment(accessor, "ClP_0", NimNil)
     else:
-      p.s(cpsStmts).addAssignment(accessor, "NIM_NIL")
+      p.s(cpsStmts).addAssignment(accessor, NimNil)
   of tyChar, tyBool, tyEnum, tyRange, tyInt..tyUInt64:
     p.s(cpsStmts).addAssignment(accessor, cIntValue(0))
   of tyCstring, tyPointer, tyPtr, tyVar, tyLent:
-    p.s(cpsStmts).addAssignment(accessor, "NIM_NIL")
+    p.s(cpsStmts).addAssignment(accessor, NimNil)
   of tySet:
     case mapSetType(p.config, typ)
     of ctArray:

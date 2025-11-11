@@ -1,6 +1,3 @@
-# XXX make complex ones like bitOr use builder instead
-# XXX add stuff like NI, NIM_NIL as constants
-
 proc constType(t: Snippet): Snippet =
   # needs manipulation of `t` in nifc
   "NIM_CONST " & t
@@ -13,6 +10,9 @@ proc ptrConstType(t: Snippet): Snippet =
 
 proc ptrType(t: Snippet): Snippet =
   t & "*"
+
+proc cppRefType(t: Snippet): Snippet =
+  t & "&"
 
 const
   CallingConvToStr: array[TCallingConvention, string] = ["N_NIMCALL",
@@ -31,6 +31,20 @@ proc procPtrTypeUnnamedNimCall(rettype, params: Snippet): Snippet =
 
 proc procPtrTypeUnnamed(callConv: TCallingConvention, rettype, params: Snippet): Snippet =
   CallingConvToStr[callConv] & "_PTR(" & rettype & ", )" & params
+
+type CppCaptureKind = enum None, ByReference, ByCopy
+
+template addCppLambda(builder: var Builder, captures: CppCaptureKind, params: Snippet, body: typed) =
+  builder.add("[")
+  case captures
+  of None: discard
+  of ByReference: builder.add("&")
+  of ByCopy: builder.add("=")
+  builder.add("] ")
+  builder.add(params)
+  builder.addLineEndIndent(" {")
+  body
+  builder.addLineEndDedent("}")
 
 proc cCast(typ, value: Snippet): Snippet =
   "((" & typ & ") " & value & ")"
@@ -53,7 +67,7 @@ template addCast(builder: var Builder, typ: Snippet, valueBody: typed) =
   builder.add ")"
 
 proc cAddr(value: Snippet): Snippet =
-  "&" & value
+  "(&" & value & ")"
 
 proc cLabelAddr(value: TLabel): Snippet =
   "&&" & value
@@ -69,9 +83,6 @@ proc dotField(a, b: Snippet): Snippet =
 
 proc derefField(a, b: Snippet): Snippet =
   a & "->" & b
-
-proc bitOr(a, b: Snippet): Snippet =
-  "(" & a & " | " & b & ")"
 
 type CallBuilder = object
   needsComma: bool

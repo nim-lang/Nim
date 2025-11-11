@@ -351,7 +351,7 @@ proc execProcesses*(cmds: openArray[string],
   ##
   ## The highest (absolute) return value of all processes is returned.
   ## Runs `beforeRunEvent` before running each command.
-
+  result = 0
   assert n > 0
   if n > 1:
     var i = 0
@@ -506,6 +506,7 @@ proc readLines*(p: Process): (seq[string], int) {.since: (1, 3),
   ##       for line in lines: echo line
   ##     p.close
   ##   ```
+  result = (@[], 0)
   for line in p.lines: result[0].add(line)
   result[1] = p.peekExitCode
 
@@ -545,8 +546,8 @@ when defined(windows) and not defined(useNimRtl):
       raiseOSError(osLastError())
 
   proc fileClose[T: Handle | FileHandle](h: var T) {.inline.} =
-    if h > 4:
-      closeHandleCheck(h)
+    if h.int > 4:
+      closeHandleCheck(Handle h)
       h = INVALID_HANDLE_VALUE.T
 
   proc hsClose(s: Stream) =
@@ -573,8 +574,8 @@ when defined(windows) and not defined(useNimRtl):
                               addr bytesWritten, nil)
     if a == 0: raiseOSError(osLastError())
 
-  proc newFileHandleStream(handle: Handle): owned FileHandleStream =
-    result = FileHandleStream(handle: handle, closeImpl: hsClose, atEndImpl: hsAtEnd,
+  proc newFileHandleStream(handle: FileHandle): owned FileHandleStream =
+    result = FileHandleStream(handle: Handle handle, closeImpl: hsClose, atEndImpl: hsAtEnd,
       readDataImpl: hsReadData, writeDataImpl: hsWriteData)
 
   proc buildCommandLine(a: string, args: openArray[string]): string =
@@ -887,7 +888,7 @@ when defined(windows) and not defined(useNimRtl):
     assert readfds.len <= MAXIMUM_WAIT_OBJECTS
     var rfds: WOHandleArray
     for i in 0..readfds.len()-1:
-      rfds[i] = readfds[i].outHandle #fProcessHandle
+      rfds[i] = readfds[i].outHandle.Handle #fProcessHandle
 
     var ret = waitForMultipleObjects(readfds.len.int32,
                                      addr(rfds), 0'i32, timeout.int32)
@@ -903,7 +904,7 @@ when defined(windows) and not defined(useNimRtl):
 
   proc hasData*(p: Process): bool =
     var x: int32
-    if peekNamedPipe(p.outHandle, lpTotalBytesAvail = addr x):
+    if peekNamedPipe(p.outHandle.Handle, lpTotalBytesAvail = addr x):
       result = x > 0
 
 elif not defined(useNimRtl):
@@ -944,7 +945,7 @@ elif not defined(useNimRtl):
       options: set[ProcessOption]
 
   const useProcessAuxSpawn = declared(posix_spawn) and not defined(useFork) and
-                             not defined(useClone) and not defined(linux)
+                             not (defined(useClone) and defined(linux))
   when useProcessAuxSpawn:
     proc startProcessAuxSpawn(data: StartProcessData): Pid {.
       raises: [OSError], tags: [ExecIOEffect, ReadEnvEffect, ReadDirEffect, RootEffect], gcsafe.}
@@ -961,7 +962,7 @@ elif not defined(useNimRtl):
       options: set[ProcessOption] = {poStdErrToStdOut}):
     owned Process =
     var
-      pStdin, pStdout, pStderr: array[0..1, cint]
+      pStdin, pStdout, pStderr: array[0..1, cint] = default(array[0..1, cint])
     new(result)
     result.options = options
     result.exitFlag = true
@@ -971,7 +972,7 @@ elif not defined(useNimRtl):
          pipe(pStderr) != 0'i32:
         raiseOSError(osLastError())
 
-    var data: StartProcessData
+    var data: StartProcessData = default(StartProcessData)
     var sysArgsRaw: seq[string]
     if poEvalCommand in options:
       const useShPath {.strdefine.} =
@@ -1102,7 +1103,7 @@ elif not defined(useNimRtl):
       var pid: Pid
       var dataCopy = data
 
-      when defined(useClone):
+      when defined(useClone) and defined(linux):
         const stackSize = 65536
         let stackEnd = cast[clong](alloc(stackSize))
         let stack = cast[pointer](stackEnd + stackSize)
@@ -1121,7 +1122,7 @@ elif not defined(useNimRtl):
       discard close(data.pErrorPipe[writeIdx])
       if pid < 0: raiseOSError(osLastError())
 
-      var error: cint
+      var error: cint = cint(0)
       let sizeRead = read(data.pErrorPipe[readIdx], addr error, sizeof(error))
       if sizeRead == sizeof(error):
         raiseOSError(OSErrorCode(error),
@@ -1167,7 +1168,7 @@ elif not defined(useNimRtl):
       if (poUsePath in data.options):
         when defined(uClibc) or defined(linux) or defined(haiku):
           # uClibc environment (OpenWrt included) doesn't have the full execvpe
-          var exe: string
+          var exe: string = ""
           try:
             exe = findExe(data.sysCommand)
           except OSError as e:
@@ -1223,6 +1224,7 @@ elif not defined(useNimRtl):
       elif ret == 0:
         return true # Can't establish status. Assume running.
       else:
+        result = false
         raiseOSError(osLastError())
 
   proc terminate(p: Process) =
@@ -1368,7 +1370,7 @@ elif not defined(useNimRtl):
         # Backwards compatibility with previous verison to
         # handle cases where timeout == -1, but extend
         # to handle cases where timeout < 0
-        var status: cint
+        var status: cint = cint(0)
         if waitpid(p.id, status, 0) < 0:
           raiseOSError(osLastError())
         p.exitFlag = true
@@ -1382,7 +1384,7 @@ elif not defined(useNimRtl):
         var delay = initDuration(microseconds = 50)
         
         while true:
-          var status: cint
+          var status: cint = cint(0)
           let pid = waitpid(p.id, status, WNOHANG)
           if p.id == pid :
             p.exitFlag = true
@@ -1407,8 +1409,8 @@ elif not defined(useNimRtl):
                 ns = ticks mod max
                 secs = ticks div max
               var 
-                waitSpec: TimeSpec
-                unused: Timespec
+                waitSpec: TimeSpec = default(TimeSpec)
+                unused: Timespec = default(Timespec)
               waitSpec.tv_sec = posix.Time(secs)
               waitSpec.tv_nsec = clong ns 
               discard posix.clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, waitSpec, unused)
@@ -1432,7 +1434,7 @@ elif not defined(useNimRtl):
 
   proc createStream(handle: var FileHandle,
                     fileMode: FileMode): owned FileStream =
-    var f: File
+    var f: File = default(File)
     if not open(f, handle, fileMode): raiseOSError(osLastError())
     return newFileStream(f)
 
@@ -1494,11 +1496,9 @@ elif not defined(useNimRtl):
     setLen(s, L)
 
   proc select(readfds: var seq[Process], timeout = 500): int =
-    var tv: Timeval
-    tv.tv_sec = posix.Time(0)
-    tv.tv_usec = Suseconds(timeout * 1000)
+    var tv: Timeval = Timeval(tv_sec: posix.Time(0), tv_usec: Suseconds(timeout * 1000))
 
-    var rd: TFdSet
+    var rd: TFdSet = default(TFdSet)
     var m = 0
     createFdSet((rd), readfds, m)
 
@@ -1510,7 +1510,7 @@ elif not defined(useNimRtl):
     pruneProcessSet(readfds, (rd))
 
   proc hasData*(p: Process): bool =
-    var rd: TFdSet
+    var rd: TFdSet = default(TFdSet)
 
     FD_ZERO(rd)
     let m = max(0, int(p.outHandle))

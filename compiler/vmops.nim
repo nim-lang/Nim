@@ -143,6 +143,9 @@ proc getCurrentExceptionMsgWrapper(a: VmArgs) {.nimcall.} =
 proc getCurrentExceptionWrapper(a: VmArgs) {.nimcall.} =
   setResult(a, a.currentException)
 
+proc raiseDefectWrapper(a: VmArgs) {.nimcall.} =
+  discard
+
 proc staticWalkDirImpl(path: string, relative: bool): PNode =
   result = newNode(nkBracket)
   for k, f in walkDir(path, relative):
@@ -263,7 +266,8 @@ proc registerAdditionalOps*(c: PCtx) =
     wrap2si(readLines, ioop)
     systemop getCurrentExceptionMsg
     systemop getCurrentException
-    registerCallback c, "stdlib.osdirs.staticWalkDir", proc (a: VmArgs) {.nimcall.} =
+    systemop raiseDefect
+    registerCallback c, "stdlib.staticos.staticWalkDir", proc (a: VmArgs) {.nimcall.} =
       setResult(a, staticWalkDirImpl(getString(a, 0), getBool(a, 1)))
     registerCallback c, "stdlib.staticos.staticDirExists", proc (a: VmArgs) {.nimcall.} =
       setResult(a, dirExists(getString(a, 0)))
@@ -330,6 +334,12 @@ proc registerAdditionalOps*(c: PCtx) =
 
   registerCallback c, "stdlib.hashes.hashVmImplByte", hashVmImplByte
   registerCallback c, "stdlib.hashes.hashVmImplChar", hashVmImplByte
+
+  registerCallback c, "stdlib.system.ltCStringVm", proc (a: VmArgs) =
+    setResult(a, getString(a, 0) < getString(a, 1))
+
+  registerCallback c, "stdlib.system.leCStringVm", proc (a: VmArgs) =
+    setResult(a, getString(a, 0) <= getString(a, 1))
 
   if optBenchmarkVM in c.config.globalOptions or vmopsDanger in c.config.features:
     wrap0(cpuTime, timesop)

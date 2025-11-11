@@ -15,6 +15,7 @@ __TINYC__
 __clang__
 __AVR__
 __arm__
+__riscv
 __EMSCRIPTEN__
 */
 
@@ -469,6 +470,13 @@ typedef char* NCSTRING;
 
 #define NIM_STRLIT_FLAG ((NU)(1) << ((NIM_INTBITS) - 2)) /* This has to be the same as system.strlitFlag! */
 
+/* unused in codegen after 2.2 but keep for compatibility: */
+#define STRING_LITERAL(name, str, length) \
+   static const struct {                   \
+     TGenericSeq Sup;                      \
+     NIM_CHAR data[(length) + 1];          \
+  } name = {{length, (NI) ((NU)length | NIM_STRLIT_FLAG)}, str}
+
 /* declared size of a sequence/variable length array: */
 #if defined(__cplusplus) && defined(__clang__)
 #  define SEQ_DECL_SIZE 1
@@ -484,13 +492,22 @@ typedef char* NCSTRING;
 
 #define paramCount() cmdCount
 
-// NAN definition copied from math.h included in the Windows SDK version 10.0.14393.0
-#ifndef NAN
+#ifndef NAN  /* use __builtin_nanf which is faster, if available */
+#  if defined(__GNUC__)
+#    define NAN (__builtin_nanf(""))
+#  elif defined(__clang__) /* XXX: writing __has_builtin this line cause MSVC complains. */
+#    if __has_builtin (__builtin_nanf)
+#      define NAN (__builtin_nanf(""))
+#    endif
+#  endif
+#endif
+
+#ifndef NAN  /* modified from math.h included in the Windows SDK version 10.0.26100.0 */
 #  ifndef _HUGE_ENUF
-#    define _HUGE_ENUF  1e+300  // _HUGE_ENUF*_HUGE_ENUF must overflow
+#    define _HUGE_ENUF  1e+300  /* _HUGE_ENUF*_HUGE_ENUF must overflow */
 #  endif
 #  define NAN_INFINITY ((float)(_HUGE_ENUF * _HUGE_ENUF))
-#  define NAN ((float)(NAN_INFINITY * 0.0F))
+#  define NAN (-(float)(NAN_INFINITY * 0.0F))
 #endif
 
 #ifndef INF
@@ -580,8 +597,8 @@ NIM_STATIC_ASSERT(sizeof(NI) == sizeof(void*) && NIM_INTBITS == sizeof(NI)*8, "P
   #define nimMulInt64(a, b, res) __builtin_smulll_overflow(a, b, (long long int*)res)
 
   #if NIM_INTBITS == 32
-    #if defined(__arm__) && defined(__GNUC__)
-      /* arm-none-eabi-gcc targets defines int32_t as long int */
+    #if (defined(__arm__) || defined(__riscv)) && defined(__GNUC__)
+      /* arm-none-eabi-gcc and riscv32-unknown-elf-gcc targets define int32_t as long int */
       #define nimAddInt(a, b, res) __builtin_saddl_overflow(a, b, res)
       #define nimSubInt(a, b, res) __builtin_ssubl_overflow(a, b, res)
       #define nimMulInt(a, b, res) __builtin_smull_overflow(a, b, res)

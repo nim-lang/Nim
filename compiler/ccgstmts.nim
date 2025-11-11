@@ -18,7 +18,7 @@ proc registerTraverseProc(p: BProc, v: PSym) =
   var traverseProc = ""
   if p.config.selectedGC in {gcMarkAndSweep, gcHooks, gcRefc} and
       optOwnedRefs notin p.config.globalOptions and
-      containsGarbageCollectedRef(v.loc.t):
+      containsManagedMemory(v.loc.t):
     # we register a specialized marked proc here; this has the advantage
     # that it works out of the box for thread local storage then :-)
     traverseProc = genTraverseProcForGlobal(p.module, v, v.info)
@@ -71,11 +71,11 @@ template startBlockWith(p: BProc, body: typed): int =
 proc blockBody(b: var TBlock; result: var Builder) =
   result.add extract(b.sections[cpsLocals])
   if b.frameLen > 0:
-    result.addInPlaceOp(Add, "NI", dotField("FR_", "len"), b.frameLen.rope)
+    result.addInPlaceOp(Add, NimInt, dotField("FR_", "len"), cIntValue(b.frameLen.int))
   result.add(extract(b.sections[cpsInit]))
   result.add(extract(b.sections[cpsStmts]))
   if b.frameLen > 0:
-    result.addInPlaceOp(Sub, "NI", dotField("FR_", "len"), b.frameLen.rope)
+    result.addInPlaceOp(Sub, NimInt, dotField("FR_", "len"), cIntValue(b.frameLen.int))
 
 proc endBlockInside(p: BProc) =
   let topBlock = p.blocks.len-1
@@ -144,7 +144,7 @@ proc genVarTuple(p: BProc, n: PNode) =
     field.snippet = dotField(rtup, fieldName)
     putLocIntoDest(p, v.loc, field)
     if forHcr or isGlobalInBlock:
-      hcrGlobals.add((loc: v.loc, tp: "NULL"))
+      hcrGlobals.add((loc: v.loc, tp: CNil))
 
   if forHcr:
     # end the block where the tuple gets initialized
@@ -158,18 +158,18 @@ proc genVarTuple(p: BProc, n: PNode) =
     # check if any of them is newly introduced and the initializing code has to be ran
     p.s(cpsLocals).addVar(kind = Local,
       name = hcrCond,
-      typ = "NIM_BOOL",
-      initializer = "NIM_FALSE")
+      typ = NimBool,
+      initializer = NimFalse)
     for curr in hcrGlobals:
       let rc = rdLoc(curr.loc)
-      p.s(cpsLocals).addInPlaceOp(BitOr, "NIM_BOOL",
+      p.s(cpsLocals).addInPlaceOp(BitOr, NimBool,
         hcrCond,
         cCall("hcrRegisterGlobal",
           getModuleDllPath(p.module, n[0].sym),
           '"' & curr.loc.snippet & '"',
           cSizeof(rc),
           curr.tp,
-          cCast("void**", cAddr(curr.loc.snippet))))
+          cCast(ptrType(CPointer), cAddr(curr.loc.snippet))))
 
 
 proc loadInto(p: BProc, le, ri: PNode, a: var TLoc) {.inline.} =
@@ -294,7 +294,7 @@ proc genBreakState(p: BProc, n: PNode, d: var TLoc) =
     let ra = a.rdLoc
     d.snippet = cOp(LessThan,
       subscript(
-        cCast(ptrType("NI"), ra),
+        cCast(ptrType(NimInt), ra),
         cIntValue(1)),
       cIntValue(0))
   else:
@@ -303,7 +303,7 @@ proc genBreakState(p: BProc, n: PNode, d: var TLoc) =
     # the environment is guaranteed to contain the 'state' field at offset 1:
     d.snippet = cOp(LessThan,
       subscript(
-        cCast(ptrType("NI"), dotField(ra, "ClE_0")),
+        cCast(ptrType(NimInt), dotField(ra, "ClE_0")),
         cIntValue(1)),
       cIntValue(0))
 
@@ -347,13 +347,6 @@ proc genCppParamsForCtor(p: BProc; call: PNode; didGenTemp: var bool): Snippet =
         didGenTemp = didGenTemp or tempLoc.k == locTemp
       genOtherArg(p, call, i, typ, res, argBuilder)
   result = extract(res)
-
-proc genCppVarForCtor(p: BProc; call: PNode; decl: var Rope, didGenTemp: var bool) =
-  let params = genCppParamsForCtor(p, call, didGenTemp)
-  if params.len == 0:
-    decl = runtimeFormat("$#;\n", [decl])
-  else:
-    decl = runtimeFormat("$#($#);\n", [decl, params])
 
 proc genSingleVar(p: BProc, v: PSym; vn, value: PNode) =
   if sfGoto in v.flags:
@@ -416,23 +409,24 @@ proc genSingleVar(p: BProc, v: PSym; vn, value: PNode) =
       # parameterless constructor followed by an assignment operator. So we
       # generate better code here: 'Foo f = x;'
       genLineDir(p, vn)
-      var decl = localVarDecl(p, vn)
-      var tmp: TLoc
+      var initializer: Snippet = ""
+      var initializerKind: VarInitializerKind = Assignment
       if isCppCtorCall:
         var didGenTemp = false
-        genCppVarForCtor(p, value, decl, didGenTemp)
-        line(p, cpsStmts, decl)
+        initializer = genCppParamsForCtor(p, value, didGenTemp)
+        if initializer.len != 0:
+          initializer = "(" & initializer & ")"
+          initializerKind = CppConstructor
       else:
-        tmp = initLocExprSingleUse(p, value)
-        if value.kind == nkEmpty:
-          lineF(p, cpsStmts, "$#;\n", [decl])
-        else:
-          lineF(p, cpsStmts, "$# = $#;\n", [decl, tmp.rdLoc])
+        var tmp = initLocExprSingleUse(p, value)
+        if value.kind != nkEmpty:
+          initializer = tmp.rdLoc
+      localVarDecl(p.s(cpsStmts), p, vn, initializer, initializerKind)
       return
     assignLocalVar(p, vn)
     initLocalVar(p, v, imm)
 
-  let traverseProc = "NULL"
+  let traverseProc = CNil
   # If the var is in a block (control flow like if/while or a block) in global scope just
   # register the so called "global" so it can be used later on. There is no need to close
   # and reopen of if (nim_hcr_do_init_) blocks because we are in one already anyway.
@@ -446,7 +440,7 @@ proc genSingleVar(p: BProc, v: PSym; vn, value: PNode) =
       '"' & v.loc.snippet & '"',
       cSizeof(rv),
       traverseProc,
-      cCast("void**", cAddr(v.loc.snippet)))
+      cCast(ptrType(CPointer), cAddr(v.loc.snippet)))
     # nothing special left to do later on - let's avoid closing and reopening blocks
     forHcr = false
 
@@ -462,7 +456,7 @@ proc genSingleVar(p: BProc, v: PSym; vn, value: PNode) =
         '"' & v.loc.snippet & '"',
         cSizeof(rdLoc(v.loc)),
         traverseProc,
-        cCast("void**", cAddr(v.loc.snippet))))
+        cCast(ptrType(CPointer), cAddr(v.loc.snippet))))
   if value.kind != nkEmpty and valueAsRope.len == 0:
     genLineDir(targetProc, vn)
     if not isCppCtorCall:
@@ -629,7 +623,7 @@ proc genComputedGoto(p: BProc; n: PNode) =
   let tmp = "TMP$1_" % [id.rope]
   p.s(cpsStmts).addArrayVarWithInitializer(kind = Global,
       name = tmp,
-      elementType = "void*",
+      elementType = CPointer,
       len = arraySize):
     var labelsInit: StructInitializer
     p.s(cpsStmts).addStructInitializer(labelsInit, kind = siArray):
@@ -883,25 +877,30 @@ proc genRaiseStmt(p: BProc, t: PNode) =
         fName,
         cIntValue(ln))
       if optOwnedRefs in p.config.globalOptions:
-        p.s(cpsStmts).addAssignment(e, "NIM_NIL")
+        p.s(cpsStmts).addAssignment(e, NimNil)
   else:
     finallyActions(p)
     genLineDir(p, t)
     p.s(cpsStmts).addCallStmt(cgsymValue(p.module, "reraiseException"))
   raiseInstr(p, p.s(cpsStmts))
 
-template genCaseGenericBranch(p: BProc, b: PNode, e: TLoc,
-                          rangeFormat, eqFormat: FormatStr, labl: TLabel) =
+template genCaseGenericBranch(p: BProc, b: PNode, e: TLoc, labl: TLabel,
+                          rangeFormat, eqFormat: untyped) =
   var x, y: TLoc
   for i in 0..<b.len - 1:
+    let rlabel {.inject.} = labl
     if b[i].kind == nkRange:
       x = initLocExpr(p, b[i][0])
       y = initLocExpr(p, b[i][1])
-      lineCg(p, cpsStmts, rangeFormat,
-           [rdCharLoc(e), rdCharLoc(x), rdCharLoc(y), labl])
+      let ra {.inject.} = rdCharLoc(e)
+      let rb {.inject.} = rdCharLoc(x)
+      let rc {.inject.} = rdCharLoc(y)
+      rangeFormat
     else:
       x = initLocExpr(p, b[i])
-      lineCg(p, cpsStmts, eqFormat, [rdCharLoc(e), rdCharLoc(x), labl])
+      let ra {.inject.} = rdCharLoc(e)
+      let rb {.inject.} = rdCharLoc(x)
+      eqFormat
 
 proc genCaseSecondPass(p: BProc, t: PNode, d: var TLoc,
                        labId, until: int): TLabel =
@@ -918,9 +917,8 @@ proc genCaseSecondPass(p: BProc, t: PNode, d: var TLoc,
   result = lend
 
 template genIfForCaseUntil(p: BProc, t: PNode, d: var TLoc,
-                       rangeFormat, eqFormat: FormatStr,
-                       until: int, a: TLoc): TLabel =
-  # XXX doesn't work with cbuilder
+                       until: int, a: TLoc,
+                       rangeFormat, eqFormat: untyped): TLabel =
   # generate a C-if statement for a Nim case statement
   var res: TLabel
   var labId = p.labels
@@ -928,7 +926,7 @@ template genIfForCaseUntil(p: BProc, t: PNode, d: var TLoc,
     inc(p.labels)
     let lab = "LA" & $p.labels & "_"
     if t[i].kind == nkOfBranch: # else statement
-      genCaseGenericBranch(p, t[i], a, rangeFormat, eqFormat, lab)
+      genCaseGenericBranch(p, t[i], a, lab, rangeFormat, eqFormat)
     else:
       p.s(cpsStmts).addGoto(lab)
   if until < t.len-1:
@@ -942,10 +940,9 @@ template genIfForCaseUntil(p: BProc, t: PNode, d: var TLoc,
   res
 
 template genCaseGeneric(p: BProc, t: PNode, d: var TLoc,
-                    rangeFormat, eqFormat: FormatStr) =
-  # XXX doesn't work with cbuilder
+                    rangeFormat, eqFormat: untyped) =
   var a: TLoc = initLocExpr(p, t[0])
-  var lend = genIfForCaseUntil(p, t, d, rangeFormat, eqFormat, t.len-1, a)
+  var lend = genIfForCaseUntil(p, t, d, t.len-1, a, rangeFormat, eqFormat)
   fixLabel(p, lend)
 
 proc genCaseStringBranch(p: BProc, b: PNode, e: TLoc, labl: TLabel,
@@ -993,7 +990,7 @@ proc genStringCase(p: BProc, t: PNode, stringKind: TTypeKind, d: var TLoc) =
     let fnName = if stringKind == tyCstring: "hashCstring" else: "hashString"
     let ra = rdLoc(a)
     p.s(cpsStmts).addSwitchStmt(
-      cOp(BitAnd, "NI",
+      cOp(BitAnd, NimInt,
         cCall(cgsymValue(p.module, fnName), ra),
         cIntValue(bitMask))):
       for j in 0..high(branches):
@@ -1009,10 +1006,15 @@ proc genStringCase(p: BProc, t: PNode, stringKind: TTypeKind, d: var TLoc) =
     var lend = genCaseSecondPass(p, t, d, labId, t.len-1)
     fixLabel(p, lend)
   else:
-    if stringKind == tyCstring:
-      genCaseGeneric(p, t, d, "", "if (#eqCstrings($1, $2)) goto $3;$n")
-    else:
-      genCaseGeneric(p, t, d, "", "if (#eqStrings($1, $2)) goto $3;$n")
+    let eqFn = cgsymValue(p.module,
+      if stringKind == tyCstring: "eqCstrings"
+      else: "eqStrings")
+    genCaseGeneric(p, t, d):
+      discard
+    do:
+      p.s(cpsStmts).addSingleIfStmt(
+          cCall(eqFn, ra, rb)):
+        p.s(cpsStmts).addGoto(rlabel)
 
 proc branchHasTooBigRange(b: PNode): bool =
   result = false
@@ -1060,10 +1062,17 @@ proc genOrdinalCase(p: BProc, n: PNode, d: var TLoc) =
 
   # generate if part (might be empty):
   var a: TLoc = initLocExpr(p, n[0])
-  var lend = if splitPoint > 0: genIfForCaseUntil(p, n, d,
-                    rangeFormat = "if ($1 >= $2 && $1 <= $3) goto $4;$n",
-                    eqFormat = "if ($1 == $2) goto $3;$n",
-                    splitPoint, a) else: ""
+  var lend: TLabel = ""
+  if splitPoint > 0:
+    lend = genIfForCaseUntil(p, n, d, splitPoint, a):
+      p.s(cpsStmts).addSingleIfStmt(cOp(And,
+          cOp(GreaterEqual, ra, rb),
+          cOp(LessEqual, ra, rc))):
+        p.s(cpsStmts).addGoto(rlabel)
+    do:
+      p.s(cpsStmts).addSingleIfStmt(
+          removeSinglePar(cOp(Equal, ra, rb))):
+        p.s(cpsStmts).addGoto(rlabel)
 
   # generate switch part (might be empty):
   if splitPoint+1 < n.len:
@@ -1104,8 +1113,15 @@ proc genCase(p: BProc, t: PNode, d: var TLoc) =
   of tyCstring:
     genStringCase(p, t, tyCstring, d)
   of tyFloat..tyFloat128:
-    genCaseGeneric(p, t, d, "if ($1 >= $2 && $1 <= $3) goto $4;$n",
-                            "if ($1 == $2) goto $3;$n")
+    genCaseGeneric(p, t, d):
+      p.s(cpsStmts).addSingleIfStmt(cOp(And,
+          cOp(GreaterEqual, ra, rb),
+          cOp(LessEqual, ra, rc))):
+        p.s(cpsStmts).addGoto(rlabel)
+    do:
+      p.s(cpsStmts).addSingleIfStmt(
+          removeSinglePar(cOp(Equal, ra, rb))):
+        p.s(cpsStmts).addGoto(rlabel)
   else:
     if t[0].kind == nkSym and sfGoto in t[0].sym.flags:
       genGotoForCase(p, t)
@@ -1467,7 +1483,7 @@ proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
           isScope = true
           innerScope = initScope(p.s(cpsStmts))
       # we handled the exception, remember this:
-      p.s(cpsStmts).addAssignment(cDeref("nimErr_"), "NIM_FALSE")
+      p.s(cpsStmts).addAssignment(cDeref("nimErr_"), NimFalse)
       expr(p, t[i][0], d)
     else:
       if not innerIsIf:
@@ -1502,7 +1518,7 @@ proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
       startBlockWith(p):
         initElifBranch(p.s(cpsStmts), innerIfStmt, orExpr)
       # we handled the exception, remember this:
-      p.s(cpsStmts).addAssignment(cDeref("nimErr_"), "NIM_FALSE")
+      p.s(cpsStmts).addAssignment(cDeref("nimErr_"), NimFalse)
       expr(p, t[i][^1], d)
 
     p.s(cpsStmts).addCallStmt(cgsymValue(p.module, "popCurrentException"))
@@ -1533,9 +1549,9 @@ proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
       genStmts(p, t[i][0])
     else:
       # pretend we did handle the error for the safe execution of the 'finally' section:
-      p.procSec(cpsLocals).addVar(kind = Local, name = "oldNimErrFin" & $lab & "_", typ = "NIM_BOOL")
+      p.procSec(cpsLocals).addVar(kind = Local, name = "oldNimErrFin" & $lab & "_", typ = NimBool)
       p.s(cpsStmts).addAssignment("oldNimErrFin" & $lab & "_", cDeref("nimErr_"))
-      p.s(cpsStmts).addAssignment(cDeref("nimErr_"), "NIM_FALSE")
+      p.s(cpsStmts).addAssignment(cDeref("nimErr_"), NimFalse)
       genStmts(p, t[i][0])
       # this is correct for all these cases:
       # 1. finally is run during ordinary control flow
@@ -1870,8 +1886,8 @@ proc genDiscriminantCheck(p: BProc, a, tmp: TLoc, objtype: PType,
   let rtmp = rdLoc(tmp)
   let dn = discriminatorTableName(p.module, t, field)
   p.s(cpsStmts).addCallStmt(cgsymValue(p.module, "FieldDiscriminantCheck"),
-    cCast("NI", cCast("NU", ra)),
-    cCast("NI", cCast("NU", rtmp)),
+    cCast(NimInt, cCast(NimUint, ra)),
+    cCast(NimInt, cCast(NimUint, rtmp)),
     dn,
     lit)
   if p.config.exc == excGoto:

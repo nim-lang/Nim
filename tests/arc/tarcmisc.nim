@@ -33,6 +33,7 @@ copying
 123
 42
 @["", "d", ""]
+mutate: 1
 ok
 destroying variable: 20
 destroying variable: 10
@@ -100,6 +101,7 @@ proc `=sink`*(m: var MyObj, m2: MyObj) =
     m.data = m2.data
 
 proc newMyObj(len: int): MyObj =
+  result = MyObj()
   result.len = len
   result.data = cast[ptr UncheckedArray[float]](allocShared(sizeof(float) * len))
 
@@ -117,6 +119,8 @@ proc takeSink(x: sink string): bool = true
 proc b(x: sink string): string =
   if takeSink(x):
     return x & "abc"
+  else:
+    result = ""
 
 proc bbb(inp: string) =
   let y = inp & "xyz"
@@ -267,11 +271,11 @@ type
     x: string
 
 proc bug14495 =
-  var owners: seq[Gah]
+  var owners: seq[Gah] = @[]
   for i in 0..10:
     owners.add Gah(x: $i)
 
-  var x: seq[Gah]
+  var x: seq[Gah] = @[]
   for i in 0..10:
     x.add owners[i]
 
@@ -602,7 +606,7 @@ block: # bug #19857
     doAssert v.kind == VFloat
     case v.kind
     of VFloat: result = v.fnum
-    else: discard
+    else: result = 0.0
 
 
   proc foo() =
@@ -611,6 +615,7 @@ block: # bug #19857
                             # works:
                             #result = Value(kind: VFloat, fnum: fuck["field_that_does_not_exist"].float)
                             # broken:
+      result = Value()
       discard "actuall runs!"
       let t = fuck["field_that_does_not_exist"]
       echo "never runs, but we crash after! ", t
@@ -638,7 +643,7 @@ method process*(self: App): Option[Event] {.base.} =
 # bug #21617
 type Test2 = ref object of RootObj
 
-method bug(t: Test2): seq[float] {.base.} = discard
+method bug(t: Test2): seq[float] {.base.} = result = @[]
 
 block: # bug #22664
   type
@@ -674,6 +679,7 @@ block: # bug #19250
     Bar[T](err: err)
 
   proc foo(): Foo[char] = 
+    result = Foo[char]()
     result.run = proc(): Bar[char] =
       # works
       # result = Bar[char](err: proc(): string = "x")
@@ -681,6 +687,7 @@ block: # bug #19250
       result = bar[char](proc(): string = "x")
 
   proc bug[T](fs: Foo[T]): Foo[T] =
+    result = Foo[T]()
     result.run = proc(): Bar[T] =
       let res = fs.run()
       
@@ -688,10 +695,11 @@ block: # bug #19250
       # var errors = @[res.err] 
       
       # not work
-      var errors: seq[proc(): string]
+      var errors: seq[proc(): string] = @[]
       errors.add res.err
       
       return bar[T] do () -> string:
+        result = ""
         for err in errors:
           result.add res.err()
 
@@ -861,3 +869,71 @@ block:
 
   var s = Foo()
   new(s, delete)
+
+proc test_18070() = # bug #18070
+  try:
+    try:
+      raise newException(CatchableError, "something")
+    except:
+      raise newException(CatchableError, "something else")
+  except:
+    doAssert getCurrentExceptionMsg() == "something else"
+
+  let msg = getCurrentExceptionMsg()
+  doAssert msg == "", "expected empty string but got: " & $msg
+
+test_18070()
+
+type AnObject = tuple
+  a: string
+  b: int
+  c: int
+
+proc mutate(a: sink AnObject) =
+  `=wasMoved`(a)
+  echo "mutate: 1"
+
+# echo "Value is: ", obj.value
+proc bar =
+  mutate(("1.2", 0, 0))
+
+bar()
+
+block: # bug #24754
+  type NoCopy = object
+    id: int
+
+  proc `=copy`(a: var NoCopy, b: NoCopy) {.error.}
+
+
+  proc foo(): NoCopy =
+    {.gcsafe.}:
+      let s = 12
+      NoCopy(id: s)
+
+  doAssert foo().id == 12
+
+
+type
+  Sinn* {.union.} = object
+    c*: C
+    b*: bool
+
+  Regen* = object
+    case x*: bool
+    of false:
+      a*: Sinn
+    of true:
+      cvar*: RootRef
+
+  C* = enum
+    wrong1, wrong2, right
+
+proc mainRegen() =
+  var xs: seq[Regen]
+  let a = Regen(x: false, a: Sinn(c: right))
+  var b = a
+  xs.add(a)
+  doAssert b.a.c == right
+
+mainRegen()

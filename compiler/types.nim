@@ -102,6 +102,9 @@ const
   # typedescX is used if we're sure tyTypeDesc should be included (or skipped)
   typedescPtrs* = abstractPtrs + {tyTypeDesc}
   typedescInst* = abstractInst + {tyTypeDesc, tyOwned, tyUserTypeClass}
+  
+  # incorrect definition of `[]` and `[]=` for these types in system.nim
+  arrPutGetMagicApplies* = {tyArray, tyOpenArray, tyString, tySequence, tyCstring, tyTuple}
 
 proc invalidGenericInst*(f: PType): bool =
   result = f.kind == tyGenericInst and skipModifier(f) == nil
@@ -523,7 +526,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
     let t = typ
     if t == nil: return
     if prefer in preferToResolveSymbols and t.sym != nil and
-         sfAnon notin t.sym.flags and t.kind != tySequence:
+         sfAnon notin t.sym.flags and t.kind notin {tySequence, tyInferred}:
       if t.kind == tyInt and isIntLit(t):
         if prefer == preferInlayHint:
           result = t.sym.name.s
@@ -763,7 +766,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
         prag.add("effectsOf: ")
         prag.add(effectsOfStr)
       if not hasImplicitRaises and prefer == preferInferredEffects and not isNil(t.owner) and not isNil(t.owner.typ) and not isNil(t.owner.typ.n) and (t.owner.typ.n.len > 0):
-        let effects = t.owner.typ.n[0]
+        let effects = t.n[0]
         if effects.kind == nkEffectList and effects.len == effectListLen:
           var inferredRaisesStr = ""
           let effs = effects[exceptionEffects]
@@ -1306,16 +1309,34 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
       cycleCheck()
       result = sameTypeAux(a.skipModifier, b.skipModifier, c)
   of tyObject:
-    withoutShallowFlags:
+    result = sameFlags(a, b)
+    if result:
       ifFastObjectTypeCheckFailed(a, b):
         cycleCheck()
-        result = sameObjectStructures(a, b, c) and sameFlags(a, b)
+        # should be generic, and belong to the same generic head type:
+        assert a.typeInst != nil, "generic object " & $a & " has no typeInst"
+        assert b.typeInst != nil, "generic object " & $b & " has no typeInst"
+        if result:
+          withoutShallowFlags:
+            # this is required because of generic `ref object`s,
+            # the value of their dereferences are not wrapped in `tyGenericInst`,
+            # so we need to check the generic parameters here
+            for ff, aa in underspecifiedPairs(a.typeInst, b.typeInst, 1, -1):
+              if not sameTypeAux(ff, aa, c): return false
   of tyDistinct:
     cycleCheck()
     if c.cmp == dcEq:
-      if sameFlags(a, b):
+      result = sameFlags(a, b)
+      if result:
         ifFastObjectTypeCheckFailed(a, b):
-          result = sameTypeAux(a.elementType, b.elementType, c)
+          # should be generic, and belong to the same generic head type:
+          assert a.typeInst != nil, "generic distinct type " & $a & " has no typeInst"
+          assert b.typeInst != nil, "generic distinct type " & $b & " has no typeInst"
+          withoutShallowFlags:
+            # just in case `tyGenericInst` was skipped at some point,
+            # we need to check the generic parameters here
+            for ff, aa in underspecifiedPairs(a.typeInst, b.typeInst, 1, -1):
+              if not sameTypeAux(ff, aa, c): return false
     else:
       result = sameTypeAux(a.elementType, b.elementType, c) and sameFlags(a, b)
   of tyEnum, tyForward:
@@ -1399,7 +1420,7 @@ proc sameBackendTypeIgnoreRange*(x, y: PType): bool =
 
 proc sameBackendTypePickyAliases*(x, y: PType): bool =
   var c = initSameTypeClosure()
-  c.flags.incl {IgnoreTupleFields, PickyCAliases, PickyBackendAliases}
+  c.flags.incl {IgnoreTupleFields, IgnoreRangeShallow, PickyCAliases, PickyBackendAliases}
   c.cmp = dcEqIgnoreDistinct
   result = sameTypeAux(x, y, c)
 
@@ -1464,7 +1485,16 @@ proc commonSuperclass*(a, b: PType): PType =
     y = y.baseClass
 
 proc lacksMTypeField*(typ: PType): bool {.inline.} =
+  ## Returns true if the type is an object that lacks a m_type field.
+  ## It doesn't check base classes.
   (typ.sym != nil and sfPure in typ.sym.flags) or tfFinal in typ.flags
+
+proc isObjLackingTypeField*(typ: PType): bool {.inline.} =
+  ## Returns true if the type is an object that lacks a type field.
+  ## Object types that store type headers are not final or pure and
+  ## have inheritable root types, which are not pure, neither.
+  result = (typ.kind == tyObject) and ((tfFinal in typ.flags) and
+      (typ.baseClass == nil) or isPureObject(typ))
 
 include sizealignoffsetimpl
 
@@ -1485,6 +1515,31 @@ proc getSize*(conf: ConfigRef; typ: PType): BiggestInt =
   computeSizeAlign(conf, typ)
   result = typ.size
 
+proc setImportedTypeSize*(conf: ConfigRef, t: PType, size: int) =
+  t.size = size
+  if tfPacked in t.flags or size <= 1:
+    t.align = 1
+  elif size <= 2:
+    t.align = 2
+  elif size <= 4:
+    t.align = 4
+  else:
+    t.align = floatInt64Align(conf)
+
+proc isConcept*(t: PType): bool=
+  case t.kind
+  of tyConcept: true
+  of tyCompositeTypeClass:
+    t.hasElementType and isConcept(t.elementType)
+  of tyGenericBody:
+    t.typeBodyImpl.kind == tyConcept
+  of tyGenericInvocation, tyGenericInst:
+    if t.baseClass.kind == tyGenericBody:
+      t.baseClass.typeBodyImpl.kind == tyConcept
+    else:
+      t.baseClass.kind == tyConcept
+  else: false
+
 proc containsGenericTypeIter(t: PType, closure: RootRef): bool =
   case t.kind
   of tyStatic:
@@ -1495,6 +1550,8 @@ proc containsGenericTypeIter(t: PType, closure: RootRef): bool =
     return false
   of GenericTypes + tyTypeClasses + {tyFromExpr}:
     return true
+  of tyGenericInst:
+    return t.isConcept
   else:
     return false
 
@@ -1840,7 +1897,7 @@ proc typeMismatch*(conf: ConfigRef; info: TLineInfo, formal, actual: PType, n: P
       processPragmaAndCallConvMismatch(msg, a, b, conf)
     localError(conf, info, msg)
 
-proc isTupleRecursive(t: PType, cycleDetector: var IntSet): bool =
+proc isRecursiveStructuralType(t: PType, cycleDetector: var IntSet): bool =
   if t == nil:
     return false
   if cycleDetector.containsOrIncl(t.id):
@@ -1851,19 +1908,30 @@ proc isTupleRecursive(t: PType, cycleDetector: var IntSet): bool =
     var cycleDetectorCopy: IntSet
     for a in t.kids:
       cycleDetectorCopy = cycleDetector
-      if isTupleRecursive(a, cycleDetectorCopy):
+      if isRecursiveStructuralType(a, cycleDetectorCopy):
+        return true
+  of tyProc:
+    result = false
+    var cycleDetectorCopy: IntSet
+    if t.returnType != nil:
+      cycleDetectorCopy = cycleDetector
+      if isRecursiveStructuralType(t.returnType, cycleDetectorCopy):
+        return true
+    for _, a in t.paramTypes:
+      cycleDetectorCopy = cycleDetector
+      if isRecursiveStructuralType(a, cycleDetectorCopy):
         return true
   of tyRef, tyPtr, tyVar, tyLent, tySink,
       tyArray, tyUncheckedArray, tySequence, tyDistinct:
-    return isTupleRecursive(t.elementType, cycleDetector)
+    return isRecursiveStructuralType(t.elementType, cycleDetector)
   of tyAlias, tyGenericInst:
-    return isTupleRecursive(t.skipModifier, cycleDetector)
+    return isRecursiveStructuralType(t.skipModifier, cycleDetector)
   else:
     return false
 
-proc isTupleRecursive*(t: PType): bool =
+proc isRecursiveStructuralType*(t: PType): bool =
   var cycleDetector = initIntSet()
-  isTupleRecursive(t, cycleDetector)
+  isRecursiveStructuralType(t, cycleDetector)
 
 proc isException*(t: PType): bool =
   # check if `y` is object type and it inherits from Exception
@@ -1938,6 +2006,9 @@ proc isCharArrayPtr*(t: PType; allowPointerToChar: bool): bool =
   else:
     result = false
 
+proc isRefPtrObject*(t: PType): bool =
+  t.kind in {tyRef, tyPtr} and tfRefsAnonObj in t.flags
+
 proc nominalRoot*(t: PType): PType =
   ## the "name" type of a given instance of a nominal type,
   ## i.e. the type directly associated with the symbol where the root
@@ -1970,7 +2041,7 @@ proc nominalRoot*(t: PType): PType =
       result = result.skipModifier[0]
     let val = result.skipModifier
     if val.kind in {tyDistinct, tyEnum, tyObject} or
-        (val.kind in {tyRef, tyPtr} and tfRefsAnonObj in val.flags):
+        isRefPtrObject(val):
       # atomic nominal types, this generic body is attached to them
       discard
     else:
@@ -2000,3 +2071,60 @@ proc nominalRoot*(t: PType): PType =
     # skips all typeclasses
     # is this correct for `concept`?
     result = nil
+
+proc genericRoot*(t: PType): PType =
+  ## gets the root generic type (`tyGenericBody`) from `t`,
+  ## if `t` is a generic type or the body of a generic instantiation
+  case t.kind
+  of tyGenericBody:
+    result = t
+  of tyGenericInst, tyGenericInvocation:
+    result = t.genericHead
+  else:
+    if t.typeInst != nil:
+      result = t.typeInst.genericHead
+    elif t.sym != nil and t.sym.typ.kind == tyGenericBody:
+      # can happen if `t` is the last child (body) of the generic body
+      result = t.sym.typ
+    else:
+      result = nil
+
+proc reduceToBase*(f: PType): PType =
+  #[
+    Not recursion safe
+    Returns the lowest order (most general) type that that is compatible with the input.
+    E.g.
+    A[T] = ptr object ... A -> ptr object
+    A[N: static[int]] = array[N, int] ... A -> array
+  ]#
+  case f.kind:
+  of tyGenericParam:
+    if f.len <= 0 or f.skipModifier == nil:
+      result = f
+    else:
+      result = reduceToBase(f.skipModifier)
+  of tyGenericInvocation:
+    result = reduceToBase(f.baseClass)
+  of tyCompositeTypeClass, tyAlias:
+    if not f.hasElementType or f.elementType == nil:
+      result = f
+    else:
+      result = reduceToBase(f.elementType)
+  of tyGenericInst:
+    result = reduceToBase(f.skipModifier)
+  of tyGenericBody:
+    result = reduceToBase(f.typeBodyImpl)
+  of tyUserTypeClass:
+    if f.isResolvedUserTypeClass:
+      result = f.base
+    else:
+      result = f.skipModifier
+  of tyStatic, tyOwned, tyVar, tyLent, tySink:
+    result = reduceToBase(f.base)
+  of tyInferred:
+    # This is not true "After a candidate type is selected"
+    result = reduceToBase(f.base)
+  of tyRange:
+    result = f.elementType
+  else:
+    result = f

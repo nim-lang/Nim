@@ -1586,7 +1586,11 @@ proc genAddr(p: PProc, n: PNode, r: var TCompRes) =
     of nkObjDownConv:
       gen(p, n[0], r)
     of nkHiddenDeref, nkDerefExpr:
-      gen(p, n[0], r)
+      if n.kind in {nkAddr, nkHiddenAddr}:
+        # addr ( deref ( x )) --> x
+        gen(p, n[0][0], r)
+      else:
+        gen(p, n[0], r)
     of nkHiddenAddr:
       gen(p, n[0], r)
     of nkConv:
@@ -2329,8 +2333,8 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
       r.res = "if (null != $1) { if (null == $2) $2 = $3; else $2 += $3; }" %
         [b, lhs.rdLoc, tmp]
     else:
-      let (a, tmp) = maybeMakeTemp(p, n[1], lhs)
-      r.res = "$1.push.apply($3, $2);" % [a, rhs.rdLoc, tmp]
+      useMagic(p, "nimAddStrStr")
+      r.res = "nimAddStrStr($1, $2);" % [lhs.rdLoc, rhs.rdLoc]
     r.kind = resExpr
   of mAppendSeqElem:
     var x, y: TCompRes = default(TCompRes)
@@ -2434,7 +2438,7 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
     binaryExpr(p, n, r, "mnewString",
       """if ($1.length < $2) { for (var i = $3.length; i < $4; ++i) $3.push(0); }
          else {$3.length = $4; }""")
-  of mSetLengthSeq:
+  of mSetLengthSeq, mSetLengthSeqUninit:
     var x, y: TCompRes = default(TCompRes)
     gen(p, n[1], x)
     gen(p, n[2], y)
@@ -2875,6 +2879,8 @@ proc genCast(p: PProc, n: PNode, r: var TCompRes) =
   elif dest.kind in tyFloat..tyFloat64:
     if src.kind in {tyInt64, tyUInt64} and optJsBigInt64 in p.config.globalOptions:
       r.res = "Number($1)" % [r.res]
+  elif dest.kind == tyChar and (fromInt or fromUint):
+    r.res = "($1 & 255)" % [r.res]
   elif (src.kind == tyPtr and mapType(p, src) == etyObject) and dest.kind == tyPointer:
     r.address = r.res
     r.res = "null"

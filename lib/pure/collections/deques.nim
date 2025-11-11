@@ -92,6 +92,7 @@ proc initDeque*[T](initialSize: int = defaultInitialSize): Deque[T] =
   ##
   ## **See also:**
   ## * `toDeque proc <#toDeque,openArray[T]>`_
+  result = Deque[T]()
   result.initImpl(initialSize)
 
 func len*[T](deq: Deque[T]): int {.inline.} =
@@ -199,8 +200,10 @@ iterator items*[T](deq: Deque[T]): lent T =
     let a = [10, 20, 30, 40, 50].toDeque
     assert toSeq(a.items) == @[10, 20, 30, 40, 50]
 
-  for c in 0 ..< deq.len:
+  let L = len(deq)
+  for c in 0 ..< L:
     yield deq.data[(deq.head + c.uint) and deq.mask]
+    assert(len(deq) == L, "the length of the Deque changed while iterating over it")
 
 iterator mitems*[T](deq: var Deque[T]): var T =
   ## Yields every element of `deq`, which can be modified.
@@ -214,8 +217,10 @@ iterator mitems*[T](deq: var Deque[T]): var T =
       x = 5 * x - 1
     assert $a == "[49, 99, 149, 199, 249]"
 
-  for c in 0 ..< deq.len:
+  let L = len(deq)
+  for c in 0 ..< L:
     yield deq.data[(deq.head + c.uint) and deq.mask]
+    assert(len(deq) == L, "the length of the Deque changed while iterating over it")
 
 iterator pairs*[T](deq: Deque[T]): tuple[key: int, val: T] =
   ## Yields every `(position, value)`-pair of `deq`.
@@ -225,8 +230,10 @@ iterator pairs*[T](deq: Deque[T]): tuple[key: int, val: T] =
     let a = [10, 20, 30].toDeque
     assert toSeq(a.pairs) == @[(0, 10), (1, 20), (2, 30)]
 
-  for c in 0 ..< deq.len:
+  let L = len(deq)
+  for c in 0 ..< L:
     yield (c, deq.data[(deq.head + c.uint) and deq.mask])
+    assert(len(deq) == L, "the length of the Deque changed while iterating over it")
 
 proc contains*[T](deq: Deque[T], item: T): bool {.inline.} =
   ## Returns true if `item` is in `deq` or false if not found.
@@ -297,7 +304,7 @@ proc toDeque*[T](x: openArray[T]): Deque[T] {.since: (1, 3).} =
     let a = toDeque([7, 8, 9])
     assert len(a) == 3
     assert $a == "[7, 8, 9]"
-
+  result = Deque[T]()
   result.initImpl(x.len)
   for item in items(x):
     result.addLast(item)
