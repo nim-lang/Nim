@@ -10,11 +10,14 @@ proc toNifPath(p: AbsoluteDir|AbsoluteFile): string =
     result = p.string
 
 proc configToNif(conf: ConfigRef; dest: var TokenBuf) =
+  # store data used to decide whether to use cache or eval config files
   dest.addStrLit conf.commandLine
   dest.buildTree pool.tags.getOrIncl("sources"), NoLineInfo:
     for f in conf.m.fileInfos:
       dest.addStrLit f.fullPath.toNifPath
 
+  # store fields that can be changed on config files
+  # see processSwitch proc in commands.nim
   #echo "conf.options"
   #echo conf.options
   dest.buildTree pool.tags.getOrIncl("options"), NoLineInfo:
@@ -26,6 +29,30 @@ proc configToNif(conf: ConfigRef; dest: var TokenBuf) =
   dest.buildTree pool.tags.getOrIncl("globalOptions"), NoLineInfo:
     for opt in conf.globalOptions:
       dest.addStrLit $opt
+
+  #echo "conf.selectedGC"
+  #echo conf.selectedGC
+  dest.addStrLit $conf.selectedGC
+
+  #echo "conf.exc"
+  #echo conf.exc
+  dest.addStrLit $conf.exc
+
+  #echo "conf.verbosity"
+  #echo conf.verbosity
+  dest.addIntLit conf.verbosity
+
+  #echo "conf.numberOfProcessors"
+  #echo conf.numberOfProcessors
+  dest.addIntLit conf.numberOfProcessors
+
+  #echo "conf.spellSuggestMax"
+  #echo conf.spellSuggestMax
+  dest.addIntLit conf.spellSuggestMax
+
+  #echo "conf.nimbasePattern"
+  #echo conf.nimbasePattern
+  dest.addStrLit conf.nimbasePattern
 
   dest.buildTree pool.tags.getOrIncl("defines"), NoLineInfo:
     for def in definedSymbolNames(conf.symbols):
@@ -76,16 +103,16 @@ proc sourcesChanged(conf: ConfigRef; n: var Cursor; modTime: Time): HashSet[stri
         result.incl dep.toAbsolute(getCurrentDir().AbsoluteDir).string
     inc n
 
-proc loadConfigsFromNif(config: ConfigRef; n: var Cursor) =
+proc loadConfigsFromNif(conf: ConfigRef; n: var Cursor) =
   assert pool.tags[n.tagId] == "options"
   inc n
   while n.kind != ParRi:
     assert n.kind == StringLit
     let opt = pool.strings[n.litId]
     inc n
-    config.options.incl parseEnum[TOption](opt)
+    conf.options.incl parseEnum[TOption](opt)
   inc n
-  #echo config.options
+  #echo conf.options
 
   assert pool.tags[n.tagId] == "globalOptions"
   inc n
@@ -93,9 +120,28 @@ proc loadConfigsFromNif(config: ConfigRef; n: var Cursor) =
     assert n.kind == StringLit
     let opt = pool.strings[n.litId]
     inc n
-    config.globalOptions.incl parseEnum[TGlobalOption](opt)
+    conf.globalOptions.incl parseEnum[TGlobalOption](opt)
   inc n
-  #echo config.globalOptions
+  #echo conf.globalOptions
+
+  conf.selectedGC = parseEnum[TGCMode](pool.strings[n.litId])
+  inc n
+  #echo conf.selectedGC
+  conf.exc = parseEnum[ExceptionSystem](pool.strings[n.litId])
+  inc n
+  #echo conf.exc
+  conf.verbosity = pool.integers[n.intId]
+  inc n
+  #echo conf.verbosity
+  conf.numberOfProcessors = pool.integers[n.intId]
+  inc n
+  #echo conf.numberOfProcessors
+  conf.spellSuggestMax = pool.integers[n.intId]
+  inc n
+  #echo conf.spellSuggestMax
+  conf.nimbasePattern = pool.strings[n.litId]
+  inc n
+  #echo conf.nimbasePattern
 
   assert pool.tags[n.tagId] == "defines"
   inc n
@@ -103,7 +149,7 @@ proc loadConfigsFromNif(config: ConfigRef; n: var Cursor) =
     assert n.kind == StringLit
     let def = pool.strings[n.litId]
     inc n
-    config.symbols.defineSymbol(def)
+    conf.symbols.defineSymbol(def)
   inc n
 
   assert pool.tags[n.tagId] == "nimblepaths"
@@ -112,10 +158,10 @@ proc loadConfigsFromNif(config: ConfigRef; n: var Cursor) =
     assert n.kind == StringLit
     let p = pool.strings[n.litId]
     inc n
-    config.nimblePaths.add p.toAbsoluteDir
+    conf.nimblePaths.add p.toAbsoluteDir
   inc n
-  #echo "config.nimblePaths"
-  #echo config.nimblePaths
+  #echo "conf.nimblePaths"
+  #echo conf.nimblePaths
 
   assert pool.tags[n.tagId] == "paths"
   inc n
@@ -123,10 +169,10 @@ proc loadConfigsFromNif(config: ConfigRef; n: var Cursor) =
     assert n.kind == StringLit
     let p = pool.strings[n.litId]
     inc n
-    config.searchPaths.add p.toAbsoluteDir
+    conf.searchPaths.add p.toAbsoluteDir
   inc n
-  #echo "config.searchPaths"
-  #echo config.searchPaths
+  #echo "conf.searchPaths"
+  #echo conf.searchPaths
 
 proc sourceChanged*(conf: ConfigRef): HashSet[string] =
   result = HashSet[string]()
