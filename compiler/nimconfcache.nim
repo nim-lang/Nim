@@ -1,5 +1,5 @@
 import options, pathutils, condsyms
-import std/[assertions, os, times]
+import std/[assertions, os, sets, times]
 from std/sequtils import addUnique
 from std/strutils import parseEnum
 import "../dist/nimony/src/lib" / [bitabs, lineinfos, nifreader, nifstreams, nifcursors]
@@ -49,7 +49,8 @@ proc configToNif(conf: ConfigRef; dest: var TokenBuf) =
 proc cfgCachePath(conf: ConfigRef): (AbsoluteDir, RelativeFile) =
   (conf.projectPath / RelativeDir"nimcache", RelativeFile"cache.cfg.nif")
 
-proc sourcesChanged(conf: ConfigRef; n: var Cursor; modTime: Time): bool =
+proc sourcesChanged(conf: ConfigRef; n: var Cursor; modTime: Time): HashSet[string] =
+  result = initHashSet[string](8)
   assert pool.tags[n.tagId] == "config"
   inc n
   assert n.kind == StringLit
@@ -57,7 +58,7 @@ proc sourcesChanged(conf: ConfigRef; n: var Cursor; modTime: Time): bool =
   inc n
   if cmdline != conf.commandLine:
     #echo "commandLine is changed, dont use cache"
-    result = true
+    discard
   else:
     assert pool.tags[n.tagId] == "sources"
     inc n
@@ -67,13 +68,13 @@ proc sourcesChanged(conf: ConfigRef; n: var Cursor; modTime: Time): bool =
       inc n
       if not fileExists(dep):
         #echo dep, " is removed"
-        return true
+        return default(typeof(result))
       elif getLastModificationTime(dep) >= modTime:
         #echo dep, " is changed"
-        return true
+        return default(typeof(result))
+      else:
+        result.incl dep.toAbsolute(getCurrentDir().AbsoluteDir).string
     inc n
-    #echo "commandLine is not changed"
-    result = false
 
 proc loadConfigsFromNif(config: ConfigRef; n: var Cursor) =
   assert pool.tags[n.tagId] == "options"
@@ -127,25 +128,36 @@ proc loadConfigsFromNif(config: ConfigRef; n: var Cursor) =
   #echo "config.searchPaths"
   #echo config.searchPaths
 
-proc loadConfigsFromCache*(conf: ConfigRef): bool =
-  if optCacheConfig in conf.globalOptions:
-    let (dir, file) = conf.cfgCachePath()
-    let path = dir / file
-    if fileExists(path):
-      let modTime = getLastModificationTime(path.string)
-      var stream = nifstreams.open(path.string)
-      discard processDirectives(stream.r)
-      var buf = fromStream(stream)
-      var n = beginRead(buf)
-      result = not sourcesChanged(conf, n, modTime)
-      if result:
-        loadConfigsFromNif(conf, n)
-      endRead(buf)
-      stream.close
-    else:
-      result = false
-  else:
-    result = false
+proc sourceChanged*(conf: ConfigRef): HashSet[string] =
+  result = HashSet[string]()
+  let (dir, file) = conf.cfgCachePath()
+  let path = dir / file
+  if fileExists(path):
+    let modTime = getLastModificationTime(path.string)
+    var stream = nifstreams.open(path.string)
+    discard processDirectives(stream.r)
+    var buf = fromStream(stream)
+    var n = beginRead(buf)
+    result = sourcesChanged(conf, n, modTime)
+    endRead(buf)
+    stream.close
+
+proc loadConfigsFromCache*(conf: ConfigRef) =
+  let (dir, file) = conf.cfgCachePath()
+  let path = dir / file
+  var stream = nifstreams.open(path.string)
+  discard processDirectives(stream.r)
+  var buf = fromStream(stream)
+  var n = beginRead(buf)
+  inc n # skip config
+  inc n # skip cmdline
+  inc n # skip sources
+  while n.kind != ParRi:
+    inc n
+  inc n
+  loadConfigsFromNif(conf, n)
+  endRead(buf)
+  stream.close
 
 proc storeConfigs*(conf: ConfigRef) =
   if optCacheConfig in conf.globalOptions:
