@@ -158,9 +158,10 @@ proc getTypeName(m: BModule; typ: PType; sig: SigHash): Rope =
     else:
       break
   let typ = if typ.kind in {tyAlias, tySink, tyOwned}: typ.elementType else: typ
+  ensureMutable typ
   if typ.loc.snippet == "":
-    typ.typeName(typ.loc.snippet)
-    typ.loc.snippet.add $sig
+    typ.typeName(typ.locImpl.snippet)
+    typ.locImpl.snippet.add $sig
   else:
     when defined(debugSigHashes):
       # check consistency:
@@ -1459,7 +1460,7 @@ proc genObjectInfo(m: BModule; typ, origType: PType, name: Rope; info: TLineInfo
   var t = typ.baseClass
   while t != nil:
     t = t.skipTypes(skipPtrs)
-    t.flags.incl tfObjHasKids
+    t.incl tfObjHasKids
     t = t.baseClass
 
 proc genTupleInfo(m: BModule; typ, origType: PType, name: Rope; info: TLineInfo) =

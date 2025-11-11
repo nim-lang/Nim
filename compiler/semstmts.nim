@@ -1119,7 +1119,7 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
             v.typ = newTypeS(iter.kind, c)
             v.typ.add iterAfterVarLent[i]
             if tfVarIsPtr in iter.flags:
-              v.typ.flags.incl tfVarIsPtr
+              v.typ.incl tfVarIsPtr
           else:
             v.typ = iter[i]
           n[0][i] = newSymNode(v)
@@ -1177,7 +1177,7 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
           v.typ = newTypeS(iter.kind, c)
           v.typ.add iterAfterVarLent[i]
           if tfVarIsPtr in iter.flags:
-            v.typ.flags.incl tfVarIsPtr
+            v.typ.incl tfVarIsPtr
         else:
           v.typ = iter[i]
         n[i] = newSymNode(v)
@@ -1549,7 +1549,7 @@ proc checkCovariantParamsUsages(c: PContext; genericType: PType) =
 
     case t.kind
     of tyGenericParam:
-      t.flags.incl tfWeakCovariant
+      t.incl tfWeakCovariant
       return true
     of tyObject:
       for field in t.n:
@@ -1575,7 +1575,7 @@ proc checkCovariantParamsUsages(c: PContext; genericType: PType) =
               error("covariant param '" & param.sym.name.s &
                     "' used in a non-covariant position")
             elif tfWeakCovariant in formalFlags:
-              param.flags.incl tfWeakCovariant
+              param.incl tfWeakCovariant
             result = true
           elif tfContravariant in param.flags:
             let formalParam = targetBody[i-1].sym
@@ -1667,11 +1667,11 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
         body.size = -1 # could not be computed properly
         if body.kind == tyObject:
           # add flags applied to generic type to object (nominal) type
-          incl(body.flags, oldFlags)
+          incl(body, oldFlags)
           # {.inheritable, final.} is already disallowed, but
           # object might have been assumed to be final
           if tfInheritable in oldFlags and tfFinal in body.flags:
-            excl(body.flags, tfFinal)
+            excl(body, tfFinal)
         s.typ[^1] = body
         if tfCovariant in s.typ.flags:
           checkCovariantParamsUsages(c, s.typ)
@@ -1720,7 +1720,7 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
         # flag might be copied from alias/instantiation:
         let t = body.skipTypes({tyAlias, tyGenericInst})
         if not (t.kind == tyDistinct and tfBorrowDot in t.flags):
-          excl s.typ.flags, tfBorrowDot
+          excl s.typ, tfBorrowDot
           localError(c.config, name.info, "only a 'distinct' type can borrow `.`")
     let aa = a[2]
     if aa.kind in {nkRefTy, nkPtrTy} and aa.len == 1 and
@@ -1730,14 +1730,14 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
       if st.kind == tyGenericBody: st = st.typeBodyImpl
       internalAssert c.config, st.kind in {tyPtr, tyRef}
       internalAssert c.config, st.last.sym == nil
-      incl st.flags, tfRefsAnonObj
+      incl st, tfRefsAnonObj
       let objTy = st.last
       # add flags for `ref object` etc to underlying `object`
-      incl(objTy.flags, oldFlags)
+      incl(objTy, oldFlags)
       # {.inheritable, final.} is already disallowed, but
       # object might have been assumed to be final
       if tfInheritable in oldFlags and tfFinal in objTy.flags:
-        excl(objTy.flags, tfFinal)
+        excl(objTy, tfFinal)
       let obj = newSym(skType, getIdent(c.cache, s.name.s & ":ObjectType"),
                        c.idgen, getCurrOwner(c), s.info)
       obj.flagsImpl.incl sfGeneratedType
@@ -2129,7 +2129,7 @@ proc bindDupHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp) =
   if cond:
     var obj = t.firstParamType
     while true:
-      incl(obj.flags, tfHasAsgn)
+      incl(obj, tfHasAsgn)
       if obj.kind in {tyGenericBody, tyGenericInst}: obj = obj.skipModifier
       elif obj.kind == tyGenericInvocation: obj = obj.genericHead
       else: break
@@ -2184,7 +2184,7 @@ proc bindTypeHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp) =
   if cond:
     var obj = t.firstParamType.skipTypes({tyVar})
     while true:
-      incl(obj.flags, tfHasAsgn)
+      incl(obj, tfHasAsgn)
       if obj.kind in {tyGenericBody, tyGenericInst}: obj = obj.skipModifier
       elif obj.kind == tyGenericInvocation: obj = obj.genericHead
       else: break
@@ -2269,7 +2269,7 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
     if t.len == 3 and t.returnType == nil and t.firstParamType.kind == tyVar:
       var obj = t.firstParamType.elementType
       while true:
-        incl(obj.flags, tfHasAsgn)
+        incl(obj, tfHasAsgn)
         if obj.kind == tyGenericBody: obj = obj.skipModifier
         elif obj.kind == tyGenericInvocation: obj = obj.genericHead
         else: break
@@ -2497,10 +2497,10 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   if n[patternPos].kind != nkEmpty:
     n[patternPos] = semPattern(c, n[patternPos], s)
   if s.kind == skIterator:
-    s.typ.flags.incl(tfIterator)
+    s.typ.incl(tfIterator)
   elif s.kind == skFunc:
     incl(s, sfNoSideEffect)
-    incl(s.typ.flags, tfNoSideEffect)
+    incl(s.typ, tfNoSideEffect)
 
   var (proto, comesFromShadowScope) =
       if isAnon: (nil, false)
@@ -2546,7 +2546,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
 
   if n[pragmasPos].kind != nkEmpty and sfBorrow notin s.flags:
     setEffectsForProcType(c.graph, s.typ, n[pragmasPos], s)
-  s.typ.flags.incl tfEffectSystemWorkaround
+  s.typ.incl tfEffectSystemWorkaround
 
   # To ease macro generation that produce forwarded .async procs we now
   # allow a bit redundancy in the pragma declarations. The rule is
@@ -2724,7 +2724,7 @@ proc semIterator(c: PContext, n: PNode): PNode =
   # we require first class iterators to be marked with 'closure' explicitly
   # -- at least for 0.9.2.
   if s.typ.callConv == ccClosure:
-    incl(s.typ.flags, tfCapturesEnv)
+    incl(s.typ, tfCapturesEnv)
   else:
     s.typ.callConv = ccInline
   if result[bodyPos].kind == nkEmpty and s.magic == mNone and c.inConceptDecl == 0:

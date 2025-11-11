@@ -679,7 +679,7 @@ proc loadAtom[T: int16|int32|int64](t: typedesc[T]; n: var Cursor): T =
   result = pool.integers[n.intId].T
   inc n
 
-template loadField(field) =
+template loadField(field) {.dirty.} =
   field = loadAtom(typeof(field), n)
 
 proc loadLoc(c: var DecodeContext; n: var Cursor; loc: var TLoc) =
@@ -713,7 +713,7 @@ proc loadType*(c: var DecodeContext; t: PType) =
   t.n = loadNode(c, n)
   t.setOwner loadSymStub(c, n)
   t.sym = loadSymStub(c, n)
-  loadLoc c, n, t.loc
+  loadLoc c, n, t.locImpl
 
   var kids: seq[PType] = @[]
   while n.kind != ParRi:

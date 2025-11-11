@@ -412,7 +412,7 @@ proc semConv(c: PContext, n: PNode; flags: TExprFlags = {}, expectedType: PType 
     let baseType = semTypeNode(c, n[1], nil).skipTypes({tyTypeDesc})
     let t = newTypeS(targetType.kind, c, baseType)
     if targetType.kind == tyOwned:
-      t.flags.incl tfHasOwned
+      t.incl tfHasOwned
     result = newNodeI(nkType, n.info)
     result.typ() = makeTypeDesc(c, t)
     return
@@ -919,7 +919,7 @@ proc evalAtCompileTime(c: PContext, n: PNode): PNode =
             tfUnresolved notin n[i].typ.flags:
           break maybeLabelAsStatic
       n.typ() = newTypeS(tyStatic, c, n.typ)
-      n.typ.flags.incl tfUnresolved
+      n.typ.incl tfUnresolved
 
   # optimization pass: not necessary for correctness of the semantic pass
   if (callee.kind == skConst or
@@ -1847,10 +1847,10 @@ proc asgnToResultVar(c: PContext, n, le, ri: PNode) {.inline.} =
       if x.sym.kind == skResult and (x.typ.kind in {tyVar, tyLent} or classifyViewType(x.typ) != noView):
         n[0] = x # 'result[]' --> 'result'
         n[1] = takeImplicitAddr(c, ri, x.typ.kind == tyLent)
-        x.typ.flags.incl tfVarIsPtr
+        x.typ.incl tfVarIsPtr
         #echo x.info, " setting it for this type ", typeToString(x.typ), " ", n.info
       elif sfGlobal in x.sym.flags:
-        x.typ.flags.incl tfVarIsPtr
+        x.typ.incl tfVarIsPtr
 
 proc borrowCheck(c: PContext, n, le, ri: PNode) =
   const
@@ -2124,7 +2124,7 @@ proc semYieldVarResult(c: PContext, n: PNode, restype: PType) =
   var t = skipTypes(restype, {tyGenericInst, tyAlias, tySink})
   case t.kind
   of tyVar, tyLent:
-    t.flags.incl tfVarIsPtr # bugfix for #4048, #4910, #6892
+    t.incl tfVarIsPtr # bugfix for #4048, #4910, #6892
     if n[0].kind in {nkHiddenStdConv, nkHiddenSubConv}:
       n[0] = n[0][1]
     n[0] = takeImplicitAddr(c, n[0], t.kind == tyLent)
@@ -2132,7 +2132,7 @@ proc semYieldVarResult(c: PContext, n: PNode, restype: PType) =
     for i in 0..<t.len:
       let e = skipTypes(t[i], {tyGenericInst, tyAlias, tySink})
       if e.kind in {tyVar, tyLent}:
-        e.flags.incl tfVarIsPtr # bugfix for #4048, #4910, #6892
+        e.incl tfVarIsPtr # bugfix for #4048, #4910, #6892
         let tupleConstr = if n[0].kind in {nkHiddenStdConv, nkHiddenSubConv}: n[0][1] else: n[0]
         if tupleConstr.kind in {nkPar, nkTupleConstr}:
           if tupleConstr[i].kind == nkExprColonExpr:
@@ -2741,7 +2741,7 @@ proc semWhen(c: PContext, n: PNode, semCheck = true): PNode =
 proc semSetConstr(c: PContext, n: PNode, expectedType: PType = nil): PNode =
   result = newNodeI(nkCurly, n.info)
   result.typ() = newTypeS(tySet, c)
-  result.typ.flags.incl tfIsConstructor
+  result.typ.incl tfIsConstructor
   var expectedElementType: PType = nil
   if expectedType != nil and (
       let expected = expectedType.skipTypes(abstractRange-{tyDistinct});

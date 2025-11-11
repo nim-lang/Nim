@@ -847,7 +847,7 @@ proc semResolvedCall(c: PContext, x: var TCandidate,
     result[0] = newSymNode(finalCallee, getCallLineInfo(result[0]))
     if containsGenericType(result.typ):
       result.typ() = newTypeS(tyError, c)
-      incl result.typ.flags, tfCheckedForDestructor
+      incl result.typ, tfCheckedForDestructor
     return
   let gp = finalCallee.ast[genericParamsPos]
   if gp.isGenericParams:
@@ -945,7 +945,7 @@ proc explicitGenericSym(c: PContext, n: PNode, s: PSym, errors: var CandidateErr
         diagnostics: m.diagnostics))
     return nil
   var newInst = generateInstance(c, s, m.bindings, n.info)
-  newInst.typ.flags.excl tfUnresolved
+  newInst.typ.excl tfUnresolved
   let info = getCallLineInfo(n)
   markUsed(c, info, s, isGenericInstance = false)
   onUse(info, s, isGenericInstance = false)

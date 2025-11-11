@@ -54,13 +54,13 @@ proc semTypeOf(c: PContext; n: PNode): PNode =
   let typExpr = semExprWithType(c, n[1], if m == 1: {efInTypeof} else: {})
   result.add typExpr
   if typExpr.typ.kind == tyFromExpr:
-    typExpr.typ.flags.incl tfNonConstExpr
+    typExpr.typ.incl tfNonConstExpr
   var t = typExpr.typ
   if t.kind == tyStatic:
     let base = t.skipTypes({tyStatic})
     if c.inGenericContext > 0 and base.containsGenericType:
       t = makeTypeFromExpr(c, copyTree(typExpr))
-      t.flags.incl tfNonConstExpr
+      t.incl tfNonConstExpr
     else:
       t = base
   result.typ() = makeTypeDesc(c, t)
@@ -85,7 +85,7 @@ proc semArrGet(c: PContext; n: PNode; flags: TExprFlags): PNode =
           # expression is compiled early in a generic body
           result = semGenericStmt(c, x)
           result.typ() = makeTypeFromExpr(c, copyTree(result))
-          result.typ.flags.incl tfNonConstExpr
+          result.typ.incl tfNonConstExpr
           return
     let s = # extract sym from first arg
       if n.len > 1:
@@ -442,7 +442,7 @@ proc semUnown(c: PContext; n: PNode): PNode =
         copyTypeProps(c.graph, c.idgen.module, result, t)
 
         result[^1] = b
-        result.flags.excl tfHasOwned
+        result.excl tfHasOwned
       else:
         result = t
     else:

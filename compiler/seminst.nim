@@ -257,7 +257,7 @@ proc instantiateProcType(c: PContext, pt: LayeredIdTable,
     let needsStaticSkipping = resulti.kind == tyFromExpr
     let needsTypeDescSkipping = resulti.kind == tyTypeDesc and tfUnresolved in resulti.flags
     if resulti.kind == tyFromExpr:
-      resulti.flags.incl tfNonConstExpr
+      resulti.incl tfNonConstExpr
     result[i] = replaceTypeVarsT(cl, resulti)
     if needsStaticSkipping:
       result[i] = result[i].skipTypes({tyStatic})
@@ -282,7 +282,7 @@ proc instantiateProcType(c: PContext, pt: LayeredIdTable,
     if oldParam.ast != nil:
       var def = oldParam.ast.copyTree
       if def.typ.kind == tyFromExpr:
-        def.typ.flags.incl tfNonConstExpr
+        def.typ.incl tfNonConstExpr
       if not isIntLit(def.typ):
         def = prepareNode(cl, def)
 
