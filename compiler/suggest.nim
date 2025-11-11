@@ -43,7 +43,7 @@ when defined(nimsuggest):
 const
   sep = '\t'
 
-type 
+type
   ImportContext = object
     isMultiImport: bool      # True if we're in a [...] context
     baseDir: string          # e.g., "folder/" in "import folder/[..."
@@ -707,9 +707,9 @@ proc markOwnerModuleAsUsed(c: PContext; s: PSym) =
 proc markUsed(c: PContext; info: TLineInfo; s: PSym; checkStyle = true; isGenericInstance = false) =
   if not isGenericInstance:
     let conf = c.config
-    incl(s.flags, sfUsed)
+    incl(s.flagsImpl, sfUsed)
     if s.kind == skEnumField and s.owner != nil:
-      incl(s.owner.flags, sfUsed)
+      incl(s.owner.flagsImpl, sfUsed)
       if sfDeprecated in s.owner.flags:
         warnAboutDeprecated(conf, info, s)
     if {sfDeprecated, sfError} * s.flags != {}:
@@ -788,7 +788,7 @@ proc extractImportContextFromAst(n: PNode, cursorCol: int): ImportContext =
 proc findModuleFile(c: PContext, partialPath: string): seq[string] =
   result = @[]
   let currentModuleDir = parentDir(toFullPath(c.config, FileIndex(c.module.position)))
-  
+
   proc tryAddModule(path, baseName: string) =
     if fileExists(path & ".nim"):
       result.add(baseName)
@@ -800,7 +800,7 @@ proc findModuleFile(c: PContext, partialPath: string): seq[string] =
           let (_, name, ext) = splitFile(path)
           if kind == pcFile:
             if ext == ".nim" and name.startsWith(file):
-              result.add(name) 
+              result.add(name)
 
   proc collectImportModulesFromDir(dir: string, result: var seq[string]) =
     for kind, path in walkDir(dir):
@@ -809,10 +809,10 @@ proc findModuleFile(c: PContext, partialPath: string): seq[string] =
         if kind == pcFile:
           if ext == ".nim" and name.startsWith(partialPath):
             result.add(name)
-        else: 
+        else:
           if name.startsWith(partialPath):
             result.add(name)
-    
+
   if '/' in partialPath:
     let parts = partialPath.split('/')
     let dir = parts[0]
@@ -839,13 +839,13 @@ proc suggestModuleNames(c: PContext, n: PNode) =
       column: n.info.col.int,
       doc: "",
       quality: 100,
-      contextFits: true, 
+      contextFits: true,
       prefix: if partialPath.len > 0: prefixMatch(path, partialPath)
              else: PrefixMatch.None,
       symkind: byte skModule
     )
     suggestions.add(suggest)
-    
+
   let importCtx = extractImportContextFromAst(n, c.config.m.trackPos.col)
   var searchPath = ""
   if importCtx.baseDir.len > 0:
@@ -901,7 +901,7 @@ proc suggestExprNoCheck*(c: PContext, n: PNode) =
   if outputs.len > 0 and c.config.ideCmd in {ideSug, ideCon, ideDef}:
     produceOutput(outputs, c.config)
     suggestQuit()
- 
+
 proc suggestExpr*(c: PContext, n: PNode) =
   if exactEquals(c.config.m.trackPos, n.info): suggestExprNoCheck(c, n)
 

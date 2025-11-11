@@ -82,7 +82,7 @@ proc lowerTupleUnpacking*(g: ModuleGraph; n: PNode; idgen: IdGenerator; owner: P
     var temp = newSym(skTemp, getIdent(g.cache, genPrefix), idgen,
                   owner, value.info, g.config.options)
     temp.typ = skipTypes(value.typ, abstractInst)
-    incl(temp.flags, sfFromGeneric)
+    incl(temp.flagsImpl, sfFromGeneric)
     tempAsNode = newSymNode(temp)
 
   var v = newNodeI(nkVarSection, value.info)
@@ -103,7 +103,7 @@ proc evalOnce*(g: ModuleGraph; value: PNode; idgen: IdGenerator; owner: PSym): P
   var temp = newSym(skTemp, getIdent(g.cache, genPrefix), idgen,
                     owner, value.info, g.config.options)
   temp.typ = skipTypes(value.typ, abstractInst)
-  incl(temp.flags, sfFromGeneric)
+  incl(temp.flagsImpl, sfFromGeneric)
 
   var v = newNodeI(nkLetSection, value.info)
   let tempAsNode = newSymNode(temp)
@@ -127,8 +127,8 @@ proc lowerSwap*(g: ModuleGraph; n: PNode; idgen: IdGenerator; owner: PSym): PNod
   # note: cannot use 'skTemp' here cause we really need the copy for the VM :-(
   var temp = newSym(skVar, getIdent(g.cache, genPrefix), idgen, owner, n.info, owner.options)
   temp.typ = n[1].typ
-  incl(temp.flags, sfFromGeneric)
-  incl(temp.flags, sfGenSym)
+  incl(temp.flagsImpl, sfFromGeneric)
+  incl(temp.flagsImpl, sfGenSym)
 
   var v = newNodeI(nkVarSection, n.info)
   let tempAsNode = newSymNode(temp)
@@ -153,7 +153,7 @@ proc createObj*(g: ModuleGraph; idgen: IdGenerator; owner: PSym, info: TLineInfo
   result.n = newNodeI(nkRecList, info)
   let s = newSym(skType, getIdent(g.cache, "Env_" & toFilename(g.config, info) & "_" & $owner.name.s),
                   idgen, owner, info, owner.options)
-  incl s.flags, sfAnon
+  incl s.flagsImpl, sfAnon
   s.typ = result
   result.sym = s
 

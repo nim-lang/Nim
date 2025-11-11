@@ -148,7 +148,7 @@ proc pragmaEnsures(c: PContext, n: PNode) =
     if o.kind in routineKinds and o.typ != nil and o.typ.returnType != nil:
       var s = newSym(skResult, getIdent(c.cache, "result"), c.idgen, o, n.info)
       s.typ = o.typ.returnType
-      incl(s.flags, sfUsed)
+      incl(s.flagsImpl, sfUsed)
       addDecl(c, s)
     n[1] = c.semExpr(c, n[1])
     closeScope(c)
@@ -156,12 +156,12 @@ proc pragmaEnsures(c: PContext, n: PNode) =
 proc setExternName(c: PContext; s: PSym, extname: string, info: TLineInfo) =
   # special cases to improve performance:
   if extname == "$1":
-    s.loc.snippet = rope(s.name.s)
+    s.setSnippet(rope(s.name.s))
   elif '$' notin extname:
-    s.loc.snippet = rope(extname)
+    s.setSnippet(rope(extname))
   else:
     try:
-      s.loc.snippet = rope(extname % s.name.s)
+      s.setSnippet(rope(extname % s.name.s))
     except ValueError:
       localError(c.config, info, "invalid extern name: '" & extname & "'. (Forgot to escape '$'?)")
   when hasFFI:
@@ -170,36 +170,36 @@ proc setExternName(c: PContext; s: PSym, extname: string, info: TLineInfo) =
 
 proc makeExternImport(c: PContext; s: PSym, extname: string, info: TLineInfo) =
   setExternName(c, s, extname, info)
-  incl(s.flags, sfImportc)
-  excl(s.flags, sfForward)
+  s.incl(sfImportc)
+  s.excl(sfForward)
 
 proc makeExternExport(c: PContext; s: PSym, extname: string, info: TLineInfo) =
   setExternName(c, s, extname, info)
-  incl(s.flags, sfExportc)
+  s.incl(sfExportc)
 
 proc processImportCompilerProc(c: PContext; s: PSym, extname: string, info: TLineInfo) =
   setExternName(c, s, extname, info)
-  incl(s.flags, sfImportc)
-  excl(s.flags, sfForward)
-  incl(s.loc.flags, lfImportCompilerProc)
+  s.incl(sfImportc)
+  s.excl(sfForward)
+  incl(s.locImpl.flags, lfImportCompilerProc)
 
 proc processImportCpp(c: PContext; s: PSym, extname: string, info: TLineInfo) =
   setExternName(c, s, extname, info)
-  incl(s.flags, sfImportc)
-  incl(s.flags, sfInfixCall)
-  excl(s.flags, sfForward)
+  s.incl(sfImportc)
+  incl(s.flagsImpl, sfInfixCall)
+  excl(s.flagsImpl, sfForward)
   if c.config.backend == backendC:
     let m = s.getModule()
-    incl(m.flags, sfCompileToCpp)
+    incl(m.flagsImpl, sfCompileToCpp)
   incl c.config.globalOptions, optMixedMode
 
 proc processImportObjC(c: PContext; s: PSym, extname: string, info: TLineInfo) =
   setExternName(c, s, extname, info)
-  incl(s.flags, sfImportc)
-  incl(s.flags, sfNamedParamCall)
-  excl(s.flags, sfForward)
+  s.incl(sfImportc)
+  incl(s.flagsImpl, sfNamedParamCall)
+  excl(s.flagsImpl, sfForward)
   let m = s.getModule()
-  incl(m.flags, sfCompileToObjc)
+  m.incl(sfCompileToObjc)
 
 proc newEmptyStrNode(c: PContext; n: PNode, strVal: string = ""): PNode {.noinline.} =
   result = newNodeIT(nkStrLit, n.info, getSysType(c.graph, n.info, tyString))
@@ -239,14 +239,14 @@ proc getOptionalStr(c: PContext, n: PNode, defaultStr: string): string =
 proc processVirtual(c: PContext, n: PNode, s: PSym, flag: TSymFlag) =
   s.constraint = newEmptyStrNode(c, n, getOptionalStr(c, n, "$1"))
   s.constraint.strVal = s.constraint.strVal % s.name.s
-  s.flags.incl {flag, sfInfixCall, sfExportc, sfMangleCpp}
+  s.flagsImpl.incl {flag, sfInfixCall, sfExportc, sfMangleCpp}
 
   s.typ.callConv = ccMember
   incl c.config.globalOptions, optMixedMode
 
 proc processCodegenDecl(c: PContext, n: PNode, sym: PSym) =
   sym.constraint = getStrLitNode(c, n)
-  sym.flags.incl sfCodegenDecl
+  sym.flagsImpl.incl sfCodegenDecl
 
 proc processMagic(c: PContext, n: PNode, s: PSym) =
   #if sfSystemModule notin c.module.flags:
@@ -282,10 +282,10 @@ proc onOff(c: PContext, n: PNode, op: TOptions, resOptions: var TOptions) =
 
 proc pragmaNoForward*(c: PContext, n: PNode; flag=sfNoForward) =
   if isTurnedOn(c, n):
-    incl(c.module.flags, flag)
+    incl(c.module.flagsImpl, flag)
     c.features.incl codeReordering
   else:
-    excl(c.module.flags, flag)
+    excl(c.module.flagsImpl, flag)
     # c.features.excl codeReordering
 
   # deprecated as of 0.18.1
@@ -357,9 +357,9 @@ proc processDynLib(c: PContext, n: PNode, sym: PSym) =
       var lib = getLib(c, libDynamic, expectDynlibNode(c, n))
       if not lib.isOverridden:
         addToLib(lib, sym)
-        incl(sym.loc.flags, lfDynamicLib)
+        sym.incl(lfDynamicLib)
     else:
-      incl(sym.loc.flags, lfExportLib)
+      sym.incl(lfExportLib)
     # since we'll be loading the dynlib symbols dynamically, we must use
     # a calling convention that doesn't introduce custom name mangling
     # cdecl is the default - the user can override this explicitly
@@ -435,7 +435,7 @@ proc processExperimental(c: PContext; n: PNode) =
           if not isTopLevel(c):
               localError(c.config, n.info,
                          "Code reordering experimental pragma only valid at toplevel")
-          c.module.flags.incl sfReorder
+          c.module.flagsImpl.incl sfReorder
       except ValueError:
         localError(c.config, n[1].info, "unknown experimental feature")
     else:
@@ -636,7 +636,7 @@ proc semAsmOrEmit*(con: PContext, n: PNode, marker: char): PNode =
         var e = searchInScopes(con, getIdent(con.cache, sub), amb)
         # XXX what to do here if 'amb' is true?
         if e != nil:
-          incl(e.flags, sfUsed)
+          incl(e.flagsImpl, sfUsed)
           if isDefined(con.config, "nimPreviewAsmSemSymbol"):
             result.add con.semExprWithType(con, newSymNode(e), {efTypeAllowed})
           else:
@@ -764,8 +764,8 @@ proc markCompilerProc(c: PContext; s: PSym) =
   # should not have an external name set:
   if s.kind != skType or s.name.s != "FlowVar":
     makeExternExport(c, s, "$1", s.info)
-  incl(s.flags, sfCompilerProc)
-  incl(s.flags, sfUsed)
+  incl(s, sfCompilerProc)
+  incl(s.flagsImpl, sfUsed)
   registerCompilerProc(c.graph, s)
   if c.config.symbolFiles != disabledSf:
     addCompilerProc(c.encoder, c.packedRepr, s)
@@ -773,7 +773,7 @@ proc markCompilerProc(c: PContext; s: PSym) =
 proc deprecatedStmt(c: PContext; outerPragma: PNode) =
   let pragma = outerPragma[1]
   if pragma.kind in {nkStrLit..nkTripleStrLit}:
-    incl(c.module.flags, sfDeprecated)
+    incl(c.module, sfDeprecated)
     c.module.constraint = getStrLitNode(c, outerPragma)
     return
   if pragma.kind != nkBracket:
@@ -842,7 +842,7 @@ proc processEffectsOf(c: PContext, n: PNode; owner: PSym) =
     let r = c.semExpr(c, n)
     if r.kind == nkSym and r.sym.kind == skParam:
       if r.sym.owner == owner:
-        incl r.sym.flags, sfEffectsDelayed
+        incl r.sym, sfEffectsDelayed
       else:
         localError(c.config, n.info, errGenerated, "parameter cannot be declared as .effectsOf")
     else:
@@ -907,8 +907,8 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
           if c.config.backend != backendCpp:
             localError(c.config, it.info, "exportcpp requires `cpp` backend, got: " & $c.config.backend)
           else:
-            incl(sym.flags, sfMangleCpp)
-        incl(sym.flags, sfUsed) # avoid wrong hints
+            incl(sym, sfMangleCpp)
+        incl(sym.flagsImpl, sfUsed) # avoid wrong hints
       of wImportc:
         let name = getOptionalStr(c, it, "$1")
         cppDefine(c.config, name)
@@ -921,24 +921,24 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         processImportCompilerProc(c, sym, name, it.info)
       of wExtern: setExternName(c, sym, expectStrLit(c, it), it.info)
       of wDirty:
-        if sym.kind == skTemplate: incl(sym.flags, sfDirty)
+        if sym.kind == skTemplate: incl(sym, sfDirty)
         else: invalidPragma(c, it)
       of wRedefine:
-        if sym.kind == skTemplate: incl(sym.flags, sfTemplateRedefinition)
+        if sym.kind == skTemplate: incl(sym, sfTemplateRedefinition)
         else: invalidPragma(c, it)
       of wCallsite:
-        if sym.kind == skTemplate: incl(sym.flags, sfCallsite)
+        if sym.kind == skTemplate: incl(sym, sfCallsite)
         else: invalidPragma(c, it)
       of wImportCpp:
         processImportCpp(c, sym, getOptionalStr(c, it, "$1"), it.info)
       of wCppNonPod:
-        incl(sym.flags, sfCppNonPod)
+        incl(sym, sfCppNonPod)
       of wImportJs:
         if c.config.backend != backendJs:
           localError(c.config, it.info, "`importjs` pragma requires the JavaScript target")
         let name = getOptionalStr(c, it, "$1")
-        incl(sym.flags, sfImportc)
-        incl(sym.flags, sfInfixCall)
+        incl(sym, sfImportc)
+        incl(sym.flagsImpl, sfInfixCall)
         if sym.kind in skProcKinds and {'(', '#', '@'} notin name:
           localError(c.config, n.info, "`importjs` for routines requires a pattern")
         setExternName(c, sym, name, it.info)
@@ -968,29 +968,29 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
           localError(c.config, it.info, "power of two expected")
       of wNodecl:
         noVal(c, it)
-        incl(sym.loc.flags, lfNoDecl)
+        sym.incl(lfNoDecl)
       of wPure, wAsmNoStackFrame:
         noVal(c, it)
         if sym != nil:
           if k == wPure and sym.kind in routineKinds: invalidPragma(c, it)
-          else: incl(sym.flags, sfPure)
+          else: incl(sym, sfPure)
       of wVolatile:
         noVal(c, it)
-        incl(sym.flags, sfVolatile)
+        incl(sym, sfVolatile)
       of wCursor:
         noVal(c, it)
-        incl(sym.flags, sfCursor)
+        incl(sym, sfCursor)
       of wRegister:
         noVal(c, it)
-        incl(sym.flags, sfRegister)
+        incl(sym, sfRegister)
       of wNoalias:
         noVal(c, it)
-        incl(sym.flags, sfNoalias)
+        incl(sym, sfNoalias)
       of wEffectsOf:
         processEffectsOf(c, it, sym)
       of wThreadVar:
         noVal(c, it)
-        incl(sym.flags, {sfThread, sfGlobal})
+        incl(sym, {sfThread, sfGlobal})
       of wDeadCodeElimUnused:
         warningDeprecated(c.config, n.info, "'{.deadcodeelim: on.}' is deprecated, now a noop")  # deprecated, dead code elim always on
       of wNoForward: pragmaNoForward(c, it)
@@ -1000,20 +1000,19 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         noVal(c, it)
         if comesFromPush:
           if sym.kind in {skProc, skFunc}:
-            incl(sym.flags, sfCompileTime)
+            incl(sym, sfCompileTime)
         else:
-          incl(sym.flags, sfCompileTime)
+          incl(sym, sfCompileTime)
         #incl(sym.loc.flags, lfNoDecl)
       of wGlobal:
         noVal(c, it)
-        incl(sym.flags, sfGlobal)
-        incl(sym.flags, sfPure)
+        incl(sym, {sfGlobal, sfPure})
       of wConstructor:
-        incl(sym.flags, sfConstructor)
+        incl(sym, sfConstructor)
         if sfImportc notin sym.flags:
           sym.constraint = newEmptyStrNode(c, it, getOptionalStr(c, it, ""))
           sym.constraint.strVal = sym.constraint.strVal
-          sym.flags.incl {sfExportc, sfMangleCpp}
+          sym.flagsImpl.incl {sfExportc, sfMangleCpp}
           sym.typ.callConv = ccNoConvention
       of wHeader:
         var lib = getLib(c, libHeader, getStrLitNode(c, it))

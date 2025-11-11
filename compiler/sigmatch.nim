@@ -1671,7 +1671,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
 
     let roota = if skipBoth or deptha > depthf: a.skipGenericAlias else: a
     let rootf = if skipBoth or depthf > deptha: f.skipGenericAlias else: f
-    
+
     if f.isConcept:
       result = enterConceptMatch(c, rootf, roota, flags)
     elif a.kind == tyGenericInst:
@@ -2316,7 +2316,7 @@ proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
     let fdest = typeRel(m, f, dest)
     if fdest in {isEqual, isGeneric} and not (dest.kind == tyLent and f.kind in {tyVar}):
       # can't fully mark used yet, may not be used in final call
-      incl(c.converters[i].flags, sfUsed)
+      incl(c.converters[i].flagsImpl, sfUsed)
       markOwnerModuleAsUsed(c, c.converters[i])
       var s = newSymNode(c.converters[i])
       s.typ() = c.converters[i].typ

@@ -279,8 +279,10 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0; expectedType: PT
     if result.sym.kind == skField and result.sym.ast != nil and
         (cl.owner == nil or result.sym.owner == cl.owner):
       # instantiate default value of object/tuple field
-      cl.c.fitDefaultNode(cl.c, result.sym.ast, result.sym.typ)
-      result.sym.typ = result.sym.ast.typ.skipIntLit(cl.c.idgen)
+      var n = result.sym.ast
+      cl.c.fitDefaultNode(cl.c, n, result.sym.typ)
+      result.sym.ast = n
+      result.sym.typ = n.typ.skipIntLit(cl.c.idgen)
     # sym type can be nil if was gensym created by macro, see #24048
     if result.sym.typ != nil and result.sym.typ.kind == tyVoid:
       # don't add the 'void' field
@@ -361,7 +363,7 @@ proc replaceTypeVarsS(cl: var TReplTypeVars, s: PSym, t: PType): PSym =
 
   ]#
   result = copySym(s, cl.c.idgen)
-  incl(result.flags, sfFromGeneric)
+  incl(result.flagsImpl, sfFromGeneric)
   #idTablePut(cl.symMap, s, result)
   setOwner(result, s.owner)
   result.typ = t
@@ -682,7 +684,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType, isInstValue = false): 
 
   of tyUserTypeClass:
     result = t
-  
+
   of tyStatic:
     if cl.c.matchedConcept != nil:
       # allow concepts to not instantiate statics for now

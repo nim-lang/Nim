@@ -681,13 +681,13 @@ proc markDirty*(g: ModuleGraph; fileIdx: FileIndex) =
   if m != nil:
     g.suggestSymbols.del(fileIdx)
     g.suggestErrors.del(fileIdx)
-    incl m.flags, sfDirty
+    incl m.flagsImpl, sfDirty
 
 proc unmarkAllDirty*(g: ModuleGraph) =
   for i in 0i32..<g.ifaces.len.int32:
     let m = g.ifaces[i].module
     if m != nil:
-      m.flags.excl sfDirty
+      m.flagsImpl.excl sfDirty
 
 proc isDirty*(g: ModuleGraph; m: PSym): bool =
   result = g.suggestMode and sfDirty in m.flags

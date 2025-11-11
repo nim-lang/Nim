@@ -568,7 +568,7 @@ proc makeTypeDesc*(c: PContext, typ: PType): PType =
 proc symFromType*(c: PContext; t: PType, info: TLineInfo): PSym =
   if t.sym != nil: return t.sym
   result = newSym(skType, getIdent(c.cache, "AnonType"), c.idgen, t.owner, info)
-  result.flags.incl sfAnon
+  result.flagsImpl.incl sfAnon
   result.typ = t
 
 proc symNodeFromType*(c: PContext, t: PType, info: TLineInfo): PNode =
@@ -577,7 +577,7 @@ proc symNodeFromType*(c: PContext, t: PType, info: TLineInfo): PNode =
 
 proc markIndirect*(c: PContext, s: PSym) {.inline.} =
   if s.kind in {skProc, skFunc, skConverter, skMethod, skIterator}:
-    incl(s.flags, sfAddrTaken)
+    incl(s.flagsImpl, sfAddrTaken)
     # XXX add to 'c' for global analysis
 
 proc illFormedAst*(n: PNode; conf: ConfigRef) =
@@ -685,7 +685,7 @@ proc analyseIfAddressTaken(c: PContext, n: PNode, isOutParam: bool): PNode =
     # n.sym.typ can be nil in 'check' mode ...
     if n.sym.typ != nil and
         skipTypes(n.sym.typ, abstractInst-{tyTypeDesc}).kind notin {tyVar, tyLent}:
-      incl(n.sym.flags, sfAddrTaken)
+      incl(n.sym.flagsImpl, sfAddrTaken)
       result = newHiddenAddrTaken(c, n, isOutParam)
   of nkDotExpr:
     checkSonsLen(n, 2, c.config)
@@ -693,12 +693,12 @@ proc analyseIfAddressTaken(c: PContext, n: PNode, isOutParam: bool): PNode =
       internalError(c.config, n.info, "analyseIfAddressTaken")
       return
     if skipTypes(n[1].sym.typ, abstractInst-{tyTypeDesc}).kind notin {tyVar, tyLent}:
-      incl(n[1].sym.flags, sfAddrTaken)
+      incl(n[1].sym.flagsImpl, sfAddrTaken)
       result = newHiddenAddrTaken(c, n, isOutParam)
   of nkBracketExpr:
     checkMinSonsLen(n, 1, c.config)
     if skipTypes(n[0].typ, abstractInst-{tyTypeDesc}).kind notin {tyVar, tyLent}:
-      if n[0].kind == nkSym: incl(n[0].sym.flags, sfAddrTaken)
+      if n[0].kind == nkSym: incl(n[0].sym.flagsImpl, sfAddrTaken)
       result = newHiddenAddrTaken(c, n, isOutParam)
   else:
     result = newHiddenAddrTaken(c, n, isOutParam)

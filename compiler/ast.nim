@@ -695,32 +695,33 @@ type
   ItemState* = enum
     Complete # completely in memory
     Partial  # partially in memory
+    Sealed   # complete in memory, already written to NIF file, so further mutations are not allowed
 
   PLib* = ref TLib
-  TSym* {.acyclic.} = object # Keep in sync with PackedSym
+  TSym* {.acyclic.} = object # Keep in sync with ast2nif.nim
     itemId*: ItemId
     # proc and type instantiations are cached in the generic symbol
     state*: ItemState
-    case kind*: TSymKind
+    case kindImpl*: TSymKind  # Note: kept as 'kind' for case statement, but accessor checks state
     of routineKinds:
       #procInstCache*: seq[PInstantiation]
-      gcUnsafetyReason*: PSym  # for better error messages regarding gcsafe
-      transformedBody*: PNode  # cached body after transf pass
+      gcUnsafetyReasonImpl*: PSym  # for better error messages regarding gcsafe
+      transformedBodyImpl*: PNode  # cached body after transf pass
     of skLet, skVar, skField, skForVar:
-      guard*: PSym
-      bitsize*: int
-      alignment*: int # for alignment
+      guardImpl*: PSym
+      bitsizeImpl*: int
+      alignmentImpl*: int # for alignment
     else: nil
-    magic*: TMagic
-    typ*: PType
+    magicImpl*: TMagic
+    typImpl*: PType
     name*: PIdent
-    info*: TLineInfo
+    infoImpl*: TLineInfo
     when defined(nimsuggest):
-      endInfo*: TLineInfo
-      hasUserSpecifiedType*: bool  # used for determining whether to display inlay type hints
-    ownerField: PSym
-    flags*: TSymFlags
-    ast*: PNode               # syntax tree of proc, iterator, etc.:
+      endInfoImpl*: TLineInfo
+      hasUserSpecifiedTypeImpl*: bool  # used for determining whether to display inlay type hints
+    ownerFieldImpl: PSym
+    flagsImpl*: TSymFlags
+    astImpl*: PNode               # syntax tree of proc, iterator, etc.:
                               # the whole proc including header; this is used
                               # for easy generation of proper error messages
                               # for variant record fields the discriminant
@@ -728,8 +729,8 @@ type
                               # for modules, it's a placeholder for compiler
                               # generated code that will be appended to the
                               # module after the sem pass (see appendToModule)
-    options*: TOptions
-    position*: int            # used for many different things:
+    optionsImpl*: TOptions
+    positionImpl*: int            # used for many different things:
                               # for enum fields its position;
                               # for fields its offset
                               # for parameters its position (starting with 0)
@@ -739,23 +740,23 @@ type
                               # for modules, an unique index corresponding
                               # to the module's fileIdx
                               # for variables a slot index for the evaluator
-    offset*: int32            # offset of record field
+    offsetImpl*: int32            # offset of record field
     disamb*: int32            # disambiguation number; the basic idea is that
                               # `<procname>__<module>_<disamb>` is unique
-    loc*: TLoc
-    annex*: PLib              # additional fields (seldom used, so we use a
+    locImpl*: TLoc
+    annexImpl*: PLib              # additional fields (seldom used, so we use a
                               # reference to another object to save space)
     when hasFFI:
-      cname*: string          # resolved C declaration name in importc decl, e.g.:
+      cnameImpl*: string          # resolved C declaration name in importc decl, e.g.:
                               # proc fun() {.importc: "$1aux".} => cname = funaux
-    constraint*: PNode        # additional constraints like 'lit|result'; also
+    constraintImpl*: PNode        # additional constraints like 'lit|result'; also
                               # misused for the codegenDecl and virtual pragmas in the hope
                               # it won't cause problems
                               # for skModule the string literal to output for
                               # deprecated modules.
-    instantiatedFrom*: PSym   # for instances, the generic symbol where it came from.
+    instantiatedFromImpl*: PSym   # for instances, the generic symbol where it came from.
     when defined(nimsuggest):
-      allUsages*: seq[TLineInfo]
+      allUsagesImpl*: seq[TLineInfo]
 
   TTypeSeq* = seq[PType]
 
@@ -840,11 +841,226 @@ template nodeId(n: PNode): int = cast[int](n)
 template typ*(n: PNode): PType =
   n.typField
 
+proc loadSym*(s: PSym) {.inline.} =
+  ## Loads a symbol from NIF file if it's in Partial state.
+  ## This is a forward declaration - implementation should be provided elsewhere.
+  discard
+
 proc owner*(s: PSym|PType): PSym {.inline.} =
-  result = s.ownerField
+  when s is PSym:
+    if s.state == Partial: loadSym(s)
+    result = s.ownerFieldImpl
+  else:
+    result = s.ownerField
 
 proc setOwner*(s: PSym|PType, owner: PSym) {.inline.} =
-  s.ownerField = owner
+  when s is PSym:
+    if s.state == Partial: loadSym(s)
+    s.ownerFieldImpl = owner
+  else:
+    s.ownerField = owner
+
+# Accessor procs for TSym fields
+# Note: kind is kept as a direct field for case statement compatibility
+# but we still provide an accessor that checks state
+proc kind*(s: PSym): TSymKind {.inline.} =
+  if s.state == Partial: loadSym(s)
+  result = s.kind
+
+proc `kind=`*(s: PSym, val: TSymKind) {.inline.} =
+  if s.state == Partial: loadSym(s)
+  s.kind = val
+
+proc gcUnsafetyReason*(s: PSym): PSym {.inline.} =
+  if s.state == Partial: loadSym(s)
+  result = s.gcUnsafetyReasonImpl
+
+proc `gcUnsafetyReason=`*(s: PSym, val: PSym) {.inline.} =
+  if s.state == Partial: loadSym(s)
+  s.gcUnsafetyReasonImpl = val
+
+proc transformedBody*(s: PSym): PNode {.inline.} =
+  if s.state == Partial: loadSym(s)
+  result = s.transformedBodyImpl
+
+proc `transformedBody=`*(s: PSym, val: PNode) {.inline.} =
+  if s.state == Partial: loadSym(s)
+  s.transformedBodyImpl = val
+
+proc guard*(s: PSym): PSym {.inline.} =
+  if s.state == Partial: loadSym(s)
+  result = s.guardImpl
+
+proc `guard=`*(s: PSym, val: PSym) {.inline.} =
+  if s.state == Partial: loadSym(s)
+  s.guardImpl = val
+
+proc bitsize*(s: PSym): int {.inline.} =
+  if s.state == Partial: loadSym(s)
+  result = s.bitsizeImpl
+
+proc `bitsize=`*(s: PSym, val: int) {.inline.} =
+  if s.state == Partial: loadSym(s)
+  s.bitsizeImpl = val
+
+proc alignment*(s: PSym): int {.inline.} =
+  if s.state == Partial: loadSym(s)
+  result = s.alignmentImpl
+
+proc `alignment=`*(s: PSym, val: int) {.inline.} =
+  if s.state == Partial: loadSym(s)
+  s.alignmentImpl = val
+
+proc magic*(s: PSym): TMagic {.inline.} =
+  if s.state == Partial: loadSym(s)
+  result = s.magicImpl
+
+proc `magic=`*(s: PSym, val: TMagic) {.inline.} =
+  if s.state == Partial: loadSym(s)
+  s.magicImpl = val
+
+proc typ*(s: PSym): PType {.inline.} =
+  if s.state == Partial: loadSym(s)
+  result = s.typImpl
+
+proc `typ=`*(s: PSym, val: PType) {.inline.} =
+  if s.state == Partial: loadSym(s)
+  s.typImpl = val
+
+proc info*(s: PSym): TLineInfo {.inline.} =
+  if s.state == Partial: loadSym(s)
+  result = s.infoImpl
+
+proc `info=`*(s: PSym, val: TLineInfo) {.inline.} =
+  if s.state == Partial: loadSym(s)
+  s.infoImpl = val
+
+when defined(nimsuggest):
+  proc endInfo*(s: PSym): TLineInfo {.inline.} =
+    if s.state == Partial: loadSym(s)
+    result = s.endInfoImpl
+
+  proc `endInfo=`*(s: PSym, val: TLineInfo) {.inline.} =
+    if s.state == Partial: loadSym(s)
+    s.endInfoImpl = val
+
+  proc hasUserSpecifiedType*(s: PSym): bool {.inline.} =
+    if s.state == Partial: loadSym(s)
+    result = s.hasUserSpecifiedTypeImpl
+
+  proc `hasUserSpecifiedType=`*(s: PSym, val: bool) {.inline.} =
+    if s.state == Partial: loadSym(s)
+    s.hasUserSpecifiedTypeImpl = val
+
+proc flags*(s: PSym): TSymFlags {.inline.} =
+  if s.state == Partial: loadSym(s)
+  result = s.flagsImpl
+
+proc `flags=`*(s: PSym, val: TSymFlags) {.inline.} =
+  if s.state == Partial: loadSym(s)
+  s.flagsImpl = val
+
+proc ast*(s: PSym): PNode {.inline.} =
+  if s.state == Partial: loadSym(s)
+  result = s.astImpl
+
+proc `ast=`*(s: PSym, val: PNode) {.inline.} =
+  if s.state == Partial: loadSym(s)
+  s.astImpl = val
+
+proc options*(s: PSym): TOptions {.inline.} =
+  if s.state == Partial: loadSym(s)
+  result = s.optionsImpl
+
+proc `options=`*(s: PSym, val: TOptions) {.inline.} =
+  if s.state == Partial: loadSym(s)
+  s.optionsImpl = val
+
+proc position*(s: PSym): int {.inline.} =
+  if s.state == Partial: loadSym(s)
+  result = s.positionImpl
+
+proc `position=`*(s: PSym, val: int) {.inline.} =
+  if s.state == Partial: loadSym(s)
+  s.positionImpl = val
+
+proc offset*(s: PSym): int32 {.inline.} =
+  if s.state == Partial: loadSym(s)
+  result = s.offsetImpl
+
+proc `offset=`*(s: PSym, val: int32) {.inline.} =
+  if s.state == Partial: loadSym(s)
+  s.offsetImpl = val
+
+proc loc*(s: PSym): TLoc {.inline.} =
+  if s.state == Partial: loadSym(s)
+  result = s.locImpl
+
+proc `loc=`*(s: PSym, val: TLoc) {.inline.} =
+  if s.state == Partial: loadSym(s)
+  s.locImpl = val
+
+proc annex*(s: PSym): PLib {.inline.} =
+  if s.state == Partial: loadSym(s)
+  result = s.annexImpl
+
+proc `annex=`*(s: PSym, val: PLib) {.inline.} =
+  if s.state == Partial: loadSym(s)
+  s.annexImpl = val
+
+when hasFFI:
+  proc cname*(s: PSym): string {.inline.} =
+    if s.state == Partial: loadSym(s)
+    result = s.cnameImpl
+
+  proc `cname=`*(s: PSym, val: string) {.inline.} =
+    if s.state == Partial: loadSym(s)
+    s.cnameImpl = val
+
+proc constraint*(s: PSym): PNode {.inline.} =
+  if s.state == Partial: loadSym(s)
+  result = s.constraintImpl
+
+proc `constraint=`*(s: PSym, val: PNode) {.inline.} =
+  if s.state == Partial: loadSym(s)
+  s.constraintImpl = val
+
+proc instantiatedFrom*(s: PSym): PSym {.inline.} =
+  if s.state == Partial: loadSym(s)
+  result = s.instantiatedFromImpl
+
+proc `instantiatedFrom=`*(s: PSym, val: PSym) {.inline.} =
+  if s.state == Partial: loadSym(s)
+  s.instantiatedFromImpl = val
+
+proc setSnippet*(s: PSym; val: sink string) {.inline.} =
+  if s.state == Partial: loadSym(s)
+  s.locImpl.snippet = val
+
+proc incl*(s: PSym; flag: TSymFlag) {.inline.} =
+  if s.state == Partial: loadSym(s)
+  s.flagsImpl.incl(flag)
+
+proc incl*(s: PSym; flags: set[TSymFlag]) {.inline.} =
+  if s.state == Partial: loadSym(s)
+  s.flagsImpl.incl(flag)
+
+proc incl*(s: PSym; flag: TLocFlag) {.inline.} =
+  if s.state == Partial: loadSym(s)
+  s.locImpl.flags.incl(flag)
+
+proc excl*(s: PSym; flag: TSymFlag) {.inline.} =
+  if s.state == Partial: loadSym(s)
+  s.flagsImpl.excl(flag)
+
+when defined(nimsuggest):
+  proc allUsages*(s: PSym): seq[TLineInfo] {.inline.} =
+    if s.state == Partial: loadSym(s)
+    result = s.allUsagesImpl
+
+  proc `allUsages=`*(s: PSym, val: seq[TLineInfo]) {.inline.} =
+    if s.state == Partial: loadSym(s)
+    s.allUsagesImpl = val
 
 type Gconfig = object
   # we put comments in a side channel to avoid increasing `sizeof(TNode)`, which
@@ -1091,15 +1307,17 @@ proc getDeclPragma*(n: PNode): PNode =
 proc extractPragma*(s: PSym): PNode =
   ## gets the pragma node of routine/type/var/let/const symbol `s`
   if s.kind in routineKinds: # bug #24167
-    if s.ast[pragmasPos] != nil and s.ast[pragmasPos].kind != nkEmpty:
-      result = s.ast[pragmasPos]
+    let astVal = s.ast
+    if astVal != nil and astVal[pragmasPos] != nil and astVal[pragmasPos].kind != nkEmpty:
+      result = astVal[pragmasPos]
     else:
       result = nil
   elif s.kind in {skType, skVar, skLet, skConst}:
-    if s.ast != nil and s.ast.len > 0:
-      if s.ast[0].kind == nkPragmaExpr and s.ast[0].len > 1:
+    let astVal = s.ast
+    if astVal != nil and astVal.len > 0:
+      if astVal[0].kind == nkPragmaExpr and astVal[0].len > 1:
         # s.ast = nkTypedef / nkPragmaExpr / [nkSym, nkPragma]
-        result = s.ast[0][1]
+        result = astVal[0][1]
       else:
         result = nil
     else:
@@ -1126,7 +1344,7 @@ when defined(useNodeIds):
   const nodeIdToDebug* = -1 # 2322968
   var gNodeId: int
 
-template newNodeImpl(info2) =
+template newNodeImpl(info2) {.dirty.} =
   result = PNode(kind: kind, info: info2)
   when false:
     # this would add overhead, so we skip it; it results in a small amount of leaked entries
@@ -1229,8 +1447,8 @@ proc newSym*(symKind: TSymKind, name: PIdent, idgen: IdGenerator; owner: PSym,
   # generates a symbol and initializes the hash field too
   assert not name.isNil
   let id = nextSymId idgen
-  result = PSym(name: name, kind: symKind, flags: {}, info: info, itemId: id,
-                options: options, ownerField: owner, offset: defaultOffset,
+  result = PSym(name: name, kindImpl: symKind, flagsImpl: {}, infoImpl: info, itemId: id,
+                optionsImpl: options, ownerFieldImpl: owner, offsetImpl: defaultOffset,
                 disamb: getOrDefault(idgen.disambTable, name).int32)
   idgen.disambTable.inc name
   when false:
@@ -1241,10 +1459,11 @@ proc newSym*(symKind: TSymKind, name: PIdent, idgen: IdGenerator; owner: PSym,
 
 proc astdef*(s: PSym): PNode =
   # get only the definition (initializer) portion of the ast
-  if s.ast != nil and s.ast.kind in {nkIdentDefs, nkConstDef}:
-    s.ast[2]
+  let astVal = s.ast
+  if astVal != nil and astVal.kind in {nkIdentDefs, nkConstDef}:
+    astVal[2]
   else:
-    s.ast
+    astVal
 
 proc isMetaType*(t: PType): bool =
   return t.kind in tyMetaTypes or
@@ -1256,31 +1475,33 @@ proc isUnresolvedStatic*(t: PType): bool =
 
 proc linkTo*(t: PType, s: PSym): PType {.discardable.} =
   t.sym = s
-  s.typ = t
+  s.typImpl = t
   result = t
 
 proc linkTo*(s: PSym, t: PType): PSym {.discardable.} =
   t.sym = s
-  s.typ = t
+  s.typImpl = t
   result = s
 
 template fileIdx*(c: PSym): FileIndex =
   # XXX: this should be used only on module symbols
-  c.position.FileIndex
+  c.position().FileIndex
 
 template filename*(c: PSym): string =
   # XXX: this should be used only on module symbols
-  c.position.FileIndex.toFilename
+  c.position().FileIndex.toFilename
 
 proc appendToModule*(m: PSym, n: PNode) =
   ## The compiler will use this internally to add nodes that will be
   ## appended to the module after the sem pass
-  if m.ast == nil:
-    m.ast = newNode(nkStmtList)
-    m.ast.sons = @[n]
+  var astVal = m.ast
+  if astVal == nil:
+    astVal = newNode(nkStmtList)
+    astVal.sons = @[n]
+    m.astImpl = astVal
   else:
-    assert m.ast.kind == nkStmtList
-    m.ast.sons.add(n)
+    assert astVal.kind == nkStmtList
+    astVal.sons.add(n)
 
 const                         # for all kind of hash tables:
   GrowthFactor* = 2           # must be power of 2, > 0
@@ -1582,9 +1803,11 @@ proc assignType*(dest, src: PType) =
   # this fixes 'type TLock = TSysLock':
   if src.sym != nil:
     if dest.sym != nil:
-      dest.sym.flags.incl src.sym.flags-{sfUsed, sfExported}
-      if dest.sym.annex == nil: dest.sym.annex = src.sym.annex
-      mergeLoc(dest.sym.loc, src.sym.loc)
+      var destFlags = dest.sym.flags
+      var srcFlags = src.sym.flags
+      dest.sym.flagsImpl = destFlags + (srcFlags - {sfUsed, sfExported})
+      if dest.sym.annex == nil: dest.sym.annexImpl = src.sym.annex
+      mergeLoc(dest.sym.locImpl, src.sym.loc)
     else:
       dest.sym = src.sym
   newSons(dest, src.sons.len)
@@ -1604,31 +1827,31 @@ proc exactReplica*(t: PType): PType =
 
 proc copySym*(s: PSym; idgen: IdGenerator): PSym =
   result = newSym(s.kind, s.name, idgen, s.owner, s.info, s.options)
-  #result.ast = nil            # BUGFIX; was: s.ast which made problems
-  result.typ = s.typ
-  result.flags = s.flags
-  result.magic = s.magic
-  result.options = s.options
-  result.position = s.position
-  result.loc = s.loc
-  result.annex = s.annex      # BUGFIX
-  result.constraint = s.constraint
+  #result.astImpl = nil            # BUGFIX; was: s.ast which made problems
+  result.typImpl = s.typ
+  result.flagsImpl = s.flags
+  result.magicImpl = s.magic
+  result.optionsImpl = s.options
+  result.positionImpl = s.position
+  result.locImpl = s.loc
+  result.annexImpl = s.annex      # BUGFIX
+  result.constraintImpl = s.constraint
   if result.kind in {skVar, skLet, skField}:
-    result.guard = s.guard
-    result.bitsize = s.bitsize
-    result.alignment = s.alignment
+    result.guardImpl = s.guard
+    result.bitsizeImpl = s.bitsize
+    result.alignmentImpl = s.alignment
 
 proc createModuleAlias*(s: PSym, idgen: IdGenerator, newIdent: PIdent, info: TLineInfo;
                         options: TOptions): PSym =
   result = newSym(s.kind, newIdent, idgen, s.owner, info, options)
   # keep ID!
-  result.ast = s.ast
+  result.astImpl = s.ast
   #result.id = s.id # XXX figure out what to do with the ID.
-  result.flags = s.flags
-  result.options = s.options
-  result.position = s.position
-  result.loc = s.loc
-  result.annex = s.annex
+  result.flagsImpl = s.flags
+  result.optionsImpl = s.options
+  result.positionImpl = s.position
+  result.locImpl = s.loc
+  result.annexImpl = s.annex
 
 proc initStrTable*(): TStrTable =
   result = TStrTable(counter: 0)
@@ -1754,28 +1977,28 @@ proc transitionNoneToSym*(n: PNode) =
 
 template transitionSymKindCommon*(k: TSymKind) =
   let obj {.inject.} = s[]
-  s[] = TSym(kind: k, itemId: obj.itemId, magic: obj.magic, typ: obj.typ, name: obj.name,
-             info: obj.info, ownerField: obj.ownerField, flags: obj.flags, ast: obj.ast,
-             options: obj.options, position: obj.position, offset: obj.offset,
-             loc: obj.loc, annex: obj.annex, constraint: obj.constraint)
+  s[] = TSym(kindImpl: k, itemId: obj.itemId, magicImpl: obj.magicImpl, typImpl: obj.typImpl, name: obj.name,
+             infoImpl: obj.infoImpl, ownerFieldImpl: obj.ownerFieldImpl, flagsImpl: obj.flagsImpl, astImpl: obj.astImpl,
+             optionsImpl: obj.optionsImpl, positionImpl: obj.positionImpl, offsetImpl: obj.offsetImpl,
+             locImpl: obj.locImpl, annexImpl: obj.annexImpl, constraintImpl: obj.constraintImpl)
   when hasFFI:
-    s.cname = obj.cname
+    s.cnameImpl = obj.cnameImpl
   when defined(nimsuggest):
-    s.allUsages = obj.allUsages
+    s.allUsagesImpl = obj.allUsagesImpl
 
 proc transitionGenericParamToType*(s: PSym) =
   transitionSymKindCommon(skType)
 
 proc transitionRoutineSymKind*(s: PSym, kind: range[skProc..skTemplate]) =
   transitionSymKindCommon(kind)
-  s.gcUnsafetyReason = obj.gcUnsafetyReason
-  s.transformedBody = obj.transformedBody
+  s.gcUnsafetyReasonImpl = obj.gcUnsafetyReasonImpl
+  s.transformedBodyImpl = obj.transformedBodyImpl
 
 proc transitionToLet*(s: PSym) =
   transitionSymKindCommon(skLet)
-  s.guard = obj.guard
-  s.bitsize = obj.bitsize
-  s.alignment = obj.alignment
+  s.guardImpl = obj.guardImpl
+  s.bitsizeImpl = obj.bitsizeImpl
+  s.alignmentImpl = obj.alignmentImpl
 
 template copyNodeImpl(dst, src, processSonsStmt) =
   if src == nil: return

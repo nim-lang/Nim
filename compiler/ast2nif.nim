@@ -118,8 +118,6 @@ type
     deps: TokenBuf  # include&import deps
     infos: LineInfoWriter
     currentModule: int32
-    writtenSyms: HashSet[ItemId]
-    writtenTypes: HashSet[ItemId]
     decodedFileIndices: HashSet[FileIndex]
     moduleToNifSuffix: Table[FileIndex, string]
     locals: HashSet[ItemId]  # track proc-local symbols
@@ -233,7 +231,8 @@ proc writeTypeDef(w: var Writer; dest: var TokenBuf; typ: PType) =
 proc writeType(w: var Writer; dest: var TokenBuf; typ: PType) =
   if typ == nil:
     dest.addDotToken()
-  elif typ.itemId.module == w.currentModule and not w.writtenTypes.containsOrIncl(typ.uniqueId):
+  elif typ.itemId.module == w.currentModule and typ.state == Complete:
+    typ.state = Sealed
     writeTypeDef(w, dest, typ)
   else:
     dest.buildTree tuseTag:
@@ -288,7 +287,8 @@ proc writeSymDef(w: var Writer; dest: var TokenBuf; sym: PSym) =
 proc writeSym(w: var Writer; dest: var TokenBuf; sym: PSym) =
   if sym == nil:
     dest.addDotToken()
-  elif sym.itemId.module == w.currentModule and not w.writtenSyms.containsOrIncl(sym.itemId):
+  elif sym.itemId.module == w.currentModule and sym.state == Complete:
+    sym.state = Sealed
     writeSymDef(w, dest, sym)
   else:
     # NIF has direct support for symbol references so we don't need to use a tag here,
@@ -298,7 +298,8 @@ proc writeSym(w: var Writer; dest: var TokenBuf; sym: PSym) =
 proc writeSymNode(w: var Writer; dest: var TokenBuf; n: PNode; sym: PSym) =
   if sym == nil:
     dest.addDotToken()
-  elif sym.itemId.module == w.currentModule and not w.writtenSyms.containsOrIncl(sym.itemId):
+  elif sym.itemId.module == w.currentModule and sym.state == Complete:
+    sym.state = Sealed
     if n.typ != n.sym.typ:
       dest.buildTree hiddenTypeTag, trLineInfo(w, n.info):
         writeSymDef(w, dest, sym)
@@ -629,7 +630,7 @@ proc loadSymStub(c: var DecodeContext; t: SymId): PSym =
   result = c.syms.getOrDefault(id)[0]
   if result == nil:
     let offs = c.getOffset(module, symAsStr)
-    result = PSym(itemId: id, kind: skStub, name: c.cache.getIdent(sn.name), disamb: sn.count.int32, state: Partial)
+    result = PSym(itemId: id, kindImpl: skStub, name: c.cache.getIdent(sn.name), disamb: sn.count.int32, state: Partial)
     c.syms[id] = (result, offs)
 
 proc loadSymStub(c: var DecodeContext; n: var Cursor): PSym =
@@ -689,6 +690,7 @@ proc loadLoc(c: var DecodeContext; n: var Cursor; loc: var TLoc) =
 
 proc loadType*(c: var DecodeContext; t: PType) =
   if t.state != Partial: return
+  t.state = Sealed
   var buf = createTokenBuf(30)
   var n = cursorFromIndexEntry(c, t.itemId.module, c.types[t.itemId][1], buf)
 
@@ -739,7 +741,8 @@ proc loadAnnex(c: var DecodeContext; n: var Cursor): PLib =
     raiseAssert "`lib/annex` information expected"
 
 proc loadSym*(c: var DecodeContext; s: PSym) =
-  if s.kind != skStub: return
+  if s.state != Partial: return
+  s.state = Sealed
   var buf = createTokenBuf(30)
   var n = cursorFromIndexEntry(c, s.itemId.module, c.syms[s.itemId][1], buf)
 
@@ -777,7 +780,7 @@ proc loadSym*(c: var DecodeContext; s: PSym) =
   s.setOwner loadSymStub(c, n)
   # We do not store `sym.ast` here but instead set it in the deserializer
   #writeNode(w, sym.ast)
-  loadLoc c, n, s.loc
+  loadLoc c, n, s.locImpl
   s.constraint = loadNode(c, n)
   s.instantiatedFrom = loadSymStub(c, n)
   skipParRi n
