@@ -870,12 +870,12 @@ proc setOwner*(s: PSym|PType, owner: PSym) {.inline.} =
 # but we still provide an accessor that checks state
 proc kind*(s: PSym): TSymKind {.inline.} =
   if s.state == Partial: loadSym(s)
-  result = s.kind
+  result = s.kindImpl
 
 proc `kind=`*(s: PSym, val: TSymKind) {.inline.} =
   assert s.state != Sealed
   if s.state == Partial: loadSym(s)
-  s.kind = val
+  s.kindImpl = val
 
 proc gcUnsafetyReason*(s: PSym): PSym {.inline.} =
   if s.state == Partial: loadSym(s)
