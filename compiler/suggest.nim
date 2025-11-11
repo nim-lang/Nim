@@ -590,7 +590,7 @@ when defined(nimsuggest):
     let infoAsInt = info.infoToInt
     for infoB in s.allUsages:
       if infoB.infoToInt == infoAsInt: return
-    s.allUsages.add(info)
+    s.allUsagesImpl.add(info)
 
 proc findUsages(g: ModuleGraph; info: TLineInfo; s: PSym; usageSym: var PSym) =
   if g.config.suggestVersion == 1:
