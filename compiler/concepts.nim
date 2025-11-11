@@ -29,7 +29,7 @@ proc declareSelf(c: PContext; info: TLineInfo) =
   let ow = getCurrOwner(c)
   let s = newSym(skType, getIdent(c.cache, "Self"), c.idgen, ow, info)
   s.typ = newType(tyTypeDesc, c.idgen, ow)
-  s.typ.flags.incl {tfUnresolved, tfPacked}
+  s.typ.incl {tfUnresolved, tfPacked}
   s.typ.add newType(tyEmpty, c.idgen, ow)
   addDecl(c, s, info)
 

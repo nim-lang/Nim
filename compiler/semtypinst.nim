@@ -263,7 +263,7 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0; expectedType: PT
   if n.typ != nil:
     if n.typ.kind == tyFromExpr:
       # type of node should not be evaluated as a static value
-      n.typ.flags.incl tfNonConstExpr
+      n.typ.incl tfNonConstExpr
     result.typ() = replaceTypeVarsT(cl, n.typ)
     checkMetaInvariants(cl, result.typ)
   case n.kind
@@ -396,12 +396,12 @@ proc instCopyType*(cl: var TReplTypeVars, t: PType): PType =
     #cl.typeMap.topLayer.idTablePut(result, t)
 
   if cl.allowMetaTypes: return
-  result.flags.incl tfFromGeneric
+  result.incl tfFromGeneric
   if not (t.kind in tyMetaTypes or
          (t.kind == tyStatic and t.n == nil)):
-    result.flags.excl tfInstClearedFlags
+    result.excl tfInstClearedFlags
   else:
-    result.flags.excl tfHasAsgn
+    result.excl tfHasAsgn
   when false:
     if newDestructors:
       result.assignment = nil
@@ -526,13 +526,13 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
     let mm = skipTypes(bbody, abstractPtrs)
     if tfFromGeneric notin mm.flags:
       # bug #5479, prevent endless recursions here:
-      incl mm.flags, tfFromGeneric
+      incl mm.flagsImpl, tfFromGeneric
       for col, meth in methodsForGeneric(cl.c.graph, mm):
         # we instantiate the known methods belonging to that type, this causes
         # them to be registered and that's enough, so we 'discard' the result.
         discard cl.c.instTypeBoundOp(cl.c, meth, result, cl.info,
           attachedAsgn, col)
-      excl mm.flags, tfFromGeneric
+      excl mm.flagsImpl, tfFromGeneric
 
 proc eraseVoidParams*(t: PType) =
   # transform '(): void' into '()' because old parts of the compiler really
@@ -756,7 +756,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType, isInstValue = false): 
       of tyObject, tyTuple:
         propagateFieldFlags(result, result.n)
         if result.kind == tyObject and cl.c.computeRequiresInit(cl.c, result):
-          result.flags.incl tfRequiresInit
+          result.incl tfRequiresInit
 
       of tyProc:
         eraseVoidParams(result)

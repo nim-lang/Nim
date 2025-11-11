@@ -147,7 +147,7 @@ proc createObj*(g: ModuleGraph; idgen: IdGenerator; owner: PSym, info: TLineInfo
   result = newType(tyObject, idgen, owner)
   if final:
     rawAddSon(result, nil)
-    incl result.flags, tfFinal
+    incl result, tfFinal
   else:
     rawAddSon(result, getCompilerProc(g, "RootObj").typ)
   result.n = newNodeI(nkRecList, info)

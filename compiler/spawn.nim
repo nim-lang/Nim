@@ -366,7 +366,7 @@ proc wrapProcForSpawn*(g: ModuleGraph; idgen: IdGenerator; owner: PSym; spawnExp
     argsParam.position = 1
 
   var objType = createObj(g, idgen, owner, n.info)
-  incl(objType.flags, tfFinal)
+  incl(objType, tfFinal)
   let castExpr = createCastExpr(argsParam, objType, idgen)
 
   var scratchObj = newSym(skVar, getIdent(g.cache, "scratch"), idgen, owner, n.info, g.config.options)

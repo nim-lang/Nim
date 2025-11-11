@@ -1212,6 +1212,11 @@ proc excl*(t: PType; flag: TTypeFlag) {.inline.} =
   if t.state == Partial: loadType(t)
   t.flagsImpl.excl(flag)
 
+proc excl*(t: PType; flags: set[TTypeFlag]) {.inline.} =
+  assert t.state != Sealed
+  if t.state == Partial: loadType(t)
+  t.flagsImpl.excl(flags)
+
 type Gconfig = object
   # we put comments in a side channel to avoid increasing `sizeof(TNode)`, which
   # reduces memory usage given that `PNode` is the most allocated type by far.
@@ -2114,7 +2119,8 @@ proc propagateToOwner*(owner, elem: PType; propagateHasAsgn = true) =
       owner.incl tfHasGCedMem
 
 proc rawAddSon*(father, son: PType; propagateHasAsgn = true) =
-  father.sons.add(son)
+  ensureMutable father
+  father.sonsImpl.add(son)
   if not son.isNil: propagateToOwner(father, son, propagateHasAsgn)
 
 proc addSonNilAllowed*(father, son: PNode) =
@@ -2147,7 +2153,7 @@ proc copyNode*(src: PNode): PNode =
   when defined(nimsuggest):
     result.endInfo = src.endInfo
 
-template transitionNodeKindCommon(k: TNodeKind) =
+template transitionNodeKindCommon(k: TNodeKind) {.dirty.} =
   let obj {.inject.} = n[]
   n[] = TNode(kind: k, typField: n.typ, info: obj.info, flags: obj.flags)
   # n.comment = obj.comment # shouldn't be needed, the address doesnt' change

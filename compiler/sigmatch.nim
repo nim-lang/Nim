@@ -897,7 +897,7 @@ proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
           param.typ = typ.exactReplica
           #copyType(typ, c.idgen, typ.owner)
           if typ.n == nil:
-            param.typ.flags.incl tfInferrableStatic
+            param.typ.incl tfInferrableStatic
           else:
             param.ast = typ.n
         of tyFromExpr:
@@ -1989,7 +1989,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         var concrete = a
         if tfWildcard in a.flags:
           a.sym.transitionGenericParamToType()
-          a.flags.excl tfWildcard
+          a.excl tfWildcard
         elif doBind:
           # careful: `trDontDont` (set by `checkGeneric`) is not always respected in this call graph.
           # typRel having two different modes (binding and non-binding) can make things harder to
@@ -2339,7 +2339,7 @@ proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
       result.add param
 
       if dest.kind in {tyVar, tyLent}:
-        dest.flags.incl tfVarIsPtr
+        dest.incl tfVarIsPtr
         result = newDeref(result)
 
       inc(m.convMatches)
@@ -2435,7 +2435,7 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
         if m.callee.kind == tyGenericBody:
           if f.kind == tyStatic and typeRel(m, f.base, a) != isNone:
             result = makeStaticExpr(m.c, arg)
-            result.typ.flags.incl tfUnresolved
+            result.typ.incl tfUnresolved
             result.typ.n = arg
             return
 
@@ -2995,7 +2995,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
             #assert(container == nil)
             if container.isNil:
               container = newNodeIT(nkBracket, n[a].info, arrayConstr(c, arg))
-              container.typ.flags.incl tfVarargs
+              container.typ.incl tfVarargs
             else:
               incrIndexType(container.typ)
             container.add arg

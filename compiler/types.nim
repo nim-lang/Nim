@@ -498,7 +498,7 @@ const preferToResolveSymbols = {preferName, preferTypeName, preferModuleInfo,
 
 template bindConcreteTypeToUserTypeClass*(tc, concrete: PType) =
   tc.add concrete
-  tc.flags.incl tfResolved
+  tc.incl tfResolved
 
 # TODO: It would be a good idea to kill the special state of a resolved
 # concept by switching to tyAlias within the instantiated procs.

@@ -150,7 +150,7 @@ template isIterator*(owner: PSym): bool =
 
 proc createEnvObj(g: ModuleGraph; idgen: IdGenerator; owner: PSym; info: TLineInfo): PType =
   result = createObj(g, idgen, owner, info, final=false)
-  result.flags.incl tfFinal
+  result.incl tfFinal
   if owner.isIterator:
     rawAddField(result, createStateField(g, owner, idgen))
 
@@ -290,7 +290,7 @@ proc markAsClosure(g: ModuleGraph; owner: PSym; n: PNode) =
   elif not (owner.typ.isClosure or owner.isNimcall and not owner.isExplicitCallConv or isEnv):
     localError(g.config, n.info, "illegal capture '$1' because '$2' has the calling convention: <$3>" %
       [s.name.s, owner.name.s, $owner.typ.callConv])
-  incl(owner.typ.flags, tfCapturesEnv)
+  incl(owner.typ, tfCapturesEnv)
   if not isEnv:
     owner.typ.callConv = ccClosure
 
@@ -336,7 +336,7 @@ proc asOwnedRef(c: var DetectionPass; t: PType): PType =
   if optOwnedRefs in c.graph.config.globalOptions:
     assert t.kind == tyRef
     result = newType(tyOwned, c.idgen, t.owner)
-    result.flags.incl tfHasOwned
+    result.incl tfHasOwned
     result.rawAddSon t
   else:
     result = t

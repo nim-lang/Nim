@@ -990,10 +990,10 @@ proc loadSym(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: int; s:
 proc typeHeaderFromPacked(c: var PackedDecoder; g: var PackedModuleGraph;
                           t: PackedType; si, item: int32): PType =
   result = PType(itemId: ItemId(module: si, item: t.nonUniqueId), kind: t.kind,
-                flags: t.flags, size: t.size, align: t.align,
-                paddingAtEnd: t.paddingAtEnd,
+                flagsImpl: t.flags, sizeImpl: t.size, alignImpl: t.align,
+                paddingAtEndImpl: t.paddingAtEnd,
                 uniqueId: ItemId(module: si, item: item),
-                callConv: t.callConv)
+                callConvImpl: t.callConv)
 
 proc typeBodyFromPacked(c: var PackedDecoder; g: var PackedModuleGraph;
                         t: PackedType; si, item: int32; result: PType) =

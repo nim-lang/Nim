@@ -1627,7 +1627,7 @@ proc setEffectsForProcType*(g: ModuleGraph; t: PType, n: PNode; s: PSym = nil) =
     effects[pragmasEffects] = n
   if s != nil and s.magic != mNone:
     if s.magic != mEcho:
-      t.flags.incl tfNoSideEffect
+      t.incl tfNoSideEffect
 
 proc rawInitEffects(g: ModuleGraph; effects: PNode) =
   newSeq(effects.sons, effectListLen)
@@ -1769,9 +1769,9 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
       else:
         localError(g.config, s.info, "") # simple error for `system.compiles` context
   if not t.gcUnsafe:
-    s.typ.flags.incl tfGcSafe
+    s.typ.incl tfGcSafe
   if not t.hasSideEffect and sfSideEffect notin s.flags:
-    s.typ.flags.incl tfNoSideEffect
+    s.typ.incl tfNoSideEffect
   when defined(drnim):
     if c.graph.strongSemCheck != nil: c.graph.strongSemCheck(c.graph, s, body)
   when defined(useDfa):

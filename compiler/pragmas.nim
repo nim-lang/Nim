@@ -757,7 +757,7 @@ proc typeBorrow(c: PContext; sym: PSym, n: PNode) =
     let it = n[1]
     if it.kind != nkAccQuoted:
       localError(c.config, n.info, "a type can only borrow `.` for now")
-  incl(sym.typ.flags, tfBorrowDot)
+  incl(sym.typ, tfBorrowDot)
 
 proc markCompilerProc(c: PContext; s: PSym) =
   # minor hack ahead: FlowVar is the only generic .compilerproc type which
@@ -1026,7 +1026,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         noVal(c, it)
         if sym != nil:
           incl(sym, sfNoSideEffect)
-          if sym.typ != nil: incl(sym.typ.flags, tfNoSideEffect)
+          if sym.typ != nil: incl(sym.typ, tfNoSideEffect)
       of wSideEffect:
         noVal(c, it)
         incl(sym, sfSideEffect)
@@ -1074,7 +1074,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wVarargs:
         noVal(c, it)
         if sym.typ == nil: invalidPragma(c, it)
-        else: incl(sym.typ.flags, tfVarargs)
+        else: incl(sym.typ, tfVarargs)
       of wBorrow:
         if sym.kind == skType:
           typeBorrow(c, sym, it)
@@ -1084,11 +1084,11 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wFinal:
         noVal(c, it)
         if sym.typ == nil: invalidPragma(c, it)
-        else: incl(sym.typ.flags, tfFinal)
+        else: incl(sym.typ, tfFinal)
       of wInheritable:
         noVal(c, it)
         if sym.typ == nil or tfFinal in sym.typ.flags: invalidPragma(c, it)
-        else: incl(sym.typ.flags, tfInheritable)
+        else: incl(sym.typ, tfInheritable)
       of wPackage:
         noVal(c, it)
         if sym.typ == nil: invalidPragma(c, it)
@@ -1096,35 +1096,35 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wAcyclic:
         noVal(c, it)
         if sym.typ == nil: invalidPragma(c, it)
-        else: incl(sym.typ.flags, tfAcyclic)
+        else: incl(sym.typ, tfAcyclic)
       of wShallow:
         noVal(c, it)
         if sym.typ == nil: invalidPragma(c, it)
-        else: incl(sym.typ.flags, tfShallow)
+        else: incl(sym.typ, tfShallow)
       of wThread:
         noVal(c, it)
         incl(sym, sfThread)
         if sym.typ != nil:
-          incl(sym.typ.flags, tfThread)
+          incl(sym.typ, tfThread)
           if sym.typ.callConv == ccClosure: sym.typ.callConv = ccNimCall
       of wSendable:
         noVal(c, it)
         if sym != nil and sym.typ != nil:
-          incl(sym.typ.flags, tfSendable)
+          incl(sym.typ, tfSendable)
         else:
           invalidPragma(c, it)
       of wGcSafe:
         noVal(c, it)
         if sym != nil:
           if sym.kind != skType: incl(sym, sfThread)
-          if sym.typ != nil: incl(sym.typ.flags, tfGcSafe)
+          if sym.typ != nil: incl(sym.typ, tfGcSafe)
           else: invalidPragma(c, it)
         else:
           discard "no checking if used as a code block"
       of wPacked:
         noVal(c, it)
         if sym.typ == nil: invalidPragma(c, it)
-        else: incl(sym.typ.flags, tfPacked)
+        else: incl(sym.typ, tfPacked)
       of wHint:
         let s = expectStrLit(c, it)
         recordPragma(c, it, "hint", s)
@@ -1208,7 +1208,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         if sym.typ == nil: invalidPragma(c, it)
         else:
           sym.typ.callConv = wordToCallConv(k)
-          sym.typ.flags.incl tfExplicitCallConv
+          sym.typ.incl tfExplicitCallConv
       of wEmit: pragmaEmit(c, it)
       of wUnroll: pragmaUnroll(c, it)
       of wLinearScanEnd, wComputedGoto: noVal(c, it)
@@ -1218,11 +1218,11 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wIncompleteStruct:
         noVal(c, it)
         if sym.typ == nil: invalidPragma(c, it)
-        else: incl(sym.typ.flags, tfIncompleteStruct)
+        else: incl(sym.typ, tfIncompleteStruct)
       of wCompleteStruct:
         noVal(c, it)
         if sym.typ == nil: invalidPragma(c, it)
-        else: incl(sym.typ.flags, tfCompleteStruct)
+        else: incl(sym.typ, tfCompleteStruct)
       of wUnchecked:
         noVal(c, it)
         if sym.typ == nil or sym.typ.kind notin {tyArray, tyUncheckedArray}:
@@ -1235,13 +1235,13 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         else:
           noVal(c, it)
           if sym.typ == nil: invalidPragma(c, it)
-          else: incl(sym.typ.flags, tfUnion)
+          else: incl(sym.typ, tfUnion)
       of wRequiresInit:
         noVal(c, it)
         if sym.kind == skField:
           sym.incl sfRequiresInit
         elif sym.typ != nil:
-          incl(sym.typ.flags, tfNeedsFullInit)
+          incl(sym.typ, tfNeedsFullInit)
         else:
           invalidPragma(c, it)
       of wByRef:
@@ -1252,18 +1252,18 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         elif sym == nil or sym.typ == nil:
           processOption(c, it, c.config.options)
         else:
-          incl(sym.typ.flags, tfByRef)
+          incl(sym.typ, tfByRef)
       of wByCopy:
         noVal(c, it)
         if sym.kind == skParam:
           incl(sym, sfByCopy)
         elif sym.kind != skType or sym.typ == nil: invalidPragma(c, it)
-        else: incl(sym.typ.flags, tfByCopy)
+        else: incl(sym.typ, tfByCopy)
       of wPartial:
         noVal(c, it)
         if sym.kind != skType or sym.typ == nil: invalidPragma(c, it)
         else:
-          incl(sym.typ.flags, tfPartial)
+          incl(sym.typ, tfPartial)
       of wInject, wGensym:
         # We check for errors, but do nothing with these pragmas otherwise
         # as they are handled directly in 'evalTemplate'.

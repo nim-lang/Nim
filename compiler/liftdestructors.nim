@@ -1168,7 +1168,7 @@ proc symPrototype(g: ModuleGraph; typ: PType; owner: PSym; kind: TTypeAttachedOp
   incl result.flagsImpl, sfGeneratedOp
   if kind == attachedWasMoved:
     incl result.flagsImpl, sfNoSideEffect
-    incl result.typ.flags, tfNoSideEffect
+    incl result.typ, tfNoSideEffect
 
 proc genTypeFieldCopy(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   let xx = genBuiltin(c, mAccessTypeField, "accessTypeField", x)
@@ -1303,11 +1303,11 @@ proc createTypeBoundOps(g: ModuleGraph; c: PContext; orig: PType; info: TLineInf
   ## to ensure we lift assignment, destructors and moves properly.
   ## The later 'injectdestructors' pass depends on it.
   if orig == nil or {tfCheckedForDestructor, tfHasMeta} * orig.flags != {}: return
-  incl orig.flags, tfCheckedForDestructor
+  incl orig, tfCheckedForDestructor
   # for user defined generic destructors:
   let origRoot = genericRoot(orig)
   if origRoot != nil:
-    incl origRoot.flags, tfGenericHasDestructor
+    incl origRoot, tfGenericHasDestructor
 
   let skipped = orig.skipTypes({tyGenericInst, tyAlias, tySink})
   if isEmptyContainer(skipped) or skipped.kind == tyStatic: return
@@ -1352,5 +1352,5 @@ proc createTypeBoundOps(g: ModuleGraph; c: PContext; orig: PType; info: TLineInf
   if not isTrivial(getAttachedOp(g, orig, attachedDestructor)):
     #or not isTrivial(orig.assignment) or
     # not isTrivial(orig.sink):
-    orig.flags.incl tfHasAsgn
+    orig.incl tfHasAsgn
     # ^ XXX Breaks IC!
