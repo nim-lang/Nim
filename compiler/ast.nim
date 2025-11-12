@@ -859,23 +859,23 @@ proc ensureMutable*(t: PType) {.inline.} =
   assert t.state != Sealed
   if t.state == Partial: loadType(t)
 
-proc owner*(s: PSym|PType): PSym {.inline.} =
-  when s is PSym:
-    if s.state == Partial: loadSym(s)
-    result = s.ownerFieldImpl
-  else:
-    if s.state == Partial: loadType(s)
-    result = s.ownerFieldImpl
+proc owner*(s: PSym): PSym {.inline.} =
+  if s.state == Partial: loadSym(s)
+  result = s.ownerFieldImpl
 
-proc setOwner*(s: PSym|PType, owner: PSym) {.inline.} =
-  when s is PSym:
-    assert s.state != Sealed
-    if s.state == Partial: loadSym(s)
-    s.ownerFieldImpl = owner
-  else:
-    assert s.state != Sealed
-    if s.state == Partial: loadType(s)
-    s.ownerFieldImpl = owner
+proc owner*(s: PType): PSym {.inline.} =
+  if s.state == Partial: loadType(s)
+  result = s.ownerFieldImpl
+
+proc setOwner*(s: PSym; owner: PSym) {.inline.} =
+  assert s.state != Sealed
+  if s.state == Partial: loadSym(s)
+  s.ownerFieldImpl = owner
+
+proc setOwner*(s: PType; owner: PSym) {.inline.} =
+  assert s.state != Sealed
+  if s.state == Partial: loadType(s)
+  s.ownerFieldImpl = owner
 
 # Accessor procs for TSym fields
 # Note: kind is kept as a direct field for case statement compatibility
@@ -2356,7 +2356,7 @@ proc skipGenericOwner*(s: PSym): PSym =
   ## symbol. This proc skips such owners and goes straight to the owner
   ## of the generic itself (the module or the enclosing proc).
   result = if s.kind == skModule:
-            s
+             s
            elif s.kind in skProcKinds and sfFromGeneric in s.flags and s.owner.kind != skModule:
              s.owner.owner
            else:
@@ -2600,3 +2600,57 @@ type
 
 template initSymMapping*(): SymMapping = initIdTable[PSym]()
 template initTypeMapping*(): TypeMapping = initIdTable[PType]()
+
+proc forcePartial*(s: PSym) =
+  ## Resets all impl-fields to their default values and sets state to Partial.
+  ## This is useful for creating a stub symbol that can be lazily loaded later.
+  ## The fields itemId, name, and disamb are preserved.
+  s.state = Partial
+  case s.kindImpl
+  of routineKinds:
+    s.gcUnsafetyReasonImpl = nil
+    s.transformedBodyImpl = nil
+  of skLet, skVar, skField, skForVar:
+    s.guardImpl = nil
+    s.bitsizeImpl = 0
+    s.alignmentImpl = 0 # for alignment
+  else: discard
+  s.magicImpl = mNone
+  s.typImpl = nil
+  s.infoImpl = unknownLineInfo
+  when defined(nimsuggest):
+    s.endInfoImpl = unknownLineInfo
+    s.hasUserSpecifiedTypeImpl = nil
+  s.ownerFieldImpl = nil
+  s.flagsImpl = {}
+  s.astImpl = nil
+  s.optionsImpl = {}
+  s.positionImpl = 0
+  s.offsetImpl = 0
+  s.locImpl = TLoc()
+  s.annexImpl = nil
+  s.constraintImpl = nil
+  s.instantiatedFromImpl = nil
+  when defined(nimsuggest):
+    s.endInfoImpl = unknownLineInfo
+    s.hasUserSpecifiedTypeImpl = false
+    s.allUsagesImpl = @[]
+  when hasFFI:
+    s.cnameImpl = ""
+
+proc forcePartial*(t: PType) =
+  ## Resets all impl-fields to their default values and sets state to Partial.
+  ## This is useful for creating a stub type that can be lazily loaded later.
+  ## The fields itemId, kind, uniqueId are preserved.
+  t.state = Partial
+  t.callConvImpl = ccNimCall
+  t.flagsImpl = {}
+  t.sonsImpl = @[]
+  t.nImpl = nil
+  t.ownerFieldImpl = nil
+  t.symImpl = nil
+  t.sizeImpl = defaultSize
+  t.alignImpl = defaultAlignment
+  t.paddingAtEndImpl = 0'i16
+  t.locImpl = TLoc()
+  t.typeInstImpl = nil
