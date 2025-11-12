@@ -586,6 +586,7 @@ proc newModuleGraph*(cache: IdentCache; config: ConfigRef): ModuleGraph =
   result.config = config
   result.cache = cache
   initModuleGraphFields(result)
+  ast.setupProgram(config, cache)
 
 proc resetAllModules*(g: ModuleGraph) =
   g.packageSyms = initStrTable()

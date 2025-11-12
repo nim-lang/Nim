@@ -26,7 +26,8 @@ export nodekinds
 import astdef
 export astdef
 
-import ast2nif
+when not defined(nimKochBootstrap):
+  import ast2nif
 
 template typ*(n: PNode): PType =
   n.typField
@@ -36,13 +37,15 @@ var program {.threadvar.}: DecodeContext
 proc setupProgram*(config: ConfigRef; cache: IdentCache) =
   program = createDecodeContext(config, cache)
 
-proc loadSym*(s: PSym) {.inline.} =
+template loadSym(s: PSym) =
   ## Loads a symbol from NIF file if it's in Partial state.
-  ast2nif.loadSym(program, s)
+  when not defined(nimKochBootstrap):
+    ast2nif.loadSym(program, s)
 
-proc loadType*(t: PType) {.inline.} =
+template loadType(t: PType) =
   ## Loads a type from NIF file if it's in Partial state.
-  ast2nif.loadType(program, t)
+  when not defined(nimKochBootstrap):
+    ast2nif.loadType(program, t)
 
 proc ensureMutable*(s: PSym) {.inline.} =
   assert s.state != Sealed
