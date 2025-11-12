@@ -5,7 +5,7 @@
 # When debugging, to run a single test, use for e.g.:
 # `nim r nimsuggest/tester.nim nimsuggest/tests/tsug_accquote.nim`
 
-import os, osproc, strutils, streams, re, sexp, net
+import os, osproc, strutils, streams, sexp, net
 from sequtils import toSeq
 
 type
@@ -148,8 +148,11 @@ proc runCmd(cmd, dest: string): bool =
     quit "unknown command: " & cmd
 
 proc smartCompare(pattern, x: string): bool =
-  if pattern.contains('*'):
-    result = match(x, re(escapeRe(pattern).replace("\\x2A","(.*)"), {}))
+  let starAt = pattern.find('*')
+  if starAt >= 0:
+    result = x.startsWith(pattern.substr(0, starAt)) and x.endsWith(pattern.substr(starAt+1))
+  else:
+    result = x == pattern
 
 proc sendEpcStr(socket: Socket; cmd: string) =
   let s = cmd.find(' ')
