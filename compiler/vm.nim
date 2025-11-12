@@ -480,9 +480,9 @@ proc opConv(c: PCtx; dest: var TFullReg, src: TFullReg, desttyp, srctyp: PType):
     else:
       asgnComplex(dest, src)
 
-proc compile(c: PCtx, s: PSym): int =
+proc compile(c: PCtx, s: PSym): VmProcInfo =
   result = vmgen.genProc(c, s)
-  when debugEchoCode: c.echoCode result
+  when debugEchoCode: c.echoCode result.pc
   #c.echoCode
 
 template handleJmpBack() {.dirty.} =
@@ -1435,13 +1435,13 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         else:
           globalError(c.config, c.debug[pc], "VM not built with FFI support")
       elif prc.kind != skTemplate:
-        let newPc = compile(c, prc)
+        let procInfo = compile(c, prc)
         # tricky: a recursion is also a jump back, so we use the same
         # logic as for loops:
-        if newPc < pc: handleJmpBack()
+        if procInfo.pc < pc: handleJmpBack()
         #echo "new pc ", newPc, " calling: ", prc.name.s
         var newFrame = PStackFrame(prc: prc, comesFrom: pc, next: tos)
-        newSeq(newFrame.slots, prc.offset+ord(isClosure))
+        newSeq(newFrame.slots, procInfo.usedRegisters+ord(isClosure))
         # setup slot for proc result:
         let ret {.cursor.} = prc.typ.returnType
         # hot spot ahead!
@@ -1467,7 +1467,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         tos = newFrame
         updateRegsAlias
         # -1 for the following 'inc pc'
-        pc = newPc-1
+        pc = procInfo.pc-1
       else:
         # for 'getAst' support we need to support template expansion here:
         let genSymOwner = if tos.next != nil and tos.next.prc != nil:
@@ -2351,8 +2351,7 @@ proc execProc*(c: PCtx; sym: PSym; args: openArray[PNode]): PNode =
       let start = genProc(c, sym)
 
       var tos = PStackFrame(prc: sym, comesFrom: 0, next: nil)
-      let maxSlots = sym.offset
-      newSeq(tos.slots, maxSlots)
+      newSeq(tos.slots, start.usedRegisters)
 
       # setup parameters:
       if not isEmptyType(sym.typ.returnType) or sym.kind == skMacro:
@@ -2361,7 +2360,7 @@ proc execProc*(c: PCtx; sym: PSym; args: openArray[PNode]): PNode =
       for i in 0..<sym.typ.paramsLen:
         putIntoReg(tos.slots[i+1], args[i])
 
-      result = rawExecute(c, start, tos).regToNode
+      result = rawExecute(c, start.pc, tos).regToNode
   else:
     result = nil
     localError(c.config, sym.info,
@@ -2578,7 +2577,7 @@ proc evalMacroCall*(module: PSym; idgen: IdGenerator; g: ModuleGraph; templInstC
                  " generic parameter(s)")
   # temporary storage:
   #for i in L..<maxSlots: tos.slots[i] = newNode(nkEmpty)
-  result = rawExecute(c, start, tos).regToNode
+  result = rawExecute(c, start.pc, tos).regToNode
   if result.info.line < 0: result.info = n.info
   if cyclicTree(result): globalError(c.config, n.info, "macro produced a cyclic tree")
   dec(g.config.evalMacroCounter)
