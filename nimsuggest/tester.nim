@@ -150,7 +150,7 @@ proc runCmd(cmd, dest: string): bool =
 proc smartCompare(pattern, x: string): bool =
   let p = splitLines(pattern)
   let x = splitLines(x)
-  if p.len != x.len: return false
+  if p.len > x.len: return false
   for i in 0..p.len-1:
     let starAt = p[i].find('*')
     if starAt >= 0:
