@@ -1,5 +1,5 @@
 import options, pathutils, condsyms
-import std/[assertions, os, sets, times]
+import std/[assertions, os, sets, strtabs, times]
 from std/sequtils import addUnique
 from std/strutils import parseEnum
 import "../dist/nimony/src/lib" / [bitabs, lineinfos, nifreader, nifstreams, nifcursors]
@@ -104,6 +104,9 @@ proc sourcesChanged(conf: ConfigRef; n: var Cursor; modTime: Time): HashSet[stri
     inc n
 
 proc loadConfigsFromNif(conf: ConfigRef; n: var Cursor) =
+  # clear fields so that it has the same value as it was stored to the cache.
+  # some switches turn off options that were turned on when conf was initialized.
+  conf.options = {}
   assert pool.tags[n.tagId] == "options"
   inc n
   while n.kind != ParRi:
@@ -114,6 +117,7 @@ proc loadConfigsFromNif(conf: ConfigRef; n: var Cursor) =
   inc n
   #echo conf.options
 
+  conf.globalOptions = {}
   assert pool.tags[n.tagId] == "globalOptions"
   inc n
   while n.kind != ParRi:
@@ -143,6 +147,7 @@ proc loadConfigsFromNif(conf: ConfigRef; n: var Cursor) =
   inc n
   #echo conf.nimbasePattern
 
+  conf.symbols.clear
   assert pool.tags[n.tagId] == "defines"
   inc n
   while n.kind != ParRi:
@@ -152,6 +157,7 @@ proc loadConfigsFromNif(conf: ConfigRef; n: var Cursor) =
     conf.symbols.defineSymbol(def)
   inc n
 
+  conf.nimblePaths.setLen(0)
   assert pool.tags[n.tagId] == "nimblepaths"
   inc n
   while n.kind != ParRi:
@@ -163,6 +169,7 @@ proc loadConfigsFromNif(conf: ConfigRef; n: var Cursor) =
   #echo "conf.nimblePaths"
   #echo conf.nimblePaths
 
+  conf.searchPaths.setLen(0)
   assert pool.tags[n.tagId] == "paths"
   inc n
   while n.kind != ParRi:
@@ -213,3 +220,70 @@ proc storeConfigs*(conf: ConfigRef) =
     dest.buildTree pool.tags.getOrIncl("config"), NoLineInfo:
       configToNif(conf, dest)
     writeFile dir / file, "(.nif24)\n" & toString(dest)
+
+when isMainModule:
+  proc `==`(x, y: StringTableRef): bool =
+    for k, v in x:
+      if k notin y:
+        return false
+
+    return true
+
+  proc assertEq(x, y: ConfigRef) =
+    template assertImpl(f: untyped) =
+      assert x.f == y.f, $x.f & " / " & $y.f
+
+    assertImpl options
+    assertImpl globalOptions
+    assertImpl selectedGC
+    assertImpl exc
+    assertImpl verbosity
+    assertImpl numberOfProcessors
+    assertImpl spellSuggestMax
+    assertImpl nimbasePattern
+    assertImpl symbols
+    assertImpl nimblePaths
+    assertImpl searchPaths
+
+  proc testConfig(conf1: ConfigRef) =
+    var dest = createTokenBuf()
+    dest.buildTree pool.tags.getOrIncl("config"), NoLineInfo:
+      configToNif(conf1, dest)
+    let cacheContent = "(.nif24)\n" & toString(dest)
+    # writeFile "cachecfg.nif", cacheContent
+
+    var stream = nifstreams.openFromBuffer(cacheContent)
+    discard processDirectives(stream.r)
+    var buf = fromStream(stream)
+    var n = beginRead(buf)
+    inc n # skip config
+    inc n # skip cmdline
+    inc n # skip sources
+    while n.kind != ParRi:
+      inc n
+    inc n
+    var conf2 = newConfigRef()
+    loadConfigsFromNif(conf2, n)
+    endRead(buf)
+
+    assertEq(conf1, conf2)
+
+  block:
+    var conf = newConfigRef()
+    testConfig conf
+
+  block:
+    var conf = newConfigRef()
+    conf.options = {optObjCheck, optFieldCheck}
+    conf.globalOptions = {gloptNone, optRun}
+    conf.selectedGC = gcArc
+    conf.exc = excSetjmp
+    conf.verbosity = 3
+    conf.numberOfProcessors = 123
+    conf.spellSuggestMax = 456
+    conf.nimbasePattern = "foo/nimbase.h"
+    conf.symbols.initDefines()
+    conf.symbols.defineSymbol("test")
+    conf.nimblePaths = @[AbsoluteDir"/foo", AbsoluteDir"/lib/nimble"]
+    conf.searchPaths = @[AbsoluteDir"/lib", AbsoluteDir"/user/lib"]
+    testConfig conf
