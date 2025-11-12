@@ -148,11 +148,20 @@ proc runCmd(cmd, dest: string): bool =
     quit "unknown command: " & cmd
 
 proc smartCompare(pattern, x: string): bool =
-  let starAt = pattern.find('*')
-  if starAt >= 0:
-    result = x.startsWith(pattern.substr(0, starAt-1)) and x.endsWith(pattern.substr(starAt+1))
-  else:
-    result = x == pattern
+  let p = splitLines(pattern)
+  let x = splitLines(x)
+  if p.len != x.len: return false
+  for i in 0..p.len-1:
+    let starAt = p[i].find('*')
+    if starAt >= 0:
+      if x[i].startsWith(p[i].substr(0, starAt-1)) and x[i].endsWith(p[i].substr(starAt+1)):
+        discard
+      else:
+        return false
+    else:
+      if x[i] != p[i]:
+        return false
+  return true
 
 proc sendEpcStr(socket: Socket; cmd: string) =
   let s = cmd.find(' ')
