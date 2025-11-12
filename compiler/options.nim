@@ -251,6 +251,8 @@ type
       ## Useful for libraries that rely on local passC
     jsNoLambdaLifting
       ## Old transformation for closures in JS backend
+    noAsmSemSymbol
+      ## disable type checking for backticked symbols in the `asm/emit` statements
     noPanicOnExcept
       ## don't panic on bare except
 

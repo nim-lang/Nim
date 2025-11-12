@@ -17,7 +17,7 @@ rounding guarantees (via the
 - Unknown warnings and hints now gives warnings `warnUnknownNotes` instead of
 errors.
 
-- With `-d:nimPreviewAsmSemSymbol`, backticked symbols are type checked in the `asm/emit` statements.
+- backticked symbols are type checked in the `asm/emit` statements. Use `--legacy:noAsmSemSymbol` for a transitional period.
 
 - The bare `except:` now panics on `Defect`. Use `except Exception:` or `except Defect:` to catch `Defect`. `--legacy:noPanicOnExcept` is provided for a transition period.
 
