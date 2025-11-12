@@ -107,11 +107,15 @@ will tell us the precise offsets anyway.
 
 ]#
 
+const
+  hiddenTypeTagName = "ht"
+  symDefTagName = "sd"
+  typeDefTagName = "td"
+
 let
-  sdefTag = registerTag("sd")
-  tdefTag = registerTag("td")
-  tuseTag = registerTag("t")
-  hiddenTypeTag = registerTag("ht")
+  sdefTag = registerTag(symDefTagName)
+  tdefTag = registerTag(typeDefTagName)
+  hiddenTypeTag = registerTag(hiddenTypeTagName)
 
 type
   Writer = object
@@ -235,8 +239,7 @@ proc writeType(w: var Writer; dest: var TokenBuf; typ: PType) =
     typ.state = Sealed
     writeTypeDef(w, dest, typ)
   else:
-    dest.buildTree tuseTag:
-      dest.addSymUse pool.syms.getOrIncl(w.typeToNifSym(typ)), NoLineInfo
+    dest.addSymUse pool.syms.getOrIncl(w.typeToNifSym(typ)), NoLineInfo
 
 proc writeBool(dest: var TokenBuf; b: bool) =
   dest.buildTree (if b: "true" else: "false"):
@@ -360,11 +363,10 @@ proc writeNode(w: var Writer; dest: var TokenBuf; n: PNode) =
   if n == nil:
     dest.addDotToken
   else:
-    case n.kind:
-    of nkEmpty:
+    case n.kind
+    of nkEmpty, nkNone:
       let info = trLineInfo(w, n.info)
-      dest.addParLe pool.tags.getOrIncl(toNifTag(nkEmpty)), info
-      writeNodeFlags(dest, n.flags)
+      dest.addParLe pool.tags.getOrIncl(toNifTag(n.kind)), info
       dest.addParRi
     of nkIdent:
       # nkIdent uses flags and typ when it is a generic parameter
@@ -801,6 +803,24 @@ proc loadNode(c: var DecodeContext; n: var Cursor): PNode =
   of ParLe:
     let kind = n.nodeKind
     case kind:
+    of nkNone:
+      # special NIF introduced tag?
+      case pool.tags[n.tagId]
+      of hiddenTypeTagName:
+        discard
+      of symDefTagName:
+        let name = n.firstSon
+        assert name.kind == SymbolDef
+        result = newSymNode(c.loadSymStub name.symId, c.infos.oldLineInfo(n.info))
+        skip n
+      of typeDefTagName:
+        raiseAssert "`td` tag in invalid context"
+      of "none":
+        result = newNodeI(nkNone, c.infos.oldLineInfo(n.info))
+        result.flags = loadAtom(TNodeFlags, n)
+        skipParRi n
+      else:
+        raiseAssert "Unknown NIF tag " & pool.tags[n.tagId]
     of nkEmpty:
       result = newNodeI(nkEmpty, c.infos.oldLineInfo(n.info))
       result.flags = loadAtom(TNodeFlags, n)
@@ -860,8 +880,6 @@ proc loadNode(c: var DecodeContext; n: var Cursor): PNode =
     of nkNilLit:
       c.withNode n, result, kind:
         discard
-    of nkNone:
-      raiseAssert "Unknown tag " & pool.tags[n.tagId]
     else:
       c.withNode n, result, kind:
         while n.kind != ParRi:
