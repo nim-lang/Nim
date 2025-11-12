@@ -28,12 +28,12 @@ jobs:
 #         # g++-multilib : Depends: gcc-multilib (>= 4:5.3.1-1ubuntu1) but it is not going to be installed
 #         vmImage: 'ubuntu-18.04'
 #         CPU: i386
-      OSX_amd64:
+      OSX_arm64:
         vmImage: 'macos-15'
-        CPU: amd64
-      OSX_amd64_cpp:
+        CPU: arm64
+      OSX_arm64_cpp:
         vmImage: 'macos-15'
-        CPU: amd64
+        CPU: arm64
         NIM_COMPILE_TO_CPP: true
       Windows_amd64_batch0_3:
         vmImage: 'windows-2025'
