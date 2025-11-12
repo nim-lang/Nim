@@ -2549,8 +2549,7 @@ proc evalMacroCall*(module: PSym; idgen: IdGenerator; g: ModuleGraph; templInstC
     return errorNode(idgen, module, n)
 
   var tos = PStackFrame(prc: sym, comesFrom: 0, next: nil)
-  let maxSlots = sym.offset
-  newSeq(tos.slots, maxSlots)
+  newSeq(tos.slots, start.usedRegisters)
   # setup arguments:
   var L = n.safeLen
   if L == 0: L = 1
