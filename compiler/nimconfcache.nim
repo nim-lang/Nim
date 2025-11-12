@@ -9,10 +9,27 @@ proc toNifPath(p: AbsoluteDir|AbsoluteFile): string =
   if p.string.len <= result.len:
     result = p.string
 
+proc fromNif[T: enum](result: var T; n: var Cursor) =
+  result = parseEnum[T](pool.strings[n.litId])
+  inc n
+
+proc fromNif[T: enum](result: var set[T]; n: var Cursor) =
+  # clear it so that it has the same value as it was stored to the cache.
+  # some switches turn off options that were turned on when conf was initialized.
+  result = {}
+  assert n.kind == StringLit
+  while n.kind != ParRi:
+    result.incl parseEnum[T](pool.strings[n.litId])
+    inc n
+  inc n
+
+template buildTree(dest: var TokenBuf; tag: string; body: untyped): untyped =
+  buildTree(dest, pool.tags.getOrIncl(tag), NoLineInfo, body)
+
 proc configToNif(conf: ConfigRef; dest: var TokenBuf) =
   # store data used to decide whether to use cache or eval config files
   dest.addStrLit conf.commandLine
-  dest.buildTree pool.tags.getOrIncl("sources"), NoLineInfo:
+  dest.buildTree "sources":
     for f in conf.m.fileInfos:
       dest.addStrLit f.fullPath.toNifPath
 
@@ -20,21 +37,21 @@ proc configToNif(conf: ConfigRef; dest: var TokenBuf) =
   # see processSwitch proc in commands.nim
   #echo "conf.options"
   #echo conf.options
-  dest.buildTree pool.tags.getOrIncl("options"), NoLineInfo:
+  dest.buildTree "options":
     for opt in conf.options:
       dest.addStrLit $opt
 
   #echo "conf.globalOptions"
   #echo conf.globalOptions
-  dest.buildTree pool.tags.getOrIncl("globalOptions"), NoLineInfo:
+  dest.buildTree "globalOptions":
     for opt in conf.globalOptions:
       dest.addStrLit $opt
 
-  dest.buildTree pool.tags.getOrIncl("macrosToExpand"), NoLineInfo:
+  dest.buildTree "macrosToExpand":
     for m in conf.macrosToExpand.keys:
       dest.addStrLit m
 
-  dest.buildTree pool.tags.getOrIncl("arcToExpand"), NoLineInfo:
+  dest.buildTree "arcToExpand":
     for a in conf.arcToExpand.keys:
       dest.addStrLit a
 
@@ -67,13 +84,13 @@ proc configToNif(conf: ConfigRef; dest: var TokenBuf) =
   #echo conf.nimbasePattern
   dest.addStrLit conf.nimbasePattern
 
-  dest.buildTree pool.tags.getOrIncl("defines"), NoLineInfo:
+  dest.buildTree "defines":
     for def in definedSymbolNames(conf.symbols):
       dest.addStrLit def
 
   #echo "conf.nimblePaths"
   #echo conf.nimblePaths
-  dest.buildTree pool.tags.getOrIncl("nimblepaths"), NoLineInfo:
+  dest.buildTree "nimblepaths":
     for p in conf.nimblePaths:
       dest.addStrLit p.toNifPath
 
@@ -82,7 +99,7 @@ proc configToNif(conf: ConfigRef; dest: var TokenBuf) =
   var paths: seq[string] = @[]
   for p in conf.searchPaths:
     paths.addUnique p.toNifPath
-  dest.buildTree pool.tags.getOrIncl("paths"), NoLineInfo:
+  dest.buildTree "paths":
     for p in paths:
       dest.addStrLit p
 
@@ -117,28 +134,14 @@ proc sourcesChanged(conf: ConfigRef; n: var Cursor; modTime: Time): HashSet[stri
     inc n
 
 proc loadConfigsFromNif(conf: ConfigRef; n: var Cursor) =
-  # clear fields so that it has the same value as it was stored to the cache.
-  # some switches turn off options that were turned on when conf was initialized.
-  conf.options = {}
   assert pool.tags[n.tagId] == "options"
   inc n
-  while n.kind != ParRi:
-    assert n.kind == StringLit
-    let opt = pool.strings[n.litId]
-    inc n
-    conf.options.incl parseEnum[TOption](opt)
-  inc n
+  fromNif(conf.options, n)
   #echo conf.options
 
-  conf.globalOptions = {}
   assert pool.tags[n.tagId] == "globalOptions"
   inc n
-  while n.kind != ParRi:
-    assert n.kind == StringLit
-    let opt = pool.strings[n.litId]
-    inc n
-    conf.globalOptions.incl parseEnum[TGlobalOption](opt)
-  inc n
+  fromNif(conf.globalOptions, n)
   #echo conf.globalOptions
 
   conf.macrosToExpand.clear
@@ -161,16 +164,13 @@ proc loadConfigsFromNif(conf: ConfigRef; n: var Cursor) =
     conf.arcToExpand[m] = "T"
   inc n
 
-  conf.filenameOption = parseEnum[FilenameOption](pool.strings[n.litId])
-  inc n
+  fromNif(conf.filenameOption, n)
   conf.unitSep = pool.strings[n.litId]
   inc n
 
-  conf.selectedGC = parseEnum[TGCMode](pool.strings[n.litId])
-  inc n
+  fromNif(conf.selectedGC, n)
   #echo conf.selectedGC
-  conf.exc = parseEnum[ExceptionSystem](pool.strings[n.litId])
-  inc n
+  fromNif(conf.exc, n)
   #echo conf.exc
   conf.hintProcessingDots = pool.integers[n.intId].bool
   inc n
