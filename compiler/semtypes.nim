@@ -1777,7 +1777,10 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
       if not trySemObjectTypeForInheritedGenericInst(c, n, tx):
         return newOrPrevType(tyError, prev, c)
     var position = 0
-    recomputeFieldPositions(tx, tx.n, position)
+    # it can be that we cached this generic instance. In this case, we don't have to
+    # recompute the field positions:
+    if tx.state != Sealed:
+      recomputeFieldPositions(tx, tx.n, position)
 
 proc maybeAliasType(c: PContext; typeExpr, prev: PType): PType =
   if prev != nil and (prev.kind == tyGenericBody or

@@ -795,7 +795,8 @@ proc transformFor(c: PTransf, n: PNode): PNode =
         addVar(v, copyTree(n[i][j])) # declare new vars
     else:
       if n[i].kind == nkSym and isSimpleIteratorVar(c, iter, call, n[i].sym.owner):
-        incl n[i].sym, sfCursor
+        # IC: review this solution again later
+        incl n[i].sym.flagsImpl, sfCursor
       addVar(v, copyTree(n[i])) # declare new vars
   stmtList.add(v)
 

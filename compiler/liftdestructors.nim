@@ -1303,11 +1303,13 @@ proc createTypeBoundOps(g: ModuleGraph; c: PContext; orig: PType; info: TLineInf
   ## to ensure we lift assignment, destructors and moves properly.
   ## The later 'injectdestructors' pass depends on it.
   if orig == nil or {tfCheckedForDestructor, tfHasMeta} * orig.flags != {}: return
-  incl orig, tfCheckedForDestructor
+  # IC: review this solution again later
+  incl orig.flagsImpl, tfCheckedForDestructor
   # for user defined generic destructors:
   let origRoot = genericRoot(orig)
   if origRoot != nil:
-    incl origRoot, tfGenericHasDestructor
+    # IC: review this solution again later
+    incl origRoot.flagsImpl, tfGenericHasDestructor
 
   let skipped = orig.skipTypes({tyGenericInst, tyAlias, tySink})
   if isEmptyContainer(skipped) or skipped.kind == tyStatic: return
@@ -1333,7 +1335,7 @@ proc createTypeBoundOps(g: ModuleGraph; c: PContext; orig: PType; info: TLineInf
   # bug #15122: We need to produce all prototypes before entering the
   # mind boggling recursion. Hacks like these imply we should rewrite
   # this module.
-  var generics: array[attachedWasMoved..attachedTrace, bool] = default(array[attachedWasMoved..attachedTrace, bool])
+  var generics = default(array[attachedWasMoved..attachedTrace, bool])
   for k in attachedWasMoved..lastAttached:
     generics[k] = getAttachedOp(g, canon, k) != nil
     if not generics[k]:
@@ -1352,5 +1354,6 @@ proc createTypeBoundOps(g: ModuleGraph; c: PContext; orig: PType; info: TLineInf
   if not isTrivial(getAttachedOp(g, orig, attachedDestructor)):
     #or not isTrivial(orig.assignment) or
     # not isTrivial(orig.sink):
-    orig.incl tfHasAsgn
+    # IC: review this solution again later
+    orig.flagsImpl.incl tfHasAsgn
     # ^ XXX Breaks IC!
