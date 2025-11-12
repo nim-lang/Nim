@@ -1097,11 +1097,11 @@ proc excl*(s: PSym; flag: TSymFlag) {.inline.} =
   s.flagsImpl.excl(flag)
 
 when defined(nimsuggest):
-  proc allUsages*(s: PSym): seq[TLineInfo] {.inline.} =
+  proc allUsages*(s: PSym): var seq[TLineInfo] {.inline.} =
     if s.state == Partial: loadSym(s)
     result = s.allUsagesImpl
 
-  proc `allUsages=`*(s: PSym, val: seq[TLineInfo]) {.inline.} =
+  proc `allUsages=`*(s: PSym, val: sink seq[TLineInfo]) {.inline.} =
     assert s.state != Sealed
     if s.state == Partial: loadSym(s)
     s.allUsagesImpl = val
@@ -1125,11 +1125,11 @@ proc `flags=`*(t: PType, val: TTypeFlags) {.inline.} =
   if t.state == Partial: loadType(t)
   t.flagsImpl = val
 
-proc sons*(t: PType): TTypeSeq {.inline.} =
+proc sons*(t: PType): var TTypeSeq {.inline.} =
   if t.state == Partial: loadType(t)
   result = t.sonsImpl
 
-proc `sons=`*(t: PType, val: TTypeSeq) {.inline.} =
+proc `sons=`*(t: PType, val: sink TTypeSeq) {.inline.} =
   assert t.state != Sealed
   if t.state == Partial: loadType(t)
   t.sonsImpl = val
