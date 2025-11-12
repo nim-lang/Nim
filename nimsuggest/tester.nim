@@ -150,7 +150,7 @@ proc runCmd(cmd, dest: string): bool =
 proc smartCompare(pattern, x: string): bool =
   let starAt = pattern.find('*')
   if starAt >= 0:
-    result = x.startsWith(pattern.substr(0, starAt)) and x.endsWith(pattern.substr(starAt+1))
+    result = x.startsWith(pattern.substr(0, starAt-1)) and x.endsWith(pattern.substr(starAt+1))
   else:
     result = x == pattern
 
