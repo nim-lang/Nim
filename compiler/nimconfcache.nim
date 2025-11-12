@@ -30,6 +30,17 @@ proc configToNif(conf: ConfigRef; dest: var TokenBuf) =
     for opt in conf.globalOptions:
       dest.addStrLit $opt
 
+  dest.buildTree pool.tags.getOrIncl("macrosToExpand"), NoLineInfo:
+    for m in conf.macrosToExpand.keys:
+      dest.addStrLit m
+
+  dest.buildTree pool.tags.getOrIncl("arcToExpand"), NoLineInfo:
+    for a in conf.arcToExpand.keys:
+      dest.addStrLit a
+
+  dest.addStrLit $conf.filenameOption
+  dest.addStrLit conf.unitSep
+
   #echo "conf.selectedGC"
   #echo conf.selectedGC
   dest.addStrLit $conf.selectedGC
@@ -37,6 +48,8 @@ proc configToNif(conf: ConfigRef; dest: var TokenBuf) =
   #echo "conf.exc"
   #echo conf.exc
   dest.addStrLit $conf.exc
+
+  dest.addIntLit conf.hintProcessingDots.int
 
   #echo "conf.verbosity"
   #echo conf.verbosity
@@ -128,12 +141,39 @@ proc loadConfigsFromNif(conf: ConfigRef; n: var Cursor) =
   inc n
   #echo conf.globalOptions
 
+  conf.macrosToExpand.clear
+  assert pool.tags[n.tagId] == "macrosToExpand"
+  inc n
+  while n.kind != ParRi:
+    assert n.kind == StringLit
+    let m = pool.strings[n.litId]
+    inc n
+    conf.macrosToExpand[m] = "T"
+  inc n
+
+  conf.arcToExpand.clear
+  assert pool.tags[n.tagId] == "arcToExpand"
+  inc n
+  while n.kind != ParRi:
+    assert n.kind == StringLit
+    let m = pool.strings[n.litId]
+    inc n
+    conf.arcToExpand[m] = "T"
+  inc n
+
+  conf.filenameOption = parseEnum[FilenameOption](pool.strings[n.litId])
+  inc n
+  conf.unitSep = pool.strings[n.litId]
+  inc n
+
   conf.selectedGC = parseEnum[TGCMode](pool.strings[n.litId])
   inc n
   #echo conf.selectedGC
   conf.exc = parseEnum[ExceptionSystem](pool.strings[n.litId])
   inc n
   #echo conf.exc
+  conf.hintProcessingDots = pool.integers[n.intId].bool
+  inc n
   conf.verbosity = pool.integers[n.intId]
   inc n
   #echo conf.verbosity
@@ -235,8 +275,13 @@ when isMainModule:
 
     assertImpl options
     assertImpl globalOptions
+    assertImpl macrosToExpand
+    assertImpl arcToExpand
+    assertImpl filenameOption
+    assertImpl unitSep
     assertImpl selectedGC
     assertImpl exc
+    assertImpl hintProcessingDots
     assertImpl verbosity
     assertImpl numberOfProcessors
     assertImpl spellSuggestMax
@@ -276,8 +321,15 @@ when isMainModule:
     var conf = newConfigRef()
     conf.options = {optObjCheck, optFieldCheck}
     conf.globalOptions = {gloptNone, optRun}
+    conf.macrosToExpand["foomacro"] = "T"
+    conf.macrosToExpand["barMacro"] = "T"
+    conf.arcToExpand["fooarc"] = "T"
+    conf.arcToExpand["barArc"] = "T"
+    conf.filenameOption = foCanonical
+    conf.unitSep = "\32"
     conf.selectedGC = gcArc
     conf.exc = excSetjmp
+    conf.hintProcessingDots = false
     conf.verbosity = 3
     conf.numberOfProcessors = 123
     conf.spellSuggestMax = 456
