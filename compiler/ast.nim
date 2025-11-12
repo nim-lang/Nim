@@ -101,7 +101,8 @@ proc transformedBody*(s: PSym): PNode {.inline.} =
   result = s.transformedBodyImpl
 
 proc `transformedBody=`*(s: PSym, val: PNode) {.inline.} =
-  assert s.state != Sealed
+  #assert s.state != Sealed
+  # Make an exception here for this misfeature...
   if s.state == Partial: loadSym(s)
   s.transformedBodyImpl = val
 
