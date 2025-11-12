@@ -2618,9 +2618,6 @@ proc forcePartial*(s: PSym) =
   s.magicImpl = mNone
   s.typImpl = nil
   s.infoImpl = unknownLineInfo
-  when defined(nimsuggest):
-    s.endInfoImpl = unknownLineInfo
-    s.hasUserSpecifiedTypeImpl = nil
   s.ownerFieldImpl = nil
   s.flagsImpl = {}
   s.astImpl = nil
