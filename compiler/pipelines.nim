@@ -55,7 +55,8 @@ proc processPipeline(graph: ModuleGraph; semNode: PNode; bModule: PPassContext):
     raiseAssert "use setPipeLinePass to set a proper PipelinePass"
 
 proc processImplicitImports*(graph: ModuleGraph; implicits: seq[string], nodeKind: TNodeKind,
-                             m: PSym, ctx: PContext, bModule: PPassContext, idgen: IdGenerator) =
+                             m: PSym, ctx: PContext, bModule: PPassContext, idgen: IdGenerator;
+                             topLevelStmts: PNode) =
   # XXX fixme this should actually be relative to the config file!
   let relativeTo = toFullPath(graph.config, m.info)
   for module in items(implicits):
@@ -67,8 +68,13 @@ proc processImplicitImports*(graph: ModuleGraph; implicits: seq[string], nodeKin
       importStmt.add str
       message(graph.config, importStmt.info, hintProcessingStmt, $idgen[])
       let semNode = semWithPContext(ctx, importStmt)
-      if semNode == nil or processPipeline(graph, semNode, bModule) == nil:
+      if semNode == nil:
         break
+      let top = processPipeline(graph, semNode, bModule)
+      if top == nil:
+        break
+      if topLevelStmts != nil:
+        topLevelStmts.add top
 
 proc prePass*(c: PContext; n: PNode) =
   for son in n:
@@ -153,6 +159,11 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
   else:
     s = stream
     graph.interactive = stream.kind == llsStdIn
+  var topLevelStmts =
+    if optCompress in graph.config.globalOptions:
+      newNodeI(nkStmtList, module.info)
+    else:
+      nil
   while true:
     syntaxes.openParser(p, fileIdx, s, graph.cache, graph.config)
 
@@ -162,8 +173,8 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
       # in ROD files. I think we should enable this feature only
       # for the interactive mode.
       if module.name.s != "nimscriptapi":
-        processImplicitImports graph, graph.config.implicitImports, nkImportStmt, module, ctx, bModule, idgen
-        processImplicitImports graph, graph.config.implicitIncludes, nkIncludeStmt, module, ctx, bModule, idgen
+        processImplicitImports graph, graph.config.implicitImports, nkImportStmt, module, ctx, bModule, idgen, topLevelStmts
+        processImplicitImports graph, graph.config.implicitIncludes, nkIncludeStmt, module, ctx, bModule, idgen, topLevelStmts
 
     checkFirstLineIndentation(p)
     block processCode:
@@ -184,7 +195,9 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
       if graph.pipelinePass != EvalPass:
         message(graph.config, sl.info, hintProcessingStmt, $idgen[])
       var semNode = semWithPContext(ctx, sl)
-      discard processPipeline(graph, semNode, bModule)
+      let top = processPipeline(graph, semNode, bModule)
+      if top != nil and topLevelStmts != nil:
+        topLevelStmts.add top
 
     closeParser(p)
     if s.kind != llsStdIn: break
@@ -223,7 +236,8 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
 
   when not defined(nimKochBootstrap):
     if optCompress in graph.config.globalOptions:
-      writeNifModule(graph.config, module.position.int32, finalNode)
+      topLevelStmts.add finalNode
+      writeNifModule(graph.config, module.position.int32, topLevelStmts)
 
   if graph.config.backend notin {backendC, backendCpp, backendObjc}:
     # We only write rod files here if no C-like backend is active.

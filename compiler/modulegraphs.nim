@@ -764,7 +764,7 @@ proc getPackage*(graph: ModuleGraph; fileIdx: FileIndex): PSym =
     result = pkgSym
     graph.packageSyms.strTableAdd(pkgSym)
 
-func belongsToStdlib*(graph: ModuleGraph, sym: PSym): bool =
+proc belongsToStdlib*(graph: ModuleGraph, sym: PSym): bool =
   ## Check if symbol belongs to the 'stdlib' package.
   sym.getPackageSymbol.getPackageId == graph.systemModule.getPackageId
 

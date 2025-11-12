@@ -11,7 +11,7 @@
 
 import std / [assertions, tables, sets]
 from std / strutils import startsWith
-import ast, idents, msgs, options
+import astdef, idents, msgs, options
 import lineinfos as astli
 import pathutils
 import "../dist/nimony/src/lib" / [bitabs, nifstreams, nifcursors, lineinfos,
@@ -84,8 +84,8 @@ proc modname(moduleToNifSuffix: var Table[FileIndex, string]; module: int; conf:
     #echo result, " -> ", fp
 
 proc modname(moduleToNifSuffix: var Table[FileIndex, string]; module: PSym; conf: ConfigRef): string =
-  assert module.kind == skModule
-  result = modname(moduleToNifSuffix, module.position, conf)
+  assert module.kindImpl == skModule
+  result = modname(moduleToNifSuffix, module.positionImpl, conf)
 
 
 
@@ -208,23 +208,23 @@ proc writeTypeDef(w: var Writer; dest: var TokenBuf; typ: PType) =
     dest.addSymDef pool.syms.getOrIncl(w.typeToNifSym(typ)), NoLineInfo
 
     #dest.addIdent toNifTag(typ.kind)
-    writeFlags(dest, typ.flags)
-    dest.addIdent toNifTag(typ.callConv)
-    dest.addIntLit typ.size
-    dest.addIntLit typ.align
-    dest.addIntLit typ.paddingAtEnd
+    writeFlags(dest, typ.flagsImpl)
+    dest.addIdent toNifTag(typ.callConvImpl)
+    dest.addIntLit typ.sizeImpl
+    dest.addIntLit typ.alignImpl
+    dest.addIntLit typ.paddingAtEndImpl
     dest.addIntLit typ.itemId.item  # nonUniqueId
 
-    writeType(w, dest, typ.typeInst)
-    writeNode(w, dest, typ.n)
-    writeSym(w, dest, typ.owner)
-    writeSym(w, dest, typ.sym)
+    writeType(w, dest, typ.typeInstImpl)
+    writeNode(w, dest, typ.nImpl)
+    writeSym(w, dest, typ.ownerFieldImpl)
+    writeSym(w, dest, typ.symImpl)
 
     # Write TLoc structure
-    writeLoc w, dest, typ.loc
+    writeLoc w, dest, typ.locImpl
     # we store the type's elements here at the end so that
     # it is not ambiguous and saves space:
-    for ch in typ.kids:
+    for ch in typ.sonsImpl:
       writeType(w, dest, ch)
 
 
@@ -253,35 +253,35 @@ proc writeLib(w: var Writer; dest: var TokenBuf; lib: PLib) =
       writeNode w, dest, lib.path
 
 proc writeSymDef(w: var Writer; dest: var TokenBuf; sym: PSym) =
-  dest.addParLe sdefTag, trLineInfo(w, sym.info)
+  dest.addParLe sdefTag, trLineInfo(w, sym.infoImpl)
   dest.addSymDef pool.syms.getOrIncl(w.toNifSymName(sym)), NoLineInfo
-  if sym.magic == mNone:
+  if sym.magicImpl == mNone:
     dest.addDotToken
   else:
-    dest.addIdent toNifTag(sym.magic)
-  writeFlags(dest, sym.flags)
-  writeFlags(dest, sym.options)
-  dest.addIntLit sym.offset
+    dest.addIdent toNifTag(sym.magicImpl)
+  writeFlags(dest, sym.flagsImpl)
+  writeFlags(dest, sym.optionsImpl)
+  dest.addIntLit sym.offsetImpl
   # field `disamb` made part of the name, so do not store it here
-  dest.buildTree sym.kind.toNifTag:
-    case sym.kind
+  dest.buildTree sym.kindImpl.toNifTag:
+    case sym.kindImpl
     of skLet, skVar, skField, skForVar:
-      writeSym(w, dest, sym.guard)
-      dest.addIntLit sym.bitsize
-      dest.addIntLit sym.alignment
+      writeSym(w, dest, sym.guardImpl)
+      dest.addIntLit sym.bitsizeImpl
+      dest.addIntLit sym.alignmentImpl
     else:
       discard
-  if sym.kind == skModule:
+  if sym.kindImpl == skModule:
     dest.addDotToken() # position will be set by the loader!
   else:
-    dest.addIntLit sym.position
-  writeType(w, dest, sym.typ)
-  writeSym(w, dest, sym.owner)
+    dest.addIntLit sym.positionImpl
+  writeType(w, dest, sym.typImpl)
+  writeSym(w, dest, sym.ownerFieldImpl)
   # We do not store `sym.ast` here but instead set it in the deserializer
   #writeNode(w, sym.ast)
-  writeLoc w, dest, sym.loc
-  writeNode(w, dest, sym.constraint)
-  writeSym(w, dest, sym.instantiatedFrom)
+  writeLoc w, dest, sym.locImpl
+  writeNode(w, dest, sym.constraintImpl)
+  writeSym(w, dest, sym.instantiatedFromImpl)
   dest.addParRi
 
 proc writeSym(w: var Writer; dest: var TokenBuf; sym: PSym) =
@@ -300,7 +300,7 @@ proc writeSymNode(w: var Writer; dest: var TokenBuf; n: PNode; sym: PSym) =
     dest.addDotToken()
   elif sym.itemId.module == w.currentModule and sym.state == Complete:
     sym.state = Sealed
-    if n.typ != n.sym.typ:
+    if n.typField != n.sym.typImpl:
       dest.buildTree hiddenTypeTag, trLineInfo(w, n.info):
         writeSymDef(w, dest, sym)
     else:
@@ -309,7 +309,7 @@ proc writeSymNode(w: var Writer; dest: var TokenBuf; n: PNode; sym: PSym) =
     # NIF has direct support for symbol references so we don't need to use a tag here,
     # unlike what we do for types!
     let info = trLineInfo(w, n.info)
-    if n.typ != n.sym.typ:
+    if n.typField != n.sym.typImpl:
       dest.buildTree hiddenTypeTag, info:
         dest.addSymUse pool.syms.getOrIncl(w.toNifSymName(sym)), info
     else:
@@ -321,7 +321,7 @@ proc writeNodeFlags(dest: var TokenBuf; flags: set[TNodeFlag]) {.inline.} =
 template withNode(w: var Writer; dest: var TokenBuf; n: PNode; body: untyped) =
   dest.addParLe pool.tags.getOrIncl(toNifTag(n.kind)), trLineInfo(w, n.info)
   writeNodeFlags(dest, n.flags)
-  writeType(w, dest, n.typ)
+  writeType(w, dest, n.typField)
   body
   dest.addParRi
 
@@ -351,8 +351,8 @@ proc trImport(w: var Writer; n: PNode) =
   for child in n:
     assert child.kind == nkSym
     let s = child.sym
-    assert s.kind == skModule
-    let fp = toFullPath(w.infos.config, s.position.FileIndex)
+    assert s.kindImpl == skModule
+    let fp = toFullPath(w.infos.config, s.positionImpl.FileIndex)
     w.deps.addStrLit fp
   w.deps.addParRi
 
@@ -416,7 +416,7 @@ proc writeNode(w: var Writer; dest: var TokenBuf; n: PNode) =
       # Entering a proc/function body - parameters are local
       var ast = n
       if n[namePos].kind == nkSym:
-        ast = n[namePos].sym.ast
+        ast = n[namePos].sym.astImpl
       w.withNode dest, ast:
         # Process body and other parts
         for i in 0 ..< ast.len:
@@ -702,24 +702,21 @@ proc loadType*(c: var DecodeContext; t: PType) =
   # ignore the type's name, we have already used it to create this PType's itemId!
   inc n
   #loadField t.kind
-  loadField t.flags
-  loadField t.callConv
-  loadField t.size
-  loadField t.align
-  loadField t.paddingAtEnd
-  loadField t.itemId.item
+  loadField t.flagsImpl
+  loadField t.callConvImpl
+  loadField t.sizeImpl
+  loadField t.alignImpl
+  loadField t.paddingAtEndImpl
+  loadField t.itemId.item  # nonUniqueId
 
-  t.typeInst = loadTypeStub(c, n)
-  t.n = loadNode(c, n)
-  t.setOwner loadSymStub(c, n)
-  t.sym = loadSymStub(c, n)
+  t.typeInstImpl = loadTypeStub(c, n)
+  t.nImpl = loadNode(c, n)
+  t.ownerFieldImpl = loadSymStub(c, n)
+  t.symImpl = loadSymStub(c, n)
   loadLoc c, n, t.locImpl
 
-  var kids: seq[PType] = @[]
   while n.kind != ParRi:
-    kids.add loadTypeStub(c, n)
-
-  t.setSons kids
+    t.sonsImpl.add loadTypeStub(c, n)
 
   skipParRi n
 
@@ -753,36 +750,36 @@ proc loadSym*(c: var DecodeContext; s: PSym) =
   expect n, SymbolDef
   # ignore the symbol's name, we have already used it to create this PSym instance!
   inc n
-  loadField s.magic
-  loadField s.flags
-  loadField s.options
-  loadField s.offset
+  loadField s.magicImpl
+  loadField s.flagsImpl
+  loadField s.optionsImpl
+  loadField s.offsetImpl
 
   expect n, ParLe
-  s.kind = parse(TSymKind, pool.tags[n.tagId])
+  s.kindImpl = parse(TSymKind, pool.tags[n.tagId])
   inc n
 
-  case s.kind
+  case s.kindImpl
   of skLet, skVar, skField, skForVar:
-    s.guard = loadSymStub(c, n)
-    loadField s.bitsize
-    loadField s.alignment
+    s.guardImpl = loadSymStub(c, n)
+    loadField s.bitsizeImpl
+    loadField s.alignmentImpl
   else:
     discard
   skipParRi n
 
-  if s.kind == skModule:
+  if s.kindImpl == skModule:
     expect n, DotToken
     inc n
   else:
-    loadField s.position
-  s.typ = loadTypeStub(c, n)
-  s.setOwner loadSymStub(c, n)
+    loadField s.positionImpl
+  s.typImpl = loadTypeStub(c, n)
+  s.ownerFieldImpl = loadSymStub(c, n)
   # We do not store `sym.ast` here but instead set it in the deserializer
   #writeNode(w, sym.ast)
   loadLoc c, n, s.locImpl
-  s.constraint = loadNode(c, n)
-  s.instantiatedFrom = loadSymStub(c, n)
+  s.constraintImpl = loadNode(c, n)
+  s.instantiatedFromImpl = loadSymStub(c, n)
   skipParRi n
 
 
@@ -791,7 +788,7 @@ template withNode(c: var DecodeContext; n: var Cursor; result: PNode; kind: TNod
   let flags = loadAtom(TNodeFlags, n)
   result = newNodeI(kind, info)
   result.flags = flags
-  result.typ = c.loadTypeStub n
+  result.typField = c.loadTypeStub n
   body
   skipParRi n
 
@@ -816,11 +813,11 @@ proc loadNode(c: var DecodeContext; n: var Cursor): PNode =
       result = newIdentNode(c.cache.getIdent(pool.strings[n.litId]), info)
       inc n
       result.flags = flags
-      result.typ = typ
+      result.typField = typ
       skipParRi n
     of nkSym:
-      c.withNode n, result, kind:
-        result.sym = c.loadSymStub n
+      let info = c.infos.oldLineInfo(n.info)
+      result = newSymNode(c.loadSymStub n, info)
     of nkCharLit:
       c.withNode n, result, kind:
         expect n, CharLit
@@ -868,7 +865,7 @@ proc loadNode(c: var DecodeContext; n: var Cursor): PNode =
     else:
       c.withNode n, result, kind:
         while n.kind != ParRi:
-          result.addAllowNil c.loadNode n
+          result.sons.add c.loadNode(n)
   else:
     raiseAssert "Not yet implemented " & $n.kind
 
