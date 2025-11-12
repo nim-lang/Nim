@@ -9,6 +9,9 @@ proc toNifPath(p: AbsoluteDir|AbsoluteFile): string =
   if p.string.len <= result.len:
     result = p.string
 
+proc expectTag(n: Cursor; tag: string) =
+  assert pool.tags[n.tagId] == tag, "expected tag: " & tag & " but got: " & pool.tags[n.tagId]
+
 proc fromNif[T: enum](result: var T; n: var Cursor) =
   result = parseEnum[T](pool.strings[n.litId])
   inc n
@@ -134,18 +137,18 @@ proc sourcesChanged(conf: ConfigRef; n: var Cursor; modTime: Time): HashSet[stri
     inc n
 
 proc loadConfigsFromNif(conf: ConfigRef; n: var Cursor) =
-  assert pool.tags[n.tagId] == "options"
+  expectTag n, "options"
   inc n
   fromNif(conf.options, n)
   #echo conf.options
 
-  assert pool.tags[n.tagId] == "globalOptions"
+  expectTag n, "globalOptions"
   inc n
   fromNif(conf.globalOptions, n)
   #echo conf.globalOptions
 
   conf.macrosToExpand.clear
-  assert pool.tags[n.tagId] == "macrosToExpand"
+  expectTag n, "macrosToExpand"
   inc n
   while n.kind != ParRi:
     assert n.kind == StringLit
@@ -155,7 +158,7 @@ proc loadConfigsFromNif(conf: ConfigRef; n: var Cursor) =
   inc n
 
   conf.arcToExpand.clear
-  assert pool.tags[n.tagId] == "arcToExpand"
+  expectTag n, "arcToExpand"
   inc n
   while n.kind != ParRi:
     assert n.kind == StringLit
@@ -188,7 +191,7 @@ proc loadConfigsFromNif(conf: ConfigRef; n: var Cursor) =
   #echo conf.nimbasePattern
 
   conf.symbols.clear
-  assert pool.tags[n.tagId] == "defines"
+  expectTag n, "defines"
   inc n
   while n.kind != ParRi:
     assert n.kind == StringLit
@@ -198,7 +201,7 @@ proc loadConfigsFromNif(conf: ConfigRef; n: var Cursor) =
   inc n
 
   conf.nimblePaths.setLen(0)
-  assert pool.tags[n.tagId] == "nimblepaths"
+  expectTag n, "nimblepaths"
   inc n
   while n.kind != ParRi:
     assert n.kind == StringLit
@@ -210,7 +213,7 @@ proc loadConfigsFromNif(conf: ConfigRef; n: var Cursor) =
   #echo conf.nimblePaths
 
   conf.searchPaths.setLen(0)
-  assert pool.tags[n.tagId] == "paths"
+  expectTag n, "paths"
   inc n
   while n.kind != ParRi:
     assert n.kind == StringLit
