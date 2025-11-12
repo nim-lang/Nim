@@ -305,6 +305,7 @@ proc writeSymNode(w: var Writer; dest: var TokenBuf; n: PNode; sym: PSym) =
     sym.state = Sealed
     if n.typField != n.sym.typImpl:
       dest.buildTree hiddenTypeTag, trLineInfo(w, n.info):
+        writeType(w, dest, n.typField)
         writeSymDef(w, dest, sym)
     else:
       writeSymDef(w, dest, sym)
@@ -314,6 +315,7 @@ proc writeSymNode(w: var Writer; dest: var TokenBuf; n: PNode; sym: PSym) =
     let info = trLineInfo(w, n.info)
     if n.typField != n.sym.typImpl:
       dest.buildTree hiddenTypeTag, info:
+        writeType(w, dest, n.typField)
         dest.addSymUse pool.syms.getOrIncl(w.toNifSymName(sym)), info
     else:
       dest.addSymUse pool.syms.getOrIncl(w.toNifSymName(sym)), info
@@ -807,7 +809,12 @@ proc loadNode(c: var DecodeContext; n: var Cursor): PNode =
       # special NIF introduced tag?
       case pool.tags[n.tagId]
       of hiddenTypeTagName:
-        discard
+        inc n
+        let typ = c.loadTypeStub n
+        let info = c.infos.oldLineInfo(n.info)
+        result = newSymNode(c.loadSymStub n, info)
+        result.typField = typ
+        skipParRi n
       of symDefTagName:
         let name = n.firstSon
         assert name.kind == SymbolDef
