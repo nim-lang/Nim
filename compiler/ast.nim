@@ -32,10 +32,12 @@ when not defined(nimKochBootstrap):
 template typ*(n: PNode): PType =
   n.typField
 
-var program {.threadvar.}: DecodeContext
+when not defined(nimKochBootstrap):
+  var program {.threadvar.}: DecodeContext
 
 proc setupProgram*(config: ConfigRef; cache: IdentCache) =
-  program = createDecodeContext(config, cache)
+  when not defined(nimKochBootstrap):
+    program = createDecodeContext(config, cache)
 
 template loadSym(s: PSym) =
   ## Loads a symbol from NIF file if it's in Partial state.
