@@ -2415,11 +2415,11 @@ proc optimizeJumps(c: PCtx; start: int) =
 
 proc genProc(c: PCtx; s: PSym): VmProcInfo =
   result = c.procToCodePos.getOrDefault(s.id, NoVmProcInfo)
-  if result.pc == 0:
+  if result.usedRegisters < 0:
     #if s.name.s == "outterMacro" or s.name.s == "innerProc":
     #  echo "GENERATING CODE FOR ", s.name.s
     let last = c.code.len-1
-    var eofInstr: TInstr = default(TInstr)
+    var eofInstr = default(TInstr)
     if last >= 0 and c.code[last].opcode == opcEof:
       eofInstr = c.code[last]
       c.code.setLen(last)
