@@ -18,7 +18,7 @@ import "../dist/nimony/src/lib" / [bitabs, nifstreams, nifcursors, lineinfos,
   nifindexes, nifreader]
 import "../dist/nimony/src/gear2" / modnames
 
-import icnif / [enum2nif]
+import ic / [enum2nif]
 
 # ---------------- Line info handling -----------------------------------------
 
