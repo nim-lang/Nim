@@ -1,4 +1,4 @@
-import options, pathutils, condsyms
+import options, pathutils, platform, condsyms
 import std/[assertions, os, sets, strtabs, times]
 from std/sequtils import addUnique
 from std/strutils import parseEnum
@@ -20,9 +20,19 @@ proc fromNif[T: enum](result: var set[T]; n: var Cursor) =
   # clear it so that it has the same value as it was stored to the cache.
   # some switches turn off options that were turned on when conf was initialized.
   result = {}
-  assert n.kind == StringLit
+  assert n.kind in {StringLit, ParRi}
   while n.kind != ParRi:
     result.incl parseEnum[T](pool.strings[n.litId])
+    inc n
+  inc n
+
+proc fromNif2[T: enum](result: var set[T]; n: var Cursor) =
+  # same to fromNif but works with enums `parseEnum` doesn't support.
+  # e.g. TNoteKind
+  result = {}
+  assert n.kind in {IntLit, ParRi}
+  while n.kind != ParRi:
+    result.incl pool.integers[n.intId].T
     inc n
   inc n
 
@@ -38,6 +48,10 @@ proc configToNif(conf: ConfigRef; dest: var TokenBuf) =
 
   # store fields that can be changed on config files
   # see processSwitch proc in commands.nim
+  dest.addStrLit $conf.backend
+  dest.addStrLit $conf.target.targetOS
+  dest.addStrLit $conf.target.targetCPU
+
   #echo "conf.options"
   #echo conf.options
   dest.buildTree "options":
@@ -86,6 +100,37 @@ proc configToNif(conf: ConfigRef; dest: var TokenBuf) =
   #echo "conf.nimbasePattern"
   #echo conf.nimbasePattern
   dest.addStrLit conf.nimbasePattern
+
+  dest.buildTree "features":
+    for f in conf.features:
+      dest.addStrLit $f
+
+  dest.buildTree "legacyFeatures":
+    for f in conf.legacyFeatures:
+      dest.addStrLit $f
+
+  dest.addStrLit $conf.cCompiler
+
+  # stores TNoteKind as int as parseEnum doesn't work
+  dest.buildTree "modifiedyNotes":
+    for n in conf.modifiedyNotes:
+      dest.addIntLit n.ord
+  dest.buildTree "foreignPackageNotes":
+    for n in conf.foreignPackageNotes:
+      dest.addIntLit n.ord
+  dest.buildTree "notes":
+    for n in conf.notes:
+      dest.addIntLit n.ord
+  dest.buildTree "warningAsErrors":
+    for n in conf.warningAsErrors:
+      dest.addIntLit n.ord
+  dest.buildTree "mainPackageNotes":
+    for n in conf.mainPackageNotes:
+      dest.addIntLit n.ord
+
+  dest.addIntLit conf.errorMax
+  dest.addIntLit conf.maxLoopIterationsVM
+  dest.addIntLit conf.maxCallDepthVM
 
   dest.buildTree "defines":
     for def in definedSymbolNames(conf.symbols):
@@ -137,6 +182,13 @@ proc sourcesChanged(conf: ConfigRef; n: var Cursor; modTime: Time): HashSet[stri
     inc n
 
 proc loadConfigsFromNif(conf: ConfigRef; n: var Cursor) =
+  fromNif conf.backend, n
+  var targetOS = default(TSystemOS)
+  var targetCPU = default(TSystemCPU)
+  fromNif targetOS, n
+  fromNif targetCPU, n
+  conf.target.setTarget(targetOS, targetCPU)
+
   expectTag n, "options"
   inc n
   fromNif(conf.options, n)
@@ -189,6 +241,37 @@ proc loadConfigsFromNif(conf: ConfigRef; n: var Cursor) =
   conf.nimbasePattern = pool.strings[n.litId]
   inc n
   #echo conf.nimbasePattern
+
+  expectTag n, "features"
+  inc n
+  fromNif(conf.features, n)
+  expectTag n, "legacyFeatures"
+  inc n
+  fromNif(conf.legacyFeatures, n)
+  fromNif(conf.cCompiler, n)
+
+  expectTag n, "modifiedyNotes"
+  inc n
+  fromNif2(conf.modifiedyNotes, n)
+  expectTag n, "foreignPackageNotes"
+  inc n
+  fromNif2(conf.foreignPackageNotes, n)
+  expectTag n, "notes"
+  inc n
+  fromNif2(conf.notes, n)
+  expectTag n, "warningAsErrors"
+  inc n
+  fromNif2(conf.warningAsErrors, n)
+  expectTag n, "mainPackageNotes"
+  inc n
+  fromNif2(conf.mainPackageNotes, n)
+
+  conf.errorMax = pool.integers[n.intId]
+  inc n
+  conf.maxLoopIterationsVM = pool.integers[n.intId]
+  inc n
+  conf.maxCallDepthVM = pool.integers[n.intId]
+  inc n
 
   conf.symbols.clear
   expectTag n, "defines"
@@ -276,6 +359,9 @@ when isMainModule:
     template assertImpl(f: untyped) =
       assert x.f == y.f, $x.f & " / " & $y.f
 
+    assertImpl backend
+    assert x.target.targetOS == y.target.targetOS
+    assert x.target.targetCPU == y.target.targetCPU
     assertImpl options
     assertImpl globalOptions
     assertImpl macrosToExpand
@@ -289,6 +375,17 @@ when isMainModule:
     assertImpl numberOfProcessors
     assertImpl spellSuggestMax
     assertImpl nimbasePattern
+    assertImpl features
+    assertImpl legacyFeatures
+    assertImpl cCompiler
+    assertImpl modifiedyNotes
+    assertImpl foreignPackageNotes
+    assertImpl notes
+    assertImpl warningAsErrors
+    assertImpl mainPackageNotes
+    assertImpl errorMax
+    assertImpl maxLoopIterationsVM
+    assertImpl maxCallDepthVM
     assertImpl symbols
     assertImpl nimblePaths
     assertImpl searchPaths
@@ -322,6 +419,8 @@ when isMainModule:
 
   block:
     var conf = newConfigRef()
+    conf.backend = backendCpp
+    conf.target.setTarget(osAny, cpuArm64)
     conf.options = {optObjCheck, optFieldCheck}
     conf.globalOptions = {gloptNone, optRun}
     conf.macrosToExpand["foomacro"] = "T"
@@ -337,6 +436,17 @@ when isMainModule:
     conf.numberOfProcessors = 123
     conf.spellSuggestMax = 456
     conf.nimbasePattern = "foo/nimbase.h"
+    conf.features = {callOperator, dynamicBindSym}
+    conf.legacyFeatures = {laxEffects, emitGenerics}
+    conf.cCompiler = ccCLang
+    conf.modifiedyNotes = {}
+    conf.foreignPackageNotes = {}
+    conf.notes = {}
+    conf.warningAsErrors = {}
+    conf.mainPackageNotes = {}
+    conf.errorMax = 7
+    conf.maxLoopIterationsVM = 1234
+    conf.maxCallDepthVM = 111
     conf.symbols.initDefines()
     conf.symbols.defineSymbol("test")
     conf.nimblePaths = @[AbsoluteDir"/foo", AbsoluteDir"/lib/nimble"]
