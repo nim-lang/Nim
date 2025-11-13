@@ -17,9 +17,9 @@ def;;skType;;minclude_types.Greet;;Greet;;*fixtures/minclude_types.nim;;4;;2;;""
 >def $path/fixtures/minclude_include.nim:3:71
 def;;skType;;minclude_types.Greet;;Greet;;*fixtures/minclude_types.nim;;4;;2;;"";;100
 >outline $path/fixtures/minclude_import.nim
-outline;;skProc;;minclude_import.say;;*fixtures/minclude_import.nim;;7;;5;;"";;100
-outline;;skProc;;minclude_import.create;;*fixtures/minclude_include.nim;;3;;5;;"";;100
-outline;;skProc;;minclude_import.say;;*fixtures/minclude_import.nim;;13;;5;;"";;100
+outline;;skProc;;minclude_import.say;;*;;*fixtures/minclude_import.nim;;7;;5;;"";;100
+outline;;skProc;;minclude_import.create;;*;;*fixtures/minclude_include.nim;;3;;5;;"";;100
+outline;;skProc;;minclude_import.say;;*;;*fixtures/minclude_import.nim;;13;;5;;"";;100
 """
 
 # TODO test/fix if the first `def` is not first or repeated we get no results
