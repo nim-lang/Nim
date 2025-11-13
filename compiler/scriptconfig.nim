@@ -215,7 +215,7 @@ proc runNimScript*(cache: IdentCache; scriptName: AbsoluteFile;
   conf.selectedGC = gcUnselected
 
   var m = graph.makeModule(scriptName)
-  incl(m.flags, sfMainModule)
+  incl(m, sfMainModule)
   var vm = setupVM(m, cache, scriptName.string, graph, idgen)
   graph.vm = vm
 

@@ -897,7 +897,7 @@ proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
           param.typ = typ.exactReplica
           #copyType(typ, c.idgen, typ.owner)
           if typ.n == nil:
-            param.typ.flags.incl tfInferrableStatic
+            param.typ.incl tfInferrableStatic
           else:
             param.ast = typ.n
         of tyFromExpr:
@@ -930,7 +930,8 @@ proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
     diagnostics = @[]
     flags = {efExplain}
     m.c.config.writelnHook = proc (s: string) =
-      if errorPrefix.len == 0: errorPrefix = typeClass.sym.name.s & ":"
+      {.gcsafe.}:
+        if errorPrefix.len == 0: errorPrefix = typeClass.sym.name.s & ":"
       let msg = s.replace("Error:", errorPrefix)
       if oldWriteHook != nil: oldWriteHook msg
       diagnostics.add msg
@@ -1671,7 +1672,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
 
     let roota = if skipBoth or deptha > depthf: a.skipGenericAlias else: a
     let rootf = if skipBoth or depthf > deptha: f.skipGenericAlias else: f
-    
+
     if f.isConcept:
       result = enterConceptMatch(c, rootf, roota, flags)
     elif a.kind == tyGenericInst:
@@ -1989,7 +1990,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         var concrete = a
         if tfWildcard in a.flags:
           a.sym.transitionGenericParamToType()
-          a.flags.excl tfWildcard
+          a.excl tfWildcard
         elif doBind:
           # careful: `trDontDont` (set by `checkGeneric`) is not always respected in this call graph.
           # typRel having two different modes (binding and non-binding) can make things harder to
@@ -2316,7 +2317,7 @@ proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
     let fdest = typeRel(m, f, dest)
     if fdest in {isEqual, isGeneric} and not (dest.kind == tyLent and f.kind in {tyVar}):
       # can't fully mark used yet, may not be used in final call
-      incl(c.converters[i].flags, sfUsed)
+      incl(c.converters[i].flagsImpl, sfUsed)
       markOwnerModuleAsUsed(c, c.converters[i])
       var s = newSymNode(c.converters[i])
       s.typ() = c.converters[i].typ
@@ -2339,7 +2340,7 @@ proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
       result.add param
 
       if dest.kind in {tyVar, tyLent}:
-        dest.flags.incl tfVarIsPtr
+        dest.incl tfVarIsPtr
         result = newDeref(result)
 
       inc(m.convMatches)
@@ -2435,7 +2436,7 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
         if m.callee.kind == tyGenericBody:
           if f.kind == tyStatic and typeRel(m, f.base, a) != isNone:
             result = makeStaticExpr(m.c, arg)
-            result.typ.flags.incl tfUnresolved
+            result.typ.incl tfUnresolved
             result.typ.n = arg
             return
 
@@ -2995,7 +2996,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
             #assert(container == nil)
             if container.isNil:
               container = newNodeIT(nkBracket, n[a].info, arrayConstr(c, arg))
-              container.typ.flags.incl tfVarargs
+              container.typ.incl tfVarargs
             else:
               incrIndexType(container.typ)
             container.add arg

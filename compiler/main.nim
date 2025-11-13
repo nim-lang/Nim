@@ -200,7 +200,7 @@ proc commandInteractive(graph: ModuleGraph) =
     discard graph.compilePipelineModule(fileInfoIdx(graph.config, graph.config.projectFull), {})
   else:
     var m = graph.makeStdinModule()
-    incl(m.flags, sfMainModule)
+    incl(m, sfMainModule)
     var idgen = IdGenerator(module: m.itemId.module, symId: m.itemId.item, typeId: 0)
     let s = llStreamOpenStdIn(onPrompt = proc() = flushDot(graph.config))
     discard processPipelineModule(graph, m, idgen, s)

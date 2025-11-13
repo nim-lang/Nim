@@ -126,7 +126,7 @@ proc fitNodeConsiderViewType(c: PContext, formal: PType, arg: PNode; info: TLine
     #classifyViewType(formal) != noView:
     result = newNodeIT(nkHiddenAddr, a.info, formal)
     result.add a
-    formal.flags.incl tfVarIsPtr
+    formal.incl tfVarIsPtr
   else:
    result = a
 
@@ -260,7 +260,7 @@ proc newSymG*(kind: TSymKind, n: PNode, c: PContext): PSym =
   else:
     result = newSym(kind, considerQuotedIdent(c, n), c.idgen, getCurrOwner(c), n.info)
     if find(result.name.s, '`') >= 0:
-      result.flags.incl sfWasGenSym
+      result.flagsImpl.incl sfWasGenSym
   #if kind in {skForVar, skLet, skVar} and result.owner.kind == skModule:
   #  incl(result.flags, sfGlobal)
   when defined(nimsuggest):

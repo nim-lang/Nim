@@ -412,7 +412,7 @@ proc semConv(c: PContext, n: PNode; flags: TExprFlags = {}, expectedType: PType 
     let baseType = semTypeNode(c, n[1], nil).skipTypes({tyTypeDesc})
     let t = newTypeS(targetType.kind, c, baseType)
     if targetType.kind == tyOwned:
-      t.flags.incl tfHasOwned
+      t.incl tfHasOwned
     result = newNodeI(nkType, n.info)
     result.typ() = makeTypeDesc(c, t)
     return
@@ -919,7 +919,7 @@ proc evalAtCompileTime(c: PContext, n: PNode): PNode =
             tfUnresolved notin n[i].typ.flags:
           break maybeLabelAsStatic
       n.typ() = newTypeS(tyStatic, c, n.typ)
-      n.typ.flags.incl tfUnresolved
+      n.typ.incl tfUnresolved
 
   # optimization pass: not necessary for correctness of the semantic pass
   if (callee.kind == skConst or
@@ -1847,10 +1847,10 @@ proc asgnToResultVar(c: PContext, n, le, ri: PNode) {.inline.} =
       if x.sym.kind == skResult and (x.typ.kind in {tyVar, tyLent} or classifyViewType(x.typ) != noView):
         n[0] = x # 'result[]' --> 'result'
         n[1] = takeImplicitAddr(c, ri, x.typ.kind == tyLent)
-        x.typ.flags.incl tfVarIsPtr
+        x.typ.incl tfVarIsPtr
         #echo x.info, " setting it for this type ", typeToString(x.typ), " ", n.info
       elif sfGlobal in x.sym.flags:
-        x.typ.flags.incl tfVarIsPtr
+        x.typ.incl tfVarIsPtr
 
 proc borrowCheck(c: PContext, n, le, ri: PNode) =
   const
@@ -1920,7 +1920,7 @@ proc makeTupleAssignments(c: PContext; n: PNode): PNode =
 
   let temp = newSym(skTemp, getIdent(c.cache, "tmpTupleAsgn"), c.idgen, getCurrOwner(c), n.info)
   temp.typ = value.typ
-  temp.flags.incl(sfGenSym)
+  temp.flagsImpl.incl(sfGenSym)
   var v = newNodeI(nkLetSection, value.info)
   let tempNode = newSymNode(temp) #newIdentNode(getIdent(genPrefix & $temp.id), value.info)
   var vpart = newNodeI(nkIdentDefs, v.info, 3)
@@ -1937,7 +1937,7 @@ proc makeTupleAssignments(c: PContext; n: PNode): PNode =
       # generate `let _ = temp[i]` which should generate a destructor
       let utemp = newSym(skLet, lhs[i].ident, c.idgen, getCurrOwner(c), lhs[i].info)
       utemp.typ = value.typ[i]
-      temp.flags.incl(sfGenSym)
+      temp.flagsImpl.incl(sfGenSym)
       var uv = newNodeI(nkLetSection, lhs[i].info)
       let utempNode = newSymNode(utemp)
       var uvpart = newNodeI(nkIdentDefs, v.info, 3)
@@ -2124,7 +2124,7 @@ proc semYieldVarResult(c: PContext, n: PNode, restype: PType) =
   var t = skipTypes(restype, {tyGenericInst, tyAlias, tySink})
   case t.kind
   of tyVar, tyLent:
-    t.flags.incl tfVarIsPtr # bugfix for #4048, #4910, #6892
+    t.incl tfVarIsPtr # bugfix for #4048, #4910, #6892
     if n[0].kind in {nkHiddenStdConv, nkHiddenSubConv}:
       n[0] = n[0][1]
     n[0] = takeImplicitAddr(c, n[0], t.kind == tyLent)
@@ -2132,7 +2132,7 @@ proc semYieldVarResult(c: PContext, n: PNode, restype: PType) =
     for i in 0..<t.len:
       let e = skipTypes(t[i], {tyGenericInst, tyAlias, tySink})
       if e.kind in {tyVar, tyLent}:
-        e.flags.incl tfVarIsPtr # bugfix for #4048, #4910, #6892
+        e.incl tfVarIsPtr # bugfix for #4048, #4910, #6892
         let tupleConstr = if n[0].kind in {nkHiddenStdConv, nkHiddenSubConv}: n[0][1] else: n[0]
         if tupleConstr.kind in {nkPar, nkTupleConstr}:
           if tupleConstr[i].kind == nkExprColonExpr:
@@ -2376,7 +2376,7 @@ proc semQuoteAst(c: PContext, n: PNode): PNode =
   processQuotations(c, quotedBlock, op, quotes, ids)
 
   let dummyTemplateSym = newAnonSym(c, skTemplate, n.info)
-  incl(dummyTemplateSym.flags, sfTemplateRedefinition)
+  incl(dummyTemplateSym.flagsImpl, sfTemplateRedefinition)
   var dummyTemplate = newProcNode(
     nkTemplateDef, quotedBlock.info, body = quotedBlock,
     params = c.graph.emptyNode,
@@ -2505,8 +2505,9 @@ proc instantiateCreateFlowVarCall(c: PContext; t: PType;
   # since it's an instantiation, we unmark it as a compilerproc. Otherwise
   # codegen would fail:
   if sfCompilerProc in result.flags:
-    result.flags.excl {sfCompilerProc, sfExportc, sfImportc}
-    result.loc.snippet = ""
+    ensureMutable result
+    result.flagsImpl.excl {sfCompilerProc, sfExportc, sfImportc}
+    result.locImpl.snippet = ""
 
 proc setMs(n: PNode, s: PSym): PNode =
   result = n
@@ -2740,7 +2741,7 @@ proc semWhen(c: PContext, n: PNode, semCheck = true): PNode =
 proc semSetConstr(c: PContext, n: PNode, expectedType: PType = nil): PNode =
   result = newNodeI(nkCurly, n.info)
   result.typ() = newTypeS(tySet, c)
-  result.typ.flags.incl tfIsConstructor
+  result.typ.incl tfIsConstructor
   var expectedElementType: PType = nil
   if expectedType != nil and (
       let expected = expectedType.skipTypes(abstractRange-{tyDistinct});
@@ -3216,7 +3217,7 @@ proc enumFieldSymChoice(c: PContext, n: PNode, s: PSym; flags: TExprFlags): PNod
     a = initOverloadIter(o, c, n)
     while a != nil:
       if a.kind == skEnumField:
-        incl(a.flags, sfUsed)
+        incl(a.flagsImpl, sfUsed)
         markOwnerModuleAsUsed(c, a)
         result.add newSymNode(a, info)
         onUse(info, a)

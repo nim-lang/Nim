@@ -369,7 +369,7 @@ proc genArg(p: BProc, n: PNode, param: PSym; call: PNode; result: var Builder; n
     let needsIndirect = mapType(p.config, n[0].typ, mapTypeChooser(n[0]) == skParam) != ctArray
     if needsIndirect:
       n.typ() = n.typ.exactReplica
-      n.typ.flags.incl tfVarIsPtr
+      n.typ.incl tfVarIsPtr
     a = initLocExprSingleUse(p, n)
     a = withTmpIfNeeded(p, a, needsTmp)
     if needsIndirect: a.flags.incl lfIndirect

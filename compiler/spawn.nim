@@ -58,7 +58,7 @@ proc addLocalVar(g: ModuleGraph; varSection, varInit: PNode; idgen: IdGenerator;
   result = newSym(skTemp, getIdent(g.cache, genPrefix), idgen, owner, varSection.info,
                   owner.options)
   result.typ = typ
-  incl(result.flags, sfFromGeneric)
+  incl(result.flagsImpl, sfFromGeneric)
 
   var vpart = newNodeI(nkIdentDefs, varSection.info, 3)
   vpart[0] = newSymNode(result)
@@ -358,7 +358,7 @@ proc wrapProcForSpawn*(g: ModuleGraph; idgen: IdGenerator; owner: PSym; spawnExp
     threadParam = newSym(skParam, getIdent(g.cache, "thread"), idgen, wrapperProc, n.info, g.config.options)
     argsParam = newSym(skParam, getIdent(g.cache, "args"), idgen, wrapperProc, n.info, g.config.options)
 
-  wrapperProc.flags.incl sfInjectDestructors
+  wrapperProc.incl sfInjectDestructors
   block:
     let ptrType = getSysType(g, n.info, tyPointer)
     threadParam.typ = ptrType
@@ -366,13 +366,13 @@ proc wrapProcForSpawn*(g: ModuleGraph; idgen: IdGenerator; owner: PSym; spawnExp
     argsParam.position = 1
 
   var objType = createObj(g, idgen, owner, n.info)
-  incl(objType.flags, tfFinal)
+  incl(objType, tfFinal)
   let castExpr = createCastExpr(argsParam, objType, idgen)
 
   var scratchObj = newSym(skVar, getIdent(g.cache, "scratch"), idgen, owner, n.info, g.config.options)
   block:
     scratchObj.typ = objType
-    incl(scratchObj.flags, sfFromGeneric)
+    incl(scratchObj.flagsImpl, sfFromGeneric)
     var varSectionB = newNodeI(nkVarSection, n.info)
     varSectionB.addVar(scratchObj.newSymNode)
     result.add varSectionB

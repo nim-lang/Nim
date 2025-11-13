@@ -150,7 +150,7 @@ template isIterator*(owner: PSym): bool =
 
 proc createEnvObj(g: ModuleGraph; idgen: IdGenerator; owner: PSym; info: TLineInfo): PType =
   result = createObj(g, idgen, owner, info, final=false)
-  result.flags.incl tfFinal
+  result.incl tfFinal
   if owner.isIterator:
     rawAddField(result, createStateField(g, owner, idgen))
 
@@ -161,7 +161,7 @@ proc getClosureIterResult*(g: ModuleGraph; iter: PSym; idgen: IdGenerator): PSym
     # XXX a bit hacky:
     result = newSym(skResult, getIdent(g.cache, ":result"), idgen, iter, iter.info, {})
     result.typ = iter.typ.returnType
-    incl(result.flags, sfUsed)
+    incl(result.flagsImpl, sfUsed)
     iter.ast.add newSymNode(result)
 
 proc addHiddenParam(routine: PSym, param: PSym) =
@@ -228,7 +228,7 @@ proc makeClosure*(g: ModuleGraph; idgen: IdGenerator; prc: PSym; env: PNode; inf
   #if isClosureIterator(result.typ):
   createTypeBoundOps(g, nil, result.typ, info, idgen)
   if tfHasAsgn in result.typ.flags or optSeqDestructors in g.config.globalOptions:
-    prc.flags.incl sfInjectDestructors
+    prc.incl sfInjectDestructors
 
 template liftingHarmful(conf: ConfigRef; owner: PSym): bool =
   ## lambda lifting can be harmful for JS-like code generators.
@@ -240,7 +240,7 @@ proc createTypeBoundOpsLL(g: ModuleGraph; refType: PType; info: TLineInfo; idgen
     createTypeBoundOps(g, nil, refType.elementType, info, idgen)
     createTypeBoundOps(g, nil, refType, info, idgen)
     if tfHasAsgn in refType.flags or optSeqDestructors in g.config.globalOptions:
-      owner.flags.incl sfInjectDestructors
+      owner.incl sfInjectDestructors
 
 proc genCreateEnv(env: PNode): PNode =
   var c = newNodeIT(nkObjConstr, env.info, env.typ)
@@ -290,7 +290,7 @@ proc markAsClosure(g: ModuleGraph; owner: PSym; n: PNode) =
   elif not (owner.typ.isClosure or owner.isNimcall and not owner.isExplicitCallConv or isEnv):
     localError(g.config, n.info, "illegal capture '$1' because '$2' has the calling convention: <$3>" %
       [s.name.s, owner.name.s, $owner.typ.callConv])
-  incl(owner.typ.flags, tfCapturesEnv)
+  incl(owner.typ, tfCapturesEnv)
   if not isEnv:
     owner.typ.callConv = ccClosure
 
@@ -336,7 +336,7 @@ proc asOwnedRef(c: var DetectionPass; t: PType): PType =
   if optOwnedRefs in c.graph.config.globalOptions:
     assert t.kind == tyRef
     result = newType(tyOwned, c.idgen, t.owner)
-    result.flags.incl tfHasOwned
+    result.incl tfHasOwned
     result.rawAddSon t
   else:
     result = t
@@ -414,7 +414,7 @@ proc addClosureParam(c: var DetectionPass; fn: PSym; info: TLineInfo) =
   let t = c.getEnvTypeForOwner(owner, info)
   if cp == nil:
     cp = newSym(skParam, getIdent(c.graph.cache, paramName), c.idgen, fn, fn.info)
-    incl(cp.flags, sfFromGeneric)
+    incl(cp.flagsImpl, sfFromGeneric)
     cp.typ = t
     addHiddenParam(fn, cp)
   elif cp.typ != t and fn.kind != skIterator:
@@ -624,7 +624,7 @@ proc rawClosureCreation(owner: PSym;
         if owner.kind != skMacro:
           createTypeBoundOps(d.graph, nil, fieldAccess.typ, env.info, d.idgen)
         if tfHasAsgn in fieldAccess.typ.flags or optSeqDestructors in d.graph.config.globalOptions:
-          owner.flags.incl sfInjectDestructors
+          owner.incl sfInjectDestructors
 
   let upField = lookupInRecord(env.typ.skipTypes({tyOwned, tyRef, tyPtr}).n, getIdent(d.graph.cache, upName))
   if upField != nil:
@@ -666,7 +666,7 @@ proc closureCreationForIter(owner: PSym, iter: PNode;
   result = newNodeIT(nkStmtListExpr, iter.info, iter.sym.typ)
   let iterOwner = iter.sym.skipGenericOwner
   var v = newSym(skVar, getIdent(d.graph.cache, envName), d.idgen, iterOwner, iter.info)
-  incl(v.flags, sfShadowed)
+  incl(v.flagsImpl, sfShadowed)
   v.typ = asOwnedRef(d, getHiddenParam(d.graph, iter.sym).typ)
   var vnode: PNode
   if iterOwner.isIterator:

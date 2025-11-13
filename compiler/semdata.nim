@@ -434,7 +434,7 @@ proc makeVarType*(c: PContext, baseType: PType; kind = tyVar): PType =
 
 proc makeTypeSymNode*(c: PContext, typ: PType, info: TLineInfo): PNode =
   let typedesc = newTypeS(tyTypeDesc, c)
-  incl typedesc.flags, tfCheckedForDestructor
+  incl typedesc.flagsImpl, tfCheckedForDestructor
   internalAssert(c.config, typ != nil)
   typedesc.addSonSkipIntLit(typ, c.idgen)
   let sym = newSym(skType, c.cache.idAnon, c.idgen, getCurrOwner(c), info,
@@ -467,8 +467,8 @@ proc makeAndType*(c: PContext, t1, t2: PType): PType =
   result.rawAddSon t2
   propagateToOwner(result, t1)
   propagateToOwner(result, t2)
-  result.flags.incl((t1.flags + t2.flags) * {tfHasStatic})
-  result.flags.incl tfHasMeta
+  result.flagsImpl.incl((t1.flags + t2.flags) * {tfHasStatic})
+  result.flagsImpl.incl tfHasMeta
 
 proc makeOrType*(c: PContext, t1, t2: PType): PType =
   if t1.kind != tyOr and t2.kind != tyOr:
@@ -486,14 +486,14 @@ proc makeOrType*(c: PContext, t1, t2: PType): PType =
     addOr(t2)
   propagateToOwner(result, t1)
   propagateToOwner(result, t2)
-  result.flags.incl((t1.flags + t2.flags) * {tfHasStatic})
-  result.flags.incl tfHasMeta
+  result.incl((t1.flags + t2.flags) * {tfHasStatic})
+  result.incl tfHasMeta
 
 proc makeNotType*(c: PContext, t1: PType): PType =
   result = newTypeS(tyNot, c, son = t1)
   propagateToOwner(result, t1)
-  result.flags.incl(t1.flags * {tfHasStatic})
-  result.flags.incl tfHasMeta
+  result.flagsImpl.incl(t1.flags * {tfHasStatic})
+  result.flagsImpl.incl tfHasMeta
 
 proc nMinusOne(c: PContext; n: PNode): PNode =
   result = newTreeI(nkCall, n.info, newSymNode(getSysMagic(c.graph, n.info, "pred", mPred)), n)
@@ -503,7 +503,7 @@ proc makeRangeWithStaticExpr*(c: PContext, n: PNode): PType =
   let intType = getSysType(c.graph, n.info, tyInt)
   result = newTypeS(tyRange, c, son = intType)
   if n.typ != nil and n.typ.n == nil:
-    result.flags.incl tfUnresolved
+    result.incl tfUnresolved
   result.n = newTreeI(nkRange, n.info, newIntTypeNode(0, intType),
     makeStaticExpr(c, nMinusOne(c, n)))
 
@@ -513,7 +513,7 @@ template rangeHasUnresolvedStatic*(t: PType): bool =
 proc errorType*(c: PContext): PType =
   ## creates a type representing an error state
   result = newTypeS(tyError, c)
-  result.flags.incl tfCheckedForDestructor
+  result.flagsImpl.incl tfCheckedForDestructor
 
 proc errorNode*(c: PContext, n: PNode): PNode =
   result = newNodeI(nkEmpty, n.info)
@@ -563,12 +563,12 @@ proc makeTypeDesc*(c: PContext, typ: PType): PType =
     result = typ
   else:
     result = newTypeS(tyTypeDesc, c, skipIntLit(typ, c.idgen))
-    incl result.flags, tfCheckedForDestructor
+    incl result, tfCheckedForDestructor
 
 proc symFromType*(c: PContext; t: PType, info: TLineInfo): PSym =
   if t.sym != nil: return t.sym
   result = newSym(skType, getIdent(c.cache, "AnonType"), c.idgen, t.owner, info)
-  result.flags.incl sfAnon
+  result.flagsImpl.incl sfAnon
   result.typ = t
 
 proc symNodeFromType*(c: PContext, t: PType, info: TLineInfo): PNode =
@@ -577,7 +577,7 @@ proc symNodeFromType*(c: PContext, t: PType, info: TLineInfo): PNode =
 
 proc markIndirect*(c: PContext, s: PSym) {.inline.} =
   if s.kind in {skProc, skFunc, skConverter, skMethod, skIterator}:
-    incl(s.flags, sfAddrTaken)
+    incl(s.flagsImpl, sfAddrTaken)
     # XXX add to 'c' for global analysis
 
 proc illFormedAst*(n: PNode; conf: ConfigRef) =
@@ -685,7 +685,7 @@ proc analyseIfAddressTaken(c: PContext, n: PNode, isOutParam: bool): PNode =
     # n.sym.typ can be nil in 'check' mode ...
     if n.sym.typ != nil and
         skipTypes(n.sym.typ, abstractInst-{tyTypeDesc}).kind notin {tyVar, tyLent}:
-      incl(n.sym.flags, sfAddrTaken)
+      incl(n.sym.flagsImpl, sfAddrTaken)
       result = newHiddenAddrTaken(c, n, isOutParam)
   of nkDotExpr:
     checkSonsLen(n, 2, c.config)
@@ -693,12 +693,12 @@ proc analyseIfAddressTaken(c: PContext, n: PNode, isOutParam: bool): PNode =
       internalError(c.config, n.info, "analyseIfAddressTaken")
       return
     if skipTypes(n[1].sym.typ, abstractInst-{tyTypeDesc}).kind notin {tyVar, tyLent}:
-      incl(n[1].sym.flags, sfAddrTaken)
+      incl(n[1].sym.flagsImpl, sfAddrTaken)
       result = newHiddenAddrTaken(c, n, isOutParam)
   of nkBracketExpr:
     checkMinSonsLen(n, 1, c.config)
     if skipTypes(n[0].typ, abstractInst-{tyTypeDesc}).kind notin {tyVar, tyLent}:
-      if n[0].kind == nkSym: incl(n[0].sym.flags, sfAddrTaken)
+      if n[0].kind == nkSym: incl(n[0].sym.flagsImpl, sfAddrTaken)
       result = newHiddenAddrTaken(c, n, isOutParam)
   else:
     result = newHiddenAddrTaken(c, n, isOutParam)

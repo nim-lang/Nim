@@ -284,7 +284,7 @@ proc fillBodyObjT(c: var TLiftCtx; t: PType, body, x, y: PNode) =
       body.add genIf(c, cond, newTreeI(nkReturnStmt, c.info, newNodeI(nkEmpty, c.info)))
     var temp = newSym(skTemp, getIdent(c.g.cache, lowerings.genPrefix), c.idgen, c.fn, c.info)
     temp.typ = x.typ
-    incl(temp.flags, sfFromGeneric)
+    incl(temp, sfFromGeneric)
     var v = newNodeI(nkVarSection, c.info)
     let blob = newSymNode(temp)
     v.addVar(blob, x)
@@ -393,7 +393,8 @@ proc considerAsgnOrSink(c: var TLiftCtx; t: PType; body, x, y: PNode;
     if op != nil and op != c.fn and
         (sfOverridden in op.flags or destructorOverridden):
       if sfError in op.flags:
-        incl c.fn.flags, sfError
+        ensureMutable c.fn
+        incl c.fn.flagsImpl, sfError
       #else:
       #  markUsed(c.g.config, c.info, op, c.g.usageSym)
       onUse(c.info, op)
@@ -419,7 +420,8 @@ proc considerAsgnOrSink(c: var TLiftCtx; t: PType; body, x, y: PNode;
       if op == nil:
         op = produceSym(c.g, c.c, t, c.kind, c.info, c.idgen)
     if sfError in op.flags:
-      incl c.fn.flags, sfError
+      ensureMutable c.fn
+      incl c.fn.flagsImpl, sfError
     #else:
     #  markUsed(c.g.config, c.info, op, c.g.usageSym)
     onUse(c.info, op)
@@ -535,7 +537,7 @@ proc considerUserDefinedOp(c: var TLiftCtx; t: PType; body, x, y: PNode): bool =
 proc declareCounter(c: var TLiftCtx; body: PNode; first: BiggestInt): PNode =
   var temp = newSym(skTemp, getIdent(c.g.cache, lowerings.genPrefix), c.idgen, c.fn, c.info)
   temp.typ = getSysType(c.g, body.info, tyInt)
-  incl(temp.flags, sfFromGeneric)
+  incl(temp.flagsImpl, sfFromGeneric)
 
   var v = newNodeI(nkVarSection, c.info)
   result = newSymNode(temp)
@@ -545,7 +547,7 @@ proc declareCounter(c: var TLiftCtx; body: PNode; first: BiggestInt): PNode =
 proc declareTempOf(c: var TLiftCtx; body: PNode; value: PNode): PNode =
   var temp = newSym(skTemp, getIdent(c.g.cache, lowerings.genPrefix), c.idgen, c.fn, c.info)
   temp.typ = value.typ
-  incl(temp.flags, sfFromGeneric)
+  incl(temp.flagsImpl, sfFromGeneric)
 
   var v = newNodeI(nkVarSection, c.info)
   result = newSymNode(temp)
@@ -1120,8 +1122,7 @@ proc symDupPrototype(g: ModuleGraph; typ: PType; owner: PSym; kind: TTypeAttache
   n[bodyPos] = newNodeI(nkStmtList, info)
   n[resultPos] = newSymNode(res)
   result.ast = n
-  incl result.flags, sfFromGeneric
-  incl result.flags, sfGeneratedOp
+  incl result.flagsImpl, {sfFromGeneric, sfGeneratedOp}
 
 proc symPrototype(g: ModuleGraph; typ: PType; owner: PSym; kind: TTypeAttachedOp;
               info: TLineInfo; idgen: IdGenerator; isDiscriminant = false): PSym =
@@ -1163,11 +1164,11 @@ proc symPrototype(g: ModuleGraph; typ: PType; owner: PSym; kind: TTypeAttachedOp
   n[paramsPos] = result.typ.n
   n[bodyPos] = newNodeI(nkStmtList, info)
   result.ast = n
-  incl result.flags, sfFromGeneric
-  incl result.flags, sfGeneratedOp
+  incl result.flagsImpl, sfFromGeneric
+  incl result.flagsImpl, sfGeneratedOp
   if kind == attachedWasMoved:
-    incl result.flags, sfNoSideEffect
-    incl result.typ.flags, tfNoSideEffect
+    incl result.flagsImpl, sfNoSideEffect
+    incl result.typ, tfNoSideEffect
 
 proc genTypeFieldCopy(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   let xx = genBuiltin(c, mAccessTypeField, "accessTypeField", x)
@@ -1200,7 +1201,8 @@ proc produceSym(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp;
 
   if kind == attachedSink and destructorOverridden(g, typ):
     ## compiler can use a combination of `=destroy` and memCopy for sink op
-    dest.flags.incl sfCursor
+    ensureMutable dest
+    dest.flagsImpl.incl sfCursor
     let op = getAttachedOp(g, typ, attachedDestructor)
     result.ast[bodyPos].add newOpCall(a, op, if op.typ.firstParamType.kind == tyVar: d[0] else: d)
     result.ast[bodyPos].add newAsgnStmt(d, src)
@@ -1222,13 +1224,15 @@ proc produceSym(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp;
         genTypeFieldCopy(a, typ, result.ast[bodyPos], d, src)
 
   if not a.canRaise:
-    incl result.flags, sfNeverRaises
+    ensureMutable result
+    incl result.flagsImpl, sfNeverRaises
     result.ast[pragmasPos] = newNodeI(nkPragma, info)
     result.ast[pragmasPos].add newTree(nkExprColonExpr,
         newIdentNode(g.cache.getIdent("raises"),  info), newNodeI(nkBracket, info))
 
   if kind == attachedDestructor:
-    incl result.options, optQuirky
+    ensureMutable result
+    incl result.optionsImpl, optQuirky
   completePartialOp(g, idgen.module, typ, kind, result)
 
 
@@ -1253,7 +1257,9 @@ proc produceDestructorForDiscriminator*(g: ModuleGraph; typ: PType; field: PSym,
   result.ast[bodyPos].add v
   let placeHolder = newNodeIT(nkSym, info, getSysType(g, info, tyPointer))
   fillBody(a, typ, result.ast[bodyPos], d, placeHolder)
-  if not a.canRaise: incl result.flags, sfNeverRaises
+  if not a.canRaise: 
+    ensureMutable result
+    incl result.flagsImpl, sfNeverRaises
 
 
 template liftTypeBoundOps*(c: PContext; typ: PType; info: TLineInfo) =
@@ -1297,11 +1303,13 @@ proc createTypeBoundOps(g: ModuleGraph; c: PContext; orig: PType; info: TLineInf
   ## to ensure we lift assignment, destructors and moves properly.
   ## The later 'injectdestructors' pass depends on it.
   if orig == nil or {tfCheckedForDestructor, tfHasMeta} * orig.flags != {}: return
-  incl orig.flags, tfCheckedForDestructor
+  # IC: review this solution again later
+  incl orig.flagsImpl, tfCheckedForDestructor
   # for user defined generic destructors:
   let origRoot = genericRoot(orig)
   if origRoot != nil:
-    incl origRoot.flags, tfGenericHasDestructor
+    # IC: review this solution again later
+    incl origRoot.flagsImpl, tfGenericHasDestructor
 
   let skipped = orig.skipTypes({tyGenericInst, tyAlias, tySink})
   if isEmptyContainer(skipped) or skipped.kind == tyStatic: return
@@ -1327,7 +1335,7 @@ proc createTypeBoundOps(g: ModuleGraph; c: PContext; orig: PType; info: TLineInf
   # bug #15122: We need to produce all prototypes before entering the
   # mind boggling recursion. Hacks like these imply we should rewrite
   # this module.
-  var generics: array[attachedWasMoved..attachedTrace, bool] = default(array[attachedWasMoved..attachedTrace, bool])
+  var generics = default(array[attachedWasMoved..attachedTrace, bool])
   for k in attachedWasMoved..lastAttached:
     generics[k] = getAttachedOp(g, canon, k) != nil
     if not generics[k]:
@@ -1346,5 +1354,6 @@ proc createTypeBoundOps(g: ModuleGraph; c: PContext; orig: PType; info: TLineInf
   if not isTrivial(getAttachedOp(g, orig, attachedDestructor)):
     #or not isTrivial(orig.assignment) or
     # not isTrivial(orig.sink):
-    orig.flags.incl tfHasAsgn
+    # IC: review this solution again later
+    orig.flagsImpl.incl tfHasAsgn
     # ^ XXX Breaks IC!

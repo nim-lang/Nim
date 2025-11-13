@@ -198,7 +198,7 @@ proc newStateAssgn(ctx: var Ctx, toValue: PNode): PNode =
 proc newEnvVar(ctx: var Ctx, name: string, typ: PType): PSym =
   result = newSym(skVar, getIdent(ctx.g.cache, name), ctx.idgen, ctx.fn, ctx.fn.info)
   result.typ = typ
-  result.flags.incl sfNoInit
+  result.flagsImpl.incl sfNoInit
   assert(not typ.isNil, "Env var needs a type")
 
   let envParam = getEnvParam(ctx.fn)

@@ -84,7 +84,8 @@ proc fillBackendName(m: BModule; s: PSym) =
     if m.hcrOn:
       result.add '_'
       result.add(idOrSig(s, m.module.name.s.mangle, m.sigConflicts, m.config))
-    s.loc.snippet = result
+    ensureMutable s
+    s.locImpl.snippet = result
 
 proc fillParamName(m: BModule; s: PSym) =
   if s.loc.snippet == "":
@@ -107,7 +108,8 @@ proc fillParamName(m: BModule; s: PSym) =
     # and a function called in main or proxy uses `socket` as a parameter name.
     # That would lead to either needing to reload `proxy` or to overwrite the
     # executable file for the main module, which is running (or both!) -> error.
-    s.loc.snippet = res.rope
+    ensureMutable s
+    s.locImpl.snippet = res.rope
 
 proc fillLocalName(p: BProc; s: PSym) =
   assert s.kind in skLocalVars+{skTemp}
@@ -122,7 +124,8 @@ proc fillLocalName(p: BProc; s: PSym) =
     elif s.kind != skResult:
       result.add "_" & rope(counter+1)
     p.sigConflicts.inc(key)
-    s.loc.snippet = result
+    ensureMutable s
+    s.locImpl.snippet = result
 
 proc scopeMangledParam(p: BProc; param: PSym) =
   ## parameter generation only takes BModule, not a BProc, so we have to
@@ -155,9 +158,10 @@ proc getTypeName(m: BModule; typ: PType; sig: SigHash): Rope =
     else:
       break
   let typ = if typ.kind in {tyAlias, tySink, tyOwned}: typ.elementType else: typ
+  ensureMutable typ
   if typ.loc.snippet == "":
-    typ.typeName(typ.loc.snippet)
-    typ.loc.snippet.add $sig
+    typ.typeName(typ.locImpl.snippet)
+    typ.locImpl.snippet.add $sig
   else:
     when defined(debugSigHashes):
       # check consistency:
@@ -300,12 +304,13 @@ proc addAbiCheck(m: BModule; t: PType, name: Rope) =
 
 
 proc fillResult(conf: ConfigRef; param: PNode, proctype: PType) =
-  fillLoc(param.sym.loc, locParam, param, "Result",
+  ensureMutable param.sym
+  fillLoc(param.sym.locImpl, locParam, param, "Result",
           OnStack)
   let t = param.sym.typ
   if mapReturnType(conf, t) != ctArray and isInvalidReturnType(conf, proctype):
-    incl(param.sym.loc.flags, lfIndirect)
-    param.sym.loc.storage = OnUnknown
+    incl(param.sym.locImpl.flags, lfIndirect)
+    param.sym.locImpl.storage = OnUnknown
 
 proc typeNameOrLiteral(m: BModule; t: PType, literal: string): Rope =
   if t.sym != nil and sfImportc in t.sym.flags and t.sym.magic == mNone:
@@ -524,14 +529,15 @@ proc genMemberProcParams(m: BModule; prc: PSym, superCall, rettype, name, params
   var types, names, args: seq[string] = @[]
   if not isCtor:
     var this = t.n[1].sym
+    ensureMutable this
     fillParamName(m, this)
-    fillLoc(this.loc, locParam, t.n[1],
+    fillLoc(this.locImpl, locParam, t.n[1],
             this.paramStorageLoc)
     if this.typ.kind == tyPtr:
-      this.loc.snippet = "this"
+      this.locImpl.snippet = "this"
     else:
-      this.loc.snippet = "(*this)"
-    names.add this.loc.snippet
+      this.locImpl.snippet = "(*this)"
+    names.add this.locImpl.snippet
     types.add getTypeDescWeak(m, this.typ, check, dkParam)
 
   let firstParam = if isCtor: 1 else: 2
@@ -545,13 +551,14 @@ proc genMemberProcParams(m: BModule; prc: PSym, superCall, rettype, name, params
       else:
         descKind = dkRefParam
     var typ, name: string
+    ensureMutable param
     fillParamName(m, param)
-    fillLoc(param.loc, locParam, t.n[i],
+    fillLoc(param.locImpl, locParam, t.n[i],
             param.paramStorageLoc)
     if ccgIntroducedPtr(m.config, param, t.returnType) and descKind == dkParam:
       typ = getTypeDescWeak(m, param.typ, check, descKind) & "*"
-      incl(param.loc.flags, lfIndirect)
-      param.loc.storage = OnUnknown
+      incl(param.locImpl.flags, lfIndirect)
+      param.locImpl.storage = OnUnknown
     elif weakDep:
       typ = getTypeDescWeak(m, param.typ, check, descKind)
     else:
@@ -559,7 +566,7 @@ proc genMemberProcParams(m: BModule; prc: PSym, superCall, rettype, name, params
     if sfNoalias in param.flags:
       typ.add("NIM_NOALIAS ")
 
-    name = param.loc.snippet
+    name = param.locImpl.snippet
     types.add typ
     names.add name
     if sfCodegenDecl notin param.flags:
@@ -601,14 +608,15 @@ proc genProcParams(m: BModule; t: PType, rettype: var Rope, params: var Builder,
         else:
           descKind = dkRefParam
       if isCompileTimeOnly(param.typ): continue
+      ensureMutable param
       fillParamName(m, param)
-      fillLoc(param.loc, locParam, t.n[i],
+      fillLoc(param.locImpl, locParam, t.n[i],
               param.paramStorageLoc)
       var typ: Rope
       if ccgIntroducedPtr(m.config, param, t.returnType) and descKind == dkParam:
         typ = ptrType(getTypeDescWeak(m, param.typ, check, descKind))
-        incl(param.loc.flags, lfIndirect)
-        param.loc.storage = OnUnknown
+        incl(param.locImpl.flags, lfIndirect)
+        param.locImpl.storage = OnUnknown
       elif weakDep:
         typ = (getTypeDescWeak(m, param.typ, check, descKind))
       else:
@@ -620,9 +628,9 @@ proc genProcParams(m: BModule; t: PType, rettype: var Rope, params: var Builder,
       var j = 0
       while arr.kind in {tyOpenArray, tyVarargs}:
         # this fixes the 'sort' bug:
-        if param.typ.kind in {tyVar, tyLent}: param.loc.storage = OnUnknown
+        if param.typ.kind in {tyVar, tyLent}: param.locImpl.storage = OnUnknown
         # need to pass hidden parameter:
-        params.addParam(paramBuilder, name = param.loc.snippet & "Len_" & $j, typ = NimInt)
+        params.addParam(paramBuilder, name = param.locImpl.snippet & "Len_" & $j, typ = NimInt)
         inc(j)
         arr = arr[0].skipTypes({tySink})
     if t.returnType != nil and isInvalidReturnType(m.config, t):
@@ -707,7 +715,8 @@ proc genRecordFieldsAux(m: BModule; n: PNode,
     if field.typ.kind == tyVoid: return
     #assert(field.ast == nil)
     let sname = mangleRecFieldName(m, field)
-    fillLoc(field.loc, locField, n, unionPrefix & sname, OnUnknown)
+    ensureMutable field
+    fillLoc(field.locImpl, locField, n, unionPrefix & sname, OnUnknown)
     # for importcpp'ed objects, we only need to set field.loc, but don't
     # have to recurse via 'getTypeDescAux'. And not doing so prevents problems
     # with heavily templatized C++ code:
@@ -1155,7 +1164,8 @@ proc genMemberProcHeader(m: BModule; prc: PSym; result: var Builder; asPtr: bool
   let isCtor = sfConstructor in prc.flags
   var check = initIntSet()
   fillBackendName(m, prc)
-  fillLoc(prc.loc, locProc, prc.ast[namePos], OnUnknown)
+  ensureMutable prc
+  fillLoc(prc.locImpl, locProc, prc.ast[namePos], OnUnknown)
   var memberOp = "#." #only virtual
   var typ: PType
   if isCtor:
@@ -1187,7 +1197,7 @@ proc genMemberProcHeader(m: BModule; prc: PSym; result: var Builder; asPtr: bool
     superCall = ""
   else:
     if not isCtor:
-      prc.loc.snippet = "$1$2(@)" % [memberOp, name]
+      prc.locImpl.snippet = "$1$2(@)" % [memberOp, name]
     elif superCall != "":
       superCall = " : " & superCall
 
@@ -1202,14 +1212,15 @@ proc genProcHeader(m: BModule; prc: PSym; result: var Builder; visibility: var D
   # using static is needed for inline procs
   var check = initIntSet()
   fillBackendName(m, prc)
-  fillLoc(prc.loc, locProc, prc.ast[namePos], OnUnknown)
+  ensureMutable prc
+  fillLoc(prc.locImpl, locProc, prc.ast[namePos], OnUnknown)
   var rettype: Snippet = ""
   var desc = newBuilder("")
   genProcParams(m, prc.typ, rettype, desc, check, true, false)
   let params = extract(desc)
   # handle the 2 options for hotcodereloading codegen - function pointer
   # (instead of forward declaration) or header for function body with "_actual" postfix
-  var name = prc.loc.snippet
+  var name = prc.locImpl.snippet
   if not asPtr and isReloadable(m, prc):
     name.add("_actual")
   # careful here! don't access ``prc.ast`` as that could reload large parts of
@@ -1449,7 +1460,7 @@ proc genObjectInfo(m: BModule; typ, origType: PType, name: Rope; info: TLineInfo
   var t = typ.baseClass
   while t != nil:
     t = t.skipTypes(skipPtrs)
-    t.flags.incl tfObjHasKids
+    t.incl tfObjHasKids
     t = t.baseClass
 
 proc genTupleInfo(m: BModule; typ, origType: PType, name: Rope; info: TLineInfo) =
@@ -1645,8 +1656,8 @@ proc generateRttiDestructor(g: ModuleGraph; typ: PType; owner: PSym; kind: TType
   n[bodyPos] = body
   result.ast = n
 
-  incl result.flags, sfFromGeneric
-  incl result.flags, sfGeneratedOp
+  incl result.flagsImpl, sfFromGeneric
+  incl result.flagsImpl, sfGeneratedOp
 
 proc genHook(m: BModule; t: PType; info: TLineInfo; op: TTypeAttachedOp; result: var Builder) =
   let theProc = getAttachedOp(m.g.graph, t, op)

@@ -1155,7 +1155,7 @@ proc ownsData(c: var Con; s: var Scope; orig: PNode; flags: set[MoveOrCopyFlag])
   if n.kind in nkCallKinds and n.typ != nil and hasDestructor(c, n.typ):
     result = newNodeIT(nkStmtListExpr, orig.info, orig.typ)
     let tmp = c.getTemp(s, n.typ, n.info)
-    tmp.sym.flags.incl sfSingleUsedTemp
+    tmp.sym.flagsImpl.incl sfSingleUsedTemp
     result.add newTree(nkFastAsgn, tmp, copyTree(n))
     s.final.add c.genDestroy(tmp)
     n[] = tmp[]
@@ -1330,7 +1330,7 @@ proc addSinkCopy(c: var Con; s: var Scope; sinkParams: seq[PSym]; n: PNode): PNo
   for param in sinkParams:
     if param.id in mutatedSet:
       let newSym = newSym(skTemp, getIdent(c.graph.cache, "sinkCopy"), c.idgen, param.owner, n.info)
-      newSym.flags.incl sfFromGeneric
+      newSym.flagsImpl.incl sfFromGeneric
       newSym.typ = param.typ.elementType
       mapping[param.id] = newSym
       let v = newNodeI(nkVarSection, n.info)

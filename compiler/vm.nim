@@ -2214,7 +2214,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       if k < 0 or k > ord(high(TSymKind)):
         internalError(c.config, c.debug[pc], "request to create symbol of invalid kind")
       var sym = newSym(k.TSymKind, getIdent(c.cache, name), c.idgen, c.module.owner, c.debug[pc])
-      incl(sym.flags, sfGenSym)
+      incl(sym.flagsImpl, sfGenSym)
       regs[ra].node = newSymNode(sym)
       regs[ra].node.flags.incl nfIsRef
     of opcNccValue:
@@ -2369,7 +2369,7 @@ proc execProc*(c: PCtx; sym: PSym; args: openArray[PNode]): PNode =
 proc errorNode(idgen: IdGenerator; owner: PSym, n: PNode): PNode =
   result = newNodeI(nkEmpty, n.info)
   result.typ() = newType(tyError, idgen, owner)
-  result.typ.flags.incl tfCheckedForDestructor
+  result.typ.incl tfCheckedForDestructor
 
 proc evalStmt*(c: PCtx, n: PNode) =
   let n = transformExpr(c.graph, c.idgen, c.module, n)

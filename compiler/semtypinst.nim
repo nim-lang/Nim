@@ -263,7 +263,7 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0; expectedType: PT
   if n.typ != nil:
     if n.typ.kind == tyFromExpr:
       # type of node should not be evaluated as a static value
-      n.typ.flags.incl tfNonConstExpr
+      n.typ.incl tfNonConstExpr
     result.typ() = replaceTypeVarsT(cl, n.typ)
     checkMetaInvariants(cl, result.typ)
   case n.kind
@@ -279,8 +279,10 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0; expectedType: PT
     if result.sym.kind == skField and result.sym.ast != nil and
         (cl.owner == nil or result.sym.owner == cl.owner):
       # instantiate default value of object/tuple field
-      cl.c.fitDefaultNode(cl.c, result.sym.ast, result.sym.typ)
-      result.sym.typ = result.sym.ast.typ.skipIntLit(cl.c.idgen)
+      var n = result.sym.ast
+      cl.c.fitDefaultNode(cl.c, n, result.sym.typ)
+      result.sym.ast = n
+      result.sym.typ = n.typ.skipIntLit(cl.c.idgen)
     # sym type can be nil if was gensym created by macro, see #24048
     if result.sym.typ != nil and result.sym.typ.kind == tyVoid:
       # don't add the 'void' field
@@ -361,7 +363,7 @@ proc replaceTypeVarsS(cl: var TReplTypeVars, s: PSym, t: PType): PSym =
 
   ]#
   result = copySym(s, cl.c.idgen)
-  incl(result.flags, sfFromGeneric)
+  incl(result.flagsImpl, sfFromGeneric)
   #idTablePut(cl.symMap, s, result)
   setOwner(result, s.owner)
   result.typ = t
@@ -394,12 +396,12 @@ proc instCopyType*(cl: var TReplTypeVars, t: PType): PType =
     #cl.typeMap.topLayer.idTablePut(result, t)
 
   if cl.allowMetaTypes: return
-  result.flags.incl tfFromGeneric
+  result.incl tfFromGeneric
   if not (t.kind in tyMetaTypes or
          (t.kind == tyStatic and t.n == nil)):
-    result.flags.excl tfInstClearedFlags
+    result.excl tfInstClearedFlags
   else:
-    result.flags.excl tfHasAsgn
+    result.excl tfHasAsgn
   when false:
     if newDestructors:
       result.assignment = nil
@@ -524,13 +526,13 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
     let mm = skipTypes(bbody, abstractPtrs)
     if tfFromGeneric notin mm.flags:
       # bug #5479, prevent endless recursions here:
-      incl mm.flags, tfFromGeneric
+      incl mm.flagsImpl, tfFromGeneric
       for col, meth in methodsForGeneric(cl.c.graph, mm):
         # we instantiate the known methods belonging to that type, this causes
         # them to be registered and that's enough, so we 'discard' the result.
         discard cl.c.instTypeBoundOp(cl.c, meth, result, cl.info,
           attachedAsgn, col)
-      excl mm.flags, tfFromGeneric
+      excl mm.flagsImpl, tfFromGeneric
 
 proc eraseVoidParams*(t: PType) =
   # transform '(): void' into '()' because old parts of the compiler really
@@ -682,7 +684,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType, isInstValue = false): 
 
   of tyUserTypeClass:
     result = t
-  
+
   of tyStatic:
     if cl.c.matchedConcept != nil:
       # allow concepts to not instantiate statics for now
@@ -754,7 +756,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType, isInstValue = false): 
       of tyObject, tyTuple:
         propagateFieldFlags(result, result.n)
         if result.kind == tyObject and cl.c.computeRequiresInit(cl.c, result):
-          result.flags.incl tfRequiresInit
+          result.incl tfRequiresInit
 
       of tyProc:
         eraseVoidParams(result)

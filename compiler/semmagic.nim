@@ -34,7 +34,7 @@ proc semAddr(c: PContext; n: PNode): PNode =
   result = newNodeI(nkAddr, n.info)
   let x = semExprWithType(c, n)
   if x.kind == nkSym:
-    x.sym.flags.incl(sfAddrTaken)
+    x.sym.flagsImpl.incl(sfAddrTaken)
   if isAssignable(c, x) notin {arLValue, arLocalLValue, arAddressableConst, arLentValue}:
     localError(c.config, n.info, errExprHasNoAddress)
   result.add x
@@ -54,13 +54,13 @@ proc semTypeOf(c: PContext; n: PNode): PNode =
   let typExpr = semExprWithType(c, n[1], if m == 1: {efInTypeof} else: {})
   result.add typExpr
   if typExpr.typ.kind == tyFromExpr:
-    typExpr.typ.flags.incl tfNonConstExpr
+    typExpr.typ.incl tfNonConstExpr
   var t = typExpr.typ
   if t.kind == tyStatic:
     let base = t.skipTypes({tyStatic})
     if c.inGenericContext > 0 and base.containsGenericType:
       t = makeTypeFromExpr(c, copyTree(typExpr))
-      t.flags.incl tfNonConstExpr
+      t.incl tfNonConstExpr
     else:
       t = base
   result.typ() = makeTypeDesc(c, t)
@@ -85,7 +85,7 @@ proc semArrGet(c: PContext; n: PNode; flags: TExprFlags): PNode =
           # expression is compiled early in a generic body
           result = semGenericStmt(c, x)
           result.typ() = makeTypeFromExpr(c, copyTree(result))
-          result.typ.flags.incl tfNonConstExpr
+          result.typ.incl tfNonConstExpr
           return
     let s = # extract sym from first arg
       if n.len > 1:
@@ -442,7 +442,7 @@ proc semUnown(c: PContext; n: PNode): PNode =
         copyTypeProps(c.graph, c.idgen.module, result, t)
 
         result[^1] = b
-        result.flags.excl tfHasOwned
+        result.excl tfHasOwned
       else:
         result = t
     else:
@@ -471,7 +471,7 @@ proc turnFinalizerIntoDestructor(c: PContext; orig: PSym; info: TLineInfo): PSym
 
   result = copySym(orig, c.idgen)
   result.info = info
-  result.flags.incl sfFromGeneric
+  result.incl sfFromGeneric
   setOwner(result, orig)
   let origParamType = orig.typ.firstParamType
   let newParamType = makeVarType(result, origParamType.skipTypes(abstractPtrs), c.idgen)
@@ -551,7 +551,7 @@ proc semNewFinalize(c: PContext; n: PNode): PNode =
           let wrapperSym = newSym(skProc, getIdent(c.graph.cache, fin.name.s & "FinalizerWrapper"), c.idgen, fin.owner, fin.info)
           let selfSymNode = newSymNode(copySym(fin.ast[paramsPos][1][0].sym, c.idgen))
           selfSymNode.typ() = fin.typ.firstParamType
-          wrapperSym.flags.incl sfUsed
+          wrapperSym.flagsImpl.incl sfUsed
 
           let wrapper = c.semExpr(c, newProcNode(nkProcDef, fin.info, body = newTree(nkCall, newSymNode(fin), selfSymNode),
             params = nkFormalParams.newTree(c.graph.emptyNode,

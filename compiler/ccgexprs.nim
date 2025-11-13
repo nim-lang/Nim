@@ -3363,8 +3363,9 @@ proc genConstSetup(p: BProc; sym: PSym): bool =
   useHeader(m, sym)
   if sym.loc.k == locNone:
     fillBackendName(p.module, sym)
-    fillLoc(sym.loc, locData, sym.astdef, OnStatic)
-  if m.hcrOn: incl(sym.loc.flags, lfIndirect)
+    ensureMutable sym
+    fillLoc(sym.locImpl, locData, sym.astdef, OnStatic)
+  if m.hcrOn: incl(sym, lfIndirect)
   result = lfNoDecl notin sym.loc.flags
 
 proc genConstHeader(m, q: BModule; p: BProc, sym: PSym) =

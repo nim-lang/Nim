@@ -141,7 +141,7 @@ proc createTypeBoundOps(tracked: PEffects, typ: PType; info: TLineInfo; explicit
   if tracked.config.selectedGC == gcRefc or
       optSeqDestructors in tracked.config.globalOptions or
       tfHasAsgn in typ.flags:
-    tracked.owner.flags.incl sfInjectDestructors
+    tracked.owner.incl sfInjectDestructors
 
 proc isLocalSym(a: PEffects, s: PSym): bool =
   s.typ != nil and (s.kind in {skLet, skVar, skResult} or (s.kind == skParam and isOutParam(s.typ))) and
@@ -206,7 +206,7 @@ proc guardDotAccess(a: PEffects; n: PNode) =
 
 proc makeVolatile(a: PEffects; s: PSym) {.inline.} =
   if a.inTryStmt > 0 and a.config.exc == excSetjmp:
-    incl(s.flags, sfVolatile)
+    incl(s, sfVolatile)
 
 proc varDecl(a: PEffects; n: PNode) {.inline.} =
   if n.kind == nkSym:
@@ -373,7 +373,7 @@ proc useVarNoInitCheck(a: PEffects; n: PNode; s: PSym) =
 proc useVar(a: PEffects, n: PNode) =
   let s = n.sym
   if a.inExceptOrFinallyStmt > 0:
-    incl s.flags, sfUsedInFinallyOrExcept
+    incl s, sfUsedInFinallyOrExcept
   if isLocalSym(a, s):
     if sfNoInit in s.flags:
       # If the variable is explicitly marked as .noinit. do not emit any error
@@ -1243,7 +1243,7 @@ proc track(tracked: PEffects, n: PNode) =
   of nkSym:
     useVar(tracked, n)
     if n.sym.typ != nil and tfHasAsgn in n.sym.typ.flags:
-      tracked.owner.flags.incl sfInjectDestructors
+      tracked.owner.incl sfInjectDestructors
       # bug #15038: ensure consistency
       if n.typ == nil or (not hasDestructor(n.typ) and sameType(n.typ, n.sym.typ)): n.typ() = n.sym.typ
   of nkHiddenAddr, nkAddr:
@@ -1627,7 +1627,7 @@ proc setEffectsForProcType*(g: ModuleGraph; t: PType, n: PNode; s: PSym = nil) =
     effects[pragmasEffects] = n
   if s != nil and s.magic != mNone:
     if s.magic != mEcho:
-      t.flags.incl tfNoSideEffect
+      t.incl tfNoSideEffect
 
 proc rawInitEffects(g: ModuleGraph; effects: PNode) =
   newSeq(effects.sons, effectListLen)
@@ -1682,7 +1682,7 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
     t.scopes[res.id] = t.currentBlock
     if sfNoInit in s.flags:
       # marks result "noinit"
-      incl res.flags, sfNoInit
+      incl res, sfNoInit
 
   track(t, body)
 
@@ -1769,9 +1769,9 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
       else:
         localError(g.config, s.info, "") # simple error for `system.compiles` context
   if not t.gcUnsafe:
-    s.typ.flags.incl tfGcSafe
+    s.typ.incl tfGcSafe
   if not t.hasSideEffect and sfSideEffect notin s.flags:
-    s.typ.flags.incl tfNoSideEffect
+    s.typ.incl tfNoSideEffect
   when defined(drnim):
     if c.graph.strongSemCheck != nil: c.graph.strongSemCheck(c.graph, s, body)
   when defined(useDfa):

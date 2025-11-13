@@ -899,11 +899,11 @@ proc moduleIndex*(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: in
 proc symHeaderFromPacked(c: var PackedDecoder; g: var PackedModuleGraph;
                          s: PackedSym; si, item: int32): PSym =
   result = PSym(itemId: ItemId(module: si, item: item),
-    kind: s.kind, magic: s.magic, flags: s.flags,
-    info: translateLineInfo(c, g, si, s.info),
-    options: s.options,
-    position: if s.kind in {skForVar, skVar, skLet, skTemp}: 0 else: s.position,
-    offset: if s.kind in routineKinds: defaultOffset else: s.offset,
+    kindImpl: s.kind, magicImpl: s.magic, flagsImpl: s.flags,
+    infoImpl: translateLineInfo(c, g, si, s.info),
+    optionsImpl: s.options,
+    positionImpl: if s.kind in {skForVar, skVar, skLet, skTemp}: 0 else: s.position,
+    offsetImpl: if s.kind in routineKinds: defaultOffset else: s.offset,
     disamb: s.disamb,
     name: getIdent(c.cache, g[si].fromDisk.strings[s.name])
   )
@@ -945,8 +945,8 @@ proc symBodyFromPacked(c: var PackedDecoder; g: var PackedModuleGraph;
   setOwner(result, loadSym(c, g, si, s.owner))
   let externalName = g[si].fromDisk.strings[s.externalName]
   if externalName != "":
-    result.loc.snippet = externalName
-  result.loc.flags = s.locFlags
+    result.locImpl.snippet = externalName
+  result.locImpl.flags = s.locFlags
   result.instantiatedFrom = loadSym(c, g, si, s.instantiatedFrom)
 
 proc needsRecompile(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCache;
@@ -990,10 +990,10 @@ proc loadSym(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: int; s:
 proc typeHeaderFromPacked(c: var PackedDecoder; g: var PackedModuleGraph;
                           t: PackedType; si, item: int32): PType =
   result = PType(itemId: ItemId(module: si, item: t.nonUniqueId), kind: t.kind,
-                flags: t.flags, size: t.size, align: t.align,
-                paddingAtEnd: t.paddingAtEnd,
+                flagsImpl: t.flags, sizeImpl: t.size, alignImpl: t.align,
+                paddingAtEndImpl: t.paddingAtEnd,
                 uniqueId: ItemId(module: si, item: item),
-                callConv: t.callConv)
+                callConvImpl: t.callConv)
 
 proc typeBodyFromPacked(c: var PackedDecoder; g: var PackedModuleGraph;
                         t: PackedType; si, item: int32; result: PType) =
@@ -1058,12 +1058,12 @@ proc setupLookupTables(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCa
   let filename = AbsoluteFile toFullPath(conf, fileIdx)
   # We cannot call ``newSym`` here, because we have to circumvent the ID
   # mechanism, which we do in order to assign each module a persistent ID.
-  m.module = PSym(kind: skModule, itemId: ItemId(module: int32(fileIdx), item: 0'i32),
+  m.module = PSym(kindImpl: skModule, itemId: ItemId(module: int32(fileIdx), item: 0'i32),
                   name: getIdent(cache, splitFile(filename).name),
-                  info: newLineInfo(fileIdx, 1, 1),
-                  position: int(fileIdx))
+                  infoImpl: newLineInfo(fileIdx, 1, 1),
+                  positionImpl: int(fileIdx))
   setOwner(m.module, getPackage(conf, cache, fileIdx))
-  m.module.flags = m.fromDisk.moduleFlags
+  m.module.flagsImpl = m.fromDisk.moduleFlags
 
 proc loadToReplayNodes(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCache;
                        fileIdx: FileIndex; m: var LoadedModule) =

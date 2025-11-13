@@ -33,7 +33,7 @@ proc iterToProcImpl*(c: PContext, n: PNode): PNode =
 
   let prc = newSym(skProc, n[3].ident, c.idgen, iter.sym.owner, iter.sym.info)
   prc.typ = copyType(iter.sym.typ, c.idgen, prc)
-  excl prc.typ.flags, tfCapturesEnv
+  excl prc.typ, tfCapturesEnv
   prc.typ.n.add newSymNode(getEnvParam(iter.sym))
   prc.typ.rawAddSon t
   let orig = iter.sym.ast
