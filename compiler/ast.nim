@@ -534,20 +534,14 @@ proc addAllowNil*(father, son: PNode) {.inline.} =
 
 proc add*(father, son: PType) =
   assert son != nil
-  var s = father.sons()
-  s.add(son)
-  father.sonsImpl = s
+  father.sonsImpl.add son
 
 proc addAllowNil*(father, son: PType) {.inline.} =
-  var s = father.sons()
-  s.add(son)
-  father.sonsImpl = s
+  father.sonsImpl.add son
 
-template `[]`*(n: PType, i: int): PType = n.sons()[i]
+template `[]`*(n: PType, i: int): PType = n.sonsImpl[i]
 template `[]=`*(n: PType, i: int; x: PType) =
-  var s = n.sons()
-  s[i] = x
-  n.sonsImpl = s
+  n.sonsImpl[i] = x
 
 template `[]`*(n: PType, i: BackwardsIndex): PType = n[n.len - i.int]
 template `[]=`*(n: PType, i: BackwardsIndex; x: PType) = n[n.len - i.int] = x
@@ -791,33 +785,33 @@ proc replaceFirstSon*(n, newson: PNode) {.inline.} =
 proc replaceSon*(n: PNode; i: int; newson: PNode) {.inline.} =
   n.sons[i] = newson
 
-proc last*(n: PType): PType {.inline.} = n.sons()[^1]
+proc last*(n: PType): PType {.inline.} = n.sonsImpl[^1]
 
-proc elementType*(n: PType): PType {.inline.} = n.sons()[^1]
-proc skipModifier*(n: PType): PType {.inline.} = n.sons()[^1]
+proc elementType*(n: PType): PType {.inline.} = n.sonsImpl[^1]
+proc skipModifier*(n: PType): PType {.inline.} = n.sonsImpl[^1]
 
-proc indexType*(n: PType): PType {.inline.} = n.sons()[0]
-proc baseClass*(n: PType): PType {.inline.} = n.sons()[0]
+proc indexType*(n: PType): PType {.inline.} = n.sonsImpl[0]
+proc baseClass*(n: PType): PType {.inline.} = n.sonsImpl[0]
 
 proc base*(t: PType): PType {.inline.} =
-  result = t.sons()[0]
+  result = t.sonsImpl[0]
 
-proc returnType*(n: PType): PType {.inline.} = n.sons()[0]
+proc returnType*(n: PType): PType {.inline.} = n.sonsImpl[0]
 proc setReturnType*(n, r: PType) {.inline.} =
-  var s = n.sons()
+  var s = n.sonsImpl
   s[0] = r
   n.sonsImpl = s
 proc setIndexType*(n, idx: PType) {.inline.} =
-  var s = n.sons()
+  var s = n.sonsImpl
   s[0] = idx
   n.sonsImpl = s
 
-proc firstParamType*(n: PType): PType {.inline.} = n.sons()[1]
-proc firstGenericParam*(n: PType): PType {.inline.} = n.sons()[1]
+proc firstParamType*(n: PType): PType {.inline.} = n.sonsImpl[1]
+proc firstGenericParam*(n: PType): PType {.inline.} = n.sonsImpl[1]
 
-proc typeBodyImpl*(n: PType): PType {.inline.} = n.sons()[^1]
+proc typeBodyImpl*(n: PType): PType {.inline.} = n.sonsImpl[^1]
 
-proc genericHead*(n: PType): PType {.inline.} = n.sons()[0]
+proc genericHead*(n: PType): PType {.inline.} = n.sonsImpl[0]
 
 proc skipTypes*(t: PType, kinds: TTypeKinds): PType =
   ## Used throughout the compiler code to test whether a type tree contains or
@@ -983,9 +977,7 @@ proc newType*(kind: TTypeKind; idgen: IdGenerator; owner: PSym; son: sink PType 
                  alignImpl: defaultAlignment, itemId: id,
                  uniqueId: id, sonsImpl: @[])
   if son != nil:
-    var s = result.sons()
-    s.add son
-    result.sonsImpl = s
+    result.sonsImpl.add son
   when false:
     if result.itemId.module == 55 and result.itemId.item == 2:
       echo "KNID ", kind
@@ -1108,7 +1100,7 @@ proc skipTypesOrNil*(t: PType, kinds: TTypeKinds): PType =
   ## same as skipTypes but handles 'nil'
   result = t
   while result != nil and result.kind in kinds:
-    if result.sons().len == 0: return nil
+    if result.sonsImpl.len == 0: return nil
     result = last(result)
 
 proc isGCedMem*(t: PType): bool {.inline.} =
