@@ -724,7 +724,7 @@ proc appendToModule*(m: PSym, n: PNode) =
     m.astImpl = newNode(nkStmtList)
   else:
     assert m.astImpl.kind == nkStmtList
-    m.astImpl.add(n)
+  m.astImpl.add(n)
 
 const                         # for all kind of hash tables:
   GrowthFactor* = 2           # must be power of 2, > 0
@@ -798,13 +798,9 @@ proc base*(t: PType): PType {.inline.} =
 
 proc returnType*(n: PType): PType {.inline.} = n.sonsImpl[0]
 proc setReturnType*(n, r: PType) {.inline.} =
-  var s = n.sonsImpl
-  s[0] = r
-  n.sonsImpl = s
+  n.sonsImpl[0] = r
 proc setIndexType*(n, idx: PType) {.inline.} =
-  var s = n.sonsImpl
-  s[0] = idx
-  n.sonsImpl = s
+  n.sonsImpl[0] = idx
 
 proc firstParamType*(n: PType): PType {.inline.} = n.sonsImpl[1]
 proc firstGenericParam*(n: PType): PType {.inline.} = n.sonsImpl[1]
