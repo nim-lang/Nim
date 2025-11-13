@@ -148,20 +148,27 @@ proc runCmd(cmd, dest: string): bool =
     quit "unknown command: " & cmd
 
 proc smartCompare(pattern, x: string): bool =
-  let p = splitLines(pattern.strip())
-  let x = splitLines(x.strip())
-  if p.len > x.len:
+  let pp = splitLines(pattern.strip())
+  let xx = splitLines(x.strip())
+  if pp.len > xx.len:
     return false
-  for i in 0..p.len-1:
-    let starAt = p[i].find('*')
-    if starAt >= 0:
-      if x[i].startsWith(p[i].substr(0, starAt-1)) and x[i].endsWith(p[i].substr(starAt+1)):
-        discard
+  for l in 0..pp.len-1:
+    let p = pp[l].split('\t')
+    let x = xx[l].split('\t')
+    if p.len > x.len:
+      return false
+    for i in 0..p.len-1:
+      let starAt = p[i].find('*')
+      if starAt >= 0:
+        if p[i] == "*":
+          discard "field exists, that is good enough"
+        elif x[i].startsWith(p[i].substr(0, starAt-1)) and x[i].endsWith(p[i].substr(starAt+1)):
+          discard
+        else:
+          return false
       else:
-        return false
-    else:
-      if x[i] != p[i]:
-        return false
+        if x[i] != p[i]:
+          return false
   return true
 
 proc sendEpcStr(socket: Socket; cmd: string) =
