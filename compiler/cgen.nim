@@ -2449,7 +2449,10 @@ proc handleProcGlobals(m: BModule) =
 
     # fixes recursive calls #24997
     swap stmts, m.preInitProc.s(cpsStmts)
-    genStmts(m.preInitProc, procGlobals[i])
+    var transformedN = procGlobals[i]
+    if sfInjectDestructors in m.module.flags:
+      transformedN = injectDestructorCalls(m.g.graph, m.idgen, m.module, transformedN)
+    genStmts(m.preInitProc, transformedN)
     swap stmts, m.preInitProc.s(cpsStmts)
 
     handleProcGlobals(m)
