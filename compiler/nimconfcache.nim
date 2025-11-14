@@ -187,6 +187,50 @@ proc configToNif(conf: ConfigRef; dest: var TokenBuf) =
   dest.addStrLit conf.libpath.toNifPath
   dest.addStrLit conf.nimcacheDir.toNifPath
 
+  dest.buildTree "dllOverrides":
+    for s in conf.dllOverrides.keys:
+      dest.addStrLit s
+
+  dest.toNif "moduleOverrides", conf.moduleOverrides
+
+  dest.buildTree "implicitImports":
+    for m in conf.implicitImports:
+      dest.addStrLit m
+
+  dest.buildTree "implicitIncludes":
+    for m in conf.implicitIncludes:
+      dest.addStrLit m
+
+  dest.addStrLit conf.docSeeSrcUrl
+  dest.addStrLit conf.docRoot
+  dest.addStrLit conf.docCmd
+
+  dest.buildTree "configFiles":
+    for c in conf.configFiles:
+      dest.addStrLit c.toNifPath
+
+  dest.buildTree "cIncludes":
+    for d in conf.cIncludes:
+      dest.addStrLit d.toNifPath
+
+  dest.buildTree "cLibs":
+    for d in conf.cLibs:
+      dest.addStrLit d.toNifPath
+
+  dest.buildTree "cLinkedLibs":
+    for l in conf.cLinkedLibs:
+      dest.addStrLit l
+
+  dest.buildTree "externalToLink":
+    for f in conf.externalToLink:
+      dest.addStrLit f
+
+  dest.addStrLit conf.linkOptionsCmd
+
+  dest.buildTree "compileOptionsCmd":
+    for c in conf.compileOptionsCmd:
+      dest.addStrLit c
+
 proc cfgCachePath(conf: ConfigRef): (AbsoluteDir, RelativeFile) =
   (conf.projectPath / RelativeDir"nimcache", RelativeFile"cache.cfg.nif")
 
@@ -354,6 +398,83 @@ proc loadConfigsFromNif(conf: ConfigRef; n: var Cursor) =
   fromNif(conf.libpath, n)
   fromNif(conf.nimcacheDir, n)
 
+  expectTag n, "dllOverrides"
+  inc n
+  while n.kind != ParRi:
+    conf.inclDynlibOverride(pool.strings[n.litId])
+    inc n
+  inc n
+
+  expectTag n, "moduleOverrides"
+  inc n
+  fromNif(conf.moduleOverrides, n)
+
+  expectTag n, "implicitImports"
+  inc n
+  while n.kind != ParRi:
+    conf.implicitImports.add pool.strings[n.litId]
+    inc n
+  inc n
+
+  expectTag n, "implicitIncludes"
+  inc n
+  while n.kind != ParRi:
+    conf.implicitIncludes.add pool.strings[n.litId]
+    inc n
+  inc n
+
+  conf.docSeeSrcUrl = pool.strings[n.litId]
+  inc n
+  conf.docRoot = pool.strings[n.litId]
+  inc n
+  conf.docCmd = pool.strings[n.litId]
+  inc n
+
+  expectTag n, "configFiles"
+  inc n
+  while n.kind != ParRi:
+    conf.configFiles.add pool.strings[n.litId].toAbsolute(getCurrentDir().AbsoluteDir)
+    inc n
+  inc n
+
+  expectTag n, "cIncludes"
+  inc n
+  while n.kind != ParRi:
+    conf.cIncludes.add pool.strings[n.litId].toAbsoluteDir
+    inc n
+  inc n
+
+  expectTag n, "cLibs"
+  inc n
+  while n.kind != ParRi:
+    conf.cLibs.add pool.strings[n.litId].toAbsoluteDir
+    inc n
+  inc n
+
+  expectTag n, "cLinkedLibs"
+  inc n
+  while n.kind != ParRi:
+    conf.cLinkedLibs.add pool.strings[n.litId]
+    inc n
+  inc n
+
+  expectTag n, "externalToLink"
+  inc n
+  while n.kind != ParRi:
+    conf.externalToLink.add pool.strings[n.litId]
+    inc n
+  inc n
+
+  conf.linkOptionsCmd = pool.strings[n.litId]
+  inc n
+
+  expectTag n, "compileOptionsCmd"
+  inc n
+  while n.kind != ParRi:
+    conf.compileOptionsCmd.add pool.strings[n.litId]
+    inc n
+  inc n
+
 proc sourceChanged*(conf: ConfigRef): HashSet[string] =
   result = HashSet[string]()
   let (dir, file) = conf.cfgCachePath()
@@ -451,6 +572,20 @@ when isMainModule:
     assertImpl prefixDir
     assertImpl libpath
     assertImpl nimcacheDir
+    assert eqlKeys(x.dllOverrides, y.dllOverrides)
+    assertImpl moduleOverrides
+    assertImpl implicitImports
+    assertImpl implicitIncludes
+    assertImpl docSeeSrcUrl
+    assertImpl docRoot
+    assertImpl docCmd
+    assertImpl configFiles
+    assertImpl cIncludes
+    assertImpl cLibs
+    assertImpl cLinkedLibs
+    assertImpl externalToLink
+    assertImpl linkOptionsCmd
+    assertImpl compileOptionsCmd
 
   proc testConfig(conf1: ConfigRef) =
     var dest = createTokenBuf()
@@ -521,4 +656,20 @@ when isMainModule:
     conf.prefixDir = AbsoluteDir"/home/foo/Nim"
     conf.libpath = AbsoluteDir"/home/foo/Nim/lib"
     conf.nimcacheDir = AbsoluteDir"/root/nimcache"
+    conf.inclDynlibOverride("foolib")
+    conf.inclDynlibOverride("libbar")
+    conf.moduleOverrides["foo"] = "overridefoo"
+    conf.moduleOverrides["bar"] = "overridebar"
+    conf.implicitImports = @["foo", "bar"]
+    conf.implicitIncludes = @["foo", "bar"]
+    conf.docSeeSrcUrl = "doc see src url"
+    conf.docRoot = "doc root"
+    conf.docCmd = "doc command"
+    conf.configFiles = @[AbsoluteFile"/foo/nim.cfg", AbsoluteFile"/bar/baz/config.nims"]
+    conf.cIncludes = @[AbsoluteDir"/include", AbsoluteDir"/foo/bar"]
+    conf.cLibs = @[AbsoluteDir"/lib", AbsoluteDir"/foo/bar"]
+    conf.cLinkedLibs = @["foolib", "libbar"]
+    conf.externalToLink = @["foo", "bar"]
+    conf.linkOptionsCmd = "--foo -lbar"
+    conf.compileOptionsCmd = @["-O3", "-g"]
     testConfig conf
