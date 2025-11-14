@@ -463,7 +463,8 @@ proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode) =
   inner.addParRi()
 
   let m = modname(w.moduleToNifSuffix, w.currentModule, w.infos.config)
-  let d = toGeneratedFile(config, AbsoluteFile(m), ".nif").string
+  let nifFilename = AbsoluteFile(m).changeFileExt(".nif")
+  let d = completeGeneratedFilePath(config, nifFilename).string
 
   var dest = createTokenBuf(600)
   dest.addParLe pool.tags.getOrIncl(toNifTag(nkStmtList)), rootInfo
