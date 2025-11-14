@@ -36,8 +36,36 @@ proc fromNif2[T: enum](result: var set[T]; n: var Cursor) =
     inc n
   inc n
 
+proc fromNif(result: StringTableRef; n: var Cursor) =
+  result.clear
+  assert n.kind in {ParLe, ParRi}
+  while n.kind != ParRi:
+    expectTag n, "kv"
+    inc n
+    assert n.kind == StringLit
+    let key = pool.strings[n.litId]
+    inc n
+    let val = pool.strings[n.litId]
+    inc n
+    result[key] = val
+    assert n.kind == ParRi
+    inc n
+  inc n
+
+proc fromNif(result: var AbsoluteDir; n: var Cursor) =
+  let d = pool.strings[n.litId]
+  inc n
+  result = if d.len > 0: d.toAbsoluteDir else: AbsoluteDir""
+
 template buildTree(dest: var TokenBuf; tag: string; body: untyped): untyped =
   buildTree(dest, pool.tags.getOrIncl(tag), NoLineInfo, body)
+
+proc toNif(dest: var TokenBuf; tag: string; tab: StringTableRef) =
+  dest.buildTree tag:
+    for key, val in pairs(tab):
+      dest.buildTree "kv":
+        dest.addStrLit key
+        dest.addStrLit val
 
 proc configToNif(conf: ConfigRef; dest: var TokenBuf) =
   # store data used to decide whether to use cache or eval config files
@@ -132,6 +160,8 @@ proc configToNif(conf: ConfigRef; dest: var TokenBuf) =
   dest.addIntLit conf.maxLoopIterationsVM
   dest.addIntLit conf.maxCallDepthVM
 
+  dest.toNif "configVars", conf.configVars
+
   dest.buildTree "defines":
     for def in definedSymbolNames(conf.symbols):
       dest.addStrLit def
@@ -150,6 +180,12 @@ proc configToNif(conf: ConfigRef; dest: var TokenBuf) =
   dest.buildTree "paths":
     for p in paths:
       dest.addStrLit p
+
+  dest.addStrLit conf.outFile.string
+  dest.addStrLit conf.outDir.toNifPath
+  dest.addStrLit conf.prefixDir.toNifPath
+  dest.addStrLit conf.libpath.toNifPath
+  dest.addStrLit conf.nimcacheDir.toNifPath
 
 proc cfgCachePath(conf: ConfigRef): (AbsoluteDir, RelativeFile) =
   (conf.projectPath / RelativeDir"nimcache", RelativeFile"cache.cfg.nif")
@@ -273,6 +309,10 @@ proc loadConfigsFromNif(conf: ConfigRef; n: var Cursor) =
   conf.maxCallDepthVM = pool.integers[n.intId]
   inc n
 
+  expectTag n, "configVars"
+  inc n
+  fromNif(conf.configVars, n)
+
   conf.symbols.clear
   expectTag n, "defines"
   inc n
@@ -306,6 +346,13 @@ proc loadConfigsFromNif(conf: ConfigRef; n: var Cursor) =
   inc n
   #echo "conf.searchPaths"
   #echo conf.searchPaths
+
+  conf.outFile = pool.strings[n.litId].RelativeFile
+  inc n
+  fromNif(conf.outDir, n)
+  fromNif(conf.prefixDir, n)
+  fromNif(conf.libpath, n)
+  fromNif(conf.nimcacheDir, n)
 
 proc sourceChanged*(conf: ConfigRef): HashSet[string] =
   result = HashSet[string]()
@@ -348,9 +395,18 @@ proc storeConfigs*(conf: ConfigRef) =
     writeFile dir / file, "(.nif24)\n" & toString(dest)
 
 when isMainModule:
-  proc `==`(x, y: StringTableRef): bool =
+  proc eqlKeys(x, y: StringTableRef): bool =
     for k, v in x:
       if k notin y:
+        return false
+
+    return true
+
+  proc `==`(x, y: StringTableRef): bool =
+    for k, v in x.pairs:
+      if k notin y:
+        return false
+      elif y[k] != v:
         return false
 
     return true
@@ -364,8 +420,8 @@ when isMainModule:
     assert x.target.targetCPU == y.target.targetCPU
     assertImpl options
     assertImpl globalOptions
-    assertImpl macrosToExpand
-    assertImpl arcToExpand
+    assert eqlKeys(x.macrosToExpand, y.macrosToExpand)
+    assert eqlKeys(x.arcToExpand, y.arcToExpand)
     assertImpl filenameOption
     assertImpl unitSep
     assertImpl selectedGC
@@ -386,9 +442,15 @@ when isMainModule:
     assertImpl errorMax
     assertImpl maxLoopIterationsVM
     assertImpl maxCallDepthVM
-    assertImpl symbols
+    assertImpl configVars
+    assert eqlKeys(x.symbols, y.symbols)
     assertImpl nimblePaths
     assertImpl searchPaths
+    assertImpl outFile
+    assertImpl outDir
+    assertImpl prefixDir
+    assertImpl libpath
+    assertImpl nimcacheDir
 
   proc testConfig(conf1: ConfigRef) =
     var dest = createTokenBuf()
@@ -447,8 +509,16 @@ when isMainModule:
     conf.errorMax = 7
     conf.maxLoopIterationsVM = 1234
     conf.maxCallDepthVM = 111
+    conf.setConfigVar("foo.bar", "baz")
+    conf.setConfigVar("abc.def.ghi", "123")
+    conf.setConfigVar(".", "")
     conf.symbols.initDefines()
     conf.symbols.defineSymbol("test")
     conf.nimblePaths = @[AbsoluteDir"/foo", AbsoluteDir"/lib/nimble"]
     conf.searchPaths = @[AbsoluteDir"/lib", AbsoluteDir"/user/lib"]
+    conf.outFile = RelativeFile"foo"
+    conf.outDir = AbsoluteDir"/foo/var"
+    conf.prefixDir = AbsoluteDir"/home/foo/Nim"
+    conf.libpath = AbsoluteDir"/home/foo/Nim/lib"
+    conf.nimcacheDir = AbsoluteDir"/root/nimcache"
     testConfig conf
