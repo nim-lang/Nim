@@ -3435,7 +3435,7 @@ proc genConstDefinition(q: BModule; p: BProc; sym: PSym) =
 
 proc genConstStmt(p: BProc, n: PNode) =
   # This code is only used in the new DCE implementation.
-  assert useAliveDataFromDce in p.module.flags
+  assert delayedCodegen(p.module)
   let m = p.module
   for it in n:
     if it[0].kind == nkSym:
@@ -3453,7 +3453,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
     var sym = n.sym
     case sym.kind
     of skMethod:
-      if useAliveDataFromDce in p.module.flags or {sfDispatcher, sfForward} * sym.flags != {}:
+      if delayedCodegen(p.module) or {sfDispatcher, sfForward} * sym.flags != {}:
         # we cannot produce code for the dispatcher yet:
         fillProcLoc(p.module, n)
         genProcPrototype(p.module, sym)
@@ -3466,7 +3466,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
       if sfCompileTime in sym.flags:
         localError(p.config, n.info, "request to generate code for .compileTime proc: " &
            sym.name.s)
-      if useAliveDataFromDce in p.module.flags and sym.typ.callConv != ccInline:
+      if delayedCodegen(p.module) and sym.typ.callConv != ccInline:
         fillProcLoc(p.module, n)
         genProcPrototype(p.module, sym)
       else:
@@ -3479,7 +3479,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
         var lit = newBuilder("")
         genLiteral(p, sym.astdef, sym.typ, lit)
         putIntoDest(p, d, n, extract(lit), OnStatic)
-      elif useAliveDataFromDce in p.module.flags:
+      elif delayedCodegen(p.module):
         genConstHeader(p.module, p.module, p, sym)
         assert((sym.loc.snippet != "") and (sym.loc.t != nil))
         putLocIntoDest(p, d, sym.loc)
@@ -3611,7 +3611,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
   of nkWhileStmt: genWhileStmt(p, n)
   of nkVarSection, nkLetSection: genVarStmt(p, n)
   of nkConstSection:
-    if useAliveDataFromDce in p.module.flags:
+    if delayedCodegen(p.module):
       genConstStmt(p, n)
     else: # enforce addressable consts for exportc
       let m = p.module
@@ -3677,7 +3677,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
   of nkProcDef, nkFuncDef, nkMethodDef, nkConverterDef:
     if n[genericParamsPos].kind == nkEmpty:
       var prc = n[namePos].sym
-      if useAliveDataFromDce in p.module.flags:
+      if delayedCodegen(p.module):
         if p.module.alive.contains(prc.itemId.item) and
             prc.magic in generatedMagics:
           genProc(p.module, prc)

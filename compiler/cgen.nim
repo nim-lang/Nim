@@ -1445,6 +1445,7 @@ proc genProcPrototype(m: BModule, sym: PSym) =
               getModuleDllPath(m, sym),
               '"' & name & '"')
   elif not containsOrIncl(m.declaredProtos, sym.id):
+    m.queue.add(sym)
     let asPtr = isReloadable(m, sym)
     var header = newBuilder("")
     var visibility: DeclVisibility = None
@@ -2506,6 +2507,11 @@ proc writeModule(m: BModule, pending: bool) =
   let cfile = getCFile(m)
   if moduleHasChanged(m.g.graph, m.module):
     genInitCode(m)
+
+    while m.queue.len > 0:
+      let sym = m.queue.pop()
+      genProcAux(m, sym)
+
     finishTypeDescriptions(m)
     if sfMainModule in m.module.flags:
       # generate main file:

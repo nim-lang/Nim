@@ -155,6 +155,7 @@ type
     forwTypeCache*: TypeCache # cache for forward declarations of types
     declaredThings*: IntSet   # things we have declared in this .c file
     declaredProtos*: IntSet   # prototypes we have declared in this .c file
+    queue*: seq[PSym]         # queue of procs to generate
     alive*: IntSet            # symbol IDs of alive data as computed by `dce.nim`
     headerFiles*: seq[string] # needed headers to include
     typeInfoMarker*: TypeCache # needed for generating type information
@@ -177,6 +178,9 @@ type
 template config*(m: BModule): ConfigRef = m.g.config
 template config*(p: BProc): ConfigRef = p.module.g.config
 template vccAndC*(p: BProc): bool = p.module.config.cCompiler == ccVcc and p.module.config.backend == backendC
+
+proc delayedCodegen*(m: BModule): bool {.inline.} =
+  useAliveDataFromDce in m.flags or m.config.globalOptions.contains(optCompress)
 
 proc includeHeader*(this: BModule; header: string) =
   if not this.headerFiles.contains header:
