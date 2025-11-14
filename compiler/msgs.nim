@@ -541,8 +541,18 @@ proc formatRustStyleSourceContext(conf: ConfigRef; info: TLineInfo;
 
   result.add "\n"
 
+proc getSurroundingSrcLegacy(conf: ConfigRef; info: TLineInfo): string =
+  ## Legacy formatting: simple indented source line with caret
+  if conf.hasHint(hintSource) and info != unknownLineInfo:
+    const indent = "  "
+    result = "\n" & indent & $sourceLine(conf, info)
+    if info.col >= 0:
+      result.add "\n" & indent & spaces(info.col) & '^'
+  else:
+    result = ""
+
 proc getSurroundingSrc(conf: ConfigRef; info: TLineInfo): string =
-  ## Legacy function - now uses Rust-style formatting
+  ## Get surrounding source - uses Rust-style formatting
   if conf.hasHint(hintSource) and info != unknownLineInfo:
     result = formatRustStyleSourceContext(conf, info)
   else:
@@ -606,8 +616,6 @@ proc liMessage*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
 
   let s = if isRaw: arg else: getMessageStr(msg, arg)
   if not ignoreMsg:
-    # Rust-style error code formatting
-    let errCode = errorCode(msg)
     let loc = if info != unknownLineInfo: conf.toFileLineCol(info) & " " else: ""
     # we could also show `conf.cmdInput` here for `projectIsCmd`
     var kindmsg = if kind.len > 0: KindFormat % kind else: ""
@@ -617,11 +625,18 @@ proc liMessage*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
       if msg == hintProcessing and conf.hintProcessingDots:
         msgWrite(conf, ".")
       else:
-        # Rust-style format: error[E0001]: message text
-        let titleWithCode = title.strip() & "[" & errCode & "]"
-        styledMsgWriteln(color, titleWithCode, resetStyle, ": ", s,
-                         resetStyle, formatRustStyleLocation(conf, info),
-                         resetStyle, conf.getSurroundingSrc(info), conf.unitSep)
+        # Check if Rust-style errors are enabled
+        if optRustStyleErrors in conf.globalOptions:
+          # Rust-style format: error[E0001]: message text
+          let errCode = errorCode(msg)
+          let titleWithCode = title.strip() & "[" & errCode & "]"
+          styledMsgWriteln(color, titleWithCode, resetStyle, ": ", s,
+                           resetStyle, formatRustStyleLocation(conf, info),
+                           resetStyle, conf.getSurroundingSrc(info), conf.unitSep)
+        else:
+          # Legacy format: file.nim(line, col) Error: message text
+          styledMsgWriteln(styleBright, loc, resetStyle, color, title, resetStyle, s, KindColor, kindmsg,
+                           resetStyle, conf.getSurroundingSrcLegacy(info), conf.unitSep)
         if hintMsgOrigin in conf.mainPackageNotes:
           # xxx needs a bit of refactoring to honor `conf.filenameOption`
           styledMsgWriteln(styleBright, toFileLineCol(info2), resetStyle,
