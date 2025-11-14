@@ -506,7 +506,7 @@ include ccgreset
 proc resetLoc(p: BProc, loc: var TLoc) =
   let containsGcRef = optSeqDestructors notin p.config.globalOptions and containsGarbageCollectedRef(loc.t)
   let typ = skipTypes(loc.t, abstractVarRange)
-  if isImportedCppType(typ): 
+  if isImportedCppType(typ):
     var didGenTemp = false
     let rl = rdLoc(loc)
     let init = genCppInitializer(p.module, p, typ, didGenTemp)
@@ -1445,7 +1445,8 @@ proc genProcPrototype(m: BModule, sym: PSym) =
               getModuleDllPath(m, sym),
               '"' & name & '"')
   elif not containsOrIncl(m.declaredProtos, sym.id):
-    m.queue.add(sym)
+    if delayedCodegen(m):
+      m.queue.add(sym)
     let asPtr = isReloadable(m, sym)
     var header = newBuilder("")
     var visibility: DeclVisibility = None
