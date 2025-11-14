@@ -968,10 +968,10 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
                       {sfPure, sfGlobal} <= v.sym.flags and
                       isInProc
 
-              let value = moveOrCopy(v, ri, c, s, if v.kind == nkSym: {IsDecl} else: {})
               if isGlobalPragma:
-                c.graph.procGlobals.add value
+                c.graph.procGlobals.add n
               else:
+                let value = moveOrCopy(v, ri, c, s, if v.kind == nkSym: {IsDecl} else: {})
                 result.add value
             elif ri.kind == nkEmpty and c.inLoop > 0:
               let skipInit = v.kind == nkDotExpr and # Closure var

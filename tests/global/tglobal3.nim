@@ -55,3 +55,10 @@ block: # bug #24997
       doAssert not isNil(u(typeof(B.j)))
     R()
   discard u(B)
+
+proc f2(str: string): string = str
+proc m2()  =
+  let v {.global, used.}: string = f2(f2("123"))
+  assert v == "123"
+
+m2()
