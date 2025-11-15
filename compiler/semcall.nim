@@ -546,9 +546,36 @@ proc getMsgDiagnostic(c: PContext, flags: TExprFlags, n, f: PNode): string =
       discard
     else:
       typeHint = " for type " & getProcHeader(c.config, sym)
+      # Check if field exists but is not exported
+      if n[1].typ != nil and n[1].typ.kind == tyObject:
+        let fieldIdent = getIdent(c.cache, ident)
+        let fieldSym = lookupInRecord(n[1].typ.n, fieldIdent)
+        if fieldSym != nil and sfExported notin fieldSym.flags:
+          # Field exists but is not exported - give better error!
+          result = "field '" & ident & "' is not exported from module '" &
+                   sym.owner.name.s & "'\n"
+          result.add "help: add '*' to export the field\n"
+          result.add "  | type " & sym.name.s & "* = object\n"
+          result.add "  |   " & ident & "*: " & fieldSym.typ.typeToString & "  # <-- add * here"
+          return
     let suffix = if result.len > 0: " " & result else: ""
     result = errUndeclaredField % ident & typeHint & suffix
   else:
+    # Check if trying to set an unexported field
+    if ident.len > 1 and ident[^1] == '=' and n.len >= 2:
+      let fieldName = ident.substr(0, ident.len - 2)  # Remove '='
+      let fieldIdent = getIdent(c.cache, fieldName)
+      # Try to get the object type from the first argument
+      if n[1].typ != nil and n[1].typ.kind == tyObject:
+        let fieldSym = lookupInRecord(n[1].typ.n, fieldIdent)
+        if fieldSym != nil and sfExported notin fieldSym.flags:
+          # Found the field but it's not exported!
+          result = "field '" & fieldName & "' is not exported from module '" &
+                   n[1].typ.typSym.owner.name.s & "'\n"
+          result.add "help: add '*' to export the field\n"
+          result.add "  | type " & n[1].typ.typSym.name.s & "* = object\n"
+          result.add "  |   " & fieldName & "*: " & fieldSym.typ.typeToString & "  # <-- add * here"
+          return
     if result.len == 0: result = errUndeclaredRoutine % ident
     else: result = errBadRoutine % [ident, result]
 
