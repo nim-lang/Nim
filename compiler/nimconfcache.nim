@@ -43,7 +43,9 @@ proc fromNif[T: enum](result: var T; n: var Cursor) =
   result = parseEnum[T](pool.strings[n.litId])
   inc n
 
-proc fromNif[T: enum](result: var set[T]; n: var Cursor) =
+proc fromNif[T: enum](result: var set[T]; tag: string; n: var Cursor) =
+  expectTag n, tag
+  inc n
   # clear it so that it has the same value as it was stored to the cache.
   # some switches turn off options that were turned on when conf was initialized.
   result = {}
@@ -53,9 +55,11 @@ proc fromNif[T: enum](result: var set[T]; n: var Cursor) =
     inc n
   inc n
 
-proc fromNif2[T: enum](result: var set[T]; n: var Cursor) =
+proc fromNif2[T: enum](result: var set[T]; tag: string; n: var Cursor) =
   # same to fromNif but works with enums `parseEnum` doesn't support.
   # e.g. TNoteKind
+  expectTag n, tag
+  inc n
   result = {}
   assert n.kind in {IntLit, ParRi}
   while n.kind != ParRi:
@@ -63,7 +67,9 @@ proc fromNif2[T: enum](result: var set[T]; n: var Cursor) =
     inc n
   inc n
 
-proc fromNif(result: StringTableRef; n: var Cursor) =
+proc fromNif(result: StringTableRef; tag: string; n: var Cursor) =
+  expectTag n, tag
+  inc n
   result.clear
   assert n.kind in {ParLe, ParRi}
   while n.kind != ParRi:
@@ -274,15 +280,8 @@ proc loadConfigsFromNif(conf: ConfigRef; n: var Cursor) =
   fromNif targetCPU, n
   conf.target.setTarget(targetOS, targetCPU)
 
-  expectTag n, "options"
-  inc n
-  fromNif(conf.options, n)
-  #echo conf.options
-
-  expectTag n, "globalOptions"
-  inc n
-  fromNif(conf.globalOptions, n)
-  #echo conf.globalOptions
+  fromNif conf.options, "options", n
+  fromNif conf.globalOptions, "globalOptions", n
 
   conf.macrosToExpand.clear
   expectTag n, "macrosToExpand"
@@ -304,14 +303,12 @@ proc loadConfigsFromNif(conf: ConfigRef; n: var Cursor) =
     conf.arcToExpand[m] = "T"
   inc n
 
-  fromNif(conf.filenameOption, n)
+  fromNif conf.filenameOption, n
   conf.unitSep = pool.strings[n.litId]
   inc n
 
-  fromNif(conf.selectedGC, n)
-  #echo conf.selectedGC
-  fromNif(conf.exc, n)
-  #echo conf.exc
+  fromNif conf.selectedGC, n
+  fromNif conf.exc, n
   conf.hintProcessingDots = pool.integers[n.intId].bool
   inc n
   conf.verbosity = pool.integers[n.intId]
@@ -327,29 +324,15 @@ proc loadConfigsFromNif(conf: ConfigRef; n: var Cursor) =
   inc n
   #echo conf.nimbasePattern
 
-  expectTag n, "features"
-  inc n
-  fromNif(conf.features, n)
-  expectTag n, "legacyFeatures"
-  inc n
-  fromNif(conf.legacyFeatures, n)
-  fromNif(conf.cCompiler, n)
+  fromNif conf.features, "features", n
+  fromNif conf.legacyFeatures, "legacyFeatures", n
+  fromNif conf.cCompiler, n
 
-  expectTag n, "modifiedyNotes"
-  inc n
-  fromNif2(conf.modifiedyNotes, n)
-  expectTag n, "foreignPackageNotes"
-  inc n
-  fromNif2(conf.foreignPackageNotes, n)
-  expectTag n, "notes"
-  inc n
-  fromNif2(conf.notes, n)
-  expectTag n, "warningAsErrors"
-  inc n
-  fromNif2(conf.warningAsErrors, n)
-  expectTag n, "mainPackageNotes"
-  inc n
-  fromNif2(conf.mainPackageNotes, n)
+  fromNif2 conf.modifiedyNotes, "modifiedyNotes", n
+  fromNif2 conf.foreignPackageNotes, "foreignPackageNotes", n
+  fromNif2 conf.notes, "notes", n
+  fromNif2 conf.warningAsErrors, "warningAsErrors", n
+  fromNif2 conf.mainPackageNotes, "mainPackageNotes", n
 
   conf.errorMax = pool.integers[n.intId]
   inc n
@@ -358,9 +341,7 @@ proc loadConfigsFromNif(conf: ConfigRef; n: var Cursor) =
   conf.maxCallDepthVM = pool.integers[n.intId]
   inc n
 
-  expectTag n, "configVars"
-  inc n
-  fromNif(conf.configVars, n)
+  fromNif conf.configVars, "configVars", n
 
   conf.symbols.clear
   expectTag n, "defines"
@@ -377,10 +358,10 @@ proc loadConfigsFromNif(conf: ConfigRef; n: var Cursor) =
 
   conf.outFile = pool.strings[n.litId].RelativeFile
   inc n
-  fromNif(conf.outDir, n)
-  fromNif(conf.prefixDir, n)
-  fromNif(conf.libpath, n)
-  fromNif(conf.nimcacheDir, n)
+  fromNif conf.outDir, n
+  fromNif conf.prefixDir, n
+  fromNif conf.libpath, n
+  fromNif conf.nimcacheDir, n
 
   expectTag n, "dllOverrides"
   inc n
@@ -388,10 +369,7 @@ proc loadConfigsFromNif(conf: ConfigRef; n: var Cursor) =
     conf.inclDynlibOverride(pool.strings[n.litId])
     inc n
   inc n
-
-  expectTag n, "moduleOverrides"
-  inc n
-  fromNif(conf.moduleOverrides, n)
+  fromNif conf.moduleOverrides, "moduleOverrides", n
 
   fromNif conf.implicitImports, "implicitImports", n
   fromNif conf.implicitIncludes, "implicitIncludes", n
