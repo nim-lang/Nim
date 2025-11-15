@@ -342,7 +342,21 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
           candidates.add "  expression '"
           candidates.add renderNotLValue(nArg)
           candidates.add "' is immutable, not 'var'"
+          # Add helpful explanation about let vs var
+          if nArg.kind == nkSym and nArg.sym != nil:
+            case nArg.sym.kind
+            of skLet:
+              candidates.add " (declared with let)"
+            of skConst:
+              candidates.add " (declared with const)"
+            of skParam:
+              candidates.add " (parameter is immutable by default)"
+            else:
+              discard
           candidates.add "\n"
+          candidates.add "\n  help: the procedure expects a mutable variable (var parameter)\n"
+          candidates.add "        declare '" & renderNotLValue(nArg) & "' with var instead:\n"
+          candidates.add "        | var " & renderNotLValue(nArg) & " = ...  # mutable variable\n"
         of kTypeMismatch:
           doAssert nArg != nil
           if nArg.kind in nkSymChoices:
@@ -422,6 +436,20 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
           if err.firstMismatch.kind == kVarNeeded:
             candidates.add renderNotLValue(nArg)
             candidates.add "' is immutable, not 'var'"
+            # Add helpful explanation about let vs var
+            if nArg.kind == nkSym and nArg.sym != nil:
+              case nArg.sym.kind
+              of skLet:
+                candidates.add " (declared with let)"
+              of skConst:
+                candidates.add " (declared with const)"
+              of skParam:
+                candidates.add " (parameter is immutable)"
+              else:
+                discard
+            candidates.add "\n"
+            candidates.add "\n  help: use var instead of let to make it mutable:\n"
+            candidates.add "        | var " & renderNotLValue(nArg) & " = ...  # mutable\n"
           else:
             candidates.add renderTree(nArg)
             candidates.add "' is of type: "
