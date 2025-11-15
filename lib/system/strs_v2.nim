@@ -141,6 +141,10 @@ proc mnewString(len: int): NimStringV2 {.compilerproc.} =
     result = NimStringV2(len: len, p: p)
 
 proc setLengthStrV2(s: var NimStringV2, newLen: int) {.compilerRtl.} =
+  ## Sets the `s` length to `newLen` zeroing memory on growth.
+  ## Terminating zero at `s[newLen]` for cstring compatibility is set
+  ## on length change, **excluding** `newLen == 0`.
+  ## Negative `newLen` is **not** bound to zero.
   if newLen == 0:
     discard "do not free the buffer here, pattern 's.setLen 0' is common for avoiding allocations"
   else:
