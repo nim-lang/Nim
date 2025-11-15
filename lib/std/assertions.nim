@@ -31,9 +31,35 @@ proc `$`(info: InstantiationInfo): string =
 proc raiseAssert*(msg: string) {.noinline, noreturn, nosinks.} =
   ## Raises an `AssertionDefect` with `msg`.
   when defined(nimPreviewSlimSystem):
-    raise newException(AssertionDefect, msg)
+    when defined(runtimeDebug):
+      var enhanced = "Assertion Failed [AssertionDefect]\n"
+      enhanced.add "  " & msg & "\n"
+      enhanced.add "\nAn assertion check failed at runtime.\n"
+      enhanced.add "This indicates a programming error or violated precondition.\n"
+      enhanced.add "\nhelp: review the failed condition\n"
+      enhanced.add "  | # The assertion that failed is shown above\n"
+      enhanced.add "  | # Check your program's logic and state\n"
+      enhanced.add "\nhelp: use doAssert for production checks\n"
+      enhanced.add "  | # assert() is disabled with -d:danger\n"
+      enhanced.add "  | # Use doAssert() for checks that must always run\n"
+      raise newException(AssertionDefect, enhanced)
+    else:
+      raise newException(AssertionDefect, msg)
   else:
-    sysFatal(AssertionDefect, msg)
+    when defined(runtimeDebug):
+      var enhanced = "Assertion Failed [AssertionDefect]\n"
+      enhanced.add "  " & msg & "\n"
+      enhanced.add "\nAn assertion check failed at runtime.\n"
+      enhanced.add "This indicates a programming error or violated precondition.\n"
+      enhanced.add "\nhelp: review the failed condition\n"
+      enhanced.add "  | # The assertion that failed is shown above\n"
+      enhanced.add "  | # Check your program's logic and state\n"
+      enhanced.add "\nhelp: use doAssert for production checks\n"
+      enhanced.add "  | # assert() is disabled with -d:danger\n"
+      enhanced.add "  | # Use doAssert() for checks that must always run\n"
+      sysFatal(AssertionDefect, enhanced)
+    else:
+      sysFatal(AssertionDefect, msg)
 
 proc failedAssertImpl*(msg: string) {.raises: [], tags: [].} =
   ## Raises an `AssertionDefect` with `msg`, but this is hidden

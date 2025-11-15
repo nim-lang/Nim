@@ -11,7 +11,7 @@
 ## `TLineInfo` object.
 
 import ropes, pathutils
-import std/[hashes, tables]
+import std/[hashes, tables, strutils]
 
 const
   explanationsBaseUrl* = "https://nim-lang.github.io/Nim"
@@ -252,6 +252,22 @@ const
   hintMax* = high(TMsgKind)
   rstWarnings* = {warnRstRedefinitionOfLabel..warnRstStyle}
 
+proc errorCode*(msg: TMsgKind): string =
+  ## Returns the error code for a message kind (similar to Rust's E0001 format)
+  ## Errors use E prefix, Warnings use W prefix, Hints use H prefix
+  case msg
+  of errMin..errMax:
+    # Fatal and regular errors: E0001-E0999
+    result = "E" & align($ord(msg), 4, '0')
+  of warnMin..warnMax:
+    # Warnings: W0001-W0999
+    let idx = ord(msg) - ord(warnMin) + 1
+    result = "W" & align($idx, 4, '0')
+  of hintMin..hintMax:
+    # Hints: H0001-H0999
+    let idx = ord(msg) - ord(hintMin) + 1
+    result = "H" & align($idx, 4, '0')
+
 type
   TNoteKind* = range[warnMin..hintMax] # "notes" are warnings or hints
   TNoteKinds* = set[TNoteKind]
@@ -312,6 +328,30 @@ type
     eStdErr
 
   TErrorOutputs* = set[TErrorOutput]
+
+  TDiagnosticLabel* = object
+    ## A label annotation for a span of code in an error message
+    info*: TLineInfo
+    endInfo*: TLineInfo  # for multi-character spans
+    message*: string     # optional label text (e.g., "expected type here")
+
+  TDiagnosticNote* = object
+    ## Additional context note for an error
+    info*: TLineInfo     # can be unknownLineInfo for general notes
+    message*: string
+
+  TDiagnosticHelp* = object
+    ## Suggestion for how to fix the error
+    message*: string
+
+  TStructuredDiagnostic* = object
+    ## A complete structured diagnostic in Rust style
+    msg*: TMsgKind
+    info*: TLineInfo
+    arg*: string
+    labels*: seq[TDiagnosticLabel]
+    notes*: seq[TDiagnosticNote]
+    help*: seq[TDiagnosticHelp]
 
   ERecoverableError* = object of ValueError
   ESuggestDone* = object of ValueError

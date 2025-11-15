@@ -1016,6 +1016,11 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "gencdeps":
     processOnOffSwitchG(conf, {optGenCDeps}, arg, pass, info)
   of "colors": processOnOffSwitchG(conf, {optUseColors}, arg, pass, info)
+  of "errorstyle":
+    case arg.normalize
+    of "rust": incl(conf.globalOptions, optRustStyleErrors)
+    of "legacy", "default": excl(conf.globalOptions, optRustStyleErrors)
+    else: localError(conf, info, "expected: rust|legacy, got: $1" % arg)
   of "lib":
     expectArg(conf, switch, arg, pass, info)
     conf.libpath = processPath(conf, arg, info, notRelativeToProj=true)

@@ -501,12 +501,60 @@ proc sourceLine*(conf: ConfigRef; i: TLineInfo): string =
 
   result = conf.m.fileInfos[i.fileIndex.int32].lines[i.line.int-1]
 
-proc getSurroundingSrc(conf: ConfigRef; info: TLineInfo): string =
+proc formatRustStyleLocation(conf: ConfigRef; info: TLineInfo): string =
+  ## Format location in Rust style:  --> file.nim:12:5
+  if info == unknownLineInfo:
+    return ""
+  result = " --> " & conf.toFileLineCol(info)
+
+proc formatRustStyleSourceContext(conf: ConfigRef; info: TLineInfo;
+                                   labels: seq[TDiagnosticLabel] = @[]): string =
+  ## Format source context with line numbers and annotations (Rust style)
+  if info == unknownLineInfo or not conf.hasHint(hintSource):
+    return ""
+
+  let line = sourceLine(conf, info)
+  if line == "":
+    return ""
+
+  # Calculate the gutter width (line number width)
+  let lineNum = $info.line
+  let gutterWidth = max(lineNum.len, 3)
+  let gutter = align(lineNum, gutterWidth)
+  let emptyGutter = spaces(gutterWidth)
+
+  result = "\n"
+  result.add emptyGutter & " |\n"
+  result.add gutter & " | " & line & "\n"
+  result.add emptyGutter & " | "
+
+  # Add carets/underlines for the error location
+  if info.col >= 0:
+    result.add spaces(info.col) & "^"
+
+    # Add label annotations if provided
+    if labels.len > 0:
+      for label in labels:
+        if label.info.line == info.line and label.message.len > 0:
+          result.add " " & label.message
+          break
+
+  result.add "\n"
+
+proc getSurroundingSrcLegacy(conf: ConfigRef; info: TLineInfo): string =
+  ## Legacy formatting: simple indented source line with caret
   if conf.hasHint(hintSource) and info != unknownLineInfo:
     const indent = "  "
     result = "\n" & indent & $sourceLine(conf, info)
     if info.col >= 0:
       result.add "\n" & indent & spaces(info.col) & '^'
+  else:
+    result = ""
+
+proc getSurroundingSrc(conf: ConfigRef; info: TLineInfo): string =
+  ## Get surrounding source - uses Rust-style formatting
+  if conf.hasHint(hintSource) and info != unknownLineInfo:
+    result = formatRustStyleSourceContext(conf, info)
   else:
     result = ""
 
@@ -577,8 +625,18 @@ proc liMessage*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
       if msg == hintProcessing and conf.hintProcessingDots:
         msgWrite(conf, ".")
       else:
-        styledMsgWriteln(styleBright, loc, resetStyle, color, title, resetStyle, s, KindColor, kindmsg,
-                         resetStyle, conf.getSurroundingSrc(info), conf.unitSep)
+        # Check if Rust-style errors are enabled
+        if optRustStyleErrors in conf.globalOptions:
+          # Rust-style format: error[E0001]: message text
+          let errCode = errorCode(msg)
+          let titleWithCode = title.strip() & "[" & errCode & "]"
+          styledMsgWriteln(color, titleWithCode, resetStyle, ": ", s,
+                           resetStyle, formatRustStyleLocation(conf, info),
+                           resetStyle, conf.getSurroundingSrc(info), conf.unitSep)
+        else:
+          # Legacy format: file.nim(line, col) Error: message text
+          styledMsgWriteln(styleBright, loc, resetStyle, color, title, resetStyle, s, KindColor, kindmsg,
+                           resetStyle, conf.getSurroundingSrcLegacy(info), conf.unitSep)
         if hintMsgOrigin in conf.mainPackageNotes:
           # xxx needs a bit of refactoring to honor `conf.filenameOption`
           styledMsgWriteln(styleBright, toFileLineCol(info2), resetStyle,
@@ -645,6 +703,38 @@ template internalAssert*(conf: ConfigRef, e: bool) =
     const info2 = instLoc()
     let arg = info2.toFileLineCol
     internalErrorImpl(conf, unknownLineInfo, arg, info2)
+
+proc addDiagnosticNote*(conf: ConfigRef; info: TLineInfo; note: string) =
+  ## Add a note to provide additional context for an error (Rust-style)
+  ## Notes are shown in blue/cyan
+  if not ignoreMsgBecauseOfIdeTools(conf, hintUser):
+    let noteLine = if info != unknownLineInfo:
+      formatRustStyleLocation(conf, info) & "\n"
+    else:
+      ""
+    styledMsgWriteln(fgCyan, "note", resetStyle, ": ", note,
+                     resetStyle, noteLine, conf.unitSep)
+
+proc addDiagnosticHelp*(conf: ConfigRef; help: string) =
+  ## Add a help message to suggest how to fix an error (Rust-style)
+  ## Help messages are shown in green
+  if not ignoreMsgBecauseOfIdeTools(conf, hintUser):
+    styledMsgWriteln(fgGreen, "help", resetStyle, ": ", help,
+                     resetStyle, "\n", conf.unitSep)
+
+proc emitStructuredDiagnostic*(conf: ConfigRef; diag: TStructuredDiagnostic;
+                                eh: TErrorHandling = doNothing) =
+  ## Emit a complete structured diagnostic with notes and help (Rust-style)
+  # First emit the main error message
+  liMessage(conf, diag.info, diag.msg, diag.arg, eh, instLoc())
+
+  # Then emit any notes
+  for note in diag.notes:
+    addDiagnosticNote(conf, note.info, note.message)
+
+  # Finally emit any help messages
+  for helpMsg in diag.help:
+    addDiagnosticHelp(conf, helpMsg.message)
 
 template lintReport*(conf: ConfigRef; info: TLineInfo, beau, got: string, extraMsg = "") =
   let m = "'$1' should be: '$2'$3" % [got, beau, extraMsg]

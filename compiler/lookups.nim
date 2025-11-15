@@ -583,6 +583,27 @@ proc ambiguousIdentifierMsg*(candidates: seq[PSym], prefix = "use one of", inden
 proc errorUseQualifier*(c: PContext; info: TLineInfo; candidates: seq[PSym]) =
   localError(c.config, info, errGenerated, ambiguousIdentifierMsg(candidates))
 
+  # Add Rust-style diagnostic notes showing where each candidate was imported/defined
+  if optRustStyleErrors in c.config.globalOptions and candidates.len > 0:
+    c.config.addDiagnosticNote(unknownLineInfo,
+      "'" & candidates[0].name.s & "' is available from multiple sources:")
+
+    for i, candidate in candidates:
+      if candidate.owner != nil:
+        let ownerInfo = candidate.owner.info
+        var noteMsg = "candidate " & $(i + 1) & " from module '" &
+                      candidate.owner.name.s & "'"
+        if candidate.typ != nil:
+          noteMsg.add " (type: " & typeToString(candidate.typ) & ")"
+        c.config.addDiagnosticNote(ownerInfo, noteMsg)
+
+    # Provide helpful suggestions
+    var helpMsg = "use qualified access to disambiguate:"
+    for candidate in candidates:
+      if candidate.owner != nil:
+        helpMsg.add "\n  - " & candidate.owner.name.s & "." & candidate.name.s
+    c.config.addDiagnosticHelp(helpMsg)
+
 proc ambiguousIdentifierMsg*(choices: PNode, indent = 0): string =
   var candidates = newSeq[PSym](choices.len)
   let prefix = if choices[0].typ.kind != tyProc: "use one of" else: "you need a helper proc to disambiguate"
@@ -595,6 +616,9 @@ proc errorUseQualifier*(c: PContext; info:TLineInfo; choices: PNode) =
 
 proc errorUndeclaredIdentifier*(c: PContext; info: TLineInfo; name: string, extra = "") =
   var err: string
+  var hadCircularDep = false
+  var circularDepMsg = ""
+
   if name == "_":
     err = "the special identifier '_' is ignored in declarations and cannot be used"
   else:
@@ -604,16 +628,53 @@ proc errorUndeclaredIdentifier*(c: PContext; info: TLineInfo; name: string, extr
     if extra.len != 0:
       err.add extra
     if c.recursiveDep.len > 0:
-      err.add "\nThis might be caused by a recursive module dependency:\n"
-      err.add c.recursiveDep
+      hadCircularDep = true
+      circularDepMsg = c.recursiveDep
+      if optRustStyleErrors in c.config.globalOptions:
+        # Rust-style circular dependency error
+        err.add "\n\nThis identifier is unavailable due to a circular module dependency"
+      else:
+        err.add "\nThis might be caused by a recursive module dependency:\n"
+        err.add c.recursiveDep
       # prevent excessive errors for 'nim check'
       c.recursiveDep = ""
+
   localError(c.config, info, errGenerated, err)
+
+  # Add diagnostic note for circular dependencies with Rust-style errors
+  if hadCircularDep and optRustStyleErrors in c.config.globalOptions:
+    c.config.addDiagnosticNote(unknownLineInfo, "circular import chain detected:")
+    # Parse and format each import in the chain
+    for line in circularDepMsg.splitLines():
+      if line.len > 0:
+        c.config.addDiagnosticNote(unknownLineInfo, "  " & line)
+    c.config.addDiagnosticHelp(
+      "break the circular dependency by:\n" &
+      "  - moving shared types to a separate module\n" &
+      "  - using forward declarations\n" &
+      "  - restructuring the module hierarchy"
+    )
 
 proc errorUndeclaredIdentifierHint*(c: PContext; ident: PIdent; info: TLineInfo): PSym =
   var extra = ""
-  if c.mustFixSpelling: fixSpelling(c, ident, extra)
+
+  if c.mustFixSpelling:
+    fixSpelling(c, ident, extra)
+
   errorUndeclaredIdentifier(c, info, ident.s, extra)
+
+  # Add Rust-style help for typo suggestions
+  if optRustStyleErrors in c.config.globalOptions and extra.len > 0:
+    # Parse the first suggestion from the extra string
+    # Format is like: "\ncandidates... (dist, depth): 'suggestion'"
+    let suggestionStart = extra.find("': '")
+    if suggestionStart >= 0:
+      let nameStart = suggestionStart + 4
+      let nameEnd = extra.find("'", nameStart)
+      if nameEnd > nameStart:
+        let suggestion = extra.substr(nameStart, nameEnd - 1)
+        c.config.addDiagnosticHelp("did you mean '" & suggestion & "'?")
+
   result = errorSym(c, ident, info)
 
 proc lookUp*(c: PContext, n: PNode): PSym =
