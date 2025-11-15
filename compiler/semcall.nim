@@ -343,6 +343,7 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
           candidates.add renderNotLValue(nArg)
           candidates.add "' is immutable, not 'var'"
           # Add helpful explanation about let vs var
+          var isParam = false
           if nArg.kind == nkSym and nArg.sym != nil:
             case nArg.sym.kind
             of skLet:
@@ -351,12 +352,17 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
               candidates.add " (declared with const)"
             of skParam:
               candidates.add " (parameter is immutable by default)"
+              isParam = true
             else:
               discard
           candidates.add "\n"
-          candidates.add "\n  help: the procedure expects a mutable variable (var parameter)\n"
-          candidates.add "        declare '" & renderNotLValue(nArg) & "' with var instead:\n"
-          candidates.add "        | var " & renderNotLValue(nArg) & " = ...  # mutable variable\n"
+          if isParam:
+            candidates.add "\n  help: change the parameter to be mutable:\n"
+            candidates.add "        | proc name(" & renderNotLValue(nArg) & ": var Type) = ...  # add 'var' to parameter\n"
+          else:
+            candidates.add "\n  help: the procedure expects a mutable variable (var parameter)\n"
+            candidates.add "        declare '" & renderNotLValue(nArg) & "' with var instead:\n"
+            candidates.add "        | var " & renderNotLValue(nArg) & " = ...  # mutable variable\n"
         of kTypeMismatch:
           doAssert nArg != nil
           if nArg.kind in nkSymChoices:
@@ -437,6 +443,7 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
             candidates.add renderNotLValue(nArg)
             candidates.add "' is immutable, not 'var'"
             # Add helpful explanation about let vs var
+            var isParam = false
             if nArg.kind == nkSym and nArg.sym != nil:
               case nArg.sym.kind
               of skLet:
@@ -445,11 +452,16 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
                 candidates.add " (declared with const)"
               of skParam:
                 candidates.add " (parameter is immutable)"
+                isParam = true
               else:
                 discard
             candidates.add "\n"
-            candidates.add "\n  help: use var instead of let to make it mutable:\n"
-            candidates.add "        | var " & renderNotLValue(nArg) & " = ...  # mutable\n"
+            if isParam:
+              candidates.add "\n  help: change the parameter to be mutable:\n"
+              candidates.add "        | proc name(" & renderNotLValue(nArg) & ": var Type) = ...  # add 'var' to parameter\n"
+            else:
+              candidates.add "\n  help: use var instead of let to make it mutable:\n"
+              candidates.add "        | var " & renderNotLValue(nArg) & " = ...  # mutable\n"
           else:
             candidates.add renderTree(nArg)
             candidates.add "' is of type: "

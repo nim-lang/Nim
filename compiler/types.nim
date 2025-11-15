@@ -1910,6 +1910,7 @@ proc typeMismatch*(conf: ConfigRef; info: TLineInfo, formal, actual: PType, n: P
       msg.add "\n"
       msg.add "\n'" & n.renderTree & "' is immutable"
       # Try to detect if it's a let/const
+      var isParam = false
       if n.kind == nkSym and n.sym != nil:
         case n.sym.kind
         of skLet:
@@ -1918,11 +1919,16 @@ proc typeMismatch*(conf: ConfigRef; info: TLineInfo, formal, actual: PType, n: P
           msg.add " (declared with const)"
         of skParam:
           msg.add " (function parameter is immutable by default)"
+          isParam = true
         else:
           discard
       msg.add "\nthe called procedure expects a mutable variable (var parameter)"
-      msg.add "\n\nhelp: declare '" & n.renderTree & "' with var instead\n"
-      msg.add "  | var " & n.renderTree & " = ...  # <-- use var for mutable variables"
+      if isParam:
+        msg.add "\n\nhelp: change the parameter to be mutable\n"
+        msg.add "  | proc name(" & n.renderTree & ": var Type) = ...  # <-- add 'var' to parameter"
+      else:
+        msg.add "\n\nhelp: declare '" & n.renderTree & "' with var instead\n"
+        msg.add "  | var " & n.renderTree & " = ...  # <-- use var for mutable variables"
 
     # Check if error involves hash/equality for collections (HashSet, Table, etc.)
     let lowerMsg = msg.toLowerAscii()
