@@ -2998,6 +2998,33 @@ spring(Implementation())
 This will bind because `p(Implementation(), 0)` will bind. Conversely, container types will bind to
 less specific definitions if the generic constraints and bindings allow it, as per usual generic matching.
 
+### Concept parameter modifiers
+
+When a concept declares a parameter with a modifier like `var`, the implementation must have
+the same or more restrictive modifier. This is an asymmetric rule:
+
+```nim
+type
+  Mutable = concept
+    proc modify(x: var Self)
+
+type MyType = object
+  value: int
+
+proc modify(x: var MyType) = discard  # Matches - has var modifier
+# proc modify(x: MyType) = discard    # Would NOT match - missing var
+
+var obj = MyType()
+proc useMutable(x: Mutable) = discard
+useMutable(obj)  # Works
+```
+
+**Key rule:** Implementations can be *more* conservative (require more from caller) but not *less*.
+A concept requiring `var Self` means the implementation must accept `var`, not just immutable values.
+
+This prevents the concept from being satisfied by operations that don't actually modify the value,
+which could lead to incorrect behavior when the concept is used with the expectation of mutation.
+
 Things start to get more complicated when overload resolution starts "Hierarchical Order Comparison"
 I.E. specificity comparison as per [Overload resolution]. In this state the compiler may be comparing
 all kinds of types and typeclasses with concepts as defined in the `proc` definitions of each overload.

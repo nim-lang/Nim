@@ -2969,7 +2969,16 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags, expectedType: PType =
 
         let verdict = semConstExpr(c, n[i])
         if verdict == nil or verdict.kind != nkIntLit or verdict.intVal == 0:
-          localError(c.config, result.info, "concept predicate failed")
+          # Build detailed error message for concept predicate failure
+          var errMsg = "concept predicate failed"
+          if c.matchedConcept != nil and c.matchedConcept.candidateType != nil:
+            if c.matchedConcept.candidateType.sym != nil:
+              errMsg.add "\n  concept: " & c.matchedConcept.candidateType.sym.name.s
+          errMsg.add "\n  failed predicate: " & renderTree(n[i])
+          errMsg.add "\n  at: " & c.config.toMsgFilename(n[i].info) & "(" & $n[i].info.line & ")"
+          errMsg.add "\n\nhelp: the type does not satisfy this requirement"
+          errMsg.add "\n      ensure the type implements the required operations"
+          localError(c.config, result.info, errMsg)
       of tyFromExpr: continue
       else: discard
     if n[i].typ == c.enforceVoidContext: #or usesResult(n[i]):
