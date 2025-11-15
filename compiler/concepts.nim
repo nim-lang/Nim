@@ -137,7 +137,7 @@ proc bindParam(c: PContext, m: var MatchCon; key, v: PType): bool {. discardable
     # check previously bound value
     if not matchType(c, old, value, m):
       return false
-  elif key.hasElementType and key.elementType.kind != tyNone:
+  elif key.hasElementType and not key.elementType.isNil and key.elementType.kind != tyNone:
     # check constaint
     if matchType(c, unrollGenericParam(key), value, m) == false:
       return false
