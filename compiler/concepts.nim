@@ -358,7 +358,7 @@ proc matchType(c: PContext; fo, ao: PType; m: var MatchCon): bool =
           if not matchType(c, f[i], ea[i], m):
             result = false
             break
-    else:
+    elif f.kind == tyGenericInvocation:
       # bind potential generic constraints into body
       let body = f.base
       for i in 1 ..< len(f):
