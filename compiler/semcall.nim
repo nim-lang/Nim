@@ -379,16 +379,24 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
           doAssert err.firstMismatch.formal != nil
           doAssert wanted != nil
           let got = nArg.typ
+
+          # Show clear type mismatch with expected vs actual
+          candidates.add "  type mismatch for parameter '" & nameParam & "'\n"
+          candidates.add "  expected: "
+          candidates.addTypeDeclVerboseMaybe(c.config, wanted)
+          candidates.add "\n  but got:  "
+          if got != nil:
+            candidates.addTypeDeclVerboseMaybe(c.config, got)
+          else:
+            candidates.add "untyped"
+          candidates.add " (expression: '" & renderTree(nArg) & "')\n"
+
           if got != nil and got.kind == tyProc and wanted.kind == tyProc:
             # These are proc mismatches so,
             # add the extra explict detail of the mismatch
-            candidates.add "  expression '"
-            candidates.add renderTree(nArg)
-            candidates.add "' is of type: "
-            candidates.addTypeDeclVerboseMaybe(c.config, got)
             candidates.addPragmaAndCallConvMismatch(wanted, got, c.config)
             effectProblem(wanted, got, candidates, c)
-            candidates.add "\n"
+          candidates.add "\n"
         of kGenericParamTypeMismatch:
           let pos = err.firstMismatch.arg
           doAssert n[0].kind == nkBracketExpr and pos < n[0].len
@@ -401,12 +409,15 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
           doAssert err.firstMismatch.formal != nil
           doAssert wanted != nil
           doAssert got != nil
-          candidates.add "  generic parameter mismatch, expected "
+
+          # Show clear generic parameter mismatch
+          candidates.add "  generic parameter mismatch for '" & nameParam & "'\n"
+          candidates.add "  expected: "
           candidates.addTypeDeclVerboseMaybe(c.config, wanted)
-          candidates.add " but got '"
-          candidates.add renderTree(arg)
-          candidates.add "' of type: "
+          candidates.add "\n  but got:  "
           candidates.addTypeDeclVerboseMaybe(c.config, got)
+          candidates.add " (expression: '" & renderTree(arg) & "')\n"
+
           if nArg.kind in nkSymChoices:
             candidates.add "\n"
             candidates.add ambiguousIdentifierMsg(nArg, indent = 2)
