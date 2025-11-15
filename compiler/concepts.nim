@@ -364,6 +364,8 @@ proc matchType(c: PContext; fo, ao: PType; m: var MatchCon): bool =
       for i in 1 ..< len(f):
         bindParam(c,m,body[i-1], f[i])
       result = matchType(c, body, a, m)
+    else: # tyGenericInst
+      result = matchType(c, f.last, a, m)
   of tyOrdinal:
     result = isOrdinalType(a, allowEnumWithHoles = false) or a.kind == tyGenericParam
   of tyStatic:
