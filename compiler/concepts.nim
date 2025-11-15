@@ -137,7 +137,7 @@ proc bindParam(c: PContext, m: var MatchCon; key, v: PType): bool {. discardable
     # check previously bound value
     if not matchType(c, old, value, m):
       return false
-  elif key.hasElementType and key.elementType.kind != tyNone:
+  elif key.hasElementType and not key.elementType.isNil and key.elementType.kind != tyNone:
     # check constaint
     if matchType(c, unrollGenericParam(key), value, m) == false:
       return false
@@ -358,6 +358,14 @@ proc matchType(c: PContext; fo, ao: PType; m: var MatchCon): bool =
           if not matchType(c, f[i], ea[i], m):
             result = false
             break
+    elif f.kind == tyGenericInvocation:
+      # bind potential generic constraints into body
+      let body = f.base
+      for i in 1 ..< len(f):
+        bindParam(c,m,body[i-1], f[i])
+      result = matchType(c, body, a, m)
+    else: # tyGenericInst
+      result = matchType(c, f.last, a, m)
   of tyOrdinal:
     result = isOrdinalType(a, allowEnumWithHoles = false) or a.kind == tyGenericParam
   of tyStatic:
