@@ -9,6 +9,21 @@ proc toNifPath(p: AbsoluteDir|AbsoluteFile): string =
   if p.string.len <= result.len:
     result = p.string
 
+template buildTree(dest: var TokenBuf; tag: string; body: untyped): untyped =
+  buildTree(dest, pool.tags.getOrIncl(tag), NoLineInfo, body)
+
+proc toNif(dest: var TokenBuf; tag: string; tab: StringTableRef) =
+  dest.buildTree tag:
+    for key, val in pairs(tab):
+      dest.buildTree "kv":
+        dest.addStrLit key
+        dest.addStrLit val
+
+proc toNif(dest: var TokenBuf; tag: string; strSeq: seq[string]) =
+  dest.buildTree tag:
+    for s in strSeq:
+      dest.addStrLit s
+
 proc expectTag(n: Cursor; tag: string) =
   assert pool.tags[n.tagId] == tag, "expected tag: " & tag & " but got: " & pool.tags[n.tagId]
 
@@ -57,15 +72,15 @@ proc fromNif(result: var AbsoluteDir; n: var Cursor) =
   inc n
   result = if d.len > 0: d.toAbsoluteDir else: AbsoluteDir""
 
-template buildTree(dest: var TokenBuf; tag: string; body: untyped): untyped =
-  buildTree(dest, pool.tags.getOrIncl(tag), NoLineInfo, body)
-
-proc toNif(dest: var TokenBuf; tag: string; tab: StringTableRef) =
-  dest.buildTree tag:
-    for key, val in pairs(tab):
-      dest.buildTree "kv":
-        dest.addStrLit key
-        dest.addStrLit val
+proc fromNif(result: var seq[string]; tag: string; n: var Cursor) =
+  expectTag n, tag
+  inc n
+  result.setLen(0)
+  assert n.kind in {StringLit, ParRi}
+  while n.kind != ParRi:
+    result.add pool.strings[n.litId]
+    inc n
+  inc n
 
 proc configToNif(conf: ConfigRef; dest: var TokenBuf) =
   # store data used to decide whether to use cache or eval config files
@@ -193,13 +208,8 @@ proc configToNif(conf: ConfigRef; dest: var TokenBuf) =
 
   dest.toNif "moduleOverrides", conf.moduleOverrides
 
-  dest.buildTree "implicitImports":
-    for m in conf.implicitImports:
-      dest.addStrLit m
-
-  dest.buildTree "implicitIncludes":
-    for m in conf.implicitIncludes:
-      dest.addStrLit m
+  dest.toNif "implicitImports", conf.implicitImports
+  dest.toNif "implicitIncludes", conf.implicitIncludes
 
   dest.addStrLit conf.docSeeSrcUrl
   dest.addStrLit conf.docRoot
@@ -217,19 +227,10 @@ proc configToNif(conf: ConfigRef; dest: var TokenBuf) =
     for d in conf.cLibs:
       dest.addStrLit d.toNifPath
 
-  dest.buildTree "cLinkedLibs":
-    for l in conf.cLinkedLibs:
-      dest.addStrLit l
-
-  dest.buildTree "externalToLink":
-    for f in conf.externalToLink:
-      dest.addStrLit f
-
+  dest.toNif "cLinkedLibs", conf.cLinkedLibs
+  dest.toNif "externalToLink", conf.externalToLink
   dest.addStrLit conf.linkOptionsCmd
-
-  dest.buildTree "compileOptionsCmd":
-    for c in conf.compileOptionsCmd:
-      dest.addStrLit c
+  dest.toNif "compileOptionsCmd", conf.compileOptionsCmd
 
 proc cfgCachePath(conf: ConfigRef): (AbsoluteDir, RelativeFile) =
   (conf.projectPath / RelativeDir"nimcache", RelativeFile"cache.cfg.nif")
@@ -409,19 +410,8 @@ proc loadConfigsFromNif(conf: ConfigRef; n: var Cursor) =
   inc n
   fromNif(conf.moduleOverrides, n)
 
-  expectTag n, "implicitImports"
-  inc n
-  while n.kind != ParRi:
-    conf.implicitImports.add pool.strings[n.litId]
-    inc n
-  inc n
-
-  expectTag n, "implicitIncludes"
-  inc n
-  while n.kind != ParRi:
-    conf.implicitIncludes.add pool.strings[n.litId]
-    inc n
-  inc n
+  fromNif conf.implicitImports, "implicitImports", n
+  fromNif conf.implicitIncludes, "implicitIncludes", n
 
   conf.docSeeSrcUrl = pool.strings[n.litId]
   inc n
@@ -451,29 +441,13 @@ proc loadConfigsFromNif(conf: ConfigRef; n: var Cursor) =
     inc n
   inc n
 
-  expectTag n, "cLinkedLibs"
-  inc n
-  while n.kind != ParRi:
-    conf.cLinkedLibs.add pool.strings[n.litId]
-    inc n
-  inc n
-
-  expectTag n, "externalToLink"
-  inc n
-  while n.kind != ParRi:
-    conf.externalToLink.add pool.strings[n.litId]
-    inc n
-  inc n
+  fromNif conf.cLinkedLibs, "cLinkedLibs", n
+  fromNif conf.externalToLink, "externalToLink", n
 
   conf.linkOptionsCmd = pool.strings[n.litId]
   inc n
 
-  expectTag n, "compileOptionsCmd"
-  inc n
-  while n.kind != ParRi:
-    conf.compileOptionsCmd.add pool.strings[n.litId]
-    inc n
-  inc n
+  fromNif conf.compileOptionsCmd, "compileOptionsCmd", n
 
 proc sourceChanged*(conf: ConfigRef): HashSet[string] =
   result = HashSet[string]()
