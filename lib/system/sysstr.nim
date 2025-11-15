@@ -252,14 +252,6 @@ proc incrSeq(seq: PGenericSeq, elemSize, elemAlign: int): PGenericSeq {.compiler
     result.reserved = r
   inc(result.len)
 
-proc incrSeqV2(seq: PGenericSeq, elemSize, elemAlign: int): PGenericSeq {.compilerproc.} =
-  # incrSeq version 2
-  result = seq
-  if result.len >= result.space:
-    let r = resize(result.space)
-    result = cast[PGenericSeq](growObj(result, align(GenericSeqSize, elemAlign) + elemSize * r))
-    result.reserved = r
-
 proc incrSeqV3(s: PGenericSeq, typ: PNimType): PGenericSeq {.compilerproc.} =
   if s == nil:
     result = cast[PGenericSeq](newSeq(typ, 1))
@@ -274,112 +266,68 @@ proc incrSeqV3(s: PGenericSeq, typ: PNimType): PGenericSeq {.compilerproc.} =
       # since we steal the content from 's', it's crucial to set s's len to 0.
       s.len = 0
 
-proc setLengthSeq(seq: PGenericSeq, elemSize, elemAlign, newLen: int): PGenericSeq {.
-    compilerRtl, inl.} =
-  result = seq
-  if result.space < newLen:
-    let r = max(resize(result.space), newLen)
-    result = cast[PGenericSeq](growObj(result, align(GenericSeqSize, elemAlign) + elemSize * r))
-    result.reserved = r
-  elif newLen < result.len:
-    # we need to decref here, otherwise the GC leaks!
-    when not defined(boehmGC) and not defined(nogc) and
-         not defined(gcMarkAndSweep) and not defined(gogc) and
-         not defined(gcRegions):
-      if ntfNoRefs notin extGetCellType(result).base.flags:
-        for i in newLen..result.len-1:
-          forAllChildrenAux(dataPointer(result, elemAlign, elemSize, i),
-                            extGetCellType(result).base, waZctDecRef)
+proc extendCapacityRaw(src: PGenericSeq; typ: PNimType;
+                      elemSize, elemAlign, newLen: int): PGenericSeq {.inline.} =
+  ## Reallocs `src` to fit `newLen` elements without any checks.
+  ## Capacity always increases to at least next `resize` step.
+  let newCap = max(resize(src.space), newLen)
+  result = cast[PGenericSeq](newSeq(typ, newCap))
+  copyMem(dataPointer(result, elemAlign), dataPointer(src, elemAlign), src.len * elemSize)
+  # since we steal the content from 's', it's crucial to set s's len to 0.
+  src.len = 0
 
-    # XXX: zeroing out the memory can still result in crashes if a wiped-out
-    # cell is aliased by another pointer (ie proc parameter or a let variable).
-    # This is a tough problem, because even if we don't zeroMem here, in the
-    # presence of user defined destructors, the user will expect the cell to be
-    # "destroyed" thus creating the same problem. We can destroy the cell in the
-    # finalizer of the sequence, but this makes destruction non-deterministic.
-    zeroMem(dataPointer(result, elemAlign, elemSize, newLen), (result.len-%newLen) *% elemSize)
-  result.len = newLen
+proc truncateRaw(src: PGenericSeq; baseFlags: set[TNimTypeFlag]; isTrivial: bool;
+              elemSize, elemAlign, newLen: int): PGenericSeq {.inline.} =
+  ## Truncates `src` to `newLen` without any checks.
+  ## Does not set `src.len`
+  # sysAssert src.space > newlen
+  # sysAssert newLen < src.len
+  result = src
+  # we need to decref here, otherwise the GC leaks!
+  when not defined(boehmGC) and not defined(nogc) and
+      not defined(gcMarkAndSweep) and not defined(gogc) and
+      not defined(gcRegions):
+    if ntfNoRefs notin baseFlags:
+      for i in newLen..<result.len:
+        forAllChildrenAux(dataPointer(result, elemAlign, elemSize, i),
+                          extGetCellType(result).base, waZctDecRef)
+  # XXX: zeroing out the memory can still result in crashes if a wiped-out
+  # cell is aliased by another pointer (ie proc parameter or a let variable).
+  # This is a tough problem, because even if we don't zeroMem here, in the
+  # presence of user defined destructors, the user will expect the cell to be
+  # "destroyed" thus creating the same problem. We can destroy the cell in the
+  # finalizer of the sequence, but this makes destruction non-deterministic.
+  if not isTrivial: # optimization for trivial types
+    zeroMem(dataPointer(result, elemAlign, elemSize, newLen),
+            ((result.len-%newLen) *% elemSize))
 
-proc setLengthSeqUninit(s: PGenericSeq, typ: PNimType, newLen: int, isTrivial: bool): PGenericSeq {.
-    compilerRtl.} =
-  sysAssert typ.kind == tySequence, "setLengthSeqUninit: type is not a seq"
+template setLengthSeqImpl(s: PGenericSeq, typ: PNimType, newLen: int; isTrivial: bool;
+                          doInit: static bool) = 
   if s == nil:
-    if newLen == 0:
-      result = s
-    else:
-      result = cast[PGenericSeq](newSeq(typ, newLen))
+    if newLen == 0: return s
+    else: return cast[PGenericSeq](newSeq(typ, newLen)) # newSeq zeroes!
   else:
     let elemSize = typ.base.size
     let elemAlign = typ.base.align
-    if s.space < newLen:
-      let r = max(resize(s.space), newLen)
-      result = cast[PGenericSeq](newSeq(typ, r))
-      copyMem(dataPointer(result, elemAlign), dataPointer(s, elemAlign), s.len * elemSize)
-      # since we steal the content from 's', it's crucial to set s's len to 0.
-      s.len = 0
-    elif newLen < s.len:
-      result = s
-      # we need to decref here, otherwise the GC leaks!
-      when not defined(boehmGC) and not defined(nogc) and
-          not defined(gcMarkAndSweep) and not defined(gogc) and
-          not defined(gcRegions):
-        if ntfNoRefs notin typ.base.flags:
-          for i in newLen..result.len-1:
-            forAllChildrenAux(dataPointer(result, elemAlign, elemSize, i),
-                              extGetCellType(result).base, waZctDecRef)
-
-      # XXX: zeroing out the memory can still result in crashes if a wiped-out
-      # cell is aliased by another pointer (ie proc parameter or a let variable).
-      # This is a tough problem, because even if we don't zeroMem here, in the
-      # presence of user defined destructors, the user will expect the cell to be
-      # "destroyed" thus creating the same problem. We can destroy the cell in the
-      # finalizer of the sequence, but this makes destruction non-deterministic.
-      if not isTrivial: # optimization for trivial types
-        zeroMem(dataPointer(result, elemAlign, elemSize, newLen), (result.len-%newLen) *% elemSize)
-    else:
-      result = s
+    result = if newLen > s.space:
+        s.extendCapacityRaw(typ, elemSize, elemAlign, newLen)
+      elif newLen < s.len:
+        s.truncateRaw(typ.base.flags, isTrivial, elemSize, elemAlign, newLen)
+      else:
+        when doInit:
+          zeroMem(dataPointer(s, elemAlign, elemSize, s.len), (newLen-%s.len) *% elemSize)
+        s
     result.len = newLen
+
+proc setLengthSeqUninit(s: PGenericSeq; typ: PNimType; newLen: int; isTrivial: bool): PGenericSeq {.
+    compilerRtl.} =
+  sysAssert typ.kind == tySequence, "setLengthSeqUninit: type is not a seq"
+  setLengthSeqImpl(s, typ, newLen, isTrivial, doInit = false)
 
 proc setLengthSeqV2(s: PGenericSeq, typ: PNimType, newLen: int, isTrivial: bool): PGenericSeq {.
     compilerRtl.} =
   sysAssert typ.kind == tySequence, "setLengthSeqV2: type is not a seq"
-  if s == nil:
-    if newLen == 0:
-      result = s
-    else:
-      result = cast[PGenericSeq](newSeq(typ, newLen))
-  else:
-    let elemSize = typ.base.size
-    let elemAlign = typ.base.align
-    if s.space < newLen:
-      let r = max(resize(s.space), newLen)
-      result = cast[PGenericSeq](newSeq(typ, r))
-      copyMem(dataPointer(result, elemAlign), dataPointer(s, elemAlign), s.len * elemSize)
-      # since we steal the content from 's', it's crucial to set s's len to 0.
-      s.len = 0
-    elif newLen < s.len:
-      result = s
-      # we need to decref here, otherwise the GC leaks!
-      when not defined(boehmGC) and not defined(nogc) and
-          not defined(gcMarkAndSweep) and not defined(gogc) and
-          not defined(gcRegions):
-        if ntfNoRefs notin typ.base.flags:
-          for i in newLen..result.len-1:
-            forAllChildrenAux(dataPointer(result, elemAlign, elemSize, i),
-                              extGetCellType(result).base, waZctDecRef)
-
-      # XXX: zeroing out the memory can still result in crashes if a wiped-out
-      # cell is aliased by another pointer (ie proc parameter or a let variable).
-      # This is a tough problem, because even if we don't zeroMem here, in the
-      # presence of user defined destructors, the user will expect the cell to be
-      # "destroyed" thus creating the same problem. We can destroy the cell in the
-      # finalizer of the sequence, but this makes destruction non-deterministic.
-      if not isTrivial: # optimization for trivial types
-        zeroMem(dataPointer(result, elemAlign, elemSize, newLen), (result.len-%newLen) *% elemSize)
-    else:
-      result = s
-      zeroMem(dataPointer(result, elemAlign, elemSize, result.len), (newLen-%result.len) *% elemSize)
-    result.len = newLen
+  setLengthSeqImpl(s, typ, newLen, isTrivial, doInit = true)
 
 func capacity*(self: string): int {.inline.} =
   ## Returns the current capacity of the string.
@@ -402,3 +350,4 @@ func capacity*[T](self: seq[T]): int {.inline.} =
 
   let sek = cast[PGenericSeq](self)
   result = if sek != nil: sek.space else: 0
+
