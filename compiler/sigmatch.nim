@@ -41,16 +41,23 @@ type
     firstMismatch*: MismatchInfo
     diagnostics*: seq[string]
     enabled*: bool
+    # Scoring fields for relevance-based sorting
+    exactMatches*: int
+    genericMatches*: int
+    subtypeMatches*: int
+    intConvMatches*: int
+    convMatches*: int
+    calleeScope*: int
 
   CandidateErrors* = seq[CandidateError]
 
   TCandidate* = object
     c*: PContext
     exactMatches*: int       # also misused to prefer iters over procs
-    genericMatches: int      # also misused to prefer constraints
-    subtypeMatches: int
-    intConvMatches: int      # conversions to int are not as expensive
-    convMatches: int
+    genericMatches*: int     # also misused to prefer constraints
+    subtypeMatches*: int
+    intConvMatches*: int     # conversions to int are not as expensive
+    convMatches*: int
     state*: TCandidateState
     callee*: PType           # may not be nil!
     calleeSym*: PSym         # may be nil
@@ -432,6 +439,29 @@ proc cmpCandidates*(a, b: TCandidate, isFormal=true): int =
     result = complexDisambiguation(a.callee, b.callee)
   if result != 0: return
   # only as a last resort, consider scoping:
+  result = a.calleeScope - b.calleeScope
+
+proc cmpCandidateErrors*(a, b: CandidateError): int =
+  ## Compare two failed candidates by relevance (higher score = more relevant)
+  ## Candidates that fail later (higher arg position) are more relevant
+  ## Uses similar logic to cmpCandidates for consistent scoring
+
+  # First, compare by mismatch position - later mismatches are more relevant
+  result = a.firstMismatch.arg - b.firstMismatch.arg
+  if result != 0: return
+
+  # Then use the same scoring as successful candidates
+  result = a.exactMatches - b.exactMatches
+  if result != 0: return
+  result = a.genericMatches - b.genericMatches
+  if result != 0: return
+  result = a.subtypeMatches - b.subtypeMatches
+  if result != 0: return
+  result = a.intConvMatches - b.intConvMatches
+  if result != 0: return
+  result = a.convMatches - b.convMatches
+  if result != 0: return
+  # Finally, consider scoping
   result = a.calleeScope - b.calleeScope
 
 proc argTypeToString(arg: PNode; prefer: TPreferedDesc): string =

@@ -176,7 +176,13 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
         errors.add(CandidateError(
           sym: sym,
           firstMismatch: z.firstMismatch,
-          diagnostics: z.diagnostics))
+          diagnostics: z.diagnostics,
+          exactMatches: z.exactMatches,
+          genericMatches: z.genericMatches,
+          subtypeMatches: z.subtypeMatches,
+          intConvMatches: z.intConvMatches,
+          convMatches: z.convMatches,
+          calleeScope: z.calleeScope))
     else:
       # this branch feels like a ticking timebomb
       # one of two bad things could happen
@@ -279,7 +285,9 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
 
   var maybeWrongSpace = false
 
-  var candidatesAll: seq[string] = @[]
+  # Keep track of pairs (error, candidate string) for relevance-based sorting
+  type CandidatePair = tuple[err: CandidateError, text: string]
+  var candidatePairs: seq[CandidatePair] = @[]
   var candidates = ""
   var skipped = 0
   for err in errors:
@@ -486,11 +494,36 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
         maybeWrongSpace = true
     for diag in err.diagnostics:
       candidates.add(diag & "\n")
-    candidatesAll.add candidates
-  candidatesAll.sort # fix #13538
-  candidates = join(candidatesAll)
-  if skipped > 0:
-    candidates.add($skipped & " other mismatching symbols have been " &
+    candidatePairs.add((err, candidates))
+
+  # Sort candidates by relevance (best matches first) instead of alphabetically
+  candidatePairs.sort(proc (a, b: CandidatePair): int =
+    # Compare by relevance (negate to get descending order - best first)
+    result = -cmpCandidateErrors(a.err, b.err)
+  )
+
+  # Limit number of candidates shown to improve readability (Top-N filtering)
+  const maxCandidatesToShow = 5
+  var candidatesToDisplay: seq[string] = @[]
+  var extraSkipped = 0
+
+  if optShowAllMismatches notin c.config.globalOptions:
+    if candidatePairs.len > maxCandidatesToShow:
+      for i in 0..<maxCandidatesToShow:
+        candidatesToDisplay.add candidatePairs[i].text
+      extraSkipped = candidatePairs.len - maxCandidatesToShow
+    else:
+      for pair in candidatePairs:
+        candidatesToDisplay.add pair.text
+  else:
+    for pair in candidatePairs:
+      candidatesToDisplay.add pair.text
+
+  candidates = join(candidatesToDisplay)
+
+  let totalSkipped = skipped + extraSkipped
+  if totalSkipped > 0:
+    candidates.add($totalSkipped & " other mismatching symbols have been " &
         "suppressed; compile with --showAllMismatches:on to see them\n")
   if maybeWrongSpace:
     candidates.add("maybe misplaced space between " & renderTree(n[0]) & " and '(' \n")
@@ -730,7 +763,13 @@ proc bracketNotFoundError(c: PContext; n: PNode; flags: TExprFlags) =
           errors.add(CandidateError(sym: symx,
                                     firstMismatch: MismatchInfo(),
                                     diagnostics: @[],
-                                    enabled: false))
+                                    enabled: false,
+                                    exactMatches: 0,
+                                    genericMatches: 0,
+                                    subtypeMatches: 0,
+                                    intConvMatches: 0,
+                                    convMatches: 0,
+                                    calleeScope: 0))
         else:
           choice.add newSymNode(symx, headSymbol.info)
       symx = nextOverloadIter(o, c, headSymbol)
@@ -1009,7 +1048,13 @@ proc explicitGenericSym(c: PContext, n: PNode, s: PSym, errors: var CandidateErr
       errors.add(CandidateError(
         sym: s,
         firstMismatch: m.firstMismatch,
-        diagnostics: m.diagnostics))
+        diagnostics: m.diagnostics,
+        exactMatches: m.exactMatches,
+        genericMatches: m.genericMatches,
+        subtypeMatches: m.subtypeMatches,
+        intConvMatches: m.intConvMatches,
+        convMatches: m.convMatches,
+        calleeScope: m.calleeScope))
     return nil
   var newInst = generateInstance(c, s, m.bindings, n.info)
   newInst.typ.excl tfUnresolved
