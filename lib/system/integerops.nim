@@ -12,10 +12,43 @@
 
 proc raiseOverflow {.compilerproc, noinline.} =
   # a single proc to reduce code size to a minimum
-  sysFatal(OverflowDefect, "over- or underflow")
+  when defined(runtimeDebug):
+    var msg = "Integer Overflow [OverflowDefect]\n"
+    msg.add "  arithmetic operation resulted in overflow or underflow\n"
+    msg.add "\nThis happens when:\n"
+    msg.add "  - Result of addition/subtraction/multiplication exceeds type bounds\n"
+    msg.add "  - Integer wraps around min/max value\n"
+    msg.add "\nhelp: use checked arithmetic or wider type\n"
+    msg.add "  | # Option 1: Use wider type\n"
+    msg.add "  | let result = int64(a) * int64(b)  # prevents overflow\n"
+    msg.add "\nhelp: or validate operands before operation\n"
+    msg.add "  | import std/math\n"
+    msg.add "  | if abs(a) < sqrt(high(int).float).int:\n"
+    msg.add "  |   # safe to multiply\n"
+    sysFatal(OverflowDefect, msg)
+  else:
+    sysFatal(OverflowDefect, "over- or underflow")
 
 proc raiseDivByZero {.compilerproc, noinline.} =
-  sysFatal(DivByZeroDefect, "division by zero")
+  when defined(runtimeDebug):
+    var msg = "Division by Zero [DivByZeroDefect]\n"
+    msg.add "  attempted to divide by zero\n"
+    msg.add "  divisor: 0\n"
+    msg.add "\nCommon causes:\n"
+    msg.add "  - Dividing by unvalidated user input\n"
+    msg.add "  - Dividing by collection length without checking if empty\n"
+    msg.add "  - Loop counter or calculation that reached zero unexpectedly\n"
+    msg.add "\nhelp: check divisor before dividing\n"
+    msg.add "  | if divisor != 0:\n"
+    msg.add "  |   result = dividend div divisor\n"
+    msg.add "  | else:\n"
+    msg.add "  |   # handle zero case (return default, raise error, etc.)\n"
+    msg.add "\nhelp: for collection length division\n"
+    msg.add "  | if collection.len > 0:\n"
+    msg.add "  |   let average = total div collection.len\n"
+    sysFatal(DivByZeroDefect, msg)
+  else:
+    sysFatal(DivByZeroDefect, "division by zero")
 
 {.pragma: nimbaseH, importc, nodecl, noSideEffect, compilerproc.}
 
@@ -124,10 +157,49 @@ divImplFallback(nimDivInt, int)
 divImplFallback(nimDivInt64, int64)
 
 proc raiseFloatInvalidOp {.compilerproc, noinline.} =
-  sysFatal(FloatInvalidOpDefect, "FPU operation caused a NaN result")
+  when defined(runtimeDebug):
+    var msg = "Invalid Float Operation [FloatInvalidOpDefect]\n"
+    msg.add "  floating-point operation resulted in NaN (Not a Number)\n"
+    msg.add "\nCommon causes:\n"
+    msg.add "  - 0.0 / 0.0 (indeterminate form)\n"
+    msg.add "  - sqrt of negative number\n"
+    msg.add "  - log of negative number or zero\n"
+    msg.add "  - arc functions with out-of-domain arguments\n"
+    msg.add "\nhelp: validate inputs before FPU operations\n"
+    msg.add "  | if x >= 0.0:\n"
+    msg.add "  |   result = sqrt(x)\n"
+    msg.add "  | else:\n"
+    msg.add "  |   # handle negative input\n"
+    sysFatal(FloatInvalidOpDefect, msg)
+  else:
+    sysFatal(FloatInvalidOpDefect, "FPU operation caused a NaN result")
 
 proc raiseFloatOverflow(x: float64) {.compilerproc, noinline.} =
-  if x > 0.0:
-    sysFatal(FloatOverflowDefect, "FPU operation caused an overflow")
+  when defined(runtimeDebug):
+    if x > 0.0:
+      var msg = "Float Overflow [FloatOverflowDefect]\n"
+      msg.add "  floating-point operation exceeded maximum value\n"
+      msg.add "  result would be > " & $high(float64) & "\n"
+      msg.add "\nCommon causes:\n"
+      msg.add "  - Multiplying very large numbers\n"
+      msg.add "  - Exponential growth (e^x for large x)\n"
+      msg.add "  - Repeated multiplication without bounds checking\n"
+      msg.add "\nhelp: use range-checked arithmetic\n"
+      msg.add "  | if abs(a) < 1e100 and abs(b) < 1e100:\n"
+      msg.add "  |   result = a * b  # safe\n"
+      sysFatal(FloatOverflowDefect, msg)
+    else:
+      var msg = "Float Underflow [FloatUnderflowDefect]\n"
+      msg.add "  floating-point operation exceeded minimum value\n"
+      msg.add "  result would be < " & $low(float64) & "\n"
+      msg.add "\nCommon causes:\n"
+      msg.add "  - Multiplying very large negative numbers\n"
+      msg.add "  - Exponential decay below representable range\n"
+      msg.add "\nhelp: clamp to representable range\n"
+      msg.add "  | result = max(low(float64), computation)\n"
+      sysFatal(FloatUnderflowDefect, msg)
   else:
-    sysFatal(FloatUnderflowDefect, "FPU operations caused an underflow")
+    if x > 0.0:
+      sysFatal(FloatOverflowDefect, "FPU operation caused an overflow")
+    else:
+      sysFatal(FloatUnderflowDefect, "FPU operations caused an underflow")
