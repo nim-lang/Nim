@@ -219,7 +219,12 @@ proc flexComment(p: var Parser, node: PNode) =
   if p.tok.indent < 0 or realInd(p): rawSkipComment(p, node)
 
 const
-  errInvalidIndentation = "invalid indentation"
+  errInvalidIndentation = "invalid indentation\n" &
+    "note: this error can also be caused by:\n" &
+    "  - using an undefined operator (like ++, which doesn't exist in Nim)\n" &
+    "  - missing operators or keywords\n" &
+    "  - syntax errors in the previous line\n" &
+    "hint: check for undefined operators; Nim uses inc() instead of ++"
   errIdentifierExpected = "identifier expected, but got '$1'"
   errExprExpected = "expression expected, but found '$1'"
 

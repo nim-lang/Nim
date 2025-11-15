@@ -1895,6 +1895,58 @@ proc typeMismatch*(conf: ConfigRef; info: TLineInfo, formal, actual: PType, n: P
       processPragmaAndCallConvMismatch(msg, a, b, conf)
     else:
       processPragmaAndCallConvMismatch(msg, a, b, conf)
+
+    # Check if user forgot to call a procedure (missing parentheses)
+    if actual.kind == tyProc and formal.kind != tyProc:
+      # They provided a proc but expected a value - likely forgot ()
+      if n.kind in {nkSym, nkIdent}:
+        msg.add "\n"
+        msg.add "\nhelp: did you forget to call the procedure?\n"
+        msg.add "  | " & n.renderTree & "()  # <-- add () to call it"
+
+    # Check if trying to pass immutable value to var parameter
+    if formal.kind == tyVar and actual.kind != tyVar:
+      # Expecting var but got immutable - explain mutability
+      msg.add "\n"
+      msg.add "\n'" & n.renderTree & "' is immutable"
+      # Try to detect if it's a let/const
+      var isParam = false
+      if n.kind == nkSym and n.sym != nil:
+        case n.sym.kind
+        of skLet:
+          msg.add " (declared with let)"
+        of skConst:
+          msg.add " (declared with const)"
+        of skParam:
+          msg.add " (function parameter is immutable by default)"
+          isParam = true
+        else:
+          discard
+      msg.add "\nthe called procedure expects a mutable variable (var parameter)"
+      if isParam:
+        msg.add "\n\nhelp: change the parameter to be mutable\n"
+        msg.add "  | proc name(" & n.renderTree & ": var Type) = ...  # <-- add 'var' to parameter"
+      else:
+        msg.add "\n\nhelp: declare '" & n.renderTree & "' with var instead\n"
+        msg.add "  | var " & n.renderTree & " = ...  # <-- use var for mutable variables"
+
+    # Check if error involves hash/equality for collections (HashSet, Table, etc.)
+    let lowerMsg = msg.toLowerAscii()
+    if ("hash" in lowerMsg or "==" in lowerMsg) and
+       (actual.kind in {tyObject, tyRef, tyPtr, tyDistinct}):
+      # Likely trying to use type in HashSet/Table without hash/==
+      msg.add "\n\nhelp: custom types in HashSet/Table require hash() and ==\n"
+      msg.add "  | import std/hashes\n"
+      msg.add "  |\n"
+      msg.add "  | proc hash(x: " & typeToString(actual) & "): Hash =\n"
+      msg.add "  |   # implement hashing logic\n"
+      msg.add "  |   result = hash(x.field1) !& hash(x.field2)\n"
+      msg.add "  |   result = !$result\n"
+      msg.add "  |\n"
+      msg.add "  | proc `==`(a, b: " & typeToString(actual) & "): bool =\n"
+      msg.add "  |   # implement equality comparison\n"
+      msg.add "  |   a.field1 == b.field1 and a.field2 == b.field2"
+
     localError(conf, info, msg)
 
 proc isRecursiveStructuralType(t: PType, cycleDetector: var IntSet): bool =
