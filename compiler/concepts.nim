@@ -191,6 +191,11 @@ proc matchConceptToImpl(c: PContext, f, potentialImpl: PType; m: var MatchCon): 
   if m.depthCount > 0:
     # concepts that are more then 2 levels deep are treated like
     # tyAnything to stop dependencies from getting out of control
+    # Warn user about this imprecise matching behavior
+    if m.depthCount == 1 and c.config != nil:
+      message(c.config, concpt.sym.info, warnUser,
+        "nested concept matching at depth > 1 is imprecise; " &
+        "complex concept hierarchies may match incorrectly")
     return true
   var efPot = potentialImpl
   if potentialImpl.isSelf:
