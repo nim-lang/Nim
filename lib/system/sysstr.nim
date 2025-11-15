@@ -48,6 +48,8 @@ else:
     cast[NimString](newObjNoInit(addr(strDesc), size))
 
 proc rawNewStringNoInit(space: int): NimString =
+  ## Returns a newly-allocated NimString with `reserved` set.
+  ## .. warning:: `len` and the terminating null-byte are not set!
   let s = max(space, 7)
   result = allocStrNoInit(sizeof(TGenericSeq) + s + 1)
   result.reserved = s
@@ -55,11 +57,21 @@ proc rawNewStringNoInit(space: int): NimString =
     result.elemSize = 1
 
 proc rawNewString(space: int): NimString {.compilerproc.} =
+  ## Returns a newly-allocated and *not* zeroed NimString
+  ## with everything required set:
+  ## - `reserved`
+  ## - `len` (0)
+  ## - terminating null-byte
   result = rawNewStringNoInit(space)
   result.len = 0
   result.data[0] = '\0'
 
 proc mnewString(len: int): NimString {.compilerproc.} =
+  ## Returns a newly-allocated and zeroed NimString
+  ## with everything required set:
+  ## - `reserved`
+  ## - `len`
+  ## - terminating null-byte
   result = rawNewStringNoInit(len)
   result.len = len
   zeroMem(addr result.data[0], len + 1)
@@ -91,28 +103,27 @@ proc toNimStr(str: cstring, len: int): NimString {.compilerproc.} =
   copyMem(addr(result.data), str, len)
   result.data[len] = '\0'
 
+proc toOwnedCopy(src: NimString): NimString {.inline.} =
+  ## Expects `src` to be not nil and initialized (len and terminating zero set)
+  result = rawNewStringNoInit(src.len)
+  result.len = src.len
+  copyMem(addr(result.data), addr(src.data), src.len + 1)
+
 proc cstrToNimstr(str: cstring): NimString {.compilerRtl.} =
   if str == nil: NimString(nil)
   else: toNimStr(str, str.len)
 
 proc copyString(src: NimString): NimString {.compilerRtl.} =
+  ## Expects `src` to be initialized (len and terminating zero set)
   if src != nil:
     if (src.reserved and seqShallowFlag) != 0:
       result = src
     else:
-      result = rawNewStringNoInit(src.len)
-      result.len = src.len
-      copyMem(addr(result.data), addr(src.data), src.len + 1)
+      result = toOwnedCopy(src)
       sysAssert((seqShallowFlag and result.reserved) == 0, "copyString")
       when defined(nimShallowStrings):
         if (src.reserved and strlitFlag) != 0:
           result.reserved = (result.reserved and not strlitFlag) or seqShallowFlag
-
-proc newOwnedString(src: NimString; n: int): NimString =
-  result = rawNewStringNoInit(n)
-  result.len = n
-  copyMem(addr(result.data), addr(src.data), n)
-  result.data[n] = '\0'
 
 proc copyStringRC1(src: NimString): NimString {.compilerRtl.} =
   if src != nil:
@@ -129,10 +140,10 @@ proc copyStringRC1(src: NimString): NimString {.compilerRtl.} =
         result.reserved = s
         when defined(gogc):
           result.elemSize = 1
+        result.len = src.len
+        copyMem(addr(result.data), addr(src.data), src.len + 1)
       else:
-        result = rawNewStringNoInit(src.len)
-      result.len = src.len
-      copyMem(addr(result.data), addr(src.data), src.len + 1)
+        result = toOwnedCopy(src)
       sysAssert((seqShallowFlag and result.reserved) == 0, "copyStringRC1")
       when defined(nimShallowStrings):
         if (src.reserved and strlitFlag) != 0:
@@ -140,28 +151,9 @@ proc copyStringRC1(src: NimString): NimString {.compilerRtl.} =
 
 proc copyDeepString(src: NimString): NimString {.inline.} =
   if src != nil:
-    result = rawNewStringNoInit(src.len)
-    result.len = src.len
-    copyMem(addr(result.data), addr(src.data), src.len + 1)
+    result = toOwnedCopy(src)
 
-proc addChar(s: NimString, c: char): NimString =
-  # is compilerproc!
-  if s == nil:
-    result = rawNewStringNoInit(1)
-    result.len = 0
-  else:
-    result = s
-    if result.len >= result.space:
-      let r = resize(result.space)
-      result = rawNewStringNoInit(r)
-      result.len = s.len
-      copyMem(addr result.data[0], unsafeAddr(s.data[0]), s.len+1)
-      result.reserved = r
-  result.data[result.len] = c
-  result.data[result.len+1] = '\0'
-  inc(result.len)
-
-# These routines should be used like following:
+# The following resize- and append- routines should be used like following:
 #   <Nim code>
 #   s &= "Hello " & name & ", how do you feel?"
 #
@@ -193,46 +185,61 @@ proc addChar(s: NimString, c: char): NimString =
 #   s = rawNewString(0);
 
 proc resizeString(dest: NimString, addlen: int): NimString {.compilerRtl.} =
+  ## Prepares `dest` for appending up to `addlen` new bytes.
+  ## .. warning:: Does not update `len`!
   if dest == nil:
-    result = rawNewString(addlen)
-  elif dest.len + addlen <= dest.space:
+    return rawNewString(addlen)
+  let futureLen = dest.len + addlen
+  if futureLen <= dest.space:
     result = dest
   else: # slow path:
-    let sp = max(resize(dest.space), dest.len + addlen)
+    # growth strategy: next `resize` step or exact `futureLen` if jumping over
+    let sp = max(resize(dest.space), futureLen)
     result = rawNewStringNoInit(sp)
     result.len = dest.len
-    copyMem(addr result.data[0], unsafeAddr(dest.data[0]), dest.len+1)
-    result.reserved = sp
-    #result = rawNewString(sp)
-    #copyMem(result, dest, dest.len + sizeof(TGenericSeq))
-    # DO NOT UPDATE LEN YET: dest.len = newLen
-
-proc appendString(dest, src: NimString) {.compilerproc, inline.} =
-  if src != nil:
-    copyMem(addr(dest.data[dest.len]), addr(src.data), src.len + 1)
-    inc(dest.len, src.len)
+    # newFutureLen > space => addlen is never zero, copy terminating null anyway
+    copyMem(addr(result.data), addr(dest.data), dest.len + 1)
 
 proc appendChar(dest: NimString, c: char) {.compilerproc, inline.} =
   dest.data[dest.len] = c
   dest.data[dest.len+1] = '\0'
   inc(dest.len)
 
-proc setLengthStr(s: NimString, newLen: int): NimString {.compilerRtl.} =
-  let n = max(newLen, 0)
+proc addChar(s: NimString, c: char): NimString =
+  # is compilerproc! used in `ccgexprs.nim`
   if s == nil:
-    if n == 0:
-      return s
-    else:
-      result = mnewString(n)
-  elif n <= s.space:
+    result = rawNewStringNoInit(1)
+    result.len = 0
+  else:
     result = s
+    if s.len >= s.space: # len.inc would overflow (`>` just in case)
+      let sp = resize(s.space)
+      result = rawNewStringNoInit(sp)
+      copyMem(addr(result.data), addr(s.data), s.len)
+      result.len = s.len
+  result.appendChar(c)
+
+proc appendString(dest, src: NimString) {.compilerproc, inline.} =
+  ## Raw, does not prepare `dest` space for copying
+  if src != nil:
+    copyMem(addr(dest.data[dest.len]), addr(src.data), src.len + 1)
+    inc(dest.len, src.len)
+
+proc setLengthStr(s: NimString, newLen: int): NimString {.compilerRtl.} =
+  ## Sets the `s` length to `newLen` zeroing memory on growth.
+  ## Terminating zero at `s[newLen]` for cstring compatibility is set
+  ## on any length change, including `newLen == 0`.
+  ## Negative `newLen` is bound to zero.
+  let n = max(newLen, 0)
+  if s == nil: # early return check
+    return if n == 0: s else: mnewString(n) # sets everything required
+  if n <= s.space:
+    result = s # len and null-byte still need updating
   else:
     let sp = max(resize(s.space), n)
-    result = rawNewStringNoInit(sp)
-    result.len = s.len
-    copyMem(addr result.data[0], unsafeAddr(s.data[0]), s.len)
+    result = rawNewStringNoInit(sp) # len and null-byte not set
+    copyMem(addr(result.data), addr(s.data), s.len)
     zeroMem(addr result.data[s.len], n - s.len)
-    result.reserved = sp
   result.len = n
   result.data[n] = '\0'
 
