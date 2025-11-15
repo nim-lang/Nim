@@ -1,6 +1,5 @@
 import options, pathutils, platform, condsyms
 import std/[assertions, os, sets, strtabs, times]
-from std/sequtils import addUnique
 from std/strutils import parseEnum
 import "../dist/nimony/src/lib" / [bitabs, lineinfos, nifreader, nifstreams, nifcursors]
 
@@ -23,6 +22,19 @@ proc toNif(dest: var TokenBuf; tag: string; strSeq: seq[string]) =
   dest.buildTree tag:
     for s in strSeq:
       dest.addStrLit s
+
+proc toNif(dest: var TokenBuf; tag: string; absDirs: seq[AbsoluteDir]) =
+  # remove duplicated paths without changing the order of paths
+  var paths: seq[string] = @[]
+  # use HashSet[string] to avoid O(n^2) computation
+  var inPaths = initHashSet[string]()
+  for p in absDirs:
+    let p2 = toNifPath p
+    if not inPaths.containsOrIncl(p2):
+      paths.add p2
+  dest.buildTree tag:
+    for p in paths:
+      dest.addStrLit p
 
 proc expectTag(n: Cursor; tag: string) =
   assert pool.tags[n.tagId] == tag, "expected tag: " & tag & " but got: " & pool.tags[n.tagId]
@@ -79,6 +91,16 @@ proc fromNif(result: var seq[string]; tag: string; n: var Cursor) =
   assert n.kind in {StringLit, ParRi}
   while n.kind != ParRi:
     result.add pool.strings[n.litId]
+    inc n
+  inc n
+
+proc fromNif(result: var seq[AbsoluteDir]; tag: string; n: var Cursor) =
+  expectTag n, tag
+  inc n
+  result.setLen(0)
+  assert n.kind in {StringLit, ParRi}
+  while n.kind != ParRi:
+    result.add pool.strings[n.litId].toAbsoluteDir
     inc n
   inc n
 
@@ -181,20 +203,8 @@ proc configToNif(conf: ConfigRef; dest: var TokenBuf) =
     for def in definedSymbolNames(conf.symbols):
       dest.addStrLit def
 
-  #echo "conf.nimblePaths"
-  #echo conf.nimblePaths
-  dest.buildTree "nimblepaths":
-    for p in conf.nimblePaths:
-      dest.addStrLit p.toNifPath
-
-  #echo "conf.searchPaths"
-  #echo conf.searchPaths
-  var paths: seq[string] = @[]
-  for p in conf.searchPaths:
-    paths.addUnique p.toNifPath
-  dest.buildTree "paths":
-    for p in paths:
-      dest.addStrLit p
+  dest.toNif "nimblepaths", conf.nimblePaths
+  dest.toNif "searchPaths", conf.searchPaths
 
   dest.addStrLit conf.outFile.string
   dest.addStrLit conf.outDir.toNifPath
@@ -219,14 +229,8 @@ proc configToNif(conf: ConfigRef; dest: var TokenBuf) =
     for c in conf.configFiles:
       dest.addStrLit c.toNifPath
 
-  dest.buildTree "cIncludes":
-    for d in conf.cIncludes:
-      dest.addStrLit d.toNifPath
-
-  dest.buildTree "cLibs":
-    for d in conf.cLibs:
-      dest.addStrLit d.toNifPath
-
+  dest.toNif "cIncludes", conf.cIncludes
+  dest.toNif "cLibs", conf.cLibs
   dest.toNif "cLinkedLibs", conf.cLinkedLibs
   dest.toNif "externalToLink", conf.externalToLink
   dest.addStrLit conf.linkOptionsCmd
@@ -368,29 +372,8 @@ proc loadConfigsFromNif(conf: ConfigRef; n: var Cursor) =
     conf.symbols.defineSymbol(def)
   inc n
 
-  conf.nimblePaths.setLen(0)
-  expectTag n, "nimblepaths"
-  inc n
-  while n.kind != ParRi:
-    assert n.kind == StringLit
-    let p = pool.strings[n.litId]
-    inc n
-    conf.nimblePaths.add p.toAbsoluteDir
-  inc n
-  #echo "conf.nimblePaths"
-  #echo conf.nimblePaths
-
-  conf.searchPaths.setLen(0)
-  expectTag n, "paths"
-  inc n
-  while n.kind != ParRi:
-    assert n.kind == StringLit
-    let p = pool.strings[n.litId]
-    inc n
-    conf.searchPaths.add p.toAbsoluteDir
-  inc n
-  #echo "conf.searchPaths"
-  #echo conf.searchPaths
+  fromNif conf.nimblePaths, "nimblepaths", n
+  fromNif conf.searchPaths, "searchPaths", n
 
   conf.outFile = pool.strings[n.litId].RelativeFile
   inc n
@@ -427,20 +410,8 @@ proc loadConfigsFromNif(conf: ConfigRef; n: var Cursor) =
     inc n
   inc n
 
-  expectTag n, "cIncludes"
-  inc n
-  while n.kind != ParRi:
-    conf.cIncludes.add pool.strings[n.litId].toAbsoluteDir
-    inc n
-  inc n
-
-  expectTag n, "cLibs"
-  inc n
-  while n.kind != ParRi:
-    conf.cLibs.add pool.strings[n.litId].toAbsoluteDir
-    inc n
-  inc n
-
+  fromNif conf.cIncludes, "cIncludes", n
+  fromNif conf.cLibs, "cLibs", n
   fromNif conf.cLinkedLibs, "cLinkedLibs", n
   fromNif conf.externalToLink, "externalToLink", n
 
