@@ -1,7 +1,7 @@
 import sem, cgen, modulegraphs, ast, llstream, parser, msgs,
        lineinfos, reorder, options, semdata, cgendata, modules, pathutils,
        packages, syntaxes, depends, vm, pragmas, idents, lookups, wordrecg,
-       liftdestructors, nifgen
+       liftdestructors, nifgen, depresolution
 
 when not defined(nimKochBootstrap):
   import ast2nif
@@ -190,7 +190,9 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
         sl.add n
 
       prePass(ctx, sl)
-      if sfReorder in module.flags or codeReordering in graph.config.features:
+      if dependencyResolution in graph.config.features:
+        sl = resolveAndReorder(graph.config, graph.cache, sl)
+      elif sfReorder in module.flags or codeReordering in graph.config.features:
         sl = reorder(graph, sl, module)
       if graph.pipelinePass != EvalPass:
         message(graph.config, sl.info, hintProcessingStmt, $idgen[])
