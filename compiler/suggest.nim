@@ -676,16 +676,30 @@ proc warnAboutDeprecated(conf: ConfigRef; info: TLineInfo; s: PSym) =
         return
   message(conf, info, warnDeprecated, name & " is deprecated")
 
-proc userError(conf: ConfigRef; info: TLineInfo; s: PSym) =
+proc userError(conf: ConfigRef; info: TLineInfo; s: PSym; receiverType: PType = nil) =
   let pragmaNode = extractPragma(s)
+
+  # Build type context string if receiver type is available
+  var typeContext = ""
+  if receiverType != nil:
+    typeContext = "\n  called with receiver type '" & typeToString(receiverType) & "'"
+
   template bail(prefix: string) =
-    localError(conf, info, "$1usage of '$2' is an {.error.} defined at $3" %
-      [prefix, s.name.s, toFileLineCol(conf, s.ast.info)])
+    let baseLocation = toFileLineCol(conf, s.ast.info)
+    if s.kind == skMethod:
+      # Enhanced error message for methods with receiver type information
+      localError(conf, info, "$1$2\n  base method '$3' defined at $4" %
+        [prefix, typeContext, s.name.s, baseLocation])
+    else:
+      # Original error message for non-methods
+      localError(conf, info, "$1usage of '$2' is an {.error.} defined at $3" %
+        [prefix, s.name.s, baseLocation])
+
   if pragmaNode != nil:
     for it in pragmaNode:
       if whichPragma(it) == wError and it.safeLen == 2 and
           it[1].kind in {nkStrLit..nkTripleStrLit}:
-        bail(it[1].strVal & "; ")
+        bail(it[1].strVal)
         return
   bail("")
 
@@ -704,7 +718,7 @@ proc markOwnerModuleAsUsed(c: PContext; s: PSym) =
       else:
         inc i
 
-proc markUsed(c: PContext; info: TLineInfo; s: PSym; checkStyle = true; isGenericInstance = false) =
+proc markUsed(c: PContext; info: TLineInfo; s: PSym; checkStyle = true; isGenericInstance = false; receiverType: PType = nil) =
   if not isGenericInstance:
     let conf = c.config
     incl(s.flagsImpl, sfUsed)
@@ -719,7 +733,7 @@ proc markUsed(c: PContext; info: TLineInfo; s: PSym; checkStyle = true; isGeneri
           warnAboutDeprecated(conf, info, s)
           c.lastTLineInfo = info
 
-      if sfError in s.flags: userError(conf, info, s)
+      if sfError in s.flags: userError(conf, info, s, receiverType)
   when defined(nimsuggest):
     suggestSym(c.graph, info, s, c.graph.usageSym, isDecl = false, isGenericInstance = isGenericInstance)
   if not isGenericInstance:
