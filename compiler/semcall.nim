@@ -391,6 +391,13 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
             candidates.add "untyped"
           candidates.add " (expression: '" & renderTree(nArg) & "')\n"
 
+          # Check if user forgot to call a procedure (missing parentheses)
+          if got != nil and got.kind == tyProc and wanted.kind != tyProc:
+            # User passed a proc where a value was expected - likely forgot ()
+            let procName = renderTree(nArg)
+            candidates.add "\n  help: did you forget to call the procedure?\n"
+            candidates.add "        use '" & procName & "()' to call it\n"
+
           if got != nil and got.kind == tyProc and wanted.kind == tyProc:
             # These are proc mismatches so,
             # add the extra explict detail of the mismatch
