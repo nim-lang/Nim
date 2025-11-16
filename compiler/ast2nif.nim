@@ -356,14 +356,14 @@ proc trInclude(w: var Writer; n: PNode) =
   w.deps.addParRi
 
 proc trImport(w: var Writer; n: PNode) =
-  w.deps.addParLe pool.tags.getOrIncl(toNifTag(n.kind)), trLineInfo(w, n.info)
   for child in n:
-    assert child.kind == nkSym
-    let s = child.sym
-    assert s.kindImpl == skModule
-    let fp = toFullPath(w.infos.config, s.positionImpl.FileIndex)
-    w.deps.addStrLit fp
-  w.deps.addParRi
+    if child.kind == nkSym:
+      w.deps.addParLe pool.tags.getOrIncl(toNifTag(n.kind)), trLineInfo(w, n.info)
+      let s = child.sym
+      assert s.kindImpl == skModule
+      let fp = toFullPath(w.infos.config, s.positionImpl.FileIndex)
+      w.deps.addStrLit fp
+      w.deps.addParRi
 
 proc writeNode(w: var Writer; dest: var TokenBuf; n: PNode) =
   if n == nil:
