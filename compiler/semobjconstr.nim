@@ -494,6 +494,16 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType 
         "'; the object's generic parameters cannot be inferred and must be explicitly given"
       )
 
+  # Check if trying to instantiate an abstract type
+  if tfAbstract in t.flags:
+    var msg = "cannot instantiate abstract type '" & typeToString(t, preferName) & "'"
+    if t.sym != nil:
+      msg.add "\n  defined at " & toFileLineCol(c.config, t.sym.info)
+    # Find concrete derived types to suggest
+    msg.add "\n\nhelp: create a concrete type that inherits from '" & typeToString(t, preferName) & "'"
+    msg.add "\n  or remove the {.abstract.} pragma if this type should be instantiable"
+    return localErrorNode(c, result, msg)
+
   # Check if the object is fully initialized by recursively testing each
   # field (if this is a case object, initialized fields in two different
   # branches will be reported as an error):
