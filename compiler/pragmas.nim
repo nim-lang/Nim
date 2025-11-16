@@ -40,7 +40,7 @@ const
     wConstructor, wLiftLocals, wStackTrace, wLineTrace, wNoDestroy,
     wRequires, wEnsures, wEnforceNoRaises, wSystemRaisesDefect, wVirtual, wQuirky, wMember}
   converterPragmas* = procPragmas
-  methodPragmas* = procPragmas+{wBase}-{wImportCpp}
+  methodPragmas* = procPragmas+{wBase, wAbstract}-{wImportCpp}
   templatePragmas* = {wDeprecated, wError, wGensym, wInject, wDirty,
     wDelegator, wExportNims, wUsed, wPragma, wRedefine, wCallsite}
   macroPragmas* = declPragmas + {FirstCallConv..LastCallConv,
@@ -72,7 +72,7 @@ const
     wRaises, wLocks, wTags, wForbids, wRequires, wEnsures, wEffectsOf,
     wGcSafe, wCodegenDecl, wNoInit, wCompileTime}
   typePragmas* = declPragmas + {wMagic, wAcyclic,
-    wPure, wHeader, wCompilerProc, wCore, wFinal, wSize, wShallow,
+    wPure, wHeader, wCompilerProc, wCore, wFinal, wAbstract, wSize, wShallow,
     wIncompleteStruct, wCompleteStruct, wByCopy, wByRef,
     wInheritable, wGensym, wInject, wRequiresInit, wUnchecked, wUnion, wPacked,
     wCppNonPod, wBorrow, wGcSafe, wPartial, wExplain, wPackage, wCodegenDecl,
@@ -1085,6 +1085,16 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         noVal(c, it)
         if sym.typ == nil: invalidPragma(c, it)
         else: incl(sym.typ, tfFinal)
+      of wAbstract:
+        noVal(c, it)
+        if sym.kind == skMethod:
+          # Abstract methods are base methods that must be overridden
+          sym.incl sfBase
+          sym.incl sfError
+        elif sym.typ == nil:
+          invalidPragma(c, it)
+        else:
+          incl(sym.typ, tfAbstract)
       of wInheritable:
         noVal(c, it)
         if sym.typ == nil or tfFinal in sym.typ.flags: invalidPragma(c, it)

@@ -330,6 +330,7 @@ type
                       # tyArray type represeting a varargs list
     tfNoSideEffect,   # procedure type does not allow side effects
     tfFinal,          # is the object final?
+    tfAbstract,       # is the object abstract (cannot be instantiated)?
     tfInheritable,    # is the object inheritable?
     tfHasOwned,       # type contains an 'owned' type and must be moved
     tfEnumHasHoles,   # enum cannot be mapped into a range

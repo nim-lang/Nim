@@ -1539,6 +1539,7 @@ proc genFlags*(s: set[TTypeFlag]; dest: var string) =
     of tfVarargs: dest.add "v"
     of tfNoSideEffect: dest.add "n"
     of tfFinal: dest.add "f"
+    of tfAbstract: dest.add "a"
     of tfInheritable: dest.add "i"
     of tfHasOwned: dest.add "h"
     of tfEnumHasHoles: dest.add "e"
