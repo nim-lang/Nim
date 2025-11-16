@@ -546,6 +546,49 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
   if maybeWrongSpace:
     candidates.add("maybe misplaced space between " & renderTree(n[0]) & " and '(' \n")
 
+  # Check if all candidates fail on the same argument with same type - indicates operation not implemented
+  if candidatePairs.len >= 3:  # Need at least 3 mismatches to be confident
+    var firstArgMismatch = true
+    var commonArgType: PType = nil
+    var commonPosition = -1
+
+    # Check if all errors are at the same argument position with incompatible base types
+    for i, pair in candidatePairs:
+      let err = pair.err
+      if err.firstMismatch.kind == kTypeMismatch:
+        let argPos = err.firstMismatch.arg
+        if i == 0:
+          commonPosition = argPos
+          if argPos < n.len:
+            commonArgType = n[argPos].typ
+        else:
+          if argPos != commonPosition:
+            firstArgMismatch = false
+            break
+          # Check if the argument type is consistently incompatible
+          if commonArgType != nil and argPos < n.len:
+            if n[argPos].typ != commonArgType:
+              firstArgMismatch = false
+              break
+      else:
+        firstArgMismatch = false
+        break
+
+    # If all overloads fail on the same argument with the same type, suggest the operation isn't implemented
+    if firstArgMismatch and commonArgType != nil and commonPosition > 0:
+      let opName = if n[0].kind in {nkSym, nkIdent}: renderTree(n[0]) else: "operation"
+      let argName = if commonPosition < n.len: renderTree(n[commonPosition]) else: "argument"
+      let typeName = typeToString(commonArgType)
+
+      candidates.add("\nhelp: '" & typeName & "' does not implement '" & opName & "'\n")
+      candidates.add("      define a proc like this to add support:\n")
+      candidates.add("      | proc `" & opName & "`(")
+      # Build parameter list suggestion
+      for i in 1..<n.len:
+        if i > 1: candidates.add(", ")
+        candidates.add("x" & $(i) & ": " & typeName)
+      candidates.add("): ReturnType = ...\n")
+
   result = (prefer, candidates)
 
 const
