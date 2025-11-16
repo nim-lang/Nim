@@ -478,7 +478,8 @@ proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode) =
   dest.add inner
   dest.addParRi()
 
-  writeFileAndIndex d, dest
+  writeFile(dest, d)
+  createIndex(d, false, dest[0].info)
 
 
 # --------------------------- Loader (lazy!) -----------------------------------------------
