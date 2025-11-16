@@ -15,7 +15,7 @@ import
   ast, astalgo, idents, lineinfos, msgs, options, renderer,
   modulegraphs
 
-import std/[tables, sets, hashes, deques, intsets]
+import std/[tables, sets, hashes, deques, intsets, strutils]
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -59,7 +59,7 @@ proc getSymbolId(cache: IdentCache; n: PNode): string =
     result = getSymbolId(cache, n[0])
   of nkAccQuoted:
     result = ""
-    for i in 0..<n.len:
+    for i in 0..<n.safeLen:
       let id = n[i].getPIdent
       if id != nil: result.add(id.s)
   of nkEnumFieldDef:
@@ -79,17 +79,17 @@ proc getNodeId(cache: IdentCache; n: PNode; idx: int): string =
     if name != "":
       return name
   of nkTypeSection:
-    if n.len > 0:
+    if n.safeLen > 0:
       let name = getSymbolId(cache, n[0][0])
       if name != "":
         return "type:" & name
   of nkConstSection:
-    if n.len > 0:
+    if n.safeLen > 0:
       let name = getSymbolId(cache, n[0][0])
       if name != "":
         return "const:" & name
   of nkVarSection, nkLetSection:
-    if n.len > 0 and n[0].kind == nkIdentDefs and n[0].len > 0:
+    if n.safeLen > 0 and n[0].kind == nkIdentDefs and n[0].len > 0:
       let name = getSymbolId(cache, n[0][0])
       if name != "":
         return "var:" & name
@@ -100,6 +100,9 @@ proc getNodeId(cache: IdentCache; n: PNode; idx: int): string =
   result = "node:" & $idx
 
 # Dependency extraction
+
+# Forward declaration
+proc extractDependenciesFromExpr(n: PNode; deps: var HashSet[string])
 
 proc extractDependenciesFromType(n: PNode; deps: var HashSet[string]) =
   ## Extract type dependencies
@@ -112,39 +115,39 @@ proc extractDependenciesFromType(n: PNode; deps: var HashSet[string]) =
     deps.incl(n.sym.name.s)
   of nkAccQuoted:
     var id = ""
-    for i in 0..<n.len:
+    for i in 0..<n.safeLen:
       let ident = n[i].getPIdent
       if ident != nil: id.add(ident.s)
     if id != "":
       deps.incl(id)
   of nkBracketExpr:
     # Generic type like seq[int]
-    for i in 0..<n.len:
+    for i in 0..<n.safeLen:
       extractDependenciesFromType(n[i], deps)
   of nkObjectTy, nkTupleTy, nkRefTy, nkPtrTy, nkVarTy, nkDistinctTy:
-    for i in 0..<n.len:
+    for i in 0..<n.safeLen:
       extractDependenciesFromType(n[i], deps)
   of nkProcTy:
     # Proc types
-    for i in 0..<n.len:
+    for i in 0..<n.safeLen:
       extractDependenciesFromType(n[i], deps)
   of nkOfInherit:
     # Inheritance
-    for i in 0..<n.len:
+    for i in 0..<n.safeLen:
       extractDependenciesFromType(n[i], deps)
   of nkRecList:
     # Object fields
-    for i in 0..<n.len:
+    for i in 0..<n.safeLen:
       extractDependenciesFromType(n[i], deps)
   of nkIdentDefs:
     # Field definitions - check types only, not names
-    if n.len >= 2:
+    if n.safeLen >= 2:
       extractDependenciesFromType(n[^2], deps) # type
-      if n.len >= 3:
+      if n.safeLen >= 3:
         extractDependenciesFromExpr(n[^1], deps) # default value
   else:
     # Recursively search other nodes
-    for i in 0..<n.len:
+    for i in 0..<n.safeLen:
       extractDependenciesFromType(n[i], deps)
 
 proc extractDependenciesFromExpr(n: PNode; deps: var HashSet[string]) =
@@ -158,32 +161,32 @@ proc extractDependenciesFromExpr(n: PNode; deps: var HashSet[string]) =
     deps.incl(n.sym.name.s)
   of nkAccQuoted:
     var id = ""
-    for i in 0..<n.len:
+    for i in 0..<n.safeLen:
       let ident = n[i].getPIdent
       if ident != nil: id.add(ident.s)
     if id != "":
       deps.incl(id)
   of nkCall, nkCommand, nkCallStrLit:
     # Function calls
-    for i in 0..<n.len:
+    for i in 0..<n.safeLen:
       extractDependenciesFromExpr(n[i], deps)
   of nkDotExpr:
     # obj.field - only left side is a dependency
-    if n.len > 0:
+    if n.safeLen > 0:
       extractDependenciesFromExpr(n[0], deps)
   of nkBracketExpr:
     # arr[idx]
-    for i in 0..<n.len:
+    for i in 0..<n.safeLen:
       extractDependenciesFromExpr(n[i], deps)
   of nkStmtList, nkStmtListExpr:
-    for i in 0..<n.len:
+    for i in 0..<n.safeLen:
       extractDependenciesFromExpr(n[i], deps)
   of nkOpenSymChoice, nkClosedSymChoice:
-    if n.len > 0:
+    if n.safeLen > 0:
       extractDependenciesFromExpr(n[0], deps)
   else:
     # Recursively process children
-    for i in 0..<n.len:
+    for i in 0..<n.safeLen:
       extractDependenciesFromExpr(n[i], deps)
 
 proc extractDependencies(cache: IdentCache; n: PNode): HashSet[string] =
@@ -193,13 +196,13 @@ proc extractDependencies(cache: IdentCache; n: PNode): HashSet[string] =
   case n.kind
   of nkProcDef, nkFuncDef, nkMethodDef, nkIteratorDef, nkConverterDef:
     # Dependencies from parameters
-    if n.len > paramsPos and n[paramsPos] != nil:
+    if n.safeLen > paramsPos and n[paramsPos] != nil:
       let params = n[paramsPos]
-      for i in 0..<params.len:
+      for i in 0..<params.safeLen:
         extractDependenciesFromType(params[i], result)
 
     # Dependencies from pragma
-    if n.len > pragmasPos and n[pragmasPos] != nil:
+    if n.safeLen > pragmasPos and n[pragmasPos] != nil:
       extractDependenciesFromExpr(n[pragmasPos], result)
 
     # Note: We don't extract from body for forward declaration support
@@ -207,12 +210,12 @@ proc extractDependencies(cache: IdentCache; n: PNode): HashSet[string] =
 
   of nkMacroDef, nkTemplateDef:
     # Similar to procs
-    if n.len > paramsPos and n[paramsPos] != nil:
+    if n.safeLen > paramsPos and n[paramsPos] != nil:
       extractDependenciesFromType(n[paramsPos], result)
 
   of nkTypeSection:
     for typeDef in n:
-      if typeDef.kind == nkTypeDef and typeDef.len >= 3:
+      if typeDef.kind == nkTypeDef and typeDef.safeLen >= 3:
         # Extract from generic params
         if typeDef[1] != nil and typeDef[1].kind != nkEmpty:
           extractDependenciesFromType(typeDef[1], result)
@@ -221,7 +224,7 @@ proc extractDependencies(cache: IdentCache; n: PNode): HashSet[string] =
 
   of nkConstSection:
     for constDef in n:
-      if constDef.kind == nkConstDef and constDef.len >= 3:
+      if constDef.kind == nkConstDef and constDef.safeLen >= 3:
         # Type annotation
         if constDef[1] != nil and constDef[1].kind != nkEmpty:
           extractDependenciesFromType(constDef[1], result)
@@ -231,7 +234,7 @@ proc extractDependencies(cache: IdentCache; n: PNode): HashSet[string] =
 
   of nkVarSection, nkLetSection:
     for identDefs in n:
-      if identDefs.kind == nkIdentDefs and identDefs.len >= 3:
+      if identDefs.kind == nkIdentDefs and identDefs.safeLen >= 3:
         # Type
         if identDefs[^2] != nil and identDefs[^2].kind != nkEmpty:
           extractDependenciesFromType(identDefs[^2], result)
@@ -310,10 +313,12 @@ proc buildDependencyGraph*(cache: IdentCache; config: ConfigRef; n: PNode): DepG
 
 # Topological sort with cycle detection
 
+# Forward declaration
+proc findCycles(graph: DepGraph; inDegree: Table[string, int]): seq[seq[string]]
+
 proc topologicalSort*(graph: DepGraph): SortResult =
   ## Kahn's algorithm with cycle detection
-  result.sorted = @[]
-  result.cycles = @[]
+  result = SortResult(sorted: @[], cycles: @[])
 
   if graph.nodes.len == 0:
     return result
