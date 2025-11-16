@@ -228,13 +228,28 @@ const
   errIdentifierExpected = "identifier expected, but got '$1'"
   errExprExpected = "expression expected, but found '$1'"
 
+proc indentationError(p: var Parser, found, expected: int, msg: string = "") =
+  ## Helper to generate detailed indentation error messages
+  var errMsg = "invalid indentation\n\n" &
+               "  found:    " & $found & " spaces\n" &
+               "  expected: " & $expected & " spaces"
+  if msg.len > 0:
+    errMsg.add "\n\n" & msg
+  else:
+    errMsg.add "\n\nhelp: adjust the indentation to match the expected level\n" &
+               "      current line should start at column " & $(expected + 1)
+  parMessage(p, errMsg)
+
 proc skipInd(p: var Parser) =
   if p.tok.indent >= 0:
-    if not realInd(p): parMessage(p, errInvalidIndentation)
+    if not realInd(p):
+      indentationError(p, p.tok.indent, p.currInd)
 
 proc optPar(p: var Parser) =
   if p.tok.indent >= 0:
-    if p.tok.indent < p.currInd: parMessage(p, errInvalidIndentation)
+    if p.tok.indent < p.currInd:
+      indentationError(p, p.tok.indent, p.currInd,
+        "help: line should be indented at least as much as the parent block")
 
 proc optInd(p: var Parser, n: PNode) =
   skipComment(p, n)
@@ -242,7 +257,10 @@ proc optInd(p: var Parser, n: PNode) =
 
 proc getTokNoInd(p: var Parser) =
   getTok(p)
-  if p.tok.indent >= 0: parMessage(p, errInvalidIndentation)
+  if p.tok.indent >= 0:
+    indentationError(p, p.tok.indent, 0,
+      "help: this line should not be indented\n" &
+      "      remove the leading spaces")
 
 proc expectIdentOrKeyw(p: Parser) =
   if p.tok.tokType != tkSymbol and not isKeyword(p.tok.tokType):
@@ -272,7 +290,10 @@ proc indAndComment(p: var Parser, n: PNode, maybeMissEquals = false) =
       let col = p.bufposPrevious - p.lineStartPrevious
       var info = newLineInfo(p.lex.fileIdx, p.lineNumberPrevious, col)
       parMessage(p, "invalid indentation, maybe you forgot a '=' at $1 ?" % [p.lex.config$info])
-    else: parMessage(p, errInvalidIndentation)
+    else:
+      indentationError(p, p.tok.indent, p.currInd,
+        "help: line is indented too much\n" &
+        "      expected indentation: " & $p.currInd & " spaces (or a multiple of it)")
   else:
     skipComment(p, n)
 
@@ -2125,7 +2146,10 @@ proc parseObjectCase(p: var Parser): PNode =
   getTok(p)
   if p.tok.tokType != tkOf:
     # of case will be handled later
-    if p.tok.indent >= 0: parMessage(p, errInvalidIndentation)
+    if p.tok.indent >= 0:
+      indentationError(p, p.tok.indent, -1,
+        "help: this line should not be indented here\n" &
+        "      remove the leading spaces")
   var a: PNode
   if p.tok.tokType in {tkSymbol, tkAccent}:
     a = parseIdentColonEquals(p, {withPragma})
@@ -2510,7 +2534,7 @@ proc parseStmt(p: var Parser): PNode =
           else: break
         else:
           if p.tok.indent > p.currInd and p.tok.tokType != tkDot:
-            parMessage(p, errInvalidIndentation)
+            indentationError(p, p.tok.indent, p.currInd)
           break
         if p.tok.tokType in {tkCurlyRi, tkParRi, tkCurlyDotRi, tkBracketRi}:
           # XXX this ensures tnamedparamanonproc still compiles;
@@ -2543,7 +2567,9 @@ proc parseStmt(p: var Parser): PNode =
         result = newNodeP(nkStmtList, p)
         while true:
           if p.tok.indent >= 0:
-            parMessage(p, errInvalidIndentation)
+            indentationError(p, p.tok.indent, -1,
+              "help: statements after semicolon should not be indented\n" &
+              "      remove the leading spaces or start a new line without semicolon")
           p.hasProgress = false
           let a = simpleStmt(p)
           let err = not p.hasProgress
@@ -2556,7 +2582,9 @@ proc parseStmt(p: var Parser): PNode =
 
 proc checkFirstLineIndentation*(p: var Parser) =
   if p.tok.indent != 0 and tsLeading in p.tok.spacing:
-    parMessage(p, errInvalidIndentation)
+    indentationError(p, p.tok.indent, 0,
+      "help: first line of the file should not be indented\n" &
+      "      remove the leading spaces")
 
 proc parseTopLevelStmt*(p: var Parser): PNode =
   ## Implements an iterator which, when called repeatedly, returns the next
@@ -2573,13 +2601,18 @@ proc parseTopLevelStmt*(p: var Parser): PNode =
           parMessage(p, errGenerated,
             "invalid indentation; an export marker '*' follows the declared identifier")
         else:
-          parMessage(p, errInvalidIndentation)
+          indentationError(p, p.tok.indent, 0,
+            "help: top-level statements should not be indented\n" &
+            "      remove the leading spaces")
     p.firstTok = false
     case p.tok.tokType
     of tkSemiColon:
       getTok(p)
       if p.tok.indent <= 0: discard
-      else: parMessage(p, errInvalidIndentation)
+      else:
+        indentationError(p, p.tok.indent, 0,
+          "help: top-level statements should not be indented\n" &
+          "      remove the leading spaces")
       p.firstTok = true
     of tkEof: break
     else:
