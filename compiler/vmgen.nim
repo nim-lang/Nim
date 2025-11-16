@@ -1075,8 +1075,26 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}, m: TMag
   of mOr:  c.genAndOr(n, opcTJmp, dest)
   of mPred, mSubI:
     c.genAddSubInt(n, dest, opcSubInt)
+    # Add range check for pred() on ordinal types
+    if m == mPred and n.typ.skipTypes(abstractInst).kind in {tyEnum, tyInt..tyInt64, tyChar, tyBool}:
+      let t = n.typ.skipTypes(abstractInst)
+      let intType = getSysType(c.graph, n.info, tyInt)
+      let first = c.genx(newIntTypeNode(toInt64(firstOrd(c.config, t)), intType))
+      let last = c.genx(newIntTypeNode(toInt64(lastOrd(c.config, t)), intType))
+      c.gABC(n, opcRangeChck, dest, first, last)
+      c.freeTemp(first)
+      c.freeTemp(last)
   of mSucc, mAddI:
     c.genAddSubInt(n, dest, opcAddInt)
+    # Add range check for succ() on ordinal types
+    if m == mSucc and n.typ.skipTypes(abstractInst).kind in {tyEnum, tyInt..tyInt64, tyChar, tyBool}:
+      let t = n.typ.skipTypes(abstractInst)
+      let intType = getSysType(c.graph, n.info, tyInt)
+      let first = c.genx(newIntTypeNode(toInt64(firstOrd(c.config, t)), intType))
+      let last = c.genx(newIntTypeNode(toInt64(lastOrd(c.config, t)), intType))
+      c.gABC(n, opcRangeChck, dest, first, last)
+      c.freeTemp(first)
+      c.freeTemp(last)
   of mInc, mDec:
     unused(c, n, dest)
     let isUnsigned = n[1].typ.skipTypes(abstractVarRange).kind in {tyUInt..tyUInt64}
