@@ -349,20 +349,20 @@ proc canUseCache(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef; idgen: I
     if cachedCfgFiles.len == 0:
       result = false
     else:
-      echo formatFloat(epochTime() - conf.lastCmdTime, ffDecimal, 3), " checking added config"
+      #echo formatFloat(epochTime() - conf.lastCmdTime, ffDecimal, 3), " checking added config"
       loadConfigsImpl(cfg, cache, conf, idgen, cachedCfgFiles)
-      echo formatFloat(epochTime() - conf.lastCmdTime, ffDecimal, 3), " done checking added config"
+      #echo formatFloat(epochTime() - conf.lastCmdTime, ffDecimal, 3), " done checking added config"
       result = cachedCfgFiles.len != 0
 
 proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef; idgen: IdGenerator) =
-  conf.lastCmdTime = epochTime()
+  #conf.lastCmdTime = epochTime()
   var cachedCfgFiles = HashSet[string]()
   if canUseCache(cfg, cache, conf, idgen, cachedCfgFiles):
-    echo formatFloat(epochTime() - conf.lastCmdTime, ffDecimal, 3), " loading cached config"
+    #echo formatFloat(epochTime() - conf.lastCmdTime, ffDecimal, 3), " loading cached config"
     loadConfigsFromCache(conf)
-    echo formatFloat(epochTime() - conf.lastCmdTime, ffDecimal, 3), " done loading cached config"
+    #echo formatFloat(epochTime() - conf.lastCmdTime, ffDecimal, 3), " done loading cached config"
   else:
-    echo formatFloat(epochTime() - conf.lastCmdTime, ffDecimal, 3), " evaluating config files"
+    #echo formatFloat(epochTime() - conf.lastCmdTime, ffDecimal, 3), " evaluating config files"
     loadConfigsImpl(cfg, cache, conf, idgen, cachedCfgFiles)
-    echo formatFloat(epochTime() - conf.lastCmdTime, ffDecimal, 3), " done evaluating config files"
+    #echo formatFloat(epochTime() - conf.lastCmdTime, ffDecimal, 3), " done evaluating config files"
     storeConfigs(conf)

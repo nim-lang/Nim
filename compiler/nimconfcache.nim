@@ -123,14 +123,10 @@ proc configToNif(conf: ConfigRef; dest: var TokenBuf) =
   dest.addStrLit $conf.target.targetOS
   dest.addStrLit $conf.target.targetCPU
 
-  #echo "conf.options"
-  #echo conf.options
   dest.buildTree "options":
     for opt in conf.options:
       dest.addStrLit $opt
 
-  #echo "conf.globalOptions"
-  #echo conf.globalOptions
   dest.buildTree "globalOptions":
     for opt in conf.globalOptions:
       dest.addStrLit $opt
@@ -146,30 +142,18 @@ proc configToNif(conf: ConfigRef; dest: var TokenBuf) =
   dest.addStrLit $conf.filenameOption
   dest.addStrLit conf.unitSep
 
-  #echo "conf.selectedGC"
-  #echo conf.selectedGC
   dest.addStrLit $conf.selectedGC
 
-  #echo "conf.exc"
-  #echo conf.exc
   dest.addStrLit $conf.exc
 
   dest.addIntLit conf.hintProcessingDots.int
 
-  #echo "conf.verbosity"
-  #echo conf.verbosity
   dest.addIntLit conf.verbosity
 
-  #echo "conf.numberOfProcessors"
-  #echo conf.numberOfProcessors
   dest.addIntLit conf.numberOfProcessors
 
-  #echo "conf.spellSuggestMax"
-  #echo conf.spellSuggestMax
   dest.addIntLit conf.spellSuggestMax
 
-  #echo "conf.nimbasePattern"
-  #echo conf.nimbasePattern
   dest.addStrLit conf.nimbasePattern
 
   dest.buildTree "features":
@@ -327,16 +311,12 @@ proc loadConfigsFromNif(conf: ConfigRef; n: var Cursor) =
   inc n
   conf.verbosity = pool.integers[n.intId]
   inc n
-  #echo conf.verbosity
   conf.numberOfProcessors = pool.integers[n.intId]
   inc n
-  #echo conf.numberOfProcessors
   conf.spellSuggestMax = pool.integers[n.intId]
   inc n
-  #echo conf.spellSuggestMax
   conf.nimbasePattern = pool.strings[n.litId]
   inc n
-  #echo conf.nimbasePattern
 
   fromNif conf.features, "features", n
   fromNif conf.legacyFeatures, "legacyFeatures", n
