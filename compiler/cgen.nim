@@ -63,7 +63,7 @@ proc addForwardedProc(m: BModule, prc: PSym) =
 
 proc findPendingModule(m: BModule, s: PSym): BModule =
   # TODO fixme
-  if m.config.symbolFiles == v2Sf:
+  if m.config.symbolFiles == v2Sf or optCompress in m.config.globalOptions:
     let ms = s.itemId.module  #getModule(s)
     result = m.g.modules[ms]
   else:
@@ -785,7 +785,7 @@ proc fillProcLoc(m: BModule; n: PNode) =
   let sym = n.sym
   if sym.loc.k == locNone:
     fillBackendName(m, sym)
-    ensureMutable sym
+    #ensureMutable sym
     fillLoc(sym.locImpl, locProc, n, OnStack)
 
 proc getLabel(p: BProc): TLabel =

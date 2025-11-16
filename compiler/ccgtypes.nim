@@ -715,7 +715,7 @@ proc genRecordFieldsAux(m: BModule; n: PNode,
     if field.typ.kind == tyVoid: return
     #assert(field.ast == nil)
     let sname = mangleRecFieldName(m, field)
-    ensureMutable field
+    #ensureMutable field
     fillLoc(field.locImpl, locField, n, unionPrefix & sname, OnUnknown)
     # for importcpp'ed objects, we only need to set field.loc, but don't
     # have to recurse via 'getTypeDescAux'. And not doing so prevents problems
@@ -1212,7 +1212,7 @@ proc genProcHeader(m: BModule; prc: PSym; result: var Builder; visibility: var D
   # using static is needed for inline procs
   var check = initIntSet()
   fillBackendName(m, prc)
-  ensureMutable prc
+  #ensureMutable prc
   fillLoc(prc.locImpl, locProc, prc.ast[namePos], OnUnknown)
   var rettype: Snippet = ""
   var desc = newBuilder("")

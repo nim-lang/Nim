@@ -425,6 +425,7 @@ proc writeNode(w: var Writer; dest: var TokenBuf; n: PNode) =
       var ast = n
       if n[namePos].kind == nkSym:
         ast = n[namePos].sym.astImpl
+        if ast == nil: ast = n
       w.withNode dest, ast:
         # Process body and other parts
         for i in 0 ..< ast.len:
