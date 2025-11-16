@@ -1,4 +1,4 @@
-import options, pathutils, platform, condsyms
+import options, pathutils, platform, condsyms, extccomp
 import std/[assertions, os, sets, strtabs, times]
 from std/strutils import parseEnum
 import "../dist/nimony/src/lib" / [bitabs, lineinfos, nifreader, nifstreams, nifcursors]
@@ -241,6 +241,15 @@ proc configToNif(conf: ConfigRef; dest: var TokenBuf) =
   dest.toNif "externalToLink", conf.externalToLink
   dest.addStrLit conf.linkOptionsCmd
   dest.toNif "compileOptionsCmd", conf.compileOptionsCmd
+  dest.addStrLit conf.compileOptions
+  dest.addStrLit conf.cCompilerPath
+
+  dest.buildTree "toCompile":
+    for c in conf.toCompile:
+      dest.addStrLit c.cname.string
+
+  dest.addStrLit conf.cppCustomNamespace
+  dest.addStrLit conf.nimMainPrefix
 
 proc cfgCachePath(conf: ConfigRef): (AbsoluteDir, RelativeFile) =
   (conf.projectPath / RelativeDir"nimcache", RelativeFile"cache.cfg.nif")
@@ -397,6 +406,23 @@ proc loadConfigsFromNif(conf: ConfigRef; n: var Cursor) =
   inc n
 
   fromNif conf.compileOptionsCmd, "compileOptionsCmd", n
+  conf.compileOptions = pool.strings[n.litId]
+  inc n
+  conf.cCompilerPath = pool.strings[n.litId]
+  inc n
+
+  expectTag n, "toCompile"
+  inc n
+  while n.kind != ParRi:
+    let c = pool.strings[n.litId]
+    inc n
+    conf.addExternalFileToCompile(AbsoluteFile(c))
+  inc n
+
+  conf.cppCustomNamespace = pool.strings[n.litId]
+  inc n
+  conf.nimMainPrefix = pool.strings[n.litId]
+  inc n
 
 proc sourceChanged*(conf: ConfigRef): HashSet[string] =
   result = HashSet[string]()
@@ -509,6 +535,10 @@ when isMainModule:
     assertImpl externalToLink
     assertImpl linkOptionsCmd
     assertImpl compileOptionsCmd
+    assertImpl compileOptions
+    assertImpl cCompilerPath
+    assertImpl cppCustomNamespace
+    assertImpl nimMainPrefix
 
   proc testConfig(conf1: ConfigRef) =
     var dest = createTokenBuf()
@@ -595,4 +625,8 @@ when isMainModule:
     conf.externalToLink = @["foo", "bar"]
     conf.linkOptionsCmd = "--foo -lbar"
     conf.compileOptionsCmd = @["-O3", "-g"]
+    conf.compileOptions = "-foo --bar"
+    conf.cCompilerPath = "/foo/bar"
+    conf.cppCustomNamespace = "foobar"
+    conf.nimMainPrefix = "prefix"
     testConfig conf
