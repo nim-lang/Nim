@@ -206,8 +206,13 @@ proc configToNif(conf: ConfigRef; dest: var TokenBuf) =
   dest.toNif "configVars", conf.configVars
 
   dest.buildTree "defines":
-    for def in definedSymbolNames(conf.symbols):
-      dest.addStrLit def
+    for def, val in conf.symbols:
+      if val == "true":
+        dest.addStrLit def
+      else:
+        dest.buildTree "kv":
+          dest.addStrLit def
+          dest.addStrLit val
 
   dest.toNif "nimblepaths", conf.nimblePaths
   dest.toNif "searchPaths", conf.searchPaths
@@ -356,10 +361,20 @@ proc loadConfigsFromNif(conf: ConfigRef; n: var Cursor) =
   expectTag n, "defines"
   inc n
   while n.kind != ParRi:
-    assert n.kind == StringLit
-    let def = pool.strings[n.litId]
-    inc n
-    conf.symbols.defineSymbol(def)
+    if n.kind == ParLe:
+      expectTag n, "kv"
+      inc n
+      let def = pool.strings[n.litId]
+      inc n
+      let val = pool.strings[n.litId]
+      inc n
+      conf.symbols.defineSymbol(def, val)
+      assert n.kind == ParRi
+      inc n
+    else:
+      let def = pool.strings[n.litId]
+      inc n
+      conf.symbols.defineSymbol(def)
   inc n
 
   fromNif conf.nimblePaths, "nimblepaths", n
@@ -513,7 +528,7 @@ when isMainModule:
     assertImpl maxLoopIterationsVM
     assertImpl maxCallDepthVM
     assertImpl configVars
-    assert eqlKeys(x.symbols, y.symbols)
+    assertImpl symbols
     assertImpl nimblePaths
     assertImpl searchPaths
     assertImpl outFile
@@ -602,6 +617,7 @@ when isMainModule:
     conf.setConfigVar(".", "")
     conf.symbols.initDefines()
     conf.symbols.defineSymbol("test")
+    conf.symbols.defineSymbol("FooBar", "123")
     conf.nimblePaths = @[AbsoluteDir"/foo", AbsoluteDir"/lib/nimble"]
     conf.searchPaths = @[AbsoluteDir"/lib", AbsoluteDir"/user/lib"]
     conf.outFile = RelativeFile"foo"
