@@ -953,11 +953,17 @@ proc semResolvedCall(c: PContext, x: var TCandidate,
   assert x.state == csMatch
   var finalCallee = x.calleeSym
   let info = getCallLineInfo(n)
-  markUsed(c, info, finalCallee, isGenericInstance = false)
+
+  # Extract receiver type for methods to provide better error context
+  var receiverType: PType = nil
+  if finalCallee.kind == skMethod and x.call.len > 1:
+    receiverType = x.call[1].typ
+
+  markUsed(c, info, finalCallee, isGenericInstance = false, receiverType = receiverType)
   onUse(info, finalCallee, isGenericInstance = false)
   assert finalCallee.ast != nil
   if x.matchedErrorType:
-    markUsed(c, info, finalCallee, isGenericInstance = true)
+    markUsed(c, info, finalCallee, isGenericInstance = true, receiverType = receiverType)
     onUse(info, finalCallee, isGenericInstance = true)
   if x.matchedErrorType:
     result = x.call
