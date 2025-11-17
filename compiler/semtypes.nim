@@ -2220,6 +2220,10 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       result = semTypeNode(c, whenResult, prev)
   of nkBracketExpr:
     checkMinSonsLen(n, 2, c.config)
+    # Provide clearer error for empty bracket expressions (issue #25231)
+    if n.len == 1:
+      localError(c.config, n.info, "invalid empty generic instantiation")
+      return errorType(c)
     var head = n[0]
     var s = if head.kind notin nkCallKinds: semTypeIdent(c, head)
             else: symFromExpectedTypeNode(c, semExpr(c, head))

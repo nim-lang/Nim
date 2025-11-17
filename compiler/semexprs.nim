@@ -1705,6 +1705,10 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags, afterOverloading = f
       arr = arr.base
 
   case arr.kind
+  of tyGenericBody:
+    # Handle invalid generic instantiation (issue #25231)
+    localError(c.config, n.info, "cannot instantiate generic type '" & typeToString(arr) & "'; missing type parameters")
+    return nil
   of tyArray, tyOpenArray, tyVarargs, tySequence, tyString, tyCstring,
     tyUncheckedArray:
     if n.len != 2: return nil
