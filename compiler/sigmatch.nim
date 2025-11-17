@@ -168,7 +168,14 @@ proc matchGenericParam(m: var TCandidate, formal: PType, n: PNode) =
       arg.n = evaluated
   elif formalBase.kind == tyTypeDesc:
     if arg.kind != tyTypeDesc:
-      arg = makeTypeDesc(m.c, arg)
+      # Only wrap in tyTypeDesc if the node represents an actual type symbol
+      if n.kind == nkSym and n.sym.kind == skType:
+        arg = makeTypeDesc(m.c, arg)
+      else:
+        # Not a type symbol - this is a type mismatch
+        m.state = csNoMatch
+        m.firstMismatch.kind = kGenericParamTypeMismatch
+        return
   else:
     arg = arg.skipTypes({tyTypeDesc})
   let tm = typeRel(m, formal, arg)
