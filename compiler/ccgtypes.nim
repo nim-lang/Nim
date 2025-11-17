@@ -1090,6 +1090,13 @@ proc getTypeDescAux(m: BModule; origTyp: PType, check: var IntSet; kind: TypeDes
     localError(m.config, info, "cannot generate code for untyped expression; " &
       "check for ambiguous or malformed constructs like templates in table literals")
     result = NimInt # Return placeholder to avoid cascading errors
+  of tyNone:
+    # Issue #8654: Better error for uninitialized/empty types
+    let info = if origTyp.sym != nil: origTyp.sym.info else: unknownLineInfo
+    localError(m.config, info,
+      "cannot generate code for empty or uninitialized type; " &
+      "check for invalid typedesc usage or incomplete type definitions")
+    result = NimInt # Return placeholder to avoid cascading errors
   else:
     internalError(m.config, "getTypeDescAux(" & $t.kind & ')')
     result = ""
