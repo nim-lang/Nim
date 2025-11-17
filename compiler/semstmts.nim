@@ -2612,6 +2612,30 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   if sfCppMember * s.flags != {} and sfWasForwarded notin s.flags:
     semCppMember(c, s, n)
 
+  # Check if abstract method has non-trivial body
+  # Now abstract methods only have sfBase, but we need to distinguish from regular {.base.} methods
+  # Check the pragmas directly
+  var hasAbstractPragma = false
+  if s.kind == skMethod and n[pragmasPos].kind != nkEmpty:
+    for pragma in n[pragmasPos]:
+      if (pragma.kind == nkIdent and pragma.ident.s == "abstract") or
+         (pragma.kind == nkExprColonExpr and pragma[0].kind == nkIdent and pragma[0].ident.s == "abstract"):
+        hasAbstractPragma = true
+        break
+
+  if n[bodyPos].kind != nkEmpty and hasAbstractPragma:
+    # This is an abstract method - check if body has meaningful implementation
+    let body = n[bodyPos]
+    # Consider body "simple" if it's: discard, a simple literal, or a single trivial statement
+    let isSimpleBody =
+      (body.kind == nkStmtList and body.len == 1 and
+       (body[0].kind in {nkDiscardStmt, nkIntLit, nkFloatLit, nkStrLit, nkNilLit})) or
+      (body.kind in {nkDiscardStmt, nkIntLit, nkFloatLit, nkStrLit, nkNilLit})
+    if not isSimpleBody:
+      localError(c.config, n.info,
+        "abstract method should only have 'discard' as body; " &
+        "if you want to provide a default implementation, use {.base.} instead of {.abstract.}")
+
   if n[bodyPos].kind != nkEmpty and sfError notin s.flags:
     # for DLL generation we allow sfImportc to have a body, for use in VM
     if c.config.ideCmd in {ideSug, ideCon} and s.kind notin {skMacro, skTemplate} and not
