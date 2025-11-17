@@ -1093,9 +1093,8 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wAbstract:
         noVal(c, it)
         if sym.kind == skMethod:
-          # Abstract methods are base methods that must be overridden
+          # Abstract methods are base methods with minimal placeholder implementation
           sym.incl sfBase
-          sym.incl sfError
         elif sym.typ == nil:
           invalidPragma(c, it)
         else:
