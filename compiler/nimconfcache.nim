@@ -143,17 +143,13 @@ proc configToNif(conf: ConfigRef; dest: var TokenBuf) =
   dest.addStrLit conf.unitSep
 
   dest.addStrLit $conf.selectedGC
-
   dest.addStrLit $conf.exc
-
   dest.addIntLit conf.hintProcessingDots.int
-
   dest.addIntLit conf.verbosity
-
   dest.addIntLit conf.numberOfProcessors
-
+  dest.addStrLit $conf.symbolFiles
   dest.addIntLit conf.spellSuggestMax
-
+  dest.addStrLit conf.headerFile
   dest.addStrLit conf.nimbasePattern
 
   dest.buildTree "features":
@@ -313,7 +309,10 @@ proc loadConfigsFromNif(conf: ConfigRef; n: var Cursor) =
   inc n
   conf.numberOfProcessors = pool.integers[n.intId]
   inc n
+  fromNif conf.symbolFiles, n
   conf.spellSuggestMax = pool.integers[n.intId]
+  inc n
+  conf.headerFile = pool.strings[n.litId]
   inc n
   conf.nimbasePattern = pool.strings[n.litId]
   inc n
@@ -494,7 +493,9 @@ when isMainModule:
     assertImpl hintProcessingDots
     assertImpl verbosity
     assertImpl numberOfProcessors
+    assertImpl symbolFiles
     assertImpl spellSuggestMax
+    assertImpl headerFile
     assertImpl nimbasePattern
     assertImpl features
     assertImpl legacyFeatures
@@ -579,7 +580,9 @@ when isMainModule:
     conf.hintProcessingDots = false
     conf.verbosity = 3
     conf.numberOfProcessors = 123
+    conf.symbolFiles = stressTest
     conf.spellSuggestMax = 456
+    conf.headerFile = "foo.h"
     conf.nimbasePattern = "foo/nimbase.h"
     conf.features = {callOperator, dynamicBindSym}
     conf.legacyFeatures = {laxEffects, emitGenerics}
