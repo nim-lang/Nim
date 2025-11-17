@@ -3502,7 +3502,11 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
       if sym.loc.snippet == "" or sym.loc.t == nil:
         #echo "FAILED FOR PRCO ", p.prc.name.s
         #echo renderTree(p.prc.ast, {renderIds})
-        internalError p.config, n.info, "expr: var not init " & sym.name.s & "_" & $sym.id
+        # Issue #24963: Provide better error for uninitialized variables
+        localError(p.config, n.info,
+          "variable '" & sym.name.s & "' not initialized or out of scope; " &
+          "check for variable usage before definition or scope issues with named arguments")
+        return
       if sfThread in sym.flags:
         accessThreadLocalVar(p, sym)
         if emulatedThreadVars(p.config):
