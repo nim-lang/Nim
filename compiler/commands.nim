@@ -1109,9 +1109,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     of "goto": conf.exc = excGoto
     else: localError(conf, info, errInvalidExceptionSystem % arg)
   of "cppdefine":
-    expectArg(conf, switch, arg, pass, info)
-    if conf != nil:
-      conf.cppDefine(arg)
+    warningDeprecated(conf, info, "cppdefine is deprecated and ignored")
   of "newruntime":
     warningDeprecated(conf, info, "newruntime is deprecated, use arc/orc instead!")
     expectNoArg(conf, switch, arg, pass, info)

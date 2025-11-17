@@ -368,7 +368,6 @@ type
     symbolFiles*: SymbolFilesOption
     spellSuggestMax*: int # max number of spelling suggestions for typos
 
-    cppDefines*: HashSet[string] # (*)
     headerFile*: string
     nimbasePattern*: string # pattern to find nimbase.h
     features*: set[Feature]
@@ -415,7 +414,6 @@ type
     command*: string # the main command (e.g. cc, check, scan, etc)
     commandArgs*: seq[string] # any arguments after the main command
     commandLine*: string
-    extraCmds*: seq[string] # for writeJsonBuildInstructions
     implicitImports*: seq[string] # modules that are to be implicitly imported
     implicitIncludes*: seq[string] # modules that are to be implicitly included
     docSeeSrcUrl*: string # if empty, no seeSrc will be generated. \
@@ -567,7 +565,6 @@ proc newConfigRef*(): ConfigRef =
     macrosToExpand: newStringTable(modeStyleInsensitive),
     arcToExpand: newStringTable(modeStyleInsensitive),
     m: initMsgConfig(),
-    cppDefines: initHashSet[string](),
     headerFile: "", features: {}, legacyFeatures: {},
     configVars: newStringTable(modeStyleInsensitive),
     symbols: newStringTable(modeStyleInsensitive),
@@ -627,9 +624,6 @@ proc newPartialConfigRef*(): ConfigRef =
   else:
     result = ConfigRef()
     initConfigRefCommon(result)
-
-proc cppDefine*(c: ConfigRef; define: string) =
-  c.cppDefines.incl define
 
 proc isDefined*(conf: ConfigRef; symbol: string): bool =
   if conf.symbols.hasKey(symbol):
