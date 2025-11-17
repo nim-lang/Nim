@@ -3537,6 +3537,11 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
         # echo renderTree(p.prc.ast, {renderIds})
         internalError(p.config, n.info, "expr: param not init " & sym.name.s & "_" & $sym.id)
       putLocIntoDest(p, d, sym.loc)
+    of skType:
+      # Issue #16507: Types used as values should be caught in semantic analysis
+      localError(p.config, n.info,
+        "cannot use type '" & sym.name.s & "' as a value; " &
+        "use 'typedesc[" & sym.name.s & "]' if you need to pass it as a parameter")
     else: internalError(p.config, n.info, "expr(" & $sym.kind & "); unknown symbol")
   of nkNilLit:
     if not isEmptyType(n.typ):
