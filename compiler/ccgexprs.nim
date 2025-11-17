@@ -1327,6 +1327,9 @@ proc genBracketExpr(p: BProc; n: PNode; d: var TLoc) =
   of tySequence, tyString: genSeqElem(p, n, n[0], n[1], d)
   of tyCstring: genCStringElem(p, n, n[0], n[1], d)
   of tyTuple: genTupleElem(p, n, d)
+  of tyGenericBody:
+    # Issue #25231: Provide better error for uninstantiated generics
+    localError(p.config, n.info, "cannot use generic type without instantiation")
   else: internalError(p.config, n.info, "expr(nkBracketExpr, " & $ty.kind & ')')
   discard getTypeDesc(p.module, n.typ)
 

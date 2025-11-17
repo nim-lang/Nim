@@ -2013,8 +2013,11 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
             let concrete = concreteType(c, a, f)
             if concrete == nil: return isNone
             put(c, f, concrete)
+          # Preserve isFromIntLit to allow int literals to disambiguate int vs uint overloads (issue #25172)
           if result in {isEqual, isSubtype}:
             result = isGeneric
+          elif result == isFromIntLit:
+            discard  # Keep isFromIntLit to preserve ranking for integer literal overloads
         elif a.kind == tyTypeDesc:
           # somewhat special typing rule, the following is illegal:
           # proc p[T](x: T)
@@ -2039,7 +2042,8 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
             return isNone
         if doBindGP:
           put(c, f, concrete)
-      elif result > isGeneric:
+      elif result > isGeneric and result != isFromIntLit:
+        # Don't clamp isFromIntLit - preserve it for integer literal overload disambiguation (issue #25172)
         result = isGeneric
     elif a.kind == tyEmpty:
       result = isGeneric
