@@ -3677,7 +3677,10 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
   of nkProcDef, nkFuncDef, nkMethodDef, nkConverterDef:
     if n[genericParamsPos].kind == nkEmpty:
       var prc = n[namePos].sym
-      if delayedCodegen(p.module):
+      if optCompress in p.config.globalOptions:
+        if prc.magic in generatedMagics:
+          genProc(p.module, prc)
+      elif delayedCodegen(p.module):
         if p.module.alive.contains(prc.itemId.item) and
             prc.magic in generatedMagics:
           genProc(p.module, prc)

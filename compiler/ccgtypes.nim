@@ -608,7 +608,7 @@ proc genProcParams(m: BModule; t: PType, rettype: var Rope, params: var Builder,
         else:
           descKind = dkRefParam
       if isCompileTimeOnly(param.typ): continue
-      ensureMutable param
+      #ensureMutable param
       fillParamName(m, param)
       fillLoc(param.locImpl, locParam, t.n[i],
               param.paramStorageLoc)

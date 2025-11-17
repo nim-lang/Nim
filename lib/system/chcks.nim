@@ -9,8 +9,6 @@
 
 # Implementation of some runtime checks.
 include system/indexerrors
-when defined(nimPreviewSlimSystem):
-  import std/formatfloat
 
 proc raiseRangeError(val: BiggestInt) {.compilerproc, noinline.} =
   when hostOS == "standalone":
@@ -53,12 +51,6 @@ proc raiseRangeErrorI(i, a, b: BiggestInt) {.compilerproc, noinline.} =
   else:
     sysFatal(RangeDefect, "value out of range: " & $i & " notin " & $a & " .. " & $b)
 
-proc raiseRangeErrorF(i, a, b: float) {.compilerproc, noinline.} =
-  when defined(standalone):
-    sysFatal(RangeDefect, "value out of range")
-  else:
-    sysFatal(RangeDefect, "value out of range: " & $i & " notin " & $a & " .. " & $b)
-
 proc raiseRangeErrorU(i, a, b: uint64) {.compilerproc, noinline.} =
   # todo: better error reporting
   sysFatal(RangeDefect, "value out of range")
@@ -96,16 +88,6 @@ proc chckRangeU(i, a, b: uint64): uint64 {.compilerproc.} =
   else:
     result = 0
     sysFatal(RangeDefect, "value out of range")
-
-proc chckRangeF(x, a, b: float): float =
-  if x >= a and x <= b:
-    return x
-  else:
-    result = 0.0
-    when hostOS == "standalone":
-      sysFatal(RangeDefect, "value out of range")
-    else:
-      sysFatal(RangeDefect, "value out of range: ", $x)
 
 proc chckNil(p: pointer) =
   if p == nil:
@@ -164,3 +146,32 @@ when not defined(nimV2):
 when defined(nimV2):
   proc raiseObjectCaseTransition() {.compilerproc.} =
     sysFatal(FieldDefect, "assignment to discriminant changes object branch")
+
+when defined(nimPreviewSlimSystem):
+  import std/formatfloat
+
+when not defined(nimPreviewSlimSystem):
+  import std/formatfloat
+  export addFloat
+
+  func `$`*(x: float | float32): string =
+    ## Outplace version of `addFloat`.
+    result = ""
+    result.addFloat(x)
+
+
+proc raiseRangeErrorF(i, a, b: float) {.compilerproc, noinline.} =
+  when defined(standalone):
+    sysFatal(RangeDefect, "value out of range")
+  else:
+    sysFatal(RangeDefect, "value out of range: " & $i & " notin " & $a & " .. " & $b)
+
+proc chckRangeF(x, a, b: float): float =
+  if x >= a and x <= b:
+    return x
+  else:
+    result = 0.0
+    when hostOS == "standalone":
+      sysFatal(RangeDefect, "value out of range")
+    else:
+      sysFatal(RangeDefect, "value out of range: ", $x)

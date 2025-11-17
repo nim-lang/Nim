@@ -29,6 +29,8 @@ const
 #   doAssert res == digits100
 #   ```
 
+{.push checks: off, stackTrace: off.}
+
 proc utoa2Digits*(buf: var openArray[char]; pos: int; digits: uint32) {.inline.} =
   buf[pos] = digits100[2 * digits]
   buf[pos+1] = digits100[2 * digits + 1]
@@ -114,3 +116,5 @@ proc addInt*(result: var string; x: int64) {.enforceNoRaises.} =
 
 proc addInt*(result: var string; x: int) {.inline, enforceNoRaises.} =
   addInt(result, int64(x))
+
+{.pop.}
