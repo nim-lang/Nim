@@ -436,6 +436,11 @@ proc processExperimental(c: PContext; n: PNode) =
               localError(c.config, n.info,
                          "Code reordering experimental pragma only valid at toplevel")
           c.module.flagsImpl.incl sfReorder
+        elif feature == dependencyResolution:
+          if not isTopLevel(c):
+              localError(c.config, n.info,
+                         "Dependency resolution experimental pragma only valid at toplevel")
+          c.module.flagsImpl.incl sfReorder  # Reuse sfReorder flag
       except ValueError:
         localError(c.config, n[1].info, "unknown experimental feature")
     else:

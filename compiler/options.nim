@@ -235,6 +235,7 @@ type
     genericsOpenSym
     vtables
     typeBoundOps
+    dependencyResolution  ## advanced dependency resolution with topological sort
 
   LegacyFeature* = enum
     allowSemcheckedAstModification,

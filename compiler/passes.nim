@@ -17,7 +17,7 @@ import
   lineinfos,
   pipelineutils,
   modules, pathutils, packages,
-  sem, semdata
+  sem, semdata, depresolution
 
 import ic/replayer
 
@@ -141,7 +141,9 @@ proc processModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
         var n = parseTopLevelStmt(p)
         if n.kind == nkEmpty: break
         sl.add n
-      if sfReorder in module.flags or codeReordering in graph.config.features:
+      if sfReorder in module.flags and dependencyResolution in graph.config.features:
+        sl = resolveAndReorder(graph.config, graph.cache, sl)
+      elif sfReorder in module.flags or codeReordering in graph.config.features:
         sl = reorder(graph, sl, module)
       discard processTopLevelStmt(graph, sl, a)
 
