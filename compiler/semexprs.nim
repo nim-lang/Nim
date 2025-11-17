@@ -2039,7 +2039,11 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
         if lhs.sym.typ.kind == tyAnything:
           rhsTyp = rhsTyp.skipTypes({tySink}).skipIntLit(c.idgen)
         if cmpTypes(c, lhs.typ, rhsTyp) in {isGeneric, isEqual}:
-          internalAssert c.config, c.p.resultSym != nil
+          # Provide proper error for void procs trying to assign to result (issue #18556)
+          if c.p.resultSym == nil:
+            localError(c.config, n.info,
+              "cannot use 'result' in a void procedure; consider adding a return type")
+            return errorNode(c, n)
           # Make sure the type is valid for the result variable
           typeAllowedCheck(c, n.info, rhsTyp, skResult)
           lhs.typ() = rhsTyp
