@@ -9,7 +9,7 @@
 - Modern GC (ARC/ORC): No built-in runtime type information
 - Workaround: Our `system/debugging` module using `of` checks
 
-**Proposal**: Add automatic runtime type name field to all inheritable objects in debug builds.
+**Proposal**: Add automatic runtime type name field to all inheritable objects (enabled by default in all builds).
 
 ##Status Quo
 
@@ -53,7 +53,7 @@ Add a hidden `runtimeType_` field to all {.inheritable.} objects:
 ```nim
 type Animal {.inheritable.} = ref object of RootObj
   name: string
-  # Compiler automatically adds (in debug builds):
+  # Compiler automatically adds (always, unless -d:noRuntimeTypeNames):
   # runtimeType_: cstring
 
 # Each type gets its type name constant:
@@ -77,20 +77,25 @@ Add to `system` module:
 ```nim
 proc typeName*[T: ref RootObj](obj: T): string {.inline.} =
   ## Returns the runtime type name of an object.
-  ## Available in debug builds. In release builds, returns compile-time type.
-  when not defined(release):
-    return $obj.runtimeType_
-  else:
-    return $typeof(obj)
+  ## Always available for inheritable objects.
+  return $obj.runtimeType_
 ```
 
 ### 3. Compilation Modes
 
-| Mode | Runtime Type Field | Memory Cost | Use Case |
-|------|-------------------|-------------|----------|
-| Debug (default) | Yes | 8 bytes/object | Development, debugging |
-| Release | No | 0 bytes | Production |
-| `-d:runtimeTypeNames` | Yes | 8 bytes/object | Production debugging |
+**Default: Always enabled** - The field is included in ALL builds by default.
+
+| Mode | Runtime Type Field | Memory Cost | Rationale |
+|------|-------------------|-------------|-----------|
+| **Default (all builds)** | **Yes** | **8 bytes/object** | **Consistent behavior, production debugging** |
+| `-d:noRuntimeTypeNames` | No | 0 bytes | Opt-out for extreme memory constraints |
+
+**Why Always-On:**
+- **8 bytes is negligible** on modern systems (0.0008% of 1MB object)
+- **Production debugging** without recompiling
+- **Consistent behavior** across debug and release
+- **Matches expectations** from C#/Java/Python developers
+- **Enables better error messages** in production
 
 ## Implementation Details
 
@@ -101,10 +106,10 @@ proc typeName*[T: ref RootObj](obj: T): string {.inline.} =
 ```nim
 proc addRuntimeTypeField(t: PType; info: TLineInfo) =
   ## Adds hidden runtimeType_ field to inheritable objects
-  if tfInheritable in t.flags and
-     not defined(release) or defined(runtimeTypeNames):
+  ## Always added unless -d:noRuntimeTypeNames is defined
+  if tfInheritable in t.flags and not defined(noRuntimeTypeNames):
     let field = newSym(skField, getIdent("runtimeType_"), t.owner, info)
-    field.typ = getSysType(tyString)  # or cstring
+    field.typ = getSysType(tyCstring)  # Use cstring for efficiency
     field.flags.incl sfCompilerProc
     t.n.add(newSymNode(field))
 ```
@@ -184,33 +189,36 @@ if animal of Dog:
 | Java | `obj.getClass().getName()` | Yes |
 | Python | `type(obj).__name__` | Yes |
 | C++ | `typeid(obj).name()` | Debug builds |
-| **Nim (proposed)** | `obj.typeName` | **Debug builds (configurable)** |
+| **Nim (proposed)** | `obj.typeName` | **Yes (default, opt-out available)** |
 
 ## Performance Impact
 
 ### Memory
 
-- **Debug build**: +8 bytes per object (one pointer)
-- **Release build**: 0 bytes (field not added)
-- **Per-type**: ~20 bytes for type name string (shared)
+- **Default (all builds)**: +8 bytes per object (one pointer)
+- **With `-d:noRuntimeTypeNames`**: 0 bytes (field not added)
+- **Per-type**: ~20 bytes for type name string (shared across all instances)
+
+**Analysis**: For a 1000-object collection, the overhead is 8KB total. On modern systems with GB of RAM, this is negligible (<0.001% of available memory).
 
 ### Runtime
 
-- **Field access**: O(1) - simple pointer dereference
-- **Initialization**: O(1) - one assignment in constructor
+- **Field access**: O(1) - simple pointer dereference (same as accessing any field)
+- **Initialization**: O(1) - one assignment in constructor (amortized to zero with inlining)
 - **No impact** on method dispatch speed
+- **No impact** on compilation time
 
 ### Example Program
 
 ```nim
 type
-  Animal = ref object of RootObj  # +8 bytes in debug
-  Dog = ref object of Animal      # +8 bytes in debug
+  Animal = ref object of RootObj  # +8 bytes
+  Dog = ref object of Animal      # +8 bytes
 
-let zoo = newSeq[Animal](1000)  # +8000 bytes in debug, +0 in release
+let zoo = newSeq[Animal](1000)  # +8000 bytes total (0.008 MB)
 ```
 
-For typical programs: **<1% memory overhead in debug, 0% in release**
+**For typical programs: <1% memory overhead, negligible on modern systems**
 
 ## Migration Path
 
@@ -220,9 +228,9 @@ For typical programs: **<1% memory overhead in debug, 0% in release**
 - ✅ Zero changes to compiler
 
 ### Phase 2: Compiler Support (Proposed)
-- Add hidden `runtimeType_` field
-- Enable by default in debug builds
-- Add `typeName` to system module
+- Add hidden `runtimeType_` field (always-on by default)
+- Add `typeName` accessor to system module
+- Provide `-d:noRuntimeTypeNames` opt-out for extreme cases
 
 ### Phase 3: Documentation
 - Update Nim manual OOP section
@@ -266,23 +274,34 @@ For typical programs: **<1% memory overhead in debug, 0% in release**
 
 This proposal would:
 
-1. **Make Nim's OOP easier to use** - runtime types "just work"
-2. **Improve debugging** - clear error messages, better introspection
-3. **Match other languages** - developers expect this feature
-4. **Zero cost** - completely free in release builds
+1. **Make Nim's OOP easier to use** - runtime types "just work" everywhere
+2. **Improve debugging** - in both development AND production
+3. **Match other languages** - C#/Java/Python all have always-on runtime types
+4. **Negligible cost** - 8 bytes per object is trivial on modern systems
 5. **Simple implementation** - ~200 lines of compiler code
+6. **Consistent behavior** - no surprises between debug and release builds
 
 ### Recommendation
 
-**Implement this proposal for Nim 2.2 or 2.4**
+**Implement this proposal for Nim 2.2 or 2.4 with always-on by default**
 
 The combination of:
-- Easy developer experience
-- Zero production cost
-- Simple implementation
-- High user demand
+- **Easy developer experience** - no configuration needed
+- **Negligible cost** - <1% memory overhead
+- **Production debugging** - investigate issues without recompiling
+- **Simple implementation** - straightforward compiler change
+- **High user demand** - developers expect this feature
+- **Language parity** - matches C#, Java, Python behavior
 
 Makes this a high-value, low-risk enhancement to Nim's OOP capabilities.
+
+**Why always-on is better than debug-only:**
+- Consistent behavior across all builds (no surprises)
+- Production debugging without recompiling
+- Better error messages in production
+- 8 bytes/object is insignificant on modern hardware
+- Matches developer expectations from other languages
+- Opt-out available for truly constrained environments
 
 ---
 
