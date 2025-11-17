@@ -245,8 +245,17 @@ proc genOp(c: var Con; t: PType; kind: TTypeAttachedOp; dest, ri: PNode): PNode 
       op = getAttachedOp(c.graph, canon, kind)
   if op == nil:
     #echo dest.typ.id
-    globalError(c.graph.config, dest.info, "internal error: '" & AttachedOpToStr[kind] &
-      "' operator not found for type " & typeToString(t))
+    # Issue #24848: Provide better error for malformed types
+    # Check if the type string indicates a malformed construct
+    let typeStr = typeToString(t)
+    if typeStr.len > 0 and typeStr[0].isUpperAscii and typeStr.len < 5:
+      # Single letter type names like "R" indicate uninstantiated generics
+      localError(c.graph.config, dest.info,
+        "cannot use uninstantiated generic type '" & typeStr & "'; generic parameters required")
+      return newNodeI(nkEmpty, dest.info)
+    else:
+      globalError(c.graph.config, dest.info, "internal error: '" & AttachedOpToStr[kind] &
+        "' operator not found for type " & typeStr)
   elif op.ast.isGenericRoutine:
     globalError(c.graph.config, dest.info, "internal error: '" & AttachedOpToStr[kind] &
       "' operator is generic")
