@@ -838,6 +838,13 @@ proc firstOrd*(conf: ConfigRef; t: PType): Int128 =
       fatal(conf, unknownLineInfo, "invalid kind for firstOrd(" & $t.kind & ')')
   of tyUncheckedArray, tyCstring:
     result = Zero
+  of tyGenericParam:
+    # Issue #15797: Generic parameters don't have ordinal bounds until instantiated
+    result = Zero
+    if conf != nil:
+      localError(conf, unknownLineInfo,
+        "cannot use generic parameter '" & typeToString(t) &
+        "' without instantiation; provide explicit type arguments")
   else:
     result = Zero
     fatal(conf, unknownLineInfo, "invalid kind for firstOrd(" & $t.kind & ')')
@@ -934,6 +941,13 @@ proc lastOrd*(conf: ConfigRef; t: PType): Int128 =
       fatal(conf, unknownLineInfo, "invalid kind for lastOrd(" & $t.kind & ')')
   of tyUncheckedArray:
     result = Zero
+  of tyGenericParam:
+    # Issue #15797: Generic parameters don't have ordinal bounds until instantiated
+    result = Zero
+    if conf != nil:
+      localError(conf, unknownLineInfo,
+        "cannot use generic parameter '" & typeToString(t) &
+        "' without instantiation; provide explicit type arguments")
   else:
     result = Zero
     fatal(conf, unknownLineInfo, "invalid kind for lastOrd(" & $t.kind & ')')
