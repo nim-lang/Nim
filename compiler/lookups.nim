@@ -447,6 +447,19 @@ proc addOverloadableSymAt*(c: PContext; scope: PScope, fn: PSym) =
     if check != nil and check.kind notin OverloadableSyms:
       wrongRedefinition(c, fn.info, fn.name.s, check.info)
     else:
+      # Warn if mixing methods and procs/funcs with the same name
+      # This helps users understand the difference between static (proc/func) and dynamic (method) dispatch
+      if check != nil:
+        let fnIsMethod = fn.kind == skMethod
+        let checkIsMethod = check.kind == skMethod
+        if fnIsMethod != checkIsMethod:
+          let (dynamicKind, staticKind, dynInfo, statInfo) =
+            if fnIsMethod: ("method", if check.kind == skFunc: "func" else: "proc", fn.info, check.info)
+            else: ("method", if fn.kind == skFunc: "func" else: "proc", check.info, fn.info)
+          message(c.config, dynInfo, warnUser,
+            "'" & fn.name.s & "' is defined as both a " & dynamicKind & " (dynamic dispatch) " &
+            "and a " & staticKind & " (static dispatch) at " & c.config$statInfo & "; " &
+            "this can be confusing. Consider using different names or only one dispatch mechanism.")
       scope.addSym(fn)
 
 proc addInterfaceOverloadableSymAt*(c: PContext, scope: PScope, sym: PSym) =
