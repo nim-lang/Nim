@@ -103,6 +103,7 @@ errors.
 
 ## Compiler changes
 
+- Added `--cachecfg` command line option that caches the result of evaluation of cfg/NimScript configuration files to reduces the compile time.
 
 ## Tool changes
 
