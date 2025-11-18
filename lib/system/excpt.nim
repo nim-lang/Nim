@@ -632,7 +632,7 @@ when defined(cpp) and appType != "lib" and not gotoBasedExceptions and
       {.emit: "#endif".}
     except Exception:
       msg = currException.getStackTrace() & "Error: unhandled exception: " &
-        currException.msg & " [" & $currException.name & "]"
+        currException.msg & " [" & cstrToStrBuiltin(currException.name) & "]"
     except StdException as e:
       msg = "Error: unhandled cpp exception: " & $e.what()
     except:
