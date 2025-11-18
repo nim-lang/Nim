@@ -181,7 +181,7 @@ Advanced options:
   --nimBasePattern:nimbase.h
                             allows to specify a custom pattern for `nimbase.h`
   --cachecfg:on|off         cache the result of evaluation of cfg/NimScript configuration files to reduces the compile time.
-                            The cache file is created in `$projectdir/nimcache`, not in `$nimcache`.
+                            The cache file is created in `$$projectdir/nimcache`, not in `$$nimcache`.
                             The cache file is not loaded and configuration files are evaluated when:
                             - `--cachecfg` is off or `--forceBuild` is on
                             - cache file doesn't exists
