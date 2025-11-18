@@ -597,6 +597,8 @@ proc callDepthLimitReached() {.noinline.} =
   showErrorMessage2(msg)
   rawQuit(1)
 
+{.push overflowChecks: off.}
+
 proc nimFrame(s: PFrame) {.compilerRtl, inl, raises: [].} =
   if framePtr == nil:
     s.calldepth = 0
@@ -607,6 +609,8 @@ proc nimFrame(s: PFrame) {.compilerRtl, inl, raises: [].} =
   s.prev = framePtr
   framePtr = s
   if s.calldepth == nimCallDepthLimit: callDepthLimitReached()
+
+{.pop.}
 
 when defined(cpp) and appType != "lib" and not gotoBasedExceptions and
     not defined(js) and not defined(nimscript) and
@@ -634,7 +638,7 @@ when defined(cpp) and appType != "lib" and not gotoBasedExceptions and
       msg = currException.getStackTrace() & "Error: unhandled exception: " &
         currException.msg & " [" & cstrToStrBuiltin(currException.name) & "]"
     except StdException as e:
-      msg = "Error: unhandled cpp exception: " & $e.what()
+      msg = "Error: unhandled cpp exception: " & cstrToStrBuiltin(e.what())
     except:
       msg = "Error: unhandled unknown cpp exception"
 
