@@ -1025,6 +1025,35 @@ proc tryAddInheritedFields(c: PContext, check: var IntSet, pos: var int,
   else:
     result = true
 
+proc verifyImplements(c: PContext, typ: PType, conceptList: PNode, info: TLineInfo) =
+  ## Verifies that 'typ' implements all concepts in 'conceptList' when --enforceInterfaces is enabled.
+  ## conceptList is expected to be an nkBracket node containing concept identifiers.
+  assert conceptList.kind == nkBracket
+
+  for conceptNode in conceptList:
+    # Resolve the concept type using semTypeNode
+    let conceptType = semTypeNode(c, conceptNode, nil)
+
+    if conceptType.isNil or conceptType.kind == tyError:
+      localError(c.config, conceptNode.info,
+        "cannot resolve concept '" & $conceptNode & "' in {.implements.} pragma")
+      continue
+
+    # Verify it's actually a concept type
+    if conceptType.kind != tyConcept:
+      localError(c.config, conceptNode.info,
+        "'" & $conceptNode & "' is not a concept; {.implements.} requires a concept type")
+      continue
+
+    # Check if the type matches the concept
+    var bindings = initLayeredTypeMap()
+    if not conceptMatch(c, conceptType, typ, bindings, nil):
+      # Type does not implement the concept - generate error
+      let conceptName = if conceptType.sym != nil: conceptType.sym.name.s else: $conceptNode
+      localError(c.config, info,
+        "type does not fully implement concept '" & conceptName & "'; " &
+        "missing or incompatible requirements. Enable --hints:all for details.")
+
 proc semObjectNode(c: PContext, n: PNode, prev: PType; flags: TTypeFlags): PType =
   result = nil
   if n.len == 0:
@@ -1090,6 +1119,10 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType; flags: TTypeFlags): PType
     var s = newSymS(skType, newIdentNode(getIdent(c.cache, "dummy"), n.info), c)
     s.typ = result
     pragma(c, s, n[0], typePragmas)
+    # Verify {.implements.} pragma if --enforceInterfaces is enabled
+    # The pragma handler stores the concept list on s.constraint
+    if s.constraint != nil and optEnforceInterfaces in c.config.globalOptions:
+      verifyImplements(c, result, s.constraint, n.info)
   if base == nil and tfInheritable notin result.flags:
     incl(result, tfFinal)
   if c.inGenericContext == 0 and computeRequiresInit(c, result):

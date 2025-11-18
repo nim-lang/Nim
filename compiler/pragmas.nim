@@ -74,7 +74,7 @@ const
   typePragmas* = declPragmas + {wMagic, wAcyclic,
     wPure, wHeader, wCompilerProc, wCore, wFinal, wAbstract, wSize, wShallow,
     wIncompleteStruct, wCompleteStruct, wByCopy, wByRef,
-    wInheritable, wGensym, wInject, wRequiresInit, wUnchecked, wUnion, wPacked,
+    wInheritable, wImplements, wGensym, wInject, wRequiresInit, wUnchecked, wUnion, wPacked,
     wCppNonPod, wBorrow, wGcSafe, wPartial, wExplain, wPackage, wCodegenDecl,
     wSendable, wNoInit}
   fieldPragmas* = declPragmas + {wGuard, wBitsize, wCursor,
@@ -1103,6 +1103,25 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         noVal(c, it)
         if sym.typ == nil or tfFinal in sym.typ.flags: invalidPragma(c, it)
         else: incl(sym.typ, tfInheritable)
+      of wImplements:
+        # Handle {.implements: ConceptName.} or {.implements: [Concept1, Concept2].}
+        if it.kind notin nkPragmaCallKinds or it.len != 2:
+          invalidPragma(c, it)
+        elif sym.typ == nil:
+          invalidPragma(c, it)
+        else:
+          # Store the concept list on the dummy symbol for later verification
+          # This will be checked in semObjectNode after pragma processing
+          let conceptList = it[1]
+          if conceptList.kind == nkBracket:
+            # Multiple concepts: {.implements: [C1, C2].}
+            sym.constraint = conceptList
+          else:
+            # Single concept: {.implements: C.}
+            # Wrap in a bracket node for uniform handling
+            var bracket = newNodeI(nkBracket, conceptList.info)
+            bracket.add(conceptList)
+            sym.constraint = bracket
       of wPackage:
         noVal(c, it)
         if sym.typ == nil: invalidPragma(c, it)

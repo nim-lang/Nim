@@ -113,6 +113,7 @@ type                          # please make sure we have under 32 options
     optItaniumMangle          # mangling follows the Itanium spec
     optCompress               # turn on AST compression by converting it to NIF
     optRustStyleErrors        # use Rust-style error messages with error codes
+    optEnforceInterfaces      # enforce complete implementation of declared interfaces/concepts
 
   TGlobalOptions* = set[TGlobalOption]
 

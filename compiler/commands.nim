@@ -354,6 +354,7 @@ proc testCompileOption*(conf: ConfigRef; switch: string, info: TLineInfo): bool 
   of "gencdeps": result = contains(conf.globalOptions, optGenCDeps)
   of "threads": result = contains(conf.globalOptions, optThreads)
   of "tlsemulation": result = contains(conf.globalOptions, optTlsEmulation)
+  of "enforceinterfaces": result = contains(conf.globalOptions, optEnforceInterfaces)
   of "implicitstatic": result = contains(conf.options, optImplicitStatic)
   of "patterns", "trmacros":
     if switch.normalize == "patterns": deprecatedAlias(switch, "trmacros")
@@ -822,6 +823,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     processOnOffSwitchG(conf, {optTlsEmulation}, arg, pass, info)
     if optTlsEmulation in conf.globalOptions:
       conf.legacyFeatures.incl emitGenerics
+  of "enforceinterfaces":
+    processOnOffSwitchG(conf, {optEnforceInterfaces}, arg, pass, info)
   of "implicitstatic":
     processOnOffSwitch(conf, {optImplicitStatic}, arg, pass, info)
   of "patterns", "trmacros":

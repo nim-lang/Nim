@@ -2411,7 +2411,9 @@ proc semMethodPrototype(c: PContext; s: PSym; n: PNode) =
     if hasObjParam(s):
       methodDef(c.graph, c.idgen, s)
     else:
-      localError(c.config, n.info, "'method' needs a parameter that has an object type")
+      localError(c.config, n.info, "'method' needs a parameter that has an object type; " &
+        "methods use dynamic dispatch and must have at least one parameter of an object type to dispatch on. " &
+        "If you want static dispatch, use 'proc' instead of 'method'.")
 
 proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
                 validPragmas: TSpecialWords, flags: TExprFlags = {}): PNode =

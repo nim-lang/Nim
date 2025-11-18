@@ -162,7 +162,8 @@ proc methodDef*(g: ModuleGraph; idgen: IdGenerator; s: PSym) =
   if s.typ.firstParamType.owner.getModule != s.getModule and vtables in g.config.features and not
       g.config.isDefined("nimInternalNonVtablesTesting"):
     localError(g.config, s.info, errGenerated, "method `" & s.name.s &
-          "` can be defined only in the same module with its type (" & s.typ.firstParamType.typeToString() & ")")
+          "` must be defined in the same module as its dispatch type (" & s.typ.firstParamType.typeToString() & "); " &
+          "methods belong to the type they dispatch on and cannot be defined in other modules")
   if sfImportc in s.flags:
     localError(g.config, s.info, errGenerated, "method `" & s.name.s &
           "` is not allowed to have 'importc' pragmas")
@@ -179,7 +180,8 @@ proc methodDef*(g: ModuleGraph; idgen: IdGenerator; s: PSym) =
       if {sfBase, sfFromGeneric} * s.flags == {sfBase} and
            g.methods[i].methods[0] != s:
         # already exists due to forwarding definition?
-        localError(g.config, s.info, "method is not a base")
+        localError(g.config, s.info, "method '" & s.name.s & "' marked {.base.} but a base method already exists; " &
+          "a method group can only have one base method. Remove {.base.} from this overriding method.")
       return
     of No: discard
     of Invalid:
