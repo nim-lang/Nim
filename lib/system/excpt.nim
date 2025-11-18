@@ -287,34 +287,34 @@ proc `$`(stackTraceEntries: seq[StackTraceEntry]): string =
     elif s[i].line == reraisedFromEnd: result.add "]]\n"
     else: addFrameEntry(result, s[i])
 
-when hasSomeStackTrace:
-  const
-    Ten = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
+const
+  Ten = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
 
-  proc i2s(x: int64): string =
-    # quick reimplementation; optimized for code size, no dependencies
-    if x < 0:
-      if x == -9223372036854775808:
-        result = "-9223372036854775808"
-      else:
-        result = "-" & i2s(0-x)
-    elif x < 10:
-      result = Ten[int x] # saves allocations
+proc i2s(x: int64): string =
+  # quick reimplementation; optimized for code size, no dependencies
+  if x < 0:
+    if x == -9223372036854775808:
+      result = "-9223372036854775808"
     else:
-      var y = x
-      while true:
-        result.add char((y mod 10) + int('0'))
-        y = y div 10
-        if y == 0: break
-      let last = result.len-1
-      var i = 0
-      let b = result.len div 2
-      while i < b:
-        let ch = result[i]
-        result[i] = result[last-i]
-        result[last-i] = ch
-        inc i
+      result = "-" & i2s(0-x)
+  elif x < 10:
+    result = Ten[int x] # saves allocations
+  else:
+    var y = x
+    while true:
+      result.add char((y mod 10) + int('0'))
+      y = y div 10
+      if y == 0: break
+    let last = result.len-1
+    var i = 0
+    let b = result.len div 2
+    while i < b:
+      let ch = result[i]
+      result[i] = result[last-i]
+      result[last-i] = ch
+      inc i
 
+when hasSomeStackTrace:
   proc auxWriteStackTrace(f: PFrame, s: var string) {.raises: [].} =
     when hasThreadSupport:
       var
@@ -439,7 +439,7 @@ proc reportUnhandledErrorAux(e: ref Exception) {.nodestroy, gcsafe.} =
     var buf: array[0..2000, char]
     var L = 0
     if e.trace.len != 0:
-      var trace = cstrToStrBuiltin(e.trace)
+      var trace = $e.trace
       add(buf, trace)
       {.gcsafe.}:
         `=destroy`(trace)
@@ -449,7 +449,7 @@ proc reportUnhandledErrorAux(e: ref Exception) {.nodestroy, gcsafe.} =
     xadd(buf, e.name, e.name.len)
     add(buf, "]\n")
     if onUnhandledException != nil:
-      onUnhandledException($cast[cstring](buf.addr))
+      onUnhandledException(cstrToStrBuiltin(cast[cstring](buf.addr)))
     else:
       showErrorMessage(cast[cstring](buf.addr), L)
 
@@ -546,8 +546,7 @@ proc reraiseException() {.compilerRtl.} =
     else:
       raiseExceptionAux(currException)
 
-proc threadTrouble() =
-  # also forward declared, it is 'raises: []' hence the try-except.
+proc threadTrouble() {.raises: [], gcsafe.} =
   try:
     if currException != nil: reportUnhandledError(currException)
   except:
