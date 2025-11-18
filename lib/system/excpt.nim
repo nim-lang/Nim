@@ -43,6 +43,8 @@ proc writeToStdErr(msg: string) {.inline.} =
   writeToStdErr(msg.cstring, msg.len)
 
 proc cstrToStrBuiltin(x: cstring): string {.magic: "CStrToStr", noSideEffect.}
+when defined(genode):
+  template `$`(s: string): string = s
 
 proc showErrorMessage(data: cstring, length: int) {.gcsafe, raises: [].} =
   var toWrite = true
@@ -55,7 +57,7 @@ proc showErrorMessage(data: cstring, length: int) {.gcsafe, raises: [].} =
   if toWrite:
     when defined(genode):
       # stderr not available by default, use the LOG session
-      echo data
+      echo cstrToStrBuiltin(data)
     else:
       writeToStdErr(data, length)
 
