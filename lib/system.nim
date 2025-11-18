@@ -1754,6 +1754,15 @@ type
     when NimStackTraceMsgs:
       frameMsgLen*: int   ## end position in frameMsgBuf for this frame.
 
+when notJSnotNims and not gotoBasedExceptions:
+  type
+    PSafePoint = ptr TSafePoint
+    TSafePoint {.compilerproc, final.} = object
+      prev: PSafePoint # points to next safe point ON THE STACK
+      status: int
+      context: C_JmpBuf
+    SafePoint = TSafePoint
+
 when defined(nimV2):
   var
     framePtr {.threadvar.}: PFrame
@@ -2237,15 +2246,6 @@ when not defined(js) and declared(alloc0) and declared(dealloc):
       dealloc(a[i])
       inc(i)
     dealloc(a)
-
-when notJSnotNims and not gotoBasedExceptions:
-  type
-    PSafePoint = ptr TSafePoint
-    TSafePoint {.compilerproc, final.} = object
-      prev: PSafePoint # points to next safe point ON THE STACK
-      status: int
-      context: C_JmpBuf
-    SafePoint = TSafePoint
 
 when not defined(js):
   when hasThreadSupport:
