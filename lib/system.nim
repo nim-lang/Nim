@@ -1740,6 +1740,28 @@ when not defined(nimscript):
 when not declared(sysFatal):
   include "system/fatal"
 
+proc echo*(x: varargs[typed, `$`]) {.magic: "Echo", benign, sideEffect.}
+  ## Writes and flushes the parameters to the standard output.
+  ##
+  ## Special built-in that takes a variable number of arguments. Each argument
+  ## is converted to a string via `$`, so it works for user-defined
+  ## types that have an overloaded `$` operator.
+  ## It is roughly equivalent to `writeLine(stdout, x); flushFile(stdout)`, but
+  ## available for the JavaScript target too.
+  ##
+  ## Unlike other IO operations this is guaranteed to be thread-safe as
+  ## `echo` is very often used for debugging convenience. If you want to use
+  ## `echo` inside a `proc without side effects
+  ## <manual.html#pragmas-nosideeffect-pragma>`_ you can use `debugEcho
+  ## <#debugEcho,varargs[typed,]>`_ instead.
+
+proc debugEcho*(x: varargs[typed, `$`]) {.magic: "Echo", noSideEffect,
+                                          tags: [], raises: [].}
+  ## Same as `echo <#echo,varargs[typed,]>`_, but as a special semantic rule,
+  ## `debugEcho` pretends to be free of side effects, so that it can be used
+  ## for debugging routines marked as `noSideEffect
+  ## <manual.html#pragmas-nosideeffect-pragma>`_.
+
 type
   PFrame* = ptr TFrame  ## Represents a runtime frame of the call stack;
                         ## part of the debugger API.
@@ -2002,27 +2024,6 @@ elif hasAlloc:
         inc(i)
   {.pop.}
 
-proc echo*(x: varargs[typed, `$`]) {.magic: "Echo", benign, sideEffect.}
-  ## Writes and flushes the parameters to the standard output.
-  ##
-  ## Special built-in that takes a variable number of arguments. Each argument
-  ## is converted to a string via `$`, so it works for user-defined
-  ## types that have an overloaded `$` operator.
-  ## It is roughly equivalent to `writeLine(stdout, x); flushFile(stdout)`, but
-  ## available for the JavaScript target too.
-  ##
-  ## Unlike other IO operations this is guaranteed to be thread-safe as
-  ## `echo` is very often used for debugging convenience. If you want to use
-  ## `echo` inside a `proc without side effects
-  ## <manual.html#pragmas-nosideeffect-pragma>`_ you can use `debugEcho
-  ## <#debugEcho,varargs[typed,]>`_ instead.
-
-proc debugEcho*(x: varargs[typed, `$`]) {.magic: "Echo", noSideEffect,
-                                          tags: [], raises: [].}
-  ## Same as `echo <#echo,varargs[typed,]>`_, but as a special semantic rule,
-  ## `debugEcho` pretends to be free of side effects, so that it can be used
-  ## for debugging routines marked as `noSideEffect
-  ## <manual.html#pragmas-nosideeffect-pragma>`_.
 
 when hostOS == "standalone" and defined(nogc):
   proc nimToCStringConv(s: NimString): cstring {.compilerproc, inline.} =
