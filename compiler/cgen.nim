@@ -1362,7 +1362,8 @@ proc genProcAux*(m: BModule, prc: PSym) =
   closureSetup(p, prc)
   genProcBody(p, procBody)
 
-  prc.info = tmpInfo
+  # IC: spurious write, seems fine for now:
+  prc.infoImpl = tmpInfo
 
   var generatedProc = newBuilder("")
   generatedProc.genCLineDir prc.info, m.config
