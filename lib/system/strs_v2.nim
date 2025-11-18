@@ -23,6 +23,8 @@ type
 
 const nimStrVersion {.core.} = 2
 
+{.push overflowChecks: off, rangeChecks: off.}
+
 template isLiteral(s): bool = (s.p == nil) or (s.p.cap and strlitFlag) == strlitFlag
 
 template contentSize(cap): int = cap + 1 + sizeof(NimStrPayloadBase)
@@ -227,3 +229,5 @@ func capacity*(self: string): int {.inline.} =
 
   let str = cast[ptr NimStringV2](unsafeAddr self)
   result = if str.p != nil: str.p.cap and not strlitFlag else: 0
+
+{.pop.}

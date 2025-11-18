@@ -42,11 +42,13 @@ proc writeToStdErr(msg: string) {.inline.} =
   # fix bug #13115: handles correctly '\0' unlike default implicit conversion to cstring
   writeToStdErr(msg.cstring, msg.len)
 
+proc cstrToStrBuiltin(x: cstring): string {.magic: "CStrToStr", noSideEffect.}
+
 proc showErrorMessage(data: cstring, length: int) {.gcsafe, raises: [].} =
   var toWrite = true
   if errorMessageWriter != nil:
     try:
-      errorMessageWriter($data)
+      errorMessageWriter(cstrToStrBuiltin data)
       toWrite = false
     except:
       discard
@@ -261,7 +263,10 @@ template addFrameEntry(s: var string, f: StackTraceEntry|PFrame) =
   var oldLen = s.len
   s.toLocation(f.filename, f.line, 0)
   for k in 1..max(1, 25-(s.len-oldLen)): add(s, ' ')
-  add(s, f.procname)
+  var i = 0
+  while f.procname[i] != '\0':
+    add(s, f.procname[i])
+    inc i
   when NimStackTraceMsgs:
     when typeof(f) is StackTraceEntry:
       add(s, f.frameMsg)
@@ -283,8 +288,34 @@ proc `$`(stackTraceEntries: seq[StackTraceEntry]): string =
     else: addFrameEntry(result, s[i])
 
 when hasSomeStackTrace:
+  const
+    Ten = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
 
-  proc auxWriteStackTrace(f: PFrame, s: var string) =
+  proc i2s(x: int64): string =
+    # quick reimplementation; optimized for code size, no dependencies
+    if x < 0:
+      if x == -9223372036854775808:
+        result = "-9223372036854775808"
+      else:
+        result = "-" & i2s(0-x)
+    elif x < 10:
+      result = Ten[int x] # saves allocations
+    else:
+      var y = x
+      while true:
+        result.add char((y mod 10) + int('0'))
+        y = y div 10
+        if y == 0: break
+      let last = result.len-1
+      var i = 0
+      let b = result.len div 2
+      while i < b:
+        let ch = result[i]
+        result[i] = result[last-i]
+        result[last-i] = ch
+        inc i
+
+  proc auxWriteStackTrace(f: PFrame, s: var string) {.raises: [].} =
     when hasThreadSupport:
       var
         tempFrames: array[maxStackTraceLines, PFrame] # but better than a threadvar
@@ -322,14 +353,14 @@ when hasSomeStackTrace:
     for j in countdown(i-1, 0):
       if tempFrames[j] == nil:
         add(s, "(")
-        add(s, $skipped)
+        s.add(i2s(skipped))
         add(s, " calls omitted) ...\n")
       else:
         addFrameEntry(s, tempFrames[j])
 
   proc stackTraceAvailable*(): bool
 
-  proc rawWriteStackTrace(s: var string) =
+  proc rawWriteStackTrace(s: var string) {.raises: [].} =
     when defined(nimStackTraceOverride):
       add(s, "Traceback (most recent call last, using override)\n")
       auxWriteStackTraceWithOverride(s)
@@ -388,7 +419,7 @@ proc reportUnhandledErrorAux(e: ref Exception) {.nodestroy, gcsafe.} =
     add(buf, "Error: unhandled exception: ")
     add(buf, e.msg)
     add(buf, " [")
-    add(buf, $e.name)
+    add(buf, cstrToStrBuiltin(e.name))
     add(buf, "]\n")
 
     if onUnhandledException != nil:
@@ -408,7 +439,7 @@ proc reportUnhandledErrorAux(e: ref Exception) {.nodestroy, gcsafe.} =
     var buf: array[0..2000, char]
     var L = 0
     if e.trace.len != 0:
-      var trace = $e.trace
+      var trace = cstrToStrBuiltin(e.trace)
       add(buf, trace)
       {.gcsafe.}:
         `=destroy`(trace)
@@ -559,10 +590,11 @@ const nimCallDepthLimit {.intdefine.} = 2000
 
 proc callDepthLimitReached() {.noinline.} =
   writeStackTrace()
-  let msg = "Error: call depth limit reached in a debug build (" &
-      $nimCallDepthLimit & " function calls). You can change it with " &
-      "-d:nimCallDepthLimit=<int> but really try to avoid deep " &
-      "recursions instead.\n"
+  var msg = "Error: call depth limit reached in a debug build ("
+  msg.add(i2s(nimCallDepthLimit))
+  msg.add(" function calls). You can change it with " &
+    "-d:nimCallDepthLimit=<int> but really try to avoid deep " &
+    "recursions instead.\n")
   showErrorMessage2(msg)
   rawQuit(1)
 
