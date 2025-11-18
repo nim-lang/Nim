@@ -1754,6 +1754,15 @@ type
     when NimStackTraceMsgs:
       frameMsgLen*: int   ## end position in frameMsgBuf for this frame.
 
+when notJSnotNims and not gotoBasedExceptions:
+  type
+    PSafePoint = ptr TSafePoint
+    TSafePoint {.compilerproc, final.} = object
+      prev: PSafePoint # points to next safe point ON THE STACK
+      status: int
+      context: C_JmpBuf
+    SafePoint = TSafePoint
+
 when defined(nimV2):
   var
     framePtr {.threadvar.}: PFrame
@@ -1765,6 +1774,111 @@ template newException*(exceptn: typedesc, message: string;
   ## Creates an exception object of type `exceptn` and sets its `msg` field
   ## to `message`. Returns the new exception object.
   (ref exceptn)(msg: message, parent: parentException)
+
+# we have to compute this here before turning it off in except.nim anyway ...
+const NimStackTrace = compileOption("stacktrace")
+const
+  usesDestructors = defined(gcDestructors) or defined(gcHooks)
+
+when notJSnotNims:
+  proc setControlCHook*(hook: proc () {.noconv.}) {.raises: [], gcsafe.}
+    ## Allows you to override the behaviour of your application when CTRL+C
+    ## is pressed. Only one such hook is supported.
+    ##
+    ## The handler runs inside a C signal handler and comes with similar
+    ## limitations.
+    ##
+    ## Allocating memory and interacting with most system calls, including using
+    ## `echo`, `string`, `seq`, raising or catching exceptions etc is undefined
+    ## behavior and will likely lead to application crashes.
+    ##
+    ## The OS may call the ctrl-c handler from any thread, including threads
+    ## that were not created by Nim, such as happens on Windows.
+    ##
+    ## ## Example:
+    ##
+    ## ```nim
+    ##   var stop: Atomic[bool]
+    ##   proc ctrlc() {.noconv.} =
+    ##     # Using atomics types is safe!
+    ##     stop.store(true)
+    ##
+    ##   setControlCHook(ctrlc)
+    ##
+    ##   while not stop.load():
+    ##     echo "Still running.."
+    ##     sleep(1000)
+    ##   ```
+
+  when not defined(noSignalHandler) and not defined(useNimRtl):
+    proc unsetControlCHook*()
+      ## Reverts a call to setControlCHook.
+
+  when hostOS != "standalone":
+    proc getStackTrace*(): string {.gcsafe.}
+      ## Gets the current stack trace. This only works for debug builds.
+
+    proc getStackTrace*(e: ref Exception): string {.gcsafe.}
+      ## Gets the stack trace associated with `e`, which is the stack that
+      ## lead to the `raise` statement. This only works for debug builds.
+
+  var
+    globalRaiseHook*: proc (e: ref Exception): bool {.nimcall, benign.}
+      ## With this hook you can influence exception handling on a global level.
+      ## If not nil, every 'raise' statement ends up calling this hook.
+      ##
+      ## .. warning:: Ordinary application code should never set this hook! You better know what you do when setting this.
+      ##
+      ## If `globalRaiseHook` returns false, the exception is caught and does
+      ## not propagate further through the call stack.
+
+    localRaiseHook* {.threadvar.}: proc (e: ref Exception): bool {.nimcall, benign.}
+      ## With this hook you can influence exception handling on a
+      ## thread local level.
+      ## If not nil, every 'raise' statement ends up calling this hook.
+      ##
+      ## .. warning:: Ordinary application code should never set this hook! You better know what you do when setting this.
+      ##
+      ## If `localRaiseHook` returns false, the exception
+      ## is caught and does not propagate further through the call stack.
+
+    outOfMemHook*: proc () {.nimcall, tags: [], benign, raises: [].}
+      ## Set this variable to provide a procedure that should be called
+      ## in case of an `out of memory`:idx: event. The standard handler
+      ## writes an error message and terminates the program.
+      ##
+      ## `outOfMemHook` can be used to raise an exception in case of OOM like so:
+      ##
+      ##   ```nim
+      ##   var gOutOfMem: ref EOutOfMemory
+      ##   new(gOutOfMem) # need to be allocated *before* OOM really happened!
+      ##   gOutOfMem.msg = "out of memory"
+      ##
+      ##   proc handleOOM() =
+      ##     raise gOutOfMem
+      ##
+      ##   system.outOfMemHook = handleOOM
+      ##   ```
+      ##
+      ## If the handler does not raise an exception, ordinary control flow
+      ## continues and the program is terminated.
+
+    unhandledExceptionHook*: proc (e: ref Exception) {.nimcall, tags: [], benign, raises: [].}
+      ## Set this variable to provide a procedure that should be called
+      ## in case of an `unhandle exception` event. The standard handler
+      ## writes an error message and terminates the program, except when
+      ## using `--os:any`
+
+  {.push stackTrace: off, profiler: off.}
+  when defined(memtracker):
+    include "system/memtracker"
+
+  when hostOS == "standalone":
+    include "system/embedded"
+  else:
+    include "system/excpt"
+  {.pop.}
+
 
 when not defined(nimPreviewSlimSystem):
   import std/assertions
@@ -1844,9 +1958,6 @@ proc `<`*[T: tuple](x, y: T): bool =
 
 include "system/gc_interface"
 
-# we have to compute this here before turning it off in except.nim anyway ...
-const NimStackTrace = compileOption("stacktrace")
-
 import system/coro_detection
 
 {.push checks: off.}
@@ -1854,53 +1965,6 @@ import system/coro_detection
 # because it would yield into an endless recursion
 # however, stack-traces are available for most parts
 # of the code
-
-when notJSnotNims:
-  var
-    globalRaiseHook*: proc (e: ref Exception): bool {.nimcall, benign.}
-      ## With this hook you can influence exception handling on a global level.
-      ## If not nil, every 'raise' statement ends up calling this hook.
-      ##
-      ## .. warning:: Ordinary application code should never set this hook! You better know what you do when setting this.
-      ##
-      ## If `globalRaiseHook` returns false, the exception is caught and does
-      ## not propagate further through the call stack.
-
-    localRaiseHook* {.threadvar.}: proc (e: ref Exception): bool {.nimcall, benign.}
-      ## With this hook you can influence exception handling on a
-      ## thread local level.
-      ## If not nil, every 'raise' statement ends up calling this hook.
-      ##
-      ## .. warning:: Ordinary application code should never set this hook! You better know what you do when setting this.
-      ##
-      ## If `localRaiseHook` returns false, the exception
-      ## is caught and does not propagate further through the call stack.
-
-    outOfMemHook*: proc () {.nimcall, tags: [], benign, raises: [].}
-      ## Set this variable to provide a procedure that should be called
-      ## in case of an `out of memory`:idx: event. The standard handler
-      ## writes an error message and terminates the program.
-      ##
-      ## `outOfMemHook` can be used to raise an exception in case of OOM like so:
-      ##
-      ##   ```nim
-      ##   var gOutOfMem: ref EOutOfMemory
-      ##   new(gOutOfMem) # need to be allocated *before* OOM really happened!
-      ##   gOutOfMem.msg = "out of memory"
-      ##
-      ##   proc handleOOM() =
-      ##     raise gOutOfMem
-      ##
-      ##   system.outOfMemHook = handleOOM
-      ##   ```
-      ##
-      ## If the handler does not raise an exception, ordinary control flow
-      ## continues and the program is terminated.
-    unhandledExceptionHook*: proc (e: ref Exception) {.nimcall, tags: [], benign, raises: [].}
-      ## Set this variable to provide a procedure that should be called
-      ## in case of an `unhandle exception` event. The standard handler
-      ## writes an error message and terminates the program, except when
-      ## using `--os:any`
 
 when defined(js) or defined(nimdoc):
   proc add*(x: var string, y: cstring) {.asmNoStackFrame.} =
@@ -2028,6 +2092,16 @@ template unlikely*(val: bool): bool =
 import system/dollars
 export dollars
 
+when notJSnotNims:
+  {.push stackTrace: off, profiler: off.}
+
+  include "system/chcks"
+
+  # we cannot compile this with stack tracing on
+  # as it would recurse endlessly!
+  include "system/integerops"
+  {.pop.}
+
 when defined(nimAuditDelete):
   {.pragma: auditDelete, deprecated: "review this call for out of bounds behavior".}
 else:
@@ -2110,17 +2184,17 @@ when notJSnotNims:
     nimZeroMem(p, size)
     when declared(memTrackerOp):
       memTrackerOp("zeroMem", p, size)
-  proc copyMem(dest, source: pointer, size: Natural) =
+  proc copyMem(dest, source: pointer, size: Natural) {.enforceNoRaises.} =
     nimCopyMem(dest, source, size)
     when declared(memTrackerOp):
       memTrackerOp("copyMem", dest, size)
-  proc moveMem(dest, source: pointer, size: Natural) =
+  proc moveMem(dest, source: pointer, size: Natural) {.enforceNoRaises.} =
     c_memmove(dest, source, csize_t(size))
     when declared(memTrackerOp):
       memTrackerOp("moveMem", dest, size)
-  proc equalMem(a, b: pointer, size: Natural): bool =
+  proc equalMem(a, b: pointer, size: Natural): bool {.enforceNoRaises.} =
     nimCmpMem(a, b, size) == 0
-  proc cmpMem(a, b: pointer, size: Natural): int =
+  proc cmpMem(a, b: pointer, size: Natural): int {.enforceNoRaises.} =
     nimCmpMem(a, b, size).int
 
 when not defined(js) or defined(nimscript):
@@ -2173,15 +2247,6 @@ when not defined(js) and declared(alloc0) and declared(dealloc):
       inc(i)
     dealloc(a)
 
-when notJSnotNims and not gotoBasedExceptions:
-  type
-    PSafePoint = ptr TSafePoint
-    TSafePoint {.compilerproc, final.} = object
-      prev: PSafePoint # points to next safe point ON THE STACK
-      status: int
-      context: C_JmpBuf
-    SafePoint = TSafePoint
-
 when not defined(js):
   when hasThreadSupport:
     when hostOS != "standalone":
@@ -2193,63 +2258,6 @@ when not defined(js):
   elif not defined(nogc) and not defined(nimscript):
     when not defined(useNimRtl) and not defined(createNimRtl): initStackBottom()
     when declared(initGC): initGC()
-
-when notJSnotNims:
-  proc setControlCHook*(hook: proc () {.noconv.}) {.raises: [], gcsafe.}
-    ## Allows you to override the behaviour of your application when CTRL+C
-    ## is pressed. Only one such hook is supported.
-    ##
-    ## The handler runs inside a C signal handler and comes with similar
-    ## limitations.
-    ##
-    ## Allocating memory and interacting with most system calls, including using
-    ## `echo`, `string`, `seq`, raising or catching exceptions etc is undefined
-    ## behavior and will likely lead to application crashes.
-    ##
-    ## The OS may call the ctrl-c handler from any thread, including threads
-    ## that were not created by Nim, such as happens on Windows.
-    ##
-    ## ## Example:
-    ##
-    ## ```nim
-    ##   var stop: Atomic[bool]
-    ##   proc ctrlc() {.noconv.} =
-    ##     # Using atomics types is safe!
-    ##     stop.store(true)
-    ##
-    ##   setControlCHook(ctrlc)
-    ##
-    ##   while not stop.load():
-    ##     echo "Still running.."
-    ##     sleep(1000)
-    ##   ```
-
-  when not defined(noSignalHandler) and not defined(useNimRtl):
-    proc unsetControlCHook*()
-      ## Reverts a call to setControlCHook.
-
-  when hostOS != "standalone":
-    proc getStackTrace*(): string {.gcsafe.}
-      ## Gets the current stack trace. This only works for debug builds.
-
-    proc getStackTrace*(e: ref Exception): string {.gcsafe.}
-      ## Gets the stack trace associated with `e`, which is the stack that
-      ## lead to the `raise` statement. This only works for debug builds.
-
-  {.push stackTrace: off, profiler: off.}
-  when defined(memtracker):
-    include "system/memtracker"
-
-  when hostOS == "standalone":
-    include "system/embedded"
-  else:
-    include "system/excpt"
-  include "system/chcks"
-
-  # we cannot compile this with stack tracing on
-  # as it would recurse endlessly!
-  include "system/integerops"
-  {.pop.}
 
 
 when not defined(js):

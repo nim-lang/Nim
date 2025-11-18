@@ -36,13 +36,13 @@ proc utoa2Digits*(buf: var openArray[char]; pos: int; digits: uint32) {.inline.}
   buf[pos+1] = digits100[2 * digits + 1]
   #copyMem(buf, unsafeAddr(digits100[2 * digits]), 2 * sizeof((char)))
 
-proc trailingZeros2Digits*(digits: uint32): int {.inline.} =
+proc trailingZeros2Digits*(digits: uint32): int {.inline, enforceNoRaises.} =
   trailingZeros100[digits]
 
 when defined(js):
   proc numToString(a: SomeInteger): cstring {.importjs: "((#) + \"\")".}
 
-func addChars[T](result: var string, x: T, start: int, n: int) {.inline.} =
+func addChars[T](result: var string, x: T, start: int, n: int) {.inline, enforceNoRaises.} =
   let old = result.len
   result.setLen old + n
   template impl =
@@ -54,10 +54,10 @@ func addChars[T](result: var string, x: T, start: int, n: int) {.inline.} =
       {.noSideEffect.}:
         copyMem result[old].addr, x[start].unsafeAddr, n
 
-func addChars[T](result: var string, x: T) {.inline.} =
+func addChars[T](result: var string, x: T) {.inline, enforceNoRaises.} =
   addChars(result, x, 0, x.len)
 
-func addIntImpl(result: var string, x: uint64) {.inline.} =
+func addIntImpl(result: var string, x: uint64) {.inline, enforceNoRaises.} =
   var tmp {.noinit.}: array[24, char]
   var num = x
   var next = tmp.len - 1
@@ -81,8 +81,6 @@ func addIntImpl(result: var string, x: uint64) {.inline.} =
     dec next
   addChars(result, tmp, next, tmp.len - next)
 
-when not defined(nimHasEnforceNoRaises):
-  {.pragma: enforceNoRaises.}
 
 func addInt*(result: var string, x: uint64) {.enforceNoRaises.} =
   when nimvm: addIntImpl(result, x)

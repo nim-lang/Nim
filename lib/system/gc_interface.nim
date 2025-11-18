@@ -1,6 +1,4 @@
 # ----------------- GC interface ---------------------------------------------
-const
-  usesDestructors = defined(gcDestructors) or defined(gcHooks)
 
 when not usesDestructors:
   {.pragma: nodestroy.}
