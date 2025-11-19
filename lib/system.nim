@@ -1802,6 +1802,8 @@ const NimStackTrace = compileOption("stacktrace")
 const
   usesDestructors = defined(gcDestructors) or defined(gcHooks)
 
+include "system/gc_interface"
+
 when notJSnotNims:
   proc setControlCHook*(hook: proc () {.noconv.}) {.raises: [], gcsafe.}
     ## Allows you to override the behaviour of your application when CTRL+C
@@ -1977,8 +1979,6 @@ proc `<`*[T: tuple](x, y: T): bool =
     if c > 0: return false
   return false
 
-
-include "system/gc_interface"
 
 import system/coro_detection
 
