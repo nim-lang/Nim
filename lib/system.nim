@@ -555,9 +555,6 @@ type
 
 when defined(nimIcIntegrityChecks):
   include "system/exceptions"
-else:
-  import system/exceptions
-  export exceptions
 
 when defined(js) or defined(nimdoc):
   type
@@ -1650,6 +1647,25 @@ when not defined(js) and defined(nimV2):
         else:
           vTable: UncheckedArray[pointer] # vtable for types
     PNimTypeV2 = ptr TNimTypeV2
+
+when notJSnotNims and defined(nimSeqsV2):
+  const nimStrVersion {.core.} = 2
+
+  type
+    NimStrPayloadBase = object
+      cap: int
+
+    NimStrPayload {.core.} = object
+      cap: int
+      data: UncheckedArray[char]
+
+    NimStringV2 {.core.} = object
+      len: int
+      p: ptr NimStrPayload ## can be nil if len == 0.
+
+when not defined(nimIcIntegrityChecks):
+  import system/exceptions
+  export exceptions
 
 when notJSnotNims and defined(nimSeqsV2):
   include "system/strs_v2"

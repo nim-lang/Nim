@@ -2056,6 +2056,7 @@ proc genTypeInfo*(config: ConfigRef, m: BModule; t: PType; info: TLineInfo): Rop
 
 proc genTypeSection(m: BModule, n: PNode) =
   var intSet = initIntSet()
+  let compress = optCompress in m.config.globalOptions
   for i in 0..<n.len:
     if len(n[i]) == 0: continue
     if n[i][0].kind != nkPragmaExpr: continue
@@ -2064,7 +2065,7 @@ proc genTypeSection(m: BModule, n: PNode) =
       var s = n[i][0][p]
       if s.kind == nkPostfix:
         s = n[i][0][p][1]
-      if {sfExportc, sfCompilerProc} * s.sym.flags == {sfExportc}:
+      if {sfExportc, sfCompilerProc} * s.sym.flags == {sfExportc} or compress:
         discard getTypeDescAux(m, s.typ, intSet, descKindFromSymKind(s.sym.kind))
         if m.g.generatedHeader != nil:
           discard getTypeDescAux(m.g.generatedHeader, s.typ, intSet, descKindFromSymKind(s.sym.kind))
