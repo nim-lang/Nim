@@ -158,8 +158,8 @@ proc getTypeName(m: BModule; typ: PType; sig: SigHash): Rope =
     else:
       break
   let typ = if typ.kind in {tyAlias, tySink, tyOwned}: typ.elementType else: typ
-  ensureMutable typ
   if typ.loc.snippet == "":
+    ensureMutable typ
     typ.typeName(typ.locImpl.snippet)
     typ.locImpl.snippet.add $sig
   else:
