@@ -170,7 +170,7 @@ proc canMove(p: BProc, n: PNode; dest: TLoc): bool =
 template simpleAsgn(builder: var Builder, dest, src: TLoc) =
   let rd = rdLoc(dest)
   let rs = rdLoc(src)
-  builder.addAssignment(rd, rs) 
+  builder.addAssignment(rd, rs)
 
 proc genRefAssign(p: BProc, dest, src: TLoc) =
   if (dest.storage == OnStack and p.config.selectedGC != gcGo) or not usesWriteBarrier(p.config):
@@ -675,7 +675,7 @@ proc binaryArithOverflow(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
       if e[2].kind in {nkIntLit..nkInt64Lit}:
         needsOverflowCheck = e[2].intVal == -1
       if canBeZero:
-        # remove extra paren from `==` op here to avoid Wparentheses-equality: 
+        # remove extra paren from `==` op here to avoid Wparentheses-equality:
         p.s(cpsStmts).addSingleIfStmt(removeSinglePar(cOp(Equal, rdLoc(b), cIntValue(0)))):
           p.s(cpsStmts).addCallStmt(cgsymValue(p.module, "raiseDivByZero"))
           raiseInstr(p, p.s(cpsStmts))
@@ -696,7 +696,7 @@ proc unaryArithOverflow(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
   let ra = rdLoc(a)
   if optOverflowCheck in p.options:
     let first = cIntLiteral(firstOrd(p.config, t))
-    # remove extra paren from `==` op here to avoid Wparentheses-equality: 
+    # remove extra paren from `==` op here to avoid Wparentheses-equality:
     p.s(cpsStmts).addSingleIfStmt(removeSinglePar(cOp(Equal, ra, first))):
       p.s(cpsStmts).addCallStmt(cgsymValue(p.module, "raiseOverflow"))
       raiseInstr(p, p.s(cpsStmts))
