@@ -11,8 +11,6 @@
 
 {.push overflowChecks: off, rangeChecks: off.}
 
-{.push overflowChecks: off, rangeChecks: off.}
-
 template isLiteral(s): bool = (s.p == nil) or (s.p.cap and strlitFlag) == strlitFlag
 
 template contentSize(cap): int = cap + 1 + sizeof(NimStrPayloadBase)
