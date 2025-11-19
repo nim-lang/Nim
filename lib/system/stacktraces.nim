@@ -62,22 +62,23 @@ when defined(nimStackTraceOverride):
     let programCounters = stackTraceOverrideGetProgramCounters(maxStackTraceLines)
     if s.len == 0:
       s = newSeqOfCap[StackTraceEntry](programCounters.len)
-    for programCounter in programCounters:
-      s.add(StackTraceEntry(programCounter: cast[uint](programCounter)))
+    for i in 0..<programCounters.len:
+      s.add(StackTraceEntry(programCounter: cast[uint](programCounters[i])))
 
   # We may have more stack trace lines in the output, due to inlined procedures.
   proc addDebuggingInfo*(s: seq[StackTraceEntry]): seq[StackTraceEntry] =
     var programCounters: seq[cuintptr_t]
     # We process program counters in groups from complete stack traces, because
     # we have logic that keeps track of certain functions being inlined or not.
-    for entry in s:
+    for i in 0..<s.len:
+      let entry = addr s[i]
       if entry.procname.isNil and entry.programCounter != 0:
         programCounters.add(cast[cuintptr_t](entry.programCounter))
       elif entry.procname.isNil and (entry.line == reraisedFromBegin or entry.line == reraisedFromEnd):
         result.add(stackTraceOverrideGetDebuggingInfo(programCounters, maxStackTraceLines))
         programCounters = @[]
-        result.add(entry)
+        result.add(entry[])
       else:
-        result.add(entry)
+        result.add(entry[])
     if programCounters.len > 0:
       result.add(stackTraceOverrideGetDebuggingInfo(programCounters, maxStackTraceLines))
