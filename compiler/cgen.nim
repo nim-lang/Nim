@@ -1467,6 +1467,8 @@ proc genProcPrototype(m: BModule, sym: PSym) =
           m.s[cfsProcHeaders].add(extract(header))
           m.s[cfsProcHeaders].finishProcHeaderAsProto()
 
+include inliner
+
 # TODO: figure out how to rename this - it DOES generate a forward declaration
 proc genProcNoForward(m: BModule, prc: PSym) =
   if lfImportCompilerProc in prc.loc.flags:
@@ -1505,16 +1507,22 @@ proc genProcNoForward(m: BModule, prc: PSym) =
       #if prc.loc.k == locNone:
       # mangle the inline proc based on the module where it is defined -
       # not on the first module that uses it
-      let m2 = if m.config.symbolFiles != disabledSf: m
-               else: findPendingModule(m, prc)
-      fillProcLoc(m2, prc.ast[namePos])
-      #elif {sfExportc, sfImportc} * prc.flags == {}:
-      #  # reset name to restore consistency in case of hashing collisions:
-      #  echo "resetting ", prc.id, " by ", m.module.name.s
-      #  prc.loc.snippet = nil
-      #  prc.loc.snippet = mangleName(m, prc)
-      genProcPrototype(m, prc)
-      genProcAux(m, prc)
+      if optCompress in m.config.globalOptions:
+        let prcCopy = copyInlineProc(prc, m.idgen)
+        fillProcLoc(m, prcCopy.ast[namePos])
+        genProcPrototype(m, prcCopy)
+        genProcAux(m, prcCopy)
+      else:
+        let m2 = if m.config.symbolFiles != disabledSf: m
+                else: findPendingModule(m, prc)
+        fillProcLoc(m2, prc.ast[namePos])
+        #elif {sfExportc, sfImportc} * prc.flags == {}:
+        #  # reset name to restore consistency in case of hashing collisions:
+        #  echo "resetting ", prc.id, " by ", m.module.name.s
+        #  prc.loc.snippet = nil
+        #  prc.loc.snippet = mangleName(m, prc)
+        genProcPrototype(m, prc)
+        genProcAux(m, prc)
   elif sfImportc notin prc.flags:
     var q = findPendingModule(m, prc)
     fillProcLoc(q, prc.ast[namePos])
