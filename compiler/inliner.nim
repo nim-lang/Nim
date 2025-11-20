@@ -47,22 +47,23 @@ proc copyInlineProcBody(n: PNode; locals: var Table[int, PSym]; idgen: IdGenerat
     result = shallowCopy(n)
     for i in 0..<n.len:
       result[i] = copyInlineProcBody(n[i], locals, idgen, owner)
-  
+
 proc copyParams(n: PNode; locals: var Table[int, PSym]; idgen: IdGenerator; owner: PSym): PNode =
   result = shallowCopy(n)
   result[0] = n[0] # return type
   for i in 1..<n.len:
     let it = n[i]
     assert it.kind == nkIdentDefs
-    assert it[0].kind == nkSym
-    let oldSym = it[0].sym
-    let newSym = copySym(oldSym, idgen)
-    setOwner(newSym, owner)
-    locals[oldSym.id] = newSym
     result[i] = shallowCopy(it)
-    result[i][0] = newSymNode(newSym, oldSym.info)
-    owner.typ.addParam newSym
-    for j in 1..<it.len:
+    for j in 0..<it.len-2:
+      assert it[j].kind == nkSym
+      let oldSym = it[j].sym
+      let newSym = copySym(oldSym, idgen)
+      setOwner(newSym, owner)
+      locals[oldSym.id] = newSym
+      result[i][j] = newSymNode(newSym, oldSym.info)
+      owner.typ.addParam newSym
+    for j in it.len-2..<it.len:
       result[i][j] = copyInlineProcBody(it[j], locals, idgen, owner)
 
 proc copyInlineProc(prc: PSym; idgen: IdGenerator): PSym =
