@@ -546,3 +546,42 @@ proc len[T](t: DummyIndexable[T]): int =
 
 let dummyIndexable = DummyIndexable(@[1, 2])
 echoAll(dummyIndexable)
+
+block:
+  type
+    C = concept
+      proc a(x: Self, i: int)
+    AObj[T] = object
+      x: T
+    ARef[T] = ref AObj[T]
+
+  proc a[T: int](x: ARef[T], i: int) =
+    discard
+
+  assert (ref AObj[int]) is C
+
+block:
+  type
+    C = concept
+      proc a(x: Self, i: int)
+    AObj[T; B] = object
+      x: T
+    ARef[T; B] = ref AObj[T,B]
+
+  proc a[T: int, C: float](x: ARef[T, C], i: int) =
+    discard
+
+  assert (ref AObj[int, int]) isnot C
+  assert (ref AObj[int, float]) is C
+
+block:
+  type
+    C = concept
+      proc a(x: Self, i: int)
+    AObj[T] = object
+    ARef[T] = ref AObj[T]
+
+  proc a(x: ARef, i: int) =
+    discard
+
+  assert (ref AObj[int]) is C
