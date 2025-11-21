@@ -2054,18 +2054,21 @@ proc genTypeInfo*(config: ConfigRef, m: BModule; t: PType; info: TLineInfo): Rop
   else:
     result = genTypeInfoV1(m, t, info)
 
+proc retrieveSym(n: PNode): PSym =
+  case n.kind
+  of nkPostfix: result = retrieveSym(n[1])
+  of nkPragmaExpr, nkTypeDef: result = retrieveSym(n[0])
+  of nkSym: result = n.sym
+  else: result = nil
+
 proc genTypeSection(m: BModule, n: PNode) =
   var intSet = initIntSet()
   let compress = optCompress in m.config.globalOptions
-  for i in 0..<n.len:
-    if len(n[i]) == 0: continue
-    if n[i][0].kind != nkPragmaExpr: continue
-    for p in 0..<n[i][0].len:
-      if (n[i][0][p].kind notin {nkSym, nkPostfix}): continue
-      var s = n[i][0][p]
-      if s.kind == nkPostfix:
-        s = n[i][0][p][1]
-      if {sfExportc, sfCompilerProc} * s.sym.flags == {sfExportc} or compress:
-        discard getTypeDescAux(m, s.typ, intSet, descKindFromSymKind(s.sym.kind))
-        if m.g.generatedHeader != nil:
-          discard getTypeDescAux(m.g.generatedHeader, s.typ, intSet, descKindFromSymKind(s.sym.kind))
+  for typedef in n:
+    let s = retrieveSym(typedef)
+    if s != nil and ({sfExportc, sfCompilerProc} * s.flags == {sfExportc} or compress) and s.typ != nil and
+        not containsGenericType(s.typ) and
+        s.typ.kind notin {tyVoid, tyNot, tyAnything, tyOr, tyAnd, tyUntyped, tyTyped, tyNone, tyNil, tySink}:
+      discard getTypeDescAux(m, s.typ, intSet, descKindFromSymKind(s.kind))
+      if m.g.generatedHeader != nil:
+        discard getTypeDescAux(m.g.generatedHeader, s.typ, intSet, descKindFromSymKind(s.kind))

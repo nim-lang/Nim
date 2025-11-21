@@ -2264,6 +2264,37 @@ when not defined(js) and declared(alloc0) and declared(dealloc):
       inc(i)
     dealloc(a)
 
+when notJSnotNims and hostOS != "standalone":
+  proc getCurrentException*(): ref Exception {.compilerRtl, inl, benign.} =
+    ## Retrieves the current exception; if there is none, `nil` is returned.
+    result = currException
+
+  proc nimBorrowCurrentException(): ref Exception {.compilerRtl, inl, benign, nodestroy.} =
+    # .nodestroy here so that we do not produce a write barrier as the
+    # C codegen only uses it in a borrowed way:
+    result = currException
+
+  proc getCurrentExceptionMsg*(): string {.inline, benign.} =
+    ## Retrieves the error message that was attached to the current
+    ## exception; if there is none, `""` is returned.
+    return if currException == nil: "" else: currException.msg
+
+  proc setCurrentException*(exc: ref Exception) {.inline, benign.} =
+    ## Sets the current exception.
+    ##
+    ## .. warning:: Only use this if you know what you are doing.
+    currException = exc
+
+  proc raiseDefect() {.compilerRtl.} =
+    let e = getCurrentException()
+    if e of Defect:
+      reportUnhandledError(e)
+      rawQuit(1)
+
+elif defined(nimscript):
+  proc getCurrentException*(): ref Exception {.compilerRtl.} = discard
+  proc raiseDefect*() {.compilerRtl.} = discard
+
 when not defined(js):
   when hasThreadSupport:
     when hostOS != "standalone":
@@ -2348,37 +2379,6 @@ when notJSnotNims and hasThreadSupport and hostOS != "standalone":
   when not defined(nimPreviewSlimSystem):
     include "system/channels_builtin"
 
-
-when notJSnotNims and hostOS != "standalone":
-  proc getCurrentException*(): ref Exception {.compilerRtl, inl, benign.} =
-    ## Retrieves the current exception; if there is none, `nil` is returned.
-    result = currException
-
-  proc nimBorrowCurrentException(): ref Exception {.compilerRtl, inl, benign, nodestroy.} =
-    # .nodestroy here so that we do not produce a write barrier as the
-    # C codegen only uses it in a borrowed way:
-    result = currException
-
-  proc getCurrentExceptionMsg*(): string {.inline, benign.} =
-    ## Retrieves the error message that was attached to the current
-    ## exception; if there is none, `""` is returned.
-    return if currException == nil: "" else: currException.msg
-
-  proc setCurrentException*(exc: ref Exception) {.inline, benign.} =
-    ## Sets the current exception.
-    ##
-    ## .. warning:: Only use this if you know what you are doing.
-    currException = exc
-
-  proc raiseDefect() {.compilerRtl.} =
-    let e = getCurrentException()
-    if e of Defect:
-      reportUnhandledError(e)
-      rawQuit(1)
-
-elif defined(nimscript):
-  proc getCurrentException*(): ref Exception {.compilerRtl.} = discard
-  proc raiseDefect*() {.compilerRtl.} = discard
 
 when notJSnotNims:
   {.push stackTrace: off, profiler: off.}
