@@ -1,4 +1,18 @@
 
+proc copySymdef(n: PNode; locals: var Table[int, PSym]; idgen: IdGenerator; owner: PSym): PNode =
+  case n.kind
+  of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit:
+    result = n
+  of nkSym:
+    let oldSym = n.sym
+    let newSym = copySym(oldSym, idgen)
+    setOwner(newSym, owner)
+    locals[oldSym.id] = newSym
+    result = newSymNode(newSym, oldSym.info)
+  else:
+    result = shallowCopy(n)
+    for i in 0..<n.len:
+      result[i] = copySymdef(n[i], locals, idgen, owner)
 
 proc copyInlineProcBody(n: PNode; locals: var Table[int, PSym]; idgen: IdGenerator; owner: PSym): PNode =
   case n.kind
@@ -10,24 +24,18 @@ proc copyInlineProcBody(n: PNode; locals: var Table[int, PSym]; idgen: IdGenerat
       result = newSymNode(sym, n.info)
     else:
       result = n
-  of nkLetSection, nkVarSection, nkConstSection:
+  of nkLetSection, nkVarSection:
     result = shallowCopy(n)
     for i in 0..<n.len:
       let it = n[i]
       if it.kind == nkCommentStmt:
         result[i] = it
-      elif it.kind == nkIdentDefs:
-        if it[0].kind == nkSym:
-          let oldSym = it[0].sym
-          let newSym = copySym(oldSym, idgen)
-          setOwner(newSym, owner)
-          locals[oldSym.id] = newSym
-          result[i] = shallowCopy(it)
-          result[i][0] = newSymNode(newSym, oldSym.info)
-          for j in 1..<it.len:
-            result[i][j] = copyInlineProcBody(it[j], locals, idgen, owner)
-        else:
-          result[i] = it
+      elif it.kind in {nkIdentDefs, nkConstDef}:
+        result[i] = shallowCopy(it)
+        for j in 0..<it.len-2:
+          result[i][j] = copySymdef(it[j], locals, idgen, owner)
+        for j in it.len-2..<it.len:
+          result[i][j] = copyInlineProcBody(it[j], locals, idgen, owner)
       else:
         assert it.kind == nkVarTuple
         result[i] = shallowCopy(it)
@@ -41,7 +49,18 @@ proc copyInlineProcBody(n: PNode; locals: var Table[int, PSym]; idgen: IdGenerat
         for j in it.len-2..<it.len:
           result[i][j] = copyInlineProcBody(it[j], locals, idgen, owner)
 
-  of routineDefs, nkTypeSection, nkTypeOfExpr, nkMixinStmt, nkBindStmt:
+  of nkForStmt, nkParForStmt:
+    result = shallowCopy(n)
+    for i in 0..<n.len-2:
+      assert n[i].kind == nkSym
+      let oldSym = n[i].sym
+      let newSym = copySym(oldSym, idgen)
+      setOwner(newSym, owner)
+      locals[oldSym.id] = newSym
+      result[i] = newSymNode(newSym, oldSym.info)
+    result[n.len-2] = copyInlineProcBody(n[n.len-2], locals, idgen, owner)
+    result[n.len-1] = copyInlineProcBody(n[n.len-1], locals, idgen, owner)
+  of routineDefs, nkTypeSection, nkTypeOfExpr, nkMixinStmt, nkBindStmt, nkConstSection:
     result = n
   else:
     result = shallowCopy(n)
@@ -82,12 +101,22 @@ proc copyInlineProc(prc: PSym; idgen: IdGenerator): PSym =
   result.typ.n = newNodeI(prc.typ.n.kind, prc.typ.n.info)
   if prc.typ.n.len > 0:
     result.typ.n.add copyNode(prc.typ.n[0])
+    for i in 1..<prc.typ.n.len:
+      let it = prc.typ.n[i]
+      assert it.kind == nkSym
+      let oldSym = it.sym
+      let newSym = copySym(oldSym, idgen)
+      setOwner(newSym, result)
+      locals[oldSym.id] = newSym
+      result.typ.addParam newSym
 
   for i in 0..<prc.ast.len:
     if i == paramsPos:
-      a[i] = copyParams(prc.ast[i], locals, idgen, result)
+      a[i] = copyTree(prc.ast[i])
     elif i == resultPos and prc.ast[i].kind == nkSym:
       discard "handled above"
     else:
       a[i] = copyInlineProcBody(prc.ast[i], locals, idgen, result)
   result.ast = a
+
+  #echo "Produced: ", renderTree(result.ast, {renderIds})

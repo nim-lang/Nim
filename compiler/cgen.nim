@@ -1507,7 +1507,7 @@ proc genProcNoForward(m: BModule, prc: PSym) =
       #if prc.loc.k == locNone:
       # mangle the inline proc based on the module where it is defined -
       # not on the first module that uses it
-      if optCompress in m.config.globalOptions:
+      if m.module.itemId.module != prc.itemId.module and optCompress in m.config.globalOptions:
         let prcCopy = copyInlineProc(prc, m.idgen)
         fillProcLoc(m, prcCopy.ast[namePos])
         genProcPrototype(m, prcCopy)
