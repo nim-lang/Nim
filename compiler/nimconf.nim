@@ -297,23 +297,23 @@ proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef; idgen: 
 
   let pd = if not conf.projectPath.isEmpty: conf.projectPath else: AbsoluteDir(getCurrentDir())
   if optSkipParentConfigFiles notin conf.globalOptions and not configEnablesSkipParent(conf, cache, pd / cfg):
-    var parentDirsSeq: seq[AbsoluteDir] = @[]
+    var parentDirs: seq[tuple[path: AbsoluteDir, hasNs: bool]] = @[]
     for dir in parentDirs(pd.string, inclusive=false):
-      let
-        adir = AbsoluteDir(dir)
-        cfgPath = adir / cfg
-      if not fileExists(cfgPath):
+      var thisReg = (path: AbsoluteDir(dir), hasNs: false)
+      let cfgPath = thisReg.path / cfg
+      if cfg == DefaultConfig:
+        thisReg.hasNs = fileExists(thisReg.path / DefaultConfigNims)
+      if not (thisReg.hasNs or fileExists(cfgPath)):
         continue
-      parentDirsSeq.add adir
+      parentDirs.add thisReg
       if configEnablesSkipParent(conf, cache, cfgPath):
         break
     
-    for i in countdown(parentDirsSeq.len - 1, 0):
-      let parentDir = parentDirsSeq[i]
-      readConfigFile(parentDir / cfg)
-
-      if cfg == DefaultConfig:
-        runNimScriptIfExists(parentDir / DefaultConfigNims)
+    for i in countdown(parentDirs.len - 1, 0):
+      let thisReg = parentDirs[i]
+      readConfigFile(thisReg.path / cfg)
+      if thisReg.hasNs:
+        runNimScriptIfExists(thisReg.path / DefaultConfigNims)
 
   if optSkipProjConfigFile notin conf.globalOptions:
     readConfigFile(pd / cfg)
