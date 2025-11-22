@@ -631,6 +631,10 @@ proc pathRelativeToConfig(arg: string, pass: TCmdLinePass, conf: ConfigRef): str
 
 proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
                     conf: ConfigRef) =
+  if conf.skipParentDetectionMode:
+    if switch.normalize == "skipparentcfg":
+      processOnOffSwitchG(conf, {optSkipParentConfigFiles}, arg, pass, info)
+    return
   var key = ""
   var val = ""
   case switch.normalize

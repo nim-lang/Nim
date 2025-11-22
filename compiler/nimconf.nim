@@ -128,8 +128,9 @@ proc parseDirective(L: var Lexer, tok: var Token; config: ConfigRef; condStack: 
   of wEnd: doEnd(L, tok, condStack)
   of wWrite:
     ppGetTok(L, tok)
-    msgs.msgWriteln(config, strtabs.`%`($tok, config.configVars,
-                                {useEnvironment, useKey}))
+    if not config.skipParentDetectionMode:
+      msgs.msgWriteln(config, strtabs.`%`($tok, config.configVars,
+                                  {useEnvironment, useKey}))
     ppGetTok(L, tok)
   else:
     case tok.ident.s.normalize
@@ -137,19 +138,22 @@ proc parseDirective(L: var Lexer, tok: var Token; config: ConfigRef; condStack: 
       ppGetTok(L, tok)
       var key = $tok
       ppGetTok(L, tok)
-      os.putEnv(key, $tok)
+      if not config.skipParentDetectionMode:
+        os.putEnv(key, $tok)
       ppGetTok(L, tok)
     of "prependenv":
       ppGetTok(L, tok)
       var key = $tok
       ppGetTok(L, tok)
-      os.putEnv(key, $tok & os.getEnv(key))
+      if not config.skipParentDetectionMode:
+        os.putEnv(key, $tok & os.getEnv(key))
       ppGetTok(L, tok)
     of "appendenv":
       ppGetTok(L, tok)
       var key = $tok
       ppGetTok(L, tok)
-      os.putEnv(key, os.getEnv(key) & $tok)
+      if not config.skipParentDetectionMode:
+        os.putEnv(key, os.getEnv(key) & $tok)
       ppGetTok(L, tok)
     else:
       lexMessage(L, errGenerated, "invalid directive: '$1'" % $tok)
@@ -244,6 +248,21 @@ proc getSystemConfigPath*(conf: ConfigRef; filename: RelativeFile): AbsoluteFile
     if not fileExists(result): result = p / RelativeDir"etc/nim" / filename
     if not fileExists(result): result = AbsoluteDir"/etc/nim" / filename
 
+proc configEnablesSkipParent(conf: ConfigRef; cache: IdentCache;
+                             cfgPath: AbsoluteFile): bool =
+  let prevMode = conf.skipParentDetectionMode
+  let prevSkip = optSkipParentConfigFiles in conf.globalOptions
+  conf.skipParentDetectionMode = true
+  try:
+    result = readConfigFile(cfgPath, cache, conf) and
+             optSkipParentConfigFiles in conf.globalOptions
+  finally:
+    conf.skipParentDetectionMode = prevMode
+    if prevSkip:
+      incl(conf.globalOptions, optSkipParentConfigFiles)
+    else:
+      excl(conf.globalOptions, optSkipParentConfigFiles)
+
 proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef; idgen: IdGenerator) =
   setDefaultLibpath(conf)
   template readConfigFile(path) =
@@ -277,12 +296,24 @@ proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef; idgen: 
       runNimScriptIfExists(getUserConfigPath(DefaultConfigNims))
 
   let pd = if not conf.projectPath.isEmpty: conf.projectPath else: AbsoluteDir(getCurrentDir())
-  if optSkipParentConfigFiles notin conf.globalOptions:
-    for dir in parentDirs(pd.string, fromRoot=true, inclusive=false):
-      readConfigFile(AbsoluteDir(dir) / cfg)
+  if optSkipParentConfigFiles notin conf.globalOptions and not configEnablesSkipParent(conf, cache, pd / cfg):
+    var parentDirsSeq: seq[AbsoluteDir] = @[]
+    for dir in parentDirs(pd.string, inclusive=false):
+      let
+        adir = AbsoluteDir(dir)
+        cfgPath = adir / cfg
+      if not fileExists(cfgPath):
+        continue
+      parentDirsSeq.add adir
+      if configEnablesSkipParent(conf, cache, cfgPath):
+        break
+    
+    for i in countdown(parentDirsSeq.len - 1, 0):
+      let parentDir = parentDirsSeq[i]
+      readConfigFile(parentDir / cfg)
 
       if cfg == DefaultConfig:
-        runNimScriptIfExists(AbsoluteDir(dir) / DefaultConfigNims)
+        runNimScriptIfExists(parentDir / DefaultConfigNims)
 
   if optSkipProjConfigFile notin conf.globalOptions:
     readConfigFile(pd / cfg)
