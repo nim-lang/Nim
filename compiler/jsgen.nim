@@ -1375,7 +1375,8 @@ proc genFieldAddr(p: PProc, n: PNode, r: var TCompRes) =
   r.typ = etyBaseIndex
   let b = if n.kind == nkHiddenAddr: n[0] else: n
   gen(p, b[0], a)
-  if skipTypes(b[0].typ, abstractVarRange).kind == tyTuple:
+  if skipTypes(b[0].typ, abstractVarRange + tyTypeClasses).kind == tyTuple:
+    # ref #25227 about `+ tyTypeClasses`
     r.res = makeJSString("Field" & $getFieldPosition(p, b[1]))
   else:
     if b[1].kind != nkSym: internalError(p.config, b[1].info, "genFieldAddr")
