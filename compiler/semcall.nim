@@ -141,13 +141,17 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
   # starts at 1 because 0 is already done with setup, only needs checking
   var nextSymIndex = 1
   var z: TCandidate # current candidate
+  let overloadScope = c.currentScope
+  
+  c.openShadowScope
+  
   while true:
     determineType(c, sym)
     z = initCandidate(c, sym, initialBinding, scope, diagnosticsFlag)
     # this is kinda backwards as without a check here the described
     # problems in recalc would not happen, but instead it 100%
     # does check forever in some cases
-    if c.currentScope.symbols.counter == symCount:
+    if overloadScope.symbols.counter == symCount:
       # may introduce new symbols with caveats described in recalc branch
       matches(c, n, orig, z)
 
@@ -202,7 +206,7 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
           let arg = n[a]
           addTypeBoundSymbols(c.graph, arg.typ, name, filter, symMarker, syms)
       # reset counter because syms may be in a new order
-      symCount = c.currentScope.symbols.counter
+      symCount = overloadScope.symbols.counter
       nextSymIndex = 0
 
       # just in case, should be impossible though
@@ -217,7 +221,10 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
     sym = syms[nextSymIndex].s
     scope = syms[nextSymIndex].scope
     inc(nextSymIndex)
-
+  if best.state == csMatch and not (best.calleeSym != nil and best.calleeSym.kind in {skTemplate, skMacro}):
+    c.mergeShadowScope
+  else:
+    c.closeShadowScope
 
 proc effectProblem(f, a: PType; result: var string; c: PContext) =
   if f.kind == tyProc and a.kind == tyProc:

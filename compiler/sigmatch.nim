@@ -2834,9 +2834,7 @@ proc findFirstArgBlock(m: var TCandidate, n: PNode): int =
     else: break
 
 proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var IntSet) =
-
   template noMatch() =
-    c.mergeShadowScope #merge so that we don't have to resem for later overloads
     m.state = csNoMatch
     m.firstMismatch.arg = a
     m.firstMismatch.formal = formal
@@ -2875,8 +2873,6 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
     container: PNode = nil # constructed container
   let firstArgBlock = findFirstArgBlock(m, n)
   while a < n.len:
-    c.openShadowScope
-
     if a >= formalLen-1 and f < formalLen and m.callee.n[f].typ.isVarargsUntyped:
       formal = m.callee.n[f].sym
       incl(marker, formal.position)
@@ -3039,11 +3035,6 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
               typeToString(n[a].typ), typeToString(formal.typ) ])
             noMatch()
         checkConstraint(n[a])
-
-    if m.state == csMatch and not (m.calleeSym != nil and m.calleeSym.kind in {skTemplate, skMacro}):
-      c.mergeShadowScope
-    else:
-      c.closeShadowScope
 
     inc a
   # for some edge cases (see tdont_return_unowned_from_owned test case)
