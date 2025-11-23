@@ -5,7 +5,7 @@ const useLibC = not defined(nimNoLibc)
 when useLibC:
   import ansi_c
 
-proc nimCopyMem*(dest, source: pointer, size: Natural) {.nonReloadable, compilerproc, inline.} =
+proc nimCopyMem*(dest, source: pointer, size: Natural) {.nonReloadable, compilerproc, inline, enforceNoRaises.} =
   when useLibC:
     c_memcpy(dest, source, cast[csize_t](size))
   else:
@@ -16,7 +16,7 @@ proc nimCopyMem*(dest, source: pointer, size: Natural) {.nonReloadable, compiler
       d[i] = s[i]
       inc i
 
-proc nimSetMem*(a: pointer, v: cint, size: Natural) {.nonReloadable, inline.} =
+proc nimSetMem*(a: pointer, v: cint, size: Natural) {.nonReloadable, inline, enforceNoRaises.} =
   when useLibC:
     c_memset(a, v, cast[csize_t](size))
   else:
@@ -27,10 +27,10 @@ proc nimSetMem*(a: pointer, v: cint, size: Natural) {.nonReloadable, inline.} =
       a[i] = v
       inc i
 
-proc nimZeroMem*(p: pointer, size: Natural) {.compilerproc, nonReloadable, inline.} =
+proc nimZeroMem*(p: pointer, size: Natural) {.compilerproc, nonReloadable, inline, enforceNoRaises.} =
   nimSetMem(p, 0, size)
 
-proc nimCmpMem*(a, b: pointer, size: Natural): cint {.compilerproc, nonReloadable, inline.} =
+proc nimCmpMem*(a, b: pointer, size: Natural): cint {.compilerproc, nonReloadable, inline, enforceNoRaises.} =
   when useLibC:
     c_memcmp(a, b, cast[csize_t](size))
   else:
@@ -42,7 +42,7 @@ proc nimCmpMem*(a, b: pointer, size: Natural): cint {.compilerproc, nonReloadabl
       if d != 0: return d
       inc i
 
-proc nimCStrLen*(a: cstring): int {.compilerproc, nonReloadable, inline.} =
+proc nimCStrLen*(a: cstring): int {.compilerproc, nonReloadable, inline, enforceNoRaises.} =
   if a.isNil: return 0
   when useLibC:
     cast[int](c_strlen(a))

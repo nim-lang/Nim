@@ -4,8 +4,8 @@ discard """
 t24974.nim(22)           t24974
 t24974.nim(19)           d
 t24974.nim(16)           s
-assertions.nim(41)       failedAssertImpl
-assertions.nim(36)       raiseAssert
+assertions.nim(45)       failedAssertImpl
+assertions.nim(40)       raiseAssert
 fatal.nim(53)            sysFatal
 Error: unhandled exception: t24974.nim(16, 26) `false`  [AssertionDefect]
 '''
