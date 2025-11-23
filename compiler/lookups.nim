@@ -15,7 +15,8 @@ when defined(nimPreviewSlimSystem):
 
 import
   ast, astalgo, idents, semdata, types, msgs, options,
-  renderer, lineinfos, modulegraphs, astmsgs, wordrecg
+  renderer, lineinfos, modulegraphs, astmsgs, wordrecg,
+  suggest_imports
 
 import std/[intsets, sets]
 
@@ -627,6 +628,27 @@ proc ambiguousIdentifierMsg*(choices: PNode, indent = 0): string =
 proc errorUseQualifier*(c: PContext; info:TLineInfo; choices: PNode) =
   localError(c.config, info, errGenerated, ambiguousIdentifierMsg(choices))
 
+proc suggestImportFor(c: PContext, name: string): string =
+  ## Check if the identifier exists in the import suggestions table
+  ## and return a helpful import suggestion message
+  result = ""
+
+  if name in importSuggestions:
+    let modules = importSuggestions[name]
+    if modules.len > 0:
+      # For now, suggest the first module (we could be smarter about this)
+      let moduleName = modules[0]
+      result = "\nhelp: '$1' is available in '$2'\n      add: import $2" % [name, moduleName]
+
+      # If there are multiple modules, mention them
+      if modules.len > 1:
+        result.add "\n      also available in: "
+        for i in 1..<min(modules.len, 4):  # Show up to 3 additional modules
+          if i > 1: result.add ", "
+          result.add modules[i]
+        if modules.len > 4:
+          result.add " (and " & $(modules.len - 4) & " more)"
+
 proc errorUndeclaredIdentifier*(c: PContext; info: TLineInfo; name: string, extra = "") =
   var err: string
   var hadCircularDep = false
@@ -640,6 +662,12 @@ proc errorUndeclaredIdentifier*(c: PContext; info: TLineInfo; name: string, extr
       err.add "; if declared in a template, this identifier may be inconsistently marked inject or gensym"
     if extra.len != 0:
       err.add extra
+
+    # Add import suggestion if available
+    let importSuggestion = suggestImportFor(c, name)
+    if importSuggestion.len > 0:
+      err.add importSuggestion
+
     if c.recursiveDep.len > 0:
       hadCircularDep = true
       circularDepMsg = c.recursiveDep
