@@ -91,7 +91,7 @@ proc shouldIncludeModule(path: string): bool =
 
   return true
 
-proc generateSuggestions() =
+proc generateSuggestions*() =
   echo "Initializing Nim compiler API..."
   let graph = setupCompilerForScanning()
 
@@ -172,6 +172,3 @@ const importSuggestions* = {
   let fileSize = getFileSize("compiler/suggest_imports.nim")
   echo "Done! Generated compiler/suggest_imports.nim"
   echo "  File size: ", (fileSize div 1024), " KB"
-
-when isMainModule:
-  generateSuggestions()

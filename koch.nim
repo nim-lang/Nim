@@ -84,8 +84,8 @@ Possible Commands:
   atlas                    builds the Atlas tool
   checksums                installs the checksums dependency
   fusion                   installs fusion via Nimble
-  genImportSuggestions     generates import suggestions for error messages
-                           (automatically run during boot)
+  genImportSuggestions     regenerates import suggestions table (manual only;
+                           uses compiler API to scan stdlib)
 
 Boot options:
   -d:release               produce a release version of the compiler
@@ -402,13 +402,14 @@ proc boot(args: string, skipIntegrityCheck: bool) =
     if not skipIntegrityCheck:
       echo "[Warning] executables are still not equal"
 
-  # Generate import suggestions after successful boot
-  genImportSuggestions()
-
 # -------------- import suggestions -------------------------------------------
 
 proc genImportSuggestions() =
+  ## Regenerates the import suggestions table by scanning the standard library.
+  ## This is a manual command - the curated list in compiler/suggest_imports.nim
+  ## is usually sufficient and doesn't need regeneration.
   echo "Generating import suggestions..."
+  echo "Note: This uses the compiler API and may take a while..."
   exec(("bin" / "nim".exe) & " c -r --path:. tools/gen_import_suggestions.nim")
 
 # -------------- clean --------------------------------------------------------
