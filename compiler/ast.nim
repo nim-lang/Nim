@@ -852,13 +852,29 @@ proc genericHead*(n: PType): PType {.inline.} =
   if n.state == Partial: loadType(n)
   n.sonsImpl[0]
 
+type
+  SkipTypesCache = Table[(ItemId, TTypeKinds), PType]
+
+var
+  skipTypesCache {.threadvar.}: SkipTypesCache
+
 proc skipTypes*(t: PType, kinds: TTypeKinds): PType =
   ## Used throughout the compiler code to test whether a type tree contains or
   ## doesn't contain a specific type/types - it is often the case that only the
   ## last child nodes of a type tree need to be searched. This is a really hot
   ## path within the compiler!
+
+  # Check cache first
+  let key = (t.itemId, kinds)
+  if skipTypesCache.hasKey(key):
+    return skipTypesCache[key]
+
+  # Compute result
   result = t
   while result.kind in kinds: result = last(result)
+
+  # Store in cache
+  skipTypesCache[key] = result
 
 proc newIntTypeNode*(intVal: BiggestInt, typ: PType): PNode =
   let kind = skipTypes(typ, abstractVarRange).kind
