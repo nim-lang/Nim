@@ -16,6 +16,11 @@ proc setupCompilerForScanning(): ModuleGraph =
   conf.libpath = AbsoluteDir(nimRoot / "lib")
   conf.prefixDir = AbsoluteDir(nimRoot)
 
+  # Set a dummy project file to avoid package errors
+  conf.projectFull = AbsoluteFile(nimRoot / "dummy.nim")
+  conf.projectPath = AbsoluteDir(nimRoot)
+  conf.projectName = "dummy"
+
   # Minimize output
   conf.errorMax = 0
   conf.verbosity = 0
@@ -31,7 +36,7 @@ proc setupCompilerForScanning(): ModuleGraph =
   let systemFileIdx = fileInfoIdx(conf, conf.libpath / RelativeFile("system.nim"))
   discard result.compileModule(systemFileIdx, {sfSystemModule})
 
-proc extractExportedSymbols(graph: ModuleGraph, moduleFile: AbsoluteFile): seq[string] =
+proc extractExportedSymbols(graph: ModuleGraph, moduleFile: AbsoluteFile, modulePath: string): seq[string] =
   result = @[]
 
   try:
@@ -40,6 +45,8 @@ proc extractExportedSymbols(graph: ModuleGraph, moduleFile: AbsoluteFile): seq[s
     let moduleSym = graph.compileModule(fileIdx, {})
 
     if moduleSym.isNil:
+      when defined(debugSuggestions):
+        echo "  Skipped (nil module): ", modulePath
       return
 
     # Iterate through module's exported symbols using modulegraphs.allSyms
@@ -58,9 +65,10 @@ proc extractExportedSymbols(graph: ModuleGraph, moduleFile: AbsoluteFile): seq[s
 
       result.add name
 
-  except CatchableError:
+  except CatchableError as e:
     # Module failed to compile - skip it
-    discard
+    when defined(debugSuggestions):
+      echo "  Skipped (error): ", modulePath, " - ", e.msg
 
 proc getModulePath(filePath: string): string =
   # Convert "lib/std/os.nim" -> "std/os"
@@ -114,7 +122,7 @@ proc generateSuggestions*() =
     if moduleCount mod 20 == 0:
       echo "  Processed ", moduleCount, " modules..."
 
-    let symbols = extractExportedSymbols(graph, absPath)
+    let symbols = extractExportedSymbols(graph, absPath, modulePath)
 
     for symName in symbols:
       inc totalSymbols
@@ -172,3 +180,6 @@ const importSuggestions* = {
   let fileSize = getFileSize("compiler/suggest_imports.nim")
   echo "Done! Generated compiler/suggest_imports.nim"
   echo "  File size: ", (fileSize div 1024), " KB"
+
+when isMainModule:
+  generateSuggestions()
