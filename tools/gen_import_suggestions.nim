@@ -2,73 +2,84 @@
 # Run from Nim repo root: nim c -r tools/gen_import_suggestions.nim
 
 import std/[os, strutils, tables, sets, algorithm, sequtils]
-import compiler/[ast, idents, modules, passes, options,
-                 modulegraphs, lineinfos, pathutils, condsyms,
-                 sem, vmdef, modulepaths, msgs]
+import compiler/[ast, idents, options, lineinfos, pathutils,
+                 llstream, parser, lexer, msgs]
 
-proc setupCompilerForScanning(): ModuleGraph =
-  # Initialize compiler configuration
-  let cache = newIdentCache()
-  let conf = newConfigRef()
-
-  # Set up paths
-  let nimRoot = getCurrentDir()
-  conf.libpath = AbsoluteDir(nimRoot / "lib")
-  conf.prefixDir = AbsoluteDir(nimRoot)
-
-  # Set a dummy project file to avoid package errors
-  conf.projectFull = AbsoluteFile(nimRoot / "dummy.nim")
-  conf.projectPath = AbsoluteDir(nimRoot)
-  conf.projectName = "dummy"
-
-  # Minimize output
-  conf.errorMax = 0
-  conf.verbosity = 0
-  conf.notes = {}
-  conf.mainPackageNotes = {}
-  conf.foreignPackageNotes = {}
-
-  # Create module graph
-  result = newModuleGraph(cache, conf)
-  initDefines(conf.symbols)
-
-  # Load system module first (required for proper initialization)
-  let systemFileIdx = fileInfoIdx(conf, conf.libpath / RelativeFile("system.nim"))
-  discard result.compileModule(systemFileIdx, {sfSystemModule})
-
-proc extractExportedSymbols(graph: ModuleGraph, moduleFile: AbsoluteFile, modulePath: string): seq[string] =
+proc extractExportedSymbols(moduleFile: AbsoluteFile, modulePath: string, cache: IdentCache, config: ConfigRef): seq[string] =
+  ## Parse a module file and extract exported symbols from the AST
   result = @[]
 
   try:
-    # Load and compile module
-    let fileIdx = fileInfoIdx(graph.config, moduleFile)
-    let moduleSym = graph.compileModule(fileIdx, {})
-
-    if moduleSym.isNil:
+    let fileIdx = fileInfoIdx(config, moduleFile)
+    var stream = llStreamOpen(moduleFile, fmRead)
+    if stream == nil:
       when defined(debugSuggestions):
-        echo "  Skipped (nil module): ", modulePath
+        echo "  Skipped (cannot open): ", modulePath
       return
 
-    # Iterate through module's exported symbols using modulegraphs.allSyms
-    for s in modulegraphs.allSyms(graph, moduleSym):
-      if s.isNil: continue
+    var parser: Parser
+    parser.lex.errorHandler = proc(conf: ConfigRef; info: TLineInfo; msg: TMsgKind; arg: string) =
+      # Silently ignore parse errors
+      discard
 
-      # Skip certain kinds
-      if s.kind in {skModule, skPackage, skUnknown, skStub, skEnumField}:
-        continue
+    openParser(parser, fileIdx, stream, cache, config)
 
-      # Skip compiler magic/internal stuff
-      let name = s.name.s
-      if name.len == 0: continue
-      if name.startsWith("internal"): continue
-      if name.startsWith("`"): continue  # Skip operators for now
+    # Parse the module
+    let moduleNode = parseAll(parser)
+    closeParser(parser)
 
-      result.add name
+    # Walk the AST looking for exported symbols
+    proc walkNode(n: PNode, symbols: var seq[string]) =
+      if n == nil: return
+
+      try:
+        case n.kind
+        of nkProcDef, nkFuncDef, nkMethodDef, nkConverterDef, nkIteratorDef:
+          # Check if it has the * export marker
+          if n.len > 0 and n[0].kind == nkPostfix:
+            let name = n[0][1]
+            if name.kind == nkIdent:
+              let identName = name.ident.s
+              if identName.len > 0 and not identName.startsWith("internal") and not identName.startsWith("`"):
+                symbols.add identName
+
+        of nkTypeDef:
+          # Type definitions: check for export marker
+          if n.len > 0 and n[0].kind == nkPostfix:
+            let name = n[0][1]
+            if name.kind == nkIdent:
+              let identName = name.ident.s
+              if identName.len > 0 and not identName.startsWith("internal"):
+                symbols.add identName
+
+        of nkConstDef, nkLetSection, nkVarSection:
+          # Constants and variables with export marker
+          for i in 0..<n.len:
+            if n[i].kind == nkIdentDefs and n[i].len > 0:
+              let nameNode = n[i][0]
+              if nameNode.kind == nkPostfix:
+                let name = nameNode[1]
+                if name.kind == nkIdent:
+                  let identName = name.ident.s
+                  if identName.len > 0 and not identName.startsWith("internal"):
+                    symbols.add identName
+
+        else: discard
+
+        # Recursively walk children (safely)
+        if n.len > 0:
+          for i in 0..<n.len:
+            walkNode(n[i], symbols)
+      except FieldDefect:
+        # Some node kinds don't support .len, just skip them
+        discard
+
+    walkNode(moduleNode, result)
 
   except CatchableError as e:
-    # Module failed to compile - skip it
+    # Module failed to parse - skip it
     when defined(debugSuggestions):
-      echo "  Skipped (error): ", modulePath, " - ", e.msg
+      echo "  Skipped (parse error): ", modulePath, " - ", e.msg
 
 proc getModulePath(filePath: string): string =
   # Convert "lib/std/os.nim" -> "std/os"
@@ -100,8 +111,14 @@ proc shouldIncludeModule(path: string): bool =
   return true
 
 proc generateSuggestions*() =
-  echo "Initializing Nim compiler API..."
-  let graph = setupCompilerForScanning()
+  echo "Initializing..."
+  let cache = newIdentCache()
+  let config = newConfigRef()
+
+  # Minimal config setup
+  let nimRoot = getCurrentDir()
+  config.libpath = AbsoluteDir(nimRoot / "lib")
+  config.prefixDir = AbsoluteDir(nimRoot)
 
   echo "Scanning lib/ directory..."
   let libPath = getCurrentDir() / "lib"
@@ -122,7 +139,7 @@ proc generateSuggestions*() =
     if moduleCount mod 20 == 0:
       echo "  Processed ", moduleCount, " modules..."
 
-    let symbols = extractExportedSymbols(graph, absPath, modulePath)
+    let symbols = extractExportedSymbols(absPath, modulePath, cache, config)
 
     for symName in symbols:
       inc totalSymbols
