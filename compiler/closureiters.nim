@@ -174,11 +174,13 @@ type
     tempVarId: int # unique name counter
     hasExceptions: bool # Does closure have yield in try?
     curExcLandingState: PNode
-    curExceptLevel: int
     curFinallyLevel: int
     idgen: IdGenerator
     varStates: Table[ItemId, int] # Used to detect if local variable belongs to multiple states
     finallyPathLen: PNode # int literal
+
+    nullifyCurExc: PNode # Empty node, if no yields in tries
+    restoreExternExc: PNode # Empty node, id no yields in tries
 
 const
   nkSkip = {nkEmpty..nkNilLit, nkTemplateDef, nkTypeSection, nkStaticStmt,
@@ -311,7 +313,7 @@ proc hasYields(n: PNode): bool =
         break
 
 proc newNullifyCurExc(ctx: var Ctx, info: TLineInfo): PNode =
-  # :curEcx = nil
+  # :curExc = nil
   let curExc = ctx.newCurExcAccess()
   curExc.info = info
   let nilnode = newNodeIT(nkNilLit, info, getSysType(ctx.g, info, tyNil))
@@ -862,7 +864,7 @@ proc newEndFinallyNode(ctx: var Ctx, info: TLineInfo): PNode =
   retStmt.flags.incl(nfNoRewrite)
 
   let ifBody = newTree(nkIfStmt,
-                       newTree(nkElifBranch, excNilCmp, retStmt),
+                       newTree(nkElifBranch, excNilCmp, newTree(nkStmtList, ctx.newRestoreExternException(), retStmt)),
                        newTree(nkElse,
                            newTree(nkStmtList,
                                    newTreeI(nkRaiseStmt, info, ctx.g.emptyNode))))
@@ -917,16 +919,15 @@ proc transformBreakStmt(ctx: var Ctx, n: PNode): PNode =
     result = n
 
 proc transformReturnStmt(ctx: var Ctx, n: PNode): PNode =
-  # "Returning" involves jumping along all the cureent finally path.
+  # "Returning" involves jumping along all the current finally path.
   # The last finally should exit to state 0 which is a special case for last exit
   # (either return or propagating exception to the caller).
   # It is eccounted for in newEndFinallyNode.
   result = newNodeI(nkStmtList, n.info)
 
   # Returns prevent exception propagation
-  result.add(ctx.newNullifyCurExc(n.info))
+  result.add(ctx.nullifyCurExc)
 
-  result.add(ctx.newRestoreExternException())
 
   var finallyChain = newSeq[PNode]()
 
@@ -950,6 +951,7 @@ proc transformReturnStmt(ctx: var Ctx, n: PNode): PNode =
     result.add(ctx.newJumpAlongFinallyChain(finallyChain, n.info))
   else:
     # There are no (split) finallies on the path, so we can return right away
+    result.add(ctx.restoreExternExc)
     result.add(n)
 
 proc transformBreaksAndReturns(ctx: var Ctx, n: PNode): PNode =
@@ -960,7 +962,7 @@ proc transformBreaksAndReturns(ctx: var Ctx, n: PNode): PNode =
   # of nkContinueStmt: # By this point all relevant continues should be
   # lowered to breaks in transf.nim.
   of nkReturnStmt:
-    if ctx.curFinallyLevel > 0 and nfNoRewrite notin n.flags:
+    if nfNoRewrite notin n.flags:
       result = ctx.transformReturnStmt(n)
   else:
     for i in 0..<n.len:
@@ -994,8 +996,7 @@ proc transformClosureIteratorBody(ctx: var Ctx, n: PNode, gotoOut: PNode): PNode
 
   of nkYieldStmt:
     result = addGotoOut(result, gotoOut)
-    if ctx.curExceptLevel > 0 or ctx.curFinallyLevel > 0:
-      result = newTree(nkStmtList, ctx.newRestoreExternException(), result)
+    result = newTree(nkStmtList, ctx.restoreExternExc, result)
 
   of nkElse, nkElseExpr:
     result[0] = addGotoOut(result[0], gotoOut)
@@ -1107,7 +1108,6 @@ proc transformClosureIteratorBody(ctx: var Ctx, n: PNode, gotoOut: PNode): PNode
       tryBody = ctx.transformClosureIteratorBody(tryBody, tryOut)
 
       if exceptBody.kind != nkEmpty:
-        inc ctx.curExceptLevel
         ctx.curExcLandingState = if finallyBody.kind != nkEmpty: finallyLabel
                                  else: oldExcLandingState
         discard ctx.newState(exceptBody, false, exceptLabel)
@@ -1116,7 +1116,6 @@ proc transformClosureIteratorBody(ctx: var Ctx, n: PNode, gotoOut: PNode): PNode
         exceptBody = ctx.addElseToExcept(exceptBody, normalOut)
         # echo "EXCEPT: ", renderTree(exceptBody)
         exceptBody = ctx.transformClosureIteratorBody(exceptBody, tryOut)
-        inc ctx.curExceptLevel
 
       ctx.curExcLandingState = oldExcLandingState
 
@@ -1469,6 +1468,11 @@ proc transformClosureIterator*(g: ModuleGraph; idgen: IdGenerator; fn: PSym, n: 
 
   ctx.curExcLandingState = ctx.newStateLabel()
   ctx.stateLoopLabel = newSym(skLabel, getIdent(ctx.g.cache, ":stateLoop"), idgen, fn, fn.info)
+
+
+  ctx.nullifyCurExc = newTree(nkStmtList)
+  ctx.restoreExternExc = newTree(nkStmtList)
+
   var n = n.toStmtList
   # echo "transformed into ", n
 
@@ -1490,6 +1494,9 @@ proc transformClosureIterator*(g: ModuleGraph; idgen: IdGenerator; fn: PSym, n: 
   let finalStateBody = newTree(nkStmtList)
   if ctx.hasExceptions:
     finalStateBody.add(ctx.newRestoreExternException())
+    ctx.nullifyCurExc.add(ctx.newNullifyCurExc(fn.info))
+    ctx.restoreExternExc.add(ctx.newRestoreExternException())
+
   finalStateBody.add(newTree(nkGotoState, g.newIntLit(n.info, -1)))
   discard ctx.newState(finalStateBody, true, finalState)
 
