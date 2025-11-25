@@ -74,6 +74,9 @@ when defined(nimStackTraceOverride):
     )
     when NimStackTraceMsgs:
       result.frameMsg = x.frameMsg
+
+    # points `procname`, `filename` to its own corresponding fields
+    # to avoid dangling pointers # bug #25306 18039
     result.procname = result.procnameStr.cstring
     result.filename = result.filenameStr.cstring
 
