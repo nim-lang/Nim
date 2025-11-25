@@ -1446,7 +1446,7 @@ proc genProcPrototype(m: BModule, sym: PSym) =
               getModuleDllPath(m, sym),
               '"' & name & '"')
   elif not containsOrIncl(m.declaredProtos, sym.id):
-    if delayedCodegen(m):
+    if optCompress in m.config.globalOptions:
       m.queue.add(sym)
     let asPtr = isReloadable(m, sym)
     var header = newBuilder("")
