@@ -553,6 +553,9 @@ type
   CatchableError* = object of Exception ## \
     ## Abstract class for all exceptions that are catchable.
 
+when defined(nimStackTraceOverride):
+  proc `=copy`*(x: StackTraceEntry) {.error.}
+
 when defined(nimIcIntegrityChecks):
   include "system/exceptions"
 
