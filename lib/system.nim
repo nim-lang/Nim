@@ -554,7 +554,7 @@ type
     ## Abstract class for all exceptions that are catchable.
 
 when defined(nimStackTraceOverride):
-  proc `=copy`*(x: StackTraceEntry) {.error.}
+  proc `=copy`*(x: var StackTraceEntry, y: StackTraceEntry) {.error.}
 
 when defined(nimIcIntegrityChecks):
   include "system/exceptions"
