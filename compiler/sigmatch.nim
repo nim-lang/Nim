@@ -1184,24 +1184,15 @@ when false:
 template skipOwned(a) =
   if a.kind == tyOwned: a = a.skipTypes({tyOwned, tyGenericInst})
 
-proc typeRel(c: var TCandidate, f, aOrig: PType,
-             flags: TTypeRelFlags = {}): TTypeRelation =
-  # typeRel can be used to establish various relationships between types:
-  #
-  # 1) When used with concrete types, it will check for type equivalence
-  # or a subtype relationship.
-  #
-  # 2) When used with a concrete type against a type class (such as generic
-  # signature of a proc), it will check whether the concrete type is a member
-  # of the designated type class.
-  #
-  # 3) When used with two type classes, it will check whether the types
-  # matching the first type class (aOrig) are a strict subset of the types matching
-  # the other (f). This allows us to compare the signatures of generic procs in
-  # order to give preferrence to the most specific one:
-  #
-  # seq[seq[any]] is a strict subset of seq[any] and hence more specific.
+type
+  TypeRelCacheKey = tuple[f: ItemId, a: ItemId, flags: TTypeRelFlags]
 
+var
+  typeRelCache {.threadvar.}: Table[TypeRelCacheKey, TTypeRelation]
+
+proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
+                 flags: TTypeRelFlags = {}): TTypeRelation =
+  # Implementation of typeRel (see wrapper below for docs)
   result = isNone
   assert(f != nil)
 
@@ -2162,6 +2153,36 @@ when false:
     result = typeRelImpl(c, f, aOrig, flags)
     if nowDebug:
       echo f, " <- ", aOrig, " res ", result
+
+proc typeRel*(c: var TCandidate, f, aOrig: PType,
+              flags: TTypeRelFlags = {}): TTypeRelation =
+  # typeRel can be used to establish various relationships between types:
+  # 1. f is a subtype of aOrig
+  # 2. aOrig is a subtype of f
+  # 3. f and aOrig are equal
+  # 4. f and aOrig are not equal and not subtypes of each other
+  # 5. f is a generic type parameter that can be bound to aOrig
+  # 6. aOrig is a generic type parameter that can be bound to f
+  # 7. f is a type class that aOrig belongs to
+  # 8. aOrig is a type class that f belongs to
+  #
+  # The proc returns one of the relation kinds: isNone, isSubtype, isEqual,
+  # isGeneric, isBothMetaConvertible, isInferred, isConvertible.
+  #
+  # Cache read-only typeRel calls (when trDontBind is set, meaning we're not
+  # modifying the candidate's bindings). This is safe because with trDontBind,
+  # the result depends only on the types and flags, not on candidate state.
+  if trDontBind in flags and aOrig != nil and f != nil:
+    let key: TypeRelCacheKey = (f.itemId, aOrig.itemId, flags)
+    if typeRelCache.hasKey(key):
+      return typeRelCache[key]
+
+  result = typeRelImpl(c, f, aOrig, flags)
+
+  # Cache the result for read-only calls
+  if trDontBind in flags and aOrig != nil and f != nil:
+    let key: TypeRelCacheKey = (f.itemId, aOrig.itemId, flags)
+    typeRelCache[key] = result
 
 proc cmpTypes*(c: PContext, f, a: PType): TTypeRelation =
   var m = newCandidate(c, f)
