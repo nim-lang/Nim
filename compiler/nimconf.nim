@@ -294,9 +294,21 @@ proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef; idgen: 
 
     if cfg == DefaultConfig:
       runNimScriptIfExists(getUserConfigPath(DefaultConfigNims))
-
-  let pd = if not conf.projectPath.isEmpty: conf.projectPath else: AbsoluteDir(getCurrentDir())
-  if optSkipParentConfigFiles notin conf.globalOptions and not configEnablesSkipParent(conf, cache, pd / cfg):
+  
+  var
+    hasProjectCfg = conf.projectName.len != 0
+    projectConfig = AbsoluteFile ""
+  if hasProjectCfg:
+    projectConfig = changeFileExt(conf.projectFull, "nimcfg")
+    if not fileExists(projectConfig):
+      projectConfig = changeFileExt(conf.projectFull, "nim.cfg")
+      if not fileExists(projectConfig):
+        hasProjectCfg = false
+  
+  let pd = if conf.projectPath.isEmpty: AbsoluteDir(getCurrentDir()) else: conf.projectPath
+  if optSkipParentConfigFiles notin conf.globalOptions and
+      not configEnablesSkipParent(conf, cache, pd / cfg) and
+      not(hasProjectCfg and configEnablesSkipParent(conf, cache, projectConfig)):
     var parentDirs: seq[tuple[path: AbsoluteDir, hasNs: bool]] = @[]
     for dir in parentDirs(pd.string, inclusive=false):
       var thisReg = (path: AbsoluteDir(dir), hasNs: false)
@@ -320,13 +332,8 @@ proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef; idgen: 
     if cfg == DefaultConfig:
       runNimScriptIfExists(pd / DefaultConfigNims)
 
-    if conf.projectName.len != 0:
-      # new project wide config file:
-      var projectConfig = changeFileExt(conf.projectFull, "nimcfg")
-      if not fileExists(projectConfig):
-        projectConfig = changeFileExt(conf.projectFull, "nim.cfg")
+    if hasProjectCfg:
       readConfigFile(projectConfig)
-
 
   let scriptFile = conf.projectFull.changeFileExt("nims")
   let scriptIsProj = scriptFile == conf.projectFull
