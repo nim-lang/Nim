@@ -84,7 +84,7 @@ proc fillBackendName(m: BModule; s: PSym) =
     if m.hcrOn:
       result.add '_'
       result.add(idOrSig(s, m.module.name.s.mangle, m.sigConflicts, m.config))
-    ensureMutable s
+    backendEnsureMutable s
     s.locImpl.snippet = result
 
 proc fillParamName(m: BModule; s: PSym) =
