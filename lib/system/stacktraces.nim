@@ -80,6 +80,11 @@ when defined(nimStackTraceOverride):
     result.procname = result.procnameStr.cstring
     result.filename = result.filenameStr.cstring
 
+  proc copyStackTraceEntrySeq(result: var seq[StackTraceEntry]; s: seq[StackTraceEntry]) =
+    for i in 0..<s.len:
+      let entry = addr s[i]
+      result.add(copyStackTraceEntry entry)
+
   # We may have more stack trace lines in the output, due to inlined procedures.
   proc addDebuggingInfo*(s: seq[StackTraceEntry]): seq[StackTraceEntry] =
     var programCounters: seq[cuintptr_t]
@@ -90,10 +95,10 @@ when defined(nimStackTraceOverride):
       if entry.procname.isNil and entry.programCounter != 0:
         programCounters.add(cast[cuintptr_t](entry.programCounter))
       elif entry.procname.isNil and (entry.line == reraisedFromBegin or entry.line == reraisedFromEnd):
-        result.add(stackTraceOverrideGetDebuggingInfo(programCounters, maxStackTraceLines))
+        result.copyStackTraceEntrySeq(stackTraceOverrideGetDebuggingInfo(programCounters, maxStackTraceLines))
         programCounters = @[]
         result.add(copyStackTraceEntry entry)
       else:
         result.add(copyStackTraceEntry entry)
     if programCounters.len > 0:
-      result.add(stackTraceOverrideGetDebuggingInfo(programCounters, maxStackTraceLines))
+      result.copyStackTraceEntrySeq(stackTraceOverrideGetDebuggingInfo(programCounters, maxStackTraceLines))
