@@ -372,9 +372,9 @@ proc useVarNoInitCheck(a: PEffects; n: PNode; s: PSym) =
 
 proc useVar(a: PEffects, n: PNode) =
   let s = n.sym
-  if a.inExceptOrFinallyStmt > 0:
-    incl s, sfUsedInFinallyOrExcept
   if isLocalSym(a, s):
+    if a.inExceptOrFinallyStmt > 0:
+      incl s, sfUsedInFinallyOrExcept
     if sfNoInit in s.flags:
       # If the variable is explicitly marked as .noinit. do not emit any error
       a.init.add s.id

@@ -117,3 +117,5 @@ proc addInt*(result: var string; x: int64) {.enforceNoRaises.} =
 
 proc addInt*(result: var string; x: int) {.inline, enforceNoRaises.} =
   addInt(result, int64(x))
+
+{.pop.}

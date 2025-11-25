@@ -119,7 +119,7 @@ type
     mapping*: Rope             # the generated mapping file (if requested)
     modules*: seq[BModule]     # list of all compiled modules
     modulesClosed*: seq[BModule] # list of the same compiled modules, but in the order they were closed
-    forwardedProcs*: seq[PSym] # proc:s that did not yet have a body
+    forwardedProcs*: seq[PSym] # procs that did not yet have a body
     generatedHeader*: BModule
     typeInfoMarker*: TypeCacheWithOwner
     typeInfoMarkerV2*: TypeCacheWithOwner
@@ -155,6 +155,7 @@ type
     forwTypeCache*: TypeCache # cache for forward declarations of types
     declaredThings*: IntSet   # things we have declared in this .c file
     declaredProtos*: IntSet   # prototypes we have declared in this .c file
+    queue*: seq[PSym]         # queue of procs to generate
     alive*: IntSet            # symbol IDs of alive data as computed by `dce.nim`
     headerFiles*: seq[string] # needed headers to include
     typeInfoMarker*: TypeCache # needed for generating type information
@@ -177,6 +178,9 @@ type
 template config*(m: BModule): ConfigRef = m.g.config
 template config*(p: BProc): ConfigRef = p.module.g.config
 template vccAndC*(p: BProc): bool = p.module.config.cCompiler == ccVcc and p.module.config.backend == backendC
+
+proc delayedCodegen*(m: BModule): bool {.inline.} =
+  useAliveDataFromDce in m.flags or m.config.globalOptions.contains(optCompress)
 
 proc includeHeader*(this: BModule; header: string) =
   if not this.headerFiles.contains header:

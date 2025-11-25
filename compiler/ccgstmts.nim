@@ -366,6 +366,7 @@ proc genSingleVar(p: BProc, v: PSym; vn, value: PNode) =
     if v.flags * {sfImportc, sfExportc} == {sfImportc} and
         value.kind == nkEmpty and
         v.loc.flags * {lfHeader, lfNoDecl} != {}:
+      # IC XXX: this is bad, we should set v.loc regardless here
       return
     if sfPure in v.flags:
       # v.owner.kind != skModule:
@@ -461,7 +462,7 @@ proc genSingleVar(p: BProc, v: PSym; vn, value: PNode) =
   if value.kind != nkEmpty and valueAsRope.len == 0:
     genLineDir(targetProc, vn)
     if not isCppCtorCall:
-      ensureMutable v
+      backendEnsureMutable v
       loadInto(targetProc, vn, value, v.locImpl)
   if forHcr:
     endBlockWith(targetProc):

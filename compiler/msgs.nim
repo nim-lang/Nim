@@ -133,6 +133,16 @@ proc fileInfoIdx*(conf: ConfigRef; filename: RelativeFile): FileIndex =
   var dummy: bool = false
   fileInfoIdx(conf, AbsoluteFile expandFilename(filename.string), dummy)
 
+proc registerNifSuffix*(conf: ConfigRef; suffix: string; isKnownFile: var bool): FileIndex =
+  result = conf.m.filenameToIndexTbl.getOrDefault(suffix, InvalidFileIdx)
+  if result == InvalidFileIdx:
+    isKnownFile = false
+    result = conf.m.fileInfos.len.FileIndex
+    conf.m.fileInfos.add(newFileInfo(AbsoluteFile suffix, RelativeFile suffix))
+    conf.m.filenameToIndexTbl[suffix] = result
+  else:
+    isKnownFile = true
+
 proc newLineInfo*(fileInfoIdx: FileIndex, line, col: int): TLineInfo =
   result = TLineInfo(fileIndex: fileInfoIdx)
   if line < int high(uint16):

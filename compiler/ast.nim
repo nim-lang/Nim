@@ -57,6 +57,16 @@ proc ensureMutable*(t: PType) {.inline.} =
   assert t.state != Sealed
   if t.state == Partial: loadType(t)
 
+proc backendEnsureMutable*(s: PSym) {.inline.} =
+  #assert s.state != Sealed
+  # ^ IC review this later
+  if s.state == Partial: loadSym(s)
+
+proc backendEnsureMutable*(t: PType) {.inline.} =
+  #assert t.state != Sealed
+  # ^ IC review this later
+  if t.state == Partial: loadType(t)
+
 proc owner*(s: PSym): PSym {.inline.} =
   if s.state == Partial: loadSym(s)
   result = s.ownerFieldImpl

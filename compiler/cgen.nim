@@ -63,7 +63,7 @@ proc addForwardedProc(m: BModule, prc: PSym) =
 
 proc findPendingModule(m: BModule, s: PSym): BModule =
   # TODO fixme
-  if m.config.symbolFiles == v2Sf:
+  if m.config.symbolFiles == v2Sf or optCompress in m.config.globalOptions:
     let ms = s.itemId.module  #getModule(s)
     result = m.g.modules[ms]
   else:
@@ -506,7 +506,7 @@ include ccgreset
 proc resetLoc(p: BProc, loc: var TLoc) =
   let containsGcRef = optSeqDestructors notin p.config.globalOptions and containsGarbageCollectedRef(loc.t)
   let typ = skipTypes(loc.t, abstractVarRange)
-  if isImportedCppType(typ): 
+  if isImportedCppType(typ):
     var didGenTemp = false
     let rl = rdLoc(loc)
     let init = genCppInitializer(p.module, p, typ, didGenTemp)
@@ -600,7 +600,7 @@ proc initLocalVar(p: BProc, v: PSym, immediateAsgn: bool) =
     # ``var v = X()`` gets transformed into ``X(&v)``.
     # Nowadays the logic in ccgcalls deals with this case however.
     if not immediateAsgn:
-      ensureMutable v
+      backendEnsureMutable v
       constructLoc(p, v.locImpl)
 
 proc getTemp(p: BProc, t: PType, needsInit=false): TLoc =
@@ -785,7 +785,7 @@ proc fillProcLoc(m: BModule; n: PNode) =
   let sym = n.sym
   if sym.loc.k == locNone:
     fillBackendName(m, sym)
-    ensureMutable sym
+    backendEnsureMutable sym
     fillLoc(sym.locImpl, locProc, n, OnStack)
 
 proc getLabel(p: BProc): TLabel =
@@ -1362,7 +1362,8 @@ proc genProcAux*(m: BModule, prc: PSym) =
   closureSetup(p, prc)
   genProcBody(p, procBody)
 
-  prc.info = tmpInfo
+  # IC: spurious write, seems fine for now:
+  prc.infoImpl = tmpInfo
 
   var generatedProc = newBuilder("")
   generatedProc.genCLineDir prc.info, m.config
@@ -1445,6 +1446,8 @@ proc genProcPrototype(m: BModule, sym: PSym) =
               getModuleDllPath(m, sym),
               '"' & name & '"')
   elif not containsOrIncl(m.declaredProtos, sym.id):
+    if optCompress in m.config.globalOptions:
+      m.queue.add(sym)
     let asPtr = isReloadable(m, sym)
     var header = newBuilder("")
     var visibility: DeclVisibility = None
@@ -1463,6 +1466,8 @@ proc genProcPrototype(m: BModule, sym: PSym) =
         m.s[cfsProcHeaders].addDeclWithVisibility(visibility):
           m.s[cfsProcHeaders].add(extract(header))
           m.s[cfsProcHeaders].finishProcHeaderAsProto()
+
+include inliner
 
 # TODO: figure out how to rename this - it DOES generate a forward declaration
 proc genProcNoForward(m: BModule, prc: PSym) =
@@ -1502,16 +1507,22 @@ proc genProcNoForward(m: BModule, prc: PSym) =
       #if prc.loc.k == locNone:
       # mangle the inline proc based on the module where it is defined -
       # not on the first module that uses it
-      let m2 = if m.config.symbolFiles != disabledSf: m
-               else: findPendingModule(m, prc)
-      fillProcLoc(m2, prc.ast[namePos])
-      #elif {sfExportc, sfImportc} * prc.flags == {}:
-      #  # reset name to restore consistency in case of hashing collisions:
-      #  echo "resetting ", prc.id, " by ", m.module.name.s
-      #  prc.loc.snippet = nil
-      #  prc.loc.snippet = mangleName(m, prc)
-      genProcPrototype(m, prc)
-      genProcAux(m, prc)
+      if m.module.itemId.module != prc.itemId.module and optCompress in m.config.globalOptions:
+        let prcCopy = copyInlineProc(prc, m.idgen)
+        fillProcLoc(m, prcCopy.ast[namePos])
+        genProcPrototype(m, prcCopy)
+        genProcAux(m, prcCopy)
+      else:
+        let m2 = if m.config.symbolFiles != disabledSf: m
+                else: findPendingModule(m, prc)
+        fillProcLoc(m2, prc.ast[namePos])
+        #elif {sfExportc, sfImportc} * prc.flags == {}:
+        #  # reset name to restore consistency in case of hashing collisions:
+        #  echo "resetting ", prc.id, " by ", m.module.name.s
+        #  prc.loc.snippet = nil
+        #  prc.loc.snippet = mangleName(m, prc)
+        genProcPrototype(m, prc)
+        genProcAux(m, prc)
   elif sfImportc notin prc.flags:
     var q = findPendingModule(m, prc)
     fillProcLoc(q, prc.ast[namePos])
@@ -1571,7 +1582,7 @@ proc genVarPrototype(m: BModule, n: PNode) =
   let sym = n.sym
   useHeader(m, sym)
   fillBackendName(m, sym)
-  ensureMutable sym
+  backendEnsureMutable sym
   fillLoc(sym.locImpl, locGlobalVar, n, OnHeap)
   if treatGlobalDifferentlyForHCR(m, sym): incl(sym, lfIndirect)
 
@@ -2509,6 +2520,11 @@ proc writeModule(m: BModule, pending: bool) =
   let cfile = getCFile(m)
   if moduleHasChanged(m.g.graph, m.module):
     genInitCode(m)
+
+    while m.queue.len > 0:
+      let sym = m.queue.pop()
+      genProcAux(m, sym)
+
     finishTypeDescriptions(m)
     if sfMainModule in m.module.flags:
       # generate main file:
