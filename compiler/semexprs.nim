@@ -1411,7 +1411,7 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
     elif s.ast != nil:
       result = semExpr(c, s.ast)
     else:
-      n.typ() = s.typ
+      n.typ() = makeTypeDesc(c, s.typ)
       return n
   of skType:
     if n.kind != nkDotExpr: # dotExpr is already checked by builtinFieldAccess
