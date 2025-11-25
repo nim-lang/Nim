@@ -29,6 +29,9 @@ when defined(nimStackTraceOverride):
       proc (programCounters: seq[cuintptr_t], maxLength: cint): seq[StackTraceEntry] {.
         nimcall, gcsafe, raises: [], tags: [], noinline.}
 
+
+  const NimStackTraceMsgs = compileOption("stacktraceMsgs")
+
   # Default procedures (not normally used, because people opting in on this
   # override are supposed to register their own versions).
   var
@@ -65,6 +68,15 @@ when defined(nimStackTraceOverride):
     for i in 0..<programCounters.len:
       s.add(StackTraceEntry(programCounter: cast[uint](programCounters[i])))
 
+  proc copyStackTraceEntry(x: ptr StackTraceEntry): StackTraceEntry =
+    result = StackTraceEntry(line: x.line, programCounter: x.programCounter,
+                             procnameStr: x.procnameStr, filenameStr: x.filenameStr
+    )
+    when NimStackTraceMsgs:
+      result.frameMsg = x.frameMsg
+    result.procname = result.procnameStr.cstring
+    result.filename = result.filenameStr.cstring
+
   # We may have more stack trace lines in the output, due to inlined procedures.
   proc addDebuggingInfo*(s: seq[StackTraceEntry]): seq[StackTraceEntry] =
     var programCounters: seq[cuintptr_t]
@@ -77,8 +89,8 @@ when defined(nimStackTraceOverride):
       elif entry.procname.isNil and (entry.line == reraisedFromBegin or entry.line == reraisedFromEnd):
         result.add(stackTraceOverrideGetDebuggingInfo(programCounters, maxStackTraceLines))
         programCounters = @[]
-        result.add(entry[])
+        result.add(copyStackTraceEntry entry)
       else:
-        result.add(entry[])
+        result.add(copyStackTraceEntry entry)
     if programCounters.len > 0:
       result.add(stackTraceOverrideGetDebuggingInfo(programCounters, maxStackTraceLines))
