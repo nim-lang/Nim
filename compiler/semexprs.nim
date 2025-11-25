@@ -3064,10 +3064,10 @@ proc semTupleConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PTyp
   var isTupleType: bool = false
   if tupexp.len > 0: # don't interpret () as type
     internalAssert c.config, tupexp.kind == nkTupleConstr
-    isTupleType = tupexp[0].typ.kind == tyTypeDesc
+    isTupleType = tupexp[0].typ.kind in {tyTypeDesc, tyGenericParam}
     # check if either everything or nothing is tyTypeDesc
     for i in 1..<tupexp.len:
-      if isTupleType != (tupexp[i].typ.kind == tyTypeDesc):
+      if isTupleType != (tupexp[i].typ.kind in {tyTypeDesc, tyGenericParam}):
         return localErrorNode(c, n, tupexp[i].info, "Mixing types and values in tuples is not allowed.")
   if isTupleType: # expressions as ``(int, string)`` are reinterpret as type expressions
     result = n
