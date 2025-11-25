@@ -5,6 +5,15 @@ runnableExamples:
 
 import std/private/[digitsutils, miscdollars]
 
+when not defined(nimPreviewSlimSystem):
+  import std/formatfloat
+  export addFloat
+
+  func `$`*(x: float | float32): string =
+    ## Outplace version of `addFloat`.
+    result = ""
+    result.addFloat(x)
+
 template addIntAlias(T: typedesc) =
   proc `$`*(x: T): string {.raises: [].} =
     ## Outplace version of `addInt`.

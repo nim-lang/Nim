@@ -147,24 +147,22 @@ when defined(nimV2):
   proc raiseObjectCaseTransition() {.compilerproc.} =
     sysFatal(FieldDefect, "assignment to discriminant changes object branch")
 
-when defined(nimPreviewSlimSystem):
-  import std/formatfloat
+import std/formatfloat
 
 when not defined(nimPreviewSlimSystem):
-  import std/formatfloat
   export addFloat
 
-  func `$`*(x: float | float32): string =
-    ## Outplace version of `addFloat`.
-    result = ""
-    result.addFloat(x)
+func f2s(x: float | float32): string =
+  ## Outplace version of `addFloat`.
+  result = ""
+  result.addFloat(x)
 
 
 proc raiseRangeErrorF(i, a, b: float) {.compilerproc, noinline.} =
   when defined(standalone):
     sysFatal(RangeDefect, "value out of range")
   else:
-    sysFatal(RangeDefect, "value out of range: " & $i & " notin " & $a & " .. " & $b)
+    sysFatal(RangeDefect, "value out of range: " & f2s(i) & " notin " & f2s(a) & " .. " & f2s(b))
 
 proc chckRangeF(x, a, b: float): float =
   if x >= a and x <= b:
@@ -174,4 +172,4 @@ proc chckRangeF(x, a, b: float): float =
     when hostOS == "standalone":
       sysFatal(RangeDefect, "value out of range")
     else:
-      sysFatal(RangeDefect, "value out of range: ", $x)
+      sysFatal(RangeDefect, "value out of range: ", f2s(x))
