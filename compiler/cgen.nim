@@ -1518,9 +1518,9 @@ proc genProcNoForward(m: BModule, prc: PSym) =
         fillProcLoc(m2, prc.ast[namePos])
         #elif {sfExportc, sfImportc} * prc.flags == {}:
         #  # reset name to restore consistency in case of hashing collisions:
-        #  echo "resetting ", prc.id, " by ", m.module.name.s
-        #  prc.loc.snippet = nil
-        #  prc.loc.snippet = mangleName(m, prc)
+        #  #echo "resetting ", prc.id, " by ", m.module.name.s
+        #  #prc.loc.snippet = nil
+        #  #prc.loc.snippet = mangleName(m, prc)
         genProcPrototype(m, prc)
         genProcAux(m, prc)
   elif sfImportc notin prc.flags:

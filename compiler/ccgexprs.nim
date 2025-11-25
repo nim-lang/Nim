@@ -3471,6 +3471,10 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
         genProcPrototype(p.module, sym)
       else:
         genProc(p.module, sym)
+        # For cross-module inline procs with optCompress, ensure prototype is emitted
+        if sym.typ.callConv == ccInline and optCompress in p.config.globalOptions and
+           sym.itemId.module != p.module.module.position:
+          genProcPrototype(p.module, sym)
       if sym.loc.snippet == "" or sym.loc.lode == nil:
         internalError(p.config, n.info, "expr: proc not init " & sym.name.s)
       putLocIntoDest(p, d, sym.loc)
