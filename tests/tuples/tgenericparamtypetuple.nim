@@ -23,3 +23,12 @@ proc test5(test: HeapQueue[(float, ExampleObj)]) = # Works
 
 proc failingTest[T](test: HeapQueue[(float, T)]) = # (Compile) Error: Mixing types and values in tuples is not allowed.
     discard
+
+proc failingTest2[T](test: HeapQueue[(T, float)]) = # (Compile) Error: Mixing types and values in tuples is not allowed.
+    discard
+
+proc test6[T](test: HeapQueue[(T, T)]) = # works
+    discard
+
+proc test7[T, U](test: HeapQueue[(T, U)]) = # works
+    discard
