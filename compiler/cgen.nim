@@ -600,7 +600,7 @@ proc initLocalVar(p: BProc, v: PSym, immediateAsgn: bool) =
     # ``var v = X()`` gets transformed into ``X(&v)``.
     # Nowadays the logic in ccgcalls deals with this case however.
     if not immediateAsgn:
-      ensureMutable v
+      backendEnsureMutable v
       constructLoc(p, v.locImpl)
 
 proc getTemp(p: BProc, t: PType, needsInit=false): TLoc =
@@ -785,7 +785,7 @@ proc fillProcLoc(m: BModule; n: PNode) =
   let sym = n.sym
   if sym.loc.k == locNone:
     fillBackendName(m, sym)
-    #ensureMutable sym
+    backendEnsureMutable sym
     fillLoc(sym.locImpl, locProc, n, OnStack)
 
 proc getLabel(p: BProc): TLabel =
@@ -1582,7 +1582,7 @@ proc genVarPrototype(m: BModule, n: PNode) =
   let sym = n.sym
   useHeader(m, sym)
   fillBackendName(m, sym)
-  ensureMutable sym
+  backendEnsureMutable sym
   fillLoc(sym.locImpl, locGlobalVar, n, OnHeap)
   if treatGlobalDifferentlyForHCR(m, sym): incl(sym, lfIndirect)
 

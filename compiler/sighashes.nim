@@ -143,15 +143,15 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]; conf: Confi
     if t.sym != nil and {sfImportc, sfExportc} * t.sym.flags != {}:
       c.hashSym(t.sym)
   of tyObject, tyEnum:
-    if t.typeInst != nil:
+    if t.typeInstImpl != nil:
       # prevent against infinite recursions here, see bug #8883:
-      let inst = t.typeInst
-      t.typeInst = nil
+      let inst = t.typeInstImpl
+      t.typeInstImpl = nil # IC: spurious writes are ok since we set it back immediately
       assert inst.kind == tyGenericInst
       c.hashType inst.genericHead, flags, conf
       for _, a in inst.genericInstParams:
         c.hashType a, flags, conf
-      t.typeInst = inst
+      t.typeInstImpl = inst
       return
     c &= char(t.kind)
     # Every cyclic type in Nim need to be constructed via some 't.sym', so this

@@ -108,7 +108,7 @@ proc fillParamName(m: BModule; s: PSym) =
     # and a function called in main or proxy uses `socket` as a parameter name.
     # That would lead to either needing to reload `proxy` or to overwrite the
     # executable file for the main module, which is running (or both!) -> error.
-    ensureMutable s
+    backendEnsureMutable s
     s.locImpl.snippet = res.rope
 
 proc fillLocalName(p: BProc; s: PSym) =
@@ -159,7 +159,7 @@ proc getTypeName(m: BModule; typ: PType; sig: SigHash): Rope =
       break
   let typ = if typ.kind in {tyAlias, tySink, tyOwned}: typ.elementType else: typ
   if typ.loc.snippet == "":
-    ensureMutable typ
+    backendEnsureMutable typ
     typ.typeName(typ.locImpl.snippet)
     typ.locImpl.snippet.add $sig
   else:
@@ -608,7 +608,7 @@ proc genProcParams(m: BModule; t: PType, rettype: var Rope, params: var Builder,
         else:
           descKind = dkRefParam
       if isCompileTimeOnly(param.typ): continue
-      #ensureMutable param
+      backendEnsureMutable param
       fillParamName(m, param)
       fillLoc(param.locImpl, locParam, t.n[i],
               param.paramStorageLoc)
@@ -715,7 +715,7 @@ proc genRecordFieldsAux(m: BModule; n: PNode,
     if field.typ.kind == tyVoid: return
     #assert(field.ast == nil)
     let sname = mangleRecFieldName(m, field)
-    #ensureMutable field
+    backendEnsureMutable field
     fillLoc(field.locImpl, locField, n, unionPrefix & sname, OnUnknown)
     # for importcpp'ed objects, we only need to set field.loc, but don't
     # have to recurse via 'getTypeDescAux'. And not doing so prevents problems
@@ -1212,7 +1212,7 @@ proc genProcHeader(m: BModule; prc: PSym; result: var Builder; visibility: var D
   # using static is needed for inline procs
   var check = initIntSet()
   fillBackendName(m, prc)
-  #ensureMutable prc
+  backendEnsureMutable prc
   fillLoc(prc.locImpl, locProc, prc.ast[namePos], OnUnknown)
   var rettype: Snippet = ""
   var desc = newBuilder("")
