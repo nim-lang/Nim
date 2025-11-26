@@ -805,7 +805,7 @@ template withNode(c: var DecodeContext; n: var Cursor; result: PNode; kind: TNod
 
 proc loadNode(c: var DecodeContext; n: var Cursor): PNode =
   result = nil
-  case n.kind:
+  case n.kind
   of DotToken:
     result = nil
     inc n
@@ -904,9 +904,63 @@ proc loadNode(c: var DecodeContext; n: var Cursor): PNode =
 proc moduleSuffix(conf: ConfigRef; f: FileIndex): string =
   moduleSuffix(toFullPath(conf, f), cast[seq[string]](conf.searchPaths))
 
-proc loadNifModule*(c: var DecodeContext; f: FileIndex; interf, inferfHidden: var TStrTable): PNode =
+proc loadSymFromIndexEntry(c: var DecodeContext; module: FileIndex;
+                           nifName: string; entry: NifIndexEntry): PSym =
+  ## Loads a symbol from the NIF index entry.
+  ## Creates a symbol stub and loads its full definition.
+  let sn = parseSymName(nifName)
+  let val = addr c.mods[module.int32].symCounter
+  inc val[]
+  let id = ItemId(module: module.int32, item: val[])
+
+  # Check if already loaded
+  if c.syms.contains(id):
+    result = c.syms[id][0]
+  else:
+    # Create stub symbol
+    result = PSym(
+      itemId: id,
+      kindImpl: skStub,
+      name: c.cache.getIdent(sn.name),
+      disamb: sn.count.int32,
+      state: Partial
+    )
+    c.syms[id] = (result, entry)
+
+  # Load the full symbol definition if it's still a stub
+  if result.state == Partial:
+    loadSym(c, result)
+
+proc populateInterfaceTablesFromIndex(c: var DecodeContext; module: FileIndex;
+                                      interf, interfHidden: var TStrTable) =
+  ## Populates interface tables from the NIF index structure.
+  ## Uses the index's public/private tables instead of traversing AST.
+  let idx = addr c.mods[module.int32].index
+
+  # Add all public symbols to interf (exported interface) and interfHidden
+  for nifName, entry in idx.public:
+    let sym = loadSymFromIndexEntry(c, module, nifName, entry)
+    if sym != nil:
+      strTableAdd(interf, sym)
+      strTableAdd(interfHidden, sym)
+
+  when false:
+    # Add private symbols to interfHidden only
+    for nifName, entry in idx.private:
+      let sym = loadSymFromIndexEntry(c, module, nifName, entry)
+      if sym != nil:
+        strTableAdd(interfHidden, sym)
+
+proc loadNifModule*(c: var DecodeContext; f: FileIndex; interf, interfHidden: var TStrTable): PNode =
   let suffix = moduleSuffix(c.infos.config, f)
   let modFile = toGeneratedFile(c.infos.config, AbsoluteFile(suffix), ".nif").string
+
+  # Ensure module index is loaded - moduleId returns the FileIndex for this suffix
+  let module = moduleId(c, suffix)
+
+  # Populate interface tables from the NIF index structure
+  # Use the FileIndex returned by moduleId to ensure we access the correct index
+  populateInterfaceTablesFromIndex(c, module, interf, interfHidden)
 
   var buf = createTokenBuf(300)
   var s = nifstreams.open(modFile)

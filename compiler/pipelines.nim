@@ -260,7 +260,13 @@ proc compilePipelineModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymF
     discard processPipelineModule(graph, result, idGeneratorFromModule(result), s)
   if result == nil:
     var cachedModules: seq[FileIndex] = @[]
-    result = moduleFromRodFile(graph, fileIdx, cachedModules)
+    when not defined(nimKochBootstrap):
+      # Try loading from NIF file first if optCompress is enabled
+      if optCompress in graph.config.globalOptions and not graph.config.isDefined("nimscript"):
+        result = moduleFromNifFile(graph, fileIdx, cachedModules)
+    if result == nil:
+      # Fall back to ROD file loading
+      result = moduleFromRodFile(graph, fileIdx, cachedModules)
     let path = toFullPath(graph.config, fileIdx)
     let filename = AbsoluteFile path
     # it could be a stdinfile/cmdfile
