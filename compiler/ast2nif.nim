@@ -901,20 +901,22 @@ proc loadNode(c: var DecodeContext; n: var Cursor): PNode =
   else:
     raiseAssert "Not yet implemented " & $n.kind
 
-when false:
-  proc loadNifModule*(c: var DecodeContext; f: FileIndex): PNode =
-    let moduleSuffix = moduleSuffix(c.infos.config, f)
-    let modFile = toGeneratedFile(c.infos.config, AbsoluteFile(moduleSuffix), ".nif").string
+proc moduleSuffix(conf: ConfigRef; f: FileIndex): string =
+  moduleSuffix(toFullPath(conf, f), cast[seq[string]](conf.searchPaths))
 
-    var buf = createTokenBuf(300)
-    var s = nifstreams.open(modFile)
-    # XXX We can optimize this here and only load the top level entries!
-    try:
-      nifcursors.parse(s, buf, NoLineInfo)
-    finally:
-      nifstreams.close(s)
-    var n = cursorAt(buf, 0)
-    result = loadNode(c, n)
+proc loadNifModule*(c: var DecodeContext; f: FileIndex; interf, inferfHidden: var TStrTable): PNode =
+  let suffix = moduleSuffix(c.infos.config, f)
+  let modFile = toGeneratedFile(c.infos.config, AbsoluteFile(suffix), ".nif").string
+
+  var buf = createTokenBuf(300)
+  var s = nifstreams.open(modFile)
+  # XXX We can optimize this here and only load the top level entries!
+  try:
+    nifcursors.parse(s, buf, NoLineInfo)
+  finally:
+    nifstreams.close(s)
+  var n = cursorAt(buf, 0)
+  result = loadNode(c, n)
 
 when isMainModule:
   import std / syncio

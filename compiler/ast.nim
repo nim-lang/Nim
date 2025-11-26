@@ -736,10 +736,6 @@ proc appendToModule*(m: PSym, n: PNode) =
     assert m.astImpl.kind == nkStmtList
   m.astImpl.add(n)
 
-const                         # for all kind of hash tables:
-  GrowthFactor* = 2           # must be power of 2, > 0
-  StartSize* = 8              # must be power of 2, > 0
-
 proc copyStrTable*(dest: var TStrTable, src: TStrTable) =
   dest.counter = src.counter
   setLen(dest.data, src.data.len)
