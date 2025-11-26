@@ -1478,8 +1478,7 @@ proc transformClosureIterator*(g: ModuleGraph; idgen: IdGenerator; fn: PSym, n: 
 
   discard ctx.newState(n, false, nil)
 
-  let finalState = ctx.newStateLabel()
-  let gotoOut = newTree(nkGotoState, finalState)
+  let gotoOut = newTree(nkGotoState, g.newIntLit(n.info, -1))
 
   var ns = false
   n = ctx.lowerStmtListExprs(n, ns)
@@ -1491,14 +1490,9 @@ proc transformClosureIterator*(g: ModuleGraph; idgen: IdGenerator; fn: PSym, n: 
   # Splitting transformation
   discard ctx.transformClosureIteratorBody(n, gotoOut)
 
-  let finalStateBody = newTree(nkStmtList)
   if ctx.hasExceptions:
-    finalStateBody.add(ctx.newRestoreExternException())
     ctx.nullifyCurExc.add(ctx.newNullifyCurExc(fn.info))
     ctx.restoreExternExc.add(ctx.newRestoreExternException())
-
-  finalStateBody.add(newTree(nkGotoState, g.newIntLit(n.info, -1)))
-  discard ctx.newState(finalStateBody, true, finalState)
 
   # Assign state label indexes
   for i in 0 .. ctx.states.high:
@@ -1517,7 +1511,9 @@ proc transformClosureIterator*(g: ModuleGraph; idgen: IdGenerator; fn: PSym, n: 
     let body = ctx.transformStateAssignments(s.body)
     caseDispatcher.add newTreeI(nkOfBranch, body.info, s.label, body)
 
-  caseDispatcher.add newTreeI(nkElse, n.info, newTreeI(nkReturnStmt, n.info, g.emptyNode))
+  caseDispatcher.add newTreeI(nkElse, n.info,
+                              newTree(nkStmtList, ctx.restoreExternExc,
+                                      newTreeI(nkReturnStmt, n.info, g.emptyNode)))
 
   result = wrapIntoStateLoop(ctx, caseDispatcher)
   result = liftLocals(ctx, result)
