@@ -951,6 +951,10 @@ proc populateInterfaceTablesFromIndex(c: var DecodeContext; module: FileIndex;
       if sym != nil:
         strTableAdd(interfHidden, sym)
 
+proc toNifFilename*(conf: ConfigRef; f: FileIndex): string =
+  let suffix = moduleSuffix(conf, f)
+  result = toGeneratedFile(conf, AbsoluteFile(suffix), ".nif").string
+
 proc loadNifModule*(c: var DecodeContext; f: FileIndex; interf, interfHidden: var TStrTable): PNode =
   let suffix = moduleSuffix(c.infos.config, f)
   let modFile = toGeneratedFile(c.infos.config, AbsoluteFile(suffix), ".nif").string

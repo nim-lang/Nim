@@ -753,6 +753,8 @@ when not defined(nimKochBootstrap):
     ## Loads module from NIF file when optCompress is enabled.
 
     # loadNifModule will check if the file exists internally
+    if not fileExists(toNifFilename(g.config, fileIdx)):
+      return nil
 
     # Create module symbol
     let filename = AbsoluteFile toFullPath(g.config, fileIdx)
