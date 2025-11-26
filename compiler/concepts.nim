@@ -263,6 +263,19 @@ proc conceptsMatch(c: PContext, fc, ac: PType; m: var MatchCon): MatchKind =
       return mkNoMatch
   return mkSubset
 
+
+proc isObjectSubtype(a, f: PType): bool =
+  assert a.kind == tyObject
+  var t = a.baseClass
+  var last = a.baseClass
+  while t != nil and not sameObjectTypes(f, t):
+    if t.kind != tyObject:  # avoid entering generic params etc
+      return false
+    t = t.baseClass
+    if t == nil:
+      return false
+  t != nil
+
 proc matchType(c: PContext; fo, ao: PType; m: var MatchCon): bool =
   ## The heart of the concept matching process. 'f' is the formal parameter of some
   ## routine inside the concept that we're looking for. 'a' is the formal parameter
@@ -327,6 +340,8 @@ proc matchType(c: PContext; fo, ao: PType; m: var MatchCon): bool =
         result = a.base.sym == f.sym
       else:
         result = sameType(f, a)
+      if not(result) and f.kind == tyObject:
+        result = isObjectSubtype(f, a)
   of tyEmpty, tyString, tyCstring, tyPointer, tyNil, tyUntyped, tyTyped, tyVoid:
     result = a.skipTypes(ignorableForArgType).kind == f.kind
   of tyBool, tyChar, tyInt..tyUInt64:
