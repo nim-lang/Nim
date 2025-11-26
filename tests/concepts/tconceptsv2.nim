@@ -585,3 +585,18 @@ block:
     discard
 
   assert (ref AObj[int]) is C
+
+block:
+  type 
+    C = concept
+      proc x(a:Self, x: int)
+    StreamObj = object of RootObj
+    Stream = ref StreamObj
+    MemMapFileStreamObj = object of Stream
+    MemMapFileStream = ref MemMapFileStreamObj
+
+  proc x(a: Stream, x: int) = discard
+  proc spring(x: C) = discard
+
+  let test = MemMapFileStream()
+  spring(test)
