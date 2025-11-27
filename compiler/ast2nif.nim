@@ -925,21 +925,7 @@ proc loadSymFromIndexEntry(c: var DecodeContext; module: FileIndex;
                            nifName: string; entry: NifIndexEntry): PSym =
   ## Loads a symbol from the NIF index entry.
   ## Creates a symbol stub and loads its full definition.
-  let sn = parseSymName(nifName)
-  let val = addr c.mods[module.int32].symCounter
-  inc val[]
-  let id = ItemId(module: module.int32, item: val[])
-
-  # Create stub symbol
-  result = PSym(
-    itemId: id,
-    kindImpl: skStub,
-    name: c.cache.getIdent(sn.name),
-    disamb: sn.count.int32,
-    state: Partial
-  )
-  c.syms[id] = (result, entry)
-  loadSym(c, result)
+  result = loadSymStub(c, pool.syms.getOrIncl nifName)
 
 proc populateInterfaceTablesFromIndex(c: var DecodeContext; module: FileIndex;
                                       interf, interfHidden: var TStrTable) =
@@ -951,7 +937,7 @@ proc populateInterfaceTablesFromIndex(c: var DecodeContext; module: FileIndex;
   for nifName, entry in idx.public:
     if not nifName.startsWith("`t"):
       # do not load types, they are not part of an interface but an implementation detail!
-      echo "LOADING SYM ", nifName, " ", entry.offset
+      #echo "LOADING SYM ", nifName, " ", entry.offset
       let sym = loadSymFromIndexEntry(c, module, nifName, entry)
       if sym != nil:
         strTableAdd(interf, sym)
