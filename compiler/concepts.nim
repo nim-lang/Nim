@@ -343,7 +343,7 @@ proc matchType(c: PContext; fo, ao: PType; m: var MatchCon): bool =
         result = a.base.sym == f.sym
       else:
         result = sameType(f, a)
-      if not(result) and f.kind == tyObject and a.kind == tyObject:
+      if not result and f.kind == tyObject and a.kind == tyObject:
         result = isObjectSubtype(f, a)
   of tyEmpty, tyString, tyCstring, tyPointer, tyNil, tyUntyped, tyTyped, tyVoid:
     result = a.skipTypes(ignorableForArgType).kind == f.kind
