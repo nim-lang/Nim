@@ -13,7 +13,6 @@
 
 import std/[intsets, tables, hashes, strtabs, algorithm, os, strutils, parseutils]
 import ../dist/checksums/src/checksums/md5
-import ../dist/checksums/src/checksums/sha1
 import ast, astalgo, options, lineinfos,idents, btrees, ropes, msgs, pathutils, packages, suggestsymdb
 import ic / [packed_ast, ic]
 
@@ -752,7 +751,6 @@ when not defined(nimKochBootstrap):
     ## Returns 'nil' if the module needs to be recompiled.
     ## Loads module from NIF file when optCompress is enabled.
 
-    # loadNifModule will check if the file exists internally
     if not fileExists(toNifFilename(g.config, fileIdx)):
       return nil
 

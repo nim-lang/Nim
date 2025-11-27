@@ -126,6 +126,8 @@ type
     moduleToNifSuffix: Table[FileIndex, string]
     locals: HashSet[ItemId]  # track proc-local symbols
     inProc: int
+    writtenTypes: seq[PType]  # types written in this module, to be unloaded later
+    writtenSyms: seq[PSym]    # symbols written in this module, to be unloaded later
 
 proc toNifSymName(w: var Writer; sym: PSym): string =
   ## Generate NIF name for a symbol: local names are `ident.disamb`,
@@ -238,6 +240,8 @@ proc writeType(w: var Writer; dest: var TokenBuf; typ: PType) =
   elif typ.itemId.module == w.currentModule and typ.state == Complete:
     typ.state = Sealed
     writeTypeDef(w, dest, typ)
+    # Collect for later unloading after entire module is written
+    w.writtenTypes.add typ
   else:
     dest.addSymUse pool.syms.getOrIncl(w.typeToNifSym(typ)), NoLineInfo
 
@@ -297,6 +301,8 @@ proc writeSym(w: var Writer; dest: var TokenBuf; sym: PSym) =
   elif sym.itemId.module == w.currentModule and sym.state == Complete:
     sym.state = Sealed
     writeSymDef(w, dest, sym)
+    # Collect for later unloading after entire module is written
+    w.writtenSyms.add sym
   else:
     # NIF has direct support for symbol references so we don't need to use a tag here,
     # unlike what we do for types!
@@ -311,8 +317,12 @@ proc writeSymNode(w: var Writer; dest: var TokenBuf; n: PNode; sym: PSym) =
       dest.buildTree hiddenTypeTag, trLineInfo(w, n.info):
         writeType(w, dest, n.typField)
         writeSymDef(w, dest, sym)
+      # Collect for later unloading after entire module is written
+      w.writtenSyms.add sym
     else:
       writeSymDef(w, dest, sym)
+      # Collect for later unloading after entire module is written
+      w.writtenSyms.add sym
   else:
     # NIF has direct support for symbol references so we don't need to use a tag here,
     # unlike what we do for types!
@@ -481,6 +491,13 @@ proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode) =
   writeFile(dest, d)
   createIndex(d, false, dest[0].info)
 
+  # Unload all written types and symbols from memory after the entire module is written
+  # This handles cyclic references correctly since everything is written before unloading
+  for typ in w.writtenTypes:
+    forcePartial(typ)
+  for sym in w.writtenSyms:
+    forcePartial(sym)
+
 
 # --------------------------- Loader (lazy!) -----------------------------------------------
 
@@ -567,7 +584,7 @@ proc moduleId(c: var DecodeContext; suffix: string): FileIndex =
   result = c.infos.config.registerNifSuffix(suffix, isKnownFile)
   if not isKnownFile:
     let modFile = (getNimcacheDir(c.infos.config) / RelativeFile(suffix & ".nif")).string
-    let idxFile = (getNimcacheDir(c.infos.config) / RelativeFile(suffix & ".idx.nif")).string
+    let idxFile = (getNimcacheDir(c.infos.config) / RelativeFile(suffix & ".s.idx.nif")).string
     if result.int >= c.mods.len:
       c.mods.setLen(result.int + 1)
     c.mods[result.int] = NifModule(stream: nifstreams.open(modFile), index: readIndex(idxFile))
@@ -913,23 +930,16 @@ proc loadSymFromIndexEntry(c: var DecodeContext; module: FileIndex;
   inc val[]
   let id = ItemId(module: module.int32, item: val[])
 
-  # Check if already loaded
-  if c.syms.contains(id):
-    result = c.syms[id][0]
-  else:
-    # Create stub symbol
-    result = PSym(
-      itemId: id,
-      kindImpl: skStub,
-      name: c.cache.getIdent(sn.name),
-      disamb: sn.count.int32,
-      state: Partial
-    )
-    c.syms[id] = (result, entry)
-
-  # Load the full symbol definition if it's still a stub
-  if result.state == Partial:
-    loadSym(c, result)
+  # Create stub symbol
+  result = PSym(
+    itemId: id,
+    kindImpl: skStub,
+    name: c.cache.getIdent(sn.name),
+    disamb: sn.count.int32,
+    state: Partial
+  )
+  c.syms[id] = (result, entry)
+  loadSym(c, result)
 
 proc populateInterfaceTablesFromIndex(c: var DecodeContext; module: FileIndex;
                                       interf, interfHidden: var TStrTable) =
@@ -939,10 +949,13 @@ proc populateInterfaceTablesFromIndex(c: var DecodeContext; module: FileIndex;
 
   # Add all public symbols to interf (exported interface) and interfHidden
   for nifName, entry in idx.public:
-    let sym = loadSymFromIndexEntry(c, module, nifName, entry)
-    if sym != nil:
-      strTableAdd(interf, sym)
-      strTableAdd(interfHidden, sym)
+    if not nifName.startsWith("`t"):
+      # do not load types, they are not part of an interface but an implementation detail!
+      echo "LOADING SYM ", nifName, " ", entry.offset
+      let sym = loadSymFromIndexEntry(c, module, nifName, entry)
+      if sym != nil:
+        strTableAdd(interf, sym)
+        strTableAdd(interfHidden, sym)
 
   when false:
     # Add private symbols to interfHidden only
@@ -954,6 +967,10 @@ proc populateInterfaceTablesFromIndex(c: var DecodeContext; module: FileIndex;
 proc toNifFilename*(conf: ConfigRef; f: FileIndex): string =
   let suffix = moduleSuffix(conf, f)
   result = toGeneratedFile(conf, AbsoluteFile(suffix), ".nif").string
+
+proc toNifIndexFilename*(conf: ConfigRef; f: FileIndex): string =
+  let suffix = moduleSuffix(conf, f)
+  result = toGeneratedFile(conf, AbsoluteFile(suffix), ".s.idx.nif").string
 
 proc loadNifModule*(c: var DecodeContext; f: FileIndex; interf, interfHidden: var TStrTable): PNode =
   let suffix = moduleSuffix(c.infos.config, f)
@@ -968,6 +985,7 @@ proc loadNifModule*(c: var DecodeContext; f: FileIndex; interf, interfHidden: va
 
   var buf = createTokenBuf(300)
   var s = nifstreams.open(modFile)
+  discard processDirectives(s.r)
   # XXX We can optimize this here and only load the top level entries!
   try:
     nifcursors.parse(s, buf, NoLineInfo)

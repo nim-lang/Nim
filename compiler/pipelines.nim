@@ -235,7 +235,7 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
     raiseAssert "use setPipeLinePass to set a proper PipelinePass"
 
   when not defined(nimKochBootstrap):
-    if optCompress in graph.config.globalOptions and not graph.config.isDefined("nimscript"):
+    if optCompress in graph.config.globalOptions and not graph.withinSystem and not graph.config.isDefined("nimscript"):
       topLevelStmts.add finalNode
       writeNifModule(graph.config, module.position.int32, topLevelStmts)
 
@@ -262,7 +262,7 @@ proc compilePipelineModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymF
     var cachedModules: seq[FileIndex] = @[]
     when not defined(nimKochBootstrap):
       # Try loading from NIF file first if optCompress is enabled
-      if optCompress in graph.config.globalOptions and not graph.config.isDefined("nimscript"):
+      if optCompress in graph.config.globalOptions and not graph.withinSystem and not graph.config.isDefined("nimscript"):
         result = moduleFromNifFile(graph, fileIdx, cachedModules)
     if result == nil:
       # Fall back to ROD file loading
@@ -321,10 +321,12 @@ proc connectPipelineCallbacks*(graph: ModuleGraph) =
 
 proc compilePipelineSystemModule*(graph: ModuleGraph) =
   if graph.systemModule == nil:
+    graph.withinSystem = true
     connectPipelineCallbacks(graph)
     graph.config.m.systemFileIdx = fileInfoIdx(graph.config,
         graph.config.libpath / RelativeFile"system.nim")
     discard graph.compilePipelineModule(graph.config.m.systemFileIdx, {sfSystemModule})
+    graph.withinSystem = false
 
 proc compilePipelineProject*(graph: ModuleGraph; projectFileIdx = InvalidFileIdx) =
   connectPipelineCallbacks(graph)
@@ -341,7 +343,9 @@ proc compilePipelineProject*(graph: ModuleGraph; projectFileIdx = InvalidFileIdx
   graph.importStack.add projectFile
 
   if projectFile == systemFileIdx:
+    graph.withinSystem = true
     discard graph.compilePipelineModule(projectFile, {sfMainModule, sfSystemModule})
+    graph.withinSystem = false
   else:
     graph.compilePipelineSystemModule()
     discard graph.compilePipelineModule(projectFile, {sfMainModule})
