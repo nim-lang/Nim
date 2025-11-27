@@ -259,8 +259,8 @@ proc blockLeaveActions(p: BProc, howManyTrys, howManyExcepts: int, isReturnStmt 
   # Pop exceptions that was handled by the
   # except-blocks we are in
   if noSafePoints notin p.flags and not (isReturnStmt and isClosureIterator(p.prc.typ)):
-      for i in countdown(howManyExcepts-1, 0):
-        p.s(cpsStmts).addCallStmt(cgsymValue(p.module, "popCurrentException"))
+    for i in countdown(howManyExcepts-1, 0):
+      p.s(cpsStmts).addCallStmt(cgsymValue(p.module, "popCurrentException"))
 
 proc genGotoState(p: BProc, n: PNode) =
   # we resist the temptation to translate it into duff's device as it later
