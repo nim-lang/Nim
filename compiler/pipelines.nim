@@ -235,7 +235,7 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
     raiseAssert "use setPipeLinePass to set a proper PipelinePass"
 
   when not defined(nimKochBootstrap):
-    if optCompress in graph.config.globalOptions:
+    if optCompress in graph.config.globalOptions and not graph.config.isDefined("nimscript"):
       topLevelStmts.add finalNode
       writeNifModule(graph.config, module.position.int32, topLevelStmts)
 
