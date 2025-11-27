@@ -202,7 +202,7 @@ proc genState(p: BProc, n: PNode) =
   elif n0.kind == nkStrLit:
     linefmt(p, cpsStmts, "$1: ;$n", [n0.strVal])
 
-proc blockLeaveActions(p: BProc, howManyTrys, howManyExcepts: int) =
+proc blockLeaveActions(p: BProc, howManyTrys, howManyExcepts: int, isReturnStmt = false) =
   # Called by return and break stmts.
   # Deals with issues faced when jumping out of try/except/finally stmts.
 
@@ -234,7 +234,7 @@ proc blockLeaveActions(p: BProc, howManyTrys, howManyExcepts: int) =
 
   # Pop exceptions that was handled by the
   # except-blocks we are in
-  if noSafePoints notin p.flags:
+  if noSafePoints notin p.flags and not (isReturnStmt and isClosureIterator(p.prc.typ)):
     for i in countdown(howManyExcepts-1, 0):
       linefmt(p, cpsStmts, "#popCurrentException();$n", [])
 
@@ -509,7 +509,8 @@ proc genReturnStmt(p: BProc, t: PNode) =
   if (t[0].kind != nkEmpty): genStmts(p, t[0])
   blockLeaveActions(p,
     howManyTrys    = p.nestedTryStmts.len,
-    howManyExcepts = p.inExceptBlockLen)
+    howManyExcepts = p.inExceptBlockLen,
+    isReturnStmt = true)
   if (p.finallySafePoints.len > 0) and noSafePoints notin p.flags:
     # If we're in a finally block, and we came here by exception
     # consume it before we return.

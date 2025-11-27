@@ -798,3 +798,52 @@ block: #25202
     doAssert(checkpoints1 == checkpoints2)
 
   p()
+
+block: #25261
+  iterator y(): int {.closure.} =
+    try:
+      try:
+        raise newException(CatchableError, "Error")
+      except CatchableError:
+        return 123
+      yield 0
+    finally:
+      discard
+
+  let w = y
+  doAssert(w() == 123)
+  doAssert(getCurrentExceptionMsg() == "")
+
+  try:
+    raise newException(ValueError, "Outer error")
+  except:
+    doAssert(getCurrentExceptionMsg() == "Outer error")
+    let w = y
+    doAssert(w() == 123)
+    doAssert(getCurrentExceptionMsg() == "Outer error")
+  doAssert(getCurrentExceptionMsg() == "")
+
+block:
+  # Looks almost like above, but last finally changed to except
+  iterator y(): int {.closure.} =
+    try:
+      try:
+        raise newException(CatchableError, "Error")
+      except CatchableError:
+        return 123
+      yield 0
+    except:
+      discard
+
+  let w = y
+  doAssert(w() == 123)
+  doAssert(getCurrentExceptionMsg() == "")
+
+  try:
+    raise newException(ValueError, "Outer error")
+  except:
+    doAssert(getCurrentExceptionMsg() == "Outer error")
+    let w = y
+    doAssert(w() == 123)
+    doAssert(getCurrentExceptionMsg() == "Outer error")
+  doAssert(getCurrentExceptionMsg() == "")
