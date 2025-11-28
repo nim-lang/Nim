@@ -483,6 +483,8 @@ proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode) =
 
   var dest = createTokenBuf(600)
   dest.addParLe pool.tags.getOrIncl(toNifTag(nkStmtList)), rootInfo
+  dest.addDotToken # flags
+  dest.addDotToken # type
   dest.add w.deps
   dest.add outer
   dest.add inner
