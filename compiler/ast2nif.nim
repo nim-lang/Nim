@@ -295,14 +295,17 @@ proc writeSymDef(w: var Writer; dest: var TokenBuf; sym: PSym) =
   writeSym(w, dest, sym.instantiatedFromImpl)
   dest.addParRi
 
+  # Collect for later unloading after entire module is written
+  if sym.kindImpl notin {skModule, skPackage}:
+    # do not unload modules
+    w.writtenSyms.add sym
+
 proc writeSym(w: var Writer; dest: var TokenBuf; sym: PSym) =
   if sym == nil:
     dest.addDotToken()
   elif sym.itemId.module == w.currentModule and sym.state == Complete:
     sym.state = Sealed
     writeSymDef(w, dest, sym)
-    # Collect for later unloading after entire module is written
-    w.writtenSyms.add sym
   else:
     # NIF has direct support for symbol references so we don't need to use a tag here,
     # unlike what we do for types!
@@ -317,12 +320,8 @@ proc writeSymNode(w: var Writer; dest: var TokenBuf; n: PNode; sym: PSym) =
       dest.buildTree hiddenTypeTag, trLineInfo(w, n.info):
         writeType(w, dest, n.typField)
         writeSymDef(w, dest, sym)
-      # Collect for later unloading after entire module is written
-      w.writtenSyms.add sym
     else:
       writeSymDef(w, dest, sym)
-      # Collect for later unloading after entire module is written
-      w.writtenSyms.add sym
   else:
     # NIF has direct support for symbol references so we don't need to use a tag here,
     # unlike what we do for types!
