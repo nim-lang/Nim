@@ -864,7 +864,6 @@ proc loadNode(c: var DecodeContext; n: var Cursor): PNode =
     of nkEmpty:
       result = newNodeI(nkEmpty, c.infos.oldLineInfo(n.info))
       inc n
-      result.flags = loadAtom(TNodeFlags, n)
       skipParRi n
     of nkIdent:
       let info = c.infos.oldLineInfo(n.info)
