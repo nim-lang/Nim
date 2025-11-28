@@ -463,14 +463,19 @@ proc writeToplevelNode(w: var Writer; outer, inner: var TokenBuf; n: PNode) =
   else:
     writeNode w, outer, n
 
+proc createStmtList(buf: var TokenBuf; info: PackedLineInfo) {.inline.} =
+  buf.addParLe pool.tags.getOrIncl(toNifTag(nkStmtList)), info
+  buf.addDotToken # flags
+  buf.addDotToken # type
+
 proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode) =
   var w = Writer(infos: LineInfoWriter(config: config), currentModule: thisModule)
   var outer = createTokenBuf(300)
   var inner = createTokenBuf(300)
 
   let rootInfo = trLineInfo(w, n.info)
-  outer.addParLe pool.tags.getOrIncl(toNifTag(nkStmtList)), rootInfo
-  inner.addParLe pool.tags.getOrIncl(toNifTag(nkStmtList)), rootInfo
+  createStmtList(outer, rootInfo)
+  createStmtList(inner, rootInfo)
 
   w.writeToplevelNode outer, inner, n
 
@@ -482,9 +487,7 @@ proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode) =
   let d = completeGeneratedFilePath(config, nifFilename).string
 
   var dest = createTokenBuf(600)
-  dest.addParLe pool.tags.getOrIncl(toNifTag(nkStmtList)), rootInfo
-  dest.addDotToken # flags
-  dest.addDotToken # type
+  createStmtList(dest, rootInfo)
   dest.add w.deps
   dest.add outer
   dest.add inner
@@ -826,6 +829,9 @@ template withNode(c: var DecodeContext; n: var Cursor; result: PNode; kind: TNod
 proc loadNode(c: var DecodeContext; n: var Cursor): PNode =
   result = nil
   case n.kind
+  of Symbol:
+    let info = c.infos.oldLineInfo(n.info)
+    result = newSymNode(c.loadSymStub n, info)
   of DotToken:
     result = nil
     inc n
