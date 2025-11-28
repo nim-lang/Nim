@@ -813,6 +813,7 @@ proc loadSym*(c: var DecodeContext; s: PSym) =
 
 template withNode(c: var DecodeContext; n: var Cursor; result: PNode; kind: TNodeKind; body: untyped) =
   let info = c.infos.oldLineInfo(n.info)
+  inc n
   let flags = loadAtom(TNodeFlags, n)
   result = newNodeI(kind, info)
   result.flags = flags
@@ -828,7 +829,7 @@ proc loadNode(c: var DecodeContext; n: var Cursor): PNode =
     inc n
   of ParLe:
     let kind = n.nodeKind
-    case kind:
+    case kind
     of nkNone:
       # special NIF introduced tag?
       case pool.tags[n.tagId]
@@ -848,16 +849,19 @@ proc loadNode(c: var DecodeContext; n: var Cursor): PNode =
         raiseAssert "`td` tag in invalid context"
       of "none":
         result = newNodeI(nkNone, c.infos.oldLineInfo(n.info))
+        inc n
         result.flags = loadAtom(TNodeFlags, n)
         skipParRi n
       else:
         raiseAssert "Unknown NIF tag " & pool.tags[n.tagId]
     of nkEmpty:
       result = newNodeI(nkEmpty, c.infos.oldLineInfo(n.info))
+      inc n
       result.flags = loadAtom(TNodeFlags, n)
       skipParRi n
     of nkIdent:
       let info = c.infos.oldLineInfo(n.info)
+      inc n
       let flags = loadAtom(TNodeFlags, n)
       let typ = c.loadTypeStub n
       expect n, Ident
@@ -867,8 +871,9 @@ proc loadNode(c: var DecodeContext; n: var Cursor): PNode =
       result.typField = typ
       skipParRi n
     of nkSym:
-      let info = c.infos.oldLineInfo(n.info)
-      result = newSymNode(c.loadSymStub n, info)
+      #let info = c.infos.oldLineInfo(n.info)
+      #result = newSymNode(c.loadSymStub n, info)
+      raiseAssert "nkSym should be mapped to a NIF symbol, not a tag"
     of nkCharLit:
       c.withNode n, result, kind:
         expect n, CharLit
