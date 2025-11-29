@@ -1,4 +1,4 @@
-
+{.push raises: [], gcsafe.}
 
 
 proc boehmGCinit {.importc: "GC_init", boehmGC.}
@@ -138,3 +138,5 @@ proc deallocOsPages(r: var MemRegion) {.inline.} = discard
 proc deallocOsPages() {.inline.} = discard
 
 include "system/cellsets"
+
+{.pop.}

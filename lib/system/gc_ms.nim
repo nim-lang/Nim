@@ -289,23 +289,23 @@ when useCellIds:
 
 {.pop.}
 
-proc newObj(typ: PNimType, size: int): pointer {.compilerRtl.} =
+proc newObj(typ: PNimType, size: int): pointer {.compilerRtl, raises: [].} =
   result = rawNewObj(typ, size, gch)
   zeroMem(result, size)
   when defined(memProfiler): nimProfile(size)
 
-proc newObjNoInit(typ: PNimType, size: int): pointer {.compilerRtl.} =
+proc newObjNoInit(typ: PNimType, size: int): pointer {.compilerRtl, raises: [].} =
   result = rawNewObj(typ, size, gch)
   when defined(memProfiler): nimProfile(size)
 
-proc newObjRC1(typ: PNimType, size: int): pointer {.compilerRtl.} =
+proc newObjRC1(typ: PNimType, size: int): pointer {.compilerRtl, raises: [].} =
   result = rawNewObj(typ, size, gch)
   zeroMem(result, size)
   when defined(memProfiler): nimProfile(size)
 
 when not defined(nimSeqsV2):
   {.push overflowChecks: on.}
-  proc newSeq(typ: PNimType, len: int): pointer {.compilerRtl.} =
+  proc newSeq(typ: PNimType, len: int): pointer {.compilerRtl, raises: [].} =
     # `newObj` already uses locks, so no need for them here.
     let size = align(GenericSeqSize, typ.base.align) + len * typ.base.size
     result = newObj(typ, size)
@@ -313,7 +313,7 @@ when not defined(nimSeqsV2):
     cast[PGenericSeq](result).reserved = len
     when defined(memProfiler): nimProfile(size)
 
-  proc newSeqRC1(typ: PNimType, len: int): pointer {.compilerRtl.} =
+  proc newSeqRC1(typ: PNimType, len: int): pointer {.compilerRtl, raises: [].} =
     let size = align(GenericSeqSize, typ.base.align) + len * typ.base.size
     result = newObj(typ, size)
     cast[PGenericSeq](result).len = len
