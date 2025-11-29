@@ -138,6 +138,8 @@
 ##   localChannelExample() # "Hello from the main thread!"
 ##   ```
 
+{.push raises: [], gcsafe.}
+
 when not declared(ThisIsSystem):
   {.error: "You must not import this module explicitly".}
 
@@ -390,7 +392,7 @@ proc llRecv(q: PRawChannel, res: pointer, typ: PNimType) =
   q.ready = false
   if typ != q.elemType:
     releaseSys(q.lock)
-    raise newException(ValueError, "cannot receive message of wrong type")
+    raiseAssert "cannot receive message of wrong type"
   rawRecv(q, res, typ)
   if q.maxItems > 0 and q.count == q.maxItems - 1:
     # Parent thread is awaiting in send. Wake it up.
@@ -455,3 +457,5 @@ proc ready*[TMsg](c: var Channel[TMsg]): bool =
   ## new messages.
   var q = cast[PRawChannel](addr(c))
   result = q.ready
+
+{.pop.}
