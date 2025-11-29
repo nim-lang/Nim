@@ -238,7 +238,8 @@ proc configToNif(conf: ConfigRef; dest: var TokenBuf) =
 
 proc cfgCachePath(conf: ConfigRef): (AbsoluteDir, RelativeFile) =
   # add projectName to the cache file name so that multiple nim files in one directory can be built in parallel.
-  (conf.projectPath / RelativeDir"nimcache", if conf.projectName.len == 0: RelativeFile"cache.cfg.nif" else: RelativeFile(conf.projectName & ".cfg.nif"))
+  (conf.projectPath / RelativeDir"nimcache",
+  if conf.projectName.len == 0: RelativeFile"cache.cfg.nif" else: RelativeFile(splitFile(conf.projectName).name & ".cfg.nif"))
 
 proc sourcesChanged(conf: ConfigRef; n: var Cursor; modTime: Time): HashSet[string] =
   result = initHashSet[string](8)
