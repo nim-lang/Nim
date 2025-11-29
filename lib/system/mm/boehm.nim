@@ -95,7 +95,7 @@ proc initGC() =
   when hasThreadSupport:
     boehmGC_allow_register_threads()
 
-proc boehmgc_finalizer(obj: pointer, typedFinalizer: (proc(x: pointer) {.cdecl.})) =
+proc boehmgc_finalizer(obj: pointer, typedFinalizer: (proc(x: pointer) {.cdecl, raises: [], gcsafe.})) =
   typedFinalizer(obj)
 
 
