@@ -351,7 +351,7 @@ proc growObj(regionUnused: var MemRegion; old: pointer, newsize: int): pointer =
   copyMem(result, old, oldsize)
   dealloc(sh.region[], old, roundup(oldsize, MemAlign))
 
-proc growObj(old: pointer, newsize: int): pointer {.rtl.} =
+proc growObj(old: pointer, newsize: int): pointer {.rtl, raises: [].} =
   result = growObj(tlRegion, old, newsize)
 
 proc unsureAsgnRef(dest: PPointer, src: pointer) {.compilerproc, inline.} =

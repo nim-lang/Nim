@@ -346,7 +346,7 @@ when not defined(nimSeqsV2):
     result = cellToUsr(res)
     when defined(memProfiler): nimProfile(newsize-oldsize)
 
-  proc growObj(old: pointer, newsize: int): pointer {.rtl.} =
+  proc growObj(old: pointer, newsize: int): pointer {.rtl, raises: [].} =
     result = growObj(old, newsize, gch)
 
 {.push profiler:off.}
