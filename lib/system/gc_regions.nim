@@ -6,6 +6,8 @@
 #    distribution, for details about the copyright.
 #
 
+{.push raises: [], gcsafe.}
+
 # "Stack GC" for embedded devices or ultra performance requirements.
 import std/private/syslocks
 
@@ -39,7 +41,7 @@ else:
 # We also support 'finalizers'.
 
 type
-  Finalizer {.compilerproc.} = proc (self: pointer) {.nimcall, benign.}
+  Finalizer {.compilerproc.} = proc (self: pointer) {.nimcall, benign, raises: [], gcsafe.}
     # A ref type can have a finalizer that is called before the object's
     # storage is freed.
 
@@ -339,7 +341,7 @@ proc newObjRC1(typ: PNimType, size: int): pointer {.compilerRtl, raises: [].} =
 proc newSeqRC1(typ: PNimType, len: int): pointer {.compilerRtl, raises: [].} =
   result = newSeq(typ, len)
 
-proc growObj(regionUnused: var MemRegion; old: pointer, newsize: int): pointer =
+proc growObj(regionUnused: var MemRegion; old: pointer, newsize: int): pointer {.raises: [].} =
   let sh = cast[ptr SeqHeader](old -! sizeof(SeqHeader))
   let typ = sh.typ
   result = rawNewSeq(sh.region[], typ,
@@ -434,3 +436,5 @@ proc nimGC_setStackBottom(theStackBottom: pointer) = discard
 
 proc nimGCref(x: pointer) {.compilerproc.} = discard
 proc nimGCunref(x: pointer) {.compilerproc.} = discard
+
+{.pop.}
