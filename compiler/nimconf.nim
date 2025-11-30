@@ -218,11 +218,14 @@ proc parseAssignment(L: var Lexer, tok: var Token;
     processSwitch(s, val, passPP, info, config)
 
 proc readConfigFile*(filename: AbsoluteFile; cache: IdentCache;
-                    config: ConfigRef): bool =
+                    config: ConfigRef, dryrun=false): bool =
   var
     L: Lexer = default(Lexer)
     tok: Token
     stream: PLLStream
+  if dryrun:
+    L.errorHandler = proc (conf: ConfigRef; info: TLineInfo; msg: TMsgKind; arg: string) =
+      discard
   stream = llStreamOpen(filename, fmRead)
   if stream != nil:
     openLexer(L, filename, stream, cache, config)
@@ -254,7 +257,7 @@ proc configEnablesSkipParent(conf: ConfigRef; cache: IdentCache;
   let prevSkip = optSkipParentConfigFiles in conf.globalOptions
   conf.skipParentDetectionMode = true
   try:
-    result = readConfigFile(cfgPath, cache, conf) and
+    result = readConfigFile(cfgPath, cache, conf, dryrun=true) and
              optSkipParentConfigFiles in conf.globalOptions
   finally:
     conf.skipParentDetectionMode = prevMode
@@ -333,6 +336,7 @@ proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef; idgen: 
       runNimScriptIfExists(pd / DefaultConfigNims)
 
     if hasProjectCfg:
+      # new project wide config file:
       readConfigFile(projectConfig)
 
   let scriptFile = conf.projectFull.changeFileExt("nims")
