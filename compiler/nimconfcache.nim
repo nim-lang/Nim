@@ -1,4 +1,5 @@
-import options, pathutils, platform, condsyms, extccomp
+import options, pathutils, platform, condsyms, extccomp, nimblecmd
+import lineinfos as nim2lineinfos
 import std/[assertions, os, sets, strtabs, times]
 from std/strutils import parseEnum
 import "../dist/nimony/src/lib" / [bitabs, lineinfos, nifreader, nifstreams, nifcursors]
@@ -358,7 +359,11 @@ proc loadConfigsFromNif(conf: ConfigRef; n: var Cursor) =
       conf.symbols.defineSymbol(def)
   inc n
 
-  fromNif conf.nimblePaths, "nimblepaths", n
+  block:
+    var tmpNimblePaths: seq[AbsoluteDir] = @[]
+    fromNif tmpNimblePaths, "nimblepaths", n
+    for i in countdown(tmpNimblePaths.len - 1, 0):
+      nimblePath(conf, tmpNimblePaths[i], unknownLineInfo)
   fromNif conf.searchPaths, "searchPaths", n
 
   conf.outFile = pool.strings[n.litId].RelativeFile
