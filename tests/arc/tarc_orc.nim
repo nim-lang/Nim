@@ -186,3 +186,27 @@ block: # bug #24147
   let oo = OO(val: "hello world")
   var ooCopy : OO
   `=copy`(ooCopy, oo)
+
+block: # bug #22305
+  type
+    SharedPtr[T] = object
+      p: ptr T
+
+  proc `=destroy`[T](self: SharedPtr[T]) =
+    discard
+
+  type
+    SomethingObj[T] = object
+    Something[T] = SharedPtr[SomethingObj[T]]
+
+  proc useSomething() =
+    # discard Something[int]() # When you uncomment this line, it will compile successfully.
+    discard Something[float]()
+
+  proc fn() =
+    let thing = Something[int]()
+    proc closure() =
+      discard thing
+    closure()
+
+  fn()
