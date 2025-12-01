@@ -1,3 +1,4 @@
+{.push raises: [], gcsafe.}
 
 when defined(windows):
   const goLib = "libgo.dll"
@@ -151,3 +152,5 @@ proc alloc0(r: var MemRegion, size: int): pointer =
 proc dealloc(r: var MemRegion, p: pointer) = dealloc(p)
 proc deallocOsPages(r: var MemRegion) {.inline.} = discard
 proc deallocOsPages() {.inline.} = discard
+
+{.pop.}

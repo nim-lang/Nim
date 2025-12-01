@@ -6,6 +6,8 @@
 #    distribution, for details about the copyright.
 #
 
+{.push raises: [], gcsafe.}
+
 # "Stack GC" for embedded devices or ultra performance requirements.
 import std/private/syslocks
 
@@ -39,7 +41,7 @@ else:
 # We also support 'finalizers'.
 
 type
-  Finalizer {.compilerproc.} = proc (self: pointer) {.nimcall, benign.}
+  Finalizer {.compilerproc.} = proc (self: pointer) {.nimcall, benign, raises: [], gcsafe.}
     # A ref type can have a finalizer that is called before the object's
     # storage is freed.
 
@@ -305,26 +307,26 @@ proc rawNewSeq(r: var MemRegion, typ: PNimType, size: int): pointer =
   res.region = addr(r)
   result = res +! sizeof(SeqHeader)
 
-proc newObj(typ: PNimType, size: int): pointer {.compilerRtl.} =
+proc newObj(typ: PNimType, size: int): pointer {.compilerRtl, raises: [].} =
   sysAssert typ.kind notin {tySequence, tyString}, "newObj cannot be used to construct seqs"
   result = rawNewObj(tlRegion, typ, size)
   zeroMem(result, size)
   when defined(memProfiler): nimProfile(size)
 
-proc newObjNoInit(typ: PNimType, size: int): pointer {.compilerRtl.} =
+proc newObjNoInit(typ: PNimType, size: int): pointer {.compilerRtl, raises: [].} =
   sysAssert typ.kind notin {tySequence, tyString}, "newObj cannot be used to construct seqs"
   result = rawNewObj(tlRegion, typ, size)
   when defined(memProfiler): nimProfile(size)
 
 {.push overflowChecks: on.}
-proc newSeq(typ: PNimType, len: int): pointer {.compilerRtl.} =
+proc newSeq(typ: PNimType, len: int): pointer {.compilerRtl, raises: [].} =
   let size = roundup(align(GenericSeqSize, typ.base.align) + len * typ.base.size, MemAlign)
   result = rawNewSeq(tlRegion, typ, size)
   zeroMem(result, size)
   cast[PGenericSeq](result).len = len
   cast[PGenericSeq](result).reserved = len
 
-proc newStr(typ: PNimType, len: int; init: bool): pointer {.compilerRtl.} =
+proc newStr(typ: PNimType, len: int; init: bool): pointer {.compilerRtl, raises: [].} =
   let size = roundup(len + GenericSeqSize, MemAlign)
   result = rawNewSeq(tlRegion, typ, size)
   if init: zeroMem(result, size)
@@ -332,14 +334,14 @@ proc newStr(typ: PNimType, len: int; init: bool): pointer {.compilerRtl.} =
   cast[PGenericSeq](result).reserved = len
 {.pop.}
 
-proc newObjRC1(typ: PNimType, size: int): pointer {.compilerRtl.} =
+proc newObjRC1(typ: PNimType, size: int): pointer {.compilerRtl, raises: [].} =
   result = rawNewObj(tlRegion, typ, size)
   zeroMem(result, size)
 
-proc newSeqRC1(typ: PNimType, len: int): pointer {.compilerRtl.} =
+proc newSeqRC1(typ: PNimType, len: int): pointer {.compilerRtl, raises: [].} =
   result = newSeq(typ, len)
 
-proc growObj(regionUnused: var MemRegion; old: pointer, newsize: int): pointer =
+proc growObj(regionUnused: var MemRegion; old: pointer, newsize: int): pointer {.raises: [].} =
   let sh = cast[ptr SeqHeader](old -! sizeof(SeqHeader))
   let typ = sh.typ
   result = rawNewSeq(sh.region[], typ,
@@ -351,7 +353,7 @@ proc growObj(regionUnused: var MemRegion; old: pointer, newsize: int): pointer =
   copyMem(result, old, oldsize)
   dealloc(sh.region[], old, roundup(oldsize, MemAlign))
 
-proc growObj(old: pointer, newsize: int): pointer {.rtl.} =
+proc growObj(old: pointer, newsize: int): pointer {.rtl, raises: [].} =
   result = growObj(tlRegion, old, newsize)
 
 proc unsureAsgnRef(dest: PPointer, src: pointer) {.compilerproc, inline.} =
@@ -434,3 +436,5 @@ proc nimGC_setStackBottom(theStackBottom: pointer) = discard
 
 proc nimGCref(x: pointer) {.compilerproc.} = discard
 proc nimGCunref(x: pointer) {.compilerproc.} = discard
+
+{.pop.}

@@ -60,10 +60,10 @@ elif (defined(nogc) or defined(gcDestructors)) and defined(useMalloc):
 
   when defined(nogc):
     proc GC_getStatistics(): string = ""
-    proc newObj(typ: PNimType, size: int): pointer {.compilerproc.} =
+    proc newObj(typ: PNimType, size: int): pointer {.compilerproc, raises: [].} =
       result = alloc0(size)
 
-    proc newSeq(typ: PNimType, len: int): pointer {.compilerproc.} =
+    proc newSeq(typ: PNimType, len: int): pointer {.compilerproc, raises: [].} =
       result = newObj(typ, align(GenericSeqSize, typ.align) + len * typ.base.size)
       cast[PGenericSeq](result).len = len
       cast[PGenericSeq](result).reserved = len
