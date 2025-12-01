@@ -1620,11 +1620,28 @@ when notJSnotNims:
   import system/ansi_c
   import system/memory
 
+when notJSnotNims and defined(nimSeqsV2):
+  const nimStrVersion {.core.} = 2
+
+  type
+    NimStrPayloadBase = object
+      cap: int
+
+    NimStrPayload {.core.} = object
+      cap: int
+      data: UncheckedArray[char]
+
+    NimStringV2 {.core.} = object
+      len: int
+      p: ptr NimStrPayload ## can be nil if len == 0.
+
 when defined(windows):
   proc GetLastError(): int32 {.header: "<windows.h>", nodecl.}
   const ERROR_BAD_EXE_FORMAT = 193
 
 when notJSnotNims:
+  proc nimToCStringConv(s: NimStringV2): cstring {.compilerproc, nonReloadable, inline.}
+
   when hostOS != "standalone" and hostOS != "any":
     type
       LibHandle = pointer       # private type
@@ -1664,21 +1681,6 @@ when not defined(js) and defined(nimV2):
         else:
           vTable: UncheckedArray[pointer] # vtable for types
     PNimTypeV2 = ptr TNimTypeV2
-
-when notJSnotNims and defined(nimSeqsV2):
-  const nimStrVersion {.core.} = 2
-
-  type
-    NimStrPayloadBase = object
-      cap: int
-
-    NimStrPayload {.core.} = object
-      cap: int
-      data: UncheckedArray[char]
-
-    NimStringV2 {.core.} = object
-      len: int
-      p: ptr NimStrPayload ## can be nil if len == 0.
 
 when not defined(nimIcIntegrityChecks):
   import system/exceptions
