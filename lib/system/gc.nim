@@ -97,7 +97,7 @@ type
     waZctDecRef, waPush
     #, waDebug
 
-  Finalizer {.compilerproc.} = proc (self: pointer) {.nimcall, benign, raises: [].}
+  Finalizer {.compilerproc.} = proc (self: pointer) {.nimcall, benign, raises: [], gcsafe.}
     # A ref type can have a finalizer that is called before the object's
     # storage is freed.
 
@@ -481,17 +481,17 @@ proc rawNewObj(typ: PNimType, size: int, gch: var GcHeap): pointer =
 {.pop.} # .stackTrace off
 {.pop.} # .profiler off
 
-proc newObjNoInit(typ: PNimType, size: int): pointer {.compilerRtl.} =
+proc newObjNoInit(typ: PNimType, size: int): pointer {.compilerRtl, raises: [].} =
   result = rawNewObj(typ, size, gch)
   when defined(memProfiler): nimProfile(size)
 
-proc newObj(typ: PNimType, size: int): pointer {.compilerRtl, noinline.} =
+proc newObj(typ: PNimType, size: int): pointer {.compilerRtl, noinline, raises: [].} =
   result = rawNewObj(typ, size, gch)
   zeroMem(result, size)
   when defined(memProfiler): nimProfile(size)
 
 {.push overflowChecks: on.}
-proc newSeq(typ: PNimType, len: int): pointer {.compilerRtl.} =
+proc newSeq(typ: PNimType, len: int): pointer {.compilerRtl, raises: [].} =
   # `newObj` already uses locks, so no need for them here.
   let size = align(GenericSeqSize, typ.base.align) + len * typ.base.size
   result = newObj(typ, size)
@@ -500,7 +500,7 @@ proc newSeq(typ: PNimType, len: int): pointer {.compilerRtl.} =
   when defined(memProfiler): nimProfile(size)
 {.pop.}
 
-proc newObjRC1(typ: PNimType, size: int): pointer {.compilerRtl, noinline.} =
+proc newObjRC1(typ: PNimType, size: int): pointer {.compilerRtl, noinline, raises: [].} =
   # generates a new object and sets its reference counter to 1
   incTypeSize typ, size
   sysAssert(allocInv(gch.region), "newObjRC1 begin")
@@ -528,7 +528,7 @@ proc newObjRC1(typ: PNimType, size: int): pointer {.compilerRtl, noinline.} =
   when defined(memProfiler): nimProfile(size)
 
 {.push overflowChecks: on.}
-proc newSeqRC1(typ: PNimType, len: int): pointer {.compilerRtl.} =
+proc newSeqRC1(typ: PNimType, len: int): pointer {.compilerRtl, raises: [].} =
   let size = align(GenericSeqSize, typ.base.align) + len * typ.base.size
   result = newObjRC1(typ, size)
   cast[PGenericSeq](result).len = len
@@ -670,7 +670,7 @@ proc doOperation(p: pointer, op: WalkOp) =
     add(gch.tempStack, c)
   #of waDebug: debugGraph(c)
 
-proc nimGCvisit(d: pointer, op: int) {.compilerRtl.} =
+proc nimGCvisit(d: pointer, op: int) {.compilerRtl, raises: [].} =
   doOperation(d, WalkOp(op))
 
 proc collectZCT(gch: var GcHeap): bool {.benign, raises: [].}
