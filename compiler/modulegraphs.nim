@@ -16,6 +16,8 @@ import ../dist/checksums/src/checksums/md5
 import ast, astalgo, options, lineinfos,idents, btrees, ropes, msgs, pathutils, packages, suggestsymdb
 import ic / [packed_ast, ic]
 
+when not defined(nimKochBootstrap):
+  import ast2nif
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -740,6 +742,31 @@ proc moduleFromRodFile*(g: ModuleGraph; fileIdx: FileIndex;
     result = moduleFromRodFile(g.packed, g.config, g.cache, fileIdx, cachedModules)
   else:
     result = nil
+
+when not defined(nimKochBootstrap):
+  proc moduleFromNifFile*(g: ModuleGraph; fileIdx: FileIndex;
+                          cachedModules: var seq[FileIndex]): PSym =
+    ## Returns 'nil' if the module needs to be recompiled.
+    ## Loads module from NIF file when optCompress is enabled.
+
+    if not fileExists(toNifFilename(g.config, fileIdx)):
+      return nil
+
+    # Create module symbol
+    let filename = AbsoluteFile toFullPath(g.config, fileIdx)
+    result = PSym(
+      kindImpl: skModule,
+      itemId: ItemId(module: int32(fileIdx), item: 0'i32),
+      name: getIdent(g.cache, splitFile(filename).name),
+      infoImpl: newLineInfo(fileIdx, 1, 1),
+      positionImpl: int(fileIdx),
+    )
+    setOwner(result, getPackage(g.config, g.cache, fileIdx))
+
+    # Register module in graph
+    registerModule(g, result)
+    result.astImpl = loadNifModule(ast.program, fileIdx, g.ifaces[fileIdx.int].interf, g.ifaces[fileIdx.int].interfHidden)
+    cachedModules.add fileIdx
 
 proc configComplete*(g: ModuleGraph) =
   rememberStartupConfig(g.startupPackedConfig, g.config)

@@ -1620,6 +1620,41 @@ when notJSnotNims:
   import system/ansi_c
   import system/memory
 
+when notJSnotNims and defined(nimSeqsV2):
+  const nimStrVersion {.core.} = 2
+
+  type
+    NimStrPayloadBase = object
+      cap: int
+
+    NimStrPayload {.core.} = object
+      cap: int
+      data: UncheckedArray[char]
+
+    NimStringV2 {.core.} = object
+      len: int
+      p: ptr NimStrPayload ## can be nil if len == 0.
+
+when defined(windows):
+  proc GetLastError(): int32 {.header: "<windows.h>", nodecl.}
+  const ERROR_BAD_EXE_FORMAT = 193
+
+when notJSnotNims:
+  when defined(nimSeqsV2):
+    proc nimToCStringConv(s: NimStringV2): cstring {.compilerproc, nonReloadable, inline.}
+
+  when hostOS != "standalone" and hostOS != "any":
+    type
+      LibHandle = pointer       # private type
+      ProcAddr = pointer        # library loading and loading of procs:
+
+    proc nimLoadLibrary(path: string): LibHandle {.compilerproc, hcrInline, nonReloadable.}
+    proc nimUnloadLibrary(lib: LibHandle) {.compilerproc, hcrInline, nonReloadable.}
+    proc nimGetProcAddr(lib: LibHandle, name: cstring): ProcAddr {.compilerproc, hcrInline, nonReloadable.}
+
+    proc nimLoadLibraryError(path: string) {.compilerproc, hcrInline, nonReloadable.}
+
+    include "system/dyncalls"
 
 {.push stackTrace: off.}
 
@@ -1647,21 +1682,6 @@ when not defined(js) and defined(nimV2):
         else:
           vTable: UncheckedArray[pointer] # vtable for types
     PNimTypeV2 = ptr TNimTypeV2
-
-when notJSnotNims and defined(nimSeqsV2):
-  const nimStrVersion {.core.} = 2
-
-  type
-    NimStrPayloadBase = object
-      cap: int
-
-    NimStrPayload {.core.} = object
-      cap: int
-      data: UncheckedArray[char]
-
-    NimStringV2 {.core.} = object
-      len: int
-      p: ptr NimStrPayload ## can be nil if len == 0.
 
 when not defined(nimIcIntegrityChecks):
   import system/exceptions
@@ -2316,19 +2336,6 @@ when not defined(js):
 
 
 when notJSnotNims:
-  when hostOS != "standalone" and hostOS != "any":
-    type
-      LibHandle = pointer       # private type
-      ProcAddr = pointer        # library loading and loading of procs:
-
-    proc nimLoadLibrary(path: string): LibHandle {.compilerproc, hcrInline, nonReloadable.}
-    proc nimUnloadLibrary(lib: LibHandle) {.compilerproc, hcrInline, nonReloadable.}
-    proc nimGetProcAddr(lib: LibHandle, name: cstring): ProcAddr {.compilerproc, hcrInline, nonReloadable.}
-
-    proc nimLoadLibraryError(path: string) {.compilerproc, hcrInline, nonReloadable.}
-
-    include "system/dyncalls"
-
   import system/countbits_impl
   include "system/sets"
 

@@ -33,7 +33,7 @@ template typ*(n: PNode): PType =
   n.typField
 
 when not defined(nimKochBootstrap):
-  var program {.threadvar.}: DecodeContext
+  var program* {.threadvar.}: DecodeContext
 
 proc setupProgram*(config: ConfigRef; cache: IdentCache) =
   when not defined(nimKochBootstrap):
@@ -735,10 +735,6 @@ proc appendToModule*(m: PSym, n: PNode) =
   else:
     assert m.astImpl.kind == nkStmtList
   m.astImpl.add(n)
-
-const                         # for all kind of hash tables:
-  GrowthFactor* = 2           # must be power of 2, > 0
-  StartSize* = 8              # must be power of 2, > 0
 
 proc copyStrTable*(dest: var TStrTable, src: TStrTable) =
   dest.counter = src.counter

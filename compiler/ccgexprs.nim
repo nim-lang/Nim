@@ -3471,6 +3471,10 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
         genProcPrototype(p.module, sym)
       else:
         genProc(p.module, sym)
+        # For cross-module inline procs with optCompress, ensure prototype is emitted
+        if sym.typ.callConv == ccInline and optCompress in p.config.globalOptions and
+           sym.itemId.module != p.module.module.position:
+          genProcPrototype(p.module, sym)
       if sym.loc.snippet == "" or sym.loc.lode == nil:
         internalError(p.config, n.info, "expr: proc not init " & sym.name.s)
       putLocIntoDest(p, d, sym.loc)
@@ -3479,6 +3483,12 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
         var lit = newBuilder("")
         genLiteral(p, sym.astdef, sym.typ, lit)
         putIntoDest(p, d, n, extract(lit), OnStatic)
+      elif optCompress in p.config.globalOptions:
+        # With delayed codegen, we need to ensure the definition is generated
+        # not just the extern header declaration
+        requestConstImpl(p, sym)
+        assert((sym.loc.snippet != "") and (sym.loc.t != nil))
+        putLocIntoDest(p, d, sym.loc)
       elif delayedCodegen(p.module):
         genConstHeader(p.module, p.module, p, sym)
         assert((sym.loc.snippet != "") and (sym.loc.t != nil))

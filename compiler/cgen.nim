@@ -1508,7 +1508,7 @@ proc genProcNoForward(m: BModule, prc: PSym) =
       # mangle the inline proc based on the module where it is defined -
       # not on the first module that uses it
       if m.module.itemId.module != prc.itemId.module and optCompress in m.config.globalOptions:
-        let prcCopy = copyInlineProc(prc, m.idgen)
+        let prcCopy = prc # copyInlineProc(prc, m.idgen)
         fillProcLoc(m, prcCopy.ast[namePos])
         genProcPrototype(m, prcCopy)
         genProcAux(m, prcCopy)
@@ -1518,9 +1518,9 @@ proc genProcNoForward(m: BModule, prc: PSym) =
         fillProcLoc(m2, prc.ast[namePos])
         #elif {sfExportc, sfImportc} * prc.flags == {}:
         #  # reset name to restore consistency in case of hashing collisions:
-        #  echo "resetting ", prc.id, " by ", m.module.name.s
-        #  prc.loc.snippet = nil
-        #  prc.loc.snippet = mangleName(m, prc)
+        #  #echo "resetting ", prc.id, " by ", m.module.name.s
+        #  #prc.loc.snippet = nil
+        #  #prc.loc.snippet = mangleName(m, prc)
         genProcPrototype(m, prc)
         genProcAux(m, prc)
   elif sfImportc notin prc.flags:
@@ -2523,7 +2523,7 @@ proc writeModule(m: BModule, pending: bool) =
 
     while m.queue.len > 0:
       let sym = m.queue.pop()
-      genProcAux(m, sym)
+      genProcNoForward(m, sym)
 
     finishTypeDescriptions(m)
     if sfMainModule in m.module.flags:

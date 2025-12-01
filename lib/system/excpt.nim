@@ -22,10 +22,6 @@ var
     ## instead of `stdmsg.write` when printing stacktrace.
     ## Unstable API.
 
-when defined(windows):
-  proc GetLastError(): int32 {.header: "<windows.h>", nodecl.}
-  const ERROR_BAD_EXE_FORMAT = 193
-
 when not defined(windows) or not defined(guiapp):
   proc writeToStdErr(msg: cstring) = rawWrite(cstderr, msg)
   proc writeToStdErr(msg: cstring, length: int) =
