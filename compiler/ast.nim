@@ -33,7 +33,7 @@ template typ*(n: PNode): PType =
   n.typField
 
 when not defined(nimKochBootstrap):
-  var program {.threadvar.}: DecodeContext
+  var program* {.threadvar.}: DecodeContext
 
 proc setupProgram*(config: ConfigRef; cache: IdentCache) =
   when not defined(nimKochBootstrap):

@@ -235,7 +235,7 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
     raiseAssert "use setPipeLinePass to set a proper PipelinePass"
 
   when not defined(nimKochBootstrap):
-    if optCompress in graph.config.globalOptions and not graph.withinSystem and not graph.config.isDefined("nimscript"):
+    if optCompress in graph.config.globalOptions and not graph.config.isDefined("nimscript"):
       topLevelStmts.add finalNode
       writeNifModule(graph.config, module.position.int32, topLevelStmts)
 
@@ -262,7 +262,7 @@ proc compilePipelineModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymF
     var cachedModules: seq[FileIndex] = @[]
     when not defined(nimKochBootstrap):
       # Try loading from NIF file first if optCompress is enabled
-      if optCompress in graph.config.globalOptions and not graph.withinSystem and not graph.config.isDefined("nimscript"):
+      if optCompress in graph.config.globalOptions and not graph.config.isDefined("nimscript"):
         result = moduleFromNifFile(graph, fileIdx, cachedModules)
     if result == nil:
       # Fall back to ROD file loading

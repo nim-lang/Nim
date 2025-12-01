@@ -1640,7 +1640,8 @@ when defined(windows):
   const ERROR_BAD_EXE_FORMAT = 193
 
 when notJSnotNims:
-  proc nimToCStringConv(s: NimStringV2): cstring {.compilerproc, nonReloadable, inline.}
+  when defined(nimSeqsV2):
+    proc nimToCStringConv(s: NimStringV2): cstring {.compilerproc, nonReloadable, inline.}
 
   when hostOS != "standalone" and hostOS != "any":
     type

@@ -744,8 +744,6 @@ proc moduleFromRodFile*(g: ModuleGraph; fileIdx: FileIndex;
     result = nil
 
 when not defined(nimKochBootstrap):
-  var gDecodeContext {.threadvar.}: DecodeContext
-
   proc moduleFromNifFile*(g: ModuleGraph; fileIdx: FileIndex;
                           cachedModules: var seq[FileIndex]): PSym =
     ## Returns 'nil' if the module needs to be recompiled.
@@ -767,13 +765,11 @@ when not defined(nimKochBootstrap):
 
     # Register module in graph
     registerModule(g, result)
-    result.astImpl = loadNifModule(gDecodeContext, fileIdx, g.ifaces[fileIdx.int].interf, g.ifaces[fileIdx.int].interfHidden)
+    result.astImpl = loadNifModule(ast.program, fileIdx, g.ifaces[fileIdx.int].interf, g.ifaces[fileIdx.int].interfHidden)
     cachedModules.add fileIdx
 
 proc configComplete*(g: ModuleGraph) =
   rememberStartupConfig(g.startupPackedConfig, g.config)
-  when not defined(nimKochBootstrap):
-    gDecodeContext = createDecodeContext(g.config, g.cache)
 
 proc onProcessing*(graph: ModuleGraph, fileIdx: FileIndex, moduleStatus: string, fromModule: PSym, ) =
   let conf = graph.config
