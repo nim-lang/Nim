@@ -772,17 +772,9 @@ proc loadAnnex(c: var DecodeContext; n: var Cursor; thisModule: string): PLib =
   else:
     raiseAssert "`lib/annex` information expected"
 
-proc loadSym*(c: var DecodeContext; s: PSym) =
-  if s.state != Partial: return
-  s.state = Sealed
-  var buf = createTokenBuf(30)
-  let symsModule = s.itemId.module.FileIndex
-  var n = cursorFromIndexEntry(c, symsModule, c.syms[s.itemId][1], buf)
-
-  expect n, ParLe
-  if n.tagId != sdefTag:
-    raiseAssert "(sd) expected"
-  inc n
+proc loadSymFromCursor(c: var DecodeContext; s: PSym; n: var Cursor; thisModule: string) =
+  ## Loads a symbol definition from the current cursor position.
+  ## The cursor should be positioned after the opening (sd tag.
   expect n, SymbolDef
   # ignore the symbol's name, we have already used it to create this PSym instance!
   inc n
@@ -808,7 +800,7 @@ proc loadSym*(c: var DecodeContext; s: PSym) =
 
   case s.kindImpl
   of skLet, skVar, skField, skForVar:
-    s.guardImpl = loadSymStub(c, n, c.moduleToNifSuffix[symsModule])
+    s.guardImpl = loadSymStub(c, n, thisModule)
     loadField s.bitsizeImpl
     loadField s.alignmentImpl
   else:
@@ -821,13 +813,26 @@ proc loadSym*(c: var DecodeContext; s: PSym) =
   else:
     loadField s.positionImpl
   s.typImpl = loadTypeStub(c, n)
-  s.ownerFieldImpl = loadSymStub(c, n, c.moduleToNifSuffix[symsModule])
+  s.ownerFieldImpl = loadSymStub(c, n, thisModule)
   # We do not store `sym.ast` here but instead set it in the deserializer
   #writeNode(w, sym.ast)
   loadLoc c, n, s.locImpl
-  s.constraintImpl = loadNode(c, n, c.moduleToNifSuffix[symsModule])
-  s.instantiatedFromImpl = loadSymStub(c, n, c.moduleToNifSuffix[symsModule])
+  s.constraintImpl = loadNode(c, n, thisModule)
+  s.instantiatedFromImpl = loadSymStub(c, n, thisModule)
   skipParRi n
+
+proc loadSym*(c: var DecodeContext; s: PSym) =
+  if s.state != Partial: return
+  s.state = Sealed
+  var buf = createTokenBuf(30)
+  let symsModule = s.itemId.module.FileIndex
+  var n = cursorFromIndexEntry(c, symsModule, c.syms[s.itemId][1], buf)
+
+  expect n, ParLe
+  if n.tagId != sdefTag:
+    raiseAssert "(sd) expected"
+  inc n
+  loadSymFromCursor(c, s, n, c.moduleToNifSuffix[symsModule])
 
 
 template withNode(c: var DecodeContext; n: var Cursor; result: PNode; kind: TNodeKind; body: untyped) =
@@ -866,10 +871,19 @@ proc loadNode(c: var DecodeContext; n: var Cursor; thisModule: string): PNode =
         result.typField = typ
         skipParRi n
       of symDefTagName:
+        let info = c.infos.oldLineInfo(n.info)
         let name = n.firstSon
         assert name.kind == SymbolDef
-        result = newSymNode(c.loadSymStub(name.symId, thisModule), c.infos.oldLineInfo(n.info))
-        skip n
+        # Check if this is a local symbol (no module suffix in name)
+        let isLocal = parseSymName(pool.syms[name.symId]).module.len == 0
+        let sym = c.loadSymStub(name.symId, thisModule)
+        if isLocal:
+          inc n # skip `sd` tag
+          loadSymFromCursor(c, sym, n, thisModule)
+          sym.state = Sealed  # mark as fully loaded
+        else:
+          skip n  # skip the entire sdef for indexed symbols
+        result = newSymNode(sym, info)
       of typeDefTagName:
         raiseAssert "`td` tag in invalid context"
       of "none":
