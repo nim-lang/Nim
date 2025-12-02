@@ -361,19 +361,23 @@ proc addLocalSyms(w: var Writer; n: PNode) =
 
 proc trInclude(w: var Writer; n: PNode) =
   w.deps.addParLe pool.tags.getOrIncl(toNifTag(n.kind)), trLineInfo(w, n.info)
+  w.deps.addDotToken # flags
+  w.deps.addDotToken # type
   for child in n:
     assert child.kind == nkStrLit
-    w.deps.addStrLit child.strVal
+    w.deps.addStrLit child.strVal  # raw string literal, no wrapper needed
   w.deps.addParRi
 
 proc trImport(w: var Writer; n: PNode) =
   for child in n:
     if child.kind == nkSym:
       w.deps.addParLe pool.tags.getOrIncl(toNifTag(n.kind)), trLineInfo(w, n.info)
+      w.deps.addDotToken # flags
+      w.deps.addDotToken # type
       let s = child.sym
       assert s.kindImpl == skModule
       let fp = toFullPath(w.infos.config, s.positionImpl.FileIndex)
-      w.deps.addStrLit fp
+      w.deps.addStrLit fp  # raw string literal, no wrapper needed
       w.deps.addParRi
 
 proc writeNode(w: var Writer; dest: var TokenBuf; n: PNode) =
@@ -845,6 +849,9 @@ proc loadNode(c: var DecodeContext; n: var Cursor; thisModule: string): PNode =
   of DotToken:
     result = nil
     inc n
+  of StringLit:
+    result = newStrNode(pool.strings[n.litId], c.infos.oldLineInfo(n.info))
+    inc n
   of ParLe:
     let kind = n.nodeKind
     case kind
@@ -938,7 +945,7 @@ proc loadNode(c: var DecodeContext; n: var Cursor; thisModule: string): PNode =
         while n.kind != ParRi:
           result.sons.add c.loadNode(n, thisModule)
   else:
-    raiseAssert "Not yet implemented " & $n.kind
+    raiseAssert "expected string literal but got " & $n.kind
 
 proc moduleSuffix(conf: ConfigRef; f: FileIndex): string =
   moduleSuffix(toFullPath(conf, f), cast[seq[string]](conf.searchPaths))

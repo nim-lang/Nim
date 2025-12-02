@@ -854,14 +854,6 @@ proc newFloatNode*(kind: TNodeKind, floatVal: BiggestFloat): PNode =
   result = newNode(kind)
   result.floatVal = floatVal
 
-proc newStrNode*(kind: TNodeKind, strVal: string): PNode =
-  result = newNode(kind)
-  result.strVal = strVal
-
-proc newStrNode*(strVal: string; info: TLineInfo): PNode =
-  result = newNodeI(nkStrLit, info)
-  result.strVal = strVal
-
 proc newProcNode*(kind: TNodeKind, info: TLineInfo, body: PNode,
                  params,
                  name, pattern, genericParams,

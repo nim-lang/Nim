@@ -981,6 +981,14 @@ proc newSymNode*(sym: PSym, info: TLineInfo): PNode =
   result.typField = sym.typImpl
   result.info = info
 
+proc newStrNode*(kind: TNodeKind, strVal: string): PNode =
+  result = newNode(kind)
+  result.strVal = strVal
+
+proc newStrNode*(strVal: string; info: TLineInfo): PNode =
+  result = newNodeI(nkStrLit, info)
+  result.strVal = strVal
+
 proc forcePartial*(s: PSym) =
   ## Resets all impl-fields to their default values and sets state to Partial.
   ## This is useful for creating a stub symbol that can be lazily loaded later.

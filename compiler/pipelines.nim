@@ -365,8 +365,18 @@ proc compilePipelineProject*(graph: ModuleGraph; projectFileIdx = InvalidFileIdx
     discard graph.compilePipelineModule(projectFile, {sfMainModule, sfSystemModule})
     graph.withinSystem = false
   elif graph.config.cmd == cmdM:
-    # For cmdM: load system.nim from NIF, don't recompile it
-    # The import mechanism will load it via moduleFromNifFile
+    # For cmdM: load system.nim from NIF first, then compile the main module
+    connectPipelineCallbacks(graph)
+    graph.config.m.systemFileIdx = fileInfoIdx(graph.config,
+        graph.config.libpath / RelativeFile"system.nim")
+    var cachedModules: seq[FileIndex] = @[]
+    when not defined(nimKochBootstrap):
+      graph.systemModule = moduleFromNifFile(graph, graph.config.m.systemFileIdx, cachedModules)
+      if graph.systemModule == nil:
+        let nifPath = toNifFilename(graph.config, graph.config.m.systemFileIdx)
+        localError(graph.config, unknownLineInfo,
+          "nim m requires precompiled NIF for system module (expected: " & nifPath & ")")
+        return
     discard graph.compilePipelineModule(projectFile, {sfMainModule})
   else:
     graph.compilePipelineSystemModule()
