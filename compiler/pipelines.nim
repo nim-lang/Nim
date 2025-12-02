@@ -160,7 +160,7 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
     s = stream
     graph.interactive = stream.kind == llsStdIn
   var topLevelStmts =
-    if optCompress in graph.config.globalOptions:
+    if optCompress in graph.config.globalOptions or graph.config.cmd == cmdM:
       newNodeI(nkStmtList, module.info)
     else:
       nil
@@ -235,14 +235,16 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
     raiseAssert "use setPipeLinePass to set a proper PipelinePass"
 
   when not defined(nimKochBootstrap):
-    if optCompress in graph.config.globalOptions and not graph.config.isDefined("nimscript"):
+    if (optCompress in graph.config.globalOptions or graph.config.cmd == cmdM) and
+       not graph.config.isDefined("nimscript"):
       topLevelStmts.add finalNode
       writeNifModule(graph.config, module.position.int32, topLevelStmts)
 
-  if graph.config.backend notin {backendC, backendCpp, backendObjc}:
+  if graph.config.backend notin {backendC, backendCpp, backendObjc} and graph.config.cmd != cmdM:
     # We only write rod files here if no C-like backend is active.
     # The C-like backends have been patched to support the IC mechanism.
     # They are responsible for closing the rod files. See `cbackend.nim`.
+    # cmdM uses NIF files only, not ROD files.
     closeRodFile(graph, module)
   result = true
 
@@ -261,11 +263,20 @@ proc compilePipelineModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymF
   if result == nil:
     var cachedModules: seq[FileIndex] = @[]
     when not defined(nimKochBootstrap):
-      # Try loading from NIF file first if optCompress is enabled
-      if optCompress in graph.config.globalOptions and not graph.config.isDefined("nimscript"):
+      # For cmdM: load imports from NIF files (but compile the main module from source)
+      # Skip when withinSystem is true (compiling system.nim itself)
+      if graph.config.cmd == cmdM and
+         sfMainModule notin flags and
+         not graph.withinSystem and
+         not graph.config.isDefined("nimscript"):
         result = moduleFromNifFile(graph, fileIdx, cachedModules)
-    if result == nil:
-      # Fall back to ROD file loading
+        if result == nil:
+          let nifPath = toNifFilename(graph.config, fileIdx)
+          localError(graph.config, unknownLineInfo,
+            "nim m requires precompiled NIF for import: " & toFullPath(graph.config, fileIdx) &
+            " (expected: " & nifPath & ")")
+    if result == nil and graph.config.cmd != cmdM:
+      # Fall back to ROD file loading (not used for cmdM which uses NIF only)
       result = moduleFromRodFile(graph, fileIdx, cachedModules)
     let path = toFullPath(graph.config, fileIdx)
     let filename = AbsoluteFile path
@@ -287,7 +298,8 @@ proc compilePipelineModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymF
       partialInitModule(result, graph, fileIdx, filename)
     for m in cachedModules:
       registerModuleById(graph, m)
-      if sfMainModule in flags and graph.config.cmd == cmdM:
+      if graph.config.cmd == cmdM:
+        # cmdM uses NIF files, not ROD files - skip ROD-specific replay
         discard
       else:
         replayStateChanges(graph.packed.pm[m.int].module, graph)

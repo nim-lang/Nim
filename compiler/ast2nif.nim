@@ -11,6 +11,7 @@
 
 import std / [assertions, tables, sets]
 from std / strutils import startsWith
+from std / os import fileExists
 import astdef, idents, msgs, options
 import lineinfos as astli
 import pathutils #, modulegraphs
@@ -495,12 +496,14 @@ proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode) =
   writeFile(dest, d)
   createIndex(d, false, dest[0].info)
 
-  # Unload all written types and symbols from memory after the entire module is written
-  # This handles cyclic references correctly since everything is written before unloading
-  for typ in w.writtenTypes:
-    forcePartial(typ)
-  for sym in w.writtenSyms:
-    forcePartial(sym)
+  # Don't unload symbols/types yet - they may be needed by other modules that haven't
+  # had their NIF files written. For recursive module dependencies (like system.nim),
+  # we need all NIFs to exist before we can safely unload and reload.
+  # TODO: Implement deferred unloading at end of compilation for memory savings.
+  #for typ in w.writtenTypes:
+  #  forcePartial(typ)
+  #for sym in w.writtenSyms:
+  #  forcePartial(sym)
 
 
 # --------------------------- Loader (lazy!) -----------------------------------------------
@@ -589,6 +592,10 @@ proc moduleId(c: var DecodeContext; suffix: string): FileIndex =
   if not isKnownFile:
     let modFile = (getNimcacheDir(c.infos.config) / RelativeFile(suffix & ".nif")).string
     let idxFile = (getNimcacheDir(c.infos.config) / RelativeFile(suffix & ".s.idx.nif")).string
+    if not fileExists(modFile):
+      raiseAssert "NIF file not found for module suffix '" & suffix & "': " & modFile &
+        ". This can happen when loading a module from NIF that references another module " &
+        "whose NIF file hasn't been written yet."
     if result.int >= c.mods.len:
       c.mods.setLen(result.int + 1)
     c.mods[result.int] = NifModule(stream: nifstreams.open(modFile), index: readIndex(idxFile))

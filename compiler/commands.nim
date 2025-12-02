@@ -510,6 +510,9 @@ proc setCmd*(conf: ConfigRef, cmd: Command) =
   of cmdCompileToOC: conf.backend = backendObjc
   of cmdCompileToJS: conf.backend = backendJs
   of cmdCompileToNif: conf.backend = backendNif
+  of cmdM:
+    # cmdM requires optCompress for proper IC handling (include files, etc.)
+    conf.globalOptions.incl optCompress
   else: discard
 
 proc setCommandEarly*(conf: ConfigRef, command: string) =
