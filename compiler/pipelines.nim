@@ -38,7 +38,12 @@ proc processPipeline(graph: ModuleGraph; semNode: PNode; bModule: PPassContext):
   of GenDependPass:
     result = addDotDependency(bModule, semNode)
   of SemPass:
-    result = graph.emptyNode
+    # Return the semantic node for cmdM (NIF generation needs it)
+    # For regular check, we don't need the result
+    if graph.config.cmd == cmdM:
+      result = semNode
+    else:
+      result = graph.emptyNode
   of Docgen2Pass, Docgen2TexPass:
     when not defined(leanCompiler):
       result = processNode(bModule, semNode)
@@ -275,6 +280,7 @@ proc compilePipelineModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymF
           localError(graph.config, unknownLineInfo,
             "nim m requires precompiled NIF for import: " & toFullPath(graph.config, fileIdx) &
             " (expected: " & nifPath & ")")
+          return nil  # Don't fall through to compile from source
     if result == nil and graph.config.cmd != cmdM:
       # Fall back to ROD file loading (not used for cmdM which uses NIF only)
       result = moduleFromRodFile(graph, fileIdx, cachedModules)
@@ -358,6 +364,10 @@ proc compilePipelineProject*(graph: ModuleGraph; projectFileIdx = InvalidFileIdx
     graph.withinSystem = true
     discard graph.compilePipelineModule(projectFile, {sfMainModule, sfSystemModule})
     graph.withinSystem = false
+  elif graph.config.cmd == cmdM:
+    # For cmdM: load system.nim from NIF, don't recompile it
+    # The import mechanism will load it via moduleFromNifFile
+    discard graph.compilePipelineModule(projectFile, {sfMainModule})
   else:
     graph.compilePipelineSystemModule()
     discard graph.compilePipelineModule(projectFile, {sfMainModule})

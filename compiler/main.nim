@@ -420,8 +420,9 @@ proc mainCommand*(graph: ModuleGraph) =
   of cmdCheck:
     commandCheck(graph)
   of cmdM:
-    graph.config.symbolFiles = v2Sf
-    setUseIc(graph.config.symbolFiles != disabledSf)
+    # cmdM uses NIF files, not ROD files
+    graph.config.symbolFiles = disabledSf
+    setUseIc(false)
     commandCheck(graph)
   of cmdParse:
     wantMainModule(conf)

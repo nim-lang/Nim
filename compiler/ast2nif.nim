@@ -52,13 +52,14 @@ proc nifLineInfo(w: var LineInfoWriter; info: TLineInfo): PackedLineInfo =
     result = NoLineInfo
   else:
     let fid = get(w, info.fileIndex)
-    result = pack(w.man, fid, info.line.int32, info.col)
+    # Must use pool.man since toString uses pool.man to unpack
+    result = pack(pool.man, fid, info.line.int32, info.col)
 
 proc oldLineInfo(w: var LineInfoWriter; info: PackedLineInfo): TLineInfo =
   if info == NoLineInfo:
     result = unknownLineInfo
   else:
-    var x = unpack(w.man, info)
+    var x = unpack(pool.man, info)
     var fileIdx: FileIndex
     if w.fileV == x.file:
       fileIdx = w.fileK
