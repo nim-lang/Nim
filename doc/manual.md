@@ -3008,6 +3008,12 @@ is more specific
 2. if the concept is being compared with another concept the result is deferred to [Concept subset matching]
 3. in any other case the concept is less specific then it's competitor 
 
+Currently, the concept evaluation mechanism evaluates to a successful match on the first acceptable candidate
+for each defined binding. This has a couple of notable effects:
+
+- generic parameters are fulfilled by the first candidate match even if other candidates would also match and bind different parameters
+- inheritable objects match as they do in normal overload resolution except the "depth" is not accounted for, because that would require calculating the minimum depth of any matching binding
+
 
 Concept subset matching
 -------------------------
