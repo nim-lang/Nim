@@ -380,6 +380,10 @@ proc requiresDestructor(c: TLiftCtx; t: PType): bool {.inline.} =
 proc instantiateGeneric(c: var TLiftCtx; op: PSym; t, typeInst: PType): PSym =
   if c.c != nil and typeInst != nil:
     result = c.c.instTypeBoundOp(c.c, op, typeInst, c.info, attachedAsgn, 1)
+  elif typeInst != nil and getAttachedOp(c.g, typeInst, c.kind) != nil:
+    # c.c == nil in lambdalifting
+    # hooks are already insted
+    result = getAttachedOp(c.g, typeInst, c.kind)
   else:
     localError(c.g.config, c.info,
       "cannot generate destructor for generic type: " & typeToString(t))
