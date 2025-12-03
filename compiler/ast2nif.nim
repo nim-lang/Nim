@@ -268,13 +268,6 @@ proc writeSymDef(w: var Writer; dest: var TokenBuf; sym: PSym) =
     dest.addIdent "x"
   else:
     dest.addDotToken
-  if sym.magicImpl == mNone:
-    dest.addDotToken
-  else:
-    dest.addIdent toNifTag(sym.magicImpl)
-  writeFlags(dest, sym.flagsImpl)
-  writeFlags(dest, sym.optionsImpl)
-  dest.addIntLit sym.offsetImpl
   # field `disamb` made part of the name, so do not store it here
   dest.buildTree sym.kindImpl.toNifTag:
     case sym.kindImpl
@@ -284,6 +277,15 @@ proc writeSymDef(w: var Writer; dest: var TokenBuf; sym: PSym) =
       dest.addIntLit sym.alignmentImpl
     else:
       discard
+
+  if sym.magicImpl == mNone:
+    dest.addDotToken
+  else:
+    dest.addIdent toNifTag(sym.magicImpl)
+  writeFlags(dest, sym.flagsImpl)
+  writeFlags(dest, sym.optionsImpl)
+  dest.addIntLit sym.offsetImpl
+
   if sym.kindImpl == skModule:
     dest.addDotToken() # position will be set by the loader!
   else:
@@ -786,13 +788,9 @@ proc loadSymFromCursor(c: var DecodeContext; s: PSym; n: var Cursor; thisModule:
   else:
     raiseAssert "expected `x` or '.' but got " & $n.kind
 
-  loadField s.magicImpl
-  loadField s.flagsImpl
-  loadField s.optionsImpl
-  loadField s.offsetImpl
-
   expect n, ParLe
-  s.kindImpl = parse(TSymKind, pool.tags[n.tagId])
+  {.cast(uncheckedAssign).}:
+    s.kindImpl = parse(TSymKind, pool.tags[n.tagId])
   inc n
 
   case s.kindImpl
@@ -803,6 +801,11 @@ proc loadSymFromCursor(c: var DecodeContext; s: PSym; n: var Cursor; thisModule:
   else:
     discard
   skipParRi n
+
+  loadField s.magicImpl
+  loadField s.flagsImpl
+  loadField s.optionsImpl
+  loadField s.offsetImpl
 
   if s.kindImpl == skModule:
     expect n, DotToken
@@ -829,6 +832,8 @@ proc loadSym*(c: var DecodeContext; s: PSym) =
   expect n, ParLe
   if n.tagId != sdefTag:
     raiseAssert "(sd) expected"
+  # Extract line info from the sdef tag before moving past it
+  s.infoImpl = c.infos.oldLineInfo(n.info)
   inc n
   loadSymFromCursor(c, s, n, c.moduleToNifSuffix[symsModule])
 

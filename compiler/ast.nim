@@ -549,12 +549,19 @@ proc add*(father, son: PType) =
 proc addAllowNil*(father, son: PType) {.inline.} =
   father.sonsImpl.add son
 
-template `[]`*(n: PType, i: int): PType = n.sonsImpl[i]
+template `[]`*(n: PType, i: int): PType =
+  if n.state == Partial: loadType(n)
+  n.sonsImpl[i]
 template `[]=`*(n: PType, i: int; x: PType) =
+  if n.state == Partial: loadType(n)
   n.sonsImpl[i] = x
 
-template `[]`*(n: PType, i: BackwardsIndex): PType = n[n.len - i.int]
-template `[]=`*(n: PType, i: BackwardsIndex; x: PType) = n[n.len - i.int] = x
+template `[]`*(n: PType, i: BackwardsIndex): PType =
+  if n.state == Partial: loadType(n)
+  n[n.len - i.int]
+template `[]=`*(n: PType, i: BackwardsIndex; x: PType) =
+  if n.state == Partial: loadType(n)
+  n[n.len - i.int] = x
 
 proc getDeclPragma*(n: PNode): PNode =
   ## return the `nkPragma` node for declaration `n`, or `nil` if no pragma was found.
@@ -791,29 +798,57 @@ proc replaceFirstSon*(n, newson: PNode) {.inline.} =
 proc replaceSon*(n: PNode; i: int; newson: PNode) {.inline.} =
   n.sons[i] = newson
 
-proc last*(n: PType): PType {.inline.} = n.sonsImpl[^1]
+proc last*(n: PType): PType {.inline.} =
+  if n.state == Partial: loadType(n)
+  n.sonsImpl[^1]
 
-proc elementType*(n: PType): PType {.inline.} = n.sonsImpl[^1]
-proc skipModifier*(n: PType): PType {.inline.} = n.sonsImpl[^1]
+proc elementType*(n: PType): PType {.inline.} =
+  if n.state == Partial: loadType(n)
+  n.sonsImpl[^1]
 
-proc indexType*(n: PType): PType {.inline.} = n.sonsImpl[0]
-proc baseClass*(n: PType): PType {.inline.} = n.sonsImpl[0]
+proc skipModifier*(n: PType): PType {.inline.} =
+  if n.state == Partial: loadType(n)
+  n.sonsImpl[^1]
+
+proc indexType*(n: PType): PType {.inline.} =
+  if n.state == Partial: loadType(n)
+  n.sonsImpl[0]
+
+proc baseClass*(n: PType): PType {.inline.} =
+  if n.state == Partial: loadType(n)
+  n.sonsImpl[0]
 
 proc base*(t: PType): PType {.inline.} =
+  if t.state == Partial: loadType(t)
   result = t.sonsImpl[0]
 
-proc returnType*(n: PType): PType {.inline.} = n.sonsImpl[0]
+proc returnType*(n: PType): PType {.inline.} =
+  if n.state == Partial: loadType(n)
+  n.sonsImpl[0]
+
 proc setReturnType*(n, r: PType) {.inline.} =
+  if n.state == Partial: loadType(n)
   n.sonsImpl[0] = r
+
 proc setIndexType*(n, idx: PType) {.inline.} =
+  if n.state == Partial: loadType(n)
   n.sonsImpl[0] = idx
 
-proc firstParamType*(n: PType): PType {.inline.} = n.sonsImpl[1]
-proc firstGenericParam*(n: PType): PType {.inline.} = n.sonsImpl[1]
+proc firstParamType*(n: PType): PType {.inline.} =
+  if n.state == Partial: loadType(n)
+  n.sonsImpl[1]
 
-proc typeBodyImpl*(n: PType): PType {.inline.} = n.sonsImpl[^1]
+proc firstGenericParam*(n: PType): PType {.inline.} =
+  if n.state == Partial: loadType(n)
+  n.sonsImpl[1]
 
-proc genericHead*(n: PType): PType {.inline.} = n.sonsImpl[0]
+proc typeBodyImpl*(n: PType): PType {.inline.} =
+  if n.state == Partial: loadType(n)
+  n.sonsImpl[^1]
+
+proc genericHead*(n: PType): PType {.inline.} =
+  if n.state == Partial: loadType(n)
+  n.sonsImpl[0]
 
 proc skipTypes*(t: PType, kinds: TTypeKinds): PType =
   ## Used throughout the compiler code to test whether a type tree contains or
