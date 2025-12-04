@@ -141,6 +141,7 @@ type
     cachedFiles*: StringTableRef
 
     procGlobals*: seq[PNode]
+    nifReplayActions*: Table[int32, seq[PNode]]  # module position -> replay actions for NIF
 
   TPassContext* = object of RootObj # the pass's context
     idgen*: IdGenerator
@@ -397,6 +398,10 @@ iterator resolveLazySymSeq(g: ModuleGraph, list: var seq[LazySym]): PSym =
 proc setMethodsPerType*(g: ModuleGraph; id: ItemId, methods: seq[LazySym]) =
   # TODO: add it for packed modules
   g.methodsPerType[id] = methods
+
+proc addNifReplayAction*(g: ModuleGraph; module: int32; n: PNode) =
+  ## Stores a replay action for NIF-based incremental compilation.
+  g.nifReplayActions.mgetOrPut(module, @[]).add n
 
 iterator getMethodsPerType*(g: ModuleGraph; t: PType): PSym =
   if g.methodsPerType.contains(t.itemId):
@@ -772,8 +777,9 @@ when not defined(nimKochBootstrap):
     registerModule(g, result)
     var hooks = initTable[nifstreams.SymId, HooksPerType]()
     var converters: seq[(string, string)] = @[]
+    var classes: seq[ClassIndexEntry] = @[]
     result.astImpl = loadNifModule(ast.program, fileIdx, g.ifaces[fileIdx.int].interf,
-                                   g.ifaces[fileIdx.int].interfHidden, hooks, converters)
+                                   g.ifaces[fileIdx.int].interfHidden, hooks, converters, classes)
     # Register hooks from NIF index with the module graph
     for typSymId, hooksPerType in hooks:
       let typeItemId = parseTypeSymIdToItemId(ast.program, typSymId)
@@ -790,6 +796,17 @@ when not defined(nimKochBootstrap):
       let convPSym = resolveHookSym(ast.program, symId)  # reuse hook resolution
       if convPSym != nil:
         g.ifaces[fileIdx.int].converters.add LazySym(sym: convPSym)
+    # Register methods per type from NIF index
+    for classEntry in classes:
+      let typeItemId = parseTypeSymIdToItemId(ast.program, classEntry.cls)
+      if typeItemId.module >= 0:
+        var methodSyms: seq[LazySym] = @[]
+        for methodEntry in classEntry.methods:
+          let methodSym = resolveHookSym(ast.program, methodEntry.fn)
+          if methodSym != nil:
+            methodSyms.add LazySym(sym: methodSym)
+        if methodSyms.len > 0:
+          setMethodsPerType(g, typeItemId, methodSyms)
     cachedModules.add fileIdx
 
 proc configComplete*(g: ModuleGraph) =

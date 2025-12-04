@@ -22,8 +22,9 @@ import "../dist/nimony/src/models" / nifindex_tags
 
 import ic / [enum2nif]
 
-# Re-export types needed for hook handling
+# Re-export types needed for hook, converter, and method handling
 export nifindexes.AttachedOp, nifindexes.HookIndexEntry, nifindexes.HooksPerType
+export nifindexes.ClassIndexEntry, nifindexes.MethodIndexEntry
 
 proc toAttachedOp*(op: TTypeAttachedOp): AttachedOp =
   ## Maps Nim compiler's TTypeAttachedOp to nimony's AttachedOp.
@@ -81,6 +82,23 @@ proc toConverterIndexEntry*(config: ConfigRef; converterSym: PSym): (nifstreams.
       return
   # Fallback: return empty entry
   result = (nifstreams.SymId(0), nifstreams.SymId(0))
+
+proc toMethodIndexEntry*(config: ConfigRef; methodSym: PSym; signature: string): MethodIndexEntry =
+  ## Converts a method symbol to a MethodIndexEntry.
+  let methodSymName = methodSym.name.s & "." & $methodSym.disamb & "." & moduleSuffix(
+    toFullPath(config, methodSym.itemId.module.FileIndex),
+    cast[seq[string]](config.searchPaths))
+  result = MethodIndexEntry(
+    fn: pool.syms.getOrIncl(methodSymName),
+    signature: pool.strings.getOrIncl(signature)
+  )
+
+proc toClassSymId*(config: ConfigRef; typeId: ItemId): nifstreams.SymId =
+  ## Converts a type ItemId to its SymId for the class index.
+  let typeSymName = "`t" & $typeId.item & "." & moduleSuffix(
+    toFullPath(config, typeId.module.FileIndex),
+    cast[seq[string]](config.searchPaths))
+  result = pool.syms.getOrIncl(typeSymName)
 
 # ---------------- Line info handling -----------------------------------------
 
@@ -654,14 +672,25 @@ proc buildExportBuf(w: var Writer): TokenBuf =
         result.add identToken(pool.strings.getOrIncl(name), NoLineInfo)
       result.addParRi()
 
+let replayTag = registerTag("replay")
+
 proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode;
                      hooks: array[AttachedOp, seq[HookIndexEntry]];
-                     converters: seq[(nifstreams.SymId, nifstreams.SymId)]) =
+                     converters: seq[(nifstreams.SymId, nifstreams.SymId)];
+                     classes: seq[ClassIndexEntry];
+                     replayActions: seq[PNode] = @[]) =
   var w = Writer(infos: LineInfoWriter(config: config), currentModule: thisModule)
   var content = createTokenBuf(300)
 
   let rootInfo = trLineInfo(w, n.info)
   createStmtList(content, rootInfo)
+
+  # Write replay actions first, wrapped in a (replay ...) node
+  if replayActions.len > 0:
+    content.addParLe replayTag, rootInfo
+    for action in replayActions:
+      writeNode(w, content, action)
+    content.addParRi()
 
   w.writeToplevelNode content, n
 
@@ -679,10 +708,10 @@ proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode;
 
   writeFile(dest, d)
 
-  # Build index with export, hook, and converter information
+  # Build index with export, hook, converter, and method information
   let exportBuf = buildExportBuf(w)
   createIndex(d, dest[0].info, false,
-    IndexSections(hooks: hooks, converters: converters, exportBuf: exportBuf))
+    IndexSections(hooks: hooks, converters: converters, classes: classes, exportBuf: exportBuf))
 
   # Don't unload symbols/types yet - they may be needed by other modules that haven't
   # had their NIF files written. For recursive module dependencies (like system.nim),
@@ -1403,7 +1432,8 @@ proc resolveHookSym*(c: var DecodeContext; symId: nifstreams.SymId): PSym =
 
 proc loadNifModule*(c: var DecodeContext; f: FileIndex; interf, interfHidden: var TStrTable;
                     hooks: var Table[nifstreams.SymId, HooksPerType];
-                    converters: var seq[(string, string)]): PNode =
+                    converters: var seq[(string, string)];
+                    classes: var seq[ClassIndexEntry]): PNode =
   let suffix = moduleSuffix(c.infos.config, f)
 
   # Ensure module index is loaded - moduleId returns the FileIndex for this suffix
@@ -1417,9 +1447,33 @@ proc loadNifModule*(c: var DecodeContext; f: FileIndex; interf, interfHidden: va
   hooks = move c.mods[module].index.hooks
   # Return converters from the index
   converters = move c.mods[module].index.converters
+  # Return classes/methods from the index
+  classes = move c.mods[module].index.classes
 
-  # Return empty statement list - actual content is loaded lazily via the index
+  # Check for replay actions at the start of the NIF file
   result = newNode(nkStmtList)
+  let s = addr c.mods[module].stream
+  s.r.jumpTo 0  # Start from beginning
+  discard processDirectives(s.r)
+  var localSyms = initTable[string, PSym]()
+  # Read root stmts node
+  var t = next(s[])
+  if t.kind == ParLe and pool.tags[t.tagId] == toNifTag(nkStmtList):
+    t = next(s[])  # skip flags
+    t = next(s[])  # skip type
+    # Check if first node is a (replay ...) container
+    if t.kind == ParLe and pool.tags[t.tagId] == "replay":
+      t = next(s[])  # move past (replay
+      # Parse all replay actions inside the container
+      while t.kind != ParRi and t.kind != EofToken:
+        if t.kind == ParLe:
+          var buf = createTokenBuf(50)
+          nifcursors.parse(s[], buf, t.info)
+          var cursor = cursorAt(buf, 0)
+          let replayNode = loadNode(c, cursor, suffix, localSyms)
+          if replayNode != nil:
+            result.sons.add replayNode
+        t = next(s[])
 
 when isMainModule:
   import std / syncio

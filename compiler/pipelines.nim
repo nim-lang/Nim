@@ -1,6 +1,6 @@
 import sem, cgen, modulegraphs, ast, llstream, parser, msgs,
        lineinfos, reorder, options, semdata, cgendata, modules, pathutils,
-       packages, syntaxes, depends, vm, pragmas, idents, lookups, wordrecg,
+       packages, syntaxes, depends, vm, vmdef, pragmas, idents, lookups, wordrecg,
        liftdestructors, nifgen
 
 when not defined(nimKochBootstrap):
@@ -244,6 +244,16 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
     if (optCompress in graph.config.globalOptions or graph.config.cmd == cmdM) and
        not graph.config.isDefined("nimscript"):
       topLevelStmts.add finalNode
+      # Collect replay actions from both pragma computations and VM state diff
+      var replayActions: seq[PNode] = @[]
+      # Get pragma-recorded replay actions (compile, link, passC, passL, etc.)
+      if graph.nifReplayActions.hasKey(module.position.int32):
+        replayActions.add graph.nifReplayActions[module.position.int32]
+      # Also get VM state diff (macro cache operations)
+      if graph.vm != nil:
+        for (m, n) in PCtx(graph.vm).vmstateDiff:
+          if m == module:
+            replayActions.add n
       # Collect hooks from the module graph for the current module
       var hooks = default array[AttachedOp, seq[HookIndexEntry]]
       for op in TTypeAttachedOp:
@@ -262,7 +272,23 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
           let entry = toConverterIndexEntry(graph.config, sym)
           if entry[0] != nifstreams.SymId(0):
             converters.add entry
-      writeNifModule(graph.config, module.position.int32, topLevelStmts, hooks, converters)
+      # Collect methods per type for classes
+      var classes: seq[ClassIndexEntry] = @[]
+      for typeId, methodList in graph.methodsPerType:
+        if typeId.module == module.position.int32:
+          var methods: seq[MethodIndexEntry] = @[]
+          for lazySym in methodList:
+            let sym = lazySym.sym
+            if sym != nil:
+              # Generate a method signature (simplified - name and param count)
+              let sig = sym.name.s & "/" & $sym.typImpl.sonsImpl.len
+              methods.add toMethodIndexEntry(graph.config, sym, sig)
+          if methods.len > 0:
+            classes.add ClassIndexEntry(
+              cls: toClassSymId(graph.config, typeId),
+              methods: methods
+            )
+      writeNifModule(graph.config, module.position.int32, topLevelStmts, hooks, converters, classes, replayActions)
 
   if graph.config.backend notin {backendC, backendCpp, backendObjc} and graph.config.cmd != cmdM:
     # We only write rod files here if no C-like backend is active.
@@ -324,8 +350,10 @@ proc compilePipelineModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymF
     for m in cachedModules:
       registerModuleById(graph, m)
       if graph.config.cmd == cmdM:
-        # cmdM uses NIF files, not ROD files - skip ROD-specific replay
-        discard
+        # cmdM uses NIF files - replay from module AST loaded by loadNifModule
+        let module = graph.getModule(m)
+        if module != nil and module.ast != nil:
+          replayStateChanges(module, graph)
       else:
         replayStateChanges(graph.packed.pm[m.int].module, graph)
         replayGenericCacheInformation(graph, m.int)
