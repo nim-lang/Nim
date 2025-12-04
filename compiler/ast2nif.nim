@@ -1041,9 +1041,21 @@ proc moduleSuffix(conf: ConfigRef; f: FileIndex): string =
 
 proc loadSymFromIndexEntry(c: var DecodeContext; module: FileIndex;
                            nifName: string; entry: NifIndexEntry; thisModule: string): PSym =
-  ## Loads a symbol from the NIF index entry.
-  ## Creates a symbol stub and loads its full definition.
-  result = loadSymStub(c, pool.syms.getOrIncl nifName, thisModule)
+  ## Loads a symbol from the NIF index entry using the entry directly.
+  ## Creates a symbol stub without looking up in the index (since the index may be moved out).
+  let symAsStr = nifName
+  let sn = parseSymName(symAsStr)
+  let symModule = moduleId(c, if sn.module.len > 0: sn.module else: thisModule)
+  let val = addr c.mods[symModule.int32].symCounter
+  inc val[]
+
+  let id = ItemId(module: symModule.int32, item: val[])
+  result = c.syms.getOrDefault(id)[0]
+  if result == nil:
+    # Use the entry directly instead of looking it up in the index
+    result = PSym(itemId: id, kindImpl: skStub, name: c.cache.getIdent(sn.name), disamb: sn.count.int32, state: Partial)
+    c.syms[id] = (result, entry)
+    c.moduleToNifSuffix[symModule] = (if sn.module.len > 0: sn.module else: thisModule)
 
 proc extractBasename(nifName: string): string =
   ## Extract the base name from a NIF name (ident.disamb.module -> ident)
