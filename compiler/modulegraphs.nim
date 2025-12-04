@@ -18,6 +18,7 @@ import ic / [packed_ast, ic]
 
 when not defined(nimKochBootstrap):
   import ast2nif
+  import "../dist/nimony/src/lib" / [nifstreams, bitabs]
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -365,6 +366,10 @@ proc getAttachedOp*(g: ModuleGraph; t: PType; op: TTypeAttachedOp): PSym =
 proc setAttachedOp*(g: ModuleGraph; module: int; t: PType; op: TTypeAttachedOp; value: PSym) =
   ## we also need to record this to the packed module.
   g.attachedOps[op][t.itemId] = LazySym(sym: value)
+
+proc setAttachedOp*(g: ModuleGraph; module: int; typeId: ItemId; op: TTypeAttachedOp; value: PSym) =
+  ## Overload that takes ItemId directly, useful for registering hooks from NIF index.
+  g.attachedOps[op][typeId] = LazySym(sym: value)
 
 proc setAttachedOpPartial*(g: ModuleGraph; module: int; t: PType; op: TTypeAttachedOp; value: PSym) =
   ## we also need to record this to the packed module.
@@ -765,7 +770,26 @@ when not defined(nimKochBootstrap):
 
     # Register module in graph
     registerModule(g, result)
-    result.astImpl = loadNifModule(ast.program, fileIdx, g.ifaces[fileIdx.int].interf, g.ifaces[fileIdx.int].interfHidden)
+    var hooks = initTable[nifstreams.SymId, HooksPerType]()
+    var converters: seq[(string, string)] = @[]
+    result.astImpl = loadNifModule(ast.program, fileIdx, g.ifaces[fileIdx.int].interf,
+                                   g.ifaces[fileIdx.int].interfHidden, hooks, converters)
+    # Register hooks from NIF index with the module graph
+    for typSymId, hooksPerType in hooks:
+      let typeItemId = parseTypeSymIdToItemId(ast.program, typSymId)
+      if typeItemId.module >= 0:
+        for op in AttachedOp:
+          let (hookSymId, isGeneric) = hooksPerType.a[op]
+          if hookSymId != nifstreams.SymId(0):
+            let hookSym = resolveHookSym(ast.program, hookSymId)
+            if hookSym != nil:
+              setAttachedOp(g, int(fileIdx), typeItemId, toTTypeAttachedOp(op), hookSym)
+    # Register converters from NIF index with the module's interface
+    for (destType, convSym) in converters:
+      let symId = pool.syms.getOrIncl(convSym)
+      let convPSym = resolveHookSym(ast.program, symId)  # reuse hook resolution
+      if convPSym != nil:
+        g.ifaces[fileIdx.int].converters.add LazySym(sym: convPSym)
     cachedModules.add fileIdx
 
 proc configComplete*(g: ModuleGraph) =

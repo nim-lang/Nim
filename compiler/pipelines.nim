@@ -5,6 +5,7 @@ import sem, cgen, modulegraphs, ast, llstream, parser, msgs,
 
 when not defined(nimKochBootstrap):
   import ast2nif
+  import "../dist/nimony/src/lib" / [nifstreams, bitabs]
 
 import pipelineutils
 
@@ -243,7 +244,25 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
     if (optCompress in graph.config.globalOptions or graph.config.cmd == cmdM) and
        not graph.config.isDefined("nimscript"):
       topLevelStmts.add finalNode
-      writeNifModule(graph.config, module.position.int32, topLevelStmts)
+      # Collect hooks from the module graph for the current module
+      var hooks = default array[AttachedOp, seq[HookIndexEntry]]
+      for op in TTypeAttachedOp:
+        if op == attachedDeepCopy: continue  # Not supported in nimony
+        let nimonyOp = toAttachedOp(op)
+        for typeId, lazySym in graph.attachedOps[op]:
+          if typeId.module == module.position.int32:
+            let sym = lazySym.sym
+            if sym != nil:
+              hooks[nimonyOp].add toHookIndexEntry(graph.config, typeId, sym)
+      # Collect converters from the module's interface
+      var converters: seq[(nifstreams.SymId, nifstreams.SymId)] = @[]
+      for lazySym in graph.ifaces[module.position].converters:
+        let sym = lazySym.sym
+        if sym != nil:
+          let entry = toConverterIndexEntry(graph.config, sym)
+          if entry[0] != nifstreams.SymId(0):
+            converters.add entry
+      writeNifModule(graph.config, module.position.int32, topLevelStmts, hooks, converters)
 
   if graph.config.backend notin {backendC, backendCpp, backendObjc} and graph.config.cmd != cmdM:
     # We only write rod files here if no C-like backend is active.

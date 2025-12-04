@@ -22,6 +22,66 @@ import "../dist/nimony/src/models" / nifindex_tags
 
 import ic / [enum2nif]
 
+# Re-export types needed for hook handling
+export nifindexes.AttachedOp, nifindexes.HookIndexEntry, nifindexes.HooksPerType
+
+proc toAttachedOp*(op: TTypeAttachedOp): AttachedOp =
+  ## Maps Nim compiler's TTypeAttachedOp to nimony's AttachedOp.
+  ## Returns attachedDestroy for attachedDeepCopy (caller should skip it).
+  case op
+  of attachedDestructor: attachedDestroy
+  of attachedAsgn: attachedCopy
+  of attachedWasMoved: nifindexes.attachedWasMoved
+  of attachedDup: nifindexes.attachedDup
+  of attachedSink: nifindexes.attachedSink
+  of attachedTrace: nifindexes.attachedTrace
+  of attachedDeepCopy: attachedDestroy  # Not supported, caller should skip
+
+proc toTTypeAttachedOp*(op: AttachedOp): TTypeAttachedOp =
+  ## Maps nimony's AttachedOp back to Nim compiler's TTypeAttachedOp.
+  case op
+  of attachedDestroy: attachedDestructor
+  of attachedCopy: attachedAsgn
+  of nifindexes.attachedWasMoved: astdef.attachedWasMoved
+  of nifindexes.attachedDup: astdef.attachedDup
+  of nifindexes.attachedSink: astdef.attachedSink
+  of nifindexes.attachedTrace: astdef.attachedTrace
+
+
+proc toHookIndexEntry*(config: ConfigRef; typeId: ItemId; hookSym: PSym): HookIndexEntry =
+  ## Converts a type ItemId and hook symbol to a HookIndexEntry for the NIF index.
+  let typeSymName = "`t" & $typeId.item & "." & moduleSuffix(
+    toFullPath(config, typeId.module.FileIndex),
+    cast[seq[string]](config.searchPaths))
+  let hookSymName = hookSym.name.s & "." & $hookSym.disamb & "." & moduleSuffix(
+    toFullPath(config, hookSym.itemId.module.FileIndex),
+    cast[seq[string]](config.searchPaths))
+  let typSymId = pool.syms.getOrIncl(typeSymName)
+  let hookSymId = pool.syms.getOrIncl(hookSymName)
+  # Check if it's a generic hook (has non-empty generic params)
+  let isGeneric = hookSym.astImpl != nil and hookSym.astImpl.len > genericParamsPos and
+                  hookSym.astImpl[genericParamsPos].kind != nkEmpty
+  result = HookIndexEntry(typ: typSymId, hook: hookSymId, isGeneric: isGeneric)
+
+proc toConverterIndexEntry*(config: ConfigRef; converterSym: PSym): (nifstreams.SymId, nifstreams.SymId) =
+  ## Converts a converter symbol to an index entry (destType, converterSym).
+  ## Returns the destination type's SymId and the converter's SymId.
+  # Get the return type of the converter (destination type)
+  let retType = converterSym.typImpl
+  if retType != nil and retType.sonsImpl.len > 0:
+    let destType = retType.sonsImpl[0]  # Return type is first son
+    if destType != nil:
+      let destTypeSymName = "`t" & $destType.itemId.item & "." & moduleSuffix(
+        toFullPath(config, destType.itemId.module.FileIndex),
+        cast[seq[string]](config.searchPaths))
+      let convSymName = converterSym.name.s & "." & $converterSym.disamb & "." & moduleSuffix(
+        toFullPath(config, converterSym.itemId.module.FileIndex),
+        cast[seq[string]](config.searchPaths))
+      result = (pool.syms.getOrIncl(destTypeSymName), pool.syms.getOrIncl(convSymName))
+      return
+  # Fallback: return empty entry
+  result = (nifstreams.SymId(0), nifstreams.SymId(0))
+
 # ---------------- Line info handling -----------------------------------------
 
 type
@@ -594,7 +654,9 @@ proc buildExportBuf(w: var Writer): TokenBuf =
         result.add identToken(pool.strings.getOrIncl(name), NoLineInfo)
       result.addParRi()
 
-proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode) =
+proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode;
+                     hooks: array[AttachedOp, seq[HookIndexEntry]];
+                     converters: seq[(nifstreams.SymId, nifstreams.SymId)]) =
   var w = Writer(infos: LineInfoWriter(config: config), currentModule: thisModule)
   var content = createTokenBuf(300)
 
@@ -617,10 +679,10 @@ proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode) =
 
   writeFile(dest, d)
 
-  # Build index with export information
+  # Build index with export, hook, and converter information
   let exportBuf = buildExportBuf(w)
   createIndex(d, dest[0].info, false,
-    IndexSections(exportBuf: exportBuf))
+    IndexSections(hooks: hooks, converters: converters, exportBuf: exportBuf))
 
   # Don't unload symbols/types yet - they may be needed by other modules that haven't
   # had their NIF files written. For recursive module dependencies (like system.nim),
@@ -1300,7 +1362,48 @@ proc toNifIndexFilename*(conf: ConfigRef; f: FileIndex): string =
   let suffix = moduleSuffix(conf, f)
   result = toGeneratedFile(conf, AbsoluteFile(suffix), ".s.idx.nif").string
 
-proc loadNifModule*(c: var DecodeContext; f: FileIndex; interf, interfHidden: var TStrTable): PNode =
+proc parseTypeSymIdToItemId*(c: var DecodeContext; symId: nifstreams.SymId): ItemId =
+  ## Parses a type SymId (format: "`tN.modulesuffix") to extract ItemId.
+  let s = pool.syms[symId]
+  if not s.startsWith("`t"):
+    return ItemId(module: -1, item: 0)
+  var i = 2  # skip "`t"
+  var item = 0'i32
+  while i < s.len and s[i] in {'0'..'9'}:
+    item = item * 10 + int32(ord(s[i]) - ord('0'))
+    inc i
+  if i < s.len and s[i] == '.':
+    inc i
+    let suffix = s.substr(i)
+    let module = moduleId(c, suffix)
+    result = ItemId(module: int32(module), item: item)
+  else:
+    result = ItemId(module: -1, item: item)
+
+proc resolveHookSym*(c: var DecodeContext; symId: nifstreams.SymId): PSym =
+  ## Resolves a hook SymId to PSym.
+  let symAsStr = pool.syms[symId]
+  let sn = parseSymName(symAsStr)
+  if sn.module.len == 0:
+    return nil  # Local symbols shouldn't be hooks
+  let module = moduleId(c, sn.module)
+  # Look up the symbol in the module's index
+  let offs = c.mods[module].index.public.getOrDefault(symAsStr)
+  if offs.offset == 0:
+    return nil
+  # Create a stub symbol
+  let val = addr c.mods[module].symCounter
+  inc val[]
+  let id = ItemId(module: int32(module), item: val[])
+  result = c.syms.getOrDefault(id)[0]
+  if result == nil:
+    result = PSym(itemId: id, kindImpl: skProc, name: c.cache.getIdent(sn.name),
+                  disamb: sn.count.int32, state: Partial)
+    c.syms[id] = (result, offs)
+
+proc loadNifModule*(c: var DecodeContext; f: FileIndex; interf, interfHidden: var TStrTable;
+                    hooks: var Table[nifstreams.SymId, HooksPerType];
+                    converters: var seq[(string, string)]): PNode =
   let suffix = moduleSuffix(c.infos.config, f)
 
   # Ensure module index is loaded - moduleId returns the FileIndex for this suffix
@@ -1309,6 +1412,11 @@ proc loadNifModule*(c: var DecodeContext; f: FileIndex; interf, interfHidden: va
   # Populate interface tables from the NIF index structure
   # Symbols are created as stubs (Partial state) and will be loaded lazily via loadSym
   populateInterfaceTablesFromIndex(c, module, interf, interfHidden, suffix)
+
+  # Return hooks from the index
+  hooks = move c.mods[module].index.hooks
+  # Return converters from the index
+  converters = move c.mods[module].index.converters
 
   # Return empty statement list - actual content is loaded lazily via the index
   result = newNode(nkStmtList)
