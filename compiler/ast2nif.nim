@@ -18,6 +18,7 @@ import pathutils #, modulegraphs
 import "../dist/nimony/src/lib" / [bitabs, nifstreams, nifcursors, lineinfos,
   nifindexes, nifreader]
 import "../dist/nimony/src/gear2" / modnames
+import "../dist/nimony/src/models" / nifindex_tags
 
 import ic / [enum2nif]
 
@@ -130,6 +131,7 @@ type
     inProc: int
     writtenTypes: seq[PType]  # types written in this module, to be unloaded later
     writtenSyms: seq[PSym]    # symbols written in this module, to be unloaded later
+    exports: Table[FileIndex, HashSet[string]]  # module -> specific symbol names (empty = all)
 
 proc toNifSymName(w: var Writer; sym: PSym): string =
   ## Generate NIF name for a symbol: local names are `ident.disamb`,
@@ -458,6 +460,35 @@ proc writeNode(w: var Writer; dest: var TokenBuf; n: PNode) =
       trImport w, n
     of nkIncludeStmt:
       trInclude w, n
+    of nkExportStmt, nkExportExceptStmt:
+      # Collect export information for the index
+      # nkExportStmt children are nkSym nodes
+      # When exporting a module (export dollars), the module symbol is a child
+      # followed by all symbols from that module - we use empty set to mean "export all"
+      # When exporting specific symbols (export foo, bar), we collect their names
+      # Note: nkExportExceptStmt is transformed to nkExportStmt by semExportExcept,
+      # but we handle both just in case
+      var exportAllModules = initHashSet[FileIndex]()
+      for child in n:
+        if child.kind == nkSym:
+          let s = child.sym
+          if s.kindImpl == skModule:
+            # Export all from this module - use empty set
+            let modIdx = s.positionImpl.FileIndex
+            exportAllModules.incl modIdx
+            if modIdx notin w.exports:
+              w.exports[modIdx] = initHashSet[string]()  # empty means "export all"
+          else:
+            # Export specific symbol, but only if we're not already exporting all from this module
+            let modIdx = s.itemId.module.FileIndex
+            if modIdx notin exportAllModules:
+              if modIdx notin w.exports:
+                w.exports[modIdx] = initHashSet[string]()
+              w.exports[modIdx].incl s.name.s
+      # Write the export statement as a regular node
+      w.withNode dest, n:
+        for i in 0 ..< n.len:
+          writeNode(w, dest, n[i])
     else:
       w.withNode dest, n:
         for i in 0 ..< n.len:
@@ -474,6 +505,24 @@ proc createStmtList(buf: var TokenBuf; info: PackedLineInfo) {.inline.} =
   buf.addParLe pool.tags.getOrIncl(toNifTag(nkStmtList)), info
   buf.addDotToken # flags
   buf.addDotToken # type
+
+proc buildExportBuf(w: var Writer): TokenBuf =
+  ## Build the export section for the NIF index from collected exports
+  result = createTokenBuf(32)
+  for modIdx, names in w.exports:
+    let path = toFullPath(w.infos.config, modIdx)
+    if names.len == 0:
+      # Export all from this module
+      result.addParLe(TagId(ExportIdx), NoLineInfo)
+      result.add strToken(pool.strings.getOrIncl(path), NoLineInfo)
+      result.addParRi()
+    else:
+      # Export specific symbols
+      result.addParLe(TagId(FromexportIdx), NoLineInfo)
+      result.add strToken(pool.strings.getOrIncl(path), NoLineInfo)
+      for name in names:
+        result.add identToken(pool.strings.getOrIncl(name), NoLineInfo)
+      result.addParRi()
 
 proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode) =
   var w = Writer(infos: LineInfoWriter(config: config), currentModule: thisModule)
@@ -497,7 +546,11 @@ proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode) =
   dest.addParRi()
 
   writeFile(dest, d)
-  createIndex(d, false, dest[0].info)
+
+  # Build index with export information
+  let exportBuf = buildExportBuf(w)
+  createIndex(d, dest[0].info, false,
+    IndexSections(exportBuf: exportBuf))
 
   # Don't unload symbols/types yet - they may be needed by other modules that haven't
   # had their NIF files written. For recursive module dependencies (like system.nim),
@@ -992,14 +1045,26 @@ proc loadSymFromIndexEntry(c: var DecodeContext; module: FileIndex;
   ## Creates a symbol stub and loads its full definition.
   result = loadSymStub(c, pool.syms.getOrIncl nifName, thisModule)
 
+proc extractBasename(nifName: string): string =
+  ## Extract the base name from a NIF name (ident.disamb.module -> ident)
+  result = ""
+  for c in nifName:
+    if c == '.': break
+    result.add c
+
 proc populateInterfaceTablesFromIndex(c: var DecodeContext; module: FileIndex;
                                       interf, interfHidden: var TStrTable; thisModule: string) =
   ## Populates interface tables from the NIF index structure.
   ## Uses the index's public/private tables instead of traversing AST.
-  let idx = addr c.mods[module.int32].index
+
+  # Move the public table and exports list out to avoid iterator invalidation
+  # (moduleId can resize c.mods which would invalidate pointers)
+  # We move them back after iteration.
+  var publicTab = move c.mods[module.int32].index.public
+  var exportsList = move c.mods[module.int32].index.exports
 
   # Add all public symbols to interf (exported interface) and interfHidden
-  for nifName, entry in idx.public:
+  for nifName, entry in publicTab:
     if not nifName.startsWith("`t"):
       # do not load types, they are not part of an interface but an implementation detail!
       #echo "LOADING SYM ", nifName, " ", entry.offset
@@ -1007,6 +1072,49 @@ proc populateInterfaceTablesFromIndex(c: var DecodeContext; module: FileIndex;
       if sym != nil:
         strTableAdd(interf, sym)
         strTableAdd(interfHidden, sym)
+
+  # Move public table back
+  c.mods[module.int32].index.public = move publicTab
+
+  # Process exports (re-exports from other modules)
+  for exp in exportsList:
+    let (path, kind, names) = exp
+    # Convert path to module suffix
+    let expSuffix = moduleSuffix(path, cast[seq[string]](c.infos.config.searchPaths))
+    # Load the exported module's index
+    let expModule = moduleId(c, expSuffix)
+
+    # Move the exported module's public table out to avoid iterator invalidation
+    var expPublicTab = move c.mods[expModule.int32].index.public
+
+    # Build a set of names for filtering
+    var nameSet = initHashSet[string]()
+    for nameId in names:
+      nameSet.incl pool.strings[nameId]
+
+    # Add symbols based on export kind
+    for nifName, entry in expPublicTab:
+      if nifName.startsWith("`t"):
+        continue  # skip types
+
+      let basename = extractBasename(nifName)
+      let shouldInclude = case kind
+        of ExportIdx: true  # export all
+        of FromexportIdx: basename in nameSet  # only specific names
+        of ExportexceptIdx: basename notin nameSet  # all except specific names
+        else: false
+
+      if shouldInclude:
+        let sym = loadSymFromIndexEntry(c, expModule, nifName, entry, expSuffix)
+        if sym != nil:
+          strTableAdd(interf, sym)
+          strTableAdd(interfHidden, sym)
+
+    # Move exported module's public table back
+    c.mods[expModule.int32].index.public = move expPublicTab
+
+  # Move exports list back
+  c.mods[module.int32].index.exports = move exportsList
 
   when false:
     # Add private symbols to interfHidden only
