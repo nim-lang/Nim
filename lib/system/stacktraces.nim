@@ -68,22 +68,14 @@ when defined(nimStackTraceOverride):
     for i in 0..<programCounters.len:
       s.add(StackTraceEntry(programCounter: cast[uint](programCounters[i])))
 
-  proc copyStackTraceEntry(x: ptr StackTraceEntry): StackTraceEntry =
-    result = StackTraceEntry(line: x.line, programCounter: x.programCounter,
-                             procnameStr: x.procnameStr, filenameStr: x.filenameStr
-    )
-    when NimStackTraceMsgs:
-      result.frameMsg = x.frameMsg
+  proc patchStackTraceEntry(x: var StackTraceEntry) =
+    x.procname = x.procnameStr.cstring
+    x.filename = x.filenameStr.cstring
 
-    # points `procname`, `filename` to its own corresponding fields
-    # to avoid dangling pointers # bug #25306 18039
-    result.procname = result.procnameStr.cstring
-    result.filename = result.filenameStr.cstring
-
-  proc copyStackTraceEntrySeq(result: var seq[StackTraceEntry]; s: seq[StackTraceEntry]) =
+  proc addStackTraceEntrySeq(result: var seq[StackTraceEntry]; s: seq[StackTraceEntry]) =
     for i in 0..<s.len:
-      let entry = addr s[i]
-      result.add(copyStackTraceEntry entry)
+      result.add(s[i])
+      patchStackTraceEntry(result[result.high])
 
   # We may have more stack trace lines in the output, due to inlined procedures.
   proc addDebuggingInfo*(s: seq[StackTraceEntry]): seq[StackTraceEntry] =
@@ -95,10 +87,12 @@ when defined(nimStackTraceOverride):
       if entry.procname.isNil and entry.programCounter != 0:
         programCounters.add(cast[cuintptr_t](entry.programCounter))
       elif entry.procname.isNil and (entry.line == reraisedFromBegin or entry.line == reraisedFromEnd):
-        result.copyStackTraceEntrySeq(stackTraceOverrideGetDebuggingInfo(programCounters, maxStackTraceLines))
+        result.addStackTraceEntrySeq(stackTraceOverrideGetDebuggingInfo(programCounters, maxStackTraceLines))
         programCounters = @[]
-        result.add(copyStackTraceEntry entry)
+        result.add(entry[])
+        patchStackTraceEntry(result[result.high])
       else:
-        result.add(copyStackTraceEntry entry)
+        result.add(entry[])
+        patchStackTraceEntry(result[result.high])
     if programCounters.len > 0:
-      result.copyStackTraceEntrySeq(stackTraceOverrideGetDebuggingInfo(programCounters, maxStackTraceLines))
+      result.addStackTraceEntrySeq(stackTraceOverrideGetDebuggingInfo(programCounters, maxStackTraceLines))
