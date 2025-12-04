@@ -307,10 +307,17 @@ proc writeSymDef(w: var Writer; dest: var TokenBuf; sym: PSym) =
     w.writtenSyms.add sym
 
 proc shouldWriteSymDef(w: Writer; sym: PSym): bool {.inline.} =
+  # Don't write module/package symbols - they don't have NIF files
+  if sym.kindImpl in {skModule, skPackage}:
+    return false
   result = sym.itemId.module == w.currentModule and sym.state == Complete
 
 proc writeSym(w: var Writer; dest: var TokenBuf; sym: PSym) =
   if sym == nil:
+    dest.addDotToken()
+  elif sym.kindImpl in {skModule, skPackage}:
+    # Write module/package symbols as dots - they're resolved differently
+    # (by position/FileIndex, not by NIF lookup)
     dest.addDotToken()
   elif shouldWriteSymDef(w, sym):
     sym.state = Sealed
