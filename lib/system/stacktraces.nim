@@ -30,7 +30,6 @@ when defined(nimStackTraceOverride):
         nimcall, gcsafe, raises: [], tags: [], noinline.}
 
 
-  const NimStackTraceMsgs = compileOption("stacktraceMsgs")
 
   # Default procedures (not normally used, because people opting in on this
   # override are supposed to register their own versions).
