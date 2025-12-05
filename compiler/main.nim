@@ -30,7 +30,10 @@ import ic / [cbackend, integrity, navigator, ic]
 
 import ../dist/checksums/src/checksums/sha1
 
-import pipelines, nifbackend
+import pipelines
+
+when not defined(nimKochBootstrap):
+  import nifbackend
 
 when not defined(leanCompiler):
   import docgen
@@ -137,14 +140,17 @@ proc commandNifC(graph: ModuleGraph) =
   ## Generate C code from precompiled NIF files.
   ## This is the new IC approach: compile modules to NIF first with `nim m`,
   ## then generate C code from the entry.nif file with whole-program DCE.
-  let conf = graph.config
-  extccomp.initVars(conf)
+  when not defined(nimKochBootstrap):
+    let conf = graph.config
+    extccomp.initVars(conf)
 
-  if not extccomp.ccHasSaneOverflow(conf):
-    conf.symbols.defineSymbol("nimEmulateOverflowChecks")
+    if not extccomp.ccHasSaneOverflow(conf):
+      conf.symbols.defineSymbol("nimEmulateOverflowChecks")
 
-  # Use the NIF backend to generate C code
-  nifbackend.generateCode(graph, conf.projectMainIdx)
+    # Use the NIF backend to generate C code
+    nifbackend.generateCode(graph, conf.projectMainIdx)
+  else:
+    rawMessage(graph.config, errGenerated, "NIF backend not available during bootstrap build")
 
 proc commandCompileToC(graph: ModuleGraph) =
   let conf = graph.config
