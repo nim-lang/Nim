@@ -29,6 +29,8 @@ errors.
 
 - Adds the switch `--mangle:nim|cpp`, which selects `nim` or `cpp` style name mangling when used with `debuginfo` on, defaults to `nim`. The default is changed from `cpp` to `nim`.
 
+- The second parameter of `succ`, `pred`, `inc`, and `dec` in `system` now accepts `SomeInteger` (previously `Ordinal`).
+
 ## Standard library additions and changes
 
 [//]: # "Additions:"
