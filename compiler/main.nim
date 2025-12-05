@@ -30,7 +30,7 @@ import ic / [cbackend, integrity, navigator, ic]
 
 import ../dist/checksums/src/checksums/sha1
 
-import pipelines
+import pipelines, nifbackend
 
 when not defined(leanCompiler):
   import docgen
@@ -132,6 +132,19 @@ proc commandCompileToNif(graph: ModuleGraph) =
 
   setPipeLinePass(graph, NifgenPass)
   compilePipelineProject(graph)
+
+proc commandNifC(graph: ModuleGraph) =
+  ## Generate C code from precompiled NIF files.
+  ## This is the new IC approach: compile modules to NIF first with `nim m`,
+  ## then generate C code from the entry.nif file with whole-program DCE.
+  let conf = graph.config
+  extccomp.initVars(conf)
+
+  if not extccomp.ccHasSaneOverflow(conf):
+    conf.symbols.defineSymbol("nimEmulateOverflowChecks")
+
+  # Use the NIF backend to generate C code
+  nifbackend.generateCode(graph, conf.projectMainIdx)
 
 proc commandCompileToC(graph: ModuleGraph) =
   let conf = graph.config
@@ -424,6 +437,10 @@ proc mainCommand*(graph: ModuleGraph) =
     graph.config.symbolFiles = disabledSf
     setUseIc(false)
     commandCheck(graph)
+  of cmdNifC:
+    # Generate C code from NIF files
+    wantMainModule(conf)
+    commandNifC(graph)
   of cmdParse:
     wantMainModule(conf)
     discard parseFile(conf.projectMainIdx, cache, conf)

@@ -175,6 +175,7 @@ type
     cmdJsonscript # compile a .json build file
     # old unused: cmdInterpret, cmdDef: def feature (find definition for IDEs)
     cmdCompileToNif
+    cmdNifC  # generate C code from NIF files
 
 const
   cmdBackends* = {cmdCompileToC, cmdCompileToCpp, cmdCompileToOC,
