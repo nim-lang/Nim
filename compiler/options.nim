@@ -176,6 +176,7 @@ type
     # old unused: cmdInterpret, cmdDef: def feature (find definition for IDEs)
     cmdCompileToNif
     cmdNifC  # generate C code from NIF files
+    cmdDeps  # generate .build.nif for nifmake
 
 const
   cmdBackends* = {cmdCompileToC, cmdCompileToCpp, cmdCompileToOC,

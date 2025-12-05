@@ -34,6 +34,7 @@ import pipelines
 
 when not defined(nimKochBootstrap):
   import nifbackend
+  import deps
 
 when not defined(leanCompiler):
   import docgen
@@ -447,6 +448,13 @@ proc mainCommand*(graph: ModuleGraph) =
     # Generate C code from NIF files
     wantMainModule(conf)
     commandNifC(graph)
+  of cmdDeps:
+    # Generate .build.nif for nifmake
+    wantMainModule(conf)
+    when not defined(nimKochBootstrap):
+      commandDeps(conf)
+    else:
+      rawMessage(conf, errGenerated, "nim deps not available in bootstrap build")
   of cmdParse:
     wantMainModule(conf)
     discard parseFile(conf.projectMainIdx, cache, conf)
