@@ -283,10 +283,6 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0; expectedType: PT
       cl.c.fitDefaultNode(cl.c, n, result.sym.typ)
       result.sym.ast = n
       result.sym.typ = n.typ.skipIntLit(cl.c.idgen)
-    # sym type can be nil if was gensym created by macro, see #24048
-    if result.sym.typ != nil and result.sym.typ.kind == tyVoid:
-      # don't add the 'void' field
-      result = newNodeI(nkRecList, n.info)
   of nkRecWhen:
     var branch: PNode = nil              # the branch to take
     for i in 0..<n.len:
@@ -546,10 +542,8 @@ proc eraseVoidParams*(t: PType) =
       var pos = i
       for j in i+1..<t.signatureLen:
         if t[j].kind != tyVoid:
-          t[pos] = t[j]
           t.n[pos] = t.n[j]
           inc pos
-      newSons t, pos
       setLen t.n.sons, pos
       break
 
@@ -743,7 +737,8 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType, isInstValue = false): 
             let r2 = r.skipTypes({tyAlias, tySink, tyOwned})
             if r2.kind in {tyPtr, tyRef}:
               r = skipTypes(r2, {tyPtr, tyRef})
-          result[i] = r
+          if result.kind != tyProc:
+            result[i] = r
           if result.kind != tyArray or i != 0:
             propagateToOwner(result, r)
       # bug #4677: Do not instantiate effect lists

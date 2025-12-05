@@ -549,17 +549,24 @@ proc addAllowNil*(father, son: PNode) {.inline.} =
   father.sons.add(son)
 
 proc add*(father, son: PType) =
+  assert father.kind != tyProc
   assert son != nil
   father.sonsImpl.add son
 
 proc addAllowNil*(father, son: PType) {.inline.} =
+  assert father.kind != tyProc
   father.sonsImpl.add son
 
 template `[]`*(n: PType, i: int): PType =
   if n.state == Partial: loadType(n)
-  n.sonsImpl[i]
+  if n.kind == tyProc and i > 0:
+    assert n.nImpl[i] != nil
+    n.nImpl[i].sym.typ
+  else:
+    n.sonsImpl[i]
 template `[]=`*(n: PType, i: int; x: PType) =
   if n.state == Partial: loadType(n)
+  assert n.kind != tyProc or i == 0
   n.sonsImpl[i] = x
 
 template `[]`*(n: PType, i: BackwardsIndex): PType =
@@ -842,7 +849,7 @@ proc setIndexType*(n, idx: PType) {.inline.} =
 
 proc firstParamType*(n: PType): PType {.inline.} =
   if n.state == Partial: loadType(n)
-  n.sonsImpl[1]
+  n.nImpl[1].sym.typ
 
 proc firstGenericParam*(n: PType): PType {.inline.} =
   if n.state == Partial: loadType(n)
@@ -914,10 +921,13 @@ proc `$`*(s: PSym): string =
     result = "<nil>"
 
 proc len*(n: PType): int {.inline.} =
-  result = n.sonsImpl.len
+  if n.kind == tyProc:
+    result = if n.nImpl == nil: 0 else: n.nImpl.len
+  else:
+    result = n.sonsImpl.len
 
 proc sameTupleLengths*(a, b: PType): bool {.inline.} =
-  result = a.sonsImpl.len == b.sonsImpl.len
+  result = a.len == b.len
 
 iterator tupleTypePairs*(a, b: PType): (int, PType, PType) =
   for i in 0 ..< a.len:
@@ -1034,6 +1044,7 @@ proc newSons*(father: PNode, length: int) =
   setLen(father.sons, length)
 
 proc newSons*(father: PType, length: int) =
+  assert father.kind != tyProc
   setLen(father.sonsImpl, length)
 
 proc truncateInferredTypeCandidates*(t: PType) {.inline.} =
@@ -1058,8 +1069,13 @@ proc assignType*(dest, src: PType) =
       mergeLoc(dest.sym.locImpl, src.sym.loc)
     else:
       dest.symImpl = src.sym
-  newSons(dest, src.len)
-  for i in 0..<src.len: dest[i] = src[i]
+  if src.kind == tyProc:
+    if src.len > 0:
+      setLen(dest.sonsImpl, 1)
+      dest.sonsImpl[0] = src.sonsImpl[0]
+  else:
+    newSons(dest, src.len)
+    for i in 0..<src.len: dest[i] = src[i]
 
 proc copyType*(t: PType, idgen: IdGenerator, owner: PSym): PType =
   result = newType(t.kind, idgen, owner)
@@ -1169,7 +1185,8 @@ proc propagateToOwner*(owner, elem: PType; propagateHasAsgn = true) =
 
 proc rawAddSon*(father, son: PType; propagateHasAsgn = true) =
   ensureMutable father
-  father.sonsImpl.add(son)
+  if father.kind != tyProc or father.sonsImpl.len == 0:
+    father.sonsImpl.add(son)
   if not son.isNil: propagateToOwner(father, son, propagateHasAsgn)
 
 proc addSonNilAllowed*(father, son: PNode) =
