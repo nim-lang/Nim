@@ -19,7 +19,7 @@ template detectVersion(field, corename) =
   if m.g.config.selectedGC in {gcArc, gcOrc, gcAtomicArc}:
     result = 2
   else:
-    m.g.field = 1
+    result = 1
 
 proc detectStrVersion(m: BModule): int =
   detectVersion(strVersion, "nimStrVersion")
