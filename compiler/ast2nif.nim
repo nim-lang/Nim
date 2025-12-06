@@ -11,14 +11,92 @@
 
 import std / [assertions, tables, sets]
 from std / strutils import startsWith
+from std / os import fileExists
 import astdef, idents, msgs, options
 import lineinfos as astli
 import pathutils #, modulegraphs
 import "../dist/nimony/src/lib" / [bitabs, nifstreams, nifcursors, lineinfos,
   nifindexes, nifreader]
 import "../dist/nimony/src/gear2" / modnames
+import "../dist/nimony/src/models" / nifindex_tags
 
 import ic / [enum2nif]
+
+# Re-export types needed for hook, converter, and method handling
+export nifindexes.AttachedOp, nifindexes.HookIndexEntry, nifindexes.HooksPerType
+export nifindexes.ClassIndexEntry, nifindexes.MethodIndexEntry
+
+proc toAttachedOp*(op: TTypeAttachedOp): AttachedOp =
+  ## Maps Nim compiler's TTypeAttachedOp to nimony's AttachedOp.
+  ## Returns attachedDestroy for attachedDeepCopy (caller should skip it).
+  case op
+  of attachedDestructor: attachedDestroy
+  of attachedAsgn: attachedCopy
+  of attachedWasMoved: nifindexes.attachedWasMoved
+  of attachedDup: nifindexes.attachedDup
+  of attachedSink: nifindexes.attachedSink
+  of attachedTrace: nifindexes.attachedTrace
+  of attachedDeepCopy: attachedDestroy  # Not supported, caller should skip
+
+proc toTTypeAttachedOp*(op: AttachedOp): TTypeAttachedOp =
+  ## Maps nimony's AttachedOp back to Nim compiler's TTypeAttachedOp.
+  case op
+  of attachedDestroy: attachedDestructor
+  of attachedCopy: attachedAsgn
+  of nifindexes.attachedWasMoved: astdef.attachedWasMoved
+  of nifindexes.attachedDup: astdef.attachedDup
+  of nifindexes.attachedSink: astdef.attachedSink
+  of nifindexes.attachedTrace: astdef.attachedTrace
+
+
+proc cachedModuleSuffix*(config: ConfigRef; fileIdx: FileIndex): string =
+  ## Gets or computes the module suffix for a FileIndex.
+  ## For NIF modules, the suffix is already stored in the file info.
+  ## For source files, computes it from the path.
+  let fullPath = toFullPath(config, fileIdx)
+  if fileInfoKind(config, fileIdx) == fikNifModule:
+    result = fullPath  # Already a suffix
+  else:
+    result = moduleSuffix(fullPath, cast[seq[string]](config.searchPaths))
+
+proc toHookIndexEntry*(config: ConfigRef; typeId: ItemId; hookSym: PSym): HookIndexEntry =
+  ## Converts a type ItemId and hook symbol to a HookIndexEntry for the NIF index.
+  let typeSymName = "`t" & $typeId.item & "." & cachedModuleSuffix(config, typeId.module.FileIndex)
+  let hookSymName = hookSym.name.s & "." & $hookSym.disamb & "." & cachedModuleSuffix(config, hookSym.itemId.module.FileIndex)
+  let typSymId = pool.syms.getOrIncl(typeSymName)
+  let hookSymId = pool.syms.getOrIncl(hookSymName)
+  # Check if it's a generic hook (has non-empty generic params)
+  let isGeneric = hookSym.astImpl != nil and hookSym.astImpl.len > genericParamsPos and
+                  hookSym.astImpl[genericParamsPos].kind != nkEmpty
+  result = HookIndexEntry(typ: typSymId, hook: hookSymId, isGeneric: isGeneric)
+
+proc toConverterIndexEntry*(config: ConfigRef; converterSym: PSym): (nifstreams.SymId, nifstreams.SymId) =
+  ## Converts a converter symbol to an index entry (destType, converterSym).
+  ## Returns the destination type's SymId and the converter's SymId.
+  # Get the return type of the converter (destination type)
+  let retType = converterSym.typImpl
+  if retType != nil and retType.sonsImpl.len > 0:
+    let destType = retType.sonsImpl[0]  # Return type is first son
+    if destType != nil:
+      let destTypeSymName = "`t" & $destType.itemId.item & "." & cachedModuleSuffix(config, destType.itemId.module.FileIndex)
+      let convSymName = converterSym.name.s & "." & $converterSym.disamb & "." & cachedModuleSuffix(config, converterSym.itemId.module.FileIndex)
+      result = (pool.syms.getOrIncl(destTypeSymName), pool.syms.getOrIncl(convSymName))
+      return
+  # Fallback: return empty entry
+  result = (nifstreams.SymId(0), nifstreams.SymId(0))
+
+proc toMethodIndexEntry*(config: ConfigRef; methodSym: PSym; signature: string): MethodIndexEntry =
+  ## Converts a method symbol to a MethodIndexEntry.
+  let methodSymName = methodSym.name.s & "." & $methodSym.disamb & "." & cachedModuleSuffix(config, methodSym.itemId.module.FileIndex)
+  result = MethodIndexEntry(
+    fn: pool.syms.getOrIncl(methodSymName),
+    signature: pool.strings.getOrIncl(signature)
+  )
+
+proc toClassSymId*(config: ConfigRef; typeId: ItemId): nifstreams.SymId =
+  ## Converts a type ItemId to its SymId for the class index.
+  let typeSymName = "`t" & $typeId.item & "." & cachedModuleSuffix(config, typeId.module.FileIndex)
+  result = pool.syms.getOrIncl(typeSymName)
 
 # ---------------- Line info handling -----------------------------------------
 
@@ -51,13 +129,14 @@ proc nifLineInfo(w: var LineInfoWriter; info: TLineInfo): PackedLineInfo =
     result = NoLineInfo
   else:
     let fid = get(w, info.fileIndex)
-    result = pack(w.man, fid, info.line.int32, info.col)
+    # Must use pool.man since toString uses pool.man to unpack
+    result = pack(pool.man, fid, info.line.int32, info.col)
 
 proc oldLineInfo(w: var LineInfoWriter; info: PackedLineInfo): TLineInfo =
   if info == NoLineInfo:
     result = unknownLineInfo
   else:
-    var x = unpack(w.man, info)
+    var x = unpack(pool.man, info)
     var fileIdx: FileIndex
     if w.fileV == x.file:
       fileIdx = w.fileK
@@ -73,19 +152,12 @@ proc oldLineInfo(w: var LineInfoWriter; info: PackedLineInfo): TLineInfo =
 
 # -------------- Module name handling --------------------------------------------
 
-proc modname(moduleToNifSuffix: var Table[FileIndex, string]; module: int; conf: ConfigRef): string =
-  let idx = module.FileIndex
-  # copied from ../nifgen.nim
-  result = moduleToNifSuffix.getOrDefault(idx)
-  if result.len == 0:
-    let fp = toFullPath(conf, idx)
-    result = moduleSuffix(fp, cast[seq[string]](conf.searchPaths))
-    moduleToNifSuffix[idx] = result
-    #echo result, " -> ", fp
+proc modname(module: int; conf: ConfigRef): string =
+  cachedModuleSuffix(conf, module.FileIndex)
 
-proc modname(moduleToNifSuffix: var Table[FileIndex, string]; module: PSym; conf: ConfigRef): string =
+proc modname(module: PSym; conf: ConfigRef): string =
   assert module.kindImpl == skModule
-  result = modname(moduleToNifSuffix, module.positionImpl, conf)
+  modname(module.positionImpl, conf)
 
 
 
@@ -123,11 +195,15 @@ type
     infos: LineInfoWriter
     currentModule: int32
     decodedFileIndices: HashSet[FileIndex]
-    moduleToNifSuffix: Table[FileIndex, string]
     locals: HashSet[ItemId]  # track proc-local symbols
     inProc: int
     writtenTypes: seq[PType]  # types written in this module, to be unloaded later
     writtenSyms: seq[PSym]    # symbols written in this module, to be unloaded later
+    exports: Table[FileIndex, HashSet[string]]  # module -> specific symbol names (empty = all)
+
+const
+  # Symbol kinds that are always local to a proc and should never have module suffix
+  skLocalSymKinds = {skParam, skGenericParam, skForVar, skResult, skTemp}
 
 proc toNifSymName(w: var Writer; sym: PSym): string =
   ## Generate NIF name for a symbol: local names are `ident.disamb`,
@@ -135,11 +211,11 @@ proc toNifSymName(w: var Writer; sym: PSym): string =
   result = sym.name.s
   result.add '.'
   result.addInt sym.disamb
-  if sym.itemId notin w.locals:
+  if sym.itemId notin w.locals and sym.kindImpl notin skLocalSymKinds:
     # Global symbol: ident.disamb.moduleSuffix
     let module = sym.itemId.module
     result.add '.'
-    result.add modname(w.moduleToNifSuffix, module, w.infos.config)
+    result.add modname(module, w.infos.config)
 
 type
   ParsedSymName* = object
@@ -191,7 +267,7 @@ proc writeFlags[E](dest: var TokenBuf; flags: set[E]) =
 proc trLineInfo(w: var Writer; info: TLineInfo): PackedLineInfo {.inline.} =
   result = nifLineInfo(w.infos, info)
 
-proc writeNode(w: var Writer; dest: var TokenBuf; n: PNode)
+proc writeNode(w: var Writer; dest: var TokenBuf; n: PNode; forAst = false)
 proc writeType(w: var Writer; dest: var TokenBuf; typ: PType)
 proc writeSym(w: var Writer; dest: var TokenBuf; sym: PSym)
 
@@ -201,7 +277,7 @@ proc typeToNifSym(w: var Writer; typ: PType): string =
   result.add '.'
   result.addInt typ.uniqueId.item
   result.add '.'
-  result.add modname(w.moduleToNifSuffix, typ.uniqueId.module, w.infos.config)
+  result.add modname(typ.uniqueId.module, w.infos.config)
 
 proc writeLoc(w: var Writer; dest: var TokenBuf; loc: TLoc) =
   dest.addIdent toNifTag(loc.k)
@@ -259,6 +335,26 @@ proc writeLib(w: var Writer; dest: var TokenBuf; lib: PLib) =
       dest.addStrLit lib.name
       writeNode w, dest, lib.path
 
+proc writeSymDef(w: var Writer; dest: var TokenBuf; sym: PSym)  # forward declaration
+
+proc collectGenericParams(w: var Writer; n: PNode) =
+  ## Pre-collect generic param symbols into w.locals before writing the type.
+  ## This ensures generic params get consistent short names, and their sdefs
+  ## are written in the type (where lazy loading can find them).
+  if n == nil: return
+  case n.kind
+  of nkSym:
+    if n.sym != nil and w.inProc > 0:
+      w.locals.incl(n.sym.itemId)
+  of nkIdentDefs, nkVarTuple:
+    for i in 0 ..< max(0, n.len - 2):
+      collectGenericParams(w, n[i])
+  of nkGenericParams:
+    for child in n:
+      collectGenericParams(w, child)
+  else:
+    discard
+
 proc writeSymDef(w: var Writer; dest: var TokenBuf; sym: PSym) =
   dest.addParLe sdefTag, trLineInfo(w, sym.infoImpl)
   dest.addSymDef pool.syms.getOrIncl(w.toNifSymName(sym)), NoLineInfo
@@ -266,13 +362,6 @@ proc writeSymDef(w: var Writer; dest: var TokenBuf; sym: PSym) =
     dest.addIdent "x"
   else:
     dest.addDotToken
-  if sym.magicImpl == mNone:
-    dest.addDotToken
-  else:
-    dest.addIdent toNifTag(sym.magicImpl)
-  writeFlags(dest, sym.flagsImpl)
-  writeFlags(dest, sym.optionsImpl)
-  dest.addIntLit sym.offsetImpl
   # field `disamb` made part of the name, so do not store it here
   dest.buildTree sym.kindImpl.toNifTag:
     case sym.kindImpl
@@ -282,14 +371,35 @@ proc writeSymDef(w: var Writer; dest: var TokenBuf; sym: PSym) =
       dest.addIntLit sym.alignmentImpl
     else:
       discard
+
+  if sym.magicImpl == mNone:
+    dest.addDotToken
+  else:
+    dest.addIdent toNifTag(sym.magicImpl)
+  writeFlags(dest, sym.flagsImpl)
+  writeFlags(dest, sym.optionsImpl)
+  dest.addIntLit sym.offsetImpl
+
   if sym.kindImpl == skModule:
     dest.addDotToken() # position will be set by the loader!
   else:
     dest.addIntLit sym.positionImpl
+
+  # For routine symbols, pre-collect generic params into w.locals before writing
+  # the type. This ensures they get consistent short names, and their sdefs are
+  # written in the type where lazy loading can find them via extractLocalSymsFromTree.
+  if sym.kindImpl in routineKinds and sym.astImpl != nil and sym.astImpl.len > genericParamsPos:
+    inc w.inProc
+    collectGenericParams(w, sym.astImpl[genericParamsPos])
+    dec w.inProc
+
   writeType(w, dest, sym.typImpl)
   writeSym(w, dest, sym.ownerFieldImpl)
-  # We do not store `sym.ast` here but instead set it in the deserializer
-  #writeNode(w, sym.ast)
+  # Store the AST for routine symbols (procs, funcs, etc.)
+  if sym.kindImpl in routineKinds:
+    writeNode(w, dest, sym.astImpl, forAst = true)
+  else:
+    dest.addDotToken
   writeLoc w, dest, sym.locImpl
   writeNode(w, dest, sym.constraintImpl)
   writeSym(w, dest, sym.instantiatedFromImpl)
@@ -300,10 +410,31 @@ proc writeSymDef(w: var Writer; dest: var TokenBuf; sym: PSym) =
     # do not unload modules
     w.writtenSyms.add sym
 
+proc shouldWriteSymDef(w: Writer; sym: PSym): bool {.inline.} =
+  # Don't write module/package symbols - they don't have NIF files
+  if sym.kindImpl in {skModule, skPackage}:
+    return false
+  # Already written - don't write again
+  if sym.state == Sealed:
+    return false
+  # If the symbol belongs to current module and would be written WITHOUT module suffix
+  # (due to being in w.locals or being in skLocalSymKinds), it MUST have an sdef.
+  # Otherwise it gets written as a bare SymUse and can't be found when loading.
+  if sym.itemId.module == w.currentModule:
+    if sym.itemId in w.locals or sym.kindImpl in skLocalSymKinds:
+      return true  # Would be written without module suffix, needs sdef
+    if sym.state == Complete:
+      return true  # Normal case for global symbols
+  return false
+
 proc writeSym(w: var Writer; dest: var TokenBuf; sym: PSym) =
   if sym == nil:
     dest.addDotToken()
-  elif sym.itemId.module == w.currentModule and sym.state == Complete:
+  elif sym.kindImpl in {skModule, skPackage}:
+    # Write module/package symbols as dots - they're resolved differently
+    # (by position/FileIndex, not by NIF lookup)
+    dest.addDotToken()
+  elif shouldWriteSymDef(w, sym):
     sym.state = Sealed
     writeSymDef(w, dest, sym)
   else:
@@ -314,7 +445,7 @@ proc writeSym(w: var Writer; dest: var TokenBuf; sym: PSym) =
 proc writeSymNode(w: var Writer; dest: var TokenBuf; n: PNode; sym: PSym) =
   if sym == nil:
     dest.addDotToken()
-  elif sym.itemId.module == w.currentModule and sym.state == Complete:
+  elif shouldWriteSymDef(w, sym):
     sym.state = Sealed
     if n.typField != n.sym.typImpl:
       dest.buildTree hiddenTypeTag, trLineInfo(w, n.info):
@@ -357,24 +488,29 @@ proc addLocalSyms(w: var Writer; n: PNode) =
   elif n.kind == nkSym:
     addLocalSym(w, n)
 
+
 proc trInclude(w: var Writer; n: PNode) =
   w.deps.addParLe pool.tags.getOrIncl(toNifTag(n.kind)), trLineInfo(w, n.info)
+  w.deps.addDotToken # flags
+  w.deps.addDotToken # type
   for child in n:
     assert child.kind == nkStrLit
-    w.deps.addStrLit child.strVal
+    w.deps.addStrLit child.strVal  # raw string literal, no wrapper needed
   w.deps.addParRi
 
 proc trImport(w: var Writer; n: PNode) =
   for child in n:
     if child.kind == nkSym:
       w.deps.addParLe pool.tags.getOrIncl(toNifTag(n.kind)), trLineInfo(w, n.info)
+      w.deps.addDotToken # flags
+      w.deps.addDotToken # type
       let s = child.sym
       assert s.kindImpl == skModule
       let fp = toFullPath(w.infos.config, s.positionImpl.FileIndex)
-      w.deps.addStrLit fp
+      w.deps.addStrLit fp  # raw string literal, no wrapper needed
       w.deps.addParRi
 
-proc writeNode(w: var Writer; dest: var TokenBuf; n: PNode) =
+proc writeNode(w: var Writer; dest: var TokenBuf; n: PNode; forAst = false) =
   if n == nil:
     dest.addDotToken
   else:
@@ -413,94 +549,168 @@ proc writeNode(w: var Writer; dest: var TokenBuf; n: PNode) =
         for child in n:
           addLocalSyms w, child
           # Process the child node
-          writeNode(w, dest, child)
+          writeNode(w, dest, child, forAst)
     of nkForStmt, nkTypeDef:
       # Track for loop variable (first child is the loop variable)
       w.withNode dest, n:
         if n.len > 0:
           addLocalSyms(w, n[0])
         for i in 0 ..< n.len:
-          writeNode(w, dest, n[i])
+          writeNode(w, dest, n[i], forAst)
     of nkFormalParams:
       # Track parameters (first child is return type, rest are parameters)
+      inc w.inProc
       w.withNode dest, n:
         for i in 0 ..< n.len:
           if i > 0:  # Skip return type
             addLocalSyms(w, n[i])
-          writeNode(w, dest, n[i])
-    of nkProcDef, nkFuncDef, nkMethodDef, nkIteratorDef, nkConverterDef, nkLambda, nkDo, nkMacroDef:
+          writeNode(w, dest, n[i], forAst)
+      dec w.inProc
+    of nkProcDef, nkFuncDef, nkMethodDef, nkIteratorDef, nkConverterDef, nkMacroDef:
+      # For top-level named routines (not forAst), just write the symbol.
+      # The full AST will be stored in the symbol's sdef.
+      if not forAst and n[namePos].kind == nkSym:
+        writeSym(w, dest, n[namePos].sym)
+      else:
+        # Writing AST inside sdef or anonymous proc: write full structure
+        inc w.inProc
+        var ast = n
+        if n[namePos].kind == nkSym:
+          ast = n[namePos].sym.astImpl
+          if ast == nil: ast = n
+        w.withNode dest, ast:
+          for i in 0 ..< ast.len:
+            writeNode(w, dest, ast[i], forAst)
+        dec w.inProc
+    of nkLambda, nkDo:
+      # Lambdas are expressions, always write full structure
       inc w.inProc
-      # Entering a proc/function body - parameters are local
       var ast = n
       if n[namePos].kind == nkSym:
         ast = n[namePos].sym.astImpl
         if ast == nil: ast = n
       w.withNode dest, ast:
-        # Process body and other parts
         for i in 0 ..< ast.len:
-          writeNode(w, dest, ast[i])
+          writeNode(w, dest, ast[i], forAst)
       dec w.inProc
     of nkImportStmt:
       # this has been transformed for us, see `importer.nim` to contain a list of module syms:
       trImport w, n
     of nkIncludeStmt:
       trInclude w, n
+    of nkExportStmt, nkExportExceptStmt:
+      # Collect export information for the index
+      # nkExportStmt children are nkSym nodes
+      # When exporting a module (export dollars), the module symbol is a child
+      # followed by all symbols from that module - we use empty set to mean "export all"
+      # When exporting specific symbols (export foo, bar), we collect their names
+      # Note: nkExportExceptStmt is transformed to nkExportStmt by semExportExcept,
+      # but we handle both just in case
+      var exportAllModules = initHashSet[FileIndex]()
+      for child in n:
+        if child.kind == nkSym:
+          let s = child.sym
+          if s.kindImpl == skModule:
+            # Export all from this module - use empty set
+            let modIdx = s.positionImpl.FileIndex
+            exportAllModules.incl modIdx
+            if modIdx notin w.exports:
+              w.exports[modIdx] = initHashSet[string]()  # empty means "export all"
+          else:
+            # Export specific symbol, but only if we're not already exporting all from this module
+            let modIdx = s.itemId.module.FileIndex
+            if modIdx notin exportAllModules:
+              if modIdx notin w.exports:
+                w.exports[modIdx] = initHashSet[string]()
+              w.exports[modIdx].incl s.name.s
+      # Write the export statement as a regular node
+      w.withNode dest, n:
+        for i in 0 ..< n.len:
+          writeNode(w, dest, n[i], forAst)
     else:
       w.withNode dest, n:
         for i in 0 ..< n.len:
-          writeNode(w, dest, n[i])
+          writeNode(w, dest, n[i], forAst)
 
-proc writeToplevelNode(w: var Writer; outer, inner: var TokenBuf; n: PNode) =
+proc writeToplevelNode(w: var Writer; dest: var TokenBuf; n: PNode) =
   case n.kind
   of nkStmtList, nkStmtListExpr:
-    for son in n: writeToplevelNode(w, outer, inner, son)
-  of nkProcDef, nkFuncDef, nkMethodDef, nkIteratorDef, nkConverterDef, nkLambda, nkDo, nkMacroDef:
-    # Delegate to `w.topLevel`!
-    writeNode w, inner, n
-  of nkConstSection, nkTypeSection, nkTypeDef:
-    writeNode w, inner, n
+    for son in n: writeToplevelNode(w, dest, son)
   else:
-    writeNode w, outer, n
+    writeNode w, dest, n
 
 proc createStmtList(buf: var TokenBuf; info: PackedLineInfo) {.inline.} =
   buf.addParLe pool.tags.getOrIncl(toNifTag(nkStmtList)), info
   buf.addDotToken # flags
   buf.addDotToken # type
 
-proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode) =
+proc buildExportBuf(w: var Writer): TokenBuf =
+  ## Build the export section for the NIF index from collected exports
+  result = createTokenBuf(32)
+  for modIdx, names in w.exports:
+    let path = toFullPath(w.infos.config, modIdx)
+    if names.len == 0:
+      # Export all from this module
+      result.addParLe(TagId(ExportIdx), NoLineInfo)
+      result.add strToken(pool.strings.getOrIncl(path), NoLineInfo)
+      result.addParRi()
+    else:
+      # Export specific symbols
+      result.addParLe(TagId(FromexportIdx), NoLineInfo)
+      result.add strToken(pool.strings.getOrIncl(path), NoLineInfo)
+      for name in names:
+        result.add identToken(pool.strings.getOrIncl(name), NoLineInfo)
+      result.addParRi()
+
+let replayTag = registerTag("replay")
+
+proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode;
+                     hooks: array[AttachedOp, seq[HookIndexEntry]];
+                     converters: seq[(nifstreams.SymId, nifstreams.SymId)];
+                     classes: seq[ClassIndexEntry];
+                     replayActions: seq[PNode] = @[]) =
   var w = Writer(infos: LineInfoWriter(config: config), currentModule: thisModule)
-  var outer = createTokenBuf(300)
-  var inner = createTokenBuf(300)
+  var content = createTokenBuf(300)
 
   let rootInfo = trLineInfo(w, n.info)
-  createStmtList(outer, rootInfo)
-  createStmtList(inner, rootInfo)
+  createStmtList(content, rootInfo)
 
-  w.writeToplevelNode outer, inner, n
+  # Write replay actions first, wrapped in a (replay ...) node
+  if replayActions.len > 0:
+    content.addParLe replayTag, rootInfo
+    for action in replayActions:
+      writeNode(w, content, action)
+    content.addParRi()
 
-  outer.addParRi()
-  inner.addParRi()
+  w.writeToplevelNode content, n
 
-  let m = modname(w.moduleToNifSuffix, w.currentModule, w.infos.config)
+  content.addParRi()
+
+  let m = modname(w.currentModule, w.infos.config)
   let nifFilename = AbsoluteFile(m).changeFileExt(".nif")
   let d = completeGeneratedFilePath(config, nifFilename).string
 
   var dest = createTokenBuf(600)
   createStmtList(dest, rootInfo)
   dest.add w.deps
-  dest.add outer
-  dest.add inner
+  dest.add content
   dest.addParRi()
 
   writeFile(dest, d)
-  createIndex(d, false, dest[0].info)
 
-  # Unload all written types and symbols from memory after the entire module is written
-  # This handles cyclic references correctly since everything is written before unloading
-  for typ in w.writtenTypes:
-    forcePartial(typ)
-  for sym in w.writtenSyms:
-    forcePartial(sym)
+  # Build index with export, hook, converter, and method information
+  let exportBuf = buildExportBuf(w)
+  createIndex(d, dest[0].info, false,
+    IndexSections(hooks: hooks, converters: converters, classes: classes, exportBuf: exportBuf))
+
+  # Don't unload symbols/types yet - they may be needed by other modules that haven't
+  # had their NIF files written. For recursive module dependencies (like system.nim),
+  # we need all NIFs to exist before we can safely unload and reload.
+  # TODO: Implement deferred unloading at end of compilation for memory savings.
+  #for typ in w.writtenTypes:
+  #  forcePartial(typ)
+  #for sym in w.writtenSyms:
+  #  forcePartial(sym)
 
 
 # --------------------------- Loader (lazy!) -----------------------------------------------
@@ -557,19 +767,19 @@ proc loadBool(n: var Cursor): bool =
     raiseAssert "(true)/(false) expected"
 
 type
-  NifModule = object
+  NifModule = ref object
     stream: nifstreams.Stream
     symCounter: int32
     index: NifIndex
+    suffix: string
 
   DecodeContext* = object
     infos: LineInfoWriter
     #moduleIds: Table[string, int32]
     types: Table[ItemId, (PType, NifIndexEntry)]
     syms: Table[ItemId, (PSym, NifIndexEntry)]
-    mods: seq[NifModule]
+    mods: Table[FileIndex, NifModule]
     cache: IdentCache
-    moduleToNifSuffix: Table[FileIndex, string]
 
 proc createDecodeContext*(config: ConfigRef; cache: IdentCache): DecodeContext =
   ## Supposed to be a global variable
@@ -577,9 +787,8 @@ proc createDecodeContext*(config: ConfigRef; cache: IdentCache): DecodeContext =
 
 proc cursorFromIndexEntry(c: var DecodeContext; module: FileIndex; entry: NifIndexEntry;
                           buf: var TokenBuf): Cursor =
-  let s = addr c.mods[module.int32].stream
+  let s = addr c.mods[module].stream
   s.r.jumpTo entry.offset
-  var buf = createTokenBuf(30)
   nifcursors.parse(s[], buf, entry.info)
   result = cursorAt(buf, 0)
 
@@ -589,19 +798,22 @@ proc moduleId(c: var DecodeContext; suffix: string): FileIndex =
   if not isKnownFile:
     let modFile = (getNimcacheDir(c.infos.config) / RelativeFile(suffix & ".nif")).string
     let idxFile = (getNimcacheDir(c.infos.config) / RelativeFile(suffix & ".s.idx.nif")).string
-    if result.int >= c.mods.len:
-      c.mods.setLen(result.int + 1)
-    c.mods[result.int] = NifModule(stream: nifstreams.open(modFile), index: readIndex(idxFile))
+    if not fileExists(modFile):
+      raiseAssert "NIF file not found for module suffix '" & suffix & "': " & modFile &
+        ". This can happen when loading a module from NIF that references another module " &
+        "whose NIF file hasn't been written yet."
+    c.mods[result] = NifModule(stream: nifstreams.open(modFile), index: readIndex(idxFile), suffix: suffix)
 
 proc getOffset(c: var DecodeContext; module: FileIndex; nifName: string): NifIndexEntry =
-  let ii = addr c.mods[module.int32].index
+  let ii = addr c.mods[module].index
   result = ii.public.getOrDefault(nifName)
   if result.offset == 0:
     result = ii.private.getOrDefault(nifName)
     if result.offset == 0:
       raiseAssert "symbol has no offset: " & nifName
 
-proc loadNode(c: var DecodeContext; n: var Cursor; thisModule: string): PNode
+proc loadNode(c: var DecodeContext; n: var Cursor; thisModule: string;
+              localSyms: var Table[string, PSym]): PNode
 
 proc loadTypeStub(c: var DecodeContext; t: SymId): PType =
   let name = pool.syms[t]
@@ -625,6 +837,41 @@ proc loadTypeStub(c: var DecodeContext; t: SymId): PType =
     result = PType(itemId: id, uniqueId: id, kind: TTypeKind(k), state: Partial)
     c.types[id] = (result, offs)
 
+proc extractLocalSymsFromTree(c: var DecodeContext; n: var Cursor; thisModule: string;
+                              localSyms: var Table[string, PSym]) =
+  ## Scan a tree for local symbol definitions (sdef tags) and add them to localSyms.
+  ## This doesn't fully load the symbols, just pre-registers them so references
+  ## can find them. After this proc returns, n is positioned AFTER the tree.
+  # Handle atoms (non-compound nodes) - just skip them
+  if n.kind != ParLe:
+    inc n
+    return
+  var depth = 0
+  while true:
+    if n.kind == ParLe:
+      if n.tagId == sdefTag:
+        # Found an sdef - check if it's local
+        let name = n.firstSon
+        if name.kind == SymbolDef:
+          let symName = pool.syms[name.symId]
+          let sn = parseSymName(symName)
+          if sn.module.len == 0 and symName notin localSyms:
+            # Local symbol - create a stub entry in localSyms
+            let module = moduleId(c, thisModule)
+            let val = addr c.mods[module].symCounter
+            inc val[]
+            let id = ItemId(module: module.int32, item: val[])
+            let sym = PSym(itemId: id, kindImpl: skStub, name: c.cache.getIdent(sn.name),
+                          disamb: sn.count.int32, state: Complete)
+            localSyms[symName] = sym
+      inc depth
+    elif n.kind == ParRi:
+      dec depth
+      if depth == 0:
+        inc n  # Move PAST the closing )
+        break
+    inc n
+
 proc loadTypeStub(c: var DecodeContext; n: var Cursor): PType =
   if n.kind == DotToken:
     result = nil
@@ -640,11 +887,40 @@ proc loadTypeStub(c: var DecodeContext; n: var Cursor): PType =
   else:
     raiseAssert "type expected but got " & $n.kind
 
-proc loadSymStub(c: var DecodeContext; t: SymId; thisModule: string): PSym =
+proc loadTypeStubWithLocalSyms(c: var DecodeContext; n: var Cursor; thisModule: string;
+                               localSyms: var Table[string, PSym]): PType =
+  ## Like loadTypeStub but also extracts local symbols from inline type definitions
+  if n.kind == DotToken:
+    result = nil
+    inc n
+  elif n.kind == Symbol:
+    let s = n.symId
+    result = loadTypeStub(c, s)
+    inc n
+  elif n.kind == ParLe and n.tagId == tdefTag:
+    # First extract local symbols from the inline type
+    let s = n.firstSon.symId
+    extractLocalSymsFromTree(c, n, thisModule, localSyms)
+    result = loadTypeStub(c, s)
+  else:
+    raiseAssert "type expected but got " & $n.kind
+
+proc loadSymStub(c: var DecodeContext; t: SymId; thisModule: string;
+                 localSyms: var Table[string, PSym]): PSym =
   let symAsStr = pool.syms[t]
   let sn = parseSymName(symAsStr)
-  let module = moduleId(c, if sn.module.len > 0: sn.module else: thisModule)
-  let val = addr c.mods[module.int32].symCounter
+  # For local symbols (no module suffix), they MUST be in localSyms.
+  # Local symbols are not in the index - they're defined inline in the NIF file.
+  # If not found, it's a bug in how we populate localSyms.
+  if sn.module.len == 0:
+    result = localSyms.getOrDefault(symAsStr)
+    if result != nil:
+      return result
+    else:
+      raiseAssert "local symbol '" & symAsStr & "' not found in localSyms."
+  # Global symbol - look up in index for lazy loading
+  let module = moduleId(c, sn.module)
+  let val = addr c.mods[module].symCounter
   inc val[]
 
   let id = ItemId(module: module.int32, item: val[])
@@ -653,20 +929,20 @@ proc loadSymStub(c: var DecodeContext; t: SymId; thisModule: string): PSym =
     let offs = c.getOffset(module, symAsStr)
     result = PSym(itemId: id, kindImpl: skStub, name: c.cache.getIdent(sn.name), disamb: sn.count.int32, state: Partial)
     c.syms[id] = (result, offs)
-    c.moduleToNifSuffix[module] = (if sn.module.len > 0: sn.module else: thisModule)
 
-proc loadSymStub(c: var DecodeContext; n: var Cursor; thisModule: string): PSym =
+proc loadSymStub(c: var DecodeContext; n: var Cursor; thisModule: string;
+                 localSyms: var Table[string, PSym]): PSym =
   if n.kind == DotToken:
     result = nil
     inc n
   elif n.kind == Symbol:
     let s = n.symId
-    result = loadSymStub(c, s, thisModule)
+    result = loadSymStub(c, s, thisModule, localSyms)
     inc n
   elif n.kind == ParLe and n.tagId == sdefTag:
     let s = n.firstSon.symId
     skip n
-    result = loadSymStub(c, s, thisModule)
+    result = loadSymStub(c, s, thisModule, localSyms)
   else:
     raiseAssert "sym expected but got " & $n.kind
 
@@ -719,10 +995,18 @@ proc loadType*(c: var DecodeContext; t: PType) =
   expect n, ParLe
   if n.tagId != tdefTag:
     raiseAssert "(td) expected"
-  inc n
+
+  # Pre-scan the ENTIRE type definition for local symbol definitions (sdefs).
+  # We need to do this before loading any fields, because local symbols may be
+  # defined anywhere in the type and referenced anywhere else.
+  var localSyms = initTable[string, PSym]()
+  var scanCursor = n  # copy cursor at start of type
+  let typesModule = parseSymName(pool.syms[n.firstSon.symId]).module
+  extractLocalSymsFromTree(c, scanCursor, typesModule, localSyms)
+
+  inc n  # move past (td
   expect n, SymbolDef
   # ignore the type's name, we have already used it to create this PType's itemId!
-  let typesModule = parseSymName(pool.syms[n.symId]).module
   inc n
   #loadField t.kind
   loadField t.flagsImpl
@@ -733,9 +1017,9 @@ proc loadType*(c: var DecodeContext; t: PType) =
   loadField t.itemId.item  # nonUniqueId
 
   t.typeInstImpl = loadTypeStub(c, n)
-  t.nImpl = loadNode(c, n, typesModule)
-  t.ownerFieldImpl = loadSymStub(c, n, typesModule)
-  t.symImpl = loadSymStub(c, n, typesModule)
+  t.nImpl = loadNode(c, n, typesModule, localSyms)
+  t.ownerFieldImpl = loadSymStub(c, n, typesModule, localSyms)
+  t.symImpl = loadSymStub(c, n, typesModule, localSyms)
   loadLoc c, n, t.locImpl
 
   while n.kind != ParRi:
@@ -743,7 +1027,7 @@ proc loadType*(c: var DecodeContext; t: PType) =
 
   skipParRi n
 
-proc loadAnnex(c: var DecodeContext; n: var Cursor; thisModule: string): PLib =
+proc loadAnnex(c: var DecodeContext; n: var Cursor; thisModule: string; localSyms: var Table[string, PSym]): PLib =
   if n.kind == DotToken:
     result = nil
     inc n
@@ -755,22 +1039,15 @@ proc loadAnnex(c: var DecodeContext; n: var Cursor; thisModule: string): PLib =
     expect n, StringLit
     result.name = pool.strings[n.litId]
     inc n
-    result.path = loadNode(c, n, thisModule)
+    result.path = loadNode(c, n, thisModule, localSyms)
     skipParRi n
   else:
     raiseAssert "`lib/annex` information expected"
 
-proc loadSym*(c: var DecodeContext; s: PSym) =
-  if s.state != Partial: return
-  s.state = Sealed
-  var buf = createTokenBuf(30)
-  let symsModule = s.itemId.module.FileIndex
-  var n = cursorFromIndexEntry(c, symsModule, c.syms[s.itemId][1], buf)
-
-  expect n, ParLe
-  if n.tagId != sdefTag:
-    raiseAssert "(sd) expected"
-  inc n
+proc loadSymFromCursor(c: var DecodeContext; s: PSym; n: var Cursor; thisModule: string;
+                       localSyms: var Table[string, PSym]) =
+  ## Loads a symbol definition from the current cursor position.
+  ## The cursor should be positioned after the opening (sd tag.
   expect n, SymbolDef
   # ignore the symbol's name, we have already used it to create this PSym instance!
   inc n
@@ -785,37 +1062,67 @@ proc loadSym*(c: var DecodeContext; s: PSym) =
   else:
     raiseAssert "expected `x` or '.' but got " & $n.kind
 
-  loadField s.magicImpl
-  loadField s.flagsImpl
-  loadField s.optionsImpl
-  loadField s.offsetImpl
-
   expect n, ParLe
-  s.kindImpl = parse(TSymKind, pool.tags[n.tagId])
+  {.cast(uncheckedAssign).}:
+    s.kindImpl = parse(TSymKind, pool.tags[n.tagId])
   inc n
 
   case s.kindImpl
   of skLet, skVar, skField, skForVar:
-    s.guardImpl = loadSymStub(c, n, c.moduleToNifSuffix[symsModule])
+    s.guardImpl = loadSymStub(c, n, thisModule, localSyms)
     loadField s.bitsizeImpl
     loadField s.alignmentImpl
   else:
     discard
   skipParRi n
 
+  loadField s.magicImpl
+  loadField s.flagsImpl
+  loadField s.optionsImpl
+  loadField s.offsetImpl
+
   if s.kindImpl == skModule:
     expect n, DotToken
     inc n
   else:
     loadField s.positionImpl
-  s.typImpl = loadTypeStub(c, n)
-  s.ownerFieldImpl = loadSymStub(c, n, c.moduleToNifSuffix[symsModule])
-  # We do not store `sym.ast` here but instead set it in the deserializer
-  #writeNode(w, sym.ast)
+
+  # For routine symbols, pre-scan the type to find local symbol definitions
+  # (generic params, params). These sdefs are written inline in the type.
+  if s.kindImpl in routineKinds:
+    s.typImpl = loadTypeStubWithLocalSyms(c, n, thisModule, localSyms)
+  else:
+    s.typImpl = loadTypeStub(c, n)
+  s.ownerFieldImpl = loadSymStub(c, n, thisModule, localSyms)
+  # Load the AST for routine symbols (procs, funcs, etc.)
+  if s.kindImpl in routineKinds:
+    s.astImpl = loadNode(c, n, thisModule, localSyms)
+  else:
+    if n.kind == DotToken:
+      inc n
+    else:
+      raiseAssert "expected '.' for non-routine symbol AST but got " & $n.kind
   loadLoc c, n, s.locImpl
-  s.constraintImpl = loadNode(c, n, c.moduleToNifSuffix[symsModule])
-  s.instantiatedFromImpl = loadSymStub(c, n, c.moduleToNifSuffix[symsModule])
+  s.constraintImpl = loadNode(c, n, thisModule, localSyms)
+  s.instantiatedFromImpl = loadSymStub(c, n, thisModule, localSyms)
   skipParRi n
+
+proc loadSym*(c: var DecodeContext; s: PSym) =
+  if s.state != Partial: return
+  s.state = Sealed
+  var buf = createTokenBuf(30)
+  let symsModule = s.itemId.module.FileIndex
+  var n = cursorFromIndexEntry(c, symsModule, c.syms[s.itemId][1], buf)
+
+  expect n, ParLe
+  if n.tagId != sdefTag:
+    raiseAssert "(sd) expected"
+  # Extract line info from the sdef tag before moving past it
+  s.infoImpl = c.infos.oldLineInfo(n.info)
+  inc n
+  # Create localSyms for any local symbols encountered in the AST
+  var localSyms = initTable[string, PSym]()
+  loadSymFromCursor(c, s, n, c.mods[symsModule].suffix, localSyms)
 
 
 template withNode(c: var DecodeContext; n: var Cursor; result: PNode; kind: TNodeKind; body: untyped) =
@@ -828,14 +1135,25 @@ template withNode(c: var DecodeContext; n: var Cursor; result: PNode; kind: TNod
   body
   skipParRi n
 
-proc loadNode(c: var DecodeContext; n: var Cursor; thisModule: string): PNode =
+proc loadNode(c: var DecodeContext; n: var Cursor; thisModule: string;
+              localSyms: var Table[string, PSym]): PNode =
   result = nil
   case n.kind
   of Symbol:
     let info = c.infos.oldLineInfo(n.info)
-    result = newSymNode(c.loadSymStub(n, thisModule), info)
+    let symName = pool.syms[n.symId]
+    # Check local symbols first
+    let localSym = localSyms.getOrDefault(symName)
+    if localSym != nil:
+      result = newSymNode(localSym, info)
+      inc n
+    else:
+      result = newSymNode(c.loadSymStub(n, thisModule, localSyms), info)
   of DotToken:
     result = nil
+    inc n
+  of StringLit:
+    result = newStrNode(pool.strings[n.litId], c.infos.oldLineInfo(n.info))
     inc n
   of ParLe:
     let kind = n.nodeKind
@@ -847,14 +1165,39 @@ proc loadNode(c: var DecodeContext; n: var Cursor; thisModule: string): PNode =
         inc n
         let typ = c.loadTypeStub n
         let info = c.infos.oldLineInfo(n.info)
-        result = newSymNode(c.loadSymStub(n, thisModule), info)
+        result = newSymNode(c.loadSymStub(n, thisModule, localSyms), info)
         result.typField = typ
         skipParRi n
       of symDefTagName:
+        let info = c.infos.oldLineInfo(n.info)
         let name = n.firstSon
         assert name.kind == SymbolDef
-        result = newSymNode(c.loadSymStub(name.symId, thisModule), c.infos.oldLineInfo(n.info))
-        skip n
+        let symName = pool.syms[name.symId]
+        # Check if this is a local symbol (no module suffix in name)
+        let sn = parseSymName(symName)
+        let isLocal = sn.module.len == 0
+        var sym: PSym
+        if isLocal:
+          # Local symbol - not in the index, defined inline in NIF.
+          # Check if we already have a stub from extractLocalSymsFromType
+          sym = localSyms.getOrDefault(symName)
+          if sym == nil:
+            # First time seeing this local symbol - create it
+            let module = moduleId(c, thisModule)
+            let val = addr c.mods[module].symCounter
+            inc val[]
+            let id = ItemId(module: module.int32, item: val[])
+            sym = PSym(itemId: id, kindImpl: skStub, name: c.cache.getIdent(sn.name),
+                       disamb: sn.count.int32, state: Complete)
+            localSyms[symName] = sym  # register for later references
+          # Now fully load the symbol from the sdef
+          inc n # skip `sd` tag
+          loadSymFromCursor(c, sym, n, thisModule, localSyms)
+          sym.state = Sealed  # mark as fully loaded
+        else:
+          sym = c.loadSymStub(name.symId, thisModule, localSyms)
+          skip n  # skip the entire sdef for indexed symbols
+        result = newSymNode(sym, info)
       of typeDefTagName:
         raiseAssert "`td` tag in invalid context"
       of "none":
@@ -928,27 +1271,50 @@ proc loadNode(c: var DecodeContext; n: var Cursor; thisModule: string): PNode =
     else:
       c.withNode n, result, kind:
         while n.kind != ParRi:
-          result.sons.add c.loadNode(n, thisModule)
+          result.sons.add c.loadNode(n, thisModule, localSyms)
   else:
-    raiseAssert "Not yet implemented " & $n.kind
+    raiseAssert "expected string literal but got " & $n.kind
 
 proc moduleSuffix(conf: ConfigRef; f: FileIndex): string =
-  moduleSuffix(toFullPath(conf, f), cast[seq[string]](conf.searchPaths))
+  cachedModuleSuffix(conf, f)
 
 proc loadSymFromIndexEntry(c: var DecodeContext; module: FileIndex;
                            nifName: string; entry: NifIndexEntry; thisModule: string): PSym =
-  ## Loads a symbol from the NIF index entry.
-  ## Creates a symbol stub and loads its full definition.
-  result = loadSymStub(c, pool.syms.getOrIncl nifName, thisModule)
+  ## Loads a symbol from the NIF index entry using the entry directly.
+  ## Creates a symbol stub without looking up in the index (since the index may be moved out).
+  let symAsStr = nifName
+  let sn = parseSymName(symAsStr)
+  let symModule = moduleId(c, if sn.module.len > 0: sn.module else: thisModule)
+  let val = addr c.mods[symModule].symCounter
+  inc val[]
+
+  let id = ItemId(module: symModule.int32, item: val[])
+  result = c.syms.getOrDefault(id)[0]
+  if result == nil:
+    # Use the entry directly instead of looking it up in the index
+    result = PSym(itemId: id, kindImpl: skStub, name: c.cache.getIdent(sn.name), disamb: sn.count.int32, state: Partial)
+    c.syms[id] = (result, entry)
+
+proc extractBasename(nifName: string): string =
+  ## Extract the base name from a NIF name (ident.disamb.module -> ident)
+  result = ""
+  for c in nifName:
+    if c == '.': break
+    result.add c
 
 proc populateInterfaceTablesFromIndex(c: var DecodeContext; module: FileIndex;
                                       interf, interfHidden: var TStrTable; thisModule: string) =
   ## Populates interface tables from the NIF index structure.
   ## Uses the index's public/private tables instead of traversing AST.
-  let idx = addr c.mods[module.int32].index
+
+  # Move the public table and exports list out to avoid iterator invalidation
+  # (moduleId can add to c.mods which would invalidate Table iterators)
+  # We move them back after iteration.
+  var publicTab = move c.mods[module].index.public
+  var exportsList = move c.mods[module].index.exports
 
   # Add all public symbols to interf (exported interface) and interfHidden
-  for nifName, entry in idx.public:
+  for nifName, entry in publicTab:
     if not nifName.startsWith("`t"):
       # do not load types, they are not part of an interface but an implementation detail!
       #echo "LOADING SYM ", nifName, " ", entry.offset
@@ -956,6 +1322,49 @@ proc populateInterfaceTablesFromIndex(c: var DecodeContext; module: FileIndex;
       if sym != nil:
         strTableAdd(interf, sym)
         strTableAdd(interfHidden, sym)
+
+  # Move public table back
+  c.mods[module].index.public = move publicTab
+
+  # Process exports (re-exports from other modules)
+  for exp in exportsList:
+    let (path, kind, names) = exp
+    # Convert path to module suffix
+    let expSuffix = moduleSuffix(path, cast[seq[string]](c.infos.config.searchPaths))
+    # Load the exported module's index
+    let expModule = moduleId(c, expSuffix)
+
+    # Move the exported module's public table out to avoid iterator invalidation
+    var expPublicTab = move c.mods[expModule].index.public
+
+    # Build a set of names for filtering
+    var nameSet = initHashSet[string]()
+    for nameId in names:
+      nameSet.incl pool.strings[nameId]
+
+    # Add symbols based on export kind
+    for nifName, entry in expPublicTab:
+      if nifName.startsWith("`t"):
+        continue  # skip types
+
+      let basename = extractBasename(nifName)
+      let shouldInclude = case kind
+        of ExportIdx: true  # export all
+        of FromexportIdx: basename in nameSet  # only specific names
+        of ExportexceptIdx: basename notin nameSet  # all except specific names
+        else: false
+
+      if shouldInclude:
+        let sym = loadSymFromIndexEntry(c, expModule, nifName, entry, expSuffix)
+        if sym != nil:
+          strTableAdd(interf, sym)
+          strTableAdd(interfHidden, sym)
+
+    # Move exported module's public table back
+    c.mods[expModule].index.public = move expPublicTab
+
+  # Move exports list back
+  c.mods[module].index.exports = move exportsList
 
   when false:
     # Add private symbols to interfHidden only
@@ -972,27 +1381,89 @@ proc toNifIndexFilename*(conf: ConfigRef; f: FileIndex): string =
   let suffix = moduleSuffix(conf, f)
   result = toGeneratedFile(conf, AbsoluteFile(suffix), ".s.idx.nif").string
 
-proc loadNifModule*(c: var DecodeContext; f: FileIndex; interf, interfHidden: var TStrTable): PNode =
+proc parseTypeSymIdToItemId*(c: var DecodeContext; symId: nifstreams.SymId): ItemId =
+  ## Parses a type SymId (format: "`tN.modulesuffix") to extract ItemId.
+  let s = pool.syms[symId]
+  if not s.startsWith("`t"):
+    return ItemId(module: -1, item: 0)
+  var i = 2  # skip "`t"
+  var item = 0'i32
+  while i < s.len and s[i] in {'0'..'9'}:
+    item = item * 10 + int32(ord(s[i]) - ord('0'))
+    inc i
+  if i < s.len and s[i] == '.':
+    inc i
+    let suffix = s.substr(i)
+    let module = moduleId(c, suffix)
+    result = ItemId(module: int32(module), item: item)
+  else:
+    result = ItemId(module: -1, item: item)
+
+proc resolveHookSym*(c: var DecodeContext; symId: nifstreams.SymId): PSym =
+  ## Resolves a hook SymId to PSym.
+  let symAsStr = pool.syms[symId]
+  let sn = parseSymName(symAsStr)
+  if sn.module.len == 0:
+    return nil  # Local symbols shouldn't be hooks
+  let module = moduleId(c, sn.module)
+  # Look up the symbol in the module's index
+  let offs = c.mods[module].index.public.getOrDefault(symAsStr)
+  if offs.offset == 0:
+    return nil
+  # Create a stub symbol
+  let val = addr c.mods[module].symCounter
+  inc val[]
+  let id = ItemId(module: int32(module), item: val[])
+  result = c.syms.getOrDefault(id)[0]
+  if result == nil:
+    result = PSym(itemId: id, kindImpl: skProc, name: c.cache.getIdent(sn.name),
+                  disamb: sn.count.int32, state: Partial)
+    c.syms[id] = (result, offs)
+
+proc loadNifModule*(c: var DecodeContext; f: FileIndex; interf, interfHidden: var TStrTable;
+                    hooks: var Table[nifstreams.SymId, HooksPerType];
+                    converters: var seq[(string, string)];
+                    classes: var seq[ClassIndexEntry]): PNode =
   let suffix = moduleSuffix(c.infos.config, f)
-  let modFile = toGeneratedFile(c.infos.config, AbsoluteFile(suffix), ".nif").string
 
   # Ensure module index is loaded - moduleId returns the FileIndex for this suffix
   let module = moduleId(c, suffix)
 
   # Populate interface tables from the NIF index structure
-  # Use the FileIndex returned by moduleId to ensure we access the correct index
+  # Symbols are created as stubs (Partial state) and will be loaded lazily via loadSym
   populateInterfaceTablesFromIndex(c, module, interf, interfHidden, suffix)
 
-  var buf = createTokenBuf(300)
-  var s = nifstreams.open(modFile)
+  # Return hooks from the index
+  hooks = move c.mods[module].index.hooks
+  # Return converters from the index
+  converters = move c.mods[module].index.converters
+  # Return classes/methods from the index
+  classes = move c.mods[module].index.classes
+
+  # Check for replay actions at the start of the NIF file
+  result = newNode(nkStmtList)
+  let s = addr c.mods[module].stream
+  s.r.jumpTo 0  # Start from beginning
   discard processDirectives(s.r)
-  # XXX We can optimize this here and only load the top level entries!
-  try:
-    nifcursors.parse(s, buf, NoLineInfo)
-  finally:
-    nifstreams.close(s)
-  var n = cursorAt(buf, 0)
-  result = loadNode(c, n, suffix)
+  var localSyms = initTable[string, PSym]()
+  # Read root stmts node
+  var t = next(s[])
+  if t.kind == ParLe and pool.tags[t.tagId] == toNifTag(nkStmtList):
+    t = next(s[])  # skip flags
+    t = next(s[])  # skip type
+    # Check if first node is a (replay ...) container
+    if t.kind == ParLe and pool.tags[t.tagId] == "replay":
+      t = next(s[])  # move past (replay
+      # Parse all replay actions inside the container
+      while t.kind != ParRi and t.kind != EofToken:
+        if t.kind == ParLe:
+          var buf = createTokenBuf(50)
+          nifcursors.parse(s[], buf, t.info)
+          var cursor = cursorAt(buf, 0)
+          let replayNode = loadNode(c, cursor, suffix, localSyms)
+          if replayNode != nil:
+            result.sons.add replayNode
+        t = next(s[])
 
 when isMainModule:
   import std / syncio

@@ -18,6 +18,7 @@ import ic / [packed_ast, ic]
 
 when not defined(nimKochBootstrap):
   import ast2nif
+  import "../dist/nimony/src/lib" / [nifstreams, bitabs]
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -140,6 +141,7 @@ type
     cachedFiles*: StringTableRef
 
     procGlobals*: seq[PNode]
+    nifReplayActions*: Table[int32, seq[PNode]]  # module position -> replay actions for NIF
 
   TPassContext* = object of RootObj # the pass's context
     idgen*: IdGenerator
@@ -366,6 +368,10 @@ proc setAttachedOp*(g: ModuleGraph; module: int; t: PType; op: TTypeAttachedOp; 
   ## we also need to record this to the packed module.
   g.attachedOps[op][t.itemId] = LazySym(sym: value)
 
+proc setAttachedOp*(g: ModuleGraph; module: int; typeId: ItemId; op: TTypeAttachedOp; value: PSym) =
+  ## Overload that takes ItemId directly, useful for registering hooks from NIF index.
+  g.attachedOps[op][typeId] = LazySym(sym: value)
+
 proc setAttachedOpPartial*(g: ModuleGraph; module: int; t: PType; op: TTypeAttachedOp; value: PSym) =
   ## we also need to record this to the packed module.
   g.attachedOps[op][t.itemId] = LazySym(sym: value)
@@ -392,6 +398,10 @@ iterator resolveLazySymSeq(g: ModuleGraph, list: var seq[LazySym]): PSym =
 proc setMethodsPerType*(g: ModuleGraph; id: ItemId, methods: seq[LazySym]) =
   # TODO: add it for packed modules
   g.methodsPerType[id] = methods
+
+proc addNifReplayAction*(g: ModuleGraph; module: int32; n: PNode) =
+  ## Stores a replay action for NIF-based incremental compilation.
+  g.nifReplayActions.mgetOrPut(module, @[]).add n
 
 iterator getMethodsPerType*(g: ModuleGraph; t: PType): PSym =
   if g.methodsPerType.contains(t.itemId):
@@ -765,7 +775,38 @@ when not defined(nimKochBootstrap):
 
     # Register module in graph
     registerModule(g, result)
-    result.astImpl = loadNifModule(ast.program, fileIdx, g.ifaces[fileIdx.int].interf, g.ifaces[fileIdx.int].interfHidden)
+    var hooks = initTable[nifstreams.SymId, HooksPerType]()
+    var converters: seq[(string, string)] = @[]
+    var classes: seq[ClassIndexEntry] = @[]
+    result.astImpl = loadNifModule(ast.program, fileIdx, g.ifaces[fileIdx.int].interf,
+                                   g.ifaces[fileIdx.int].interfHidden, hooks, converters, classes)
+    # Register hooks from NIF index with the module graph
+    for typSymId, hooksPerType in hooks:
+      let typeItemId = parseTypeSymIdToItemId(ast.program, typSymId)
+      if typeItemId.module >= 0:
+        for op in AttachedOp:
+          let (hookSymId, isGeneric) = hooksPerType.a[op]
+          if hookSymId != nifstreams.SymId(0):
+            let hookSym = resolveHookSym(ast.program, hookSymId)
+            if hookSym != nil:
+              setAttachedOp(g, int(fileIdx), typeItemId, toTTypeAttachedOp(op), hookSym)
+    # Register converters from NIF index with the module's interface
+    for (destType, convSym) in converters:
+      let symId = pool.syms.getOrIncl(convSym)
+      let convPSym = resolveHookSym(ast.program, symId)  # reuse hook resolution
+      if convPSym != nil:
+        g.ifaces[fileIdx.int].converters.add LazySym(sym: convPSym)
+    # Register methods per type from NIF index
+    for classEntry in classes:
+      let typeItemId = parseTypeSymIdToItemId(ast.program, classEntry.cls)
+      if typeItemId.module >= 0:
+        var methodSyms: seq[LazySym] = @[]
+        for methodEntry in classEntry.methods:
+          let methodSym = resolveHookSym(ast.program, methodEntry.fn)
+          if methodSym != nil:
+            methodSyms.add LazySym(sym: methodSym)
+        if methodSyms.len > 0:
+          setMethodsPerType(g, typeItemId, methodSyms)
     cachedModules.add fileIdx
 
 proc configComplete*(g: ModuleGraph) =
