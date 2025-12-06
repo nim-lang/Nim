@@ -49,14 +49,20 @@ proc toTTypeAttachedOp*(op: AttachedOp): TTypeAttachedOp =
   of nifindexes.attachedTrace: astdef.attachedTrace
 
 
+proc cachedModuleSuffix*(config: ConfigRef; fileIdx: FileIndex): string =
+  ## Gets or computes the module suffix for a FileIndex.
+  ## For NIF modules, the suffix is already stored in the file info.
+  ## For source files, computes it from the path.
+  let fullPath = toFullPath(config, fileIdx)
+  if fileInfoKind(config, fileIdx) == fikNifModule:
+    result = fullPath  # Already a suffix
+  else:
+    result = moduleSuffix(fullPath, cast[seq[string]](config.searchPaths))
+
 proc toHookIndexEntry*(config: ConfigRef; typeId: ItemId; hookSym: PSym): HookIndexEntry =
   ## Converts a type ItemId and hook symbol to a HookIndexEntry for the NIF index.
-  let typeSymName = "`t" & $typeId.item & "." & moduleSuffix(
-    toFullPath(config, typeId.module.FileIndex),
-    cast[seq[string]](config.searchPaths))
-  let hookSymName = hookSym.name.s & "." & $hookSym.disamb & "." & moduleSuffix(
-    toFullPath(config, hookSym.itemId.module.FileIndex),
-    cast[seq[string]](config.searchPaths))
+  let typeSymName = "`t" & $typeId.item & "." & cachedModuleSuffix(config, typeId.module.FileIndex)
+  let hookSymName = hookSym.name.s & "." & $hookSym.disamb & "." & cachedModuleSuffix(config, hookSym.itemId.module.FileIndex)
   let typSymId = pool.syms.getOrIncl(typeSymName)
   let hookSymId = pool.syms.getOrIncl(hookSymName)
   # Check if it's a generic hook (has non-empty generic params)
@@ -72,12 +78,8 @@ proc toConverterIndexEntry*(config: ConfigRef; converterSym: PSym): (nifstreams.
   if retType != nil and retType.sonsImpl.len > 0:
     let destType = retType.sonsImpl[0]  # Return type is first son
     if destType != nil:
-      let destTypeSymName = "`t" & $destType.itemId.item & "." & moduleSuffix(
-        toFullPath(config, destType.itemId.module.FileIndex),
-        cast[seq[string]](config.searchPaths))
-      let convSymName = converterSym.name.s & "." & $converterSym.disamb & "." & moduleSuffix(
-        toFullPath(config, converterSym.itemId.module.FileIndex),
-        cast[seq[string]](config.searchPaths))
+      let destTypeSymName = "`t" & $destType.itemId.item & "." & cachedModuleSuffix(config, destType.itemId.module.FileIndex)
+      let convSymName = converterSym.name.s & "." & $converterSym.disamb & "." & cachedModuleSuffix(config, converterSym.itemId.module.FileIndex)
       result = (pool.syms.getOrIncl(destTypeSymName), pool.syms.getOrIncl(convSymName))
       return
   # Fallback: return empty entry
@@ -85,9 +87,7 @@ proc toConverterIndexEntry*(config: ConfigRef; converterSym: PSym): (nifstreams.
 
 proc toMethodIndexEntry*(config: ConfigRef; methodSym: PSym; signature: string): MethodIndexEntry =
   ## Converts a method symbol to a MethodIndexEntry.
-  let methodSymName = methodSym.name.s & "." & $methodSym.disamb & "." & moduleSuffix(
-    toFullPath(config, methodSym.itemId.module.FileIndex),
-    cast[seq[string]](config.searchPaths))
+  let methodSymName = methodSym.name.s & "." & $methodSym.disamb & "." & cachedModuleSuffix(config, methodSym.itemId.module.FileIndex)
   result = MethodIndexEntry(
     fn: pool.syms.getOrIncl(methodSymName),
     signature: pool.strings.getOrIncl(signature)
@@ -95,9 +95,7 @@ proc toMethodIndexEntry*(config: ConfigRef; methodSym: PSym; signature: string):
 
 proc toClassSymId*(config: ConfigRef; typeId: ItemId): nifstreams.SymId =
   ## Converts a type ItemId to its SymId for the class index.
-  let typeSymName = "`t" & $typeId.item & "." & moduleSuffix(
-    toFullPath(config, typeId.module.FileIndex),
-    cast[seq[string]](config.searchPaths))
+  let typeSymName = "`t" & $typeId.item & "." & cachedModuleSuffix(config, typeId.module.FileIndex)
   result = pool.syms.getOrIncl(typeSymName)
 
 # ---------------- Line info handling -----------------------------------------
@@ -154,19 +152,12 @@ proc oldLineInfo(w: var LineInfoWriter; info: PackedLineInfo): TLineInfo =
 
 # -------------- Module name handling --------------------------------------------
 
-proc modname(moduleToNifSuffix: var Table[FileIndex, string]; module: int; conf: ConfigRef): string =
-  let idx = module.FileIndex
-  # copied from ../nifgen.nim
-  result = moduleToNifSuffix.getOrDefault(idx)
-  if result.len == 0:
-    let fp = toFullPath(conf, idx)
-    result = moduleSuffix(fp, cast[seq[string]](conf.searchPaths))
-    moduleToNifSuffix[idx] = result
-    #echo result, " -> ", fp
+proc modname(module: int; conf: ConfigRef): string =
+  cachedModuleSuffix(conf, module.FileIndex)
 
-proc modname(moduleToNifSuffix: var Table[FileIndex, string]; module: PSym; conf: ConfigRef): string =
+proc modname(module: PSym; conf: ConfigRef): string =
   assert module.kindImpl == skModule
-  result = modname(moduleToNifSuffix, module.positionImpl, conf)
+  modname(module.positionImpl, conf)
 
 
 
@@ -204,7 +195,6 @@ type
     infos: LineInfoWriter
     currentModule: int32
     decodedFileIndices: HashSet[FileIndex]
-    moduleToNifSuffix: Table[FileIndex, string]
     locals: HashSet[ItemId]  # track proc-local symbols
     inProc: int
     writtenTypes: seq[PType]  # types written in this module, to be unloaded later
@@ -225,7 +215,7 @@ proc toNifSymName(w: var Writer; sym: PSym): string =
     # Global symbol: ident.disamb.moduleSuffix
     let module = sym.itemId.module
     result.add '.'
-    result.add modname(w.moduleToNifSuffix, module, w.infos.config)
+    result.add modname(module, w.infos.config)
 
 type
   ParsedSymName* = object
@@ -287,7 +277,7 @@ proc typeToNifSym(w: var Writer; typ: PType): string =
   result.add '.'
   result.addInt typ.uniqueId.item
   result.add '.'
-  result.add modname(w.moduleToNifSuffix, typ.uniqueId.module, w.infos.config)
+  result.add modname(typ.uniqueId.module, w.infos.config)
 
 proc writeLoc(w: var Writer; dest: var TokenBuf; loc: TLoc) =
   dest.addIdent toNifTag(loc.k)
@@ -696,7 +686,7 @@ proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode;
 
   content.addParRi()
 
-  let m = modname(w.moduleToNifSuffix, w.currentModule, w.infos.config)
+  let m = modname(w.currentModule, w.infos.config)
   let nifFilename = AbsoluteFile(m).changeFileExt(".nif")
   let d = completeGeneratedFilePath(config, nifFilename).string
 
@@ -1286,7 +1276,7 @@ proc loadNode(c: var DecodeContext; n: var Cursor; thisModule: string;
     raiseAssert "expected string literal but got " & $n.kind
 
 proc moduleSuffix(conf: ConfigRef; f: FileIndex): string =
-  moduleSuffix(toFullPath(conf, f), cast[seq[string]](conf.searchPaths))
+  cachedModuleSuffix(conf, f)
 
 proc loadSymFromIndexEntry(c: var DecodeContext; module: FileIndex;
                            nifName: string; entry: NifIndexEntry; thisModule: string): PSym =
