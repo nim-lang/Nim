@@ -1462,29 +1462,62 @@ proc loadNifModule*(c: var DecodeContext; f: FileIndex; interf, interfHidden: va
   # Return classes/methods from the index
   classes = move c.mods[module].index.classes
 
-  # Check for replay actions at the start of the NIF file
+  # Load the module AST (or just replay actions if loadFullAst is false)
   result = newNode(nkStmtList)
   let s = addr c.mods[module].stream
   s.r.jumpTo 0  # Start from beginning
   discard processDirectives(s.r)
   var localSyms = initTable[string, PSym]()
-  # Read root stmts node
   var t = next(s[])
   if t.kind == ParLe and pool.tags[t.tagId] == toNifTag(nkStmtList):
     t = next(s[])  # skip flags
     t = next(s[])  # skip type
-    # Check if first node is a (replay ...) container
-    if t.kind == ParLe and pool.tags[t.tagId] == "replay":
-      t = next(s[])  # move past (replay
-      # Parse all replay actions inside the container
-      while t.kind != ParRi and t.kind != EofToken:
-        if t.kind == ParLe:
+    # Process all top-level statements
+    while t.kind != ParRi and t.kind != EofToken:
+      if t.kind == ParLe:
+        let tag = pool.tags[t.tagId]
+        if tag == "replay":
+          # Always load replay actions (macro cache operations)
+          t = next(s[])  # move past (replay
+          while t.kind != ParRi and t.kind != EofToken:
+            if t.kind == ParLe:
+              var buf = createTokenBuf(50)
+              nifcursors.parse(s[], buf, t.info)
+              var cursor = cursorAt(buf, 0)
+              let replayNode = loadNode(c, cursor, suffix, localSyms)
+              if replayNode != nil:
+                result.sons.add replayNode
+            t = next(s[])
+        elif loadFullAst:
+          # Parse the full statement
           var buf = createTokenBuf(50)
-          nifcursors.parse(s[], buf, t.info)
+          buf.add t # Add the ParLe token we already read
+          var nested = 1
+          while nested > 0:
+            t = next(s[])
+            buf.add t
+            if t.kind == ParLe:
+              inc nested
+            elif t.kind == ParRi:
+              dec nested
+            elif t.kind == EofToken:
+              break
           var cursor = cursorAt(buf, 0)
-          let replayNode = loadNode(c, cursor, suffix, localSyms)
-          if replayNode != nil:
-            result.sons.add replayNode
+          let stmtNode = loadNode(c, cursor, suffix, localSyms)
+          if stmtNode != nil:
+            result.sons.add stmtNode
+        else:
+          # Skip over the statement by counting parentheses
+          var nested = 1
+          while nested > 0:
+            t = next(s[])
+            if t.kind == ParLe:
+              inc nested
+            elif t.kind == ParRi:
+              dec nested
+            elif t.kind == EofToken:
+              break
+      else:
         t = next(s[])
 
 when isMainModule:
