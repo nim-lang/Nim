@@ -1436,10 +1436,15 @@ proc tryResolveCompilerProc*(c: var DecodeContext; name: string; moduleFileIdx: 
   if offs.offset == 0:
     return nil
 
-  # Get or create the SymId for this symbol name
-  let symId = pool.syms.getOrIncl(symName)
-  # Now resolve it - this will create the PSym stub
-  result = resolveHookSym(c, symId)
+  # Create a stub symbol
+  let val = addr c.mods[module].symCounter
+  inc val[]
+  let id = ItemId(module: int32(module), item: val[])
+  result = c.syms.getOrDefault(id)[0]
+  if result == nil:
+    result = PSym(itemId: id, kindImpl: skProc, name: c.cache.getIdent(name),
+                  disamb: 0, state: Partial)
+    c.syms[id] = (result, offs)
 
 proc loadNifModule*(c: var DecodeContext; f: FileIndex; interf, interfHidden: var TStrTable;
                     hooks: var Table[nifstreams.SymId, HooksPerType];
