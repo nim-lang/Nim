@@ -1420,10 +1420,32 @@ proc resolveHookSym*(c: var DecodeContext; symId: nifstreams.SymId): PSym =
                   disamb: sn.count.int32, state: Partial)
     c.syms[id] = (result, offs)
 
+proc tryResolveCompilerProc*(c: var DecodeContext; name: string; moduleFileIdx: FileIndex): PSym =
+  ## Tries to resolve a compiler proc from a module by checking the NIF index.
+  ## Returns nil if the symbol doesn't exist.
+  let suffix = moduleSuffix(c.infos.config, moduleFileIdx)
+  let symName = name & ".0." & suffix
+
+  # Check if module index is loaded, if not load it
+  let module = moduleId(c, suffix)
+
+  # Check if symbol exists in the index (check both public and private)
+  var offs = c.mods[module].index.public.getOrDefault(symName)
+  if offs.offset == 0:
+    offs = c.mods[module].index.private.getOrDefault(symName)
+  if offs.offset == 0:
+    return nil
+
+  # Get or create the SymId for this symbol name
+  let symId = pool.syms.getOrIncl(symName)
+  # Now resolve it - this will create the PSym stub
+  result = resolveHookSym(c, symId)
+
 proc loadNifModule*(c: var DecodeContext; f: FileIndex; interf, interfHidden: var TStrTable;
                     hooks: var Table[nifstreams.SymId, HooksPerType];
                     converters: var seq[(string, string)];
-                    classes: var seq[ClassIndexEntry]): PNode =
+                    classes: var seq[ClassIndexEntry];
+                    loadFullAst: bool = false): PNode =
   let suffix = moduleSuffix(c.infos.config, f)
 
   # Ensure module index is loaded - moduleId returns the FileIndex for this suffix

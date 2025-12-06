@@ -39,8 +39,9 @@ proc loadModuleDependencies(g: ModuleGraph; mainFileIdx: FileIndex): seq[PSym] =
     if visited.containsOrIncl(int(fileIdx)):
       continue
 
-    # Load module from NIF
-    let module = moduleFromNifFile(g, fileIdx, cachedModules)
+    # Only load full AST for main module; others are loaded lazily by codegen
+    let isMainModule = fileIdx == mainFileIdx
+    let module = moduleFromNifFile(g, fileIdx, cachedModules, loadFullAst=isMainModule)
     if module == nil:
       continue
 
@@ -71,8 +72,10 @@ proc generateCodeForModule(g: ModuleGraph; module: PSym) =
   if module.ast != nil:
     cgen.genTopLevelStmt(bmod, module.ast)
 
-  # Finalize the module
-  finalCodegenActions(g, bmod, newNodeI(nkStmtList, module.info))
+  # Finalize the module (this adds it to modulesClosed)
+  # Create an empty stmt list as the init body - genInitCode in writeModule will set it up properly
+  let initStmt = newNodeI(nkStmtList, module.info)
+  finalCodegenActions(g, bmod, initStmt)
 
   # Generate dispatcher methods
   for disp in getDispatchers(g):
@@ -92,11 +95,12 @@ proc generateCode*(g: ModuleGraph; mainFileIdx: FileIndex) =
       "Cannot load NIF file for main module: " & toFullPath(g.config, mainFileIdx))
     return
 
-  # Set up backend modules
+  # Set up backend modules for all modules that need code generation
   for module in modules:
     discard setupNifBackendModule(g, module)
 
   # Generate code for all modules except main (main goes last)
+  # This ensures all modules are added to modulesClosed
   let mainModule = g.getModule(mainFileIdx)
   for module in modules:
     if module != mainModule:
@@ -105,6 +109,13 @@ proc generateCode*(g: ModuleGraph; mainFileIdx: FileIndex) =
   # Generate main module last (so all init procs are registered)
   if mainModule != nil:
     generateCodeForModule(g, mainModule)
+
+  # Also ensure system module is set up and generated if it exists
+  if g.systemModule != nil and g.systemModule != mainModule:
+    let systemBmod = BModuleList(g.backend).modules[g.systemModule.position]
+    if systemBmod == nil:
+      discard setupNifBackendModule(g, g.systemModule)
+      generateCodeForModule(g, g.systemModule)
 
   # Write C files
   if g.backend != nil:

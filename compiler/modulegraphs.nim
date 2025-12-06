@@ -435,7 +435,30 @@ proc copyTypeProps*(g: ModuleGraph; module: int; dest, src: PType) =
 
 proc loadCompilerProc*(g: ModuleGraph; name: string): PSym =
   result = nil
-  if g.config.symbolFiles == disabledSf: return nil
+  if g.config.symbolFiles == disabledSf:
+    # For NIF-based compilation, search in loaded NIF modules
+    when not defined(nimKochBootstrap):
+      # Only try to resolve from NIF if we're actually using NIF files (cmdNifC)
+      if g.config.cmd == cmdNifC:
+        # First try system module (most compilerprocs are there)
+        let systemFileIdx = g.config.m.systemFileIdx
+        if systemFileIdx != InvalidFileIdx:
+          result = tryResolveCompilerProc(ast.program, name, systemFileIdx)
+          if result != nil:
+            strTableAdd(g.compilerprocs, result)
+            return result
+
+        # Try threadpool module (some compilerprocs like FlowVar are there)
+        # Find threadpool module by searching loaded modules
+        for moduleIdx in 0..<g.ifaces.len:
+          let module = g.ifaces[moduleIdx].module
+          if module != nil and module.name.s == "threadpool":
+            let threadpoolFileIdx = module.position.FileIndex
+            result = tryResolveCompilerProc(ast.program, name, threadpoolFileIdx)
+            if result != nil:
+              strTableAdd(g.compilerprocs, result)
+              return result
+    return nil
 
   # slow, linear search, but the results are cached:
   for module in 0..<len(g.packed):
@@ -755,9 +778,11 @@ proc moduleFromRodFile*(g: ModuleGraph; fileIdx: FileIndex;
 
 when not defined(nimKochBootstrap):
   proc moduleFromNifFile*(g: ModuleGraph; fileIdx: FileIndex;
-                          cachedModules: var seq[FileIndex]): PSym =
+                          cachedModules: var seq[FileIndex];
+                          loadFullAst: bool = false): PSym =
     ## Returns 'nil' if the module needs to be recompiled.
     ## Loads module from NIF file when optCompress is enabled.
+    ## When loadFullAst is true, loads the complete module AST for code generation.
 
     if not fileExists(toNifFilename(g.config, fileIdx)):
       return nil
@@ -779,7 +804,7 @@ when not defined(nimKochBootstrap):
     var converters: seq[(string, string)] = @[]
     var classes: seq[ClassIndexEntry] = @[]
     result.astImpl = loadNifModule(ast.program, fileIdx, g.ifaces[fileIdx.int].interf,
-                                   g.ifaces[fileIdx.int].interfHidden, hooks, converters, classes)
+                                   g.ifaces[fileIdx.int].interfHidden, hooks, converters, classes, loadFullAst)
     # Register hooks from NIF index with the module graph
     for typSymId, hooksPerType in hooks:
       let typeItemId = parseTypeSymIdToItemId(ast.program, typSymId)
