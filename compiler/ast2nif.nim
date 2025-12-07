@@ -887,24 +887,6 @@ proc loadTypeStub(c: var DecodeContext; n: var Cursor): PType =
   else:
     raiseAssert "type expected but got " & $n.kind
 
-proc loadTypeStubWithLocalSyms(c: var DecodeContext; n: var Cursor; thisModule: string;
-                               localSyms: var Table[string, PSym]): PType =
-  ## Like loadTypeStub but also extracts local symbols from inline type definitions
-  if n.kind == DotToken:
-    result = nil
-    inc n
-  elif n.kind == Symbol:
-    let s = n.symId
-    result = loadTypeStub(c, s)
-    inc n
-  elif n.kind == ParLe and n.tagId == tdefTag:
-    # First extract local symbols from the inline type
-    let s = n.firstSon.symId
-    extractLocalSymsFromTree(c, n, thisModule, localSyms)
-    result = loadTypeStub(c, s)
-  else:
-    raiseAssert "type expected but got " & $n.kind
-
 proc loadSymStub(c: var DecodeContext; t: SymId; thisModule: string;
                  localSyms: var Table[string, PSym]): PSym =
   let symAsStr = pool.syms[t]
@@ -1089,12 +1071,9 @@ proc loadSymFromCursor(c: var DecodeContext; s: PSym; n: var Cursor; thisModule:
   else:
     loadField s.positionImpl
 
-  # For routine symbols, pre-scan the type to find local symbol definitions
-  # (generic params, params). These sdefs are written inline in the type.
-  if s.kindImpl in routineKinds:
-    s.typImpl = loadTypeStubWithLocalSyms(c, n, thisModule, localSyms)
-  else:
-    s.typImpl = loadTypeStub(c, n)
+  # Local symbols were already extracted upfront in loadSym, so we can use
+  # the simple loadTypeStub here.
+  s.typImpl = loadTypeStub(c, n)
   s.ownerFieldImpl = loadSymStub(c, n, thisModule, localSyms)
   # Load the AST for routine symbols (procs, funcs, etc.)
   if s.kindImpl in routineKinds:
@@ -1118,11 +1097,17 @@ proc loadSym*(c: var DecodeContext; s: PSym) =
   expect n, ParLe
   if n.tagId != sdefTag:
     raiseAssert "(sd) expected"
-  # Extract line info from the sdef tag before moving past it
+
+  # Pre-scan the ENTIRE symbol definition to extract ALL local symbols upfront.
+  # This ensures local symbols are registered before any references to them,
+  # regardless of where they appear in the definition (in types, nested procs, etc.)
+  var localSyms = initTable[string, PSym]()
+  var scanCursor = n
+  extractLocalSymsFromTree(c, scanCursor, c.mods[symsModule].suffix, localSyms)
+
+  # Now parse the symbol definition with all local symbols pre-registered
   s.infoImpl = c.infos.oldLineInfo(n.info)
   inc n
-  # Create localSyms for any local symbols encountered in the AST
-  var localSyms = initTable[string, PSym]()
   loadSymFromCursor(c, s, n, c.mods[symsModule].suffix, localSyms)
 
 
@@ -1132,7 +1117,7 @@ template withNode(c: var DecodeContext; n: var Cursor; result: PNode; kind: TNod
   let flags = loadAtom(TNodeFlags, n)
   result = newNodeI(kind, info)
   result.flags = flags
-  result.typField = c.loadTypeStub n
+  result.typField = c.loadTypeStub(n)
   body
   skipParRi n
 
@@ -1164,7 +1149,7 @@ proc loadNode(c: var DecodeContext; n: var Cursor; thisModule: string;
       case pool.tags[n.tagId]
       of hiddenTypeTagName:
         inc n
-        let typ = c.loadTypeStub n
+        let typ = c.loadTypeStub(n)
         let info = c.infos.oldLineInfo(n.info)
         result = newSymNode(c.loadSymStub(n, thisModule, localSyms), info)
         result.typField = typ
@@ -1216,7 +1201,7 @@ proc loadNode(c: var DecodeContext; n: var Cursor; thisModule: string;
       let info = c.infos.oldLineInfo(n.info)
       inc n
       let flags = loadAtom(TNodeFlags, n)
-      let typ = c.loadTypeStub n
+      let typ = c.loadTypeStub(n)
       expect n, Ident
       result = newIdentNode(c.cache.getIdent(pool.strings[n.litId]), info)
       inc n
@@ -1349,7 +1334,8 @@ proc populateInterfaceTablesFromIndex(c: var DecodeContext; module: FileIndex;
         continue  # skip types
 
       let basename = extractBasename(nifName)
-      let shouldInclude = case kind
+      let shouldInclude =
+        case kind
         of ExportIdx: true  # export all
         of FromexportIdx: basename in nameSet  # only specific names
         of ExportexceptIdx: basename notin nameSet  # all except specific names
