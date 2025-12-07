@@ -211,7 +211,7 @@ proc toNifSymName(w: var Writer; sym: PSym): string =
   result = sym.name.s
   result.add '.'
   result.addInt sym.disamb
-  if sym.itemId notin w.locals and sym.kindImpl notin skLocalSymKinds:
+  if sym.kindImpl notin skLocalSymKinds and sym.itemId notin w.locals:
     # Global symbol: ident.disamb.moduleSuffix
     let module = sym.itemId.module
     result.add '.'
@@ -406,13 +406,13 @@ proc writeSymDef(w: var Writer; dest: var TokenBuf; sym: PSym) =
   dest.addParRi
 
   # Collect for later unloading after entire module is written
-  if sym.kindImpl notin {skModule, skPackage}:
+  if sym.kindImpl notin {skPackage}:
     # do not unload modules
     w.writtenSyms.add sym
 
 proc shouldWriteSymDef(w: Writer; sym: PSym): bool {.inline.} =
   # Don't write module/package symbols - they don't have NIF files
-  if sym.kindImpl in {skModule, skPackage}:
+  if sym.kindImpl in {skPackage}:
     return false
   # Already written - don't write again
   if sym.state == Sealed:
@@ -430,7 +430,7 @@ proc shouldWriteSymDef(w: Writer; sym: PSym): bool {.inline.} =
 proc writeSym(w: var Writer; dest: var TokenBuf; sym: PSym) =
   if sym == nil:
     dest.addDotToken()
-  elif sym.kindImpl in {skModule, skPackage}:
+  elif sym.kindImpl in {skPackage}:
     # Write module/package symbols as dots - they're resolved differently
     # (by position/FileIndex, not by NIF lookup)
     dest.addDotToken()
@@ -1084,6 +1084,8 @@ proc loadSymFromCursor(c: var DecodeContext; s: PSym; n: var Cursor; thisModule:
   if s.kindImpl == skModule:
     expect n, DotToken
     inc n
+    var isKnownFile = false
+    s.positionImpl = int c.infos.config.registerNifSuffix(thisModule, isKnownFile)
   else:
     loadField s.positionImpl
 
@@ -1097,11 +1099,10 @@ proc loadSymFromCursor(c: var DecodeContext; s: PSym; n: var Cursor; thisModule:
   # Load the AST for routine symbols (procs, funcs, etc.)
   if s.kindImpl in routineKinds:
     s.astImpl = loadNode(c, n, thisModule, localSyms)
+  elif n.kind == DotToken:
+    inc n
   else:
-    if n.kind == DotToken:
-      inc n
-    else:
-      raiseAssert "expected '.' for non-routine symbol AST but got " & $n.kind
+    raiseAssert "expected '.' for non-routine symbol AST but got " & $n.kind
   loadLoc c, n, s.locImpl
   s.constraintImpl = loadNode(c, n, thisModule, localSyms)
   s.instantiatedFromImpl = loadSymStub(c, n, thisModule, localSyms)
