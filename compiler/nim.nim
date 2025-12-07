@@ -118,8 +118,7 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
   if conf.selectedGC == gcUnselected:
     if conf.backend in {backendC, backendCpp, backendObjc} or
         (conf.cmd in cmdDocLike and conf.backend != backendJs) or
-        conf.cmd == cmdGendepend or
-        conf.cmd == cmdM:
+        conf.cmd in {cmdGendepend, cmdNifC, cmdDeps, cmdM}:
       initOrcDefines(conf)
 
   mainCommand(graph)

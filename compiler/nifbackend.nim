@@ -30,29 +30,23 @@ proc loadModuleDependencies(g: ModuleGraph; mainFileIdx: FileIndex): seq[PSym] =
   ## Returns all modules that need code generation, in dependency order.
   var visited = initIntSet()
   var stack: seq[FileIndex] = @[mainFileIdx]
-  var modules: seq[PSym] = @[]
+  result = @[]
   var cachedModules: seq[FileIndex] = @[]
 
   while stack.len > 0:
     let fileIdx = stack.pop()
 
-    if visited.containsOrIncl(int(fileIdx)):
-      continue
-
-    # Load module from NIF
-    let module = moduleFromNifFile(g, fileIdx, cachedModules)
-    if module == nil:
-      continue
-
-    modules.add module
-
-    # Add dependencies to stack (they come from cachedModules)
-    for dep in cachedModules:
-      if not visited.contains(int(dep)):
-        stack.add dep
-    cachedModules.setLen(0)
-
-  result = modules
+    if not visited.containsOrIncl(int(fileIdx)):
+      # Only load full AST for main module; others are loaded lazily by codegen
+      let isMainModule = fileIdx == mainFileIdx
+      let module = moduleFromNifFile(g, fileIdx, cachedModules, loadFullAst=isMainModule)
+      if module != nil:
+        result.add module
+        # Add dependencies to stack (they come from cachedModules)
+        for dep in cachedModules:
+          if not visited.contains(int(dep)):
+            stack.add dep
+        cachedModules.setLen(0)
 
 proc setupNifBackendModule(g: ModuleGraph; module: PSym): BModule =
   ## Set up a BModule for code generation from a NIF module.
@@ -71,8 +65,10 @@ proc generateCodeForModule(g: ModuleGraph; module: PSym) =
   if module.ast != nil:
     cgen.genTopLevelStmt(bmod, module.ast)
 
-  # Finalize the module
-  finalCodegenActions(g, bmod, newNodeI(nkStmtList, module.info))
+  # Finalize the module (this adds it to modulesClosed)
+  # Create an empty stmt list as the init body - genInitCode in writeModule will set it up properly
+  let initStmt = newNodeI(nkStmtList, module.info)
+  finalCodegenActions(g, bmod, initStmt)
 
   # Generate dispatcher methods
   for disp in getDispatchers(g):
@@ -84,6 +80,14 @@ proc generateCode*(g: ModuleGraph; mainFileIdx: FileIndex) =
 
   # Reset backend state
   resetForBackend(g)
+  let mainModule = g.getModule(mainFileIdx)
+
+  # Also ensure system module is set up and generated if it exists
+  if g.systemModule != nil and g.systemModule != mainModule:
+    let systemBmod = BModuleList(g.backend).modules[g.systemModule.position]
+    if systemBmod == nil:
+      discard setupNifBackendModule(g, g.systemModule)
+      generateCodeForModule(g, g.systemModule)
 
   # Load all modules in dependency order using stack traversal
   let modules = loadModuleDependencies(g, mainFileIdx)
@@ -92,12 +96,12 @@ proc generateCode*(g: ModuleGraph; mainFileIdx: FileIndex) =
       "Cannot load NIF file for main module: " & toFullPath(g.config, mainFileIdx))
     return
 
-  # Set up backend modules
+  # Set up backend modules for all modules that need code generation
   for module in modules:
     discard setupNifBackendModule(g, module)
 
   # Generate code for all modules except main (main goes last)
-  let mainModule = g.getModule(mainFileIdx)
+  # This ensures all modules are added to modulesClosed
   for module in modules:
     if module != mainModule:
       generateCodeForModule(g, module)

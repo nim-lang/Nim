@@ -721,7 +721,7 @@ proc genRecordFieldsAux(m: BModule; n: PNode,
     # have to recurse via 'getTypeDescAux'. And not doing so prevents problems
     # with heavily templatized C++ code:
     if not isImportedCppType(rectype):
-      let fieldType = field.loc.lode.typ.skipTypes(abstractInst)
+      let fieldType = field.loc.t.skipTypes(abstractInst)
       var typ: Rope = ""
       var isFlexArray = false
       var initializer = ""

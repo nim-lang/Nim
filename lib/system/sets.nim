@@ -10,6 +10,13 @@
 # set handling
 
 
+# IC: compilerprocs now must be defined in system.nim or threadpool.nim!
+proc countBits32*(n: uint32): int {.compilerproc, inline.} =
+  result = countSetBitsImpl(n)
+
+proc countBits64*(n: uint64): int {.compilerproc, inline.} =
+  result = countSetBitsImpl(n)
+
 proc cardSetImpl(s: ptr UncheckedArray[uint8], len: int): int {.inline.} =
   var i = 0
   result = 0

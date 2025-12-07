@@ -447,6 +447,7 @@ proc mainCommand*(graph: ModuleGraph) =
   of cmdNifC:
     # Generate C code from NIF files
     wantMainModule(conf)
+    setOutFile(conf)
     commandNifC(graph)
   of cmdDeps:
     # Generate .build.nif for nifmake

@@ -211,7 +211,7 @@ proc toNifSymName(w: var Writer; sym: PSym): string =
   result = sym.name.s
   result.add '.'
   result.addInt sym.disamb
-  if sym.itemId notin w.locals and sym.kindImpl notin skLocalSymKinds:
+  if sym.kindImpl notin skLocalSymKinds and sym.itemId notin w.locals:
     # Global symbol: ident.disamb.moduleSuffix
     let module = sym.itemId.module
     result.add '.'
@@ -406,13 +406,13 @@ proc writeSymDef(w: var Writer; dest: var TokenBuf; sym: PSym) =
   dest.addParRi
 
   # Collect for later unloading after entire module is written
-  if sym.kindImpl notin {skModule, skPackage}:
+  if sym.kindImpl notin {skPackage}:
     # do not unload modules
     w.writtenSyms.add sym
 
 proc shouldWriteSymDef(w: Writer; sym: PSym): bool {.inline.} =
   # Don't write module/package symbols - they don't have NIF files
-  if sym.kindImpl in {skModule, skPackage}:
+  if sym.kindImpl in {skPackage}:
     return false
   # Already written - don't write again
   if sym.state == Sealed:
@@ -430,7 +430,7 @@ proc shouldWriteSymDef(w: Writer; sym: PSym): bool {.inline.} =
 proc writeSym(w: var Writer; dest: var TokenBuf; sym: PSym) =
   if sym == nil:
     dest.addDotToken()
-  elif sym.kindImpl in {skModule, skPackage}:
+  elif sym.kindImpl in {skPackage}:
     # Write module/package symbols as dots - they're resolved differently
     # (by position/FileIndex, not by NIF lookup)
     dest.addDotToken()
@@ -1084,6 +1084,8 @@ proc loadSymFromCursor(c: var DecodeContext; s: PSym; n: var Cursor; thisModule:
   if s.kindImpl == skModule:
     expect n, DotToken
     inc n
+    var isKnownFile = false
+    s.positionImpl = int c.infos.config.registerNifSuffix(thisModule, isKnownFile)
   else:
     loadField s.positionImpl
 
@@ -1097,11 +1099,10 @@ proc loadSymFromCursor(c: var DecodeContext; s: PSym; n: var Cursor; thisModule:
   # Load the AST for routine symbols (procs, funcs, etc.)
   if s.kindImpl in routineKinds:
     s.astImpl = loadNode(c, n, thisModule, localSyms)
+  elif n.kind == DotToken:
+    inc n
   else:
-    if n.kind == DotToken:
-      inc n
-    else:
-      raiseAssert "expected '.' for non-routine symbol AST but got " & $n.kind
+    raiseAssert "expected '.' for non-routine symbol AST but got " & $n.kind
   loadLoc c, n, s.locImpl
   s.constraintImpl = loadNode(c, n, thisModule, localSyms)
   s.instantiatedFromImpl = loadSymStub(c, n, thisModule, localSyms)
@@ -1420,10 +1421,37 @@ proc resolveHookSym*(c: var DecodeContext; symId: nifstreams.SymId): PSym =
                   disamb: sn.count.int32, state: Partial)
     c.syms[id] = (result, offs)
 
+proc tryResolveCompilerProc*(c: var DecodeContext; name: string; moduleFileIdx: FileIndex): PSym =
+  ## Tries to resolve a compiler proc from a module by checking the NIF index.
+  ## Returns nil if the symbol doesn't exist.
+  let suffix = moduleSuffix(c.infos.config, moduleFileIdx)
+  let symName = name & ".0." & suffix
+
+  # Check if module index is loaded, if not load it
+  let module = moduleId(c, suffix)
+
+  # Check if symbol exists in the index (check both public and private)
+  var offs = c.mods[module].index.public.getOrDefault(symName)
+  if offs.offset == 0:
+    offs = c.mods[module].index.private.getOrDefault(symName)
+  if offs.offset == 0:
+    return nil
+
+  # Create a stub symbol
+  let val = addr c.mods[module].symCounter
+  inc val[]
+  let id = ItemId(module: int32(module), item: val[])
+  result = c.syms.getOrDefault(id)[0]
+  if result == nil:
+    result = PSym(itemId: id, kindImpl: skProc, name: c.cache.getIdent(name),
+                  disamb: 0, state: Partial)
+    c.syms[id] = (result, offs)
+
 proc loadNifModule*(c: var DecodeContext; f: FileIndex; interf, interfHidden: var TStrTable;
                     hooks: var Table[nifstreams.SymId, HooksPerType];
                     converters: var seq[(string, string)];
-                    classes: var seq[ClassIndexEntry]): PNode =
+                    classes: var seq[ClassIndexEntry];
+                    loadFullAst: bool = false): PNode =
   let suffix = moduleSuffix(c.infos.config, f)
 
   # Ensure module index is loaded - moduleId returns the FileIndex for this suffix
@@ -1440,29 +1468,62 @@ proc loadNifModule*(c: var DecodeContext; f: FileIndex; interf, interfHidden: va
   # Return classes/methods from the index
   classes = move c.mods[module].index.classes
 
-  # Check for replay actions at the start of the NIF file
+  # Load the module AST (or just replay actions if loadFullAst is false)
   result = newNode(nkStmtList)
   let s = addr c.mods[module].stream
   s.r.jumpTo 0  # Start from beginning
   discard processDirectives(s.r)
   var localSyms = initTable[string, PSym]()
-  # Read root stmts node
   var t = next(s[])
   if t.kind == ParLe and pool.tags[t.tagId] == toNifTag(nkStmtList):
     t = next(s[])  # skip flags
     t = next(s[])  # skip type
-    # Check if first node is a (replay ...) container
-    if t.kind == ParLe and pool.tags[t.tagId] == "replay":
-      t = next(s[])  # move past (replay
-      # Parse all replay actions inside the container
-      while t.kind != ParRi and t.kind != EofToken:
-        if t.kind == ParLe:
+    # Process all top-level statements
+    while t.kind != ParRi and t.kind != EofToken:
+      if t.kind == ParLe:
+        let tag = pool.tags[t.tagId]
+        if tag == "replay":
+          # Always load replay actions (macro cache operations)
+          t = next(s[])  # move past (replay
+          while t.kind != ParRi and t.kind != EofToken:
+            if t.kind == ParLe:
+              var buf = createTokenBuf(50)
+              nifcursors.parse(s[], buf, t.info)
+              var cursor = cursorAt(buf, 0)
+              let replayNode = loadNode(c, cursor, suffix, localSyms)
+              if replayNode != nil:
+                result.sons.add replayNode
+            t = next(s[])
+        elif loadFullAst:
+          # Parse the full statement
           var buf = createTokenBuf(50)
-          nifcursors.parse(s[], buf, t.info)
+          buf.add t # Add the ParLe token we already read
+          var nested = 1
+          while nested > 0:
+            t = next(s[])
+            buf.add t
+            if t.kind == ParLe:
+              inc nested
+            elif t.kind == ParRi:
+              dec nested
+            elif t.kind == EofToken:
+              break
           var cursor = cursorAt(buf, 0)
-          let replayNode = loadNode(c, cursor, suffix, localSyms)
-          if replayNode != nil:
-            result.sons.add replayNode
+          let stmtNode = loadNode(c, cursor, suffix, localSyms)
+          if stmtNode != nil:
+            result.sons.add stmtNode
+        else:
+          # Skip over the statement by counting parentheses
+          var nested = 1
+          while nested > 0:
+            t = next(s[])
+            if t.kind == ParLe:
+              inc nested
+            elif t.kind == ParRi:
+              dec nested
+            elif t.kind == EofToken:
+              break
+      else:
         t = next(s[])
 
 when isMainModule:
