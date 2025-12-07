@@ -813,6 +813,7 @@ proc replaceSon*(n: PNode; i: int; newson: PNode) {.inline.} =
 
 proc last*(n: PType): PType {.inline.} =
   if n.state == Partial: loadType(n)
+  assert n.kind != tyProc
   n.sonsImpl[^1]
 
 proc elementType*(n: PType): PType {.inline.} =
@@ -1022,15 +1023,21 @@ proc newType*(kind: TTypeKind; idgen: IdGenerator; owner: PSym; son: sink PType 
                  alignImpl: defaultAlignment, itemId: id,
                  uniqueId: id, sonsImpl: @[])
   if son != nil:
+    assert kind != tyProc
     result.sonsImpl.add son
   when false:
     if result.itemId.module == 55 and result.itemId.item == 2:
       echo "KNID ", kind
       writeStackTrace()
 
-proc setSons*(dest: PType; sons: sink seq[PType]) {.inline.} = dest.sonsImpl = sons
-proc setSon*(dest: PType; son: sink PType) {.inline.} = dest.sonsImpl = @[son]
+proc setSons*(dest: PType; sons: sink seq[PType]) {.inline.} =
+  assert dest.kind != tyProc
+  dest.sonsImpl = sons
+proc setSon*(dest: PType; son: sink PType) {.inline.} =
+  assert dest.kind != tyProc
+  dest.sonsImpl = @[son]
 proc setSonsLen*(dest: PType; len: int) {.inline.} =
+  assert dest.kind != tyProc
   setLen(dest.sonsImpl, len)
 
 proc mergeLoc(a: var TLoc, b: TLoc) =
