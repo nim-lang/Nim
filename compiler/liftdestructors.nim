@@ -1212,8 +1212,10 @@ proc produceSym(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp;
     result.ast[bodyPos].add newAsgnStmt(d, src)
   else:
     var tk: TTypeKind
+    var skipped: PType = nil
     if g.config.selectedGC in {gcArc, gcOrc, gcHooks, gcAtomicArc}:
-      tk = skipTypes(typ, {tyOrdinal, tyRange, tyInferred, tyGenericInst, tyStatic, tyAlias, tySink}).kind
+      skipped = skipTypes(typ, {tyOrdinal, tyRange, tyInferred, tyGenericInst, tyStatic, tyAlias, tySink})
+      tk = skipped.kind
     else:
       tk = tyNone # no special casing for strings and seqs
     case tk
@@ -1223,7 +1225,7 @@ proc produceSym(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp;
       fillStrOp(a, typ, result.ast[bodyPos], d, src)
     else:
       fillBody(a, typ, result.ast[bodyPos], d, src)
-      if tk == tyObject and a.kind in {attachedAsgn, attachedSink, attachedDeepCopy, attachedDup} and not isObjLackingTypeField(typ):
+      if tk == tyObject and a.kind in {attachedAsgn, attachedSink, attachedDeepCopy, attachedDup} and not isObjLackingTypeField(skipped):
         # bug #19205: Do not forget to also copy the hidden type field:
         genTypeFieldCopy(a, typ, result.ast[bodyPos], d, src)
 
