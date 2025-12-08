@@ -981,6 +981,14 @@ proc newSymNode*(sym: PSym, info: TLineInfo): PNode =
   result.typField = sym.typImpl
   result.info = info
 
+proc newStrNode*(kind: TNodeKind, strVal: string): PNode =
+  result = newNode(kind)
+  result.strVal = strVal
+
+proc newStrNode*(strVal: string; info: TLineInfo): PNode =
+  result = newNodeI(nkStrLit, info)
+  result.strVal = strVal
+
 proc forcePartial*(s: PSym) =
   ## Resets all impl-fields to their default values and sets state to Partial.
   ## This is useful for creating a stub symbol that can be lazily loaded later.
@@ -1031,3 +1039,106 @@ proc forcePartial*(t: PType) =
   t.paddingAtEndImpl = 0'i16
   t.locImpl = TLoc()
   t.typeInstImpl = nil
+
+const                         # for all kind of hash tables:
+  GrowthFactor* = 2           # must be power of 2, > 0
+  StartSize* = 8              # must be power of 2, > 0
+
+proc nextTry*(h, maxHash: Hash): Hash {.inline.} =
+  result = ((5 * h) + 1) and maxHash
+  # For any initial h in range(maxHash), repeating that maxHash times
+  # generates each int in range(maxHash) exactly once (see any text on
+  # random-number generation for proof).
+
+proc mustRehash*(length, counter: int): bool =
+  assert(length > counter)
+  result = (length * 2 < counter * 3) or (length - counter < 4)
+
+proc strTableContains*(t: TStrTable, n: PSym): bool =
+  var h: Hash = n.name.h and high(t.data) # start with real hash value
+  while t.data[h] != nil:
+    if (t.data[h] == n):
+      return true
+    h = nextTry(h, high(t.data))
+  result = false
+
+proc strTableRawInsert(data: var seq[PSym], n: PSym) =
+  var h: Hash = n.name.h and high(data)
+  while data[h] != nil:
+    if data[h] == n:
+      # allowed for 'export' feature:
+      #InternalError(n.info, "StrTableRawInsert: " & n.name.s)
+      return
+    h = nextTry(h, high(data))
+  assert(data[h] == nil)
+  data[h] = n
+
+proc symTabReplaceRaw(data: var seq[PSym], prevSym: PSym, newSym: PSym) =
+  assert prevSym.name.h == newSym.name.h
+  var h: Hash = prevSym.name.h and high(data)
+  while data[h] != nil:
+    if data[h] == prevSym:
+      data[h] = newSym
+      return
+    h = nextTry(h, high(data))
+  assert false
+
+proc symTabReplace*(t: var TStrTable, prevSym: PSym, newSym: PSym) =
+  symTabReplaceRaw(t.data, prevSym, newSym)
+
+proc strTableEnlarge(t: var TStrTable) =
+  var n: seq[PSym]
+  newSeq(n, t.data.len * GrowthFactor)
+  for i in 0..high(t.data):
+    if t.data[i] != nil: strTableRawInsert(n, t.data[i])
+  swap(t.data, n)
+
+proc strTableAdd*(t: var TStrTable, n: PSym) =
+  if mustRehash(t.data.len, t.counter): strTableEnlarge(t)
+  strTableRawInsert(t.data, n)
+  inc(t.counter)
+
+proc strTableInclReportConflict*(t: var TStrTable, n: PSym;
+                                 onConflictKeepOld = false): PSym =
+  # if `t` has a conflicting symbol (same identifier as `n`), return it
+  # otherwise return `nil`. Incl `n` to `t` unless `onConflictKeepOld = true`
+  # and a conflict was found.
+  assert n.name != nil
+  var h: Hash = n.name.h and high(t.data)
+  var replaceSlot = -1
+  while true:
+    var it = t.data[h]
+    if it == nil: break
+    # Semantic checking can happen multiple times thanks to templates
+    # and overloading: (var x=@[]; x).mapIt(it).
+    # So it is possible the very same sym is added multiple
+    # times to the symbol table which we allow here with the 'it == n' check.
+    if it.name.id == n.name.id:
+      if it == n: return nil
+      replaceSlot = h
+    h = nextTry(h, high(t.data))
+  if replaceSlot >= 0:
+    result = t.data[replaceSlot] # found it
+    if not onConflictKeepOld:
+      t.data[replaceSlot] = n # overwrite it with newer definition!
+    return result # but return the old one
+  elif mustRehash(t.data.len, t.counter):
+    strTableEnlarge(t)
+    strTableRawInsert(t.data, n)
+  else:
+    assert(t.data[h] == nil)
+    t.data[h] = n
+  inc(t.counter)
+  result = nil
+
+proc strTableIncl*(t: var TStrTable, n: PSym;
+                   onConflictKeepOld = false): bool {.discardable.} =
+  result = strTableInclReportConflict(t, n, onConflictKeepOld) != nil
+
+proc strTableGet*(t: TStrTable, name: PIdent): PSym =
+  var h: Hash = name.h and high(t.data)
+  while true:
+    result = t.data[h]
+    if result == nil: break
+    if result.name.id == name.id: break
+    h = nextTry(h, high(t.data))

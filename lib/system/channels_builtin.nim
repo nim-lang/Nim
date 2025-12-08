@@ -138,6 +138,8 @@
 ##   localChannelExample() # "Hello from the main thread!"
 ##   ```
 
+{.push raises: [], gcsafe.}
+
 when not declared(ThisIsSystem):
   {.error: "You must not import this module explicitly".}
 
@@ -365,23 +367,35 @@ proc sendImpl(q: PRawChannel, typ: PNimType, msg: pointer, noBlock: bool): bool 
   releaseSys(q.lock)
   result = true
 
-proc send*[TMsg](c: var Channel[TMsg], msg: sink TMsg) {.inline.} =
-  ## Sends a message to a thread. `msg` is deeply copied.
-  discard sendImpl(cast[PRawChannel](addr c), cast[PNimType](getTypeInfo(msg)), unsafeAddr(msg), false)
-  when defined(gcDestructors):
+when defined(gcDestructors):
+  proc send*[TMsg](c: var Channel[TMsg], msg: sink TMsg) {.inline.} =
+    ## Sends a message to a thread.
+    discard sendImpl(cast[PRawChannel](addr c), cast[PNimType](getTypeInfo(msg)), unsafeAddr(msg), false)
     wasMoved(msg)
 
-proc trySend*[TMsg](c: var Channel[TMsg], msg: sink TMsg): bool {.inline.} =
-  ## Tries to send a message to a thread.
-  ##
-  ## `msg` is deeply copied. Doesn't block.
-  ##
-  ## Returns `false` if the message was not sent because number of pending items
-  ## in the channel exceeded `maxItems`.
-  result = sendImpl(cast[PRawChannel](addr c), cast[PNimType](getTypeInfo(msg)), unsafeAddr(msg), true)
-  when defined(gcDestructors):
+  proc trySend*[TMsg](c: var Channel[TMsg], msg: sink TMsg): bool {.inline.} =
+    ## Tries to send a message to a thread.
+    ##
+    ## Doesn't block.
+    ##
+    ## Returns `false` if the message was not sent because number of pending items
+    ## in the channel exceeded `maxItems`.
+    result = sendImpl(cast[PRawChannel](addr c), cast[PNimType](getTypeInfo(msg)), unsafeAddr(msg), true)
     if result:
       wasMoved(msg)
+else:
+  proc send*[TMsg](c: var Channel[TMsg], msg: TMsg) {.inline.} =
+    ## Sends a message to a thread. `msg` is deeply copied.
+    discard sendImpl(cast[PRawChannel](addr c), cast[PNimType](getTypeInfo(msg)), unsafeAddr(msg), false)
+
+  proc trySend*[TMsg](c: var Channel[TMsg], msg: TMsg): bool {.inline.} =
+    ## Tries to send a message to a thread.
+    ##
+    ## `msg` is deeply copied. Doesn't block.
+    ##
+    ## Returns `false` if the message was not sent because number of pending items
+    ## in the channel exceeded `maxItems`.
+    result = sendImpl(cast[PRawChannel](addr c), cast[PNimType](getTypeInfo(msg)), unsafeAddr(msg), true)
 
 proc llRecv(q: PRawChannel, res: pointer, typ: PNimType) =
   q.ready = true
@@ -390,7 +404,7 @@ proc llRecv(q: PRawChannel, res: pointer, typ: PNimType) =
   q.ready = false
   if typ != q.elemType:
     releaseSys(q.lock)
-    raise newException(ValueError, "cannot receive message of wrong type")
+    raiseAssert "cannot receive message of wrong type"
   rawRecv(q, res, typ)
   if q.maxItems > 0 and q.count == q.maxItems - 1:
     # Parent thread is awaiting in send. Wake it up.
@@ -455,3 +469,5 @@ proc ready*[TMsg](c: var Channel[TMsg]): bool =
   ## new messages.
   var q = cast[PRawChannel](addr(c))
   result = q.ready
+
+{.pop.}

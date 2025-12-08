@@ -9,19 +9,7 @@
 
 ## Default new string implementation used by Nim's core.
 
-type
-  NimStrPayloadBase = object
-    cap: int
-
-  NimStrPayload {.core.} = object
-    cap: int
-    data: UncheckedArray[char]
-
-  NimStringV2 {.core.} = object
-    len: int
-    p: ptr NimStrPayload ## can be nil if len == 0.
-
-const nimStrVersion {.core.} = 2
+{.push overflowChecks: off, rangeChecks: off.}
 
 template isLiteral(s): bool = (s.p == nil) or (s.p.cap and strlitFlag) == strlitFlag
 
@@ -227,3 +215,5 @@ func capacity*(self: string): int {.inline.} =
 
   let str = cast[ptr NimStringV2](unsafeAddr self)
   result = if str.p != nil: str.p.cap and not strlitFlag else: 0
+
+{.pop.}

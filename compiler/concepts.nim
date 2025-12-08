@@ -263,18 +263,21 @@ proc conceptsMatch(c: PContext, fc, ac: PType; m: var MatchCon): MatchKind =
       return mkNoMatch
   return mkSubset
 
-
-proc isObjectSubtype(a, f: PType): bool =
-  assert a.kind == tyObject
-  var t = a.baseClass
-  var last = a.baseClass
-  while t != nil and not sameObjectTypes(f, t):
-    if t.kind != tyObject:  # avoid entering generic params etc
-      return false
+proc isObjectSubtype(f, a: PType): bool =
+  var t = a
+  result = false
+  while t != nil:
     t = t.baseClass
     if t == nil:
-      return false
-  t != nil
+      break
+    t = t.skipTypes({tyPtr,tyRef})
+    if t == nil:
+      break
+    if t.kind != tyObject:
+      break
+    if sameObjectTypes(f, t):
+      result = true
+      break
 
 proc matchType(c: PContext; fo, ao: PType; m: var MatchCon): bool =
   ## The heart of the concept matching process. 'f' is the formal parameter of some
@@ -340,7 +343,7 @@ proc matchType(c: PContext; fo, ao: PType; m: var MatchCon): bool =
         result = a.base.sym == f.sym
       else:
         result = sameType(f, a)
-      if not(result) and f.kind == tyObject:
+      if not result and f.kind == tyObject and a.kind == tyObject:
         result = isObjectSubtype(f, a)
   of tyEmpty, tyString, tyCstring, tyPointer, tyNil, tyUntyped, tyTyped, tyVoid:
     result = a.skipTypes(ignorableForArgType).kind == f.kind

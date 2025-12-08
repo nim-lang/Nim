@@ -153,7 +153,6 @@ type
     generics*: seq[TInstantiationPair] # pending list of instantiated generics to compile
     topStmts*: int # counts the number of encountered top level statements
     lastGenericIdx*: int      # used for the generics stack
-    hloLoopDetector*: int     # used to prevent endless loops in the HLO
     inParallelStmt*: int
     instTypeBoundOp*: proc (c: PContext; dc: PSym; t: PType; info: TLineInfo;
                             op: TTypeAttachedOp; col: int): PSym {.nimcall.}
@@ -359,6 +358,9 @@ proc addImportFileDep*(c: PContext; f: FileIndex) =
 proc addPragmaComputation*(c: PContext; n: PNode) =
   if c.config.symbolFiles != disabledSf:
     addPragmaComputation(c.encoder, c.packedRepr, n)
+  # Also store for NIF-based IC (cmdM mode or optCompress)
+  if optCompress in c.config.globalOptions or c.config.cmd == cmdM:
+    addNifReplayAction(c.graph, c.module.position.int32, n)
 
 proc inclSym(sq: var seq[PSym], s: PSym): bool =
   for i in 0..<sq.len:

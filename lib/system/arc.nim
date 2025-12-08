@@ -14,7 +14,7 @@ at offset 0 then. The ``ref`` object header is independent from the
 runtime type and only contains a reference count.
 ]#
 
-{.push raises: [].}
+{.push raises: [], rangeChecks: off.}
 
 when defined(gcOrc):
   const

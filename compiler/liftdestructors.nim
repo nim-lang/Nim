@@ -380,6 +380,10 @@ proc requiresDestructor(c: TLiftCtx; t: PType): bool {.inline.} =
 proc instantiateGeneric(c: var TLiftCtx; op: PSym; t, typeInst: PType): PSym =
   if c.c != nil and typeInst != nil:
     result = c.c.instTypeBoundOp(c.c, op, typeInst, c.info, attachedAsgn, 1)
+  elif typeInst != nil and getAttachedOp(c.g, typeInst, c.kind) != nil:
+    # c.c == nil in lambdalifting
+    # hooks are already insted
+    result = getAttachedOp(c.g, typeInst, c.kind)
   else:
     localError(c.g.config, c.info,
       "cannot generate destructor for generic type: " & typeToString(t))
@@ -1208,8 +1212,10 @@ proc produceSym(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp;
     result.ast[bodyPos].add newAsgnStmt(d, src)
   else:
     var tk: TTypeKind
+    var skipped: PType = nil
     if g.config.selectedGC in {gcArc, gcOrc, gcHooks, gcAtomicArc}:
-      tk = skipTypes(typ, {tyOrdinal, tyRange, tyInferred, tyGenericInst, tyStatic, tyAlias, tySink}).kind
+      skipped = skipTypes(typ, {tyOrdinal, tyRange, tyInferred, tyGenericInst, tyStatic, tyAlias, tySink})
+      tk = skipped.kind
     else:
       tk = tyNone # no special casing for strings and seqs
     case tk
@@ -1219,7 +1225,7 @@ proc produceSym(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp;
       fillStrOp(a, typ, result.ast[bodyPos], d, src)
     else:
       fillBody(a, typ, result.ast[bodyPos], d, src)
-      if tk == tyObject and a.kind in {attachedAsgn, attachedSink, attachedDeepCopy, attachedDup} and not isObjLackingTypeField(typ):
+      if tk == tyObject and a.kind in {attachedAsgn, attachedSink, attachedDeepCopy, attachedDup} and not isObjLackingTypeField(skipped):
         # bug #19205: Do not forget to also copy the hidden type field:
         genTypeFieldCopy(a, typ, result.ast[bodyPos], d, src)
 

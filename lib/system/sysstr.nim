@@ -15,6 +15,7 @@
 # we don't use refcounts because that's a behaviour
 # the programmer may not want
 
+{.push raises: [], gcsafe.}
 
 proc dataPointer(a: PGenericSeq, elemAlign: int): pointer =
   cast[pointer](cast[int](a) +% align(GenericSeqSize, elemAlign))
@@ -103,7 +104,7 @@ proc toNimStr(str: cstring, len: int): NimString {.compilerproc.} =
   copyMem(addr(result.data), str, len)
   result.data[len] = '\0'
 
-proc toOwnedCopy(src: NimString): NimString {.inline.} =
+proc toOwnedCopy(src: NimString): NimString {.inline, raises: [].} =
   ## Expects `src` to be not nil and initialized (len and terminating zero set)
   result = rawNewStringNoInit(src.len)
   result.len = src.len
@@ -149,7 +150,7 @@ proc copyStringRC1(src: NimString): NimString {.compilerRtl.} =
         if (src.reserved and strlitFlag) != 0:
           result.reserved = (result.reserved and not strlitFlag) or seqShallowFlag
 
-proc copyDeepString(src: NimString): NimString {.inline.} =
+proc copyDeepString(src: NimString): NimString {.inline, raises: [].} =
   if src != nil:
     result = toOwnedCopy(src)
 
@@ -358,3 +359,4 @@ func capacity*[T](self: seq[T]): int {.inline.} =
   let sek = cast[PGenericSeq](self)
   result = if sek != nil: sek.space else: 0
 
+{.pop.}

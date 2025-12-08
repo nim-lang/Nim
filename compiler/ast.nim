@@ -33,7 +33,7 @@ template typ*(n: PNode): PType =
   n.typField
 
 when not defined(nimKochBootstrap):
-  var program {.threadvar.}: DecodeContext
+  var program* {.threadvar.}: DecodeContext
 
 proc setupProgram*(config: ConfigRef; cache: IdentCache) =
   when not defined(nimKochBootstrap):
@@ -55,6 +55,16 @@ proc ensureMutable*(s: PSym) {.inline.} =
 
 proc ensureMutable*(t: PType) {.inline.} =
   assert t.state != Sealed
+  if t.state == Partial: loadType(t)
+
+proc backendEnsureMutable*(s: PSym) {.inline.} =
+  #assert s.state != Sealed
+  # ^ IC review this later
+  if s.state == Partial: loadSym(s)
+
+proc backendEnsureMutable*(t: PType) {.inline.} =
+  #assert t.state != Sealed
+  # ^ IC review this later
   if t.state == Partial: loadType(t)
 
 proc owner*(s: PSym): PSym {.inline.} =
@@ -539,12 +549,19 @@ proc add*(father, son: PType) =
 proc addAllowNil*(father, son: PType) {.inline.} =
   father.sonsImpl.add son
 
-template `[]`*(n: PType, i: int): PType = n.sonsImpl[i]
+template `[]`*(n: PType, i: int): PType =
+  if n.state == Partial: loadType(n)
+  n.sonsImpl[i]
 template `[]=`*(n: PType, i: int; x: PType) =
+  if n.state == Partial: loadType(n)
   n.sonsImpl[i] = x
 
-template `[]`*(n: PType, i: BackwardsIndex): PType = n[n.len - i.int]
-template `[]=`*(n: PType, i: BackwardsIndex; x: PType) = n[n.len - i.int] = x
+template `[]`*(n: PType, i: BackwardsIndex): PType =
+  if n.state == Partial: loadType(n)
+  n[n.len - i.int]
+template `[]=`*(n: PType, i: BackwardsIndex; x: PType) =
+  if n.state == Partial: loadType(n)
+  n[n.len - i.int] = x
 
 proc getDeclPragma*(n: PNode): PNode =
   ## return the `nkPragma` node for declaration `n`, or `nil` if no pragma was found.
@@ -726,10 +743,6 @@ proc appendToModule*(m: PSym, n: PNode) =
     assert m.astImpl.kind == nkStmtList
   m.astImpl.add(n)
 
-const                         # for all kind of hash tables:
-  GrowthFactor* = 2           # must be power of 2, > 0
-  StartSize* = 8              # must be power of 2, > 0
-
 proc copyStrTable*(dest: var TStrTable, src: TStrTable) =
   dest.counter = src.counter
   setLen(dest.data, src.data.len)
@@ -785,29 +798,57 @@ proc replaceFirstSon*(n, newson: PNode) {.inline.} =
 proc replaceSon*(n: PNode; i: int; newson: PNode) {.inline.} =
   n.sons[i] = newson
 
-proc last*(n: PType): PType {.inline.} = n.sonsImpl[^1]
+proc last*(n: PType): PType {.inline.} =
+  if n.state == Partial: loadType(n)
+  n.sonsImpl[^1]
 
-proc elementType*(n: PType): PType {.inline.} = n.sonsImpl[^1]
-proc skipModifier*(n: PType): PType {.inline.} = n.sonsImpl[^1]
+proc elementType*(n: PType): PType {.inline.} =
+  if n.state == Partial: loadType(n)
+  n.sonsImpl[^1]
 
-proc indexType*(n: PType): PType {.inline.} = n.sonsImpl[0]
-proc baseClass*(n: PType): PType {.inline.} = n.sonsImpl[0]
+proc skipModifier*(n: PType): PType {.inline.} =
+  if n.state == Partial: loadType(n)
+  n.sonsImpl[^1]
+
+proc indexType*(n: PType): PType {.inline.} =
+  if n.state == Partial: loadType(n)
+  n.sonsImpl[0]
+
+proc baseClass*(n: PType): PType {.inline.} =
+  if n.state == Partial: loadType(n)
+  n.sonsImpl[0]
 
 proc base*(t: PType): PType {.inline.} =
+  if t.state == Partial: loadType(t)
   result = t.sonsImpl[0]
 
-proc returnType*(n: PType): PType {.inline.} = n.sonsImpl[0]
+proc returnType*(n: PType): PType {.inline.} =
+  if n.state == Partial: loadType(n)
+  n.sonsImpl[0]
+
 proc setReturnType*(n, r: PType) {.inline.} =
+  if n.state == Partial: loadType(n)
   n.sonsImpl[0] = r
+
 proc setIndexType*(n, idx: PType) {.inline.} =
+  if n.state == Partial: loadType(n)
   n.sonsImpl[0] = idx
 
-proc firstParamType*(n: PType): PType {.inline.} = n.sonsImpl[1]
-proc firstGenericParam*(n: PType): PType {.inline.} = n.sonsImpl[1]
+proc firstParamType*(n: PType): PType {.inline.} =
+  if n.state == Partial: loadType(n)
+  n.sonsImpl[1]
 
-proc typeBodyImpl*(n: PType): PType {.inline.} = n.sonsImpl[^1]
+proc firstGenericParam*(n: PType): PType {.inline.} =
+  if n.state == Partial: loadType(n)
+  n.sonsImpl[1]
 
-proc genericHead*(n: PType): PType {.inline.} = n.sonsImpl[0]
+proc typeBodyImpl*(n: PType): PType {.inline.} =
+  if n.state == Partial: loadType(n)
+  n.sonsImpl[^1]
+
+proc genericHead*(n: PType): PType {.inline.} =
+  if n.state == Partial: loadType(n)
+  n.sonsImpl[0]
 
 proc skipTypes*(t: PType, kinds: TTypeKinds): PType =
   ## Used throughout the compiler code to test whether a type tree contains or
@@ -847,14 +888,6 @@ proc newIntTypeNode*(intVal: Int128, typ: PType): PNode =
 proc newFloatNode*(kind: TNodeKind, floatVal: BiggestFloat): PNode =
   result = newNode(kind)
   result.floatVal = floatVal
-
-proc newStrNode*(kind: TNodeKind, strVal: string): PNode =
-  result = newNode(kind)
-  result.strVal = strVal
-
-proc newStrNode*(strVal: string; info: TLineInfo): PNode =
-  result = newNodeI(nkStrLit, info)
-  result.strVal = strVal
 
 proc newProcNode*(kind: TNodeKind, info: TLineInfo, body: PNode,
                  params,

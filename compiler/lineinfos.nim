@@ -273,6 +273,10 @@ const
   errFloatToString* = "cannot convert '$1' to '$2'"
 
 type
+  FileInfoKind* = enum
+    fikSource,      ## A real source file path
+    fikNifModule    ## A NIF module suffix (not a real path)
+
   TFileInfo* = object
     fullPath*: AbsoluteFile    # This is a canonical full filesystem path
     projPath*: RelativeFile    # This is relative to the project's root
@@ -291,6 +295,7 @@ type
                                # for 'nimsuggest'
     hash*: string              # the checksum of the file
     dirty*: bool               # for 'nimpretty' like tooling
+    kind*: FileInfoKind        # distinguishes real files from NIF suffixes
     when defined(nimpretty):
       fullContent*: string
   FileIndex* = distinct int32

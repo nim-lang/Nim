@@ -84,7 +84,7 @@ proc fillBackendName(m: BModule; s: PSym) =
     if m.hcrOn:
       result.add '_'
       result.add(idOrSig(s, m.module.name.s.mangle, m.sigConflicts, m.config))
-    ensureMutable s
+    backendEnsureMutable s
     s.locImpl.snippet = result
 
 proc fillParamName(m: BModule; s: PSym) =
@@ -108,7 +108,7 @@ proc fillParamName(m: BModule; s: PSym) =
     # and a function called in main or proxy uses `socket` as a parameter name.
     # That would lead to either needing to reload `proxy` or to overwrite the
     # executable file for the main module, which is running (or both!) -> error.
-    ensureMutable s
+    backendEnsureMutable s
     s.locImpl.snippet = res.rope
 
 proc fillLocalName(p: BProc; s: PSym) =
@@ -158,8 +158,8 @@ proc getTypeName(m: BModule; typ: PType; sig: SigHash): Rope =
     else:
       break
   let typ = if typ.kind in {tyAlias, tySink, tyOwned}: typ.elementType else: typ
-  ensureMutable typ
   if typ.loc.snippet == "":
+    backendEnsureMutable typ
     typ.typeName(typ.locImpl.snippet)
     typ.locImpl.snippet.add $sig
   else:
@@ -608,7 +608,7 @@ proc genProcParams(m: BModule; t: PType, rettype: var Rope, params: var Builder,
         else:
           descKind = dkRefParam
       if isCompileTimeOnly(param.typ): continue
-      ensureMutable param
+      backendEnsureMutable param
       fillParamName(m, param)
       fillLoc(param.locImpl, locParam, t.n[i],
               param.paramStorageLoc)
@@ -715,13 +715,13 @@ proc genRecordFieldsAux(m: BModule; n: PNode,
     if field.typ.kind == tyVoid: return
     #assert(field.ast == nil)
     let sname = mangleRecFieldName(m, field)
-    ensureMutable field
+    backendEnsureMutable field
     fillLoc(field.locImpl, locField, n, unionPrefix & sname, OnUnknown)
     # for importcpp'ed objects, we only need to set field.loc, but don't
     # have to recurse via 'getTypeDescAux'. And not doing so prevents problems
     # with heavily templatized C++ code:
     if not isImportedCppType(rectype):
-      let fieldType = field.loc.lode.typ.skipTypes(abstractInst)
+      let fieldType = field.loc.t.skipTypes(abstractInst)
       var typ: Rope = ""
       var isFlexArray = false
       var initializer = ""
@@ -1212,7 +1212,7 @@ proc genProcHeader(m: BModule; prc: PSym; result: var Builder; visibility: var D
   # using static is needed for inline procs
   var check = initIntSet()
   fillBackendName(m, prc)
-  ensureMutable prc
+  backendEnsureMutable prc
   fillLoc(prc.locImpl, locProc, prc.ast[namePos], OnUnknown)
   var rettype: Snippet = ""
   var desc = newBuilder("")
@@ -2054,17 +2054,21 @@ proc genTypeInfo*(config: ConfigRef, m: BModule; t: PType; info: TLineInfo): Rop
   else:
     result = genTypeInfoV1(m, t, info)
 
+proc retrieveSym(n: PNode): PSym =
+  case n.kind
+  of nkPostfix: result = retrieveSym(n[1])
+  of nkPragmaExpr, nkTypeDef: result = retrieveSym(n[0])
+  of nkSym: result = n.sym
+  else: result = nil
+
 proc genTypeSection(m: BModule, n: PNode) =
   var intSet = initIntSet()
-  for i in 0..<n.len:
-    if len(n[i]) == 0: continue
-    if n[i][0].kind != nkPragmaExpr: continue
-    for p in 0..<n[i][0].len:
-      if (n[i][0][p].kind notin {nkSym, nkPostfix}): continue
-      var s = n[i][0][p]
-      if s.kind == nkPostfix:
-        s = n[i][0][p][1]
-      if {sfExportc, sfCompilerProc} * s.sym.flags == {sfExportc}:
-        discard getTypeDescAux(m, s.typ, intSet, descKindFromSymKind(s.sym.kind))
-        if m.g.generatedHeader != nil:
-          discard getTypeDescAux(m.g.generatedHeader, s.typ, intSet, descKindFromSymKind(s.sym.kind))
+  let compress = optCompress in m.config.globalOptions
+  for typedef in n:
+    let s = retrieveSym(typedef)
+    if s != nil and ({sfExportc, sfCompilerProc} * s.flags == {sfExportc} or compress) and s.typ != nil and
+        not containsGenericType(s.typ) and
+        s.typ.kind notin {tyVoid, tyNot, tyAnything, tyOr, tyAnd, tyUntyped, tyTyped, tyNone, tyNil, tySink}:
+      discard getTypeDescAux(m, s.typ, intSet, descKindFromSymKind(s.kind))
+      if m.g.generatedHeader != nil:
+        discard getTypeDescAux(m.g.generatedHeader, s.typ, intSet, descKindFromSymKind(s.kind))
