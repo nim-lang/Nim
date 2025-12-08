@@ -85,9 +85,3 @@ func countSetBitsImpl*(x: SomeInteger): int {.inline.} =
     else:
       when sizeof(x) <= 4: result = countBitsImpl(x.uint32)
       else: result = countBitsImpl(x.uint64)
-
-proc countBits32*(n: uint32): int {.compilerproc, inline.} =
-  result = countSetBitsImpl(n)
-
-proc countBits64*(n: uint64): int {.compilerproc, inline.} =
-  result = countSetBitsImpl(n)
