@@ -3053,6 +3053,13 @@ proc semExport(c: PContext, n: PNode): PNode =
 
         s = nextOverloadIter(o, c, a)
 
+proc isTypeTupleField(n: PNode): bool {.inline.} =
+  result = n.typ.kind == tyTypeDesc or
+    (n.typ.kind == tyGenericParam and n.typ.sym.kind == skGenericParam)
+    # `skGenericParam` stays as `tyGenericParam` type rather than being wrapped in `tyTypeDesc`
+    # would check if `n` itself is an `skGenericParam` symbol, but these symbols semcheck to an ident
+    # maybe check if `n` is an ident to ensure this is not a value with the generic param type?
+
 proc semTupleConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType = nil): PNode =
   result = semTuplePositionsConstr(c, n, flags, expectedType)
   if result.typ.kind == tyFromExpr:
@@ -3063,10 +3070,10 @@ proc semTupleConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PTyp
   var isTupleType: bool = false
   if tupexp.len > 0: # don't interpret () as type
     internalAssert c.config, tupexp.kind == nkTupleConstr
-    isTupleType = tupexp[0].typ.kind == tyTypeDesc
+    isTupleType = isTypeTupleField(tupexp[0])
     # check if either everything or nothing is tyTypeDesc
     for i in 1..<tupexp.len:
-      if isTupleType != (tupexp[i].typ.kind == tyTypeDesc):
+      if isTupleType != isTypeTupleField(tupexp[i]):
         return localErrorNode(c, n, tupexp[i].info, "Mixing types and values in tuples is not allowed.")
   if isTupleType: # expressions as ``(int, string)`` are reinterpret as type expressions
     result = n
