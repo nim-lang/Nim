@@ -205,13 +205,17 @@ const
   # Symbol kinds that are always local to a proc and should never have module suffix
   skLocalSymKinds = {skParam, skGenericParam, skForVar, skResult, skTemp}
 
+proc isLocalSym(sym: PSym): bool {.inline.} =
+  sym.kindImpl in skLocalSymKinds or
+    (sym.kindImpl in {skVar, skLet} and {sfGlobal, sfThread} * sym.flagsImpl == {})
+
 proc toNifSymName(w: var Writer; sym: PSym): string =
   ## Generate NIF name for a symbol: local names are `ident.disamb`,
   ## global names are `ident.disamb.moduleSuffix`
   result = sym.name.s
   result.add '.'
   result.addInt sym.disamb
-  if sym.kindImpl notin skLocalSymKinds and sym.itemId notin w.locals:
+  if not isLocalSym(sym) and sym.itemId notin w.locals:
     # Global symbol: ident.disamb.moduleSuffix
     let module = sym.itemId.module
     result.add '.'
@@ -305,6 +309,8 @@ proc writeTypeDef(w: var Writer; dest: var TokenBuf; typ: PType) =
     dest.addIntLit typ.itemId.item  # nonUniqueId
 
     writeType(w, dest, typ.typeInstImpl)
+    #if typ.kind in {tyProc, tyIterator} and typ.nImpl != nil and typ.nImpl.kind != nkFormalParams:
+
     writeNode(w, dest, typ.nImpl)
     writeSym(w, dest, typ.ownerFieldImpl)
     writeSym(w, dest, typ.symImpl)
@@ -341,8 +347,6 @@ proc writeLib(w: var Writer; dest: var TokenBuf; lib: PLib) =
       dest.writeBool lib.isOverridden
       dest.addStrLit lib.name
       writeNode w, dest, lib.path
-
-proc writeSymDef(w: var Writer; dest: var TokenBuf; sym: PSym)  # forward declaration
 
 proc collectGenericParams(w: var Writer; n: PNode) =
   ## Pre-collect generic param symbols into w.locals before writing the type.
@@ -428,7 +432,7 @@ proc shouldWriteSymDef(w: Writer; sym: PSym): bool {.inline.} =
   # (due to being in w.locals or being in skLocalSymKinds), it MUST have an sdef.
   # Otherwise it gets written as a bare SymUse and can't be found when loading.
   if sym.itemId.module == w.currentModule:
-    if sym.itemId in w.locals or sym.kindImpl in skLocalSymKinds:
+    if sym.itemId in w.locals or isLocalSym(sym):
       return true  # Would be written without module suffix, needs sdef
     if sym.state == Complete:
       return true  # Normal case for global symbols
