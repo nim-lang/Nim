@@ -509,7 +509,7 @@ const
     optHints, optStackTrace, optLineTrace, # consider adding `optStackTraceMsgs`
     optTrMacros, optStyleCheck, optCursorInference}
   DefaultGlobalOptions* = {optThreadAnalysis, optExcessiveStackTrace,
-    optJsBigInt64}
+    optJsBigInt64, optItaniumMangle}
 
 proc getSrcTimestamp(): DateTime =
   try:
