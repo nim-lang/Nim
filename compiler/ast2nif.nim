@@ -515,10 +515,21 @@ proc writeNode(w: var Writer; dest: var TokenBuf; n: PNode; forAst = false) =
     dest.addDotToken
   else:
     case n.kind
-    of nkEmpty, nkNone:
+    of nkNone:
+      assert n.typField == nil, "nkNone should not have a type"
       let info = trLineInfo(w, n.info)
       dest.addParLe pool.tags.getOrIncl(toNifTag(n.kind)), info
       dest.addParRi
+    of nkEmpty:
+      if n.typField != nil:
+        w.withNode dest, n:
+          let info = trLineInfo(w, n.info)
+          dest.addParLe pool.tags.getOrIncl(toNifTag(n.kind)), info
+          dest.addParRi
+      else:
+        let info = trLineInfo(w, n.info)
+        dest.addParLe pool.tags.getOrIncl(toNifTag(n.kind)), info
+        dest.addParRi
     of nkIdent:
       # nkIdent uses flags and typ when it is a generic parameter
       w.withNode dest, n:
@@ -1196,6 +1207,9 @@ proc loadNode(c: var DecodeContext; n: var Cursor; thisModule: string;
     of nkEmpty:
       result = newNodeI(nkEmpty, c.infos.oldLineInfo(n.info))
       inc n
+      if n.kind != ParRi:
+        result.flags = loadAtom(TNodeFlags, n)
+        result.typField = c.loadTypeStub(n)
       skipParRi n
     of nkIdent:
       let info = c.infos.oldLineInfo(n.info)
