@@ -363,8 +363,7 @@ proc size*(t: PType): BiggestInt {.inline.} =
   result = t.sizeImpl
 
 proc `size=`*(t: PType, val: BiggestInt) {.inline.} =
-  assert t.state != Sealed
-  if t.state == Partial: loadType(t)
+  backendEnsureMutable t
   t.sizeImpl = val
 
 proc align*(t: PType): int16 {.inline.} =
@@ -372,8 +371,7 @@ proc align*(t: PType): int16 {.inline.} =
   result = t.alignImpl
 
 proc `align=`*(t: PType, val: int16) {.inline.} =
-  assert t.state != Sealed
-  if t.state == Partial: loadType(t)
+  backendEnsureMutable t
   t.alignImpl = val
 
 proc paddingAtEnd*(t: PType): int16 {.inline.} =
@@ -381,8 +379,7 @@ proc paddingAtEnd*(t: PType): int16 {.inline.} =
   result = t.paddingAtEndImpl
 
 proc `paddingAtEnd=`*(t: PType, val: int16) {.inline.} =
-  assert t.state != Sealed
-  if t.state == Partial: loadType(t)
+  backendEnsureMutable t
   t.paddingAtEndImpl = val
 
 proc loc*(t: PType): TLoc {.inline.} =
