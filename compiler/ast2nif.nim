@@ -844,7 +844,7 @@ proc getOffset(c: var DecodeContext; module: FileIndex; nifName: string): NifInd
 proc loadNode(c: var DecodeContext; n: var Cursor; thisModule: string;
               localSyms: var Table[string, PSym]): PNode
 
-proc loadTypeStub(c: var DecodeContext; t: SymId): PType =
+proc createTypeStub(c: var DecodeContext; t: SymId): PType =
   let name = pool.syms[t]
   assert name.startsWith("`t")
   var i = len("`t")
@@ -907,12 +907,12 @@ proc loadTypeStub(c: var DecodeContext; n: var Cursor): PType =
     inc n
   elif n.kind == Symbol:
     let s = n.symId
-    result = loadTypeStub(c, s)
+    result = createTypeStub(c, s)
     inc n
   elif n.kind == ParLe and n.tagId == tdefTag:
     let s = n.firstSon.symId
     skip n
-    result = loadTypeStub(c, s)
+    result = createTypeStub(c, s)
   else:
     raiseAssert "type expected but got " & $n.kind
 
@@ -1208,6 +1208,7 @@ proc loadNode(c: var DecodeContext; n: var Cursor; thisModule: string;
             let id = ItemId(module: module.int32, item: val[])
             sym = PSym(itemId: id, kindImpl: skStub, name: c.cache.getIdent(sn.name),
                        disamb: sn.count.int32, state: Complete)
+            echo "registering local sym: ", symName
             localSyms[symName] = sym  # register for later references
           # Now fully load the symbol from the sdef
           inc n # skip `sd` tag
