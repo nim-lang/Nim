@@ -238,10 +238,10 @@ proc semTemplSymbol(c: var TemplCtx, n: PNode, s: PSym; isField, isAmbiguous: bo
         if result.kind == nkSym:
           result = newOpenSym(result)
         else:
-          result.typ() = nil
+          result.typ = nil
       else:
         result.flags.incl nfDisabledOpenSym
-        result.typ() = nil
+        result.typ = nil
   of skGenericParam:
     if isField and sfGenSym in s.flags: result = n
     else:
@@ -251,7 +251,7 @@ proc semTemplSymbol(c: var TemplCtx, n: PNode, s: PSym; isField, isAmbiguous: bo
           result = newOpenSym(result)
         else:
           result.flags.incl nfDisabledOpenSym
-          result.typ() = nil
+          result.typ = nil
   of skParam:
     result = n
   of skType:
@@ -269,10 +269,10 @@ proc semTemplSymbol(c: var TemplCtx, n: PNode, s: PSym; isField, isAmbiguous: bo
           if result.kind == nkSym:
             result = newOpenSym(result)
           else:
-            result.typ() = nil
+            result.typ = nil
         else:
           result.flags.incl nfDisabledOpenSym
-          result.typ() = nil
+          result.typ = nil
   else:
     if isField and sfGenSym in s.flags: result = n
     else:
@@ -282,7 +282,7 @@ proc semTemplSymbol(c: var TemplCtx, n: PNode, s: PSym; isField, isAmbiguous: bo
           result = newOpenSym(result)
         else:
           result.flags.incl nfDisabledOpenSym
-          result.typ() = nil
+          result.typ = nil
     # Issue #12832
     when defined(nimsuggest):
       suggestSym(c.c.graph, n.info, s, c.c.graph.usageSym, false)
@@ -544,7 +544,7 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
       let x = n[i]
       let prag = whichPragma(x)
       if prag == wInvalid:
-        # only sem if not a language-level pragma 
+        # only sem if not a language-level pragma
         result[i] = semTemplBody(c, x)
       elif x.kind in nkPragmaCallKinds:
         # is pragma, but value still needs to be checked

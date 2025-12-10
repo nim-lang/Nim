@@ -1166,6 +1166,8 @@ proc loadNode(c: var DecodeContext; n: var Cursor; thisModule: string;
       inc n
     else:
       result = newSymNode(c.loadSymStub(n, thisModule, localSyms), info)
+      if result.typField == nil:
+        result.flags.incl nfLazyType
   of DotToken:
     result = nil
     inc n

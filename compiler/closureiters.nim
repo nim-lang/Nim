@@ -458,7 +458,7 @@ proc newNotCall(g: ModuleGraph; e: PNode): PNode =
 
 proc boolLit(g: ModuleGraph; info: TLineInfo; value: bool): PNode =
   result = newIntLit(g, info, ord value)
-  result.typ() = getSysType(g, info, tyBool)
+  result.typ = getSysType(g, info, tyBool)
 
 proc captureVar(c: var Ctx, s: PSym) =
   if c.varStates.getOrDefault(s.itemId) != localRequiresLifting:
@@ -819,7 +819,7 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
       result = newNodeIT(nkStmtListExpr, n.info, n.typ)
       let (st, ex) = exprToStmtList(n[1])
       n.transitionSonsKind(nkBlockStmt)
-      n.typ() = nil
+      n.typ = nil
       n[1] = st
       result.add(n)
       result.add(ex)
