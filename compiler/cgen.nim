@@ -61,6 +61,8 @@ proc hcrOn(p: BProc): bool = p.module.config.hcrOn
 proc addForwardedProc(m: BModule, prc: PSym) =
   m.g.forwardedProcs.add(prc)
 
+proc newModule*(g: BModuleList; module: PSym; conf: ConfigRef): BModule
+
 proc findPendingModule(m: BModule, s: PSym): BModule =
   # TODO fixme
   if m.config.symbolFiles == v2Sf or optCompress in m.config.globalOptions:
@@ -69,6 +71,8 @@ proc findPendingModule(m: BModule, s: PSym): BModule =
   else:
     var ms = getModule(s)
     result = m.g.modules[ms.position]
+    if result == nil:
+      result = newModule(m.g, ms, m.config)
 
 proc initLoc(k: TLocKind, lode: PNode, s: TStorageLoc, flags: TLocFlags = {}): TLoc =
   result = TLoc(k: k, storage: s, lode: lode,
@@ -2368,7 +2372,7 @@ proc rawNewModule(g: BModuleList; module: PSym, filename: AbsoluteFile): BModule
 proc rawNewModule(g: BModuleList; module: PSym; conf: ConfigRef): BModule =
   result = rawNewModule(g, module, AbsoluteFile toFullPath(conf, module.position.FileIndex))
 
-proc newModule*(g: BModuleList; module: PSym; conf: ConfigRef): BModule =
+proc newModule(g: BModuleList; module: PSym; conf: ConfigRef): BModule =
   # we should create only one cgen module for each module sym
   result = rawNewModule(g, module, conf)
   if module.position >= g.modules.len:
