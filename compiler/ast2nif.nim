@@ -406,8 +406,9 @@ proc writeSymDef(w: var Writer; dest: var TokenBuf; sym: PSym) =
 
   writeType(w, dest, sym.typImpl)
   writeSym(w, dest, sym.ownerFieldImpl)
-  # Store the AST for routine symbols (procs, funcs, etc.)
-  if sym.kindImpl in routineKinds:
+  # Store the AST for routine symbols and constants
+  # Constants need their AST for astdef() to return the constant's value
+  if sym.kindImpl in routineKinds + {skConst}:
     writeNode(w, dest, sym.astImpl, forAst = true)
   else:
     dest.addDotToken
@@ -1110,8 +1111,9 @@ proc loadSymFromCursor(c: var DecodeContext; s: PSym; n: var Cursor; thisModule:
   # the simple loadTypeStub here.
   s.typImpl = loadTypeStub(c, n, localSyms)
   s.ownerFieldImpl = loadSymStub(c, n, thisModule, localSyms)
-  # Load the AST for routine symbols (procs, funcs, etc.)
-  if s.kindImpl in routineKinds:
+  # Load the AST for routine symbols and constants
+  # Constants need their AST for astdef() to return the constant's value
+  if s.kindImpl in routineKinds + {skConst}:
     s.astImpl = loadNode(c, n, thisModule, localSyms)
   elif n.kind == DotToken:
     inc n
