@@ -197,9 +197,10 @@ type
     decodedFileIndices: HashSet[FileIndex]
     locals: HashSet[ItemId]  # track proc-local symbols
     inProc: int
-    writtenTypes: seq[PType]  # types written in this module, to be unloaded later
-    writtenSyms: seq[PSym]    # symbols written in this module, to be unloaded later
+    #writtenTypes: seq[PType]  # types written in this module, to be unloaded later
+    #writtenSyms: seq[PSym]    # symbols written in this module, to be unloaded later
     exports: Table[FileIndex, HashSet[string]]  # module -> specific symbol names (empty = all)
+    writtenPackages: HashSet[string]
 
 const
   # Symbol kinds that are always local to a proc and should never have module suffix
@@ -217,8 +218,8 @@ proc toNifSymName(w: var Writer; sym: PSym): string =
   result.addInt sym.disamb
   if not isLocalSym(sym) and sym.itemId notin w.locals:
     # Global symbol: ident.disamb.moduleSuffix
-    let module = sym.itemId.module
     result.add '.'
+    let module = if sym.kindImpl == skPackage: w.currentModule else: sym.itemId.module
     result.add modname(module, w.infos.config)
 
 proc globalName(sym: PSym; config: ConfigRef): string =
@@ -329,8 +330,6 @@ proc writeType(w: var Writer; dest: var TokenBuf; typ: PType) =
   elif typ.itemId.module == w.currentModule and typ.state == Complete:
     typ.state = Sealed
     writeTypeDef(w, dest, typ)
-    # Collect for later unloading after entire module is written
-    w.writtenTypes.add typ
   else:
     dest.addSymUse pool.syms.getOrIncl(typeToNifSym(typ, w.infos.config)), NoLineInfo
 
@@ -396,6 +395,8 @@ proc writeSymDef(w: var Writer; dest: var TokenBuf; sym: PSym) =
   else:
     dest.addIntLit sym.positionImpl
 
+  writeLib(w, dest, sym.annexImpl)
+
   # For routine symbols, pre-collect generic params into w.locals before writing
   # the type. This ensures they get consistent short names, and their sdefs are
   # written in the type where lazy loading can find them via extractLocalSymsFromTree.
@@ -417,15 +418,11 @@ proc writeSymDef(w: var Writer; dest: var TokenBuf; sym: PSym) =
   writeSym(w, dest, sym.instantiatedFromImpl)
   dest.addParRi
 
-  # Collect for later unloading after entire module is written
-  if sym.kindImpl notin {skPackage}:
-    # do not unload modules
-    w.writtenSyms.add sym
 
-proc shouldWriteSymDef(w: Writer; sym: PSym): bool {.inline.} =
+proc shouldWriteSymDef(w: var Writer; sym: PSym): bool {.inline.} =
   # Don't write module/package symbols - they don't have NIF files
-  if sym.kindImpl in {skPackage}:
-    return false
+  if sym.kindImpl == skPackage:
+    return not w.writtenPackages.containsOrIncl(sym.name.s)
   # Already written - don't write again
   if sym.state == Sealed:
     return false
@@ -441,10 +438,6 @@ proc shouldWriteSymDef(w: Writer; sym: PSym): bool {.inline.} =
 
 proc writeSym(w: var Writer; dest: var TokenBuf; sym: PSym) =
   if sym == nil:
-    dest.addDotToken()
-  elif sym.kindImpl in {skPackage}:
-    # Write module/package symbols as dots - they're resolved differently
-    # (by position/FileIndex, not by NIF lookup)
     dest.addDotToken()
   elif shouldWriteSymDef(w, sym):
     sym.state = Sealed
@@ -1106,6 +1099,8 @@ proc loadSymFromCursor(c: var DecodeContext; s: PSym; n: var Cursor; thisModule:
     s.positionImpl = int c.infos.config.registerNifSuffix(thisModule, isKnownFile)
   else:
     loadField s.positionImpl
+
+  s.annexImpl = loadAnnex(c, n, thisModule, localSyms)
 
   # Local symbols were already extracted upfront in loadSym, so we can use
   # the simple loadTypeStub here.
