@@ -1209,7 +1209,7 @@ proc loadNode(c: var DecodeContext; n: var Cursor; thisModule: string;
             let id = ItemId(module: module.int32, item: val[])
             sym = PSym(itemId: id, kindImpl: skStub, name: c.cache.getIdent(sn.name),
                        disamb: sn.count.int32, state: Complete)
-            echo "registering local sym: ", symName
+            #echo "registering local sym: ", symName
             localSyms[symName] = sym  # register for later references
           # Now fully load the symbol from the sdef
           inc n # skip `sd` tag
