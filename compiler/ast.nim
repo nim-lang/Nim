@@ -1077,6 +1077,7 @@ proc assignType*(dest, src: PType) =
     else:
       dest.symImpl = src.sym
   if src.kind == tyProc:
+    assert src.sonsImpl.len <= 1
     if src.len > 0:
       setLen(dest.sonsImpl, 1)
       dest.sonsImpl[0] = src.sonsImpl[0]
