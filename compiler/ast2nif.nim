@@ -901,7 +901,9 @@ proc extractLocalSymsFromTree(c: var DecodeContext; n: var Cursor; thisModule: s
         break
     inc n
 
-proc loadTypeStub(c: var DecodeContext; n: var Cursor): PType =
+proc loadTypeFromCursor(c: var DecodeContext; n: var Cursor; t: PType; localSyms: var Table[string, PSym])
+
+proc loadTypeStub(c: var DecodeContext; n: var Cursor; localSyms: var Table[string, PSym]): PType =
   if n.kind == DotToken:
     result = nil
     inc n
@@ -911,8 +913,8 @@ proc loadTypeStub(c: var DecodeContext; n: var Cursor): PType =
     inc n
   elif n.kind == ParLe and n.tagId == tdefTag:
     let s = n.firstSon.symId
-    skip n
     result = createTypeStub(c, s)
+    loadTypeFromCursor(c, n, result, localSyms)
   else:
     raiseAssert "type expected but got " & $n.kind
 
@@ -997,21 +999,11 @@ proc loadLoc(c: var DecodeContext; n: var Cursor; loc: var TLoc) =
   loadField loc.flags
   loadField loc.snippet
 
-proc loadType*(c: var DecodeContext; t: PType) =
-  if t.state != Partial: return
-  t.state = Sealed
-  var buf = createTokenBuf(30)
-  let typeName = typeToNifSym(t, c.infos.config)
-  var n = cursorFromIndexEntry(c, t.itemId.module.FileIndex, c.types[typeName][1], buf)
-
+proc loadTypeFromCursor(c: var DecodeContext; n: var Cursor; t: PType; localSyms: var Table[string, PSym]) =
   expect n, ParLe
   if n.tagId != tdefTag:
     raiseAssert "(td) expected"
 
-  # Pre-scan the ENTIRE type definition for local symbol definitions (sdefs).
-  # We need to do this before loading any fields, because local symbols may be
-  # defined anywhere in the type and referenced anywhere else.
-  var localSyms = initTable[string, PSym]()
   var scanCursor = n  # copy cursor at start of type
   let typesModule = parseSymName(pool.syms[n.firstSon.symId]).module
   extractLocalSymsFromTree(c, scanCursor, typesModule, localSyms)
@@ -1028,16 +1020,25 @@ proc loadType*(c: var DecodeContext; t: PType) =
   loadField t.paddingAtEndImpl
   loadField t.itemId.item  # nonUniqueId
 
-  t.typeInstImpl = loadTypeStub(c, n)
+  t.typeInstImpl = loadTypeStub(c, n, localSyms)
   t.nImpl = loadNode(c, n, typesModule, localSyms)
   t.ownerFieldImpl = loadSymStub(c, n, typesModule, localSyms)
   t.symImpl = loadSymStub(c, n, typesModule, localSyms)
   loadLoc c, n, t.locImpl
 
   while n.kind != ParRi:
-    t.sonsImpl.add loadTypeStub(c, n)
+    t.sonsImpl.add loadTypeStub(c, n, localSyms)
 
   skipParRi n
+
+proc loadType*(c: var DecodeContext; t: PType) =
+  if t.state != Partial: return
+  t.state = Sealed
+  var buf = createTokenBuf(30)
+  let typeName = typeToNifSym(t, c.infos.config)
+  var n = cursorFromIndexEntry(c, t.itemId.module.FileIndex, c.types[typeName][1], buf)
+  var localSyms = initTable[string, PSym]()
+  loadTypeFromCursor(c, n, t, localSyms)
 
 proc loadAnnex(c: var DecodeContext; n: var Cursor; thisModule: string; localSyms: var Table[string, PSym]): PLib =
   if n.kind == DotToken:
@@ -1103,7 +1104,7 @@ proc loadSymFromCursor(c: var DecodeContext; s: PSym; n: var Cursor; thisModule:
 
   # Local symbols were already extracted upfront in loadSym, so we can use
   # the simple loadTypeStub here.
-  s.typImpl = loadTypeStub(c, n)
+  s.typImpl = loadTypeStub(c, n, localSyms)
   s.ownerFieldImpl = loadSymStub(c, n, thisModule, localSyms)
   # Load the AST for routine symbols (procs, funcs, etc.)
   if s.kindImpl in routineKinds:
@@ -1148,7 +1149,7 @@ template withNode(c: var DecodeContext; n: var Cursor; result: PNode; kind: TNod
   let flags = loadAtom(TNodeFlags, n)
   result = newNodeI(kind, info)
   result.flags = flags
-  result.typField = c.loadTypeStub(n)
+  result.typField = c.loadTypeStub(n, localSyms)
   body
   skipParRi n
 
@@ -1182,7 +1183,7 @@ proc loadNode(c: var DecodeContext; n: var Cursor; thisModule: string;
       case pool.tags[n.tagId]
       of hiddenTypeTagName:
         inc n
-        let typ = c.loadTypeStub(n)
+        let typ = c.loadTypeStub(n, localSyms)
         let info = c.infos.oldLineInfo(n.info)
         result = newSymNode(c.loadSymStub(n, thisModule, localSyms), info)
         result.typField = typ
@@ -1232,13 +1233,13 @@ proc loadNode(c: var DecodeContext; n: var Cursor; thisModule: string;
       inc n
       if n.kind != ParRi:
         result.flags = loadAtom(TNodeFlags, n)
-        result.typField = c.loadTypeStub(n)
+        result.typField = c.loadTypeStub(n, localSyms)
       skipParRi n
     of nkIdent:
       let info = c.infos.oldLineInfo(n.info)
       inc n
       let flags = loadAtom(TNodeFlags, n)
-      let typ = c.loadTypeStub(n)
+      let typ = c.loadTypeStub(n, localSyms)
       expect n, Ident
       result = newIdentNode(c.cache.getIdent(pool.strings[n.litId]), info)
       inc n
