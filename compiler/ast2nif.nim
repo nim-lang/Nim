@@ -1411,7 +1411,7 @@ proc toNifIndexFilename*(conf: ConfigRef; f: FileIndex): string =
   result = toGeneratedFile(conf, AbsoluteFile(suffix), ".s.idx.nif").string
 
 proc parseTypeSymIdToItemId*(c: var DecodeContext; symId: nifstreams.SymId): ItemId =
-  ## Parses a type SymId (format: "`tN.modulesuffix") to extract ItemId.
+  ## Parses a type SymId (format: `"`tN.modulesuffix"`) to extract ItemId.
   let s = pool.syms[symId]
   if not s.startsWith("`t"):
     return ItemId(module: -1, item: 0)
