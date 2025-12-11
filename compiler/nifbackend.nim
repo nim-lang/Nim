@@ -72,7 +72,7 @@ proc generateCodeForModule(g: ModuleGraph; module: PSym) =
 
   # Generate dispatcher methods
   for disp in getDispatchers(g):
-    genProcAux(bmod, disp)
+    genProcLvl3(bmod, disp)
 
 proc generateCode*(g: ModuleGraph; mainFileIdx: FileIndex) =
   ## Main entry point for NIF-based C code generation.

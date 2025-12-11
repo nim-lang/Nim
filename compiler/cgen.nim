@@ -1285,7 +1285,7 @@ proc genProcBody(p: BProc; procBody: PNode) =
     p.blocks[0].sections[cpsInit].addAssignmentWithValue("nimErr_"):
       p.blocks[0].sections[cpsInit].addCall(cgsymValue(p.module, "nimErrorFlag"))
 
-proc genProcAux*(m: BModule, prc: PSym) =
+proc genProcLvl3*(m: BModule, prc: PSym) =
   var p = newProc(prc, m)
   var header = newBuilder("")
   let isCppMember = m.config.backend == backendCpp and sfCppMember * prc.flags != {}
@@ -1469,8 +1469,7 @@ proc genProcPrototype(m: BModule, sym: PSym) =
 
 include inliner
 
-# TODO: figure out how to rename this - it DOES generate a forward declaration
-proc genProcNoForward(m: BModule, prc: PSym) =
+proc genProcLvl2(m: BModule, prc: PSym) =
   if lfImportCompilerProc in prc.loc.flags:
     fillProcLoc(m, prc.ast[namePos])
     useHeader(m, prc)
@@ -1511,7 +1510,7 @@ proc genProcNoForward(m: BModule, prc: PSym) =
         let prcCopy = prc # copyInlineProc(prc, m.idgen)
         fillProcLoc(m, prcCopy.ast[namePos])
         genProcPrototype(m, prcCopy)
-        genProcAux(m, prcCopy)
+        genProcLvl3(m, prcCopy)
       else:
         let m2 = if m.config.symbolFiles != disabledSf: m
                 else: findPendingModule(m, prc)
@@ -1522,7 +1521,7 @@ proc genProcNoForward(m: BModule, prc: PSym) =
         #  #prc.loc.snippet = nil
         #  #prc.loc.snippet = mangleName(m, prc)
         genProcPrototype(m, prc)
-        genProcAux(m, prc)
+        genProcLvl3(m, prc)
   elif sfImportc notin prc.flags:
     var q = findPendingModule(m, prc)
     fillProcLoc(q, prc.ast[namePos])
@@ -1543,7 +1542,7 @@ proc genProcNoForward(m: BModule, prc: PSym) =
       # which will actually become a function pointer
       if isReloadable(m, prc):
         genProcPrototype(q, prc)
-      genProcAux(q, prc)
+      genProcLvl3(q, prc)
   else:
     fillProcLoc(m, prc.ast[namePos])
     useHeader(m, prc)
@@ -1569,13 +1568,13 @@ proc genProc(m: BModule, prc: PSym) =
     addForwardedProc(m, prc)
     fillProcLoc(m, prc.ast[namePos])
   else:
-    genProcNoForward(m, prc)
+    genProcLvl2(m, prc)
     if {sfExportc, sfCompilerProc} * prc.flags == {sfExportc} and
         m.g.generatedHeader != nil and lfNoDecl notin prc.loc.flags:
       genProcPrototype(m.g.generatedHeader, prc)
       if prc.typ.callConv == ccInline:
         if not containsOrIncl(m.g.generatedHeader.declaredThings, prc.id):
-          genProcAux(m.g.generatedHeader, prc)
+          genProcLvl3(m.g.generatedHeader, prc)
 
 proc genVarPrototype(m: BModule, n: PNode) =
   #assert(sfGlobal in sym.flags)
@@ -2523,7 +2522,7 @@ proc writeModule(m: BModule, pending: bool) =
 
     while m.queue.len > 0:
       let sym = m.queue.pop()
-      genProcNoForward(m, sym)
+      genProcLvl2(m, sym)
 
     finishTypeDescriptions(m)
     if sfMainModule in m.module.flags:
@@ -2588,7 +2587,7 @@ proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: PNode) =
         body.add graph.globalDestructors[i]
       body.flags.incl nfTransf # should not be further transformed
       let dtor = generateLibraryDestroyGlobals(graph, m, body, optGenDynLib in m.config.globalOptions)
-      genProcAux(m, dtor)
+      genProcLvl3(m, dtor)
   if pipelineutils.skipCodegen(m.config, n): return
   if moduleHasChanged(graph, m.module):
     # if the module is cached, we don't regenerate the main proc
@@ -2641,7 +2640,7 @@ proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: PNode) =
 proc genForwardedProcs(g: BModuleList) =
   # Forward declared proc:s lack bodies when first encountered, so they're given
   # a second pass here
-  # Note: ``genProcNoForward`` may add to ``forwardedProcs``
+  # Note: ``genProcLvl2`` may add to ``forwardedProcs``
   while g.forwardedProcs.len > 0:
     let
       prc = g.forwardedProcs.pop()
@@ -2649,7 +2648,7 @@ proc genForwardedProcs(g: BModuleList) =
     if sfForward in prc.flags:
       internalError(m.config, prc.info, "still forwarded: " & prc.name.s)
 
-    genProcNoForward(m, prc)
+    genProcLvl2(m, prc)
 
 proc cgenWriteModules*(backend: RootRef, config: ConfigRef) =
   let g = BModuleList(backend)
