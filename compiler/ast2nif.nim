@@ -914,7 +914,11 @@ proc loadTypeStub(c: var DecodeContext; n: var Cursor; localSyms: var Table[stri
   elif n.kind == ParLe and n.tagId == tdefTag:
     let s = n.firstSon.symId
     result = createTypeStub(c, s)
-    loadTypeFromCursor(c, n, result, localSyms)
+    if result.state == Partial:
+      result.state = Sealed  # Mark as loaded to prevent loadType from re-loading with empty localSyms
+      loadTypeFromCursor(c, n, result, localSyms)
+    else:
+      skip n  # Type already loaded, skip over the td block
   else:
     raiseAssert "type expected but got " & $n.kind
 
@@ -1209,7 +1213,6 @@ proc loadNode(c: var DecodeContext; n: var Cursor; thisModule: string;
             let id = ItemId(module: module.int32, item: val[])
             sym = PSym(itemId: id, kindImpl: skStub, name: c.cache.getIdent(sn.name),
                        disamb: sn.count.int32, state: Complete)
-            #echo "registering local sym: ", symName
             localSyms[symName] = sym  # register for later references
           # Now fully load the symbol from the sdef
           inc n # skip `sd` tag
