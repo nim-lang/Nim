@@ -61,7 +61,7 @@ proc hcrOn(p: BProc): bool = p.module.config.hcrOn
 proc addForwardedProc(m: BModule, prc: PSym) =
   m.g.forwardedProcs.add(prc)
 
-proc newModule*(g: BModuleList; module: PSym; conf: ConfigRef): BModule
+proc newModule*(g: BModuleList; module: PSym; conf: ConfigRef; idgen: IdGenerator): BModule
 
 proc findPendingModule(m: BModule, s: PSym): BModule =
   # TODO fixme
@@ -72,7 +72,7 @@ proc findPendingModule(m: BModule, s: PSym): BModule =
     var ms = getModule(s)
     result = m.g.modules[ms.position]
     if result == nil:
-      result = newModule(m.g, ms, m.config)
+      result = newModule(m.g, ms, m.config, idGeneratorFromModule(ms))
 
 proc initLoc(k: TLocKind, lode: PNode, s: TStorageLoc, flags: TLocFlags = {}): TLoc =
   result = TLoc(k: k, storage: s, lode: lode,
@@ -2372,9 +2372,10 @@ proc rawNewModule(g: BModuleList; module: PSym, filename: AbsoluteFile): BModule
 proc rawNewModule(g: BModuleList; module: PSym; conf: ConfigRef): BModule =
   result = rawNewModule(g, module, AbsoluteFile toFullPath(conf, module.position.FileIndex))
 
-proc newModule(g: BModuleList; module: PSym; conf: ConfigRef): BModule =
+proc newModule(g: BModuleList; module: PSym; conf: ConfigRef; idgen: IdGenerator): BModule =
   # we should create only one cgen module for each module sym
   result = rawNewModule(g, module, conf)
+  result.idgen = idgen
   if module.position >= g.modules.len:
     setLen(g.modules, module.position + 1)
   #growCache g.modules, module.position
@@ -2387,8 +2388,7 @@ template injectG() {.dirty.} =
 
 proc setupCgen*(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext =
   injectG()
-  result = newModule(g, module, graph.config)
-  result.idgen = idgen
+  result = newModule(g, module, graph.config, idgen)
   if optGenIndex in graph.config.globalOptions and g.generatedHeader == nil:
     let f = if graph.config.headerFile.len > 0: AbsoluteFile graph.config.headerFile
             else: graph.config.projectFull

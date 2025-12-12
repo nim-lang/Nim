@@ -52,7 +52,7 @@ proc setupNifBackendModule(g: ModuleGraph; module: PSym): BModule =
   ## Set up a BModule for code generation from a NIF module.
   if g.backend == nil:
     g.backend = cgendata.newModuleList(g)
-  result = cgen.newModule(BModuleList(g.backend), module, g.config)
+  result = cgen.newModule(BModuleList(g.backend), module, g.config, idGeneratorFromModule(module))
 
 proc generateCodeForModule(g: ModuleGraph; module: PSym) =
   ## Generate C code for a single module.

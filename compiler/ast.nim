@@ -82,9 +82,6 @@ proc setOwner*(s: PType; owner: PSym) {.inline.} =
   if s.state == Partial: loadType(s)
   s.ownerFieldImpl = owner
 
-# Accessor procs for TSym fields
-# Note: kind is kept as a direct field for case statement compatibility
-# but we still provide an accessor that checks state
 proc kind*(s: PSym): TSymKind {.inline.} =
   if s.state == Partial: loadSym(s)
   result = s.kindImpl
