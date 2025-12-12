@@ -1215,10 +1215,12 @@ proc loadNode(c: var DecodeContext; n: var Cursor; thisModule: string;
           inc n # skip `sd` tag
           loadSymFromCursor(c, sym, n, thisModule, localSyms)
           sym.state = Sealed  # mark as fully loaded
+          result = newSymNode(sym, info)
         else:
           sym = c.loadSymStub(name.symId, thisModule, localSyms)
           skip n  # skip the entire sdef for indexed symbols
-        result = newSymNode(sym, info)
+          result = newSymNode(sym, info)
+          result.flags.incl nfLazyType
       of typeDefTagName:
         raiseAssert "`td` tag in invalid context"
       of "none":
