@@ -514,7 +514,6 @@ proc setCmd*(conf: ConfigRef, cmd: Command) =
   of cmdCompileToNif: conf.backend = backendNif
   of cmdNifC:
     conf.backend = backendC  # NIF to C compilation
-    conf.globalOptions.incl optCompress  # enable NIF loading
   of cmdM:
     # cmdM requires optCompress for proper IC handling (include files, etc.)
     conf.globalOptions.incl optCompress

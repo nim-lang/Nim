@@ -220,7 +220,7 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
           if retTyp != nil:
             # TODO: properly semcheck the code of dispatcher?
             createTypeBoundOps(graph, ctx, retTyp, disp.ast.info, idgen)
-          genProcAux(m, disp)
+          genProcLvl3(m, disp)
         discard closePContext(graph, ctx, nil)
   of JSgenPass:
     when not defined(leanCompiler):

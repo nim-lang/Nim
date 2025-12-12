@@ -1,6 +1,6 @@
 {.push stack_trace: off.}
 
-proc succ*[T, V: Ordinal](x: T, y: V = 1): T {.magic: "Succ", noSideEffect.} =
+proc succ*[T: Ordinal, V: SomeInteger](x: T, y: V = 1): T {.magic: "Succ", noSideEffect.} =
   ## Returns the `y`-th successor (default: 1) of the value `x`.
   ##
   ## If such a value does not exist, `OverflowDefect` is raised
@@ -9,7 +9,7 @@ proc succ*[T, V: Ordinal](x: T, y: V = 1): T {.magic: "Succ", noSideEffect.} =
     assert succ(5) == 6
     assert succ(5, 3) == 8
 
-proc pred*[T, V: Ordinal](x: T, y: V = 1): T {.magic: "Pred", noSideEffect.} =
+proc pred*[T: Ordinal, V: SomeInteger](x: T, y: V = 1): T {.magic: "Pred", noSideEffect.} =
   ## Returns the `y`-th predecessor (default: 1) of the value `x`.
   ##
   ## If such a value does not exist, `OverflowDefect` is raised
@@ -18,7 +18,7 @@ proc pred*[T, V: Ordinal](x: T, y: V = 1): T {.magic: "Pred", noSideEffect.} =
     assert pred(5) == 4
     assert pred(5, 3) == 2
 
-proc inc*[T, V: Ordinal](x: var T, y: V = 1) {.magic: "Inc", noSideEffect.} =
+proc inc*[T: Ordinal, V: SomeInteger](x: var T, y: V = 1) {.magic: "Inc", noSideEffect.} =
   ## Increments the ordinal `x` by `y`.
   ##
   ## If such a value does not exist, `OverflowDefect` is raised or a compile
@@ -30,7 +30,7 @@ proc inc*[T, V: Ordinal](x: var T, y: V = 1) {.magic: "Inc", noSideEffect.} =
     inc(i, 3)
     assert i == 6
 
-proc dec*[T, V: Ordinal](x: var T, y: V = 1) {.magic: "Dec", noSideEffect.} =
+proc dec*[T: Ordinal, V: SomeInteger](x: var T, y: V = 1) {.magic: "Dec", noSideEffect.} =
   ## Decrements the ordinal `x` by `y`.
   ##
   ## If such a value does not exist, `OverflowDefect` is raised or a compile

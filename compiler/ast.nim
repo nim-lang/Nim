@@ -29,9 +29,6 @@ export astdef
 when not defined(nimKochBootstrap):
   import ast2nif
 
-template typ*(n: PNode): PType =
-  n.typField
-
 when not defined(nimKochBootstrap):
   var program* {.threadvar.}: DecodeContext
 
@@ -366,8 +363,7 @@ proc size*(t: PType): BiggestInt {.inline.} =
   result = t.sizeImpl
 
 proc `size=`*(t: PType, val: BiggestInt) {.inline.} =
-  assert t.state != Sealed
-  if t.state == Partial: loadType(t)
+  backendEnsureMutable t
   t.sizeImpl = val
 
 proc align*(t: PType): int16 {.inline.} =
@@ -375,8 +371,7 @@ proc align*(t: PType): int16 {.inline.} =
   result = t.alignImpl
 
 proc `align=`*(t: PType, val: int16) {.inline.} =
-  assert t.state != Sealed
-  if t.state == Partial: loadType(t)
+  backendEnsureMutable t
   t.alignImpl = val
 
 proc paddingAtEnd*(t: PType): int16 {.inline.} =
@@ -384,8 +379,7 @@ proc paddingAtEnd*(t: PType): int16 {.inline.} =
   result = t.paddingAtEndImpl
 
 proc `paddingAtEnd=`*(t: PType, val: int16) {.inline.} =
-  assert t.state != Sealed
-  if t.state == Partial: loadType(t)
+  backendEnsureMutable t
   t.paddingAtEndImpl = val
 
 proc loc*(t: PType): TLoc {.inline.} =
@@ -425,6 +419,14 @@ proc excl*(t: PType; flags: set[TTypeFlag]) {.inline.} =
   assert t.state != Sealed
   if t.state == Partial: loadType(t)
   t.flagsImpl.excl(flags)
+
+proc typ*(n: PNode): PType {.inline.} =
+  result = n.typField
+  if result == nil and nfLazyType in n.flags:
+    result = n.sym.typ
+
+proc `typ=`*(n: PNode, val: sink PType) {.inline.} =
+  n.typField = val
 
 template nodeId(n: PNode): int = cast[int](n)
 
@@ -769,7 +771,7 @@ proc withInfo*(n: PNode, info: TLineInfo): PNode =
 proc newSymNode*(sym: PSym): PNode =
   result = newNode(nkSym)
   result.sym = sym
-  result.typ() = sym.typ
+  result.typField = sym.typ
   result.info = sym.info
 
 proc newOpenSym*(n: PNode): PNode {.inline.} =
@@ -879,7 +881,7 @@ proc newIntTypeNode*(intVal: BiggestInt, typ: PType): PNode =
     result = newNode(nkIntLit)
   else: raiseAssert $kind
   result.intVal = intVal
-  result.typ() = typ
+  result.typField = typ
 
 proc newIntTypeNode*(intVal: Int128, typ: PType): PNode =
   # XXX: introduce range check
@@ -1180,7 +1182,7 @@ proc copyNode*(src: PNode): PNode =
     return nil
   result = newNode(src.kind)
   result.info = src.info
-  result.typ() = src.typ
+  result.typ = src.typ
   result.flags = src.flags * PersistentNodeFlags
   result.comment = src.comment
   when defined(useNodeIds):
@@ -1249,7 +1251,7 @@ template copyNodeImpl(dst, src, processSonsStmt) =
   dst.info = src.info
   when defined(nimsuggest):
     result.endInfo = src.endInfo
-  dst.typ() = src.typ
+  dst.typ = src.typ
   dst.flags = src.flags * PersistentNodeFlags
   dst.comment = src.comment
   when defined(useNodeIds):

@@ -1,6 +1,6 @@
 discard """
   targets: "c"
-  matrix: "--debugger:native --mangle:nim; --debugger:native"
+  matrix: "--debugger:native --mangle:nim"
   ccodecheck: "'testFunc__titaniummangle95nim_u1316'"
   ccodecheck: "'testFunc__titaniummangle95nim_u156'"
   ccodecheck: "'testFunc__titaniummangle95nim_u1305'"

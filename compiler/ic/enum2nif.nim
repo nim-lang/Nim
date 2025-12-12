@@ -1472,6 +1472,7 @@ proc genFlags*(s: set[TNodeFlag]; dest: var string) =
     of nfHasComment: dest.add "h"
     of nfSkipFieldChecking: dest.add "s0"
     of nfDisabledOpenSym: dest.add "d3"
+    of nfLazyType: dest.add "l1"
 
 
 proc parse*(t: typedesc[TNodeFlag]; s: string): set[TNodeFlag] =
@@ -1513,6 +1514,9 @@ proc parse*(t: typedesc[TNodeFlag]; s: string): set[TNodeFlag] =
     of 'l':
       if i+1 < s.len and s[i+1] == '0':
         result.incl nfLastRead
+        inc i
+      elif i+1 < s.len and s[i+1] == '1':
+        result.incl nfLazyType
         inc i
       else: result.incl nfLL
     of 'n': result.incl nfNone

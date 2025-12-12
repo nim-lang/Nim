@@ -323,6 +323,7 @@ type
     nfDisabledOpenSym # temporary: node should be nkOpenSym but cannot
                       # because openSym experimental switch is disabled
                       # gives warning instead
+    nfLazyType  # node has a lazy type
 
   TNodeFlags* = set[TNodeFlag]
   TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 47)
@@ -866,7 +867,7 @@ const
                                       nfFromTemplate, nfDefaultRefsParam,
                                       nfExecuteOnReload, nfLastRead,
                                       nfFirstWrite, nfSkipFieldChecking,
-                                      nfDisabledOpenSym}
+                                      nfDisabledOpenSym, nfLazyType}
   namePos* = 0
   patternPos* = 1    # empty except for term rewriting macros
   genericParamsPos* = 2

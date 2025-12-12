@@ -1916,7 +1916,7 @@ proc genSeqConstr(p: BProc, n: PNode, d: var TLoc) =
 proc genArrToSeq(p: BProc, n: PNode, d: var TLoc) =
   var elem, arr: TLoc
   if n[1].kind == nkBracket:
-    n[1].typ() = n.typ
+    n[1].typ = n.typ
     genSeqConstr(p, n[1], d)
     return
   if d.k == locNone:
