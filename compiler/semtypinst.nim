@@ -737,7 +737,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType, isInstValue = false): 
             let r2 = r.skipTypes({tyAlias, tySink, tyOwned})
             if r2.kind in {tyPtr, tyRef}:
               r = skipTypes(r2, {tyPtr, tyRef})
-          if result.kind != tyProc:
+          if result.kind != tyProc or i == 0:
             result[i] = r
           if result.kind != tyArray or i != 0:
             propagateToOwner(result, r)
