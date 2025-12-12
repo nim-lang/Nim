@@ -26,6 +26,26 @@ import ic / [enum2nif]
 export nifindexes.AttachedOp, nifindexes.HookIndexEntry, nifindexes.HooksPerType
 export nifindexes.ClassIndexEntry, nifindexes.MethodIndexEntry
 
+# -------------- Module name handling --------------------------------------------
+
+proc cachedModuleSuffix*(config: ConfigRef; fileIdx: FileIndex): string =
+  ## Gets or computes the module suffix for a FileIndex.
+  ## For NIF modules, the suffix is already stored in the file info.
+  ## For source files, computes it from the path.
+  let fullPath = toFullPath(config, fileIdx)
+  if fileInfoKind(config, fileIdx) == fikNifModule:
+    result = fullPath  # Already a suffix
+  else:
+    result = moduleSuffix(fullPath, cast[seq[string]](config.searchPaths))
+
+proc modname(module: int; conf: ConfigRef): string =
+  cachedModuleSuffix(conf, module.FileIndex)
+
+proc modname(module: PSym; conf: ConfigRef): string =
+  assert module.kindImpl == skModule
+  modname(module.positionImpl, conf)
+
+
 proc toAttachedOp*(op: TTypeAttachedOp): AttachedOp =
   ## Maps Nim compiler's TTypeAttachedOp to nimony's AttachedOp.
   ## Returns attachedDestroy for attachedDeepCopy (caller should skip it).
@@ -48,16 +68,13 @@ proc toTTypeAttachedOp*(op: AttachedOp): TTypeAttachedOp =
   of nifindexes.attachedSink: astdef.attachedSink
   of nifindexes.attachedTrace: astdef.attachedTrace
 
-
-proc cachedModuleSuffix*(config: ConfigRef; fileIdx: FileIndex): string =
-  ## Gets or computes the module suffix for a FileIndex.
-  ## For NIF modules, the suffix is already stored in the file info.
-  ## For source files, computes it from the path.
-  let fullPath = toFullPath(config, fileIdx)
-  if fileInfoKind(config, fileIdx) == fikNifModule:
-    result = fullPath  # Already a suffix
-  else:
-    result = moduleSuffix(fullPath, cast[seq[string]](config.searchPaths))
+proc typeToNifSym(typ: PType; config: ConfigRef): string =
+  result = "`t"
+  result.addInt ord(typ.kind)
+  result.add '.'
+  result.addInt typ.uniqueId.item
+  result.add '.'
+  result.add modname(typ.uniqueId.module, config)
 
 proc toHookIndexEntry*(config: ConfigRef; typeId: ItemId; hookSym: PSym): HookIndexEntry =
   ## Converts a type ItemId and hook symbol to a HookIndexEntry for the NIF index.
@@ -148,17 +165,6 @@ proc oldLineInfo(w: var LineInfoWriter; info: PackedLineInfo): TLineInfo =
       fileIdx = msgs.fileInfoIdx(w.config, AbsoluteFile filePath)
       w.revTab[x.file] = fileIdx
     result = TLineInfo(line: x.line.uint16, col: x.col.int16, fileIndex: fileIdx)
-
-
-# -------------- Module name handling --------------------------------------------
-
-proc modname(module: int; conf: ConfigRef): string =
-  cachedModuleSuffix(conf, module.FileIndex)
-
-proc modname(module: PSym; conf: ConfigRef): string =
-  assert module.kindImpl == skModule
-  modname(module.positionImpl, conf)
-
 
 
 # ------------- Writer ---------------------------------------------------------------
@@ -282,14 +288,6 @@ proc trLineInfo(w: var Writer; info: TLineInfo): PackedLineInfo {.inline.} =
 proc writeNode(w: var Writer; dest: var TokenBuf; n: PNode; forAst = false)
 proc writeType(w: var Writer; dest: var TokenBuf; typ: PType)
 proc writeSym(w: var Writer; dest: var TokenBuf; sym: PSym)
-
-proc typeToNifSym(typ: PType; config: ConfigRef): string =
-  result = "`t"
-  result.addInt ord(typ.kind)
-  result.add '.'
-  result.addInt typ.uniqueId.item
-  result.add '.'
-  result.add modname(typ.uniqueId.module, config)
 
 proc writeLoc(w: var Writer; dest: var TokenBuf; loc: TLoc) =
   dest.addIdent toNifTag(loc.k)
