@@ -38,7 +38,8 @@ proc checkForSink*(config: ConfigRef; idgen: IdGenerator; owner: PSym; arg: PNod
         sinkType.add argType
 
         arg.sym.typ = sinkType
-        owner.typ[arg.sym.position+1] = sinkType
+        #owner.typ[arg.sym.position+1] = sinkType
+        assert owner.typ.n[arg.sym.position+1].sym == arg.sym
 
         #message(config, arg.info, warnUser,
         #  ("turned '$1' to a sink parameter") % [$arg])
