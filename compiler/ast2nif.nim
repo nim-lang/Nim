@@ -19,31 +19,12 @@ import "../dist/nimony/src/lib" / [bitabs, nifstreams, nifcursors, lineinfos,
   nifindexes, nifreader]
 import "../dist/nimony/src/gear2" / modnames
 import "../dist/nimony/src/models" / nifindex_tags
-
+import typekeys
 import ic / [enum2nif]
 
 # Re-export types needed for hook, converter, and method handling
 export nifindexes.AttachedOp, nifindexes.HookIndexEntry, nifindexes.HooksPerType
 export nifindexes.ClassIndexEntry, nifindexes.MethodIndexEntry
-
-# -------------- Module name handling --------------------------------------------
-
-proc cachedModuleSuffix*(config: ConfigRef; fileIdx: FileIndex): string =
-  ## Gets or computes the module suffix for a FileIndex.
-  ## For NIF modules, the suffix is already stored in the file info.
-  ## For source files, computes it from the path.
-  let fullPath = toFullPath(config, fileIdx)
-  if fileInfoKind(config, fileIdx) == fikNifModule:
-    result = fullPath  # Already a suffix
-  else:
-    result = moduleSuffix(fullPath, cast[seq[string]](config.searchPaths))
-
-proc modname(module: int; conf: ConfigRef): string =
-  cachedModuleSuffix(conf, module.FileIndex)
-
-proc modname(module: PSym; conf: ConfigRef): string =
-  assert module.kindImpl == skModule
-  modname(module.positionImpl, conf)
 
 
 proc toAttachedOp*(op: TTypeAttachedOp): AttachedOp =

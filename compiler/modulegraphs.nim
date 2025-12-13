@@ -79,6 +79,7 @@ type
     typeInstCache*: Table[ItemId, seq[LazyType]] # A symbol's ItemId.
     procInstCache*: Table[ItemId, seq[LazyInstantiation]] # A symbol's ItemId.
     attachedOps*: array[TTypeAttachedOp, Table[ItemId, LazySym]] # Type ID, destructors, etc.
+    opsLog*: seq[LogEntry]
     methodsPerGenericType*: Table[ItemId, seq[(int, LazySym)]] # Type ID, attached methods
     memberProcsPerType*: Table[ItemId, seq[PSym]] # Type ID, attached member procs (only c++, virtual,member and ctor so far).
     initializersPerType*: Table[ItemId, PNode] # Type ID, AST call to the default ctor (c++ only)
@@ -367,6 +368,7 @@ proc getAttachedOp*(g: ModuleGraph; t: PType; op: TTypeAttachedOp): PSym =
 proc setAttachedOp*(g: ModuleGraph; module: int; t: PType; op: TTypeAttachedOp; value: PSym) =
   ## we also need to record this to the packed module.
   g.attachedOps[op][t.itemId] = LazySym(sym: value)
+  g.opsLog.add LogEntry(kind: HookEntry, op: op, typ: t, sym: value)
 
 proc setAttachedOp*(g: ModuleGraph; module: int; typeId: ItemId; op: TTypeAttachedOp; value: PSym) =
   ## Overload that takes ItemId directly, useful for registering hooks from NIF index.
@@ -414,6 +416,7 @@ proc getToStringProc*(g: ModuleGraph; t: PType): PSym =
 
 proc setToStringProc*(g: ModuleGraph; t: PType; value: PSym) =
   g.enumToStringProcs[t.itemId] = LazySym(sym: value)
+  g.opsLog.add LogEntry(kind: EnumToStrEntry, typ: t, sym: value)
 
 iterator methodsForGeneric*(g: ModuleGraph; t: PType): (int, PSym) =
   if g.methodsPerGenericType.contains(t.itemId):
@@ -422,6 +425,7 @@ iterator methodsForGeneric*(g: ModuleGraph; t: PType): (int, PSym) =
 
 proc addMethodToGeneric*(g: ModuleGraph; module: int; t: PType; col: int; m: PSym) =
   g.methodsPerGenericType.mgetOrPut(t.itemId, @[]).add (col, LazySym(sym: m))
+  g.opsLog.add LogEntry(kind: MethodEntry, typ: t, sym: m)
 
 proc hasDisabledAsgn*(g: ModuleGraph; t: PType): bool =
   let op = getAttachedOp(g, t, attachedAsgn)
