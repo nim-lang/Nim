@@ -390,15 +390,15 @@ else:
     ## Generic `destructor`:idx: implementation that can be overridden.
     discard
 
-  when defined(nimAllowNonVarDestructor) and arcLikeMem:
-    proc `=destroy`*(x: string) {.inline, magic: "Destroy", enforceNoRaises.} =
-      discard
+when defined(nimAllowNonVarDestructor) and arcLikeMem:
+  proc `=destroy`*(x: string) {.inline, magic: "Destroy", enforceNoRaises.} =
+    discard
 
-    proc `=destroy`*[T](x: seq[T]) {.inline, magic: "Destroy".} =
-      discard
+  proc `=destroy`*[T](x: seq[T]) {.inline, magic: "Destroy".} =
+    discard
 
-    proc `=destroy`*[T](x: ref T) {.inline, magic: "Destroy".} =
-      discard
+  proc `=destroy`*[T](x: ref T) {.inline, magic: "Destroy".} =
+    discard
 
 when defined(nimHasDup):
   proc `=dup`*[T](x: T): T {.inline, magic: "Dup".} =

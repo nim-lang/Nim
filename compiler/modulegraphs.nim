@@ -367,8 +367,9 @@ proc getAttachedOp*(g: ModuleGraph; t: PType; op: TTypeAttachedOp): PSym =
 
 proc setAttachedOp*(g: ModuleGraph; module: int; t: PType; op: TTypeAttachedOp; value: PSym) =
   ## we also need to record this to the packed module.
+  if not g.attachedOps[op].contains(t.itemId):
+    g.opsLog.add LogEntry(kind: HookEntry, op: op, typ: t, sym: value)
   g.attachedOps[op][t.itemId] = LazySym(sym: value)
-  g.opsLog.add LogEntry(kind: HookEntry, op: op, typ: t, sym: value)
 
 proc setAttachedOp*(g: ModuleGraph; module: int; typeId: ItemId; op: TTypeAttachedOp; value: PSym) =
   ## Overload that takes ItemId directly, useful for registering hooks from NIF index.
@@ -779,6 +780,10 @@ proc moduleFromRodFile*(g: ModuleGraph; fileIdx: FileIndex;
     result = moduleFromRodFile(g.packed, g.config, g.cache, fileIdx, cachedModules)
   else:
     result = nil
+
+proc processLogOps*(g: ModuleGraph; logOps: seq[LogEntry]) =
+  for x in logOps:
+    discard
 
 when not defined(nimKochBootstrap):
   proc moduleFromNifFile*(g: ModuleGraph; fileIdx: FileIndex;

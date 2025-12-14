@@ -664,11 +664,26 @@ proc buildExportBuf(w: var Writer): TokenBuf =
         result.add identToken(pool.strings.getOrIncl(name), NoLineInfo)
       result.addParRi()
 
+proc translateOpsLog(w: var Writer; opsLog: seq[LogEntry]): IndexSections =
+  result = IndexSections(hooks: default array[AttachedOp, seq[HookIndexEntry]], converters: @[], classes: @[])
+  for entry in opsLog:
+    let key = pool.syms.getOrIncl(entry.typ.typeKey(w.infos.config))
+    let sym = pool.syms.getOrIncl(w.toNifSymName(entry.sym))
+    case entry.kind
+    of HookEntry:
+      result.hooks[toAttachedOp(entry.op)].add HookIndexEntry(isGeneric: entry.isGeneric, typ: key, hook: sym)
+    of ConverterEntry:
+      result.converters.add (key, sym)
+    of MethodEntry:
+      discard "to implement"
+    of EnumToStrEntry:
+      discard "to implement"
+
+
 let replayTag = registerTag("replay")
 
 proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode;
-                     hooks: array[AttachedOp, seq[HookIndexEntry]];
-                     converters: seq[(nifstreams.SymId, nifstreams.SymId)];
+                     opsLog: seq[LogEntry];
                      classes: seq[ClassIndexEntry];
                      replayActions: seq[PNode] = @[]) =
   var w = Writer(infos: LineInfoWriter(config: config), currentModule: thisModule)
@@ -702,17 +717,9 @@ proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode;
 
   # Build index with export, hook, converter, and method information
   let exportBuf = buildExportBuf(w)
-  createIndex(d, dest[0].info, false,
-    IndexSections(hooks: hooks, converters: converters, classes: classes, exportBuf: exportBuf))
-
-  # Don't unload symbols/types yet - they may be needed by other modules that haven't
-  # had their NIF files written. For recursive module dependencies (like system.nim),
-  # we need all NIFs to exist before we can safely unload and reload.
-  # TODO: Implement deferred unloading at end of compilation for memory savings.
-  #for typ in w.writtenTypes:
-  #  forcePartial(typ)
-  #for sym in w.writtenSyms:
-  #  forcePartial(sym)
+  var sections = translateOpsLog(w, opsLog)
+  sections.exportBuf = exportBuf
+  createIndex(d, dest[0].info, false, sections)
 
 
 # --------------------------- Loader (lazy!) -----------------------------------------------
@@ -1443,8 +1450,7 @@ proc tryResolveCompilerProc*(c: var DecodeContext; name: string; moduleFileIdx: 
   result = resolveSym(c, symName, true)
 
 proc loadNifModule*(c: var DecodeContext; f: FileIndex; interf, interfHidden: var TStrTable;
-                    hooks: var Table[nifstreams.SymId, HooksPerType];
-                    converters: var seq[(string, string)];
+                    logOps: var seq[LogEntry];
                     classes: var seq[ClassIndexEntry];
                     loadFullAst: bool = false): PNode =
   let suffix = moduleSuffix(c.infos.config, f)

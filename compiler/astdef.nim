@@ -1000,6 +1000,7 @@ type
   LogEntry* = object
     kind*: LogEntryKind
     op*: TTypeAttachedOp
+    isGeneric*: bool
     typ*: PType
     sym*: PSym
 
