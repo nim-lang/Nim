@@ -813,8 +813,10 @@ proc replaceSon*(n: PNode; i: int; newson: PNode) {.inline.} =
 
 proc last*(n: PType): PType {.inline.} =
   if n.state == Partial: loadType(n)
-  assert n.kind != tyProc
-  n.sonsImpl[^1]
+  if n.kind == tyProc and n.nImpl.len > 1:
+    n.nImpl[^1].sym.typ
+  else:
+    n.sonsImpl[^1]
 
 proc elementType*(n: PType): PType {.inline.} =
   if n.state == Partial: loadType(n)
