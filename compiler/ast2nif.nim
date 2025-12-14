@@ -22,33 +22,6 @@ import "../dist/nimony/src/models" / nifindex_tags
 import typekeys
 import ic / [enum2nif]
 
-# Re-export types needed for hook, converter, and method handling
-export nifindexes.AttachedOp, nifindexes.HookIndexEntry, nifindexes.HooksPerType
-export nifindexes.ClassIndexEntry, nifindexes.MethodIndexEntry
-
-
-proc toAttachedOp*(op: TTypeAttachedOp): AttachedOp =
-  ## Maps Nim compiler's TTypeAttachedOp to nimony's AttachedOp.
-  ## Returns attachedDestroy for attachedDeepCopy (caller should skip it).
-  case op
-  of attachedDestructor: attachedDestroy
-  of attachedAsgn: attachedCopy
-  of attachedWasMoved: nifindexes.attachedWasMoved
-  of attachedDup: nifindexes.attachedDup
-  of attachedSink: nifindexes.attachedSink
-  of attachedTrace: nifindexes.attachedTrace
-  of attachedDeepCopy: attachedDestroy  # Not supported, caller should skip
-
-proc toTTypeAttachedOp*(op: AttachedOp): TTypeAttachedOp =
-  ## Maps nimony's AttachedOp back to Nim compiler's TTypeAttachedOp.
-  case op
-  of attachedDestroy: attachedDestructor
-  of attachedCopy: attachedAsgn
-  of nifindexes.attachedWasMoved: astdef.attachedWasMoved
-  of nifindexes.attachedDup: astdef.attachedDup
-  of nifindexes.attachedSink: astdef.attachedSink
-  of nifindexes.attachedTrace: astdef.attachedTrace
-
 proc typeToNifSym(typ: PType; config: ConfigRef): string =
   result = "`t"
   result.addInt ord(typ.kind)
@@ -664,27 +637,52 @@ proc buildExportBuf(w: var Writer): TokenBuf =
         result.add identToken(pool.strings.getOrIncl(name), NoLineInfo)
       result.addParRi()
 
-proc translateOpsLog(w: var Writer; opsLog: seq[LogEntry]): IndexSections =
-  result = IndexSections(hooks: default array[AttachedOp, seq[HookIndexEntry]], converters: @[], classes: @[])
-  for entry in opsLog:
-    let key = pool.syms.getOrIncl(entry.key)
-    let sym = pool.syms.getOrIncl(w.toNifSymName(entry.sym))
-    case entry.kind
-    of HookEntry:
-      result.hooks[toAttachedOp(entry.op)].add HookIndexEntry(isGeneric: entry.isGeneric, typ: key, hook: sym)
-    of ConverterEntry:
-      result.converters.add (key, sym)
-    of MethodEntry:
-      discard "to implement"
-    of EnumToStrEntry:
-      discard "to implement"
-
-
 let replayTag = registerTag("replay")
+let repConverterTag = registerTag("repconverter")
+let repDestroyTag = registerTag("repdestroy")
+let repWasMovedTag = registerTag("repwasmoved")
+let repCopyTag = registerTag("repcopy")
+let repSinkTag = registerTag("repsink")
+let repDupTag = registerTag("repdup")
+let repTraceTag = registerTag("reptrace")
+let repDeepCopyTag = registerTag("repdeepcopy")
+let repEnumToStrTag = registerTag("repenumtostr")
+let repMethodTag = registerTag("repmethod")
+#let repClassTag = registerTag("repclass")
+
+proc writeOp(w: var Writer; content: var TokenBuf; op: LogEntry) =
+  case op.kind
+  of HookEntry:
+    case op.op
+    of attachedDestructor:
+      content.addParLe repDestroyTag, NoLineInfo
+    of attachedAsgn:
+      content.addParLe repCopyTag, NoLineInfo
+    of attachedWasMoved:
+      content.addParLe repWasMovedTag, NoLineInfo
+    of attachedDup:
+      content.addParLe repDupTag, NoLineInfo
+    of attachedSink:
+      content.addParLe repSinkTag, NoLineInfo
+    of attachedTrace:
+      content.addParLe repTraceTag, NoLineInfo
+    of attachedDeepCopy:
+      content.addParLe repDeepCopyTag, NoLineInfo
+    content.add strToken(pool.strings.getOrIncl(op.key), NoLineInfo)
+    content.add symToken(pool.syms.getOrIncl(w.toNifSymName(op.sym)), NoLineInfo)
+    content.addParRi()
+  of ConverterEntry:
+    content.addParLe repConverterTag, NoLineInfo
+    content.add strToken(pool.strings.getOrIncl(op.key), NoLineInfo)
+    content.add symToken(pool.syms.getOrIncl(w.toNifSymName(op.sym)), NoLineInfo)
+    content.addParRi()
+  of MethodEntry:
+    discard "to implement"
+  of EnumToStrEntry:
+    discard "to implement"
 
 proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode;
                      opsLog: seq[LogEntry];
-                     classes: seq[ClassIndexEntry];
                      replayActions: seq[PNode] = @[]) =
   var w = Writer(infos: LineInfoWriter(config: config), currentModule: thisModule)
   var content = createTokenBuf(300)
@@ -698,6 +696,8 @@ proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode;
     for action in replayActions:
       writeNode(w, content, action)
     content.addParRi()
+  for op in opsLog:
+    writeOp(w, content, op)
 
   w.writeToplevelNode content, n
 
@@ -715,12 +715,9 @@ proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode;
 
   writeFile(dest, d)
 
-  # Build index with export, hook, converter, and method information
   let exportBuf = buildExportBuf(w)
-  var sections = translateOpsLog(w, opsLog)
-  sections.exportBuf = exportBuf
-  createIndex(d, dest[0].info, false, sections)
-
+  createIndex(d, dest[0].info, false,
+    IndexSections(exportBuf: exportBuf))
 
 # --------------------------- Loader (lazy!) -----------------------------------------------
 
@@ -1431,9 +1428,28 @@ proc tryResolveCompilerProc*(c: var DecodeContext; name: string; moduleFileIdx: 
   let symName = name & ".0." & suffix
   result = resolveSym(c, symName, true)
 
+proc loadLogOp(c: var DecodeContext; logOps: var seq[LogEntry]; s: ptr Stream; kind: LogEntryKind; op: TTypeAttachedOp): PackedToken =
+  result = next(s[])
+  var key = ""
+  if result.kind == StringLit:
+    key = pool.strings[result.litId]
+    result = next(s[])
+  else:
+    raiseAssert "expected StringLit but got " & $result.kind
+  if result.kind == Symbol:
+    let sym = resolveHookSym(c, result.symId)
+    if sym != nil:
+      logOps.add LogEntry(kind: kind, op: op, key: key, sym: sym)
+    else:
+      raiseAssert "symbol not found: " & pool.syms[result.symId]
+    result = next(s[])
+  if result.kind == ParRi:
+    result = next(s[])
+  else:
+    raiseAssert "expected ParRi but got " & $result.kind
+
 proc loadNifModule*(c: var DecodeContext; f: FileIndex; interf, interfHidden: var TStrTable;
                     logOps: var seq[LogEntry];
-                    classes: var seq[ClassIndexEntry];
                     loadFullAst: bool = false): PNode =
   let suffix = moduleSuffix(c.infos.config, f)
 
@@ -1443,26 +1459,6 @@ proc loadNifModule*(c: var DecodeContext; f: FileIndex; interf, interfHidden: va
   # Populate interface tables from the NIF index structure
   # Symbols are created as stubs (Partial state) and will be loaded lazily via loadSym
   populateInterfaceTablesFromIndex(c, module, interf, interfHidden, suffix)
-
-  # Return hooks from the index
-  let hooks = move c.mods[module].index.hooks
-  for typeKey, h in hooks:
-    for op in AttachedOp:
-      let (hookSymId, isGeneric) = h.a[op]
-      let hookSym = resolveHookSym(c, hookSymId)
-      if hookSym != nil:
-        logOps.add LogEntry(kind: HookEntry, op: toTTypeAttachedOp(op),
-          isGeneric: isGeneric, key: pool.syms[typeKey], sym: hookSym)
-  # Return converters from the index
-  let converters = move c.mods[module].index.converters
-  for (destType, convSym) in converters:
-    let symId = pool.syms.getOrIncl(convSym)
-    let convPSym = resolveHookSym(c, symId)  # reuse hook resolution
-    if convPSym != nil:
-      logOps.add LogEntry(kind: ConverterEntry,
-        isGeneric: false, key: destType, sym: convPSym)
-  # Return classes/methods from the index
-  classes = move c.mods[module].index.classes
 
   # Load the module AST (or just replay actions if loadFullAst is false)
   result = newNode(nkStmtList)
@@ -1477,8 +1473,7 @@ proc loadNifModule*(c: var DecodeContext; f: FileIndex; interf, interfHidden: va
     # Process all top-level statements
     while t.kind != ParRi and t.kind != EofToken:
       if t.kind == ParLe:
-        let tag = pool.tags[t.tagId]
-        if tag == "replay":
+        if t.tagId == replayTag:
           # Always load replay actions (macro cache operations)
           t = next(s[])  # move past (replay
           while t.kind != ParRi and t.kind != EofToken:
@@ -1490,6 +1485,32 @@ proc loadNifModule*(c: var DecodeContext; f: FileIndex; interf, interfHidden: va
               if replayNode != nil:
                 result.sons.add replayNode
             t = next(s[])
+          if t.kind == ParRi:
+            t = next(s[])
+          else:
+            raiseAssert "expected ParRi but got " & $t.kind
+        elif t.tagId == repConverterTag:
+          t = loadLogOp(c, logOps, s, ConverterEntry, attachedTrace)
+        elif t.tagId == repDestroyTag:
+          t = loadLogOp(c, logOps, s, HookEntry, attachedDestructor)
+        elif t.tagId == repWasMovedTag:
+          t = loadLogOp(c, logOps, s, HookEntry, attachedWasMoved)
+        elif t.tagId == repCopyTag:
+          t = loadLogOp(c, logOps, s, HookEntry, attachedAsgn)
+        elif t.tagId == repSinkTag:
+          t = loadLogOp(c, logOps, s, HookEntry, attachedSink)
+        elif t.tagId == repDupTag:
+          t = loadLogOp(c, logOps, s, HookEntry, attachedDup)
+        elif t.tagId == repTraceTag:
+          t = loadLogOp(c, logOps, s, HookEntry, attachedTrace)
+        elif t.tagId == repDeepCopyTag:
+          t = loadLogOp(c, logOps, s, HookEntry, attachedDeepCopy)
+        elif t.tagId == repEnumToStrTag:
+          t = loadLogOp(c, logOps, s, EnumToStrEntry, attachedTrace)
+        elif t.tagId == repMethodTag:
+          t = loadLogOp(c, logOps, s, MethodEntry, attachedTrace)
+          #elif t.tagId == repClassTag:
+          #  t = loadLogOp(c, logOps, s, ClassEntry, attachedTrace)
         elif loadFullAst:
           # Parse the full statement
           var buf = createTokenBuf(50)

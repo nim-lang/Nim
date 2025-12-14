@@ -254,23 +254,8 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
         for (m, n) in PCtx(graph.vm).vmstateDiff:
           if m == module:
             replayActions.add n
-      # Collect methods per type for classes
-      var classes: seq[ClassIndexEntry] = @[]
-      for typeId, methodList in graph.methodsPerType:
-        if typeId.module == module.position.int32:
-          var methods: seq[MethodIndexEntry] = @[]
-          for lazySym in methodList:
-            let sym = lazySym.sym
-            if sym != nil:
-              # Generate a method signature (simplified - name and param count)
-              let sig = sym.name.s & "/" & $sym.typImpl.sonsImpl.len
-              methods.add toMethodIndexEntry(graph.config, sym, sig)
-          if methods.len > 0:
-            classes.add ClassIndexEntry(
-              cls: toClassSymId(graph.config, typeId),
-              methods: methods
-            )
-      writeNifModule(graph.config, module.position.int32, topLevelStmts, move(graph.opsLog), classes, replayActions)
+
+      writeNifModule(graph.config, module.position.int32, topLevelStmts, move(graph.opsLog), replayActions)
 
   if graph.config.backend notin {backendC, backendCpp, backendObjc} and graph.config.cmd != cmdM:
     # We only write rod files here if no C-like backend is active.

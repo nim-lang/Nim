@@ -816,9 +816,8 @@ when not defined(nimKochBootstrap):
     # Register module in graph
     registerModule(g, result)
     var opsLog: seq[LogEntry] = @[]
-    var classes: seq[ClassIndexEntry] = @[]
     result.astImpl = loadNifModule(ast.program, fileIdx, g.ifaces[fileIdx.int].interf,
-                                   g.ifaces[fileIdx.int].interfHidden, opsLog, classes, loadFullAst)
+                                   g.ifaces[fileIdx.int].interfHidden, opsLog, loadFullAst)
     # Register hooks from NIF index with the module graph
     for x in opsLog:
       case x.kind
