@@ -20,6 +20,8 @@ when not defined(nimKochBootstrap):
   import ast2nif
   import "../dist/nimony/src/lib" / [nifstreams, bitabs]
 
+import typekeys
+
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
@@ -79,6 +81,7 @@ type
     typeInstCache*: Table[ItemId, seq[LazyType]] # A symbol's ItemId.
     procInstCache*: Table[ItemId, seq[LazyInstantiation]] # A symbol's ItemId.
     attachedOps*: array[TTypeAttachedOp, Table[ItemId, LazySym]] # Type ID, destructors, etc.
+    loadedOps: array[TTypeAttachedOp, Table[string, PSym]] # This can later by unified with `attachedOps` once it's stable
     opsLog*: seq[LogEntry]
     methodsPerGenericType*: Table[ItemId, seq[(int, LazySym)]] # Type ID, attached methods
     memberProcsPerType*: Table[ItemId, seq[PSym]] # Type ID, attached member procs (only c++, virtual,member and ctor so far).
@@ -368,7 +371,8 @@ proc getAttachedOp*(g: ModuleGraph; t: PType; op: TTypeAttachedOp): PSym =
 proc setAttachedOp*(g: ModuleGraph; module: int; t: PType; op: TTypeAttachedOp; value: PSym) =
   ## we also need to record this to the packed module.
   if not g.attachedOps[op].contains(t.itemId):
-    g.opsLog.add LogEntry(kind: HookEntry, op: op, typ: t, sym: value)
+    let key = typeKey(t, g.config, loadTypeCallback, loadSymCallback)
+    g.opsLog.add LogEntry(kind: HookEntry, op: op, key: key, sym: value)
   g.attachedOps[op][t.itemId] = LazySym(sym: value)
 
 proc setAttachedOp*(g: ModuleGraph; module: int; typeId: ItemId; op: TTypeAttachedOp; value: PSym) =
@@ -417,7 +421,8 @@ proc getToStringProc*(g: ModuleGraph; t: PType): PSym =
 
 proc setToStringProc*(g: ModuleGraph; t: PType; value: PSym) =
   g.enumToStringProcs[t.itemId] = LazySym(sym: value)
-  g.opsLog.add LogEntry(kind: EnumToStrEntry, typ: t, sym: value)
+  let key = typeKey(t, g.config, loadTypeCallback, loadSymCallback)
+  g.opsLog.add LogEntry(kind: EnumToStrEntry, key: key, sym: value)
 
 iterator methodsForGeneric*(g: ModuleGraph; t: PType): (int, PSym) =
   if g.methodsPerGenericType.contains(t.itemId):
@@ -426,7 +431,8 @@ iterator methodsForGeneric*(g: ModuleGraph; t: PType): (int, PSym) =
 
 proc addMethodToGeneric*(g: ModuleGraph; module: int; t: PType; col: int; m: PSym) =
   g.methodsPerGenericType.mgetOrPut(t.itemId, @[]).add (col, LazySym(sym: m))
-  g.opsLog.add LogEntry(kind: MethodEntry, typ: t, sym: m)
+  let key = typeKey(t, g.config, loadTypeCallback, loadSymCallback)
+  g.opsLog.add LogEntry(kind: MethodEntry, key: key, sym: m)
 
 proc hasDisabledAsgn*(g: ModuleGraph; t: PType): bool =
   let op = getAttachedOp(g, t, attachedAsgn)
@@ -809,38 +815,23 @@ when not defined(nimKochBootstrap):
 
     # Register module in graph
     registerModule(g, result)
-    var hooks = initTable[nifstreams.SymId, HooksPerType]()
-    var converters: seq[(string, string)] = @[]
+    var opsLog: seq[LogEntry] = @[]
     var classes: seq[ClassIndexEntry] = @[]
     result.astImpl = loadNifModule(ast.program, fileIdx, g.ifaces[fileIdx.int].interf,
-                                   g.ifaces[fileIdx.int].interfHidden, hooks, converters, classes, loadFullAst)
+                                   g.ifaces[fileIdx.int].interfHidden, opsLog, classes, loadFullAst)
     # Register hooks from NIF index with the module graph
-    for typSymId, hooksPerType in hooks:
-      let typeItemId = parseTypeSymIdToItemId(ast.program, typSymId)
-      if typeItemId.module >= 0:
-        for op in AttachedOp:
-          let (hookSymId, isGeneric) = hooksPerType.a[op]
-          if hookSymId != nifstreams.SymId(0):
-            let hookSym = resolveHookSym(ast.program, hookSymId)
-            if hookSym != nil:
-              setAttachedOp(g, int(fileIdx), typeItemId, toTTypeAttachedOp(op), hookSym)
-    # Register converters from NIF index with the module's interface
-    for (destType, convSym) in converters:
-      let symId = pool.syms.getOrIncl(convSym)
-      let convPSym = resolveHookSym(ast.program, symId)  # reuse hook resolution
-      if convPSym != nil:
-        g.ifaces[fileIdx.int].converters.add LazySym(sym: convPSym)
+    for x in opsLog:
+      case x.kind
+      of HookEntry:
+        g.loadedOps[x.op][x.key] = x.sym
+      of ConverterEntry:
+        g.ifaces[fileIdx.int].converters.add LazySym(sym: x.sym)
+      of MethodEntry:
+        discard "todo"
+      of EnumToStrEntry:
+        discard "todo"
     # Register methods per type from NIF index
-    for classEntry in classes:
-      let typeItemId = parseTypeSymIdToItemId(ast.program, classEntry.cls)
-      if typeItemId.module >= 0:
-        var methodSyms: seq[LazySym] = @[]
-        for methodEntry in classEntry.methods:
-          let methodSym = resolveHookSym(ast.program, methodEntry.fn)
-          if methodSym != nil:
-            methodSyms.add LazySym(sym: methodSym)
-        if methodSyms.len > 0:
-          setMethodsPerType(g, typeItemId, methodSyms)
+    discard "todo"
     cachedModules.add fileIdx
 
 proc configComplete*(g: ModuleGraph) =

@@ -46,6 +46,12 @@ template loadType(t: PType) =
   when not defined(nimKochBootstrap):
     ast2nif.loadType(program, t)
 
+proc loadSymCallback*(s: PSym) {.nimcall.} =
+  loadSym(s)
+
+proc loadTypeCallback*(t: PType) {.nimcall.} =
+  loadType(t)
+
 proc ensureMutable*(s: PSym) {.inline.} =
   assert s.state != Sealed
   if s.state == Partial: loadSym(s)

@@ -1001,7 +1001,7 @@ type
     kind*: LogEntryKind
     op*: TTypeAttachedOp
     isGeneric*: bool
-    typ*: PType
+    key*: string
     sym*: PSym
 
 

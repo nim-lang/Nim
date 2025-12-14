@@ -667,7 +667,7 @@ proc buildExportBuf(w: var Writer): TokenBuf =
 proc translateOpsLog(w: var Writer; opsLog: seq[LogEntry]): IndexSections =
   result = IndexSections(hooks: default array[AttachedOp, seq[HookIndexEntry]], converters: @[], classes: @[])
   for entry in opsLog:
-    let key = pool.syms.getOrIncl(entry.typ.typeKey(w.infos.config))
+    let key = pool.syms.getOrIncl(entry.key)
     let sym = pool.syms.getOrIncl(w.toNifSymName(entry.sym))
     case entry.kind
     of HookEntry:
@@ -1393,24 +1393,6 @@ proc toNifIndexFilename*(conf: ConfigRef; f: FileIndex): string =
   let suffix = moduleSuffix(conf, f)
   result = toGeneratedFile(conf, AbsoluteFile(suffix), ".s.idx.nif").string
 
-proc parseTypeSymIdToItemId*(c: var DecodeContext; symId: nifstreams.SymId): ItemId =
-  ## Parses a type SymId (format: `"`tN.modulesuffix"`) to extract ItemId.
-  let s = pool.syms[symId]
-  if not s.startsWith("`t"):
-    return ItemId(module: -1, item: 0)
-  var i = 2  # skip "`t"
-  var item = 0'i32
-  while i < s.len and s[i] in {'0'..'9'}:
-    item = item * 10 + int32(ord(s[i]) - ord('0'))
-    inc i
-  if i < s.len and s[i] == '.':
-    inc i
-    let suffix = s.substr(i)
-    let module = moduleId(c, suffix)
-    result = ItemId(module: int32(module), item: item)
-  else:
-    result = ItemId(module: -1, item: item)
-
 proc resolveSym(c: var DecodeContext; symAsStr: string; alsoConsiderPrivate: bool): PSym =
   result = c.syms.getOrDefault(symAsStr)[0]
   if result != nil:
@@ -1463,9 +1445,22 @@ proc loadNifModule*(c: var DecodeContext; f: FileIndex; interf, interfHidden: va
   populateInterfaceTablesFromIndex(c, module, interf, interfHidden, suffix)
 
   # Return hooks from the index
-  hooks = move c.mods[module].index.hooks
+  let hooks = move c.mods[module].index.hooks
+  for typeKey, h in hooks:
+    for op in AttachedOp:
+      let (hookSymId, isGeneric) = h.a[op]
+      let hookSym = resolveHookSym(c, hookSymId)
+      if hookSym != nil:
+        logOps.add LogEntry(kind: HookEntry, op: toTTypeAttachedOp(op),
+          isGeneric: isGeneric, key: pool.syms[typeKey], sym: hookSym)
   # Return converters from the index
-  converters = move c.mods[module].index.converters
+  let converters = move c.mods[module].index.converters
+  for (destType, convSym) in converters:
+    let symId = pool.syms.getOrIncl(convSym)
+    let convPSym = resolveHookSym(c, symId)  # reuse hook resolution
+    if convPSym != nil:
+      logOps.add LogEntry(kind: ConverterEntry,
+        isGeneric: false, key: destType, sym: convPSym)
   # Return classes/methods from the index
   classes = move c.mods[module].index.classes
 

@@ -48,10 +48,20 @@ type
     CoDistinct
     CoHashTypeInsideNode
 
-proc typeKey(c: var Mangler, t: PType; flags: set[ConsiderFlag]; conf: ConfigRef)
-proc symKey(c: var Mangler, s: PSym; conf: ConfigRef) =
+  TypeLoader* = proc (t: PType) {.nimcall.}
+  SymLoader* = proc (s: PSym) {.nimcall.}
+  Context = object
+    m: Mangler
+    tl: TypeLoader
+    sl: SymLoader
+
+proc typeKey(c: var Context; t: PType; flags: set[ConsiderFlag]; conf: ConfigRef)
+proc symKey(c: var Context; s: PSym; conf: ConfigRef) =
+  if s.state == Partial:
+    assert c.sl != nil
+    c.sl(s)
   if sfAnon in s.flagsImpl or s.kindImpl == skGenericParam:
-    c.addIdent("´anon")
+    c.m.addIdent("´anon")
   else:
     var name = s.name.s
     name.add '.'
@@ -67,32 +77,32 @@ proc symKey(c: var Mangler, s: PSym; conf: ConfigRef) =
     if it.kindImpl == skModule:
       name.add '.'
       name.add modname(it, conf)
-    c.addSymbol(name)
+    c.m.addSymbol(name)
 
-proc treeKey(c: var Mangler, n: PNode; flags: set[ConsiderFlag]; conf: ConfigRef) =
+proc treeKey(c: var Context; n: PNode; flags: set[ConsiderFlag]; conf: ConfigRef) =
   if n == nil:
-    c.addEmpty()
+    c.m.addEmpty()
     return
 
   let k = n.kind
   case k
   of nkEmpty, nkNilLit, nkType: discard
   of nkIdent:
-    c.addIdent(n.ident.s)
+    c.m.addIdent(n.ident.s)
   of nkSym:
     symKey(c, n.sym, conf)
     if CoHashTypeInsideNode in flags and n.sym.typImpl != nil:
       typeKey(c, n.sym.typImpl, flags, conf)
   of nkCharLit..nkUInt64Lit:
     let v = n.intVal
-    c.addIntLit v
+    c.m.addIntLit v
   of nkFloatLit..nkFloat64Lit:
     let v = n.floatVal
-    c.addFloatLit v
+    c.m.addFloatLit v
   of nkStrLit..nkTripleStrLit:
-    c.addStrLit n.strVal
+    c.m.addStrLit n.strVal
   else:
-    withTree c, toNifTag(k):
+    withTree c.m, toNifTag(k):
       for i in 0..<n.len: treeKey(c, n[i], flags, conf)
 
 proc skipModifierB(n: PType): PType {.inline.} =
@@ -110,14 +120,18 @@ proc skipGenericAlias(t: PType): PType =
   if result.isGenericAlias:
     result = result.skipModifierB.skipTypesB({tyAlias})
 
-proc maybeImported(c: var Mangler, s: PSym; conf: ConfigRef) {.inline.} =
+proc maybeImported(c: var Context; s: PSym; conf: ConfigRef) {.inline.} =
   if s != nil and {sfImportc, sfExportc} * s.flagsImpl != {}:
     c.symKey(s, conf)
 
-proc typeKey(c: var Mangler, t: PType; flags: set[ConsiderFlag]; conf: ConfigRef) =
+proc typeKey(c: var Context; t: PType; flags: set[ConsiderFlag]; conf: ConfigRef) =
   if t == nil:
-    c.addEmpty()
+    c.m.addEmpty()
     return
+
+  if t.state == Partial:
+    assert c.tl != nil
+    c.tl(t)
 
   case t.kind
   of tyGenericInvocation:
@@ -147,56 +161,56 @@ proc typeKey(c: var Mangler, t: PType; flags: set[ConsiderFlag]; conf: ConfigRef
     c.typeKey t.skipModifierB, flags, conf
   of tyOwned:
     if CoConsiderOwned in flags:
-      withTree c, toNifTag(t.kind):
+      withTree c.m, toNifTag(t.kind):
         c.typeKey t.skipModifierB, flags, conf
     else:
       c.typeKey t.skipModifierB, flags, conf
   of tyBool:
-    withTree c, "bool":
+    withTree c.m, "bool":
       maybeImported(c, t.symImpl, conf)
   of tyChar:
-    withTree c, "c":
-      c.addIntLit 8 # char is always 8 bits
+    withTree c.m, "c":
+      c.m.addIntLit 8 # char is always 8 bits
       maybeImported(c, t.symImpl, conf)
   of tyInt:
-    withTree c, "i":
-      c.addIntLit -1
+    withTree c.m, "i":
+      c.m.addIntLit -1
       maybeImported(c, t.symImpl, conf)
   of tyInt8:
-    withTree c, "i":
-      c.addIntLit 8
+    withTree c.m, "i":
+      c.m.addIntLit 8
       maybeImported(c, t.symImpl, conf)
   of tyInt16:
-    withTree c, "i":
-      c.addIntLit 16
+    withTree c.m, "i":
+      c.m.addIntLit 16
       maybeImported(c, t.symImpl, conf)
   of tyInt32:
-    withTree c, "i":
-      c.addIntLit 32
+    withTree c.m, "i":
+      c.m.addIntLit 32
       maybeImported(c, t.symImpl, conf)
   of tyInt64:
-    withTree c, "i":
-      c.addIntLit 64
+    withTree c.m, "i":
+      c.m.addIntLit 64
       maybeImported(c, t.symImpl, conf)
   of tyUInt:
-    withTree c, "u":
-      c.addIntLit -1
+    withTree c.m, "u":
+      c.m.addIntLit -1
       maybeImported(c, t.symImpl, conf)
   of tyUInt8:
-    withTree c, "u":
-      c.addIntLit 8
+    withTree c.m, "u":
+      c.m.addIntLit 8
       maybeImported(c, t.symImpl, conf)
   of tyUInt16:
-    withTree c, "u":
-      c.addIntLit 16
+    withTree c.m, "u":
+      c.m.addIntLit 16
       maybeImported(c, t.symImpl, conf)
   of tyUInt32:
-    withTree c, "u":
-      c.addIntLit 32
+    withTree c.m, "u":
+      c.m.addIntLit 32
       maybeImported(c, t.symImpl, conf)
   of tyUInt64:
-    withTree c, "u":
-      c.addIntLit 64
+    withTree c.m, "u":
+      c.m.addIntLit 64
       maybeImported(c, t.symImpl, conf)
   of tyObject, tyEnum:
     if t.typeInstImpl != nil:
@@ -211,15 +225,15 @@ proc typeKey(c: var Mangler, t: PType; flags: set[ConsiderFlag]; conf: ConfigRef
     elif t.symImpl != nil:
       c.symKey(t.symImpl, conf)
     else:
-      c.addIdent "`bug"
+      c.m.addIdent "`bug"
   of tyFromExpr:
-    withTree c, toNifTag(t.kind):
+    withTree c.m, toNifTag(t.kind):
       c.treeKey(t.nImpl, flags, conf)
   of tyTuple:
-    withTree c, toNifTag(t.kind):
+    withTree c.m, toNifTag(t.kind):
       if t.nImpl != nil and CoType notin flags:
         for i in 0..<t.nImpl.len:
-          withTree c, "kv":
+          withTree c.m, "kv":
             assert(t.nImpl[i].kind == nkSym)
             c.symKey(t.nImpl[i].sym, conf)
             c.typeKey(t.nImpl[i].sym.typImpl, flags+{CoIgnoreRange}, conf)
@@ -228,17 +242,17 @@ proc typeKey(c: var Mangler, t: PType; flags: set[ConsiderFlag]; conf: ConfigRef
           c.typeKey t.sonsImpl[i], flags+{CoIgnoreRange}, conf
   of tyRange:
     if CoIgnoreRange notin flags:
-      withTree c, toNifTag(t.kind):
+      withTree c.m, toNifTag(t.kind):
         c.treeKey(t.nImpl, {}, conf)
         c.typeKey(t.sonsImpl[^1], flags, conf)
     else:
       c.typeKey(t.sonsImpl[^1], flags, conf)
   of tyStatic:
-    withTree c, toNifTag(t.kind):
+    withTree c.m, toNifTag(t.kind):
       c.treeKey(t.nImpl, {}, conf)
       c.typeKey(t.skipModifierB, flags, conf)
   of tyProc:
-    withTree c, (if tfIterator in t.flagsImpl: "itertype" else: "proctype"):
+    withTree c.m, (if tfIterator in t.flagsImpl: "itertype" else: "proctype"):
       if CoProc in flags and t.nImpl != nil:
         let params = t.nImpl
         for i in 1..<params.len:
@@ -251,19 +265,20 @@ proc typeKey(c: var Mangler, t: PType; flags: set[ConsiderFlag]; conf: ConfigRef
       if t.sonsImpl.len > 0:
         c.typeKey(t.sonsImpl[0], flags, conf)
 
-      c.addIdent toNifTag(t.callConvImpl)
-      if tfVarargs in t.flagsImpl: c.addIdent "´varargs"
+      c.m.addIdent toNifTag(t.callConvImpl)
+      if tfVarargs in t.flagsImpl: c.m.addIdent "´varargs"
   of tyArray:
-    withTree c, toNifTag(t.kind):
+    withTree c.m, toNifTag(t.kind):
       c.typeKey(t.sonsImpl[^1], flags-{CoIgnoreRange}, conf)
       c.typeKey(t.sonsImpl[0], flags-{CoIgnoreRange}, conf)
   else:
-    withTree c, toNifTag(t.kind):
+    withTree c.m, toNifTag(t.kind):
       for i in 1..<t.sonsImpl.len:
         c.typeKey t.sonsImpl[i], flags, conf
-      if tfNotNil in t.flagsImpl and CoType notin flags: c.addIdent "´notnil"
+      if tfNotNil in t.flagsImpl and CoType notin flags:
+        c.m.addIdent "´notnil"
 
-proc typeKey*(t: PType; conf: ConfigRef): string =
-  var c = createMangler(30, -1)
+proc typeKey*(t: PType; conf: ConfigRef; tl: TypeLoader; sl: SymLoader): string =
+  var c: Context = Context(m: createMangler(30, -1), tl: tl, sl: sl)
   typeKey(c, t, {}, conf)
-  result = c.extract()
+  result = c.m.extract()
