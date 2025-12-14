@@ -787,10 +787,6 @@ proc moduleFromRodFile*(g: ModuleGraph; fileIdx: FileIndex;
   else:
     result = nil
 
-proc processLogOps*(g: ModuleGraph; logOps: seq[LogEntry]) =
-  for x in logOps:
-    discard
-
 when not defined(nimKochBootstrap):
   proc moduleFromNifFile*(g: ModuleGraph; fileIdx: FileIndex;
                           cachedModules: var seq[FileIndex];
