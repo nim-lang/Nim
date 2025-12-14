@@ -60,11 +60,12 @@ proc makeCString*(s: string): Rope =
     toCChar(s[i], result)
   result.add('\"')
 
-proc newFileInfo(fullPath: AbsoluteFile, projPath: RelativeFile): TFileInfo =
+proc newFileInfo(fullPath: AbsoluteFile, projPath: RelativeFile; kind = fikSource): TFileInfo =
   result = TFileInfo(fullPath: fullPath, projPath: projPath,
                     shortName: fullPath.extractFilename,
                     quotedFullName: fullPath.string.makeCString,
-                    lines: @[]
+                    lines: @[],
+                    kind: kind
   )
   result.quotedName = result.shortName.makeCString
   when defined(nimpretty):
@@ -132,6 +133,23 @@ proc fileInfoIdx*(conf: ConfigRef; filename: RelativeFile; isKnownFile: var bool
 proc fileInfoIdx*(conf: ConfigRef; filename: RelativeFile): FileIndex =
   var dummy: bool = false
   fileInfoIdx(conf, AbsoluteFile expandFilename(filename.string), dummy)
+
+proc registerNifSuffix*(conf: ConfigRef; suffix: string; isKnownFile: var bool): FileIndex =
+  result = conf.m.filenameToIndexTbl.getOrDefault(suffix, InvalidFileIdx)
+  if result == InvalidFileIdx:
+    isKnownFile = false
+    result = conf.m.fileInfos.len.FileIndex
+    conf.m.fileInfos.add(newFileInfo(AbsoluteFile suffix, RelativeFile suffix, fikNifModule))
+    conf.m.filenameToIndexTbl[suffix] = result
+  else:
+    isKnownFile = true
+
+proc fileInfoKind*(conf: ConfigRef; fileIdx: FileIndex): FileInfoKind =
+  ## Returns the kind of a FileIndex (source file or NIF module suffix).
+  if fileIdx.int >= 0 and fileIdx.int < conf.m.fileInfos.len:
+    result = conf.m.fileInfos[fileIdx.int].kind
+  else:
+    result = fikSource  # Default to source for unknown indices
 
 proc newLineInfo*(fileInfoIdx: FileIndex, line, col: int): TLineInfo =
   result = TLineInfo(fileIndex: fileInfoIdx)

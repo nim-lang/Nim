@@ -29,7 +29,7 @@ proc declareSelf(c: PContext; info: TLineInfo) =
   let ow = getCurrOwner(c)
   let s = newSym(skType, getIdent(c.cache, "Self"), c.idgen, ow, info)
   s.typ = newType(tyTypeDesc, c.idgen, ow)
-  s.typ.flags.incl {tfUnresolved, tfPacked}
+  s.typ.incl {tfUnresolved, tfPacked}
   s.typ.add newType(tyEmpty, c.idgen, ow)
   addDecl(c, s, info)
 
@@ -137,7 +137,7 @@ proc bindParam(c: PContext, m: var MatchCon; key, v: PType): bool {. discardable
     # check previously bound value
     if not matchType(c, old, value, m):
       return false
-  elif key.hasElementType and key.elementType.kind != tyNone:
+  elif key.hasElementType and not key.elementType.isNil and key.elementType.kind != tyNone:
     # check constaint
     if matchType(c, unrollGenericParam(key), value, m) == false:
       return false
@@ -263,6 +263,22 @@ proc conceptsMatch(c: PContext, fc, ac: PType; m: var MatchCon): MatchKind =
       return mkNoMatch
   return mkSubset
 
+proc isObjectSubtype(f, a: PType): bool =
+  var t = a
+  result = false
+  while t != nil:
+    t = t.baseClass
+    if t == nil:
+      break
+    t = t.skipTypes({tyPtr,tyRef})
+    if t == nil:
+      break
+    if t.kind != tyObject:
+      break
+    if sameObjectTypes(f, t):
+      result = true
+      break
+
 proc matchType(c: PContext; fo, ao: PType; m: var MatchCon): bool =
   ## The heart of the concept matching process. 'f' is the formal parameter of some
   ## routine inside the concept that we're looking for. 'a' is the formal parameter
@@ -271,7 +287,10 @@ proc matchType(c: PContext; fo, ao: PType; m: var MatchCon): bool =
   var
     a = ao
     f = fo
-  
+  if a.isSelf:
+    if m.magic in {mArrPut, mArrGet}:
+      return false
+    a = m.potentialImplementation
   if a.kind in bindableTypes:
     a = existingBinding(m, ao)
     if a == ao and a.kind == tyGenericParam and a.hasElementType and a.elementType.kind != tyNone:
@@ -324,6 +343,8 @@ proc matchType(c: PContext; fo, ao: PType; m: var MatchCon): bool =
         result = a.base.sym == f.sym
       else:
         result = sameType(f, a)
+      if not result and f.kind == tyObject and a.kind == tyObject:
+        result = isObjectSubtype(f, a)
   of tyEmpty, tyString, tyCstring, tyPointer, tyNil, tyUntyped, tyTyped, tyVoid:
     result = a.skipTypes(ignorableForArgType).kind == f.kind
   of tyBool, tyChar, tyInt..tyUInt64:
@@ -337,8 +358,11 @@ proc matchType(c: PContext; fo, ao: PType; m: var MatchCon): bool =
       result = true
     else:
       let ak = a.skipTypes(ignorableForArgType - {f.kind})
-      if ak.kind == f.kind and f.kidsLen == ak.kidsLen:
-        result = matchKids(c, f, ak, m)
+      if ak.kind == f.kind:
+        if f.base.kind == tyNone:
+          result = true
+        elif f.kidsLen == ak.kidsLen:
+          result = matchKids(c, f, ak, m)
   of tyGenericInvocation, tyGenericInst:
     result = false
     let ea = a.skipTypes(ignorableForArgType)
@@ -352,6 +376,14 @@ proc matchType(c: PContext; fo, ao: PType; m: var MatchCon): bool =
           if not matchType(c, f[i], ea[i], m):
             result = false
             break
+    elif f.kind == tyGenericInvocation:
+      # bind potential generic constraints into body
+      let body = f.base
+      for i in 1 ..< len(f):
+        bindParam(c,m,body[i-1], f[i])
+      result = matchType(c, body, a, m)
+    else: # tyGenericInst
+      result = matchType(c, f.last, a, m)
   of tyOrdinal:
     result = isOrdinalType(a, allowEnumWithHoles = false) or a.kind == tyGenericParam
   of tyStatic:

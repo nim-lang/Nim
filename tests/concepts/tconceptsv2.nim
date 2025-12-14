@@ -497,6 +497,28 @@ block:
 
   spring({One,Two})
 
+block: # bare `range`
+  type
+    MyRange = 0..64
+    MyConcept = concept
+      proc a(x: typedesc[Self])
+
+  proc a(x: typedesc[range]) = discard
+  proc spring(x: typedesc[MyConcept]) = discard
+  spring(MyRange)
+
+block:
+  type
+    A = object
+    TestConcept =
+      concept
+          proc x(x: Self)
+
+  proc x(x: not object) =
+    discard
+
+  assert A isnot TestConcept
+
 # this code fails inside a block for some reason
 type Indexable[T] = concept
   proc `[]`(t: Self, i: int): T
@@ -524,3 +546,57 @@ proc len[T](t: DummyIndexable[T]): int =
 
 let dummyIndexable = DummyIndexable(@[1, 2])
 echoAll(dummyIndexable)
+
+block:
+  type
+    C = concept
+      proc a(x: Self, i: int)
+    AObj[T] = object
+      x: T
+    ARef[T] = ref AObj[T]
+
+  proc a[T: int](x: ARef[T], i: int) =
+    discard
+
+  assert (ref AObj[int]) is C
+
+block:
+  type
+    C = concept
+      proc a(x: Self, i: int)
+    AObj[T; B] = object
+      x: T
+    ARef[T; B] = ref AObj[T,B]
+
+  proc a[T: int, C: float](x: ARef[T, C], i: int) =
+    discard
+
+  assert (ref AObj[int, int]) isnot C
+  assert (ref AObj[int, float]) is C
+
+block:
+  type
+    C = concept
+      proc a(x: Self, i: int)
+    AObj[T] = object
+    ARef[T] = ref AObj[T]
+
+  proc a(x: ARef, i: int) =
+    discard
+
+  assert (ref AObj[int]) is C
+
+block:
+  type 
+    C = concept
+      proc x(a:Self, x: int)
+    StreamObj = object of RootObj
+    Stream = ref StreamObj
+    MemMapFileStreamObj = object of Stream
+    MemMapFileStream = ref MemMapFileStreamObj
+
+  proc x(a: Stream, x: int) = discard
+  proc spring(x: C) = discard
+
+  let test = MemMapFileStream()
+  spring(test)

@@ -61,14 +61,18 @@ proc hcrOn(p: BProc): bool = p.module.config.hcrOn
 proc addForwardedProc(m: BModule, prc: PSym) =
   m.g.forwardedProcs.add(prc)
 
+proc newModule*(g: BModuleList; module: PSym; conf: ConfigRef): BModule
+
 proc findPendingModule(m: BModule, s: PSym): BModule =
   # TODO fixme
-  if m.config.symbolFiles == v2Sf:
+  if m.config.symbolFiles == v2Sf or optCompress in m.config.globalOptions:
     let ms = s.itemId.module  #getModule(s)
     result = m.g.modules[ms]
   else:
     var ms = getModule(s)
     result = m.g.modules[ms.position]
+    if result == nil:
+      result = newModule(m.g, ms, m.config)
 
 proc initLoc(k: TLocKind, lode: PNode, s: TStorageLoc, flags: TLocFlags = {}): TLoc =
   result = TLoc(k: k, storage: s, lode: lode,
@@ -97,7 +101,7 @@ proc t(a: TLoc): PType {.inline.} =
 
 proc lodeTyp(t: PType): PNode =
   result = newNode(nkEmpty)
-  result.typ() = t
+  result.typ = t
 
 proc isSimpleConst(typ: PType): bool =
   let t = skipTypes(typ, abstractVar)
@@ -506,7 +510,7 @@ include ccgreset
 proc resetLoc(p: BProc, loc: var TLoc) =
   let containsGcRef = optSeqDestructors notin p.config.globalOptions and containsGarbageCollectedRef(loc.t)
   let typ = skipTypes(loc.t, abstractVarRange)
-  if isImportedCppType(typ): 
+  if isImportedCppType(typ):
     var didGenTemp = false
     let rl = rdLoc(loc)
     let init = genCppInitializer(p.module, p, typ, didGenTemp)
@@ -600,7 +604,8 @@ proc initLocalVar(p: BProc, v: PSym, immediateAsgn: bool) =
     # ``var v = X()`` gets transformed into ``X(&v)``.
     # Nowadays the logic in ccgcalls deals with this case however.
     if not immediateAsgn:
-      constructLoc(p, v.loc)
+      backendEnsureMutable v
+      constructLoc(p, v.locImpl)
 
 proc getTemp(p: BProc, t: PType, needsInit=false): TLoc =
   inc(p.labels)
@@ -646,8 +651,9 @@ proc localVarDecl(res: var Builder, p: BProc; n: PNode,
   let s = n.sym
   if s.loc.k == locNone:
     fillLocalName(p, s)
-    fillLoc(s.loc, locLocalVar, n, OnStack)
-    if s.kind == skLet: incl(s.loc.flags, lfNoDeepCopy)
+    ensureMutable s
+    fillLoc(s.locImpl, locLocalVar, n, OnStack)
+    if s.kind == skLet: incl(s, lfNoDeepCopy)
 
   genCLineDir(res, p, n.info, p.config)
 
@@ -707,15 +713,17 @@ proc assignGlobalVar(p: BProc, n: PNode; value: Rope) =
   let s = n.sym
   if s.loc.k == locNone:
     fillBackendName(p.module, s)
-    fillLoc(s.loc, locGlobalVar, n, OnHeap)
-    if treatGlobalDifferentlyForHCR(p.module, s): incl(s.loc.flags, lfIndirect)
+    ensureMutable s
+    fillLoc(s.locImpl, locGlobalVar, n, OnHeap)
+    if treatGlobalDifferentlyForHCR(p.module, s): incl(s, lfIndirect)
 
   if lfDynamicLib in s.loc.flags:
     var q = findPendingModule(p.module, s)
     if q != nil and not containsOrIncl(q.declaredThings, s.id):
       varInDynamicLib(q, s)
     else:
-      s.loc.snippet = mangleDynLibProc(s)
+      ensureMutable s
+      s.locImpl.snippet = mangleDynLibProc(s)
     if value != "":
       internalError(p.config, n.info, ".dynlib variables cannot have a value")
     return
@@ -755,12 +763,14 @@ proc assignGlobalVar(p: BProc, n: PNode; value: Rope) =
       genGlobalVarDecl(p.module.s[cfsVars], p, n, td, initializer = initializer)
   if p.withinLoop > 0 and value == "":
     # fixes tests/run/tzeroarray:
-    resetLoc(p, s.loc)
+    ensureMutable s
+    resetLoc(p, s.locImpl)
 
 proc callGlobalVarCppCtor(p: BProc; v: PSym; vn, value: PNode; didGenTemp: var bool) =
   let s = vn.sym
   fillBackendName(p.module, s)
-  fillLoc(s.loc, locGlobalVar, vn, OnHeap)
+  ensureMutable s
+  fillLoc(s.locImpl, locGlobalVar, vn, OnHeap)
   let td = getTypeDesc(p.module, vn.sym.typ, dkVar)
   var val = genCppParamsForCtor(p, value, didGenTemp)
   if didGenTemp:  return # generated in the caller
@@ -779,7 +789,8 @@ proc fillProcLoc(m: BModule; n: PNode) =
   let sym = n.sym
   if sym.loc.k == locNone:
     fillBackendName(m, sym)
-    fillLoc(sym.loc, locProc, n, OnStack)
+    backendEnsureMutable sym
+    fillLoc(sym.locImpl, locProc, n, OnStack)
 
 proc getLabel(p: BProc): TLabel =
   inc(p.labels)
@@ -948,7 +959,8 @@ proc symInDynamicLib(m: BModule, sym: PSym) =
   var extname = sym.loc.snippet
   if not isCall: loadDynamicLib(m, lib)
   var tmp = mangleDynLibProc(sym)
-  sym.loc.snippet = tmp             # from now on we only need the internal name
+  ensureMutable sym
+  sym.locImpl.snippet = tmp             # from now on we only need the internal name
   sym.typ.sym = nil           # generate a new name
   inc(m.labels, 2)
   if isCall:
@@ -990,9 +1002,10 @@ proc varInDynamicLib(m: BModule, sym: PSym) =
   var lib = sym.annex
   var extname = sym.loc.snippet
   loadDynamicLib(m, lib)
-  incl(sym.loc.flags, lfIndirect)
+  incl(sym, lfIndirect)
   var tmp = mangleDynLibProc(sym)
-  sym.loc.snippet = tmp             # from now on we only need the internal name
+  ensureMutable sym
+  sym.locImpl.snippet = tmp             # from now on we only need the internal name
   inc(m.labels, 2)
   let t = ptrType(getTypeDesc(m, sym.typ, dkVar))
   # cgsym has side effects, do it first:
@@ -1005,7 +1018,8 @@ proc varInDynamicLib(m: BModule, sym: PSym) =
   m.s[cfsVars].addVar(name = sym.loc.snippet, typ = t)
 
 proc symInDynamicLibPartial(m: BModule, sym: PSym) =
-  sym.loc.snippet = mangleDynLibProc(sym)
+  ensureMutable sym
+  sym.locImpl.snippet = mangleDynLibProc(sym)
   sym.typ.sym = nil           # generate a new name
 
 proc cgsymImpl(m: BModule; sym: PSym) {.inline.} =
@@ -1238,6 +1252,11 @@ proc allPathsAsgnResult(p: BProc; n: PNode): InitResultEnum =
         (n[0].kind == nkSym and sfNoReturn in n[0].sym.flags):
       # requires initializations when encountering unreachable code
       result = InitRequired
+    elif n[0].kind == nkSym and
+        n[0].sym.magic in {mUnaryMinusI..mAbsI, mAddI..mPred} and
+          optOverflowCheck in p.config.options:
+      # arithmetic operations may raise exceptions
+      result = InitRequired
     else:
       for i in 0..<n.safeLen:
         allPathsInBranch(n[i])
@@ -1270,7 +1289,7 @@ proc genProcBody(p: BProc; procBody: PNode) =
     p.blocks[0].sections[cpsInit].addAssignmentWithValue("nimErr_"):
       p.blocks[0].sections[cpsInit].addCall(cgsymValue(p.module, "nimErrorFlag"))
 
-proc genProcAux*(m: BModule, prc: PSym) =
+proc genProcLvl3*(m: BModule, prc: PSym) =
   var p = newProc(prc, m)
   var header = newBuilder("")
   let isCppMember = m.config.backend == backendCpp and sfCppMember * prc.flags != {}
@@ -1295,7 +1314,7 @@ proc genProcAux*(m: BModule, prc: PSym) =
     let resNode = prc.ast[resultPos]
     let res = resNode.sym # get result symbol
     if not isInvalidReturnType(m.config, prc.typ) and sfConstructor notin prc.flags:
-      if sfNoInit in prc.flags: incl(res.flags, sfNoInit)
+      if sfNoInit in prc.flags: incl(res, sfNoInit)
       if sfNoInit in prc.flags and p.module.compileToCpp and (let val = easyResultAsgn(procBody); val != nil):
         var a: TLoc = initLocExprSingleUse(p, val)
         let ra = rdLoc(a)
@@ -1316,9 +1335,11 @@ proc genProcAux*(m: BModule, prc: PSym) =
       returnBuilder.addReturn(rres)
       returnStmt = extract(returnBuilder)
     elif sfConstructor in prc.flags:
-      resNode.sym.loc.flags.incl lfIndirect
-      fillLoc(resNode.sym.loc, locParam, resNode, "this", OnHeap)
-      prc.loc.snippet = getTypeDesc(m, resNode.sym.loc.t, dkVar)
+      resNode.sym.incl lfIndirect
+      ensureMutable resNode.sym
+      fillLoc(resNode.sym.locImpl, locParam, resNode, "this", OnHeap)
+      ensureMutable prc
+      prc.locImpl.snippet = getTypeDesc(m, resNode.sym.locImpl.t, dkVar)
     else:
       fillResult(p.config, resNode, prc.typ)
       assignParam(p, res, prc.typ.returnType)
@@ -1331,10 +1352,12 @@ proc genProcAux*(m: BModule, prc: PSym) =
       if sfNoInit in prc.flags: discard
       elif allPathsAsgnResult(p, procBody) == InitSkippable: discard
       else:
-        resetLoc(p, res.loc)
+        ensureMutable res
+        resetLoc(p, res.locImpl)
       if skipTypes(res.typ, abstractInst).kind == tyArray:
         #incl(res.loc.flags, lfIndirect)
-        res.loc.storage = OnUnknown
+        ensureMutable res
+        res.locImpl.storage = OnUnknown
 
   for i in 1..<prc.typ.n.len:
     let param = prc.typ.n[i].sym
@@ -1343,7 +1366,8 @@ proc genProcAux*(m: BModule, prc: PSym) =
   closureSetup(p, prc)
   genProcBody(p, procBody)
 
-  prc.info = tmpInfo
+  # IC: spurious write, seems fine for now:
+  prc.infoImpl = tmpInfo
 
   var generatedProc = newBuilder("")
   generatedProc.genCLineDir prc.info, m.config
@@ -1426,6 +1450,8 @@ proc genProcPrototype(m: BModule, sym: PSym) =
               getModuleDllPath(m, sym),
               '"' & name & '"')
   elif not containsOrIncl(m.declaredProtos, sym.id):
+    if optCompress in m.config.globalOptions:
+      m.queue.add(sym)
     let asPtr = isReloadable(m, sym)
     var header = newBuilder("")
     var visibility: DeclVisibility = None
@@ -1445,8 +1471,9 @@ proc genProcPrototype(m: BModule, sym: PSym) =
           m.s[cfsProcHeaders].add(extract(header))
           m.s[cfsProcHeaders].finishProcHeaderAsProto()
 
-# TODO: figure out how to rename this - it DOES generate a forward declaration
-proc genProcNoForward(m: BModule, prc: PSym) =
+include inliner
+
+proc genProcLvl2(m: BModule, prc: PSym) =
   if lfImportCompilerProc in prc.loc.flags:
     fillProcLoc(m, prc.ast[namePos])
     useHeader(m, prc)
@@ -1483,16 +1510,22 @@ proc genProcNoForward(m: BModule, prc: PSym) =
       #if prc.loc.k == locNone:
       # mangle the inline proc based on the module where it is defined -
       # not on the first module that uses it
-      let m2 = if m.config.symbolFiles != disabledSf: m
-               else: findPendingModule(m, prc)
-      fillProcLoc(m2, prc.ast[namePos])
-      #elif {sfExportc, sfImportc} * prc.flags == {}:
-      #  # reset name to restore consistency in case of hashing collisions:
-      #  echo "resetting ", prc.id, " by ", m.module.name.s
-      #  prc.loc.snippet = nil
-      #  prc.loc.snippet = mangleName(m, prc)
-      genProcPrototype(m, prc)
-      genProcAux(m, prc)
+      if m.module.itemId.module != prc.itemId.module and optCompress in m.config.globalOptions:
+        let prcCopy = prc # copyInlineProc(prc, m.idgen)
+        fillProcLoc(m, prcCopy.ast[namePos])
+        genProcPrototype(m, prcCopy)
+        genProcLvl3(m, prcCopy)
+      else:
+        let m2 = if m.config.symbolFiles != disabledSf: m
+                else: findPendingModule(m, prc)
+        fillProcLoc(m2, prc.ast[namePos])
+        #elif {sfExportc, sfImportc} * prc.flags == {}:
+        #  # reset name to restore consistency in case of hashing collisions:
+        #  #echo "resetting ", prc.id, " by ", m.module.name.s
+        #  #prc.loc.snippet = nil
+        #  #prc.loc.snippet = mangleName(m, prc)
+        genProcPrototype(m, prc)
+        genProcLvl3(m, prc)
   elif sfImportc notin prc.flags:
     var q = findPendingModule(m, prc)
     fillProcLoc(q, prc.ast[namePos])
@@ -1513,7 +1546,7 @@ proc genProcNoForward(m: BModule, prc: PSym) =
       # which will actually become a function pointer
       if isReloadable(m, prc):
         genProcPrototype(q, prc)
-      genProcAux(q, prc)
+      genProcLvl3(q, prc)
   else:
     fillProcLoc(m, prc.ast[namePos])
     useHeader(m, prc)
@@ -1539,21 +1572,22 @@ proc genProc(m: BModule, prc: PSym) =
     addForwardedProc(m, prc)
     fillProcLoc(m, prc.ast[namePos])
   else:
-    genProcNoForward(m, prc)
+    genProcLvl2(m, prc)
     if {sfExportc, sfCompilerProc} * prc.flags == {sfExportc} and
         m.g.generatedHeader != nil and lfNoDecl notin prc.loc.flags:
       genProcPrototype(m.g.generatedHeader, prc)
       if prc.typ.callConv == ccInline:
         if not containsOrIncl(m.g.generatedHeader.declaredThings, prc.id):
-          genProcAux(m.g.generatedHeader, prc)
+          genProcLvl3(m.g.generatedHeader, prc)
 
 proc genVarPrototype(m: BModule, n: PNode) =
   #assert(sfGlobal in sym.flags)
   let sym = n.sym
   useHeader(m, sym)
   fillBackendName(m, sym)
-  fillLoc(sym.loc, locGlobalVar, n, OnHeap)
-  if treatGlobalDifferentlyForHCR(m, sym): incl(sym.loc.flags, lfIndirect)
+  backendEnsureMutable sym
+  fillLoc(sym.locImpl, locGlobalVar, n, OnHeap)
+  if treatGlobalDifferentlyForHCR(m, sym): incl(sym, lfIndirect)
 
   if (lfNoDecl in sym.loc.flags) or contains(m.declaredThings, sym.id):
     return
@@ -2069,7 +2103,8 @@ proc hcrGetProcLoadCode(builder: var Builder, m: BModule, sym, prefix, handle, g
 
   var extname = prefix & sym
   var tmp = mangleDynLibProc(prc)
-  prc.loc.snippet = tmp
+  ensureMutable prc
+  prc.locImpl.snippet = tmp
   prc.typ.sym = nil
 
   if not containsOrIncl(m.declaredThings, prc.id):
@@ -2337,7 +2372,7 @@ proc rawNewModule(g: BModuleList; module: PSym, filename: AbsoluteFile): BModule
 proc rawNewModule(g: BModuleList; module: PSym; conf: ConfigRef): BModule =
   result = rawNewModule(g, module, AbsoluteFile toFullPath(conf, module.position.FileIndex))
 
-proc newModule*(g: BModuleList; module: PSym; conf: ConfigRef): BModule =
+proc newModule(g: BModuleList; module: PSym; conf: ConfigRef): BModule =
   # we should create only one cgen module for each module sym
   result = rawNewModule(g, module, conf)
   if module.position >= g.modules.len:
@@ -2428,7 +2463,10 @@ proc handleProcGlobals(m: BModule) =
 
     # fixes recursive calls #24997
     swap stmts, m.preInitProc.s(cpsStmts)
-    genStmts(m.preInitProc, procGlobals[i])
+    var transformedN = procGlobals[i]
+    if sfInjectDestructors in m.module.flags:
+      transformedN = injectDestructorCalls(m.g.graph, m.idgen, m.module, transformedN)
+    genStmts(m.preInitProc, transformedN)
     swap stmts, m.preInitProc.s(cpsStmts)
 
     handleProcGlobals(m)
@@ -2485,6 +2523,11 @@ proc writeModule(m: BModule, pending: bool) =
   let cfile = getCFile(m)
   if moduleHasChanged(m.g.graph, m.module):
     genInitCode(m)
+
+    while m.queue.len > 0:
+      let sym = m.queue.pop()
+      genProcLvl2(m, sym)
+
     finishTypeDescriptions(m)
     if sfMainModule in m.module.flags:
       # generate main file:
@@ -2519,10 +2562,11 @@ proc generateLibraryDestroyGlobals(graph: ModuleGraph; m: BModule; body: PNode; 
   result = newSym(skProc, procname, m.idgen, m.module.owner, m.module.info)
   result.typ = newProcType(m.module.info, m.idgen, m.module.owner)
   result.typ.callConv = ccCDecl
-  incl result.flags, sfExportc
-  result.loc.snippet = prefixedName
+  ensureMutable result
+  incl result.flagsImpl, sfExportc
+  result.locImpl.snippet = prefixedName
   if isDynlib:
-    incl(result.loc.flags, lfExportLib)
+    incl(result.locImpl.flags, lfExportLib)
 
   let theProc = newNodeI(nkProcDef, m.module.info, bodyPos+1)
   for i in 0..<theProc.len: theProc[i] = newNodeI(nkEmpty, m.module.info)
@@ -2547,7 +2591,7 @@ proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: PNode) =
         body.add graph.globalDestructors[i]
       body.flags.incl nfTransf # should not be further transformed
       let dtor = generateLibraryDestroyGlobals(graph, m, body, optGenDynLib in m.config.globalOptions)
-      genProcAux(m, dtor)
+      genProcLvl3(m, dtor)
   if pipelineutils.skipCodegen(m.config, n): return
   if moduleHasChanged(graph, m.module):
     # if the module is cached, we don't regenerate the main proc
@@ -2600,7 +2644,7 @@ proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: PNode) =
 proc genForwardedProcs(g: BModuleList) =
   # Forward declared proc:s lack bodies when first encountered, so they're given
   # a second pass here
-  # Note: ``genProcNoForward`` may add to ``forwardedProcs``
+  # Note: ``genProcLvl2`` may add to ``forwardedProcs``
   while g.forwardedProcs.len > 0:
     let
       prc = g.forwardedProcs.pop()
@@ -2608,7 +2652,7 @@ proc genForwardedProcs(g: BModuleList) =
     if sfForward in prc.flags:
       internalError(m.config, prc.info, "still forwarded: " & prc.name.s)
 
-    genProcNoForward(m, prc)
+    genProcLvl2(m, prc)
 
 proc cgenWriteModules*(backend: RootRef, config: ConfigRef) =
   let g = BModuleList(backend)

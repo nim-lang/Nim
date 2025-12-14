@@ -16,6 +16,9 @@ import ../dist/checksums/src/checksums/md5
 import ast, astalgo, options, lineinfos,idents, btrees, ropes, msgs, pathutils, packages, suggestsymdb
 import ic / [packed_ast, ic]
 
+when not defined(nimKochBootstrap):
+  import ast2nif
+  import "../dist/nimony/src/lib" / [nifstreams, bitabs]
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -138,6 +141,7 @@ type
     cachedFiles*: StringTableRef
 
     procGlobals*: seq[PNode]
+    nifReplayActions*: Table[int32, seq[PNode]]  # module position -> replay actions for NIF
 
   TPassContext* = object of RootObj # the pass's context
     idgen*: IdGenerator
@@ -364,6 +368,10 @@ proc setAttachedOp*(g: ModuleGraph; module: int; t: PType; op: TTypeAttachedOp; 
   ## we also need to record this to the packed module.
   g.attachedOps[op][t.itemId] = LazySym(sym: value)
 
+proc setAttachedOp*(g: ModuleGraph; module: int; typeId: ItemId; op: TTypeAttachedOp; value: PSym) =
+  ## Overload that takes ItemId directly, useful for registering hooks from NIF index.
+  g.attachedOps[op][typeId] = LazySym(sym: value)
+
 proc setAttachedOpPartial*(g: ModuleGraph; module: int; t: PType; op: TTypeAttachedOp; value: PSym) =
   ## we also need to record this to the packed module.
   g.attachedOps[op][t.itemId] = LazySym(sym: value)
@@ -390,6 +398,10 @@ iterator resolveLazySymSeq(g: ModuleGraph, list: var seq[LazySym]): PSym =
 proc setMethodsPerType*(g: ModuleGraph; id: ItemId, methods: seq[LazySym]) =
   # TODO: add it for packed modules
   g.methodsPerType[id] = methods
+
+proc addNifReplayAction*(g: ModuleGraph; module: int32; n: PNode) =
+  ## Stores a replay action for NIF-based incremental compilation.
+  g.nifReplayActions.mgetOrPut(module, @[]).add n
 
 iterator getMethodsPerType*(g: ModuleGraph; t: PType): PSym =
   if g.methodsPerType.contains(t.itemId):
@@ -423,7 +435,30 @@ proc copyTypeProps*(g: ModuleGraph; module: int; dest, src: PType) =
 
 proc loadCompilerProc*(g: ModuleGraph; name: string): PSym =
   result = nil
-  if g.config.symbolFiles == disabledSf: return nil
+  if g.config.symbolFiles == disabledSf:
+    # For NIF-based compilation, search in loaded NIF modules
+    when not defined(nimKochBootstrap):
+      # Only try to resolve from NIF if we're actually using NIF files (cmdNifC)
+      if g.config.cmd == cmdNifC:
+        # First try system module (most compilerprocs are there)
+        let systemFileIdx = g.config.m.systemFileIdx
+        if systemFileIdx != InvalidFileIdx:
+          result = tryResolveCompilerProc(ast.program, name, systemFileIdx)
+          if result != nil:
+            strTableAdd(g.compilerprocs, result)
+            return result
+
+        # Try threadpool module (some compilerprocs like FlowVar are there)
+        # Find threadpool module by searching loaded modules
+        for moduleIdx in 0..<g.ifaces.len:
+          let module = g.ifaces[moduleIdx].module
+          if module != nil and module.name.s == "threadpool":
+            let threadpoolFileIdx = module.position.FileIndex
+            result = tryResolveCompilerProc(ast.program, name, threadpoolFileIdx)
+            if result != nil:
+              strTableAdd(g.compilerprocs, result)
+              return result
+    return nil
 
   # slow, linear search, but the results are cached:
   for module in 0..<len(g.packed):
@@ -586,6 +621,7 @@ proc newModuleGraph*(cache: IdentCache; config: ConfigRef): ModuleGraph =
   result.config = config
   result.cache = cache
   initModuleGraphFields(result)
+  ast.setupProgram(config, cache)
 
 proc resetAllModules*(g: ModuleGraph) =
   g.packageSyms = initStrTable()
@@ -681,13 +717,13 @@ proc markDirty*(g: ModuleGraph; fileIdx: FileIndex) =
   if m != nil:
     g.suggestSymbols.del(fileIdx)
     g.suggestErrors.del(fileIdx)
-    incl m.flags, sfDirty
+    incl m.flagsImpl, sfDirty
 
 proc unmarkAllDirty*(g: ModuleGraph) =
   for i in 0i32..<g.ifaces.len.int32:
     let m = g.ifaces[i].module
     if m != nil:
-      m.flags.excl sfDirty
+      m.flagsImpl.excl sfDirty
 
 proc isDirty*(g: ModuleGraph; m: PSym): bool =
   result = g.suggestMode and sfDirty in m.flags
@@ -740,6 +776,64 @@ proc moduleFromRodFile*(g: ModuleGraph; fileIdx: FileIndex;
   else:
     result = nil
 
+when not defined(nimKochBootstrap):
+  proc moduleFromNifFile*(g: ModuleGraph; fileIdx: FileIndex;
+                          cachedModules: var seq[FileIndex];
+                          loadFullAst: bool = false): PSym =
+    ## Returns 'nil' if the module needs to be recompiled.
+    ## Loads module from NIF file when optCompress is enabled.
+    ## When loadFullAst is true, loads the complete module AST for code generation.
+
+    if not fileExists(toNifFilename(g.config, fileIdx)):
+      return nil
+
+    # Create module symbol
+    let filename = AbsoluteFile toFullPath(g.config, fileIdx)
+    result = PSym(
+      kindImpl: skModule,
+      itemId: ItemId(module: int32(fileIdx), item: 0'i32),
+      name: getIdent(g.cache, splitFile(filename).name),
+      infoImpl: newLineInfo(fileIdx, 1, 1),
+      positionImpl: int(fileIdx),
+    )
+    setOwner(result, getPackage(g.config, g.cache, fileIdx))
+
+    # Register module in graph
+    registerModule(g, result)
+    var hooks = initTable[nifstreams.SymId, HooksPerType]()
+    var converters: seq[(string, string)] = @[]
+    var classes: seq[ClassIndexEntry] = @[]
+    result.astImpl = loadNifModule(ast.program, fileIdx, g.ifaces[fileIdx.int].interf,
+                                   g.ifaces[fileIdx.int].interfHidden, hooks, converters, classes, loadFullAst)
+    # Register hooks from NIF index with the module graph
+    for typSymId, hooksPerType in hooks:
+      let typeItemId = parseTypeSymIdToItemId(ast.program, typSymId)
+      if typeItemId.module >= 0:
+        for op in AttachedOp:
+          let (hookSymId, isGeneric) = hooksPerType.a[op]
+          if hookSymId != nifstreams.SymId(0):
+            let hookSym = resolveHookSym(ast.program, hookSymId)
+            if hookSym != nil:
+              setAttachedOp(g, int(fileIdx), typeItemId, toTTypeAttachedOp(op), hookSym)
+    # Register converters from NIF index with the module's interface
+    for (destType, convSym) in converters:
+      let symId = pool.syms.getOrIncl(convSym)
+      let convPSym = resolveHookSym(ast.program, symId)  # reuse hook resolution
+      if convPSym != nil:
+        g.ifaces[fileIdx.int].converters.add LazySym(sym: convPSym)
+    # Register methods per type from NIF index
+    for classEntry in classes:
+      let typeItemId = parseTypeSymIdToItemId(ast.program, classEntry.cls)
+      if typeItemId.module >= 0:
+        var methodSyms: seq[LazySym] = @[]
+        for methodEntry in classEntry.methods:
+          let methodSym = resolveHookSym(ast.program, methodEntry.fn)
+          if methodSym != nil:
+            methodSyms.add LazySym(sym: methodSym)
+        if methodSyms.len > 0:
+          setMethodsPerType(g, typeItemId, methodSyms)
+    cachedModules.add fileIdx
+
 proc configComplete*(g: ModuleGraph) =
   rememberStartupConfig(g.startupPackedConfig, g.config)
 
@@ -764,7 +858,7 @@ proc getPackage*(graph: ModuleGraph; fileIdx: FileIndex): PSym =
     result = pkgSym
     graph.packageSyms.strTableAdd(pkgSym)
 
-func belongsToStdlib*(graph: ModuleGraph, sym: PSym): bool =
+proc belongsToStdlib*(graph: ModuleGraph, sym: PSym): bool =
   ## Check if symbol belongs to the 'stdlib' package.
   sym.getPackageSymbol.getPackageId == graph.systemModule.getPackageId
 

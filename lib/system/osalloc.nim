@@ -7,6 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
+{.push raises: [], gcsafe.}
+
 proc roundup(x, v: int): int {.inline.} =
   result = (x + (v-1)) and not (v-1)
   sysAssert(result >= x, "roundup: result < x")
@@ -216,3 +218,5 @@ elif hostOS == "standalone" or defined(StandaloneHeapSize):
 
 else:
   {.error: "Port memory manager to your platform".}
+
+{.pop.}

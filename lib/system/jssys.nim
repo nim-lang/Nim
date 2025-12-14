@@ -72,6 +72,9 @@ proc getCurrentExceptionMsg*(): string =
 proc setCurrentException*(exc: ref Exception) =
   lastJSError = cast[PJSError](exc)
 
+proc closureIterSetExc(e: ref Exception) {.compilerRtl, benign.} =
+  setCurrentException(e)
+
 proc pushCurrentException(e: sink(ref Exception)) {.compilerRtl, inline.} =
   ## Used to set up exception handling for closure iterators.
 
@@ -683,6 +686,14 @@ proc isObj(obj, subclass: PNimType): bool {.compilerproc.} =
 
 proc addChar(x: string, c: char) {.compilerproc, asmNoStackFrame.} =
   {.emit: "`x`.push(`c`);".}
+
+proc nimAddStrStr(x, y: string) {.compilerproc, asmNoStackFrame.} =
+  {.emit: """
+  var L = `y`.length;
+  for (var i = 0; i < L; ++i) {
+    `x`.push(`y`[i]);
+  }
+  """.}
 
 {.pop.}
 

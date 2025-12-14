@@ -1,4 +1,6 @@
-proc succ*[T, V: Ordinal](x: T, y: V = 1): T {.magic: "Succ", noSideEffect.} =
+{.push stack_trace: off.}
+
+proc succ*[T: Ordinal, V: SomeInteger](x: T, y: V = 1): T {.magic: "Succ", noSideEffect.} =
   ## Returns the `y`-th successor (default: 1) of the value `x`.
   ##
   ## If such a value does not exist, `OverflowDefect` is raised
@@ -7,7 +9,7 @@ proc succ*[T, V: Ordinal](x: T, y: V = 1): T {.magic: "Succ", noSideEffect.} =
     assert succ(5) == 6
     assert succ(5, 3) == 8
 
-proc pred*[T, V: Ordinal](x: T, y: V = 1): T {.magic: "Pred", noSideEffect.} =
+proc pred*[T: Ordinal, V: SomeInteger](x: T, y: V = 1): T {.magic: "Pred", noSideEffect.} =
   ## Returns the `y`-th predecessor (default: 1) of the value `x`.
   ##
   ## If such a value does not exist, `OverflowDefect` is raised
@@ -16,7 +18,7 @@ proc pred*[T, V: Ordinal](x: T, y: V = 1): T {.magic: "Pred", noSideEffect.} =
     assert pred(5) == 4
     assert pred(5, 3) == 2
 
-proc inc*[T, V: Ordinal](x: var T, y: V = 1) {.magic: "Inc", noSideEffect.} =
+proc inc*[T: Ordinal, V: SomeInteger](x: var T, y: V = 1) {.magic: "Inc", noSideEffect.} =
   ## Increments the ordinal `x` by `y`.
   ##
   ## If such a value does not exist, `OverflowDefect` is raised or a compile
@@ -28,7 +30,7 @@ proc inc*[T, V: Ordinal](x: var T, y: V = 1) {.magic: "Inc", noSideEffect.} =
     inc(i, 3)
     assert i == 6
 
-proc dec*[T, V: Ordinal](x: var T, y: V = 1) {.magic: "Dec", noSideEffect.} =
+proc dec*[T: Ordinal, V: SomeInteger](x: var T, y: V = 1) {.magic: "Dec", noSideEffect.} =
   ## Decrements the ordinal `x` by `y`.
   ##
   ## If such a value does not exist, `OverflowDefect` is raised or a compile
@@ -403,3 +405,5 @@ proc `%%`*(x, y: int8): int8 {.inline.}   = cast[int8](cast[uint8](x) mod cast[u
 proc `%%`*(x, y: int16): int16 {.inline.} = cast[int16](cast[uint16](x) mod cast[uint16](y))
 proc `%%`*(x, y: int32): int32 {.inline.} = cast[int32](cast[uint32](x) mod cast[uint32](y))
 proc `%%`*(x, y: int64): int64 {.inline.} = cast[int64](cast[uint64](x) mod cast[uint64](y))
+
+{.pop.}
