@@ -59,6 +59,18 @@ errors.
 
 [//]: # "Changes:"
 
+- `std/atomics` now determines lock-free eligibility by size instead of type category.
+  Previously only `Trivial` types (`SomeNumber | bool | enum | ptr | pointer`) could use
+  lock-free atomics. Now any type with `sizeof(T)` of 1, 2, 4, 8, or 16 bytes (with
+  architecture support) can be lock-free, allowing small structs and tuples to use
+  hardware atomics instead of spinlock fallback.
+  - Added `isLockFree(T)` template to check lock-free eligibility at compile-time
+  - Added `hasLockFree8` constant for 8-byte atomic support detection
+  - Added `hasLockFree16` constant for 16-byte atomic support detection (amd64/arm64)
+  - Added `-d:nimEnforceLockFreeAtomics` to get compile errors instead of silent spinlock fallback
+  - Added `-d:nimNoLockFree16` to disable 16-byte lock-free for old x86-64 CPUs lacking CMPXCHG16B
+  - Added `-d:nimUseCppAtomics` to use C++ `std::atomic` instead of C11 primitives
+
 - `std/math` The `^` symbol now supports floating-point as exponent in addition to the Natural type.
 - `min`, `max`, and `sequtils`' `minIndex`, `maxIndex` and `minmax` for `openArray`s now accept a comparison function.
 - `system.substr` implementation now uses `copymem` (wrapped C `memcpy`) for copying data, if available at compilation.
