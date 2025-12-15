@@ -712,7 +712,9 @@ proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode;
   var dest = createTokenBuf(600)
   createStmtList(dest, rootInfo)
   dest.add w.deps
-  dest.add content
+  # do not write the (stmts .. ) wrapper:
+  for i in 3 ..< content.len-1:
+    dest.add content[i]
   dest.addParRi()
 
   writeFile(dest, d)
