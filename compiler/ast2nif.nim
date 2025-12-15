@@ -649,6 +649,8 @@ let repDeepCopyTag = registerTag("repdeepcopy")
 let repEnumToStrTag = registerTag("repenumtostr")
 let repMethodTag = registerTag("repmethod")
 #let repClassTag = registerTag("repclass")
+let includeTag = registerTag("include")
+let importTag = registerTag("import")
 
 proc writeOp(w: var Writer; content: var TokenBuf; op: LogEntry) =
   case op.kind
@@ -1448,6 +1450,18 @@ proc loadLogOp(c: var DecodeContext; logOps: var seq[LogEntry]; s: ptr Stream; k
   else:
     raiseAssert "expected ParRi but got " & $result.kind
 
+proc skipTree(s: var Stream): PackedToken =
+  result = next(s)
+  var nested = 1
+  while nested > 0:
+    if result.kind == ParLe:
+      inc nested
+    elif result.kind == ParRi:
+      dec nested
+    elif result.kind == EofToken:
+      break
+    result = next(s)
+
 proc loadNifModule*(c: var DecodeContext; f: FileIndex; interf, interfHidden: var TStrTable;
                     logOps: var seq[LogEntry];
                     loadFullAst: bool = false): PNode =
@@ -1511,6 +1525,8 @@ proc loadNifModule*(c: var DecodeContext; f: FileIndex; interf, interfHidden: va
           t = loadLogOp(c, logOps, s, MethodEntry, attachedTrace)
           #elif t.tagId == repClassTag:
           #  t = loadLogOp(c, logOps, s, ClassEntry, attachedTrace)
+        elif t.tagId == includeTag or t.tagId == importTag:
+          t = skipTree(s[])
         elif loadFullAst:
           # Parse the full statement
           var buf = createTokenBuf(50)

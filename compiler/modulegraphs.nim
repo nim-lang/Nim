@@ -794,7 +794,6 @@ when not defined(nimKochBootstrap):
     ## Returns 'nil' if the module needs to be recompiled.
     ## Loads module from NIF file when optCompress is enabled.
     ## When loadFullAst is true, loads the complete module AST for code generation.
-
     if not fileExists(toNifFilename(g.config, fileIdx)):
       return nil
 
@@ -805,8 +804,7 @@ when not defined(nimKochBootstrap):
       itemId: ItemId(module: int32(fileIdx), item: 0'i32),
       name: getIdent(g.cache, splitFile(filename).name),
       infoImpl: newLineInfo(fileIdx, 1, 1),
-      positionImpl: int(fileIdx),
-    )
+      positionImpl: int(fileIdx))
     setOwner(result, getPackage(g.config, g.cache, fileIdx))
 
     # Register module in graph
