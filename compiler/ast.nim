@@ -560,14 +560,17 @@ proc addAllowNil*(father, son: PType) {.inline.} =
 template `[]`*(n: PType, i: int): PType =
   if n.state == Partial: loadType(n)
   if n.kind == tyProc and i > 0:
-    assert n.nImpl[i] != nil
+    assert n.nImpl[i] != nil and n.nImpl[i].sym != nil
     n.nImpl[i].sym.typ
   else:
     n.sonsImpl[i]
 template `[]=`*(n: PType, i: int; x: PType) =
   if n.state == Partial: loadType(n)
-  assert n.kind != tyProc or i == 0
-  n.sonsImpl[i] = x
+  if n.kind == tyProc and i > 0:
+    assert n.nImpl[i] != nil and n.nImpl[i].sym != nil
+    n.nImpl[i].sym.typ = x
+  else:
+    n.sonsImpl[i] = x
 
 template `[]`*(n: PType, i: BackwardsIndex): PType =
   if n.state == Partial: loadType(n)
