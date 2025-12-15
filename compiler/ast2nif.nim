@@ -1432,12 +1432,12 @@ proc tryResolveCompilerProc*(c: var DecodeContext; name: string; moduleFileIdx: 
   let symName = name & ".0." & suffix
   result = resolveSym(c, symName, true)
 
-proc loadLogOp(c: var DecodeContext; logOps: var seq[LogEntry]; s: ptr Stream; kind: LogEntryKind; op: TTypeAttachedOp): PackedToken =
-  result = next(s[])
+proc loadLogOp(c: var DecodeContext; logOps: var seq[LogEntry]; s: var Stream; kind: LogEntryKind; op: TTypeAttachedOp): PackedToken =
+  result = next(s)
   var key = ""
   if result.kind == StringLit:
     key = pool.strings[result.litId]
-    result = next(s[])
+    result = next(s)
   else:
     raiseAssert "expected StringLit but got " & $result.kind
   if result.kind == Symbol:
@@ -1446,9 +1446,9 @@ proc loadLogOp(c: var DecodeContext; logOps: var seq[LogEntry]; s: ptr Stream; k
       logOps.add LogEntry(kind: kind, op: op, key: key, sym: sym)
     else:
       raiseAssert "symbol not found: " & pool.syms[result.symId]
-    result = next(s[])
+    result = next(s)
   if result.kind == ParRi:
-    result = next(s[])
+    result = next(s)
   else:
     raiseAssert "expected ParRi but got " & $result.kind
 
@@ -1464,6 +1464,82 @@ proc skipTree(s: var Stream): PackedToken =
       break
     result = next(s)
 
+proc nextSubtree(r: var Stream; dest: var TokenBuf; tok: var PackedToken) =
+  r.parents[0] = tok.info
+  var nested = 1
+  dest.add tok # tag
+  while true:
+    tok = r.next()
+    dest.add tok
+    if tok.kind == EofToken:
+      break
+    elif tok.kind == ParLe:
+      inc nested
+    elif tok.kind == ParRi:
+      dec nested
+      if nested == 0: break
+
+proc processTopLevel(c: var DecodeContext; s: var Stream; loadFullAst: bool; suffix: string; logOps: var seq[LogEntry]): PNode =
+  result = newNode(nkStmtList)
+  var localSyms = initTable[string, PSym]()
+
+  var t = next(s) # skip dot
+  var cont = true
+  while cont and t.kind != EofToken:
+    if t.kind == ParLe:
+      if t.tagId == replayTag:
+        # Always load replay actions (macro cache operations)
+        t = next(s)  # move past (replay
+        while t.kind != ParRi and t.kind != EofToken:
+          if t.kind == ParLe:
+            var buf = createTokenBuf(50)
+            nextSubtree(s, buf, t)
+            var cursor = cursorAt(buf, 0)
+            let replayNode = loadNode(c, cursor, suffix, localSyms)
+            if replayNode != nil:
+              result.sons.add replayNode
+          t = next(s)
+        if t.kind == ParRi:
+          t = next(s)
+        else:
+          raiseAssert "expected ParRi but got " & $t.kind
+      elif t.tagId == repConverterTag:
+        t = loadLogOp(c, logOps, s, ConverterEntry, attachedTrace)
+      elif t.tagId == repDestroyTag:
+        t = loadLogOp(c, logOps, s, HookEntry, attachedDestructor)
+      elif t.tagId == repWasMovedTag:
+        t = loadLogOp(c, logOps, s, HookEntry, attachedWasMoved)
+      elif t.tagId == repCopyTag:
+        t = loadLogOp(c, logOps, s, HookEntry, attachedAsgn)
+      elif t.tagId == repSinkTag:
+        t = loadLogOp(c, logOps, s, HookEntry, attachedSink)
+      elif t.tagId == repDupTag:
+        t = loadLogOp(c, logOps, s, HookEntry, attachedDup)
+      elif t.tagId == repTraceTag:
+        t = loadLogOp(c, logOps, s, HookEntry, attachedTrace)
+      elif t.tagId == repDeepCopyTag:
+        t = loadLogOp(c, logOps, s, HookEntry, attachedDeepCopy)
+      elif t.tagId == repEnumToStrTag:
+        t = loadLogOp(c, logOps, s, EnumToStrEntry, attachedTrace)
+      elif t.tagId == repMethodTag:
+        t = loadLogOp(c, logOps, s, MethodEntry, attachedTrace)
+        #elif t.tagId == repClassTag:
+        #  t = loadLogOp(c, logOps, s, ClassEntry, attachedTrace)
+      elif t.tagId == includeTag or t.tagId == importTag:
+        t = skipTree(s)
+      elif loadFullAst:
+        # Parse the full statement
+        var buf = createTokenBuf(50)
+        nextSubtree(s, buf, t)
+        var cursor = cursorAt(buf, 0)
+        let stmtNode = loadNode(c, cursor, suffix, localSyms)
+        if stmtNode != nil:
+          result.sons.add stmtNode
+      else:
+        cont = false
+    else:
+      cont = false
+
 proc loadNifModule*(c: var DecodeContext; f: FileIndex; interf, interfHidden: var TStrTable;
                     logOps: var seq[LogEntry];
                     loadFullAst: bool = false): PNode =
@@ -1477,89 +1553,17 @@ proc loadNifModule*(c: var DecodeContext; f: FileIndex; interf, interfHidden: va
   populateInterfaceTablesFromIndex(c, module, interf, interfHidden, suffix)
 
   # Load the module AST (or just replay actions if loadFullAst is false)
-  result = newNode(nkStmtList)
   let s = addr c.mods[module].stream
   s.r.jumpTo 0  # Start from beginning
   discard processDirectives(s.r)
-  var localSyms = initTable[string, PSym]()
   var t = next(s[])
   if t.kind == ParLe and pool.tags[t.tagId] == toNifTag(nkStmtList):
+    t = next(s[])  # skip (stmts
     t = next(s[])  # skip flags
-    t = next(s[])  # skip type
-    # Process all top-level statements
-    while t.kind != ParRi and t.kind != EofToken:
-      if t.kind == ParLe:
-        if t.tagId == replayTag:
-          # Always load replay actions (macro cache operations)
-          t = next(s[])  # move past (replay
-          while t.kind != ParRi and t.kind != EofToken:
-            if t.kind == ParLe:
-              var buf = createTokenBuf(50)
-              nifcursors.parse(s[], buf, t.info)
-              var cursor = cursorAt(buf, 0)
-              let replayNode = loadNode(c, cursor, suffix, localSyms)
-              if replayNode != nil:
-                result.sons.add replayNode
-            t = next(s[])
-          if t.kind == ParRi:
-            t = next(s[])
-          else:
-            raiseAssert "expected ParRi but got " & $t.kind
-        elif t.tagId == repConverterTag:
-          t = loadLogOp(c, logOps, s, ConverterEntry, attachedTrace)
-        elif t.tagId == repDestroyTag:
-          t = loadLogOp(c, logOps, s, HookEntry, attachedDestructor)
-        elif t.tagId == repWasMovedTag:
-          t = loadLogOp(c, logOps, s, HookEntry, attachedWasMoved)
-        elif t.tagId == repCopyTag:
-          t = loadLogOp(c, logOps, s, HookEntry, attachedAsgn)
-        elif t.tagId == repSinkTag:
-          t = loadLogOp(c, logOps, s, HookEntry, attachedSink)
-        elif t.tagId == repDupTag:
-          t = loadLogOp(c, logOps, s, HookEntry, attachedDup)
-        elif t.tagId == repTraceTag:
-          t = loadLogOp(c, logOps, s, HookEntry, attachedTrace)
-        elif t.tagId == repDeepCopyTag:
-          t = loadLogOp(c, logOps, s, HookEntry, attachedDeepCopy)
-        elif t.tagId == repEnumToStrTag:
-          t = loadLogOp(c, logOps, s, EnumToStrEntry, attachedTrace)
-        elif t.tagId == repMethodTag:
-          t = loadLogOp(c, logOps, s, MethodEntry, attachedTrace)
-          #elif t.tagId == repClassTag:
-          #  t = loadLogOp(c, logOps, s, ClassEntry, attachedTrace)
-        elif t.tagId == includeTag or t.tagId == importTag:
-          t = skipTree(s[])
-        elif loadFullAst:
-          # Parse the full statement
-          var buf = createTokenBuf(50)
-          buf.add t # Add the ParLe token we already read
-          var nested = 1
-          while nested > 0:
-            t = next(s[])
-            buf.add t
-            if t.kind == ParLe:
-              inc nested
-            elif t.kind == ParRi:
-              dec nested
-            elif t.kind == EofToken:
-              break
-          var cursor = cursorAt(buf, 0)
-          let stmtNode = loadNode(c, cursor, suffix, localSyms)
-          if stmtNode != nil:
-            result.sons.add stmtNode
-        else:
-          # Skip over the statement by counting parentheses
-          var nested = 1
-          while nested > 0:
-            t = next(s[])
-            if t.kind == ParLe:
-              inc nested
-            elif t.kind == ParRi:
-              dec nested
-            elif t.kind == EofToken:
-              break
-      else:
-        t = next(s[])
+    result = processTopLevel(c, s[], loadFullAst, suffix, logOps)
+  else:
+    result = newNode(nkStmtList)
+
 
 when isMainModule:
   import std / syncio
