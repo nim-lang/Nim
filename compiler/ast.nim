@@ -1036,7 +1036,7 @@ proc newType*(kind: TTypeKind; idgen: IdGenerator; owner: PSym; son: sink PType 
       writeStackTrace()
 
 proc setSons*(dest: PType; sons: sink seq[PType]) {.inline.} =
-  assert dest.kind != tyProc
+  assert dest.kind != tyProc or sons.len <= 1
   dest.sonsImpl = sons
 proc setSon*(dest: PType; son: sink PType) {.inline.} =
   assert dest.kind != tyProc
