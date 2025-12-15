@@ -170,6 +170,9 @@ proc resetForBackend*(g: ModuleGraph) =
   g.enumToStringProcs.clear()
   g.dispatchers.setLen(0)
   g.methodsPerType.clear()
+  for a in mitems(g.loadedOps):
+    a.clear()
+  g.opsLog.setLen(0)
 
 const
   cb64 = [
@@ -372,7 +375,11 @@ proc setAttachedOp*(g: ModuleGraph; module: int; t: PType; op: TTypeAttachedOp; 
   ## we also need to record this to the packed module.
   if not g.attachedOps[op].contains(t.itemId):
     let key = typeKey(t, g.config, loadTypeCallback, loadSymCallback)
-    g.opsLog.add LogEntry(kind: HookEntry, op: op, key: key, sym: value)
+    # Use key-based deduplication for opsLog because different type objects
+    # (e.g. canon vs orig) can have different itemIds but same structural key
+    if key notin g.loadedOps[op]:
+      g.opsLog.add LogEntry(kind: HookEntry, op: op, key: key, sym: value)
+      g.loadedOps[op][key] = value
   g.attachedOps[op][t.itemId] = LazySym(sym: value)
 
 proc setAttachedOp*(g: ModuleGraph; module: int; typeId: ItemId; op: TTypeAttachedOp; value: PSym) =
