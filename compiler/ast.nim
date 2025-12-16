@@ -855,7 +855,10 @@ proc setIndexType*(n, idx: PType) {.inline.} =
 
 proc firstParamType*(n: PType): PType {.inline.} =
   if n.state == Partial: loadType(n)
-  n.nImpl[1].sym.typ
+  if n.kind == tyProc:
+    n.nImpl[1].sym.typ
+  else:
+    n.sonsImpl[1]
 
 proc firstGenericParam*(n: PType): PType {.inline.} =
   if n.state == Partial: loadType(n)
