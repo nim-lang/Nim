@@ -22,13 +22,8 @@
 ##  This function may temporarily write up to DtoaMinBufferLength characters into the buffer.
 
 
-import std/private/digitsutils
-
-when defined(nimPreviewSlimSystem):
-  import std/assertions
-
 const
-  dtoaMinBufferLength*: cint = 64
+  dtoaMinBufferLengthDr: cint = 64
 
 ##  This file contains an implementation of Junekey Jeon's Dragonbox algorithm.
 ##
@@ -38,7 +33,7 @@ const
 ##  The reference implementation also works with single-precision floating-point numbers and
 ##  has options to configure the rounding mode.
 
-template dragonbox_Assert*(x: untyped): untyped =
+template dragonbox_Assert(x: untyped): untyped =
   assert(x)
 
 # ==================================================================================================
@@ -46,63 +41,63 @@ template dragonbox_Assert*(x: untyped): untyped =
 # ==================================================================================================
 
 type
-  ValueType* = float
-  BitsType* = uint64
+  ValueTypeDr = float
+  BitsTypeDr = uint64
 
 type
-  Double* = object
-    bits*: BitsType
+  DoubleDr = object
+    bits: BitsTypeDr
 
 const                         ##  = p   (includes the hidden bit)
-  significandSize*: int32 = 53
+  significandSizeDr: int32 = 53
 
 const ##   static constexpr int32_t   MaxExponent     = 1024 - 1 - (SignificandSize - 1);
      ##   static constexpr int32_t   MinExponent     = std::numeric_limits<value_type>::min_exponent - 1 - (SignificandSize - 1);
-  exponentBias*: int32 = 1024 - 1 + (significandSize - 1)
+  exponentBiasDr: int32 = 1024 - 1 + (significandSizeDr - 1)
 
 const
-  maxIeeeExponent*: BitsType = BitsType(2 * 1024 - 1)
+  maxIeeeExponentDr: BitsTypeDr = BitsTypeDr(2 * 1024 - 1)
 
 const                         ##  = 2^(p-1)
-  hiddenBit*: BitsType = BitsType(1) shl (significandSize - 1)
+  hiddenBitDr: BitsTypeDr = BitsTypeDr(1) shl (significandSizeDr - 1)
 
 const                         ##  = 2^(p-1) - 1
-  significandMask*: BitsType = hiddenBit - 1
+  significandMaskDr: BitsTypeDr = hiddenBitDr - 1
 
 const
-  exponentMask*: BitsType = maxIeeeExponent shl (significandSize - 1)
+  exponentMaskDr: BitsTypeDr = maxIeeeExponentDr shl (significandSizeDr - 1)
 
 const
-  signMask*: BitsType = not (not BitsType(0) shr 1)
+  signMaskDr: BitsTypeDr = not (not BitsTypeDr(0) shr 1)
 
-proc constructDouble*(bits: BitsType): Double =
-  result = Double(bits: bits)
+proc constructDoubleDr(bits: BitsTypeDr): DoubleDr =
+  result = DoubleDr(bits: bits)
 
-proc constructDouble*(value: ValueType): Double =
-  result = Double(bits: cast[typeof(result.bits)](value))
+proc constructDoubleDr(value: ValueTypeDr): DoubleDr =
+  result = DoubleDr(bits: cast[typeof(result.bits)](value))
 
-proc physicalSignificand*(this: Double): BitsType {.noSideEffect.} =
-  return this.bits and significandMask
+proc physicalSignificandDr(this: DoubleDr): BitsTypeDr {.noSideEffect.} =
+  return this.bits and significandMaskDr
 
-proc physicalExponent*(this: Double): BitsType {.noSideEffect.} =
-  return (this.bits and exponentMask) shr (significandSize - 1)
+proc physicalExponentDr(this: DoubleDr): BitsTypeDr {.noSideEffect.} =
+  return (this.bits and exponentMaskDr) shr (significandSizeDr - 1)
 
-proc isFinite*(this: Double): bool {.noSideEffect.} =
-  return (this.bits and exponentMask) != exponentMask
+proc isFiniteDr(this: DoubleDr): bool {.noSideEffect.} =
+  return (this.bits and exponentMaskDr) != exponentMaskDr
 
-proc isInf*(this: Double): bool {.noSideEffect.} =
-  return (this.bits and exponentMask) == exponentMask and
-      (this.bits and significandMask) == 0
+proc isInfDr(this: DoubleDr): bool {.noSideEffect.} =
+  return (this.bits and exponentMaskDr) == exponentMaskDr and
+      (this.bits and significandMaskDr) == 0
 
-proc isNaN*(this: Double): bool {.noSideEffect.} =
-  return (this.bits and exponentMask) == exponentMask and
-      (this.bits and significandMask) != 0
+proc isNaNDr(this: DoubleDr): bool {.noSideEffect.} =
+  return (this.bits and exponentMaskDr) == exponentMaskDr and
+      (this.bits and significandMaskDr) != 0
 
-proc isZero*(this: Double): bool {.noSideEffect.} =
-  return (this.bits and not signMask) == 0
+proc isZeroDr(this: DoubleDr): bool {.noSideEffect.} =
+  return (this.bits and not signMaskDr) == 0
 
-proc signBit*(this: Double): int {.noSideEffect.} =
-  return ord((this.bits and signMask) != 0)
+proc signBitDr(this: DoubleDr): int {.noSideEffect.} =
+  return ord((this.bits and signMaskDr) != 0)
 
 
 # ==================================================================================================
@@ -114,35 +109,35 @@ proc signBit*(this: Double): int {.noSideEffect.} =
 ##  Technically, right-shift of negative integers is implementation defined...
 ##  Should easily be optimized into SAR (or equivalent) instruction.
 
-proc floorDivPow2*(x: int32; n: int32): int32 {.inline.} =
+proc floorDivPow2Dr(x: int32; n: int32): int32 {.inline.} =
   return x shr n
 
-proc floorLog2Pow10*(e: int32): int32 {.inline.} =
+proc floorLog2Pow10Dr(e: int32): int32 {.inline.} =
   dragonbox_Assert(e >= -1233)
   dragonbox_Assert(e <= 1233)
-  return floorDivPow2(e * 1741647, 19)
+  return floorDivPow2Dr(e * 1741647, 19)
 
-proc floorLog10Pow2*(e: int32): int32 {.inline.} =
+proc floorLog10Pow2Dr(e: int32): int32 {.inline.} =
   dragonbox_Assert(e >= -1500)
   dragonbox_Assert(e <= 1500)
-  return floorDivPow2(e * 1262611, 22)
+  return floorDivPow2Dr(e * 1262611, 22)
 
-proc floorLog10ThreeQuartersPow2*(e: int32): int32 {.inline.} =
+proc floorLog10ThreeQuartersPow2Dr(e: int32): int32 {.inline.} =
   dragonbox_Assert(e >= -1500)
   dragonbox_Assert(e <= 1500)
-  return floorDivPow2(e * 1262611 - 524031, 22)
+  return floorDivPow2Dr(e * 1262611 - 524031, 22)
 
 # ==================================================================================================
 #
 # ==================================================================================================
 
 type
-  uint64x2* {.bycopy.} = object
-    hi*: uint64
-    lo*: uint64
+  uint64x2 {.bycopy.} = object
+    hi: uint64
+    lo: uint64
 
 
-proc computePow10*(k: int32): uint64x2 {.inline.} =
+proc computePow10Dr(k: int32): uint64x2 {.inline.} =
   const
     kMin: int32 = -292
   const
@@ -774,13 +769,13 @@ proc computePow10*(k: int32): uint64x2 {.inline.} =
 
 ##  Returns whether value is divisible by 2^e2
 
-proc multipleOfPow2*(value: uint64; e2: int32): bool {.inline.} =
+proc multipleOfPow2Dr(value: uint64; e2: int32): bool {.inline.} =
   dragonbox_Assert(e2 >= 0)
   return e2 < 64 and (value and ((uint64(1) shl e2) - 1)) == 0
 
 ##  Returns whether value is divisible by 5^e5
 
-proc multipleOfPow5*(value: uint64; e5: int32): bool {.inline.} =
+proc multipleOfPow5Dr(value: uint64; e5: int32): bool {.inline.} =
   type
     MulCmp {.bycopy.} = object
       mul: uint64
@@ -818,22 +813,22 @@ proc multipleOfPow5*(value: uint64; e5: int32): bool {.inline.} =
   return value * m5.mul <= m5.cmp
 
 type
-  FloatingDecimal64* {.bycopy.} = object
-    significand*: uint64
-    exponent*: int32
+  FloatingDecimal64 {.bycopy.} = object
+    significand: uint64
+    exponent: int32
 
 
-proc toDecimal64AsymmetricInterval*(e2: int32): FloatingDecimal64 {.inline.} =
+proc toDecimal64AsymmetricIntervalDr(e2: int32): FloatingDecimal64 {.inline.} =
   ##  NB:
   ##  accept_lower_endpoint = true
   ##  accept_upper_endpoint = true
   const
-    P: int32 = significandSize
+    P: int32 = significandSizeDr
   ##  Compute k and beta
-  let minusK: int32 = floorLog10ThreeQuartersPow2(e2)
-  let betaMinus1: int32 = e2 + floorLog2Pow10(-minusK)
+  let minusK: int32 = floorLog10ThreeQuartersPow2Dr(e2)
+  let betaMinus1: int32 = e2 + floorLog2Pow10Dr(-minusK)
   ##  Compute xi and zi
-  let pow10: uint64x2 = computePow10(-minusK)
+  let pow10: uint64x2 = computePow10Dr(-minusK)
   let lowerEndpoint: uint64 = (pow10.hi - (pow10.hi shr (P + 1))) shr
       (64 - P - betaMinus1)
   let upperEndpoint: uint64 = (pow10.hi + (pow10.hi shr (P + 0))) shr
@@ -856,13 +851,13 @@ proc toDecimal64AsymmetricInterval*(e2: int32): FloatingDecimal64 {.inline.} =
     inc(q, ord(q < xi))
   return FloatingDecimal64(significand: q, exponent: minusK)
 
-proc computeDelta*(pow10: uint64x2; betaMinus1: int32): uint32 {.inline.} =
+proc computeDeltaDr(pow10: uint64x2; betaMinus1: int32): uint32 {.inline.} =
   dragonbox_Assert(betaMinus1 >= 0)
   dragonbox_Assert(betaMinus1 <= 63)
   return cast[uint32](pow10.hi shr (64 - 1 - betaMinus1))
 
 when defined(sizeof_Int128):
-  proc mul128*(x: uint64; y: uint64): uint64x2 {.inline.} =
+  proc mul128Dr(x: uint64; y: uint64): uint64x2 {.inline.} =
     ##  1 mulx
     type
       uint128T = uint128
@@ -872,69 +867,69 @@ when defined(sizeof_Int128):
     return (hi, lo)
 
 elif defined(vcc) and defined(cpu64):
-  proc umul128(x, y: uint64, z: ptr uint64): uint64 {.importc: "_umul128", header: "<intrin.h>".}
-  proc mul128*(x: uint64; y: uint64): uint64x2 {.inline.} =
+  proc umul128Dr(x, y: uint64, z: ptr uint64): uint64 {.importc: "_umul128", header: "<intrin.h>".}
+  proc mul128Dr(x: uint64; y: uint64): uint64x2 {.inline.} =
     var hi: uint64 = 0
-    var lo: uint64 = umul128(x, y, addr(hi))
+    var lo: uint64 = umul128Dr(x, y, addr(hi))
     return uint64x2(hi: hi, lo: lo)
 
 else:
-  proc lo32*(x: uint64): uint32 {.inline.} =
+  proc lo32Dr(x: uint64): uint32 {.inline.} =
     return cast[uint32](x)
 
-  proc hi32*(x: uint64): uint32 {.inline.} =
+  proc hi32Dr(x: uint64): uint32 {.inline.} =
     return cast[uint32](x shr 32)
 
-  proc mul128*(a: uint64; b: uint64): uint64x2 {.inline.} =
-    let b00: uint64 = uint64(lo32(a)) * lo32(b)
-    let b01: uint64 = uint64(lo32(a)) * hi32(b)
-    let b10: uint64 = uint64(hi32(a)) * lo32(b)
-    let b11: uint64 = uint64(hi32(a)) * hi32(b)
-    let mid1: uint64 = b10 + hi32(b00)
-    let mid2: uint64 = b01 + lo32(mid1)
-    let hi: uint64 = b11 + hi32(mid1) + hi32(mid2)
-    let lo: uint64 = lo32(b00) or uint64(lo32(mid2)) shl 32
+  proc mul128Dr(a: uint64; b: uint64): uint64x2 {.inline.} =
+    let b00: uint64 = uint64(lo32Dr(a)) * lo32Dr(b)
+    let b01: uint64 = uint64(lo32Dr(a)) * hi32Dr(b)
+    let b10: uint64 = uint64(hi32Dr(a)) * lo32Dr(b)
+    let b11: uint64 = uint64(hi32Dr(a)) * hi32Dr(b)
+    let mid1: uint64 = b10 + hi32Dr(b00)
+    let mid2: uint64 = b01 + lo32Dr(mid1)
+    let hi: uint64 = b11 + hi32Dr(mid1) + hi32Dr(mid2)
+    let lo: uint64 = lo32Dr(b00) or uint64(lo32Dr(mid2)) shl 32
     return uint64x2(hi: hi, lo: lo)
 
 ##  Returns (x * y) / 2^128
 
-proc mulShift*(x: uint64; y: uint64x2): uint64 {.inline.} =
+proc mulShiftDr(x: uint64; y: uint64x2): uint64 {.inline.} =
   ##  2 mulx
-  var p1: uint64x2 = mul128(x, y.hi)
-  var p0: uint64x2 = mul128(x, y.lo)
+  var p1: uint64x2 = mul128Dr(x, y.hi)
+  var p0: uint64x2 = mul128Dr(x, y.lo)
   p1.lo += p0.hi
   inc(p1.hi, ord(p1.lo < p0.hi))
   return p1.hi
 
-proc mulParity*(twoF: uint64; pow10: uint64x2; betaMinus1: int32): bool {.inline.} =
+proc mulParityDr(twoF: uint64; pow10: uint64x2; betaMinus1: int32): bool {.inline.} =
   ##  1 mulx, 1 mul
   dragonbox_Assert(betaMinus1 >= 1)
   dragonbox_Assert(betaMinus1 <= 63)
   let p01: uint64 = twoF * pow10.hi
-  let p10: uint64 = mul128(twoF, pow10.lo).hi
+  let p10: uint64 = mul128Dr(twoF, pow10.lo).hi
   let mid: uint64 = p01 + p10
   return (mid and (uint64(1) shl (64 - betaMinus1))) != 0
 
-proc isIntegralEndpoint*(twoF: uint64; e2: int32; minusK: int32): bool {.inline.} =
+proc isIntegralEndpointDr(twoF: uint64; e2: int32; minusK: int32): bool {.inline.} =
   if e2 < -2:
     return false
   if e2 <= 9:
     return true
   if e2 <= 86:
-    return multipleOfPow5(twoF, minusK)
+    return multipleOfPow5Dr(twoF, minusK)
   return false
 
-proc isIntegralMidpoint*(twoF: uint64; e2: int32; minusK: int32): bool {.inline.} =
+proc isIntegralMidpointDr(twoF: uint64; e2: int32; minusK: int32): bool {.inline.} =
   if e2 < -4:
-    return multipleOfPow2(twoF, minusK - e2 + 1)
+    return multipleOfPow2Dr(twoF, minusK - e2 + 1)
   if e2 <= 9:
     return true
   if e2 <= 86:
-    return multipleOfPow5(twoF, minusK)
+    return multipleOfPow5Dr(twoF, minusK)
   return false
 
-proc toDecimal64*(ieeeSignificand: uint64; ieeeExponent: uint64): FloatingDecimal64 {.
-    inline.} =
+proc toDecimal64Dr(ieeeSignificand: uint64; ieeeExponent: uint64): FloatingDecimal64 {.
+  inline.} =
   const
     kappa: int32 = 2
   const
@@ -950,31 +945,31 @@ proc toDecimal64*(ieeeSignificand: uint64; ieeeExponent: uint64): FloatingDecima
   var m2: uint64
   var e2: int32
   if ieeeExponent != 0:
-    m2 = hiddenBit or ieeeSignificand
-    e2 = cast[int32](ieeeExponent) - exponentBias
-    if 0 <= -e2 and -e2 < significandSize and multipleOfPow2(m2, -e2):
+    m2 = hiddenBitDr or ieeeSignificand
+    e2 = cast[int32](ieeeExponent) - exponentBiasDr
+    if 0 <= -e2 and -e2 < significandSizeDr and multipleOfPow2Dr(m2, -e2):
       ##  Small integer.
       return FloatingDecimal64(significand: m2 shr -e2, exponent: 0)
     if ieeeSignificand == 0 and ieeeExponent > 1:
       ##  Shorter interval case; proceed like Schubfach.
-      return toDecimal64AsymmetricInterval(e2)
+      return toDecimal64AsymmetricIntervalDr(e2)
   else:
     ##  Subnormal case; interval is always regular.
     m2 = ieeeSignificand
-    e2 = 1 - exponentBias
+    e2 = 1 - exponentBiasDr
   let isEven: bool = (m2 mod 2 == 0)
   let acceptLower: bool = isEven
   let acceptUpper: bool = isEven
   ##  Compute k and beta.
-  let minusK: int32 = floorLog10Pow2(e2) - kappa
-  let betaMinus1: int32 = e2 + floorLog2Pow10(-minusK)
+  let minusK: int32 = floorLog10Pow2Dr(e2) - kappa
+  let betaMinus1: int32 = e2 + floorLog2Pow10Dr(-minusK)
   dragonbox_Assert(betaMinus1 >= 6)
   dragonbox_Assert(betaMinus1 <= 9)
-  let pow10: uint64x2 = computePow10(-minusK)
+  let pow10: uint64x2 = computePow10Dr(-minusK)
   ##  Compute delta
   ##  10^kappa <= delta < 10^(kappa + 1)
   ##       100 <= delta < 1000
-  let delta: uint32 = computeDelta(pow10, betaMinus1)
+  let delta: uint32 = computeDeltaDr(pow10, betaMinus1)
   dragonbox_Assert(delta >= smallDivisor)
   dragonbox_Assert(delta < bigDivisor)
   let twoFl: uint64 = 2 * m2 - 1
@@ -983,7 +978,7 @@ proc toDecimal64*(ieeeSignificand: uint64; ieeeExponent: uint64): FloatingDecima
   ##  (54 bits)
   ##  Compute zi
   ##   (54 + 9 = 63 bits)
-  let zi: uint64 = mulShift(twoFr shl betaMinus1, pow10)
+  let zi: uint64 = mulShiftDr(twoFr shl betaMinus1, pow10)
   ##  2 mulx
   ##
   ##  Step 2:
@@ -997,7 +992,7 @@ proc toDecimal64*(ieeeSignificand: uint64; ieeeExponent: uint64): FloatingDecima
   if r < delta:                  ## likely ~50% ?!
             ##  (r > deltai)
     ##  Exclude the right endpoint if necessary
-    if r != 0 or acceptUpper or not isIntegralEndpoint(twoFr, e2, minusK):
+    if r != 0 or acceptUpper or not isIntegralEndpointDr(twoFr, e2, minusK):
       return FloatingDecimal64(significand: q, exponent: minusK + kappa + 1)
     dragonbox_Assert(q != 0)
     dec(q)
@@ -1006,8 +1001,8 @@ proc toDecimal64*(ieeeSignificand: uint64; ieeeExponent: uint64): FloatingDecima
     ##  Compare fractional parts.
     ##  Check conditions in the order different from the paper
     ##  to take advantage of short-circuiting
-    if (acceptLower and isIntegralEndpoint(twoFl, e2, minusK)) or
-        mulParity(twoFl, pow10, betaMinus1):
+    if (acceptLower and isIntegralEndpointDr(twoFl, e2, minusK)) or
+      mulParityDr(twoFl, pow10, betaMinus1):
       return FloatingDecimal64(significand: q, exponent: minusK + kappa + 1)
   else:
     discard
@@ -1033,9 +1028,9 @@ proc toDecimal64*(ieeeSignificand: uint64; ieeeExponent: uint64): FloatingDecima
     ##  Since there are only 2 possibilities, we only need to care about the
     ##  parity. Also, zi and r should have the same parity since the divisor
     ##  is an even number
-    if mulParity(twoFc, pow10, betaMinus1) != approxYParity:
+    if mulParityDr(twoFc, pow10, betaMinus1) != approxYParity:
       dec(q)
-    elif q mod 2 != 0 and isIntegralMidpoint(twoFc, e2, minusK):
+    elif q mod 2 != 0 and isIntegralMidpointDr(twoFc, e2, minusK):
       dec(q)
   return FloatingDecimal64(significand: q, exponent: minusK + kappa)
 
@@ -1043,7 +1038,7 @@ proc toDecimal64*(ieeeSignificand: uint64; ieeeExponent: uint64): FloatingDecima
 #  ToChars
 # ==================================================================================================
 
-proc utoa8DigitsSkipTrailingZeros*(buf: var openArray[char]; pos: int; digits: uint32): int {.inline.} =
+proc utoa8DigitsSkipTrailingZerosDr(buf: var openArray[char]; pos: int; digits: uint32): int {.inline.} =
   dragonbox_Assert(digits >= 1)
   dragonbox_Assert(digits <= 99999999'u32)
   let q: uint32 = digits div 10000
@@ -1061,7 +1056,7 @@ proc utoa8DigitsSkipTrailingZeros*(buf: var openArray[char]; pos: int; digits: u
     utoa2Digits(buf, pos + 6, rL)
     return trailingZeros2Digits(if rL == 0: rH else: rL) + (if rL == 0: 2 else: 0)
 
-proc printDecimalDigitsBackwards*(buf: var openArray[char]; pos: int; output64: uint64): int {.inline.} =
+proc printDecimalDigitsBackwardsDr(buf: var openArray[char]; pos: int; output64: uint64): int {.inline.} =
   var pos = pos
   var output64 = output64
   var tz = 0
@@ -1075,7 +1070,7 @@ proc printDecimalDigitsBackwards*(buf: var openArray[char]; pos: int; output64: 
     output64 = q
     dec(pos, 8)
     if r != 0:
-      tz = utoa8DigitsSkipTrailingZeros(buf, pos, r)
+      tz = utoa8DigitsSkipTrailingZerosDr(buf, pos, r)
       dragonbox_Assert(tz >= 0)
       dragonbox_Assert(tz <= 7)
     else:
@@ -1137,7 +1132,7 @@ proc printDecimalDigitsBackwards*(buf: var openArray[char]; pos: int; output64: 
     buf[pos] = chr(ord('0') + q)
   return tz
 
-proc decimalLength*(v: uint64): int {.inline.} =
+proc decimalLengthDr(v: uint64): int {.inline.} =
   dragonbox_Assert(v >= 1)
   dragonbox_Assert(v <= 99999999999999999'u64)
   if cast[uint32](v shr 32) != 0:
@@ -1177,7 +1172,7 @@ proc decimalLength*(v: uint64): int {.inline.} =
     return 2
   return 1
 
-proc formatDigits*[T: Ordinal](buffer: var openArray[char]; pos: T; digits: uint64; decimalExponent: int;
+proc formatDigitsDr[T: Ordinal](buffer: var openArray[char]; pos: T; digits: uint64; decimalExponent: int;
                   forceTrailingDotZero = false): int {.inline.} =
   const
     minFixedDecimalPoint = -6
@@ -1190,7 +1185,7 @@ proc formatDigits*[T: Ordinal](buffer: var openArray[char]; pos: T; digits: uint
   dragonbox_Assert(digits <= 99999999999999999'u64)
   dragonbox_Assert(decimalExponent >= -999)
   dragonbox_Assert(decimalExponent <= 999)
-  var numDigits = decimalLength(digits)
+  var numDigits = decimalLengthDr(digits)
   let decimalPoint = numDigits + decimalExponent
   let useFixed: bool = minFixedDecimalPoint <= decimalPoint and
       decimalPoint <= maxFixedDecimalPoint
@@ -1211,7 +1206,7 @@ proc formatDigits*[T: Ordinal](buffer: var openArray[char]; pos: T; digits: uint
     ##  dE+123 or d.igitsE+123
     decimalDigitsPosition = 1
   var digitsEnd = pos + int(decimalDigitsPosition + numDigits)
-  let tz = printDecimalDigitsBackwards(buffer, digitsEnd, digits)
+  let tz = printDecimalDigitsBackwardsDr(buffer, digitsEnd, digits)
   dec(digitsEnd, tz)
   dec(numDigits, tz)
   ##   decimal_exponent += tz; // => decimal_point unchanged.
@@ -1270,20 +1265,20 @@ proc formatDigits*[T: Ordinal](buffer: var openArray[char]; pos: T; digits: uint
       inc(pos, 2)
   return pos
 
-proc toChars*(buffer: var openArray[char]; v: float; forceTrailingDotZero = false): int {.
-    inline.} =
+proc toChars(buffer: var openArray[char]; v: float; forceTrailingDotZero = false): int {.
+  inline.} =
   var pos = 0
-  let significand: uint64 = physicalSignificand(constructDouble(v))
-  let exponent: uint64 = physicalExponent(constructDouble(v))
-  if exponent != maxIeeeExponent:
+  let significand: uint64 = physicalSignificandDr(constructDoubleDr(v))
+  let exponent: uint64 = physicalExponentDr(constructDoubleDr(v))
+  if exponent != maxIeeeExponentDr:
     ##  Finite
     buffer[pos] = '-'
-    inc(pos, signBit(constructDouble(v)))
+    inc(pos, signBitDr(constructDoubleDr(v)))
     if exponent != 0 or significand != 0:
       ##  != 0
-      let dec = toDecimal64(significand, exponent)
-      return formatDigits(buffer, pos, dec.significand, dec.exponent.int,
-                         forceTrailingDotZero)
+      let dec = toDecimal64Dr(significand, exponent)
+      return formatDigitsDr(buffer, pos, dec.significand, dec.exponent.int,
+             forceTrailingDotZero)
     else:
       buffer[pos] = '0'
       buffer[pos+1] = '.'
@@ -1293,7 +1288,7 @@ proc toChars*(buffer: var openArray[char]; v: float; forceTrailingDotZero = fals
       return pos
   if significand == 0:
     buffer[pos] = '-'
-    inc(pos, signBit(constructDouble(v)))
+    inc(pos, signBitDr(constructDoubleDr(v)))
     buffer[pos] = 'i'
     buffer[pos+1] = 'n'
     buffer[pos+2] = 'f'
@@ -1307,8 +1302,8 @@ proc toChars*(buffer: var openArray[char]; v: float; forceTrailingDotZero = fals
     return pos + 3
 
 when false:
-  proc toString*(value: float): string =
-    var buffer: array[dtoaMinBufferLength, char]
+  proc toString(value: float): string =
+    var buffer: array[dtoaMinBufferLengthDr, char]
     let last = toChars(addr buffer, value)
     let L = cast[int](last) - cast[int](addr(buffer))
     result = newString(L)

@@ -10,10 +10,6 @@
 ##      https://drive.google.com/open?id=1luHhyQF9zKlM8yJ1nebU0OgVYhfC6CBN
 # --------------------------------------------------------------------------------------------------
 
-import std/private/digitsutils
-
-when defined(nimPreviewSlimSystem):
-  import std/assertions
 
 
 template sf_Assert(x: untyped): untyped =
@@ -400,8 +396,8 @@ proc formatDigits[T: Ordinal](buffer: var openArray[char]; pos: T; digits: uint3
       inc(pos, 2)
   return pos
 
-proc float32ToChars*(buffer: var openArray[char]; v: float32; forceTrailingDotZero = false): int {.
-    inline.} =
+proc float32ToChars(buffer: var openArray[char]; v: float32; forceTrailingDotZero = false): int {.
+  inline.} =
   let significand: uint32 = physicalSignificand(constructSingle(v))
   let exponent: uint32 = physicalExponent(constructSingle(v))
   var pos = 0

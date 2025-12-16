@@ -553,8 +553,8 @@ type
   CatchableError* = object of Exception ## \
     ## Abstract class for all exceptions that are catchable.
 
-when defined(nimIcIntegrityChecks):
-  include "system/exceptions"
+
+include "system/exceptions"
 
 when defined(js) or defined(nimdoc):
   type
@@ -1127,8 +1127,8 @@ when not defined(js) and hostOS != "standalone":
     ## deprecated, prefer `quit` or `exitprocs.getProgramResult`, `exitprocs.setProgramResult`.
 
 import std/private/since
-import system/ctypes
-export ctypes
+
+include system/ctypes
 
 include system/ptrarith
 
@@ -1682,10 +1682,6 @@ when not defined(js) and defined(nimV2):
         else:
           vTable: UncheckedArray[pointer] # vtable for types
     PNimTypeV2 = ptr TNimTypeV2
-
-when not defined(nimIcIntegrityChecks):
-  import system/exceptions
-  export exceptions
 
 when notJSnotNims and defined(nimSeqsV2):
   include "system/strs_v2"
