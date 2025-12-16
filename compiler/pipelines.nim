@@ -255,7 +255,7 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
           if m == module:
             replayActions.add n
 
-      writeNifModule(graph.config, module.position.int32, topLevelStmts, move(graph.opsLog), replayActions)
+      writeNifModule(graph.config, module.position.int32, topLevelStmts, graph.opsLog, replayActions)
 
   if graph.config.backend notin {backendC, backendCpp, backendObjc} and graph.config.cmd != cmdM:
     # We only write rod files here if no C-like backend is active.

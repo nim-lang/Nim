@@ -698,8 +698,10 @@ proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode;
     for action in replayActions:
       writeNode(w, content, action)
     content.addParRi()
+  # Only write ops that belong to this module
   for op in opsLog:
-    writeOp(w, content, op)
+    if op.module == thisModule.int:
+      writeOp(w, content, op)
 
   w.writeToplevelNode content, n
 
@@ -1422,8 +1424,9 @@ proc resolveSym(c: var DecodeContext; symAsStr: string; alsoConsiderPrivate: boo
 
 proc resolveHookSym*(c: var DecodeContext; symId: nifstreams.SymId): PSym =
   ## Resolves a hook SymId to PSym.
+  ## Hook symbols are often private (generated =destroy, =wasMoved, etc.)
   let symAsStr = pool.syms[symId]
-  result = resolveSym(c, symAsStr, false)
+  result = resolveSym(c, symAsStr, true)
 
 proc tryResolveCompilerProc*(c: var DecodeContext; name: string; moduleFileIdx: FileIndex): PSym =
   ## Tries to resolve a compiler proc from a module by checking the NIF index.
@@ -1432,7 +1435,7 @@ proc tryResolveCompilerProc*(c: var DecodeContext; name: string; moduleFileIdx: 
   let symName = name & ".0." & suffix
   result = resolveSym(c, symName, true)
 
-proc loadLogOp(c: var DecodeContext; logOps: var seq[LogEntry]; s: var Stream; kind: LogEntryKind; op: TTypeAttachedOp): PackedToken =
+proc loadLogOp(c: var DecodeContext; logOps: var seq[LogEntry]; s: var Stream; kind: LogEntryKind; op: TTypeAttachedOp; module: int): PackedToken =
   result = next(s)
   var key = ""
   if result.kind == StringLit:
@@ -1443,9 +1446,8 @@ proc loadLogOp(c: var DecodeContext; logOps: var seq[LogEntry]; s: var Stream; k
   if result.kind == Symbol:
     let sym = resolveHookSym(c, result.symId)
     if sym != nil:
-      logOps.add LogEntry(kind: kind, op: op, key: key, sym: sym)
-    else:
-      raiseAssert "symbol not found: " & pool.syms[result.symId]
+      logOps.add LogEntry(kind: kind, op: op, module: module, key: key, sym: sym)
+    # else: symbol not indexed, skip this hook entry
     result = next(s)
   if result.kind == ParRi:
     result = next(s)
@@ -1479,7 +1481,7 @@ proc nextSubtree(r: var Stream; dest: var TokenBuf; tok: var PackedToken) =
       dec nested
       if nested == 0: break
 
-proc processTopLevel(c: var DecodeContext; s: var Stream; loadFullAst: bool; suffix: string; logOps: var seq[LogEntry]): PNode =
+proc processTopLevel(c: var DecodeContext; s: var Stream; loadFullAst: bool; suffix: string; logOps: var seq[LogEntry]; module: int): PNode =
   result = newNode(nkStmtList)
   var localSyms = initTable[string, PSym]()
 
@@ -1504,27 +1506,27 @@ proc processTopLevel(c: var DecodeContext; s: var Stream; loadFullAst: bool; suf
         else:
           raiseAssert "expected ParRi but got " & $t.kind
       elif t.tagId == repConverterTag:
-        t = loadLogOp(c, logOps, s, ConverterEntry, attachedTrace)
+        t = loadLogOp(c, logOps, s, ConverterEntry, attachedTrace, module)
       elif t.tagId == repDestroyTag:
-        t = loadLogOp(c, logOps, s, HookEntry, attachedDestructor)
+        t = loadLogOp(c, logOps, s, HookEntry, attachedDestructor, module)
       elif t.tagId == repWasMovedTag:
-        t = loadLogOp(c, logOps, s, HookEntry, attachedWasMoved)
+        t = loadLogOp(c, logOps, s, HookEntry, attachedWasMoved, module)
       elif t.tagId == repCopyTag:
-        t = loadLogOp(c, logOps, s, HookEntry, attachedAsgn)
+        t = loadLogOp(c, logOps, s, HookEntry, attachedAsgn, module)
       elif t.tagId == repSinkTag:
-        t = loadLogOp(c, logOps, s, HookEntry, attachedSink)
+        t = loadLogOp(c, logOps, s, HookEntry, attachedSink, module)
       elif t.tagId == repDupTag:
-        t = loadLogOp(c, logOps, s, HookEntry, attachedDup)
+        t = loadLogOp(c, logOps, s, HookEntry, attachedDup, module)
       elif t.tagId == repTraceTag:
-        t = loadLogOp(c, logOps, s, HookEntry, attachedTrace)
+        t = loadLogOp(c, logOps, s, HookEntry, attachedTrace, module)
       elif t.tagId == repDeepCopyTag:
-        t = loadLogOp(c, logOps, s, HookEntry, attachedDeepCopy)
+        t = loadLogOp(c, logOps, s, HookEntry, attachedDeepCopy, module)
       elif t.tagId == repEnumToStrTag:
-        t = loadLogOp(c, logOps, s, EnumToStrEntry, attachedTrace)
+        t = loadLogOp(c, logOps, s, EnumToStrEntry, attachedTrace, module)
       elif t.tagId == repMethodTag:
-        t = loadLogOp(c, logOps, s, MethodEntry, attachedTrace)
+        t = loadLogOp(c, logOps, s, MethodEntry, attachedTrace, module)
         #elif t.tagId == repClassTag:
-        #  t = loadLogOp(c, logOps, s, ClassEntry, attachedTrace)
+        #  t = loadLogOp(c, logOps, s, ClassEntry, attachedTrace, module)
       elif t.tagId == includeTag or t.tagId == importTag:
         t = skipTree(s)
       elif loadFullAst:
@@ -1560,7 +1562,7 @@ proc loadNifModule*(c: var DecodeContext; f: FileIndex; interf, interfHidden: va
   if t.kind == ParLe and pool.tags[t.tagId] == toNifTag(nkStmtList):
     t = next(s[])  # skip (stmts
     t = next(s[])  # skip flags
-    result = processTopLevel(c, s[], loadFullAst, suffix, logOps)
+    result = processTopLevel(c, s[], loadFullAst, suffix, logOps, f.int)
   else:
     result = newNode(nkStmtList)
 

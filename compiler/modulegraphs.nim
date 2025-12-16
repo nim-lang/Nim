@@ -369,7 +369,10 @@ proc getAttachedOp*(g: ModuleGraph; t: PType; op: TTypeAttachedOp): PSym =
   if g.attachedOps[op].contains(t.itemId):
     result = resolveAttachedOp(g, g.attachedOps[op][t.itemId])
   else:
-    result = nil
+    # Fall back to key-based lookup for NIF-loaded hooks
+    let key = typeKey(t, g.config, loadTypeCallback, loadSymCallback)
+    result = g.loadedOps[op].getOrDefault(key)
+    #echo "fallback ", key, " ", op, " ", result
 
 proc setAttachedOp*(g: ModuleGraph; module: int; t: PType; op: TTypeAttachedOp; value: PSym) =
   ## we also need to record this to the packed module.
@@ -378,7 +381,10 @@ proc setAttachedOp*(g: ModuleGraph; module: int; t: PType; op: TTypeAttachedOp; 
     # Use key-based deduplication for opsLog because different type objects
     # (e.g. canon vs orig) can have different itemIds but same structural key
     if key notin g.loadedOps[op]:
-      g.opsLog.add LogEntry(kind: HookEntry, op: op, key: key, sym: value)
+      # Hooks should be written to the module where the type is defined,
+      # not the module that triggered the registration
+      let ownerModule = if t.sym != nil: t.sym.itemId.module.int else: module
+      g.opsLog.add LogEntry(kind: HookEntry, op: op, module: ownerModule, key: key, sym: value)
       g.loadedOps[op][key] = value
   g.attachedOps[op][t.itemId] = LazySym(sym: value)
 
@@ -429,7 +435,8 @@ proc getToStringProc*(g: ModuleGraph; t: PType): PSym =
 proc setToStringProc*(g: ModuleGraph; t: PType; value: PSym) =
   g.enumToStringProcs[t.itemId] = LazySym(sym: value)
   let key = typeKey(t, g.config, loadTypeCallback, loadSymCallback)
-  g.opsLog.add LogEntry(kind: EnumToStrEntry, key: key, sym: value)
+  let ownerModule = if t.sym != nil: t.sym.itemId.module.int else: value.itemId.module.int
+  g.opsLog.add LogEntry(kind: EnumToStrEntry, module: ownerModule, key: key, sym: value)
 
 iterator methodsForGeneric*(g: ModuleGraph; t: PType): (int, PSym) =
   if g.methodsPerGenericType.contains(t.itemId):
@@ -439,7 +446,8 @@ iterator methodsForGeneric*(g: ModuleGraph; t: PType): (int, PSym) =
 proc addMethodToGeneric*(g: ModuleGraph; module: int; t: PType; col: int; m: PSym) =
   g.methodsPerGenericType.mgetOrPut(t.itemId, @[]).add (col, LazySym(sym: m))
   let key = typeKey(t, g.config, loadTypeCallback, loadSymCallback)
-  g.opsLog.add LogEntry(kind: MethodEntry, key: key, sym: m)
+  let ownerModule = if t.sym != nil: t.sym.itemId.module.int else: module
+  g.opsLog.add LogEntry(kind: MethodEntry, module: ownerModule, key: key, sym: m)
 
 proc hasDisabledAsgn*(g: ModuleGraph; t: PType): bool =
   let op = getAttachedOp(g, t, attachedAsgn)

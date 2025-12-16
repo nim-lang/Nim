@@ -1001,6 +1001,7 @@ type
     kind*: LogEntryKind
     op*: TTypeAttachedOp
     isGeneric*: bool
+    module*: int  # Which module this entry belongs to
     key*: string
     sym*: PSym
 
