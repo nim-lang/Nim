@@ -155,6 +155,8 @@ lib/posix/posix_haiku.nim
 lib/pure/md5.nim
 lib/std/sha1.nim
 lib/pure/htmlparser.nim
+lib/std/private/schubfach.nim
+lib/std/private/dragonbox.nim
 """.splitWhitespace()
 
   officialPackagesList = """
