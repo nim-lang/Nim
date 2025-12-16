@@ -68,11 +68,17 @@ proc findPendingModule(m: BModule, s: PSym): BModule =
   if m.config.symbolFiles == v2Sf or optCompress in m.config.globalOptions:
     let ms = s.itemId.module  #getModule(s)
     result = m.g.modules[ms]
+  elif m.config.cmd in {cmdNifC, cmdM}:
+    var ms = getModule(s)
+    if ms.position >= m.g.modules.len:
+      result = newModule(m.g, ms, m.config, idGeneratorFromModule(ms))
+    else:
+      result = m.g.modules[ms.position]
+      if result == nil:
+        result = newModule(m.g, ms, m.config, idGeneratorFromModule(ms))
   else:
     var ms = getModule(s)
     result = m.g.modules[ms.position]
-    if result == nil:
-      result = newModule(m.g, ms, m.config, idGeneratorFromModule(ms))
 
 proc initLoc(k: TLocKind, lode: PNode, s: TStorageLoc, flags: TLocFlags = {}): TLoc =
   result = TLoc(k: k, storage: s, lode: lode,

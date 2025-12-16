@@ -717,6 +717,16 @@ proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode;
   # do not write the (stmts .. ) wrapper:
   for i in 3 ..< content.len-1:
     dest.add content[i]
+
+  # ensure the hooks we announced end up in the NIF file regardless of
+  # whether they have been used:
+  for op in opsLog:
+    if op.module == thisModule.int:
+      let s = op.sym
+      if s.state != Sealed:
+        s.state = Sealed
+        writeSymDef w, dest, s
+
   dest.addParRi()
 
   writeFile(dest, d)

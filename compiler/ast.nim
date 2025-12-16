@@ -296,7 +296,8 @@ proc incl*(s: PSym; flags: set[TSymFlag]) {.inline.} =
   s.flagsImpl.incl(flags)
 
 proc incl*(s: PSym; flag: TLocFlag) {.inline.} =
-  assert s.state != Sealed
+  #assert s.state != Sealed
+  # locImpl is a backend field so do not protect it against mutations
   if s.state == Partial: loadSym(s)
   s.locImpl.flags.incl(flag)
 
