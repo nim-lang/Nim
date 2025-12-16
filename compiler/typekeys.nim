@@ -250,7 +250,8 @@ proc typeKey(c: var Context; t: PType; flags: set[ConsiderFlag]; conf: ConfigRef
   of tyStatic:
     withTree c.m, toNifTag(t.kind):
       c.treeKey(t.nImpl, {}, conf)
-      c.typeKey(t.skipModifierB, flags, conf)
+      if t.sonsImpl.len > 0:
+        c.typeKey(t.skipModifierB, flags, conf)
   of tyProc:
     withTree c.m, (if tfIterator in t.flagsImpl: "itertype" else: "proctype"):
       if CoProc in flags and t.nImpl != nil:

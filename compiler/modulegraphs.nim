@@ -368,11 +368,13 @@ proc getAttachedOp*(g: ModuleGraph; t: PType; op: TTypeAttachedOp): PSym =
   ## if no such operation exists.
   if g.attachedOps[op].contains(t.itemId):
     result = resolveAttachedOp(g, g.attachedOps[op][t.itemId])
-  else:
+  elif g.config.cmd in {cmdNifC, cmdM}:
     # Fall back to key-based lookup for NIF-loaded hooks
     let key = typeKey(t, g.config, loadTypeCallback, loadSymCallback)
     result = g.loadedOps[op].getOrDefault(key)
     #echo "fallback ", key, " ", op, " ", result
+  else:
+    result = nil
 
 proc setAttachedOp*(g: ModuleGraph; module: int; t: PType; op: TTypeAttachedOp; value: PSym) =
   ## we also need to record this to the packed module.
