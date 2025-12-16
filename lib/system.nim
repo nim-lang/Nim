@@ -554,7 +554,8 @@ type
     ## Abstract class for all exceptions that are catchable.
 
 
-include "system/exceptions"
+when defined(nimIcIntegrityChecks):
+  include "system/exceptions"
 
 when defined(js) or defined(nimdoc):
   type
@@ -1682,6 +1683,10 @@ when not defined(js) and defined(nimV2):
         else:
           vTable: UncheckedArray[pointer] # vtable for types
     PNimTypeV2 = ptr TNimTypeV2
+
+when not defined(nimIcIntegrityChecks):
+  import system/exceptions
+  export exceptions
 
 when notJSnotNims and defined(nimSeqsV2):
   include "system/strs_v2"
