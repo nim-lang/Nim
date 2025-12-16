@@ -2012,7 +2012,7 @@ proc `<`*[T: tuple](x, y: T): bool =
   return false
 
 
-import system/coro_detection
+include system/coro_detection
 
 {.push checks: off.}
 # obviously we cannot generate checking operations here :-)
