@@ -1,5 +1,3 @@
-include system/inclrtl
-
 proc isNamedTuple(T: typedesc): bool {.magic: "TypeTrait".}
   ## imported from typetraits
 
