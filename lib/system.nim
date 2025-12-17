@@ -2605,8 +2605,7 @@ macro varargsLen*(x: varargs[untyped]): int {.since: (1, 1).} =
   varargsLenImpl(x)
 
 when defined(nimV2):
-  import system/repr_v2
-  export repr_v2
+  include system/repr_v2
 
 proc repr*[T, U](x: HSlice[T, U]): string =
   ## Generic `repr` operator for slices that is lifted from the components

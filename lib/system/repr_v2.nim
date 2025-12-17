@@ -1,8 +1,5 @@
 include system/inclrtl
 
-when defined(nimPreviewSlimSystem):
-  import std/formatfloat
-
 proc isNamedTuple(T: typedesc): bool {.magic: "TypeTrait".}
   ## imported from typetraits
 
