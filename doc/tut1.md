@@ -1278,9 +1278,10 @@ Arrays can be constructed using `[]`:
     echo x[i]
   ```
 
-The notation `x[i]` is used to access the i-th element of `x`.
-Array access is always bounds checked (at compile-time or at runtime). These
-checks can be disabled via pragmas or invoking the compiler with the
+The notation `x[i]` is used to access the i-th element of `x` in the example
+above but valid indexes can be defined by any subrange. Array access is
+always bounds checked (at compile-time or at runtime). These checks can be
+disabled via pragmas or invoking the compiler with the
 ``--bound_checks:off`` command line switch.
 
 Arrays are value types, like any other Nim type. The assignment operator
