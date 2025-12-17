@@ -3,7 +3,7 @@ runnableExamples:
   assert $0.1 == "0.1"
   assert $(-2*3) == "-6"
 
-import std/private/[digitsutils, miscdollars]
+import std/private/miscdollars
 
 when not defined(nimPreviewSlimSystem):
   import std/formatfloat

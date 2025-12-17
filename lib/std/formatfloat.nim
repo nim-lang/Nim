@@ -21,7 +21,9 @@ proc addCstringN(result: var string, buf: cstring; buflen: int) =
   result.setLen newLen
   c_memcpy(result[oldLen].addr, buf, buflen.csize_t)
 
-import std/private/digitsutils
+
+when not declared(ThisIsSystem):
+  include std/private/digitsutils
 
 include private/dragonbox
 include private/schubfach

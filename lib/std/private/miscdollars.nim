@@ -1,4 +1,4 @@
-from std/private/digitsutils import addInt
+from digitsutils import addIntSysimpl
 
 template toLocation*(result: var string, file: string | cstring, line: int, col: int) =
   ## avoids spurious allocations
@@ -13,10 +13,10 @@ template toLocation*(result: var string, file: string | cstring, line: int, col:
     result.add file
   if line > 0:
     result.add "("
-    addInt(result, line)
+    addIntSysimpl(result, line)
     if col > 0:
       result.add ", "
-      addInt(result, col)
+      addIntSysimpl(result, col)
     result.add ")"
 
 proc isNamedTuple(T: typedesc): bool {.magic: "TypeTrait".}

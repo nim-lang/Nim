@@ -2127,6 +2127,9 @@ template unlikely*(val: bool): bool =
     else:
       unlikelyProc(val)
 
+include std/private/digitsutils
+export addInt
+
 import system/dollars
 export dollars
 
@@ -2456,9 +2459,6 @@ proc finished*[T: iterator {.closure.}](x: T): bool {.noSideEffect, inline, magi
     {.emit: """
     `result` = ((NI*) `x`.ClE_0)[1] < 0;
     """.}
-
-from std/private/digitsutils import addInt
-export addInt
 
 when defined(js) and not defined(nimscript):
   # nimscript can be defined if config file for js compilation

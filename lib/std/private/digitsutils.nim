@@ -34,12 +34,12 @@ const
 when not defined(nimHasEnforceNoRaises):
   {.pragma: enforceNoRaises.}
 
-proc utoa2Digits*(buf: var openArray[char]; pos: int; digits: uint32) {.inline, enforceNoRaises.} =
+proc utoa2Digits(buf: var openArray[char]; pos: int; digits: uint32) {.inline, enforceNoRaises.} =
   buf[pos] = digits100[2 * digits]
   buf[pos+1] = digits100[2 * digits + 1]
   #copyMem(buf, unsafeAddr(digits100[2 * digits]), 2 * sizeof((char)))
 
-proc trailingZeros2Digits*(digits: uint32): int {.inline, enforceNoRaises.} =
+proc trailingZeros2Digits(digits: uint32): int {.inline, enforceNoRaises.} =
   trailingZeros100[digits]
 
 when defined(js):
@@ -85,14 +85,14 @@ func addIntImpl(result: var string, x: uint64) {.inline, enforceNoRaises.} =
   addChars(result, tmp, next, tmp.len - next)
 
 
-func addInt*(result: var string, x: uint64) {.enforceNoRaises.} =
+func addInt(result: var string, x: uint64) {.enforceNoRaises.} =
   when nimvm: addIntImpl(result, x)
   else:
     when not defined(js): addIntImpl(result, x)
     else:
       addChars(result, numToString(x))
 
-proc addInt*(result: var string; x: int64) {.enforceNoRaises.} =
+proc addInt(result: var string; x: int64) {.enforceNoRaises.} =
   ## Converts integer to its string representation and appends it to `result`.
   runnableExamples:
     var s = "foo"
@@ -115,7 +115,10 @@ proc addInt*(result: var string; x: int64) {.enforceNoRaises.} =
       addChars(result, numToString(x))
     else: impl()
 
-proc addInt*(result: var string; x: int) {.inline, enforceNoRaises.} =
+proc addInt(result: var string; x: int) {.inline, enforceNoRaises.} =
   addInt(result, int64(x))
+
+proc addIntSysimpl*(result: var string; x: int) {.inline, enforceNoRaises.} =
+  addInt(result, x)
 
 {.pop.}
