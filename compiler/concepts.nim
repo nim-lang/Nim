@@ -74,7 +74,7 @@ type
     mfDontBind  # Do not bind generic parameters
     mfCheckGeneric  # formal <- formal comparison as opposed to formal <- operand
 
-  ConceptTypePair = tuple[conceptId, typeId: int]
+  ConceptTypePair = tuple[conceptId, typeId: ItemId]
     ## Pair of (concept type id, implementation type id) used for cycle detection
 
   MatchCon = object ## Context we pass around during concept matching.
