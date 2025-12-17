@@ -85,7 +85,7 @@ proc generateCode*(g: ModuleGraph; mainFileIdx: FileIndex) =
   # Load system module first - it's always needed and contains essential hooks
   var cachedModules: seq[FileIndex] = @[]
   if g.config.m.systemFileIdx != InvalidFileIdx:
-    discard moduleFromNifFile(g, g.config.m.systemFileIdx, cachedModules)
+    g.systemModule = moduleFromNifFile(g, g.config.m.systemFileIdx, cachedModules)
 
   # Load all modules in dependency order using stack traversal
   # This must happen BEFORE any code generation so that hooks are loaded into loadedOps
