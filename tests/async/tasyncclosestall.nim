@@ -8,7 +8,7 @@ import asyncdispatch, asyncnet
 when defined(windows):
   from winlean import ERROR_NETNAME_DELETED
 else:
-  from posix import EBADF
+  from posix import EBADF, ECONNRESET, EPIPE
 
 # This reproduces a case where a socket remains stuck waiting for writes
 # even when the socket is closed.
@@ -38,11 +38,14 @@ proc keepSendingTo(c: AsyncSocket) {.async.} =
         # is raised which we classif as a "diconnection error", hence we overwrite
         # the flags above in the `send` call so that this error is raised.
         #
-        # On Linux the EBADF error code is raised, this is because the socket
-        # is closed.
+        # On POSIX systems, the error code depends on timing:
+        # - EBADF: Socket was closed locally before kernel detected remote state
+        # - ECONNRESET: Remote peer sent RST packet (detected first)
+        # - EPIPE: Socket is no longer connected (broken pipe)
+        # All three are valid disconnection errors for this test scenario.
         #
         # This means that by default the behaviours will differ between Windows
-        # and Linux. I think this is fine though, it makes sense mainly because
+        # and POSIX. I think this is fine though, it makes sense mainly because
         # Windows doesn't use a IO readiness model. We can fix this later if
         # necessary to reclassify ERROR_NETNAME_DELETED as not a "disconnection
         # error" (TODO)
@@ -53,7 +56,7 @@ proc keepSendingTo(c: AsyncSocket) {.async.} =
           else:
             raise newException(ValueError, "Test failed. Send failed with code " & $errCode)
         else:
-          if errCode == EBADF:
+          if errCode == EBADF or errCode == ECONNRESET or errCode == EPIPE:
             echo("send has errored. As expected. All good!")
             quit(QuitSuccess)
           else:
