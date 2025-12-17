@@ -35,13 +35,19 @@
 import prefixmatches, suggestsymdb
 from wordrecg import wDeprecated, wError, wAddr, wYield
 
-import std/[algorithm, sets, parseutils, tables]
+import std/[algorithm, sets, parseutils, os]
 
 when defined(nimsuggest):
   import pathutils # importer
 
 const
   sep = '\t'
+
+type
+  ImportContext = object
+    isMultiImport: bool      # True if we're in a [...] context
+    baseDir: string          # e.g., "folder/" in "import folder/[..."
+    partialModule: string    # The actual module name being typed
 
 #template sectionSuggest(): expr = "##begin\n" & getStackTrace() & "##end\n"
 
@@ -584,7 +590,7 @@ when defined(nimsuggest):
     let infoAsInt = info.infoToInt
     for infoB in s.allUsages:
       if infoB.infoToInt == infoAsInt: return
-    s.allUsages.add(info)
+    s.allUsagesImpl.add(info)
 
 proc findUsages(g: ModuleGraph; info: TLineInfo; s: PSym; usageSym: var PSym) =
   if g.config.suggestVersion == 1:
@@ -618,41 +624,43 @@ proc ensureIdx[T](x: var T, y: int) =
 proc ensureSeq[T](x: var seq[T]) =
   if x == nil: newSeq(x, 0)
 
-proc suggestSym*(g: ModuleGraph; info: TLineInfo; s: PSym; usageSym: var PSym; isDecl=true) {.inline.} =
+proc suggestSym*(g: ModuleGraph; info: TLineInfo; s: PSym; usageSym: var PSym; isDecl=true; isGenericInstance=false) {.inline.} =
   ## misnamed: should be 'symDeclared'
   let conf = g.config
   when defined(nimsuggest):
-    g.suggestSymbols.add SymInfoPair(sym: s, info: info, isDecl: isDecl), optIdeExceptionInlayHints in g.config.globalOptions
+    if optIdeExceptionInlayHints in conf.globalOptions or not isGenericInstance:
+      g.suggestSymbols.add SymInfoPair(sym: s, info: info, isDecl: isDecl, isGenericInstance: isGenericInstance), optIdeExceptionInlayHints in g.config.globalOptions
 
-    if conf.suggestVersion == 0:
-      if s.allUsages.len == 0:
-        s.allUsages = @[info]
-      else:
-        s.addNoDup(info)
+    if not isGenericInstance:
+      if conf.suggestVersion == 0:
+        if s.allUsages.len == 0:
+          s.allUsages = @[info]
+        else:
+          s.addNoDup(info)
 
-    if conf.ideCmd == ideUse:
-      findUsages(g, info, s, usageSym)
-    elif conf.ideCmd == ideDef:
-      findDefinition(g, info, s, usageSym)
-    elif conf.ideCmd == ideDus and s != nil:
-      if isTracked(info, conf.m.trackPos, s.name.s.len):
-        suggestResult(conf, symToSuggest(g, s, isLocal=false, ideDef, info, 100, PrefixMatch.None, false, 0))
-      findUsages(g, info, s, usageSym)
-    elif conf.ideCmd == ideHighlight and info.fileIndex == conf.m.trackPos.fileIndex:
-      suggestResult(conf, symToSuggest(g, s, isLocal=false, ideHighlight, info, 100, PrefixMatch.None, false, 0))
-    elif conf.ideCmd == ideOutline and isDecl:
-      # if a module is included then the info we have is inside the include and
-      # we need to walk up the owners until we find the outer most module,
-      # which will be the last skModule prior to an skPackage.
-      var
-        parentFileIndex = info.fileIndex # assume we're in the correct module
-        parentModule = s.owner
-      while parentModule != nil and parentModule.kind == skModule:
-        parentFileIndex = parentModule.info.fileIndex
-        parentModule = parentModule.owner
+      if conf.ideCmd == ideUse:
+        findUsages(g, info, s, usageSym)
+      elif conf.ideCmd == ideDef:
+        findDefinition(g, info, s, usageSym)
+      elif conf.ideCmd == ideDus and s != nil:
+        if isTracked(info, conf.m.trackPos, s.name.s.len):
+          suggestResult(conf, symToSuggest(g, s, isLocal=false, ideDef, info, 100, PrefixMatch.None, false, 0))
+        findUsages(g, info, s, usageSym)
+      elif conf.ideCmd == ideHighlight and info.fileIndex == conf.m.trackPos.fileIndex:
+        suggestResult(conf, symToSuggest(g, s, isLocal=false, ideHighlight, info, 100, PrefixMatch.None, false, 0))
+      elif conf.ideCmd == ideOutline and isDecl:
+        # if a module is included then the info we have is inside the include and
+        # we need to walk up the owners until we find the outer most module,
+        # which will be the last skModule prior to an skPackage.
+        var
+          parentFileIndex = info.fileIndex # assume we're in the correct module
+          parentModule = s.owner
+        while parentModule != nil and parentModule.kind == skModule:
+          parentFileIndex = parentModule.info.fileIndex
+          parentModule = parentModule.owner
 
-      if parentFileIndex == conf.m.trackPos.fileIndex:
-        suggestResult(conf, symToSuggest(g, s, isLocal=false, ideOutline, info, 100, PrefixMatch.None, false, 0))
+        if parentFileIndex == conf.m.trackPos.fileIndex:
+          suggestResult(conf, symToSuggest(g, s, isLocal=false, ideOutline, info, 100, PrefixMatch.None, false, 0))
 
 proc warnAboutDeprecated(conf: ConfigRef; info: TLineInfo; s: PSym) =
   var pragmaNode: PNode
@@ -696,26 +704,28 @@ proc markOwnerModuleAsUsed(c: PContext; s: PSym) =
       else:
         inc i
 
-proc markUsed(c: PContext; info: TLineInfo; s: PSym; checkStyle = true) =
-  let conf = c.config
-  incl(s.flags, sfUsed)
-  if s.kind == skEnumField and s.owner != nil:
-    incl(s.owner.flags, sfUsed)
-    if sfDeprecated in s.owner.flags:
-      warnAboutDeprecated(conf, info, s)
-  if {sfDeprecated, sfError} * s.flags != {}:
-    if sfDeprecated in s.flags:
-      if not (c.lastTLineInfo.line == info.line and
-              c.lastTLineInfo.col == info.col):
+proc markUsed(c: PContext; info: TLineInfo; s: PSym; checkStyle = true; isGenericInstance = false) =
+  if not isGenericInstance:
+    let conf = c.config
+    incl(s.flagsImpl, sfUsed)
+    if s.kind == skEnumField and s.owner != nil:
+      incl(s.owner.flagsImpl, sfUsed)
+      if sfDeprecated in s.owner.flags:
         warnAboutDeprecated(conf, info, s)
-        c.lastTLineInfo = info
+    if {sfDeprecated, sfError} * s.flags != {}:
+      if sfDeprecated in s.flags:
+        if not (c.lastTLineInfo.line == info.line and
+                c.lastTLineInfo.col == info.col):
+          warnAboutDeprecated(conf, info, s)
+          c.lastTLineInfo = info
 
-    if sfError in s.flags: userError(conf, info, s)
+      if sfError in s.flags: userError(conf, info, s)
   when defined(nimsuggest):
-    suggestSym(c.graph, info, s, c.graph.usageSym, false)
-  if checkStyle:
-    styleCheckUse(c, info, s)
-  markOwnerModuleAsUsed(c, s)
+    suggestSym(c.graph, info, s, c.graph.usageSym, isDecl = false, isGenericInstance = isGenericInstance)
+  if not isGenericInstance:
+    if checkStyle:
+      styleCheckUse(c, info, s)
+    markOwnerModuleAsUsed(c, s)
 
 proc safeSemExpr*(c: PContext, n: PNode): PNode =
   # use only for idetools support!
@@ -745,6 +755,123 @@ proc sugExpr(c: PContext, n: PNode, outputs: var Suggestions) =
   else:
     let prefix = if c.config.m.trackPosAttached: nil else: n
     suggestEverything(c, n, prefix, outputs)
+
+proc extractImportContextFromAst(n: PNode, cursorCol: int): ImportContext =
+  result = ImportContext()
+  if n.kind != nkImportStmt: return
+  for child in n:
+    case child.kind
+    of nkIdent:
+      # Single import, e.g. import foo
+      if child.info.col <= cursorCol:
+        result.baseDir = ""
+        result.partialModule = child.ident.s
+        result.isMultiImport = false
+    of nkInfix:
+      # Directory or multi-import, e.g. import std/[os, strutils]
+      if child.len == 3 and child[0].kind == nkIdent and child[0].ident.s == "/":
+        let dir = child[1].ident.s
+        if child[2].kind == nkBracket:
+          result.baseDir = dir
+          result.isMultiImport = true
+          for modNode in child[2]:
+            if modNode.kind == nkIdent and modNode.info.col <= cursorCol:
+              result.partialModule = modNode.ident.s
+        elif child[2].kind == nkIdent:
+          if child[2].info.col <= cursorCol:
+            result.baseDir = dir
+            result.partialModule = child[2].ident.s
+            result.isMultiImport = false
+    else:
+      discard
+
+proc findModuleFile(c: PContext, partialPath: string): seq[string] =
+  result = @[]
+  let currentModuleDir = parentDir(toFullPath(c.config, FileIndex(c.module.position)))
+
+  proc tryAddModule(path, baseName: string) =
+    if fileExists(path & ".nim"):
+      result.add(baseName)
+
+  proc addModulesFromDir(dir, file: string; result: var seq[string]) =
+    if dirExists(dir):
+      for kind, path in walkDir(dir):
+        if kind in {pcFile, pcDir}:
+          let (_, name, ext) = splitFile(path)
+          if kind == pcFile:
+            if ext == ".nim" and name.startsWith(file):
+              result.add(name)
+
+  proc collectImportModulesFromDir(dir: string, result: var seq[string]) =
+    for kind, path in walkDir(dir):
+      if kind in {pcFile, pcDir}:
+        let (_, name, ext) = splitFile(path)
+        if kind == pcFile:
+          if ext == ".nim" and name.startsWith(partialPath):
+            result.add(name)
+        else:
+          if name.startsWith(partialPath):
+            result.add(name)
+
+  if '/' in partialPath:
+    let parts = partialPath.split('/')
+    let dir = parts[0]
+    let file = parts[1]
+    addModulesFromDir(currentModuleDir / dir, file, result)
+    for searchPath in c.config.searchPaths:
+      let searchDir = searchPath.string / dir
+      addModulesFromDir(searchDir, file, result)
+  else:
+    collectImportModulesFromDir(currentModuleDir, result)
+    for searchPath in c.config.searchPaths:
+      collectImportModulesFromDir(searchPath.string, result)
+
+proc suggestModuleNames(c: PContext, n: PNode) =
+  var suggestions: Suggestions = @[]
+  let partialPath = if n.kind == nkIdent: n.ident.s else: ""
+  proc addModuleSuggestion(path: string) =
+    var suggest = Suggest(
+      section: ideSug,
+      qualifiedPath: @[path],
+      name: addr path,
+      filePath: path,
+      line: n.info.line.int,
+      column: n.info.col.int,
+      doc: "",
+      quality: 100,
+      contextFits: true,
+      prefix: if partialPath.len > 0: prefixMatch(path, partialPath)
+             else: PrefixMatch.None,
+      symkind: byte skModule
+    )
+    suggestions.add(suggest)
+
+  let importCtx = extractImportContextFromAst(n, c.config.m.trackPos.col)
+  var searchPath = ""
+  if importCtx.baseDir.len > 0:
+    searchPath = importCtx.baseDir & "/"
+
+  let possibleModules = findModuleFile(c, searchPath & importCtx.partialModule)
+  for moduleName in possibleModules:
+    if moduleName != c.module.name.s:
+      addModuleSuggestion(moduleName)
+
+  produceOutput(suggestions, c.config)
+  suggestQuit()
+
+proc findImportStmtOnLine(n: PNode, line: uint16): PNode =
+  if n.kind in {nkImportStmt, nkFromStmt} and n.info.line == line:
+    return n
+  for i in 0..<n.safeLen:
+    let res = findImportStmtOnLine(n[i], line)
+    if res != nil: return res
+  return nil
+
+template trySuggestModuleNames*(c: PContext, n: PNode) =
+  if c.config.ideCmd == ideSug:
+    let importNode = findImportStmtOnLine(n, c.config.m.trackPos.line)
+    if importNode != nil:
+      suggestModuleNames(c, importNode)
 
 proc suggestExprNoCheck*(c: PContext, n: PNode) =
   # This keeps semExpr() from coming here recursively:

@@ -392,7 +392,7 @@ block:
 
   proc p[X, Y](z: var A[int, float]) = discard
   proc g[X, Y](z: var A[X, Y], y: int) = discard
-  proc h[X, Y](z: var A[X, Y]): A[X, Y] = discard
+  proc h[X, Y](z: A[X, Y]): A[X, Y] = discard
 
   proc spring(x: C4) = discard
   var d = A[int, float]()
@@ -428,6 +428,97 @@ block:
 
   assert spring(Impl()) == 2
 
+block:
+  type
+    C1[T] = concept
+      proc p(s: var Self; x: T)
+    FreakString = concept
+      proc p(w: var C1; s: Self)
+      proc a(x: Self)
+    DynArray[CT, T] = object
+
+  proc p[CT; T; W; ](w: C1[T]; o: DynArray[CT, T]): int = discard
+  proc spring(s: auto) = discard
+  proc spring(s: FreakString) = discard
+
+  spring("hi")
+
+block:
+  type
+    RawWriter = concept
+      proc write(s: Self; data: pointer; length: int)
+    ArrayBuffer[N: static int] = object
+    SeqBuffer = object
+    CompatBuffer = ArrayBuffer | SeqBuffer
+
+  proc write[T:CompatBuffer](a: var T; data: pointer; length: int) =
+    discard
+
+  proc spring(r:RawWriter, i: byte)=discard
+
+  var s = ArrayBuffer[1500]()
+  spring(s, 8.uint8)
+
+block:
+  type
+    Future[T] = object
+    SyncType = concept
+      proc p(s: Self)
+    AsyncType = concept
+      proc p(s: Self) : Future[void]
+    SyncImpl = object
+    AsyncImpl = object
+    Container[T] = object
+
+  proc p(x: SyncImpl) = discard
+  proc p(x: AsyncImpl): Future[void] = discard
+
+  proc p(x: Container[SyncType]) = discard
+  proc p(x: Container[AsyncImpl]): Future[void] = discard
+
+  assert SyncImpl is SyncType
+  assert SyncImpl isnot AsyncType
+  assert AsyncImpl isnot SyncType
+  assert AsyncImpl is AsyncType
+  assert Container[SyncImpl] is SyncType
+  assert Container[SyncImpl] isnot AsyncType
+  assert Container[AsyncImpl] isnot SyncType
+  assert Container[AsyncImpl] is AsyncType
+
+block:
+  type
+    C1 = concept
+      proc p(x: typedesc[Self]): int
+    E1 = enum
+      One, Two
+  proc p[E: enum](x: typedesc[set[E]]): int = sizeof(set[E])
+
+  proc spring(x: C1) = discard
+
+  spring({One,Two})
+
+block: # bare `range`
+  type
+    MyRange = 0..64
+    MyConcept = concept
+      proc a(x: typedesc[Self])
+
+  proc a(x: typedesc[range]) = discard
+  proc spring(x: typedesc[MyConcept]) = discard
+  spring(MyRange)
+
+block:
+  type
+    A = object
+    TestConcept =
+      concept
+          proc x(x: Self)
+
+  proc x(x: not object) =
+    discard
+
+  assert A isnot TestConcept
+
 # this code fails inside a block for some reason
 type Indexable[T] = concept
   proc `[]`(t: Self, i: int): T
@@ -455,3 +546,57 @@ proc len[T](t: DummyIndexable[T]): int =
 
 let dummyIndexable = DummyIndexable(@[1, 2])
 echoAll(dummyIndexable)
+
+block:
+  type
+    C = concept
+      proc a(x: Self, i: int)
+    AObj[T] = object
+      x: T
+    ARef[T] = ref AObj[T]
+
+  proc a[T: int](x: ARef[T], i: int) =
+    discard
+
+  assert (ref AObj[int]) is C
+
+block:
+  type
+    C = concept
+      proc a(x: Self, i: int)
+    AObj[T; B] = object
+      x: T
+    ARef[T; B] = ref AObj[T,B]
+
+  proc a[T: int, C: float](x: ARef[T, C], i: int) =
+    discard
+
+  assert (ref AObj[int, int]) isnot C
+  assert (ref AObj[int, float]) is C
+
+block:
+  type
+    C = concept
+      proc a(x: Self, i: int)
+    AObj[T] = object
+    ARef[T] = ref AObj[T]
+
+  proc a(x: ARef, i: int) =
+    discard
+
+  assert (ref AObj[int]) is C
+
+block:
+  type 
+    C = concept
+      proc x(a:Self, x: int)
+    StreamObj = object of RootObj
+    Stream = ref StreamObj
+    MemMapFileStreamObj = object of Stream
+    MemMapFileStream = ref MemMapFileStreamObj
+
+  proc x(a: Stream, x: int) = discard
+  proc spring(x: C) = discard
+
+  let test = MemMapFileStream()
+  spring(test)

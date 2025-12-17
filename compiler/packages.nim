@@ -33,7 +33,7 @@ proc getPackage*(conf: ConfigRef; cache: IdentCache; fileIdx: FileIndex): PSym =
     pkgIdent = getIdent(cache, pkgName)
   newSym(skPackage, pkgIdent, idGeneratorForPackage(int32(fileIdx)), nil, info)
 
-func getPackageSymbol*(sym: PSym): PSym =
+proc getPackageSymbol*(sym: PSym): PSym =
   ## Return the owning package symbol.
   assert sym != nil
   result = sym
@@ -41,18 +41,18 @@ func getPackageSymbol*(sym: PSym): PSym =
     result = result.owner
     assert result != nil, repr(sym.info)
 
-func getPackageId*(sym: PSym): int =
+proc getPackageId*(sym: PSym): int =
   ## Return the owning package ID.
   sym.getPackageSymbol.id
 
-func belongsToProjectPackage*(conf: ConfigRef, sym: PSym): bool =
+proc belongsToProjectPackage*(conf: ConfigRef, sym: PSym): bool =
   ## Return whether the symbol belongs to the project's package.
   ##
   ## See Also:
   ## * `modulegraphs.belongsToStdlib`
   conf.mainPackageId == sym.getPackageId
 
-func belongsToProjectPackageMaybeNil*(conf: ConfigRef, sym: PSym): bool =
+proc belongsToProjectPackageMaybeNil*(conf: ConfigRef, sym: PSym): bool =
   ## Return whether the symbol belongs to the project's package.
   ## Returns `false` if `sym` is nil.
   ##

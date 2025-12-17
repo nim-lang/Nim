@@ -131,8 +131,8 @@ proc isRange*(n: PNode): bool {.inline.} =
     let callee = n[0]
     if (callee.kind == nkIdent and callee.ident.id == ord(wDotDot)) or
        (callee.kind == nkSym and callee.sym.name.id == ord(wDotDot)) or
-       (callee.kind in {nkClosedSymChoice, nkOpenSymChoice} and
-        callee[1].sym.name.id == ord(wDotDot)):
+       (callee.kind in {nkClosedSymChoice, nkOpenSymChoice, nkOpenSym} and
+        callee[0].sym.name.id == ord(wDotDot)):
       result = true
     else:
       result = false
@@ -145,7 +145,7 @@ proc whichPragma*(n: PNode): TSpecialWord =
   of nkIdent: result = whichKeyword(key.ident)
   of nkSym: result = whichKeyword(key.sym.name)
   of nkCast: return wCast
-  of nkClosedSymChoice, nkOpenSymChoice:
+  of nkClosedSymChoice, nkOpenSymChoice, nkOpenSym:
     return whichPragma(key[0])
   of nkBracketExpr:
     if n.kind notin nkPragmaCallKinds: return wInvalid

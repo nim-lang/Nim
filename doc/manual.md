@@ -3008,6 +3008,12 @@ is more specific
 2. if the concept is being compared with another concept the result is deferred to [Concept subset matching]
 3. in any other case the concept is less specific then it's competitor 
 
+Currently, the concept evaluation mechanism evaluates to a successful match on the first acceptable candidate
+for each defined binding. This has a couple of notable effects:
+
+- generic parameters are fulfilled by the first candidate match even if other candidates would also match and bind different parameters
+- inheritable objects match as they do in normal overload resolution except the "depth" is not accounted for, because that would require calculating the minimum depth of any matching binding
+
 
 Concept subset matching
 -------------------------
@@ -4062,7 +4068,7 @@ notation. (Thus an operator can have more than two parameters):
     # Multiply and add
     result = a * b + c
 
-  assert `*+`(3, 4, 6) == `+`(`*`(a, b), c)
+  assert `*+`(3, 4, 6) == `+`(`*`(3, 4), 6)
   ```
 
 
@@ -7815,6 +7821,8 @@ The `size pragma` allows specifying the size of the enum type.
   doAssert sizeof(EventType) == sizeof(uint32)
   ```
 
+When used for enum types, the `size pragma` accepts only the values 1, 2, 4 or 8.
+
 The `size pragma` can also specify the size of an `importc` incomplete object type
 so that one can get the size of it at compile time even if it was declared without fields.
 
@@ -7826,8 +7834,6 @@ so that one can get the size of it at compile time even if it was declared witho
       # if AtomicFlag didn't have the size pragma, this code would result in a compile time error.
       echo sizeof(AtomicFlag)
   ```
-
-The `size pragma` accepts only the values 1, 2, 4 or 8.
 
 
 Align pragma

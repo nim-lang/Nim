@@ -546,8 +546,8 @@ when defined(windows) and not defined(useNimRtl):
       raiseOSError(osLastError())
 
   proc fileClose[T: Handle | FileHandle](h: var T) {.inline.} =
-    if h > 4:
-      closeHandleCheck(h)
+    if h.int > 4:
+      closeHandleCheck(Handle h)
       h = INVALID_HANDLE_VALUE.T
 
   proc hsClose(s: Stream) =
@@ -574,8 +574,8 @@ when defined(windows) and not defined(useNimRtl):
                               addr bytesWritten, nil)
     if a == 0: raiseOSError(osLastError())
 
-  proc newFileHandleStream(handle: Handle): owned FileHandleStream =
-    result = FileHandleStream(handle: handle, closeImpl: hsClose, atEndImpl: hsAtEnd,
+  proc newFileHandleStream(handle: FileHandle): owned FileHandleStream =
+    result = FileHandleStream(handle: Handle handle, closeImpl: hsClose, atEndImpl: hsAtEnd,
       readDataImpl: hsReadData, writeDataImpl: hsWriteData)
 
   proc buildCommandLine(a: string, args: openArray[string]): string =
@@ -888,7 +888,7 @@ when defined(windows) and not defined(useNimRtl):
     assert readfds.len <= MAXIMUM_WAIT_OBJECTS
     var rfds: WOHandleArray
     for i in 0..readfds.len()-1:
-      rfds[i] = readfds[i].outHandle #fProcessHandle
+      rfds[i] = readfds[i].outHandle.Handle #fProcessHandle
 
     var ret = waitForMultipleObjects(readfds.len.int32,
                                      addr(rfds), 0'i32, timeout.int32)
@@ -904,7 +904,7 @@ when defined(windows) and not defined(useNimRtl):
 
   proc hasData*(p: Process): bool =
     var x: int32
-    if peekNamedPipe(p.outHandle, lpTotalBytesAvail = addr x):
+    if peekNamedPipe(p.outHandle.Handle, lpTotalBytesAvail = addr x):
       result = x > 0
 
 elif not defined(useNimRtl):
@@ -945,7 +945,7 @@ elif not defined(useNimRtl):
       options: set[ProcessOption]
 
   const useProcessAuxSpawn = declared(posix_spawn) and not defined(useFork) and
-                             not defined(useClone) and not defined(linux)
+                             not (defined(useClone) and defined(linux))
   when useProcessAuxSpawn:
     proc startProcessAuxSpawn(data: StartProcessData): Pid {.
       raises: [OSError], tags: [ExecIOEffect, ReadEnvEffect, ReadDirEffect, RootEffect], gcsafe.}
@@ -1103,7 +1103,7 @@ elif not defined(useNimRtl):
       var pid: Pid
       var dataCopy = data
 
-      when defined(useClone):
+      when defined(useClone) and defined(linux):
         const stackSize = 65536
         let stackEnd = cast[clong](alloc(stackSize))
         let stack = cast[pointer](stackEnd + stackSize)

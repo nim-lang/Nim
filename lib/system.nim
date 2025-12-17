@@ -161,12 +161,10 @@ else:
 proc `=wasMoved`*[T](obj: var T) {.magic: "WasMoved", noSideEffect.} =
   ## Generic `wasMoved`:idx: implementation that can be overridden.
 
-proc wasMoved*[T](obj: var T) {.inline, noSideEffect.} =
+proc wasMoved*[T](obj: var T) {.magic: "WasMoved", noSideEffect.}
   ## Resets an object `obj` to its initial (binary zero) value to signify
   ## it was "moved" and to signify its destructor should do nothing and
   ## ideally be optimized away.
-  {.cast(raises: []), cast(tags: []).}:
-    `=wasMoved`(obj)
 
 proc move*[T](x: var T): T {.magic: "Move", noSideEffect.} =
   result = x
@@ -557,9 +555,6 @@ type
 
 when defined(nimIcIntegrityChecks):
   include "system/exceptions"
-else:
-  import system/exceptions
-  export exceptions
 
 when defined(js) or defined(nimdoc):
   type
@@ -957,6 +952,22 @@ proc setLen*[T](s: var seq[T], newlen: Natural) {.
   ##   assert x == @[10]
   ##   ```
 
+when defined(nimHasSetLengthSeqUninitMagic):
+  func setLenUninit*[T](s: var seq[T], newlen: Natural) {.magic: "SetLengthSeqUninit", nodestroy.} =
+    ## Sets the length of seq `s` to `newlen`. `T` may be any sequence type.
+    ## New slots will not be initialized.
+    ##
+    ## If the current length is greater than the new length,
+    ## `s` will be truncated.
+    ##   ```nim
+    ##   var x = @[10, 20]
+    ##   x.setLenUninit(5)
+    ##   x[4] = 50
+    ##   assert x[4] == 50Add commentMore actions
+    ##   x.setLenUninit(1)
+    ##   assert x == @[10]
+    ##   ```
+
 proc setLen*(s: var string, newlen: Natural) {.
   magic: "SetLengthStr", noSideEffect.}
   ## Sets the length of string `s` to `newlen`.
@@ -1055,7 +1066,8 @@ const
     ## Possible values:
     ## `"i386"`, `"alpha"`, `"powerpc"`, `"powerpc64"`, `"powerpc64el"`,
     ## `"sparc"`, `"amd64"`, `"mips"`, `"mipsel"`, `"arm"`, `"arm64"`,
-    ## `"mips64"`, `"mips64el"`, `"riscv32"`, `"riscv64"`, `"loongarch64"`.
+    ## `"mips64"`, `"mips64el"`, `"riscv32"`, `"riscv64"`, `"loongarch64"`,
+    ## `"s390x"`.
 
   seqShallowFlag = low(int)
   strlitFlag = 1 shl (sizeof(int)*8 - 2) # later versions of the codegen \
@@ -1118,12 +1130,7 @@ import std/private/since
 import system/ctypes
 export ctypes
 
-proc align(address, alignment: int): int =
-  if alignment == 0: # Actually, this is illegal. This branch exists to actively
-                     # hide problems.
-    result = address
-  else:
-    result = (address + (alignment - 1)) and not (alignment - 1)
+include system/ptrarith
 
 include system/rawquits
 when defined(genode):
@@ -1451,6 +1458,8 @@ proc isNil*[T: proc | iterator {.closure.}](x: T): bool {.noSideEffect, magic: "
   ## Fast check whether `x` is nil. This is sometimes more efficient than
   ## `== nil`.
 
+proc supportsCopyMem(t: typedesc): bool {.magic: "TypeTrait".}
+
 when defined(nimHasTopDownInference):
   # magic used for seq type inference
   proc `@`*[T](a: openArray[T]): seq[T] {.magic: "OpenArrayToSeq".} =
@@ -1458,8 +1467,17 @@ when defined(nimHasTopDownInference):
     ##
     ## This is not as efficient as turning a fixed length array into a sequence
     ## as it always copies every element of `a`.
-    newSeq(result, a.len)
-    for i in 0..a.len-1: result[i] = a[i]
+    let sz = a.len
+    when supportsCopyMem(T) and not defined(js):
+      result = newSeqUninit[T](sz)
+      when nimvm:
+        for i in 0..sz-1: result[i] = a[i]
+      else:
+        if sz != 0:
+          copyMem(addr result[0], addr a[0], sizeof(T) * sz)
+    else:
+      newSeq(result, sz)
+      for i in 0..sz-1: result[i] = a[i]
 else:
   proc `@`*[T](a: openArray[T]): seq[T] =
     ## Turns an *openArray* into a sequence.
@@ -1602,6 +1620,41 @@ when notJSnotNims:
   import system/ansi_c
   import system/memory
 
+when notJSnotNims and defined(nimSeqsV2):
+  const nimStrVersion {.core.} = 2
+
+  type
+    NimStrPayloadBase = object
+      cap: int
+
+    NimStrPayload {.core.} = object
+      cap: int
+      data: UncheckedArray[char]
+
+    NimStringV2 {.core.} = object
+      len: int
+      p: ptr NimStrPayload ## can be nil if len == 0.
+
+when defined(windows):
+  proc GetLastError(): int32 {.header: "<windows.h>", nodecl.}
+  const ERROR_BAD_EXE_FORMAT = 193
+
+when notJSnotNims:
+  when defined(nimSeqsV2):
+    proc nimToCStringConv(s: NimStringV2): cstring {.compilerproc, nonReloadable, inline.}
+
+  when hostOS != "standalone" and hostOS != "any":
+    type
+      LibHandle = pointer       # private type
+      ProcAddr = pointer        # library loading and loading of procs:
+
+    proc nimLoadLibrary(path: string): LibHandle {.compilerproc, hcrInline, nonReloadable.}
+    proc nimUnloadLibrary(lib: LibHandle) {.compilerproc, hcrInline, nonReloadable.}
+    proc nimGetProcAddr(lib: LibHandle, name: cstring): ProcAddr {.compilerproc, hcrInline, nonReloadable.}
+
+    proc nimLoadLibraryError(path: string) {.compilerproc, hcrInline, nonReloadable.}
+
+    include "system/dyncalls"
 
 {.push stackTrace: off.}
 
@@ -1618,7 +1671,7 @@ when not defined(js) and defined(nimV2):
       align: int16
       depth: int16
       display: ptr UncheckedArray[uint32] # classToken
-      when defined(nimTypeNames) or defined(nimArcIds):
+      when defined(nimTypeNames) or defined(nimArcIds) or defined(nimOrcLeakDetector):
         name: cstring
       traceImpl: pointer
       typeInfoV1: pointer # for backwards compat, usually nil
@@ -1630,7 +1683,9 @@ when not defined(js) and defined(nimV2):
           vTable: UncheckedArray[pointer] # vtable for types
     PNimTypeV2 = ptr TNimTypeV2
 
-proc supportsCopyMem(t: typedesc): bool {.magic: "TypeTrait".}
+when not defined(nimIcIntegrityChecks):
+  import system/exceptions
+  export exceptions
 
 when notJSnotNims and defined(nimSeqsV2):
   include "system/strs_v2"
@@ -1685,7 +1740,7 @@ when not defined(js):
     else:
       {.error: "The type T cannot contain managed memory or have destructors".}
 
-  proc newStringUninit*(len: Natural): string =
+  proc newStringUninit*(len: Natural): string {.noSideEffect.} =
     ## Returns a new string of length `len` but with uninitialized
     ## content. One needs to fill the string character after character
     ## with the index operator `s[i]`.
@@ -1696,15 +1751,16 @@ when not defined(js):
       result = newString(len)
     else:
       result = newStringOfCap(len)
-      when defined(nimSeqsV2):
-        let s = cast[ptr NimStringV2](addr result)
-        if len > 0:
+      {.cast(noSideEffect).}:
+        when defined(nimSeqsV2):
+          let s = cast[ptr NimStringV2](addr result)
+          if len > 0:
+            s.len = len
+            s.p.data[len] = '\0'
+        else:
+          let s = cast[NimString](result)
           s.len = len
-          s.p.data[len] = '\0'
-      else:
-        let s = cast[NimString](result)
-        s.len = len
-        s.data[len] = '\0'
+          s.data[len] = '\0'
 else:
   proc newStringUninit*(len: Natural): string {.
     magic: "NewString", importc: "mnewString", noSideEffect.}
@@ -1720,6 +1776,28 @@ when not defined(nimscript):
 when not declared(sysFatal):
   include "system/fatal"
 
+proc echo*(x: varargs[typed, `$`]) {.magic: "Echo", benign, sideEffect.}
+  ## Writes and flushes the parameters to the standard output.
+  ##
+  ## Special built-in that takes a variable number of arguments. Each argument
+  ## is converted to a string via `$`, so it works for user-defined
+  ## types that have an overloaded `$` operator.
+  ## It is roughly equivalent to `writeLine(stdout, x); flushFile(stdout)`, but
+  ## available for the JavaScript target too.
+  ##
+  ## Unlike other IO operations this is guaranteed to be thread-safe as
+  ## `echo` is very often used for debugging convenience. If you want to use
+  ## `echo` inside a `proc without side effects
+  ## <manual.html#pragmas-nosideeffect-pragma>`_ you can use `debugEcho
+  ## <#debugEcho,varargs[typed,]>`_ instead.
+
+proc debugEcho*(x: varargs[typed, `$`]) {.magic: "Echo", noSideEffect,
+                                          tags: [], raises: [].}
+  ## Same as `echo <#echo,varargs[typed,]>`_, but as a special semantic rule,
+  ## `debugEcho` pretends to be free of side effects, so that it can be used
+  ## for debugging routines marked as `noSideEffect
+  ## <manual.html#pragmas-nosideeffect-pragma>`_.
+
 type
   PFrame* = ptr TFrame  ## Represents a runtime frame of the call stack;
                         ## part of the debugger API.
@@ -1734,6 +1812,15 @@ type
     when NimStackTraceMsgs:
       frameMsgLen*: int   ## end position in frameMsgBuf for this frame.
 
+when notJSnotNims and not gotoBasedExceptions:
+  type
+    PSafePoint = ptr TSafePoint
+    TSafePoint {.compilerproc, final.} = object
+      prev: PSafePoint # points to next safe point ON THE STACK
+      status: int
+      context: C_JmpBuf
+    SafePoint = TSafePoint
+
 when defined(nimV2):
   var
     framePtr {.threadvar.}: PFrame
@@ -1745,6 +1832,113 @@ template newException*(exceptn: typedesc, message: string;
   ## Creates an exception object of type `exceptn` and sets its `msg` field
   ## to `message`. Returns the new exception object.
   (ref exceptn)(msg: message, parent: parentException)
+
+# we have to compute this here before turning it off in except.nim anyway ...
+const NimStackTrace = compileOption("stacktrace")
+const
+  usesDestructors = defined(gcDestructors) or defined(gcHooks)
+
+include "system/gc_interface"
+
+when notJSnotNims:
+  proc setControlCHook*(hook: proc () {.noconv.}) {.raises: [], gcsafe.}
+    ## Allows you to override the behaviour of your application when CTRL+C
+    ## is pressed. Only one such hook is supported.
+    ##
+    ## The handler runs inside a C signal handler and comes with similar
+    ## limitations.
+    ##
+    ## Allocating memory and interacting with most system calls, including using
+    ## `echo`, `string`, `seq`, raising or catching exceptions etc is undefined
+    ## behavior and will likely lead to application crashes.
+    ##
+    ## The OS may call the ctrl-c handler from any thread, including threads
+    ## that were not created by Nim, such as happens on Windows.
+    ##
+    ## ## Example:
+    ##
+    ## ```nim
+    ##   var stop: Atomic[bool]
+    ##   proc ctrlc() {.noconv.} =
+    ##     # Using atomics types is safe!
+    ##     stop.store(true)
+    ##
+    ##   setControlCHook(ctrlc)
+    ##
+    ##   while not stop.load():
+    ##     echo "Still running.."
+    ##     sleep(1000)
+    ##   ```
+
+  when not defined(noSignalHandler) and not defined(useNimRtl):
+    proc unsetControlCHook*()
+      ## Reverts a call to setControlCHook.
+
+  when hostOS != "standalone":
+    proc getStackTrace*(): string {.gcsafe.}
+      ## Gets the current stack trace. This only works for debug builds.
+
+    proc getStackTrace*(e: ref Exception): string {.gcsafe.}
+      ## Gets the stack trace associated with `e`, which is the stack that
+      ## lead to the `raise` statement. This only works for debug builds.
+
+  var
+    globalRaiseHook*: proc (e: ref Exception): bool {.nimcall, benign.}
+      ## With this hook you can influence exception handling on a global level.
+      ## If not nil, every 'raise' statement ends up calling this hook.
+      ##
+      ## .. warning:: Ordinary application code should never set this hook! You better know what you do when setting this.
+      ##
+      ## If `globalRaiseHook` returns false, the exception is caught and does
+      ## not propagate further through the call stack.
+
+    localRaiseHook* {.threadvar.}: proc (e: ref Exception): bool {.nimcall, benign.}
+      ## With this hook you can influence exception handling on a
+      ## thread local level.
+      ## If not nil, every 'raise' statement ends up calling this hook.
+      ##
+      ## .. warning:: Ordinary application code should never set this hook! You better know what you do when setting this.
+      ##
+      ## If `localRaiseHook` returns false, the exception
+      ## is caught and does not propagate further through the call stack.
+
+    outOfMemHook*: proc () {.nimcall, tags: [], benign, raises: [].}
+      ## Set this variable to provide a procedure that should be called
+      ## in case of an `out of memory`:idx: event. The standard handler
+      ## writes an error message and terminates the program.
+      ##
+      ## `outOfMemHook` can be used to raise an exception in case of OOM like so:
+      ##
+      ##   ```nim
+      ##   var gOutOfMem: ref EOutOfMemory
+      ##   new(gOutOfMem) # need to be allocated *before* OOM really happened!
+      ##   gOutOfMem.msg = "out of memory"
+      ##
+      ##   proc handleOOM() =
+      ##     raise gOutOfMem
+      ##
+      ##   system.outOfMemHook = handleOOM
+      ##   ```
+      ##
+      ## If the handler does not raise an exception, ordinary control flow
+      ## continues and the program is terminated.
+
+    unhandledExceptionHook*: proc (e: ref Exception) {.nimcall, tags: [], benign, raises: [].}
+      ## Set this variable to provide a procedure that should be called
+      ## in case of an `unhandle exception` event. The standard handler
+      ## writes an error message and terminates the program, except when
+      ## using `--os:any`
+
+  {.push stackTrace: off, profiler: off.}
+  when defined(memtracker):
+    include "system/memtracker"
+
+  when hostOS == "standalone":
+    include "system/embedded"
+  else:
+    include "system/excpt"
+  {.pop.}
+
 
 when not defined(nimPreviewSlimSystem):
   import std/assertions
@@ -1822,11 +2016,6 @@ proc `<`*[T: tuple](x, y: T): bool =
   return false
 
 
-include "system/gc_interface"
-
-# we have to compute this here before turning it off in except.nim anyway ...
-const NimStackTrace = compileOption("stacktrace")
-
 import system/coro_detection
 
 {.push checks: off.}
@@ -1834,53 +2023,6 @@ import system/coro_detection
 # because it would yield into an endless recursion
 # however, stack-traces are available for most parts
 # of the code
-
-when notJSnotNims:
-  var
-    globalRaiseHook*: proc (e: ref Exception): bool {.nimcall, benign.}
-      ## With this hook you can influence exception handling on a global level.
-      ## If not nil, every 'raise' statement ends up calling this hook.
-      ##
-      ## .. warning:: Ordinary application code should never set this hook! You better know what you do when setting this.
-      ##
-      ## If `globalRaiseHook` returns false, the exception is caught and does
-      ## not propagate further through the call stack.
-
-    localRaiseHook* {.threadvar.}: proc (e: ref Exception): bool {.nimcall, benign.}
-      ## With this hook you can influence exception handling on a
-      ## thread local level.
-      ## If not nil, every 'raise' statement ends up calling this hook.
-      ##
-      ## .. warning:: Ordinary application code should never set this hook! You better know what you do when setting this.
-      ##
-      ## If `localRaiseHook` returns false, the exception
-      ## is caught and does not propagate further through the call stack.
-
-    outOfMemHook*: proc () {.nimcall, tags: [], benign, raises: [].}
-      ## Set this variable to provide a procedure that should be called
-      ## in case of an `out of memory`:idx: event. The standard handler
-      ## writes an error message and terminates the program.
-      ##
-      ## `outOfMemHook` can be used to raise an exception in case of OOM like so:
-      ##
-      ##   ```nim
-      ##   var gOutOfMem: ref EOutOfMemory
-      ##   new(gOutOfMem) # need to be allocated *before* OOM really happened!
-      ##   gOutOfMem.msg = "out of memory"
-      ##
-      ##   proc handleOOM() =
-      ##     raise gOutOfMem
-      ##
-      ##   system.outOfMemHook = handleOOM
-      ##   ```
-      ##
-      ## If the handler does not raise an exception, ordinary control flow
-      ## continues and the program is terminated.
-    unhandledExceptionHook*: proc (e: ref Exception) {.nimcall, tags: [], benign, raises: [].}
-      ## Set this variable to provide a procedure that should be called
-      ## in case of an `unhandle exception` event. The standard handler
-      ## writes an error message and terminates the program, except when
-      ## using `--os:any`
 
 when defined(js) or defined(nimdoc):
   proc add*(x: var string, y: cstring) {.asmNoStackFrame.} =
@@ -1918,27 +2060,6 @@ elif hasAlloc:
         inc(i)
   {.pop.}
 
-proc echo*(x: varargs[typed, `$`]) {.magic: "Echo", benign, sideEffect.}
-  ## Writes and flushes the parameters to the standard output.
-  ##
-  ## Special built-in that takes a variable number of arguments. Each argument
-  ## is converted to a string via `$`, so it works for user-defined
-  ## types that have an overloaded `$` operator.
-  ## It is roughly equivalent to `writeLine(stdout, x); flushFile(stdout)`, but
-  ## available for the JavaScript target too.
-  ##
-  ## Unlike other IO operations this is guaranteed to be thread-safe as
-  ## `echo` is very often used for debugging convenience. If you want to use
-  ## `echo` inside a `proc without side effects
-  ## <manual.html#pragmas-nosideeffect-pragma>`_ you can use `debugEcho
-  ## <#debugEcho,varargs[typed,]>`_ instead.
-
-proc debugEcho*(x: varargs[typed, `$`]) {.magic: "Echo", noSideEffect,
-                                          tags: [], raises: [].}
-  ## Same as `echo <#echo,varargs[typed,]>`_, but as a special semantic rule,
-  ## `debugEcho` pretends to be free of side effects, so that it can be used
-  ## for debugging routines marked as `noSideEffect
-  ## <manual.html#pragmas-nosideeffect-pragma>`_.
 
 when hostOS == "standalone" and defined(nogc):
   proc nimToCStringConv(s: NimString): cstring {.compilerproc, inline.} =
@@ -2007,6 +2128,16 @@ template unlikely*(val: bool): bool =
 
 import system/dollars
 export dollars
+
+when notJSnotNims:
+  {.push stackTrace: off, profiler: off.}
+
+  include "system/chcks"
+
+  # we cannot compile this with stack tracing on
+  # as it would recurse endlessly!
+  include "system/integerops"
+  {.pop.}
 
 when defined(nimAuditDelete):
   {.pragma: auditDelete, deprecated: "review this call for out of bounds behavior".}
@@ -2090,17 +2221,17 @@ when notJSnotNims:
     nimZeroMem(p, size)
     when declared(memTrackerOp):
       memTrackerOp("zeroMem", p, size)
-  proc copyMem(dest, source: pointer, size: Natural) =
+  proc copyMem(dest, source: pointer, size: Natural) {.enforceNoRaises.} =
     nimCopyMem(dest, source, size)
     when declared(memTrackerOp):
       memTrackerOp("copyMem", dest, size)
-  proc moveMem(dest, source: pointer, size: Natural) =
+  proc moveMem(dest, source: pointer, size: Natural) {.enforceNoRaises.} =
     c_memmove(dest, source, csize_t(size))
     when declared(memTrackerOp):
       memTrackerOp("moveMem", dest, size)
-  proc equalMem(a, b: pointer, size: Natural): bool =
+  proc equalMem(a, b: pointer, size: Natural): bool {.enforceNoRaises.} =
     nimCmpMem(a, b, size) == 0
-  proc cmpMem(a, b: pointer, size: Natural): int =
+  proc cmpMem(a, b: pointer, size: Natural): int {.enforceNoRaises.} =
     nimCmpMem(a, b, size).int
 
 when not defined(js) or defined(nimscript):
@@ -2153,18 +2284,38 @@ when not defined(js) and declared(alloc0) and declared(dealloc):
       inc(i)
     dealloc(a)
 
-when notJSnotNims and not gotoBasedExceptions:
-  type
-    PSafePoint = ptr TSafePoint
-    TSafePoint {.compilerproc, final.} = object
-      prev: PSafePoint # points to next safe point ON THE STACK
-      status: int
-      context: C_JmpBuf
-    SafePoint = TSafePoint
+when notJSnotNims and hostOS != "standalone":
+  proc getCurrentException*(): ref Exception {.compilerRtl, inl, benign.} =
+    ## Retrieves the current exception; if there is none, `nil` is returned.
+    result = currException
+
+  proc nimBorrowCurrentException(): ref Exception {.compilerRtl, inl, benign, nodestroy.} =
+    # .nodestroy here so that we do not produce a write barrier as the
+    # C codegen only uses it in a borrowed way:
+    result = currException
+
+  proc getCurrentExceptionMsg*(): string {.inline, benign.} =
+    ## Retrieves the error message that was attached to the current
+    ## exception; if there is none, `""` is returned.
+    return if currException == nil: "" else: currException.msg
+
+  proc setCurrentException*(exc: ref Exception) {.inline, benign.} =
+    ## Sets the current exception.
+    ##
+    ## .. warning:: Only use this if you know what you are doing.
+    currException = exc
+
+  proc raiseDefect() {.compilerRtl.} =
+    let e = getCurrentException()
+    if e of Defect:
+      reportUnhandledError(e)
+      rawQuit(1)
+
+elif defined(nimscript):
+  proc getCurrentException*(): ref Exception {.compilerRtl.} = discard
+  proc raiseDefect*() {.compilerRtl.} = discard
 
 when not defined(js):
-  when declared(initAllocator):
-    initAllocator()
   when hasThreadSupport:
     when hostOS != "standalone":
       include system/threadimpl
@@ -2176,48 +2327,6 @@ when not defined(js):
     when not defined(useNimRtl) and not defined(createNimRtl): initStackBottom()
     when declared(initGC): initGC()
 
-when notJSnotNims:
-  proc setControlCHook*(hook: proc () {.noconv.})
-    ## Allows you to override the behaviour of your application when CTRL+C
-    ## is pressed. Only one such hook is supported.
-    ## Example:
-    ##
-    ##   ```nim
-    ##   proc ctrlc() {.noconv.} =
-    ##     echo "Ctrl+C fired!"
-    ##     # do clean up stuff
-    ##     quit()
-    ##
-    ##   setControlCHook(ctrlc)
-    ##   ```
-
-  when not defined(noSignalHandler) and not defined(useNimRtl):
-    proc unsetControlCHook*()
-      ## Reverts a call to setControlCHook.
-
-  when hostOS != "standalone":
-    proc getStackTrace*(): string {.gcsafe.}
-      ## Gets the current stack trace. This only works for debug builds.
-
-    proc getStackTrace*(e: ref Exception): string {.gcsafe.}
-      ## Gets the stack trace associated with `e`, which is the stack that
-      ## lead to the `raise` statement. This only works for debug builds.
-
-  {.push stackTrace: off, profiler: off.}
-  when defined(memtracker):
-    include "system/memtracker"
-
-  when hostOS == "standalone":
-    include "system/embedded"
-  else:
-    include "system/excpt"
-  include "system/chcks"
-
-  # we cannot compile this with stack tracing on
-  # as it would recurse endlessly!
-  include "system/integerops"
-  {.pop.}
-
 
 when not defined(js):
   # this is a hack: without this when statement, you would get:
@@ -2227,19 +2336,6 @@ when not defined(js):
 
 
 when notJSnotNims:
-  when hostOS != "standalone" and hostOS != "any":
-    type
-      LibHandle = pointer       # private type
-      ProcAddr = pointer        # library loading and loading of procs:
-
-    proc nimLoadLibrary(path: string): LibHandle {.compilerproc, hcrInline, nonReloadable.}
-    proc nimUnloadLibrary(lib: LibHandle) {.compilerproc, hcrInline, nonReloadable.}
-    proc nimGetProcAddr(lib: LibHandle, name: cstring): ProcAddr {.compilerproc, hcrInline, nonReloadable.}
-
-    proc nimLoadLibraryError(path: string) {.compilerproc, hcrInline, nonReloadable.}
-
-    include "system/dyncalls"
-
   import system/countbits_impl
   include "system/sets"
 
@@ -2290,29 +2386,6 @@ when notJSnotNims and hasThreadSupport and hostOS != "standalone":
   when not defined(nimPreviewSlimSystem):
     include "system/channels_builtin"
 
-
-when notJSnotNims and hostOS != "standalone":
-  proc getCurrentException*(): ref Exception {.compilerRtl, inl, benign.} =
-    ## Retrieves the current exception; if there is none, `nil` is returned.
-    result = currException
-
-  proc nimBorrowCurrentException(): ref Exception {.compilerRtl, inl, benign, nodestroy.} =
-    # .nodestroy here so that we do not produce a write barrier as the
-    # C codegen only uses it in a borrowed way:
-    result = currException
-
-  proc getCurrentExceptionMsg*(): string {.inline, benign.} =
-    ## Retrieves the error message that was attached to the current
-    ## exception; if there is none, `""` is returned.
-    return if currException == nil: "" else: currException.msg
-
-  proc setCurrentException*(exc: ref Exception) {.inline, benign.} =
-    ## Sets the current exception.
-    ##
-    ## .. warning:: Only use this if you know what you are doing.
-    currException = exc
-elif defined(nimscript):
-  proc getCurrentException*(): ref Exception {.compilerRtl.} = discard
 
 when notJSnotNims:
   {.push stackTrace: off, profiler: off.}
@@ -2715,15 +2788,53 @@ proc procCall*(x: untyped) {.magic: "ProcCall", compileTime.} =
   ##   ```
   discard
 
+proc strcmp(a, b: cstring): cint {.noSideEffect,
+  importc, header: "<string.h>".}
 
 proc `==`*(x, y: cstring): bool {.magic: "EqCString", noSideEffect,
                                    inline.} =
   ## Checks for equality between two `cstring` variables.
-  proc strcmp(a, b: cstring): cint {.noSideEffect,
-    importc, header: "<string.h>".}
   if pointer(x) == pointer(y): result = true
   elif pointer(x) == nil or pointer(y) == nil: result = false
   else: result = strcmp(x, y) == 0
+
+func ltCStringVm(x, y: cstring): bool {.inline.} =
+  discard "implemented in the vm ops"
+
+func leCStringVm(x, y: cstring): bool {.inline.} =
+  discard "implemented in the vm ops"
+
+when defined(nimPreviewCStringComparisons):
+  func `<`*(x, y: cstring): bool {.inline.} =
+    if x == y:
+      result = false
+    elif x == nil:
+      result = true
+    elif y == nil:
+      result = false
+    else:
+      when nimvm:
+        result = ltCStringVm(x, y)
+      else:
+        when defined(js):
+          result = pointer(x) < pointer(y)
+        else:
+          result = strcmp(x, y) < 0
+
+  func `<=`*(x, y: cstring): bool {.inline.} =
+    if x == y: result = true
+    elif x == nil:
+      result = true
+    elif y == nil:
+      result = false
+    else:
+      when nimvm:
+        result = leCStringVm(x, y)
+      else:
+        when defined(js):
+          result = pointer(x) <= pointer(y)
+        else:
+          result = strcmp(x, y) <= 0
 
 template closureScope*(body: untyped): untyped =
   ## Useful when creating a closure in a loop to capture local loop variables by
@@ -2769,41 +2880,91 @@ template once*(body: untyped): untyped =
 
 {.pop.} # warning[GcMem]: off, warning[Uninit]: off
 
-proc substr*(s: openArray[char]): string =
-  ## Copies a slice of `s` into a new string and returns this new
-  ## string.
-  runnableExamples:
-    let a = "abcdefgh"
-    assert a.substr(2, 5) == "cdef"
-    assert a.substr(2) == "cdefgh"
-    assert a.substr(5, 99) == "fgh"
-  result = newString(s.len)
-  for i, ch in s:
-    result[i] = ch
+template whenNotVmJsNims(normalBody, restrictedBody: untyped) =
+  ## hack, see: #12517 #12518
+  when nimvm:
+    restrictedBody
+  else:
+    when notJSnotNims:
+      normalBody
+    else:
+      restrictedBody
 
-proc substr*(s: string, first, last: int): string = # A bug with `magic: Slice` requires this to exist this way
-  ## Copies a slice of `s` into a new string and returns this new
-  ## string.
+proc substr*(a: openArray[char]): string =
+  ## Returns a new string, copying contents of `a`.
   ##
-  ## The bounds `first` and `last` denote the indices of
-  ## the first and last characters that shall be copied. If `last`
-  ## is omitted, it is treated as `high(s)`. If `last >= s.len`, `s.len`
-  ## is used instead: This means `substr` can also be used to `cut`:idx:
-  ## or `limit`:idx: a string's length.
+  ## .. warning:: As opposed to other `substr` overloads, no additional input
+  ##    validation and clamping is performed!
+  ##
+  ## This proc does not prevent raising an `IndexDefect` when `a` is being
+  ## passed using a `toOpenArray` call with out-of-bounds indexes:
+  ## * `doAssertRaises(IndexDefect): discard "abc".toOpenArray(-9, 9).substr()`
+  ##
+  ## If clamping is required, consider using
+  ## `substr(s: string; first, last: int) <#substr,string,int,int>`_:
+  ## * `doAssert "abc".substr(-9, 9) == "abc"`
+  runnableExamples:
+    let a = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
+    assert a.substr() == "abcdefgh"
+    assert a.toOpenArray(2, 5).substr() == "cdef"
+    assert a.toOpenArray(2, high(a)).substr() == "cdefgh"  # From index 2 to `high(a)`
+    doAssertRaises(IndexDefect): discard a.toOpenArray(5, 99).substr()
+  result = newStringUninit(a.len)
+  whenNotVmJsNims():
+    if a.len > 0:
+      copyMem(result[0].addr, a[0].unsafeAddr, a.len)
+  do:
+    for i, ch in a:
+      result[i] = ch
+
+proc substr*(s: string; first, last: int): string = # A bug with `magic: Slice` requires this to exist this way
+  ## Returns a new string containing a substring (slice) of `s`,
+  ## copying characters from index `first` to index `last` inclusive.
+  ##
+  ## Index values are validated and capped:
+  ## - Negative `first` is clamped to 0
+  ## - If `last >= s.len`, it is clamped to `high(s)`
+  ## - If `last < first`, returns an empty string
+  ## This means `substr` can also be used to `cut`:idx: or `limit`:idx:
+  ## a string's length.
+  ##
+  ## .. note::
+  ##   If index values are ensured to be in-bounds, for performance
+  ##   critical cases consider using a non-clamping overload
+  ##   `substr(a: openArray[char]) <#substr,openArray[char]>`_
   runnableExamples:
     let a = "abcdefgh"
-    assert a.substr(2, 5) == "cdef"
-    assert a.substr(2) == "cdefgh"
-    assert a.substr(5, 99) == "fgh"
-
-  let first = max(first, 0)
-  let L = max(min(last, high(s)) - first + 1, 0)
-  result = newString(L)
-  for i in 0 .. L-1:
-    result[i] = s[i+first]
+    assert a.substr(2, 5) == "cdef" # Normal substring
+    # Invalid indexes
+    assert a.substr(5, 99) == "fgh" # From index 5 to `high(a)`
+    assert a.substr(42, 99) == ""   # `first` out of bounds
+    assert a.substr(100, 5) == ""   # `first > last`
+    assert a.substr(-1, 2) == "abc" # Negative `first` clamped to 0
+  let
+    first = max(first, 0)
+    last = min(last, high(s))
+    L = max(last - first + 1, 0)
+  result = newStringUninit(L)
+  whenNotVmJsNims():
+    if L > 0:
+      copyMem(result[0].addr, s[first].unsafeAddr, L)
+  do:
+    for i in 0..<L:
+      result[i] = s[i + first]
 
 proc substr*(s: string, first = 0): string =
-  result = substr(s, first, high(s))
+  ## Convenience `substr <#substr,string,int,int>`_ overload that returns
+  ## a substring from `first` to the end of the string.
+  ##
+  ## `first` value is validated and capped:
+  ## - `first >= s.len` returns an empty string
+  ## - Negative `first` is clamped to 0.
+  runnableExamples:
+    let a = "abcdefgh"
+    assert a.substr(2) == "cdefgh"    # From index 2 to string end (`high(a)`)
+    assert a.substr(100) == ""        # `first` out of bounds
+    assert a.substr(-1) == "abcdefgh" # Negative `first` clamped to 0
+  substr(s, first, high(s))
 
 when defined(nimconfig):
   include "system/nimscript"
@@ -2818,8 +2979,10 @@ when not defined(js):
 
 proc toOpenArray*[T](x: seq[T]; first, last: int): openArray[T] {.
   magic: "Slice".}
-  ## Allows passing the slice of `x` from the element at `first` to the element
-  ## at `last` to `openArray[T]` parameters without copying it.
+  ## Returns a non-owning slice (a `view`:idx:) of `x` from the element at
+  ## index `first` to `last` inclusive. Allows passing slices without copying,
+  ## as opposed to using the slice operator
+  ## `\`[]\` <#[],openArray[T],HSlice[U: Ordinal,V: Ordinal]>`_.
   ##
   ## Example:
   ##   ```nim

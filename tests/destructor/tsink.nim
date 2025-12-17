@@ -68,3 +68,11 @@ block: # bug #24175
     static:
       foo()
     foo()
+
+proc create(value: sink int): ptr int =
+  let s = addr value
+  result = addr value
+  result = s
+
+
+let xxx = create(12)

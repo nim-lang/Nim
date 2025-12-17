@@ -20,7 +20,7 @@ when not defined(nimHasEffectsOf):
 
 const
   maxOS = 20 # max number of OSes
-  maxCPU = 20 # max number of CPUs
+  maxCPU = 30 # max number of CPUs
   buildShFile = "build.sh"
   buildBatFile = "build.bat"
   buildBatFile32 = "build32.bat"
@@ -544,7 +544,7 @@ proc srcdist(c: var ConfigData) =
       var dir = getOutputDir(c) / buildDir(osA, cpuA)
       if dirExists(dir): removeDir(dir)
       createDir(dir)
-      var cmd = ("$# compile -f --incremental:off --compileonly " &
+      var cmd = ("$# compile -f --incremental:off --d:nimKochBootstrap --compileonly " &
                  "--gen_mapping --cc:gcc --skipUserCfg" &
                  " --os:$# --cpu:$# $# $#") %
                  [findNim(), osname, cpuname, c.nimArgs, c.mainfile]

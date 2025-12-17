@@ -1,7 +1,11 @@
 import sem, cgen, modulegraphs, ast, llstream, parser, msgs,
        lineinfos, reorder, options, semdata, cgendata, modules, pathutils,
-       packages, syntaxes, depends, vm, pragmas, idents, lookups, wordrecg,
-       liftdestructors
+       packages, syntaxes, depends, vm, vmdef, pragmas, idents, lookups, wordrecg,
+       liftdestructors, nifgen
+
+when not defined(nimKochBootstrap):
+  import ast2nif
+  import "../dist/nimony/src/lib" / [nifstreams, bitabs]
 
 import pipelineutils
 
@@ -23,6 +27,10 @@ proc processPipeline(graph: ModuleGraph; semNode: PNode; bModule: PPassContext):
     result = semNode
     if bModule != nil:
       genTopLevelStmt(BModule(bModule), result)
+  of NifgenPass:
+    result = semNode
+    if bModule != nil:
+      genTopLevelNif(bModule, result)
   of JSgenPass:
     when not defined(leanCompiler):
       result = processJSCodeGen(bModule, semNode)
@@ -31,7 +39,12 @@ proc processPipeline(graph: ModuleGraph; semNode: PNode; bModule: PPassContext):
   of GenDependPass:
     result = addDotDependency(bModule, semNode)
   of SemPass:
-    result = graph.emptyNode
+    # Return the semantic node for cmdM (NIF generation needs it)
+    # For regular check, we don't need the result
+    if graph.config.cmd == cmdM:
+      result = semNode
+    else:
+      result = graph.emptyNode
   of Docgen2Pass, Docgen2TexPass:
     when not defined(leanCompiler):
       result = processNode(bModule, semNode)
@@ -48,7 +61,8 @@ proc processPipeline(graph: ModuleGraph; semNode: PNode; bModule: PPassContext):
     raiseAssert "use setPipeLinePass to set a proper PipelinePass"
 
 proc processImplicitImports*(graph: ModuleGraph; implicits: seq[string], nodeKind: TNodeKind,
-                             m: PSym, ctx: PContext, bModule: PPassContext, idgen: IdGenerator) =
+                             m: PSym, ctx: PContext, bModule: PPassContext, idgen: IdGenerator;
+                             topLevelStmts: PNode) =
   # XXX fixme this should actually be relative to the config file!
   let relativeTo = toFullPath(graph.config, m.info)
   for module in items(implicits):
@@ -60,8 +74,13 @@ proc processImplicitImports*(graph: ModuleGraph; implicits: seq[string], nodeKin
       importStmt.add str
       message(graph.config, importStmt.info, hintProcessingStmt, $idgen[])
       let semNode = semWithPContext(ctx, importStmt)
-      if semNode == nil or processPipeline(graph, semNode, bModule) == nil:
+      if semNode == nil:
         break
+      let top = processPipeline(graph, semNode, bModule)
+      if top == nil:
+        break
+      if topLevelStmts != nil:
+        topLevelStmts.add top
 
 proc prePass*(c: PContext; n: PNode) =
   for son in n:
@@ -83,7 +102,7 @@ proc prePass*(c: PContext; n: PNode) =
                 let feature = parseEnum[Feature](name.strVal)
                 if feature == codeReordering:
                   c.features.incl feature
-                  c.module.flags.incl sfReorder
+                  c.module.incl sfReorder
               except ValueError:
                 discard
             else:
@@ -131,6 +150,8 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
         nil
     of SemPass:
       nil
+    of NifgenPass:
+      setupNifgen(graph, module, idgen)
     of NonePass:
       raiseAssert "use setPipeLinePass to set a proper PipelinePass"
 
@@ -144,6 +165,11 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
   else:
     s = stream
     graph.interactive = stream.kind == llsStdIn
+  var topLevelStmts =
+    if optCompress in graph.config.globalOptions or graph.config.cmd == cmdM:
+      newNodeI(nkStmtList, module.info)
+    else:
+      nil
   while true:
     syntaxes.openParser(p, fileIdx, s, graph.cache, graph.config)
 
@@ -153,8 +179,8 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
       # in ROD files. I think we should enable this feature only
       # for the interactive mode.
       if module.name.s != "nimscriptapi":
-        processImplicitImports graph, graph.config.implicitImports, nkImportStmt, module, ctx, bModule, idgen
-        processImplicitImports graph, graph.config.implicitIncludes, nkIncludeStmt, module, ctx, bModule, idgen
+        processImplicitImports graph, graph.config.implicitImports, nkImportStmt, module, ctx, bModule, idgen, topLevelStmts
+        processImplicitImports graph, graph.config.implicitIncludes, nkIncludeStmt, module, ctx, bModule, idgen, topLevelStmts
 
     checkFirstLineIndentation(p)
     block processCode:
@@ -175,7 +201,9 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
       if graph.pipelinePass != EvalPass:
         message(graph.config, sl.info, hintProcessingStmt, $idgen[])
       var semNode = semWithPContext(ctx, sl)
-      discard processPipeline(graph, semNode, bModule)
+      let top = processPipeline(graph, semNode, bModule)
+      if top != nil and topLevelStmts != nil:
+        topLevelStmts.add top
 
     closeParser(p)
     if s.kind != llsStdIn: break
@@ -192,7 +220,7 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
           if retTyp != nil:
             # TODO: properly semcheck the code of dispatcher?
             createTypeBoundOps(graph, ctx, retTyp, disp.ast.info, idgen)
-          genProcAux(m, disp)
+          genProcLvl3(m, disp)
         discard closePContext(graph, ctx, nil)
   of JSgenPass:
     when not defined(leanCompiler):
@@ -207,13 +235,66 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
   of Docgen2JsonPass:
     when not defined(leanCompiler):
       discard closeJson(graph, bModule, finalNode)
+  of NifgenPass:
+    closeNif(graph, bModule, finalNode)
   of NonePass:
     raiseAssert "use setPipeLinePass to set a proper PipelinePass"
 
-  if graph.config.backend notin {backendC, backendCpp, backendObjc}:
+  when not defined(nimKochBootstrap):
+    if (optCompress in graph.config.globalOptions or graph.config.cmd == cmdM) and
+       not graph.config.isDefined("nimscript"):
+      topLevelStmts.add finalNode
+      # Collect replay actions from both pragma computations and VM state diff
+      var replayActions: seq[PNode] = @[]
+      # Get pragma-recorded replay actions (compile, link, passC, passL, etc.)
+      if graph.nifReplayActions.hasKey(module.position.int32):
+        replayActions.add graph.nifReplayActions[module.position.int32]
+      # Also get VM state diff (macro cache operations)
+      if graph.vm != nil:
+        for (m, n) in PCtx(graph.vm).vmstateDiff:
+          if m == module:
+            replayActions.add n
+      # Collect hooks from the module graph for the current module
+      var hooks = default array[AttachedOp, seq[HookIndexEntry]]
+      for op in TTypeAttachedOp:
+        if op == attachedDeepCopy: continue  # Not supported in nimony
+        let nimonyOp = toAttachedOp(op)
+        for typeId, lazySym in graph.attachedOps[op]:
+          if typeId.module == module.position.int32:
+            let sym = lazySym.sym
+            if sym != nil:
+              hooks[nimonyOp].add toHookIndexEntry(graph.config, typeId, sym)
+      # Collect converters from the module's interface
+      var converters: seq[(nifstreams.SymId, nifstreams.SymId)] = @[]
+      for lazySym in graph.ifaces[module.position].converters:
+        let sym = lazySym.sym
+        if sym != nil:
+          let entry = toConverterIndexEntry(graph.config, sym)
+          if entry[0] != nifstreams.SymId(0):
+            converters.add entry
+      # Collect methods per type for classes
+      var classes: seq[ClassIndexEntry] = @[]
+      for typeId, methodList in graph.methodsPerType:
+        if typeId.module == module.position.int32:
+          var methods: seq[MethodIndexEntry] = @[]
+          for lazySym in methodList:
+            let sym = lazySym.sym
+            if sym != nil:
+              # Generate a method signature (simplified - name and param count)
+              let sig = sym.name.s & "/" & $sym.typImpl.sonsImpl.len
+              methods.add toMethodIndexEntry(graph.config, sym, sig)
+          if methods.len > 0:
+            classes.add ClassIndexEntry(
+              cls: toClassSymId(graph.config, typeId),
+              methods: methods
+            )
+      writeNifModule(graph.config, module.position.int32, topLevelStmts, hooks, converters, classes, replayActions)
+
+  if graph.config.backend notin {backendC, backendCpp, backendObjc} and graph.config.cmd != cmdM:
     # We only write rod files here if no C-like backend is active.
     # The C-like backends have been patched to support the IC mechanism.
     # They are responsible for closing the rod files. See `cbackend.nim`.
+    # cmdM uses NIF files only, not ROD files.
     closeRodFile(graph, module)
   result = true
 
@@ -231,33 +312,53 @@ proc compilePipelineModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymF
     discard processPipelineModule(graph, result, idGeneratorFromModule(result), s)
   if result == nil:
     var cachedModules: seq[FileIndex] = @[]
-    result = moduleFromRodFile(graph, fileIdx, cachedModules)
+    when not defined(nimKochBootstrap):
+      # For cmdM: load imports from NIF files (but compile the main module from source)
+      # Skip when withinSystem is true (compiling system.nim itself)
+      if graph.config.cmd == cmdM and
+         sfMainModule notin flags and
+         not graph.withinSystem and
+         not graph.config.isDefined("nimscript"):
+        result = moduleFromNifFile(graph, fileIdx, cachedModules)
+        if result == nil:
+          let nifPath = toNifFilename(graph.config, fileIdx)
+          localError(graph.config, unknownLineInfo,
+            "nim m requires precompiled NIF for import: " & toFullPath(graph.config, fileIdx) &
+            " (expected: " & nifPath & ")")
+          return nil  # Don't fall through to compile from source
+    if result == nil and graph.config.cmd != cmdM:
+      # Fall back to ROD file loading (not used for cmdM which uses NIF only)
+      result = moduleFromRodFile(graph, fileIdx, cachedModules)
     let path = toFullPath(graph.config, fileIdx)
     let filename = AbsoluteFile path
-    if fileExists(filename): # it could be a stdinfile
+    # it could be a stdinfile/cmdfile
+    if fileExists(filename) and not graph.config.projectIsStdin:
       graph.cachedFiles[path] = $secureHashFile(path)
     if result == nil:
       result = newModule(graph, fileIdx)
-      result.flags.incl flags
+      result.incl flags
       registerModule(graph, result)
       processModuleAux("import")
     else:
       if sfSystemModule in flags:
         graph.systemModule = result
       if sfMainModule in flags and graph.config.cmd == cmdM:
-        result.flags.incl flags
+        result.incl flags
         registerModule(graph, result)
         processModuleAux("import")
       partialInitModule(result, graph, fileIdx, filename)
     for m in cachedModules:
       registerModuleById(graph, m)
-      if sfMainModule in flags and graph.config.cmd == cmdM:
-        discard
+      if graph.config.cmd == cmdM:
+        # cmdM uses NIF files - replay from module AST loaded by loadNifModule
+        let module = graph.getModule(m)
+        if module != nil and module.ast != nil:
+          replayStateChanges(module, graph)
       else:
         replayStateChanges(graph.packed.pm[m.int].module, graph)
         replayGenericCacheInformation(graph, m.int)
   elif graph.isDirty(result):
-    result.flags.excl sfDirty
+    result.excl sfDirty
     # reset module fields:
     initStrTables(graph, result)
     result.ast = nil
@@ -285,10 +386,12 @@ proc connectPipelineCallbacks*(graph: ModuleGraph) =
 
 proc compilePipelineSystemModule*(graph: ModuleGraph) =
   if graph.systemModule == nil:
+    graph.withinSystem = true
     connectPipelineCallbacks(graph)
     graph.config.m.systemFileIdx = fileInfoIdx(graph.config,
         graph.config.libpath / RelativeFile"system.nim")
     discard graph.compilePipelineModule(graph.config.m.systemFileIdx, {sfSystemModule})
+    graph.withinSystem = false
 
 proc compilePipelineProject*(graph: ModuleGraph; projectFileIdx = InvalidFileIdx) =
   connectPipelineCallbacks(graph)
@@ -305,7 +408,23 @@ proc compilePipelineProject*(graph: ModuleGraph; projectFileIdx = InvalidFileIdx
   graph.importStack.add projectFile
 
   if projectFile == systemFileIdx:
+    graph.withinSystem = true
     discard graph.compilePipelineModule(projectFile, {sfMainModule, sfSystemModule})
+    graph.withinSystem = false
+  elif graph.config.cmd == cmdM:
+    # For cmdM: load system.nim from NIF first, then compile the main module
+    connectPipelineCallbacks(graph)
+    graph.config.m.systemFileIdx = fileInfoIdx(graph.config,
+        graph.config.libpath / RelativeFile"system.nim")
+    var cachedModules: seq[FileIndex] = @[]
+    when not defined(nimKochBootstrap):
+      graph.systemModule = moduleFromNifFile(graph, graph.config.m.systemFileIdx, cachedModules)
+      if graph.systemModule == nil:
+        let nifPath = toNifFilename(graph.config, graph.config.m.systemFileIdx)
+        localError(graph.config, unknownLineInfo,
+          "nim m requires precompiled NIF for system module (expected: " & nifPath & ")")
+        return
+    discard graph.compilePipelineModule(projectFile, {sfMainModule})
   else:
     graph.compilePipelineSystemModule()
     discard graph.compilePipelineModule(projectFile, {sfMainModule})

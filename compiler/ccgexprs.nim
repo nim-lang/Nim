@@ -170,7 +170,7 @@ proc canMove(p: BProc, n: PNode; dest: TLoc): bool =
 template simpleAsgn(builder: var Builder, dest, src: TLoc) =
   let rd = rdLoc(dest)
   let rs = rdLoc(src)
-  builder.addAssignment(rd, rs) 
+  builder.addAssignment(rd, rs)
 
 proc genRefAssign(p: BProc, dest, src: TLoc) =
   if (dest.storage == OnStack and p.config.selectedGC != gcGo) or not usesWriteBarrier(p.config):
@@ -675,7 +675,7 @@ proc binaryArithOverflow(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
       if e[2].kind in {nkIntLit..nkInt64Lit}:
         needsOverflowCheck = e[2].intVal == -1
       if canBeZero:
-        # remove extra paren from `==` op here to avoid Wparentheses-equality: 
+        # remove extra paren from `==` op here to avoid Wparentheses-equality:
         p.s(cpsStmts).addSingleIfStmt(removeSinglePar(cOp(Equal, rdLoc(b), cIntValue(0)))):
           p.s(cpsStmts).addCallStmt(cgsymValue(p.module, "raiseDivByZero"))
           raiseInstr(p, p.s(cpsStmts))
@@ -696,7 +696,7 @@ proc unaryArithOverflow(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
   let ra = rdLoc(a)
   if optOverflowCheck in p.options:
     let first = cIntLiteral(firstOrd(p.config, t))
-    # remove extra paren from `==` op here to avoid Wparentheses-equality: 
+    # remove extra paren from `==` op here to avoid Wparentheses-equality:
     p.s(cpsStmts).addSingleIfStmt(removeSinglePar(cOp(Equal, ra, first))):
       p.s(cpsStmts).addCallStmt(cgsymValue(p.module, "raiseOverflow"))
       raiseInstr(p, p.s(cpsStmts))
@@ -919,6 +919,10 @@ proc genDeref(p: BProc, e: PNode, d: var TLoc) =
       return
     else:
       a = initLocExprSingleUse(p, e[0])
+
+    if e.typ != nil and e.typ.kind == tyObject:
+      # bug #23453 #25265
+      discard getTypeDesc(p.module, e.typ)
     if d.k == locNone:
       # dest = *a;  <-- We do not know that 'dest' is on the heap!
       # It is completely wrong to set 'd.storage' here, unless it's not yet
@@ -962,6 +966,11 @@ proc cowBracket(p: BProc; n: PNode) =
 proc cow(p: BProc; n: PNode) {.inline.} =
   if n.kind == nkHiddenAddr: cowBracket(p, n[0])
 
+template ignoreConv(e: PNode): bool =
+  let destType = e.typ.skipTypes({tyVar, tyLent, tyGenericInst, tyAlias, tySink})
+  let srcType = e[1].typ.skipTypes({tyVar, tyLent, tyGenericInst, tyAlias, tySink})
+  sameBackendTypePickyAliases(destType, srcType)
+
 proc genAddr(p: BProc, e: PNode, d: var TLoc) =
   # careful  'addr(myptrToArray)' needs to get the ampersand:
   if e[0].typ.skipTypes(abstractInstOwned).kind in {tyRef, tyPtr}:
@@ -974,7 +983,15 @@ proc genAddr(p: BProc, e: PNode, d: var TLoc) =
     d.lode = e
   else:
     var a: TLoc = initLocExpr(p, e[0])
-    putIntoDest(p, d, e, addrLoc(p.config, a), a.storage)
+    if e[0].kind in {nkHiddenStdConv, nkHiddenSubConv, nkConv} and not ignoreConv(e[0]):
+      # addr (conv x) introduces a temp because `conv x` is not a rvalue
+      # transform addr ( conv ( x ) ) -> conv ( addr ( x ) )
+      var exprLoc: TLoc = initLocExpr(p, e[0][1])
+      var tmp = getTemp(p, e.typ, needsInit=false)
+      putIntoDest(p, tmp, e, cCast(getTypeDesc(p.module, e.typ), addrLoc(p.config, exprLoc)))
+      putIntoDest(p, d, e, rdLoc(tmp))
+    else:
+      putIntoDest(p, d, e, addrLoc(p.config, a), a.storage)
 
 template inheritLocation(d: var TLoc, a: TLoc) =
   if d.k == locNone: d.storage = a.storage
@@ -989,7 +1006,7 @@ proc genTupleElem(p: BProc, e: PNode, d: var TLoc) =
   var
     i: int = 0
   var a: TLoc = initLocExpr(p, e[0])
-  let tupType = a.t.skipTypes(abstractInst+{tyVar})
+  let tupType = a.t.skipTypes(abstractInst+{tyVar}+tyUserTypeClasses) # ref #25227
   assert tupType.kind == tyTuple
   d.inheritLocation(a)
   discard getTypeDesc(p.module, a.t) # fill the record's fields.loc
@@ -1899,7 +1916,7 @@ proc genSeqConstr(p: BProc, n: PNode, d: var TLoc) =
 proc genArrToSeq(p: BProc, n: PNode, d: var TLoc) =
   var elem, arr: TLoc
   if n[1].kind == nkBracket:
-    n[1].typ() = n.typ
+    n[1].typ = n.typ
     genSeqConstr(p, n[1], d)
     return
   if d.k == locNone:
@@ -2205,7 +2222,7 @@ proc isTrivialTypesToSnippet(t: PType): Snippet =
   else:
     result = NimTrue
 
-proc genSetLengthSeq(p: BProc, e: PNode, d: var TLoc) =
+proc genSetLengthSeq(p: BProc, e: PNode, d: var TLoc, noinit = false) =
   if optSeqDestructors in p.config.globalOptions:
     e[1] = makeAddr(e[1], p.module.idgen)
     genCall(p, e, d)
@@ -2227,7 +2244,9 @@ proc genSetLengthSeq(p: BProc, e: PNode, d: var TLoc) =
     pExpr = cIfExpr(ra, cAddr(derefField(ra, "Sup")), NimNil)
   else:
     pExpr = ra
-  call.snippet = cCast(rt, cgCall(p, "setLengthSeqV2", pExpr, rti, rb,
+
+  let name = if noinit: "setLengthSeqUninit" else: "setLengthSeqV2"
+  call.snippet = cCast(rt, cgCall(p, name, pExpr, rti, rb,
           isTrivialTypesToSnippet(t.skipTypes(abstractInst)[0])))
 
   genAssignment(p, a, call, {})
@@ -2637,8 +2656,7 @@ proc genRangeChck(p: BProc, n: PNode, d: var TLoc) =
     putIntoDest(p, d, n, cCast(destType, wrapPar(val)), a.storage)
 
 proc genConv(p: BProc, e: PNode, d: var TLoc) =
-  let destType = e.typ.skipTypes({tyVar, tyLent, tyGenericInst, tyAlias, tySink})
-  if sameBackendTypeIgnoreRange(destType, e[1].typ):
+  if ignoreConv(e):
     expr(p, e[1], d)
   else:
     genSomeCast(p, e, d)
@@ -2967,6 +2985,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       p.s(cpsStmts).addCallStmt(cgsymValue(p.module, "nimGCunref"), ra)
   of mSetLengthStr: genSetLengthStr(p, e, d)
   of mSetLengthSeq: genSetLengthSeq(p, e, d)
+  of mSetLengthSeqUninit: genSetLengthSeq(p, e, d, noinit = true)
   of mIncl, mExcl, mCard, mLtSet, mLeSet, mEqSet, mMulSet, mPlusSet, mMinusSet,
      mInSet, mXorSet:
     genSetOp(p, e, d, op)
@@ -3344,8 +3363,9 @@ proc genConstSetup(p: BProc; sym: PSym): bool =
   useHeader(m, sym)
   if sym.loc.k == locNone:
     fillBackendName(p.module, sym)
-    fillLoc(sym.loc, locData, sym.astdef, OnStatic)
-  if m.hcrOn: incl(sym.loc.flags, lfIndirect)
+    ensureMutable sym
+    fillLoc(sym.locImpl, locData, sym.astdef, OnStatic)
+  if m.hcrOn: incl(sym, lfIndirect)
   result = lfNoDecl notin sym.loc.flags
 
 proc genConstHeader(m, q: BModule; p: BProc, sym: PSym) =
@@ -3415,7 +3435,7 @@ proc genConstDefinition(q: BModule; p: BProc; sym: PSym) =
 
 proc genConstStmt(p: BProc, n: PNode) =
   # This code is only used in the new DCE implementation.
-  assert useAliveDataFromDce in p.module.flags
+  assert delayedCodegen(p.module)
   let m = p.module
   for it in n:
     if it[0].kind == nkSym:
@@ -3433,7 +3453,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
     var sym = n.sym
     case sym.kind
     of skMethod:
-      if useAliveDataFromDce in p.module.flags or {sfDispatcher, sfForward} * sym.flags != {}:
+      if delayedCodegen(p.module) or {sfDispatcher, sfForward} * sym.flags != {}:
         # we cannot produce code for the dispatcher yet:
         fillProcLoc(p.module, n)
         genProcPrototype(p.module, sym)
@@ -3446,11 +3466,15 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
       if sfCompileTime in sym.flags:
         localError(p.config, n.info, "request to generate code for .compileTime proc: " &
            sym.name.s)
-      if useAliveDataFromDce in p.module.flags and sym.typ.callConv != ccInline:
+      if delayedCodegen(p.module) and sym.typ.callConv != ccInline:
         fillProcLoc(p.module, n)
         genProcPrototype(p.module, sym)
       else:
         genProc(p.module, sym)
+        # For cross-module inline procs with optCompress, ensure prototype is emitted
+        if sym.typ.callConv == ccInline and optCompress in p.config.globalOptions and
+           sym.itemId.module != p.module.module.position:
+          genProcPrototype(p.module, sym)
       if sym.loc.snippet == "" or sym.loc.lode == nil:
         internalError(p.config, n.info, "expr: proc not init " & sym.name.s)
       putLocIntoDest(p, d, sym.loc)
@@ -3459,7 +3483,13 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
         var lit = newBuilder("")
         genLiteral(p, sym.astdef, sym.typ, lit)
         putIntoDest(p, d, n, extract(lit), OnStatic)
-      elif useAliveDataFromDce in p.module.flags:
+      elif optCompress in p.config.globalOptions:
+        # With delayed codegen, we need to ensure the definition is generated
+        # not just the extern header declaration
+        requestConstImpl(p, sym)
+        assert((sym.loc.snippet != "") and (sym.loc.t != nil))
+        putLocIntoDest(p, d, sym.loc)
+      elif delayedCodegen(p.module):
         genConstHeader(p.module, p.module, p, sym)
         assert((sym.loc.snippet != "") and (sym.loc.t != nil))
         putLocIntoDest(p, d, sym.loc)
@@ -3591,7 +3621,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
   of nkWhileStmt: genWhileStmt(p, n)
   of nkVarSection, nkLetSection: genVarStmt(p, n)
   of nkConstSection:
-    if useAliveDataFromDce in p.module.flags:
+    if delayedCodegen(p.module):
       genConstStmt(p, n)
     else: # enforce addressable consts for exportc
       let m = p.module
@@ -3657,7 +3687,10 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
   of nkProcDef, nkFuncDef, nkMethodDef, nkConverterDef:
     if n[genericParamsPos].kind == nkEmpty:
       var prc = n[namePos].sym
-      if useAliveDataFromDce in p.module.flags:
+      if optCompress in p.config.globalOptions:
+        if prc.magic in generatedMagics:
+          genProc(p.module, prc)
+      elif delayedCodegen(p.module):
         if p.module.alive.contains(prc.itemId.item) and
             prc.magic in generatedMagics:
           genProc(p.module, prc)

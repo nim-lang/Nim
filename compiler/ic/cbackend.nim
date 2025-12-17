@@ -52,7 +52,7 @@ proc generateCodeForModule(g: ModuleGraph; m: var LoadedModule; alive: var Alive
 
   finalCodegenActions(g, bmod, newNodeI(nkStmtList, m.module.info))
   for disp in getDispatchers(g):
-    genProcAux(bmod, disp)
+    genProcLvl3(bmod, disp)
   m.fromDisk.backendFlags = cgen.whichInitProcs(bmod)
 
 proc replayTypeInfo(g: ModuleGraph; m: var LoadedModule; origin: FileIndex) =

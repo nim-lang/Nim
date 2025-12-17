@@ -173,7 +173,7 @@ proc compileModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymFlags, fr
     let filename = AbsoluteFile toFullPath(graph.config, fileIdx)
     if result == nil:
       result = newModule(graph, fileIdx)
-      result.flags.incl flags
+      result.incl flags
       registerModule(graph, result)
       processModuleAux("import")
     else:
@@ -185,7 +185,7 @@ proc compileModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymFlags, fr
       replayStateChanges(graph.packed.pm[m.int].module, graph)
       replayGenericCacheInformation(graph, m.int)
   elif graph.isDirty(result):
-    result.flags.excl sfDirty
+    result.excl sfDirty
     # reset module fields:
     initStrTables(graph, result)
     result.ast = nil

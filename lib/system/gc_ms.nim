@@ -36,7 +36,7 @@ type
                    # local
     waMarkPrecise  # fast precise marking
 
-  Finalizer {.compilerproc.} = proc (self: pointer) {.nimcall, benign, raises: [].}
+  Finalizer {.compilerproc.} = proc (self: pointer) {.nimcall, benign, raises: [], gcsafe.}
     # A ref type can have a finalizer that is called before the object's
     # storage is freed.
 
@@ -94,11 +94,11 @@ template gcAssert(cond: bool, msg: string) =
 
 proc cellToUsr(cell: PCell): pointer {.inline.} =
   # convert object (=pointer to refcount) to pointer to userdata
-  result = cast[pointer](cast[int](cell)+%ByteAddress(sizeof(Cell)))
+  cell +! sizeof(Cell)
 
 proc usrToCell(usr: pointer): PCell {.inline.} =
   # convert pointer to userdata to object (=pointer to refcount)
-  result = cast[PCell](cast[int](usr)-%ByteAddress(sizeof(Cell)))
+  cast[PCell](usr -! sizeof(Cell))
 
 proc extGetCellType(c: pointer): PNimType {.compilerproc.} =
   # used for code generation concerning debugging
@@ -289,23 +289,23 @@ when useCellIds:
 
 {.pop.}
 
-proc newObj(typ: PNimType, size: int): pointer {.compilerRtl.} =
+proc newObj(typ: PNimType, size: int): pointer {.compilerRtl, raises: [].} =
   result = rawNewObj(typ, size, gch)
   zeroMem(result, size)
   when defined(memProfiler): nimProfile(size)
 
-proc newObjNoInit(typ: PNimType, size: int): pointer {.compilerRtl.} =
+proc newObjNoInit(typ: PNimType, size: int): pointer {.compilerRtl, raises: [].} =
   result = rawNewObj(typ, size, gch)
   when defined(memProfiler): nimProfile(size)
 
-proc newObjRC1(typ: PNimType, size: int): pointer {.compilerRtl.} =
+proc newObjRC1(typ: PNimType, size: int): pointer {.compilerRtl, raises: [].} =
   result = rawNewObj(typ, size, gch)
   zeroMem(result, size)
   when defined(memProfiler): nimProfile(size)
 
 when not defined(nimSeqsV2):
   {.push overflowChecks: on.}
-  proc newSeq(typ: PNimType, len: int): pointer {.compilerRtl.} =
+  proc newSeq(typ: PNimType, len: int): pointer {.compilerRtl, raises: [].} =
     # `newObj` already uses locks, so no need for them here.
     let size = align(GenericSeqSize, typ.base.align) + len * typ.base.size
     result = newObj(typ, size)
@@ -313,7 +313,7 @@ when not defined(nimSeqsV2):
     cast[PGenericSeq](result).reserved = len
     when defined(memProfiler): nimProfile(size)
 
-  proc newSeqRC1(typ: PNimType, len: int): pointer {.compilerRtl.} =
+  proc newSeqRC1(typ: PNimType, len: int): pointer {.compilerRtl, raises: [].} =
     let size = align(GenericSeqSize, typ.base.align) + len * typ.base.size
     result = newObj(typ, size)
     cast[PGenericSeq](result).len = len
@@ -346,7 +346,7 @@ when not defined(nimSeqsV2):
     result = cellToUsr(res)
     when defined(memProfiler): nimProfile(newsize-oldsize)
 
-  proc growObj(old: pointer, newsize: int): pointer {.rtl.} =
+  proc growObj(old: pointer, newsize: int): pointer {.rtl, raises: [].} =
     result = growObj(old, newsize, gch)
 
 {.push profiler:off.}

@@ -45,7 +45,8 @@ proc checkForSink*(config: ConfigRef; idgen: IdGenerator; owner: PSym; arg: PNod
         #echo config $ arg.info, " turned into a sink parameter ", arg.sym.name.s
       elif sfWasForwarded notin arg.sym.flags:
         # we only report every potential 'sink' parameter only once:
-        incl arg.sym.flags, sfWasForwarded
+        ensureMutable arg.sym
+        incl arg.sym.flagsImpl, sfWasForwarded
         message(config, arg.info, hintPerformance,
           "could not turn '$1' to a sink parameter" % [arg.sym.name.s])
       #echo config $ arg.info, " candidate for a sink parameter here"

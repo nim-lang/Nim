@@ -14,6 +14,8 @@ at offset 0 then. The ``ref`` object header is independent from the
 runtime type and only contains a reference count.
 ]#
 
+{.push raises: [], rangeChecks: off.}
+
 when defined(gcOrc):
   const
     rcIncrement = 0b10000 # so that lowest 4 bits are not touched
@@ -81,9 +83,9 @@ when defined(gcAtomicArc) and hasThreadSupport:
     atomicLoadN(x.rc.addr, ATOMIC_ACQUIRE) shr rcShift
 else:
   template decrement(cell: Cell): untyped =
-    dec(cell.rc, rcIncrement)
+    cell.rc = cell.rc -% rcIncrement
   template increment(cell: Cell): untyped =
-    inc(cell.rc, rcIncrement)
+    cell.rc = cell.rc +% rcIncrement
   template count(x: Cell): untyped =
     x.rc shr rcShift
 
@@ -92,7 +94,7 @@ when not defined(nimHasQuirky):
 
 proc nimNewObj(size, alignment: int): pointer {.compilerRtl.} =
   let hdrSize = align(sizeof(RefHeader), alignment)
-  let s = size + hdrSize
+  let s = size +% hdrSize
   when defined(nimscript):
     discard
   else:
@@ -269,3 +271,5 @@ when defined(gcDestructors):
   proc nimGetVTable(p: pointer, index: int): pointer
         {.compilerRtl, inline, raises: [].} =
     result = cast[ptr PNimTypeV2](p).vTable[index]
+
+{.pop.} # raises: []
