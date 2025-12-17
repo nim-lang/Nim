@@ -206,8 +206,8 @@ lib/system/iterators.nim
 lib/system/exceptions.nim
 lib/system/dollars.nim
 lib/system/ctypes.nim
-lib/system/repr_v2.nim
 """.splitWhitespace()
+# lib/system/repr_v2.nim
 
   proc follow(a: PathEntry): bool =
     result = a.path.lastPathPart notin ["nimcache", htmldocsDirname,
