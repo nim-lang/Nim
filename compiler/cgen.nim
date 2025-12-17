@@ -16,7 +16,7 @@ import
   rodutils, renderer, cgendata, aliases,
   lowerings, lineinfos, pathutils, transf,
   injectdestructors, astmsgs, modulepaths, pushpoppragmas,
-  mangleutils, cbuilderbase
+  mangleutils, cbuilderbase, modulegraphs
 
 from expanddefaults import caseObjDefaultBranch
 
@@ -70,6 +70,7 @@ proc findPendingModule(m: BModule, s: PSym): BModule =
     result = m.g.modules[ms]
   elif m.config.cmd in {cmdNifC, cmdM}:
     var ms = getModule(s)
+    registerModule m.g.graph, ms
     if ms.position >= m.g.modules.len:
       result = newModule(m.g, ms, m.config, idGeneratorFromModule(ms))
     else:

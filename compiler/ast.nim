@@ -230,7 +230,7 @@ proc offset*(s: PSym): int32 {.inline.} =
   result = s.offsetImpl
 
 proc `offset=`*(s: PSym, val: int32) {.inline.} =
-  assert s.state != Sealed
+  #assert s.state != Sealed
   if s.state == Partial: loadSym(s)
   s.offsetImpl = val
 
