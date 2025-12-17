@@ -94,8 +94,7 @@ proc `$`*[T: tuple](x: T): string =
   tupleObjectDollar(result, x)
 
 when not defined(nimPreviewSlimSystem):
-  import std/objectdollar
-  export objectdollar
+  include std/objectdollar
 
 proc collectionToString[T](x: T, prefix, separator, suffix: string): string =
   result = prefix

@@ -4,6 +4,7 @@ const useGCC_builtins = (defined(gcc) or defined(llvm_gcc) or
                          defined(clang)) and useBuiltins
 const useICC_builtins = defined(icc) and useBuiltins
 const useVCC_builtins = defined(vcc) and useBuiltins
+const arch64 = sizeof(int) == 8
 
 template forwardImpl(impl, arg) {.dirty.} =
   when sizeof(x) <= 4:

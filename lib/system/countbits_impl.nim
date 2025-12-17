@@ -11,8 +11,6 @@
 
 include std/private/bitops_utils
 
-const arch64 = sizeof(int) == 8
-
 template countBitsImpl(n: uint32): int =
   # generic formula is from: https://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
   var v = uint32(n)
