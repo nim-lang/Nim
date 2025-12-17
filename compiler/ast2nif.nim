@@ -182,6 +182,7 @@ proc toNifSymName(w: var Writer; sym: PSym): string =
     let module = if sym.kindImpl == skPackage: w.currentModule else: sym.itemId.module
     result.add modname(module, w.infos.config)
 
+
 proc globalName(sym: PSym; config: ConfigRef): string =
   result = sym.name.s
   result.add '.'
@@ -682,6 +683,8 @@ proc writeOp(w: var Writer; content: var TokenBuf; op: LogEntry) =
     discard "to implement"
   of EnumToStrEntry:
     discard "to implement"
+  of GenericInstEntry:
+    discard "will only be written later to ensure it is materialized"
 
 proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode;
                      opsLog: seq[LogEntry];

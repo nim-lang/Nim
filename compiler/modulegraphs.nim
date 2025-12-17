@@ -451,6 +451,14 @@ proc addMethodToGeneric*(g: ModuleGraph; module: int; t: PType; col: int; m: PSy
   let ownerModule = if t.sym != nil: t.sym.itemId.module.int else: module
   g.opsLog.add LogEntry(kind: MethodEntry, module: ownerModule, key: key, sym: m)
 
+proc logGenericInstance*(g: ModuleGraph; inst: PSym) =
+  ## Log a generic instance so it gets written to the NIF file.
+  ## This is needed when generic instances are created during compile-time
+  ## evaluation and may be referenced from other modules compiled in the same run.
+  if g.config.cmd in {cmdNifC, cmdM}:
+    let ownerModule = inst.itemId.module.int
+    g.opsLog.add LogEntry(kind: GenericInstEntry, module: ownerModule, sym: inst)
+
 proc hasDisabledAsgn*(g: ModuleGraph; t: PType): bool =
   let op = getAttachedOp(g, t, attachedAsgn)
   result = op != nil and sfError in op.flags
@@ -840,6 +848,8 @@ when not defined(nimKochBootstrap):
         discard "todo"
       of EnumToStrEntry:
         discard "todo"
+      of GenericInstEntry:
+        raiseAssert "GenericInstEntry should not be in the NIF index"
     # Register methods per type from NIF index
     discard "todo"
     cachedModules.add fileIdx

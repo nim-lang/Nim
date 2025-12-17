@@ -3363,7 +3363,7 @@ proc genConstSetup(p: BProc; sym: PSym): bool =
   useHeader(m, sym)
   if sym.loc.k == locNone:
     fillBackendName(p.module, sym)
-    ensureMutable sym
+    backendEnsureMutable sym
     fillLoc(sym.locImpl, locData, sym.astdef, OnStatic)
   if m.hcrOn: incl(sym, lfIndirect)
   result = lfNoDecl notin sym.loc.flags

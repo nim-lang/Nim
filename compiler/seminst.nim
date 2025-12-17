@@ -450,6 +450,10 @@ proc generateInstance(c: PContext, fn: PSym, pt: LayeredIdTable,
     entry.compilesId = c.compilesContextId
     addToGenericProcCache(c, fn, entry)
     c.generics.add(makeInstPair(fn, entry))
+    # Log the generic instance so it gets written to the NIF file.
+    # This is needed for cyclic module dependencies where generic instances
+    # may be created in one module but referenced from another.
+    logGenericInstance(c.graph, result)
     # bug #12985 bug #22913
     # TODO: use the context of the declaration of generic functions instead
     # TODO: consider fixing options as well
