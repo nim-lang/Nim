@@ -197,7 +197,7 @@ proc matchConceptToImpl(c: PContext, f, potentialImpl: PType; m: var MatchCon): 
   # one we're currently matching and has no body (n=nil).
   if concpt.n.isNil:
     if concpt.sym != nil and m.concpt.sym != nil and
-       concpt.sym.name.s == m.concpt.sym.name.s:
+       concpt.sym == m.concpt.sym:
       # Self-reference: check if potentialImpl matches what we're already checking
       return potentialImpl.id == m.potentialImplementation.id
     # Concept without body that's not a self-reference - cannot match
