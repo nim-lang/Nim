@@ -2,9 +2,6 @@
 
 const useLibC = not defined(nimNoLibc)
 
-when useLibC:
-  import ansi_c
-
 proc nimCopyMem*(dest, source: pointer, size: Natural) {.nonReloadable, compilerproc, inline, enforceNoRaises.} =
   when useLibC:
     c_memcpy(dest, source, cast[csize_t](size))
