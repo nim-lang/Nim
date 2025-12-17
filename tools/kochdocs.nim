@@ -157,6 +157,7 @@ lib/std/sha1.nim
 lib/pure/htmlparser.nim
 lib/std/private/schubfach.nim
 lib/std/private/dragonbox.nim
+lib/std/private/syslocks.nim
 """.splitWhitespace()
 
   officialPackagesList = """

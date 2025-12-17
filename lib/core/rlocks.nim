@@ -16,7 +16,7 @@ when not compileOption("threads") and not defined(nimdoc):
     # so they can replace each other seamlessly.
     {.error: "Rlocks requires --threads:on option.".}
 
-import std/private/syslocks
+include std/private/syslocks
 
 type
   RLock* = SysLock ## Nim lock, re-entrant

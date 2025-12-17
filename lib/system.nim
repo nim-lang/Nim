@@ -1660,7 +1660,7 @@ when notJSnotNims:
 {.push stackTrace: off.}
 
 when not defined(js) and hasThreadSupport and hostOS != "standalone":
-  import std/private/syslocks
+  include std/private/syslocks
   include "system/threadlocalstorage"
 
 when not defined(js) and defined(nimV2):

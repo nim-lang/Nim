@@ -18,7 +18,7 @@ when not compileOption("threads") and not defined(nimdoc):
   when false: # fix #12330
     {.error: "Locks requires --threads:on option.".}
 
-import std/private/syslocks
+include std/private/syslocks
 
 type
   Lock* = SysLock ## Nim lock; whether this is re-entrant
