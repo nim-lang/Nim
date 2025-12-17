@@ -21,20 +21,13 @@ proc hashTree*(n: PNode): Hash =
     return
   result = ord(n.kind)
   case n.kind
-  of nkEmpty, nkNilLit, nkType:
-    discard
-  of nkIdent:
-    result = result !& n.ident.h
-  of nkSym:
-    result = result !& n.sym.id
-  of nkCharLit..nkUInt64Lit:
-    if (n.intVal >= low(int)) and (n.intVal <= high(int)):
-      result = result !& int(n.intVal)
-  of nkFloatLit..nkFloat64Lit:
-    if (n.floatVal >= - 1000000.0) and (n.floatVal <= 1000000.0):
-      result = result !& toInt(n.floatVal)
-  of nkStrLit..nkTripleStrLit:
-    result = result !& hash(n.strVal)
+  of nkEmpty: discard
+  of nkSym: result = result !& n.sym.id
+  of nkIdent: result = result !& n.ident.h
+  of nkCharLit..nkUInt64Lit: result = result !& hash(n.intVal)
+  of nkFloatLit..nkFloat64Lit: result = result !& hash(cast[uint64](n.floatVal))
+  of nkStrLit..nkTripleStrLit: result = result !& hash(n.strVal)
+  of nkType, nkNilLit: result = result !& hash(n.typ.itemId)
   else:
     for i in 0..<n.len:
       result = result !& hashTree(n[i])
@@ -53,7 +46,6 @@ proc treesEquivalent(a, b: PNode; ignoreTypes: bool): bool =
     of nkCharLit..nkUInt64Lit: result = a.intVal == b.intVal
     of nkFloatLit..nkFloat64Lit:
       result = cast[uint64](a.floatVal) == cast[uint64](b.floatVal)
-      #result = a.floatVal == b.floatVal
     of nkStrLit..nkTripleStrLit: result = a.strVal == b.strVal
     of nkType, nkNilLit:
       result = a.typ == b.typ
