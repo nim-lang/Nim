@@ -429,6 +429,12 @@ else:
       cast[T](interlockedXor(addr(location.value), cast[nonAtomicType(T)](value)))
 
   else:
+    # On Linux with GCC/Clang, 16-byte atomic operations (__atomic_load_16,
+    # __atomic_store_16, etc.) may not be inlined and require libatomic.
+    # See: https://github.com/STEllAR-GROUP/hpx/issues/3342
+    when defined(linux) and hasLockFree16:
+      {.passL: "-latomic".}
+
     when defined(cpp):
       {.push, header: "<atomic>".}
       template maybeWrapStd(x: string): string =
