@@ -9,7 +9,7 @@
 
 ## Contains the used algorithms for counting bits.
 
-from std/private/bitops_utils import forwardImpl, castToUnsigned
+include std/private/bitops_utils
 
 const useBuiltins* = not defined(noIntrinsicsBitOpts)
 const noUndefined* = defined(noUndefinedBitOpts)
