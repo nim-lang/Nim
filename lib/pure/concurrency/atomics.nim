@@ -26,7 +26,7 @@
 ## - With destructor-based MMs (`--mm:arc`, `--mm:orc`, `--mm:atomicArc`):
 ##   `supportsCopyMem(T)` must be true (excludes `ref`, `string`, `seq`)
 ## - With non-destructor MMs (`--mm:refc`, `--mm:markAndSweep`, `--mm:none`):
-##   managed types are pointer-sized and can use lock-free atomics
+##   managed types of a correct size can use lock-free atomics
 ##
 ## Architecture Support
 ## --------------------
@@ -110,7 +110,6 @@ runnableExamples:
   assert isLockFree(int)
   assert isLockFree(bool)
 
-  # Small objects are lock-free if size in {1, 2, 4, 8} and no managed memory
   type Point = object
     x, y: int32
   assert isLockFree(Point) == (sizeof(Point) <= sizeof(pointer))
