@@ -11,13 +11,7 @@
 
 include std/private/bitops_utils
 
-const useBuiltins* = not defined(noIntrinsicsBitOpts)
-const noUndefined* = defined(noUndefinedBitOpts)
-const useGCC_builtins* = (defined(gcc) or defined(llvm_gcc) or
-                         defined(clang)) and useBuiltins
-const useICC_builtins* = defined(icc) and useBuiltins
-const useVCC_builtins* = defined(vcc) and useBuiltins
-const arch64* = sizeof(int) == 8
+const arch64 = sizeof(int) == 8
 
 template countBitsImpl(n: uint32): int =
   # generic formula is from: https://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
@@ -60,7 +54,7 @@ elif useICC_builtins:
       importc: "_popcnt64", header: "<immintrin.h>".}
 
 
-func countSetBitsImpl*(x: SomeInteger): int {.inline.} =
+func countSetBitsImpl(x: SomeInteger): int {.inline.} =
   ## Counts the set bits in an integer (also called `Hamming weight`:idx:).
   # TODO: figure out if ICC support _popcnt32/_popcnt64 on platform without POPCNT.
   # like GCC and MSVC
@@ -85,3 +79,6 @@ func countSetBitsImpl*(x: SomeInteger): int {.inline.} =
     else:
       when sizeof(x) <= 4: result = countBitsImpl(x.uint32)
       else: result = countBitsImpl(x.uint64)
+
+func countSetBitsSysimpl*(x: SomeInteger): int {.inline.} =
+  result = countSetBitsImpl(x)

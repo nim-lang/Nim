@@ -1,3 +1,10 @@
+const useBuiltins = not defined(noIntrinsicsBitOpts)
+const noUndefined = defined(noUndefinedBitOpts)
+const useGCC_builtins = (defined(gcc) or defined(llvm_gcc) or
+                         defined(clang)) and useBuiltins
+const useICC_builtins = defined(icc) and useBuiltins
+const useVCC_builtins = defined(vcc) and useBuiltins
+
 template forwardImpl(impl, arg) {.dirty.} =
   when sizeof(x) <= 4:
     when x is SomeSignedInt:

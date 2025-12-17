@@ -2340,7 +2340,7 @@ when not defined(js):
 
 
 when notJSnotNims:
-  import system/countbits_impl
+  include system/countbits_impl
   include "system/sets"
 
   when defined(gogc):

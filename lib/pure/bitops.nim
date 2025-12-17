@@ -491,7 +491,7 @@ func countSetBits*(x: SomeInteger): int {.inline.} =
     doAssert countSetBits(0b0000_0011'u8) == 2
     doAssert countSetBits(0b1010_1010'u8) == 4
 
-  result = countSetBitsImpl(x)
+  result = countSetBitsSysimpl(x)
 
 func popcount*(x: SomeInteger): int {.inline.} =
   ## Alias for `countSetBits <#countSetBits,SomeInteger>`_ (Hamming weight).
