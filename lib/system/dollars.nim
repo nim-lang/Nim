@@ -7,7 +7,6 @@ import std/private/miscdollars
 
 when not defined(nimPreviewSlimSystem):
   import std/formatfloat
-  export addFloat
 
   func `$`*(x: float | float32): string =
     ## Outplace version of `addFloat`.

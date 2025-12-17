@@ -147,10 +147,6 @@ when defined(nimV2):
   proc raiseObjectCaseTransition() {.compilerproc.} =
     sysFatal(FieldDefect, "assignment to discriminant changes object branch")
 
-import std/formatfloat
-
-when not defined(nimPreviewSlimSystem):
-  export addFloat
 
 func f2s(x: float | float32): string =
   ## Outplace version of `addFloat`.

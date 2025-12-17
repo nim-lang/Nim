@@ -2130,6 +2130,10 @@ template unlikely*(val: bool): bool =
 include std/private/digitsutils
 export addInt
 
+import std/formatfloat
+when not defined(nimPreviewSlimSystem):
+  export addFloat
+
 import system/dollars
 export dollars
 
@@ -3032,8 +3036,7 @@ when defined(genode):
 
 
 when not defined(nimPreviewSlimSystem):
-  import std/widestrs
-  export widestrs
+  include std/widestrs
 
 when notJSnotNims:
   when defined(windows) and compileOption("threads"):
