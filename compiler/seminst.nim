@@ -244,7 +244,6 @@ proc instantiateProcType(c: PContext, pt: LayeredIdTable,
   var result = instCopyType(cl, prc.typ)
   let originalParams = result.n
   result.n = originalParams.shallowCopy
-  #for i, resulti in paramTypes(result):
   for i in 1 ..< originalParams.len:
     let resulti = originalParams[i].sym.typ
     # twrong_field_caching requires these 'resetIdTable' calls:

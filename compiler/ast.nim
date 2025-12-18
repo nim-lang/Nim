@@ -549,12 +549,12 @@ proc addAllowNil*(father, son: PNode) {.inline.} =
   father.sons.add(son)
 
 proc add*(father, son: PType) =
-  assert father.kind != tyProc
+  assert father.kind != tyProc or father.sonsImpl.len == 0
   assert son != nil
   father.sonsImpl.add son
 
 proc addAllowNil*(father, son: PType) {.inline.} =
-  assert father.kind != tyProc
+  assert father.kind != tyProc or father.sonsImpl.len == 0
   father.sonsImpl.add son
 
 template `[]`*(n: PType, i: int): PType =
@@ -1042,10 +1042,9 @@ proc setSons*(dest: PType; sons: sink seq[PType]) {.inline.} =
   assert dest.kind != tyProc or sons.len <= 1
   dest.sonsImpl = sons
 proc setSon*(dest: PType; son: sink PType) {.inline.} =
-  assert dest.kind != tyProc
   dest.sonsImpl = @[son]
 proc setSonsLen*(dest: PType; len: int) {.inline.} =
-  assert dest.kind != tyProc
+  assert dest.kind != tyProc or len <= 1
   setLen(dest.sonsImpl, len)
 
 proc mergeLoc(a: var TLoc, b: TLoc) =
@@ -1059,7 +1058,7 @@ proc newSons*(father: PNode, length: int) =
   setLen(father.sons, length)
 
 proc newSons*(father: PType, length: int) =
-  assert father.kind != tyProc
+  assert father.kind != tyProc or length <= 1
   setLen(father.sonsImpl, length)
 
 proc truncateInferredTypeCandidates*(t: PType) {.inline.} =
@@ -1085,6 +1084,8 @@ proc assignType*(dest, src: PType) =
     else:
       dest.symImpl = src.sym
   if src.kind == tyProc:
+    # `tyProc` uses only `sonsImpl[0]` to store return type.
+    # parameter symbols and types are stored in `nImpl`.
     assert src.sonsImpl.len <= 1
     if src.len > 0:
       setLen(dest.sonsImpl, 1)
