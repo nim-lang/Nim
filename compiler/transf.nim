@@ -129,9 +129,10 @@ proc transformSymAux(c: PTransf, n: PNode): PNode =
     if s.kind == skIterator:
       if c.tooEarly: return n
       else:
-        let transformedBody = injectDestructorCalls(c.graph, c.idgen, s, body)
-        let closureBody = transformClosureIterator(c.graph, c.idgen, s, transformedBody)
-        s.closureBody = closureBody
+        if s.closureBody == nil:
+          let transformedBody = injectDestructorCalls(c.graph, c.idgen, s, body)
+          let closureBody = transformClosureIterator(c.graph, c.idgen, s, transformedBody)
+          s.closureBody = closureBody
         return liftIterSym(c.graph, n, c.idgen, getCurrOwner(c))
     elif s.kind in {skProc, skFunc, skConverter, skMethod} and not c.tooEarly:
       # top level .closure procs are still somewhat supported for 'Nake':
