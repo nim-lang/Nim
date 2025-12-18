@@ -245,6 +245,7 @@ proc hasContinue(n: PNode): bool =
   case n.kind
   of nkEmpty..nkNilLit, nkForStmt, nkParForStmt, nkWhileStmt: result = false
   of nkContinueStmt: result = true
+  of routineDefs: result = false
   else:
     result = false
     for i in 0..<n.len:
