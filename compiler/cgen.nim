@@ -16,7 +16,7 @@ import
   rodutils, renderer, cgendata, aliases,
   lowerings, lineinfos, pathutils, transf,
   injectdestructors, astmsgs, modulepaths, pushpoppragmas,
-  mangleutils, cbuilderbase
+  mangleutils, cbuilderbase, modulegraphs
 
 from expanddefaults import caseObjDefaultBranch
 
@@ -61,18 +61,25 @@ proc hcrOn(p: BProc): bool = p.module.config.hcrOn
 proc addForwardedProc(m: BModule, prc: PSym) =
   m.g.forwardedProcs.add(prc)
 
-proc newModule*(g: BModuleList; module: PSym; conf: ConfigRef): BModule
+proc newModule*(g: BModuleList; module: PSym; conf: ConfigRef; idgen: IdGenerator): BModule
 
 proc findPendingModule(m: BModule, s: PSym): BModule =
   # TODO fixme
   if m.config.symbolFiles == v2Sf or optCompress in m.config.globalOptions:
     let ms = s.itemId.module  #getModule(s)
     result = m.g.modules[ms]
+  elif m.config.cmd in {cmdNifC, cmdM}:
+    var ms = getModule(s)
+    registerModule m.g.graph, ms
+    if ms.position >= m.g.modules.len:
+      result = newModule(m.g, ms, m.config, idGeneratorFromModule(ms))
+    else:
+      result = m.g.modules[ms.position]
+      if result == nil:
+        result = newModule(m.g, ms, m.config, idGeneratorFromModule(ms))
   else:
     var ms = getModule(s)
     result = m.g.modules[ms.position]
-    if result == nil:
-      result = newModule(m.g, ms, m.config)
 
 proc initLoc(k: TLocKind, lode: PNode, s: TStorageLoc, flags: TLocFlags = {}): TLoc =
   result = TLoc(k: k, storage: s, lode: lode,
@@ -651,7 +658,7 @@ proc localVarDecl(res: var Builder, p: BProc; n: PNode,
   let s = n.sym
   if s.loc.k == locNone:
     fillLocalName(p, s)
-    ensureMutable s
+    backendEnsureMutable s
     fillLoc(s.locImpl, locLocalVar, n, OnStack)
     if s.kind == skLet: incl(s, lfNoDeepCopy)
 
@@ -713,7 +720,7 @@ proc assignGlobalVar(p: BProc, n: PNode; value: Rope) =
   let s = n.sym
   if s.loc.k == locNone:
     fillBackendName(p.module, s)
-    ensureMutable s
+    backendEnsureMutable s
     fillLoc(s.locImpl, locGlobalVar, n, OnHeap)
     if treatGlobalDifferentlyForHCR(p.module, s): incl(s, lfIndirect)
 
@@ -722,7 +729,7 @@ proc assignGlobalVar(p: BProc, n: PNode; value: Rope) =
     if q != nil and not containsOrIncl(q.declaredThings, s.id):
       varInDynamicLib(q, s)
     else:
-      ensureMutable s
+      backendEnsureMutable s
       s.locImpl.snippet = mangleDynLibProc(s)
     if value != "":
       internalError(p.config, n.info, ".dynlib variables cannot have a value")
@@ -763,13 +770,13 @@ proc assignGlobalVar(p: BProc, n: PNode; value: Rope) =
       genGlobalVarDecl(p.module.s[cfsVars], p, n, td, initializer = initializer)
   if p.withinLoop > 0 and value == "":
     # fixes tests/run/tzeroarray:
-    ensureMutable s
+    backendEnsureMutable s
     resetLoc(p, s.locImpl)
 
 proc callGlobalVarCppCtor(p: BProc; v: PSym; vn, value: PNode; didGenTemp: var bool) =
   let s = vn.sym
   fillBackendName(p.module, s)
-  ensureMutable s
+  backendEnsureMutable s
   fillLoc(s.locImpl, locGlobalVar, vn, OnHeap)
   let td = getTypeDesc(p.module, vn.sym.typ, dkVar)
   var val = genCppParamsForCtor(p, value, didGenTemp)
@@ -959,7 +966,7 @@ proc symInDynamicLib(m: BModule, sym: PSym) =
   var extname = sym.loc.snippet
   if not isCall: loadDynamicLib(m, lib)
   var tmp = mangleDynLibProc(sym)
-  ensureMutable sym
+  backendEnsureMutable sym
   sym.locImpl.snippet = tmp             # from now on we only need the internal name
   sym.typ.sym = nil           # generate a new name
   inc(m.labels, 2)
@@ -1004,7 +1011,7 @@ proc varInDynamicLib(m: BModule, sym: PSym) =
   loadDynamicLib(m, lib)
   incl(sym, lfIndirect)
   var tmp = mangleDynLibProc(sym)
-  ensureMutable sym
+  backendEnsureMutable sym
   sym.locImpl.snippet = tmp             # from now on we only need the internal name
   inc(m.labels, 2)
   let t = ptrType(getTypeDesc(m, sym.typ, dkVar))
@@ -1018,7 +1025,7 @@ proc varInDynamicLib(m: BModule, sym: PSym) =
   m.s[cfsVars].addVar(name = sym.loc.snippet, typ = t)
 
 proc symInDynamicLibPartial(m: BModule, sym: PSym) =
-  ensureMutable sym
+  backendEnsureMutable sym
   sym.locImpl.snippet = mangleDynLibProc(sym)
   sym.typ.sym = nil           # generate a new name
 
@@ -1336,9 +1343,9 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
       returnStmt = extract(returnBuilder)
     elif sfConstructor in prc.flags:
       resNode.sym.incl lfIndirect
-      ensureMutable resNode.sym
+      backendEnsureMutable resNode.sym
       fillLoc(resNode.sym.locImpl, locParam, resNode, "this", OnHeap)
-      ensureMutable prc
+      backendEnsureMutable prc
       prc.locImpl.snippet = getTypeDesc(m, resNode.sym.locImpl.t, dkVar)
     else:
       fillResult(p.config, resNode, prc.typ)
@@ -1352,11 +1359,11 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
       if sfNoInit in prc.flags: discard
       elif allPathsAsgnResult(p, procBody) == InitSkippable: discard
       else:
-        ensureMutable res
+        backendEnsureMutable res
         resetLoc(p, res.locImpl)
       if skipTypes(res.typ, abstractInst).kind == tyArray:
         #incl(res.loc.flags, lfIndirect)
-        ensureMutable res
+        backendEnsureMutable res
         res.locImpl.storage = OnUnknown
 
   for i in 1..<prc.typ.n.len:
@@ -2103,7 +2110,7 @@ proc hcrGetProcLoadCode(builder: var Builder, m: BModule, sym, prefix, handle, g
 
   var extname = prefix & sym
   var tmp = mangleDynLibProc(prc)
-  ensureMutable prc
+  backendEnsureMutable prc
   prc.locImpl.snippet = tmp
   prc.typ.sym = nil
 
@@ -2372,9 +2379,10 @@ proc rawNewModule(g: BModuleList; module: PSym, filename: AbsoluteFile): BModule
 proc rawNewModule(g: BModuleList; module: PSym; conf: ConfigRef): BModule =
   result = rawNewModule(g, module, AbsoluteFile toFullPath(conf, module.position.FileIndex))
 
-proc newModule(g: BModuleList; module: PSym; conf: ConfigRef): BModule =
+proc newModule(g: BModuleList; module: PSym; conf: ConfigRef; idgen: IdGenerator): BModule =
   # we should create only one cgen module for each module sym
   result = rawNewModule(g, module, conf)
+  result.idgen = idgen
   if module.position >= g.modules.len:
     setLen(g.modules, module.position + 1)
   #growCache g.modules, module.position
@@ -2387,8 +2395,7 @@ template injectG() {.dirty.} =
 
 proc setupCgen*(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext =
   injectG()
-  result = newModule(g, module, graph.config)
-  result.idgen = idgen
+  result = newModule(g, module, graph.config, idgen)
   if optGenIndex in graph.config.globalOptions and g.generatedHeader == nil:
     let f = if graph.config.headerFile.len > 0: AbsoluteFile graph.config.headerFile
             else: graph.config.projectFull
@@ -2562,7 +2569,7 @@ proc generateLibraryDestroyGlobals(graph: ModuleGraph; m: BModule; body: PNode; 
   result = newSym(skProc, procname, m.idgen, m.module.owner, m.module.info)
   result.typ = newProcType(m.module.info, m.idgen, m.module.owner)
   result.typ.callConv = ccCDecl
-  ensureMutable result
+  backendEnsureMutable result
   incl result.flagsImpl, sfExportc
   result.locImpl.snippet = prefixedName
   if isDynlib:
