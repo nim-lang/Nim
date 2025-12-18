@@ -26,6 +26,8 @@ import
   lowerings, liftlocals,
   modulegraphs, lineinfos
 
+import injectdestructors
+
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
@@ -123,11 +125,16 @@ proc newAsgnStmt(c: PTransf, kind: TNodeKind, le: PNode, ri: PNode; isFirstWrite
 proc transformSymAux(c: PTransf, n: PNode): PNode =
   let s = n.sym
   if s.typ != nil and s.typ.callConv == ccClosure:
+    var body: PNode = nil
     if s.kind in routineKinds:
-      discard transformBody(c.graph, c.idgen, s, {useCache}+c.flags)
+      body = transformBody(c.graph, c.idgen, s, {useCache}+c.flags)
     if s.kind == skIterator:
       if c.tooEarly: return n
-      else: return liftIterSym(c.graph, n, c.idgen, getCurrOwner(c))
+      else:
+        let transformedBody = injectDestructorCalls(c.graph, c.idgen, s, body)
+        let closureBody = transformClosureIterator(c.graph, c.idgen, s, transformedBody)
+        s.closureBody = closureBody
+        return liftIterSym(c.graph, n, c.idgen, getCurrOwner(c))
     elif s.kind in {skProc, skFunc, skConverter, skMethod} and not c.tooEarly:
       # top level .closure procs are still somewhat supported for 'Nake':
       return makeClosure(c.graph, c.idgen, s, nil, n.info)
@@ -1316,8 +1323,6 @@ proc transformBody*(g: ModuleGraph; idgen: IdGenerator; prc: PSym; flags: Transf
     liftDefer(c, result)
     result = liftLocalsIfRequested(prc, result, g.cache, g.config, c.idgen)
 
-    if prc.isIterator:
-      result = g.transformClosureIterator(c.idgen, prc, result)
 
     incl(result.flags, nfTransf)
 

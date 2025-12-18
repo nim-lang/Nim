@@ -1083,6 +1083,10 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
       for i in 0..<n.len:
         result[i] = p(n[i], c, s, mode, inReturn=true)
       s.needsTry = true
+    of nkYieldStmt: # TODO:
+      result = shallowCopy(n)
+      for i in 0..<n.len:
+        result[i] = p(n[i], c, s, mode)
     of nkCast:
       result = shallowCopy(n)
       result[0] = n[0]

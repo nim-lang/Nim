@@ -1285,6 +1285,9 @@ proc genProcBody(p: BProc; procBody: PNode) =
     p.blocks[0].sections[cpsInit].addAssignmentWithValue("nimErr_"):
       p.blocks[0].sections[cpsInit].addCall(cgsymValue(p.module, "nimErrorFlag"))
 
+template isIterator(owner: PSym): bool =
+  owner.kind == skIterator and owner.typ.callConv == ccClosure
+
 proc genProcAux*(m: BModule, prc: PSym) =
   var p = newProc(prc, m)
   var header = newBuilder("")
@@ -1297,9 +1300,13 @@ proc genProcAux*(m: BModule, prc: PSym) =
   var returnStmt: Snippet = ""
   assert(prc.ast != nil)
 
-  var procBody = transformBody(m.g.graph, m.idgen, prc, {})
-  if sfInjectDestructors in prc.flags:
-    procBody = injectDestructorCalls(m.g.graph, m.idgen, prc, procBody)
+  var procBody: PNode = nil
+  if isIterator(prc) and prc.closureBody != nil:
+    procBody = prc.closureBody
+  else:
+    procBody = transformBody(m.g.graph, m.idgen, prc, {})
+    if sfInjectDestructors in prc.flags:
+      procBody = injectDestructorCalls(m.g.graph, m.idgen, prc, procBody)
 
   let tmpInfo = prc.info
   discard freshLineInfo(p, prc.info)
