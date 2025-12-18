@@ -1608,7 +1608,7 @@ proc newProcType*(info: TLineInfo; idgen: IdGenerator; owner: PSym): PType =
   result.n.add newNodeI(nkEffectList, info)
 
 proc addParam*(procType: PType; param: PSym) =
-  param.position = procType.sons.len-1
+  param.position = procType.n.len - 1
   procType.n.add newSymNode(param)
   rawAddSon(procType, param.typ)
 
