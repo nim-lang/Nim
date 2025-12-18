@@ -16,7 +16,7 @@ import
   commands, magicsys, modulegraphs, lineinfos, wordrecg
 
 import std/[strutils, math, strtabs]
-from system/memory import nimCStrLen
+#from system/memory import nimCStrLen
 
 when defined(nimPreviewSlimSystem):
   import std/[assertions, formatfloat]

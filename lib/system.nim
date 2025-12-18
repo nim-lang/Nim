@@ -1621,7 +1621,7 @@ proc instantiationInfo*(index = -1, fullPaths = false): tuple[
 
 when notJSnotNims:
   import system/ansi_c
-  import system/memory
+  include system/sysmem
 
 
 {.push stackTrace: off.}
