@@ -102,7 +102,7 @@ const
   # typedescX is used if we're sure tyTypeDesc should be included (or skipped)
   typedescPtrs* = abstractPtrs + {tyTypeDesc}
   typedescInst* = abstractInst + {tyTypeDesc, tyOwned, tyUserTypeClass}
-  
+
   # incorrect definition of `[]` and `[]=` for these types in system.nim
   arrPutGetMagicApplies* = {tyArray, tyOpenArray, tyString, tySequence, tyCstring, tyTuple}
 
@@ -1238,7 +1238,7 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
       x + {tyRange}
     else:
       x
-  
+
   template withoutShallowFlags(body) =
     let oldFlags = c.flags
     c.flags.excl IgnoreRangeShallow
@@ -1744,7 +1744,7 @@ proc skipHidden*(n: PNode): PNode =
 
 proc skipConvTakeType*(n: PNode): PNode =
   result = n.skipConv
-  result.typ() = n.typ
+  result.typ = n.typ
 
 proc isEmptyContainer*(t: PType): bool =
   case t.kind
@@ -1784,7 +1784,7 @@ proc skipHiddenSubConv*(n: PNode; g: ModuleGraph; idgen: IdGenerator): PNode =
       result = n
     else:
       result = copyTree(result)
-      result.typ() = dest
+      result.typ = dest
   else:
     result = n
 
@@ -2014,7 +2014,7 @@ proc nominalRoot*(t: PType): PType =
   ## i.e. the type directly associated with the symbol where the root
   ## nominal type of `t` was defined, skipping things like generic instances,
   ## aliases, `var`/`sink`/`typedesc` modifiers
-  ## 
+  ##
   ## instead of returning the uninstantiated body of a generic type,
   ## returns the type of the symbol instead (with tyGenericBody type)
   result = nil

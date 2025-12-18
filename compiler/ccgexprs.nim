@@ -1916,7 +1916,7 @@ proc genSeqConstr(p: BProc, n: PNode, d: var TLoc) =
 proc genArrToSeq(p: BProc, n: PNode, d: var TLoc) =
   var elem, arr: TLoc
   if n[1].kind == nkBracket:
-    n[1].typ() = n.typ
+    n[1].typ = n.typ
     genSeqConstr(p, n[1], d)
     return
   if d.k == locNone:
@@ -3363,7 +3363,7 @@ proc genConstSetup(p: BProc; sym: PSym): bool =
   useHeader(m, sym)
   if sym.loc.k == locNone:
     fillBackendName(p.module, sym)
-    ensureMutable sym
+    backendEnsureMutable sym
     fillLoc(sym.locImpl, locData, sym.astdef, OnStatic)
   if m.hcrOn: incl(sym, lfIndirect)
   result = lfNoDecl notin sym.loc.flags
@@ -3710,7 +3710,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
     inc p.splitDecls
     genGotoState(p, n)
   of nkBreakState: genBreakState(p, n, d)
-  of nkMixinStmt, nkBindStmt: discard
+  of nkMixinStmt, nkBindStmt, nkReplayAction: discard
   else: internalError(p.config, n.info, "expr(" & $n.kind & "); unknown node kind")
 
 proc getDefaultValue(p: BProc; typ: PType; info: TLineInfo; result: var Builder) =

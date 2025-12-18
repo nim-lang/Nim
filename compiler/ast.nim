@@ -29,9 +29,6 @@ export astdef
 when not defined(nimKochBootstrap):
   import ast2nif
 
-template typ*(n: PNode): PType =
-  n.typField
-
 when not defined(nimKochBootstrap):
   var program* {.threadvar.}: DecodeContext
 
@@ -48,6 +45,12 @@ template loadType(t: PType) =
   ## Loads a type from NIF file if it's in Partial state.
   when not defined(nimKochBootstrap):
     ast2nif.loadType(program, t)
+
+proc loadSymCallback*(s: PSym) {.nimcall.} =
+  loadSym(s)
+
+proc loadTypeCallback*(t: PType) {.nimcall.} =
+  loadType(t)
 
 proc ensureMutable*(s: PSym) {.inline.} =
   assert s.state != Sealed
@@ -85,9 +88,6 @@ proc setOwner*(s: PType; owner: PSym) {.inline.} =
   if s.state == Partial: loadType(s)
   s.ownerFieldImpl = owner
 
-# Accessor procs for TSym fields
-# Note: kind is kept as a direct field for case statement compatibility
-# but we still provide an accessor that checks state
 proc kind*(s: PSym): TSymKind {.inline.} =
   if s.state == Partial: loadSym(s)
   result = s.kindImpl
@@ -240,7 +240,7 @@ proc offset*(s: PSym): int32 {.inline.} =
   result = s.offsetImpl
 
 proc `offset=`*(s: PSym, val: int32) {.inline.} =
-  assert s.state != Sealed
+  #assert s.state != Sealed
   if s.state == Partial: loadSym(s)
   s.offsetImpl = val
 
@@ -306,7 +306,8 @@ proc incl*(s: PSym; flags: set[TSymFlag]) {.inline.} =
   s.flagsImpl.incl(flags)
 
 proc incl*(s: PSym; flag: TLocFlag) {.inline.} =
-  assert s.state != Sealed
+  #assert s.state != Sealed
+  # locImpl is a backend field so do not protect it against mutations
   if s.state == Partial: loadSym(s)
   s.locImpl.flags.incl(flag)
 
@@ -376,8 +377,7 @@ proc size*(t: PType): BiggestInt {.inline.} =
   result = t.sizeImpl
 
 proc `size=`*(t: PType, val: BiggestInt) {.inline.} =
-  assert t.state != Sealed
-  if t.state == Partial: loadType(t)
+  backendEnsureMutable t
   t.sizeImpl = val
 
 proc align*(t: PType): int16 {.inline.} =
@@ -385,8 +385,7 @@ proc align*(t: PType): int16 {.inline.} =
   result = t.alignImpl
 
 proc `align=`*(t: PType, val: int16) {.inline.} =
-  assert t.state != Sealed
-  if t.state == Partial: loadType(t)
+  backendEnsureMutable t
   t.alignImpl = val
 
 proc paddingAtEnd*(t: PType): int16 {.inline.} =
@@ -394,8 +393,7 @@ proc paddingAtEnd*(t: PType): int16 {.inline.} =
   result = t.paddingAtEndImpl
 
 proc `paddingAtEnd=`*(t: PType, val: int16) {.inline.} =
-  assert t.state != Sealed
-  if t.state == Partial: loadType(t)
+  backendEnsureMutable t
   t.paddingAtEndImpl = val
 
 proc loc*(t: PType): TLoc {.inline.} =
@@ -435,6 +433,14 @@ proc excl*(t: PType; flags: set[TTypeFlag]) {.inline.} =
   assert t.state != Sealed
   if t.state == Partial: loadType(t)
   t.flagsImpl.excl(flags)
+
+proc typ*(n: PNode): PType {.inline.} =
+  result = n.typField
+  if result == nil and nfLazyType in n.flags:
+    result = n.sym.typ
+
+proc `typ=`*(n: PNode, val: sink PType) {.inline.} =
+  n.typField = val
 
 template nodeId(n: PNode): int = cast[int](n)
 
@@ -779,7 +785,7 @@ proc withInfo*(n: PNode, info: TLineInfo): PNode =
 proc newSymNode*(sym: PSym): PNode =
   result = newNode(nkSym)
   result.sym = sym
-  result.typ() = sym.typ
+  result.typField = sym.typ
   result.info = sym.info
 
 proc newOpenSym*(n: PNode): PNode {.inline.} =
@@ -889,7 +895,7 @@ proc newIntTypeNode*(intVal: BiggestInt, typ: PType): PNode =
     result = newNode(nkIntLit)
   else: raiseAssert $kind
   result.intVal = intVal
-  result.typ() = typ
+  result.typField = typ
 
 proc newIntTypeNode*(intVal: Int128, typ: PType): PNode =
   # XXX: introduce range check
@@ -1190,7 +1196,7 @@ proc copyNode*(src: PNode): PNode =
     return nil
   result = newNode(src.kind)
   result.info = src.info
-  result.typ() = src.typ
+  result.typ = src.typ
   result.flags = src.flags * PersistentNodeFlags
   result.comment = src.comment
   when defined(useNodeIds):
@@ -1259,7 +1265,7 @@ template copyNodeImpl(dst, src, processSonsStmt) =
   dst.info = src.info
   when defined(nimsuggest):
     result.endInfo = src.endInfo
-  dst.typ() = src.typ
+  dst.typ = src.typ
   dst.flags = src.flags * PersistentNodeFlags
   dst.comment = src.comment
   when defined(useNodeIds):

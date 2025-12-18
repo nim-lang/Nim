@@ -220,7 +220,7 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
           if retTyp != nil:
             # TODO: properly semcheck the code of dispatcher?
             createTypeBoundOps(graph, ctx, retTyp, disp.ast.info, idgen)
-          genProcAux(m, disp)
+          genProcLvl3(m, disp)
         discard closePContext(graph, ctx, nil)
   of JSgenPass:
     when not defined(leanCompiler):
@@ -254,41 +254,8 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
         for (m, n) in PCtx(graph.vm).vmstateDiff:
           if m == module:
             replayActions.add n
-      # Collect hooks from the module graph for the current module
-      var hooks = default array[AttachedOp, seq[HookIndexEntry]]
-      for op in TTypeAttachedOp:
-        if op == attachedDeepCopy: continue  # Not supported in nimony
-        let nimonyOp = toAttachedOp(op)
-        for typeId, lazySym in graph.attachedOps[op]:
-          if typeId.module == module.position.int32:
-            let sym = lazySym.sym
-            if sym != nil:
-              hooks[nimonyOp].add toHookIndexEntry(graph.config, typeId, sym)
-      # Collect converters from the module's interface
-      var converters: seq[(nifstreams.SymId, nifstreams.SymId)] = @[]
-      for lazySym in graph.ifaces[module.position].converters:
-        let sym = lazySym.sym
-        if sym != nil:
-          let entry = toConverterIndexEntry(graph.config, sym)
-          if entry[0] != nifstreams.SymId(0):
-            converters.add entry
-      # Collect methods per type for classes
-      var classes: seq[ClassIndexEntry] = @[]
-      for typeId, methodList in graph.methodsPerType:
-        if typeId.module == module.position.int32:
-          var methods: seq[MethodIndexEntry] = @[]
-          for lazySym in methodList:
-            let sym = lazySym.sym
-            if sym != nil:
-              # Generate a method signature (simplified - name and param count)
-              let sig = sym.name.s & "/" & $sym.typImpl.sonsImpl.len
-              methods.add toMethodIndexEntry(graph.config, sym, sig)
-          if methods.len > 0:
-            classes.add ClassIndexEntry(
-              cls: toClassSymId(graph.config, typeId),
-              methods: methods
-            )
-      writeNifModule(graph.config, module.position.int32, topLevelStmts, hooks, converters, classes, replayActions)
+
+      writeNifModule(graph.config, module.position.int32, topLevelStmts, graph.opsLog, replayActions)
 
   if graph.config.backend notin {backendC, backendCpp, backendObjc} and graph.config.cmd != cmdM:
     # We only write rod files here if no C-like backend is active.
