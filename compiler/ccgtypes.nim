@@ -11,7 +11,7 @@
 
 # ------------------------- Name Mangling --------------------------------
 
-import sighashes, modulegraphs, std/strscans
+import sighashes, std/strscans
 import ../dist/checksums/src/checksums/md5
 import std/sequtils
 
@@ -124,7 +124,7 @@ proc fillLocalName(p: BProc; s: PSym) =
     elif s.kind != skResult:
       result.add "_" & rope(counter+1)
     p.sigConflicts.inc(key)
-    ensureMutable s
+    backendEnsureMutable s
     s.locImpl.snippet = result
 
 proc scopeMangledParam(p: BProc; param: PSym) =

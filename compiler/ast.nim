@@ -46,6 +46,12 @@ template loadType(t: PType) =
   when not defined(nimKochBootstrap):
     ast2nif.loadType(program, t)
 
+proc loadSymCallback*(s: PSym) {.nimcall.} =
+  loadSym(s)
+
+proc loadTypeCallback*(t: PType) {.nimcall.} =
+  loadType(t)
+
 proc ensureMutable*(s: PSym) {.inline.} =
   assert s.state != Sealed
   if s.state == Partial: loadSym(s)
@@ -82,9 +88,6 @@ proc setOwner*(s: PType; owner: PSym) {.inline.} =
   if s.state == Partial: loadType(s)
   s.ownerFieldImpl = owner
 
-# Accessor procs for TSym fields
-# Note: kind is kept as a direct field for case statement compatibility
-# but we still provide an accessor that checks state
 proc kind*(s: PSym): TSymKind {.inline.} =
   if s.state == Partial: loadSym(s)
   result = s.kindImpl
@@ -227,7 +230,7 @@ proc offset*(s: PSym): int32 {.inline.} =
   result = s.offsetImpl
 
 proc `offset=`*(s: PSym, val: int32) {.inline.} =
-  assert s.state != Sealed
+  #assert s.state != Sealed
   if s.state == Partial: loadSym(s)
   s.offsetImpl = val
 
@@ -293,7 +296,8 @@ proc incl*(s: PSym; flags: set[TSymFlag]) {.inline.} =
   s.flagsImpl.incl(flags)
 
 proc incl*(s: PSym; flag: TLocFlag) {.inline.} =
-  assert s.state != Sealed
+  #assert s.state != Sealed
+  # locImpl is a backend field so do not protect it against mutations
   if s.state == Partial: loadSym(s)
   s.locImpl.flags.incl(flag)
 
