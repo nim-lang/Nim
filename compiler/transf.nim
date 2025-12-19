@@ -127,7 +127,7 @@ proc transformSymAux(c: PTransf, n: PNode): PNode =
     if s.kind in routineKinds:
       body = transformBody(c.graph, c.idgen, s, {useCache}+c.flags)
     if s.kind == skIterator:
-      if s.closureBody == nil:
+      if body.kind != nkEmpty and s.closureBody == nil:
         let injected = injectDestructorCalls(c.graph, c.idgen, s, body)
         let closureBody = transformClosureIterator(c.graph, c.idgen, s, injected)
         s.closureBody = closureBody
