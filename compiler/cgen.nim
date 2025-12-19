@@ -20,6 +20,8 @@ import
 
 from expanddefaults import caseObjDefaultBranch
 
+import closureiters
+
 import pipelineutils
 
 when defined(nimPreviewSlimSystem):
@@ -1312,12 +1314,16 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
   assert(prc.ast != nil)
 
   var procBody: PNode = nil
-  if isIterator(prc) and prc.closureBody != nil:
+  if prc.closureBody != nil:
     procBody = prc.closureBody
   else:
     procBody = transformBody(m.g.graph, m.idgen, prc, {})
     if sfInjectDestructors in prc.flags:
       procBody = injectDestructorCalls(m.g.graph, m.idgen, prc, procBody)
+
+    if isIterator(prc):
+      procBody = transformClosureIterator(m.g.graph, m.idgen, prc, procBody)
+      prc.closureBody = procBody
 
   let tmpInfo = prc.info
   discard freshLineInfo(p, prc.info)

@@ -130,8 +130,8 @@ proc transformSymAux(c: PTransf, n: PNode): PNode =
       if c.tooEarly: return n
       else:
         if s.closureBody == nil:
-          let transformedBody = injectDestructorCalls(c.graph, c.idgen, s, body)
-          let closureBody = transformClosureIterator(c.graph, c.idgen, s, transformedBody)
+          let injected = injectDestructorCalls(c.graph, c.idgen, s, body)
+          let closureBody = transformClosureIterator(c.graph, c.idgen, s, injected)
           s.closureBody = closureBody
         return liftIterSym(c.graph, n, c.idgen, getCurrOwner(c))
     elif s.kind in {skProc, skFunc, skConverter, skMethod} and not c.tooEarly:

@@ -139,8 +139,9 @@
 
 import
   ast, msgs, idents,
-  renderer, magicsys, lowerings, lambdalifting, modulegraphs, lineinfos,
-  options
+  renderer, magicsys, lowerings, modulegraphs, lineinfos
+
+import lambdautils
 
 import std/tables
 
