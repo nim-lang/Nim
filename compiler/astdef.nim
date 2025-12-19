@@ -990,6 +990,22 @@ proc newStrNode*(strVal: string; info: TLineInfo): PNode =
   result = newNodeI(nkStrLit, info)
   result.strVal = strVal
 
+# Hooks, converters, method dispatchers and enum-to-string generated procs need special
+# handling for IC, they end up in IC indexes etc. Thus we "log" them in the module graph
+# and to pass them around to the NIF writer. This is not very elegant but it works.
+
+type
+  LogEntryKind* = enum
+    HookEntry, ConverterEntry, MethodEntry, EnumToStrEntry, GenericInstEntry
+  LogEntry* = object
+    kind*: LogEntryKind
+    op*: TTypeAttachedOp
+    isGeneric*: bool
+    module*: int  # Which module this entry belongs to
+    key*: string
+    sym*: PSym
+
+
 proc forcePartial*(s: PSym) =
   ## Resets all impl-fields to their default values and sets state to Partial.
   ## This is useful for creating a stub symbol that can be lazily loaded later.

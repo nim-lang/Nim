@@ -62,3 +62,7 @@ proc m2()  =
   assert v == "123"
 
 m2()
+
+import mglobal3
+block:
+  v()

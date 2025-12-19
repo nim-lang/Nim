@@ -969,7 +969,7 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
                       isInProc
 
               if isGlobalPragma:
-                c.graph.procGlobals.add n
+                c.graph.procGlobals.add newTree(nkFastAsgn, v, ri)
               else:
                 let value = moveOrCopy(v, ri, c, s, if v.kind == nkSym: {IsDecl} else: {})
                 result.add value
