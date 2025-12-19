@@ -205,7 +205,7 @@ proc matchConceptToImpl(c: PContext, f, potentialImpl: PType; m: var MatchCon): 
 
   # Cycle detection: track (concept, type) pairs to prevent infinite recursion.
   # Returns true on cycle (coinductive semantics) to support co-dependent concepts.
-  let pair: ConceptTypePair = (concpt.id, potentialImpl.id)
+  let pair: ConceptTypePair = (concpt.itemId, potentialImpl.itemId)
   if pair in m.marker:
     return true
   m.marker.incl pair
