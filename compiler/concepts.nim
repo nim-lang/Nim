@@ -74,7 +74,7 @@ type
     mfDontBind  # Do not bind generic parameters
     mfCheckGeneric  # formal <- formal comparison as opposed to formal <- operand
 
-  ConceptTypePair = tuple[conceptId, typeId: int]
+  ConceptTypePair = tuple[conceptId, typeId: ItemId]
     ## Pair of (concept type id, implementation type id) used for cycle detection
 
   MatchCon = object ## Context we pass around during concept matching.
@@ -197,7 +197,7 @@ proc matchConceptToImpl(c: PContext, f, potentialImpl: PType; m: var MatchCon): 
   # one we're currently matching and has no body (n=nil).
   if concpt.n.isNil:
     if concpt.sym != nil and m.concpt.sym != nil and
-       concpt.sym.name.s == m.concpt.sym.name.s:
+       concpt.sym == m.concpt.sym:
       # Self-reference: check if potentialImpl matches what we're already checking
       return potentialImpl.id == m.potentialImplementation.id
     # Concept without body that's not a self-reference - cannot match
