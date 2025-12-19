@@ -7943,6 +7943,35 @@ underlying C `struct`:c: in a `sizeof` expression:
   ```
 
 
+CompleteStruct pragma
+---------------------
+The `completeStruct` pragma is a contract indicating that an `importc` type
+declaration contains all fields of the corresponding C type, allowing
+`sizeof`, `alignof`, and `offsetof` to be computed at compile-time.
+
+By default, `importc` types are assumed to be incomplete (their size is
+unknown at compile-time). Use `completeStruct` when you need compile-time
+size information and can guarantee the Nim definition matches the C layout:
+
+  ```Nim
+  type
+    InotifyEvent {.importc: "struct inotify_event", header: "<sys/inotify.h>",
+                   completeStruct.} = object
+      wd: cint
+      mask: uint32
+      cookie: uint32
+      len: uint32
+      # All fields must match the C struct exactly
+  ```
+
+If the Nim fields don't match the C struct, a static assertion will fail
+during C code generation.
+
+Without `completeStruct`, attempting to use `sizeof` on an `importc` type
+at compile-time will error with "'sizeof' requires '.importc' types to be
+'.completeStruct'".
+
+
 Compile pragma
 --------------
 The `compile` pragma can be used to compile and link a C/C++ source file
