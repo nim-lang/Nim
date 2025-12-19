@@ -160,6 +160,11 @@ runnableExamples:
 when (defined(cpp) and defined(nimUseCppAtomics)) or defined(nimdoc):
   # For the C++ backend, types and operations map directly to C++11 atomics.
 
+  # On Linux with GCC/Clang, 16-byte atomic operations may not be inlined
+  # and require libatomic even when using C++ std::atomic.
+  when defined(linux) and hasLockFree16:
+    {.passL: "-latomic".}
+
   {.push, header: "<atomic>".}
 
   type
