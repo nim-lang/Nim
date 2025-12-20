@@ -1717,9 +1717,12 @@ proc genMainProcs(m: BModule) =
 
 proc genMainProcsWithResult(m: BModule) =
   genMainProcs(m)
-  var res = "nim_program_result"
-  if m.hcrOn: res = cDeref(res)
-  m.s[cfsProcs].addReturn(res)
+  if m.config.cmd != cmdNifC:
+    var res = "nim_program_result"
+    if m.hcrOn: res = cDeref(res)
+    m.s[cfsProcs].addReturn(res)
+  else:
+    m.s[cfsProcs].addReturn(cIntValue(0))
 
 proc genNimMainInner(m: BModule) =
   m.s[cfsProcs].addDeclWithVisibility(Private):

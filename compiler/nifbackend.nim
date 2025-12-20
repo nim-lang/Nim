@@ -56,25 +56,29 @@ proc setupNifBackendModule(g: ModuleGraph; module: PSym): BModule =
     g.backend = cgendata.newModuleList(g)
   result = cgen.newModule(BModuleList(g.backend), module, g.config, idGeneratorFromModule(module))
 
-proc generateCodeForModule(g: ModuleGraph; module: PSym) =
-  ## Generate C code for a single module.
-  let moduleId = module.position
-  var bmod = BModuleList(g.backend).modules[moduleId]
-  if bmod == nil:
-    bmod = setupNifBackendModule(g, module)
-
-  # Generate code for the module's top-level statements
-  if module.ast != nil:
-    cgen.genTopLevelStmt(bmod, module.ast)
-
+proc finishModule(g: ModuleGraph; bmod: BModule) =
   # Finalize the module (this adds it to modulesClosed)
   # Create an empty stmt list as the init body - genInitCode in writeModule will set it up properly
-  let initStmt = newNodeI(nkStmtList, module.info)
+  let initStmt = newNode(nkStmtList)
   finalCodegenActions(g, bmod, initStmt)
 
   # Generate dispatcher methods
   for disp in getDispatchers(g):
     genProcLvl3(bmod, disp)
+
+proc generateCodeForModule(g: ModuleGraph; module: PSym) =
+  ## Generate C code for a single module.
+  when false:
+    let moduleId = module.position
+    var bmod = BModuleList(g.backend).modules[moduleId]
+    if bmod == nil:
+      bmod = setupNifBackendModule(g, module)
+
+    # Generate code for the module's top-level statements
+    if module.ast != nil:
+      cgen.genTopLevelStmt(bmod, module.ast)
+
+    finishModule(g, bmod)
 
 proc generateCode*(g: ModuleGraph; mainFileIdx: FileIndex) =
   ## Main entry point for NIF-based C code generation.
@@ -110,6 +114,7 @@ proc generateCode*(g: ModuleGraph; mainFileIdx: FileIndex) =
 
   # Generate code for all modules except main (main goes last)
   # This ensures all modules are added to modulesClosed
+
   for module in modules:
     if module != mainModule and module != g.systemModule:
       generateCodeForModule(g, module)
@@ -117,6 +122,11 @@ proc generateCode*(g: ModuleGraph; mainFileIdx: FileIndex) =
   # Generate main module last (so all init procs are registered)
   if mainModule != nil:
     generateCodeForModule(g, mainModule)
+
+  for m in BModuleList(g.backend).modules:
+    if m != nil:
+      assert m.module != nil
+      finishModule g, m
 
   # Write C files
   if g.backend != nil:
