@@ -42,6 +42,8 @@ proc loadModuleDependencies(g: ModuleGraph; mainFileIdx: FileIndex): seq[PSym] =
       let module = moduleFromNifFile(g, fileIdx, cachedModules, loadFullAst=isMainModule)
       if module != nil:
         result.add module
+        if isMainModule:
+          incl module.flagsImpl, sfMainModule
         # Add dependencies to stack (they come from cachedModules)
         for dep in cachedModules:
           if not visited.contains(int(dep)):
