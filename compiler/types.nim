@@ -1284,7 +1284,7 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     withoutShallowFlags:
       for ff, aa in underspecifiedPairs(rhs, lhs, 1, -1):
         if not sameTypeAux(ff, aa, c): return false
-    return true
+    return sameTypeAux(lhs.skipModifier, rhs.skipModifier, c)
 
   case a.kind
   of tyEmpty, tyChar, tyBool, tyNil, tyPointer, tyString, tyCstring,
