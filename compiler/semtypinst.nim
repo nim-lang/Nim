@@ -249,13 +249,24 @@ proc hasValuelessStatics(n: PNode): bool =
         a
     proc doThing(_: MyThing)
   ]#
+  result = false
   if n.safeLen == 0 and n.kind != nkEmpty: # Some empty nodes can get in here
-    n.typ == nil or n.typ.kind == tyStatic
+    if n.typ == nil:
+      result = true
+    elif n.typ.kind == tyStatic:
+      result = true
+    elif n.typ.kind == tyTypeDesc:
+      # Check if the base type is an unresolved generic parameter.
+      # This handles cases where a template containing sizeof(T) is called
+      # inside a generic object's when clause - the T needs to be resolved
+      # before we can evaluate the condition.
+      let base = n.typ.skipTypes({tyTypeDesc})
+      if base.kind == tyGenericParam:
+        result = true
   else:
     for x in n:
       if hasValuelessStatics(x):
         return true
-    false
 
 proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0; expectedType: PType = nil): PNode =
   if n == nil: return
