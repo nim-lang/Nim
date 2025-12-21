@@ -68,17 +68,16 @@ proc finishModule(g: ModuleGraph; bmod: BModule) =
 
 proc generateCodeForModule(g: ModuleGraph; module: PSym) =
   ## Generate C code for a single module.
-  when false:
-    let moduleId = module.position
-    var bmod = BModuleList(g.backend).modules[moduleId]
-    if bmod == nil:
-      bmod = setupNifBackendModule(g, module)
+  let moduleId = module.position
+  var bmod = BModuleList(g.backend).modules[moduleId]
+  if bmod == nil:
+    bmod = setupNifBackendModule(g, module)
 
-    # Generate code for the module's top-level statements
-    if module.ast != nil:
-      cgen.genTopLevelStmt(bmod, module.ast)
+  # Generate code for the module's top-level statements
+  if module.ast != nil:
+    cgen.genTopLevelStmt(bmod, module.ast)
 
-    finishModule(g, bmod)
+  finishModule(g, bmod)
 
 proc generateCode*(g: ModuleGraph; mainFileIdx: FileIndex) =
   ## Main entry point for NIF-based C code generation.
@@ -126,7 +125,8 @@ proc generateCode*(g: ModuleGraph; mainFileIdx: FileIndex) =
   for m in BModuleList(g.backend).modules:
     if m != nil:
       assert m.module != nil
-      finishModule g, m
+      if sfMainModule notin m.module.flags:
+        finishModule g, m
 
   # Write C files
   if g.backend != nil:
