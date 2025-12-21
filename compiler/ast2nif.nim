@@ -164,7 +164,7 @@ type
 
 const
   # Symbol kinds that are always local to a proc and should never have module suffix
-  skLocalSymKinds = {skParam, skGenericParam, skForVar, skResult, skTemp}
+  skLocalSymKinds = {skParam, skForVar, skResult, skTemp}
 
 proc isLocalSym(sym: PSym): bool {.inline.} =
   sym.kindImpl in skLocalSymKinds or
@@ -362,10 +362,7 @@ proc writeSymDef(w: var Writer; dest: var TokenBuf; sym: PSym) =
   writeSym(w, dest, sym.ownerFieldImpl)
   # Store the AST for routine symbols and constants
   # Constants need their AST for astdef() to return the constant's value
-  if sym.kindImpl in routineKinds + {skConst}:
-    writeNode(w, dest, sym.astImpl, forAst = true)
-  else:
-    dest.addDotToken
+  writeNode(w, dest, sym.astImpl, forAst = true)
   writeLoc w, dest, sym.locImpl
   writeNode(w, dest, sym.constraintImpl)
   writeSym(w, dest, sym.instantiatedFromImpl)
@@ -512,14 +509,14 @@ proc writeNode(w: var Writer; dest: var TokenBuf; n: PNode; forAst = false) =
     of nkNilLit:
       w.withNode dest, n:
         discard
-    of nkLetSection, nkVarSection, nkConstSection, nkGenericParams:
+    of nkLetSection, nkVarSection, nkConstSection:
       # Track local variables declared in let/var sections
       w.withNode dest, n:
         for child in n:
           addLocalSyms w, child
           # Process the child node
           writeNode(w, dest, child, forAst)
-    of nkForStmt, nkTypeDef:
+    of nkForStmt:
       # Track for loop variable (first child is the loop variable)
       w.withNode dest, n:
         if n.len > 0:
@@ -1112,12 +1109,7 @@ proc loadSymFromCursor(c: var DecodeContext; s: PSym; n: var Cursor; thisModule:
   s.ownerFieldImpl = loadSymStub(c, n, thisModule, localSyms)
   # Load the AST for routine symbols and constants
   # Constants need their AST for astdef() to return the constant's value
-  if s.kindImpl in routineKinds + {skConst}:
-    s.astImpl = loadNode(c, n, thisModule, localSyms)
-  elif n.kind == DotToken:
-    inc n
-  else:
-    raiseAssert "expected '.' for non-routine symbol AST but got " & $n.kind
+  s.astImpl = loadNode(c, n, thisModule, localSyms)
   loadLoc c, n, s.locImpl
   s.constraintImpl = loadNode(c, n, thisModule, localSyms)
   s.instantiatedFromImpl = loadSymStub(c, n, thisModule, localSyms)
