@@ -1099,6 +1099,8 @@ proc loadSymFromCursor(c: var DecodeContext; s: PSym; n: var Cursor; thisModule:
     inc n
     var isKnownFile = false
     s.positionImpl = int c.infos.config.registerNifSuffix(thisModule, isKnownFile)
+    # do to the precompiled mechanism things end up as main modules which are not!
+    excl s.flagsImpl, sfMainModule
   else:
     loadField s.positionImpl
 
