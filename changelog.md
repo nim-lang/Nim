@@ -103,7 +103,15 @@ errors.
 
 ## Compiler changes
 
+- Fixed a bug where `sizeof(T)` inside a `typedesc` template called from a generic type's
+  `when` clause would error with "'sizeof' requires '.importc' types to be '.completeStruct'".
+  The issue was that `hasValuelessStatics` in `semtypinst.nim` didn't recognize
+  `tyTypeDesc(tyGenericParam)` as an unresolved generic parameter.
 
 ## Tool changes
 
 - Added `--stdinfile` flag to name of the file used when running program from stdin (defaults to `stdinfile.nim`)
+
+## Documentation changes
+
+- Added documentation for the `completeStruct` pragma in the manual.
