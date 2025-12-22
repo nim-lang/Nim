@@ -532,7 +532,7 @@ proc writeNode(w: var Writer; dest: var TokenBuf; n: PNode; forAst = false) =
             addLocalSyms(w, n[i])
           writeNode(w, dest, n[i], forAst)
       dec w.inProc
-    of nkProcDef, nkFuncDef, nkMethodDef, nkIteratorDef, nkConverterDef, nkMacroDef:
+    of nkProcDef, nkFuncDef, nkMethodDef, nkIteratorDef, nkConverterDef, nkMacroDef, nkTemplateDef:
       # For top-level named routines (not forAst), just write the symbol.
       # The full AST will be stored in the symbol's sdef.
       if not forAst and n[namePos].kind == nkSym:
