@@ -67,7 +67,7 @@ errors.
   - Added `isLockFree(T)` template to check lock-free eligibility at compile-time
   - Added `hasLockFree8` constant for 8-byte atomic support detection
   - Added `hasLockFree16` constant for 16-byte atomic support detection (amd64/arm64)
-  - Added `-d:nimEnforceLockFreeAtomics` to get compile errors instead of silent spinlock fallback
+  - Non-lock-free types now cause compile errors by default; use `-d:nimAllowAtomicSpinlock` to allow spinlock fallback
   - Added `-d:nimNoLockFree16` to disable 16-byte lock-free for old x86-64 CPUs lacking CMPXCHG16B
   - Added `-d:nimUseCppAtomics` to use C++ `std::atomic` instead of C11 primitives
 

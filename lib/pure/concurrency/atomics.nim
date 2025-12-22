@@ -17,7 +17,7 @@
 ## Types that don't qualify fall back to a spinlock.
 ##
 ## **Size requirements:**
-## - 1, 2, 4 bytes: always lock-free
+## - 1, 2, 4 bytes: lock-free (requires natural alignment)
 ## - 8 bytes: requires `hasLockFree8` (see below)
 ## - 16 bytes: requires `hasLockFree16` (see below)
 ## - Other sizes: uses spinlock
@@ -32,23 +32,45 @@
 ## --------------------
 ## **8-byte atomics** (`hasLockFree8`):
 ## - All 64-bit architectures
-## - x86-32 (CMPXCHG8B)
-## - ARM32 (LDREXD/STREXD)
+## - x86-32 (CMPXCHG8B, Pentium and later)
+## - ARM32 (LDREXD/STREXD, ARMv6K+; not ARMv7-M)
 ## - NOT supported: MIPS32, SPARC32, PowerPC32, RISC-V 32
 ##
 ## **16-byte atomics** (`hasLockFree16`):
-## - x86-64 (CMPXCHG16B, standard since ~2005)
-## - ARM64 (LDXP/STXP, mandatory in ARMv8-A)
-## - Use `-d:nimNoLockFree16` to disable if targeting very old x86-64 CPUs
+## - x86-64 (CMPXCHG16B, standard since ~2006)
+## - ARM64 (LDXP/STXP; full 128-bit atomicity requires ARMv8.4+)
+## - Use `-d:nimNoLockFree16` to disable for old x86-64 CPUs without CMPXCHG16B
 ##
 ## Use `T.isLockFree` to check at compile-time whether a type uses lock-free
-## operations. To enforce lock-free operations (compile error instead of
-## spinlock fallback), compile with `-d:nimEnforceLockFreeAtomics`.
+## operations. By default, non-lock-free types cause a compile error. To allow
+## spinlock fallback, compile with `-d:nimAllowAtomicSpinlock`.
 ##
 ## C++ Backend
 ## -----------
 ## By default, C++ backend uses C11 atomic primitives. To use C++ `std::atomic`,
 ## compile with `-d:nimUseCppAtomics`.
+##
+## Safety with Managed Types
+## -------------------------
+## **Important:** Lock-free atomics on managed types (`ref`, `string`, `seq`)
+## means the *swap operation* is lock-free, NOT that concurrent access is safe.
+##
+## Naively using `Atomic[ref T]` leads to memory corruption:
+## - **Use-after-free:** Thread A loads pointer, Thread B frees object, Thread A dereferences
+## - **ABA problem:** Pointer reused for new object between load and CAS
+##
+## **Memory manager determines what's possible:**
+##
+## | Memory Manager     | Lock-free refs? | Notes |
+## |--------------------|-----------------|-------|
+## | `--mm:refc`        | No              | Thread-local heaps; refs can't cross threads |
+## | `--mm:markAndSweep`| No              | Thread-local heaps; refs can't cross threads |
+## | `--mm:arc/orc`     | No              | Non-atomic refcount; use locks or `--mm:atomicArc` |
+## | `--mm:atomicArc`   | Yes             | You must use GC_ref/GC_unref and must prevent ABA and use-after-free |
+## | `--mm:boehm`       | Yes             | You must prevent ABA and use-after-free |
+## | `--mm:go`          | Yes             | You must prevent ABA anduse-after-free |
+## | `--mm:none`        | Yes             | You manually manage all memory |
+##
 
 import std/typetraits
 
@@ -67,15 +89,24 @@ const
                   defined(i386) or          # x86-32 has CMPXCHG8B
                   defined(arm)              # ARM32 has LDREXD/STREXD (ARMv6k+)
     ## Whether 8-byte atomics are lock-free on this architecture.
-    ## True for: all 64-bit CPUs, x86-32 (CMPXCHG8B), ARM32 (LDREXD).
-    ## False for: MIPS32, SPARC32, PowerPC32, RISC-V 32.
+    ##
+    ## **True for:**
+    ## - All 64-bit CPUs
+    ## - x86-32 (CMPXCHG8B)
+    ## - ARM32 (LDREXD)
+    ##
+    ## **False for:** MIPS32, SPARC32, PowerPC32, RISC-V 32
 
   hasLockFree16* = not defined(nimNoLockFree16) and
-                   (defined(amd64) or  # x86-64 has CMPXCHG16B (standard since ~2005)
-                    defined(arm64))    # ARM64 has LDXP/STXP (mandatory in ARMv8-A)
+                   (defined(amd64) or  # x86-64 has CMPXCHG16B (standard since ~2006)
+                    defined(arm64))    # ARM64 has LDXP/STXP
     ## Whether 16-byte atomics are lock-free on this architecture.
-    ## True for: x86-64 (CMPXCHG16B), ARM64 (LDXP/STXP).
-    ## Use `-d:nimNoLockFree16` to disable for very old x86-64 CPUs without CMPXCHG16B.
+    ##
+    ## **True for:**
+    ## - x86-64 (CMPXCHG16B)
+    ## - ARM64 (LDXP/STXP)
+    ##
+    ## Use `-d:nimNoLockFree16` to disable for old x86-64 CPUs without CMPXCHG16B.
 
 template isLockFree*(T: typedesc): bool =
   ## Returns `true` if `Atomic[T]` uses lock-free hardware atomics,
@@ -92,18 +123,19 @@ template isLockFree*(T: typedesc): bool =
    (sizeof(T) == 16 and hasLockFree16)) and not isManaged(T)
 
 template enforceLockFreeCheck(T: typedesc) =
-  ## Internal template to emit compile-time error when nimEnforceLockFreeAtomics
-  ## is defined and the type cannot use lock-free atomics.
-  when defined(nimEnforceLockFreeAtomics):
+  ## Internal template to emit compile-time error when type cannot use lock-free
+  ## atomics, unless `-d:nimAllowAtomicSpinlock` is defined to allow fallback.
+  when not defined(nimAllowAtomicSpinlock):
     when not (sizeof(T) == 1 or sizeof(T) == 2 or sizeof(T) == 4 or
               (sizeof(T) == 8 and hasLockFree8) or
               (sizeof(T) == 16 and hasLockFree16)):
       {.error: "Atomic[" & $T & "] cannot use lock-free atomics: sizeof(" & $T & ") = " &
                $sizeof(T) & " is not a valid atomic size. " &
-               "Remove -d:nimEnforceLockFreeAtomics to use spinlock fallback.".}
+               "Use -d:nimAllowAtomicSpinlock to allow spinlock fallback.".}
     elif isManaged(T):
       {.error: "Atomic[" & $T & "] cannot use lock-free atomics: type contains managed memory " &
-               "and cannot be safely copied with this memory manager.".}
+               "and cannot be safely copied with this memory manager. " &
+               "Use -d:nimAllowAtomicSpinlock to allow spinlock fallback.".}
 
 runnableExamples:
   # Check lock-free status at compile time
