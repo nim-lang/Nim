@@ -404,8 +404,8 @@ block nestedTypes:
   doAssert isLockFree(OuterPadded) == hasLockFree8
 
 block importcTypes:
-  # Types marked for C interop
-  type CInt {.importc: "int", nodecl.} = cint
+  # Types marked for C interop - need completeStruct for sizeof to work
+  type CInt {.importc: "int", nodecl, completeStruct.} = cint
   doAssert isLockFree(CInt)
 
 block caseObjects:
@@ -469,3 +469,164 @@ block bug18844:
     var y = Zoomer()
     doAssert x.memes.load == 0
     doAssert y.dopamine.memes.load == 0
+
+
+# =============================================================================
+# SomeAtomicInt Type Class Tests - char and enum support
+# =============================================================================
+
+block charAtomics:
+  # char is an integral type in C/C++ and should work with atomic arithmetic
+  var c: Atomic[char]
+  c.store('A')
+  doAssert c.load == 'A'
+
+  # fetchAdd on char
+  doAssert c.fetchAdd(1.char) == 'A'
+  doAssert c.load == 'B'
+
+  # fetchSub on char
+  doAssert c.fetchSub(1.char) == 'B'
+  doAssert c.load == 'A'
+
+  # atomicInc/atomicDec on char
+  c.atomicInc(1.char)
+  doAssert c.load == 'B'
+  c.atomicDec(1.char)
+  doAssert c.load == 'A'
+
+  # += and -= on char
+  c += 2.char
+  doAssert c.load == 'C'
+  c -= 2.char
+  doAssert c.load == 'A'
+
+  # Bitwise operations on char
+  c.store(char(0b11110000))
+  doAssert c.fetchAnd(char(0b10101010)) == char(0b11110000)
+  doAssert c.load == char(0b10100000)
+
+  c.store(char(0b00001111))
+  doAssert c.fetchOr(char(0b11110000)) == char(0b00001111)
+  doAssert c.load == char(0b11111111)
+
+  c.store(char(0b11110000))
+  doAssert c.fetchXor(char(0b10101010)) == char(0b11110000)
+  doAssert c.load == char(0b01011010)
+
+block enumAtomics:
+  type
+    State = enum
+      idle, starting, running, stopping, stopped
+
+  var state: Atomic[State]
+  state.store(idle)
+  doAssert state.load == idle
+
+  # exchange
+  doAssert state.exchange(running) == idle
+  doAssert state.load == running
+
+  # compareExchange
+  var expected = running
+  doAssert state.compareExchange(expected, stopped)
+  doAssert state.load == stopped
+
+  # fetchAdd to increment enum
+  state.store(idle)
+  doAssert state.fetchAdd(1.State) == idle
+  doAssert state.load == starting
+  doAssert state.fetchAdd(1.State) == starting
+  doAssert state.load == running
+
+  # fetchSub to decrement enum
+  doAssert state.fetchSub(1.State) == running
+  doAssert state.load == starting
+
+  # atomicInc/atomicDec
+  state.store(idle)
+  state.atomicInc(2.State)
+  doAssert state.load == running
+  state.atomicDec(1.State)
+  doAssert state.load == starting
+
+  # += and -=
+  state.store(idle)
+  state += 3.State
+  doAssert state.load == stopping
+  state -= 2.State
+  doAssert state.load == starting
+
+block enumBitwiseAtomics:
+  # Bitwise operations on enum (flags pattern)
+  type
+    Flags = enum
+      none = 0
+      flag1 = 1
+      flag2 = 2
+      flag3 = 4
+      allFlags = 7
+
+  var flags: Atomic[Flags]
+  flags.store(none)
+
+  # fetchOr to set flags
+  discard flags.fetchOr(flag1)
+  doAssert flags.load == flag1
+
+  discard flags.fetchOr(flag2)
+  doAssert cast[int](flags.load) == 3  # flag1 | flag2
+
+  # fetchAnd to clear flags
+  flags.store(allFlags)
+  discard flags.fetchAnd(Flags(cast[int](allFlags) and not cast[int](flag2)))
+  doAssert cast[int](flags.load) == 5  # flag1 | flag3
+
+  # fetchXor to toggle flags
+  flags.store(flag1)
+  discard flags.fetchXor(flag1)
+  doAssert flags.load == none
+
+block charLockFree:
+  # char should be lock-free (1 byte)
+  doAssert isLockFree(char)
+  doAssert sizeof(char) == 1
+
+block enumLockFree:
+  type
+    SmallEnum = enum a, b, c  # Typically 1 byte
+    MediumEnum = enum
+      e0, e1, e2, e3, e4, e5, e6, e7, e8, e9,
+      e10, e11, e12, e13, e14, e15, e16, e17, e18, e19,
+      e20, e21, e22, e23, e24, e25, e26, e27, e28, e29,
+      e30, e31, e32, e33, e34, e35, e36, e37, e38, e39,
+      e40, e41, e42, e43, e44, e45, e46, e47, e48, e49,
+      e50, e51, e52, e53, e54, e55, e56, e57, e58, e59,
+      e60, e61, e62, e63, e64, e65, e66, e67, e68, e69,
+      e70, e71, e72, e73, e74, e75, e76, e77, e78, e79,
+      e80, e81, e82, e83, e84, e85, e86, e87, e88, e89,
+      e90, e91, e92, e93, e94, e95, e96, e97, e98, e99,
+      e100, e101, e102, e103, e104, e105, e106, e107, e108, e109,
+      e110, e111, e112, e113, e114, e115, e116, e117, e118, e119,
+      e120, e121, e122, e123, e124, e125, e126, e127, e128, e129,
+      e130, e131, e132, e133, e134, e135, e136, e137, e138, e139,
+      e140, e141, e142, e143, e144, e145, e146, e147, e148, e149,
+      e150, e151, e152, e153, e154, e155, e156, e157, e158, e159,
+      e160, e161, e162, e163, e164, e165, e166, e167, e168, e169,
+      e170, e171, e172, e173, e174, e175, e176, e177, e178, e179,
+      e180, e181, e182, e183, e184, e185, e186, e187, e188, e189,
+      e190, e191, e192, e193, e194, e195, e196, e197, e198, e199,
+      e200, e201, e202, e203, e204, e205, e206, e207, e208, e209,
+      e210, e211, e212, e213, e214, e215, e216, e217, e218, e219,
+      e220, e221, e222, e223, e224, e225, e226, e227, e228, e229,
+      e230, e231, e232, e233, e234, e235, e236, e237, e238, e239,
+      e240, e241, e242, e243, e244, e245, e246, e247, e248, e249,
+      e250, e251, e252, e253, e254, e255, e256  # > 256 values, so > 1 byte
+
+  # Small enums (<=256 values) should be 1 byte and lock-free
+  doAssert sizeof(SmallEnum) == 1
+  doAssert isLockFree(SmallEnum)
+
+  # Medium enums (>256 values) should be 2 bytes and lock-free
+  doAssert sizeof(MediumEnum) == 2
+  doAssert isLockFree(MediumEnum)

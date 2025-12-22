@@ -67,9 +67,13 @@ errors.
   - Added `isLockFree(T)` template to check lock-free eligibility at compile-time
   - Added `hasLockFree8` constant for 8-byte atomic support detection
   - Added `hasLockFree16` constant for 16-byte atomic support detection (amd64/arm64)
-  - Non-lock-free types now cause compile errors by default; use `-d:nimAllowAtomicSpinlock` to allow spinlock fallback
+  - Non-lock-free types now cause compile errors by default; use `-d:nimAllowAtomicFallback` to allow fallback
   - Added `-d:nimNoLockFree16` to disable 16-byte lock-free for old x86-64 CPUs lacking CMPXCHG16B
-  - Added `-d:nimUseCppAtomics` to use C++ `std::atomic` instead of C11 primitives
+  - Corrected `-d:nimUseCppAtomics` documentation: by default, lock-free types use fixed-size C++
+    atomic integers (`std::atomic<int8>`, etc.) with Nim spinlock fallback; `-d:nimUseCppAtomics`
+    uses C++'s generic `std::atomic<T>` with C++ internal locking for non-lock-free types
+  - `fetchAdd`, `fetchSub`, `fetchAnd`, `fetchOr`, `fetchXor`, `atomicInc`, `atomicDec`, `+=`, `-=`
+    now accept `char` and `enum` in addition to integer types (via new `SomeAtomicInt` type class)
 
 - `std/math` The `^` symbol now supports floating-point as exponent in addition to the Natural type.
 - `min`, `max`, and `sequtils`' `minIndex`, `maxIndex` and `minmax` for `openArray`s now accept a comparison function.
