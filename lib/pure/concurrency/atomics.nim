@@ -66,9 +66,9 @@
 ## | `--mm:refc`        | No              | Thread-local heaps; refs can't cross threads |
 ## | `--mm:markAndSweep`| No              | Thread-local heaps; refs can't cross threads |
 ## | `--mm:arc/orc`     | No              | Non-atomic refcount; use locks or `--mm:atomicArc` |
-## | `--mm:atomicArc`   | Yes             | You must use GC_ref/GC_unref and must prevent ABA and use-after-free |
-## | `--mm:boehm`       | Yes             | You must prevent ABA and use-after-free |
-## | `--mm:go`          | Yes             | You must prevent ABA anduse-after-free |
+## | `--mm:atomicArc`   | Yes             | Use `GC_ref`/`GC_unref`; prevent ABA and use-after-free |
+## | `--mm:boehm`       | Yes             | `GC_ref`/`GC_unref` are no-ops; prevent ABA and use-after-free |
+## | `--mm:go`          | Yes             | `GC_ref`/`GC_unref` are no-ops; prevent ABA and use-after-free |
 ## | `--mm:none`        | Yes             | You manually manage all memory |
 ##
 
