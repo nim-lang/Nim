@@ -687,8 +687,9 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: var DetectionPass;
           finishClosureCreation(s, d, c, n.info, s.transformedBody)
 
         if isIterator(s) and s.closureBody == nil:
-          let injected = injectDestructorCalls(d.graph, d.idgen, s, body)
-          let closureBody = transformClosureIterator(d.graph, d.idgen, s, injected)
+          if sfInjectDestructors in s.flags:
+            body = injectDestructorCalls(d.graph, d.idgen, s, body)
+          let closureBody = transformClosureIterator(d.graph, d.idgen, s, body)
           s.closureBody = closureBody
         c.inContainer = oldInContainer
 
