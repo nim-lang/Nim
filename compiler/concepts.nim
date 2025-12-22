@@ -13,7 +13,7 @@
 
 import ast, astalgo, semdata, lookups, lineinfos, idents, msgs, renderer, types, layeredtable
 
-import std/intsets
+import std/[intsets, sets]
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -73,18 +73,20 @@ type
   MatchFlags* = enum
     mfDontBind  # Do not bind generic parameters
     mfCheckGeneric  # formal <- formal comparison as opposed to formal <- operand
-  
+
+  ConceptTypePair = tuple[conceptId, typeId: ItemId]
+    ## Pair of (concept type id, implementation type id) used for cycle detection
+
   MatchCon = object ## Context we pass around during concept matching.
     bindings: LayeredIdTable
-    marker: IntSet ## Some protection against wild runaway recursions.
+    marker: HashSet[ConceptTypePair] ## Tracks (concept, type) pairs being checked to detect cycles.
     potentialImplementation: PType ## the concrete type that might match the concept we try to match.
     magic: TMagic  ## mArrGet and mArrPut is wrong in system.nim and
                    ## cannot be fixed that easily.
                    ## Thus we special case it here.
     concpt: PType  ## current concept being evaluated
-    depthCount = 0
     flags: set[MatchFlags]
-    
+
   MatchKind = enum
     mkNoMatch, mkSubset, mkSame
 
@@ -188,32 +190,48 @@ iterator traverseTyOr(t: PType): PType {. closure .}=
 proc matchConceptToImpl(c: PContext, f, potentialImpl: PType; m: var MatchCon): bool =
   assert not(potentialImpl.reduceToBase.kind == tyConcept)
   let concpt = f.reduceToBase
-  if m.depthCount > 0:
-    # concepts that are more then 2 levels deep are treated like
-    # tyAnything to stop dependencies from getting out of control
+
+  # Handle self-referential concepts: when a concept references itself in its body
+  # (e.g., `A = concept; proc test(x: Self, y: A)`), the inner type A has n=nil.
+  # We detect this by checking if the concept has the same symbol name as the
+  # one we're currently matching and has no body (n=nil).
+  if concpt.n.isNil:
+    if concpt.sym != nil and m.concpt.sym != nil and
+       concpt.sym == m.concpt.sym:
+      # Self-reference: check if potentialImpl matches what we're already checking
+      return potentialImpl.id == m.potentialImplementation.id
+    # Concept without body that's not a self-reference - cannot match
+    return false
+
+  # Cycle detection: track (concept, type) pairs to prevent infinite recursion.
+  # Returns true on cycle (coinductive semantics) to support co-dependent concepts.
+  let pair: ConceptTypePair = (concpt.itemId, potentialImpl.itemId)
+  if pair in m.marker:
     return true
+  m.marker.incl pair
+
   var efPot = potentialImpl
   if potentialImpl.isSelf:
     if m.concpt.n == concpt.n:
+      m.marker.excl pair
       return true
     efPot = m.potentialImplementation
-  
+
   var oldBindings = m.bindings
   m.bindings = newTypeMapLayer(m.bindings)
   let oldPotentialImplementation = m.potentialImplementation
   m.potentialImplementation = efPot
   let oldConcept = m.concpt
   m.concpt = concpt
-  
+
   var invocation: PType = nil
   if f.kind in {tyGenericInvocation, tyGenericInst}:
     invocation = f
-  inc m.depthCount
   result = processConcept(c, concpt, invocation, oldBindings, m)
-  dec m.depthCount
   m.potentialImplementation = oldPotentialImplementation
   m.concpt = oldConcept
   m.bindings = oldBindings
+  m.marker.excl pair
 
 proc cmpConceptDefs(c: PContext, fn, an: PNode, m: var MatchCon): bool=
   if fn.kind != an.kind:
@@ -610,7 +628,7 @@ proc conceptMatch*(c: PContext; concpt, arg: PType; bindings: var LayeredIdTable
   ## `C[S, T]` parent type that we look for. We need this because we need to store bindings
   ## for 'S' and 'T' inside 'bindings' on a successful match. It is very important that
   ## we do not add any bindings at all on an unsuccessful match!
-  var m = MatchCon(bindings: bindings, potentialImplementation: arg, concpt: concpt, flags: flags)
+  var m = MatchCon(bindings: bindings, potentialImplementation: arg, concpt: concpt, flags: flags, marker: initHashSet[ConceptTypePair]())
   if arg.isConcept:
     result = conceptsMatch(c, concpt.reduceToBase, arg.reduceToBase, m) >= mkSubset
   elif arg.acceptsAllTypes:

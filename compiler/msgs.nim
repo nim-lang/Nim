@@ -30,7 +30,6 @@ proc toLowerAscii(a: var string) {.inline.} =
 
 proc flushDot*(conf: ConfigRef) =
   ## safe to call multiple times
-  # xxx one edge case not yet handled is when `printf` is called at CT with `compiletimeFFI`.
   let stdOrr = if optStdout in conf.globalOptions: stdout else: stderr
   let stdOrrKind = toStdOrrKind(stdOrr)
   if stdOrrKind in conf.lastMsgWasDot:
@@ -52,7 +51,7 @@ proc makeCString*(s: string): Rope =
   result = newStringOfCap(int(s.len.toFloat * 1.1) + 1)
   result.add("\"")
   for i in 0..<s.len:
-    # line wrapping of string litterals in cgen'd code was a bad idea, e.g. causes: bug #16265
+    # line wrapping of string literals in cgen'd code was a bad idea, e.g. causes: bug #16265
     # It also makes reading c sources or grepping harder, for zero benefit.
     # const MaxLineLength = 64
     # if (i + 1) mod MaxLineLength == 0:
@@ -65,8 +64,7 @@ proc newFileInfo(fullPath: AbsoluteFile, projPath: RelativeFile; kind = fikSourc
                     shortName: fullPath.extractFilename,
                     quotedFullName: fullPath.string.makeCString,
                     lines: @[],
-                    kind: kind
-  )
+                    kind: kind)
   result.quotedName = result.shortName.makeCString
   when defined(nimpretty):
     if not result.fullPath.isEmpty:
