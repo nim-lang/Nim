@@ -37,8 +37,7 @@ proc setupBackendModule(g: ModuleGraph; m: var LoadedModule) =
   if g.backend == nil:
     g.backend = cgendata.newModuleList(g)
   assert g.backend != nil
-  var bmod = cgen.newModule(BModuleList(g.backend), m.module, g.config)
-  bmod.idgen = idgenFromLoadedModule(m)
+  var bmod = cgen.newModule(BModuleList(g.backend), m.module, g.config, idgenFromLoadedModule(m))
 
 proc generateCodeForModule(g: ModuleGraph; m: var LoadedModule; alive: var AliveSyms) =
   var bmod = BModuleList(g.backend).modules[m.module.position]

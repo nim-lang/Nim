@@ -11,7 +11,7 @@
 
 # ------------------------- Name Mangling --------------------------------
 
-import sighashes, modulegraphs, std/strscans
+import sighashes, std/strscans
 import ../dist/checksums/src/checksums/md5
 import std/sequtils
 
@@ -124,7 +124,7 @@ proc fillLocalName(p: BProc; s: PSym) =
     elif s.kind != skResult:
       result.add "_" & rope(counter+1)
     p.sigConflicts.inc(key)
-    ensureMutable s
+    backendEnsureMutable s
     s.locImpl.snippet = result
 
 proc scopeMangledParam(p: BProc; param: PSym) =
@@ -1862,6 +1862,12 @@ proc genTypeInfoV2Impl(m: BModule; t, origType: PType, name: Rope; info: TLineIn
   if t.kind == tyObject and t.baseClass != nil and optEnableDeepCopy in m.config.globalOptions:
     discard genTypeInfoV1(m, t, info)
 
+proc myModuleOpenForCodegen(m: BModule; idx: FileIndex): bool {.inline.} =
+  if moduleOpenForCodegen(m.g.graph, idx):
+    result = idx.int < m.g.modules.len and m.g.modules[idx.int] != nil
+  else:
+    result = false
+
 proc genTypeInfoV2(m: BModule; t: PType; info: TLineInfo): Rope =
   let origType = t
   # distinct types can have their own destructors
@@ -1890,7 +1896,7 @@ proc genTypeInfoV2(m: BModule; t: PType; info: TLineInfo): Rope =
   m.typeInfoMarkerV2[sig] = result
 
   let owner = t.skipTypes(typedescPtrs).itemId.module
-  if owner != m.module.position and moduleOpenForCodegen(m.g.graph, FileIndex owner):
+  if owner != m.module.position and myModuleOpenForCodegen(m, FileIndex owner):
     # make sure the type info is created in the owner module
     discard genTypeInfoV2(m.g.modules[owner], origType, info)
     # reference the type info as extern here
@@ -1975,7 +1981,7 @@ proc genTypeInfoV1(m: BModule; t: PType; info: TLineInfo): Rope =
     return prefixTI(result)
 
   var owner = t.skipTypes(typedescPtrs).itemId.module
-  if owner != m.module.position and moduleOpenForCodegen(m.g.graph, FileIndex owner):
+  if owner != m.module.position and myModuleOpenForCodegen(m, FileIndex owner):
     # make sure the type info is created in the owner module
     discard genTypeInfoV1(m.g.modules[owner], origType, info)
     # reference the type info as extern here

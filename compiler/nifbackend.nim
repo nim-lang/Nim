@@ -42,6 +42,8 @@ proc loadModuleDependencies(g: ModuleGraph; mainFileIdx: FileIndex): seq[PSym] =
       let module = moduleFromNifFile(g, fileIdx, cachedModules, loadFullAst=isMainModule)
       if module != nil:
         result.add module
+        if isMainModule:
+          incl module.flagsImpl, sfMainModule
         # Add dependencies to stack (they come from cachedModules)
         for dep in cachedModules:
           if not visited.contains(int(dep)):
@@ -52,7 +54,7 @@ proc setupNifBackendModule(g: ModuleGraph; module: PSym): BModule =
   ## Set up a BModule for code generation from a NIF module.
   if g.backend == nil:
     g.backend = cgendata.newModuleList(g)
-  result = cgen.newModule(BModuleList(g.backend), module, g.config)
+  result = cgen.newModule(BModuleList(g.backend), module, g.config, idGeneratorFromModule(module))
 
 proc generateCodeForModule(g: ModuleGraph; module: PSym) =
   ## Generate C code for a single module.
@@ -82,14 +84,13 @@ proc generateCode*(g: ModuleGraph; mainFileIdx: FileIndex) =
   resetForBackend(g)
   let mainModule = g.getModule(mainFileIdx)
 
-  # Also ensure system module is set up and generated if it exists
-  if g.systemModule != nil and g.systemModule != mainModule:
-    let systemBmod = BModuleList(g.backend).modules[g.systemModule.position]
-    if systemBmod == nil:
-      discard setupNifBackendModule(g, g.systemModule)
-      generateCodeForModule(g, g.systemModule)
+  # Load system module first - it's always needed and contains essential hooks
+  var cachedModules: seq[FileIndex] = @[]
+  if g.config.m.systemFileIdx != InvalidFileIdx:
+    g.systemModule = moduleFromNifFile(g, g.config.m.systemFileIdx, cachedModules)
 
   # Load all modules in dependency order using stack traversal
+  # This must happen BEFORE any code generation so that hooks are loaded into loadedOps
   let modules = loadModuleDependencies(g, mainFileIdx)
   if modules.len == 0:
     rawMessage(g.config, errGenerated,
@@ -100,10 +101,17 @@ proc generateCode*(g: ModuleGraph; mainFileIdx: FileIndex) =
   for module in modules:
     discard setupNifBackendModule(g, module)
 
+  # Also ensure system module is set up and generated first if it exists
+  if g.systemModule != nil and g.systemModule != mainModule:
+    let systemBmod = BModuleList(g.backend).modules[g.systemModule.position]
+    if systemBmod == nil:
+      discard setupNifBackendModule(g, g.systemModule)
+    generateCodeForModule(g, g.systemModule)
+
   # Generate code for all modules except main (main goes last)
   # This ensures all modules are added to modulesClosed
   for module in modules:
-    if module != mainModule:
+    if module != mainModule and module != g.systemModule:
       generateCodeForModule(g, module)
 
   # Generate main module last (so all init procs are registered)
