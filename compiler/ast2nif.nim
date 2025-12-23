@@ -453,6 +453,9 @@ proc trInclude(w: var Writer; n: PNode) =
     w.deps.addStrLit child.strVal  # raw string literal, no wrapper needed
   w.deps.addParRi
 
+proc moduleSuffix(conf: ConfigRef; f: FileIndex): string =
+  cachedModuleSuffix(conf, f)
+
 proc trImport(w: var Writer; n: PNode) =
   for child in n:
     if child.kind == nkSym:
@@ -461,7 +464,7 @@ proc trImport(w: var Writer; n: PNode) =
       w.deps.addDotToken # type
       let s = child.sym
       assert s.kindImpl == skModule
-      let fp = toFullPath(w.infos.config, s.positionImpl.FileIndex)
+      let fp = moduleSuffix(w.infos.config, s.positionImpl.FileIndex)
       w.deps.addStrLit fp  # raw string literal, no wrapper needed
       w.deps.addParRi
 
@@ -1310,9 +1313,6 @@ proc loadNode(c: var DecodeContext; n: var Cursor; thisModule: string;
           result.sons.add c.loadNode(n, thisModule, localSyms)
   else:
     raiseAssert "expected string literal but got " & $n.kind
-
-proc moduleSuffix(conf: ConfigRef; f: FileIndex): string =
-  cachedModuleSuffix(conf, f)
 
 proc loadSymFromIndexEntry(c: var DecodeContext; module: FileIndex;
                            nifName: string; entry: NifIndexEntry; thisModule: string): PSym =
