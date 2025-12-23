@@ -166,7 +166,7 @@ proc containsVariable(n: PNode): bool =
 proc checkIsolate*(conf: ConfigRef, n: PNode): bool =
   if conf.selectedGC notin {gcArc, gcAtomicArc, gcOrc} and
       containsGarbageCollectedRef(n.typ):
-    message(conf, n.info, warnGcIsolated, "Garbage-collected types '$#' cannot be isolated in refc" % [$n.typ])
+    message(conf, n.info, warnGcIsolated, "'$#' containing garbage-collected types cannot be isolated in refc" % [$n.typ])
   if types.containsTyRef(n.typ):
     # XXX Maybe require that 'n.typ' is acyclic. This is not much
     # worse than the already existing inheritance and closure restrictions.
