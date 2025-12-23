@@ -683,7 +683,7 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
   of mZeroDefault:
     result = checkDefault(c, n)
   of mIsolate:
-    if not checkIsolate(n[1]):
+    if not checkIsolate(c.config, n[1]):
       localError(c.config, n.info, "expression cannot be isolated: " & $n[1])
     result = n
   of mPrivateAccess:

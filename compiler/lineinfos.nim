@@ -93,8 +93,9 @@ type
     warnBareExcept = "BareExcept",
     warnImplicitDefaultValue = "ImplicitDefaultValue",
     warnIgnoredSymbolInjection = "IgnoredSymbolInjection",
-    warnStdPrefix = "StdPrefix"
-    warnUnknownNotes = "UnknownNotes"
+    warnStdPrefix = "StdPrefix",
+    warnUnknownNotes = "UnknownNotes",
+    warnGcIsolated = "GcIsolated",
     warnUser = "User",
     warnGlobalVarConstructorTemporary = "GlobalVarConstructorTemporary",
     # hints
@@ -202,6 +203,7 @@ const
     warnIgnoredSymbolInjection: "$1",
     warnStdPrefix: "$1 needs the 'std' prefix",
     warnUnknownNotes: "$1",
+    warnGcIsolated: "$1",
     warnUser: "$1",
     warnGlobalVarConstructorTemporary: "global variable '$1' initialization requires a temporary variable",
     hintSuccess: "operation successful: $#",

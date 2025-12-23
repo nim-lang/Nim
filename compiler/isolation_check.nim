@@ -11,9 +11,9 @@
 ## https://github.com/nim-lang/RFCs/issues/244 for more details.
 
 import
-  ast, types, renderer
+  ast, types, renderer, options, msgs, lineinfos
 
-import std/intsets
+import std/[intsets, strutils]
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -163,7 +163,10 @@ proc containsVariable(n: PNode): bool =
       if containsVariable(ch): return true
     result = false
 
-proc checkIsolate*(n: PNode): bool =
+proc checkIsolate*(conf: ConfigRef, n: PNode): bool =
+  if conf.selectedGC notin {gcArc, gcAtomicArc, gcOrc} and
+      containsGarbageCollectedRef(n.typ):
+    message(conf, n.info, warnGcIsolated, "Garbage-collected types '$#' cannot be isolated in refc" % [$n.typ])
   if types.containsTyRef(n.typ):
     # XXX Maybe require that 'n.typ' is acyclic. This is not much
     # worse than the already existing inheritance and closure restrictions.
@@ -177,7 +180,7 @@ proc checkIsolate*(n: PNode): bool =
       if tfNoSideEffect notin n[0].typ.flags:
         return false
       for i in 1..<n.len:
-        if checkIsolate(n[i]):
+        if checkIsolate(conf, n[i]):
           discard "fine, it is isolated already"
         else:
           let argType = n[i].typ
@@ -192,30 +195,30 @@ proc checkIsolate*(n: PNode): bool =
     of nkIfStmt, nkIfExpr:
       result = false
       for it in n:
-        result = checkIsolate(it.lastSon)
+        result = checkIsolate(conf, it.lastSon)
         if not result: break
     of nkCaseStmt:
       result = false
       for i in 1..<n.len:
-        result = checkIsolate(n[i].lastSon)
+        result = checkIsolate(conf, n[i].lastSon)
         if not result: break
     of nkObjConstr:
       result = true
       for i in 1..<n.len:
-        result = checkIsolate(n[i].lastSon)
+        result = checkIsolate(conf, n[i].lastSon)
         if not result: break
     of nkBracket, nkTupleConstr, nkPar:
       result = false
       for it in n:
-        result = checkIsolate(it)
+        result = checkIsolate(conf, it)
         if not result: break
     of nkHiddenStdConv, nkHiddenSubConv, nkCast, nkConv:
-      result = checkIsolate(n[1])
+      result = checkIsolate(conf, n[1])
     of nkObjUpConv, nkObjDownConv, nkDotExpr:
-      result = checkIsolate(n[0])
+      result = checkIsolate(conf, n[0])
     of nkStmtList, nkStmtListExpr:
       if n.len > 0:
-        result = checkIsolate(n[^1])
+        result = checkIsolate(conf, n[^1])
       else:
         result = false
     of nkSym:
