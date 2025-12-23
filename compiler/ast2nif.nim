@@ -605,10 +605,17 @@ proc writeNode(w: var Writer; dest: var TokenBuf; n: PNode; forAst = false) =
         for i in 0 ..< n.len:
           writeNode(w, dest, n[i], forAst)
 
-proc writeToplevelNode(w: var Writer; dest: var TokenBuf; n: PNode) =
+proc writeToplevelNode(w: var Writer; dest, bottom: var TokenBuf; n: PNode) =
   case n.kind
   of nkStmtList, nkStmtListExpr:
-    for son in n: writeToplevelNode(w, dest, son)
+    for son in n: writeToplevelNode(w, dest, bottom, son)
+  of nkEmpty:
+    discard "ignore"
+  of nkTypeSection, nkConstSection, nkCommentStmt, nkMixinStmt, nkBindStmt, nkUsingStmt,
+     nkPragma,
+     nkProcDef, nkFuncDef, nkMethodDef, nkIteratorDef, nkConverterDef, nkMacroDef, nkTemplateDef:
+    # We write purely declarative nodes at the bottom of the file
+    writeNode(w, bottom, n)
   else:
     writeNode w, dest, n
 
@@ -649,6 +656,7 @@ let repMethodTag = registerTag("repmethod")
 #let repClassTag = registerTag("repclass")
 let includeTag = registerTag("include")
 let importTag = registerTag("import")
+let implTag = registerTag("implementation")
 
 proc writeOp(w: var Writer; content: var TokenBuf; op: LogEntry) =
   case op.kind
@@ -703,8 +711,14 @@ proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode;
     if op.module == thisModule.int:
       writeOp(w, content, op)
 
-  w.writeToplevelNode content, n
+  var bottom = createTokenBuf(300)
+  w.writeToplevelNode content, bottom, n
 
+  # the implTag is used to tell the loader that the
+  # bottom of the file is the implementation of the module:
+  content.addParLe implTag, NoLineInfo
+  content.addParRi()
+  content.add bottom
   content.addParRi()
 
   let m = modname(w.currentModule, w.infos.config)
@@ -1536,6 +1550,8 @@ proc processTopLevel(c: var DecodeContext; s: var Stream; loadFullAst: bool; suf
         #  t = loadLogOp(c, logOps, s, ClassEntry, attachedTrace, module)
       elif t.tagId == includeTag or t.tagId == importTag:
         t = skipTree(s)
+      elif t.tagId == implTag:
+        cont = false
       elif loadFullAst:
         # Parse the full statement
         var buf = createTokenBuf(50)
