@@ -1502,8 +1502,28 @@ proc nextSubtree(r: var Stream; dest: var TokenBuf; tok: var PackedToken) =
       dec nested
       if nested == 0: break
 
-proc processTopLevel(c: var DecodeContext; s: var Stream; loadFullAst: bool; suffix: string; logOps: var seq[LogEntry]; module: int): PNode =
-  result = newNode(nkStmtList)
+proc loadImport(c: var DecodeContext; s: var Stream; deps: var seq[string]; tok: var PackedToken) =
+  tok = next(s) # skip `(import`
+  if tok.kind == DotToken:
+    tok = next(s) # skip dot
+    if tok.kind == DotToken:
+      tok = next(s) # skip dot
+  if tok.kind == StringLit:
+    deps.add pool.strings[tok.litId]
+  else:
+    raiseAssert "expected StringLit but got " & $tok.kind
+  if tok.kind == ParRi:
+    tok = next(s) # skip )
+  else:
+    raiseAssert "expected ParRi but got " & $tok.kind
+
+type
+  NifGraph = object
+    topLevel: PNode # top level statements of the main module
+    deps: seq[string] # other modules we need to process the top level statements of
+
+proc processTopLevel(c: var DecodeContext; s: var Stream; loadFullAst: bool; suffix: string; logOps: var seq[LogEntry]; module: int): NifGraph =
+  result = NifGraph(topLevel: newNode(nkStmtList))
   var localSyms = initTable[string, PSym]()
 
   var t = next(s) # skip dot
@@ -1520,7 +1540,7 @@ proc processTopLevel(c: var DecodeContext; s: var Stream; loadFullAst: bool; suf
             var cursor = cursorAt(buf, 0)
             let replayNode = loadNode(c, cursor, suffix, localSyms)
             if replayNode != nil:
-              result.sons.add replayNode
+              result.topLevel.sons.add replayNode
           t = next(s)
         if t.kind == ParRi:
           t = next(s)
@@ -1548,8 +1568,10 @@ proc processTopLevel(c: var DecodeContext; s: var Stream; loadFullAst: bool; suf
         t = loadLogOp(c, logOps, s, MethodEntry, attachedTrace, module)
         #elif t.tagId == repClassTag:
         #  t = loadLogOp(c, logOps, s, ClassEntry, attachedTrace, module)
-      elif t.tagId == includeTag or t.tagId == importTag:
+      elif t.tagId == includeTag:
         t = skipTree(s)
+      elif t.tagId == importTag:
+        loadImport(c, s, result.deps, t)
       elif t.tagId == implTag:
         cont = false
       elif loadFullAst:
@@ -1559,15 +1581,15 @@ proc processTopLevel(c: var DecodeContext; s: var Stream; loadFullAst: bool; suf
         var cursor = cursorAt(buf, 0)
         let stmtNode = loadNode(c, cursor, suffix, localSyms)
         if stmtNode != nil:
-          result.sons.add stmtNode
+          result.topLevel.sons.add stmtNode
       else:
         cont = false
     else:
       cont = false
 
-proc loadNifModule*(c: var DecodeContext; f: FileIndex; interf, interfHidden: var TStrTable;
+proc loadNifGraph*(c: var DecodeContext; f: FileIndex; interf, interfHidden: var TStrTable;
                     logOps: var seq[LogEntry];
-                    loadFullAst: bool = false): PNode =
+                    loadFullAst: bool = false): NifGraph =
   let suffix = moduleSuffix(c.infos.config, f)
 
   # Ensure module index is loaded - moduleId returns the FileIndex for this suffix
@@ -1587,8 +1609,13 @@ proc loadNifModule*(c: var DecodeContext; f: FileIndex; interf, interfHidden: va
     t = next(s[])  # skip flags
     result = processTopLevel(c, s[], loadFullAst, suffix, logOps, f.int)
   else:
-    result = newNode(nkStmtList)
+    result = NifGraph(topLevel: newNode(nkStmtList))
 
+proc loadNifModule*(c: var DecodeContext; f: FileIndex; interf, interfHidden: var TStrTable;
+                    logOps: var seq[LogEntry];
+                    loadFullAst: bool = false): PNode =
+  let g = loadNifGraph(c, f, interf, interfHidden, logOps, loadFullAst)
+  result = g.topLevel
 
 when isMainModule:
   import std / syncio
