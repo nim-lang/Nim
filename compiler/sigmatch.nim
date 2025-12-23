@@ -160,10 +160,7 @@ proc matchGenericParam(m: var TCandidate, formal: PType, n: PNode) =
       arg = newTypeS(tyStatic, m.c, son = evaluated.typ)
       arg.n = evaluated
   elif formalBase.kind == tyTypeDesc:
-    if arg.kind != tyTypeDesc and
-        n.kind == nkSym and n.sym.kind == skType:
-      # make sure we have a type here
-      arg = makeTypeDesc(m.c, arg)
+    discard
   else:
     arg = arg.skipTypes({tyTypeDesc})
   let tm = typeRel(m, formal, arg)
