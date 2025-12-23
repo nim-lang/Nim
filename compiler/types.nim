@@ -252,32 +252,32 @@ proc iterOverType(t: PType, iter: TTypeIter, closure: RootRef): bool =
   result = iterOverTypeAux(marker, t, iter, closure)
 
 proc searchTypeForAux(t: PType, predicate: TTypePredicate,
-                      marker: var IntSet): bool
+                      marker: var IntSet; recursive: bool = false): bool
 
 proc searchTypeNodeForAux(n: PNode, p: TTypePredicate,
-                          marker: var IntSet): bool =
+                          marker: var IntSet; recursive: bool = false): bool =
   result = false
   case n.kind
   of nkRecList:
     for i in 0..<n.len:
-      result = searchTypeNodeForAux(n[i], p, marker)
+      result = searchTypeNodeForAux(n[i], p, marker, recursive)
       if result: return
   of nkRecCase:
     assert(n[0].kind == nkSym)
-    result = searchTypeNodeForAux(n[0], p, marker)
+    result = searchTypeNodeForAux(n[0], p, marker, recursive)
     if result: return
     for i in 1..<n.len:
       case n[i].kind
       of nkOfBranch, nkElse:
-        result = searchTypeNodeForAux(lastSon(n[i]), p, marker)
+        result = searchTypeNodeForAux(lastSon(n[i]), p, marker, recursive)
         if result: return
       else: discard
   of nkSym:
-    result = searchTypeForAux(n.sym.typ, p, marker)
+    result = searchTypeForAux(n.sym.typ, p, marker, recursive)
   else: discard
 
 proc searchTypeForAux(t: PType, predicate: TTypePredicate,
-                      marker: var IntSet): bool =
+                      marker: var IntSet; recursive: bool = false): bool =
   # iterates over VALUE types!
   result = false
   if t == nil: return
@@ -287,20 +287,23 @@ proc searchTypeForAux(t: PType, predicate: TTypePredicate,
   case t.kind
   of tyObject:
     if t.baseClass != nil:
-      result = searchTypeForAux(t.baseClass.skipTypes(skipPtrs), predicate, marker)
-    if not result: result = searchTypeNodeForAux(t.n, predicate, marker)
+      result = searchTypeForAux(t.baseClass.skipTypes(skipPtrs), predicate, marker, recursive)
+    if not result: result = searchTypeNodeForAux(t.n, predicate, marker, recursive)
   of tyGenericInst, tyDistinct, tyAlias, tySink:
-    result = searchTypeForAux(skipModifier(t), predicate, marker)
+    result = searchTypeForAux(skipModifier(t), predicate, marker, recursive)
   of tyArray, tySet, tyTuple:
     for a in t.kids:
-      result = searchTypeForAux(a, predicate, marker)
+      result = searchTypeForAux(a, predicate, marker, recursive)
       if result: return
+  of tyRef, tyPtr, tyUncheckedArray, tyOpenArray, tyVarargs:
+    if recursive:
+      result = searchTypeForAux(t.elementType, predicate, marker, recursive)
   else:
     discard
 
 proc searchTypeFor*(t: PType, predicate: TTypePredicate): bool =
   var marker = initIntSet()
-  result = searchTypeForAux(t, predicate, marker)
+  result = searchTypeForAux(t, predicate, marker, recursive = false)
 
 proc isObjectPredicate(t: PType): bool =
   result = t.kind == tyObject
@@ -363,6 +366,12 @@ proc containsGarbageCollectedRef*(typ: PType): bool =
   # returns true if typ contains a reference, sequence or string (all the
   # things that are garbage-collected)
   result = searchTypeFor(typ, isGCRef)
+
+proc containsGarbageCollectedRefRecursive*(typ: PType): bool =
+  # returns true if typ contains a reference, sequence or string (all the
+  # things that are garbage-collected). It checks recursively
+  var marker = initIntSet()
+  result = searchTypeForAux(typ, isGCRef, marker, recursive = true)
 
 proc isManagedMemory(t: PType): bool =
   result = t.kind in GcTypeKinds or
