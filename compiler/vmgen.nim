@@ -798,6 +798,11 @@ proc genNarrow(c: PCtx; n: PNode; dest: TDest) =
     c.gABC(n, opcNarrowU, dest, TRegister(size*8))
   elif t.kind in {tyInt8..tyInt32} or (t.kind == tyInt and size < 8):
     c.gABC(n, opcNarrowS, dest, TRegister(size*8))
+  elif t.kind == tyEnum:
+    let intType = getSysType(c.graph, n.info, tyInt)
+    let first = c.genx(newIntTypeNode(firstOrd(c.config, t), intType))
+    let last = c.genx(newIntTypeNode(lastOrd(c.config, t), intType))
+    c.gABC(n, opcNarrowRange, dest, first, last)
 
 proc genNarrowU(c: PCtx; n: PNode; dest: TDest) =
   let t = skipTypes(n.typ, abstractVar-{tyTypeDesc})
