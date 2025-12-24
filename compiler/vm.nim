@@ -1723,7 +1723,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       let max = (1.BiggestInt shl (rb-1))-1
       if regs[ra].intVal < min or regs[ra].intVal > max:
         stackTrace(c, tos, pc, "unhandled exception: value out of range")
-    of opcNarrowRange:
+    of opcNarrowR:
       decodeBC(rkInt)
       let min = regs[rb].intVal
       let max = regs[rc].intVal
