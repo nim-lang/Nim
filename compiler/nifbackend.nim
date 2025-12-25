@@ -25,18 +25,17 @@ when defined(nimPreviewSlimSystem):
 import ast, options, lineinfos, modulegraphs, cgendata, cgen,
   pathutils, extccomp, msgs, modulepaths, idents, types, ast2nif
 
-proc loadModuleDependencies(g: ModuleGraph; mainFileIdx: FileIndex): seq[PSym] =
+proc loadModuleDependencies(g: ModuleGraph; mainFileIdx: FileIndex): seq[PrecompiledModule] =
   ## Traverse the module dependency graph using a stack.
   ## Returns all modules that need code generation, in dependency order.
-  let precomp = moduleFromNifFile(g, mainFileIdx, loadFullAst=true)
+  let mainModule = moduleFromNifFile(g, mainFileIdx, loadFullAst=true)
 
   var stack: seq[ModuleSuffix] = @[]
   result = @[]
 
-  if precomp.module != nil:
-    result.add precomp.module
-    incl precomp.module.flagsImpl, sfMainModule
-    for dep in precomp.deps:
+  if mainModule.module != nil:
+    incl mainModule.module.flagsImpl, sfMainModule
+    for dep in mainModule.deps:
       stack.add dep
 
   var visited = initHashSet[string]()
@@ -45,13 +44,17 @@ proc loadModuleDependencies(g: ModuleGraph; mainFileIdx: FileIndex): seq[PSym] =
     let suffix = stack.pop()
 
     if not visited.containsOrIncl(suffix.string):
-      let fileIdx = msgs.fileInfoIdx(g.config, AbsoluteFile suffix.string)
+      let nifFile = toGeneratedFile(g.config, AbsoluteFile(suffix.string), ".nif")
+      let fileIdx = msgs.fileInfoIdx(g.config, nifFile)
       let precomp = moduleFromNifFile(g, fileIdx, loadFullAst=true)
       if precomp.module != nil:
-        result.add precomp.module
+        result.add precomp
         for dep in precomp.deps:
           if not visited.contains(dep.string):
             stack.add dep
+
+  if mainModule.module != nil:
+    result.add mainModule
 
 proc setupNifBackendModule(g: ModuleGraph; module: PSym): BModule =
   ## Set up a BModule for code generation from a NIF module.
@@ -69,16 +72,16 @@ proc finishModule(g: ModuleGraph; bmod: BModule) =
   for disp in getDispatchers(g):
     genProcLvl3(bmod, disp)
 
-proc generateCodeForModule(g: ModuleGraph; module: PSym) =
+proc generateCodeForModule(g: ModuleGraph; precomp: PrecompiledModule) =
   ## Generate C code for a single module.
-  let moduleId = module.position
+  let moduleId = precomp.module.position
   var bmod = BModuleList(g.backend).modules[moduleId]
   if bmod == nil:
-    bmod = setupNifBackendModule(g, module)
+    bmod = setupNifBackendModule(g, precomp.module)
 
   # Generate code for the module's top-level statements
-  if module.ast != nil:
-    cgen.genTopLevelStmt(bmod, module.ast)
+  if precomp.topLevel != nil:
+    cgen.genTopLevelStmt(bmod, precomp.topLevel)
 
   finishModule(g, bmod)
 
@@ -90,9 +93,10 @@ proc generateCode*(g: ModuleGraph; mainFileIdx: FileIndex) =
   resetForBackend(g)
 
   # Load system module first - it's always needed and contains essential hooks
+  var precompSys = PrecompiledModule(module: nil)
   if g.config.m.systemFileIdx != InvalidFileIdx:
-    let precomp = moduleFromNifFile(g, g.config.m.systemFileIdx)
-    g.systemModule = precomp.module
+    precompSys = moduleFromNifFile(g, g.config.m.systemFileIdx)
+    g.systemModule = precompSys.module
 
   # Load all modules in dependency order using stack traversal
   # This must happen BEFORE any code generation so that hooks are loaded into loadedOps
@@ -103,22 +107,22 @@ proc generateCode*(g: ModuleGraph; mainFileIdx: FileIndex) =
     return
 
   # Set up backend modules for all modules that need code generation
-  for module in modules:
-    discard setupNifBackendModule(g, module)
+  for m in modules:
+    discard setupNifBackendModule(g, m.module)
 
   # Also ensure system module is set up and generated first if it exists
-  if g.systemModule != nil:
-    let systemBmod = BModuleList(g.backend).modules[g.systemModule.position]
+  if precompSys.module != nil:
+    let systemBmod = BModuleList(g.backend).modules[precompSys.module.position]
     if systemBmod == nil:
-      discard setupNifBackendModule(g, g.systemModule)
-    generateCodeForModule(g, g.systemModule)
+      discard setupNifBackendModule(g, precompSys.module)
+    generateCodeForModule(g, precompSys)
 
   # Generate code for all modules except main (main goes last)
   # This ensures all modules are added to modulesClosed
 
-  for module in modules:
-    if module != g.systemModule:
-      generateCodeForModule(g, module)
+  for m in modules:
+    if m.module != g.systemModule:
+      generateCodeForModule(g, m)
 
   for m in BModuleList(g.backend).modules:
     if m != nil:
