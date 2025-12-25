@@ -304,6 +304,8 @@ else:
 proc rotl32(x: uint32, r: int): uint32 {.inline.} =
   (x shl r) or (x shr (32 - r))
 
+proc load4(s: openArray[byte], o=0): uint32 {.inline.}
+
 proc murmurHash(x: openArray[byte]): Hash =
   # https://github.com/PeterScott/murmur3/blob/master/murmur3.c
   const
@@ -320,24 +322,10 @@ proc murmurHash(x: openArray[byte]): Hash =
     h1: uint32 = uint32(0)
     i = 0
 
-
-  template impl =
-    var j = stepSize
-    while j > 0:
-      dec j
-      k1 = (k1 shl 8) or (ord(x[i+j])).uint32
-
   # body
   while i < n * stepSize:
-    var k1: uint32 = uint32(0)
+    var k1 = load4(x, i)
 
-    when nimvm:
-      impl()
-    else:
-      when declared(copyMem):
-        copyMem(addr k1, addr x[i], 4)
-      else:
-        impl()
     inc i, stepSize
 
     k1 = imul(k1, c1)
@@ -394,12 +382,15 @@ proc load8e(s: openArray[byte], o=0): uint64 {.inline.} =
   uint64(s[o + 3]) shl 24 or uint64(s[o + 2]) shl 16 or
   uint64(s[o + 1]) shl  8 or uint64(s[o + 0])
 
+when declared(copyMem):
+  from std/endians import littleEndian64, littleEndian32
+
 proc load4(s: openArray[byte], o=0): uint32 {.inline.} =
   when nimvm: result = load4e(s, o)
   else:
     when declared copyMem:
       result = uint32(0)
-      copyMem result.addr, s[o].addr, result.sizeof
+      littleEndian32(addr result, addr s[o])
     else: result = load4e(s, o)
 
 proc load8(s: openArray[byte], o=0): uint64 {.inline.} =
@@ -407,7 +398,7 @@ proc load8(s: openArray[byte], o=0): uint64 {.inline.} =
   else:
     when declared copyMem:
       result = uint64(0)
-      copyMem result.addr, s[o].addr, result.sizeof
+      littleEndian64(addr result, addr s[o])
     else: result = load8e(s, o)
 
 proc lenU(s: openArray[byte]): uint64 {.inline.} = s.len.uint64
