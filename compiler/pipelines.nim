@@ -286,8 +286,8 @@ proc compilePipelineModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymF
          sfMainModule notin flags and
          not graph.withinSystem and
          not graph.config.isDefined("nimscript"):
-        result = moduleFromNifFile(graph, fileIdx, cachedModules)
-        if result == nil:
+        let precomp = moduleFromNifFile(graph, fileIdx)
+        if precomp.module == nil:
           let nifPath = toNifFilename(graph.config, fileIdx)
           localError(graph.config, unknownLineInfo,
             "nim m requires precompiled NIF for import: " & toFullPath(graph.config, fileIdx) &
@@ -385,7 +385,8 @@ proc compilePipelineProject*(graph: ModuleGraph; projectFileIdx = InvalidFileIdx
         graph.config.libpath / RelativeFile"system.nim")
     var cachedModules: seq[FileIndex] = @[]
     when not defined(nimKochBootstrap):
-      graph.systemModule = moduleFromNifFile(graph, graph.config.m.systemFileIdx, cachedModules)
+      let precomp = moduleFromNifFile(graph, graph.config.m.systemFileIdx)
+      graph.systemModule = precomp.module
       if graph.systemModule == nil:
         let nifPath = toNifFilename(graph.config, graph.config.m.systemFileIdx)
         localError(graph.config, unknownLineInfo,

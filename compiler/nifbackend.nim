@@ -28,27 +28,30 @@ import ast, options, lineinfos, modulegraphs, cgendata, cgen,
 proc loadModuleDependencies(g: ModuleGraph; mainFileIdx: FileIndex): seq[PSym] =
   ## Traverse the module dependency graph using a stack.
   ## Returns all modules that need code generation, in dependency order.
-  var visited = initIntSet()
-  var stack: seq[FileIndex] = @[mainFileIdx]
+  let precomp = moduleFromNifFile(g, mainFileIdx, loadFullAst=true)
+
+  var stack: seq[ModuleSuffix] = @[]
   result = @[]
-  var cachedModules: seq[FileIndex] = @[]
+
+  if precomp.module != nil:
+    result.add precomp.module
+    incl precomp.module.flagsImpl, sfMainModule
+    for dep in precomp.deps:
+      stack.add dep
+
+  var visited = initHashSet[string]()
 
   while stack.len > 0:
-    let fileIdx = stack.pop()
+    let suffix = stack.pop()
 
-    if not visited.containsOrIncl(int(fileIdx)):
-      # Only load full AST for main module; others are loaded lazily by codegen
-      let isMainModule = fileIdx == mainFileIdx
-      let module = moduleFromNifFile(g, fileIdx, cachedModules, loadFullAst=isMainModule)
-      if module != nil:
-        result.add module
-        if isMainModule:
-          incl module.flagsImpl, sfMainModule
-        # Add dependencies to stack (they come from cachedModules)
-        for dep in cachedModules:
-          if not visited.contains(int(dep)):
+    if not visited.containsOrIncl(suffix.string):
+      let fileIdx = msgs.fileInfoIdx(g.config, AbsoluteFile suffix.string)
+      let precomp = moduleFromNifFile(g, fileIdx, loadFullAst=true)
+      if precomp.module != nil:
+        result.add precomp.module
+        for dep in precomp.deps:
+          if not visited.contains(dep.string):
             stack.add dep
-        cachedModules.setLen(0)
 
 proc setupNifBackendModule(g: ModuleGraph; module: PSym): BModule =
   ## Set up a BModule for code generation from a NIF module.
@@ -85,12 +88,11 @@ proc generateCode*(g: ModuleGraph; mainFileIdx: FileIndex) =
 
   # Reset backend state
   resetForBackend(g)
-  let mainModule = g.getModule(mainFileIdx)
 
   # Load system module first - it's always needed and contains essential hooks
-  var cachedModules: seq[FileIndex] = @[]
   if g.config.m.systemFileIdx != InvalidFileIdx:
-    g.systemModule = moduleFromNifFile(g, g.config.m.systemFileIdx, cachedModules)
+    let precomp = moduleFromNifFile(g, g.config.m.systemFileIdx)
+    g.systemModule = precomp.module
 
   # Load all modules in dependency order using stack traversal
   # This must happen BEFORE any code generation so that hooks are loaded into loadedOps
@@ -105,7 +107,7 @@ proc generateCode*(g: ModuleGraph; mainFileIdx: FileIndex) =
     discard setupNifBackendModule(g, module)
 
   # Also ensure system module is set up and generated first if it exists
-  if g.systemModule != nil and g.systemModule != mainModule:
+  if g.systemModule != nil:
     let systemBmod = BModuleList(g.backend).modules[g.systemModule.position]
     if systemBmod == nil:
       discard setupNifBackendModule(g, g.systemModule)
@@ -115,12 +117,8 @@ proc generateCode*(g: ModuleGraph; mainFileIdx: FileIndex) =
   # This ensures all modules are added to modulesClosed
 
   for module in modules:
-    if module != mainModule and module != g.systemModule:
+    if module != g.systemModule:
       generateCodeForModule(g, module)
-
-  # Generate main module last (so all init procs are registered)
-  if mainModule != nil:
-    generateCodeForModule(g, mainModule)
 
   for m in BModuleList(g.backend).modules:
     if m != nil:

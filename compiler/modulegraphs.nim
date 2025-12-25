@@ -814,31 +814,33 @@ proc moduleFromRodFile*(g: ModuleGraph; fileIdx: FileIndex;
 
 when not defined(nimKochBootstrap):
   proc moduleFromNifFile*(g: ModuleGraph; fileIdx: FileIndex;
-                          cachedModules: var seq[FileIndex];
-                          loadFullAst: bool = false): PSym =
+                          loadFullAst: bool = false): PrecompiledModule =
     ## Returns 'nil' if the module needs to be recompiled.
     ## Loads module from NIF file when optCompress is enabled.
     ## When loadFullAst is true, loads the complete module AST for code generation.
     if not fileExists(toNifFilename(g.config, fileIdx)):
-      return nil
+      return PrecompiledModule(module: nil)
 
     # Create module symbol
     let filename = AbsoluteFile toFullPath(g.config, fileIdx)
-    result = PSym(
+
+    let m = PSym(
       kindImpl: skModule,
       itemId: ItemId(module: int32(fileIdx), item: 0'i32),
       name: getIdent(g.cache, splitFile(filename).name),
       infoImpl: newLineInfo(fileIdx, 1, 1),
       positionImpl: int(fileIdx))
-    setOwner(result, getPackage(g.config, g.cache, fileIdx))
-
+    setOwner(m, getPackage(g.config, g.cache, fileIdx))
     # Register module in graph
-    registerModule(g, result)
-    var opsLog: seq[LogEntry] = @[]
-    result.astImpl = loadNifModule(ast.program, fileIdx, g.ifaces[fileIdx.int].interf,
-                                   g.ifaces[fileIdx.int].interfHidden, opsLog, loadFullAst)
+    registerModule(g, m)
+
+    result = loadNifModule(ast.program, fileIdx,
+                           g.ifaces[fileIdx.int].interf,
+                           g.ifaces[fileIdx.int].interfHidden, loadFullAst)
+    result.module = m
+
     # Register hooks from NIF index with the module graph
-    for x in opsLog:
+    for x in result.logOps:
       case x.kind
       of HookEntry:
         g.loadedOps[x.op][x.key] = x.sym
@@ -852,7 +854,6 @@ when not defined(nimKochBootstrap):
         raiseAssert "GenericInstEntry should not be in the NIF index"
     # Register methods per type from NIF index
     discard "todo"
-    cachedModules.add fileIdx
 
 proc configComplete*(g: ModuleGraph) =
   rememberStartupConfig(g.startupPackedConfig, g.config)

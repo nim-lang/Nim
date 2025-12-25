@@ -1501,15 +1501,23 @@ proc nextSubtree(r: var Stream; dest: var TokenBuf; tok: var PackedToken) =
     elif tok.kind == ParRi:
       dec nested
       if nested == 0: break
+type
+  ModuleSuffix* = distinct string
+  PrecompiledModule* = object
+    topLevel*: PNode # top level statements of the main module
+    deps*: seq[ModuleSuffix] # other modules we need to process the top level statements of
+    logOps*: seq[LogEntry]
+    module*: PSym # set by modulegraphs.nim!
 
-proc loadImport(c: var DecodeContext; s: var Stream; deps: var seq[string]; tok: var PackedToken) =
+proc loadImport(c: var DecodeContext; s: var Stream; deps: var seq[ModuleSuffix]; tok: var PackedToken) =
   tok = next(s) # skip `(import`
   if tok.kind == DotToken:
     tok = next(s) # skip dot
     if tok.kind == DotToken:
       tok = next(s) # skip dot
   if tok.kind == StringLit:
-    deps.add pool.strings[tok.litId]
+    deps.add ModuleSuffix(pool.strings[tok.litId])
+    tok = next(s)
   else:
     raiseAssert "expected StringLit but got " & $tok.kind
   if tok.kind == ParRi:
@@ -1517,13 +1525,8 @@ proc loadImport(c: var DecodeContext; s: var Stream; deps: var seq[string]; tok:
   else:
     raiseAssert "expected ParRi but got " & $tok.kind
 
-type
-  NifGraph = object
-    topLevel: PNode # top level statements of the main module
-    deps: seq[string] # other modules we need to process the top level statements of
-
-proc processTopLevel(c: var DecodeContext; s: var Stream; loadFullAst: bool; suffix: string; logOps: var seq[LogEntry]; module: int): NifGraph =
-  result = NifGraph(topLevel: newNode(nkStmtList))
+proc processTopLevel(c: var DecodeContext; s: var Stream; loadFullAst: bool; suffix: string; module: int): PrecompiledModule =
+  result = PrecompiledModule(topLevel: newNode(nkStmtList))
   var localSyms = initTable[string, PSym]()
 
   var t = next(s) # skip dot
@@ -1547,25 +1550,25 @@ proc processTopLevel(c: var DecodeContext; s: var Stream; loadFullAst: bool; suf
         else:
           raiseAssert "expected ParRi but got " & $t.kind
       elif t.tagId == repConverterTag:
-        t = loadLogOp(c, logOps, s, ConverterEntry, attachedTrace, module)
+        t = loadLogOp(c, result.logOps, s, ConverterEntry, attachedTrace, module)
       elif t.tagId == repDestroyTag:
-        t = loadLogOp(c, logOps, s, HookEntry, attachedDestructor, module)
+        t = loadLogOp(c, result.logOps, s, HookEntry, attachedDestructor, module)
       elif t.tagId == repWasMovedTag:
-        t = loadLogOp(c, logOps, s, HookEntry, attachedWasMoved, module)
+        t = loadLogOp(c, result.logOps, s, HookEntry, attachedWasMoved, module)
       elif t.tagId == repCopyTag:
-        t = loadLogOp(c, logOps, s, HookEntry, attachedAsgn, module)
+        t = loadLogOp(c, result.logOps, s, HookEntry, attachedAsgn, module)
       elif t.tagId == repSinkTag:
-        t = loadLogOp(c, logOps, s, HookEntry, attachedSink, module)
+        t = loadLogOp(c, result.logOps, s, HookEntry, attachedSink, module)
       elif t.tagId == repDupTag:
-        t = loadLogOp(c, logOps, s, HookEntry, attachedDup, module)
+        t = loadLogOp(c, result.logOps, s, HookEntry, attachedDup, module)
       elif t.tagId == repTraceTag:
-        t = loadLogOp(c, logOps, s, HookEntry, attachedTrace, module)
+        t = loadLogOp(c, result.logOps, s, HookEntry, attachedTrace, module)
       elif t.tagId == repDeepCopyTag:
-        t = loadLogOp(c, logOps, s, HookEntry, attachedDeepCopy, module)
+        t = loadLogOp(c, result.logOps, s, HookEntry, attachedDeepCopy, module)
       elif t.tagId == repEnumToStrTag:
-        t = loadLogOp(c, logOps, s, EnumToStrEntry, attachedTrace, module)
+        t = loadLogOp(c, result.logOps, s, EnumToStrEntry, attachedTrace, module)
       elif t.tagId == repMethodTag:
-        t = loadLogOp(c, logOps, s, MethodEntry, attachedTrace, module)
+        t = loadLogOp(c, result.logOps, s, MethodEntry, attachedTrace, module)
         #elif t.tagId == repClassTag:
         #  t = loadLogOp(c, logOps, s, ClassEntry, attachedTrace, module)
       elif t.tagId == includeTag:
@@ -1587,17 +1590,14 @@ proc processTopLevel(c: var DecodeContext; s: var Stream; loadFullAst: bool; suf
     else:
       cont = false
 
-proc loadNifGraph*(c: var DecodeContext; f: FileIndex; interf, interfHidden: var TStrTable;
-                    logOps: var seq[LogEntry];
-                    loadFullAst: bool = false): NifGraph =
-  let suffix = moduleSuffix(c.infos.config, f)
-
-  # Ensure module index is loaded - moduleId returns the FileIndex for this suffix
-  let module = moduleId(c, suffix)
+proc loadNifModule*(c: var DecodeContext; suffix: ModuleSuffix; interf, interfHidden: var TStrTable;
+                    loadFullAst: bool = false): PrecompiledModule =
+    # Ensure module index is loaded - moduleId returns the FileIndex for this suffix
+  let module = moduleId(c, string(suffix))
 
   # Populate interface tables from the NIF index structure
   # Symbols are created as stubs (Partial state) and will be loaded lazily via loadSym
-  populateInterfaceTablesFromIndex(c, module, interf, interfHidden, suffix)
+  populateInterfaceTablesFromIndex(c, module, interf, interfHidden, string(suffix))
 
   # Load the module AST (or just replay actions if loadFullAst is false)
   let s = addr c.mods[module].stream
@@ -1607,15 +1607,14 @@ proc loadNifGraph*(c: var DecodeContext; f: FileIndex; interf, interfHidden: var
   if t.kind == ParLe and pool.tags[t.tagId] == toNifTag(nkStmtList):
     t = next(s[])  # skip (stmts
     t = next(s[])  # skip flags
-    result = processTopLevel(c, s[], loadFullAst, suffix, logOps, f.int)
+    result = processTopLevel(c, s[], loadFullAst, string(suffix), module.int)
   else:
-    result = NifGraph(topLevel: newNode(nkStmtList))
+    result = PrecompiledModule(topLevel: newNode(nkStmtList))
 
 proc loadNifModule*(c: var DecodeContext; f: FileIndex; interf, interfHidden: var TStrTable;
-                    logOps: var seq[LogEntry];
-                    loadFullAst: bool = false): PNode =
-  let g = loadNifGraph(c, f, interf, interfHidden, logOps, loadFullAst)
-  result = g.topLevel
+                    loadFullAst: bool = false): PrecompiledModule =
+  let suffix = ModuleSuffix(moduleSuffix(c.infos.config, f))
+  result = loadNifModule(c, suffix, interf, interfHidden, loadFullAst)
 
 when isMainModule:
   import std / syncio
