@@ -95,7 +95,7 @@ proc generateCode*(g: ModuleGraph; mainFileIdx: FileIndex) =
   # Load system module first - it's always needed and contains essential hooks
   var precompSys = PrecompiledModule(module: nil)
   if g.config.m.systemFileIdx != InvalidFileIdx:
-    precompSys = moduleFromNifFile(g, g.config.m.systemFileIdx)
+    precompSys = moduleFromNifFile(g, g.config.m.systemFileIdx, loadFullAst=true)
     g.systemModule = precompSys.module
 
   # Load all modules in dependency order using stack traversal

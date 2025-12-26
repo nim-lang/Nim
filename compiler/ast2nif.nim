@@ -1501,6 +1501,7 @@ proc nextSubtree(r: var Stream; dest: var TokenBuf; tok: var PackedToken) =
     elif tok.kind == ParRi:
       dec nested
       if nested == 0: break
+
 type
   ModuleSuffix* = distinct string
   PrecompiledModule* = object
@@ -1581,6 +1582,7 @@ proc processTopLevel(c: var DecodeContext; s: var Stream; loadFullAst: bool; suf
         # Parse the full statement
         var buf = createTokenBuf(50)
         nextSubtree(s, buf, t)
+        t = next(s) # skip ParRi
         var cursor = cursorAt(buf, 0)
         let stmtNode = loadNode(c, cursor, suffix, localSyms)
         if stmtNode != nil:
