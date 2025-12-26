@@ -126,7 +126,7 @@ proc genVarTuple(p: BProc, n: PNode) =
     let vn = n[i]
     let v = vn.sym
     if sfCompileTime in v.flags: continue
-    ensureMutable v
+    backendEnsureMutable v
     if sfGlobal in v.flags:
       assignGlobalVar(p, vn, "")
       genObjectInit(p, cpsInit, v.typ, v.locImpl, constructObj)
@@ -743,9 +743,10 @@ proc genBlock(p: BProc, n: PNode, d: var TLoc) =
       # named block?
       assert(n[0].kind == nkSym)
       var sym = n[0].sym
-      ensureMutable sym
+      backendEnsureMutable sym
       sym.locImpl.k = locOther
-      sym.position = p.breakIdx+1
+      sym.positionImpl = p.breakIdx+1
+      # ^ IC: review this
     expr(p, n[1], d)
     endSimpleBlock(p, scope)
 
@@ -1258,7 +1259,7 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
           initElifBranch(p.s(cpsStmts), ifStmt, orExpr)
         if exvar != nil:
           fillLocalName(p, exvar.sym)
-          ensureMutable exvar.sym
+          backendEnsureMutable exvar.sym
           fillLoc(exvar.sym.locImpl, locTemp, exvar, OnStack)
           linefmt(p, cpsStmts, "$1 $2 = T$3_;$n", [getTypeDesc(p.module, exvar.sym.typ),
             rdLoc(exvar.sym.loc), rope(etmp+1)])
@@ -1307,7 +1308,7 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
             if isImportedException(typeNode.typ, p.config):
               let exvar = t[i][j][2] # ex1 in `except ExceptType as ex1:`
               fillLocalName(p, exvar.sym)
-              ensureMutable exvar.sym
+              backendEnsureMutable exvar.sym
               fillLoc(exvar.sym.locImpl, locTemp, exvar, OnStack)
               startBlockWith(p):
                 lineCg(p, cpsStmts, "catch ($1& $2) {$n", [getTypeDesc(p.module, typeNode.typ), rdLoc(exvar.sym.loc)])
@@ -1399,7 +1400,7 @@ proc genTryCppOld(p: BProc, t: PNode, d: var TLoc) =
         if t[i][j].isInfixAs():
           let exvar = t[i][j][2] # ex1 in `except ExceptType as ex1:`
           fillLocalName(p, exvar.sym)
-          ensureMutable exvar.sym
+          backendEnsureMutable exvar.sym
           fillLoc(exvar.sym.locImpl, locTemp, exvar, OnUnknown)
           startBlockWith(p):
             lineCg(p, cpsStmts, "catch ($1& $2) {$n", [getTypeDesc(p.module, t[i][j][1].typ), rdLoc(exvar.sym.loc)])

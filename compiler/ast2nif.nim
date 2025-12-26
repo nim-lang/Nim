@@ -621,7 +621,7 @@ proc writeGlobal(w: var Writer; dest: var TokenBuf; n: PNode) =
   case n.kind
   of nkVarTuple:
     writeNode(w, dest, n)
-  of nkIdentDefs:
+  of nkIdentDefs, nkConstDef:
     # nkIdentDefs: [ident1, ident2, ..., type, default]
     # All children except the last two are identifiers
     for i in 0 ..< max(0, n.len - 2):
