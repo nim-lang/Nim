@@ -14,7 +14,7 @@ int32
 0
 tUnsignedOps OK
 '''
-targets: "c cpp"
+targets: "c cpp js"
 nimout: "tUnsignedOps OK"
 """
 

@@ -729,44 +729,47 @@ proc arithAux(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
   of mShrI:
     let typ = n[1].typ.skipTypes(abstractVarRange)
     if typ.kind == tyInt64 and optJsBigInt64 in p.config.globalOptions:
-      applyFormat("BigInt.asIntN(64, BigInt.asUintN(64, $1) >> BigInt($2))")
+      applyFormat("BigInt.asIntN(64, BigInt.asUintN(64, $1) >> BigInt($2 & 63))")
     elif typ.kind == tyUInt64 and optJsBigInt64 in p.config.globalOptions:
-      applyFormat("($1 >> BigInt($2))")
+      applyFormat("($1 >> BigInt($2 & 63))")
     else:
+      let bitmask = typ.size * 8 - 1
       if typ.kind in {tyInt..tyInt32}:
         let trimmerU = unsignedTrimmer(typ.size)
         let trimmerS = signedTrimmer(typ.size)
-        r.res = "((($1 $2) >>> $3) $4)" % [xLoc, trimmerU, yLoc, trimmerS]
+        r.res = "((($1 $2) >>> ($3 & $5)) $4)" % [xLoc, trimmerU, yLoc, trimmerS, $bitmask]
       else:
-        applyFormat("($1 >>> $2)")
+        r.res = "($1 >>> ($2 & $3))" % [xLoc, yLoc, $bitmask]
   of mShlI:
     let typ = n[1].typ.skipTypes(abstractVarRange)
     if typ.size == 8:
       if typ.kind == tyInt64 and optJsBigInt64 in p.config.globalOptions:
-        applyFormat("BigInt.asIntN(64, $1 << BigInt($2))")
+        applyFormat("BigInt.asIntN(64, $1 << BigInt($2 & 63))")
       elif typ.kind == tyUInt64 and optJsBigInt64 in p.config.globalOptions:
-        applyFormat("BigInt.asUintN(64, $1 << BigInt($2))")
+        applyFormat("BigInt.asUintN(64, $1 << BigInt($2 & 63))")
       else:
-        applyFormat("($1 * Math.pow(2, $2))")
+        applyFormat("($1 * Math.pow(2, ($2 & 63)))")
     else:
+      let bitmask = typ.size * 8 - 1
       if typ.kind in {tyUInt..tyUInt32}:
         let trimmer = unsignedTrimmer(typ.size)
-        r.res = "(($1 << $2) $3)" % [xLoc, yLoc, trimmer]
+        r.res = "(($1 << ($2 & $4)) $3)" % [xLoc, yLoc, trimmer, $bitmask]
       else:
         let trimmer = signedTrimmer(typ.size)
-        r.res = "(($1 << $2) $3)" % [xLoc, yLoc, trimmer]
+        r.res = "(($1 << ($2 & $4)) $3)" % [xLoc, yLoc, trimmer, $bitmask]
   of mAshrI:
     let typ = n[1].typ.skipTypes(abstractVarRange)
     if typ.size == 8:
       if optJsBigInt64 in p.config.globalOptions:
-        applyFormat("($1 >> BigInt($2))")
+        applyFormat("($1 >> BigInt($2 & 63))")
       else:
-        applyFormat("Math.floor($1 / Math.pow(2, $2))")
+        applyFormat("Math.floor($1 / Math.pow(2, ($2 & 63)))")
     else:
+      let bitmask = typ.size * 8 - 1
       if typ.kind in {tyUInt..tyUInt32}:
-        applyFormat("($1 >>> $2)")
+        r.res = "($1 >>> ($2 & $3)))" % [xLoc, yLoc, $bitmask]
       else:
-        applyFormat("($1 >> $2)")
+        r.res = "($1 >> ($2 & $3))" % [xLoc, yLoc, $bitmask]
   of mBitandI: bitwiseExpr("&")
   of mBitorI: bitwiseExpr("|")
   of mBitxorI: bitwiseExpr("^")
