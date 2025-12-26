@@ -729,9 +729,9 @@ proc arithAux(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
   of mShrI:
     let typ = n[1].typ.skipTypes(abstractVarRange)
     if typ.kind == tyInt64 and optJsBigInt64 in p.config.globalOptions:
-      applyFormat("BigInt.asIntN(64, BigInt.asUintN(64, $1) >> BigInt($2 & 63))")
+      applyFormat("BigInt.asIntN(64, BigInt.asUintN(64, $1) >> (BigInt($2) & 63n))")
     elif typ.kind == tyUInt64 and optJsBigInt64 in p.config.globalOptions:
-      applyFormat("($1 >> BigInt($2 & 63))")
+      applyFormat("($1 >> (BigInt($2) & 63n))")
     else:
       let bitmask = typ.size * 8 - 1
       if typ.kind in {tyInt..tyInt32}:
@@ -744,9 +744,9 @@ proc arithAux(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
     let typ = n[1].typ.skipTypes(abstractVarRange)
     if typ.size == 8:
       if typ.kind == tyInt64 and optJsBigInt64 in p.config.globalOptions:
-        applyFormat("BigInt.asIntN(64, $1 << BigInt($2 & 63))")
+        applyFormat("BigInt.asIntN(64, $1 << (BigInt($2) & 63n))")
       elif typ.kind == tyUInt64 and optJsBigInt64 in p.config.globalOptions:
-        applyFormat("BigInt.asUintN(64, $1 << BigInt($2 & 63))")
+        applyFormat("BigInt.asUintN(64, $1 << (BigInt($2) & 63n))")
       else:
         applyFormat("($1 * Math.pow(2, ($2 & 63)))")
     else:
@@ -761,7 +761,7 @@ proc arithAux(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
     let typ = n[1].typ.skipTypes(abstractVarRange)
     if typ.size == 8:
       if optJsBigInt64 in p.config.globalOptions:
-        applyFormat("($1 >> BigInt($2 & 63))")
+        applyFormat("($1 >> (BigInt($2) & 63n))")
       else:
         applyFormat("Math.floor($1 / Math.pow(2, ($2 & 63)))")
     else:
