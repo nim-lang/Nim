@@ -553,14 +553,12 @@ proc eraseVoidParams*(t: PType) =
 
   for i in FirstParamAt..<t.signatureLen:
     # don't touch any memory unless necessary
-    if t[i].kind == tyVoid:
+    if t.n[i].kind == nkRecList or t[i].kind == tyVoid:
       var pos = i
       for j in i+1..<t.signatureLen:
         if t[j].kind != tyVoid:
-          t[pos] = t[j]
           t.n[pos] = t.n[j]
           inc pos
-      newSons t, pos
       setLen t.n.sons, pos
       break
 
@@ -754,7 +752,8 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType, isInstValue = false): 
             let r2 = r.skipTypes({tyAlias, tySink, tyOwned})
             if r2.kind in {tyPtr, tyRef}:
               r = skipTypes(r2, {tyPtr, tyRef})
-          result[i] = r
+          if result.kind != tyProc or i == 0:
+            result[i] = r
           if result.kind != tyArray or i != 0:
             propagateToOwner(result, r)
       # bug #4677: Do not instantiate effect lists

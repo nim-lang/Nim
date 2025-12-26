@@ -370,8 +370,14 @@ proc storeType(t: PType; c: var PackedEncoder; m: var PackedModule): PackedItemI
       paddingAtEnd: t.paddingAtEnd)
     storeNode(p, t, n)
     p.typeInst = t.typeInst.storeType(c, m)
-    for kid in kids t:
-      p.types.add kid.storeType(c, m)
+    if t.kind == tyProc and t.len > 0:
+      # if kind == tyProc, parameter types are stored in t.n
+      # and you can access them with `kits` iterator.
+      # return type is stored in t.sons[0].
+      p.types.add t[0].storeType(c, m)
+    else:
+      for kid in kids t:
+        p.types.add kid.storeType(c, m)
     c.addMissing t.sym
     p.sym = t.sym.safeItemId(c, m)
     c.addMissing t.owner
