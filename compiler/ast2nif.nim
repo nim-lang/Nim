@@ -608,7 +608,10 @@ proc writeNode(w: var Writer; dest: var TokenBuf; n: PNode; forAst = false) =
       # Write the export statement as a regular node
       w.withNode dest, n:
         for i in 0 ..< n.len:
-          writeNode(w, dest, n[i], forAst)
+          if n[i].kind == nkSym and n[i].sym.kindImpl == skModule:
+            discard "do not write module syms here"
+          else:
+            writeNode(w, dest, n[i], forAst)
     else:
       w.withNode dest, n:
         for i in 0 ..< n.len:
