@@ -435,14 +435,20 @@ proc addLocalSym(w: var Writer; n: PNode) =
     w.locals.incl(n.sym.itemId)
 
 proc addLocalSyms(w: var Writer; n: PNode) =
-  if n.kind in {nkIdentDefs, nkVarTuple}:
+  case n.kind
+  of nkIdentDefs, nkVarTuple:
     # nkIdentDefs: [ident1, ident2, ..., type, default]
     # All children except the last two are identifiers
     for i in 0 ..< max(0, n.len - 2):
       addLocalSyms(w, n[i])
-  elif n.kind == nkSym:
+  of nkPostfix:
+    addLocalSyms(w, n[1])
+  of nkPragmaExpr:
+    addLocalSyms(w, n[0])
+  of nkSym:
     addLocalSym(w, n)
-
+  else:
+    discard
 
 proc trInclude(w: var Writer; n: PNode) =
   w.deps.addParLe pool.tags.getOrIncl(toNifTag(n.kind)), trLineInfo(w, n.info)
@@ -608,17 +614,44 @@ proc writeNode(w: var Writer; dest: var TokenBuf; n: PNode; forAst = false) =
         for i in 0 ..< n.len:
           writeNode(w, dest, n[i], forAst)
 
+proc writeGlobal(w: var Writer; dest: var TokenBuf; n: PNode) =
+  case n.kind
+  of nkVarTuple:
+    writeNode(w, dest, n)
+  of nkIdentDefs:
+    # nkIdentDefs: [ident1, ident2, ..., type, default]
+    # All children except the last two are identifiers
+    for i in 0 ..< max(0, n.len - 2):
+      writeGlobal(w, dest, n[i])
+  of nkPostfix:
+    writeGlobal(w, dest, n[1])
+  of nkPragmaExpr:
+    writeGlobal(w, dest, n[0])
+  of nkSym:
+    writeSym(w, dest, n.sym)
+  else:
+    discard
+
+proc writeGlobals(w: var Writer; dest: var TokenBuf; n: PNode) =
+  w.withNode dest, n:
+    for child in n:
+      writeGlobal(w, dest, child)
+
 proc writeToplevelNode(w: var Writer; dest, bottom: var TokenBuf; n: PNode) =
   case n.kind
   of nkStmtList, nkStmtListExpr:
     for son in n: writeToplevelNode(w, dest, bottom, son)
   of nkEmpty:
     discard "ignore"
-  of nkTypeSection, nkConstSection, nkCommentStmt, nkMixinStmt, nkBindStmt, nkUsingStmt,
+  of nkTypeSection, nkCommentStmt, nkMixinStmt, nkBindStmt, nkUsingStmt,
      nkPragma,
      nkProcDef, nkFuncDef, nkMethodDef, nkIteratorDef, nkConverterDef, nkMacroDef, nkTemplateDef:
     # We write purely declarative nodes at the bottom of the file
     writeNode(w, bottom, n)
+  of nkConstSection:
+    writeGlobals(w, bottom, n)
+  of nkLetSection, nkVarSection:
+    writeGlobals(w, dest, n)
   else:
     writeNode w, dest, n
 
