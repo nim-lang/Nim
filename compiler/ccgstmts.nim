@@ -136,7 +136,7 @@ proc genVarTuple(p: BProc, n: PNode) =
       initLocalVar(p, v, immediateAsgn=isAssignedImmediately(p.config, n[^1]))
     var field = initLoc(locExpr, vn, tup.storage)
     let rtup = rdLoc(tup)
-    let fieldName = 
+    let fieldName =
       if t.kind == tyTuple:
         "Field" & $i
       else:
@@ -490,14 +490,17 @@ proc genClosureVar(p: BProc, a: PNode) =
     constructLoc(p, v)
 
 proc genVarStmt(p: BProc, n: PNode) =
-  for it in n.sons:
-    if it.kind == nkCommentStmt: continue
-    if it.kind == nkIdentDefs:
+  for it in n:
+    case it.kind
+    of nkCommentStmt: discard
+    of nkIdentDefs:
       # can be a lifted var nowadays ...
       if it[0].kind == nkSym:
         genSingleVar(p, it)
       else:
         genClosureVar(p, it)
+    of nkSym:
+      genSingleVar(p, it.sym, newSymNode(it.sym), it.sym.astdef)
     else:
       genVarTuple(p, it)
 
