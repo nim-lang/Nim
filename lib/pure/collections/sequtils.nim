@@ -964,6 +964,7 @@ template foldl*(sequence, operation: untyped): untyped =
   ##
   ## **See also:**
   ## * `foldl template<#foldl.t,,,>`_ with a starting parameter
+  ## * `foldr template<#foldr.t,,,>`_ with a starting parameter
   ## * `foldr template<#foldr.t,untyped,untyped>`_
   ##
   runnableExamples:
@@ -1009,6 +1010,7 @@ template foldl*(sequence, operation, first): untyped =
   ##
   ## **See also:**
   ## * `foldr template<#foldr.t,untyped,untyped>`_
+  ## * `foldr template<#foldr.t,,,>`_ with a starting parameter
   ##
   runnableExamples:
     let
@@ -1041,6 +1043,7 @@ template foldr*(sequence, operation: untyped): untyped =
   ## **See also:**
   ## * `foldl template<#foldl.t,untyped,untyped>`_
   ## * `foldl template<#foldl.t,,,>`_ with a starting parameter
+  ## * `foldr template<#foldr.t,,,>`_ with a starting parameter
   ##
   runnableExamples:
     let
@@ -1062,6 +1065,46 @@ template foldr*(sequence, operation: untyped): untyped =
   for i in countdown(n - 2, 0):
     let
       a {.inject.} = s[i]
+      b {.inject.} = result
+    result = operation
+  result
+
+template foldr*(sequence, operation, first): untyped =
+  ## Template to fold a sequence from right to left, returning the accumulation.
+  ##
+  ## This version of `foldr` gets a **starting parameter**. This makes it possible
+  ## to accumulate the sequence into a different type than the sequence elements.
+  ##
+  ## The `operation` parameter should be an expression which uses the variables
+  ## `a` and `b` for each step of the fold. The `first` parameter is the
+  ## start value (the innermost `b`) and therefore defines the type of the result.
+  ##
+  ## **See also:**
+  ## * `foldl template<#foldl.t,untyped,untyped>`_
+  ## * `foldl template<#foldl.t,,,>`_ with a starting parameter
+  ##
+  runnableExamples:
+    type Node = ref object
+      v: char
+      n: Node
+
+    proc `==`(x, y: Node): bool =
+      if x.isNil and y.isNil: true
+      elif x.isNil or y.isNil: false
+      else: x.v == y.v and x.n == y.n
+
+    let
+      letters = "abcde"
+      tail: Node = nil
+      linkedList = Node(v: 'a', n: Node(v: 'b', n: Node(v: 'c',
+                           n: Node(v: 'd', n: Node(v: 'e', n: nil)))))
+
+    assert linkedList == foldr(letters, Node(v: a, n: b), tail)
+  
+  var result: typeof(first) = first
+  for i in countdown(sequence.len - 1, 0):
+    let
+      a {.inject.} = sequence[i]
       b {.inject.} = result
     result = operation
   result
