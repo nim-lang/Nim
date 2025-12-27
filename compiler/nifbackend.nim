@@ -83,8 +83,6 @@ proc generateCodeForModule(g: ModuleGraph; precomp: PrecompiledModule) =
   if precomp.topLevel != nil:
     cgen.genTopLevelStmt(bmod, precomp.topLevel)
 
-  finishModule(g, bmod)
-
 proc generateCode*(g: ModuleGraph; mainFileIdx: FileIndex) =
   ## Main entry point for NIF-based C code generation.
   ## Traverses the module dependency graph and generates C code.
@@ -133,9 +131,17 @@ proc generateCode*(g: ModuleGraph; mainFileIdx: FileIndex) =
     if not processed.containsOrIncl(m.module.position):
       generateCodeForModule(g, m)
 
+  # during code generation of `main.nim` we can trigger the code generation
+  # of symbols in different modules so we need to finish these modules
+  # here later, after the above loop!
+  for m in BModuleList(g.backend).modules:
+    if m != nil:
+      assert m.module != nil
+      #if sfMainModule notin m.module.flags:
+      finishModule g, m
+
   # Write C files
-  if g.backend != nil:
-    cgenWriteModules(g.backend, g.config)
+  cgenWriteModules(g.backend, g.config)
 
   # Run C compiler
   if g.config.cmd != cmdTcc:
