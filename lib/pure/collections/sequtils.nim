@@ -486,6 +486,27 @@ proc map*[T, S](s: openArray[T], op: proc (x: T): S {.closure.}):
   for i in 0 ..< s.len:
     result[i] = op(s[i])
 
+proc mapArr*[N: static[int], T, S](a: array[N, T], op: proc (x: T): S {.closure.}):
+                                                   array[N, S] {.inline, effectsOf: op.} =
+  ## Returns a new array with the results of the `op` proc applied to every
+  ## item in the array `s`.
+  ##
+  ## Since the input is not modified, you can use it to
+  ## transform the type of the elements in the input array.
+  ##
+  ## **See also:**
+  ## * `map proc<#map,openArray[T],proc(T)>`_
+  ## * `mapIt template<#mapIt.t,typed,untyped>`_
+  ## * `apply proc<#apply,openArray[T],proc(T)_2>`_ for the in-place version
+  ##
+  runnableExamples:
+    let
+      a = [0, 1, 2, 3, 4]
+      b = mapArr(a, proc(x: int): char = chr(x + 48))
+    assert b == ['0', '1', '2', '3', '4']
+
+  for i, v in a: result[i] = op v
+
 proc apply*[T](s: var openArray[T], op: proc (x: var T) {.closure.})
                                                               {.inline, effectsOf: op.} =
   ## Applies `op` to every item in `s`, modifying it directly.
