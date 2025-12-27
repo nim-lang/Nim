@@ -92,10 +92,16 @@ proc generateCode*(g: ModuleGraph; mainFileIdx: FileIndex) =
   # Reset backend state
   resetForBackend(g)
 
+  # Ensure systemFileIdx is set up (might not be set in cmdNifC path)
+  if g.config.m.systemFileIdx == InvalidFileIdx:
+    g.config.m.systemFileIdx = msgs.fileInfoIdx(g.config,
+        g.config.libpath / RelativeFile"system.nim")
+
   # Load system module first - it's always needed and contains essential hooks
   var precompSys = PrecompiledModule(module: nil)
-  if g.config.m.systemFileIdx != InvalidFileIdx:
-    precompSys = moduleFromNifFile(g, g.config.m.systemFileIdx, loadFullAst=true)
+  let systemFileIdx = g.config.m.systemFileIdx
+  if systemFileIdx != InvalidFileIdx:
+    precompSys = moduleFromNifFile(g, systemFileIdx, loadFullAst=true)
     g.systemModule = precompSys.module
 
   # Load all modules in dependency order using stack traversal
@@ -117,18 +123,15 @@ proc generateCode*(g: ModuleGraph; mainFileIdx: FileIndex) =
       discard setupNifBackendModule(g, precompSys.module)
     generateCodeForModule(g, precompSys)
 
-  # Generate code for all modules except main (main goes last)
-  # This ensures all modules are added to modulesClosed
+  # Track which modules have been processed to avoid duplicates
+  var processed = initIntSet()
+  if precompSys.module != nil:
+    processed.incl precompSys.module.position
 
+  # Generate code for all modules (skip system since it's already processed)
   for m in modules:
-    if m.module != g.systemModule:
+    if not processed.containsOrIncl(m.module.position):
       generateCodeForModule(g, m)
-
-  for m in BModuleList(g.backend).modules:
-    if m != nil:
-      assert m.module != nil
-      if sfMainModule notin m.module.flags:
-        finishModule g, m
 
   # Write C files
   if g.backend != nil:

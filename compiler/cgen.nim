@@ -2170,6 +2170,8 @@ proc genInitCode(m: BModule) =
       else:
         prcBody.add(extract(m.thing.s(section)))
 
+  #echo "PRE INIT PROC ", m.module.name.s, " ", m.s[cfsVars].buf.len
+
   if m.preInitProc.s(cpsInit).buf.len > 0 or m.preInitProc.s(cpsStmts).buf.len > 0:
     # Give this small function its own scope
     prcBody.addScope():
@@ -2523,13 +2525,7 @@ proc shouldRecompile(m: BModule; code: Rope, cfile: Cfile): bool =
       rawMessage(m.config, errCannotOpenFile, cfile.cname.string)
     result = true
 
-# We need 2 different logics here: pending modules (including
-# 'nim__dat') may require file merging for the combination of dead code
-# elimination and incremental compilation! Non pending modules need no
-# such logic and in fact the logic hurts for the main module at least;
-# it would generate multiple 'main' procs, for instance.
-
-proc writeModule(m: BModule, pending: bool) =
+proc writeModule(m: BModule) =
   let cfile = getCFile(m)
   if moduleHasChanged(m.g.graph, m.module):
     genInitCode(m)
@@ -2674,6 +2670,6 @@ proc cgenWriteModules*(backend: RootRef, config: ConfigRef) =
   genForwardedProcs(g)
 
   for m in cgenModules(g):
-    m.writeModule(pending=true)
+    m.writeModule()
   writeMapping(config, g.mapping)
   if g.generatedHeader != nil: writeHeader(g.generatedHeader)
