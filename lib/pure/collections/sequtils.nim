@@ -121,6 +121,40 @@ template unCheckedInc(x) =
   inc(x)
   {.pop.}
 
+func `&`*[M, N: static[int], T](x: array[M, T], y: array[N, T]): array[M + N, T] =
+  ## Concatenates two arrays.
+  runnableExamples:
+    assert [1, 2, 3] & [4, 5] == [1, 2, 3, 4, 5]
+
+  for i, a in x: result[i] = a
+  for i, a in y: result[i + M] = a
+
+func `&`*[N: static[int], T](x: array[N, T], y: T): array[N + 1, T] =
+  ## Appends an item to an array.
+  runnableExamples:
+    assert [1, 2, 3] & 4 == [1, 2, 3, 4]
+
+  for i, a in x: result[i] = a
+  result[N] = y
+
+func `&`*[N: static[int], T](x: T, y: array[N, T]): array[N + 1, T] =
+  ## Prepends an item to an array.
+  runnableExamples:
+    assert 3 & [4, 5] == [3, 4, 5]
+
+  result[0] = x
+  for i, a in y: result[i + 1] = a
+
+macro concat*(arrs: varargs[untyped]): untyped =
+  ## Concatenates multiple arrays and elements of the same type, possibly
+  ## of varying length.
+  runnableExamples:
+    assert concat(2, [4, 5, 6], 14, [0]) == [2, 4, 5, 6, 14, 0]
+
+  result = arrs[0]
+  for i in 1..<arrs.len:
+    result = newCall("&", result, arrs[i])
+
 func concat*[T](seqs: varargs[seq[T]]): seq[T] =
   ## Takes several sequences' items and returns them inside a new sequence.
   ## All sequences must be of the same type.
@@ -145,6 +179,15 @@ func concat*[T](seqs: varargs[seq[T]]): seq[T] =
     for itm in items(s):
       result[i] = itm
       unCheckedInc(i)
+
+func slice*[N: static[int], T](x: array[N, T], i, j: static[Natural]):
+                                                      array[j - i + 1, T] =
+  ## Slices an array based on given indices.
+  runnableExamples:
+    assert [1, 2, 3, 4, 5].slice(2, 4) == [3, 4, 5]
+
+  static: assert j >= i
+  for k in i..j: result[k - i] = x[k]
 
 func addUnique*[T](s: var seq[T], x: sink T) =
   ## Adds `x` to the container `s` if it is not already present. 
