@@ -599,9 +599,10 @@ proc registerModule*(g: ModuleGraph; m: PSym) =
   if m.position >= g.packed.len:
     setLen(g.packed.pm, m.position + 1)
 
-  g.ifaces[m.position] = Iface(module: m, converters: @[], patterns: @[],
-                               uniqueName: rope(uniqueModuleName(g.config, m)))
-  initStrTables(g, m)
+  if g.ifaces[m.position].module == nil:
+    g.ifaces[m.position] = Iface(module: m, converters: @[], patterns: @[],
+                                uniqueName: rope(uniqueModuleName(g.config, m)))
+    initStrTables(g, m)
 
 proc registerModuleById*(g: ModuleGraph; m: FileIndex) =
   registerModule(g, g.packed[int m].module)
