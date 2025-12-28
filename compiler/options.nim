@@ -112,6 +112,7 @@ type                          # please make sure we have under 32 options
     optJsBigInt64             # use bigints for 64-bit integers in JS
     optItaniumMangle          # mangling follows the Itanium spec
     optCompress               # turn on AST compression by converting it to NIF
+    optWithinConfigSystem     # we still compile within the configuration system
 
   TGlobalOptions* = set[TGlobalOption]
 

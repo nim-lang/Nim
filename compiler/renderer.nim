@@ -1836,6 +1836,9 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
     putWithSpace(g, tkSymbol, "error")
     #gcomma(g, n, c)
     gsub(g, n[0], c)
+  of nkReplayAction:
+    put(g, tkSymbol, "replayaction")
+    #gsons(g, n, c, 0)
   else:
     #nkNone, nkExplicitTypeListCall:
     internalError(g.config, n.info, "renderer.gsub(" & $n.kind & ')')
