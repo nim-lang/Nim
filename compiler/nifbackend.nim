@@ -115,9 +115,7 @@ proc generateCode*(g: ModuleGraph; mainFileIdx: FileIndex) =
 
   # Also ensure system module is set up and generated first if it exists
   if precompSys.module != nil:
-    let systemBmod = BModuleList(g.backend).mods[precompSys.module.position]
-    if systemBmod == nil:
-      discard setupNifBackendModule(g, precompSys.module)
+    discard setupNifBackendModule(g, precompSys.module)
     generateCodeForModule(g, precompSys)
 
   # Track which modules have been processed to avoid duplicates

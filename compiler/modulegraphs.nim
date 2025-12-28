@@ -471,7 +471,7 @@ proc copyTypeProps*(g: ModuleGraph; module: int; dest, src: PType) =
 
 proc loadCompilerProc*(g: ModuleGraph; name: string): PSym =
   result = nil
-  if g.config.symbolFiles == disabledSf:
+  if g.config.symbolFiles == disabledSf and optWithinConfigSystem notin g.config.globalOptions:
     # For NIF-based compilation, search in loaded NIF modules
     when not defined(nimKochBootstrap):
       # Only try to resolve from NIF if we're actually using NIF files (cmdNifC)
