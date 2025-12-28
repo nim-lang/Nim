@@ -95,13 +95,14 @@ proc renderDefinitionName*(s: PSym, noQuotes = false): string =
   ## Returns the definition name of the symbol.
   ##
   ## If noQuotes is false the symbol may be returned in backticks. This will
-  ## happen if the name happens to be a keyword or the first character is not
-  ## part of the SymStartChars set.
+  ## happen if the name happens to be a keyword or the identifier contains
+  ## invalid characters.
   let x = s.name.s
-  if noQuotes or (x[0] in SymStartChars and not renderer.isKeyword(s.name)):
+  if noQuotes or (isNimIdentifier(x) and not renderer.isKeyword(s.name)):
     result = x
   else:
-    result = '`' & x & '`'
+    # Escape any backticks in the identifier as '`'
+    result = '`' & x.replace("`", "'`'") & '`'
 
 template inside(g: var TSrcGen, section: Section, body: untyped) =
   ## Runs `body` with `section` included in `g.inside`.
@@ -960,7 +961,18 @@ proc gident(g: var TSrcGen, n: PNode) =
 
   var t: TokType
   var s = atom(g, n)
-  if s.len > 0 and s[0] in lexer.SymChars:
+  let ident = n.getPIdent
+  # Check if the identifier needs backticks: starts like an identifier but
+  # contains invalid characters (e.g. `hi@name` from macros). Don't quote
+  # pure operators or keywords.
+  let needsBackticks = ident != nil and ident.s.len > 0 and
+    ident.s[0] in SymStartChars and
+    not isNimIdentifier(s)
+  if needsBackticks:
+    # Escape any backticks in the identifier as '`'
+    s = '`' & s.replace("`", "'`'") & '`'
+    t = tkSymbol
+  elif s.len > 0 and s[0] in lexer.SymChars:
     if n.kind == nkIdent:
       if (n.ident.id < ord(tokKeywordLow) - ord(tkSymbol)) or
           (n.ident.id > ord(tokKeywordHigh) - ord(tkSymbol)):
