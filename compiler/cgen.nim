@@ -337,7 +337,10 @@ proc genLineDir(p: BProc, t: PNode) =
   let line = t.info.safeLineNm
 
   if optEmbedOrigSrc in p.config.globalOptions:
-    p.s(cpsStmts).add("//" & sourceLine(p.config, t.info) & "\L")
+    var code = sourceLine(p.config, t.info)
+    if code.endsWith('\\'):
+      code.add "#"
+    p.s(cpsStmts).add("// " & code & "\L")
   let lastFileIndex = p.lastLineInfo.fileIndex
   let freshLine = freshLineInfo(p, t.info)
   if freshLine:
