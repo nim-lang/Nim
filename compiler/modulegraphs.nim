@@ -814,7 +814,7 @@ proc moduleFromRodFile*(g: ModuleGraph; fileIdx: FileIndex;
 
 when not defined(nimKochBootstrap):
   proc moduleFromNifFile*(g: ModuleGraph; fileIdx: FileIndex;
-                          loadFullAst: bool = false): PrecompiledModule =
+                          flags: set[LoadFlag] = {}): PrecompiledModule =
     ## Returns 'nil' if the module needs to be recompiled.
     ## Loads module from NIF file when optCompress is enabled.
     ## When loadFullAst is true, loads the complete module AST for code generation.
@@ -836,7 +836,7 @@ when not defined(nimKochBootstrap):
 
     result = loadNifModule(ast.program, fileIdx,
                            g.ifaces[fileIdx.int].interf,
-                           g.ifaces[fileIdx.int].interfHidden, loadFullAst)
+                           g.ifaces[fileIdx.int].interfHidden, flags)
     result.module = m
 
     # Register hooks from NIF index with the module graph

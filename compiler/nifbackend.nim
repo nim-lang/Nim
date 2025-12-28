@@ -28,7 +28,7 @@ import ast, options, lineinfos, modulegraphs, cgendata, cgen,
 proc loadModuleDependencies(g: ModuleGraph; mainFileIdx: FileIndex): seq[PrecompiledModule] =
   ## Traverse the module dependency graph using a stack.
   ## Returns all modules that need code generation, in dependency order.
-  let mainModule = moduleFromNifFile(g, mainFileIdx, loadFullAst=true)
+  let mainModule = moduleFromNifFile(g, mainFileIdx, {LoadFullAst})
 
   var stack: seq[ModuleSuffix] = @[]
   result = @[]
@@ -46,7 +46,7 @@ proc loadModuleDependencies(g: ModuleGraph; mainFileIdx: FileIndex): seq[Precomp
     if not visited.containsOrIncl(suffix.string):
       let nifFile = toGeneratedFile(g.config, AbsoluteFile(suffix.string), ".nif")
       let fileIdx = msgs.fileInfoIdx(g.config, nifFile)
-      let precomp = moduleFromNifFile(g, fileIdx, loadFullAst=true)
+      let precomp = moduleFromNifFile(g, fileIdx, {LoadFullAst})
       if precomp.module != nil:
         result.add precomp
         for dep in precomp.deps:
@@ -75,7 +75,7 @@ proc finishModule(g: ModuleGraph; bmod: BModule) =
 proc generateCodeForModule(g: ModuleGraph; precomp: PrecompiledModule) =
   ## Generate C code for a single module.
   let moduleId = precomp.module.position
-  var bmod = BModuleList(g.backend).modules[moduleId]
+  var bmod = BModuleList(g.backend).mods[moduleId]
   if bmod == nil:
     bmod = setupNifBackendModule(g, precomp.module)
 
@@ -90,17 +90,16 @@ proc generateCode*(g: ModuleGraph; mainFileIdx: FileIndex) =
   # Reset backend state
   resetForBackend(g)
 
-  # Ensure systemFileIdx is set up (might not be set in cmdNifC path)
-  if g.config.m.systemFileIdx == InvalidFileIdx:
-    g.config.m.systemFileIdx = msgs.fileInfoIdx(g.config,
-        g.config.libpath / RelativeFile"system.nim")
+  var isKnownFile = false
+  let systemFileIdx = registerNifSuffix(g.config, "sysma2dyk", isKnownFile)
+  g.config.m.systemFileIdx = systemFileIdx
+  #msgs.fileInfoIdx(g.config,
+  #    g.config.libpath / RelativeFile"system.nim")
 
   # Load system module first - it's always needed and contains essential hooks
   var precompSys = PrecompiledModule(module: nil)
-  let systemFileIdx = g.config.m.systemFileIdx
-  if systemFileIdx != InvalidFileIdx:
-    precompSys = moduleFromNifFile(g, systemFileIdx, loadFullAst=true)
-    g.systemModule = precompSys.module
+  precompSys = moduleFromNifFile(g, systemFileIdx, {LoadFullAst, AlwaysLoadInterface})
+  g.systemModule = precompSys.module
 
   # Load all modules in dependency order using stack traversal
   # This must happen BEFORE any code generation so that hooks are loaded into loadedOps
@@ -116,7 +115,7 @@ proc generateCode*(g: ModuleGraph; mainFileIdx: FileIndex) =
 
   # Also ensure system module is set up and generated first if it exists
   if precompSys.module != nil:
-    let systemBmod = BModuleList(g.backend).modules[precompSys.module.position]
+    let systemBmod = BModuleList(g.backend).mods[precompSys.module.position]
     if systemBmod == nil:
       discard setupNifBackendModule(g, precompSys.module)
     generateCodeForModule(g, precompSys)
@@ -134,7 +133,7 @@ proc generateCode*(g: ModuleGraph; mainFileIdx: FileIndex) =
   # during code generation of `main.nim` we can trigger the code generation
   # of symbols in different modules so we need to finish these modules
   # here later, after the above loop!
-  for m in BModuleList(g.backend).modules:
+  for m in BModuleList(g.backend).mods:
     if m != nil:
       assert m.module != nil
       #if sfMainModule notin m.module.flags:

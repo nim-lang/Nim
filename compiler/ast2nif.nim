@@ -867,10 +867,14 @@ proc cursorFromIndexEntry(c: var DecodeContext; module: FileIndex; entry: NifInd
   nifcursors.parse(s[], buf, entry.info)
   result = cursorAt(buf, 0)
 
-proc moduleId(c: var DecodeContext; suffix: string): FileIndex =
+type
+  LoadFlag* = enum
+    LoadFullAst, AlwaysLoadInterface
+
+proc moduleId(c: var DecodeContext; suffix: string; flags: set[LoadFlag] = {}): FileIndex =
   var isKnownFile = false
   result = c.infos.config.registerNifSuffix(suffix, isKnownFile)
-  if not isKnownFile:
+  if not isKnownFile or AlwaysLoadInterface in flags:
     let modFile = (getNimcacheDir(c.infos.config) / RelativeFile(suffix & ".nif")).string
     let idxFile = (getNimcacheDir(c.infos.config) / RelativeFile(suffix & ".s.idx.nif")).string
     if not fileExists(modFile):
@@ -1562,7 +1566,7 @@ proc loadImport(c: var DecodeContext; s: var Stream; deps: var seq[ModuleSuffix]
   else:
     raiseAssert "expected ParRi but got " & $tok.kind
 
-proc processTopLevel(c: var DecodeContext; s: var Stream; loadFullAst: bool; suffix: string; module: int): PrecompiledModule =
+proc processTopLevel(c: var DecodeContext; s: var Stream; flags: set[LoadFlag] = {}; suffix: string; module: int): PrecompiledModule =
   result = PrecompiledModule(topLevel: newNode(nkStmtList))
   var localSyms = initTable[string, PSym]()
 
@@ -1614,7 +1618,7 @@ proc processTopLevel(c: var DecodeContext; s: var Stream; loadFullAst: bool; suf
         loadImport(c, s, result.deps, t)
       elif t.tagId == implTag:
         cont = false
-      elif loadFullAst:
+      elif LoadFullAst in flags:
         # Parse the full statement
         var buf = createTokenBuf(50)
         nextSubtree(s, buf, t)
@@ -1629,9 +1633,9 @@ proc processTopLevel(c: var DecodeContext; s: var Stream; loadFullAst: bool; suf
       cont = false
 
 proc loadNifModule*(c: var DecodeContext; suffix: ModuleSuffix; interf, interfHidden: var TStrTable;
-                    loadFullAst: bool = false): PrecompiledModule =
+                    flags: set[LoadFlag] = {}): PrecompiledModule =
     # Ensure module index is loaded - moduleId returns the FileIndex for this suffix
-  let module = moduleId(c, string(suffix))
+  let module = moduleId(c, string(suffix), flags)
 
   # Populate interface tables from the NIF index structure
   # Symbols are created as stubs (Partial state) and will be loaded lazily via loadSym
@@ -1645,14 +1649,14 @@ proc loadNifModule*(c: var DecodeContext; suffix: ModuleSuffix; interf, interfHi
   if t.kind == ParLe and pool.tags[t.tagId] == toNifTag(nkStmtList):
     t = next(s[])  # skip (stmts
     t = next(s[])  # skip flags
-    result = processTopLevel(c, s[], loadFullAst, string(suffix), module.int)
+    result = processTopLevel(c, s[], flags, string(suffix), module.int)
   else:
     result = PrecompiledModule(topLevel: newNode(nkStmtList))
 
 proc loadNifModule*(c: var DecodeContext; f: FileIndex; interf, interfHidden: var TStrTable;
-                    loadFullAst: bool = false): PrecompiledModule =
+                    flags: set[LoadFlag] = {}): PrecompiledModule =
   let suffix = ModuleSuffix(moduleSuffix(c.infos.config, f))
-  result = loadNifModule(c, suffix, interf, interfHidden, loadFullAst)
+  result = loadNifModule(c, suffix, interf, interfHidden, flags)
 
 when isMainModule:
   import std / syncio

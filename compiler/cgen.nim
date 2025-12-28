@@ -67,19 +67,19 @@ proc findPendingModule(m: BModule, s: PSym): BModule =
   # TODO fixme
   if m.config.symbolFiles == v2Sf or optCompress in m.config.globalOptions:
     let ms = s.itemId.module  #getModule(s)
-    result = m.g.modules[ms]
+    result = m.g.mods[ms]
   elif m.config.cmd in {cmdNifC, cmdM}:
     var ms = getModule(s)
     registerModule m.g.graph, ms
-    if ms.position >= m.g.modules.len:
+    if ms.position >= m.g.mods.len:
       result = newModule(m.g, ms, m.config, idGeneratorFromModule(ms))
     else:
-      result = m.g.modules[ms.position]
+      result = m.g.mods[ms.position]
       if result == nil:
         result = newModule(m.g, ms, m.config, idGeneratorFromModule(ms))
   else:
     var ms = getModule(s)
-    result = m.g.modules[ms.position]
+    result = m.g.mods[ms.position]
 
 proc initLoc(k: TLocKind, lode: PNode, s: TStorageLoc, flags: TLocFlags = {}): TLoc =
   result = TLoc(k: k, storage: s, lode: lode,
@@ -133,10 +133,10 @@ proc getModuleDllPath(m: BModule): Rope =
   result = makeCString(dir.string & "/" & filename)
 
 proc getModuleDllPath(m: BModule, module: int): Rope =
-  result = getModuleDllPath(m.g.modules[module])
+  result = getModuleDllPath(m.g.mods[module])
 
 proc getModuleDllPath(m: BModule, s: PSym): Rope =
-  result = getModuleDllPath(m.g.modules[s.itemId.module])
+  result = getModuleDllPath(m.g.mods[s.itemId.module])
 
 import std/macros
 
@@ -1960,7 +1960,7 @@ proc registerModuleToMain(g: BModuleList; m: BModule) =
 
   if m.hcrOn:
     var hcrModuleMeta = newBuilder("")
-    let systemModulePath = getModuleDllPath(m, g.modules[g.graph.config.m.systemFileIdx.int].module)
+    let systemModulePath = getModuleDllPath(m, g.mods[g.graph.config.m.systemFileIdx.int].module)
     let mainModulePath = getModuleDllPath(m, m.module)
     hcrModuleMeta.addDeclWithVisibility(Private):
       hcrModuleMeta.addArrayVarWithInitializer(kind = Local,
@@ -1977,7 +1977,7 @@ proc registerModuleToMain(g: BModuleList; m: BModule) =
           g.graph.importDeps.withValue(FileIndex(m.module.position), deps):
             for curr in deps[]:
               hcrModuleMeta.addField(modules, ""):
-                hcrModuleMeta.add(getModuleDllPath(m, g.modules[curr.int].module))
+                hcrModuleMeta.add(getModuleDllPath(m, g.mods[curr.int].module))
           hcrModuleMeta.addField(modules, ""):
             hcrModuleMeta.add("\"\"")
     hcrModuleMeta.addDeclWithVisibility(ExportLib):
@@ -2388,10 +2388,10 @@ proc newModule(g: BModuleList; module: PSym; conf: ConfigRef; idgen: IdGenerator
   # we should create only one cgen module for each module sym
   result = rawNewModule(g, module, conf)
   result.idgen = idgen
-  if module.position >= g.modules.len:
-    setLen(g.modules, module.position + 1)
+  if module.position >= g.mods.len:
+    setLen(g.mods, module.position + 1)
   #growCache g.modules, module.position
-  g.modules[module.position] = result
+  g.mods[module.position] = result
 
 template injectG() {.dirty.} =
   if graph.backend == nil:
@@ -2654,7 +2654,7 @@ proc genForwardedProcs(g: BModuleList) =
   while g.forwardedProcs.len > 0:
     let
       prc = g.forwardedProcs.pop()
-      m = g.modules[prc.itemId.module]
+      m = g.mods[prc.itemId.module]
     if sfForward in prc.flags:
       internalError(m.config, prc.info, "still forwarded: " & prc.name.s)
 

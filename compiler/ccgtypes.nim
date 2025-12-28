@@ -1864,7 +1864,7 @@ proc genTypeInfoV2Impl(m: BModule; t, origType: PType, name: Rope; info: TLineIn
 
 proc myModuleOpenForCodegen(m: BModule; idx: FileIndex): bool {.inline.} =
   if moduleOpenForCodegen(m.g.graph, idx):
-    result = idx.int < m.g.modules.len and m.g.modules[idx.int] != nil
+    result = idx.int < m.g.mods.len and m.g.mods[idx.int] != nil
   else:
     result = false
 
@@ -1898,7 +1898,7 @@ proc genTypeInfoV2(m: BModule; t: PType; info: TLineInfo): Rope =
   let owner = t.skipTypes(typedescPtrs).itemId.module
   if owner != m.module.position and myModuleOpenForCodegen(m, FileIndex owner):
     # make sure the type info is created in the owner module
-    discard genTypeInfoV2(m.g.modules[owner], origType, info)
+    discard genTypeInfoV2(m.g.mods[owner], origType, info)
     # reference the type info as extern here
     cgsym(m, "TNimTypeV2")
     declareNimType(m, "TNimTypeV2", result, owner)
@@ -1983,7 +1983,7 @@ proc genTypeInfoV1(m: BModule; t: PType; info: TLineInfo): Rope =
   var owner = t.skipTypes(typedescPtrs).itemId.module
   if owner != m.module.position and myModuleOpenForCodegen(m, FileIndex owner):
     # make sure the type info is created in the owner module
-    discard genTypeInfoV1(m.g.modules[owner], origType, info)
+    discard genTypeInfoV1(m.g.mods[owner], origType, info)
     # reference the type info as extern here
     cgsym(m, "TNimType")
     cgsym(m, "TNimNode")
