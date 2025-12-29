@@ -1543,7 +1543,7 @@ proc genProcLvl2(m: BModule, prc: PSym) =
     # externally-to-the-current-module defined proc, also important
     # to do the declaredProtos check before the call to genProcPrototype
     if isReloadable(m, prc) and prc.id notin m.declaredProtos and
-      q != nil and q.module.id != m.module.id:
+      q != nil and not sameModules(q.module, m.module):
       m.s[cfsDynLibInit].add('\t')
       m.s[cfsDynLibInit].addAssignment(prc.loc.snippet,
         cCast(getProcTypeCast(m, prc),
@@ -1601,7 +1601,7 @@ proc genVarPrototype(m: BModule, n: PNode) =
 
   if (lfNoDecl in sym.loc.flags) or contains(m.declaredThings, sym.id):
     return
-  if sym.owner.id != m.module.id:
+  if not sameModules(sym.owner, m.module):
     # else we already have the symbol generated!
     assert(sym.loc.snippet != "")
     incl(m.declaredThings, sym.id)
