@@ -1601,7 +1601,7 @@ proc genVarPrototype(m: BModule, n: PNode) =
 
   if (lfNoDecl in sym.loc.flags) or contains(m.declaredThings, sym.id):
     return
-  if not sameModules(sym.owner, m.module):
+  if not sameOwners(sym.owner, m.module):
     # else we already have the symbol generated!
     assert(sym.loc.snippet != "")
     incl(m.declaredThings, sym.id)
