@@ -1041,7 +1041,7 @@ proc getTypeDescAux(m: BModule; origTyp: PType, check: var IntSet; kind: TypeDes
       m.s[cfsTypes].addArrayTypedef(name = result, len = 1):
         m.s[cfsTypes].add(et)
   of tyArray:
-    var n: BiggestInt = toInt64(lengthOrd(m.config, t))
+    var n = toInt64(lengthOrd(m.config, t))
     if n <= 0: n = 1   # make an array of at least one element
     result = getTypeName(m, origTyp, sig)
     m.typeCache[sig] = result
