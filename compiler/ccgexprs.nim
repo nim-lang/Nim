@@ -749,16 +749,16 @@ proc binaryArith(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     let t = getType()
     let at = cUintType(k)
     let bt = cUintType(s)
-    res = cCast(t, cOp(Shr, at, cCast(at, ra), cCast(bt, rb)))
+    res = cCast(t, cOp(Shr, at, cCast(at, ra), cOp(BitAnd, at, cCast(bt, rb), cIntLiteral(k - 1))))
   of mShlI:
     let t = getType()
     let at = cUintType(s)
-    res = cCast(t, cOp(Shl, at, cCast(at, ra), cCast(at, rb)))
+    res = cCast(t, cOp(Shl, at, cCast(at, ra), cOp(BitAnd, at, cCast(at, rb), cIntLiteral(k - 1))))
   of mAshrI:
     let t = getType()
     let at = cIntType(s)
     let bt = cUintType(s)
-    res = cCast(t, cOp(Shr, at, cCast(at, ra), cCast(bt, rb)))
+    res = cCast(t, cOp(Shr, at, cCast(at, ra), cOp(BitAnd, at, cCast(bt, rb), cIntLiteral(k - 1))))
   of mBitandI:
     let t = getType()
     res = cCast(t, cOp(BitAnd, t, ra, rb))
