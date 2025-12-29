@@ -31,6 +31,8 @@ errors.
 
 - The second parameter of `succ`, `pred`, `inc`, and `dec` in `system` now accepts `SomeInteger` (previously `Ordinal`).
 
+- Bitshift operators (`shl`, `shr`, `ashr`) now apply bitmasking to the right operand in the C/C++/VM/JS backends.
+
 ## Standard library additions and changes
 
 [//]: # "Additions:"
