@@ -131,11 +131,18 @@ proc generateCode*(g: ModuleGraph; mainFileIdx: FileIndex) =
   # during code generation of `main.nim` we can trigger the code generation
   # of symbols in different modules so we need to finish these modules
   # here later, after the above loop!
+  # Important: The main module must be finished LAST so that all other modules
+  # have registered their init procs before genMainProc uses them.
+  var mainModule: BModule = nil
   for m in BModuleList(g.backend).mods:
     if m != nil:
       assert m.module != nil
-      #if sfMainModule notin m.module.flags:
-      finishModule g, m
+      if sfMainModule in m.module.flags:
+        mainModule = m
+      else:
+        finishModule g, m
+  if mainModule != nil:
+    finishModule g, mainModule
 
   # Write C files
   cgenWriteModules(g.backend, g.config)

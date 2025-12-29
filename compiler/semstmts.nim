@@ -2361,7 +2361,7 @@ proc semCppMember(c: PContext; s: PSym; n: PNode) =
         typ = typ.elementType
       if typ.kind != tyObject:
         localError(c.config, n.info, pragmaName & " must be either ptr to object or object type.")
-      if typ.owner.id == s.owner.id and c.module.id == s.owner.id:
+      if sameOwners(typ.owner, s.owner) and sameOwners(c.module, s.owner):
         c.graph.memberProcsPerType.mgetOrPut(typ.itemId, @[]).add s
       else:
         localError(c.config, n.info,
