@@ -128,7 +128,7 @@ proc createInterpreter*(scriptName: string;
     if conf.libpath.isEmpty: conf.libpath = AbsoluteDir p
 
   var m = graph.makeModule(scriptName)
-  incl(m.flags, sfMainModule)
+  incl(m, sfMainModule)
   var idgen = idGeneratorFromModule(m)
   var vm = newCtx(m, cache, graph, idgen)
   vm.mode = emRepl
@@ -168,7 +168,7 @@ proc runRepl*(r: TLLRepl;
   if supportNimscript: defineSymbol(conf.symbols, "nimconfig")
   when hasFFI: defineSymbol(graph.config.symbols, "nimffi")
   var m = graph.makeStdinModule()
-  incl(m.flags, sfMainModule)
+  incl(m, sfMainModule)
   var idgen = idGeneratorFromModule(m)
 
   if supportNimscript: graph.vm = setupVM(m, cache, "stdin", graph, idgen)

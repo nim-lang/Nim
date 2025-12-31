@@ -230,11 +230,11 @@ elif someVcc:
   proc atomicCompareExchangeN*[T: ptr](p, expected: ptr T, desired: T,
     weak: bool, success_memmodel: AtomMemModel, failure_memmodel: AtomMemModel): bool =
     when sizeof(T) == 8:
-      interlockedCompareExchange64(p, cast[int64](desired), cast[int64](expected)) ==
-        cast[int64](expected)
+      interlockedCompareExchange64(p, cast[int64](desired), cast[int64](expected[])) ==
+        cast[int64](expected[])
     elif sizeof(T) == 4:
-      interlockedCompareExchange32(p, cast[int32](desired), cast[int32](expected)) ==
-        cast[int32](expected)
+      interlockedCompareExchange32(p, cast[int32](desired), cast[int32](expected[])) ==
+        cast[int32](expected[])
 
   proc atomicExchangeN*[T: ptr](p: ptr T, val: T, mem: AtomMemModel): T =
     when sizeof(T) == 8:

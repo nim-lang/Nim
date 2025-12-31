@@ -145,3 +145,18 @@ proc main123() =
     discard
 
 main123()
+
+# bug #21138
+iterator ubi(): int =
+  when nimvm:
+    yield 0
+  else:
+    yield 0
+
+block:
+  for k in ubi():
+    func e() {.closure.} = discard
+
+static:
+  for k in ubi():
+    func e() {.closure.} = discard

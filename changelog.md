@@ -19,15 +19,52 @@ errors.
 
 - With `-d:nimPreviewAsmSemSymbol`, backticked symbols are type checked in the `asm/emit` statements.
 
+- The bare `except:` now panics on `Defect`. Use `except Exception:` or `except Defect:` to catch `Defect`. `--legacy:noPanicOnExcept` is provided for a transition period.
+
+- With `-d:nimPreviewCStringComparisons`, comparsions (`<`, `>`, `<=`, `>=`) between cstrings switch from reference semantics to value semantics like `==` and `!=`.
+
+- `std/parsesql` has been moved to a nimble package, use `nimble` or `atlas` to install it.
+
+- With `-d:nimPreviewDuplicateModuleError`, importing two modules that share the same name becomes a compile-time error. This includes importing the same module more than once. Use `import foo as foo1` (or other aliases) to avoid collisions.
+
+- Adds the switch `--mangle:nim|cpp`, which selects `nim` or `cpp` style name mangling when used with `debuginfo` on, defaults to `cpp`.
+
+- The second parameter of `succ`, `pred`, `inc`, and `dec` in `system` now accepts `SomeInteger` (previously `Ordinal`).
+
+- Bitshift operators (`shl`, `shr`, `ashr`) now apply bitmasking to the right operand in the C/C++/VM/JS backends.
+
 ## Standard library additions and changes
 
 [//]: # "Additions:"
+
 - `setutils.symmetricDifference` along with its operator version
   `` setutils.`-+-` `` and in-place version `setutils.toggle` have been added
   to more efficiently calculate the symmetric difference of bitsets.
+- `strutils.multiReplace` overload for character set replacements in a single pass.
+	Useful for string sanitation. Follows existing multiReplace semantics.
+
+- `std/files` adds:
+  - Exports `CopyFlag` enum and `FilePermission` type for fine-grained control of file operations
+  - New file operation procs with `Path` support:
+    - `getFilePermissions`, `setFilePermissions` for managing permissions
+    - `tryRemoveFile` for file deletion
+    - `copyFile` with configurable buffer size and symlink handling
+    - `copyFileWithPermissions` to preserve file attributes
+    - `copyFileToDir` for copying files into directories
+
+- `std/dirs` adds:
+  - New directory operation procs with `Path` support:
+    - `copyDir` with special file handling options
+    - `copyDirWithPermissions` to recursively preserve attributes
+
+- `system.setLenUninit` now supports refc, JS and VM backends.
 
 [//]: # "Changes:"
+
 - `std/math` The `^` symbol now supports floating-point as exponent in addition to the Natural type.
+- `min`, `max`, and `sequtils`' `minIndex`, `maxIndex` and `minmax` for `openArray`s now accept a comparison function.
+- `system.substr` implementation now uses `copymem` (wrapped C `memcpy`) for copying data, if available at compilation.
+- `system.newStringUninit` is now considered free of side-effects allowing it to be used with `--experimental:strictFuncs`.
 
 ## Language changes
 
@@ -68,7 +105,15 @@ errors.
 
 ## Compiler changes
 
+- Fixed a bug where `sizeof(T)` inside a `typedesc` template called from a generic type's
+  `when` clause would error with "'sizeof' requires '.importc' types to be '.completeStruct'".
+  The issue was that `hasValuelessStatics` in `semtypinst.nim` didn't recognize
+  `tyTypeDesc(tyGenericParam)` as an unresolved generic parameter.
 
 ## Tool changes
 
+- Added `--stdinfile` flag to name of the file used when running program from stdin (defaults to `stdinfile.nim`)
 
+## Documentation changes
+
+- Added documentation for the `completeStruct` pragma in the manual.
