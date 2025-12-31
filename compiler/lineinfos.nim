@@ -110,6 +110,7 @@ type
     hintSource = "Source", hintPerformance = "Performance", hintStackTrace = "StackTrace",
     hintGCStats = "GCStats", hintGlobalVar = "GlobalVar", hintExpandMacro = "ExpandMacro",
     hintUser = "User", hintUserRaw = "UserRaw", hintExtendedContext = "ExtendedContext",
+    hintUnknownRaises = "UnknownRaises",
     hintMsgOrigin = "MsgOrigin", # since 1.3.5
     hintDeclaredLoc = "DeclaredLoc", # since 1.5.1
 
@@ -236,6 +237,7 @@ const
     hintUser: "$1",
     hintUserRaw: "$1",
     hintExtendedContext: "$1",
+    hintUnknownRaises: "$1 is a forward declaration without explicit .raises, assuming it can raise anything",
     hintMsgOrigin: "$1",
     hintDeclaredLoc: "$1"
   ]
@@ -271,6 +273,10 @@ const
   errFloatToString* = "cannot convert '$1' to '$2'"
 
 type
+  FileInfoKind* = enum
+    fikSource,      ## A real source file path
+    fikNifModule    ## A NIF module suffix (not a real path)
+
   TFileInfo* = object
     fullPath*: AbsoluteFile    # This is a canonical full filesystem path
     projPath*: RelativeFile    # This is relative to the project's root
@@ -289,6 +295,7 @@ type
                                # for 'nimsuggest'
     hash*: string              # the checksum of the file
     dirty*: bool               # for 'nimpretty' like tooling
+    kind*: FileInfoKind        # distinguishes real files from NIF suffixes
     when defined(nimpretty):
       fullContent*: string
   FileIndex* = distinct int32

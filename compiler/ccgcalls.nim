@@ -338,7 +338,7 @@ proc withTmpIfNeeded(p: BProc, a: TLoc, needsTmp: bool): TLoc =
   else:
     result = a
 
-proc literalsNeedsTmp(p: BProc, a: TLoc): TLoc =
+proc expressionsNeedsTmp(p: BProc, a: TLoc): TLoc =
   result = getTemp(p, a.lode.typ, needsInit=false)
   genAssignment(p, result, a, {})
 
@@ -358,7 +358,7 @@ proc genArg(p: BProc, n: PNode, param: PSym; call: PNode; result: var Builder; n
     (optByRef notin param.options or not p.module.compileToCpp):
     a = initLocExpr(p, n)
     if n.kind in {nkCharLit..nkNilLit}:
-      addAddrLoc(p.config, literalsNeedsTmp(p, a), result)
+      addAddrLoc(p.config, expressionsNeedsTmp(p, a), result)
     else:
       addAddrLoc(p.config, withTmpIfNeeded(p, a, needsTmp), result)
   elif p.module.compileToCpp and param.typ.kind in {tyVar} and
@@ -368,8 +368,8 @@ proc genArg(p: BProc, n: PNode, param: PSym; call: PNode; result: var Builder; n
     # variable. Thus, we create a temporary pointer variable instead.
     let needsIndirect = mapType(p.config, n[0].typ, mapTypeChooser(n[0]) == skParam) != ctArray
     if needsIndirect:
-      n.typ() = n.typ.exactReplica
-      n.typ.flags.incl tfVarIsPtr
+      n.typ = n.typ.exactReplica
+      n.typ.incl tfVarIsPtr
     a = initLocExprSingleUse(p, n)
     a = withTmpIfNeeded(p, a, needsTmp)
     if needsIndirect: a.flags.incl lfIndirect
@@ -417,35 +417,6 @@ proc skipTrivialIndirections(n: PNode): PNode =
     of nkHiddenStdConv, nkHiddenSubConv:
       result = result[1]
     else: break
-
-proc getPotentialWrites(n: PNode; mutate: bool; result: var seq[PNode]) =
-  case n.kind:
-  of nkLiterals, nkIdent, nkFormalParams: discard
-  of nkSym:
-    if mutate: result.add n
-  of nkAsgn, nkFastAsgn, nkSinkAsgn:
-    getPotentialWrites(n[0], true, result)
-    getPotentialWrites(n[1], mutate, result)
-  of nkAddr, nkHiddenAddr:
-    getPotentialWrites(n[0], true, result)
-  of nkBracketExpr, nkDotExpr, nkCheckedFieldExpr:
-    getPotentialWrites(n[0], mutate, result)
-  of nkCallKinds:
-    case n.getMagic:
-    of mIncl, mExcl, mInc, mDec, mAppendStrCh, mAppendStrStr, mAppendSeqElem,
-        mAddr, mNew, mNewFinalize, mWasMoved, mDestroy:
-      getPotentialWrites(n[1], true, result)
-      for i in 2..<n.len:
-        getPotentialWrites(n[i], mutate, result)
-    of mSwap:
-      for i in 1..<n.len:
-        getPotentialWrites(n[i], true, result)
-    else:
-      for i in 1..<n.len:
-        getPotentialWrites(n[i], mutate, result)
-  else:
-    for s in n:
-      getPotentialWrites(s, mutate, result)
 
 proc getPotentialReads(n: PNode; result: var seq[PNode]) =
   case n.kind:
@@ -527,7 +498,7 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
       else:
         cCall(p, params, e)
     cIfExpr(e,
-      eCall, 
+      eCall,
       cCall(cCast(pTyp, p), params))
 
   template callIter(rp, params: Snippet): Snippet =

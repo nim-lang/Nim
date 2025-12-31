@@ -15,11 +15,12 @@ import std/formatfloat
 when defined(windows):
   import std/widestrs
 
+from system/ansi_c import c_memchr, CFilePtr
+
 # ----------------- IO Part ------------------------------------------------
+
 type
-  CFile {.importc: "FILE", header: "<stdio.h>",
-          incompleteStruct.} = object
-  File* = ptr CFile ## The type representing a file handle.
+  File* = CFilePtr ## The type representing a file handle.
 
   FileMode* = enum       ## The file mode when opening a file.
     fmRead,              ## Open the file for read access only.
@@ -38,15 +39,19 @@ type
                          ## at the end. If the file does not exist, it
                          ## will be created.
 
-  FileHandle* = cint ## The type that represents an OS file handle; this is
-                      ## useful for low-level file access.
-
   FileSeekPos* = enum ## Position relative to which seek should happen.
                       # The values are ordered so that they match with stdio
                       # SEEK_SET, SEEK_CUR and SEEK_END respectively.
     fspSet            ## Seek to absolute value
     fspCur            ## Seek relative to current position
     fspEnd            ## Seek relative to end
+
+when defined(windows):
+  type FileHandle* = int
+    ## Windows `HANDLE` type, convertible to `winlean.Handle`.
+else:
+  type FileHandle* = cint ## The type that represents an OS file handle; this is
+                      ## useful for low-level file access.
 
 # text file handling:
 when not defined(nimscript) and not defined(js):
@@ -291,13 +296,7 @@ when SupportIoctlInheritCtl:
   proc c_ioctl(fd: cint, request: cint): cint {.
     importc: "ioctl", header: "<sys/ioctl.h>", varargs.}
 elif defined(posix) and not defined(lwip) and not defined(nimscript):
-  var
-    F_GETFD {.importc, header: "<fcntl.h>".}: cint
-    F_SETFD {.importc, header: "<fcntl.h>".}: cint
-    FD_CLOEXEC {.importc, header: "<fcntl.h>".}: cint
-
-  proc c_fcntl(fd: cint, cmd: cint): cint {.
-    importc: "fcntl", header: "<fcntl.h>", varargs.}
+  from posix import F_GETFD, F_SETFD, FD_CLOEXEC, fcntl, Stat, S_ISDIR, fstat
 elif defined(windows):
   type
     WinDWORD = culong
@@ -308,12 +307,7 @@ elif defined(windows):
   proc getOsfhandle(fd: cint): int {.
     importc: "_get_osfhandle", header: "<io.h>".}
 
-  type
-    IoHandle = distinct pointer
-      ## Windows' HANDLE type. Defined as an untyped pointer but is **not**
-      ## one. Named like this to avoid collision with other `system` modules.
-
-  proc setHandleInformation(hObject: IoHandle, dwMask, dwFlags: WinDWORD):
+  proc setHandleInformation(hObject: FileHandle, dwMask, dwFlags: WinDWORD):
                            WinBOOL {.stdcall, dynlib: "kernel32",
                                   importc: "SetHandleInformation".}
 
@@ -359,7 +353,7 @@ proc getFileHandle*(f: File): FileHandle =
   ## Note that on Windows this doesn't return the Windows-specific handle,
   ## but the C library's notion of a handle, whatever that means.
   ## Use `getOsFileHandle` instead.
-  c_fileno(f)
+  FileHandle c_fileno(f)
 
 proc getOsFileHandle*(f: File): FileHandle =
   ## Returns the OS file handle of the file `f`. This is only useful for
@@ -382,13 +376,13 @@ when defined(nimdoc) or (defined(posix) and not defined(nimscript)) or defined(w
     elif defined(freertos) or defined(zephyr):
       result = true
     elif defined(posix):
-      var flags = c_fcntl(f, F_GETFD)
+      var flags = fcntl(f, F_GETFD)
       if flags == -1:
         return false
       flags = if inheritable: flags and not FD_CLOEXEC else: flags or FD_CLOEXEC
-      result = c_fcntl(f, F_SETFD, flags) != -1
+      result = fcntl(f, F_SETFD, flags) != -1
     else:
-      result = setHandleInformation(cast[IoHandle](f), HANDLE_FLAG_INHERIT,
+      result = setHandleInformation(f, HANDLE_FLAG_INHERIT,
                                     inheritable.WinDWORD) != 0
 
 proc readLine*(f: File, line: var string): bool {.tags: [ReadIOEffect],
@@ -400,9 +394,6 @@ proc readLine*(f: File, line: var string): bool {.tags: [ReadIOEffect],
   ## if the end of the file has been reached, `true` otherwise. If
   ## `false` is returned `line` contains no new data.
   result = false
-
-  proc c_memchr(s: pointer, c: cint, n: csize_t): pointer {.
-    importc: "memchr", header: "<string.h>".}
 
   when defined(windows):
     proc readConsole(hConsoleInput: FileHandle, lpBuffer: pointer,
@@ -424,12 +415,18 @@ proc readLine*(f: File, line: var string): bool {.tags: [ReadIOEffect],
       importc: "LocalFree", stdcall, dynlib: "kernel32".}
 
     proc isatty(f: File): bool =
+      # terminal module also has isatty
       when defined(posix):
         proc isatty(fildes: FileHandle): cint {.
           importc: "isatty", header: "<unistd.h>".}
-      else:
-        proc isatty(fildes: FileHandle): cint {.
+      elif defined(windows):
+        proc c_isatty(fildes: cint): cint {.
           importc: "_isatty", header: "<io.h>".}
+        proc isatty(fildes: FileHandle): cint =
+          c_isatty(cint(fildes))
+      else:
+        {.error: "isatty is not supported on your operating system!".}
+
       result = isatty(getFileHandle(f)) != 0'i32
 
     # this implies the file is open
@@ -491,7 +488,7 @@ proc readLine*(f: File, line: var string): bool {.tags: [ReadIOEffect],
       checkErr(f)
       break
 
-    let m = c_memchr(addr line[pos], '\L'.ord, cast[csize_t](sp))
+    let m = c_memchr(addr line[pos], cint('\L'), cast[csize_t](sp))
     if m != nil:
       # \l found: Could be our own or the one by fgets, in any case, we're done
       var last = cast[int](m) - cast[int](addr line[0])
@@ -676,37 +673,6 @@ const
     # we always use binary here as for Nim the OS line ending
     # should not be translated.
 
-when defined(posix) and not defined(nimscript):
-  when defined(linux) and defined(amd64):
-    type
-      Mode {.importc: "mode_t", header: "<sys/types.h>".} = cint
-
-      # fillers ensure correct size & offsets
-      Stat {.importc: "struct stat",
-              header: "<sys/stat.h>", final, pure.} = object ## struct stat
-        filler_1: array[24, char]
-        st_mode: Mode ## Mode of file
-        filler_2: array[144 - 24 - 4, char]
-
-    proc modeIsDir(m: Mode): bool =
-      ## Test for a directory.
-      (m and 0o170000) == 0o40000
-
-  else:
-    type
-      Mode {.importc: "mode_t", header: "<sys/types.h>".} = cint
-
-      Stat {.importc: "struct stat",
-               header: "<sys/stat.h>", final, pure.} = object ## struct stat
-        st_mode: Mode ## Mode of file
-
-    proc modeIsDir(m: Mode): bool {.importc: "S_ISDIR", header: "<sys/stat.h>".}
-      ## Test for a directory.
-
-  proc c_fstat(a1: cint, a2: var Stat): cint {.
-    importc: "fstat", header: "<sys/stat.h>".}
-
-
 proc open*(f: var File, filename: string,
           mode: FileMode = fmRead,
           bufSize: int = -1): bool {.tags: [], raises: [], benign.} =
@@ -719,12 +685,12 @@ proc open*(f: var File, filename: string,
   var p = fopen(filename.cstring, FormatOpen[mode])
   if p != nil:
     var f2 = cast[File](p)
-    when defined(posix) and not defined(nimscript):
+    when declared(Stat) and declared(fstat) and declared S_ISDIR:
       # How `fopen` handles opening a directory is not specified in ISO C and
       # POSIX. We do not want to handle directories as regular files that can
       # be opened.
       var res {.noinit.}: Stat
-      if c_fstat(getFileHandle(f2), res) >= 0'i32 and modeIsDir(res.st_mode):
+      if fstat(getFileHandle(f2), res) >= 0'i32 and S_ISDIR(res.st_mode):
         closeIgnoreError(f2)
         return false
     when not defined(nimInheritHandles) and declared(setInheritable) and
@@ -770,10 +736,10 @@ proc open*(f: var File, filehandle: FileHandle,
   ## The passed file handle will no longer be inheritable.
   when not defined(nimInheritHandles) and declared(setInheritable):
     let oshandle = when defined(windows): FileHandle getOsfhandle(
-        filehandle) else: filehandle
+        cint filehandle) else: filehandle
     if not setInheritable(oshandle, false):
       return false
-  f = c_fdopen(filehandle, RawFormatOpen[mode])
+  f = c_fdopen(cint filehandle, RawFormatOpen[mode])
   result = f != nil
 
 proc open*(filename: string,

@@ -172,4 +172,6 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimHasDefaultFloatRoundtrip")
   defineSymbol("nimHasXorSet")
 
-  defineSymbol("nimHasLegacyNoStrictDefs")
+  defineSymbol("nimHasSetLengthSeqUninitMagic")
+  defineSymbol("nimHasPreviewDuplicateModuleError")
+

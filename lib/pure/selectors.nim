@@ -25,6 +25,10 @@
 ## Solaris (files, sockets, handles and user events).
 ## Android (files, sockets, handles and user events).
 ##
+## By default, the implementation is chosen based on the target
+## platform; you can pass `-d:nimIoselector=value` to override it.
+## Accepted values are "epoll", "kqueue", "poll", and "select".
+##
 ## TODO: `/dev/poll`, `event ports` and filesystem events.
 
 import std/nativesockets
@@ -342,7 +346,9 @@ else:
           res = int(fdLim.rlim_cur) - 1
         res
 
-  when defined(nimIoselector):
+  const nimIoselector {.strdefine.} = ""
+
+  when nimIoselector != "":
     when nimIoselector == "epoll":
       include ioselects/ioselectors_epoll
     elif nimIoselector == "kqueue":

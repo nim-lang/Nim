@@ -32,13 +32,13 @@ proc dispatch(x: Base, params: ...) =
     dispatchObject,
     newIntNode(nkIntLit, index)
   )
-  getVTableCall.typ() = getSysType(g, unknownLineInfo, tyPointer)
+  getVTableCall.typ = getSysType(g, unknownLineInfo, tyPointer)
   var vTableCall = newNodeIT(nkCall, base.info, base.typ.returnType)
   var castNode = newTree(nkCast,
         newNodeIT(nkType, base.info, base.typ),
         getVTableCall)
 
-  castNode.typ() = base.typ
+  castNode.typ = base.typ
   vTableCall.add castNode
   for col in 1..<paramLen:
     let param = base.typ.n[col].sym

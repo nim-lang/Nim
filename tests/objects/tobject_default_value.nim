@@ -811,3 +811,26 @@ template main {.dirty.} =
 
 static: main()
 main()
+
+block:
+  type
+    MyTyp = ref object
+      thing = initTable[string,string]()
+
+  var t = MyTyp()
+  t.thing[""] = ""
+
+
+type
+  Thing = object
+    a: int = 100 # this is fine
+    b = 100 # this is not
+
+proc overloaded[T: SomeSignedInt](x: T) = discard
+proc overloaded[T: SomeUnsignedInt](x: T) = discard
+proc overloaded[T: object](x: T) =
+  for val in fields(x):
+    var v: typeof(val)
+    overloaded(v)
+
+overloaded(Thing())
