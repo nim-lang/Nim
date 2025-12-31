@@ -7930,6 +7930,26 @@ alignment requirement of the type are ignored.
 
 This pragma has no effect on the JS backend.
 
+For generic types and fields, the `align` pragma accepts expressions involving
+type parameters:
+
+  ```Nim
+  type
+    # Type-level alignment based on generic parameter
+    CacheAligned[T] {.align: alignof(T).} = object
+      value: T
+
+    # Field-level alignment
+    Container[T] = object
+      header: int32
+      data {.align: alignof(T).}: T
+
+  static:
+    doAssert alignof(CacheAligned[int64]) >= alignof(int64)
+  ```
+
+The expression is evaluated when the generic type is instantiated.
+
 
 Noalias pragma
 --------------

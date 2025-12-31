@@ -115,6 +115,17 @@ errors.
     doAssert sizeof(CppAtomic[int32]) == 4
   ```
 
+- The `align` pragma is now supported on types.
+- The `align` pragma now supports expressions involving type parameters for generic
+  types and fields. The expression is evaluated when the generic type is instantiated.
+
+  ```nim
+  type
+    Container[T] = object
+      header: int32
+      data {.align: alignof(T).}: T
+  ```
+
 ## Compiler changes
 
 - Fixed a bug where `sizeof(T)` inside a `typedesc` template called from a generic type's

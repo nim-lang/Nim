@@ -9,7 +9,7 @@
 
 # This module does the instantiation of generic types.
 
-import std / tables
+import std / [tables, math]
 
 import ast, astalgo, msgs, types, magicsys, semdata, renderer, options,
   lineinfos, modulegraphs, layeredtable, wordrecg
@@ -84,6 +84,7 @@ type
 proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType, isInstValue = false): PType
 proc replaceTypeVarsS(cl: var TReplTypeVars, s: PSym, t: PType): PSym
 proc replaceTypeVarsN*(cl: var TReplTypeVars, n: PNode; start=0; expectedType: PType = nil): PNode
+proc evaluateDeferredFieldPragmas(cl: var TReplTypeVars, s: PSym, body: PType)
 
 proc newTypeMapLayer*(cl: var TReplTypeVars): LayeredIdTable =
   result = newTypeMapLayer(cl.typeMap)
@@ -295,6 +296,8 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0; expectedType: PT
       cl.c.fitDefaultNode(cl.c, n, result.sym.typ)
       result.sym.ast = n
       result.sym.typ = n.typ.skipIntLit(cl.c.idgen)
+    if result.sym.kind == skField and cl.genericBody != nil:
+      evaluateDeferredFieldPragmas(cl, result.sym, cl.genericBody)
     # sym type can be nil if was gensym created by macro, see #24048
     if result.sym.typ != nil and result.sym.typ.kind == tyVoid:
       # don't add the 'void' field
@@ -493,8 +496,63 @@ proc applyDeferredPragma(cl: var TReplTypeVars, t: PType, word: TSpecialWord,
       localError(cl.c.config, info, "size must be a compile-time constant integer")
     if size > 0:
       setImportedTypeSize(cl.c.config, t, size)
+  of wAlign:
+    var alignment = 0
+    if val.kind in nkIntLit..nkInt64Lit:
+      let alignVal = int(val.intVal)
+      if isPowerOfTwo(alignVal) and alignVal > 0:
+        alignment = alignVal
+      else:
+        localError(cl.c.config, info, "align must be a power of two")
+    else:
+      localError(cl.c.config, info, "align must be a compile-time constant integer")
+    if alignment > 0:
+      t.align = int16(alignment)
   else:
     discard
+
+proc applyDeferredFieldPragma(cl: var TReplTypeVars, s: PSym, word: TSpecialWord,
+                              val: PNode, info: TLineInfo) =
+  ## Applies an evaluated deferred pragma to a field symbol.
+  case word
+  of wAlign:
+    var alignment = 0
+    if val.kind in nkIntLit..nkInt64Lit:
+      let alignVal = int(val.intVal)
+      if isPowerOfTwo(alignVal) and alignVal > 0:
+        alignment = alignVal
+      else:
+        localError(cl.c.config, info, "align must be a power of two")
+    else:
+      localError(cl.c.config, info, "align must be a compile-time constant integer")
+    if alignment > 0:
+      s.alignment = max(s.alignment, alignment)
+  else:
+    discard
+
+proc evaluateDeferredFieldPragmas(cl: var TReplTypeVars, s: PSym, body: PType) =
+  ## Evaluates deferred pragma expressions on field symbols after generic instantiation.
+  if s.kind != skField:
+    return
+  if sfHasDeferredPragmas notin s.flags:
+    return
+
+  var toClear: seq[TSpecialWord] = @[]
+  for dp in s.deferredPragmas:
+    let expr = dp.expr
+    if expr == nil: continue
+
+    var hasUnresolved = false
+    let replacedExpr = replaceIdentsWithTypes(cl, expr, body, hasUnresolved)
+    if hasUnresolved:
+      continue
+
+    let val = cl.c.semConstExpr(cl.c, replacedExpr)
+    applyDeferredFieldPragma(cl, s, dp.word, val, expr.info)
+    toClear.add(dp.word)
+
+  for word in toClear:
+    s.clearDeferredExpr(word)
 
 proc evaluateDeferredPragmas(cl: var TReplTypeVars, t: PType, body: PType) =
   ## Evaluates all deferred pragma expressions on a type after generic instantiation.

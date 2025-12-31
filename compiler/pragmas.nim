@@ -72,7 +72,7 @@ const
     wRaises, wLocks, wTags, wForbids, wRequires, wEnsures, wEffectsOf,
     wGcSafe, wCodegenDecl, wNoInit, wCompileTime}
   typePragmas* = declPragmas + {wMagic, wAcyclic,
-    wPure, wHeader, wCompilerProc, wCore, wFinal, wSize, wShallow,
+    wPure, wHeader, wCompilerProc, wCore, wFinal, wSize, wAlign, wShallow,
     wIncompleteStruct, wCompleteStruct, wByCopy, wByRef,
     wInheritable, wGensym, wInject, wRequiresInit, wUnchecked, wUnion, wPacked,
     wCppNonPod, wBorrow, wGcSafe, wPartial, wExplain, wPackage, wCodegenDecl,
@@ -1050,11 +1050,32 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
           let size = expectIntLit(c, it)
           applySize(c, sym.typ, size, sfImportc in sym.flags, it.info)
       of wAlign:
-        let alignment = expectIntLit(c, it)
-        if isPowerOfTwo(alignment) and alignment > 0:
-          sym.alignment = max(sym.alignment, alignment)
+        if sym.kind == skType:
+          if deferOrEvaluate(c, sym, it, wAlign, requireImportc = false):
+            discard
+          else:
+            let expr = it[1]
+            let evaluated = c.semConstExpr(c, expr.copyTree)
+            let alignment = expectInt(c, evaluated, it.info, "align")
+            if isPowerOfTwo(alignment) and alignment > 0:
+              sym.typ.align = int16(alignment)
+            else:
+              localError(c.config, it.info, "align must be a power of two")
+        elif sym.kind == skField:
+          if deferOrEvaluate(c, sym, it, wAlign, requireImportc = false):
+            discard
+          else:
+            let alignment = expectIntLit(c, it)
+            if isPowerOfTwo(alignment) and alignment > 0:
+              sym.alignment = max(sym.alignment, alignment)
+            else:
+              localError(c.config, it.info, "align must be a power of two")
         else:
-          localError(c.config, it.info, "power of two expected")
+          let alignment = expectIntLit(c, it)
+          if isPowerOfTwo(alignment) and alignment > 0:
+            sym.alignment = max(sym.alignment, alignment)
+          else:
+            localError(c.config, it.info, "power of two expected")
       of wNodecl:
         noVal(c, it)
         sym.incl(lfNoDecl)
