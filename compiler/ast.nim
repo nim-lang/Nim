@@ -10,7 +10,7 @@
 # abstract syntax tree + symbol table
 
 import
-  lineinfos, options, ropes, idents, int128, wordrecg
+  lineinfos, options, idents, int128, wordrecg
 
 import std/[tables, hashes]
 from std/strutils import toLowerAscii
