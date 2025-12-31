@@ -311,7 +311,7 @@ proc errorSym*(c: PContext, ident: PIdent, info: TLineInfo): PSym =
   ## creates an error symbol to avoid cascading errors (for IDE support)
   result = newSym(skError, ident, c.idgen, getCurrOwner(c), info, {})
   result.typ = errorType(c)
-  incl(result.flags, sfDiscardable)
+  incl(result.flagsImpl, sfDiscardable)
   # pretend it's from the top level scope to prevent cascading errors:
   if c.config.cmd != cmdInteractive and c.compilesContextId == 0:
     c.moduleScope.addSym(result)
@@ -388,7 +388,7 @@ proc addDeclAt*(c: PContext; scope: PScope, sym: PSym, info: TLineInfo) =
   if sym.name.id == ord(wUnderscore): return
   let conflict = scope.addUniqueSym(sym)
   if conflict != nil:
-    if sym.kind == skModule and conflict.kind == skModule:
+    if sym.kind == skModule and conflict.kind == skModule and not c.config.isDefined("nimPreviewDuplicateModuleError"):
       # e.g.: import foo; import foo
       # xxx we could refine this by issuing a different hint for the case
       # where a duplicate import happens inside an include.

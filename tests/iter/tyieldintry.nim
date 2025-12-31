@@ -17,9 +17,12 @@ proc testClosureIterAux(it: iterator(): int, exceptionExpected: bool, expectedRe
 
   var exceptionCaught = false
 
+  var maxIterations = 10000
   try:
     for i in it():
       closureIterResult.add(i)
+      dec maxIterations
+      doAssert(maxIterations > 0, "Too many iterations in test. Infinite loop?")
   except TestError:
     exceptionCaught = true
 
@@ -752,3 +755,145 @@ block: #25038
       0
 
   test(d)
+
+block: #25202
+  proc p() =
+    iterator p_1073741828(checkpoints: var seq[int]): int {.
+        closure, raises: [].} =
+      var closureSucceeded_1073741827 = true
+      try:
+        try:
+          try:
+            yield 0
+            raise newException(ValueError, "value error")
+          except ValueError:
+            checkpoints.add(1)
+            raise newException(IOError, "io error")
+        finally:
+          yield 2
+      except IOError as exc:
+        closureSucceeded_1073741827 = false
+        checkpoints.add(3)
+      finally:
+        checkpoints.add(4)
+        if closureSucceeded_1073741827:
+          discard
+
+    var internalClosure = p_1073741828
+    var internalClosure2 = p_1073741828
+
+    var checkpoints1 = newSeq[int]()
+    var checkpoints2 = newSeq[int]()
+
+    while true:
+      if not internalClosure.finished():
+        checkpoints1.add internalClosure(checkpoints1)
+        doAssert(getCurrentException() == nil)
+      if not internalClosure2.finished():
+        checkpoints2.add internalClosure2(checkpoints2)
+        doAssert(getCurrentException() == nil)
+      if internalClosure.finished() and internalClosure2.finished():
+        break
+
+    if checkpoints1[^1] == 0: checkpoints1.del(checkpoints1.high)
+    if checkpoints2[^1] == 0: checkpoints2.del(checkpoints2.high)
+    doAssert(checkpoints1 == @[0, 1, 2, 3, 4])
+    doAssert(checkpoints1 == checkpoints2)
+
+  p()
+
+block: #25261
+  iterator y(): int {.closure.} =
+    try:
+      try:
+        raise newException(CatchableError, "Error")
+      except CatchableError:
+        return 123
+      yield 0
+    finally:
+      discard
+
+  let w = y
+  doAssert(w() == 123)
+  doAssert(getCurrentExceptionMsg() == "")
+
+  try:
+    raise newException(ValueError, "Outer error")
+  except:
+    doAssert(getCurrentExceptionMsg() == "Outer error")
+    let w = y
+    doAssert(w() == 123)
+    doAssert(getCurrentExceptionMsg() == "Outer error")
+  doAssert(getCurrentExceptionMsg() == "")
+
+block:
+  # Looks almost like above, but last finally changed to except
+  iterator y(): int {.closure.} =
+    try:
+      try:
+        raise newException(CatchableError, "Error")
+      except CatchableError:
+        return 123
+      yield 0
+    except:
+      discard
+
+  let w = y
+  doAssert(w() == 123)
+  doAssert(getCurrentExceptionMsg() == "")
+
+  try:
+    raise newException(ValueError, "Outer error")
+  except:
+    doAssert(getCurrentExceptionMsg() == "Outer error")
+    let w = y
+    doAssert(w() == 123)
+    doAssert(getCurrentExceptionMsg() == "Outer error")
+  doAssert(getCurrentExceptionMsg() == "")
+
+block: #25330 (v1)
+  iterator count1(): int {.closure.} =
+    yield 1
+    raiseTestError()
+
+  iterator count0(): int {.closure.} =
+    try:
+      var count = count1
+      while true:
+        yield count()
+        if finished(count): break
+    finally:
+      try:
+        checkpoint(2)
+        var count2 = count1
+        while true:
+          yield count2()
+          if finished(count2): break
+        discard  # removing this outputs "raise"
+      except:
+        checkpoint(3)
+        raise
+
+  testExc(count0, 1, 2, 1, 3)
+
+block: #25330 (v2)
+  iterator count1(): int {.closure.} =
+    yield 1
+    raiseTestError()
+
+  iterator count0(): int {.closure.} =
+    try:
+      var count = count1
+      for x in 0 .. 10:
+        yield count()
+    finally:
+      try:
+        checkpoint(2)
+        var count2 = count1
+        for x in 0 .. 10:
+          yield count2()
+      except:
+        checkpoint(3)
+        raise
+
+  testExc(count0, 1, 2, 1, 3)

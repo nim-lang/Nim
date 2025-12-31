@@ -1151,9 +1151,9 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
     # ideSug/ideCon performs partial build of the file, thus mark it dirty for the
     # future calls.
     graph.markDirtyIfNeeded(file.string, fileIndex)
-    graph.recompilePartially(fileIndex) 
+    graph.recompilePartially(fileIndex)
     let m = graph.getModule fileIndex
-    incl m.flags, sfDirty 
+    incl m, sfDirty
   of ideOutline:
     let n = parseFile(fileIndex, graph.cache, graph.config)
     graph.iterateOutlineNodes(n, graph.fileSymbols(fileIndex).deduplicateSymInfoPair(false))

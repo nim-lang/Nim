@@ -110,6 +110,9 @@ type                          # please make sure we have under 32 options
     optEnableDeepCopy         # ORC specific: enable 'deepcopy' for all types.
     optShowNonExportedFields  # for documentation: show fields that are not exported
     optJsBigInt64             # use bigints for 64-bit integers in JS
+    optItaniumMangle          # mangling follows the Itanium spec
+    optCompress               # turn on AST compression by converting it to NIF
+    optWithinConfigSystem     # we still compile within the configuration system
 
   TGlobalOptions* = set[TGlobalOption]
 
@@ -173,6 +176,8 @@ type
     cmdJsonscript # compile a .json build file
     # old unused: cmdInterpret, cmdDef: def feature (find definition for IDEs)
     cmdCompileToNif
+    cmdNifC  # generate C code from NIF files
+    cmdDeps  # generate .build.nif for nifmake
 
 const
   cmdBackends* = {cmdCompileToC, cmdCompileToCpp, cmdCompileToOC,
@@ -508,7 +513,7 @@ const
     optHints, optStackTrace, optLineTrace, # consider adding `optStackTraceMsgs`
     optTrMacros, optStyleCheck, optCursorInference}
   DefaultGlobalOptions* = {optThreadAnalysis, optExcessiveStackTrace,
-    optJsBigInt64}
+    optJsBigInt64, optItaniumMangle}
 
 proc getSrcTimestamp(): DateTime =
   try:

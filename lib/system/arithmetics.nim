@@ -1,4 +1,6 @@
-proc succ*[T, V: Ordinal](x: T, y: V = 1): T {.magic: "Succ", noSideEffect.} =
+{.push stack_trace: off.}
+
+proc succ*[T: Ordinal, V: SomeInteger](x: T, y: V = 1): T {.magic: "Succ", noSideEffect.} =
   ## Returns the `y`-th successor (default: 1) of the value `x`.
   ##
   ## If such a value does not exist, `OverflowDefect` is raised
@@ -7,7 +9,7 @@ proc succ*[T, V: Ordinal](x: T, y: V = 1): T {.magic: "Succ", noSideEffect.} =
     assert succ(5) == 6
     assert succ(5, 3) == 8
 
-proc pred*[T, V: Ordinal](x: T, y: V = 1): T {.magic: "Pred", noSideEffect.} =
+proc pred*[T: Ordinal, V: SomeInteger](x: T, y: V = 1): T {.magic: "Pred", noSideEffect.} =
   ## Returns the `y`-th predecessor (default: 1) of the value `x`.
   ##
   ## If such a value does not exist, `OverflowDefect` is raised
@@ -16,7 +18,7 @@ proc pred*[T, V: Ordinal](x: T, y: V = 1): T {.magic: "Pred", noSideEffect.} =
     assert pred(5) == 4
     assert pred(5, 3) == 2
 
-proc inc*[T, V: Ordinal](x: var T, y: V = 1) {.magic: "Inc", noSideEffect.} =
+proc inc*[T: Ordinal, V: SomeInteger](x: var T, y: V = 1) {.magic: "Inc", noSideEffect.} =
   ## Increments the ordinal `x` by `y`.
   ##
   ## If such a value does not exist, `OverflowDefect` is raised or a compile
@@ -28,7 +30,7 @@ proc inc*[T, V: Ordinal](x: var T, y: V = 1) {.magic: "Inc", noSideEffect.} =
     inc(i, 3)
     assert i == 6
 
-proc dec*[T, V: Ordinal](x: var T, y: V = 1) {.magic: "Dec", noSideEffect.} =
+proc dec*[T: Ordinal, V: SomeInteger](x: var T, y: V = 1) {.magic: "Dec", noSideEffect.} =
   ## Decrements the ordinal `x` by `y`.
   ##
   ## If such a value does not exist, `OverflowDefect` is raised or a compile
@@ -134,7 +136,10 @@ when defined(nimOldShiftRight):
 else:
   proc `shr`*(x: int, y: SomeInteger): int {.magic: "AshrI", noSideEffect.} =
     ## Computes the `shift right` operation of `x` and `y`, filling
-    ## vacant bit positions with the sign bit.
+    ## vacant bit positions with the sign bit. `y` (the number of
+    ## positions to shift) is reduced to modulo `sizeof(x) * 8`.
+    ## That is `15'i32 shr 35` is equivalent to `15'i32 shr 3`
+    ## bitmasked to always be in the range `0 ..< sizeof(int)`.
     ##
     ## **Note**: `Operator precedence <manual.html#syntax-precedence>`_
     ## is different than in *C*.
@@ -156,7 +161,9 @@ else:
 
 
 proc `shl`*(x: int, y: SomeInteger): int {.magic: "ShlI", noSideEffect.} =
-  ## Computes the `shift left` operation of `x` and `y`.
+  ## Computes the `shift left` operation of `x` and `y`. `y` (the number of
+  ## positions to shift) is reduced to modulo `sizeof(x) * 8`.
+  ## That is `15'i32 shl 35` is equivalent to `15'i32 shl 3`.
   ##
   ## **Note**: `Operator precedence <manual.html#syntax-precedence>`_
   ## is different than in *C*.
@@ -170,7 +177,9 @@ proc `shl`*(x: int64, y: SomeInteger): int64 {.magic: "ShlI", noSideEffect.}
 
 proc ashr*(x: int, y: SomeInteger): int {.magic: "AshrI", noSideEffect.} =
   ## Shifts right by pushing copies of the leftmost bit in from the left,
-  ## and let the rightmost bits fall off.
+  ## and let the rightmost bits fall off. `y` (the number of
+  ## positions to shift) is reduced to modulo `sizeof(x) * 8`.
+  ## That is `ashr(15'i32, 35)` is equivalent to `ashr(15'i32, 3)`.
   ##
   ## Note that `ashr` is not an operator so use the normal function
   ## call syntax for it.
@@ -179,7 +188,7 @@ proc ashr*(x: int, y: SomeInteger): int {.magic: "AshrI", noSideEffect.} =
   ## * `shr func<#shr,int,SomeInteger>`_
   runnableExamples:
     assert ashr(0b0001_0000'i8, 2) == 0b0000_0100'i8
-    assert ashr(0b1000_0000'i8, 8) == 0b1111_1111'i8
+    assert ashr(0b1000_0000'i8, 8) == 0b1000_0000'i8
     assert ashr(0b1000_0000'i8, 1) == 0b1100_0000'i8
 proc ashr*(x: int8, y: SomeInteger): int8 {.magic: "AshrI", noSideEffect.}
 proc ashr*(x: int16, y: SomeInteger): int16 {.magic: "AshrI", noSideEffect.}
@@ -403,3 +412,5 @@ proc `%%`*(x, y: int8): int8 {.inline.}   = cast[int8](cast[uint8](x) mod cast[u
 proc `%%`*(x, y: int16): int16 {.inline.} = cast[int16](cast[uint16](x) mod cast[uint16](y))
 proc `%%`*(x, y: int32): int32 {.inline.} = cast[int32](cast[uint32](x) mod cast[uint32](y))
 proc `%%`*(x, y: int64): int64 {.inline.} = cast[int64](cast[uint64](x) mod cast[uint64](y))
+
+{.pop.}

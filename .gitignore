@@ -68,6 +68,7 @@ testament.db
 /csources
 /csources_v1
 /csources_v2
+/csources_v3
 
 /dist/
 # /lib/fusion # fusion is now unbundled; `git status` should reveal if it's there so users can act on it

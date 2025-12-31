@@ -25,6 +25,14 @@ errors.
 
 - `std/parsesql` has been moved to a nimble package, use `nimble` or `atlas` to install it.
 
+- With `-d:nimPreviewDuplicateModuleError`, importing two modules that share the same name becomes a compile-time error. This includes importing the same module more than once. Use `import foo as foo1` (or other aliases) to avoid collisions.
+
+- Adds the switch `--mangle:nim|cpp`, which selects `nim` or `cpp` style name mangling when used with `debuginfo` on, defaults to `cpp`.
+
+- The second parameter of `succ`, `pred`, `inc`, and `dec` in `system` now accepts `SomeInteger` (previously `Ordinal`).
+
+- Bitshift operators (`shl`, `shr`, `ashr`) now apply bitmasking to the right operand in the C/C++/VM/JS backends.
+
 ## Standard library additions and changes
 
 [//]: # "Additions:"
@@ -97,7 +105,15 @@ errors.
 
 ## Compiler changes
 
+- Fixed a bug where `sizeof(T)` inside a `typedesc` template called from a generic type's
+  `when` clause would error with "'sizeof' requires '.importc' types to be '.completeStruct'".
+  The issue was that `hasValuelessStatics` in `semtypinst.nim` didn't recognize
+  `tyTypeDesc(tyGenericParam)` as an unresolved generic parameter.
 
 ## Tool changes
 
 - Added `--stdinfile` flag to name of the file used when running program from stdin (defaults to `stdinfile.nim`)
+
+## Documentation changes
+
+- Added documentation for the `completeStruct` pragma in the manual.

@@ -273,5 +273,17 @@ template main =
     list.add(n4)
     doAssert list.toSeq == @["sonic", "the", "hedgehog"]
 
+
+  block:
+    var list = initSinglyLinkedList[int]()
+
+    list.add(4)
+    list.remove(list.head)
+
+    list.add(5)
+    list.remove(list.head)
+
+    list.add(6)
+
 static: main()
 main()

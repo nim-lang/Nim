@@ -1014,6 +1014,6 @@ proc computeCursors*(s: PSym; n: PNode; g: ModuleGraph) =
       if par.s[rid].con.kind == isRootOf and dangerousMutation(par.graphs[par.s[rid].con.graphIndex], par.s[i]):
         discard "cannot cursor into a graph that is mutated"
       else:
-        v.sym.flags.incl sfCursor
+        v.sym.flagsImpl.incl sfCursor
         when false:
           echo "this is now a cursor ", v.sym, " ", par.s[rid].flags, " ", g.config $ v.sym.info
