@@ -296,7 +296,7 @@ when SupportIoctlInheritCtl:
   proc c_ioctl(fd: cint, request: cint): cint {.
     importc: "ioctl", header: "<sys/ioctl.h>", varargs.}
 elif defined(posix) and not defined(lwip) and not defined(nimscript):
-  from posix import F_GETFD, F_SETFD, FD_CLOEXEC, fcntl
+  from posix import F_GETFD, F_SETFD, FD_CLOEXEC, fcntl, Stat, S_ISDIR, fstat
 elif defined(windows):
   type
     WinDWORD = culong
@@ -673,12 +673,6 @@ const
     # we always use binary here as for Nim the OS line ending
     # should not be translated.
 
-when defined(posix) and not defined(nimscript):
-  from posix import Mode, Stat, S_ISDIR, fstat
-
-  proc modeIsDir(m: Mode): bool =
-    S_ISDIR(m)
-
 proc open*(f: var File, filename: string,
           mode: FileMode = fmRead,
           bufSize: int = -1): bool {.tags: [], raises: [], benign.} =
@@ -691,12 +685,12 @@ proc open*(f: var File, filename: string,
   var p = fopen(filename.cstring, FormatOpen[mode])
   if p != nil:
     var f2 = cast[File](p)
-    when defined(posix) and not defined(nimscript):
+    when declared(Stat) and declared(fstat) and declared S_ISDIR:
       # How `fopen` handles opening a directory is not specified in ISO C and
       # POSIX. We do not want to handle directories as regular files that can
       # be opened.
       var res {.noinit.}: Stat
-      if fstat(getFileHandle(f2), res) >= 0'i32 and modeIsDir(res.st_mode):
+      if fstat(getFileHandle(f2), res) >= 0'i32 and S_ISDIR(res.st_mode):
         closeIgnoreError(f2)
         return false
     when not defined(nimInheritHandles) and declared(setInheritable) and
