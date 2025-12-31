@@ -654,6 +654,18 @@ template main() =
       let myB = "bazquz"
       doAssert $parseEnum[MyEnum](myB) == myB
 
+    block:
+      const rawStr = r"foobar"
+
+      type MyEnum = enum
+        a = rawStr
+        b = r"bazquz"
+
+      let myA = rawStr
+      doAssert $parseEnum[MyEnum](myA) == myA
+      let myB = r"bazquz"
+      doAssert $parseEnum[MyEnum](myB) == myB
+
     block: # check enum defined in block
       type
         Bar = enum
