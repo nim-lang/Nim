@@ -642,6 +642,18 @@ template main() =
       let myA = CAMPAIGN_TABLE
       doAssert $parseEnum[Tables](myA) == "wikientries_campaign"
 
+    block:
+      const tripleQuotedStr = """foobar"""
+
+      type MyEnum = enum
+        a = tripleQuotedStr
+        b = """bazquz"""
+
+      let myA = tripleQuotedStr
+      doAssert $parseEnum[MyEnum](myA) == myA
+      let myB = "bazquz"
+      doAssert $parseEnum[MyEnum](myB) == myB
+
     block: # check enum defined in block
       type
         Bar = enum
