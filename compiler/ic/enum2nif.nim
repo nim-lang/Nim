@@ -1266,6 +1266,7 @@ proc genFlags*(s: set[TSymFlag]; dest: var string) =
     of sfAnon: dest.add "a0"
     of sfAllUntyped: dest.add "a1"
     of sfTemplateRedefinition: dest.add "t1"
+    of sfHasDeferredPragmas: dest.add "h"
 
 
 proc parse*(t: typedesc[TSymFlag]; s: string): set[TSymFlag] =
@@ -1362,6 +1363,7 @@ proc parse*(t: typedesc[TSymFlag]; s: string): set[TSymFlag] =
         result.incl sfGoto
         inc i
       else: result.incl sfGlobal
+    of 'h': result.incl sfHasDeferredPragmas
     of 'i':
       if i+1 < s.len and s[i+1] == '0':
         result.incl sfInfixCall
@@ -1588,6 +1590,7 @@ proc genFlags*(s: set[TTypeFlag]; dest: var string) =
     of tfIsOutParam: dest.add "i5"
     of tfSendable: dest.add "s0"
     of tfImplicitStatic: dest.add "i6"
+    of tfHasDeferredPragmas: dest.add "h2"
 
 
 proc parse*(t: typedesc[TTypeFlag]; s: string): set[TTypeFlag] =
@@ -1646,6 +1649,9 @@ proc parse*(t: typedesc[TTypeFlag]; s: string): set[TTypeFlag] =
         inc i
       elif i+1 < s.len and s[i+1] == '1':
         result.incl tfHasStatic
+        inc i
+      elif i+1 < s.len and s[i+1] == '2':
+        result.incl tfHasDeferredPragmas
         inc i
       else: result.incl tfHasOwned
     of 'i':

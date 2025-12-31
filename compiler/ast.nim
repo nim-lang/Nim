@@ -143,6 +143,36 @@ proc `alignment=`*(s: PSym, val: int) {.inline.} =
   if s.state == Partial: loadSym(s)
   s.alignmentImpl = val
 
+proc setDeferredExpr*(s: PSym, word: TSpecialWord, expr: PNode) {.inline.} =
+  ## Sets a deferred expression for a pragma word on a field symbol.
+  assert s.state != Sealed, "cannot modify sealed symbol"
+  assert s.kind in {skLet, skVar, skField, skForVar},
+    "setDeferredExpr only valid for field-like symbols"
+  if s.state == Partial: loadSym(s)
+  for i in 0..<s.deferredExprsImpl.len:
+    if s.deferredExprsImpl[i].word == word:
+      s.deferredExprsImpl[i].expr = expr
+      if expr != nil:
+        s.flagsImpl.incl sfHasDeferredPragmas
+      return
+  s.deferredExprsImpl.add DeferredPragmaExpr(word: word, expr: expr)
+  if expr != nil:
+    s.flagsImpl.incl sfHasDeferredPragmas
+
+proc clearDeferredExpr*(s: PSym, word: TSpecialWord) {.inline.} =
+  ## Clears a deferred expression for a pragma word.
+  for i in 0..<s.deferredExprsImpl.len:
+    if s.deferredExprsImpl[i].word == word:
+      s.deferredExprsImpl.delete(i)
+      break
+  if s.deferredExprsImpl.len == 0:
+    s.flagsImpl.excl sfHasDeferredPragmas
+
+iterator deferredPragmas*(s: PSym): DeferredPragmaExpr {.inline.} =
+  ## Iterates over all deferred pragma expressions on a symbol
+  for dp in s.deferredExprsImpl:
+    yield dp
+
 proc magic*(s: PSym): TMagic {.inline.} =
   if s.state == Partial: loadSym(s)
   result = s.magicImpl
@@ -377,6 +407,34 @@ proc align*(t: PType): int16 {.inline.} =
 proc `align=`*(t: PType, val: int16) {.inline.} =
   backendEnsureMutable t
   t.alignImpl = val
+
+proc setDeferredExpr*(t: PType, word: TSpecialWord, expr: PNode) {.inline.} =
+  ## Sets a deferred expression for a pragma word on a type.
+  assert t.state != Sealed
+  if t.state == Partial: loadType(t)
+  for i in 0..<t.deferredExprsImpl.len:
+    if t.deferredExprsImpl[i].word == word:
+      t.deferredExprsImpl[i].expr = expr
+      if expr != nil:
+        t.flagsImpl.incl tfHasDeferredPragmas
+      return
+  t.deferredExprsImpl.add DeferredPragmaExpr(word: word, expr: expr)
+  if expr != nil:
+    t.flagsImpl.incl tfHasDeferredPragmas
+
+proc clearDeferredExpr*(t: PType, word: TSpecialWord) {.inline.} =
+  ## Clears a deferred expression for a pragma word.
+  for i in 0..<t.deferredExprsImpl.len:
+    if t.deferredExprsImpl[i].word == word:
+      t.deferredExprsImpl.delete(i)
+      break
+  if t.deferredExprsImpl.len == 0:
+    t.flagsImpl.excl tfHasDeferredPragmas
+
+iterator deferredPragmas*(t: PType): DeferredPragmaExpr {.inline.} =
+  ## Iterates over all deferred pragma expressions on a type
+  for dp in t.deferredExprsImpl:
+    yield dp
 
 proc paddingAtEnd*(t: PType): int16 {.inline.} =
   if t.state == Partial: loadType(t)

@@ -97,6 +97,32 @@ const
   allRoutinePragmas* = methodPragmas + iteratorPragmas + lambdaPragmas
   enumFieldPragmas* = {wDeprecated}
 
+proc isGenericParamSym(sym: PSym): bool {.inline.} =
+  ## Returns true if sym represents a generic parameter.
+  if sym == nil: return false
+  if sym.kind == skGenericParam: return true
+  if sym.kind == skType and sym.typ != nil and sym.typ.kind == tyGenericParam:
+    return true
+  return false
+
+proc containsUnresolvedIdent(c: PContext, n: PNode): bool =
+  ## Returns true if n contains any identifiers that cannot be resolved in scope.
+  ## Unresolved identifiers indicate potential generic params that haven't been
+  ## added to scope yet (pragmas are processed before generic params in typeDefLeftSidePass).
+  if n == nil: return false
+  case n.kind
+  of nkIdent:
+    var ambiguous = false
+    let sym = searchInScopes(c, n.ident, ambiguous)
+    return sym == nil or isGenericParamSym(sym)
+  of nkSym:
+    return isGenericParamSym(n.sym)
+  else:
+    for child in n:
+      if containsUnresolvedIdent(c, child):
+        return true
+    return false
+
 proc getPragmaVal*(procAst: PNode; name: TSpecialWord): PNode =
   result = nil
   let p = procAst[pragmasPos]
@@ -118,6 +144,48 @@ proc recordPragma(c: PContext; n: PNode; args: varargs[string]) =
 const
   errStringLiteralExpected = "string literal expected"
   errIntLiteralExpected = "integer literal expected"
+  errPragmaRequiresArgument = "$1 pragma requires an argument"
+  errDeferredOnlyForImported = "deferred $1 expressions only supported for imported types"
+  errMustBeConstantInteger = "$1 must be a compile-time constant integer"
+
+proc deferOrEvaluate(c: PContext, sym: PSym, it: PNode,
+                     word: TSpecialWord, requireImportc: bool): bool =
+  ## Generic helper: decides whether to defer or evaluate a pragma expression.
+  ## Returns true if expression was deferred, false if it should be evaluated immediately.
+  ## Handles nil checks, validation, and error reporting.
+  ##
+  ## Args:
+  ##   c: Semantic context
+  ##   sym: Symbol being processed (must have .typ for types, or be a field symbol)
+  ##   it: The pragma node
+  ##   word: Pragma word (wSize, wAlign, etc.)
+  ##   requireImportc: If true, deferred expressions require sfImportc flag
+  ##
+  ## Returns:
+  ##   true = expression was deferred (caller should return)
+  ##   false = expression is ready for immediate evaluation (caller continues)
+  let expr = if it.kind in nkPragmaCallKinds and it.len == 2: it[1] else: nil
+  if expr == nil:
+    localError(c.config, it.info, errPragmaRequiresArgument % $word)
+    return true
+
+  if containsUnresolvedIdent(c, expr):
+    if requireImportc:
+      let hasImportc = if sym.kind in {skLet, skVar, skField, skForVar}:
+                         false
+                       else:
+                         sfImportc in sym.flags
+      if not hasImportc:
+        localError(c.config, it.info, errDeferredOnlyForImported % $word)
+        return true
+
+    if sym.kind in {skLet, skVar, skField, skForVar}:
+      sym.setDeferredExpr(word, expr)
+    else:
+      sym.typ.setDeferredExpr(word, expr)
+    return true
+
+  return false
 
 proc invalidPragma*(c: PContext; n: PNode) =
   localError(c.config, n.info, "invalid pragma: " & renderTree(n, {renderNoComments}))
@@ -232,9 +300,35 @@ proc expectIntLit(c: PContext, n: PNode): int =
     of nkIntLit..nkInt64Lit: result = int(n[1].intVal)
     else: localError(c.config, n.info, errIntLiteralExpected)
 
+template expectInt(c: PContext, n: PNode, info: TLineInfo,
+                   pragmaName: string): int =
+  ## Validates that n is an integer constant. Returns value or 0 on error.
+  var resultVal = 0
+  if n.kind in nkIntLit..nkInt64Lit:
+    resultVal = int(n.intVal)
+  else:
+    localError(c.config, info, errMustBeConstantInteger % pragmaName)
+  resultVal
+
 proc getOptionalStr(c: PContext, n: PNode, defaultStr: string): string =
   if n.kind in nkPragmaCallKinds: result = expectStrLit(c, n)
   else: result = defaultStr
+
+proc applySize(c: PContext, typ: PType, size: int, isImported: bool, info: TLineInfo) =
+  ## Applies size pragma to a type. Validates size for non-imported types.
+  if size <= 0: return
+  if isImported:
+    setImportedTypeSize(c.config, typ, size)
+  else:
+    case size
+    of 1, 2, 4:
+      typ.size = size
+      typ.align = int16 size
+    of 8:
+      typ.size = 8
+      typ.align = floatInt64Align(c.config)
+    else:
+      localError(c.config, info, "size may only be 1, 2, 4 or 8")
 
 proc processVirtual(c: PContext, n: PNode, s: PSym, flag: TSymFlag) =
   s.constraint = newEmptyStrNode(c, n, getOptionalStr(c, n, "$1"))
@@ -946,20 +1040,15 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         processImportObjC(c, sym, getOptionalStr(c, it, "$1"), it.info)
       of wSize:
         if sym.typ == nil: invalidPragma(c, it)
-        var size = expectIntLit(c, it)
-        if sfImportc in sym.flags:
-          # no restrictions on size for imported types
-          setImportedTypeSize(c.config, sym.typ, size)
+        if sym.kind == skType:
+          if not deferOrEvaluate(c, sym, it, wSize, requireImportc = true):
+            let expr = it[1]
+            let evaluated = c.semConstExpr(c, expr.copyTree)
+            let size = expectInt(c, evaluated, it.info, "size")
+            applySize(c, sym.typ, size, sfImportc in sym.flags, it.info)
         else:
-          case size
-          of 1, 2, 4:
-            sym.typ.size = size
-            sym.typ.align = int16 size
-          of 8:
-            sym.typ.size = 8
-            sym.typ.align = floatInt64Align(c.config)
-          else:
-            localError(c.config, it.info, "size may only be 1, 2, 4 or 8")
+          let size = expectIntLit(c, it)
+          applySize(c, sym.typ, size, sfImportc in sym.flags, it.info)
       of wAlign:
         let alignment = expectIntLit(c, it)
         if isPowerOfTwo(alignment) and alignment > 0:

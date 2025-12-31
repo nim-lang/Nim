@@ -7873,6 +7873,30 @@ so that one can get the size of it at compile time even if it was declared witho
       echo sizeof(AtomicFlag)
   ```
 
+For generic imported types, the `size` pragma accepts expressions involving type parameters:
+
+  ```Nim
+  type
+    # Size based on generic parameter
+    CppAtomic[T] {.importcpp: "std::atomic", header: "<atomic>",
+                   size: sizeof(T), completeStruct.} = object
+
+    # Complex expressions are supported
+    PaddedWrapper[T] {.importc, size: sizeof(T) + 4, completeStruct.} = object
+
+    # Multiple type parameters
+    Pair[A, B] {.importc, size: sizeof(A) + sizeof(B), completeStruct.} = object
+
+  static:
+    doAssert sizeof(CppAtomic[int32]) == 4
+    doAssert sizeof(PaddedWrapper[int8]) == 5
+    doAssert sizeof(Pair[int32, int64]) == 12
+  ```
+
+The expression is evaluated when the generic type is instantiated. The
+`completeStruct` pragma is typically used with these declarations to enable
+compile-time size queries.
+
 
 Align pragma
 ------------

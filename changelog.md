@@ -103,6 +103,18 @@ errors.
   See the [experimental manual](https://nim-lang.github.io/Nim/manual_experimental.html#typeminusbound-overloads)
   for more information.
 
+- The `size` pragma now supports expressions involving type parameters for generic
+  imported types. The expression is evaluated when the generic type is instantiated.
+
+  ```nim
+  type
+    CppAtomic[T] {.importcpp: "std::atomic", header: "<atomic>",
+                   size: sizeof(T), completeStruct.} = object
+
+  static:
+    doAssert sizeof(CppAtomic[int32]) == 4
+  ```
+
 ## Compiler changes
 
 - Fixed a bug where `sizeof(T)` inside a `typedesc` template called from a generic type's

@@ -12,7 +12,7 @@
 import std / tables
 
 import ast, astalgo, msgs, types, magicsys, semdata, renderer, options,
-  lineinfos, modulegraphs, layeredtable
+  lineinfos, modulegraphs, layeredtable, wordrecg
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -79,6 +79,7 @@ type
     isReturnType*: bool
     owner*: PSym              # where this instantiation comes from
     recursionLimit: int
+    genericBody*: PType       # the generic body type, used for pragma evaluation
 
 proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType, isInstValue = false): PType
 proc replaceTypeVarsS(cl: var TReplTypeVars, s: PSym, t: PType): PSym
@@ -419,6 +420,104 @@ proc instCopyType*(cl: var TReplTypeVars, t: PType): PType =
       result.destructor = nil
       result.sink = nil
 
+proc resolveConcreteType(cl: var TReplTypeVars, n: PNode,
+                         concreteType: PType, hasUnresolved: var bool): PNode =
+  ## Resolves a concrete type to an AST node for pragma expression substitution.
+  ## Returns nil if type is still generic (sets hasUnresolved), otherwise
+  ## returns appropriate node (value for static, typedesc for type params).
+  if concreteType.kind == tyGenericParam:
+    hasUnresolved = true
+    return nil
+  if concreteType.kind == tyStatic:
+    if concreteType.n != nil:
+      return concreteType.n.copyTree
+    return nil
+  let typeDescType = makeTypeDesc(cl.c, concreteType)
+  return newNodeIT(nkType, n.info, typeDescType)
+
+proc tryResolveGenericParam(cl: var TReplTypeVars, n: PNode,
+                            concreteType: PType, hasUnresolved: var bool): PNode =
+  ## Attempts to resolve a generic param to a concrete node.
+  ## Returns: resolved node, original node (if unresolved), or nil (if concreteType is nil).
+  if concreteType == nil:
+    return nil
+  let resolved = resolveConcreteType(cl, n, concreteType, hasUnresolved)
+  if resolved != nil:
+    return resolved
+  if hasUnresolved:
+    return n
+  return nil
+
+proc replaceIdentsWithTypes(cl: var TReplTypeVars, n: PNode, body: PType, hasUnresolved: var bool): PNode =
+  ## Walks the expression and replaces identifier nodes with type symbols
+  ## based on the generic parameters in body and concrete types in typeMap.
+  ## Sets hasUnresolved to true if any generic param couldn't be resolved to a concrete type.
+  if n == nil: return nil
+
+  case n.kind
+  of nkIdent:
+    for i in FirstGenericParamAt..<body.kidsLen:
+      let param = body[i-1]
+      if param.sym != nil and param.sym.name.s == n.ident.s:
+        let concreteType = cl.typeMap.lookup(param)
+        let resolved = tryResolveGenericParam(cl, n, concreteType, hasUnresolved)
+        if resolved != nil:
+          return resolved
+        return
+    result = n
+  of nkSym:
+    if n.sym != nil and n.sym.typ != nil and n.sym.typ.kind == tyGenericParam:
+      let concreteType = cl.typeMap.lookup(n.sym.typ)
+      let resolved = tryResolveGenericParam(cl, n, concreteType, hasUnresolved)
+      if resolved != nil:
+        return resolved
+    result = copyNode(n)
+    result.typ = replaceTypeVarsT(cl, n.typ)
+  of nkCharLit..nkNilLit:
+    result = copyNode(n)
+  else:
+    result = copyNode(n)
+    result.typ = if n.typ != nil: replaceTypeVarsT(cl, n.typ) else: nil
+    for i in 0..<n.len:
+      result.add replaceIdentsWithTypes(cl, n[i], body, hasUnresolved)
+
+proc applyDeferredPragma(cl: var TReplTypeVars, t: PType, word: TSpecialWord,
+                         val: PNode, info: TLineInfo) =
+  ## Applies an evaluated deferred pragma to a type.
+  case word
+  of wSize:
+    var size = 0
+    if val.kind in nkIntLit..nkInt64Lit:
+      size = int(val.intVal)
+    else:
+      localError(cl.c.config, info, "size must be a compile-time constant integer")
+    if size > 0:
+      setImportedTypeSize(cl.c.config, t, size)
+  else:
+    discard
+
+proc evaluateDeferredPragmas(cl: var TReplTypeVars, t: PType, body: PType) =
+  ## Evaluates all deferred pragma expressions on a type after generic instantiation.
+  if tfHasDeferredPragmas notin t.flags:
+    return
+
+  var toClear: seq[TSpecialWord] = @[]
+  for dp in t.deferredPragmas:
+    let expr = dp.expr
+    if expr == nil: continue
+
+    var hasUnresolved = false
+    let replacedExpr = replaceIdentsWithTypes(cl, expr, body, hasUnresolved)
+    if hasUnresolved:
+      continue
+
+    let val = cl.c.semConstExpr(cl.c, replacedExpr)
+    applyDeferredPragma(cl, t, dp.word, val, expr.info)
+    toClear.add(dp.word)
+
+  for word in toClear:
+    t.clearDeferredExpr(word)
+
 proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   # tyGenericInvocation[A, tyGenericInvocation[A, B]]
   # is difficult to handle:
@@ -494,10 +593,16 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
     return
 
   let bbody = last body
+  cl.genericBody = body
   var newbody = replaceTypeVarsT(cl, bbody, isInstValue = true)
   cl.skipTypedesc = oldSkipTypedesc
   newbody.flags = newbody.flags + (t.flags + body.flags - tfInstClearedFlags)
   result.flags = result.flags + newbody.flags - tfInstClearedFlags
+
+  if tfHasDeferredPragmas in body.flags:
+    for dp in body.deferredPragmas:
+      newbody.setDeferredExpr(dp.word, dp.expr)
+  evaluateDeferredPragmas(cl, newbody, body)
 
   setToPreviousLayer(cl.typeMap)
 
