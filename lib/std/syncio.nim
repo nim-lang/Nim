@@ -15,10 +15,9 @@ import std/formatfloat
 when defined(windows):
   import std/widestrs
 
-from system/ansi_c import c_memchr
+from system/ansi_c import c_memchr, CFilePtr
 
 # ----------------- IO Part ------------------------------------------------
-from system/ansi_c import CFilePtr
 
 type
   File* = CFilePtr ## The type representing a file handle.
