@@ -220,7 +220,7 @@ type
 const
   SymChars = {'a'..'z', 'A'..'Z', '0'..'9', '_', ' ', '\x80'..'\xFF', '.', '/', '\\', '-'}
 
-proc rawGetTok(c: var CfgParser, tok: var Token) {.gcsafe.}
+proc rawGetTok(c: var CfgParser, tok: var Token) {.gcsafe, raises: [ValueError, OSError, IOError].}
 
 proc open*(c: var CfgParser, input: Stream, filename: string,
            lineOffset = 0) {.rtl, extern: "npc$1".} =
