@@ -11,7 +11,7 @@
 ## This enables incremental and parallel compilation using the `m` switch.
 
 import std / [os, tables, sets, times, osproc, strutils]
-import options, msgs, pathutils, lineinfos
+import options, msgs, lineinfos
 
 import "../dist/nimony/src/lib" / [nifstreams, nifcursors, bitabs, nifreader, nifbuilder]
 import "../dist/nimony/src/gear2" / modnames

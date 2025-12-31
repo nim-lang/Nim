@@ -9,7 +9,7 @@
 
 # Implements a table from trees to trees. Does structural equivalence checking.
 
-import ast, astalgo, types
+import ast, types
 
 import std/hashes
 

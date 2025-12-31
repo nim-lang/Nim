@@ -1,9 +1,10 @@
 import sem, cgen, modulegraphs, ast, llstream, parser, msgs,
        lineinfos, reorder, options, semdata, cgendata, modules, pathutils,
-       packages, syntaxes, depends, vm, vmdef, pragmas, idents, lookups, wordrecg,
+       packages, syntaxes, depends, vm, pragmas, idents, lookups, wordrecg,
        liftdestructors, nifgen
 
 when not defined(nimKochBootstrap):
+  import vmdef
   import ast2nif
   import "../dist/nimony/src/lib" / [nifstreams, bitabs]
 

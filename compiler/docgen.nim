@@ -19,7 +19,7 @@ import
   wordrecg, syntaxes, renderer, lexer,
   packages/docutils/[rst, rstidx, rstgen, dochelpers],
   trees, types,
-  typesrenderer, astalgo, lineinfos,
+  typesrenderer, lineinfos,
   pathutils, nimpaths, renderverbatim, packages
 import packages/docutils/rstast except FileIndex, TLineInfo
 
