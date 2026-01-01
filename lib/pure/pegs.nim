@@ -19,10 +19,12 @@ include "system/inclrtl"
 when defined(nimPreviewSlimSystem):
   import std/[syncio, assertions]
 
+{.push gcsafe.}
+
 const
   useUnicode = true ## change this to deactivate proper UTF-8 support
 
-import std/[strutils, macros]
+import std/[strformat, strutils, macros]
 import std/private/decode_helpers
 
 when useUnicode:
@@ -562,8 +564,10 @@ template matchOrParse(mopProc: untyped) =
   # procs. For the former, *enter* and *leave* event handler code generators
   # are provided which just return *discard*.
 
-  proc mopProc(s: string, p: Peg, start: int, c: var Captures): int {.gcsafe, raises: [].} =
-    proc matchBackRef(s: string, p: Peg, start: int, c: var Captures): int =
+  proc mopProc(s: string, p: Peg, start: int, c: var Captures): int {.raises: [].} =
+    result = 0
+
+    proc matchBackRef(s: string, p: Peg, start: int, c: var Captures): int {.raises: [].}=
       # Parse handler code must run in an *of* clause of its own for each
       # *PegKind*, so we encapsulate the identical clause body for
       # *pkBackRef..pkBackRefIgnoreStyle* here.
@@ -1029,7 +1033,7 @@ template eventParser*(pegAst, handlers: untyped): (proc(s: string): int) =
   ## Symbols  declared in an *enter* handler can be made visible in the
   ## corresponding *leave* handler by annotating them with an *inject* pragma.
   proc rawParse(s: string, p: Peg, start: int, c: var Captures): int
-      {.gensym.} =
+      {.gensym, raises: [ValueError].} =
 
     # binding from *macros*
     bind strVal
@@ -1295,7 +1299,7 @@ when not defined(nimHasEffectsOf):
   {.pragma: effectsOf.}
 
 func replace*(s: string, sub: Peg, cb: proc(
-              match: int, cnt: int, caps: openArray[string]): string): string {.
+              match: int, cnt: int, caps: openArray[string]): string {.gcsafe.}): string {.
               rtl, extern: "npegs$1cb", effectsOf: cb.} =
   ## Replaces `sub` in `s` by the resulting strings from the callback.
   ## The callback proc receives the index of the current match (starting with 0),
@@ -1341,7 +1345,7 @@ func replace*(s: string, sub: Peg, cb: proc(
 when not defined(js):
   proc transformFile*(infile, outfile: string,
                       subs: varargs[tuple[pattern: Peg, repl: string]]) {.
-                      rtl, extern: "npegs$1".} =
+                      rtl, extern: "npegs$1", raises: [ValueError, IOError].} =
     ## reads in the file `infile`, performs a parallel replacement (calls
     ## `parallelReplace`) and writes back to `outfile`. Raises ``IOError`` if an
     ## error occurs. This is supposed to be used for quick scripting.
@@ -1480,9 +1484,9 @@ func getLine(L: PegLexer): int {.inline.} =
   result = L.lineNumber
 
 func errorStr(L: PegLexer, msg: string, line = -1, col = -1): string =
-  var line = if line < 0: getLine(L) else: line
-  var col = if col < 0: getColumn(L) else: col
-  result = "$1($2, $3) Error: $4" % [L.filename, $line, $col, msg]
+  let line = if line < 0: getLine(L) else: line
+  let col = if col < 0: getColumn(L) else: col
+  &"{L.filename}({line}, {col}) Error: {msg}"
 
 func getEscapedChar(c: var PegLexer, tok: var Token) =
   inc(c.bufpos)
@@ -1677,7 +1681,7 @@ func getBuiltin(c: var PegLexer, tok: var Token) =
     tok.kind = tkEscaped
     getEscapedChar(c, tok) # may set tok.kind to tkInvalid
 
-func getTok(c: var PegLexer, tok: var Token) =
+func getTok(c: var PegLexer, tok: var Token) {.raises: [].} =
   tok.kind = tkInvalid
   tok.modifier = modNone
   setLen(tok.literal, 0)
@@ -1820,11 +1824,10 @@ type
     identIsVerbatim: bool
     skip: Peg
 
-func pegError(p: PegParser, msg: string, line = -1, col = -1) {.noreturn.} =
-  var e = (ref EInvalidPeg)(msg: errorStr(p, msg, line, col))
-  raise e
+func pegError(p: PegParser, msg: string, line = -1, col = -1) {.noreturn, raises: [EInvalidPeg].} =
+  raise (ref EInvalidPeg)(msg: errorStr(p, msg, line, col))
 
-func getTok(p: var PegParser) =
+func getTok(p: var PegParser) {.raises: [EInvalidPeg].}=
   getTok(p, p.tok)
   if p.tok.kind == tkInvalid: pegError(p, "'" & p.tok.literal & "' is invalid token")
 
@@ -1832,7 +1835,7 @@ func eat(p: var PegParser, kind: TokKind) =
   if p.tok.kind == kind: getTok(p)
   else: pegError(p, tokKindToStr[kind] & " expected")
 
-func parseExpr(p: var PegParser): Peg {.gcsafe.}
+func parseExpr(p: var PegParser): Peg {.raises: [EInvalidPeg].}
 
 func getNonTerminal(p: var PegParser, name: string): NonTerminal =
   for i in 0..high(p.nonterms):
@@ -1881,7 +1884,7 @@ func token(terminal: Peg, p: PegParser): Peg =
   if p.skip.kind == pkEmpty: result = terminal
   else: result = sequence(p.skip, terminal)
 
-func primary(p: var PegParser): Peg =
+func primary(p: var PegParser): Peg {.raises: [EInvalidPeg].}=
   case p.tok.kind
   of tkAmp:
     getTok(p)
@@ -1974,7 +1977,7 @@ func primary(p: var PegParser): Peg =
       getTok(p)
     else: break
 
-func seqExpr(p: var PegParser): Peg =
+func seqExpr(p: var PegParser): Peg {.raises: [EInvalidPeg].}=
   result = primary(p)
   while true:
     case p.tok.kind
@@ -2040,7 +2043,7 @@ func rawParse(p: var PegParser): Peg =
     elif ntUsed notin nt.flags and i > 0:
       pegError(p, "unused rule: " & nt.name, nt.line, nt.col)
 
-func parsePeg*(pattern: string, filename = "pattern", line = 1, col = 0): Peg =
+func parsePeg*(pattern: string, filename = "pattern", line = 1, col = 0): Peg {.raises: [EInvalidPeg].} =
   ## constructs a Peg object from `pattern`. `filename`, `line`, `col` are
   ## used for error messages, but they only provide start offsets. `parsePeg`
   ## keeps track of line and column numbers within `pattern`.
@@ -2055,7 +2058,7 @@ func parsePeg*(pattern: string, filename = "pattern", line = 1, col = 0): Peg =
   getTok(p)
   result = rawParse(p)
 
-func peg*(pattern: string): Peg =
+func peg*(pattern: string): Peg {.raises: [EInvalidPeg].} =
   ## constructs a Peg object from the `pattern`. The short name has been
   ## chosen to encourage its use as a raw string modifier:
   ##
