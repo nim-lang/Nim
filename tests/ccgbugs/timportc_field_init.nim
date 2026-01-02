@@ -1,14 +1,14 @@
 discard """
   targets: "c cpp"
 """
-# Test const initialization of objects with opaque importc fields
+# Test const initialization of objects with opaque importc fields (e.g. FILE from stdio.h)
 
-type OpaqueInt {.importc: "_Atomic int", nodecl.} = object
+type OpaqueFile {.importc: "FILE", header: "<stdio.h>".} = object
 
 type
   SimpleStruct = object
     normal: int
-    opaque: OpaqueInt
+    opaque: OpaqueFile
 
   NestedStruct = object
     inner: SimpleStruct
@@ -17,13 +17,13 @@ type
   VariantStruct = object
     case kind: bool
     of true:
-      opaque: OpaqueInt
+      opaque: OpaqueFile
     of false:
       normal: int
 
   ArrayElementStruct = object
     id: int
-    atom: OpaqueInt
+    atom: OpaqueFile
 
 const simple = default(SimpleStruct)
 const nested = default(NestedStruct)
@@ -51,7 +51,7 @@ const tupleVal = default(TupleWithOpaque)
 # Sandwich: opaque between non-opaque fields requires designated init
 type SandwichStruct = object
   first: int
-  opaque: OpaqueInt
+  opaque: OpaqueFile
   last: float
 
 const sandwich = default(SandwichStruct)
@@ -79,7 +79,7 @@ useTuple(tupleVal)
 useSandwich(sandwich.addr)
 
 # Edge cases: different C/Nim names
-type OpaqueWithCName {.importc: "_Atomic long", nodecl.} = object
+type OpaqueWithCName {.importc: "FILE", header: "<stdio.h>".} = object
 
 type StructWithRenamedField = object
   nimName {.importc: "c_name".}: int
@@ -94,7 +94,7 @@ type NimTypeName {.importc: "int", completeStruct, nodecl.} = distinct cint
 
 type StructContainingRenamedType = object
   inner: NimTypeName
-  opaque: OpaqueInt
+  opaque: OpaqueFile
 
 const withRenamedType = default(StructContainingRenamedType)
 proc useRenamedType(s: ptr StructContainingRenamedType) {.exportc, noinline.} = discard
@@ -102,7 +102,7 @@ useRenamedType(withRenamedType.addr)
 
 type StructWithExportedField = object
   nimField {.exportc: "exported_field".}: int
-  opaque: OpaqueInt
+  opaque: OpaqueFile
 
 const withExported = default(StructWithExportedField)
 proc useExportedField(s: ptr StructWithExportedField) {.exportc, noinline.} = discard
@@ -111,7 +111,7 @@ static: doAssert withExported.nimField == 0
 
 type ByCopyStruct {.bycopy.} = object
   data: int
-  opaque: OpaqueInt
+  opaque: OpaqueFile
 
 const byCopyVal = default(ByCopyStruct)
 proc useByCopy(s: ByCopyStruct) {.exportc, noinline.} = discard
@@ -120,7 +120,7 @@ static: doAssert byCopyVal.data == 0
 
 type PackedStruct {.packed.} = object
   a: int8
-  opaque: OpaqueInt
+  opaque: OpaqueFile
   b: int8
 
 const packedVal = default(PackedStruct)
@@ -132,7 +132,7 @@ static:
 
 type UnionWithOpaque {.union.} = object
   intVal: int
-  opaque: OpaqueInt
+  opaque: OpaqueFile
 
 const unionVal = default(UnionWithOpaque)
 proc useUnion(u: ptr UnionWithOpaque) {.exportc, noinline.} = discard
@@ -141,7 +141,7 @@ useUnion(unionVal.addr)
 # Deep nesting
 type DeepLevel1 = object
   field1: int
-  opaque: OpaqueInt
+  opaque: OpaqueFile
 
 type DeepLevel2 = object
   nested: DeepLevel1
@@ -163,7 +163,7 @@ static:
 # Multiple opaque fields with renamed non-opaque fields
 type MultiOpaque = object
   first {.importc: "first_field".}: int
-  opaque1: OpaqueInt
+  opaque1: OpaqueFile
   second {.importc: "second_field".}: float
   opaque2: OpaqueWithCName
   third: int
