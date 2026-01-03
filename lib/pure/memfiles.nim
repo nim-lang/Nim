@@ -58,6 +58,7 @@ proc setFileSize(fh: FileHandle, newFileSize = -1, oldSize = -1): OSErrorCode =
         while (e = posix_fallocate(fh, 0, newFileSize); e == EINTR):
           discard
       if (e == EINVAL or e == EOPNOTSUPP or e == ENOSYS) and ftruncate(fh, newFileSize) != -1:
+        # fallback arguable; Most portable BUT allows SEGV
         discard
       elif e != 0:
         result = osLastError()
