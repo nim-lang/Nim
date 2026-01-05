@@ -394,7 +394,16 @@ proc transformYield(c: PTransf, n: PNode): PNode =
     case lhs.kind
     of nkSym:
       internalAssert c.graph.config, lhs.sym.kind == skForVar
-      result = newAsgnStmt(c, nkFastAsgn, lhs, rhs, false)
+      # For var/lent iterators (reference types), use assignment to preserve
+      # reference semantics. For value types, create fresh vars at each yield
+      # point to keep them local and prevent unnecessary lifting. (issue #23994)
+      if lhs.sym.typ.kind in {tyVar, tyLent}:
+        result = newAsgnStmt(c, nkFastAsgn, lhs, rhs, false)
+      else:
+        let fresh = freshVar(c, lhs.sym)
+        c.transCon.mapping[lhs.sym.itemId] = fresh
+        result = newNodeI(nkVarSection, lhs.info)
+        result.addVar(fresh, rhs)
     of nkDotExpr:
       result = newAsgnStmt(c, nkAsgn, lhs, rhs, false)
     else:
@@ -475,14 +484,12 @@ proc transformYield(c: PTransf, n: PNode): PNode =
       child.info = changeNode.info
 
   inc(c.transCon.yieldStmts)
-  if c.transCon.yieldStmts <= 1:
-    # common case
-    result.add(c.transCon.forLoopBody)
-  else:
-    # we need to introduce new local variables:
-    c.isIntroducingNewLocalVars = true # don't transform yields when introducing new local vars
-    result.add(introduceNewLocalVars(c, c.transCon.forLoopBody))
-    c.isIntroducingNewLocalVars = false
+  # Always use introduceNewLocalVars to pick up the fresh for-loop variables
+  # created above. This is needed because we create fresh vars at each yield
+  # to avoid unnecessary lifting in closure iterators. (issue #23994)
+  c.isIntroducingNewLocalVars = true # don't transform yields when introducing new local vars
+  result.add(introduceNewLocalVars(c, c.transCon.forLoopBody))
+  c.isIntroducingNewLocalVars = false
 
 proc transformAddrDeref(c: PTransf, n: PNode, kinds: TNodeKinds, isAddr = false): PNode =
   result = transformSons(c, n, noConstFold = isAddr)
@@ -790,13 +797,19 @@ proc transformFor(c: PTransf, n: PNode): PNode =
   var v = newNodeI(nkVarSection, n.info)
   for i in 0..<n.len - 2:
     if n[i].kind == nkVarTuple:
+      # Declare tuple vars for var/lent types at beginning; others at each yield (issue #23994)
       for j in 0..<n[i].len-1:
-        addVar(v, copyTree(n[i][j])) # declare new vars
+        let tvar = n[i][j]
+        if tvar.kind == nkSym and tvar.sym.typ.kind in {tyVar, tyLent}:
+          v.addVar(tvar)
     else:
       if n[i].kind == nkSym and isSimpleIteratorVar(c, iter, call, n[i].sym.owner):
         # IC: review this solution again later
         incl n[i].sym.flagsImpl, sfCursor
-      addVar(v, copyTree(n[i])) # declare new vars
+      # Declare var/lent types at beginning; others at each yield (issue #23994)
+      if n[i].kind == nkSym and n[i].sym.typ.kind in {tyVar, tyLent}:
+        v.addVar(n[i])
+  # Note: v is kept for parameter temps that may be added below
   stmtList.add(v)
 
 
