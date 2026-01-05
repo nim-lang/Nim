@@ -369,6 +369,7 @@ type
     numberOfProcessors*: int   # number of processors
     lastCmdTime*: float        # when caas is enabled, we measure each command
     symbolFiles*: SymbolFilesOption
+    ic*: bool # whether ic is enabled
     spellSuggestMax*: int # max number of spelling suggestions for typos
 
     cppDefines*: HashSet[string] # (*)
