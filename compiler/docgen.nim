@@ -24,7 +24,6 @@ import
 import packages/docutils/rstast except FileIndex, TLineInfo
 
 import std/[os, strutils, strtabs, algorithm, json, osproc, tables, intsets, xmltree, sequtils]
-import std/options as optionals
 from std/uri import encodeUrl
 from nodejs import findNodeJs
 
@@ -113,9 +112,6 @@ type
 
 proc add(dest: var ItemPre, rst: PRstNode) = dest.add ItemFragment(isRst: true, rst: rst)
 proc add(dest: var ItemPre, str: string) = dest.add ItemFragment(isRst: false, str: str)
-proc add(dest: var ItemPre, item: sink Option[ItemFragment]) =
-  if item.isSome():
-    dest.add item.unsafeGet
 
 proc addRstFileIndex(d: PDoc, fileIndex: lineinfos.FileIndex): rstast.FileIndex =
   let invalid = rstast.FileIndex(-1)
@@ -435,45 +431,39 @@ proc getVarIdx(varnames: openArray[string], id: string): int =
       return i
   result = -1
 
-func initItemFragment(rst: PRstNode): ItemFragment =
-  ItemFragment(isRst: true, rst: rst)
-
-func initItemFragment(str: string): ItemFragment =
-  ItemFragment(isRst: false, str: str)
-
-proc genComment(d: PDoc, n: PNode): Option[ItemFragment] =
+proc genComment(d: PDoc, n: PNode): PRstNode =
   if n.comment.len > 0:
     if optDocRaw in d.conf.globalOptions:
-      return some initItemFragment(n.comment)
+      return newRstLeaf(n.comment)
 
     d.sharedState.currFileIdx = addRstFileIndex(d, n.info)
     try:
-      result = some initItemFragment(parseRst(n.comment,
+      result = parseRst(n.comment,
                         toLinenumber(n.info),
                         toColumn(n.info) + DocColOffset,
-                        d.conf, d.sharedState))
+                        d.conf, d.sharedState)
     except ERecoverableError:
-      result = some initItemFragment(newRstNode(rnLiteralBlock, @[newRstLeaf(n.comment)]))
+      result = newRstNode(rnLiteralBlock, @[newRstLeaf(n.comment)])
   else:
-    result = none(ItemFragment)
+    result = nil
 
-proc genRecCommentAux(d: PDoc, n: PNode): Option[ItemFragment] =
-  if n == nil: return none(ItemFragment)
+proc genRecCommentAux(d: PDoc, n: PNode): PRstNode =
+  if n == nil: return nil
   result = genComment(d, n)
-  if result.isNone:
+  if result == nil:
     if n.kind in {nkStmtList, nkStmtListExpr, nkTypeDef, nkConstDef, nkTypeClassTy,
                   nkObjectTy, nkRefTy, nkPtrTy, nkAsgn, nkFastAsgn, nkSinkAsgn, nkHiddenStdConv}:
       # notin {nkEmpty..nkNilLit, nkEnumTy, nkTupleTy}:
       for i in 0..<n.len:
         result = genRecCommentAux(d, n[i])
-        if result.isSome: return
+        if result != nil: return
   else:
     n.comment = ""
 
-proc genRecComment(d: PDoc, n: PNode): Option[ItemFragment] =
-  if n == nil: return none(ItemFragment)
+proc genRecComment(d: PDoc, n: PNode): PRstNode =
+  if n == nil: return nil
   result = genComment(d, n)
-  if result.isNone:
+  if result == nil:
     if n.kind in {nkProcDef, nkFuncDef, nkMethodDef, nkIteratorDef,
                   nkMacroDef, nkTemplateDef, nkConverterDef}:
       result = genRecCommentAux(d, n[bodyPos])
@@ -1188,13 +1178,13 @@ proc genJsonItem(d: PDoc, n, nameNode: PNode, k: TSymKind, nonExports = false): 
   result = JsonItem(json: %{ "name": %name, "type": %($k), "line": %n.info.line.int,
                    "col": %n.info.col}
   )
-  if comm.isSome:
-    let c = comm.unsafeGet
-    if c.isRst:
-      result.rst = c.rst
-      result.rstField = "description"
+  if comm != nil:
+    if optDocRaw in d.conf.globalOptions:
+      result.json["description"] = %comm.text
     else:
-      result.json["description"] = %c.str
+      result.rst = comm
+      result.rstField = "description"
+
   if r.buf.len > 0:
     result.json["code"] = %r.buf
   if k in routineKinds:
@@ -1392,8 +1382,7 @@ proc generateDoc*(d: PDoc, n, orig: PNode, config: ConfigRef, docFlags: DocFlags
     d.modDeprecationMsg.add(genDeprecationMsg(d, pragmaNode))
     let doctypeNode = findPragma(n, wDoctype)
     setDoctype(d, doctypeNode)
-  of nkCommentStmt:
-    d.modDescPre.add(genComment(d, n))
+  of nkCommentStmt: d.modDescPre.add(genComment(d, n))
   of nkProcDef, nkFuncDef:
     when useEffectSystem: documentRaises(d.cache, n)
     genItemAux(skProc)
@@ -1591,7 +1580,7 @@ proc generateJson*(d: PDoc, n: PNode, config: ConfigRef, includeComments: bool =
     setDoctype(d, doctypeNode)
   of nkCommentStmt:
     if includeComments:
-      d.add JsonItem(rst: genComment(d, n).get().rst, rstField: "comment",
+      d.add JsonItem(rst: genComment(d, n), rstField: "comment",
                      json: %Table[string, string]())
     else:
       d.modDescPre.add(genComment(d, n))
