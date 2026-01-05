@@ -493,8 +493,8 @@ proc icTests(r: var TResults; testsDir: string, cat: Category, options: string;
     tooltests = ["compiler/nim.nim"]
     writeOnly = " --incremental:writeonly "
     readOnly = " --incremental:readonly "
-    incrementalOn = " --incremental:on -d:nimIcIntegrityChecks "
-    navTestConfig = " --ic:on -d:nimIcNavigatorTests --hint:Conf:off --warnings:off "
+    incrementalOn = " --incremental:legacy -d:nimIcIntegrityChecks "
+    navTestConfig = " --ic:legacy -d:nimIcNavigatorTests --hint:Conf:off --warnings:off "
 
   template test(x: untyped) =
     testSpecWithNimcache(r, makeRawTest(file, x & options, cat), nimcache)
@@ -508,7 +508,7 @@ proc icTests(r: var TResults; testsDir: string, cat: Category, options: string;
 
   template checkTest() =
     var test = makeRawTest(file, options, cat)
-    test.spec.cmd = compilerPrefix & " check --hint:Conf:off --warnings:off --ic:on $options " & file
+    test.spec.cmd = compilerPrefix & " check --hint:Conf:off --warnings:off --ic:legacy $options " & file
     testSpecWithNimcache(r, test, nimcache)
 
   if not isNavigatorTest:
