@@ -200,6 +200,7 @@ aside {
 
 main {
   grid-area: main;
+  overflow-x: hidden;
   max-width: 70ch;
   width: 100%;
   margin-inline: auto;
