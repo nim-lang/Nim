@@ -25,7 +25,7 @@ const
   useEffectSystem* = true
   useWriteTracking* = false
   hasFFI* = defined(nimHasLibFFI)
-  copyrightYear* = "2025"
+  copyrightYear* = "2026"
 
   nimEnableCovariance* = defined(nimEnableCovariance)
 
