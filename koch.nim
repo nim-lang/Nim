@@ -188,6 +188,9 @@ proc bundleChecksums(latest: bool) =
   let nimonyCommit = if latest: "HEAD" else: NimonyStableCommit
   cloneDependency(distDir, "https://github.com/nim-lang/nimony.git", nimonyCommit, allowBundled = true)
 
+  nimCompileFold("Compile nifler", "dist/nimony/src/nifler/nifler.nim", options = "-d:release")
+  nimCompileFold("Compile nifmake", "dist/nimony/src/nifmake/nifmake.nim", options = "-d:release")
+
 proc bundleNimsuggest(args: string) =
   bundleChecksums(false)
   nimCompileFold("Compile nimsuggest", "nimsuggest/nimsuggest.nim",
