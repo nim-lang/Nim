@@ -798,6 +798,11 @@ proc genNarrow(c: PCtx; n: PNode; dest: TDest) =
     c.gABC(n, opcNarrowU, dest, TRegister(size*8))
   elif t.kind in {tyInt8..tyInt32} or (t.kind == tyInt and size < 8):
     c.gABC(n, opcNarrowS, dest, TRegister(size*8))
+  elif t.kind in {tyEnum, tyRange}:
+    let intType = getSysType(c.graph, n.info, tyInt)
+    let first = c.genx(newIntTypeNode(firstOrd(c.config, t), intType))
+    let last = c.genx(newIntTypeNode(lastOrd(c.config, t), intType))
+    c.gABC(n, opcNarrowR, dest, first, last)
 
 proc genNarrowU(c: PCtx; n: PNode; dest: TDest) =
   let t = skipTypes(n.typ, abstractVar-{tyTypeDesc})
@@ -1069,6 +1074,19 @@ proc whichAsgnOpc(n: PNode; requiresCopy = true): TOpcode =
   else:
     (if requiresCopy: opcAsgnComplex else: opcFastAsgnComplex)
 
+proc sizeLog2(typeSize: BiggestInt): TRegister =
+  case typeSize:
+  of 8:
+    result = 3
+  of 16:
+    result = 4
+  of 32:
+    result = 5
+  of 64:
+    result = 6
+  else:
+    raiseAssert $(typeSize)
+
 proc genMagic(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}, m: TMagic) =
   case m
   of mAnd: c.genAndOr(n, opcFJmp, dest)
@@ -1154,24 +1172,42 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}, m: TMag
   of mDivF64: genBinaryABC(c, n, dest, opcDivFloat)
   of mShrI:
     # modified: genBinaryABC(c, n, dest, opcShrInt)
-    # narrowU is applied to the left operandthe idea here is to narrow the left operand
+    # narrowU is applied to the left operand the idea here is to narrow the left operand
+    let typ = skipTypes(n.typ, abstractVar-{tyTypeDesc})
+    let size = getSize(c.config, typ)
     let tmp = c.genx(n[1])
     c.genNarrowU(n, tmp)
     let tmp2 = c.genx(n[2])
     if dest < 0: dest = c.getTemp(n.typ)
+    c.gABC(n, opcNarrowU, tmp2, sizeLog2(size * 8))
     c.gABC(n, opcShrInt, dest, tmp, tmp2)
     c.freeTemp(tmp)
     c.freeTemp(tmp2)
   of mShlI:
-    genBinaryABC(c, n, dest, opcShlInt)
+    let typ = skipTypes(n.typ, abstractVar-{tyTypeDesc})
+    let size = getSize(c.config, typ)
+    let tmp1 = c.genx(n[1])
+    let tmp2 = c.genx(n[2])
+    if dest < 0: dest = c.getTemp(n.typ)
+    c.gABC(n, opcNarrowU, tmp2, sizeLog2(size * 8))
+    c.gABC(n, opcShlInt, dest, tmp1, tmp2)
+    c.freeTemp(tmp1)
+    c.freeTemp(tmp2)
     # genNarrowU modified
-    let t = skipTypes(n.typ, abstractVar-{tyTypeDesc})
-    let size = getSize(c.config, t)
-    if t.kind in {tyUInt8..tyUInt32} or (t.kind == tyUInt and size < 8):
+    if typ.kind in {tyUInt8..tyUInt32} or (typ.kind == tyUInt and size < 8):
       c.gABC(n, opcNarrowU, dest, TRegister(size*8))
-    elif t.kind in {tyInt8..tyInt32} or (t.kind == tyInt and size < 8):
+    elif typ.kind in {tyInt8..tyInt32} or (typ.kind == tyInt and size < 8):
       c.gABC(n, opcSignExtend, dest, TRegister(size*8))
-  of mAshrI: genBinaryABC(c, n, dest, opcAshrInt)
+  of mAshrI:
+    let typ = skipTypes(n.typ, abstractVar-{tyTypeDesc})
+    let size = getSize(c.config, typ)
+    let tmp1 = c.genx(n[1])
+    let tmp2 = c.genx(n[2])
+    if dest < 0: dest = c.getTemp(n.typ)
+    c.gABC(n, opcNarrowU, tmp2, sizeLog2(size * 8))
+    c.gABC(n, opcAshrInt, dest, tmp1, tmp2)
+    c.freeTemp(tmp1)
+    c.freeTemp(tmp2)
   of mBitandI: genBinaryABC(c, n, dest, opcBitandInt)
   of mBitorI: genBinaryABC(c, n, dest, opcBitorInt)
   of mBitxorI: genBinaryABC(c, n, dest, opcBitxorInt)

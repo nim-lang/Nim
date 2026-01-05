@@ -11,7 +11,7 @@ import
   ast, astalgo, msgs, renderer, magicsys, types, idents, trees,
   wordrecg, options, guards, lineinfos, semfold, semdata,
   modulegraphs, varpartitions, typeallowed, nilcheck, errorhandling,
-  semstrictfuncs, suggestsymdb, pushpoppragmas, lowerings
+  semstrictfuncs, suggestsymdb, pushpoppragmas
 
 import std/[tables, intsets, strutils, sequtils]
 
