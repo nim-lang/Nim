@@ -228,12 +228,14 @@ proc traverseDeps(c: var DepContext; pair: FilePair; current: Node) =
 
 proc generateBuildFile(c: DepContext): string =
   ## Generate the .build.nif file for nifmake
-  result = getNimcacheDir(c.config).string / c.nodes[0].files[0].modname & ".build.nif"
+  createDir("nifcache")
+  result = "nifcache" / c.nodes[0].files[0].modname & ".build.nif"
+  #getNimcacheDir(c.config).string / c.nodes[0].files[0].modname & ".build.nif"
 
   var b = nifbuilder.open(result)
   defer: b.close()
 
-  b.addHeader("nim deps", "nifmake")
+  b.addHeader("nim ic", "nifmake")
   b.addTree "stmts"
 
   # Define nifler command
@@ -322,8 +324,8 @@ proc generateBuildFile(c: DepContext): string =
 
   b.endTree()  # stmts
 
-proc commandDeps*(conf: ConfigRef) =
-  ## Main entry point for `nim deps`
+proc commandIc*(conf: ConfigRef) =
+  ## Main entry point for `nim ic`
   when not defined(nimKochBootstrap):
     let nifler = findNifler()
     if nifler.len == 0:
@@ -370,4 +372,4 @@ proc commandDeps*(conf: ConfigRef) =
       if exitCode != 0:
         rawMessage(conf, errGenerated, "nifmake failed with exit code: " & $exitCode)
   else:
-    rawMessage(conf, errGenerated, "nim deps not available in bootstrap build")
+    rawMessage(conf, errGenerated, "nim ic not available in bootstrap build")

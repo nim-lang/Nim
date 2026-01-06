@@ -449,11 +449,11 @@ proc mainCommand*(graph: ModuleGraph) =
     wantMainModule(conf)
     setOutFile(conf)
     commandNifC(graph)
-  of cmdDeps:
+  of cmdIc:
     # Generate .build.nif for nifmake
     wantMainModule(conf)
     when not defined(nimKochBootstrap):
-      commandDeps(conf)
+      commandIc(conf)
     else:
       rawMessage(conf, errGenerated, "nim deps not available in bootstrap build")
   of cmdParse:
