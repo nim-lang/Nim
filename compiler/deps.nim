@@ -57,6 +57,14 @@ proc findNifler(): string =
       if not fileExists(result):
         result = ""
 
+proc findNifmake(): string =
+  # Look for nifmake in common locations
+  # Try relative to nim executable
+  let nimDir = getAppDir()
+  result = nimDir / "nifmake"
+  if not fileExists(result):
+    result = findExe("nifmake")
+
 proc runNifler(c: DepContext; nimFile: string): bool =
   ## Run nifler deps on a file if needed. Returns true on success.
   let pair = c.toPair(nimFile)
@@ -245,6 +253,21 @@ proc generateBuildFile(c: DepContext): string =
   b.addSymbolDef "nim_m"
   b.addStrLit getAppFilename()
   b.addStrLit "m"
+  b.addStrLit "--nimcache:nifcache"
+  # Add search paths
+  for p in c.config.searchPaths:
+    b.addStrLit "--path:" & p.string
+  b.addTree "input"
+  b.addIntLit 0
+  b.endTree()
+  b.endTree()
+
+  # Define nim nifc command
+  b.addTree "cmd"
+  b.addSymbolDef "nim_nifc"
+  b.addStrLit getAppFilename()
+  b.addStrLit "nifc"
+  b.addStrLit "--nimcache:nifcache"
   # Add search paths
   for p in c.config.searchPaths:
     b.addStrLit "--path:" & p.string
@@ -335,6 +358,16 @@ proc commandDeps*(conf: ConfigRef) =
     # Generate build file
     let buildFile = generateBuildFile(c)
     rawMessage(conf, hintSuccess, "generated: " & buildFile)
-    rawMessage(conf, hintSuccess, "run: nifmake run " & buildFile)
+
+    # Automatically run nifmake
+    let nifmake = findNifmake()
+    if nifmake.len == 0:
+      rawMessage(conf, hintSuccess, "run: nifmake run " & buildFile)
+    else:
+      let cmd = quoteShell(nifmake) & " run " & quoteShell(buildFile)
+      rawMessage(conf, hintExecuting, cmd)
+      let exitCode = execShellCmd(cmd)
+      if exitCode != 0:
+        rawMessage(conf, errGenerated, "nifmake failed with exit code: " & $exitCode)
   else:
     rawMessage(conf, errGenerated, "nim deps not available in bootstrap build")
