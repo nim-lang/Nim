@@ -254,9 +254,10 @@ proc generateBuildFile(c: DepContext): string =
   # Add search paths
   for p in c.config.searchPaths:
     b.addStrLit "--path:" & p.string
-  b.addTree "input"
-  b.addIntLit 0
+  b.addTree "args"
   b.endTree()
+  b.withTree "input":
+    b.addIntLit 0  # main parsed file
   b.endTree()
 
   # Define nim nifc command
@@ -299,6 +300,8 @@ proc generateBuildFile(c: DepContext): string =
     b.addTree "do"
     b.addIdent "nim_m"
     # Input: all parsed files for this module
+    b.withTree "input":
+      b.addStrLit node.files[0].nimFile
     for f in node.files:
       b.addTree "input"
       b.addStrLit c.parsedFile(f)
@@ -311,9 +314,6 @@ proc generateBuildFile(c: DepContext): string =
     # Output: semmed file
     b.addTree "output"
     b.addStrLit c.semmedFile(pair)
-    b.endTree()
-    b.addTree "args"
-    b.addStrLit pair.nimFile
     b.endTree()
     b.endTree()
 
