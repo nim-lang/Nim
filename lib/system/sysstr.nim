@@ -114,6 +114,12 @@ proc cstrToNimstr(str: cstring): NimString {.compilerRtl.} =
   if str == nil: NimString(nil)
   else: toNimStr(str, str.len)
 
+proc moveString(src: NimString): NimString {.compilerRtl.} =
+  if (src.reserved and strlitFlag) != 0:
+    result = toOwnedCopy(src)
+  else:
+    result = src
+
 proc copyString(src: NimString): NimString {.compilerRtl.} =
   ## Expects `src` to be initialized (len and terminating zero set)
   if src != nil:

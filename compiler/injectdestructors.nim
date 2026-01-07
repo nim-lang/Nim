@@ -165,11 +165,11 @@ proc isLastReadImpl(n: PNode; c: var Con; scope: var Scope): bool =
 
 template hasDestructorOrAsgn(c: var Con, typ: PType): bool =
   # bug #23354; an object type could have a non-trivial assignements when it is passed to a sink parameter
-  hasDestructor(c, typ) or (c.graph.config.selectedGC in {gcArc, gcOrc, gcAtomicArc} and
+  hasDestructor(c, typ) or (c.graph.config.selectedGC == gcRefc and typ.kind == tyString) or (c.graph.config.selectedGC in {gcArc, gcOrc, gcAtomicArc} and
         typ.kind == tyObject and not isTrivial(getAttachedOp(c.graph, typ, attachedAsgn)))
 
 proc isLastRead(n: PNode; c: var Con; s: var Scope): bool =
-  if not hasDestructorOrAsgn(c, n.typ): return true
+  if not hasDestructorOrAsgn(c, n.typ.skipTypes({tyGenericInst, tyAlias, tySink})): return true
 
   let m = skipConvDfa(n)
   result = isLastReadImpl(n, c, s)
@@ -286,7 +286,9 @@ proc deepAliases(dest, ri: PNode): bool =
     return aliases(dest, ri) != no
 
 proc genSink(c: var Con; s: var Scope; dest, ri: PNode; flags: set[MoveOrCopyFlag] = {}): PNode =
-  if (c.inLoopCond == 0 and (isFullyUnpackedTuple(dest) or IsDecl in flags or
+  if c.graph.config.selectedGC == gcRefc and dest.typ.skipTypes({tyGenericInst, tyAlias, tySink}).kind == tyString:
+    result = newFastAsgnStmt(dest, callCodegenProc(c.graph, "moveString", dest.info, ri))
+  elif (c.inLoopCond == 0 and (isFullyUnpackedTuple(dest) or IsDecl in flags or
       (isAnalysableFieldAccess(dest, c.owner) and isFirstWrite(dest, c)))) or
       isNoInit(dest) or IsReturn in flags:
     # optimize sink call into a bitwise memcopy

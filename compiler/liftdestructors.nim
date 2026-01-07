@@ -1036,6 +1036,8 @@ proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   of tyString:
     if useNoGc(c, t):
       useSeqOrStrOp(c, t, body, x, y)
+    elif c.g.config.selectedGC == gcRefc:
+      defaultOp(c, t, body, x, y)
     elif tfHasAsgn in t.flags:
       discard considerUserDefinedOp(c, t, body, x, y)
     else:
