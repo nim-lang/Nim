@@ -317,6 +317,20 @@ proc generateBuildFile(c: DepContext): string =
     b.endTree()
     b.endTree()
 
+  # Final compilation step: generate executable from main module
+  let mainNif = c.nodes[0].files[0].nimFile
+  let exeFile = changeFileExt(c.nodes[0].files[0].nimFile, ExeExt)
+  b.addTree "do"
+  b.addIdent "nim_nifc"
+  # Input: .nim file (expanded as argument) and .nif file (dependency)
+  b.addTree "input"
+  b.addStrLit mainNif
+  b.endTree()
+  b.addTree "output"
+  b.addStrLit exeFile
+  b.endTree()
+  b.endTree()
+
   b.endTree()  # stmts
 
 proc commandIc*(conf: ConfigRef) =
