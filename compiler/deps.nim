@@ -11,7 +11,7 @@
 ## This enables incremental and parallel compilation using the `m` switch.
 
 import std / [os, tables, sets, times, osproc, strutils]
-import options, msgs, lineinfos
+import options, msgs, lineinfos, pathutils
 
 import "../dist/nimony/src/lib" / [nifstreams, nifcursors, bitabs, nifreader, nifbuilder]
 import "../dist/nimony/src/gear2" / modnames
@@ -47,15 +47,10 @@ proc semmedFile(c: DepContext; f: FilePair): string =
 
 proc findNifler(): string =
   # Look for nifler in common locations
-  result = findExe("nifler")
-  if result.len == 0:
-    # Try relative to nim executable
-    let nimDir = getAppDir()
-    result = nimDir / "nifler"
-    if not fileExists(result):
-      result = nimDir / ".." / "nimony" / "bin" / "nifler"
-      if not fileExists(result):
-        result = ""
+  let nimDir = getAppDir()
+  result = nimDir / "nifler"
+  if not fileExists(result):
+    result = findExe("nifler")
 
 proc findNifmake(): string =
   # Look for nifmake in common locations
@@ -353,6 +348,11 @@ proc commandIc*(conf: ConfigRef) =
     let rootNode = Node(files: @[rootPair], id: 0)
     c.nodes.add rootNode
     c.processedModules[rootPair.modname] = 0
+
+    # model the system.nim dependency:
+    let sysNode = Node(files: @[toPair(c, (conf.libpath / RelativeFile"system.nim").string)], id: 1)
+    c.nodes.add sysNode
+    rootNode.deps.add sysNode.id
 
     # Process dependencies
     traverseDeps(c, rootPair, rootNode)
