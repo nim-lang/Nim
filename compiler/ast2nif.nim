@@ -894,6 +894,9 @@ proc getOffset(c: var DecodeContext; module: FileIndex; nifName: string): NifInd
 proc loadNode(c: var DecodeContext; n: var Cursor; thisModule: string;
               localSyms: var Table[string, PSym]): PNode
 
+proc loadSymFromCursor(c: var DecodeContext; s: PSym; n: var Cursor; thisModule: string;
+                       localSyms: var Table[string, PSym])
+
 proc createTypeStub(c: var DecodeContext; t: SymId): PType =
   let name = pool.syms[t]
   assert name.startsWith("`t")
@@ -919,8 +922,8 @@ proc createTypeStub(c: var DecodeContext; t: SymId): PType =
 proc extractLocalSymsFromTree(c: var DecodeContext; n: var Cursor; thisModule: string;
                               localSyms: var Table[string, PSym]) =
   ## Scan a tree for local symbol definitions (sdef tags) and add them to localSyms.
-  ## This doesn't fully load the symbols, just pre-registers them so references
-  ## can find them. After this proc returns, n is positioned AFTER the tree.
+  ## For local symbols, fully load them immediately since they have no index offsets.
+  ## After this proc returns, n is positioned AFTER the tree.
   # Handle atoms (non-compound nodes) - just skip them
   if n.kind != ParLe:
     inc n
@@ -935,7 +938,8 @@ proc extractLocalSymsFromTree(c: var DecodeContext; n: var Cursor; thisModule: s
           let symName = pool.syms[name.symId]
           let sn = parseSymName(symName)
           if sn.module.len == 0 and symName notin localSyms:
-            # Local symbol - create a stub entry in localSyms
+            # Local symbol - create stub and immediately load it fully
+            # since local symbols have no index offsets for lazy loading
             let module = moduleId(c, thisModule)
             let val = addr c.mods[module].symCounter
             inc val[]
@@ -943,6 +947,17 @@ proc extractLocalSymsFromTree(c: var DecodeContext; n: var Cursor; thisModule: s
             let sym = PSym(itemId: id, kindImpl: skStub, name: c.cache.getIdent(sn.name),
                           disamb: sn.count.int32, state: Complete)
             localSyms[symName] = sym
+            # Load the full symbol definition immediately
+            # We're currently at the `(sd` position, need to skip to SymbolDef
+            inc n  # skip past `sd` tag to get to SymbolDef
+            inc depth  # account for the opening `(` of the sdef
+            loadSymFromCursor(c, sym, n, thisModule, localSyms)
+            sym.state = Sealed  # mark as fully loaded
+            # loadSymFromCursor consumed everything including the closing `)`,
+            # so we need to account for it in depth tracking
+            dec depth
+            # Continue processing - loadSymFromCursor already advanced n past the closing `)`
+            continue
       inc depth
     elif n.kind == ParRi:
       dec depth
