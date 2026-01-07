@@ -442,18 +442,20 @@ proc mainCommand*(graph: ModuleGraph) =
   of cmdM:
     # cmdM uses NIF files, not ROD files
     graph.config.symbolFiles = disabledSf
-    setUseIc(false)
+    setUseIc(true)
     commandCheck(graph)
   of cmdNifC:
+    setUseIc(true)
     # Generate C code from NIF files
     wantMainModule(conf)
     setOutFile(conf)
     commandNifC(graph)
-  of cmdDeps:
+  of cmdIc:
     # Generate .build.nif for nifmake
+    setUseIc(true)
     wantMainModule(conf)
     when not defined(nimKochBootstrap):
-      commandDeps(conf)
+      commandIc(conf)
     else:
       rawMessage(conf, errGenerated, "nim deps not available in bootstrap build")
   of cmdParse:
