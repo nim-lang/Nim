@@ -442,15 +442,17 @@ proc mainCommand*(graph: ModuleGraph) =
   of cmdM:
     # cmdM uses NIF files, not ROD files
     graph.config.symbolFiles = disabledSf
-    setUseIc(false)
+    setUseIc(true)
     commandCheck(graph)
   of cmdNifC:
+    setUseIc(true)
     # Generate C code from NIF files
     wantMainModule(conf)
     setOutFile(conf)
     commandNifC(graph)
   of cmdIc:
     # Generate .build.nif for nifmake
+    setUseIc(true)
     wantMainModule(conf)
     when not defined(nimKochBootstrap):
       commandIc(conf)
