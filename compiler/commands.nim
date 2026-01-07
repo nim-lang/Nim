@@ -499,7 +499,7 @@ proc parseCommand*(command: string): Command =
   of "nop", "help": cmdNop
   of "jsonscript": cmdJsonscript
   of "nifc": cmdNifC  # generate C from NIF files
-  of "deps": cmdDeps  # generate .build.nif for nifmake
+  of "ic": cmdIc  # generate .build.nif for nifmake
   else: cmdUnknown
 
 proc setCmd*(conf: ConfigRef, cmd: Command) =
