@@ -16,7 +16,7 @@ const
   ChecksumsStableCommit = "0b8e46379c5bc1bf73d8b3011908389c60fb9b98" # 2.0.1
   SatStableCommit = "faf1617f44d7632ee9601ebc13887644925dcc01"
 
-  NimonyStableCommit = "e2cd6eadcaa68eb8ab380cb4d3bdd7fd260677b4" # unversioned \
+  NimonyStableCommit = "fc8baa61b9911caf4666685a5f5ed41b9c04f6f8" # unversioned \
     # Note that Nimony uses Nim as a git submodule but we don't want to install
     # Nimony's dependency to Nim as we are Nim. So a `git clone` without --recursive
     # is **required** here.
@@ -188,8 +188,10 @@ proc bundleChecksums(latest: bool) =
   let nimonyCommit = if latest: "HEAD" else: NimonyStableCommit
   cloneDependency(distDir, "https://github.com/nim-lang/nimony.git", nimonyCommit, allowBundled = true)
 
-  nimCompileFold("Compile nifler", "dist/nimony/src/nifler/nifler.nim", options = "-d:release")
-  nimCompileFold("Compile nifmake", "dist/nimony/src/nifmake/nifmake.nim", options = "-d:release")
+  if not fileExists("bin/nifler".exe):
+    nimCompileFold("Compile nifler", "dist/nimony/src/nifler/nifler.nim", options = "-d:release")
+  if not fileExists("bin/nifmake".exe):
+    nimCompileFold("Compile nifmake", "dist/nimony/src/nifmake/nifmake.nim", options = "-d:release")
 
 proc bundleNimsuggest(args: string) =
   bundleChecksums(false)
