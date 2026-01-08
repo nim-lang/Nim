@@ -242,8 +242,11 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
     raiseAssert "use setPipeLinePass to set a proper PipelinePass"
 
   when not defined(nimKochBootstrap):
-    if (optCompress in graph.config.globalOptions or graph.config.cmd == cmdM) and
-       not graph.config.isDefined("nimscript"):
+    # For cmdM: only write NIF for the main module, not for imported modules
+    # (imported modules should be loaded from existing NIF files)
+    let shouldWriteNif = (optCompress in graph.config.globalOptions) or
+                         (graph.config.cmd == cmdM and sfMainModule in module.flags)
+    if shouldWriteNif and not graph.config.isDefined("nimscript"):
       topLevelStmts.add finalNode
       # Collect replay actions from both pragma computations and VM state diff
       var replayActions: seq[PNode] = @[]
@@ -294,6 +297,16 @@ proc compilePipelineModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymF
             "nim m requires precompiled NIF for import: " & toFullPath(graph.config, fileIdx) &
             " (expected: " & nifPath & ")")
           return nil  # Don't fall through to compile from source
+        else:
+          # Module successfully loaded from NIF file - use it and skip processing
+          result = precomp.module
+          if sfSystemModule in flags:
+            graph.systemModule = result
+          partialInitModule(result, graph, fileIdx, AbsoluteFile(toFullPath(graph.config, fileIdx)))
+          # Replay state changes from the loaded NIF module
+          if result.ast != nil:
+            replayStateChanges(result, graph)
+          return result  # Return early, don't process from source
     if result == nil and graph.config.cmd != cmdM:
       # Fall back to ROD file loading (not used for cmdM which uses NIF only)
       result = moduleFromRodFile(graph, fileIdx, cachedModules)
