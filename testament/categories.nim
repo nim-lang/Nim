@@ -27,6 +27,7 @@ const
     "io",
     "js",
     "ic",
+    "ic_disabled",
     "lib",
     "manyloc",
     "nimble-packages",
