@@ -354,6 +354,9 @@ proc genCopyNoCheck(c: var Con; dest, ri: PNode; a: TTypeAttachedOp): PNode =
   assert ri.typ != nil
 
 proc genCopy(c: var Con; dest, ri: PNode; flags: set[MoveOrCopyFlag]): PNode =
+  if c.graph.config.selectedGC == gcRefc and dest.typ.skipTypes({tyGenericInst, tyAlias, tySink}).kind == tyString:
+    result = newAsgnStmt(dest, ri)
+    return
   if c.inEnsureMove > 0:
     localError(c.graph.config, ri.info, errFailedMove, "cannot move '" & $ri &
                                                       "', which introduces an implicit copy")
