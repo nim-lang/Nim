@@ -37,3 +37,24 @@ block:
 
   let newAdder = makeAdder(0)
   newAdder(5)
+
+block:
+  proc g() = discard
+  proc f() {.raises: [IOError].} =
+    try:
+      g()
+    except IOError:
+      raise
+
+  f()
+
+
+block:
+  proc g() = discard
+  proc f() {.raises: [IOError].} =
+    try:
+      g()
+    except IOError as e:
+      raise
+
+  f()
