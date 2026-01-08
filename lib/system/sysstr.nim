@@ -115,10 +115,13 @@ proc cstrToNimstr(str: cstring): NimString {.compilerRtl.} =
   else: toNimStr(str, str.len)
 
 proc moveString(src: NimString): NimString {.compilerRtl.} =
-  if (src.reserved and strlitFlag) != 0:
-    result = toOwnedCopy(src)
-  else:
+  if src == nil:
     result = src
+  else:
+    if (src.reserved and strlitFlag) != 0:
+      result = toOwnedCopy(src)
+    else:
+      result = src
 
 proc copyString(src: NimString): NimString {.compilerRtl.} =
   ## Expects `src` to be initialized (len and terminating zero set)
