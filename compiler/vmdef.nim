@@ -105,7 +105,7 @@ type
     opcIsNil, opcOf, opcIs,
     opcParseFloat, opcConv, opcCast,
     opcQuit, opcInvalidField,
-    opcNarrowS, opcNarrowU,
+    opcNarrowS, opcNarrowU, opcNarrowR
     opcSignExtend,
 
     opcAddStrCh,
@@ -241,6 +241,11 @@ type
   VmCallback* = proc (args: VmArgs) {.closure.}
 
   PCtx* = ref TCtx
+
+  VmProcInfo* = object
+    pc*: int32
+    usedRegisters*: int32
+
   TCtx* = object of TPassContext # code gen context
     code*: seq[TInstr]
     debug*: seq[TLineInfo]  # line info for every instruction; kept separate
@@ -269,7 +274,7 @@ type
     profiler*: Profiler
     templInstCounter*: ref int # gives every template instantiation a unique ID, needed here for getAst
     vmstateDiff*: seq[(PSym, PNode)] # we remember the "diff" to global state here (feature for IC)
-    procToCodePos*: Table[int, int]
+    procToCodePos*: Table[int, VmProcInfo]
     cannotEval*: bool
     locals*: IntSet
 
@@ -290,6 +295,9 @@ type
   TPosition* = distinct int
 
   PEvalContext* = PCtx
+
+const
+  NoVmProcInfo* = VmProcInfo(pc: 0'i32, usedRegisters: -1'i32)
 
 proc newCtx*(module: PSym; cache: IdentCache; g: ModuleGraph; idgen: IdGenerator): PCtx =
   PCtx(code: @[], debug: @[],

@@ -277,7 +277,8 @@ proc mangleName(m: BModule, s: PSym): Rope =
       else:
         result.add("_")
         result.add(rope(s.id))
-    s.loc.snippet = result
+    ensureMutable s
+    s.locImpl.snippet = result
 
 proc escapeJSString(s: string): string =
   result = newStringOfCap(s.len + s.len shr 2)
@@ -728,44 +729,47 @@ proc arithAux(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
   of mShrI:
     let typ = n[1].typ.skipTypes(abstractVarRange)
     if typ.kind == tyInt64 and optJsBigInt64 in p.config.globalOptions:
-      applyFormat("BigInt.asIntN(64, BigInt.asUintN(64, $1) >> BigInt($2))")
+      applyFormat("BigInt.asIntN(64, BigInt.asUintN(64, $1) >> (BigInt($2) & 63n))")
     elif typ.kind == tyUInt64 and optJsBigInt64 in p.config.globalOptions:
-      applyFormat("($1 >> BigInt($2))")
+      applyFormat("($1 >> (BigInt($2) & 63n))")
     else:
+      let bitmask = typ.size * 8 - 1
       if typ.kind in {tyInt..tyInt32}:
         let trimmerU = unsignedTrimmer(typ.size)
         let trimmerS = signedTrimmer(typ.size)
-        r.res = "((($1 $2) >>> $3) $4)" % [xLoc, trimmerU, yLoc, trimmerS]
+        r.res = "((($1 $2) >>> ($3 & $5)) $4)" % [xLoc, trimmerU, yLoc, trimmerS, $bitmask]
       else:
-        applyFormat("($1 >>> $2)")
+        r.res = "($1 >>> ($2 & $3))" % [xLoc, yLoc, $bitmask]
   of mShlI:
     let typ = n[1].typ.skipTypes(abstractVarRange)
     if typ.size == 8:
       if typ.kind == tyInt64 and optJsBigInt64 in p.config.globalOptions:
-        applyFormat("BigInt.asIntN(64, $1 << BigInt($2))")
+        applyFormat("BigInt.asIntN(64, $1 << (BigInt($2) & 63n))")
       elif typ.kind == tyUInt64 and optJsBigInt64 in p.config.globalOptions:
-        applyFormat("BigInt.asUintN(64, $1 << BigInt($2))")
+        applyFormat("BigInt.asUintN(64, $1 << (BigInt($2) & 63n))")
       else:
-        applyFormat("($1 * Math.pow(2, $2))")
+        applyFormat("($1 * Math.pow(2, ($2 & 63)))")
     else:
+      let bitmask = typ.size * 8 - 1
       if typ.kind in {tyUInt..tyUInt32}:
         let trimmer = unsignedTrimmer(typ.size)
-        r.res = "(($1 << $2) $3)" % [xLoc, yLoc, trimmer]
+        r.res = "(($1 << ($2 & $4)) $3)" % [xLoc, yLoc, trimmer, $bitmask]
       else:
         let trimmer = signedTrimmer(typ.size)
-        r.res = "(($1 << $2) $3)" % [xLoc, yLoc, trimmer]
+        r.res = "(($1 << ($2 & $4)) $3)" % [xLoc, yLoc, trimmer, $bitmask]
   of mAshrI:
     let typ = n[1].typ.skipTypes(abstractVarRange)
     if typ.size == 8:
       if optJsBigInt64 in p.config.globalOptions:
-        applyFormat("($1 >> BigInt($2))")
+        applyFormat("($1 >> (BigInt($2) & 63n))")
       else:
-        applyFormat("Math.floor($1 / Math.pow(2, $2))")
+        applyFormat("Math.floor($1 / Math.pow(2, ($2 & 63)))")
     else:
+      let bitmask = typ.size * 8 - 1
       if typ.kind in {tyUInt..tyUInt32}:
-        applyFormat("($1 >>> $2)")
+        r.res = "($1 >>> ($2 & $3)))" % [xLoc, yLoc, $bitmask]
       else:
-        applyFormat("($1 >> $2)")
+        r.res = "($1 >> ($2 & $3))" % [xLoc, yLoc, $bitmask]
   of mBitandI: bitwiseExpr("&")
   of mBitorI: bitwiseExpr("|")
   of mBitxorI: bitwiseExpr("^")
@@ -1002,7 +1006,8 @@ proc genTry(p: PProc, n: PNode, r: var TCompRes) =
       # If some branch requires a local alias introduce it here. This is needed
       # since JS cannot do ``catch x as y``.
       if excAlias != nil:
-        excAlias.sym.loc.snippet = mangleName(p.module, excAlias.sym)
+        ensureMutable excAlias.sym
+        excAlias.sym.locImpl.snippet = mangleName(p.module, excAlias.sym)
         lineF(p, "var $1 = lastJSError;$n", excAlias.sym.loc.snippet)
       gen(p, n[i][^1], a)
       moveInto(p, a, r)
@@ -1135,7 +1140,8 @@ proc genBlock(p: PProc, n: PNode, r: var TCompRes) =
     # named block?
     if (n[0].kind != nkSym): internalError(p.config, n.info, "genBlock")
     var sym = n[0].sym
-    sym.loc.k = locOther
+    ensureMutable sym
+    sym.locImpl.k = locOther
     sym.position = idx+1
   let labl = p.unique
   lineF(p, "Label$1: {$n", [labl.rope])
@@ -1234,7 +1240,8 @@ proc generateHeader(p: PProc, prc: PSym): Rope =
       # to keep it simple
       let env = prc.ast[paramsPos].lastSon
       assert env.kind == nkSym, "env is missing"
-      env.sym.loc.snippet = "this"
+      ensureMutable env.sym
+      env.sym.locImpl.snippet = "this"
 
   for i in 1..<typ.n.len:
     assert(typ.n[i].kind == nkSym)
@@ -1371,12 +1378,15 @@ proc genFieldAddr(p: PProc, n: PNode, r: var TCompRes) =
   r.typ = etyBaseIndex
   let b = if n.kind == nkHiddenAddr: n[0] else: n
   gen(p, b[0], a)
-  if skipTypes(b[0].typ, abstractVarRange).kind == tyTuple:
+  if skipTypes(b[0].typ, abstractVarRange + tyTypeClasses).kind == tyTuple:
+    # ref #25227 about `+ tyTypeClasses`
     r.res = makeJSString("Field" & $getFieldPosition(p, b[1]))
   else:
     if b[1].kind != nkSym: internalError(p.config, b[1].info, "genFieldAddr")
     var f = b[1].sym
-    if f.loc.snippet == "": f.loc.snippet = mangleName(p.module, f)
+    if f.loc.snippet == "": 
+      ensureMutable f
+      f.locImpl.snippet = mangleName(p.module, f)
     r.res = makeJSString($f.loc.snippet)
   internalAssert p.config, a.typ != etyBaseIndex
   r.address = a.res
@@ -1404,7 +1414,9 @@ proc genFieldAccess(p: PProc, n: PNode, r: var TCompRes) =
   else:
     if n[1].kind != nkSym: internalError(p.config, n[1].info, "genFieldAccess")
     var f = n[1].sym
-    if f.loc.snippet == "": f.loc.snippet = mangleName(p.module, f)
+    if f.loc.snippet == "": 
+      ensureMutable f
+      f.locImpl.snippet = mangleName(p.module, f)
     r.res = "$1.$2" % [r.res, f.loc.snippet]
     mkTemp(1)
   r.kind = resExpr
@@ -1425,11 +1437,15 @@ proc genCheckedFieldOp(p: PProc, n: PNode, addrTyp: PType, r: var TCompRes) =
   # Field symbol
   var field = accessExpr[1].sym
   internalAssert p.config, field.kind == skField
-  if field.loc.snippet == "": field.loc.snippet = mangleName(p.module, field)
+  if field.loc.snippet == "": 
+    ensureMutable field
+    field.locImpl.snippet = mangleName(p.module, field)
   # Discriminant symbol
   let disc = checkExpr[2].sym
   internalAssert p.config, disc.kind == skField
-  if disc.loc.snippet == "": disc.loc.snippet = mangleName(p.module, disc)
+  if disc.loc.snippet == "": 
+    ensureMutable disc
+    disc.locImpl.snippet = mangleName(p.module, disc)
 
   var setx: TCompRes = default(TCompRes)
   gen(p, checkExpr[1], setx)
@@ -1841,7 +1857,9 @@ proc genPatternCall(p: PProc; n: PNode; pat: string; typ: PType;
 proc genInfixCall(p: PProc, n: PNode, r: var TCompRes) =
   # don't call '$' here for efficiency:
   let f = n[0].sym
-  if f.loc.snippet == "": f.loc.snippet = mangleName(p.module, f)
+  if f.loc.snippet == "": 
+    ensureMutable f
+    f.locImpl.snippet = mangleName(p.module, f)
   if sfInfixCall in f.flags:
     let pat = $n[0].sym.loc.snippet
     internalAssert p.config, pat.len > 0
@@ -2333,8 +2351,8 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
       r.res = "if (null != $1) { if (null == $2) $2 = $3; else $2 += $3; }" %
         [b, lhs.rdLoc, tmp]
     else:
-      let (a, tmp) = maybeMakeTemp(p, n[1], lhs)
-      r.res = "$1.push.apply($3, $2);" % [a, rhs.rdLoc, tmp]
+      useMagic(p, "nimAddStrStr")
+      r.res = "nimAddStrStr($1, $2);" % [lhs.rdLoc, rhs.rdLoc]
     r.kind = resExpr
   of mAppendSeqElem:
     var x, y: TCompRes = default(TCompRes)
@@ -2577,7 +2595,9 @@ proc genObjConstr(p: PProc, n: PNode, r: var TCompRes) =
     let val = it[1]
     gen(p, val, a)
     var f = it[0].sym
-    if f.loc.snippet == "": f.loc.snippet = mangleName(p.module, f)
+    if f.loc.snippet == "": 
+      ensureMutable f
+      f.locImpl.snippet = mangleName(p.module, f)
     fieldIDs.incl(lookupFieldAgain(n.typ.skipTypes({tyDistinct}), f).id)
 
     let typ = val.typ.skipTypes(abstractInst)

@@ -798,6 +798,11 @@ proc genNarrow(c: PCtx; n: PNode; dest: TDest) =
     c.gABC(n, opcNarrowU, dest, TRegister(size*8))
   elif t.kind in {tyInt8..tyInt32} or (t.kind == tyInt and size < 8):
     c.gABC(n, opcNarrowS, dest, TRegister(size*8))
+  elif t.kind in {tyEnum, tyRange}:
+    let intType = getSysType(c.graph, n.info, tyInt)
+    let first = c.genx(newIntTypeNode(firstOrd(c.config, t), intType))
+    let last = c.genx(newIntTypeNode(lastOrd(c.config, t), intType))
+    c.gABC(n, opcNarrowR, dest, first, last)
 
 proc genNarrowU(c: PCtx; n: PNode; dest: TDest) =
   let t = skipTypes(n.typ, abstractVar-{tyTypeDesc})
@@ -1069,6 +1074,19 @@ proc whichAsgnOpc(n: PNode; requiresCopy = true): TOpcode =
   else:
     (if requiresCopy: opcAsgnComplex else: opcFastAsgnComplex)
 
+proc sizeLog2(typeSize: BiggestInt): TRegister =
+  case typeSize:
+  of 8:
+    result = 3
+  of 16:
+    result = 4
+  of 32:
+    result = 5
+  of 64:
+    result = 6
+  else:
+    raiseAssert $(typeSize)
+
 proc genMagic(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}, m: TMagic) =
   case m
   of mAnd: c.genAndOr(n, opcFJmp, dest)
@@ -1154,24 +1172,42 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}, m: TMag
   of mDivF64: genBinaryABC(c, n, dest, opcDivFloat)
   of mShrI:
     # modified: genBinaryABC(c, n, dest, opcShrInt)
-    # narrowU is applied to the left operandthe idea here is to narrow the left operand
+    # narrowU is applied to the left operand the idea here is to narrow the left operand
+    let typ = skipTypes(n.typ, abstractVar-{tyTypeDesc})
+    let size = getSize(c.config, typ)
     let tmp = c.genx(n[1])
     c.genNarrowU(n, tmp)
     let tmp2 = c.genx(n[2])
     if dest < 0: dest = c.getTemp(n.typ)
+    c.gABC(n, opcNarrowU, tmp2, sizeLog2(size * 8))
     c.gABC(n, opcShrInt, dest, tmp, tmp2)
     c.freeTemp(tmp)
     c.freeTemp(tmp2)
   of mShlI:
-    genBinaryABC(c, n, dest, opcShlInt)
+    let typ = skipTypes(n.typ, abstractVar-{tyTypeDesc})
+    let size = getSize(c.config, typ)
+    let tmp1 = c.genx(n[1])
+    let tmp2 = c.genx(n[2])
+    if dest < 0: dest = c.getTemp(n.typ)
+    c.gABC(n, opcNarrowU, tmp2, sizeLog2(size * 8))
+    c.gABC(n, opcShlInt, dest, tmp1, tmp2)
+    c.freeTemp(tmp1)
+    c.freeTemp(tmp2)
     # genNarrowU modified
-    let t = skipTypes(n.typ, abstractVar-{tyTypeDesc})
-    let size = getSize(c.config, t)
-    if t.kind in {tyUInt8..tyUInt32} or (t.kind == tyUInt and size < 8):
+    if typ.kind in {tyUInt8..tyUInt32} or (typ.kind == tyUInt and size < 8):
       c.gABC(n, opcNarrowU, dest, TRegister(size*8))
-    elif t.kind in {tyInt8..tyInt32} or (t.kind == tyInt and size < 8):
+    elif typ.kind in {tyInt8..tyInt32} or (typ.kind == tyInt and size < 8):
       c.gABC(n, opcSignExtend, dest, TRegister(size*8))
-  of mAshrI: genBinaryABC(c, n, dest, opcAshrInt)
+  of mAshrI:
+    let typ = skipTypes(n.typ, abstractVar-{tyTypeDesc})
+    let size = getSize(c.config, typ)
+    let tmp1 = c.genx(n[1])
+    let tmp2 = c.genx(n[2])
+    if dest < 0: dest = c.getTemp(n.typ)
+    c.gABC(n, opcNarrowU, tmp2, sizeLog2(size * 8))
+    c.gABC(n, opcAshrInt, dest, tmp1, tmp2)
+    c.freeTemp(tmp1)
+    c.freeTemp(tmp2)
   of mBitandI: genBinaryABC(c, n, dest, opcBitandInt)
   of mBitorI: genBinaryABC(c, n, dest, opcBitorInt)
   of mBitxorI: genBinaryABC(c, n, dest, opcBitxorInt)
@@ -1476,9 +1512,9 @@ proc canElimAddr(n: PNode; idgen: IdGenerator): PNode =
       result = copyNode(n[0])
       result.add m[0]
       if n.typ.skipTypes(abstractVar).kind != tyOpenArray:
-        result.typ() = n.typ
+        result.typ = n.typ
       elif n.typ.skipTypes(abstractInst).kind in {tyVar}:
-        result.typ() = toVar(result.typ, n.typ.skipTypes(abstractInst).kind, idgen)
+        result.typ = toVar(result.typ, n.typ.skipTypes(abstractInst).kind, idgen)
   of nkHiddenStdConv, nkHiddenSubConv, nkConv:
     var m = n[0][1]
     if m.kind in {nkDerefExpr, nkHiddenDeref}:
@@ -1487,9 +1523,9 @@ proc canElimAddr(n: PNode; idgen: IdGenerator): PNode =
       result.add n[0][0]
       result.add m[0]
       if n.typ.skipTypes(abstractVar).kind != tyOpenArray:
-        result.typ() = n.typ
+        result.typ = n.typ
       elif n.typ.skipTypes(abstractInst).kind in {tyVar}:
-        result.typ() = toVar(result.typ, n.typ.skipTypes(abstractInst).kind, idgen)
+        result.typ = toVar(result.typ, n.typ.skipTypes(abstractInst).kind, idgen)
   else:
     if n[0].kind in {nkDerefExpr, nkHiddenDeref}:
       # addr ( deref ( x )) --> x
@@ -1542,7 +1578,8 @@ proc genAsgn(c: PCtx; dest: TDest; ri: PNode; requiresCopy: bool) =
 proc setSlot(c: PCtx; v: PSym) =
   # XXX generate type initialization here?
   if v.position == 0:
-    v.position = getFreeRegister(c, if v.kind == skLet: slotFixedLet else: slotFixedVar, start = 1)
+    # IC: review this solution again later
+    v.positionImpl = getFreeRegister(c, if v.kind == skLet: slotFixedLet else: slotFixedVar, start = 1)
 
 template cannotEval(c: PCtx; n: PNode) =
   if c.config.cmd == cmdCheck and c.config.m.errorOutputs != {}:
@@ -1687,7 +1724,7 @@ proc genAsgn(c: PCtx; le, ri: PNode; requiresCopy: bool) =
 
 proc genTypeLit(c: PCtx; t: PType; dest: var TDest) =
   var n = newNode(nkType)
-  n.typ() = t
+  n.typ = t
   genLit(c, n, dest)
 
 proc isEmptyBody(n: PNode): bool =
@@ -1782,7 +1819,7 @@ proc genRdVar(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
       # see tests/t99bott for an example that triggers it:
       cannotEval(c, n)
 
-template needsRegLoad(): untyped =
+template needsRegLoad(): untyped {.dirty.} =
   {gfNode, gfNodeAddr} * flags == {} and
     fitsRegister(n.typ.skipTypes({tyVar, tyLent, tyStatic}))
 
@@ -1856,7 +1893,7 @@ proc genCheckedObjAccessAux(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags
   let fieldName = $accessExpr[1]
   let msg = genFieldDefect(c.config, fieldName, disc.sym)
   let strLit = newStrNode(msg, accessExpr[1].info)
-  strLit.typ() = strType
+  strLit.typ = strType
   c.genLit(strLit, msgReg)
   c.gABC(n, opcInvalidField, msgReg, discVal)
   c.freeTemp(discVal)
@@ -2120,7 +2157,7 @@ proc genTupleConstr(c: PCtx, n: PNode, dest: var TDest) =
         c.preventFalseAlias(it, opcWrObj, dest, i.TRegister, tmp)
         c.freeTemp(tmp)
 
-proc genProc*(c: PCtx; s: PSym): int
+proc genProc*(c: PCtx; s: PSym): VmProcInfo
 
 proc toKey(s: PSym): string =
   result = ""
@@ -2404,27 +2441,19 @@ proc optimizeJumps(c: PCtx; start: int) =
         c.finalJumpTarget(i, d - i)
     else: discard
 
-proc genProc(c: PCtx; s: PSym): int =
-  let
-    pos = c.procToCodePos.getOrDefault(s.id)
-    wasNotGenProcBefore = pos == 0
-    noRegistersAllocated = s.offset == -1
-  if wasNotGenProcBefore or noRegistersAllocated:
-    # xxx: the noRegisterAllocated check is required in order to avoid issues
-    #      where nimsuggest can crash due as a macro with pos will be loaded
-    #      but it doesn't have offsets for register allocations see:
-    #      https://github.com/nim-lang/Nim/issues/18385
-    #      Improvements and further use of IC should remove the need for this.
+proc genProc(c: PCtx; s: PSym): VmProcInfo =
+  result = c.procToCodePos.getOrDefault(s.id, NoVmProcInfo)
+  if result.usedRegisters < 0:
     #if s.name.s == "outterMacro" or s.name.s == "innerProc":
     #  echo "GENERATING CODE FOR ", s.name.s
     let last = c.code.len-1
-    var eofInstr: TInstr = default(TInstr)
+    var eofInstr = default(TInstr)
     if last >= 0 and c.code[last].opcode == opcEof:
       eofInstr = c.code[last]
       c.code.setLen(last)
       c.debug.setLen(last)
     #c.removeLastEof
-    result = c.code.len+1 # skip the jump instruction
+    result.pc = (c.code.len+1).int32 # skip the jump instruction
     c.procToCodePos[s.id] = result
     # thanks to the jmp we can add top level statements easily and also nest
     # procs easily:
@@ -2449,12 +2478,12 @@ proc genProc(c: PCtx; s: PSym): int =
     c.gABC(body, opcRet)
     c.patch(procStart)
     c.gABC(body, opcEof, eofInstr.regA)
-    c.optimizeJumps(result)
-    s.offset = c.prc.regInfo.len.int32
+    c.optimizeJumps(result.pc)
+    result.usedRegisters = c.prc.regInfo.len.int32
+    c.procToCodePos[s.id] = result
     #if s.name.s == "main" or s.name.s == "[]":
     #  echo renderTree(body)
     #  c.echoCode(result)
     c.prc = oldPrc
   else:
-    c.prc.regInfo.setLen s.offset
-    result = pos
+    c.prc.regInfo.setLen result.usedRegisters

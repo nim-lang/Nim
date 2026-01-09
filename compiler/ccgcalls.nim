@@ -368,8 +368,8 @@ proc genArg(p: BProc, n: PNode, param: PSym; call: PNode; result: var Builder; n
     # variable. Thus, we create a temporary pointer variable instead.
     let needsIndirect = mapType(p.config, n[0].typ, mapTypeChooser(n[0]) == skParam) != ctArray
     if needsIndirect:
-      n.typ() = n.typ.exactReplica
-      n.typ.flags.incl tfVarIsPtr
+      n.typ = n.typ.exactReplica
+      n.typ.incl tfVarIsPtr
     a = initLocExprSingleUse(p, n)
     a = withTmpIfNeeded(p, a, needsTmp)
     if needsIndirect: a.flags.incl lfIndirect
@@ -498,7 +498,7 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
       else:
         cCall(p, params, e)
     cIfExpr(e,
-      eCall, 
+      eCall,
       cCall(cCast(pTyp, p), params))
 
   template callIter(rp, params: Snippet): Snippet =

@@ -170,7 +170,7 @@ proc canMove(p: BProc, n: PNode; dest: TLoc): bool =
 template simpleAsgn(builder: var Builder, dest, src: TLoc) =
   let rd = rdLoc(dest)
   let rs = rdLoc(src)
-  builder.addAssignment(rd, rs) 
+  builder.addAssignment(rd, rs)
 
 proc genRefAssign(p: BProc, dest, src: TLoc) =
   if (dest.storage == OnStack and p.config.selectedGC != gcGo) or not usesWriteBarrier(p.config):
@@ -675,7 +675,7 @@ proc binaryArithOverflow(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
       if e[2].kind in {nkIntLit..nkInt64Lit}:
         needsOverflowCheck = e[2].intVal == -1
       if canBeZero:
-        # remove extra paren from `==` op here to avoid Wparentheses-equality: 
+        # remove extra paren from `==` op here to avoid Wparentheses-equality:
         p.s(cpsStmts).addSingleIfStmt(removeSinglePar(cOp(Equal, rdLoc(b), cIntValue(0)))):
           p.s(cpsStmts).addCallStmt(cgsymValue(p.module, "raiseDivByZero"))
           raiseInstr(p, p.s(cpsStmts))
@@ -696,7 +696,7 @@ proc unaryArithOverflow(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
   let ra = rdLoc(a)
   if optOverflowCheck in p.options:
     let first = cIntLiteral(firstOrd(p.config, t))
-    # remove extra paren from `==` op here to avoid Wparentheses-equality: 
+    # remove extra paren from `==` op here to avoid Wparentheses-equality:
     p.s(cpsStmts).addSingleIfStmt(removeSinglePar(cOp(Equal, ra, first))):
       p.s(cpsStmts).addCallStmt(cgsymValue(p.module, "raiseOverflow"))
       raiseInstr(p, p.s(cpsStmts))
@@ -749,16 +749,16 @@ proc binaryArith(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     let t = getType()
     let at = cUintType(k)
     let bt = cUintType(s)
-    res = cCast(t, cOp(Shr, at, cCast(at, ra), cCast(bt, rb)))
+    res = cCast(t, cOp(Shr, at, cCast(at, ra), cOp(BitAnd, at, cCast(bt, rb), cIntLiteral(k - 1))))
   of mShlI:
     let t = getType()
     let at = cUintType(s)
-    res = cCast(t, cOp(Shl, at, cCast(at, ra), cCast(at, rb)))
+    res = cCast(t, cOp(Shl, at, cCast(at, ra), cOp(BitAnd, at, cCast(at, rb), cIntLiteral(k - 1))))
   of mAshrI:
     let t = getType()
     let at = cIntType(s)
     let bt = cUintType(s)
-    res = cCast(t, cOp(Shr, at, cCast(at, ra), cCast(bt, rb)))
+    res = cCast(t, cOp(Shr, at, cCast(at, ra), cOp(BitAnd, at, cCast(bt, rb), cIntLiteral(k - 1))))
   of mBitandI:
     let t = getType()
     res = cCast(t, cOp(BitAnd, t, ra, rb))
@@ -919,6 +919,10 @@ proc genDeref(p: BProc, e: PNode, d: var TLoc) =
       return
     else:
       a = initLocExprSingleUse(p, e[0])
+
+    if e.typ != nil and e.typ.kind == tyObject:
+      # bug #23453 #25265
+      discard getTypeDesc(p.module, e.typ)
     if d.k == locNone:
       # dest = *a;  <-- We do not know that 'dest' is on the heap!
       # It is completely wrong to set 'd.storage' here, unless it's not yet
@@ -1002,7 +1006,7 @@ proc genTupleElem(p: BProc, e: PNode, d: var TLoc) =
   var
     i: int = 0
   var a: TLoc = initLocExpr(p, e[0])
-  let tupType = a.t.skipTypes(abstractInst+{tyVar})
+  let tupType = a.t.skipTypes(abstractInst+{tyVar}+tyUserTypeClasses) # ref #25227
   assert tupType.kind == tyTuple
   d.inheritLocation(a)
   discard getTypeDesc(p.module, a.t) # fill the record's fields.loc
@@ -1912,7 +1916,7 @@ proc genSeqConstr(p: BProc, n: PNode, d: var TLoc) =
 proc genArrToSeq(p: BProc, n: PNode, d: var TLoc) =
   var elem, arr: TLoc
   if n[1].kind == nkBracket:
-    n[1].typ() = n.typ
+    n[1].typ = n.typ
     genSeqConstr(p, n[1], d)
     return
   if d.k == locNone:
@@ -3359,8 +3363,9 @@ proc genConstSetup(p: BProc; sym: PSym): bool =
   useHeader(m, sym)
   if sym.loc.k == locNone:
     fillBackendName(p.module, sym)
-    fillLoc(sym.loc, locData, sym.astdef, OnStatic)
-  if m.hcrOn: incl(sym.loc.flags, lfIndirect)
+    backendEnsureMutable sym
+    fillLoc(sym.locImpl, locData, sym.astdef, OnStatic)
+  if m.hcrOn: incl(sym, lfIndirect)
   result = lfNoDecl notin sym.loc.flags
 
 proc genConstHeader(m, q: BModule; p: BProc, sym: PSym) =
@@ -3430,7 +3435,7 @@ proc genConstDefinition(q: BModule; p: BProc; sym: PSym) =
 
 proc genConstStmt(p: BProc, n: PNode) =
   # This code is only used in the new DCE implementation.
-  assert useAliveDataFromDce in p.module.flags
+  assert delayedCodegen(p.module)
   let m = p.module
   for it in n:
     if it[0].kind == nkSym:
@@ -3448,7 +3453,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
     var sym = n.sym
     case sym.kind
     of skMethod:
-      if useAliveDataFromDce in p.module.flags or {sfDispatcher, sfForward} * sym.flags != {}:
+      if delayedCodegen(p.module) or {sfDispatcher, sfForward} * sym.flags != {}:
         # we cannot produce code for the dispatcher yet:
         fillProcLoc(p.module, n)
         genProcPrototype(p.module, sym)
@@ -3461,11 +3466,15 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
       if sfCompileTime in sym.flags:
         localError(p.config, n.info, "request to generate code for .compileTime proc: " &
            sym.name.s)
-      if useAliveDataFromDce in p.module.flags and sym.typ.callConv != ccInline:
+      if delayedCodegen(p.module) and sym.typ.callConv != ccInline:
         fillProcLoc(p.module, n)
         genProcPrototype(p.module, sym)
       else:
         genProc(p.module, sym)
+        # For cross-module inline procs with optCompress, ensure prototype is emitted
+        if sym.typ.callConv == ccInline and optCompress in p.config.globalOptions and
+           sym.itemId.module != p.module.module.position:
+          genProcPrototype(p.module, sym)
       if sym.loc.snippet == "" or sym.loc.lode == nil:
         internalError(p.config, n.info, "expr: proc not init " & sym.name.s)
       putLocIntoDest(p, d, sym.loc)
@@ -3474,7 +3483,13 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
         var lit = newBuilder("")
         genLiteral(p, sym.astdef, sym.typ, lit)
         putIntoDest(p, d, n, extract(lit), OnStatic)
-      elif useAliveDataFromDce in p.module.flags:
+      elif optCompress in p.config.globalOptions:
+        # With delayed codegen, we need to ensure the definition is generated
+        # not just the extern header declaration
+        requestConstImpl(p, sym)
+        assert((sym.loc.snippet != "") and (sym.loc.t != nil))
+        putLocIntoDest(p, d, sym.loc)
+      elif delayedCodegen(p.module):
         genConstHeader(p.module, p.module, p, sym)
         assert((sym.loc.snippet != "") and (sym.loc.t != nil))
         putLocIntoDest(p, d, sym.loc)
@@ -3606,7 +3621,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
   of nkWhileStmt: genWhileStmt(p, n)
   of nkVarSection, nkLetSection: genVarStmt(p, n)
   of nkConstSection:
-    if useAliveDataFromDce in p.module.flags:
+    if delayedCodegen(p.module):
       genConstStmt(p, n)
     else: # enforce addressable consts for exportc
       let m = p.module
@@ -3672,7 +3687,10 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
   of nkProcDef, nkFuncDef, nkMethodDef, nkConverterDef:
     if n[genericParamsPos].kind == nkEmpty:
       var prc = n[namePos].sym
-      if useAliveDataFromDce in p.module.flags:
+      if optCompress in p.config.globalOptions:
+        if prc.magic in generatedMagics:
+          genProc(p.module, prc)
+      elif delayedCodegen(p.module):
         if p.module.alive.contains(prc.itemId.item) and
             prc.magic in generatedMagics:
           genProc(p.module, prc)
@@ -3692,8 +3710,66 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
     inc p.splitDecls
     genGotoState(p, n)
   of nkBreakState: genBreakState(p, n, d)
-  of nkMixinStmt, nkBindStmt: discard
+  of nkMixinStmt, nkBindStmt, nkReplayAction: discard
   else: internalError(p.config, n.info, "expr(" & $n.kind & "); unknown node kind")
+
+proc isOpaqueImportcType(t: PType): bool =
+  # importc type without completeStruct that can't use aggregate init (e.g. C11 _Atomic)
+  if t.sym != nil and sfImportc in t.sym.flags:
+    if tfCompleteStruct notin t.flags:
+      if tfIncompleteStruct in t.flags:
+        return true
+      if t.kind == tyObject and (t.n == nil or t.n.len == 0):
+        return true
+  return false
+
+proc containsOpaqueImportcField(typ: PType): bool
+
+proc containsOpaqueImportcFieldAux(t: PType; n: PNode): bool =
+  if n == nil: return false
+  case n.kind
+  of nkRecList:
+    for child in n.sons:
+      if containsOpaqueImportcFieldAux(t, child):
+        return true
+  of nkRecCase:
+    if containsOpaqueImportcFieldAux(t, n[0]):
+      return true
+    for i in 1..<n.len:
+      let branch = n[i]
+      if branch.kind == nkOfBranch or branch.kind == nkElse:
+        if containsOpaqueImportcFieldAux(t, branch.lastSon):
+          return true
+  of nkSym:
+    if containsOpaqueImportcField(n.sym.typ):
+      return true
+  else:
+    discard
+  return false
+
+proc containsOpaqueImportcField(typ: PType): bool =
+  # Check if type contains opaque importc fields that need designated initializers
+  if typ == nil: return false
+  let t = skipTypes(typ, abstractRange+{tyOwned}-{tyTypeDesc})
+  if isOpaqueImportcType(t):
+    return true
+  case t.kind
+  of tyObject:
+    if t.baseClass != nil:
+      if containsOpaqueImportcField(t.baseClass):
+        return true
+    if containsOpaqueImportcFieldAux(t, t.n):
+      return true
+  of tyTuple:
+    for i, a in t.ikids:
+      if containsOpaqueImportcField(a):
+        return true
+  of tyArray:
+    if containsOpaqueImportcField(t.elementType):
+      return true
+  else:
+    discard
+  return false
 
 proc getDefaultValue(p: BProc; typ: PType; info: TLineInfo; result: var Builder) =
   var t = skipTypes(typ, abstractRange+{tyOwned}-{tyTypeDesc})
@@ -3725,24 +3801,34 @@ proc getDefaultValue(p: BProc; typ: PType; info: TLineInfo; result: var Builder)
         result.addField(closureInit, name = "ClE_0"):
           result.add(NimNil)
   of tyObject:
+    # Use designated initializers when opaque importc fields present
     var objInit: StructInitializer
-    result.addStructInitializer(objInit, kind = siOrderedStruct):
+    let initKind = if containsOpaqueImportcField(t): siNamedStruct else: siOrderedStruct
+    result.addStructInitializer(objInit, kind = initKind):
       getNullValueAuxT(p, t, t, t.n, nil, result, objInit, true, info)
   of tyTuple:
+    # Use designated initializers when opaque importc fields present
     var tupleInit: StructInitializer
-    result.addStructInitializer(tupleInit, kind = siOrderedStruct):
+    let initKind = if containsOpaqueImportcField(t): siNamedStruct else: siOrderedStruct
+    result.addStructInitializer(tupleInit, kind = initKind):
       if p.vccAndC and t.isEmptyTupleType:
         result.addField(tupleInit, name = "dummy"):
           result.addIntValue(0)
       for i, a in t.ikids:
-        result.addField(tupleInit, name = "Field" & $i):
-          getDefaultValue(p, a, info, result)
+        let elemTyp = skipTypes(a, abstractRange+{tyOwned}-{tyTypeDesc})
+        if not isOpaqueImportcType(elemTyp):
+          result.addField(tupleInit, name = "Field" & $i):
+            getDefaultValue(p, a, info, result)
   of tyArray:
-    var arrInit: StructInitializer
-    result.addStructInitializer(arrInit, kind = siArray):
-      for i in 0..<toInt(lengthOrd(p.config, t.indexType)):
-        result.addField(arrInit, name = ""):
-          getDefaultValue(p, t.elementType, info, result)
+    let elemTyp = skipTypes(t.elementType, abstractRange+{tyOwned}-{tyTypeDesc})
+    if isOpaqueImportcType(elemTyp):
+      result.add "{0}"
+    else:
+      var arrInit: StructInitializer
+      result.addStructInitializer(arrInit, kind = siArray):
+        for i in 0..<toInt(lengthOrd(p.config, t.indexType)):
+          result.addField(arrInit, name = ""):
+            getDefaultValue(p, t.elementType, info, result)
     #result = rope"{}"
   of tyOpenArray, tyVarargs:
     var openArrInit: StructInitializer
@@ -3797,8 +3883,7 @@ proc getNullValueAux(p: BProc; t: PType; obj, constOrNil: PNode,
     var fieldName: string = ""
     if b.kind == nkRecList and not isEmptyCaseObjectBranch(b):
       fieldName = "_" & mangleRecFieldName(p.module, obj[0].sym) & "_" & $selectedBranch
-      result.addField(init, name = "<anonymous union>"):
-        # XXX figure out name for the union, see use of `addAnonUnion`
+      result.addField(init, name = ""): # anonymous union
         var branchInit: StructInitializer
         result.addStructInitializer(branchInit, kind = siNamedStruct):
           result.addField(branchInit, name = fieldName):
@@ -3807,8 +3892,7 @@ proc getNullValueAux(p: BProc; t: PType; obj, constOrNil: PNode,
               getNullValueAux(p, t, b, constOrNil, result, branchObjInit, isConst, info)
     elif b.kind == nkSym:
       fieldName = mangleRecFieldName(p.module, b.sym)
-      result.addField(init, name = "<anonymous union>"):
-        # XXX figure out name for the union, see use of `addAnonUnion`
+      result.addField(init, name = ""): # anonymous union
         var branchInit: StructInitializer
         result.addStructInitializer(branchInit, kind = siNamedStruct):
           result.addField(branchInit, name = fieldName):
@@ -3823,6 +3907,9 @@ proc getNullValueAux(p: BProc; t: PType; obj, constOrNil: PNode,
 
   of nkSym:
     let field = obj.sym
+    let fieldTyp = skipTypes(field.typ, abstractRange+{tyOwned}-{tyTypeDesc})
+    if isOpaqueImportcType(fieldTyp):
+      return # C zero-initializes omitted fields
     let sname = mangleRecFieldName(p.module, field)
     result.addField(init, name = sname):
       block fieldInit:
@@ -3867,11 +3954,10 @@ proc getNullValueAuxT(p: BProc; orig, t: PType; obj, constOrNil: PNode,
 
 proc genConstObjConstr(p: BProc; n: PNode; isConst: bool; result: var Builder) =
   let t = n.typ.skipTypes(abstractInstOwned)
-  #if not isObjLackingTypeField(t) and not p.module.compileToCpp:
-  #  result.addf("{$1}", [genTypeInfo(p.module, t)])
-  #  inc count
+  # Use designated initializers when opaque importc fields present
   var objInit: StructInitializer
-  result.addStructInitializer(objInit, kind = siOrderedStruct):
+  let initKind = if t.kind == tyObject and containsOpaqueImportcField(t): siNamedStruct else: siOrderedStruct
+  result.addStructInitializer(objInit, kind = initKind):
     if t.kind == tyObject:
       getNullValueAuxT(p, t, t, t.n, n, result, objInit, isConst, n.info)
 
