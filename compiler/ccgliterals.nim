@@ -16,13 +16,10 @@
 ## implementation.
 
 template detectVersion(field, corename) =
-  if m.g.field == 0:
-    let core = getCompilerProc(m.g.graph, corename)
-    if core == nil or core.kind != skConst:
-      m.g.field = 1
-    else:
-      m.g.field = toInt(ast.getInt(core.astdef))
-  result = m.g.field
+  if m.g.config.selectedGC in {gcArc, gcOrc, gcAtomicArc, gcHooks}:
+    result = 2
+  else:
+    result = 1
 
 proc detectStrVersion(m: BModule): int =
   detectVersion(strVersion, "nimStrVersion")

@@ -47,8 +47,7 @@ proc genEnumToStrProc*(t: PType; info: TLineInfo; g: ModuleGraph; idgen: IdGener
   n[bodyPos] = body
   n[resultPos] = newSymNode(res)
   result.ast = n
-  incl result.flags, sfFromGeneric
-  incl result.flags, sfNeverRaises
+  incl result.flagsImpl, {sfFromGeneric, sfNeverRaises}
 
 proc searchObjCaseImpl(obj: PNode; field: PSym): PNode =
   case obj.kind
@@ -110,5 +109,4 @@ proc genCaseObjDiscMapping*(t: PType; field: PSym; info: TLineInfo; g: ModuleGra
   n[bodyPos] = body
   n[resultPos] = newSymNode(res)
   result.ast = n
-  incl result.flags, sfFromGeneric
-  incl result.flags, sfNeverRaises
+  incl result.flagsImpl, {sfFromGeneric, sfNeverRaises}

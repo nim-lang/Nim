@@ -32,6 +32,10 @@ import ../dist/checksums/src/checksums/sha1
 
 import pipelines
 
+when not defined(nimKochBootstrap):
+  import nifbackend
+  import deps
+
 when not defined(leanCompiler):
   import docgen
 
@@ -133,6 +137,22 @@ proc commandCompileToNif(graph: ModuleGraph) =
   setPipeLinePass(graph, NifgenPass)
   compilePipelineProject(graph)
 
+proc commandNifC(graph: ModuleGraph) =
+  ## Generate C code from precompiled NIF files.
+  ## This is the new IC approach: compile modules to NIF first with `nim m`,
+  ## then generate C code from the entry.nif file with whole-program DCE.
+  when not defined(nimKochBootstrap):
+    let conf = graph.config
+    extccomp.initVars(conf)
+
+    if not extccomp.ccHasSaneOverflow(conf):
+      conf.symbols.defineSymbol("nimEmulateOverflowChecks")
+
+    # Use the NIF backend to generate C code
+    nifbackend.generateCode(graph, conf.projectMainIdx)
+  else:
+    rawMessage(graph.config, errGenerated, "NIF backend not available during bootstrap build")
+
 proc commandCompileToC(graph: ModuleGraph) =
   let conf = graph.config
   extccomp.initVars(conf)
@@ -200,7 +220,7 @@ proc commandInteractive(graph: ModuleGraph) =
     discard graph.compilePipelineModule(fileInfoIdx(graph.config, graph.config.projectFull), {})
   else:
     var m = graph.makeStdinModule()
-    incl(m.flags, sfMainModule)
+    incl(m, sfMainModule)
     var idgen = IdGenerator(module: m.itemId.module, symId: m.itemId.item, typeId: 0)
     let s = llStreamOpenStdIn(onPrompt = proc() = flushDot(graph.config))
     discard processPipelineModule(graph, m, idgen, s)
@@ -420,9 +440,24 @@ proc mainCommand*(graph: ModuleGraph) =
   of cmdCheck:
     commandCheck(graph)
   of cmdM:
-    graph.config.symbolFiles = v2Sf
-    setUseIc(graph.config.symbolFiles != disabledSf)
+    # cmdM uses NIF files, not ROD files
+    graph.config.symbolFiles = disabledSf
+    setUseIc(true)
     commandCheck(graph)
+  of cmdNifC:
+    setUseIc(true)
+    # Generate C code from NIF files
+    wantMainModule(conf)
+    setOutFile(conf)
+    commandNifC(graph)
+  of cmdIc:
+    # Generate .build.nif for nifmake
+    setUseIc(true)
+    wantMainModule(conf)
+    when not defined(nimKochBootstrap):
+      commandIc(conf)
+    else:
+      rawMessage(conf, errGenerated, "nim deps not available in bootstrap build")
   of cmdParse:
     wantMainModule(conf)
     discard parseFile(conf.projectMainIdx, cache, conf)

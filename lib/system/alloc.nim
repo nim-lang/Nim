@@ -11,7 +11,6 @@
 {.push profiler:off.}
 
 include osalloc
-import std/private/syslocks
 
 template track(op, address, size) =
   when defined(memTracker):
@@ -837,6 +836,15 @@ when defined(gcDestructors):
       dec maxIters
       if it == nil: break
 
+when defined(heaptrack):
+  const heaptrackLib =
+    when defined(heaptrack_inject):
+      "libheaptrack_inject.so"
+    else:
+      "libheaptrack_preload.so"
+  proc heaptrack_malloc(a: pointer, size: int) {.cdecl, importc, dynlib: heaptrackLib.}
+  proc heaptrack_free(a: pointer) {.cdecl, importc, dynlib: heaptrackLib.}
+
 proc rawAlloc(a: var MemRegion, requestedSize: int): pointer =
   when defined(nimTypeNames):
     inc(a.allocCounter)
@@ -959,6 +967,8 @@ proc rawAlloc(a: var MemRegion, requestedSize: int): pointer =
   sysAssert(isAccessible(a, result), "rawAlloc 14")
   sysAssert(allocInv(a), "rawAlloc: end")
   when logAlloc: cprintf("var pointer_%p = alloc(%ld) # %p\n", result, requestedSize, addr a)
+  when defined(heaptrack):
+    heaptrack_malloc(result, requestedSize)
 
 proc rawAlloc0(a: var MemRegion, requestedSize: int): pointer =
   result = rawAlloc(a, requestedSize)
@@ -967,6 +977,8 @@ proc rawAlloc0(a: var MemRegion, requestedSize: int): pointer =
 proc rawDealloc(a: var MemRegion, p: pointer) =
   when defined(nimTypeNames):
     inc(a.deallocCounter)
+  when defined(heaptrack):
+    heaptrack_free(p)
   #sysAssert(isAllocatedPtr(a, p), "rawDealloc: no allocated pointer")
   sysAssert(allocInv(a), "rawDealloc: begin")
   var c = pageAddr(p)

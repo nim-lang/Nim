@@ -580,6 +580,8 @@ Define                   Effect
                          Currently only clang and vcc.
 `strip`                  Strip debug symbols added by the backend compiler from
                          the executable.
+`heaptrack`              Track memory allocations using
+                         [heaptrack](https://github.com/KDE/heaptrack)
 ======================   =========================================================
 
 

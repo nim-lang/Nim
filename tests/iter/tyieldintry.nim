@@ -17,9 +17,12 @@ proc testClosureIterAux(it: iterator(): int, exceptionExpected: bool, expectedRe
 
   var exceptionCaught = false
 
+  var maxIterations = 10000
   try:
     for i in it():
       closureIterResult.add(i)
+      dec maxIterations
+      doAssert(maxIterations > 0, "Too many iterations in test. Infinite loop?")
   except TestError:
     exceptionCaught = true
 
@@ -798,3 +801,99 @@ block: #25202
     doAssert(checkpoints1 == checkpoints2)
 
   p()
+
+block: #25261
+  iterator y(): int {.closure.} =
+    try:
+      try:
+        raise newException(CatchableError, "Error")
+      except CatchableError:
+        return 123
+      yield 0
+    finally:
+      discard
+
+  let w = y
+  doAssert(w() == 123)
+  doAssert(getCurrentExceptionMsg() == "")
+
+  try:
+    raise newException(ValueError, "Outer error")
+  except:
+    doAssert(getCurrentExceptionMsg() == "Outer error")
+    let w = y
+    doAssert(w() == 123)
+    doAssert(getCurrentExceptionMsg() == "Outer error")
+  doAssert(getCurrentExceptionMsg() == "")
+
+block:
+  # Looks almost like above, but last finally changed to except
+  iterator y(): int {.closure.} =
+    try:
+      try:
+        raise newException(CatchableError, "Error")
+      except CatchableError:
+        return 123
+      yield 0
+    except:
+      discard
+
+  let w = y
+  doAssert(w() == 123)
+  doAssert(getCurrentExceptionMsg() == "")
+
+  try:
+    raise newException(ValueError, "Outer error")
+  except:
+    doAssert(getCurrentExceptionMsg() == "Outer error")
+    let w = y
+    doAssert(w() == 123)
+    doAssert(getCurrentExceptionMsg() == "Outer error")
+  doAssert(getCurrentExceptionMsg() == "")
+
+block: #25330 (v1)
+  iterator count1(): int {.closure.} =
+    yield 1
+    raiseTestError()
+
+  iterator count0(): int {.closure.} =
+    try:
+      var count = count1
+      while true:
+        yield count()
+        if finished(count): break
+    finally:
+      try:
+        checkpoint(2)
+        var count2 = count1
+        while true:
+          yield count2()
+          if finished(count2): break
+        discard  # removing this outputs "raise"
+      except:
+        checkpoint(3)
+        raise
+
+  testExc(count0, 1, 2, 1, 3)
+
+block: #25330 (v2)
+  iterator count1(): int {.closure.} =
+    yield 1
+    raiseTestError()
+
+  iterator count0(): int {.closure.} =
+    try:
+      var count = count1
+      for x in 0 .. 10:
+        yield count()
+    finally:
+      try:
+        checkpoint(2)
+        var count2 = count1
+        for x in 0 .. 10:
+          yield count2()
+      except:
+        checkpoint(3)
+        raise
+
+  testExc(count0, 1, 2, 1, 3)

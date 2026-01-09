@@ -12,14 +12,14 @@ var
 chan1.open()
 chan2.open()
 
-proc routeMessage*(msg: BackendMessage) =
+proc routeMessage*(msg: BackendMessage) {.raises: [], gcsafe.} = # no exceptions!
   discard chan2.trySend(msg)
 
 var
   recv: Thread[void]
   stopToken: Atomic[bool]
 
-proc recvMsg() =
+proc recvMsg() {.raises: [], gcsafe.} = # no exceptions!
   while not stopToken.load(moRelaxed):
     let resp = chan1.tryRecv()
     if resp.dataAvailable:

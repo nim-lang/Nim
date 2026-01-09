@@ -213,9 +213,10 @@ proc runNimScript*(cache: IdentCache; scriptName: AbsoluteFile;
   unregisterArcOrc(conf)
   conf.globalOptions.excl optOwnedRefs
   conf.selectedGC = gcUnselected
+  conf.globalOptions.incl optWithinConfigSystem
 
   var m = graph.makeModule(scriptName)
-  incl(m.flags, sfMainModule)
+  incl(m, sfMainModule)
   var vm = setupVM(m, cache, scriptName.string, graph, idgen)
   graph.vm = vm
 
@@ -251,4 +252,5 @@ proc runNimScript*(cache: IdentCache; scriptName: AbsoluteFile;
   #initDefines()
   undefSymbol(conf.symbols, "nimscript")
   undefSymbol(conf.symbols, "nimconfig")
+  conf.globalOptions.excl optWithinConfigSystem
   conf.symbolFiles = oldSymbolFiles

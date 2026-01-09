@@ -311,7 +311,7 @@ proc errorSym*(c: PContext, ident: PIdent, info: TLineInfo): PSym =
   ## creates an error symbol to avoid cascading errors (for IDE support)
   result = newSym(skError, ident, c.idgen, getCurrOwner(c), info, {})
   result.typ = errorType(c)
-  incl(result.flags, sfDiscardable)
+  incl(result.flagsImpl, sfDiscardable)
   # pretend it's from the top level scope to prevent cascading errors:
   if c.config.cmd != cmdInteractive and c.compilesContextId == 0:
     c.moduleScope.addSym(result)
