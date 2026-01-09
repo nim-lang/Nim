@@ -83,6 +83,7 @@ At least the following standard library modules are available:
 * [parsejson](parsejson.html)
 * [parsesql](parsesql.html)
 * [parseutils](parseutils.html)
+* [punycode](punycode.html)
 * [random](random.html)
 * [ropes](ropes.html)
 * [std/setutils](setutils.html)

@@ -7,7 +7,7 @@ Tools available with Nim
 
 The standard distribution ships with the following tools:
 
-- | atlas
+- | [atlas](atlas.html)
   | `atlas`:cmd: is a simple package cloner tool. It manages an isolated workspace that
     contains projects and dependencies.
 

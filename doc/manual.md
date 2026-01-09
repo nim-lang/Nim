@@ -2459,8 +2459,9 @@ conversions from `string` to `SQL` are allowed:
 
 Now we have compile-time checking against SQL injection attacks. Since
 `"".SQL` is transformed to `SQL("")` no new syntax is needed for nice
-looking `SQL` string literals. The hypothetical `SQL` type exists
-in database modules as the `SqlQuery` type (e.g., in the db_connector package).
+looking `SQL` string literals. The hypothetical `SQL` type actually
+exists in the library as the [SqlQuery type](db_common.html#SqlQuery) of
+modules like [db_sqlite](db_sqlite.html).
 
 
 Auto type
