@@ -830,11 +830,14 @@ else:
     ## When `T` is a ref type then the resulting type will be `T`,
     ## otherwise it will be `ref T`.
     when (t is ref):
-      var r: t
+      # When t is already a ref type, cast nil to t and call new on it
+      # This avoids declaring a variable of type t which would fail typeAllowed check
+      result = cast[t](nil)
+      new(result)
     else:
       var r: ref t
-    new(r)
-    return r
+      new(r)
+      return r
 
 
 template disarm*(x: typed) =
