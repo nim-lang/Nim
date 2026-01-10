@@ -10,7 +10,7 @@
 # abstract syntax tree + symbol table
 
 import
-  lineinfos, options, ropes, idents, int128, wordrecg
+  lineinfos, options, idents, int128, wordrecg
 
 import std/[tables, hashes]
 from std/strutils import toLowerAscii
@@ -1680,3 +1680,10 @@ type
 
 template initSymMapping*(): SymMapping = initIdTable[PSym]()
 template initTypeMapping*(): TypeMapping = initIdTable[PType]()
+
+proc sameModules*(a, b: PSym): bool {.inline.} =
+  assert a.kind == skModule and b.kind == skModule
+  result = a.position == b.position
+
+proc sameOwners*(a, b: PSym): bool =
+  result = a == b or (a.kind == skModule and b.kind == skModule and a.position == b.position) or a.id == b.id

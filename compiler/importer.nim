@@ -10,7 +10,7 @@
 ## This module implements the symbol importing mechanism.
 
 import
-  ast, astalgo, msgs, options, idents, lookups,
+  ast, msgs, options, idents, lookups,
   semdata, modulepaths, sigmatch, lineinfos,
   modulegraphs, wordrecg
 from std/strutils import `%`, startsWith

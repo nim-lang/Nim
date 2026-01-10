@@ -25,7 +25,7 @@ const
   useEffectSystem* = true
   useWriteTracking* = false
   hasFFI* = defined(nimHasLibFFI)
-  copyrightYear* = "2025"
+  copyrightYear* = "2026"
 
   nimEnableCovariance* = defined(nimEnableCovariance)
 
@@ -112,6 +112,7 @@ type                          # please make sure we have under 32 options
     optJsBigInt64             # use bigints for 64-bit integers in JS
     optItaniumMangle          # mangling follows the Itanium spec
     optCompress               # turn on AST compression by converting it to NIF
+    optWithinConfigSystem     # we still compile within the configuration system
 
   TGlobalOptions* = set[TGlobalOption]
 
@@ -176,7 +177,7 @@ type
     # old unused: cmdInterpret, cmdDef: def feature (find definition for IDEs)
     cmdCompileToNif
     cmdNifC  # generate C code from NIF files
-    cmdDeps  # generate .build.nif for nifmake
+    cmdIc  # generate .build.nif for nifmake
 
 const
   cmdBackends* = {cmdCompileToC, cmdCompileToCpp, cmdCompileToOC,
@@ -368,6 +369,7 @@ type
     numberOfProcessors*: int   # number of processors
     lastCmdTime*: float        # when caas is enabled, we measure each command
     symbolFiles*: SymbolFilesOption
+    ic*: bool # whether ic is enabled
     spellSuggestMax*: int # max number of spelling suggestions for typos
 
     cppDefines*: HashSet[string] # (*)
