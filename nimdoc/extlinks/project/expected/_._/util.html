@@ -22,30 +22,27 @@
 <script type="text/javascript" src="../dochack.js"></script>
 </head>
 <body>
-  <div class="document" id="documentId">
-    <div class="container">
-      <h1 class="title">nimdoc/extlinks/util</h1>
-      <div class="row">
-  <div class="three columns">
-    <div class="theme-select-wrapper">
-      <label for="theme-select">Theme:&nbsp;</label>
-      <select id="theme-select" onchange="setTheme(this.value)">
-        <option value="auto">🌗 Match OS</option>
-        <option value="dark">🌑 Dark</option>
-        <option value="light">🌕 Light</option>
+  <header>
+    <button id="sidebarToggle" aria-label="Toggle Sidebar" title="Toggle Sidebar" aria-controls="sidebar">☰</button>
+    <div id="navbar-right-elements">
+      <input type="search" id="searchInput" placeholder="Search…" oninput="search()"/>
+      <select id="theme-select" aria-label="Change Theme" title="Change Theme" onchange="setTheme(this.value)">
+        <option aria-label="Match OS" title="Match OS" value="auto">🌗</option>
+        <option aria-label="Dark" title="Dark" value="dark">🌑</option>
+        <option aria-label="Light" title="Light" value="light">🌕</option>
       </select>
     </div>
-    <div id="global-links">
+  </header>
+  <div id="content">
+  <aside id="sidebar">
+    <nav id="global-links">
       <ul class="simple">
         <li><a id="indexLink" href="../theindex.html">Index</a></li>
       </ul>
-    </div>
-    <div id="searchInputDiv">
-      Search: <input type="search" id="searchInput" oninput="search()"/>
-    </div>
+    </nav>
     <div>
-      Group by:
-      <select onchange="groupBy(this.value)">
+      <label for="groupBy">Group by</label>
+      <select id="groupBy" onchange="groupBy(this.value)">
         <option value="section">Section</option>
         <option value="type">Type</option>
       </select>
@@ -66,13 +63,14 @@
 
 </ul>
 
-  </div>
-  <div class="nine columns" id="content">
+  </aside>
+  <main>
+    <h1 id="title">nimdoc/extlinks/util</h1>
     
     <div id="tocRoot"></div>
     
     <p class="module-desc"></p>
-    <div class="section" id="12">
+    <section id="12">
   <h1><a class="toc-backref" href="#12">Procs</a></h1>
   <dl class="item">
     <div id="utilfunction-procs-all">
@@ -88,18 +86,15 @@
 </div>
 
   </dl>
+</section>
+
+  </main>
 </div>
 
-  </div>
-</div>
-
-      <div class="twelve-columns footer">
-        <span class="nim-sprite"></span>
-        <br>
-        <small style="color: var(--hint);">Made with Nim. Generated: 1970-01-02 03:46:40 UTC</small>
-      </div>
-    </div>
-  </div>
+  <footer>
+    <span class="nim-sprite"></span>
+    <small style="color: var(--hint);">Made with Nim. Generated: 1970-01-02 03:46:40 UTC</small>
+  </footer>
   
 </body>
 </html>

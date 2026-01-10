@@ -22,10 +22,18 @@
 <script type="text/javascript" src="../dochack.js"></script>
 </head>
 <body>
-  <div class="document" id="documentId">
-    <div class="container">
-      <h1 class="title">Nothing User Manual</h1>
-      
+  <header>
+    <button id="sidebarToggle" aria-label="Toggle Sidebar" title="Toggle Sidebar" aria-controls="sidebar">☰</button>
+    <div id="navbar-right-elements">
+      <input type="search" id="searchInput" placeholder="Search…" oninput="search()"/>
+      <select id="theme-select" aria-label="Change Theme" title="Change Theme" onchange="setTheme(this.value)">
+        <option aria-label="Match OS" title="Match OS" value="auto">🌗</option>
+        <option aria-label="Dark" title="Dark" value="dark">🌑</option>
+        <option aria-label="Light" title="Light" value="light">🌕</option>
+      </select>
+    </div>
+  </header>
+  
 <h1 id="first-section">First section</h1>
 <h1 id="second-section-amp">Second <em>section</em> &amp;</h1><p>Ref. <a class="reference external" href="../sub/submodule.html#&lt;/a&gt;,int,int">submodule: `&lt;/a&gt;`</a> or <a class="reference external" href="../sub/submodule.html#submoduleInt">submodule: submoduleInt</a> from <a class="reference external" href="../sub/submodule.html">module nimdoc/extlinks/project/sub/submodule</a>.</p>
 <p>Ref. <a class="reference external" href="../main.html#mainfunction">main: proc mainfunction*(): int</a>.</p>
@@ -33,13 +41,10 @@
 
 
 
-      <div class="twelve-columns footer">
-        <span class="nim-sprite"></span>
-        <br>
-        <small style="color: var(--hint);">Made with Nim. Generated: 1970-01-02 03:46:40 UTC</small>
-      </div>
-    </div>
-  </div>
+  <footer>
+    <span class="nim-sprite"></span>
+    <small style="color: var(--hint);">Made with Nim. Generated: 1970-01-02 03:46:40 UTC</small>
+  </footer>
   
 </body>
 </html>

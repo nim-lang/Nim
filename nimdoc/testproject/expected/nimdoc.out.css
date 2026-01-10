@@ -55,7 +55,7 @@ Modified by Boyd Greenfield and narimiran
   --info-background: #008000;
   --warning-background: #807000;
   --error-background: #c03000;
-  --border: #0e1014;
+  --border: #3b3e44;
   --text: #fff;
   --anchor: #8be9fd;
   --anchor-focus: #8be9fd;
@@ -91,7 +91,7 @@ Modified by Boyd Greenfield and narimiran
     --info-background: #008000;
     --warning-background: #807000;
     --error-background: #c03000;
-    --border: #0e1014;
+    --border: #3b3e44;
     --text: #fff;
     --anchor: #8be9fd;
     --anchor-focus: #8be9fd;
@@ -170,18 +170,17 @@ header {
   background: none;
   border: 1px solid var(--border);
   border-radius: 2px;
-  padding: 4px 10px;
+  padding: 2px 8px;
   cursor: pointer;
-  color: var(--text);
 }
 
-#theme-select-wrapper {
+#navbar-right-elements {
   display: flex;
   align-items: center;
   gap: 0.5em;
 }
 
-#row {
+#content {
   display: grid;
   grid-area: container;
   grid-template-columns: 0 minmax(0, 1fr);
@@ -200,7 +199,6 @@ aside {
 
 main {
   grid-area: main;
-  overflow-x: hidden;
   max-width: 70ch;
   width: 100%;
   margin-inline: auto;
@@ -208,12 +206,12 @@ main {
 }
 
 /* open sidebar state */
-#row.sidebar-open {
+#content.sidebar-open {
   grid-template-columns: 25vw minmax(0, 1fr);
   transition: grid-template-columns 0.2s ease;
 }
 
-#row.sidebar-open>aside {
+#content.sidebar-open>aside {
   border-right: 1px solid var(--border);
   padding: 0.25em;
 }
@@ -225,7 +223,7 @@ main {
     line-height: 1.35;
   }
 
-  #row.sidebar-open {
+  #content.sidebar-open {
     grid-template-columns: minmax(0, 1fr) 20vh;
   }
 }
@@ -234,12 +232,8 @@ cite {
   font-style: italic !important; }
 
 
-/* Nim search input */
-div#searchInputDiv {
-  margin-bottom: 1em;
-}
 input#searchInput {
-  width: 80%;
+  border-radius: 2px;
 }
 
 /*
@@ -248,6 +242,7 @@ input#searchInput {
  */
 input {
   -moz-appearance: none;
+  appearance: none;
   background-color: var(--secondary-background);
   color: var(--text);
   border: 1px solid var(--border);
@@ -263,18 +258,25 @@ input:focus {
 
 select {
   -moz-appearance: none;
+  appearance: none;
   background-color: var(--secondary-background);
   color: var(--text);
+  border-radius: 2px;
   border: 1px solid var(--border);
   font-family: "Lato", "Helvetica Neue", "HelveticaNeue", Helvetica, Arial, sans-serif;
   font-size: 0.9em;
   padding: 6px;
 }
 
-select:focus {
-  border: 1px solid var(--input-focus);
-  box-shadow: 0 0 3px var(--input-focus);
+select#theme-select {
+  cursor: pointer;
+  background-color: var(--primary-background);
 }
+
+/*select:focus {*/
+  /* border: 1px solid var(--input-focus); */
+  /* box-shadow: 0 0 3px var(--input-focus); */
+/*}*/
 
 /* Docgen styles */
 
@@ -358,7 +360,7 @@ img {
     grid-template-rows: 0 minmax(0, 1fr) auto;
   }
 
-  #row.sidebar-open {
+  #content.sidebar-open {
     grid-template-columns: 0 minmax(0, 1fr);
   }
 
