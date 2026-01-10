@@ -267,12 +267,14 @@ proc genGenericAsgn(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
         cCast(CPointer, ras),
         genTypeInfoV1(p.module, dest.t, dest.lode.info))
   else:
-    let rad = addrLoc(p.config, dest)
-    let ras = addrLoc(p.config, src)
-    p.s(cpsStmts).addCallStmt(cgsymValue(p.module, "genericAssign"),
-      cCast(CPointer, rad),
-      cCast(CPointer, ras),
-      genTypeInfoV1(p.module, dest.t, dest.lode.info))
+    specializeAssign(p, dest, src)
+    when false:
+      let rad = addrLoc(p.config, dest)
+      let ras = addrLoc(p.config, src)
+      p.s(cpsStmts).addCallStmt(cgsymValue(p.module, "genericAssign"),
+        cCast(CPointer, rad),
+        cCast(CPointer, ras),
+        genTypeInfoV1(p.module, dest.t, dest.lode.info))
 
 proc genOpenArrayConv(p: BProc; d: TLoc; a: TLoc; flags: TAssignmentFlags) =
   assert d.k != locNone
