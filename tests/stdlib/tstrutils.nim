@@ -542,6 +542,9 @@ template main() =
     doAssert(insertSep("1234567890123456", ' ', 4) == "1234 5678 9012 3456")
     doAssert(insertSep("SGVsbG8gV29ybGQ=", ' ', 4) == "SGVs bG8g V29y bGQ=")
     doAssert(insertSep("ABCDEFGHIJKL", '-', 3) == "ABC-DEF-GHI-JKL")
+    # Test backward compatibility with negative numbers (sign prefix)
+    doAssert(insertSep("-1000", ',') == "-1,000")
+    doAssert(insertSep("+12345", ',') == "+12,345")
 
 
   block: # repeat, spaces
