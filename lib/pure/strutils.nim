@@ -2380,14 +2380,22 @@ func insertSep*(s: string, sep = '_', digits = 3): string {.rtl,
   result = newStringOfCap(s.len)
   let hasPrefix = isDigit(s[s.low]) == false
   var idx: int = 0
+  var foundDigit = false
   if hasPrefix:
     result.add s[s.low]
     for i in (s.low + 1)..s.high:
-      idx = i
       if not isDigit(s[i]):
         result.add s[i]
+        idx = i
       else:
+        foundDigit = true
+        idx = i
         break
+  # If we have a prefix but never found a digit, or the first digit is not immediately
+  # after the first character, treat the whole string normally (not a number with sign)
+  if hasPrefix and (not foundDigit or idx != s.low + 1):
+    result.setLen(0)
+    idx = 0
   let partsLen = s.len - idx
   var L = (partsLen-1) div digits + partsLen
   result.setLen(L + idx)
