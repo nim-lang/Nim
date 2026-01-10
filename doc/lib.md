@@ -163,9 +163,6 @@ String handling
 * [objectdollar](objectdollar.html)
   A generic `$` operator to convert objects to strings.
 
-* [punycode](punycode.html)
-  Implements a representation of Unicode with the limited ASCII character subset.
-
 * [strbasics](strbasics.html)
   Some high performance string operations.
 
@@ -326,9 +323,6 @@ Internet Protocols and Support
 * [asyncfile](asyncfile.html)
   An asynchronous file reading and writing using `asyncdispatch`.
 
-* [asyncftpclient](asyncftpclient.html)
-  An asynchronous FTP client using the `asyncnet` module.
-
 * [asynchttpserver](asynchttpserver.html)
   An asynchronous HTTP server using the `asyncnet` module.
 
@@ -363,9 +357,6 @@ Internet Protocols and Support
 * [selectors](selectors.html)
   A selector API with backends specific to each OS.
   Supported OS primitives: `epoll`, `kqueue`, `poll`, and `select` on Windows.
-
-* [smtp](smtp.html)
-  A simple SMTP client with support for both synchronous and asynchronous operation.
 
 * [socketstreams](socketstreams.html)
   An implementation of the streams interface for sockets.
@@ -606,21 +597,8 @@ Regular expressions
 Database support
 ----------------
 
-* [db_mysql](db_mysql.html)
-  A higher level MySQL database wrapper. The same interface is implemented
-  for other databases too.
-
-* [db_odbc](db_odbc.html)
-  A higher level ODBC database wrapper. The same interface is implemented
-  for other databases too.
-
-* [db_postgres](db_postgres.html)
-  A higher level PostgreSQL database wrapper. The same interface is implemented
-  for other databases too.
-
-* [db_sqlite](db_sqlite.html)
-  A higher level SQLite database wrapper. The same interface is implemented
-  for other databases too.
+The database modules have been moved to a separate package.
+Use `nimble install db_connector` to get them.
 
 
 Generic Operating System Services
@@ -660,19 +638,6 @@ Regular expressions
 
 * [pcre](pcre.html)
   Wrapper for the PCRE library.
-
-
-Database support
-----------------
-
-* [mysql](mysql.html)
-  Wrapper for the mySQL API.
-* [odbcsql](odbcsql.html)
-  interface to the ODBC driver.
-* [postgres](postgres.html)
-  Wrapper for the PostgreSQL API.
-* [sqlite3](sqlite3.html)
-  Wrapper for the SQLite 3 API.
 
 
 Network Programming and Internet Protocols
