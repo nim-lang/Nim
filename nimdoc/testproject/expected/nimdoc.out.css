@@ -268,15 +268,15 @@ select {
   padding: 6px;
 }
 
+select:focus {
+  border: 1px solid var(--input-focus);
+  box-shadow: 0 0 3px var(--input-focus);
+}
+
 select#theme-select {
   cursor: pointer;
   background-color: var(--primary-background);
 }
-
-/*select:focus {*/
-  /* border: 1px solid var(--input-focus); */
-  /* box-shadow: 0 0 3px var(--input-focus); */
-/*}*/
 
 /* Docgen styles */
 
