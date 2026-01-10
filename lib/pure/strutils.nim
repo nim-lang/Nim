@@ -2384,12 +2384,11 @@ func insertSep*(s: string, sep = '_', digits = 3): string {.rtl,
   if hasPrefix:
     result.add s[s.low]
     for i in (s.low + 1)..s.high:
+      idx = i
       if not isDigit(s[i]):
         result.add s[i]
-        idx = i
       else:
         foundDigit = true
-        idx = i
         break
   # If we have a prefix but never found a digit, or the first digit is not immediately
   # after the first character, treat the whole string normally (not a number with sign)
