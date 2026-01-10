@@ -1557,8 +1557,16 @@ proc checkRaisesSpec(g: ModuleGraph; emitWarnings: bool; spec, real: PNode, msg:
       while rr.kind in {nkStmtList, nkStmtListExpr} and rr.len > 0: rr = rr.lastSon
       for (s, info) in unknownRaises.items:
         message(g.config, info, hintUnknownRaises, s.name.s)
-      message(g.config, r.info, if emitWarnings: warnEffect else: errGenerated,
-              renderTree(rr) & " " & msg & typeToString(r.typ))
+      # Improve the error message to avoid redundancy and add context
+      # Check if the effect comes from a different location (e.g., cast block)
+      let errMsg =
+        if r.info.line != spec.info.line or r.info.fileIndex != spec.info.fileIndex:
+          # Effect comes from a different location - reference the cast/call
+          "'" & renderTree(rr) & "' " & msg & typeToString(r.typ)
+        else:
+          # Effect comes from the same location as the spec
+          renderTree(rr) & " " & msg & typeToString(r.typ)
+      message(g.config, r.info, if emitWarnings: warnEffect else: errGenerated, errMsg)
       popInfoContext(g.config)
   # hint about unnecessarily listed exception types:
   if hints:
