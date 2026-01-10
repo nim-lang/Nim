@@ -11,9 +11,8 @@ when defined(nimPreviewSlimSystem):
 
 import std/[
   # Core:
-  bitops, typetraits, lenientops, macros, volatile, typeinfo,
+  bitops, typetraits, lenientops, macros, volatile, typeinfo, endians,
   # fails due to FFI: rlocks
-  # fails due to cstring cast/copyMem: endians
   # works but uses FFI: cpuinfo, locks
 
   # Algorithms:
@@ -62,8 +61,7 @@ import std/[
   htmlgen,
 
   # Hashing:
-  base64, hashes,
-  # fails due to cstring cast/endians import: oids
+  base64, hashes, oids,
   # fails due to copyMem/endians import: sha1
 
   # Miscellaneous:
