@@ -1317,6 +1317,8 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
   assert(prc.ast != nil)
 
   var procBody = transformBody(m.g.graph, m.idgen, prc, {})
+  if sfInjectDestructors in prc.flags and not isIterator(prc):
+    procBody = injectDestructorCalls(m.g.graph, m.idgen, prc, procBody)
 
   let tmpInfo = prc.info
   discard freshLineInfo(p, prc.info)
