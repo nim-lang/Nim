@@ -38,7 +38,7 @@ type
 
 proc transformBody*(g: ModuleGraph; idgen: IdGenerator; prc: PSym; flags: TransformFlags): PNode
 
-import closureiters, lambdalifting
+import closureiters, lambdalifting, lambdautils
 
 type
   PTransCon = ref object # part of TContext; stackable
@@ -125,17 +125,10 @@ proc transformSymAux(c: PTransf, n: PNode): PNode =
   if s.typ != nil and s.typ.callConv == ccClosure:
     var body: PNode = nil
     if s.kind in routineKinds:
-      body = transformBody(c.graph, c.idgen, s, {useCache}+c.flags)
+      discard transformBody(c.graph, c.idgen, s, {useCache}+c.flags)
     if s.kind == skIterator:
-      if c.tooEarly:
-        return n
-      else:
-        if s.closureBody == nil:
-          if sfInjectDestructors in s.flags:
-            body = injectDestructorCalls(c.graph, c.idgen, s, body)
-          let closureBody = transformClosureIterator(c.graph, c.idgen, s, body)
-          s.closureBody = closureBody
-        return liftIterSym(c.graph, n, c.idgen, getCurrOwner(c))
+      if c.tooEarly: return n
+      else: return liftIterSym(c.graph, n, c.idgen, getCurrOwner(c))
     elif s.kind in {skProc, skFunc, skConverter, skMethod} and not c.tooEarly:
       # top level .closure procs are still somewhat supported for 'Nake':
       return makeClosure(c.graph, c.idgen, s, nil, n.info)
@@ -1326,6 +1319,11 @@ proc transformBody*(g: ModuleGraph; idgen: IdGenerator; prc: PSym; flags: Transf
     liftDefer(c, result)
     result = liftLocalsIfRequested(prc, result, g.cache, g.config, c.idgen)
 
+    if prc.isIterator:
+      if sfInjectDestructors in prc.flags:
+        result = injectDestructorCalls(c.graph, c.idgen, prc, result)
+      result = g.transformClosureIterator(c.idgen, prc, result)
+      prc.closureBody = result
 
     incl(result.flags, nfTransf)
 

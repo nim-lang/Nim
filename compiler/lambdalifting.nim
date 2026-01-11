@@ -686,11 +686,6 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: var DetectionPass;
           s.transformedBody = newTree(nkStmtList, rawClosureCreation(s, d, c, n.info), body)
           finishClosureCreation(s, d, c, n.info, s.transformedBody)
 
-        if isIterator(s) and s.closureBody == nil:
-          if sfInjectDestructors in s.flags:
-            body = injectDestructorCalls(d.graph, d.idgen, s, body)
-          let closureBody = transformClosureIterator(d.graph, d.idgen, s, body)
-          s.closureBody = closureBody
         c.inContainer = oldInContainer
 
       if s.typ.callConv == ccClosure:
