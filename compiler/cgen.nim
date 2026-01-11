@@ -1321,12 +1321,6 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
     procBody = prc.closureBody
   else:
     procBody = transformBody(m.g.graph, m.idgen, prc, {})
-    if sfInjectDestructors in prc.flags:
-      procBody = injectDestructorCalls(m.g.graph, m.idgen, prc, procBody)
-
-    if isIterator(prc):
-      procBody = transformClosureIterator(m.g.graph, m.idgen, prc, procBody)
-      prc.closureBody = procBody
 
   let tmpInfo = prc.info
   discard freshLineInfo(p, prc.info)
