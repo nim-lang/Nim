@@ -433,6 +433,9 @@ proc getVarIdx(varnames: openArray[string], id: string): int =
 
 proc genComment(d: PDoc, n: PNode): PRstNode =
   if n.comment.len > 0:
+    if optDocRaw in d.conf.globalOptions:
+      return newRstLeaf(n.comment)
+
     d.sharedState.currFileIdx = addRstFileIndex(d, n.info)
     try:
       result = parseRst(n.comment,
@@ -1176,8 +1179,12 @@ proc genJsonItem(d: PDoc, n, nameNode: PNode, k: TSymKind, nonExports = false): 
                    "col": %n.info.col}
   )
   if comm != nil:
-    result.rst = comm
-    result.rstField = "description"
+    if optDocRaw in d.conf.globalOptions:
+      result.json["description"] = %comm.text
+    else:
+      result.rst = comm
+      result.rstField = "description"
+
   if r.buf.len > 0:
     result.json["code"] = %r.buf
   if k in routineKinds:
@@ -1418,7 +1425,7 @@ proc generateDoc*(d: PDoc, n, orig: PNode, config: ConfigRef, docFlags: DocFlags
   of nkExportExceptStmt: discard "transformed into nkExportStmt by semExportExcept"
   of nkFromStmt, nkImportExceptStmt: traceDeps(d, n[0])
   of nkCallKinds:
-    var comm: ItemPre = default(ItemPre)
+    var comm = default(ItemPre)
     getAllRunnableExamples(d, n, comm)
     if comm.len != 0: d.modDescPre.add(comm)
   else: discard
