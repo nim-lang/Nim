@@ -123,7 +123,6 @@ proc newAsgnStmt(c: PTransf, kind: TNodeKind, le: PNode, ri: PNode; isFirstWrite
 proc transformSymAux(c: PTransf, n: PNode): PNode =
   let s = n.sym
   if s.typ != nil and s.typ.callConv == ccClosure:
-    var body: PNode = nil
     if s.kind in routineKinds:
       discard transformBody(c.graph, c.idgen, s, {useCache}+c.flags)
     if s.kind == skIterator:
