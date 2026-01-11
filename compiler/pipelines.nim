@@ -1,9 +1,10 @@
 import sem, cgen, modulegraphs, ast, llstream, parser, msgs,
        lineinfos, reorder, options, semdata, cgendata, modules, pathutils,
-       packages, syntaxes, depends, vm, vmdef, pragmas, idents, lookups, wordrecg,
+       packages, syntaxes, depends, vm, pragmas, idents, lookups, wordrecg,
        liftdestructors, nifgen
 
 when not defined(nimKochBootstrap):
+  import vmdef
   import ast2nif
   import "../dist/nimony/src/lib" / [nifstreams, bitabs]
 
@@ -241,8 +242,11 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
     raiseAssert "use setPipeLinePass to set a proper PipelinePass"
 
   when not defined(nimKochBootstrap):
-    if (optCompress in graph.config.globalOptions or graph.config.cmd == cmdM) and
-       not graph.config.isDefined("nimscript"):
+    # For cmdM: only write NIF for the main module, not for imported modules
+    # (imported modules should be loaded from existing NIF files)
+    let shouldWriteNif = (optCompress in graph.config.globalOptions) or
+                         (graph.config.cmd == cmdM and sfMainModule in module.flags)
+    if shouldWriteNif and not graph.config.isDefined("nimscript"):
       topLevelStmts.add finalNode
       # Collect replay actions from both pragma computations and VM state diff
       var replayActions: seq[PNode] = @[]
@@ -286,13 +290,23 @@ proc compilePipelineModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymF
          sfMainModule notin flags and
          not graph.withinSystem and
          not graph.config.isDefined("nimscript"):
-        result = moduleFromNifFile(graph, fileIdx, cachedModules)
-        if result == nil:
+        let precomp = moduleFromNifFile(graph, fileIdx)
+        if precomp.module == nil:
           let nifPath = toNifFilename(graph.config, fileIdx)
           localError(graph.config, unknownLineInfo,
             "nim m requires precompiled NIF for import: " & toFullPath(graph.config, fileIdx) &
             " (expected: " & nifPath & ")")
           return nil  # Don't fall through to compile from source
+        else:
+          # Module successfully loaded from NIF file - use it and skip processing
+          result = precomp.module
+          if sfSystemModule in flags:
+            graph.systemModule = result
+          partialInitModule(result, graph, fileIdx, AbsoluteFile(toFullPath(graph.config, fileIdx)))
+          # Replay state changes from the loaded NIF module
+          if result.ast != nil:
+            replayStateChanges(result, graph)
+          return result  # Return early, don't process from source
     if result == nil and graph.config.cmd != cmdM:
       # Fall back to ROD file loading (not used for cmdM which uses NIF only)
       result = moduleFromRodFile(graph, fileIdx, cachedModules)
@@ -385,7 +399,8 @@ proc compilePipelineProject*(graph: ModuleGraph; projectFileIdx = InvalidFileIdx
         graph.config.libpath / RelativeFile"system.nim")
     var cachedModules: seq[FileIndex] = @[]
     when not defined(nimKochBootstrap):
-      graph.systemModule = moduleFromNifFile(graph, graph.config.m.systemFileIdx, cachedModules)
+      let precomp = moduleFromNifFile(graph, graph.config.m.systemFileIdx)
+      graph.systemModule = precomp.module
       if graph.systemModule == nil:
         let nifPath = toNifFilename(graph.config, graph.config.m.systemFileIdx)
         localError(graph.config, unknownLineInfo,

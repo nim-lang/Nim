@@ -41,7 +41,7 @@ proc normalizePathAux(path: var string){.inline, raises: [], noSideEffect.}
 import std/private/osseps
 export osseps
 
-proc absolutePathInternal(path: string): string {.gcsafe.}
+proc absolutePathInternal(path: string): string {.gcsafe, raises: [ValueError, OSerror].}
 
 proc normalizePathEnd*(path: var string, trailingSep = false) =
   ## Ensures ``path`` has exactly 0 or 1 trailing `DirSep`, depending on

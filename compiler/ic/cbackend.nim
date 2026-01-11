@@ -40,7 +40,7 @@ proc setupBackendModule(g: ModuleGraph; m: var LoadedModule) =
   var bmod = cgen.newModule(BModuleList(g.backend), m.module, g.config, idgenFromLoadedModule(m))
 
 proc generateCodeForModule(g: ModuleGraph; m: var LoadedModule; alive: var AliveSyms) =
-  var bmod = BModuleList(g.backend).modules[m.module.position]
+  var bmod = BModuleList(g.backend).mods[m.module.position]
   assert bmod != nil
   bmod.flags.incl useAliveDataFromDce
   bmod.alive = move alive[m.module.position]

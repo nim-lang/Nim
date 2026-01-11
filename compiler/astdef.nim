@@ -8,10 +8,9 @@
 #
 
 import
-  lineinfos, options, ropes, idents, int128, wordrecg
+  lineinfos, options, ropes, idents, int128
 
 import std/[tables, hashes]
-from std/strutils import toLowerAscii
 
 when defined(nimPreviewSlimSystem):
   import std/assertions

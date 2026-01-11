@@ -27,6 +27,7 @@ const
     "io",
     "js",
     "ic",
+    "ic_disabled",
     "lib",
     "manyloc",
     "nimble-packages",
@@ -489,46 +490,16 @@ proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string) =
 
 proc icTests(r: var TResults; testsDir: string, cat: Category, options: string;
              isNavigatorTest: bool) =
-  const
-    tooltests = ["compiler/nim.nim"]
-    writeOnly = " --incremental:writeonly "
-    readOnly = " --incremental:readonly "
-    incrementalOn = " --incremental:on -d:nimIcIntegrityChecks "
-    navTestConfig = " --ic:on -d:nimIcNavigatorTests --hint:Conf:off --warnings:off "
-
-  template test(x: untyped) =
-    testSpecWithNimcache(r, makeRawTest(file, x & options, cat), nimcache)
-
-  template editedTest(x: untyped) =
-    var test = makeTest(file, x & options, cat)
-    if isNavigatorTest:
-      test.spec.action = actionCompile
-    test.spec.targets = {getTestSpecTarget()}
+  template editedTest() =
+    var test = makeTest(file, options, cat)
+    test.spec.targets = {targetC}
+    test.spec.cmd = compilerPrefix & " ic --hint:Conf:off --warnings:off $options " & file
     testSpecWithNimcache(r, test, nimcache)
-
-  template checkTest() =
-    var test = makeRawTest(file, options, cat)
-    test.spec.cmd = compilerPrefix & " check --hint:Conf:off --warnings:off --ic:on $options " & file
-    testSpecWithNimcache(r, test, nimcache)
-
-  if not isNavigatorTest:
-    for file in tooltests:
-      let nimcache = nimcacheDir(file, options, getTestSpecTarget())
-      removeDir(nimcache)
-
-      let oldPassed = r.passed
-      checkTest()
-
-      if r.passed == oldPassed+1:
-        checkTest()
-        if r.passed == oldPassed+2:
-          checkTest()
 
   const tempExt = "_temp.nim"
   for it in walkDirRec(testsDir):
-  # for it in ["tests/ic/timports.nim"]: # debugging: to try a specific test
     if isTestFile(it) and not it.endsWith(tempExt):
-      let nimcache = nimcacheDir(it, options, getTestSpecTarget())
+      let nimcache = nimcacheDir(it, options, targetC)
       removeDir(nimcache)
 
       let content = readFile(it)
@@ -536,7 +507,7 @@ proc icTests(r: var TResults; testsDir: string, cat: Category, options: string;
         let file = it.replace(".nim", tempExt)
         writeFile(file, fragment)
         let oldPassed = r.passed
-        editedTest(if isNavigatorTest: navTestConfig else: incrementalOn)
+        editedTest()
         if r.passed != oldPassed+1: break
 
 # ----------------------------------------------------------------------------

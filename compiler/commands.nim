@@ -499,7 +499,7 @@ proc parseCommand*(command: string): Command =
   of "nop", "help": cmdNop
   of "jsonscript": cmdJsonscript
   of "nifc": cmdNifC  # generate C from NIF files
-  of "deps": cmdDeps  # generate .build.nif for nifmake
+  of "ic": cmdIc  # generate .build.nif for nifmake
   else: cmdUnknown
 
 proc setCmd*(conf: ConfigRef, cmd: Command) =
@@ -1000,7 +1000,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       # xxx maybe also ic, since not in help?
     if pass in {passCmd2, passPP}:
       case arg.normalize
-      of "on": conf.symbolFiles = v2Sf
+      of "on": conf.ic = true
+      of "legacy": conf.symbolFiles = v2Sf
       of "off": conf.symbolFiles = disabledSf
       of "writeonly": conf.symbolFiles = writeOnlySf
       of "readonly": conf.symbolFiles = readOnlySf
@@ -1108,6 +1109,9 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "shownonexports":
     expectNoArg(conf, switch, arg, pass, info)
     showNonExportedFields(conf)
+  of "raw":
+    expectNoArg(conf, switch, arg, pass, info)
+    docRawOutput(conf)
   of "exceptions":
     case arg.normalize
     of "cpp": conf.exc = excCpp

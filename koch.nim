@@ -16,7 +16,7 @@ const
   ChecksumsStableCommit = "0b8e46379c5bc1bf73d8b3011908389c60fb9b98" # 2.0.1
   SatStableCommit = "faf1617f44d7632ee9601ebc13887644925dcc01"
 
-  NimonyStableCommit = "322178d9af6676363d5237382c6d6c1b4e56d3cd" # unversioned \
+  NimonyStableCommit = "fc8baa61b9911caf4666685a5f5ed41b9c04f6f8" # unversioned \
     # Note that Nimony uses Nim as a git submodule but we don't want to install
     # Nimony's dependency to Nim as we are Nim. So a `git clone` without --recursive
     # is **required** here.
@@ -187,6 +187,11 @@ proc bundleChecksums(latest: bool) =
 
   let nimonyCommit = if latest: "HEAD" else: NimonyStableCommit
   cloneDependency(distDir, "https://github.com/nim-lang/nimony.git", nimonyCommit, allowBundled = true)
+
+  if not fileExists("bin/nifler".exe):
+    nimCompileFold("Compile nifler", "dist/nimony/src/nifler/nifler.nim", options = "-d:release")
+  if not fileExists("bin/nifmake".exe):
+    nimCompileFold("Compile nifmake", "dist/nimony/src/nifmake/nifmake.nim", options = "-d:release")
 
 proc bundleNimsuggest(args: string) =
   bundleChecksums(false)
@@ -553,7 +558,7 @@ proc icTest(args: string) =
   for fragment in content.split("#!EDIT!#"):
     let file = inp.replace(".nim", "_temp.nim")
     writeFile(file, fragment)
-    var cmd = nimExe & " cpp --ic:on -d:nimIcIntegrityChecks --listcmd "
+    var cmd = nimExe & " cpp --ic:legacy -d:nimIcIntegrityChecks --listcmd "
     if i == 0:
       cmd.add "-f "
     cmd.add quoteShell(file)
