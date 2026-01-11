@@ -1316,11 +1316,7 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
   var returnStmt: Snippet = ""
   assert(prc.ast != nil)
 
-  var procBody: PNode = nil
-  if prc.closureBody != nil:
-    procBody = prc.closureBody
-  else:
-    procBody = transformBody(m.g.graph, m.idgen, prc, {})
+  var procBody = transformBody(m.g.graph, m.idgen, prc, {})
 
   let tmpInfo = prc.info
   discard freshLineInfo(p, prc.info)

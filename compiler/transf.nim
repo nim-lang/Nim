@@ -1318,11 +1318,10 @@ proc transformBody*(g: ModuleGraph; idgen: IdGenerator; prc: PSym; flags: Transf
     liftDefer(c, result)
     result = liftLocalsIfRequested(prc, result, g.cache, g.config, c.idgen)
 
-    if prc.isIterator and prc.closureBody == nil:
+    if prc.isIterator:
       if sfInjectDestructors in prc.flags:
         result = injectDestructorCalls(c.graph, c.idgen, prc, result)
       result = g.transformClosureIterator(c.idgen, prc, result)
-      prc.closureBody = result
 
     incl(result.flags, nfTransf)
 
