@@ -110,6 +110,7 @@ type                          # please make sure we have under 32 options
     optEnableDeepCopy         # ORC specific: enable 'deepcopy' for all types.
     optShowNonExportedFields  # for documentation: show fields that are not exported
     optJsBigInt64             # use bigints for 64-bit integers in JS
+    optDocRaw                 # for documentation: Don't render markdown for JSON output
     optItaniumMangle          # mangling follows the Itanium spec
     optCompress               # turn on AST compression by converting it to NIF
     optWithinConfigSystem     # we still compile within the configuration system
@@ -1045,6 +1046,9 @@ proc isDynlibOverride*(conf: ConfigRef; lib: string): bool =
 
 proc showNonExportedFields*(conf: ConfigRef) =
   incl(conf.globalOptions, optShowNonExportedFields)
+
+proc docRawOutput*(conf: ConfigRef) =
+  incl(conf.globalOptions, optDocRaw)
 
 proc expandDone*(conf: ConfigRef): bool =
   result = conf.ideCmd == ideExpand and conf.expandLevels == 0 and conf.expandProgress
