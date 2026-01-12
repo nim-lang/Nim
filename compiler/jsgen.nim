@@ -34,7 +34,7 @@ import
   ropes, wordrecg, renderer,
   cgmeth, lowerings, sighashes, modulegraphs, lineinfos,
   transf, injectdestructors, sourcemap, astmsgs, pushpoppragmas,
-  mangleutils
+  mangleutils, lambdautils
 
 import pipelineutils
 
@@ -2792,7 +2792,7 @@ proc genProc(oldProc: PProc, prc: PSym): Rope =
       returnStmt = "return $#;$n" % [a.res]
 
   var transformedBody = transformBody(p.module.graph, p.module.idgen, prc, {})
-  if sfInjectDestructors in prc.flags:
+  if sfInjectDestructors in prc.flags and not isIterator(prc):
     transformedBody = injectDestructorCalls(p.module.graph, p.module.idgen, prc, transformedBody)
 
   p.nested: genStmt(p, transformedBody)
