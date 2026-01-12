@@ -444,9 +444,61 @@ else:
     """.}
 
 # Arithmetic:
+proc checkOverflowInt8(a: int) {.asmNoStackFrame, compilerproc.} =
+  {.emit: """
+    if (`a` > 127 || `a` < -128) `raiseOverflow`();
+  """.}
+
+proc checkOverflowInt16(a: int) {.asmNoStackFrame, compilerproc.} =
+  {.emit: """
+    if (`a` > 32767 || `a` < -32768) `raiseOverflow`();
+  """.}
+
 proc checkOverflowInt(a: int) {.asmNoStackFrame, compilerproc.} =
   {.emit: """
     if (`a` > 2147483647 || `a` < -2147483648) `raiseOverflow`();
+  """.}
+
+proc addInt8(a, b: int): int {.asmNoStackFrame, compilerproc.} =
+  {.emit: """
+    var result = `a` + `b`;
+    `checkOverflowInt8`(result);
+    return result;
+  """.}
+
+proc subInt8(a, b: int): int {.asmNoStackFrame, compilerproc.} =
+  {.emit: """
+    var result = `a` - `b`;
+    `checkOverflowInt8`(result);
+    return result;
+  """.}
+
+proc mulInt8(a, b: int): int {.asmNoStackFrame, compilerproc.} =
+  {.emit: """
+    var result = `a` * `b`;
+    `checkOverflowInt8`(result);
+    return result;
+  """.}
+
+proc addInt16(a, b: int): int {.asmNoStackFrame, compilerproc.} =
+  {.emit: """
+    var result = `a` + `b`;
+    `checkOverflowInt16`(result);
+    return result;
+  """.}
+
+proc subInt16(a, b: int): int {.asmNoStackFrame, compilerproc.} =
+  {.emit: """
+    var result = `a` - `b`;
+    `checkOverflowInt16`(result);
+    return result;
+  """.}
+
+proc mulInt16(a, b: int): int {.asmNoStackFrame, compilerproc.} =
+  {.emit: """
+    var result = `a` * `b`;
+    `checkOverflowInt16`(result);
+    return result;
   """.}
 
 proc addInt(a, b: int): int {.asmNoStackFrame, compilerproc.} =

@@ -656,6 +656,12 @@ proc arithAux(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
       if n[1].typ.size == 8 and optJsBigInt64 in p.config.globalOptions:
         useMagic(p, "addInt64")
         applyFormat("addInt64($1, $2)")
+      elif n[1].typ.size == 1:
+        useMagic(p, "addInt8")
+        applyFormat("addInt8($1, $2)")
+      elif n[1].typ.size == 2:
+        useMagic(p, "addInt16")
+        applyFormat("addInt16($1, $2)")
       else:
         applyFormat("addInt($1, $2)")
     else:
@@ -665,6 +671,12 @@ proc arithAux(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
       if n[1].typ.size == 8 and optJsBigInt64 in p.config.globalOptions:
         useMagic(p, "subInt64")
         applyFormat("subInt64($1, $2)")
+      elif n[1].typ.size == 1:
+        useMagic(p, "subInt8")
+        applyFormat("subInt8($1, $2)")
+      elif n[1].typ.size == 2:
+        useMagic(p, "subInt16")
+        applyFormat("subInt16($1, $2)")
       else:
         applyFormat("subInt($1, $2)")
     else:
@@ -674,6 +686,12 @@ proc arithAux(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
       if n[1].typ.size == 8 and optJsBigInt64 in p.config.globalOptions:
         useMagic(p, "mulInt64")
         applyFormat("mulInt64($1, $2)")
+      elif n[1].typ.size == 1:
+        useMagic(p, "mulInt8")
+        applyFormat("mulInt8($1, $2)")
+      elif n[1].typ.size == 2:
+        useMagic(p, "mulInt16")
+        applyFormat("mulInt16($1, $2)")
       else:
         applyFormat("mulInt($1, $2)")
     else:
@@ -705,7 +723,13 @@ proc arithAux(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
       else: binaryExpr(p, n, r, "addInt64", "addInt64($1, BigInt($2))")
     else:
       if optOverflowCheck notin p.options: applyFormat("$1 + $2")
-      else: binaryExpr(p, n, r, "addInt", "addInt($1, $2)")
+      else:
+        if typ.size == 1:
+          binaryExpr(p, n, r, "addInt8", "addInt8($1, $2)")
+        elif typ.size == 2:
+          binaryExpr(p, n, r, "addInt16", "addInt16($1, $2)")
+        else:
+          binaryExpr(p, n, r, "addInt", "addInt($1, $2)")
   of mPred:
     let typ = n[1].typ.skipTypes(abstractVarRange)
     case typ.kind
@@ -721,7 +745,13 @@ proc arithAux(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
       else: binaryExpr(p, n, r, "subInt64", "subInt64($1, BigInt($2))")
     else:
       if optOverflowCheck notin p.options: applyFormat("$1 - $2")
-      else: binaryExpr(p, n, r, "subInt", "subInt($1, $2)")
+      else:
+        if typ.size == 1:
+          binaryExpr(p, n, r, "subInt8", "subInt8($1, $2)")
+        elif typ.size == 2:
+          binaryExpr(p, n, r, "subInt16", "subInt16($1, $2)")
+        else:
+          binaryExpr(p, n, r, "subInt", "subInt($1, $2)")
   of mAddF64: applyFormat("($1 + $2)", "($1 + $2)")
   of mSubF64: applyFormat("($1 - $2)", "($1 - $2)")
   of mMulF64: applyFormat("($1 * $2)", "($1 * $2)")
