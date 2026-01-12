@@ -649,7 +649,10 @@ template handleNestedTempl(n, processCall: untyped, willProduceStmt = false,
   of nkStmtList, nkStmtListExpr:
     # a statement list does not open a new scope
     if n.len == 0: return n
-    result = copyNode(n)
+    if isEmptyType(n.typ) or willProduceStmt:
+      result = newNodeI(nkStmtList, n.info)
+    else:
+      result = copyNode(n)
     for i in 0..<n.len-1:
       result.add p(n[i], c, s, normal)
     result.add maybeVoid(n[^1], s)
