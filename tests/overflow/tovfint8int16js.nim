@@ -1,10 +1,9 @@
 discard """
-  description: "Test overflow checks for int8 and int16 on JS backend"
-  matrix: "--backend:js"
-  outputsub: "Error: unhandled exception"
+  targets: "js"
+  output: "All overflow tests passed"
 """
 
-# Test int8 overflow detection
+# Test overflow checks for int8 and int16 on JS backend
 {.push overflowChecks: on.}
 
 block test_int8_add_overflow:
