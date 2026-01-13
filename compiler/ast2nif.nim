@@ -1658,8 +1658,6 @@ proc loadNifModule*(c: var DecodeContext; suffix: ModuleSuffix; interf, interfHi
 
   # Load the module AST (or just replay actions if loadFullAst is false)
   let s = addr c.mods[module].stream
-  s.r.jumpTo 0  # Start from beginning
-  discard processDirectives(s.r)
   var t = next(s[])
   if t.kind == ParLe and pool.tags[t.tagId] == toNifTag(nkStmtList):
     t = next(s[])  # skip (stmts
