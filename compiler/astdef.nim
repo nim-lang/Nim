@@ -705,7 +705,6 @@ type
       #procInstCache*: seq[PInstantiation]
       gcUnsafetyReasonImpl*: PSym  # for better error messages regarding gcsafe
       transformedBodyImpl*: PNode  # cached body after transf pass
-      closureBodyImpl*: PNode      # cached body after closure conversion
     of skLet, skVar, skField, skForVar:
       guardImpl*: PSym
       bitsizeImpl*: int

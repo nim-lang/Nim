@@ -116,16 +116,6 @@ proc `transformedBody=`*(s: PSym, val: PNode) {.inline.} =
   if s.state == Partial: loadSym(s)
   s.transformedBodyImpl = val
 
-proc closureBody*(s: PSym): PNode {.inline.} =
-  if s.state == Partial: loadSym(s)
-  result = s.closureBodyImpl
-
-proc `closureBody=`*(s: PSym, val: PNode) {.inline.} =
-  #assert s.state != Sealed
-  # Make an exception here for this misfeature...
-  if s.state == Partial: loadSym(s)
-  s.closureBodyImpl = val
-
 proc guard*(s: PSym): PSym {.inline.} =
   if s.state == Partial: loadSym(s)
   result = s.guardImpl
