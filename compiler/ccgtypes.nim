@@ -1996,7 +1996,7 @@ proc genTypeInfoV1(m: BModule; t: PType; info: TLineInfo): Rope =
     owner = m.module.position.int32
 
   m.g.typeInfoMarker[sig] = (str: result, owner: owner)
-  rememberEmittedTypeInfo(m.g.graph, FileIndex(owner), $result)
+  #rememberEmittedTypeInfo(m.g.graph, FileIndex(owner), $result)
 
   case t.kind
   of tyEmpty, tyVoid: result = cIntValue(0)

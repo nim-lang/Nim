@@ -2776,7 +2776,7 @@ proc semConverterDef(c: PContext, n: PNode): PNode =
   var t = s.typ
   if t.returnType == nil: localError(c.config, n.info, errXNeedsReturnType % "converter")
   if t.len != 2: localError(c.config, n.info, "a converter takes exactly one argument")
-  addConverterDef(c, LazySym(sym: s))
+  addConverterDef(c, s)
 
 proc semMacroDef(c: PContext, n: PNode): PNode =
   result = semProcAux(c, n, skMacro, macroPragmas)

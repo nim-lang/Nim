@@ -155,7 +155,6 @@ type
     cmdCheck # semantic checking for whole project
     cmdM     # only compile a single
     cmdParse # parse a single file (for debugging)
-    cmdRod # .rod to some text representation (for debugging)
     cmdIdeTools # ide tools (e.g. nimsuggest)
     cmdNimscript # evaluate nimscript
     cmdDoc0
