@@ -116,3 +116,13 @@ block:
   s(something)
   s(otherthing, something)
   s(something, otherthing)
+
+block:
+  type
+    Test = set
+    Test2 = seq
+    Test3 = array
+
+  doAssert set is Test
+  doAssert seq is Test2
+  doAssert array is Test3
