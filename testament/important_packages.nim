@@ -43,7 +43,7 @@ when not defined(arm64):
 pkg "awk"
 pkg "bigints"
 pkg "binaryheap", "nim c -r binaryheap.nim"
-pkg "BipBuffer", url = "https://github.com/nim-lang/BipBuffer"
+pkg "BipBuffer"
 pkg "bncurve"
 pkg "brainfuck", "nim c -d:release -r tests/compile.nim"
 pkg "c2nim", "nim c testsuite/tester.nim"
