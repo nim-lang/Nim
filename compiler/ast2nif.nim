@@ -252,6 +252,7 @@ proc writeLoc(w: var Writer; dest: var TokenBuf; loc: TLoc) =
 proc writeTypeDef(w: var Writer; dest: var TokenBuf; typ: PType) =
   dest.buildTree tdefTag:
     dest.addSymDef pool.syms.getOrIncl(typeToNifSym(typ, w.infos.config)), NoLineInfo
+    dest.addDotToken # always private for the index generator
 
     #dest.addIdent toNifTag(typ.kind)
     writeFlags(dest, typ.flagsImpl)
@@ -1084,6 +1085,8 @@ proc loadTypeFromCursor(c: var DecodeContext; n: var Cursor; t: PType; localSyms
   expect n, SymbolDef
   # ignore the type's name, we have already used it to create this PType's itemId!
   inc n
+  expect n, DotToken
+  inc n
   #loadField t.kind
   loadField t.flagsImpl
   loadField t.callConvImpl
@@ -1406,13 +1409,16 @@ proc populateInterfaceTablesFromIndex(c: var DecodeContext; module: FileIndex;
 
   # Add all symbols to interf (exported interface) and interfHidden
   for nifName, entry in indexTab:
-    if not nifName.startsWith("`t"):
+    if entry.vis == Exported:
+      let sym = loadSymFromIndexEntry(c, module, nifName, entry, thisModule)
+      if sym != nil:
+        strTableAdd(interf, sym)
+        strTableAdd(interfHidden, sym)
+    elif not nifName.startsWith("`t"):
       # do not load types, they are not part of an interface but an implementation detail!
       #echo "LOADING SYM ", nifName, " ", entry.offset
       let sym = loadSymFromIndexEntry(c, module, nifName, entry, thisModule)
       if sym != nil:
-        if entry.vis == Exported:
-          strTableAdd(interf, sym)
         strTableAdd(interfHidden, sym)
 
   # Move index table back
