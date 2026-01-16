@@ -16,15 +16,16 @@ Incremental compilation works by decomposing the compilation process into severa
 3. **Code Generation** - Platform-specific code is generated from the analyzed AST
 4. **Linking** - The generated code is linked into an executable
 
-The IC mechanism caches the results of earlier stages in ``.nif`` files
-(Nim frontend intermediate format). When recompiling, only modules that have
+The IC mechanism caches the results of earlier stages in NIF files
+(Nim intermediate format): ``.p.nif`` (parsed), ``.deps.nif`` (dependencies),
+and ``.nif`` (semantically analyzed). When recompiling, only modules that have
 changed need to be reprocessed through the semantic analysis and code generation
 stages, significantly reducing compilation time for large projects.
 
 NIF File Format
 ===============
 
-NIF (Nim Frontend Intermediate Format) files are text-based files that use a Lisp-like
+NIF (Nim Intermediate Format) files are text-based files that use a Lisp-like
 syntax. They employ a hybrid format where byte offsets into the text are used for
 efficient access, making them simultaneously human-readable and machine-efficient.
 The text representation is particularly valuable for debugging and introspection.
@@ -32,8 +33,8 @@ The text representation is particularly valuable for debugging and introspection
 Each ``.nim`` module produces its own ``.nif`` file during compilation.
 The NIF format contains:
 
-- **Header** - Version information (e.g., `(.nif24)`)
-- **Dependencies** - List of source file checksums and their dependencies
+- **Header** - Version information (e.g., `(.nif26)`)
+- **Dependencies** - List of source files and dependencies
 - **Interface** - Exported symbols and their indices
 - **Body** - The intermediate representation of the module's code in Lisp-like syntax
 
@@ -56,8 +57,8 @@ It automatically manages the build process by:
 Prerequisites
 -------------
 
-- **nifler** - Tool for parsing Nim source files into NIF format
-- **nifmake** - Build orchestration tool that follows dependencies
+- **nifler** - Tool for parsing Nim source files into NIF format. The ``nim ic`` command uses ``nifler parse --deps`` to generate both parsed files (``.p.nif``) and dependency files (``.deps.nif``).
+- **nifmake** - Build orchestration tool that follows dependencies and executes the build rules defined in ``.build.nif`` files.
 
 If these tools are not available, ``nim ic`` will display instructions on how to
 obtain them.
@@ -69,32 +70,13 @@ The primary modules in the compiler that handle incremental compilation logic ar
 
 - **deps.nim** - Dependency analysis and build file generation. Contains the
   ``commandIc`` procedure which is the main entry point for the ``nim ic`` command.
-  This module orchestrates the incremental compilation process, handling NIF generation
-  and build file creation.
+  This module orchestrates the incremental compilation process, handling dependency
+  traversal (via ``nifler deps``), build rule generation, and build file creation.
+  The build file is written to ``nifcache/`` directory. This module also explicitly
+  models ``system.nim`` as a dependency of all modules.
 
-- **ic.nim** - Core incremental compilation module handling the main IC logic,
-  module caching, and NIF serialization/deserialization.
+- **ast2nif.nim** - Core mapping between AST and NIF.
 
-Additionally, various utility modules in the ``compiler/ic/`` directory support
-the IC infrastructure for handling NIF data structures, line information mapping,
-and state replay for pragmas and VM-specific compilations.
-
-Caching and Consistency
-=======================
-
-The IC system ensures correctness through several mechanisms:
-
-- **Dependency Tracking** - Every module's dependencies are recorded and their
-  checksums stored in the NIF file
-
-- **Configuration Hashing** - The compiler configuration (options, GC mode, backend)
-  is hashed and stored, invalidating caches when configuration changes
-
-- **Atomic Operations** - By construction, either a `.nif` file is completely
-  read or completely written, preventing partial/inconsistent updates
-
-- **No Global State** - Each module's IC cache is independent, avoiding
-  complex global state synchronization issues
 
 **Code, Logic & Debugging**
 ===========================
@@ -145,9 +127,12 @@ Manual bug-hunting workflow
   ```
 
 - To reproduce a full incremental compilation of the project, generate the
-  build file and run it (``nim ic`` automates this). To debug an individual
-  build step, run the command that the build file would execute manually
-  (for example, the semantic step uses ``nim m``; code generation uses ``nim nifc``).
+  build file and run it (``nim ic`` automates this). The build file is generated
+  in ``nifcache/`` directory. To debug an individual build step, run the command
+  that the build file would execute manually:
+  - Parsing step: ``nifler parse --deps input.nim`` (produces ``.p.nif`` and ``.deps.nif``)
+  - Semantic step: ``nim m --nimcache:nifcache input.nim`` (produces ``.nif``)
+  - Code generation: ``nim nifc --nimcache:nifcache input.nim`` (produces executable)
 
 - Force a cache invalidation for a single module by removing its NIF/sem
   artifact and re-running the semantic step:
