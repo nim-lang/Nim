@@ -30,7 +30,6 @@ when not defined(leanCompiler):
 
 import std/strutils except `%`, addf # collides with ropes.`%`
 
-from ic / ic import ModuleBackendFlag
 import std/[dynlib, math, tables, sets, os, intsets, hashes]
 
 const
@@ -1925,36 +1924,6 @@ proc genMainProc(m: BModule) =
 
     if m.config.cppCustomNamespace.len > 0:
       openNamespaceNim(m.config.cppCustomNamespace, m.s[cfsProcs])
-
-proc registerInitProcs*(g: BModuleList; m: PSym; flags: set[ModuleBackendFlag]) =
-  ## Called from the IC backend.
-  if HasDatInitProc in flags:
-    let datInit = getSomeNameForModule(g.config, g.config.toFullPath(m.info.fileIndex).AbsoluteFile) & "DatInit000"
-    g.mainModProcs.addDeclWithVisibility(Private):
-      g.mainModProcs.addProcHeader(ccNimCall, datInit, CVoid, cProcParams())
-      g.mainModProcs.finishProcHeaderAsProto()
-    g.mainDatInit.addCallStmt(datInit)
-  if HasModuleInitProc in flags:
-    let init = getSomeNameForModule(g.config, g.config.toFullPath(m.info.fileIndex).AbsoluteFile) & "Init000"
-    g.mainModProcs.addDeclWithVisibility(Private):
-      g.mainModProcs.addProcHeader(ccNimCall, init, CVoid, cProcParams())
-      g.mainModProcs.finishProcHeaderAsProto()
-    if sfMainModule in m.flags:
-      g.mainModInit.addCallStmt(init)
-    elif sfSystemModule in m.flags:
-      g.mainDatInit.addCallStmt(init) # systemInit must called right after systemDatInit if any
-    else:
-      g.otherModsInit.addCallStmt(init)
-
-proc whichInitProcs*(m: BModule): set[ModuleBackendFlag] =
-  # called from IC.
-  result = {}
-  if m.hcrOn or m.preInitProc.s(cpsInit).buf.len > 0 or m.preInitProc.s(cpsStmts).buf.len > 0:
-    result.incl HasModuleInitProc
-  for i in cfsTypeInit1..cfsDynLibInit:
-    if m.s[i].buf.len != 0:
-      result.incl HasDatInitProc
-      break
 
 proc registerModuleToMain(g: BModuleList; m: BModule) =
   let
