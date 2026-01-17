@@ -536,6 +536,7 @@ proc initModuleGraphFields(result: ModuleGraph) =
   result.operators = initOperators(result)
   result.emittedTypeInfo = initTable[string, FileIndex]()
   result.cachedFiles = newStringTable()
+  result.cachedMods = initIntSet()
 
 proc newModuleGraph*(cache: IdentCache; config: ConfigRef): ModuleGraph =
   result = ModuleGraph()
@@ -676,6 +677,9 @@ when not defined(nimKochBootstrap):
                            g.ifaces[fileIdx.int].interf,
                            g.ifaces[fileIdx.int].interfHidden, flags)
     result.module = m
+
+    # Mark module as cached
+    g.cachedMods.incl fileIdx.int
 
     # Register hooks from NIF index with the module graph
     for x in result.logOps:
