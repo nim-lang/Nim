@@ -1,3 +1,6 @@
+discard """
+  output: "hi 1"
+"""
 
 import myimp
 
