@@ -1845,6 +1845,13 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
           let baseType = s.typ.safeSkipTypes(abstractPtrs)
           if baseType.kind in {tyObject, tyTuple} and not baseType.n.isNil:
             checkForMetaFields(c, baseType.n, hasError)
+
+        if s.typ.kind in {tySet, tyArray, tySequence, tyUncheckedArray} and s.typ.elementType.kind == tyNone:
+          # magic generics are not filled but tyNone is added to its elements by default,
+          # we lift them to tyBuiltInTypeClass here
+          s.typ = newTypeS(tyBuiltInTypeClass, c,
+                    newTypeS(s.typ.kind, c))
+
         if not hasError:
           checkConstructedType(c.config, s.info, s.typ)
   #instAllTypeBoundOp(c, n.info)
@@ -2776,7 +2783,7 @@ proc semConverterDef(c: PContext, n: PNode): PNode =
   var t = s.typ
   if t.returnType == nil: localError(c.config, n.info, errXNeedsReturnType % "converter")
   if t.len != 2: localError(c.config, n.info, "a converter takes exactly one argument")
-  addConverterDef(c, LazySym(sym: s))
+  addConverterDef(c, s)
 
 proc semMacroDef(c: PContext, n: PNode): PNode =
   result = semProcAux(c, n, skMacro, macroPragmas)
