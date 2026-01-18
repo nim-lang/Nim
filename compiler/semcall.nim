@@ -1023,8 +1023,15 @@ proc searchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): tuple[s: PS
   # and use the overloading resolution mechanism:
   const desiredTypes = abstractVar + {tyCompositeTypeClass} - {tyTypeDesc, tyDistinct}
 
-  template getType(isDistinct: bool; t: PType):untyped =
-    if isDistinct: t.baseOfDistinct(c.graph, c.idgen) else: t
+  template getType(isDistinct: bool; t, rawType: PType):untyped =
+    if not isDistinct:
+      t
+    elif t.kind == tyDistinct:
+      t.baseOfDistinct(c.graph, c.idgen)
+    elif rawType.kind == tyGenericInvocation and rawType.genericHead.last.kind == tyDistinct:
+      rawType.genericHead.last.elementType
+    else:
+      t
 
   result = default(tuple[s: PSym, state: TBorrowState])
   var call = newNodeI(nkCall, fn.info)
@@ -1043,17 +1050,21 @@ proc searchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): tuple[s: PS
       proc `$`(f: Foo): string {.borrow.}
       # We want to skip the `Foo` to get `int`
     ]#
-    t = skipTypes(param.typ, desiredTypes)
-    isDistinct = t.kind == tyDistinct or param.typ.kind == tyDistinct
-    if t.kind == tyGenericInvocation and t.genericHead.last.kind == tyDistinct:
-      result.state = bsGeneric
-      return
+    let rawType = skipTypes(param.typ, desiredTypes)
+    if rawType.kind == tyGenericInvocation and rawType.genericHead.last.kind == tyDistinct:
+      let name = fn.name.s
+      if name notin ["[]", "[]="]:
+        result.state = bsGeneric
+        return
+    t = skipTypes(param.typ, desiredTypes + {tyGenericInvocation})
+    isDistinct = t.kind == tyDistinct or param.typ.kind == tyDistinct or
+      (rawType.kind == tyGenericInvocation and rawType.genericHead.last.kind == tyDistinct)
     if isDistinct: hasDistinct = true
     if param.typ.kind == tyVar:
       x = newTypeS(param.typ.kind, c)
-      x.addSonSkipIntLit(getType(isDistinct, t), c.idgen)
+      x.addSonSkipIntLit(getType(isDistinct, t, rawType), c.idgen)
     else:
-      x = getType(isDistinct, t)
+      x = getType(isDistinct, t, rawType)
     var s = copySym(param.sym, c.idgen)
     s.typ = x
     s.info = param.info
@@ -1064,10 +1075,8 @@ proc searchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): tuple[s: PS
     if resolved != nil:
       result.s = resolved[0].sym
       result.state = bsMatch
-      if not compareTypes(result.s.typ.returnType, fn.typ.returnType, dcEqIgnoreDistinct, {IgnoreFlags}):
+      if result.s.magic notin {mArrGet, mArrPut} and
+          not compareTypes(result.s.typ.returnType, fn.typ.returnType, dcEqIgnoreDistinct, {IgnoreFlags}):
         result.state = bsReturnNotMatch
-      elif result.s.magic in {mArrPut, mArrGet}:
-        # cannot borrow these magics for now
-        result.state = bsNotSupported
   else:
     result.state = bsNoDistinct

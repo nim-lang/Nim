@@ -1573,6 +1573,7 @@ proc genFlags*(s: set[TTypeFlag]; dest: var string) =
     of tfWildcard: dest.add "w"
     of tfHasAsgn: dest.add "a"
     of tfBorrowDot: dest.add "d"
+    of tfBorrowBrackets: dest.add "q"
     of tfTriggersCompileTime: dest.add "t0"
     of tfRefsAnonObj: dest.add "o"
     of tfCovariant: dest.add "c1"
@@ -1623,6 +1624,7 @@ proc parse*(t: typedesc[TTypeFlag]; s: string): set[TTypeFlag] =
         inc i
       else: result.incl tfCapturesEnv
     of 'd': result.incl tfBorrowDot
+    of 'q': result.incl tfBorrowBrackets
     of 'e':
       if i+1 < s.len and s[i+1] == '0':
         result.incl tfExplicit
@@ -1860,4 +1862,3 @@ proc parse*(t: typedesc[TOption]; s: string): set[TOption] =
     of 'w': result.incl optWarns
     else: discard
     inc i
-
