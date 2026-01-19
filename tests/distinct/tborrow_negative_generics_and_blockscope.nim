@@ -31,7 +31,10 @@ doAssert not compiles(a1[0] == 0)
 block:
   var a0GetOnly: A0GetOnly[int]
   doAssert compiles(a0GetOnly[0] == 0)
-  doAssert not compiles(a0GetOnly[0] = 10)
+  doAssert not compiles((block:
+    var tmp = a0GetOnly
+    tmp[0] = 10
+    true))
 
 # See 2. and 3.
 type A2[T] = distinct array[3, T]
