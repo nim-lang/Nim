@@ -378,6 +378,7 @@ type
                       # wildcard type.
     tfHasAsgn         # type has overloaded assignment operator
     tfBorrowDot       # distinct type borrows '.'
+    tfBorrowBrackets  # distinct type borrows '[]'
     tfTriggersCompileTime # uses the NimNode type which make the proc
                           # implicitly '.compiletime'
     tfRefsAnonObj     # used for 'ref object' and 'ptr object'
