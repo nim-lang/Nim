@@ -44,9 +44,9 @@ block BLOCK_TEST:
   type A4[T] = distinct array[3, T]
   type A5[T] = distinct array[3, T]
 
-  proc `[]`*[T](a: A4[T], i: int): T {.borrow.}
-  proc `[]`*[T](a: var A4[T], i: int): var T {.borrow.}
-  proc `[]=`*[T](a: var A4[T], i: int, val: T) {.borrow.}
+  proc `[]`[T](a: A4[T], i: int): T {.borrow.}
+  proc `[]`[T](a: var A4[T], i: int): var T {.borrow.}
+  proc `[]=`[T](a: var A4[T], i: int, val: T) {.borrow.}
 
   var a4: A4[float]
   doAssert compiles(a4[0] == 0)

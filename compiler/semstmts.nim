@@ -1715,24 +1715,15 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
       elif s.typ.kind == tyGenericBody:
         localError(c.config, name.info, "{.exportc.} not allowed for generic types")
 
-    let borrowFlags = {tfBorrowDot, tfBorrowBrackets}
+    let borrowFlags = {tfBorrowDot}
     if borrowFlags * s.typ.flags != {}:
       let body = s.typ.skipTypes({tyGenericBody})
       if body.kind != tyDistinct:
         # flag might be copied from alias/instantiation:
         let t = body.skipTypes({tyAlias, tyGenericInst})
         if not (t.kind == tyDistinct and borrowFlags * t.flags != {}):
-          let hasDot = tfBorrowDot in s.typ.flags
-          let hasBrackets = tfBorrowBrackets in s.typ.flags
           excl s.typ, borrowFlags
-          let msg =
-            if hasDot and not hasBrackets:
-              "only a 'distinct' type can borrow `.`"
-            elif hasBrackets and not hasDot:
-              "only a 'distinct' type can borrow `[]`"
-            else:
-              "only a 'distinct' type can borrow operators"
-          localError(c.config, name.info, msg)
+          localError(c.config, name.info, "only a 'distinct' type can borrow `.`")
     let aa = a[2]
     if aa.kind in {nkRefTy, nkPtrTy} and aa.len == 1 and
        aa[0].kind == nkObjectTy and not preserveSym:
@@ -1952,6 +1943,8 @@ proc semBorrow(c: PContext, n: PNode, s: PSym) =
       var paramType = s.typ.firstParamType
       if paramType != nil:
         paramType = paramType.skipTypes({tyVar, tyLent, tyPtr, tyRef, tyOwned, tyAlias, tyGenericInst, tySink})
+        if paramType.kind == tyGenericInvocation and paramType.genericHead.last.kind == tyDistinct:
+          paramType = paramType.genericHead.last
         if paramType.kind == tyDistinct:
           incl(paramType, tfBorrowBrackets)
   of bsNoDistinct:

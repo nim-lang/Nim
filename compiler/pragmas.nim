@@ -754,16 +754,14 @@ proc typeBorrow(c: PContext; sym: PSym, n: PNode) =
   if n.kind in nkPragmaCallKinds and n.len == 2:
     let it = n[1]
     if it.kind != nkAccQuoted:
-      localError(c.config, n.info, "a type can only borrow `.` or `[]` for now")
+      localError(c.config, n.info, "a type can only borrow `.` for now")
       return
     let opIdent = considerQuotedIdent(c, it).s
     case opIdent
     of ".":
       incl(sym.typ, tfBorrowDot)
-    of "[]":
-      incl(sym.typ, tfBorrowBrackets)
     else:
-      localError(c.config, n.info, "a type can only borrow `.` or `[]` for now")
+      localError(c.config, n.info, "a type can only borrow `.` for now")
       return
 
 proc markCompilerProc(c: PContext; s: PSym) =
