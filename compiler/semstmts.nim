@@ -1940,13 +1940,20 @@ proc semBorrow(c: PContext, n: PNode, s: PSym) =
       s.typ.n[0] = b.typ.n[0]
     s.typ.flags = b.typ.flags
     if s.name.s in ["[]", "[]="]:
-      var paramType = s.typ.firstParamType
-      if paramType != nil:
-        paramType = paramType.skipTypes({tyVar, tyLent, tyPtr, tyRef, tyOwned, tyAlias, tyGenericInst, tySink})
-        if paramType.kind == tyGenericInvocation and paramType.genericHead.last.kind == tyDistinct:
-          paramType = paramType.genericHead.last
-        if paramType.kind == tyDistinct:
-          incl(paramType, tfBorrowBrackets)
+      let isGetBorrow = s.name.s == "[]"
+      let isMutableBorrow = s.name.s == "[]=" or
+        (s.typ.n.len > 1 and s.typ.n[1].sym.typ.kind == tyVar)
+      if isGetBorrow or isMutableBorrow:
+        var paramType = s.typ.firstParamType
+        if paramType != nil:
+          paramType = paramType.skipTypes({tyVar, tyLent, tyPtr, tyRef, tyOwned, tyAlias, tyGenericInst, tySink})
+          if paramType.kind == tyGenericInvocation and paramType.genericHead.last.kind == tyDistinct:
+            paramType = paramType.genericHead.last
+          if paramType.kind == tyDistinct:
+            if isGetBorrow:
+              incl(paramType, tfBorrowBrackets)
+            if isMutableBorrow:
+              incl(paramType, tfBorrowBracketsMut)
   of bsNoDistinct:
     localError(c.config, n.info, "borrow proc without distinct type parameter is meaningless")
   of bsReturnNotMatch:

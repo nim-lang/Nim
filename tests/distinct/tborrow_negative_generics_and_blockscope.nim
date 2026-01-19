@@ -14,16 +14,24 @@ This testcase checks several things:
 # See 1.
 type A0 = distinct array[3, int]
 type A1 = distinct array[3, int]
+type A0GetOnly[T] = distinct array[3, T]
 
 proc `[]`*(a: A0, i: int): int {.borrow.}
 proc `[]`*(a: var A0, i: int): var int {.borrow.}
 proc `[]=`*(a: var A0, i: int, val: int) {.borrow.}
+proc `[]`*[T](a: A0GetOnly[T], i: int): T {.borrow.}
 
 var a0: A0
 doAssert compiles(a0[0] == 0)
 
 var a1: A1
 doAssert not compiles(a1[0] == 0)
+
+# Only borrowed the non-var `[]` should not allow mutation.
+block:
+  var a0GetOnly: A0GetOnly[int]
+  doAssert compiles(a0GetOnly[0] == 0)
+  doAssert not compiles(a0GetOnly[0] = 10)
 
 # See 2. and 3.
 type A2[T] = distinct array[3, T]
