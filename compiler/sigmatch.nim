@@ -2737,7 +2737,7 @@ proc setSon(c: PContext; father: PNode, at: int, son: PNode) =
   father[at] = son
   # insert potential 'void' parameters:
   for i in oldLen..<at:
-    father[i] = newNodeIT(nkEmpty, son.info, getSysType(c.graph, father.info, tyVoid))
+    father[i] = newNodeIT(nkEmpty, son.info, getSysType(c.graph, son.info, tyVoid))
 
 # we are allowed to modify the calling node in the 'prepare*' procs:
 proc prepareOperand(c: PContext; formal: PType; a: PNode, newlyTyped: var bool): PNode =
