@@ -2730,14 +2730,14 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
       echo m.c.config $ arg.info, " for ", m.calleeSym.name.s, " ", m.c.config $ m.calleeSym.info
       writeMatches(m)
 
-proc setSon(father: PNode, at: int, son: PNode) =
+proc setSon(c: PContext; father: PNode, at: int, son: PNode) =
   let oldLen = father.len
   if oldLen <= at:
     setLen(father.sons, at + 1)
   father[at] = son
   # insert potential 'void' parameters:
-  #for i in oldLen..<at:
-  #  father[i] = newNodeIT(nkEmpty, son.info, getSysType(tyVoid))
+  for i in oldLen..<at:
+    father[i] = newNodeIT(nkEmpty, son.info, getSysType(c.graph, father.info, tyVoid))
 
 # we are allowed to modify the calling node in the 'prepare*' procs:
 proc prepareOperand(c: PContext; formal: PType; a: PNode, newlyTyped: var bool): PNode =
@@ -2864,11 +2864,11 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
         doAssert n[a][0].kind == nkEmpty and
                  n[a][1].kind in {nkBracket, nkArgList}
         # Steal the container and pass it along
-        setSon(m.call, formal.position + 1, n[a][1])
+        setSon(c, m.call, formal.position + 1, n[a][1])
       else:
         if container.isNil:
           container = newNodeIT(nkArgList, n[a].info, arrayConstr(c, n.info))
-          setSon(m.call, formal.position + 1, container)
+          setSon(c, m.call, formal.position + 1, container)
         else:
           incrIndexType(container.typ)
         container.add n[a]
@@ -2908,10 +2908,10 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
         #assert(container == nil)
         container = newNodeIT(nkBracket, n[a].info, arrayConstr(c, arg))
         container.add arg
-        setSon(m.call, formal.position + 1, container)
+        setSon(c, m.call, formal.position + 1, container)
         if f != formalLen - 1: container = nil
       else:
-        setSon(m.call, formal.position + 1, arg)
+        setSon(c, m.call, formal.position + 1, arg)
       inc f
     else:
       # unnamed param
@@ -2967,7 +2967,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
         if formal.typ.isVarargsUntyped:
           if container.isNil:
             container = newNodeIT(nkArgList, n[a].info, arrayConstr(c, n.info))
-            setSon(m.call, formal.position + 1, container)
+            setSon(c, m.call, formal.position + 1, container)
           else:
             incrIndexType(container.typ)
           container.add n[a]
@@ -2984,7 +2984,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
           if formal.typ.isVarargsTyped and m.calleeSym.kind in {skTemplate, skMacro}:
             if container.isNil:
               container = newNodeIT(nkBracket, n[a].info, arrayConstr(c, n.info))
-              setSon(m.call, formal.position + 1, implicitConv(nkHiddenStdConv, formal.typ, container, m, c))
+              setSon(c, m.call, formal.position + 1, implicitConv(nkHiddenStdConv, formal.typ, container, m, c))
             else:
               incrIndexType(container.typ)
             container.add n[a]
@@ -2998,14 +2998,14 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
             else:
               incrIndexType(container.typ)
             container.add arg
-            setSon(m.call, formal.position + 1,
+            setSon(c, m.call, formal.position + 1,
                    implicitConv(nkHiddenStdConv, formal.typ, container, m, c))
             #if f != formalLen - 1: container = nil
 
             # pick the formal from the end, so that 'x, y, varargs, z' works:
             f = max(f, formalLen - n.len + a + 1)
           elif formal.typ.kind != tyVarargs or container == nil:
-            setSon(m.call, formal.position + 1, arg)
+            setSon(c, m.call, formal.position + 1, arg)
             inc f
             container = nil
           else:
@@ -3059,7 +3059,7 @@ proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
           # container node kind accordingly
           let cnKind = if formal.typ.isVarargsUntyped: nkArgList else: nkBracket
           var container = newNodeIT(cnKind, n.info, arrayConstr(c, n.info))
-          setSon(m.call, formal.position + 1,
+          setSon(c, m.call, formal.position + 1,
                  implicitConv(nkHiddenStdConv, formal.typ, container, m, c))
         else:
           # no default value
@@ -3091,7 +3091,7 @@ proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
             # see bug #11600:
             put(m, formal.typ, defaultValue.typ)
         defaultValue.flags.incl nfDefaultParam
-        setSon(m.call, formal.position + 1, defaultValue)
+        setSon(c, m.call, formal.position + 1, defaultValue)
   # forget all inferred types if the overload matching failed
   if m.state == csNoMatch:
     for t in m.inferredTypes:

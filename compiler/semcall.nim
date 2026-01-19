@@ -830,13 +830,6 @@ proc inheritBindings(c: PContext, x: var TCandidate, expectedType: PType) =
   for i in 0 ..< flatUnbound.len():
     x.bindings.put(flatUnbound[i], flatBound[i])
 
-proc compactVoidArgs(n: PNode): PNode =
-  # deletes void args from the argument list, which are created by `setSon`
-  result = copyNode(n)
-  for i in 0..<n.len:
-    if n[i] != nil:
-      result.add n[i]
-
 proc semResolvedCall(c: PContext, x: var TCandidate,
                      n: PNode, flags: TExprFlags;
                      expectedType: PType = nil): PNode =
@@ -887,7 +880,7 @@ proc semResolvedCall(c: PContext, x: var TCandidate,
   markUsed(c, info, finalCallee, isGenericInstance = true)
   onUse(info, finalCallee, isGenericInstance = true)
 
-  result = compactVoidArgs(x.call)
+  result = x.call
   instGenericConvertersSons(c, result, x)
   markConvertersUsed(c, result)
   result[0] = newSymNode(finalCallee, getCallLineInfo(result[0]))
