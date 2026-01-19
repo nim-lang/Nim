@@ -3035,7 +3035,7 @@ proc partialMatch*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
   matchesAux(c, n, nOrig, m, marker)
 
 proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
-  if m.magic in {mArrGet, mArrPut}:
+  if m.magic in {mArrGet, mArrPut} and not (m.calleeSym != nil and sfBorrow in m.calleeSym.flags):
     m.state = csMatch
     m.call = n
     # Note the following doesn't work as it would produce ambiguities.

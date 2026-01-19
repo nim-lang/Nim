@@ -14,16 +14,27 @@ This testcase checks several things:
 # See 1.
 type A0 = distinct array[3, int]
 type A1 = distinct array[3, int]
+type A0GetOnly[T] = distinct array[3, T]
 
 proc `[]`*(a: A0, i: int): int {.borrow.}
 proc `[]`*(a: var A0, i: int): var int {.borrow.}
 proc `[]=`*(a: var A0, i: int, val: int) {.borrow.}
+proc `[]`*[T](a: A0GetOnly[T], i: int): T {.borrow.}
 
 var a0: A0
 doAssert compiles(a0[0] == 0)
 
 var a1: A1
 doAssert not compiles(a1[0] == 0)
+
+# Only borrowed the non-var `[]` should not allow mutation.
+block:
+  var a0GetOnly: A0GetOnly[int]
+  doAssert compiles(a0GetOnly[0] == 0)
+  doAssert not compiles((block:
+    var tmp = a0GetOnly
+    tmp[0] = 10
+    true))
 
 # See 2. and 3.
 type A2[T] = distinct array[3, T]
@@ -44,9 +55,9 @@ block BLOCK_TEST:
   type A4[T] = distinct array[3, T]
   type A5[T] = distinct array[3, T]
 
-  proc `[]`*[T](a: A4[T], i: int): T {.borrow.}
-  proc `[]`*[T](a: var A4[T], i: int): var T {.borrow.}
-  proc `[]=`*[T](a: var A4[T], i: int, val: T) {.borrow.}
+  proc `[]`[T](a: A4[T], i: int): T {.borrow.}
+  proc `[]`[T](a: var A4[T], i: int): var T {.borrow.}
+  proc `[]=`[T](a: var A4[T], i: int, val: T) {.borrow.}
 
   var a4: A4[float]
   doAssert compiles(a4[0] == 0)

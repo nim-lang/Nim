@@ -1075,7 +1075,9 @@ proc searchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): tuple[s: PS
     if resolved != nil:
       result.s = resolved[0].sym
       result.state = bsMatch
-      if result.s.magic notin {mArrGet, mArrPut} and
+      let skipReturnCheck = fn.name.s in ["[]", "[]="] or
+        result.s.magic in {mArrGet, mArrPut}
+      if not skipReturnCheck and
           not compareTypes(result.s.typ.returnType, fn.typ.returnType, dcEqIgnoreDistinct, {IgnoreFlags}):
         result.state = bsReturnNotMatch
   else:
