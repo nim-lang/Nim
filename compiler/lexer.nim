@@ -353,18 +353,22 @@ proc getNumber(L: var Lexer, result: var Token) =
                        startpos,
                        warnDeprecated)
       eatChar(L, result, 'c')
+      result.base = base8
       numDigits = matchUnderscoreChars(L, result, {'0'..'7'})
     of 'O':
       lexMessageLitNum(L, "$1 is an invalid int literal; For octal literals " &
                           "use the '0o' prefix.", startpos)
     of 'x', 'X':
       eatChar(L, result, 'x')
+      result.base = base16
       numDigits = matchUnderscoreChars(L, result, {'0'..'9', 'a'..'f', 'A'..'F'})
     of 'o':
       eatChar(L, result, 'o')
+      result.base = base8
       numDigits = matchUnderscoreChars(L, result, {'0'..'7'})
     of 'b', 'B':
       eatChar(L, result, 'b')
+      result.base = base2
       numDigits = matchUnderscoreChars(L, result, {'0'..'1'})
     else:
       internalError(L.config, getLineInfo(L), "getNumber")
@@ -430,6 +434,29 @@ proc getNumber(L: var Lexer, result: var Token) =
   if  L.buf[postPos] in literalishChars or
      (L.buf[postPos] == '.' and L.buf[postPos + 1] in {'0'..'9'}):
     lexMessageLitNum(L, "invalid number: '$1'", startpos)
+
+  # Check for overflow in non-base-10 untyped integer literals
+  # According to the manual, explicitly typed literals can overflow (they wrap),
+  # but untyped literals should warn when they exceed 64-bit range
+  if not isBase10 and numDigits > 0 and result.tokType in {tkIntLit, tkUIntLit}:
+    let maxDigits = 
+      case result.base
+      of base2: 64   # 64 bits for binary
+      of base8: 22   # ceil(64 / 3) = 22 for octal
+      of base16: 16  # 64 / 4 = 16 for hex
+      of base10: 0   # Not used for base10
+    
+    if numDigits > maxDigits:
+      let baseStr = 
+        case result.base
+        of base2: "binary"
+        of base8: "octal" 
+        of base16: "hexadecimal"
+        of base10: "decimal"
+      lexMessageLitNum(L, "number literal has too many digits; " &
+                          baseStr & " literals for 64-bit integers can have at most " &
+                          $maxDigits & " digits: '$1'",
+                       startpos, warnDeprecated)
 
   if result.tokType != tkCustomLit:
     # Third stage, extract actual number
