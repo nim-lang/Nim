@@ -814,6 +814,8 @@ static:
   conf.val = 2
   foo2323(defaultConf)
 
+  discard cast[pointer](default(pointer)) # bug #25446
+
 
 proc g1314(_: static bool) = discard
 proc g1314(_: int) = discard
