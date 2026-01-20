@@ -508,7 +508,9 @@ proc getNumber(L: var Lexer, result: var Token) =
           # Maximum digits = ceil(bitWidth / bitsPerDigit) = (bitWidth + bitsPerDigit - 1) div bitsPerDigit
           let maxDigits = (bitWidth + bitsPerDigit - 1) div bitsPerDigit
           if numDigits > maxDigits:
-            lexMessageLitNum(L, "number has $1 digits but type only supports $2 digits: '$3'" % [$numDigits, $maxDigits, result.literal], startpos, warnLongLiterals)
+            lexMessageLitNum(L,
+              "number has " & $numDigits & " digits but type only supports " &
+              $maxDigits & " digits: '$1'", startpos, warnLongLiterals)
 
         # Bounds checks. Non decimal literals are allowed to overflow the range of
         # the datatype as long as their pattern don't overflow _bitwise_, hence
