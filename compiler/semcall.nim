@@ -1023,55 +1023,155 @@ proc searchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): tuple[s: PS
   # and use the overloading resolution mechanism:
   const desiredTypes = abstractVar + {tyCompositeTypeClass} - {tyTypeDesc, tyDistinct}
 
+  proc baseTypeFromDistinctGeneric(rawType: PType): PType =
+    var bindings = initLayeredTypeMap()
+    let genericHead = rawType.genericHead
+    for (instParam, bodyParam) in genericInvocationAndBodyElements(rawType, genericHead):
+      bindings.put(bodyParam, instParam)
+    let instantiated = generateTypeInstance(c, bindings, fn.info, genericHead.typeBodyImpl)
+    result = if instantiated.kind == tyDistinct: instantiated.elementType else: instantiated
+
+  proc borrowSearchType(t: PType): PType =
+    if t == nil or not containsGenericType(t):
+      return t
+    var bindings = initLayeredTypeMap()
+
+    proc collectGenericParams(tt: PType) =
+      if tt == nil:
+        return
+      if tt.kind == tyGenericParam:
+        if lookup(bindings, tt) == nil:
+          bindings.put(tt, newTypeS(tyAnything, c))
+      else:
+        for child in tt.kids:
+          collectGenericParams(child)
+
+    collectGenericParams(t)
+    result = generateTypeInstance(c, bindings, fn.info, t)
+
+  proc normalizeBorrowType(t: PType): PType =
+    result = t.skipTypes({tyVar, tyLent, tyPtr, tyRef, tyOwned, tyAlias, tySink, tyGenericInst})
+    if result.kind == tyGenericBody:
+      result = result.typeBodyImpl
+    while true:
+      if result.kind == tyDistinct:
+        result = result.baseOfDistinct(c.graph, c.idgen)
+        continue
+      if result.kind == tyGenericInvocation and result.genericHead.last.kind == tyDistinct:
+        result = result.genericHead.last.elementType
+        continue
+      break
+
+  proc borrowMatchScore(actual, formal: PType): int =
+    if actual == nil or formal == nil:
+      return if actual == formal: 1 else: -1
+    let aa = normalizeBorrowType(actual)
+    let ff = normalizeBorrowType(formal)
+    if ff.kind == tyGenericParam and ff.genericParamHasConstraints:
+      return borrowMatchScore(aa, ff.genericConstraint)
+    if ff.kind == tyGenericParam:
+      return 0
+    if aa.kind != ff.kind:
+      return -1
+    if aa.kind == tyGenericInvocation and aa.genericHead != ff.genericHead:
+      return -1
+    if aa.len != ff.len:
+      return -1
+    result = 1
+    for i in 0..<aa.len:
+      let childScore = borrowMatchScore(aa[i], ff[i])
+      if childScore < 0:
+        return -1
+      inc(result, childScore)
+
   template getType(isDistinct: bool; t, rawType: PType):untyped =
     if not isDistinct:
       t
     elif t.kind == tyDistinct:
       t.baseOfDistinct(c.graph, c.idgen)
     elif rawType.kind == tyGenericInvocation and rawType.genericHead.last.kind == tyDistinct:
-      rawType.genericHead.last.elementType
+      baseTypeFromDistinctGeneric(rawType)
     else:
       t
 
   result = default(tuple[s: PSym, state: TBorrowState])
-  var call = newNodeI(nkCall, fn.info)
   var hasDistinct = false
-  var isDistinct: bool
-  var x: PType
-  var t: PType
-  call.add(newIdentNode(fn.name, fn.info))
   for i in 1..<fn.typ.n.len:
     let param = fn.typ.n[i]
-    #[.
-      # We only want the type not any modifiers such as `ptr`, `var`, `ref` ...
-      # tyCompositeTypeClass is here for
-      # when using something like:
-      type Foo[T] = distinct int
-      proc `$`(f: Foo): string {.borrow.}
-      # We want to skip the `Foo` to get `int`
-    ]#
     let rawType = skipTypes(param.typ, desiredTypes)
-    if rawType.kind == tyGenericInvocation and rawType.genericHead.last.kind == tyDistinct:
-      let name = fn.name.s
-      if name notin ["[]", "[]="]:
-        result.state = bsGeneric
-        return
-    t = skipTypes(param.typ, desiredTypes + {tyGenericInvocation})
-    isDistinct = t.kind == tyDistinct or param.typ.kind == tyDistinct or
-      (rawType.kind == tyGenericInvocation and rawType.genericHead.last.kind == tyDistinct)
-    if isDistinct: hasDistinct = true
-    if param.typ.kind == tyVar:
-      x = newTypeS(param.typ.kind, c)
-      x.addSonSkipIntLit(getType(isDistinct, t, rawType), c.idgen)
-    else:
-      x = getType(isDistinct, t, rawType)
-    var s = copySym(param.sym, c.idgen)
-    s.typ = x
-    s.info = param.info
-    call.add(newSymNode(s))
+    if param.typ.kind == tyDistinct or rawType.kind == tyDistinct or
+        (rawType.kind == tyGenericInvocation and rawType.genericHead.last.kind == tyDistinct) or
+        (rawType.kind == tyGenericBody and rawType.typeBodyImpl.kind == tyDistinct):
+      hasDistinct = true
+
+  if hasDistinct and containsGenericType(fn.typ):
+    var matchedGeneric = false
+    var o: TOverloadIter = default(TOverloadIter)
+    let matchKinds = if fn.kind in {skProc, skFunc}: {skProc, skFunc} else: {fn.kind}
+    var resolved = initOverloadIter(o, c, newIdentNode(fn.name, fn.info))
+    var bestScore = -1
+    var bestSym: PSym = nil
+    while resolved != nil:
+      if resolved.kind in matchKinds and resolved.id != fn.id and
+          sfBorrow notin resolved.flags and
+          fn.typ.n.len == resolved.typ.n.len:
+        var score = 0
+        for i in 1..<fn.typ.n.len:
+          let partScore = borrowMatchScore(fn.typ.n[i].typ, resolved.typ.n[i].typ)
+          if partScore < 0:
+            score = -1
+            break
+          inc(score, partScore)
+        if score > bestScore:
+          bestScore = score
+          bestSym = resolved
+      resolved = nextOverloadIter(o, c, newIdentNode(fn.name, fn.info))
+    if bestSym != nil:
+      result.s = bestSym
+      result.state = bsMatch
+      let skipReturnCheck = fn.name.s in ["[]", "[]="] or
+        result.s.magic in {mArrGet, mArrPut}
+      if not skipReturnCheck and
+          not compareTypes(normalizeBorrowType(result.s.typ.returnType),
+            normalizeBorrowType(fn.typ.returnType),
+            dcEqIgnoreDistinct, {IgnoreFlags}):
+        result.state = bsReturnNotMatch
+      matchedGeneric = true
+    if matchedGeneric:
+      return
   if hasDistinct:
+    var call = newNodeI(nkCall, fn.info)
+    var isDistinct: bool
+    var x: PType
+    var t: PType
+    call.add(newIdentNode(fn.name, fn.info))
+    for i in 1..<fn.typ.n.len:
+      let param = fn.typ.n[i]
+      #[.
+        # We only want the type not any modifiers such as `ptr`, `var`, `ref` ...
+        # tyCompositeTypeClass is here for
+        # when using something like:
+        type Foo[T] = distinct int
+        proc `$`(f: Foo): string {.borrow.}
+        # We want to skip the `Foo` to get `int`
+      ]#
+      let rawType = skipTypes(param.typ, desiredTypes)
+      t = skipTypes(param.typ, desiredTypes + {tyGenericInvocation})
+      isDistinct = t.kind == tyDistinct or param.typ.kind == tyDistinct or
+        (rawType.kind == tyGenericInvocation and rawType.genericHead.last.kind == tyDistinct)
+      if param.typ.kind == tyVar:
+        x = newTypeS(param.typ.kind, c)
+        x.addSonSkipIntLit(borrowSearchType(getType(isDistinct, t, rawType)), c.idgen)
+      else:
+        x = borrowSearchType(getType(isDistinct, t, rawType))
+      var s = copySym(param.sym, c.idgen)
+      s.typ = x
+      s.info = param.info
+      call.add(newSymNode(s))
     let filter = if fn.kind in {skProc, skFunc}: {skProc, skFunc} else: {fn.kind}
+    inc c.inBorrowSearch
     var resolved = semOverloadedCall(c, call, call, filter, {})
+    dec c.inBorrowSearch
     if resolved != nil:
       result.s = resolved[0].sym
       result.state = bsMatch

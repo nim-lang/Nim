@@ -60,12 +60,12 @@ block:
 
   proc `+`[T:static[int]](x, y: Amount[T]): Amount[T] {.borrow.}
 
-  var a0 = 5.0.Amount[0]
-  var a1 = 5.0.Amount[0]
-  var a2 = 5.0.Amount[1]
-  var a3 = 5.0.Amount[1]
+  var a0 = Amount[0](5.0)
+  var a1 = Amount[0](5.0)
+  var a2 = Amount[1](5.0)
+  var a3 = Amount[1](5.0)
 
-  doAssert not compiles((block:
+  doAssert compiles((block:
     var s0 = a0 + a1))
 
   let s0 = a0 + a1
@@ -77,6 +77,8 @@ block:
   doAssert not compiles((block:
     let s2 = a0 + a2))
 
-  doAssert a0.type == a1.type
-  doAssert a2.type == a3.type
-  doAssert a0.type != a2.type
+  doAssert a0 is Amount[0]
+  doAssert a1 is Amount[0]
+  doAssert a2 is Amount[1]
+  doAssert a3 is Amount[1]
+  doAssert a0 isnot Amount[1]

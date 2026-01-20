@@ -1958,8 +1958,6 @@ proc semBorrow(c: PContext, n: PNode, s: PSym) =
     localError(c.config, n.info, "borrow proc without distinct type parameter is meaningless")
   of bsReturnNotMatch:
     localError(c.config, n.info, "borrow from proc return type mismatch: '$1'" % typeToString(b.typ.returnType))
-  of bsGeneric:
-    localError(c.config, n.info, "borrow with generic parameter is not supported")
   of bsNotSupported:
     localError(c.config, n.info, "borrow from '$1' is not supported" % $b.name.s)
   else:
