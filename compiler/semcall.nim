@@ -1051,27 +1051,38 @@ proc searchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): tuple[s: PS
 
   proc normalizeBorrowType(t: PType): PType =
     result = t.skipTypes({tyVar, tyLent, tyPtr, tyRef, tyOwned, tyAlias, tySink, tyGenericInst})
-    if result.kind == tyDistinct:
-      result = result.baseOfDistinct(c.graph, c.idgen)
-    elif result.kind == tyGenericInvocation and result.genericHead.last.kind == tyDistinct:
-      result = result.genericHead.last.elementType
+    if result.kind == tyGenericBody:
+      result = result.typeBodyImpl
+    while true:
+      if result.kind == tyDistinct:
+        result = result.baseOfDistinct(c.graph, c.idgen)
+        continue
+      if result.kind == tyGenericInvocation and result.genericHead.last.kind == tyDistinct:
+        result = result.genericHead.last.elementType
+        continue
+      break
 
-  proc borrowTypesCompatible(a, b: PType): bool =
-    if a == nil or b == nil: return a == b
-    let aa = normalizeBorrowType(a)
-    let bb = normalizeBorrowType(b)
-    if aa.kind == tyGenericParam or bb.kind == tyGenericParam:
-      return true
-    if aa.kind != bb.kind:
-      return false
-    if aa.kind == tyGenericInvocation and aa.genericHead != bb.genericHead:
-      return false
-    if aa.len != bb.len:
-      return false
+  proc borrowMatchScore(actual, formal: PType): int =
+    if actual == nil or formal == nil:
+      return if actual == formal: 1 else: -1
+    let aa = normalizeBorrowType(actual)
+    let ff = normalizeBorrowType(formal)
+    if ff.kind == tyGenericParam and ff.genericParamHasConstraints:
+      return borrowMatchScore(aa, ff.genericConstraint)
+    if ff.kind == tyGenericParam:
+      return 0
+    if aa.kind != ff.kind:
+      return -1
+    if aa.kind == tyGenericInvocation and aa.genericHead != ff.genericHead:
+      return -1
+    if aa.len != ff.len:
+      return -1
+    result = 1
     for i in 0..<aa.len:
-      if not borrowTypesCompatible(aa[i], bb[i]):
-        return false
-    result = true
+      let childScore = borrowMatchScore(aa[i], ff[i])
+      if childScore < 0:
+        return -1
+      inc(result, childScore)
 
   template getType(isDistinct: bool; t, rawType: PType):untyped =
     if not isDistinct:
@@ -1089,34 +1100,46 @@ proc searchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): tuple[s: PS
     let param = fn.typ.n[i]
     let rawType = skipTypes(param.typ, desiredTypes)
     if param.typ.kind == tyDistinct or rawType.kind == tyDistinct or
-        (rawType.kind == tyGenericInvocation and rawType.genericHead.last.kind == tyDistinct):
+        (rawType.kind == tyGenericInvocation and rawType.genericHead.last.kind == tyDistinct) or
+        (rawType.kind == tyGenericBody and rawType.typeBodyImpl.kind == tyDistinct):
       hasDistinct = true
 
   if hasDistinct and containsGenericType(fn.typ):
+    var matchedGeneric = false
     var o: TOverloadIter = default(TOverloadIter)
     let matchKinds = if fn.kind in {skProc, skFunc}: {skProc, skFunc} else: {fn.kind}
     var resolved = initOverloadIter(o, c, newIdentNode(fn.name, fn.info))
+    var bestScore = -1
+    var bestSym: PSym = nil
     while resolved != nil:
       if resolved.kind in matchKinds and resolved.id != fn.id and
+          sfBorrow notin resolved.flags and
           fn.typ.n.len == resolved.typ.n.len:
-        var matches = true
+        var score = 0
         for i in 1..<fn.typ.n.len:
-          if not borrowTypesCompatible(fn.typ.n[i].typ, resolved.typ.n[i].typ):
-            matches = false
+          let partScore = borrowMatchScore(fn.typ.n[i].typ, resolved.typ.n[i].typ)
+          if partScore < 0:
+            score = -1
             break
-        if matches:
-          result.s = resolved
-          result.state = bsMatch
-          let skipReturnCheck = fn.name.s in ["[]", "[]="] or
-            result.s.magic in {mArrGet, mArrPut}
-          if not skipReturnCheck and
-              not compareTypes(normalizeBorrowType(result.s.typ.returnType),
-                normalizeBorrowType(fn.typ.returnType),
-                dcEqIgnoreDistinct, {IgnoreFlags}):
-            result.state = bsReturnNotMatch
-          return
+          inc(score, partScore)
+        if score > bestScore:
+          bestScore = score
+          bestSym = resolved
       resolved = nextOverloadIter(o, c, newIdentNode(fn.name, fn.info))
-  elif hasDistinct:
+    if bestSym != nil:
+      result.s = bestSym
+      result.state = bsMatch
+      let skipReturnCheck = fn.name.s in ["[]", "[]="] or
+        result.s.magic in {mArrGet, mArrPut}
+      if not skipReturnCheck and
+          not compareTypes(normalizeBorrowType(result.s.typ.returnType),
+            normalizeBorrowType(fn.typ.returnType),
+            dcEqIgnoreDistinct, {IgnoreFlags}):
+        result.state = bsReturnNotMatch
+      matchedGeneric = true
+    if matchedGeneric:
+      return
+  if hasDistinct:
     var call = newNodeI(nkCall, fn.info)
     var isDistinct: bool
     var x: PType
@@ -1146,7 +1169,9 @@ proc searchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): tuple[s: PS
       s.info = param.info
       call.add(newSymNode(s))
     let filter = if fn.kind in {skProc, skFunc}: {skProc, skFunc} else: {fn.kind}
+    inc c.inBorrowSearch
     var resolved = semOverloadedCall(c, call, call, filter, {})
+    dec c.inBorrowSearch
     if resolved != nil:
       result.s = resolved[0].sym
       result.state = bsMatch

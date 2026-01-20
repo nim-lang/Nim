@@ -2,11 +2,10 @@ discard """
   cmd: "nim check --hints:off --warnings:off $file"
   action: "reject"
   nimout:'''
-tinvalidborrow.nim(26, 21) Error: a type can only borrow `.` for now
+tinvalidborrow.nim(25, 21) Error: a type can only borrow `.` for now
+tinvalidborrow.nim(23, 3) Error: only a 'distinct' type can borrow `.`
 tinvalidborrow.nim(24, 3) Error: only a 'distinct' type can borrow `.`
-tinvalidborrow.nim(25, 3) Error: only a 'distinct' type can borrow `.`
-tinvalidborrow.nim(27, 1) Error: borrow proc without distinct type parameter is meaningless
-tinvalidborrow.nim(36, 1) Error: borrow with generic parameter is not supported
+tinvalidborrow.nim(26, 1) Error: borrow proc without distinct type parameter is meaningless
 '''
 """
 

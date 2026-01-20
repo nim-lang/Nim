@@ -132,10 +132,16 @@ proc instantiateBody(c: PContext, n, params: PNode, result, orig: PSym) =
 
   proc borrowInstType(t: PType; info: TLineInfo): PType =
     result = t.skipTypes({tyVar, tyLent, tyPtr, tyRef, tyOwned, tyAlias, tySink, tyGenericInst})
-    if result.kind == tyDistinct:
-      result = result.baseOfDistinct(c.graph, c.idgen)
-    elif result.kind == tyGenericInvocation and result.genericHead.last.kind == tyDistinct:
-      result = baseTypeFromDistinctGeneric(result, info)
+    if result.kind == tyGenericBody:
+      result = result.typeBodyImpl
+    while true:
+      if result.kind == tyDistinct:
+        result = result.baseOfDistinct(c.graph, c.idgen)
+        continue
+      if result.kind == tyGenericInvocation and result.genericHead.last.kind == tyDistinct:
+        result = baseTypeFromDistinctGeneric(result, info)
+        continue
+      break
 
   if n[bodyPos].kind != nkEmpty:
     let procParams = result.typ.n
@@ -165,14 +171,21 @@ proc instantiateBody(c: PContext, n, params: PNode, result, orig: PSym) =
         else:
           nil
       b = semProcBody(c, b, resultType)
-    elif b.kind == nkSym and b.sym.isGenericRoutine:
+    elif b.kind == nkSym and b.sym.isGenericRoutine and b.sym.magic == mNone and
+        sfBorrow notin b.sym.flags and c.inBorrowSearch == 0:
       var candidate = newCandidate(c, b.sym, nil)
       for i in 1..<result.typ.n.len:
         let formal = b.sym.typ.n[i].sym.typ
         let actual = borrowInstType(result.typ.n[i].sym.typ, n.info)
         discard typeRel(candidate, formal, actual)
-      let inst = generateInstance(c, b.sym, candidate.bindings, n.info)
-      b = newSymNode(inst, b.info)
+      var hasGenericBinding = false
+      for (_, bound) in pairs(candidate.bindings):
+        if bound.containsGenericType:
+          hasGenericBinding = true
+          break
+      if not hasGenericBinding:
+        let inst = generateInstance(c, b.sym, candidate.bindings, n.info)
+        b = newSymNode(inst, b.info)
     result.ast[bodyPos] = hloBody(c, b)
     excl(result, sfForward)
     trackProc(c, result, result.ast[bodyPos])

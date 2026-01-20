@@ -118,6 +118,7 @@ type
     compilesContextId*: int    # > 0 if we are in a ``compiles`` magic
     compilesContextIdGenerator*: int
     inGenericInst*: int        # > 0 if we are instantiating a generic
+    inBorrowSearch*: int       # > 0 if we're resolving a borrow target
     converters*: seq[PSym]
     patterns*: seq[PSym]       # sequence of pattern matchers
     optionStack*: seq[POptionEntry]
