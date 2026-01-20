@@ -438,14 +438,17 @@ proc getNumber(L: var Lexer, result: var Token) =
   # Check for overflow in non-base-10 untyped integer literals
   # According to the manual, explicitly typed literals can overflow (they wrap),
   # but untyped literals should warn when they exceed 64-bit range
-  if not isBase10 and numDigits > 0 and result.tokType in {tkIntLit, tkUIntLit}:
+  if not isBase10 and result.tokType in {tkIntLit, tkUIntLit}:
+    const
+      maxBinaryDigits = 64   # 64 bits for binary
+      maxOctalDigits = 22    # ceil(64 / 3) = 22 for octal
+      maxHexDigits = 16      # 64 / 4 = 16 for hex
     let maxDigits = 
       case result.base
-      of base2: 64   # 64 bits for binary
-      of base8: 22   # ceil(64 / 3) = 22 for octal
-      of base16: 16  # 64 / 4 = 16 for hex
+      of base2: maxBinaryDigits
+      of base8: maxOctalDigits
+      of base16: maxHexDigits
       of base10: 0   # Not used for base10
-    
     if numDigits > maxDigits:
       let baseStr = 
         case result.base
