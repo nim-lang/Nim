@@ -118,8 +118,25 @@ proc freshGenSyms(c: PContext; n: PNode, owner, orig: PSym, symMap: var SymMappi
     for i in 0..<n.safeLen: freshGenSyms(c, n[i], owner, orig, symMap)
 
 proc addParamOrResult(c: PContext, param: PSym, kind: TSymKind)
+proc generateInstance(c: PContext, fn: PSym, pt: LayeredIdTable,
+                      info: TLineInfo): PSym
 
 proc instantiateBody(c: PContext, n, params: PNode, result, orig: PSym) =
+  proc baseTypeFromDistinctGeneric(rawType: PType; info: TLineInfo): PType =
+    var bindings = initLayeredTypeMap()
+    let genericHead = rawType.genericHead
+    for (instParam, bodyParam) in genericInvocationAndBodyElements(rawType, genericHead):
+      bindings.put(bodyParam, instParam)
+    let instantiated = generateTypeInstance(c, bindings, info, genericHead.typeBodyImpl)
+    result = if instantiated.kind == tyDistinct: instantiated.elementType else: instantiated
+
+  proc borrowInstType(t: PType; info: TLineInfo): PType =
+    result = t.skipTypes({tyVar, tyLent, tyPtr, tyRef, tyOwned, tyAlias, tySink, tyGenericInst})
+    if result.kind == tyDistinct:
+      result = result.baseOfDistinct(c.graph, c.idgen)
+    elif result.kind == tyGenericInvocation and result.genericHead.last.kind == tyDistinct:
+      result = baseTypeFromDistinctGeneric(result, info)
+
   if n[bodyPos].kind != nkEmpty:
     let procParams = result.typ.n
     for i in 1..<procParams.len:
@@ -148,6 +165,14 @@ proc instantiateBody(c: PContext, n, params: PNode, result, orig: PSym) =
         else:
           nil
       b = semProcBody(c, b, resultType)
+    elif b.kind == nkSym and b.sym.isGenericRoutine:
+      var candidate = newCandidate(c, b.sym, nil)
+      for i in 1..<result.typ.n.len:
+        let formal = b.sym.typ.n[i].sym.typ
+        let actual = borrowInstType(result.typ.n[i].sym.typ, n.info)
+        discard typeRel(candidate, formal, actual)
+      let inst = generateInstance(c, b.sym, candidate.bindings, n.info)
+      b = newSymNode(inst, b.info)
     result.ast[bodyPos] = hloBody(c, b)
     excl(result, sfForward)
     trackProc(c, result, result.ast[bodyPos])

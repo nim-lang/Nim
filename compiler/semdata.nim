@@ -177,7 +177,7 @@ type
     semAsgnOpr*: proc (c: PContext; n: PNode; k: TNodeKind): PNode {.nimcall.}
 
   TBorrowState* = enum
-    bsNone, bsReturnNotMatch, bsNoDistinct, bsGeneric, bsNotSupported, bsMatch
+    bsNone, bsReturnNotMatch, bsNoDistinct, bsNotSupported, bsMatch
 
 template config*(c: PContext): ConfigRef = c.graph.config
 
