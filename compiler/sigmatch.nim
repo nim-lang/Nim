@@ -624,12 +624,15 @@ proc isRangeSupertype(conf: ConfigRef; wider, narrower: PType): bool =
     let narrowFirst = firstOrd(conf, narrower)
     let narrowLast = lastOrd(conf, narrower)
     result = narrowFirst >= wideFirst and narrowLast <= wideLast
-  else:
+  elif not narrower.isOrdinalType:
     let wideFirst = firstFloat(wider)
     let wideLast = lastFloat(wider)
     let narrowFirst = firstFloat(narrower)
     let narrowLast = lastFloat(narrower)
     result = narrowFirst >= wideFirst and narrowLast <= wideLast
+  else:
+    # int -> float ranges; ignore for now
+    result = true
 
 proc shouldWarnRangeConversion(conf: ConfigRef; formalType, argType: PType): bool =
   ## Determine if an implicit range conversion should warn
