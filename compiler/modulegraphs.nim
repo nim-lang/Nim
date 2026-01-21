@@ -375,8 +375,8 @@ proc loadCompilerProc*(g: ModuleGraph; name: string): PSym =
   if g.config.symbolFiles == disabledSf and optWithinConfigSystem notin g.config.globalOptions:
     # For NIF-based compilation, search in loaded NIF modules
     when not defined(nimKochBootstrap):
-      # Only try to resolve from NIF if we're actually using NIF files (cmdNifC)
-      if g.config.cmd == cmdNifC:
+      # Try to resolve from NIF for both cmdNifC and cmdM (which uses NIF files)
+      if g.config.cmd in {cmdNifC, cmdM}:
         # First try system module (most compilerprocs are there)
         let systemFileIdx = g.config.m.systemFileIdx
         if systemFileIdx != InvalidFileIdx:
