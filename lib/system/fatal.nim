@@ -14,14 +14,28 @@ const
   quirkyExceptions = compileOption("exceptions", "quirky")
 
 when hostOS == "standalone":
-  include "$projectpath/panicoverride"
+  type
+    PanicProc* = proc(msg: string) {.nimcall.}
+    RawOutputProc* = proc(msg: string) {.nimcall.}
 
-  func sysFatal(exceptn: typedesc[Defect], message: string) {.inline.} =
-    panic(message)
+  # These are set up from panicoverride.nim, which must be included
+  # if `hostOS == "standalone"`, so they will always be set or a compile time
+  # error will be generated.
+  var panicImpl: PanicProc
+  var rawOutputImpl: RawOutputProc
 
-  func sysFatal(exceptn: typedesc[Defect], message, arg: string) {.inline.} =
-    rawoutput(message)
-    panic(arg)
+  template sysFatal(exceptn: typedesc[Defect], message: string) =
+    {.cast(noSideEffect).}:
+      {.cast(raises: []).}:
+        {.cast(tags: []).}:
+          panicImpl(message)
+
+  template sysFatal(exceptn: typedesc[Defect], message, arg: string) =
+    {.cast(noSideEffect).}:
+      {.cast(raises: []).}:
+        {.cast(tags: []).}:
+          rawOutputImpl(message)
+          panicImpl(arg)
 
 elif quirkyExceptions and not defined(nimscript):
   import ansi_c
