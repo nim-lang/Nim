@@ -1100,6 +1100,10 @@ proc searchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): tuple[s: PS
   template getType(isDistinct: bool; t, rawType: PType):untyped =
     if not isDistinct:
       t
+    elif t.kind == tyDistinct:
+      t.baseOfDistinct(c.graph, c.idgen)
+    elif rawType.kind == tyGenericInvocation and rawType.genericHead.last.kind == tyDistinct:
+      baseTypeFromDistinctGeneric(rawType)
     else:
       let base =
         if rawType.kind == tyGenericInvocation and rawType.genericHead.last.kind == tyDistinct:
