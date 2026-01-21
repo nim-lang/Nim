@@ -379,7 +379,8 @@ proc loadCompilerProc*(g: ModuleGraph; name: string): PSym =
       if g.config.cmd in {cmdNifC, cmdM}:
         # First try system module (most compilerprocs are there)
         let systemFileIdx = g.config.m.systemFileIdx
-        if systemFileIdx != InvalidFileIdx:
+        if systemFileIdx != InvalidFileIdx and not g.withinSystem:
+          # Only try to load from NIF if the file exists (it may not during initial ic build)
           result = tryResolveCompilerProc(ast.program, name, systemFileIdx)
           if result != nil:
             strTableAdd(g.compilerprocs, result)

@@ -223,9 +223,9 @@ proc traverseDeps(c: var DepContext; pair: FilePair; current: Node) =
 
 proc generateBuildFile(c: DepContext): string =
   ## Generate the .build.nif file for nifmake
-  createDir("nifcache")
-  result = "nifcache" / c.nodes[0].files[0].modname & ".build.nif"
-  #getNimcacheDir(c.config).string / c.nodes[0].files[0].modname & ".build.nif"
+  let nimcache = getNimcacheDir(c.config).string
+  createDir(nimcache)
+  result = nimcache / c.nodes[0].files[0].modname & ".build.nif"
 
   var b = nifbuilder.open(result)
   defer: b.close()
@@ -250,7 +250,7 @@ proc generateBuildFile(c: DepContext): string =
   b.addSymbolDef "nim_m"
   b.addStrLit getAppFilename()
   b.addStrLit "m"
-  b.addStrLit "--nimcache:nifcache"
+  b.addStrLit "--nimcache:" & nimcache
   # Add search paths
   for p in c.config.searchPaths:
     b.addStrLit "--path:" & p.string
@@ -265,7 +265,7 @@ proc generateBuildFile(c: DepContext): string =
   b.addSymbolDef "nim_nifc"
   b.addStrLit getAppFilename()
   b.addStrLit "nifc"
-  b.addStrLit "--nimcache:nifcache"
+  b.addStrLit "--nimcache:" & nimcache
   # Add search paths
   for p in c.config.searchPaths:
     b.addStrLit "--path:" & p.string
