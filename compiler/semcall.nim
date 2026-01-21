@@ -1026,10 +1026,17 @@ proc searchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): tuple[s: PS
   proc baseTypeFromDistinctGeneric(rawType: PType): PType =
     var bindings = initLayeredTypeMap()
     let genericHead = rawType.genericHead
+    var hasGenericParams = false
     for (instParam, bodyParam) in genericInvocationAndBodyElements(rawType, genericHead):
+      if instParam == nil or instParam.containsGenericType:
+        hasGenericParams = true
+        break
       bindings.put(bodyParam, instParam)
-    let instantiated = generateTypeInstance(c, bindings, fn.info, genericHead.typeBodyImpl)
-    result = if instantiated.kind == tyDistinct: instantiated.elementType else: instantiated
+    if hasGenericParams:
+      result = genericHead.last.elementType
+    else:
+      let instantiated = generateTypeInstance(c, bindings, fn.info, genericHead.typeBodyImpl)
+      result = if instantiated.kind == tyDistinct: instantiated.elementType else: instantiated
 
   proc borrowSearchType(t: PType): PType =
     if t == nil or not containsGenericType(t):
@@ -1050,12 +1057,18 @@ proc searchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): tuple[s: PS
     result = generateTypeInstance(c, bindings, fn.info, t)
 
   proc normalizeBorrowType(t: PType): PType =
+    if t == nil:
+      return nil
     result = t.skipTypes({tyVar, tyLent, tyPtr, tyRef, tyOwned, tyAlias, tySink, tyGenericInst})
     if result.kind == tyGenericBody:
       result = result.typeBodyImpl
     while true:
       if result.kind == tyDistinct:
-        result = result.baseOfDistinct(c.graph, c.idgen)
+        if result.typeInst != nil and result.typeInst.kind in {tyGenericInvocation, tyGenericInst} and
+            result.typeInst.genericHead.last.kind == tyDistinct:
+          result = baseTypeFromDistinctGeneric(result.typeInst)
+        else:
+          result = result.baseOfDistinct(c.graph, c.idgen)
         continue
       if result.kind == tyGenericInvocation and result.genericHead.last.kind == tyDistinct:
         result = result.genericHead.last.elementType
@@ -1092,7 +1105,12 @@ proc searchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): tuple[s: PS
     elif rawType.kind == tyGenericInvocation and rawType.genericHead.last.kind == tyDistinct:
       baseTypeFromDistinctGeneric(rawType)
     else:
-      t
+      let base =
+        if rawType.kind == tyGenericInvocation and rawType.genericHead.last.kind == tyDistinct:
+          baseTypeFromDistinctGeneric(rawType)
+        else:
+          t
+      normalizeBorrowType(base)
 
   result = default(tuple[s: PSym, state: TBorrowState])
   var hasDistinct = false

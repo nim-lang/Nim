@@ -125,10 +125,17 @@ proc instantiateBody(c: PContext, n, params: PNode, result, orig: PSym) =
   proc baseTypeFromDistinctGeneric(rawType: PType; info: TLineInfo): PType =
     var bindings = initLayeredTypeMap()
     let genericHead = rawType.genericHead
+    var hasGenericParams = false
     for (instParam, bodyParam) in genericInvocationAndBodyElements(rawType, genericHead):
+      if instParam == nil or instParam.containsGenericType:
+        hasGenericParams = true
+        break
       bindings.put(bodyParam, instParam)
-    let instantiated = generateTypeInstance(c, bindings, info, genericHead.typeBodyImpl)
-    result = if instantiated.kind == tyDistinct: instantiated.elementType else: instantiated
+    if hasGenericParams:
+      result = genericHead.last.elementType
+    else:
+      let instantiated = generateTypeInstance(c, bindings, info, genericHead.typeBodyImpl)
+      result = if instantiated.kind == tyDistinct: instantiated.elementType else: instantiated
 
   proc borrowInstType(t: PType; info: TLineInfo): PType =
     result = t.skipTypes({tyVar, tyLent, tyPtr, tyRef, tyOwned, tyAlias, tySink, tyGenericInst})
@@ -136,7 +143,11 @@ proc instantiateBody(c: PContext, n, params: PNode, result, orig: PSym) =
       result = result.typeBodyImpl
     while true:
       if result.kind == tyDistinct:
-        result = result.baseOfDistinct(c.graph, c.idgen)
+        if result.typeInst != nil and result.typeInst.kind in {tyGenericInvocation, tyGenericInst} and
+            result.typeInst.genericHead.last.kind == tyDistinct:
+          result = baseTypeFromDistinctGeneric(result.typeInst, info)
+        else:
+          result = result.baseOfDistinct(c.graph, c.idgen)
         continue
       if result.kind == tyGenericInvocation and result.genericHead.last.kind == tyDistinct:
         result = baseTypeFromDistinctGeneric(result, info)
@@ -171,7 +182,7 @@ proc instantiateBody(c: PContext, n, params: PNode, result, orig: PSym) =
         else:
           nil
       b = semProcBody(c, b, resultType)
-    elif b.kind == nkSym and b.sym.isGenericRoutine and b.sym.magic == mNone and
+    elif b.kind == nkSym and b.sym.isGenericRoutine and
         sfBorrow notin b.sym.flags and c.inBorrowSearch == 0:
       var candidate = newCandidate(c, b.sym, nil)
       for i in 1..<result.typ.n.len:
