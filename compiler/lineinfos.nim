@@ -97,6 +97,7 @@ type
     warnUnknownNotes = "UnknownNotes"
     warnUser = "User",
     warnGlobalVarConstructorTemporary = "GlobalVarConstructorTemporary",
+    warnImplicitRangeConversion = "ImplicitRangeConversion",
     # hints
     hintSuccess = "Success", hintSuccessX = "SuccessX",
     hintCC = "CC",
@@ -204,6 +205,7 @@ const
     warnUnknownNotes: "$1",
     warnUser: "$1",
     warnGlobalVarConstructorTemporary: "global variable '$1' initialization requires a temporary variable",
+    warnImplicitRangeConversion: "implicit range conversion $1",
     hintSuccess: "operation successful: $#",
     # keep in sync with `testament.isSuccess`
     hintSuccessX: "$build\n$loc lines; ${sec}s; $mem; proj: $project; out: $output",
@@ -258,7 +260,7 @@ type
 
 proc computeNotesVerbosity(): array[0..3, TNoteKinds] =
   result = default(array[0..3, TNoteKinds])
-  result[3] = {low(TNoteKind)..high(TNoteKind)} - {warnObservableStores, warnResultUsed, warnAnyEnumConv, warnBareExcept, warnStdPrefix}
+  result[3] = {low(TNoteKind)..high(TNoteKind)} - {warnObservableStores, warnResultUsed, warnAnyEnumConv, warnBareExcept, warnStdPrefix, warnImplicitRangeConversion}
   result[2] = result[3] - {hintStackTrace, hintExtendedContext, hintDeclaredLoc, hintProcessingStmt}
   result[1] = result[2] - {warnProveField, warnProveIndex,
     warnGcUnsafe, hintPath, hintDependency, hintCodeBegin, hintCodeEnd,
