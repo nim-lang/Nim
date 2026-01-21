@@ -1,9 +1,10 @@
 block:
   type
-    Inner[T] = distinct seq[T]
-    Outer[T] = distinct Inner[T]
+    InnerInt = distinct seq[int]
+    OuterInt = distinct InnerInt
 
-  proc len[T](s: Outer[T]): int {.borrow.}
+  proc len(s: InnerInt): int {.borrow.}
+  proc len(s: OuterInt): int {.borrow.}
 
-  var o: Outer[int]
+  var o: OuterInt
   doAssert o.len == 0
