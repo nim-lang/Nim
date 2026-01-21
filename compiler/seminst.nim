@@ -182,7 +182,7 @@ proc instantiateBody(c: PContext, n, params: PNode, result, orig: PSym) =
         else:
           nil
       b = semProcBody(c, b, resultType)
-    elif b.kind == nkSym and b.sym.isGenericRoutine and b.sym.magic == mNone and
+    elif b.kind == nkSym and b.sym.isGenericRoutine and
         sfBorrow notin b.sym.flags and c.inBorrowSearch == 0:
       var candidate = newCandidate(c, b.sym, nil)
       for i in 1..<result.typ.n.len:
