@@ -122,6 +122,28 @@ proc generateInstance(c: PContext, fn: PSym, pt: LayeredIdTable,
                       info: TLineInfo): PSym
 
 proc instantiateBody(c: PContext, n, params: PNode, result, orig: PSym) =
+  proc applyBorrowTarget(inst, target: PSym) =
+    inst.magic = target.magic
+    if target.typ != nil and target.typ.len > 0 and inst.name.s notin ["[]", "[]="]:
+      inst.typ.n[0] = target.typ.n[0]
+    inst.typ.flags = target.typ.flags
+    if inst.name.s in ["[]", "[]="]:
+      let isGetBorrow = inst.name.s == "[]"
+      let isMutableBorrow = inst.name.s == "[]=" or
+        (inst.typ.n.len > 1 and inst.typ.n[1].sym.typ.kind == tyVar)
+      if isGetBorrow or isMutableBorrow:
+        var paramType = inst.typ.firstParamType
+        if paramType != nil:
+          paramType = paramType.skipTypes({tyVar, tyLent, tyPtr, tyRef, tyOwned, tyAlias,
+                                           tyGenericInst, tySink})
+          if paramType.kind == tyGenericInvocation and paramType.genericHead.last.kind == tyDistinct:
+            paramType = paramType.genericHead.last
+          if paramType.kind == tyDistinct:
+            if isGetBorrow:
+              incl(paramType, tfBorrowBrackets)
+            if isMutableBorrow:
+              incl(paramType, tfBorrowBracketsMut)
+
   proc baseTypeFromDistinctGeneric(rawType: PType; info: TLineInfo): PType =
     var bindings = initLayeredTypeMap()
     let genericHead = rawType.genericHead
@@ -197,6 +219,8 @@ proc instantiateBody(c: PContext, n, params: PNode, result, orig: PSym) =
       if not hasGenericBinding:
         let inst = generateInstance(c, b.sym, candidate.bindings, n.info)
         b = newSymNode(inst, b.info)
+    if sfBorrow in orig.flags and b.kind == nkSym and b.sym != nil:
+      applyBorrowTarget(result, b.sym)
     result.ast[bodyPos] = hloBody(c, b)
     excl(result, sfForward)
     trackProc(c, result, result.ast[bodyPos])
