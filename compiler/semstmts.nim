@@ -1926,13 +1926,40 @@ proc addParams(c: PContext, n: PNode, kind: TSymKind) =
     if n[i].kind == nkSym: addParamOrResult(c, n[i].sym, kind)
     else: illFormedAst(n, c.config)
 
+proc replaceOwnedSyms(c: PContext, n: var PNode, ownerFrom, ownerTo: PSym,
+                      symMap: var SymMapping) =
+  if n.isNil:
+    return
+  if n.kind == nkSym and n.sym.owner == ownerFrom:
+    var mapped = idTableGet(symMap, n.sym)
+    if mapped == nil:
+      mapped = copySym(n.sym, c.idgen)
+      setOwner(mapped, ownerTo)
+      idTablePut(symMap, n.sym, mapped)
+    n = newSymNode(mapped, n.info)
+    return
+  for i in 0..<n.safeLen:
+    replaceOwnedSyms(c, n[i], ownerFrom, ownerTo, symMap)
+
 proc semBorrow(c: PContext, n: PNode, s: PSym) =
   # search for the correct alias:
   var (b, state) = searchForBorrowProc(c, c.currentScope.parent, s)
   case state
   of bsMatch:
     # store the alias:
-    n[bodyPos] = newSymNode(b)
+    if s.kind == skIterator and isInlineIterator(s.typ) and
+        b.ast != nil and b.ast.len > bodyPos and b.ast[bodyPos].kind != nkEmpty:
+      n[bodyPos] = copyTree(b.ast[bodyPos])
+      let borrowedParams = b.typ.n
+      let targetParams = s.typ.n
+      let maxParams = min(borrowedParams.len, targetParams.len)
+      var symMap = initSymMapping()
+      for i in 1..<maxParams:
+        if borrowedParams[i].kind == nkSym and targetParams[i].kind == nkSym:
+          idTablePut(symMap, borrowedParams[i].sym, targetParams[i].sym)
+      replaceOwnedSyms(c, n[bodyPos], b, s, symMap)
+    else:
+      n[bodyPos] = newSymNode(b)
     # Carry over the original symbol magic, this is necessary in order to ensure
     # the semantic pass is correct
     s.magic = b.magic
@@ -2700,7 +2727,12 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
 
       incl(s, sfForward)
       incl(s, sfWasForwarded)
-    elif sfBorrow in s.flags: semBorrow(c, n, s)
+    elif sfBorrow in s.flags:
+      pushProcCon(c, s)
+      semBorrow(c, n, s)
+      if s.typ.returnType != nil and n.len <= resultPos:
+        addResult(c, n, s.typ.returnType, s.kind)
+      popProcCon(c)
   sideEffectsCheck(c, s)
 
   closeScope(c)           # close scope for parameters
