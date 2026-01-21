@@ -32,6 +32,7 @@ type
     nodes: seq[Node]
     processedModules: Table[string, int]  # modname -> node index
     includeStack: seq[string]
+    systemNodeId: int  # ID of the system.nim node
 
 proc toPair(c: DepContext; f: string): FilePair =
   FilePair(nimFile: f, modname: moduleSuffix(f, cast[seq[string]](c.config.searchPaths)))
@@ -128,6 +129,9 @@ proc processImport(c: var DepContext; importPath: string; current: Node) =
     # New module - create node and process it
     let newNode = Node(files: @[pair], id: c.nodes.len)
     current.deps.add newNode.id
+    # Every module depends on system.nim
+    if c.systemNodeId >= 0:
+      newNode.deps.add c.systemNodeId
     c.processedModules[pair.modname] = newNode.id
     c.nodes.add newNode
     traverseDeps(c, pair, newNode)
@@ -354,7 +358,8 @@ proc commandIc*(conf: ConfigRef) =
       nifler: nifler,
       nodes: @[],
       processedModules: initTable[string, int](),
-      includeStack: @[]
+      includeStack: @[],
+      systemNodeId: -1
     )
 
     # Create root node for main project file
@@ -366,6 +371,7 @@ proc commandIc*(conf: ConfigRef) =
     # model the system.nim dependency:
     let sysNode = Node(files: @[toPair(c, (conf.libpath / RelativeFile"system.nim").string)], id: 1)
     c.nodes.add sysNode
+    c.systemNodeId = sysNode.id
     rootNode.deps.add sysNode.id
 
     # Process dependencies
