@@ -8,7 +8,7 @@ t23536.nim(22)           t23536
 t23536.nim(17)           foo
 assertions.nim(45)       failedAssertImpl
 assertions.nim(40)       raiseAssert
-fatal.nim(67)            sysFatal
+fatal.nim(65)            sysFatal
 """
 
 
