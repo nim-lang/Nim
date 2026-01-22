@@ -375,11 +375,12 @@ proc loadCompilerProc*(g: ModuleGraph; name: string): PSym =
   if g.config.symbolFiles == disabledSf and optWithinConfigSystem notin g.config.globalOptions:
     # For NIF-based compilation, search in loaded NIF modules
     when not defined(nimKochBootstrap):
-      # Only try to resolve from NIF if we're actually using NIF files (cmdNifC)
-      if g.config.cmd == cmdNifC:
+      # Try to resolve from NIF for both cmdNifC and cmdM (which uses NIF files)
+      if g.config.cmd in {cmdNifC, cmdM}:
         # First try system module (most compilerprocs are there)
         let systemFileIdx = g.config.m.systemFileIdx
-        if systemFileIdx != InvalidFileIdx:
+        if systemFileIdx != InvalidFileIdx and not g.withinSystem:
+          # Only try to load from NIF if the file exists (it may not during initial ic build)
           result = tryResolveCompilerProc(ast.program, name, systemFileIdx)
           if result != nil:
             strTableAdd(g.compilerprocs, result)
@@ -536,6 +537,7 @@ proc initModuleGraphFields(result: ModuleGraph) =
   result.operators = initOperators(result)
   result.emittedTypeInfo = initTable[string, FileIndex]()
   result.cachedFiles = newStringTable()
+  result.cachedMods = initIntSet()
 
 proc newModuleGraph*(cache: IdentCache; config: ConfigRef): ModuleGraph =
   result = ModuleGraph()
@@ -676,6 +678,9 @@ when not defined(nimKochBootstrap):
                            g.ifaces[fileIdx.int].interf,
                            g.ifaces[fileIdx.int].interfHidden, flags)
     result.module = m
+
+    # Mark module as cached
+    g.cachedMods.incl fileIdx.int
 
     # Register hooks from NIF index with the module graph
     for x in result.logOps:

@@ -289,9 +289,8 @@ proc myImportModule(c: PContext, n: var PNode, importStmtResult: PNode): PSym =
       c.recursiveDep = err
 
     let trackUnusedImport = warnUnusedImportX in c.config.notes
-    var realModule: PSym
     discard pushOptionEntry(c)
-    realModule = c.graph.importModuleCallback(c.graph, c.module, f)
+    let realModule = c.graph.importModuleCallback(c.graph, c.module, f)
     result = importModuleAs(c, n, realModule, transf.importHidden, trackUnusedImport)
     popOptionEntry(c)
 
