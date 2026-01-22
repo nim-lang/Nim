@@ -3143,12 +3143,6 @@ proc arrayWithDefault*[T](size: static int): array[size, T] {.noinit, nodestroy,
     result[i] = default(T)
 
 when hostOS == "standalone":
-  # Define panic handler variables with exportc so fatal.nim can reference
-  # them via importc. This avoids these variable being defined multiple times
-  # at the c level.
-  var panicImplDef {.exportc: "panicImpl".}: PanicProc
-  var rawOutputImplDef {.exportc: "rawOutputImpl".}: RawOutputProc
-
   # Include panicoverride.nim late so users can use the full extent of the
   # language in their custom panic handlers (e.g. macros).
   # Users define `proc panic(msg: string)` and `proc rawoutput(msg: string)`.
@@ -3160,12 +3154,14 @@ when hostOS == "standalone":
       "when compiling with --os:standalone: " &
       "`proc panic(msg: string) {.nimcall.}`".}
 
-
   when not declared(rawoutput):
      {.error:
       "a rawoutput proc with the following signature must be provided " &
       "when compiling with --os:standalone: " &
       "`proc rawoutput(msg: string) {.nimcall.}`".}
 
-  panicImplDef = panic
-  rawOutputImplDef = rawoutput
+  # Wrappers with exportc that fatal.nim references via importc.
+  # This way panicoverride keeps old API and can still be included without
+  # ssymbols being duplicated.
+  proc nimPanic(s: string) {.exportc, noreturn.} = panic(s)
+  proc nimRawoutput(s: string) {.exportc.} = rawoutput(s)

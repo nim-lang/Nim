@@ -14,26 +14,23 @@ const
   quirkyExceptions = compileOption("exceptions", "quirky")
 
 when hostOS == "standalone":
-  type
-    PanicProc* = proc(msg: string) {.nimcall.}
-    RawOutputProc* = proc(msg: string) {.nimcall.}
-
-  # These variables are defined in system.nim with exportc
-  var panicImpl* {.importc: "panicImpl".}: PanicProc
-  var rawOutputImpl* {.importc: "rawOutputImpl".}: RawOutputProc
+  # These procs are defined in panicoverride.nim, which gets included at end
+  # of system.nim with exportc.
+  proc nimPanic(msg: string) {.importc: "nimPanic", noreturn.}
+  proc nimRawoutput(msg: string) {.importc: "nimRawoutput".}
 
   proc sysFatal(exceptn: typedesc[Defect], message: string) {.inline, noreturn, raises: [], tags: [].} =
     {.cast(noSideEffect).}:
       {.cast(raises: []).}:
         {.cast(tags: []).}:
-          panicImpl(message)
+          nimPanic(message)
 
   proc sysFatal(exceptn: typedesc[Defect], message, arg: string) {.inline, noreturn, raises: [], tags: [].} =
     {.cast(noSideEffect).}:
       {.cast(raises: []).}:
         {.cast(tags: []).}:
-          rawOutputImpl(message)
-          panicImpl(arg)
+          nimRawoutput(message)
+          nimPanic(arg)
 
 elif quirkyExceptions and not defined(nimscript):
   import ansi_c
