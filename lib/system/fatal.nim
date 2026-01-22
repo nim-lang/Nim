@@ -18,19 +18,17 @@ when hostOS == "standalone":
     PanicProc* = proc(msg: string) {.nimcall.}
     RawOutputProc* = proc(msg: string) {.nimcall.}
 
-  # These are set up from panicoverride.nim, which must be included
-  # if `hostOS == "standalone"`, so they will always be set or a compile time
-  # error will be generated.
-  var panicImpl: PanicProc
-  var rawOutputImpl: RawOutputProc
+  # These variables are defined in system.nim with exportc
+  var panicImpl* {.importc: "panicImpl".}: PanicProc
+  var rawOutputImpl* {.importc: "rawOutputImpl".}: RawOutputProc
 
-  template sysFatal(exceptn: typedesc[Defect], message: string) =
+  proc sysFatal(exceptn: typedesc[Defect], message: string) {.inline, noreturn, raises: [], tags: [].} =
     {.cast(noSideEffect).}:
       {.cast(raises: []).}:
         {.cast(tags: []).}:
           panicImpl(message)
 
-  template sysFatal(exceptn: typedesc[Defect], message, arg: string) =
+  proc sysFatal(exceptn: typedesc[Defect], message, arg: string) {.inline, noreturn, raises: [], tags: [].} =
     {.cast(noSideEffect).}:
       {.cast(raises: []).}:
         {.cast(tags: []).}:
