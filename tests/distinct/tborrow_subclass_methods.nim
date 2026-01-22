@@ -21,6 +21,8 @@ type
   DistinctAnimal {.borrow: `.`.} = distinct Animal
   DistinctDog {.borrow: `.`.} = distinct Dog
   DistinctDog2 {.borrow: `.`.} = distinct DistinctDog
+  DistinctAnimalNoBorrow = distinct Animal
+  DistinctDogNoBorrow = distinct Dog
 
 proc describe(animal: DistinctAnimal): string {.borrow.}
 proc describe(dog: DistinctDog): string {.borrow.}
@@ -30,7 +32,7 @@ method kind(animal: DistinctAnimal): string {.borrow.}
 method kind(dog: DistinctDog): string {.borrow.}
 method kind(dog: DistinctDog2): string {.borrow.}
 
-# Section: Distinct wrappers forward method overloads and casts.
+# Section: Borrowed methods on distinct wrappers still dispatch dynamically.
 let dog = Dog(name: "Rex", age: 5)
 let distinctDog = DistinctDog(dog)
 let distinctDog2 = DistinctDog2(distinctDog)
@@ -59,3 +61,19 @@ doAssert backAnimal.name == "Rex"
 let distinctAnimalFromDistinctDog = DistinctAnimal(Animal(Dog(distinctDog)))
 
 doAssert describe(distinctAnimalFromDistinctDog) == "animal:Rex"
+
+# Section: Borrowed methods are not available without the borrow pragma.
+let noBorrowAnimal = DistinctAnimalNoBorrow(Animal(name: "Nemo"))
+let noBorrowDog = DistinctDogNoBorrow(Dog(name: "Spot", age: 3))
+static:
+  doAssert not compiles(kind(noBorrowAnimal))
+  doAssert not compiles(kind(noBorrowDog))
+  doAssert not compiles(noBorrowAnimal.kind)
+  doAssert not compiles(noBorrowDog.kind)
+
+# Section: Distinct wrappers should reject mismatched argument types.
+static:
+  doAssert not compiles(kind(DistinctAnimalNoBorrow(Animal(name: "Pax"))))
+  doAssert not compiles(kind(DistinctDogNoBorrow(Dog(name: "Pax", age: 1))))
+  doAssert not compiles(DistinctDog("Pax"))
+  doAssert not compiles(kind(DistinctDog("Pax")))
