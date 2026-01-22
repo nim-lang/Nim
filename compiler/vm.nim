@@ -663,7 +663,10 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       of rkNode:
         if regs[rb].node.typ.kind notin PtrLikeKinds:
           stackTrace(c, tos, pc, "opcCastIntToPtr: regs[rb].node.typ: " & $regs[rb].node.typ.kind)
-        node2.intVal = regs[rb].node.intVal
+        if regs[rb].node.kind == nkNilLit:
+          node2.intVal = 0
+        else:
+          node2.intVal = regs[rb].node.intVal
       else: stackTrace(c, tos, pc, "opcCastIntToPtr: regs[rb].kind: " & $regs[rb].kind)
       regs[ra].node = node2
     of opcAsgnComplex:
