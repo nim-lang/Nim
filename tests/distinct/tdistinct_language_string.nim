@@ -1,3 +1,4 @@
+# Section: Distinct string aliases keyed by static enums enforce language tags.
 type
   Language = enum
     English
@@ -17,6 +18,7 @@ proc checkValid(str: german): auto =
 var text = "hello! ".english
 text &= "how are you?".english
 
+# Section: Overloads resolve based on distinct string tags.
 doAssert checkValid(text) == "got english"
 
 doAssert checkValid("hallo".german) == "got german"

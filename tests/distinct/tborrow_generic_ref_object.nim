@@ -13,5 +13,6 @@ block:
 
   proc getVal[T](b: DBox[T]): T {.borrow.}
 
+  # Section: Borrowed getter forwards through distinct ref object wrapper.
   var b = DBox[int](Box[int](val: 7))
   doAssert b.getVal == 7

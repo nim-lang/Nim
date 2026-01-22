@@ -1,3 +1,4 @@
+# Section: Borrowed proc requires explicit borrow pragma on distinct type.
 block:
   type
     Base = object

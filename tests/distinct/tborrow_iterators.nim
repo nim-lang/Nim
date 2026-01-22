@@ -1,5 +1,6 @@
 import std/tables
 
+# Section: Borrowed `values` iterator for distinct object types.
 type
   NumberList = object
     items: seq[int]
@@ -26,6 +27,7 @@ static:
     doAssert totalDot == 6
   ))
 
+# Section: Borrowed `items` iterator for distinct generic object types.
 type
   Box[T] = object
     items: seq[T]
@@ -48,6 +50,7 @@ static:
     doAssert genericTotal == 9
   ))
 
+# Section: Borrowed `items` iterator for distinct sequences (runtime + static checks).
 type
   DistinctSeq = distinct seq[int]
   DistinctSeqNoBorrow = distinct seq[int]
@@ -81,6 +84,7 @@ static:
       discard value
   ))
 
+# Section: Borrowed `items` iterator for distinct arrays (runtime + static checks).
 type
   DistinctArray = distinct array[3, int]
   DistinctArrayNoBorrow = distinct array[3, int]
@@ -114,6 +118,7 @@ static:
       discard value
   ))
 
+# Section: Borrowed `pairs` iterator for distinct tables (runtime + static checks).
 type
   BaseTable = Table[string, int]
   DistinctTable = distinct BaseTable

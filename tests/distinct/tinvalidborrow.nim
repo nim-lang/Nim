@@ -13,7 +13,7 @@ tinvalidborrow.nim(26, 1) Error: borrow proc without distinct type parameter is 
 
 
 
-# bug #516
+# Section: Invalid borrow targets should be rejected (bug #516).
 
 type
   TAtom = culong
@@ -30,11 +30,11 @@ var
 
 discard( $(d == e) )
 
-# issue #4121
+# Section: Borrowed len on distinct seq requires distinct type (issue #4121).
 type HeapQueue[T] = distinct seq[T]
 proc len*[T](h: HeapQueue[T]): int {.borrow.}
 
-# issue #3564
+# Section: Borrowed brackets on distinct arrays require correct borrow target (issue #3564).
 type vec4[T] = distinct array[4, float32]
 
 proc `[]`(v: vec4, i: int): float32 {.borrow.}

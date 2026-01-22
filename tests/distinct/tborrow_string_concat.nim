@@ -1,3 +1,4 @@
+# Section: Borrowed string concatenation for distinct strings.
 block:
   type DistinctString = distinct string
 
@@ -8,6 +9,7 @@ block:
   let b = DistinctString("b")
   doAssert (a & b) == DistinctString("ab")
 
+# Section: Distinct strings without borrow reject concatenation.
 block:
   type DistinctStringNoBorrow = distinct string
 

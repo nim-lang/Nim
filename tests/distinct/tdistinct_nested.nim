@@ -1,5 +1,6 @@
 import std/typetraits
 
+# Section: Nested distinct numeric types preserve borrowed arithmetic.
 type
   MyInt = distinct int
   MyOtherInt = distinct MyInt
@@ -19,10 +20,12 @@ let thirdTwo = MyThirdInt(otherTwo)
 let otherSum = otherOne + otherTwo
 let thirdSum = thirdOne + thirdTwo
 
+# Section: Round-tripping nested distinct conversions yields expected sums.
 doAssert int(MyInt(otherSum)) == 3
 
 doAssert int(MyInt(MyOtherInt(thirdSum))) == 3
 
+# Section: distinctBase resolves to the right base and intermediate types.
 doAssert distinctBase(MyInt) is int
 
 doAssert distinctBase(MyOtherInt) is int
@@ -43,6 +46,7 @@ doAssert int(MyInt(explicitOther)) == 5
 doAssert int(MyInt(MyOtherInt(explicitThird))) == 5
 
 static:
+  # Section: Implicit conversions between nested distinct types are rejected.
   doAssert not compiles((block:
     var implicitOther: MyOtherInt = MyInt(1)
     discard implicitOther
@@ -55,6 +59,7 @@ doAssert backToInt == 5
 doAssert int(MyInt(MyOtherInt(thirdFromFloat))) == 5
 doAssert MyThirdInt(1.0).MyInt.int == 1
 
+# Section: Borrowed string formatting across nested distinct floats.
 type
   T0 = distinct float
   T1 = distinct T0
@@ -67,6 +72,7 @@ proc `$`(a: T2): string {.borrow.}
 doAssert $T2(3.25) == "3.25"
 
 static:
+  # Section: Borrowing skips intermediate distinct levels when missing.
   doAssert not compiles((block:
     type
       U0 = distinct float

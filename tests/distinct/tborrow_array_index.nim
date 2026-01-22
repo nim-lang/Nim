@@ -1,3 +1,4 @@
+# Section: Borrowed indexing works for distinct array values.
 block:
   type
     DistinctArray = distinct array[3, int]

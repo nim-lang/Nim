@@ -13,6 +13,7 @@ block:
 
   proc contains[T](s: List[T], value: T): bool {.borrow.}
 
+  # Section: Borrowed `contains` forwards to custom implementation.
   let xs = List(@["a", "b"])
   doAssert xs.contains("b")
   doAssert not xs.contains("c")

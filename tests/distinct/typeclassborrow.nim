@@ -1,5 +1,6 @@
 import std/tables
 
+# Section: Borrowed procs work on distinct seqs with static params.
 type
   Foo = distinct seq[int]
   Bar[N: static[int]] = distinct seq[int]
@@ -17,6 +18,7 @@ proc `$`(s: Baz): string {.borrow.}
 proc doThing(b: Bar) = discard
 proc doThing(b: Baz) {.borrow.}
 
+# Section: Borrowed overloads resolve for distinct seq aliases.
 var
   foo: Foo
   bar: Bar[10]
@@ -33,6 +35,7 @@ assert $seq[int](foo) == $foo
 assert $seq[int](bar) == $bar
 assert $seq[int](baz) == $baz
 
+# Section: Borrowed equality supports runnableExamples.
 type
   Fine* = distinct string
 
@@ -49,6 +52,7 @@ var x = Fine("1234")
 var y = Fine("1234")
 doAssert x == y
 
+# Section: Borrowed bracket access on distinct tables returns lent values (#22902).
 block: # bug #22902
   type
     DistinctTable = distinct Table[int, int]

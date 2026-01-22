@@ -11,6 +11,7 @@ proc `&`*(a, b: DistinctSeqB): DistinctSeqB {.borrow.}
 proc `==`*(a, b: DistinctSeqA): bool {.borrow.}
 proc `==`*(a, b: DistinctSeqB): bool {.borrow.}
 
+# Section: Borrowed concatenation stays type-distinct and rejects mixing.
 block:
   var a0 = DistinctSeqA(@[1, 2, 3])
   var a1 = DistinctSeqA(@[4, 5, 6])
