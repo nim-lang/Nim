@@ -13,6 +13,7 @@ proc `[]`*(v: Vec4Alt, i: int): float32 {.borrow.}
 proc `[]`*(v: var Vec4Alt, i: int): var float32 {.borrow.}
 proc `[]=`*(v: var Vec4Alt, i: int, val: float32) {.borrow.}
 
+# Section: Borrowed bracket access and updates for distinct arrays.
 block:
   var v: Vec4
   v[0] = 1.5'f32

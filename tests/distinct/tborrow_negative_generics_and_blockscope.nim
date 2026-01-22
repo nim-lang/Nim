@@ -11,6 +11,7 @@ This testcase checks several things:
 ]##
 
 
+# Section: Non-borrowed `[]` on distinct array should not compile.
 # See 1.
 type A0 = distinct array[3, int]
 type A1 = distinct array[3, int]
@@ -27,6 +28,7 @@ doAssert compiles(a0[0] == 0)
 var a1: A1
 doAssert not compiles(a1[0] == 0)
 
+# Section: Read-only borrowed `[]` should not allow mutation.
 # Only borrowed the non-var `[]` should not allow mutation.
 block:
   var a0GetOnly: A0GetOnly[int]
@@ -36,6 +38,7 @@ block:
     tmp[0] = 10
     true))
 
+# Section: Multiple distinct types can independently borrow generic brackets.
 # See 2. and 3.
 type A2[T] = distinct array[3, T]
 type A3[T] = distinct array[3, T]
@@ -50,6 +53,7 @@ doAssert compiles(a2[0] == 0)
 var a3: A3[int]
 doAssert not compiles(a3[0] == 0)
 
+# Section: Borrowed brackets can be declared in block scope.
 # See 4.
 block BLOCK_TEST:
   type A4[T] = distinct array[3, T]

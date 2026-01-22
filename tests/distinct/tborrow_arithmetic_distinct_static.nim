@@ -9,6 +9,7 @@ type
 proc `+`(x, y: Amount[1]): Amount[1] {.borrow.}
 proc `==`(x, y: Amount[1]): bool {.borrow.}
 
+# Section: Borrowed arithmetic validates compatible static parameters.
 block:
   let total = Amount[1](1.25) + Amount[1](2.5)
   doAssert total == Amount[1](3.75)

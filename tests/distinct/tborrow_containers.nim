@@ -10,6 +10,7 @@ type
 
 proc len*(s: DistinctSeqInt): int {.borrow.}
 
+# Section: Borrowed `len` on distinct sequences.
 block:
   var s = DistinctSeqInt(@[1, 2, 3])
   doAssert s.len == 3
@@ -19,6 +20,7 @@ type
 
 proc hasKey*(t: DistinctTableStrInt, key: string): bool {.borrow.}
 
+# Section: Borrowed `hasKey` on distinct tables.
 block:
   var base = initTable[string, int]()
   base["a"] = 4
@@ -32,6 +34,7 @@ type
 proc contains*(s: DistinctHashSetInt, v: int): bool {.borrow.}
 proc incl*(s: var DistinctHashSetInt, v: int) {.borrow.}
 
+# Section: Borrowed set membership and inclusion on distinct sets.
 block:
   var hs = DistinctHashSetInt(initHashSet[int]())
   hs.incl 5

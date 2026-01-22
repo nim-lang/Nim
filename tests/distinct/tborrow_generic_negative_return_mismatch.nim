@@ -3,6 +3,7 @@ Ensures borrowing fails on return type mismatch.
 ]##
 
 block:
+  # Section: Borrowed overload must match return type of base proc.
   static:
     doAssert not compiles((block:
       type D[T] = distinct seq[T]

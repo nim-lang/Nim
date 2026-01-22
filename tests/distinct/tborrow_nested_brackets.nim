@@ -11,6 +11,7 @@ proc `[]`*(s: var NestedSeq, i: int): var NestedArray {.borrow.}
 proc `[]`*(a: NestedArray, i: int): float {.borrow.}
 proc `[]`*(a: var NestedArray, i: int): var float {.borrow.}
 
+# Section: Nested borrowed brackets allow mutating inner arrays through seqs.
 block:
   var testObj = NestedSeq(@[NestedArray([0.0, 0.0])])
 

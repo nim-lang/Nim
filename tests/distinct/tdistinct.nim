@@ -14,6 +14,7 @@ foo
 
 echo "tdistinct"
 
+# Section: Borrowed field access for distinct object types.
 block tborrowdot:
   type
     Foo = object
@@ -27,6 +28,7 @@ block tborrowdot:
   bb.a = 90
   bb.s = "abc"
 
+# Section: Currency-style distinct types borrowing arithmetic and comparisons.
 block tcurrncy:
   template Additive(typ: untyped) =
     proc `+`(x, y: typ): typ {.borrow.}
@@ -60,8 +62,8 @@ block tcurrncy:
   DefineCurrency(TEuro, int)
   echo($( 12.TDollar + 13.TDollar )) #OUT 25
 
+# Section: Distinct constants should preserve underlying literal values (bug #2641).
 block tconsts:
-  # bug #2641
 
   type MyChar = distinct char
   const c:MyChar = MyChar('a')
@@ -81,7 +83,7 @@ block tconsts:
   type MyBoolArr = distinct array[3, bool]
   const barr:MyBoolArr = MyBoolArr([true, false, true])
 
-# bug #2760
+# Section: Distinct tuple constants preserve field names (bug #2760).
 
 type
   DistTup = distinct tuple
@@ -92,7 +94,7 @@ const d: DistTup = DistTup((
 ))
 
 
-# bug #7167
+# Section: Distinct range indexes can borrow comparisons for array iteration (bug #7167).
 
 type Id = distinct range[0..3]
 
@@ -102,13 +104,14 @@ var xs: array[Id, bool]
 
 for x in xs: echo x # type mismatch: got (T) but expected 'bool'
 
-# bug #11715
+# Section: Distinct int with borrowed comparisons should support range literals (bug #11715).
 
 type FooD = distinct int
 proc `<=`(a, b: FooD): bool {.borrow.}
 
 for f in [FooD(0): "Foo"]: echo f
 
+# Section: `requiresInit` works correctly with distinct/borrowed types.
 block tRequiresInit:
   template accept(x) =
     static: doAssert compiles(x)
@@ -141,6 +144,7 @@ block tRequiresInit:
     let s = DistinctString("test")
     doAssert string(s) == "test"
 
+# Section: Borrowed access on distinct generic aliases mutates underlying string data (#17322).
 block: #17322
   type
     A[T] = distinct string
@@ -160,9 +164,10 @@ block: #17322
 type Foo = distinct string
 
 proc main() = # proc instead of template because of MCS/UFCS.
-  # xxx put everything here to test under RT + VM
+  # Section: Run-time/VM regression coverage for borrowed string mutations (bug #12282).
   block: # bug #12282
     block:
+      # Case: Direct string mutation through distinct alias.
       proc test() =
         var s: Foo
         s.string.add('c')
@@ -170,6 +175,7 @@ proc main() = # proc instead of template because of MCS/UFCS.
       test()
 
     block:
+      # Case: Borrowed proc on distinct type with string mutation.
       proc add(a: var Foo, b: char) {.borrow.}
       proc test() =
         var s: Foo
@@ -178,12 +184,14 @@ proc main() = # proc instead of template because of MCS/UFCS.
       test()
 
     block:
+      # Case: Borrowed proc invoked via UFCS on base string.
       proc add(a: var Foo, b: char) {.borrow.}
       proc test() =
         var s: string
         s.Foo.add('c')
         doAssert s.string == "c" # was failing
       test()
+    # Section: Distinct range subtypes should accept casts and range bounds (#18061).
     block: #18061
       type
         A = distinct (0..100)
@@ -199,6 +207,7 @@ proc main() = # proc instead of template because of MCS/UFCS.
       var c: B
 
 
+  # Section: Borrowed seq operations remain functional for distinct stacks (bug #9423).
   block: # bug #9423
     block:
       type Foo = seq[int]

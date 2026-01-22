@@ -3,7 +3,7 @@ discard """
 0.5'''
 """
 
-# test the new borrow feature that works with generics:
+# Section: Generic borrowed operators on distinct scalar types.
 
 proc `++`*[T: int | float](a, b: T): T =
   result = a + b
@@ -21,7 +21,7 @@ proc `$`(x: DF): string {.borrow.}
 
 echo  4544.DI ++ 343.DI, " ", (4.5.DF ++ 0.5.DF).float == 5.0
 
-# issue #14440
+# Section: Borrowed compound assignment on distinct float (issue #14440).
 
 type Radians = distinct float64
 
@@ -34,6 +34,7 @@ a -= b
 
 echo a.float64
 
+# Section: Borrowed field access through nested distinct generic aliases (#14449).
 block: #14449
   type 
     Foo[T] = object
@@ -54,6 +55,7 @@ block: #14449
   assert b.foo == 400d
   assert c.foo == 42d
 
+# Section: Borrow chains across multiple aliases remain functional (#16666).
 block: # Borrow from muliple aliasses #16666
   type
     AImpl = object
@@ -75,6 +77,7 @@ block: # Borrow from muliple aliasses #16666
   assert d.i == 0
   assert e.i == 0
 
+# Section: Borrow from generic alias resolves through concrete instantiations.
 block: # Borrow from generic alias
   type
     AImpl[T] = object
@@ -90,6 +93,7 @@ block: # Borrow from generic alias
   assert c.i == int(0)
   assert e.i == 0d
 
+# Section: Borrowed fields on static-length arrays preserve type info (#22069).
 block: # issue #22069
   type
     Vehicle[C: static[int]] = object
@@ -99,6 +103,7 @@ block: # issue #22069
   var x: MuscleCar
   doAssert x.color is array[128, int]
 
+# Section: Borrowed procs on distinct vectors match concrete overloads (#22646).
 block: # issue #22646
   type
     Vec[N : static[int], T: SomeNumber] = object

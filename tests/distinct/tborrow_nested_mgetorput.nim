@@ -11,6 +11,7 @@ type
 
 proc mgetOrPut(t: var Level1; key: string; val: Level2): var Level2 {.borrow, noinit.}
 
+# Section: Borrowed `mgetOrPut` allows nested table updates.
 block:
   var nested = Level1(initTable[string, Level2]())
   var level1 = nested.mgetOrPut(

@@ -14,6 +14,7 @@ This testcase checks several things:
 import std/tables
 
 
+# Section: Borrowed brackets on distinct fixed-size arrays.
 block:
   type vec4 = distinct array[4, float32]
 
@@ -25,6 +26,7 @@ block:
   doAssert v[0] == 1.234'f32
 
 
+# Section: Borrowed brackets on distinct generic sequences.
 block:
   type MySeq [T] = distinct seq[T]
   proc `[]`[T](s: MySeq[T], i: int): T {.borrow.}
@@ -32,6 +34,7 @@ block:
   doAssert points[0] == (x: 1, y: 2,)
 
 
+# Section: Borrowed `len` for distinct heap queues.
 block:
   type HeapQueue[T] = distinct seq[T]
   proc len[T](h: HeapQueue[T]): int {.borrow.}
@@ -40,6 +43,7 @@ block:
   doAssert hq.len == 0
 
 
+# Section: Borrowed table `mgetOrPut` for nested distinct tables.
 block:
   type
     DefaultTable[A, B] = distinct Table[A, B]
@@ -55,6 +59,7 @@ block:
   doAssert nested["key1"]["key2"]["key3"] == @["1", "2", "3"]
 
 
+# Section: Borrowed arithmetic for distinct types with static parameters.
 block:
   type Amount[date: static[int]] = distinct float
 

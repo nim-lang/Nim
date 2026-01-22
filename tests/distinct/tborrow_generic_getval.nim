@@ -13,5 +13,6 @@ block:
 
   proc getVal[T](dc: DistinctChild[T]): T {.borrow.}
 
+  # Section: Borrowed getter exposes default-initialized value.
   var concrete: DistinctChild[int]
   doAssert concrete.getVal() == 0

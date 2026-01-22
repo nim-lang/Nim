@@ -10,5 +10,6 @@ block:
   proc size[T](s: MySeq[T]): int =
     s.len
 
+  # Section: Borrowed `len` is callable inside generic helpers.
   var items = MySeq(@[1, 2, 3])
   doAssert size(items) == 3

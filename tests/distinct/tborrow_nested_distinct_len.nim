@@ -1,3 +1,4 @@
+# Section: Borrowed `len` works through nested distinct sequence layers.
 block:
   type
     InnerInt = distinct seq[int]

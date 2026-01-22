@@ -1,3 +1,4 @@
+# Section: Borrowed set operations are only available to opted-in distinct sets.
 block:
   type
     DistinctSet[T] = distinct set[T]

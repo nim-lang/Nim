@@ -22,6 +22,7 @@ type
 proc `[]`*(b: BorrowedBox, i: int): lent int {.borrow.}
 proc `[]=`*(b: var BorrowedBox, i: int, newVal: int) {.borrow.}
 
+# Section: Borrowed bracket access mutates distinct object wrappers.
 block:
   var boxed = BorrowedBox(BaseBox(data: @[1, 2, 3]))
   doAssert boxed[0] == 1

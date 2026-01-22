@@ -8,6 +8,7 @@ type
 
 proc len*(h: HeapQueue): int {.borrow.}
 
+# Section: Borrowed `len` succeeds only for the opted-in distinct type.
 block:
   var h = HeapQueue(@[1, 2, 3])
   doAssert h.len == 3

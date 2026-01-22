@@ -15,6 +15,7 @@ block:
   proc sum[T](s: DSeq[T]): int {.borrow.}
   proc sum[T](s: DSet[T]): int {.borrow.}
 
+  # Section: Borrowed overload chooses seq vs set implementation.
   let xs = DSeq(@[1, 2, 3])
   let ys = DSet({1, 2})
 

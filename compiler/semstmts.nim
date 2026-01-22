@@ -1941,6 +1941,8 @@ proc replaceOwnedSyms(c: PContext, n: var PNode, ownerFrom, ownerTo: PSym,
   for i in 0..<n.safeLen:
     replaceOwnedSyms(c, n[i], ownerFrom, ownerTo, symMap)
 
+proc addResult(c: PContext, n: PNode, t: PType, owner: TSymKind)
+
 proc semBorrow(c: PContext, n: PNode, s: PSym) =
   # search for the correct alias:
   var (b, state) = searchForBorrowProc(c, c.currentScope.parent, s)
@@ -1966,6 +1968,8 @@ proc semBorrow(c: PContext, n: PNode, s: PSym) =
     if b.typ != nil and b.typ.len > 0 and s.name.s notin ["[]", "[]="]:
       s.typ.n[0] = b.typ.n[0]
     s.typ.flags = b.typ.flags
+    if s.typ.returnType != nil and (n.len <= resultPos or n[resultPos].kind == nkEmpty):
+      addResult(c, n, s.typ.returnType, s.kind)
     if s.name.s in ["[]", "[]="]:
       let isGetBorrow = s.name.s == "[]"
       let isMutableBorrow = s.name.s == "[]=" or
@@ -2374,15 +2378,18 @@ proc cursorInProc(conf: ConfigRef; n: PNode): bool =
   else:
     result = false
 
-proc hasObjParam(s: PSym): bool =
+proc hasObjParam(c: PContext; s: PSym): bool =
   result = false
   var t = s.typ
   for col in 1..<t.len:
-    if skipTypes(t[col], skipPtrs).kind == tyObject:
+    var paramType = t[col].skipTypes(skipPtrs)
+    while paramType.kind == tyDistinct:
+      paramType = paramType.baseOfDistinct(c.graph, c.idgen).skipTypes(skipPtrs)
+    if paramType.kind == tyObject:
       return true
 
 proc finishMethod(c: PContext, s: PSym) =
-  if hasObjParam(s):
+  if hasObjParam(c, s):
     methodDef(c.graph, c.idgen, s)
 
 proc semCppMember(c: PContext; s: PSym; n: PNode) =
@@ -2456,7 +2463,7 @@ proc semMethodPrototype(c: PContext; s: PSym; n: PNode) =
     # why check for the body? bug #2400 has none. Checking for sfForward makes
     # no sense either.
     # and result[bodyPos].kind != nkEmpty:
-    if hasObjParam(s):
+    if hasObjParam(c, s):
       methodDef(c.graph, c.idgen, s)
     else:
       localError(c.config, n.info, "'method' needs a parameter that has an object type")
@@ -2718,7 +2725,14 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       if s.kind == skMethod: semMethodPrototype(c, s, n)
       popProcCon(c)
   else:
-    if s.kind == skMethod: semMethodPrototype(c, s, n)
+    if sfBorrow in s.flags:
+      pushProcCon(c, s)
+      semBorrow(c, n, s)
+      if s.typ.returnType != nil and (n.len <= resultPos or n[resultPos].kind == nkEmpty):
+        addResult(c, n, s.typ.returnType, s.kind)
+      popProcCon(c)
+    if s.kind == skMethod and sfBorrow notin s.flags:
+      semMethodPrototype(c, s, n)
     if hasProto: localError(c.config, n.info, errImplOfXexpected % proto.name.s)
     if {sfImportc, sfBorrow, sfError} * s.flags == {} and s.magic == mNone:
       # this is a forward declaration and we're building the prototype
@@ -2727,12 +2741,6 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
 
       incl(s, sfForward)
       incl(s, sfWasForwarded)
-    elif sfBorrow in s.flags:
-      pushProcCon(c, s)
-      semBorrow(c, n, s)
-      if s.typ.returnType != nil and n.len <= resultPos:
-        addResult(c, n, s.typ.returnType, s.kind)
-      popProcCon(c)
   sideEffectsCheck(c, s)
 
   closeScope(c)           # close scope for parameters

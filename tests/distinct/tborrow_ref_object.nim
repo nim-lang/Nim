@@ -1,3 +1,4 @@
+# Section: Borrowed procs on distinct ref objects access underlying fields.
 block:
   type
     RefInner = ref object

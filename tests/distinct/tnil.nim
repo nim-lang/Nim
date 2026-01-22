@@ -1,4 +1,5 @@
 {.experimental: "notnil".}
+# Section: Distinct pointer and value types preserve nil semantics.
 type
   MyPointer = distinct pointer
   MyString = distinct string

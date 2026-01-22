@@ -1,3 +1,4 @@
+# Section: Borrowed generic `add` works only for types declaring borrow.
 block:
   type
     SeqBox[T] = distinct seq[T]

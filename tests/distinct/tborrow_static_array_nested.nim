@@ -1,3 +1,4 @@
+# Section: Borrowed indexing works through nested static array distincts.
 block:
   type
     StaticInner[N: static[int]] = distinct array[N, int]

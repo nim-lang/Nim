@@ -10,6 +10,7 @@ proc `[]`*(s: DistinctSeq, i: int): int {.borrow.}
 proc `[]`*(s: var DistinctSeq, i: int): var int {.borrow.}
 proc `[]=`*(s: var DistinctSeq, i: int, val: int) {.borrow.}
 
+# Section: Borrowed brackets allow reads/writes on opted-in distinct seq.
 var s = DistinctSeq(@[1, 2, 3])
 var t: DistinctSeqAlt
 
