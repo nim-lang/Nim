@@ -316,7 +316,7 @@ proc getNumber(L: var Lexer, result: var Token) =
     L.bufpos = msgPos
     lexMessage(L, msgKind, msg % t.literal)
 
-  proc checkBitWidth(L: var Lexer, base: TNumeralBase, tokType: TokType, 
+  proc checkBitWidth(L: var Lexer, base: NumericalBase, tokType: TokType, 
                      numDigits: int, startpos: int) =
     # Check bit width for non-base-10 literals
     # Warn if the digit count exceeds what can fit in the target type
