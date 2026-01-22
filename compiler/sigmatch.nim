@@ -615,36 +615,7 @@ proc isGenericObjectOf(f, a: PType): bool =
   # use sym equality to check if the `tyGenericBody` types are equal
   result = aRoot != nil and f.sym == aRoot.sym
 
-proc isRangeSupertype(conf: ConfigRef; wider, narrower: PType): bool =
-  ## Check if `wider` type fully contains `narrower` type
-  ## Returns true if narrower fits entirely within wider (safe conversion)
-  if wider.isOrdinalType:
-    let wideFirst = firstOrd(conf, wider)
-    let wideLast = lastOrd(conf, wider)
-    let narrowFirst = firstOrd(conf, narrower)
-    let narrowLast = lastOrd(conf, narrower)
-    result = narrowFirst >= wideFirst and narrowLast <= wideLast
-  elif not narrower.isOrdinalType:
-    let wideFirst = firstFloat(wider)
-    let wideLast = lastFloat(wider)
-    let narrowFirst = firstFloat(narrower)
-    let narrowLast = lastFloat(narrower)
-    result = narrowFirst >= wideFirst and narrowLast <= wideLast
-  else:
-    # int -> float ranges; ignore for now
-    result = true
 
-proc shouldWarnRangeConversion(conf: ConfigRef; formalType, argType: PType): bool =
-  ## Determine if an implicit range conversion should warn
-  ## We warn on conversions that are likely to cause panics
-  let f = formalType.skipTypes({tyGenericInst, tyAlias, tySink, tyDistinct})
-  let a = argType.skipTypes({tyGenericInst, tyAlias, tySink, tyDistinct})
-  if f.kind == tyRange:
-    # Only warn if formal range doesn't fully contain argument range
-    # Check if the ranges don't perfectly overlap
-    result = not isRangeSupertype(conf, f, a)
-  else:
-    result = false
 
 proc isObjectSubtype(c: var TCandidate; a, f, fGenericOrigin: PType): int =
   var t = a
@@ -2518,10 +2489,6 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
 
   case r
   of isConvertible:
-    # Check for problematic implicit range conversions
-    if shouldWarnRangeConversion(c.config, f, a):
-      message(c.config, arg.info, warnImplicitRangeConversion,
-              typeToString(a) & " -> " & typeToString(f))
     if f.skipTypes({tyRange}).kind in {tyInt, tyUInt}:
       inc(m.convMatches)
     inc(m.convMatches)
@@ -2542,10 +2509,6 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
   of isIntConv:
     # I'm too lazy to introduce another ``*matches`` field, so we conflate
     # ``isIntConv`` and ``isIntLit`` here:
-    # Check for problematic implicit range conversions
-    if shouldWarnRangeConversion(c.config, f, a):
-      message(c.config, arg.info, warnImplicitRangeConversion,
-              typeToString(a) & " -> " & typeToString(f))
     if f.skipTypes({tyRange}).kind notin {tyInt, tyUInt}:
       inc(m.intConvMatches)
     inc(m.intConvMatches)
