@@ -84,6 +84,7 @@ type
     gcUnsafe, isRecursive, isTopLevel, hasSideEffect, inEnforcedGcSafe: bool
     isInnerProc: bool
     inEnforcedNoSideEffects: bool
+    isArrayIndexing: bool
     currentExceptType: PType
     unknownRaises: seq[(PSym, TLineInfo)]
     currOptions: TOptions
@@ -1536,7 +1537,7 @@ proc track(tracked: PEffects, n: PNode) =
           $n[1].typ)
 
     # Check for implicit range conversions
-    if n.kind == nkHiddenStdConv and
+    if n.kind == nkHiddenStdConv and (not tracked.isArrayIndexing) and
           shouldWarnRangeConversion(tracked.config, n.typ, n[1].typ):
       message(tracked.config, n.info, warnImplicitRangeConversion,
               typeToString(n[1].typ) & " -> " & typeToString(n.typ))
@@ -1578,7 +1579,12 @@ proc track(tracked: PEffects, n: PNode) =
         checkBounds(tracked, n[0], n[1])
     track(tracked, n[0])
     dec tracked.leftPartOfAsgn
-    for i in 1 ..< n.len: track(tracked, n[i])
+    for i in 1 ..< n.len:
+      if i == 1:
+        tracked.isArrayIndexing = true
+      track(tracked, n[i])
+      if i == 1:
+        tracked.isArrayIndexing = false
     inc tracked.leftPartOfAsgn
   of nkError:
     localError(tracked.config, n.info, errorToString(tracked.config, n))
