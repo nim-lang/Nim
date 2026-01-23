@@ -664,7 +664,9 @@ template internalAssert*(conf: ConfigRef, e: bool) =
 
 template lintReport*(conf: ConfigRef; info: TLineInfo, beau, got: string, extraMsg = "") =
   let m = "'$1' should be: '$2'$3" % [got, beau, extraMsg]
-  let msg = if optStyleError in conf.globalOptions: errGenerated else: hintName
+  let msg = if optStyleError in conf.globalOptions: errGenerated
+            elif optStyleWarning in conf.globalOptions: warnUser
+            else: hintName
   liMessage(conf, info, msg, m, doNothing, instLoc())
 
 proc quotedFilename*(conf: ConfigRef; fi: FileIndex): Rope =

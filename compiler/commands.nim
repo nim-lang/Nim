@@ -1142,9 +1142,10 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       defineSymbol(conf.symbols, "nimSeqsV2")
   of "stylecheck":
     case arg.normalize
-    of "off": conf.globalOptions = conf.globalOptions - {optStyleHint, optStyleError}
-    of "hint": conf.globalOptions = conf.globalOptions + {optStyleHint} - {optStyleError}
-    of "error": conf.globalOptions = conf.globalOptions + {optStyleError}
+    of "off": conf.globalOptions = conf.globalOptions - {optStyleHint, optStyleError, optStyleWarning}
+    of "hint": conf.globalOptions = conf.globalOptions + {optStyleHint} - {optStyleError, optStyleWarning}
+    of "warning": conf.globalOptions = conf.globalOptions + {optStyleWarning} - {optStyleHint, optStyleError}
+    of "error": conf.globalOptions = conf.globalOptions + {optStyleError} - {optStyleHint, optStyleWarning}
     of "usages": conf.globalOptions.incl optStyleUsages
     else: localError(conf, info, errOffHintsError % arg)
   of "showallmismatches":

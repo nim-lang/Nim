@@ -896,7 +896,7 @@ proc getSymbol(L: var Lexer, tok: var Token) =
     tok.tokType = tkSymbol
   else:
     tok.tokType = TokType(tok.ident.id + ord(tkSymbol))
-    if suspicious and {optStyleHint, optStyleError} * L.config.globalOptions != {}:
+    if suspicious and {optStyleHint, optStyleError, optStyleWarning} * L.config.globalOptions != {}:
       lintReport(L.config, getLineInfo(L), tok.ident.s.normalize, tok.ident.s)
   L.bufpos = pos
 
