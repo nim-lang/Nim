@@ -832,10 +832,18 @@ proc inheritBindings(c: PContext, x: var TCandidate, expectedType: PType) =
 
 proc compactVoidArgs(n: PNode): PNode =
   # deletes void args from the argument list, which are created by `setSon`
-  result = copyNode(n)
+  var hasNil = false
   for i in 0..<n.len:
-    if n[i] != nil:
-      result.add n[i]
+    if n[i] == nil:
+      hasNil = true
+      break
+  if not hasNil:
+    result = n
+  else:
+    result = copyNode(n)
+    for i in 0..<n.len:
+      if n[i] != nil:
+        result.add n[i]
 
 proc semResolvedCall(c: PContext, x: var TCandidate,
                      n: PNode, flags: TExprFlags;
