@@ -32,6 +32,7 @@ type
     nodes: seq[Node]
     processedModules: Table[string, int]  # modname -> node index
     includeStack: seq[string]
+    systemNodeId: int  # ID of the system.nim node
 
 proc toPair(c: DepContext; f: string): FilePair =
   FilePair(nimFile: f, modname: moduleSuffix(f, cast[seq[string]](c.config.searchPaths)))
@@ -128,6 +129,9 @@ proc processImport(c: var DepContext; importPath: string; current: Node) =
     # New module - create node and process it
     let newNode = Node(files: @[pair], id: c.nodes.len)
     current.deps.add newNode.id
+    # Every module depends on system.nim
+    if c.systemNodeId >= 0:
+      newNode.deps.add c.systemNodeId
     c.processedModules[pair.modname] = newNode.id
     c.nodes.add newNode
     traverseDeps(c, pair, newNode)
@@ -223,9 +227,9 @@ proc traverseDeps(c: var DepContext; pair: FilePair; current: Node) =
 
 proc generateBuildFile(c: DepContext): string =
   ## Generate the .build.nif file for nifmake
-  createDir("nifcache")
-  result = "nifcache" / c.nodes[0].files[0].modname & ".build.nif"
-  #getNimcacheDir(c.config).string / c.nodes[0].files[0].modname & ".build.nif"
+  let nimcache = getNimcacheDir(c.config).string
+  createDir(nimcache)
+  result = nimcache / c.nodes[0].files[0].modname & ".build.nif"
 
   var b = nifbuilder.open(result)
   defer: b.close()
@@ -250,7 +254,7 @@ proc generateBuildFile(c: DepContext): string =
   b.addSymbolDef "nim_m"
   b.addStrLit getAppFilename()
   b.addStrLit "m"
-  b.addStrLit "--nimcache:nifcache"
+  b.addStrLit "--nimcache:" & nimcache
   # Add search paths
   for p in c.config.searchPaths:
     b.addStrLit "--path:" & p.string
@@ -265,7 +269,7 @@ proc generateBuildFile(c: DepContext): string =
   b.addSymbolDef "nim_nifc"
   b.addStrLit getAppFilename()
   b.addStrLit "nifc"
-  b.addStrLit "--nimcache:nifcache"
+  b.addStrLit "--nimcache:" & nimcache
   # Add search paths
   for p in c.config.searchPaths:
     b.addStrLit "--path:" & p.string
@@ -354,7 +358,8 @@ proc commandIc*(conf: ConfigRef) =
       nifler: nifler,
       nodes: @[],
       processedModules: initTable[string, int](),
-      includeStack: @[]
+      includeStack: @[],
+      systemNodeId: -1
     )
 
     # Create root node for main project file
@@ -366,6 +371,7 @@ proc commandIc*(conf: ConfigRef) =
     # model the system.nim dependency:
     let sysNode = Node(files: @[toPair(c, (conf.libpath / RelativeFile"system.nim").string)], id: 1)
     c.nodes.add sysNode
+    c.systemNodeId = sysNode.id
     rootNode.deps.add sysNode.id
 
     # Process dependencies
