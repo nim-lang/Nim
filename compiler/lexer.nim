@@ -316,6 +316,28 @@ proc getNumber(L: var Lexer, result: var Token) =
     L.bufpos = msgPos
     lexMessage(L, msgKind, msg % t.literal)
 
+  proc checkBitWidth(L: var Lexer, base: NumericalBase, tokType: TokType, 
+                     numDigits: int, startpos: int) =
+    # Check bit width for non-base-10 literals
+    # Warn if the digit count exceeds what can fit in the target type
+    let bitsPerDigit = case base
+      of base2: 1
+      of base8: 3
+      of base16: 4
+      else: raiseAssert "unreachable"
+    let bitWidth = case tokType
+      of tkInt8Lit, tkUInt8Lit: 8
+      of tkInt16Lit, tkUInt16Lit: 16
+      of tkInt32Lit, tkUInt32Lit: 32
+      of tkInt64Lit, tkUIntLit, tkIntLit, tkUInt64Lit: 64
+      else: raiseAssert "unreachable"
+    # Maximum digits = ceil(bitWidth / bitsPerDigit) = (bitWidth + bitsPerDigit - 1) div bitsPerDigit
+    let maxDigits = (bitWidth + bitsPerDigit - 1) div bitsPerDigit
+    if numDigits > maxDigits:
+      lexMessageLitNum(L,
+        "number has " & $numDigits & " digits but type only supports " &
+        $maxDigits & " digits: '$1'", startpos, warnLongLiterals)
+
   var
     xi: BiggestInt
     isBase10 = true
@@ -490,6 +512,11 @@ proc getNumber(L: var Lexer, result: var Token) =
         of tkFloat64Lit, tkFloatLit:
           setNumber result.fNumber, (cast[ptr float64](addr(xi)))[]
         else: internalError(L.config, getLineInfo(L), "getNumber")
+
+        # Check bit width for non-base-10 literals
+        # Warn if the digit count exceeds what can fit in the target type
+        if result.base != base10 and result.tokType in {tkIntLit..tkUInt64Lit} and numDigits > 0:
+          checkBitWidth(L, result.base, result.tokType, numDigits, startpos)
 
         # Bounds checks. Non decimal literals are allowed to overflow the range of
         # the datatype as long as their pattern don't overflow _bitwise_, hence
