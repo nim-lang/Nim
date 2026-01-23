@@ -1251,7 +1251,7 @@ proc gproc(g: var TSrcGen, n: PNode) =
       gsub(g, n[miscPos][1])
     else:
       gsub(g, n[genericParamsPos])
-  if s != nil and s.typ != nil and s.typ.n != nil:
+  if n[paramsPos].len == 0 and s != nil and s.typ != nil and s.typ.n != nil:
     gsemmedParams(g, s.typ.n)
   else:
     gsub(g, n[paramsPos])

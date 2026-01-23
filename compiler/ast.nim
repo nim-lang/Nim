@@ -501,6 +501,7 @@ const
 proc idGeneratorFromModule*(m: PSym): IdGenerator =
   assert m.kind == skModule
   result = IdGenerator(module: m.itemId.module, symId: m.itemId.item, typeId: 0, disambTable: initCountTable[PIdent]())
+  result.disambTable.inc m.name
 
 proc idGeneratorForPackage*(nextIdWillBe: int32): IdGenerator =
   result = IdGenerator(module: PackageModuleId, symId: nextIdWillBe - 1'i32, typeId: 0, disambTable: initCountTable[PIdent]())
