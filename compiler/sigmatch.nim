@@ -3034,6 +3034,13 @@ proc partialMatch*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
   var marker = initIntSet()
   matchesAux(c, n, nOrig, m, marker)
 
+proc compactVoidArgs(n: PNode): PNode =
+  # deletes void args from the argument list, which are created by `setSon`
+  result = copyNode(n)
+  for i in 0..<n.len:
+    if n[i] != nil:
+      result.add n[i]
+
 proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
   if m.magic in {mArrGet, mArrPut}:
     m.state = csMatch
@@ -3092,6 +3099,10 @@ proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
             put(m, formal.typ, defaultValue.typ)
         defaultValue.flags.incl nfDefaultParam
         setSon(m.call, formal.position + 1, defaultValue)
+
+  if m.state == csMatch:
+    m.call = compactVoidArgs(m.call)
+
   # forget all inferred types if the overload matching failed
   if m.state == csNoMatch:
     for t in m.inferredTypes:
