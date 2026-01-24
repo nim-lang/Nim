@@ -3116,3 +3116,27 @@ proc arrayWithDefault*[T](size: static int): array[size, T] {.noinit, nodestroy,
   ## Creates a new array filled with `default(T)`.
   for i in 0..size-1:
     result[i] = default(T)
+
+when hostOS == "standalone":
+  # Include panicoverride.nim late so users can use the full extent of the
+  # language in their custom panic handlers (e.g. macros).
+  # Users define `proc panic(msg: string)` and `proc rawoutput(msg: string)`.
+  include "$projectpath/panicoverride"
+
+  when not declared(panic):
+    {.error:
+      "a panic proc with the following signature must be provided " &
+      "when compiling with --os:standalone: " &
+      "`proc panic(msg: string) {.nimcall.}`".}
+
+  when not declared(rawoutput):
+     {.error:
+      "a rawoutput proc with the following signature must be provided " &
+      "when compiling with --os:standalone: " &
+      "`proc rawoutput(msg: string) {.nimcall.}`".}
+
+  # Wrappers with exportc that fatal.nim references via importc.
+  # This way panicoverride keeps old API and can still be included without
+  # ssymbols being duplicated.
+  proc nimPanic(s: string) {.exportc, noreturn.} = panic(s)
+  proc nimRawoutput(s: string) {.exportc.} = rawoutput(s)
