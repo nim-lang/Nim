@@ -501,6 +501,7 @@ const
 proc idGeneratorFromModule*(m: PSym): IdGenerator =
   assert m.kind == skModule
   result = IdGenerator(module: m.itemId.module, symId: m.itemId.item, typeId: 0, disambTable: initCountTable[PIdent]())
+  result.disambTable.inc m.name
 
 proc idGeneratorForPackage*(nextIdWillBe: int32): IdGenerator =
   result = IdGenerator(module: PackageModuleId, symId: nextIdWillBe - 1'i32, typeId: 0, disambTable: initCountTable[PIdent]())
@@ -549,22 +550,25 @@ proc addAllowNil*(father, son: PNode) {.inline.} =
   father.sons.add(son)
 
 proc add*(father, son: PType) =
+  ensureMutable father
   assert father.kind != tyProc or father.sonsImpl.len == 0
   assert son != nil
   father.sonsImpl.add son
 
 proc addAllowNil*(father, son: PType) {.inline.} =
+  ensureMutable father
   assert father.kind != tyProc or father.sonsImpl.len == 0
   father.sonsImpl.add son
 
-template `[]`*(n: PType, i: int): PType =
+proc `[]`*(n: PType, i: int): PType {.inline.} =
   if n.state == Partial: loadType(n)
   if n.kind == tyProc and i > 0:
     assert n.nImpl[i] != nil and n.nImpl[i].sym != nil
     n.nImpl[i].sym.typ
   else:
     n.sonsImpl[i]
-template `[]=`*(n: PType, i: int; x: PType) =
+
+proc `[]=`*(n: PType, i: int; x: PType) {.inline.} =
   if n.state == Partial: loadType(n)
   if n.kind == tyProc and i > 0:
     assert n.nImpl[i] != nil and n.nImpl[i].sym != nil
@@ -572,12 +576,13 @@ template `[]=`*(n: PType, i: int; x: PType) =
   else:
     n.sonsImpl[i] = x
 
-template `[]`*(n: PType, i: BackwardsIndex): PType =
+proc `[]`*(n: PType, i: BackwardsIndex): PType {.inline.} =
   if n.state == Partial: loadType(n)
-  n[n.len - i.int]
-template `[]=`*(n: PType, i: BackwardsIndex; x: PType) =
+  n[n.sonsImpl.len - i.int]
+
+proc `[]=`*(n: PType, i: BackwardsIndex; x: PType) {.inline.} =
   if n.state == Partial: loadType(n)
-  n[n.len - i.int] = x
+  n[n.sonsImpl.len - i.int] = x
 
 proc getDeclPragma*(n: PNode): PNode =
   ## return the `nkPragma` node for declaration `n`, or `nil` if no pragma was found.
@@ -930,6 +935,7 @@ proc `$`*(s: PSym): string =
     result = "<nil>"
 
 proc len*(n: PType): int {.inline.} =
+  if n.state == Partial: loadType(n)
   if n.kind == tyProc:
     result = if n.nImpl == nil: 0 else: n.nImpl.len
   else:
@@ -1168,6 +1174,7 @@ proc skipTypesOrNil*(t: PType, kinds: TTypeKinds): PType =
   ## same as skipTypes but handles 'nil'
   result = t
   while result != nil and result.kind in kinds:
+    if result.state == Partial: loadType(result)
     if result.sonsImpl.len == 0: return nil
     result = last(result)
 
