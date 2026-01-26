@@ -1,5 +1,6 @@
 discard """
 ccodeCheck: "\\i @'NIM_ALIGN(128) NI mylocal1' .*"
+matrix: "--mm:refc; --mm:orc"
 targets: "c cpp"
 output: "align ok"
 """
@@ -66,4 +67,23 @@ block: # bug #22419
       doAssert value mod 16 == 0
 
   f()()
+
+
+type Xxx = object
+  v {.align: 128.}: byte
+
+type Yyy = object
+  v: byte
+  v2: Xxx
+
+for i in 0..<3:
+  let x = new Yyy
+  # echo "addr v2.v:", cast[uint](addr x.v2.v)
+  doAssert cast[uint](addr x.v2.v) mod 128 == 0
+
+let m = new Yyy
+m.v2.v = 42
+doAssert m.v2.v == 42
+m.v = 7
+doAssert m.v == 7
 
