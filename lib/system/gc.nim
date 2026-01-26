@@ -453,7 +453,8 @@ template setFrameInfo(c: PCell) =
       c.line = 0
 
 proc allocCellWithAlignment(typ: PNimType, size: int, gch: var GcHeap): PCell {.inline.} =
-  # Allocate a cell with proper alignment based on type requirements
+  # Allocate a cell with proper alignment based on type requirements.
+  # Follows the pattern from alignedAlloc in memalloc.nim
   let requiredAlign =
     if typ.base != nil and typ.base.align > 0:
       typ.base.align
@@ -465,10 +466,12 @@ proc allocCellWithAlignment(typ: PNimType, size: int, gch: var GcHeap): PCell {.
     result = cast[PCell](rawAlloc(gch.region, size +% sizeof(Cell)))
   else:
     let extra = requiredAlign -% 1
+    # allocate (size + align - 1) to ensure alignment
     let base = rawAlloc(gch.region, size +% sizeof(Cell) +% extra)
-    let baseInt = cast[BiggestInt](base)
-    let userInt = align(baseInt +% sizeof(Cell), requiredAlign)
-    result = cast[PCell](cast[pointer](userInt -% sizeof(Cell)))
+    # calculate offset to align the user data (after the Cell header)
+    # the user data starts at (base + sizeof(Cell)), so we align that address
+    let offset = requiredAlign -% cast[int]((cast[uint](base) + cast[uint](sizeof(Cell))) and cast[uint](extra))
+    result = cast[PCell](base +! offset)
 
 proc rawNewObj(typ: PNimType, size: int, gch: var GcHeap): pointer =
   # generates a new object and sets its reference counter to 0
