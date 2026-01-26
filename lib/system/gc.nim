@@ -470,7 +470,9 @@ proc allocCellWithAlignment(typ: PNimType, size: int, gch: var GcHeap): PCell {.
     let base = rawAlloc(gch.region, size +% sizeof(Cell) +% extra)
     # calculate offset to align the user data (after the Cell header)
     # the user data starts at (base + sizeof(Cell)), so we align that address
-    let offset = requiredAlign -% cast[int]((cast[uint](base) + cast[uint](sizeof(Cell))) and cast[uint](extra))
+    let userDataAddr = cast[uint](base) + cast[uint](sizeof(Cell))
+    let misalignment = userDataAddr and cast[uint](extra)
+    let offset = requiredAlign -% cast[int](misalignment)
     result = cast[PCell](base +! offset)
 
 proc rawNewObj(typ: PNimType, size: int, gch: var GcHeap): pointer =
