@@ -233,13 +233,11 @@ proc copyingEraseVoidParams(m: TCandidate, t: var PType) =
       if not copied:
         # keep first i children
         t = copyType(original, m.c.idgen, t.owner)
-        t.setSonsLen(i)
         t.n = copyNode(original.n)
         t.n.sons = original.n.sons
         t.n.sons.setLen(i)
         copied = true
     elif copied:
-      t.add(f)
       t.n.add(original.n[i])
 
 proc initCandidate*(ctx: PContext, callee: PSym,
@@ -3094,6 +3092,7 @@ proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
             put(m, formal.typ, defaultValue.typ)
         defaultValue.flags.incl nfDefaultParam
         setSon(m.call, formal.position + 1, defaultValue)
+
   # forget all inferred types if the overload matching failed
   if m.state == csNoMatch:
     for t in m.inferredTypes:

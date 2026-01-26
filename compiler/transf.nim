@@ -65,16 +65,14 @@ proc newTransNode(a: PNode): PNode {.inline.} =
 
 proc newTransNode(kind: TNodeKind, info: TLineInfo,
                   sons: int): PNode {.inline.} =
-  var x = newNodeI(kind, info)
-  newSeq(x.sons, sons)
-  result = x
+  result = newNodeI(kind, info)
+  newSeq(result.sons, sons)
 
 proc newTransNode(kind: TNodeKind, n: PNode,
                   sons: int): PNode {.inline.} =
-  var x = newNodeIT(kind, n.info, n.typ)
-  newSeq(x.sons, sons)
-#  x.flags = n.flags
-  result = x
+  result = newNodeIT(kind, n.info, n.typ)
+  newSeq(result.sons, sons)
+  #  x.flags = n.flags
 
 proc newTransCon(owner: PSym): PTransCon =
   assert owner != nil
@@ -247,6 +245,7 @@ proc hasContinue(n: PNode): bool =
   case n.kind
   of nkEmpty..nkNilLit, nkForStmt, nkParForStmt, nkWhileStmt: result = false
   of nkContinueStmt: result = true
+  of routineDefs: result = false
   else:
     result = false
     for i in 0..<n.len:

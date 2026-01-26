@@ -11,7 +11,7 @@ import
   ast, astalgo, msgs, renderer, magicsys, types, idents, trees,
   wordrecg, options, guards, lineinfos, semfold, semdata,
   modulegraphs, varpartitions, typeallowed, nilcheck, errorhandling,
-  semstrictfuncs, suggestsymdb, pushpoppragmas, lowerings
+  semstrictfuncs, suggestsymdb, pushpoppragmas
 
 import std/[tables, intsets, strutils, sequtils]
 
@@ -84,6 +84,7 @@ type
     gcUnsafe, isRecursive, isTopLevel, hasSideEffect, inEnforcedGcSafe: bool
     isInnerProc: bool
     inEnforcedNoSideEffects: bool
+    currentExceptType: PType
     unknownRaises: seq[(PSym, TLineInfo)]
     currOptions: TOptions
     optionsStack: seq[(TOptions, TNoteKinds)]
@@ -577,11 +578,25 @@ proc trackTryStmt(tracked: PEffects, n: PNode) =
     let b = n[i]
     if b.kind == nkExceptBranch:
       setLen(tracked.init, oldState)
+      # If this except branch catches exactly one type, record it so an
+      # empty `raise` inside the branch can be inferred as re-raising that
+      # specific exception type instead of the generic `Exception`.
+      var savedExcept: PType = tracked.currentExceptType
+      var inferredExcept: PType = nil
+      if b.len == 2:
+        if b[0].isInfixAs():
+          assert(b[0][1].kind == nkType)
+          inferredExcept = b[0][1].typ
+        else:
+          assert(b[0].kind == nkType)
+          inferredExcept = b[0].typ
+      tracked.currentExceptType = inferredExcept
       for j in 0..<b.len - 1:
         if b[j].isInfixAs(): # skips initialization checks
           assert(b[j][2].kind == nkSym)
           tracked.init.add b[j][2].sym.id
       track(tracked, b[^1])
+      tracked.currentExceptType = savedExcept
       for i in oldState..<tracked.init.len:
         addToIntersection(inter, tracked.init[i], bsNone)
     else:
@@ -1264,7 +1279,14 @@ proc track(tracked: PEffects, n: PNode) =
       # A `raise` with no arguments means we're going to re-raise the exception
       # being handled or, if outside of an `except` block, a `ReraiseDefect`.
       # Here we add a `Exception` tag in order to cover both the cases.
-      addRaiseEffect(tracked, createRaise(tracked.graph, n), nil)
+      if tracked.currentExceptType != nil:
+        var en = newNode(nkType)
+        en.typ = tracked.currentExceptType
+        en.info = n.info
+        addRaiseEffect(tracked, en, nil)
+        createTypeBoundOps(tracked, tracked.currentExceptType, n.info)
+      else:
+        addRaiseEffect(tracked, createRaise(tracked.graph, n), nil)
   of nkCallKinds:
     trackCall(tracked, n)
   of nkDotExpr:

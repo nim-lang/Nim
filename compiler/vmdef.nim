@@ -105,7 +105,7 @@ type
     opcIsNil, opcOf, opcIs,
     opcParseFloat, opcConv, opcCast,
     opcQuit, opcInvalidField,
-    opcNarrowS, opcNarrowU,
+    opcNarrowS, opcNarrowU, opcNarrowR
     opcSignExtend,
 
     opcAddStrCh,

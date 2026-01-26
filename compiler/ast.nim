@@ -10,7 +10,7 @@
 # abstract syntax tree + symbol table
 
 import
-  lineinfos, options, ropes, idents, int128, wordrecg
+  lineinfos, options, idents, int128, wordrecg
 
 import std/[tables, hashes]
 from std/strutils import toLowerAscii
@@ -45,6 +45,12 @@ template loadType(t: PType) =
   ## Loads a type from NIF file if it's in Partial state.
   when not defined(nimKochBootstrap):
     ast2nif.loadType(program, t)
+
+proc loadSymCallback*(s: PSym) {.nimcall.} =
+  loadSym(s)
+
+proc loadTypeCallback*(t: PType) {.nimcall.} =
+  loadType(t)
 
 proc ensureMutable*(s: PSym) {.inline.} =
   assert s.state != Sealed
@@ -82,9 +88,6 @@ proc setOwner*(s: PType; owner: PSym) {.inline.} =
   if s.state == Partial: loadType(s)
   s.ownerFieldImpl = owner
 
-# Accessor procs for TSym fields
-# Note: kind is kept as a direct field for case statement compatibility
-# but we still provide an accessor that checks state
 proc kind*(s: PSym): TSymKind {.inline.} =
   if s.state == Partial: loadSym(s)
   result = s.kindImpl
@@ -227,7 +230,7 @@ proc offset*(s: PSym): int32 {.inline.} =
   result = s.offsetImpl
 
 proc `offset=`*(s: PSym, val: int32) {.inline.} =
-  assert s.state != Sealed
+  #assert s.state != Sealed
   if s.state == Partial: loadSym(s)
   s.offsetImpl = val
 
@@ -293,7 +296,8 @@ proc incl*(s: PSym; flags: set[TSymFlag]) {.inline.} =
   s.flagsImpl.incl(flags)
 
 proc incl*(s: PSym; flag: TLocFlag) {.inline.} =
-  assert s.state != Sealed
+  #assert s.state != Sealed
+  # locImpl is a backend field so do not protect it against mutations
   if s.state == Partial: loadSym(s)
   s.locImpl.flags.incl(flag)
 
@@ -497,6 +501,7 @@ const
 proc idGeneratorFromModule*(m: PSym): IdGenerator =
   assert m.kind == skModule
   result = IdGenerator(module: m.itemId.module, symId: m.itemId.item, typeId: 0, disambTable: initCountTable[PIdent]())
+  result.disambTable.inc m.name
 
 proc idGeneratorForPackage*(nextIdWillBe: int32): IdGenerator =
   result = IdGenerator(module: PackageModuleId, symId: nextIdWillBe - 1'i32, typeId: 0, disambTable: initCountTable[PIdent]())
@@ -545,25 +550,39 @@ proc addAllowNil*(father, son: PNode) {.inline.} =
   father.sons.add(son)
 
 proc add*(father, son: PType) =
+  ensureMutable father
+  assert father.kind != tyProc or father.sonsImpl.len == 0
   assert son != nil
   father.sonsImpl.add son
 
 proc addAllowNil*(father, son: PType) {.inline.} =
+  ensureMutable father
+  assert father.kind != tyProc or father.sonsImpl.len == 0
   father.sonsImpl.add son
 
-template `[]`*(n: PType, i: int): PType =
+proc `[]`*(n: PType, i: int): PType {.inline.} =
   if n.state == Partial: loadType(n)
-  n.sonsImpl[i]
-template `[]=`*(n: PType, i: int; x: PType) =
-  if n.state == Partial: loadType(n)
-  n.sonsImpl[i] = x
+  if n.kind == tyProc and i > 0:
+    assert n.nImpl[i] != nil and n.nImpl[i].sym != nil
+    n.nImpl[i].sym.typ
+  else:
+    n.sonsImpl[i]
 
-template `[]`*(n: PType, i: BackwardsIndex): PType =
+proc `[]=`*(n: PType, i: int; x: PType) {.inline.} =
   if n.state == Partial: loadType(n)
-  n[n.len - i.int]
-template `[]=`*(n: PType, i: BackwardsIndex; x: PType) =
+  if n.kind == tyProc and i > 0:
+    assert n.nImpl[i] != nil and n.nImpl[i].sym != nil
+    n.nImpl[i].sym.typ = x
+  else:
+    n.sonsImpl[i] = x
+
+proc `[]`*(n: PType, i: BackwardsIndex): PType {.inline.} =
   if n.state == Partial: loadType(n)
-  n[n.len - i.int] = x
+  n[n.sonsImpl.len - i.int]
+
+proc `[]=`*(n: PType, i: BackwardsIndex; x: PType) {.inline.} =
+  if n.state == Partial: loadType(n)
+  n[n.sonsImpl.len - i.int] = x
 
 proc getDeclPragma*(n: PNode): PNode =
   ## return the `nkPragma` node for declaration `n`, or `nil` if no pragma was found.
@@ -802,7 +821,10 @@ proc replaceSon*(n: PNode; i: int; newson: PNode) {.inline.} =
 
 proc last*(n: PType): PType {.inline.} =
   if n.state == Partial: loadType(n)
-  n.sonsImpl[^1]
+  if n.kind == tyProc and n.nImpl.len > 1:
+    n.nImpl[^1].sym.typ
+  else:
+    n.sonsImpl[^1]
 
 proc elementType*(n: PType): PType {.inline.} =
   if n.state == Partial: loadType(n)
@@ -838,7 +860,10 @@ proc setIndexType*(n, idx: PType) {.inline.} =
 
 proc firstParamType*(n: PType): PType {.inline.} =
   if n.state == Partial: loadType(n)
-  n.sonsImpl[1]
+  if n.kind == tyProc:
+    n.nImpl[1].sym.typ
+  else:
+    n.sonsImpl[1]
 
 proc firstGenericParam*(n: PType): PType {.inline.} =
   if n.state == Partial: loadType(n)
@@ -910,10 +935,14 @@ proc `$`*(s: PSym): string =
     result = "<nil>"
 
 proc len*(n: PType): int {.inline.} =
-  result = n.sonsImpl.len
+  if n.state == Partial: loadType(n)
+  if n.kind == tyProc:
+    result = if n.nImpl == nil: 0 else: n.nImpl.len
+  else:
+    result = n.sonsImpl.len
 
 proc sameTupleLengths*(a, b: PType): bool {.inline.} =
-  result = a.sonsImpl.len == b.sonsImpl.len
+  result = a.len == b.len
 
 iterator tupleTypePairs*(a, b: PType): (int, PType, PType) =
   for i in 0 ..< a.len:
@@ -1008,15 +1037,20 @@ proc newType*(kind: TTypeKind; idgen: IdGenerator; owner: PSym; son: sink PType 
                  alignImpl: defaultAlignment, itemId: id,
                  uniqueId: id, sonsImpl: @[])
   if son != nil:
+    assert kind != tyProc
     result.sonsImpl.add son
   when false:
     if result.itemId.module == 55 and result.itemId.item == 2:
       echo "KNID ", kind
       writeStackTrace()
 
-proc setSons*(dest: PType; sons: sink seq[PType]) {.inline.} = dest.sonsImpl = sons
-proc setSon*(dest: PType; son: sink PType) {.inline.} = dest.sonsImpl = @[son]
+proc setSons*(dest: PType; sons: sink seq[PType]) {.inline.} =
+  assert dest.kind != tyProc or sons.len <= 1
+  dest.sonsImpl = sons
+proc setSon*(dest: PType; son: sink PType) {.inline.} =
+  dest.sonsImpl = @[son]
 proc setSonsLen*(dest: PType; len: int) {.inline.} =
+  assert dest.kind != tyProc or len <= 1
   setLen(dest.sonsImpl, len)
 
 proc mergeLoc(a: var TLoc, b: TLoc) =
@@ -1030,6 +1064,7 @@ proc newSons*(father: PNode, length: int) =
   setLen(father.sons, length)
 
 proc newSons*(father: PType, length: int) =
+  assert father.kind != tyProc or length <= 1
   setLen(father.sonsImpl, length)
 
 proc truncateInferredTypeCandidates*(t: PType) {.inline.} =
@@ -1054,8 +1089,16 @@ proc assignType*(dest, src: PType) =
       mergeLoc(dest.sym.locImpl, src.sym.loc)
     else:
       dest.symImpl = src.sym
-  newSons(dest, src.len)
-  for i in 0..<src.len: dest[i] = src[i]
+  if src.kind == tyProc:
+    # `tyProc` uses only `sonsImpl[0]` to store return type.
+    # parameter symbols and types are stored in `nImpl`.
+    assert src.sonsImpl.len <= 1
+    if src.len > 0:
+      setLen(dest.sonsImpl, 1)
+      dest.sonsImpl[0] = src.sonsImpl[0]
+  else:
+    newSons(dest, src.len)
+    for i in 0..<src.len: dest[i] = src[i]
 
 proc copyType*(t: PType, idgen: IdGenerator, owner: PSym): PType =
   result = newType(t.kind, idgen, owner)
@@ -1131,6 +1174,7 @@ proc skipTypesOrNil*(t: PType, kinds: TTypeKinds): PType =
   ## same as skipTypes but handles 'nil'
   result = t
   while result != nil and result.kind in kinds:
+    if result.state == Partial: loadType(result)
     if result.sonsImpl.len == 0: return nil
     result = last(result)
 
@@ -1165,7 +1209,8 @@ proc propagateToOwner*(owner, elem: PType; propagateHasAsgn = true) =
 
 proc rawAddSon*(father, son: PType; propagateHasAsgn = true) =
   ensureMutable father
-  father.sonsImpl.add(son)
+  if father.kind != tyProc or father.sonsImpl.len == 0:
+    father.sonsImpl.add(son)
   if not son.isNil: propagateToOwner(father, son, propagateHasAsgn)
 
 proc addSonNilAllowed*(father, son: PNode) =
@@ -1571,7 +1616,7 @@ proc newProcType*(info: TLineInfo; idgen: IdGenerator; owner: PSym): PType =
   result.n.add newNodeI(nkEffectList, info)
 
 proc addParam*(procType: PType; param: PSym) =
-  param.position = procType.sons.len-1
+  param.position = procType.n.len - 1
   procType.n.add newSymNode(param)
   rawAddSon(procType, param.typ)
 
@@ -1642,3 +1687,10 @@ type
 
 template initSymMapping*(): SymMapping = initIdTable[PSym]()
 template initTypeMapping*(): TypeMapping = initIdTable[PType]()
+
+proc sameModules*(a, b: PSym): bool {.inline.} =
+  assert a.kind == skModule and b.kind == skModule
+  result = a.position == b.position
+
+proc sameOwners*(a, b: PSym): bool =
+  result = a == b or (a.kind == skModule and b.kind == skModule and a.position == b.position) or a.id == b.id

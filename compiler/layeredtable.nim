@@ -1,4 +1,3 @@
-import std/[tables]
 import ast, astalgo
 
 type

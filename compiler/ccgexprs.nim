@@ -749,16 +749,16 @@ proc binaryArith(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     let t = getType()
     let at = cUintType(k)
     let bt = cUintType(s)
-    res = cCast(t, cOp(Shr, at, cCast(at, ra), cCast(bt, rb)))
+    res = cCast(t, cOp(Shr, at, cCast(at, ra), cOp(BitAnd, at, cCast(bt, rb), cIntLiteral(k - 1))))
   of mShlI:
     let t = getType()
     let at = cUintType(s)
-    res = cCast(t, cOp(Shl, at, cCast(at, ra), cCast(at, rb)))
+    res = cCast(t, cOp(Shl, at, cCast(at, ra), cOp(BitAnd, at, cCast(at, rb), cIntLiteral(k - 1))))
   of mAshrI:
     let t = getType()
     let at = cIntType(s)
     let bt = cUintType(s)
-    res = cCast(t, cOp(Shr, at, cCast(at, ra), cCast(bt, rb)))
+    res = cCast(t, cOp(Shr, at, cCast(at, ra), cOp(BitAnd, at, cCast(bt, rb), cIntLiteral(k - 1))))
   of mBitandI:
     let t = getType()
     res = cCast(t, cOp(BitAnd, t, ra, rb))
@@ -3366,7 +3366,7 @@ proc genConstSetup(p: BProc; sym: PSym): bool =
   useHeader(m, sym)
   if sym.loc.k == locNone:
     fillBackendName(p.module, sym)
-    ensureMutable sym
+    backendEnsureMutable sym
     fillLoc(sym.locImpl, locData, sym.astdef, OnStatic)
   if m.hcrOn: incl(sym, lfIndirect)
   result = lfNoDecl notin sym.loc.flags
@@ -3722,8 +3722,66 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
     inc p.splitDecls
     genGotoState(p, n)
   of nkBreakState: genBreakState(p, n, d)
-  of nkMixinStmt, nkBindStmt: discard
+  of nkMixinStmt, nkBindStmt, nkReplayAction: discard
   else: internalError(p.config, n.info, "expr(" & $n.kind & "); unknown node kind")
+
+proc isOpaqueImportcType(t: PType): bool =
+  # importc type without completeStruct that can't use aggregate init (e.g. C11 _Atomic)
+  if t.sym != nil and sfImportc in t.sym.flags:
+    if tfCompleteStruct notin t.flags:
+      if tfIncompleteStruct in t.flags:
+        return true
+      if t.kind == tyObject and (t.n == nil or t.n.len == 0):
+        return true
+  return false
+
+proc containsOpaqueImportcField(typ: PType): bool
+
+proc containsOpaqueImportcFieldAux(t: PType; n: PNode): bool =
+  if n == nil: return false
+  case n.kind
+  of nkRecList:
+    for child in n.sons:
+      if containsOpaqueImportcFieldAux(t, child):
+        return true
+  of nkRecCase:
+    if containsOpaqueImportcFieldAux(t, n[0]):
+      return true
+    for i in 1..<n.len:
+      let branch = n[i]
+      if branch.kind == nkOfBranch or branch.kind == nkElse:
+        if containsOpaqueImportcFieldAux(t, branch.lastSon):
+          return true
+  of nkSym:
+    if containsOpaqueImportcField(n.sym.typ):
+      return true
+  else:
+    discard
+  return false
+
+proc containsOpaqueImportcField(typ: PType): bool =
+  # Check if type contains opaque importc fields that need designated initializers
+  if typ == nil: return false
+  let t = skipTypes(typ, abstractRange+{tyOwned}-{tyTypeDesc})
+  if isOpaqueImportcType(t):
+    return true
+  case t.kind
+  of tyObject:
+    if t.baseClass != nil:
+      if containsOpaqueImportcField(t.baseClass):
+        return true
+    if containsOpaqueImportcFieldAux(t, t.n):
+      return true
+  of tyTuple:
+    for i, a in t.ikids:
+      if containsOpaqueImportcField(a):
+        return true
+  of tyArray:
+    if containsOpaqueImportcField(t.elementType):
+      return true
+  else:
+    discard
+  return false
 
 proc getDefaultValue(p: BProc; typ: PType; info: TLineInfo; result: var Builder) =
   var t = skipTypes(typ, abstractRange+{tyOwned}-{tyTypeDesc})
@@ -3755,24 +3813,34 @@ proc getDefaultValue(p: BProc; typ: PType; info: TLineInfo; result: var Builder)
         result.addField(closureInit, name = "ClE_0"):
           result.add(NimNil)
   of tyObject:
+    # Use designated initializers when opaque importc fields present
     var objInit: StructInitializer
-    result.addStructInitializer(objInit, kind = siOrderedStruct):
+    let initKind = if containsOpaqueImportcField(t): siNamedStruct else: siOrderedStruct
+    result.addStructInitializer(objInit, kind = initKind):
       getNullValueAuxT(p, t, t, t.n, nil, result, objInit, true, info)
   of tyTuple:
+    # Use designated initializers when opaque importc fields present
     var tupleInit: StructInitializer
-    result.addStructInitializer(tupleInit, kind = siOrderedStruct):
+    let initKind = if containsOpaqueImportcField(t): siNamedStruct else: siOrderedStruct
+    result.addStructInitializer(tupleInit, kind = initKind):
       if p.vccAndC and t.isEmptyTupleType:
         result.addField(tupleInit, name = "dummy"):
           result.addIntValue(0)
       for i, a in t.ikids:
-        result.addField(tupleInit, name = "Field" & $i):
-          getDefaultValue(p, a, info, result)
+        let elemTyp = skipTypes(a, abstractRange+{tyOwned}-{tyTypeDesc})
+        if not isOpaqueImportcType(elemTyp):
+          result.addField(tupleInit, name = "Field" & $i):
+            getDefaultValue(p, a, info, result)
   of tyArray:
-    var arrInit: StructInitializer
-    result.addStructInitializer(arrInit, kind = siArray):
-      for i in 0..<toInt(lengthOrd(p.config, t.indexType)):
-        result.addField(arrInit, name = ""):
-          getDefaultValue(p, t.elementType, info, result)
+    let elemTyp = skipTypes(t.elementType, abstractRange+{tyOwned}-{tyTypeDesc})
+    if isOpaqueImportcType(elemTyp):
+      result.add "{0}"
+    else:
+      var arrInit: StructInitializer
+      result.addStructInitializer(arrInit, kind = siArray):
+        for i in 0..<toInt(lengthOrd(p.config, t.indexType)):
+          result.addField(arrInit, name = ""):
+            getDefaultValue(p, t.elementType, info, result)
     #result = rope"{}"
   of tyOpenArray, tyVarargs:
     var openArrInit: StructInitializer
@@ -3827,8 +3895,7 @@ proc getNullValueAux(p: BProc; t: PType; obj, constOrNil: PNode,
     var fieldName: string = ""
     if b.kind == nkRecList and not isEmptyCaseObjectBranch(b):
       fieldName = "_" & mangleRecFieldName(p.module, obj[0].sym) & "_" & $selectedBranch
-      result.addField(init, name = "<anonymous union>"):
-        # XXX figure out name for the union, see use of `addAnonUnion`
+      result.addField(init, name = ""): # anonymous union
         var branchInit: StructInitializer
         result.addStructInitializer(branchInit, kind = siNamedStruct):
           result.addField(branchInit, name = fieldName):
@@ -3837,8 +3904,7 @@ proc getNullValueAux(p: BProc; t: PType; obj, constOrNil: PNode,
               getNullValueAux(p, t, b, constOrNil, result, branchObjInit, isConst, info)
     elif b.kind == nkSym:
       fieldName = mangleRecFieldName(p.module, b.sym)
-      result.addField(init, name = "<anonymous union>"):
-        # XXX figure out name for the union, see use of `addAnonUnion`
+      result.addField(init, name = ""): # anonymous union
         var branchInit: StructInitializer
         result.addStructInitializer(branchInit, kind = siNamedStruct):
           result.addField(branchInit, name = fieldName):
@@ -3853,6 +3919,9 @@ proc getNullValueAux(p: BProc; t: PType; obj, constOrNil: PNode,
 
   of nkSym:
     let field = obj.sym
+    let fieldTyp = skipTypes(field.typ, abstractRange+{tyOwned}-{tyTypeDesc})
+    if isOpaqueImportcType(fieldTyp):
+      return # C zero-initializes omitted fields
     let sname = mangleRecFieldName(p.module, field)
     result.addField(init, name = sname):
       block fieldInit:
@@ -3897,11 +3966,10 @@ proc getNullValueAuxT(p: BProc; orig, t: PType; obj, constOrNil: PNode,
 
 proc genConstObjConstr(p: BProc; n: PNode; isConst: bool; result: var Builder) =
   let t = n.typ.skipTypes(abstractInstOwned)
-  #if not isObjLackingTypeField(t) and not p.module.compileToCpp:
-  #  result.addf("{$1}", [genTypeInfo(p.module, t)])
-  #  inc count
+  # Use designated initializers when opaque importc fields present
   var objInit: StructInitializer
-  result.addStructInitializer(objInit, kind = siOrderedStruct):
+  let initKind = if t.kind == tyObject and containsOpaqueImportcField(t): siNamedStruct else: siOrderedStruct
+  result.addStructInitializer(objInit, kind = initKind):
     if t.kind == tyObject:
       getNullValueAuxT(p, t, t, t.n, n, result, objInit, isConst, n.info)
 

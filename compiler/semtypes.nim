@@ -210,7 +210,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
     )
 
   if isPure and sfExported in result.sym.flags:
-    addPureEnum(c, LazySym(sym: result.sym))
+    addPureEnum(c, result.sym)
   if tfNotNil in e.typ.flags and not hasNull:
     result.incl tfRequiresInit
   setToStringProc(c.graph, result, genEnumToStrProc(result, n.info, c.graph, c.idgen))
@@ -2219,11 +2219,8 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     else:
       result = semTypeNode(c, whenResult, prev)
   of nkBracketExpr:
-    checkMinSonsLen(n, 2, c.config)
-    # Provide clearer error for empty bracket expressions (issue #25231)
-    if n.len == 1:
-      localError(c.config, n.info, "invalid empty generic instantiation")
-      return errorType(c)
+    # Actually len >= 2 is required, but it doesn't print errors nicely with empty brackets
+    checkMinSonsLen(n, 1, c.config)
     var head = n[0]
     var s = if head.kind notin nkCallKinds: semTypeIdent(c, head)
             else: symFromExpectedTypeNode(c, semExpr(c, head))
@@ -2241,10 +2238,21 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
         incl result, tfHasAsgn
     of mVarargs: result = semVarargs(c, n, prev)
     of mTypeDesc, mType, mTypeOf:
-      result = makeTypeDesc(c, semTypeNode(c, n[1], nil))
-      result.incl tfExplicit
+      if n.len != 2:
+        let name = case s.magic:
+                   of mTypeDesc: "typedesc"
+                   of mType: "type"
+                   of mTypeOf: "typeof"
+                   else: ""
+        localError(c.config, n.info, errXExpectsOneTypeParam % name)
+      else:
+        result = makeTypeDesc(c, semTypeNode(c, n[1], nil))
+        result.incl tfExplicit
     of mStatic:
-      result = semStaticType(c, n[1], prev)
+      if n.len != 2:
+        localError(c.config, n.info, errXExpectsOneTypeParam % "static")
+      else:
+        result = semStaticType(c, n[1], prev)
     of mExpr:
       result = semTypeNode(c, n[0], nil)
       if result != nil:
@@ -2254,9 +2262,11 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
         for i in 1..<n.len:
           result.rawAddSon(semTypeNode(c, n[i], nil))
     of mDistinct:
+      checkSonsLen(n, 2, c.config)
       result = newOrPrevType(tyDistinct, prev, c)
       addSonSkipIntLit(result, semTypeNode(c, n[1], nil), c.idgen)
     of mVar:
+      checkSonsLen(n, 2, c.config)
       result = newOrPrevType(tyVar, prev, c)
       var base = semTypeNode(c, n[1], nil)
       if base.kind in {tyVar, tyLent}:

@@ -118,7 +118,7 @@ const
   errInvalidCmdLineOption = "invalid command line option: '$1'"
   errOnOrOffExpectedButXFound = "'on' or 'off' expected, but '$1' found"
   errOnOffOrListExpectedButXFound = "'on', 'off' or 'list' expected, but '$1' found"
-  errOffHintsError = "'off', 'hint', 'error' or 'usages' expected, but '$1' found"
+  errOffHintsError = "'off', 'hint', 'warning', 'error' or 'usages' expected, but '$1' found"
 
 proc invalidCmdLineOption(conf: ConfigRef; pass: TCmdLinePass, switch: string, info: TLineInfo) =
   if switch == " ": localError(conf, info, errInvalidCmdLineOption % "-")
@@ -494,12 +494,11 @@ proc parseCommand*(command: string): Command =
   of "gendepend": cmdGendepend
   of "dump": cmdDump
   of "parse": cmdParse
-  of "rod": cmdRod
   of "secret": cmdInteractive
   of "nop", "help": cmdNop
   of "jsonscript": cmdJsonscript
   of "nifc": cmdNifC  # generate C from NIF files
-  of "deps": cmdDeps  # generate .build.nif for nifmake
+  of "ic": cmdIc  # generate .build.nif for nifmake
   else: cmdUnknown
 
 proc setCmd*(conf: ConfigRef, cmd: Command) =
@@ -1000,7 +999,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       # xxx maybe also ic, since not in help?
     if pass in {passCmd2, passPP}:
       case arg.normalize
-      of "on": conf.symbolFiles = v2Sf
+      of "on": conf.ic = true
+      of "legacy": conf.symbolFiles = v2Sf
       of "off": conf.symbolFiles = disabledSf
       of "writeonly": conf.symbolFiles = writeOnlySf
       of "readonly": conf.symbolFiles = readOnlySf
@@ -1108,6 +1108,9 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "shownonexports":
     expectNoArg(conf, switch, arg, pass, info)
     showNonExportedFields(conf)
+  of "raw":
+    expectNoArg(conf, switch, arg, pass, info)
+    docRawOutput(conf)
   of "exceptions":
     case arg.normalize
     of "cpp": conf.exc = excCpp
@@ -1139,9 +1142,10 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       defineSymbol(conf.symbols, "nimSeqsV2")
   of "stylecheck":
     case arg.normalize
-    of "off": conf.globalOptions = conf.globalOptions - {optStyleHint, optStyleError}
-    of "hint": conf.globalOptions = conf.globalOptions + {optStyleHint} - {optStyleError}
-    of "error": conf.globalOptions = conf.globalOptions + {optStyleError}
+    of "off": conf.globalOptions = conf.globalOptions - {optStyleHint, optStyleError, optStyleWarning}
+    of "hint": conf.globalOptions = conf.globalOptions + {optStyleHint} - {optStyleError, optStyleWarning}
+    of "warning": conf.globalOptions = conf.globalOptions + {optStyleWarning} - {optStyleHint, optStyleError}
+    of "error": conf.globalOptions = conf.globalOptions + {optStyleError} - {optStyleHint, optStyleWarning}
     of "usages": conf.globalOptions.incl optStyleUsages
     else: localError(conf, info, errOffHintsError % arg)
   of "showallmismatches":

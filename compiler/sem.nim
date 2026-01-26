@@ -889,8 +889,6 @@ proc semWithPContext*(c: PContext, n: PNode): PNode =
       else:
         result = newNodeI(nkEmpty, n.info)
       #if c.config.cmd == cmdIdeTools: findSuggest(c, n)
-  storeRodNode(c, result)
-
 
 proc reportUnusedModules(c: PContext) =
   if c.config.cmd == cmdM: return

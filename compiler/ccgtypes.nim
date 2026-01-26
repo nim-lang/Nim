@@ -11,7 +11,7 @@
 
 # ------------------------- Name Mangling --------------------------------
 
-import sighashes, modulegraphs, std/strscans
+import sighashes, std/strscans
 import ../dist/checksums/src/checksums/md5
 import std/sequtils
 
@@ -124,7 +124,7 @@ proc fillLocalName(p: BProc; s: PSym) =
     elif s.kind != skResult:
       result.add "_" & rope(counter+1)
     p.sigConflicts.inc(key)
-    ensureMutable s
+    backendEnsureMutable s
     s.locImpl.snippet = result
 
 proc scopeMangledParam(p: BProc; param: PSym) =
@@ -844,6 +844,54 @@ proc getOpenArrayDesc(m: BModule; t: PType, check: var IntSet; kind: TypeDescKin
           m.s[cfsTypes].addField(name = "Field0", typ = ptrType(elemType))
           m.s[cfsTypes].addField(name = "Field1", typ = NimInt)
 
+proc importedCppObject(m: BModule; t, tt: PType; check: var IntSet; kind: TypeDescKind; sig: SigHash; result: var Rope) =
+  let cppNameAsRope = getTypeName(m, t, sig)
+  let cppName = $cppNameAsRope
+  var i = 0
+  var chunkStart = 0
+
+  template addResultType(ty: untyped) =
+    if ty == nil or ty.kind == tyVoid:
+      result.add(CVoid)
+    elif ty.kind == tyStatic:
+      internalAssert m.config, ty.n != nil
+      result.add ty.n.renderTree
+    else:
+      result.add getTypeDescAux(m, ty, check, kind)
+
+  while i < cppName.len:
+    if cppName[i] == '\'':
+      var chunkEnd = i-1
+      var idx, stars: int = 0
+      if scanCppGenericSlot(cppName, i, idx, stars):
+        result.add cppName.substr(chunkStart, chunkEnd)
+        chunkStart = i
+
+        let typeInSlot = resolveStarsInCppType(tt, idx + 1, stars)
+        addResultType(typeInSlot)
+    else:
+      inc i
+
+  if chunkStart != 0:
+    result.add cppName.substr(chunkStart)
+  else:
+    result = cppNameAsRope & "<"
+    for needsComma, a in tt.genericInstParams:
+      if needsComma: result.add(" COMMA ")
+      addResultType(a)
+    result.add("> ")
+  # always call for sideeffects:
+  assert t.kind != tyTuple
+  discard getRecordDesc(m, t, result, check)
+  # The resulting type will include commas and these won't play well
+  # with the C macros for defining procs such as N_NIMCALL. We must
+  # create a typedef for the type and use it in the proc signature:
+  let typedefName = "TY" & $sig
+  m.s[cfsTypes].addTypedef(name = typedefName):
+    m.s[cfsTypes].add(result)
+  m.typeCache[sig] = typedefName
+  result = typedefName
+
 proc getTypeDescAux(m: BModule; origTyp: PType, check: var IntSet; kind: TypeDescKind): Rope =
   # returns only the type's name
   var t = origTyp.skipTypes(irrelevantForBackend-{tyOwned})
@@ -859,7 +907,7 @@ proc getTypeDescAux(m: BModule; origTyp: PType, check: var IntSet; kind: TypeDes
 
   # tyDistinct matters if it is an importc type
   result = getTypePre(m, origTyp.skipTypes(irrelevantForBackend-{tyOwned, tyDistinct}), sig)
-  defer: # defer is the simplest in this case
+  defer:
     if isImportedType(t) and not m.typeABICache.containsOrIncl(sig):
       addAbiCheck(m, t, result)
 
@@ -993,7 +1041,7 @@ proc getTypeDescAux(m: BModule; origTyp: PType, check: var IntSet; kind: TypeDes
       m.s[cfsTypes].addArrayTypedef(name = result, len = 1):
         m.s[cfsTypes].add(et)
   of tyArray:
-    var n: BiggestInt = toInt64(lengthOrd(m.config, t))
+    var n = toInt64(lengthOrd(m.config, t))
     if n <= 0: n = 1   # make an array of at least one element
     result = getTypeName(m, origTyp, sig)
     m.typeCache[sig] = result
@@ -1004,52 +1052,7 @@ proc getTypeDescAux(m: BModule; origTyp: PType, check: var IntSet; kind: TypeDes
   of tyObject, tyTuple:
     let tt = origTyp.skipTypes({tyDistinct})
     if isImportedCppType(t) and tt.kind == tyGenericInst:
-      let cppNameAsRope = getTypeName(m, t, sig)
-      let cppName = $cppNameAsRope
-      var i = 0
-      var chunkStart = 0
-
-      template addResultType(ty: untyped) =
-        if ty == nil or ty.kind == tyVoid:
-          result.add(CVoid)
-        elif ty.kind == tyStatic:
-          internalAssert m.config, ty.n != nil
-          result.add ty.n.renderTree
-        else:
-          result.add getTypeDescAux(m, ty, check, kind)
-
-      while i < cppName.len:
-        if cppName[i] == '\'':
-          var chunkEnd = i-1
-          var idx, stars: int = 0
-          if scanCppGenericSlot(cppName, i, idx, stars):
-            result.add cppName.substr(chunkStart, chunkEnd)
-            chunkStart = i
-
-            let typeInSlot = resolveStarsInCppType(tt, idx + 1, stars)
-            addResultType(typeInSlot)
-        else:
-          inc i
-
-      if chunkStart != 0:
-        result.add cppName.substr(chunkStart)
-      else:
-        result = cppNameAsRope & "<"
-        for needsComma, a in tt.genericInstParams:
-          if needsComma: result.add(" COMMA ")
-          addResultType(a)
-        result.add("> ")
-      # always call for sideeffects:
-      assert t.kind != tyTuple
-      discard getRecordDesc(m, t, result, check)
-      # The resulting type will include commas and these won't play well
-      # with the C macros for defining procs such as N_NIMCALL. We must
-      # create a typedef for the type and use it in the proc signature:
-      let typedefName = "TY" & $sig
-      m.s[cfsTypes].addTypedef(name = typedefName):
-        m.s[cfsTypes].add(result)
-      m.typeCache[sig] = typedefName
-      result = typedefName
+      importedCppObject(m, t, tt, check, kind, sig, result)
     else:
       result = cacheGetType(m.forwTypeCache, sig)
       if result == "":
@@ -1868,6 +1871,12 @@ proc genTypeInfoV2Impl(m: BModule; t, origType: PType, name: Rope; info: TLineIn
   if t.kind == tyObject and t.baseClass != nil and optEnableDeepCopy in m.config.globalOptions:
     discard genTypeInfoV1(m, t, info)
 
+proc myModuleOpenForCodegen(m: BModule; idx: FileIndex): bool {.inline.} =
+  if moduleOpenForCodegen(m.g.graph, idx):
+    result = idx.int < m.g.mods.len and m.g.mods[idx.int] != nil
+  else:
+    result = false
+
 proc genTypeInfoV2(m: BModule; t: PType; info: TLineInfo): Rope =
   let origType = t
   # distinct types can have their own destructors
@@ -1896,9 +1905,9 @@ proc genTypeInfoV2(m: BModule; t: PType; info: TLineInfo): Rope =
   m.typeInfoMarkerV2[sig] = result
 
   let owner = t.skipTypes(typedescPtrs).itemId.module
-  if owner != m.module.position and moduleOpenForCodegen(m.g.graph, FileIndex owner):
+  if owner != m.module.position and myModuleOpenForCodegen(m, FileIndex owner):
     # make sure the type info is created in the owner module
-    discard genTypeInfoV2(m.g.modules[owner], origType, info)
+    discard genTypeInfoV2(m.g.mods[owner], origType, info)
     # reference the type info as extern here
     cgsym(m, "TNimTypeV2")
     declareNimType(m, "TNimTypeV2", result, owner)
@@ -1981,9 +1990,9 @@ proc genTypeInfoV1(m: BModule; t: PType; info: TLineInfo): Rope =
     return prefixTI(result)
 
   var owner = t.skipTypes(typedescPtrs).itemId.module
-  if owner != m.module.position and moduleOpenForCodegen(m.g.graph, FileIndex owner):
+  if owner != m.module.position and myModuleOpenForCodegen(m, FileIndex owner):
     # make sure the type info is created in the owner module
-    discard genTypeInfoV1(m.g.modules[owner], origType, info)
+    discard genTypeInfoV1(m.g.mods[owner], origType, info)
     # reference the type info as extern here
     cgsym(m, "TNimType")
     cgsym(m, "TNimNode")
@@ -1993,7 +2002,7 @@ proc genTypeInfoV1(m: BModule; t: PType; info: TLineInfo): Rope =
     owner = m.module.position.int32
 
   m.g.typeInfoMarker[sig] = (str: result, owner: owner)
-  rememberEmittedTypeInfo(m.g.graph, FileIndex(owner), $result)
+  #rememberEmittedTypeInfo(m.g.graph, FileIndex(owner), $result)
 
   case t.kind
   of tyEmpty, tyVoid: result = cIntValue(0)

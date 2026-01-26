@@ -21,8 +21,6 @@ import std/[os, math, strutils]
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
-from ic / ic import addCompilerProc
-
 const
   FirstCallConv* = wNimcall
   LastCallConv* = wNoconv
@@ -767,8 +765,6 @@ proc markCompilerProc(c: PContext; s: PSym) =
   incl(s, sfCompilerProc)
   incl(s.flagsImpl, sfUsed)
   registerCompilerProc(c.graph, s)
-  if c.config.symbolFiles != disabledSf:
-    addCompilerProc(c.encoder, c.packedRepr, s)
 
 proc deprecatedStmt(c: PContext; outerPragma: PNode) =
   let pragma = outerPragma[1]

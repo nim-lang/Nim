@@ -249,13 +249,24 @@ proc hasValuelessStatics(n: PNode): bool =
         a
     proc doThing(_: MyThing)
   ]#
+  result = false
   if n.safeLen == 0 and n.kind != nkEmpty: # Some empty nodes can get in here
-    n.typ == nil or n.typ.kind == tyStatic
+    if n.typ == nil:
+      result = true
+    elif n.typ.kind == tyStatic:
+      result = true
+    elif n.typ.kind == tyTypeDesc:
+      # Check if the base type is an unresolved generic parameter.
+      # This handles cases where a template containing sizeof(T) is called
+      # inside a generic object's when clause - the T needs to be resolved
+      # before we can evaluate the condition.
+      let base = n.typ.skipTypes({tyTypeDesc})
+      if base.kind == tyGenericParam:
+        result = true
   else:
     for x in n:
       if hasValuelessStatics(x):
         return true
-    false
 
 proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0; expectedType: PType = nil): PNode =
   if n == nil: return
@@ -362,6 +373,7 @@ proc replaceTypeVarsS(cl: var TReplTypeVars, s: PSym, t: PType): PSym =
       var g: G[string]
 
   ]#
+  # XXX FIXME This causes system.Natural to be duplicated during compilation of system.nim as cl.owner == nil!
   result = copySym(s, cl.c.idgen)
   incl(result.flagsImpl, sfFromGeneric)
   #idTablePut(cl.symMap, s, result)
@@ -542,14 +554,12 @@ proc eraseVoidParams*(t: PType) =
 
   for i in FirstParamAt..<t.signatureLen:
     # don't touch any memory unless necessary
-    if t[i].kind == tyVoid:
+    if t.n[i].kind == nkRecList or t[i].kind == tyVoid:
       var pos = i
       for j in i+1..<t.signatureLen:
         if t[j].kind != tyVoid:
-          t[pos] = t[j]
           t.n[pos] = t.n[j]
           inc pos
-      newSons t, pos
       setLen t.n.sons, pos
       break
 
@@ -743,7 +753,8 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType, isInstValue = false): 
             let r2 = r.skipTypes({tyAlias, tySink, tyOwned})
             if r2.kind in {tyPtr, tyRef}:
               r = skipTypes(r2, {tyPtr, tyRef})
-          result[i] = r
+          if result.kind != tyProc or i == 0:
+            result[i] = r
           if result.kind != tyArray or i != 0:
             propagateToOwner(result, r)
       # bug #4677: Do not instantiate effect lists
