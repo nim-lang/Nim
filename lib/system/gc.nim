@@ -452,28 +452,41 @@ template setFrameInfo(c: PCell) =
       c.filename = nil
       c.line = 0
 
+proc getRequiredAlign(typ: PNimType): int {.inline.} =
+  # Determine the required alignment for a type.
+  # Priority: typ.base.align -> typ.align -> MemAlign
+  if typ.base != nil and typ.base.align > 0:
+    typ.base.align
+  elif typ.align > 0:
+    typ.align
+  else:
+    MemAlign
+
 proc allocCellWithAlignment(typ: PNimType, size: int, gch: var GcHeap): PCell {.inline.} =
   # Allocate a cell with proper alignment based on type requirements.
-  # Follows the pattern from alignedAlloc in memalloc.nim
-  let requiredAlign =
-    if typ.base != nil and typ.base.align > 0:
-      typ.base.align
-    elif typ.align > 0:
-      typ.align
-    else:
-      MemAlign
+  let requiredAlign = getRequiredAlign(typ)
   if requiredAlign <= MemAlign:
     result = cast[PCell](rawAlloc(gch.region, size +% sizeof(Cell)))
   else:
-    let extra = requiredAlign -% 1
-    # allocate (size + align - 1) to ensure alignment
-    let base = rawAlloc(gch.region, size +% sizeof(Cell) +% extra)
+    # allocate (size + align - 1) to ensure alignment, plus space for offset metadata
+    let base = rawAlloc(gch.region, size +% sizeof(Cell) +% sizeof(uint16) +% (requiredAlign -% 1))
     # calculate offset to align the user data (after the Cell header)
     # the user data starts at (base + sizeof(Cell)), so we align that address
     let userDataAddr = cast[uint](base) + cast[uint](sizeof(Cell))
-    let misalignment = userDataAddr and cast[uint](extra)
-    let offset = requiredAlign -% cast[int](misalignment)
+    let offset = requiredAlign -% cast[int](userDataAddr and cast[uint](requiredAlign -% 1))
     result = cast[PCell](base +! offset)
+    # store offset as metadata before the cell so we can recover base during deallocation
+    cast[ptr uint16](result -! sizeof(uint16))[] = uint16(offset)
+
+proc rawDeallocWithAlignment(gch: var GcHeap, c: PCell) {.inline.} =
+  # Deallocate a cell that may have been allocated with custom alignment.
+  let requiredAlign = getRequiredAlign(c.typ)
+  if requiredAlign <= MemAlign:
+    rawDealloc(gch.region, c)
+  else:
+    # read offset at c - 2 bytes, then deallocate (c - offset) pointer
+    let offset = cast[ptr uint16](c -! sizeof(uint16))[]
+    rawDealloc(gch.region, c -! offset)
 
 proc rawNewObj(typ: PNimType, size: int, gch: var GcHeap): pointer =
   # generates a new object and sets its reference counter to 0
@@ -614,7 +627,7 @@ proc freeCyclicCell(gch: var GcHeap, c: PCell) =
   when reallyDealloc:
     sysAssert(allocInv(gch.region), "free cyclic cell")
     beforeDealloc(gch, c, "freeCyclicCell: stack trash")
-    rawDealloc(gch.region, c)
+    rawDeallocWithAlignment(gch, c)
   else:
     gcAssert(c.typ != nil, "freeCyclicCell")
     zeroMem(c, sizeof(Cell))
@@ -785,7 +798,7 @@ proc collectZCT(gch: var GcHeap): bool =
       when reallyDealloc:
         sysAssert(allocInv(gch.region), "collectZCT: rawDealloc")
         beforeDealloc(gch, c, "collectZCT: stack trash")
-        rawDealloc(gch.region, c)
+        rawDeallocWithAlignment(gch, c)
       else:
         sysAssert(c.typ != nil, "collectZCT 2")
         zeroMem(c, sizeof(Cell))
