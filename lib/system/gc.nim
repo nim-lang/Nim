@@ -452,13 +452,34 @@ template setFrameInfo(c: PCell) =
       c.filename = nil
       c.line = 0
 
+proc allocCellWithAlignment(typ: PNimType, size: int, gch: var GcHeap): PCell {.inline.} =
+  # Allocate a cell with proper alignment based on type requirements
+  let requiredAlign =
+    if typ.base != nil and typ.base.align > 0:
+      typ.base.align
+    elif typ.align > 0:
+      typ.align
+    else:
+      MemAlign
+  if requiredAlign <= MemAlign:
+    result = cast[PCell](rawAlloc(gch.region, size +% sizeof(Cell)))
+  else:
+    let extra = requiredAlign -% 1
+    let base = rawAlloc(gch.region, size +% sizeof(Cell) +% extra)
+    let baseInt = cast[BiggestInt](base)
+    let userInt = align(baseInt +% sizeof(Cell), requiredAlign)
+    result = cast[PCell](cast[pointer](userInt -% sizeof(Cell)))
+
 proc rawNewObj(typ: PNimType, size: int, gch: var GcHeap): pointer =
   # generates a new object and sets its reference counter to 0
   incTypeSize typ, size
   sysAssert(allocInv(gch.region), "rawNewObj begin")
   gcAssert(typ.kind in {tyRef, tyString, tySequence}, "newObj: 1")
   collectCT(gch)
-  var res = cast[PCell](rawAlloc(gch.region, size + sizeof(Cell)))
+  # honor type alignment: if the requested type alignment is larger than
+  # the allocator's MemAlign, allocate extra space and return a cell
+  # whose user pointer is properly aligned.
+  var res = allocCellWithAlignment(typ, size, gch)
   #gcAssert typ.kind in {tyString, tySequence} or size >= typ.base.size, "size too small"
   gcAssert((cast[int](res) and (MemAlign-1)) == 0, "newObj: 2")
   # now it is buffered in the ZCT
@@ -508,7 +529,7 @@ proc newObjRC1(typ: PNimType, size: int): pointer {.compilerRtl, noinline, raise
   collectCT(gch)
   sysAssert(allocInv(gch.region), "newObjRC1 after collectCT")
 
-  var res = cast[PCell](rawAlloc(gch.region, size + sizeof(Cell)))
+  var res = allocCellWithAlignment(typ, size, gch)
   sysAssert(allocInv(gch.region), "newObjRC1 after rawAlloc")
   sysAssert((cast[int](res) and (MemAlign-1)) == 0, "newObj: 2")
   # now it is buffered in the ZCT
