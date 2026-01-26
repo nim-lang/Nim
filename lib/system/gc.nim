@@ -454,11 +454,9 @@ template setFrameInfo(c: PCell) =
 
 proc getRequiredAlign(typ: PNimType): int {.inline.} =
   # Determine the required alignment for a type.
-  # Priority: typ.base.align -> typ.align -> MemAlign
-  if typ.base != nil and typ.base.align > 0:
+  if typ.kind notin {tyString, tySequence} and
+      typ.base != nil and typ.base.align > 0:
     typ.base.align
-  elif typ.align > 0:
-    typ.align
   else:
     MemAlign
 
