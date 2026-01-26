@@ -1658,6 +1658,9 @@ proc semDeref(c: PContext, n: PNode, flags: TExprFlags): PNode =
     n[0] = a
   result = n
   var t = skipTypes(n[0].typ, {tyGenericInst, tyVar, tyLent, tyAlias, tySink, tyOwned})
+  if t.kind == tyTypeDesc:
+    localError(c.config, n.info, "missing generic parameter")
+    return nil
   case t.kind
   of tyRef, tyPtr: n.typ() = t.elementType
   of tyMetaTypes, tyFromExpr:
