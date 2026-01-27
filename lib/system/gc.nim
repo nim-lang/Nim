@@ -460,7 +460,7 @@ proc getRequiredAlign(typ: PNimType): int {.inline.} =
   else:
     MemAlign
 
-proc allocCellWithAlignment(typ: PNimType, size: int, gch: var GcHeap): PCell {.inline.} =
+proc alignedRawAlloc(typ: PNimType, size: int, gch: var GcHeap): PCell {.inline.} =
   # Allocate a cell with proper alignment based on type requirements.
   let requiredAlign = getRequiredAlign(typ)
   if requiredAlign <= MemAlign:
@@ -476,7 +476,7 @@ proc allocCellWithAlignment(typ: PNimType, size: int, gch: var GcHeap): PCell {.
     # store offset as metadata before the cell so we can recover base during deallocation
     cast[ptr uint16](result -! sizeof(uint16))[] = uint16(offset)
 
-proc rawDeallocWithAlignment(gch: var GcHeap, c: PCell) {.inline.} =
+proc alignedRawDealloc(gch: var GcHeap, c: PCell) {.inline.} =
   # Deallocate a cell that may have been allocated with custom alignment.
   let requiredAlign = getRequiredAlign(c.typ)
   if requiredAlign <= MemAlign:
@@ -495,7 +495,7 @@ proc rawNewObj(typ: PNimType, size: int, gch: var GcHeap): pointer =
   # honor type alignment: if the requested type alignment is larger than
   # the allocator's MemAlign, allocate extra space and return a cell
   # whose user pointer is properly aligned.
-  var res = allocCellWithAlignment(typ, size, gch)
+  var res = alignedRawAlloc(typ, size, gch)
   #gcAssert typ.kind in {tyString, tySequence} or size >= typ.base.size, "size too small"
   gcAssert((cast[int](res) and (MemAlign-1)) == 0, "newObj: 2")
   # now it is buffered in the ZCT
@@ -545,7 +545,7 @@ proc newObjRC1(typ: PNimType, size: int): pointer {.compilerRtl, noinline, raise
   collectCT(gch)
   sysAssert(allocInv(gch.region), "newObjRC1 after collectCT")
 
-  var res = allocCellWithAlignment(typ, size, gch)
+  var res = alignedRawAlloc(typ, size, gch)
   sysAssert(allocInv(gch.region), "newObjRC1 after rawAlloc")
   sysAssert((cast[int](res) and (MemAlign-1)) == 0, "newObj: 2")
   # now it is buffered in the ZCT
@@ -625,7 +625,7 @@ proc freeCyclicCell(gch: var GcHeap, c: PCell) =
   when reallyDealloc:
     sysAssert(allocInv(gch.region), "free cyclic cell")
     beforeDealloc(gch, c, "freeCyclicCell: stack trash")
-    rawDeallocWithAlignment(gch, c)
+    alignedRawDealloc(gch, c)
   else:
     gcAssert(c.typ != nil, "freeCyclicCell")
     zeroMem(c, sizeof(Cell))
@@ -796,7 +796,7 @@ proc collectZCT(gch: var GcHeap): bool =
       when reallyDealloc:
         sysAssert(allocInv(gch.region), "collectZCT: rawDealloc")
         beforeDealloc(gch, c, "collectZCT: stack trash")
-        rawDeallocWithAlignment(gch, c)
+        alignedRawDealloc(gch, c)
       else:
         sysAssert(c.typ != nil, "collectZCT 2")
         zeroMem(c, sizeof(Cell))
