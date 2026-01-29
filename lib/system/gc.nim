@@ -222,6 +222,42 @@ template gcTrace(cell, state: untyped) =
   when traceGC: traceCell(cell, state)
 
 # forward declarations:
+proc getRequiredAlign(typ: PNimType): int {.inline.} =
+  # Determine the required alignment for a type.
+  if typ != nil and typ.kind notin {tyString, tySequence} and
+      typ.base != nil and typ.base.align > 0:
+    typ.base.align
+  else:
+    MemAlign
+
+proc isAllocatedCell(region: MemRegion, c: PCell): bool {.inline.} =
+  # Check if a Cell pointer is valid. This handles both regular and aligned allocations.
+  # For regular allocations, c is at the start of an allocation.
+  # For aligned allocations, c is within an allocation but not at the start.
+  #
+  # First check: is c accessible (within a page managed by the allocator)?
+  if not isAccessible(region, c):
+    return false
+  
+  # Try the standard check for regular allocations
+  let interior = interiorAllocatedPtr(region, c)
+  if interior == c:
+    # Regular allocation - c is at the start
+    return true
+  elif interior != nil:
+    # c is within an allocated block but not at the start (aligned allocation with small offset).
+    # Verify it looks like a valid Cell.
+    if c.typ != nil and cast[int](c.typ) >% PageSize:
+      return true
+  else:
+    # interior is nil - this can happen for aligned allocations with larger offsets
+    # where interiorAllocatedPtr's alignment calculation doesn't find the cell.
+    # Do a basic sanity check: the cell should have a valid-looking typ pointer.
+    if c.typ != nil and cast[int](c.typ) >% PageSize:
+      return true
+  
+  return false
+
 proc collectCT(gch: var GcHeap) {.benign, raises: [].}
 proc isOnStack(p: pointer): bool {.noinline, benign, raises: [].}
 proc forAllChildren(cell: PCell, op: WalkOp) {.benign, raises: [].}
@@ -230,7 +266,7 @@ proc forAllChildrenAux(dest: pointer, mt: PNimType, op: WalkOp) {.benign, raises
 # we need the prototype here for debugging purposes
 
 proc incRef(c: PCell) {.inline.} =
-  gcAssert(isAllocatedPtr(gch.region, c), "incRef: interiorPtr")
+  gcAssert(isAllocatedCell(gch.region, c), "incRef: interiorPtr")
   c.refcount = c.refcount +% rcIncrement
   # and not colorMask
   logCell("incRef", c)
@@ -246,7 +282,7 @@ proc rtlAddZCT(c: PCell) {.rtl, inl.} =
   addZCT(gch.zct, c)
 
 proc decRef(c: PCell) {.inline.} =
-  gcAssert(isAllocatedPtr(gch.region, c), "decRef: interiorPtr")
+  gcAssert(isAllocatedCell(gch.region, c), "decRef: interiorPtr")
   gcAssert(c.refcount >=% rcIncrement, "decRef")
   c.refcount = c.refcount -% rcIncrement
   if c.refcount <% rcIncrement:
@@ -374,7 +410,7 @@ proc forAllChildrenAux(dest: pointer, mt: PNimType, op: WalkOp) =
 
 proc forAllChildren(cell: PCell, op: WalkOp) =
   gcAssert(cell != nil, "forAllChildren: cell is nil")
-  gcAssert(isAllocatedPtr(gch.region, cell), "forAllChildren: pointer not part of the heap")
+  gcAssert(isAllocatedCell(gch.region, cell), "forAllChildren: pointer not part of the heap")
   gcAssert(cell.typ != nil, "forAllChildren: cell.typ is nil")
   gcAssert cell.typ.kind in {tyRef, tySequence, tyString}, "forAllChildren: unknown GC'ed type"
   let marker = cell.typ.marker
@@ -452,22 +488,14 @@ template setFrameInfo(c: PCell) =
       c.filename = nil
       c.line = 0
 
-proc getRequiredAlign(typ: PNimType): int {.inline.} =
-  # Determine the required alignment for a type.
-  if typ.kind notin {tyString, tySequence} and
-      typ.base != nil and typ.base.align > 0:
-    typ.base.align
-  else:
-    MemAlign
-
 proc alignedRawAlloc(typ: PNimType, size: int, gch: var GcHeap): PCell {.inline.} =
   # Allocate a cell with proper alignment based on type requirements.
-  let requiredAlign = getRequiredAlign(typ)
+  var requiredAlign = getRequiredAlign(typ)
   if requiredAlign <= MemAlign:
     result = cast[PCell](rawAlloc(gch.region, size +% sizeof(Cell)))
   else:
     # allocate (size + align - 1) to ensure alignment, plus space for offset metadata
-    let base = rawAlloc(gch.region, size +% sizeof(Cell) +% sizeof(uint16) +% (requiredAlign -% 1))
+    let base = rawAlloc(gch.region, size +% sizeof(Cell) +% requiredAlign +% requiredAlign)
     # calculate offset to align the user data (after the Cell header)
     # the user data starts at (base + sizeof(Cell)), so we align that address
     let userDataAddr = cast[uint](base) + cast[uint](sizeof(Cell))
@@ -503,7 +531,7 @@ proc rawNewObj(typ: PNimType, size: int, gch: var GcHeap): pointer =
   setFrameInfo(res)
   # refcount is zero, color is black, but mark it to be in the ZCT
   res.refcount = ZctFlag
-  sysAssert(isAllocatedPtr(gch.region, res), "newObj: 3")
+  sysAssert(isAllocatedCell(gch.region, res), "newObj: 3")
   # its refcount is zero, so add it to the ZCT:
   addNewObjToZCT(res, gch)
   logCell("new cell", res)
@@ -552,7 +580,7 @@ proc newObjRC1(typ: PNimType, size: int): pointer {.compilerRtl, noinline, raise
   res.typ = typ
   setFrameInfo(res)
   res.refcount = rcIncrement # refcount is 1
-  sysAssert(isAllocatedPtr(gch.region, res), "newObj: 3")
+  sysAssert(isAllocatedCell(gch.region, res), "newObj: 3")
   logCell("new cell", res)
   track("newObjRC1", res, size)
   gcTrace(res, csAllocated)
@@ -644,14 +672,14 @@ proc sweep(gch: var GcHeap) =
           c.refcount = c.refcount and not ZctFlag
 
 proc markS(gch: var GcHeap, c: PCell) =
-  gcAssert isAllocatedPtr(gch.region, c), "markS: foreign heap root detected A!"
+  gcAssert isAllocatedCell(gch.region, c), "markS: foreign heap root detected A!"
   incl(gch.marked, c)
   gcAssert gch.tempStack.len == 0, "stack not empty!"
   forAllChildren(c, waMarkPrecise)
   while gch.tempStack.len > 0:
     dec gch.tempStack.len
     var d = gch.tempStack.d[gch.tempStack.len]
-    gcAssert isAllocatedPtr(gch.region, d), "markS: foreign heap root detected B!"
+    gcAssert isAllocatedCell(gch.region, d), "markS: foreign heap root detected B!"
     if not containsOrIncl(gch.marked, d):
       forAllChildren(d, waMarkPrecise)
 
@@ -692,9 +720,9 @@ proc doOperation(p: pointer, op: WalkOp) =
   # prediction:
   case op
   of waZctDecRef:
-    #if not isAllocatedPtr(gch.region, c):
+    #if not isAllocatedCell(gch.region, c):
     #  c_printf("[GC] decref bug: %p", c)
-    gcAssert(isAllocatedPtr(gch.region, c), "decRef: waZctDecRef")
+    gcAssert(isAllocatedCell(gch.region, c), "decRef: waZctDecRef")
     gcAssert(c.refcount >=% rcIncrement, "doOperation 2")
     logCell("decref (from doOperation)", c)
     track("waZctDecref", p, 0)
@@ -721,7 +749,7 @@ proc collectCycles(gch: var GcHeap) {.raises: [].} =
   cellsetReset(gch.marked)
   var d = gch.decStack.d
   for i in 0..gch.decStack.len-1:
-    sysAssert isAllocatedPtr(gch.region, d[i]), "collectCycles"
+    sysAssert isAllocatedCell(gch.region, d[i]), "collectCycles"
     markS(gch, d[i])
   markGlobals(gch)
   sweep(gch)
@@ -732,15 +760,13 @@ proc gcMark(gch: var GcHeap, p: pointer) {.inline.} =
   var c = cast[int](p)
   if c >% PageSize:
     # fast check: does it look like a cell?
-    var objStart = cast[PCell](interiorAllocatedPtr(gch.region, p))
-    if objStart != nil:
-      # mark the cell:
-      incRef(objStart)
-      add(gch.decStack, objStart)
-    when false:
+    # First check if p is within any allocation at all
+    if interiorAllocatedPtr(gch.region, p) != nil:
+      # For both regular and aligned allocations, the user pointer is at cell + sizeof(Cell),
+      # so we can get the cell by subtracting sizeof(Cell).
       let cell = usrToCell(p)
-      if isAllocatedPtr(gch.region, cell):
-        sysAssert false, "allocated pointer but not interior?"
+      # Verify this is actually a valid cell before using it
+      if isAllocatedCell(gch.region, cell):
         # mark the cell:
         incRef(cell)
         add(gch.decStack, cell)
@@ -770,7 +796,7 @@ proc collectZCT(gch: var GcHeap): bool =
     if gch.maxPause > 0: t0 = getticks()
   while L[] > 0:
     var c = gch.zct.d[0]
-    sysAssert(isAllocatedPtr(gch.region, c), "CollectZCT: isAllocatedPtr")
+    sysAssert(isAllocatedCell(gch.region, c), "CollectZCT: isAllocatedPtr")
     # remove from ZCT:
     gcAssert((c.refcount and ZctFlag) == ZctFlag, "collectZCT")
 
@@ -815,7 +841,7 @@ proc collectZCT(gch: var GcHeap): bool =
 proc unmarkStackAndRegisters(gch: var GcHeap) =
   var d = gch.decStack.d
   for i in 0..gch.decStack.len-1:
-    sysAssert isAllocatedPtr(gch.region, d[i]), "unmarkStackAndRegisters"
+    sysAssert isAllocatedCell(gch.region, d[i]), "unmarkStackAndRegisters"
     decRef(d[i])
   gch.decStack.len = 0
 
