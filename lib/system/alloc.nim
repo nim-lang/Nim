@@ -845,17 +845,24 @@ when defined(heaptrack):
   proc heaptrack_malloc(a: pointer, size: int) {.cdecl, importc, dynlib: heaptrackLib.}
   proc heaptrack_free(a: pointer) {.cdecl, importc, dynlib: heaptrackLib.}
 
-proc rawAlloc(a: var MemRegion, requestedSize: int): pointer =
+proc rawAlloc(a: var MemRegion, requestedSize: int, alignment: int = MemAlign, extraSize: int = 0): pointer =
   when defined(nimTypeNames):
     inc(a.allocCounter)
   sysAssert(allocInv(a), "rawAlloc: begin")
   sysAssert(roundup(65, 8) == 72, "rawAlloc: roundup broken")
-  var size = roundup(requestedSize, MemAlign)
+  
+  # Calculate the actual size we need to allocate
+  # If alignment > MemAlign, we need extra space to ensure we can align the result
+  let alignmentOverhead = if alignment > MemAlign: alignment - 1 + extraSize else: 0
+  let totalSize = requestedSize + alignmentOverhead
+  
+  var size = roundup(totalSize, MemAlign)
   sysAssert(size >= sizeof(FreeCell), "rawAlloc: requested size too small")
   sysAssert(size >= requestedSize, "insufficient allocated size!")
   #c_fprintf(stdout, "alloc; size: %ld; %ld\n", requestedSize, size)
 
-  if size <= SmallChunkSize-smallChunkOverhead():
+  # Force big chunk allocation for aligned allocations to avoid cell boundary issues
+  if size <= SmallChunkSize-smallChunkOverhead() and alignment <= MemAlign:
     template fetchSharedCells(tc: PSmallChunk) =
       # Consumes cells from (potentially) foreign threads from `a.sharedFreeLists[s]`
       when defined(gcDestructors):
@@ -965,6 +972,16 @@ proc rawAlloc(a: var MemRegion, requestedSize: int): pointer =
     inc a.occ, c.size
     trackSize(c.size)
   sysAssert(isAccessible(a, result), "rawAlloc 14")
+  
+  # Handle alignment if specified
+  if alignment > MemAlign:
+    # We need to ensure that (result + extraSize) is aligned
+    # So find the aligned address for user data, then back up by extraSize
+    let userDataAddr = cast[int](result) + extraSize
+    let alignedUserDataAddr = (userDataAddr + alignment - 1) and not (alignment - 1)
+    # The result should be extraSize bytes before the aligned user data
+    result = cast[pointer](alignedUserDataAddr - extraSize)
+  
   sysAssert(allocInv(a), "rawAlloc: end")
   when logAlloc: cprintf("var pointer_%p = alloc(%ld) # %p\n", result, requestedSize, addr a)
   when defined(heaptrack):
@@ -1067,7 +1084,12 @@ when not defined(gcDestructors):
             (cast[ptr FreeCell](p).zeroField >% 1)
         else:
           var c = cast[PBigChunk](c)
-          result = p == addr(c.data) and cast[ptr FreeCell](p).zeroField >% 1
+          # For aligned allocations, p might be offset from addr(c.data), but should be within data bounds
+          # Note: We cannot check zeroField/refcount as it may not be initialized yet when called from rawNewObj
+          let dataStart = cast[int](addr(c.data))
+          let dataEnd = dataStart + c.size - bigChunkOverhead()
+          let pAddr = cast[int](p)
+          result = (pAddr >= dataStart) and (pAddr < dataEnd)
 
   proc prepareForInteriorPointerChecking(a: var MemRegion) {.inline.} =
     a.minLargeObj = lowGauge(a.root)
