@@ -964,7 +964,7 @@ proc rawAlloc(a: var MemRegion, requestedSize: int, alignment: int = MemAlign, e
     result = addr(c.data)
     
     # Apply alignment if needed: align (result + extraSize) to alignment boundary
-    if alignment > MemAlign and extraSize > 0:
+    if alignment > MemAlign:
       let mask = alignment - 1
       let alignedUserData = (cast[int](result) + extraSize + mask) and not mask
       result = cast[pointer](alignedUserData - extraSize)
