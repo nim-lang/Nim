@@ -143,7 +143,7 @@ proc getFloatValue*(n: PNode): BiggestFloat =
 
 proc addTypeHeader*(result: var string, conf: ConfigRef; typ: PType; prefer: TPreferedDesc = preferMixed; getDeclarationPath = true) =
   result.add typeToString(typ, prefer)
-  if getDeclarationPath: result.addDeclaredLoc(conf, typ.sym)
+  if getDeclarationPath and typ.sym != nil: result.addDeclaredLoc(conf, typ.sym)
 
 proc getProcHeader*(conf: ConfigRef; sym: PSym; prefer: TPreferedDesc = preferName; getDeclarationPath = true): string =
   assert sym != nil

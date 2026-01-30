@@ -1067,6 +1067,7 @@ proc getTypeDescAux(m: BModule; origTyp: PType, check: var IntSet; kind: TypeDes
                       else: getTupleDesc(m, t, result, check)
         if not isImportedType(t):
           m.s[cfsTypes].add(recdesc)
+          addAbiCheck(m, t, result)
         elif tfIncompleteStruct notin t.flags:
           discard # addAbiCheck(m, t, result) # already handled elsewhere
   of tySet:
