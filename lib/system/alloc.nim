@@ -846,7 +846,7 @@ when defined(heaptrack):
   proc heaptrack_malloc(a: pointer, size: int) {.cdecl, importc, dynlib: heaptrackLib.}
   proc heaptrack_free(a: pointer) {.cdecl, importc, dynlib: heaptrackLib.}
 
-proc rawAlloc(a: var MemRegion, requestedSize: int, alignment: int = MemAlign, extraSize: int = 0): pointer =
+proc rawAlloc(a: var MemRegion, requestedSize: int, alignment: int = MemAlign, offset: int = 0): pointer =
   when defined(nimTypeNames):
     inc(a.allocCounter)
   sysAssert(allocInv(a), "rawAlloc: begin")
@@ -956,7 +956,7 @@ proc rawAlloc(a: var MemRegion, requestedSize: int, alignment: int = MemAlign, e
     # For big chunks with custom alignment, allocate extra space for alignment adjustment
     size = requestedSize + bigChunkOverhead()
     if alignment > MemAlign:
-      size += alignment - 1 + extraSize
+      size += alignment - 1
     # allocate a large block
     var c = if size >= HugeChunkSize: getHugeChunk(a, size)
             else: getBigChunk(a, size)
@@ -964,11 +964,11 @@ proc rawAlloc(a: var MemRegion, requestedSize: int, alignment: int = MemAlign, e
     sysAssert c.next == nil, "rawAlloc 11"
     result = addr(c.data)
     
-    # Apply alignment if needed: align (result + extraSize) to alignment boundary
+    # Apply alignment if needed: align (result + offset) to alignment boundary
     if alignment > MemAlign:
       let mask = alignment - 1
-      let alignedUserData = (cast[int](result) + extraSize + mask) and not mask
-      let finalResult = cast[pointer](alignedUserData - extraSize)
+      let alignedUserData = (cast[int](result) + offset + mask) and not mask
+      let finalResult = cast[pointer](alignedUserData - offset)
       c.alignOffset = cast[int16](cast[int](finalResult) - cast[int](result))
       result = finalResult
     else:
