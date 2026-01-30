@@ -987,8 +987,8 @@ proc rawAlloc(a: var MemRegion, requestedSize: int, alignment: int = MemAlign, o
   when defined(heaptrack):
     heaptrack_malloc(result, requestedSize)
 
-proc rawAlloc0(a: var MemRegion, requestedSize: int, alignment: int = MemAlign, extraSize: int = 0): pointer =
-  result = rawAlloc(a, requestedSize, alignment, extraSize)
+proc rawAlloc0(a: var MemRegion, requestedSize: int, alignment: int = MemAlign, offset: int = 0): pointer =
+  result = rawAlloc(a, requestedSize, alignment, offset)
   zeroMem(result, requestedSize)
 
 proc rawDealloc(a: var MemRegion, p: pointer) =
