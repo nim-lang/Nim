@@ -850,18 +850,13 @@ proc rawAlloc(a: var MemRegion, requestedSize: int, alignment: int = MemAlign, e
     inc(a.allocCounter)
   sysAssert(allocInv(a), "rawAlloc: begin")
   sysAssert(roundup(65, 8) == 72, "rawAlloc: roundup broken")
-  
-  # Calculate the actual size we need to allocate
-  # If alignment > MemAlign, we need extra space to ensure we can align the result
-  let alignmentOverhead = if alignment > MemAlign: alignment - 1 + extraSize else: 0
-  let totalSize = requestedSize + alignmentOverhead
-  
-  var size = roundup(totalSize, MemAlign)
+  var size = roundup(requestedSize, MemAlign)
   sysAssert(size >= sizeof(FreeCell), "rawAlloc: requested size too small")
   sysAssert(size >= requestedSize, "insufficient allocated size!")
   #c_fprintf(stdout, "alloc; size: %ld; %ld\n", requestedSize, size)
 
-  # Force big chunk allocation for aligned allocations to avoid cell boundary issues
+  # For custom alignments > MemAlign, force big chunk allocation
+  # Small chunks cannot handle arbitrary alignments due to fixed cell boundaries
   if size <= SmallChunkSize-smallChunkOverhead() and alignment <= MemAlign:
     template fetchSharedCells(tc: PSmallChunk) =
       # Consumes cells from (potentially) foreign threads from `a.sharedFreeLists[s]`
@@ -957,13 +952,23 @@ proc rawAlloc(a: var MemRegion, requestedSize: int, alignment: int = MemAlign, e
       if deferredFrees != nil:
         freeDeferredObjects(a, deferredFrees)
 
-    size = requestedSize + bigChunkOverhead() #  roundup(requestedSize+bigChunkOverhead(), PageSize)
+    # For big chunks with custom alignment, allocate extra space for alignment adjustment
+    size = requestedSize + bigChunkOverhead()
+    if alignment > MemAlign:
+      size += alignment - 1 + extraSize
     # allocate a large block
     var c = if size >= HugeChunkSize: getHugeChunk(a, size)
             else: getBigChunk(a, size)
     sysAssert c.prev == nil, "rawAlloc 10"
     sysAssert c.next == nil, "rawAlloc 11"
     result = addr(c.data)
+    
+    # Apply alignment if needed: align (result + extraSize) to alignment boundary
+    if alignment > MemAlign and extraSize > 0:
+      let mask = alignment - 1
+      let alignedUserData = (cast[int](result) + extraSize + mask) and not mask
+      result = cast[pointer](alignedUserData - extraSize)
+
     sysAssert((cast[int](c) and (MemAlign-1)) == 0, "rawAlloc 13")
     sysAssert((cast[int](c) and PageMask) == 0, "rawAlloc: Not aligned on a page boundary")
     when not defined(gcDestructors):
@@ -972,23 +977,13 @@ proc rawAlloc(a: var MemRegion, requestedSize: int, alignment: int = MemAlign, e
     inc a.occ, c.size
     trackSize(c.size)
   sysAssert(isAccessible(a, result), "rawAlloc 14")
-  
-  # Handle alignment if specified
-  if alignment > MemAlign:
-    # We need to ensure that (result + extraSize) is aligned
-    # So find the aligned address for user data, then back up by extraSize
-    let userDataAddr = cast[int](result) + extraSize
-    let alignedUserDataAddr = (userDataAddr + alignment - 1) and not (alignment - 1)
-    # The result should be extraSize bytes before the aligned user data
-    result = cast[pointer](alignedUserDataAddr - extraSize)
-  
   sysAssert(allocInv(a), "rawAlloc: end")
   when logAlloc: cprintf("var pointer_%p = alloc(%ld) # %p\n", result, requestedSize, addr a)
   when defined(heaptrack):
     heaptrack_malloc(result, requestedSize)
 
-proc rawAlloc0(a: var MemRegion, requestedSize: int): pointer =
-  result = rawAlloc(a, requestedSize)
+proc rawAlloc0(a: var MemRegion, requestedSize: int, alignment: int = MemAlign, extraSize: int = 0): pointer =
+  result = rawAlloc(a, requestedSize, alignment, extraSize)
   zeroMem(result, requestedSize)
 
 proc rawDealloc(a: var MemRegion, p: pointer) =
@@ -1084,12 +1079,11 @@ when not defined(gcDestructors):
             (cast[ptr FreeCell](p).zeroField >% 1)
         else:
           var c = cast[PBigChunk](c)
-          # For aligned allocations, p might be offset from addr(c.data), but should be within data bounds
-          # Note: We cannot check zeroField/refcount as it may not be initialized yet when called from rawNewObj
+          # For aligned allocations, p might not be exactly at c.data
           let dataStart = cast[int](addr(c.data))
-          let dataEnd = dataStart + c.size - bigChunkOverhead()
-          let pAddr = cast[int](p)
-          result = (pAddr >= dataStart) and (pAddr < dataEnd)
+          let dataEnd = dataStart + (c.size - bigChunkOverhead())
+          result = (cast[int](p) >= dataStart and cast[int](p) < dataEnd) and
+                   cast[ptr FreeCell](p).zeroField >% 1
 
   proc prepareForInteriorPointerChecking(a: var MemRegion) {.inline.} =
     a.minLargeObj = lowGauge(a.root)

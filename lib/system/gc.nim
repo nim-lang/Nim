@@ -459,7 +459,7 @@ proc rawNewObj(typ: PNimType, size: int, gch: var GcHeap): pointer =
   gcAssert(typ.kind in {tyRef, tyString, tySequence}, "newObj: 1")
   collectCT(gch)
   # Use alignment from typ.base if available, otherwise use MemAlign
-  let alignment = if typ.base != nil: max(typ.base.align, MemAlign) else: MemAlign
+  let alignment = if typ.kind == tyRef and typ.base != nil: max(typ.base.align, MemAlign) else: MemAlign
   var res = cast[PCell](rawAlloc(gch.region, size + sizeof(Cell), alignment, sizeof(Cell)))
   #gcAssert typ.kind in {tyString, tySequence} or size >= typ.base.size, "size too small"
   # Check that the user data (after the Cell header) is properly aligned
