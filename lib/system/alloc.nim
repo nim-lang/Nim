@@ -134,6 +134,7 @@ type
 
   BigChunk = object of BaseChunk # not necessarily > PageSize!
     next, prev: PBigChunk    # chunks of the same (or bigger) size
+    alignOffset: int16       # offset from data start to actual Cell (for aligned allocs)
     data {.align: MemAlign.}: UncheckedArray[byte]      # start of usable memory
 
   HeapLinks = object
@@ -967,7 +968,11 @@ proc rawAlloc(a: var MemRegion, requestedSize: int, alignment: int = MemAlign, e
     if alignment > MemAlign:
       let mask = alignment - 1
       let alignedUserData = (cast[int](result) + extraSize + mask) and not mask
-      result = cast[pointer](alignedUserData - extraSize)
+      let finalResult = cast[pointer](alignedUserData - extraSize)
+      c.alignOffset = cast[int16](cast[int](finalResult) - cast[int](result))
+      result = finalResult
+    else:
+      c.alignOffset = 0
 
     sysAssert((cast[int](c) and (MemAlign-1)) == 0, "rawAlloc 13")
     sysAssert((cast[int](c) and PageMask) == 0, "rawAlloc: Not aligned on a page boundary")
@@ -1079,11 +1084,9 @@ when not defined(gcDestructors):
             (cast[ptr FreeCell](p).zeroField >% 1)
         else:
           var c = cast[PBigChunk](c)
-          # For aligned allocations, p might not be exactly at c.data
-          let dataStart = cast[int](addr(c.data))
-          let dataEnd = dataStart + (c.size - bigChunkOverhead())
-          result = (cast[int](p) >= dataStart and cast[int](p) < dataEnd) and
-                   cast[ptr FreeCell](p).zeroField >% 1
+          # Use stored alignOffset to find the actual Cell location
+          let cellPtr = cast[pointer](cast[int](addr(c.data)) + c.alignOffset)
+          result = p == cellPtr and cast[ptr FreeCell](p).zeroField >% 1
 
   proc prepareForInteriorPointerChecking(a: var MemRegion) {.inline.} =
     a.minLargeObj = lowGauge(a.root)
@@ -1107,7 +1110,8 @@ when not defined(gcDestructors):
               sysAssert isAllocatedPtr(a, result), " result wrong pointer!"
         else:
           var c = cast[PBigChunk](c)
-          var d = addr(c.data)
+          # Use stored alignment offset to find the actual Cell location
+          var d = cast[pointer](cast[int](addr(c.data)) + c.alignOffset)
           if p >= d and cast[ptr FreeCell](d).zeroField >% 1:
             result = d
             sysAssert isAllocatedPtr(a, result), " result wrong pointer!"
