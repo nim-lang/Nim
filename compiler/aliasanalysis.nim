@@ -20,8 +20,27 @@ proc skipConvDfa*(n: PNode): PNode =
       result = result[1]
     else: break
 
+proc hasUniqueEnvAccess*(orig: PNode): bool =
+  ## Returns true if the access goes through a closure environment marked with nfUniqueEnv.
+  ## Such accesses are known to be unique and can be treated specially by the DFA.
+  result = false
+  var n = orig
+  while true:
+    case n.kind
+    of PathKinds0 - {nkHiddenDeref, nkDerefExpr}:
+      n = n[0]
+    of PathKinds1:
+      n = n[1]
+    of nkHiddenDeref, nkDerefExpr:
+      if nfUniqueEnv in n.flags:
+        return true
+      n = n[0]
+    else:
+      return
+
 proc isAnalysableFieldAccess*(orig: PNode; owner: PSym): bool =
   var n = orig
+  var sawUniqueEnv = false
   while true:
     case n.kind
     of PathKinds0 - {nkHiddenDeref, nkDerefExpr}:
@@ -36,6 +55,7 @@ proc isAnalysableFieldAccess*(orig: PNode; owner: PSym): bool =
       # Closure environment accesses marked with nfUniqueEnv are known to be
       # unique, so allow the DFA to recognize last-uses through them:
       if nfUniqueEnv in n.flags:
+        sawUniqueEnv = true
         n = n[0]
         continue
       n = n[0]
@@ -44,9 +64,11 @@ proc isAnalysableFieldAccess*(orig: PNode; owner: PSym): bool =
     else: break
   # XXX Allow closure deref operations here if we know
   # the owner controlled the closure allocation?
+  # When we've traversed through nfUniqueEnv marked derefs (closure environments),
+  # we can relax the parameter check since the environment is uniquely owned:
   result = n.kind == nkSym and n.sym.owner == owner and
     {sfGlobal, sfThread, sfCursor} * n.sym.flags == {} and
-    (n.sym.kind != skParam or isSinkParam(n.sym)) # or n.sym.typ.kind == tyVar)
+    (sawUniqueEnv or n.sym.kind != skParam or isSinkParam(n.sym)) # or n.sym.typ.kind == tyVar)
   # Note: There is a different move analyzer possible that checks for
   # consume(param.key); param.key = newValue  for all paths. Then code like
   #

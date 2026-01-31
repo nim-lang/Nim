@@ -261,7 +261,7 @@ proc liftIterSym*(g: ModuleGraph; n: PNode; idgen: IdGenerator; owner: PSym): PN
   if owner.isIterator:
     let it = getHiddenParam(g, owner)
     addUniqueField(it.typ.skipTypes({tyOwned})[0], hp, g.cache, idgen)
-    env = indirectAccess(newSymNode(it), hp, hp.info)
+    env = indirectAccess(newSymNode(it), hp, hp.info, uniqueEnv = true)
   else:
     let e = newSym(skLet, iter.name, idgen, owner, n.info)
     e.typ = hp.typ
@@ -618,7 +618,7 @@ proc rawClosureCreation(owner: PSym;
     for i in 1..<owner.typ.n.len:
       let local = owner.typ.n[i].sym
       if local.id in d.capturedVars:
-        let fieldAccess = indirectAccess(env, local, env.info)
+        let fieldAccess = indirectAccess(env, local, env.info, uniqueEnv = true)
         # add ``env.param = param``
         result.add(newAsgnStmt(fieldAccess, newSymNode(local), env.info))
         if owner.kind != skMacro:
@@ -672,7 +672,7 @@ proc closureCreationForIter(owner: PSym, iter: PNode;
   if iterOwner.isIterator:
     let it = getHiddenParam(d.graph, iterOwner)
     addUniqueField(it.typ.skipTypes({tyOwned, tyRef, tyPtr}), v, d.graph.cache, d.idgen)
-    vnode = indirectAccess(newSymNode(it), v, v.info)
+    vnode = indirectAccess(newSymNode(it), v, v.info, uniqueEnv = true)
   else:
     vnode = v.newSymNode
     var vs = newNodeI(nkVarSection, iter.info)

@@ -255,10 +255,13 @@ proc newDotExpr*(obj, b: PSym): PNode =
   result.add newSymNode(field)
   result.typ = field.typ
 
-proc indirectAccess*(a: PNode, b: ItemId, info: TLineInfo): PNode =
+proc indirectAccess*(a: PNode, b: ItemId, info: TLineInfo;
+                     uniqueEnv = false): PNode =
   # returns a[].b as a node
   var deref = newNodeI(nkHiddenDeref, info)
   deref.typ = a.typ.skipTypes(abstractInst).elementType
+  if uniqueEnv:
+    deref.flags.incl nfUniqueEnv
   var t = deref.typ.skipTypes(abstractInst)
   var field: PSym
   while true:
@@ -278,10 +281,13 @@ proc indirectAccess*(a: PNode, b: ItemId, info: TLineInfo): PNode =
   result.add newSymNode(field)
   result.typ = field.typ
 
-proc indirectAccess*(a: PNode, b: string, info: TLineInfo; cache: IdentCache): PNode =
+proc indirectAccess*(a: PNode, b: string, info: TLineInfo; cache: IdentCache;
+                     uniqueEnv = false): PNode =
   # returns a[].b as a node
   var deref = newNodeI(nkHiddenDeref, info)
   deref.typ = a.typ.skipTypes(abstractInst).elementType
+  if uniqueEnv:
+    deref.flags.incl nfUniqueEnv
   var t = deref.typ.skipTypes(abstractInst)
   var field: PSym
   let bb = getIdent(cache, b)
@@ -313,12 +319,13 @@ proc getFieldFromObj*(t: PType; v: PSym): PSym =
     if t == nil: break
     t = t.skipTypes(skipPtrs)
 
-proc indirectAccess*(a: PNode, b: PSym, info: TLineInfo): PNode =
+proc indirectAccess*(a: PNode, b: PSym, info: TLineInfo;
+                     uniqueEnv = false): PNode =
   # returns a[].b as a node
-  result = indirectAccess(a, b.itemId, info)
+  result = indirectAccess(a, b.itemId, info, uniqueEnv)
 
-proc indirectAccess*(a, b: PSym, info: TLineInfo): PNode =
-  result = indirectAccess(newSymNode(a), b, info)
+proc indirectAccess*(a, b: PSym, info: TLineInfo; uniqueEnv = false): PNode =
+  result = indirectAccess(newSymNode(a), b, info, uniqueEnv)
 
 proc genAddrOf*(n: PNode; idgen: IdGenerator; typeKind = tyPtr): PNode =
   result = newNodeI(nkAddr, n.info, 1)

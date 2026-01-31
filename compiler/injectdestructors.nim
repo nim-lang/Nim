@@ -815,9 +815,11 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
          nkCallKinds + nkLiterals:
       result = p(n, c, s, consumed)
     elif ((n.kind == nkSym and isSinkParam(n.sym)) or isAnalysableFieldAccess(n, c.owner)) and
-        isLastRead(n, c, s) and not (n.kind == nkSym and isCursor(n)):
+        (hasUniqueEnvAccess(n) or isLastRead(n, c, s)) and not (n.kind == nkSym and isCursor(n)):
       # Sinked params can be consumed only once. We need to reset the memory
-      # to disable the destructor which we have not elided
+      # to disable the destructor which we have not elided.
+      # For unique env accesses (closure environments), we can skip the isLastRead check
+      # because each field in the environment is only accessed by one closure.
       result = destructiveMoveVar(n, c, s)
     elif n.kind in {nkHiddenSubConv, nkHiddenStdConv, nkConv}:
       result = copyTree(n)
