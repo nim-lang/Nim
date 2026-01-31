@@ -170,11 +170,14 @@ proc rawAddField*(obj: PType; field: PSym) =
   propagateToOwner(obj, field.typ)
   fieldCheck()
 
-proc rawIndirectAccess*(a: PNode; field: PSym; info: TLineInfo): PNode =
+proc rawIndirectAccess*(a: PNode; field: PSym; info: TLineInfo;
+                        uniqueEnv = false): PNode =
   # returns a[].field as a node
   assert field.kind == skField
   var deref = newNodeI(nkHiddenDeref, info)
   deref.typ = a.typ.skipTypes(abstractInst)[0]
+  if uniqueEnv:
+    deref.flags.incl nfUniqueEnv
   deref.add a
   result = newNodeI(nkDotExpr, info)
   result.add deref

@@ -33,6 +33,11 @@ proc isAnalysableFieldAccess*(orig: PNode; owner: PSym): bool =
       # pointer indirection.
       # bug #14159, we cannot reason about sinkParam[].location as it can
       # still be shared for tyRef.
+      # Closure environment accesses marked with nfUniqueEnv are known to be
+      # unique, so allow the DFA to recognize last-uses through them:
+      if nfUniqueEnv in n.flags:
+        n = n[0]
+        continue
       n = n[0]
       return n.kind == nkSym and n.sym.owner == owner and
          (n.sym.typ.skipTypes(abstractInst-{tyOwned}).kind in {tyOwned})

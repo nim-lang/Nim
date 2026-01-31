@@ -323,6 +323,9 @@ type
                       # because openSym experimental switch is disabled
                       # gives warning instead
     nfLazyType  # node has a lazy type
+    nfUniqueEnv # the hidden deref is unique for closure environments;
+                # tells the DFA engine to assume uniqueness so that
+                # last-use detection can work for env.field accesses
 
   TNodeFlags* = set[TNodeFlag]
   TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 47)
@@ -866,7 +869,8 @@ const
                                       nfFromTemplate, nfDefaultRefsParam,
                                       nfExecuteOnReload, nfLastRead,
                                       nfFirstWrite, nfSkipFieldChecking,
-                                      nfDisabledOpenSym, nfLazyType}
+                                      nfDisabledOpenSym, nfLazyType,
+                                      nfUniqueEnv}
   namePos* = 0
   patternPos* = 1    # empty except for term rewriting macros
   genericParamsPos* = 2

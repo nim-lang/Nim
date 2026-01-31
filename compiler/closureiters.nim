@@ -189,7 +189,7 @@ const
 
 proc newStateAccess(ctx: var Ctx): PNode =
   result = rawIndirectAccess(newSymNode(getEnvParam(ctx.fn)),
-      getStateField(ctx.g, ctx.fn), ctx.fn.info)
+      getStateField(ctx.g, ctx.fn), ctx.fn.info, uniqueEnv = true)
 
 proc newStateAssgn(ctx: var Ctx, toValue: PNode): PNode =
   # Creates state assignment:
@@ -206,7 +206,8 @@ proc newEnvVar(ctx: var Ctx, name: string, typ: PType): PSym =
   result = addUniqueField(envParam.typ.elementType, result, ctx.g.cache, ctx.idgen)
 
 proc newEnvVarAccess(ctx: Ctx, s: PSym): PNode =
-  result = rawIndirectAccess(newSymNode(getEnvParam(ctx.fn)), s, ctx.fn.info)
+  result = rawIndirectAccess(newSymNode(getEnvParam(ctx.fn)), s, ctx.fn.info,
+                             uniqueEnv = true)
 
 proc newTempVarAccess(ctx: Ctx, s: PSym): PNode =
   result = newSymNode(s, ctx.fn.info)
@@ -1436,7 +1437,7 @@ proc liftLocals(c: var Ctx, n: PNode): PNode =
       let e = getEnvParam(c.fn)
       let field = getFieldFromObj(e.typ.elementType, s)
       assert(field != nil)
-      result = rawIndirectAccess(newSymNode(e), field, n.info)
+      result = rawIndirectAccess(newSymNode(e), field, n.info, uniqueEnv = true)
     # elif c.varStates.getOrDefault(s.itemId, localNotSeen) != localNotSeen:
     #   echo "Not lifting ", s.name.s
 

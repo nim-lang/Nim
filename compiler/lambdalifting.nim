@@ -537,10 +537,10 @@ proc accessViaEnvParam(g: ModuleGraph; n: PNode; owner: PSym): PNode =
       assert obj.kind == tyObject
       let field = getFieldFromObj(obj, s)
       if field != nil:
-        return rawIndirectAccess(access, field, n.info)
+        return rawIndirectAccess(access, field, n.info, uniqueEnv = true)
       let upField = lookupInRecord(obj.n, getIdent(g.cache, upName))
       if upField == nil: break
-      access = rawIndirectAccess(access, upField, n.info)
+      access = rawIndirectAccess(access, upField, n.info, uniqueEnv = true)
       obj = access.typ.baseClass
   localError(g.config, n.info, "internal error: environment misses: " & s.name.s)
   result = n
@@ -583,7 +583,7 @@ proc getUpViaParam(g: ModuleGraph; owner: PSym): PNode =
     if upField == nil:
       localError(g.config, owner.info, "could not find up reference for closure iter")
     else:
-      result = rawIndirectAccess(result, upField, p.info)
+      result = rawIndirectAccess(result, upField, p.info, uniqueEnv = true)
 
 proc rawClosureCreation(owner: PSym;
                         d: var DetectionPass; c: var LiftingPass;
@@ -658,7 +658,7 @@ proc getUpForIter(g: ModuleGraph; owner, iterOwner: PSym, expectedUpTyp: PType):
     if upField == nil:
       return nil
     p = upField
-    res = rawIndirectAccess(res, upField, p.info)
+    res = rawIndirectAccess(res, upField, p.info, uniqueEnv = true)
   res
 
 proc closureCreationForIter(owner: PSym, iter: PNode;
@@ -701,7 +701,7 @@ proc accessViaEnvVar(n: PNode; owner: PSym; d: var DetectionPass;
   let obj = access.typ.skipTypes({tyOwned, tyRef, tyPtr})
   let field = getFieldFromObj(obj, n.sym)
   if field != nil:
-    result = rawIndirectAccess(access, field, n.info)
+    result = rawIndirectAccess(access, field, n.info, uniqueEnv = true)
   else:
     localError(d.graph.config, n.info, "internal error: not part of closure object type")
     result = n

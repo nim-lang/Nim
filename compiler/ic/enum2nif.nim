@@ -1473,6 +1473,7 @@ proc genFlags*(s: set[TNodeFlag]; dest: var string) =
     of nfSkipFieldChecking: dest.add "s0"
     of nfDisabledOpenSym: dest.add "d3"
     of nfLazyType: dest.add "l1"
+    of nfUniqueEnv: dest.add "u"
 
 
 proc parse*(t: typedesc[TNodeFlag]; s: string): set[TNodeFlag] =
@@ -1533,6 +1534,7 @@ proc parse*(t: typedesc[TNodeFlag]; s: string): set[TNodeFlag] =
         inc i
       else: result.incl nfSem
     of 't': result.incl nfTransf
+    of 'u': result.incl nfUniqueEnv
     of 'w': result.incl nfFirstWrite
     else: discard
     inc i
