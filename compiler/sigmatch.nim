@@ -615,6 +615,8 @@ proc isGenericObjectOf(f, a: PType): bool =
   # use sym equality to check if the `tyGenericBody` types are equal
   result = aRoot != nil and f.sym == aRoot.sym
 
+
+
 proc isObjectSubtype(c: var TCandidate; a, f, fGenericOrigin: PType): int =
   var t = a
   assert t.kind == tyObject
