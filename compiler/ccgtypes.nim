@@ -294,7 +294,12 @@ proc cacheGetType(tab: TypeCache; sig: SigHash): Rope =
   result = tab.getOrDefault(sig)
 
 proc addAbiCheck(m: BModule; t: PType, name: Rope) =
-  if isDefined(m.config, "checkAbi") and (let size = getSize(m.config, t); size != szUnknownSize):
+  if isDefined(m.config, "checkAbi") and (let size = getSize(m.config, t); size != szUnknownSize) and
+    not (t.kind == tyObject and searchTypeFor(t, proc (t: PType): bool {.nimcall.} = t.kind == tyUncheckedArray)):
+    # `UncheckedArray`, not `ptr UncheckedArray` type field in object types is a flexible array.
+    # `sizeof` in C and Nim doesn't always return the same value for object types containing it.
+    # making `getSize` in Nim always returns the same value as `sizeof` in C from flexible arrays seems hard.
+    # See `SEQ_DECL_SIZE` in lib/nimbase.h
     var msg = "backend & Nim disagree on size for: "
     msg.addTypeHeader(m.config, t)
     var msg2 = ""
@@ -1067,6 +1072,7 @@ proc getTypeDescAux(m: BModule; origTyp: PType, check: var IntSet; kind: TypeDes
                       else: getTupleDesc(m, t, result, check)
         if not isImportedType(t):
           m.s[cfsTypes].add(recdesc)
+          addAbiCheck(m, t, result)
         elif tfIncompleteStruct notin t.flags:
           discard # addAbiCheck(m, t, result) # already handled elsewhere
   of tySet:
