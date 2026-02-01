@@ -150,7 +150,7 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]; conf: Confi
       assert inst.kind == tyGenericInst
       c.hashType inst.genericHead, flags, conf
       for _, a in inst.genericInstParams:
-        c.hashType a, flags, conf
+        c.hashType a, flags+{CoDistinct}, conf
       t.typeInst = inst
       return
     c &= char(t.kind)
@@ -434,4 +434,3 @@ proc idOrSig*(s: PSym, currentModule: string,
     if counter != 0:
       result.add "_" & rope(counter+1)
     sigCollisions.inc(sig)
-
