@@ -778,7 +778,9 @@ proc deallocBigChunk(a: var MemRegion, c: PBigChunk) =
   sysAssert a.occ >= 0, "rawDealloc: negative occupied memory (case B)"
   when not defined(gcDestructors):
     a.deleted = getBottom(a)
-    del(a, a.root, cast[int](addr(c.data)))
+    # Use the same address that was added during allocation (accounting for alignment)
+    let alignedDataAddr = cast[int](addr(c.data)) +% c.alignOffset.int
+    del(a, a.root, alignedDataAddr)
   if c.size >= HugeChunkSize: freeHugeChunk(a, c)
   else: freeBigChunk(a, c)
 

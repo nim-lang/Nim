@@ -123,49 +123,49 @@ for q in 0..500:
     z[i].a = q
     doAssert(cast[int](z[i]) mod alignof(MyType64) == 0)
 
-# type
-#   MyType128 = object
-#     a{.align(128).}: int
+type
+  MyType128 = object
+    a{.align(128).}: int
 
-# var w: array[10, ref MyType128]
-# for q in 0..500:
-#   for i in 0..<w.len:
-#     new w[i]
-#     w[i].a = q
-#     doAssert(cast[int](w[i]) mod alignof(MyType128) == 0)
+var w: array[10, ref MyType128]
+for q in 0..500:
+  for i in 0..<w.len:
+    new w[i]
+    w[i].a = q
+    doAssert(cast[int](w[i]) mod alignof(MyType128) == 0)
 
-# # Nested aligned-object tests
-# type
-#   Inner128 = object
-#     v {.align(128).}: byte
+# Nested aligned-object tests
+type
+  Inner128 = object
+    v {.align(128).}: byte
 
-#   OuterWithInner = object
-#     prefix: int
-#     inner: Inner128
+  OuterWithInner = object
+    prefix: int
+    inner: Inner128
 
-# var outerArr: array[8, ref OuterWithInner]
-# for q in 0..200:
-#   for i in 0..<outerArr.len:
-#     new outerArr[i]
-#     # write to inner to ensure it's allocated
-#     outerArr[i].inner.v = cast[byte](q and 0xFF)
-#     doAssert(cast[uint](addr outerArr[i].inner) mod uint(alignof(Inner128)) == 0)
+var outerArr: array[8, ref OuterWithInner]
+for q in 0..200:
+  for i in 0..<outerArr.len:
+    new outerArr[i]
+    # write to inner to ensure it's allocated
+    outerArr[i].inner.v = cast[byte](q and 0xFF)
+    doAssert(cast[uint](addr outerArr[i].inner) mod uint(alignof(Inner128)) == 0)
 
-# # Nested two-level alignment
-# type
-#   DeepInner = object
-#     b {.align(128).}: int
+# Nested two-level alignment
+type
+  DeepInner = object
+    b {.align(128).}: int
 
-#   Mid = object
-#     di: DeepInner
+  Mid = object
+    di: DeepInner
 
-#   Top = object
-#     m: Mid
+  Top = object
+    m: Mid
 
-# var topArr: array[4, ref Top]
-# for q in 0..100:
-#   for i in 0..<topArr.len:
-#     new topArr[i]
-#     topArr[i].m.di.b = q
-#     doAssert(cast[uint](addr topArr[i].m.di) mod uint(alignof(DeepInner)) == 0)
+var topArr: array[4, ref Top]
+for q in 0..100:
+  for i in 0..<topArr.len:
+    new topArr[i]
+    topArr[i].m.di.b = q
+    doAssert(cast[uint](addr topArr[i].m.di) mod uint(alignof(DeepInner)) == 0)
 
