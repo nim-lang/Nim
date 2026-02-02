@@ -478,7 +478,8 @@ iterator allObjects(m: var MemRegion): pointer {.inline.} =
             a = a +% size
         else:
           let c = cast[PBigChunk](c)
-          yield addr(c.data)
+          # Yield the aligned address that was actually returned to user
+          yield addr(c.data) +! c.alignOffset
   m.locked = false
 
 proc iterToProc*(iter: typed, envType: typedesc; procName: untyped) {.
@@ -1130,7 +1131,8 @@ when not defined(gcDestructors):
         if avlNode != nil:
           var k = cast[pointer](avlNode.key)
           var c = cast[PBigChunk](pageAddr(k))
-          sysAssert(addr(c.data) == k, " k is not the same as addr(c.data)!")
+          # k should be the aligned address (addr(c.data) + alignOffset)
+          sysAssert(addr(c.data) +! c.alignOffset == k, " k is not the aligned address!")
           if cast[ptr FreeCell](k).zeroField >% 1:
             result = k
             sysAssert isAllocatedPtr(a, result), " result wrong pointer!"
