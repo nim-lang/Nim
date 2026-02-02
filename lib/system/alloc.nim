@@ -1088,7 +1088,7 @@ when not defined(gcDestructors):
         else:
           var c = cast[PBigChunk](c)
           # Use stored alignOffset to find the actual Cell location
-          let cellPtr = cast[pointer](cast[int](addr(c.data)) + cast[int](c.alignOffset))
+          let cellPtr = addr(c.data) +! c.alignOffset
           result = p == cellPtr and cast[ptr FreeCell](p).zeroField >% 1
 
   proc prepareForInteriorPointerChecking(a: var MemRegion) {.inline.} =
@@ -1114,7 +1114,7 @@ when not defined(gcDestructors):
         else:
           var c = cast[PBigChunk](c)
           # Use stored alignment offset to find the actual Cell location
-          var d = cast[pointer](cast[int](addr(c.data)) + c.alignOffset)
+          var d = addr(c.data) +! c.alignOffset
           if p >= d and cast[ptr FreeCell](d).zeroField >% 1:
             result = d
             sysAssert isAllocatedPtr(a, result), " result wrong pointer!"
