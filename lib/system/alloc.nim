@@ -850,9 +850,9 @@ proc applyAlignment(basePtr: pointer, alignment: int, offset: int, c: PBigChunk)
   # Apply alignment if needed: align (basePtr + offset) to alignment boundary
   if alignment > MemAlign:
     let base = basePtr +! offset
-    let alignOffset = alignment - (cast[int](base) and (alignment - 1))
+    let alignOffset = alignment -% cast[int](cast[uint](base) and uint(alignment - 1))
     result = base +! alignOffset
-    c.alignOffset = cast[uint16](alignOffset + offset)
+    c.alignOffset = cast[uint16](alignOffset +% offset)
   else:
     c.alignOffset = 0
     result = basePtr
