@@ -842,7 +842,7 @@ proc transformFor(c: PTransf, n: PNode): PNode =
       else:
         # generate a temporary and produce an assignment statement:
         var temp = newTemp(c, t, formal.info)
-        #incl(temp.sym.flags, sfCursor)
+        incl(temp.sym.flagsImpl, sfCursor)
         addVar(v, temp)
         stmtList.add(newAsgnStmt(c, nkFastAsgn, temp, arg, true))
         newC.mapping[formal.itemId] = temp
