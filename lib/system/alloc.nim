@@ -134,7 +134,7 @@ type
 
   BigChunk = object of BaseChunk # not necessarily > PageSize!
     next, prev: PBigChunk    # chunks of the same (or bigger) size
-    alignOffset: int16       # offset from data start to actual Cell (for aligned allocs)
+    alignOffset: uint16       # offset from data start to actual Cell (for aligned allocs)
     data {.align: MemAlign.}: UncheckedArray[byte]      # start of usable memory
 
   HeapLinks = object
@@ -846,6 +846,17 @@ when defined(heaptrack):
   proc heaptrack_malloc(a: pointer, size: int) {.cdecl, importc, dynlib: heaptrackLib.}
   proc heaptrack_free(a: pointer) {.cdecl, importc, dynlib: heaptrackLib.}
 
+proc applyAlignment(basePtr: pointer, alignment: int, offset: int, c: PBigChunk): pointer {.inline.} =
+  # Apply alignment if needed: align (basePtr + offset) to alignment boundary
+  if alignment > MemAlign:
+    let base = basePtr +! offset
+    let alignOffset = alignment - (cast[int](base) and (alignment - 1))
+    result = base +! alignOffset
+    c.alignOffset = cast[uint16](alignOffset + offset)
+  else:
+    c.alignOffset = 0
+    result = basePtr
+
 proc rawAlloc(a: var MemRegion, requestedSize: int, alignment: int = MemAlign, offset: int = 0): pointer =
   when defined(nimTypeNames):
     inc(a.allocCounter)
@@ -963,16 +974,8 @@ proc rawAlloc(a: var MemRegion, requestedSize: int, alignment: int = MemAlign, o
     sysAssert c.prev == nil, "rawAlloc 10"
     sysAssert c.next == nil, "rawAlloc 11"
     result = addr(c.data)
-    
     # Apply alignment if needed: align (result + offset) to alignment boundary
-    if alignment > MemAlign:
-      let mask = alignment - 1
-      let alignedUserData = (cast[int](result) + offset + mask) and not mask
-      let finalResult = cast[pointer](alignedUserData - offset)
-      c.alignOffset = cast[int16](cast[int](finalResult) - cast[int](result))
-      result = finalResult
-    else:
-      c.alignOffset = 0
+    result = applyAlignment(result, alignment, offset, c)
 
     sysAssert((cast[int](c) and (MemAlign-1)) == 0, "rawAlloc 13")
     sysAssert((cast[int](c) and PageMask) == 0, "rawAlloc: Not aligned on a page boundary")
@@ -1085,7 +1088,7 @@ when not defined(gcDestructors):
         else:
           var c = cast[PBigChunk](c)
           # Use stored alignOffset to find the actual Cell location
-          let cellPtr = cast[pointer](cast[int](addr(c.data)) + c.alignOffset)
+          let cellPtr = cast[pointer](cast[int](addr(c.data)) + cast[int](c.alignOffset))
           result = p == cellPtr and cast[ptr FreeCell](p).zeroField >% 1
 
   proc prepareForInteriorPointerChecking(a: var MemRegion) {.inline.} =
