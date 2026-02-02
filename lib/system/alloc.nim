@@ -850,16 +850,10 @@ when defined(heaptrack):
   proc heaptrack_free(a: pointer) {.cdecl, importc, dynlib: heaptrackLib.}
 
 proc applyAlignment(basePtr: pointer, alignment: int, offset: int, c: PBigChunk): pointer {.inline.} =
-  # Apply alignment if needed: align (basePtr + offset) to alignment boundary
-  if alignment > MemAlign:
-    # Use integer modulo-safe arithmetic for addresses and ptrarith for casts
-    let alignedUserData = align(cast[int](basePtr) +% offset, alignment)
-    let finalResult = alignedUserData -% offset
-    c.alignOffset = cast[uint16](finalResult -% cast[int](basePtr))
-    result = cast[pointer](finalResult)
-  else:
-    c.alignOffset = 0
-    result = basePtr
+  let alignedUserData = align(cast[int](basePtr) +% offset, alignment)
+  let finalResult = alignedUserData -% offset
+  c.alignOffset = cast[uint16](finalResult -% cast[int](basePtr))
+  result = cast[pointer](finalResult)
 
 proc rawAlloc(a: var MemRegion, requestedSize: int, alignment: int = MemAlign, offset: int = 0): pointer =
   when defined(nimTypeNames):
@@ -979,7 +973,10 @@ proc rawAlloc(a: var MemRegion, requestedSize: int, alignment: int = MemAlign, o
     sysAssert c.next == nil, "rawAlloc 11"
     result = addr(c.data)
     # Apply alignment if needed: align (result + offset) to alignment boundary
-    result = applyAlignment(result, alignment, offset, c)
+    if alignment > MemAlign:
+      result = applyAlignment(result, alignment, offset, c)
+    else:
+      c.alignOffset = 0
 
     sysAssert((cast[int](c) and (MemAlign-1)) == 0, "rawAlloc 13")
     sysAssert((cast[int](c) and PageMask) == 0, "rawAlloc: Not aligned on a page boundary")
