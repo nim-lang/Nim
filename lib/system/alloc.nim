@@ -849,10 +849,11 @@ when defined(heaptrack):
 proc applyAlignment(basePtr: pointer, alignment: int, offset: int, c: PBigChunk): pointer {.inline.} =
   # Apply alignment if needed: align (basePtr + offset) to alignment boundary
   if alignment > MemAlign:
-    let base = basePtr +! offset
-    let alignOffset = alignment -% cast[int](cast[uint](base) and uint(alignment - 1))
-    result = base +! alignOffset
-    c.alignOffset = cast[uint16](alignOffset +% offset)
+    # Use integer modulo-safe arithmetic for addresses and ptrarith for casts
+    let alignedUserData = align(cast[int](basePtr) +% offset, alignment)
+    let finalResult = alignedUserData -% offset
+    c.alignOffset = cast[uint16](finalResult -% cast[int](basePtr))
+    result = cast[pointer](finalResult)
   else:
     c.alignOffset = 0
     result = basePtr
