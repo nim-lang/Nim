@@ -1144,6 +1144,8 @@ semantic analysis). Assignments from the base type to one of its subrange types
 A subrange type has the same size as its base type (`int` in the
 Subrange example).
 
+Implicit "downsizing" conversions to range types (for example, `int -> range[0..255]` or `range[1..256] -> range[0..255]`) emit the `ImplicitRangeConversion` warning. Conversions that are clearly safe (for example, `range[0..255] -> range[0..65535]`) and any explicit casts do not trigger this warning. Conversions from `int` to common subranges such as `Natural` or `Positive` are also exempt.
+
 
 Pre-defined floating-point types
 --------------------------------
