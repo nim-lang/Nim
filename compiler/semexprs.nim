@@ -1105,7 +1105,7 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType
     let t = n[0].typ
     if t != nil and t.kind in {tyVar, tyLent}:
       n[0] = newDeref(n[0])
-    elif isSymChoice(n[0]) and nfDotField notin n.flags:
+    elif (isSymChoice(n[0]) or (n[0].kind == nkSym and isGenericRoutineStrict(n[0].sym))) and nfDotField notin n.flags:
       # overloaded generic procs e.g. newSeq[int] can end up here
       return semDirectOp(c, n, flags, expectedType)
 
