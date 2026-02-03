@@ -1078,7 +1078,7 @@ proc trackCall(tracked: PEffects; n: PNode) =
     if tracked.owner.kind != skMacro and n.typ.skipTypes(abstractVar).kind != tyOpenArray:
       createTypeBoundOps(tracked, n.typ, n.info)
   if a.kind == nkSym:
-    if a.sym.isGenericRoutineStrict():
+    if a.sym.isGenericRoutineStrict() and a.sym.magic != mZeroDefault:
       # this error is likely a compiler bug
       localError(tracked.config, a.info, "calling generic procedure without instantiation: $1" % a.sym.name.s)
 
