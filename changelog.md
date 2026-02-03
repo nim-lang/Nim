@@ -33,6 +33,8 @@ errors.
 
 - Bitshift operators (`shl`, `shr`, `ashr`) now apply bitmasking to the right operand in the C/C++/VM/JS backends.
 
+- Adds a new warning enabled by `--warning:ImplicitRangeConversion` that detects downsizing implicit conversions to range types (e.g., `int -> range[0..255]` or `range[1..256] -> range[0..255]`) that could cause runtime panics. Safe conversions like `range[0..255] -> range[0..65535]` and explicit casts are not warned on.
+
 ## Standard library additions and changes
 
 [//]: # "Additions:"
