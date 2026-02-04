@@ -558,6 +558,21 @@ proc declareTempOf(c: var TLiftCtx; body: PNode; value: PNode): PNode =
   v.addVar(result, value)
   body.add v
 
+proc considerInferDupFromCopy(c: var TLiftCtx; t: PType; body, x, y: PNode): bool =
+  ## For `=dup`, if no explicit hook exists, try to infer from `=copy` hook
+  ## to maintain backward compatibility. Returns true if inference was applied.
+  if c.kind == attachedDup:
+    var op2 = getAttachedOp(c.g, t, attachedAsgn)
+    if op2 != nil and sfOverridden in op2.flags:
+      #markUsed(c.g.config, c.info, op, c.g.usageSym)
+      onUse(c.info, op2)
+      body.add newHookCall(c, t.assignment, x, y)
+      result = true
+    else:
+      result = false
+  else:
+    result = false
+
 proc addIncStmt(c: var TLiftCtx; body, i: PNode) =
   let incCall = genBuiltin(c, mInc, "inc", i)
   incCall.add lowerings.newIntLit(c.g, c.info, 1)
@@ -1053,19 +1068,12 @@ proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
       elif tfUnion in t.flags: # bug #25236
         defaultOp(c, t, body, x, y)
       else:
-        if c.kind == attachedDup:
-          var op2 = getAttachedOp(c.g, t, attachedAsgn)
-          if op2 != nil and sfOverridden in op2.flags:
-            #markUsed(c.g.config, c.info, op, c.g.usageSym)
-            onUse(c.info, op2)
-            body.add newHookCall(c, t.assignment, x, y)
-          else:
-            fillBodyObjT(c, t, body, x, y)
-        else:
+        if not considerInferDupFromCopy(c, t, body, x, y):
           fillBodyObjT(c, t, body, x, y)
   of tyDistinct:
     if not considerUserDefinedOp(c, t, body, x, y):
-      fillBody(c, t.elementType, body, x, y)
+      if not considerInferDupFromCopy(c, t, body, x, y):
+        fillBody(c, t.elementType, body, x, y)
   of tyTuple:
     fillBodyTup(c, t, body, x, y)
   of tyVarargs, tyOpenArray:
