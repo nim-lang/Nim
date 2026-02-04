@@ -13,7 +13,7 @@ import
   ast, astalgo, trees, msgs, platform, renderer, options,
   lineinfos, int128, modulegraphs, astmsgs, wordrecg
 
-import std/[intsets, strutils]
+import std/[intsets, strutils, tables]
 
 when defined(nimPreviewSlimSystem):
   import std/[assertions, formatfloat]
@@ -1165,6 +1165,31 @@ proc getAlign*(conf: ConfigRef; typ: PType): BiggestInt =
 proc getSize*(conf: ConfigRef; typ: PType): BiggestInt =
   computeSizeAlign(conf, typ)
   result = typ.size
+
+proc typeExtensions*(g: ModuleGraph; t: PType): seq[TypeExtension] =
+  ## Returns type extensions, or empty seq if none.
+  if g.typeExtensions.hasKey(t.itemId):
+    result = g.typeExtensions[t.itemId]
+  else:
+    result = @[]
+
+proc addTypeExtension*(g: ModuleGraph; t: PType; kind: TypeExtKind; expr: PNode) =
+  ## Adds a type extension.
+  if not g.typeExtensions.hasKey(t.itemId):
+    g.typeExtensions[t.itemId] = @[]
+  g.typeExtensions[t.itemId].add(TypeExtension(kind: kind, expr: expr))
+
+proc hasTypeExtensions*(g: ModuleGraph; t: PType): bool =
+  ## Returns true if type has any extensions.
+  g.typeExtensions.hasKey(t.itemId)
+
+proc hasTypeExtension*(g: ModuleGraph; t: PType; kind: TypeExtKind): bool =
+  ## Returns true if type has a specific extension kind.
+  if g.typeExtensions.hasKey(t.itemId):
+    for ext in g.typeExtensions[t.itemId]:
+      if ext.kind == kind:
+        return true
+  false
 
 proc setImportedTypeSize*(conf: ConfigRef, t: PType, size: int) =
   t.size = size

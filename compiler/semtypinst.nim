@@ -31,6 +31,48 @@ proc checkConstructedType*(conf: ConfigRef; info: TLineInfo, typ: PType) =
   elif computeSize(conf, t) == szIllegalRecursion or isRecursiveStructuralType(t):
     localError(conf, info, "illegal recursion in type '" & typeToString(t) & "'")
 
+proc substituteTypeParams(n: PNode; body, inst: PType): PNode =
+  ## Substitute generic parameter references with instantiated types.
+  ## body is the generic body type, inst is the tyGenericInst.
+  if n == nil: return nil
+  case n.kind
+  of nkSym:
+    if n.sym.kind == skGenericParam or
+       (n.sym.kind == skType and n.sym.typ != nil and n.sym.typ.kind == tyGenericParam):
+      # Find which parameter this is by matching against body's params
+      for i in 0..<body.kidsLen - 1:
+        if body[i].sym == n.sym or sameTypeOrNil(body[i], n.sym.typ):
+          # inst[0] is the generic body, inst[1..] are the type arguments
+          return newNodeIT(nkType, n.info, inst[i + 1])
+      return n
+    else:
+      return n
+  of nkType:
+    if n.typ != nil and n.typ.kind == tyGenericParam:
+      for i in 0..<body.kidsLen - 1:
+        if sameTypeOrNil(body[i], n.typ):
+          return newNodeIT(nkType, n.info, inst[i + 1])
+      return n
+    else:
+      return n
+  else:
+    result = shallowCopy(n)
+    for i in 0..<n.len:
+      result[i] = substituteTypeParams(n[i], body, inst)
+
+proc evaluateTypeExtension*(c: PContext; instType, body: PType;
+                             ext: TypeExtension): BiggestInt =
+  ## Evaluates a type extension expression after type instantiation.
+  ## Returns the evaluated integer value, or szUnknownSize on error.
+  var expr = copyTree(ext.expr)
+  expr = substituteTypeParams(expr, body, instType)
+  let evaluated = c.semConstExpr(c, expr)
+  if evaluated.kind in {nkCharLit..nkUInt64Lit}:
+    result = evaluated.intVal
+  else:
+    localError(c.config, ext.expr.info, "type extension must evaluate to integer constant")
+    result = szUnknownSize
+
 proc searchInstTypes*(g: ModuleGraph; key: PType): PType =
   result = nil
   let genericTyp = key[0]
@@ -511,6 +553,27 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
 
   rawAddSon(result, newbody)
   checkPartialConstructedType(cl.c.config, cl.info, newbody)
+
+  # Evaluate type extensions (e.g., size: sizeof(T) on generic imported types)
+  if cl.c.graph.hasTypeExtensions(body):
+    for ext in cl.c.graph.typeExtensions(body):
+      let val = evaluateTypeExtension(cl.c, result, body, ext)
+      if val != szUnknownSize:
+        case ext.kind
+        of extDeferredSize:
+          newbody.size = val
+          # Set alignment based on size for imported types
+          if val <= 1:
+            newbody.align = 1
+          elif val <= 2:
+            newbody.align = 2
+          elif val <= 4:
+            newbody.align = 4
+          else:
+            newbody.align = int16 floatInt64Align(cl.c.config)
+        of extDeferredAlign:
+          newbody.align = int16 val
+
   if not cl.allowMetaTypes:
     let dc = cl.c.graph.getAttachedOp(newbody, attachedDeepCopy)
     if dc != nil and sfFromGeneric notin dc.flags:
