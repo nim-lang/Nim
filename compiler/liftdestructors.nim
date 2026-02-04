@@ -566,7 +566,7 @@ proc considerInferDupFromCopy(c: var TLiftCtx; t: PType; body, x, y: PNode): boo
     if op2 != nil and sfOverridden in op2.flags:
       #markUsed(c.g.config, c.info, op, c.g.usageSym)
       onUse(c.info, op2)
-      body.add newHookCall(c, t.assignment, x, y)
+      body.add newHookCall(c, op2, x, y)
       result = true
     else:
       result = false
