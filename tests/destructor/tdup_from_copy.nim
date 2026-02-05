@@ -1,6 +1,5 @@
 discard """
-  matrix: "--warningaserror:deprecated"
-  errormsg: "'=dup' is not provided while a custom '=copy' is defined for type 'Foo'; this will become a compile time error in the future"
+  errormsg: "'=dup' is not provided while a custom '=copy' is defined for type 'Foo'"
 """
 
 type Foo = distinct int

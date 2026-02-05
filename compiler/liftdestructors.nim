@@ -558,18 +558,14 @@ proc declareTempOf(c: var TLiftCtx; body: PNode; value: PNode): PNode =
   v.addVar(result, value)
   body.add v
 
-proc warnDupCustomCopy(c: var TLiftCtx; t: PType; useError: bool) {.inline.} =
-  ## Emit a warning when generating `=dup` code and a custom `=copy` hook
+proc errorDupCustomCopy(c: var TLiftCtx; t: PType) {.inline.} =
+  ## Emit an error when generating `=dup` code and a custom `=copy` hook
   ## exists
   if c.kind == attachedDup:
     let op2 = getAttachedOp(c.g, t, attachedAsgn)
     if op2 != nil and sfOverridden in op2.flags:
-      if useError:
-        localError(c.g.config, c.info,
-          "'=dup' is not provided while a custom '=copy' is defined for type '" & typeToString(t) & "'; this will become a compile time error in the future")
-      else:
-        message(c.g.config, c.info, warnDeprecated,
-          "'=dup' is not provided while a custom '=copy' is defined for type '" & typeToString(t) & "'; this will become a compile time error in the future")
+      localError(c.g.config, c.info,
+        "'=dup' is not provided while a custom '=copy' is defined for type '" & typeToString(t) & "'")
 
 proc addIncStmt(c: var TLiftCtx; body, i: PNode) =
   let incCall = genBuiltin(c, mInc, "inc", i)
@@ -1070,7 +1066,8 @@ proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
           var op2 = getAttachedOp(c.g, t, attachedAsgn)
           if op2 != nil and sfOverridden in op2.flags:
             # warn if a custom '=copy' exists but no '=dup' is provided
-            warnDupCustomCopy(c, t, false)
+            message(c.g.config, c.info, warnDeprecated,
+              "'=dup' is not provided while a custom '=copy' is defined for type '" & typeToString(t) & "'; this will become a compile time error in the future")
             #markUsed(c.g.config, c.info, op, c.g.usageSym)
             onUse(c.info, op2)
             body.add newHookCall(c, t.assignment, x, y)
@@ -1080,7 +1077,7 @@ proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
           fillBodyObjT(c, t, body, x, y)
   of tyDistinct:
     if not considerUserDefinedOp(c, t, body, x, y):
-      warnDupCustomCopy(c, t, true)
+      errorDupCustomCopy(c, t)
       fillBody(c, t.elementType, body, x, y)
   of tyTuple:
     fillBodyTup(c, t, body, x, y)
