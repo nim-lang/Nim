@@ -180,7 +180,9 @@ proc shouldWarnRangeConversion(conf: ConfigRef; info: TLineInfo; formalType, arg
         sfSystemModule in f.sym.owner.flags and
         (f.sym.name.s == "Positive" or
           f.sym.name.s == "Natural"):
-      # Positive and Natural are special cases that we never warn on
+      # Positive and Natural are special cases that we do not warn on with
+      # ImplicitRangeConversion, but may warn on with systemRangeConversion
+      # if that warning is enabled.
       if conf.hasWarn(warnSystemRangeConversion):
         message(conf, info, warnSystemRangeConversion,
               typeToString(argType) & " -> " & typeToString(formalType))
