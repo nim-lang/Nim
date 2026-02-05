@@ -168,7 +168,7 @@ proc isRangeSupertype(conf: ConfigRef; wider, narrower: PType): bool =
     # int -> float ranges; warn
     result = false
 
-proc shouldWarnRangeConversion(conf: ConfigRef; formalType, argType: PType): bool =
+proc shouldWarnRangeConversion(conf: ConfigRef; info: TLineInfo; formalType, argType: PType): bool =
   ## Determine if an implicit range conversion should warn
   ## We warn on conversions that are likely to cause panics
   let f = formalType.skipTypes({tyGenericInst, tyAlias, tySink, tyDistinct})
@@ -181,6 +181,9 @@ proc shouldWarnRangeConversion(conf: ConfigRef; formalType, argType: PType): boo
         (f.sym.name.s == "Positive" or
           f.sym.name.s == "Natural"):
       # Positive and Natural are special cases that we never warn on
+      if conf.hasWarn(warnSystemRangeConversion):
+        message(conf, info, warnSystemRangeConversion,
+              typeToString(argType) & " -> " & typeToString(formalType))
       result = false
     else:
       result = not isRangeSupertype(conf, f, a)
@@ -1545,7 +1548,7 @@ proc track(tracked: PEffects, n: PNode) =
 
     # Check for implicit range conversions
     if n.kind == nkHiddenStdConv and (not tracked.isArrayIndexing) and
-          shouldWarnRangeConversion(tracked.config, n.typ, n[1].typ):
+          shouldWarnRangeConversion(tracked.config, n.info, n.typ, n[1].typ):
       message(tracked.config, n.info, warnImplicitRangeConversion,
               typeToString(n[1].typ) & " -> " & typeToString(n.typ))
 
