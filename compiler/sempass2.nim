@@ -176,7 +176,7 @@ proc shouldWarnRangeConversion(conf: ConfigRef; formalType, argType: PType): boo
   if f.kind == tyRange:
     # Only warn if formal range doesn't fully contain argument range
     # Check if the ranges don't perfectly overlap
-    if a.kind == tyInt and f.sym != nil and 
+    if a.kind == tyInt and f.sym != nil and f.sym.owner != nil and
         sfSystemModule in f.sym.owner.flagsImpl and
         (f.sym.name.s == "Positive" or
           f.sym.name.s == "Natural"):
