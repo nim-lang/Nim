@@ -125,14 +125,13 @@ proc isLastReadImpl(n: PNode; c: var Con; scope: var Scope; root: PSym): bool =
   dbg:
     echo "\n### ", c.owner.name.s, ":\nCFG:"
     echoCfg(c.g)
-    #echo c.body
 
-  var j = 0
-  while j < c.g.len:
-    if c.g[j].kind == use and c.g[j].n == n: break
-    inc j
+  var j = -1
+  for i in 0..<c.g.len:
+    if c.g[i].kind == use and c.g[i].n == n:
+      j = i
   c.otherUsage = unknownLineInfo
-  if j < c.g.len:
+  if j >= 0:
     var pcs = @[j+1]
     var marked = initIntSet()
     result = true

@@ -25,6 +25,8 @@
 import ast, lineinfos, renderer, aliasanalysis
 import std/private/asciitables
 import std/intsets
+import std/tables
+import std/algorithm
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -57,6 +59,10 @@ type
     blocks: seq[TBlock]
     owner: PSym
     root: PSym
+    stateLabels: Table[int, TPosition]
+    stateFixups: Table[int, seq[TPosition]]
+    stateCaseDepth: int
+    stateCaseNextState: int
 
 proc codeListing(c: ControlFlowGraph, start = 0; last = -1): string =
   # for debugging purposes
@@ -106,11 +112,24 @@ template checkedDistance(dist): int =
 proc jmpBack(c: var Con, p = TPosition(0)) =
   c.code.add Instr(kind: loop, dest: checkedDistance(p.int - c.code.len))
 
+proc genStateGoto(c: var Con; target: int) =
+  if target < 0:
+    c.code.add Instr(kind: goto, dest: high(int) - c.code.len)
+  else:
+    let lab = c.stateLabels.getOrDefault(target, TPosition(-1))
+    if lab.int >= 0:
+      c.code.add Instr(kind: goto, dest: checkedDistance(lab.int - c.code.len))
+    else:
+      let p = c.gotoI()
+      c.stateFixups.mgetOrPut(target, @[]).add p
+
 proc patch(c: var Con, p: TPosition) =
   # patch with current index
   c.code[p.int].dest = checkedDistance(c.code.len - p.int)
 
 proc gen(c: var Con; n: PNode)
+
+const stateUnset = high(int)
 
 proc popBlock(c: var Con; oldLen: int) =
   var exits: seq[TPosition] = @[]
@@ -142,9 +161,34 @@ proc genWhile(c: var Con; n: PNode) =
   #   body
   #   jmp lab1
   # lab2:
+  proc containsGotoState(n: PNode): bool =
+    if n.kind == nkGotoState: return true
+    for i in 0..<n.safeLen:
+      if containsGotoState(n[i]): return true
+    result = false
+  proc isStateAccess(n: PNode): bool =
+    let it = skipConvDfa(n)
+    case it.kind
+    of nkSym:
+      result = it.sym.name.s == ":state"
+    of nkDotExpr, nkCheckedFieldExpr:
+      result = it[1].kind == nkSym and it[1].sym.name.s == ":state"
+    of nkHiddenDeref:
+      result = isStateAccess(it[0])
+    else:
+      result = false
+  proc containsStateCase(n: PNode): bool =
+    if n.kind == nkCaseStmt and n.len > 0 and isStateAccess(n[0]):
+      return true
+    for i in 0..<n.safeLen:
+      if containsStateCase(n[i]): return true
+    result = false
   let lab1 = c.genLabel
   withBlock(nil):
-    if isTrue(n[0]):
+    if containsStateCase(n[1]) or containsGotoState(n[1]):
+      # State-machine dispatcher loop; control flow is modeled via the case/goto.
+      c.gen(n[1])
+    elif isTrue(n[0]):
       c.gen(n[1])
       c.jmpBack(lab1)
     else:
@@ -227,8 +271,75 @@ proc genCase(c: var Con; n: PNode) =
   c.gen(n[0])
   let oldInteresting = c.interestingInstructions
   let oldLen = c.code.len
-  for i in 1..<n.len:
+  proc isStateAccess(n: PNode): bool =
+    let it = skipConvDfa(n)
+    case it.kind
+    of nkSym:
+      result = it.sym.name.s == ":state"
+    of nkDotExpr, nkCheckedFieldExpr:
+      result = it[1].kind == nkSym and it[1].sym.name.s == ":state"
+    of nkHiddenDeref:
+      result = isStateAccess(it[0])
+    else:
+      result = false
+  proc findStateAssignment(n: PNode): int =
+    var res = stateUnset
+    proc traverse(n: PNode) =
+      case n.kind
+      of nkAsgn, nkFastAsgn:
+        if isStateAccess(n[0]) and n[1].kind == nkIntLit:
+          res = n[1].intVal.int
+      else:
+        discard
+      for i in 0..<n.safeLen:
+        traverse(n[i])
+    traverse(n)
+    result = res
+  let isStateCase = isStateAccess(n[0])
+  var branchOrder: seq[int] = @[]
+  if isStateCase:
+    var labeled: seq[(int, int)] = @[]
+    var others: seq[int] = @[]
+    var elseIdx = -1
+    for i in 1..<n.len:
+      let it = n[i]
+      if it.len == 1:
+        elseIdx = i
+      else:
+        var stateId = high(int)
+        for j in 0..it.len-2:
+          if it[j].kind == nkIntLit:
+            stateId = it[j].intVal.int
+            break
+        if stateId != high(int):
+          labeled.add (stateId, i)
+        else:
+          others.add i
+    labeled.sort(proc (a, b: (int, int)): int = cmp(a[0], b[0]))
+    for it in labeled: branchOrder.add it[1]
+    for i in others: branchOrder.add i
+    if elseIdx >= 0: branchOrder.add elseIdx
+  else:
+    for i in 1..<n.len: branchOrder.add i
+
+  for i in branchOrder:
     let it = n[i]
+    if isStateCase and it.len >= 2:
+      for j in 0..it.len-2:
+        if it[j].kind == nkIntLit:
+          let stateId = it[j].intVal.int
+          let lab = c.genLabel
+          c.stateLabels[stateId] = lab
+          if c.stateFixups.hasKey(stateId):
+            for p in c.stateFixups[stateId]:
+              c.code[p.int].dest = checkedDistance(lab.int - p.int)
+            c.stateFixups.del(stateId)
+          break
+    let oldDepth = c.stateCaseDepth
+    let oldNext = c.stateCaseNextState
+    if isStateCase:
+      c.stateCaseDepth = oldDepth + 1
+      c.stateCaseNextState = findStateAssignment(it.lastSon)
     if it.len == 1 or (i == n.len-1 and isExhaustive):
       # treat the last branch as 'else' if this is an exhaustive case statement.
       c.gen(it.lastSon)
@@ -236,6 +347,10 @@ proc genCase(c: var Con; n: PNode) =
       forkT:
         c.gen(it.lastSon)
         endings.add c.gotoI()
+    if isStateCase:
+      c.stateCaseDepth = oldDepth
+      c.stateCaseNextState = oldNext
+    discard
 
   if oldInteresting == c.interestingInstructions:
     setLen c.code, oldLen
@@ -246,6 +361,17 @@ proc genCase(c: var Con; n: PNode) =
 proc genBlock(c: var Con; n: PNode) =
   withBlock(n[0].sym):
     c.gen(n[1])
+
+proc genGotoState(c: var Con; n: PNode) =
+  if n.len == 0:
+    c.code.add Instr(kind: goto, dest: high(int) - c.code.len)
+    return
+  if n[0].kind == nkIntLit:
+    let target = n[0].intVal.int
+    c.genStateGoto(target)
+  else:
+    # Dynamic target; be conservative and assume a loop.
+    c.jmpBack(TPosition(0))
 
 proc genBreakOrRaiseAux(c: var Con, i: int, n: PNode) =
   let lab1 = c.gotoI()
@@ -263,6 +389,11 @@ proc genBreakOrRaiseAux(c: var Con, i: int, n: PNode) =
 
 proc genBreak(c: var Con; n: PNode) =
   inc c.interestingInstructions
+  if c.stateCaseDepth > 0 and n[0].kind == nkSym and
+      n[0].sym.name.s == ":stateLoop" and
+      c.stateCaseNextState != stateUnset:
+    c.genStateGoto(c.stateCaseNextState)
+    return
   if n[0].kind == nkSym:
     for i in countdown(c.blocks.high, 0):
       if not c.blocks[i].isTryBlock and c.blocks[i].label == n[0].sym:
@@ -329,7 +460,13 @@ proc genReturn(c: var Con; n: PNode) =
     gen(c, n[0])
   else:
     genImplicitReturn(c)
-  genBreakOrRaiseAux(c, 0, n)
+  if c.stateCaseDepth > 0 and c.stateCaseNextState != stateUnset and
+      c.stateCaseNextState >= 0:
+    forkT:
+      genBreakOrRaiseAux(c, 0, n)
+    c.genStateGoto(c.stateCaseNextState)
+  else:
+    genBreakOrRaiseAux(c, 0, n)
 
 const
   InterestingSyms = {skVar, skResult, skLet, skParam, skForVar, skTemp}
@@ -468,9 +605,16 @@ proc gen(c: var Con; n: PNode) =
   of nkRaiseStmt: genRaise(c, n)
   of nkBreakStmt: genBreak(c, n)
   of nkTryStmt, nkHiddenTryStmt: genTry(c, n)
-  of nkStmtList, nkStmtListExpr, nkChckRangeF, nkChckRange64, nkChckRange,
-     nkBracket, nkCurly, nkPar, nkTupleConstr, nkClosure, nkObjConstr, nkYieldStmt:
+  of nkStmtList, nkStmtListExpr:
     for x in n: gen(c, x)
+  of nkYieldStmt:
+    forkT:
+      c.code.add Instr(kind: goto, dest: high(int) - c.code.len)
+  of nkChckRangeF, nkChckRange64, nkChckRange,
+     nkBracket, nkCurly, nkPar, nkTupleConstr, nkClosure, nkObjConstr:
+    for x in n: gen(c, x)
+  of nkGotoState:
+    genGotoState(c, n)
   of nkPragmaBlock: gen(c, n.lastSon)
   of nkDiscardStmt, nkObjDownConv, nkObjUpConv, nkStringToCString, nkCStringToString:
     gen(c, n[0])
@@ -498,7 +642,11 @@ when false:
 
 proc constructCfg*(s: PSym; body: PNode; root: PSym): ControlFlowGraph =
   ## constructs a control flow graph for ``body``.
-  var c = Con(code: @[], blocks: @[], owner: s, root: root)
+  var c = Con(code: @[], blocks: @[], owner: s, root: root,
+              stateLabels: initTable[int, TPosition](),
+              stateFixups: initTable[int, seq[TPosition]](),
+              stateCaseDepth: 0,
+              stateCaseNextState: stateUnset)
   withBlock(s):
     gen(c, body)
     if root.kind == skResult:
