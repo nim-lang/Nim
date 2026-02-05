@@ -803,6 +803,8 @@ proc genNarrow(c: PCtx; n: PNode; dest: TDest) =
     let first = c.genx(newIntTypeNode(firstOrd(c.config, t), intType))
     let last = c.genx(newIntTypeNode(lastOrd(c.config, t), intType))
     c.gABC(n, opcNarrowR, dest, first, last)
+    c.freeTemp(first)
+    c.freeTemp(last)
 
 proc genNarrowU(c: PCtx; n: PNode; dest: TDest) =
   let t = skipTypes(n.typ, abstractVar-{tyTypeDesc})
