@@ -1260,9 +1260,24 @@ proc wrapIntoStateLoop(ctx: var Ctx, n: PNode): PNode =
   #   block :stateLoop:
   #     local vars decl (if needed)
   #     body # Might get wrapped in try-except
+  var needsLoop = false
+  proc detectNonYieldGoto(n: PNode) =
+    if needsLoop: return
+    for i, c in n:
+      if c.kind == nkGotoState and c[0].kind == nkIntLit and (i > 0 and n[i - 1].kind != nkYieldStmt):
+        needsLoop = true
+        return
+      else:
+        detectNonYieldGoto(c)
+  for s in ctx.states:
+    detectNonYieldGoto(s.body)
+    if needsLoop: break
+
+  result = newNodeI(nkStmtList, n.info)
   let loopBody = newNodeI(nkStmtList, n.info)
-  result = newTree(nkWhileStmt, ctx.g.boolLit(n.info, true), loopBody)
-  result.info = n.info
+  if needsLoop:
+    result = newTree(nkWhileStmt, ctx.g.boolLit(n.info, true), loopBody)
+    result.info = n.info
 
   let localVars = newNodeI(nkStmtList, n.info)
 
@@ -1274,7 +1289,10 @@ proc wrapIntoStateLoop(ctx: var Ctx, n: PNode): PNode =
     blockBody = ctx.wrapIntoTryExcept(blockBody)
 
   blockStmt.add(blockBody)
-  loopBody.add(blockStmt)
+  if needsLoop:
+    loopBody.add(blockStmt)
+  else:
+    result = blockStmt
 
   if ctx.hasExceptions:
     # Since we have yields in tries, we must switch current exception

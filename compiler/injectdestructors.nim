@@ -97,8 +97,22 @@ when false:
     for i in low(InstrKind)..high(InstrKind):
       echo "INSTR ", i, " ", perfCounters[i]
 
-proc isLastReadImpl(n: PNode; c: var Con; scope: var Scope): bool =
-  let root = parampatterns.exprRoot(n, allowCalls=false)
+proc fieldRootFromAccess(n: PNode): PSym =
+  result = nil
+  var it = n
+  while true:
+    case it.kind
+    of nkHiddenStdConv, nkHiddenSubConv, nkConv:
+      it = it[1]
+    of nkObjUpConv, nkObjDownConv, nkHiddenDeref, nkDerefExpr, nkHiddenAddr, nkBracketExpr:
+      it = it[0]
+    of nkDotExpr, nkCheckedFieldExpr:
+      if it[1].kind == nkSym: return it[1].sym
+      return nil
+    else:
+      return nil
+
+proc isLastReadImpl(n: PNode; c: var Con; scope: var Scope; root: PSym): bool =
   if root == nil: return false
   elif sfSingleUsedTemp in root.flags: return true
 
@@ -172,7 +186,12 @@ proc isLastRead(n: PNode; c: var Con; s: var Scope): bool =
   if not hasDestructorOrAsgn(c, n.typ): return true
 
   let m = skipConvDfa(n)
-  result = isLastReadImpl(n, c, s)
+  let root = parampatterns.exprRoot(n, allowCalls=false)
+  if n.typ != nil and isSinkType(n.typ) and isAnalysableFieldAccess(n, c.owner):
+    let fieldRoot = fieldRootFromAccess(n)
+    if fieldRoot != nil:
+      return isLastReadImpl(n, c, s, fieldRoot)
+  result = isLastReadImpl(n, c, s, root)
 
 proc isFirstWrite(n: PNode; c: var Con): bool =
   let m = skipConvDfa(n)
@@ -814,34 +833,35 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
     elif n.kind in {nkBracket, nkObjConstr, nkTupleConstr, nkClosure, nkNilLit} +
          nkCallKinds + nkLiterals:
       result = p(n, c, s, consumed)
-    elif ((n.kind == nkSym and isSinkParam(n.sym)) or isAnalysableFieldAccess(n, c.owner)) and
-        isLastRead(n, c, s) and not (n.kind == nkSym and isCursor(n)):
-      # Sinked params can be consumed only once. We need to reset the memory
-      # to disable the destructor which we have not elided
-      result = destructiveMoveVar(n, c, s)
-    elif n.kind in {nkHiddenSubConv, nkHiddenStdConv, nkConv}:
-      result = copyTree(n)
-      if n.typ.skipTypes(abstractInst-{tyOwned}).kind != tyOwned and
-          n[1].typ.skipTypes(abstractInst-{tyOwned}).kind == tyOwned:
-        # allow conversions from owned to unowned via this little hack:
-        let nTyp = n[1].typ
-        n[1].typ = n.typ
-        result[1] = p(n[1], c, s, sinkArg)
-        result[1].typ = nTyp
-      else:
-        result[1] = p(n[1], c, s, sinkArg)
-    elif n.kind in {nkObjDownConv, nkObjUpConv}:
-      result = copyTree(n)
-      result[0] = p(n[0], c, s, sinkArg)
-    elif n.kind == nkCast and n.typ.skipTypes(abstractInst).kind in {tyString, tySequence}:
-      result = copyTree(n)
-      result[1] = p(n[1], c, s, sinkArg)
-    elif n.typ == nil:
-      # 'raise X' can be part of a 'case' expression. Deal with it here:
-      result = p(n, c, s, normal)
     else:
-      # copy objects that are not temporary but passed to a 'sink' parameter
-      result = passCopyToSink(n, c, s)
+      if ((n.kind == nkSym and isSinkParam(n.sym)) or isAnalysableFieldAccess(n, c.owner)) and
+          isLastRead(n, c, s) and not (n.kind == nkSym and isCursor(n)):
+        # Sinked params can be consumed only once. We need to reset the memory
+        # to disable the destructor which we have not elided
+        result = destructiveMoveVar(n, c, s)
+      elif n.kind in {nkHiddenSubConv, nkHiddenStdConv, nkConv}:
+        result = copyTree(n)
+        if n.typ.skipTypes(abstractInst-{tyOwned}).kind != tyOwned and
+            n[1].typ.skipTypes(abstractInst-{tyOwned}).kind == tyOwned:
+          # allow conversions from owned to unowned via this little hack:
+          let nTyp = n[1].typ
+          n[1].typ = n.typ
+          result[1] = p(n[1], c, s, sinkArg)
+          result[1].typ = nTyp
+        else:
+          result[1] = p(n[1], c, s, sinkArg)
+      elif n.kind in {nkObjDownConv, nkObjUpConv}:
+        result = copyTree(n)
+        result[0] = p(n[0], c, s, sinkArg)
+      elif n.kind == nkCast and n.typ.skipTypes(abstractInst).kind in {tyString, tySequence}:
+        result = copyTree(n)
+        result[1] = p(n[1], c, s, sinkArg)
+      elif n.typ == nil:
+        # 'raise X' can be part of a 'case' expression. Deal with it here:
+        result = p(n, c, s, normal)
+      else:
+        # copy objects that are not temporary but passed to a 'sink' parameter
+        result = passCopyToSink(n, c, s)
   else:
     case n.kind
     of nkBracket, nkTupleConstr, nkClosure, nkCurly:

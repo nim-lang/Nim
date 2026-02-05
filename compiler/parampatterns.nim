@@ -187,6 +187,20 @@ type
 
 proc exprRoot*(n: PNode; allowCalls = true): PSym =
   result = nil
+  if n.typ != nil and isSinkType(n.typ):
+    var probe = n
+    while true:
+      case probe.kind
+      of nkHiddenStdConv, nkHiddenSubConv, nkConv:
+        probe = probe[1]
+      of nkObjUpConv, nkObjDownConv, nkHiddenDeref, nkDerefExpr, nkHiddenAddr, nkBracketExpr:
+        probe = probe[0]
+      of nkDotExpr, nkCheckedFieldExpr:
+        if probe[1].kind == nkSym:
+          return probe[1].sym
+        break
+      else:
+        break
   var it = n
   while true:
     case it.kind

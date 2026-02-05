@@ -347,23 +347,43 @@ proc skipTrivials(c: var Con, n: PNode): PNode =
       result = result[1]
     else: break
 
+proc matchesFieldAccess(orig: PNode; field: PSym): bool =
+  result = false
+  var n = skipConvDfa(orig)
+  while true:
+    case n.kind
+    of nkDotExpr, nkCheckedFieldExpr:
+      if n[1].kind == nkSym and n[1].sym == field:
+        result = true
+        break
+      n = skipConvDfa(n[0])
+    else:
+      break
+
 proc genUse(c: var Con; orig: PNode) =
   let n = c.skipTrivials(orig)
 
-  if n.kind == nkSym:
+  if c.root.kind == skField and matchesFieldAccess(orig, c.root):
+    c.code.add Instr(kind: use, n: orig)
+    inc c.interestingInstructions
+  elif n.kind == nkSym:
     if n.sym.kind in InterestingSyms and n.sym == c.root:
       c.code.add Instr(kind: use, n: orig)
       inc c.interestingInstructions
+    else:
+      discard
   else:
     gen(c, n)
 
 proc genDef(c: var Con; orig: PNode) =
   let n = c.skipTrivials(orig)
 
-  if n.kind == nkSym and n.sym.kind in InterestingSyms:
-    if n.sym == c.root:
-      c.code.add Instr(kind: def, n: orig)
-      inc c.interestingInstructions
+  if c.root.kind == skField and matchesFieldAccess(orig, c.root):
+    c.code.add Instr(kind: def, n: orig)
+    inc c.interestingInstructions
+  elif n.kind == nkSym and n.sym.kind in InterestingSyms and n.sym == c.root:
+    c.code.add Instr(kind: def, n: orig)
+    inc c.interestingInstructions
 
 proc genCall(c: var Con; n: PNode) =
   gen(c, n[0])

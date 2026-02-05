@@ -21,6 +21,24 @@ proc skipConvDfa*(n: PNode): PNode =
     else: break
 
 proc isAnalysableFieldAccess*(orig: PNode; owner: PSym): bool =
+  let stripped = skipConvDfa(orig)
+  if stripped.typ != nil and isSinkType(stripped.typ):
+    var base = stripped
+    while true:
+      case base.kind
+      of nkDotExpr, nkCheckedFieldExpr:
+        base = skipConvDfa(base[0])
+      of nkHiddenDeref, nkDerefExpr:
+        base = skipConvDfa(base[0])
+      of nkHiddenStdConv, nkHiddenSubConv, nkConv:
+        base = skipConvDfa(base[1])
+      of nkObjUpConv, nkObjDownConv:
+        base = skipConvDfa(base[0])
+      else:
+        break
+    if base.kind == nkSym and base.sym.owner == owner and
+        {sfGlobal, sfThread, sfCursor} * base.sym.flags == {}:
+      return true
   var n = orig
   while true:
     case n.kind
