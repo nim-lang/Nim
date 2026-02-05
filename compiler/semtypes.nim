@@ -986,7 +986,7 @@ proc skipGenericInvocation(t: PType): PType {.inline.} =
 proc tryAddInheritedFields(c: PContext, check: var IntSet, pos: var int,
                         obj: PType, n: PNode, isPartial = false, innerObj: PType = nil): bool =
   if ((not isPartial) and (obj.kind notin {tyObject, tyGenericParam} or tfFinal in obj.flags)) or
-    (innerObj != nil and obj.sym.id == innerObj.sym.id):
+    (innerObj != nil and obj.id == innerObj.id):
     localError(c.config, n.info, "Cannot inherit from: '" & $obj & "'")
     result = false
   elif obj.kind == tyObject:
