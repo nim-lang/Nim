@@ -821,3 +821,10 @@ proc g1314(_: static bool) = discard
 proc g1314(_: int) = discard
 proc y1314() = g1314((; let k = 0; k))
 y1314()
+
+proc myProc(first: range[0..100]) =
+  var x = first
+  while x > 0:
+    dec(x)
+
+const r = (myProc(3); 1)
