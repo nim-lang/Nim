@@ -106,6 +106,10 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]; conf: Confi
     c &= "\254"
     return
 
+  # Ensure type is fully loaded before hashing to avoid hash changing
+  # as properties are accessed and trigger lazy loading.
+  backendEnsureMutable(t)
+
   case t.kind
   of tyGenericInvocation:
     for a in t.kids:
@@ -150,7 +154,7 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]; conf: Confi
       assert inst.kind == tyGenericInst
       c.hashType inst.genericHead, flags, conf
       for _, a in inst.genericInstParams:
-        c.hashType a, flags, conf
+        c.hashType a, flags+{CoDistinct}, conf
       t.typeInstImpl = inst
       return
     c &= char(t.kind)

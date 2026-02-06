@@ -663,7 +663,10 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       of rkNode:
         if regs[rb].node.typ.kind notin PtrLikeKinds:
           stackTrace(c, tos, pc, "opcCastIntToPtr: regs[rb].node.typ: " & $regs[rb].node.typ.kind)
-        node2.intVal = regs[rb].node.intVal
+        if regs[rb].node.kind == nkNilLit:
+          node2.intVal = 0
+        else:
+          node2.intVal = regs[rb].node.intVal
       else: stackTrace(c, tos, pc, "opcCastIntToPtr: regs[rb].kind: " & $regs[rb].kind)
       regs[ra].node = node2
     of opcAsgnComplex:
@@ -1721,6 +1724,12 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeB(rkInt)
       let min = -(1.BiggestInt shl (rb-1))
       let max = (1.BiggestInt shl (rb-1))-1
+      if regs[ra].intVal < min or regs[ra].intVal > max:
+        stackTrace(c, tos, pc, "unhandled exception: value out of range")
+    of opcNarrowR:
+      decodeBC(rkInt)
+      let min = regs[rb].intVal
+      let max = regs[rc].intVal
       if regs[ra].intVal < min or regs[ra].intVal > max:
         stackTrace(c, tos, pc, "unhandled exception: value out of range")
     of opcNarrowU:

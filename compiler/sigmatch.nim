@@ -233,13 +233,11 @@ proc copyingEraseVoidParams(m: TCandidate, t: var PType) =
       if not copied:
         # keep first i children
         t = copyType(original, m.c.idgen, t.owner)
-        t.setSonsLen(i)
         t.n = copyNode(original.n)
         t.n.sons = original.n.sons
         t.n.sons.setLen(i)
         copied = true
     elif copied:
-      t.add(f)
       t.n.add(original.n[i])
 
 proc initCandidate*(ctx: PContext, callee: PSym,
@@ -616,6 +614,8 @@ proc isGenericObjectOf(f, a: PType): bool =
   let aRoot = genericRoot(a)
   # use sym equality to check if the `tyGenericBody` types are equal
   result = aRoot != nil and f.sym == aRoot.sym
+
+
 
 proc isObjectSubtype(c: var TCandidate; a, f, fGenericOrigin: PType): int =
   var t = a
@@ -1678,7 +1678,6 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     elif a.kind == tyGenericInst:
       if roota.base == rootf.base:
         let nextFlags = flags + {trNoCovariance}
-        var hasCovariance = false
         # YYYY
         result = isEqual
 
@@ -1690,7 +1689,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
           if res notin {isEqual, isGeneric}:
             if trNoCovariance notin flags and ff.kind == aa.kind:
               let paramFlags = rootf.base[i-1].flags
-              hasCovariance =
+              let hasCovariance =
                 if tfCovariant in paramFlags:
                   if tfWeakCovariant in paramFlags:
                     isCovariantPtr(c, ff, aa)
@@ -1701,35 +1700,36 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
                     typeRel(c, aa, ff, flags) == isSubtype
               if hasCovariance:
                 continue
+            result = isNone
+            break
 
-            return isNone
-        if prev == nil: put(c, f, a)
-      else:
-        let fKind = rootf.last.kind
-        if fKind in {tyAnd, tyOr}:
-          result = typeRel(c, last(f), a, flags)
-          if result != isNone: put(c, f, a)
+        if result != isNone:
+          if prev == nil: put(c, f, a)
           return
 
-        var aAsObject = roota.last
+      let fKind = rootf.last.kind
+      if fKind in {tyAnd, tyOr}:
+        result = typeRel(c, last(f), a, flags)
+        if result != isNone: put(c, f, a)
+        return
 
-        if fKind in {tyRef, tyPtr}:
-          if aAsObject.kind == tyObject:
-            # bug #7600, tyObject cannot be passed
-            # as argument to tyRef/tyPtr
-            return isNone
-          elif aAsObject.kind == fKind:
-            aAsObject = aAsObject.base
+      var aAsObject = roota.last
 
-        if aAsObject.kind == tyObject and trIsOutParam notin flags:
-          let baseType = aAsObject.base
-          if baseType != nil:
-            if tfFinal notin aAsObject.flags:
-              inc c.inheritancePenalty, 1 + int(c.inheritancePenalty < 0)
-            let ret = typeRel(c, f, baseType, flags)
-            return if ret in {isEqual,isGeneric}: isSubtype else: ret
+      if fKind in {tyRef, tyPtr}:
+        if aAsObject.kind == tyObject:
+          # bug #7600, tyObject cannot be passed
+          # as argument to tyRef/tyPtr
+          return isNone
+        elif aAsObject.kind == fKind:
+          aAsObject = aAsObject.base
 
-        result = isNone
+      if aAsObject.kind == tyObject and trIsOutParam notin flags:
+        let baseType = aAsObject.base
+        if baseType != nil:
+          if tfFinal notin aAsObject.flags:
+            inc c.inheritancePenalty, 1 + int(c.inheritancePenalty < 0)
+          let ret = typeRel(c, f, baseType, flags)
+          return if ret in {isEqual,isGeneric}: isSubtype else: ret
     else:
       assert last(origF) != nil
       result = typeRel(c, last(origF), a, flags)
@@ -3094,6 +3094,7 @@ proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
             put(m, formal.typ, defaultValue.typ)
         defaultValue.flags.incl nfDefaultParam
         setSon(m.call, formal.position + 1, defaultValue)
+
   # forget all inferred types if the overload matching failed
   if m.state == csNoMatch:
     for t in m.inferredTypes:

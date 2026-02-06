@@ -31,6 +31,10 @@ errors.
 
 - The second parameter of `succ`, `pred`, `inc`, and `dec` in `system` now accepts `SomeInteger` (previously `Ordinal`).
 
+- Bitshift operators (`shl`, `shr`, `ashr`) now apply bitmasking to the right operand in the C/C++/VM/JS backends.
+
+- Adds a new warning enabled by `--warning:ImplicitRangeConversion` that detects downsizing implicit conversions to range types (e.g., `int -> range[0..255]` or `range[1..256] -> range[0..255]`) that could cause runtime panics. Safe conversions like `range[0..255] -> range[0..65535]` and explicit casts are not warned on.
+
 ## Standard library additions and changes
 
 [//]: # "Additions:"
@@ -104,7 +108,17 @@ errors.
 ## Compiler changes
 
 - Added `--cachecfg` command line option that caches the result of evaluation of cfg/NimScript configuration files to reduces the compile time.
+- Fixed a bug where `sizeof(T)` inside a `typedesc` template called from a generic type's
+  `when` clause would error with "'sizeof' requires '.importc' types to be '.completeStruct'".
+  The issue was that `hasValuelessStatics` in `semtypinst.nim` didn't recognize
+  `tyTypeDesc(tyGenericParam)` as an unresolved generic parameter.
 
 ## Tool changes
 
+- Added `--raw` flag when generating JSON docs to not render markup.
 - Added `--stdinfile` flag to name of the file used when running program from stdin (defaults to `stdinfile.nim`)
+- Added `--styleCheck:warning` flag to treat style check violations as warnings.
+
+## Documentation changes
+
+- Added documentation for the `completeStruct` pragma in the manual.
