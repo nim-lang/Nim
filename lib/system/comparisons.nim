@@ -38,6 +38,16 @@ proc `==`*[T](x, y: ptr T): bool {.magic: "EqRef", noSideEffect.}
 proc `==`*[T: proc | iterator](x, y: T): bool {.magic: "EqProc", noSideEffect.}
   ## Checks that two `proc` variables refer to the same procedure.
 
+when true:
+  # guard against string converted to cstring implicitly; see also #bug #25488
+  proc isNil*(x: string): bool {.noSideEffect, error: "'isNil' is invalid for 'string'".}
+
+  proc `==`*(x: string; y: typeof(nil) | typeof(nil)): bool {.error: "'nil' is invalid for 'string'".} =
+    discard
+
+  proc `==`*(x: typeof(nil) | typeof(nil); y: string): bool {.error: "'nil' is invalid for 'string'".} =
+    discard
+
 proc `<=`*[Enum: enum](x, y: Enum): bool {.magic: "LeEnum", noSideEffect.}
 proc `<=`*(x, y: string): bool {.magic: "LeStr", noSideEffect.} =
   ## Compares two strings and returns true if `x` is lexicographically
