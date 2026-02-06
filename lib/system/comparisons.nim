@@ -42,6 +42,11 @@ when true:
   # guard against string converted to cstring implicitly; see also #bug #25488
   proc isNil*(x: string): bool {.noSideEffect, error: "'isNil' is invalid for 'string'".}
 
+
+  # bug #9149; ensure that 'typeof(nil)' does not match *too* well by using 'typeof(nil) | typeof(nil)',
+  # especially for converters, see tests/overload/tconverter_to_string.nim
+  # Eventually we will be able to remove this hack completely.
+
   proc `==`*(x: string; y: typeof(nil) | typeof(nil)): bool {.error: "'nil' is invalid for 'string'".} =
     discard
 
