@@ -1078,7 +1078,7 @@ proc trackCall(tracked: PEffects; n: PNode) =
     if tracked.owner.kind != skMacro and n.typ.skipTypes(abstractVar).kind != tyOpenArray:
       createTypeBoundOps(tracked, n.typ, n.info)
   if tracked.c.matchedConcept == nil and a.kind == nkSym:
-    if a.sym.isGenericRoutineStrict() and a.sym.magic notin {mSizeOf, mZeroDefault}:
+    if a.sym.isGenericRoutineStrict() and a.sym.magic notin {mSizeOf, mZeroDefault, mTypeOf}:
       # this error is likely a compiler bug
 
       # it is not instantiated if there is an error
