@@ -913,8 +913,12 @@ proc parseJson(p: var JsonParser; rawIntegers, rawFloats: bool, depth = 0): Json
       eat(p, tkColon)
       var val = parseJson(p, rawIntegers, rawFloats, depth+1)
       result[key] = val
-      if p.tok != tkComma: break
-      discard getTok(p)
+      if p.tok == tkComma:
+        discard getTok(p)
+        if p.tok == tkCurlyRi:
+          raiseParseErr(p, "string literal as key")
+      elif p.tok != tkCurlyRi:
+        raiseParseErr(p, "'}' or ','")
     eat(p, tkCurlyRi)
   of tkBracketLe:
     if depth > DepthLimit:
@@ -923,8 +927,12 @@ proc parseJson(p: var JsonParser; rawIntegers, rawFloats: bool, depth = 0): Json
     discard getTok(p)
     while p.tok != tkBracketRi:
       result.add(parseJson(p, rawIntegers, rawFloats, depth+1))
-      if p.tok != tkComma: break
-      discard getTok(p)
+      if p.tok == tkComma:
+        discard getTok(p)
+        if p.tok == tkBracketRi:
+          raiseParseErr(p, "array element")
+      elif p.tok != tkBracketRi:
+        raiseParseErr(p, "']' or ','")
     eat(p, tkBracketRi)
   of tkError, tkCurlyRi, tkBracketRi, tkColon, tkComma, tkEof:
     raiseParseErr(p, "{")
