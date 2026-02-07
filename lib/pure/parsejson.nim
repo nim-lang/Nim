@@ -343,13 +343,33 @@ proc parseNumber(my: var JsonParser) =
       inc(pos)
   my.bufpos = pos
 
-proc parseName(my: var JsonParser) =
-  var pos = my.bufpos
-  if my.buf[pos] in IdentStartChars:
-    while my.buf[pos] in IdentChars:
-      add(my.a, my.buf[pos])
-      inc(pos)
-  my.bufpos = pos
+proc parseKeyword(my: var JsonParser): TokKind =
+  let pos = my.bufpos
+  case my.buf[pos]
+  of 'n':
+    if my.buf[pos + 1] == 'u' and my.buf[pos + 2] == 'l' and
+       my.buf[pos + 3] == 'l' and my.buf[pos + 4] notin IdentChars:
+      my.bufpos = pos + 4
+      return tkNull
+  of 't':
+    if my.buf[pos + 1] == 'r' and my.buf[pos + 2] == 'u' and
+       my.buf[pos + 3] == 'e' and my.buf[pos + 4] notin IdentChars:
+      my.bufpos = pos + 4
+      return tkTrue
+  of 'f':
+    if my.buf[pos + 1] == 'a' and my.buf[pos + 2] == 'l' and
+       my.buf[pos + 3] == 's' and my.buf[pos + 4] == 'e' and
+       my.buf[pos + 5] notin IdentChars:
+      my.bufpos = pos + 5
+      return tkFalse
+  else:
+    discard
+
+  var endPos = pos
+  while my.buf[endPos] in IdentChars:
+    inc(endPos)
+  my.bufpos = endPos
+  result = tkError
 
 proc getTok*(my: var JsonParser): TokKind =
   setLen(my.a, 0)
@@ -384,12 +404,7 @@ proc getTok*(my: var JsonParser): TokKind =
   of '\0':
     result = tkEof
   of 'a'..'z', 'A'..'Z', '_':
-    parseName(my)
-    case my.a
-    of "null": result = tkNull
-    of "true": result = tkTrue
-    of "false": result = tkFalse
-    else: result = tkError
+    result = parseKeyword(my)
   else:
     inc(my.bufpos)
     result = tkError
