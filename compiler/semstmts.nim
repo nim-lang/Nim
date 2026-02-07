@@ -2175,7 +2175,7 @@ proc bindTypeHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp) =
   template notRefc: bool =
     # fixes refc with non-var destructor; cancel warnings (#23156)
     c.config.backend == backendJs or
-      c.config.selectedGC in {gcArc, gcAtomicArc, gcOrc}
+      c.config.selectedGC in {gcArc, gcAtomicArc, gcOrc, gcYrc}
   let cond = case op
              of attachedWasMoved:
                t.len == 2 and t.returnType == nil and t.firstParamType.kind == tyVar
