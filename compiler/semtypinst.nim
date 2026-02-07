@@ -55,6 +55,16 @@ proc substituteTypeParams(n: PNode; body, inst: PType): PNode =
       return n
     else:
       return n
+  of nkIdent:
+    # Try to match identifier against generic param names
+    for i in 0..<body.kidsLen - 1:
+      if body[i].sym != nil and body[i].sym.name.id == n.ident.id:
+        return newNodeIT(nkType, n.info, inst[i + 1])
+    return n
+  of nkEmpty, nkNilLit, nkCharLit..nkUInt64Lit, nkFloatLit..nkFloat128Lit,
+     nkStrLit..nkTripleStrLit:
+    # Leaf nodes - return as-is
+    return n
   else:
     result = shallowCopy(n)
     for i in 0..<n.len:

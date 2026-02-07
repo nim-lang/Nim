@@ -118,10 +118,13 @@ const
   errStringLiteralExpected = "string literal expected"
   errIntLiteralExpected = "integer literal expected"
 
-proc containsGenericParam(n: PNode): bool =
+proc containsGenericParam(c: PContext; n: PNode): bool =
   ## Check if AST node contains any unresolved generic type parameter.
-  ## Also returns true for unresolved identifiers (nkIdent) which may be
-  ## generic params not yet resolved during early pragma processing.
+  ## Returns true for:
+  ## - Symbols that are generic params (skGenericParam or tyGenericParam)
+  ## - Identifiers that resolve to generic params
+  ## - Identifiers that don't resolve to anything (likely generic params not yet in scope)
+  ##   BUT only if they also don't resolve to a known type like `cint`
   if n == nil: return false
   case n.kind
   of nkSym:
@@ -130,12 +133,26 @@ proc containsGenericParam(n: PNode): bool =
   of nkType:
     result = n.typ != nil and n.typ.kind == tyGenericParam
   of nkIdent:
-    # Unresolved identifier - could be a generic param not yet resolved.
-    # Defer evaluation to be safe.
-    result = true
+    # Try to look up the identifier in current scope
+    var ambiguous = false
+    let sym = searchInScopes(c, n.ident, ambiguous)
+    if sym == nil:
+      # Unresolved identifier - likely a generic param not yet fully in scope
+      result = true
+    elif sym.kind == skGenericParam:
+      result = true
+    elif sym.kind == skType and sym.typ != nil and sym.typ.kind == tyGenericParam:
+      result = true
+    else:
+      # Resolves to a known type (like cint) - not a generic param
+      result = false
+  of nkEmpty, nkNilLit, nkCharLit..nkUInt64Lit, nkFloatLit..nkFloat128Lit,
+     nkStrLit..nkTripleStrLit:
+    # Leaf nodes that are never generic params
+    result = false
   else:
     for child in n:
-      if containsGenericParam(child):
+      if containsGenericParam(c, child):
         return true
     result = false
 
@@ -964,7 +981,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         processImportObjC(c, sym, getOptionalStr(c, it, "$1"), it.info)
       of wSize:
         if sym.typ == nil: invalidPragma(c, it)
-        elif it.kind in nkPragmaCallKinds and it.len == 2 and containsGenericParam(it[1]):
+        elif it.kind in nkPragmaCallKinds and it.len == 2 and containsGenericParam(c, it[1]):
           # Defer evaluation until generic type is instantiated
           if sfImportc notin sym.flags:
             localError(c.config, it.info,
