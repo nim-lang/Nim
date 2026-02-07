@@ -195,6 +195,7 @@ type
     gcRegions = "regions"
     gcArc = "arc"
     gcOrc = "orc"
+    gcYrc = "yrc"       # thread-safe ORC (concurrent cycle collector)
     gcAtomicArc = "atomicArc"
     gcMarkAndSweep = "markAndSweep"
     gcHooks = "hooks"

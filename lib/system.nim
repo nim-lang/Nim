@@ -125,7 +125,7 @@ proc unsafeAddr*[T](x: T): ptr T {.magic: "Addr", noSideEffect.} =
 
 const ThisIsSystem = true
 
-const arcLikeMem = defined(gcArc) or defined(gcAtomicArc) or defined(gcOrc)
+const arcLikeMem = defined(gcArc) or defined(gcAtomicArc) or defined(gcOrc) or defined(gcYrc)
 
 when defined(nimAllowNonVarDestructor) and arcLikeMem:
   proc new*[T](a: var ref T, finalizer: proc (x: T) {.nimcall.}) {.
@@ -356,7 +356,7 @@ proc low*(x: string): int {.magic: "Low", noSideEffect.}
   ## See also:
   ## * `high(string) <#high,string>`_
 
-when not defined(gcArc) and not defined(gcOrc) and not defined(gcAtomicArc):
+when not defined(gcArc) and not defined(gcOrc) and not defined(gcYrc) and not defined(gcAtomicArc):
   proc shallowCopy*[T](x: var T, y: T) {.noSideEffect, magic: "ShallowCopy".}
     ## Use this instead of `=` for a `shallow copy`:idx:.
     ##
@@ -407,7 +407,7 @@ when defined(nimHasDup):
 
 proc `=sink`*[T](x: var T; y: T) {.inline, nodestroy, magic: "Asgn".} =
   ## Generic `sink`:idx: implementation that can be overridden.
-  when defined(gcArc) or defined(gcOrc) or defined(gcAtomicArc):
+  when defined(gcArc) or defined(gcOrc) or defined(gcYrc) or defined(gcAtomicArc):
     x = y
   else:
     shallowCopy(x, y)
@@ -2561,7 +2561,7 @@ when compileOption("rangechecks"):
 else:
   template rangeCheck*(cond) = discard
 
-when not defined(gcArc) and not defined(gcOrc) and not defined(gcAtomicArc):
+when not defined(gcArc) and not defined(gcOrc) and not defined(gcYrc) and not defined(gcAtomicArc):
   proc shallow*[T](s: var seq[T]) {.noSideEffect, inline.} =
     ## Marks a sequence `s` as `shallow`:idx:. Subsequent assignments will not
     ## perform deep copies of `s`.
@@ -2630,7 +2630,7 @@ when hasAlloc or defined(nimscript):
     setLen(x, xl+item.len)
     var j = xl-1
     while j >= i:
-      when defined(gcArc) or defined(gcOrc) or defined(gcAtomicArc):
+      when defined(gcArc) or defined(gcOrc) or defined(gcYrc) or defined(gcAtomicArc):
         x[j+item.len] = move x[j]
       else:
         shallowCopy(x[j+item.len], x[j])

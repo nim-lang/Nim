@@ -16,7 +16,7 @@ runtime type and only contains a reference count.
 
 {.push raises: [], rangeChecks: off.}
 
-when defined(gcOrc):
+when defined(gcOrc) or defined(gcYrc):
   const
     rcIncrement = 0b10000 # so that lowest 4 bits are not touched
     rcMask = 0b1111
@@ -36,12 +36,12 @@ type
     rc: int # the object header is now a single RC field.
             # we could remove it in non-debug builds for the 'owned ref'
             # design but this seems unwise.
-    when defined(gcOrc):
+    when defined(gcOrc) or defined(gcYrc):
       rootIdx: int # thanks to this we can delete potential cycle roots
                    # in O(1) without doubly linked lists
     when defined(nimArcDebug) or defined(nimArcIds):
       refId: int
-    when defined(gcOrc) and orcLeakDetector:
+    when (defined(gcOrc) or defined(gcYrc)) and orcLeakDetector:
       filename: cstring
       line: int
 
@@ -119,7 +119,7 @@ proc nimNewObjUninit(size, alignment: int): pointer {.compilerRtl.} =
   else:
     result = cast[ptr RefHeader](alignedAlloc(s, alignment) +! hdrSize)
   head(result).rc = 0
-  when defined(gcOrc):
+  when defined(gcOrc) or defined(gcYrc):
     head(result).rootIdx = 0
   when defined(nimArcDebug):
     head(result).refId = gRefId
@@ -157,7 +157,7 @@ proc nimIncRef(p: pointer) {.compilerRtl, inl.} =
   when traceCollector:
     cprintf("[INCREF] %p\n", head(p))
 
-when not defined(gcOrc) or defined(nimThinout):
+when not (defined(gcOrc) or defined(gcYrc)) or defined(nimThinout):
   proc unsureAsgnRef(dest: ptr pointer, src: pointer) {.inline.} =
     # This is only used by the old RTTI mechanism and we know
     # that 'dest[]' is nil and needs no destruction. Which is really handy
@@ -208,7 +208,9 @@ proc nimDestroyAndDispose(p: pointer) {.compilerRtl, quirky, raises: [].} =
       cstderr.rawWrite "has destructor!\n"
   nimRawDispose(p, rti.align)
 
-when defined(gcOrc):
+when defined(gcYrc):
+  include yrc
+elif defined(gcOrc):
   when defined(nimThinout):
     include cyclebreaker
   else:
@@ -251,7 +253,7 @@ proc GC_ref*[T](x: ref T) =
   ## New runtime only supports this operation for 'ref T'.
   if x != nil: nimIncRef(cast[pointer](x))
 
-when not defined(gcOrc):
+when not (defined(gcOrc) or defined(gcYrc)):
   template GC_fullCollect* =
     ## Forces a full garbage collection pass. With `--mm:arc` a nop.
     discard

@@ -163,7 +163,7 @@ proc fillBodyObj(c: var TLiftCtx; n, body, x, y: PNode; enforceDefaultOp: bool, 
     if c.filterDiscriminator != nil: return
     let f = n.sym
     let b = if c.kind == attachedTrace: y else: y.dotField(f)
-    if (sfCursor in f.flags and c.g.config.selectedGC in {gcArc, gcAtomicArc, gcOrc, gcHooks}) or
+    if (sfCursor in f.flags and c.g.config.selectedGC in {gcArc, gcAtomicArc, gcOrc, gcYrc, gcHooks}) or
         enforceDefaultOp:
       defaultOp(c, f.typ, body, x.dotField(f), b)
     else:
@@ -735,9 +735,9 @@ proc atomicRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   let elemType = t.elementType
 
   createTypeBoundOps(c.g, c.c, elemType, c.info, c.idgen)
-  let isCyclic = c.g.config.selectedGC == gcOrc and types.canFormAcycle(c.g, elemType)
+  let isCyclic = c.g.config.selectedGC in {gcOrc, gcYrc} and types.canFormAcycle(c.g, elemType)
 
-  let isInheritableAcyclicRef = c.g.config.selectedGC == gcOrc and
+  let isInheritableAcyclicRef = c.g.config.selectedGC in {gcOrc, gcYrc} and
                       (not isPureObject(elemType)) and
                       tfAcyclic in skipTypes(elemType, abstractInst+{tyOwned}-{tyTypeDesc}).flags
   # dynamic Acyclic refs need to use dyn decRef
@@ -819,7 +819,7 @@ proc atomicClosureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   let xenv = genBuiltin(c, mAccessEnv, "accessEnv", x)
   xenv.typ = getSysType(c.g, c.info, tyPointer)
 
-  let isCyclic = c.g.config.selectedGC == gcOrc
+  let isCyclic = c.g.config.selectedGC in {gcOrc, gcYrc}
   let tmp =
     if isCyclic and c.kind in {attachedAsgn, attachedSink, attachedDup}:
       declareTempOf(c, body, xenv)
@@ -937,7 +937,7 @@ proc closureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     call[1] = y
     body.add newAsgnStmt(x, call)
   elif (optOwnedRefs in c.g.config.globalOptions and
-      optRefCheck in c.g.config.options) or c.g.config.selectedGC in {gcArc, gcAtomicArc, gcOrc}:
+      optRefCheck in c.g.config.options) or c.g.config.selectedGC in {gcArc, gcAtomicArc, gcOrc, gcYrc}:
     let xx = genBuiltin(c, mAccessEnv, "accessEnv", x)
     xx.typ = getSysType(c.g, c.info, tyPointer)
     case c.kind
@@ -1125,7 +1125,7 @@ proc symDupPrototype(g: ModuleGraph; typ: PType; owner: PSym; kind: TTypeAttache
 
   result.typ.addParam src
 
-  if g.config.selectedGC == gcOrc and
+  if g.config.selectedGC in {gcOrc, gcYrc} and
     cyclicType(g, typ.skipTypes(abstractInst)):
     let cycleParam = newSym(skParam, getIdent(g.cache, "cyclic"),
                             idgen, result, info)
@@ -1152,7 +1152,7 @@ proc symPrototype(g: ModuleGraph; typ: PType; owner: PSym; kind: TTypeAttachedOp
   let src = newSym(skParam, getIdent(g.cache, if kind == attachedTrace: "env" else: "src"),
                    idgen, result, info)
 
-  if kind == attachedDestructor and g.config.selectedGC in {gcArc, gcOrc, gcAtomicArc} and
+  if kind == attachedDestructor and g.config.selectedGC in {gcArc, gcOrc, gcYrc, gcAtomicArc} and
      ((g.config.isDefined("nimPreviewNonVarDestructor") and not isDiscriminant) or (typ.kind in {tyRef, tyString, tySequence})):
     dest.typ = typ
   else:
@@ -1168,7 +1168,7 @@ proc symPrototype(g: ModuleGraph; typ: PType; owner: PSym; kind: TTypeAttachedOp
   if kind notin {attachedDestructor, attachedWasMoved}:
     result.typ.addParam src
 
-  if kind == attachedAsgn and g.config.selectedGC == gcOrc and
+  if kind == attachedAsgn and g.config.selectedGC in {gcOrc, gcYrc} and
       cyclicType(g, typ.skipTypes(abstractInst)):
     let cycleParam = newSym(skParam, getIdent(g.cache, "cyclic"),
                             idgen, result, info)
@@ -1226,7 +1226,7 @@ proc produceSym(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp;
   else:
     var tk: TTypeKind
     var skipped: PType = nil
-    if g.config.selectedGC in {gcArc, gcOrc, gcHooks, gcAtomicArc}:
+    if g.config.selectedGC in {gcArc, gcOrc, gcYrc, gcHooks, gcAtomicArc}:
       skipped = skipTypes(typ, {tyOrdinal, tyRange, tyInferred, tyGenericInst, tyStatic, tyAlias, tySink})
       tk = skipped.kind
     else:
@@ -1348,7 +1348,7 @@ proc createTypeBoundOps(g: ModuleGraph; c: PContext; orig: PType; info: TLineInf
 
   # we do not generate '=trace' procs if we
   # have the cycle detection disabled, saves code size.
-  let lastAttached = if g.config.selectedGC == gcOrc: attachedTrace
+  let lastAttached = if g.config.selectedGC in {gcOrc, gcYrc}: attachedTrace
                      else: attachedSink
 
   # bug #15122: We need to produce all prototypes before entering the
