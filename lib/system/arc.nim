@@ -74,7 +74,7 @@ elif defined(nimArcIds):
 
   const traceId = -1
 
-when defined(gcAtomicArc) and hasThreadSupport:
+when (defined(gcAtomicArc) or defined(gcYrc)) and hasThreadSupport:
   template decrement(cell: Cell): untyped =
     discard atomicDec(cell.rc, rcIncrement)
   template increment(cell: Cell): untyped =
@@ -227,7 +227,7 @@ proc nimDecRefIsLast(p: pointer): bool {.compilerRtl, inl.} =
         writeStackTrace()
         cfprintf(cstderr, "[DecRef] %p %ld\n", p, cell.count)
 
-    when defined(gcAtomicArc) and hasThreadSupport:
+    when (defined(gcAtomicArc) or defined(gcYrc)) and hasThreadSupport:
       # `atomicDec` returns the new value
       if atomicDec(cell.rc, rcIncrement) == -rcIncrement:
         result = true
