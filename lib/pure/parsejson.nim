@@ -11,7 +11,7 @@
 ## and exported by the `json` standard library
 ## module, but can also be used in its own right.
 
-import std/[strutils, lexbase, streams, unicode]
+import std/[strutils, lexbase, streams, unicode, parseutils]
 import std/private/decode_helpers
 
 when defined(nimPreviewSlimSystem):
