@@ -19,7 +19,7 @@ const
   colGray = 0b001
   colWhite = 0b010
   maybeCycle = 0b100
-  jumpStackFlag = 0b1000
+  inRootsFlag = 0b1000
   colorMask = 0b011
   logOrc = defined(nimArcIds)
 
@@ -108,10 +108,10 @@ proc mergePendingRoots() =
       for j in 0..<stripes[i].toDecLen:
         let (c, desc) = stripes[i].toDec[j]
         c.rc = c.rc -% rcIncrement
-        if c.rootIdx == 0:
+        if (c.rc and inRootsFlag) == 0:
+          c.rc = c.rc or inRootsFlag
           if roots.d == nil: init(roots)
           add(roots, c, desc)
-          c.rootIdx = roots.len
       stripes[i].toDecLen = 0
 
 proc collectCycles()
@@ -123,7 +123,7 @@ when logOrc or orcLeakDetector:
         msg, desc.name, s.filename, s.line, s.color, getThreadId())
     else:
       cfprintf(cstderr, "%s %s %ld root index: %ld; RC: %ld; color: %ld; thread: %ld\n",
-        msg, desc.name, s.refId, s.rootIdx, s.rc shr rcShift, s.color, getThreadId())
+        msg, desc.name, s.refId, (if (s.rc and inRootsFlag) != 0: 1 else: 0), s.rc shr rcShift, s.color, getThreadId())
 
 proc free(s: Cell; desc: PNimTypeV2) {.inline.} =
   when traceCollector:
@@ -207,7 +207,7 @@ proc scan(s: Cell; desc: PNimTypeV2; j: var GcEnv) =
             trace(t, desc, j)
 
 proc collectColor(s: Cell; desc: PNimTypeV2; col: int; j: var GcEnv) =
-  if s.color == col and s.rootIdx == 0:
+  if s.color == col and (s.rc and inRootsFlag) == 0:
     orcAssert(j.traceStack.len == 0, "collectWhite: trace stack not empty")
     s.setColor(colBlack)
     j.toFree.add(s, desc)
@@ -216,7 +216,7 @@ proc collectColor(s: Cell; desc: PNimTypeV2; col: int; j: var GcEnv) =
       let (entry, desc) = j.traceStack.pop()
       let t = head entry[]
       entry[] = nil
-      if t.color == col and t.rootIdx == 0:
+      if t.color == col and (t.rc and inRootsFlag) == 0:
         j.toFree.add(t, desc)
         t.setColor(colBlack)
         trace(t, desc, j)
@@ -238,7 +238,7 @@ proc collectCyclesBacon(j: var GcEnv; lowMark: int) =
   init j.toFree
   for i in 0 ..< roots.len:
     let s = roots.d[i][0]
-    s.rootIdx = 0
+    s.rc = s.rc and not inRootsFlag
     collectColor(s, roots.d[i][1], colToCollect, j)
   when not defined(nimStressOrc):
     let oldThreshold = rootsThreshold
