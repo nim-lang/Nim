@@ -70,12 +70,62 @@ proc substituteTypeParams(n: PNode; body, inst: PType): PNode =
     for i in 0..<n.len:
       result[i] = substituteTypeParams(n[i], body, inst)
 
+proc containsUnresolvedGenericType(n: PNode): bool =
+  ## Check if the substituted expression still contains unresolved generic types.
+  ## This happens when Atomic[T] is instantiated with T being another generic param.
+  ## 
+  ## After substituteTypeParams, generic params that were successfully substituted
+  ## become nkType nodes with concrete types. Unresolved generic params remain as
+  ## nkType nodes with tyGenericParam types.
+  ## 
+  ## nkIdent nodes for things like `sizeof` or type names like `int8` are NOT
+  ## unresolved generic types - they're regular identifiers that will be resolved
+  ## during semantic analysis.
+  if n == nil: return false
+  case n.kind
+  of nkType:
+    # After substitution, generic params become nkType nodes
+    # Check if the type is still a generic param
+    if n.typ != nil and n.typ.kind == tyGenericParam:
+      return true
+    # Also check for generic invocations with unresolved params
+    if n.typ != nil and n.typ.containsGenericType:
+      return true
+  of nkSym:
+    if n.sym.kind == skGenericParam:
+      return true
+    if n.sym.kind == skType and n.sym.typ != nil and n.sym.typ.kind == tyGenericParam:
+      return true
+  of nkIdent:
+    # nkIdent nodes are regular identifiers (like `sizeof`, `int8`, etc.)
+    # They are NOT unresolved generic types - they will be resolved during semExpr.
+    # If a generic param wasn't substituted, it would remain as nkIdent, but
+    # substituteTypeParams handles that by matching against body's params.
+    # If it didn't match, it's a regular identifier, not a generic param.
+    return false
+  of nkEmpty, nkNilLit, nkCharLit..nkUInt64Lit, nkFloatLit..nkFloat128Lit,
+     nkStrLit..nkTripleStrLit:
+    return false
+  else:
+    for child in n:
+      if containsUnresolvedGenericType(child):
+        return true
+  return false
+
 proc evaluateTypeExtension*(c: PContext; instType, body: PType;
                              ext: TypeExtension): BiggestInt =
   ## Evaluates a type extension expression after type instantiation.
   ## Returns the evaluated integer value, or szUnknownSize on error.
+  ## Returns szUnknownSize without error if the expression still contains
+  ## unresolved generic types (will be evaluated on further instantiation).
   var expr = copyTree(ext.expr)
   expr = substituteTypeParams(expr, body, instType)
+  
+  # If the substituted expression still contains generic types, defer evaluation.
+  # This happens when e.g. Atomic[T] is used inside a generic proc like store[T].
+  if containsUnresolvedGenericType(expr):
+    return szUnknownSize
+  
   let evaluated = c.semConstExpr(c, expr)
   if evaluated.kind in {nkCharLit..nkUInt64Lit}:
     result = evaluated.intVal
