@@ -65,8 +65,7 @@ type
 var
   gYrcGlobalLock: Lock
   roots: CellSeq[Cell]  # merged roots, used under global lock
-  toIncStripes: array[NumStripes, Stripe]
-  toDecStripes: array[NumStripes, Stripe]
+  stripes: array[NumStripes, Stripe]
   rootsThreshold: int = 128
   defaultThreshold = when defined(nimFixedOrc): 10_000 else: 128
 
@@ -80,37 +79,36 @@ proc nimIncRefCyclic(p: pointer; cyclic: bool) {.compilerRtl, inl.} =
   let idx = getStripeIdx()
   while true:
     var overflow = false
-    withLock toIncStripes[idx].lock:
-      if toIncStripes[idx].toIncLen < QueueSize:
-        toIncStripes[idx].toInc[toIncStripes[idx].toIncLen] = h
-        toIncStripes[idx].toIncLen += 1
+    withLock stripes[idx].lock:
+      if stripes[idx].toIncLen < QueueSize:
+        stripes[idx].toInc[stripes[idx].toIncLen] = h
+        stripes[idx].toIncLen += 1
       else:
         overflow = true
     if overflow:
       withLock gYrcGlobalLock:
         for i in 0..<NumStripes:
-          withLock toIncStripes[i].lock:
-            for j in 0..<toIncStripes[i].toIncLen:
-              toIncStripes[i].toInc[j].rc = toIncStripes[i].toInc[j].rc +% rcIncrement
-            toIncStripes[i].toIncLen = 0
+          withLock stripes[i].lock:
+            for j in 0..<stripes[i].toIncLen:
+              stripes[i].toInc[j].rc = stripes[i].toInc[j].rc +% rcIncrement
+            stripes[i].toIncLen = 0
     else:
       break
 
 proc mergePendingRoots() =
   for i in 0..<NumStripes:
-    withLock toIncStripes[i].lock:
-      for j in 0..<toIncStripes[i].toIncLen:
-        toIncStripes[i].toInc[j].rc = toIncStripes[i].toInc[j].rc +% rcIncrement
-      toIncStripes[i].toIncLen = 0
-    withLock toDecStripes[i].lock:
-      for j in 0..<toDecStripes[i].toDecLen:
-        let (c, desc) = toDecStripes[i].toDec[j]
+    withLock stripes[i].lock:
+      for j in 0..<stripes[i].toIncLen:
+        stripes[i].toInc[j].rc = stripes[i].toInc[j].rc +% rcIncrement
+      stripes[i].toIncLen = 0
+      for j in 0..<stripes[i].toDecLen:
+        let (c, desc) = stripes[i].toDec[j]
         c.rc = c.rc -% rcIncrement
         if c.rootIdx == 0:
           if roots.d == nil: init(roots)
           add(roots, c, desc)
           c.rootIdx = roots.len
-      toDecStripes[i].toDecLen = 0
+      stripes[i].toDecLen = 0
 
 proc collectCycles()
 
@@ -356,10 +354,10 @@ proc rememberCycle(isDestroyAction: bool; s: Cell; desc: PNimTypeV2) {.noinline.
       let idx = getStripeIdx()
       while true:
         var overflow = false
-        withLock toDecStripes[idx].lock:
-          if toDecStripes[idx].toDecLen < QueueSize:
-            toDecStripes[idx].toDec[toDecStripes[idx].toDecLen] = (s, desc)
-            toDecStripes[idx].toDecLen += 1
+        withLock stripes[idx].lock:
+          if stripes[idx].toDecLen < QueueSize:
+            stripes[idx].toDec[stripes[idx].toDecLen] = (s, desc)
+            stripes[idx].toDecLen += 1
           else:
             overflow = true
         if overflow:
@@ -375,10 +373,10 @@ proc nimDecRefIsLastCyclicDyn(p: pointer): bool {.compilerRtl, inl.} =
     let idx = getStripeIdx()
     while true:
       var overflow = false
-      withLock toDecStripes[idx].lock:
-        if toDecStripes[idx].toDecLen < QueueSize:
-          toDecStripes[idx].toDec[toDecStripes[idx].toDecLen] = (cell, desc)
-          toDecStripes[idx].toDecLen += 1
+      withLock stripes[idx].lock:
+        if stripes[idx].toDecLen < QueueSize:
+          stripes[idx].toDec[stripes[idx].toDecLen] = (cell, desc)
+          stripes[idx].toDecLen += 1
         else:
           overflow = true
       if overflow:
@@ -396,10 +394,10 @@ proc nimDecRefIsLastCyclicStatic(p: pointer; desc: PNimTypeV2): bool {.compilerR
     let idx = getStripeIdx()
     while true:
       var overflow = false
-      withLock toDecStripes[idx].lock:
-        if toDecStripes[idx].toDecLen < QueueSize:
-          toDecStripes[idx].toDec[toDecStripes[idx].toDecLen] = (cell, desc)
-          toDecStripes[idx].toDecLen += 1
+      withLock stripes[idx].lock:
+        if stripes[idx].toDecLen < QueueSize:
+          stripes[idx].toDec[stripes[idx].toDecLen] = (cell, desc)
+          stripes[idx].toDecLen += 1
         else:
           overflow = true
       if overflow:
@@ -420,7 +418,6 @@ proc nimMarkCyclic(p: pointer) {.compilerRtl, inl.} =
 # Initialize locks at module load
 initLock(gYrcGlobalLock)
 for i in 0..<NumStripes:
-  initLock(toIncStripes[i].lock)
-  initLock(toDecStripes[i].lock)
+  initLock(stripes[i].lock)
 
 {.pop.}
