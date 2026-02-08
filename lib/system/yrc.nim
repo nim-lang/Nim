@@ -3,6 +3,71 @@
 # Same API as orc.nim but with striped queues and global lock for merge/collect.
 # Destructors for refs run at collection time, not immediately on last decRef.
 #
+# ## Key Invariant: Topology vs. Reference Counts
+#
+# Only `obj.field = x` can change the topology of the heap graph (heap-to-heap
+# edges). Local variable assignments (`var local = someRef`) affect reference
+# counts but never create heap-to-heap edges and thus cannot create cycles.
+#
+# The actual pointer write in `obj.field = x` happens immediately and lock-free —
+# the graph topology is always up-to-date in memory. Only the RC adjustments are
+# deferred: increments and decrements are buffered into per-stripe queues
+# (`toInc`, `toDec`) protected by fine-grained per-stripe locks.
+#
+# When `collectCycles` runs it takes the global lock, drains all stripe buffers
+# via `mergePendingRoots`, and then traces the physical pointer graph (via
+# `traceImpl`) to detect cycles. This is sound because `trace` follows the actual
+# pointer values in memory — which are always current — and uses the reconciled
+# RCs only to identify candidate roots and confirm garbage.
+#
+# In summary: the physical pointer graph is always consistent (writes are
+# immediate); only the reference counts are eventually consistent (writes are
+# buffered). The per-stripe locks are cheap; the expensive global lock is only
+# needed when interpreting the RCs during collection.
+#
+# ## Why No Write Barrier Is Needed
+#
+# The classic concurrent-GC hazard is the "lost object" problem: during
+# collection the mutator executes `A.field = B` where A is already scanned
+# (black), B is reachable only through an unscanned (gray) object C, and then
+# C's reference to B is removed. The collector never discovers B and frees it
+# while A still points to it. Traditional concurrent collectors need write
+# barriers to prevent this.
+#
+# This problem structurally cannot arise in YRC because the cycle collector only
+# frees *closed cycles* — subgraphs where every reference to every member comes
+# from within the group, with zero external references. To execute `A.field = B`
+# the mutator must hold a reference to A, which means A has an external reference
+# (from the stack) that is not a heap-to-heap edge. During trial deletion
+# (`markGray`) only internal edges are subtracted from RCs, so A's external
+# reference survives, `scan` finds A's RC >= 0, calls `scanBlack`, and rescues A
+# and everything reachable from it — including B. In short: the mutator can only
+# modify objects it can reach, but the cycle collector only frees objects nothing
+# external can reach. The two conditions are mutually exclusive.
+#
+#[
+
+The problem described in Bacon01 is: during markGray/scan, a mutator concurrently
+does X.field = Z (was X→Y), changing the physical graph while the collector is tracing
+it. The collector might see stale or new edges. The reasons this is still safe:
+
+Stale edges cancel with unbuffered decrements: If the collector sees old edge X→Y
+(mutator already wrote X→Z and buffered dec(Y)), the phantom trial deletion and the
+unbuffered dec cancel — Y's effective RC is correct.
+
+scanBlack rescues via current physical edges: If X has external refs (merged RC reflects
+the mutator's access), scanBlack(X) re-traces X and follows the current physical edge X→Z,
+incrementing Z's RC and marking it black. Z survives.
+
+rcSum==edges fast path is conservative: Any discrepancy between physical graph and merged
+state (stale or new edges) causes rcSum != edges, falling back to the slow path which
+rescues anything with RC >= 0.
+
+Unreachable cycles are truly unreachable: The mutator can only reach objects through chains
+rooted in merged references. If a cycle has zero external refs at merge time, no mutator
+can reach it.
+
+]#
 
 {.push raises: [].}
 
