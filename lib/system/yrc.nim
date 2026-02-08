@@ -156,15 +156,6 @@ proc nimTraceRefDyn(q: pointer; env: pointer) {.compilerRtl, inl.} =
     var j = cast[ptr GcEnv](env)
     j.traceStack.add(p, cast[ptr PNimTypeV2](p[])[])
 
-proc unregisterCycle(s: Cell) =
-  let rootIdx = s.rootIdx
-  let idx = rootIdx -% 1
-  let last = roots.len -% 1
-  roots.d[idx] = roots.d[last]
-  roots.d[idx][0].rootIdx = rootIdx
-  roots.len = last
-  s.rootIdx = 0
-
 proc scanBlack(s: Cell; desc: PNimTypeV2; j: var GcEnv) =
   s.setColor colBlack
   let until = j.traceStack.len
@@ -347,27 +338,6 @@ when optimizedOrc:
 else:
   template markedAsCyclic(s: Cell; desc: PNimTypeV2): bool =
     (desc.flags and acyclicFlag) == 0
-
-proc rememberCycle(isDestroyAction: bool; s: Cell; desc: PNimTypeV2) {.noinline.} =
-  if isDestroyAction:
-    if s.rootIdx > 0:
-      unregisterCycle(s)
-  else:
-    if s.rootIdx == 0 and markedAsCyclic(s, desc):
-      s.setColor colBlack
-      let idx = getStripeIdx()
-      while true:
-        var overflow = false
-        withLock stripes[idx].lockDec:
-          if stripes[idx].toDecLen < QueueSize:
-            stripes[idx].toDec[stripes[idx].toDecLen] = (s, desc)
-            stripes[idx].toDecLen += 1
-          else:
-            overflow = true
-        if overflow:
-          collectCycles()
-        else:
-          break
 
 proc nimDecRefIsLastCyclicDyn(p: pointer): bool {.compilerRtl, inl.} =
   result = false
