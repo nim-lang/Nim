@@ -130,12 +130,49 @@ type
     toDecLen: int
     toDec: array[QueueSize, (Cell, PNimTypeV2)]
 
+type
+  PreventThreadFromCollectProc* = proc(): bool {.nimcall, benign, raises: [].}
+    ## Callback run before this thread runs the cycle collector.
+    ## Return `true` to allow collection, `false` to skip (e.g. real-time thread).
+    ## Invoked while holding the global lock; must not call back into YRC.
+
 var
   gYrcGlobalLock: Lock
   roots: CellSeq[Cell]  # merged roots, used under global lock
   stripes: array[NumStripes, Stripe]
   rootsThreshold: int = 128
   defaultThreshold = when defined(nimFixedOrc): 10_000 else: 128
+  gPreventThreadFromCollectProc: PreventThreadFromCollectProc = nil
+
+proc GC_setPreventThreadFromCollectProc*(cb: PreventThreadFromCollectProc) =
+  ##[ Can be used to customize the cycle collector for a thread. For example,
+  to ensure that a hard realtime thread cannot run the cycle collector use:
+
+  ```nim
+  var hardRealTimeThread: int
+  GC_setPreventThreadFromCollectProc(proc(): bool {.nimcall.} = hardRealTimeThread == getThreadId())
+  ```
+
+  To ensure that a hard realtime thread cannot by involved in any cycle collector activity use:
+
+  ```nim
+  GC_setPreventThreadFromCollectProc(proc(): bool {.nimcall.} =
+    if hardRealTimeThread == getThreadId():
+      writeStackTrace()
+      echo "Realtime thread involved in inpredictable cycle collector activity!"
+    result = false
+  ```
+  ]##
+  gPreventThreadFromCollectProc = cb
+
+proc GC_getPreventThreadFromCollectProc*(): PreventThreadFromCollectProc =
+  ## Returns the current "prevent thread from collecting proc".
+  ## Typically `nil` if not set.
+  result = gPreventThreadFromCollectProc
+
+proc mayRunCycleCollect(): bool {.inline.} =
+  if gPreventThreadFromCollectProc == nil: true
+  else: not gPreventThreadFromCollectProc()
 
 proc getStripeIdx(): int {.inline.} =
   getThreadId() and (NumStripes - 1)
@@ -348,7 +385,7 @@ proc collectCycles() =
     cfprintf(cstderr, "[collectCycles] begin\n")
   withLock gYrcGlobalLock:
     mergePendingRoots()
-    if roots.len >= RootsThreshold:
+    if roots.len >= RootsThreshold and mayRunCycleCollect():
       var j: GcEnv
       init j.traceStack
       collectCyclesBacon(j, 0)
@@ -381,11 +418,12 @@ when defined(nimOrcStats):
 proc GC_runOrc* =
   withLock gYrcGlobalLock:
     mergePendingRoots()
-    var j: GcEnv
-    init j.traceStack
-    collectCyclesBacon(j, 0)
-    deinit j.traceStack
-    roots.len = 0
+    if mayRunCycleCollect():
+      var j: GcEnv
+      init j.traceStack
+      collectCyclesBacon(j, 0)
+      deinit j.traceStack
+      roots.len = 0
   when logOrc: orcAssert roots.len == 0, "roots not empty!"
 
 proc GC_enableOrc*() =
@@ -404,7 +442,7 @@ proc GC_prepareOrc*(): int {.inline.} =
 proc GC_partialCollect*(limit: int) =
   withLock gYrcGlobalLock:
     mergePendingRoots()
-    if roots.len > limit:
+    if roots.len > limit and mayRunCycleCollect():
       var j: GcEnv
       init j.traceStack
       collectCyclesBacon(j, limit)
