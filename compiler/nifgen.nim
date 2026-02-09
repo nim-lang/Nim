@@ -983,7 +983,7 @@ proc genericParamToNif(n: PNode; parent: PNode; c: var TranslationContext) =
     toNif n, parent, c
 
 proc addExternName(sym: PSym; c: var TranslationContext) =
-  if sym.loc.snippet != nil:
+  if sym.loc.snippet != "":
     c.b.addStrLit sym.loc.snippet
   else:
     c.b.addStrLit sym.name.s
