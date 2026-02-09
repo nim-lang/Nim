@@ -175,23 +175,34 @@ proc parseEscapedUTF16*(buf: cstring, pos: var int): int =
     else:
       return -1
 
+proc addSpan(dst: var string; src: string; startPos, endPos: int) {.inline.} =
+  let n = endPos - startPos
+  if n <= 0:
+    return
+  let oldLen = dst.len
+  setLen(dst, oldLen + n)
+  copyMem(addr dst[oldLen], addr src[startPos], n)
+
 proc parseString(my: var JsonParser): TokKind =
   result = tkString
   var pos = my.bufpos + 1
+  var spanStart = pos
   if my.rawStringLiterals:
     add(my.a, '"')
   while true:
     case my.buf[pos]
     of '\0':
-      my.err = errQuoteExpected
+      addSpan(my.a, my.buf, spanStart, pos)
       result = tkError
       break
     of '"':
+      addSpan(my.a, my.buf, spanStart, pos)
       if my.rawStringLiterals:
         add(my.a, '"')
       inc(pos)
       break
     of '\\':
+      addSpan(my.a, my.buf, spanStart, pos)
       if my.rawStringLiterals:
         add(my.a, '\\')
       case my.buf[pos+1]
@@ -223,19 +234,16 @@ proc parseString(my: var JsonParser): TokKind =
         var pos2 = pos
         var r = parseEscapedUTF16(cstring(my.buf), pos)
         if r < 0:
-          my.err = errInvalidToken
           break
         # Deal with surrogates
         if (r and 0xfc00) == 0xd800:
           if my.buf[pos] != '\\' or my.buf[pos+1] != 'u':
-            my.err = errInvalidToken
             break
           inc(pos, 2)
           var s = parseEscapedUTF16(cstring(my.buf), pos)
           if (s and 0xfc00) == 0xdc00 and s > 0:
             r = 0x10000 + (((r - 0xd800) shl 10) or (s - 0xdc00))
           else:
-            my.err = errInvalidToken
             break
         if my.rawStringLiterals:
           let length = pos - pos2
@@ -251,14 +259,18 @@ proc parseString(my: var JsonParser): TokKind =
         # don't bother with the error
         add(my.a, my.buf[pos])
         inc(pos)
+      spanStart = pos
     of '\c':
+      addSpan(my.a, my.buf, spanStart, pos)
       pos = lexbase.handleCR(my, pos)
       add(my.a, '\c')
+      spanStart = pos
     of '\L':
+      addSpan(my.a, my.buf, spanStart, pos)
       pos = lexbase.handleLF(my, pos)
       add(my.a, '\L')
+      spanStart = pos
     else:
-      add(my.a, my.buf[pos])
       inc(pos)
   my.bufpos = pos # store back
 
