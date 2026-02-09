@@ -38,6 +38,21 @@ type
   PByte = ptr ByteArray
   PString = ptr string
 
+when not (defined(gcOrc) or defined(gcArc) or defined(gcAtomicArc)):
+  type
+    RefCount = int
+
+    Cell {.pure.} = object
+      refcount: RefCount  # the refcount and some flags
+      typ: PNimType
+      when trackAllocationSource:
+        filename: cstring
+        line: int
+      when useCellIds:
+        id: int
+
+    PCell = ptr Cell
+
 when declared(IntsPerTrunk):
   discard
 else:

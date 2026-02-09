@@ -849,14 +849,14 @@ when defined(heaptrack):
   proc heaptrack_malloc(a: pointer, size: int) {.cdecl, importc, dynlib: heaptrackLib.}
   proc heaptrack_free(a: pointer) {.cdecl, importc, dynlib: heaptrackLib.}
 
-proc bigChunkAlignOffset(alignment, offset: int): int {.inline.} =
+proc bigChunkAlignOffset(alignment: int): int {.inline.} =
   ## Compute the alignment offset for big chunk data.
-  ## Since chunks are page-aligned and sizeof(BigChunk) is a compile-time constant,
-  ## the offset is deterministic for a given alignment and data offset.
-  if alignment <= MemAlign: 0
-  else: align(sizeof(BigChunk) + offset, alignment) - sizeof(BigChunk) - offset
+  if alignment <= MemAlign:
+    result = 0
+  else:
+    result = align(sizeof(BigChunk) + sizeof(Cell), alignment) - sizeof(BigChunk) - sizeof(Cell)
 
-proc rawAlloc(a: var MemRegion, requestedSize: int, alignment: int = MemAlign, offset: int = 0): pointer =
+proc rawAlloc(a: var MemRegion, requestedSize: int, alignment: int = MemAlign): pointer =
   when defined(nimTypeNames):
     inc(a.allocCounter)
   sysAssert(allocInv(a), "rawAlloc: begin")
@@ -966,7 +966,7 @@ proc rawAlloc(a: var MemRegion, requestedSize: int, alignment: int = MemAlign, o
     # For big chunks with custom alignment, allocate extra space.
     # Since chunks are page-aligned, the needed padding is a compile-time
     # deterministic value rather than a worst-case estimate.
-    let alignPad = bigChunkAlignOffset(alignment, offset)
+    let alignPad = bigChunkAlignOffset(alignment)
     size = requestedSize + bigChunkOverhead() + alignPad
     # allocate a large block
     var c = if size >= HugeChunkSize: getHugeChunk(a, size)
@@ -991,8 +991,8 @@ proc rawAlloc(a: var MemRegion, requestedSize: int, alignment: int = MemAlign, o
   when defined(heaptrack):
     heaptrack_malloc(result, requestedSize)
 
-proc rawAlloc0(a: var MemRegion, requestedSize: int, alignment: int = MemAlign, offset: int = 0): pointer =
-  result = rawAlloc(a, requestedSize, alignment, offset)
+proc rawAlloc0(a: var MemRegion, requestedSize: int): pointer =
+  result = rawAlloc(a, requestedSize)
   zeroMem(result, requestedSize)
 
 proc rawDealloc(a: var MemRegion, p: pointer) =
