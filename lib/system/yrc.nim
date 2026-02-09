@@ -2,6 +2,7 @@
 # YRC: Thread-safe ORC (concurrent cycle collector).
 # Same API as orc.nim but with striped queues and global lock for merge/collect.
 # Destructors for refs run at collection time, not immediately on last decRef.
+# See yrc_proof.lean for a Lean 4 proof of safety and deadlock freedom.
 #
 # ## Key Invariant: Topology vs. Reference Counts
 #
