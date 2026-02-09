@@ -365,7 +365,7 @@ MarkGray(obj, desc) ==
           \* For roots, the RC includes external refs which survive trial deletion.
           rc' = [x \in Objects |->
               IF x \in allReachable THEN rc[x] - internalEdgeCount[x] ELSE rc[x]]
-    /\ UNCHANGED <<edges, roots, color, inRoots, toIncLen, toInc, toDecLen, toDec, lockInc, lockDec, globalLock, mergedRoots, collecting, gcEnv, pendingWrites>>
+    /\ UNCHANGED <<edges, roots, inRoots, toIncLen, toInc, toDecLen, toDec, lockInc, lockDec, globalLock, mergedRoots, collecting, gcEnv, pendingWrites>>
 
 \* ============================================================================
 \* Scan Phase
@@ -442,7 +442,7 @@ CollectColor(obj, desc, targetColor) ==
        edges' = [edges EXCEPT ![obj] = [x \in Objects |->
            IF x = obj THEN FALSE ELSE edges[obj][x]]]
     /\ color' = [color EXCEPT ![obj] = colBlack]  \* Mark as freed
-    /\ UNCHANGED <<edges, roots, rc, inRoots, toIncLen, toInc, toDecLen, toDec, lockInc, lockDec, globalLock, mergedRoots, collecting, gcEnv, pendingWrites>>
+    /\ UNCHANGED <<roots, rc, inRoots, toIncLen, toInc, toDecLen, toDec, lockInc, lockDec, globalLock, mergedRoots, collecting, gcEnv, pendingWrites>>
 
 \* ============================================================================
 \* Collection Cycle: collectCyclesBacon
@@ -454,7 +454,7 @@ StartCollection ==
     /\ Len(mergedRoots) >= RootsThreshold
     /\ collecting' = TRUE
     /\ gcEnv' = [touched |-> 0, edges |-> 0, rcSum |-> 0, toFree |-> {}]
-    /\ UNCHANGED <<edges, roots, rc, color, inRoots, toIncLen, toInc, toDecLen, toDec, lockInc, lockDec, globalLock, mergedRoots, collecting, pendingWrites>>
+    /\ UNCHANGED <<edges, roots, rc, color, inRoots, toIncLen, toInc, toDecLen, toDec, lockInc, lockDec, globalLock, mergedRoots, pendingWrites>>
 
 EndCollection ==
     /\ globalLock # NULL
@@ -464,7 +464,7 @@ EndCollection ==
            IF x \in {r.obj : r \in mergedRoots} THEN FALSE ELSE inRoots[x]]
     /\ mergedRoots' = <<>>
     /\ collecting' = FALSE
-    /\ UNCHANGED <<edges, roots, rc, color, inRoots, toIncLen, toInc, toDecLen, toDec, lockInc, lockDec, globalLock, mergedRoots, gcEnv, pendingWrites>>
+    /\ UNCHANGED <<edges, roots, rc, color, toIncLen, toInc, toDecLen, toDec, lockInc, lockDec, globalLock, gcEnv, pendingWrites>>
 
 \* ============================================================================
 \* Mutator Actions
