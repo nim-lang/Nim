@@ -1699,8 +1699,6 @@ proc genPreMain(m: BModule) =
       m.s[cfsProcs].addVar(name = "cmdCount", typ = CInt)
     m.s[cfsProcs].addDeclWithVisibility(Private):
       m.s[cfsProcs].addVar(name = "cmdLine", typ = ptrType(ptrType(CChar)))
-    m.s[cfsProcs].addDeclWithVisibility(Private):
-      m.s[cfsProcs].addVar(name = "gEnv", typ = ptrType(ptrType(CChar)))
   m.s[cfsProcs].addDeclWithVisibility(Private):
     m.s[cfsProcs].addProcHeader(m.config.nimMainPrefix & "PreMain", CVoid, cProcParams())
     m.s[cfsProcs].finishProcHeaderWithBody():
@@ -1761,12 +1759,10 @@ proc genNimMainBody(m: BModule, preMainCode: Snippet) =
 proc genPosixCMain(m: BModule) =
   m.s[cfsProcs].addProcHeader("main", CInt, cProcParams(
     (name: "argc", typ: CInt),
-    (name: "args", typ: ptrType(ptrType(CChar))),
-    (name: "env", typ: ptrType(ptrType(CChar)))))
+    (name: "args", typ: ptrType(ptrType(CChar)))))
   m.s[cfsProcs].finishProcHeaderWithBody():
     m.s[cfsProcs].addAssignment("cmdLine", "args")
     m.s[cfsProcs].addAssignment("cmdCount", "argc")
-    m.s[cfsProcs].addAssignment("gEnv", "env")
     genMainProcsWithResult(m)
   m.s[cfsProcs].addNewline()
 
