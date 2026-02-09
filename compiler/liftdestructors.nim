@@ -730,11 +730,33 @@ proc atomicRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     dest[] = source
     decRef tmp
 
+  For YRC the write barrier is more complicated still and must be:
+
+    let tmp = dest
+    # assignment must come first so that the collector sees the most-recent graph:
+    atomic: dest[] = source
+    # Then teach the cycle collector about the changes edge (these use locks, see yrc.nim):
+    incRef source
+    decRef tmp
+
+  This is implemented as a single runtime call (nimAsgnYrc / nimSinkYrc).
   ]#
   var actions = newNodeI(nkStmtList, c.info)
   let elemType = t.elementType
 
   createTypeBoundOps(c.g, c.c, elemType, c.info, c.idgen)
+
+  # YRC uses dedicated runtime procs for the entire write barrier:
+  if c.g.config.selectedGC == gcYrc:
+    case c.kind
+    of attachedAsgn, attachedDup:
+      body.add callCodegenProc(c.g, "nimAsgnYrc", c.info, genAddr(c, x), y)
+      return
+    of attachedSink:
+      body.add callCodegenProc(c.g, "nimSinkYrc", c.info, genAddr(c, x), y)
+      return
+    else: discard # fall through for destructor, trace, wasMoved
+
   let isCyclic = c.g.config.selectedGC in {gcOrc, gcYrc} and types.canFormAcycle(c.g, elemType)
 
   let isInheritableAcyclicRef = c.g.config.selectedGC in {gcOrc, gcYrc} and
@@ -819,6 +841,17 @@ proc atomicClosureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   let xenv = genBuiltin(c, mAccessEnv, "accessEnv", x)
   xenv.typ = getSysType(c.g, c.info, tyPointer)
 
+  # YRC uses dedicated runtime procs for the write barrier on the env pointer:
+  if c.g.config.selectedGC == gcYrc:
+    case c.kind
+    of attachedAsgn, attachedDup:
+      body.add callCodegenProc(c.g, "nimAsgnYrc", c.info, genAddr(c, xenv), y)
+      return
+    of attachedSink:
+      body.add callCodegenProc(c.g, "nimSinkYrc", c.info, genAddr(c, xenv), y)
+      return
+    else: discard # fall through for destructor, trace, wasMoved
+
   let isCyclic = c.g.config.selectedGC in {gcOrc, gcYrc}
   let tmp =
     if isCyclic and c.kind in {attachedAsgn, attachedSink, attachedDup}:
@@ -852,7 +885,6 @@ proc atomicClosureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
       body.add genIf(c, cond, actions)
     else:
       body.add genIf(c, yenv, callCodegenProc(c.g, "nimIncRef", c.info, yenv))
-
       body.add genIf(c, cond, actions)
       body.add newAsgnStmt(x, y)
   of attachedDup:

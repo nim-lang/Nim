@@ -448,6 +448,25 @@ proc unsureAsgnRef(dest: ptr pointer, src: pointer) {.inline.} =
   dest[] = src
   if src != nil: nimIncRefCyclic(src, true)
 
+proc nimAsgnYrc(dest: ptr pointer; src: pointer) {.compilerRtl.} =
+  ## YRC write barrier for ref copy assignment.
+  ## Atomically stores src into dest, then buffers RC adjustments.
+  ## Freeing is always done by the cycle collector, never inline.
+  let tmp = dest[]
+  atomicStoreN(dest, src, ATOMIC_RELEASE)
+  if src != nil:
+    nimIncRefCyclic(src, true)
+  if tmp != nil:
+    discard nimDecRefIsLastCyclicDyn(tmp)
+
+proc nimSinkYrc(dest: ptr pointer; src: pointer) {.compilerRtl.} =
+  ## YRC write barrier for ref sink (move). No incRef on source.
+  ## Freeing is always done by the cycle collector, never inline.
+  let tmp = dest[]
+  atomicStoreN(dest, src, ATOMIC_RELEASE)
+  if tmp != nil:
+    discard nimDecRefIsLastCyclicDyn(tmp)
+
 proc nimMarkCyclic(p: pointer) {.compilerRtl, inl.} =
   when optimizedOrc:
     if p != nil:
