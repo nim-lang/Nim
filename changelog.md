@@ -61,6 +61,10 @@ errors.
 
 - `system.setLenUninit` now supports refc, JS and VM backends.
 
+- `std/parseopt` now supports multiple parser modes via `-d:parseopt.mode=<int>`.
+  Modes include `Nim` (default, fully compatible) and two new experimental modes:
+  `PosixLax` and `Gnu` for different option parsing behaviors.
+
 [//]: # "Changes:"
 
 - `std/math` The `^` symbol now supports floating-point as exponent in addition to the Natural type.

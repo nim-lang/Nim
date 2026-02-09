@@ -14,6 +14,11 @@
 ## Supported Syntax
 ## ================
 ##
+## The parser supports multiple `parsing modes<#parser-modes>`_ that affect how
+## options are interpreted. The syntax described here applies to the default
+## `Nim` mode. See `Parser Modes<#parser-modes>`_ for details on alternative
+## modes and their differences.
+##
 ## The following syntax is supported when arguments for the `shortNoVal` and
 ## `longNoVal` parameters, which are
 ## `described later<#nimshortnoval-and-nimlongnoval>`_, are not provided:
@@ -30,7 +35,8 @@
 ##
 ## The `--` option, commonly used to denote that every token that follows is
 ## an argument, is interpreted as a long option, and its name is the empty
-## string.
+## string. Trailing arguments can be accessed with `remainingArgs<#remainingArgs,OptParser>`_
+## or `cmdLineRest<#cmdLineRest,OptParser>`_.
 ##
 ## Parsing
 ## =======
@@ -107,16 +113,29 @@
 ## specifying which short and long options do not accept values.
 ##
 ## When `shortNoVal` is non-empty, users are not required to separate short
-## options and their values with a ':' or '=' since the parser knows which
+## options and their values with a `:` or `=` since the parser knows which
 ## options accept values and which ones do not. This behavior also applies for
-## long options if `longNoVal` is non-empty. For short options, `-j4`
-## becomes supported syntax, and for long options, `--foo bar` becomes
-## supported. This is in addition to the `previously mentioned
-## syntax<#supported-syntax>`_. Users can still separate options and their
-## values with ':' or '=', but that becomes optional.
+## long options if `longNoVal` is non-empty.
+##
+## For short options, `-j4` becomes supported syntax (parsed as option `j` with
+## value `4` instead of two separate options `j` and `4`). For long options,
+## `--foo bar` becomes supported syntax in all modes. In `PosixLax` and `Gnu`
+## modes, short options can also take values from the next argument (e.g.,
+## `-c val`), but this does **not** work in the default `Nim` mode.
+##
+## This is in addition to the `previously mentioned syntax<#supported-syntax>`_.
+## Users can still separate options and their values with `:` or `=`, but that
+## becomes optional.
 ##
 ## As more options which do not accept values are added to your program,
 ## remember to amend `shortNoVal` and `longNoVal` accordingly.
+##
+##
+## .. Important::
+##   Next-argument value-taking for short/long options is only enabled when
+##   `shortNoVal`/`longNoVal` are non-empty. If your program has *no* options
+##   that take no value, you still must pass a non-empty placeholder (for example,
+##   `shortNoVal = {'\0'}` and/or `longNoVal = @[""]`) to enable this form.
 ##
 ## The following example illustrates the difference between having an empty
 ## `shortNoVal` and `longNoVal`, which is the default, and providing
@@ -158,6 +177,96 @@
 ##   # Option and value: first, bar
 ##   ```
 ##
+## Parser Modes
+## ============
+##
+## .. Warning:: Modes other than the default (`Nim`) are **experimental** and may change
+##    in future releases.
+##
+## The parser supports several distinct rule sets that change how options are
+## interpreted. The modes are switched at compile time.
+## Select a mode with `-d:parseopt.mode=<int>`:
+##
+## - `0` (`PosixLax`): Most forgiving mode, combines `Nim` with POSIX-like
+##    short option handling. Tries to follow the POSIX_ guidelines where possible.
+## - `1` (`Nim`): Standard Nim parsing rules (default).
+## - `2` (`Gnu`): GNU-inspired parsing (e.g. `=` as the only delimiter).
+##   Puts some restrictions, following some of the GNU_ conventions.
+##
+## Modes are numbered from most relaxed (0) to strictest (2). The names were
+## chosen to set general user expectations and full compliance is neither
+## achieved nor planned.
+##
+## Mode Differences
+## ----------------
+##
+## **Nim** (mode 1, default):
+##
+## - Short options require adjacent values or explicit delimiters: `-cval`, `-c:val`, `-c=val`
+## - Next-argument value taking (`-c val`) is **not** supported by default
+## - Supports both `:` and `=` as delimiters
+## - Allows whitespace around delimiters
+## - Values starting with `-` are interpreted as new options
+##
+## **PosixLax** (mode 0):
+##
+## - Essentially the Nim mode with a key relaxation for short options
+## - Allows short options to take values from the next argument: `-c val`
+## - Supports bundled short options with trailing value: `-abc val`
+## - Values starting with `-` can be consumed as option arguments
+##
+## **Gnu** (mode 2):
+##
+## - Only `=` is treated as a delimiter (`:` is not a delimiter)
+## - No whitespace allowed around `=`
+## - Short options can take next-argument values: `-c val`
+## - Values starting with `-` can be consumed as option arguments
+##
+## Mode-Specific Behavior
+## ======================
+##
+## The parser's behavior varies significantly between modes, particularly
+## around how options consume their values:
+##
+## **Short Options**
+##
+## Consider `-c val`:
+##
+## - In `Nim` mode: `-c` is parsed as an option without a value, and `val` is
+##   parsed as an argument (unless `shortNoVal` is non-empty and `c` is not in it)
+## - In `PosixLax` mode: same as `Nim`, but if `shortNoVal` is non-empty and
+##   `c` is not in it, `val` is consumed as the value of `-c`
+## - In `Gnu` mode: if `shortNoVal` is non-empty and `c` is not in it, `val` is
+##   consumed as the value of `-c`
+##
+## Consider `-c-10`:
+##
+## - In `Nim` mode: `-c` is an option, `-10` is interpreted as two bundled
+##   short options `-1` and `-0`
+## - In `PosixLax` mode: same as `Nim`, unless `shortNoVal` is non-empty and
+##   `c` is not in it, in which case `-10` is consumed as the value of `-c`
+##   (allowing negative numbers)
+## - In `Gnu` mode: if `shortNoVal` is non-empty and `c` is not in it, `-10` is
+##   consumed as the value of `-c` (allowing negative numbers)
+##
+## **Long Options**
+##
+## Consider `--foo:bar`:
+##
+## - In `Nim` mode: `:` is a valid delimiter, so `bar` is the value of `--foo`
+## - In `PosixLax` mode: same as `Nim`
+## - In `Gnu` mode: only `=` is a delimiter, so this parses as an option named
+##   `foo:bar` without a value (unless `longNoVal` is non-empty and allows
+##   next-argument consumption)
+##
+## Consider `--foo =bar`:
+##
+## - In `Nim` mode: whitespace around delimiters is allowed, so `=bar` is the
+##   value of `--foo`
+## - In `PosixLax` mode: same as `Nim`
+## - In `Gnu` mode: whitespace around `=` is not allowed, so `--foo` is an
+##   option without a value, and `=bar` is parsed as an argument
+##
 ## See also
 ## ========
 ##
@@ -171,6 +280,11 @@
 ##   parser
 ## * `parsexml module<parsexml.html>`_ for a XML / HTML parser
 ## * `other parsers<lib.html#pure-libraries-parsers>`_ for more parsers
+## * POSIX_ - The Open Group Base Specifications Issue 8. Utility Conventions
+## * GNU_ - GNU C Library reference manual. 26.1.1 Program Argument Syntax Conventions
+##
+## .. _GNU: https://sourceware.org/glibc/manual/latest/html_node/Argument-Syntax.html
+## .. _POSIX: https://pubs.opengroup.org/onlinepubs/9799919799/basedefs/V1_chap12.html
 
 {.push debugger: off.}
 
@@ -178,6 +292,72 @@ include "system/inclrtl"
 
 import std/strutils
 import std/os
+
+type
+  ParserRuleMode = enum
+    ## Parser behavior profiles used to select capability sets at compile time.
+    rsPosixLax, ## The mose forgiving mode. Combines Nim-style parser with
+                ## POSIX-like handling of short options, allowing passing
+                ## whitespace-delimited arguments.
+    rsNim,      ## Nim parsing rules (default).
+    rsGnu ## GNU-style parsing:
+          ## - Short options follow POSIX-style bundling and value handling.
+          ## - Only '=' is a long/short delimiter (':' not treated as a delimiter).
+          ## - Whitespace around '=' is disallowed.
+          ##
+          ## Known discrepancies:
+          ## - No notion of optional/mandatory arguments.
+
+type
+  ParserCapabilities = enum
+    ## Feature flags used to assemble parser behavior for a given mode.
+    pcSepAllowDelimBefore,       ## Allow whitespace before a separator (':'|'=')
+    pcSepAllowDelimAfter,        ## Allow whitespace after a separator (':'|'=')
+    pcShortAllowSep,             ## Allow `-c:val`/`-c=val` forms, see `SepSet`
+    pcShortBundle,               ## Allow bundling short options behind one '-'
+    pcShortValAllowAdjacent,     ## Allow adjacent short option values: `-cval`
+    pcShortValAllowNextArg,      ## Allow next-argv short option values: `-c val`
+    pcShortValAllowDashLeading,  ## Allow values that start with '-' to be taken
+    pcLongAllowSep,              ## Allow `--opt=val`/`--opt:val`, see `SepSet`
+    pcLongValAllowNextArg,       ## Allow `--opt val` form, requires non-emty `longNoVal`
+
+const
+  ParserMode* {.intdefine: "parseopt.mode".}: int = ord(rsNim)
+  RuleMode: ParserRuleMode = static: ##|
+    ## Selected parser mode controlled by `-d:parseopt.mode=<int>`.
+    when ParserMode notin 0..int(ParserRuleMode.high):
+      {.error: "Unknown parseopt parser mode!".}
+    ParserRuleMode(ParserMode)
+
+  RuleSet: set[ParserCapabilities] = static:
+    ## Capability set derived from the selected rule mode.
+    let
+      Common = {
+        pcShortValAllowAdjacent,
+        pcShortBundle,
+        pcLongValAllowNextArg,
+        pcLongAllowSep,
+      }
+      Lax = {
+        pcSepAllowDelimBefore,
+        pcSepAllowDelimAfter,
+        pcShortAllowSep,
+      }
+      ShortPosix = {
+        pcShortValAllowNextArg,
+        pcShortValAllowDashLeading,
+      }
+    when RuleMode == rsPosixLax:
+      Common + Lax + ShortPosix
+    elif RuleMode == rsNim:
+      Common + Lax
+    elif RuleMode == rsGnu:
+      Common + ShortPosix
+    else: {.error: "No rule set defined for the parseopt parser mode." & $RuleMode .}
+
+  SepSet = if RuleMode == rsGnu: {'='} else: {':', '='} ##|
+  ## Allowed separators for long/short option values.
+  DelimSet = {'\t', ' '} ## Allowed delimiters between tokens
 
 type
   CmdLineKind* = enum ## The detected command line token.
@@ -203,7 +383,7 @@ type
                                  ## the option was given a value
 
 proc parseWord(s: string, i: int, w: var string,
-               delim: set[char] = {'\t', ' '}): int =
+               delim: set[char] = DelimSet): int =
   result = i
   if result < s.len and s[result] == '\"':
     inc(result)
@@ -223,12 +403,22 @@ proc initOptParser*(cmdline: seq[string], shortNoVal: set[char] = {},
                     allowWhitespaceAfterColon = true): OptParser =
   ## Initializes the command line parser.
   ##
-  ## If `cmdline.len == 0`, the real command line as provided by the
-  ## `os` module is retrieved instead if it is available. If the
-  ## command line is not available, a `ValueError` will be raised.
-  ## Behavior of the other parameters remains the same as in
-  ## `initOptParser(string, ...)
-  ## <#initOptParser,string,set[char],seq[string]>`_.
+  ## **Parameters:**
+  ##
+  ## - `cmdline`: Sequence of command line arguments to parse. If empty, the
+  ##   real command line as provided by the `os` module is retrieved instead.
+  ##   If the command line is not available, an assertion will be raised.
+  ## - `shortNoVal`: Set of short option characters that do not accept values.
+  ##   See `shortNoVal and longNoVal<#nimshortnoval-and-nimlongnoval>`_ for details.
+  ## - `longNoVal`: Sequence of long option names that do not accept values.
+  ##   See `shortNoVal and longNoVal<#nimshortnoval-and-nimlongnoval>`_ for details.
+  ## - `allowWhitespaceAfterColon`: When `true` (default), allows forms like
+  ##   `--option: value` or `--option= value` where the value is in the next
+  ##   command line argument after the delimiter. When `false`, the value must
+  ##   be in the same argument as the delimiter.
+  ##
+  ## **Note:** The parser's behavior depends on the selected `parser mode
+  ## <#parser-modes>`_, which is set at compile time with `-d:parseopt.mode=<int>`.
   ##
   ## See also:
   ## * `getopt iterator<#getopt.i,seq[string],set[char],seq[string]>`_
@@ -273,18 +463,27 @@ proc initOptParser*(cmdline: seq[string], shortNoVal: set[char] = {},
 proc initOptParser*(cmdline = "", shortNoVal: set[char] = {},
                     longNoVal: seq[string] = @[];
                     allowWhitespaceAfterColon = true): OptParser =
-  ## Initializes the command line parser.
+  ## Initializes the command line parser from a command line string.
   ##
-  ## If `cmdline == ""`, the real command line as provided by the
-  ## `os` module is retrieved instead if it is available. If the
-  ## command line is not available, a `ValueError` will be raised.
+  ## The `cmdline` string is parsed into tokens using shell-like quoting rules.
   ##
-  ## `shortNoVal` and `longNoVal` are used to specify which options
-  ## do not take values. See the `documentation about these
-  ## parameters<#nimshortnoval-and-nimlongnoval>`_ for more information on
-  ## how this affects parsing.
+  ## **Parameters:**
   ##
-  ## This does not provide a way of passing default values to arguments.
+  ## - `cmdline`: Command line string to parse. If empty, the real command line
+  ##   as provided by the `os` module is retrieved instead. If the command line
+  ##   is not available, an assertion will be raised.
+  ## - `shortNoVal`: Set of short option characters that do not accept values.
+  ##   See `shortNoVal and longNoVal<#nimshortnoval-and-nimlongnoval>`_ for details.
+  ## - `longNoVal`: Sequence of long option names that do not accept values.
+  ##   See `shortNoVal and longNoVal<#nimshortnoval-and-nimlongnoval>`_ for details.
+  ## - `allowWhitespaceAfterColon`: When `true` (default), allows forms like
+  ##   `--option: value` or `--option= value` where the value is in the next
+  ##   token after the delimiter. When `false`, the value must be in the same
+  ##   token as the delimiter.
+  ##
+  ## **Note:** This does not provide a way of passing default values to arguments.
+  ## The parser's behavior depends on the selected `parser mode<#parser-modes>`_,
+  ## which is set at compile time with `-d:parseopt.mode=<int>`.
   ##
   ## See also:
   ## * `getopt iterator<#getopt.i,OptParser>`_
@@ -303,18 +502,63 @@ proc handleShortOption(p: var OptParser; cmd: string) =
     add(p.key, cmd[i])
     inc(i)
   p.inShortState = true
-  while i < cmd.len and cmd[i] in {'\t', ' '}:
+  when pcSepAllowDelimBefore in RuleSet:
+    while i < cmd.len and cmd[i] in DelimSet:
+      inc(i)
+      p.inShortState = false
+  let canTakeVal = card(p.shortNoVal) > 0 and p.key[0] notin p.shortNoVal
+
+  template consumeDelims() =
+      while i < cmd.len and cmd[i] in DelimSet: inc(i)
+
+  template consumeSepValue() =
     inc(i)
     p.inShortState = false
-  if i < cmd.len and (cmd[i] in {':', '='} or
-      card(p.shortNoVal) > 0 and p.key[0] notin p.shortNoVal):
-    if i < cmd.len and cmd[i] in {':', '='}:
-      inc(i)
-    p.inShortState = false
-    while i < cmd.len and cmd[i] in {'\t', ' '}: inc(i)
+    when pcSepAllowDelimAfter in RuleSet:
+      consumeDelims()
     p.val = substr(cmd, i)
     p.pos = 0
     inc p.idx
+
+  template consumeAdjacentValue() =
+    p.inShortState = false
+    when pcSepAllowDelimBefore in RuleSet:
+      consumeDelims()
+    p.val = substr(cmd, i)
+    p.pos = 0
+    inc p.idx
+
+  template canConsumeNextArg(): bool =
+    when pcShortValAllowNextArg in RuleSet:
+      if canTakeVal and i >= cmd.len and p.idx + 1 < p.cmds.len:
+        when pcShortValAllowDashLeading in RuleSet:
+          true
+        else:
+          p.cmds[p.idx + 1].len == 0 or p.cmds[p.idx + 1][0] != '-'
+      else:
+        false
+    else:
+      false
+
+  template sepAllowedAndFound(): bool =
+    when pcShortAllowSep in RuleSet:
+      i < cmd.len and cmd[i] in SepSet
+    else:
+      false
+
+  if sepAllowedAndFound():
+    consumeSepValue()
+  elif canTakeVal and i < cmd.len:
+    when pcShortValAllowAdjacent in RuleSet:
+      consumeAdjacentValue()
+    else:
+      p.pos = i
+  elif canConsumeNextArg():
+    p.inShortState = false
+    p.val = p.cmds[p.idx + 1]
+    p.pos = 0
+    inc p.idx, 2
+    return
   else:
     p.pos = i
   if i >= cmd.len:
@@ -343,14 +587,17 @@ proc next*(p: var OptParser) {.rtl, extern: "npo$1".} =
     return
 
   var i = p.pos
-  while i < p.cmds[p.idx].len and p.cmds[p.idx][i] in {'\t', ' '}: inc(i)
+  template consumeDelims() =
+    while i < p.cmds[p.idx].len and p.cmds[p.idx][i] in DelimSet: inc(i)
+
+  consumeDelims()
   p.pos = i
   setLen(p.key, 0)
   setLen(p.val, 0)
   if p.inShortState:
     p.inShortState = false
     if i >= p.cmds[p.idx].len:
-      inc(p.idx)
+      inc p.idx
       p.pos = 0
       if p.idx >= p.cmds.len:
         p.kind = cmdEnd
@@ -364,24 +611,52 @@ proc next*(p: var OptParser) {.rtl, extern: "npo$1".} =
     if i < p.cmds[p.idx].len and p.cmds[p.idx][i] == '-':
       p.kind = cmdLongOption
       inc(i)
-      i = parseWord(p.cmds[p.idx], i, p.key, {' ', '\t', ':', '='})
-      while i < p.cmds[p.idx].len and p.cmds[p.idx][i] in {'\t', ' '}: inc(i)
-      if i < p.cmds[p.idx].len and p.cmds[p.idx][i] in {':', '='}:
-        inc(i)
-        while i < p.cmds[p.idx].len and p.cmds[p.idx][i] in {'\t', ' '}: inc(i)
+      var foundSep = false
+
+      template sepFoundAndAllowed(): bool =
+        when pcLongAllowSep in RuleSet:
+          if i < p.cmds[p.idx].len and p.cmds[p.idx][i] in SepSet:
+            foundSep = true
+            inc(i)
+            when pcSepAllowDelimAfter in RuleSet:
+              consumeDelims()
+            true
+          else:
+            false
+        else:
+          false
+
+      template canConsumeNextArg(): bool =
+        when pcLongValAllowNextArg in RuleSet:
+          len(p.longNoVal) > 0 and p.key notin p.longNoVal and p.idx+1 < p.cmds.len
+        else:
+          false
+
+      i = parseWord(p.cmds[p.idx], i, p.key,
+            DelimSet + (when pcLongAllowSep in RuleSet: SepSet else: {}))
+      when pcSepAllowDelimBefore in RuleSet:
+        consumeDelims()
+      if sepFoundAndAllowed():
         # if we're at the end, use the next command line option:
-        if i >= p.cmds[p.idx].len and p.idx < p.cmds.len and
-            p.allowWhitespaceAfterColon:
+        if i >= p.cmds[p.idx].len and p.idx < p.cmds.len and p.allowWhitespaceAfterColon:
           inc p.idx
           i = 0
         if p.idx < p.cmds.len:
           p.val = p.cmds[p.idx].substr(i)
-      elif len(p.longNoVal) > 0 and p.key notin p.longNoVal and p.idx+1 < p.cmds.len:
-        p.val = p.cmds[p.idx+1]
+        else:
+          p.val = ""
         inc p.idx
+      elif canConsumeNextArg():
+        p.val = p.cmds[p.idx+1]
+        inc p.idx, 2
       else:
         p.val = ""
-      inc p.idx
+        if not foundSep and i < p.cmds[p.idx].len:
+          # Leave remainder of the current token to be parsed as an argument.
+          consumeDelims()
+          p.cmds[p.idx] = p.cmds[p.idx].substr(i)
+        else:
+          inc p.idx
       p.pos = 0
     else:
       p.pos = i
