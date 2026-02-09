@@ -38,7 +38,7 @@ type
   PByte = ptr ByteArray
   PString = ptr string
 
-when not (defined(gcOrc) or defined(gcArc) or defined(gcAtomicArc)):
+when not defined(nimV2):
   type
     RefCount = int
 
