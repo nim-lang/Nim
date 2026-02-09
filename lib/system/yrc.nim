@@ -122,7 +122,8 @@ include threadids
 
 type
   Stripe = object
-    lockInc: Lock
+    when not defined(yrcAtomics):
+      lockInc: Lock
     toIncLen: int
     toInc: array[QueueSize, Cell]
     lockDec: Lock
@@ -143,33 +144,53 @@ proc nimIncRefCyclic(p: pointer; cyclic: bool) {.compilerRtl, inl.} =
   let h = head(p)
   when optimizedOrc:
     if cyclic: h.rc = h.rc or maybeCycle
-  let idx = getStripeIdx()
-  while true:
-    var overflow = false
-    withLock stripes[idx].lockInc:
-      if stripes[idx].toIncLen < QueueSize:
-        stripes[idx].toInc[stripes[idx].toIncLen] = h
-        stripes[idx].toIncLen += 1
-      else:
-        overflow = true
-    if overflow:
-      withLock gYrcGlobalLock:
-        for i in 0..<NumStripes:
-          withLock stripes[i].lockInc:
-            for j in 0..<stripes[i].toIncLen:
-              let x = stripes[i].toInc[j]
-              x.rc = x.rc +% rcIncrement
-            stripes[i].toIncLen = 0
+  when defined(yrcAtomics):
+    let s = getStripeIdx()
+    let slot = atomicFetchAdd(addr stripes[s].toIncLen, 1, ATOMIC_ACQ_REL)
+    if slot < QueueSize:
+      atomicStoreN(addr stripes[s].toInc[slot], h, ATOMIC_RELEASE)
     else:
-      break
+      withLock gYrcGlobalLock:
+        h.rc = h.rc +% rcIncrement
+        for i in 0..<NumStripes:
+          let len = atomicExchangeN(addr stripes[i].toIncLen, 0, ATOMIC_ACQUIRE)
+          for j in 0..<min(len, QueueSize):
+            let x = atomicLoadN(addr stripes[i].toInc[j], ATOMIC_ACQUIRE)
+            x.rc = x.rc +% rcIncrement
+  else:
+    let idx = getStripeIdx()
+    while true:
+      var overflow = false
+      withLock stripes[idx].lockInc:
+        if stripes[idx].toIncLen < QueueSize:
+          stripes[idx].toInc[stripes[idx].toIncLen] = h
+          stripes[idx].toIncLen += 1
+        else:
+          overflow = true
+      if overflow:
+        withLock gYrcGlobalLock:
+          for i in 0..<NumStripes:
+            withLock stripes[i].lockInc:
+              for j in 0..<stripes[i].toIncLen:
+                let x = stripes[i].toInc[j]
+                x.rc = x.rc +% rcIncrement
+              stripes[i].toIncLen = 0
+      else:
+        break
 
 proc mergePendingRoots() =
   for i in 0..<NumStripes:
-    withLock stripes[i].lockInc:
-      for j in 0..<stripes[i].toIncLen:
-        let x = stripes[i].toInc[j]
+    when defined(yrcAtomics):
+      let incLen = atomicExchangeN(addr stripes[i].toIncLen, 0, ATOMIC_ACQUIRE)
+      for j in 0..<min(incLen, QueueSize):
+        let x = atomicLoadN(addr stripes[i].toInc[j], ATOMIC_ACQUIRE)
         x.rc = x.rc +% rcIncrement
-      stripes[i].toIncLen = 0
+    else:
+      withLock stripes[i].lockInc:
+        for j in 0..<stripes[i].toIncLen:
+          let x = stripes[i].toInc[j]
+          x.rc = x.rc +% rcIncrement
+        stripes[i].toIncLen = 0
     withLock stripes[i].lockDec:
       for j in 0..<stripes[i].toDecLen:
         let (c, desc) = stripes[i].toDec[j]
@@ -483,7 +504,8 @@ proc nimMarkCyclic(p: pointer) {.compilerRtl, inl.} =
 # Initialize locks at module load
 initLock(gYrcGlobalLock)
 for i in 0..<NumStripes:
-  initLock(stripes[i].lockInc)
+  when not defined(yrcAtomics):
+    initLock(stripes[i].lockInc)
   initLock(stripes[i].lockDec)
 
 {.pop.}

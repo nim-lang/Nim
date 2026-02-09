@@ -848,19 +848,11 @@ proc atomicClosureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   let xenv = genBuiltin(c, mAccessEnv, "accessEnv", x)
   xenv.typ = getSysType(c.g, c.info, tyPointer)
 
-  # YRC uses dedicated runtime procs for the write barrier on the env pointer:
-  # Closure envs are always polymorphic, so pass nil for desc (uses Dyn variant):
-  if c.g.config.selectedGC == gcYrc:
-    let nilDesc = newNodeIT(nkNilLit, c.info, getSysType(c.g, c.info, tyPointer))
-    case c.kind
-    of attachedAsgn, attachedDup:
-      body.add callCodegenProc(c.g, "nimAsgnYrc", c.info, genAddr(c, xenv), y, nilDesc)
-      return
-    of attachedSink:
-      body.add callCodegenProc(c.g, "nimSinkYrc", c.info, genAddr(c, xenv), y, nilDesc)
-      return
-    else: discard # fall through for destructor, trace, wasMoved
-
+  # Closures are (fnPtr, env) pairs -- nimAsgnYrc/nimSinkYrc operate on single
+  # pointers so they cannot handle a closure struct. Instead we fall through to
+  # the regular ORC cyclic path which copies the whole struct via newAsgnStmt
+  # and calls nimIncRefCyclic / nimDecRefIsLastCyclicDyn on the env pointer.
+  # Those procs are already YRC-aware (they buffer into striped queues).
   let isCyclic = c.g.config.selectedGC in {gcOrc, gcYrc}
   let tmp =
     if isCyclic and c.kind in {attachedAsgn, attachedSink, attachedDup}:
