@@ -131,12 +131,12 @@ proc str*(my: JsonParser): string {.inline.} =
 
 proc getInt*(my: JsonParser): BiggestInt {.inline.} =
   ## returns the number for the event: `jsonInt`
-  assert(my.tok == tkInt)
+  assert(my.kind == jsonInt)
   result = my.i
 
 proc getFloat*(my: JsonParser): float {.inline.} =
   ## returns the number for the event: `jsonFloat`
-  assert(my.tok == tkFloat)
+  assert(my.kind == jsonFloat)
   result = my.f
 
 proc kind*(my: JsonParser): JsonEventKind {.inline.} =
@@ -321,12 +321,9 @@ proc parseNumberValue(my: var JsonParser; tokenStart, tokenLen: int;
   if kind == tkFloat:
     L = parseFloat(my.buf, my.f, tokenStart)
   else:
-    try:
-      L = parseBiggestInt(my.buf, my.i, tokenStart)
-    except ValueError:
-      return tkError
+    L = parseBiggestInt(my.buf, my.i, tokenStart)
   if L != tokenLen:
-    return tkError
+    raise newException(ValueError, "invalid number: " & my.buf[tokenStart..tokenLen-1])
   result = kind
 
 proc parseNumber(my: var JsonParser): TokKind {.inline.} =
