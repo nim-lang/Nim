@@ -134,7 +134,6 @@ type
 
   BigChunk = object of BaseChunk # not necessarily > PageSize!
     next, prev: PBigChunk    # chunks of the same (or bigger) size
-    alignOffset: uint16       # offset from data start to actual Cell (for aligned allocs)
     data {.align: MemAlign.}: UncheckedArray[byte]      # start of usable memory
 
   HeapLinks = object
@@ -478,8 +477,8 @@ iterator allObjects(m: var MemRegion): pointer {.inline.} =
             a = a +% size
         else:
           let c = cast[PBigChunk](c)
-          # Yield the aligned address that was actually returned to user
-          yield addr(c.data) +! c.alignOffset
+          # prev stores the aligned data pointer set during rawAlloc
+          yield cast[pointer](c.prev)
   m.locked = false
 
 proc iterToProc*(iter: typed, envType: typedesc; procName: untyped) {.
@@ -779,9 +778,10 @@ proc deallocBigChunk(a: var MemRegion, c: PBigChunk) =
   sysAssert a.occ >= 0, "rawDealloc: negative occupied memory (case B)"
   when not defined(gcDestructors):
     a.deleted = getBottom(a)
-    # Use the same address that was added during allocation (accounting for alignment)
-    let alignedDataAddr = cast[int](addr(c.data)) +% c.alignOffset.int
-    del(a, a.root, alignedDataAddr)
+    # prev stores the aligned data pointer that was added to the AVL tree during allocation
+    del(a, a.root, cast[int](c.prev))
+  # Reset prev before freeing (required by listAdd assertions in freeBigChunk)
+  c.prev = nil
   if c.size >= HugeChunkSize: freeHugeChunk(a, c)
   else: freeBigChunk(a, c)
 
@@ -849,11 +849,12 @@ when defined(heaptrack):
   proc heaptrack_malloc(a: pointer, size: int) {.cdecl, importc, dynlib: heaptrackLib.}
   proc heaptrack_free(a: pointer) {.cdecl, importc, dynlib: heaptrackLib.}
 
-proc applyAlignment(basePtr: pointer, alignment: int, offset: int, c: PBigChunk): pointer {.inline.} =
-  let alignedUserData = align(cast[int](basePtr) +% offset, alignment)
-  let finalResult = alignedUserData -% offset
-  c.alignOffset = cast[uint16](finalResult -% cast[int](basePtr))
-  result = cast[pointer](finalResult)
+proc bigChunkAlignOffset(alignment, offset: int): int {.inline.} =
+  ## Compute the alignment offset for big chunk data.
+  ## Since chunks are page-aligned and sizeof(BigChunk) is a compile-time constant,
+  ## the offset is deterministic for a given alignment and data offset.
+  if alignment <= MemAlign: 0
+  else: align(sizeof(BigChunk) + offset, alignment) - sizeof(BigChunk) - offset
 
 proc rawAlloc(a: var MemRegion, requestedSize: int, alignment: int = MemAlign, offset: int = 0): pointer =
   when defined(nimTypeNames):
@@ -962,21 +963,20 @@ proc rawAlloc(a: var MemRegion, requestedSize: int, alignment: int = MemAlign, o
       if deferredFrees != nil:
         freeDeferredObjects(a, deferredFrees)
 
-    # For big chunks with custom alignment, allocate extra space for alignment adjustment
-    size = requestedSize + bigChunkOverhead()
-    if alignment > MemAlign:
-      size += alignment - 1
+    # For big chunks with custom alignment, allocate extra space.
+    # Since chunks are page-aligned, the needed padding is a compile-time
+    # deterministic value rather than a worst-case estimate.
+    let alignPad = bigChunkAlignOffset(alignment, offset)
+    size = requestedSize + bigChunkOverhead() + alignPad
     # allocate a large block
     var c = if size >= HugeChunkSize: getHugeChunk(a, size)
             else: getBigChunk(a, size)
     sysAssert c.prev == nil, "rawAlloc 10"
     sysAssert c.next == nil, "rawAlloc 11"
-    result = addr(c.data)
-    # Apply alignment if needed: align (result + offset) to alignment boundary
-    if alignment > MemAlign:
-      result = applyAlignment(result, alignment, offset, c)
-    else:
-      c.alignOffset = 0
+    result = addr(c.data) +! alignPad
+    # Store the aligned data pointer in prev for deallocation and GC traversal.
+    # prev is unused while the chunk is allocated (next/prev are free-list links).
+    c.prev = cast[PBigChunk](result)
 
     sysAssert((cast[int](c) and (MemAlign-1)) == 0, "rawAlloc 13")
     sysAssert((cast[int](c) and PageMask) == 0, "rawAlloc: Not aligned on a page boundary")
@@ -1088,8 +1088,8 @@ when not defined(gcDestructors):
             (cast[ptr FreeCell](p).zeroField >% 1)
         else:
           var c = cast[PBigChunk](c)
-          # Use stored alignOffset to find the actual Cell location
-          let cellPtr = addr(c.data) +! c.alignOffset
+          # prev stores the aligned data pointer set during rawAlloc
+          let cellPtr = cast[pointer](c.prev)
           result = p == cellPtr and cast[ptr FreeCell](p).zeroField >% 1
 
   proc prepareForInteriorPointerChecking(a: var MemRegion) {.inline.} =
@@ -1114,8 +1114,8 @@ when not defined(gcDestructors):
               sysAssert isAllocatedPtr(a, result), " result wrong pointer!"
         else:
           var c = cast[PBigChunk](c)
-          # Use stored alignment offset to find the actual Cell location
-          var d = addr(c.data) +! c.alignOffset
+          # prev stores the aligned data pointer set during rawAlloc
+          var d = cast[pointer](c.prev)
           if p >= d and cast[ptr FreeCell](d).zeroField >% 1:
             result = d
             sysAssert isAllocatedPtr(a, result), " result wrong pointer!"
@@ -1128,8 +1128,8 @@ when not defined(gcDestructors):
         if avlNode != nil:
           var k = cast[pointer](avlNode.key)
           var c = cast[PBigChunk](pageAddr(k))
-          # k should be the aligned address (addr(c.data) + alignOffset)
-          sysAssert(addr(c.data) +! c.alignOffset == k, " k is not the aligned address!")
+          # prev stores the aligned data pointer (the AVL tree key)
+          sysAssert(cast[pointer](c.prev) == k, " k is not the aligned address!")
           if cast[ptr FreeCell](k).zeroField >% 1:
             result = k
             sysAssert isAllocatedPtr(a, result), " result wrong pointer!"
