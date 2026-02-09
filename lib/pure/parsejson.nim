@@ -179,9 +179,22 @@ proc addSpan(dst: var string; src: string; startPos, endPos: int) {.inline.} =
   let n = endPos - startPos
   if n <= 0:
     return
-  let oldLen = dst.len
-  setLen(dst, oldLen + n)
-  copyMem(addr dst[oldLen], addr src[startPos], n)
+
+  let old = dst.len
+  dst.setLen old + n
+
+  template impl =
+    for i in 0..<n:
+      dst[old + i] = src[startPos + i]
+
+  when nimvm:
+    impl
+  else:
+    when defined(js) or defined(nimscript):
+      impl
+    else:
+      {.noSideEffect.}:
+        copyMem dst[old].addr, src[startPos].unsafeAddr, n
 
 proc parseString(my: var JsonParser): TokKind =
   result = tkString
