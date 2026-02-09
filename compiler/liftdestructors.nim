@@ -848,11 +848,25 @@ proc atomicClosureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   let xenv = genBuiltin(c, mAccessEnv, "accessEnv", x)
   xenv.typ = getSysType(c.g, c.info, tyPointer)
 
-  # Closures are (fnPtr, env) pairs -- nimAsgnYrc/nimSinkYrc operate on single
-  # pointers so they cannot handle a closure struct. Instead we fall through to
-  # the regular ORC cyclic path which copies the whole struct via newAsgnStmt
-  # and calls nimIncRefCyclic / nimDecRefIsLastCyclicDyn on the env pointer.
-  # Those procs are already YRC-aware (they buffer into striped queues).
+  # Closures are (fnPtr, env) pairs. nimAsgnYrc/nimSinkYrc handle the env pointer
+  # (atomic store + buffered inc/dec). We also need newAsgnStmt to copy the fnPtr.
+  if c.g.config.selectedGC == gcYrc:
+    let nilDesc = newNodeIT(nkNilLit, c.info, getSysType(c.g, c.info, tyPointer))
+    let yenv = genBuiltin(c, mAccessEnv, "accessEnv", y)
+    yenv.typ = getSysType(c.g, c.info, tyPointer)
+    case c.kind
+    of attachedAsgn, attachedDup:
+      # nimAsgnYrc: save old env, atomic store new env, inc new env, dec old env
+      body.add callCodegenProc(c.g, "nimAsgnYrc", c.info, genAddr(c, xenv), yenv, nilDesc)
+      # Raw struct copy to also update the function pointer (env write is redundant but benign)
+      body.add newAsgnStmt(x, y)
+      return
+    of attachedSink:
+      body.add callCodegenProc(c.g, "nimSinkYrc", c.info, genAddr(c, xenv), yenv, nilDesc)
+      body.add newAsgnStmt(x, y)
+      return
+    else: discard # fall through for destructor, trace, wasMoved
+
   let isCyclic = c.g.config.selectedGC in {gcOrc, gcYrc}
   let tmp =
     if isCyclic and c.kind in {attachedAsgn, attachedSink, attachedDup}:
