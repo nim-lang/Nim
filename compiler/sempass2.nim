@@ -1756,7 +1756,7 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
       let param = params[i].sym
       let typ = param.typ
       if isSinkTypeForParam(typ) or
-          (t.config.selectedGC in {gcArc, gcOrc, gcAtomicArc} and
+          (t.config.selectedGC in {gcArc, gcOrc, gcYrc, gcAtomicArc} and
             (isClosure(typ.skipTypes(abstractInst)) or param.id in t.escapingParams)):
         createTypeBoundOps(t, typ, param.info)
       if isOutParam(typ) and param.id notin t.init and s.magic == mNone:
