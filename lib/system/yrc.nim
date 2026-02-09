@@ -390,7 +390,7 @@ proc GC_partialCollect*(limit: int) =
       roots.len = limit
 
 proc GC_fullCollect* =
-  collectCycles()
+  GC_runOrc()
 
 proc GC_enableMarkAndSweep*() = GC_enableOrc()
 proc GC_disableMarkAndSweep*() = GC_disableOrc()
@@ -448,7 +448,13 @@ proc unsureAsgnRef(dest: ptr pointer, src: pointer) {.inline.} =
   dest[] = src
   if src != nil: nimIncRefCyclic(src, true)
 
-proc nimAsgnYrc(dest: ptr pointer; src: pointer) {.compilerRtl.} =
+proc yrcDec(tmp: pointer; desc: PNimTypeV2) {.inline.} =
+  if desc != nil:
+    discard nimDecRefIsLastCyclicStatic(tmp, desc)
+  else:
+    discard nimDecRefIsLastCyclicDyn(tmp)
+
+proc nimAsgnYrc(dest: ptr pointer; src: pointer; desc: PNimTypeV2) {.compilerRtl.} =
   ## YRC write barrier for ref copy assignment.
   ## Atomically stores src into dest, then buffers RC adjustments.
   ## Freeing is always done by the cycle collector, never inline.
@@ -457,15 +463,15 @@ proc nimAsgnYrc(dest: ptr pointer; src: pointer) {.compilerRtl.} =
   if src != nil:
     nimIncRefCyclic(src, true)
   if tmp != nil:
-    discard nimDecRefIsLastCyclicDyn(tmp)
+    yrcDec(tmp, desc)
 
-proc nimSinkYrc(dest: ptr pointer; src: pointer) {.compilerRtl.} =
+proc nimSinkYrc(dest: ptr pointer; src: pointer; desc: PNimTypeV2) {.compilerRtl.} =
   ## YRC write barrier for ref sink (move). No incRef on source.
   ## Freeing is always done by the cycle collector, never inline.
   let tmp = dest[]
   atomicStoreN(dest, src, ATOMIC_RELEASE)
   if tmp != nil:
-    discard nimDecRefIsLastCyclicDyn(tmp)
+    yrcDec(tmp, desc)
 
 proc nimMarkCyclic(p: pointer) {.compilerRtl, inl.} =
   when optimizedOrc:

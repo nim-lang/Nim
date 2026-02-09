@@ -748,12 +748,19 @@ proc atomicRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
 
   # YRC uses dedicated runtime procs for the entire write barrier:
   if c.g.config.selectedGC == gcYrc:
+    let desc =
+      if isFinal(elemType):
+        let ti = genBuiltin(c, mGetTypeInfoV2, "getTypeInfoV2", newNodeIT(nkType, x.info, elemType))
+        ti.typ = getSysType(c.g, c.info, tyPointer)
+        ti
+      else:
+        newNodeIT(nkNilLit, c.info, getSysType(c.g, c.info, tyPointer))
     case c.kind
     of attachedAsgn, attachedDup:
-      body.add callCodegenProc(c.g, "nimAsgnYrc", c.info, genAddr(c, x), y)
+      body.add callCodegenProc(c.g, "nimAsgnYrc", c.info, genAddr(c, x), y, desc)
       return
     of attachedSink:
-      body.add callCodegenProc(c.g, "nimSinkYrc", c.info, genAddr(c, x), y)
+      body.add callCodegenProc(c.g, "nimSinkYrc", c.info, genAddr(c, x), y, desc)
       return
     else: discard # fall through for destructor, trace, wasMoved
 
@@ -842,13 +849,15 @@ proc atomicClosureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   xenv.typ = getSysType(c.g, c.info, tyPointer)
 
   # YRC uses dedicated runtime procs for the write barrier on the env pointer:
+  # Closure envs are always polymorphic, so pass nil for desc (uses Dyn variant):
   if c.g.config.selectedGC == gcYrc:
+    let nilDesc = newNodeIT(nkNilLit, c.info, getSysType(c.g, c.info, tyPointer))
     case c.kind
     of attachedAsgn, attachedDup:
-      body.add callCodegenProc(c.g, "nimAsgnYrc", c.info, genAddr(c, xenv), y)
+      body.add callCodegenProc(c.g, "nimAsgnYrc", c.info, genAddr(c, xenv), y, nilDesc)
       return
     of attachedSink:
-      body.add callCodegenProc(c.g, "nimSinkYrc", c.info, genAddr(c, xenv), y)
+      body.add callCodegenProc(c.g, "nimSinkYrc", c.info, genAddr(c, xenv), y, nilDesc)
       return
     else: discard # fall through for destructor, trace, wasMoved
 
