@@ -163,7 +163,7 @@ proc fillBodyObj(c: var TLiftCtx; n, body, x, y: PNode; enforceDefaultOp: bool, 
     if c.filterDiscriminator != nil: return
     let f = n.sym
     let b = if c.kind == attachedTrace: y else: y.dotField(f)
-    if (sfCursor in f.flags and c.g.config.selectedGC in {gcArc, gcAtomicArc, gcOrc, gcHooks}) or
+    if (sfCursor in f.flags and c.g.config.selectedGC in {gcArc, gcAtomicArc, gcOrc, gcYrc, gcHooks}) or
         enforceDefaultOp:
       defaultOp(c, f.typ, body, x.dotField(f), b)
     else:
@@ -730,14 +730,43 @@ proc atomicRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     dest[] = source
     decRef tmp
 
+  For YRC the write barrier is more complicated still and must be:
+
+    let tmp = dest
+    # assignment must come first so that the collector sees the most-recent graph:
+    atomic: dest[] = source
+    # Then teach the cycle collector about the changes edge (these use locks, see yrc.nim):
+    incRef source
+    decRef tmp
+
+  This is implemented as a single runtime call (nimAsgnYrc / nimSinkYrc).
   ]#
   var actions = newNodeI(nkStmtList, c.info)
   let elemType = t.elementType
 
   createTypeBoundOps(c.g, c.c, elemType, c.info, c.idgen)
-  let isCyclic = c.g.config.selectedGC == gcOrc and types.canFormAcycle(c.g, elemType)
 
-  let isInheritableAcyclicRef = c.g.config.selectedGC == gcOrc and
+  # YRC uses dedicated runtime procs for the entire write barrier:
+  if c.g.config.selectedGC == gcYrc:
+    let desc =
+      if isFinal(elemType):
+        let ti = genBuiltin(c, mGetTypeInfoV2, "getTypeInfoV2", newNodeIT(nkType, x.info, elemType))
+        ti.typ = getSysType(c.g, c.info, tyPointer)
+        ti
+      else:
+        newNodeIT(nkNilLit, c.info, getSysType(c.g, c.info, tyPointer))
+    case c.kind
+    of attachedAsgn, attachedDup:
+      body.add callCodegenProc(c.g, "nimAsgnYrc", c.info, genAddr(c, x), y, desc)
+      return
+    of attachedSink:
+      body.add callCodegenProc(c.g, "nimSinkYrc", c.info, genAddr(c, x), y, desc)
+      return
+    else: discard # fall through for destructor, trace, wasMoved
+
+  let isCyclic = c.g.config.selectedGC in {gcOrc, gcYrc} and types.canFormAcycle(c.g, elemType)
+
+  let isInheritableAcyclicRef = c.g.config.selectedGC in {gcOrc, gcYrc} and
                       (not isPureObject(elemType)) and
                       tfAcyclic in skipTypes(elemType, abstractInst+{tyOwned}-{tyTypeDesc}).flags
   # dynamic Acyclic refs need to use dyn decRef
@@ -819,7 +848,26 @@ proc atomicClosureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   let xenv = genBuiltin(c, mAccessEnv, "accessEnv", x)
   xenv.typ = getSysType(c.g, c.info, tyPointer)
 
-  let isCyclic = c.g.config.selectedGC == gcOrc
+  # Closures are (fnPtr, env) pairs. nimAsgnYrc/nimSinkYrc handle the env pointer
+  # (atomic store + buffered inc/dec). We also need newAsgnStmt to copy the fnPtr.
+  if c.g.config.selectedGC == gcYrc:
+    let nilDesc = newNodeIT(nkNilLit, c.info, getSysType(c.g, c.info, tyPointer))
+    let yenv = genBuiltin(c, mAccessEnv, "accessEnv", y)
+    yenv.typ = getSysType(c.g, c.info, tyPointer)
+    case c.kind
+    of attachedAsgn, attachedDup:
+      # nimAsgnYrc: save old env, atomic store new env, inc new env, dec old env
+      body.add callCodegenProc(c.g, "nimAsgnYrc", c.info, genAddr(c, xenv), yenv, nilDesc)
+      # Raw struct copy to also update the function pointer (env write is redundant but benign)
+      body.add newAsgnStmt(x, y)
+      return
+    of attachedSink:
+      body.add callCodegenProc(c.g, "nimSinkYrc", c.info, genAddr(c, xenv), yenv, nilDesc)
+      body.add newAsgnStmt(x, y)
+      return
+    else: discard # fall through for destructor, trace, wasMoved
+
+  let isCyclic = c.g.config.selectedGC in {gcOrc, gcYrc}
   let tmp =
     if isCyclic and c.kind in {attachedAsgn, attachedSink, attachedDup}:
       declareTempOf(c, body, xenv)
@@ -852,7 +900,6 @@ proc atomicClosureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
       body.add genIf(c, cond, actions)
     else:
       body.add genIf(c, yenv, callCodegenProc(c.g, "nimIncRef", c.info, yenv))
-
       body.add genIf(c, cond, actions)
       body.add newAsgnStmt(x, y)
   of attachedDup:
@@ -937,7 +984,7 @@ proc closureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     call[1] = y
     body.add newAsgnStmt(x, call)
   elif (optOwnedRefs in c.g.config.globalOptions and
-      optRefCheck in c.g.config.options) or c.g.config.selectedGC in {gcArc, gcAtomicArc, gcOrc}:
+      optRefCheck in c.g.config.options) or c.g.config.selectedGC in {gcArc, gcAtomicArc, gcOrc, gcYrc}:
     let xx = genBuiltin(c, mAccessEnv, "accessEnv", x)
     xx.typ = getSysType(c.g, c.info, tyPointer)
     case c.kind
@@ -992,7 +1039,7 @@ proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
       tyPtr, tyUncheckedArray, tyVar, tyLent:
     defaultOp(c, t, body, x, y)
   of tyRef:
-    if c.g.config.selectedGC in {gcArc, gcOrc, gcAtomicArc}:
+    if c.g.config.selectedGC in {gcArc, gcOrc, gcYrc, gcAtomicArc}:
       atomicRefOp(c, t, body, x, y)
     elif (optOwnedRefs in c.g.config.globalOptions and
         optRefCheck in c.g.config.options):
@@ -1001,7 +1048,7 @@ proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
       defaultOp(c, t, body, x, y)
   of tyProc:
     if t.callConv == ccClosure:
-      if c.g.config.selectedGC in {gcArc, gcOrc, gcAtomicArc}:
+      if c.g.config.selectedGC in {gcArc, gcOrc, gcYrc, gcAtomicArc}:
         atomicClosureOp(c, t, body, x, y)
       else:
         closureOp(c, t, body, x, y)
@@ -1125,7 +1172,7 @@ proc symDupPrototype(g: ModuleGraph; typ: PType; owner: PSym; kind: TTypeAttache
 
   result.typ.addParam src
 
-  if g.config.selectedGC == gcOrc and
+  if g.config.selectedGC in {gcOrc, gcYrc} and
     cyclicType(g, typ.skipTypes(abstractInst)):
     let cycleParam = newSym(skParam, getIdent(g.cache, "cyclic"),
                             idgen, result, info)
@@ -1152,7 +1199,7 @@ proc symPrototype(g: ModuleGraph; typ: PType; owner: PSym; kind: TTypeAttachedOp
   let src = newSym(skParam, getIdent(g.cache, if kind == attachedTrace: "env" else: "src"),
                    idgen, result, info)
 
-  if kind == attachedDestructor and g.config.selectedGC in {gcArc, gcOrc, gcAtomicArc} and
+  if kind == attachedDestructor and g.config.selectedGC in {gcArc, gcOrc, gcYrc, gcAtomicArc} and
      ((g.config.isDefined("nimPreviewNonVarDestructor") and not isDiscriminant) or (typ.kind in {tyRef, tyString, tySequence})):
     dest.typ = typ
   else:
@@ -1168,7 +1215,7 @@ proc symPrototype(g: ModuleGraph; typ: PType; owner: PSym; kind: TTypeAttachedOp
   if kind notin {attachedDestructor, attachedWasMoved}:
     result.typ.addParam src
 
-  if kind == attachedAsgn and g.config.selectedGC == gcOrc and
+  if kind == attachedAsgn and g.config.selectedGC in {gcOrc, gcYrc} and
       cyclicType(g, typ.skipTypes(abstractInst)):
     let cycleParam = newSym(skParam, getIdent(g.cache, "cyclic"),
                             idgen, result, info)
@@ -1226,7 +1273,7 @@ proc produceSym(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp;
   else:
     var tk: TTypeKind
     var skipped: PType = nil
-    if g.config.selectedGC in {gcArc, gcOrc, gcHooks, gcAtomicArc}:
+    if g.config.selectedGC in {gcArc, gcOrc, gcYrc, gcHooks, gcAtomicArc}:
       skipped = skipTypes(typ, {tyOrdinal, tyRange, tyInferred, tyGenericInst, tyStatic, tyAlias, tySink})
       tk = skipped.kind
     else:
@@ -1348,7 +1395,7 @@ proc createTypeBoundOps(g: ModuleGraph; c: PContext; orig: PType; info: TLineInf
 
   # we do not generate '=trace' procs if we
   # have the cycle detection disabled, saves code size.
-  let lastAttached = if g.config.selectedGC == gcOrc: attachedTrace
+  let lastAttached = if g.config.selectedGC in {gcOrc, gcYrc}: attachedTrace
                      else: attachedSink
 
   # bug #15122: We need to produce all prototypes before entering the

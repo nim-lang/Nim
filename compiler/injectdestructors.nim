@@ -69,7 +69,7 @@ proc hasDestructor(c: Con; t: PType): bool {.inline.} =
   result = ast.hasDestructor(t)
   when toDebug.len > 0:
     # for more effective debugging
-    if not result and c.graph.config.selectedGC in {gcArc, gcOrc, gcAtomicArc}:
+    if not result and c.graph.config.selectedGC in {gcArc, gcOrc, gcYrc, gcAtomicArc}:
       assert(not containsGarbageCollectedRef(t))
 
 proc getTemp(c: var Con; s: var Scope; typ: PType; info: TLineInfo): PNode =
@@ -165,7 +165,7 @@ proc isLastReadImpl(n: PNode; c: var Con; scope: var Scope): bool =
 
 template hasDestructorOrAsgn(c: var Con, typ: PType): bool =
   # bug #23354; an object type could have a non-trivial assignements when it is passed to a sink parameter
-  hasDestructor(c, typ) or (c.graph.config.selectedGC in {gcArc, gcOrc, gcAtomicArc} and
+  hasDestructor(c, typ) or (c.graph.config.selectedGC in {gcArc, gcOrc, gcYrc, gcAtomicArc} and
         typ.kind == tyObject and not isTrivial(getAttachedOp(c.graph, typ, attachedAsgn)))
 
 proc isLastRead(n: PNode; c: var Con; s: var Scope): bool =
@@ -329,14 +329,14 @@ proc isCriticalLink(dest: PNode): bool {.inline.} =
   result = dest.kind != nkSym
 
 proc finishCopy(c: var Con; result, dest: PNode; flags: set[MoveOrCopyFlag]; isFromSink: bool) =
-  if c.graph.config.selectedGC == gcOrc and IsExplicitSink notin flags:
+  if c.graph.config.selectedGC in {gcOrc, gcYrc} and IsExplicitSink notin flags:
     # add cyclic flag, but not to sink calls, which IsExplicitSink generates
     let t = dest.typ.skipTypes(tyUserTypeClasses + {tyGenericInst, tyAlias, tySink, tyDistinct})
     if cyclicType(c.graph, t):
       result.add boolLit(c.graph, result.info, isFromSink or isCriticalLink(dest))
 
 proc genMarkCyclic(c: var Con; result, dest: PNode) =
-  if c.graph.config.selectedGC == gcOrc:
+  if c.graph.config.selectedGC in {gcOrc, gcYrc}:
     let t = dest.typ.skipTypes({tyGenericInst, tyAlias, tySink, tyDistinct})
     if cyclicType(c.graph, t):
       if t.kind == tyRef:
@@ -495,7 +495,7 @@ proc passCopyToSink(n: PNode; c: var Con; s: var Scope): PNode =
       localError(c.graph.config, n.info, errFailedMove,
         ("cannot move '$1', passing '$1' to a sink parameter introduces an implicit copy") % $n)
   else:
-    if c.graph.config.selectedGC in {gcArc, gcOrc, gcAtomicArc}:
+    if c.graph.config.selectedGC in {gcArc, gcOrc, gcYrc, gcAtomicArc}:
       assert(not containsManagedMemory(nTyp))
     if nTyp.skipTypes(abstractInst).kind in {tyOpenArray, tyVarargs}:
       localError(c.graph.config, n.info, "cannot create an implicit openArray copy to be passed to a sink parameter")
@@ -926,7 +926,7 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
 
       if n[0].kind == nkSym and n[0].sym.magic in {mNew, mNewFinalize}:
         result[0] = copyTree(n[0])
-        if c.graph.config.selectedGC in {gcHooks, gcArc, gcAtomicArc, gcOrc}:
+        if c.graph.config.selectedGC in {gcHooks, gcArc, gcAtomicArc, gcOrc, gcYrc}:
           let destroyOld = c.genDestroy(result[1])
           result = newTree(nkStmtList, destroyOld, result)
       else:

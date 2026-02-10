@@ -16,7 +16,7 @@
 ## implementation.
 
 template detectVersion(field, corename) =
-  if m.g.config.selectedGC in {gcArc, gcOrc, gcAtomicArc, gcHooks}:
+  if m.g.config.selectedGC in {gcArc, gcOrc, gcYrc, gcAtomicArc, gcHooks}:
     result = 2
   else:
     result = 1

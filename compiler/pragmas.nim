@@ -567,7 +567,7 @@ proc processCompile(c: PContext, n: PNode) =
     n[i] = c.semConstExpr(c, n[i])
     case n[i].kind
     of nkStrLit, nkRStrLit, nkTripleStrLit:
-      when defined(gcArc) or defined(gcOrc) or defined(gcAtomicArc):
+      when defined(gcArc) or defined(gcOrc) or defined(gcAtomicArc) or defined(gcYrc):
         result = n[i].strVal
       else:
         shallowCopy(result, n[i].strVal)

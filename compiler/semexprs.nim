@@ -333,7 +333,7 @@ proc isCastable(c: PContext; dst, src: PType, info: TLineInfo): bool =
   if skipTypes(dst, abstractInst).kind == tyBuiltInTypeClass:
     return false
   let conf = c.config
-  if conf.selectedGC in {gcArc, gcOrc, gcAtomicArc}:
+  if conf.selectedGC in {gcArc, gcOrc, gcAtomicArc, gcYrc}:
     let d = skipTypes(dst, abstractInst)
     let s = skipTypes(src, abstractInst)
     if d.kind == tyRef and s.kind == tyRef and s[0].isFinal != d[0].isFinal:
@@ -813,7 +813,7 @@ proc semArrayConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PTyp
       inc(lastIndex)
     if isGeneric:
       for i in 0..<result.len:
-        if isIntLit(result[i].typ):
+        if result[i].typ != nil and isIntLit(result[i].typ):
           # generic instantiation strips int lit type which makes conversions fail
           result[i].typ = nil
       result.typ = nil # current result.typ is invalid, index type is nil
@@ -2800,7 +2800,7 @@ proc semSetConstr(c: PContext, n: PNode, expectedType: PType = nil): PNode =
           expectedElementType = typ
     if isGeneric:
       for i in 0..<n.len:
-        if isIntLit(n[i].typ):
+        if n[i].typ != nil and isIntLit(n[i].typ):
           # generic instantiation strips int lit type which makes conversions fail
           n[i].typ = nil
         result.add n[i]
@@ -2913,7 +2913,7 @@ proc semTupleFieldsConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType
     result.add n[i]
   if isGeneric:
     for i in 0..<result.len:
-      if isIntLit(result[i][1].typ):
+      if result[i][1].typ != nil and isIntLit(result[i][1].typ):
         # generic instantiation strips int lit type which makes conversions fail
         result[i][1].typ = nil
     result.typ = makeTypeFromExpr(c, result.copyTree)
@@ -2954,7 +2954,7 @@ proc semTuplePositionsConstr(c: PContext, n: PNode, flags: TExprFlags; expectedT
     addSonSkipIntLit(typ, n[i].typ.skipTypes({tySink}), c.idgen)
   if isGeneric:
     for i in 0..<result.len:
-      if isIntLit(result[i].typ):
+      if result[i].typ != nil and isIntLit(result[i].typ):
         # generic instantiation strips int lit type which makes conversions fail
         result[i].typ = nil
     result.typ = makeTypeFromExpr(c, result.copyTree)

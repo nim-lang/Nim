@@ -416,7 +416,7 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
     else:
       simpleAsgn(p.s(cpsStmts), dest, src)
   of tyArray:
-    if containsGarbageCollectedRef(dest.t) and p.config.selectedGC notin {gcArc, gcAtomicArc, gcOrc, gcHooks}:
+    if containsGarbageCollectedRef(dest.t) and p.config.selectedGC notin {gcArc, gcAtomicArc, gcOrc, gcYrc, gcHooks}:
       genGenericAsgn(p, dest, src, flags)
     else:
       let rd = rdLoc(dest)
@@ -1832,7 +1832,7 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
 
   var tmp: TLoc = default(TLoc)
   var r: Rope
-  let needsZeroMem = p.config.selectedGC notin {gcArc, gcAtomicArc, gcOrc} or nfAllFieldsSet notin e.flags
+  let needsZeroMem = p.config.selectedGC notin {gcArc, gcAtomicArc, gcOrc, gcYrc} or nfAllFieldsSet notin e.flags
   if useTemp:
     tmp = getTemp(p, t)
     r = rdLoc(tmp)
@@ -2751,7 +2751,7 @@ proc genMove(p: BProc; n: PNode; d: var TLoc) =
     p.s(cpsStmts).addFieldAssignment(destVal, "p", dotField(srcVal, "p"))
   else:
     if d.k == locNone: d = getTemp(p, n.typ)
-    if p.config.selectedGC in {gcArc, gcAtomicArc, gcOrc}:
+    if p.config.selectedGC in {gcArc, gcAtomicArc, gcOrc, gcYrc}:
       genAssignment(p, d, a, {})
       var op = getAttachedOp(p.module.g.graph, n.typ, attachedWasMoved)
       if op == nil:
@@ -2835,7 +2835,7 @@ proc genSlice(p: BProc; e: PNode; d: var TLoc) =
   let (x, y) = genOpenArraySlice(p, e, e.typ, e.typ.elementType,
     prepareForMutation = e[1].kind == nkHiddenDeref and
                          e[1].typ.skipTypes(abstractInst).kind == tyString and
-                         p.config.selectedGC in {gcArc, gcAtomicArc, gcOrc})
+                         p.config.selectedGC in {gcArc, gcAtomicArc, gcOrc, gcYrc})
   if d.k == locNone: d = getTemp(p, e.typ)
   let dest = rdLoc(d)
   p.s(cpsStmts).addFieldAssignment(dest, "Field0", x)
@@ -3039,7 +3039,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       let n = semparallel.liftParallel(p.module.g.graph, p.module.idgen, p.module.module, e)
       expr(p, n, d)
   of mDeepCopy:
-    if p.config.selectedGC in {gcArc, gcAtomicArc, gcOrc} and optEnableDeepCopy notin p.config.globalOptions:
+    if p.config.selectedGC in {gcArc, gcAtomicArc, gcOrc, gcYrc} and optEnableDeepCopy notin p.config.globalOptions:
       localError(p.config, e.info,
         "for --mm:arc|atomicArc|orc 'deepcopy' support has to be enabled with --deepcopy:on")
 
