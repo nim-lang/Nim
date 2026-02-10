@@ -159,8 +159,9 @@ proc GC_setPreventThreadFromCollectProc*(cb: PreventThreadFromCollectProc) =
   GC_setPreventThreadFromCollectProc(proc(): bool {.nimcall.} =
     if hardRealTimeThread == getThreadId():
       writeStackTrace()
-      echo "Realtime thread involved in inpredictable cycle collector activity!"
+      echo "Realtime thread involved in unpredictable cycle collector activity!"
     result = false
+  )
   ```
   ]##
   gPreventThreadFromCollectProc = cb
