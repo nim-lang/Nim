@@ -233,39 +233,37 @@
 ## Consider `-c val`:
 ##
 ## - In `Nim` mode: `-c` is parsed as an option without a value, and `val` is
-##   parsed as an argument (unless `shortNoVal` is non-empty and `c` is not in it)
-## - In `PosixLax` mode: same as `Nim`, but if `shortNoVal` is non-empty and
-##   `c` is not in it, `val` is consumed as the value of `-c`
-## - In `Gnu` mode: if `shortNoVal` is non-empty and `c` is not in it, `val` is
-##   consumed as the value of `-c`
+##   parsed as an argument, regardless of `shortNoVal` being empty or not.
+## - In `PosixLax` and `Gnu` modes: same as `Nim` when `shortNoVal` is
+##   empty and `c` is not in it, when it's not, `val` is consumed as the value.
 ##
 ## Consider `-c-10`:
 ##
-## - In `Nim` mode: `-c` is an option, `-10` is interpreted as two bundled
-##   short options `-1` and `-0`
-## - In `PosixLax` mode: same as `Nim`, unless `shortNoVal` is non-empty and
-##   `c` is not in it, in which case `-10` is consumed as the value of `-c`
-##   (allowing negative numbers)
-## - In `Gnu` mode: if `shortNoVal` is non-empty and `c` is not in it, `-10` is
-##   consumed as the value of `-c` (allowing negative numbers)
+## - If `shortNoVal` value is empty, all three modes parse thre separate short
+##   options: `c`, `1` and `0`.
+## - Otherwise, if `-c` is not in `shortNoVal`:
+##   + `Nim`: `-c` is an option without an argument. `-10` is interpreted as a
+##      an option `-1` with the `0` argument.
+##   + `PosixLax` and `Gnu`: `-10` is consumed as the value of `-c`
+##     (allowing negative number values).
 ##
 ## **Long Options**
 ##
 ## Consider `--foo:bar`:
 ##
-## - In `Nim` mode: `:` is a valid delimiter, so `bar` is the value of `--foo`
-## - In `PosixLax` mode: same as `Nim`
-## - In `Gnu` mode: only `=` is a delimiter, so this parses as an option named
+## - `Nim`: `:` is a valid delimiter, so `bar` is the value of `--foo`.
+## - `PosixLax`: same as `Nim`.
+## - `Gnu`: only `=` is a delimiter, so this parses as an option named
 ##   `foo:bar` without a value (unless `longNoVal` is non-empty and allows
-##   next-argument consumption)
+##   next-argument consumption).
 ##
 ## Consider `--foo =bar`:
 ##
-## - In `Nim` mode: whitespace around delimiters is allowed, so `=bar` is the
-##   value of `--foo`
-## - In `PosixLax` mode: same as `Nim`
-## - In `Gnu` mode: whitespace around `=` is not allowed, so `--foo` is an
-##   option without a value, and `=bar` is parsed as an argument
+## - `Nim`: whitespace around delimiters is allowed, so `=bar` is the
+##   value of `--foo`.
+## - `PosixLax`: same as `Nim`.
+## - `Gnu`: whitespace around `=` is not allowed, so `--foo` is an
+##   option without a value, and `=bar` is parsed as an argument.
 ##
 ## Custom Rule Sets
 ## ================
@@ -493,7 +491,7 @@ proc parseWord(s: string, i: int, w: var string,
 
 proc initOptParser*(cmdline: seq[string], shortNoVal: set[char] = {},
                     longNoVal: seq[string] = @[];
-                    allowWhitespaceAfterColon = true): OptParser =
+                    allowWhitespaceAfterColon = pcSepAllowDelimAfter in RuleSet): OptParser =
   ## Initializes the command line parser.
   ##
   ## **Parameters:**
@@ -555,7 +553,7 @@ proc initOptParser*(cmdline: seq[string], shortNoVal: set[char] = {},
 
 proc initOptParser*(cmdline = "", shortNoVal: set[char] = {},
                     longNoVal: seq[string] = @[];
-                    allowWhitespaceAfterColon = true): OptParser =
+                    allowWhitespaceAfterColon = pcSepAllowDelimAfter in RuleSet): OptParser =
   ## Initializes the command line parser from a command line string.
   ##
   ## The `cmdline` string is parsed into tokens using shell-like quoting rules.

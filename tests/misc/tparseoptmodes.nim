@@ -8,7 +8,7 @@ from std/sequtils import toSeq
 
 
 type Opt = tuple[kind: CmdLineKind, key, val: string]
-proc `$`(opt: Opt): string = $opt[0] & "\t'" & opt[1] & "'\t'" & opt[2] & "'"
+proc `$`(opt: Opt): string = "(" & $opt[0] & ", \"" & opt[1] & "\", \"" & opt[2] & "\")"
 
 proc check(name: string; got, expected: openArray[Opt]) =
   doAssert got == expected, "- " & name & ":\n" & $got
@@ -34,6 +34,12 @@ block:
     of rsNim:      @[(cmdShortOption, "c", ""), (cmdArgument, "4", "")]
     of rsGnu:      @[(cmdShortOption, "c", "4")]
   check("short whitespace value", res, expected)
+
+block:
+  # No opt-arg knowledge: whitespace does not bind to short option.
+  let res = collectNoVal(@["-c", "4"])
+  let expected = [(cmdShortOption, "c", ""), (cmdArgument, "4", "")]
+  check("short no-val whitespace value", res, expected)
 
 block:
   # pcShortBundle + pcShortValAllowNextArg: grouped shorts with one opt-arg.
@@ -117,12 +123,6 @@ block:
     of rsNim:      @[(cmdShortOption, "c", ""), (cmdArgument, "foo bar", "")]
     of rsGnu:      @[(cmdShortOption, "c", "foo bar")]
   check("short whitespace quoted value", res, expected)
-
-block:
-  # No opt-arg knowledge: whitespace does not bind to short option.
-  let res = collectNoVal(@["-c", "4"])
-  let expected = [(cmdShortOption, "c", ""), (cmdArgument, "4", "")]
-  check("short no-val whitespace", res, expected)
 
 block:
   # pcShortValAllowNextArg + pcShortValAllowDashLeading: negative numbers as opt-args.
@@ -279,3 +279,44 @@ block:
   let res = collect(@["--", "rest"])
   let expected = @[(cmdLongOption, "", ""), (cmdArgument, "rest", "")]
   check("double-dash marker", res, expected)
+
+block issue9619:
+  let res = collect(@["--option=", "", "--anotherOption", "tree"])
+  let expected = case parseopt.RuleMode
+    of rsPosixLax: @[(cmdLongOption, "option", ""),
+                     (cmdLongOption, "anotherOption", ""),
+                     (cmdArgument, "tree", "")]
+    of rsNim:      @[(cmdLongOption, "option", ""),
+                     (cmdLongOption, "anotherOption", ""),
+                     (cmdArgument, "tree", "")]
+    of rsGnu:      @[(cmdLongOption, "option", ""),
+                     (cmdArgument, "", ""),
+                     (cmdLongOption, "anotherOption", ""),
+                     (cmdArgument, "tree", "")]
+  check("issue #9619, whitespace after separator", res, expected)
+
+
+block issue22736:
+  let res = collect(@["--long", "", "-h", "--long:", "-h", "--long=", "-h", "arg"])
+  let expected = case parseopt.RuleMode
+    of rsPosixLax: @[(cmdLongOption, "long", ""),
+                     (cmdArgument, "", ""),
+                     (cmdShortOption, "h", ""),
+                     (cmdLongOption, "long", "-h"),
+                     (cmdLongOption, "long", "-h"),
+                     (cmdArgument, "arg", "")]
+    of rsNim:      @[(cmdLongOption, "long", ""),
+                     (cmdArgument, "", ""),
+                     (cmdShortOption, "h", ""),
+                     (cmdLongOption, "long", "-h"),
+                     (cmdLongOption, "long", "-h"),
+                     (cmdArgument, "arg", "")]
+    of rsGnu:      @[(cmdLongOption, "long", ""),
+                     (cmdArgument, "", ""),
+                     (cmdShortOption, "h", ""),
+                     (cmdLongOption, "long:", ""),
+                     (cmdShortOption, "h", ""),
+                     (cmdLongOption, "long", ""),
+                     (cmdShortOption, "h", ""),
+                     (cmdArgument, "arg", "")]
+  check("issue #22736, whitespace after separator, colon separator", res, expected)
