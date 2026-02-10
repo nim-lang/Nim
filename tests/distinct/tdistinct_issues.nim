@@ -8,7 +8,7 @@ apr
 '''
 """
 
-
+# Section: Overload resolution for distinct generic types (#4435).
 block t4435:
   type
     A[T] = distinct T
@@ -26,7 +26,7 @@ block t4435:
   bar(a) # testdistinct.nim(14, 4) Error: ambiguous call; both testdistinct.bar(x: A) and testdistinct.bar(x: B) match for: (A[system.int])
 
 
-
+# Section: Borrowed assignment and arithmetic on distinct ints (#7010).
 block t7010:
   type MyInt = distinct int
 
@@ -42,7 +42,7 @@ block t7010:
       next = next + 1.MyInt
 
 
-
+# Section: Borrowed math and formatting on distinct floats (#9079).
 block t9079:
   type
     Dollars = distinct float
@@ -58,7 +58,7 @@ block t9079:
   echo a
 
 
-
+# Section: Borrowed string formatting on distinct string alias (#9322).
 block t9322:
   type Fix = distinct string
   proc `$`(f: Fix): string {.borrow.}
@@ -66,7 +66,7 @@ block t9322:
     echo s
   mystr($Fix("apr"))
 
-
+# Section: `high` for distinct uint64 retains type in static/runtime (#13517).
 block: # bug #13517
   type MyUint64 = distinct uint64
 

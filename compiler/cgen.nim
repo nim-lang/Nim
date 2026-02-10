@@ -1319,54 +1319,56 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
 
   if sfPure notin prc.flags and prc.typ.returnType != nil:
     if resultPos >= prc.ast.len:
-      internalError(m.config, prc.info, "proc has no result symbol")
-    let resNode = prc.ast[resultPos]
-    let res = resNode.sym # get result symbol
-    if not isInvalidReturnType(m.config, prc.typ) and sfConstructor notin prc.flags:
-      if sfNoInit in prc.flags: incl(res, sfNoInit)
-      if sfNoInit in prc.flags and p.module.compileToCpp and (let val = easyResultAsgn(procBody); val != nil):
-        var a: TLoc = initLocExprSingleUse(p, val)
-        let ra = rdLoc(a)
-        localVarDecl(p.s(cpsStmts), p, resNode, initializer = ra)
-      else:
-        # declare the result symbol:
-        assignLocalVar(p, resNode)
-        assert(res.loc.snippet != "")
-        if p.config.selectedGC in {gcArc, gcAtomicArc, gcOrc} and
-            allPathsAsgnResult(p, procBody) == InitSkippable:
-          # In an ideal world the codegen could rely on injectdestructors doing its job properly
-          # and then the analysis step would not be required.
-          discard "result init optimized out"
-        else:
-          initLocalVar(p, res, immediateAsgn=false)
-      var returnBuilder = newBuilder("\t")
-      let rres = rdLoc(res.loc)
-      returnBuilder.addReturn(rres)
-      returnStmt = extract(returnBuilder)
-    elif sfConstructor in prc.flags:
-      resNode.sym.incl lfIndirect
-      backendEnsureMutable resNode.sym
-      fillLoc(resNode.sym.locImpl, locParam, resNode, "this", OnHeap)
-      backendEnsureMutable prc
-      prc.locImpl.snippet = getTypeDesc(m, resNode.sym.locImpl.t, dkVar)
+      if not (prc.kind == skIterator and isInlineIterator(prc.typ)):
+        internalError(m.config, prc.info, "proc has no result symbol")
     else:
-      fillResult(p.config, resNode, prc.typ)
-      assignParam(p, res, prc.typ.returnType)
-      # We simplify 'unsureAsgn(result, nil); unsureAsgn(result, x)'
-      # to 'unsureAsgn(result, x)'
-      # Sketch why this is correct: If 'result' points to a stack location
-      # the 'unsureAsgn' is a nop. If it points to a global variable the
-      # global is either 'nil' or points to valid memory and so the RC operation
-      # succeeds without touching not-initialized memory.
-      if sfNoInit in prc.flags: discard
-      elif allPathsAsgnResult(p, procBody) == InitSkippable: discard
+      let resNode = prc.ast[resultPos]
+      let res = resNode.sym # get result symbol
+      if not isInvalidReturnType(m.config, prc.typ) and sfConstructor notin prc.flags:
+        if sfNoInit in prc.flags: incl(res, sfNoInit)
+        if sfNoInit in prc.flags and p.module.compileToCpp and (let val = easyResultAsgn(procBody); val != nil):
+          var a: TLoc = initLocExprSingleUse(p, val)
+          let ra = rdLoc(a)
+          localVarDecl(p.s(cpsStmts), p, resNode, initializer = ra)
+        else:
+          # declare the result symbol:
+          assignLocalVar(p, resNode)
+          assert(res.loc.snippet != "")
+          if p.config.selectedGC in {gcArc, gcAtomicArc, gcOrc} and
+              allPathsAsgnResult(p, procBody) == InitSkippable:
+            # In an ideal world the codegen could rely on injectdestructors doing its job properly
+            # and then the analysis step would not be required.
+            discard "result init optimized out"
+          else:
+            initLocalVar(p, res, immediateAsgn=false)
+        var returnBuilder = newBuilder("\t")
+        let rres = rdLoc(res.loc)
+        returnBuilder.addReturn(rres)
+        returnStmt = extract(returnBuilder)
+      elif sfConstructor in prc.flags:
+        resNode.sym.incl lfIndirect
+        backendEnsureMutable resNode.sym
+        fillLoc(resNode.sym.locImpl, locParam, resNode, "this", OnHeap)
+        backendEnsureMutable prc
+        prc.locImpl.snippet = getTypeDesc(m, resNode.sym.locImpl.t, dkVar)
       else:
-        backendEnsureMutable res
-        resetLoc(p, res.locImpl)
-      if skipTypes(res.typ, abstractInst).kind == tyArray:
-        #incl(res.loc.flags, lfIndirect)
-        backendEnsureMutable res
-        res.locImpl.storage = OnUnknown
+        fillResult(p.config, resNode, prc.typ)
+        assignParam(p, res, prc.typ.returnType)
+        # We simplify 'unsureAsgn(result, nil); unsureAsgn(result, x)'
+        # to 'unsureAsgn(result, x)'
+        # Sketch why this is correct: If 'result' points to a stack location
+        # the 'unsureAsgn' is a nop. If it points to a global variable the
+        # global is either 'nil' or points to valid memory and so the RC operation
+        # succeeds without touching not-initialized memory.
+        if sfNoInit in prc.flags: discard
+        elif allPathsAsgnResult(p, procBody) == InitSkippable: discard
+        else:
+          backendEnsureMutable res
+          resetLoc(p, res.locImpl)
+        if skipTypes(res.typ, abstractInst).kind == tyArray:
+          #incl(res.loc.flags, lfIndirect)
+          backendEnsureMutable res
+          res.locImpl.storage = OnUnknown
 
   for i in 1..<prc.typ.n.len:
     let param = prc.typ.n[i].sym

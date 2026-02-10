@@ -1715,13 +1715,14 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
       elif s.typ.kind == tyGenericBody:
         localError(c.config, name.info, "{.exportc.} not allowed for generic types")
 
-    if tfBorrowDot in s.typ.flags:
+    let borrowFlags = {tfBorrowDot}
+    if borrowFlags * s.typ.flags != {}:
       let body = s.typ.skipTypes({tyGenericBody})
       if body.kind != tyDistinct:
         # flag might be copied from alias/instantiation:
         let t = body.skipTypes({tyAlias, tyGenericInst})
-        if not (t.kind == tyDistinct and tfBorrowDot in t.flags):
-          excl s.typ, tfBorrowDot
+        if not (t.kind == tyDistinct and borrowFlags * t.flags != {}):
+          excl s.typ, borrowFlags
           localError(c.config, name.info, "only a 'distinct' type can borrow `.`")
     let aa = a[2]
     if aa.kind in {nkRefTy, nkPtrTy} and aa.len == 1 and
@@ -1925,25 +1926,69 @@ proc addParams(c: PContext, n: PNode, kind: TSymKind) =
     if n[i].kind == nkSym: addParamOrResult(c, n[i].sym, kind)
     else: illFormedAst(n, c.config)
 
+proc replaceOwnedSyms(c: PContext, n: var PNode, ownerFrom, ownerTo: PSym,
+                      symMap: var SymMapping) =
+  if n.isNil:
+    return
+  if n.kind == nkSym and n.sym.owner == ownerFrom:
+    var mapped = idTableGet(symMap, n.sym)
+    if mapped == nil:
+      mapped = copySym(n.sym, c.idgen)
+      setOwner(mapped, ownerTo)
+      idTablePut(symMap, n.sym, mapped)
+    n = newSymNode(mapped, n.info)
+    return
+  for i in 0..<n.safeLen:
+    replaceOwnedSyms(c, n[i], ownerFrom, ownerTo, symMap)
+
+proc addResult(c: PContext, n: PNode, t: PType, owner: TSymKind)
+
 proc semBorrow(c: PContext, n: PNode, s: PSym) =
   # search for the correct alias:
   var (b, state) = searchForBorrowProc(c, c.currentScope.parent, s)
   case state
   of bsMatch:
     # store the alias:
-    n[bodyPos] = newSymNode(b)
+    if s.kind == skIterator and isInlineIterator(s.typ) and
+        b.ast != nil and b.ast.len > bodyPos and b.ast[bodyPos].kind != nkEmpty:
+      n[bodyPos] = copyTree(b.ast[bodyPos])
+      let borrowedParams = b.typ.n
+      let targetParams = s.typ.n
+      let maxParams = min(borrowedParams.len, targetParams.len)
+      var symMap = initSymMapping()
+      for i in 1..<maxParams:
+        if borrowedParams[i].kind == nkSym and targetParams[i].kind == nkSym:
+          idTablePut(symMap, borrowedParams[i].sym, targetParams[i].sym)
+      replaceOwnedSyms(c, n[bodyPos], b, s, symMap)
+    else:
+      n[bodyPos] = newSymNode(b)
     # Carry over the original symbol magic, this is necessary in order to ensure
     # the semantic pass is correct
     s.magic = b.magic
-    if b.typ != nil and b.typ.len > 0:
+    if b.typ != nil and b.typ.len > 0 and s.name.s notin ["[]", "[]="]:
       s.typ.n[0] = b.typ.n[0]
     s.typ.flags = b.typ.flags
+    if s.typ.returnType != nil and (n.len <= resultPos or n[resultPos].kind == nkEmpty):
+      addResult(c, n, s.typ.returnType, s.kind)
+    if s.name.s in ["[]", "[]="]:
+      let isGetBorrow = s.name.s == "[]"
+      let isMutableBorrow = s.name.s == "[]=" or
+        (s.typ.n.len > 1 and s.typ.n[1].sym.typ.kind == tyVar)
+      if isGetBorrow or isMutableBorrow:
+        var paramType = s.typ.firstParamType
+        if paramType != nil:
+          paramType = paramType.skipTypes({tyVar, tyLent, tyPtr, tyRef, tyOwned, tyAlias, tyGenericInst, tySink})
+          if paramType.kind == tyGenericInvocation and paramType.genericHead.last.kind == tyDistinct:
+            paramType = paramType.genericHead.last
+          if paramType.kind == tyDistinct:
+            if isGetBorrow:
+              incl(paramType, tfBorrowBrackets)
+            if isMutableBorrow:
+              incl(paramType, tfBorrowBracketsMut)
   of bsNoDistinct:
     localError(c.config, n.info, "borrow proc without distinct type parameter is meaningless")
   of bsReturnNotMatch:
     localError(c.config, n.info, "borrow from proc return type mismatch: '$1'" % typeToString(b.typ.returnType))
-  of bsGeneric:
-    localError(c.config, n.info, "borrow with generic parameter is not supported")
   of bsNotSupported:
     localError(c.config, n.info, "borrow from '$1' is not supported" % $b.name.s)
   else:
@@ -2333,15 +2378,18 @@ proc cursorInProc(conf: ConfigRef; n: PNode): bool =
   else:
     result = false
 
-proc hasObjParam(s: PSym): bool =
+proc hasObjParam(c: PContext; s: PSym): bool =
   result = false
   var t = s.typ
   for col in 1..<t.len:
-    if skipTypes(t[col], skipPtrs).kind == tyObject:
+    var paramType = t[col].skipTypes(skipPtrs)
+    while paramType.kind == tyDistinct:
+      paramType = paramType.baseOfDistinct(c.graph, c.idgen).skipTypes(skipPtrs)
+    if paramType.kind == tyObject:
       return true
 
 proc finishMethod(c: PContext, s: PSym) =
-  if hasObjParam(s):
+  if hasObjParam(c, s):
     methodDef(c.graph, c.idgen, s)
 
 proc semCppMember(c: PContext; s: PSym; n: PNode) =
@@ -2415,7 +2463,7 @@ proc semMethodPrototype(c: PContext; s: PSym; n: PNode) =
     # why check for the body? bug #2400 has none. Checking for sfForward makes
     # no sense either.
     # and result[bodyPos].kind != nkEmpty:
-    if hasObjParam(s):
+    if hasObjParam(c, s):
       methodDef(c.graph, c.idgen, s)
     else:
       localError(c.config, n.info, "'method' needs a parameter that has an object type")
@@ -2677,7 +2725,14 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       if s.kind == skMethod: semMethodPrototype(c, s, n)
       popProcCon(c)
   else:
-    if s.kind == skMethod: semMethodPrototype(c, s, n)
+    if sfBorrow in s.flags:
+      pushProcCon(c, s)
+      semBorrow(c, n, s)
+      if s.typ.returnType != nil and (n.len <= resultPos or n[resultPos].kind == nkEmpty):
+        addResult(c, n, s.typ.returnType, s.kind)
+      popProcCon(c)
+    if s.kind == skMethod and sfBorrow notin s.flags:
+      semMethodPrototype(c, s, n)
     if hasProto: localError(c.config, n.info, errImplOfXexpected % proto.name.s)
     if {sfImportc, sfBorrow, sfError} * s.flags == {} and s.magic == mNone:
       # this is a forward declaration and we're building the prototype
@@ -2686,7 +2741,6 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
 
       incl(s, sfForward)
       incl(s, sfWasForwarded)
-    elif sfBorrow in s.flags: semBorrow(c, n, s)
   sideEffectsCheck(c, s)
 
   closeScope(c)           # close scope for parameters

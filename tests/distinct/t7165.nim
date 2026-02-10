@@ -7,6 +7,7 @@ type
   MyTable = distinct Table[string, int]
   MyTableRef = ref MyTable
 
+# Section: Distinct ref alias can wrap a generic ref-returning constructor.
 proc newTable[K, V](): ref Table[K, V] = discard
 
 proc newMyTable: MyTableRef =
