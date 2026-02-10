@@ -184,7 +184,7 @@
 ##    in future releases.
 ##
 ## The parser supports several distinct rule sets that change how options are
-## interpreted. The modes are switched at compile time.
+## interpreted. The modes are controlled by `ParserMode<#ParserMode>`_ constant.
 ## Select a mode with `-d:parseopt.mode=<int>`:
 ##
 ## - `0` (`PosixLax`): Most forgiving mode, combines `Nim` with POSIX-like
@@ -267,6 +267,23 @@
 ## - In `Gnu` mode: whitespace around `=` is not allowed, so `--foo` is an
 ##   option without a value, and `=bar` is parsed as an argument
 ##
+## Custom Rule Sets
+## ================
+##
+## .. Warning:: Custom rule sets is an **experimental** feature.
+##
+## Beyond the three provided modes, you can define a custom parser behavior
+## by specifying individual `ParserCapabilities<#ParserCapabilities>`_ at
+## compile time by overriding the `ParserRulesMask<#ParserRulesMask>`_
+## bit mask with `-d:parseopt.ruleset=<int32>`.
+##
+## This is useful when you need parsing rules that don't match any standard
+## mode.
+##
+## When defined, `ParserRulesMask` value completely overrides the selected mode
+## and the `RuleSet<#RuleSet>`_ derived from it. See `RuleSet<#RuleSet>`_ for
+## details on the derivation process.
+##
 ## See also
 ## ========
 ##
@@ -290,7 +307,7 @@
 
 include "system/inclrtl"
 
-import std/strutils
+import std/[strutils, bitops]
 import std/os
 
 type
@@ -309,7 +326,7 @@ type
           ## - No notion of optional/mandatory arguments.
 
 type
-  ParserCapabilities = enum
+  ParserCapabilities* = enum
     ## Feature flags used to assemble parser behavior for a given mode.
     pcSepAllowDelimBefore,       ## Allow whitespace before a separator (':'|'=')
     pcSepAllowDelimAfter,        ## Allow whitespace after a separator (':'|'=')
@@ -321,16 +338,36 @@ type
     pcLongAllowSep,              ## Allow `--opt=val`/`--opt:val`, see `SepSet`
     pcLongValAllowNextArg,       ## Allow `--opt val` form, requires non-emty `longNoVal`
 
+func toRuleSet(mask: int32): set[ParserCapabilities] =
+  for cap in ParserCapabilities:
+    if testBit(mask, ord(cap)): result.incl(cap)
+
+func toRuleSetMask*(caps: set[ParserCapabilities]): int32 =
+  ## Helper to derive a value for a custom `ParserRulesMask<#ParserRulesMask>`_
+  ## override value from `caps`.
+  for cap in caps:
+    result.setBit(ord(cap))
+
 const
-  ParserMode* {.intdefine: "parseopt.mode".}: int = ord(rsNim)
+  ParserMode* {.intdefine: "parseopt.mode".}: int = ord(rsNim) ##|
+  ## Parser mode switch. Defined at compilation with the `-d:parseopt.mode=<int>`.
+  ## Valid integer values:
+  ## - `0`: PosixLax mode
+  ## - `1`: Nim mode (default)
+  ## - `2`: Gnu mode
+  ##
+  ## See `Parser Modes<#parser-modes>`_ for details.
+  ##
+  ## If `ParserRulesMask<#ParserRulesMask>`_ is set at compile-time, it
+  ## takes precedence and effectively overrides `ParserMode`.
   RuleMode: ParserRuleMode = static: ##|
     ## Selected parser mode controlled by `-d:parseopt.mode=<int>`.
     when ParserMode notin 0..int(ParserRuleMode.high):
       {.error: "Unknown parseopt parser mode!".}
     ParserRuleMode(ParserMode)
 
-  RuleSet: set[ParserCapabilities] = static:
-    ## Capability set derived from the selected rule mode.
+  DefaultRuleSet: set[ParserCapabilities] = static:
+    ## Default capability set derived from the selected rule mode.
     let
       Common = {
         pcShortValAllowAdjacent,
@@ -354,6 +391,62 @@ const
     elif RuleMode == rsGnu:
       Common + ShortPosix
     else: {.error: "No rule set defined for the parseopt parser mode." & $RuleMode .}
+
+  ParserRulesMask* {.intdefine: "parseopt.ruleset".}: int32 = ##|
+  ## Integer bitmask for the effective parser rule set.
+  ## Used to override the chosen mode with a granular custom set of
+  ## `ParserCapabilities<#ParserCapabilities>`_ rules.
+  ##
+  ## To enact, use the `-d:parseopt.ruleset=<N>` define at compile time.
+  ##
+  ## By default, this is derived from the active `RuleMode`.
+  ## Each bit position corresponds to a `ParserCapabilities` enum value.
+  ##
+  ## To use a custom capability set instead of a predefined mode, define
+  ## `parseopt.ruleset` at compile time in  your `config.nims`:
+  ##
+  ## ```nim
+  ## import parseopt
+  ## let myRuleSet = {
+  ##   pcShortBundle,              # Allow -abc bundling
+  ##   pcShortValAllowAdjacent,    # Allow -cval
+  ##   pcLongAllowSep,             # Allow --opt=val
+  ##   pcSepAllowDelimBefore,      # Allow --opt =val
+  ##   pcSepAllowDelimAfter        # Allow --opt= val
+  ## }
+  ## switch("define", "parseopt.ruleset=" & $toRuleSetMask(myRuleSet))
+  ## ```
+  ##
+  ## When `parseopt.ruleset` is defined, it completely bypasses the default
+  ## derivation (steps 1-3) and directly controls the final `RuleSet`.
+    toRuleSetMask(DefaultRuleSet)
+
+  RuleSet*: set[ParserCapabilities] = toRuleSet(ParserRulesMask) ##|
+  ## The final active parser capability set used throughout the module to
+  ## control parsing behavior.
+  ##
+  ## Derivation Process:
+  ##
+  ## The `RuleSet` is derived through a multi-stage compile-time process:
+  ##
+  ## 1. Mode Selection: The `ParserMode<#ParserMode>`_ selects one of the
+  ##    pre-defined parsing modes. Defaults to `Nim` mode.
+  ##
+  ## 2. Default Capabilities: Based on `RuleMode`, a default set of
+  ##    `ParserCapabilities` is assembled.
+  ##
+  ## 3. Bitmask Conversion: The derived rule set is converted to an integer
+  ##    bitmask and stored in `ParserRulesMask<#ParserRulesMask>`_.
+  ##    This step allows user override: if `-d:parseopt.ruleset=<int32>` is
+  ##    used as a compilation switch, it replaces the value.
+  ##
+  ## 4. Final Rule Set: `ParserRulesMask` is converted back
+  ##    to the final value of `RuleSet` used by the parser.
+  ##
+  ## **See Also:**
+  ## - `ParserCapabilities<#ParserCapabilities>`_ for individual capability meanings
+  ## - `ParserMode<#ParserMode>`_ for mode selection
+  ## - `ParserRulesMask<#ParserRulesMask>`_ for custom override mechanism
 
   SepSet = if RuleMode == rsGnu: {'='} else: {':', '='} ##|
   ## Allowed separators for long/short option values.
