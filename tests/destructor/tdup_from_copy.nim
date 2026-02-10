@@ -1,8 +1,10 @@
 discard """
   output: '''
 copy!
+copy!
+3
 2
-1'''
+'''
 """
 
 type Foo = distinct int

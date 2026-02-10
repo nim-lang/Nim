@@ -566,6 +566,7 @@ proc considerInferDupFromCopy(c: var TLiftCtx; t: PType; body, x, y: PNode): boo
     if op2 != nil and sfOverridden in op2.flags:
       #markUsed(c.g.config, c.info, op, c.g.usageSym)
       onUse(c.info, op2)
+      body.add genBuiltin(c, mWasMoved, "wasMoved", x)
       body.add newHookCall(c, op2, x, y)
       result = true
     else:
@@ -1192,7 +1193,17 @@ proc genTypeFieldCopy(c: var TLiftCtx; t: PType; body, x, y: PNode) =
 proc produceSym(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp;
               info: TLineInfo; idgen: IdGenerator): PSym =
   if typ.kind == tyDistinct:
-    return produceSymDistinctType(g, c, typ, kind, info, idgen)
+    # For =dup, if the distinct type has a user-defined =copy, don't delegate
+    # to the base type. Instead fall through to the normal produceSym logic
+    # so that fillBody -> considerInferDupFromCopy can synthesize =dup from =copy.
+    if kind == attachedDup:
+      let copyOp = getAttachedOp(g, typ, attachedAsgn)
+      if copyOp != nil and sfOverridden in copyOp.flags:
+        discard "fall through to normal produceSym logic"
+      else:
+        return produceSymDistinctType(g, c, typ, kind, info, idgen)
+    else:
+      return produceSymDistinctType(g, c, typ, kind, info, idgen)
 
   result = getAttachedOp(g, typ, kind)
   if result == nil:
