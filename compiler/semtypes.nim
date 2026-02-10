@@ -1149,7 +1149,7 @@ proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
       result = t
     else: discard
     if result.kind == tyRef and
-        c.config.selectedGC in {gcArc, gcOrc, gcAtomicArc} and
+        c.config.selectedGC in {gcArc, gcOrc, gcAtomicArc, gcYrc} and
         tfTriggersCompileTime notin result.flags:
       result.incl tfHasAsgn
 
@@ -2390,7 +2390,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
 
       if n.kind == nkIteratorTy and result.kind == tyProc:
         result.incl(tfIterator)
-      if result.callConv == ccClosure and c.config.selectedGC in {gcArc, gcOrc, gcAtomicArc}:
+      if result.callConv == ccClosure and c.config.selectedGC in {gcArc, gcOrc, gcAtomicArc, gcYrc}:
         result.incl tfHasAsgn
   of nkEnumTy: result = semEnum(c, n, prev)
   of nkType: result = n.typ

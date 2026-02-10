@@ -465,13 +465,13 @@ proc GC_runOrc* =
 
 proc GC_enableOrc*() =
   ## Enables the cycle collector subsystem of `--mm:orc`. This is a `--mm:orc`
-  ## specific API. Check with `when defined(gcOrc)` for its existence.
+  ## specific API. Check with `when defined(gcOrc) or defined(gcYrc)` for its existence.
   when not defined(nimStressOrc):
     rootsThreshold = 0
 
 proc GC_disableOrc*() =
   ## Disables the cycle collector subsystem of `--mm:orc`. This is a `--mm:orc`
-  ## specific API. Check with `when defined(gcOrc)` for its existence.
+  ## specific API. Check with `when defined(gcOrc) or defined(gcYrc)` for its existence.
   when not defined(nimStressOrc):
     rootsThreshold = high(int)
 

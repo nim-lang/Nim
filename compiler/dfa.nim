@@ -483,7 +483,7 @@ proc constructCfg*(s: PSym; body: PNode; root: PSym): ControlFlowGraph =
     gen(c, body)
     if root.kind == skResult:
       genImplicitReturn(c)
-  when defined(gcArc) or defined(gcOrc) or defined(gcAtomicArc):
+  when defined(gcArc) or defined(gcOrc) or defined(gcAtomicArc) or defined(gcYrc):
     result = c.code # will move
   else:
     shallowCopy(result, c.code)

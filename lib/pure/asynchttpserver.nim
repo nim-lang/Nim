@@ -188,7 +188,7 @@ proc processRequest(
   # \n
   request.headers.clear()
   request.body = ""
-  when defined(gcArc) or defined(gcOrc) or defined(gcAtomicArc):
+  when defined(gcArc) or defined(gcOrc) or defined(gcAtomicArc) or defined(gcYrc):
     request.hostname = address
   else:
     request.hostname.shallowCopy(address)
