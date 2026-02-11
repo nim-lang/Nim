@@ -41,6 +41,7 @@ type
     CoType
     CoOwnerSig
     CoIgnoreRange
+    CoIgnoreRangeInarray
     CoConsiderOwned
     CoDistinct
     CoHashTypeInsideNode
@@ -220,10 +221,17 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]; conf: Confi
     else:
       for a in t.kids: c.hashType a, flags+{CoIgnoreRange}, conf
   of tyRange:
-    if CoIgnoreRange notin flags:
+    if {CoIgnoreRange, CoIgnoreRangeInarray} * flags == {}:
       c &= char(t.kind)
       c.hashTree(t.n, {}, conf)
-    c.hashType(t.elementType, flags, conf)
+      c.hashType(t.elementType, flags, conf)
+    elif CoIgnoreRangeInarray in flags:
+      # include only the length of the range (not its specific bounds)
+      c &= char(t.kind)
+      let l = lastOrd(conf, t) - firstOrd(conf, t) + 1
+      lowlevel l
+    else:
+      c.hashType(t.elementType, flags, conf)
   of tyStatic:
     c &= char(t.kind)
     c.hashTree(t.n, {}, conf)
@@ -253,7 +261,7 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]; conf: Confi
     if tfVarargs in t.flags: c &= ".varargs"
   of tyArray:
     c &= char(t.kind)
-    c.hashType(t.indexType, flags-{CoIgnoreRange}, conf)
+    c.hashType(t.indexType, flags-{CoIgnoreRange}+{CoIgnoreRangeInarray}, conf)
     c.hashType(t.elementType, flags-{CoIgnoreRange}, conf)
   else:
     c &= char(t.kind)
