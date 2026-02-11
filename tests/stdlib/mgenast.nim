@@ -31,7 +31,7 @@ macro bindme6UseExpose*(): untyped =
   genAst:
     var tst = "sometext"
     var ss = newStringStream("anothertext")
-    when defined(gcArc) or defined(gcOrc):
+    when defined(gcArc) or defined(gcOrc) or defined(gcYrc):
       prepareMutation(tst)
     writeData(ss, tst[0].addr, 2)
     discard readData(ss, tst[0].addr, 2)
@@ -42,7 +42,7 @@ macro bindme6UseExposeFalse*(): untyped =
   genAstOpt({kDirtyTemplate}, newStringStream, writeData, readData):
     var tst = "sometext"
     var ss = newStringStream("anothertext")
-    when defined(gcArc) or defined(gcOrc):
+    when defined(gcArc) or defined(gcOrc) or defined(gcYrc):
       prepareMutation(tst)
     writeData(ss, tst[0].addr, 2)
     discard readData(ss, tst[0].addr, 2)

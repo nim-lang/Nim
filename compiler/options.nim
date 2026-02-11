@@ -68,6 +68,7 @@ type                          # please make sure we have under 32 options
     optUseNimcache,           # save artifacts (including binary) in $nimcache
     optStyleHint,             # check that the names adhere to NEP-1
     optStyleError,            # enforce that the names adhere to NEP-1
+    optStyleWarning,          # emit style checks as warnings
     optStyleUsages,           # only enforce consistent **usages** of the symbol
     optSkipSystemConfigFile,  # skip the system's cfg/nims config file
     optSkipProjConfigFile,    # skip the project's cfg/nims config file
@@ -194,6 +195,7 @@ type
     gcRegions = "regions"
     gcArc = "arc"
     gcOrc = "orc"
+    gcYrc = "yrc"       # thread-safe ORC (concurrent cycle collector)
     gcAtomicArc = "atomicArc"
     gcMarkAndSweep = "markAndSweep"
     gcHooks = "hooks"

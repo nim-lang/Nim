@@ -25,7 +25,7 @@ when not (defined(cpu16) or defined(cpu8)):
         bytes: int
         data: WideCString
 
-    const arcLike = defined(gcArc) or defined(gcAtomicArc) or defined(gcOrc)
+    const arcLike = defined(gcArc) or defined(gcAtomicArc) or defined(gcOrc) or defined(gcYrc)
     when defined(nimAllowNonVarDestructor) and arcLike:
       proc `=destroy`(a: WideCStringObj) =
         if a.data != nil:

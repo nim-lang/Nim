@@ -231,7 +231,7 @@ proc runNimScript*(cache: IdentCache; scriptName: AbsoluteFile;
   if optOwnedRefs in oldGlobalOptions:
     conf.globalOptions.incl {optTinyRtti, optOwnedRefs, optSeqDestructors}
     defineSymbol(conf.symbols, "nimv2")
-  if conf.selectedGC in {gcArc, gcOrc, gcAtomicArc}:
+  if conf.selectedGC in {gcArc, gcOrc, gcYrc, gcAtomicArc}:
     conf.globalOptions.incl {optTinyRtti, optSeqDestructors}
     defineSymbol(conf.symbols, "nimv2")
     defineSymbol(conf.symbols, "gcdestructors")
@@ -241,6 +241,8 @@ proc runNimScript*(cache: IdentCache; scriptName: AbsoluteFile;
       defineSymbol(conf.symbols, "gcarc")
     of gcOrc:
       defineSymbol(conf.symbols, "gcorc")
+    of gcYrc:
+      defineSymbol(conf.symbols, "gcyrc")
     of gcAtomicArc:
       defineSymbol(conf.symbols, "gcatomicarc")
     else:

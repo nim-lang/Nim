@@ -125,7 +125,7 @@ proc unsafeAddr*[T](x: T): ptr T {.magic: "Addr", noSideEffect.} =
 
 const ThisIsSystem = true
 
-const arcLikeMem = defined(gcArc) or defined(gcAtomicArc) or defined(gcOrc)
+const arcLikeMem = defined(gcArc) or defined(gcAtomicArc) or defined(gcOrc) or defined(gcYrc)
 
 when defined(nimAllowNonVarDestructor) and arcLikeMem:
   proc new*[T](a: var ref T, finalizer: proc (x: T) {.nimcall.}) {.
@@ -356,7 +356,7 @@ proc low*(x: string): int {.magic: "Low", noSideEffect.}
   ## See also:
   ## * `high(string) <#high,string>`_
 
-when not defined(gcArc) and not defined(gcOrc) and not defined(gcAtomicArc):
+when not defined(gcArc) and not defined(gcOrc) and not defined(gcYrc) and not defined(gcAtomicArc):
   proc shallowCopy*[T](x: var T, y: T) {.noSideEffect, magic: "ShallowCopy".}
     ## Use this instead of `=` for a `shallow copy`:idx:.
     ##
@@ -407,7 +407,7 @@ when defined(nimHasDup):
 
 proc `=sink`*[T](x: var T; y: T) {.inline, nodestroy, magic: "Asgn".} =
   ## Generic `sink`:idx: implementation that can be overridden.
-  when defined(gcArc) or defined(gcOrc) or defined(gcAtomicArc):
+  when defined(gcArc) or defined(gcOrc) or defined(gcYrc) or defined(gcAtomicArc):
     x = y
   else:
     shallowCopy(x, y)
@@ -2561,7 +2561,7 @@ when compileOption("rangechecks"):
 else:
   template rangeCheck*(cond) = discard
 
-when not defined(gcArc) and not defined(gcOrc) and not defined(gcAtomicArc):
+when not defined(gcArc) and not defined(gcOrc) and not defined(gcYrc) and not defined(gcAtomicArc):
   proc shallow*[T](s: var seq[T]) {.noSideEffect, inline.} =
     ## Marks a sequence `s` as `shallow`:idx:. Subsequent assignments will not
     ## perform deep copies of `s`.
@@ -2630,7 +2630,7 @@ when hasAlloc or defined(nimscript):
     setLen(x, xl+item.len)
     var j = xl-1
     while j >= i:
-      when defined(gcArc) or defined(gcOrc) or defined(gcAtomicArc):
+      when defined(gcArc) or defined(gcOrc) or defined(gcYrc) or defined(gcAtomicArc):
         x[j+item.len] = move x[j]
       else:
         shallowCopy(x[j+item.len], x[j])
@@ -3141,3 +3141,27 @@ proc arrayWithDefault*[T](size: static int): array[size, T] {.noinit, nodestroy,
   ## Creates a new array filled with `default(T)`.
   for i in 0..size-1:
     result[i] = default(T)
+
+when hostOS == "standalone":
+  # Include panicoverride.nim late so users can use the full extent of the
+  # language in their custom panic handlers (e.g. macros).
+  # Users define `proc panic(msg: string)` and `proc rawoutput(msg: string)`.
+  include "$projectpath/panicoverride"
+
+  when not declared(panic):
+    {.error:
+      "a panic proc with the following signature must be provided " &
+      "when compiling with --os:standalone: " &
+      "`proc panic(msg: string) {.nimcall.}`".}
+
+  when not declared(rawoutput):
+     {.error:
+      "a rawoutput proc with the following signature must be provided " &
+      "when compiling with --os:standalone: " &
+      "`proc rawoutput(msg: string) {.nimcall.}`".}
+
+  # Wrappers with exportc that fatal.nim references via importc.
+  # This way panicoverride keeps old API and can still be included without
+  # ssymbols being duplicated.
+  proc nimPanic(s: string) {.exportc, noreturn.} = panic(s)
+  proc nimRawoutput(s: string) {.exportc.} = rawoutput(s)

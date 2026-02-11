@@ -321,7 +321,7 @@ proc collectGenericParams(w: var Writer; n: PNode) =
 proc writeSymDef(w: var Writer; dest: var TokenBuf; sym: PSym) =
   dest.addParLe sdefTag, trLineInfo(w, sym.infoImpl)
   dest.addSymDef pool.syms.getOrIncl(w.toNifSymName(sym)), NoLineInfo
-  if sfExported in sym.flagsImpl:
+  if {sfExported, sfFromGeneric} * sym.flagsImpl == {sfExported}:
     dest.addIdent "x"
   else:
     dest.addDotToken
@@ -345,6 +345,8 @@ proc writeSymDef(w: var Writer; dest: var TokenBuf; sym: PSym) =
 
   if sym.kindImpl == skModule:
     dest.addDotToken() # position will be set by the loader!
+  elif sym.kindImpl in {skVar, skLet, skForVar, skResult}:
+    dest.addIntLit 0  # hack for the VM which uses this field to store information
   else:
     dest.addIntLit sym.positionImpl
 
@@ -879,7 +881,11 @@ proc readEmbeddedIndex(s: var Stream): Table[string, NifIndexEntry] =
 proc moduleId(c: var DecodeContext; suffix: string; flags: set[LoadFlag] = {}): FileIndex =
   var isKnownFile = false
   result = c.infos.config.registerNifSuffix(suffix, isKnownFile)
-  if not isKnownFile or AlwaysLoadInterface in flags:
+  # Always load the module's index if it's not already in c.mods
+  # This is needed when resolving symbols from modules that were registered elsewhere
+  # but haven't had their NIF index loaded yet
+  let hasEntry = c.mods.hasKey(result)
+  if not hasEntry or AlwaysLoadInterface in flags:
     let modFile = (getNimcacheDir(c.infos.config) / RelativeFile(suffix & ".nif")).string
     if not fileExists(modFile):
       raiseAssert "NIF file not found for module suffix '" & suffix & "': " & modFile &
@@ -1438,7 +1444,13 @@ proc resolveSym(c: var DecodeContext; symAsStr: string; alsoConsiderPrivate: boo
     return nil  # Local symbols shouldn't be hooks
   let module = moduleId(c, sn.module)
   # Look up the symbol in the module's index
+  # Try both formats: with module suffix (e.g., "foo.0.modulename") and without (e.g., "foo.0.")
+  # NIF spec allows local symbols to be stored without module suffix
   var offs = c.mods[module].index.getOrDefault(symAsStr)
+  if offs.offset == 0:
+    # Try the format without module suffix
+    let localKey = sn.name & "." & $sn.count & "."
+    offs = c.mods[module].index.getOrDefault(localKey)
   if offs.offset == 0:
     return nil
   if not alsoConsiderPrivate and offs.vis == Hidden:

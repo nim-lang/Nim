@@ -286,7 +286,7 @@ proc compilePipelineModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymF
         let precomp = moduleFromNifFile(graph, fileIdx)
         if precomp.module == nil:
           let nifPath = toNifFilename(graph.config, fileIdx)
-          localError(graph.config, unknownLineInfo,
+          globalError(graph.config, unknownLineInfo,
             "nim m requires precompiled NIF for import: " & toFullPath(graph.config, fileIdx) &
             " (expected: " & nifPath & ")")
           return nil  # Don't fall through to compile from source

@@ -373,6 +373,7 @@ proc replaceTypeVarsS(cl: var TReplTypeVars, s: PSym, t: PType): PSym =
       var g: G[string]
 
   ]#
+  # XXX FIXME This causes system.Natural to be duplicated during compilation of system.nim as cl.owner == nil!
   result = copySym(s, cl.c.idgen)
   incl(result.flagsImpl, sfFromGeneric)
   #idTablePut(cl.symMap, s, result)

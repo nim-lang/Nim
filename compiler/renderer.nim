@@ -14,7 +14,7 @@
 {.used.}
 
 import
-  lexer, options, idents, ast, msgs, lineinfos, wordrecg
+  lexer, options, idents, ast, msgs, lineinfos, wordrecg, trees
 
 import std/[strutils]
 
@@ -65,6 +65,359 @@ proc renderTree*(n: PNode, renderFlags: TRenderFlags = {}): string
 # We render the source code in a two phases: The first
 # determines how long the subtree will likely be, the second
 # phase appends to a buffer that will be the output.
+
+type
+  TPreferedDesc* = enum
+    preferName, # default
+    preferDesc, # probably should become what preferResolved is
+    preferExported,
+    preferModuleInfo, # fully qualified
+    preferGenericArg,
+    preferTypeName,
+    preferResolved, # fully resolved symbols
+    preferMixed,
+      # most useful, shows: symbol + resolved symbols if it differs, e.g.:
+      # tuple[a: MyInt{int}, b: float]
+    preferInlayHint,
+    preferInferredEffects,
+
+proc typeToString*(typ: PType; prefer: TPreferedDesc = preferName): string
+template `$`*(typ: PType): string = typeToString(typ)
+
+proc valueToString(a: PNode): string =
+  case a.kind
+  of nkCharLit, nkUIntLit..nkUInt64Lit:
+    result = $cast[uint64](a.intVal)
+  of nkIntLit..nkInt64Lit:
+    result = $a.intVal
+  of nkFloatLit..nkFloat128Lit: result = $a.floatVal
+  of nkStrLit..nkTripleStrLit: result = a.strVal
+  of nkStaticExpr: result = "static(" & a[0].renderTree & ")"
+  else: result = "<invalid value>"
+
+proc rangeToStr(n: PNode): string =
+  assert(n.kind == nkRange)
+  result = valueToString(n[0]) & ".." & valueToString(n[1])
+
+const preferToResolveSymbols = {preferName, preferTypeName, preferModuleInfo,
+  preferGenericArg, preferResolved, preferMixed, preferInlayHint, preferInferredEffects}
+
+
+const
+  typeToStr: array[TTypeKind, string] = ["None", "bool", "char", "empty",
+    "Alias", "typeof(nil)", "untyped", "typed", "typeDesc",
+    # xxx typeDesc=>typedesc: typedesc is declared as such, and is 10x more common.
+    "GenericInvocation", "GenericBody", "GenericInst", "GenericParam",
+    "distinct $1", "enum", "ordinal[$1]", "array[$1, $2]", "object", "tuple",
+    "set[$1]", "range[$1]", "ptr ", "ref ", "var ", "seq[$1]", "proc",
+    "pointer", "OpenArray[$1]", "string", "cstring", "Forward",
+    "int", "int8", "int16", "int32", "int64",
+    "float", "float32", "float64", "float128",
+    "uint", "uint8", "uint16", "uint32", "uint64",
+    "owned", "sink",
+    "lent ", "varargs[$1]", "UncheckedArray[$1]", "Error Type",
+    "BuiltInTypeClass", "UserTypeClass",
+    "UserTypeClassInst", "CompositeTypeClass", "inferred",
+    "and", "or", "not", "any", "static", "TypeFromExpr", "concept", # xxx bugfix
+    "void", "iterable"]
+
+proc addTypeFlags(name: var string, typ: PType) {.inline.} =
+  if tfNotNil in typ.flags: name.add(" not nil")
+
+proc isIntLit*(t: PType): bool {.inline.} =
+  result = t.kind == tyInt and t.n != nil and t.n.kind == nkIntLit
+
+proc isFloatLit*(t: PType): bool {.inline.} =
+  result = t.kind == tyFloat and t.n != nil and t.n.kind == nkFloatLit
+
+# TODO: It would be a good idea to kill the special state of a resolved
+# concept by switching to tyAlias within the instantiated procs.
+# Currently, tyAlias is always skipped with skipModifier, which means that
+# we can store information about the matched concept in another position.
+# Then builtInFieldAccess can be modified to properly read the derived
+# consts and types stored within the concept.
+template isResolvedUserTypeClass*(t: PType): bool =
+  tfResolved in t.flags
+
+proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
+  let preferToplevel = prefer
+  proc getPrefer(prefer: TPreferedDesc): TPreferedDesc =
+    if preferToplevel in {preferResolved, preferMixed}:
+      preferToplevel # sticky option
+    else:
+      prefer
+
+  proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
+    result = ""
+    let prefer = getPrefer(prefer)
+    let t = typ
+    if t == nil: return
+    if prefer in preferToResolveSymbols and t.sym != nil and
+         sfAnon notin t.sym.flags and t.kind notin {tySequence, tyInferred}:
+      if t.kind == tyInt and isIntLit(t):
+        if prefer == preferInlayHint:
+          result = t.sym.name.s
+        else:
+          result = t.sym.name.s & " literal(" & $t.n.intVal & ")"
+      elif t.kind == tyAlias and t.elementType.kind != tyAlias:
+        result = typeToString(t.elementType)
+      elif prefer in {preferResolved, preferMixed}:
+        case t.kind
+        of IntegralTypes + {tyFloat..tyFloat128} + {tyString, tyCstring}:
+          result = typeToStr[t.kind]
+        of tyGenericBody:
+          result = typeToString(t.last)
+        of tyCompositeTypeClass:
+          # avoids showing `A[any]` in `proc fun(a: A)` with `A = object[T]`
+          result = typeToString(t.last.last)
+        else:
+          result = t.sym.name.s
+        if prefer == preferMixed and result != t.sym.name.s:
+          result = t.sym.name.s & "{" & result & "}"
+      elif prefer in {preferName, preferTypeName, preferInlayHint, preferInferredEffects} or t.sym.owner.isNil:
+        # note: should probably be: {preferName, preferTypeName, preferGenericArg}
+        result = t.sym.name.s
+        if t.kind == tyGenericParam and t.genericParamHasConstraints:
+          result.add ": "
+          result.add t.elementType.typeToString
+      else:
+        result = t.sym.owner.name.s & '.' & t.sym.name.s
+      result.addTypeFlags(t)
+      return
+    case t.kind
+    of tyInt:
+      if not isIntLit(t) or prefer == preferExported:
+        result = typeToStr[t.kind]
+      else:
+        case prefer:
+        of preferGenericArg:
+          result = $t.n.intVal
+        of preferInlayHint:
+          result = "int"
+        else:
+          result = "int literal(" & $t.n.intVal & ")"
+    of tyGenericInst:
+      result = typeToString(t.genericHead) & '['
+      for needsComma, a in t.genericInstParams:
+        if needsComma: result.add(", ")
+        result.add(typeToString(a, preferGenericArg))
+      result.add(']')
+    of tyGenericInvocation:
+      result = typeToString(t.genericHead) & '['
+      for needsComma, a in t.genericInvocationParams:
+        if needsComma: result.add(", ")
+        result.add(typeToString(a, preferGenericArg))
+      result.add(']')
+    of tyGenericBody:
+      result = typeToString(t.typeBodyImpl) & '['
+      for i, a in t.genericBodyParams:
+        if i > 0: result.add(", ")
+        result.add(typeToString(a, preferTypeName))
+      result.add(']')
+    of tyTypeDesc:
+      if t.elementType.kind == tyNone: result = "typedesc"
+      else: result = "typedesc[" & typeToString(t.elementType) & "]"
+    of tyStatic:
+      if prefer == preferGenericArg and t.n != nil:
+        result = t.n.renderTree
+      else:
+        result = "static[" & (if t.hasElementType: typeToString(t.skipModifier) else: "") & "]"
+        if t.n != nil: result.add "(" & renderTree(t.n) & ")"
+    of tyUserTypeClass:
+      if t.sym != nil and t.sym.owner != nil:
+        if t.isResolvedUserTypeClass: return typeToString(t.last)
+        return t.sym.owner.name.s
+      else:
+        result = "<invalid tyUserTypeClass>"
+    of tyBuiltInTypeClass:
+      result =
+        case t.base.kind
+        of tyVar: "var"
+        of tyRef: "ref"
+        of tyPtr: "ptr"
+        of tySequence: "seq"
+        of tyArray: "array"
+        of tySet: "set"
+        of tyRange: "range"
+        of tyDistinct: "distinct"
+        of tyProc: "proc"
+        of tyObject: "object"
+        of tyTuple: "tuple"
+        of tyOpenArray: "openArray"
+        else: typeToStr[t.base.kind]
+    of tyInferred:
+      let concrete = t.previouslyInferred
+      if concrete != nil: result = typeToString(concrete)
+      else: result = "inferred[" & typeToString(t.base) & "]"
+    of tyUserTypeClassInst:
+      let body = t.base
+      result = body.sym.name.s & "["
+      for needsComma, a in t.userTypeClassInstParams:
+        if needsComma: result.add(", ")
+        result.add(typeToString(a))
+      result.add "]"
+    of tyAnd:
+      for i, son in t.ikids:
+        if i > 0: result.add(" and ")
+        result.add(typeToString(son))
+    of tyOr:
+      for i, son in t.ikids:
+        if i > 0: result.add(" or ")
+        result.add(typeToString(son))
+    of tyNot:
+      result = "not " & typeToString(t.elementType)
+    of tyUntyped:
+      #internalAssert t.len == 0
+      result = "untyped"
+    of tyFromExpr:
+      if t.n == nil:
+        result = "unknown"
+      else:
+        result = "typeof(" & renderTree(t.n) & ")"
+    of tyArray:
+      result = "array"
+      if t.hasElementType:
+        if t.indexType.kind == tyRange:
+          result &= "[" & rangeToStr(t.indexType.n) & ", " &
+              typeToString(t.elementType) & ']'
+        else:
+          result &= "[" & typeToString(t.indexType) & ", " &
+              typeToString(t.elementType) & ']'
+    of tyUncheckedArray:
+      result = "UncheckedArray"
+      if t.hasElementType:
+        result &= "[" & typeToString(t.elementType) & ']'
+    of tySequence:
+      if t.sym != nil and prefer != preferResolved:
+        result = t.sym.name.s
+      else:
+        result = "seq"
+        if t.hasElementType:
+          result &= "[" & typeToString(t.elementType) & ']'
+    of tyOrdinal:
+      result = "ordinal"
+      if t.hasElementType:
+        result &= "[" & typeToString(t.skipModifier) & ']'
+    of tySet:
+      result = "set"
+      if t.hasElementType:
+        result &= "[" & typeToString(t.elementType) & ']'
+    of tyOpenArray:
+      result = "openArray"
+      if t.hasElementType:
+        result &= "[" & typeToString(t.elementType) & ']'
+    of tyDistinct:
+      result = "distinct " & typeToString(t.elementType,
+        if prefer == preferModuleInfo: preferModuleInfo else: preferTypeName)
+    of tyIterable:
+      # xxx factor this pattern
+      result = "iterable"
+      if t.hasElementType:
+        result &= "[" & typeToString(t.skipModifier) & ']'
+    of tyTuple:
+      # we iterate over t.sons here, because t.n may be nil
+      if t.n != nil:
+        result = "tuple["
+        for i in 0..<t.n.len:
+          assert(t.n[i].kind == nkSym)
+          result.add(t.n[i].sym.name.s & ": " & typeToString(t.n[i].sym.typ))
+          if i < t.n.len - 1: result.add(", ")
+        result.add(']')
+      elif t.isEmptyTupleType:
+        result = "tuple[]"
+      elif t.isSingletonTupleType:
+        result = "("
+        for son in t.kids:
+          result.add(typeToString(son))
+        result.add(",)")
+      else:
+        result = "("
+        for i, son in t.ikids:
+          if i > 0: result.add ", "
+          result.add(typeToString(son))
+        result.add(')')
+    of tyPtr, tyRef, tyVar, tyLent:
+      result = if isOutParam(t): "out " else: typeToStr[t.kind]
+      result.add typeToString(t.elementType)
+    of tyRange:
+      result = "range "
+      if t.n != nil and t.n.kind == nkRange:
+        result.add rangeToStr(t.n)
+      if prefer != preferExported:
+        result.add("(" & typeToString(t.elementType) & ")")
+    of tyProc:
+      result = if tfIterator in t.flags: "iterator "
+               elif t.owner != nil:
+                 case t.owner.kind
+                 of skTemplate: "template "
+                 of skMacro: "macro "
+                 of skConverter: "converter "
+                 else: "proc "
+              else:
+                "proc "
+      if tfUnresolved in t.flags: result.add "[*missing parameters*]"
+      result.add "("
+      for i, a in t.paramTypes:
+        if i > FirstParamAt: result.add(", ")
+        let j = paramTypeToNodeIndex(i)
+        if t.n != nil and j < t.n.len and t.n[j].kind == nkSym:
+          result.add(t.n[j].sym.name.s)
+          result.add(": ")
+        result.add(typeToString(a))
+      result.add(')')
+      if t.returnType != nil: result.add(": " & typeToString(t.returnType))
+      var prag = if t.callConv == ccNimCall and tfExplicitCallConv notin t.flags: "" else: $t.callConv
+      var hasImplicitRaises = false
+      if not isNil(t.owner) and not isNil(t.owner.ast) and (t.owner.ast.len - 1) >= pragmasPos:
+        let pragmasNode = t.owner.ast[pragmasPos]
+        let raisesSpec = effectSpec(pragmasNode, wRaises)
+        if not isNil(raisesSpec):
+          addSep(prag)
+          prag.add("raises: ")
+          prag.add(renderTree raisesSpec)
+          hasImplicitRaises = true
+      if tfNoSideEffect in t.flags:
+        addSep(prag)
+        prag.add("noSideEffect")
+      if tfThread in t.flags:
+        addSep(prag)
+        prag.add("gcsafe")
+      var effectsOfStr = ""
+      for i, a in t.paramTypes:
+        let j = paramTypeToNodeIndex(i)
+        if t.n != nil and j < t.n.len and t.n[j].kind == nkSym and t.n[j].sym.kind == skParam and sfEffectsDelayed in t.n[j].sym.flags:
+          addSep(effectsOfStr)
+          effectsOfStr.add(t.n[j].sym.name.s)
+      if effectsOfStr != "":
+        addSep(prag)
+        prag.add("effectsOf: ")
+        prag.add(effectsOfStr)
+      if not hasImplicitRaises and prefer == preferInferredEffects and not isNil(t.owner) and not isNil(t.owner.typ) and not isNil(t.owner.typ.n) and (t.owner.typ.n.len > 0):
+        let effects = t.n[0]
+        if effects.kind == nkEffectList and effects.len == effectListLen:
+          var inferredRaisesStr = ""
+          let effs = effects[exceptionEffects]
+          if not isNil(effs):
+            for eff in items(effs):
+              if not isNil(eff):
+                addSep(inferredRaisesStr)
+                inferredRaisesStr.add($eff.typ)
+          addSep(prag)
+          prag.add("raises: <inferred> [")
+          prag.add(inferredRaisesStr)
+          prag.add("]")
+      if prag.len != 0: result.add("{." & prag & ".}")
+    of tyVarargs:
+      result = typeToStr[t.kind] % typeToString(t.elementType)
+    of tySink:
+      result = "sink " & typeToString(t.skipModifier)
+    of tyOwned:
+      result = "owned " & typeToString(t.elementType)
+    else:
+      result = typeToStr[t.kind]
+    result.addTypeFlags(t)
+  result = typeToString(typ, prefer)
+
 
 proc disamb(g: var TSrcGen; s: PSym): int =
   # we group by 's.name.s' to compute the stable name ID.
@@ -862,10 +1215,28 @@ proc genSymSuffix(result: var string, s: PSym) {.inline.} =
     result.add '_'
     result.addInt s.id
 
+proc gsemmedParams(g: var TSrcGen, n: PNode) =
+  put(g, tkParLe, "(")
+  for i in 1..<n.len:
+    if i > 1:
+      putWithSpace(g, tkComma, ";")
+    let x {.cursor.} = n[i]
+    if x.kind == nkSym:
+      put g, tkSymbol, renderDefinitionName(x.sym)
+      putWithSpace(g, tkColon, ":")
+      put g, tkSymbol, typeToString(x.sym.typ)
+    else:
+      gsub(g, x)
+  put(g, tkParRi, ")")
+  if not isEmptyType(n[0].typ):
+    putWithSpace(g, tkColon, ":")
+    gsub(g, n[0])
+
 proc gproc(g: var TSrcGen, n: PNode) =
   var c: TContext = initContext()
+  var s: PSym = nil
   if n[namePos].kind == nkSym:
-    let s = n[namePos].sym
+    s = n[namePos].sym
     var ret = renderDefinitionName(s)
     ret.genSymSuffix(s)
     put(g, tkSymbol, ret)
@@ -880,7 +1251,10 @@ proc gproc(g: var TSrcGen, n: PNode) =
       gsub(g, n[miscPos][1])
     else:
       gsub(g, n[genericParamsPos])
-  gsub(g, n[paramsPos])
+  if n[paramsPos].len == 0 and s != nil and s.typ != nil and s.typ.n != nil:
+    gsemmedParams(g, s.typ.n)
+  else:
+    gsub(g, n[paramsPos])
   if renderNoPragmas notin g.flags:
     gsub(g, n[pragmasPos])
   if renderNoBody notin g.flags:

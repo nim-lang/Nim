@@ -1332,7 +1332,7 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
         # declare the result symbol:
         assignLocalVar(p, resNode)
         assert(res.loc.snippet != "")
-        if p.config.selectedGC in {gcArc, gcAtomicArc, gcOrc} and
+        if p.config.selectedGC in {gcArc, gcAtomicArc, gcOrc, gcYrc} and
             allPathsAsgnResult(p, procBody) == InitSkippable:
           # In an ideal world the codegen could rely on injectdestructors doing its job properly
           # and then the analysis step would not be required.
@@ -1687,7 +1687,7 @@ proc hcrGetProcLoadCode(builder: var Builder, m: BModule, sym, prefix, handle, g
 # prevents inlining of the NimMainInner function and dependent
 # functions, which might otherwise merge their stack frames.
 proc isInnerMainVolatile(m: BModule): bool =
-  m.config.selectedGC notin {gcNone, gcArc, gcAtomicArc, gcOrc}
+  m.config.selectedGC notin {gcNone, gcArc, gcAtomicArc, gcOrc, gcYrc}
 
 proc genPreMain(m: BModule) =
   m.s[cfsProcs].addDeclWithVisibility(Private):
@@ -1699,8 +1699,6 @@ proc genPreMain(m: BModule) =
       m.s[cfsProcs].addVar(name = "cmdCount", typ = CInt)
     m.s[cfsProcs].addDeclWithVisibility(Private):
       m.s[cfsProcs].addVar(name = "cmdLine", typ = ptrType(ptrType(CChar)))
-    m.s[cfsProcs].addDeclWithVisibility(Private):
-      m.s[cfsProcs].addVar(name = "gEnv", typ = ptrType(ptrType(CChar)))
   m.s[cfsProcs].addDeclWithVisibility(Private):
     m.s[cfsProcs].addProcHeader(m.config.nimMainPrefix & "PreMain", CVoid, cProcParams())
     m.s[cfsProcs].finishProcHeaderWithBody():
@@ -1734,7 +1732,7 @@ proc genNimMainInner(m: BModule) =
   m.s[cfsProcs].addNewline()
 
 proc initStackBottom(m: BModule): bool =
-  not (m.config.target.targetOS == osStandalone or m.config.selectedGC in {gcNone, gcArc, gcAtomicArc, gcOrc})
+  not (m.config.target.targetOS == osStandalone or m.config.selectedGC in {gcNone, gcArc, gcAtomicArc, gcOrc, gcYrc})
 
 proc genNimMainProc(m: BModule, preMainCode: Snippet) =
   m.s[cfsProcs].addProcHeader(ccCDecl, m.config.nimMainPrefix & "NimMain", CVoid, cProcParams())
@@ -1761,12 +1759,10 @@ proc genNimMainBody(m: BModule, preMainCode: Snippet) =
 proc genPosixCMain(m: BModule) =
   m.s[cfsProcs].addProcHeader("main", CInt, cProcParams(
     (name: "argc", typ: CInt),
-    (name: "args", typ: ptrType(ptrType(CChar))),
-    (name: "env", typ: ptrType(ptrType(CChar)))))
+    (name: "args", typ: ptrType(ptrType(CChar)))))
   m.s[cfsProcs].finishProcHeaderWithBody():
     m.s[cfsProcs].addAssignment("cmdLine", "args")
     m.s[cfsProcs].addAssignment("cmdCount", "argc")
-    m.s[cfsProcs].addAssignment("gEnv", "env")
     genMainProcsWithResult(m)
   m.s[cfsProcs].addNewline()
 
@@ -1864,7 +1860,7 @@ proc genMainProc(m: BModule) =
         builder.addCallStmt(cgsymValue(m, "nimLoadLibraryError"), strLit)
 
     loadLib(preMainBuilder, "hcr_handle", "hcrGetProc")
-    if m.config.selectedGC in {gcArc, gcAtomicArc, gcOrc}:
+    if m.config.selectedGC in {gcArc, gcAtomicArc, gcOrc, gcYrc}:
       preMainBuilder.addCallStmt(m.config.nimMainPrefix & "PreMain")
     else:
       preMainBuilder.addVar(name = "rtl_handle", typ = CPointer)
@@ -2034,7 +2030,7 @@ proc registerModuleToMain(g: BModuleList; m: BModule) =
   if sfSystemModule in m.module.flags:
     if emulatedThreadVars(m.config) and m.config.target.targetOS != osStandalone:
       g.mainDatInit.addCallStmt(cgsymValue(m, "initThreadVarsEmulation"))
-    if m.config.target.targetOS != osStandalone and m.config.selectedGC notin {gcNone, gcArc, gcAtomicArc, gcOrc}:
+    if m.config.target.targetOS != osStandalone and m.config.selectedGC notin {gcNone, gcArc, gcAtomicArc, gcOrc, gcYrc}:
       g.mainDatInit.addCallStmt(cgsymValue(m, "initStackBottomWith"),
         cCast(CPointer, cAddr("inner")))
 
@@ -2603,7 +2599,7 @@ proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: PNode) =
         cgsym(m, "rawWrite")
 
       # raise dependencies on behalf of genMainProc
-      if m.config.target.targetOS != osStandalone and m.config.selectedGC notin {gcNone, gcArc, gcAtomicArc, gcOrc}:
+      if m.config.target.targetOS != osStandalone and m.config.selectedGC notin {gcNone, gcArc, gcAtomicArc, gcOrc, gcYrc}:
         cgsym(m, "initStackBottomWith")
       if emulatedThreadVars(m.config) and m.config.target.targetOS != osStandalone:
         cgsym(m, "initThreadVarsEmulation")
@@ -2611,7 +2607,7 @@ proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: PNode) =
       if m.g.forwardedProcs.len == 0:
         incl m.flags, objHasKidsValid
       if optMultiMethods in m.g.config.globalOptions or
-          m.g.config.selectedGC notin {gcArc, gcOrc, gcAtomicArc} or
+          m.g.config.selectedGC notin {gcArc, gcOrc, gcAtomicArc, gcYrc} or
           vtables notin m.g.config.features:
         generateIfMethodDispatchers(graph, m.idgen)
 

@@ -84,6 +84,7 @@ type
     gcUnsafe, isRecursive, isTopLevel, hasSideEffect, inEnforcedGcSafe: bool
     isInnerProc: bool
     inEnforcedNoSideEffects: bool
+    isArrayIndexing: bool
     currentExceptType: PType
     unknownRaises: seq[(PSym, TLineInfo)]
     currOptions: TOptions
@@ -147,6 +148,37 @@ proc createTypeBoundOps(tracked: PEffects, typ: PType; info: TLineInfo; explicit
 proc isLocalSym(a: PEffects, s: PSym): bool =
   s.typ != nil and (s.kind in {skLet, skVar, skResult} or (s.kind == skParam and isOutParam(s.typ))) and
     sfGlobal notin s.flags and s.owner == a.owner
+
+proc isRangeSupertype(conf: ConfigRef; wider, narrower: PType): bool =
+  ## Check if `wider` type fully contains `narrower` type
+  ## Returns true if narrower fits entirely within wider (safe conversion)
+  if wider.isOrdinalType:
+    let wideFirst = firstOrd(conf, wider)
+    let wideLast = lastOrd(conf, wider)
+    let narrowFirst = firstOrd(conf, narrower)
+    let narrowLast = lastOrd(conf, narrower)
+    result = narrowFirst >= wideFirst and narrowLast <= wideLast
+  elif not narrower.isOrdinalType:
+    let wideFirst = firstFloat(wider)
+    let wideLast = lastFloat(wider)
+    let narrowFirst = firstFloat(narrower)
+    let narrowLast = lastFloat(narrower)
+    result = narrowFirst >= wideFirst and narrowLast <= wideLast
+  else:
+    # int -> float ranges; warn
+    result = false
+
+proc shouldWarnRangeConversion(conf: ConfigRef; formalType, argType: PType): bool =
+  ## Determine if an implicit range conversion should warn
+  ## We warn on conversions that are likely to cause panics
+  let f = formalType.skipTypes({tyGenericInst, tyAlias, tySink, tyDistinct})
+  let a = argType.skipTypes({tyGenericInst, tyAlias, tySink, tyDistinct})
+  if f.kind == tyRange:
+    # Only warn if formal range doesn't fully contain argument range
+    # Check if the ranges don't perfectly overlap
+    result = not isRangeSupertype(conf, f, a)
+  else:
+    result = false
 
 proc lockLocations(a: PEffects; pragma: PNode) =
   if pragma.kind != nkExprColonExpr:
@@ -1504,6 +1536,11 @@ proc track(tracked: PEffects, n: PNode) =
       message(tracked.config, n.info, warnPtrToCstringConv,
           $n[1].typ)
 
+    # Check for implicit range conversions
+    if n.kind == nkHiddenStdConv and (not tracked.isArrayIndexing) and
+          shouldWarnRangeConversion(tracked.config, n.typ, n[1].typ):
+      message(tracked.config, n.info, warnImplicitRangeConversion,
+              typeToString(n[1].typ) & " -> " & typeToString(n.typ))
 
     let t = n.typ.skipTypes(abstractInst)
     if t.kind == tyEnum:
@@ -1542,7 +1579,12 @@ proc track(tracked: PEffects, n: PNode) =
         checkBounds(tracked, n[0], n[1])
     track(tracked, n[0])
     dec tracked.leftPartOfAsgn
-    for i in 1 ..< n.len: track(tracked, n[i])
+    for i in 1 ..< n.len:
+      if i == 1:
+        tracked.isArrayIndexing = true
+      track(tracked, n[i])
+      if i == 1:
+        tracked.isArrayIndexing = false
     inc tracked.leftPartOfAsgn
   of nkError:
     localError(tracked.config, n.info, errorToString(tracked.config, n))
@@ -1714,7 +1756,7 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
       let param = params[i].sym
       let typ = param.typ
       if isSinkTypeForParam(typ) or
-          (t.config.selectedGC in {gcArc, gcOrc, gcAtomicArc} and
+          (t.config.selectedGC in {gcArc, gcOrc, gcYrc, gcAtomicArc} and
             (isClosure(typ.skipTypes(abstractInst)) or param.id in t.escapingParams)):
         createTypeBoundOps(t, typ, param.info)
       if isOutParam(typ) and param.id notin t.init and s.magic == mNone:
