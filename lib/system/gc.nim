@@ -458,9 +458,12 @@ proc rawNewObj(typ: PNimType, size: int, gch: var GcHeap): pointer =
   sysAssert(allocInv(gch.region), "rawNewObj begin")
   gcAssert(typ.kind in {tyRef, tyString, tySequence}, "newObj: 1")
   collectCT(gch)
-  var res = cast[PCell](rawAlloc(gch.region, size + sizeof(Cell)))
+  # Use alignment from typ.base if available, otherwise use MemAlign
+  let alignment = if typ.kind == tyRef and typ.base != nil: max(typ.base.align, MemAlign) else: MemAlign
+  var res = cast[PCell](rawAlloc(gch.region, size + sizeof(Cell), alignment))
   #gcAssert typ.kind in {tyString, tySequence} or size >= typ.base.size, "size too small"
-  gcAssert((cast[int](res) and (MemAlign-1)) == 0, "newObj: 2")
+  # Check that the user data (after the Cell header) is properly aligned
+  gcAssert((cast[int](cellToUsr(res)) and (alignment-1)) == 0, "newObj: 2")
   # now it is buffered in the ZCT
   res.typ = typ
   setFrameInfo(res)
@@ -508,9 +511,12 @@ proc newObjRC1(typ: PNimType, size: int): pointer {.compilerRtl, noinline, raise
   collectCT(gch)
   sysAssert(allocInv(gch.region), "newObjRC1 after collectCT")
 
-  var res = cast[PCell](rawAlloc(gch.region, size + sizeof(Cell)))
+  # Use alignment from typ.base if available, otherwise use MemAlign
+  let alignment = if typ.base != nil: max(typ.base.align, MemAlign) else: MemAlign
+  var res = cast[PCell](rawAlloc(gch.region, size + sizeof(Cell), alignment))
   sysAssert(allocInv(gch.region), "newObjRC1 after rawAlloc")
-  sysAssert((cast[int](res) and (MemAlign-1)) == 0, "newObj: 2")
+  # Check that the user data (after the Cell header) is properly aligned
+  sysAssert((cast[int](cellToUsr(res)) and (alignment-1)) == 0, "newObj: 2")
   # now it is buffered in the ZCT
   res.typ = typ
   setFrameInfo(res)
