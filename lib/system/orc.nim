@@ -433,8 +433,9 @@ proc collectCycles() =
       rootsThreshold = (if rootsThreshold <= 0: defaultThreshold else: rootsThreshold)
       rootsThreshold = rootsThreshold div 2 +% rootsThreshold
   when logOrc:
-    cfprintf(cstderr, "[collectCycles] end; freed %ld new threshold %ld touched: %ld mem: %ld rcSum: %ld edges: %ld\n", j.freed, rootsThreshold, j.touched,
-      getOccupiedMem(), j.rcSum, j.edges)
+    {.cast(raises: []).}:
+      discard cfprintf(cstderr, "[collectCycles] end; freed %ld new threshold %ld touched: %ld mem: %ld rcSum: %ld edges: %ld\n", j.freed, rootsThreshold, j.touched,
+        getOccupiedMem(), j.rcSum, j.edges)
   when defined(nimOrcStats):
     inc freedCyclicObjects, j.freed
 
