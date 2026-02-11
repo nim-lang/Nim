@@ -558,14 +558,21 @@ proc declareTempOf(c: var TLiftCtx; body: PNode; value: PNode): PNode =
   v.addVar(result, value)
   body.add v
 
-proc errorDupCustomCopy(c: var TLiftCtx; t: PType) {.inline.} =
-  ## Emit an error when generating `=dup` code and a custom `=copy` hook
-  ## exists
+proc considerInferDupFromCopy(c: var TLiftCtx; t: PType; body, x, y: PNode): bool =
+  ## For `=dup`, if no explicit hook exists, try to infer from `=copy` hook
+  ## to maintain backward compatibility. Returns true if inference was applied.
   if c.kind == attachedDup:
-    let op2 = getAttachedOp(c.g, t, attachedAsgn)
+    var op2 = getAttachedOp(c.g, t, attachedAsgn)
     if op2 != nil and sfOverridden in op2.flags:
-      localError(c.g.config, c.info,
-        "'=dup' is not provided while a custom '=copy' is defined for type '" & typeToString(t) & "'")
+      #markUsed(c.g.config, c.info, op, c.g.usageSym)
+      onUse(c.info, op2)
+      body.add genBuiltin(c, mWasMoved, "wasMoved", x)
+      body.add newHookCall(c, op2, x, y)
+      result = true
+    else:
+      result = false
+  else:
+    result = false
 
 proc addIncStmt(c: var TLiftCtx; body, i: PNode) =
   let incCall = genBuiltin(c, mInc, "inc", i)
@@ -1109,23 +1116,12 @@ proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
       elif tfUnion in t.flags: # bug #25236
         defaultOp(c, t, body, x, y)
       else:
-        if c.kind == attachedDup:
-          var op2 = getAttachedOp(c.g, t, attachedAsgn)
-          if op2 != nil and sfOverridden in op2.flags:
-            # warn if a custom '=copy' exists but no '=dup' is provided
-            message(c.g.config, c.info, warnDeprecated,
-              "'=dup' is not provided while a custom '=copy' is defined for type '" & typeToString(t) & "'; this will become a compile time error in the future")
-            #markUsed(c.g.config, c.info, op, c.g.usageSym)
-            onUse(c.info, op2)
-            body.add newHookCall(c, t.assignment, x, y)
-          else:
-            fillBodyObjT(c, t, body, x, y)
-        else:
+        if not considerInferDupFromCopy(c, t, body, x, y):
           fillBodyObjT(c, t, body, x, y)
   of tyDistinct:
     if not considerUserDefinedOp(c, t, body, x, y):
-      errorDupCustomCopy(c, t)
-      fillBody(c, t.elementType, body, x, y)
+      if not considerInferDupFromCopy(c, t, body, x, y):
+        fillBody(c, t.elementType, body, x, y)
   of tyTuple:
     fillBodyTup(c, t, body, x, y)
   of tyVarargs, tyOpenArray:
@@ -1244,7 +1240,17 @@ proc genTypeFieldCopy(c: var TLiftCtx; t: PType; body, x, y: PNode) =
 proc produceSym(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp;
               info: TLineInfo; idgen: IdGenerator): PSym =
   if typ.kind == tyDistinct:
-    return produceSymDistinctType(g, c, typ, kind, info, idgen)
+    # For =dup, if the distinct type has a user-defined =copy, don't delegate
+    # to the base type. Instead fall through to the normal produceSym logic
+    # so that fillBody -> considerInferDupFromCopy can synthesize =dup from =copy.
+    if kind == attachedDup:
+      let copyOp = getAttachedOp(g, typ, attachedAsgn)
+      if copyOp != nil and sfOverridden in copyOp.flags:
+        discard "fall through to normal produceSym logic"
+      else:
+        return produceSymDistinctType(g, c, typ, kind, info, idgen)
+    else:
+      return produceSymDistinctType(g, c, typ, kind, info, idgen)
 
   result = getAttachedOp(g, typ, kind)
   if result == nil:
