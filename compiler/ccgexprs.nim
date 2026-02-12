@@ -3271,7 +3271,11 @@ proc upConv(p: BProc, n: PNode, d: var TLoc) =
         p.s(cpsStmts).addCallStmt(cgsymValue(p.module, "raiseObjectConversionError"))
         raiseInstr(p, p.s(cpsStmts))
 
-  if n[0].typ.kind != tyObject:
+  # skip cast when types map to the same C type
+  # this avoids invalid C code like `*(T*)&x` for types that can't have their address taken (e.g., WASM __externref_t)
+  if getTypeDesc(p.module, n.typ) == getTypeDesc(p.module, n[0].typ):
+    expr(p, n[0], d)
+  elif n[0].typ.kind != tyObject:
     let destTyp = getTypeDesc(p.module, n.typ)
     let val = rdLoc(a)
     if n.isLValue:
@@ -3317,7 +3321,7 @@ proc downConv(p: BProc, n: PNode, d: var TLoc) =
         cCast(ptrType(destType),
           wrapPar(cAddr(wrapPar(val))))),
       a.storage)
-  elif p.module.compileToCpp:
+  elif p.module.compileToCpp or isImportedType(src):
     # C++ implicitly downcasts for us
     expr(p, arg, d)
   else:
