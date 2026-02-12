@@ -178,11 +178,6 @@ proc mayRunCycleCollect(): bool {.inline.} =
 proc getStripeIdx(): int {.inline.} =
   getThreadId() and (NumStripes - 1)
 
-template incBlack(x: Cell) =
-  x.rc = x.rc +% rcIncrement
-  if (x.rc and inRootsFlag) != 0:
-    x.setColor(colBlack)
-
 proc nimIncRefCyclic(p: pointer; cyclic: bool) {.compilerRtl, inl.} =
   let h = head(p)
   when optimizedOrc:
@@ -195,14 +190,11 @@ proc nimIncRefCyclic(p: pointer; cyclic: bool) {.compilerRtl, inl.} =
     else:
       withLock gYrcGlobalLock:
         h.rc = h.rc +% rcIncrement
-        # Bacon's algorithm: if object is buffered (inRootsFlag), set color to black on incRef
-        if (h.rc and inRootsFlag) != 0:
-          h.setColor(colBlack)
         for i in 0..<NumStripes:
           let len = atomicExchangeN(addr stripes[i].toIncLen, 0, ATOMIC_ACQUIRE)
           for j in 0..<min(len, QueueSize):
             let x = atomicLoadN(addr stripes[i].toInc[j], ATOMIC_ACQUIRE)
-            incBlack(x)
+            x.rc = x.rc +% rcIncrement
   else:
     let idx = getStripeIdx()
     while true:
@@ -219,29 +211,26 @@ proc nimIncRefCyclic(p: pointer; cyclic: bool) {.compilerRtl, inl.} =
             withLock stripes[i].lockInc:
               for j in 0..<stripes[i].toIncLen:
                 let x = stripes[i].toInc[j]
-                incBlack(x)
+                x.rc = x.rc +% rcIncrement
               stripes[i].toIncLen = 0
       else:
         break
 
 proc mergePendingRoots() =
-  # Merge buffered RC operations and apply Bacon's algorithm rules:
-  # - When incRef happens on a buffered object (inRootsFlag set), set color to black
-  # - When decRef happens, add to roots if not already buffered
+  # Merge buffered RC operations. Note: Unlike truly concurrent collectors,
+  # we don't need to set color to black on incRef because collection runs
+  # under the global lock, so no concurrent mutations happen during collection.
   for i in 0..<NumStripes:
     when defined(yrcAtomics):
       let incLen = atomicExchangeN(addr stripes[i].toIncLen, 0, ATOMIC_ACQUIRE)
       for j in 0..<min(incLen, QueueSize):
         let x = atomicLoadN(addr stripes[i].toInc[j], ATOMIC_ACQUIRE)
         x.rc = x.rc +% rcIncrement
-        # Bacon's algorithm: if object is buffered (inRootsFlag), set color to black on incRef
-        if (x.rc and inRootsFlag) != 0:
-          x.setColor(colBlack)
     else:
       withLock stripes[i].lockInc:
         for j in 0..<stripes[i].toIncLen:
           let x = stripes[i].toInc[j]
-          incBlack(x)
+          x.rc = x.rc +% rcIncrement
         stripes[i].toIncLen = 0
     withLock stripes[i].lockDec:
       for j in 0..<stripes[i].toDecLen:
