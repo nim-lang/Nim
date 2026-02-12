@@ -382,9 +382,9 @@ func toRules(m: CliMode): set[ParserRules] =
       prShortValAllowDashLeading,
     }
   case m
-    of LaxMode: Common + Lax + ShortPosix
-    of NimMode: Common + Lax
-    of GnuMode: Common + ShortPosix
+  of LaxMode: Common + Lax + ShortPosix
+  of NimMode: Common + Lax
+  of GnuMode: Common + ShortPosix
 
 proc parseWord(s: string, i: int, w: var string,
                delim: set[char] = DelimSet): int =
