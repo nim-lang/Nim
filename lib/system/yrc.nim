@@ -217,6 +217,9 @@ proc nimIncRefCyclic(p: pointer; cyclic: bool) {.compilerRtl, inl.} =
         break
 
 proc mergePendingRoots() =
+  # Merge buffered RC operations. Note: Unlike truly concurrent collectors,
+  # we don't need to set color to black on incRef because collection runs
+  # under the global lock, so no concurrent mutations happen during collection.
   for i in 0..<NumStripes:
     when defined(yrcAtomics):
       let incLen = atomicExchangeN(addr stripes[i].toIncLen, 0, ATOMIC_ACQUIRE)
@@ -346,83 +349,50 @@ proc collectColor(s: Cell; desc: PNimTypeV2; col: int; j: var GcEnv) =
         trace(t, desc, j)
 
 proc collectCyclesBacon(j: var GcEnv; lowMark: int) =
+  # YRC defers all destruction to collection time - process ALL roots through Bacon's algorithm
+  # This is different from ORC which handles immediate garbage (rc == 0) directly
   let last = roots.len -% 1
   when logOrc:
     for i in countdown(last, lowMark):
       writeCell("root", roots.d[i][0], roots.d[i][1])
-  init j.toFree
 
-  # First pass: swap roots with rc <= 0 to the end for immediate freeing
-  # Check RC before markGray modifies it. Use a while loop that shrinks as we iterate.
-  var cycleStart = lowMark
-  var immediateFreeStart = roots.len
-  while cycleStart < immediateFreeStart:
-    let s = roots.d[cycleStart][0]
-    if (s.rc shr rcShift) < 0:
-      # Root is already garbage, swap to end for immediate freeing
-      dec immediateFreeStart
-      swap(roots.d[cycleStart], roots.d[immediateFreeStart])
-      when logOrc: writeCell("root swapped to end for immediate free (rc <= 0)", roots.d[immediateFreeStart][0], roots.d[immediateFreeStart][1])
-    else:
-      inc cycleStart
-
-  # Second pass: process remaining roots (rc > 0) for cycle detection
-  # Only process roots from lowMark to immediateFreeStart (cycleStart == immediateFreeStart after swap loop)
-  for i in lowMark..<immediateFreeStart:
+  # Process all roots through markGray (Bacon's algorithm)
+  for i in countdown(last, lowMark):
     markGray(roots.d[i][0], roots.d[i][1], j)
+
   var colToCollect = colWhite
   if j.rcSum == j.edges:
+    # Short-cut: we know everything is garbage
     colToCollect = colGray
     j.keepThreshold = true
   else:
-    for i in lowMark..<immediateFreeStart:
+    # Normal scan phase
+    for i in countdown(last, lowMark):
       scan(roots.d[i][0], roots.d[i][1], j)
-  for i in lowMark..<immediateFreeStart:
+
+  # Collect phase: free all garbage objects
+  init j.toFree
+  for i in 0 ..< roots.len:
     let s = roots.d[i][0]
     s.rc = s.rc and not inRootsFlag
     collectColor(s, roots.d[i][1], colToCollect, j)
+
+  # Clear roots before freeing to prevent nested collectCycles() from accessing freed cells
   when not defined(nimStressOrc):
     let oldThreshold = rootsThreshold
     rootsThreshold = high(int)
-
-  # Prepare immediate-free roots for freeing: recursively trace through ALL descendants
-  # and set child pointers to nil, just like collectColor does. This prevents destructors
-  # from accessing children and triggering nested collectCycles().
-  # Add them to j.toFree so they're freed together after roots.len = 0 is set.
-  # Keep inRootsFlag set until right before freeing to prevent mergePendingRoots from
-  # accessing freed cells during nested collectCycles().
-  let immediateFreeCount = roots.len - immediateFreeStart
-  for i in immediateFreeStart..<roots.len:
-    let s = roots.d[i][0]
-    let desc = roots.d[i][1]
-    # Don't clear inRootsFlag yet - keep it set so mergePendingRoots can skip this cell
-    orcAssert(j.traceStack.len == 0, "trace stack not empty before preparing immediate-free root")
-    s.setColor(colBlack)
-    j.toFree.add(s, desc)
-    trace(s, desc, j)
-    # Recursively trace and nil ALL descendants, just like collectColor does
-    # This ensures destructors can't access any children, preventing nested collections
-    while j.traceStack.len > 0:
-      let (entry, childDesc) = j.traceStack.pop()
-      let t = head entry[]
-      entry[] = nil
-      # Recursively trace children to nil their descendants too
-      trace(t, childDesc, j)
-
-  # Clear roots before freeing to prevent nested collectCycles() from accessing freed cells
   roots.len = 0
 
-  # Free all roots (both immediate-free and cycle-detected) together
+  # Free all collected objects
   # Destructors must not call nimDecRefIsLastCyclicStatic (add to toDec) during this phase
   for i in 0 ..< j.toFree.len:
     let s = j.toFree.d[i][0]
-    s.rc = s.rc and not inRootsFlag
     when orcLeakDetector:
       writeCell("CYCLIC OBJECT FREED", s, j.toFree.d[i][1])
     free(s, j.toFree.d[i][1])
   when not defined(nimStressOrc):
     rootsThreshold = oldThreshold
-  j.freed = j.freed +% j.toFree.len +% immediateFreeCount
+  j.freed = j.freed +% j.toFree.len
   deinit j.toFree
 
 when defined(nimOrcStats):
