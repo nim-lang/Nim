@@ -761,7 +761,7 @@ used to specialize the object traversal in order to avoid deep recursions:
       if x.left != nil: s.add(x.left)
       if x.right != nil: s.add(x.right)
       # free the memory explicitly:
-      `=dispose`(x)
+      deallocRef(x)
     # notice how even the destructor for 's' is not called implicitly
     # anymore thanks to .nodestroy, so we have to call it on our own:
     `=destroy`(s)
