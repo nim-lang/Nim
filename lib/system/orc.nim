@@ -22,6 +22,7 @@ const
   colBlack = 0b000
   colGray = 0b001
   colWhite = 0b010
+  colDead = 0b011 # node is being freed as part of a cycle; decRef skips these
   maybeCycle = 0b100 # possibly part of a cycle; this has to be a "sticky" bit
   jumpStackFlag = 0b1000
   colorMask = 0b011
@@ -75,6 +76,8 @@ type
     toFree: CellSeq[Cell]
     freed, touched, edges, rcSum: int
     keepThreshold: bool
+    allGarbage: bool  # true iff no node had (rc shr rcShift) >= 0 after trial (0-based: -1 = no refs)
+    sawOtherRoot: bool  # true if we traversed into another root (different from initial s) → abandon lucky
 
 proc trace(s: Cell; desc: PNimTypeV2; j: var GcEnv) {.inline.} =
   if desc.traceImpl != nil:
@@ -158,6 +161,11 @@ proc unregisterCycle(s: Cell) =
   roots.len = last
   s.rootIdx = 0
 
+var lucky* {.threadvar.}: int
+var wasLive* {.threadvar.}: int
+var wasDead* {.threadvar.}: int
+var rootLucky* {.threadvar.}: seq[bool]  # per-root: true = skip scan, collect gray
+
 proc scanBlack(s: Cell; desc: PNimTypeV2; j: var GcEnv) =
   #[
   proc scanBlack(s: Cell) =
@@ -168,6 +176,7 @@ proc scanBlack(s: Cell; desc: PNimTypeV2; j: var GcEnv) =
         scanBlack(t)
   ]#
   s.setColor colBlack
+  inc wasLive
   let until = j.traceStack.len
   trace(s, desc, j)
   when logOrc: writeCell("root still alive", s, desc)
@@ -177,6 +186,7 @@ proc scanBlack(s: Cell; desc: PNimTypeV2; j: var GcEnv) =
     t.rc = t.rc +% rcIncrement
     if t.color != colBlack:
       t.setColor colBlack
+      inc wasLive
       trace(t, desc, j)
       when logOrc: writeCell("child still alive", t, desc)
 
@@ -193,6 +203,9 @@ proc markGray(s: Cell; desc: PNimTypeV2; j: var GcEnv) =
   if s.color != colGray:
     s.setColor colGray
     j.touched = j.touched +% 1
+    # 0-based RC: -1 = no refs, >= 0 = has refs; if root still has refs we need scan
+    if (s.rc shr rcShift) >= 0:
+      j.allGarbage = false
     # keep in mind that refcounts are zero based so add 1 here:
     j.rcSum = j.rcSum +% (s.rc shr rcShift) +% 1
     orcAssert(j.traceStack.len == 0, "markGray: trace stack not empty")
@@ -200,8 +213,14 @@ proc markGray(s: Cell; desc: PNimTypeV2; j: var GcEnv) =
     while j.traceStack.len > 0:
       let (entry, desc) = j.traceStack.pop()
       let t = head entry[]
+      # abandon lucky if we traverse into another root (different from initial s)
+      if t != s and t.rootIdx != 0:
+        j.sawOtherRoot = true
       t.rc = t.rc -% rcIncrement
       j.edges = j.edges +% 1
+      # 0-based: >= 0 means still has refs after trial (need scan to restore)
+      if (t.rc shr rcShift) >= 0:
+        j.allGarbage = false
       when useJumpStack:
         if (t.rc shr rcShift) >= 0 and (t.rc and jumpStackFlag) == 0:
           t.rc = t.rc or jumpStackFlag
@@ -294,6 +313,7 @@ proc collectColor(s: Cell; desc: PNimTypeV2; col: int; j: var GcEnv) =
       free(s) # watch out, a bug here!
   ]#
   if s.color == col and s.rootIdx == 0:
+    inc wasDead
     orcAssert(j.traceStack.len == 0, "collectWhite: trace stack not empty")
 
     s.setColor(colBlack)
@@ -302,9 +322,10 @@ proc collectColor(s: Cell; desc: PNimTypeV2; col: int; j: var GcEnv) =
     while j.traceStack.len > 0:
       let (entry, desc) = j.traceStack.pop()
       let t = head entry[]
-      entry[] = nil # ensure that the destructor does touch moribund objects!
+      entry[] = nil
       if t.color == col and t.rootIdx == 0:
         j.toFree.add(t, desc)
+        inc wasDead
         t.setColor(colBlack)
         trace(t, desc, j)
 
@@ -336,24 +357,37 @@ proc collectCyclesBacon(j: var GcEnv; lowMark: int) =
     for i in countdown(last, lowMark):
       writeCell("root", roots.d[i][0], roots.d[i][1])
 
-  for i in countdown(last, lowMark):
-    markGray(roots.d[i][0], roots.d[i][1], j)
+  if rootLucky.len < roots.len:
+    rootLucky.setLen(roots.len)
+  for i in 0 .. last:
+    rootLucky[i] = false
 
-  var colToCollect = colWhite
-  if j.rcSum == j.edges:
-    # short-cut: we know everything is garbage:
-    colToCollect = colGray
-    # remember the fact that we got so lucky:
-    j.keepThreshold = true
-  else:
-    for i in countdown(last, lowMark):
+  j.allGarbage = true
+  for i in countdown(last, lowMark):
+    j.rcSum = 0
+    j.edges = 0
+    j.sawOtherRoot = false
+    markGray(roots.d[i][0], roots.d[i][1], j)
+    # Lucky iff rcSum==edges and we never traversed into another root
+    let isLucky = (j.rcSum == j.edges) and not j.sawOtherRoot
+    rootLucky[i] = isLucky
+    if isLucky:
+      inc lucky
+      j.keepThreshold = true
+
+  for i in countdown(last, lowMark):
+    if not rootLucky[i]:
       scan(roots.d[i][0], roots.d[i][1], j)
 
   init j.toFree
   for i in 0 ..< roots.len:
+    roots.d[i][0].rootIdx = 0
+  for i in 0 ..< roots.len:
     let s = roots.d[i][0]
-    s.rootIdx = 0
-    collectColor(s, roots.d[i][1], colToCollect, j)
+    if s.color == colBlack:
+      continue
+    let col = if rootLucky[i]: colGray else: colWhite
+    collectColor(s, roots.d[i][1], col, j)
 
   # Bug #22927: `free` calls destructors which can append to `roots`.
   # We protect against this here by setting `roots.len` to 0 and also
@@ -364,10 +398,22 @@ proc collectCyclesBacon(j: var GcEnv; lowMark: int) =
     rootsThreshold = high(int)
   roots.len = 0
 
+  # Pass 1: mark all cycle members as colDead so destructors skip them via decRef
+  for i in 0 ..< j.toFree.len:
+    j.toFree.d[i][0].setColor colDead
+  # Pass 2: run destructors; decRef sees colDead on cycle members and returns early
   for i in 0 ..< j.toFree.len:
     when orcLeakDetector:
       writeCell("CYCLIC OBJECT FREED", j.toFree.d[i][0], j.toFree.d[i][1])
-    free(j.toFree.d[i][0], j.toFree.d[i][1])
+    let (s, desc) = j.toFree.d[i]
+    let p = s +! sizeof(RefHeader)
+    when logOrc: writeCell("free", s, desc)
+    if desc.destructor != nil:
+      cast[DestructorProc](desc.destructor)(p)
+  # Pass 3: release memory
+  for i in 0 ..< j.toFree.len:
+    let (s, desc) = j.toFree.d[i]
+    nimRawDispose(s +! sizeof(RefHeader), desc.align)
 
   when not defined(nimStressOrc):
     rootsThreshold = oldThreshold
@@ -519,6 +565,7 @@ proc nimDecRefIsLastCyclicDyn(p: pointer): bool {.compilerRtl, inl.} =
   result = false
   if p != nil:
     var cell = head(p)
+    if cell.color == colDead: return false # part of a cycle being freed
     if (cell.rc and not rcMask) == 0:
       result = true
       #cprintf("[DESTROY] %p\n", p)
@@ -531,6 +578,7 @@ proc nimDecRefIsLastDyn(p: pointer): bool {.compilerRtl, inl.} =
   result = false
   if p != nil:
     var cell = head(p)
+    if cell.color == colDead: return false # part of a cycle being freed
     if (cell.rc and not rcMask) == 0:
       result = true
       #cprintf("[DESTROY] %p\n", p)
@@ -545,6 +593,7 @@ proc nimDecRefIsLastCyclicStatic(p: pointer; desc: PNimTypeV2): bool {.compilerR
   result = false
   if p != nil:
     var cell = head(p)
+    if cell.color == colDead: return false # part of a cycle being freed
     if (cell.rc and not rcMask) == 0:
       result = true
       #cprintf("[DESTROY] %p %s\n", p, desc.name)

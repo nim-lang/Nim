@@ -34,5 +34,8 @@ proc main() =
       discard buildTree(leakList, 8)
 
 main()
+echo "lucky: ", lucky
 GC_fullCollect()
 echo getOccupiedMem() < 10 * 1024 * 1024, " peak memory: ", getMaxMem() < 10 * 1024 * 1024
+
+echo "lucky: ", lucky, " wasLive: ", wasLive, " wasDead: ", wasDead
