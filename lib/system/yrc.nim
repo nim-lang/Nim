@@ -159,8 +159,9 @@ proc GC_setPreventThreadFromCollectProc*(cb: PreventThreadFromCollectProc) =
   GC_setPreventThreadFromCollectProc(proc(): bool {.nimcall.} =
     if hardRealTimeThread == getThreadId():
       writeStackTrace()
-      echo "Realtime thread involved in inpredictable cycle collector activity!"
+      echo "Realtime thread involved in unpredictable cycle collector activity!"
     result = false
+  )
   ```
   ]##
   gPreventThreadFromCollectProc = cb
@@ -244,19 +245,22 @@ when logOrc or orcLeakDetector:
   proc writeCell(msg: cstring; s: Cell; desc: PNimTypeV2) =
     when orcLeakDetector:
       cfprintf(cstderr, "%s %s file: %s:%ld; color: %ld; thread: %ld\n",
-        msg, desc.name, s.filename, s.line, s.color, getThreadId())
+        msg, if desc != nil: desc.name else: cstring"(nil)", s.filename, s.line, s.color, getThreadId())
     else:
-      cfprintf(cstderr, "%s %s %ld root index: %ld; RC: %ld; color: %ld; thread: %ld\n",
-        msg, desc.name, s.refId, (if (s.rc and inRootsFlag) != 0: 1 else: 0), s.rc shr rcShift, s.color, getThreadId())
+      # Guard nil desc/desc.name. Use cell pointer as id to avoid uninitialized s.refId (roots may have refId unset)
+      let name = if desc != nil and desc.name != nil: desc.name else: cstring"(null)"
+      cfprintf(cstderr, "%s %s %p isroot: %s; RC: %ld; color: %ld; thread: %ld\n",
+        msg, name, s, (if (s.rc and inRootsFlag) != 0: "yes" else: "no"), s.rc shr rcShift, s.color, getThreadId())
 
 proc free(s: Cell; desc: PNimTypeV2) {.inline.} =
   when traceCollector:
     cprintf("[From ] %p rc %ld color %ld\n", s, s.rc shr rcShift, s.color)
-  let p = s +! sizeof(RefHeader)
-  when logOrc: writeCell("free", s, desc)
-  if desc.destructor != nil:
-    cast[DestructorProc](desc.destructor)(p)
-  nimRawDispose(p, desc.align)
+  if (s.rc and inRootsFlag) == 0:
+    let p = s +! sizeof(RefHeader)
+    when logOrc: writeCell("free", s, desc)
+    if desc.destructor != nil:
+      cast[DestructorProc](desc.destructor)(p)
+    nimRawDispose(p, desc.align)
 
 template orcAssert(cond, msg) =
   when logOrc:
@@ -264,13 +268,9 @@ template orcAssert(cond, msg) =
       cfprintf(cstderr, "[Bug!] %s\n", msg)
       rawQuit 1
 
-when logOrc:
-  proc strstr(s, sub: cstring): cstring {.header: "<string.h>", importc.}
-
 proc nimTraceRef(q: pointer; desc: PNimTypeV2; env: pointer) {.compilerRtl, inl.} =
   let p = cast[ptr pointer](q)
   if p[] != nil:
-    orcAssert strstr(desc.name, "TType") == nil, "following a TType but it's acyclic!"
     var j = cast[ptr GcEnv](env)
     j.traceStack.add(p, desc)
 
@@ -350,31 +350,79 @@ proc collectCyclesBacon(j: var GcEnv; lowMark: int) =
   when logOrc:
     for i in countdown(last, lowMark):
       writeCell("root", roots.d[i][0], roots.d[i][1])
-  for i in countdown(last, lowMark):
+  init j.toFree
+
+  # First pass: swap roots with rc <= 0 to the end for immediate freeing
+  # Check RC before markGray modifies it. Use a while loop that shrinks as we iterate.
+  var cycleStart = lowMark
+  var immediateFreeStart = roots.len
+  while cycleStart < immediateFreeStart:
+    let s = roots.d[cycleStart][0]
+    if (s.rc shr rcShift) < 0:
+      # Root is already garbage, swap to end for immediate freeing
+      dec immediateFreeStart
+      swap(roots.d[cycleStart], roots.d[immediateFreeStart])
+      when logOrc: writeCell("root swapped to end for immediate free (rc <= 0)", roots.d[immediateFreeStart][0], roots.d[immediateFreeStart][1])
+    else:
+      inc cycleStart
+
+  # Second pass: process remaining roots (rc > 0) for cycle detection
+  # Only process roots from lowMark to immediateFreeStart (cycleStart == immediateFreeStart after swap loop)
+  for i in lowMark..<immediateFreeStart:
     markGray(roots.d[i][0], roots.d[i][1], j)
   var colToCollect = colWhite
   if j.rcSum == j.edges:
     colToCollect = colGray
     j.keepThreshold = true
   else:
-    for i in countdown(last, lowMark):
+    for i in lowMark..<immediateFreeStart:
       scan(roots.d[i][0], roots.d[i][1], j)
-  init j.toFree
-  for i in 0 ..< roots.len:
+  for i in lowMark..<immediateFreeStart:
     let s = roots.d[i][0]
     s.rc = s.rc and not inRootsFlag
     collectColor(s, roots.d[i][1], colToCollect, j)
   when not defined(nimStressOrc):
     let oldThreshold = rootsThreshold
     rootsThreshold = high(int)
+
+  # Prepare immediate-free roots for freeing: recursively trace through ALL descendants
+  # and set child pointers to nil, just like collectColor does. This prevents destructors
+  # from accessing children and triggering nested collectCycles().
+  # Add them to j.toFree so they're freed together after roots.len = 0 is set.
+  # Keep inRootsFlag set until right before freeing to prevent mergePendingRoots from
+  # accessing freed cells during nested collectCycles().
+  let immediateFreeCount = roots.len - immediateFreeStart
+  for i in immediateFreeStart..<roots.len:
+    let s = roots.d[i][0]
+    let desc = roots.d[i][1]
+    # Don't clear inRootsFlag yet - keep it set so mergePendingRoots can skip this cell
+    orcAssert(j.traceStack.len == 0, "trace stack not empty before preparing immediate-free root")
+    s.setColor(colBlack)
+    j.toFree.add(s, desc)
+    trace(s, desc, j)
+    # Recursively trace and nil ALL descendants, just like collectColor does
+    # This ensures destructors can't access any children, preventing nested collections
+    while j.traceStack.len > 0:
+      let (entry, childDesc) = j.traceStack.pop()
+      let t = head entry[]
+      entry[] = nil
+      # Recursively trace children to nil their descendants too
+      trace(t, childDesc, j)
+
+  # Clear roots before freeing to prevent nested collectCycles() from accessing freed cells
   roots.len = 0
+
+  # Free all roots (both immediate-free and cycle-detected) together
+  # Destructors must not call nimDecRefIsLastCyclicStatic (add to toDec) during this phase
   for i in 0 ..< j.toFree.len:
+    let s = j.toFree.d[i][0]
+    s.rc = s.rc and not inRootsFlag
     when orcLeakDetector:
-      writeCell("CYCLIC OBJECT FREED", j.toFree.d[i][0], j.toFree.d[i][1])
-    free(j.toFree.d[i][0], j.toFree.d[i][1])
+      writeCell("CYCLIC OBJECT FREED", s, j.toFree.d[i][1])
+    free(s, j.toFree.d[i][1])
   when not defined(nimStressOrc):
     rootsThreshold = oldThreshold
-  j.freed = j.freed +% j.toFree.len
+  j.freed = j.freed +% j.toFree.len +% immediateFreeCount
   deinit j.toFree
 
 when defined(nimOrcStats):
@@ -402,6 +450,8 @@ proc collectCycles() =
         elif rootsThreshold < high(int) div 4:
           rootsThreshold = (if rootsThreshold <= 0: defaultThreshold else: rootsThreshold)
           rootsThreshold = rootsThreshold div 2 +% rootsThreshold
+          # Cap growth so threshold doesn't grow without bound when we rarely free cycles
+          #rootsThreshold = min(rootsThreshold, defaultThreshold *% 16)
       when logOrc:
         cfprintf(cstderr, "[collectCycles] end; freed %ld new threshold %ld\n", j.freed, rootsThreshold)
       when defined(nimOrcStats):

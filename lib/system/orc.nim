@@ -433,8 +433,9 @@ proc collectCycles() =
       rootsThreshold = (if rootsThreshold <= 0: defaultThreshold else: rootsThreshold)
       rootsThreshold = rootsThreshold div 2 +% rootsThreshold
   when logOrc:
-    cfprintf(cstderr, "[collectCycles] end; freed %ld new threshold %ld touched: %ld mem: %ld rcSum: %ld edges: %ld\n", j.freed, rootsThreshold, j.touched,
-      getOccupiedMem(), j.rcSum, j.edges)
+    {.cast(raises: []).}:
+      discard cfprintf(cstderr, "[collectCycles] end; freed %ld new threshold %ld touched: %ld mem: %ld rcSum: %ld edges: %ld\n", j.freed, rootsThreshold, j.touched,
+        getOccupiedMem(), j.rcSum, j.edges)
   when defined(nimOrcStats):
     inc freedCyclicObjects, j.freed
 
@@ -465,13 +466,13 @@ proc GC_runOrc* =
 
 proc GC_enableOrc*() =
   ## Enables the cycle collector subsystem of `--mm:orc`. This is a `--mm:orc`
-  ## specific API. Check with `when defined(gcOrc)` for its existence.
+  ## specific API. Check with `when defined(gcOrc) or defined(gcYrc)` for its existence.
   when not defined(nimStressOrc):
     rootsThreshold = 0
 
 proc GC_disableOrc*() =
   ## Disables the cycle collector subsystem of `--mm:orc`. This is a `--mm:orc`
-  ## specific API. Check with `when defined(gcOrc)` for its existence.
+  ## specific API. Check with `when defined(gcOrc) or defined(gcYrc)` for its existence.
   when not defined(nimStressOrc):
     rootsThreshold = high(int)
 

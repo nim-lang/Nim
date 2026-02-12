@@ -1,5 +1,10 @@
 discard """
-  errormsg: "'=dup' is not provided while a custom '=copy' is defined for type 'Foo'"
+  output: '''
+copy!
+copy!
+3
+2
+'''
 """
 
 type Foo = distinct int
