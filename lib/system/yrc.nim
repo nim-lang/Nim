@@ -178,6 +178,11 @@ proc mayRunCycleCollect(): bool {.inline.} =
 proc getStripeIdx(): int {.inline.} =
   getThreadId() and (NumStripes - 1)
 
+template incBlack(x: Cell) =
+  x.rc = x.rc +% rcIncrement
+  if (x.rc and inRootsFlag) != 0:
+    x.setColor(colBlack)
+
 proc nimIncRefCyclic(p: pointer; cyclic: bool) {.compilerRtl, inl.} =
   let h = head(p)
   when optimizedOrc:
@@ -197,10 +202,7 @@ proc nimIncRefCyclic(p: pointer; cyclic: bool) {.compilerRtl, inl.} =
           let len = atomicExchangeN(addr stripes[i].toIncLen, 0, ATOMIC_ACQUIRE)
           for j in 0..<min(len, QueueSize):
             let x = atomicLoadN(addr stripes[i].toInc[j], ATOMIC_ACQUIRE)
-            x.rc = x.rc +% rcIncrement
-            # Bacon's algorithm: if object is buffered (inRootsFlag), set color to black on incRef
-            if (x.rc and inRootsFlag) != 0:
-              x.setColor(colBlack)
+            incBlack(x)
   else:
     let idx = getStripeIdx()
     while true:
@@ -217,10 +219,7 @@ proc nimIncRefCyclic(p: pointer; cyclic: bool) {.compilerRtl, inl.} =
             withLock stripes[i].lockInc:
               for j in 0..<stripes[i].toIncLen:
                 let x = stripes[i].toInc[j]
-                x.rc = x.rc +% rcIncrement
-                # Bacon's algorithm: if object is buffered (inRootsFlag), set color to black on incRef
-                if (x.rc and inRootsFlag) != 0:
-                  x.setColor(colBlack)
+                incBlack(x)
               stripes[i].toIncLen = 0
       else:
         break
@@ -242,10 +241,7 @@ proc mergePendingRoots() =
       withLock stripes[i].lockInc:
         for j in 0..<stripes[i].toIncLen:
           let x = stripes[i].toInc[j]
-          x.rc = x.rc +% rcIncrement
-          # Bacon's algorithm: if object is buffered (inRootsFlag), set color to black on incRef
-          if (x.rc and inRootsFlag) != 0:
-            x.setColor(colBlack)
+          incBlack(x)
         stripes[i].toIncLen = 0
     withLock stripes[i].lockDec:
       for j in 0..<stripes[i].toDecLen:
