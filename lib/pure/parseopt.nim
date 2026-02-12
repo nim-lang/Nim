@@ -301,6 +301,8 @@
 include "system/inclrtl"
 
 import std/os
+when defined(nimscript):
+  from std/strutils import toLowerAscii, endsWith
 
 type
   CliMode* = enum
@@ -427,7 +429,7 @@ proc initOptParser(cmdline: openArray[string];
           if firstNimsFound: 
             result.cmds[ctr] = paramStr(i)
             inc ctr, 1
-          if paramStr(i).endsWith(".nims") and not firstNimsFound:
+          if paramStr(i).toLowerAscii().endsWith(".nims") and not firstNimsFound:
             firstNimsFound = true 
             result.cmds = newSeq[string](paramCount()-i)
       else:
