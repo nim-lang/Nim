@@ -728,10 +728,10 @@ proc analyseIfAddressTakenInCall*(c: PContext, n: PNode, isConverter = false) =
 proc replaceHookMagic*(c: PContext, n: PNode, kind: TTypeAttachedOp): PNode =
   ## Replaces builtin generic hooks with lifted hooks.
   case kind
-  of attachedDestructor:
+  of attachedDestructor, attachedDispose:
     result = n
     let t = n[1].typ.skipTypes(abstractVar)
-    let op = getAttachedOp(c.graph, t, attachedDestructor)
+    let op = getAttachedOp(c.graph, t, kind)
     if op != nil:
       result[0] = newSymNode(op)
       if op.typ != nil and op.typ.len == 2 and op.typ.firstParamType.kind != tyVar:

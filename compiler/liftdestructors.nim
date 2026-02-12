@@ -484,6 +484,22 @@ proc considerUserDefinedOp(c: var TLiftCtx; t: PType; body, x, y: PNode): bool =
     else:
       result = false
     #result = addDestructorCall(c, t, body, x)
+  of attachedDispose:
+    var op = getAttachedOp(c.g, t, c.kind)
+    if op != nil and sfOverridden in op.flags:
+
+      if op.ast.isGenericRoutine:
+        # patch generic destructor:
+        op = instantiateGeneric(c, op, t, t.typeInst)
+        setAttachedOp(c.g, c.idgen.module, t, attachedDispose, op)
+
+      #markUsed(c.g.config, c.info, op, c.g.usageSym)
+      onUse(c.info, op)
+      body.add destructorCall(c, op, x) # fine for `dispose` too!
+      result = true
+    else:
+      result = false
+
   of attachedAsgn, attachedSink, attachedTrace:
     var op = getAttachedOp(c.g, t, c.kind)
     if op != nil and sfOverridden in op.flags:
@@ -646,6 +662,9 @@ proc fillSeqOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     # destroy all elements:
     forallElements(c, t, body, x, y)
     body.add genBuiltin(c, mDestroy, "destroy", x)
+  of attachedDispose:
+    # The mDestroy that the C code generator produces is right for `dispose`:
+    body.add genBuiltin(c, mDestroy, "destroy", x)
   of attachedTrace:
     if canFormAcycle(c.g, t.elemType):
       # follow all elements:
@@ -682,6 +701,9 @@ proc useSeqOrStrOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   of attachedDestructor:
     doAssert t.destructor != nil
     body.add destructorCall(c, t.destructor, x)
+  of attachedDispose:
+    # The mDestroy that the C code generator produces is right for `dispose`:
+    body.add genBuiltin(c, mDestroy, "destroy", x)
   of attachedTrace:
     if t.kind != tyString and canFormAcycle(c.g, t.elemType):
       let op = getAttachedOp(c.g, t, c.kind)
@@ -706,7 +728,7 @@ proc fillStrOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     doAssert t.destructor != nil
     moveCall.add destructorCall(c, t.destructor, x)
     body.add moveCall
-  of attachedDestructor:
+  of attachedDestructor, attachedDispose:
     body.add genBuiltin(c, mDestroy, "destroy", x)
   of attachedTrace:
     discard "strings are atomic and have no inner elements that are to trace"
@@ -828,6 +850,8 @@ proc atomicRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   of attachedDestructor:
     body.add genIf(c, cond, actions)
   of attachedDeepCopy: assert(false, "cannot happen")
+  of attachedDispose:
+    discard "the whole point of this exercise! Do not traverse `ref` fields for `=dispose`!"
   of attachedTrace:
     if isCyclic:
       if isFinal(elemType):
@@ -920,6 +944,8 @@ proc atomicClosureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
       body.add genIf(c, yenv, callCodegenProc(c.g, "nimIncRef", c.info, yenv))
   of attachedDestructor:
     body.add genIf(c, cond, actions)
+  of attachedDispose:
+    discard "the whole point of this exercise! Do not traverse `closure` fields for `=dispose`!"
   of attachedDeepCopy: assert(false, "cannot happen")
   of attachedTrace:
     body.add callCodegenProc(c.g, "nimTraceRefDyn", c.info, genAddrOf(xenv, c.idgen), y)
@@ -950,7 +976,7 @@ proc weakrefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     else:
       body.sons.insert(des, 0)
   of attachedDeepCopy: assert(false, "cannot happen")
-  of attachedTrace: discard
+  of attachedTrace, attachedDispose: discard
   of attachedWasMoved: body.add genBuiltin(c, mWasMoved, "wasMoved", x)
 
 proc ownedRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
@@ -978,7 +1004,7 @@ proc ownedRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   of attachedDestructor:
     body.add genIf(c, x, actions)
   of attachedDeepCopy: assert(false, "cannot happen")
-  of attachedTrace: discard
+  of attachedTrace, attachedDispose: discard
   of attachedWasMoved: body.add genBuiltin(c, mWasMoved, "wasMoved", x)
 
 proc closureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
@@ -1018,7 +1044,7 @@ proc closureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
       else:
         body.sons.insert(des, 0)
     of attachedDeepCopy: assert(false, "cannot happen")
-    of attachedTrace: discard
+    of attachedTrace, attachedDispose: discard
     of attachedWasMoved: body.add genBuiltin(c, mWasMoved, "wasMoved", x)
 
 proc ownedClosureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
@@ -1036,7 +1062,7 @@ proc ownedClosureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   of attachedDestructor:
     body.add genIf(c, xx, actions)
   of attachedDeepCopy: assert(false, "cannot happen")
-  of attachedTrace: discard
+  of attachedTrace, attachedDispose: discard
   of attachedWasMoved: body.add genBuiltin(c, mWasMoved, "wasMoved", x)
 
 proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =

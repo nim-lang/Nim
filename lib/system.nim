@@ -1674,6 +1674,7 @@ when not defined(js) and defined(nimV2):
       when defined(nimTypeNames) or defined(nimArcIds) or defined(nimOrcLeakDetector):
         name: cstring
       traceImpl: pointer
+      disposeImpl: pointer
       typeInfoV1: pointer # for backwards compat, usually nil
       flags: int
       when defined(gcDestructors):

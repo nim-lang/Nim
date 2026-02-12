@@ -258,8 +258,8 @@ proc free(s: Cell; desc: PNimTypeV2) {.inline.} =
   if (s.rc and inRootsFlag) == 0:
     let p = s +! sizeof(RefHeader)
     when logOrc: writeCell("free", s, desc)
-    if desc.destructor != nil:
-      cast[DestructorProc](desc.destructor)(p)
+    if desc.disposeImpl != nil:
+      cast[DestructorProc](desc.disposeImpl)(p)
     nimRawDispose(p, desc.align)
 
 template orcAssert(cond, msg) =
@@ -339,7 +339,7 @@ proc collectColor(s: Cell; desc: PNimTypeV2; col: int; j: var GcEnv) =
     while j.traceStack.len > 0:
       let (entry, desc) = j.traceStack.pop()
       let t = head entry[]
-      entry[] = nil
+      #entry[] = nil
       if t.color == col and (t.rc and inRootsFlag) == 0:
         j.toFree.add(t, desc)
         t.setColor(colBlack)

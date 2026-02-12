@@ -926,7 +926,7 @@ proc newProcNode*(kind: TNodeKind, info: TLineInfo, body: PNode,
 
 const
   AttachedOpToStr*: array[TTypeAttachedOp, string] = [
-    "=wasMoved", "=destroy", "=copy", "=dup", "=sink", "=trace", "=deepcopy"]
+    "=wasMoved", "=destroy", "=dispose", "=copy", "=dup", "=sink", "=trace", "=deepcopy"]
 
 proc `$`*(s: PSym): string =
   if s != nil:

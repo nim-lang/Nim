@@ -497,6 +497,7 @@ proc trExport(w: var Writer; n: PNode) =
 let replayTag = registerTag("replay")
 let repConverterTag = registerTag("repconverter")
 let repDestroyTag = registerTag("repdestroy")
+let repDisposeTag = registerTag("repdispose")
 let repWasMovedTag = registerTag("repwasmoved")
 let repCopyTag = registerTag("repcopy")
 let repSinkTag = registerTag("repsink")
@@ -677,6 +678,8 @@ proc writeOp(w: var Writer; content: var TokenBuf; op: LogEntry) =
     case op.op
     of attachedDestructor:
       content.addParLe repDestroyTag, NoLineInfo
+    of attachedDispose:
+      content.addParLe repDisposeTag, NoLineInfo
     of attachedAsgn:
       content.addParLe repCopyTag, NoLineInfo
     of attachedWasMoved:
@@ -1576,6 +1579,8 @@ proc processTopLevel(c: var DecodeContext; s: var Stream; flags: set[LoadFlag];
         t = loadLogOp(c, result.logOps, s, ConverterEntry, attachedTrace, module)
       elif t.tagId == repDestroyTag:
         t = loadLogOp(c, result.logOps, s, HookEntry, attachedDestructor, module)
+      elif t.tagId == repDisposeTag:
+        t = loadLogOp(c, result.logOps, s, HookEntry, attachedDispose, module)
       elif t.tagId == repWasMovedTag:
         t = loadLogOp(c, result.logOps, s, HookEntry, attachedWasMoved, module)
       elif t.tagId == repCopyTag:
