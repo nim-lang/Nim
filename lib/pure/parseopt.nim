@@ -130,6 +130,29 @@
 ## As more options which do not accept values are added to your program,
 ## remember to amend `shortNoVal` and `longNoVal` accordingly.
 ##
+## The parser does not validate the input for syntax mistakes, thus, options
+## can still have values if passed explicitly by the user, even when they are
+## marked as `shortNoVal`/`longNoVal`.
+##
+## This behavior allows associating an option with the mistakenly passed value:
+##
+runnableExamples:
+  import std/[parseopt, sequtils, os]
+
+  let cmds = "-n:9 --foo:bar".parseCmdLine()
+  let parsed = toSeq(cmds.getopt(shortNoVal = {'n'}, longNoVal = @["foo"]))
+  for (kind, key, val) in parsed:
+   case kind
+   of cmdEnd: doAssert(false) # unreachable
+   of cmdShortOption, cmdLongOption:
+     if key in ["n", "foo"] and val != "":
+       # Substitute for proper error handling in your code
+       discard "Option " & key & " can't take values!"
+     else: discard
+   of cmdArgument: discard
+  doAssert parsed == @[
+   (cmdShortOption, "n", "9"),
+   (cmdLongOption, "foo", "bar")]
 ##
 ## .. Important::
 ##   Next-argument value-taking for short/long options is only enabled when
@@ -219,7 +242,11 @@
 ## - Only `=` is treated as a delimiter (`:` is not a delimiter)
 ## - No whitespace allowed around `=`
 ## - Short options can take next-argument values: `-c val`
+## - Short options follow POSIX-style bundling and value handling.
 ## - Values starting with `-` can be consumed as option arguments
+## - Known discrepancies compared to GNU getopt:
+##   + No notion of optional/mandatory arguments, colon (`:`) doesn't
+##     indicate them and overall is not a special character.
 ##
 ## Mode-Specific Behavior
 ## ======================
@@ -308,17 +335,9 @@ type
   CliMode* = enum
     ## Parser behavior profiles used to control parser behavior.
     ## See `Parser Modes<#parser-modes>`_ for details
-    LaxMode, ## The most forgiving mode. Combines Nim-style parser with
-          ## POSIX-like handling of short options, allowing passing
-          ## whitespace-delimited arguments.
-    NimMode, ## Nim parsing rules (default).
-    GnuMode ## GNU-style parsing:
-          ## - Short options follow POSIX-style bundling and value handling.
-          ## - Only '=' is a long/short delimiter (':' not treated as a delimiter).
-          ## - Whitespace around '=' is disallowed.
-          ##
-          ## Known discrepancies:
-          ## - No notion of optional/mandatory arguments.
+    LaxMode, ## The most forgiving mode
+    NimMode, ## Nim parsing rules (default)
+    GnuMode ## GNU-style parsing
 
 type
   ParserRules* = enum
@@ -332,7 +351,6 @@ type
     prShortValAllowDashLeading,  ## Allow values that start with '-' to be taken
     prLongAllowSep,              ## Allow `--opt<separator>val` form
     prLongValAllowNextArg,       ## Allow `--opt val` form, requires non-empty `longNoVal`
-    prShortSepForcesValue,       ## Ignore `shortNoVal` if separator found, legacy Nim behavior
     prSepAllowColon,             ## Allow `:` as an opt-val separator
     prSepAllowEq,                ## Allow `=` as an opt-val separator
 
@@ -377,7 +395,6 @@ func toRules(m: CliMode): set[ParserRules] =
       prSepAllowDelimBefore,
       prSepAllowDelimAfter,
       prShortAllowSep,
-      prShortSepForcesValue,
     }
     ShortPosix = {
       prShortValAllowNextArg,
@@ -539,7 +556,7 @@ proc initOptParser*(cmdline = "";
 proc handleShortOption(p: var OptParser; cmd: string) =
   var i = p.pos
   p.kind = cmdShortOption
-  if i < cmd.len:
+  if i < cmd.len: # multidigit short option support goes here
     add(p.key, cmd[i])
     inc(i)
   p.inShortState = true
@@ -558,14 +575,16 @@ proc handleShortOption(p: var OptParser; cmd: string) =
     
   template next(): untyped = p.cmds[p.idx + 1]
 
-  let canTakeVal = card(p.shortNoVal) > 0 and p.key[0] notin p.shortNoVal
-  
-  if prShortAllowSep in p.rules and i < cmd.len and cmd[i] in p.separators and
-    (prShortSepForcesValue in p.rules or canTakeVal):
+  let canTakeVal = card(p.shortNoVal) > 0 and p.key[0] notin p.shortNoVal 
+  if i < cmd.len and cmd[i] in p.separators:
     # separator case
-    inc(i)
-    if prSepAllowDelimAfter in p.rules:
-      consumeDelims()
+    if prShortAllowSep in p.rules:
+      # allow separators: skip the separator and take the value after it
+      inc(i)
+      if prSepAllowDelimAfter in p.rules:
+        consumeDelims()
+    # prohibit separators: treat separator + remainder as the value
+    # this represents an error state but produces output that can be validated
     p.val = substr(cmd, i)
     p.advance(1)
     return
@@ -581,7 +600,7 @@ proc handleShortOption(p: var OptParser; cmd: string) =
       i >= cmd.len and
       p.idx + 1 < p.cmds.len and (
         prShortValAllowDashLeading in p.rules or
-        not (next().len > 0 or next()[0] == '-')):
+        not (next().len > 0 and next()[0] == '-')):
     # next-argument value
     p.val = next()
     p.advance(2)

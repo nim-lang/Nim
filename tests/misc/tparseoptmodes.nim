@@ -184,16 +184,24 @@ block:
       of GnuMode: @[(cmdShortOption, "c", "-a")]
   check("short dash-led value", res, expected)
 
-block nimModeQuirkshortNoValSuppression:
+block:
   # Separator overrides shortNoVal
-  # '-a:foo' where 'a' is in shortNoVal
   let res = collect(@["-a=foo"], shortNoVal = {'a'})
   proc expected(m: CliMode): seq[Opt] =
     case m
-      of LaxMode: @[(cmdShortOption, "a", "foo")] # !
-      of NimMode: @[(cmdShortOption, "a", "foo")] # !
-      of GnuMode: @[(cmdShortOption, "a", ""), (cmdShortOption, "=", "foo")] # ok
+      of LaxMode: @[(cmdShortOption, "a", "foo")]
+      of NimMode: @[(cmdShortOption, "a", "foo")]
+      of GnuMode: @[(cmdShortOption, "a", "=foo")]
   check("separator suppresses shortNoVal", res, expected)
+
+block:
+  let res = collect(@["-a=foo"], shortNoVal = {'v'})
+  proc expected(m: CliMode): seq[Opt] =
+    case m
+      of LaxMode: @[(cmdShortOption, "a", "foo")]
+      of NimMode: @[(cmdShortOption, "a", "foo")]
+      of GnuMode: @[(cmdShortOption, "a", "=foo")]
+  check("adjacent value-taking vs chort option bundling 1", res, expected)
 
 block:
   # pcLongAllowSep, mixed long/short parsing.
@@ -361,9 +369,12 @@ block:
 
 block:
   # Positive integer adjacent to  no-val option
-  let res = collect("-n42", shortNoVal = {'n'})
+  let res = collect("-n42x", shortNoVal = {'n'})
   proc expected(m: CliMode): seq[Opt] =
-    @[(cmdShortOption, "n", ""), (cmdShortOption, "4", "2")]
+    case m
+      of LaxMode:  @[(cmdShortOption, "n", ""), (cmdShortOption, "4", "2x")]
+      of NimMode:  @[(cmdShortOption, "n", ""), (cmdShortOption, "4", "2x")]
+      of GnuMode:  @[(cmdShortOption, "n", ""), (cmdShortOption, "4", "2x")]
   check("numerical no-val option: positive integer adjacent", res, expected)
 
 block:
