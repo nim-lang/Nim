@@ -31,7 +31,7 @@
 ## `CmdLineKind enum<#CmdLineKind>`_.
 ##
 ## When option values begin with ':' or '=', they need to be doubled up (as in
-## `--delim::`) or alternated (as in `--delim=:`).
+## `--foo::`) or alternated (as in `--foo=:`).
 ##
 ## The `--` option, commonly used to denote that every token that follows is
 ## an argument, is interpreted as a long option, and its name is the empty
@@ -54,30 +54,30 @@
 ##
 ## Here is an example:
 ##
-##   ```Nim
-##   import std/parseopt
-##
-##   var p = initOptParser("-ab -e:5 --foo --bar=20 file.txt")
-##   while true:
-##     p.next()
-##     case p.kind
-##     of cmdEnd: break
-##     of cmdShortOption, cmdLongOption:
-##       if p.val == "":
-##         echo "Option: ", p.key
-##       else:
-##         echo "Option and value: ", p.key, ", ", p.val
-##     of cmdArgument:
-##       echo "Argument: ", p.key
-##
-##   # Output:
-##   # Option: a
-##   # Option: b
-##   # Option and value: e, 5
-##   # Option: foo
-##   # Option and value: bar, 20
-##   # Argument: file.txt
-##   ```
+runnableExamples:
+
+  var p = initOptParser("-ab -e:5 --foo --bar=20 file.txt")
+  var output: seq[string] = @[]
+  while true:
+    p.next()
+    case p.kind
+    of cmdEnd: break
+    of cmdShortOption, cmdLongOption:
+      if p.val == "":
+        output.add("Option: " & p.key)
+      else:
+        output.add("Option and value: " & p.key & ", " & p.val)
+    of cmdArgument:
+      output.add("Argument: " & p.key)
+
+  doAssert output == @[
+    "Option: a",
+    "Option: b",
+    "Option and value: e, 5",
+    "Option: foo",
+    "Option and value: bar, 20",
+    "Argument: file.txt"
+  ]
 ##
 ## The `getopt iterator<#getopt.i,OptParser>`_, which is provided for
 ## convenience, can be used to iterate through all command line options as well.
@@ -88,22 +88,23 @@
 ##
 ## Here is an example:
 ##
-##   ```Nim
-##   import std/parseopt
-##
-##   var varName: string = "defaultValue"
-##
-##   for kind, key, val in getopt():
-##     case kind
-##     of cmdArgument:
-##       discard
-##     of cmdLongOption, cmdShortOption:
-##       case key:
-##       of "varName": # --varName:<value> in the console when executing
-##         varName = val # do input sanitization in production systems
-##     of cmdEnd:
-##       discard
-##   ```
+runnableExamples:
+  import std/strutils
+
+  var varName: string = "defaultValue"
+
+  for kind, key, val in getopt(@["--varName:HELLO"]):
+    case kind
+    of cmdArgument:
+      discard
+    of cmdLongOption, cmdShortOption:
+      case key
+      of "varName":  # --varName:<value> in the console when executing
+        varName = val.toLowerAscii() # do input sanitization in production
+    of cmdEnd:
+      discard
+
+  doAssert varName == "hello"
 ##
 ## `shortNoVal` and `longNoVal`
 ## ============================
@@ -137,13 +138,13 @@
 ## This behavior allows associating an option with the mistakenly passed value:
 ##
 runnableExamples:
-  import std/[parseopt, sequtils, os]
+  import std/[sequtils, os]
 
   let cmds = "-n:9 --foo:bar".parseCmdLine()
   let parsed = toSeq(cmds.getopt(shortNoVal = {'n'}, longNoVal = @["foo"]))
   for (kind, key, val) in parsed:
    case kind
-   of cmdEnd: doAssert(false) # unreachable
+   of cmdEnd: raise newException(AssertionDefect, "Unreachable")
    of cmdShortOption, cmdLongOption:
      if key in ["n", "foo"] and val != "":
        # Substitute for proper error handling in your code
@@ -164,41 +165,39 @@ runnableExamples:
 ## `shortNoVal` and `longNoVal`, which is the default, and providing
 ## arguments for those two parameters:
 ##
-##   ```Nim
-##   import std/parseopt
-##
-##   proc printToken(kind: CmdLineKind, key: string, val: string) =
-##     case kind
-##     of cmdEnd: doAssert(false)  # Doesn't happen with getopt()
-##     of cmdShortOption, cmdLongOption:
-##       if val == "":
-##         echo "Option: ", key
-##       else:
-##         echo "Option and value: ", key, ", ", val
-##     of cmdArgument:
-##       echo "Argument: ", key
-##
-##   let cmdLine = "-j4 --first bar"
-##
-##   var emptyNoVal = initOptParser(cmdLine)
-##   for kind, key, val in emptyNoVal.getopt():
-##     printToken(kind, key, val)
-##
-##   # Output:
-##   # Option: j
-##   # Option: 4
-##   # Option: first
-##   # Argument: bar
-##
-##   var withNoVal = initOptParser(cmdLine, shortNoVal = {'c'},
-##                                 longNoVal = @["second"])
-##   for kind, key, val in withNoVal.getopt():
-##     printToken(kind, key, val)
-##
-##   # Output:
-##   # Option and value: j, 4
-##   # Option and value: first, bar
-##   ```
+runnableExamples:
+
+  proc format(kind: CmdLineKind; key, val: string): string =
+    case kind
+    of cmdEnd: raise newException(AssertionDefect, "Unreachable")
+    of cmdShortOption, cmdLongOption:
+      if val == "": "Option: " & key
+      else:         "Option and value: " & key & ", " & val
+    of cmdArgument: "Argument: " & key
+
+  let cmdLine = "-j4 --first bar"
+  var output1, output2: seq[string] = @[]
+
+  var emptyNoVal = initOptParser(cmdLine)
+  for kind, key, val in emptyNoVal.getopt():
+    output1.add format(kind, key, val)
+
+  doAssert output1 == @[
+    "Option: j",
+    "Option: 4",
+    "Option: first",
+    "Argument: bar"
+  ]
+
+  var withNoVal = cmdLine.initOptParser(shortNoVal = {'c'},
+                                  longNoVal = @["second"])
+  for kind, key, val in withNoVal.getopt():
+    output2.add format(kind, key, val)
+
+  doAssert output2 == @[
+    "Option and value: j, 4",
+    "Option and value: first, bar"
+  ]
 ##
 ## Parser Modes
 ## ============

@@ -315,6 +315,40 @@ block:
     @[(cmdLongOption, "", ""), (cmdArgument, "rest", "")]
   check("double-dash marker", res, expected)
 
+block:
+  # option values beginning with ':' - doubled up
+  let res = collect(@["--foo::"])
+  proc expected(m: CliMode): seq[Opt] =
+    case m
+      of LaxMode: @[(cmdLongOption, "foo", ":")]
+      of NimMode: @[(cmdLongOption, "foo", ":")]
+      of GnuMode: @[(cmdLongOption, "foo::", "")]
+  check("long option value starting with colon (doubled)", res, expected)
+
+block:
+  # option values beginning with '=' - doubled up
+  let res = collect(@["--foo=="])
+  proc expected(m: CliMode): seq[Opt] =
+    @[(cmdLongOption, "foo", "=")]
+  check("long option value starting with equals (doubled)", res, expected)
+
+block:
+  # option values beginning with ':' - alternated with '='
+  let res = collect(@["--foo=:"])
+  proc expected(m: CliMode): seq[Opt] =
+    @[(cmdLongOption, "foo", ":")]
+  check("long option value starting with colon (alternated)", res, expected)
+
+block:
+  # option values beginning with '=' - alternated with ':'
+  let res = collect(@["--foo:="])
+  proc expected(m: CliMode): seq[Opt] =
+    case m
+      of LaxMode: @[(cmdLongOption, "foo", "=")]
+      of NimMode: @[(cmdLongOption, "foo", "=")]
+      of GnuMode: @[(cmdLongOption, "foo:", "")]
+  check("long option value starting with equals (alternated)", res, expected)
+
 block issue9619:
   let res = collect(@["--option=", "", "--anotherOption", "tree"])
   proc expected(m: CliMode): seq[Opt] =
