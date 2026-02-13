@@ -224,7 +224,9 @@ runnableExamples:
 ##
 ## **NimMode** (default):
 ##
-## - Short options require adjacent values or explicit delimiters: `-cval`, `-c:val`, `-c=val`
+## - Short options require adjacent values or explicit delimiters:
+##   `-cval`, `-c:val`, `-c=val`
+## - Short options follow POSIX-style bundling rules
 ## - Next-argument value taking (`-c val`) is **not** supported by default
 ## - Supports both `:` and `=` as delimiters
 ## - Allows whitespace around delimiters
@@ -232,17 +234,18 @@ runnableExamples:
 ##
 ## **LaxMode**:
 ##
-## - Essentially the Nim mode with a key relaxation for short options
-## - Allows short options to take values from the next argument: `-c val`
-## - Supports bundled short options with trailing value: `-abc val`
+## - Essentially the Nim mode with some relaxations for short options:
+##   + Allows short options to take values from the next argument: `-c val`
+##   + Supports bundled short options with trailing value: `-abc val`
 ## - Values starting with `-` can be consumed as option arguments
 ##
 ## **GnuMode**:
 ##
 ## - Only `=` is treated as a delimiter (`:` is not a delimiter)
 ## - No whitespace allowed around `=`
-## - Short options can take next-argument values: `-c val`
-## - Short options follow POSIX-style bundling and value handling.
+## - Short options can take next-argument values (`-c val`), but only whitespace
+##   is allowed as a delimiter, separators parse as part of the value
+## - Short options follow POSIX-style bundling rules
 ## - Values starting with `-` can be consumed as option arguments
 ## - Known discrepancies compared to GNU getopt:
 ##   + No notion of optional/mandatory arguments, colon (`:`) doesn't
@@ -297,12 +300,13 @@ runnableExamples:
 ## .. Warning:: Custom rule sets are unsupported and not tested
 ##
 ## If you require parsing rules beyond the three provided modes, it's possible
-## to define a custom parser behavior by specifying a set of individual
-## `ParserRules<#ParserRules>`_.
+## to define a custom parser behavior by specifying a set of individual parser
+## rules.
 ##
-## Due to this feature being unsupported, it requires importing the private parts
-## of the module (with `import std/parseopt {.all.}`) and utilizing
-## the unexported `initOptParser` overload, which accepts `set[ParserRules]`.
+## Due to this feature being unsupported, it requires importing the private
+## symbols of the module (with `import std/parseopt {.all.}`) and utilizing
+## the unexported `initOptParser` overload, which accepts `set[ParserRules]`
+## (see the `ParserRules` enum in the code for details).
 ##
 ## See also
 ## ========
@@ -340,7 +344,7 @@ type
     GnuMode ## GNU-style parsing
 
 type
-  ParserRules* = enum
+  ParserRules = enum
     ## Feature flags used to assemble parser behavior for a given mode.
     prSepAllowDelimBefore,       ## Allow whitespace before an opt-val separator
     prSepAllowDelimAfter,        ## Allow whitespace after an opt-val separator
