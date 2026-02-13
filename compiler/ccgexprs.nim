@@ -2853,7 +2853,11 @@ proc upConv(p: BProc, n: PNode, d: var TLoc) =
     raiseInstr(p, p.s(cpsStmts))
     linefmt p, cpsStmts, "}$n", []
 
-  if n[0].typ.kind != tyObject:
+  # skip cast when types map to the same C type
+  # this avoids invalid C code like `*(T*)&x` for types that can't have their address taken (e.g., WASM __externref_t)
+  if getTypeDesc(p.module, n.typ) == getTypeDesc(p.module, n[0].typ):
+    expr(p, n[0], d)
+  elif n[0].typ.kind != tyObject:
     if n.isLValue:
       putIntoDest(p, d, n,
                 "(*(($1*) (&($2))))" % [getTypeDesc(p.module, n.typ), rdLoc(a)], a.storage)
@@ -2881,7 +2885,7 @@ proc downConv(p: BProc, n: PNode, d: var TLoc) =
     var a: TLoc = initLocExpr(p, arg)
     putIntoDest(p, d, n,
               "(*(($1*) (&($2))))" % [getTypeDesc(p.module, n.typ), rdLoc(a)], a.storage)
-  elif p.module.compileToCpp:
+  elif p.module.compileToCpp or isImportedType(src):
     # C++ implicitly downcasts for us
     expr(p, arg, d)
   else:
