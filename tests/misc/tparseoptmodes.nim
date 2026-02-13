@@ -28,9 +28,9 @@ block:
   let res = collect(@["-c", "4"], shortNoVal = {'a', 'b'})
   proc expected(m: CliMode): seq[Opt] =
    case m
-    of LaxMode: @[(cmdShortOption, "c", "4")]
-    of NimMode: @[(cmdShortOption, "c", ""), (cmdArgument, "4", "")]
-    of GnuMode: @[(cmdShortOption, "c", "4")]
+   of LaxMode: @[(cmdShortOption, "c", "4")]
+   of NimMode: @[(cmdShortOption, "c", ""), (cmdArgument, "4", "")]
+   of GnuMode: @[(cmdShortOption, "c", "4")]
   check("short whitespace value", res, expected)
 
 block:
@@ -45,18 +45,18 @@ block:
   let res = collect(@["-abc", "4"], shortNoVal = {'a', 'b'})
   proc expected(m: CliMode): seq[Opt] =
      case m
-      of LaxMode:    @[(cmdShortOption, "a", ""),
-                       (cmdShortOption, "b", ""),
-                       (cmdShortOption, "c", "4")]
+     of LaxMode:    @[(cmdShortOption, "a", ""),
+                      (cmdShortOption, "b", ""),
+                      (cmdShortOption, "c", "4")]
 
-      of NimMode:    @[(cmdShortOption, "a", ""),
-                       (cmdShortOption, "b", ""),
-                       (cmdShortOption, "c", ""),
-                       (cmdArgument, "4", "")]
+     of NimMode:    @[(cmdShortOption, "a", ""),
+                      (cmdShortOption, "b", ""),
+                      (cmdShortOption, "c", ""),
+                      (cmdArgument, "4", "")]
 
-      of GnuMode:    @[(cmdShortOption, "a", ""),
-                       (cmdShortOption, "b", ""),
-                       (cmdShortOption, "c", "4")]
+     of GnuMode:    @[(cmdShortOption, "a", ""),
+                      (cmdShortOption, "b", ""),
+                      (cmdShortOption, "c", "4")]
   check("short bundle with trailing value", res, expected)
 
 block:
@@ -80,9 +80,9 @@ block:
   let res = collect(@["-c", ":"], shortNoVal = {'a', 'b'})
   proc expected(m: CliMode): seq[Opt] =
      case m
-      of LaxMode: @[(cmdShortOption, "c", ":")]
-      of NimMode: @[(cmdShortOption, "c", ""), (cmdArgument, ":", "")]
-      of GnuMode: @[(cmdShortOption, "c", ":")]
+     of LaxMode: @[(cmdShortOption, "c", ":")]
+     of NimMode: @[(cmdShortOption, "c", ""), (cmdArgument, ":", "")]
+     of GnuMode: @[(cmdShortOption, "c", ":")]
   check("short whitespace colon value", res, expected)
 
 block:
