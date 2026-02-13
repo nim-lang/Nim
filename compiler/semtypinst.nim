@@ -572,7 +572,7 @@ proc eraseTupleVoidFields*(t: PType) =
       # found first void field, compact from here
       var pos = i
       for j in i+1..<t.kidsLen:
-        if t[j].kind != tyVoid and (j >= t.n.len or t.n[j].kind != nkRecList):
+        if t[j].kind != tyVoid and j < t.n.len and t.n[j].kind != nkRecList:
           t.n[pos] = t.n[j]
           t[pos] = t[j]
           if t.n[pos].kind == nkSym:
