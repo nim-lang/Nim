@@ -879,13 +879,16 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
 
       result = copyTree(n)
       for i in ord(n.kind == nkClosure)..<n.len:
+        # nkClosure env (i=1): must not consume; it's shared with lexical refs
+        # (e.g. hash(inner) after `let inner2 = inner` needs the env).
+        let mClosure = if n.kind == nkClosure and i == 1: normal else: m
         if n[i].kind == nkExprColonExpr:
-          result[i][1] = p(n[i][1], c, s, m)
+          result[i][1] = p(n[i][1], c, s, mClosure)
         elif n[i].kind == nkRange:
-          result[i][0] = p(n[i][0], c, s, m)
-          result[i][1] = p(n[i][1], c, s, m)
+          result[i][0] = p(n[i][0], c, s, mClosure)
+          result[i][1] = p(n[i][1], c, s, mClosure)
         else:
-          result[i] = p(n[i], c, s, m)
+          result[i] = p(n[i], c, s, mClosure)
     of nkObjConstr:
       # see also the remark about `nkTupleConstr`.
       let t = n.typ.skipTypes(abstractInst)
