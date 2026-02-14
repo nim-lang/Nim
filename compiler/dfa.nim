@@ -63,9 +63,6 @@ type
     stateFixups: Table[int, seq[TPosition]]
     stateCaseDepth: int
     stateCaseNextState: int
-    when defined(nimExperimentalPreLiftDestruct):
-      # Maps inner proc symbol ID -> set of captured variable IDs
-      capturedVars: Table[int, IntSet]
 
 proc codeListing(c: ControlFlowGraph, start = 0; last = -1): string =
   # for debugging purposes
@@ -510,14 +507,18 @@ proc genUse(c: var Con; orig: PNode) =
     if n.sym.kind in InterestingSyms and n.sym == c.root:
       c.code.add Instr(kind: use, n: orig)
       inc c.interestingInstructions
-    else:
-      when defined(nimExperimentalPreLiftDestruct):
-        # If this is a use of an inner proc, also mark its captured variables as used
-        if n.sym.kind in {skProc, skFunc, skMethod, skConverter, skIterator}:
-          if c.capturedVars.hasKey(n.sym.id) and c.root.id in c.capturedVars[n.sym.id]:
-            # The root variable we're tracking is captured by this inner proc
-            c.code.add Instr(kind: use, n: orig)
-            inc c.interestingInstructions
+    elif n.sym.kind in {skProc, skFunc, skMethod, skConverter, skIterator} and
+         n.sym.typ != nil and n.sym.typ.callConv == ccClosure:
+      # Using a closure proc implicitly uses its environment.
+      # Check if we're tracking an environment variable and this closure is defined locally.
+      if c.root.kind == skVar and c.root.name.s.len >= 4 and
+         c.root.name.s[0] == ':' and c.root.name.s[1] == 'e' and
+         c.root.name.s[2] == 'n' and c.root.name.s[3] == 'v':
+        let symOwner = n.sym.skipGenericOwner
+        # If this closure is defined in our scope (inner proc), using it means using :env
+        if symOwner == c.owner or (symOwner.kind in routineKinds and symOwner.owner == c.owner):
+          c.code.add Instr(kind: use, n: orig)
+          inc c.interestingInstructions
   else:
     gen(c, n)
 
@@ -633,48 +634,6 @@ proc gen(c: var Con; n: PNode) =
   of nkDefer: raiseAssert "dfa construction pass requires the elimination of 'defer'"
   else: discard
 
-when defined(nimExperimentalPreLiftDestruct):
-  proc interestingVar(s: PSym): bool {.inline.} =
-    ## Detect variables that can be captured by closures (from lambdalifting)
-    result = s.kind in {skVar, skLet, skTemp, skForVar, skParam, skResult} and
-      sfGlobal notin s.flags and
-      s.typ.kind notin {tyStatic, tyTypeDesc}
-
-  proc isInnerProc(s: PSym; owner: PSym): bool {.inline.} =
-    ## Check if s is an inner proc relative to owner
-    if s.kind in {skProc, skFunc, skMethod, skConverter, skIterator} and s.magic == mNone:
-      let sOwner = s.skipGenericOwner
-      result = sOwner == owner or (sOwner.kind in routineKinds and sOwner != owner)
-    else:
-      result = false
-
-  proc detectCapturedVars(n: PNode; owner: PSym; capturedVars: var Table[int, IntSet]) =
-    ## Detect which variables are captured by inner procs
-    ## Maps inner proc ID -> set of captured var IDs
-    case n.kind
-    of nkSym:
-      let s = n.sym
-      if isInnerProc(s, owner) and s.kind in {skProc, skFunc, skMethod, skConverter, skIterator}:
-        # This is an inner proc - recursively analyze its body to find captured vars
-        if not capturedVars.hasKey(s.id):
-          capturedVars[s.id] = initIntSet()
-        # Mark all uses of owner's variables as captured
-        proc findCaptures(body: PNode; innerProc: PSym) =
-          case body.kind
-          of nkSym:
-            let v = body.sym
-            if interestingVar(v) and v.owner != innerProc and v.owner == owner:
-              capturedVars[innerProc.id].incl(v.id)
-          else:
-            for child in body:
-              findCaptures(child, innerProc)
-        # Analyze the inner proc's AST to find captured variables
-        if s.ast != nil and s.ast.len > bodyPos:
-          findCaptures(s.ast[bodyPos], s)
-    else:
-      for child in n:
-        detectCapturedVars(child, owner, capturedVars)
-
 when false:
   proc optimizeJumps(c: var ControlFlowGraph) =
     for i in 0..<c.len:
@@ -693,21 +652,11 @@ when false:
 
 proc constructCfg*(s: PSym; body: PNode; root: PSym): ControlFlowGraph =
   ## constructs a control flow graph for ``body``.
-  when defined(nimExperimentalPreLiftDestruct):
-    var c = Con(code: @[], blocks: @[], owner: s, root: root,
-                stateLabels: initTable[int, TPosition](),
-                stateFixups: initTable[int, seq[TPosition]](),
-                stateCaseDepth: 0,
-                stateCaseNextState: stateUnset,
-                capturedVars: initTable[int, IntSet]())
-    # Detect which variables are captured by inner procs
-    detectCapturedVars(body, s, c.capturedVars)
-  else:
-    var c = Con(code: @[], blocks: @[], owner: s, root: root,
-                stateLabels: initTable[int, TPosition](),
-                stateFixups: initTable[int, seq[TPosition]](),
-                stateCaseDepth: 0,
-                stateCaseNextState: stateUnset)
+  var c = Con(code: @[], blocks: @[], owner: s, root: root,
+              stateLabels: initTable[int, TPosition](),
+              stateFixups: initTable[int, seq[TPosition]](),
+              stateCaseDepth: 0,
+              stateCaseNextState: stateUnset)
   withBlock(s):
     gen(c, body)
     if root.kind == skResult:

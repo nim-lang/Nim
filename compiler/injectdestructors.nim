@@ -19,9 +19,6 @@ import
   lineinfos, parampatterns, sighashes, liftdestructors, optimizer,
   varpartitions, aliasanalysis, dfa, wordrecg
 
-when not defined(nimExperimentalPreLiftDestruct):
-  import lambdalifting
-
 import std/[strtabs, tables, strutils, intsets]
 
 when defined(nimPreviewSlimSystem):
@@ -131,8 +128,20 @@ proc isLastReadImpl(n: PNode; c: var Con; scope: var Scope; root: PSym): bool =
 
   var j = -1
   for i in 0..<c.g.len:
-    if c.g[i].kind == use and c.g[i].n == n:
-      j = i
+    if c.g[i].kind == use:
+      # Direct match
+      if c.g[i].n == n:
+        j = i
+      # Also check if this is a closure proc use that implies using our env variable
+      elif root != nil and root.kind == skVar and root.name.s.len >= 4 and
+           root.name.s[0] == ':' and root.name.s[1] == 'e' and
+           c.g[i].n.kind == nkSym and c.g[i].n.sym.kind in {skProc, skFunc, skMethod, skConverter, skIterator} and
+           c.g[i].n.sym.typ != nil and c.g[i].n.sym.typ.callConv == ccClosure:
+        # This is a closure proc use - check if it's defined in our scope
+        let symOwner = c.g[i].n.sym.skipGenericOwner
+        if symOwner == c.owner:
+          # This closure implicitly uses the env, so treat it as a use of n
+          j = i
   c.otherUsage = unknownLineInfo
   if j >= 0:
     var pcs = @[j+1]
@@ -161,7 +170,16 @@ proc isLastReadImpl(n: PNode; c: var Con; scope: var Scope; root: PSym): bool =
               pcs.add pc + 1
             pc = pc + c.g[pc].dest
           of use:
-            if c.g[pc].n.aliases(n) != no or n.aliases(c.g[pc].n) != no:
+            var isUse = c.g[pc].n.aliases(n) != no or n.aliases(c.g[pc].n) != no
+            # Also check if this is a closure proc use that implies using our env variable
+            if not isUse and root != nil and root.kind == skVar and root.name.s.len >= 4 and
+               root.name.s[0] == ':' and root.name.s[1] == 'e' and
+               c.g[pc].n.kind == nkSym and c.g[pc].n.sym.kind in {skProc, skFunc, skMethod, skConverter, skIterator} and
+               c.g[pc].n.sym.typ != nil and c.g[pc].n.sym.typ.callConv == ccClosure:
+              let symOwner = c.g[pc].n.sym.skipGenericOwner
+              if symOwner == c.owner:
+                isUse = true
+            if isUse:
               c.otherUsage = c.g[pc].n.info
               return false
             inc pc
@@ -882,29 +900,9 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
 
       result = copyTree(n)
       for i in ord(n.kind == nkClosure)..<n.len:
-        when defined(nimExperimentalPreLiftDestruct):
-          # When running before lambda lifting, closures haven't been transformed
-          # into (fn, env) tuples yet, so no special handling needed
-          let mClosure = m
-        else:
-          # nkClosure env (i=1): Critical for closure environment lifetime.
-          # - Fresh nkObjConstr: Use mode `m` (parent decides - may sink into new env)
-          # - Current proc's :envP param: Force `normal` (shared across closure calls)
-          # - Other cases: Force `normal` (conservative - may be shared/aliased)
-          let mClosure = if n.kind == nkClosure and i == 1:
-            let envNode = n[1].skipConv
-            if envNode.kind == nkSym:
-              let ep = getEnvParam(c.owner)
-              if ep != nil and envNode.sym.id == ep.id:
-                # Current scope's env param - reused across closure invocations, don't consume
-                normal
-              else:
-                # Other symbol (local var, param, temp) - use parent mode (may sink if last use)
-                m
-            else:
-              # nkObjConstr or other constructs - use parent mode
-              m
-          else: m
+        # No special handling needed - DFA understands that using a closure proc
+        # implies using its environment, so isLastRead will work correctly
+        let mClosure = m
         if n[i].kind == nkExprColonExpr:
           result[i][1] = p(n[i][1], c, s, mClosure)
         elif n[i].kind == nkRange:

@@ -224,7 +224,8 @@ proc makeClosure*(g: ModuleGraph; idgen: IdGenerator; prc: PSym; env: PNode; inf
   else:
     if env.skipConv.kind == nkClosure:
       localError(g.config, info, "internal error: taking closure of closure")
-    result.add(env)
+    # Create a fresh copy to avoid node sharing issues with DFA
+    result.add(if env.kind == nkSym: newSymNode(env.sym, env.info) else: env)
   #if isClosureIterator(result.typ):
   createTypeBoundOps(g, nil, result.typ, info, idgen)
   if tfHasAsgn in result.typ.flags or optSeqDestructors in g.config.globalOptions:
