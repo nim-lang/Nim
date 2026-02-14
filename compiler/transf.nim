@@ -26,9 +26,6 @@ import
   lowerings, liftlocals,
   modulegraphs, lineinfos
 
-when defined(nimExperimentalPreLiftDestruct):
-  import injectdestructors
-
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
@@ -1313,16 +1310,7 @@ proc transformBody*(g: ModuleGraph; idgen: IdGenerator; prc: PSym; flags: Transf
   else:
     prc.transformedBody = newNode(nkEmpty) # protects from recursion
     var c = openTransf(g, prc.getModule, "", idgen, flags)
-
-    when defined(nimExperimentalPreLiftDestruct):
-      # EXPERIMENTAL: Inject destructors BEFORE lambda lifting
-      # This allows DFA to work on pre-lifted AST without closure-specific hacks
-      var body = getBody(g, prc)
-      if sfInjectDestructors in prc.flags:
-        body = injectDestructorCalls(g, idgen, prc, body)
-      result = liftLambdas(g, prc, body, c.tooEarly, c.idgen, flags)
-    else:
-      result = liftLambdas(g, prc, getBody(g, prc), c.tooEarly, c.idgen, flags)
+    result = liftLambdas(g, prc, getBody(g, prc), c.tooEarly, c.idgen, flags)
 
     result = processTransf(c, result, prc)
     liftDefer(c, result)

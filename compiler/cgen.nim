@@ -1311,9 +1311,8 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
   assert(prc.ast != nil)
 
   var procBody = transformBody(m.g.graph, m.idgen, prc, {})
-  when not defined(nimExperimentalPreLiftDestruct):
-    if sfInjectDestructors in prc.flags:
-      procBody = injectDestructorCalls(m.g.graph, m.idgen, prc, procBody)
+  if sfInjectDestructors in prc.flags:
+    procBody = injectDestructorCalls(m.g.graph, m.idgen, prc, procBody)
 
   let tmpInfo = prc.info
   discard freshLineInfo(p, prc.info)
@@ -2449,9 +2448,8 @@ proc handleProcGlobals(m: BModule) =
     # fixes recursive calls #24997
     swap stmts, m.preInitProc.s(cpsStmts)
     var transformedN = procGlobals[i]
-    when not defined(nimExperimentalPreLiftDestruct):
-      if sfInjectDestructors in m.module.flags:
-        transformedN = injectDestructorCalls(m.g.graph, m.idgen, m.module, transformedN)
+    if sfInjectDestructors in m.module.flags:
+      transformedN = injectDestructorCalls(m.g.graph, m.idgen, m.module, transformedN)
     genStmts(m.preInitProc, transformedN)
     swap stmts, m.preInitProc.s(cpsStmts)
 
@@ -2465,9 +2463,8 @@ proc genTopLevelStmt*(m: BModule; n: PNode) =
   #softRnl = if optLineDir in m.config.options: noRnl else: rnl
   # XXX replicate this logic!
   var transformedN = transformStmt(m.g.graph, m.idgen, m.module, n)
-  when not defined(nimExperimentalPreLiftDestruct):
-    if sfInjectDestructors in m.module.flags:
-      transformedN = injectDestructorCalls(m.g.graph, m.idgen, m.module, transformedN)
+  if sfInjectDestructors in m.module.flags:
+    transformedN = injectDestructorCalls(m.g.graph, m.idgen, m.module, transformedN)
 
   if m.hcrOn:
     addHcrInitGuards(m.initProc, transformedN, m.inHcrInitGuard, m.hcrInitGuard)

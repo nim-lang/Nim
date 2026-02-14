@@ -26,7 +26,6 @@ import ast, lineinfos, renderer, aliasanalysis
 import std/private/asciitables
 import std/intsets
 import std/tables
-import std/algorithm
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -296,33 +295,23 @@ proc genCase(c: var Con; n: PNode) =
     traverse(n)
     result = res
   let isStateCase = isStateAccess(n[0])
-  var branchOrder: seq[int] = @[]
-  if isStateCase:
-    var labeled: seq[(int, int)] = @[]
-    var others: seq[int] = @[]
-    var elseIdx = -1
-    for i in 1..<n.len:
-      let it = n[i]
-      if it.len == 1:
-        elseIdx = i
-      else:
-        var stateId = high(int)
-        for j in 0..it.len-2:
-          if it[j].kind == nkIntLit:
-            stateId = it[j].intVal.int
-            break
-        if stateId != high(int):
-          labeled.add (stateId, i)
-        else:
-          others.add i
-    labeled.sort(proc (a, b: (int, int)): int = cmp(a[0], b[0]))
-    for it in labeled: branchOrder.add it[1]
-    for i in others: branchOrder.add i
-    if elseIdx >= 0: branchOrder.add elseIdx
-  else:
-    for i in 1..<n.len: branchOrder.add i
+  # State case branches are already sorted by closureiters.nim, so we can
+  # process them in order without needing to sort here.
+  when defined(debug):
+    if isStateCase:
+      # Verify that state branches are in sorted order
+      var lastStateId = -1
+      for i in 1..<n.len:
+        let it = n[i]
+        if it.len >= 2:
+          for j in 0..it.len-2:
+            if it[j].kind == nkIntLit:
+              let stateId = it[j].intVal.int
+              assert stateId > lastStateId, "State case branches are not sorted: " & $lastStateId & " >= " & $stateId
+              lastStateId = stateId
+              break
 
-  for i in branchOrder:
+  for i in 1..<n.len:
     let it = n[i]
     if isStateCase and it.len >= 2:
       for j in 0..it.len-2:
