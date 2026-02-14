@@ -1,0 +1,195 @@
+(.nif26)
+(.indexat +6218            )
+1,1,/home/araq/projects/nim/lib/std/private/bitops_utils.nim(stmts . .
+ (implementation) 8
+ (sd :forwardImpl.0. x
+  (template) . egn4d3a1 . -1 +0 .
+  (td :`t25.3. . m nimcall -1 -1 +0 +3 . 21,1,/home/araq/projects/nim/lib/std/private/bitops_utils.nim
+   (formalparams . .
+    (arglist . .) 1
+    (sd :impl.0 .
+     (param) . t0 . -1 +0 .
+     (td :`t6.4. . . nimcall -1 -1 +0 +4 . . forwardImpl.0. . none unknown . "") forwardImpl.0. . none unknown . "" . .) 7
+    (sd :arg.0 .
+     (param) . t0 . -1 +1 . `t6.4. forwardImpl.0. . none unknown . "" . .)) forwardImpl.0. . none unknown . "" .) ~8
+  (sd :bitops_utils.0. .
+   (module) . . . +0 . . . 1,1,/home/araq/projects/nim/lib/system.nim
+   (sd :stdlib.0. .
+    (package) . . . -1 +0 . . . . none unknown . "" . .) . none unknown . "" . .) ~9
+  (template s . 9
+   (ht . forwardImpl.0.)
+   (empty)
+   (empty) . 33
+   (pragma . . 2
+    (ident . . dirty))
+   (empty) 2,1
+   (stmts . .
+    (when . . 5
+     (elif . . 10
+      (infix . .
+       (ident . . <=) ~4
+       (call . . ~6
+        (ident . . sizeof) 1
+        (ident . . x)) 3
+       (intlit . . +4)) ~3,1
+      (stmts . .
+       (when . . 5
+        (elif . . 2
+         (infix . .
+          (ident . . is) ~2
+          (ident . . x) 3
+          (ident . . SomeSignedInt)) ~3,1
+         (stmts . . 4
+          (call . . ~4 impl.0 1
+           (cast . . 5
+            (ident . . uint32) 14
+            (dot . . ~1
+             (ident . . x) 1
+             (ident . . int32)))))) ,2
+        (else . . 2,1
+         (stmts . . 4
+          (call . . ~4 impl.0 2
+           (dot . . ~1
+            (ident . . x) 1
+            (ident . . uint32)))))))) ,5
+     (else . . 2,1
+      (stmts . .
+       (when . . 5
+        (elif . . 2
+         (infix . .
+          (ident . . is) ~2
+          (ident . . x) 3
+          (ident . . SomeSignedInt)) ~3,1
+         (stmts . . 4
+          (call . . ~4 impl.0 1
+           (cast . . 5
+            (ident . . uint64) 14
+            (dot . . ~1
+             (ident . . x) 1
+             (ident . . int64)))))) ,2
+        (else . . 2,1
+         (stmts . . 4
+          (call . . ~4 impl.0 2
+           (dot . . ~1
+            (ident . . x) 1
+            (ident . . uint64))))))))))) none unknown . "" . .) 8,16
+ (sd :castToUnsigned.0. x
+  (template) . egn4 . -1 +0 .
+  (td :`t25.5. . . nimcall -1 -1 +0 +5 . 24,17,/home/araq/projects/nim/lib/std/private/bitops_utils.nim
+   (formalparams . `t41.9.sysma2dyk
+    (arglist . .) 1
+    (sd :x.0 .
+     (param) . ut0 . -1 +0 . `t32.4.sysma2dyk castToUnsigned.0. . none unknown . "" . .)) castToUnsigned.0. . none unknown . "" `t41.9.sysma2dyk) bitops_utils.0. ~9
+  (template s . 9
+   (ht . castToUnsigned.0.)
+   (empty)
+   (empty) .
+   (empty)
+   (empty) 43
+   (stmts . .
+    (cast . . 5
+     (ht . uint8.0.sysma2dyk) 12 x.0))) none unknown . "" . .) 8,17
+ (sd :castToUnsigned.1. x
+  (template) . egn4 . -1 +0 .
+  (td :`t25.7. . . nimcall -1 -1 +0 +7 . 24,18,/home/araq/projects/nim/lib/std/private/bitops_utils.nim
+   (formalparams . `t42.10.sysma2dyk
+    (arglist . .) 1
+    (sd :x.1 .
+     (param) . ut0 . -1 +0 . `t33.5.sysma2dyk castToUnsigned.1. . none unknown . "" . .)) castToUnsigned.1. . none unknown . "" `t42.10.sysma2dyk) bitops_utils.0. ~9
+  (template s . 9
+   (ht . castToUnsigned.1.)
+   (empty)
+   (empty) .
+   (empty)
+   (empty) 45
+   (stmts . .
+    (cast . . 5
+     (ht . uint16.0.sysma2dyk) 13 x.1))) none unknown . "" . .) 8,18
+ (sd :castToUnsigned.2. x
+  (template) . egn4 . -1 +0 .
+  (td :`t25.9. . . nimcall -1 -1 +0 +9 . 24,19,/home/araq/projects/nim/lib/std/private/bitops_utils.nim
+   (formalparams . `t43.11.sysma2dyk
+    (arglist . .) 1
+    (sd :x.2 .
+     (param) . ut0 . -1 +0 . `t34.6.sysma2dyk castToUnsigned.2. . none unknown . "" . .)) castToUnsigned.2. . none unknown . "" `t43.11.sysma2dyk) bitops_utils.0. ~9
+  (template s . 9
+   (ht . castToUnsigned.2.)
+   (empty)
+   (empty) .
+   (empty)
+   (empty) 45
+   (stmts . .
+    (cast . . 5
+     (ht . uint32.0.sysma2dyk) 13 x.2))) none unknown . "" . .) 8,19
+ (sd :castToUnsigned.3. x
+  (template) . egn4 . -1 +0 .
+  (td :`t25.11. . . nimcall -1 -1 +0 +11 . 24,20,/home/araq/projects/nim/lib/std/private/bitops_utils.nim
+   (formalparams . `t44.12.sysma2dyk
+    (arglist . .) 1
+    (sd :x.3 .
+     (param) . ut0 . -1 +0 . `t35.7.sysma2dyk castToUnsigned.3. . none unknown . "" . .)) castToUnsigned.3. . none unknown . "" `t44.12.sysma2dyk) bitops_utils.0. ~9
+  (template s . 9
+   (ht . castToUnsigned.3.)
+   (empty)
+   (empty) .
+   (empty)
+   (empty) 45
+   (stmts . .
+    (cast . . 5
+     (ht . uint64.0.sysma2dyk) 13 x.3))) none unknown . "" . .) 8,20
+ (sd :castToUnsigned.4. x
+  (template) . egn4 . -1 +0 .
+  (td :`t25.13. . . nimcall -1 -1 +0 +13 . 24,21,/home/araq/projects/nim/lib/std/private/bitops_utils.nim
+   (formalparams . `t40.8.sysma2dyk
+    (arglist . .) 1
+    (sd :x.4 .
+     (param) . ut0 . -1 +0 . `t31.3.sysma2dyk castToUnsigned.4. . none unknown . "" . .)) castToUnsigned.4. . none unknown . "" `t40.8.sysma2dyk) bitops_utils.0. ~9
+  (template s . 9
+   (ht . castToUnsigned.4.)
+   (empty)
+   (empty) .
+   (empty)
+   (empty) 41
+   (stmts . .
+    (cast . . 5
+     (ht . uint.0.sysma2dyk) 11 x.4))) none unknown . "" . .) 8,21
+ (sd :castToUnsigned.5. x
+  (template) . egn4 . -1 +0 .
+  (td :`t25.16. . m nimcall -1 -1 +0 +16 . 44,22,/home/araq/projects/nim/lib/std/private/bitops_utils.nim
+   (formalparams .
+    (td :`t12.15. . g0 nimcall -1 -1 +0 +15 . . castToUnsigned.5. 25,22,/home/araq/projects/nim/lib/std/private/bitops_utils.nim
+     (sd :T.0 .
+      (type) . u . -1 +0 . `t12.15. castToUnsigned.5. . none unknown . "" . .) none unknown . "" `t57.39.sysma2dyk)
+    (arglist . .) 1
+    (sd :x.5 .
+     (param) . ut0 . -1 +0 . `t12.15. castToUnsigned.5. . none unknown . "" . .)) castToUnsigned.5. . none unknown . "" `t12.15.) bitops_utils.0. ~9
+  (template s . 9
+   (ht . castToUnsigned.5.)
+   (empty) 24
+   (genericparams . . 1 T.0) .
+   (empty)
+   (bracket . .
+    (empty) 24,22,/home/araq/projects/nim/lib/std/private/bitops_utils.nim
+    (genericparams . . 1
+     (identdefs . .
+      (ident . . T) 3 SomeUnsignedInt.0.sysma2dyk
+      (empty)))) 56
+   (stmts . . x.5)) none unknown . "" . .))1,1,/home/araq/projects/nim/lib/std/private/bitops_utils.nim(.index 8
+ (x forwardImpl.0. +128)
+ (h `t25.3. +57)
+ (h `t6.4. +190)
+ (h bitops_utils.0. +257) 1,1,/home/araq/projects/nim/lib/system.nim
+ (h stdlib.0. +95) 8,16
+ (x castToUnsigned.0. +1556)
+ (h `t25.5. +56) 8,17
+ (x castToUnsigned.1. +533)
+ (h `t25.7. +56) 8,18
+ (x castToUnsigned.2. +536)
+ (h `t25.9. +56) 8,19
+ (x castToUnsigned.3. +536)
+ (h `t25.11. +56) 8,20
+ (x castToUnsigned.4. +538)
+ (h `t25.13. +56) 8,21
+ (x castToUnsigned.5. +534)
+ (h `t25.16. +56)
+ (h `t12.15. +125))

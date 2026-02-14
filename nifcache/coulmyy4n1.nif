@@ -1,0 +1,607 @@
+(.nif26)
+(.indexat +29850           )
+1,1,/home/araq/projects/nim/lib/system/countbits_impl.nim(stmts . . ~1,11
+ (import . . "bitk5e76j")
+ (replay 48,39
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "__builtin_popcount")) 12,41
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "__builtin_popcountll")))
+ (implementation) ~1,9
+ (comment sh .) ~1,13
+ (const s . 6
+  (sd :useBuiltins.0. x
+   (const) . ueg r0whtl0t0c0 -1 +0 . `t1.34.sysma2dyk ~5,~13
+   (sd :countbits_impl.0. .
+    (module) . . . +0 . . . 1,1,/home/araq/projects/nim/lib/system.nim
+    (sd :stdlib.0. .
+     (package) . . . -1 +0 . . . . none unknown . "" . .) . none unknown . "" . .)
+   (const0 . . useBuiltins.0.
+    (empty) 15
+    (intlit . `t1.34.sysma2dyk +1)) none unknown . "" . .)) ~1,14
+ (const s . 6
+  (sd :noUndefined.0. x
+   (const) . eg r0whtl0t0c0 -1 +0 . `t1.34.sysma2dyk countbits_impl.0.
+   (const0 . . noUndefined.0.
+    (empty) 22
+    (intlit . `t1.34.sysma2dyk +0)) none unknown . "" . .)) ~1,15
+ (const s . 6
+  (sd :useGCC_builtins.0. x
+   (const) . ueg r0whtl0t0c0 -1 +0 . `t1.34.sysma2dyk countbits_impl.0.
+   (const0 . . useGCC_builtins.0.
+    (empty) 35,1
+    (intlit . `t1.34.sysma2dyk +1)) none unknown . "" . .)) ~1,17
+ (const s . 6
+  (sd :useICC_builtins.0. x
+   (const) . ueg r0whtl0t0c0 -1 +0 . `t1.34.sysma2dyk countbits_impl.0.
+   (const0 . . useICC_builtins.0.
+    (empty) 32
+    (intlit . `t1.34.sysma2dyk +0)) none unknown . "" . .)) ~1,18
+ (const s . 6
+  (sd :useVCC_builtins.0. x
+   (const) . ueg r0whtl0t0c0 -1 +0 . `t1.34.sysma2dyk countbits_impl.0.
+   (const0 . . useVCC_builtins.0.
+    (empty) 32
+    (intlit . `t1.34.sysma2dyk +0)) none unknown . "" . .)) ~1,19
+ (const s . 6
+  (sd :arch64.0. x
+   (const) . ueg r0whtl0t0c0 -1 +0 . `t1.34.sysma2dyk countbits_impl.0.
+   (const0 . . arch64.0.
+    (empty) 22
+    (intlit . `t1.34.sysma2dyk +1)) none unknown . "" . .)) 8,21
+ (sd :countBitsImpl.0. .
+  (template) . ugn4 . -1 +0 .
+  (td :`t25.5. . . nimcall -1 -1 +0 +5 . 22,22,/home/araq/projects/nim/lib/system/countbits_impl.nim
+   (formalparams . `t31.3.sysma2dyk
+    (arglist . .) 1
+    (sd :n.0 .
+     (param) . ut0 . -1 +0 . `t43.11.sysma2dyk countBitsImpl.0. . none unknown . "" . .)) countBitsImpl.0. . none unknown . "" `t31.3.sysma2dyk) countbits_impl.0. ~9
+  (template s . 9
+   (ht . countBitsImpl.0.)
+   (empty)
+   (empty) .
+   (empty)
+   (empty) 2,2
+   (stmts . .
+    (var . . 4
+     (identdefs . .
+      (sd :v.0 .
+       (var . +0 +0) . us1g0 . -1 +0 . . countBitsImpl.0. . none unknown . "" . .) 2
+      (empty) 10
+      (call . . ~6
+       (ht . uint32.0.sysma2dyk) 1 n.0))) 2,1
+    (asgn . . ~2 v.0 4
+     (infix . .
+      (opensymchoice d3 . \2D.1.sysma2dyk \2D.19.sysma2dyk \2D.6.sysma2dyk \2D.0.sysma2dyk \2D.14.sysma2dyk \2D.2.sysma2dyk \2D.10.sysma2dyk \2D.17.sysma2dyk \2D.15.sysma2dyk \2D.13.sysma2dyk \2D.4.sysma2dyk \2D.9.sysma2dyk \2D.11.sysma2dyk \2D.5.sysma2dyk \2D.3.sysma2dyk \2D.20.sysma2dyk \2D.7.sysma2dyk \2D.16.sysma2dyk \2D.12.sysma2dyk \2D.18.sysma2dyk \2D.8.sysma2dyk) ~2 v.0 2
+      (par . . 15
+       (infix . .
+        (opensymchoice d3 . and.0.sysma2dyk and.7.sysma2dyk and.2.sysma2dyk and.5.sysma2dyk and.9.sysma2dyk and.11.sysma2dyk and.4.sysma2dyk and.3.sysma2dyk and.1.sysma2dyk and.8.sysma2dyk and.6.sysma2dyk and.10.sysma2dyk) ~14
+        (par . . 3
+         (infix . .
+          (opensymchoice d3 . shr.9.sysma2dyk shr.2.sysma2dyk shr.4.sysma2dyk shr.5.sysma2dyk shr.8.sysma2dyk shr.3.sysma2dyk shr.7.sysma2dyk shr.0.sysma2dyk shr.6.sysma2dyk shr.1.sysma2dyk) ~2 v.0 4
+          (uint32lit . . +1u))) 4
+        (uint32lit b1 . +1431655765u))))) 2,2
+    (asgn . . ~2 v.0 25
+     (infix . .
+      (opensymchoice d3 . \2B.16.sysma2dyk \2B.17.sysma2dyk \2B.18.sysma2dyk \2B.5.sysma2dyk \2B.8.sysma2dyk \2B.13.sysma2dyk \2B.14.sysma2dyk \2B.15.sysma2dyk \2B.1.sysma2dyk \2B.7.sysma2dyk \2B.9.sysma2dyk \2B.4.sysma2dyk \2B.2.sysma2dyk \2B.6.sysma2dyk \2B.11.sysma2dyk \2B.12.sysma2dyk \2B.0.sysma2dyk \2B.10.sysma2dyk \2B.19.sysma2dyk \2B.3.sysma2dyk) ~23
+      (par . . 3
+       (infix . .
+        (opensymchoice d3 . and.0.sysma2dyk and.7.sysma2dyk and.2.sysma2dyk and.5.sysma2dyk and.9.sysma2dyk and.11.sysma2dyk and.4.sysma2dyk and.3.sysma2dyk and.1.sysma2dyk and.8.sysma2dyk and.6.sysma2dyk and.10.sysma2dyk) ~2 v.0 4
+        (uint32lit b1 . +858993459u))) 2
+      (par . . 15
+       (infix . .
+        (opensymchoice d3 . and.0.sysma2dyk and.7.sysma2dyk and.2.sysma2dyk and.5.sysma2dyk and.9.sysma2dyk and.11.sysma2dyk and.4.sysma2dyk and.3.sysma2dyk and.1.sysma2dyk and.8.sysma2dyk and.6.sysma2dyk and.10.sysma2dyk) ~14
+        (par . . 3
+         (infix . .
+          (opensymchoice d3 . shr.9.sysma2dyk shr.2.sysma2dyk shr.4.sysma2dyk shr.5.sysma2dyk shr.8.sysma2dyk shr.3.sysma2dyk shr.7.sysma2dyk shr.0.sysma2dyk shr.6.sysma2dyk shr.1.sysma2dyk) ~2 v.0 4
+          (uint32lit . . +2u))) 4
+        (uint32lit b1 . +858993459u))))) 68,3
+    (dot . . ~68
+     (par . . 57
+      (infix . .
+       (opensymchoice d3 . shr.9.sysma2dyk shr.2.sysma2dyk shr.4.sysma2dyk shr.5.sysma2dyk shr.8.sysma2dyk shr.3.sysma2dyk shr.7.sysma2dyk shr.0.sysma2dyk shr.6.sysma2dyk shr.1.sysma2dyk) ~56
+       (par . . 39
+        (infix . .
+         (opensymchoice d3 . *.12.sysma2dyk *.7.sysma2dyk *.9.sysma2dyk *.2.sysma2dyk *.0.sysma2dyk *.6.sysma2dyk *.5.sysma2dyk *.8.sysma2dyk *.4.sysma2dyk *.1.sysma2dyk *.10.sysma2dyk *.11.sysma2dyk *.3.sysma2dyk) ~38
+         (par . . 19
+          (infix . .
+           (opensymchoice d3 . and.0.sysma2dyk and.7.sysma2dyk and.2.sysma2dyk and.5.sysma2dyk and.9.sysma2dyk and.11.sysma2dyk and.4.sysma2dyk and.3.sysma2dyk and.1.sysma2dyk and.8.sysma2dyk and.6.sysma2dyk and.10.sysma2dyk) ~16
+           (infix . .
+            (opensymchoice d3 . \2B.16.sysma2dyk \2B.17.sysma2dyk \2B.18.sysma2dyk \2B.5.sysma2dyk \2B.8.sysma2dyk \2B.13.sysma2dyk \2B.14.sysma2dyk \2B.15.sysma2dyk \2B.1.sysma2dyk \2B.7.sysma2dyk \2B.9.sysma2dyk \2B.4.sysma2dyk \2B.2.sysma2dyk \2B.6.sysma2dyk \2B.11.sysma2dyk \2B.12.sysma2dyk \2B.0.sysma2dyk \2B.10.sysma2dyk \2B.19.sysma2dyk \2B.3.sysma2dyk) ~2 v.0 2
+            (par . . 3
+             (infix . .
+              (opensymchoice d3 . shr.9.sysma2dyk shr.2.sysma2dyk shr.4.sysma2dyk shr.5.sysma2dyk shr.8.sysma2dyk shr.3.sysma2dyk shr.7.sysma2dyk shr.0.sysma2dyk shr.6.sysma2dyk shr.1.sysma2dyk) ~2 v.0 4
+              (uint32lit . . +4u)))) 4
+           (uint32lit b1 . +252645135u))) 2
+         (uint32lit b1 . +16843009u))) 4
+       (uint32lit . . +24u))) 1
+     (ht
+      (td :`t8.19. . . nimcall -1 -1 +0 +19 . . system.0.sysma2dyk . none unknown . "" `t31.3.sysma2dyk) int.0.sysma2dyk)))) none unknown . "" . .) 8,28
+ (sd :countBitsImpl.1. .
+  (template) . ugn4 . -1 +0 .
+  (td :`t25.20. . . nimcall -1 -1 +0 +20 . 22,29,/home/araq/projects/nim/lib/system/countbits_impl.nim
+   (formalparams . `t31.3.sysma2dyk
+    (arglist . .) 1
+    (sd :n.1 .
+     (param) . ut0 . -1 +0 . `t44.12.sysma2dyk countBitsImpl.1. . none unknown . "" . .)) countBitsImpl.1. . none unknown . "" `t31.3.sysma2dyk) countbits_impl.0. ~9
+  (template s . 9
+   (ht . countBitsImpl.1.)
+   (empty)
+   (empty) .
+   (empty)
+   (empty) 2,2
+   (stmts . .
+    (var . . 4
+     (identdefs . .
+      (sd :v.1 .
+       (var . +0 +0) . us1g0 . -1 +0 . . countBitsImpl.1. . none unknown . "" . .) 2
+      (empty) 10
+      (call . . ~6
+       (ht . uint64.0.sysma2dyk) 1 n.1))) 2,1
+    (asgn . . ~2 v.1 4
+     (infix . .
+      (opensymchoice d3 . \2D.1.sysma2dyk \2D.19.sysma2dyk \2D.6.sysma2dyk \2D.0.sysma2dyk \2D.14.sysma2dyk \2D.2.sysma2dyk \2D.10.sysma2dyk \2D.17.sysma2dyk \2D.15.sysma2dyk \2D.13.sysma2dyk \2D.4.sysma2dyk \2D.9.sysma2dyk \2D.11.sysma2dyk \2D.5.sysma2dyk \2D.3.sysma2dyk \2D.20.sysma2dyk \2D.7.sysma2dyk \2D.16.sysma2dyk \2D.12.sysma2dyk \2D.18.sysma2dyk \2D.8.sysma2dyk) ~2 v.1 2
+      (par . . 15
+       (infix . .
+        (opensymchoice d3 . and.0.sysma2dyk and.7.sysma2dyk and.2.sysma2dyk and.5.sysma2dyk and.9.sysma2dyk and.11.sysma2dyk and.4.sysma2dyk and.3.sysma2dyk and.1.sysma2dyk and.8.sysma2dyk and.6.sysma2dyk and.10.sysma2dyk) ~14
+        (par . . 3
+         (infix . .
+          (opensymchoice d3 . shr.9.sysma2dyk shr.2.sysma2dyk shr.4.sysma2dyk shr.5.sysma2dyk shr.8.sysma2dyk shr.3.sysma2dyk shr.7.sysma2dyk shr.0.sysma2dyk shr.6.sysma2dyk shr.1.sysma2dyk) ~2 v.1 4
+          (uint64lit . . +1u))) 4
+        (uint64lit b1 . +6148914691236517205u))))) 2,2
+    (asgn . . ~2 v.1 33
+     (infix . .
+      (opensymchoice d3 . \2B.16.sysma2dyk \2B.17.sysma2dyk \2B.18.sysma2dyk \2B.5.sysma2dyk \2B.8.sysma2dyk \2B.13.sysma2dyk \2B.14.sysma2dyk \2B.15.sysma2dyk \2B.1.sysma2dyk \2B.7.sysma2dyk \2B.9.sysma2dyk \2B.4.sysma2dyk \2B.2.sysma2dyk \2B.6.sysma2dyk \2B.11.sysma2dyk \2B.12.sysma2dyk \2B.0.sysma2dyk \2B.10.sysma2dyk \2B.19.sysma2dyk \2B.3.sysma2dyk) ~31
+      (par . . 3
+       (infix . .
+        (opensymchoice d3 . and.0.sysma2dyk and.7.sysma2dyk and.2.sysma2dyk and.5.sysma2dyk and.9.sysma2dyk and.11.sysma2dyk and.4.sysma2dyk and.3.sysma2dyk and.1.sysma2dyk and.8.sysma2dyk and.6.sysma2dyk and.10.sysma2dyk) ~2 v.1 4
+        (uint64lit b1 . +3689348814741910323u))) 2
+      (par . . 15
+       (infix . .
+        (opensymchoice d3 . and.0.sysma2dyk and.7.sysma2dyk and.2.sysma2dyk and.5.sysma2dyk and.9.sysma2dyk and.11.sysma2dyk and.4.sysma2dyk and.3.sysma2dyk and.1.sysma2dyk and.8.sysma2dyk and.6.sysma2dyk and.10.sysma2dyk) ~14
+        (par . . 3
+         (infix . .
+          (opensymchoice d3 . shr.9.sysma2dyk shr.2.sysma2dyk shr.4.sysma2dyk shr.5.sysma2dyk shr.8.sysma2dyk shr.3.sysma2dyk shr.7.sysma2dyk shr.0.sysma2dyk shr.6.sysma2dyk shr.1.sysma2dyk) ~2 v.1 4
+          (uint64lit . . +2u))) 4
+        (uint64lit b1 . +3689348814741910323u))))) 2,3
+    (asgn . . ~2 v.1 2
+     (par . . 19
+      (infix . .
+       (opensymchoice d3 . and.0.sysma2dyk and.7.sysma2dyk and.2.sysma2dyk and.5.sysma2dyk and.9.sysma2dyk and.11.sysma2dyk and.4.sysma2dyk and.3.sysma2dyk and.1.sysma2dyk and.8.sysma2dyk and.6.sysma2dyk and.10.sysma2dyk) ~16
+       (infix . .
+        (opensymchoice d3 . \2B.16.sysma2dyk \2B.17.sysma2dyk \2B.18.sysma2dyk \2B.5.sysma2dyk \2B.8.sysma2dyk \2B.13.sysma2dyk \2B.14.sysma2dyk \2B.15.sysma2dyk \2B.1.sysma2dyk \2B.7.sysma2dyk \2B.9.sysma2dyk \2B.4.sysma2dyk \2B.2.sysma2dyk \2B.6.sysma2dyk \2B.11.sysma2dyk \2B.12.sysma2dyk \2B.0.sysma2dyk \2B.10.sysma2dyk \2B.19.sysma2dyk \2B.3.sysma2dyk) ~2 v.1 2
+        (par . . 3
+         (infix . .
+          (opensymchoice d3 . shr.9.sysma2dyk shr.2.sysma2dyk shr.4.sysma2dyk shr.5.sysma2dyk shr.8.sysma2dyk shr.3.sysma2dyk shr.7.sysma2dyk shr.0.sysma2dyk shr.6.sysma2dyk shr.1.sysma2dyk) ~2 v.1 4
+          (uint64lit . . +4u)))) 4
+       (uint64lit b1 . +1085102592571150095u)))) 41,4
+    (dot . . ~41
+     (par . . 30
+      (infix . .
+       (opensymchoice d3 . shr.9.sysma2dyk shr.2.sysma2dyk shr.4.sysma2dyk shr.5.sysma2dyk shr.8.sysma2dyk shr.3.sysma2dyk shr.7.sysma2dyk shr.0.sysma2dyk shr.6.sysma2dyk shr.1.sysma2dyk) ~29
+       (par . . 3
+        (infix . .
+         (opensymchoice d3 . *.12.sysma2dyk *.7.sysma2dyk *.9.sysma2dyk *.2.sysma2dyk *.0.sysma2dyk *.6.sysma2dyk *.5.sysma2dyk *.8.sysma2dyk *.4.sysma2dyk *.1.sysma2dyk *.10.sysma2dyk *.11.sysma2dyk *.3.sysma2dyk) ~2 v.1 2
+         (uint64lit b1 . +72340172838076673u))) 4
+       (uint64lit . . +56u))) 1
+     (ht
+      (td :`t8.34. . . nimcall -1 -1 +0 +34 . . system.0.sysma2dyk . none unknown . "" `t31.3.sysma2dyk) int.0.sysma2dyk)))) none unknown . "" . .) 6,39
+ (sd :builtin_popcount.0. .
+  (proc) . ugi r0whtl0t0c0 -1 +0 .
+  (td :`t25.35. . e1e2 cdecl -1 -1 +0 +35 . 23,40,/home/araq/projects/nim/lib/system/countbits_impl.nim
+   (formalparams . `t34.11.cty9mra12
+    (arglist . .
+     (arglist . .) . .
+     (arglist . .) 17
+     (pragma . . 9
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "__builtin_popcount")) 33
+      (ident . . cdecl))
+     (arglist . .)) 1
+    (sd :x.0 .
+     (param) . . . -1 +0 . `t43.19.cty9mra12 builtin_popcount.0. . none unknown . "" . .)) builtin_popcount.0. . none unknown . "" `t34.11.cty9mra12) countbits_impl.0. ~5
+  (proc s . 5
+   (ht . builtin_popcount.0.)
+   (empty)
+   (empty) . 38
+   (pragma . . 9
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "__builtin_popcount")) 33
+    (ident . . cdecl))
+   (empty)
+   (empty)) none unknown . "__builtin_popcount" . .) 6,40
+ (sd :builtin_popcountll.0. .
+  (proc) . ugi r0whtl0t0c0 -1 +0 .
+  (td :`t25.36. . e1e2 cdecl -1 -1 +0 +36 . 25,41,/home/araq/projects/nim/lib/system/countbits_impl.nim
+   (formalparams . `t34.11.cty9mra12
+    (arglist . .
+     (arglist . .) . .
+     (arglist . .) 22
+     (pragma . . ~34,1
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "__builtin_popcountll")) ~8,1
+      (ident . . cdecl))
+     (arglist . .)) 1
+    (sd :x.1 .
+     (param) . . . -1 +0 . `t44.20.cty9mra12 builtin_popcountll.0. . none unknown . "" . .)) builtin_popcountll.0. . none unknown . "" `t34.11.cty9mra12) countbits_impl.0. ~5
+  (proc s . 5
+   (ht . builtin_popcountll.0.)
+   (empty)
+   (empty) . 45
+   (pragma . . ~34,1
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "__builtin_popcountll")) ~8,1
+    (ident . . cdecl))
+   (empty)
+   (empty)) none unknown . "__builtin_popcountll" . .) 4,62
+ (sd :countSetBitsImpl.0. x
+  (func) . egn r0whtl0t0c0 -1 +0 .
+  (td :`t25.37. . nume1e2 inline -1 -1 +0 +37 . 22,63,/home/araq/projects/nim/lib/system/countbits_impl.nim
+   (formalparams . `t31.3.sysma2dyk
+    (arglist . . . . . . 22
+     (pragma . . 2
+      (ident . . inline)) .) 1
+    (sd :x.2 .
+     (param) . u . -1 +0 .
+     (td :`t57.38. . mi1 nimcall -1 -1 +0 +38 . . countSetBitsImpl.0. 23,63,/home/araq/projects/nim/lib/system/countbits_impl.nim
+      (sd :SomeInteger.0 .
+       (type) . . . -1 +0 . `t57.38. SomeInteger.0.sysma2dyk . none unknown . "" . .) none unknown . "" `t31.3.sysma2dyk `t32.4.sysma2dyk `t33.5.sysma2dyk `t34.6.sysma2dyk `t35.7.sysma2dyk `t40.8.sysma2dyk `t41.9.sysma2dyk `t42.10.sysma2dyk `t43.11.sysma2dyk `t44.12.sysma2dyk) countSetBitsImpl.0. . none unknown . "" . .)) countSetBitsImpl.0. . none unknown . "" `t31.3.sysma2dyk) countbits_impl.0. ~5
+  (func s . 5
+   (ht . countSetBitsImpl.0.)
+   (empty)
+   (genericparams . . 23 SomeInteger.0) . 44
+   (pragma . . 2
+    (ident . . inline))
+   (bracket . .
+    (empty)
+    (empty)) 2,1
+   (stmts . .
+    (comment h .) ,3
+    (let . . 4
+     (identdefs . .
+      (ident . . x) 2
+      (empty) 5
+      (dot . . ~1
+       (ident . . x) 1
+       (opensymchoice .
+        (td :`t0.39. . . nimcall -1 -1 +0 +39 . . countSetBitsImpl.0. . none unknown . "") castToUnsigned.3.bitk5e76j castToUnsigned.1.bitk5e76j castToUnsigned.2.bitk5e76j castToUnsigned.0.bitk5e76j castToUnsigned.4.bitk5e76j castToUnsigned.5.bitk5e76j)))) ,4
+    (when . . 5
+     (elif . . nimvm.0.sysma2dyk ~3,1
+      (stmts . . 7
+       (asgn . . ~7
+        (ident . . result) 2
+        (stmts f . 11
+         (when . . 7,2,/home/araq/projects/nim/lib/std/private/bitops_utils.nim
+          (elif . . 10
+           (infix . .
+            (opensymchoice .
+             (td :`t0.40. . . nimcall -1 -1 +0 +40 . . countSetBitsImpl.0. . none unknown . "") <=.15.sysma2dyk <=.3.sysma2dyk <=.1.sysma2dyk <=.10.sysma2dyk <=.2.sysma2dyk <=.12.sysma2dyk <=.11.sysma2dyk <=.13.sysma2dyk <=.9.sysma2dyk <=.18.sysma2dyk <=.7.sysma2dyk <=.16.sysma2dyk <=.6.sysma2dyk <=.0.sysma2dyk <=.17.sysma2dyk <=.4.sysma2dyk <=.8.sysma2dyk <=.14.sysma2dyk <=.5.sysma2dyk <=.19.sysma2dyk) ~4
+            (call . . ~6
+             (opensymchoice .
+              (td :`t0.41. . . nimcall -1 -1 +0 +41 . . countSetBitsImpl.0. . none unknown . "") sizeof.1.sysma2dyk sizeof.0.sysma2dyk) 1
+             (ident . . x)) 3
+            (intlit . . +4)) ~3,1
+           (stmts . .
+            (when . . 5
+             (elif . . 2
+              (infix . . is.0.sysma2dyk ~2
+               (ident . . x) 3
+               (ht . SomeSignedInt.0.sysma2dyk)) ~3,1
+              (stmts . . 4
+               (call . . 25,69,/home/araq/projects/nim/lib/system/countbits_impl.nim
+                (opensymchoice .
+                 (td :`t0.43. . . nimcall -1 -1 +0 +43 . . countSetBitsImpl.0. . none unknown . "") countBitsImpl.0. countBitsImpl.1.) 1
+                (cast . . 5
+                 (ht . uint32.0.sysma2dyk) 14
+                 (dot . . ~1
+                  (ident . . x) 1
+                  (ht . int32.0.sysma2dyk)))))) ,2
+             (else . . 2,1
+              (stmts . . 4
+               (call . . 25,69,/home/araq/projects/nim/lib/system/countbits_impl.nim
+                (opensymchoice .
+                 (td :`t0.46. . . nimcall -1 -1 +0 +46 . . countSetBitsImpl.0. . none unknown . "") countBitsImpl.0. countBitsImpl.1.) 2
+                (dot . . ~1
+                 (ident . . x) 1
+                 (ht . uint32.0.sysma2dyk)))))))) 2,7,/home/araq/projects/nim/lib/std/private/bitops_utils.nim
+          (else . . 2,1
+           (stmts . .
+            (when . . 5
+             (elif . . 2
+              (infix . . is.0.sysma2dyk ~2
+               (ident . . x) 3
+               (ht . SomeSignedInt.0.sysma2dyk)) ~3,1
+              (stmts . . 4
+               (call . . 25,69,/home/araq/projects/nim/lib/system/countbits_impl.nim
+                (opensymchoice .
+                 (td :`t0.49. . . nimcall -1 -1 +0 +49 . . countSetBitsImpl.0. . none unknown . "") countBitsImpl.0. countBitsImpl.1.) 1
+                (cast . . 5
+                 (ht . uint64.0.sysma2dyk) 14
+                 (dot . . ~1
+                  (ident . . x) 1
+                  (ht . int64.0.sysma2dyk)))))) ,2
+             (else . . 2,1
+              (stmts . . 4
+               (call . . 25,69,/home/araq/projects/nim/lib/system/countbits_impl.nim
+                (opensymchoice .
+                 (td :`t0.52. . . nimcall -1 -1 +0 +52 . . countSetBitsImpl.0. . none unknown . "") countBitsImpl.0. countBitsImpl.1.) 2
+                (dot . . ~1
+                 (ident . . x) 1
+                 (ht . uint64.0.sysma2dyk))))))))))))) ,2
+     (else . . 2,1
+      (stmts . .
+       (when . . 5
+        (elif . .
+         (ht . useGCC_builtins.0.) ~3,1
+         (stmts . .
+          (when . . 5
+           (elif . . 10
+            (infix . .
+             (opensymchoice .
+              (td :`t0.58. . . nimcall -1 -1 +0 +58 . . countSetBitsImpl.0. . none unknown . "") <=.15.sysma2dyk <=.3.sysma2dyk <=.1.sysma2dyk <=.10.sysma2dyk <=.2.sysma2dyk <=.12.sysma2dyk <=.11.sysma2dyk <=.13.sysma2dyk <=.9.sysma2dyk <=.18.sysma2dyk <=.7.sysma2dyk <=.16.sysma2dyk <=.6.sysma2dyk <=.0.sysma2dyk <=.17.sysma2dyk <=.4.sysma2dyk <=.8.sysma2dyk <=.14.sysma2dyk <=.5.sysma2dyk <=.19.sysma2dyk) ~4
+             (call . . ~6
+              (opensymchoice .
+               (td :`t0.59. . . nimcall -1 -1 +0 +59 . . countSetBitsImpl.0. . none unknown . "") sizeof.1.sysma2dyk sizeof.0.sysma2dyk) 1
+              (ident . . x)) 3
+             (intlit . . +4)) 16
+            (stmts . . 7
+             (asgn . . ~7
+              (ident . . result) 27
+              (dot . . ~9
+               (call . . ~16 builtin_popcount.0. 2
+                (dot . . ~1
+                 (ident . . x) 1
+                 (ht . cuint.0.cty9mra12))) 1
+               (ht . int.0.sysma2dyk))))) ,1
+           (else . . 6
+            (stmts . . 7
+             (asgn . . ~7
+              (ident . . result) 34
+              (dot . . ~14
+               (call . . ~18 builtin_popcountll.0. 2
+                (dot . . ~1
+                 (ident . . x) 1
+                 (ht . culonglong.0.cty9mra12))) 1
+               (ht . int.0.sysma2dyk)))))))) 5,3
+        (elif . .
+         (ht . useVCC_builtins.0.) ~3,1
+         (stmts . .
+          (when . . 5
+           (elif . . 10
+            (infix . .
+             (opensymchoice .
+              (td :`t0.64. . . nimcall -1 -1 +0 +64 . . countSetBitsImpl.0. . none unknown . "") <=.15.sysma2dyk <=.3.sysma2dyk <=.1.sysma2dyk <=.10.sysma2dyk <=.2.sysma2dyk <=.12.sysma2dyk <=.11.sysma2dyk <=.13.sysma2dyk <=.9.sysma2dyk <=.18.sysma2dyk <=.7.sysma2dyk <=.16.sysma2dyk <=.6.sysma2dyk <=.0.sysma2dyk <=.17.sysma2dyk <=.4.sysma2dyk <=.8.sysma2dyk <=.14.sysma2dyk <=.5.sysma2dyk <=.19.sysma2dyk) ~4
+             (call . . ~6
+              (opensymchoice .
+               (td :`t0.65. . . nimcall -1 -1 +0 +65 . . countSetBitsImpl.0. . none unknown . "") sizeof.1.sysma2dyk sizeof.0.sysma2dyk) 1
+              (ident . . x)) 3
+             (intlit . . +2)) 16
+            (stmts . . 7
+             (asgn . . ~7
+              (ident . . result) 28
+              (dot . . ~10
+               (call . . ~16
+                (ident . . builtin_popcnt16) 2
+                (dot . . ~1
+                 (ident . . x) 1
+                 (ht . uint16.0.sysma2dyk))) 1
+               (ht . int.0.sysma2dyk))))) 5,1
+           (elif . . 10
+            (infix . .
+             (opensymchoice .
+              (td :`t0.68. . . nimcall -1 -1 +0 +68 . . countSetBitsImpl.0. . none unknown . "") <=.15.sysma2dyk <=.3.sysma2dyk <=.1.sysma2dyk <=.10.sysma2dyk <=.2.sysma2dyk <=.12.sysma2dyk <=.11.sysma2dyk <=.13.sysma2dyk <=.9.sysma2dyk <=.18.sysma2dyk <=.7.sysma2dyk <=.16.sysma2dyk <=.6.sysma2dyk <=.0.sysma2dyk <=.17.sysma2dyk <=.4.sysma2dyk <=.8.sysma2dyk <=.14.sysma2dyk <=.5.sysma2dyk <=.19.sysma2dyk) ~4
+             (call . . ~6
+              (opensymchoice .
+               (td :`t0.69. . . nimcall -1 -1 +0 +69 . . countSetBitsImpl.0. . none unknown . "") sizeof.1.sysma2dyk sizeof.0.sysma2dyk) 1
+              (ident . . x)) 3
+             (intlit . . +4)) 16
+            (stmts . . 7
+             (asgn . . ~7
+              (ident . . result) 28
+              (dot . . ~10
+               (call . . ~16
+                (ident . . builtin_popcnt32) 2
+                (dot . . ~1
+                 (ident . . x) 1
+                 (ht . uint32.0.sysma2dyk))) 1
+               (ht . int.0.sysma2dyk))))) 5,2
+           (elif . .
+            (ht . arch64.0.) 8
+            (stmts . . 7
+             (asgn . . ~7
+              (ident . . result) 28
+              (dot . . ~10
+               (call . . ~16
+                (ident . . builtin_popcnt64) 2
+                (dot . . ~1
+                 (ident . . x) 1
+                 (ht . uint64.0.sysma2dyk))) 1
+               (ht . int.0.sysma2dyk))))) ,3
+           (else . . 6
+            (stmts . . 7
+             (asgn . . ~7
+              (ident . . result) 61
+              (infix . .
+               (opensymchoice .
+                (td :`t0.74. . . nimcall -1 -1 +0 +74 . . countSetBitsImpl.0. . none unknown . "") \2B.16.sysma2dyk \2B.17.sysma2dyk \2B.18.sysma2dyk \2B.5.sysma2dyk \2B.8.sysma2dyk \2B.13.sysma2dyk \2B.14.sysma2dyk \2B.15.sysma2dyk \2B.1.sysma2dyk \2B.7.sysma2dyk \2B.9.sysma2dyk \2B.4.sysma2dyk \2B.2.sysma2dyk \2B.6.sysma2dyk \2B.11.sysma2dyk \2B.12.sysma2dyk \2B.0.sysma2dyk \2B.10.sysma2dyk \2B.19.sysma2dyk \2B.3.sysma2dyk) ~5
+               (dot . . ~38
+                (call . . ~16
+                 (ident . . builtin_popcnt32) 30
+                 (dot . . ~29
+                  (par . . 10
+                   (infix . .
+                    (opensymchoice .
+                     (td :`t0.75. . . nimcall -1 -1 +0 +75 . . countSetBitsImpl.0. . none unknown . "") and.0.sysma2dyk and.7.sysma2dyk and.2.sysma2dyk and.5.sysma2dyk and.9.sysma2dyk and.11.sysma2dyk and.4.sysma2dyk and.3.sysma2dyk and.1.sysma2dyk and.8.sysma2dyk and.6.sysma2dyk and.10.sysma2dyk) ~8
+                    (dot . . ~1
+                     (ident . . x) 1
+                     (ht . uint64.0.sysma2dyk)) 4
+                    (uint64lit b1 . +4294967295u))) 1
+                  (ht . uint32.0.sysma2dyk))) 1
+                (ht . int.0.sysma2dyk)) ~13,1
+               (dot . . ~30
+                (call . . ~16
+                 (ident . . builtin_popcnt32) 22
+                 (dot . . ~21
+                  (par . . 10
+                   (infix . .
+                    (opensymchoice .
+                     (td :`t0.79. . . nimcall -1 -1 +0 +79 . . countSetBitsImpl.0. . none unknown . "") shr.9.sysma2dyk shr.2.sysma2dyk shr.4.sysma2dyk shr.5.sysma2dyk shr.8.sysma2dyk shr.3.sysma2dyk shr.7.sysma2dyk shr.0.sysma2dyk shr.6.sysma2dyk shr.1.sysma2dyk) ~8
+                    (dot . . ~1
+                     (ident . . x) 1
+                     (ht . uint64.0.sysma2dyk)) 4
+                    (uint64lit . . +32u))) 1
+                  (ht . uint32.0.sysma2dyk))) 1
+                (ht . int.0.sysma2dyk))))))))) 5,9
+        (elif . .
+         (ht . useICC_builtins.0.) ~3,1
+         (stmts . .
+          (when . . 5
+           (elif . . 10
+            (infix . .
+             (opensymchoice .
+              (td :`t0.83. . . nimcall -1 -1 +0 +83 . . countSetBitsImpl.0. . none unknown . "") <=.15.sysma2dyk <=.3.sysma2dyk <=.1.sysma2dyk <=.10.sysma2dyk <=.2.sysma2dyk <=.12.sysma2dyk <=.11.sysma2dyk <=.13.sysma2dyk <=.9.sysma2dyk <=.18.sysma2dyk <=.7.sysma2dyk <=.16.sysma2dyk <=.6.sysma2dyk <=.0.sysma2dyk <=.17.sysma2dyk <=.4.sysma2dyk <=.8.sysma2dyk <=.14.sysma2dyk <=.5.sysma2dyk <=.19.sysma2dyk) ~4
+             (call . . ~6
+              (opensymchoice .
+               (td :`t0.84. . . nimcall -1 -1 +0 +84 . . countSetBitsImpl.0. . none unknown . "") sizeof.1.sysma2dyk sizeof.0.sysma2dyk) 1
+              (ident . . x)) 3
+             (intlit . . +4)) 16
+            (stmts . . 7
+             (asgn . . ~7
+              (ident . . result) 26
+              (dot . . ~8
+               (call . . ~16
+                (ident . . builtin_popcnt32) 2
+                (dot . . ~1
+                 (ident . . x) 1
+                 (ht . cint.0.cty9mra12))) 1
+               (ht . int.0.sysma2dyk))))) 5,1
+           (elif . .
+            (ht . arch64.0.) 8
+            (stmts . . 7
+             (asgn . . ~7
+              (ident . . result) 28
+              (dot . . ~10
+               (call . . ~16
+                (ident . . builtin_popcnt64) 2
+                (dot . . ~1
+                 (ident . . x) 1
+                 (ht . uint64.0.sysma2dyk))) 1
+               (ht . int.0.sysma2dyk))))) ,2
+           (else . . 6
+            (stmts . . 7
+             (asgn . . ~7
+              (ident . . result) 59
+              (infix . .
+               (opensymchoice .
+                (td :`t0.89. . . nimcall -1 -1 +0 +89 . . countSetBitsImpl.0. . none unknown . "") \2B.16.sysma2dyk \2B.17.sysma2dyk \2B.18.sysma2dyk \2B.5.sysma2dyk \2B.8.sysma2dyk \2B.13.sysma2dyk \2B.14.sysma2dyk \2B.15.sysma2dyk \2B.1.sysma2dyk \2B.7.sysma2dyk \2B.9.sysma2dyk \2B.4.sysma2dyk \2B.2.sysma2dyk \2B.6.sysma2dyk \2B.11.sysma2dyk \2B.12.sysma2dyk \2B.0.sysma2dyk \2B.10.sysma2dyk \2B.19.sysma2dyk \2B.3.sysma2dyk) ~5
+               (dot . . ~36
+                (call . . ~16
+                 (ident . . builtin_popcnt32) 30
+                 (dot . . ~29
+                  (par . . 10
+                   (infix . .
+                    (opensymchoice .
+                     (td :`t0.90. . . nimcall -1 -1 +0 +90 . . countSetBitsImpl.0. . none unknown . "") and.0.sysma2dyk and.7.sysma2dyk and.2.sysma2dyk and.5.sysma2dyk and.9.sysma2dyk and.11.sysma2dyk and.4.sysma2dyk and.3.sysma2dyk and.1.sysma2dyk and.8.sysma2dyk and.6.sysma2dyk and.10.sysma2dyk) ~8
+                    (dot . . ~1
+                     (ident . . x) 1
+                     (ht . uint64.0.sysma2dyk)) 4
+                    (uint64lit b1 . +4294967295u))) 1
+                  (ht . cint.0.cty9mra12))) 1
+                (ht . int.0.sysma2dyk)) ~13,1
+               (dot . . ~28
+                (call . . ~16
+                 (ident . . builtin_popcnt32) 22
+                 (dot . . ~21
+                  (par . . 10
+                   (infix . .
+                    (opensymchoice .
+                     (td :`t0.94. . . nimcall -1 -1 +0 +94 . . countSetBitsImpl.0. . none unknown . "") shr.9.sysma2dyk shr.2.sysma2dyk shr.4.sysma2dyk shr.5.sysma2dyk shr.8.sysma2dyk shr.3.sysma2dyk shr.7.sysma2dyk shr.0.sysma2dyk shr.6.sysma2dyk shr.1.sysma2dyk) ~8
+                    (dot . . ~1
+                     (ident . . x) 1
+                     (ht . uint64.0.sysma2dyk)) 4
+                    (uint64lit . . +32u))) 1
+                  (ht . cint.0.cty9mra12))) 1
+                (ht . int.0.sysma2dyk))))))))) ,14
+        (else . . 2,1
+         (stmts . .
+          (when . . 5
+           (elif . . 10
+            (infix . .
+             (opensymchoice .
+              (td :`t0.98. . . nimcall -1 -1 +0 +98 . . countSetBitsImpl.0. . none unknown . "") <=.15.sysma2dyk <=.3.sysma2dyk <=.1.sysma2dyk <=.10.sysma2dyk <=.2.sysma2dyk <=.12.sysma2dyk <=.11.sysma2dyk <=.13.sysma2dyk <=.9.sysma2dyk <=.18.sysma2dyk <=.7.sysma2dyk <=.16.sysma2dyk <=.6.sysma2dyk <=.0.sysma2dyk <=.17.sysma2dyk <=.4.sysma2dyk <=.8.sysma2dyk <=.14.sysma2dyk <=.5.sysma2dyk <=.19.sysma2dyk) ~4
+             (call . . ~6
+              (opensymchoice .
+               (td :`t0.99. . . nimcall -1 -1 +0 +99 . . countSetBitsImpl.0. . none unknown . "") sizeof.1.sysma2dyk sizeof.0.sysma2dyk) 1
+              (ident . . x)) 3
+             (intlit . . +4)) 16
+            (stmts . . 7
+             (asgn . . ~7
+              (ident . . result) 15
+              (call . . ~13
+               (opensymchoice .
+                (td :`t0.100. . . nimcall -1 -1 +0 +100 . . countSetBitsImpl.0. . none unknown . "") countBitsImpl.0. countBitsImpl.1.) 2
+               (dot . . ~1
+                (ident . . x) 1
+                (ht . uint32.0.sysma2dyk)))))) ,1
+           (else . . 6
+            (stmts . . 7
+             (asgn . . ~7
+              (ident . . result) 15
+              (call . . ~13
+               (opensymchoice .
+                (td :`t0.102. . . nimcall -1 -1 +0 +102 . . countSetBitsImpl.0. . none unknown . "") countBitsImpl.0. countBitsImpl.1.) 2
+               (dot . . ~1
+                (ident . . x) 1
+                (ht . uint64.0.sysma2dyk))))))))))))))) none unknown . "" . .))1,1,/home/araq/projects/nim/lib/system/countbits_impl.nim(.index 5,13
+ (x useBuiltins.0. +392)
+ (h countbits_impl.0. +85) 1,1,/home/araq/projects/nim/lib/system.nim
+ (h stdlib.0. +99) 5,14
+ (x noUndefined.0. +229) 5,15
+ (x useGCC_builtins.0. +220) 5,17
+ (x useICC_builtins.0. +231) 5,18
+ (x useVCC_builtins.0. +229) 5,19
+ (x arch64.0. +229) 8,21
+ (h countBitsImpl.0. +196)
+ (h `t25.5. +55)
+ (h `t8.19. +4543) 8,28
+ (h countBitsImpl.1. +153)
+ (h `t25.20. +55)
+ (h `t8.34. +4583) 6,39
+ (h builtin_popcount.0. +153)
+ (h `t25.35. +63) 6,40
+ (h builtin_popcountll.0. +843)
+ (h `t25.36. +65) 4,62
+ (x countSetBitsImpl.0. +867)
+ (h `t25.37. +63)
+ (h `t57.38. +264)
+ (h `t0.39. +919)
+ (h `t0.40. +558)
+ (h `t0.41. +465)
+ (h `t0.43. +546)
+ (h `t0.46. +497)
+ (h `t0.49. +677)
+ (h `t0.52. +497)
+ (h `t0.58. +488)
+ (h `t0.59. +468)
+ (h `t0.64. +1047)
+ (h `t0.65. +468)
+ (h `t0.68. +624)
+ (h `t0.69. +468)
+ (h `t0.74. +1109)
+ (h `t0.75. +667)
+ (h `t0.79. +803)
+ (h `t0.83. +708)
+ (h `t0.84. +468)
+ (h `t0.89. +1106)
+ (h `t0.90. +667)
+ (h `t0.94. +801)
+ (h `t0.98. +670)
+ (h `t0.99. +468)
+ (h `t0.100. +350)
+ (h `t0.102. +417))

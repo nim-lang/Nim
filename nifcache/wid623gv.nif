@@ -1,0 +1,2012 @@
+(.nif26)
+(.indexat +90646           )
+1,1,/home/araq/projects/nim/lib/std/widestrs.nim(stmts . .
+ (repdestroy "SX57ideX43X53tringX4fbj0wid623gv" =destroy.0.)
+ (repcopy "SX57ideX43X53tringX4fbj0wid623gv" =copy.0.)
+ (repsink "SX57ideX43X53tringX4fbj0wid623gv" =sink.0.)
+ (repwasmoved "SX55tf16X43har0wid623gv" =wasMoved.0.)
+ (repdestroy "SX55tf16X43har0wid623gv" =destroy.1.)
+ (repcopy "SX55tf16X43har0wid623gv" =copy.1.)
+ (repdup "SX55tf16X43har0wid623gv" =dup.0.)
+ (repsink "SX55tf16X43har0wid623gv" =sink.1.)
+ (reptrace "SX55tf16X43har0wid623gv" =trace.0.)
+ (repwasmoved "SX57ideX43X53tringX4fbj0wid623gv" =wasMoved.2.)
+ (repdup "SX57ideX43X53tringX4fbj0wid623gv" =dup.2.)
+ (reptrace "SX57ideX43X53tringX4fbj0wid623gv" =trace.2.)
+ (implementation) ~1,9
+ (comment sh .) 1,15
+ (type s . 11
+  (type0 . . ~2
+   (postfix . .
+    (ident . . *) ~9
+    (sd :Utf16Char.0. x
+     (type) . ueg ofrbcr0s0awhtl0t0c0 -1 +0 .
+     (td :`t13.3. . c3 nimcall +2 +2 +0 +3 . . 1,1,/home/araq/projects/nim/lib/std/widestrs.nim
+      (sd :widestrs.0. .
+       (module) . . . +0 . . . 1,1,/home/araq/projects/nim/lib/system.nim
+       (sd :stdlib.0. .
+        (package) . . . -1 +0 . . . . none unknown . "" . .) . none unknown . "" . .) Utf16Char.0. none unknown . "" `t33.5.sysma2dyk) widestrs.0. 11
+     (type0 . . ~2
+      (postfix . .
+       (ident . . *) ~9 Utf16Char.0.)
+      (empty) 2
+      (distinctty . `t13.3. 9 int16.0.sysma2dyk)) none unknown . "" . .))
+   (empty) 2
+   (distinctty . `t13.3. 9 int16.0.sysma2dyk))) 5,21
+ (type s . 13
+  (type0 . . ~2
+   (postfix . .
+    (ident . . *) ~11
+    (sd :WideCString.0. x
+     (type) . ueg ofrbcr0s0awhtl0t0c0 -1 +0 .
+     (td :`t21.4. . c3 nimcall +8 +8 +0 +4 . . widestrs.0. WideCString.0. none unknown . ""
+      (td :`t49.6. . . nimcall -1 -1 +0 +6 . . WideCString.0. . none unknown . "" `t13.3.)) widestrs.0. 13
+     (type0 . . ~2
+      (postfix . .
+       (ident . . *) ~11 WideCString.0.)
+      (empty) 2
+      (ptrty . `t21.4. 18
+       (at . `t49.6. ~14 UncheckedArray.0.sysma2dyk 1 Utf16Char.0.))) none unknown . "" . .))
+   (empty) 2
+   (ptrty . `t21.4. 18
+    (at . `t49.6. ~14 UncheckedArray.0.sysma2dyk 1 Utf16Char.0.))) 16,2
+  (type0 . . ~2
+   (postfix . .
+    (ident . . *) ~14
+    (sd :WideCStringObj.0. x
+     (type) . ueg ofrbcr0s0awhtl0t0c0 -1 +0 .
+     (td :`t17.5. . fac3 nimcall +16 +8 +0 +5 . 24,24,/home/araq/projects/nim/lib/std/widestrs.nim
+      (reclist . . ~16,1
+       (sd :bytes.0. .
+        (field . +0 +0) . u ofrbcr0s0awhtl0t0c0 +0 +0 . `t31.3.sysma2dyk WideCStringObj.0. . none unknown . "" . .) ~16,2
+       (sd :data.0. .
+        (field . +0 +0) . u ofrbcr0s0awhtl0t0c0 +8 +1 . `t21.4. WideCStringObj.0. . none unknown . "" . .)) widestrs.0. WideCStringObj.0. none unknown . "" .) widestrs.0. 16
+     (type0 . . ~2
+      (postfix . .
+       (ident . . *) ~14 WideCStringObj.0.)
+      (empty) 2
+      (objectty . `t17.5.
+       (empty)
+       (empty) ~16,1
+       (reclist . .
+        (identdefs . .
+         (ident . . bytes) 7 int.0.sysma2dyk ,1
+         (empty)) ,1
+        (identdefs . .
+         (ident . . data) 6 WideCString.0. ~4,2
+         (empty))))) none unknown . "" . .))
+   (empty) 2
+   (objectty . `t17.5.
+    (empty)
+    (empty) ~16,1
+    (reclist . .
+     (identdefs . .
+      (ident . . bytes) 7 int.0.sysma2dyk ,1
+      (empty)) ,1
+     (identdefs . .
+      (ident . . data) 6 WideCString.0. ~4,2
+      (empty)))))) 3,27
+ (const s . 6
+  (sd :arcLike.0. .
+   (const) . ug ofrbcr0s0awhtl0t0c0 -1 +0 . `t1.34.sysma2dyk widestrs.0.
+   (const0 . . arcLike.0.
+    (empty) 49
+    (intlit . `t1.34.sysma2dyk +1)) none unknown . "" . .)) 10,29
+ (sd :=destroy.0. .
+  (proc) . ugoi1 ofrbcr0s0awhtl0t0c0 -1 +0 .
+  (td :`t25.7. . te2 nimcall -1 -1 +0 +7 . 21,30,/home/araq/projects/nim/lib/std/widestrs.nim
+   (formalparams . .
+    (arglist . . ~10
+     (bracket . .)
+     (empty)
+     (empty) ~10
+     (arglist . .)
+     (empty) ~10
+     (arglist . .)) 1
+    (sd :a.0 .
+     (param) . u . -1 +0 . `t17.5. =destroy.0. . none unknown . "" . .)) =destroy.0. . none unknown . "" .) widestrs.0. ~5
+  (proc s . 5
+   (ht . =destroy.0.)
+   (empty)
+   (empty) . 5
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty) 2,1
+   (if s . 3
+    (elif . . 7
+     (expr sf `t1.34.sysma2dyk 2,132,/home/araq/projects/nim/lib/system/comparisons.nim
+      (empty)
+      (prefix s `t1.34.sysma2dyk not.0.sysma2dyk
+       (infix s `t1.34.sysma2dyk 5,36,/home/araq/projects/nim/lib/system/comparisons.nim
+        (sd :==.0. .
+         (proc) eqref uefgn ofrbcr0s0awhtl0t0c0 -1 +0 .
+         (td :`t25.10. . nge2 nimcall -1 -1 +0 +10 . 13,36,/home/araq/projects/nim/lib/system/comparisons.nim
+          (formalparams . `t1.34.sysma2dyk
+           (arglist . .
+            (arglist . .) . .
+            (arglist . .) 20
+            (pragma . . 7
+             (kv . . ~5
+              (ident . . magic) 2
+              (strlit . `t28.17.sysma2dyk "EqRef")) 18
+             (ident . . noSideEffect))
+            (arglist . .)) 1
+           (sd :x.0 .
+            (param) . . . -1 +0 .
+            (td :`t21.11. . g nimcall -1 -1 +0 +11 . . ==.7.sysma2dyk . none unknown . "" `t49.6.) ==.0. . none unknown . "" . .) 4
+           (sd :y.0 .
+            (param) . . . -1 +1 .
+            (td :`t21.12. . g nimcall -1 -1 +0 +12 . . ==.7.sysma2dyk . none unknown . "" `t49.6.) ==.0. . none unknown . "" . .)) ==.7.sysma2dyk . none unknown . "" `t1.34.sysma2dyk) ==.7.sysma2dyk ~5
+         (proc . . 5
+          (ht `t25.561.sysma2dyk ==.0.)
+          (empty)
+          (empty) . 33
+          (pragma . . 7
+           (kv . . ~5
+            (ident . . magic) 2
+            (strlit . `t28.17.sysma2dyk "EqRef")) 18
+           (ident . . noSideEffect))
+          (bracket . .
+           (empty) 10,36,/home/araq/projects/nim/lib/system/comparisons.nim
+           (genericparams . . 1
+            (identdefs . .
+             (ident . . T)
+             (empty)
+             (empty))))
+          (empty)) none unknown . "" . ==.7.sysma2dyk) ~6
+        (dot s `t21.4. ~1 a.0 1 data.0.) 3
+        (nil s
+         (td :`t21.9. . g nimcall -1 -1 +0 +9 . . ==.7.sysma2dyk . none unknown . "" `t49.6.))))) 14,2
+     (call s . ~13 deallocShared.0.sysma2dyk 2
+      (hstdconv . `t26.19.sysma2dyk
+       (empty)
+       (dot s `t21.4. ~1 a.0 1 data.0.)))))) none unknown . "" . .) 8,43
+ (sd :=copy.0. .
+  (proc) . uge3o ofrbcr0s0awhtl0t0c0 -1 +0 .
+  (td :`t25.13. . e2 nimcall -1 -1 +0 +13 . 16,44,/home/araq/projects/nim/lib/std/widestrs.nim
+   (formalparams . .
+    (arglist . . . . . . 43
+     (pragma . . 2
+      (ident . . error)) .) 1
+    (sd :a.1 .
+     (param) . . . -1 +0 .
+     (td :`t23.14. . . nimcall -1 -1 +0 +14 . . =copy.0. . none unknown . "" `t17.5.) =copy.0. . none unknown . "" . .) 24
+    (sd :b.0 .
+     (param) . . . -1 +1 . `t17.5. =copy.0. . none unknown . "" . .)) =copy.0. . none unknown . "" .) widestrs.0. ~5
+  (proc s . 5
+   (ht . =copy.0.)
+   (empty)
+   (empty) . 55
+   (pragma . . 2
+    (ident . . error))
+   (empty)
+   (empty)) none unknown . "" . .) 8,45
+ (sd :=sink.0. .
+  (proc) . ugoi1 ofrbcr0s0awhtl0t0c0 -1 +0 .
+  (td :`t25.15. . nte2 nimcall -1 -1 +0 +15 . 16,46,/home/araq/projects/nim/lib/std/widestrs.nim
+   (formalparams . .
+    (arglist . . ~7
+     (arglist . .)
+     (empty)
+     (empty) ~7
+     (arglist . .)
+     (empty) ~7
+     (arglist . .)) 1
+    (sd :a.2 .
+     (param) . u . -1 +0 .
+     (td :`t23.16. . . nimcall -1 -1 +0 +16 . . =sink.0. . none unknown . "" `t17.5.) =sink.0. . none unknown . "" . .) 24
+    (sd :b.1 .
+     (param) . u . -1 +1 . `t17.5. =sink.0. . none unknown . "" . .)) =sink.0. . none unknown . "" .) widestrs.0. ~5
+  (proc s . 5
+   (ht . =sink.0.)
+   (empty)
+   (empty) .
+   (empty)
+   (empty) 2,1
+   (stmts s . 8
+    (asgn s . ~7
+     (dot . `t31.3.sysma2dyk ~1
+      (hderef . `t17.5. a.2) 1 bytes.0.) 3
+     (dot s `t31.3.sysma2dyk ~1 b.1 1 bytes.0.)) 7,1
+    (asgn s . ~6
+     (dot . `t21.4. ~1
+      (hderef . `t17.5. a.2) 1 data.0.) 3
+     (dot s `t21.4. ~1 b.1 1 data.0.)))) none unknown . "" . .) 8,49
+ (sd :createWide.0. .
+  (proc) . ugi1 ofrbcr0s0awhtl0t0c0 -1 +0 .
+  (td :`t25.17. . te2 nimcall -1 -1 +0 +17 . 19,50,/home/araq/projects/nim/lib/std/widestrs.nim
+   (formalparams . .
+    (arglist . . ~10
+     (arglist . .)
+     (empty)
+     (empty) ~10
+     (arglist . .)
+     (empty) ~10
+     (arglist . .)) 1
+    (sd :a.3 .
+     (param) . u . -1 +0 .
+     (td :`t23.18. . . nimcall -1 -1 +0 +18 . . createWide.0. . none unknown . "" `t17.5.) createWide.0. . none unknown . "" . .) 24
+    (sd :bytes.1 .
+     (param) . u . -1 +1 . `t31.3.sysma2dyk createWide.0. . none unknown . "" . .)) createWide.0. . none unknown . "" .) widestrs.0. ~5
+  (proc s . 5
+   (ht . createWide.0.)
+   (empty)
+   (empty) .
+   (empty)
+   (empty) 2,1
+   (stmts s . 8
+    (asgn s . ~7
+     (dot . `t31.3.sysma2dyk ~1
+      (hderef . `t17.5. a.3) 1 bytes.0.) 2 bytes.1) 9,2
+    (asgn s . ~6
+     (dot . `t21.4. ~1
+      (hderef . `t17.5. a.3) 1 data.0.) 2
+     (cast s `t21.4. 11
+      (call . `t21.4. ~6
+       (ident . . typeof) 2
+       (dot . `t21.4. ~1
+        (hderef . `t17.5. a.3) 1 data.0.)) 21
+      (expr sf `t26.19.sysma2dyk 4,237,/home/araq/projects/nim/lib/system/memalloc.nim
+       (empty) 4,247,/home/araq/projects/nim/lib/system/memalloc.nim
+       (discard s .
+        (empty)) 12
+       (call s `t26.19.sysma2dyk 4,248,/home/araq/projects/nim/lib/system/memalloc.nim allocShared0Impl.0.sysma2dyk 1
+        (hstdconv . `t20.744.sysma2dyk
+         (empty) bytes.1))))))) none unknown . "" . .) 12,56
+ (sd :\5B\5D.0. x
+  (template) . uegn4 . -1 +0 .
+  (td :`t25.20. . . nimcall -1 -1 +0 +20 . 18,57,/home/araq/projects/nim/lib/std/widestrs.nim
+   (formalparams . `t13.3.
+    (arglist . .) 1
+    (sd :a.4 .
+     (param) . ut0 . -1 +0 . `t17.5. \5B\5D.0. . none unknown . "" . .) 20
+    (sd :idx.0 .
+     (param) . ut0 . -1 +1 . `t31.3.sysma2dyk \5B\5D.0. . none unknown . "" . .)) \5B\5D.0. . none unknown . "" `t13.3.) widestrs.0. ~9
+  (template s . 9
+   (ht . \5B\5D.0.)
+   (empty)
+   (empty) .
+   (empty)
+   (empty) 57
+   (stmts . . 6
+    (call . .
+     (opensymchoice d3 . \5B\5D.0.sysma2dyk \5B\5D.1.sysma2dyk \5B\5D.2.sysma2dyk \5B\5D.3.sysma2dyk \5B\5D.4.sysma2dyk \5B\5D.5.sysma2dyk \5B\5D.6.sysma2dyk \5B\5D.7.sysma2dyk \5B\5D.8.sysma2dyk \5B\5D.9.sysma2dyk \5B\5D.10.sysma2dyk) ~5
+     (dot . . ~1 a.4 1
+      (ident . . data)) 1 idx.0))) none unknown . "" . .) 12,57
+ (sd :\5B\5D=.0. x
+  (template) . uegn4 . -1 +0 .
+  (td :`t25.22. . . nimcall -1 -1 +0 +22 . 19,58,/home/araq/projects/nim/lib/std/widestrs.nim
+   (formalparams . .
+    (arglist . .) 1
+    (sd :a.5 .
+     (param) . ut0 . -1 +0 . `t17.5. \5B\5D=.0. . none unknown . "" . .) 20
+    (sd :idx.1 .
+     (param) . ut0 . -1 +1 . `t31.3.sysma2dyk \5B\5D=.0. . none unknown . "" . .) 30
+    (sd :val.0 .
+     (param) . ut0 . -1 +2 . `t13.3. \5B\5D=.0. . none unknown . "" . .)) \5B\5D=.0. . none unknown . "" .) widestrs.0. ~9
+  (template s . 9
+   (ht . \5B\5D=.0.)
+   (empty)
+   (empty) .
+   (empty)
+   (empty) 63
+   (stmts . . 12
+    (call . .
+     (opensymchoice d3 . \5B\5D=.0.sysma2dyk \5B\5D=.1.sysma2dyk \5B\5D=.2.sysma2dyk \5B\5D=.3.sysma2dyk \5B\5D=.4.sysma2dyk \5B\5D=.5.sysma2dyk \5B\5D=.6.sysma2dyk \5B\5D=.7.sysma2dyk) ~11
+     (dot . . ~1 a.5 1
+      (ident . . data)) ~5 idx.1 2 val.0))) none unknown . "" . .) 12,59
+ (sd :nullWide.0. .
+  (template) . uga1 . -1 +0 .
+  (td :`t25.24. . . nimcall -1 -1 +0 +24 . 21,60,/home/araq/projects/nim/lib/std/widestrs.nim
+   (formalparams . `t6.28.sysma2dyk
+    (arglist . .)) nullWide.0. . none unknown . "" `t6.28.sysma2dyk) widestrs.0. ~9
+  (template s . 9
+   (ht . nullWide.0.)
+   (empty)
+   (empty) .
+   (empty)
+   (empty) 31
+   (stmts . . 14
+    (objconstr . . ~14
+     (ht . WideCStringObj.0.) 6
+     (kv . . ~5
+      (ident . . bytes) 2
+      (intlit . . +0)) 15
+     (kv . . ~4
+      (ident . . data) 2
+      (nil . .))))) none unknown . "" . .) 13,61
+ (sd :toWideCString.0. x
+  (converter) . egi1 ofrbcr0s0awhtl0t0c0 -1 +0 .
+  (td :`t25.26. . nte1e2 inline -1 -1 +0 +26 . 28,62,/home/araq/projects/nim/lib/std/widestrs.nim
+   (formalparams . `t21.4.
+    (arglist . . ~14
+     (arglist . .)
+     (empty)
+     (empty) ~14
+     (arglist . .)
+     (empty) ~14
+     (arglist . .)) 1
+    (sd :x.1 .
+     (param) . u . -1 +0 . `t17.5. toWideCString.0. . none unknown . "" . .)) toWideCString.0. . none unknown . "" `t21.4.) widestrs.0. ~10
+  (converter s . 10
+   (ht . toWideCString.0.)
+   (empty)
+   (empty) . 57
+   (pragma . . 2
+    (ident . . inline))
+   (empty) 9,1
+   (asgn s
+    (td :`t7.1. . . nimcall -1 -1 +0 +1 . . . . none unknown . "") ~9,~1
+    (sd :result.0 .
+     (result) . u . -1 +0 . `t21.4. toWideCString.0. . none unknown . "" . .) 3
+    (dot s `t21.4. ~1 x.1 1 data.0.)) result.0) none unknown . "" . .) 6,74
+ (sd :ord.0. .
+  (proc) . ugi1 ofrbcr0s0awhtl0t0c0 -1 +0 .
+  (td :`t25.27. . nte2 nimcall -1 -1 +0 +27 . 10,75,/home/araq/projects/nim/lib/std/widestrs.nim
+   (formalparams . `t31.3.sysma2dyk
+    (arglist . . ~3
+     (arglist . .)
+     (empty)
+     (empty) ~3
+     (arglist . .)
+     (empty) ~3
+     (arglist . .)) 1
+    (sd :arg.0 .
+     (param) . u . -1 +0 . `t13.3. ord.0. . none unknown . "" . .)) ord.0. . none unknown . "" `t31.3.sysma2dyk) widestrs.0. ~5
+  (proc s . 5
+   (ht . ord.0.)
+   (empty)
+   (empty) .
+   (empty)
+   (empty) 32
+   (asgn . `t7.1. ~32
+    (sd :result.1 .
+     (result) . u . -1 +0 . `t31.3.sysma2dyk ord.0. . none unknown . "" . .) 3
+    (conv s `t31.3.sysma2dyk ~3 int.0.sysma2dyk 1
+     (cast s `t42.10.sysma2dyk 5 uint16.0.sysma2dyk 13 arg.0))) result.1) none unknown . "" . .) 6,76
+ (sd :len.0. x
+  (proc) . uegi1 ofrbcr0s0awhtl0t0c0 -1 +0 .
+  (td :`t25.28. . nte2 nimcall -1 -1 +0 +28 . 11,77,/home/araq/projects/nim/lib/std/widestrs.nim
+   (formalparams . `t31.3.sysma2dyk
+    (arglist . . ~4
+     (arglist . .)
+     (empty)
+     (empty) ~4
+     (arglist . .)
+     (empty) ~4
+     (arglist . .)) 1
+    (sd :w.0 .
+     (param) . u . -1 +0 . `t21.4. len.0. . none unknown . "" . .)) len.0. . none unknown . "" `t31.3.sysma2dyk) widestrs.0. ~5
+  (proc s . 5
+   (ht . len.0.)
+   (empty)
+   (empty) .
+   (empty)
+   (empty) 2,1
+   (stmts s `t7.1.
+    (comment sh .) 7,2
+    (asgn s `t7.1. ~9,~3
+     (sd :result.2 .
+      (result) . u . -1 +0 . `t31.3.sysma2dyk len.0. . none unknown . "" . .) 2
+     (intlit s `t31.3.sysma2dyk +0)) ,3
+    (while s . 23
+     (expr sf `t1.34.sysma2dyk 2,132,/home/araq/projects/nim/lib/system/comparisons.nim
+      (empty)
+      (prefix s `t1.34.sysma2dyk not.0.sysma2dyk
+       (infix s `t1.34.sysma2dyk ==.11.sysma2dyk ~12
+        (conv s `t33.5.sysma2dyk ~5 int16.0.sysma2dyk 2
+         (at s `t13.3. ~1
+          (hderef . `t49.6. w.0) 1 result.2)) 3
+        (int16lit s `t33.5.sysma2dyk +0)))) 33
+     (cmd s . inc.9.sysma2dyk 4 result.2 55,21,/home/araq/projects/nim/lib/system/arithmetics.nim
+      (intlit s `t31.36.sysma2dyk +1)))) result.2) none unknown . "" . .) 1,82
+ (const s . 2,1
+  (sd :UNI_REPLACEMENT_CHAR.0. .
+   (const) . ug ofrbcr0s0awhtl0t0c0 -1 +0 . `t13.3. widestrs.0.
+   (const0 . . UNI_REPLACEMENT_CHAR.0.
+    (empty) 32
+    (int16lit . `t13.3. -3)) none unknown . "" . .) 2,2
+  (sd :UNI_MAX_BMP.0. .
+   (const) . ug ofrbcr0s0awhtl0t0c0 -1 +0 .
+   (td :`t31.54. . c3 nimcall +8 +8 +0 +54 . 18,85,/home/araq/projects/nim/lib/std/widestrs.nim
+    (intlit b1s `t31.54. +65535) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") widestrs.0.
+   (const0 . . UNI_MAX_BMP.0.
+    (empty) 14
+    (intlit b1 `t31.54. +65535)) none unknown . "" . .) 2,3
+  (sd :UNI_MAX_UTF16.0. .
+   (const) . ug ofrbcr0s0awhtl0t0c0 -1 +0 .
+   (td :`t31.55. . c3 nimcall +8 +8 +0 +55 . 20,86,/home/araq/projects/nim/lib/std/widestrs.nim
+    (intlit b1s `t31.55. +1114111) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") widestrs.0.
+   (const0 . . UNI_MAX_UTF16.0.
+    (empty) 16
+    (intlit b1 `t31.55. +1114111)) none unknown . "" . .) 2,7
+  (sd :halfShift.0. .
+   (const) . ug ofrbcr0s0awhtl0t0c0 -1 +0 .
+   (td :`t31.56. . c3 nimcall +8 +8 +0 +56 . 16,90,/home/araq/projects/nim/lib/std/widestrs.nim
+    (intlit s `t31.56. +10) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") widestrs.0.
+   (const0 . . halfShift.0.
+    (empty) 12
+    (intlit . `t31.56. +10)) none unknown . "" . .) 2,8
+  (sd :halfBase.0. .
+   (const) . ug ofrbcr0s0awhtl0t0c0 -1 +0 .
+   (td :`t31.57. . c3 nimcall +8 +8 +0 +57 . 15,91,/home/araq/projects/nim/lib/std/widestrs.nim
+    (intlit b1s `t31.57. +65536) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") widestrs.0.
+   (const0 . . halfBase.0.
+    (empty) 11
+    (intlit b1 `t31.57. +65536)) none unknown . "" . .) 2,9
+  (sd :halfMask.0. .
+   (const) . ug ofrbcr0s0awhtl0t0c0 -1 +0 .
+   (td :`t31.58. . c3 nimcall +8 +8 +0 +58 . 15,92,/home/araq/projects/nim/lib/std/widestrs.nim
+    (intlit b1s `t31.58. +1023) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") widestrs.0.
+   (const0 . . halfMask.0.
+    (empty) 11
+    (intlit b1 `t31.58. +1023)) none unknown . "" . .) 2,11
+  (sd :UNI_SUR_HIGH_START.0. .
+   (const) . ug ofrbcr0s0awhtl0t0c0 -1 +0 .
+   (td :`t31.59. . c3 nimcall +8 +8 +0 +59 . 25,94,/home/araq/projects/nim/lib/std/widestrs.nim
+    (intlit b1s `t31.59. +55296) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") widestrs.0.
+   (const0 . . UNI_SUR_HIGH_START.0.
+    (empty) 21
+    (intlit b1 `t31.59. +55296)) none unknown . "" . .) 2,12
+  (sd :UNI_SUR_HIGH_END.0. .
+   (const) . ug ofrbcr0s0awhtl0t0c0 -1 +0 .
+   (td :`t31.60. . c3 nimcall +8 +8 +0 +60 . 23,95,/home/araq/projects/nim/lib/std/widestrs.nim
+    (intlit b1s `t31.60. +56319) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") widestrs.0.
+   (const0 . . UNI_SUR_HIGH_END.0.
+    (empty) 19
+    (intlit b1 `t31.60. +56319)) none unknown . "" . .) 2,13
+  (sd :UNI_SUR_LOW_START.0. .
+   (const) . ug ofrbcr0s0awhtl0t0c0 -1 +0 .
+   (td :`t31.61. . c3 nimcall +8 +8 +0 +61 . 24,96,/home/araq/projects/nim/lib/std/widestrs.nim
+    (intlit b1s `t31.61. +56320) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") widestrs.0.
+   (const0 . . UNI_SUR_LOW_START.0.
+    (empty) 20
+    (intlit b1 `t31.61. +56320)) none unknown . "" . .) 2,14
+  (sd :UNI_SUR_LOW_END.0. .
+   (const) . ug ofrbcr0s0awhtl0t0c0 -1 +0 .
+   (td :`t31.62. . c3 nimcall +8 +8 +0 +62 . 22,97,/home/araq/projects/nim/lib/std/widestrs.nim
+    (intlit b1s `t31.62. +57343) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") widestrs.0.
+   (const0 . . UNI_SUR_LOW_END.0.
+    (empty) 18
+    (intlit b1 `t31.62. +57343)) none unknown . "" . .) 2,15
+  (sd :UNI_REPL.0. .
+   (const) . ug ofrbcr0s0awhtl0t0c0 -1 +0 .
+   (td :`t31.63. . c3 nimcall +8 +8 +0 +63 . 15,98,/home/araq/projects/nim/lib/std/widestrs.nim
+    (intlit b1s `t31.63. +65533) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") widestrs.0.
+   (const0 . . UNI_REPL.0.
+    (empty) 11
+    (intlit b1 `t31.63. +65533)) none unknown . "" . .)) 10,99
+ (sd :ones.0. .
+  (template) . ugn4a1 . -1 +0 .
+  (td :`t25.64. . m nimcall -1 -1 +0 +64 . 15,100,/home/araq/projects/nim/lib/std/widestrs.nim
+   (formalparams . `t6.28.sysma2dyk
+    (arglist . .) 1
+    (sd :n.0 .
+     (param) . ut0 . -1 +0 . `t6.28.sysma2dyk ones.0. . none unknown . "" . .)) ones.0. . none unknown . "" `t6.28.sysma2dyk) widestrs.0. ~9
+  (template s . 9
+   (ht . ones.0.)
+   (empty)
+   (empty) .
+   (empty)
+   (empty) 37
+   (stmts . .
+    (par . . 10
+     (infix . .
+      (opensymchoice d3 . \2D.1.sysma2dyk \2D.19.sysma2dyk \2D.6.sysma2dyk \2D.0.sysma2dyk \2D.14.sysma2dyk \2D.2.sysma2dyk \2D.10.sysma2dyk \2D.17.sysma2dyk \2D.15.sysma2dyk \2D.13.sysma2dyk \2D.4.sysma2dyk \2D.9.sysma2dyk \2D.11.sysma2dyk \2D.5.sysma2dyk \2D.3.sysma2dyk \2D.20.sysma2dyk \2D.7.sysma2dyk \2D.16.sysma2dyk \2D.12.sysma2dyk \2D.18.sysma2dyk \2D.8.sysma2dyk) ~9
+      (par . . 3
+       (infix . .
+        (opensymchoice d3 . shl.1.sysma2dyk shl.0.sysma2dyk shl.4.sysma2dyk shl.9.sysma2dyk shl.5.sysma2dyk shl.6.sysma2dyk shl.3.sysma2dyk shl.2.sysma2dyk shl.7.sysma2dyk shl.8.sysma2dyk) ~2
+        (intlit . . +1) 4 n.0)) 1
+      (intlit . . +1))))) none unknown . "" . .) 10,101
+ (sd :fastRuneAt.0. .
+  (template) . ugn4 . -1 +0 .
+  (td :`t25.67. . m nimcall -1 -1 +0 +67 . 21,102,/home/araq/projects/nim/lib/std/widestrs.nim
+   (formalparams . .
+    (arglist . .) 1
+    (sd :s.0 .
+     (param) . ut0 . -1 +0 . `t29.18.sysma2dyk fastRuneAt.0. . none unknown . "" . .) 13
+    (sd :i.0 .
+     (param) . ut0 . -1 +1 . `t31.3.sysma2dyk fastRuneAt.0. . none unknown . "" . .) 16
+    (sd :L.0 .
+     (param) . ut0 . -1 +2 . `t31.3.sysma2dyk fastRuneAt.0. . none unknown . "" . .) 24
+    (sd :result.5 .
+     (param) . ut0 . -1 +3 . `t6.28.sysma2dyk fastRuneAt.0. . none unknown . "" . .) 41
+    (sd :doInc.0 .
+     (param) . ut0 . -1 +4 . `t1.34.sysma2dyk fastRuneAt.0. 8 true.0.sysma2dyk none unknown . "" . .)) fastRuneAt.0. . none unknown . "" .) widestrs.0. ~9
+  (template s . 9
+   (ht . fastRuneAt.0.)
+   (empty)
+   (empty) .
+   (empty)
+   (empty) 2,1
+   (stmts . .
+    (comment h .) ,2
+    (bind0 . . ones.0.) ,4
+    (if . . 3
+     (elif . . 10
+      (infix . .
+       (opensymchoice d3 . <=.15.sysma2dyk <=.3.sysma2dyk <=.1.sysma2dyk <=.10.sysma2dyk <=.2.sysma2dyk <=.12.sysma2dyk <=.11.sysma2dyk <=.13.sysma2dyk <=.9.sysma2dyk <=.18.sysma2dyk <=.7.sysma2dyk <=.16.sysma2dyk <=.6.sysma2dyk <=.0.sysma2dyk <=.17.sysma2dyk <=.4.sysma2dyk <=.8.sysma2dyk <=.14.sysma2dyk <=.5.sysma2dyk <=.19.sysma2dyk) ~7
+       (call . . ~3
+        (opensymchoice d3 . ord.0. ord.0.sysma2dyk) 2
+        (call . .
+         (opensymchoice d3 . \5B\5D.0. \5B\5D.0.sysma2dyk \5B\5D.1.sysma2dyk \5B\5D.2.sysma2dyk \5B\5D.3.sysma2dyk \5B\5D.4.sysma2dyk \5B\5D.5.sysma2dyk \5B\5D.6.sysma2dyk \5B\5D.7.sysma2dyk \5B\5D.8.sysma2dyk \5B\5D.9.sysma2dyk \5B\5D.10.sysma2dyk) ~1 s.0 1 i.0)) 3
+       (intlit . . +127)) ~1,1
+      (stmts . . 7
+       (asgn . . ~7 result.5 5
+        (call . . ~3
+         (opensymchoice d3 . ord.0. ord.0.sysma2dyk) 2
+         (call . .
+          (opensymchoice d3 . \5B\5D.0. \5B\5D.0.sysma2dyk \5B\5D.1.sysma2dyk \5B\5D.2.sysma2dyk \5B\5D.3.sysma2dyk \5B\5D.4.sysma2dyk \5B\5D.5.sysma2dyk \5B\5D.6.sysma2dyk \5B\5D.7.sysma2dyk \5B\5D.8.sysma2dyk \5B\5D.9.sysma2dyk \5B\5D.10.sysma2dyk) ~1 s.0 1 i.0))) ,1
+       (when . . 5
+        (elif . . doInc.0 7
+         (stmts . . 3
+          (call . . ~3
+           (ht . inc.0.sysma2dyk) 1 i.0)))))) 5,3
+     (elif . . 16
+      (infix . .
+       (opensymchoice d3 . ==.0.sysma2dyk ==.14.sysma2dyk ==.13.sysma2dyk ==.3.sysma2dyk ==.5.sysma2dyk ==.20.sysma2dyk ==.1.sysma2dyk ==.15.sysma2dyk ==.19.sysma2dyk ==.10.sysma2dyk ==.18.sysma2dyk ==.2.sysma2dyk ==.9.sysma2dyk ==.17.sysma2dyk ==.4.sysma2dyk ==.16.sysma2dyk ==.6.sysma2dyk ==.8.sysma2dyk ==.21.sysma2dyk ==.12.sysma2dyk ==.23.sysma2dyk ==.22.sysma2dyk ==.7.sysma2dyk ==.11.sysma2dyk ==.59.sysma2dyk ==.145.sysma2dyk) ~6
+       (infix . .
+        (opensymchoice d3 . shr.9.sysma2dyk shr.2.sysma2dyk shr.4.sysma2dyk shr.5.sysma2dyk shr.8.sysma2dyk shr.3.sysma2dyk shr.7.sysma2dyk shr.0.sysma2dyk shr.6.sysma2dyk shr.1.sysma2dyk) ~7
+        (call . . ~3
+         (opensymchoice d3 . ord.0. ord.0.sysma2dyk) 2
+         (call . .
+          (opensymchoice d3 . \5B\5D.0. \5B\5D.0.sysma2dyk \5B\5D.1.sysma2dyk \5B\5D.2.sysma2dyk \5B\5D.3.sysma2dyk \5B\5D.4.sysma2dyk \5B\5D.5.sysma2dyk \5B\5D.6.sysma2dyk \5B\5D.7.sysma2dyk \5B\5D.8.sysma2dyk \5B\5D.9.sysma2dyk \5B\5D.10.sysma2dyk) ~1 s.0 1 i.0)) 4
+        (intlit . . +5)) 3
+       (intlit b . +6)) ~3,2
+      (stmts . .
+       (if . . 3
+        (elif . . 2
+         (infix . .
+          (opensymchoice d3 . <=.15.sysma2dyk <=.3.sysma2dyk <=.1.sysma2dyk <=.10.sysma2dyk <=.2.sysma2dyk <=.12.sysma2dyk <=.11.sysma2dyk <=.13.sysma2dyk <=.9.sysma2dyk <=.18.sysma2dyk <=.7.sysma2dyk <=.16.sysma2dyk <=.6.sysma2dyk <=.0.sysma2dyk <=.17.sysma2dyk <=.4.sysma2dyk <=.8.sysma2dyk <=.14.sysma2dyk <=.5.sysma2dyk <=.19.sysma2dyk) ~2 i.0 5
+          (infix . .
+           (opensymchoice d3 . \2D.1.sysma2dyk \2D.19.sysma2dyk \2D.6.sysma2dyk \2D.0.sysma2dyk \2D.14.sysma2dyk \2D.2.sysma2dyk \2D.10.sysma2dyk \2D.17.sysma2dyk \2D.15.sysma2dyk \2D.13.sysma2dyk \2D.4.sysma2dyk \2D.9.sysma2dyk \2D.11.sysma2dyk \2D.5.sysma2dyk \2D.3.sysma2dyk \2D.20.sysma2dyk \2D.7.sysma2dyk \2D.16.sysma2dyk \2D.12.sysma2dyk \2D.18.sysma2dyk \2D.8.sysma2dyk) ~2 L.0 2
+           (intlit . . +2))) ~1,1
+         (stmts . . 7
+          (asgn . . ~7 result.5 34
+           (infix . .
+            (opensymchoice d3 . or.9.sysma2dyk or.11.sysma2dyk or.5.sysma2dyk or.0.sysma2dyk or.6.sysma2dyk or.10.sysma2dyk or.1.sysma2dyk or.7.sysma2dyk or.8.sysma2dyk or.2.sysma2dyk or.3.sysma2dyk or.4.sysma2dyk) ~6
+            (infix . .
+             (opensymchoice d3 . shl.1.sysma2dyk shl.0.sysma2dyk shl.4.sysma2dyk shl.9.sysma2dyk shl.5.sysma2dyk shl.6.sysma2dyk shl.3.sysma2dyk shl.2.sysma2dyk shl.7.sysma2dyk shl.8.sysma2dyk) ~26
+             (par . . 11
+              (infix . .
+               (opensymchoice d3 . and.0.sysma2dyk and.7.sysma2dyk and.2.sysma2dyk and.5.sysma2dyk and.9.sysma2dyk and.11.sysma2dyk and.4.sysma2dyk and.3.sysma2dyk and.1.sysma2dyk and.8.sysma2dyk and.6.sysma2dyk and.10.sysma2dyk) ~7
+               (call . . ~3
+                (opensymchoice d3 . ord.0. ord.0.sysma2dyk) 2
+                (call . .
+                 (opensymchoice d3 . \5B\5D.0. \5B\5D.0.sysma2dyk \5B\5D.1.sysma2dyk \5B\5D.2.sysma2dyk \5B\5D.3.sysma2dyk \5B\5D.4.sysma2dyk \5B\5D.5.sysma2dyk \5B\5D.6.sysma2dyk \5B\5D.7.sysma2dyk \5B\5D.8.sysma2dyk \5B\5D.9.sysma2dyk \5B\5D.10.sysma2dyk) ~1 s.0 1 i.0)) 4
+               (par . . 5
+                (call . . ~4 ones.0. 1
+                 (intlit . . +5))))) 4
+             (intlit . . +6)) 3
+            (par . . 13
+             (infix . .
+              (opensymchoice d3 . and.0.sysma2dyk and.7.sysma2dyk and.2.sysma2dyk and.5.sysma2dyk and.9.sysma2dyk and.11.sysma2dyk and.4.sysma2dyk and.3.sysma2dyk and.1.sysma2dyk and.8.sysma2dyk and.6.sysma2dyk and.10.sysma2dyk) ~9
+              (call . . ~3
+               (opensymchoice d3 . ord.0. ord.0.sysma2dyk) 2
+               (call . .
+                (opensymchoice d3 . \5B\5D.0. \5B\5D.0.sysma2dyk \5B\5D.1.sysma2dyk \5B\5D.2.sysma2dyk \5B\5D.3.sysma2dyk \5B\5D.4.sysma2dyk \5B\5D.5.sysma2dyk \5B\5D.6.sysma2dyk \5B\5D.7.sysma2dyk \5B\5D.8.sysma2dyk \5B\5D.9.sysma2dyk \5B\5D.10.sysma2dyk) ~1 s.0 2
+                (infix . .
+                 (opensymchoice d3 . \2B.16.sysma2dyk \2B.17.sysma2dyk \2B.18.sysma2dyk \2B.5.sysma2dyk \2B.8.sysma2dyk \2B.13.sysma2dyk \2B.14.sysma2dyk \2B.15.sysma2dyk \2B.1.sysma2dyk \2B.7.sysma2dyk \2B.9.sysma2dyk \2B.4.sysma2dyk \2B.2.sysma2dyk \2B.6.sysma2dyk \2B.11.sysma2dyk \2B.12.sysma2dyk \2B.0.sysma2dyk \2B.10.sysma2dyk \2B.19.sysma2dyk \2B.3.sysma2dyk) ~1 i.0 1
+                 (intlit . . +1)))) 8
+              (call . . ~4 ones.0. 1
+               (intlit . . +6)))))) ,1
+          (when . . 5
+           (elif . . doInc.0 7
+            (stmts . . 3
+             (call . . ~3
+              (ht . inc.0.sysma2dyk) 1 i.0 4
+              (intlit . . +2))))))) ,3
+        (else . . 2,1
+         (stmts . . 7
+          (asgn . . ~7 result.5 2
+           (ht . UNI_REPL.0.)) ,1
+          (when . . 5
+           (elif . . doInc.0 7
+            (stmts . . 3
+             (call . . ~3
+              (ht . inc.0.sysma2dyk) 1 i.0))))))))) 5,11
+     (elif . . 16
+      (infix . .
+       (opensymchoice d3 . ==.0.sysma2dyk ==.14.sysma2dyk ==.13.sysma2dyk ==.3.sysma2dyk ==.5.sysma2dyk ==.20.sysma2dyk ==.1.sysma2dyk ==.15.sysma2dyk ==.19.sysma2dyk ==.10.sysma2dyk ==.18.sysma2dyk ==.2.sysma2dyk ==.9.sysma2dyk ==.17.sysma2dyk ==.4.sysma2dyk ==.16.sysma2dyk ==.6.sysma2dyk ==.8.sysma2dyk ==.21.sysma2dyk ==.12.sysma2dyk ==.23.sysma2dyk ==.22.sysma2dyk ==.7.sysma2dyk ==.11.sysma2dyk ==.59.sysma2dyk ==.145.sysma2dyk) ~6
+       (infix . .
+        (opensymchoice d3 . shr.9.sysma2dyk shr.2.sysma2dyk shr.4.sysma2dyk shr.5.sysma2dyk shr.8.sysma2dyk shr.3.sysma2dyk shr.7.sysma2dyk shr.0.sysma2dyk shr.6.sysma2dyk shr.1.sysma2dyk) ~7
+        (call . . ~3
+         (opensymchoice d3 . ord.0. ord.0.sysma2dyk) 2
+         (call . .
+          (opensymchoice d3 . \5B\5D.0. \5B\5D.0.sysma2dyk \5B\5D.1.sysma2dyk \5B\5D.2.sysma2dyk \5B\5D.3.sysma2dyk \5B\5D.4.sysma2dyk \5B\5D.5.sysma2dyk \5B\5D.6.sysma2dyk \5B\5D.7.sysma2dyk \5B\5D.8.sysma2dyk \5B\5D.9.sysma2dyk \5B\5D.10.sysma2dyk) ~1 s.0 1 i.0)) 4
+        (intlit . . +4)) 3
+       (intlit b . +14)) ~3,1
+      (stmts . .
+       (if . . 3
+        (elif . . 2
+         (infix . .
+          (opensymchoice d3 . <=.15.sysma2dyk <=.3.sysma2dyk <=.1.sysma2dyk <=.10.sysma2dyk <=.2.sysma2dyk <=.12.sysma2dyk <=.11.sysma2dyk <=.13.sysma2dyk <=.9.sysma2dyk <=.18.sysma2dyk <=.7.sysma2dyk <=.16.sysma2dyk <=.6.sysma2dyk <=.0.sysma2dyk <=.17.sysma2dyk <=.4.sysma2dyk <=.8.sysma2dyk <=.14.sysma2dyk <=.5.sysma2dyk <=.19.sysma2dyk) ~2 i.0 5
+          (infix . .
+           (opensymchoice d3 . \2D.1.sysma2dyk \2D.19.sysma2dyk \2D.6.sysma2dyk \2D.0.sysma2dyk \2D.14.sysma2dyk \2D.2.sysma2dyk \2D.10.sysma2dyk \2D.17.sysma2dyk \2D.15.sysma2dyk \2D.13.sysma2dyk \2D.4.sysma2dyk \2D.9.sysma2dyk \2D.11.sysma2dyk \2D.5.sysma2dyk \2D.3.sysma2dyk \2D.20.sysma2dyk \2D.7.sysma2dyk \2D.16.sysma2dyk \2D.12.sysma2dyk \2D.18.sysma2dyk \2D.8.sysma2dyk) ~2 L.0 2
+           (intlit . . +3))) ~1,3
+         (stmts . . 7
+          (asgn . . ~7 result.5 33,1
+           (infix . .
+            (opensymchoice d3 . or.9.sysma2dyk or.11.sysma2dyk or.5.sysma2dyk or.0.sysma2dyk or.6.sysma2dyk or.10.sysma2dyk or.1.sysma2dyk or.7.sysma2dyk or.8.sysma2dyk or.2.sysma2dyk or.3.sysma2dyk or.4.sysma2dyk) ,~1
+            (infix . .
+             (opensymchoice d3 . or.9.sysma2dyk or.11.sysma2dyk or.5.sysma2dyk or.0.sysma2dyk or.6.sysma2dyk or.10.sysma2dyk or.1.sysma2dyk or.7.sysma2dyk or.8.sysma2dyk or.2.sysma2dyk or.3.sysma2dyk or.4.sysma2dyk) ~7
+             (infix . .
+              (opensymchoice d3 . shl.1.sysma2dyk shl.0.sysma2dyk shl.4.sysma2dyk shl.9.sysma2dyk shl.5.sysma2dyk shl.6.sysma2dyk shl.3.sysma2dyk shl.2.sysma2dyk shl.7.sysma2dyk shl.8.sysma2dyk) ~24
+              (par . . 11
+               (infix . .
+                (opensymchoice d3 . and.0.sysma2dyk and.7.sysma2dyk and.2.sysma2dyk and.5.sysma2dyk and.9.sysma2dyk and.11.sysma2dyk and.4.sysma2dyk and.3.sysma2dyk and.1.sysma2dyk and.8.sysma2dyk and.6.sysma2dyk and.10.sysma2dyk) ~7
+                (call . . ~3
+                 (opensymchoice d3 . ord.0. ord.0.sysma2dyk) 2
+                 (call . .
+                  (opensymchoice d3 . \5B\5D.0. \5B\5D.0.sysma2dyk \5B\5D.1.sysma2dyk \5B\5D.2.sysma2dyk \5B\5D.3.sysma2dyk \5B\5D.4.sysma2dyk \5B\5D.5.sysma2dyk \5B\5D.6.sysma2dyk \5B\5D.7.sysma2dyk \5B\5D.8.sysma2dyk \5B\5D.9.sysma2dyk \5B\5D.10.sysma2dyk) ~1 s.0 1 i.0)) 8
+                (call . . ~4 ones.0. 1
+                 (intlit . . +4)))) 4
+              (intlit . . +12)) ~6,1
+             (infix . .
+              (opensymchoice d3 . shl.1.sysma2dyk shl.0.sysma2dyk shl.4.sysma2dyk shl.9.sysma2dyk shl.5.sysma2dyk shl.6.sysma2dyk shl.3.sysma2dyk shl.2.sysma2dyk shl.7.sysma2dyk shl.8.sysma2dyk) ~26
+              (par . . 13
+               (infix . .
+                (opensymchoice d3 . and.0.sysma2dyk and.7.sysma2dyk and.2.sysma2dyk and.5.sysma2dyk and.9.sysma2dyk and.11.sysma2dyk and.4.sysma2dyk and.3.sysma2dyk and.1.sysma2dyk and.8.sysma2dyk and.6.sysma2dyk and.10.sysma2dyk) ~9
+                (call . . ~3
+                 (opensymchoice d3 . ord.0. ord.0.sysma2dyk) 2
+                 (call . .
+                  (opensymchoice d3 . \5B\5D.0. \5B\5D.0.sysma2dyk \5B\5D.1.sysma2dyk \5B\5D.2.sysma2dyk \5B\5D.3.sysma2dyk \5B\5D.4.sysma2dyk \5B\5D.5.sysma2dyk \5B\5D.6.sysma2dyk \5B\5D.7.sysma2dyk \5B\5D.8.sysma2dyk \5B\5D.9.sysma2dyk \5B\5D.10.sysma2dyk) ~1 s.0 2
+                  (infix . .
+                   (opensymchoice d3 . \2B.16.sysma2dyk \2B.17.sysma2dyk \2B.18.sysma2dyk \2B.5.sysma2dyk \2B.8.sysma2dyk \2B.13.sysma2dyk \2B.14.sysma2dyk \2B.15.sysma2dyk \2B.1.sysma2dyk \2B.7.sysma2dyk \2B.9.sysma2dyk \2B.4.sysma2dyk \2B.2.sysma2dyk \2B.6.sysma2dyk \2B.11.sysma2dyk \2B.12.sysma2dyk \2B.0.sysma2dyk \2B.10.sysma2dyk \2B.19.sysma2dyk \2B.3.sysma2dyk) ~1 i.0 1
+                   (intlit . . +1)))) 8
+                (call . . ~4 ones.0. 1
+                 (intlit . . +6)))) 4
+              (intlit . . +6))) ~32,1
+            (par . . 13
+             (infix . .
+              (opensymchoice d3 . and.0.sysma2dyk and.7.sysma2dyk and.2.sysma2dyk and.5.sysma2dyk and.9.sysma2dyk and.11.sysma2dyk and.4.sysma2dyk and.3.sysma2dyk and.1.sysma2dyk and.8.sysma2dyk and.6.sysma2dyk and.10.sysma2dyk) ~9
+              (call . . ~3
+               (opensymchoice d3 . ord.0. ord.0.sysma2dyk) 2
+               (call . .
+                (opensymchoice d3 . \5B\5D.0. \5B\5D.0.sysma2dyk \5B\5D.1.sysma2dyk \5B\5D.2.sysma2dyk \5B\5D.3.sysma2dyk \5B\5D.4.sysma2dyk \5B\5D.5.sysma2dyk \5B\5D.6.sysma2dyk \5B\5D.7.sysma2dyk \5B\5D.8.sysma2dyk \5B\5D.9.sysma2dyk \5B\5D.10.sysma2dyk) ~1 s.0 2
+                (infix . .
+                 (opensymchoice d3 . \2B.16.sysma2dyk \2B.17.sysma2dyk \2B.18.sysma2dyk \2B.5.sysma2dyk \2B.8.sysma2dyk \2B.13.sysma2dyk \2B.14.sysma2dyk \2B.15.sysma2dyk \2B.1.sysma2dyk \2B.7.sysma2dyk \2B.9.sysma2dyk \2B.4.sysma2dyk \2B.2.sysma2dyk \2B.6.sysma2dyk \2B.11.sysma2dyk \2B.12.sysma2dyk \2B.0.sysma2dyk \2B.10.sysma2dyk \2B.19.sysma2dyk \2B.3.sysma2dyk) ~1 i.0 1
+                 (intlit . . +2)))) 8
+              (call . . ~4 ones.0. 1
+               (intlit . . +6)))))) ,3
+          (when . . 5
+           (elif . . doInc.0 7
+            (stmts . . 3
+             (call . . ~3
+              (ht . inc.0.sysma2dyk) 1 i.0 4
+              (intlit . . +3))))))) ,7
+        (else . . 2,1
+         (stmts . . 7
+          (asgn . . ~7 result.5 2
+           (ht . UNI_REPL.0.)) ,1
+          (when . . 5
+           (elif . . doInc.0 7
+            (stmts . . 3
+             (call . . ~3
+              (ht . inc.0.sysma2dyk) 1 i.0))))))))) 5,22
+     (elif . . 16
+      (infix . .
+       (opensymchoice d3 . ==.0.sysma2dyk ==.14.sysma2dyk ==.13.sysma2dyk ==.3.sysma2dyk ==.5.sysma2dyk ==.20.sysma2dyk ==.1.sysma2dyk ==.15.sysma2dyk ==.19.sysma2dyk ==.10.sysma2dyk ==.18.sysma2dyk ==.2.sysma2dyk ==.9.sysma2dyk ==.17.sysma2dyk ==.4.sysma2dyk ==.16.sysma2dyk ==.6.sysma2dyk ==.8.sysma2dyk ==.21.sysma2dyk ==.12.sysma2dyk ==.23.sysma2dyk ==.22.sysma2dyk ==.7.sysma2dyk ==.11.sysma2dyk ==.59.sysma2dyk ==.145.sysma2dyk) ~6
+       (infix . .
+        (opensymchoice d3 . shr.9.sysma2dyk shr.2.sysma2dyk shr.4.sysma2dyk shr.5.sysma2dyk shr.8.sysma2dyk shr.3.sysma2dyk shr.7.sysma2dyk shr.0.sysma2dyk shr.6.sysma2dyk shr.1.sysma2dyk) ~7
+        (call . . ~3
+         (opensymchoice d3 . ord.0. ord.0.sysma2dyk) 2
+         (call . .
+          (opensymchoice d3 . \5B\5D.0. \5B\5D.0.sysma2dyk \5B\5D.1.sysma2dyk \5B\5D.2.sysma2dyk \5B\5D.3.sysma2dyk \5B\5D.4.sysma2dyk \5B\5D.5.sysma2dyk \5B\5D.6.sysma2dyk \5B\5D.7.sysma2dyk \5B\5D.8.sysma2dyk \5B\5D.9.sysma2dyk \5B\5D.10.sysma2dyk) ~1 s.0 1 i.0)) 4
+        (intlit . . +3)) 3
+       (intlit b . +30)) ~3,1
+      (stmts . .
+       (if . . 3
+        (elif . . 2
+         (infix . .
+          (opensymchoice d3 . <=.15.sysma2dyk <=.3.sysma2dyk <=.1.sysma2dyk <=.10.sysma2dyk <=.2.sysma2dyk <=.12.sysma2dyk <=.11.sysma2dyk <=.13.sysma2dyk <=.9.sysma2dyk <=.18.sysma2dyk <=.7.sysma2dyk <=.16.sysma2dyk <=.6.sysma2dyk <=.0.sysma2dyk <=.17.sysma2dyk <=.4.sysma2dyk <=.8.sysma2dyk <=.14.sysma2dyk <=.5.sysma2dyk <=.19.sysma2dyk) ~2 i.0 5
+          (infix . .
+           (opensymchoice d3 . \2D.1.sysma2dyk \2D.19.sysma2dyk \2D.6.sysma2dyk \2D.0.sysma2dyk \2D.14.sysma2dyk \2D.2.sysma2dyk \2D.10.sysma2dyk \2D.17.sysma2dyk \2D.15.sysma2dyk \2D.13.sysma2dyk \2D.4.sysma2dyk \2D.9.sysma2dyk \2D.11.sysma2dyk \2D.5.sysma2dyk \2D.3.sysma2dyk \2D.20.sysma2dyk \2D.7.sysma2dyk \2D.16.sysma2dyk \2D.12.sysma2dyk \2D.18.sysma2dyk \2D.8.sysma2dyk) ~2 L.0 2
+           (intlit . . +4))) ~1,4
+         (stmts . . 7
+          (asgn . . ~7 result.5 33,2
+           (infix . .
+            (opensymchoice d3 . or.9.sysma2dyk or.11.sysma2dyk or.5.sysma2dyk or.0.sysma2dyk or.6.sysma2dyk or.10.sysma2dyk or.1.sysma2dyk or.7.sysma2dyk or.8.sysma2dyk or.2.sysma2dyk or.3.sysma2dyk or.4.sysma2dyk) 1,~1
+            (infix . .
+             (opensymchoice d3 . or.9.sysma2dyk or.11.sysma2dyk or.5.sysma2dyk or.0.sysma2dyk or.6.sysma2dyk or.10.sysma2dyk or.1.sysma2dyk or.7.sysma2dyk or.8.sysma2dyk or.2.sysma2dyk or.3.sysma2dyk or.4.sysma2dyk) ~1,~1
+             (infix . .
+              (opensymchoice d3 . or.9.sysma2dyk or.11.sysma2dyk or.5.sysma2dyk or.0.sysma2dyk or.6.sysma2dyk or.10.sysma2dyk or.1.sysma2dyk or.7.sysma2dyk or.8.sysma2dyk or.2.sysma2dyk or.3.sysma2dyk or.4.sysma2dyk) ~7
+              (infix . .
+               (opensymchoice d3 . shl.1.sysma2dyk shl.0.sysma2dyk shl.4.sysma2dyk shl.9.sysma2dyk shl.5.sysma2dyk shl.6.sysma2dyk shl.3.sysma2dyk shl.2.sysma2dyk shl.7.sysma2dyk shl.8.sysma2dyk) ~24
+               (par . . 11
+                (infix . .
+                 (opensymchoice d3 . and.0.sysma2dyk and.7.sysma2dyk and.2.sysma2dyk and.5.sysma2dyk and.9.sysma2dyk and.11.sysma2dyk and.4.sysma2dyk and.3.sysma2dyk and.1.sysma2dyk and.8.sysma2dyk and.6.sysma2dyk and.10.sysma2dyk) ~7
+                 (call . . ~3
+                  (opensymchoice d3 . ord.0. ord.0.sysma2dyk) 2
+                  (call . .
+                   (opensymchoice d3 . \5B\5D.0. \5B\5D.0.sysma2dyk \5B\5D.1.sysma2dyk \5B\5D.2.sysma2dyk \5B\5D.3.sysma2dyk \5B\5D.4.sysma2dyk \5B\5D.5.sysma2dyk \5B\5D.6.sysma2dyk \5B\5D.7.sysma2dyk \5B\5D.8.sysma2dyk \5B\5D.9.sysma2dyk \5B\5D.10.sysma2dyk) ~1 s.0 1 i.0)) 8
+                 (call . . ~4 ones.0. 1
+                  (intlit . . +3)))) 4
+               (intlit . . +18)) ~6,1
+              (infix . .
+               (opensymchoice d3 . shl.1.sysma2dyk shl.0.sysma2dyk shl.4.sysma2dyk shl.9.sysma2dyk shl.5.sysma2dyk shl.6.sysma2dyk shl.3.sysma2dyk shl.2.sysma2dyk shl.7.sysma2dyk shl.8.sysma2dyk) ~26
+               (par . . 13
+                (infix . .
+                 (opensymchoice d3 . and.0.sysma2dyk and.7.sysma2dyk and.2.sysma2dyk and.5.sysma2dyk and.9.sysma2dyk and.11.sysma2dyk and.4.sysma2dyk and.3.sysma2dyk and.1.sysma2dyk and.8.sysma2dyk and.6.sysma2dyk and.10.sysma2dyk) ~9
+                 (call . . ~3
+                  (opensymchoice d3 . ord.0. ord.0.sysma2dyk) 2
+                  (call . .
+                   (opensymchoice d3 . \5B\5D.0. \5B\5D.0.sysma2dyk \5B\5D.1.sysma2dyk \5B\5D.2.sysma2dyk \5B\5D.3.sysma2dyk \5B\5D.4.sysma2dyk \5B\5D.5.sysma2dyk \5B\5D.6.sysma2dyk \5B\5D.7.sysma2dyk \5B\5D.8.sysma2dyk \5B\5D.9.sysma2dyk \5B\5D.10.sysma2dyk) ~1 s.0 2
+                   (infix . .
+                    (opensymchoice d3 . \2B.16.sysma2dyk \2B.17.sysma2dyk \2B.18.sysma2dyk \2B.5.sysma2dyk \2B.8.sysma2dyk \2B.13.sysma2dyk \2B.14.sysma2dyk \2B.15.sysma2dyk \2B.1.sysma2dyk \2B.7.sysma2dyk \2B.9.sysma2dyk \2B.4.sysma2dyk \2B.2.sysma2dyk \2B.6.sysma2dyk \2B.11.sysma2dyk \2B.12.sysma2dyk \2B.0.sysma2dyk \2B.10.sysma2dyk \2B.19.sysma2dyk \2B.3.sysma2dyk) ~1 i.0 1
+                    (intlit . . +1)))) 8
+                 (call . . ~4 ones.0. 1
+                  (intlit . . +6)))) 4
+               (intlit . . +12))) ~7,1
+             (infix . .
+              (opensymchoice d3 . shl.1.sysma2dyk shl.0.sysma2dyk shl.4.sysma2dyk shl.9.sysma2dyk shl.5.sysma2dyk shl.6.sysma2dyk shl.3.sysma2dyk shl.2.sysma2dyk shl.7.sysma2dyk shl.8.sysma2dyk) ~26
+              (par . . 13
+               (infix . .
+                (opensymchoice d3 . and.0.sysma2dyk and.7.sysma2dyk and.2.sysma2dyk and.5.sysma2dyk and.9.sysma2dyk and.11.sysma2dyk and.4.sysma2dyk and.3.sysma2dyk and.1.sysma2dyk and.8.sysma2dyk and.6.sysma2dyk and.10.sysma2dyk) ~9
+                (call . . ~3
+                 (opensymchoice d3 . ord.0. ord.0.sysma2dyk) 2
+                 (call . .
+                  (opensymchoice d3 . \5B\5D.0. \5B\5D.0.sysma2dyk \5B\5D.1.sysma2dyk \5B\5D.2.sysma2dyk \5B\5D.3.sysma2dyk \5B\5D.4.sysma2dyk \5B\5D.5.sysma2dyk \5B\5D.6.sysma2dyk \5B\5D.7.sysma2dyk \5B\5D.8.sysma2dyk \5B\5D.9.sysma2dyk \5B\5D.10.sysma2dyk) ~1 s.0 2
+                  (infix . .
+                   (opensymchoice d3 . \2B.16.sysma2dyk \2B.17.sysma2dyk \2B.18.sysma2dyk \2B.5.sysma2dyk \2B.8.sysma2dyk \2B.13.sysma2dyk \2B.14.sysma2dyk \2B.15.sysma2dyk \2B.1.sysma2dyk \2B.7.sysma2dyk \2B.9.sysma2dyk \2B.4.sysma2dyk \2B.2.sysma2dyk \2B.6.sysma2dyk \2B.11.sysma2dyk \2B.12.sysma2dyk \2B.0.sysma2dyk \2B.10.sysma2dyk \2B.19.sysma2dyk \2B.3.sysma2dyk) ~1 i.0 1
+                   (intlit . . +2)))) 8
+                (call . . ~4 ones.0. 1
+                 (intlit . . +6)))) 4
+              (intlit . . +6))) ~32,1
+            (par . . 13
+             (infix . .
+              (opensymchoice d3 . and.0.sysma2dyk and.7.sysma2dyk and.2.sysma2dyk and.5.sysma2dyk and.9.sysma2dyk and.11.sysma2dyk and.4.sysma2dyk and.3.sysma2dyk and.1.sysma2dyk and.8.sysma2dyk and.6.sysma2dyk and.10.sysma2dyk) ~9
+              (call . . ~3
+               (opensymchoice d3 . ord.0. ord.0.sysma2dyk) 2
+               (call . .
+                (opensymchoice d3 . \5B\5D.0. \5B\5D.0.sysma2dyk \5B\5D.1.sysma2dyk \5B\5D.2.sysma2dyk \5B\5D.3.sysma2dyk \5B\5D.4.sysma2dyk \5B\5D.5.sysma2dyk \5B\5D.6.sysma2dyk \5B\5D.7.sysma2dyk \5B\5D.8.sysma2dyk \5B\5D.9.sysma2dyk \5B\5D.10.sysma2dyk) ~1 s.0 2
+                (infix . .
+                 (opensymchoice d3 . \2B.16.sysma2dyk \2B.17.sysma2dyk \2B.18.sysma2dyk \2B.5.sysma2dyk \2B.8.sysma2dyk \2B.13.sysma2dyk \2B.14.sysma2dyk \2B.15.sysma2dyk \2B.1.sysma2dyk \2B.7.sysma2dyk \2B.9.sysma2dyk \2B.4.sysma2dyk \2B.2.sysma2dyk \2B.6.sysma2dyk \2B.11.sysma2dyk \2B.12.sysma2dyk \2B.0.sysma2dyk \2B.10.sysma2dyk \2B.19.sysma2dyk \2B.3.sysma2dyk) ~1 i.0 1
+                 (intlit . . +3)))) 8
+              (call . . ~4 ones.0. 1
+               (intlit . . +6)))))) ,4
+          (when . . 5
+           (elif . . doInc.0 7
+            (stmts . . 3
+             (call . . ~3
+              (ht . inc.0.sysma2dyk) 1 i.0 4
+              (intlit . . +4))))))) ,9
+        (else . . 2,1
+         (stmts . . 7
+          (asgn . . ~7 result.5 2
+           (ht . UNI_REPL.0.)) ,1
+          (when . . 5
+           (elif . . doInc.0 7
+            (stmts . . 3
+             (call . . ~3
+              (ht . inc.0.sysma2dyk) 1 i.0))))))))) ,35
+     (else . . 2,1
+      (stmts . . 7
+       (asgn . . ~7 result.5 2
+        (intlit b1 . +65533)) ,1
+       (when . . 5
+        (elif . . doInc.0 7
+         (stmts . . 3
+          (call . . ~3
+           (ht . inc.0.sysma2dyk) 1 i.0))))))))) none unknown . "" . .) 10,145
+ (sd :runes.0. .
+  (iterator) . ugi1 ofrbcr0s0awhtl0t0c0 -1 +0 .
+  (td :`t25.136. . nti0e2 inline -1 -1 +0 +136 . 16,146,/home/araq/projects/nim/lib/std/widestrs.nim
+   (formalparams . `t31.3.sysma2dyk
+    (arglist . . ~5
+     (arglist . .)
+     (empty)
+     (empty) ~5
+     (arglist . .)
+     (empty) ~5
+     (arglist . .)) 1
+    (sd :s.1 .
+     (param) . u . -1 +0 . `t29.18.sysma2dyk runes.0. . none unknown . "" . .) 13
+    (sd :L.1 .
+     (param) . u . -1 +1 . `t31.3.sysma2dyk runes.0. . none unknown . "" . .)) runes.0. . none unknown . "" `t31.3.sysma2dyk) widestrs.0. ~9
+  (iterator s . 9
+   (ht . runes.0.)
+   (empty)
+   (empty) .
+   (empty)
+   (empty) 2,1
+   (stmts s .
+    (var s . 2,1
+     (identdefs . .
+      (sd :i.1 .
+       (var . +0 +0) . u ofrbcr0s0awhtl0t0c0 -1 +0 .
+       (td :`t31.138. . c3 nimcall +8 +8 +0 +138 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "") runes.0.
+       (identdefs . . i.1 2
+        (empty) 4
+        (intlit .
+         (td :`t31.137. . c3 nimcall +8 +8 +0 +137 . 10,148,/home/araq/projects/nim/lib/std/widestrs.nim
+          (intlit s `t31.137. +0) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +0)) none unknown . "" . .) 2
+      (empty) 4
+      (intlit . `t31.137. +0)) 2,2
+     (identdefs . .
+      (sd :result.6 .
+       (var . +0 +0) . u ofrbcr0s0awhtl0t0c0 -1 +0 . `t31.3.sysma2dyk runes.0.
+       (identdefs . . result.6 8 int.0.sysma2dyk
+        (empty)) none unknown . "" . .) 8 int.0.sysma2dyk
+      (empty))) ,3
+    (while s . 8
+     (infix s `t1.34.sysma2dyk <.8.sysma2dyk ~2 i.1 2 L.1) 2,1
+     (stmts s .
+      (stmts sf . ~2,~48
+       (empty) ~2,~46
+       (bind0 s . ones.0.) 10
+       (if s . ~9,~44
+        (elif . . 10
+         (infix s `t1.34.sysma2dyk <=.7.sysma2dyk ~7
+          (call s `t31.3.sysma2dyk ~3 ord.0.digqtx7k2 2
+           (at s `t2.16.sysma2dyk 5,44 s.1 8,44 i.1)) 3
+          (intlit s
+           (td :`t31.140. . c3 nimcall +8 +8 +0 +140 . 20,107,/home/araq/projects/nim/lib/std/widestrs.nim
+            (intlit s `t31.140. +127) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +127)) ~1,1
+         (stmts s . 7
+          (asgn s . 13,43 result.6 5
+           (call s `t31.3.sysma2dyk ~3 ord.0.digqtx7k2 2
+            (at s `t2.16.sysma2dyk ~3,43 s.1 ,43 i.1))) 15,1
+          (call s . ~3 inc.9.sysma2dyk ~1,42 i.1 55,21,/home/araq/projects/nim/lib/system/arithmetics.nim
+           (intlit s `t31.36.sysma2dyk +1)))) ~7,~41
+        (elif . . 16
+         (infix s `t1.34.sysma2dyk ==.9.sysma2dyk ~6
+          (infix s `t31.3.sysma2dyk shr.10.sysma2dyk ~7
+           (call s `t31.3.sysma2dyk ~3 ord.0.digqtx7k2 2
+            (at s `t2.16.sysma2dyk 3,41 s.1 6,41 i.1)) 4
+           (intlit .
+            (td :`t31.148. . c3 nimcall +8 +8 +0 +148 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +5)) 3
+          (intlit bs
+           (td :`t31.150. . c3 nimcall +8 +8 +0 +150 . 28,110,/home/araq/projects/nim/lib/std/widestrs.nim
+            (intlit bs `t31.150. +6) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +6)) ~3,2
+         (if s . 3
+          (elif . . 2
+           (infix s `t1.34.sysma2dyk <=.7.sysma2dyk 9,39 i.1 5
+            (infix s `t31.3.sysma2dyk \2D.5.sysma2dyk 7,39 L.1 2
+             (intlit s
+              (td :`t31.151. . c3 nimcall +8 +8 +0 +151 . 18,112,/home/araq/projects/nim/lib/std/widestrs.nim
+               (intlit s `t31.151. +2) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +2))) ~1,1
+           (stmts s . 7
+            (asgn s . 11,38 result.6 34
+             (infix s `t31.3.sysma2dyk or.2.sysma2dyk ~6
+              (infix s `t31.3.sysma2dyk shl.10.sysma2dyk ~15
+               (infix s `t31.3.sysma2dyk and.2.sysma2dyk ~7
+                (call s `t31.3.sysma2dyk ~3 ord.0.digqtx7k2 2
+                 (at s `t2.16.sysma2dyk ~6,38 s.1 ~3,38 i.1)) 5
+                (intlit s
+                 (td :`t31.166. . c3 nimcall +8 +8 +0 +166 . 33,113,/home/araq/projects/nim/lib/std/widestrs.nim
+                  (intlit s `t31.166. +31) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +31)) 4
+               (intlit .
+                (td :`t31.167. . c3 nimcall +8 +8 +0 +167 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +6)) 16
+              (infix s `t31.3.sysma2dyk and.2.sysma2dyk ~9
+               (call s `t31.3.sysma2dyk ~3 ord.0.digqtx7k2 2
+                (at s `t2.16.sysma2dyk ~41,38 s.1 2
+                 (infix s `t31.3.sysma2dyk \2B.5.sysma2dyk ~40,38 i.1 1
+                  (intlit s
+                   (td :`t31.153. . c3 nimcall +8 +8 +0 +153 . 41,100,/home/araq/projects/nim/lib/std/widestrs.nim
+                    (intlit s `t31.153. +1) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +1)))) 4
+               (intlit s
+                (td :`t31.183. . c3 nimcall +8 +8 +0 +183 . 69,113,/home/araq/projects/nim/lib/std/widestrs.nim
+                 (intlit s `t31.183. +63) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +63)))) 15,1
+            (call s . ~3 inc.9.sysma2dyk ~3,37 i.1 4
+             (intlit .
+              (td :`t31.184. . c3 nimcall +8 +8 +0 +184 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +2)))) ,3
+          (else . . 2,1
+           (stmts s . 7
+            (asgn s . 11,35 result.6 2
+             (intlit b1s `t31.63. +65533)) 15,1
+            (call s . ~3 inc.9.sysma2dyk ~3,34 i.1 55,21,/home/araq/projects/nim/lib/system/arithmetics.nim
+             (intlit s `t31.36.sysma2dyk +1)))))) ~7,~33
+        (elif . . 16
+         (infix s `t1.34.sysma2dyk ==.9.sysma2dyk ~6
+          (infix s `t31.3.sysma2dyk shr.10.sysma2dyk ~7
+           (call s `t31.3.sysma2dyk ~3 ord.0.digqtx7k2 2
+            (at s `t2.16.sysma2dyk 3,33 s.1 6,33 i.1)) 4
+           (intlit .
+            (td :`t31.193. . c3 nimcall +8 +8 +0 +193 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +4)) 3
+          (intlit bs
+           (td :`t31.195. . c3 nimcall +8 +8 +0 +195 . 28,118,/home/araq/projects/nim/lib/std/widestrs.nim
+            (intlit bs `t31.195. +14) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +14)) ~3,1
+         (if s . 3
+          (elif . . 2
+           (infix s `t1.34.sysma2dyk <=.7.sysma2dyk 9,32 i.1 5
+            (infix s `t31.3.sysma2dyk \2D.5.sysma2dyk 7,32 L.1 2
+             (intlit s
+              (td :`t31.196. . c3 nimcall +8 +8 +0 +196 . 18,119,/home/araq/projects/nim/lib/std/widestrs.nim
+               (intlit s `t31.196. +3) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +3))) ~1,3
+           (stmts s . 7
+            (asgn s . 11,29 result.6 33,1
+             (infix s `t31.3.sysma2dyk or.2.sysma2dyk ,~1
+              (infix s `t31.3.sysma2dyk or.2.sysma2dyk ~7
+               (infix s `t31.3.sysma2dyk shl.10.sysma2dyk ~13
+                (infix s `t31.3.sysma2dyk and.2.sysma2dyk ~7
+                 (call s `t31.3.sysma2dyk ~3 ord.0.digqtx7k2 2
+                  (at s `t2.16.sysma2dyk ~6,29 s.1 ~3,29 i.1)) 4
+                 (intlit s
+                  (td :`t31.210. . c3 nimcall +8 +8 +0 +210 . 32,122,/home/araq/projects/nim/lib/std/widestrs.nim
+                   (intlit s `t31.210. +15) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +15)) 4
+                (intlit .
+                 (td :`t31.212. . c3 nimcall +8 +8 +0 +212 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +12)) ~6,1
+               (infix s `t31.3.sysma2dyk shl.10.sysma2dyk ~13
+                (infix s `t31.3.sysma2dyk and.2.sysma2dyk ~9
+                 (call s `t31.3.sysma2dyk ~3 ord.0.digqtx7k2 2
+                  (at s `t2.16.sysma2dyk ~5,28 s.1 2
+                   (infix s `t31.3.sysma2dyk \2B.5.sysma2dyk ~4,28 i.1 1
+                    (intlit s `t31.153. +1)))) 4
+                 (intlit s
+                  (td :`t31.228. . c3 nimcall +8 +8 +0 +228 . 33,123,/home/araq/projects/nim/lib/std/widestrs.nim
+                   (intlit s `t31.228. +63) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +63)) 4
+                (intlit .
+                 (td :`t31.229. . c3 nimcall +8 +8 +0 +229 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +6))) ~19,1
+              (infix s `t31.3.sysma2dyk and.2.sysma2dyk ~9
+               (call s `t31.3.sysma2dyk ~3 ord.0.digqtx7k2 2
+                (at s `t2.16.sysma2dyk ~5,27 s.1 2
+                 (infix s `t31.3.sysma2dyk \2B.5.sysma2dyk ~4,27 i.1 1
+                  (intlit s `t31.151. +2)))) 4
+               (intlit s
+                (td :`t31.245. . c3 nimcall +8 +8 +0 +245 . 33,124,/home/araq/projects/nim/lib/std/widestrs.nim
+                 (intlit s `t31.245. +63) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +63)))) 15,3
+            (call s . ~3 inc.9.sysma2dyk ~3,26 i.1 4
+             (intlit .
+              (td :`t31.246. . c3 nimcall +8 +8 +0 +246 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +3)))) ,7
+          (else . . 2,1
+           (stmts s . 7
+            (asgn s . 11,24 result.6 2
+             (intlit b1s `t31.63. +65533)) 15,1
+            (call s . ~3 inc.9.sysma2dyk ~3,23 i.1 55,21,/home/araq/projects/nim/lib/system/arithmetics.nim
+             (intlit s `t31.36.sysma2dyk +1)))))) ~7,~22
+        (elif . . 16
+         (infix s `t1.34.sysma2dyk ==.9.sysma2dyk ~6
+          (infix s `t31.3.sysma2dyk shr.10.sysma2dyk ~7
+           (call s `t31.3.sysma2dyk ~3 ord.0.digqtx7k2 2
+            (at s `t2.16.sysma2dyk 3,22 s.1 6,22 i.1)) 4
+           (intlit .
+            (td :`t31.254. . c3 nimcall +8 +8 +0 +254 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +3)) 3
+          (intlit bs
+           (td :`t31.256. . c3 nimcall +8 +8 +0 +256 . 28,129,/home/araq/projects/nim/lib/std/widestrs.nim
+            (intlit bs `t31.256. +30) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +30)) ~3,1
+         (if s . 3
+          (elif . . 2
+           (infix s `t1.34.sysma2dyk <=.7.sysma2dyk 9,21 i.1 5
+            (infix s `t31.3.sysma2dyk \2D.5.sysma2dyk 7,21 L.1 2
+             (intlit s
+              (td :`t31.191. . c3 nimcall +8 +8 +0 +191 . 23,118,/home/araq/projects/nim/lib/std/widestrs.nim
+               (intlit s `t31.191. +4) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +4))) ~1,4
+           (stmts s . 7
+            (asgn s . 11,17 result.6 33,2
+             (infix s `t31.3.sysma2dyk or.2.sysma2dyk 1,~1
+              (infix s `t31.3.sysma2dyk or.2.sysma2dyk ~1,~1
+               (infix s `t31.3.sysma2dyk or.2.sysma2dyk ~7
+                (infix s `t31.3.sysma2dyk shl.10.sysma2dyk ~13
+                 (infix s `t31.3.sysma2dyk and.2.sysma2dyk ~7
+                  (call s `t31.3.sysma2dyk ~3 ord.0.digqtx7k2 2
+                   (at s `t2.16.sysma2dyk ~6,17 s.1 ~3,17 i.1)) 4
+                  (intlit s
+                   (td :`t31.270. . c3 nimcall +8 +8 +0 +270 . 32,134,/home/araq/projects/nim/lib/std/widestrs.nim
+                    (intlit s `t31.270. +7) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +7)) 4
+                 (intlit .
+                  (td :`t31.272. . c3 nimcall +8 +8 +0 +272 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +18)) ~6,1
+                (infix s `t31.3.sysma2dyk shl.10.sysma2dyk ~13
+                 (infix s `t31.3.sysma2dyk and.2.sysma2dyk ~9
+                  (call s `t31.3.sysma2dyk ~3 ord.0.digqtx7k2 2
+                   (at s `t2.16.sysma2dyk ~5,16 s.1 2
+                    (infix s `t31.3.sysma2dyk \2B.5.sysma2dyk ~4,16 i.1 1
+                     (intlit s `t31.153. +1)))) 4
+                  (intlit s
+                   (td :`t31.288. . c3 nimcall +8 +8 +0 +288 . 33,135,/home/araq/projects/nim/lib/std/widestrs.nim
+                    (intlit s `t31.288. +63) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +63)) 4
+                 (intlit .
+                  (td :`t31.289. . c3 nimcall +8 +8 +0 +289 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +12))) ~7,1
+               (infix s `t31.3.sysma2dyk shl.10.sysma2dyk ~13
+                (infix s `t31.3.sysma2dyk and.2.sysma2dyk ~9
+                 (call s `t31.3.sysma2dyk ~3 ord.0.digqtx7k2 2
+                  (at s `t2.16.sysma2dyk ~5,15 s.1 2
+                   (infix s `t31.3.sysma2dyk \2B.5.sysma2dyk ~4,15 i.1 1
+                    (intlit s `t31.151. +2)))) 4
+                 (intlit s
+                  (td :`t31.305. . c3 nimcall +8 +8 +0 +305 . 33,136,/home/araq/projects/nim/lib/std/widestrs.nim
+                   (intlit s `t31.305. +63) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +63)) 4
+                (intlit .
+                 (td :`t31.306. . c3 nimcall +8 +8 +0 +306 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +6))) ~19,1
+              (infix s `t31.3.sysma2dyk and.2.sysma2dyk ~9
+               (call s `t31.3.sysma2dyk ~3 ord.0.digqtx7k2 2
+                (at s `t2.16.sysma2dyk ~5,14 s.1 2
+                 (infix s `t31.3.sysma2dyk \2B.5.sysma2dyk ~4,14 i.1 1
+                  (intlit s `t31.196. +3)))) 4
+               (intlit s
+                (td :`t31.322. . c3 nimcall +8 +8 +0 +322 . 33,137,/home/araq/projects/nim/lib/std/widestrs.nim
+                 (intlit s `t31.322. +63) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +63)))) 15,4
+            (call s . ~3 inc.9.sysma2dyk ~3,13 i.1 4
+             (intlit .
+              (td :`t31.323. . c3 nimcall +8 +8 +0 +323 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +4)))) ,9
+          (else . . 2,1
+           (stmts s . 7
+            (asgn s . 11,11 result.6 2
+             (intlit b1s `t31.63. +65533)) 15,1
+            (call s . ~3 inc.9.sysma2dyk ~3,10 i.1 55,21,/home/araq/projects/nim/lib/system/arithmetics.nim
+             (intlit s `t31.36.sysma2dyk +1)))))) ~12,~9
+        (else . . 2,1
+         (stmts s . 7
+          (asgn s . 13,8 result.6 2
+           (intlit b1s `t31.3.sysma2dyk +65533)) 15,1
+          (call s . ~3 inc.9.sysma2dyk ~1,7 i.1 55,21,/home/araq/projects/nim/lib/system/arithmetics.nim
+           (intlit s `t31.36.sysma2dyk +1)))))) ,1
+      (yield s . 6 result.6))))) none unknown . "" . .) 6,153
+ (sd :newWideCString.0. x
+  (proc) . egi1 ofrbcr0s0awhtl0t0c0 -1 +0 .
+  (td :`t25.332. . te2 nimcall -1 -1 +0 +332 . 22,154,/home/araq/projects/nim/lib/std/widestrs.nim
+   (formalparams . `t17.5.
+    (arglist . . ~15
+     (arglist . .)
+     (empty)
+     (empty) ~15
+     (arglist . .)
+     (empty) ~15
+     (arglist . .)) 1
+    (sd :size.0 .
+     (param) . u . -1 +0 . `t31.3.sysma2dyk newWideCString.0. . none unknown . "" . .)) newWideCString.0. . none unknown . "" `t17.5.) widestrs.0. ~5
+  (proc s . 5
+   (ht . newWideCString.0.)
+   (empty)
+   (empty) .
+   (empty)
+   (empty) 2,1
+   (stmts s `t7.1. 7
+    (asgn s `t7.1. ~9,~1
+     (sd :result.7 .
+      (result) . ua . -1 +0 . `t17.5. newWideCString.0. . none unknown . "" . .) 9
+     (call s `t17.5. 5,913,/home/araq/projects/nim/lib/system.nim
+      (sd :default.0. .
+       (proc) default uefgn ofrbcr0s0awhtl0t0c0 -1 +0 .
+       (td :`t25.334. . ntgme2 nimcall -1 -1 +0 +334 . 16,913,/home/araq/projects/nim/lib/system.nim
+        (formalparams . `t12.906.sysma2dyk
+         (arglist . . ~11
+          (arglist . .)
+          (empty)
+          (empty) ~11
+          (arglist . .)
+          (empty) ~11
+          (arglist . .)) 1
+         (sd :_.0 .
+          (param) . g0 . -1 +0 .
+          (td :`t8.333. . c3 nimcall -1 -1 +0 +333 . . newWideCString.0. . none unknown . "" `t17.5.) default.0. . none unknown . "" . .)) default.0.sysma2dyk . none unknown . "" `t17.5.) default.0.sysma2dyk ~5
+       (proc . . 5
+        (ht `t25.907.sysma2dyk default.0.)
+        (empty)
+        (empty) . 36
+        (pragma . . 7
+         (kv . . ~5
+          (ident . . magic) 2
+          (strlit . `t28.17.sysma2dyk "Default")) 20
+         (ident . . noSideEffect))
+        (bracket . .
+         (empty) 13,913,/home/araq/projects/nim/lib/system.nim
+         (genericparams . . 1
+          (identdefs . .
+           (ident . . T)
+           (empty)
+           (empty)))) 2,1
+        (stmts s .
+         (comment s .)
+         (empty))
+        (sd :result.8 .
+         (result) . u . -1 +0 . `t17.5. default.0. . none unknown . "" . .)) none unknown . "" . default.0.sysma2dyk) 1
+      (ht `t8.333. WideCStringObj.0.))) 10,1
+    (call s . ~10 createWide.0. 1
+     (haddr .
+      (td :`t23.335. . . nimcall -1 -1 +0 +335 . . newWideCString.0. . none unknown . "" `t17.5.) result.7) 18
+     (infix s `t31.3.sysma2dyk \2B.5.sysma2dyk ~4
+      (infix s `t31.3.sysma2dyk *.0.sysma2dyk ~5 size.0 2
+       (intlit s `t31.151. +2)) 2
+      (intlit s `t31.151. +2)))) result.7) none unknown . "" . .) 6,157
+ (sd :newWideCString.1. x
+  (proc) . uegi1 ofrbcr0s0awhtl0t0c0 -1 +0 .
+  (td :`t25.343. . te2 nimcall -1 -1 +0 +343 . 22,158,/home/araq/projects/nim/lib/std/widestrs.nim
+   (formalparams . `t17.5.
+    (arglist . . ~15
+     (arglist . .)
+     (empty)
+     (empty) ~15
+     (arglist . .)
+     (empty) ~15
+     (arglist . .)) 1
+    (sd :source.0 .
+     (param) . u . -1 +0 . `t29.18.sysma2dyk newWideCString.1. . none unknown . "" . .) 18
+    (sd :L.2 .
+     (param) . u . -1 +1 . `t31.3.sysma2dyk newWideCString.1. . none unknown . "" . .)) newWideCString.1. . none unknown . "" `t17.5.) widestrs.0. ~5
+  (proc s . 5
+   (ht . newWideCString.1.)
+   (empty)
+   (empty) .
+   (empty)
+   (empty) 2,1
+   (stmts s `t7.1.
+    (comment sh .) 7,1
+    (asgn s `t7.1. ~9,~2
+     (sd :result.10 .
+      (result) . ua . -1 +0 . `t17.5. newWideCString.1. . none unknown . "" . .) 9
+     (call s `t17.5. ~7 default.0. 1
+      (ht
+       (td :`t8.344. . c3 nimcall -1 -1 +0 +344 . . newWideCString.1. . none unknown . "" `t17.5.) WideCStringObj.0.))) 10,2
+    (call s . ~10 createWide.0. 1
+     (haddr .
+      (td :`t23.346. . . nimcall -1 -1 +0 +346 . . newWideCString.1. . none unknown . "" `t17.5.) result.10) 15
+     (infix s `t31.3.sysma2dyk \2B.5.sysma2dyk ~4
+      (infix s `t31.3.sysma2dyk *.0.sysma2dyk ~2 L.2 2
+       (intlit s `t31.151. +2)) 2
+      (intlit s `t31.151. +2))) ,3
+    (var s . 4
+     (identdefs . .
+      (sd :d.0 .
+       (var . +0 +0) . u ofrbcr0s0awhtl0t0c0 -1 +0 .
+       (td :`t31.347. . c3 nimcall +8 +8 +0 +347 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "") newWideCString.1.
+       (identdefs . . d.0 2
+        (empty) 4
+        (intlit . `t31.137. +0)) none unknown . "" . .) 2
+      (empty) 4
+      (intlit . `t31.137. +0))) 4,4
+    (for s .
+     (sd :ch.0 .
+      (forvar . +0 +0) . us1 . -1 +0 . `t31.3.sysma2dyk newWideCString.1. . none unknown . "" . .) 11
+     (call s `t31.3.sysma2dyk ~5 runes.0. 1 source.0 9 L.2) ~2,2
+     (stmts s .
+      (if s . 3
+       (elif . . 3
+        (infix s `t1.34.sysma2dyk <=.7.sysma2dyk ~3 ch.0 3
+         (intlit b1s `t31.54. +65535)) ~1,1
+        (if s . 3
+         (elif . . 25
+          (infix s `t1.34.sysma2dyk and.0.sysma2dyk ~22
+           (expr sf `t1.34.sysma2dyk 2,136,/home/araq/projects/nim/lib/system/comparisons.nim
+            (empty)
+            (infix s `t1.34.sysma2dyk <=.7.sysma2dyk 3
+             (intlit b1s `t31.59. +55296) ~3 ch.0)) 7
+           (infix s `t1.34.sysma2dyk <=.7.sysma2dyk ~3 ch.0 3
+            (intlit b1s `t31.62. +57343))) 5,1
+          (asgn s .
+           (at . `t13.3. 52,~109
+            (hderef . `t49.6.
+             (dot s `t21.4. ~58,109 result.10 1 data.0.)) 1 d.0) 6
+           (int16lit s `t13.3. -3))) ,2
+         (else . . 8,1
+          (asgn s .
+           (at . `t13.3. 52,~111
+            (hderef . `t49.6.
+             (dot s `t21.4. ~58,111 result.10 1 data.0.)) 1 d.0) 6
+           (cast s `t13.3. 5 Utf16Char.0. 22
+            (conv s `t42.10.sysma2dyk ~6 uint16.0.sysma2dyk 1 ch.0)))))) 5,5
+       (elif . . 3
+        (expr sf `t1.34.sysma2dyk 2,140,/home/araq/projects/nim/lib/system/comparisons.nim
+         (empty)
+         (infix s `t1.34.sysma2dyk <.8.sysma2dyk 2
+          (intlit b1s `t31.55. +1114111) ~3 ch.0)) 3,1
+        (asgn s .
+         (at . `t13.3. 54,~113
+          (hderef . `t49.6.
+           (dot s `t21.4. ~60,113 result.10 1 data.0.)) 1 d.0) 6
+         (int16lit s `t13.3. -3))) ,7
+       (else . . 2,1
+        (stmts s .
+         (let s . 4
+          (identdefs . .
+           (sd :ch.1 .
+            (let . +0 +0) . u ofrbcr0s0awhtl0t0c0 -1 +0 . `t31.3.sysma2dyk newWideCString.1.
+            (identdefs . . ch.1 3
+             (empty) 8
+             (infix . `t31.3.sysma2dyk \2D.5.sysma2dyk ~3 ch.0 2
+              (intlit b1 `t31.57. +65536))) none unknown . "" . .) 3
+           (empty) 8
+           (infix . `t31.3.sysma2dyk \2D.5.sysma2dyk ~3 ch.0 2
+            (intlit b1 `t31.57. +65536)))) 6,1
+         (asgn s .
+          (at . `t13.3. 54,~116
+           (hderef . `t49.6.
+            (dot s `t21.4. ~60,116 result.10 1 data.0.)) 1 d.0) 6
+          (cast s `t13.3. 5 Utf16Char.0. 22
+           (conv s `t42.10.sysma2dyk ~6 uint16.0.sysma2dyk 20
+            (infix . `t31.3.sysma2dyk \2B.5.sysma2dyk ~15
+             (infix . `t31.3.sysma2dyk shr.10.sysma2dyk ~3 ch.1 4
+              (intlit .
+               (td :`t31.349. . c3 nimcall +8 +8 +0 +349 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +10)) 2
+             (intlit b1 `t31.59. +55296))))) ,2
+         (cmd s . inc.9.sysma2dyk 4 d.0 55,21,/home/araq/projects/nim/lib/system/arithmetics.nim
+          (intlit s `t31.36.sysma2dyk +1)) 6,3
+         (asgn s .
+          (at . `t13.3. 54,~118
+           (hderef . `t49.6.
+            (dot s `t21.4. ~60,118 result.10 1 data.0.)) 1 d.0) 6
+          (cast s `t13.3. 5 Utf16Char.0. 22
+           (conv s `t42.10.sysma2dyk ~6 uint16.0.sysma2dyk 19
+            (infix . `t31.3.sysma2dyk \2B.5.sysma2dyk ~14
+             (infix . `t31.3.sysma2dyk and.2.sysma2dyk ~3 ch.1 4
+              (intlit b1 `t31.58. +1023)) 2
+             (intlit b1 `t31.61. +56320)))))))) ,12
+      (cmd s . inc.9.sysma2dyk 4 d.0 55,21,/home/araq/projects/nim/lib/system/arithmetics.nim
+       (intlit s `t31.36.sysma2dyk +1)))) 6,19
+    (asgn s .
+     (at . `t13.3. 58,~120
+      (hderef . `t49.6.
+       (dot s `t21.4. ~64,120 result.10 1 data.0.)) 1 d.0) 15
+     (conv s `t13.3. ~9 Utf16Char.0. 1
+      (intlit . `t31.137. +0)))) result.10) none unknown . "" . .) 6,179
+ (sd :newWideCString.2. x
+  (proc) . egi1 ofrbcr0s0awhtl0t0c0 -1 +0 .
+  (td :`t25.358. . te2 nimcall -1 -1 +0 +358 . 22,180,/home/araq/projects/nim/lib/std/widestrs.nim
+   (formalparams . `t17.5.
+    (arglist . . ~15
+     (arglist . .)
+     (empty)
+     (empty) ~15
+     (arglist . .)
+     (empty) ~15
+     (arglist . .)) 1
+    (sd :s.2 .
+     (param) . u . -1 +0 . `t29.18.sysma2dyk newWideCString.2. . none unknown . "" . .)) newWideCString.2. . none unknown . "" `t17.5.) widestrs.0. ~5
+  (proc s . 5
+   (ht . newWideCString.2.)
+   (empty)
+   (empty) .
+   (empty)
+   (empty) 2,1
+   (stmts s `t7.1.
+    (if s . 3
+     (elif . . 1
+      (call s `t1.34.sysma2dyk 1 isNil.3.sysma2dyk ~1 s.2) 9
+      (ret s . 7
+       (asgn . `t7.1. ~21,~1
+        (sd :result.11 .
+         (result) . u . -1 +0 . `t17.5. newWideCString.2. . none unknown . "" . .)
+        (objconstr bs `t17.5. 12,~121 WideCStringObj.0. 32,~121
+         (kv s . ~47,~35 bytes.0. 2
+          (intlit ss0 `t31.3.sysma2dyk +0)) 41,~121
+         (kv s . ~56,~34 data.0. 2
+          (nil ss0 `t21.4.))))))) 7,2
+    (asgn s `t7.1. ~7 result.11 16
+     (call s `t17.5. ~14 newWideCString.1. 1 s.2 5
+      (call s `t31.3.sysma2dyk 1 len.5.sysma2dyk ~1 s.2)))) result.11) none unknown . "" . .) 6,184
+ (sd :newWideCString.3. x
+  (proc) . egi1 ofrbcr0s0awhtl0t0c0 -1 +0 .
+  (td :`t25.359. . te2 nimcall -1 -1 +0 +359 . 22,185,/home/araq/projects/nim/lib/std/widestrs.nim
+   (formalparams . `t17.5.
+    (arglist . . ~15
+     (arglist . .)
+     (empty)
+     (empty) ~15
+     (arglist . .)
+     (empty) ~15
+     (arglist . .)) 1
+    (sd :s.3 .
+     (param) . u . -1 +0 . `t28.17.sysma2dyk newWideCString.3. . none unknown . "" . .)) newWideCString.3. . none unknown . "" `t17.5.) widestrs.0. ~5
+  (proc s . 5
+   (ht . newWideCString.3.)
+   (empty)
+   (empty) .
+   (empty)
+   (empty) 9,1
+   (asgn s `t7.1. ~9,~1
+    (sd :result.12 .
+     (result) . u . -1 +0 . `t17.5. newWideCString.3. . none unknown . "" . .) 16
+    (call s `t17.5. ~14 newWideCString.1. 9
+     (conv s `t29.18.sysma2dyk ~8 cstring.0.sysma2dyk s.3) 13
+     (call s `t31.3.sysma2dyk 1 len.4.sysma2dyk ~1 s.3))) result.12) none unknown . "" . .) 6,187
+ (sd :$.0. x
+  (proc) . uegi1 ofrbcr0s0awhtl0t0c0 -1 +0 .
+  (td :`t25.360. . nte2 nimcall -1 -1 +0 +360 . 11,188,/home/araq/projects/nim/lib/std/widestrs.nim
+   (formalparams . `t28.17.sysma2dyk
+    (arglist . . ~4
+     (arglist . .)
+     (empty)
+     (empty) ~4
+     (arglist . .)
+     (empty) ~4
+     (arglist . .)) 1
+    (sd :w.1 .
+     (param) . u . -1 +0 . `t21.4. $.0. . none unknown . "" . .) 17
+    (sd :estimate.0 .
+     (param) . u . -1 +1 . `t31.3.sysma2dyk $.0. . none unknown . "" . .) 32
+    (sd :replacement.0 .
+     (param) . u . -1 +2 . `t31.3.sysma2dyk $.0. 19
+     (intlit b1 `t31.3.sysma2dyk +65533) none unknown . "" . .)) $.0. . none unknown . "" `t28.17.sysma2dyk) widestrs.0. ~5
+  (proc s . 5
+   (ht . $.0.)
+   (empty)
+   (empty) .
+   (empty)
+   (empty) 2,1
+   (stmts s `t7.1. 7
+    (asgn s `t7.1. ~9,~1
+     (sd :result.13 .
+      (result) . u . -1 +0 . `t28.17.sysma2dyk $.0. . none unknown . "" . .) 16
+     (call s `t28.17.sysma2dyk ~14 newStringOfCap.0.sysma2dyk 10
+      (hstdconv . `t20.744.sysma2dyk
+       (empty)
+       (infix s `t31.3.sysma2dyk \2B.5.sysma2dyk ~9 estimate.0 11
+        (infix s `t31.3.sysma2dyk shr.10.sysma2dyk ~9 estimate.0 4
+         (intlit .
+          (td :`t31.362. . c3 nimcall +8 +8 +0 +362 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +2)))))) ,2
+    (var s . 4
+     (identdefs . .
+      (sd :i.2 .
+       (var . +0 +0) . u ofrbcr0s0awhtl0t0c0 -1 +0 .
+       (td :`t31.364. . c3 nimcall +8 +8 +0 +364 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "") $.0.
+       (identdefs . . i.2 2
+        (empty) 4
+        (intlit . `t31.137. +0)) none unknown . "" . .) 2
+      (empty) 4
+      (intlit . `t31.137. +0))) ,3
+    (while s . 17
+     (expr sf `t1.34.sysma2dyk 2,132,/home/araq/projects/nim/lib/system/comparisons.nim
+      (empty)
+      (prefix s `t1.34.sysma2dyk not.0.sysma2dyk
+       (infix s `t1.34.sysma2dyk ==.11.sysma2dyk ~7
+        (conv s `t33.5.sysma2dyk 1 int16.0.sysma2dyk ~3
+         (at s `t13.3. ~1
+          (hderef s `t49.6. w.1) 1 i.2)) 3
+        (int16lit s `t33.5.sysma2dyk +0)))) 2,1
+     (stmts s .
+      (var s . 4
+       (identdefs . .
+        (sd :ch.2 .
+         (var . +0 +0) . u ofrbcr0s0awhtl0t0c0 -1 +0 . `t31.3.sysma2dyk $.0.
+         (identdefs . . ch.2 3
+          (empty) 8
+          (call . `t31.3.sysma2dyk ~3 ord.0. 2
+           (at . `t13.3. ~1
+            (hderef . `t49.6. w.1) 1 i.2))) none unknown . "" . .) 3
+        (empty) 8
+        (call . `t31.3.sysma2dyk ~3 ord.0. 2
+         (at . `t13.3. ~1
+          (hderef . `t49.6. w.1) 1 i.2)))) ,1
+      (cmd s . inc.9.sysma2dyk 4 i.2 55,21,/home/araq/projects/nim/lib/system/arithmetics.nim
+       (intlit s `t31.36.sysma2dyk +1)) ,2
+      (if s . 3
+       (elif . . 25
+        (infix s `t1.34.sysma2dyk and.0.sysma2dyk ~22
+         (expr sf `t1.34.sysma2dyk 2,136,/home/araq/projects/nim/lib/system/comparisons.nim
+          (empty)
+          (infix s `t1.34.sysma2dyk <=.7.sysma2dyk 3
+           (intlit b1s `t31.59. +55296) ~3 ch.2)) 7
+         (infix s `t1.34.sysma2dyk <=.7.sysma2dyk ~3 ch.2 3
+          (intlit b1s `t31.60. +56319))) ~1,2
+        (stmts s .
+         (let s . 4
+          (identdefs . .
+           (sd :ch2.0 .
+            (let . +0 +0) . u ofrbcr0s0awhtl0t0c0 -1 +0 . `t31.3.sysma2dyk $.0.
+            (identdefs . . ch2.0 4
+             (empty) 9
+             (call . `t31.3.sysma2dyk ~3 ord.0. 2
+              (at . `t13.3. ~1
+               (hderef . `t49.6. w.1) 1 i.2))) none unknown . "" . .) 4
+           (empty) 9
+           (call . `t31.3.sysma2dyk ~3 ord.0. 2
+            (at . `t13.3. ~1
+             (hderef . `t49.6. w.1) 1 i.2)))) ,3
+         (if s . 3
+          (elif . . 25
+           (infix s `t1.34.sysma2dyk and.0.sysma2dyk ~21
+            (expr sf `t1.34.sysma2dyk 2,136,/home/araq/projects/nim/lib/system/comparisons.nim
+             (empty)
+             (infix s `t1.34.sysma2dyk <=.7.sysma2dyk 3
+              (intlit b1s `t31.61. +56320) ~4 ch2.0)) 8
+            (infix s `t1.34.sysma2dyk <=.7.sysma2dyk ~4 ch2.0 3
+             (intlit b1s `t31.62. +57343))) ~1,1
+           (stmts s . 3
+            (asgn s . ~3 ch.2 59
+             (infix s `t31.3.sysma2dyk \2B.5.sysma2dyk ~22
+              (infix s `t31.3.sysma2dyk \2B.5.sysma2dyk ~15
+               (infix s `t31.3.sysma2dyk shl.10.sysma2dyk ~14
+                (infix s `t31.3.sysma2dyk and.2.sysma2dyk ~3 ch.2 4
+                 (intlit b1s `t31.58. +1023)) 4
+                (intlit .
+                 (td :`t31.368. . c3 nimcall +8 +8 +0 +368 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +10)) 7
+               (infix s `t31.3.sysma2dyk and.2.sysma2dyk ~4 ch2.0 4
+                (intlit b1s `t31.58. +1023))) 2
+              (intlit b1s `t31.57. +65536))) ,1
+            (cmd s . inc.9.sysma2dyk 4 i.2 55,21,/home/araq/projects/nim/lib/system/arithmetics.nim
+             (intlit s `t31.36.sysma2dyk +1)))) ,3
+          (else . . 5,2
+           (asgn s . ~3 ch.2 2 replacement.0))))) 5,11
+       (elif . . 24
+        (infix s `t1.34.sysma2dyk and.0.sysma2dyk ~21
+         (expr sf `t1.34.sysma2dyk 2,136,/home/araq/projects/nim/lib/system/comparisons.nim
+          (empty)
+          (infix s `t1.34.sysma2dyk <=.7.sysma2dyk 3
+           (intlit b1s `t31.61. +56320) ~3 ch.2)) 7
+         (infix s `t1.34.sysma2dyk <=.7.sysma2dyk ~3 ch.2 3
+          (intlit b1s `t31.62. +57343))) ,2
+        (asgn s . ~3 ch.2 2 replacement.0))) ,17
+      (if s . 3
+       (elif . . 3
+        (infix s `t1.34.sysma2dyk <.8.sysma2dyk ~3 ch.2 2
+         (intlit b1s
+          (td :`t31.374. . c3 nimcall +8 +8 +0 +374 . 14,210,/home/araq/projects/nim/lib/std/widestrs.nim
+           (intlit b1s `t31.374. +128) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +128)) 5,1
+        (call s . 1 add.0.sysma2dyk ~6 result.13 8
+         (call s `t2.16.sysma2dyk ~3 chr.0.sysma2dyk 1
+          (hstdconv . `t20.815.sysma2dyk
+           (empty) ch.2)))) 5,2
+       (elif . . 3
+        (infix s `t1.34.sysma2dyk <.8.sysma2dyk ~3 ch.2 2
+         (intlit b1s
+          (td :`t31.375. . c3 nimcall +8 +8 +0 +375 . 16,212,/home/araq/projects/nim/lib/std/widestrs.nim
+           (intlit b1s `t31.375. +2048) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +2048)) ~3,1
+        (stmts s . 6
+         (call s . 1 add.0.sysma2dyk ~6 result.13 8
+          (call s `t2.16.sysma2dyk ~3 chr.0.sysma2dyk 12
+           (hstdconv . `t20.815.sysma2dyk
+            (empty)
+            (infix s `t31.3.sysma2dyk or.2.sysma2dyk ~7
+             (infix s `t31.3.sysma2dyk shr.10.sysma2dyk ~3 ch.2 4
+              (intlit .
+               (td :`t31.377. . c3 nimcall +8 +8 +0 +377 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +6)) 3
+             (intlit b1s
+              (td :`t31.379. . c3 nimcall +8 +8 +0 +379 . 37,213,/home/araq/projects/nim/lib/std/widestrs.nim
+               (intlit b1s `t31.379. +192) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +192))))) 6,1
+         (call s . 1 add.0.sysma2dyk ~6 result.13 8
+          (call s `t2.16.sysma2dyk ~3 chr.0.sysma2dyk 15
+           (hstdconv . `t20.815.sysma2dyk
+            (empty)
+            (infix s `t31.3.sysma2dyk or.2.sysma2dyk ~10
+             (infix s `t31.3.sysma2dyk and.2.sysma2dyk ~3 ch.2 4
+              (intlit b1s
+               (td :`t31.380. . c3 nimcall +8 +8 +0 +380 . 31,214,/home/araq/projects/nim/lib/std/widestrs.nim
+                (intlit b1s `t31.380. +63) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +63)) 3
+             (intlit b1s
+              (td :`t31.381. . c3 nimcall +8 +8 +0 +381 . 40,214,/home/araq/projects/nim/lib/std/widestrs.nim
+               (intlit b1s `t31.381. +128) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +128))))))) 5,5
+       (elif . . 3
+        (infix s `t1.34.sysma2dyk <.8.sysma2dyk ~3 ch.2 2
+         (intlit b1s
+          (td :`t31.382. . c3 nimcall +8 +8 +0 +382 . 16,215,/home/araq/projects/nim/lib/std/widestrs.nim
+           (intlit b1s `t31.382. +65536) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +65536)) ~3,1
+        (stmts s . 6
+         (call s . 1 add.0.sysma2dyk ~6 result.13 8
+          (call s `t2.16.sysma2dyk ~3 chr.0.sysma2dyk 13
+           (hstdconv . `t20.815.sysma2dyk
+            (empty)
+            (infix s `t31.3.sysma2dyk or.2.sysma2dyk ~8
+             (infix s `t31.3.sysma2dyk shr.10.sysma2dyk ~3 ch.2 4
+              (intlit .
+               (td :`t31.384. . c3 nimcall +8 +8 +0 +384 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +12)) 3
+             (intlit b1s
+              (td :`t31.386. . c3 nimcall +8 +8 +0 +386 . 38,216,/home/araq/projects/nim/lib/std/widestrs.nim
+               (intlit b1s `t31.386. +224) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +224))))) 6,1
+         (call s . 1 add.0.sysma2dyk ~6 result.13 8
+          (call s `t2.16.sysma2dyk ~3 chr.0.sysma2dyk 23
+           (hstdconv . `t20.815.sysma2dyk
+            (empty)
+            (infix s `t31.3.sysma2dyk or.2.sysma2dyk ~10
+             (infix s `t31.3.sysma2dyk and.2.sysma2dyk ~7
+              (infix s `t31.3.sysma2dyk shr.10.sysma2dyk ~3 ch.2 4
+               (intlit .
+                (td :`t31.388. . c3 nimcall +8 +8 +0 +388 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +6)) 4
+              (intlit b1s
+               (td :`t31.390. . c3 nimcall +8 +8 +0 +390 . 39,217,/home/araq/projects/nim/lib/std/widestrs.nim
+                (intlit b1s `t31.390. +63) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +63)) 3
+             (intlit b1s
+              (td :`t31.391. . c3 nimcall +8 +8 +0 +391 . 48,217,/home/araq/projects/nim/lib/std/widestrs.nim
+               (intlit b1s `t31.391. +128) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +128))))) 6,2
+         (call s . 1 add.0.sysma2dyk ~6 result.13 8
+          (call s `t2.16.sysma2dyk ~3 chr.0.sysma2dyk 15
+           (hstdconv . `t20.815.sysma2dyk
+            (empty)
+            (infix s `t31.3.sysma2dyk or.2.sysma2dyk ~10
+             (infix s `t31.3.sysma2dyk and.2.sysma2dyk ~3 ch.2 4
+              (intlit b1s
+               (td :`t31.392. . c3 nimcall +8 +8 +0 +392 . 31,218,/home/araq/projects/nim/lib/std/widestrs.nim
+                (intlit b1s `t31.392. +63) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +63)) 3
+             (intlit b1s
+              (td :`t31.393. . c3 nimcall +8 +8 +0 +393 . 40,218,/home/araq/projects/nim/lib/std/widestrs.nim
+               (intlit b1s `t31.393. +128) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +128))))))) 5,9
+       (elif . . 3
+        (infix s `t1.34.sysma2dyk <=.7.sysma2dyk ~3 ch.2 3
+         (intlit b1s
+          (td :`t31.394. . c3 nimcall +8 +8 +0 +394 . 17,219,/home/araq/projects/nim/lib/std/widestrs.nim
+           (intlit b1s `t31.394. +1114111) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +1114111)) ~3,1
+        (stmts s . 6
+         (call s . 1 add.0.sysma2dyk ~6 result.13 8
+          (call s `t2.16.sysma2dyk ~3 chr.0.sysma2dyk 13
+           (hstdconv . `t20.815.sysma2dyk
+            (empty)
+            (infix s `t31.3.sysma2dyk or.2.sysma2dyk ~8
+             (infix s `t31.3.sysma2dyk shr.10.sysma2dyk ~3 ch.2 4
+              (intlit .
+               (td :`t31.396. . c3 nimcall +8 +8 +0 +396 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +18)) 3
+             (intlit b1s
+              (td :`t31.398. . c3 nimcall +8 +8 +0 +398 . 38,220,/home/araq/projects/nim/lib/std/widestrs.nim
+               (intlit b1s `t31.398. +240) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +240))))) 6,1
+         (call s . 1 add.0.sysma2dyk ~6 result.13 8
+          (call s `t2.16.sysma2dyk ~3 chr.0.sysma2dyk 24
+           (hstdconv . `t20.815.sysma2dyk
+            (empty)
+            (infix s `t31.3.sysma2dyk or.2.sysma2dyk ~10
+             (infix s `t31.3.sysma2dyk and.2.sysma2dyk ~8
+              (infix s `t31.3.sysma2dyk shr.10.sysma2dyk ~3 ch.2 4
+               (intlit .
+                (td :`t31.400. . c3 nimcall +8 +8 +0 +400 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +12)) 4
+              (intlit b1s
+               (td :`t31.402. . c3 nimcall +8 +8 +0 +402 . 40,221,/home/araq/projects/nim/lib/std/widestrs.nim
+                (intlit b1s `t31.402. +63) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +63)) 3
+             (intlit b1s
+              (td :`t31.403. . c3 nimcall +8 +8 +0 +403 . 49,221,/home/araq/projects/nim/lib/std/widestrs.nim
+               (intlit b1s `t31.403. +128) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +128))))) 6,2
+         (call s . 1 add.0.sysma2dyk ~6 result.13 8
+          (call s `t2.16.sysma2dyk ~3 chr.0.sysma2dyk 23
+           (hstdconv . `t20.815.sysma2dyk
+            (empty)
+            (infix s `t31.3.sysma2dyk or.2.sysma2dyk ~10
+             (infix s `t31.3.sysma2dyk and.2.sysma2dyk ~7
+              (infix s `t31.3.sysma2dyk shr.10.sysma2dyk ~3 ch.2 4
+               (intlit .
+                (td :`t31.405. . c3 nimcall +8 +8 +0 +405 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +6)) 4
+              (intlit b1s
+               (td :`t31.407. . c3 nimcall +8 +8 +0 +407 . 39,222,/home/araq/projects/nim/lib/std/widestrs.nim
+                (intlit b1s `t31.407. +63) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +63)) 3
+             (intlit b1s
+              (td :`t31.408. . c3 nimcall +8 +8 +0 +408 . 48,222,/home/araq/projects/nim/lib/std/widestrs.nim
+               (intlit b1s `t31.408. +128) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +128))))) 6,3
+         (call s . 1 add.0.sysma2dyk ~6 result.13 8
+          (call s `t2.16.sysma2dyk ~3 chr.0.sysma2dyk 15
+           (hstdconv . `t20.815.sysma2dyk
+            (empty)
+            (infix s `t31.3.sysma2dyk or.2.sysma2dyk ~10
+             (infix s `t31.3.sysma2dyk and.2.sysma2dyk ~3 ch.2 4
+              (intlit b1s
+               (td :`t31.409. . c3 nimcall +8 +8 +0 +409 . 31,223,/home/araq/projects/nim/lib/std/widestrs.nim
+                (intlit b1s `t31.409. +63) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +63)) 3
+             (intlit b1s
+              (td :`t31.410. . c3 nimcall +8 +8 +0 +410 . 40,223,/home/araq/projects/nim/lib/std/widestrs.nim
+               (intlit b1s `t31.410. +128) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +128))))))) ,14
+       (else . . 2,2
+        (stmts s . 6
+         (call s . 1 add.0.sysma2dyk ~6 result.13 8
+          (charlit s `t2.16.sysma2dyk 'ï')) 6,1
+         (call s . 1 add.0.sysma2dyk ~6 result.13 8
+          (charlit s `t2.16.sysma2dyk '¿')) 6,2
+         (call s . 1 add.0.sysma2dyk ~6 result.13 8
+          (charlit s `t2.16.sysma2dyk '½')))))))) result.13) none unknown . "" . .) 6,229
+ (sd :$.1. x
+  (proc) . uegi1 ofrbcr0s0awhtl0t0c0 -1 +0 .
+  (td :`t25.466. . nte2 nimcall -1 -1 +0 +466 . 11,230,/home/araq/projects/nim/lib/std/widestrs.nim
+   (formalparams . `t28.17.sysma2dyk
+    (arglist . . ~4
+     (arglist . .)
+     (empty)
+     (empty) ~4
+     (arglist . .)
+     (empty) ~4
+     (arglist . .)) 1
+    (sd :s.4 .
+     (param) . u . -1 +0 . `t21.4. $.1. . none unknown . "" . .)) $.1. . none unknown . "" `t28.17.sysma2dyk) widestrs.0. ~5
+  (proc s . 5
+   (ht . $.1.)
+   (empty)
+   (empty) .
+   (empty)
+   (empty) 9,1
+   (asgn s `t7.1. ~9,~1
+    (sd :result.14 .
+     (result) . u . -1 +0 . `t28.17.sysma2dyk $.1. . none unknown . "" . .) 4
+    (infix s `t28.17.sysma2dyk $.0. ~2 s.4 2
+     (intlit s
+      (td :`t31.467. . c3 nimcall +8 +8 +0 +467 . 17,231,/home/araq/projects/nim/lib/std/widestrs.nim
+       (intlit s `t31.467. +80) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +80) 47,~43
+     (intlit b1 `t31.3.sysma2dyk +65533))) result.14) none unknown . "" . .) 8,233
+ (sd :$.2. x
+  (proc) . egi1 ofrbcr0s0awhtl0t0c0 -1 +0 .
+  (td :`t25.468. . nte2 nimcall -1 -1 +0 +468 . 13,234,/home/araq/projects/nim/lib/std/widestrs.nim
+   (formalparams . `t28.17.sysma2dyk
+    (arglist . . ~4
+     (arglist . .)
+     (empty)
+     (empty) ~4
+     (arglist . .)
+     (empty) ~4
+     (arglist . .)) 1
+    (sd :s.5 .
+     (param) . u . -1 +0 . `t17.5. $.2. . none unknown . "" . .) 20
+    (sd :estimate.1 .
+     (param) . u . -1 +1 . `t31.3.sysma2dyk $.2. . none unknown . "" . .) 35
+    (sd :replacement.1 .
+     (param) . u . -1 +2 . `t31.3.sysma2dyk $.2. 19
+     (intlit b1 `t31.3.sysma2dyk +65533) none unknown . "" . .)) $.2. . none unknown . "" `t28.17.sysma2dyk) widestrs.0. ~5
+  (proc s . 5
+   (ht . $.2.)
+   (empty)
+   (empty) .
+   (empty)
+   (empty) 2,1
+   (asgn . `t7.1. ~2,~1
+    (sd :result.15 .
+     (result) . u . -1 +0 . `t28.17.sysma2dyk $.2. . none unknown . "" . .) 3
+    (call s `t28.17.sysma2dyk ~2 $.0. 2
+     (dot s `t21.4. ~1 s.5 1 data.0.) 9 estimate.1 19 replacement.1)) result.15) none unknown . "" . .) 8,236
+ (sd :$.3. x
+  (proc) . egi1 ofrbcr0s0awhtl0t0c0 -1 +0 .
+  (td :`t25.469. . nte2 nimcall -1 -1 +0 +469 . 13,237,/home/araq/projects/nim/lib/std/widestrs.nim
+   (formalparams . `t28.17.sysma2dyk
+    (arglist . . ~4
+     (arglist . .)
+     (empty)
+     (empty) ~4
+     (arglist . .)
+     (empty) ~4
+     (arglist . .)) 1
+    (sd :s.6 .
+     (param) . u . -1 +0 . `t17.5. $.3. . none unknown . "" . .)) $.3. . none unknown . "" `t28.17.sysma2dyk) widestrs.0. ~5
+  (proc s . 5
+   (ht . $.3.)
+   (empty)
+   (empty) .
+   (empty)
+   (empty) 2,1
+   (asgn . `t7.1. ~2,~1
+    (sd :result.16 .
+     (result) . u . -1 +0 . `t28.17.sysma2dyk $.3. . none unknown . "" . .)
+    (prefix s `t28.17.sysma2dyk $.1. 3
+     (dot s `t21.4. ~1 s.6 1 data.0.))) result.16) none unknown . "" . .) 8,239
+ (sd :len.1. x
+  (proc) . egi1 ofrbcr0s0awhtl0t0c0 -1 +0 .
+  (td :`t25.470. . nte1e2 inline -1 -1 +0 +470 . 13,240,/home/araq/projects/nim/lib/std/widestrs.nim
+   (formalparams . `t31.3.sysma2dyk
+    (arglist . . ~4
+     (arglist . .)
+     (empty)
+     (empty) ~4
+     (arglist . .)
+     (empty) ~4
+     (arglist . .)) 1
+    (sd :w.2 .
+     (param) . u . -1 +0 . `t17.5. len.1. . none unknown . "" . .)) len.1. . none unknown . "" `t31.3.sysma2dyk) widestrs.0. ~5
+  (proc s . 5
+   (ht . len.1.)
+   (empty)
+   (empty) . 34
+   (pragma . . 2
+    (ident . . inline))
+   (empty) 2,1
+   (asgn . `t7.1. ~2,~1
+    (sd :result.17 .
+     (result) . u . -1 +0 . `t31.3.sysma2dyk len.1. . none unknown . "" . .) 3
+    (call s `t31.3.sysma2dyk ~3 len.0. 2
+     (dot s `t21.4. ~1 w.2 1 data.0.))) result.17) none unknown . "" . .) 16,80
+ (sd :=wasMoved.0. .
+  (proc) . fng1 . -1 +0 .
+  (td :`t25.33. . n nimcall -1 -1 +0 +33 . 17,81,/home/araq/projects/nim/lib/std/widestrs.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.0 .
+     (param) . . . -1 +0 .
+     (td :`t23.32. . . nimcall -1 -1 +0 +32 . . widestrs.0. . none unknown . "" `t13.3.) =wasMoved.0. . none unknown . "" . .)) widestrs.0. . none unknown . "" .) widestrs.0.
+  (proc . . =wasMoved.0.
+   (empty)
+   (empty) .
+   (empty)
+   (empty)
+   (stmts . .)) none unknown . "" . .) 16,80
+ (sd :=destroy.1. .
+  (proc) . fg1 . -1 +0 .
+  (td :`t25.35. . . nimcall -1 -1 +0 +35 . 17,81,/home/araq/projects/nim/lib/std/widestrs.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.1 .
+     (param) . . . -1 +0 .
+     (td :`t23.34. . . nimcall -1 -1 +0 +34 . . widestrs.0. . none unknown . "" `t13.3.) =destroy.1. . none unknown . "" . .)) widestrs.0. . none unknown . "" .) widestrs.0.
+  (proc . . =destroy.1.
+   (empty)
+   (empty) .
+   (empty)
+   (empty)
+   (stmts . .)) none unknown . "" . .) 16,80
+ (sd :=copy.1. .
+  (proc) . fg1 . -1 +0 .
+  (td :`t25.37. . . nimcall -1 -1 +0 +37 . 17,81,/home/araq/projects/nim/lib/std/widestrs.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.2 .
+     (param) . . . -1 +0 .
+     (td :`t23.36. . . nimcall -1 -1 +0 +36 . . widestrs.0. . none unknown . "" `t13.3.) =copy.1. . none unknown . "" . .)
+    (sd :src.2 .
+     (param) . . . -1 +1 . `t13.3. =copy.1. . none unknown . "" . .)) widestrs.0. . none unknown . "" .) widestrs.0.
+  (proc . . =copy.1.
+   (empty)
+   (empty) .
+   (empty)
+   (empty)
+   (stmts . .)) none unknown . "" . .) 16,80
+ (sd :=dup.0. .
+  (proc) . fg1 . -1 +0 .
+  (td :`t25.38. . . nimcall -1 -1 +0 +38 . 17,81,/home/araq/projects/nim/lib/std/widestrs.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :src.3 .
+     (param) . . . -1 +0 . `t13.3. =dup.0. . none unknown . "" . .)) widestrs.0. . none unknown . "" `t13.3.) widestrs.0.
+  (proc . . =dup.0.
+   (empty)
+   (empty) .
+   (empty)
+   (empty)
+   (stmts . .)
+   (sd :result.3 .
+    (result) . . . -1 +0 . `t13.3. =dup.0. . none unknown . "" . .)) none unknown . "" . .) 16,80
+ (sd :=sink.1. .
+  (proc) . fg1 . -1 +0 .
+  (td :`t25.40. . . nimcall -1 -1 +0 +40 . 17,81,/home/araq/projects/nim/lib/std/widestrs.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.3 .
+     (param) . . . -1 +0 .
+     (td :`t23.39. . . nimcall -1 -1 +0 +39 . . widestrs.0. . none unknown . "" `t13.3.) =sink.1. . none unknown . "" . .)
+    (sd :src.4 .
+     (param) . . . -1 +1 . `t13.3. =sink.1. . none unknown . "" . .)) widestrs.0. . none unknown . "" .) widestrs.0.
+  (proc . . =sink.1.
+   (empty)
+   (empty) .
+   (empty)
+   (empty)
+   (stmts . .)) none unknown . "" . .) 16,80
+ (sd :=trace.0. .
+  (proc) . fg1 . -1 +0 .
+  (td :`t25.42. . . nimcall -1 -1 +0 +42 . 17,81,/home/araq/projects/nim/lib/std/widestrs.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.4 .
+     (param) . . . -1 +0 .
+     (td :`t23.41. . . nimcall -1 -1 +0 +41 . . widestrs.0. . none unknown . "" `t13.3.) =trace.0. . none unknown . "" . .)
+    (sd :env.0 .
+     (param) . . . -1 +1 . `t26.19.sysma2dyk =trace.0. . none unknown . "" . .)) widestrs.0. . none unknown . "" .) widestrs.0.
+  (proc . . =trace.0.
+   (empty)
+   (empty) .
+   (empty)
+   (empty)
+   (stmts . .)) none unknown . "" . .) 19,154
+ (sd :=wasMoved.2. .
+  (proc) . fng1n3 . -1 +0 .
+  (td :`t25.337. . n nimcall -1 -1 +0 +337 . 20,155,/home/araq/projects/nim/lib/std/widestrs.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.10 .
+     (param) . . . -1 +0 .
+     (td :`t23.336. . . nimcall -1 -1 +0 +336 . . widestrs.0. . none unknown . "" `t17.5.) =wasMoved.2. . none unknown . "" . .)) widestrs.0. . none unknown . "" .) widestrs.0.
+  (proc . . =wasMoved.2.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .
+    (call . .
+     (sd :wasMoved.1. .
+      (proc) wasmoved n3 . -1 +0 . . . . none unknown . "" . .)
+     (dot . `t31.3.sysma2dyk
+      (hderef . `t17.5. dest.10) bytes.0.))
+    (call . .
+     (sd :wasMoved.2. .
+      (proc) wasmoved n3 . -1 +0 . . . . none unknown . "" . .)
+     (dot . `t21.4.
+      (hderef . `t17.5. dest.10) data.0.)))) none unknown . "" . .) 19,154
+ (sd :=dup.2. .
+  (proc) . fg1 . -1 +0 .
+  (td :`t25.338. . . nimcall -1 -1 +0 +338 . 20,155,/home/araq/projects/nim/lib/std/widestrs.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :src.11 .
+     (param) . . . -1 +0 . `t17.5. =dup.2. . none unknown . "" . .)) widestrs.0. . none unknown . "" `t17.5.) widestrs.0.
+  (proc . . =dup.2.
+   (empty)
+   (empty) .
+   (empty)
+   (empty)
+   (stmts . .
+    (call . . ~11,~111 =copy.0.
+     (haddr .
+      (td :`t23.341. . . nimcall -1 -1 +0 +341 . . widestrs.0. . none unknown . "" `t17.5.)
+      (sd :result.9 .
+       (result) . . . -1 +0 . `t17.5. =dup.2. . none unknown . "" . .)) src.11)) result.9) none unknown . "" . .) 19,154
+ (sd :=trace.2. .
+  (proc) . fg1n3 . -1 +0 .
+  (td :`t25.340. . . nimcall -1 -1 +0 +340 . 20,155,/home/araq/projects/nim/lib/std/widestrs.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.11 .
+     (param) . . . -1 +0 .
+     (td :`t23.339. . . nimcall -1 -1 +0 +339 . . widestrs.0. . none unknown . "" `t17.5.) =trace.2. . none unknown . "" . .)
+    (sd :env.2 .
+     (param) . . . -1 +1 . `t26.19.sysma2dyk =trace.2. . none unknown . "" . .)) widestrs.0. . none unknown . "" .) widestrs.0.
+  (proc . . =trace.2.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .)) none unknown . "" . .))1,1,/home/araq/projects/nim/lib/std/widestrs.nim(.index 1,15
+ (x Utf16Char.0. +841)
+ (h `t13.3. +70)
+ (h widestrs.0. +96) 1,1,/home/araq/projects/nim/lib/system.nim
+ (h stdlib.0. +99) 5,21
+ (x WideCString.0. +474)
+ (h `t21.4. +72)
+ (h `t49.6. +92) 5,23
+ (x WideCStringObj.0. +484)
+ (h `t17.5. +75) 7,24
+ (h bytes.0. +124) 7,25
+ (h data.0. +145) 9,27
+ (h arcLike.0. +853) 10,29
+ (h =destroy.0. +200)
+ (h `t25.7. +65) 5,36,/home/araq/projects/nim/lib/system/comparisons.nim
+ (h ==.0. +799)
+ (h `t25.10. +77)
+ (h `t21.11. +499)
+ (h `t21.12. +188)
+ (h `t21.9. +818) 8,43
+ (h =copy.0. +274)
+ (h `t25.13. +62)
+ (h `t23.14. +235) 8,45
+ (h =sink.0. +406)
+ (h `t25.15. +62)
+ (h `t23.16. +285) 8,49
+ (h createWide.0. +650)
+ (h `t25.17. +66)
+ (h `t23.18. +287) 12,56
+ (x \5B\5D.0. +1141)
+ (h `t25.20. +49) 12,57
+ (x \5B\5D=.0. +827)
+ (h `t25.22. +50) 12,59
+ (h nullWide.0. +873)
+ (h `t25.24. +50) 13,61
+ (x toWideCString.0. +533)
+ (h `t25.26. +74)
+ (h `t7.1. +549) 6,74
+ (h ord.0. +249)
+ (h `t25.27. +59) 6,76
+ (x len.0. +756)
+ (h `t25.28. +60) 3,83
+ (h UNI_REPLACEMENT_CHAR.0. +1282) 3,84
+ (h UNI_MAX_BMP.0. +207)
+ (h `t31.54. +68) 3,85
+ (h UNI_MAX_UTF16.0. +300)
+ (h `t31.55. +70) 3,89
+ (h halfShift.0. +306)
+ (h `t31.56. +66) 3,90
+ (h halfBase.0. +289)
+ (h `t31.57. +65) 3,91
+ (h halfMask.0. +297)
+ (h `t31.58. +65) 3,93
+ (h UNI_SUR_HIGH_START.0. +296)
+ (h `t31.59. +75) 3,94
+ (h UNI_SUR_HIGH_END.0. +308)
+ (h `t31.60. +73) 3,95
+ (h UNI_SUR_LOW_START.0. +306)
+ (h `t31.61. +74) 3,96
+ (h UNI_SUR_LOW_END.0. +307)
+ (h `t31.62. +72) 3,97
+ (h UNI_REPL.0. +305)
+ (h `t31.63. +65) 10,99
+ (h ones.0. +300)
+ (h `t25.64. +48) 10,101
+ (h fastRuneAt.0. +1132)
+ (h `t25.67. +52) 10,145
+ (h runes.0. +22414)
+ (h `t25.136. +65)
+ (h `t31.138. +723)
+ (h `t31.137. +180)
+ (h `t31.140. +922)
+ (h `t31.148. +812)
+ (h `t31.150. +140)
+ (h `t31.151. +400)
+ (h `t31.166. +608)
+ (h `t31.167. +243)
+ (h `t31.153. +396)
+ (h `t31.183. +247)
+ (h `t31.184. +297)
+ (h `t31.193. +689)
+ (h `t31.195. +140)
+ (h `t31.196. +402)
+ (h `t31.210. +674)
+ (h `t31.212. +246)
+ (h `t31.228. +516)
+ (h `t31.229. +246)
+ (h `t31.245. +443)
+ (h `t31.246. +297)
+ (h `t31.254. +689)
+ (h `t31.256. +140)
+ (h `t31.191. +402)
+ (h `t31.270. +742)
+ (h `t31.272. +247)
+ (h `t31.288. +524)
+ (h `t31.289. +249)
+ (h `t31.305. +518)
+ (h `t31.306. +246)
+ (h `t31.322. +443)
+ (h `t31.323. +297) 6,153
+ (x newWideCString.0. +776)
+ (h `t25.332. +70) 5,913,/home/araq/projects/nim/lib/system.nim
+ (h default.0. +730)
+ (h `t25.334. +80)
+ (h `t8.333. +360)
+ (h `t23.335. +976) 6,157
+ (x newWideCString.1. +325)
+ (h `t25.343. +71)
+ (h `t8.344. +841)
+ (h `t23.346. +173)
+ (h `t31.347. +391)
+ (h `t31.349. +2881) 6,179
+ (x newWideCString.2. +1166)
+ (h `t25.358. +70) 6,184
+ (x newWideCString.3. +1188)
+ (h `t25.359. +70) 6,187
+ (x $.0. +843)
+ (h `t25.360. +58)
+ (h `t31.362. +1141)
+ (h `t31.364. +227)
+ (h `t31.368. +3037)
+ (h `t31.374. +1075)
+ (h `t31.375. +487)
+ (h `t31.377. +551)
+ (h `t31.379. +147)
+ (h `t31.380. +540)
+ (h `t31.381. +241)
+ (h `t31.382. +321)
+ (h `t31.384. +553)
+ (h `t31.386. +148)
+ (h `t31.388. +599)
+ (h `t31.390. +149)
+ (h `t31.391. +241)
+ (h `t31.392. +540)
+ (h `t31.393. +241)
+ (h `t31.394. +322)
+ (h `t31.396. +557)
+ (h `t31.398. +148)
+ (h `t31.400. +599)
+ (h `t31.402. +150)
+ (h `t31.403. +241)
+ (h `t31.405. +599)
+ (h `t31.407. +149)
+ (h `t31.408. +241)
+ (h `t31.409. +540)
+ (h `t31.410. +241) 6,229
+ (x $.1. +607)
+ (h `t25.466. +58)
+ (h `t31.467. +664) 8,233
+ (x $.2. +283)
+ (h `t25.468. +57) 8,236
+ (x $.3. +997)
+ (h `t25.469. +57) 8,239
+ (x len.1. +721)
+ (h `t25.470. +59) 16,80
+ (h =wasMoved.0. +764)
+ (h `t25.33. +47)
+ (h `t23.32. +178) 16,80
+ (h =destroy.1. +291)
+ (h `t25.35. +45)
+ (h `t23.34. +178) 16,80
+ (h =copy.1. +289)
+ (h `t25.37. +42)
+ (h `t23.36. +178) 16,80
+ (h =dup.0. +369)
+ (h `t25.38. +41) 16,80
+ (h =sink.1. +470)
+ (h `t25.40. +42)
+ (h `t23.39. +178) 16,80
+ (h =trace.0. +369)
+ (h `t25.42. +43)
+ (h `t23.41. +178) 19,154
+ (h =wasMoved.2. +383)
+ (h `t25.337. +49)
+ (h `t23.336. +182)
+ (h wasMoved.1. +337)
+ (h wasMoved.2. +175) 19,154
+ (h =dup.2. +183)
+ (h `t25.338. +41)
+ (h `t23.341. +402) 19,154
+ (h =trace.2. +235)
+ (h `t25.340. +45)
+ (h `t23.339. +182))

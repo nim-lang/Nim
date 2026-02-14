@@ -1,0 +1,1702 @@
+(.nif26)
+(.indexat +61580           )
+1,1,/home/araq/projects/nim/lib/std/sysatomics.nim(stmts . .
+ (replay 30,27
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "__ATOMIC_RELAXED")) 30,29
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "__ATOMIC_CONSUME")) 30,32
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "__ATOMIC_ACQUIRE")) 30,36
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "__ATOMIC_RELEASE")) 30,40
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "__ATOMIC_ACQ_REL")) 30,44
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "__ATOMIC_SEQ_CST")) 10,50
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "__atomic_load_n")) 10,55
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "__atomic_load")) 10,59
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "__atomic_store_n")) 10,64
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "__atomic_store")) 10,68
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "__atomic_exchange_n")) 10,74
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "__atomic_exchange")) 10,80
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "__atomic_compare_exchange_n")) 10,96
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "__atomic_compare_exchange")) 10,103
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "__atomic_add_fetch")) 10,105
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "__atomic_sub_fetch")) 10,107
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "__atomic_or_fetch")) 10,109
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "__atomic_and_fetch")) 10,111
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "__atomic_xor_fetch")) 10,113
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "__atomic_nand_fetch")) 10,117
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "__atomic_fetch_add")) 10,119
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "__atomic_fetch_sub")) 10,121
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "__atomic_fetch_or")) 10,123
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "__atomic_fetch_and")) 10,125
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "__atomic_fetch_xor")) 10,127
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "__atomic_fetch_nand")) 10,130
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "__atomic_test_and_set")) 10,137
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "__atomic_clear")) 10,143
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "__atomic_thread_fence")) 10,148
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "__atomic_signal_fence")) 10,153
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "__atomic_always_lock_free")) 10,162
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "__atomic_is_lock_free")) 10,103
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "__atomic_add_fetch")) 10,105
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "__atomic_sub_fetch")))
+ (repwasmoved "SX41tomX4demX4dodel0sysjr26sp" =wasMoved.0.)
+ (repdestroy "SX41tomX4demX4dodel0sysjr26sp" =destroy.0.)
+ (repcopy "SX41tomX4demX4dodel0sysjr26sp" =copy.0.)
+ (repdup "SX41tomX4demX4dodel0sysjr26sp" =dup.0.)
+ (repsink "SX41tomX4demX4dodel0sysjr26sp" =sink.0.)
+ (reptrace "SX41tomX4demX4dodel0sysjr26sp" =trace.0.) 1,27
+ (var s . 4
+  (sd :ATOMIC_RELAXED.0. x
+   (var . +0 +0) . egi ofrbcr0s0awhl0t0c0 -1 +0 . `t13.10. sysatomics.0.
+   (identdefs . .
+    (pragmax . . ATOMIC_RELAXED.0. 16
+     (pragma . . 9
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "__ATOMIC_RELAXED")) 31
+      (ident . . nodecl))) 57 AtomMemModel.0.
+    (empty)) none unknown d "__ATOMIC_RELAXED" . .)) 1,29
+ (var s . 4
+  (sd :ATOMIC_CONSUME.0. x
+   (var . +0 +0) . egi ofrbcr0s0awhl0t0c0 -1 +0 . `t13.10. sysatomics.0.
+   (identdefs . .
+    (pragmax . . ATOMIC_CONSUME.0. 16
+     (pragma . . 9
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "__ATOMIC_CONSUME")) 31
+      (ident . . nodecl))) 57 AtomMemModel.0.
+    (empty)) none unknown d "__ATOMIC_CONSUME" . .)) 1,32
+ (var s . 4
+  (sd :ATOMIC_ACQUIRE.0. x
+   (var . +0 +0) . egi ofrbcr0s0awhl0t0c0 -1 +0 . `t13.10. sysatomics.0.
+   (identdefs . .
+    (pragmax . . ATOMIC_ACQUIRE.0. 16
+     (pragma . . 9
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "__ATOMIC_ACQUIRE")) 31
+      (ident . . nodecl))) 57 AtomMemModel.0.
+    (empty)) none unknown d "__ATOMIC_ACQUIRE" . .)) 1,36
+ (var s . 4
+  (sd :ATOMIC_RELEASE.0. x
+   (var . +0 +0) . egi ofrbcr0s0awhl0t0c0 -1 +0 . `t13.10. sysatomics.0.
+   (identdefs . .
+    (pragmax . . ATOMIC_RELEASE.0. 16
+     (pragma . . 9
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "__ATOMIC_RELEASE")) 31
+      (ident . . nodecl))) 57 AtomMemModel.0.
+    (empty)) none unknown d "__ATOMIC_RELEASE" . .)) 1,40
+ (var s . 4
+  (sd :ATOMIC_ACQ_REL.0. x
+   (var . +0 +0) . egi ofrbcr0s0awhl0t0c0 -1 +0 . `t13.10. sysatomics.0.
+   (identdefs . .
+    (pragmax . . ATOMIC_ACQ_REL.0. 16
+     (pragma . . 9
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "__ATOMIC_ACQ_REL")) 31
+      (ident . . nodecl))) 57 AtomMemModel.0.
+    (empty)) none unknown d "__ATOMIC_ACQ_REL" . .)) 1,44
+ (var s . 4
+  (sd :ATOMIC_SEQ_CST.0. x
+   (var . +0 +0) . uegi ofrbcr0s0awhl0t0c0 -1 +0 . `t13.10. sysatomics.0.
+   (identdefs . .
+    (pragmax . . ATOMIC_SEQ_CST.0. 16
+     (pragma . . 9
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "__ATOMIC_SEQ_CST")) 31
+      (ident . . nodecl))) 57 AtomMemModel.0.
+    (empty)) none unknown d "__ATOMIC_SEQ_CST" . .))
+ (implementation) ~1,13
+ (pragma s . 2
+  (ident . . push) 17
+  (kv . . ~10
+   (ident . . stackTrace) 1
+   (intlit . `t1.34.sysma2dyk +0)) 31
+  (kv . . ~8
+   (ident . . profiler) 1
+   (intlit . `t1.34.sysma2dyk +0))) ~1,15
+ (const s . 2,1
+  (sd :hasThreadSupport.0. .
+   (const) . ug ofrbcr0s0awhl0t0c0 -1 +0 . `t1.34.sysma2dyk ~1,~16
+   (sd :sysatomics.0. .
+    (module) . i1 . +0 . . . 1,1,/home/araq/projects/nim/lib/system.nim
+    (sd :stdlib.0. .
+     (package) . . . -1 +0 . . . . none unknown . "" . .) . none unknown . "" . .)
+   (const0 . . hasThreadSupport.0.
+    (empty) 44
+    (intlit . `t1.34.sysma2dyk +1)) none unknown . "" . .)) ~1,17
+ (const s . 6
+  (sd :someGcc.0. .
+   (const) . ug ofrbcr0s0awhl0t0c0 -1 +0 . `t1.34.sysma2dyk sysatomics.0.
+   (const0 . . someGcc.0.
+    (empty) 62
+    (intlit . `t1.34.sysma2dyk +1)) none unknown . "" . .)) ~1,18
+ (const s . 6
+  (sd :someVcc.0. .
+   (const) . ug ofrbcr0s0awhl0t0c0 -1 +0 . `t1.34.sysma2dyk sysatomics.0.
+   (const0 . . someVcc.0.
+    (empty) 23
+    (intlit . `t1.34.sysma2dyk +0)) none unknown . "" . .)) 1,21
+ (type s . 10
+  (type0 h . ~2
+   (postfix . .
+    (ident . . *) ~8
+    (sd :AtomType.0. x
+     (type) . ueg ofrbcr0s0awhl0t0c0 -1 +0 .
+     (td :`t57.3. . m nimcall -1 -1 +0 +3 . . sysatomics.0. AtomType.0. none unknown . "" `t31.3.sysma2dyk `t32.4.sysma2dyk `t33.5.sysma2dyk `t34.6.sysma2dyk `t35.7.sysma2dyk `t40.8.sysma2dyk `t41.9.sysma2dyk `t42.10.sysma2dyk `t43.11.sysma2dyk `t44.12.sysma2dyk `t36.13.sysma2dyk `t37.14.sysma2dyk `t36.15.sysma2dyk `t26.19.sysma2dyk
+      (td :`t51.5. . c3 nimcall -1 -1 +0 +5 . . AtomType.0. . none unknown . ""
+       (td :`t21.6. . . nimcall -1 -1 +0 +6 . . AtomType.0. . none unknown . "")) `t2.16.sysma2dyk `t1.34.sysma2dyk) sysatomics.0. 10
+     (type0 h . ~2
+      (postfix . .
+       (ident . . *) ~8 AtomType.0.)
+      (empty) 29
+      (infix s
+       (td :`t57.9. . m nimcall -1 -1 +0 +9 . . AtomType.0. . none unknown . "" `t31.3.sysma2dyk `t32.4.sysma2dyk `t33.5.sysma2dyk `t34.6.sysma2dyk `t35.7.sysma2dyk `t40.8.sysma2dyk `t41.9.sysma2dyk `t42.10.sysma2dyk `t43.11.sysma2dyk `t44.12.sysma2dyk `t36.13.sysma2dyk `t37.14.sysma2dyk `t36.15.sysma2dyk `t26.19.sysma2dyk `t51.5. `t2.16.sysma2dyk `t1.34.sysma2dyk)
+       (ident . . |) ~5
+       (infix .
+        (td :`t57.8. . m nimcall -1 -1 +0 +8 . . AtomType.0. . none unknown . "" `t31.3.sysma2dyk `t32.4.sysma2dyk `t33.5.sysma2dyk `t34.6.sysma2dyk `t35.7.sysma2dyk `t40.8.sysma2dyk `t41.9.sysma2dyk `t42.10.sysma2dyk `t43.11.sysma2dyk `t44.12.sysma2dyk `t36.13.sysma2dyk `t37.14.sysma2dyk `t36.15.sysma2dyk `t26.19.sysma2dyk `t51.5. `t2.16.sysma2dyk)
+        (ident . . |) ~4
+        (infix .
+         (td :`t57.7. . m nimcall -1 -1 +0 +7 . . AtomType.0. . none unknown . "" `t31.3.sysma2dyk `t32.4.sysma2dyk `t33.5.sysma2dyk `t34.6.sysma2dyk `t35.7.sysma2dyk `t40.8.sysma2dyk `t41.9.sysma2dyk `t42.10.sysma2dyk `t43.11.sysma2dyk `t44.12.sysma2dyk `t36.13.sysma2dyk `t37.14.sysma2dyk `t36.15.sysma2dyk `t26.19.sysma2dyk `t51.5.)
+         (ident . . |) ~8
+         (infix .
+          (td :`t57.4. . m nimcall -1 -1 +0 +4 . . AtomType.0. . none unknown . "" `t31.3.sysma2dyk `t32.4.sysma2dyk `t33.5.sysma2dyk `t34.6.sysma2dyk `t35.7.sysma2dyk `t40.8.sysma2dyk `t41.9.sysma2dyk `t42.10.sysma2dyk `t43.11.sysma2dyk `t44.12.sysma2dyk `t36.13.sysma2dyk `t37.14.sysma2dyk `t36.15.sysma2dyk `t26.19.sysma2dyk)
+          (ident . . |) ~10 SomeNumber.0.sysma2dyk 1 pointer.0.sysma2dyk) 1
+         (ptrty . `t51.5.)) 1 char.0.sysma2dyk) 1 bool.0.sysma2dyk)) none unknown . "" . .))
+   (empty) 29
+   (infix s `t57.9.
+    (ident . . |) ~5
+    (infix . `t57.8.
+     (ident . . |) ~4
+     (infix . `t57.7.
+      (ident . . |) ~8
+      (infix . `t57.4.
+       (ident . . |) ~10 SomeNumber.0.sysma2dyk 1 pointer.0.sysma2dyk) 1
+      (ptrty . `t51.5.)) 1 char.0.sysma2dyk) 1 bool.0.sysma2dyk))) 6,25
+ (type s . 14
+  (type0 . . ~2
+   (postfix . .
+    (ident . . *) ~12
+    (sd :AtomMemModel.0. x
+     (type) . ueg ofrbcr0s0awhl0t0c0 -1 +0 .
+     (td :`t13.10. . c3 nimcall -1 -1 +0 +10 . . sysatomics.0. AtomMemModel.0. none unknown . "" `t34.11.cty9mra12) sysatomics.0. 14
+     (type0 . . ~2
+      (postfix . .
+       (ident . . *) ~12 AtomMemModel.0.)
+      (empty) 2
+      (distinctty . `t13.10. 9 cint.0.cty9mra12)) none unknown . "" . .))
+   (empty) 2
+   (distinctty . `t13.10. 9 cint.0.cty9mra12))) 6,49
+ (sd :atomicLoadN.0. x
+  (proc) . egi ofrbcr0s0awhl0t0c0 -1 +0 .
+  (td :`t25.12. . me2 nimcall -1 -1 +0 +12 . 32,50,/home/araq/projects/nim/lib/std/sysatomics.nim
+   (formalparams .
+    (td :`t12.11. . g0 nimcall -1 -1 +0 +11 . . atomicLoadN.0. 20,50,/home/araq/projects/nim/lib/std/sysatomics.nim
+     (sd :T.0 .
+      (type) . u . -1 +0 . `t12.11. atomicLoadN.0. . none unknown . "" . .) none unknown . "" `t57.3.)
+    (arglist . .
+     (arglist . .) . .
+     (arglist . .) 33
+     (pragma . . ~54,1
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "__atomic_load_n")) ~33,1
+      (ident . . nodecl))
+     (arglist . .)) 1
+    (sd :p.0 .
+     (param) . . . -1 +0 .
+     (td :`t21.13. . m nimcall -1 -1 +0 +13 . . atomicLoadN.0. . none unknown . "" `t12.11.) atomicLoadN.0. . none unknown . "" . .) 11
+    (sd :mem.0 .
+     (param) . . . -1 +1 . `t13.10. atomicLoadN.0. . none unknown . "" . .)) atomicLoadN.0. . none unknown . "" `t12.11.) sysatomics.0. ~5
+  (proc sh . 5
+   (ht . atomicLoadN.0.)
+   (empty) 17
+   (genericparams . . 1 T.0) . 63
+   (pragma . . ~54,1
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "__atomic_load_n")) ~33,1
+    (ident . . nodecl))
+   (bracket . .
+    (empty) 19,50,/home/araq/projects/nim/lib/std/sysatomics.nim
+    (genericparams . . 1
+     (identdefs . .
+      (ident . . T) 3 AtomType.0.
+      (empty))))
+   (empty)) none unknown d "__atomic_load_n" . .) 6,54
+ (sd :atomicLoad.0. x
+  (proc) . egi ofrbcr0s0awhl0t0c0 -1 +0 .
+  (td :`t25.15. . me2 nimcall -1 -1 +0 +15 . 31,55,/home/araq/projects/nim/lib/std/sysatomics.nim
+   (formalparams . .
+    (arglist . .
+     (arglist . .) . .
+     (arglist . .) 35
+     (pragma . . ~55,1
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "__atomic_load")) ~36,1
+      (ident . . nodecl))
+     (arglist . .)) 1
+    (sd :p.1 .
+     (param) . . . -1 +0 .
+     (td :`t21.16. . m nimcall -1 -1 +0 +16 . . atomicLoad.0. . none unknown . ""
+      (td :`t12.14. . g0 nimcall -1 -1 +0 +14 . . atomicLoad.0. 19,55,/home/araq/projects/nim/lib/std/sysatomics.nim
+       (sd :T.1 .
+        (type) . u . -1 +0 . `t12.14. atomicLoad.0. . none unknown . "" . .) none unknown . "" `t57.3.)) atomicLoad.0. . none unknown . "" . .) 4
+    (sd :ret.0 .
+     (param) . . . -1 +1 . `t21.16. atomicLoad.0. . none unknown . "" . .) 16
+    (sd :mem.1 .
+     (param) . . . -1 +2 . `t13.10. atomicLoad.0. . none unknown . "" . .)) atomicLoad.0. . none unknown . "" .) sysatomics.0. ~5
+  (proc sh . 5
+   (ht . atomicLoad.0.)
+   (empty) 16
+   (genericparams . . 1 T.1) . 64
+   (pragma . . ~55,1
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "__atomic_load")) ~36,1
+    (ident . . nodecl))
+   (bracket . .
+    (empty) 18,55,/home/araq/projects/nim/lib/std/sysatomics.nim
+    (genericparams . . 1
+     (identdefs . .
+      (ident . . T) 3 AtomType.0.
+      (empty))))
+   (empty)) none unknown d "__atomic_load" . .) 6,58
+ (sd :atomicStoreN.0. x
+  (proc) . egi ofrbcr0s0awhl0t0c0 -1 +0 .
+  (td :`t25.18. . me2 nimcall -1 -1 +0 +18 . 33,59,/home/araq/projects/nim/lib/std/sysatomics.nim
+   (formalparams . .
+    (arglist . .
+     (arglist . .) . .
+     (arglist . .) 38
+     (pragma . . ~60,1
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "__atomic_store_n")) ~38,1
+      (ident . . nodecl))
+     (arglist . .)) 1
+    (sd :p.2 .
+     (param) . . . -1 +0 .
+     (td :`t21.19. . m nimcall -1 -1 +0 +19 . . atomicStoreN.0. . none unknown . ""
+      (td :`t12.17. . g0 nimcall -1 -1 +0 +17 . . atomicStoreN.0. 21,59,/home/araq/projects/nim/lib/std/sysatomics.nim
+       (sd :T.2 .
+        (type) . u . -1 +0 . `t12.17. atomicStoreN.0. . none unknown . "" . .) none unknown . "" `t57.3.)) atomicStoreN.0. . none unknown . "" . .) 11
+    (sd :val.0 .
+     (param) . . . -1 +1 . `t12.17. atomicStoreN.0. . none unknown . "" . .) 19
+    (sd :mem.2 .
+     (param) . . . -1 +2 . `t13.10. atomicStoreN.0. . none unknown . "" . .)) atomicStoreN.0. . none unknown . "" .) sysatomics.0. ~5
+  (proc sh . 5
+   (ht . atomicStoreN.0.)
+   (empty) 18
+   (genericparams . . 1 T.2) . 69
+   (pragma . . ~60,1
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "__atomic_store_n")) ~38,1
+    (ident . . nodecl))
+   (bracket . .
+    (empty) 20,59,/home/araq/projects/nim/lib/std/sysatomics.nim
+    (genericparams . . 1
+     (identdefs . .
+      (ident . . T) 3 AtomType.0.
+      (empty))))
+   (empty)) none unknown d "__atomic_store_n" . .) 6,63
+ (sd :atomicStore.0. x
+  (proc) . egi ofrbcr0s0awhl0t0c0 -1 +0 .
+  (td :`t25.21. . me2 nimcall -1 -1 +0 +21 . 32,64,/home/araq/projects/nim/lib/std/sysatomics.nim
+   (formalparams . .
+    (arglist . .
+     (arglist . .) . .
+     (arglist . .) 35
+     (pragma . . ~56,1
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "__atomic_store")) ~36,1
+      (ident . . nodecl))
+     (arglist . .)) 1
+    (sd :p.3 .
+     (param) . . . -1 +0 .
+     (td :`t21.22. . m nimcall -1 -1 +0 +22 . . atomicStore.0. . none unknown . ""
+      (td :`t12.20. . g0 nimcall -1 -1 +0 +20 . . atomicStore.0. 20,64,/home/araq/projects/nim/lib/std/sysatomics.nim
+       (sd :T.3 .
+        (type) . u . -1 +0 . `t12.20. atomicStore.0. . none unknown . "" . .) none unknown . "" `t57.3.)) atomicStore.0. . none unknown . "" . .) 4
+    (sd :val.1 .
+     (param) . . . -1 +1 . `t21.22. atomicStore.0. . none unknown . "" . .) 16
+    (sd :mem.3 .
+     (param) . . . -1 +2 . `t13.10. atomicStore.0. . none unknown . "" . .)) atomicStore.0. . none unknown . "" .) sysatomics.0. ~5
+  (proc sh . 5
+   (ht . atomicStore.0.)
+   (empty) 17
+   (genericparams . . 1 T.3) . 65
+   (pragma . . ~56,1
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "__atomic_store")) ~36,1
+    (ident . . nodecl))
+   (bracket . .
+    (empty) 19,64,/home/araq/projects/nim/lib/std/sysatomics.nim
+    (genericparams . . 1
+     (identdefs . .
+      (ident . . T) 3 AtomType.0.
+      (empty))))
+   (empty)) none unknown d "__atomic_store" . .) 6,67
+ (sd :atomicExchangeN.0. x
+  (proc) . egi ofrbcr0s0awhl0t0c0 -1 +0 .
+  (td :`t25.24. . me2 nimcall -1 -1 +0 +24 . 36,68,/home/araq/projects/nim/lib/std/sysatomics.nim
+   (formalparams .
+    (td :`t12.23. . g0 nimcall -1 -1 +0 +23 . . atomicExchangeN.0. 24,68,/home/araq/projects/nim/lib/std/sysatomics.nim
+     (sd :T.4 .
+      (type) . u . -1 +0 . `t12.23. atomicExchangeN.0. . none unknown . "" . .) none unknown . "" `t57.3.)
+    (arglist . .
+     (arglist . .) . .
+     (arglist . .) 41
+     (pragma . . ~66,1
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "__atomic_exchange_n")) ~41,1
+      (ident . . nodecl))
+     (arglist . .)) 1
+    (sd :p.4 .
+     (param) . . . -1 +0 .
+     (td :`t21.25. . m nimcall -1 -1 +0 +25 . . atomicExchangeN.0. . none unknown . "" `t12.23.) atomicExchangeN.0. . none unknown . "" . .) 11
+    (sd :val.2 .
+     (param) . . . -1 +1 . `t12.23. atomicExchangeN.0. . none unknown . "" . .) 19
+    (sd :mem.4 .
+     (param) . . . -1 +2 . `t13.10. atomicExchangeN.0. . none unknown . "" . .)) atomicExchangeN.0. . none unknown . "" `t12.23.) sysatomics.0. ~5
+  (proc sh . 5
+   (ht . atomicExchangeN.0.)
+   (empty) 21
+   (genericparams . . 1 T.4) . 75
+   (pragma . . ~66,1
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "__atomic_exchange_n")) ~41,1
+    (ident . . nodecl))
+   (bracket . .
+    (empty) 23,68,/home/araq/projects/nim/lib/std/sysatomics.nim
+    (genericparams . . 1
+     (identdefs . .
+      (ident . . T) 3 AtomType.0.
+      (empty))))
+   (empty)) none unknown d "__atomic_exchange_n" . .) 6,73
+ (sd :atomicExchange.0. x
+  (proc) . egi ofrbcr0s0awhl0t0c0 -1 +0 .
+  (td :`t25.27. . me2 nimcall -1 -1 +0 +27 . 35,74,/home/araq/projects/nim/lib/std/sysatomics.nim
+   (formalparams . .
+    (arglist . .
+     (arglist . .) . .
+     (arglist . .) 40
+     (pragma . . ~64,1
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "__atomic_exchange")) ~41,1
+      (ident . . nodecl))
+     (arglist . .)) 1
+    (sd :p.5 .
+     (param) . . . -1 +0 .
+     (td :`t21.28. . m nimcall -1 -1 +0 +28 . . atomicExchange.0. . none unknown . ""
+      (td :`t12.26. . g0 nimcall -1 -1 +0 +26 . . atomicExchange.0. 23,74,/home/araq/projects/nim/lib/std/sysatomics.nim
+       (sd :T.5 .
+        (type) . u . -1 +0 . `t12.26. atomicExchange.0. . none unknown . "" . .) none unknown . "" `t57.3.)) atomicExchange.0. . none unknown . "" . .) 4
+    (sd :val.3 .
+     (param) . . . -1 +1 . `t21.28. atomicExchange.0. . none unknown . "" . .) 9
+    (sd :ret.1 .
+     (param) . . . -1 +2 . `t21.28. atomicExchange.0. . none unknown . "" . .) 21
+    (sd :mem.5 .
+     (param) . . . -1 +3 . `t13.10. atomicExchange.0. . none unknown . "" . .)) atomicExchange.0. . none unknown . "" .) sysatomics.0. ~5
+  (proc sh . 5
+   (ht . atomicExchange.0.)
+   (empty) 20
+   (genericparams . . 1 T.5) . 73
+   (pragma . . ~64,1
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "__atomic_exchange")) ~41,1
+    (ident . . nodecl))
+   (bracket . .
+    (empty) 22,74,/home/araq/projects/nim/lib/std/sysatomics.nim
+    (genericparams . . 1
+     (identdefs . .
+      (ident . . T) 3 AtomType.0.
+      (empty))))
+   (empty)) none unknown d "__atomic_exchange" . .) 6,78
+ (sd :atomicCompareExchangeN.0. x
+  (proc) . uegi ofrbcr0s0awhl0t0c0 -1 +0 .
+  (td :`t25.30. . me2 nimcall -1 -1 +0 +30 . 43,79,/home/araq/projects/nim/lib/std/sysatomics.nim
+   (formalparams . `t1.34.sysma2dyk
+    (arglist . .
+     (arglist . .) . .
+     (arglist . .) 43,1
+     (pragma . . ~75,1
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "__atomic_compare_exchange_n")) ~42,1
+      (ident . . nodecl))
+     (arglist . .)) 1
+    (sd :p.6 .
+     (param) . . . -1 +0 .
+     (td :`t21.31. . m nimcall -1 -1 +0 +31 . . atomicCompareExchangeN.0. . none unknown . ""
+      (td :`t12.29. . g0 nimcall -1 -1 +0 +29 . . atomicCompareExchangeN.0. 31,79,/home/araq/projects/nim/lib/std/sysatomics.nim
+       (sd :T.6 .
+        (type) . u . -1 +0 . `t12.29. atomicCompareExchangeN.0. . none unknown . "" . .) none unknown . "" `t57.3.)) atomicCompareExchangeN.0. . none unknown . "" . .) 4
+    (sd :expected.0 .
+     (param) . . . -1 +1 . `t21.31. atomicCompareExchangeN.0. . none unknown . "" . .) 21
+    (sd :desired.0 .
+     (param) . . . -1 +2 . `t12.29. atomicCompareExchangeN.0. . none unknown . "" . .) ~39,1
+    (sd :weak.0 .
+     (param) . . . -1 +3 . `t1.34.sysma2dyk atomicCompareExchangeN.0. . none unknown . "" . .) ~27,1
+    (sd :success_memmodel.0 .
+     (param) . . . -1 +4 . `t13.10. atomicCompareExchangeN.0. . none unknown . "" . .) 5,1
+    (sd :failure_memmodel.0 .
+     (param) . . . -1 +5 . `t13.10. atomicCompareExchangeN.0. . none unknown . "" . .)) atomicCompareExchangeN.0. . none unknown . "" `t1.34.sysma2dyk) sysatomics.0. ~5
+  (proc sh . 5
+   (ht . atomicCompareExchangeN.0.)
+   (empty) 28
+   (genericparams . . 1 T.6) . 84,1
+   (pragma . . ~75,1
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "__atomic_compare_exchange_n")) ~42,1
+    (ident . . nodecl))
+   (bracket . .
+    (empty) 30,79,/home/araq/projects/nim/lib/std/sysatomics.nim
+    (genericparams . . 1
+     (identdefs . .
+      (ident . . T) 3 AtomType.0.
+      (empty))))
+   (empty)) none unknown d "__atomic_compare_exchange_n" . .) 6,94
+ (sd :atomicCompareExchange.0. x
+  (proc) . egi ofrbcr0s0awhl0t0c0 -1 +0 .
+  (td :`t25.33. . me2 nimcall -1 -1 +0 +33 . 42,95,/home/araq/projects/nim/lib/std/sysatomics.nim
+   (formalparams . `t1.34.sysma2dyk
+    (arglist . .
+     (arglist . .) . .
+     (arglist . .) 44,1
+     (pragma . . ~75,1
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "__atomic_compare_exchange")) ~44,1
+      (ident . . nodecl))
+     (arglist . .)) 1
+    (sd :p.7 .
+     (param) . . . -1 +0 .
+     (td :`t21.34. . m nimcall -1 -1 +0 +34 . . atomicCompareExchange.0. . none unknown . ""
+      (td :`t12.32. . g0 nimcall -1 -1 +0 +32 . . atomicCompareExchange.0. 30,95,/home/araq/projects/nim/lib/std/sysatomics.nim
+       (sd :T.7 .
+        (type) . u . -1 +0 . `t12.32. atomicCompareExchange.0. . none unknown . "" . .) none unknown . "" `t57.3.)) atomicCompareExchange.0. . none unknown . "" . .) 4
+    (sd :expected.1 .
+     (param) . . . -1 +1 . `t21.34. atomicCompareExchange.0. . none unknown . "" . .) 14
+    (sd :desired.1 .
+     (param) . . . -1 +2 . `t21.34. atomicCompareExchange.0. . none unknown . "" . .) ~38,1
+    (sd :weak.1 .
+     (param) . . . -1 +3 . `t1.34.sysma2dyk atomicCompareExchange.0. . none unknown . "" . .) ~26,1
+    (sd :success_memmodel.1 .
+     (param) . . . -1 +4 . `t13.10. atomicCompareExchange.0. . none unknown . "" . .) 6,1
+    (sd :failure_memmodel.1 .
+     (param) . . . -1 +5 . `t13.10. atomicCompareExchange.0. . none unknown . "" . .)) atomicCompareExchange.0. . none unknown . "" `t1.34.sysma2dyk) sysatomics.0. ~5
+  (proc sh . 5
+   (ht . atomicCompareExchange.0.)
+   (empty) 27
+   (genericparams . . 1 T.7) . 84,1
+   (pragma . . ~75,1
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "__atomic_compare_exchange")) ~44,1
+    (ident . . nodecl))
+   (bracket . .
+    (empty) 29,95,/home/araq/projects/nim/lib/std/sysatomics.nim
+    (genericparams . . 1
+     (identdefs . .
+      (ident . . T) 3 AtomType.0.
+      (empty))))
+   (empty)) none unknown d "__atomic_compare_exchange" . .) 1,101
+ (comment sh .) 6,102
+ (sd :atomicAddFetch.0. x
+  (proc) . uegi ofrbcr0s0awhl0t0c0 -1 +0 .
+  (td :`t25.36. . me2 nimcall -1 -1 +0 +36 . 35,103,/home/araq/projects/nim/lib/std/sysatomics.nim
+   (formalparams .
+    (td :`t12.35. . g0 nimcall -1 -1 +0 +35 . . atomicAddFetch.0. 23,103,/home/araq/projects/nim/lib/std/sysatomics.nim
+     (sd :T.8 .
+      (type) . u . -1 +0 . `t12.35. atomicAddFetch.0. . none unknown . "" . .) none unknown . "" `t57.3.)
+    (arglist . .
+     (arglist . .) . .
+     (arglist . .) 41
+     (pragma . . ~65,1
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "__atomic_add_fetch")) ~41,1
+      (ident . . nodecl))
+     (arglist . .)) 1
+    (sd :p.8 .
+     (param) . . . -1 +0 .
+     (td :`t21.37. . m nimcall -1 -1 +0 +37 . . atomicAddFetch.0. . none unknown . "" `t12.35.) atomicAddFetch.0. . none unknown . "" . .) 11
+    (sd :val.4 .
+     (param) . . . -1 +1 . `t12.35. atomicAddFetch.0. . none unknown . "" . .) 19
+    (sd :mem.6 .
+     (param) . . . -1 +2 . `t13.10. atomicAddFetch.0. . none unknown . "" . .)) atomicAddFetch.0. . none unknown . "" `t12.35.) sysatomics.0. ~5
+  (proc s . 5
+   (ht . atomicAddFetch.0.)
+   (empty) 20
+   (genericparams . . 1 T.8) . 74
+   (pragma . . ~65,1
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "__atomic_add_fetch")) ~41,1
+    (ident . . nodecl))
+   (bracket . .
+    (empty) 22,103,/home/araq/projects/nim/lib/std/sysatomics.nim
+    (genericparams . . 1
+     (identdefs . .
+      (ident . . T) 3 AtomType.0.
+      (empty))))
+   (empty)) none unknown d "__atomic_add_fetch" . .) 6,104
+ (sd :atomicSubFetch.0. x
+  (proc) . uegi ofrbcr0s0awhl0t0c0 -1 +0 .
+  (td :`t25.39. . me2 nimcall -1 -1 +0 +39 . 35,105,/home/araq/projects/nim/lib/std/sysatomics.nim
+   (formalparams .
+    (td :`t12.38. . g0 nimcall -1 -1 +0 +38 . . atomicSubFetch.0. 23,105,/home/araq/projects/nim/lib/std/sysatomics.nim
+     (sd :T.9 .
+      (type) . u . -1 +0 . `t12.38. atomicSubFetch.0. . none unknown . "" . .) none unknown . "" `t57.3.)
+    (arglist . .
+     (arglist . .) . .
+     (arglist . .) 41
+     (pragma . . ~65,1
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "__atomic_sub_fetch")) ~41,1
+      (ident . . nodecl))
+     (arglist . .)) 1
+    (sd :p.9 .
+     (param) . . . -1 +0 .
+     (td :`t21.40. . m nimcall -1 -1 +0 +40 . . atomicSubFetch.0. . none unknown . "" `t12.38.) atomicSubFetch.0. . none unknown . "" . .) 11
+    (sd :val.5 .
+     (param) . . . -1 +1 . `t12.38. atomicSubFetch.0. . none unknown . "" . .) 19
+    (sd :mem.7 .
+     (param) . . . -1 +2 . `t13.10. atomicSubFetch.0. . none unknown . "" . .)) atomicSubFetch.0. . none unknown . "" `t12.38.) sysatomics.0. ~5
+  (proc s . 5
+   (ht . atomicSubFetch.0.)
+   (empty) 20
+   (genericparams . . 1 T.9) . 74
+   (pragma . . ~65,1
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "__atomic_sub_fetch")) ~41,1
+    (ident . . nodecl))
+   (bracket . .
+    (empty) 22,105,/home/araq/projects/nim/lib/std/sysatomics.nim
+    (genericparams . . 1
+     (identdefs . .
+      (ident . . T) 3 AtomType.0.
+      (empty))))
+   (empty)) none unknown d "__atomic_sub_fetch" . .) 6,106
+ (sd :atomicOrFetch.0. x
+  (proc) . egi ofrbcr0s0awhl0t0c0 -1 +0 .
+  (td :`t25.42. . me2 nimcall -1 -1 +0 +42 . 34,107,/home/araq/projects/nim/lib/std/sysatomics.nim
+   (formalparams .
+    (td :`t12.41. . g0 nimcall -1 -1 +0 +41 . . atomicOrFetch.0. 22,107,/home/araq/projects/nim/lib/std/sysatomics.nim
+     (sd :T.10 .
+      (type) . u . -1 +0 . `t12.41. atomicOrFetch.0. . none unknown . "" . .) none unknown . "" `t57.3.)
+    (arglist . .
+     (arglist . .) . .
+     (arglist . .) 41
+     (pragma . . ~64,1
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "__atomic_or_fetch")) ~41,1
+      (ident . . nodecl))
+     (arglist . .)) 1
+    (sd :p.10 .
+     (param) . . . -1 +0 .
+     (td :`t21.43. . m nimcall -1 -1 +0 +43 . . atomicOrFetch.0. . none unknown . "" `t12.41.) atomicOrFetch.0. . none unknown . "" . .) 11
+    (sd :val.6 .
+     (param) . . . -1 +1 . `t12.41. atomicOrFetch.0. . none unknown . "" . .) 19
+    (sd :mem.8 .
+     (param) . . . -1 +2 . `t13.10. atomicOrFetch.0. . none unknown . "" . .)) atomicOrFetch.0. . none unknown . "" `t12.41.) sysatomics.0. ~5
+  (proc s . 5
+   (ht . atomicOrFetch.0.)
+   (empty) 19
+   (genericparams . . 1 T.10) . 73
+   (pragma . . ~64,1
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "__atomic_or_fetch")) ~41,1
+    (ident . . nodecl))
+   (bracket . .
+    (empty) 21,107,/home/araq/projects/nim/lib/std/sysatomics.nim
+    (genericparams . . 1
+     (identdefs . .
+      (ident . . T) 3 AtomType.0.
+      (empty))))
+   (empty)) none unknown d "__atomic_or_fetch" . .) 6,108
+ (sd :atomicAndFetch.0. x
+  (proc) . egi ofrbcr0s0awhl0t0c0 -1 +0 .
+  (td :`t25.45. . me2 nimcall -1 -1 +0 +45 . 35,109,/home/araq/projects/nim/lib/std/sysatomics.nim
+   (formalparams .
+    (td :`t12.44. . g0 nimcall -1 -1 +0 +44 . . atomicAndFetch.0. 23,109,/home/araq/projects/nim/lib/std/sysatomics.nim
+     (sd :T.11 .
+      (type) . u . -1 +0 . `t12.44. atomicAndFetch.0. . none unknown . "" . .) none unknown . "" `t57.3.)
+    (arglist . .
+     (arglist . .) . .
+     (arglist . .) 41
+     (pragma . . ~65,1
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "__atomic_and_fetch")) ~41,1
+      (ident . . nodecl))
+     (arglist . .)) 1
+    (sd :p.11 .
+     (param) . . . -1 +0 .
+     (td :`t21.46. . m nimcall -1 -1 +0 +46 . . atomicAndFetch.0. . none unknown . "" `t12.44.) atomicAndFetch.0. . none unknown . "" . .) 11
+    (sd :val.7 .
+     (param) . . . -1 +1 . `t12.44. atomicAndFetch.0. . none unknown . "" . .) 19
+    (sd :mem.9 .
+     (param) . . . -1 +2 . `t13.10. atomicAndFetch.0. . none unknown . "" . .)) atomicAndFetch.0. . none unknown . "" `t12.44.) sysatomics.0. ~5
+  (proc s . 5
+   (ht . atomicAndFetch.0.)
+   (empty) 20
+   (genericparams . . 1 T.11) . 74
+   (pragma . . ~65,1
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "__atomic_and_fetch")) ~41,1
+    (ident . . nodecl))
+   (bracket . .
+    (empty) 22,109,/home/araq/projects/nim/lib/std/sysatomics.nim
+    (genericparams . . 1
+     (identdefs . .
+      (ident . . T) 3 AtomType.0.
+      (empty))))
+   (empty)) none unknown d "__atomic_and_fetch" . .) 6,110
+ (sd :atomicXorFetch.0. x
+  (proc) . egi ofrbcr0s0awhl0t0c0 -1 +0 .
+  (td :`t25.48. . me2 nimcall -1 -1 +0 +48 . 35,111,/home/araq/projects/nim/lib/std/sysatomics.nim
+   (formalparams .
+    (td :`t12.47. . g0 nimcall -1 -1 +0 +47 . . atomicXorFetch.0. 23,111,/home/araq/projects/nim/lib/std/sysatomics.nim
+     (sd :T.12 .
+      (type) . u . -1 +0 . `t12.47. atomicXorFetch.0. . none unknown . "" . .) none unknown . "" `t57.3.)
+    (arglist . .
+     (arglist . .) . .
+     (arglist . .) 41
+     (pragma . . ~65,1
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "__atomic_xor_fetch")) ~41,1
+      (ident . . nodecl))
+     (arglist . .)) 1
+    (sd :p.12 .
+     (param) . . . -1 +0 .
+     (td :`t21.49. . m nimcall -1 -1 +0 +49 . . atomicXorFetch.0. . none unknown . "" `t12.47.) atomicXorFetch.0. . none unknown . "" . .) 11
+    (sd :val.8 .
+     (param) . . . -1 +1 . `t12.47. atomicXorFetch.0. . none unknown . "" . .) 19
+    (sd :mem.10 .
+     (param) . . . -1 +2 . `t13.10. atomicXorFetch.0. . none unknown . "" . .)) atomicXorFetch.0. . none unknown . "" `t12.47.) sysatomics.0. ~5
+  (proc s . 5
+   (ht . atomicXorFetch.0.)
+   (empty) 20
+   (genericparams . . 1 T.12) . 74
+   (pragma . . ~65,1
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "__atomic_xor_fetch")) ~41,1
+    (ident . . nodecl))
+   (bracket . .
+    (empty) 22,111,/home/araq/projects/nim/lib/std/sysatomics.nim
+    (genericparams . . 1
+     (identdefs . .
+      (ident . . T) 3 AtomType.0.
+      (empty))))
+   (empty)) none unknown d "__atomic_xor_fetch" . .) 6,112
+ (sd :atomicNandFetch.0. x
+  (proc) . egi ofrbcr0s0awhl0t0c0 -1 +0 .
+  (td :`t25.51. . me2 nimcall -1 -1 +0 +51 . 36,113,/home/araq/projects/nim/lib/std/sysatomics.nim
+   (formalparams .
+    (td :`t12.50. . g0 nimcall -1 -1 +0 +50 . . atomicNandFetch.0. 24,113,/home/araq/projects/nim/lib/std/sysatomics.nim
+     (sd :T.13 .
+      (type) . u . -1 +0 . `t12.50. atomicNandFetch.0. . none unknown . "" . .) none unknown . "" `t57.3.)
+    (arglist . .
+     (arglist . .) . .
+     (arglist . .) 41
+     (pragma . . ~66,1
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "__atomic_nand_fetch")) ~41,1
+      (ident . . nodecl))
+     (arglist . .)) 1
+    (sd :p.13 .
+     (param) . . . -1 +0 .
+     (td :`t21.52. . m nimcall -1 -1 +0 +52 . . atomicNandFetch.0. . none unknown . "" `t12.50.) atomicNandFetch.0. . none unknown . "" . .) 11
+    (sd :val.9 .
+     (param) . . . -1 +1 . `t12.50. atomicNandFetch.0. . none unknown . "" . .) 19
+    (sd :mem.11 .
+     (param) . . . -1 +2 . `t13.10. atomicNandFetch.0. . none unknown . "" . .)) atomicNandFetch.0. . none unknown . "" `t12.50.) sysatomics.0. ~5
+  (proc s . 5
+   (ht . atomicNandFetch.0.)
+   (empty) 21
+   (genericparams . . 1 T.13) . 75
+   (pragma . . ~66,1
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "__atomic_nand_fetch")) ~41,1
+    (ident . . nodecl))
+   (bracket . .
+    (empty) 23,113,/home/araq/projects/nim/lib/std/sysatomics.nim
+    (genericparams . . 1
+     (identdefs . .
+      (ident . . T) 3 AtomType.0.
+      (empty))))
+   (empty)) none unknown d "__atomic_nand_fetch" . .) 1,115
+ (comment sh .) 6,116
+ (sd :atomicFetchAdd.0. x
+  (proc) . egi ofrbcr0s0awhl0t0c0 -1 +0 .
+  (td :`t25.54. . me2 nimcall -1 -1 +0 +54 . 35,117,/home/araq/projects/nim/lib/std/sysatomics.nim
+   (formalparams .
+    (td :`t12.53. . g0 nimcall -1 -1 +0 +53 . . atomicFetchAdd.0. 23,117,/home/araq/projects/nim/lib/std/sysatomics.nim
+     (sd :T.14 .
+      (type) . u . -1 +0 . `t12.53. atomicFetchAdd.0. . none unknown . "" . .) none unknown . "" `t57.3.)
+    (arglist . .
+     (arglist . .) . .
+     (arglist . .) 41
+     (pragma . . ~65,1
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "__atomic_fetch_add")) ~41,1
+      (ident . . nodecl))
+     (arglist . .)) 1
+    (sd :p.14 .
+     (param) . . . -1 +0 .
+     (td :`t21.55. . m nimcall -1 -1 +0 +55 . . atomicFetchAdd.0. . none unknown . "" `t12.53.) atomicFetchAdd.0. . none unknown . "" . .) 11
+    (sd :val.10 .
+     (param) . . . -1 +1 . `t12.53. atomicFetchAdd.0. . none unknown . "" . .) 19
+    (sd :mem.12 .
+     (param) . . . -1 +2 . `t13.10. atomicFetchAdd.0. . none unknown . "" . .)) atomicFetchAdd.0. . none unknown . "" `t12.53.) sysatomics.0. ~5
+  (proc s . 5
+   (ht . atomicFetchAdd.0.)
+   (empty) 20
+   (genericparams . . 1 T.14) . 74
+   (pragma . . ~65,1
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "__atomic_fetch_add")) ~41,1
+    (ident . . nodecl))
+   (bracket . .
+    (empty) 22,117,/home/araq/projects/nim/lib/std/sysatomics.nim
+    (genericparams . . 1
+     (identdefs . .
+      (ident . . T) 3 AtomType.0.
+      (empty))))
+   (empty)) none unknown d "__atomic_fetch_add" . .) 6,118
+ (sd :atomicFetchSub.0. x
+  (proc) . egi ofrbcr0s0awhl0t0c0 -1 +0 .
+  (td :`t25.57. . me2 nimcall -1 -1 +0 +57 . 35,119,/home/araq/projects/nim/lib/std/sysatomics.nim
+   (formalparams .
+    (td :`t12.56. . g0 nimcall -1 -1 +0 +56 . . atomicFetchSub.0. 23,119,/home/araq/projects/nim/lib/std/sysatomics.nim
+     (sd :T.15 .
+      (type) . u . -1 +0 . `t12.56. atomicFetchSub.0. . none unknown . "" . .) none unknown . "" `t57.3.)
+    (arglist . .
+     (arglist . .) . .
+     (arglist . .) 41
+     (pragma . . ~65,1
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "__atomic_fetch_sub")) ~41,1
+      (ident . . nodecl))
+     (arglist . .)) 1
+    (sd :p.15 .
+     (param) . . . -1 +0 .
+     (td :`t21.58. . m nimcall -1 -1 +0 +58 . . atomicFetchSub.0. . none unknown . "" `t12.56.) atomicFetchSub.0. . none unknown . "" . .) 11
+    (sd :val.11 .
+     (param) . . . -1 +1 . `t12.56. atomicFetchSub.0. . none unknown . "" . .) 19
+    (sd :mem.13 .
+     (param) . . . -1 +2 . `t13.10. atomicFetchSub.0. . none unknown . "" . .)) atomicFetchSub.0. . none unknown . "" `t12.56.) sysatomics.0. ~5
+  (proc s . 5
+   (ht . atomicFetchSub.0.)
+   (empty) 20
+   (genericparams . . 1 T.15) . 74
+   (pragma . . ~65,1
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "__atomic_fetch_sub")) ~41,1
+    (ident . . nodecl))
+   (bracket . .
+    (empty) 22,119,/home/araq/projects/nim/lib/std/sysatomics.nim
+    (genericparams . . 1
+     (identdefs . .
+      (ident . . T) 3 AtomType.0.
+      (empty))))
+   (empty)) none unknown d "__atomic_fetch_sub" . .) 6,120
+ (sd :atomicFetchOr.0. x
+  (proc) . egi ofrbcr0s0awhl0t0c0 -1 +0 .
+  (td :`t25.60. . me2 nimcall -1 -1 +0 +60 . 34,121,/home/araq/projects/nim/lib/std/sysatomics.nim
+   (formalparams .
+    (td :`t12.59. . g0 nimcall -1 -1 +0 +59 . . atomicFetchOr.0. 22,121,/home/araq/projects/nim/lib/std/sysatomics.nim
+     (sd :T.16 .
+      (type) . u . -1 +0 . `t12.59. atomicFetchOr.0. . none unknown . "" . .) none unknown . "" `t57.3.)
+    (arglist . .
+     (arglist . .) . .
+     (arglist . .) 41
+     (pragma . . ~64,1
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "__atomic_fetch_or")) ~41,1
+      (ident . . nodecl))
+     (arglist . .)) 1
+    (sd :p.16 .
+     (param) . . . -1 +0 .
+     (td :`t21.61. . m nimcall -1 -1 +0 +61 . . atomicFetchOr.0. . none unknown . "" `t12.59.) atomicFetchOr.0. . none unknown . "" . .) 11
+    (sd :val.12 .
+     (param) . . . -1 +1 . `t12.59. atomicFetchOr.0. . none unknown . "" . .) 19
+    (sd :mem.14 .
+     (param) . . . -1 +2 . `t13.10. atomicFetchOr.0. . none unknown . "" . .)) atomicFetchOr.0. . none unknown . "" `t12.59.) sysatomics.0. ~5
+  (proc s . 5
+   (ht . atomicFetchOr.0.)
+   (empty) 19
+   (genericparams . . 1 T.16) . 73
+   (pragma . . ~64,1
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "__atomic_fetch_or")) ~41,1
+    (ident . . nodecl))
+   (bracket . .
+    (empty) 21,121,/home/araq/projects/nim/lib/std/sysatomics.nim
+    (genericparams . . 1
+     (identdefs . .
+      (ident . . T) 3 AtomType.0.
+      (empty))))
+   (empty)) none unknown d "__atomic_fetch_or" . .) 6,122
+ (sd :atomicFetchAnd.0. x
+  (proc) . egi ofrbcr0s0awhl0t0c0 -1 +0 .
+  (td :`t25.63. . me2 nimcall -1 -1 +0 +63 . 35,123,/home/araq/projects/nim/lib/std/sysatomics.nim
+   (formalparams .
+    (td :`t12.62. . g0 nimcall -1 -1 +0 +62 . . atomicFetchAnd.0. 23,123,/home/araq/projects/nim/lib/std/sysatomics.nim
+     (sd :T.17 .
+      (type) . u . -1 +0 . `t12.62. atomicFetchAnd.0. . none unknown . "" . .) none unknown . "" `t57.3.)
+    (arglist . .
+     (arglist . .) . .
+     (arglist . .) 41
+     (pragma . . ~65,1
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "__atomic_fetch_and")) ~41,1
+      (ident . . nodecl))
+     (arglist . .)) 1
+    (sd :p.17 .
+     (param) . . . -1 +0 .
+     (td :`t21.64. . m nimcall -1 -1 +0 +64 . . atomicFetchAnd.0. . none unknown . "" `t12.62.) atomicFetchAnd.0. . none unknown . "" . .) 11
+    (sd :val.13 .
+     (param) . . . -1 +1 . `t12.62. atomicFetchAnd.0. . none unknown . "" . .) 19
+    (sd :mem.15 .
+     (param) . . . -1 +2 . `t13.10. atomicFetchAnd.0. . none unknown . "" . .)) atomicFetchAnd.0. . none unknown . "" `t12.62.) sysatomics.0. ~5
+  (proc s . 5
+   (ht . atomicFetchAnd.0.)
+   (empty) 20
+   (genericparams . . 1 T.17) . 74
+   (pragma . . ~65,1
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "__atomic_fetch_and")) ~41,1
+    (ident . . nodecl))
+   (bracket . .
+    (empty) 22,123,/home/araq/projects/nim/lib/std/sysatomics.nim
+    (genericparams . . 1
+     (identdefs . .
+      (ident . . T) 3 AtomType.0.
+      (empty))))
+   (empty)) none unknown d "__atomic_fetch_and" . .) 6,124
+ (sd :atomicFetchXor.0. x
+  (proc) . egi ofrbcr0s0awhl0t0c0 -1 +0 .
+  (td :`t25.66. . me2 nimcall -1 -1 +0 +66 . 35,125,/home/araq/projects/nim/lib/std/sysatomics.nim
+   (formalparams .
+    (td :`t12.65. . g0 nimcall -1 -1 +0 +65 . . atomicFetchXor.0. 23,125,/home/araq/projects/nim/lib/std/sysatomics.nim
+     (sd :T.18 .
+      (type) . u . -1 +0 . `t12.65. atomicFetchXor.0. . none unknown . "" . .) none unknown . "" `t57.3.)
+    (arglist . .
+     (arglist . .) . .
+     (arglist . .) 41
+     (pragma . . ~65,1
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "__atomic_fetch_xor")) ~41,1
+      (ident . . nodecl))
+     (arglist . .)) 1
+    (sd :p.18 .
+     (param) . . . -1 +0 .
+     (td :`t21.67. . m nimcall -1 -1 +0 +67 . . atomicFetchXor.0. . none unknown . "" `t12.65.) atomicFetchXor.0. . none unknown . "" . .) 11
+    (sd :val.14 .
+     (param) . . . -1 +1 . `t12.65. atomicFetchXor.0. . none unknown . "" . .) 19
+    (sd :mem.16 .
+     (param) . . . -1 +2 . `t13.10. atomicFetchXor.0. . none unknown . "" . .)) atomicFetchXor.0. . none unknown . "" `t12.65.) sysatomics.0. ~5
+  (proc s . 5
+   (ht . atomicFetchXor.0.)
+   (empty) 20
+   (genericparams . . 1 T.18) . 74
+   (pragma . . ~65,1
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "__atomic_fetch_xor")) ~41,1
+    (ident . . nodecl))
+   (bracket . .
+    (empty) 22,125,/home/araq/projects/nim/lib/std/sysatomics.nim
+    (genericparams . . 1
+     (identdefs . .
+      (ident . . T) 3 AtomType.0.
+      (empty))))
+   (empty)) none unknown d "__atomic_fetch_xor" . .) 6,126
+ (sd :atomicFetchNand.0. x
+  (proc) . egi ofrbcr0s0awhl0t0c0 -1 +0 .
+  (td :`t25.69. . me2 nimcall -1 -1 +0 +69 . 36,127,/home/araq/projects/nim/lib/std/sysatomics.nim
+   (formalparams .
+    (td :`t12.68. . g0 nimcall -1 -1 +0 +68 . . atomicFetchNand.0. 24,127,/home/araq/projects/nim/lib/std/sysatomics.nim
+     (sd :T.19 .
+      (type) . u . -1 +0 . `t12.68. atomicFetchNand.0. . none unknown . "" . .) none unknown . "" `t57.3.)
+    (arglist . .
+     (arglist . .) . .
+     (arglist . .) 41
+     (pragma . . ~66,1
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "__atomic_fetch_nand")) ~41,1
+      (ident . . nodecl))
+     (arglist . .)) 1
+    (sd :p.19 .
+     (param) . . . -1 +0 .
+     (td :`t21.70. . m nimcall -1 -1 +0 +70 . . atomicFetchNand.0. . none unknown . "" `t12.68.) atomicFetchNand.0. . none unknown . "" . .) 11
+    (sd :val.15 .
+     (param) . . . -1 +1 . `t12.68. atomicFetchNand.0. . none unknown . "" . .) 19
+    (sd :mem.17 .
+     (param) . . . -1 +2 . `t13.10. atomicFetchNand.0. . none unknown . "" . .)) atomicFetchNand.0. . none unknown . "" `t12.68.) sysatomics.0. ~5
+  (proc s . 5
+   (ht . atomicFetchNand.0.)
+   (empty) 21
+   (genericparams . . 1 T.19) . 75
+   (pragma . . ~66,1
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "__atomic_fetch_nand")) ~41,1
+    (ident . . nodecl))
+   (bracket . .
+    (empty) 23,127,/home/araq/projects/nim/lib/std/sysatomics.nim
+    (genericparams . . 1
+     (identdefs . .
+      (ident . . T) 3 AtomType.0.
+      (empty))))
+   (empty)) none unknown d "__atomic_fetch_nand" . .) 6,129
+ (sd :atomicTestAndSet.0. x
+  (proc) . egi ofrbcr0s0awhl0t0c0 -1 +0 .
+  (td :`t25.71. . e2 nimcall -1 -1 +0 +71 . 24,130,/home/araq/projects/nim/lib/std/sysatomics.nim
+   (formalparams . `t1.34.sysma2dyk
+    (arglist . .
+     (arglist . .) . .
+     (arglist . .) 38
+     (pragma . . ~51,1
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "__atomic_test_and_set")) ~24,1
+      (ident . . nodecl))
+     (arglist . .)) 1
+    (sd :p.20 .
+     (param) . . . -1 +0 . `t26.19.sysma2dyk atomicTestAndSet.0. . none unknown . "" . .) 13
+    (sd :mem.18 .
+     (param) . . . -1 +1 . `t13.10. atomicTestAndSet.0. . none unknown . "" . .)) atomicTestAndSet.0. . none unknown . "" `t1.34.sysma2dyk) sysatomics.0. ~5
+  (proc sh . 5
+   (ht . atomicTestAndSet.0.)
+   (empty)
+   (empty) . 60
+   (pragma . . ~51,1
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "__atomic_test_and_set")) ~24,1
+    (ident . . nodecl))
+   (empty)
+   (empty)) none unknown d "__atomic_test_and_set" . .) 6,136
+ (sd :atomicClear.0. x
+  (proc) . egi ofrbcr0s0awhl0t0c0 -1 +0 .
+  (td :`t25.72. . e2 nimcall -1 -1 +0 +72 . 19,137,/home/araq/projects/nim/lib/std/sysatomics.nim
+   (formalparams . .
+    (arglist . .
+     (arglist . .) . .
+     (arglist . .) 32
+     (pragma . . ~40,1
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "__atomic_clear")) ~20,1
+      (ident . . nodecl))
+     (arglist . .)) 1
+    (sd :p.21 .
+     (param) . . . -1 +0 . `t26.19.sysma2dyk atomicClear.0. . none unknown . "" . .) 13
+    (sd :mem.19 .
+     (param) . . . -1 +1 . `t13.10. atomicClear.0. . none unknown . "" . .)) atomicClear.0. . none unknown . "" .) sysatomics.0. ~5
+  (proc sh . 5
+   (ht . atomicClear.0.)
+   (empty)
+   (empty) . 49
+   (pragma . . ~40,1
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "__atomic_clear")) ~20,1
+    (ident . . nodecl))
+   (empty)
+   (empty)) none unknown d "__atomic_clear" . .) 6,142
+ (sd :atomicThreadFence.0. x
+  (proc) . uegi ofrbcr0s0awhl0t0c0 -1 +0 .
+  (td :`t25.73. . e2 nimcall -1 -1 +0 +73 . 25,143,/home/araq/projects/nim/lib/std/sysatomics.nim
+   (formalparams . .
+    (arglist . .
+     (arglist . .) . .
+     (arglist . .) 20
+     (pragma . . ~34,1
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "__atomic_thread_fence")) ~7,1
+      (ident . . nodecl))
+     (arglist . .)) 1
+    (sd :mem.20 .
+     (param) . . . -1 +0 . `t13.10. atomicThreadFence.0. . none unknown . "" . .)) atomicThreadFence.0. . none unknown . "" .) sysatomics.0. ~5
+  (proc sh . 5
+   (ht . atomicThreadFence.0.)
+   (empty)
+   (empty) . 43
+   (pragma . . ~34,1
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "__atomic_thread_fence")) ~7,1
+    (ident . . nodecl))
+   (empty)
+   (empty)) none unknown d "__atomic_thread_fence" . .) 6,147
+ (sd :atomicSignalFence.0. x
+  (proc) . egi ofrbcr0s0awhl0t0c0 -1 +0 .
+  (td :`t25.74. . e2 nimcall -1 -1 +0 +74 . 25,148,/home/araq/projects/nim/lib/std/sysatomics.nim
+   (formalparams . .
+    (arglist . .
+     (arglist . .) . .
+     (arglist . .) 20
+     (pragma . . ~34,1
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "__atomic_signal_fence")) ~7,1
+      (ident . . nodecl))
+     (arglist . .)) 1
+    (sd :mem.21 .
+     (param) . . . -1 +0 . `t13.10. atomicSignalFence.0. . none unknown . "" . .)) atomicSignalFence.0. . none unknown . "" .) sysatomics.0. ~5
+  (proc sh . 5
+   (ht . atomicSignalFence.0.)
+   (empty)
+   (empty) . 43
+   (pragma . . ~34,1
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "__atomic_signal_fence")) ~7,1
+    (ident . . nodecl))
+   (empty)
+   (empty)) none unknown d "__atomic_signal_fence" . .) 6,152
+ (sd :atomicAlwaysLockFree.0. x
+  (proc) . egi ofrbcr0s0awhl0t0c0 -1 +0 .
+  (td :`t25.75. . e2 nimcall -1 -1 +0 +75 . 28,153,/home/araq/projects/nim/lib/std/sysatomics.nim
+   (formalparams . `t1.34.sysma2dyk
+    (arglist . .
+     (arglist . .) . .
+     (arglist . .) 30
+     (pragma . . ~47,1
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "__atomic_always_lock_free")) ~16,1
+      (ident . . nodecl))
+     (arglist . .)) 1
+    (sd :size.0 .
+     (param) . . . -1 +0 . `t31.3.sysma2dyk atomicAlwaysLockFree.0. . none unknown . "" . .) 12
+    (sd :p.22 .
+     (param) . . . -1 +1 . `t26.19.sysma2dyk atomicAlwaysLockFree.0. . none unknown . "" . .)) atomicAlwaysLockFree.0. . none unknown . "" `t1.34.sysma2dyk) sysatomics.0. ~5
+  (proc sh . 5
+   (ht . atomicAlwaysLockFree.0.)
+   (empty)
+   (empty) . 56
+   (pragma . . ~47,1
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "__atomic_always_lock_free")) ~16,1
+    (ident . . nodecl))
+   (empty)
+   (empty)) none unknown d "__atomic_always_lock_free" . .) 6,161
+ (sd :atomicIsLockFree.0. x
+  (proc) . egi ofrbcr0s0awhl0t0c0 -1 +0 .
+  (td :`t25.76. . e2 nimcall -1 -1 +0 +76 . 24,162,/home/araq/projects/nim/lib/std/sysatomics.nim
+   (formalparams . `t1.34.sysma2dyk
+    (arglist . .
+     (arglist . .) . .
+     (arglist . .) 30
+     (pragma . . ~43,1
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "__atomic_is_lock_free")) ~16,1
+      (ident . . nodecl))
+     (arglist . .)) 1
+    (sd :size.1 .
+     (param) . . . -1 +0 . `t31.3.sysma2dyk atomicIsLockFree.0. . none unknown . "" . .) 12
+    (sd :p.23 .
+     (param) . . . -1 +1 . `t26.19.sysma2dyk atomicIsLockFree.0. . none unknown . "" . .)) atomicIsLockFree.0. . none unknown . "" `t1.34.sysma2dyk) sysatomics.0. ~5
+  (proc sh . 5
+   (ht . atomicIsLockFree.0.)
+   (empty)
+   (empty) . 52
+   (pragma . . ~43,1
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "__atomic_is_lock_free")) ~16,1
+    (ident . . nodecl))
+   (empty)
+   (empty)) none unknown d "__atomic_is_lock_free" . .) 10,170
+ (sd :fence.0. x
+  (template) . ega1 . -1 +0 .
+  (td :`t25.77. . . nimcall -1 -1 +0 +77 . 17,171,/home/araq/projects/nim/lib/std/sysatomics.nim
+   (formalparams . .
+    (arglist . .)) fence.0. . none unknown . "" .) sysatomics.0. ~9
+  (template s . 9
+   (ht . fence.0.)
+   (empty)
+   (empty) .
+   (empty)
+   (empty) 20
+   (stmts . . 17
+    (call . . ~17
+     (ht . atomicThreadFence.0.) 1
+     (ht . ATOMIC_SEQ_CST.0.)))) none unknown . "" . .) 4,266
+ (sd :atomicInc.0. x
+  (proc) . egd2i1 ofrbcr0s0awhl0t0c0 -1 +0 .
+  (td :`t25.78. . te1e2 inline -1 -1 +0 +78 . 15,267,/home/araq/projects/nim/lib/std/sysatomics.nim
+   (formalparams . `t31.3.sysma2dyk
+    (arglist . . 66
+     (bracket . .)
+     (empty)
+     (empty) 76
+     (bracket . .)
+     (empty) ~10
+     (arglist . .)) 1
+    (sd :memLoc.0 .
+     (param) . u . -1 +0 .
+     (td :`t23.79. . . nimcall -1 -1 +0 +79 . . atomicInc.0. . none unknown . "" `t31.3.sysma2dyk) atomicInc.0. . none unknown . "" . .) 18
+    (sd :x.0 .
+     (param) . u . -1 +1 . `t31.3.sysma2dyk atomicInc.0. 9
+     (intlit . `t31.3.sysma2dyk +1) none unknown . "" . .)) atomicInc.0. . none unknown . "" `t31.3.sysma2dyk) sysatomics.0. ~5
+  (proc s . 5
+   (ht . atomicInc.0.)
+   (empty)
+   (empty) . 50
+   (pragma . . 2
+    (ident . . inline) 10
+    (ident . . discardable) 29
+    (kv . . ~6
+     (ident . . raises) 2
+     (bracket . .)) 39
+    (kv . . ~4
+     (ident . . tags) 2
+     (bracket . .)))
+   (empty) 2,1
+   (stmts s
+    (td :`t7.1. . . nimcall -1 -1 +0 +1 . . . . none unknown . "")
+    (comment sh .) 9,2
+    (asgn s `t7.1. ~11,~3
+     (sd :result.0 .
+      (result) . u . -1 +0 . `t31.3.sysma2dyk atomicInc.0. . none unknown . "" . .) 16
+     (call s `t31.3.sysma2dyk ~20,~167
+      (sd :atomicAddFetch.1. .
+       (proc) . uefgi ofrbcr0s0awhl0t0c0 -1 +0 .
+       (td :`t25.81. . ge2 nimcall -1 -1 +0 +81 . 35,103,/home/araq/projects/nim/lib/std/sysatomics.nim
+        (formalparams . `t12.35.
+         (arglist . .
+          (arglist . .) . .
+          (arglist . .) 41
+          (pragma . . ~65,1
+           (kv . . ~7
+            (ident . . importc) 2
+            (strlit . `t28.17.sysma2dyk "__atomic_add_fetch")) ~41,1
+           (ident . . nodecl))
+          (arglist . .)) 1
+         (sd :p.24 .
+          (param) . . . -1 +0 .
+          (td :`t21.82. . g nimcall -1 -1 +0 +82 . . atomicAddFetch.0. . none unknown . "" `t31.3.sysma2dyk) atomicAddFetch.1. . none unknown . "" . .) 11
+         (sd :val.16 .
+          (param) . . . -1 +1 . `t31.3.sysma2dyk atomicAddFetch.1. . none unknown . "" . .) 19
+         (sd :mem.22 .
+          (param) . . . -1 +2 . `t13.10. atomicAddFetch.1. . none unknown . "" . .)) atomicAddFetch.0. . none unknown . "" `t31.3.sysma2dyk) atomicAddFetch.0. ~5
+       (proc . . 5
+        (ht `t25.36. atomicAddFetch.1.)
+        (empty)
+        (empty) . 74
+        (pragma . . ~65,1
+         (kv . . ~7
+          (ident . . importc) 2
+          (strlit . `t28.17.sysma2dyk "__atomic_add_fetch")) ~41,1
+         (ident . . nodecl))
+        (bracket . .
+         (empty) 22,103,/home/araq/projects/nim/lib/std/sysatomics.nim
+         (genericparams . . 1
+          (identdefs . .
+           (ident . . T) 3 AtomType.0.
+           (empty))))
+        (empty)) none unknown d "__atomic_add_fetch" . atomicAddFetch.0.) 1
+      (addr s
+       (td :`t21.80. . . nimcall -1 -1 +0 +80 . . atomicInc.0. . none unknown . "" `t31.3.sysma2dyk)
+       (hderef . `t31.3.sysma2dyk memLoc.0)) 14 x.0 17 ATOMIC_SEQ_CST.0.))) result.0) none unknown . "" . .) 4,277
+ (sd :atomicDec.0. x
+  (proc) . egd2i1 ofrbcr0s0awhl0t0c0 -1 +0 .
+  (td :`t25.83. . te1e2 inline -1 -1 +0 +83 . 15,278,/home/araq/projects/nim/lib/std/sysatomics.nim
+   (formalparams . `t31.3.sysma2dyk
+    (arglist . . 66
+     (bracket . .)
+     (empty)
+     (empty) 76
+     (bracket . .)
+     (empty) ~10
+     (arglist . .)) 1
+    (sd :memLoc.1 .
+     (param) . u . -1 +0 .
+     (td :`t23.84. . . nimcall -1 -1 +0 +84 . . atomicDec.0. . none unknown . "" `t31.3.sysma2dyk) atomicDec.0. . none unknown . "" . .) 18
+    (sd :x.1 .
+     (param) . u . -1 +1 . `t31.3.sysma2dyk atomicDec.0. 9
+     (intlit . `t31.3.sysma2dyk +1) none unknown . "" . .)) atomicDec.0. . none unknown . "" `t31.3.sysma2dyk) sysatomics.0. ~5
+  (proc s . 5
+   (ht . atomicDec.0.)
+   (empty)
+   (empty) . 50
+   (pragma . . 2
+    (ident . . inline) 10
+    (ident . . discardable) 29
+    (kv . . ~6
+     (ident . . raises) 2
+     (bracket . .)) 39
+    (kv . . ~4
+     (ident . . tags) 2
+     (bracket . .)))
+   (empty) 2,1
+   (stmts s `t7.1.
+    (comment sh .) 11,3
+    (asgn s `t7.1. ~13,~4
+     (sd :result.1 .
+      (result) . u . -1 +0 . `t31.3.sysma2dyk atomicDec.0. . none unknown . "" . .) 16
+     (call s `t31.3.sysma2dyk ~22,~177
+      (sd :atomicSubFetch.1. .
+       (proc) . uefgi ofrbcr0s0awhl0t0c0 -1 +0 .
+       (td :`t25.86. . ge2 nimcall -1 -1 +0 +86 . 35,105,/home/araq/projects/nim/lib/std/sysatomics.nim
+        (formalparams . `t12.38.
+         (arglist . .
+          (arglist . .) . .
+          (arglist . .) 41
+          (pragma . . ~65,1
+           (kv . . ~7
+            (ident . . importc) 2
+            (strlit . `t28.17.sysma2dyk "__atomic_sub_fetch")) ~41,1
+           (ident . . nodecl))
+          (arglist . .)) 1
+         (sd :p.25 .
+          (param) . . . -1 +0 .
+          (td :`t21.87. . g nimcall -1 -1 +0 +87 . . atomicSubFetch.0. . none unknown . "" `t31.3.sysma2dyk) atomicSubFetch.1. . none unknown . "" . .) 11
+         (sd :val.17 .
+          (param) . . . -1 +1 . `t31.3.sysma2dyk atomicSubFetch.1. . none unknown . "" . .) 19
+         (sd :mem.23 .
+          (param) . . . -1 +2 . `t13.10. atomicSubFetch.1. . none unknown . "" . .)) atomicSubFetch.0. . none unknown . "" `t31.3.sysma2dyk) atomicSubFetch.0. ~5
+       (proc . . 5
+        (ht `t25.39. atomicSubFetch.1.)
+        (empty)
+        (empty) . 74
+        (pragma . . ~65,1
+         (kv . . ~7
+          (ident . . importc) 2
+          (strlit . `t28.17.sysma2dyk "__atomic_sub_fetch")) ~41,1
+         (ident . . nodecl))
+        (bracket . .
+         (empty) 22,105,/home/araq/projects/nim/lib/std/sysatomics.nim
+         (genericparams . . 1
+          (identdefs . .
+           (ident . . T) 3 AtomType.0.
+           (empty))))
+        (empty)) none unknown d "__atomic_sub_fetch" . atomicSubFetch.0.) 1
+      (addr s
+       (td :`t21.85. . . nimcall -1 -1 +0 +85 . . atomicDec.0. . none unknown . "" `t31.3.sysma2dyk)
+       (hderef . `t31.3.sysma2dyk memLoc.1)) 14 x.1 17 ATOMIC_SEQ_CST.0.))) result.1) none unknown . "" . .) 6,345
+ (sd :cas.0. x
+  (proc) . eg ofrbcr0s0awhl0t0c0 -1 +0 .
+  (td :`t25.93. . me2 nimcall -1 -1 +0 +93 . 28,346,/home/araq/projects/nim/lib/std/sysatomics.nim
+   (formalparams . `t1.34.sysma2dyk
+    (arglist . .) 1
+    (sd :p.26 .
+     (param) . u . -1 +0 .
+     (td :`t21.94. . m nimcall -1 -1 +0 +94 . . cas.0. . none unknown . ""
+      (td :`t12.92. . g0 nimcall -1 -1 +0 +92 . . cas.0. 12,346,/home/araq/projects/nim/lib/std/sysatomics.nim
+       (sd :T.22 .
+        (type) . u . -1 +0 . `t12.92. cas.0. . none unknown . "" . .) none unknown . ""
+       (td :`t57.91. . m nimcall -1 -1 +0 +91 . . cas.0. . none unknown . "" `t1.34.sysma2dyk `t31.3.sysma2dyk
+        (td :`t51.89. . c3 nimcall -1 -1 +0 +89 . . cas.0. . none unknown . ""
+         (td :`t21.90. . . nimcall -1 -1 +0 +90 . . cas.0. . none unknown . ""))))) cas.0. . none unknown . "" . .) 11
+    (sd :oldValue.0 .
+     (param) . u . -1 +1 . `t12.92. cas.0. . none unknown . "" . .) 21
+    (sd :newValue.0 .
+     (param) . u . -1 +2 . `t12.92. cas.0. . none unknown . "" . .)) cas.0. . none unknown . "" `t1.34.sysma2dyk) sysatomics.0. ~5
+  (proc s . 5
+   (ht . cas.0.)
+   (empty) 9
+   (genericparams . . 1 T.22) .
+   (empty)
+   (bracket . .
+    (empty) 11,346,/home/araq/projects/nim/lib/std/sysatomics.nim
+    (genericparams . . 1
+     (identdefs . .
+      (ident . . T) 11
+      (infix . `t57.91.
+       (ident . . |) ~4
+       (infix .
+        (td :`t57.88. . m nimcall -1 -1 +0 +88 . . cas.0. . none unknown . "" `t1.34.sysma2dyk `t31.3.sysma2dyk)
+        (ident . . |) ~4 bool.0.sysma2dyk 1 int.0.sysma2dyk) 1
+       (ptrty . `t51.89.))
+      (empty)))) 2,1
+   (stmts . . 22
+    (call . . ~22 atomicCompareExchangeN.0. 1
+     (ident . . p) 12
+     (dot . . ~8
+      (ident . . oldValue) 1
+      (closedsymchoice .
+       (td :`t0.95. . . nimcall -1 -1 +0 +95 . . cas.0. . none unknown . "") unsafeAddr.0.sysma2dyk)) 25
+     (ident . . newValue) 35 false.0.sysma2dyk 42 ATOMIC_SEQ_CST.0. 58 ATOMIC_SEQ_CST.0.))) none unknown . "" . .) 6,357
+ (sd :cpuRelax.0. x
+  (proc) . eg ofrbcr0s0awhl0t0c0 -1 +0 .
+  (td :`t25.96. . nte1e2 inline -1 -1 +0 +96 . 17,358,/home/araq/projects/nim/lib/std/sysatomics.nim
+   (formalparams . .
+    (arglist . . ~10
+     (arglist . .)
+     (empty)
+     (empty) ~10
+     (arglist . .)
+     (empty) ~10
+     (arglist . .))) cpuRelax.0. . none unknown . "" .) sysatomics.0. ~5
+  (proc s . 5
+   (ht . cpuRelax.0.)
+   (empty)
+   (empty) . 15
+   (pragma . . 2
+    (ident . . inline))
+   (empty) 2,1
+   (pragma s . 6
+    (kv . . ~4
+     (ident . . emit)
+     (arglist . .
+      (strlit . . "asm volatile\28\22pause\22 \3A\3A\3A \22memory\22\29;"))))) none unknown . "" . .) ~1,375
+ (pragma s . 2
+  (ident . . pop)) atomicAddFetch.1. atomicSubFetch.1. 5,27
+ (sd :=wasMoved.0. .
+  (proc) . fng1 . -1 +0 .
+  (td :`t25.98. . n nimcall -1 -1 +0 +98 . 6,28,/home/araq/projects/nim/lib/std/sysatomics.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.0 .
+     (param) . . . -1 +0 .
+     (td :`t23.97. . . nimcall -1 -1 +0 +97 . . sysatomics.0. . none unknown . "" `t13.10.) =wasMoved.0. . none unknown . "" . .)) sysatomics.0. . none unknown . "" .) sysatomics.0.
+  (proc . . =wasMoved.0.
+   (empty)
+   (empty) .
+   (empty)
+   (empty)
+   (stmts . .)) none unknown . "" . .) 5,27
+ (sd :=destroy.0. .
+  (proc) . fg1 . -1 +0 .
+  (td :`t25.100. . . nimcall -1 -1 +0 +100 . 6,28,/home/araq/projects/nim/lib/std/sysatomics.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.1 .
+     (param) . . . -1 +0 .
+     (td :`t23.99. . . nimcall -1 -1 +0 +99 . . sysatomics.0. . none unknown . "" `t13.10.) =destroy.0. . none unknown . "" . .)) sysatomics.0. . none unknown . "" .) sysatomics.0.
+  (proc . . =destroy.0.
+   (empty)
+   (empty) .
+   (empty)
+   (empty)
+   (stmts . .)) none unknown . "" . .) 5,27
+ (sd :=copy.0. .
+  (proc) . fg1 . -1 +0 .
+  (td :`t25.102. . . nimcall -1 -1 +0 +102 . 6,28,/home/araq/projects/nim/lib/std/sysatomics.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.2 .
+     (param) . . . -1 +0 .
+     (td :`t23.101. . . nimcall -1 -1 +0 +101 . . sysatomics.0. . none unknown . "" `t13.10.) =copy.0. . none unknown . "" . .)
+    (sd :src.2 .
+     (param) . . . -1 +1 . `t13.10. =copy.0. . none unknown . "" . .)) sysatomics.0. . none unknown . "" .) sysatomics.0.
+  (proc . . =copy.0.
+   (empty)
+   (empty) .
+   (empty)
+   (empty)
+   (stmts . .)) none unknown . "" . .) 5,27
+ (sd :=dup.0. .
+  (proc) . fg1 . -1 +0 .
+  (td :`t25.103. . . nimcall -1 -1 +0 +103 . 6,28,/home/araq/projects/nim/lib/std/sysatomics.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :src.3 .
+     (param) . . . -1 +0 . `t13.10. =dup.0. . none unknown . "" . .)) sysatomics.0. . none unknown . "" `t13.10.) sysatomics.0.
+  (proc . . =dup.0.
+   (empty)
+   (empty) .
+   (empty)
+   (empty)
+   (stmts . .)
+   (sd :result.3 .
+    (result) . . . -1 +0 . `t13.10. =dup.0. . none unknown . "" . .)) none unknown . "" . .) 5,27
+ (sd :=sink.0. .
+  (proc) . fg1 . -1 +0 .
+  (td :`t25.105. . . nimcall -1 -1 +0 +105 . 6,28,/home/araq/projects/nim/lib/std/sysatomics.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.3 .
+     (param) . . . -1 +0 .
+     (td :`t23.104. . . nimcall -1 -1 +0 +104 . . sysatomics.0. . none unknown . "" `t13.10.) =sink.0. . none unknown . "" . .)
+    (sd :src.4 .
+     (param) . . . -1 +1 . `t13.10. =sink.0. . none unknown . "" . .)) sysatomics.0. . none unknown . "" .) sysatomics.0.
+  (proc . . =sink.0.
+   (empty)
+   (empty) .
+   (empty)
+   (empty)
+   (stmts . .)) none unknown . "" . .) 5,27
+ (sd :=trace.0. .
+  (proc) . fg1 . -1 +0 .
+  (td :`t25.107. . . nimcall -1 -1 +0 +107 . 6,28,/home/araq/projects/nim/lib/std/sysatomics.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.4 .
+     (param) . . . -1 +0 .
+     (td :`t23.106. . . nimcall -1 -1 +0 +106 . . sysatomics.0. . none unknown . "" `t13.10.) =trace.0. . none unknown . "" . .)
+    (sd :env.0 .
+     (param) . . . -1 +1 . `t26.19.sysma2dyk =trace.0. . none unknown . "" . .)) sysatomics.0. . none unknown . "" .) sysatomics.0.
+  (proc . . =trace.0.
+   (empty)
+   (empty) .
+   (empty)
+   (empty)
+   (stmts . .)) none unknown . "" . .))1,1,/home/araq/projects/nim/lib/std/sysatomics.nim(.index 5,27
+ (x ATOMIC_RELAXED.0. +3604) 5,29
+ (x ATOMIC_CONSUME.0. +396) 5,32
+ (x ATOMIC_ACQUIRE.0. +396) 5,36
+ (x ATOMIC_RELEASE.0. +396) 5,40
+ (x ATOMIC_ACQ_REL.0. +396) 5,44
+ (x ATOMIC_SEQ_CST.0. +396) 1,16
+ (h hasThreadSupport.0. +618)
+ (h sysatomics.0. +96) 1,1,/home/araq/projects/nim/lib/system.nim
+ (h stdlib.0. +96) 5,17
+ (h someGcc.0. +234) 5,18
+ (h someVcc.0. +215) 1,21
+ (x AtomType.0. +267)
+ (h `t57.3. +68)
+ (h `t51.5. +335)
+ (h `t21.6. +80)
+ (h `t57.9. +241)
+ (h `t57.8. +408)
+ (h `t57.7. +394)
+ (h `t57.4. +380) 6,25
+ (x AtomMemModel.0. +877)
+ (h `t13.10. +72) 6,49
+ (x atomicLoadN.0. +369)
+ (h `t25.12. +65)
+ (h `t12.11. +117)
+ (h `t21.13. +517) 6,54
+ (x atomicLoad.0. +758)
+ (h `t25.15. +64)
+ (h `t21.16. +399)
+ (h `t12.14. +82) 6,58
+ (x atomicStoreN.0. +984)
+ (h `t25.18. +66)
+ (h `t21.19. +402)
+ (h `t12.17. +84) 6,63
+ (x atomicStore.0. +1005)
+ (h `t25.21. +65)
+ (h `t21.22. +400)
+ (h `t12.20. +83) 6,67
+ (x atomicExchangeN.0. +993)
+ (h `t25.24. +69)
+ (h `t12.23. +117)
+ (h `t21.25. +529) 6,73
+ (x atomicExchange.0. +886)
+ (h `t25.27. +68)
+ (h `t21.28. +403)
+ (h `t12.26. +86) 6,78
+ (x atomicCompareExchangeN.0. +1118)
+ (h `t25.30. +77)
+ (h `t21.31. +430)
+ (h `t12.29. +94) 6,94
+ (x atomicCompareExchange.0. +1485)
+ (h `t25.33. +75)
+ (h `t21.34. +428)
+ (h `t12.32. +93) 6,102
+ (x atomicAddFetch.0. +1494)
+ (h `t25.36. +69)
+ (h `t12.35. +118)
+ (h `t21.37. +527) 6,104
+ (x atomicSubFetch.0. +879)
+ (h `t25.39. +69)
+ (h `t12.38. +118)
+ (h `t21.40. +527) 6,106
+ (x atomicOrFetch.0. +879)
+ (h `t25.42. +67)
+ (h `t12.41. +118)
+ (h `t21.43. +526) 6,108
+ (x atomicAndFetch.0. +872)
+ (h `t25.45. +68)
+ (h `t12.44. +118)
+ (h `t21.46. +529) 6,110
+ (x atomicXorFetch.0. +880)
+ (h `t25.48. +68)
+ (h `t12.47. +118)
+ (h `t21.49. +529) 6,112
+ (x atomicNandFetch.0. +881)
+ (h `t25.51. +69)
+ (h `t12.50. +118)
+ (h `t21.52. +532) 6,116
+ (x atomicFetchAdd.0. +911)
+ (h `t25.54. +68)
+ (h `t12.53. +118)
+ (h `t21.55. +529) 6,118
+ (x atomicFetchSub.0. +882)
+ (h `t25.57. +68)
+ (h `t12.56. +118)
+ (h `t21.58. +529) 6,120
+ (x atomicFetchOr.0. +882)
+ (h `t25.60. +67)
+ (h `t12.59. +118)
+ (h `t21.61. +526) 6,122
+ (x atomicFetchAnd.0. +874)
+ (h `t25.63. +68)
+ (h `t12.62. +118)
+ (h `t21.64. +529) 6,124
+ (x atomicFetchXor.0. +882)
+ (h `t25.66. +68)
+ (h `t12.65. +118)
+ (h `t21.67. +529) 6,126
+ (x atomicFetchNand.0. +882)
+ (h `t25.69. +69)
+ (h `t12.68. +118)
+ (h `t21.70. +532) 6,129
+ (x atomicTestAndSet.0. +890)
+ (h `t25.71. +70) 6,136
+ (x atomicClear.0. +961)
+ (h `t25.72. +65) 6,142
+ (x atomicThreadFence.0. +890)
+ (h `t25.73. +72) 6,147
+ (x atomicSignalFence.0. +823)
+ (h `t25.74. +71) 6,152
+ (x atomicAlwaysLockFree.0. +823)
+ (h `t25.75. +74) 6,161
+ (x atomicIsLockFree.0. +997)
+ (h `t25.76. +70) 10,170
+ (x fence.0. +970)
+ (h `t25.77. +47) 4,266
+ (x atomicInc.0. +404)
+ (h `t25.78. +66)
+ (h `t23.79. +309)
+ (h `t7.1. +631) 6,102
+ (h atomicAddFetch.1. +263)
+ (h `t25.81. +80)
+ (h `t21.82. +478)
+ (h `t21.80. +1026) 4,277
+ (x atomicDec.0. +216)
+ (h `t25.83. +66)
+ (h `t23.84. +309) 6,104
+ (h atomicSubFetch.1. +835)
+ (h `t25.86. +80)
+ (h `t21.87. +478)
+ (h `t21.85. +1026) 6,345
+ (x cas.0. +216)
+ (h `t25.93. +56)
+ (h `t21.94. +198)
+ (h `t12.92. +75)
+ (h `t57.91. +218)
+ (h `t51.89. +111)
+ (h `t21.90. +79)
+ (h `t57.88. +666)
+ (h `t0.95. +380) 6,357
+ (x cpuRelax.0. +226)
+ (h `t25.96. +61) 5,27
+ (h =wasMoved.0. +676)
+ (h `t25.98. +47)
+ (h `t23.97. +179) 5,27
+ (h =destroy.0. +297)
+ (h `t25.100. +45)
+ (h `t23.99. +181) 5,27
+ (h =copy.0. +295)
+ (h `t25.102. +42)
+ (h `t23.101. +181) 5,27
+ (h =dup.0. +378)
+ (h `t25.103. +41) 5,27
+ (h =sink.0. +479)
+ (h `t25.105. +42)
+ (h `t23.104. +181) 5,27
+ (h =trace.0. +378)
+ (h `t25.107. +43)
+ (h `t23.106. +181))

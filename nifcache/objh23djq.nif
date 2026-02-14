@@ -1,0 +1,81 @@
+(.nif26)
+(.indexat +2361            )
+1,1,/home/araq/projects/nim/lib/std/objectdollar.nim(stmts . . ~1,2
+ (import . . "misc8dkkc")
+ (implementation) ~1
+ (comment sh .) 4,4
+ (sd :$.0. x
+  (proc) . eg r0whtl0t0c0 -1 +0 .
+  (td :`t25.6. . me2 nimcall -1 -1 +0 +6 . 20,5,/home/araq/projects/nim/lib/std/objectdollar.nim
+   (formalparams . `t28.17.sysma2dyk
+    (arglist . .) 1
+    (sd :x.0 .
+     (param) . u . -1 +0 .
+     (td :`t12.5. . g0 nimcall -1 -1 +0 +5 . . $.0. 10,5,/home/araq/projects/nim/lib/std/objectdollar.nim
+      (sd :T.0 .
+       (type) . u . -1 +0 . `t12.5. $.0. . none unknown . "" . .) none unknown . ""
+      (td :`t51.3. . c3 nimcall -1 -1 +0 +3 . . $.0. . none unknown . ""
+       (td :`t17.4. . . nimcall -1 -1 +0 +4 . . $.0. . none unknown . ""))) $.0. . none unknown . "" . .)) $.0. . none unknown . "" `t28.17.sysma2dyk) ~4,~4
+  (sd :objectdollar.0. .
+   (module) . . . +0 . . . 1,1,/home/araq/projects/nim/lib/system.nim
+   (sd :stdlib.0. .
+    (package) . . . -1 +0 . . . . none unknown . "" . .) . none unknown . "" . .) ~5
+  (proc s . 5
+   (ht . $.0.)
+   (empty) 9
+   (genericparams . . 1 T.0) .
+   (empty)
+   (bracket . .
+    (empty) 9,5,/home/araq/projects/nim/lib/std/objectdollar.nim
+    (genericparams . . 1
+     (identdefs . .
+      (ident . . T) 3
+      (objectty . `t51.3.)
+      (empty)))) 2,1
+   (stmts . .
+    (comment h .) ,2
+    (call . . runnableExamples.0.sysma2dyk 2,1
+     (stmts b2 . 5
+      (type . . 4
+       (type0 . . ~4
+        (ident . . Foo)
+        (empty) 2
+        (objectty . .
+         (empty)
+         (empty) ~9,1
+         (reclist . .
+          (identdefs . .
+           (ident . . a) 3
+           (ident . . b) 6
+           (ident . . int) ~2,1
+           (empty)))))) ,2
+      (let . . 4
+       (identdefs . .
+        (ident . . x) 2
+        (empty) 7
+        (objconstr . . ~3
+         (ident . . Foo) 2
+         (kv . . ~1
+          (ident . . a) 2
+          (intlit . . +23)) 9
+         (kv . . ~1
+          (ident . . b) 2
+          (intlit . . +45))))) ,3
+      (cmd . .
+       (ident . . assert) 10
+       (infix . .
+        (ident . . ==) ~3
+        (prefix . .
+         (ident . . $) 1
+         (ident . . x)) 3
+        (strlit . . "\28a\3A 23, b\3A 45\29"))))) 17,7
+    (call . . ~17 tupleObjectDollar.0.misc8dkkc 1
+     (ident . . result) 9
+     (ident . . x)))) none unknown . "" . .))1,1,/home/araq/projects/nim/lib/std/objectdollar.nim(.index 4,4
+ (x $.0. +172)
+ (h `t25.6. +47)
+ (h `t12.5. +196)
+ (h `t51.3. +207)
+ (h `t17.4. +73)
+ (h objectdollar.0. +157) 1,1,/home/araq/projects/nim/lib/system.nim
+ (h stdlib.0. +95))

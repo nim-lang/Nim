@@ -1,0 +1,1373 @@
+(.nif26)
+(.indexat +46161           )
+1,1,/home/araq/projects/nim/lib/std/private/syslocks.nim(stmts . .
+ (replay 23,101
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "pthread_mutex_t")) 25,107
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "pthread_mutexattr_t")) 23,113
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "pthread_cond_t")) 24,119
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "pthread_condattr_t")) 10,128
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "pthread_mutex_init")) 10,130
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "pthread_mutex_destroy")) 10,133
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "pthread_mutex_lock")) 10,135
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "pthread_mutex_trylock")) 10,138
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "pthread_mutex_unlock")) 37,185
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "PTHREAD_MUTEX_RECURSIVE")) 10,188
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "pthread_mutexattr_init")) 10,190
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "pthread_mutexattr_settype")) 10,194
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "pthread_cond_init")) 10,196
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "pthread_cond_destroy")) 10,199
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "pthread_cond_wait")) 10,201
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "pthread_cond_signal")) 10,203
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "pthread_cond_broadcast")))
+ (repwasmoved "SX53ysX4cockX54ype0sys6npxts" =wasMoved.0.)
+ (repdestroy "SX53ysX4cockX54ype0sys6npxts" =destroy.0.)
+ (repcopy "SX53ysX4cockX54ype0sys6npxts" =copy.0.)
+ (repdup "SX53ysX4cockX54ype0sys6npxts" =dup.0.)
+ (repsink "SX53ysX4cockX54ype0sys6npxts" =sink.0.)
+ (reptrace "SX53ysX4cockX54ype0sys6npxts" =trace.0.) 1,185
+ (var s . 4
+  (sd :SysLockType_Reentrant.0. x
+   (var . +0 +0) . egi ofrbcr0s0awhl0t0c0 -1 +0
+   (bheader
+    (false)
+    (false) "" 43,129,/home/araq/projects/nim/lib/std/private/syslocks.nim
+    (strlit . `t28.17.sysma2dyk "<pthread.h>")) `t13.7. syslocks.0.
+   (identdefs . .
+    (pragmax . . SysLockType_Reentrant.0. 23
+     (pragma . . 9
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "PTHREAD_MUTEX_RECURSIVE")) ~19,1
+      (kv . . ~6
+       (ident . . header) 2
+       (strlit . `t28.17.sysma2dyk "<pthread.h>")))) 23,1 SysLockType.0.
+    (empty)) none unknown dh "PTHREAD_MUTEX_RECURSIVE" . .))
+ (implementation) ~1,11
+ (pragma s . 2
+  (ident . . push) 17
+  (kv . . ~10
+   (ident . . stackTrace) 2
+   (intlit . `t1.34.sysma2dyk +0))) 3,101
+ (type s . 55,2
+  (type0 . .
+   (pragmax . . ~55,~2
+    (sd :SysLockObj.0. .
+     (type) . ugip ofrbcr0s0awhl0t0c0 -1 +0
+     (bheader
+      (false)
+      (false) "" 23,103,/home/araq/projects/nim/lib/std/private/syslocks.nim
+      (triplestrlit . `t28.17.sysma2dyk "\23include <sys/types.h>\0A                          \23include <pthread.h>"))
+     (td :`t17.3. . fb0 nimcall -3 -3 -3 +3 . 61,104,/home/araq/projects/nim/lib/std/private/syslocks.nim
+      (reclist . . ~53,2
+       (sd :abi.0. .
+        (field . +0 +0) . i ofrbcr0s0awhl0t0c0 +0 +0 .
+        (td :`t16.13. . . nimcall +40 +8 +0 +13 . . SysLockObj.0. . none unknown . ""
+         (td :`t20.11. . . nimcall -1 -1 +0 +11 . 22,106,/home/araq/projects/nim/lib/std/private/syslocks.nim
+          (range . .
+           (intlit .
+            (td :`t31.10. . c3 nimcall +8 +8 +0 +10 . 22,106,/home/araq/projects/nim/lib/std/private/syslocks.nim
+             (intlit s `t31.10. +5) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +0)
+           (intlit . `t31.10. +4)) SysLockObj.0. . none unknown . ""
+          (td :`t31.12. . c3 nimcall +8 +8 +0 +12 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "")) `t31.6.cty9mra12) SysLockObj.0. . none unknown . "abi" . .)) 1,1,/home/araq/projects/nim/lib/std/private/syslocks.nim
+      (sd :syslocks.0. .
+       (module) . i1 . +0 . . . 1,1,/home/araq/projects/nim/lib/system.nim
+       (sd :stdlib.0. .
+        (package) . . . -1 +0 . . . . none unknown . "" . .) . none unknown . "" . .) SysLockObj.0. none unknown . "" .) syslocks.0. 55,2
+     (type0 . .
+      (pragmax . . ~55,~2 SysLockObj.0. ~44,~2
+       (pragma . . 9
+        (kv . . ~7
+         (ident . . importc) 2
+         (strlit . `t28.17.sysma2dyk "pthread_mutex_t")) 30
+        (ident . . pure) 36
+        (ident . . final) 6,1
+        (kv . . ~6
+         (ident . . header) 2
+         (triplestrlit . `t28.17.sysma2dyk "\23include <sys/types.h>\0A                          \23include <pthread.h>")) 36,2
+        (ident . . byref)))
+      (empty) 2
+      (objectty . `t17.3.
+       (empty)
+       (empty) ~55,1
+       (reclist . .
+        (recwhen . . 5
+         (elif . . 15
+          (infix . .
+           (ident . . and) ~8
+           (call . . ~7
+            (ident . . defined) 1
+            (ident . . linux)) 11
+           (call . . ~7
+            (ident . . defined) 1
+            (ident . . amd64))) ~3,1
+          (reclist . .
+           (identdefs . .
+            (ident . . abi) 10
+            (at . . ~5
+             (ident . . array) 4
+             (infix . .
+              (ident . . div) ~3
+              (intlit . . +40) 10
+              (call . . ~6
+               (ident . . sizeof) 1
+               (ident . . clong))) 23
+             (ident . . clong)) ~4,2
+            (empty)))))))) none unknown dh "pthread_mutex_t" . .) ~44,~2
+    (pragma . . 9
+     (kv . . ~7
+      (ident . . importc) 2
+      (strlit . `t28.17.sysma2dyk "pthread_mutex_t")) 30
+     (ident . . pure) 36
+     (ident . . final) 6,1
+     (kv . . ~6
+      (ident . . header) 2
+      (triplestrlit . `t28.17.sysma2dyk "\23include <sys/types.h>\0A                          \23include <pthread.h>")) 36,2
+     (ident . . byref)))
+   (empty) 2
+   (objectty . `t17.3.
+    (empty)
+    (empty) ~55,1
+    (reclist . .
+     (recwhen . . 5
+      (elif . . 15
+       (infix . .
+        (ident . . and) ~8
+        (call . . ~7
+         (ident . . defined) 1
+         (ident . . linux)) 11
+        (call . . ~7
+         (ident . . defined) 1
+         (ident . . amd64))) ~3,1
+       (reclist . .
+        (identdefs . .
+         (ident . . abi) 10
+         (at . . ~5
+          (ident . . array) 4
+          (infix . .
+           (ident . . div) ~3
+           (intlit . . +40) 10
+           (call . . ~6
+            (ident . . sizeof) 1
+            (ident . . clong))) 23
+          (ident . . clong)) ~4,2
+         (empty)))))))) 48,8
+  (type0 . .
+   (pragmax . . ~37,~2
+    (postfix . .
+     (ident . . *) ~11
+     (sd :SysLockAttr.0. x
+      (type) . uegip ofrbcr0s0awhl0t0c0 -1 +0
+      (bheader
+       (false)
+       (false) "" 23,103,/home/araq/projects/nim/lib/std/private/syslocks.nim
+       (triplestrlit . `t28.17.sysma2dyk "\23include <sys/types.h>\0A                          \23include <pthread.h>"))
+      (td :`t17.4. . f nimcall -3 -3 -3 +4 . 54,110,/home/araq/projects/nim/lib/std/private/syslocks.nim
+       (reclist . . ~46,2
+        (sd :abi.1. .
+         (field . +0 +0) . i ofrbcr0s0awhl0t0c0 +0 +0 .
+         (td :`t16.19. . . nimcall +4 +4 +0 +19 . . SysLockAttr.0. . none unknown . ""
+          (td :`t20.17. . . nimcall -1 -1 +0 +17 . 21,112,/home/araq/projects/nim/lib/std/private/syslocks.nim
+           (range . .
+            (intlit .
+             (td :`t31.16. . c3 nimcall +8 +8 +0 +16 . 21,112,/home/araq/projects/nim/lib/std/private/syslocks.nim
+              (intlit s `t31.16. +1) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +0)
+            (intlit . `t31.16. +0)) SysLockAttr.0. . none unknown . ""
+           (td :`t31.18. . c3 nimcall +8 +8 +0 +18 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "")) `t34.11.cty9mra12) SysLockAttr.0. . none unknown . "abi" . .)) syslocks.0. SysLockAttr.0. none unknown . "" .) syslocks.0. 48,2
+      (type0 . .
+       (pragmax . . ~37,~2
+        (postfix . .
+         (ident . . *) ~11 SysLockAttr.0.) ~35,~2
+        (pragma . . 9
+         (kv . . ~7
+          (ident . . importc) 2
+          (strlit . `t28.17.sysma2dyk "pthread_mutexattr_t")) 34
+         (ident . . pure) 40
+         (ident . . final) 4,1
+         (kv . . ~6
+          (ident . . header) 2
+          (triplestrlit . `t28.17.sysma2dyk "\23include <sys/types.h>\0A                          \23include <pthread.h>"))))
+       (empty) 2
+       (objectty . `t17.4.
+        (empty)
+        (empty) ~48,1
+        (reclist . .
+         (recwhen . . 5
+          (elif . . 15
+           (infix . .
+            (ident . . and) ~8
+            (call . . ~7
+             (ident . . defined) 1
+             (ident . . linux)) 11
+            (call . . ~7
+             (ident . . defined) 1
+             (ident . . amd64))) ~3,1
+           (reclist . .
+            (identdefs . .
+             (ident . . abi) 10
+             (at . . ~5
+              (ident . . array) 3
+              (infix . .
+               (ident . . div) ~2
+               (intlit . . +4) 10
+               (call . . ~6
+                (ident . . sizeof) 1
+                (ident . . cint))) 21
+              (ident . . cint)) ~4,2
+             (empty)))))))) none unknown dh "pthread_mutexattr_t" . .)) ~35,~2
+    (pragma . . 9
+     (kv . . ~7
+      (ident . . importc) 2
+      (strlit . `t28.17.sysma2dyk "pthread_mutexattr_t")) 34
+     (ident . . pure) 40
+     (ident . . final) 4,1
+     (kv . . ~6
+      (ident . . header) 2
+      (triplestrlit . `t28.17.sysma2dyk "\23include <sys/types.h>\0A                          \23include <pthread.h>"))))
+   (empty) 2
+   (objectty . `t17.4.
+    (empty)
+    (empty) ~48,1
+    (reclist . .
+     (recwhen . . 5
+      (elif . . 15
+       (infix . .
+        (ident . . and) ~8
+        (call . . ~7
+         (ident . . defined) 1
+         (ident . . linux)) 11
+        (call . . ~7
+         (ident . . defined) 1
+         (ident . . amd64))) ~3,1
+       (reclist . .
+        (identdefs . .
+         (ident . . abi) 10
+         (at . . ~5
+          (ident . . array) 3
+          (infix . .
+           (ident . . div) ~2
+           (intlit . . +4) 10
+           (call . . ~6
+            (ident . . sizeof) 1
+            (ident . . cint))) 21
+          (ident . . cint)) ~4,2
+         (empty)))))))) 55,14
+  (type0 . .
+   (pragmax . . ~55,~2
+    (sd :SysCondObj.0. .
+     (type) . ugip ofrbcr0s0awhl0t0c0 -1 +0
+     (bheader
+      (false)
+      (false) "" 23,103,/home/araq/projects/nim/lib/std/private/syslocks.nim
+      (triplestrlit . `t28.17.sysma2dyk "\23include <sys/types.h>\0A                          \23include <pthread.h>"))
+     (td :`t17.5. . fb0 nimcall -3 -3 -3 +5 . 61,116,/home/araq/projects/nim/lib/std/private/syslocks.nim
+      (reclist . . ~53,2
+       (sd :abi.2. .
+        (field . +0 +0) . i ofrbcr0s0awhl0t0c0 +0 +0 .
+        (td :`t16.25. . . nimcall +48 +8 +0 +25 . . SysCondObj.0. . none unknown . ""
+         (td :`t20.23. . . nimcall -1 -1 +0 +23 . 22,118,/home/araq/projects/nim/lib/std/private/syslocks.nim
+          (range . .
+           (intlit .
+            (td :`t31.22. . c3 nimcall +8 +8 +0 +22 . 22,118,/home/araq/projects/nim/lib/std/private/syslocks.nim
+             (intlit s `t31.22. +6) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +0)
+           (intlit . `t31.22. +5)) SysCondObj.0. . none unknown . ""
+          (td :`t31.24. . c3 nimcall +8 +8 +0 +24 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "")) `t35.13.cty9mra12) SysCondObj.0. . none unknown . "abi" . .)) syslocks.0. SysCondObj.0. none unknown . "" .) syslocks.0. 55,2
+     (type0 . .
+      (pragmax . . ~55,~2 SysCondObj.0. ~44,~2
+       (pragma . . 9
+        (kv . . ~7
+         (ident . . importc) 2
+         (strlit . `t28.17.sysma2dyk "pthread_cond_t")) 29
+        (ident . . pure) 35
+        (ident . . final) 6,1
+        (kv . . ~6
+         (ident . . header) 2
+         (triplestrlit . `t28.17.sysma2dyk "\23include <sys/types.h>\0A                          \23include <pthread.h>")) 36,2
+        (ident . . byref)))
+      (empty) 2
+      (objectty . `t17.5.
+       (empty)
+       (empty) ~55,1
+       (reclist . .
+        (recwhen . . 5
+         (elif . . 15
+          (infix . .
+           (ident . . and) ~8
+           (call . . ~7
+            (ident . . defined) 1
+            (ident . . linux)) 11
+           (call . . ~7
+            (ident . . defined) 1
+            (ident . . amd64))) ~3,1
+          (reclist . .
+           (identdefs . .
+            (ident . . abi) 10
+            (at . . ~5
+             (ident . . array) 4
+             (infix . .
+              (ident . . div) ~3
+              (intlit . . +48) 10
+              (call . . ~6
+               (ident . . sizeof) 1
+               (ident . . clonglong))) 27
+             (ident . . clonglong)) ~4,2
+            (empty)))))))) none unknown dh "pthread_cond_t" . .) ~44,~2
+    (pragma . . 9
+     (kv . . ~7
+      (ident . . importc) 2
+      (strlit . `t28.17.sysma2dyk "pthread_cond_t")) 29
+     (ident . . pure) 35
+     (ident . . final) 6,1
+     (kv . . ~6
+      (ident . . header) 2
+      (triplestrlit . `t28.17.sysma2dyk "\23include <sys/types.h>\0A                          \23include <pthread.h>")) 36,2
+     (ident . . byref)))
+   (empty) 2
+   (objectty . `t17.5.
+    (empty)
+    (empty) ~55,1
+    (reclist . .
+     (recwhen . . 5
+      (elif . . 15
+       (infix . .
+        (ident . . and) ~8
+        (call . . ~7
+         (ident . . defined) 1
+         (ident . . linux)) 11
+        (call . . ~7
+         (ident . . defined) 1
+         (ident . . amd64))) ~3,1
+       (reclist . .
+        (identdefs . .
+         (ident . . abi) 10
+         (at . . ~5
+          (ident . . array) 4
+          (infix . .
+           (ident . . div) ~3
+           (intlit . . +48) 10
+           (call . . ~6
+            (ident . . sizeof) 1
+            (ident . . clonglong))) 27
+          (ident . . clonglong)) ~4,2
+         (empty)))))))) 48,20
+  (type0 . .
+   (pragmax . . ~48,~2
+    (sd :SysCondAttr.0. .
+     (type) . ugip ofrbcr0s0awhl0t0c0 -1 +0
+     (bheader
+      (false)
+      (false) "" 23,103,/home/araq/projects/nim/lib/std/private/syslocks.nim
+      (triplestrlit . `t28.17.sysma2dyk "\23include <sys/types.h>\0A                          \23include <pthread.h>"))
+     (td :`t17.6. . f nimcall -3 -3 -3 +6 . 54,122,/home/araq/projects/nim/lib/std/private/syslocks.nim
+      (reclist . . ~46,2
+       (sd :abi.3. .
+        (field . +0 +0) . i ofrbcr0s0awhl0t0c0 +0 +0 .
+        (td :`t16.30. . . nimcall +4 +4 +0 +30 . . SysCondAttr.0. . none unknown . ""
+         (td :`t20.28. . . nimcall -1 -1 +0 +28 . 21,124,/home/araq/projects/nim/lib/std/private/syslocks.nim
+          (range . .
+           (intlit .
+            (td :`t31.27. . c3 nimcall +8 +8 +0 +27 . 21,124,/home/araq/projects/nim/lib/std/private/syslocks.nim
+             (intlit s `t31.27. +1) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +0)
+           (intlit . `t31.27. +0)) SysCondAttr.0. . none unknown . ""
+          (td :`t31.29. . c3 nimcall +8 +8 +0 +29 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "")) `t34.11.cty9mra12) SysCondAttr.0. . none unknown . "abi" . .)) syslocks.0. SysCondAttr.0. none unknown . "" .) syslocks.0. 48,2
+     (type0 . .
+      (pragmax . . ~48,~2 SysCondAttr.0. ~36,~2
+       (pragma . . 9
+        (kv . . ~7
+         (ident . . importc) 2
+         (strlit . `t28.17.sysma2dyk "pthread_condattr_t")) 33
+        (ident . . pure) 39
+        (ident . . final) 5,1
+        (kv . . ~6
+         (ident . . header) 2
+         (triplestrlit . `t28.17.sysma2dyk "\23include <sys/types.h>\0A                          \23include <pthread.h>"))))
+      (empty) 2
+      (objectty . `t17.6.
+       (empty)
+       (empty) ~48,1
+       (reclist . .
+        (recwhen . . 5
+         (elif . . 15
+          (infix . .
+           (ident . . and) ~8
+           (call . . ~7
+            (ident . . defined) 1
+            (ident . . linux)) 11
+           (call . . ~7
+            (ident . . defined) 1
+            (ident . . amd64))) ~3,1
+          (reclist . .
+           (identdefs . .
+            (ident . . abi) 10
+            (at . . ~5
+             (ident . . array) 3
+             (infix . .
+              (ident . . div) ~2
+              (intlit . . +4) 10
+              (call . . ~6
+               (ident . . sizeof) 1
+               (ident . . cint))) 21
+             (ident . . cint)) ~4,2
+            (empty)))))))) none unknown dh "pthread_condattr_t" . .) ~36,~2
+    (pragma . . 9
+     (kv . . ~7
+      (ident . . importc) 2
+      (strlit . `t28.17.sysma2dyk "pthread_condattr_t")) 33
+     (ident . . pure) 39
+     (ident . . final) 5,1
+     (kv . . ~6
+      (ident . . header) 2
+      (triplestrlit . `t28.17.sysma2dyk "\23include <sys/types.h>\0A                          \23include <pthread.h>"))))
+   (empty) 2
+   (objectty . `t17.6.
+    (empty)
+    (empty) ~48,1
+    (reclist . .
+     (recwhen . . 5
+      (elif . . 15
+       (infix . .
+        (ident . . and) ~8
+        (call . . ~7
+         (ident . . defined) 1
+         (ident . . linux)) 11
+        (call . . ~7
+         (ident . . defined) 1
+         (ident . . amd64))) ~3,1
+       (reclist . .
+        (identdefs . .
+         (ident . . abi) 10
+         (at . . ~5
+          (ident . . array) 3
+          (infix . .
+           (ident . . div) ~2
+           (intlit . . +4) 10
+           (call . . ~6
+            (ident . . sizeof) 1
+            (ident . . cint))) 21
+          (ident . . cint)) ~4,2
+         (empty)))))))) 12,24
+  (type0 . . ~12
+   (sd :SysLockType.0. .
+    (type) . ug ofrbcr0s0awhl0t0c0 -1 +0 .
+    (td :`t13.7. . c3 nimcall -1 -1 +0 +7 . . syslocks.0. SysLockType.0. none unknown . "" `t34.11.cty9mra12) syslocks.0. 12
+    (type0 . . ~12 SysLockType.0.
+     (empty) 2
+     (distinctty . `t13.7. 9 cint.0.cty9mra12)) none unknown . "" . .)
+   (empty) 2
+   (distinctty . `t13.7. 9 cint.0.cty9mra12))) 6,127
+ (sd :initSysLockAux.0. .
+  (proc) . ugin ofrbcr0s0awhl0t0c0 -1 +0
+  (bheader
+   (false)
+   (false) "" 43,129,/home/araq/projects/nim/lib/std/private/syslocks.nim
+   (strlit . `t28.17.sysma2dyk "<pthread.h>"))
+  (td :`t25.31. . ne2 nimcall -1 -1 +0 +31 . 21,128,/home/araq/projects/nim/lib/std/private/syslocks.nim
+   (formalparams . .
+    (arglist . .
+     (arglist . .) . .
+     (arglist . .) 43
+     (pragma . . ~53,1
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "pthread_mutex_init")) ~23,1
+      (kv . . ~6
+       (ident . . header) 2
+       (strlit . `t28.17.sysma2dyk "<pthread.h>")) ~6,1
+      (ident . . noSideEffect))
+     (arglist . .)) 1
+    (sd :L.0 .
+     (param) . . . -1 +0 .
+     (td :`t23.32. . . nimcall -1 -1 +0 +32 . . initSysLockAux.0. . none unknown . "" `t17.3.) initSysLockAux.0. . none unknown . "" . .) 20
+    (sd :attr.0 .
+     (param) . . . -1 +1 .
+     (td :`t21.33. . . nimcall -1 -1 +0 +33 . . initSysLockAux.0. . none unknown . "" `t17.4.) initSysLockAux.0. . none unknown . "" . .)) initSysLockAux.0. . none unknown . "" .) syslocks.0. ~5
+  (proc s . 5
+   (ht . initSysLockAux.0.)
+   (empty)
+   (empty) . 62
+   (pragma . . ~53,1
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "pthread_mutex_init")) ~23,1
+    (kv . . ~6
+     (ident . . header) 2
+     (strlit . `t28.17.sysma2dyk "<pthread.h>")) ~6,1
+    (ident . . noSideEffect))
+   (empty)
+   (empty)) none unknown dh "pthread_mutex_init" . .) 6,129
+ (sd :deinitSysAux.0. .
+  (proc) . ugin ofrbcr0s0awhl0t0c0 -1 +0
+  (bheader
+   (false)
+   (false) "" 43,129,/home/araq/projects/nim/lib/std/private/syslocks.nim
+   (strlit . `t28.17.sysma2dyk "<pthread.h>"))
+  (td :`t25.34. . ne2 nimcall -1 -1 +0 +34 . 19,130,/home/araq/projects/nim/lib/std/private/syslocks.nim
+   (formalparams . .
+    (arglist . .
+     (arglist . .) . .
+     (arglist . .) 16
+     (pragma . . 2
+      (ident . . noSideEffect) ~24,1
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "pthread_mutex_destroy")) 9,1
+      (kv . . ~6
+       (ident . . header) 2
+       (strlit . `t28.17.sysma2dyk "<pthread.h>")))
+     (arglist . .)) 1
+    (sd :L.1 .
+     (param) . . . -1 +0 . `t17.3. deinitSysAux.0. . none unknown . "" . .)) deinitSysAux.0. . none unknown . "" .) syslocks.0. ~5
+  (proc s . 5
+   (ht . deinitSysAux.0.)
+   (empty)
+   (empty) . 33
+   (pragma . . 2
+    (ident . . noSideEffect) ~24,1
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "pthread_mutex_destroy")) 9,1
+    (kv . . ~6
+     (ident . . header) 2
+     (strlit . `t28.17.sysma2dyk "<pthread.h>")))
+   (empty)
+   (empty)) none unknown dh "pthread_mutex_destroy" . .) 6,132
+ (sd :acquireSysAux.0. .
+  (proc) . ugin ofrbcr0s0awhl0t0c0 -1 +0
+  (bheader
+   (false)
+   (false) "" 43,129,/home/araq/projects/nim/lib/std/private/syslocks.nim
+   (strlit . `t28.17.sysma2dyk "<pthread.h>"))
+  (td :`t25.35. . ne2 nimcall -1 -1 +0 +35 . 20,133,/home/araq/projects/nim/lib/std/private/syslocks.nim
+   (formalparams . .
+    (arglist . .
+     (arglist . .) . .
+     (arglist . .) 20
+     (pragma . . 2
+      (ident . . noSideEffect) ~29,1
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "pthread_mutex_lock")) 1,1
+      (kv . . ~6
+       (ident . . header) 2
+       (strlit . `t28.17.sysma2dyk "<pthread.h>")))
+     (arglist . .)) 1
+    (sd :L.2 .
+     (param) . . . -1 +0 .
+     (td :`t23.36. . . nimcall -1 -1 +0 +36 . . acquireSysAux.0. . none unknown . "" `t17.3.) acquireSysAux.0. . none unknown . "" . .)) acquireSysAux.0. . none unknown . "" .) syslocks.0. ~5
+  (proc s . 5
+   (ht . acquireSysAux.0.)
+   (empty)
+   (empty) . 38
+   (pragma . . 2
+    (ident . . noSideEffect) ~29,1
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "pthread_mutex_lock")) 1,1
+    (kv . . ~6
+     (ident . . header) 2
+     (strlit . `t28.17.sysma2dyk "<pthread.h>")))
+   (empty)
+   (empty)) none unknown dh "pthread_mutex_lock" . .) 6,134
+ (sd :tryAcquireSysAux.0. .
+  (proc) . ugin ofrbcr0s0awhl0t0c0 -1 +0
+  (bheader
+   (false)
+   (false) "" 43,129,/home/araq/projects/nim/lib/std/private/syslocks.nim
+   (strlit . `t28.17.sysma2dyk "<pthread.h>"))
+  (td :`t25.37. . ne2 nimcall -1 -1 +0 +37 . 23,135,/home/araq/projects/nim/lib/std/private/syslocks.nim
+   (formalparams . `t34.11.cty9mra12
+    (arglist . .
+     (arglist . .) . .
+     (arglist . .) 26
+     (pragma . . 2
+      (ident . . noSideEffect) ~38,1
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "pthread_mutex_trylock")) ~5,1
+      (kv . . ~6
+       (ident . . header) 2
+       (strlit . `t28.17.sysma2dyk "<pthread.h>")))
+     (arglist . .)) 1
+    (sd :L.3 .
+     (param) . . . -1 +0 .
+     (td :`t23.38. . . nimcall -1 -1 +0 +38 . . tryAcquireSysAux.0. . none unknown . "" `t17.3.) tryAcquireSysAux.0. . none unknown . "" . .)) tryAcquireSysAux.0. . none unknown . "" `t34.11.cty9mra12) syslocks.0. ~5
+  (proc s . 5
+   (ht . tryAcquireSysAux.0.)
+   (empty)
+   (empty) . 47
+   (pragma . . 2
+    (ident . . noSideEffect) ~38,1
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "pthread_mutex_trylock")) ~5,1
+    (kv . . ~6
+     (ident . . header) 2
+     (strlit . `t28.17.sysma2dyk "<pthread.h>")))
+   (empty)
+   (empty)) none unknown dh "pthread_mutex_trylock" . .) 6,137
+ (sd :releaseSysAux.0. .
+  (proc) . ugin ofrbcr0s0awhl0t0c0 -1 +0
+  (bheader
+   (false)
+   (false) "" 43,129,/home/araq/projects/nim/lib/std/private/syslocks.nim
+   (strlit . `t28.17.sysma2dyk "<pthread.h>"))
+  (td :`t25.39. . ne2 nimcall -1 -1 +0 +39 . 20,138,/home/araq/projects/nim/lib/std/private/syslocks.nim
+   (formalparams . .
+    (arglist . .
+     (arglist . .) . .
+     (arglist . .) 20
+     (pragma . . 2
+      (ident . . noSideEffect) ~29,1
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "pthread_mutex_unlock")) 3,1
+      (kv . . ~6
+       (ident . . header) 2
+       (strlit . `t28.17.sysma2dyk "<pthread.h>")))
+     (arglist . .)) 1
+    (sd :L.4 .
+     (param) . . . -1 +0 .
+     (td :`t23.40. . . nimcall -1 -1 +0 +40 . . releaseSysAux.0. . none unknown . "" `t17.3.) releaseSysAux.0. . none unknown . "" . .)) releaseSysAux.0. . none unknown . "" .) syslocks.0. ~5
+  (proc s . 5
+   (ht . releaseSysAux.0.)
+   (empty)
+   (empty) . 38
+   (pragma . . 2
+    (ident . . noSideEffect) ~29,1
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "pthread_mutex_unlock")) 3,1
+    (kv . . ~6
+     (ident . . header) 2
+     (strlit . `t28.17.sysma2dyk "<pthread.h>")))
+   (empty)
+   (empty)) none unknown dh "pthread_mutex_unlock" . .) 5,170
+ (type s . 9
+  (type0 . . ~2
+   (postfix . .
+    (ident . . *) ~7
+    (sd :SysLock.0. x
+     (type) . ueg ofrbcr0s0awhl0t0c0 -1 +0 .
+     (td :`t4.41. . . nimcall -3 -3 -3 +41 . . syslocks.0. SysLock.0. none unknown . "" `t17.3.) syslocks.0. 9
+     (type0 . . ~2
+      (postfix . .
+       (ident . . *) ~7 SysLock.0.)
+      (empty) 2
+      (ht
+       (td :`t4.43. . . nimcall -1 -1 +0 +43 . . SysLock.0. SysLock.0. none unknown . "" `t17.3.) SysLockObj.0.)) none unknown . "" . .))
+   (empty) 2
+   (ht `t4.43. SysLockObj.0.)) 9,1
+  (type0 . . ~2
+   (postfix . .
+    (ident . . *) ~7
+    (sd :SysCond.0. x
+     (type) . ueg ofrbcr0s0awhl0t0c0 -1 +0 .
+     (td :`t4.42. . . nimcall -3 -3 -3 +42 . . syslocks.0. SysCond.0. none unknown . "" `t17.5.) syslocks.0. 9
+     (type0 . . ~2
+      (postfix . .
+       (ident . . *) ~7 SysCond.0.)
+      (empty) 2
+      (ht
+       (td :`t4.44. . . nimcall -1 -1 +0 +44 . . SysCond.0. SysCond.0. none unknown . "" `t17.5.) SysCondObj.0.)) none unknown . "" . .))
+   (empty) 2
+   (ht `t4.44. SysCondObj.0.))) 12,173
+ (sd :initSysLock.0. x
+  (template) . egn4 . -1 +0 .
+  (td :`t25.45. . . nimcall -1 -1 +0 +45 . 25,174,/home/araq/projects/nim/lib/std/private/syslocks.nim
+   (formalparams . .
+    (arglist . .) 1
+    (sd :L.5 .
+     (param) . ut0 . -1 +0 .
+     (td :`t23.46. . . nimcall -1 -1 +0 +46 . . initSysLock.0. . none unknown . "" `t4.41.) initSysLock.0. . none unknown . "" . .) 17
+    (sd :attr.1 .
+     (param) . ut0 . -1 +1 .
+     (td :`t21.47. . . nimcall -1 -1 +0 +47 . . initSysLock.0. . none unknown . "" `t17.4.) initSysLock.0. 24
+     (nil . `t21.47.) none unknown . "" . .)) initSysLock.0. . none unknown . "" .) syslocks.0. ~9
+  (template s . 9
+   (ht . initSysLock.0.)
+   (empty)
+   (empty) .
+   (empty)
+   (empty) 2,1
+   (stmts . . 14
+    (call . . ~14
+     (ht . initSysLockAux.0.) 1 L.5 4 attr.1))) none unknown . "" . .) 12,175
+ (sd :deinitSys.0. x
+  (template) . egn4 . -1 +0 .
+  (td :`t25.49. . . nimcall -1 -1 +0 +49 . 23,176,/home/araq/projects/nim/lib/std/private/syslocks.nim
+   (formalparams . .
+    (arglist . .) 1
+    (sd :L.6 .
+     (param) . ut0 . -1 +0 . `t4.41. deinitSys.0. . none unknown . "" . .)) deinitSys.0. . none unknown . "" .) syslocks.0. ~9
+  (template s . 9
+   (ht . deinitSys.0.)
+   (empty)
+   (empty) .
+   (empty)
+   (empty) 2,1
+   (stmts . . 12
+    (call . . ~12
+     (ht . deinitSysAux.0.) 1 L.6))) none unknown . "" . .) 12,177
+ (sd :acquireSys.0. x
+  (template) . egn4 . -1 +0 .
+  (td :`t25.50. . . nimcall -1 -1 +0 +50 . 24,178,/home/araq/projects/nim/lib/std/private/syslocks.nim
+   (formalparams . .
+    (arglist . .) 1
+    (sd :L.7 .
+     (param) . ut0 . -1 +0 .
+     (td :`t23.51. . . nimcall -1 -1 +0 +51 . . acquireSys.0. . none unknown . "" `t4.41.) acquireSys.0. . none unknown . "" . .)) acquireSys.0. . none unknown . "" .) syslocks.0. ~9
+  (template s . 9
+   (ht . acquireSys.0.)
+   (empty)
+   (empty) .
+   (empty)
+   (empty) 2,1
+   (stmts . . 13
+    (call . . ~13
+     (ht . acquireSysAux.0.) 1 L.7))) none unknown . "" . .) 12,179
+ (sd :tryAcquireSys.0. x
+  (template) . egn4 . -1 +0 .
+  (td :`t25.52. . . nimcall -1 -1 +0 +52 . 27,180,/home/araq/projects/nim/lib/std/private/syslocks.nim
+   (formalparams . `t1.34.sysma2dyk
+    (arglist . .) 1
+    (sd :L.8 .
+     (param) . ut0 . -1 +0 .
+     (td :`t23.53. . . nimcall -1 -1 +0 +53 . . tryAcquireSys.0. . none unknown . "" `t4.41.) tryAcquireSys.0. . none unknown . "" . .)) tryAcquireSys.0. . none unknown . "" `t1.34.sysma2dyk) syslocks.0. ~9
+  (template s . 9
+   (ht . tryAcquireSys.0.)
+   (empty)
+   (empty) .
+   (empty)
+   (empty) 2,1
+   (stmts . . 20
+    (infix . .
+     (opensymchoice d3 . ==.0.sysma2dyk ==.3.sysma2dyk ==.9.sysma2dyk ==.5.sysma2dyk ==.8.sysma2dyk ==.12.sysma2dyk ==.1.sysma2dyk ==.13.sysma2dyk ==.2.sysma2dyk ==.7.sysma2dyk ==.11.sysma2dyk ==.4.sysma2dyk ==.10.sysma2dyk ==.6.sysma2dyk ==.14.sysma2dyk ==.15.sysma2dyk ==.16.sysma2dyk ==.17.sysma2dyk ==.18.sysma2dyk ==.19.sysma2dyk ==.20.sysma2dyk ==.21.sysma2dyk ==.22.sysma2dyk ==.23.sysma2dyk) ~4
+     (call . . ~16
+      (ht . tryAcquireSysAux.0.) 1 L.8) 3
+     (int32lit . . +0)))) none unknown . "" . .) 12,181
+ (sd :releaseSys.0. x
+  (template) . egn4 . -1 +0 .
+  (td :`t25.55. . . nimcall -1 -1 +0 +55 . 24,182,/home/araq/projects/nim/lib/std/private/syslocks.nim
+   (formalparams . .
+    (arglist . .) 1
+    (sd :L.9 .
+     (param) . ut0 . -1 +0 .
+     (td :`t23.56. . . nimcall -1 -1 +0 +56 . . releaseSys.0. . none unknown . "" `t4.41.) releaseSys.0. . none unknown . "" . .)) releaseSys.0. . none unknown . "" .) syslocks.0. ~9
+  (template s . 9
+   (ht . releaseSys.0.)
+   (empty)
+   (empty) .
+   (empty)
+   (empty) 2,1
+   (stmts . . 13
+    (call . . ~13
+     (ht . releaseSysAux.0.) 1 L.9))) none unknown . "" . .) 6,187
+ (sd :initSysLockAttr.0. x
+  (proc) . egin ofrbcr0s0awhl0t0c0 -1 +0
+  (bheader
+   (false)
+   (false) "" 43,129,/home/araq/projects/nim/lib/std/private/syslocks.nim
+   (strlit . `t28.17.sysma2dyk "<pthread.h>"))
+  (td :`t25.57. . ne2 nimcall -1 -1 +0 +57 . 23,188,/home/araq/projects/nim/lib/std/private/syslocks.nim
+   (formalparams . .
+    (arglist . .
+     (arglist . .) . .
+     (arglist . .) 21
+     (pragma . . ~33,1
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "pthread_mutexattr_init")) 1,1
+      (kv . . ~6
+       (ident . . header) 2
+       (strlit . `t28.17.sysma2dyk "<pthread.h>")) 18,1
+      (ident . . noSideEffect))
+     (arglist . .)) 1
+    (sd :a.0 .
+     (param) . . . -1 +0 .
+     (td :`t23.58. . . nimcall -1 -1 +0 +58 . . initSysLockAttr.0. . none unknown . "" `t17.4.) initSysLockAttr.0. . none unknown . "" . .)) initSysLockAttr.0. . none unknown . "" .) syslocks.0. ~5
+  (proc s . 5
+   (ht . initSysLockAttr.0.)
+   (empty)
+   (empty) . 42
+   (pragma . . ~33,1
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "pthread_mutexattr_init")) 1,1
+    (kv . . ~6
+     (ident . . header) 2
+     (strlit . `t28.17.sysma2dyk "<pthread.h>")) 18,1
+    (ident . . noSideEffect))
+   (empty)
+   (empty)) none unknown dh "pthread_mutexattr_init" . .) 6,189
+ (sd :setSysLockType.0. x
+  (proc) . egin ofrbcr0s0awhl0t0c0 -1 +0
+  (bheader
+   (false)
+   (false) "" 43,129,/home/araq/projects/nim/lib/std/private/syslocks.nim
+   (strlit . `t28.17.sysma2dyk "<pthread.h>"))
+  (td :`t25.59. . ne2 nimcall -1 -1 +0 +59 . 22,190,/home/araq/projects/nim/lib/std/private/syslocks.nim
+   (formalparams . .
+    (arglist . .
+     (arglist . .) . .
+     (arglist . .) 37
+     (pragma . . ~48,1
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "pthread_mutexattr_settype")) ~11,1
+      (kv . . ~6
+       (ident . . header) 2
+       (strlit . `t28.17.sysma2dyk "<pthread.h>")) 6,1
+      (ident . . noSideEffect))
+     (arglist . .)) 1
+    (sd :a.1 .
+     (param) . . . -1 +0 .
+     (td :`t23.60. . . nimcall -1 -1 +0 +60 . . setSysLockType.0. . none unknown . "" `t17.4.) setSysLockType.0. . none unknown . "" . .) 21
+    (sd :t.0 .
+     (param) . . . -1 +1 . `t13.7. setSysLockType.0. . none unknown . "" . .)) setSysLockType.0. . none unknown . "" .) syslocks.0. ~5
+  (proc s . 5
+   (ht . setSysLockType.0.)
+   (empty)
+   (empty) . 57
+   (pragma . . ~48,1
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "pthread_mutexattr_settype")) ~11,1
+    (kv . . ~6
+     (ident . . header) 2
+     (strlit . `t28.17.sysma2dyk "<pthread.h>")) 6,1
+    (ident . . noSideEffect))
+   (empty)
+   (empty)) none unknown dh "pthread_mutexattr_settype" . .) 6,193
+ (sd :initSysCondAux.0. .
+  (proc) . ugin ofrbcr0s0awhl0t0c0 -1 +0
+  (bheader
+   (false)
+   (false) "" 43,129,/home/araq/projects/nim/lib/std/private/syslocks.nim
+   (strlit . `t28.17.sysma2dyk "<pthread.h>"))
+  (td :`t25.61. . ne2 nimcall -1 -1 +0 +61 . 21,194,/home/araq/projects/nim/lib/std/private/syslocks.nim
+   (formalparams . .
+    (arglist . .
+     (arglist . .) . .
+     (arglist . .) 57
+     (pragma . . ~67,1
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "pthread_cond_init")) ~38,1
+      (kv . . ~6
+       (ident . . header) 2
+       (strlit . `t28.17.sysma2dyk "<pthread.h>")) ~21,1
+      (ident . . noSideEffect))
+     (arglist . .)) 1
+    (sd :cond.0 .
+     (param) . . . -1 +0 .
+     (td :`t23.62. . . nimcall -1 -1 +0 +62 . . initSysCondAux.0. . none unknown . "" `t17.5.) initSysCondAux.0. . none unknown . "" . .) 23
+    (sd :cond_attr.0 .
+     (param) . . . -1 +1 .
+     (td :`t21.63. . . nimcall -1 -1 +0 +63 . . initSysCondAux.0. . none unknown . "" `t17.6.) initSysCondAux.0. 29
+     (nil . `t21.63.) none unknown . "" . .)) initSysCondAux.0. . none unknown . "" .) syslocks.0. ~5
+  (proc s . 5
+   (ht . initSysCondAux.0.)
+   (empty)
+   (empty) . 76
+   (pragma . . ~67,1
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "pthread_cond_init")) ~38,1
+    (kv . . ~6
+     (ident . . header) 2
+     (strlit . `t28.17.sysma2dyk "<pthread.h>")) ~21,1
+    (ident . . noSideEffect))
+   (empty)
+   (empty)) none unknown dh "pthread_cond_init" . .) 6,195
+ (sd :deinitSysCondAux.0. .
+  (proc) . ugin ofrbcr0s0awhl0t0c0 -1 +0
+  (bheader
+   (false)
+   (false) "" 43,129,/home/araq/projects/nim/lib/std/private/syslocks.nim
+   (strlit . `t28.17.sysma2dyk "<pthread.h>"))
+  (td :`t25.64. . ne2 nimcall -1 -1 +0 +64 . 23,196,/home/araq/projects/nim/lib/std/private/syslocks.nim
+   (formalparams . .
+    (arglist . .
+     (arglist . .) . .
+     (arglist . .) 19
+     (pragma . . 2
+      (ident . . noSideEffect) ~31,1
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "pthread_cond_destroy")) 1,1
+      (kv . . ~6
+       (ident . . header) 2
+       (strlit . `t28.17.sysma2dyk "<pthread.h>")))
+     (arglist . .)) 1
+    (sd :cond.1 .
+     (param) . . . -1 +0 . `t17.5. deinitSysCondAux.0. . none unknown . "" . .)) deinitSysCondAux.0. . none unknown . "" .) syslocks.0. ~5
+  (proc s . 5
+   (ht . deinitSysCondAux.0.)
+   (empty)
+   (empty) . 40
+   (pragma . . 2
+    (ident . . noSideEffect) ~31,1
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "pthread_cond_destroy")) 1,1
+    (kv . . ~6
+     (ident . . header) 2
+     (strlit . `t28.17.sysma2dyk "<pthread.h>")))
+   (empty)
+   (empty)) none unknown dh "pthread_cond_destroy" . .) 6,198
+ (sd :waitSysCondAux.0. .
+  (proc) . ugin ofrbcr0s0awhl0t0c0 -1 +0
+  (bheader
+   (false)
+   (false) "" 43,129,/home/araq/projects/nim/lib/std/private/syslocks.nim
+   (strlit . `t28.17.sysma2dyk "<pthread.h>"))
+  (td :`t25.65. . ne2 nimcall -1 -1 +0 +65 . 21,199,/home/araq/projects/nim/lib/std/private/syslocks.nim
+   (formalparams . `t34.11.cty9mra12
+    (arglist . .
+     (arglist . .) . .
+     (arglist . .) 51
+     (pragma . . ~61,1
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "pthread_cond_wait")) ~32,1
+      (kv . . ~6
+       (ident . . header) 2
+       (strlit . `t28.17.sysma2dyk "<pthread.h>")) ~15,1
+      (ident . . noSideEffect))
+     (arglist . .)) 1
+    (sd :cond.2 .
+     (param) . . . -1 +0 .
+     (td :`t23.66. . . nimcall -1 -1 +0 +66 . . waitSysCondAux.0. . none unknown . "" `t17.5.) waitSysCondAux.0. . none unknown . "" . .) 23
+    (sd :lock.0 .
+     (param) . . . -1 +1 .
+     (td :`t23.67. . . nimcall -1 -1 +0 +67 . . waitSysCondAux.0. . none unknown . "" `t17.3.) waitSysCondAux.0. . none unknown . "" . .)) waitSysCondAux.0. . none unknown . "" `t34.11.cty9mra12) syslocks.0. ~5
+  (proc s . 5
+   (ht . waitSysCondAux.0.)
+   (empty)
+   (empty) . 70
+   (pragma . . ~61,1
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "pthread_cond_wait")) ~32,1
+    (kv . . ~6
+     (ident . . header) 2
+     (strlit . `t28.17.sysma2dyk "<pthread.h>")) ~15,1
+    (ident . . noSideEffect))
+   (empty)
+   (empty)) none unknown dh "pthread_cond_wait" . .) 6,200
+ (sd :signalSysCondAux.0. .
+  (proc) . ugin ofrbcr0s0awhl0t0c0 -1 +0
+  (bheader
+   (false)
+   (false) "" 43,129,/home/araq/projects/nim/lib/std/private/syslocks.nim
+   (strlit . `t28.17.sysma2dyk "<pthread.h>"))
+  (td :`t25.68. . ne2 nimcall -1 -1 +0 +68 . 23,201,/home/araq/projects/nim/lib/std/private/syslocks.nim
+   (formalparams . .
+    (arglist . .
+     (arglist . .) . .
+     (arglist . .) 23
+     (pragma . . ~35,1
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "pthread_cond_signal")) ~4,1
+      (kv . . ~6
+       (ident . . header) 2
+       (strlit . `t28.17.sysma2dyk "<pthread.h>")) 13,1
+      (ident . . noSideEffect))
+     (arglist . .)) 1
+    (sd :cond.3 .
+     (param) . . . -1 +0 .
+     (td :`t23.69. . . nimcall -1 -1 +0 +69 . . signalSysCondAux.0. . none unknown . "" `t17.5.) signalSysCondAux.0. . none unknown . "" . .)) signalSysCondAux.0. . none unknown . "" .) syslocks.0. ~5
+  (proc s . 5
+   (ht . signalSysCondAux.0.)
+   (empty)
+   (empty) . 44
+   (pragma . . ~35,1
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "pthread_cond_signal")) ~4,1
+    (kv . . ~6
+     (ident . . header) 2
+     (strlit . `t28.17.sysma2dyk "<pthread.h>")) 13,1
+    (ident . . noSideEffect))
+   (empty)
+   (empty)) none unknown dh "pthread_cond_signal" . .) 6,202
+ (sd :broadcastSysCondAux.0. .
+  (proc) . ugin ofrbcr0s0awhl0t0c0 -1 +0
+  (bheader
+   (false)
+   (false) "" 43,129,/home/araq/projects/nim/lib/std/private/syslocks.nim
+   (strlit . `t28.17.sysma2dyk "<pthread.h>"))
+  (td :`t25.70. . ne2 nimcall -1 -1 +0 +70 . 26,203,/home/araq/projects/nim/lib/std/private/syslocks.nim
+   (formalparams . .
+    (arglist . .
+     (arglist . .) . .
+     (arglist . .) 23
+     (pragma . . ~38,1
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "pthread_cond_broadcast")) ~4,1
+      (kv . . ~6
+       (ident . . header) 2
+       (strlit . `t28.17.sysma2dyk "<pthread.h>")) 13,1
+      (ident . . noSideEffect))
+     (arglist . .)) 1
+    (sd :cond.4 .
+     (param) . . . -1 +0 .
+     (td :`t23.71. . . nimcall -1 -1 +0 +71 . . broadcastSysCondAux.0. . none unknown . "" `t17.5.) broadcastSysCondAux.0. . none unknown . "" . .)) broadcastSysCondAux.0. . none unknown . "" .) syslocks.0. ~5
+  (proc s . 5
+   (ht . broadcastSysCondAux.0.)
+   (empty)
+   (empty) . 47
+   (pragma . . ~38,1
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "pthread_cond_broadcast")) ~4,1
+    (kv . . ~6
+     (ident . . header) 2
+     (strlit . `t28.17.sysma2dyk "<pthread.h>")) 13,1
+    (ident . . noSideEffect))
+   (empty)
+   (empty)) none unknown dh "pthread_cond_broadcast" . .) 12,221
+ (sd :initSysCond.0. x
+  (template) . egn4 . -1 +0 .
+  (td :`t25.72. . . nimcall -1 -1 +0 +72 . 25,222,/home/araq/projects/nim/lib/std/private/syslocks.nim
+   (formalparams . .
+    (arglist . .) 1
+    (sd :cond.5 .
+     (param) . ut0 . -1 +0 .
+     (td :`t23.73. . . nimcall -1 -1 +0 +73 . . initSysCond.0. . none unknown . "" `t4.42.) initSysCond.0. . none unknown . "" . .) 20
+    (sd :cond_attr.1 .
+     (param) . ut0 . -1 +1 .
+     (td :`t21.74. . . nimcall -1 -1 +0 +74 . . initSysCond.0. . none unknown . "" `t17.6.) initSysCond.0. 29
+     (nil . `t21.74.) none unknown . "" . .)) initSysCond.0. . none unknown . "" .) syslocks.0. ~9
+  (template s . 9
+   (ht . initSysCond.0.)
+   (empty)
+   (empty) .
+   (empty)
+   (empty) 2,1
+   (stmts . . 14
+    (call . . ~14
+     (ht . initSysCondAux.0.) 1 cond.5 7 cond_attr.1))) none unknown . "" . .) 12,223
+ (sd :deinitSysCond.0. x
+  (template) . egn4 . -1 +0 .
+  (td :`t25.75. . . nimcall -1 -1 +0 +75 . 27,224,/home/araq/projects/nim/lib/std/private/syslocks.nim
+   (formalparams . .
+    (arglist . .) 1
+    (sd :cond.6 .
+     (param) . ut0 . -1 +0 . `t4.42. deinitSysCond.0. . none unknown . "" . .)) deinitSysCond.0. . none unknown . "" .) syslocks.0. ~9
+  (template s . 9
+   (ht . deinitSysCond.0.)
+   (empty)
+   (empty) .
+   (empty)
+   (empty) 2,1
+   (stmts . . 16
+    (call . . ~16
+     (ht . deinitSysCondAux.0.) 1 cond.6))) none unknown . "" . .) 12,226
+ (sd :waitSysCond.0. x
+  (template) . egn4 . -1 +0 .
+  (td :`t25.76. . . nimcall -1 -1 +0 +76 . 25,227,/home/araq/projects/nim/lib/std/private/syslocks.nim
+   (formalparams . .
+    (arglist . .) 1
+    (sd :cond.7 .
+     (param) . ut0 . -1 +0 .
+     (td :`t23.77. . . nimcall -1 -1 +0 +77 . . waitSysCond.0. . none unknown . "" `t4.42.) waitSysCond.0. . none unknown . "" . .) 20
+    (sd :lock.1 .
+     (param) . ut0 . -1 +1 .
+     (td :`t23.78. . . nimcall -1 -1 +0 +78 . . waitSysCond.0. . none unknown . "" `t4.41.) waitSysCond.0. . none unknown . "" . .)) waitSysCond.0. . none unknown . "" .) syslocks.0. ~9
+  (template s . 9
+   (ht . waitSysCond.0.)
+   (empty)
+   (empty) .
+   (empty)
+   (empty) 2,1
+   (stmts . .
+    (discard . . 22
+     (call . . ~14
+      (ht . waitSysCondAux.0.) 1 cond.7 7 lock.1)))) none unknown . "" . .) 12,228
+ (sd :signalSysCond.0. x
+  (template) . egn4 . -1 +0 .
+  (td :`t25.79. . . nimcall -1 -1 +0 +79 . 27,229,/home/araq/projects/nim/lib/std/private/syslocks.nim
+   (formalparams . .
+    (arglist . .) 1
+    (sd :cond.8 .
+     (param) . ut0 . -1 +0 .
+     (td :`t23.80. . . nimcall -1 -1 +0 +80 . . signalSysCond.0. . none unknown . "" `t4.42.) signalSysCond.0. . none unknown . "" . .)) signalSysCond.0. . none unknown . "" .) syslocks.0. ~9
+  (template s . 9
+   (ht . signalSysCond.0.)
+   (empty)
+   (empty) .
+   (empty)
+   (empty) 2,1
+   (stmts . . 16
+    (call . . ~16
+     (ht . signalSysCondAux.0.) 1 cond.8))) none unknown . "" . .) 12,230
+ (sd :broadcastSysCond.0. x
+  (template) . egn4 . -1 +0 .
+  (td :`t25.81. . . nimcall -1 -1 +0 +81 . 30,231,/home/araq/projects/nim/lib/std/private/syslocks.nim
+   (formalparams . .
+    (arglist . .) 1
+    (sd :cond.9 .
+     (param) . ut0 . -1 +0 .
+     (td :`t23.82. . . nimcall -1 -1 +0 +82 . . broadcastSysCond.0. . none unknown . "" `t4.42.) broadcastSysCond.0. . none unknown . "" . .)) broadcastSysCond.0. . none unknown . "" .) syslocks.0. ~9
+  (template s . 9
+   (ht . broadcastSysCond.0.)
+   (empty)
+   (empty) .
+   (empty)
+   (empty) 2,1
+   (stmts . . 19
+    (call . . ~19
+     (ht . broadcastSysCondAux.0.) 1 cond.9))) none unknown . "" . .) ~1,233
+ (pragma s . 2
+  (ident . . pop)) 5,185
+ (sd :=wasMoved.0. .
+  (proc) . fng1 . -1 +0 .
+  (td :`t25.84. . n nimcall -1 -1 +0 +84 . 6,186,/home/araq/projects/nim/lib/std/private/syslocks.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.0 .
+     (param) . . . -1 +0 .
+     (td :`t23.83. . . nimcall -1 -1 +0 +83 . . syslocks.0. . none unknown . "" `t13.7.) =wasMoved.0. . none unknown . "" . .)) syslocks.0. . none unknown . "" .) syslocks.0.
+  (proc . . =wasMoved.0.
+   (empty)
+   (empty) .
+   (empty)
+   (empty)
+   (stmts . .)) none unknown . "" . .) 5,185
+ (sd :=destroy.0. .
+  (proc) . fg1 . -1 +0 .
+  (td :`t25.86. . . nimcall -1 -1 +0 +86 . 6,186,/home/araq/projects/nim/lib/std/private/syslocks.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.1 .
+     (param) . . . -1 +0 .
+     (td :`t23.85. . . nimcall -1 -1 +0 +85 . . syslocks.0. . none unknown . "" `t13.7.) =destroy.0. . none unknown . "" . .)) syslocks.0. . none unknown . "" .) syslocks.0.
+  (proc . . =destroy.0.
+   (empty)
+   (empty) .
+   (empty)
+   (empty)
+   (stmts . .)) none unknown . "" . .) 5,185
+ (sd :=copy.0. .
+  (proc) . fg1 . -1 +0 .
+  (td :`t25.88. . . nimcall -1 -1 +0 +88 . 6,186,/home/araq/projects/nim/lib/std/private/syslocks.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.2 .
+     (param) . . . -1 +0 .
+     (td :`t23.87. . . nimcall -1 -1 +0 +87 . . syslocks.0. . none unknown . "" `t13.7.) =copy.0. . none unknown . "" . .)
+    (sd :src.2 .
+     (param) . . . -1 +1 . `t13.7. =copy.0. . none unknown . "" . .)) syslocks.0. . none unknown . "" .) syslocks.0.
+  (proc . . =copy.0.
+   (empty)
+   (empty) .
+   (empty)
+   (empty)
+   (stmts . .)) none unknown . "" . .) 5,185
+ (sd :=dup.0. .
+  (proc) . fg1 . -1 +0 .
+  (td :`t25.89. . . nimcall -1 -1 +0 +89 . 6,186,/home/araq/projects/nim/lib/std/private/syslocks.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :src.3 .
+     (param) . . . -1 +0 . `t13.7. =dup.0. . none unknown . "" . .)) syslocks.0. . none unknown . "" `t13.7.) syslocks.0.
+  (proc . . =dup.0.
+   (empty)
+   (empty) .
+   (empty)
+   (empty)
+   (stmts . .)
+   (sd :result.0 .
+    (result) . . . -1 +0 . `t13.7. =dup.0. . none unknown . "" . .)) none unknown . "" . .) 5,185
+ (sd :=sink.0. .
+  (proc) . fg1 . -1 +0 .
+  (td :`t25.91. . . nimcall -1 -1 +0 +91 . 6,186,/home/araq/projects/nim/lib/std/private/syslocks.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.3 .
+     (param) . . . -1 +0 .
+     (td :`t23.90. . . nimcall -1 -1 +0 +90 . . syslocks.0. . none unknown . "" `t13.7.) =sink.0. . none unknown . "" . .)
+    (sd :src.4 .
+     (param) . . . -1 +1 . `t13.7. =sink.0. . none unknown . "" . .)) syslocks.0. . none unknown . "" .) syslocks.0.
+  (proc . . =sink.0.
+   (empty)
+   (empty) .
+   (empty)
+   (empty)
+   (stmts . .)) none unknown . "" . .) 5,185
+ (sd :=trace.0. .
+  (proc) . fg1 . -1 +0 .
+  (td :`t25.93. . . nimcall -1 -1 +0 +93 . 6,186,/home/araq/projects/nim/lib/std/private/syslocks.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.4 .
+     (param) . . . -1 +0 .
+     (td :`t23.92. . . nimcall -1 -1 +0 +92 . . syslocks.0. . none unknown . "" `t13.7.) =trace.0. . none unknown . "" . .)
+    (sd :env.0 .
+     (param) . . . -1 +1 . `t26.19.sysma2dyk =trace.0. . none unknown . "" . .)) syslocks.0. . none unknown . "" .) syslocks.0.
+  (proc . . =trace.0.
+   (empty)
+   (empty) .
+   (empty)
+   (empty)
+   (stmts . .)) none unknown . "" . .))1,1,/home/araq/projects/nim/lib/std/private/syslocks.nim(.index 5,185
+ (x SysLockType_Reentrant.0. +2056) 3,101
+ (h SysLockObj.0. +822)
+ (h `t17.3. +294) 7,105
+ (h abi.0. +131)
+ (h `t16.13. +76)
+ (h `t20.11. +86)
+ (h `t31.10. +152)
+ (h `t31.12. +277)
+ (h syslocks.0. +227) 1,1,/home/araq/projects/nim/lib/system.nim
+ (h stdlib.0. +100) 3,107
+ (x SysLockAttr.0. +2572)
+ (h `t17.4. +302) 7,111
+ (h abi.1. +131)
+ (h `t16.19. +78)
+ (h `t20.17. +87)
+ (h `t31.16. +155)
+ (h `t31.18. +281) 3,113
+ (h SysCondObj.0. +2646)
+ (h `t17.5. +294) 7,117
+ (h abi.2. +131)
+ (h `t16.25. +76)
+ (h `t20.23. +86)
+ (h `t31.22. +152)
+ (h `t31.24. +277) 3,119
+ (h SysCondAttr.0. +2619)
+ (h `t17.6. +295) 7,123
+ (h abi.3. +129)
+ (h `t16.30. +76)
+ (h `t20.28. +86)
+ (h `t31.27. +152)
+ (h `t31.29. +278) 3,125
+ (h SysLockType.0. +2534)
+ (h `t13.7. +68) 6,127
+ (h initSysLockAux.0. +311)
+ (h `t25.31. +210)
+ (h `t23.32. +518)
+ (h `t21.33. +186) 6,129
+ (h deinitSysAux.0. +585)
+ (h `t25.34. +208) 6,132
+ (h acquireSysAux.0. +1009)
+ (h `t25.35. +209)
+ (h `t23.36. +513) 6,134
+ (h tryAcquireSysAux.0. +576)
+ (h `t25.37. +212)
+ (h `t23.38. +533) 6,137
+ (h releaseSysAux.0. +611)
+ (h `t25.39. +209)
+ (h `t23.40. +515) 5,170
+ (x SysLock.0. +646)
+ (h `t4.41. +67)
+ (h `t4.43. +211) 5,171
+ (x SysCond.0. +239)
+ (h `t4.42. +67)
+ (h `t4.44. +211) 12,173
+ (x initSysLock.0. +190)
+ (h `t25.45. +53)
+ (h `t23.46. +188)
+ (h `t21.47. +182) 12,175
+ (x deinitSys.0. +415)
+ (h `t25.49. +51) 12,177
+ (x acquireSys.0. +479)
+ (h `t25.50. +52)
+ (h `t23.51. +188) 12,179
+ (x tryAcquireSys.0. +378)
+ (h `t25.52. +55)
+ (h `t23.53. +203) 12,181
+ (x releaseSys.0. +854)
+ (h `t25.55. +52)
+ (h `t23.56. +188) 6,187
+ (x initSysLockAttr.0. +377)
+ (h `t25.57. +211)
+ (h `t23.58. +520) 6,189
+ (x setSysLockType.0. +595)
+ (h `t25.59. +210)
+ (h `t23.60. +524) 6,193
+ (h initSysCondAux.0. +694)
+ (h `t25.61. +210)
+ (h `t23.62. +521)
+ (h `t21.63. +191) 6,195
+ (h deinitSysCondAux.0. +607)
+ (h `t25.64. +212) 6,198
+ (h waitSysCondAux.0. +1021)
+ (h `t25.65. +210)
+ (h `t23.66. +537)
+ (h `t23.67. +186) 6,200
+ (h signalSysCondAux.0. +600)
+ (h `t25.68. +212)
+ (h `t23.69. +521) 6,202
+ (h broadcastSysCondAux.0. +594)
+ (h `t25.70. +215)
+ (h `t23.71. +524) 12,221
+ (x initSysCond.0. +613)
+ (h `t25.72. +53)
+ (h `t23.73. +191)
+ (h `t21.74. +187) 12,223
+ (x deinitSysCond.0. +423)
+ (h `t25.75. +55) 12,226
+ (x waitSysCond.0. +501)
+ (h `t25.76. +53)
+ (h `t23.77. +191)
+ (h `t23.78. +182) 12,228
+ (x signalSysCond.0. +415)
+ (h `t25.79. +55)
+ (h `t23.80. +191) 12,230
+ (x broadcastSysCond.0. +396)
+ (h `t25.81. +58)
+ (h `t23.82. +191) 5,185
+ (h =wasMoved.0. +451)
+ (h `t25.84. +47)
+ (h `t23.83. +186) 5,185
+ (h =destroy.0. +291)
+ (h `t25.86. +45)
+ (h `t23.85. +186) 5,185
+ (h =copy.0. +289)
+ (h `t25.88. +42)
+ (h `t23.87. +186) 5,185
+ (h =dup.0. +369)
+ (h `t25.89. +41) 5,185
+ (h =sink.0. +478)
+ (h `t25.91. +42)
+ (h `t23.90. +186) 5,185
+ (h =trace.0. +369)
+ (h `t25.93. +43)
+ (h `t23.92. +186))

@@ -1,0 +1,72 @@
+(.nif26)
+(.indexat +2214            )
+1,1,/home/araq/projects/nim/lib/std/private/since.nim(stmts . .
+ (implementation) ~1
+ (comment sh .) 8,14
+ (sd :since.0. x
+  (template) . egn4d3 . -1 +0 .
+  (td :`t25.3. . m nimcall -1 -1 +0 +3 . 15,15,/home/araq/projects/nim/lib/std/private/since.nim
+   (formalparams . .
+    (arglist . .) 1
+    (sd :version.0 .
+     (param) . t0 . -1 +0 .
+     (td :`t18.4. . . nimcall -1 -1 +0 +4 . . since.0. . none unknown . "" `t31.3.sysma2dyk `t31.3.sysma2dyk) since.0. . none unknown . "" . .) 22
+    (sd :body.0 .
+     (param) . t0 . -1 +1 . `t6.28.sysma2dyk since.0. . none unknown . "" . .)) since.0. . none unknown . "" .) ~8,~14
+  (sd :since.0. .
+   (module) . . . +0 . . . 1,1,/home/araq/projects/nim/lib/system.nim
+   (sd :stdlib.0. .
+    (package) . . . -1 +0 . . . . none unknown . "" . .) . none unknown . "" . .) ~9
+  (template s . 9
+   (ht . since.0.)
+   (empty)
+   (empty) . 52
+   (pragma . . 2
+    (ident . . dirty))
+   (empty) 2,1
+   (stmts . .
+    (comment h .) ,6
+    (when . . 5
+     (elif . . 21
+      (infix . .
+       (ident . . >=) ~21
+       (tupleconstr . . 1
+        (ident . . NimMajor) 11
+        (ident . . NimMinor)) 3 version.0) ~3,1
+      (stmts . . body.0))))) none unknown . "" . .) 8,24
+ (sd :since.1. x
+  (template) . egn4d3 . -1 +0 .
+  (td :`t25.5. . m nimcall -1 -1 +0 +5 . 15,25,/home/araq/projects/nim/lib/std/private/since.nim
+   (formalparams . .
+    (arglist . .) 1
+    (sd :version.1 .
+     (param) . t0 . -1 +0 .
+     (td :`t18.6. . . nimcall -1 -1 +0 +6 . . since.1. . none unknown . "" `t31.3.sysma2dyk `t31.3.sysma2dyk `t31.3.sysma2dyk) since.1. . none unknown . "" . .) 27
+    (sd :body.1 .
+     (param) . t0 . -1 +1 . `t6.28.sysma2dyk since.1. . none unknown . "" . .)) since.1. . none unknown . "" .) since.0. ~9
+  (template s . 9
+   (ht . since.1.)
+   (empty)
+   (empty) . 57
+   (pragma . . 2
+    (ident . . dirty))
+   (empty) 2,1
+   (stmts . .
+    (comment h .) ,6
+    (when . . 5
+     (elif . . 31
+      (infix . .
+       (ident . . >=) ~31
+       (tupleconstr . . 1
+        (ident . . NimMajor) 11
+        (ident . . NimMinor) 21
+        (ident . . NimPatch)) 3 version.1) ~3,1
+      (stmts . . body.1))))) none unknown . "" . .))1,1,/home/araq/projects/nim/lib/std/private/since.nim(.index 8,14
+ (x since.0. +143)
+ (h `t25.3. +49)
+ (h `t18.4. +187)
+ (h since.0. +284) 1,1,/home/araq/projects/nim/lib/system.nim
+ (h stdlib.0. +88) 8,24
+ (x since.1. +499)
+ (h `t25.5. +49)
+ (h `t18.6. +187))

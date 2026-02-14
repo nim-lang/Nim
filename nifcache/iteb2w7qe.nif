@@ -1,0 +1,3399 @@
+(.nif26)
+(.indexat +127132          )
+1,1,/home/araq/projects/nim/lib/system/iterators.nim(stmts . .
+ (repwasmoved "At2AkvSkey6AiS-1ZZAkvSval6AcS8" =wasMoved.0.)
+ (repdestroy "At2AkvSkey6AiS-1ZZAkvSval6AcS8" =destroy.0.)
+ (repcopy "At2AkvSkey6AiS-1ZZAkvSval6AcS8" =copy.0.)
+ (repdup "At2AkvSkey6AiS-1ZZAkvSval6AcS8" =dup.0.)
+ (repsink "At2AkvSkey6AiS-1ZZAkvSval6AcS8" =sink.0.)
+ (reptrace "At2AkvSkey6AiS-1ZZAkvSval6AcS8" =trace.0.)
+ (repwasmoved "Av0" =wasMoved.1.)
+ (repdestroy "Av0" =destroy.1.)
+ (repcopy "Av0" =copy.1.)
+ (repdup "Av0" =dup.1.)
+ (repsink "Av0" =sink.1.)
+ (reptrace "Av0" =trace.1.)
+ (repwasmoved "At2AkvSkey7AiS-1ZZAkvSval7Av0" =wasMoved.2.)
+ (repdestroy "At2AkvSkey7AiS-1ZZAkvSval7Av0" =destroy.2.)
+ (repcopy "At2AkvSkey7AiS-1ZZAkvSval7Av0" =copy.2.)
+ (repdup "At2AkvSkey7AiS-1ZZAkvSval7Av0" =dup.2.)
+ (repsink "At2AkvSkey7AiS-1ZZAkvSval7Av0" =sink.2.)
+ (reptrace "At2AkvSkey7AiS-1ZZAkvSval7Av0" =trace.2.)
+ (repwasmoved "At2AkvSkey8AiS-1ZZAkvSval8AcS8" =wasMoved.0.)
+ (repdestroy "At2AkvSkey8AiS-1ZZAkvSval8AcS8" =destroy.0.)
+ (repcopy "At2AkvSkey8AiS-1ZZAkvSval8AcS8" =copy.0.)
+ (repdup "At2AkvSkey8AiS-1ZZAkvSval8AcS8" =dup.0.)
+ (repsink "At2AkvSkey8AiS-1ZZAkvSval8AcS8" =sink.0.)
+ (reptrace "At2AkvSkey8AiS-1ZZAkvSval8AcS8" =trace.0.)
+ (repwasmoved "At2AkvSkey9AiS-1ZZAkvSval9Av0" =wasMoved.2.)
+ (repdestroy "At2AkvSkey9AiS-1ZZAkvSval9Av0" =destroy.2.)
+ (repcopy "At2AkvSkey9AiS-1ZZAkvSval9Av0" =copy.2.)
+ (repdup "At2AkvSkey9AiS-1ZZAkvSval9Av0" =dup.2.)
+ (repsink "At2AkvSkey9AiS-1ZZAkvSval9Av0" =sink.2.)
+ (reptrace "At2AkvSkey9AiS-1ZZAkvSval9Av0" =trace.2.)
+ (implementation) ~1
+ (comment sh .) 10,6
+ (sd :lent2.0. .
+  (template) . ugn4a1 . -1 +0 .
+  (td :`t25.3. . m nimcall -1 -1 +0 +3 . 16,7,/home/araq/projects/nim/lib/system/iterators.nim
+   (formalparams . `t6.28.sysma2dyk
+    (arglist . .) 1
+    (sd :T.0 .
+     (param) . ut0 . -1 +0 .
+     (td :`t6.4. . . nimcall -1 -1 +0 +4 . . lent2.0. . none unknown . "") lent2.0. . none unknown . "" . .)) lent2.0. . none unknown . "" `t6.28.sysma2dyk) ~10,~6
+  (sd :iterators.0. .
+   (module) . . . +0 . . . 1,1,/home/araq/projects/nim/lib/system.nim
+   (sd :stdlib.0. .
+    (package) . . . -1 +0 . . . . none unknown . "" . .) . none unknown . "" . .) ~9
+  (template s . 9
+   (ht . lent2.0.)
+   (empty)
+   (empty) .
+   (empty)
+   (empty) 29
+   (stmts . .
+    (cmd . .
+     (ht . lent.0.sysma2dyk) 5 T.0))) none unknown . "" . .) 8,10
+ (sd :unCheckedInc.0. .
+  (template) . ugn4a1 . -1 +0 .
+  (td :`t25.6. . m nimcall -1 -1 +0 +6 . 21,11,/home/araq/projects/nim/lib/system/iterators.nim
+   (formalparams . .
+    (arglist . .) 1
+    (sd :x.0 .
+     (param) . ut0 . -1 +0 .
+     (td :`t6.7. . . nimcall -1 -1 +0 +7 . . unCheckedInc.0. . none unknown . "") unCheckedInc.0. . none unknown . "" . .)) unCheckedInc.0. . none unknown . "" .) iterators.0. ~9
+  (template s . 9
+   (ht . unCheckedInc.0.)
+   (empty)
+   (empty) .
+   (empty)
+   (empty) 2,1
+   (stmts . .
+    (pragma . . 2
+     (ident . . push) 21
+     (kv . . ~14
+      (ident . . overflowChecks) 2
+      (ht . off.0.sysma2dyk))) 3,1
+    (call . . ~3
+     (ht . inc.0.sysma2dyk) 1 x.0) ,2
+    (pragma . . 2
+     (ident . . pop)))) none unknown . "" . .) 8,15
+ (sd :items.0. x
+  (iterator) . eg ofrbcr0s0awhtl0t0c0 -1 +0 .
+  (td :`t25.10. . i0me1e2 inline -1 -1 +0 +10 . 28,16,/home/araq/projects/nim/lib/system/iterators.nim
+   (formalparams .
+    (td :`t47.12. . . nimcall -1 -1 +0 +12 . . items.0. . none unknown . ""
+     (td :`t12.9. . g0 nimcall -1 -1 +0 +9 . . items.0. 16,16,/home/araq/projects/nim/lib/system/iterators.nim
+      (sd :T.1 .
+       (type) . u . -1 +0 . `t12.9. items.0. . none unknown . "" . .) none unknown . ""
+      (td :`t58.8. . m nimcall -1 -1 +0 +8 . . items.0. . none unknown . "" `t2.16.sysma2dyk)))
+    (arglist . . . . . . 27
+     (pragma . . 2
+      (ident . . inline)) .) 1
+    (sd :a.0 .
+     (param) . u . -1 +0 .
+     (td :`t27.11. . m nimcall -1 -1 +0 +11 . . items.0. . none unknown . "" `t12.9.) items.0. . none unknown . "" . .)) items.0. . none unknown . "" `t47.12.) iterators.0. ~9
+  (iterator s . 9
+   (ht . items.0.)
+   (empty) 15
+   (genericparams . . 1 T.1) . 55
+   (pragma . . 2
+    (ident . . inline))
+   (bracket . .
+    (empty) 15,16,/home/araq/projects/nim/lib/system/iterators.nim
+    (genericparams . . 1
+     (identdefs . .
+      (ident . . T) 3
+      (prefix . `t58.8.
+       (ident . . not) 4 char.0.sysma2dyk)
+      (empty)))) 2,1
+   (stmts . .
+    (comment h .) ,1
+    (var . . 4
+     (identdefs . .
+      (ident . . i) 2
+      (empty) 4
+      (intlit . . +0))) ,2
+    (while . . 8
+     (infix . .
+      (opensymchoice .
+       (td :`t0.14. . . nimcall -1 -1 +0 +14 . . items.0. . none unknown . "") <.16.sysma2dyk <.4.sysma2dyk <.3.sysma2dyk <.11.sysma2dyk <.17.sysma2dyk <.12.sysma2dyk <.7.sysma2dyk <.8.sysma2dyk <.0.sysma2dyk <.14.sysma2dyk <.6.sysma2dyk <.5.sysma2dyk <.19.sysma2dyk <.18.sysma2dyk <.2.sysma2dyk <.15.sysma2dyk <.10.sysma2dyk <.9.sysma2dyk <.1.sysma2dyk <.13.sysma2dyk) ~2
+      (ident . . i) 5
+      (call . . ~3
+       (opensymchoice .
+        (td :`t0.15. . . nimcall -1 -1 +0 +15 . . items.0. . none unknown . "") len.10.sysma2dyk len.7.sysma2dyk len.4.sysma2dyk len.3.sysma2dyk len.8.sysma2dyk len.6.sysma2dyk len.5.sysma2dyk) 1
+       (ident . . a))) 2,1
+     (stmts . .
+      (yield . . 7
+       (call . . \5B\5D.0.sysma2dyk ~1
+        (ident . . a) 1
+        (ident . . i))) ,1
+      (stmts f . ~2,~9
+       (pragma . . 2
+        (ident . . push) 21
+        (kv . . ~14
+         (ident . . overflowChecks) 2
+         (ht . off.0.sysma2dyk))) 1,~8
+       (call . . ~3 inc.0.sysma2dyk 12,8
+        (ident . . i)) 12
+       (pragma . . ~12,~7
+        (ident . . pop))))))) none unknown . "" . .) 8,22
+ (sd :items.1. x
+  (iterator) . eg ofrbcr0s0awhtl0t0c0 -1 +0 .
+  (td :`t25.17. . i0me1e2 inline -1 -1 +0 +17 . 24,23,/home/araq/projects/nim/lib/system/iterators.nim
+   (formalparams .
+    (td :`t12.16. . g0 nimcall -1 -1 +0 +16 . . items.1. 16,23,/home/araq/projects/nim/lib/system/iterators.nim
+     (sd :T.2 .
+      (type) . u . -1 +0 . `t12.16. items.1. . none unknown . "" . .) none unknown . "" `t2.16.sysma2dyk)
+    (arglist . . . . . . 21
+     (pragma . . 2
+      (ident . . inline)) .) 1
+    (sd :a.1 .
+     (param) . u . -1 +0 .
+     (td :`t27.18. . m nimcall -1 -1 +0 +18 . . items.1. . none unknown . "" `t12.16.) items.1. . none unknown . "" . .)) items.1. . none unknown . "" `t12.16.) iterators.0. ~9
+  (iterator s . 9
+   (ht . items.1.)
+   (empty) 15
+   (genericparams . . 1 T.2) . 45
+   (pragma . . 2
+    (ident . . inline))
+   (bracket . .
+    (empty) 15,23,/home/araq/projects/nim/lib/system/iterators.nim
+    (genericparams . . 1
+     (identdefs . .
+      (ident . . T) 3 char.0.sysma2dyk
+      (empty)))) 2,1
+   (stmts . .
+    (comment h .) ,4
+    (var . . 4
+     (identdefs . .
+      (ident . . i) 2
+      (empty) 4
+      (intlit . . +0))) ,5
+    (while . . 8
+     (infix . .
+      (opensymchoice .
+       (td :`t0.19. . . nimcall -1 -1 +0 +19 . . items.1. . none unknown . "") <.16.sysma2dyk <.4.sysma2dyk <.3.sysma2dyk <.11.sysma2dyk <.17.sysma2dyk <.12.sysma2dyk <.7.sysma2dyk <.8.sysma2dyk <.0.sysma2dyk <.14.sysma2dyk <.6.sysma2dyk <.5.sysma2dyk <.19.sysma2dyk <.18.sysma2dyk <.2.sysma2dyk <.15.sysma2dyk <.10.sysma2dyk <.9.sysma2dyk <.1.sysma2dyk <.13.sysma2dyk) ~2
+      (ident . . i) 5
+      (call . . ~3
+       (opensymchoice .
+        (td :`t0.20. . . nimcall -1 -1 +0 +20 . . items.1. . none unknown . "") len.10.sysma2dyk len.7.sysma2dyk len.4.sysma2dyk len.3.sysma2dyk len.8.sysma2dyk len.6.sysma2dyk len.5.sysma2dyk) 1
+       (ident . . a))) 2,1
+     (stmts . .
+      (yield . . 7
+       (call . . \5B\5D.0.sysma2dyk ~1
+        (ident . . a) 1
+        (ident . . i))) ,1
+      (stmts f . ~2,~19
+       (pragma . . 2
+        (ident . . push) 21
+        (kv . . ~14
+         (ident . . overflowChecks) 2
+         (ht . off.0.sysma2dyk))) 1,~18
+       (call . . ~3 inc.0.sysma2dyk 12,18
+        (ident . . i)) 12
+       (pragma . . ~12,~17
+        (ident . . pop))))))) none unknown . "" . .) 8,32
+ (sd :mitems.0. x
+  (iterator) . eg ofrbcr0s0awhtl0t0c0 -1 +0 .
+  (td :`t25.22. . i0me1e2 inline -1 -1 +0 +22 . 19,33,/home/araq/projects/nim/lib/system/iterators.nim
+   (formalparams .
+    (td :`t23.25. . m nimcall -1 -1 +0 +25 . . mitems.0. . none unknown . ""
+     (td :`t12.21. . g0 nimcall -1 -1 +0 +21 . . mitems.0. 17,33,/home/araq/projects/nim/lib/system/iterators.nim
+      (sd :T.0 .
+       (type) . u . -1 +0 . `t12.21. mitems.0. . none unknown . "" . .) none unknown . ""))
+    (arglist . . . . . . 29
+     (pragma . . 2
+      (ident . . inline)) .) 1
+    (sd :a.2 .
+     (param) . u . -1 +0 .
+     (td :`t23.23. . m nimcall -1 -1 +0 +23 . . mitems.0. . none unknown . ""
+      (td :`t27.24. . m nimcall -1 -1 +0 +24 . . mitems.0. . none unknown . "" `t12.21.)) mitems.0. . none unknown . "" . .)) mitems.0. . none unknown . "" `t23.25.) iterators.0. ~9
+  (iterator s . 9
+   (ht . mitems.0.)
+   (empty) 16
+   (genericparams . . 1 T.0) . 48
+   (pragma . . 2
+    (ident . . inline))
+   (bracket . .
+    (empty) 16,33,/home/araq/projects/nim/lib/system/iterators.nim
+    (genericparams . . 1
+     (identdefs . .
+      (ident . . T)
+      (empty)
+      (empty)))) 2,1
+   (stmts . .
+    (comment h .) ,1
+    (var . . 4
+     (identdefs . .
+      (ident . . i) 2
+      (empty) 4
+      (intlit . . +0))) ,2
+    (while . . 8
+     (infix . .
+      (opensymchoice .
+       (td :`t0.26. . . nimcall -1 -1 +0 +26 . . mitems.0. . none unknown . "") <.16.sysma2dyk <.4.sysma2dyk <.3.sysma2dyk <.11.sysma2dyk <.17.sysma2dyk <.12.sysma2dyk <.7.sysma2dyk <.8.sysma2dyk <.0.sysma2dyk <.14.sysma2dyk <.6.sysma2dyk <.5.sysma2dyk <.19.sysma2dyk <.18.sysma2dyk <.2.sysma2dyk <.15.sysma2dyk <.10.sysma2dyk <.9.sysma2dyk <.1.sysma2dyk <.13.sysma2dyk) ~2
+      (ident . . i) 5
+      (call . . ~3
+       (opensymchoice .
+        (td :`t0.27. . . nimcall -1 -1 +0 +27 . . mitems.0. . none unknown . "") len.10.sysma2dyk len.7.sysma2dyk len.4.sysma2dyk len.3.sysma2dyk len.8.sysma2dyk len.6.sysma2dyk len.5.sysma2dyk) 1
+       (ident . . a))) 2,1
+     (stmts . .
+      (yield . . 7
+       (call . . \5B\5D.0.sysma2dyk ~1
+        (ident . . a) 1
+        (ident . . i))) ,1
+      (stmts f . ~2,~26
+       (pragma . . 2
+        (ident . . push) 21
+        (kv . . ~14
+         (ident . . overflowChecks) 2
+         (ht . off.0.sysma2dyk))) 1,~25
+       (call . . ~3 inc.0.sysma2dyk 12,25
+        (ident . . i)) 12
+       (pragma . . ~12,~24
+        (ident . . pop))))))) none unknown . "" . .) 8,39
+ (sd :items.2. x
+  (iterator) . eg ofrbcr0s0awhtl0t0c0 -1 +0 .
+  (td :`t25.30. . i0me1e2 inline -1 -1 +0 +30 . 22,40,/home/araq/projects/nim/lib/system/iterators.nim
+   (formalparams .
+    (td :`t12.29. . g0 nimcall -1 -1 +0 +29 . . items.2. 20,40,/home/araq/projects/nim/lib/system/iterators.nim
+     (sd :T.0 .
+      (type) . u . -1 +1 . `t12.29. items.2. . none unknown . "" . .) none unknown . "")
+    (arglist . . . . . . 21
+     (pragma . . 2
+      (ident . . inline)) .) 1
+    (sd :a.3 .
+     (param) . u . -1 +0 .
+     (td :`t16.31. . m nimcall -1 -1 +0 +31 . . items.2. . none unknown . ""
+      (td :`t12.28. . g0 nimcall -1 -1 +0 +28 . . items.2. 16,40,/home/araq/projects/nim/lib/system/iterators.nim
+       (sd :IX.0 .
+        (type) . u . -1 +0 . `t12.28. items.2. . none unknown . "" . .) none unknown . "") `t12.29.) items.2. . none unknown . "" . .)) items.2. . none unknown . "" `t12.29.) iterators.0. ~9
+  (iterator s . 9
+   (ht . items.2.)
+   (empty) 15
+   (genericparams . . 1 IX.0 5 T.0) . 43
+   (pragma . . 2
+    (ident . . inline))
+   (bracket . .
+    (empty) 15,40,/home/araq/projects/nim/lib/system/iterators.nim
+    (genericparams . . 1
+     (identdefs . .
+      (ident . . IX) 4
+      (ident . . T)
+      (empty)
+      (empty)))) 2,1
+   (stmts . .
+    (comment h .) ,1
+    (when . . 5
+     (elif . . 6
+      (stmts f . 2,140,/home/araq/projects/nim/lib/system/comparisons.nim
+       (empty)
+       (infix . .
+        (opensymchoice d3 . <.0.sysma2dyk <.1.sysma2dyk <.2.sysma2dyk <.3.sysma2dyk <.4.sysma2dyk <.5.sysma2dyk <.6.sysma2dyk <.7.sysma2dyk) 2
+        (intlit . . +0) ~5
+        (dot . . ~1
+         (ident . . a) 1
+         (opensymchoice .
+          (td :`t0.33. . . nimcall -1 -1 +0 +33 . . items.2. . none unknown . "") len.10.sysma2dyk len.7.sysma2dyk len.4.sysma2dyk len.3.sysma2dyk len.8.sysma2dyk len.6.sysma2dyk len.5.sysma2dyk)))) ~3,1
+      (stmts . .
+       (var . . 4
+        (identdefs . .
+         (ident . . i) 2
+         (empty) 7
+         (call . . ~3
+          (opensymchoice .
+           (td :`t0.34. . . nimcall -1 -1 +0 +34 . . items.2. . none unknown . "") low.3.sysma2dyk low.4.sysma2dyk low.6.sysma2dyk low.0.sysma2dyk low.8.sysma2dyk low.5.sysma2dyk low.1.sysma2dyk low.2.sysma2dyk) 1
+          (ident . . IX)))) ,1
+       (while . . 6
+        (ht . true.0.sysma2dyk) 2,1
+        (stmts . .
+         (yield . . 7
+          (call . . \5B\5D.0.sysma2dyk ~1
+           (ident . . a) 1
+           (ident . . i))) ,1
+         (if . . 3
+          (elif . . 2
+           (stmts f . 2,136,/home/araq/projects/nim/lib/system/comparisons.nim
+            (empty)
+            (infix . .
+             (opensymchoice d3 . <=.0.sysma2dyk <=.1.sysma2dyk <=.2.sysma2dyk <=.3.sysma2dyk <=.4.sysma2dyk <=.5.sysma2dyk <=.6.sysma2dyk) 7
+             (call . . ~4
+              (opensymchoice .
+               (td :`t0.35. . . nimcall -1 -1 +0 +35 . . items.2. . none unknown . "") high.0.sysma2dyk high.9.sysma2dyk high.3.sysma2dyk high.6.sysma2dyk high.5.sysma2dyk high.4.sysma2dyk high.2.sysma2dyk high.1.sysma2dyk) 1
+              (ident . . IX)) ~2
+             (ident . . i))) 15
+           (stmts . .
+            (brk . .
+             (empty))))) ,2
+         (stmts f . ~4,~35
+          (pragma . . 2
+           (ident . . push) 21
+           (kv . . ~14
+            (ident . . overflowChecks) 2
+            (ht . off.0.sysma2dyk))) ~1,~34
+          (call . . ~3 inc.0.sysma2dyk 14,34
+           (ident . . i)) 12
+          (pragma . . ~14,~33
+           (ident . . pop)))))))))) none unknown . "" . .) 8,48
+ (sd :mitems.1. x
+  (iterator) . eg ofrbcr0s0awhtl0t0c0 -1 +0 .
+  (td :`t25.38. . i0me1e2 inline -1 -1 +0 +38 . 23,49,/home/araq/projects/nim/lib/system/iterators.nim
+   (formalparams .
+    (td :`t23.41. . m nimcall -1 -1 +0 +41 . . mitems.1. . none unknown . ""
+     (td :`t12.37. . g0 nimcall -1 -1 +0 +37 . . mitems.1. 21,49,/home/araq/projects/nim/lib/system/iterators.nim
+      (sd :T.0 .
+       (type) . u . -1 +1 . `t12.37. mitems.1. . none unknown . "" . .) none unknown . ""))
+    (arglist . . . . . . 29
+     (pragma . . 2
+      (ident . . inline)) .) 1
+    (sd :a.4 .
+     (param) . u . -1 +0 .
+     (td :`t23.39. . m nimcall -1 -1 +0 +39 . . mitems.1. . none unknown . ""
+      (td :`t16.40. . m nimcall -1 -1 +0 +40 . . mitems.1. . none unknown . ""
+       (td :`t12.36. . g0 nimcall -1 -1 +0 +36 . . mitems.1. 17,49,/home/araq/projects/nim/lib/system/iterators.nim
+        (sd :IX.0 .
+         (type) . u . -1 +0 . `t12.36. mitems.1. . none unknown . "" . .) none unknown . "") `t12.37.)) mitems.1. . none unknown . "" . .)) mitems.1. . none unknown . "" `t23.41.) iterators.0. ~9
+  (iterator s . 9
+   (ht . mitems.1.)
+   (empty) 16
+   (genericparams . . 1 IX.0 5 T.0) . 52
+   (pragma . . 2
+    (ident . . inline))
+   (bracket . .
+    (empty) 16,49,/home/araq/projects/nim/lib/system/iterators.nim
+    (genericparams . . 1
+     (identdefs . .
+      (ident . . IX) 4
+      (ident . . T)
+      (empty)
+      (empty)))) 2,1
+   (stmts . .
+    (comment h .) ,1
+    (when . . 5
+     (elif . . 6
+      (stmts f . 2,140,/home/araq/projects/nim/lib/system/comparisons.nim
+       (empty)
+       (infix . .
+        (opensymchoice d3 . <.0.sysma2dyk <.1.sysma2dyk <.2.sysma2dyk <.3.sysma2dyk <.4.sysma2dyk <.5.sysma2dyk <.6.sysma2dyk <.7.sysma2dyk) 2
+        (intlit . . +0) ~5
+        (dot . . ~1
+         (ident . . a) 1
+         (opensymchoice .
+          (td :`t0.43. . . nimcall -1 -1 +0 +43 . . mitems.1. . none unknown . "") len.10.sysma2dyk len.7.sysma2dyk len.4.sysma2dyk len.3.sysma2dyk len.8.sysma2dyk len.6.sysma2dyk len.5.sysma2dyk)))) ~3,1
+      (stmts . .
+       (var . . 4
+        (identdefs . .
+         (ident . . i) 2
+         (empty) 7
+         (call . . ~3
+          (opensymchoice .
+           (td :`t0.44. . . nimcall -1 -1 +0 +44 . . mitems.1. . none unknown . "") low.3.sysma2dyk low.4.sysma2dyk low.6.sysma2dyk low.0.sysma2dyk low.8.sysma2dyk low.5.sysma2dyk low.1.sysma2dyk low.2.sysma2dyk) 1
+          (ident . . IX)))) ,1
+       (while . . 6
+        (ht . true.0.sysma2dyk) 2,1
+        (stmts . .
+         (yield . . 7
+          (call . . \5B\5D.0.sysma2dyk ~1
+           (ident . . a) 1
+           (ident . . i))) ,1
+         (if . . 3
+          (elif . . 2
+           (stmts f . 2,136,/home/araq/projects/nim/lib/system/comparisons.nim
+            (empty)
+            (infix . .
+             (opensymchoice d3 . <=.0.sysma2dyk <=.1.sysma2dyk <=.2.sysma2dyk <=.3.sysma2dyk <=.4.sysma2dyk <=.5.sysma2dyk <=.6.sysma2dyk) 7
+             (call . . ~4
+              (opensymchoice .
+               (td :`t0.45. . . nimcall -1 -1 +0 +45 . . mitems.1. . none unknown . "") high.0.sysma2dyk high.9.sysma2dyk high.3.sysma2dyk high.6.sysma2dyk high.5.sysma2dyk high.4.sysma2dyk high.2.sysma2dyk high.1.sysma2dyk) 1
+              (ident . . IX)) ~2
+             (ident . . i))) 15
+           (stmts . .
+            (brk . .
+             (empty))))) ,2
+         (stmts f . ~4,~44
+          (pragma . . 2
+           (ident . . push) 21
+           (kv . . ~14
+            (ident . . overflowChecks) 2
+            (ht . off.0.sysma2dyk))) ~1,~43
+          (call . . ~3 inc.0.sysma2dyk 14,43
+           (ident . . i)) 12
+          (pragma . . ~14,~42
+           (ident . . pop)))))))))) none unknown . "" . .) 8,57
+ (sd :items.3. x
+  (iterator) . eg ofrbcr0s0awhtl0t0c0 -1 +0 .
+  (td :`t25.47. . i0me1e2 inline -1 -1 +0 +47 . 18,58,/home/araq/projects/nim/lib/system/iterators.nim
+   (formalparams .
+    (td :`t12.46. . g0 nimcall -1 -1 +0 +46 . . items.3. 16,58,/home/araq/projects/nim/lib/system/iterators.nim
+     (sd :T.0 .
+      (type) . u . -1 +0 . `t12.46. items.3. . none unknown . "" . .) none unknown . "")
+    (arglist . . . . . . 15
+     (pragma . . 2
+      (ident . . inline)) .) 1
+    (sd :a.5 .
+     (param) . u . -1 +0 .
+     (td :`t19.48. . m nimcall -1 -1 +0 +48 . . items.3. . none unknown . "" `t12.46.) items.3. . none unknown . "" . .)) items.3. . none unknown . "" `t12.46.) iterators.0. ~9
+  (iterator s . 9
+   (ht . items.3.)
+   (empty) 15
+   (genericparams . . 1 T.0) . 33
+   (pragma . . 2
+    (ident . . inline))
+   (bracket . .
+    (empty) 15,58,/home/araq/projects/nim/lib/system/iterators.nim
+    (genericparams . . 1
+     (identdefs . .
+      (ident . . T)
+      (empty)
+      (empty)))) 2,1
+   (stmts . .
+    (comment h .) ,3
+    (var . . 4
+     (identdefs . .
+      (ident . . i) 2
+      (empty) 10
+      (dot . . ~3
+       (call . . ~3
+        (opensymchoice .
+         (td :`t0.49. . . nimcall -1 -1 +0 +49 . . items.3. . none unknown . "") low.3.sysma2dyk low.4.sysma2dyk low.6.sysma2dyk low.0.sysma2dyk low.8.sysma2dyk low.5.sysma2dyk low.1.sysma2dyk low.2.sysma2dyk) 1
+        (ident . . T)) 1
+       (ht
+        (td :`t8.50. . . nimcall -1 -1 +0 +50 . . system.0.sysma2dyk . none unknown . "" `t31.3.sysma2dyk) int.0.sysma2dyk)))) ,4
+    (while . . 8
+     (infix . .
+      (opensymchoice .
+       (td :`t0.51. . . nimcall -1 -1 +0 +51 . . items.3. . none unknown . "") <=.15.sysma2dyk <=.3.sysma2dyk <=.1.sysma2dyk <=.10.sysma2dyk <=.2.sysma2dyk <=.12.sysma2dyk <=.11.sysma2dyk <=.13.sysma2dyk <=.9.sysma2dyk <=.18.sysma2dyk <=.7.sysma2dyk <=.16.sysma2dyk <=.6.sysma2dyk <=.0.sysma2dyk <=.17.sysma2dyk <=.4.sysma2dyk <=.8.sysma2dyk <=.14.sysma2dyk <=.5.sysma2dyk) ~2
+      (ident . . i) 10
+      (dot . . ~3
+       (call . . ~4
+        (opensymchoice .
+         (td :`t0.52. . . nimcall -1 -1 +0 +52 . . items.3. . none unknown . "") high.0.sysma2dyk high.9.sysma2dyk high.3.sysma2dyk high.6.sysma2dyk high.5.sysma2dyk high.4.sysma2dyk high.2.sysma2dyk high.1.sysma2dyk) 1
+        (ident . . T)) 1
+       (ht
+        (td :`t8.53. . . nimcall -1 -1 +0 +53 . . system.0.sysma2dyk . none unknown . "" `t31.3.sysma2dyk) int.0.sysma2dyk))) 2,1
+     (stmts . .
+      (when . . 5
+       (elif . . 10
+        (infix . .
+         (opensymchoice .
+          (td :`t0.54. . . nimcall -1 -1 +0 +54 . . items.3. . none unknown . "") and.0.sysma2dyk and.7.sysma2dyk and.2.sysma2dyk and.5.sysma2dyk and.9.sysma2dyk and.11.sysma2dyk and.4.sysma2dyk and.3.sysma2dyk and.1.sysma2dyk and.8.sysma2dyk and.6.sysma2dyk and.10.sysma2dyk) ~8
+         (infix . . is.0.sysma2dyk ~2
+          (ident . . T) 3
+          (enumty . .)) 4
+         (prefix . .
+          (opensymchoice .
+           (td :`t0.55. . . nimcall -1 -1 +0 +55 . . items.3. . none unknown . "") not.8.sysma2dyk not.2.sysma2dyk not.9.sysma2dyk not.1.sysma2dyk not.4.sysma2dyk not.6.sysma2dyk not.5.sysma2dyk not.0.sysma2dyk not.7.sysma2dyk not.11.sysma2dyk not.10.sysma2dyk not.3.sysma2dyk) 11
+          (call . . ~7 defined.0.sysma2dyk 1
+           (ident . . js)))) ~3,1
+        (stmts . .
+         (if . . 3
+          (elif . . 11
+           (stmts f .
+            (call . .
+             (opensymchoice .
+              (td :`t0.56. . . nimcall -1 -1 +0 +56 . . items.3. . none unknown . "") contains.1.sysma2dyk contains.0.sysma2dyk) 3
+             (ident . . a) ~11
+             (cast . . 5
+              (ident . . T) 8
+              (ident . . i)))) 17
+           (stmts . .
+            (yield . . 6
+             (cast . . 5
+              (ident . . T) 8
+              (ident . . i)))))))) ,2
+       (else . . 2,1
+        (stmts . .
+         (if . . 3
+          (elif . . 5
+           (stmts f .
+            (call . .
+             (opensymchoice .
+              (td :`t0.57. . . nimcall -1 -1 +0 +57 . . items.3. . none unknown . "") contains.1.sysma2dyk contains.0.sysma2dyk) 3
+             (ident . . a) ~4
+             (call . . ~1
+              (ident . . T) 1
+              (ident . . i)))) 11
+           (stmts . .
+            (yield . . 7
+             (call . . ~1
+              (ident . . T) 1
+              (ident . . i))))))))) ,4
+      (stmts f . ~2,~56
+       (pragma . . 2
+        (ident . . push) 21
+        (kv . . ~14
+         (ident . . overflowChecks) 2
+         (ht . off.0.sysma2dyk))) 1,~55
+       (call . . ~3 inc.0.sysma2dyk 12,55
+        (ident . . i)) 12
+       (pragma . . ~12,~54
+        (ident . . pop))))))) none unknown . "" . .) 8,69
+ (sd :items.4. x
+  (iterator) . egi1 ofrbcr0s0awhtl0t0c0 -1 +0 .
+  (td :`t25.58. . nti0e1e2 inline -1 -1 +0 +58 . 15,70,/home/araq/projects/nim/lib/system/iterators.nim
+   (formalparams . `t2.16.sysma2dyk
+    (arglist . . ~6
+     (arglist . .)
+     (empty)
+     (empty) ~6
+     (arglist . .)
+     (empty) ~6
+     (arglist . .)) 1
+    (sd :a.6 .
+     (param) . u . -1 +0 . `t29.18.sysma2dyk items.4. . none unknown . "" . .)) items.4. . none unknown . "" `t2.16.sysma2dyk) iterators.0. ~9
+  (iterator s . 9
+   (ht . items.4.)
+   (empty)
+   (empty) . 34
+   (pragma . . 2
+    (ident . . inline))
+   (empty) 2,1
+   (stmts s .
+    (comment sh .)
+    (empty) ,11
+    (template s . 9
+     (ht .
+      (sd :impl.0. .
+       (template) . ua1 . -1 +0 .
+       (td :`t25.59. . . nimcall -1 -1 +0 +59 . 15,82,/home/araq/projects/nim/lib/system/iterators.nim
+        (formalparams . .
+         (arglist . .)) impl.0. . none unknown . "" .) items.4. ~9
+       (template s . 9
+        (ht . impl.0.)
+        (empty)
+        (empty) .
+        (empty)
+        (empty) 2,1
+        (stmts . .
+         (var . . 4
+          (identdefs . .
+           (sd :i.6 .
+            (var . +0 +0) . us1g0 . -1 +0 . . impl.0. . none unknown . "" . .) 2
+           (empty) 4
+           (intlit . . +0))) ,1
+         (let . . 4
+          (identdefs . .
+           (sd :n.0 .
+            (let . +0 +0) . us1g0 . -1 +0 . . impl.0. . none unknown . "" . .) 2
+           (empty) 7
+           (call . . ~3
+            (opensymchoice d3 . len.10.sysma2dyk len.7.sysma2dyk len.4.sysma2dyk len.3.sysma2dyk len.8.sysma2dyk len.6.sysma2dyk len.5.sysma2dyk) 1
+            (ident . . a)))) ,2
+         (while . . 8
+          (infix . .
+           (opensymchoice d3 . <.16.sysma2dyk <.4.sysma2dyk <.3.sysma2dyk <.11.sysma2dyk <.17.sysma2dyk <.12.sysma2dyk <.7.sysma2dyk <.8.sysma2dyk <.0.sysma2dyk <.14.sysma2dyk <.6.sysma2dyk <.5.sysma2dyk <.19.sysma2dyk <.18.sysma2dyk <.2.sysma2dyk <.15.sysma2dyk <.10.sysma2dyk <.9.sysma2dyk <.1.sysma2dyk <.13.sysma2dyk) ~2 i.6 2 n.0) 2,1
+          (stmts . .
+           (yield . . 7
+            (call . .
+             (ht . \5B\5D.0.sysma2dyk) ~1
+             (ident . . a) 1 i.6)) 12,1
+           (call . . ~12
+            (ht . unCheckedInc.0.) 1 i.6))))) none unknown . "" . .))
+     (empty)
+     (empty) .
+     (empty)
+     (empty) 2,1
+     (stmts . .
+      (var . . 4
+       (identdefs . . i.6 2
+        (empty) 4
+        (intlit . . +0))) ,1
+      (let . . 4
+       (identdefs . . n.0 2
+        (empty) 7
+        (call . . ~3
+         (opensymchoice d3 . len.10.sysma2dyk len.7.sysma2dyk len.4.sysma2dyk len.3.sysma2dyk len.8.sysma2dyk len.6.sysma2dyk len.5.sysma2dyk) 1
+         (ident . . a)))) ,2
+      (while . . 8
+       (infix . .
+        (opensymchoice d3 . <.16.sysma2dyk <.4.sysma2dyk <.3.sysma2dyk <.11.sysma2dyk <.17.sysma2dyk <.12.sysma2dyk <.7.sysma2dyk <.8.sysma2dyk <.0.sysma2dyk <.14.sysma2dyk <.6.sysma2dyk <.5.sysma2dyk <.19.sysma2dyk <.18.sysma2dyk <.2.sysma2dyk <.15.sysma2dyk <.10.sysma2dyk <.9.sysma2dyk <.1.sysma2dyk <.13.sysma2dyk) ~2 i.6 2 n.0) 2,1
+       (stmts . .
+        (yield . . 7
+         (call . .
+          (ht . \5B\5D.0.sysma2dyk) ~1
+          (ident . . a) 1 i.6)) 12,1
+        (call . . ~12
+         (ht . unCheckedInc.0.) 1 i.6))))) 2,19
+    (when sl . 5
+     (elif . .
+      (ident . . nimvm) ~3,2
+      (stmts sf . ~2,~9
+       (var s . 4
+        (identdefs . .
+         (sd :i`gensym13.0 .
+          (var . +0 +0) . uw0 ofrbcr0s0awhtl0t0c0 -1 +0 .
+          (td :`t31.63. . c3 nimcall +8 +8 +0 +63 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "") items.4.
+          (identdefs . . i`gensym13.0 2
+           (empty) 4
+           (intlit .
+            (td :`t31.62. . c3 nimcall +8 +8 +0 +62 . 12,83,/home/araq/projects/nim/lib/system/iterators.nim
+             (intlit s `t31.62. +0) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +0)) none unknown . "" . .) 2
+         (empty) 4
+         (intlit . `t31.62. +0))) ~2,~8
+       (let s . 4
+        (identdefs . .
+         (sd :n`gensym13.0 .
+          (let . +0 +0) . uw0 ofrbcr0s0awhtl0t0c0 -1 +0 . `t31.3.sysma2dyk items.4.
+          (identdefs . . n`gensym13.0 2
+           (empty) 7
+           (call . `t31.3.sysma2dyk ~3 len.5.sysma2dyk 1 a.6)) none unknown . "" . .) 2
+         (empty) 7
+         (call . `t31.3.sysma2dyk ~3 len.5.sysma2dyk 1 a.6))) 4
+       (while s . 2,~7
+        (infix s `t1.34.sysma2dyk <.8.sysma2dyk ~2 i`gensym13.0 2 n`gensym13.0) ~4,~6
+        (stmts s .
+         (yield s . 7
+          (at s `t2.16.sysma2dyk ~1 a.6 1 i`gensym13.0)) ,1
+         (stmts sf . ~4,~75
+          (pragma s . 2
+           (ident . . push) 21
+           (kv . . ~14
+            (ident . . overflowChecks) 2
+            (intlit . `t1.34.sysma2dyk +0))) ~1,~74
+          (call s . ~3 inc.9.sysma2dyk 14,74 i`gensym13.0 55,21,/home/araq/projects/nim/lib/system/arithmetics.nim
+           (intlit s `t31.36.sysma2dyk +1)) 12
+          (pragma s . ~14,~73
+           (ident . . pop))))))) ,3
+     (else . . 2,1
+      (stmts s .
+       (var s . 4
+        (identdefs . .
+         (sd :i.8 .
+          (var . +0 +0) . u ofrbcr0s0awhtl0t0c0 -1 +0 .
+          (td :`t31.67. . c3 nimcall +8 +8 +0 +67 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "") items.4.
+          (identdefs . . i.8 2
+           (empty) 4
+           (intlit . `t31.62. +0)) none unknown . "" . .) 2
+         (empty) 4
+         (intlit . `t31.62. +0))) ,1
+       (while s . 11
+        (expr sf `t1.34.sysma2dyk 2,132,/home/araq/projects/nim/lib/system/comparisons.nim
+         (empty)
+         (prefix s `t1.34.sysma2dyk not.0.sysma2dyk
+          (infix s `t1.34.sysma2dyk ==.3.sysma2dyk ~4
+           (at s `t2.16.sysma2dyk ~1 a.6 1 i.8) 3
+           (charlit s `t2.16.sysma2dyk '\00')))) 2,1
+        (stmts s .
+         (yield s . 7
+          (at s `t2.16.sysma2dyk ~1 a.6 1 i.8)) ,1
+         (stmts sf . ~6,~85
+          (pragma s . 2
+           (ident . . push) 21
+           (kv . . ~14
+            (ident . . overflowChecks) 2
+            (intlit . `t1.34.sysma2dyk +0))) ~3,~84
+          (call s . ~3 inc.9.sysma2dyk 16,84 i.8 55,21,/home/araq/projects/nim/lib/system/arithmetics.nim
+           (intlit s `t31.36.sysma2dyk +1)) 12
+          (pragma s . ~16,~83
+           (ident . . pop)))))))))) none unknown . "" . .) 8,98
+ (sd :mitems.2. x
+  (iterator) . egi1 ofrbcr0s0awhtl0t0c0 -1 +0 .
+  (td :`t25.71. . nti0e1e2 inline -1 -1 +0 +71 . 16,99,/home/araq/projects/nim/lib/system/iterators.nim
+   (formalparams .
+    (td :`t23.73. . v0 nimcall -1 -1 +0 +73 . . mitems.2. . none unknown . "" `t2.16.sysma2dyk)
+    (arglist . . ~7
+     (arglist . .)
+     (empty)
+     (empty) ~7
+     (arglist . .)
+     (empty) ~7
+     (arglist . .)) 1
+    (sd :a.7 .
+     (param) . u . -1 +0 .
+     (td :`t23.72. . . nimcall -1 -1 +0 +72 . . mitems.2. . none unknown . "" `t29.18.sysma2dyk) mitems.2. . none unknown . "" . .)) mitems.2. . none unknown . "" `t23.73.) iterators.0. ~9
+  (iterator s . 9
+   (ht . mitems.2.)
+   (empty)
+   (empty) . 43
+   (pragma . . 2
+    (ident . . inline))
+   (empty) 2,1
+   (stmts s .
+    (comment sh .)
+    (empty) ,15
+    (template s . 9
+     (ht .
+      (sd :impl.1. .
+       (template) . ua1 . -1 +0 .
+       (td :`t25.74. . . nimcall -1 -1 +0 +74 . 15,115,/home/araq/projects/nim/lib/system/iterators.nim
+        (formalparams . .
+         (arglist . .)) impl.1. . none unknown . "" .) mitems.2. ~9
+       (template s . 9
+        (ht . impl.1.)
+        (empty)
+        (empty) .
+        (empty)
+        (empty) 2,1
+        (stmts . .
+         (var . . 4
+          (identdefs . .
+           (sd :i.9 .
+            (var . +0 +0) . us1g0 . -1 +0 . . impl.1. . none unknown . "" . .) 2
+           (empty) 4
+           (intlit . . +0))) ,1
+         (let . . 4
+          (identdefs . .
+           (sd :n.2 .
+            (let . +0 +0) . us1g0 . -1 +0 . . impl.1. . none unknown . "" . .) 2
+           (empty) 7
+           (call . . ~3
+            (opensymchoice d3 . len.10.sysma2dyk len.7.sysma2dyk len.4.sysma2dyk len.3.sysma2dyk len.8.sysma2dyk len.6.sysma2dyk len.5.sysma2dyk) 1
+            (ident . . a)))) ,2
+         (while . . 8
+          (infix . .
+           (opensymchoice d3 . <.16.sysma2dyk <.4.sysma2dyk <.3.sysma2dyk <.11.sysma2dyk <.17.sysma2dyk <.12.sysma2dyk <.7.sysma2dyk <.8.sysma2dyk <.0.sysma2dyk <.14.sysma2dyk <.6.sysma2dyk <.5.sysma2dyk <.19.sysma2dyk <.18.sysma2dyk <.2.sysma2dyk <.15.sysma2dyk <.10.sysma2dyk <.9.sysma2dyk <.1.sysma2dyk <.13.sysma2dyk) ~2 i.9 2 n.2) 2,1
+          (stmts . .
+           (yield . . 7
+            (call . .
+             (ht . \5B\5D.0.sysma2dyk) ~1
+             (ident . . a) 1 i.9)) 12,1
+           (call . . ~12
+            (ht . unCheckedInc.0.) 1 i.9))))) none unknown . "" . .))
+     (empty)
+     (empty) .
+     (empty)
+     (empty) 2,1
+     (stmts . .
+      (var . . 4
+       (identdefs . . i.9 2
+        (empty) 4
+        (intlit . . +0))) ,1
+      (let . . 4
+       (identdefs . . n.2 2
+        (empty) 7
+        (call . . ~3
+         (opensymchoice d3 . len.10.sysma2dyk len.7.sysma2dyk len.4.sysma2dyk len.3.sysma2dyk len.8.sysma2dyk len.6.sysma2dyk len.5.sysma2dyk) 1
+         (ident . . a)))) ,2
+      (while . . 8
+       (infix . .
+        (opensymchoice d3 . <.16.sysma2dyk <.4.sysma2dyk <.3.sysma2dyk <.11.sysma2dyk <.17.sysma2dyk <.12.sysma2dyk <.7.sysma2dyk <.8.sysma2dyk <.0.sysma2dyk <.14.sysma2dyk <.6.sysma2dyk <.5.sysma2dyk <.19.sysma2dyk <.18.sysma2dyk <.2.sysma2dyk <.15.sysma2dyk <.10.sysma2dyk <.9.sysma2dyk <.1.sysma2dyk <.13.sysma2dyk) ~2 i.9 2 n.2) 2,1
+       (stmts . .
+        (yield . . 7
+         (call . .
+          (ht . \5B\5D.0.sysma2dyk) ~1
+          (ident . . a) 1 i.9)) 12,1
+        (call . . ~12
+         (ht . unCheckedInc.0.) 1 i.9))))) 2,23
+    (when sl . 5
+     (elif . .
+      (ident . . nimvm) 7
+      (stmts sf . ~12,~7
+       (var s . 4
+        (identdefs . .
+         (sd :i`gensym17.0 .
+          (var . +0 +0) . uw0 ofrbcr0s0awhtl0t0c0 -1 +0 .
+          (td :`t31.77. . c3 nimcall +8 +8 +0 +77 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "") mitems.2.
+          (identdefs . . i`gensym17.0 2
+           (empty) 4
+           (intlit . `t31.62. +0)) none unknown . "" . .) 2
+         (empty) 4
+         (intlit . `t31.62. +0))) ~12,~6
+       (let s . 4
+        (identdefs . .
+         (sd :n`gensym17.0 .
+          (let . +0 +0) . uw0 ofrbcr0s0awhtl0t0c0 -1 +0 . `t31.3.sysma2dyk mitems.2.
+          (identdefs . . n`gensym17.0 2
+           (empty) 7
+           (call . `t31.3.sysma2dyk ~3 len.5.sysma2dyk 1
+            (hderef . `t29.18.sysma2dyk a.7))) none unknown . "" . .) 2
+         (empty) 7
+         (call . `t31.3.sysma2dyk ~3 len.5.sysma2dyk 1
+          (hderef . `t29.18.sysma2dyk a.7)))) 4
+       (while s . ~8,~5
+        (infix s `t1.34.sysma2dyk <.8.sysma2dyk ~2 i`gensym17.0 2 n`gensym17.0) ~14,~4
+        (stmts s .
+         (yield s . 7
+          (haddr .
+           (td :`t21.78. . . nimcall -1 -1 +0 +78 . . mitems.2. . none unknown . "" `t2.16.sysma2dyk)
+           (at s `t2.16.sysma2dyk ~1
+            (hderef . `t29.18.sysma2dyk a.7) 1 i`gensym17.0))) ,1
+         (stmts sf . ~4,~108
+          (pragma s . 2
+           (ident . . push) 21
+           (kv . . ~14
+            (ident . . overflowChecks) 2
+            (intlit . `t1.34.sysma2dyk +0))) ~1,~107
+          (call s . ~3 inc.9.sysma2dyk 14,107 i`gensym17.0 55,21,/home/araq/projects/nim/lib/system/arithmetics.nim
+           (intlit s `t31.36.sysma2dyk +1)) 12
+          (pragma s . ~14,~106
+           (ident . . pop))))))) ,1
+     (else . . 2,1
+      (stmts s .
+       (var s . 4
+        (identdefs . .
+         (sd :i.11 .
+          (var . +0 +0) . u ofrbcr0s0awhtl0t0c0 -1 +0 .
+          (td :`t31.82. . c3 nimcall +8 +8 +0 +82 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "") mitems.2.
+          (identdefs . . i.11 2
+           (empty) 4
+           (intlit . `t31.62. +0)) none unknown . "" . .) 2
+         (empty) 4
+         (intlit . `t31.62. +0))) ,1
+       (while s . 11
+        (expr sf `t1.34.sysma2dyk 2,132,/home/araq/projects/nim/lib/system/comparisons.nim
+         (empty)
+         (prefix s `t1.34.sysma2dyk not.0.sysma2dyk
+          (infix s `t1.34.sysma2dyk ==.3.sysma2dyk ~4
+           (at s `t2.16.sysma2dyk ~1
+            (hderef . `t29.18.sysma2dyk a.7) 1 i.11) 3
+           (charlit s `t2.16.sysma2dyk '\00')))) 2,1
+        (stmts s .
+         (yield s . 7
+          (haddr .
+           (td :`t21.83. . . nimcall -1 -1 +0 +83 . . mitems.2. . none unknown . "" `t2.16.sysma2dyk)
+           (at s `t2.16.sysma2dyk ~1
+            (hderef . `t29.18.sysma2dyk a.7) 1 i.11))) ,1
+         (stmts sf . ~6,~116
+          (pragma s . 2
+           (ident . . push) 21
+           (kv . . ~14
+            (ident . . overflowChecks) 2
+            (intlit . `t1.34.sysma2dyk +0))) ~3,~115
+          (call s . ~3 inc.9.sysma2dyk 16,115 i.11 55,21,/home/araq/projects/nim/lib/system/arithmetics.nim
+           (intlit s `t31.36.sysma2dyk +1)) 12
+          (pragma s . ~16,~114
+           (ident . . pop)))))))))) none unknown . "" . .) 8,129
+ (sd :items.5. x
+  (iterator) . eg ofrbcr0s0awhtl0t0c0 -1 +0 .
+  (td :`t25.91. . i0me2 inline -1 -1 +0 +91 . 36,130,/home/araq/projects/nim/lib/system/iterators.nim
+   (formalparams .
+    (td :`t12.90. . g0 nimcall -1 -1 +0 +90 . . items.5. 16,130,/home/araq/projects/nim/lib/system/iterators.nim
+     (sd :T.11 .
+      (type) . u . -1 +0 . `t12.90. items.5. . none unknown . "" . .) none unknown . ""
+     (td :`t56.89. . m nimcall -1 -1 +0 +89 . . items.5. . none unknown . ""
+      (td :`t51.87. . c3 nimcall -1 -1 +0 +87 . . items.5. . none unknown . ""
+       (td :`t14.88. . . nimcall -1 -1 +0 +88 . . items.5. . none unknown . "")) `t15.120.sysma2dyk))
+    (arglist . .) 1
+    (sd :E.0 .
+     (param) . u . -1 +0 .
+     (td :`t8.93. . i1c3 nimcall -1 -1 +0 +93 . . items.5. 37,130,/home/araq/projects/nim/lib/system/iterators.nim
+      (sd :E\3Atype.0 .
+       (type) . a0 . -1 +1 . `t8.93. items.5. . none unknown . "" . .) none unknown . "" `t12.90.) items.5. . none unknown . "" . .)) items.5. . none unknown . "" `t12.90.) iterators.0. ~9
+  (iterator s . 9
+   (ht . items.5.)
+   (empty) 15
+   (genericparams . . 1 T.11 22 E\3Atype.0) .
+   (empty)
+   (bracket . .
+    (empty) 15,130,/home/araq/projects/nim/lib/system/iterators.nim
+    (genericparams . . 1
+     (identdefs . .
+      (ident . . T) 8
+      (infix . `t56.89.
+       (ident . . and) ~5
+       (enumty . `t51.87.) 4 Ordinal.0.sysma2dyk)
+      (empty)))) 2,1
+   (stmts . .
+    (comment h .) ,2
+    (call . . runnableExamples.0.sysma2dyk 2,1
+     (stmts b2 . 5
+      (type . . 4
+       (type0 . . ~4
+        (ident . . Goo)
+        (empty) 2
+        (enumty . .
+         (empty) 10
+         (efld . . ~5
+          (ident . . g0)
+          (intlit . . +2)) 13
+         (ident . . g1) 17
+         (ident . . g2)))) ,1
+      (from . . 8
+       (infix . .
+        (ident . . /) ~3
+        (ident . . std) 1
+        (ident . . sequtils)) 25
+       (ident . . toSeq)) ,2
+      (cmd . .
+       (ident . . assert) 17
+       (infix . .
+        (ident . . ==) ~7
+        (dot . . ~3
+         (ident . . Goo) 1
+         (ident . . toSeq)) 3
+        (bracket . . 1
+         (ident . . g0) 5
+         (ident . . g1) 9
+         (ident . . g2)))))) 4,6
+    (for . .
+     (ident . . v) 12
+     (infix . .
+      (opensymchoice .
+       (td :`t0.94. . . nimcall -1 -1 +0 +94 . . items.5. . none unknown . "") \2E..0.sysma2dyk \2E..1.sysma2dyk \2E..6.sysma2dyk \2E..5.sysma2dyk \2E..4.sysma2dyk \2E..3.sysma2dyk \2E..2.sysma2dyk) ~4
+      (call . . ~3
+       (opensymchoice .
+        (td :`t0.95. . . nimcall -1 -1 +0 +95 . . items.5. . none unknown . "") low.3.sysma2dyk low.4.sysma2dyk low.6.sysma2dyk low.0.sysma2dyk low.8.sysma2dyk low.5.sysma2dyk low.1.sysma2dyk low.2.sysma2dyk) 1
+       (ident . . E)) 7
+      (call . . ~4
+       (opensymchoice .
+        (td :`t0.96. . . nimcall -1 -1 +0 +96 . . items.5. . none unknown . "") high.0.sysma2dyk high.9.sysma2dyk high.3.sysma2dyk high.6.sysma2dyk high.5.sysma2dyk high.4.sysma2dyk high.2.sysma2dyk high.1.sysma2dyk) 1
+       (ident . . E))) ~2,1
+     (stmts . .
+      (yield . . 6
+       (ident . . v)))))) none unknown . "" . .) 8,139
+ (sd :items.6. x
+  (iterator) . eg ofrbcr0s0awhtl0t0c0 -1 +0 .
+  (td :`t25.98. . i0me2 inline -1 -1 +0 +98 . 27,140,/home/araq/projects/nim/lib/system/iterators.nim
+   (formalparams .
+    (td :`t12.97. . g0 nimcall -1 -1 +0 +97 . . items.6. 16,140,/home/araq/projects/nim/lib/system/iterators.nim
+     (sd :T.12 .
+      (type) . u . -1 +0 . `t12.97. items.6. . none unknown . "" . .) none unknown . "" `t15.120.sysma2dyk)
+    (arglist . .) 1
+    (sd :s.0 .
+     (param) . u . -1 +0 .
+     (td :`t9.99. . m nimcall -1 -1 +0 +99 . . items.6. . none unknown . "" `t10.280.sysma2dyk `t12.97.) items.6. . none unknown . "" . .)) items.6. . none unknown . "" `t12.97.) iterators.0. ~9
+  (iterator s . 9
+   (ht . items.6.)
+   (empty) 15
+   (genericparams . . 1 T.12) .
+   (empty)
+   (bracket . .
+    (empty) 15,140,/home/araq/projects/nim/lib/system/iterators.nim
+    (genericparams . . 1
+     (identdefs . .
+      (ident . . T) 3 Ordinal.0.sysma2dyk
+      (empty)))) 2,1
+   (stmts . .
+    (comment h .) 4,2
+    (for . .
+     (ident . . x) 9
+     (infix . .
+      (opensymchoice .
+       (td :`t0.101. . . nimcall -1 -1 +0 +101 . . items.6. . none unknown . "") \2E..0.sysma2dyk \2E..1.sysma2dyk \2E..6.sysma2dyk \2E..5.sysma2dyk \2E..4.sysma2dyk \2E..3.sysma2dyk \2E..2.sysma2dyk) ~3
+      (dot . . ~1
+       (ident . . s) 1
+       (ident . . a)) 4
+      (dot . . ~1
+       (ident . . s) 1
+       (ident . . b))) ~2,1
+     (stmts . .
+      (yield . . 6
+       (ident . . x)))))) none unknown . "" . .) 8,145
+ (sd :pairs.0. x
+  (iterator) . eg ofrbcr0s0awhtl0t0c0 -1 +0 .
+  (td :`t25.103. . i0me1e2 inline -1 -1 +0 +103 . 18,146,/home/araq/projects/nim/lib/system/iterators.nim
+   (formalparams .
+    (td :`t18.105. . m nimcall -1 -1 +0 +105 . 37,146,/home/araq/projects/nim/lib/system/iterators.nim
+     (reclist . . 6
+      (sd :key.0. .
+       (field . +0 +0) . . . -1 +0 . `t31.3.sysma2dyk pairs.0. . none unknown . "" . .) 16
+      (sd :val.0. .
+       (field . +0 +0) . . . -1 +1 .
+       (td :`t12.102. . g0 nimcall -1 -1 +0 +102 . . pairs.0. 16,146,/home/araq/projects/nim/lib/system/iterators.nim
+        (sd :T.0 .
+         (type) . u . -1 +0 . `t12.102. pairs.0. . none unknown . "" . .) none unknown . "") pairs.0. . none unknown . "" . .)) pairs.0. . none unknown . "" `t31.3.sysma2dyk `t12.102.)
+    (arglist . . . . . . 43
+     (pragma . . 2
+      (ident . . inline)) .) 1
+    (sd :a.8 .
+     (param) . u . -1 +0 .
+     (td :`t27.104. . m nimcall -1 -1 +0 +104 . . pairs.0. . none unknown . "" `t12.102.) pairs.0. . none unknown . "" . .)) pairs.0. . none unknown . "" `t18.105.) iterators.0. ~9
+  (iterator s . 9
+   (ht . pairs.0.)
+   (empty) 15
+   (genericparams . . 1 T.0) . 61
+   (pragma . . 2
+    (ident . . inline))
+   (bracket . .
+    (empty) 15,146,/home/araq/projects/nim/lib/system/iterators.nim
+    (genericparams . . 1
+     (identdefs . .
+      (ident . . T)
+      (empty)
+      (empty)))) 2,1
+   (stmts . .
+    (comment h .) ,1
+    (var . . 4
+     (identdefs . .
+      (ident . . i) 2
+      (empty) 4
+      (intlit . . +0))) ,2
+    (while . . 8
+     (infix . .
+      (opensymchoice .
+       (td :`t0.106. . . nimcall -1 -1 +0 +106 . . pairs.0. . none unknown . "") <.16.sysma2dyk <.4.sysma2dyk <.3.sysma2dyk <.11.sysma2dyk <.17.sysma2dyk <.12.sysma2dyk <.7.sysma2dyk <.8.sysma2dyk <.0.sysma2dyk <.14.sysma2dyk <.6.sysma2dyk <.5.sysma2dyk <.19.sysma2dyk <.18.sysma2dyk <.2.sysma2dyk <.15.sysma2dyk <.10.sysma2dyk <.9.sysma2dyk <.1.sysma2dyk <.13.sysma2dyk) ~2
+      (ident . . i) 5
+      (call . . ~3
+       (opensymchoice .
+        (td :`t0.107. . . nimcall -1 -1 +0 +107 . . pairs.0. . none unknown . "") len.10.sysma2dyk len.7.sysma2dyk len.4.sysma2dyk len.3.sysma2dyk len.8.sysma2dyk len.6.sysma2dyk len.5.sysma2dyk) 1
+       (ident . . a))) 2,1
+     (stmts . .
+      (yield . . 6
+       (tupleconstr . . 1
+        (ident . . i) 5
+        (call . . \5B\5D.0.sysma2dyk ~1
+         (ident . . a) 1
+         (ident . . i)))) ,1
+      (stmts f . ~2,~139
+       (pragma . . 2
+        (ident . . push) 21
+        (kv . . ~14
+         (ident . . overflowChecks) 2
+         (ht . off.0.sysma2dyk))) 1,~138
+       (call . . ~3 inc.0.sysma2dyk 12,138
+        (ident . . i)) 12
+       (pragma . . ~12,~137
+        (ident . . pop))))))) none unknown . "" . .) 8,152
+ (sd :mpairs.0. x
+  (iterator) . eg ofrbcr0s0awhtl0t0c0 -1 +0 .
+  (td :`t25.109. . i0me1e2 inline -1 -1 +0 +109 . 19,153,/home/araq/projects/nim/lib/system/iterators.nim
+   (formalparams .
+    (td :`t18.112. . m nimcall -1 -1 +0 +112 . 42,153,/home/araq/projects/nim/lib/system/iterators.nim
+     (reclist . . 6
+      (sd :key.1. .
+       (field . +0 +0) . . . -1 +0 . `t31.3.sysma2dyk mpairs.0. . none unknown . "" . .) 16
+      (sd :val.1. .
+       (field . +0 +0) . . . -1 +1 .
+       (td :`t23.113. . m nimcall -1 -1 +0 +113 . . mpairs.0. . none unknown . ""
+        (td :`t12.108. . g0 nimcall -1 -1 +0 +108 . . mpairs.0. 17,153,/home/araq/projects/nim/lib/system/iterators.nim
+         (sd :T.0 .
+          (type) . u . -1 +0 . `t12.108. mpairs.0. . none unknown . "" . .) none unknown . "")) mpairs.0. . none unknown . "" . .)) mpairs.0. . none unknown . "" `t31.3.sysma2dyk `t23.113.)
+    (arglist . . . . . . 50
+     (pragma . . 2
+      (ident . . inline)) .) 1
+    (sd :a.9 .
+     (param) . u . -1 +0 .
+     (td :`t23.110. . m nimcall -1 -1 +0 +110 . . mpairs.0. . none unknown . ""
+      (td :`t27.111. . m nimcall -1 -1 +0 +111 . . mpairs.0. . none unknown . "" `t12.108.)) mpairs.0. . none unknown . "" . .)) mpairs.0. . none unknown . "" `t18.112.) iterators.0. ~9
+  (iterator s . 9
+   (ht . mpairs.0.)
+   (empty) 16
+   (genericparams . . 1 T.0) . 69
+   (pragma . . 2
+    (ident . . inline))
+   (bracket . .
+    (empty) 16,153,/home/araq/projects/nim/lib/system/iterators.nim
+    (genericparams . . 1
+     (identdefs . .
+      (ident . . T)
+      (empty)
+      (empty)))) 2,1
+   (stmts . .
+    (comment h .) ,2
+    (var . . 4
+     (identdefs . .
+      (ident . . i) 2
+      (empty) 4
+      (intlit . . +0))) ,3
+    (while . . 8
+     (infix . .
+      (opensymchoice .
+       (td :`t0.114. . . nimcall -1 -1 +0 +114 . . mpairs.0. . none unknown . "") <.16.sysma2dyk <.4.sysma2dyk <.3.sysma2dyk <.11.sysma2dyk <.17.sysma2dyk <.12.sysma2dyk <.7.sysma2dyk <.8.sysma2dyk <.0.sysma2dyk <.14.sysma2dyk <.6.sysma2dyk <.5.sysma2dyk <.19.sysma2dyk <.18.sysma2dyk <.2.sysma2dyk <.15.sysma2dyk <.10.sysma2dyk <.9.sysma2dyk <.1.sysma2dyk <.13.sysma2dyk) ~2
+      (ident . . i) 5
+      (call . . ~3
+       (opensymchoice .
+        (td :`t0.115. . . nimcall -1 -1 +0 +115 . . mpairs.0. . none unknown . "") len.10.sysma2dyk len.7.sysma2dyk len.4.sysma2dyk len.3.sysma2dyk len.8.sysma2dyk len.6.sysma2dyk len.5.sysma2dyk) 1
+       (ident . . a))) 2,1
+     (stmts . .
+      (yield . . 6
+       (tupleconstr . . 1
+        (ident . . i) 5
+        (call . . \5B\5D.0.sysma2dyk ~1
+         (ident . . a) 1
+         (ident . . i)))) ,1
+      (stmts f . ~2,~147
+       (pragma . . 2
+        (ident . . push) 21
+        (kv . . ~14
+         (ident . . overflowChecks) 2
+         (ht . off.0.sysma2dyk))) 1,~146
+       (call . . ~3 inc.0.sysma2dyk 12,146
+        (ident . . i)) 12
+       (pragma . . ~12,~145
+        (ident . . pop))))))) none unknown . "" . .) 8,160
+ (sd :pairs.1. x
+  (iterator) . eg ofrbcr0s0awhtl0t0c0 -1 +0 .
+  (td :`t25.118. . i0me1e2 inline -1 -1 +0 +118 . 22,161,/home/araq/projects/nim/lib/system/iterators.nim
+   (formalparams .
+    (td :`t18.120. . m nimcall -1 -1 +0 +120 . 41,161,/home/araq/projects/nim/lib/system/iterators.nim
+     (reclist . . 6
+      (sd :key.2. .
+       (field . +0 +0) . . . -1 +0 .
+       (td :`t12.116. . g0 nimcall -1 -1 +0 +116 . . pairs.1. 16,161,/home/araq/projects/nim/lib/system/iterators.nim
+        (sd :IX.0 .
+         (type) . u . -1 +0 . `t12.116. pairs.1. . none unknown . "" . .) none unknown . "") pairs.1. . none unknown . "" . .) 15
+      (sd :val.2. .
+       (field . +0 +0) . . . -1 +1 .
+       (td :`t12.117. . g0 nimcall -1 -1 +0 +117 . . pairs.1. 20,161,/home/araq/projects/nim/lib/system/iterators.nim
+        (sd :T.0 .
+         (type) . u . -1 +1 . `t12.117. pairs.1. . none unknown . "" . .) none unknown . "") pairs.1. . none unknown . "" . .)) pairs.1. . none unknown . "" `t12.116. `t12.117.)
+    (arglist . . . . . . 42
+     (pragma . . 2
+      (ident . . inline)) .) 1
+    (sd :a.10 .
+     (param) . u . -1 +0 .
+     (td :`t16.119. . m nimcall -1 -1 +0 +119 . . pairs.1. . none unknown . "" `t12.116. `t12.117.) pairs.1. . none unknown . "" . .)) pairs.1. . none unknown . "" `t18.120.) iterators.0. ~9
+  (iterator s . 9
+   (ht . pairs.1.)
+   (empty) 15
+   (genericparams . . 1 IX.0 5 T.0) . 64
+   (pragma . . 2
+    (ident . . inline))
+   (bracket . .
+    (empty) 15,161,/home/araq/projects/nim/lib/system/iterators.nim
+    (genericparams . . 1
+     (identdefs . .
+      (ident . . IX) 4
+      (ident . . T)
+      (empty)
+      (empty)))) 2,1
+   (stmts . .
+    (comment h .) ,1
+    (when . . 5
+     (elif . . 6
+      (stmts f . 2,140,/home/araq/projects/nim/lib/system/comparisons.nim
+       (empty)
+       (infix . .
+        (opensymchoice d3 . <.0.sysma2dyk <.1.sysma2dyk <.2.sysma2dyk <.3.sysma2dyk <.4.sysma2dyk <.5.sysma2dyk <.6.sysma2dyk <.7.sysma2dyk) 2
+        (intlit . . +0) ~5
+        (dot . . ~1
+         (ident . . a) 1
+         (opensymchoice .
+          (td :`t0.122. . . nimcall -1 -1 +0 +122 . . pairs.1. . none unknown . "") len.10.sysma2dyk len.7.sysma2dyk len.4.sysma2dyk len.3.sysma2dyk len.8.sysma2dyk len.6.sysma2dyk len.5.sysma2dyk)))) ~3,1
+      (stmts . .
+       (var . . 4
+        (identdefs . .
+         (ident . . i) 2
+         (empty) 7
+         (call . . ~3
+          (opensymchoice .
+           (td :`t0.123. . . nimcall -1 -1 +0 +123 . . pairs.1. . none unknown . "") low.3.sysma2dyk low.4.sysma2dyk low.6.sysma2dyk low.0.sysma2dyk low.8.sysma2dyk low.5.sysma2dyk low.1.sysma2dyk low.2.sysma2dyk) 1
+          (ident . . IX)))) ,1
+       (while . . 6
+        (ht . true.0.sysma2dyk) 2,1
+        (stmts . .
+         (yield . . 6
+          (tupleconstr . . 1
+           (ident . . i) 5
+           (call . . \5B\5D.0.sysma2dyk ~1
+            (ident . . a) 1
+            (ident . . i)))) ,1
+         (if . . 3
+          (elif . . 2
+           (stmts f . 2,136,/home/araq/projects/nim/lib/system/comparisons.nim
+            (empty)
+            (infix . .
+             (opensymchoice d3 . <=.0.sysma2dyk <=.1.sysma2dyk <=.2.sysma2dyk <=.3.sysma2dyk <=.4.sysma2dyk <=.5.sysma2dyk <=.6.sysma2dyk) 7
+             (call . . ~4
+              (opensymchoice .
+               (td :`t0.124. . . nimcall -1 -1 +0 +124 . . pairs.1. . none unknown . "") high.0.sysma2dyk high.9.sysma2dyk high.3.sysma2dyk high.6.sysma2dyk high.5.sysma2dyk high.4.sysma2dyk high.2.sysma2dyk high.1.sysma2dyk) 1
+              (ident . . IX)) ~2
+             (ident . . i))) 15
+           (stmts . .
+            (brk . .
+             (empty))))) ,2
+         (stmts f . ~4,~156
+          (pragma . . 2
+           (ident . . push) 21
+           (kv . . ~14
+            (ident . . overflowChecks) 2
+            (ht . off.0.sysma2dyk))) ~1,~155
+          (call . . ~3 inc.0.sysma2dyk 14,155
+           (ident . . i)) 12
+          (pragma . . ~14,~154
+           (ident . . pop)))))))))) none unknown . "" . .) 8,169
+ (sd :mpairs.1. x
+  (iterator) . eg ofrbcr0s0awhtl0t0c0 -1 +0 .
+  (td :`t25.127. . i0me1e2 inline -1 -1 +0 +127 . 23,170,/home/araq/projects/nim/lib/system/iterators.nim
+   (formalparams .
+    (td :`t18.130. . m nimcall -1 -1 +0 +130 . 46,170,/home/araq/projects/nim/lib/system/iterators.nim
+     (reclist . . 6
+      (sd :key.3. .
+       (field . +0 +0) . . . -1 +0 .
+       (td :`t12.125. . g0 nimcall -1 -1 +0 +125 . . mpairs.1. 17,170,/home/araq/projects/nim/lib/system/iterators.nim
+        (sd :IX.0 .
+         (type) . u . -1 +0 . `t12.125. mpairs.1. . none unknown . "" . .) none unknown . "") mpairs.1. . none unknown . "" . .) 15
+      (sd :val.3. .
+       (field . +0 +0) . . . -1 +1 .
+       (td :`t23.131. . m nimcall -1 -1 +0 +131 . . mpairs.1. . none unknown . ""
+        (td :`t12.126. . g0 nimcall -1 -1 +0 +126 . . mpairs.1. 21,170,/home/araq/projects/nim/lib/system/iterators.nim
+         (sd :T.0 .
+          (type) . u . -1 +1 . `t12.126. mpairs.1. . none unknown . "" . .) none unknown . "")) mpairs.1. . none unknown . "" . .)) mpairs.1. . none unknown . "" `t12.125. `t23.131.)
+    (arglist . . . . . . 50
+     (pragma . . 2
+      (ident . . inline)) .) 1
+    (sd :a.11 .
+     (param) . u . -1 +0 .
+     (td :`t23.128. . m nimcall -1 -1 +0 +128 . . mpairs.1. . none unknown . ""
+      (td :`t16.129. . m nimcall -1 -1 +0 +129 . . mpairs.1. . none unknown . "" `t12.125. `t12.126.)) mpairs.1. . none unknown . "" . .)) mpairs.1. . none unknown . "" `t18.130.) iterators.0. ~9
+  (iterator s . 9
+   (ht . mpairs.1.)
+   (empty) 16
+   (genericparams . . 1 IX.0 5 T.0) . 73
+   (pragma . . 2
+    (ident . . inline))
+   (bracket . .
+    (empty) 16,170,/home/araq/projects/nim/lib/system/iterators.nim
+    (genericparams . . 1
+     (identdefs . .
+      (ident . . IX) 4
+      (ident . . T)
+      (empty)
+      (empty)))) 2,1
+   (stmts . .
+    (comment h .) ,2
+    (when . . 5
+     (elif . . 6
+      (stmts f . 2,140,/home/araq/projects/nim/lib/system/comparisons.nim
+       (empty)
+       (infix . .
+        (opensymchoice d3 . <.0.sysma2dyk <.1.sysma2dyk <.2.sysma2dyk <.3.sysma2dyk <.4.sysma2dyk <.5.sysma2dyk <.6.sysma2dyk <.7.sysma2dyk) 2
+        (intlit . . +0) ~5
+        (dot . . ~1
+         (ident . . a) 1
+         (opensymchoice .
+          (td :`t0.133. . . nimcall -1 -1 +0 +133 . . mpairs.1. . none unknown . "") len.10.sysma2dyk len.7.sysma2dyk len.4.sysma2dyk len.3.sysma2dyk len.8.sysma2dyk len.6.sysma2dyk len.5.sysma2dyk)))) ~3,1
+      (stmts . .
+       (var . . 4
+        (identdefs . .
+         (ident . . i) 2
+         (empty) 7
+         (call . . ~3
+          (opensymchoice .
+           (td :`t0.134. . . nimcall -1 -1 +0 +134 . . mpairs.1. . none unknown . "") low.3.sysma2dyk low.4.sysma2dyk low.6.sysma2dyk low.0.sysma2dyk low.8.sysma2dyk low.5.sysma2dyk low.1.sysma2dyk low.2.sysma2dyk) 1
+          (ident . . IX)))) ,1
+       (while . . 6
+        (ht . true.0.sysma2dyk) 2,1
+        (stmts . .
+         (yield . . 6
+          (tupleconstr . . 1
+           (ident . . i) 5
+           (call . . \5B\5D.0.sysma2dyk ~1
+            (ident . . a) 1
+            (ident . . i)))) ,1
+         (if . . 3
+          (elif . . 2
+           (stmts f . 2,136,/home/araq/projects/nim/lib/system/comparisons.nim
+            (empty)
+            (infix . .
+             (opensymchoice d3 . <=.0.sysma2dyk <=.1.sysma2dyk <=.2.sysma2dyk <=.3.sysma2dyk <=.4.sysma2dyk <=.5.sysma2dyk <=.6.sysma2dyk) 7
+             (call . . ~4
+              (opensymchoice .
+               (td :`t0.135. . . nimcall -1 -1 +0 +135 . . mpairs.1. . none unknown . "") high.0.sysma2dyk high.9.sysma2dyk high.3.sysma2dyk high.6.sysma2dyk high.5.sysma2dyk high.4.sysma2dyk high.2.sysma2dyk high.1.sysma2dyk) 1
+              (ident . . IX)) ~2
+             (ident . . i))) 15
+           (stmts . .
+            (brk . .
+             (empty))))) ,2
+         (stmts f . ~4,~166
+          (pragma . . 2
+           (ident . . push) 21
+           (kv . . ~14
+            (ident . . overflowChecks) 2
+            (ht . off.0.sysma2dyk))) ~1,~165
+          (call . . ~3 inc.0.sysma2dyk 14,165
+           (ident . . i)) 12
+          (pragma . . ~14,~164
+           (ident . . pop)))))))))) none unknown . "" . .) 8,179
+ (sd :pairs.2. x
+  (iterator) . eg ofrbcr0s0awhtl0t0c0 -1 +0 .
+  (td :`t25.137. . i0me1e2 inline -1 -1 +0 +137 . 18,180,/home/araq/projects/nim/lib/system/iterators.nim
+   (formalparams .
+    (td :`t18.139. . m nimcall -1 -1 +0 +139 . 31,180,/home/araq/projects/nim/lib/system/iterators.nim
+     (reclist . . 6
+      (sd :key.4. .
+       (field . +0 +0) . . . -1 +0 . `t31.3.sysma2dyk pairs.2. . none unknown . "" . .) 16
+      (sd :val.4. .
+       (field . +0 +0) . . . -1 +1 .
+       (td :`t12.136. . g0 nimcall -1 -1 +0 +136 . . pairs.2. 16,180,/home/araq/projects/nim/lib/system/iterators.nim
+        (sd :T.0 .
+         (type) . u . -1 +0 . `t12.136. pairs.2. . none unknown . "" . .) none unknown . "") pairs.2. . none unknown . "" . .)) pairs.2. . none unknown . "" `t31.3.sysma2dyk `t12.136.)
+    (arglist . . . . . . 37
+     (pragma . . 2
+      (ident . . inline)) .) 1
+    (sd :a.12 .
+     (param) . u . -1 +0 .
+     (td :`t24.138. . ma nimcall -1 -1 +0 +138 . . pairs.2. . none unknown . "" `t12.136.) pairs.2. . none unknown . "" . .)) pairs.2. . none unknown . "" `t18.139.) iterators.0. ~9
+  (iterator s . 9
+   (ht . pairs.2.)
+   (empty) 15
+   (genericparams . . 1 T.0) . 55
+   (pragma . . 2
+    (ident . . inline))
+   (bracket . .
+    (empty) 15,180,/home/araq/projects/nim/lib/system/iterators.nim
+    (genericparams . . 1
+     (identdefs . .
+      (ident . . T)
+      (empty)
+      (empty)))) 2,1
+   (stmts . .
+    (comment h .) ,1
+    (var . . 4
+     (identdefs . .
+      (ident . . i) 2
+      (empty) 4
+      (intlit . . +0))) ,2
+    (let . . 4
+     (identdefs . .
+      (ident . . L) 2
+      (empty) 7
+      (call . . ~3
+       (opensymchoice .
+        (td :`t0.140. . . nimcall -1 -1 +0 +140 . . pairs.2. . none unknown . "") len.10.sysma2dyk len.7.sysma2dyk len.4.sysma2dyk len.3.sysma2dyk len.8.sysma2dyk len.6.sysma2dyk len.5.sysma2dyk) 1
+       (ident . . a)))) ,3
+    (while . . 8
+     (infix . .
+      (opensymchoice .
+       (td :`t0.141. . . nimcall -1 -1 +0 +141 . . pairs.2. . none unknown . "") <.16.sysma2dyk <.4.sysma2dyk <.3.sysma2dyk <.11.sysma2dyk <.17.sysma2dyk <.12.sysma2dyk <.7.sysma2dyk <.8.sysma2dyk <.0.sysma2dyk <.14.sysma2dyk <.6.sysma2dyk <.5.sysma2dyk <.19.sysma2dyk <.18.sysma2dyk <.2.sysma2dyk <.15.sysma2dyk <.10.sysma2dyk <.9.sysma2dyk <.1.sysma2dyk <.13.sysma2dyk) ~2
+      (ident . . i) 2
+      (ident . . L)) 2,1
+     (stmts . .
+      (yield . . 6
+       (tupleconstr . . 1
+        (ident . . i) 5
+        (call . . \5B\5D.0.sysma2dyk ~1
+         (ident . . a) 1
+         (ident . . i)))) ,1
+      (stmts f . ~2,~174
+       (pragma . . 2
+        (ident . . push) 21
+        (kv . . ~14
+         (ident . . overflowChecks) 2
+         (ht . off.0.sysma2dyk))) 1,~173
+       (call . . ~3 inc.0.sysma2dyk 12,173
+        (ident . . i)) 12
+       (pragma . . ~12,~172
+        (ident . . pop))) 6,2
+      (call . . ~6 assert.0.assy765wm 8
+       (infix . .
+        (opensymchoice .
+         (td :`t0.142. . . nimcall -1 -1 +0 +142 . . pairs.2. . none unknown . "") ==.0.sysma2dyk ==.14.sysma2dyk ==.13.sysma2dyk ==.3.sysma2dyk ==.5.sysma2dyk ==.20.sysma2dyk ==.1.sysma2dyk ==.15.sysma2dyk ==.19.sysma2dyk ==.10.sysma2dyk ==.18.sysma2dyk ==.2.sysma2dyk ==.9.sysma2dyk ==.17.sysma2dyk ==.4.sysma2dyk ==.16.sysma2dyk ==.6.sysma2dyk ==.8.sysma2dyk ==.21.sysma2dyk ==.12.sysma2dyk ==.23.sysma2dyk ==.22.sysma2dyk ==.7.sysma2dyk ==.11.sysma2dyk) ~4
+        (call . . ~3
+         (opensymchoice .
+          (td :`t0.143. . . nimcall -1 -1 +0 +143 . . pairs.2. . none unknown . "") len.10.sysma2dyk len.7.sysma2dyk len.4.sysma2dyk len.3.sysma2dyk len.8.sysma2dyk len.6.sysma2dyk len.5.sysma2dyk) 1
+         (ident . . a)) 3
+        (ident . . L)) 14
+       (strlit . . "the length of the seq changed while iterating over it")))))) none unknown . "" . .) 8,188
+ (sd :mpairs.2. x
+  (iterator) . eg ofrbcr0s0awhtl0t0c0 -1 +0 .
+  (td :`t25.145. . i0me1e2 inline -1 -1 +0 +145 . 19,189,/home/araq/projects/nim/lib/system/iterators.nim
+   (formalparams .
+    (td :`t18.148. . m nimcall -1 -1 +0 +148 . 36,189,/home/araq/projects/nim/lib/system/iterators.nim
+     (reclist . . 6
+      (sd :key.5. .
+       (field . +0 +0) . . . -1 +0 . `t31.3.sysma2dyk mpairs.2. . none unknown . "" . .) 16
+      (sd :val.5. .
+       (field . +0 +0) . . . -1 +1 .
+       (td :`t23.149. . m nimcall -1 -1 +0 +149 . . mpairs.2. . none unknown . ""
+        (td :`t12.144. . g0 nimcall -1 -1 +0 +144 . . mpairs.2. 17,189,/home/araq/projects/nim/lib/system/iterators.nim
+         (sd :T.0 .
+          (type) . u . -1 +0 . `t12.144. mpairs.2. . none unknown . "" . .) none unknown . "")) mpairs.2. . none unknown . "" . .)) mpairs.2. . none unknown . "" `t31.3.sysma2dyk `t23.149.)
+    (arglist . . . . . . 45
+     (pragma . . 2
+      (ident . . inline)) .) 1
+    (sd :a.13 .
+     (param) . u . -1 +0 .
+     (td :`t23.146. . mh0 nimcall -1 -1 +0 +146 . . mpairs.2. . none unknown . ""
+      (td :`t24.147. . ma nimcall -1 -1 +0 +147 . . mpairs.2. . none unknown . "" `t12.144.)) mpairs.2. . none unknown . "" . .)) mpairs.2. . none unknown . "" `t18.148.) iterators.0. ~9
+  (iterator s . 9
+   (ht . mpairs.2.)
+   (empty) 16
+   (genericparams . . 1 T.0) . 64
+   (pragma . . 2
+    (ident . . inline))
+   (bracket . .
+    (empty) 16,189,/home/araq/projects/nim/lib/system/iterators.nim
+    (genericparams . . 1
+     (identdefs . .
+      (ident . . T)
+      (empty)
+      (empty)))) 2,1
+   (stmts . .
+    (comment h .) ,2
+    (var . . 4
+     (identdefs . .
+      (ident . . i) 2
+      (empty) 4
+      (intlit . . +0))) ,3
+    (let . . 4
+     (identdefs . .
+      (ident . . L) 2
+      (empty) 7
+      (call . . ~3
+       (opensymchoice .
+        (td :`t0.150. . . nimcall -1 -1 +0 +150 . . mpairs.2. . none unknown . "") len.10.sysma2dyk len.7.sysma2dyk len.4.sysma2dyk len.3.sysma2dyk len.8.sysma2dyk len.6.sysma2dyk len.5.sysma2dyk) 1
+       (ident . . a)))) ,4
+    (while . . 8
+     (infix . .
+      (opensymchoice .
+       (td :`t0.151. . . nimcall -1 -1 +0 +151 . . mpairs.2. . none unknown . "") <.16.sysma2dyk <.4.sysma2dyk <.3.sysma2dyk <.11.sysma2dyk <.17.sysma2dyk <.12.sysma2dyk <.7.sysma2dyk <.8.sysma2dyk <.0.sysma2dyk <.14.sysma2dyk <.6.sysma2dyk <.5.sysma2dyk <.19.sysma2dyk <.18.sysma2dyk <.2.sysma2dyk <.15.sysma2dyk <.10.sysma2dyk <.9.sysma2dyk <.1.sysma2dyk <.13.sysma2dyk) ~2
+      (ident . . i) 2
+      (ident . . L)) 2,1
+     (stmts . .
+      (yield . . 6
+       (tupleconstr . . 1
+        (ident . . i) 5
+        (call . . \5B\5D.0.sysma2dyk ~1
+         (ident . . a) 1
+         (ident . . i)))) ,1
+      (stmts f . ~2,~184
+       (pragma . . 2
+        (ident . . push) 21
+        (kv . . ~14
+         (ident . . overflowChecks) 2
+         (ht . off.0.sysma2dyk))) 1,~183
+       (call . . ~3 inc.0.sysma2dyk 12,183
+        (ident . . i)) 12
+       (pragma . . ~12,~182
+        (ident . . pop))) 6,2
+      (call . . ~6 assert.0.assy765wm 8
+       (infix . .
+        (opensymchoice .
+         (td :`t0.152. . . nimcall -1 -1 +0 +152 . . mpairs.2. . none unknown . "") ==.0.sysma2dyk ==.14.sysma2dyk ==.13.sysma2dyk ==.3.sysma2dyk ==.5.sysma2dyk ==.20.sysma2dyk ==.1.sysma2dyk ==.15.sysma2dyk ==.19.sysma2dyk ==.10.sysma2dyk ==.18.sysma2dyk ==.2.sysma2dyk ==.9.sysma2dyk ==.17.sysma2dyk ==.4.sysma2dyk ==.16.sysma2dyk ==.6.sysma2dyk ==.8.sysma2dyk ==.21.sysma2dyk ==.12.sysma2dyk ==.23.sysma2dyk ==.22.sysma2dyk ==.7.sysma2dyk ==.11.sysma2dyk) ~4
+        (call . . ~3
+         (opensymchoice .
+          (td :`t0.153. . . nimcall -1 -1 +0 +153 . . mpairs.2. . none unknown . "") len.10.sysma2dyk len.7.sysma2dyk len.4.sysma2dyk len.3.sysma2dyk len.8.sysma2dyk len.6.sysma2dyk len.5.sysma2dyk) 1
+         (ident . . a)) 3
+        (ident . . L)) 14
+       (strlit . . "the length of the seq changed while iterating over it")))))) none unknown . "" . .) 8,198
+ (sd :pairs.3. x
+  (iterator) . egi1 ofrbcr0s0awhtl0t0c0 -1 +0 .
+  (td :`t25.154. . nti0e1e2 inline -1 -1 +0 +154 . 15,199,/home/araq/projects/nim/lib/system/iterators.nim
+   (formalparams .
+    (td :`t18.155. . c3 nimcall -1 -1 +0 +155 . 28,199,/home/araq/projects/nim/lib/system/iterators.nim
+     (reclist . . 6
+      (sd :key.6. .
+       (field . +0 +0) . . . -1 +0 . `t31.3.sysma2dyk pairs.3. . none unknown . "" . .) 16
+      (sd :val.6. .
+       (field . +0 +0) . . . -1 +1 . `t2.16.sysma2dyk pairs.3. . none unknown . "" . .)) pairs.3. . none unknown . "" `t31.3.sysma2dyk `t2.16.sysma2dyk)
+    (arglist . . ~6
+     (arglist . .)
+     (empty)
+     (empty) ~6
+     (arglist . .)
+     (empty) ~6
+     (arglist . .)) 1
+    (sd :a.14 .
+     (param) . u . -1 +0 . `t28.17.sysma2dyk pairs.3. . none unknown . "" . .)) pairs.3. . none unknown . "" `t18.155.) iterators.0. ~9
+  (iterator s . 9
+   (ht . pairs.3.)
+   (empty)
+   (empty) . 55
+   (pragma . . 2
+    (ident . . inline))
+   (empty) 2,1
+   (stmts s .
+    (comment sh .) ,1
+    (var s . 4
+     (identdefs . .
+      (sd :i.18 .
+       (var . +0 +0) . u ofrbcr0s0awhtl0t0c0 -1 +0 .
+       (td :`t31.156. . c3 nimcall +8 +8 +0 +156 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "") pairs.3.
+       (identdefs . . i.18 2
+        (empty) 4
+        (intlit . `t31.62. +0)) none unknown . "" . .) 2
+      (empty) 4
+      (intlit . `t31.62. +0))) ,2
+    (let s . 4
+     (identdefs . .
+      (sd :L.2 .
+       (let . +0 +0) . u ofrbcr0s0awhtl0t0c0 -1 +0 . `t31.3.sysma2dyk pairs.3.
+       (identdefs . . L.2 2
+        (empty) 7
+        (call . `t31.3.sysma2dyk ~3 len.4.sysma2dyk 1 a.14)) none unknown . "" . .) 2
+      (empty) 7
+      (call . `t31.3.sysma2dyk ~3 len.4.sysma2dyk 1 a.14))) ,3
+    (while s . 8
+     (infix s `t1.34.sysma2dyk <.8.sysma2dyk ~2 i.18 2 L.2) 2,1
+     (stmts s .
+      (yield s . 6
+       (hsubconv . `t18.155.
+        (empty)
+        (tupleconstr s `t18.155. 1
+         (ht `t31.3.sysma2dyk i.18) 5
+         (at s `t2.16.sysma2dyk ~1 a.14 1 i.18)))) ,1
+      (stmts sf . ~2,~193
+       (pragma s . 2
+        (ident . . push) 21
+        (kv . . ~14
+         (ident . . overflowChecks) 2
+         (intlit . `t1.34.sysma2dyk +0))) 1,~192
+       (call s . ~3 inc.9.sysma2dyk 12,192 i.18 55,21,/home/araq/projects/nim/lib/system/arithmetics.nim
+        (intlit s `t31.36.sysma2dyk +1)) 12
+       (pragma s . ~12,~191
+        (ident . . pop))) ,2
+      (stmts sf . 2,59,/home/araq/projects/nim/lib/std/assertions.nim
+       (empty) 2,70,/home/araq/projects/nim/lib/std/assertions.nim
+       (stmts s . 2,~21
+        (const s . 2,1
+         (const0 . .
+          (sd :loc`gensym33.0. .
+           (const) . uw0 ofrbcr0s0awhtl0t0c0 -1 +0 . `t18.1411.sysma2dyk pairs.3.
+           (const0 . . loc`gensym33.0.
+            (empty) 23
+            (tupleconstr . `t18.1411.sysma2dyk 2,1583,/home/araq/projects/nim/lib/system.nim
+             (kv . . filename.3.sysma2dyk 29,50,/home/araq/projects/nim/lib/std/assertions.nim
+              (strlit . `t28.17.sysma2dyk "/home/araq/projects/nim/lib/system/iterators.nim")) 20,1583,/home/araq/projects/nim/lib/system.nim
+             (kv . . line.1.sysma2dyk 29,50,/home/araq/projects/nim/lib/std/assertions.nim
+              (intlit . `t31.3.sysma2dyk +206)) 31,1583,/home/araq/projects/nim/lib/system.nim
+             (kv . . column.0.sysma2dyk 29,50,/home/araq/projects/nim/lib/std/assertions.nim
+              (intlit . `t31.3.sysma2dyk +10)))) none unknown . "" . .)
+          (empty) 23
+          (tupleconstr . `t18.1411.sysma2dyk 2,1583,/home/araq/projects/nim/lib/system.nim
+           (kv . . filename.3.sysma2dyk 29,50,/home/araq/projects/nim/lib/std/assertions.nim
+            (strlit . `t28.17.sysma2dyk "/home/araq/projects/nim/lib/system/iterators.nim")) 20,1583,/home/araq/projects/nim/lib/system.nim
+           (kv . . line.1.sysma2dyk 29,50,/home/araq/projects/nim/lib/std/assertions.nim
+            (intlit . `t31.3.sysma2dyk +206)) 31,1583,/home/araq/projects/nim/lib/system.nim
+           (kv . . column.0.sysma2dyk 29,50,/home/araq/projects/nim/lib/std/assertions.nim
+            (intlit . `t31.3.sysma2dyk +10)))) 2,2
+         (const0 . .
+          (sd :ploc`gensym33.0. .
+           (const) . uw0 ofrbcr0s0awhtl0t0c0 -1 +0 . `t28.17.sysma2dyk pairs.3.
+           (const0 . . ploc`gensym33.0.
+            (empty) 5,~24
+            (strlit . `t28.17.sysma2dyk "/home/araq/projects/nim/lib/system/iterators.nim\28206, 11\29")) none unknown . "" . .)
+          (empty) 5,~24
+          (strlit . `t28.17.sysma2dyk "/home/araq/projects/nim/lib/system/iterators.nim\28206, 11\29"))) 2,~18
+        (bind0 s . instantiationInfo.0.sysma2dyk) 2,~17
+        (mixin s . 6
+         (opensymchoice . `t0.56.assy765wm failedAssertImpl.0.assy765wm)) 10,206,/home/araq/projects/nim/lib/system/iterators.nim
+        (pragmablock s .
+         (pragma . .
+          (kv . .
+           (ident . . line)
+           (tupleconstr a `t18.1411.sysma2dyk
+            (kv . . filename.3.sysma2dyk
+             (strlit . `t28.17.sysma2dyk "/home/araq/projects/nim/lib/system/iterators.nim"))
+            (kv . . line.1.sysma2dyk
+             (intlit . `t31.3.sysma2dyk +206))
+            (kv . . column.0.sysma2dyk
+             (intlit . `t31.3.sysma2dyk +10)))))
+         (if s .
+          (elif . .
+           (prefix s `t1.34.sysma2dyk not.0.sysma2dyk
+            (infix . `t1.34.sysma2dyk ==.9.sysma2dyk
+             (call . `t31.3.sysma2dyk len.4.sysma2dyk a.14) L.2))
+           (call s . failedAssertImpl.0.assy765wm
+            (strlit s `t28.17.sysma2dyk "/home/araq/projects/nim/lib/system/iterators.nim\28206, 11\29 `len\28a\29 == L` the length of the string changed while iterating over it"))))))))))) none unknown . "" . .) 8,207
+ (sd :mpairs.3. x
+  (iterator) . egi1 ofrbcr0s0awhtl0t0c0 -1 +0 .
+  (td :`t25.181. . nti0e1e2 inline -1 -1 +0 +181 . 16,208,/home/araq/projects/nim/lib/system/iterators.nim
+   (formalparams .
+    (td :`t18.183. . c3 nimcall -1 -1 +0 +183 . 33,208,/home/araq/projects/nim/lib/system/iterators.nim
+     (reclist . . 6
+      (sd :key.7. .
+       (field . +0 +0) . . . -1 +0 . `t31.3.sysma2dyk mpairs.3. . none unknown . "" . .) 16
+      (sd :val.7. .
+       (field . +0 +0) . . . -1 +1 .
+       (td :`t23.184. . v0c3 nimcall -1 -1 +0 +184 . . mpairs.3. . none unknown . "" `t2.16.sysma2dyk) mpairs.3. . none unknown . "" . .)) mpairs.3. . none unknown . "" `t31.3.sysma2dyk `t23.184.)
+    (arglist . . ~7
+     (arglist . .)
+     (empty)
+     (empty) ~7
+     (arglist . .)
+     (empty) ~7
+     (arglist . .)) 1
+    (sd :a.15 .
+     (param) . u . -1 +0 .
+     (td :`t23.182. . h0 nimcall -1 -1 +0 +182 . . mpairs.3. . none unknown . "" `t28.17.sysma2dyk) mpairs.3. . none unknown . "" . .)) mpairs.3. . none unknown . "" `t18.183.) iterators.0. ~9
+  (iterator s . 9
+   (ht . mpairs.3.)
+   (empty)
+   (empty) . 64
+   (pragma . . 2
+    (ident . . inline))
+   (empty) 2,1
+   (stmts s .
+    (comment sh .) ,2
+    (var s . 4
+     (identdefs . .
+      (sd :i.20 .
+       (var . +0 +0) . u ofrbcr0s0awhtl0t0c0 -1 +0 .
+       (td :`t31.185. . c3 nimcall +8 +8 +0 +185 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "") mpairs.3.
+       (identdefs . . i.20 2
+        (empty) 4
+        (intlit . `t31.62. +0)) none unknown . "" . .) 2
+      (empty) 4
+      (intlit . `t31.62. +0))) ,3
+    (let s . 4
+     (identdefs . .
+      (sd :L.3 .
+       (let . +0 +0) . u ofrbcr0s0awhtl0t0c0 -1 +0 . `t31.3.sysma2dyk mpairs.3.
+       (identdefs . . L.3 2
+        (empty) 7
+        (call . `t31.3.sysma2dyk ~3 len.4.sysma2dyk 1
+         (hderef . `t28.17.sysma2dyk a.15))) none unknown . "" . .) 2
+      (empty) 7
+      (call . `t31.3.sysma2dyk ~3 len.4.sysma2dyk 1
+       (hderef . `t28.17.sysma2dyk a.15)))) ,4
+    (while s . 8
+     (infix s `t1.34.sysma2dyk <.8.sysma2dyk ~2 i.20 2 L.3) 2,1
+     (stmts s .
+      (yield s . 6
+       (hsubconv . `t18.183.
+        (empty)
+        (tupleconstr s `t18.183. 1
+         (ht `t31.3.sysma2dyk i.20) 5
+         (haddr . `t23.184.
+          (at s `t2.16.sysma2dyk ~1
+           (hderef . `t28.17.sysma2dyk a.15) 1 i.20))))) ,1
+      (stmts sf . ~2,~203
+       (pragma s . 2
+        (ident . . push) 21
+        (kv . . ~14
+         (ident . . overflowChecks) 2
+         (intlit . `t1.34.sysma2dyk +0))) 1,~202
+       (call s . ~3 inc.9.sysma2dyk 12,202 i.20 55,21,/home/araq/projects/nim/lib/system/arithmetics.nim
+        (intlit s `t31.36.sysma2dyk +1)) 12
+       (pragma s . ~12,~201
+        (ident . . pop))) ,2
+      (stmts sf . 2,59,/home/araq/projects/nim/lib/std/assertions.nim
+       (empty) 2,70,/home/araq/projects/nim/lib/std/assertions.nim
+       (stmts s . 2,~21
+        (const s . 2,1
+         (const0 . .
+          (sd :loc`gensym36.0. .
+           (const) . uw0 ofrbcr0s0awhtl0t0c0 -1 +0 . `t18.1411.sysma2dyk mpairs.3.
+           (const0 . . loc`gensym36.0.
+            (empty) 23
+            (tupleconstr . `t18.1411.sysma2dyk 2,1583,/home/araq/projects/nim/lib/system.nim
+             (kv . . filename.3.sysma2dyk 29,50,/home/araq/projects/nim/lib/std/assertions.nim
+              (strlit . `t28.17.sysma2dyk "/home/araq/projects/nim/lib/system/iterators.nim")) 20,1583,/home/araq/projects/nim/lib/system.nim
+             (kv . . line.1.sysma2dyk 29,50,/home/araq/projects/nim/lib/std/assertions.nim
+              (intlit . `t31.3.sysma2dyk +216)) 31,1583,/home/araq/projects/nim/lib/system.nim
+             (kv . . column.0.sysma2dyk 29,50,/home/araq/projects/nim/lib/std/assertions.nim
+              (intlit . `t31.3.sysma2dyk +10)))) none unknown . "" . .)
+          (empty) 23
+          (tupleconstr . `t18.1411.sysma2dyk 2,1583,/home/araq/projects/nim/lib/system.nim
+           (kv . . filename.3.sysma2dyk 29,50,/home/araq/projects/nim/lib/std/assertions.nim
+            (strlit . `t28.17.sysma2dyk "/home/araq/projects/nim/lib/system/iterators.nim")) 20,1583,/home/araq/projects/nim/lib/system.nim
+           (kv . . line.1.sysma2dyk 29,50,/home/araq/projects/nim/lib/std/assertions.nim
+            (intlit . `t31.3.sysma2dyk +216)) 31,1583,/home/araq/projects/nim/lib/system.nim
+           (kv . . column.0.sysma2dyk 29,50,/home/araq/projects/nim/lib/std/assertions.nim
+            (intlit . `t31.3.sysma2dyk +10)))) 2,2
+         (const0 . .
+          (sd :ploc`gensym36.0. .
+           (const) . uw0 ofrbcr0s0awhtl0t0c0 -1 +0 . `t28.17.sysma2dyk mpairs.3.
+           (const0 . . ploc`gensym36.0.
+            (empty) 5,~24
+            (strlit . `t28.17.sysma2dyk "/home/araq/projects/nim/lib/system/iterators.nim\28216, 11\29")) none unknown . "" . .)
+          (empty) 5,~24
+          (strlit . `t28.17.sysma2dyk "/home/araq/projects/nim/lib/system/iterators.nim\28216, 11\29"))) 2,~18
+        (bind0 s . instantiationInfo.0.sysma2dyk) 2,~17
+        (mixin s . 6
+         (opensymchoice . `t0.56.assy765wm failedAssertImpl.0.assy765wm)) 10,216,/home/araq/projects/nim/lib/system/iterators.nim
+        (pragmablock s .
+         (pragma . .
+          (kv . .
+           (ident . . line)
+           (tupleconstr a `t18.1411.sysma2dyk
+            (kv . . filename.3.sysma2dyk
+             (strlit . `t28.17.sysma2dyk "/home/araq/projects/nim/lib/system/iterators.nim"))
+            (kv . . line.1.sysma2dyk
+             (intlit . `t31.3.sysma2dyk +216))
+            (kv . . column.0.sysma2dyk
+             (intlit . `t31.3.sysma2dyk +10)))))
+         (if s .
+          (elif . .
+           (prefix s `t1.34.sysma2dyk not.0.sysma2dyk
+            (infix . `t1.34.sysma2dyk ==.9.sysma2dyk
+             (call . `t31.3.sysma2dyk len.4.sysma2dyk
+              (hderef . `t28.17.sysma2dyk a.15)) L.3))
+           (call s . failedAssertImpl.0.assy765wm
+            (strlit s `t28.17.sysma2dyk "/home/araq/projects/nim/lib/system/iterators.nim\28216, 11\29 `len\28a\29 == L` the length of the string changed while iterating over it"))))))))))) none unknown . "" . .) 8,217
+ (sd :pairs.4. x
+  (iterator) . egi1 ofrbcr0s0awhtl0t0c0 -1 +0 .
+  (td :`t25.208. . nti0e1e2 inline -1 -1 +0 +208 . 15,218,/home/araq/projects/nim/lib/system/iterators.nim
+   (formalparams .
+    (td :`t18.209. . c3 nimcall -1 -1 +0 +209 . 29,218,/home/araq/projects/nim/lib/system/iterators.nim
+     (reclist . . 6
+      (sd :key.8. .
+       (field . +0 +0) . . . -1 +0 . `t31.3.sysma2dyk pairs.4. . none unknown . "" . .) 16
+      (sd :val.8. .
+       (field . +0 +0) . . . -1 +1 . `t2.16.sysma2dyk pairs.4. . none unknown . "" . .)) pairs.4. . none unknown . "" `t31.3.sysma2dyk `t2.16.sysma2dyk)
+    (arglist . . ~6
+     (arglist . .)
+     (empty)
+     (empty) ~6
+     (arglist . .)
+     (empty) ~6
+     (arglist . .)) 1
+    (sd :a.16 .
+     (param) . u . -1 +0 . `t29.18.sysma2dyk pairs.4. . none unknown . "" . .)) pairs.4. . none unknown . "" `t18.209.) iterators.0. ~9
+  (iterator s . 9
+   (ht . pairs.4.)
+   (empty)
+   (empty) . 56
+   (pragma . . 2
+    (ident . . inline))
+   (empty) 2,1
+   (stmts s .
+    (comment sh .) 2,8
+    (stmts s .
+     (var s . 4
+      (identdefs . .
+       (sd :i.21 .
+        (var . +0 +0) . u ofrbcr0s0awhtl0t0c0 -1 +0 .
+        (td :`t31.210. . c3 nimcall +8 +8 +0 +210 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "") pairs.4.
+        (identdefs . . i.21 2
+         (empty) 4
+         (intlit . `t31.62. +0)) none unknown . "" . .) 2
+       (empty) 4
+       (intlit . `t31.62. +0))) ,1
+     (while s . 11
+      (expr sf `t1.34.sysma2dyk 2,132,/home/araq/projects/nim/lib/system/comparisons.nim
+       (empty)
+       (prefix s `t1.34.sysma2dyk not.0.sysma2dyk
+        (infix s `t1.34.sysma2dyk ==.3.sysma2dyk ~4
+         (at s `t2.16.sysma2dyk ~1 a.16 1 i.21) 3
+         (charlit s `t2.16.sysma2dyk '\00')))) 2,1
+      (stmts s .
+       (yield s . 6
+        (hsubconv . `t18.209.
+         (empty)
+         (tupleconstr s `t18.209. 1
+          (ht `t31.3.sysma2dyk i.21) 5
+          (at s `t2.16.sysma2dyk ~1 a.16 1 i.21)))) ,1
+       (stmts sf . ~4,~218
+        (pragma s . 2
+         (ident . . push) 21
+         (kv . . ~14
+          (ident . . overflowChecks) 2
+          (intlit . `t1.34.sysma2dyk +0))) ~1,~217
+        (call s . ~3 inc.9.sysma2dyk 14,217 i.21 55,21,/home/araq/projects/nim/lib/system/arithmetics.nim
+         (intlit s `t31.36.sysma2dyk +1)) 12
+        (pragma s . ~14,~216
+         (ident . . pop)))))))) none unknown . "" . .) 8,231
+ (sd :mpairs.4. x
+  (iterator) . egi1 ofrbcr0s0awhtl0t0c0 -1 +0 .
+  (td :`t25.215. . nti0e1e2 inline -1 -1 +0 +215 . 16,232,/home/araq/projects/nim/lib/system/iterators.nim
+   (formalparams .
+    (td :`t18.217. . c3 nimcall -1 -1 +0 +217 . 34,232,/home/araq/projects/nim/lib/system/iterators.nim
+     (reclist . . 6
+      (sd :key.9. .
+       (field . +0 +0) . . . -1 +0 . `t31.3.sysma2dyk mpairs.4. . none unknown . "" . .) 16
+      (sd :val.9. .
+       (field . +0 +0) . . . -1 +1 .
+       (td :`t23.218. . v0c3 nimcall -1 -1 +0 +218 . . mpairs.4. . none unknown . "" `t2.16.sysma2dyk) mpairs.4. . none unknown . "" . .)) mpairs.4. . none unknown . "" `t31.3.sysma2dyk `t23.218.)
+    (arglist . . ~7
+     (arglist . .)
+     (empty)
+     (empty) ~7
+     (arglist . .)
+     (empty) ~7
+     (arglist . .)) 1
+    (sd :a.17 .
+     (param) . u . -1 +0 .
+     (td :`t23.216. . . nimcall -1 -1 +0 +216 . . mpairs.4. . none unknown . "" `t29.18.sysma2dyk) mpairs.4. . none unknown . "" . .)) mpairs.4. . none unknown . "" `t18.217.) iterators.0. ~9
+  (iterator s . 9
+   (ht . mpairs.4.)
+   (empty)
+   (empty) . 65
+   (pragma . . 2
+    (ident . . inline))
+   (empty) 2,1
+   (stmts s .
+    (comment sh .) 2,9
+    (stmts s .
+     (var s . 4
+      (identdefs . .
+       (sd :i.22 .
+        (var . +0 +0) . u ofrbcr0s0awhtl0t0c0 -1 +0 .
+        (td :`t31.219. . c3 nimcall +8 +8 +0 +219 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "") mpairs.4.
+        (identdefs . . i.22 2
+         (empty) 4
+         (intlit . `t31.62. +0)) none unknown . "" . .) 2
+       (empty) 4
+       (intlit . `t31.62. +0))) ,1
+     (while s . 11
+      (expr sf `t1.34.sysma2dyk 2,132,/home/araq/projects/nim/lib/system/comparisons.nim
+       (empty)
+       (prefix s `t1.34.sysma2dyk not.0.sysma2dyk
+        (infix s `t1.34.sysma2dyk ==.3.sysma2dyk ~4
+         (at s `t2.16.sysma2dyk ~1
+          (hderef . `t29.18.sysma2dyk a.17) 1 i.22) 3
+         (charlit s `t2.16.sysma2dyk '\00')))) 2,1
+      (stmts s .
+       (yield s . 6
+        (hsubconv . `t18.217.
+         (empty)
+         (tupleconstr s `t18.217. 1
+          (ht `t31.3.sysma2dyk i.22) 5
+          (haddr . `t23.218.
+           (at s `t2.16.sysma2dyk ~1
+            (hderef . `t29.18.sysma2dyk a.17) 1 i.22))))) ,1
+       (stmts sf . ~4,~233
+        (pragma s . 2
+         (ident . . push) 21
+         (kv . . ~14
+          (ident . . overflowChecks) 2
+          (intlit . `t1.34.sysma2dyk +0))) ~1,~232
+        (call s . ~3 inc.9.sysma2dyk 14,232 i.22 55,21,/home/araq/projects/nim/lib/system/arithmetics.nim
+         (intlit s `t31.36.sysma2dyk +1)) 12
+        (pragma s . ~14,~231
+         (ident . . pop)))))))) none unknown . "" . .) 8,246
+ (sd :items.7. x
+  (iterator) . eg ofrbcr0s0awhtl0t0c0 -1 +0 .
+  (td :`t25.225. . i0me1e2 inline -1 -1 +0 +225 . 18,247,/home/araq/projects/nim/lib/system/iterators.nim
+   (formalparams .
+    (td :`t47.227. . . nimcall -1 -1 +0 +227 . . items.7. . none unknown . ""
+     (td :`t12.224. . g0 nimcall -1 -1 +0 +224 . . items.7. 16,247,/home/araq/projects/nim/lib/system/iterators.nim
+      (sd :T.0 .
+       (type) . u . -1 +0 . `t12.224. items.7. . none unknown . "" . .) none unknown . ""))
+    (arglist . . . . . . 21
+     (pragma . . 2
+      (ident . . inline)) .) 1
+    (sd :a.18 .
+     (param) . u . -1 +0 .
+     (td :`t24.226. . ma nimcall -1 -1 +0 +226 . . items.7. . none unknown . "" `t12.224.) items.7. . none unknown . "" . .)) items.7. . none unknown . "" `t47.227.) iterators.0. ~9
+  (iterator s . 9
+   (ht . items.7.)
+   (empty) 15
+   (genericparams . . 1 T.0) . 39
+   (pragma . . 2
+    (ident . . inline))
+   (bracket . .
+    (empty) 15,247,/home/araq/projects/nim/lib/system/iterators.nim
+    (genericparams . . 1
+     (identdefs . .
+      (ident . . T)
+      (empty)
+      (empty)))) 2,1
+   (stmts . .
+    (comment h .) ,1
+    (var . . 4
+     (identdefs . .
+      (ident . . i) 2
+      (empty) 4
+      (intlit . . +0))) ,2
+    (let . . 4
+     (identdefs . .
+      (ident . . L) 2
+      (empty) 7
+      (call . . ~3
+       (opensymchoice .
+        (td :`t0.229. . . nimcall -1 -1 +0 +229 . . items.7. . none unknown . "") len.10.sysma2dyk len.7.sysma2dyk len.4.sysma2dyk len.3.sysma2dyk len.8.sysma2dyk len.6.sysma2dyk len.5.sysma2dyk) 1
+       (ident . . a)))) ,3
+    (while . . 8
+     (infix . .
+      (opensymchoice .
+       (td :`t0.230. . . nimcall -1 -1 +0 +230 . . items.7. . none unknown . "") <.16.sysma2dyk <.4.sysma2dyk <.3.sysma2dyk <.11.sysma2dyk <.17.sysma2dyk <.12.sysma2dyk <.7.sysma2dyk <.8.sysma2dyk <.0.sysma2dyk <.14.sysma2dyk <.6.sysma2dyk <.5.sysma2dyk <.19.sysma2dyk <.18.sysma2dyk <.2.sysma2dyk <.15.sysma2dyk <.10.sysma2dyk <.9.sysma2dyk <.1.sysma2dyk <.13.sysma2dyk) ~2
+      (ident . . i) 2
+      (ident . . L)) 2,1
+     (stmts . .
+      (yield . . 7
+       (call . . \5B\5D.0.sysma2dyk ~1
+        (ident . . a) 1
+        (ident . . i))) ,1
+      (stmts f . ~2,~241
+       (pragma . . 2
+        (ident . . push) 21
+        (kv . . ~14
+         (ident . . overflowChecks) 2
+         (ht . off.0.sysma2dyk))) 1,~240
+       (call . . ~3 inc.0.sysma2dyk 12,240
+        (ident . . i)) 12
+       (pragma . . ~12,~239
+        (ident . . pop))) 6,2
+      (call . . ~6 assert.0.assy765wm 8
+       (infix . .
+        (opensymchoice .
+         (td :`t0.231. . . nimcall -1 -1 +0 +231 . . items.7. . none unknown . "") ==.0.sysma2dyk ==.14.sysma2dyk ==.13.sysma2dyk ==.3.sysma2dyk ==.5.sysma2dyk ==.20.sysma2dyk ==.1.sysma2dyk ==.15.sysma2dyk ==.19.sysma2dyk ==.10.sysma2dyk ==.18.sysma2dyk ==.2.sysma2dyk ==.9.sysma2dyk ==.17.sysma2dyk ==.4.sysma2dyk ==.16.sysma2dyk ==.6.sysma2dyk ==.8.sysma2dyk ==.21.sysma2dyk ==.12.sysma2dyk ==.23.sysma2dyk ==.22.sysma2dyk ==.7.sysma2dyk ==.11.sysma2dyk) ~4
+        (call . . ~3
+         (opensymchoice .
+          (td :`t0.232. . . nimcall -1 -1 +0 +232 . . items.7. . none unknown . "") len.10.sysma2dyk len.7.sysma2dyk len.4.sysma2dyk len.3.sysma2dyk len.8.sysma2dyk len.6.sysma2dyk len.5.sysma2dyk) 1
+         (ident . . a)) 3
+        (ident . . L)) 14
+       (strlit . . "the length of the seq changed while iterating over it")))))) none unknown . "" . .) 8,255
+ (sd :mitems.3. x
+  (iterator) . eg ofrbcr0s0awhtl0t0c0 -1 +0 .
+  (td :`t25.234. . i0me1e2 inline -1 -1 +0 +234 . 19,256,/home/araq/projects/nim/lib/system/iterators.nim
+   (formalparams .
+    (td :`t23.237. . m nimcall -1 -1 +0 +237 . . mitems.3. . none unknown . ""
+     (td :`t12.233. . g0 nimcall -1 -1 +0 +233 . . mitems.3. 17,256,/home/araq/projects/nim/lib/system/iterators.nim
+      (sd :T.0 .
+       (type) . u . -1 +0 . `t12.233. mitems.3. . none unknown . "" . .) none unknown . ""))
+    (arglist . . . . . . 23
+     (pragma . . 2
+      (ident . . inline)) .) 1
+    (sd :a.19 .
+     (param) . u . -1 +0 .
+     (td :`t23.235. . mh0 nimcall -1 -1 +0 +235 . . mitems.3. . none unknown . ""
+      (td :`t24.236. . ma nimcall -1 -1 +0 +236 . . mitems.3. . none unknown . "" `t12.233.)) mitems.3. . none unknown . "" . .)) mitems.3. . none unknown . "" `t23.237.) iterators.0. ~9
+  (iterator s . 9
+   (ht . mitems.3.)
+   (empty) 16
+   (genericparams . . 1 T.0) . 42
+   (pragma . . 2
+    (ident . . inline))
+   (bracket . .
+    (empty) 16,256,/home/araq/projects/nim/lib/system/iterators.nim
+    (genericparams . . 1
+     (identdefs . .
+      (ident . . T)
+      (empty)
+      (empty)))) 2,1
+   (stmts . .
+    (comment h .) ,1
+    (var . . 4
+     (identdefs . .
+      (ident . . i) 2
+      (empty) 4
+      (intlit . . +0))) ,2
+    (let . . 4
+     (identdefs . .
+      (ident . . L) 2
+      (empty) 7
+      (call . . ~3
+       (opensymchoice .
+        (td :`t0.238. . . nimcall -1 -1 +0 +238 . . mitems.3. . none unknown . "") len.10.sysma2dyk len.7.sysma2dyk len.4.sysma2dyk len.3.sysma2dyk len.8.sysma2dyk len.6.sysma2dyk len.5.sysma2dyk) 1
+       (ident . . a)))) ,3
+    (while . . 8
+     (infix . .
+      (opensymchoice .
+       (td :`t0.239. . . nimcall -1 -1 +0 +239 . . mitems.3. . none unknown . "") <.16.sysma2dyk <.4.sysma2dyk <.3.sysma2dyk <.11.sysma2dyk <.17.sysma2dyk <.12.sysma2dyk <.7.sysma2dyk <.8.sysma2dyk <.0.sysma2dyk <.14.sysma2dyk <.6.sysma2dyk <.5.sysma2dyk <.19.sysma2dyk <.18.sysma2dyk <.2.sysma2dyk <.15.sysma2dyk <.10.sysma2dyk <.9.sysma2dyk <.1.sysma2dyk <.13.sysma2dyk) ~2
+      (ident . . i) 2
+      (ident . . L)) 2,1
+     (stmts . .
+      (yield . . 7
+       (call . . \5B\5D.0.sysma2dyk ~1
+        (ident . . a) 1
+        (ident . . i))) ,1
+      (stmts f . ~2,~250
+       (pragma . . 2
+        (ident . . push) 21
+        (kv . . ~14
+         (ident . . overflowChecks) 2
+         (ht . off.0.sysma2dyk))) 1,~249
+       (call . . ~3 inc.0.sysma2dyk 12,249
+        (ident . . i)) 12
+       (pragma . . ~12,~248
+        (ident . . pop))) 6,2
+      (call . . ~6 assert.0.assy765wm 8
+       (infix . .
+        (opensymchoice .
+         (td :`t0.240. . . nimcall -1 -1 +0 +240 . . mitems.3. . none unknown . "") ==.0.sysma2dyk ==.14.sysma2dyk ==.13.sysma2dyk ==.3.sysma2dyk ==.5.sysma2dyk ==.20.sysma2dyk ==.1.sysma2dyk ==.15.sysma2dyk ==.19.sysma2dyk ==.10.sysma2dyk ==.18.sysma2dyk ==.2.sysma2dyk ==.9.sysma2dyk ==.17.sysma2dyk ==.4.sysma2dyk ==.16.sysma2dyk ==.6.sysma2dyk ==.8.sysma2dyk ==.21.sysma2dyk ==.12.sysma2dyk ==.23.sysma2dyk ==.22.sysma2dyk ==.7.sysma2dyk ==.11.sysma2dyk) ~4
+        (call . . ~3
+         (opensymchoice .
+          (td :`t0.241. . . nimcall -1 -1 +0 +241 . . mitems.3. . none unknown . "") len.10.sysma2dyk len.7.sysma2dyk len.4.sysma2dyk len.3.sysma2dyk len.8.sysma2dyk len.6.sysma2dyk len.5.sysma2dyk) 1
+         (ident . . a)) 3
+        (ident . . L)) 14
+       (strlit . . "the length of the seq changed while iterating over it")))))) none unknown . "" . .) 8,264
+ (sd :items.8. x
+  (iterator) . egi1 ofrbcr0s0awhtl0t0c0 -1 +0 .
+  (td :`t25.242. . nti0e1e2 inline -1 -1 +0 +242 . 15,265,/home/araq/projects/nim/lib/system/iterators.nim
+   (formalparams . `t2.16.sysma2dyk
+    (arglist . . ~6
+     (arglist . .)
+     (empty)
+     (empty) ~6
+     (arglist . .)
+     (empty) ~6
+     (arglist . .)) 1
+    (sd :a.20 .
+     (param) . u . -1 +0 . `t28.17.sysma2dyk items.8. . none unknown . "" . .)) items.8. . none unknown . "" `t2.16.sysma2dyk) iterators.0. ~9
+  (iterator s . 9
+   (ht . items.8.)
+   (empty)
+   (empty) . 33
+   (pragma . . 2
+    (ident . . inline))
+   (empty) 2,1
+   (stmts s .
+    (comment sh .) ,1
+    (var s . 4
+     (identdefs . .
+      (sd :i.25 .
+       (var . +0 +0) . u ofrbcr0s0awhtl0t0c0 -1 +0 .
+       (td :`t31.243. . c3 nimcall +8 +8 +0 +243 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "") items.8.
+       (identdefs . . i.25 2
+        (empty) 4
+        (intlit . `t31.62. +0)) none unknown . "" . .) 2
+      (empty) 4
+      (intlit . `t31.62. +0))) ,2
+    (let s . 4
+     (identdefs . .
+      (sd :L.6 .
+       (let . +0 +0) . u ofrbcr0s0awhtl0t0c0 -1 +0 . `t31.3.sysma2dyk items.8.
+       (identdefs . . L.6 2
+        (empty) 7
+        (call . `t31.3.sysma2dyk ~3 len.4.sysma2dyk 1 a.20)) none unknown . "" . .) 2
+      (empty) 7
+      (call . `t31.3.sysma2dyk ~3 len.4.sysma2dyk 1 a.20))) ,3
+    (while s . 8
+     (infix s `t1.34.sysma2dyk <.8.sysma2dyk ~2 i.25 2 L.6) 2,1
+     (stmts s .
+      (yield s . 7
+       (at s `t2.16.sysma2dyk ~1 a.20 1 i.25)) ,1
+      (stmts sf . ~2,~259
+       (pragma s . 2
+        (ident . . push) 21
+        (kv . . ~14
+         (ident . . overflowChecks) 2
+         (intlit . `t1.34.sysma2dyk +0))) 1,~258
+       (call s . ~3 inc.9.sysma2dyk 12,258 i.25 55,21,/home/araq/projects/nim/lib/system/arithmetics.nim
+        (intlit s `t31.36.sysma2dyk +1)) 12
+       (pragma s . ~12,~257
+        (ident . . pop))) ,2
+      (stmts sf . 2,59,/home/araq/projects/nim/lib/std/assertions.nim
+       (empty) 2,70,/home/araq/projects/nim/lib/std/assertions.nim
+       (stmts s . 2,~21
+        (const s . 2,1
+         (const0 . .
+          (sd :loc`gensym46.0. .
+           (const) . uw0 ofrbcr0s0awhtl0t0c0 -1 +0 . `t18.1411.sysma2dyk items.8.
+           (const0 . . loc`gensym46.0.
+            (empty) 23
+            (tupleconstr . `t18.1411.sysma2dyk 2,1583,/home/araq/projects/nim/lib/system.nim
+             (kv . . filename.3.sysma2dyk 29,50,/home/araq/projects/nim/lib/std/assertions.nim
+              (strlit . `t28.17.sysma2dyk "/home/araq/projects/nim/lib/system/iterators.nim")) 20,1583,/home/araq/projects/nim/lib/system.nim
+             (kv . . line.1.sysma2dyk 29,50,/home/araq/projects/nim/lib/std/assertions.nim
+              (intlit . `t31.3.sysma2dyk +272)) 31,1583,/home/araq/projects/nim/lib/system.nim
+             (kv . . column.0.sysma2dyk 29,50,/home/araq/projects/nim/lib/std/assertions.nim
+              (intlit . `t31.3.sysma2dyk +10)))) none unknown . "" . .)
+          (empty) 23
+          (tupleconstr . `t18.1411.sysma2dyk 2,1583,/home/araq/projects/nim/lib/system.nim
+           (kv . . filename.3.sysma2dyk 29,50,/home/araq/projects/nim/lib/std/assertions.nim
+            (strlit . `t28.17.sysma2dyk "/home/araq/projects/nim/lib/system/iterators.nim")) 20,1583,/home/araq/projects/nim/lib/system.nim
+           (kv . . line.1.sysma2dyk 29,50,/home/araq/projects/nim/lib/std/assertions.nim
+            (intlit . `t31.3.sysma2dyk +272)) 31,1583,/home/araq/projects/nim/lib/system.nim
+           (kv . . column.0.sysma2dyk 29,50,/home/araq/projects/nim/lib/std/assertions.nim
+            (intlit . `t31.3.sysma2dyk +10)))) 2,2
+         (const0 . .
+          (sd :ploc`gensym46.0. .
+           (const) . uw0 ofrbcr0s0awhtl0t0c0 -1 +0 . `t28.17.sysma2dyk items.8.
+           (const0 . . ploc`gensym46.0.
+            (empty) 5,~24
+            (strlit . `t28.17.sysma2dyk "/home/araq/projects/nim/lib/system/iterators.nim\28272, 11\29")) none unknown . "" . .)
+          (empty) 5,~24
+          (strlit . `t28.17.sysma2dyk "/home/araq/projects/nim/lib/system/iterators.nim\28272, 11\29"))) 2,~18
+        (bind0 s . instantiationInfo.0.sysma2dyk) 2,~17
+        (mixin s . 6
+         (opensymchoice . `t0.56.assy765wm failedAssertImpl.0.assy765wm)) 10,272,/home/araq/projects/nim/lib/system/iterators.nim
+        (pragmablock s .
+         (pragma . .
+          (kv . .
+           (ident . . line)
+           (tupleconstr a `t18.1411.sysma2dyk
+            (kv . . filename.3.sysma2dyk
+             (strlit . `t28.17.sysma2dyk "/home/araq/projects/nim/lib/system/iterators.nim"))
+            (kv . . line.1.sysma2dyk
+             (intlit . `t31.3.sysma2dyk +272))
+            (kv . . column.0.sysma2dyk
+             (intlit . `t31.3.sysma2dyk +10)))))
+         (if s .
+          (elif . .
+           (prefix s `t1.34.sysma2dyk not.0.sysma2dyk
+            (infix . `t1.34.sysma2dyk ==.9.sysma2dyk
+             (call . `t31.3.sysma2dyk len.4.sysma2dyk a.20) L.6))
+           (call s . failedAssertImpl.0.assy765wm
+            (strlit s `t28.17.sysma2dyk "/home/araq/projects/nim/lib/system/iterators.nim\28272, 11\29 `len\28a\29 == L` the length of the string changed while iterating over it"))))))))))) none unknown . "" . .) 8,273
+ (sd :mitems.4. x
+  (iterator) . egi1 ofrbcr0s0awhtl0t0c0 -1 +0 .
+  (td :`t25.248. . nti0e1e2 inline -1 -1 +0 +248 . 16,274,/home/araq/projects/nim/lib/system/iterators.nim
+   (formalparams .
+    (td :`t23.250. . v0 nimcall -1 -1 +0 +250 . . mitems.4. . none unknown . "" `t2.16.sysma2dyk)
+    (arglist . . ~7
+     (arglist . .)
+     (empty)
+     (empty) ~7
+     (arglist . .)
+     (empty) ~7
+     (arglist . .)) 1
+    (sd :a.21 .
+     (param) . u . -1 +0 .
+     (td :`t23.249. . h0 nimcall -1 -1 +0 +249 . . mitems.4. . none unknown . "" `t28.17.sysma2dyk) mitems.4. . none unknown . "" . .)) mitems.4. . none unknown . "" `t23.250.) iterators.0. ~9
+  (iterator s . 9
+   (ht . mitems.4.)
+   (empty)
+   (empty) . 42
+   (pragma . . 2
+    (ident . . inline))
+   (empty) 2,1
+   (stmts s .
+    (comment sh .) ,1
+    (var s . 4
+     (identdefs . .
+      (sd :i.26 .
+       (var . +0 +0) . u ofrbcr0s0awhtl0t0c0 -1 +0 .
+       (td :`t31.251. . c3 nimcall +8 +8 +0 +251 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "") mitems.4.
+       (identdefs . . i.26 2
+        (empty) 4
+        (intlit . `t31.62. +0)) none unknown . "" . .) 2
+      (empty) 4
+      (intlit . `t31.62. +0))) ,2
+    (let s . 4
+     (identdefs . .
+      (sd :L.7 .
+       (let . +0 +0) . u ofrbcr0s0awhtl0t0c0 -1 +0 . `t31.3.sysma2dyk mitems.4.
+       (identdefs . . L.7 2
+        (empty) 7
+        (call . `t31.3.sysma2dyk ~3 len.4.sysma2dyk 1
+         (hderef . `t28.17.sysma2dyk a.21))) none unknown . "" . .) 2
+      (empty) 7
+      (call . `t31.3.sysma2dyk ~3 len.4.sysma2dyk 1
+       (hderef . `t28.17.sysma2dyk a.21)))) ,3
+    (while s . 8
+     (infix s `t1.34.sysma2dyk <.8.sysma2dyk ~2 i.26 2 L.7) 2,1
+     (stmts s .
+      (yield s . 7
+       (haddr .
+        (td :`t21.252. . . nimcall -1 -1 +0 +252 . . mitems.4. . none unknown . "" `t2.16.sysma2dyk)
+        (at s `t2.16.sysma2dyk ~1
+         (hderef . `t28.17.sysma2dyk a.21) 1 i.26))) ,1
+      (stmts sf . ~2,~268
+       (pragma s . 2
+        (ident . . push) 21
+        (kv . . ~14
+         (ident . . overflowChecks) 2
+         (intlit . `t1.34.sysma2dyk +0))) 1,~267
+       (call s . ~3 inc.9.sysma2dyk 12,267 i.26 55,21,/home/araq/projects/nim/lib/system/arithmetics.nim
+        (intlit s `t31.36.sysma2dyk +1)) 12
+       (pragma s . ~12,~266
+        (ident . . pop))) ,2
+      (stmts sf . 2,59,/home/araq/projects/nim/lib/std/assertions.nim
+       (empty) 2,70,/home/araq/projects/nim/lib/std/assertions.nim
+       (stmts s . 2,~21
+        (const s . 2,1
+         (const0 . .
+          (sd :loc`gensym49.0. .
+           (const) . uw0 ofrbcr0s0awhtl0t0c0 -1 +0 . `t18.1411.sysma2dyk mitems.4.
+           (const0 . . loc`gensym49.0.
+            (empty) 23
+            (tupleconstr . `t18.1411.sysma2dyk 2,1583,/home/araq/projects/nim/lib/system.nim
+             (kv . . filename.3.sysma2dyk 29,50,/home/araq/projects/nim/lib/std/assertions.nim
+              (strlit . `t28.17.sysma2dyk "/home/araq/projects/nim/lib/system/iterators.nim")) 20,1583,/home/araq/projects/nim/lib/system.nim
+             (kv . . line.1.sysma2dyk 29,50,/home/araq/projects/nim/lib/std/assertions.nim
+              (intlit . `t31.3.sysma2dyk +281)) 31,1583,/home/araq/projects/nim/lib/system.nim
+             (kv . . column.0.sysma2dyk 29,50,/home/araq/projects/nim/lib/std/assertions.nim
+              (intlit . `t31.3.sysma2dyk +10)))) none unknown . "" . .)
+          (empty) 23
+          (tupleconstr . `t18.1411.sysma2dyk 2,1583,/home/araq/projects/nim/lib/system.nim
+           (kv . . filename.3.sysma2dyk 29,50,/home/araq/projects/nim/lib/std/assertions.nim
+            (strlit . `t28.17.sysma2dyk "/home/araq/projects/nim/lib/system/iterators.nim")) 20,1583,/home/araq/projects/nim/lib/system.nim
+           (kv . . line.1.sysma2dyk 29,50,/home/araq/projects/nim/lib/std/assertions.nim
+            (intlit . `t31.3.sysma2dyk +281)) 31,1583,/home/araq/projects/nim/lib/system.nim
+           (kv . . column.0.sysma2dyk 29,50,/home/araq/projects/nim/lib/std/assertions.nim
+            (intlit . `t31.3.sysma2dyk +10)))) 2,2
+         (const0 . .
+          (sd :ploc`gensym49.0. .
+           (const) . uw0 ofrbcr0s0awhtl0t0c0 -1 +0 . `t28.17.sysma2dyk mitems.4.
+           (const0 . . ploc`gensym49.0.
+            (empty) 5,~24
+            (strlit . `t28.17.sysma2dyk "/home/araq/projects/nim/lib/system/iterators.nim\28281, 11\29")) none unknown . "" . .)
+          (empty) 5,~24
+          (strlit . `t28.17.sysma2dyk "/home/araq/projects/nim/lib/system/iterators.nim\28281, 11\29"))) 2,~18
+        (bind0 s . instantiationInfo.0.sysma2dyk) 2,~17
+        (mixin s . 6
+         (opensymchoice . `t0.56.assy765wm failedAssertImpl.0.assy765wm)) 10,281,/home/araq/projects/nim/lib/system/iterators.nim
+        (pragmablock s .
+         (pragma . .
+          (kv . .
+           (ident . . line)
+           (tupleconstr a `t18.1411.sysma2dyk
+            (kv . . filename.3.sysma2dyk
+             (strlit . `t28.17.sysma2dyk "/home/araq/projects/nim/lib/system/iterators.nim"))
+            (kv . . line.1.sysma2dyk
+             (intlit . `t31.3.sysma2dyk +281))
+            (kv . . column.0.sysma2dyk
+             (intlit . `t31.3.sysma2dyk +10)))))
+         (if s .
+          (elif . .
+           (prefix s `t1.34.sysma2dyk not.0.sysma2dyk
+            (infix . `t1.34.sysma2dyk ==.9.sysma2dyk
+             (call . `t31.3.sysma2dyk len.4.sysma2dyk
+              (hderef . `t28.17.sysma2dyk a.21)) L.7))
+           (call s . failedAssertImpl.0.assy765wm
+            (strlit s `t28.17.sysma2dyk "/home/araq/projects/nim/lib/system/iterators.nim\28281, 11\29 `len\28a\29 == L` the length of the string changed while iterating over it"))))))))))) none unknown . "" . .) 8,283
+ (sd :fields.0. x
+  (iterator) fields egn ofrbcr0s0awhtl0t0c0 -1 +0 .
+  (td :`t25.263. . ni0me2 inline -1 -1 +0 +263 . 33,284,/home/araq/projects/nim/lib/system/iterators.nim
+   (formalparams . `t17.756.sysma2dyk
+    (arglist . .
+     (arglist . .) . .
+     (arglist . .) 16
+     (pragma . . ~42,1
+      (kv . . ~5
+       (ident . . magic) 2
+       (strlit . `t28.17.sysma2dyk "Fields")) ~30,1
+      (ident . . noSideEffect))
+     (arglist . .)) 1
+    (sd :x.12 .
+     (param) . . . -1 +0 .
+     (td :`t12.262. . g0 nimcall -1 -1 +0 +262 . . fields.0. 17,284,/home/araq/projects/nim/lib/system/iterators.nim
+      (sd :T.27 .
+       (type) . u . -1 +0 . `t12.262. fields.0. . none unknown . "" . .) none unknown . ""
+      (td :`t57.261. . m nimcall -1 -1 +0 +261 . . fields.0. . none unknown . ""
+       (td :`t51.257. . c3 nimcall -1 -1 +0 +257 . . fields.0. . none unknown . ""
+        (td :`t18.258. . . nimcall -1 -1 +0 +258 . . fields.0. . none unknown . ""))
+       (td :`t51.259. . c3 nimcall -1 -1 +0 +259 . . fields.0. . none unknown . ""
+        (td :`t17.260. . . nimcall -1 -1 +0 +260 . . fields.0. . none unknown . "")))) fields.0. . none unknown . "" . .)) fields.0. . none unknown . "" `t17.756.sysma2dyk) iterators.0. ~9
+  (iterator s . 9
+   (ht . fields.0.)
+   (empty) 16
+   (genericparams . . 1 T.27) . 49
+   (pragma . . ~42,1
+    (kv . . ~5
+     (ident . . magic) 2
+     (strlit . `t28.17.sysma2dyk "Fields")) ~30,1
+    (ident . . noSideEffect))
+   (bracket . .
+    (empty) 16,284,/home/araq/projects/nim/lib/system/iterators.nim
+    (genericparams . . 1
+     (identdefs . .
+      (ident . . T) 8
+      (infix . `t57.261.
+       (ident . . |)
+       (tupleclassty . `t51.257.) 1
+       (objectty . `t51.259.))
+      (empty)))) 2,2
+   (stmts . .
+    (comment h .) ,5
+    (call . . runnableExamples.0.sysma2dyk 2,1
+     (stmts b2 .
+      (var . . 4
+       (identdefs . .
+        (ident . . t) 2
+        (empty) 4
+        (tupleconstr . . 1
+         (intlit . . +1) 4
+         (strlit . . "foo")))) 4,1
+      (for . .
+       (ident . . v) 11
+       (call . . ~6
+        (ident . . fields) 1
+        (ident . . t)) 16
+       (stmts . . 2
+        (asgn . . ~2
+         (ident . . v) 9
+         (call . . ~7
+          (ident . . default) 7
+          (call . . ~6
+           (ident . . typeof) 1
+           (ident . . v)))))) ,2
+      (cmd . .
+       (ident . . doAssert) 11
+       (infix . .
+        (ident . . ==) ~2
+        (ident . . t) 3
+        (tupleconstr . . 1
+         (intlit . . +0) 4
+         (strlit . . "")))))))) none unknown . "" . .) 8,295
+ (sd :fields.1. x
+  (iterator) fields egn ofrbcr0s0awhtl0t0c0 -1 +0 .
+  (td :`t25.276. . ni0me2 inline -1 -1 +0 +276 . 48,296,/home/araq/projects/nim/lib/system/iterators.nim
+   (formalparams .
+    (td :`t18.277. . h0a nimcall -1 -1 +0 +277 . 62,296,/home/araq/projects/nim/lib/system/iterators.nim
+     (reclist . . 6
+      (sd :key.10. .
+       (field . +0 +0) . . . -1 +0 . `t28.17.sysma2dyk fields.1. . none unknown . "" . .) 19
+      (sd :val.10. .
+       (field . +0 +0) . . . -1 +1 . `t17.756.sysma2dyk fields.1. . none unknown . "" . .)) fields.1. . none unknown . "" `t28.17.sysma2dyk `t17.756.sysma2dyk)
+    (arglist . .
+     (arglist . .) . .
+     (arglist . .) 47
+     (pragma . . ~88,1
+      (kv . . ~5
+       (ident . . magic) 2
+       (strlit . `t28.17.sysma2dyk "Fields")) ~76,1
+      (ident . . noSideEffect))
+     (arglist . .)) 1
+    (sd :x.13 .
+     (param) . . . -1 +0 .
+     (td :`t12.269. . g0 nimcall -1 -1 +0 +269 . . fields.1. 17,296,/home/araq/projects/nim/lib/system/iterators.nim
+      (sd :S.0 .
+       (type) . u . -1 +0 . `t12.269. fields.1. . none unknown . "" . .) none unknown . ""
+      (td :`t57.268. . m nimcall -1 -1 +0 +268 . . fields.1. . none unknown . ""
+       (td :`t51.264. . c3 nimcall -1 -1 +0 +264 . . fields.1. . none unknown . ""
+        (td :`t18.265. . . nimcall -1 -1 +0 +265 . . fields.1. . none unknown . ""))
+       (td :`t51.266. . c3 nimcall -1 -1 +0 +266 . . fields.1. . none unknown . ""
+        (td :`t17.267. . . nimcall -1 -1 +0 +267 . . fields.1. . none unknown . "")))) fields.1. . none unknown . "" . .) 7
+    (sd :y.10 .
+     (param) . . . -1 +1 .
+     (td :`t12.275. . g0 nimcall -1 -1 +0 +275 . . fields.1. 33,296,/home/araq/projects/nim/lib/system/iterators.nim
+      (sd :T.28 .
+       (type) . u . -1 +1 . `t12.275. fields.1. . none unknown . "" . .) none unknown . ""
+      (td :`t57.274. . m nimcall -1 -1 +0 +274 . . fields.1. . none unknown . ""
+       (td :`t51.270. . c3 nimcall -1 -1 +0 +270 . . fields.1. . none unknown . ""
+        (td :`t18.271. . . nimcall -1 -1 +0 +271 . . fields.1. . none unknown . ""))
+       (td :`t51.272. . c3 nimcall -1 -1 +0 +272 . . fields.1. . none unknown . ""
+        (td :`t17.273. . . nimcall -1 -1 +0 +273 . . fields.1. . none unknown . "")))) fields.1. . none unknown . "" . .)) fields.1. . none unknown . "" `t18.277.) iterators.0. ~9
+  (iterator s . 9
+   (ht . fields.1.)
+   (empty) 16
+   (genericparams . . 1 S.0 17 T.28) . 95
+   (pragma . . ~88,1
+    (kv . . ~5
+     (ident . . magic) 2
+     (strlit . `t28.17.sysma2dyk "Fields")) ~76,1
+    (ident . . noSideEffect))
+   (bracket . .
+    (empty) 16,296,/home/araq/projects/nim/lib/system/iterators.nim
+    (genericparams . . 1
+     (identdefs . .
+      (ident . . S) 7
+      (infix . `t57.268.
+       (ident . . |)
+       (tupleclassty . `t51.264.) 1
+       (objectty . `t51.266.))
+      (empty)) 17
+     (identdefs . .
+      (ident . . T) 7
+      (infix . `t57.274.
+       (ident . . |)
+       (tupleclassty . `t51.270.) 1
+       (objectty . `t51.272.))
+      (empty)))) 2,2
+   (stmts . .
+    (comment h .) ,5
+    (call . . runnableExamples.0.sysma2dyk 2,1
+     (stmts b2 .
+      (var . . 4
+       (identdefs . .
+        (ident . . t1) 3
+        (empty) 5
+        (tupleconstr . . 1
+         (intlit . . +1) 4
+         (strlit . . "foo")))) ,1
+      (var . . 4
+       (identdefs . .
+        (ident . . t2) 3
+        (empty) 12
+        (call . . ~7
+         (ident . . default) 7
+         (call . . ~6
+          (ident . . typeof) 1
+          (ident . . t1))))) 4,2
+      (for . .
+       (ident . . v1) 4
+       (ident . . v2) 16
+       (call . . ~6
+        (ident . . fields) 1
+        (ident . . t1) 5
+        (ident . . t2)) 26
+       (stmts . . 3
+        (asgn . . ~3
+         (ident . . v2) 2
+         (ident . . v1)))) ,3
+      (cmd . .
+       (ident . . doAssert) 12
+       (infix . .
+        (ident . . ==) ~3
+        (ident . . t1) 3
+        (ident . . t2))))))) none unknown . "" . .) 8,308
+ (sd :fieldPairs.0. x
+  (iterator) fieldpairs egn ofrbcr0s0awhtl0t0c0 -1 +0 .
+  (td :`t25.284. . ni0me2 inline -1 -1 +0 +284 . 37,309,/home/araq/projects/nim/lib/system/iterators.nim
+   (formalparams .
+    (td :`t18.285. . h0a nimcall -1 -1 +0 +285 . 45,309,/home/araq/projects/nim/lib/system/iterators.nim
+     (reclist . . 6
+      (sd :key.11. .
+       (field . +0 +0) . . . -1 +0 . `t28.17.sysma2dyk fieldPairs.0. . none unknown . "" . .) 19
+      (sd :val.11. .
+       (field . +0 +0) . . . -1 +1 . `t17.756.sysma2dyk fieldPairs.0. . none unknown . "" . .)) fieldPairs.0. . none unknown . "" `t28.17.sysma2dyk `t17.756.sysma2dyk)
+    (arglist . .
+     (arglist . .) . .
+     (arglist . .) 41
+     (pragma . . ~71,1
+      (kv . . ~5
+       (ident . . magic) 2
+       (strlit . `t28.17.sysma2dyk "FieldPairs")) ~55,1
+      (ident . . noSideEffect))
+     (arglist . .)) 1
+    (sd :x.14 .
+     (param) . . . -1 +0 .
+     (td :`t12.283. . g0 nimcall -1 -1 +0 +283 . . fieldPairs.0. 21,309,/home/araq/projects/nim/lib/system/iterators.nim
+      (sd :T.29 .
+       (type) . u . -1 +0 . `t12.283. fieldPairs.0. . none unknown . "" . .) none unknown . ""
+      (td :`t57.282. . m nimcall -1 -1 +0 +282 . . fieldPairs.0. . none unknown . ""
+       (td :`t51.278. . c3 nimcall -1 -1 +0 +278 . . fieldPairs.0. . none unknown . ""
+        (td :`t18.279. . . nimcall -1 -1 +0 +279 . . fieldPairs.0. . none unknown . ""))
+       (td :`t51.280. . c3 nimcall -1 -1 +0 +280 . . fieldPairs.0. . none unknown . ""
+        (td :`t17.281. . . nimcall -1 -1 +0 +281 . . fieldPairs.0. . none unknown . "")))) fieldPairs.0. . none unknown . "" . .)) fieldPairs.0. . none unknown . "" `t18.285.) iterators.0. ~9
+  (iterator s . 9
+   (ht . fieldPairs.0.)
+   (empty) 20
+   (genericparams . . 1 T.29) . 78
+   (pragma . . ~71,1
+    (kv . . ~5
+     (ident . . magic) 2
+     (strlit . `t28.17.sysma2dyk "FieldPairs")) ~55,1
+    (ident . . noSideEffect))
+   (bracket . .
+    (empty) 20,309,/home/araq/projects/nim/lib/system/iterators.nim
+    (genericparams . . 1
+     (identdefs . .
+      (ident . . T) 8
+      (infix . `t57.282.
+       (ident . . |)
+       (tupleclassty . `t51.278.) 1
+       (objectty . `t51.280.))
+      (empty)))) 2,2
+   (stmts . .
+    (comment h .) ,13
+    (call . . runnableExamples.0.sysma2dyk 2,1
+     (stmts b2 . 2,1
+      (type . . 7
+       (type0 . . ~7
+        (ident . . Custom)
+        (empty) 2
+        (objectty . .
+         (empty)
+         (empty) ~7,1
+         (reclist . .
+          (identdefs . .
+           (ident . . foo) 5
+           (ident . . string) ,1
+           (empty)) ,1
+          (identdefs . .
+           (ident . . bar) 5
+           (ident . . bool) ~4,1
+           (empty)))))) ,4
+      (proc . . 5
+       (accquoted . . 1
+        (ident . . $))
+       (empty)
+       (empty) 8
+       (formalparams . . 13
+        (ident . . string) 1
+        (identdefs . .
+         (ident . . x) 3
+         (ident . . Custom) 9
+         (empty)))
+       (empty)
+       (empty) 2,1
+       (stmts . . 7
+        (asgn . . ~7
+         (ident . . result) 2
+         (strlit . . "Custom\3A")) 4,1
+        (for . .
+         (ident . . name) 6
+         (ident . . value) 16
+         (dot . . ~1
+          (ident . . x) 1
+          (ident . . fieldPairs)) ~2,1
+         (stmts . .
+          (when . . 5
+           (elif . . 6
+            (infix . .
+             (ident . . is) ~6
+             (ident . . value) 3
+             (ident . . bool)) ~3,1
+            (stmts . . 10
+             (call . . ~4
+              (dot . . ~6
+               (ident . . result) 1
+               (ident . . add)) 24
+              (infix . .
+               (ident . . &) ~9
+               (infix . .
+                (ident . . &) ~7
+                (infix . .
+                 (ident . . &) ~7
+                 (strlit . . "\0A\09") 2
+                 (ident . . name)) 2
+                (strlit . . " is ")) 2
+               (prefix . .
+                (ident . . $) 1
+                (ident . . value)))))) ,2
+           (else . . 2,1
+            (stmts . . 10
+             (call . . ~4
+              (dot . . ~6
+               (ident . . result) 1
+               (ident . . add)) 30
+              (infix . .
+               (ident . . &) ~8
+               (infix . .
+                (ident . . &) ~7
+                (infix . .
+                 (ident . . &) ~7
+                 (infix . .
+                  (ident . . &) ~7
+                  (strlit . . "\0A\09") 2
+                  (ident . . name)) 2
+                 (strlit . . " \27")) 2
+                (ident . . value)) 2
+               (strlit . . "\27")))))))))))))) none unknown . "" . .) 8,336
+ (sd :fieldPairs.1. x
+  (iterator) fieldpairs egn ofrbcr0s0awhtl0t0c0 -1 +0 .
+  (td :`t25.298. . ni0me2 inline -1 -1 +0 +298 . 54,337,/home/araq/projects/nim/lib/system/iterators.nim
+   (formalparams .
+    (td :`t18.299. . h0a nimcall -1 -1 +0 +299 . 68,337,/home/araq/projects/nim/lib/system/iterators.nim
+     (reclist . . ~66,1
+      (sd :key.12. .
+       (field . +0 +0) . . . -1 +0 . `t28.17.sysma2dyk fieldPairs.1. . none unknown . "" . .) ~53,1
+      (sd :a.22. .
+       (field . +0 +0) . . . -1 +1 . `t17.756.sysma2dyk fieldPairs.1. . none unknown . "" . .) ~50,1
+      (sd :b.0. .
+       (field . +0 +0) . . . -1 +2 . `t17.756.sysma2dyk fieldPairs.1. . none unknown . "" . .)) fieldPairs.1. . none unknown . "" `t28.17.sysma2dyk `t17.756.sysma2dyk `t17.756.sysma2dyk)
+    (arglist . .
+     (arglist . .) . .
+     (arglist . .) ~24,1
+     (pragma . . ~23,1
+      (kv . . ~5
+       (ident . . magic) 2
+       (strlit . `t28.17.sysma2dyk "FieldPairs")) ~7,1
+      (ident . . noSideEffect))
+     (arglist . .)) 1
+    (sd :x.15 .
+     (param) . . . -1 +0 .
+     (td :`t12.291. . g0 nimcall -1 -1 +0 +291 . . fieldPairs.1. 21,337,/home/araq/projects/nim/lib/system/iterators.nim
+      (sd :S.1 .
+       (type) . u . -1 +0 . `t12.291. fieldPairs.1. . none unknown . "" . .) none unknown . ""
+      (td :`t57.290. . m nimcall -1 -1 +0 +290 . . fieldPairs.1. . none unknown . ""
+       (td :`t51.286. . c3 nimcall -1 -1 +0 +286 . . fieldPairs.1. . none unknown . ""
+        (td :`t18.287. . . nimcall -1 -1 +0 +287 . . fieldPairs.1. . none unknown . ""))
+       (td :`t51.288. . c3 nimcall -1 -1 +0 +288 . . fieldPairs.1. . none unknown . ""
+        (td :`t17.289. . . nimcall -1 -1 +0 +289 . . fieldPairs.1. . none unknown . "")))) fieldPairs.1. . none unknown . "" . .) 7
+    (sd :y.11 .
+     (param) . . . -1 +1 .
+     (td :`t12.297. . g0 nimcall -1 -1 +0 +297 . . fieldPairs.1. 38,337,/home/araq/projects/nim/lib/system/iterators.nim
+      (sd :T.30 .
+       (type) . u . -1 +1 . `t12.297. fieldPairs.1. . none unknown . "" . .) none unknown . ""
+      (td :`t57.296. . m nimcall -1 -1 +0 +296 . . fieldPairs.1. . none unknown . ""
+       (td :`t51.292. . c3 nimcall -1 -1 +0 +292 . . fieldPairs.1. . none unknown . ""
+        (td :`t18.293. . . nimcall -1 -1 +0 +293 . . fieldPairs.1. . none unknown . ""))
+       (td :`t51.294. . c3 nimcall -1 -1 +0 +294 . . fieldPairs.1. . none unknown . ""
+        (td :`t17.295. . . nimcall -1 -1 +0 +295 . . fieldPairs.1. . none unknown . "")))) fieldPairs.1. . none unknown . "" . .)) fieldPairs.1. . none unknown . "" `t18.299.) iterators.0. ~9
+  (iterator s . 9
+   (ht . fieldPairs.1.)
+   (empty) 20
+   (genericparams . . 1 S.1 18 T.30) . 30,1
+   (pragma . . ~23,1
+    (kv . . ~5
+     (ident . . magic) 2
+     (strlit . `t28.17.sysma2dyk "FieldPairs")) ~7,1
+    (ident . . noSideEffect))
+   (bracket . .
+    (empty) 20,337,/home/araq/projects/nim/lib/system/iterators.nim
+    (genericparams . . 1
+     (identdefs . .
+      (ident . . S) 8
+      (infix . `t57.290.
+       (ident . . |)
+       (tupleclassty . `t51.286.) 1
+       (objectty . `t51.288.))
+      (empty)) 18
+     (identdefs . .
+      (ident . . T) 8
+      (infix . `t57.296.
+       (ident . . |)
+       (tupleclassty . `t51.292.) 1
+       (objectty . `t51.294.))
+      (empty)))) 2,3
+   (stmts . .
+    (comment h .) ,5
+    (call . . runnableExamples.0.sysma2dyk 2,1
+     (stmts b2 . 5
+      (type . . 4
+       (type0 . . ~4
+        (ident . . Foo)
+        (empty) 2
+        (objectty . .
+         (empty)
+         (empty) ~9,1
+         (reclist . .
+          (identdefs . .
+           (ident . . x1) 4
+           (ident . . int) ,1
+           (empty)) ,1
+          (identdefs . .
+           (ident . . x2) 4
+           (ident . . string) ~2,1
+           (empty)))))) ,3
+      (var . . 4
+       (identdefs . .
+        (ident . . a1) 3
+        (empty) 8
+        (objconstr . . ~3
+         (ident . . Foo) 3
+         (kv . . ~2
+          (ident . . x1) 2
+          (intlit . . +12)) 11
+         (kv . . ~2
+          (ident . . x2) 2
+          (strlit . . "abc"))))) ,4
+      (var . . 4
+       (identdefs . .
+        (ident . . a2) 4
+        (ident . . Foo) ~4,1
+        (empty))) 4,5
+      (for . .
+       (ident . . name) 6
+       (ident . . v1) 10
+       (ident . . v2) 26
+       (call . . ~10
+        (ident . . fieldPairs) 1
+        (ident . . a1) 5
+        (ident . . a2)) ~2,1
+       (stmts . .
+        (when . . 5
+         (elif . . 5
+          (infix . .
+           (ident . . ==) ~5
+           (ident . . name) 3
+           (strlit . . "x2")) 14
+          (stmts . . 3
+           (asgn . . ~3
+            (ident . . v2) 2
+            (ident . . v1))))))) ,7
+      (cmd . .
+       (ident . . doAssert) 12
+       (infix . .
+        (ident . . ==) ~3
+        (ident . . a2) 6
+        (objconstr . . ~3
+         (ident . . Foo) 3
+         (kv . . ~2
+          (ident . . x1) 2
+          (intlit . . +0)) 10
+         (kv . . ~2
+          (ident . . x2) 2
+          (strlit . . "abc"))))))))) none unknown . "" . .) 9,203
+ (sd :=wasMoved.0. .
+  (proc) . fng1n3 . -1 +0 .
+  (td :`t25.171. . n nimcall -1 -1 +0 +171 . 10,204,/home/araq/projects/nim/lib/system/iterators.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.0 .
+     (param) . . . -1 +0 .
+     (td :`t23.170. . . nimcall -1 -1 +0 +170 . . pairs.3. . none unknown . "" `t18.155.) =wasMoved.0. . none unknown . "" . .)) pairs.3. . none unknown . "" .) pairs.3.
+  (proc . . =wasMoved.0.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .
+    (call . .
+     (sd :wasMoved.0. .
+      (proc) wasmoved n3 . -1 +0 . . . . none unknown . "" . .)
+     (at . `t31.3.sysma2dyk
+      (hderef . `t18.155. dest.0)
+      (intlit . `t31.3.sysma2dyk +0)))
+    (call . .
+     (sd :wasMoved.1. .
+      (proc) wasmoved n3 . -1 +0 . . . . none unknown . "" . .)
+     (at . `t2.16.sysma2dyk
+      (hderef . `t18.155. dest.0)
+      (intlit . `t31.3.sysma2dyk +1))))) none unknown . "" . .) 9,203
+ (sd :=destroy.0. .
+  (proc) . fg1n3 q -1 +0 .
+  (td :`t25.173. . . nimcall -1 -1 +0 +173 . 10,204,/home/araq/projects/nim/lib/system/iterators.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.1 .
+     (param) . . . -1 +0 .
+     (td :`t23.172. . . nimcall -1 -1 +0 +172 . . pairs.3. . none unknown . "" `t18.155.) =destroy.0. . none unknown . "" . .)) pairs.3. . none unknown . "" .) pairs.3.
+  (proc . . =destroy.0.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .)) none unknown . "" . .) 9,203
+ (sd :=copy.0. .
+  (proc) . fg1n3 . -1 +0 .
+  (td :`t25.175. . . nimcall -1 -1 +0 +175 . 10,204,/home/araq/projects/nim/lib/system/iterators.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.2 .
+     (param) . . . -1 +0 .
+     (td :`t23.174. . . nimcall -1 -1 +0 +174 . . pairs.3. . none unknown . "" `t18.155.) =copy.0. . none unknown . "" . .)
+    (sd :src.2 .
+     (param) . . . -1 +1 . `t18.155. =copy.0. . none unknown . "" . .)) pairs.3. . none unknown . "" .) pairs.3.
+  (proc . . =copy.0.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .
+    (asgn . .
+     (at . `t31.3.sysma2dyk
+      (hderef . `t18.155. dest.2)
+      (intlit . `t31.3.sysma2dyk +0))
+     (at . `t31.3.sysma2dyk src.2
+      (intlit . `t31.3.sysma2dyk +0)))
+    (asgn . .
+     (at . `t2.16.sysma2dyk
+      (hderef . `t18.155. dest.2)
+      (intlit . `t31.3.sysma2dyk +1))
+     (at . `t2.16.sysma2dyk src.2
+      (intlit . `t31.3.sysma2dyk +1))))) none unknown . "" . .) 9,203
+ (sd :=dup.0. .
+  (proc) . fg1n3 . -1 +0 .
+  (td :`t25.176. . . nimcall -1 -1 +0 +176 . 10,204,/home/araq/projects/nim/lib/system/iterators.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :src.3 .
+     (param) . . . -1 +0 . `t18.155. =dup.0. . none unknown . "" . .)) pairs.3. . none unknown . "" `t18.155.) pairs.3.
+  (proc . . =dup.0.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .
+    (asgn . .
+     (at . `t31.3.sysma2dyk
+      (sd :result.0 .
+       (result) . . . -1 +0 . `t18.155. =dup.0. . none unknown . "" . .)
+      (intlit . `t31.3.sysma2dyk +0))
+     (at . `t31.3.sysma2dyk src.3
+      (intlit . `t31.3.sysma2dyk +0)))
+    (asgn . .
+     (at . `t2.16.sysma2dyk result.0
+      (intlit . `t31.3.sysma2dyk +1))
+     (at . `t2.16.sysma2dyk src.3
+      (intlit . `t31.3.sysma2dyk +1)))) result.0) none unknown . "" . .) 9,203
+ (sd :=sink.0. .
+  (proc) . fg1n3 . -1 +0 .
+  (td :`t25.178. . . nimcall -1 -1 +0 +178 . 10,204,/home/araq/projects/nim/lib/system/iterators.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.3 .
+     (param) . . . -1 +0 .
+     (td :`t23.177. . . nimcall -1 -1 +0 +177 . . pairs.3. . none unknown . "" `t18.155.) =sink.0. . none unknown . "" . .)
+    (sd :src.4 .
+     (param) . . . -1 +1 . `t18.155. =sink.0. . none unknown . "" . .)) pairs.3. . none unknown . "" .) pairs.3.
+  (proc . . =sink.0.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .
+    (asgn . .
+     (at . `t31.3.sysma2dyk
+      (hderef . `t18.155. dest.3)
+      (intlit . `t31.3.sysma2dyk +0))
+     (at . `t31.3.sysma2dyk src.4
+      (intlit . `t31.3.sysma2dyk +0)))
+    (asgn . .
+     (at . `t2.16.sysma2dyk
+      (hderef . `t18.155. dest.3)
+      (intlit . `t31.3.sysma2dyk +1))
+     (at . `t2.16.sysma2dyk src.4
+      (intlit . `t31.3.sysma2dyk +1))))) none unknown . "" . .) 9,203
+ (sd :=trace.0. .
+  (proc) . fg1n3 . -1 +0 .
+  (td :`t25.180. . . nimcall -1 -1 +0 +180 . 10,204,/home/araq/projects/nim/lib/system/iterators.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.4 .
+     (param) . . . -1 +0 .
+     (td :`t23.179. . . nimcall -1 -1 +0 +179 . . pairs.3. . none unknown . "" `t18.155.) =trace.0. . none unknown . "" . .)
+    (sd :env.0 .
+     (param) . . . -1 +1 . `t26.19.sysma2dyk =trace.0. . none unknown . "" . .)) pairs.3. . none unknown . "" .) pairs.3.
+  (proc . . =trace.0.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .)) none unknown . "" . .) 9,213
+ (sd :=wasMoved.1. .
+  (proc) . fng1n3 . -1 +0 .
+  (td :`t25.191. . n nimcall -1 -1 +0 +191 . 10,214,/home/araq/projects/nim/lib/system/iterators.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.5 .
+     (param) . . . -1 +0 . `t23.184. =wasMoved.1. . none unknown . "" . .)) mpairs.3. . none unknown . "" .) mpairs.3.
+  (proc . . =wasMoved.1.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .
+    (call . .
+     (sd :wasMoved.2. .
+      (proc) wasmoved n3 . -1 +0 . . . . none unknown . "" . .)
+     (hderef . `t2.16.sysma2dyk dest.5)))) none unknown . "" . .) 9,213
+ (sd :=destroy.1. .
+  (proc) . fg1n3 q -1 +0 .
+  (td :`t25.192. . . nimcall -1 -1 +0 +192 . 10,214,/home/araq/projects/nim/lib/system/iterators.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.6 .
+     (param) . . . -1 +0 . `t23.184. =destroy.1. . none unknown . "" . .)) mpairs.3. . none unknown . "" .) mpairs.3.
+  (proc . . =destroy.1.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .)) none unknown . "" . .) 9,213
+ (sd :=copy.1. .
+  (proc) . fg1n3 . -1 +0 .
+  (td :`t25.193. . . nimcall -1 -1 +0 +193 . 10,214,/home/araq/projects/nim/lib/system/iterators.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.7 .
+     (param) . . . -1 +0 . `t23.184. =copy.1. . none unknown . "" . .)
+    (sd :src.7 .
+     (param) . . . -1 +1 . `t23.184. =copy.1. . none unknown . "" . .)) mpairs.3. . none unknown . "" .) mpairs.3.
+  (proc . . =copy.1.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .
+    (asgn . .
+     (hderef . `t2.16.sysma2dyk dest.7) src.7))) none unknown . "" . .) 9,213
+ (sd :=dup.1. .
+  (proc) . fg1n3 . -1 +0 .
+  (td :`t25.194. . . nimcall -1 -1 +0 +194 . 10,214,/home/araq/projects/nim/lib/system/iterators.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :src.8 .
+     (param) . . . -1 +0 . `t23.184. =dup.1. . none unknown . "" . .)) mpairs.3. . none unknown . "" `t23.184.) mpairs.3.
+  (proc . . =dup.1.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .
+    (asgn . .
+     (hderef . `t2.16.sysma2dyk
+      (sd :result.1 .
+       (result) . . . -1 +0 . `t23.184. =dup.1. . none unknown . "" . .)) src.8)) result.1) none unknown . "" . .) 9,213
+ (sd :=sink.1. .
+  (proc) . fg1n3 . -1 +0 .
+  (td :`t25.195. . . nimcall -1 -1 +0 +195 . 10,214,/home/araq/projects/nim/lib/system/iterators.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.8 .
+     (param) . . . -1 +0 . `t23.184. =sink.1. . none unknown . "" . .)
+    (sd :src.9 .
+     (param) . . . -1 +1 . `t23.184. =sink.1. . none unknown . "" . .)) mpairs.3. . none unknown . "" .) mpairs.3.
+  (proc . . =sink.1.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .
+    (asgn . .
+     (hderef . `t2.16.sysma2dyk dest.8) src.9))) none unknown . "" . .) 9,213
+ (sd :=trace.1. .
+  (proc) . fg1n3 . -1 +0 .
+  (td :`t25.196. . . nimcall -1 -1 +0 +196 . 10,214,/home/araq/projects/nim/lib/system/iterators.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.9 .
+     (param) . . . -1 +0 . `t23.184. =trace.1. . none unknown . "" . .)
+    (sd :env.1 .
+     (param) . . . -1 +1 . `t26.19.sysma2dyk =trace.1. . none unknown . "" . .)) mpairs.3. . none unknown . "" .) mpairs.3.
+  (proc . . =trace.1.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .)) none unknown . "" . .) 9,213
+ (sd :=wasMoved.2. .
+  (proc) . fng1n3 . -1 +0 .
+  (td :`t25.198. . n nimcall -1 -1 +0 +198 . 10,214,/home/araq/projects/nim/lib/system/iterators.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.10 .
+     (param) . . . -1 +0 .
+     (td :`t23.197. . . nimcall -1 -1 +0 +197 . . mpairs.3. . none unknown . "" `t18.183.) =wasMoved.2. . none unknown . "" . .)) mpairs.3. . none unknown . "" .) mpairs.3.
+  (proc . . =wasMoved.2.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .
+    (call . .
+     (sd :wasMoved.3. .
+      (proc) wasmoved n3 . -1 +0 . . . . none unknown . "" . .)
+     (at . `t31.3.sysma2dyk
+      (hderef . `t18.183. dest.10)
+      (intlit . `t31.3.sysma2dyk +0)))
+    (call . .
+     (sd :wasMoved.4. .
+      (proc) wasmoved n3 . -1 +0 . . . . none unknown . "" . .)
+     (at . `t23.184.
+      (hderef . `t18.183. dest.10)
+      (intlit . `t31.3.sysma2dyk +1))))) none unknown . "" . .) 9,213
+ (sd :=destroy.2. .
+  (proc) . fg1n3 q -1 +0 .
+  (td :`t25.200. . . nimcall -1 -1 +0 +200 . 10,214,/home/araq/projects/nim/lib/system/iterators.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.11 .
+     (param) . . . -1 +0 .
+     (td :`t23.199. . . nimcall -1 -1 +0 +199 . . mpairs.3. . none unknown . "" `t18.183.) =destroy.2. . none unknown . "" . .)) mpairs.3. . none unknown . "" .) mpairs.3.
+  (proc . . =destroy.2.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .)) none unknown . "" . .) 9,213
+ (sd :=copy.2. .
+  (proc) . fg1n3 . -1 +0 .
+  (td :`t25.202. . . nimcall -1 -1 +0 +202 . 10,214,/home/araq/projects/nim/lib/system/iterators.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.12 .
+     (param) . . . -1 +0 .
+     (td :`t23.201. . . nimcall -1 -1 +0 +201 . . mpairs.3. . none unknown . "" `t18.183.) =copy.2. . none unknown . "" . .)
+    (sd :src.12 .
+     (param) . . . -1 +1 . `t18.183. =copy.2. . none unknown . "" . .)) mpairs.3. . none unknown . "" .) mpairs.3.
+  (proc . . =copy.2.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .
+    (asgn . .
+     (at . `t31.3.sysma2dyk
+      (hderef . `t18.183. dest.12)
+      (intlit . `t31.3.sysma2dyk +0))
+     (at . `t31.3.sysma2dyk src.12
+      (intlit . `t31.3.sysma2dyk +0)))
+    (asgn . .
+     (at . `t23.184.
+      (hderef . `t18.183. dest.12)
+      (intlit . `t31.3.sysma2dyk +1))
+     (at . `t23.184. src.12
+      (intlit . `t31.3.sysma2dyk +1))))) none unknown . "" . .) 9,213
+ (sd :=dup.2. .
+  (proc) . fg1n3 . -1 +0 .
+  (td :`t25.203. . . nimcall -1 -1 +0 +203 . 10,214,/home/araq/projects/nim/lib/system/iterators.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :src.13 .
+     (param) . . . -1 +0 . `t18.183. =dup.2. . none unknown . "" . .)) mpairs.3. . none unknown . "" `t18.183.) mpairs.3.
+  (proc . . =dup.2.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .
+    (asgn . .
+     (at . `t31.3.sysma2dyk
+      (sd :result.2 .
+       (result) . . . -1 +0 . `t18.183. =dup.2. . none unknown . "" . .)
+      (intlit . `t31.3.sysma2dyk +0))
+     (at . `t31.3.sysma2dyk src.13
+      (intlit . `t31.3.sysma2dyk +0)))
+    (asgn . .
+     (at . `t23.184. result.2
+      (intlit . `t31.3.sysma2dyk +1))
+     (at . `t23.184. src.13
+      (intlit . `t31.3.sysma2dyk +1)))) result.2) none unknown . "" . .) 9,213
+ (sd :=sink.2. .
+  (proc) . fg1n3 . -1 +0 .
+  (td :`t25.205. . . nimcall -1 -1 +0 +205 . 10,214,/home/araq/projects/nim/lib/system/iterators.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.13 .
+     (param) . . . -1 +0 .
+     (td :`t23.204. . . nimcall -1 -1 +0 +204 . . mpairs.3. . none unknown . "" `t18.183.) =sink.2. . none unknown . "" . .)
+    (sd :src.14 .
+     (param) . . . -1 +1 . `t18.183. =sink.2. . none unknown . "" . .)) mpairs.3. . none unknown . "" .) mpairs.3.
+  (proc . . =sink.2.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .
+    (asgn . .
+     (at . `t31.3.sysma2dyk
+      (hderef . `t18.183. dest.13)
+      (intlit . `t31.3.sysma2dyk +0))
+     (at . `t31.3.sysma2dyk src.14
+      (intlit . `t31.3.sysma2dyk +0)))
+    (asgn . .
+     (at . `t23.184.
+      (hderef . `t18.183. dest.13)
+      (intlit . `t31.3.sysma2dyk +1))
+     (at . `t23.184. src.14
+      (intlit . `t31.3.sysma2dyk +1))))) none unknown . "" . .) 9,213
+ (sd :=trace.2. .
+  (proc) . fg1n3 . -1 +0 .
+  (td :`t25.207. . . nimcall -1 -1 +0 +207 . 10,214,/home/araq/projects/nim/lib/system/iterators.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.14 .
+     (param) . . . -1 +0 .
+     (td :`t23.206. . . nimcall -1 -1 +0 +206 . . mpairs.3. . none unknown . "" `t18.183.) =trace.2. . none unknown . "" . .)
+    (sd :env.2 .
+     (param) . . . -1 +1 . `t26.19.sysma2dyk =trace.2. . none unknown . "" . .)) mpairs.3. . none unknown . "" .) mpairs.3.
+  (proc . . =trace.2.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .)) none unknown . "" . .))1,1,/home/araq/projects/nim/lib/system/iterators.nim(.index 10,6
+ (h lent2.0. +1628)
+ (h `t25.3. +49)
+ (h `t6.4. +195)
+ (h iterators.0. +164) 1,1,/home/araq/projects/nim/lib/system.nim
+ (h stdlib.0. +92) 8,10
+ (h unCheckedInc.0. +284)
+ (h `t25.6. +56)
+ (h `t6.7. +181) 8,15
+ (x items.0. +542)
+ (h `t25.10. +63)
+ (h `t47.12. +122)
+ (h `t12.9. +76)
+ (h `t58.8. +216)
+ (h `t27.11. +216)
+ (h `t0.14. +731)
+ (h `t0.15. +438) 8,22
+ (x items.1. +668)
+ (h `t25.17. +63)
+ (h `t12.16. +122)
+ (h `t27.18. +354)
+ (h `t0.19. +682)
+ (h `t0.20. +438) 8,32
+ (x mitems.0. +672)
+ (h `t25.22. +64)
+ (h `t23.25. +122)
+ (h `t12.21. +77)
+ (h `t23.23. +343)
+ (h `t27.24. +78)
+ (h `t0.26. +683)
+ (h `t0.27. +439) 8,39
+ (x items.2. +673)
+ (h `t25.30. +63)
+ (h `t12.29. +122)
+ (h `t16.31. +337)
+ (h `t12.28. +77)
+ (h `t0.33. +1079)
+ (h `t0.34. +355)
+ (h `t0.35. +802) 8,48
+ (x mitems.1. +720)
+ (h `t25.38. +64)
+ (h `t23.41. +122)
+ (h `t12.37. +77)
+ (h `t23.39. +343)
+ (h `t16.40. +78)
+ (h `t12.36. +79)
+ (h `t0.43. +1088)
+ (h `t0.44. +356)
+ (h `t0.45. +803) 8,57
+ (x items.3. +721)
+ (h `t25.47. +63)
+ (h `t12.46. +122)
+ (h `t19.48. +337)
+ (h `t0.49. +658)
+ (h `t8.50. +248)
+ (h `t0.51. +186)
+ (h `t0.52. +463)
+ (h `t8.53. +256)
+ (h `t0.54. +229)
+ (h `t0.55. +418)
+ (h `t0.56. +495)
+ (h `t0.57. +546) 8,69
+ (x items.4. +717)
+ (h `t25.58. +65) 10,81
+ (h impl.0. +623)
+ (h `t25.59. +55)
+ (h `t31.63. +2747)
+ (h `t31.62. +199)
+ (h `t31.67. +1464) 8,98
+ (x mitems.2. +1161)
+ (h `t25.71. +66)
+ (h `t23.73. +123)
+ (h `t23.72. +263) 10,114
+ (h impl.1. +390)
+ (h `t25.74. +55)
+ (h `t31.77. +2747)
+ (h `t21.78. +937)
+ (h `t31.82. +790)
+ (h `t21.83. +727) 8,129
+ (x items.5. +649)
+ (h `t25.91. +63)
+ (h `t12.90. +121)
+ (h `t56.89. +218)
+ (h `t51.87. +77)
+ (h `t14.88. +79)
+ (h `t8.93. +164)
+ (h `t0.94. +1560)
+ (h `t0.95. +245)
+ (h `t0.96. +278) 8,139
+ (x items.6. +337)
+ (h `t25.98. +63)
+ (h `t12.97. +121)
+ (h `t9.99. +300)
+ (h `t0.101. +590) 8,145
+ (x pairs.0. +428)
+ (h `t25.103. +63)
+ (h `t18.105. +125) 42,145
+ (h key.0. +123) 52,145
+ (h val.0. +111)
+ (h `t12.102. +57)
+ (h `t27.104. +442)
+ (h `t0.106. +682)
+ (h `t0.107. +440) 8,152
+ (x mpairs.0. +733)
+ (h `t25.109. +64)
+ (h `t18.112. +125) 47,152
+ (h key.1. +123) 57,152
+ (h val.1. +112)
+ (h `t23.113. +57)
+ (h `t12.108. +82)
+ (h `t23.110. +450)
+ (h `t27.111. +80)
+ (h `t0.114. +688)
+ (h `t0.115. +441) 8,160
+ (x pairs.1. +734)
+ (h `t25.118. +63)
+ (h `t18.120. +125) 46,160
+ (h key.2. +123)
+ (h `t12.116. +57) 55,160
+ (h val.2. +268)
+ (h `t12.117. +57)
+ (h `t16.119. +436)
+ (h `t0.122. +947)
+ (h `t0.123. +357)
+ (h `t0.124. +864) 8,169
+ (x mpairs.1. +727)
+ (h `t25.127. +64)
+ (h `t18.130. +125) 51,169
+ (h key.3. +123)
+ (h `t12.125. +57) 60,169
+ (h val.3. +271)
+ (h `t23.131. +57)
+ (h `t12.126. +82)
+ (h `t23.128. +444)
+ (h `t16.129. +80)
+ (h `t0.133. +953)
+ (h `t0.134. +358)
+ (h `t0.135. +865) 8,179
+ (x pairs.2. +728)
+ (h `t25.137. +63)
+ (h `t18.139. +125) 36,179
+ (h key.4. +123) 46,179
+ (h val.4. +111)
+ (h `t12.136. +57)
+ (h `t24.138. +443)
+ (h `t0.140. +743)
+ (h `t0.141. +281)
+ (h `t0.142. +984)
+ (h `t0.143. +508) 8,188
+ (x mpairs.2. +362)
+ (h `t25.145. +64)
+ (h `t18.148. +125) 41,188
+ (h key.5. +123) 51,188
+ (h val.5. +112)
+ (h `t23.149. +57)
+ (h `t12.144. +82)
+ (h `t23.146. +451)
+ (h `t24.147. +82)
+ (h `t0.150. +749)
+ (h `t0.151. +282)
+ (h `t0.152. +985)
+ (h `t0.153. +509) 8,198
+ (x pairs.3. +363)
+ (h `t25.154. +65)
+ (h `t18.155. +126) 33,198
+ (h key.6. +124) 43,198
+ (h val.6. +111)
+ (h `t31.156. +712) 6,50,/home/araq/projects/nim/lib/std/assertions.nim
+ (h loc`gensym33.0. +1493) 6,51,/home/araq/projects/nim/lib/std/assertions.nim
+ (h ploc`gensym33.0. +1548) 8,207
+ (x mpairs.3. +1575)
+ (h `t25.181. +66)
+ (h `t18.183. +126) 38,207
+ (h key.7. +124) 48,207
+ (h val.7. +112)
+ (h `t23.184. +57)
+ (h `t23.182. +365)
+ (h `t31.185. +456) 6,50,/home/araq/projects/nim/lib/std/assertions.nim
+ (h loc`gensym36.0. +1639) 6,51,/home/araq/projects/nim/lib/std/assertions.nim
+ (h ploc`gensym36.0. +1549) 8,217
+ (x pairs.4. +1619)
+ (h `t25.208. +65)
+ (h `t18.209. +126) 34,217
+ (h key.8. +124) 44,217
+ (h val.8. +111)
+ (h `t31.210. +732) 8,231
+ (x mpairs.4. +1246)
+ (h `t25.215. +66)
+ (h `t18.217. +126) 39,231
+ (h key.9. +124) 49,231
+ (h val.9. +112)
+ (h `t23.218. +57)
+ (h `t23.216. +365)
+ (h `t31.219. +475) 8,246
+ (x items.7. +1358)
+ (h `t25.225. +63)
+ (h `t47.227. +125)
+ (h `t12.224. +78)
+ (h `t24.226. +346)
+ (h `t0.229. +743)
+ (h `t0.230. +281)
+ (h `t0.231. +930)
+ (h `t0.232. +508) 8,255
+ (x mitems.3. +362)
+ (h `t25.234. +64)
+ (h `t23.237. +125)
+ (h `t12.233. +79)
+ (h `t23.235. +348)
+ (h `t24.236. +82)
+ (h `t0.238. +749)
+ (h `t0.239. +282)
+ (h `t0.240. +931)
+ (h `t0.241. +509) 8,264
+ (x items.8. +363)
+ (h `t25.242. +65)
+ (h `t31.243. +689) 6,50,/home/araq/projects/nim/lib/std/assertions.nim
+ (h loc`gensym46.0. +1371) 6,51,/home/araq/projects/nim/lib/std/assertions.nim
+ (h ploc`gensym46.0. +1548) 8,273
+ (x mitems.4. +1575)
+ (h `t25.248. +66)
+ (h `t23.250. +126)
+ (h `t23.249. +266)
+ (h `t31.251. +456)
+ (h `t21.252. +820) 6,50,/home/araq/projects/nim/lib/std/assertions.nim
+ (h loc`gensym49.0. +784) 6,51,/home/araq/projects/nim/lib/std/assertions.nim
+ (h ploc`gensym49.0. +1549) 8,283
+ (x fields.0. +1619)
+ (h `t25.263. +70)
+ (h `t12.262. +421)
+ (h `t57.261. +226)
+ (h `t51.257. +81)
+ (h `t18.258. +83)
+ (h `t51.259. +85)
+ (h `t17.260. +83) 8,295
+ (x fields.1. +1522)
+ (h `t25.276. +70)
+ (h `t18.277. +124) 67,295
+ (h key.10. +125) 80,295
+ (h val.10. +114)
+ (h `t12.269. +459)
+ (h `t57.268. +225)
+ (h `t51.264. +81)
+ (h `t18.265. +83)
+ (h `t51.266. +85)
+ (h `t17.267. +83)
+ (h `t12.275. +167)
+ (h `t57.274. +226)
+ (h `t51.270. +81)
+ (h `t18.271. +83)
+ (h `t51.272. +85)
+ (h `t17.273. +83) 8,308
+ (x fieldPairs.0. +1798)
+ (h `t25.284. +78)
+ (h `t18.285. +124) 50,308
+ (h key.11. +125) 63,308
+ (h val.11. +118)
+ (h `t12.283. +471)
+ (h `t57.282. +234)
+ (h `t51.278. +85)
+ (h `t18.279. +87)
+ (h `t51.280. +89)
+ (h `t17.281. +87) 8,336
+ (x fieldPairs.1. +3143)
+ (h `t25.298. +78)
+ (h `t18.299. +124) 1,337
+ (h key.12. +129) 14,337
+ (h a.22. +121) 17,337
+ (h b.0. +120)
+ (h `t12.291. +489)
+ (h `t57.290. +233)
+ (h `t51.286. +85)
+ (h `t18.287. +87)
+ (h `t51.288. +89)
+ (h `t17.289. +87)
+ (h `t12.297. +175)
+ (h `t57.296. +234)
+ (h `t51.292. +85)
+ (h `t18.293. +87)
+ (h `t51.294. +89)
+ (h `t17.295. +87) 9,203
+ (h =wasMoved.0. +2632)
+ (h `t25.171. +49)
+ (h `t23.170. +185)
+ (h wasMoved.0. +330)
+ (h wasMoved.1. +203) 9,203
+ (h =destroy.0. +220)
+ (h `t25.173. +47)
+ (h `t23.172. +185) 9,203
+ (h =copy.0. +345)
+ (h `t25.175. +44)
+ (h `t23.174. +185) 9,203
+ (h =dup.0. +801)
+ (h `t25.176. +43) 9,203
+ (h =sink.0. +868)
+ (h `t25.178. +44)
+ (h `t23.177. +185) 9,203
+ (h =trace.0. +801)
+ (h `t25.180. +45)
+ (h `t23.179. +185) 9,213
+ (h =wasMoved.1. +438)
+ (h `t25.191. +49)
+ (h wasMoved.2. +437) 9,213
+ (h =destroy.1. +160)
+ (h `t25.192. +47) 9,213
+ (h =copy.1. +452)
+ (h `t25.193. +44) 9,213
+ (h =dup.1. +595)
+ (h `t25.194. +43) 9,213
+ (h =sink.1. +609)
+ (h `t25.195. +44) 9,213
+ (h =trace.1. +595)
+ (h `t25.196. +45) 9,213
+ (h =wasMoved.2. +545)
+ (h `t25.198. +49)
+ (h `t23.197. +186)
+ (h wasMoved.3. +333)
+ (h wasMoved.4. +204) 9,213
+ (h =destroy.2. +214)
+ (h `t25.200. +47)
+ (h `t23.199. +186) 9,213
+ (h =copy.2. +348)
+ (h `t25.202. +44)
+ (h `t23.201. +186) 9,213
+ (h =dup.2. +795)
+ (h `t25.203. +43) 9,213
+ (h =sink.2. +859)
+ (h `t25.205. +44)
+ (h `t23.204. +186) 9,213
+ (h =trace.2. +795)
+ (h `t25.207. +45)
+ (h `t23.206. +186))

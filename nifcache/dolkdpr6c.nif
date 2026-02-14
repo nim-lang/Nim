@@ -1,0 +1,1157 @@
+(.nif26)
+(.indexat +38356           )
+1,1,/home/araq/projects/nim/lib/system/dollars.nim(stmts . . ~1,5
+ (import . . "digqtx7k2") ~1,5
+ (import . . "misc8dkkc") 1,8
+ (import . . "for2ybv4p1") 1,9
+ (export . . addFloat.0.for2ybv4p1) 1,96
+ (import . . "objh23djq") 1,97
+ (export . . $.0.objh23djq)
+ (implementation) ~1
+ (comment sh .) 6,11
+ (sd :$.0. x
+  (func) . uegn r0whtl0t0c0 -1 +0 .
+  (td :`t25.3. . nme2 nimcall -1 -1 +0 +3 . 11,12,/home/araq/projects/nim/lib/system/dollars.nim
+   (formalparams . `t28.17.sysma2dyk
+    (arglist . .) 1
+    (sd :x.0 .
+     (param) . u . -1 +0 .
+     (td :`t57.5. . mi1 nimcall -1 -1 +0 +5 . . $.0. 12,12,/home/araq/projects/nim/lib/system/dollars.nim
+      (sd :x\3Atype.0 .
+       (type) . a0 . -1 +0 . `t57.5. $.0. . none unknown . "" . .) none unknown . "" `t36.13.sysma2dyk `t37.14.sysma2dyk) $.0. . none unknown . "" . .)) $.0. . none unknown . "" `t28.17.sysma2dyk) ~6,~11
+  (sd :dollars.0. .
+   (module) . . . +0 . . . 1,1,/home/araq/projects/nim/lib/system.nim
+   (sd :stdlib.0. .
+    (package) . . . -1 +0 . . . . none unknown . "" . .) . none unknown . "" . .) ~5
+  (func s . 5
+   (ht . $.0.)
+   (empty)
+   (genericparams . . 10 x\3Atype.0) .
+   (empty)
+   (bracket . .
+    (empty)
+    (empty)) 2,1
+   (stmts . .
+    (comment h .) 7,1
+    (asgn . . ~7
+     (ident . . result) 2
+     (strlit . . "")) 15,2
+    (call . . ~9
+     (dot . . ~6
+      (ident . . result) 1
+      (closedsymchoice .
+       (td :`t0.6. . . nimcall -1 -1 +0 +6 . . $.0. . none unknown . "") addFloat.0.for2ybv4p1)) 1
+     (ident . . x)))) none unknown . "" . .) 8,16
+ (sd :addIntAlias.0. .
+  (template) . ugn4 . -1 +0 .
+  (td :`t25.7. . m nimcall -1 -1 +0 +7 . 20,17,/home/araq/projects/nim/lib/system/dollars.nim
+   (formalparams . .
+    (arglist . .) 1
+    (sd :T.0 .
+     (param) . ut0 . -1 +0 .
+     (td :`t8.8. . i1c3 nimcall -1 -1 +0 +8 . . addIntAlias.0. 21,17,/home/araq/projects/nim/lib/system/dollars.nim
+      (sd :T\3Atype.0 .
+       (type) . a0 . -1 +0 . `t8.8. addIntAlias.0. . none unknown . "" . .) none unknown . "" `t0.21.sysma2dyk) addIntAlias.0. . none unknown . "" . .)) addIntAlias.0. . none unknown . "" .) dollars.0. ~9
+  (template s . 9
+   (ht . addIntAlias.0.)
+   (empty)
+   (genericparams . . 21 T\3Atype.0) .
+   (empty)
+   (bracket . .
+    (empty)
+    (empty)) 2,1
+   (stmts . .
+    (proc . . 8
+     (postfix . .
+      (ident . . *) ~3
+      (accquoted . . 1
+       (ident . . $)))
+     (empty)
+     (empty) 9
+     (formalparams . . 8
+      (ht . string.0.sysma2dyk) 1
+      (identdefs . .
+       (sd :x.1 .
+        (param) . us1g0 . -1 +0 . . addIntAlias.0. . none unknown . "" . .) 3 T.0 4
+       (empty))) 24
+     (pragma . . 8
+      (kv . . ~6
+       (ident . . raises) 2
+       (bracket . .)))
+     (empty) 2,1
+     (stmts . .
+      (comment h .) 7,1
+      (asgn . . ~7
+       (ident . . result) 2
+       (strlit . . "")) 13,2
+      (call . . ~7
+       (dot . . ~6
+        (ident . . result) 1
+        (opensymchoice .
+         (td :`t0.10. . . nimcall -1 -1 +0 +10 . . addIntAlias.0. . none unknown . "") addInt.0.digqtx7k2 addInt.1.digqtx7k2 addInt.2.digqtx7k2)) 1 x.1))))) none unknown . "" . .) 6,17
+ (sd :$.1. x
+  (proc) . uegi1 r0whtl0t0c0 -1 +0 .
+  (td :`t25.12. . nte2 nimcall -1 -1 +0 +12 . 11,18,/home/araq/projects/nim/lib/system/dollars.nim
+   (formalparams . `t28.17.sysma2dyk
+    (arglist . . 25
+     (bracket . .)
+     (empty)
+     (empty) ~4
+     (arglist . .)
+     (empty) ~4
+     (arglist . .)) 1
+    (sd :x`gensym0.0 .
+     (param) . uw0 . -1 +0 . `t31.3.sysma2dyk $.1. . none unknown . "" . .)) $.1. . none unknown . "" `t28.17.sysma2dyk) dollars.0. ~7,6
+  (proc s . 7,~6
+   (ht . $.1.)
+   (empty)
+   (empty) . 26,~6
+   (pragma . . 8
+    (kv . . ~6
+     (ident . . raises) 2
+     (bracket . .)))
+   (empty) 4,~5
+   (stmts s
+    (td :`t7.1. . . nimcall -1 -1 +0 +1 . . . . none unknown . "")
+    (comment s .) 7,1
+    (asgn s `t7.1. ~11,4
+     (sd :result.1 .
+      (result) . ua . -1 +0 . `t28.17.sysma2dyk $.1. . none unknown . "" . .) 2
+     (strlit s `t28.17.sysma2dyk "")) 6,2
+    (call s . 1 addInt.2.digqtx7k2 ~6
+     (haddr .
+      (td :`t23.13. . . nimcall -1 -1 +0 +13 . . $.1. . none unknown . "" `t28.17.sysma2dyk) result.1) 8 x`gensym0.0)) result.1) none unknown . "" . .) 6,17
+ (sd :$.2. x
+  (proc) . uegi1 r0whtl0t0c0 -1 +0 .
+  (td :`t25.15. . nte2 nimcall -1 -1 +0 +15 . 11,18,/home/araq/projects/nim/lib/system/dollars.nim
+   (formalparams . `t28.17.sysma2dyk
+    (arglist . . 25
+     (bracket . .)
+     (empty)
+     (empty) ~4
+     (arglist . .)
+     (empty) ~4
+     (arglist . .)) 1
+    (sd :x`gensym1.0 .
+     (param) . uw0 . -1 +0 . `t32.4.sysma2dyk $.2. . none unknown . "" . .)) $.2. . none unknown . "" `t28.17.sysma2dyk) dollars.0. ~7,7
+  (proc s . 7,~7
+   (ht . $.2.)
+   (empty)
+   (empty) . 26,~7
+   (pragma . . 8
+    (kv . . ~6
+     (ident . . raises) 2
+     (bracket . .)))
+   (empty) 4,~6
+   (stmts s `t7.1.
+    (comment s .) 7,1
+    (asgn s `t7.1. ~11,5
+     (sd :result.2 .
+      (result) . ua . -1 +0 . `t28.17.sysma2dyk $.2. . none unknown . "" . .) 2
+     (strlit s `t28.17.sysma2dyk "")) 6,2
+    (call s . 1 addInt.2.digqtx7k2 ~6
+     (haddr .
+      (td :`t23.16. . . nimcall -1 -1 +0 +16 . . $.2. . none unknown . "" `t28.17.sysma2dyk) result.2) 8
+     (hstdconv . `t31.3.sysma2dyk
+      (empty) x`gensym1.0))) result.2) none unknown . "" . .) 6,17
+ (sd :$.3. x
+  (proc) . uegi1 r0whtl0t0c0 -1 +0 .
+  (td :`t25.18. . nte2 nimcall -1 -1 +0 +18 . 11,18,/home/araq/projects/nim/lib/system/dollars.nim
+   (formalparams . `t28.17.sysma2dyk
+    (arglist . . 25
+     (bracket . .)
+     (empty)
+     (empty) ~4
+     (arglist . .)
+     (empty) ~4
+     (arglist . .)) 1
+    (sd :x`gensym2.0 .
+     (param) . uw0 . -1 +0 . `t33.5.sysma2dyk $.3. . none unknown . "" . .)) $.3. . none unknown . "" `t28.17.sysma2dyk) dollars.0. ~7,8
+  (proc s . 7,~8
+   (ht . $.3.)
+   (empty)
+   (empty) . 26,~8
+   (pragma . . 8
+    (kv . . ~6
+     (ident . . raises) 2
+     (bracket . .)))
+   (empty) 4,~7
+   (stmts s `t7.1.
+    (comment s .) 7,1
+    (asgn s `t7.1. ~11,6
+     (sd :result.3 .
+      (result) . ua . -1 +0 . `t28.17.sysma2dyk $.3. . none unknown . "" . .) 2
+     (strlit s `t28.17.sysma2dyk "")) 6,2
+    (call s . 1 addInt.2.digqtx7k2 ~6
+     (haddr .
+      (td :`t23.19. . . nimcall -1 -1 +0 +19 . . $.3. . none unknown . "" `t28.17.sysma2dyk) result.3) 8
+     (hstdconv . `t31.3.sysma2dyk
+      (empty) x`gensym2.0))) result.3) none unknown . "" . .) 6,17
+ (sd :$.4. x
+  (proc) . uegi1 r0whtl0t0c0 -1 +0 .
+  (td :`t25.21. . nte2 nimcall -1 -1 +0 +21 . 11,18,/home/araq/projects/nim/lib/system/dollars.nim
+   (formalparams . `t28.17.sysma2dyk
+    (arglist . . 25
+     (bracket . .)
+     (empty)
+     (empty) ~4
+     (arglist . .)
+     (empty) ~4
+     (arglist . .)) 1
+    (sd :x`gensym3.0 .
+     (param) . uw0 . -1 +0 . `t34.6.sysma2dyk $.4. . none unknown . "" . .)) $.4. . none unknown . "" `t28.17.sysma2dyk) dollars.0. ~7,9
+  (proc s . 7,~9
+   (ht . $.4.)
+   (empty)
+   (empty) . 26,~9
+   (pragma . . 8
+    (kv . . ~6
+     (ident . . raises) 2
+     (bracket . .)))
+   (empty) 4,~8
+   (stmts s `t7.1.
+    (comment s .) 7,1
+    (asgn s `t7.1. ~11,7
+     (sd :result.4 .
+      (result) . ua . -1 +0 . `t28.17.sysma2dyk $.4. . none unknown . "" . .) 2
+     (strlit s `t28.17.sysma2dyk "")) 6,2
+    (call s . 1 addInt.2.digqtx7k2 ~6
+     (haddr .
+      (td :`t23.22. . . nimcall -1 -1 +0 +22 . . $.4. . none unknown . "" `t28.17.sysma2dyk) result.4) 8
+     (hstdconv . `t31.3.sysma2dyk
+      (empty) x`gensym3.0))) result.4) none unknown . "" . .) 6,17
+ (sd :$.5. x
+  (proc) . uegi1 r0whtl0t0c0 -1 +0 .
+  (td :`t25.24. . nte2 nimcall -1 -1 +0 +24 . 11,18,/home/araq/projects/nim/lib/system/dollars.nim
+   (formalparams . `t28.17.sysma2dyk
+    (arglist . . 25
+     (bracket . .)
+     (empty)
+     (empty) ~4
+     (arglist . .)
+     (empty) ~4
+     (arglist . .)) 1
+    (sd :x`gensym4.0 .
+     (param) . uw0 . -1 +0 . `t35.7.sysma2dyk $.5. . none unknown . "" . .)) $.5. . none unknown . "" `t28.17.sysma2dyk) dollars.0. ~7,10
+  (proc s . 7,~10
+   (ht . $.5.)
+   (empty)
+   (empty) . 26,~10
+   (pragma . . 8
+    (kv . . ~6
+     (ident . . raises) 2
+     (bracket . .)))
+   (empty) 4,~9
+   (stmts s `t7.1.
+    (comment s .) 7,1
+    (asgn s `t7.1. ~11,8
+     (sd :result.5 .
+      (result) . ua . -1 +0 . `t28.17.sysma2dyk $.5. . none unknown . "" . .) 2
+     (strlit s `t28.17.sysma2dyk "")) 6,2
+    (call s . 1 addInt.1.digqtx7k2 ~6
+     (haddr .
+      (td :`t23.25. . . nimcall -1 -1 +0 +25 . . $.5. . none unknown . "" `t28.17.sysma2dyk) result.5) 8 x`gensym4.0)) result.5) none unknown . "" . .) 6,17
+ (sd :$.6. x
+  (proc) . uegi1 r0whtl0t0c0 -1 +0 .
+  (td :`t25.27. . nte2 nimcall -1 -1 +0 +27 . 11,18,/home/araq/projects/nim/lib/system/dollars.nim
+   (formalparams . `t28.17.sysma2dyk
+    (arglist . . 25
+     (bracket . .)
+     (empty)
+     (empty) ~4
+     (arglist . .)
+     (empty) ~4
+     (arglist . .)) 1
+    (sd :x`gensym5.0 .
+     (param) . uw0 . -1 +0 . `t40.8.sysma2dyk $.6. . none unknown . "" . .)) $.6. . none unknown . "" `t28.17.sysma2dyk) dollars.0. ~7,12
+  (proc s . 7,~12
+   (ht . $.6.)
+   (empty)
+   (empty) . 26,~12
+   (pragma . . 8
+    (kv . . ~6
+     (ident . . raises) 2
+     (bracket . .)))
+   (empty) 4,~11
+   (stmts s `t7.1.
+    (comment s .) 7,1
+    (asgn s `t7.1. ~11,10
+     (sd :result.6 .
+      (result) . ua . -1 +0 . `t28.17.sysma2dyk $.6. . none unknown . "" . .) 2
+     (strlit s `t28.17.sysma2dyk "")) 6,2
+    (call s . 1 addInt.0.digqtx7k2 ~6
+     (haddr .
+      (td :`t23.28. . . nimcall -1 -1 +0 +28 . . $.6. . none unknown . "" `t28.17.sysma2dyk) result.6) 8
+     (hstdconv . `t44.12.sysma2dyk
+      (empty) x`gensym5.0))) result.6) none unknown . "" . .) 6,17
+ (sd :$.7. x
+  (proc) . uegi1 r0whtl0t0c0 -1 +0 .
+  (td :`t25.30. . nte2 nimcall -1 -1 +0 +30 . 11,18,/home/araq/projects/nim/lib/system/dollars.nim
+   (formalparams . `t28.17.sysma2dyk
+    (arglist . . 25
+     (bracket . .)
+     (empty)
+     (empty) ~4
+     (arglist . .)
+     (empty) ~4
+     (arglist . .)) 1
+    (sd :x`gensym6.0 .
+     (param) . uw0 . -1 +0 . `t41.9.sysma2dyk $.7. . none unknown . "" . .)) $.7. . none unknown . "" `t28.17.sysma2dyk) dollars.0. ~7,13
+  (proc s . 7,~13
+   (ht . $.7.)
+   (empty)
+   (empty) . 26,~13
+   (pragma . . 8
+    (kv . . ~6
+     (ident . . raises) 2
+     (bracket . .)))
+   (empty) 4,~12
+   (stmts s `t7.1.
+    (comment s .) 7,1
+    (asgn s `t7.1. ~11,11
+     (sd :result.7 .
+      (result) . ua . -1 +0 . `t28.17.sysma2dyk $.7. . none unknown . "" . .) 2
+     (strlit s `t28.17.sysma2dyk "")) 6,2
+    (call s . 1 addInt.0.digqtx7k2 ~6
+     (haddr .
+      (td :`t23.31. . . nimcall -1 -1 +0 +31 . . $.7. . none unknown . "" `t28.17.sysma2dyk) result.7) 8
+     (hstdconv . `t44.12.sysma2dyk
+      (empty) x`gensym6.0))) result.7) none unknown . "" . .) 6,17
+ (sd :$.8. x
+  (proc) . uegi1 r0whtl0t0c0 -1 +0 .
+  (td :`t25.33. . nte2 nimcall -1 -1 +0 +33 . 11,18,/home/araq/projects/nim/lib/system/dollars.nim
+   (formalparams . `t28.17.sysma2dyk
+    (arglist . . 25
+     (bracket . .)
+     (empty)
+     (empty) ~4
+     (arglist . .)
+     (empty) ~4
+     (arglist . .)) 1
+    (sd :x`gensym7.0 .
+     (param) . uw0 . -1 +0 . `t42.10.sysma2dyk $.8. . none unknown . "" . .)) $.8. . none unknown . "" `t28.17.sysma2dyk) dollars.0. ~7,14
+  (proc s . 7,~14
+   (ht . $.8.)
+   (empty)
+   (empty) . 26,~14
+   (pragma . . 8
+    (kv . . ~6
+     (ident . . raises) 2
+     (bracket . .)))
+   (empty) 4,~13
+   (stmts s `t7.1.
+    (comment s .) 7,1
+    (asgn s `t7.1. ~11,12
+     (sd :result.8 .
+      (result) . ua . -1 +0 . `t28.17.sysma2dyk $.8. . none unknown . "" . .) 2
+     (strlit s `t28.17.sysma2dyk "")) 6,2
+    (call s . 1 addInt.0.digqtx7k2 ~6
+     (haddr .
+      (td :`t23.34. . . nimcall -1 -1 +0 +34 . . $.8. . none unknown . "" `t28.17.sysma2dyk) result.8) 8
+     (hstdconv . `t44.12.sysma2dyk
+      (empty) x`gensym7.0))) result.8) none unknown . "" . .) 6,17
+ (sd :$.9. x
+  (proc) . uegi1 r0whtl0t0c0 -1 +0 .
+  (td :`t25.36. . nte2 nimcall -1 -1 +0 +36 . 11,18,/home/araq/projects/nim/lib/system/dollars.nim
+   (formalparams . `t28.17.sysma2dyk
+    (arglist . . 25
+     (bracket . .)
+     (empty)
+     (empty) ~4
+     (arglist . .)
+     (empty) ~4
+     (arglist . .)) 1
+    (sd :x`gensym8.0 .
+     (param) . uw0 . -1 +0 . `t43.11.sysma2dyk $.9. . none unknown . "" . .)) $.9. . none unknown . "" `t28.17.sysma2dyk) dollars.0. ~7,15
+  (proc s . 7,~15
+   (ht . $.9.)
+   (empty)
+   (empty) . 26,~15
+   (pragma . . 8
+    (kv . . ~6
+     (ident . . raises) 2
+     (bracket . .)))
+   (empty) 4,~14
+   (stmts s `t7.1.
+    (comment s .) 7,1
+    (asgn s `t7.1. ~11,13
+     (sd :result.9 .
+      (result) . ua . -1 +0 . `t28.17.sysma2dyk $.9. . none unknown . "" . .) 2
+     (strlit s `t28.17.sysma2dyk "")) 6,2
+    (call s . 1 addInt.0.digqtx7k2 ~6
+     (haddr .
+      (td :`t23.37. . . nimcall -1 -1 +0 +37 . . $.9. . none unknown . "" `t28.17.sysma2dyk) result.9) 8
+     (hstdconv . `t44.12.sysma2dyk
+      (empty) x`gensym8.0))) result.9) none unknown . "" . .) 6,17
+ (sd :$.10. x
+  (proc) . uegi1 r0whtl0t0c0 -1 +0 .
+  (td :`t25.39. . nte2 nimcall -1 -1 +0 +39 . 11,18,/home/araq/projects/nim/lib/system/dollars.nim
+   (formalparams . `t28.17.sysma2dyk
+    (arglist . . 25
+     (bracket . .)
+     (empty)
+     (empty) ~4
+     (arglist . .)
+     (empty) ~4
+     (arglist . .)) 1
+    (sd :x`gensym9.0 .
+     (param) . uw0 . -1 +0 . `t44.12.sysma2dyk $.10. . none unknown . "" . .)) $.10. . none unknown . "" `t28.17.sysma2dyk) dollars.0. ~7,16
+  (proc s . 7,~16
+   (ht . $.10.)
+   (empty)
+   (empty) . 26,~16
+   (pragma . . 8
+    (kv . . ~6
+     (ident . . raises) 2
+     (bracket . .)))
+   (empty) 4,~15
+   (stmts s `t7.1.
+    (comment s .) 7,1
+    (asgn s `t7.1. ~11,14
+     (sd :result.10 .
+      (result) . ua . -1 +0 . `t28.17.sysma2dyk $.10. . none unknown . "" . .) 2
+     (strlit s `t28.17.sysma2dyk "")) 6,2
+    (call s . 1 addInt.0.digqtx7k2 ~6
+     (haddr .
+      (td :`t23.40. . . nimcall -1 -1 +0 +40 . . $.10. . none unknown . "" `t28.17.sysma2dyk) result.10) 8 x`gensym9.0)) result.10) none unknown . "" . .) 8,36
+ (sd :gen.0. .
+  (template) . ugn4a1 . -1 +0 .
+  (td :`t25.41. . m nimcall -1 -1 +0 +41 . 12,37,/home/araq/projects/nim/lib/system/dollars.nim
+   (formalparams . .
+    (arglist . .) 1
+    (sd :T.1 .
+     (param) . ut0 . -1 +0 .
+     (td :`t6.42. . . nimcall -1 -1 +0 +42 . . gen.0. . none unknown . "") gen.0. . none unknown . "" . .)) gen.0. . none unknown . "" .) dollars.0. ~9
+  (template s . 9
+   (ht . gen.0.)
+   (empty)
+   (empty) .
+   (empty)
+   (empty) 2,2
+   (stmts . .
+    (func . . 8
+     (postfix . .
+      (ident . . *) ~3
+      (accquoted . . 1
+       (ident . . $)))
+     (empty)
+     (empty) 9
+     (formalparams . . 13
+      (ht . string.0.sysma2dyk) 1
+      (identdefs . .
+       (sd :x.12 .
+        (param) . us1g0 . -1 +0 . . gen.0. . none unknown . "" . .) 4
+       (call . .
+        (ident . . \7B\7D) ~1 T.1 1
+        (ident . . lit)) 9
+       (empty))) 29
+     (pragma . . 2
+      (ident . . compileTime))
+     (empty) 2,1
+     (stmts . . 7
+      (asgn . . ~7
+       (ident . . result) 2
+       (strlit . . "")) 13,1
+      (call . . ~7
+       (dot . . ~6
+        (ident . . result) 1
+        (opensymchoice .
+         (td :`t0.44. . . nimcall -1 -1 +0 +44 . . gen.0. . none unknown . "") addInt.0.digqtx7k2 addInt.1.digqtx7k2 addInt.2.digqtx7k2)) 1 x.12))))) none unknown . "" . .) 6,38
+ (sd :$.11. x
+  (func) . uegnc1i1 r0whtl0t0c0 -1 +0 .
+  (td :`t25.45. . nte2 nimcall -1 -1 +0 +45 . 11,39,/home/araq/projects/nim/lib/system/dollars.nim
+   (formalparams . `t28.17.sysma2dyk
+    (arglist . . ~4
+     (arglist . .)
+     (empty)
+     (empty) ~4
+     (arglist . .)
+     (empty) ~4
+     (arglist . .)) 1
+    (sd :x`gensym10.0 .
+     (param) . uw0 . -1 +0 . `t31.3.sysma2dyk $.11. . none unknown . "" 4
+     (strlit . . "\01\07\01") .)) $.11. . none unknown . "" `t28.17.sysma2dyk) dollars.0. ~7,3
+  (func s . 7,~3
+   (ht . $.11.)
+   (empty)
+   (empty) . 31,~3
+   (pragma . . 2
+    (ident . . compileTime))
+   (empty) 4,~2
+   (stmts s `t7.1. 7
+    (asgn s `t7.1. ~8,2
+     (sd :result.11 .
+      (result) . ua . -1 +0 . `t28.17.sysma2dyk $.11. . none unknown . "" . .) 2
+     (strlit s `t28.17.sysma2dyk "")) 6,1
+    (call s . 1 addInt.2.digqtx7k2 ~6
+     (haddr .
+      (td :`t23.46. . . nimcall -1 -1 +0 +46 . . $.11. . none unknown . "" `t28.17.sysma2dyk) result.11) 8 x`gensym10.0)) 3 result.11) none unknown . "" . .) 6,38
+ (sd :$.12. x
+  (func) . uegnc1i1 r0whtl0t0c0 -1 +0 .
+  (td :`t25.47. . nte2 nimcall -1 -1 +0 +47 . 11,39,/home/araq/projects/nim/lib/system/dollars.nim
+   (formalparams . `t28.17.sysma2dyk
+    (arglist . . ~4
+     (arglist . .)
+     (empty)
+     (empty) ~4
+     (arglist . .)
+     (empty) ~4
+     (arglist . .)) 1
+    (sd :x`gensym11.0 .
+     (param) . uw0 . -1 +0 . `t44.12.sysma2dyk $.12. . none unknown . "" 4
+     (strlit . . "\01\07\01") .)) $.12. . none unknown . "" `t28.17.sysma2dyk) dollars.0. ~7,4
+  (func s . 7,~4
+   (ht . $.12.)
+   (empty)
+   (empty) . 31,~4
+   (pragma . . 2
+    (ident . . compileTime))
+   (empty) 4,~3
+   (stmts s `t7.1. 7
+    (asgn s `t7.1. ~8,3
+     (sd :result.12 .
+      (result) . ua . -1 +0 . `t28.17.sysma2dyk $.12. . none unknown . "" . .) 2
+     (strlit s `t28.17.sysma2dyk "")) 6,1
+    (call s . 1 addInt.0.digqtx7k2 ~6
+     (haddr .
+      (td :`t23.48. . . nimcall -1 -1 +0 +48 . . $.12. . none unknown . "" `t28.17.sysma2dyk) result.12) 8 x`gensym11.0)) 3 result.12) none unknown . "" . .) 6,38
+ (sd :$.13. x
+  (func) . uegnc1i1 r0whtl0t0c0 -1 +0 .
+  (td :`t25.49. . nte2 nimcall -1 -1 +0 +49 . 11,39,/home/araq/projects/nim/lib/system/dollars.nim
+   (formalparams . `t28.17.sysma2dyk
+    (arglist . . ~4
+     (arglist . .)
+     (empty)
+     (empty) ~4
+     (arglist . .)
+     (empty) ~4
+     (arglist . .)) 1
+    (sd :x`gensym12.0 .
+     (param) . uw0 . -1 +0 . `t35.7.sysma2dyk $.13. . none unknown . "" 4
+     (strlit . . "\01\07\01") .)) $.13. . none unknown . "" `t28.17.sysma2dyk) dollars.0. ~7,5
+  (func s . 7,~5
+   (ht . $.13.)
+   (empty)
+   (empty) . 31,~5
+   (pragma . . 2
+    (ident . . compileTime))
+   (empty) 4,~4
+   (stmts s `t7.1. 7
+    (asgn s `t7.1. ~8,4
+     (sd :result.13 .
+      (result) . ua . -1 +0 . `t28.17.sysma2dyk $.13. . none unknown . "" . .) 2
+     (strlit s `t28.17.sysma2dyk "")) 6,1
+    (call s . 1 addInt.1.digqtx7k2 ~6
+     (haddr .
+      (td :`t23.50. . . nimcall -1 -1 +0 +50 . . $.13. . none unknown . "" `t28.17.sysma2dyk) result.13) 8 x`gensym12.0)) 3 result.13) none unknown . "" . .) 4,46
+ (sd :$.14. x
+  (proc) booltostr uegn r0whtl0t0c0 -1 +0 .
+  (td :`t25.51. . ne2 nimcall -1 -1 +0 +51 . 9,47,/home/araq/projects/nim/lib/system/dollars.nim
+   (formalparams . `t28.17.sysma2dyk
+    (arglist . .
+     (arglist . .) . .
+     (arglist . .) 18
+     (pragma . . 7
+      (kv . . ~5
+       (ident . . magic) 2
+       (strlit . `t28.17.sysma2dyk "BoolToStr")) 22
+      (ident . . noSideEffect))
+     (arglist . .)) 1
+    (sd :x.16 .
+     (param) . . . -1 +0 . `t1.34.sysma2dyk $.14. . none unknown . "" . .)) $.14. . none unknown . "" `t28.17.sysma2dyk) dollars.0. ~5
+  (proc sh . 5
+   (ht . $.14.)
+   (empty)
+   (empty) . 27
+   (pragma . . 7
+    (kv . . ~5
+     (ident . . magic) 2
+     (strlit . `t28.17.sysma2dyk "BoolToStr")) 22
+    (ident . . noSideEffect))
+   (empty)
+   (empty)) none unknown . "" . .) 4,50
+ (sd :$.15. x
+  (proc) chartostr uegn r0whtl0t0c0 -1 +0 .
+  (td :`t25.52. . ne2 nimcall -1 -1 +0 +52 . 9,51,/home/araq/projects/nim/lib/system/dollars.nim
+   (formalparams . `t28.17.sysma2dyk
+    (arglist . .
+     (arglist . .) . .
+     (arglist . .) 18
+     (pragma . . 7
+      (kv . . ~5
+       (ident . . magic) 2
+       (strlit . `t28.17.sysma2dyk "CharToStr")) 22
+      (ident . . noSideEffect))
+     (arglist . .)) 1
+    (sd :x.17 .
+     (param) . . . -1 +0 . `t2.16.sysma2dyk $.15. . none unknown . "" . .)) $.15. . none unknown . "" `t28.17.sysma2dyk) dollars.0. ~5
+  (proc sh . 5
+   (ht . $.15.)
+   (empty)
+   (empty) . 27
+   (pragma . . 7
+    (kv . . ~5
+     (ident . . magic) 2
+     (strlit . `t28.17.sysma2dyk "CharToStr")) 22
+    (ident . . noSideEffect))
+   (empty)
+   (empty)) none unknown . "" . .) 4,57
+ (sd :$.16. x
+  (proc) cstrtostr uegn r0whtl0t0c0 -1 +0 .
+  (td :`t25.53. . ne2 nimcall -1 -1 +0 +53 . 9,58,/home/araq/projects/nim/lib/system/dollars.nim
+   (formalparams . `t28.17.sysma2dyk
+    (arglist . .
+     (arglist . .) . .
+     (arglist . .) 21
+     (pragma . . 7
+      (kv . . ~5
+       (ident . . magic) 2
+       (strlit . `t28.17.sysma2dyk "CStrToStr")) 22
+      (ident . . noSideEffect))
+     (arglist . .)) 1
+    (sd :x.18 .
+     (param) . . . -1 +0 . `t29.18.sysma2dyk $.16. . none unknown . "" . .)) $.16. . none unknown . "" `t28.17.sysma2dyk) dollars.0. ~5
+  (proc sh . 5
+   (ht . $.16.)
+   (empty)
+   (empty) . 30
+   (pragma . . 7
+    (kv . . ~5
+     (ident . . magic) 2
+     (strlit . `t28.17.sysma2dyk "CStrToStr")) 22
+    (ident . . noSideEffect))
+   (empty)
+   (empty)) none unknown . "" . .) 4,61
+ (sd :$.17. x
+  (proc) strtostr uegn r0whtl0t0c0 -1 +0 .
+  (td :`t25.54. . ne2 nimcall -1 -1 +0 +54 . 9,62,/home/araq/projects/nim/lib/system/dollars.nim
+   (formalparams . `t28.17.sysma2dyk
+    (arglist . .
+     (arglist . .) . .
+     (arglist . .) 20
+     (pragma . . 7
+      (kv . . ~5
+       (ident . . magic) 2
+       (strlit . `t28.17.sysma2dyk "StrToStr")) 21
+      (ident . . noSideEffect))
+     (arglist . .)) 1
+    (sd :x.19 .
+     (param) . . . -1 +0 . `t28.17.sysma2dyk $.17. . none unknown . "" . .)) $.17. . none unknown . "" `t28.17.sysma2dyk) dollars.0. ~5
+  (proc sh . 5
+   (ht . $.17.)
+   (empty)
+   (empty) . 29
+   (pragma . . 7
+    (kv . . ~5
+     (ident . . magic) 2
+     (strlit . `t28.17.sysma2dyk "StrToStr")) 21
+    (ident . . noSideEffect))
+   (empty)
+   (empty)) none unknown . "" . .) 4,66
+ (sd :$.18. x
+  (proc) enumtostr uegn r0whtl0t0c0 -1 +0 .
+  (td :`t25.58. . nme2 nimcall -1 -1 +0 +58 . 21,67,/home/araq/projects/nim/lib/system/dollars.nim
+   (formalparams . `t28.17.sysma2dyk
+    (arglist . .
+     (arglist . .) . .
+     (arglist . .) 18
+     (pragma . . 7
+      (kv . . ~5
+       (ident . . magic) 2
+       (strlit . `t28.17.sysma2dyk "EnumToStr")) 22
+      (ident . . noSideEffect))
+     (arglist . .)) 1
+    (sd :x.20 .
+     (param) . . . -1 +0 .
+     (td :`t12.57. . g0 nimcall -1 -1 +0 +57 . . $.18. 10,67,/home/araq/projects/nim/lib/system/dollars.nim
+      (sd :Enum.0 .
+       (type) . u . -1 +0 . `t12.57. $.18. . none unknown . "" . .) none unknown . ""
+      (td :`t51.55. . c3 nimcall -1 -1 +0 +55 . . $.18. . none unknown . ""
+       (td :`t14.56. . . nimcall -1 -1 +0 +56 . . $.18. . none unknown . ""))) $.18. . none unknown . "" . .)) $.18. . none unknown . "" `t28.17.sysma2dyk) dollars.0. ~5
+  (proc sh . 5
+   (ht . $.18.)
+   (empty) 9
+   (genericparams . . 1 Enum.0) . 39
+   (pragma . . 7
+    (kv . . ~5
+     (ident . . magic) 2
+     (strlit . `t28.17.sysma2dyk "EnumToStr")) 22
+    (ident . . noSideEffect))
+   (bracket . .
+    (empty) 9,67,/home/araq/projects/nim/lib/system/dollars.nim
+    (genericparams . . 1
+     (identdefs . .
+      (ident . . Enum) 6
+      (enumty . `t51.55.)
+      (empty))))
+   (empty)) none unknown . "" . .) 4,73
+ (sd :$.19. x
+  (proc) typetrait ueg r0whtl0t0c0 -1 +0 .
+  (td :`t25.59. . nme2 nimcall -1 -1 +0 +59 . 9,74,/home/araq/projects/nim/lib/system/dollars.nim
+   (formalparams . `t28.17.sysma2dyk
+    (arglist . .
+     (arglist . .) . .
+     (arglist . .) 22
+     (pragma . . 7
+      (kv . . ~5
+       (ident . . magic) 2
+       (strlit . `t28.17.sysma2dyk "TypeTrait")))
+     (arglist . .)) 1
+    (sd :t.0 .
+     (param) . . . -1 +0 .
+     (td :`t8.60. . i1c3 nimcall -1 -1 +0 +60 . . $.19. 10,74,/home/araq/projects/nim/lib/system/dollars.nim
+      (sd :t\3Atype.0 .
+       (type) . a0 . -1 +0 . `t8.60. $.19. . none unknown . "" . .) none unknown . "" `t0.21.sysma2dyk) $.19. . none unknown . "" . .)) $.19. . none unknown . "" `t28.17.sysma2dyk) dollars.0. ~5
+  (proc sh . 5
+   (ht . $.19.)
+   (empty)
+   (genericparams . . 10 t\3Atype.0) . 31
+   (pragma . . 7
+    (kv . . ~5
+     (ident . . magic) 2
+     (strlit . `t28.17.sysma2dyk "TypeTrait")))
+   (bracket . .
+    (empty)
+    (empty))
+   (empty)) none unknown . "" . .) 4,85
+ (sd :$.20. x
+  (proc) . ueg r0whtl0t0c0 -1 +0 .
+  (td :`t25.64. . me2 nimcall -1 -1 +0 +64 . 19,86,/home/araq/projects/nim/lib/system/dollars.nim
+   (formalparams . `t28.17.sysma2dyk
+    (arglist . .) 1
+    (sd :x.21 .
+     (param) . u . -1 +0 .
+     (td :`t12.63. . g0 nimcall -1 -1 +0 +63 . . $.20. 10,86,/home/araq/projects/nim/lib/system/dollars.nim
+      (sd :T.2 .
+       (type) . u . -1 +0 . `t12.63. $.20. . none unknown . "" . .) none unknown . ""
+      (td :`t51.61. . c3 nimcall -1 -1 +0 +61 . . $.20. . none unknown . ""
+       (td :`t18.62. . . nimcall -1 -1 +0 +62 . . $.20. . none unknown . ""))) $.20. . none unknown . "" . .)) $.20. . none unknown . "" `t28.17.sysma2dyk) dollars.0. ~5
+  (proc s . 5
+   (ht . $.20.)
+   (empty) 9
+   (genericparams . . 1 T.2) .
+   (empty)
+   (bracket . .
+    (empty) 9,86,/home/araq/projects/nim/lib/system/dollars.nim
+    (genericparams . . 1
+     (identdefs . .
+      (ident . . T) 8
+      (tupleclassty . `t51.61.)
+      (empty)))) 2,1
+   (stmts . .
+    (comment h .) 17,7
+    (call . . ~17 tupleObjectDollar.0.misc8dkkc 1
+     (ident . . result) 9
+     (ident . . x)))) none unknown . "" . .) 4,99
+ (sd :collectionToString.0. .
+  (proc) . ug r0whtl0t0c0 -1 +0 .
+  (td :`t25.66. . me2 nimcall -1 -1 +0 +66 . 26,100,/home/araq/projects/nim/lib/system/dollars.nim
+   (formalparams . `t28.17.sysma2dyk
+    (arglist . .) 1
+    (sd :x.22 .
+     (param) . u . -1 +0 .
+     (td :`t12.65. . g0 nimcall -1 -1 +0 +65 . . collectionToString.0. 24,100,/home/araq/projects/nim/lib/system/dollars.nim
+      (sd :T.0 .
+       (type) . u . -1 +0 . `t12.65. collectionToString.0. . none unknown . "" . .) none unknown . "") collectionToString.0. . none unknown . "" . .) 7
+    (sd :prefix.0 .
+     (param) . u . -1 +1 . `t28.17.sysma2dyk collectionToString.0. . none unknown . "" . .) 15
+    (sd :separator.0 .
+     (param) . u . -1 +2 . `t28.17.sysma2dyk collectionToString.0. . none unknown . "" . .) 26
+    (sd :suffix.0 .
+     (param) . u . -1 +3 . `t28.17.sysma2dyk collectionToString.0. . none unknown . "" . .)) collectionToString.0. . none unknown . "" `t28.17.sysma2dyk) dollars.0. ~5
+  (proc s . 5
+   (ht . collectionToString.0.)
+   (empty) 23
+   (genericparams . . 1 T.0) .
+   (empty)
+   (bracket . .
+    (empty) 23,100,/home/araq/projects/nim/lib/system/dollars.nim
+    (genericparams . . 1
+     (identdefs . .
+      (ident . . T)
+      (empty)
+      (empty)))) 2,1
+   (stmts . . 7
+    (asgn . . ~7
+     (ident . . result) 2
+     (ident . . prefix)) ,1
+    (var . . 4
+     (identdefs . .
+      (ident . . firstElement) 13
+      (empty) 15 true.0.sysma2dyk)) 4,2
+    (for . .
+     (ident . . value) 14
+     (call . . ~5
+      (opensymchoice .
+       (td :`t0.67. . . nimcall -1 -1 +0 +67 . . collectionToString.0. . none unknown . "") items.8.iteb2w7qe items.6.iteb2w7qe items.7.iteb2w7qe items.4.iteb2w7qe items.2.iteb2w7qe items.0.iteb2w7qe items.5.iteb2w7qe items.3.iteb2w7qe items.1.iteb2w7qe) 1
+      (ident . . x)) ~2,1
+     (stmts . .
+      (if . . 3
+       (elif . .
+        (ident . . firstElement) ~1,1
+        (stmts . . 13
+         (asgn . . ~13
+          (ident . . firstElement) 2 false.0.sysma2dyk))) ,2
+       (else . . 2,1
+        (stmts . . 10
+         (call . . ~4
+          (dot . . ~6
+           (ident . . result) 1
+           (opensymchoice .
+            (td :`t0.68. . . nimcall -1 -1 +0 +68 . . collectionToString.0. . none unknown . "") add.3.sysma2dyk add.0.sysma2dyk add.2.sysma2dyk add.1.sysma2dyk add.12.sysma2dyk)) 1
+          (ident . . separator))))) ,5
+      (when . . 5
+       (elif . . 39
+        (infix . .
+         (opensymchoice .
+          (td :`t0.69. . . nimcall -1 -1 +0 +69 . . collectionToString.0. . none unknown . "") and.0.sysma2dyk and.7.sysma2dyk and.2.sysma2dyk and.5.sysma2dyk and.9.sysma2dyk and.11.sysma2dyk and.4.sysma2dyk and.3.sysma2dyk and.1.sysma2dyk and.8.sysma2dyk and.6.sysma2dyk and.10.sysma2dyk) ~20
+         (infix . .
+          (opensymchoice .
+           (td :`t0.70. . . nimcall -1 -1 +0 +70 . . collectionToString.0. . none unknown . "") and.0.sysma2dyk and.7.sysma2dyk and.2.sysma2dyk and.5.sysma2dyk and.9.sysma2dyk and.11.sysma2dyk and.4.sysma2dyk and.3.sysma2dyk and.1.sysma2dyk and.8.sysma2dyk and.6.sysma2dyk and.10.sysma2dyk) ~13
+          (stmts f .
+           (prefix . .
+            (opensymchoice d3 . not.0.sysma2dyk not.4.sysma2dyk not.8.sysma2dyk not.2.sysma2dyk not.9.sysma2dyk not.1.sysma2dyk not.3.sysma2dyk not.11.sysma2dyk not.10.sysma2dyk not.5.sysma2dyk not.7.sysma2dyk not.6.sysma2dyk)
+            (par . .
+             (infix . . is.0.sysma2dyk ~6
+              (ident . . value) 6
+              (ht
+               (td :`t8.71. . h0 nimcall -1 -1 +0 +71 . . system.0.sysma2dyk . none unknown . "" `t28.17.sysma2dyk) string.0.sysma2dyk))))) 10
+          (stmts f .
+           (prefix . .
+            (opensymchoice d3 . not.0.sysma2dyk not.4.sysma2dyk not.8.sysma2dyk not.2.sysma2dyk not.9.sysma2dyk not.1.sysma2dyk not.3.sysma2dyk not.11.sysma2dyk not.10.sysma2dyk not.5.sysma2dyk not.7.sysma2dyk not.6.sysma2dyk)
+            (par . .
+             (infix . . is.0.sysma2dyk ~6
+              (ident . . value) 6
+              (ht
+               (td :`t8.72. . mh0 nimcall -1 -1 +0 +72 . . system.0.sysma2dyk . none unknown . "" `t24.156.sysma2dyk) seq.0.sysma2dyk)))))) 12
+         (call . . ~8 compiles.0.sysma2dyk 6
+          (dot . . ~5
+           (ident . . value) 1
+           (opensymchoice .
+            (td :`t0.73. . . nimcall -1 -1 +0 +73 . . collectionToString.0. . none unknown . "") isNil.3.sysma2dyk isNil.4.sysma2dyk isNil.0.sysma2dyk isNil.2.sysma2dyk isNil.1.sysma2dyk)))) ~3,2
+        (stmts . .
+         (if . . 3
+          (elif . . 5
+           (dot . . ~5
+            (ident . . value) 1
+            (opensymchoice .
+             (td :`t0.74. . . nimcall -1 -1 +0 +74 . . collectionToString.0. . none unknown . "") isNil.3.sysma2dyk isNil.4.sysma2dyk isNil.0.sysma2dyk isNil.2.sysma2dyk isNil.1.sysma2dyk)) ~1,1
+           (stmts . . 6
+            (cmd . .
+             (dot . . ~6
+              (ident . . result) 1
+              (opensymchoice .
+               (td :`t0.75. . . nimcall -1 -1 +0 +75 . . collectionToString.0. . none unknown . "") add.3.sysma2dyk add.0.sysma2dyk add.2.sysma2dyk add.1.sysma2dyk add.12.sysma2dyk)) 5
+             (strlit . . "nil")))) ,2
+          (else . . 2,1
+           (stmts . . 16
+            (call . . ~10
+             (dot . . ~6
+              (ident . . result) 1
+              (ident . . addQuoted)) 1
+             (ident . . value))))))) ,6
+       (else . . 2,1
+        (stmts . . 16
+         (call . . ~10
+          (dot . . ~6
+           (ident . . result) 1
+           (ident . . addQuoted)) 1
+          (ident . . value))))))) 10,16
+    (call . . ~4
+     (dot . . ~6
+      (ident . . result) 1
+      (opensymchoice .
+       (td :`t0.76. . . nimcall -1 -1 +0 +76 . . collectionToString.0. . none unknown . "") add.3.sysma2dyk add.0.sysma2dyk add.2.sysma2dyk add.1.sysma2dyk add.12.sysma2dyk)) 1
+     (ident . . suffix)))) none unknown . "" . .) 4,118
+ (sd :$.21. x
+  (proc) . ueg r0whtl0t0c0 -1 +0 .
+  (td :`t25.78. . me2 nimcall -1 -1 +0 +78 . 12,119,/home/araq/projects/nim/lib/system/dollars.nim
+   (formalparams . `t28.17.sysma2dyk
+    (arglist . .) 1
+    (sd :x.23 .
+     (param) . u . -1 +0 .
+     (td :`t19.79. . m nimcall -1 -1 +0 +79 . . $.21. . none unknown . ""
+      (td :`t12.77. . g0 nimcall -1 -1 +0 +77 . . $.21. 10,119,/home/araq/projects/nim/lib/system/dollars.nim
+       (sd :T.0 .
+        (type) . u . -1 +0 . `t12.77. $.21. . none unknown . "" . .) none unknown . "")) $.21. . none unknown . "" . .)) $.21. . none unknown . "" `t28.17.sysma2dyk) dollars.0. ~5
+  (proc s . 5
+   (ht . $.21.)
+   (empty) 9
+   (genericparams . . 1 T.0) .
+   (empty)
+   (bracket . .
+    (empty) 9,119,/home/araq/projects/nim/lib/system/dollars.nim
+    (genericparams . . 1
+     (identdefs . .
+      (ident . . T)
+      (empty)
+      (empty)))) 2,1
+   (stmts . .
+    (comment h .) 18,5
+    (call . . ~18 collectionToString.0. 1
+     (ident . . x) 4
+     (strlit . . "\7B") 9
+     (strlit . . ", ") 15
+     (strlit . . "\7D")))) none unknown . "" . .) 4,126
+ (sd :$.22. x
+  (proc) . ueg r0whtl0t0c0 -1 +0 .
+  (td :`t25.81. . me2 nimcall -1 -1 +0 +81 . 12,127,/home/araq/projects/nim/lib/system/dollars.nim
+   (formalparams . `t28.17.sysma2dyk
+    (arglist . .) 1
+    (sd :x.24 .
+     (param) . u . -1 +0 .
+     (td :`t24.82. . ma nimcall -1 -1 +0 +82 . . $.22. . none unknown . ""
+      (td :`t12.80. . g0 nimcall -1 -1 +0 +80 . . $.22. 10,127,/home/araq/projects/nim/lib/system/dollars.nim
+       (sd :T.0 .
+        (type) . u . -1 +0 . `t12.80. $.22. . none unknown . "" . .) none unknown . "")) $.22. . none unknown . "" . .)) $.22. . none unknown . "" `t28.17.sysma2dyk) dollars.0. ~5
+  (proc s . 5
+   (ht . $.22.)
+   (empty) 9
+   (genericparams . . 1 T.0) .
+   (empty)
+   (bracket . .
+    (empty) 9,127,/home/araq/projects/nim/lib/system/dollars.nim
+    (genericparams . . 1
+     (identdefs . .
+      (ident . . T)
+      (empty)
+      (empty)))) 2,1
+   (stmts . .
+    (comment h .) 18,5
+    (call . . ~18 collectionToString.0. 1
+     (ident . . x) 4
+     (strlit . . "@\5B") 10
+     (strlit . . ", ") 16
+     (strlit . . "\5D")))) none unknown . "" . .) 4,134
+ (sd :$.23. x
+  (proc) . ueg r0whtl0t0c0 -1 +0 .
+  (td :`t25.85. . me2 nimcall -1 -1 +0 +85 . 15,135,/home/araq/projects/nim/lib/system/dollars.nim
+   (formalparams . `t28.17.sysma2dyk
+    (arglist . .) 1
+    (sd :x.25 .
+     (param) . u . -1 +0 .
+     (td :`t9.86. . m nimcall -1 -1 +0 +86 . . $.23. . none unknown . "" `t10.279.sysma2dyk
+      (td :`t12.83. . g0 nimcall -1 -1 +0 +83 . . $.23. 10,135,/home/araq/projects/nim/lib/system/dollars.nim
+       (sd :T.0 .
+        (type) . u . -1 +0 . `t12.83. $.23. . none unknown . "" . .) none unknown . "")
+      (td :`t12.84. . g0 nimcall -1 -1 +0 +84 . . $.23. 13,135,/home/araq/projects/nim/lib/system/dollars.nim
+       (sd :U.0 .
+        (type) . u . -1 +1 . `t12.84. $.23. . none unknown . "" . .) none unknown . "")) $.23. . none unknown . "" . .)) $.23. . none unknown . "" `t28.17.sysma2dyk) dollars.0. ~5
+  (proc s . 5
+   (ht . $.23.)
+   (empty) 9
+   (genericparams . . 1 T.0 4 U.0) .
+   (empty)
+   (bracket . .
+    (empty) 9,135,/home/araq/projects/nim/lib/system/dollars.nim
+    (genericparams . . 1
+     (identdefs . .
+      (ident . . T) 3
+      (ident . . U)
+      (empty)
+      (empty)))) 2,1
+   (stmts . .
+    (comment h .) 7,5
+    (asgn . . ~7
+     (ident . . result) 2
+     (prefix . .
+      (opensymchoice .
+       (td :`t0.87. . . nimcall -1 -1 +0 +87 . . $.23. . none unknown . "") $.0. $.1. $.3. $.12. $.10. $.4. $.5. $.16. $.13. $.14. $.9. $.15. $.8. $.2. $.11. $.6. $.7. $.17. $.18. $.19. $.20. $.21. $.22. $.23. $.0.objh23djq) 2
+      (dot . . ~1
+       (ident . . x) 1
+       (ident . . a)))) 10,6
+    (call . . ~4
+     (dot . . ~6
+      (ident . . result) 1
+      (opensymchoice .
+       (td :`t0.88. . . nimcall -1 -1 +0 +88 . . $.23. . none unknown . "") add.3.sysma2dyk add.0.sysma2dyk add.2.sysma2dyk add.1.sysma2dyk add.12.sysma2dyk)) 1
+     (strlit . . " .. ")) 10,7
+    (call . . ~4
+     (dot . . ~6
+      (ident . . result) 1
+      (opensymchoice .
+       (td :`t0.89. . . nimcall -1 -1 +0 +89 . . $.23. . none unknown . "") add.3.sysma2dyk add.0.sysma2dyk add.2.sysma2dyk add.1.sysma2dyk add.12.sysma2dyk)) 1
+     (prefix . .
+      (opensymchoice .
+       (td :`t0.90. . . nimcall -1 -1 +0 +90 . . $.23. . none unknown . "") $.0. $.1. $.3. $.12. $.10. $.4. $.5. $.16. $.13. $.14. $.9. $.15. $.8. $.2. $.11. $.6. $.7. $.17. $.18. $.19. $.20. $.21. $.22. $.23. $.0.objh23djq) 2
+      (dot . . ~1
+       (ident . . x) 1
+       (ident . . b)))))) none unknown . "" . .) 6,146
+ (sd :$.24. x
+  (proc) . eg r0whtl0t0c0 -1 +0 .
+  (td :`t25.93. . me2 nimcall -1 -1 +0 +93 . 19,147,/home/araq/projects/nim/lib/system/dollars.nim
+   (formalparams . `t28.17.sysma2dyk
+    (arglist . .) 1
+    (sd :x.26 .
+     (param) . u . -1 +0 .
+     (td :`t16.94. . m nimcall -1 -1 +0 +94 . . $.24. . none unknown . ""
+      (td :`t12.92. . g0 nimcall -1 -1 +0 +92 . . $.24. 15,147,/home/araq/projects/nim/lib/system/dollars.nim
+       (sd :IDX.0 .
+        (type) . u . -1 +1 . `t12.92. $.24. . none unknown . "" . .) none unknown . "")
+      (td :`t12.91. . g0 nimcall -1 -1 +0 +91 . . $.24. 12,147,/home/araq/projects/nim/lib/system/dollars.nim
+       (sd :T.0 .
+        (type) . u . -1 +0 . `t12.91. $.24. . none unknown . "" . .) none unknown . "")) $.24. . none unknown . "" . .)) $.24. . none unknown . "" `t28.17.sysma2dyk) dollars.0. ~5
+  (proc s . 5
+   (ht . $.24.)
+   (empty) 9
+   (genericparams . . 1 T.0 4 IDX.0) .
+   (empty)
+   (bracket . .
+    (empty) 11,147,/home/araq/projects/nim/lib/system/dollars.nim
+    (genericparams . . 1
+     (identdefs . .
+      (ident . . T) 3
+      (ident . . IDX)
+      (empty)
+      (empty)))) 2,1
+   (stmts . .
+    (comment h .) 18,1
+    (call . . ~18 collectionToString.0. 1
+     (ident . . x) 4
+     (strlit . . "\5B") 9
+     (strlit . . ", ") 15
+     (strlit . . "\5D")))) none unknown . "" . .) 4,150
+ (sd :$.25. x
+  (proc) . eg r0whtl0t0c0 -1 +0 .
+  (td :`t25.96. . me2 nimcall -1 -1 +0 +96 . 12,151,/home/araq/projects/nim/lib/system/dollars.nim
+   (formalparams . `t28.17.sysma2dyk
+    (arglist . .) 1
+    (sd :x.27 .
+     (param) . u . -1 +0 .
+     (td :`t27.97. . m nimcall -1 -1 +0 +97 . . $.25. . none unknown . ""
+      (td :`t12.95. . g0 nimcall -1 -1 +0 +95 . . $.25. 10,151,/home/araq/projects/nim/lib/system/dollars.nim
+       (sd :T.0 .
+        (type) . u . -1 +0 . `t12.95. $.25. . none unknown . "" . .) none unknown . "")) $.25. . none unknown . "" . .)) $.25. . none unknown . "" `t28.17.sysma2dyk) dollars.0. ~5
+  (proc s . 5
+   (ht . $.25.)
+   (empty) 9
+   (genericparams . . 1 T.0) .
+   (empty)
+   (bracket . .
+    (empty) 9,151,/home/araq/projects/nim/lib/system/dollars.nim
+    (genericparams . . 1
+     (identdefs . .
+      (ident . . T)
+      (empty)
+      (empty)))) 2,1
+   (stmts . .
+    (comment h .) 18,5
+    (call . . ~18 collectionToString.0. 1
+     (ident . . x) 4
+     (strlit . . "\5B") 9
+     (strlit . . ", ") 15
+     (strlit . . "\5D")))) none unknown . "" . .))1,1,/home/araq/projects/nim/lib/system/dollars.nim(.index 6,11
+ (x $.0. +337)
+ (h `t25.3. +49)
+ (h `t57.5. +196)
+ (h dollars.0. +334) 1,1,/home/araq/projects/nim/lib/system.nim
+ (h stdlib.0. +90)
+ (h `t0.6. +432) 8,16
+ (h addIntAlias.0. +149)
+ (h `t25.7. +53)
+ (h `t8.8. +179)
+ (h `t0.10. +1153) 6,17
+ (x $.1. +185)
+ (h `t25.12. +50)
+ (h `t7.1. +590)
+ (h `t23.13. +309) 6,17
+ (x $.2. +157)
+ (h `t25.15. +50)
+ (h `t23.16. +839) 6,17
+ (x $.3. +206)
+ (h `t25.18. +50)
+ (h `t23.19. +839) 6,17
+ (x $.4. +206)
+ (h `t25.21. +50)
+ (h `t23.22. +839) 6,17
+ (x $.5. +206)
+ (h `t25.24. +50)
+ (h `t23.25. +842) 6,17
+ (x $.6. +157)
+ (h `t25.27. +50)
+ (h `t23.28. +844) 6,17
+ (x $.7. +207)
+ (h `t25.30. +50)
+ (h `t23.31. +844) 6,17
+ (x $.8. +207)
+ (h `t25.33. +50)
+ (h `t23.34. +845) 6,17
+ (x $.9. +207)
+ (h `t25.36. +50)
+ (h `t23.37. +845) 6,17
+ (x $.10. +207)
+ (h `t25.39. +51)
+ (h `t23.40. +850) 8,36
+ (h gen.0. +160)
+ (h `t25.41. +47)
+ (h `t6.42. +181)
+ (h `t0.44. +905) 6,38
+ (x $.11. +178)
+ (h `t25.45. +54)
+ (h `t23.46. +821) 6,38
+ (x $.12. +163)
+ (h `t25.47. +54)
+ (h `t23.48. +822) 6,38
+ (x $.13. +163)
+ (h `t25.49. +54)
+ (h `t23.50. +821) 4,46
+ (x $.14. +163)
+ (h `t25.51. +58) 4,50
+ (x $.15. +762)
+ (h `t25.52. +58) 4,57
+ (x $.16. +762)
+ (h `t25.53. +58) 4,61
+ (x $.17. +763)
+ (h `t25.54. +57) 4,66
+ (x $.18. +761)
+ (h `t25.58. +58)
+ (h `t12.57. +410)
+ (h `t51.55. +214)
+ (h `t14.56. +76) 4,73
+ (x $.19. +621)
+ (h `t25.59. +57)
+ (h `t8.60. +374) 4,85
+ (x $.20. +598)
+ (h `t25.64. +49)
+ (h `t12.63. +198)
+ (h `t51.61. +211)
+ (h `t18.62. +76) 4,99
+ (h collectionToString.0. +618)
+ (h `t25.66. +64)
+ (h `t12.65. +199)
+ (h `t0.67. +1275)
+ (h `t0.68. +623)
+ (h `t0.69. +304)
+ (h `t0.70. +341)
+ (h `t8.71. +681)
+ (h `t8.72. +529)
+ (h `t0.73. +269)
+ (h `t0.74. +340)
+ (h `t0.75. +331)
+ (h `t0.76. +717) 4,118
+ (x $.21. +233)
+ (h `t25.78. +49)
+ (h `t19.79. +199)
+ (h `t12.77. +74) 4,126
+ (x $.22. +782)
+ (h `t25.81. +49)
+ (h `t24.82. +199)
+ (h `t12.80. +75) 4,134
+ (x $.23. +784)
+ (h `t25.85. +49)
+ (h `t9.86. +199)
+ (h `t12.83. +92)
+ (h `t12.84. +216)
+ (h `t0.87. +721)
+ (h `t0.88. +381)
+ (h `t0.89. +276)
+ (h `t0.90. +201) 6,146
+ (x $.24. +323)
+ (h `t25.93. +48)
+ (h `t16.94. +199)
+ (h `t12.92. +74)
+ (h `t12.91. +218) 4,150
+ (x $.25. +815)
+ (h `t25.96. +48)
+ (h `t27.97. +199)
+ (h `t12.95. +74))

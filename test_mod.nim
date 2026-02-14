@@ -1,0 +1,1 @@
+proc foo*() = discard

@@ -1,0 +1,1235 @@
+(.nif26)
+(.indexat +41967           )
+1,1,/home/araq/projects/nim/lib/std/private/threadtypes.nim(stmts . . ~1
+ (include . . "/home/araq/projects/nim/lib/system/inclrtl.nim")
+ (replay 10,57
+  (replayaction . .
+   (strlit . . "passl")
+   (strlit . . "-pthread")) 10,60
+  (replayaction . .
+   (strlit . . "passc")
+   (strlit . . "-pthread")) 25,74
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "pthread_t")) 28,76
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "pthread_attr_t")) 22,90
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "struct timespec")) 3,95
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "$1")) 3,97
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "$1")) 3,99
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "$1")) 3,101
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "$1")) 39,105
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "pthread_create")) 3,108
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "$1")) 10,111
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "pthread_cancel")) 23,113
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "cpu_set_t")) 42,117
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "CPU_ZERO")) 10,119
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "CPU_SET")) 12,137
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "pthread_setaffinity_np")))
+ (repcopy "SX54hread0thrgbmtmk" =copy.0.)
+ (implementation) 2,44,/home/araq/projects/nim/lib/system/inclrtl.nim
+ (pragma s . 8
+  (kv . . ~6
+   (ident . . pragma) 2
+   (ident . . rtl)) 15
+  (ident . . gcsafe)) 2,45,/home/araq/projects/nim/lib/system/inclrtl.nim
+ (pragma s . 8
+  (kv . . ~6
+   (ident . . pragma) 2
+   (ident . . inl)) 15
+  (ident . . inline)) 2,46,/home/araq/projects/nim/lib/system/inclrtl.nim
+ (pragma s . 8
+  (kv . . ~6
+   (ident . . pragma) 2
+   (ident . . compilerRtl)) 23
+  (ident . . compilerproc)) 0,48,/home/araq/projects/nim/lib/system/inclrtl.nim
+ (pragma s . 8
+  (kv . . ~6
+   (ident . . pragma) 2
+   (ident . . benign)) 18
+  (ident . . gcsafe)) ~1,2
+ (const s . 6
+  (sd :hasSharedHeap.0. x
+   (const) . ueg ofrbcr0s0awhl0t0c0 -1 +0 . `t1.34.sysma2dyk ~5,~2
+   (sd :threadtypes.0. .
+    (module) . u . +0 . . . 1,1,/home/araq/projects/nim/lib/system.nim
+    (sd :stdlib.0. .
+     (package) . . . -1 +0 . . . . none unknown . "" . .) . none unknown . "" . .)
+   (const0 . . hasSharedHeap.0.
+    (empty) 34
+    (intlit . `t1.34.sysma2dyk +0)) none unknown . "" . .)) 3,57
+ (pragma s . 7
+  (kv . . ~5
+   (ident . . passl) 2
+   (strlit . `t28.17.sysma2dyk "-pthread"))) 3,60
+ (pragma s . 7
+  (kv . . ~5
+   (ident . . passc) 2
+   (strlit . `t28.17.sysma2dyk "-pthread"))) 1,62
+ (const s . 2,1
+  (sd :schedh.0. .
+   (const) . ug ofrbcr0s0awhl0t0c0 -1 +0 . `t28.17.sysma2dyk threadtypes.0.
+   (const0 . . schedh.0.
+    (empty) 9
+    (strlit . `t28.17.sysma2dyk "\23define _GNU_SOURCE\0A\23include <sched.h>")) none unknown . "" . .) 2,2
+  (sd :pthreadh.0. x
+   (const) . ueg ofrbcr0s0awhl0t0c0 -1 +0 . `t28.17.sysma2dyk threadtypes.0.
+   (const0 . . pthreadh.0.
+    (empty) 12
+    (strlit . `t28.17.sysma2dyk "\23define _GNU_SOURCE\0A\23include <pthread.h>")) none unknown . "" . .)) 10,68
+ (type s . 5
+  (type0 . . ~5
+   (sd :Time.0. .
+    (type) . ugi ofrbcr0s0awhl0t0c0 -1 +0 .
+    (td :`t31.3. . c3 nimcall +8 +8 +0 +3 . . threadtypes.0. Time.0. none unknown . "") threadtypes.0. 5
+    (type0 . . ~5 Time.0.
+     (empty) 2
+     (ht `t31.3. clong.0.cty9mra12)) none unknown d "long" . .)
+   (empty) 2
+   (ht `t31.3. clong.0.cty9mra12))) 5,74
+ (type s . 39,1
+  (type0 . .
+   (pragmax . . ~30,~1
+    (postfix . .
+     (ident . . *) ~9
+     (sd :SysThread.0. x
+      (type) . uegi ofrbcr0s0awhl0t0c0 -1 +0
+      (bheader
+       (false)
+       (false) "" 26,76,/home/araq/projects/nim/lib/std/private/threadtypes.nim
+       (strlit . `t28.17.sysma2dyk "<sys/types.h>"))
+      (td :`t13.4. . . nimcall -1 -1 +0 +4 . . threadtypes.0. SysThread.0. none unknown . "" `t40.7.cty9mra12) threadtypes.0. 39,1
+      (type0 . .
+       (pragmax . . ~30,~1
+        (postfix . .
+         (ident . . *) ~9 SysThread.0.) ~28,~1
+        (pragma . . 9
+         (kv . . ~7
+          (ident . . importc) 2
+          (strlit . `t28.17.sysma2dyk "pthread_t")) 7,1
+         (kv . . ~6
+          (ident . . header) 2
+          (strlit . `t28.17.sysma2dyk "<sys/types.h>"))))
+       (empty) 2
+       (distinctty . `t13.4. 9 culong.0.cty9mra12)) none unknown dh "pthread_t" . .)) ~28,~1
+    (pragma . . 9
+     (kv . . ~7
+      (ident . . importc) 2
+      (strlit . `t28.17.sysma2dyk "pthread_t")) 7,1
+     (kv . . ~6
+      (ident . . header) 2
+      (strlit . `t28.17.sysma2dyk "<sys/types.h>"))))
+   (empty) 2
+   (distinctty . `t13.4. 9 culong.0.cty9mra12)) 40,3
+  (type0 . .
+   (pragmax . . ~28,~1
+    (postfix . .
+     (ident . . *) ~12
+     (sd :Pthread_attr.0. x
+      (type) . uegi ofrbcr0s0awhl0t0c0 -1 +0
+      (bheader
+       (false)
+       (false) "" 26,76,/home/araq/projects/nim/lib/std/private/threadtypes.nim
+       (strlit . `t28.17.sysma2dyk "<sys/types.h>"))
+      (td :`t17.5. . f nimcall -3 -3 -3 +5 . 48,78,/home/araq/projects/nim/lib/std/private/threadtypes.nim
+       (reclist . . ~40,1
+        (sd :abi.0. .
+         (field . +0 +0) . i ofrbcr0s0awhl0t0c0 +0 +0 .
+         (td :`t16.11. . . nimcall +56 +8 +0 +11 . . Pthread_attr.0. . none unknown . ""
+          (td :`t20.9. . . nimcall -1 -1 +0 +9 . 22,79,/home/araq/projects/nim/lib/std/private/threadtypes.nim
+           (range . .
+            (intlit .
+             (td :`t31.8. . c3 nimcall +8 +8 +0 +8 . 22,79,/home/araq/projects/nim/lib/std/private/threadtypes.nim
+              (intlit s `t31.8. +7) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +0)
+            (intlit . `t31.8. +6)) Pthread_attr.0. . none unknown . ""
+           (td :`t31.10. . c3 nimcall +8 +8 +0 +10 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "")) `t31.6.cty9mra12) Pthread_attr.0. . none unknown . "abi" . .)) threadtypes.0. Pthread_attr.0. none unknown . "" .) threadtypes.0. 40,1
+      (type0 . .
+       (pragmax . . ~28,~1
+        (postfix . .
+         (ident . . *) ~12 Pthread_attr.0.) ~26,~1
+        (pragma . . 9
+         (kv . . ~7
+          (ident . . importc) 2
+          (strlit . `t28.17.sysma2dyk "pthread_attr_t")) 6,1
+         (kv . . ~6
+          (ident . . header) 2
+          (strlit . `t28.17.sysma2dyk "<sys/types.h>"))))
+       (empty) 2
+       (objectty . `t17.5.
+        (empty)
+        (empty) ~40,1
+        (reclist . .
+         (identdefs . .
+          (ident . . abi) 10
+          (at . `t16.11. ~5 array.0.sysma2dyk 4
+           (infix . .
+            (ident . . div) ~3
+            (intlit s
+             (td :`t31.6. . c3 nimcall +8 +8 +0 +6 . 19,79,/home/araq/projects/nim/lib/std/private/threadtypes.nim
+              (intlit s `t31.6. +56) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +56) 10
+            (intlit s `t31.3.sysma2dyk +8)) 23 clong.0.cty9mra12) ~6,1
+          (empty))))) none unknown dh "pthread_attr_t" . .)) ~26,~1
+    (pragma . . 9
+     (kv . . ~7
+      (ident . . importc) 2
+      (strlit . `t28.17.sysma2dyk "pthread_attr_t")) 6,1
+     (kv . . ~6
+      (ident . . header) 2
+      (strlit . `t28.17.sysma2dyk "<sys/types.h>"))))
+   (empty) 2
+   (objectty . `t17.5.
+    (empty)
+    (empty) ~40,1
+    (reclist . .
+     (identdefs . .
+      (ident . . abi) 10
+      (at . `t16.11. ~5 array.0.sysma2dyk 4
+       (infix . .
+        (ident . . div) ~3
+        (intlit s `t31.6. +56) 10
+        (intlit s `t31.3.sysma2dyk +8)) 23 clong.0.cty9mra12) ~6,1
+      (empty)))))) 3,90
+ (type s . 61
+  (type0 . .
+   (pragmax . . ~53
+    (postfix . .
+     (ident . . *) ~8
+     (sd :Timespec.0. x
+      (type) . egi ofrbcr0s0awhl0t0c0 -1 +0
+      (bheader
+       (false)
+       (false) "" 52,91,/home/araq/projects/nim/lib/std/private/threadtypes.nim
+       (strlit . `t28.17.sysma2dyk "<time.h>"))
+      (td :`t17.12. . f nimcall -3 -3 -3 +12 . 67,91,/home/araq/projects/nim/lib/std/private/threadtypes.nim
+       (reclist . . ~61,1
+        (sd :tv_sec.0. x
+         (field . +0 +0) . ei ofrbcr0s0awhl0t0c0 +0 +0 . `t31.3. Timespec.0. . none unknown . "tv_sec" . .) ~61,2
+        (sd :tv_nsec.0. x
+         (field . +0 +0) . ei ofrbcr0s0awhl0t0c0 +8 +1 . `t31.6.cty9mra12 Timespec.0. . none unknown . "tv_nsec" . .)) threadtypes.0. Timespec.0. none unknown . "" .) threadtypes.0. 61
+      (type0 . .
+       (pragmax . . ~53
+        (postfix . .
+         (ident . . *) ~8 Timespec.0.) ~51
+        (pragma . . 9
+         (kv . . ~7
+          (ident . . importc) 2
+          (strlit . `t28.17.sysma2dyk "struct timespec")) 36
+         (kv . . ~6
+          (ident . . header) 2
+          (strlit . `t28.17.sysma2dyk "<time.h>"))))
+       (empty) 2
+       (objectty . `t17.12.
+        (empty)
+        (empty) ~61,1
+        (reclist . .
+         (identdefs . . 6
+          (postfix . .
+           (ident . . *) ~6
+           (ident . . tv_sec)) 9 Time.0. ,1
+          (empty)) ,1
+         (identdefs . . 7
+          (postfix . .
+           (ident . . *) ~7
+           (ident . . tv_nsec)) 10 clong.0.cty9mra12 ~4,2
+          (empty))))) none unknown dh "struct timespec" . .)) ~51
+    (pragma . . 9
+     (kv . . ~7
+      (ident . . importc) 2
+      (strlit . `t28.17.sysma2dyk "struct timespec")) 36
+     (kv . . ~6
+      (ident . . header) 2
+      (strlit . `t28.17.sysma2dyk "<time.h>"))))
+   (empty) 2
+   (objectty . `t17.12.
+    (empty)
+    (empty) ~61,1
+    (reclist . .
+     (identdefs . . 6
+      (postfix . .
+       (ident . . *) ~6
+       (ident . . tv_sec)) 9 Time.0. ,1
+      (empty)) ,1
+     (identdefs . . 7
+      (postfix . .
+       (ident . . *) ~7
+       (ident . . tv_nsec)) 10 clong.0.cty9mra12 ~4,2
+      (empty)))))) 6,94
+ (sd :pthread_attr_init.0. x
+  (proc) . egi ofrbcr0s0awhl0t0c0 -1 +0
+  (bheader
+   (false)
+   (false) "" 21,96,/home/araq/projects/nim/lib/std/private/threadtypes.nim
+   (strlit . `t28.17.sysma2dyk "\23define _GNU_SOURCE\0A\23include <pthread.h>"))
+  (td :`t25.13. . e2 nimcall -1 -1 +0 +13 . 25,95,/home/araq/projects/nim/lib/std/private/threadtypes.nim
+   (formalparams . `t34.11.cty9mra12
+    (arglist . .
+     (arglist . .) . .
+     (arglist . .) 29
+     (pragma . . ~50,1
+      (ident . . importc) ~35,1
+      (kv . . ~6
+       (ident . . header) 2
+       (strlit . `t28.17.sysma2dyk "\23define _GNU_SOURCE\0A\23include <pthread.h>")))
+     (arglist . .)) 1
+    (sd :a1.0 .
+     (param) . . . -1 +0 .
+     (td :`t23.14. . . nimcall -1 -1 +0 +14 . . pthread_attr_init.0. . none unknown . "" `t17.5.) pthread_attr_init.0. . none unknown . "" . .)) pthread_attr_init.0. . none unknown . "" `t34.11.cty9mra12) threadtypes.0. ~5
+  (proc s . 5
+   (ht . pthread_attr_init.0.)
+   (empty)
+   (empty) . 52
+   (pragma . . ~50,1
+    (ident . . importc) ~35,1
+    (kv . . ~6
+     (ident . . header) 2
+     (strlit . `t28.17.sysma2dyk "\23define _GNU_SOURCE\0A\23include <pthread.h>")))
+   (empty)
+   (empty)) none unknown dh "pthread_attr_init" . .) 6,96
+ (sd :pthread_attr_setstack.0. x
+  (proc) . egi ofrbcr0s0awhl0t0c0 -1 +0
+  (bheader
+   (false)
+   (false) "" 21,96,/home/araq/projects/nim/lib/std/private/threadtypes.nim
+   (strlit . `t28.17.sysma2dyk "\23define _GNU_SOURCE\0A\23include <pthread.h>"))
+  (td :`t25.15. . e2 nimcall -1 -1 +0 +15 . 29,97,/home/araq/projects/nim/lib/std/private/threadtypes.nim
+   (formalparams . `t34.11.cty9mra12
+    (arglist . .
+     (arglist . .) . .
+     (arglist . .) 51
+     (pragma . . ~76,1
+      (ident . . importc) ~61,1
+      (kv . . ~6
+       (ident . . header) 2
+       (strlit . `t28.17.sysma2dyk "\23define _GNU_SOURCE\0A\23include <pthread.h>")))
+     (arglist . .)) 1
+    (sd :a1.1 .
+     (param) . . . -1 +0 .
+     (td :`t21.16. . . nimcall -1 -1 +0 +16 . . pthread_attr_setstack.0. . none unknown . "" `t17.5.) pthread_attr_setstack.0. . none unknown . "" . .) 23
+    (sd :a2.0 .
+     (param) . . . -1 +1 . `t26.19.sysma2dyk pthread_attr_setstack.0. . none unknown . "" . .) 36
+    (sd :a3.0 .
+     (param) . . . -1 +2 . `t31.3.sysma2dyk pthread_attr_setstack.0. . none unknown . "" . .)) pthread_attr_setstack.0. . none unknown . "" `t34.11.cty9mra12) threadtypes.0. ~5
+  (proc s . 5
+   (ht . pthread_attr_setstack.0.)
+   (empty)
+   (empty) . 78
+   (pragma . . ~76,1
+    (ident . . importc) ~61,1
+    (kv . . ~6
+     (ident . . header) 2
+     (strlit . `t28.17.sysma2dyk "\23define _GNU_SOURCE\0A\23include <pthread.h>")))
+   (empty)
+   (empty)) none unknown dh "pthread_attr_setstack" . .) 6,98
+ (sd :pthread_attr_setstacksize.0. x
+  (proc) . egi ofrbcr0s0awhl0t0c0 -1 +0
+  (bheader
+   (false)
+   (false) "" 21,96,/home/araq/projects/nim/lib/std/private/threadtypes.nim
+   (strlit . `t28.17.sysma2dyk "\23define _GNU_SOURCE\0A\23include <pthread.h>"))
+  (td :`t25.17. . e2 nimcall -1 -1 +0 +17 . 33,99,/home/araq/projects/nim/lib/std/private/threadtypes.nim
+   (formalparams . `t34.11.cty9mra12
+    (arglist . .
+     (arglist . .) . .
+     (arglist . .) 38
+     (pragma . . ~67,1
+      (ident . . importc) ~52,1
+      (kv . . ~6
+       (ident . . header) 2
+       (strlit . `t28.17.sysma2dyk "\23define _GNU_SOURCE\0A\23include <pthread.h>")))
+     (arglist . .)) 1
+    (sd :a1.2 .
+     (param) . . . -1 +0 .
+     (td :`t23.18. . . nimcall -1 -1 +0 +18 . . pthread_attr_setstacksize.0. . none unknown . "" `t17.5.) pthread_attr_setstacksize.0. . none unknown . "" . .) 23
+    (sd :a2.1 .
+     (param) . . . -1 +1 . `t31.3.sysma2dyk pthread_attr_setstacksize.0. . none unknown . "" . .)) pthread_attr_setstacksize.0. . none unknown . "" `t34.11.cty9mra12) threadtypes.0. ~5
+  (proc s . 5
+   (ht . pthread_attr_setstacksize.0.)
+   (empty)
+   (empty) . 69
+   (pragma . . ~67,1
+    (ident . . importc) ~52,1
+    (kv . . ~6
+     (ident . . header) 2
+     (strlit . `t28.17.sysma2dyk "\23define _GNU_SOURCE\0A\23include <pthread.h>")))
+   (empty)
+   (empty)) none unknown dh "pthread_attr_setstacksize" . .) 6,100
+ (sd :pthread_attr_destroy.0. x
+  (proc) . egi ofrbcr0s0awhl0t0c0 -1 +0
+  (bheader
+   (false)
+   (false) "" 21,96,/home/araq/projects/nim/lib/std/private/threadtypes.nim
+   (strlit . `t28.17.sysma2dyk "\23define _GNU_SOURCE\0A\23include <pthread.h>"))
+  (td :`t25.19. . e2 nimcall -1 -1 +0 +19 . 28,101,/home/araq/projects/nim/lib/std/private/threadtypes.nim
+   (formalparams . `t34.11.cty9mra12
+    (arglist . .
+     (arglist . .) . .
+     (arglist . .) 29
+     (pragma . . ~53,1
+      (ident . . importc) ~38,1
+      (kv . . ~6
+       (ident . . header) 2
+       (strlit . `t28.17.sysma2dyk "\23define _GNU_SOURCE\0A\23include <pthread.h>")))
+     (arglist . .)) 1
+    (sd :a1.3 .
+     (param) . . . -1 +0 .
+     (td :`t23.20. . . nimcall -1 -1 +0 +20 . . pthread_attr_destroy.0. . none unknown . "" `t17.5.) pthread_attr_destroy.0. . none unknown . "" . .)) pthread_attr_destroy.0. . none unknown . "" `t34.11.cty9mra12) threadtypes.0. ~5
+  (proc s . 5
+   (ht . pthread_attr_destroy.0.)
+   (empty)
+   (empty) . 55
+   (pragma . . ~53,1
+    (ident . . importc) ~38,1
+    (kv . . ~6
+     (ident . . header) 2
+     (strlit . `t28.17.sysma2dyk "\23define _GNU_SOURCE\0A\23include <pthread.h>")))
+   (empty)
+   (empty)) none unknown dh "pthread_attr_destroy" . .) 6,103
+ (sd :pthread_create.0. x
+  (proc) . egi ofrbcr0s0awhl0t0c0 -1 +0
+  (bheader
+   (false)
+   (false) "" 21,96,/home/araq/projects/nim/lib/std/private/threadtypes.nim
+   (strlit . `t28.17.sysma2dyk "\23define _GNU_SOURCE\0A\23include <pthread.h>"))
+  (td :`t25.21. . e2 nimcall -1 -1 +0 +21 . 22,104,/home/araq/projects/nim/lib/std/private/threadtypes.nim
+   (formalparams . `t34.11.cty9mra12
+    (arglist . .
+     (arglist . .) . .
+     (arglist . .) 9,2
+     (pragma . . 9
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "pthread_create")) ~13,1
+      (kv . . ~6
+       (ident . . header) 2
+       (strlit . `t28.17.sysma2dyk "\23define _GNU_SOURCE\0A\23include <pthread.h>")))
+     (arglist . .)) 1
+    (sd :a1.4 .
+     (param) . . . -1 +0 .
+     (td :`t23.22. . . nimcall -1 -1 +0 +22 . . pthread_create.0. . none unknown . "" `t13.4.) pthread_create.0. . none unknown . "" . .) 20
+    (sd :a2.2 .
+     (param) . . . -1 +1 .
+     (td :`t23.23. . . nimcall -1 -1 +0 +23 . . pthread_create.0. . none unknown . "" `t17.5.) pthread_create.0. . none unknown . "" . .) ~10,1
+    (sd :a3.1 .
+     (param) . . . -1 +2 .
+     (td :`t25.24. . e1 noconv -1 -1 +0 +24 . 21,105,/home/araq/projects/nim/lib/std/private/threadtypes.nim
+      (formalparams . `t26.19.sysma2dyk
+       (arglist . . . . . . 22
+        (pragma . . 2
+         (ident . . noconv)) .) 1
+       (sd :x.0 .
+        (param) . . . -1 +0 . `t26.19.sysma2dyk pthread_create.0. . none unknown . "" . .)) pthread_create.0. . none unknown . "" `t26.19.sysma2dyk) pthread_create.0. . none unknown . "" . .) ~10,2
+    (sd :a4.0 .
+     (param) . . . -1 +3 . `t26.19.sysma2dyk pthread_create.0. . none unknown . "" . .)) pthread_create.0. . none unknown . "" `t34.11.cty9mra12) threadtypes.0. ~5
+  (proc s . 5
+   (ht . pthread_create.0.)
+   (empty)
+   (empty) . 29,2
+   (pragma . . 9
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "pthread_create")) ~13,1
+    (kv . . ~6
+     (ident . . header) 2
+     (strlit . `t28.17.sysma2dyk "\23define _GNU_SOURCE\0A\23include <pthread.h>")))
+   (empty)
+   (empty)) none unknown dh "pthread_create" . .) 6,107
+ (sd :pthread_join.0. x
+  (proc) . egi ofrbcr0s0awhl0t0c0 -1 +0
+  (bheader
+   (false)
+   (false) "" 21,96,/home/araq/projects/nim/lib/std/private/threadtypes.nim
+   (strlit . `t28.17.sysma2dyk "\23define _GNU_SOURCE\0A\23include <pthread.h>"))
+  (td :`t25.25. . e2 nimcall -1 -1 +0 +25 . 20,108,/home/araq/projects/nim/lib/std/private/threadtypes.nim
+   (formalparams . `t34.11.cty9mra12
+    (arglist . .
+     (arglist . .) . .
+     (arglist . .) 39
+     (pragma . . ~55,1
+      (ident . . importc) ~40,1
+      (kv . . ~6
+       (ident . . header) 2
+       (strlit . `t28.17.sysma2dyk "\23define _GNU_SOURCE\0A\23include <pthread.h>")))
+     (arglist . .)) 1
+    (sd :a1.5 .
+     (param) . . . -1 +0 . `t13.4. pthread_join.0. . none unknown . "" . .) 16
+    (sd :a2.3 .
+     (param) . . . -1 +1 .
+     (td :`t21.26. . . nimcall -1 -1 +0 +26 . . pthread_join.0. . none unknown . "" `t26.19.sysma2dyk) pthread_join.0. . none unknown . "" . .)) pthread_join.0. . none unknown . "" `t34.11.cty9mra12) threadtypes.0. ~5
+  (proc s . 5
+   (ht . pthread_join.0.)
+   (empty)
+   (empty) . 57
+   (pragma . . ~55,1
+    (ident . . importc) ~40,1
+    (kv . . ~6
+     (ident . . header) 2
+     (strlit . `t28.17.sysma2dyk "\23define _GNU_SOURCE\0A\23include <pthread.h>")))
+   (empty)
+   (empty)) none unknown dh "pthread_join" . .) 6,110
+ (sd :pthread_cancel.0. x
+  (proc) . egi ofrbcr0s0awhl0t0c0 -1 +0
+  (bheader
+   (false)
+   (false) "" 21,96,/home/araq/projects/nim/lib/std/private/threadtypes.nim
+   (strlit . `t28.17.sysma2dyk "\23define _GNU_SOURCE\0A\23include <pthread.h>"))
+  (td :`t25.27. . e2 nimcall -1 -1 +0 +27 . 22,111,/home/araq/projects/nim/lib/std/private/threadtypes.nim
+   (formalparams . `t34.11.cty9mra12
+    (arglist . .
+     (arglist . .) . .
+     (arglist . .) 22
+     (pragma . . ~33,1
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "pthread_cancel")) ~7,1
+      (kv . . ~6
+       (ident . . header) 2
+       (strlit . `t28.17.sysma2dyk "\23define _GNU_SOURCE\0A\23include <pthread.h>")))
+     (arglist . .)) 1
+    (sd :a1.6 .
+     (param) . . . -1 +0 . `t13.4. pthread_cancel.0. . none unknown . "" . .)) pthread_cancel.0. . none unknown . "" `t34.11.cty9mra12) threadtypes.0. ~5
+  (proc s . 5
+   (ht . pthread_cancel.0.)
+   (empty)
+   (empty) . 42
+   (pragma . . ~33,1
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "pthread_cancel")) ~7,1
+    (kv . . ~6
+     (ident . . header) 2
+     (strlit . `t28.17.sysma2dyk "\23define _GNU_SOURCE\0A\23include <pthread.h>")))
+   (empty)
+   (empty)) none unknown dh "pthread_cancel" . .) 6,113
+ (type s . 49
+  (type0 . .
+   (pragmax . . ~43
+    (postfix . .
+     (ident . . *) ~6
+     (sd :CpuSet.0. x
+      (type) . uegi ofrbcr0s0awhl0t0c0 -1 +0
+      (bheader
+       (false)
+       (false) "" 47,114,/home/araq/projects/nim/lib/std/private/threadtypes.nim
+       (strlit . `t28.17.sysma2dyk "\23define _GNU_SOURCE\0A\23include <sched.h>"))
+      (td :`t17.28. . f nimcall -3 -3 -3 +28 . 58,114,/home/araq/projects/nim/lib/std/private/threadtypes.nim
+       (reclist . . ~51,2
+        (sd :abi.1. .
+         (field . +0 +0) . i ofrbcr0s0awhl0t0c0 +0 +0 .
+         (td :`t16.36. . . nimcall +128 +8 +0 +36 . . CpuSet.0. . none unknown . ""
+          (td :`t20.34. . . nimcall -1 -1 +0 +34 . 23,116,/home/araq/projects/nim/lib/std/private/threadtypes.nim
+           (range . .
+            (intlit .
+             (td :`t31.33. . c3 nimcall +8 +8 +0 +33 . 23,116,/home/araq/projects/nim/lib/std/private/threadtypes.nim
+              (intlit s `t31.33. +16) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +0)
+            (intlit . `t31.33. +15)) CpuSet.0. . none unknown . ""
+           (td :`t31.35. . c3 nimcall +8 +8 +0 +35 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "")) `t40.7.cty9mra12) CpuSet.0. . none unknown . "abi" . .)) threadtypes.0. CpuSet.0. none unknown . "" .) threadtypes.0. 49
+      (type0 . .
+       (pragmax . . ~43
+        (postfix . .
+         (ident . . *) ~6 CpuSet.0.) ~41
+        (pragma . . 9
+         (kv . . ~7
+          (ident . . importc) 2
+          (strlit . `t28.17.sysma2dyk "cpu_set_t")) 30
+         (kv . . ~6
+          (ident . . header) 2
+          (strlit . `t28.17.sysma2dyk "\23define _GNU_SOURCE\0A\23include <sched.h>"))))
+       (empty) 2
+       (objectty . `t17.28.
+        (empty)
+        (empty) ~53,1
+        (reclist . .
+         (recwhen . . 5
+          (elif . . 15
+           (infix . .
+            (ident . . and) ~8
+            (call . . ~7
+             (ident . . defined) 1
+             (ident . . linux)) 11
+            (call . . ~7
+             (ident . . defined) 1
+             (ident . . amd64))) ~3,1
+           (reclist . .
+            (identdefs . .
+             (ident . . abi) 10
+             (at . . ~5
+              (ident . . array) 6
+              (infix . .
+               (ident . . div) ~5
+               (intlit . . +1024) 4
+               (par . . 3
+                (infix . .
+                 (ident . . *) ~2
+                 (intlit . . +8) 8
+                 (call . . ~6
+                  (ident . . sizeof) 1
+                  (ident . . culong))))) 32
+              (ident . . culong)) ~5,2
+             (empty)))))))) none unknown dh "cpu_set_t" . .)) ~41
+    (pragma . . 9
+     (kv . . ~7
+      (ident . . importc) 2
+      (strlit . `t28.17.sysma2dyk "cpu_set_t")) 30
+     (kv . . ~6
+      (ident . . header) 2
+      (strlit . `t28.17.sysma2dyk "\23define _GNU_SOURCE\0A\23include <sched.h>"))))
+   (empty) 2
+   (objectty . `t17.28.
+    (empty)
+    (empty) ~53,1
+    (reclist . .
+     (recwhen . . 5
+      (elif . . 15
+       (infix . .
+        (ident . . and) ~8
+        (call . . ~7
+         (ident . . defined) 1
+         (ident . . linux)) 11
+        (call . . ~7
+         (ident . . defined) 1
+         (ident . . amd64))) ~3,1
+       (reclist . .
+        (identdefs . .
+         (ident . . abi) 10
+         (at . . ~5
+          (ident . . array) 6
+          (infix . .
+           (ident . . div) ~5
+           (intlit . . +1024) 4
+           (par . . 3
+            (infix . .
+             (ident . . *) ~2
+             (intlit . . +8) 8
+             (call . . ~6
+              (ident . . sizeof) 1
+              (ident . . culong))))) 32
+          (ident . . culong)) ~5,2
+         (empty))))))))) 6,117
+ (sd :cpusetZero.0. x
+  (proc) . egi ofrbcr0s0awhl0t0c0 -1 +0
+  (bheader
+   (false)
+   (false) "" 47,114,/home/araq/projects/nim/lib/std/private/threadtypes.nim
+   (strlit . `t28.17.sysma2dyk "\23define _GNU_SOURCE\0A\23include <sched.h>"))
+  (td :`t25.37. . e2 nimcall -1 -1 +0 +37 . 18,118,/home/araq/projects/nim/lib/std/private/threadtypes.nim
+   (formalparams . .
+    (arglist . .
+     (arglist . .) . .
+     (arglist . .) 16
+     (pragma . . 9
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "CPU_ZERO")) 29
+      (kv . . ~6
+       (ident . . header) 2
+       (strlit . `t28.17.sysma2dyk "\23define _GNU_SOURCE\0A\23include <sched.h>")))
+     (arglist . .)) 1
+    (sd :s.0 .
+     (param) . . . -1 +0 .
+     (td :`t23.38. . . nimcall -1 -1 +0 +38 . . cpusetZero.0. . none unknown . "" `t17.28.) cpusetZero.0. . none unknown . "" . .)) cpusetZero.0. . none unknown . "" .) threadtypes.0. ~5
+  (proc s . 5
+   (ht . cpusetZero.0.)
+   (empty)
+   (empty) . 32
+   (pragma . . 9
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "CPU_ZERO")) 29
+    (kv . . ~6
+     (ident . . header) 2
+     (strlit . `t28.17.sysma2dyk "\23define _GNU_SOURCE\0A\23include <sched.h>")))
+   (empty)
+   (empty)) none unknown dh "CPU_ZERO" . .) 6,118
+ (sd :cpusetIncl.0. x
+  (proc) . egi ofrbcr0s0awhl0t0c0 -1 +0
+  (bheader
+   (false)
+   (false) "" 47,114,/home/araq/projects/nim/lib/std/private/threadtypes.nim
+   (strlit . `t28.17.sysma2dyk "\23define _GNU_SOURCE\0A\23include <sched.h>"))
+  (td :`t25.39. . e2 nimcall -1 -1 +0 +39 . 18,119,/home/araq/projects/nim/lib/std/private/threadtypes.nim
+   (formalparams . .
+    (arglist . .
+     (arglist . .) . .
+     (arglist . .) 27
+     (pragma . . ~34,1
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "CPU_SET")) ~15,1
+      (kv . . ~6
+       (ident . . header) 2
+       (strlit . `t28.17.sysma2dyk "\23define _GNU_SOURCE\0A\23include <sched.h>")))
+     (arglist . .)) 1
+    (sd :cpu.0 .
+     (param) . . . -1 +0 . `t34.11.cty9mra12 cpusetIncl.0. . none unknown . "" . .) 12
+    (sd :s.1 .
+     (param) . . . -1 +1 .
+     (td :`t23.40. . . nimcall -1 -1 +0 +40 . . cpusetIncl.0. . none unknown . "" `t17.28.) cpusetIncl.0. . none unknown . "" . .)) cpusetIncl.0. . none unknown . "" .) threadtypes.0. ~5
+  (proc s . 5
+   (ht . cpusetIncl.0.)
+   (empty)
+   (empty) . 43
+   (pragma . . ~34,1
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "CPU_SET")) ~15,1
+    (kv . . ~6
+     (ident . . header) 2
+     (strlit . `t28.17.sysma2dyk "\23define _GNU_SOURCE\0A\23include <sched.h>")))
+   (empty)
+   (empty)) none unknown dh "CPU_SET" . .) 8,136
+ (sd :setAffinity.0. x
+  (proc) . egi ofrbcr0s0awhl0t0c0 -1 +0
+  (bheader
+   (false)
+   (false) "" 21,96,/home/araq/projects/nim/lib/std/private/threadtypes.nim
+   (strlit . `t28.17.sysma2dyk "\23define _GNU_SOURCE\0A\23include <pthread.h>"))
+  (td :`t25.41. . e2 nimcall -1 -1 +0 +41 . 21,137,/home/araq/projects/nim/lib/std/private/threadtypes.nim
+   (formalparams . .
+    (arglist . .
+     (arglist . .) . .
+     (arglist . .) 53
+     (pragma . . ~61,1
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "pthread_setaffinity_np")) ~27,1
+      (kv . . ~6
+       (ident . . header) 2
+       (strlit . `t28.17.sysma2dyk "\23define _GNU_SOURCE\0A\23include <pthread.h>")))
+     (arglist . .)) 1
+    (sd :thread.0 .
+     (param) . . . -1 +0 . `t13.4. setAffinity.0. . none unknown . "" . .) 20
+    (sd :setsize.0 .
+     (param) . . . -1 +1 . `t40.12.cty9mra12 setAffinity.0. . none unknown . "" . .) 38
+    (sd :s.2 .
+     (param) . . . -1 +2 .
+     (td :`t23.42. . . nimcall -1 -1 +0 +42 . . setAffinity.0. . none unknown . "" `t17.28.) setAffinity.0. . none unknown . "" . .)) setAffinity.0. . none unknown . "" .) threadtypes.0. ~5
+  (proc s . 5
+   (ht . setAffinity.0.)
+   (empty)
+   (empty) . 70
+   (pragma . . ~61,1
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "pthread_setaffinity_np")) ~27,1
+    (kv . . ~6
+     (ident . . header) 2
+     (strlit . `t28.17.sysma2dyk "\23define _GNU_SOURCE\0A\23include <pthread.h>")))
+   (empty)
+   (empty)) none unknown dh "pthread_setaffinity_np" . .) ~1,140
+ (const s . 2,1
+  (sd :emulatedThreadVars.0. x
+   (const) . ueg ofrbcr0s0awhl0t0c0 -1 +0 . `t1.34.sysma2dyk threadtypes.0.
+   (const0 . . emulatedThreadVars.0.
+    (empty) 35
+    (intlit . `t1.34.sysma2dyk +0)) none unknown . "" . .)) ~1,145
+ (const s . 6
+  (sd :nimTlsSize.0. .
+   (const) intdefine ug ofrbcr0s0awhl0t0c0 -1 +0 .
+   (td :`t31.43. . c3 nimcall +8 +8 +0 +43 . 33,146,/home/araq/projects/nim/lib/std/private/threadtypes.nim
+    (intlit s `t31.43. +16000) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") threadtypes.0.
+   (const0 . .
+    (pragmax . . nimTlsSize.0. 11
+     (pragma . . 2
+      (ident . . intdefine)))
+    (empty) 27
+    (intlit . `t31.43. +16000)) none unknown . "" . .)) 1,147
+ (type s . 20
+  (type0 . . ~2
+   (postfix . .
+    (ident . . *) ~18
+    (sd :ThreadLocalStorage.0. x
+     (type) . eg ofrbcr0s0awhl0t0c0 -1 +0 .
+     (td :`t16.44. . . nimcall +16008 +8 +0 +44 . . threadtypes.0. ThreadLocalStorage.0. none unknown . ""
+      (td :`t20.47. . . nimcall -1 -1 +0 +47 . 31,148,/home/araq/projects/nim/lib/std/private/threadtypes.nim
+       (range . . ~1
+        (intlit .
+         (td :`t31.49. . c3 nimcall +8 +8 +0 +49 . 30,148,/home/araq/projects/nim/lib/std/private/threadtypes.nim
+          (intlit s `t31.49. +0) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +0) 14
+        (intlit .
+         (td :`t31.51. . c3 nimcall +8 +8 +0 +51 . 45,148,/home/araq/projects/nim/lib/std/private/threadtypes.nim
+          (intlit s `t31.51. +2000) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +2000)) ThreadLocalStorage.0. . none unknown . ""
+       (td :`t31.52. . c3 nimcall +8 +8 +0 +52 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "")) `t36.13.sysma2dyk) threadtypes.0. 20
+     (type0 . . ~2
+      (postfix . .
+       (ident . . *) ~18 ThreadLocalStorage.0.)
+      (empty) 7
+      (at . `t16.44. ~5 array.0.sysma2dyk 2
+       (infix . .
+        (ident . . \2E\2E) ~1
+        (intlit s `t31.49. +0) 2
+        (par . . 12
+         (infix . .
+          (ident . . div) ~11 nimTlsSize.0. 10
+          (intlit s `t31.3.sysma2dyk +8)))) 36 float.0.sysma2dyk)) none unknown . "" . .))
+   (empty) 7
+   (at . `t16.44. ~5 array.0.sysma2dyk 2
+    (infix . .
+     (ident . . \2E\2E) ~1
+     (intlit s `t31.49. +0) 2
+     (par . . 12
+      (infix . .
+       (ident . . div) ~11 nimTlsSize.0. 10
+       (intlit s `t31.3.sysma2dyk +8)))) 36 float.0.sysma2dyk)) 11,1
+  (type0 . . ~2
+   (postfix . .
+    (ident . . *) ~9
+    (sd :PGcThread.0. x
+     (type) . ueg ofrbcr0s0awhl0t0c0 -1 +0 .
+     (td :`t21.45. . . nimcall +8 +8 +0 +45 . . threadtypes.0. PGcThread.0. none unknown . ""
+      (td :`t17.46. . i nimcall +1 +1 +0 +46 . 36,150,/home/araq/projects/nim/lib/std/private/threadtypes.nim
+       (reclist . .) threadtypes.0. 2,150,/home/araq/projects/nim/lib/std/private/threadtypes.nim
+       (sd :GcThread.0. x
+        (type) . uegp ofrbcr0s0awhl0t0c0 -1 +0 . `t17.46. threadtypes.0. 32
+        (type0 . .
+         (pragmax . . ~24
+          (postfix . .
+           (ident . . *) ~8 GcThread.0.) ~22
+          (pragma . . 2
+           (ident . . pure) 8
+           (ident . . inheritable)))
+         (empty) 2
+         (objectty . `t17.46.
+          (empty)
+          (empty) ~32,1
+          (reclist . .
+           (recwhen . . 5
+            (elif . .
+             (ident . . emulatedThreadVars) ~3,1
+             (reclist . .
+              (identdefs . . 3
+               (postfix . .
+                (ident . . *) ~3
+                (ident . . tls)) 6
+               (ident . . ThreadLocalStorage) ~2,1
+               (empty)))) ,2
+            (else . . 2,1
+             (reclist . .
+              (nil . .)))) ,4
+           (recwhen . . 5
+            (elif . .
+             (ident . . hasSharedHeap) ~3,1
+             (reclist . .
+              (identdefs . . 4
+               (postfix . .
+                (ident . . *) ~4
+                (ident . . next)) 11
+               (postfix . .
+                (ident . . *) ~4
+                (ident . . prev)) 14
+               (ident . . PGcThread) ,1
+               (empty)) ,1
+              (identdefs . . 11
+               (postfix . .
+                (ident . . *) ~11
+                (ident . . stackBottom)) 22
+               (postfix . .
+                (ident . . *) ~8
+                (ident . . stackTop)) 25
+               (ident . . pointer) ,1
+               (empty)) ,2
+              (identdefs . . 9
+               (postfix . .
+                (ident . . *) ~9
+                (ident . . stackSize)) 12
+               (ident . . int) ~2,1
+               (empty)))) ,4
+            (else . . 2,1
+             (reclist . .
+              (nil . .))))))) none unknown . "" . .) none unknown . "" .)) threadtypes.0. 11
+     (type0 . . ~2
+      (postfix . .
+       (ident . . *) ~9 PGcThread.0.)
+      (empty) 2
+      (ptrty . `t21.45. 4 GcThread.0.)) none unknown . "" . .))
+   (empty) 2
+   (ptrty . `t21.45. 4 GcThread.0.)) 32,2
+  (type0 . .
+   (pragmax . . ~24
+    (postfix . .
+     (ident . . *) ~8 GcThread.0.) ~22
+    (pragma . . 2
+     (ident . . pure) 8
+     (ident . . inheritable)))
+   (empty) 2
+   (objectty . `t17.46.
+    (empty)
+    (empty) ~32,1
+    (reclist . .
+     (recwhen . . 5
+      (elif . .
+       (ident . . emulatedThreadVars) ~3,1
+       (reclist . .
+        (identdefs . . 3
+         (postfix . .
+          (ident . . *) ~3
+          (ident . . tls)) 6
+         (ident . . ThreadLocalStorage) ~2,1
+         (empty)))) ,2
+      (else . . 2,1
+       (reclist . .
+        (nil . .)))) ,4
+     (recwhen . . 5
+      (elif . .
+       (ident . . hasSharedHeap) ~3,1
+       (reclist . .
+        (identdefs . . 4
+         (postfix . .
+          (ident . . *) ~4
+          (ident . . next)) 11
+         (postfix . .
+          (ident . . *) ~4
+          (ident . . prev)) 14
+         (ident . . PGcThread) ,1
+         (empty)) ,1
+        (identdefs . . 11
+         (postfix . .
+          (ident . . *) ~11
+          (ident . . stackBottom)) 22
+         (postfix . .
+          (ident . . *) ~8
+          (ident . . stackTop)) 25
+         (ident . . pointer) ,1
+         (empty)) ,2
+        (identdefs . . 9
+         (postfix . .
+          (ident . . *) ~9
+          (ident . . stackSize)) 12
+         (ident . . int) ~2,1
+         (empty)))) ,4
+      (else . . 2,1
+       (reclist . .
+        (nil . .)))))))) ~1,161
+ (const s . 6
+  (sd :hasAllocStack.0. x
+   (const) . ueg ofrbcr0s0awhl0t0c0 -1 +0 . `t1.34.sysma2dyk threadtypes.0.
+   (const0 . . hasAllocStack.0.
+    (empty) 24
+    (intlit . `t1.34.sysma2dyk +0)) none unknown . "" . .)) 1,164
+ (type s . 14
+  (type0 . . ~8
+   (postfix . .
+    (ident . . *) ~6
+    (sd :Thread.0. x
+     (type) . ueg ofrbcr0s0awhl0t0c0 -1 +0 .
+     (td :`t10.54. . ma nimcall -1 -1 +0 +54 . 9,165,/home/araq/projects/nim/lib/std/private/threadtypes.nim
+      (genericparams . . 1
+       (sd :TArg.0. .
+        (type) . u . -1 +0 .
+        (td :`t12.55. . g0 nimcall -1 -1 +0 +55 . . Thread.0. TArg.0. none unknown . "") Thread.0. . none unknown . "" . .)) threadtypes.0. Thread.0. none unknown . "" `t12.55.
+      (td :`t17.57. . fma nimcall -1 -1 +0 +57 . 18,165,/home/araq/projects/nim/lib/std/private/threadtypes.nim
+       (reclist . . ~14,1
+        (sd :core.0. x
+         (field . +0 +0) . e ofrbcr0s0awhl0t0c0 -1 +0 . `t21.45. Thread.0. . none unknown . "" . .) ~14,2
+        (sd :sys.0. x
+         (field . +0 +0) . e ofrbcr0s0awhl0t0c0 -1 +1 . `t13.4. Thread.0. . none unknown . "" . .) ~14,3
+        (recwhen . . 5
+         (elif . . 5
+          (infix s `t1.34.sysma2dyk is.0.sysma2dyk ~5
+           (ht
+            (td :`t8.58. . c3 nimcall -1 -1 +0 +58 . . Thread.0. . none unknown . "" `t12.55.) TArg.0.) 3
+           (onlytype . `t63.25.sysma2dyk)) ~3,1
+          (sd :dataFn.0. x
+           (field . +0 +0) . e ofrbcr0s0awhl0t0c0 -1 +2 .
+           (td :`t25.59. . te1 nimcall -1 -1 +0 +59 . 20,169,/home/araq/projects/nim/lib/std/private/threadtypes.nim
+            (formalparams . .
+             (arglist . . . . . . 3
+              (pragma . . 2
+               (ident . . nimcall) 11
+               (ident . . gcsafe)) .)) Thread.0. . none unknown . "" .) Thread.0. . none unknown . "" . .)) ,2
+         (else . . ,~2
+          (reclist . . 2,3
+           (sd :dataFn.1. x
+            (field . +0 +0) . e ofrbcr0s0awhl0t0c0 -1 +2 .
+            (td :`t25.60. . tme1 nimcall -1 -1 +0 +60 . 20,171,/home/araq/projects/nim/lib/std/private/threadtypes.nim
+             (formalparams . .
+              (arglist . . . . . . 10
+               (pragma . . 2
+                (ident . . nimcall) 11
+                (ident . . gcsafe)) .) 1
+              (sd :m.0 .
+               (param) . . . -1 +0 . `t12.55. Thread.0. . none unknown . "" . .)) Thread.0. . none unknown . "" .) Thread.0. . none unknown . "" . .) 2,4
+           (sd :data.0. x
+            (field . +0 +0) . e ofrbcr0s0awhl0t0c0 -1 +3 . `t12.55. Thread.0. . none unknown . "" . .))))) Thread.0. Thread.0. none unknown . "" .)) threadtypes.0. 14
+     (type0 . . ~8
+      (postfix . .
+       (ident . . *) ~6 Thread.0.) ~7
+      (genericparams . . 1 TArg.0.) 2
+      (objectty . `t17.57.
+       (empty)
+       (empty) ~14,1
+       (reclist . .
+        (identdefs . . 4
+         (postfix . .
+          (ident . . *) ~4
+          (ident . . core)) 7 PGcThread.0. ,1
+         (empty)) ,1
+        (identdefs . . 3
+         (postfix . .
+          (ident . . *) ~3
+          (ident . . sys)) 6 SysThread.0. ,1
+         (empty)) ,2
+        (recwhen . . 5
+         (elif . . 5
+          (infix . .
+           (ident . . is) ~5
+           (ident . . TArg) 3
+           (ident . . void)) ~3,1
+          (reclist . .
+           (identdefs . . 6
+            (postfix . .
+             (ident . . *) ~6
+             (ident . . dataFn)) 14
+            (procty . .
+             (formalparams . .
+              (empty)) 3
+             (pragma . . 2
+              (ident . . nimcall) 11
+              (ident . . gcsafe))) ~2,1
+            (empty)))) ,2
+         (else . . 2,1
+          (reclist . .
+           (identdefs . . 6
+            (postfix . .
+             (ident . . *) ~6
+             (ident . . dataFn)) 14
+            (procty . .
+             (formalparams . .
+              (empty) 1
+              (identdefs . .
+               (ident . . m) 3
+               (ident . . TArg) 7
+               (empty))) 10
+             (pragma . . 2
+              (ident . . nimcall) 11
+              (ident . . gcsafe))) ,1
+            (empty)) ,1
+           (identdefs . . 4
+            (postfix . .
+             (ident . . *) ~4
+             (ident . . data)) 7
+            (ident . . TArg) ~2,1
+            (empty))))) ,7
+        (recwhen . . 5
+         (elif . .
+          (ident . . hasAllocStack) ~3,1
+          (reclist . .
+           (identdefs . . 8
+            (postfix . .
+             (ident . . *) ~8
+             (ident . . rawStack)) 11
+            (ident . . pointer) ~6,2
+            (empty)))))))) none unknown . "" . .)) ~7
+   (genericparams . . 1 TArg.0.) 2
+   (objectty . `t17.57.
+    (empty)
+    (empty) ~14,1
+    (reclist . .
+     (identdefs . . 4
+      (postfix . .
+       (ident . . *) ~4
+       (ident . . core)) 7 PGcThread.0. ,1
+      (empty)) ,1
+     (identdefs . . 3
+      (postfix . .
+       (ident . . *) ~3
+       (ident . . sys)) 6 SysThread.0. ,1
+      (empty)) ,2
+     (recwhen . . 5
+      (elif . . 5
+       (infix . .
+        (ident . . is) ~5
+        (ident . . TArg) 3
+        (ident . . void)) ~3,1
+       (reclist . .
+        (identdefs . . 6
+         (postfix . .
+          (ident . . *) ~6
+          (ident . . dataFn)) 14
+         (procty . .
+          (formalparams . .
+           (empty)) 3
+          (pragma . . 2
+           (ident . . nimcall) 11
+           (ident . . gcsafe))) ~2,1
+         (empty)))) ,2
+      (else . . 2,1
+       (reclist . .
+        (identdefs . . 6
+         (postfix . .
+          (ident . . *) ~6
+          (ident . . dataFn)) 14
+         (procty . .
+          (formalparams . .
+           (empty) 1
+           (identdefs . .
+            (ident . . m) 3
+            (ident . . TArg) 7
+            (empty))) 10
+          (pragma . . 2
+           (ident . . nimcall) 11
+           (ident . . gcsafe))) ,1
+         (empty)) ,1
+        (identdefs . . 4
+         (postfix . .
+          (ident . . *) ~4
+          (ident . . data)) 7
+         (ident . . TArg) ~2,1
+         (empty))))) ,7
+     (recwhen . . 5
+      (elif . .
+       (ident . . hasAllocStack) ~3,1
+       (reclist . .
+        (identdefs . . 8
+         (postfix . .
+          (ident . . *) ~8
+          (ident . . rawStack)) 11
+         (ident . . pointer) ~6,2
+         (empty))))))))) 4,175
+ (sd :=copy.0. x
+  (proc) . uege3o ofrbcr0s0awhl0t0c0 -1 +0 .
+  (td :`t25.62. . me2 nimcall -1 -1 +0 +62 . 19,176,/home/araq/projects/nim/lib/std/private/threadtypes.nim
+   (formalparams . .
+    (arglist . . . . . . 39
+     (pragma . . 2
+      (ident . . error)) .) 1
+    (sd :x.1 .
+     (param) . . . -1 +0 .
+     (td :`t23.63. . m nimcall -1 -1 +0 +63 . . =copy.0. . none unknown . ""
+      (td :`t9.64. . ma nimcall -1 -1 +0 +64 . . =copy.0. . none unknown . "" `t10.54.
+       (td :`t12.61. . g0 nimcall -1 -1 +0 +61 . . =copy.0. 14,176,/home/araq/projects/nim/lib/std/private/threadtypes.nim
+        (sd :TArg.0 .
+         (type) . u . -1 +0 . `t12.61. =copy.0. . none unknown . "" . .) none unknown . ""))) =copy.0. . none unknown . "" . .) 22
+    (sd :y.0 .
+     (param) . . . -1 +1 .
+     (td :`t9.65. . m nimcall -1 -1 +0 +65 . . =copy.0. . none unknown . "" `t10.54. `t12.61.) =copy.0. . none unknown . "" . .)) =copy.0. . none unknown . "" .) threadtypes.0. ~5
+  (proc s . 5
+   (ht . =copy.0.)
+   (empty) 13
+   (genericparams . . 1 TArg.0) . 58
+   (pragma . . 2
+    (ident . . error))
+   (bracket . .
+    (empty) 13,176,/home/araq/projects/nim/lib/std/private/threadtypes.nim
+    (genericparams . . 1
+     (identdefs . .
+      (ident . . TArg)
+      (empty)
+      (empty))))
+   (empty)) none unknown . "" . .))1,1,/home/araq/projects/nim/lib/std/private/threadtypes.nim(.index 5,2
+ (x hasSharedHeap.0. +2193)
+ (h threadtypes.0. +93) 1,1,/home/araq/projects/nim/lib/system.nim
+ (h stdlib.0. +96) 3,63
+ (h schedh.0. +434) 3,64
+ (x pthreadh.0. +242) 10,68
+ (h Time.0. +282)
+ (h `t31.3. +62) 5,74
+ (x SysThread.0. +355)
+ (h `t13.4. +233) 5,76
+ (x Pthread_attr.0. +945)
+ (h `t17.5. +236) 7,78
+ (h abi.0. +133)
+ (h `t16.11. +78)
+ (h `t20.9. +89)
+ (h `t31.8. +155)
+ (h `t31.10. +280)
+ (h `t31.6. +884) 3,90
+ (x Timespec.0. +997)
+ (h `t17.12. +226) 5,91
+ (x tv_sec.0. +135) 5,92
+ (x tv_nsec.0. +139) 6,94
+ (x pthread_attr_init.0. +1564)
+ (h `t25.13. +249)
+ (h `t23.14. +457) 6,96
+ (x pthread_attr_setstack.0. +541)
+ (h `t25.15. +253)
+ (h `t21.16. +457) 6,98
+ (x pthread_attr_setstacksize.0. +788)
+ (h `t25.17. +257)
+ (h `t23.18. +457) 6,100
+ (x pthread_attr_destroy.0. +699)
+ (h `t25.19. +252)
+ (h `t23.20. +458) 6,103
+ (x pthread_create.0. +557)
+ (h `t25.21. +246)
+ (h `t23.22. +529)
+ (h `t23.23. +184)
+ (h `t25.24. +187) 6,107
+ (x pthread_join.0. +1013)
+ (h `t25.25. +244)
+ (h `t21.26. +553) 6,110
+ (x pthread_cancel.0. +527)
+ (h `t25.27. +246) 6,113
+ (x CpuSet.0. +1126)
+ (h `t17.28. +262) 6,115
+ (h abi.1. +136)
+ (h `t16.36. +78)
+ (h `t20.34. +84)
+ (h `t31.33. +158)
+ (h `t31.35. +281) 6,117
+ (x cpusetZero.0. +2631)
+ (h `t25.37. +241)
+ (h `t23.38. +500) 6,118
+ (x cpusetIncl.0. +545)
+ (h `t25.39. +241)
+ (h `t23.40. +610) 8,136
+ (x setAffinity.0. +550)
+ (h `t25.41. +243)
+ (h `t23.42. +730) 1,141
+ (x emulatedThreadVars.0. +603) 5,145
+ (h nimTlsSize.0. +240)
+ (h `t31.43. +74) 1,147
+ (x ThreadLocalStorage.0. +451)
+ (h `t16.44. +77)
+ (h `t20.47. +107)
+ (h `t31.49. +149)
+ (h `t31.51. +226)
+ (h `t31.52. +254) 1,148
+ (x PGcThread.0. +874)
+ (h `t21.45. +69)
+ (h `t17.46. +94) 1,149
+ (x GcThread.0. +208) 5,161
+ (x hasAllocStack.0. +3518) 1,164
+ (x Thread.0. +282)
+ (h `t10.54. +66) 9,164
+ (h TArg.0. +136)
+ (h `t12.55. +51)
+ (h `t17.57. +177) 3,165
+ (x core.0. +138) 3,166
+ (x sys.0. +129)
+ (h `t8.58. +240) 5,168
+ (x dataFn.0. +154)
+ (h `t25.59. +85) 5,170
+ (x dataFn.1. +410)
+ (h `t25.60. +87) 5,171
+ (x data.0. +476) 4,175
+ (x =copy.0. +3849)
+ (h `t25.62. +62)
+ (h `t23.63. +248)
+ (h `t9.64. +77)
+ (h `t12.61. +87)
+ (h `t9.65. +318))

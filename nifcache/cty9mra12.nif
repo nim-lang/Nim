@@ -1,0 +1,677 @@
+(.nif26)
+(.indexat +20191           )
+1,1,/home/araq/projects/nim/lib/system/ctypes.nim(stmts . .
+ (replay 19,61
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "long")) 20,62
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "unsigned long")) 17,65
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "char")) 18,67
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "signed char")) 18,69
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "short")) 16,71
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "int")) 19,73
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "size_t")) 21,75
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "long long")) 18,77
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "float")) 19,79
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "double")) 23,81
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "long double")) 18,85
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "unsigned char")) 19,86
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "unsigned short")) 17,88
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "unsigned int")) 22,90
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "unsigned long long")) 24,98
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "char**")))
+ (implementation) ~1
+ (comment sh .) 1,4
+ (type s . 12
+  (type0 h . ~2
+   (postfix . .
+    (ident . . *) ~10
+    (sd :BiggestInt.0. x
+     (type) . eg ofrbcr0s0awhtl0t0c0 -1 +0 .
+     (td :`t35.3. . c3 nimcall +8 +8 +0 +3 . . 1,1,/home/araq/projects/nim/lib/system/ctypes.nim
+      (sd :ctypes.0. .
+       (module) . . . +0 . . . 1,1,/home/araq/projects/nim/lib/system.nim
+       (sd :stdlib.0. .
+        (package) . . . -1 +0 . . . . none unknown . "" . .) . none unknown . "" . .) BiggestInt.0. none unknown . "") ctypes.0. 12
+     (type0 h . ~2
+      (postfix . .
+       (ident . . *) ~10 BiggestInt.0.)
+      (empty) 2
+      (ht `t35.3. int64.0.sysma2dyk)) none unknown . "" . .))
+   (empty) 2
+   (ht `t35.3. int64.0.sysma2dyk)) 14,5
+  (type0 h . ~2
+   (postfix . .
+    (ident . . *) ~12
+    (sd :BiggestFloat.0. x
+     (type) . ueg ofrbcr0s0awhtl0t0c0 -1 +0 .
+     (td :`t36.4. . c3 nimcall +8 +8 +0 +4 . . ctypes.0. BiggestFloat.0. none unknown . "") ctypes.0. 14
+     (type0 h . ~2
+      (postfix . .
+       (ident . . *) ~12 BiggestFloat.0.)
+      (empty) 2
+      (ht `t36.4. float64.0.sysma2dyk)) none unknown . "" . .))
+   (empty) 2
+   (ht `t36.4. float64.0.sysma2dyk)) 13,10
+  (type0 h . ~2
+   (postfix . .
+    (ident . . *) ~11
+    (sd :BiggestUInt.0. x
+     (type) . eg ofrbcr0s0awhtl0t0c0 -1 +0 .
+     (td :`t44.5. . c3 nimcall +8 +8 +0 +5 . . ctypes.0. BiggestUInt.0. none unknown . "") ctypes.0. 13
+     (type0 h . ~2
+      (postfix . .
+       (ident . . *) ~11 BiggestUInt.0.)
+      (empty) 2
+      (ht `t44.5. uint64.0.sysma2dyk)) none unknown . "" . .))
+   (empty) 2
+   (ht `t44.5. uint64.0.sysma2dyk))) 3,61
+ (type s . 35
+  (type0 . .
+   (pragmax . . ~30
+    (postfix . .
+     (ident . . *) ~5
+     (sd :clong.0. x
+      (type) . egi ofrbcr0s0awhtl0t0c0 -1 +0 .
+      (td :`t31.6. . c3 nimcall +8 +8 +0 +6 . . ctypes.0. clong.0. none unknown . "") ctypes.0. 35
+      (type0 . .
+       (pragmax . . ~30
+        (postfix . .
+         (ident . . *) ~5 clong.0.) ~28
+        (pragma . . 9
+         (kv . . ~7
+          (ident . . importc) 2
+          (strlit . `t28.17.sysma2dyk "long")) 19
+         (ident . . nodecl)))
+       (empty) 2
+       (ht `t31.6. int.0.sysma2dyk)) none unknown d "long" . .)) ~28
+    (pragma . . 9
+     (kv . . ~7
+      (ident . . importc) 2
+      (strlit . `t28.17.sysma2dyk "long")) 19
+     (ident . . nodecl)))
+   (empty) 2
+   (ht `t31.6. int.0.sysma2dyk)) 45,1
+  (type0 . .
+   (pragmax . . ~39
+    (postfix . .
+     (ident . . *) ~6
+     (sd :culong.0. x
+      (type) . egi ofrbcr0s0awhtl0t0c0 -1 +0 .
+      (td :`t40.7. . c3 nimcall +8 +8 +0 +7 . . ctypes.0. culong.0. none unknown . "") ctypes.0. 45
+      (type0 . .
+       (pragmax . . ~39
+        (postfix . .
+         (ident . . *) ~6 culong.0.) ~37
+        (pragma . . 9
+         (kv . . ~7
+          (ident . . importc) 2
+          (strlit . `t28.17.sysma2dyk "unsigned long")) 28
+         (ident . . nodecl)))
+       (empty) 2
+       (ht `t40.7. uint.0.sysma2dyk)) none unknown d "unsigned long" . .)) ~37
+    (pragma . . 9
+     (kv . . ~7
+      (ident . . importc) 2
+      (strlit . `t28.17.sysma2dyk "unsigned long")) 28
+     (ident . . nodecl)))
+   (empty) 2
+   (ht `t40.7. uint.0.sysma2dyk))) 1,65
+ (type s . 35
+  (type0 h .
+   (pragmax . . ~30
+    (postfix . .
+     (ident . . *) ~5
+     (sd :cchar.0. x
+      (type) . egi ofrbcr0s0awhtl0t0c0 -1 +0 .
+      (td :`t2.8. . c3 nimcall +1 +1 +0 +8 . . ctypes.0. cchar.0. none unknown . "") ctypes.0. 35
+      (type0 h .
+       (pragmax . . ~30
+        (postfix . .
+         (ident . . *) ~5 cchar.0.) ~28
+        (pragma . . 9
+         (kv . . ~7
+          (ident . . importc) 2
+          (strlit . `t28.17.sysma2dyk "char")) 19
+         (ident . . nodecl)))
+       (empty) 2
+       (ht `t2.8. char.0.sysma2dyk)) none unknown d "char" . .)) ~28
+    (pragma . . 9
+     (kv . . ~7
+      (ident . . importc) 2
+      (strlit . `t28.17.sysma2dyk "char")) 19
+     (ident . . nodecl)))
+   (empty) 2
+   (ht `t2.8. char.0.sysma2dyk)) 43,2
+  (type0 h .
+   (pragmax . . ~37
+    (postfix . .
+     (ident . . *) ~6
+     (sd :cschar.0. x
+      (type) . egi ofrbcr0s0awhtl0t0c0 -1 +0 .
+      (td :`t32.9. . c3 nimcall +1 +1 +0 +9 . . ctypes.0. cschar.0. none unknown . "") ctypes.0. 43
+      (type0 h .
+       (pragmax . . ~37
+        (postfix . .
+         (ident . . *) ~6 cschar.0.) ~35
+        (pragma . . 9
+         (kv . . ~7
+          (ident . . importc) 2
+          (strlit . `t28.17.sysma2dyk "signed char")) 26
+         (ident . . nodecl)))
+       (empty) 2
+       (ht `t32.9. int8.0.sysma2dyk)) none unknown d "signed char" . .)) ~35
+    (pragma . . 9
+     (kv . . ~7
+      (ident . . importc) 2
+      (strlit . `t28.17.sysma2dyk "signed char")) 26
+     (ident . . nodecl)))
+   (empty) 2
+   (ht `t32.9. int8.0.sysma2dyk)) 37,4
+  (type0 h .
+   (pragmax . . ~31
+    (postfix . .
+     (ident . . *) ~6
+     (sd :cshort.0. x
+      (type) . egi ofrbcr0s0awhtl0t0c0 -1 +0 .
+      (td :`t33.10. . c3 nimcall +2 +2 +0 +10 . . ctypes.0. cshort.0. none unknown . "") ctypes.0. 37
+      (type0 h .
+       (pragmax . . ~31
+        (postfix . .
+         (ident . . *) ~6 cshort.0.) ~29
+        (pragma . . 9
+         (kv . . ~7
+          (ident . . importc) 2
+          (strlit . `t28.17.sysma2dyk "short")) 20
+         (ident . . nodecl)))
+       (empty) 2
+       (ht `t33.10. int16.0.sysma2dyk)) none unknown d "short" . .)) ~29
+    (pragma . . 9
+     (kv . . ~7
+      (ident . . importc) 2
+      (strlit . `t28.17.sysma2dyk "short")) 20
+     (ident . . nodecl)))
+   (empty) 2
+   (ht `t33.10. int16.0.sysma2dyk)) 33,6
+  (type0 h .
+   (pragmax . . ~29
+    (postfix . .
+     (ident . . *) ~4
+     (sd :cint.0. x
+      (type) . egi ofrbcr0s0awhtl0t0c0 -1 +0 .
+      (td :`t34.11. . c3 nimcall +4 +4 +0 +11 . . ctypes.0. cint.0. none unknown . "") ctypes.0. 33
+      (type0 h .
+       (pragmax . . ~29
+        (postfix . .
+         (ident . . *) ~4 cint.0.) ~27
+        (pragma . . 9
+         (kv . . ~7
+          (ident . . importc) 2
+          (strlit . `t28.17.sysma2dyk "int")) 18
+         (ident . . nodecl)))
+       (empty) 2
+       (ht `t34.11. int32.0.sysma2dyk)) none unknown d "int" . .)) ~27
+    (pragma . . 9
+     (kv . . ~7
+      (ident . . importc) 2
+      (strlit . `t28.17.sysma2dyk "int")) 18
+     (ident . . nodecl)))
+   (empty) 2
+   (ht `t34.11. int32.0.sysma2dyk)) 39,8
+  (type0 h .
+   (pragmax . . ~32
+    (postfix . .
+     (ident . . *) ~7
+     (sd :csize_t.0. x
+      (type) . egi ofrbcr0s0awhtl0t0c0 -1 +0 .
+      (td :`t40.12. . c3 nimcall +8 +8 +0 +12 . . ctypes.0. csize_t.0. none unknown . "") ctypes.0. 39
+      (type0 h .
+       (pragmax . . ~32
+        (postfix . .
+         (ident . . *) ~7 csize_t.0.) ~30
+        (pragma . . 9
+         (kv . . ~7
+          (ident . . importc) 2
+          (strlit . `t28.17.sysma2dyk "size_t")) 21
+         (ident . . nodecl)))
+       (empty) 2
+       (ht `t40.12. uint.0.sysma2dyk)) none unknown d "size_t" . .)) ~30
+    (pragma . . 9
+     (kv . . ~7
+      (ident . . importc) 2
+      (strlit . `t28.17.sysma2dyk "size_t")) 21
+     (ident . . nodecl)))
+   (empty) 2
+   (ht `t40.12. uint.0.sysma2dyk)) 44,10
+  (type0 h .
+   (pragmax . . ~35
+    (postfix . .
+     (ident . . *) ~9
+     (sd :clonglong.0. x
+      (type) . egi ofrbcr0s0awhtl0t0c0 -1 +0 .
+      (td :`t35.13. . c3 nimcall +8 +8 +0 +13 . . ctypes.0. clonglong.0. none unknown . "") ctypes.0. 44
+      (type0 h .
+       (pragmax . . ~35
+        (postfix . .
+         (ident . . *) ~9 clonglong.0.) ~33
+        (pragma . . 9
+         (kv . . ~7
+          (ident . . importc) 2
+          (strlit . `t28.17.sysma2dyk "long long")) 24
+         (ident . . nodecl)))
+       (empty) 2
+       (ht `t35.13. int64.0.sysma2dyk)) none unknown d "long long" . .)) ~33
+    (pragma . . 9
+     (kv . . ~7
+      (ident . . importc) 2
+      (strlit . `t28.17.sysma2dyk "long long")) 24
+     (ident . . nodecl)))
+   (empty) 2
+   (ht `t35.13. int64.0.sysma2dyk)) 37,12
+  (type0 h .
+   (pragmax . . ~31
+    (postfix . .
+     (ident . . *) ~6
+     (sd :cfloat.0. x
+      (type) . egi ofrbcr0s0awhtl0t0c0 -1 +0 .
+      (td :`t37.14. . c3 nimcall +4 +4 +0 +14 . . ctypes.0. cfloat.0. none unknown . "") ctypes.0. 37
+      (type0 h .
+       (pragmax . . ~31
+        (postfix . .
+         (ident . . *) ~6 cfloat.0.) ~29
+        (pragma . . 9
+         (kv . . ~7
+          (ident . . importc) 2
+          (strlit . `t28.17.sysma2dyk "float")) 20
+         (ident . . nodecl)))
+       (empty) 2
+       (ht `t37.14. float32.0.sysma2dyk)) none unknown d "float" . .)) ~29
+    (pragma . . 9
+     (kv . . ~7
+      (ident . . importc) 2
+      (strlit . `t28.17.sysma2dyk "float")) 20
+     (ident . . nodecl)))
+   (empty) 2
+   (ht `t37.14. float32.0.sysma2dyk)) 39,14
+  (type0 h .
+   (pragmax . . ~32
+    (postfix . .
+     (ident . . *) ~7
+     (sd :cdouble.0. x
+      (type) . egi ofrbcr0s0awhtl0t0c0 -1 +0 .
+      (td :`t36.15. . c3 nimcall +8 +8 +0 +15 . . ctypes.0. cdouble.0. none unknown . "") ctypes.0. 39
+      (type0 h .
+       (pragmax . . ~32
+        (postfix . .
+         (ident . . *) ~7 cdouble.0.) ~30
+        (pragma . . 9
+         (kv . . ~7
+          (ident . . importc) 2
+          (strlit . `t28.17.sysma2dyk "double")) 21
+         (ident . . nodecl)))
+       (empty) 2
+       (ht `t36.15. float64.0.sysma2dyk)) none unknown d "double" . .)) ~30
+    (pragma . . 9
+     (kv . . ~7
+      (ident . . importc) 2
+      (strlit . `t28.17.sysma2dyk "double")) 21
+     (ident . . nodecl)))
+   (empty) 2
+   (ht `t36.15. float64.0.sysma2dyk)) 48,16
+  (type0 h .
+   (pragmax . . ~37
+    (postfix . .
+     (ident . . *) ~11
+     (sd :clongdouble.0. x
+      (type) . egi ofrbcr0s0awhtl0t0c0 -1 +0 .
+      (td :`t36.16. . c3 nimcall +8 +8 +0 +16 . . ctypes.0. clongdouble.0. none unknown . "") ctypes.0. 48
+      (type0 h .
+       (pragmax . . ~37
+        (postfix . .
+         (ident . . *) ~11 clongdouble.0.) ~35
+        (pragma . . 9
+         (kv . . ~7
+          (ident . . importc) 2
+          (strlit . `t28.17.sysma2dyk "long double")) 26
+         (ident . . nodecl)))
+       (empty) 2
+       (ht `t36.16. BiggestFloat.0.)) none unknown d "long double" . .)) ~35
+    (pragma . . 9
+     (kv . . ~7
+      (ident . . importc) 2
+      (strlit . `t28.17.sysma2dyk "long double")) 26
+     (ident . . nodecl)))
+   (empty) 2
+   (ht `t36.16. BiggestFloat.0.)) 90,20
+  (type0 . .
+   (pragmax . . ~84
+    (postfix . .
+     (ident . . *) ~6
+     (sd :cuchar.0. x
+      (type) . egid0 ofrbcr0s0awhtl0t0c0 -1 +0 .
+      (td :`t2.17. . c3 nimcall +1 +1 +0 +17 . . ctypes.0. cuchar.0. none unknown . "") ctypes.0. 90
+      (type0 . .
+       (pragmax . . ~84
+        (postfix . .
+         (ident . . *) ~6 cuchar.0.) ~82
+        (pragma . . 9
+         (kv . . ~7
+          (ident . . importc) 2
+          (strlit . `t28.17.sysma2dyk "unsigned char")) 28
+         (ident . . nodecl) 46
+         (kv . . ~10
+          (ident . . deprecated) 2
+          (strlit . `t28.17.sysma2dyk "Use `char` or `uint8` instead"))))
+       (empty) 2
+       (ht `t2.17. char.0.sysma2dyk)) none unknown d "unsigned char" . .)) ~82
+    (pragma . . 9
+     (kv . . ~7
+      (ident . . importc) 2
+      (strlit . `t28.17.sysma2dyk "unsigned char")) 28
+     (ident . . nodecl) 46
+     (kv . . ~10
+      (ident . . deprecated) 2
+      (strlit . `t28.17.sysma2dyk "Use `char` or `uint8` instead"))))
+   (empty) 2
+   (ht `t2.17. char.0.sysma2dyk)) 47,21
+  (type0 h .
+   (pragmax . . ~40
+    (postfix . .
+     (ident . . *) ~7
+     (sd :cushort.0. x
+      (type) . egi ofrbcr0s0awhtl0t0c0 -1 +0 .
+      (td :`t42.18. . c3 nimcall +2 +2 +0 +18 . . ctypes.0. cushort.0. none unknown . "") ctypes.0. 47
+      (type0 h .
+       (pragmax . . ~40
+        (postfix . .
+         (ident . . *) ~7 cushort.0.) ~38
+        (pragma . . 9
+         (kv . . ~7
+          (ident . . importc) 2
+          (strlit . `t28.17.sysma2dyk "unsigned short")) 29
+         (ident . . nodecl)))
+       (empty) 2
+       (ht `t42.18. uint16.0.sysma2dyk)) none unknown d "unsigned short" . .)) ~38
+    (pragma . . 9
+     (kv . . ~7
+      (ident . . importc) 2
+      (strlit . `t28.17.sysma2dyk "unsigned short")) 29
+     (ident . . nodecl)))
+   (empty) 2
+   (ht `t42.18. uint16.0.sysma2dyk)) 43,23
+  (type0 h .
+   (pragmax . . ~38
+    (postfix . .
+     (ident . . *) ~5
+     (sd :cuint.0. x
+      (type) . egi ofrbcr0s0awhtl0t0c0 -1 +0 .
+      (td :`t43.19. . c3 nimcall +4 +4 +0 +19 . . ctypes.0. cuint.0. none unknown . "") ctypes.0. 43
+      (type0 h .
+       (pragmax . . ~38
+        (postfix . .
+         (ident . . *) ~5 cuint.0.) ~36
+        (pragma . . 9
+         (kv . . ~7
+          (ident . . importc) 2
+          (strlit . `t28.17.sysma2dyk "unsigned int")) 27
+         (ident . . nodecl)))
+       (empty) 2
+       (ht `t43.19. uint32.0.sysma2dyk)) none unknown d "unsigned int" . .)) ~36
+    (pragma . . 9
+     (kv . . ~7
+      (ident . . importc) 2
+      (strlit . `t28.17.sysma2dyk "unsigned int")) 27
+     (ident . . nodecl)))
+   (empty) 2
+   (ht `t43.19. uint32.0.sysma2dyk)) 54,25
+  (type0 h .
+   (pragmax . . ~44
+    (postfix . .
+     (ident . . *) ~10
+     (sd :culonglong.0. x
+      (type) . egi ofrbcr0s0awhtl0t0c0 -1 +0 .
+      (td :`t44.20. . c3 nimcall +8 +8 +0 +20 . . ctypes.0. culonglong.0. none unknown . "") ctypes.0. 54
+      (type0 h .
+       (pragmax . . ~44
+        (postfix . .
+         (ident . . *) ~10 culonglong.0.) ~42
+        (pragma . . 9
+         (kv . . ~7
+          (ident . . importc) 2
+          (strlit . `t28.17.sysma2dyk "unsigned long long")) 33
+         (ident . . nodecl)))
+       (empty) 2
+       (ht `t44.20. uint64.0.sysma2dyk)) none unknown d "unsigned long long" . .)) ~42
+    (pragma . . 9
+     (kv . . ~7
+      (ident . . importc) 2
+      (strlit . `t28.17.sysma2dyk "unsigned long long")) 33
+     (ident . . nodecl)))
+   (empty) 2
+   (ht `t44.20. uint64.0.sysma2dyk))) 1,94
+ (type s . 42
+  (type0 h .
+   (pragmax . . ~31
+    (postfix . .
+     (ident . . *) ~11
+     (sd :ByteAddress.0. x
+      (type) . egd0 ofrbcr0s0awhtl0t0c0 -1 +0 .
+      (td :`t31.21. . c3 nimcall +8 +8 +0 +21 . . ctypes.0. ByteAddress.0. none unknown . "") ctypes.0. 42
+      (type0 h .
+       (pragmax . . ~31
+        (postfix . .
+         (ident . . *) ~11 ByteAddress.0.) ~29
+        (pragma . . 12
+         (kv . . ~10
+          (ident . . deprecated) 2
+          (strlit . `t28.17.sysma2dyk "use `uint`"))))
+       (empty) 2
+       (ht `t31.21. int.0.sysma2dyk)) none unknown . "" . .)) ~29
+    (pragma . . 12
+     (kv . . ~10
+      (ident . . deprecated) 2
+      (strlit . `t28.17.sysma2dyk "use `uint`"))))
+   (empty) 2
+   (ht `t31.21. int.0.sysma2dyk)) 44,4
+  (type0 h .
+   (pragmax . . ~32
+    (postfix . .
+     (ident . . *) ~12
+     (sd :cstringArray.0. x
+      (type) . egi ofrbcr0s0awhtl0t0c0 -1 +0 .
+      (td :`t21.22. . . nimcall +8 +8 +0 +22 . . ctypes.0. cstringArray.0. none unknown . ""
+       (td :`t49.23. . . nimcall -1 -1 +0 +23 . . cstringArray.0. . none unknown . "" `t29.18.sysma2dyk)) ctypes.0. 44
+      (type0 h .
+       (pragmax . . ~32
+        (postfix . .
+         (ident . . *) ~12 cstringArray.0.) ~30
+        (pragma . . 9
+         (kv . . ~7
+          (ident . . importc) 2
+          (strlit . `t28.17.sysma2dyk "char**")) 21
+         (ident . . nodecl)))
+       (empty) 2
+       (ptrty . `t21.22. 18
+        (at . `t49.23. ~14 UncheckedArray.0.sysma2dyk 1 cstring.0.sysma2dyk))) none unknown d "char**" . .)) ~30
+    (pragma . . 9
+     (kv . . ~7
+      (ident . . importc) 2
+      (strlit . `t28.17.sysma2dyk "char**")) 21
+     (ident . . nodecl)))
+   (empty) 2
+   (ptrty . `t21.22. 18
+    (at . `t49.23. ~14 UncheckedArray.0.sysma2dyk 1 cstring.0.sysma2dyk)))) 3,107
+ (type s . 46
+  (type0 h .
+   (pragmax . . ~38
+    (postfix . .
+     (ident . . *) ~8
+     (sd :PFloat32.0. x
+      (type) . egd0 ofrbcr0s0awhtl0t0c0 -1 +0 .
+      (td :`t21.24. . . nimcall +8 +8 +0 +24 . . ctypes.0. PFloat32.0. none unknown . "" `t37.14.sysma2dyk) ctypes.0. 46
+      (type0 h .
+       (pragmax . . ~38
+        (postfix . .
+         (ident . . *) ~8 PFloat32.0.) ~36
+        (pragma . . 12
+         (kv . . ~10
+          (ident . . deprecated) 2
+          (strlit . `t28.17.sysma2dyk "use `ptr float32`"))))
+       (empty) 2
+       (ptrty . `t21.24. 4 float32.0.sysma2dyk)) none unknown . "" . .)) ~36
+    (pragma . . 12
+     (kv . . ~10
+      (ident . . deprecated) 2
+      (strlit . `t28.17.sysma2dyk "use `ptr float32`"))))
+   (empty) 2
+   (ptrty . `t21.24. 4 float32.0.sysma2dyk)) 46,2
+  (type0 h .
+   (pragmax . . ~38
+    (postfix . .
+     (ident . . *) ~8
+     (sd :PFloat64.0. x
+      (type) . egd0 ofrbcr0s0awhtl0t0c0 -1 +0 .
+      (td :`t21.25. . . nimcall +8 +8 +0 +25 . . ctypes.0. PFloat64.0. none unknown . "" `t36.15.sysma2dyk) ctypes.0. 46
+      (type0 h .
+       (pragmax . . ~38
+        (postfix . .
+         (ident . . *) ~8 PFloat64.0.) ~36
+        (pragma . . 12
+         (kv . . ~10
+          (ident . . deprecated) 2
+          (strlit . `t28.17.sysma2dyk "use `ptr float64`"))))
+       (empty) 2
+       (ptrty . `t21.25. 4 float64.0.sysma2dyk)) none unknown . "" . .)) ~36
+    (pragma . . 12
+     (kv . . ~10
+      (ident . . deprecated) 2
+      (strlit . `t28.17.sysma2dyk "use `ptr float64`"))))
+   (empty) 2
+   (ptrty . `t21.25. 4 float64.0.sysma2dyk)) 42,4
+  (type0 h .
+   (pragmax . . ~36
+    (postfix . .
+     (ident . . *) ~6
+     (sd :PInt64.0. x
+      (type) . egd0 ofrbcr0s0awhtl0t0c0 -1 +0 .
+      (td :`t21.26. . . nimcall +8 +8 +0 +26 . . ctypes.0. PInt64.0. none unknown . "" `t35.7.sysma2dyk) ctypes.0. 42
+      (type0 h .
+       (pragmax . . ~36
+        (postfix . .
+         (ident . . *) ~6 PInt64.0.) ~34
+        (pragma . . 12
+         (kv . . ~10
+          (ident . . deprecated) 2
+          (strlit . `t28.17.sysma2dyk "use `ptr int64`"))))
+       (empty) 2
+       (ptrty . `t21.26. 4 int64.0.sysma2dyk)) none unknown . "" . .)) ~34
+    (pragma . . 12
+     (kv . . ~10
+      (ident . . deprecated) 2
+      (strlit . `t28.17.sysma2dyk "use `ptr int64`"))))
+   (empty) 2
+   (ptrty . `t21.26. 4 int64.0.sysma2dyk)) 42,6
+  (type0 h .
+   (pragmax . . ~36
+    (postfix . .
+     (ident . . *) ~6
+     (sd :PInt32.0. x
+      (type) . egd0 ofrbcr0s0awhtl0t0c0 -1 +0 .
+      (td :`t21.27. . . nimcall +8 +8 +0 +27 . . ctypes.0. PInt32.0. none unknown . "" `t34.6.sysma2dyk) ctypes.0. 42
+      (type0 h .
+       (pragmax . . ~36
+        (postfix . .
+         (ident . . *) ~6 PInt32.0.) ~34
+        (pragma . . 12
+         (kv . . ~10
+          (ident . . deprecated) 2
+          (strlit . `t28.17.sysma2dyk "use `ptr int32`"))))
+       (empty) 2
+       (ptrty . `t21.27. 4 int32.0.sysma2dyk)) none unknown . "" . .)) ~34
+    (pragma . . 12
+     (kv . . ~10
+      (ident . . deprecated) 2
+      (strlit . `t28.17.sysma2dyk "use `ptr int32`"))))
+   (empty) 2
+   (ptrty . `t21.27. 4 int32.0.sysma2dyk))))1,1,/home/araq/projects/nim/lib/system/ctypes.nim(.index 1,4
+ (x BiggestInt.0. +1540)
+ (h `t35.3. +70)
+ (h ctypes.0. +97) 1,1,/home/araq/projects/nim/lib/system.nim
+ (h stdlib.0. +97) 1,9
+ (x BiggestFloat.0. +419)
+ (h `t36.4. +73) 1,14
+ (x BiggestUInt.0. +375)
+ (h `t44.5. +71) 3,61
+ (x clong.0. +403)
+ (h `t31.6. +68) 3,62
+ (x culong.0. +698)
+ (h `t40.7. +69) 1,65
+ (x cchar.0. +744)
+ (h `t2.8. +68) 1,67
+ (x cschar.0. +697)
+ (h `t32.9. +69) 1,69
+ (x cshort.0. +723)
+ (h `t33.10. +69) 1,71
+ (x cint.0. +711)
+ (h `t34.11. +67) 1,73
+ (x csize_t.0. +701)
+ (h `t40.12. +70) 1,75
+ (x clonglong.0. +715)
+ (h `t35.13. +72) 1,77
+ (x cfloat.0. +730)
+ (h `t37.14. +69) 1,79
+ (x cdouble.0. +716)
+ (h `t36.15. +70) 1,81
+ (x clongdouble.0. +722)
+ (h `t36.16. +74) 1,85
+ (x cuchar.0. +737)
+ (h `t2.17. +71) 1,86
+ (x cushort.0. +981)
+ (h `t42.18. +70) 1,88
+ (x cuint.0. +743)
+ (h `t43.19. +68) 1,90
+ (x culonglong.0. +734)
+ (h `t44.20. +73) 1,94
+ (x ByteAddress.0. +777)
+ (h `t31.21. +75) 1,98
+ (x cstringArray.0. +676)
+ (h `t21.22. +75)
+ (h `t49.23. +93) 3,107
+ (x PFloat32.0. +884)
+ (h `t21.24. +72) 3,109
+ (x PFloat64.0. +721)
+ (h `t21.25. +72) 3,111
+ (x PInt64.0. +721)
+ (h `t21.26. +70) 3,113
+ (x PInt32.0. +708)
+ (h `t21.27. +70))

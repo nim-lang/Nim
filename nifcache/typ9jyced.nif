@@ -1,0 +1,1159 @@
+(.nif26)
+(.indexat +54916           )
+1,1,/home/araq/projects/nim/lib/std/typedthreads.nim(stmts . . ~1,78
+ (import . . "thrgbmtmk") ~1,79
+ (export . . Thread.0.thrgbmtmk) ~1,81
+ (import . . "ans3a62y1")
+ (implementation) ~1,9
+ (comment sh .) 1,101
+ (const s . 2,1
+  (sd :StackGuardSize.0. .
+   (const) . ug r0whl0t0c0 -1 +0 .
+   (td :`t31.5. . c3 nimcall +8 +8 +0 +5 . 21,103,/home/araq/projects/nim/lib/std/typedthreads.nim
+    (intlit s `t31.5. +4096) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") ~3,~102
+   (sd :typedthreads.0. .
+    (module) . i1 . +0 . . . 1,1,/home/araq/projects/nim/lib/system.nim
+    (sd :stdlib.0. .
+     (package) . . . -1 +0 . . . . none unknown . "" . .) . none unknown . "" . .)
+   (const0 . . StackGuardSize.0.
+    (empty) 17
+    (intlit . `t31.5. +4096)) none unknown . "" . .) 2,2
+  (sd :ThreadStackMask.0. .
+   (const) . ug r0whl0t0c0 -1 +0 .
+   (td :`t31.12. . c3 nimcall +8 +8 +0 +12 . 28,108,/home/araq/projects/nim/lib/std/typedthreads.nim
+    (intlit s `t31.12. +2097151) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") typedthreads.0.
+   (const0 . . ThreadStackMask.0.
+    (empty) 24,4
+    (intlit . `t31.12. +2097151)) none unknown . "" . .) 2,8
+  (sd :ThreadStackSize.0. .
+   (const) . ug r0whl0t0c0 -1 +0 .
+   (td :`t31.14. . c3 nimcall +8 +8 +0 +14 . 40,110,/home/araq/projects/nim/lib/std/typedthreads.nim
+    (intlit s `t31.14. +2093056) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") typedthreads.0.
+   (const0 . . ThreadStackSize.0.
+    (empty) 36
+    (intlit . `t31.14. +2093056)) none unknown . "" . .)) 6,113
+ (sd :allocThreadStorage.0. .
+  (proc) . ugi1 r0whl0t0c0 -1 +0 .
+  (td :`t25.15. . nte2 nimcall -1 -1 +0 +15 . 25,114,/home/araq/projects/nim/lib/std/typedthreads.nim
+   (formalparams . `t26.19.sysma2dyk
+    (arglist . . ~18
+     (arglist . .)
+     (empty)
+     (empty) ~18
+     (arglist . .)
+     (empty) ~18
+     (arglist . .)) 1
+    (sd :size.0 .
+     (param) . u . -1 +0 . `t31.3.sysma2dyk allocThreadStorage.0. . none unknown . "" . .)) allocThreadStorage.0. . none unknown . "" `t26.19.sysma2dyk) typedthreads.0. ~5
+  (proc s . 5
+   (ht . allocThreadStorage.0.)
+   (empty)
+   (empty) .
+   (empty)
+   (empty) 2,1
+   (stmts s
+    (td :`t7.1. . . nimcall -1 -1 +0 +1 . . . . none unknown . "") 7
+    (asgn s `t7.1. ~9,~1
+     (sd :result.0 .
+      (result) . u . -1 +0 . `t26.19.sysma2dyk allocThreadStorage.0. . none unknown . "" . .) 10
+     (call s `t26.19.sysma2dyk ~8 c_malloc.0.ans3a62y1 9
+      (conv s `t40.12.cty9mra12 ~8 csize_t.0.cty9mra12 size.0))) 7,1
+    (call s . ~7 zeroMem.0.sysma2dyk 1 result.0 9
+     (hstdconv . `t20.744.sysma2dyk
+      (empty) size.0))) result.0) none unknown . "" . .) ~1,136
+ (pragma s . 2
+  (ident . . push) 18
+  (kv . . ~11
+   (ident . . stack_trace) 1
+   (intlit . `t1.34.sysma2dyk +0))) 6,146
+ (sd :threadProcWrapper.0. .
+  (proc) . ug r0whl0t0c0 -1 +0 .
+  (td :`t25.17. . ue1e2 noconv -1 -1 +0 +17 . 30,147,/home/araq/projects/nim/lib/std/typedthreads.nim
+   (formalparams . `t26.19.sysma2dyk
+    (arglist . . . . . . 28
+     (pragma . . 2
+      (ident . . noconv)) .) 1
+    (sd :closure.0 .
+     (param) . u . -1 +0 . `t26.19.sysma2dyk threadProcWrapper.0. . none unknown . "" . .)) threadProcWrapper.0. . none unknown . "" `t26.19.sysma2dyk) typedthreads.0. ~5
+  (proc s . 5
+   (ht . threadProcWrapper.0.)
+   (empty) 22
+   (genericparams . . 1
+    (sd :TArg.0 .
+     (type) . u . -1 +0 .
+     (td :`t12.16. . g0 nimcall -1 -1 +0 +16 . . threadProcWrapper.0. TArg.0 none unknown . "") threadProcWrapper.0. . none unknown . "" . .)) . 56
+   (pragma . . 2
+    (ident . . noconv))
+   (bracket . .
+    (empty) 24,147,/home/araq/projects/nim/lib/std/typedthreads.nim
+    (genericparams . . 1
+     (identdefs . .
+      (ident . . TArg)
+      (empty)
+      (empty)))) 2,1
+   (stmts . . 7
+    (asgn . . ~7
+     (ident . . result) 2
+     (nil . .)) ,1
+    (stmts f . 2,98,/home/araq/projects/nim/lib/system/threadimpl.nim
+     (var . . 4
+      (identdefs . .
+       (ident . . thrd`gensym0) 5
+       (empty) 7
+       (cast . . 5
+        (ptrty . . 10
+         (call . . \5B\5D.0.sysma2dyk ~6
+          (ht . Thread.0.thrgbmtmk) 1
+          (ident . . TArg))) 29,149,/home/araq/projects/nim/lib/std/typedthreads.nim
+        (ident . . closure)))) 2,99,/home/araq/projects/nim/lib/system/threadimpl.nim
+     (var . . 4
+      (identdefs . .
+       (ident . . core`gensym0) 5
+       (empty) 11
+       (dot . . ~4
+        (ident . . thrd`gensym0) 1
+        (ident . . core)))) 2,100,/home/araq/projects/nim/lib/system/threadimpl.nim
+     (when . . 5
+      (elif . . 8
+       (call . . ~8 declared.0.sysma2dyk 1
+        (ident . . globalsSlot)) 23
+       (stmts . . 17
+        (call . . ~17 threadVarSetValue.0.sysma2dyk 1
+         (ident . . globalsSlot) 18
+         (dot . . ~4
+          (ident . . thrd`gensym0) 1
+          (ident . . core)))))) 26,101,/home/araq/projects/nim/lib/system/threadimpl.nim
+     (call . . ~24 threadProcWrapStackFrame.0.sysma2dyk 1
+      (ident . . thrd`gensym0)) 12,109,/home/araq/projects/nim/lib/system/threadimpl.nim
+     (asgn . . ~6
+      (dot . . ~4
+       (ident . . thrd`gensym0) 1
+       (ident . . core)) 2
+      (nil . .)) 14,110,/home/araq/projects/nim/lib/system/threadimpl.nim
+     (asgn . . ~8
+      (dot . . ~4
+       (ident . . thrd`gensym0) 1
+       (ident . . dataFn)) 2
+      (nil . .)) 24
+     (call . . 2,111,/home/araq/projects/nim/lib/system/threadimpl.nim deallocThreadStorage.0.sysma2dyk 23,111,/home/araq/projects/nim/lib/system/threadimpl.nim
+      (cast . . 5
+       (ht . pointer.0.sysma2dyk) 14
+       (ident . . core`gensym0)))))) none unknown . "" . .) ~1,149
+ (pragma s . 2
+  (ident . . pop)) 4,151
+ (sd :running.0. x
+  (proc) . eg r0whl0t0c0 -1 +0 .
+  (td :`t25.19. . me1e2 inline -1 -1 +0 +19 . 19,152,/home/araq/projects/nim/lib/std/typedthreads.nim
+   (formalparams . `t1.34.sysma2dyk
+    (arglist . . . . . . 24
+     (pragma . . 2
+      (ident . . inline)) .) 1
+    (sd :t.0 .
+     (param) . u . -1 +0 .
+     (td :`t9.20. . m nimcall -1 -1 +0 +20 . . running.0. . none unknown . "" `t10.54.thrgbmtmk
+      (td :`t12.18. . g0 nimcall -1 -1 +0 +18 . . running.0. 14,152,/home/araq/projects/nim/lib/std/typedthreads.nim
+       (sd :TArg.0 .
+        (type) . u . -1 +0 . `t12.18. running.0. . none unknown . "" . .) none unknown . "")) running.0. . none unknown . "" . .)) running.0. . none unknown . "" `t1.34.sysma2dyk) typedthreads.0. ~5
+  (proc s . 5
+   (ht . running.0.)
+   (empty) 13
+   (genericparams . . 1 TArg.0) . 43
+   (pragma . . 2
+    (ident . . inline))
+   (bracket . .
+    (empty) 13,152,/home/araq/projects/nim/lib/std/typedthreads.nim
+    (genericparams . . 1
+     (identdefs . .
+      (ident . . TArg)
+      (empty)
+      (empty)))) 2,1
+   (stmts . .
+    (comment h .) 7,1
+    (asgn . . ~7
+     (ident . . result) 11
+     (stmts f . 2,132,/home/araq/projects/nim/lib/system/comparisons.nim
+      (empty)
+      (prefix . .
+       (opensymchoice d3 . not.2.sysma2dyk not.3.sysma2dyk not.0.sysma2dyk not.4.sysma2dyk not.1.sysma2dyk not.6.sysma2dyk not.5.sysma2dyk not.7.sysma2dyk not.8.sysma2dyk not.9.sysma2dyk not.10.sysma2dyk not.11.sysma2dyk)
+       (par . .
+        (infix . .
+         (opensymchoice d3 . ==.0.sysma2dyk ==.1.sysma2dyk ==.2.sysma2dyk ==.3.sysma2dyk ==.4.sysma2dyk ==.5.sysma2dyk ==.6.sysma2dyk ==.7.sysma2dyk ==.8.sysma2dyk) ~8
+         (dot . . ~1
+          (ident . . t) 1
+          (ident . . dataFn)) 3
+         (nil . .)))))))) none unknown . "" . .) 4,155
+ (sd :handle.0. x
+  (proc) . eg r0whl0t0c0 -1 +0 .
+  (td :`t25.22. . me1e2 inline -1 -1 +0 +22 . 18,156,/home/araq/projects/nim/lib/std/typedthreads.nim
+   (formalparams . `t13.4.thrgbmtmk
+    (arglist . . . . . . 29
+     (pragma . . 2
+      (ident . . inline)) .) 1
+    (sd :t.1 .
+     (param) . u . -1 +0 .
+     (td :`t9.23. . m nimcall -1 -1 +0 +23 . . handle.0. . none unknown . "" `t10.54.thrgbmtmk
+      (td :`t12.21. . g0 nimcall -1 -1 +0 +21 . . handle.0. 13,156,/home/araq/projects/nim/lib/std/typedthreads.nim
+       (sd :TArg.0 .
+        (type) . u . -1 +0 . `t12.21. handle.0. . none unknown . "" . .) none unknown . "")) handle.0. . none unknown . "" . .)) handle.0. . none unknown . "" `t13.4.thrgbmtmk) typedthreads.0. ~5
+  (proc s . 5
+   (ht . handle.0.)
+   (empty) 12
+   (genericparams . . 1 TArg.0) . 47
+   (pragma . . 2
+    (ident . . inline))
+   (bracket . .
+    (empty) 12,156,/home/araq/projects/nim/lib/std/typedthreads.nim
+    (genericparams . . 1
+     (identdefs . .
+      (ident . . TArg)
+      (empty)
+      (empty)))) 2,1
+   (stmts . .
+    (comment h .) 7,1
+    (asgn . . ~7
+     (ident . . result) 3
+     (dot . . ~1
+      (ident . . t) 1
+      (ident . . sys))))) none unknown . "" . .) 6,186
+ (sd :joinThread.0. x
+  (proc) . ueg r0whl0t0c0 -1 +0 .
+  (td :`t25.27. . me1e2 inline -1 -1 +0 +27 . 24,187,/home/araq/projects/nim/lib/std/typedthreads.nim
+   (formalparams . .
+    (arglist . . . . . . 18
+     (pragma . . 2
+      (ident . . inline)) .) 1
+    (sd :t.2 .
+     (param) . u . -1 +0 .
+     (td :`t9.28. . m nimcall -1 -1 +0 +28 . . joinThread.0. . none unknown . "" `t10.54.thrgbmtmk
+      (td :`t12.26. . g0 nimcall -1 -1 +0 +26 . . joinThread.0. 19,187,/home/araq/projects/nim/lib/std/typedthreads.nim
+       (sd :TArg.0 .
+        (type) . u . -1 +0 . `t12.26. joinThread.0. . none unknown . "" . .) none unknown . "")) joinThread.0. . none unknown . "" . .)) joinThread.0. . none unknown . "" .) typedthreads.0. ~5
+  (proc s . 5
+   (ht . joinThread.0.)
+   (empty) 16
+   (genericparams . . 1 TArg.0) . 40
+   (pragma . . 2
+    (ident . . inline))
+   (bracket . .
+    (empty) 18,187,/home/araq/projects/nim/lib/std/typedthreads.nim
+    (genericparams . . 1
+     (identdefs . .
+      (ident . . TArg)
+      (empty)
+      (empty)))) 2,1
+   (stmts . .
+    (comment h .) ,1
+    (discard . . 20
+     (call . . ~12 pthread_join.0.thrgbmtmk 2
+      (dot . . ~1
+       (ident . . t) 1
+       (ident . . sys)) 8
+      (nil . .))))) none unknown . "" . .) 6,190
+ (sd :joinThreads.0. x
+  (proc) . eg r0whl0t0c0 -1 +0 .
+  (td :`t25.30. . ume2 nimcall -1 -1 +0 +30 . 25,191,/home/araq/projects/nim/lib/std/typedthreads.nim
+   (formalparams . .
+    (arglist . .) 1
+    (sd :t.3 .
+     (param) . u . -1 +0 .
+     (td :`t48.31. . m nimcall -1 -1 +0 +31 . . joinThreads.0. . none unknown . ""
+      (td :`t9.32. . m nimcall -1 -1 +0 +32 . . joinThreads.0. . none unknown . "" `t10.54.thrgbmtmk
+       (td :`t12.29. . g0 nimcall -1 -1 +0 +29 . . joinThreads.0. 20,191,/home/araq/projects/nim/lib/std/typedthreads.nim
+        (sd :TArg.0 .
+         (type) . . . -1 +0 . `t12.29. joinThreads.0. . none unknown . "" . .) none unknown . ""))) joinThreads.0. . none unknown . "" . .)) joinThreads.0. . none unknown . "" .) typedthreads.0. ~5
+  (proc s . 5
+   (ht . joinThreads.0.)
+   (empty) 17
+   (genericparams . . 1 TArg.0) .
+   (empty)
+   (bracket . .
+    (empty) 19,191,/home/araq/projects/nim/lib/std/typedthreads.nim
+    (genericparams . . 1
+     (identdefs . .
+      (ident . . TArg)
+      (empty)
+      (empty)))) 2,1
+   (stmts . .
+    (comment h .) 4,1
+    (for . .
+     (ident . . i) 6
+     (infix . .
+      (opensymchoice .
+       (td :`t0.33. . . nimcall -1 -1 +0 +33 . . joinThreads.0. . none unknown . "") \2E..0.sysma2dyk \2E..1.sysma2dyk \2E..6.sysma2dyk \2E..5.sysma2dyk \2E..4.sysma2dyk \2E..3.sysma2dyk \2E..2.sysma2dyk) ~1
+      (intlit . . +0) 3
+      (dot . . ~1
+       (ident . . t) 1
+       (opensymchoice .
+        (td :`t0.34. . . nimcall -1 -1 +0 +34 . . joinThreads.0. . none unknown . "") high.0.sysma2dyk high.9.sysma2dyk high.3.sysma2dyk high.6.sysma2dyk high.5.sysma2dyk high.4.sysma2dyk high.2.sysma2dyk high.1.sysma2dyk))) 16
+     (stmts . . 10
+      (call . . ~10 joinThread.0. 2
+       (call . . \5B\5D.0.sysma2dyk ~1
+        (ident . . t) 1
+        (ident . . i))))))) none unknown . "" . .) 6,260
+ (sd :createThread.0. x
+  (proc) . ueg r0whl0t0c0 -1 +0 .
+  (td :`t25.38. . me2 nimcall -1 -1 +0 +38 . 26,261,/home/araq/projects/nim/lib/std/typedthreads.nim
+   (formalparams . .
+    (arglist . .) 1
+    (sd :t.4 .
+     (param) . u . -1 +0 .
+     (td :`t23.39. . m nimcall -1 -1 +0 +39 . . createThread.0. . none unknown . ""
+      (td :`t9.40. . m nimcall -1 -1 +0 +40 . . createThread.0. . none unknown . "" `t10.54.thrgbmtmk
+       (td :`t12.37. . g0 nimcall -1 -1 +0 +37 . . createThread.0. 21,261,/home/araq/projects/nim/lib/std/typedthreads.nim
+        (sd :TArg.0 .
+         (type) . u . -1 +0 . `t12.37. createThread.0. . none unknown . "" . .) none unknown . ""))) createThread.0. . none unknown . "" . .) 1,1
+    (sd :tp.0 .
+     (param) . u . -1 +1 .
+     (td :`t25.41. . tme1 nimcall -1 -1 +0 +41 . 36,262,/home/araq/projects/nim/lib/std/typedthreads.nim
+      (formalparams . .
+       (arglist . . . . . . 12
+        (pragma . . 2
+         (ident . . thread) 10
+         (ident . . nimcall)) .) 1
+       (sd :arg.0 .
+        (param) . . . -1 +0 . `t12.37. createThread.0. . none unknown . "" . .)) createThread.0. . none unknown . "" .) createThread.0. . none unknown . "" . .) 1,2
+    (sd :param.0 .
+     (param) . u . -1 +2 . `t12.37. createThread.0. . none unknown . "" . .)) createThread.0. . none unknown . "" .) typedthreads.0. ~5
+  (proc s . 5
+   (ht . createThread.0.)
+   (empty) 18
+   (genericparams . . 1 TArg.0) .
+   (empty)
+   (bracket . .
+    (empty) 20,261,/home/araq/projects/nim/lib/std/typedthreads.nim
+    (genericparams . . 1
+     (identdefs . .
+      (ident . . TArg)
+      (empty)
+      (empty)))) 2,3
+   (stmts . .
+    (comment h .) 7,5
+    (asgn . . ~6
+     (dot . . ~1
+      (ident . . t) 1
+      (ident . . core)) 2
+     (cast . . 5
+      (ht
+       (td :`t8.42. . . nimcall -1 -1 +0 +42 . . threadtypes.0.thrgbmtmk . none unknown . "" `t21.45.thrgbmtmk) PGcThread.0.thrgbmtmk) 34
+      (call . . ~18 allocThreadStorage.0. 7
+       (call . . ~6
+        (opensymchoice .
+         (td :`t0.43. . . nimcall -1 -1 +0 +43 . . createThread.0. . none unknown . "") sizeof.1.sysma2dyk sizeof.0.sysma2dyk) 1
+        (ht
+         (td :`t8.44. . . nimcall +1 +1 +0 +44 . . threadtypes.0.thrgbmtmk . none unknown . "" `t17.46.thrgbmtmk) GcThread.0.thrgbmtmk))))) ,7
+    (when . . 5
+     (elif . . 5
+      (stmts f .
+       (prefix . .
+        (opensymchoice d3 . not.0.sysma2dyk not.4.sysma2dyk not.8.sysma2dyk not.2.sysma2dyk not.9.sysma2dyk not.1.sysma2dyk not.3.sysma2dyk not.11.sysma2dyk not.10.sysma2dyk not.5.sysma2dyk not.7.sysma2dyk not.6.sysma2dyk)
+        (par . .
+         (infix . . is.0.sysma2dyk ~5
+          (ident . . TArg) 6
+          (ht
+           (td :`t8.45. . . nimcall -1 -1 +0 +45 . . system.0.sysma2dyk . none unknown . "" `t63.25.sysma2dyk) void.0.sysma2dyk))))) 17
+      (stmts . . 7
+       (asgn . . ~6
+        (dot . . ~1
+         (ident . . t) 1
+         (ident . . data)) 2
+        (ident . . param))))) 9,8
+    (asgn . . ~8
+     (dot . . ~1
+      (ident . . t) 1
+      (ident . . dataFn)) 2
+     (ident . . tp)) ,9
+    (when . . 5
+     (elif . . hasSharedHeap.0.thrgbmtmk 15
+      (stmts . . 17
+       (asgn . . ~11
+        (dot . . ~5
+         (dot . . ~1
+          (ident . . t) 1
+          (ident . . core)) 1
+         (ident . . stackSize)) 2
+        (ht . ThreadStackSize.0.))))) ,10
+    (var . . 4
+     (identdefs . . 2
+      (pragmax . . ~2
+       (ident . . a)
+       (pragma . . 2
+        (ident . . noinit))) 14
+      (ht
+       (td :`t8.46. . . nimcall -1 -1 +0 +46 . . threadtypes.0.thrgbmtmk . none unknown . "" `t17.5.thrgbmtmk) Pthread_attr.0.thrgbmtmk) ~4,1
+      (empty))) ,11
+    (cmd . . doAssert.0.assy765wm 30
+     (infix . .
+      (opensymchoice .
+       (td :`t0.47. . . nimcall -1 -1 +0 +47 . . createThread.0. . none unknown . "") ==.0.sysma2dyk ==.14.sysma2dyk ==.13.sysma2dyk ==.3.sysma2dyk ==.5.sysma2dyk ==.20.sysma2dyk ==.1.sysma2dyk ==.15.sysma2dyk ==.19.sysma2dyk ==.10.sysma2dyk ==.18.sysma2dyk ==.2.sysma2dyk ==.9.sysma2dyk ==.17.sysma2dyk ==.4.sysma2dyk ==.16.sysma2dyk ==.6.sysma2dyk ==.8.sysma2dyk ==.21.sysma2dyk ==.12.sysma2dyk ==.23.sysma2dyk ==.22.sysma2dyk ==.7.sysma2dyk ==.11.sysma2dyk ==.59.sysma2dyk) ~4
+      (call . . ~17 pthread_attr_init.0.thrgbmtmk 1
+       (ident . . a)) 3
+      (intlit . . +0))) ,12
+    (when . . 5
+     (elif . . hasAllocStack.0.thrgbmtmk ~3,1
+      (stmts . .
+       (var . . 2,1
+        (identdefs . .
+         (ident . . rawstk) 7
+         (empty) 27
+         (call . . ~18 allocThreadStorage.0. 17
+          (infix . .
+           (opensymchoice .
+            (td :`t0.48. . . nimcall -1 -1 +0 +48 . . createThread.0. . none unknown . "") \2B.16.sysma2dyk \2B.17.sysma2dyk \2B.18.sysma2dyk \2B.5.sysma2dyk \2B.8.sysma2dyk \2B.13.sysma2dyk \2B.14.sysma2dyk \2B.15.sysma2dyk \2B.1.sysma2dyk \2B.7.sysma2dyk \2B.9.sysma2dyk \2B.4.sysma2dyk \2B.2.sysma2dyk \2B.6.sysma2dyk \2B.11.sysma2dyk \2B.12.sysma2dyk \2B.0.sysma2dyk \2B.10.sysma2dyk \2B.19.sysma2dyk \2B.3.sysma2dyk) ~16
+           (ht . ThreadStackSize.0.) 2
+           (ht . StackGuardSize.0.)))) 2,2
+        (identdefs . .
+         (ident . . stk) 4
+         (empty) 6
+         (cast . . 5
+          (ht . pointer.0.sysma2dyk) 33
+          (infix . .
+           (opensymchoice .
+            (td :`t0.50. . . nimcall -1 -1 +0 +50 . . createThread.0. . none unknown . "") \2B.16.sysma2dyk \2B.17.sysma2dyk \2B.18.sysma2dyk \2B.5.sysma2dyk \2B.8.sysma2dyk \2B.13.sysma2dyk \2B.14.sysma2dyk \2B.15.sysma2dyk \2B.1.sysma2dyk \2B.7.sysma2dyk \2B.9.sysma2dyk \2B.4.sysma2dyk \2B.2.sysma2dyk \2B.6.sysma2dyk \2B.11.sysma2dyk \2B.12.sysma2dyk \2B.0.sysma2dyk \2B.10.sysma2dyk \2B.19.sysma2dyk \2B.3.sysma2dyk) ~19
+           (cast . . 5
+            (ht . uint.0.sysma2dyk) 11
+            (ident . . rawstk)) 2
+           (ht . StackGuardSize.0.))))) ,3
+       (let . . 4
+        (identdefs . .
+         (ident . . setstacksizeResult) 19
+         (empty) 42
+         (call . . ~21 pthread_attr_setstack.0.thrgbmtmk 6
+          (cmd . . ~5 addr.0.sysma2dyk
+           (ident . . a)) 9
+          (ident . . stk) 14
+          (ht . ThreadStackSize.0.)))) 11,4
+       (asgn . . ~10
+        (dot . . ~1
+         (ident . . t) 1
+         (ident . . rawStack)) 2
+        (ident . . rawstk)))) ,6
+     (else . . 2,1
+      (stmts . .
+       (let . . 4
+        (identdefs . .
+         (ident . . setstacksizeResult) 19
+         (empty) 46
+         (call . . ~25 pthread_attr_setstacksize.0.thrgbmtmk 1
+          (ident . . a) 4
+          (ht . ThreadStackSize.0.))))))) ,21
+    (when . . 5
+     (elif . .
+      (prefix . .
+       (opensymchoice .
+        (td :`t0.52. . . nimcall -1 -1 +0 +52 . . createThread.0. . none unknown . "") not.8.sysma2dyk not.2.sysma2dyk not.9.sysma2dyk not.1.sysma2dyk not.4.sysma2dyk not.6.sysma2dyk not.5.sysma2dyk not.0.sysma2dyk not.7.sysma2dyk not.11.sysma2dyk not.10.sysma2dyk not.3.sysma2dyk) 11
+       (call . . ~7 defined.0.sysma2dyk 1
+        (ident . . ios))) ~3,2
+      (stmts . . 8
+       (call . . ~8 doAssert.0.assy765wm 20
+        (infix . .
+         (opensymchoice .
+          (td :`t0.53. . . nimcall -1 -1 +0 +53 . . createThread.0. . none unknown . "") ==.0.sysma2dyk ==.14.sysma2dyk ==.13.sysma2dyk ==.3.sysma2dyk ==.5.sysma2dyk ==.20.sysma2dyk ==.1.sysma2dyk ==.15.sysma2dyk ==.19.sysma2dyk ==.10.sysma2dyk ==.18.sysma2dyk ==.2.sysma2dyk ==.9.sysma2dyk ==.17.sysma2dyk ==.4.sysma2dyk ==.16.sysma2dyk ==.6.sysma2dyk ==.8.sysma2dyk ==.21.sysma2dyk ==.12.sysma2dyk ==.23.sysma2dyk ==.22.sysma2dyk ==.7.sysma2dyk ==.11.sysma2dyk ==.59.sysma2dyk) ~19
+         (ident . . setstacksizeResult) 3
+         (intlit . . +0)))))) ,24
+    (if . . 3
+     (elif . . 59
+      (stmts f . 2,132,/home/araq/projects/nim/lib/system/comparisons.nim
+       (empty)
+       (prefix . .
+        (opensymchoice d3 . not.2.sysma2dyk not.3.sysma2dyk not.0.sysma2dyk not.4.sysma2dyk not.1.sysma2dyk not.6.sysma2dyk not.5.sysma2dyk not.7.sysma2dyk not.8.sysma2dyk not.9.sysma2dyk not.10.sysma2dyk not.11.sysma2dyk)
+        (par . .
+         (infix . .
+          (opensymchoice d3 . ==.0.sysma2dyk ==.1.sysma2dyk ==.2.sysma2dyk ==.3.sysma2dyk ==.4.sysma2dyk ==.5.sysma2dyk ==.6.sysma2dyk ==.7.sysma2dyk ==.8.sysma2dyk) ~45
+          (call . . ~14 pthread_create.0.thrgbmtmk 2
+           (dot . . ~1
+            (ident . . t) 1
+            (ident . . sys)) 8
+           (ident . . a) 28
+           (call . . \5B\5D.0.sysma2dyk ~17 threadProcWrapper.0. 1
+            (ident . . TArg)) 40
+           (call . . ~4 addr.0.sysma2dyk 1
+            (ident . . t))) 3
+          (intlit . . +0))))) ~1,1
+      (stmts . .
+       (raise . . 18
+        (call . . ~12 newException.0.sysma2dyk 1
+         (ht . ResourceExhaustedError.0.exc3otjng1) 25
+         (strlit . . "cannot create thread")))))) ,26
+    (cmd . . doAssert.0.assy765wm 33
+     (infix . .
+      (opensymchoice .
+       (td :`t0.55. . . nimcall -1 -1 +0 +55 . . createThread.0. . none unknown . "") ==.0.sysma2dyk ==.14.sysma2dyk ==.13.sysma2dyk ==.3.sysma2dyk ==.5.sysma2dyk ==.20.sysma2dyk ==.1.sysma2dyk ==.15.sysma2dyk ==.19.sysma2dyk ==.10.sysma2dyk ==.18.sysma2dyk ==.2.sysma2dyk ==.9.sysma2dyk ==.17.sysma2dyk ==.4.sysma2dyk ==.16.sysma2dyk ==.6.sysma2dyk ==.8.sysma2dyk ==.21.sysma2dyk ==.12.sysma2dyk ==.23.sysma2dyk ==.22.sysma2dyk ==.7.sysma2dyk ==.11.sysma2dyk ==.59.sysma2dyk) ~4
+      (call . . ~20 pthread_attr_destroy.0.thrgbmtmk 1
+       (ident . . a)) 3
+      (intlit . . +0))))) none unknown . "" . .) 6,291
+ (sd :pinToCpu.0. x
+  (proc) . eg r0whl0t0c0 -1 +0 .
+  (td :`t25.57. . me2 nimcall -1 -1 +0 +57 . 21,292,/home/araq/projects/nim/lib/std/typedthreads.nim
+   (formalparams . .
+    (arglist . .) 1
+    (sd :t.5 .
+     (param) . u . -1 +0 .
+     (td :`t23.58. . m nimcall -1 -1 +0 +58 . . pinToCpu.0. . none unknown . ""
+      (td :`t9.59. . m nimcall -1 -1 +0 +59 . . pinToCpu.0. . none unknown . "" `t10.54.thrgbmtmk
+       (td :`t12.56. . g0 nimcall -1 -1 +0 +56 . . pinToCpu.0. 17,292,/home/araq/projects/nim/lib/std/typedthreads.nim
+        (sd :Arg.0 .
+         (type) . u . -1 +0 . `t12.56. pinToCpu.0. . none unknown . "" . .) none unknown . ""))) pinToCpu.0. . none unknown . "" . .) 21
+    (sd :cpu.0 .
+     (param) . u . -1 +1 . `t20.744.sysma2dyk pinToCpu.0. . none unknown . "" . .)) pinToCpu.0. . none unknown . "" .) typedthreads.0. ~5
+  (proc s . 5
+   (ht . pinToCpu.0.)
+   (empty) 14
+   (genericparams . . 1 Arg.0) .
+   (empty)
+   (bracket . .
+    (empty) 16,292,/home/araq/projects/nim/lib/std/typedthreads.nim
+    (genericparams . . 1
+     (identdefs . .
+      (ident . . Arg)
+      (empty)
+      (empty)))) 2,1
+   (stmts . .
+    (comment h .) ,4
+    (when . . 5
+     (elif . .
+      (prefix . .
+       (opensymchoice .
+        (td :`t0.60. . . nimcall -1 -1 +0 +60 . . pinToCpu.0. . none unknown . "") not.8.sysma2dyk not.2.sysma2dyk not.9.sysma2dyk not.1.sysma2dyk not.4.sysma2dyk not.6.sysma2dyk not.5.sysma2dyk not.0.sysma2dyk not.7.sysma2dyk not.11.sysma2dyk not.10.sysma2dyk not.3.sysma2dyk) 11
+       (call . . ~7 defined.0.sysma2dyk 1
+        (ident . . macosx))) ~3,1
+      (stmts . .
+       (var . . 4
+        (identdefs . . 2
+         (pragmax . . ~2
+          (ident . . s)
+          (pragma . . 2
+           (ident . . noinit))) 14
+         (ht . CpuSet.0.thrgbmtmk) ~4,1
+         (empty))) 10,1
+       (call . . ~10 cpusetZero.0.thrgbmtmk 1
+        (ident . . s)) 10,2
+       (call . . ~10 cpusetIncl.0.thrgbmtmk 4
+        (dot . . ~3
+         (ident . . cpu) 1
+         (ht . cint.0.cty9mra12)) 11
+        (ident . . s)) 11,3
+       (call . . ~11 setAffinity.0.thrgbmtmk 2
+        (dot . . ~1
+         (ident . . t) 1
+         (ident . . sys)) 15
+        (call . . ~7
+         (ht
+          (td :`t8.63. . . nimcall -1 -1 +0 +63 . . ctypes.0.cty9mra12 . none unknown . "" `t40.12.cty9mra12) csize_t.0.cty9mra12) 7
+         (call . . ~6
+          (opensymchoice .
+           (td :`t0.64. . . nimcall -1 -1 +0 +64 . . pinToCpu.0. . none unknown . "") sizeof.1.sysma2dyk sizeof.0.sysma2dyk) 1
+          (ident . . s))) 28
+        (ident . . s))))))) none unknown . "" . .) 4,302
+ (sd :createThread.1. x
+  (proc) . ueg r0whl0t0c0 -1 +0 .
+  (td :`t25.65. . nte2 nimcall -1 -1 +0 +65 . 18,303,/home/araq/projects/nim/lib/std/typedthreads.nim
+   (formalparams . .
+    (arglist . . ~13
+     (arglist . . 15,1
+      (call .
+       (td :`t22.126. . h0ac3 nimcall -1 -1 +0 +126 . . 7,261,/home/araq/projects/nim/lib/std/typedthreads.nim
+        (sd :createThread.5. .
+         (proc) . uefgi1 r0whl0t0c0 -1 +0 .
+         (td :`t25.90. . ntge2 nimcall -1 -1 +0 +90 . 26,261,/home/araq/projects/nim/lib/std/typedthreads.nim
+          (formalparams . .
+           (arglist . . ~19
+            (arglist . . ~1,28
+             (raise . `t22.126.
+              (expr f `t22.126. 2,1832,/home/araq/projects/nim/lib/system.nim
+               (empty) 18
+               (objconstr . `t22.126. 2,1834,/home/araq/projects/nim/lib/system.nim
+                (par . `t22.126. 1
+                 (refty . `t22.126. 25,289,/home/araq/projects/nim/lib/std/typedthreads.nim ResourceExhaustedError.0.exc3otjng1)) 19,1834,/home/araq/projects/nim/lib/system.nim
+                (kv . . ~15,~1295 msg.0.sysma2dyk 49,289,/home/araq/projects/nim/lib/std/typedthreads.nim
+                 (strlit s0 `t28.17.sysma2dyk "cannot create thread")) 36,1834,/home/araq/projects/nim/lib/system.nim
+                (kv . . ~32,~1299 parent.0.sysma2dyk 20,~3
+                 (nil s0 `t22.2391.sysma2dyk))))))
+            (empty)
+            (empty) ~19
+            (arglist . .)
+            (empty) ~19
+            (arglist . .)) 1
+           (sd :t.10 .
+            (param) . u . -1 +0 .
+            (td :`t23.91. . g nimcall -1 -1 +0 +91 . . createThread.0. . none unknown . ""
+             (td :`t11.71. . fga nimcall -1 -1 +0 +71 . . threadtypes.0.thrgbmtmk . none unknown . "" `t10.54.thrgbmtmk `t63.25.sysma2dyk
+              (td :`t17.72. . fga nimcall -1 -1 +0 +72 `t11.71. 18,165,/home/araq/projects/nim/lib/std/private/threadtypes.nim
+               (reclist . . ~14,1
+                (sd :core.1. .
+                 (field . +0 +0) . uef ofrbcr0s0awhl0t0c0 -1 +0 . `t21.45.thrgbmtmk Thread.0.thrgbmtmk . none unknown . "" . .) ~14,2
+                (sd :sys.0. .
+                 (field . +0 +0) . uefa ofrbcr0s0awhl0t0c0 -1 +1 . `t13.4.thrgbmtmk Thread.0.thrgbmtmk . none unknown . "" . .) ~12,4
+                (sd :dataFn.0. .
+                 (field . +0 +0) . uef ofrbcr0s0awhl0t0c0 -1 +2 . `t25.59.thrgbmtmk Thread.0.thrgbmtmk . none unknown . "" . .)) Thread.0.thrgbmtmk Thread.0.thrgbmtmk none unknown . "" .))) createThread.5. . none unknown . "" . .) 1,1
+           (sd :tp.5 .
+            (param) . u . -1 +1 .
+            (td :`t25.93. . tge1 nimcall -1 -1 +0 +93 . 36,262,/home/araq/projects/nim/lib/std/typedthreads.nim
+             (formalparams . .
+              (arglist . . . . . . 12
+               (pragma . . 2
+                (ident . . thread) 10
+                (ident . . nimcall)) .)) createThread.0. . none unknown . "" .) createThread.5. . none unknown . "" . .)) createThread.0. . none unknown . "" .) createThread.0. ~5
+         (proc . . 5
+          (ht `t25.38. createThread.5.)
+          (empty)
+          (empty) .
+          (empty)
+          (bracket . .
+           (empty) 20,261,/home/araq/projects/nim/lib/std/typedthreads.nim
+           (genericparams . . 1
+            (identdefs . .
+             (ident . . TArg)
+             (empty)
+             (empty)))) 2,3
+          (stmts s .
+           (comment s .) 7,5
+           (asgn s . ~6
+            (dot . `t21.45.thrgbmtmk ~1
+             (hderef . `t11.71. t.10) 1 core.1.) 2
+            (cast s `t21.45.thrgbmtmk 5 PGcThread.0.thrgbmtmk 34
+             (call s `t26.19.sysma2dyk ~18 allocThreadStorage.0. 7
+              (intlit s `t31.3.sysma2dyk +1)))) ,7
+           (empty) 9,8
+           (asgn s . ~8
+            (dot . `t25.59.thrgbmtmk ~1
+             (hderef . `t11.71. t.10) 1 dataFn.0.) 2 tp.5) ,9
+           (empty) ,10
+           (var s . 4
+            (identdefs . .
+             (pragmax . .
+              (sd :a.1 .
+               (var . +0 +0) . um0a r0whl0t0c0 -1 +0 . `t17.5.thrgbmtmk createThread.5.
+               (identdefs . .
+                (pragmax . . a.1 2
+                 (pragma . . 2
+                  (ident . . noinit))) 14 Pthread_attr.0.thrgbmtmk
+                (empty)) none unknown . "" . .) 2
+              (pragma . . 2
+               (ident . . noinit))) 14 Pthread_attr.0.thrgbmtmk
+             (empty))) ,11
+           (stmts sf . 2,73,/home/araq/projects/nim/lib/std/assertions.nim
+            (empty) 2,76,/home/araq/projects/nim/lib/std/assertions.nim
+            (stmts s . 2,~27
+             (const s . 2,1
+              (const0 . .
+               (sd :loc`gensym5.0. .
+                (const) . uw0 r0whl0t0c0 -1 +0 . `t18.1411.sysma2dyk createThread.5.
+                (const0 . . loc`gensym5.0.
+                 (empty) 23
+                 (tupleconstr . `t18.1411.sysma2dyk 2,1583,/home/araq/projects/nim/lib/system.nim
+                  (kv . . filename.3.sysma2dyk 29,50,/home/araq/projects/nim/lib/std/assertions.nim
+                   (strlit . `t28.17.sysma2dyk "/home/araq/projects/nim/lib/std/typedthreads.nim")) 20,1583,/home/araq/projects/nim/lib/system.nim
+                  (kv . . line.1.sysma2dyk 29,50,/home/araq/projects/nim/lib/std/assertions.nim
+                   (intlit . `t31.3.sysma2dyk +275)) 31,1583,/home/araq/projects/nim/lib/system.nim
+                  (kv . . column.0.sysma2dyk 29,50,/home/araq/projects/nim/lib/std/assertions.nim
+                   (intlit . `t31.3.sysma2dyk +4)))) none unknown . "" . .)
+               (empty) 23
+               (tupleconstr . `t18.1411.sysma2dyk 2,1583,/home/araq/projects/nim/lib/system.nim
+                (kv . . filename.3.sysma2dyk 29,50,/home/araq/projects/nim/lib/std/assertions.nim
+                 (strlit . `t28.17.sysma2dyk "/home/araq/projects/nim/lib/std/typedthreads.nim")) 20,1583,/home/araq/projects/nim/lib/system.nim
+                (kv . . line.1.sysma2dyk 29,50,/home/araq/projects/nim/lib/std/assertions.nim
+                 (intlit . `t31.3.sysma2dyk +275)) 31,1583,/home/araq/projects/nim/lib/system.nim
+                (kv . . column.0.sysma2dyk 29,50,/home/araq/projects/nim/lib/std/assertions.nim
+                 (intlit . `t31.3.sysma2dyk +4)))) 2,2
+              (const0 . .
+               (sd :ploc`gensym5.0. .
+                (const) . uw0 r0whl0t0c0 -1 +0 . `t28.17.sysma2dyk createThread.5.
+                (const0 . . ploc`gensym5.0.
+                 (empty) 5,~24
+                 (strlit . `t28.17.sysma2dyk "/home/araq/projects/nim/lib/std/typedthreads.nim\28275, 5\29")) none unknown . "" . .)
+               (empty) 5,~24
+               (strlit . `t28.17.sysma2dyk "/home/araq/projects/nim/lib/std/typedthreads.nim\28275, 5\29"))) 2,~24
+             (bind0 s . instantiationInfo.0.sysma2dyk) 2,~23
+             (mixin s . 6
+              (opensymchoice . `t0.56.assy765wm failedAssertImpl.0.assy765wm)) 10,275,/home/araq/projects/nim/lib/std/typedthreads.nim
+             (pragmablock s .
+              (pragma . .
+               (kv . .
+                (ident . . line)
+                (tupleconstr a `t18.1411.sysma2dyk
+                 (kv . . filename.3.sysma2dyk
+                  (strlit . `t28.17.sysma2dyk "/home/araq/projects/nim/lib/std/typedthreads.nim"))
+                 (kv . . line.1.sysma2dyk
+                  (intlit . `t31.3.sysma2dyk +275))
+                 (kv . . column.0.sysma2dyk
+                  (intlit . `t31.3.sysma2dyk +4)))))
+              (if s .
+               (elif . .
+                (prefix s `t1.34.sysma2dyk not.0.sysma2dyk
+                 (infix . `t1.34.sysma2dyk ==.12.sysma2dyk
+                  (call . `t34.11.cty9mra12 pthread_attr_init.0.thrgbmtmk
+                   (haddr .
+                    (td :`t23.96. . . nimcall -1 -1 +0 +96 . . createThread.5. . none unknown . "" `t17.5.thrgbmtmk) a.1))
+                  (hstdconv . `t34.6.sysma2dyk
+                   (empty)
+                   (intlit .
+                    (td :`t31.97. . c3 nimcall +8 +8 +0 +97 . 37,275,/home/araq/projects/nim/lib/std/typedthreads.nim
+                     (intlit s `t31.97. +0) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +0))))
+                (call s . failedAssertImpl.0.assy765wm
+                 (strlit s `t28.17.sysma2dyk "/home/araq/projects/nim/lib/std/typedthreads.nim\28275, 5\29 `pthread_attr_init\28a\29 == 0` "))))))) 2,19
+           (let s . 4
+            (identdefs . .
+             (sd :setstacksizeResult.2 .
+              (let . +0 +0) . u r0whl0t0c0 -1 +0 . `t34.11.cty9mra12 createThread.5.
+              (identdefs . . setstacksizeResult.2 19
+               (empty) 46
+               (call . `t34.11.cty9mra12 ~25 pthread_attr_setstacksize.0.thrgbmtmk 1
+                (haddr .
+                 (td :`t23.99. . . nimcall -1 -1 +0 +99 . . createThread.5. . none unknown . "" `t17.5.thrgbmtmk) a.1) 4
+                (intlit . `t31.14. +2093056))) none unknown . "" . .) 19
+             (empty) 46
+             (call . `t34.11.cty9mra12 ~25 pthread_attr_setstacksize.0.thrgbmtmk 1
+              (haddr . `t23.99. a.1) 4
+              (intlit . `t31.14. +2093056)))) 2,23
+           (stmts sf . 2,73,/home/araq/projects/nim/lib/std/assertions.nim
+            (empty) 2,76,/home/araq/projects/nim/lib/std/assertions.nim
+            (stmts s . 2,~27
+             (const s . 2,1
+              (const0 . .
+               (sd :loc`gensym7.0. .
+                (const) . uw0 r0whl0t0c0 -1 +0 . `t18.1411.sysma2dyk createThread.5.
+                (const0 . . loc`gensym7.0.
+                 (empty) 23
+                 (tupleconstr . `t18.1411.sysma2dyk 2,1583,/home/araq/projects/nim/lib/system.nim
+                  (kv . . filename.3.sysma2dyk 29,50,/home/araq/projects/nim/lib/std/assertions.nim
+                   (strlit . `t28.17.sysma2dyk "/home/araq/projects/nim/lib/std/typedthreads.nim")) 20,1583,/home/araq/projects/nim/lib/system.nim
+                  (kv . . line.1.sysma2dyk 29,50,/home/araq/projects/nim/lib/std/assertions.nim
+                   (intlit . `t31.3.sysma2dyk +287)) 31,1583,/home/araq/projects/nim/lib/system.nim
+                  (kv . . column.0.sysma2dyk 29,50,/home/araq/projects/nim/lib/std/assertions.nim
+                   (intlit . `t31.3.sysma2dyk +14)))) none unknown . "" . .)
+               (empty) 23
+               (tupleconstr . `t18.1411.sysma2dyk 2,1583,/home/araq/projects/nim/lib/system.nim
+                (kv . . filename.3.sysma2dyk 29,50,/home/araq/projects/nim/lib/std/assertions.nim
+                 (strlit . `t28.17.sysma2dyk "/home/araq/projects/nim/lib/std/typedthreads.nim")) 20,1583,/home/araq/projects/nim/lib/system.nim
+                (kv . . line.1.sysma2dyk 29,50,/home/araq/projects/nim/lib/std/assertions.nim
+                 (intlit . `t31.3.sysma2dyk +287)) 31,1583,/home/araq/projects/nim/lib/system.nim
+                (kv . . column.0.sysma2dyk 29,50,/home/araq/projects/nim/lib/std/assertions.nim
+                 (intlit . `t31.3.sysma2dyk +14)))) 2,2
+              (const0 . .
+               (sd :ploc`gensym7.0. .
+                (const) . uw0 r0whl0t0c0 -1 +0 . `t28.17.sysma2dyk createThread.5.
+                (const0 . . ploc`gensym7.0.
+                 (empty) 5,~24
+                 (strlit . `t28.17.sysma2dyk "/home/araq/projects/nim/lib/std/typedthreads.nim\28287, 15\29")) none unknown . "" . .)
+               (empty) 5,~24
+               (strlit . `t28.17.sysma2dyk "/home/araq/projects/nim/lib/std/typedthreads.nim\28287, 15\29"))) 2,~24
+             (bind0 s . instantiationInfo.0.sysma2dyk) 2,~23
+             (mixin s . 6
+              (opensymchoice . `t0.56.assy765wm failedAssertImpl.0.assy765wm)) 10,287,/home/araq/projects/nim/lib/std/typedthreads.nim
+             (pragmablock s .
+              (pragma . .
+               (kv . .
+                (ident . . line)
+                (tupleconstr a `t18.1411.sysma2dyk
+                 (kv . . filename.3.sysma2dyk
+                  (strlit . `t28.17.sysma2dyk "/home/araq/projects/nim/lib/std/typedthreads.nim"))
+                 (kv . . line.1.sysma2dyk
+                  (intlit . `t31.3.sysma2dyk +287))
+                 (kv . . column.0.sysma2dyk
+                  (intlit . `t31.3.sysma2dyk +14)))))
+              (if s .
+               (elif . .
+                (prefix s `t1.34.sysma2dyk not.0.sysma2dyk
+                 (infix . `t1.34.sysma2dyk ==.12.sysma2dyk setstacksizeResult.2
+                  (hstdconv . `t34.6.sysma2dyk
+                   (empty)
+                   (intlit . `t31.97. +0))))
+                (call s . failedAssertImpl.0.assy765wm
+                 (strlit s `t28.17.sysma2dyk "/home/araq/projects/nim/lib/std/typedthreads.nim\28287, 15\29 `setstacksizeResult == 0` "))))))) ,24
+           (if s . 3
+            (elif . . 59
+             (expr sf `t1.34.sysma2dyk 2,132,/home/araq/projects/nim/lib/system/comparisons.nim
+              (empty)
+              (prefix s `t1.34.sysma2dyk not.0.sysma2dyk
+               (infix s `t1.34.sysma2dyk ==.12.sysma2dyk ~45
+                (call s `t34.11.cty9mra12 ~14 pthread_create.0.thrgbmtmk 2
+                 (haddr .
+                  (td :`t23.123. . . nimcall -1 -1 +0 +123 . . createThread.5. . none unknown . "" `t13.4.thrgbmtmk)
+                  (dot s `t13.4.thrgbmtmk ~1
+                   (hderef . `t11.71. t.10) 1 sys.0.)) 8
+                 (haddr .
+                  (td :`t23.124. . . nimcall -1 -1 +0 +124 . . createThread.5. . none unknown . "" `t17.5.thrgbmtmk) a.1) ~14,~141
+                 (sd :threadProcWrapper.1. .
+                  (proc) . ufgi1 r0whl0t0c0 -1 +0 .
+                  (td :`t25.102. . tge1e2 noconv -1 -1 +0 +102 . 30,147,/home/araq/projects/nim/lib/std/typedthreads.nim
+                   (formalparams . `t26.19.sysma2dyk
+                    (arglist . . ~23
+                     (arglist . .)
+                     (empty)
+                     (empty) ~23
+                     (arglist . . 26,101,/home/araq/projects/nim/lib/system/threadimpl.nim
+                      (call . `t17.758.sysma2dyk ~21,~20
+                       (sd :threadProcWrapStackFrame.0. .
+                        (proc) . ufg r0whl0t0c0 -1 +0 .
+                        (td :`t25.110. . tge2 nimcall -1 -1 +0 +110 . 35,81,/home/araq/projects/nim/lib/system/threadimpl.nim
+                         (formalparams . .
+                          (arglist . . 35
+                           (bracket . .)
+                           (empty)
+                           (empty) ~30
+                           (arglist . . 21,14
+                            (call . `t17.758.sysma2dyk ~19,~32
+                             (sd :threadProcWrapDispatch.0. .
+                              (proc) . ufgi1 r0whl0t0c0 -1 +0 .
+                              (td :`t25.115. . tge2 nimcall -1 -1 +0 +115 . 35,63,/home/araq/projects/nim/lib/system/threadimpl.nim
+                               (formalparams . .
+                                (arglist . . 35
+                                 (bracket . .)
+                                 (empty)
+                                 (empty) ~28
+                                 (arglist . . 12,3
+                                  (onlytype . `t17.758.sysma2dyk) 12,12
+                                  (call . `t17.6.exc3otjng1 ~13 threadTrouble.0.sysma2dyk))
+                                 (empty) ~28
+                                 (arglist . .)) 1
+                                (sd :thrd.2 .
+                                 (param) . u . -1 +0 .
+                                 (td :`t21.116. . g nimcall -1 -1 +0 +116 . . threadProcWrapDispatch.0.sysma2dyk . none unknown . "" `t11.71.) threadProcWrapDispatch.0. . none unknown . "" . .)) threadProcWrapDispatch.0.sysma2dyk . none unknown . "" .) threadProcWrapDispatch.0.sysma2dyk ~5
+                              (proc . . 5
+                               (ht `t25.3708.sysma2dyk threadProcWrapDispatch.0.)
+                               (empty)
+                               (empty) . 58
+                               (pragma . . 8
+                                (kv . . ~6
+                                 (ident . . raises) 2
+                                 (bracket . .)))
+                               (bracket . .
+                                (empty) 29,63,/home/araq/projects/nim/lib/system/threadimpl.nim
+                                (genericparams . . 1
+                                 (identdefs . .
+                                  (ident . . TArg)
+                                  (empty)
+                                  (empty)))) 2,1
+                               (try s . 15,2
+                                (call s . ~7
+                                 (dot . `t25.59.thrgbmtmk ~4
+                                  (hderef . `t11.71. thrd.2) 1 dataFn.0.)) ,10
+                                (except . . 15,1
+                                 (call s . ~13 threadTrouble.0.sysma2dyk)) ,12
+                                (finally . . 2,1
+                                 (stmts s . 15
+                                  (for s . ~15,~49
+                                   (sd :i`gensym262.0 .
+                                    (forvar . +0 +0) . uw0 . -1 +0 . `t31.3.sysma2dyk threadProcWrapDispatch.0. . none unknown . "" . .) ~1,~49
+                                   (call s `t31.3.sysma2dyk ~9 countdown.1.sysma2dyk 33
+                                    (infix s `t31.3.sysma2dyk \2D.5.sysma2dyk ~4
+                                     (call s `t31.3.sysma2dyk 1 len.73.sysma2dyk ~28 nimThreadDestructionHandlers.0.sysma2dyk) 1
+                                     (intlit s
+                                      (td :`t31.11. . c3 nimcall +8 +8 +0 +11 . 29,108,/home/araq/projects/nim/lib/std/typedthreads.nim
+                                       (intlit s `t31.11. +1) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +1)) 37
+                                    (intlit . `t31.3.sysma2dyk +0) 49,6,/home/araq/projects/nim/lib/system/iterators_1.nim
+                                    (intlit s `t20.745.sysma2dyk +1)) 14,~48
+                                   (call s . ~3
+                                    (at s `t25.3659.sysma2dyk ~28 nimThreadDestructionHandlers.0.sysma2dyk 1 i`gensym262.0))) ,1
+                                  (empty))))) none unknown . "" . threadProcWrapDispatch.0.sysma2dyk) 10,~14
+                             (sd :thrd.1 .
+                              (param) . u . -1 +0 .
+                              (td :`t21.111. . g nimcall -1 -1 +0 +111 . . threadProcWrapStackFrame.0.sysma2dyk . none unknown . "" `t11.71.) threadProcWrapStackFrame.0. . none unknown . "" . .)) 21,14
+                            (call . `t17.6.exc3otjng1 ~22 threadProcWrapDispatch.0. 1 thrd.1))
+                           (empty) ~30
+                           (arglist . .)) 1 thrd.1) threadProcWrapStackFrame.0.sysma2dyk . none unknown . "" .) threadProcWrapStackFrame.0.sysma2dyk ~5
+                        (proc . . 5
+                         (ht `t25.3715.sysma2dyk threadProcWrapStackFrame.0.)
+                         (empty)
+                         (empty) . 60
+                         (pragma . . 8
+                          (kv . . ~6
+                           (ident . . raises) 2
+                           (bracket . .)))
+                         (bracket . .
+                          (empty) 29,81,/home/araq/projects/nim/lib/system/threadimpl.nim
+                          (genericparams . . 1
+                           (identdefs . .
+                            (ident . . TArg)
+                            (empty)
+                            (empty)))) 26,14
+                         (call s . ~22 threadProcWrapDispatch.0. 1 thrd.1)) none unknown . "" . threadProcWrapStackFrame.0.sysma2dyk) ~20,~3
+                       (sd :thrd`gensym0.2 .
+                        (var . +0 +0) . uw0 r0whl0t0c0 -1 +0 .
+                        (td :`t21.107. . c3 nimcall +8 +8 +0 +107 . . threadProcWrapper.1. . none unknown . "" `t11.71.) threadProcWrapper.1.
+                        (identdefs . . thrd`gensym0.2 5
+                         (empty) 7
+                         (cast . `t21.107. 5
+                          (ptrty . `t21.107. 10
+                           (call . `t11.71. \5B\5D.0.sysma2dyk ~6
+                            (ht . Thread.0.thrgbmtmk) 1
+                            (ident . . TArg))) 31,147,/home/araq/projects/nim/lib/std/typedthreads.nim
+                          (sd :closure.1 .
+                           (param) . u . -1 +0 . `t26.19.sysma2dyk threadProcWrapper.1. . none unknown . "" . .))) none unknown . "" . .)) 26,101,/home/araq/projects/nim/lib/system/threadimpl.nim
+                      (call . `t17.6.exc3otjng1 ~24 threadProcWrapStackFrame.0. 1 thrd`gensym0.2))
+                     (empty) ~23
+                     (arglist . .)) 1 closure.1) threadProcWrapper.0. . none unknown . "" `t26.19.sysma2dyk) threadProcWrapper.0. ~5
+                  (proc . . 5
+                   (ht `t25.17. threadProcWrapper.1.)
+                   (empty)
+                   (empty) . 56
+                   (pragma . . 2
+                    (ident . . noconv))
+                   (bracket . .
+                    (empty) 24,147,/home/araq/projects/nim/lib/std/typedthreads.nim
+                    (genericparams . . 1
+                     (identdefs . .
+                      (ident . . TArg)
+                      (empty)
+                      (empty)))) 2,1
+                   (stmts s `t7.1. 7
+                    (asgn s `t7.1. ~9,~1
+                     (sd :result.4 .
+                      (result) . u . -1 +0 . `t26.19.sysma2dyk threadProcWrapper.1. . none unknown . "" . .) 2
+                     (nil s `t26.19.sysma2dyk)) ,1
+                    (stmts sf . 2,98,/home/araq/projects/nim/lib/system/threadimpl.nim
+                     (var s . 4
+                      (identdefs . . thrd`gensym0.2 5
+                       (empty) 7
+                       (cast . `t21.107. 5
+                        (ptrty . `t21.107. 10
+                         (call . `t11.71. \5B\5D.0.sysma2dyk ~6
+                          (ht . Thread.0.thrgbmtmk) 1
+                          (ident . . TArg))) 29,149,/home/araq/projects/nim/lib/std/typedthreads.nim closure.1))) 2,99,/home/araq/projects/nim/lib/system/threadimpl.nim
+                     (var s . 4
+                      (identdefs . .
+                       (sd :core`gensym0.2 .
+                        (var . +0 +0) . uw0 r0whl0t0c0 -1 +0 . `t21.45.thrgbmtmk threadProcWrapper.1.
+                        (identdefs . . core`gensym0.2 5
+                         (empty) 11
+                         (dot . `t21.45.thrgbmtmk ~4
+                          (hderef . `t11.71. thrd`gensym0.2) 1 core.1.)) none unknown . "" . .) 5
+                       (empty) 11
+                       (dot . `t21.45.thrgbmtmk ~4
+                        (hderef . `t11.71. thrd`gensym0.2) 1 core.1.))) 2,100,/home/araq/projects/nim/lib/system/threadimpl.nim
+                     (empty) 26,101,/home/araq/projects/nim/lib/system/threadimpl.nim
+                     (call s . ~24 threadProcWrapStackFrame.0. 1 thrd`gensym0.2) 12,109,/home/araq/projects/nim/lib/system/threadimpl.nim
+                     (asgn s . ~6
+                      (dot . `t21.45.thrgbmtmk ~4
+                       (hderef . `t11.71. thrd`gensym0.2) 1 core.1.) 2
+                      (nil s `t21.45.thrgbmtmk)) 14,110,/home/araq/projects/nim/lib/system/threadimpl.nim
+                     (asgn s . ~8
+                      (dot . `t25.59.thrgbmtmk ~4
+                       (hderef . `t11.71. thrd`gensym0.2) 1 dataFn.0.) 2
+                      (nil s `t25.59.thrgbmtmk)) 24
+                     (call s . 2,111,/home/araq/projects/nim/lib/system/threadimpl.nim deallocThreadStorage.0.sysma2dyk 23,111,/home/araq/projects/nim/lib/system/threadimpl.nim
+                      (cast s `t26.19.sysma2dyk 5 pointer.0.sysma2dyk 14 core`gensym0.2)))) result.4) none unknown . "" . threadProcWrapper.0.) 41
+                 (hstdconv . `t26.19.sysma2dyk
+                  (empty)
+                  (addr s
+                   (td :`t21.122. . c3 nimcall -1 -1 +0 +122 . . createThread.5. . none unknown . "" `t11.71.)
+                   (hderef . `t11.71. t.10)))) 3
+                (hstdconv . `t34.6.sysma2dyk
+                 (empty)
+                 (intlit s `t31.97. +0))))) ~1,1
+             (raise s .
+              (expr sf `t22.126. 2,1832,/home/araq/projects/nim/lib/system.nim
+               (empty) 18
+               (objconstr s `t22.126. 2,1834,/home/araq/projects/nim/lib/system.nim
+                (par . `t22.126. 1
+                 (refty . `t22.126. 25,289,/home/araq/projects/nim/lib/std/typedthreads.nim ResourceExhaustedError.0.exc3otjng1)) 19,1834,/home/araq/projects/nim/lib/system.nim
+                (kv s . ~15,~1295 msg.0.sysma2dyk 49,289,/home/araq/projects/nim/lib/std/typedthreads.nim
+                 (strlit ss0 `t28.17.sysma2dyk "cannot create thread")) 36,1834,/home/araq/projects/nim/lib/system.nim
+                (kv s . ~32,~1299 parent.0.sysma2dyk 20,~3
+                 (nil ss0 `t22.2391.sysma2dyk))))))) ,26
+           (stmts sf . 2,73,/home/araq/projects/nim/lib/std/assertions.nim
+            (empty) 2,76,/home/araq/projects/nim/lib/std/assertions.nim
+            (stmts s . 2,~27
+             (const s . 2,1
+              (const0 . .
+               (sd :loc`gensym10.0. .
+                (const) . uw0 r0whl0t0c0 -1 +0 . `t18.1411.sysma2dyk createThread.5.
+                (const0 . . loc`gensym10.0.
+                 (empty) 23
+                 (tupleconstr . `t18.1411.sysma2dyk 2,1583,/home/araq/projects/nim/lib/system.nim
+                  (kv . . filename.3.sysma2dyk 29,50,/home/araq/projects/nim/lib/std/assertions.nim
+                   (strlit . `t28.17.sysma2dyk "/home/araq/projects/nim/lib/std/typedthreads.nim")) 20,1583,/home/araq/projects/nim/lib/system.nim
+                  (kv . . line.1.sysma2dyk 29,50,/home/araq/projects/nim/lib/std/assertions.nim
+                   (intlit . `t31.3.sysma2dyk +290)) 31,1583,/home/araq/projects/nim/lib/system.nim
+                  (kv . . column.0.sysma2dyk 29,50,/home/araq/projects/nim/lib/std/assertions.nim
+                   (intlit . `t31.3.sysma2dyk +4)))) none unknown . "" . .)
+               (empty) 23
+               (tupleconstr . `t18.1411.sysma2dyk 2,1583,/home/araq/projects/nim/lib/system.nim
+                (kv . . filename.3.sysma2dyk 29,50,/home/araq/projects/nim/lib/std/assertions.nim
+                 (strlit . `t28.17.sysma2dyk "/home/araq/projects/nim/lib/std/typedthreads.nim")) 20,1583,/home/araq/projects/nim/lib/system.nim
+                (kv . . line.1.sysma2dyk 29,50,/home/araq/projects/nim/lib/std/assertions.nim
+                 (intlit . `t31.3.sysma2dyk +290)) 31,1583,/home/araq/projects/nim/lib/system.nim
+                (kv . . column.0.sysma2dyk 29,50,/home/araq/projects/nim/lib/std/assertions.nim
+                 (intlit . `t31.3.sysma2dyk +4)))) 2,2
+              (const0 . .
+               (sd :ploc`gensym10.0. .
+                (const) . uw0 r0whl0t0c0 -1 +0 . `t28.17.sysma2dyk createThread.5.
+                (const0 . . ploc`gensym10.0.
+                 (empty) 5,~24
+                 (strlit . `t28.17.sysma2dyk "/home/araq/projects/nim/lib/std/typedthreads.nim\28290, 5\29")) none unknown . "" . .)
+               (empty) 5,~24
+               (strlit . `t28.17.sysma2dyk "/home/araq/projects/nim/lib/std/typedthreads.nim\28290, 5\29"))) 2,~24
+             (bind0 s . instantiationInfo.0.sysma2dyk) 2,~23
+             (mixin s . 6
+              (opensymchoice . `t0.56.assy765wm failedAssertImpl.0.assy765wm)) 10,290,/home/araq/projects/nim/lib/std/typedthreads.nim
+             (pragmablock s .
+              (pragma . .
+               (kv . .
+                (ident . . line)
+                (tupleconstr a `t18.1411.sysma2dyk
+                 (kv . . filename.3.sysma2dyk
+                  (strlit . `t28.17.sysma2dyk "/home/araq/projects/nim/lib/std/typedthreads.nim"))
+                 (kv . . line.1.sysma2dyk
+                  (intlit . `t31.3.sysma2dyk +290))
+                 (kv . . column.0.sysma2dyk
+                  (intlit . `t31.3.sysma2dyk +4)))))
+              (if s .
+               (elif . .
+                (prefix s `t1.34.sysma2dyk not.0.sysma2dyk
+                 (infix . `t1.34.sysma2dyk ==.12.sysma2dyk
+                  (call . `t34.11.cty9mra12 pthread_attr_destroy.0.thrgbmtmk
+                   (haddr .
+                    (td :`t23.127. . . nimcall -1 -1 +0 +127 . . createThread.5. . none unknown . "" `t17.5.thrgbmtmk) a.1))
+                  (hstdconv . `t34.6.sysma2dyk
+                   (empty)
+                   (intlit . `t31.97. +0))))
+                (call s . failedAssertImpl.0.assy765wm
+                 (strlit s `t28.17.sysma2dyk "/home/araq/projects/nim/lib/std/typedthreads.nim\28290, 5\29 `pthread_attr_destroy\28a\29 == 0` "))))))))) none unknown . "" . createThread.0.) . none unknown . "" `t17.12.exc3otjng1) ~18 createThread.5. ~1,~1
+       (sd :t.6 .
+        (param) . u . -1 +0 .
+        (td :`t23.66. . . nimcall -1 -1 +0 +66 . . createThread.1. . none unknown . "" `t11.71.) createThread.1. . none unknown . "" . .) 20,~1
+       (sd :tp.1 .
+        (param) . u . -1 +1 .
+        (td :`t25.75. . te1 nimcall -1 -1 +0 +75 . 49,303,/home/araq/projects/nim/lib/std/typedthreads.nim
+         (formalparams . .
+          (arglist . . . . . . 3
+           (pragma . . 2
+            (ident . . thread) 10
+            (ident . . nimcall)) .)) createThread.1. . none unknown . "" .) createThread.1. . none unknown . "" . .)))
+     (empty)
+     (empty) ~13
+     (arglist . .)
+     (empty) ~13
+     (arglist . .)) 1 t.6 22 tp.1) createThread.1. . none unknown . "" .) typedthreads.0. ~5
+  (proc s . 5
+   (ht . createThread.1.)
+   (empty)
+   (empty) .
+   (empty)
+   (empty) 20,1
+   (call s . ~18 createThread.5. 1 t.6 4 tp.1)) none unknown . "" . .) createThread.5. threadProcWrapper.1. threadProcWrapStackFrame.0. threadProcWrapDispatch.0. 5,608,/home/araq/projects/nim/lib/system.nim
+ (sd :sizeof.0. .
+  (proc) sizeof uefgn ofrbcr0s0awhtl0t0c0 -1 +0 .
+  (td :`t25.94. . ngme2 nimcall -1 -1 +0 +94 . 12,608,/home/araq/projects/nim/lib/system.nim
+   (formalparams . `t31.3.sysma2dyk
+    (arglist . .
+     (arglist . .) . .
+     (arglist . .) 19
+     (pragma . . 7
+      (kv . . ~5
+       (ident . . magic) 2
+       (strlit . `t28.17.sysma2dyk "SizeOf")) 19
+      (ident . . noSideEffect))
+     (arglist . .)) 1
+    (sd :x.0 .
+     (param) . . . -1 +0 . `t8.44. sizeof.0. . none unknown . "" . .)) sizeof.1.sysma2dyk . none unknown . "" `t31.3.sysma2dyk) sizeof.1.sysma2dyk ~5
+  (proc . . 5
+   (ht `t25.784.sysma2dyk sizeof.0.)
+   (empty)
+   (empty) . 31
+   (pragma . . 7
+    (kv . . ~5
+     (ident . . magic) 2
+     (strlit . `t28.17.sysma2dyk "SizeOf")) 19
+    (ident . . noSideEffect))
+   (bracket . .
+    (empty)
+    (empty))
+   (empty)) none unknown . "" . sizeof.1.sysma2dyk))1,1,/home/araq/projects/nim/lib/std/typedthreads.nim(.index 3,102
+ (h StackGuardSize.0. +264)
+ (h `t31.5. +62)
+ (h typedthreads.0. +190) 1,1,/home/araq/projects/nim/lib/system.nim
+ (h stdlib.0. +98) 3,103
+ (h ThreadStackMask.0. +209)
+ (h `t31.12. +63) 3,109
+ (h ThreadStackSize.0. +316)
+ (h `t31.14. +63) 6,113
+ (h allocThreadStorage.0. +317)
+ (h `t25.15. +65)
+ (h `t7.1. +565) 6,146
+ (h threadProcWrapper.0. +610)
+ (h `t25.17. +62)
+ (h `t12.16. +536) 4,151
+ (x running.0. +2262)
+ (h `t25.19. +52)
+ (h `t9.20. +258)
+ (h `t12.18. +96) 4,155
+ (x handle.0. +1395)
+ (h `t25.22. +51)
+ (h `t9.23. +258)
+ (h `t12.21. +95) 6,186
+ (x joinThread.0. +819)
+ (h `t25.27. +56)
+ (h `t9.28. +243)
+ (h `t12.26. +99) 6,190
+ (x joinThreads.0. +868)
+ (h `t25.30. +56)
+ (h `t48.31. +185)
+ (h `t9.32. +83)
+ (h `t12.29. +101)
+ (h `t0.33. +736)
+ (h `t0.34. +297) 6,260
+ (x createThread.0. +403)
+ (h `t25.38. +58)
+ (h `t23.39. +184)
+ (h `t9.40. +84)
+ (h `t12.37. +102)
+ (h `t25.41. +334)
+ (h `t8.42. +1019)
+ (h `t0.43. +227)
+ (h `t8.44. +141)
+ (h `t8.45. +533)
+ (h `t8.46. +808)
+ (h `t0.47. +238)
+ (h `t0.48. +853)
+ (h `t0.50. +687)
+ (h `t0.52. +1348)
+ (h `t0.53. +466)
+ (h `t0.55. +1773) 6,291
+ (x pinToCpu.0. +614)
+ (h `t25.57. +53)
+ (h `t23.58. +184)
+ (h `t9.59. +80)
+ (h `t12.56. +98)
+ (h `t0.60. +820)
+ (h `t8.63. +976)
+ (h `t0.64. +182) 4,302
+ (x createThread.1. +213)
+ (h `t25.65. +58)
+ (h `t22.126. +181) 6,260
+ (h createThread.5. +111)
+ (h `t25.90. +75)
+ (h `t23.91. +1143)
+ (h `t11.71. +91)
+ (h `t17.72. +138) 4,166,/home/araq/projects/nim/lib/std/private/threadtypes.nim
+ (h core.1. +161) 4,167,/home/araq/projects/nim/lib/std/private/threadtypes.nim
+ (h sys.0. +165) 6,169,/home/araq/projects/nim/lib/std/private/threadtypes.nim
+ (h dataFn.0. +164)
+ (h `t25.93. +325) 6,50,/home/araq/projects/nim/lib/std/assertions.nim
+ (h loc`gensym5.0. +2051) 6,51,/home/araq/projects/nim/lib/std/assertions.nim
+ (h ploc`gensym5.0. +1642)
+ (h `t23.96. +1461)
+ (h `t31.97. +226)
+ (h `t23.99. +795) 6,50,/home/araq/projects/nim/lib/std/assertions.nim
+ (h loc`gensym7.0. +621) 6,51,/home/araq/projects/nim/lib/std/assertions.nim
+ (h ploc`gensym7.0. +1644)
+ (h `t23.123. +2087)
+ (h `t23.124. +245) 6,146
+ (h threadProcWrapper.1. +131)
+ (h `t25.102. +97) 5,81,/home/araq/projects/nim/lib/system/threadimpl.nim
+ (h threadProcWrapStackFrame.0. +456)
+ (h `t25.110. +114) 7,63,/home/araq/projects/nim/lib/system/threadimpl.nim
+ (h threadProcWrapDispatch.0. +435)
+ (h `t25.115. +126)
+ (h `t21.116. +773)
+ (h `t31.11. +2122)
+ (h `t21.111. +841)
+ (h `t21.107. +1432)
+ (h `t21.122. +4218) 6,50,/home/araq/projects/nim/lib/std/assertions.nim
+ (h loc`gensym10.0. +1275) 6,51,/home/araq/projects/nim/lib/std/assertions.nim
+ (h ploc`gensym10.0. +1644)
+ (h `t23.127. +1466)
+ (h `t23.66. +603)
+ (h `t25.75. +193) 5,608,/home/araq/projects/nim/lib/system.nim
+ (h sizeof.0. +802)
+ (h `t25.94. +68))

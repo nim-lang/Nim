@@ -1,0 +1,2558 @@
+(.nif26)
+(.indexat +94611           )
+1,1,/home/araq/projects/nim/lib/std/private/digitsutils.nim(stmts . .
+ (repwasmoved "Ar0ArangeS0S199ZAiS-1" =wasMoved.0.)
+ (repdestroy "Ar0ArangeS0S199ZAiS-1" =destroy.0.)
+ (repcopy "Ar0ArangeS0S199ZAiS-1" =copy.0.)
+ (repdup "Ar0ArangeS0S199ZAiS-1" =dup.0.)
+ (repsink "Ar0ArangeS0S199ZAiS-1" =sink.0.)
+ (reptrace "Ar0ArangeS0S199ZAiS-1" =trace.0.)
+ (repwasmoved "Ar0ArangeS0S99ZAiS-1" =wasMoved.1.)
+ (repdestroy "Ar0ArangeS0S99ZAiS-1" =destroy.1.)
+ (repcopy "Ar0ArangeS0S99ZAiS-1" =copy.1.)
+ (repdup "Ar0ArangeS0S99ZAiS-1" =dup.1.)
+ (repsink "Ar0ArangeS0S99ZAiS-1" =sink.1.)
+ (reptrace "Ar0ArangeS0S99ZAiS-1" =trace.1.)
+ (repwasmoved "Ar0ArangeS0S23ZAiS-1" =wasMoved.2.)
+ (repdestroy "Ar0ArangeS0S23ZAiS-1" =destroy.2.)
+ (repcopy "Ar0ArangeS0S23ZAiS-1" =copy.2.)
+ (repdup "Ar0ArangeS0S23ZAiS-1" =dup.2.)
+ (repsink "Ar0ArangeS0S23ZAiS-1" =sink.2.)
+ (reptrace "Ar0ArangeS0S23ZAiS-1" =trace.2.)
+ (repwasmoved "Aa1AcS8ZAr0ArangeS0S23ZAiS-1" =wasMoved.3.)
+ (repdestroy "Aa1AcS8ZAr0ArangeS0S23ZAiS-1" =destroy.3.)
+ (repcopy "Aa1AcS8ZAr0ArangeS0S23ZAiS-1" =copy.3.)
+ (repdup "Aa1AcS8ZAr0ArangeS0S23ZAiS-1" =dup.3.)
+ (repsink "Aa1AcS8ZAr0ArangeS0S23ZAiS-1" =sink.3.)
+ (reptrace "Aa1AcS8ZAr0ArangeS0S23ZAiS-1" =trace.3.)
+ (repwasmoved "Ar0ArangeS0S255ZAiS-1" =wasMoved.4.)
+ (repdestroy "Ar0ArangeS0S255ZAiS-1" =destroy.4.)
+ (repcopy "Ar0ArangeS0S255ZAiS-1" =copy.4.)
+ (repdup "Ar0ArangeS0S255ZAiS-1" =dup.4.)
+ (repsink "Ar0ArangeS0S255ZAiS-1" =sink.4.)
+ (reptrace "Ar0ArangeS0S255ZAiS-1" =trace.4.)
+ (repwasmoved "Aa1AiS8ZAr0ArangeS0S99ZAiS-1" =wasMoved.5.)
+ (repdestroy "Aa1AiS8ZAr0ArangeS0S99ZAiS-1" =destroy.5.)
+ (repcopy "Aa1AiS8ZAr0ArangeS0S99ZAiS-1" =copy.5.)
+ (repdup "Aa1AiS8ZAr0ArangeS0S99ZAiS-1" =dup.5.)
+ (repsink "Aa1AiS8ZAr0ArangeS0S99ZAiS-1" =sink.5.)
+ (reptrace "Aa1AiS8ZAr0ArangeS0S99ZAiS-1" =trace.5.)
+ (repwasmoved "Aa1AcS8ZAr0ArangeS0S199ZAiS-1" =wasMoved.6.)
+ (repdestroy "Aa1AcS8ZAr0ArangeS0S199ZAiS-1" =destroy.6.)
+ (repcopy "Aa1AcS8ZAr0ArangeS0S199ZAiS-1" =copy.6.)
+ (repdup "Aa1AcS8ZAr0ArangeS0S199ZAiS-1" =dup.6.)
+ (repsink "Aa1AcS8ZAr0ArangeS0S199ZAiS-1" =sink.6.)
+ (reptrace "Aa1AcS8ZAr0ArangeS0S199ZAiS-1" =trace.6.)
+ (implementation) ~1
+ (const s . 2,1
+  (sd :trailingZeros100.0. .
+   (const) . ug ofrbcr0s0awhl0t0c0 -1 +0 .
+   (td :`t16.6. . . nimcall -1 -1 +0 +6 . . 1,1,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+    (sd :digitsutils.0. .
+     (module) . i1 . +0 . . . 1,1,/home/araq/projects/nim/lib/system.nim
+     (sd :stdlib.0. .
+      (package) . . . -1 +0 . . . . none unknown . "" . .) . none unknown . "" . .) . none unknown . ""
+    (td :`t20.4. . c3 nimcall -1 -1 +0 +4 . 26,2,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+     (range . .
+      (intlit .
+       (td :`t31.3. . c3 nimcall +8 +8 +0 +3 . 26,2,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+        (intlit s `t31.3. +100) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +0)
+      (intlit . `t31.3. +99)) digitsutils.0. . none unknown . ""
+     (td :`t31.5. . c3 nimcall +8 +8 +0 +5 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "")) `t32.4.sysma2dyk) digitsutils.0.
+   (const0 . . trailingZeros100.0. 23
+    (at . `t16.6. ~5 array.0.sysma2dyk 1
+     (intlit s `t31.3. +100) 6 int8.0.sysma2dyk) 37
+    (bracket .
+     (td :`t16.7. . c3 nimcall -1 -1 +0 +7 . . digitsutils.0. . none unknown . ""
+      (td :`t20.8. . . nimcall -1 -1 +0 +8 . 39,2,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+       (range . .
+        (intlit . `t31.3.sysma2dyk +0)
+        (intlit . `t31.3.sysma2dyk +99)) digitsutils.0. . none unknown . "" `t31.3.sysma2dyk) `t32.4.sysma2dyk) 1
+     (int8lit . `t32.4.sysma2dyk +2) 7
+     (intlit . `t32.4.sysma2dyk +0) 10
+     (intlit . `t32.4.sysma2dyk +0) 13
+     (intlit . `t32.4.sysma2dyk +0) 16
+     (intlit . `t32.4.sysma2dyk +0) 19
+     (intlit . `t32.4.sysma2dyk +0) 22
+     (intlit . `t32.4.sysma2dyk +0) 25
+     (intlit . `t32.4.sysma2dyk +0) 28
+     (intlit . `t32.4.sysma2dyk +0) 31
+     (intlit . `t32.4.sysma2dyk +0) 34
+     (intlit . `t32.4.sysma2dyk +1) 37
+     (intlit . `t32.4.sysma2dyk +0) 40
+     (intlit . `t32.4.sysma2dyk +0) 43
+     (intlit . `t32.4.sysma2dyk +0) 46
+     (intlit . `t32.4.sysma2dyk +0) 49
+     (intlit . `t32.4.sysma2dyk +0) 52
+     (intlit . `t32.4.sysma2dyk +0) 55
+     (intlit . `t32.4.sysma2dyk +0) 58
+     (intlit . `t32.4.sysma2dyk +0) 61
+     (intlit . `t32.4.sysma2dyk +0) ~35,1
+     (intlit . `t32.4.sysma2dyk +1) ~32,1
+     (intlit . `t32.4.sysma2dyk +0) ~29,1
+     (intlit . `t32.4.sysma2dyk +0) ~26,1
+     (intlit . `t32.4.sysma2dyk +0) ~23,1
+     (intlit . `t32.4.sysma2dyk +0) ~20,1
+     (intlit . `t32.4.sysma2dyk +0) ~17,1
+     (intlit . `t32.4.sysma2dyk +0) ~14,1
+     (intlit . `t32.4.sysma2dyk +0) ~11,1
+     (intlit . `t32.4.sysma2dyk +0) ~8,1
+     (intlit . `t32.4.sysma2dyk +0) ~5,1
+     (intlit . `t32.4.sysma2dyk +1) ~2,1
+     (intlit . `t32.4.sysma2dyk +0) 1,1
+     (intlit . `t32.4.sysma2dyk +0) 4,1
+     (intlit . `t32.4.sysma2dyk +0) 7,1
+     (intlit . `t32.4.sysma2dyk +0) 10,1
+     (intlit . `t32.4.sysma2dyk +0) 13,1
+     (intlit . `t32.4.sysma2dyk +0) 16,1
+     (intlit . `t32.4.sysma2dyk +0) 19,1
+     (intlit . `t32.4.sysma2dyk +0) 22,1
+     (intlit . `t32.4.sysma2dyk +0) 25,1
+     (intlit . `t32.4.sysma2dyk +1) 28,1
+     (intlit . `t32.4.sysma2dyk +0) 31,1
+     (intlit . `t32.4.sysma2dyk +0) 34,1
+     (intlit . `t32.4.sysma2dyk +0) 37,1
+     (intlit . `t32.4.sysma2dyk +0) 40,1
+     (intlit . `t32.4.sysma2dyk +0) 43,1
+     (intlit . `t32.4.sysma2dyk +0) 46,1
+     (intlit . `t32.4.sysma2dyk +0) 49,1
+     (intlit . `t32.4.sysma2dyk +0) 52,1
+     (intlit . `t32.4.sysma2dyk +0) 55,1
+     (intlit . `t32.4.sysma2dyk +1) 58,1
+     (intlit . `t32.4.sysma2dyk +0) 61,1
+     (intlit . `t32.4.sysma2dyk +0) 64,1
+     (intlit . `t32.4.sysma2dyk +0) 67,1
+     (intlit . `t32.4.sysma2dyk +0) 70,1
+     (intlit . `t32.4.sysma2dyk +0) 73,1
+     (intlit . `t32.4.sysma2dyk +0) ~35,2
+     (intlit . `t32.4.sysma2dyk +0) ~32,2
+     (intlit . `t32.4.sysma2dyk +0) ~29,2
+     (intlit . `t32.4.sysma2dyk +0) ~26,2
+     (intlit . `t32.4.sysma2dyk +1) ~23,2
+     (intlit . `t32.4.sysma2dyk +0) ~20,2
+     (intlit . `t32.4.sysma2dyk +0) ~17,2
+     (intlit . `t32.4.sysma2dyk +0) ~14,2
+     (intlit . `t32.4.sysma2dyk +0) ~11,2
+     (intlit . `t32.4.sysma2dyk +0) ~8,2
+     (intlit . `t32.4.sysma2dyk +0) ~5,2
+     (intlit . `t32.4.sysma2dyk +0) ~2,2
+     (intlit . `t32.4.sysma2dyk +0) 1,2
+     (intlit . `t32.4.sysma2dyk +0) 4,2
+     (intlit . `t32.4.sysma2dyk +1) 7,2
+     (intlit . `t32.4.sysma2dyk +0) 10,2
+     (intlit . `t32.4.sysma2dyk +0) 13,2
+     (intlit . `t32.4.sysma2dyk +0) 16,2
+     (intlit . `t32.4.sysma2dyk +0) 19,2
+     (intlit . `t32.4.sysma2dyk +0) 22,2
+     (intlit . `t32.4.sysma2dyk +0) 25,2
+     (intlit . `t32.4.sysma2dyk +0) 28,2
+     (intlit . `t32.4.sysma2dyk +0) 31,2
+     (intlit . `t32.4.sysma2dyk +0) 34,2
+     (intlit . `t32.4.sysma2dyk +1) 37,2
+     (intlit . `t32.4.sysma2dyk +0) 40,2
+     (intlit . `t32.4.sysma2dyk +0) 43,2
+     (intlit . `t32.4.sysma2dyk +0) 46,2
+     (intlit . `t32.4.sysma2dyk +0) 49,2
+     (intlit . `t32.4.sysma2dyk +0) 52,2
+     (intlit . `t32.4.sysma2dyk +0) 55,2
+     (intlit . `t32.4.sysma2dyk +0) 58,2
+     (intlit . `t32.4.sysma2dyk +0) 61,2
+     (intlit . `t32.4.sysma2dyk +0) 64,2
+     (intlit . `t32.4.sysma2dyk +1) 67,2
+     (intlit . `t32.4.sysma2dyk +0) 70,2
+     (intlit . `t32.4.sysma2dyk +0) 73,2
+     (intlit . `t32.4.sysma2dyk +0) ~35,3
+     (intlit . `t32.4.sysma2dyk +0) ~32,3
+     (intlit . `t32.4.sysma2dyk +0) ~29,3
+     (intlit . `t32.4.sysma2dyk +0) ~26,3
+     (intlit . `t32.4.sysma2dyk +0) ~23,3
+     (intlit . `t32.4.sysma2dyk +0) ~20,3
+     (intlit . `t32.4.sysma2dyk +0))) none unknown . "" . .) 2,6
+  (sd :digits100.0. .
+   (const) . ug ofrbcr0s0awhl0t0c0 -1 +0 .
+   (td :`t16.12. . . nimcall -1 -1 +0 +12 . . digitsutils.0. . none unknown . ""
+    (td :`t20.10. . c3 nimcall -1 -1 +0 +10 . 19,7,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+     (range . .
+      (intlit .
+       (td :`t31.9. . c3 nimcall +8 +8 +0 +9 . 19,7,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+        (intlit s `t31.9. +200) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +0)
+      (intlit . `t31.9. +199)) digitsutils.0. . none unknown . ""
+     (td :`t31.11. . c3 nimcall +8 +8 +0 +11 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "")) `t2.16.sysma2dyk) digitsutils.0.
+   (const0 . . digits100.0. 16
+    (at . `t16.12. ~5 array.0.sysma2dyk 1
+     (intlit s `t31.9. +200) 6 char.0.sysma2dyk) 30
+    (bracket .
+     (td :`t16.13. . c3 nimcall -1 -1 +0 +13 . . digitsutils.0. . none unknown . ""
+      (td :`t20.14. . . nimcall -1 -1 +0 +14 . 32,7,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+       (range . .
+        (intlit . `t31.3.sysma2dyk +0)
+        (intlit . `t31.3.sysma2dyk +199)) digitsutils.0. . none unknown . "" `t31.3.sysma2dyk) `t2.16.sysma2dyk) 1
+     (charlit . `t2.16.sysma2dyk '0') 6
+     (charlit . `t2.16.sysma2dyk '0') 11
+     (charlit . `t2.16.sysma2dyk '0') 16
+     (charlit . `t2.16.sysma2dyk '1') 21
+     (charlit . `t2.16.sysma2dyk '0') 26
+     (charlit . `t2.16.sysma2dyk '2') 31
+     (charlit . `t2.16.sysma2dyk '0') 36
+     (charlit . `t2.16.sysma2dyk '3') 41
+     (charlit . `t2.16.sysma2dyk '0') 46
+     (charlit . `t2.16.sysma2dyk '4') 51
+     (charlit . `t2.16.sysma2dyk '0') 56
+     (charlit . `t2.16.sysma2dyk '5') ~28,1
+     (charlit . `t2.16.sysma2dyk '0') ~23,1
+     (charlit . `t2.16.sysma2dyk '6') ~18,1
+     (charlit . `t2.16.sysma2dyk '0') ~13,1
+     (charlit . `t2.16.sysma2dyk '7') ~8,1
+     (charlit . `t2.16.sysma2dyk '0') ~3,1
+     (charlit . `t2.16.sysma2dyk '8') 2,1
+     (charlit . `t2.16.sysma2dyk '0') 7,1
+     (charlit . `t2.16.sysma2dyk '9') 12,1
+     (charlit . `t2.16.sysma2dyk '1') 17,1
+     (charlit . `t2.16.sysma2dyk '0') 22,1
+     (charlit . `t2.16.sysma2dyk '1') 27,1
+     (charlit . `t2.16.sysma2dyk '1') 32,1
+     (charlit . `t2.16.sysma2dyk '1') 37,1
+     (charlit . `t2.16.sysma2dyk '2') 42,1
+     (charlit . `t2.16.sysma2dyk '1') 47,1
+     (charlit . `t2.16.sysma2dyk '3') 52,1
+     (charlit . `t2.16.sysma2dyk '1') 57,1
+     (charlit . `t2.16.sysma2dyk '4') ~28,2
+     (charlit . `t2.16.sysma2dyk '1') ~23,2
+     (charlit . `t2.16.sysma2dyk '5') ~18,2
+     (charlit . `t2.16.sysma2dyk '1') ~13,2
+     (charlit . `t2.16.sysma2dyk '6') ~8,2
+     (charlit . `t2.16.sysma2dyk '1') ~3,2
+     (charlit . `t2.16.sysma2dyk '7') 2,2
+     (charlit . `t2.16.sysma2dyk '1') 7,2
+     (charlit . `t2.16.sysma2dyk '8') 12,2
+     (charlit . `t2.16.sysma2dyk '1') 17,2
+     (charlit . `t2.16.sysma2dyk '9') 22,2
+     (charlit . `t2.16.sysma2dyk '2') 27,2
+     (charlit . `t2.16.sysma2dyk '0') 32,2
+     (charlit . `t2.16.sysma2dyk '2') 37,2
+     (charlit . `t2.16.sysma2dyk '1') 42,2
+     (charlit . `t2.16.sysma2dyk '2') 47,2
+     (charlit . `t2.16.sysma2dyk '2') 52,2
+     (charlit . `t2.16.sysma2dyk '2') 57,2
+     (charlit . `t2.16.sysma2dyk '3') ~28,3
+     (charlit . `t2.16.sysma2dyk '2') ~23,3
+     (charlit . `t2.16.sysma2dyk '4') ~18,3
+     (charlit . `t2.16.sysma2dyk '2') ~13,3
+     (charlit . `t2.16.sysma2dyk '5') ~8,3
+     (charlit . `t2.16.sysma2dyk '2') ~3,3
+     (charlit . `t2.16.sysma2dyk '6') 2,3
+     (charlit . `t2.16.sysma2dyk '2') 7,3
+     (charlit . `t2.16.sysma2dyk '7') 12,3
+     (charlit . `t2.16.sysma2dyk '2') 17,3
+     (charlit . `t2.16.sysma2dyk '8') 22,3
+     (charlit . `t2.16.sysma2dyk '2') 27,3
+     (charlit . `t2.16.sysma2dyk '9') 32,3
+     (charlit . `t2.16.sysma2dyk '3') 37,3
+     (charlit . `t2.16.sysma2dyk '0') 42,3
+     (charlit . `t2.16.sysma2dyk '3') 47,3
+     (charlit . `t2.16.sysma2dyk '1') 52,3
+     (charlit . `t2.16.sysma2dyk '3') 57,3
+     (charlit . `t2.16.sysma2dyk '2') ~28,4
+     (charlit . `t2.16.sysma2dyk '3') ~23,4
+     (charlit . `t2.16.sysma2dyk '3') ~18,4
+     (charlit . `t2.16.sysma2dyk '3') ~13,4
+     (charlit . `t2.16.sysma2dyk '4') ~8,4
+     (charlit . `t2.16.sysma2dyk '3') ~3,4
+     (charlit . `t2.16.sysma2dyk '5') 2,4
+     (charlit . `t2.16.sysma2dyk '3') 7,4
+     (charlit . `t2.16.sysma2dyk '6') 12,4
+     (charlit . `t2.16.sysma2dyk '3') 17,4
+     (charlit . `t2.16.sysma2dyk '7') 22,4
+     (charlit . `t2.16.sysma2dyk '3') 27,4
+     (charlit . `t2.16.sysma2dyk '8') 32,4
+     (charlit . `t2.16.sysma2dyk '3') 37,4
+     (charlit . `t2.16.sysma2dyk '9') 42,4
+     (charlit . `t2.16.sysma2dyk '4') 47,4
+     (charlit . `t2.16.sysma2dyk '0') 52,4
+     (charlit . `t2.16.sysma2dyk '4') 57,4
+     (charlit . `t2.16.sysma2dyk '1') ~28,5
+     (charlit . `t2.16.sysma2dyk '4') ~23,5
+     (charlit . `t2.16.sysma2dyk '2') ~18,5
+     (charlit . `t2.16.sysma2dyk '4') ~13,5
+     (charlit . `t2.16.sysma2dyk '3') ~8,5
+     (charlit . `t2.16.sysma2dyk '4') ~3,5
+     (charlit . `t2.16.sysma2dyk '4') 2,5
+     (charlit . `t2.16.sysma2dyk '4') 7,5
+     (charlit . `t2.16.sysma2dyk '5') 12,5
+     (charlit . `t2.16.sysma2dyk '4') 17,5
+     (charlit . `t2.16.sysma2dyk '6') 22,5
+     (charlit . `t2.16.sysma2dyk '4') 27,5
+     (charlit . `t2.16.sysma2dyk '7') 32,5
+     (charlit . `t2.16.sysma2dyk '4') 37,5
+     (charlit . `t2.16.sysma2dyk '8') 42,5
+     (charlit . `t2.16.sysma2dyk '4') 47,5
+     (charlit . `t2.16.sysma2dyk '9') 52,5
+     (charlit . `t2.16.sysma2dyk '5') 57,5
+     (charlit . `t2.16.sysma2dyk '0') ~28,6
+     (charlit . `t2.16.sysma2dyk '5') ~23,6
+     (charlit . `t2.16.sysma2dyk '1') ~18,6
+     (charlit . `t2.16.sysma2dyk '5') ~13,6
+     (charlit . `t2.16.sysma2dyk '2') ~8,6
+     (charlit . `t2.16.sysma2dyk '5') ~3,6
+     (charlit . `t2.16.sysma2dyk '3') 2,6
+     (charlit . `t2.16.sysma2dyk '5') 7,6
+     (charlit . `t2.16.sysma2dyk '4') 12,6
+     (charlit . `t2.16.sysma2dyk '5') 17,6
+     (charlit . `t2.16.sysma2dyk '5') 22,6
+     (charlit . `t2.16.sysma2dyk '5') 27,6
+     (charlit . `t2.16.sysma2dyk '6') 32,6
+     (charlit . `t2.16.sysma2dyk '5') 37,6
+     (charlit . `t2.16.sysma2dyk '7') 42,6
+     (charlit . `t2.16.sysma2dyk '5') 47,6
+     (charlit . `t2.16.sysma2dyk '8') 52,6
+     (charlit . `t2.16.sysma2dyk '5') 57,6
+     (charlit . `t2.16.sysma2dyk '9') ~28,7
+     (charlit . `t2.16.sysma2dyk '6') ~23,7
+     (charlit . `t2.16.sysma2dyk '0') ~18,7
+     (charlit . `t2.16.sysma2dyk '6') ~13,7
+     (charlit . `t2.16.sysma2dyk '1') ~8,7
+     (charlit . `t2.16.sysma2dyk '6') ~3,7
+     (charlit . `t2.16.sysma2dyk '2') 2,7
+     (charlit . `t2.16.sysma2dyk '6') 7,7
+     (charlit . `t2.16.sysma2dyk '3') 12,7
+     (charlit . `t2.16.sysma2dyk '6') 17,7
+     (charlit . `t2.16.sysma2dyk '4') 22,7
+     (charlit . `t2.16.sysma2dyk '6') 27,7
+     (charlit . `t2.16.sysma2dyk '5') 32,7
+     (charlit . `t2.16.sysma2dyk '6') 37,7
+     (charlit . `t2.16.sysma2dyk '6') 42,7
+     (charlit . `t2.16.sysma2dyk '6') 47,7
+     (charlit . `t2.16.sysma2dyk '7') 52,7
+     (charlit . `t2.16.sysma2dyk '6') 57,7
+     (charlit . `t2.16.sysma2dyk '8') ~28,8
+     (charlit . `t2.16.sysma2dyk '6') ~23,8
+     (charlit . `t2.16.sysma2dyk '9') ~18,8
+     (charlit . `t2.16.sysma2dyk '7') ~13,8
+     (charlit . `t2.16.sysma2dyk '0') ~8,8
+     (charlit . `t2.16.sysma2dyk '7') ~3,8
+     (charlit . `t2.16.sysma2dyk '1') 2,8
+     (charlit . `t2.16.sysma2dyk '7') 7,8
+     (charlit . `t2.16.sysma2dyk '2') 12,8
+     (charlit . `t2.16.sysma2dyk '7') 17,8
+     (charlit . `t2.16.sysma2dyk '3') 22,8
+     (charlit . `t2.16.sysma2dyk '7') 27,8
+     (charlit . `t2.16.sysma2dyk '4') 32,8
+     (charlit . `t2.16.sysma2dyk '7') 37,8
+     (charlit . `t2.16.sysma2dyk '5') 42,8
+     (charlit . `t2.16.sysma2dyk '7') 47,8
+     (charlit . `t2.16.sysma2dyk '6') 52,8
+     (charlit . `t2.16.sysma2dyk '7') 57,8
+     (charlit . `t2.16.sysma2dyk '7') ~28,9
+     (charlit . `t2.16.sysma2dyk '7') ~23,9
+     (charlit . `t2.16.sysma2dyk '8') ~18,9
+     (charlit . `t2.16.sysma2dyk '7') ~13,9
+     (charlit . `t2.16.sysma2dyk '9') ~8,9
+     (charlit . `t2.16.sysma2dyk '8') ~3,9
+     (charlit . `t2.16.sysma2dyk '0') 2,9
+     (charlit . `t2.16.sysma2dyk '8') 7,9
+     (charlit . `t2.16.sysma2dyk '1') 12,9
+     (charlit . `t2.16.sysma2dyk '8') 17,9
+     (charlit . `t2.16.sysma2dyk '2') 22,9
+     (charlit . `t2.16.sysma2dyk '8') 27,9
+     (charlit . `t2.16.sysma2dyk '3') 32,9
+     (charlit . `t2.16.sysma2dyk '8') 37,9
+     (charlit . `t2.16.sysma2dyk '4') 42,9
+     (charlit . `t2.16.sysma2dyk '8') 47,9
+     (charlit . `t2.16.sysma2dyk '5') 52,9
+     (charlit . `t2.16.sysma2dyk '8') 57,9
+     (charlit . `t2.16.sysma2dyk '6') ~28,10
+     (charlit . `t2.16.sysma2dyk '8') ~23,10
+     (charlit . `t2.16.sysma2dyk '7') ~18,10
+     (charlit . `t2.16.sysma2dyk '8') ~13,10
+     (charlit . `t2.16.sysma2dyk '8') ~8,10
+     (charlit . `t2.16.sysma2dyk '8') ~3,10
+     (charlit . `t2.16.sysma2dyk '9') 2,10
+     (charlit . `t2.16.sysma2dyk '9') 7,10
+     (charlit . `t2.16.sysma2dyk '0') 12,10
+     (charlit . `t2.16.sysma2dyk '9') 17,10
+     (charlit . `t2.16.sysma2dyk '1') 22,10
+     (charlit . `t2.16.sysma2dyk '9') 27,10
+     (charlit . `t2.16.sysma2dyk '2') 32,10
+     (charlit . `t2.16.sysma2dyk '9') 37,10
+     (charlit . `t2.16.sysma2dyk '3') 42,10
+     (charlit . `t2.16.sysma2dyk '9') 47,10
+     (charlit . `t2.16.sysma2dyk '4') 52,10
+     (charlit . `t2.16.sysma2dyk '9') 57,10
+     (charlit . `t2.16.sysma2dyk '5') ~28,11
+     (charlit . `t2.16.sysma2dyk '9') ~23,11
+     (charlit . `t2.16.sysma2dyk '6') ~18,11
+     (charlit . `t2.16.sysma2dyk '9') ~13,11
+     (charlit . `t2.16.sysma2dyk '7') ~8,11
+     (charlit . `t2.16.sysma2dyk '9') ~3,11
+     (charlit . `t2.16.sysma2dyk '8') 2,11
+     (charlit . `t2.16.sysma2dyk '9') 7,11
+     (charlit . `t2.16.sysma2dyk '9'))) none unknown . "" . .)) ~1,31
+ (pragma s . 2
+  (ident . . push) 13
+  (kv . . ~6
+   (ident . . checks) 2
+   (intlit . `t1.34.sysma2dyk +0)) 30
+  (kv . . ~10
+   (ident . . stackTrace) 2
+   (intlit . `t1.34.sysma2dyk +0))) 4,36
+ (sd :utoa2Digits.0. x
+  (proc) . egi1n3 r0whl0t0c0 -1 +0 .
+  (td :`t25.15. . nte1e2 inline -1 -1 +0 +15 . 17,37,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+   (formalparams . .
+    (arglist . . ~12
+     (arglist . .)
+     (empty)
+     (empty) ~12
+     (arglist . .)
+     (empty) ~12
+     (arglist . .)) 1
+    (sd :buf.0 .
+     (param) . u . -1 +0 .
+     (td :`t23.16. . . nimcall -1 -1 +0 +16 . . utoa2Digits.0. . none unknown . ""
+      (td :`t27.17. . . nimcall -1 -1 +0 +17 . . utoa2Digits.0. . none unknown . "" `t2.16.sysma2dyk)) utoa2Digits.0. . none unknown . "" . .) 27
+    (sd :pos.0 .
+     (param) . u . -1 +1 . `t31.3.sysma2dyk utoa2Digits.0. . none unknown . "" . .) 37
+    (sd :digits.0 .
+     (param) . u . -1 +2 . `t43.11.sysma2dyk utoa2Digits.0. . none unknown . "" . .)) utoa2Digits.0. . none unknown . "" .) digitsutils.0. ~5
+  (proc s . 5
+   (ht . utoa2Digits.0.)
+   (empty)
+   (empty) . 70
+   (pragma . . 2
+    (ident . . inline) 10
+    (ident . . enforceNoRaises))
+   (empty) 2,1
+   (stmts s . 9
+    (asgn s . ~6
+     (at . `t2.16.sysma2dyk ~3
+      (hderef . `t27.17. buf.0) 1 pos.0) 11
+     (at s `t2.16.sysma2dyk ~9 digits100.0. 3
+      (hstdconv . `t20.10.
+       (empty)
+       (infix s `t43.11.sysma2dyk *.8.sysma2dyk ~2
+        (hstdconv . `t43.11.sysma2dyk
+         (empty)
+         (intlit s
+          (td :`t31.18. . c3 nimcall +8 +8 +0 +18 . 23,38,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+           (intlit s `t31.18. +2) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +2)) 2 digits.0)))) 11,1
+    (asgn s . ~8
+     (at . `t2.16.sysma2dyk ~3
+      (hderef . `t27.17. buf.0) 4
+      (infix s `t31.3.sysma2dyk \2B.5.sysma2dyk ~3 pos.0 1
+       (intlit s
+        (td :`t31.19. . c3 nimcall +8 +8 +0 +19 . 10,39,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+         (intlit s `t31.19. +1) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +1))) 11
+     (at s `t2.16.sysma2dyk ~9 digits100.0. 12
+      (hstdconv . `t20.10.
+       (empty)
+       (infix s `t43.11.sysma2dyk \2B.13.sysma2dyk ~9
+        (infix s `t43.11.sysma2dyk *.8.sysma2dyk ~2
+         (hstdconv . `t43.11.sysma2dyk
+          (empty)
+          (intlit s `t31.18. +2)) 2 digits.0) 2
+        (hstdconv . `t43.11.sysma2dyk
+         (empty)
+         (intlit s `t31.19. +1)))))))) none unknown . "" . .) 4,41
+ (sd :trailingZeros2Digits.0. x
+  (proc) . egi1n3 r0whl0t0c0 -1 +0 .
+  (td :`t25.31. . nte1e2 inline -1 -1 +0 +31 . 26,42,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+   (formalparams . `t31.3.sysma2dyk
+    (arglist . . ~21
+     (arglist . .)
+     (empty)
+     (empty) ~21
+     (arglist . .)
+     (empty) ~21
+     (arglist . .)) 1
+    (sd :digits.1 .
+     (param) . u . -1 +0 . `t43.11.sysma2dyk trailingZeros2Digits.0. . none unknown . "" . .)) trailingZeros2Digits.0. . none unknown . "" `t31.3.sysma2dyk) digitsutils.0. ~5
+  (proc s . 5
+   (ht . trailingZeros2Digits.0.)
+   (empty)
+   (empty) . 48
+   (pragma . . 2
+    (ident . . inline) 10
+    (ident . . enforceNoRaises))
+   (empty) 2,1
+   (asgn .
+    (td :`t7.1. . . nimcall -1 -1 +0 +1 . . . . none unknown . "") ~2,~1
+    (sd :result.1 .
+     (result) . u . -1 +0 . `t31.3.sysma2dyk trailingZeros2Digits.0. . none unknown . "" . .) 16
+    (hstdconv . `t31.3.sysma2dyk
+     (empty)
+     (at s `t32.4.sysma2dyk ~16 trailingZeros100.0. 1
+      (hstdconv . `t20.4.
+       (empty) digits.1)))) result.1) none unknown . "" . .) 4,47
+ (sd :addChars.0. .
+  (func) . ugnn3 r0whl0t0c0 -1 +0 .
+  (td :`t25.44. . nme1e2 inline -1 -1 +0 +44 . 16,48,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+   (formalparams . .
+    (arglist . . . . . . 47
+     (pragma . . 2
+      (ident . . inline) 10
+      (ident . . enforceNoRaises)) .) 1
+    (sd :result.3 .
+     (param) . u . -1 +0 .
+     (td :`t23.45. . h0 nimcall -1 -1 +0 +45 . . addChars.0. . none unknown . "" `t28.17.sysma2dyk) addChars.0. . none unknown . "" . .) 21
+    (sd :x.0 .
+     (param) . u . -1 +1 .
+     (td :`t12.43. . g0 nimcall -1 -1 +0 +43 . . addChars.0. 14,48,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+      (sd :T.0 .
+       (type) . u . -1 +0 . `t12.43. addChars.0. . none unknown . "" . .) none unknown . "") addChars.0. . none unknown . "" . .) 27
+    (sd :start.0 .
+     (param) . u . -1 +2 . `t31.3.sysma2dyk addChars.0. . none unknown . "" . .) 39
+    (sd :n.0 .
+     (param) . u . -1 +3 . `t31.3.sysma2dyk addChars.0. . none unknown . "" . .)) addChars.0. . none unknown . "" .) digitsutils.0. ~5
+  (func s . 5
+   (ht . addChars.0.)
+   (empty) 13
+   (genericparams . . 1 T.0) . 63
+   (pragma . . 2
+    (ident . . inline) 10
+    (ident . . enforceNoRaises))
+   (bracket . .
+    (empty) 13,48,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+    (genericparams . . 1
+     (identdefs . .
+      (ident . . T)
+      (empty)
+      (empty)))) 2,1
+   (stmts . .
+    (let . . 4
+     (identdefs . .
+      (ident . . old) 4
+      (empty) 12
+      (dot . . ~6
+       (ident . . result) 1
+       (opensymchoice .
+        (td :`t0.46. . . nimcall -1 -1 +0 +46 . . addChars.0. . none unknown . "") len.10.sysma2dyk len.7.sysma2dyk len.4.sysma2dyk len.3.sysma2dyk len.8.sysma2dyk len.6.sysma2dyk len.5.sysma2dyk)))) 6,1
+    (cmd . .
+     (dot . . ~6
+      (ident . . result) 1
+      (opensymchoice .
+       (td :`t0.47. . . nimcall -1 -1 +0 +47 . . addChars.0. . none unknown . "") setLen.1.sysma2dyk setLen.0.sysma2dyk)) 12
+     (infix . .
+      (opensymchoice .
+       (td :`t0.48. . . nimcall -1 -1 +0 +48 . . addChars.0. . none unknown . "") \2B.16.sysma2dyk \2B.17.sysma2dyk \2B.18.sysma2dyk \2B.5.sysma2dyk \2B.8.sysma2dyk \2B.13.sysma2dyk \2B.14.sysma2dyk \2B.15.sysma2dyk \2B.1.sysma2dyk \2B.7.sysma2dyk \2B.9.sysma2dyk \2B.4.sysma2dyk \2B.2.sysma2dyk \2B.6.sysma2dyk \2B.11.sysma2dyk \2B.12.sysma2dyk \2B.0.sysma2dyk \2B.10.sysma2dyk \2B.19.sysma2dyk \2B.3.sysma2dyk) ~4
+      (ident . . old) 2
+      (ident . . n))) ,2
+    (template . . 9
+     (ident . . impl)
+     (empty)
+     (empty) 14
+     (formalparams . .
+      (empty))
+     (empty)
+     (empty) 2,1
+     (stmts . . 4
+      (for . .
+       (ident . . i) 6
+       (infix . .
+        (opensymchoice .
+         (td :`t0.49. . . nimcall -1 -1 +0 +49 . . addChars.0. . none unknown . "") \2E.<.0.sysma2dyk \2E.<.2.sysma2dyk \2E.<.3.sysma2dyk \2E.<.1.sysma2dyk \2E.<.4.sysma2dyk) ~1
+        (intlit . . +0) 3
+        (ident . . n)) 12
+       (stmts . . 16
+        (call . . \5B\5D=.0.sysma2dyk ~16
+         (ident . . result) ~5
+         (infix . .
+          (opensymchoice .
+           (td :`t0.50. . . nimcall -1 -1 +0 +50 . . addChars.0. . none unknown . "") \2B.16.sysma2dyk \2B.17.sysma2dyk \2B.18.sysma2dyk \2B.5.sysma2dyk \2B.8.sysma2dyk \2B.13.sysma2dyk \2B.14.sysma2dyk \2B.15.sysma2dyk \2B.1.sysma2dyk \2B.7.sysma2dyk \2B.9.sysma2dyk \2B.4.sysma2dyk \2B.2.sysma2dyk \2B.6.sysma2dyk \2B.11.sysma2dyk \2B.12.sysma2dyk \2B.0.sysma2dyk \2B.10.sysma2dyk \2B.19.sysma2dyk \2B.3.sysma2dyk) ~4
+          (ident . . old) 2
+          (ident . . i)) 3
+         (call . . \5B\5D.0.sysma2dyk ~1
+          (ident . . x) 7
+          (infix . .
+           (opensymchoice .
+            (td :`t0.51. . . nimcall -1 -1 +0 +51 . . addChars.0. . none unknown . "") \2B.16.sysma2dyk \2B.17.sysma2dyk \2B.18.sysma2dyk \2B.5.sysma2dyk \2B.8.sysma2dyk \2B.13.sysma2dyk \2B.14.sysma2dyk \2B.15.sysma2dyk \2B.1.sysma2dyk \2B.7.sysma2dyk \2B.9.sysma2dyk \2B.4.sysma2dyk \2B.2.sysma2dyk \2B.6.sysma2dyk \2B.11.sysma2dyk \2B.12.sysma2dyk \2B.0.sysma2dyk \2B.10.sysma2dyk \2B.19.sysma2dyk \2B.3.sysma2dyk) ~6
+           (ident . . start) 2
+           (ident . . i)))))))) ,4
+    (when . . 5
+     (elif . . nimvm.0.sysma2dyk 7
+      (stmts . .
+       (ident . . impl))) ,1
+     (else . . 2,1
+      (stmts . .
+       (when . . 5
+        (elif . . 12
+         (infix . .
+          (opensymchoice .
+           (td :`t0.52. . . nimcall -1 -1 +0 +52 . . addChars.0. . none unknown . "") or.9.sysma2dyk or.11.sysma2dyk or.5.sysma2dyk or.0.sysma2dyk or.6.sysma2dyk or.10.sysma2dyk or.1.sysma2dyk or.7.sysma2dyk or.8.sysma2dyk or.2.sysma2dyk or.3.sysma2dyk or.4.sysma2dyk) ~5
+          (call . . ~7 defined.0.sysma2dyk 1
+           (ident . . js)) 10
+          (call . . ~7 defined.0.sysma2dyk 1
+           (ident . . nimscript))) 35
+         (stmts . .
+          (ident . . impl))) ,1
+        (else . . 2,1
+         (stmts . .
+          (pragmablock . .
+           (pragma . . 2
+            (ident . . noSideEffect)) 2,1
+           (stmts . .
+            (cmd . . copyMem.0.sysma2dyk 19
+             (dot . . ~5
+              (call . . \5B\5D.0.sysma2dyk ~6
+               (ident . . result) 1
+               (ident . . old)) 1
+              (closedsymchoice .
+               (td :`t0.53. . . nimcall -1 -1 +0 +53 . . addChars.0. . none unknown . "") addr.0.sysma2dyk)) 34
+             (dot . . ~7
+              (call . . \5B\5D.0.sysma2dyk ~1
+               (ident . . x) 1
+               (ident . . start)) 1
+              (closedsymchoice .
+               (td :`t0.54. . . nimcall -1 -1 +0 +54 . . addChars.0. . none unknown . "") unsafeAddr.0.sysma2dyk)) 47
+             (ident . . n)))))))))))) none unknown . "" . .) 4,59
+ (sd :addChars.1. .
+  (func) . ugnn3 r0whl0t0c0 -1 +0 .
+  (td :`t25.56. . nme1e2 inline -1 -1 +0 +56 . 16,60,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+   (formalparams . .
+    (arglist . . . . . . 27
+     (pragma . . 2
+      (ident . . inline) 10
+      (ident . . enforceNoRaises)) .) 1
+    (sd :result.4 .
+     (param) . u . -1 +0 .
+     (td :`t23.57. . h0 nimcall -1 -1 +0 +57 . . addChars.1. . none unknown . "" `t28.17.sysma2dyk) addChars.1. . none unknown . "" . .) 21
+    (sd :x.1 .
+     (param) . u . -1 +1 .
+     (td :`t12.55. . g0 nimcall -1 -1 +0 +55 . . addChars.1. 14,60,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+      (sd :T.0 .
+       (type) . u . -1 +0 . `t12.55. addChars.1. . none unknown . "" . .) none unknown . "") addChars.1. . none unknown . "" . .)) addChars.1. . none unknown . "" .) digitsutils.0. ~5
+  (func s . 5
+   (ht . addChars.1.)
+   (empty) 13
+   (genericparams . . 1 T.0) . 43
+   (pragma . . 2
+    (ident . . inline) 10
+    (ident . . enforceNoRaises))
+   (bracket . .
+    (empty) 13,60,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+    (genericparams . . 1
+     (identdefs . .
+      (ident . . T)
+      (empty)
+      (empty)))) 2,1
+   (stmts . . 8
+    (call . . ~8
+     (opensymchoice .
+      (td :`t0.58. . . nimcall -1 -1 +0 +58 . . addChars.1. . none unknown . "") addChars.0. addChars.1.) 1
+     (ident . . result) 9
+     (ident . . x) 12
+     (intlit . . +0) 16
+     (dot . . ~1
+      (ident . . x) 1
+      (opensymchoice .
+       (td :`t0.59. . . nimcall -1 -1 +0 +59 . . addChars.1. . none unknown . "") len.10.sysma2dyk len.7.sysma2dyk len.4.sysma2dyk len.3.sysma2dyk len.8.sysma2dyk len.6.sysma2dyk len.5.sysma2dyk))))) none unknown . "" . .) 4,62
+ (sd :addIntImpl.0. .
+  (func) . ugni1n3 r0whl0t0c0 -1 +0 .
+  (td :`t25.60. . nte1e2 inline -1 -1 +0 +60 . 15,63,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+   (formalparams . .
+    (arglist . . ~10
+     (arglist . .)
+     (empty)
+     (empty) ~10
+     (arglist . .)
+     (empty) ~10
+     (arglist . .)) 1
+    (sd :result.5 .
+     (param) . u . -1 +0 .
+     (td :`t23.61. . h0 nimcall -1 -1 +0 +61 . . addIntImpl.0. . none unknown . "" `t28.17.sysma2dyk) addIntImpl.0. . none unknown . "" . .) 21
+    (sd :x.2 .
+     (param) . u . -1 +1 . `t44.12.sysma2dyk addIntImpl.0. . none unknown . "" . .)) addIntImpl.0. . none unknown . "" .) digitsutils.0. ~5
+  (func s . 5
+   (ht . addIntImpl.0.)
+   (empty)
+   (empty) . 47
+   (pragma . . 2
+    (ident . . inline) 10
+    (ident . . enforceNoRaises))
+   (empty) 2,1
+   (stmts s .
+    (var s . 4
+     (identdefs . .
+      (pragmax . .
+       (sd :tmp.0 .
+        (var . +0 +0) . um0 r0whl0t0c0 -1 +0 .
+        (td :`t16.65. . c3 nimcall -1 -1 +0 +65 . . addIntImpl.0. . none unknown . ""
+         (td :`t20.63. . c3 nimcall -1 -1 +0 +63 . 28,64,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+          (range . .
+           (intlit .
+            (td :`t31.62. . c3 nimcall +8 +8 +0 +62 . 28,64,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+             (intlit s `t31.62. +24) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +0)
+           (intlit . `t31.62. +23)) addIntImpl.0. . none unknown . ""
+          (td :`t31.64. . c3 nimcall +8 +8 +0 +64 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "")) `t2.16.sysma2dyk) addIntImpl.0.
+        (identdefs . .
+         (pragmax . . tmp.0 4
+          (pragma . . 2
+           (ident . . noinit))) 21
+         (at . `t16.65. ~5 array.0.sysma2dyk 1
+          (intlit s `t31.62. +24) 5 char.0.sysma2dyk)
+         (empty)) none unknown . "" . .) 4
+       (pragma . . 2
+        (ident . . noinit))) 21
+      (at . `t16.65. ~5 array.0.sysma2dyk 1
+       (intlit s `t31.62. +24) 5 char.0.sysma2dyk)
+      (empty))) ,1
+    (var s . 4
+     (identdefs . .
+      (sd :num.0 .
+       (var . +0 +0) . u r0whl0t0c0 -1 +0 . `t44.12.sysma2dyk addIntImpl.0.
+       (identdefs . . num.0 4
+        (empty) 6 x.2) none unknown . "" . .) 4
+      (empty) 6 x.2)) ,2
+    (var s . 4
+     (identdefs . .
+      (sd :next.0 .
+       (var . +0 +0) . u r0whl0t0c0 -1 +0 .
+       (td :`t31.70. . c3 nimcall +8 +8 +0 +70 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "") addIntImpl.0.
+       (identdefs . . next.0 5
+        (empty) 15
+        (intlit .
+         (td :`t31.69. . c3 nimcall +8 +8 +0 +69 . 21,66,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+          (intlit s `t31.69. +23) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +23)) none unknown . "" . .) 5
+      (empty) 15
+      (intlit . `t31.69. +23))) ,3
+    (const s . 6
+     (const0 . .
+      (sd :nbatch.0. .
+       (const) . u r0whl0t0c0 -1 +0 .
+       (td :`t31.71. . c3 nimcall +8 +8 +0 +71 . 17,67,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+        (intlit s `t31.71. +100) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") addIntImpl.0.
+       (const0 . . nbatch.0.
+        (empty) 9
+        (intlit . `t31.71. +100)) none unknown . "" . .)
+      (empty) 9
+      (intlit . `t31.71. +100))) ,5
+    (while s . 10
+     (expr sf `t1.34.sysma2dyk 2,136,/home/araq/projects/nim/lib/system/comparisons.nim
+      (empty)
+      (infix s `t1.34.sysma2dyk <=.16.sysma2dyk 3
+       (hstdconv . `t44.12.sysma2dyk
+        (empty)
+        (intlit s `t31.71. +100)) ~4 num.0)) 2,1
+     (stmts s .
+      (let s . 4
+       (identdefs . .
+        (sd :originNum.0 .
+         (let . +0 +0) . u r0whl0t0c0 -1 +0 . `t44.12.sysma2dyk addIntImpl.0.
+         (identdefs . . originNum.0 10
+          (empty) 12 num.0) none unknown . "" . .) 10
+        (empty) 12 num.0)) 4,1
+      (asgn s . ~4 num.0 6
+       (infix s `t44.12.sysma2dyk div.9.sysma2dyk ~4 num.0 4
+        (hstdconv . `t44.12.sysma2dyk
+         (empty)
+         (intlit s `t31.71. +100)))) ,2
+      (let s . 4
+       (identdefs . .
+        (sd :index.0 .
+         (let . +0 +0) . u r0whl0t0c0 -1 +0 . `t33.5.sysma2dyk addIntImpl.0.
+         (identdefs . . index.0 6
+          (empty) 13
+          (conv . `t33.5.sysma2dyk ~5 int16.0.sysma2dyk 28
+           (infix . `t44.12.sysma2dyk 5,248,/home/araq/projects/nim/lib/system/arithmetics.nim
+            (sd :shl.0. .
+             (proc) shl uefgn ofrbcr0s0awhl0t0c0 -1 +0 .
+             (td :`t25.74. . nge2 nimcall -1 -1 +0 +74 . 11,248,/home/araq/projects/nim/lib/system/arithmetics.nim
+              (formalparams . `t44.12.sysma2dyk
+               (arglist . .
+                (arglist . .) . .
+                (arglist . .) 36
+                (pragma . . 7
+                 (kv . . ~5
+                  (ident . . magic) 2
+                  (strlit . `t28.17.sysma2dyk "ShlI")) 17
+                 (ident . . noSideEffect))
+                (arglist . .)) 1
+               (sd :x.4 .
+                (param) . . . -1 +0 . `t44.12.sysma2dyk shl.0. . none unknown . "" . .) 12
+               (sd :y.0 .
+                (param) . . . -1 +1 .
+                (td :`t31.72. . c3 nimcall +8 +8 +0 +72 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "") shl.0. . none unknown . "" . .)) shl.9.sysma2dyk . none unknown . "" `t44.12.sysma2dyk) shl.9.sysma2dyk ~5
+             (proc . . 5
+              (ht `t25.432.sysma2dyk shl.0.)
+              (empty)
+              (empty) . 47
+              (pragma . . 7
+               (kv . . ~5
+                (ident . . magic) 2
+                (strlit . `t28.17.sysma2dyk "ShlI")) 17
+               (ident . . noSideEffect))
+              (bracket . .
+               (empty)
+               (empty))
+              (empty)) none unknown . "" . shl.9.sysma2dyk) ~16
+            (infix . `t44.12.sysma2dyk \2D.14.sysma2dyk ~10 originNum.0 6
+             (infix . `t44.12.sysma2dyk *.9.sysma2dyk ~4 num.0 2
+              (hstdconv . `t44.12.sysma2dyk
+               (empty)
+               (intlit . `t31.71. +100)))) 4
+            (intlit . `t31.72. +1)))) none unknown . "" . .) 6
+        (empty) 13
+        (conv . `t33.5.sysma2dyk ~5 int16.0.sysma2dyk 28
+         (infix . `t44.12.sysma2dyk shl.0. ~16
+          (infix . `t44.12.sysma2dyk \2D.14.sysma2dyk ~10 originNum.0 6
+           (infix . `t44.12.sysma2dyk *.9.sysma2dyk ~4 num.0 2
+            (hstdconv . `t44.12.sysma2dyk
+             (empty)
+             (intlit . `t31.71. +100)))) 4
+          (intlit . `t31.72. +1))))) 10,3
+      (asgn s . ~7
+       (at . `t2.16.sysma2dyk ~3 tmp.0 1
+        (hstdconv . `t20.63.
+         (empty) next.0)) 11
+       (at s `t2.16.sysma2dyk ~9 digits100.0. 7
+        (hstdconv . `t20.10.
+         (empty)
+         (infix s `t33.5.sysma2dyk \2B.7.sysma2dyk ~6 index.0 2
+          (hstdconv . `t33.5.sysma2dyk
+           (empty)
+           (intlit s `t31.19. +1)))))) 14,4
+      (asgn s . ~11
+       (at . `t2.16.sysma2dyk ~3 tmp.0 6
+        (hstdconv . `t20.63.
+         (empty)
+         (infix s `t31.3.sysma2dyk \2D.5.sysma2dyk ~5 next.0 2
+          (intlit s `t31.19. +1)))) 11
+       (at s `t2.16.sysma2dyk ~9 digits100.0. 1
+        (hstdconv . `t20.10.
+         (empty) index.0))) 3,5
+      (call s . 5,33,/home/araq/projects/nim/lib/system/arithmetics.nim
+       (sd :dec.0. .
+        (proc) dec uefgn ofrbcr0s0awhl0t0c0 -1 +0 .
+        (td :`t25.76. . ntge2 nimcall -1 -1 +0 +76 . 37,33,/home/araq/projects/nim/lib/system/arithmetics.nim
+         (formalparams . .
+          (arglist . . ~32
+           (arglist . .)
+           (empty)
+           (empty) ~32
+           (arglist . .)
+           (empty) ~32
+           (arglist . .)) 1
+          (sd :x.5 .
+           (param) . . . -1 +0 .
+           (td :`t23.77. . g nimcall -1 -1 +0 +77 . . dec.0.sysma2dyk . none unknown . "" `t31.70.) dec.0. . none unknown . "" . .) 11
+          (sd :y.1 .
+           (param) . . . -1 +1 .
+           (td :`t31.75. . c3 nimcall +8 +8 +0 +75 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "") dec.0. 7
+           (intlit s `t31.36.sysma2dyk +1) none unknown . "" . .)) dec.0.sysma2dyk . none unknown . "" .) dec.0.sysma2dyk ~5
+        (proc . . 5
+         (ht `t25.322.sysma2dyk dec.0.)
+         (empty)
+         (empty) . 58
+         (pragma . . 7
+          (kv . . ~5
+           (ident . . magic) 2
+           (strlit . `t28.17.sysma2dyk "Dec")) 16
+          (ident . . noSideEffect))
+         (bracket . .
+          (empty) 9,33,/home/araq/projects/nim/lib/system/arithmetics.nim
+          (genericparams . . 1
+           (identdefs . .
+            (ident . . T) 3 Ordinal.0.sysma2dyk
+            (empty)) 13
+           (identdefs . .
+            (ident . . V) 3 SomeInteger.0.sysma2dyk
+            (empty)))) 2,1
+         (stmts s .
+          (comment s .)
+          (empty))) none unknown . "" . dec.0.sysma2dyk) 1 next.0 7
+       (intlit . `t31.75. +2)))) ,14
+    (if s . 3
+     (elif . . 4
+      (infix s `t1.34.sysma2dyk <.17.sysma2dyk ~4 num.0 2
+       (hstdconv . `t44.12.sysma2dyk
+        (empty)
+        (intlit s
+         (td :`t31.78. . c3 nimcall +8 +8 +0 +78 . 11,78,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+          (intlit s `t31.78. +10) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +10))) 9,1
+      (asgn s . ~7
+       (at . `t2.16.sysma2dyk ~3 tmp.0 1
+        (hstdconv . `t20.63.
+         (empty) next.0)) 5
+       (call s `t2.16.sysma2dyk ~3 chr.0.sysma2dyk 10
+        (hstdconv . `t20.815.sysma2dyk
+         (empty)
+         (infix s `t41.9.sysma2dyk \2B.11.sysma2dyk ~6
+          (hstdconv . `t41.9.sysma2dyk
+           (empty)
+           (intlit s
+            (td :`t31.80. . c3 nimcall +8 +8 +0 +80 . 23,79,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+             (intlit s `t31.80. +48) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +48)) 5
+          (conv s `t41.9.sysma2dyk 1 uint8.0.sysma2dyk ~3 num.0)))))) ,2
+     (else . . 2,1
+      (stmts s .
+       (let s . 4
+        (identdefs . .
+         (sd :index.1 .
+          (let . +0 +0) . u r0whl0t0c0 -1 +0 . `t44.12.sysma2dyk addIntImpl.0.
+          (identdefs . . index.1 6
+           (empty) 12
+           (infix . `t44.12.sysma2dyk *.9.sysma2dyk ~4 num.0 2
+            (hstdconv . `t44.12.sysma2dyk
+             (empty)
+             (intlit . `t31.18. +2)))) none unknown . "" . .) 6
+         (empty) 12
+         (infix . `t44.12.sysma2dyk *.9.sysma2dyk ~4 num.0 2
+          (hstdconv . `t44.12.sysma2dyk
+           (empty)
+           (intlit . `t31.18. +2))))) 10,1
+       (asgn s . ~7
+        (at . `t2.16.sysma2dyk ~3 tmp.0 1
+         (hstdconv . `t20.63.
+          (empty) next.0)) 11
+        (at s `t2.16.sysma2dyk ~9 digits100.0. 7
+         (hstdconv . `t20.10.
+          (empty)
+          (infix s `t44.12.sysma2dyk \2B.14.sysma2dyk ~6 index.1 2
+           (hstdconv . `t44.12.sysma2dyk
+            (empty)
+            (intlit s `t31.19. +1)))))) 14,2
+       (asgn s . ~11
+        (at . `t2.16.sysma2dyk ~3 tmp.0 6
+         (hstdconv . `t20.63.
+          (empty)
+          (infix s `t31.3.sysma2dyk \2D.5.sysma2dyk ~5 next.0 2
+           (intlit s `t31.19. +1)))) 11
+        (at s `t2.16.sysma2dyk ~9 digits100.0. 1
+         (hstdconv . `t20.10.
+          (empty) index.1))) ,3
+       (cmd s . dec.0. 4 next.0 55,33,/home/araq/projects/nim/lib/system/arithmetics.nim
+        (intlit s `t31.36.sysma2dyk +1))))) 8,21
+    (call s . ~5,~37
+     (sd :addChars.2. .
+      (func) . ufgni1n3 r0whl0t0c0 -1 +0 .
+      (td :`t25.87. . ntge1e2 inline -1 -1 +0 +87 . 16,48,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+       (formalparams . .
+        (arglist . . ~11
+         (arglist . .)
+         (empty)
+         (empty) ~11
+         (arglist . .)
+         (empty) ~11
+         (arglist . .)) 1
+        (sd :result.8 .
+         (param) . u . -1 +0 . `t23.45. addChars.2. . none unknown . "" . .) 21
+        (sd :x.9 .
+         (param) . u . -1 +1 . `t16.65. addChars.2. . none unknown . "" . .) 27
+        (sd :start.1 .
+         (param) . u . -1 +2 . `t31.3.sysma2dyk addChars.2. . none unknown . "" . .) 39
+        (sd :n.1 .
+         (param) . u . -1 +3 . `t31.3.sysma2dyk addChars.2. . none unknown . "" . .)) addChars.0. . none unknown . "" .) addChars.0. ~5
+      (func . . 5
+       (ht `t25.44. addChars.2.)
+       (empty)
+       (empty) . 63
+       (pragma . . 2
+        (ident . . inline) 10
+        (ident . . enforceNoRaises))
+       (bracket . .
+        (empty) 13,48,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+        (genericparams . . 1
+         (identdefs . .
+          (ident . . T)
+          (empty)
+          (empty)))) 2,1
+       (stmts s .
+        (let s . 4
+         (identdefs . .
+          (sd :old.1 .
+           (let . +0 +0) . u r0whl0t0c0 -1 +0 . `t31.3.sysma2dyk addChars.2.
+           (identdefs . . old.1 4
+            (empty) 12
+            (call . `t31.3.sysma2dyk 1 len.4.sysma2dyk ~6
+             (hderef . `t28.17.sysma2dyk result.8))) none unknown . "" . .) 4
+          (empty) 12
+          (call . `t31.3.sysma2dyk 1 len.4.sysma2dyk ~6
+           (hderef . `t28.17.sysma2dyk result.8)))) 6,1
+        (call s . 1 setLen.1.sysma2dyk ~6
+         (hderef . `t28.17.sysma2dyk result.8) 12
+         (hstdconv . `t20.744.sysma2dyk
+          (empty)
+          (infix s `t31.3.sysma2dyk \2B.5.sysma2dyk ~4 old.1 2 n.1))) ,2
+        (template s . 9
+         (ht .
+          (sd :impl.1. .
+           (template) . ua1 . -1 +0 .
+           (td :`t25.88. . . nimcall -1 -1 +0 +88 . 16,51,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+            (formalparams . .
+             (arglist . .)) impl.1. . none unknown . "" .) addChars.2. ~9
+           (template s . 9
+            (ht . impl.1.)
+            (empty)
+            (empty) .
+            (empty)
+            (empty) 2,1
+            (stmts . . 4
+             (for . .
+              (sd :i.1 .
+               (forvar . +0 +0) . us1g0 . -1 +0 . . impl.1. . none unknown . "" . .) 6
+              (infix . .
+               (opensymchoice . `t0.49. \2E.<.0.sysma2dyk \2E.<.2.sysma2dyk \2E.<.3.sysma2dyk \2E.<.1.sysma2dyk \2E.<.4.sysma2dyk) ~1
+               (intlit . . +0) 3
+               (ident . . n)) 12
+              (stmts . . 16
+               (call . . \5B\5D=.0.sysma2dyk ~16
+                (ident . . result) ~5
+                (infix . .
+                 (opensymchoice . `t0.50. \2B.16.sysma2dyk \2B.17.sysma2dyk \2B.18.sysma2dyk \2B.5.sysma2dyk \2B.8.sysma2dyk \2B.13.sysma2dyk \2B.14.sysma2dyk \2B.15.sysma2dyk \2B.1.sysma2dyk \2B.7.sysma2dyk \2B.9.sysma2dyk \2B.4.sysma2dyk \2B.2.sysma2dyk \2B.6.sysma2dyk \2B.11.sysma2dyk \2B.12.sysma2dyk \2B.0.sysma2dyk \2B.10.sysma2dyk \2B.19.sysma2dyk \2B.3.sysma2dyk) ~4
+                 (ht . old.1) 2 i.1) 3
+                (call . . \5B\5D.0.sysma2dyk ~1
+                 (ident . . x) 7
+                 (infix . .
+                  (opensymchoice . `t0.51. \2B.16.sysma2dyk \2B.17.sysma2dyk \2B.18.sysma2dyk \2B.5.sysma2dyk \2B.8.sysma2dyk \2B.13.sysma2dyk \2B.14.sysma2dyk \2B.15.sysma2dyk \2B.1.sysma2dyk \2B.7.sysma2dyk \2B.9.sysma2dyk \2B.4.sysma2dyk \2B.2.sysma2dyk \2B.6.sysma2dyk \2B.11.sysma2dyk \2B.12.sysma2dyk \2B.0.sysma2dyk \2B.10.sysma2dyk \2B.19.sysma2dyk \2B.3.sysma2dyk) ~6
+                  (ident . . start) 2 i.1))))))) none unknown . "" . .))
+         (empty)
+         (empty) .
+         (empty)
+         (empty) 2,1
+         (stmts . . 4
+          (for . . i.1 6
+           (infix . .
+            (opensymchoice . `t0.49. \2E.<.0.sysma2dyk \2E.<.2.sysma2dyk \2E.<.3.sysma2dyk \2E.<.1.sysma2dyk \2E.<.4.sysma2dyk) ~1
+            (intlit . . +0) 3
+            (ident . . n)) 12
+           (stmts . . 16
+            (call . . \5B\5D=.0.sysma2dyk ~16
+             (ident . . result) ~5
+             (infix . .
+              (opensymchoice . `t0.50. \2B.16.sysma2dyk \2B.17.sysma2dyk \2B.18.sysma2dyk \2B.5.sysma2dyk \2B.8.sysma2dyk \2B.13.sysma2dyk \2B.14.sysma2dyk \2B.15.sysma2dyk \2B.1.sysma2dyk \2B.7.sysma2dyk \2B.9.sysma2dyk \2B.4.sysma2dyk \2B.2.sysma2dyk \2B.6.sysma2dyk \2B.11.sysma2dyk \2B.12.sysma2dyk \2B.0.sysma2dyk \2B.10.sysma2dyk \2B.19.sysma2dyk \2B.3.sysma2dyk) ~4
+              (ht . old.1) 2 i.1) 3
+             (call . . \5B\5D.0.sysma2dyk ~1
+              (ident . . x) 7
+              (infix . .
+               (opensymchoice . `t0.51. \2B.16.sysma2dyk \2B.17.sysma2dyk \2B.18.sysma2dyk \2B.5.sysma2dyk \2B.8.sysma2dyk \2B.13.sysma2dyk \2B.14.sysma2dyk \2B.15.sysma2dyk \2B.1.sysma2dyk \2B.7.sysma2dyk \2B.9.sysma2dyk \2B.4.sysma2dyk \2B.2.sysma2dyk \2B.6.sysma2dyk \2B.11.sysma2dyk \2B.12.sysma2dyk \2B.0.sysma2dyk \2B.10.sysma2dyk \2B.19.sysma2dyk \2B.3.sysma2dyk) ~6
+               (ident . . start) 2 i.1))))))) ,4
+        (when sl . 5
+         (elif . . nimvm.0.sysma2dyk 7
+          (for s . ~6,~1
+           (sd :i`gensym1.0 .
+            (forvar . +0 +0) . uw0 . -1 +0 . `t31.2234.sysma2dyk addChars.2. . none unknown . "" . .) ,~1
+           (infix s `t31.2234.sysma2dyk \2E.<.5.sysma2dyk ~1
+            (intlit .
+             (td :`t31.90. . c3 nimcall +8 +8 +0 +90 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +0) 3 n.1) 22,~1
+           (asgn s .
+            (at . `t2.16.sysma2dyk ~16
+             (hderef . `t28.17.sysma2dyk result.8) ~5
+             (infix s `t31.3.sysma2dyk \2B.5.sysma2dyk ~4 old.1 2 i`gensym1.0)) 3
+            (at s `t2.16.sysma2dyk ~1 x.9 7
+             (hstdconv . `t20.63.
+              (empty)
+              (infix s `t31.3.sysma2dyk \2B.5.sysma2dyk ~6 start.1 2 i`gensym1.0)))))) ,1
+         (else . . 4,3
+          (pragmablock s .
+           (pragma . . 2
+            (ident . . noSideEffect)) 2,1
+           (cmd s . copyMem.0.sysma2dyk 14
+            (hstdconv . `t26.19.sysma2dyk
+             (empty)
+             (addr s
+              (td :`t21.94. . c3 nimcall -1 -1 +0 +94 . . addChars.2. . none unknown . "" `t2.16.sysma2dyk)
+              (at s `t2.16.sysma2dyk ~6
+               (hderef s `t28.17.sysma2dyk result.8) 1 old.1))) 27
+            (hstdconv . `t26.19.sysma2dyk
+             (empty)
+             (addr s
+              (td :`t21.97. . c3 nimcall -1 -1 +0 +97 . . addChars.2. . none unknown . "" `t2.16.sysma2dyk)
+              (at s `t2.16.sysma2dyk ~1 x.9 1
+               (hstdconv s `t20.63.
+                (empty) start.1)))) 47
+            (hstdconv . `t20.744.sysma2dyk
+             (empty) n.1))))))) none unknown . "" . addChars.0.) 1 result.5 9 tmp.0 14 next.0 28
+     (infix s `t31.3.sysma2dyk \2D.5.sysma2dyk ~5
+      (call s `t31.3.sysma2dyk 5,695,/home/araq/projects/nim/lib/system.nim
+       (sd :len.0. .
+        (func) lenarray uefgn ofrbcr0s0awhtl0t0c0 -1 +0 .
+        (td :`t25.67. . ntge2 nimcall -1 -1 +0 +67 . 9,695,/home/araq/projects/nim/lib/system.nim
+         (formalparams . `t31.3.sysma2dyk
+          (arglist . . ~4
+           (arglist . .)
+           (empty)
+           (empty) ~4
+           (arglist . .)
+           (empty) ~4
+           (arglist . .)) 1
+          (sd :x.3 .
+           (param) . . . -1 +0 . `t16.65. len.0. . none unknown . "" . .)) len.6.sysma2dyk . none unknown . "" `t31.3.sysma2dyk) len.6.sysma2dyk ~5
+        (func . . 5
+         (ht `t25.802.sysma2dyk len.0.)
+         (empty)
+         (empty) . 38
+         (pragma . . 7
+          (kv . . ~5
+           (ident . . magic) 2
+           (strlit . `t28.17.sysma2dyk "LengthArray")))
+         (bracket . .
+          (empty)
+          (empty)) 2,1
+         (stmts s .
+          (comment s .)
+          (empty))
+         (sd :result.6 .
+          (result) . u . -1 +0 . `t31.3.sysma2dyk len.0. . none unknown . "" . .)) none unknown . "" . len.6.sysma2dyk) ~3 tmp.0) 2 next.0)))) none unknown . "" . .) 4,87
+ (sd :addInt.0. x
+  (func) . uegnn3 r0whl0t0c0 -1 +0 .
+  (td :`t25.133. . nte2 nimcall -1 -1 +0 +133 . 12,88,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+   (formalparams . .
+    (arglist . . ~7
+     (arglist . .)
+     (empty)
+     (empty) ~7
+     (arglist . .)
+     (empty) ~7
+     (arglist . .)) 1
+    (sd :result.14 .
+     (param) . u . -1 +0 .
+     (td :`t23.134. . h0 nimcall -1 -1 +0 +134 . . addInt.0. . none unknown . "" `t28.17.sysma2dyk) addInt.0. . none unknown . "" . .) 21
+    (sd :x.12 .
+     (param) . u . -1 +1 . `t44.12.sysma2dyk addInt.0. . none unknown . "" . .)) addInt.0. . none unknown . "" .) digitsutils.0. ~5
+  (func s . 5
+   (ht . addInt.0.)
+   (empty)
+   (empty) . 44
+   (pragma . . 2
+    (ident . . enforceNoRaises))
+   (empty) 2,1
+   (when sl . 5
+    (elif . .
+     (ident . . nimvm) 17
+     (call s . ~10 addIntImpl.0. 1 result.14 9 x.12)) ,1
+    (else . . 34,1
+     (call s . ~10 addIntImpl.0. 1 result.14 9 x.12)))) none unknown . "" . .) 4,94
+ (sd :addInt.1. x
+  (proc) . uegi1n3 r0whl0t0c0 -1 +0 .
+  (td :`t25.135. . nte2 nimcall -1 -1 +0 +135 . 12,95,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+   (formalparams . .
+    (arglist . . ~7
+     (arglist . .)
+     (empty)
+     (empty) ~7
+     (arglist . .)
+     (empty) ~7
+     (arglist . .)) 1
+    (sd :result.15 .
+     (param) . u . -1 +0 .
+     (td :`t23.136. . h0 nimcall -1 -1 +0 +136 . . addInt.1. . none unknown . "" `t28.17.sysma2dyk) addInt.1. . none unknown . "" . .) 21
+    (sd :x.13 .
+     (param) . u . -1 +1 . `t35.7.sysma2dyk addInt.1. . none unknown . "" . .)) addInt.1. . none unknown . "" .) digitsutils.0. ~5
+  (proc s . 5
+   (ht . addInt.1.)
+   (empty)
+   (empty) . 43
+   (pragma . . 2
+    (ident . . enforceNoRaises))
+   (empty) 2,1
+   (stmts s .
+    (comment sh .)
+    (empty) ,5
+    (template s . 9
+     (ht .
+      (sd :impl.2. .
+       (template) . ua1 . -1 +0 .
+       (td :`t25.137. . . nimcall -1 -1 +0 +137 . 16,101,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+        (formalparams . .
+         (arglist . .)) impl.2. . none unknown . "" .) addInt.1. ~9
+       (template s . 9
+        (ht . impl.2.)
+        (empty)
+        (empty) .
+        (empty)
+        (empty) 2,1
+        (stmts . .
+         (var . . 4
+          (identdefs . .
+           (sd :num.1 .
+            (var . +0 +0) . us1g0 . -1 +0 . . impl.2. . none unknown . "" . .) 5
+           (ht . uint64.0.sysma2dyk) ~4,1
+           (empty))) ,1
+         (if . . 3
+          (elif . . 2
+           (infix . .
+            (opensymchoice d3 . <.16.sysma2dyk <.4.sysma2dyk <.3.sysma2dyk <.11.sysma2dyk <.17.sysma2dyk <.12.sysma2dyk <.7.sysma2dyk <.8.sysma2dyk <.0.sysma2dyk <.14.sysma2dyk <.6.sysma2dyk <.5.sysma2dyk <.19.sysma2dyk <.18.sysma2dyk <.2.sysma2dyk <.15.sysma2dyk <.10.sysma2dyk <.9.sysma2dyk <.1.sysma2dyk <.13.sysma2dyk) ~2
+            (ident . . x) 2
+            (intlit . . +0)) ~1,1
+           (stmts . .
+            (if . . 3
+             (elif . . 2
+              (infix . .
+               (opensymchoice d3 . ==.0.sysma2dyk ==.14.sysma2dyk ==.13.sysma2dyk ==.3.sysma2dyk ==.5.sysma2dyk ==.20.sysma2dyk ==.1.sysma2dyk ==.15.sysma2dyk ==.19.sysma2dyk ==.10.sysma2dyk ==.18.sysma2dyk ==.2.sysma2dyk ==.9.sysma2dyk ==.17.sysma2dyk ==.4.sysma2dyk ==.16.sysma2dyk ==.6.sysma2dyk ==.8.sysma2dyk ==.21.sysma2dyk ==.12.sysma2dyk ==.23.sysma2dyk ==.22.sysma2dyk ==.7.sysma2dyk ==.11.sysma2dyk) ~2
+               (ident . . x) 6
+               (call . . ~3
+                (opensymchoice d3 . low.3.sysma2dyk low.4.sysma2dyk low.6.sysma2dyk low.0.sysma2dyk low.8.sysma2dyk low.5.sysma2dyk low.1.sysma2dyk low.2.sysma2dyk) 1
+                (ht . int64.0.sysma2dyk))) ~1,1
+              (stmts . . 4
+               (asgn . . ~4 num.1 2
+                (cast . . 5
+                 (ht . uint64.0.sysma2dyk) 13
+                 (ident . . x))))) ,2
+             (else . . 2,1
+              (stmts . . 4
+               (asgn . . ~4 num.1 8
+                (call . . ~6
+                 (ht . uint64.0.sysma2dyk) 1
+                 (prefix . .
+                  (opensymchoice d3 . \2D.1.sysma2dyk \2D.19.sysma2dyk \2D.6.sysma2dyk \2D.0.sysma2dyk \2D.14.sysma2dyk \2D.2.sysma2dyk \2D.10.sysma2dyk \2D.17.sysma2dyk \2D.15.sysma2dyk \2D.13.sysma2dyk \2D.4.sysma2dyk \2D.9.sysma2dyk \2D.11.sysma2dyk \2D.5.sysma2dyk \2D.3.sysma2dyk \2D.20.sysma2dyk \2D.7.sysma2dyk \2D.16.sysma2dyk \2D.12.sysma2dyk \2D.18.sysma2dyk \2D.8.sysma2dyk) 1
+                  (ident . . x))))))) 6,4
+            (cmd . .
+             (dot . . ~6
+              (ident . . result) 1
+              (opensymchoice .
+               (td :`t0.146. . . nimcall -1 -1 +0 +146 . . impl.2. . none unknown . "") add.3.sysma2dyk add.0.sysma2dyk add.2.sysma2dyk add.1.sysma2dyk)) 5
+             (charlit . . '-')))) ,6
+          (else . . 2,1
+           (stmts . . 4
+            (asgn . . ~4 num.1 8
+             (call . . ~6
+              (ht . uint64.0.sysma2dyk) 1
+              (ident . . x)))))) 6,9
+         (call . . ~6
+          (opensymchoice d3 . addInt.0. addInt.1.) 1
+          (ident . . result) 9 num.1))) none unknown . "" . .))
+     (empty)
+     (empty) .
+     (empty)
+     (empty) 2,1
+     (stmts . .
+      (var . . 4
+       (identdefs . . num.1 5
+        (ht . uint64.0.sysma2dyk) ~4,1
+        (empty))) ,1
+      (if . . 3
+       (elif . . 2
+        (infix . .
+         (opensymchoice d3 . <.16.sysma2dyk <.4.sysma2dyk <.3.sysma2dyk <.11.sysma2dyk <.17.sysma2dyk <.12.sysma2dyk <.7.sysma2dyk <.8.sysma2dyk <.0.sysma2dyk <.14.sysma2dyk <.6.sysma2dyk <.5.sysma2dyk <.19.sysma2dyk <.18.sysma2dyk <.2.sysma2dyk <.15.sysma2dyk <.10.sysma2dyk <.9.sysma2dyk <.1.sysma2dyk <.13.sysma2dyk) ~2
+         (ident . . x) 2
+         (intlit . . +0)) ~1,1
+        (stmts . .
+         (if . . 3
+          (elif . . 2
+           (infix . .
+            (opensymchoice d3 . ==.0.sysma2dyk ==.14.sysma2dyk ==.13.sysma2dyk ==.3.sysma2dyk ==.5.sysma2dyk ==.20.sysma2dyk ==.1.sysma2dyk ==.15.sysma2dyk ==.19.sysma2dyk ==.10.sysma2dyk ==.18.sysma2dyk ==.2.sysma2dyk ==.9.sysma2dyk ==.17.sysma2dyk ==.4.sysma2dyk ==.16.sysma2dyk ==.6.sysma2dyk ==.8.sysma2dyk ==.21.sysma2dyk ==.12.sysma2dyk ==.23.sysma2dyk ==.22.sysma2dyk ==.7.sysma2dyk ==.11.sysma2dyk) ~2
+            (ident . . x) 6
+            (call . . ~3
+             (opensymchoice d3 . low.3.sysma2dyk low.4.sysma2dyk low.6.sysma2dyk low.0.sysma2dyk low.8.sysma2dyk low.5.sysma2dyk low.1.sysma2dyk low.2.sysma2dyk) 1
+             (ht . int64.0.sysma2dyk))) ~1,1
+           (stmts . . 4
+            (asgn . . ~4 num.1 2
+             (cast . . 5
+              (ht . uint64.0.sysma2dyk) 13
+              (ident . . x))))) ,2
+          (else . . 2,1
+           (stmts . . 4
+            (asgn . . ~4 num.1 8
+             (call . . ~6
+              (ht . uint64.0.sysma2dyk) 1
+              (prefix . .
+               (opensymchoice d3 . \2D.1.sysma2dyk \2D.19.sysma2dyk \2D.6.sysma2dyk \2D.0.sysma2dyk \2D.14.sysma2dyk \2D.2.sysma2dyk \2D.10.sysma2dyk \2D.17.sysma2dyk \2D.15.sysma2dyk \2D.13.sysma2dyk \2D.4.sysma2dyk \2D.9.sysma2dyk \2D.11.sysma2dyk \2D.5.sysma2dyk \2D.3.sysma2dyk \2D.20.sysma2dyk \2D.7.sysma2dyk \2D.16.sysma2dyk \2D.12.sysma2dyk \2D.18.sysma2dyk \2D.8.sysma2dyk) 1
+               (ident . . x))))))) 6,4
+         (cmd . .
+          (dot . . ~6
+           (ident . . result) 1
+           (opensymchoice . `t0.146. add.3.sysma2dyk add.0.sysma2dyk add.2.sysma2dyk add.1.sysma2dyk)) 5
+          (charlit . . '-')))) ,6
+       (else . . 2,1
+        (stmts . . 4
+         (asgn . . ~4 num.1 8
+          (call . . ~6
+           (ht . uint64.0.sysma2dyk) 1
+           (ident . . x)))))) 6,9
+      (call . . ~6
+       (opensymchoice d3 . addInt.0. addInt.1.) 1
+       (ident . . result) 9 num.1))) ,16
+    (when sl . 5
+     (elif . .
+      (ident . . nimvm) 7
+      (stmts sf . ~10,~10
+       (var s . 4
+        (identdefs . .
+         (sd :num`gensym2.0 .
+          (var . +0 +0) . uw0 r0whl0t0c0 -1 +0 . `t44.12.sysma2dyk addInt.1.
+          (identdefs . . num`gensym2.0 5 uint64.0.sysma2dyk
+           (empty)) none unknown . "" . .) 5 uint64.0.sysma2dyk
+         (empty))) ~10,~9
+       (if s . 3
+        (elif . . 2
+         (infix s `t1.34.sysma2dyk <.12.sysma2dyk ~2 x.13 2
+          (hstdconv . `t35.7.sysma2dyk
+           (empty)
+           (intlit s
+            (td :`t31.89. . c3 nimcall +8 +8 +0 +89 . 13,52,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+             (intlit s `t31.89. +0) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +0))) ~1,1
+         (stmts s .
+          (if s . 3
+           (elif . . 2
+            (infix s `t1.34.sysma2dyk ==.13.sysma2dyk ~2 x.13 6
+             (call s `t35.7.sysma2dyk 5,295,/home/araq/projects/nim/lib/system.nim
+              (sd :low.0. .
+               (proc) low uefgn ofrbcr0s0awhtl0t0c0 -1 +0 .
+               (td :`t25.150. . ngme2 nimcall -1 -1 +0 +150 . 32,295,/home/araq/projects/nim/lib/system.nim
+                (formalparams . `t12.218.sysma2dyk
+                 (arglist . .
+                  (arglist . .) . .
+                  (arglist . .) 20
+                  (pragma . . 7
+                   (kv . . ~5
+                    (ident . . magic) 2
+                    (strlit . `t28.17.sysma2dyk "Low")) 16
+                   (ident . . noSideEffect))
+                  (arglist . .)) 1
+                 (sd :x.14 .
+                  (param) . . . -1 +0 .
+                  (td :`t8.149. . c3 nimcall -1 -1 +0 +149 . . addInt.1. . none unknown . "" `t35.7.sysma2dyk) low.0. . none unknown . "" . .)) low.1.sysma2dyk . none unknown . "" `t35.7.sysma2dyk) low.1.sysma2dyk ~5
+               (proc . . 5
+                (ht `t25.219.sysma2dyk low.0.)
+                (empty)
+                (empty) . 52
+                (pragma . . 7
+                 (kv . . ~5
+                  (ident . . magic) 2
+                  (strlit . `t28.17.sysma2dyk "Low")) 16
+                 (ident . . noSideEffect))
+                (bracket . .
+                 (empty) 9,295,/home/araq/projects/nim/lib/system.nim
+                 (genericparams . . 1
+                  (identdefs . .
+                   (ident . . T) 15
+                   (infix . `t57.217.sysma2dyk
+                    (ident . . |) ~5
+                    (infix . `t57.216.sysma2dyk
+                     (ident . . |) ~7 Ordinal.0.sysma2dyk 1
+                     (enumty . `t51.214.sysma2dyk)) 1 range.0.sysma2dyk)
+                   (empty))))
+                (empty)) none unknown . "" . low.1.sysma2dyk) 1
+              (ht `t8.149. int64.0.sysma2dyk))) 3,1
+            (asgn s . ~4 num`gensym2.0 2
+             (cast s `t44.12.sysma2dyk 5 uint64.0.sysma2dyk 13 x.13))) ,2
+           (else . . 6,1
+            (asgn s . ~4 num`gensym2.0 8
+             (conv s `t44.12.sysma2dyk ~6 uint64.0.sysma2dyk 1
+              (prefix s `t35.7.sysma2dyk \2D.4.sysma2dyk 1 x.13))))) 6,4
+          (call s . 1 add.0.sysma2dyk ~6
+           (hderef . `t28.17.sysma2dyk result.15) 5
+           (charlit s `t2.16.sysma2dyk '-')))) ,6
+        (else . . 6,1
+         (asgn s . ~4 num`gensym2.0 8
+          (conv s `t44.12.sysma2dyk ~6 uint64.0.sysma2dyk 1 x.13)))) 4
+       (call s . ~14,~1 addInt.0. ~7,~1 result.15 1,~1 num`gensym2.0))) ,1
+     (else . . 8,3
+      (stmts sf . ~6,~14
+       (var s . 4
+        (identdefs . .
+         (sd :num`gensym3.0 .
+          (var . +0 +0) . uw0 r0whl0t0c0 -1 +0 . `t44.12.sysma2dyk addInt.1.
+          (identdefs . . num`gensym3.0 5 uint64.0.sysma2dyk
+           (empty)) none unknown . "" . .) 5 uint64.0.sysma2dyk
+         (empty))) ~6,~13
+       (if s . 3
+        (elif . . 2
+         (infix s `t1.34.sysma2dyk <.12.sysma2dyk ~2 x.13 2
+          (hstdconv . `t35.7.sysma2dyk
+           (empty)
+           (intlit s `t31.89. +0))) ~1,1
+         (stmts s .
+          (if s . 3
+           (elif . . 2
+            (infix s `t1.34.sysma2dyk ==.13.sysma2dyk ~2 x.13 6
+             (call s `t35.7.sysma2dyk ~3 low.0. 1
+              (ht
+               (td :`t8.151. . c3 nimcall -1 -1 +0 +151 . . addInt.1. . none unknown . "" `t35.7.sysma2dyk) int64.0.sysma2dyk))) 3,1
+            (asgn s . ~4 num`gensym3.0 2
+             (cast s `t44.12.sysma2dyk 5 uint64.0.sysma2dyk 13 x.13))) ,2
+           (else . . 6,1
+            (asgn s . ~4 num`gensym3.0 8
+             (conv s `t44.12.sysma2dyk ~6 uint64.0.sysma2dyk 1
+              (prefix s `t35.7.sysma2dyk \2D.4.sysma2dyk 1 x.13))))) 6,4
+          (call s . 1 add.0.sysma2dyk ~6
+           (hderef . `t28.17.sysma2dyk result.15) 5
+           (charlit s `t2.16.sysma2dyk '-')))) ,6
+        (else . . 6,1
+         (asgn s . ~4 num`gensym3.0 8
+          (conv s `t44.12.sysma2dyk ~6 uint64.0.sysma2dyk 1 x.13)))) 4
+       (call s . ~10,~5 addInt.0. ~3,~5 result.15 5,~5 num`gensym3.0)))))) none unknown . "" . .) 4,117
+ (sd :addInt.2. x
+  (proc) . egi1n3 r0whl0t0c0 -1 +0 .
+  (td :`t25.153. . nte1e2 inline -1 -1 +0 +153 . 12,118,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+   (formalparams . .
+    (arglist . . ~7
+     (arglist . .)
+     (empty)
+     (empty) ~7
+     (arglist . .)
+     (empty) ~7
+     (arglist . .)) 1
+    (sd :result.16 .
+     (param) . u . -1 +0 .
+     (td :`t23.154. . h0 nimcall -1 -1 +0 +154 . . addInt.2. . none unknown . "" `t28.17.sysma2dyk) addInt.2. . none unknown . "" . .) 21
+    (sd :x.16 .
+     (param) . u . -1 +1 . `t31.3.sysma2dyk addInt.2. . none unknown . "" . .)) addInt.2. . none unknown . "" .) digitsutils.0. ~5
+  (proc s . 5
+   (ht . addInt.2.)
+   (empty)
+   (empty) . 41
+   (pragma . . 2
+    (ident . . inline) 10
+    (ident . . enforceNoRaises))
+   (empty) 8,1
+   (call s . ~6 addInt.1. 1 result.16 14
+    (conv s `t35.7.sysma2dyk ~5 int64.0.sysma2dyk 1 x.16))) none unknown . "" . .) ~1,120
+ (pragma s . 2
+  (ident . . pop)) addChars.2. 24,37
+ (sd :=wasMoved.0. .
+  (proc) . fng1n3 . -1 +0 .
+  (td :`t25.21. . n nimcall -1 -1 +0 +21 . 25,38,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.0 .
+     (param) . . . -1 +0 .
+     (td :`t23.20. . . nimcall -1 -1 +0 +20 . . digitsutils.0. . none unknown . "" `t20.10.) =wasMoved.0. . none unknown . "" . .)) digitsutils.0. . none unknown . "" .) digitsutils.0.
+  (proc . . =wasMoved.0.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .
+    (call . .
+     (sd :wasMoved.0. .
+      (proc) wasmoved n3 . -1 +0 . . . . none unknown . "" . .)
+     (hderef . `t20.10. dest.0)))) none unknown . "" . .) 24,37
+ (sd :=destroy.0. .
+  (proc) . fg1n3 q -1 +0 .
+  (td :`t25.23. . . nimcall -1 -1 +0 +23 . 25,38,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.1 .
+     (param) . . . -1 +0 .
+     (td :`t23.22. . . nimcall -1 -1 +0 +22 . . digitsutils.0. . none unknown . "" `t20.10.) =destroy.0. . none unknown . "" . .)) digitsutils.0. . none unknown . "" .) digitsutils.0.
+  (proc . . =destroy.0.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .)) none unknown . "" . .) 24,37
+ (sd :=copy.0. .
+  (proc) . fg1n3 . -1 +0 .
+  (td :`t25.25. . . nimcall -1 -1 +0 +25 . 25,38,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.2 .
+     (param) . . . -1 +0 .
+     (td :`t23.24. . . nimcall -1 -1 +0 +24 . . digitsutils.0. . none unknown . "" `t20.10.) =copy.0. . none unknown . "" . .)
+    (sd :src.2 .
+     (param) . . . -1 +1 . `t20.10. =copy.0. . none unknown . "" . .)) digitsutils.0. . none unknown . "" .) digitsutils.0.
+  (proc . . =copy.0.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .
+    (asgn . .
+     (hderef . `t20.10. dest.2) src.2))) none unknown . "" . .) 24,37
+ (sd :=dup.0. .
+  (proc) . fg1n3 . -1 +0 .
+  (td :`t25.26. . . nimcall -1 -1 +0 +26 . 25,38,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :src.3 .
+     (param) . . . -1 +0 . `t20.10. =dup.0. . none unknown . "" . .)) digitsutils.0. . none unknown . "" `t20.10.) digitsutils.0.
+  (proc . . =dup.0.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .
+    (asgn . .
+     (sd :result.0 .
+      (result) . . . -1 +0 . `t20.10. =dup.0. . none unknown . "" . .) src.3)) result.0) none unknown . "" . .) 24,37
+ (sd :=sink.0. .
+  (proc) . fg1n3 . -1 +0 .
+  (td :`t25.28. . . nimcall -1 -1 +0 +28 . 25,38,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.3 .
+     (param) . . . -1 +0 .
+     (td :`t23.27. . . nimcall -1 -1 +0 +27 . . digitsutils.0. . none unknown . "" `t20.10.) =sink.0. . none unknown . "" . .)
+    (sd :src.4 .
+     (param) . . . -1 +1 . `t20.10. =sink.0. . none unknown . "" . .)) digitsutils.0. . none unknown . "" .) digitsutils.0.
+  (proc . . =sink.0.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .
+    (asgn . .
+     (hderef . `t20.10. dest.3) src.4))) none unknown . "" . .) 24,37
+ (sd :=trace.0. .
+  (proc) . fg1n3 . -1 +0 .
+  (td :`t25.30. . . nimcall -1 -1 +0 +30 . 25,38,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.4 .
+     (param) . . . -1 +0 .
+     (td :`t23.29. . . nimcall -1 -1 +0 +29 . . digitsutils.0. . none unknown . "" `t20.10.) =trace.0. . none unknown . "" . .)
+    (sd :env.0 .
+     (param) . . . -1 +1 . `t26.19.sysma2dyk =trace.0. . none unknown . "" . .)) digitsutils.0. . none unknown . "" .) digitsutils.0.
+  (proc . . =trace.0.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .)) none unknown . "" . .) 18,42
+ (sd :=wasMoved.1. .
+  (proc) . fng1n3 . -1 +0 .
+  (td :`t25.33. . n nimcall -1 -1 +0 +33 . 19,43,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.5 .
+     (param) . . . -1 +0 .
+     (td :`t23.32. . . nimcall -1 -1 +0 +32 . . digitsutils.0. . none unknown . "" `t20.4.) =wasMoved.1. . none unknown . "" . .)) digitsutils.0. . none unknown . "" .) digitsutils.0.
+  (proc . . =wasMoved.1.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .
+    (call . .
+     (sd :wasMoved.1. .
+      (proc) wasmoved n3 . -1 +0 . . . . none unknown . "" . .)
+     (hderef . `t20.4. dest.5)))) none unknown . "" . .) 18,42
+ (sd :=destroy.1. .
+  (proc) . fg1n3 q -1 +0 .
+  (td :`t25.35. . . nimcall -1 -1 +0 +35 . 19,43,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.6 .
+     (param) . . . -1 +0 .
+     (td :`t23.34. . . nimcall -1 -1 +0 +34 . . digitsutils.0. . none unknown . "" `t20.4.) =destroy.1. . none unknown . "" . .)) digitsutils.0. . none unknown . "" .) digitsutils.0.
+  (proc . . =destroy.1.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .)) none unknown . "" . .) 18,42
+ (sd :=copy.1. .
+  (proc) . fg1n3 . -1 +0 .
+  (td :`t25.37. . . nimcall -1 -1 +0 +37 . 19,43,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.7 .
+     (param) . . . -1 +0 .
+     (td :`t23.36. . . nimcall -1 -1 +0 +36 . . digitsutils.0. . none unknown . "" `t20.4.) =copy.1. . none unknown . "" . .)
+    (sd :src.7 .
+     (param) . . . -1 +1 . `t20.4. =copy.1. . none unknown . "" . .)) digitsutils.0. . none unknown . "" .) digitsutils.0.
+  (proc . . =copy.1.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .
+    (asgn . .
+     (hderef . `t20.4. dest.7) src.7))) none unknown . "" . .) 18,42
+ (sd :=dup.1. .
+  (proc) . fg1n3 . -1 +0 .
+  (td :`t25.38. . . nimcall -1 -1 +0 +38 . 19,43,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :src.8 .
+     (param) . . . -1 +0 . `t20.4. =dup.1. . none unknown . "" . .)) digitsutils.0. . none unknown . "" `t20.4.) digitsutils.0.
+  (proc . . =dup.1.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .
+    (asgn . .
+     (sd :result.2 .
+      (result) . . . -1 +0 . `t20.4. =dup.1. . none unknown . "" . .) src.8)) result.2) none unknown . "" . .) 18,42
+ (sd :=sink.1. .
+  (proc) . fg1n3 . -1 +0 .
+  (td :`t25.40. . . nimcall -1 -1 +0 +40 . 19,43,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.8 .
+     (param) . . . -1 +0 .
+     (td :`t23.39. . . nimcall -1 -1 +0 +39 . . digitsutils.0. . none unknown . "" `t20.4.) =sink.1. . none unknown . "" . .)
+    (sd :src.9 .
+     (param) . . . -1 +1 . `t20.4. =sink.1. . none unknown . "" . .)) digitsutils.0. . none unknown . "" .) digitsutils.0.
+  (proc . . =sink.1.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .
+    (asgn . .
+     (hderef . `t20.4. dest.8) src.9))) none unknown . "" . .) 18,42
+ (sd :=trace.1. .
+  (proc) . fg1n3 . -1 +0 .
+  (td :`t25.42. . . nimcall -1 -1 +0 +42 . 19,43,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.9 .
+     (param) . . . -1 +0 .
+     (td :`t23.41. . . nimcall -1 -1 +0 +41 . . digitsutils.0. . none unknown . "" `t20.4.) =trace.1. . none unknown . "" . .)
+    (sd :env.1 .
+     (param) . . . -1 +1 . `t26.19.sysma2dyk =trace.1. . none unknown . "" . .)) digitsutils.0. . none unknown . "" .) digitsutils.0.
+  (proc . . =trace.1.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .)) none unknown . "" . .) 5,714,/home/araq/projects/nim/lib/system.nim
+ (sd :ord.0. .
+  (func) ord uefgn ofrbcr0s0awhtl0t0c0 -1 +0 .
+  (td :`t25.79. . ntge2 nimcall -1 -1 +0 +79 . 26,714,/home/araq/projects/nim/lib/system.nim
+   (formalparams . `t31.3.sysma2dyk
+    (arglist . . ~21
+     (arglist . .)
+     (empty)
+     (empty) ~21
+     (arglist . .)
+     (empty) ~21
+     (arglist . .)) 1
+    (sd :x.6 .
+     (param) . . . -1 +0 . `t2.16.sysma2dyk ord.0. . none unknown . "" . .)) ord.0.sysma2dyk . none unknown . "" `t31.3.sysma2dyk) ord.0.sysma2dyk ~5
+  (func . . 5
+   (ht `t25.813.sysma2dyk ord.0.)
+   (empty)
+   (empty) . 38
+   (pragma . . 7
+    (kv . . ~5
+     (ident . . magic) 2
+     (strlit . `t28.17.sysma2dyk "Ord")))
+   (bracket . .
+    (empty) 9,714,/home/araq/projects/nim/lib/system.nim
+    (genericparams . . 1
+     (identdefs . .
+      (ident . . T) 10
+      (infix . `t57.811.sysma2dyk
+       (ident . . |) ~7 Ordinal.0.sysma2dyk 1
+       (enumty . `t51.809.sysma2dyk))
+      (empty)))) 2,1
+   (stmts s .
+    (comment s .)
+    (empty))
+   (sd :result.7 .
+    (result) . u . -1 +0 . `t31.3.sysma2dyk ord.0. . none unknown . "" . .)) none unknown . "" . ord.0.sysma2dyk) 5,99,/home/araq/projects/nim/lib/system.nim
+ (sd :addr.0. .
+  (proc) addrm uefgn ofrbcr0s0awhtl0t0c0 -1 +0 .
+  (td :`t25.92. . ntge2 nimcall -1 -1 +0 +92 . 15,99,/home/araq/projects/nim/lib/system.nim
+   (formalparams . `t21.126.sysma2dyk
+    (arglist . . ~10
+     (arglist . .)
+     (empty)
+     (empty) ~10
+     (arglist . .)
+     (empty) ~10
+     (arglist . .)) 1
+    (sd :x.10 .
+     (param) . . . -1 +0 . `t2.16.sysma2dyk addr.0. . none unknown . "" . .)) addr.0.sysma2dyk . none unknown . ""
+   (td :`t21.93. . g nimcall -1 -1 +0 +93 . . addr.0.sysma2dyk . none unknown . "" `t2.16.sysma2dyk)) addr.0.sysma2dyk ~5
+  (proc . . 5
+   (ht `t25.125.sysma2dyk addr.0.)
+   (empty)
+   (empty) . 29
+   (pragma . . 7
+    (kv . . ~5
+     (ident . . magic) 2
+     (strlit . `t28.17.sysma2dyk "Addr")) 17
+    (ident . . noSideEffect))
+   (bracket . .
+    (empty) 12,99,/home/araq/projects/nim/lib/system.nim
+    (genericparams . . 1
+     (identdefs . .
+      (ident . . T)
+      (empty)
+      (empty)))) 2,1
+   (stmts s .
+    (comment s .) ,18
+    (discard s .
+     (empty)))
+   (sd :result.9 .
+    (result) . u . -1 +0 . `t21.93. addr.0. . none unknown . "" . .)) none unknown . "" . addr.0.sysma2dyk) 5,120,/home/araq/projects/nim/lib/system.nim
+ (sd :unsafeAddr.0. .
+  (proc) addrm uefgn ofrbcr0s0awhtl0t0c0 -1 +0 .
+  (td :`t25.95. . ntge2 nimcall -1 -1 +0 +95 . 19,120,/home/araq/projects/nim/lib/system.nim
+   (formalparams . `t21.129.sysma2dyk
+    (arglist . . ~14
+     (arglist . .)
+     (empty)
+     (empty) ~14
+     (arglist . .)
+     (empty) ~14
+     (arglist . .)) 1
+    (sd :x.11 .
+     (param) . . . -1 +0 . `t2.16.sysma2dyk unsafeAddr.0. . none unknown . "" . .)) unsafeAddr.0.sysma2dyk . none unknown . ""
+   (td :`t21.96. . g nimcall -1 -1 +0 +96 . . unsafeAddr.0.sysma2dyk . none unknown . "" `t2.16.sysma2dyk)) unsafeAddr.0.sysma2dyk ~5
+  (proc . . 5
+   (ht `t25.128.sysma2dyk unsafeAddr.0.)
+   (empty)
+   (empty) . 33
+   (pragma . . 7
+    (kv . . ~5
+     (ident . . magic) 2
+     (strlit . `t28.17.sysma2dyk "Addr")) 17
+    (ident . . noSideEffect))
+   (bracket . .
+    (empty) 16,120,/home/araq/projects/nim/lib/system.nim
+    (genericparams . . 1
+     (identdefs . .
+      (ident . . T)
+      (empty)
+      (empty)))) 2,1
+   (stmts s .
+    (comment s .) ,2
+    (discard s .
+     (empty)))
+   (sd :result.10 .
+    (result) . u . -1 +0 . `t21.96. unsafeAddr.0. . none unknown . "" . .)) none unknown . "" . unsafeAddr.0.sysma2dyk) 45,51
+ (sd :=wasMoved.2. .
+  (proc) . fng1n3 . -1 +0 .
+  (td :`t25.99. . n nimcall -1 -1 +0 +99 . 46,52,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.10 .
+     (param) . . . -1 +0 .
+     (td :`t23.98. . . nimcall -1 -1 +0 +98 . . addIntImpl.0. . none unknown . "" `t20.63.) =wasMoved.2. . none unknown . "" . .)) addIntImpl.0. . none unknown . "" .) addIntImpl.0.
+  (proc . . =wasMoved.2.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .
+    (call . .
+     (sd :wasMoved.2. .
+      (proc) wasmoved n3 . -1 +0 . . . . none unknown . "" . .)
+     (hderef . `t20.63. dest.10)))) none unknown . "" . .) 45,51
+ (sd :=destroy.2. .
+  (proc) . fg1n3 q -1 +0 .
+  (td :`t25.101. . . nimcall -1 -1 +0 +101 . 46,52,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.11 .
+     (param) . . . -1 +0 .
+     (td :`t23.100. . . nimcall -1 -1 +0 +100 . . addIntImpl.0. . none unknown . "" `t20.63.) =destroy.2. . none unknown . "" . .)) addIntImpl.0. . none unknown . "" .) addIntImpl.0.
+  (proc . . =destroy.2.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .)) none unknown . "" . .) 45,51
+ (sd :=copy.2. .
+  (proc) . fg1n3 . -1 +0 .
+  (td :`t25.103. . . nimcall -1 -1 +0 +103 . 46,52,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.12 .
+     (param) . . . -1 +0 .
+     (td :`t23.102. . . nimcall -1 -1 +0 +102 . . addIntImpl.0. . none unknown . "" `t20.63.) =copy.2. . none unknown . "" . .)
+    (sd :src.12 .
+     (param) . . . -1 +1 . `t20.63. =copy.2. . none unknown . "" . .)) addIntImpl.0. . none unknown . "" .) addIntImpl.0.
+  (proc . . =copy.2.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .
+    (asgn . .
+     (hderef . `t20.63. dest.12) src.12))) none unknown . "" . .) 45,51
+ (sd :=dup.2. .
+  (proc) . fg1n3 . -1 +0 .
+  (td :`t25.104. . . nimcall -1 -1 +0 +104 . 46,52,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :src.13 .
+     (param) . . . -1 +0 . `t20.63. =dup.2. . none unknown . "" . .)) addIntImpl.0. . none unknown . "" `t20.63.) addIntImpl.0.
+  (proc . . =dup.2.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .
+    (asgn . .
+     (sd :result.11 .
+      (result) . . . -1 +0 . `t20.63. =dup.2. . none unknown . "" . .) src.13)) result.11) none unknown . "" . .) 45,51
+ (sd :=sink.2. .
+  (proc) . fg1n3 . -1 +0 .
+  (td :`t25.106. . . nimcall -1 -1 +0 +106 . 46,52,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.13 .
+     (param) . . . -1 +0 .
+     (td :`t23.105. . . nimcall -1 -1 +0 +105 . . addIntImpl.0. . none unknown . "" `t20.63.) =sink.2. . none unknown . "" . .)
+    (sd :src.14 .
+     (param) . . . -1 +1 . `t20.63. =sink.2. . none unknown . "" . .)) addIntImpl.0. . none unknown . "" .) addIntImpl.0.
+  (proc . . =sink.2.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .
+    (asgn . .
+     (hderef . `t20.63. dest.13) src.14))) none unknown . "" . .) 45,51
+ (sd :=trace.2. .
+  (proc) . fg1n3 . -1 +0 .
+  (td :`t25.108. . . nimcall -1 -1 +0 +108 . 46,52,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.14 .
+     (param) . . . -1 +0 .
+     (td :`t23.107. . . nimcall -1 -1 +0 +107 . . addIntImpl.0. . none unknown . "" `t20.63.) =trace.2. . none unknown . "" . .)
+    (sd :env.2 .
+     (param) . . . -1 +1 . `t26.19.sysma2dyk =trace.2. . none unknown . "" . .)) addIntImpl.0. . none unknown . "" .) addIntImpl.0.
+  (proc . . =trace.2.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .)) none unknown . "" . .) 5,63
+ (sd :=wasMoved.3. .
+  (proc) . fng1n3 . -1 +0 .
+  (td :`t25.110. . n nimcall -1 -1 +0 +110 . 6,64,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.15 .
+     (param) . . . -1 +0 .
+     (td :`t23.109. . . nimcall -1 -1 +0 +109 . . addIntImpl.0. . none unknown . "" `t16.65.) =wasMoved.3. . none unknown . "" . .)) addIntImpl.0. . none unknown . "" .) addIntImpl.0.
+  (proc . . =wasMoved.3.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .
+    (call . .
+     (sd :wasMoved.3. .
+      (proc) wasmoved n3 . -1 +0 . . . . none unknown . "" . .)
+     (hderef . `t16.65. dest.15)))) none unknown . "" . .) 5,63
+ (sd :=destroy.3. .
+  (proc) . fg1n3 q -1 +0 .
+  (td :`t25.112. . . nimcall -1 -1 +0 +112 . 6,64,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.16 .
+     (param) . . . -1 +0 .
+     (td :`t23.111. . . nimcall -1 -1 +0 +111 . . addIntImpl.0. . none unknown . "" `t16.65.) =destroy.3. . none unknown . "" . .)) addIntImpl.0. . none unknown . "" .) addIntImpl.0.
+  (proc . . =destroy.3.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .)) none unknown . "" . .) 5,63
+ (sd :=copy.3. .
+  (proc) . fg1n3 . -1 +0 .
+  (td :`t25.114. . . nimcall -1 -1 +0 +114 . 6,64,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.17 .
+     (param) . . . -1 +0 .
+     (td :`t23.113. . . nimcall -1 -1 +0 +113 . . addIntImpl.0. . none unknown . "" `t16.65.) =copy.3. . none unknown . "" . .)
+    (sd :src.17 .
+     (param) . . . -1 +1 . `t16.65. =copy.3. . none unknown . "" . .)) addIntImpl.0. . none unknown . "" .) addIntImpl.0.
+  (proc . . =copy.3.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .
+    (asgn . .
+     (hderef . `t16.65. dest.17) src.17))) none unknown . "" . .) 5,63
+ (sd :=dup.3. .
+  (proc) . fg1n3 . -1 +0 .
+  (td :`t25.115. . . nimcall -1 -1 +0 +115 . 6,64,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :src.18 .
+     (param) . . . -1 +0 . `t16.65. =dup.3. . none unknown . "" . .)) addIntImpl.0. . none unknown . "" `t16.65.) addIntImpl.0.
+  (proc . . =dup.3.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .
+    (asgn . .
+     (sd :result.12 .
+      (result) . . . -1 +0 . `t16.65. =dup.3. . none unknown . "" . .) src.18)) result.12) none unknown . "" . .) 5,63
+ (sd :=sink.3. .
+  (proc) . fg1n3 . -1 +0 .
+  (td :`t25.117. . . nimcall -1 -1 +0 +117 . 6,64,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.18 .
+     (param) . . . -1 +0 .
+     (td :`t23.116. . . nimcall -1 -1 +0 +116 . . addIntImpl.0. . none unknown . "" `t16.65.) =sink.3. . none unknown . "" . .)
+    (sd :src.19 .
+     (param) . . . -1 +1 . `t16.65. =sink.3. . none unknown . "" . .)) addIntImpl.0. . none unknown . "" .) addIntImpl.0.
+  (proc . . =sink.3.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .
+    (asgn . .
+     (hderef . `t16.65. dest.18) src.19))) none unknown . "" . .) 5,63
+ (sd :=trace.3. .
+  (proc) . fg1n3 . -1 +0 .
+  (td :`t25.119. . . nimcall -1 -1 +0 +119 . 6,64,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.19 .
+     (param) . . . -1 +0 .
+     (td :`t23.118. . . nimcall -1 -1 +0 +118 . . addIntImpl.0. . none unknown . "" `t16.65.) =trace.3. . none unknown . "" . .)
+    (sd :env.3 .
+     (param) . . . -1 +1 . `t26.19.sysma2dyk =trace.3. . none unknown . "" . .)) addIntImpl.0. . none unknown . "" .) addIntImpl.0.
+  (proc . . =trace.3.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .)) none unknown . "" . .) 28,78
+ (sd :=wasMoved.4. .
+  (proc) . fng1n3 . -1 +0 .
+  (td :`t25.121. . n nimcall -1 -1 +0 +121 . 29,79,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.20 .
+     (param) . . . -1 +0 .
+     (td :`t23.120. . . nimcall -1 -1 +0 +120 . . chr.0.sysma2dyk . none unknown . "" `t20.815.sysma2dyk) =wasMoved.4. . none unknown . "" . .)) chr.0.sysma2dyk . none unknown . "" .) chr.0.sysma2dyk
+  (proc . . =wasMoved.4.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .
+    (call . .
+     (sd :wasMoved.4. .
+      (proc) wasmoved n3 . -1 +0 . . . . none unknown . "" . .)
+     (hderef . `t20.815.sysma2dyk dest.20)))) none unknown . "" . .) 28,78
+ (sd :=destroy.4. .
+  (proc) . fg1n3 q -1 +0 .
+  (td :`t25.123. . . nimcall -1 -1 +0 +123 . 29,79,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.21 .
+     (param) . . . -1 +0 .
+     (td :`t23.122. . . nimcall -1 -1 +0 +122 . . chr.0.sysma2dyk . none unknown . "" `t20.815.sysma2dyk) =destroy.4. . none unknown . "" . .)) chr.0.sysma2dyk . none unknown . "" .) chr.0.sysma2dyk
+  (proc . . =destroy.4.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .)) none unknown . "" . .) 28,78
+ (sd :=copy.4. .
+  (proc) . fg1n3 . -1 +0 .
+  (td :`t25.125. . . nimcall -1 -1 +0 +125 . 29,79,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.22 .
+     (param) . . . -1 +0 .
+     (td :`t23.124. . . nimcall -1 -1 +0 +124 . . chr.0.sysma2dyk . none unknown . "" `t20.815.sysma2dyk) =copy.4. . none unknown . "" . .)
+    (sd :src.22 .
+     (param) . . . -1 +1 . `t20.815.sysma2dyk =copy.4. . none unknown . "" . .)) chr.0.sysma2dyk . none unknown . "" .) chr.0.sysma2dyk
+  (proc . . =copy.4.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .
+    (asgn . .
+     (hderef . `t20.815.sysma2dyk dest.22) src.22))) none unknown . "" . .) 28,78
+ (sd :=dup.4. .
+  (proc) . fg1n3 . -1 +0 .
+  (td :`t25.126. . . nimcall -1 -1 +0 +126 . 29,79,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :src.23 .
+     (param) . . . -1 +0 . `t20.815.sysma2dyk =dup.4. . none unknown . "" . .)) chr.0.sysma2dyk . none unknown . "" `t20.815.sysma2dyk) chr.0.sysma2dyk
+  (proc . . =dup.4.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .
+    (asgn . .
+     (sd :result.13 .
+      (result) . . . -1 +0 . `t20.815.sysma2dyk =dup.4. . none unknown . "" . .) src.23)) result.13) none unknown . "" . .) 28,78
+ (sd :=sink.4. .
+  (proc) . fg1n3 . -1 +0 .
+  (td :`t25.128. . . nimcall -1 -1 +0 +128 . 29,79,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.23 .
+     (param) . . . -1 +0 .
+     (td :`t23.127. . . nimcall -1 -1 +0 +127 . . chr.0.sysma2dyk . none unknown . "" `t20.815.sysma2dyk) =sink.4. . none unknown . "" . .)
+    (sd :src.24 .
+     (param) . . . -1 +1 . `t20.815.sysma2dyk =sink.4. . none unknown . "" . .)) chr.0.sysma2dyk . none unknown . "" .) chr.0.sysma2dyk
+  (proc . . =sink.4.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .
+    (asgn . .
+     (hderef . `t20.815.sysma2dyk dest.23) src.24))) none unknown . "" . .) 28,78
+ (sd :=trace.4. .
+  (proc) . fg1n3 . -1 +0 .
+  (td :`t25.130. . . nimcall -1 -1 +0 +130 . 29,79,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.24 .
+     (param) . . . -1 +0 .
+     (td :`t23.129. . . nimcall -1 -1 +0 +129 . . chr.0.sysma2dyk . none unknown . "" `t20.815.sysma2dyk) =trace.4. . none unknown . "" . .)
+    (sd :env.4 .
+     (param) . . . -1 +1 . `t26.19.sysma2dyk =trace.4. . none unknown . "" . .)) chr.0.sysma2dyk . none unknown . "" .) chr.0.sysma2dyk
+  (proc . . =trace.4.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .)) none unknown . "" . .) 38,1
+ (sd :=wasMoved.5. .
+  (proc) . fng1n3 . -1 +0 .
+  (td :`t25.156. . n nimcall -1 -1 +0 +156 . 39,2,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.25 .
+     (param) . . . -1 +0 .
+     (td :`t23.155. . . nimcall -1 -1 +0 +155 . . digitsutils.0. . none unknown . "" `t16.7.) =wasMoved.5. . none unknown . "" . .)) digitsutils.0. . none unknown . "" .) digitsutils.0.
+  (proc . . =wasMoved.5.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .
+    (call . .
+     (sd :wasMoved.5. .
+      (proc) wasmoved n3 . -1 +0 . . . . none unknown . "" . .)
+     (hderef . `t16.7. dest.25)))) none unknown . "" . .) 38,1
+ (sd :=destroy.5. .
+  (proc) . fg1n3 q -1 +0 .
+  (td :`t25.158. . . nimcall -1 -1 +0 +158 . 39,2,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.26 .
+     (param) . . . -1 +0 .
+     (td :`t23.157. . . nimcall -1 -1 +0 +157 . . digitsutils.0. . none unknown . "" `t16.7.) =destroy.5. . none unknown . "" . .)) digitsutils.0. . none unknown . "" .) digitsutils.0.
+  (proc . . =destroy.5.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .)) none unknown . "" . .) 38,1
+ (sd :=copy.5. .
+  (proc) . fg1n3 . -1 +0 .
+  (td :`t25.160. . . nimcall -1 -1 +0 +160 . 39,2,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.27 .
+     (param) . . . -1 +0 .
+     (td :`t23.159. . . nimcall -1 -1 +0 +159 . . digitsutils.0. . none unknown . "" `t16.7.) =copy.5. . none unknown . "" . .)
+    (sd :src.27 .
+     (param) . . . -1 +1 . `t16.7. =copy.5. . none unknown . "" . .)) digitsutils.0. . none unknown . "" .) digitsutils.0.
+  (proc . . =copy.5.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .
+    (asgn . .
+     (hderef . `t16.7. dest.27) src.27))) none unknown . "" . .) 38,1
+ (sd :=dup.5. .
+  (proc) . fg1n3 . -1 +0 .
+  (td :`t25.161. . . nimcall -1 -1 +0 +161 . 39,2,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :src.28 .
+     (param) . . . -1 +0 . `t16.7. =dup.5. . none unknown . "" . .)) digitsutils.0. . none unknown . "" `t16.7.) digitsutils.0.
+  (proc . . =dup.5.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .
+    (asgn . .
+     (sd :result.17 .
+      (result) . . . -1 +0 . `t16.7. =dup.5. . none unknown . "" . .) src.28)) result.17) none unknown . "" . .) 38,1
+ (sd :=sink.5. .
+  (proc) . fg1n3 . -1 +0 .
+  (td :`t25.163. . . nimcall -1 -1 +0 +163 . 39,2,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.28 .
+     (param) . . . -1 +0 .
+     (td :`t23.162. . . nimcall -1 -1 +0 +162 . . digitsutils.0. . none unknown . "" `t16.7.) =sink.5. . none unknown . "" . .)
+    (sd :src.29 .
+     (param) . . . -1 +1 . `t16.7. =sink.5. . none unknown . "" . .)) digitsutils.0. . none unknown . "" .) digitsutils.0.
+  (proc . . =sink.5.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .
+    (asgn . .
+     (hderef . `t16.7. dest.28) src.29))) none unknown . "" . .) 38,1
+ (sd :=trace.5. .
+  (proc) . fg1n3 . -1 +0 .
+  (td :`t25.165. . . nimcall -1 -1 +0 +165 . 39,2,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.29 .
+     (param) . . . -1 +0 .
+     (td :`t23.164. . . nimcall -1 -1 +0 +164 . . digitsutils.0. . none unknown . "" `t16.7.) =trace.5. . none unknown . "" . .)
+    (sd :env.5 .
+     (param) . . . -1 +1 . `t26.19.sysma2dyk =trace.5. . none unknown . "" . .)) digitsutils.0. . none unknown . "" .) digitsutils.0.
+  (proc . . =trace.5.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .)) none unknown . "" . .) 31,6
+ (sd :=wasMoved.6. .
+  (proc) . fng1n3 . -1 +0 .
+  (td :`t25.167. . n nimcall -1 -1 +0 +167 . 32,7,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.30 .
+     (param) . . . -1 +0 .
+     (td :`t23.166. . . nimcall -1 -1 +0 +166 . . digitsutils.0. . none unknown . "" `t16.13.) =wasMoved.6. . none unknown . "" . .)) digitsutils.0. . none unknown . "" .) digitsutils.0.
+  (proc . . =wasMoved.6.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .
+    (call . .
+     (sd :wasMoved.6. .
+      (proc) wasmoved n3 . -1 +0 . . . . none unknown . "" . .)
+     (hderef . `t16.13. dest.30)))) none unknown . "" . .) 31,6
+ (sd :=destroy.6. .
+  (proc) . fg1n3 q -1 +0 .
+  (td :`t25.169. . . nimcall -1 -1 +0 +169 . 32,7,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.31 .
+     (param) . . . -1 +0 .
+     (td :`t23.168. . . nimcall -1 -1 +0 +168 . . digitsutils.0. . none unknown . "" `t16.13.) =destroy.6. . none unknown . "" . .)) digitsutils.0. . none unknown . "" .) digitsutils.0.
+  (proc . . =destroy.6.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .)) none unknown . "" . .) 31,6
+ (sd :=copy.6. .
+  (proc) . fg1n3 . -1 +0 .
+  (td :`t25.171. . . nimcall -1 -1 +0 +171 . 32,7,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.32 .
+     (param) . . . -1 +0 .
+     (td :`t23.170. . . nimcall -1 -1 +0 +170 . . digitsutils.0. . none unknown . "" `t16.13.) =copy.6. . none unknown . "" . .)
+    (sd :src.32 .
+     (param) . . . -1 +1 . `t16.13. =copy.6. . none unknown . "" . .)) digitsutils.0. . none unknown . "" .) digitsutils.0.
+  (proc . . =copy.6.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .
+    (asgn . .
+     (hderef . `t16.13. dest.32) src.32))) none unknown . "" . .) 31,6
+ (sd :=dup.6. .
+  (proc) . fg1n3 . -1 +0 .
+  (td :`t25.172. . . nimcall -1 -1 +0 +172 . 32,7,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :src.33 .
+     (param) . . . -1 +0 . `t16.13. =dup.6. . none unknown . "" . .)) digitsutils.0. . none unknown . "" `t16.13.) digitsutils.0.
+  (proc . . =dup.6.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .
+    (asgn . .
+     (sd :result.18 .
+      (result) . . . -1 +0 . `t16.13. =dup.6. . none unknown . "" . .) src.33)) result.18) none unknown . "" . .) 31,6
+ (sd :=sink.6. .
+  (proc) . fg1n3 . -1 +0 .
+  (td :`t25.174. . . nimcall -1 -1 +0 +174 . 32,7,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.33 .
+     (param) . . . -1 +0 .
+     (td :`t23.173. . . nimcall -1 -1 +0 +173 . . digitsutils.0. . none unknown . "" `t16.13.) =sink.6. . none unknown . "" . .)
+    (sd :src.34 .
+     (param) . . . -1 +1 . `t16.13. =sink.6. . none unknown . "" . .)) digitsutils.0. . none unknown . "" .) digitsutils.0.
+  (proc . . =sink.6.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .
+    (asgn . .
+     (hderef . `t16.13. dest.33) src.34))) none unknown . "" . .) 31,6
+ (sd :=trace.6. .
+  (proc) . fg1n3 . -1 +0 .
+  (td :`t25.176. . . nimcall -1 -1 +0 +176 . 32,7,/home/araq/projects/nim/lib/std/private/digitsutils.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.34 .
+     (param) . . . -1 +0 .
+     (td :`t23.175. . . nimcall -1 -1 +0 +175 . . digitsutils.0. . none unknown . "" `t16.13.) =trace.6. . none unknown . "" . .)
+    (sd :env.6 .
+     (param) . . . -1 +1 . `t26.19.sysma2dyk =trace.6. . none unknown . "" . .)) digitsutils.0. . none unknown . "" .) digitsutils.0.
+  (proc . . =trace.6.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .)) none unknown . "" . .))1,1,/home/araq/projects/nim/lib/std/private/digitsutils.nim(.index 1,1
+ (h trailingZeros100.0. +2210)
+ (h `t16.6. +72)
+ (h digitsutils.0. +104) 1,1,/home/araq/projects/nim/lib/system.nim
+ (h stdlib.0. +99)
+ (h `t20.4. +126)
+ (h `t31.3. +137)
+ (h `t31.5. +263)
+ (h `t16.7. +281)
+ (h `t20.8. +82) 1,6
+ (h digits100.0. +4381)
+ (h `t16.12. +65)
+ (h `t20.10. +81)
+ (h `t31.9. +139)
+ (h `t31.11. +264)
+ (h `t16.13. +277)
+ (h `t20.14. +84) 4,36
+ (x utoa2Digits.0. +9127)
+ (h `t25.15. +60)
+ (h `t23.16. +302)
+ (h `t27.17. +83)
+ (h `t31.18. +890)
+ (h `t31.19. +385) 4,41
+ (x trailingZeros2Digits.0. +629)
+ (h `t25.31. +69)
+ (h `t7.1. +645) 4,47
+ (h addChars.0. +382)
+ (h `t25.44. +56)
+ (h `t23.45. +292)
+ (h `t12.43. +182)
+ (h `t0.46. +1036)
+ (h `t0.47. +284)
+ (h `t0.48. +164)
+ (h `t0.49. +703)
+ (h `t0.50. +371)
+ (h `t0.51. +591)
+ (h `t0.52. +707)
+ (h `t0.53. +858)
+ (h `t0.54. +283) 4,59
+ (h addChars.1. +184)
+ (h `t25.56. +56)
+ (h `t23.57. +292)
+ (h `t12.55. +182)
+ (h `t0.58. +729)
+ (h `t0.59. +242) 4,62
+ (h addIntImpl.0. +228)
+ (h `t25.60. +60)
+ (h `t23.61. +305)
+ (h `t16.65. +590)
+ (h `t20.63. +86)
+ (h `t31.62. +155)
+ (h `t31.64. +281)
+ (h `t31.70. +896)
+ (h `t31.69. +187) 7,66
+ (h nbatch.0. +318)
+ (h `t31.71. +61) 5,248,/home/araq/projects/nim/lib/system/arithmetics.nim
+ (h shl.0. +1455)
+ (h `t25.74. +83)
+ (h `t31.72. +669) 5,33,/home/araq/projects/nim/lib/system/arithmetics.nim
+ (h dec.0. +2153)
+ (h `t25.76. +73)
+ (h `t23.77. +361)
+ (h `t31.75. +189)
+ (h `t31.78. +1142)
+ (h `t31.80. +573) 4,47
+ (h addChars.2. +1775)
+ (h `t25.87. +67) 10,50
+ (h impl.1. +1905)
+ (h `t25.88. +63)
+ (h `t31.90. +3558)
+ (h `t21.94. +758)
+ (h `t21.97. +299) 5,695,/home/araq/projects/nim/lib/system.nim
+ (h len.0. +495)
+ (h `t25.67. +79) 4,87
+ (x addInt.0. +1028)
+ (h `t25.133. +55)
+ (h `t23.134. +304) 4,94
+ (x addInt.1. +628)
+ (h `t25.135. +56)
+ (h `t23.136. +304) 10,100
+ (h impl.2. +490)
+ (h `t25.137. +55)
+ (h `t0.146. +2700)
+ (h `t31.89. +3692) 5,295,/home/araq/projects/nim/lib/system.nim
+ (h low.0. +427)
+ (h `t25.150. +88)
+ (h `t8.149. +570)
+ (h `t8.151. +2556) 4,117
+ (x addInt.2. +828)
+ (h `t25.153. +55)
+ (h `t23.154. +306) 24,37
+ (h =wasMoved.0. +620)
+ (h `t25.21. +49)
+ (h `t23.20. +189)
+ (h wasMoved.0. +345) 24,37
+ (h =destroy.0. +152)
+ (h `t25.23. +47)
+ (h `t23.22. +189) 24,37
+ (h =copy.0. +360)
+ (h `t25.25. +44)
+ (h `t23.24. +189) 24,37
+ (h =dup.0. +494)
+ (h `t25.26. +43) 24,37
+ (h =sink.0. +585)
+ (h `t25.28. +44)
+ (h `t23.27. +189) 24,37
+ (h =trace.0. +494)
+ (h `t25.30. +45)
+ (h `t23.29. +189) 18,42
+ (h =wasMoved.1. +453)
+ (h `t25.33. +49)
+ (h `t23.32. +189)
+ (h wasMoved.1. +344) 18,42
+ (h =destroy.1. +151)
+ (h `t25.35. +47)
+ (h `t23.34. +189) 18,42
+ (h =copy.1. +359)
+ (h `t25.37. +44)
+ (h `t23.36. +189) 18,42
+ (h =dup.1. +491)
+ (h `t25.38. +43) 18,42
+ (h =sink.1. +582)
+ (h `t25.40. +44)
+ (h `t23.39. +189) 18,42
+ (h =trace.1. +491)
+ (h `t25.42. +45)
+ (h `t23.41. +189) 5,714,/home/araq/projects/nim/lib/system.nim
+ (h ord.0. +491)
+ (h `t25.79. +62) 5,99,/home/araq/projects/nim/lib/system.nim
+ (h addr.0. +1098)
+ (h `t25.92. +65)
+ (h `t21.93. +389) 5,120,/home/araq/projects/nim/lib/system.nim
+ (h unsafeAddr.0. +743)
+ (h `t25.95. +71)
+ (h `t21.96. +402) 45,51
+ (h =wasMoved.2. +735)
+ (h `t25.99. +49)
+ (h `t23.98. +190)
+ (h wasMoved.2. +342) 45,51
+ (h =destroy.2. +153)
+ (h `t25.101. +47)
+ (h `t23.100. +192) 45,51
+ (h =copy.2. +359)
+ (h `t25.103. +44)
+ (h `t23.102. +192) 45,51
+ (h =dup.2. +496)
+ (h `t25.104. +43) 45,51
+ (h =sink.2. +589)
+ (h `t25.106. +44)
+ (h `t23.105. +192) 45,51
+ (h =trace.2. +496)
+ (h `t25.108. +45)
+ (h `t23.107. +192) 5,63
+ (h =wasMoved.3. +451)
+ (h `t25.110. +49)
+ (h `t23.109. +191)
+ (h wasMoved.3. +344) 5,63
+ (h =destroy.3. +152)
+ (h `t25.112. +47)
+ (h `t23.111. +191) 5,63
+ (h =copy.3. +358)
+ (h `t25.114. +44)
+ (h `t23.113. +191) 5,63
+ (h =dup.3. +495)
+ (h `t25.115. +43) 5,63
+ (h =sink.3. +587)
+ (h `t25.117. +44)
+ (h `t23.116. +191) 5,63
+ (h =trace.3. +495)
+ (h `t25.119. +45)
+ (h `t23.118. +191) 28,78
+ (h =wasMoved.4. +452)
+ (h `t25.121. +49)
+ (h `t23.120. +192)
+ (h wasMoved.4. +360) 28,78
+ (h =destroy.4. +163)
+ (h `t25.123. +47)
+ (h `t23.122. +192) 28,78
+ (h =copy.4. +375)
+ (h `t25.125. +44)
+ (h `t23.124. +192) 28,78
+ (h =dup.4. +532)
+ (h `t25.126. +43) 28,78
+ (h =sink.4. +623)
+ (h `t25.128. +44)
+ (h `t23.127. +192) 28,78
+ (h =trace.4. +532)
+ (h `t25.130. +45)
+ (h `t23.129. +192) 38,1
+ (h =wasMoved.5. +467)
+ (h `t25.156. +49)
+ (h `t23.155. +191)
+ (h wasMoved.5. +346) 38,1
+ (h =destroy.5. +151)
+ (h `t25.158. +47)
+ (h `t23.157. +191) 38,1
+ (h =copy.5. +360)
+ (h `t25.160. +44)
+ (h `t23.159. +191) 38,1
+ (h =dup.5. +495)
+ (h `t25.161. +43) 38,1
+ (h =sink.5. +586)
+ (h `t25.163. +44)
+ (h `t23.162. +191) 38,1
+ (h =trace.5. +495)
+ (h `t25.165. +45)
+ (h `t23.164. +191) 31,6
+ (h =wasMoved.6. +453)
+ (h `t25.167. +49)
+ (h `t23.166. +191)
+ (h wasMoved.6. +347) 31,6
+ (h =destroy.6. +152)
+ (h `t25.169. +47)
+ (h `t23.168. +191) 31,6
+ (h =copy.6. +361)
+ (h `t25.171. +44)
+ (h `t23.170. +191) 31,6
+ (h =dup.6. +498)
+ (h `t25.172. +43) 31,6
+ (h =sink.6. +589)
+ (h `t25.174. +44)
+ (h `t23.173. +191) 31,6
+ (h =trace.6. +498)
+ (h `t25.176. +45)
+ (h `t23.175. +191))

@@ -1,0 +1,53 @@
+when true:
+  type
+    SimpleNode = ref object
+      self: SimpleNode
+      data: string
+
+  proc mainSimple =
+    for i in 0..<10_000:
+      var node = SimpleNode(data: "kaboom? " & $i)
+      node.self = node
+    GC_fullCollect()
+    echo getOccupiedMem()
+
+  mainSimple()
+
+discard """
+  output: '''true peak memory: true'''
+  cmd: "nim c --gc:orc -d:release $file"
+"""
+
+import lists, strutils, times
+
+type
+  Base = ref object of RootObj
+
+  Node = ref object of Base
+    parent: DoublyLinkedList[string]
+    le, ri: Node
+    self: Node # in order to create a cycle
+
+proc buildTree(parent: DoublyLinkedList[string]; depth: int): Node =
+  if depth == 0:
+    result = nil
+  elif depth == 1:
+    result = Node(parent: parent, le: nil, ri: nil, self: nil)
+    when not defined(gcArc):
+      result.self = result
+  else:
+    result = Node(parent: parent, le: buildTree(parent, depth - 1), ri: buildTree(parent, depth - 2), self: nil)
+    result.self = result
+
+proc main() =
+  for i in countup(1, 100):
+    var leakList = initDoublyLinkedList[string]()
+    for j in countup(1, 5000):
+      leakList.append(newString(200))
+    #GC_fullCollect()
+    for i in 0..400:
+      discard buildTree(leakList, 8)
+
+main()
+GC_fullCollect()
+echo "MEM: ", getOccupiedMem()

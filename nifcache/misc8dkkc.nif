@@ -1,0 +1,333 @@
+(.nif26)
+(.indexat +13558           )
+1,1,/home/araq/projects/nim/lib/std/private/miscdollars.nim(stmts . . ~1
+ (import . . "digqtx7k2")
+ (implementation) 8,2
+ (sd :toLocation.0. x
+  (template) . egn4 . -1 +0 .
+  (td :`t25.3. . m nimcall -1 -1 +0 +3 . 20,3,/home/araq/projects/nim/lib/std/private/miscdollars.nim
+   (formalparams . .
+    (arglist . .) 1
+    (sd :result.0 .
+     (param) . ut0 . -1 +0 .
+     (td :`t23.4. . h0 nimcall -1 -1 +0 +4 . . toLocation.0. . none unknown . "" `t28.17.sysma2dyk) toLocation.0. . none unknown . "" . .) 21
+    (sd :file.0 .
+     (param) . ut0 . -1 +1 .
+     (td :`t57.6. . mh0i1 nimcall -1 -1 +0 +6 . . toLocation.0. 41,3,/home/araq/projects/nim/lib/std/private/miscdollars.nim
+      (sd :file\3Atype.0 .
+       (type) . a0 . -1 +0 . `t57.6. toLocation.0. . none unknown . "" . .) none unknown . "" `t28.17.sysma2dyk `t29.18.sysma2dyk) toLocation.0. . none unknown . "" . .) 45
+    (sd :line.0 .
+     (param) . ut0 . -1 +2 . `t31.3.sysma2dyk toLocation.0. . none unknown . "" . .) 56
+    (sd :col.0 .
+     (param) . ut0 . -1 +3 . `t31.3.sysma2dyk toLocation.0. . none unknown . "" . .)) toLocation.0. . none unknown . "" .) ~8,~2
+  (sd :miscdollars.0. .
+   (module) . . . +0 . . . 1,1,/home/araq/projects/nim/lib/system.nim
+   (sd :stdlib.0. .
+    (package) . . . -1 +0 . . . . none unknown . "" . .) . none unknown . "" . .) ~9
+  (template s . 9
+   (ht . toLocation.0.)
+   (empty)
+   (genericparams . . 41 file\3Atype.0) .
+   (empty)
+   (bracket . .
+    (empty)
+    (empty)) 2,1
+   (stmts . .
+    (comment h .) ,3
+    (when . . 5
+     (elif . . 5
+      (infix . .
+       (ht . is.0.sysma2dyk) ~5 file.0 3
+       (ht . cstring.0.sysma2dyk)) ~3,1
+      (stmts . .
+       (var . . 4
+        (identdefs . .
+         (sd :i.0 .
+          (var . +0 +0) . us1g0 . -1 +0 . . toLocation.0. . none unknown . "" . .) 2
+         (empty) 4
+         (intlit . . +0))) ,1
+       (while . . 14
+        (infix . .
+         (ht . !=.0.sysma2dyk) ~4
+         (call . .
+          (ht . \5B\5D.0.sysma2dyk) ~4 file.0 1 i.0) 3
+         (charlit . . '\00')) 2,1
+        (stmts . . 3
+         (call . . ~3
+          (opensymchoice d3 . add.3.sysma2dyk add.0.sysma2dyk add.2.sysma2dyk add.1.sysma2dyk) 1 result.0 13
+          (call . .
+           (ht . \5B\5D.0.sysma2dyk) ~4 file.0 1 i.0)) ,1
+         (cmd . .
+          (ht . inc.0.sysma2dyk) 4 i.0))))) ,5
+     (else . . 2,1
+      (stmts . . 6
+       (cmd . .
+        (dot . . ~6 result.0 1
+         (opensymchoice .
+          (td :`t0.9. . . nimcall -1 -1 +0 +9 . . toLocation.0. . none unknown . "") add.3.sysma2dyk add.0.sysma2dyk add.2.sysma2dyk add.1.sysma2dyk)) 5 file.0)))) ,10
+    (if . . 3
+     (elif . . 5
+      (infix . .
+       (ht . >.0.sysma2dyk) ~5 line.0 2
+       (intlit . . +0)) ~1,1
+      (stmts . . 6
+       (cmd . .
+        (dot . . ~6 result.0 1
+         (opensymchoice .
+          (td :`t0.10. . . nimcall -1 -1 +0 +10 . . toLocation.0. . none unknown . "") add.3.sysma2dyk add.0.sysma2dyk add.2.sysma2dyk add.1.sysma2dyk)) 5
+        (strlit . . "\28")) 6,1
+       (call . . ~6
+        (opensymchoice d3 . addInt.0.digqtx7k2 addInt.1.digqtx7k2 addInt.2.digqtx7k2) 1 result.0 9 line.0) ,2
+       (if . . 3
+        (elif . . 4
+         (infix . .
+          (ht . >.0.sysma2dyk) ~4 col.0 2
+          (intlit . . +0)) ~1,1
+         (stmts . . 6
+          (cmd . .
+           (dot . . ~6 result.0 1
+            (opensymchoice .
+             (td :`t0.12. . . nimcall -1 -1 +0 +12 . . toLocation.0. . none unknown . "") add.3.sysma2dyk add.0.sysma2dyk add.2.sysma2dyk add.1.sysma2dyk)) 5
+           (strlit . . ", ")) 6,1
+          (call . . ~6
+           (opensymchoice d3 . addInt.0.digqtx7k2 addInt.1.digqtx7k2 addInt.2.digqtx7k2) 1 result.0 9 col.0)))) 6,5
+       (cmd . .
+        (dot . . ~6 result.0 1
+         (opensymchoice .
+          (td :`t0.14. . . nimcall -1 -1 +0 +14 . . toLocation.0. . none unknown . "") add.3.sysma2dyk add.0.sysma2dyk add.2.sysma2dyk add.1.sysma2dyk)) 5
+        (strlit . . "\29"))))))) none unknown . "" . .) 4,21
+ (sd :isNamedTuple.0. .
+  (proc) typetrait ug ofrbcr0s0awhl0t0c0 -1 +0 .
+  (td :`t25.15. . nme2 nimcall -1 -1 +0 +15 . 17,22,/home/araq/projects/nim/lib/std/private/miscdollars.nim
+   (formalparams . `t1.34.sysma2dyk
+    (arglist . .
+     (arglist . .) . .
+     (arglist . .) 20
+     (pragma . . 7
+      (kv . . ~5
+       (ident . . magic) 2
+       (strlit . `t28.17.sysma2dyk "TypeTrait")))
+     (arglist . .)) 1
+    (sd :T.0 .
+     (param) . . . -1 +0 .
+     (td :`t8.16. . i1c3 nimcall -1 -1 +0 +16 . . isNamedTuple.0. 18,22,/home/araq/projects/nim/lib/std/private/miscdollars.nim
+      (sd :T\3Atype.0 .
+       (type) . a0 . -1 +0 . `t8.16. isNamedTuple.0. . none unknown . "" . .) none unknown . "" `t0.21.sysma2dyk) isNamedTuple.0. . none unknown . "" . .)) isNamedTuple.0. . none unknown . "" `t1.34.sysma2dyk) miscdollars.0. ~5
+  (proc s . 5
+   (ht . isNamedTuple.0.)
+   (empty)
+   (genericparams . . 18 T\3Atype.0) . 37
+   (pragma . . 7
+    (kv . . ~5
+     (ident . . magic) 2
+     (strlit . `t28.17.sysma2dyk "TypeTrait")))
+   (bracket . .
+    (empty)
+    (empty))
+   (empty)) none unknown . "" . .) 8,23
+ (sd :tupleObjectDollar.0. x
+  (template) . egn4 . -1 +0 .
+  (td :`t25.23. . m nimcall -1 -1 +0 +23 . 46,24,/home/araq/projects/nim/lib/std/private/miscdollars.nim
+   (formalparams . .
+    (arglist . .) 1
+    (sd :result.1 .
+     (param) . ut0 . -1 +0 .
+     (td :`t23.24. . h0 nimcall -1 -1 +0 +24 . . tupleObjectDollar.0. . none unknown . "" `t28.17.sysma2dyk) tupleObjectDollar.0. . none unknown . "" . .) 21
+    (sd :x.0 .
+     (param) . ut0 . -1 +1 .
+     (td :`t12.22. . g0 nimcall -1 -1 +0 +22 . . tupleObjectDollar.0. 28,24,/home/araq/projects/nim/lib/std/private/miscdollars.nim
+      (sd :T.1 .
+       (type) . u . -1 +0 . `t12.22. tupleObjectDollar.0. . none unknown . "" . .) none unknown . ""
+      (td :`t57.21. . m nimcall -1 -1 +0 +21 . . tupleObjectDollar.0. . none unknown . ""
+       (td :`t51.17. . c3 nimcall -1 -1 +0 +17 . . tupleObjectDollar.0. . none unknown . ""
+        (td :`t18.18. . . nimcall -1 -1 +0 +18 . . tupleObjectDollar.0. . none unknown . ""))
+       (td :`t51.19. . c3 nimcall -1 -1 +0 +19 . . tupleObjectDollar.0. . none unknown . ""
+        (td :`t17.20. . . nimcall -1 -1 +0 +20 . . tupleObjectDollar.0. . none unknown . "")))) tupleObjectDollar.0. . none unknown . "" . .)) tupleObjectDollar.0. . none unknown . "" .) miscdollars.0. ~9
+  (template s . 9
+   (ht . tupleObjectDollar.0.)
+   (empty) 27
+   (genericparams . . 1 T.1) .
+   (empty)
+   (bracket . .
+    (empty) 27,24,/home/araq/projects/nim/lib/std/private/miscdollars.nim
+    (genericparams . . 1
+     (identdefs . .
+      (ident . . T) 9
+      (infix . `t57.21.
+       (ident . . |)
+       (tupleclassty . `t51.17.) 2
+       (objectty . `t51.19.))
+      (empty)))) 2,1
+   (stmts . . 7
+    (asgn . . ~7 result.1 2
+     (strlit . . "\28")) ,1
+    (const . . 6
+     (const0 . .
+      (sd :isNamed.0. .
+       (const) . us1g0 . -1 +0 . . tupleObjectDollar.0. . none unknown . "" . .)
+      (empty) 22
+      (infix . .
+       (opensymchoice d3 . or.9.sysma2dyk or.11.sysma2dyk or.5.sysma2dyk or.0.sysma2dyk or.6.sysma2dyk or.10.sysma2dyk or.1.sysma2dyk or.7.sysma2dyk or.8.sysma2dyk or.2.sysma2dyk or.3.sysma2dyk or.4.sysma2dyk) ~10
+       (infix . .
+        (ht . is.0.sysma2dyk) ~2
+        (ht
+         (td :`t8.26. . m nimcall -1 -1 +0 +26 . . tupleObjectDollar.0. . none unknown . "" `t12.22.) T.1) 3
+        (objectty . .)) 15
+       (call . . ~12
+        (ht . isNamedTuple.0.) 7
+        (call . . ~6
+         (ht . typeof.0.sysma2dyk) 1
+         (ht
+          (td :`t8.27. . m nimcall -1 -1 +0 +27 . . tupleObjectDollar.0. . none unknown . "" `t12.22.) T.1)))))) ,2
+    (var . . 4
+     (identdefs . . 6
+      (pragmax . . ~6
+       (sd :count.0 .
+        (var . +0 +0) . us1g0 . -1 +0 . . tupleObjectDollar.0. . none unknown . "" . .)
+       (pragma . . 2
+        (ident . . used))) 15
+      (empty) 17
+      (intlit . . +0))) 4,3
+    (for . .
+     (sd :name.0 .
+      (forvar . +0 +0) . us1g0 . -1 +0 . . tupleObjectDollar.0. . none unknown . "" . .) 6
+     (sd :value.0 .
+      (forvar . +0 +0) . us1g0 . -1 +0 . . tupleObjectDollar.0. . none unknown . "" . .) 25
+     (call . . ~10
+      (ident . . fieldPairs) 1 x.0) ~2,1
+     (stmts . .
+      (if . . 3
+       (elif . . 6
+        (infix . .
+         (ht . >.0.sysma2dyk) ~6 count.0 2
+         (intlit . . +0)) 11
+        (stmts . . 10
+         (call . . ~4
+          (dot . . ~6 result.1 1
+           (opensymchoice .
+            (td :`t0.28. . . nimcall -1 -1 +0 +28 . . tupleObjectDollar.0. . none unknown . "") add.3.sysma2dyk add.0.sysma2dyk add.2.sysma2dyk add.1.sysma2dyk)) 1
+          (strlit . . ", "))))) ,1
+      (when . . 5
+       (elif . . isNamed.0. ~3,1
+        (stmts . . 10
+         (call . . ~4
+          (dot . . ~6 result.1 1
+           (opensymchoice .
+            (td :`t0.29. . . nimcall -1 -1 +0 +29 . . tupleObjectDollar.0. . none unknown . "") add.3.sysma2dyk add.0.sysma2dyk add.2.sysma2dyk add.1.sysma2dyk)) 1 name.0) 10,1
+         (call . . ~4
+          (dot . . ~6 result.1 1
+           (opensymchoice .
+            (td :`t0.30. . . nimcall -1 -1 +0 +30 . . tupleObjectDollar.0. . none unknown . "") add.3.sysma2dyk add.0.sysma2dyk add.2.sysma2dyk add.1.sysma2dyk)) 1
+          (strlit . . "\3A "))))) 5,4
+      (dot . . ~5 count.0 1
+       (opensymchoice .
+        (td :`t0.31. . . nimcall -1 -1 +0 +31 . . tupleObjectDollar.0. . none unknown . "") inc.0.sysma2dyk)) ,5
+      (when . . 5
+       (elif . . 8
+        (call . . ~8
+         (ht . compiles.0.sysma2dyk) 1
+         (prefix . .
+          (ident . . $) 1 value.0)) ~3,1
+        (stmts . .
+         (when . . 5
+          (elif . . 39
+           (infix . .
+            (opensymchoice d3 . and.0.sysma2dyk and.7.sysma2dyk and.2.sysma2dyk and.5.sysma2dyk and.9.sysma2dyk and.11.sysma2dyk and.4.sysma2dyk and.3.sysma2dyk and.1.sysma2dyk and.8.sysma2dyk and.6.sysma2dyk and.10.sysma2dyk) ~20
+            (infix . .
+             (opensymchoice d3 . and.0.sysma2dyk and.7.sysma2dyk and.2.sysma2dyk and.5.sysma2dyk and.9.sysma2dyk and.11.sysma2dyk and.4.sysma2dyk and.3.sysma2dyk and.1.sysma2dyk and.8.sysma2dyk and.6.sysma2dyk and.10.sysma2dyk) ~13
+             (infix . .
+              (ht . isnot.0.sysma2dyk) ~6 value.0 6
+              (ht . string.0.sysma2dyk)) 10
+             (infix . .
+              (ht . isnot.0.sysma2dyk) ~6 value.0 6
+              (ht . seq.0.sysma2dyk))) 12
+            (call . . ~8
+             (ht . compiles.0.sysma2dyk) 6
+             (dot . . ~5 value.0 1
+              (opensymchoice .
+               (td :`t0.36. . . nimcall -1 -1 +0 +36 . . tupleObjectDollar.0. . none unknown . "") isNil.3.sysma2dyk isNil.4.sysma2dyk isNil.0.sysma2dyk isNil.2.sysma2dyk isNil.1.sysma2dyk)))) ~3,1
+           (stmts . .
+            (if . . 3
+             (elif . . 5
+              (dot . . ~5 value.0 1
+               (opensymchoice .
+                (td :`t0.37. . . nimcall -1 -1 +0 +37 . . tupleObjectDollar.0. . none unknown . "") isNil.3.sysma2dyk isNil.4.sysma2dyk isNil.0.sysma2dyk isNil.2.sysma2dyk isNil.1.sysma2dyk)) 13
+              (stmts . . 6
+               (cmd . .
+                (dot . . ~6 result.1 1
+                 (opensymchoice .
+                  (td :`t0.38. . . nimcall -1 -1 +0 +38 . . tupleObjectDollar.0. . none unknown . "") add.3.sysma2dyk add.0.sysma2dyk add.2.sysma2dyk add.1.sysma2dyk)) 5
+                (strlit . . "nil")))) ,1
+             (else . . 6
+              (stmts . . 16
+               (call . . ~10
+                (dot . . ~6 result.1 1
+                 (ident . . addQuoted)) 1 value.0)))))) ,3
+          (else . . 2,1
+           (stmts . . 16
+            (call . . ~10
+             (dot . . ~6 result.1 1
+              (ident . . addQuoted)) 1 value.0)))))) ,6
+       (else . . 2,1
+        (stmts . . 10
+         (call . . ~4
+          (dot . . ~6 result.1 1
+           (opensymchoice .
+            (td :`t0.39. . . nimcall -1 -1 +0 +39 . . tupleObjectDollar.0. . none unknown . "") add.3.sysma2dyk add.0.sysma2dyk add.2.sysma2dyk add.1.sysma2dyk)) 1
+          (strlit . . "..."))))))) ,17
+    (when . . 5
+     (elif . .
+      (prefix . .
+       (opensymchoice d3 . not.8.sysma2dyk not.2.sysma2dyk not.9.sysma2dyk not.1.sysma2dyk not.4.sysma2dyk not.6.sysma2dyk not.5.sysma2dyk not.0.sysma2dyk not.7.sysma2dyk not.11.sysma2dyk not.10.sysma2dyk not.3.sysma2dyk) 4 isNamed.0.) ~3,1
+      (stmts . .
+       (if . . 3
+        (elif . . 6
+         (infix . .
+          (opensymchoice d3 . ==.0.sysma2dyk ==.14.sysma2dyk ==.13.sysma2dyk ==.3.sysma2dyk ==.5.sysma2dyk ==.20.sysma2dyk ==.1.sysma2dyk ==.15.sysma2dyk ==.19.sysma2dyk ==.10.sysma2dyk ==.18.sysma2dyk ==.2.sysma2dyk ==.9.sysma2dyk ==.17.sysma2dyk ==.4.sysma2dyk ==.16.sysma2dyk ==.6.sysma2dyk ==.8.sysma2dyk ==.21.sysma2dyk ==.12.sysma2dyk ==.23.sysma2dyk ==.22.sysma2dyk ==.7.sysma2dyk ==.11.sysma2dyk) ~6 count.0 3
+          (intlit . . +1)) ~1,1
+         (stmts . . 10
+          (call . . ~4
+           (dot . . ~6 result.1 1
+            (opensymchoice .
+             (td :`t0.42. . . nimcall -1 -1 +0 +42 . . tupleObjectDollar.0. . none unknown . "") add.3.sysma2dyk add.0.sysma2dyk add.2.sysma2dyk add.1.sysma2dyk)) 1
+           (strlit . . ",")))))))) 10,20
+    (call . . ~4
+     (dot . . ~6 result.1 1
+      (opensymchoice .
+       (td :`t0.43. . . nimcall -1 -1 +0 +43 . . tupleObjectDollar.0. . none unknown . "") add.3.sysma2dyk add.0.sysma2dyk add.2.sysma2dyk add.1.sysma2dyk)) 1
+     (strlit . . "\29")))) none unknown . "" . .))1,1,/home/araq/projects/nim/lib/std/private/miscdollars.nim(.index 8,2
+ (x toLocation.0. +158)
+ (h `t25.3. +52)
+ (h `t23.4. +192)
+ (h `t57.6. +189)
+ (h miscdollars.0. +577) 1,1,/home/araq/projects/nim/lib/system.nim
+ (h stdlib.0. +94)
+ (h `t0.9. +1222)
+ (h `t0.10. +377)
+ (h `t0.12. +552)
+ (h `t0.14. +404) 4,21
+ (h isNamedTuple.0. +216)
+ (h `t25.15. +73)
+ (h `t8.16. +383) 8,23
+ (x tupleObjectDollar.0. +659)
+ (h `t25.23. +59)
+ (h `t23.24. +195)
+ (h `t12.22. +202)
+ (h `t57.21. +250)
+ (h `t51.17. +90)
+ (h `t18.18. +92)
+ (h `t51.19. +94)
+ (h `t17.20. +92) 7,25
+ (h isNamed.0. +704)
+ (h `t8.26. +416)
+ (h `t8.27. +261)
+ (h `t0.28. +923)
+ (h `t0.29. +355)
+ (h `t0.30. +260)
+ (h `t0.31. +254)
+ (h `t0.36. +1215)
+ (h `t0.37. +335)
+ (h `t0.38. +319)
+ (h `t0.39. +684)
+ (h `t0.42. +1126)
+ (h `t0.43. +274))

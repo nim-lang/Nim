@@ -1,0 +1,858 @@
+(.nif26)
+(.indexat +30585           )
+1,1,/home/araq/projects/nim/lib/std/assertions.nim(stmts . . 1,10
+ (include . . "/home/araq/projects/nim/lib/system/rawquits.nim") 1,11
+ (include . . "/home/araq/projects/nim/lib/system/fatal.nim") ~1,15
+ (import . . "misc8dkkc")
+ (replay 26,25,/home/araq/projects/nim/lib/system/rawquits.nim
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "exit")))
+ (implementation) 7,24,/home/araq/projects/nim/lib/system/rawquits.nim
+ (sd :rawQuit.0. .
+  (proc) exit gin0 ofrbcr0s0awhtl0t0c0 -1 +0
+  (bheader
+   (false)
+   (false) "" 44,25,/home/araq/projects/nim/lib/system/rawquits.nim
+   (strlit . `t28.17.sysma2dyk "<stdlib.h>"))
+  (td :`t25.3. . ne2 nimcall -1 -1 +0 +3 . 14,24,/home/araq/projects/nim/lib/system/rawquits.nim
+   (formalparams . .
+    (arglist . .
+     (arglist . .) . .
+     (arglist . .) 18
+     (pragma . . ~23,1
+      (kv . . ~5
+       (ident . . magic) 2
+       (strlit . `t28.17.sysma2dyk "Exit")) ~6,1
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "exit")) 10,1
+      (kv . . ~6
+       (ident . . header) 2
+       (strlit . `t28.17.sysma2dyk "<stdlib.h>")) 26,1
+      (ident . . noreturn))
+     (arglist . .)) 1
+    (sd :errorcode.0 .
+     (param) . . . -1 +0 . `t34.11.cty9mra12 rawQuit.0. . none unknown . "" . .)) rawQuit.0. . none unknown . "" .) 1,1,/home/araq/projects/nim/lib/std/assertions.nim
+  (sd :assertions.0. .
+   (module) . . . +0 . . . 1,1,/home/araq/projects/nim/lib/system.nim
+   (sd :stdlib.0. .
+    (package) . . . -1 +0 . . . . none unknown . "" . .) . none unknown . "" . .) ~5
+  (proc s . 5
+   (ht . rawQuit.0.)
+   (empty)
+   (empty) . 30
+   (pragma . . ~23,1
+    (kv . . ~5
+     (ident . . magic) 2
+     (strlit . `t28.17.sysma2dyk "Exit")) ~6,1
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "exit")) 10,1
+    (kv . . ~6
+     (ident . . header) 2
+     (strlit . `t28.17.sysma2dyk "<stdlib.h>")) 26,1
+    (ident . . noreturn))
+   (empty)
+   (empty)) none unknown dh "exit" . .) 0,10,/home/araq/projects/nim/lib/system/fatal.nim
+ (pragma s . 2
+  (ident . . push) 15
+  (kv . . ~8
+   (ident . . profiler) 2
+   (intlit . `t1.34.sysma2dyk +0))) 0,12,/home/araq/projects/nim/lib/system/fatal.nim
+ (const s . 2,1
+  (sd :gotoBasedExceptions.0. .
+   (const) . g ofrbcr0s0awhtl0t0c0 -1 +0 . `t1.34.sysma2dyk assertions.0.
+   (const0 . . gotoBasedExceptions.0.
+    (empty) 35
+    (intlit . `t1.34.sysma2dyk +1)) none unknown . "" . .) 2,2
+  (sd :quirkyExceptions.0. .
+   (const) . ug ofrbcr0s0awhtl0t0c0 -1 +0 . `t1.34.sysma2dyk assertions.0.
+   (const0 . . quirkyExceptions.0.
+    (empty) 32
+    (intlit . `t1.34.sysma2dyk +0)) none unknown . "" . .)) 7,52,/home/araq/projects/nim/lib/system/fatal.nim
+ (sd :sysFatal.0. .
+  (func) . ugnn0 ofrbcr0s0awhtl0t0c0 -1 +0 .
+  (td :`t25.6. . nme1e2 inline -1 -1 +0 +6 . 15,52,/home/araq/projects/nim/lib/system/fatal.nim
+   (formalparams . .
+    (arglist . . . . . . 45
+     (pragma . . 2
+      (ident . . inline) 10
+      (ident . . noreturn)) .) 1
+    (sd :exceptn.0 .
+     (param) . u . -1 +0 .
+     (td :`t8.8. . i1c3 nimcall -1 -1 +0 +8 . . sysFatal.0. 16,52,/home/araq/projects/nim/lib/system/fatal.nim
+      (sd :exceptn\3Atype.0 .
+       (type) . a0 . -1 +0 . `t8.8. sysFatal.0. . none unknown . "" . .) none unknown . "" `t17.761.sysma2dyk) sysFatal.0. . none unknown . "" . .) 28
+    (sd :message.0 .
+     (param) . u . -1 +1 . `t28.17.sysma2dyk sysFatal.0. . none unknown . "" . .)) sysFatal.0. . none unknown . "" .) assertions.0. ~5
+  (func s . 5
+   (ht . sysFatal.0.)
+   (empty)
+   (genericparams . . 14 exceptn\3Atype.0) . 58
+   (pragma . . 2
+    (ident . . inline) 10
+    (ident . . noreturn))
+   (bracket . .
+    (empty)
+    (empty)) 2,1
+   (stmts . .
+    (raise . . 19
+     (objconstr . . ~13
+      (par . . 1
+       (refty . . 4
+        (ident . . exceptn))) 4
+      (kv . . ~3
+       (ident . . msg) 2
+       (ident . . message)))))) none unknown . "" . .) 7,55,/home/araq/projects/nim/lib/system/fatal.nim
+ (sd :sysFatal.1. .
+  (func) . gnn0 ofrbcr0s0awhtl0t0c0 -1 +0 .
+  (td :`t25.9. . nme1e2 inline -1 -1 +0 +9 . 15,55,/home/araq/projects/nim/lib/system/fatal.nim
+   (formalparams . .
+    (arglist . . . . . . 50
+     (pragma . . 2
+      (ident . . inline) 10
+      (ident . . noreturn)) .) 1
+    (sd :exceptn.1 .
+     (param) . u . -1 +0 .
+     (td :`t8.11. . i1c3 nimcall -1 -1 +0 +11 . . sysFatal.1. 16,55,/home/araq/projects/nim/lib/system/fatal.nim
+      (sd :exceptn\3Atype.1 .
+       (type) . a0 . -1 +0 . `t8.11. sysFatal.1. . none unknown . "" . .) none unknown . "" `t17.761.sysma2dyk) sysFatal.1. . none unknown . "" . .) 28
+    (sd :message.1 .
+     (param) . u . -1 +1 . `t28.17.sysma2dyk sysFatal.1. . none unknown . "" . .) 37
+    (sd :arg.0 .
+     (param) . u . -1 +2 . `t28.17.sysma2dyk sysFatal.1. . none unknown . "" . .)) sysFatal.1. . none unknown . "" .) assertions.0. ~5
+  (func s . 5
+   (ht . sysFatal.1.)
+   (empty)
+   (genericparams . . 14 exceptn\3Atype.1) . 63
+   (pragma . . 2
+    (ident . . inline) 10
+    (ident . . noreturn))
+   (bracket . .
+    (empty)
+    (empty)) 2,1
+   (stmts . .
+    (raise . . 19
+     (objconstr . . ~13
+      (par . . 1
+       (refty . . 4
+        (ident . . exceptn))) 4
+      (kv . . ~3
+       (ident . . msg) 10
+       (infix . .
+        (opensymchoice .
+         (td :`t0.12. . . nimcall -1 -1 +0 +12 . . sysFatal.1. . none unknown . "") &.4.sysma2dyk &.6.sysma2dyk &.5.sysma2dyk &.3.sysma2dyk &.2.sysma2dyk &.1.sysma2dyk &.0.sysma2dyk) ~8
+        (ident . . message) 2
+        (ident . . arg))))))) none unknown . "" . .) 0,58,/home/araq/projects/nim/lib/system/fatal.nim
+ (pragma s . 2
+  (ident . . pop)) ~1,13
+ (comment sh .) 4,19
+ (type s . 18
+  (type0 . . ~18
+   (sd :InstantiationInfo.0. .
+    (type) . ug ofrbcr0s0awhtl0t0c0 -1 +0 .
+    (td :`t18.13. . h0a nimcall +32 +8 +0 +13 . 25,20,/home/araq/projects/nim/lib/std/assertions.nim
+     (reclist . . 6
+      (sd :filename.0. .
+       (field . +0 +0) . u . +0 +0 . `t28.17.sysma2dyk InstantiationInfo.0. . none unknown . "" . .) 24
+      (sd :line.0. .
+       (field . +0 +0) . u . +16 +1 . `t31.3.sysma2dyk InstantiationInfo.0. . none unknown . "" . .) 35
+      (sd :column.0. .
+       (field . +0 +0) . u . +24 +2 . `t31.3.sysma2dyk InstantiationInfo.0. . none unknown . "" . .)) assertions.0. InstantiationInfo.0. none unknown . "" `t28.17.sysma2dyk `t31.3.sysma2dyk `t31.3.sysma2dyk) assertions.0. 18
+    (type0 . . ~18 InstantiationInfo.0.
+     (empty) 2
+     (tuplety . `t18.13. 6
+      (identdefs . .
+       (ident . . filename) 10 string.0.sysma2dyk 16
+       (empty)) 24
+      (identdefs . .
+       (ident . . line) 6 int.0.sysma2dyk 9
+       (empty)) 35
+      (identdefs . .
+       (ident . . column) 8 int.0.sysma2dyk 11
+       (empty)))) none unknown . "" . .)
+   (empty) 2
+   (tuplety . `t18.13. 6
+    (identdefs . .
+     (ident . . filename) 10 string.0.sysma2dyk 16
+     (empty)) 24
+    (identdefs . .
+     (ident . . line) 6 int.0.sysma2dyk 9
+     (empty)) 35
+    (identdefs . .
+     (ident . . column) 8 int.0.sysma2dyk 11
+     (empty))))) ~1,21
+ (pragma s . 2
+  (ident . . push) 21
+  (kv . . ~14
+   (ident . . overflowChecks) 2
+   (intlit . `t1.34.sysma2dyk +0)) 39
+  (kv . . ~11
+   (ident . . rangeChecks) 2
+   (intlit . `t1.34.sysma2dyk +0))) 4,23
+ (sd :$.0. .
+  (proc) . ugi1 ofbr0s0awhtl0t0c0 -1 +0 .
+  (td :`t25.14. . nte2 nimcall -1 -1 +0 +14 . 8,24,/home/araq/projects/nim/lib/std/assertions.nim
+   (formalparams . `t28.17.sysma2dyk
+    (arglist . . ~3
+     (arglist . .)
+     (empty)
+     (empty) ~3
+     (arglist . .)
+     (empty) ~3
+     (arglist . .)) 1
+    (sd :info.0 .
+     (param) . u . -1 +0 . `t18.13. $.0. . none unknown . "" . .)) $.0. . none unknown . "" `t28.17.sysma2dyk) assertions.0. ~5
+  (proc s . 5
+   (ht . $.0.)
+   (empty)
+   (empty) .
+   (empty)
+   (empty) 2,3
+   (stmts s
+    (td :`t7.1. . . nimcall -1 -1 +0 +1 . . . . none unknown . "") 7
+    (asgn s `t7.1. ~9,~3
+     (sd :result.0 .
+      (result) . ua . -1 +0 . `t28.17.sysma2dyk $.0. . none unknown . "" . .) 2
+     (strlit s `t28.17.sysma2dyk "")) 7,1
+    (stmts sf . 2,4,/home/araq/projects/nim/lib/std/private/miscdollars.nim
+     (empty) 10,13,/home/araq/projects/nim/lib/std/private/miscdollars.nim
+     (call s . 1 add.1.sysma2dyk 2,28,/home/araq/projects/nim/lib/std/assertions.nim result.0 24,28,/home/araq/projects/nim/lib/std/assertions.nim
+      (dot . `t28.17.sysma2dyk ~4 info.0 7,~8 filename.0.)) ~1
+     (if s . 5,14,/home/araq/projects/nim/lib/std/private/miscdollars.nim
+      (elif . . 5
+       (expr sf `t1.34.sysma2dyk 2,140,/home/araq/projects/nim/lib/system/comparisons.nim
+        (empty)
+        (infix s `t1.34.sysma2dyk <.8.sysma2dyk 2
+         (intlit s
+          (td :`t31.17. . c3 nimcall +8 +8 +0 +17 . 12,14,/home/araq/projects/nim/lib/std/private/miscdollars.nim
+           (intlit s `t31.17. +0) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +0) 39,28,/home/araq/projects/nim/lib/std/assertions.nim
+         (dot . `t31.3.sysma2dyk ~4 info.0 10,~8 line.0.))) ~1,1
+       (stmts s . 6
+        (call s . 1 add.1.sysma2dyk 2,28,/home/araq/projects/nim/lib/std/assertions.nim result.0 5
+         (strlit s `t28.17.sysma2dyk "\28")) 6,1
+        (call s . ~6 addInt.2.digqtx7k2 2,28,/home/araq/projects/nim/lib/std/assertions.nim
+         (haddr .
+          (td :`t23.18. . . nimcall -1 -1 +0 +18 . . $.0. . none unknown . "" `t28.17.sysma2dyk) result.0) 39,28,/home/araq/projects/nim/lib/std/assertions.nim
+         (dot . `t31.3.sysma2dyk ~4 info.0 10,~8 line.0.)) ,2
+        (if s . 3
+         (elif . . 4
+          (expr sf `t1.34.sysma2dyk 2,140,/home/araq/projects/nim/lib/system/comparisons.nim
+           (empty)
+           (infix s `t1.34.sysma2dyk <.8.sysma2dyk 2
+            (intlit s `t31.17. +0) 58,28,/home/araq/projects/nim/lib/std/assertions.nim
+            (infix . `t31.3.sysma2dyk \2B.5.sysma2dyk ~8
+             (dot . `t31.3.sysma2dyk ~4 info.0 10,~8 column.0.) 2
+             (intlit .
+              (td :`t31.15. . c3 nimcall +8 +8 +0 +15 . 60,28,/home/araq/projects/nim/lib/std/assertions.nim
+               (intlit s `t31.15. +1) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +1)))) ~1,1
+          (stmts s . 6
+           (call s . 1 add.1.sysma2dyk 2,28,/home/araq/projects/nim/lib/std/assertions.nim result.0 5
+            (strlit s `t28.17.sysma2dyk ", ")) 6,1
+           (call s . ~6 addInt.2.digqtx7k2 2,28,/home/araq/projects/nim/lib/std/assertions.nim
+            (haddr .
+             (td :`t23.19. . . nimcall -1 -1 +0 +19 . . $.0. . none unknown . "" `t28.17.sysma2dyk) result.0) 58,28,/home/araq/projects/nim/lib/std/assertions.nim
+            (infix . `t31.3.sysma2dyk \2B.5.sysma2dyk ~8
+             (dot . `t31.3.sysma2dyk ~4 info.0 10,~8 column.0.) 2
+             (intlit . `t31.15. +1)))))) 6,5
+        (call s . 1 add.1.sysma2dyk 2,28,/home/araq/projects/nim/lib/std/assertions.nim result.0 5
+         (strlit s `t28.17.sysma2dyk "\29"))))))) result.0) none unknown . "" . .) ~1,29
+ (pragma s . 2
+  (ident . . pop)) 4,34
+ (sd :raiseAssert.0. x
+  (proc) . uegwn0i1 ofrbcr0s0awhtl0t0c0 -1 +0 .
+  (td :`t25.20. . nte1e2 noinline -1 -1 +0 +20 . 17,35,/home/araq/projects/nim/lib/std/assertions.nim
+   (formalparams . .
+    (arglist . . ~12
+     (arglist . .)
+     (empty)
+     (empty) ~12
+     (arglist . .)
+     (empty) ~12
+     (arglist . .)) 1
+    (sd :msg.0 .
+     (param) . u . -1 +0 . `t28.17.sysma2dyk raiseAssert.0. . none unknown . "" . .)) raiseAssert.0. . none unknown . "" .) assertions.0. ~5
+  (proc s . 5
+   (ht . raiseAssert.0.)
+   (empty)
+   (empty) . 31
+   (pragma . . 2
+    (ident . . noinline) 12
+    (ident . . noreturn) 22
+    (ident . . nosinks))
+   (empty) 2,1
+   (stmts s .
+    (comment sh .) 10,4
+    (call s . 7,52,/home/araq/projects/nim/lib/system/fatal.nim
+     (sd :sysFatal.2. .
+      (func) . ufgnn0i1 ofrbcr0s0awhtl0t0c0 -1 +0 .
+      (td :`t25.22. . ntgme1e2 inline -1 -1 +0 +22 . 15,52,/home/araq/projects/nim/lib/system/fatal.nim
+       (formalparams . .
+        (arglist . . ~8
+         (arglist . .)
+         (empty)
+         (empty) ~8
+         (arglist . .)
+         (empty) ~8
+         (arglist . .)) 1
+        (sd :exceptn.2 .
+         (param) . u . -1 +0 .
+         (td :`t8.21. . c3 nimcall -1 -1 +0 +21 . . raiseAssert.0. . none unknown . "" `t17.17.exc3otjng1) sysFatal.2. . none unknown . "" . .) 28
+        (sd :message.2 .
+         (param) . u . -1 +1 . `t28.17.sysma2dyk sysFatal.2. . none unknown . "" . .)) sysFatal.0. . none unknown . "" .) sysFatal.0. ~5
+      (func . . 5
+       (ht `t25.6. sysFatal.2.)
+       (empty)
+       (empty) . 58
+       (pragma . . 2
+        (ident . . inline) 10
+        (ident . . noreturn))
+       (bracket . .
+        (empty)
+        (empty)) 2,1
+       (raise s .
+        (objconstr s
+         (td :`t22.23. . h0ac3 nimcall -1 -1 +0 +23 . . sysFatal.2. . none unknown . "" `t17.17.exc3otjng1) 6
+         (par . `t22.23. 1
+          (refty . `t22.23. 4
+           (ident . `t17.17.exc3otjng1 exceptn))) 23
+         (kv s . 4,539,/home/araq/projects/nim/lib/system.nim msg.0.sysma2dyk 2 message.2)))) none unknown . "" . sysFatal.0.) 1
+     (ht `t8.21. AssertionDefect.0.exc3otjng1) 18 msg.0))) none unknown . "" . .) 4,41
+ (sd :failedAssertImpl.0. x
+  (proc) . uegi1 ofrbcr0s0awhtl0t0c0 -1 +0 .
+  (td :`t25.51. . nte2 nimcall -1 -1 +0 +51 . 22,42,/home/araq/projects/nim/lib/std/assertions.nim
+   (formalparams . .
+    (arglist . . 24
+     (bracket . .)
+     (empty)
+     (empty) 34
+     (bracket . .)
+     (empty) ~17
+     (arglist . .)) 1
+    (sd :msg.1 .
+     (param) . u . -1 +0 . `t28.17.sysma2dyk failedAssertImpl.0. . none unknown . "" . .)) failedAssertImpl.0. . none unknown . "" .) assertions.0. ~5
+  (proc s . 5
+   (ht . failedAssertImpl.0.)
+   (empty)
+   (empty) . 36
+   (pragma . . 8
+    (kv . . ~6
+     (ident . . raises) 2
+     (bracket . .)) 18
+    (kv . . ~4
+     (ident . . tags) 2
+     (bracket . .)))
+   (empty) 2,1
+   (stmts s .
+    (comment sh .) 11,2
+    (call s . ~11 raiseAssert.0. 1 msg.1))) none unknown . "" . .) 8,46
+ (sd :assertImpl.0. .
+  (template) . ugn4 . -1 +0 .
+  (td :`t25.52. . m nimcall -1 -1 +0 +52 . 19,47,/home/araq/projects/nim/lib/std/assertions.nim
+   (formalparams . .
+    (arglist . .) 1
+    (sd :cond.0 .
+     (param) . ut0 . -1 +0 . `t1.34.sysma2dyk assertImpl.0. . none unknown . "" . .) 13
+    (sd :msg.2 .
+     (param) . ut0 . -1 +1 . `t28.17.sysma2dyk assertImpl.0. . none unknown . "" . .) 26
+    (sd :expr.0 .
+     (param) . ut0 . -1 +2 . `t28.17.sysma2dyk assertImpl.0. . none unknown . "" . .) 40
+    (sd :enabled.0 .
+     (param) . ut0 . -1 +3 .
+     (td :`t60.54. . uh1i1 nimcall -1 -1 +0 +54 . . assertImpl.0. 59,47,/home/araq/projects/nim/lib/std/assertions.nim
+      (sd :enabled\3Atype.0 .
+       (type) . a0 . -1 +0 . `t60.54. assertImpl.0. . none unknown . "" . .) none unknown . "" `t1.34.sysma2dyk) assertImpl.0. . none unknown . "" . .)) assertImpl.0. . none unknown . "" .) assertions.0. ~9
+  (template s . 9
+   (ht . assertImpl.0.)
+   (empty)
+   (genericparams . . 59 enabled\3Atype.0) .
+   (empty)
+   (bracket . .
+    (empty)
+    (empty)) 2,1
+   (stmts . .
+    (when . . 5
+     (elif . . enabled.0 ~3,1
+      (stmts . .
+       (const . . 2,1
+        (const0 . .
+         (sd :loc.0. .
+          (const) . us1g0 . -1 +0 . . assertImpl.0. . none unknown . "" . .)
+         (empty) 23
+         (call . . ~17
+          (ht . instantiationInfo.0.sysma2dyk) 11
+          (vv . . ~10
+           (ident . . fullPaths) 15
+           (call . . ~13
+            (opensymchoice d3 . compileOption.1.sysma2dyk compileOption.0.sysma2dyk) 1
+            (strlit . . "excessiveStackTrace"))))) 2,2
+        (const0 . .
+         (sd :ploc.0. .
+          (const) . us1g0 . -1 +0 . . assertImpl.0. . none unknown . "" . .)
+         (empty) 7
+         (prefix . .
+          (ht . $.0.) 1 loc.0.))) ,3
+       (bind0 . . instantiationInfo.0.sysma2dyk) ,4
+       (mixin . . 6
+        (opensymchoice .
+         (td :`t0.56. . . nimcall -1 -1 +0 +56 . . assertImpl.0. . none unknown . "") failedAssertImpl.0.)) ,5
+       (pragmablock . .
+        (pragma . . 6
+         (kv . . ~4
+          (ident . . line) 2 loc.0.)) 2,1
+        (stmts . .
+         (if . . 3
+          (elif . .
+           (prefix . .
+            (opensymchoice d3 . not.8.sysma2dyk not.2.sysma2dyk not.9.sysma2dyk not.1.sysma2dyk not.4.sysma2dyk not.6.sysma2dyk not.5.sysma2dyk not.0.sysma2dyk not.7.sysma2dyk not.11.sysma2dyk not.10.sysma2dyk not.3.sysma2dyk) 4 cond.0) ~1,1
+           (stmts . . 16
+            (call . . ~16
+             (opensymchoice .
+              (td :`t0.58. . . nimcall -1 -1 +0 +58 . . assertImpl.0. . none unknown . "") failedAssertImpl.0.) 27
+             (infix . .
+              (opensymchoice d3 . &.4.sysma2dyk &.6.sysma2dyk &.5.sysma2dyk &.3.sysma2dyk &.2.sysma2dyk &.1.sysma2dyk &.0.sysma2dyk) ~7
+              (infix . .
+               (opensymchoice d3 . &.4.sysma2dyk &.6.sysma2dyk &.5.sysma2dyk &.3.sysma2dyk &.2.sysma2dyk &.1.sysma2dyk &.0.sysma2dyk) ~7
+               (infix . .
+                (opensymchoice d3 . &.4.sysma2dyk &.6.sysma2dyk &.5.sysma2dyk &.3.sysma2dyk &.2.sysma2dyk &.1.sysma2dyk &.0.sysma2dyk) ~7
+                (infix . .
+                 (opensymchoice d3 . &.4.sysma2dyk &.6.sysma2dyk &.5.sysma2dyk &.3.sysma2dyk &.2.sysma2dyk &.1.sysma2dyk &.0.sysma2dyk) ~5 ploc.0. 2
+                 (strlit . . " `")) 2 expr.0) 2
+               (strlit . . "` ")) 2 msg.2)))))))))))) none unknown . "" . .) 8,57
+ (sd :assert.0. x
+  (template) . egn4 . -1 +0 .
+  (td :`t25.63. . m nimcall -1 -1 +0 +63 . 16,58,/home/araq/projects/nim/lib/std/assertions.nim
+   (formalparams . .
+    (arglist . .) 1
+    (sd :cond.1 .
+     (param) . ut0 . -1 +0 . `t6.28.sysma2dyk assert.0. . none unknown . "" . .) 16
+    (sd :msg.3 .
+     (param) . ut0 . -1 +1 . `t28.17.sysma2dyk assert.0. 6
+     (strlit . `t28.17.sysma2dyk "") none unknown . "" . .)) assert.0. . none unknown . "" .) assertions.0. ~9
+  (template s . 9
+   (ht . assert.0.)
+   (empty)
+   (empty) .
+   (empty)
+   (empty) 2,1
+   (stmts . .
+    (comment h .) ,7
+    (call . .
+     (ident . . runnableExamples) 18
+     (stmts b2 .
+      (cmd . .
+       (ident . . assert) 9
+       (infix . .
+        (ident . . ==) ~2
+        (intlit . . +1) 3
+        (intlit . . +1))))) 16,8
+    (call . . ~16
+     (ident . . runnableExamples) 1
+     (strlit . . "--assertions\3Aoff") ~14,1
+     (stmts b2 .
+      (cmd . .
+       (ident . . assert) 9
+       (infix . .
+        (ident . . ==) ~2
+        (intlit . . +1) 3
+        (intlit . . +2))))) 16,10
+    (call . . ~16
+     (ident . . runnableExamples) 1
+     (strlit . . "-d\3Adanger") 15
+     (stmts b2 .
+      (cmd . .
+       (ident . . assert) 9
+       (infix . .
+        (ident . . ==) ~2
+        (intlit . . +1) 3
+        (intlit . . +2))))) 10,11
+    (call . . ~10
+     (ht . assertImpl.0.) 1 cond.1 7 msg.3 20
+     (call . . ~8
+      (ht . astToStr.0.sysma2dyk) 1 cond.1) 41
+     (call . . ~13
+      (opensymchoice d3 . compileOption.1.sysma2dyk compileOption.0.sysma2dyk) 1
+      (strlit . . "assertions"))))) none unknown . "" . .) 8,71
+ (sd :doAssert.0. x
+  (template) . egn4 . -1 +0 .
+  (td :`t25.65. . m nimcall -1 -1 +0 +65 . 18,72,/home/araq/projects/nim/lib/std/assertions.nim
+   (formalparams . .
+    (arglist . .) 1
+    (sd :cond.2 .
+     (param) . ut0 . -1 +0 . `t6.28.sysma2dyk doAssert.0. . none unknown . "" . .) 16
+    (sd :msg.4 .
+     (param) . ut0 . -1 +1 . `t28.17.sysma2dyk doAssert.0. 6
+     (strlit . `t28.17.sysma2dyk "") none unknown . "" . .)) doAssert.0. . none unknown . "" .) assertions.0. ~9
+  (template s . 9
+   (ht . doAssert.0.)
+   (empty)
+   (empty) .
+   (empty)
+   (empty) 2,1
+   (stmts . .
+    (comment h .) ,1
+    (call . .
+     (ident . . runnableExamples) 2,1
+     (stmts b2 .
+      (cmd . .
+       (ident . . doAssert) 11
+       (infix . .
+        (ident . . ==) ~2
+        (intlit . . +1) 3
+        (intlit . . +1))))) 10,3
+    (call . . ~10
+     (ht . assertImpl.0.) 1 cond.2 7 msg.4 20
+     (call . . ~8
+      (ht . astToStr.0.sysma2dyk) 1 cond.2) 28
+     (ht . true.0.sysma2dyk)))) none unknown . "" . .) 8,77
+ (sd :onFailedAssert.0. x
+  (template) . egn4d3a1 . -1 +0 .
+  (td :`t25.66. . m nimcall -1 -1 +0 +66 . 24,78,/home/araq/projects/nim/lib/std/assertions.nim
+   (formalparams . `t6.28.sysma2dyk
+    (arglist . .) 1
+    (sd :msg.5 .
+     (param) . t0 . -1 +0 . `t6.28.sysma2dyk onFailedAssert.0. . none unknown . "" . .) 6
+    (sd :code.0 .
+     (param) . t0 . -1 +1 . `t6.28.sysma2dyk onFailedAssert.0. . none unknown . "" . .)) onFailedAssert.0. . none unknown . "" `t6.28.sysma2dyk) assertions.0. ~9
+  (template s . 9
+   (ht . onFailedAssert.0.)
+   (empty)
+   (empty) . 54
+   (pragma . . 2
+    (ident . . dirty))
+   (empty) 2,1
+   (stmts . .
+    (comment h .) ,2
+    (call . .
+     (ident . . runnableExamples) 2,1
+     (stmts b2 . 5
+      (type . . 8
+       (type0 . . ~8
+        (ident . . MyError)
+        (empty) 2
+        (objectty . .
+         (empty) 7
+         (ofinherit . . 3
+          (ident . . CatchableError)) ~13,1
+         (reclist . .
+          (identdefs . .
+           (ident . . lineinfo) 10
+           (tuplety . . 6
+            (identdefs . .
+             (ident . . filename) 10
+             (ident . . string) 16
+             (empty)) 24
+            (identdefs . .
+             (ident . . line) 6
+             (ident . . int) 9
+             (empty)) 35
+            (identdefs . .
+             (ident . . column) 8
+             (ident . . int) 11
+             (empty))) ~2,3
+           (empty)))))) 14,4
+      (call . . ~14
+       (ident . . onFailedAssert) 1 msg.5 ~12,1
+       (stmts b2 .
+        (raise . . 19
+         (objconstr . . ~13
+          (par . . 1
+           (refty . . 4
+            (ident . . MyError))) 4
+          (kv . . ~3 msg.5 2 msg.5) 19
+          (kv . . ~8
+           (ident . . lineinfo) 19
+           (call . . ~17
+            (ident . . instantiationInfo) 1
+            (intlit . . -2))))))) 14,6
+      (call . . ~14
+       (ident . . doAssertRaises) 1
+       (ident . . MyError) 11
+       (stmts b2 .
+        (cmd . .
+         (ident . . doAssert) 9
+         (ident . . false)))))) ,10
+    (when . . 5
+     (elif . .
+      (prefix . .
+       (ident . . not) 11
+       (call . . ~7
+        (ident . . defined) 1
+        (ident . . nimHasTemplateRedefinitionPragma))) ~3,1
+      (stmts . .
+       (pragma . . 8
+        (kv . . ~6
+         (ident . . pragma) 2
+         (ident . . redefine)))))) ,12
+    (template . . 9
+     (ident . . failedAssertImpl)
+     (empty)
+     (empty) 25
+     (formalparams . . 19
+      (ident . . untyped) 1
+      (identdefs . .
+       (ident . . msgIMPL) 9
+       (ident . . string) 15
+       (empty))) 52
+     (pragma . . 2
+      (ident . . dirty) 9
+      (ident . . redefine))
+     (empty) 2,1
+     (stmts . .
+      (let . . 4
+       (identdefs . . msg.5 4
+        (empty) 6
+        (ident . . msgIMPL))) ,1 code.0)))) none unknown . "" . .) 8,94
+ (sd :doAssertRaises.0. x
+  (template) . egn4 . -1 +0 .
+  (td :`t25.67. . m nimcall -1 -1 +0 +67 . 24,95,/home/araq/projects/nim/lib/std/assertions.nim
+   (formalparams . .
+    (arglist . .) 1
+    (sd :exception.0 .
+     (param) . ut0 . -1 +0 .
+     (td :`t8.68. . i1c3 nimcall -1 -1 +0 +68 . . doAssertRaises.0. 25,95,/home/araq/projects/nim/lib/std/assertions.nim
+      (sd :exception\3Atype.0 .
+       (type) . a0 . -1 +0 . `t8.68. doAssertRaises.0. . none unknown . "" . .) none unknown . "" `t0.21.sysma2dyk) doAssertRaises.0. . none unknown . "" . .) 22
+    (sd :code.1 .
+     (param) . ut0 . -1 +1 . `t6.28.sysma2dyk doAssertRaises.0. . none unknown . "" . .)) doAssertRaises.0. . none unknown . "" .) assertions.0. ~9
+  (template s . 9
+   (ht . doAssertRaises.0.)
+   (empty)
+   (genericparams . . 25 exception\3Atype.0) .
+   (empty)
+   (bracket . .
+    (empty)
+    (empty)) 2,1
+   (stmts . .
+    (comment h .) ,1
+    (call . .
+     (ident . . runnableExamples) 2,1
+     (stmts b2 . 14
+      (call . . ~14
+       (ident . . doAssertRaises) 1
+       (ident . . ValueError) 14
+       (stmts b2 .
+        (raise . . 18
+         (call . . ~12
+          (ident . . newException) 1
+          (ident . . ValueError) 13
+          (strlit . . "Hello World"))))) 14,1
+      (call . . ~14
+       (ident . . doAssertRaises) 1
+       (ident . . CatchableError) 18
+       (stmts b2 .
+        (raise . . 18
+         (call . . ~12
+          (ident . . newException) 1
+          (ident . . ValueError) 13
+          (strlit . . "Hello World"))))) 14,2
+      (call . . ~14
+       (ident . . doAssertRaises) 1
+       (ident . . AssertionDefect) 19
+       (stmts b2 .
+        (cmd . .
+         (ident . . doAssert) 9
+         (ident . . false)))))) ,5
+    (var . . 4
+     (identdefs . .
+      (sd :wrong.0 .
+       (var . +0 +0) . us1g0 . -1 +0 . . doAssertRaises.0. . none unknown . "" . .) 6
+      (empty) 8
+      (ht . false.0.sysma2dyk))) ,6
+    (const . . 6
+     (const0 . .
+      (sd :begin.0. .
+       (const) . us1g0 . -1 +0 . . doAssertRaises.0. . none unknown . "" . .)
+      (empty) 51
+      (infix . .
+       (opensymchoice d3 . &.4.sysma2dyk &.6.sysma2dyk &.5.sysma2dyk &.3.sysma2dyk &.2.sysma2dyk &.1.sysma2dyk &.0.sysma2dyk) ~22
+       (infix . .
+        (opensymchoice d3 . &.4.sysma2dyk &.6.sysma2dyk &.5.sysma2dyk &.3.sysma2dyk &.2.sysma2dyk &.1.sysma2dyk &.0.sysma2dyk) ~21
+        (strlit . . "expected raising \27") 10
+        (call . . ~8
+         (ht . astToStr.0.sysma2dyk) 1 exception.0)) 2
+       (strlit . . "\27, instead")))) ,7
+    (const . . 6
+     (const0 . .
+      (sd :msgEnd.0. .
+       (const) . us1g0 . -1 +0 . . doAssertRaises.0. . none unknown . "" . .)
+      (empty) 17
+      (infix . .
+       (opensymchoice d3 . &.4.sysma2dyk &.6.sysma2dyk &.5.sysma2dyk &.3.sysma2dyk &.2.sysma2dyk &.1.sysma2dyk &.0.sysma2dyk) ~8
+       (strlit . . " by\3A ") 10
+       (call . . ~8
+        (ht . astToStr.0.sysma2dyk) 1 code.1)))) ,8
+    (template . . 9
+     (sd :raisedForeign.0. .
+      (template) . us1g0 . -1 +0 . . doAssertRaises.0. ~9
+      (template . . 9 raisedForeign.0.
+       (empty)
+       (empty) . 23
+       (pragma . . 2
+        (ident . . gensym))
+       (empty) 36
+       (stmts . . 11
+        (call . . ~11
+         (ht . raiseAssert.0.) 37
+         (infix . .
+          (opensymchoice d3 . &.4.sysma2dyk &.6.sysma2dyk &.5.sysma2dyk &.3.sysma2dyk &.2.sysma2dyk &.1.sysma2dyk &.0.sysma2dyk) ~30
+          (infix . .
+           (opensymchoice d3 . &.4.sysma2dyk &.6.sysma2dyk &.5.sysma2dyk &.3.sysma2dyk &.2.sysma2dyk &.1.sysma2dyk &.0.sysma2dyk) ~6 begin.0. 2
+           (strlit . . " raised foreign exception")) 2 msgEnd.0.)))) none unknown . "" . .)
+     (empty)
+     (empty) . 23
+     (pragma . . 2
+      (ident . . gensym))
+     (empty) 36
+     (stmts . . 11
+      (call . . ~11
+       (ht . raiseAssert.0.) 37
+       (infix . .
+        (opensymchoice d3 . &.4.sysma2dyk &.6.sysma2dyk &.5.sysma2dyk &.3.sysma2dyk &.2.sysma2dyk &.1.sysma2dyk &.0.sysma2dyk) ~30
+        (infix . .
+         (opensymchoice d3 . &.4.sysma2dyk &.6.sysma2dyk &.5.sysma2dyk &.3.sysma2dyk &.2.sysma2dyk &.1.sysma2dyk &.0.sysma2dyk) ~6 begin.0. 2
+         (strlit . . " raised foreign exception")) 2 msgEnd.0.)))) ,9
+    (pragma . . 2
+     (ident . . push) 26
+     (kv . . ~12
+      (at . . ~7
+       (ident . . warning) 1
+       (ident . . BareExcept)) 1
+      (ht . off.0.sysma2dyk))) ,10
+    (when . . 5
+     (elif . . 10
+      (infix . .
+       (ht . is.0.sysma2dyk) ~10
+       (ht . Exception.0.sysma2dyk) 3 exception.0) ~3,1
+      (stmts . .
+       (try . . 2,1
+        (stmts . .
+         (if . . 3
+          (elif . .
+           (ht . true.0.sysma2dyk) ~1,1
+           (stmts . . code.1))) 6,2
+         (asgn . . ~6 wrong.0 2
+          (ht . true.0.sysma2dyk))) ,4
+        (except . . 17
+         (infix . .
+          (ident . . as) ~10
+          (ht . Exception.0.sysma2dyk) 3
+          (sd :e.0 .
+           (let . +0 +0) . s1g0 . -1 +0 . . doAssertRaises.0. . none unknown . "" . .)) 23
+         (stmts . .
+          (discard . .
+           (empty)))) ,5
+        (except . . 8
+         (stmts . . 13
+          (call . . ~13 raisedForeign.0.)))))) ,7
+     (else . . 2,1
+      (stmts . .
+       (try . . 2,1
+        (stmts . .
+         (if . . 3
+          (elif . .
+           (ht . true.0.sysma2dyk) ~1,1
+           (stmts . . code.1))) 6,2
+         (asgn . . ~6 wrong.0 2
+          (ht . true.0.sysma2dyk))) ,4
+        (except . . 7 exception.0 2,1
+         (stmts . .
+          (discard . .
+           (empty)))) ,6
+        (except . . 17
+         (infix . .
+          (ident . . as) ~10
+          (ht . Exception.0.sysma2dyk) 3
+          (sd :e.1 .
+           (let . +0 +0) . us1g0 . -1 +0 . . doAssertRaises.0. . none unknown . "" . .)) 2,1
+         (stmts . .
+          (mixin . . 7
+           (opensymchoice .
+            (td :`t0.77. . . nimcall -1 -1 +0 +77 . . doAssertRaises.0. . none unknown . "") $.0.)) 11,1
+          (call . . ~11
+           (ht . raiseAssert.0.) 37
+           (infix . .
+            (opensymchoice d3 . &.4.sysma2dyk &.6.sysma2dyk &.5.sysma2dyk &.3.sysma2dyk &.2.sysma2dyk &.1.sysma2dyk &.0.sysma2dyk) ~6
+            (infix . .
+             (opensymchoice d3 . &.4.sysma2dyk &.6.sysma2dyk &.5.sysma2dyk &.3.sysma2dyk &.2.sysma2dyk &.1.sysma2dyk &.0.sysma2dyk) ~10
+             (infix . .
+              (opensymchoice d3 . &.4.sysma2dyk &.6.sysma2dyk &.5.sysma2dyk &.3.sysma2dyk &.2.sysma2dyk &.1.sysma2dyk &.0.sysma2dyk) ~14
+              (infix . .
+               (opensymchoice d3 . &.4.sysma2dyk &.6.sysma2dyk &.5.sysma2dyk &.3.sysma2dyk &.2.sysma2dyk &.1.sysma2dyk &.0.sysma2dyk) ~6 begin.0. 2
+               (strlit . . " raised \27")) 2
+              (prefix . .
+               (opensymchoice .
+                (td :`t0.82. . . nimcall -1 -1 +0 +82 . . doAssertRaises.0. . none unknown . "") $.0.) 2
+               (dot . . ~1 e.1 1
+                (ident . . name)))) 2
+             (strlit . . "\27")) 2 msgEnd.0.)))) ,9
+        (except . . 8
+         (stmts . . 13
+          (call . . ~13 raisedForeign.0.))))))) ,28
+    (pragma . . 2
+     (ident . . pop)) ,29
+    (if . . 3
+     (elif . . wrong.0 ~1,1
+      (stmts . . 11
+       (call . . ~11
+        (ht . raiseAssert.0.) 31
+        (infix . .
+         (opensymchoice d3 . &.4.sysma2dyk &.6.sysma2dyk &.5.sysma2dyk &.3.sysma2dyk &.2.sysma2dyk &.1.sysma2dyk &.0.sysma2dyk) ~24
+         (infix . .
+          (opensymchoice d3 . &.4.sysma2dyk &.6.sysma2dyk &.5.sysma2dyk &.3.sysma2dyk &.2.sysma2dyk &.1.sysma2dyk &.0.sysma2dyk) ~6 begin.0. 2
+          (strlit . . " nothing was raised")) 2 msgEnd.0.))))))) none unknown . "" . .) sysFatal.2.)1,1,/home/araq/projects/nim/lib/std/assertions.nim(.index 7,24,/home/araq/projects/nim/lib/system/rawquits.nim
+ (h rawQuit.0. +474)
+ (h `t25.3. +200)
+ (h assertions.0. +731) 1,1,/home/araq/projects/nim/lib/system.nim
+ (h stdlib.0. +93) 2,13,/home/araq/projects/nim/lib/system/fatal.nim
+ (h gotoBasedExceptions.0. +763) 2,14,/home/araq/projects/nim/lib/system/fatal.nim
+ (h quirkyExceptions.0. +222) 7,52,/home/araq/projects/nim/lib/system/fatal.nim
+ (h sysFatal.0. +264)
+ (h `t25.6. +65)
+ (h `t8.8. +273) 7,55,/home/araq/projects/nim/lib/system/fatal.nim
+ (h sysFatal.1. +929)
+ (h `t25.9. +64)
+ (h `t8.11. +273)
+ (h `t0.12. +973) 4,19
+ (h InstantiationInfo.0. +411)
+ (h `t18.13. +75) 30,19
+ (h filename.0. +121) 48,19
+ (h line.0. +129) 59,19
+ (h column.0. +125) 4,23
+ (h $.0. +1111)
+ (h `t25.14. +55)
+ (h `t7.1. +497)
+ (h `t31.17. +865)
+ (h `t23.18. +602)
+ (h `t31.15. +660)
+ (h `t23.19. +505) 4,34
+ (x raiseAssert.0. +558)
+ (h `t25.20. +71) 7,52,/home/araq/projects/nim/lib/system/fatal.nim
+ (h sysFatal.2. +690)
+ (h `t25.22. +76)
+ (h `t8.21. +338)
+ (h `t22.23. +571) 4,41
+ (x failedAssertImpl.0. +436)
+ (h `t25.51. +73) 8,46
+ (h assertImpl.0. +751)
+ (h `t25.52. +52)
+ (h `t60.54. +506) 5,49
+ (h loc.0. +629) 5,50
+ (h ploc.0. +438)
+ (h `t0.56. +275)
+ (h `t0.58. +623) 8,57
+ (x assert.0. +907)
+ (h `t25.63. +48) 8,71
+ (x doAssert.0. +1572)
+ (h `t25.65. +50) 8,77
+ (x onFailedAssert.0. +964)
+ (h `t25.66. +60) 8,94
+ (x doAssertRaises.0. +2767)
+ (h `t25.67. +56)
+ (h `t8.68. +189) 7,101
+ (h begin.0. +1721) 7,102
+ (h msgEnd.0. +611) 10,103
+ (h raisedForeign.0. +389)
+ (h `t0.77. +2867)
+ (h `t0.82. +917))

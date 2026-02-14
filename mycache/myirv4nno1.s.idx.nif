@@ -1,0 +1,16 @@
+(.nif24)
+(index
+1,1,/home/araq/projects/nim/myimp.nim(public 4,1
+ (kv foo.0.myirv4nno1 +110) 4,1
+ (kv `t25.3.myirv4nno1 +71))
+1,1,/home/araq/projects/nim/myimp.nim(private 9,1
+ (kv `t23.4.myirv4nno1 +490) 4,1
+ (kv myimp.0.myirv4nno1 +214))
+(destroy)
+(wasmoved)
+(dup)
+(copy)
+(sinkh)
+(trace)
+
+)

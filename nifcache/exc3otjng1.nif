@@ -1,0 +1,1320 @@
+(.nif26)
+(.indexat +42689           )
+1,1,/home/araq/projects/nim/lib/system/exceptions.nim(stmts . .
+ (implementation) ~1
+ (comment sh .) 1,3
+ (type s . 12
+  (type0 . . ~2
+   (postfix . .
+    (ident . . *) ~10
+    (sd :TimeEffect.0. x
+     (type) . eg ofrbcr0s0awhl0t0c0 -1 +0 .
+     (td :`t17.3. . . nimcall +8 +8 +0 +3 . 16,4,/home/araq/projects/nim/lib/system/exceptions.nim
+      (reclist . .) 1,1,/home/araq/projects/nim/lib/system/exceptions.nim
+      (sd :exceptions.0. .
+       (module) . . . +0 . . . 1,1,/home/araq/projects/nim/lib/system.nim
+       (sd :stdlib.0. .
+        (package) . . . -1 +0 . . . . none unknown . "" . .) . none unknown . "" . .) TimeEffect.0. none unknown . "" `t17.758.sysma2dyk) exceptions.0. 12
+     (type0 . . ~2
+      (postfix . .
+       (ident . . *) ~10 TimeEffect.0.)
+      (empty) 2
+      (objectty h `t17.3.
+       (empty) 7
+       (ofinherit . . 3 RootEffect.0.sysma2dyk)
+       (empty))) none unknown . "" . .))
+   (empty) 2
+   (objectty h `t17.3.
+    (empty) 7
+    (ofinherit . . 3 RootEffect.0.sysma2dyk)
+    (empty))) 10,1
+  (type0 . . ~2
+   (postfix . .
+    (ident . . *) ~8
+    (sd :IOEffect.0. x
+     (type) . ueg ofrbcr0s0awhl0t0c0 -1 +0 .
+     (td :`t17.4. . . nimcall +8 +8 +0 +4 . 14,5,/home/araq/projects/nim/lib/system/exceptions.nim
+      (reclist . .) exceptions.0. IOEffect.0. none unknown . "" `t17.758.sysma2dyk) exceptions.0. 10
+     (type0 . . ~2
+      (postfix . .
+       (ident . . *) ~8 IOEffect.0.)
+      (empty) 2
+      (objectty h `t17.4.
+       (empty) 7
+       (ofinherit . . 3 RootEffect.0.sysma2dyk)
+       (empty))) none unknown . "" . .))
+   (empty) 2
+   (objectty h `t17.4.
+    (empty) 7
+    (ofinherit . . 3 RootEffect.0.sysma2dyk)
+    (empty))) 14,2
+  (type0 . . ~2
+   (postfix . .
+    (ident . . *) ~12
+    (sd :ReadIOEffect.0. x
+     (type) . eg ofrbcr0s0awhl0t0c0 -1 +0 .
+     (td :`t17.5. . . nimcall +8 +8 +0 +5 . 18,6,/home/araq/projects/nim/lib/system/exceptions.nim
+      (reclist . .) exceptions.0. ReadIOEffect.0. none unknown . "" `t17.4.) exceptions.0. 14
+     (type0 . . ~2
+      (postfix . .
+       (ident . . *) ~12 ReadIOEffect.0.)
+      (empty) 2
+      (objectty h `t17.5.
+       (empty) 7
+       (ofinherit . . 3 IOEffect.0.)
+       (empty))) none unknown . "" . .))
+   (empty) 2
+   (objectty h `t17.5.
+    (empty) 7
+    (ofinherit . . 3 IOEffect.0.)
+    (empty))) 15,3
+  (type0 . . ~2
+   (postfix . .
+    (ident . . *) ~13
+    (sd :WriteIOEffect.0. x
+     (type) . eg ofrbcr0s0awhl0t0c0 -1 +0 .
+     (td :`t17.6. . . nimcall +8 +8 +0 +6 . 19,7,/home/araq/projects/nim/lib/system/exceptions.nim
+      (reclist . .) exceptions.0. WriteIOEffect.0. none unknown . "" `t17.4.) exceptions.0. 15
+     (type0 . . ~2
+      (postfix . .
+       (ident . . *) ~13 WriteIOEffect.0.)
+      (empty) 2
+      (objectty h `t17.6.
+       (empty) 7
+       (ofinherit . . 3 IOEffect.0.)
+       (empty))) none unknown . "" . .))
+   (empty) 2
+   (objectty h `t17.6.
+    (empty) 7
+    (ofinherit . . 3 IOEffect.0.)
+    (empty))) 14,4
+  (type0 . . ~2
+   (postfix . .
+    (ident . . *) ~12
+    (sd :ExecIOEffect.0. x
+     (type) . eg ofrbcr0s0awhl0t0c0 -1 +0 .
+     (td :`t17.7. . . nimcall +8 +8 +0 +7 . 18,8,/home/araq/projects/nim/lib/system/exceptions.nim
+      (reclist . .) exceptions.0. ExecIOEffect.0. none unknown . "" `t17.4.) exceptions.0. 14
+     (type0 . . ~2
+      (postfix . .
+       (ident . . *) ~12 ExecIOEffect.0.)
+      (empty) 2
+      (objectty h `t17.7.
+       (empty) 7
+       (ofinherit . . 3 IOEffect.0.)
+       (empty))) none unknown . "" . .))
+   (empty) 2
+   (objectty h `t17.7.
+    (empty) 7
+    (ofinherit . . 3 IOEffect.0.)
+    (empty)))) 1,10
+ (type s . 9
+  (type0 . . ~2
+   (postfix . .
+    (ident . . *) ~7
+    (sd :IOError.0. x
+     (type) . ueg ofrbcr0s0awhl0t0c0 -1 +0 .
+     (td :`t17.8. . h0a nimcall +64 +8 +0 +8 . 13,11,/home/araq/projects/nim/lib/system/exceptions.nim
+      (reclist . .) exceptions.0. IOError.0. none unknown . "" `t17.762.sysma2dyk) exceptions.0. 9
+     (type0 . . ~2
+      (postfix . .
+       (ident . . *) ~7 IOError.0.)
+      (empty) 2
+      (objectty h `t17.8.
+       (empty) 7
+       (ofinherit . . 3 CatchableError.0.sysma2dyk)
+       (empty))) none unknown . "" . .))
+   (empty) 2
+   (objectty h `t17.8.
+    (empty) 7
+    (ofinherit . . 3 CatchableError.0.sysma2dyk)
+    (empty))) 10,2
+  (type0 . . ~2
+   (postfix . .
+    (ident . . *) ~8
+    (sd :EOFError.0. x
+     (type) . eg ofrbcr0s0awhl0t0c0 -1 +0 .
+     (td :`t17.9. . h0a nimcall +64 +8 +0 +9 . 14,13,/home/araq/projects/nim/lib/system/exceptions.nim
+      (reclist . .) exceptions.0. EOFError.0. none unknown . "" `t17.8.) exceptions.0. 10
+     (type0 . . ~2
+      (postfix . .
+       (ident . . *) ~8 EOFError.0.)
+      (empty) 2
+      (objectty h `t17.9.
+       (empty) 7
+       (ofinherit . . 3 IOError.0.)
+       (empty))) none unknown . "" . .))
+   (empty) 2
+   (objectty h `t17.9.
+    (empty) 7
+    (ofinherit . . 3 IOError.0.)
+    (empty))) 9,4
+  (type0 . . ~2
+   (postfix . .
+    (ident . . *) ~7
+    (sd :OSError.0. x
+     (type) . ueg ofrbcr0s0awhl0t0c0 -1 +0 .
+     (td :`t17.10. . h0a nimcall +72 +8 +4 +10 . 13,15,/home/araq/projects/nim/lib/system/exceptions.nim
+      (reclist . . ~9,2
+       (sd :errorCode.0. x
+        (field . +0 +0) . e ofrbcr0s0awhl0t0c0 +64 +5 . `t34.6.sysma2dyk OSError.0. . none unknown . "" . .)) exceptions.0. OSError.0. none unknown . "" `t17.762.sysma2dyk) exceptions.0. 9
+     (type0 . . ~2
+      (postfix . .
+       (ident . . *) ~7 OSError.0.)
+      (empty) 2
+      (objectty h `t17.10.
+       (empty) 7
+       (ofinherit . . 3 CatchableError.0.sysma2dyk) ~9,2
+       (reclist . .
+        (identdefs h . 9
+         (postfix . .
+          (ident . . *) ~9
+          (ident . . errorCode)) 12 int32.0.sysma2dyk 18
+         (empty))))) none unknown . "" . .))
+   (empty) 2
+   (objectty h `t17.10.
+    (empty) 7
+    (ofinherit . . 3 CatchableError.0.sysma2dyk) ~9,2
+    (reclist . .
+     (identdefs h . 9
+      (postfix . .
+       (ident . . *) ~9
+       (ident . . errorCode)) 12 int32.0.sysma2dyk 18
+      (empty))))) 14,7
+  (type0 . . ~2
+   (postfix . .
+    (ident . . *) ~12
+    (sd :LibraryError.0. x
+     (type) . eg ofrbcr0s0awhl0t0c0 -1 +0 .
+     (td :`t17.11. . h0a nimcall +72 +8 +0 +11 . 18,18,/home/araq/projects/nim/lib/system/exceptions.nim
+      (reclist . .) exceptions.0. LibraryError.0. none unknown . "" `t17.10.) exceptions.0. 14
+     (type0 . . ~2
+      (postfix . .
+       (ident . . *) ~12 LibraryError.0.)
+      (empty) 2
+      (objectty h `t17.11.
+       (empty) 7
+       (ofinherit . . 3 OSError.0.)
+       (empty))) none unknown . "" . .))
+   (empty) 2
+   (objectty h `t17.11.
+    (empty) 7
+    (ofinherit . . 3 OSError.0.)
+    (empty))) 24,9
+  (type0 . . ~2
+   (postfix . .
+    (ident . . *) ~22
+    (sd :ResourceExhaustedError.0. x
+     (type) . eg ofrbcr0s0awhl0t0c0 -1 +0 .
+     (td :`t17.12. . h0a nimcall +64 +8 +0 +12 . 28,20,/home/araq/projects/nim/lib/system/exceptions.nim
+      (reclist . .) exceptions.0. ResourceExhaustedError.0. none unknown . "" `t17.762.sysma2dyk) exceptions.0. 24
+     (type0 . . ~2
+      (postfix . .
+       (ident . . *) ~22 ResourceExhaustedError.0.)
+      (empty) 2
+      (objectty h `t17.12.
+       (empty) 7
+       (ofinherit . . 3 CatchableError.0.sysma2dyk)
+       (empty))) none unknown . "" . .))
+   (empty) 2
+   (objectty h `t17.12.
+    (empty) 7
+    (ofinherit . . 3 CatchableError.0.sysma2dyk)
+    (empty))) 18,11
+  (type0 . . ~2
+   (postfix . .
+    (ident . . *) ~16
+    (sd :ArithmeticDefect.0. x
+     (type) . ueg ofrbcr0s0awhl0t0c0 -1 +0 .
+     (td :`t17.13. . h0a nimcall +64 +8 +0 +13 . 22,22,/home/araq/projects/nim/lib/system/exceptions.nim
+      (reclist . .) exceptions.0. ArithmeticDefect.0. none unknown . "" `t17.761.sysma2dyk) exceptions.0. 18
+     (type0 . . ~2
+      (postfix . .
+       (ident . . *) ~16 ArithmeticDefect.0.)
+      (empty) 2
+      (objectty h `t17.13.
+       (empty) 7
+       (ofinherit . . 3 Defect.0.sysma2dyk)
+       (empty))) none unknown . "" . .))
+   (empty) 2
+   (objectty h `t17.13.
+    (empty) 7
+    (ofinherit . . 3 Defect.0.sysma2dyk)
+    (empty))) 17,13
+  (type0 . . ~2
+   (postfix . .
+    (ident . . *) ~15
+    (sd :DivByZeroDefect.0. x
+     (type) . ueg ofrbcr0s0awhl0t0c0 -1 +0 .
+     (td :`t17.14. . h0a nimcall +64 +8 +0 +14 . 21,24,/home/araq/projects/nim/lib/system/exceptions.nim
+      (reclist . .) exceptions.0. DivByZeroDefect.0. none unknown . "" `t17.13.) exceptions.0. 17
+     (type0 . . ~2
+      (postfix . .
+       (ident . . *) ~15 DivByZeroDefect.0.)
+      (empty) 2
+      (objectty h `t17.14.
+       (empty) 7
+       (ofinherit . . 3 ArithmeticDefect.0.)
+       (empty))) none unknown . "" . .))
+   (empty) 2
+   (objectty h `t17.14.
+    (empty) 7
+    (ofinherit . . 3 ArithmeticDefect.0.)
+    (empty))) 16,16
+  (type0 . . ~2
+   (postfix . .
+    (ident . . *) ~14
+    (sd :OverflowDefect.0. x
+     (type) . ueg ofrbcr0s0awhl0t0c0 -1 +0 .
+     (td :`t17.15. . h0a nimcall +64 +8 +0 +15 . 20,27,/home/araq/projects/nim/lib/system/exceptions.nim
+      (reclist . .) exceptions.0. OverflowDefect.0. none unknown . "" `t17.13.) exceptions.0. 16
+     (type0 . . ~2
+      (postfix . .
+       (ident . . *) ~14 OverflowDefect.0.)
+      (empty) 2
+      (objectty h `t17.15.
+       (empty) 7
+       (ofinherit . . 3 ArithmeticDefect.0.)
+       (empty))) none unknown . "" . .))
+   (empty) 2
+   (objectty h `t17.15.
+    (empty) 7
+    (ofinherit . . 3 ArithmeticDefect.0.)
+    (empty))) 23,21
+  (type0 . . ~2
+   (postfix . .
+    (ident . . *) ~21
+    (sd :AccessViolationDefect.0. x
+     (type) . ueg ofrbcr0s0awhl0t0c0 -1 +0 .
+     (td :`t17.16. . h0a nimcall +64 +8 +0 +16 . 27,32,/home/araq/projects/nim/lib/system/exceptions.nim
+      (reclist . .) exceptions.0. AccessViolationDefect.0. none unknown . "" `t17.761.sysma2dyk) exceptions.0. 23
+     (type0 . . ~2
+      (postfix . .
+       (ident . . *) ~21 AccessViolationDefect.0.)
+      (empty) 2
+      (objectty h `t17.16.
+       (empty) 7
+       (ofinherit . . 3 Defect.0.sysma2dyk)
+       (empty))) none unknown . "" . .))
+   (empty) 2
+   (objectty h `t17.16.
+    (empty) 7
+    (ofinherit . . 3 Defect.0.sysma2dyk)
+    (empty))) 17,23
+  (type0 . . ~2
+   (postfix . .
+    (ident . . *) ~15
+    (sd :AssertionDefect.0. x
+     (type) . ueg ofrbcr0s0awhl0t0c0 -1 +0 .
+     (td :`t17.17. . h0a nimcall +64 +8 +0 +17 . 21,34,/home/araq/projects/nim/lib/system/exceptions.nim
+      (reclist . .) exceptions.0. AssertionDefect.0. none unknown . "" `t17.761.sysma2dyk) exceptions.0. 17
+     (type0 . . ~2
+      (postfix . .
+       (ident . . *) ~15 AssertionDefect.0.)
+      (empty) 2
+      (objectty h `t17.17.
+       (empty) 7
+       (ofinherit . . 3 Defect.0.sysma2dyk)
+       (empty))) none unknown . "" . .))
+   (empty) 2
+   (objectty h `t17.17.
+    (empty) 7
+    (ofinherit . . 3 Defect.0.sysma2dyk)
+    (empty))) 12,28
+  (type0 . . ~2
+   (postfix . .
+    (ident . . *) ~10
+    (sd :ValueError.0. x
+     (type) . ueg ofrbcr0s0awhl0t0c0 -1 +0 .
+     (td :`t17.18. . h0a nimcall +64 +8 +0 +18 . 16,39,/home/araq/projects/nim/lib/system/exceptions.nim
+      (reclist . .) exceptions.0. ValueError.0. none unknown . "" `t17.762.sysma2dyk) exceptions.0. 12
+     (type0 . . ~2
+      (postfix . .
+       (ident . . *) ~10 ValueError.0.)
+      (empty) 2
+      (objectty h `t17.18.
+       (empty) 7
+       (ofinherit . . 3 CatchableError.0.sysma2dyk)
+       (empty))) none unknown . "" . .))
+   (empty) 2
+   (objectty h `t17.18.
+    (empty) 7
+    (ofinherit . . 3 CatchableError.0.sysma2dyk)
+    (empty))) 10,30
+  (type0 . . ~2
+   (postfix . .
+    (ident . . *) ~8
+    (sd :KeyError.0. x
+     (type) . eg ofrbcr0s0awhl0t0c0 -1 +0 .
+     (td :`t17.19. . h0a nimcall +64 +8 +0 +19 . 14,41,/home/araq/projects/nim/lib/system/exceptions.nim
+      (reclist . .) exceptions.0. KeyError.0. none unknown . "" `t17.18.) exceptions.0. 10
+     (type0 . . ~2
+      (postfix . .
+       (ident . . *) ~8 KeyError.0.)
+      (empty) 2
+      (objectty h `t17.19.
+       (empty) 7
+       (ofinherit . . 3 ValueError.0.)
+       (empty))) none unknown . "" . .))
+   (empty) 2
+   (objectty h `t17.19.
+    (empty) 7
+    (ofinherit . . 3 ValueError.0.)
+    (empty))) 16,36
+  (type0 . . ~2
+   (postfix . .
+    (ident . . *) ~14
+    (sd :OutOfMemDefect.0. x
+     (type) . ueg ofrbcr0s0awhl0t0c0 -1 +0 .
+     (td :`t17.20. . h0a nimcall +64 +8 +0 +20 . 20,47,/home/araq/projects/nim/lib/system/exceptions.nim
+      (reclist . .) exceptions.0. OutOfMemDefect.0. none unknown . "" `t17.761.sysma2dyk) exceptions.0. 16
+     (type0 . . ~2
+      (postfix . .
+       (ident . . *) ~14 OutOfMemDefect.0.)
+      (empty) 2
+      (objectty h `t17.20.
+       (empty) 7
+       (ofinherit . . 3 Defect.0.sysma2dyk)
+       (empty))) none unknown . "" . .))
+   (empty) 2
+   (objectty h `t17.20.
+    (empty) 7
+    (ofinherit . . 3 Defect.0.sysma2dyk)
+    (empty))) 13,38
+  (type0 . . ~2
+   (postfix . .
+    (ident . . *) ~11
+    (sd :IndexDefect.0. x
+     (type) . ueg ofrbcr0s0awhl0t0c0 -1 +0 .
+     (td :`t17.21. . h0a nimcall +64 +8 +0 +21 . 17,49,/home/araq/projects/nim/lib/system/exceptions.nim
+      (reclist . .) exceptions.0. IndexDefect.0. none unknown . "" `t17.761.sysma2dyk) exceptions.0. 13
+     (type0 . . ~2
+      (postfix . .
+       (ident . . *) ~11 IndexDefect.0.)
+      (empty) 2
+      (objectty h `t17.21.
+       (empty) 7
+       (ofinherit . . 3 Defect.0.sysma2dyk)
+       (empty))) none unknown . "" . .))
+   (empty) 2
+   (objectty h `t17.21.
+    (empty) 7
+    (ofinherit . . 3 Defect.0.sysma2dyk)
+    (empty))) 13,41
+  (type0 . . ~2
+   (postfix . .
+    (ident . . *) ~11
+    (sd :FieldDefect.0. x
+     (type) . ueg ofrbcr0s0awhl0t0c0 -1 +0 .
+     (td :`t17.22. . h0a nimcall +64 +8 +0 +22 . 17,52,/home/araq/projects/nim/lib/system/exceptions.nim
+      (reclist . .) exceptions.0. FieldDefect.0. none unknown . "" `t17.761.sysma2dyk) exceptions.0. 13
+     (type0 . . ~2
+      (postfix . .
+       (ident . . *) ~11 FieldDefect.0.)
+      (empty) 2
+      (objectty h `t17.22.
+       (empty) 7
+       (ofinherit . . 3 Defect.0.sysma2dyk)
+       (empty))) none unknown . "" . .))
+   (empty) 2
+   (objectty h `t17.22.
+    (empty) 7
+    (ofinherit . . 3 Defect.0.sysma2dyk)
+    (empty))) 13,44
+  (type0 . . ~2
+   (postfix . .
+    (ident . . *) ~11
+    (sd :RangeDefect.0. x
+     (type) . ueg ofrbcr0s0awhl0t0c0 -1 +0 .
+     (td :`t17.23. . h0a nimcall +64 +8 +0 +23 . 17,55,/home/araq/projects/nim/lib/system/exceptions.nim
+      (reclist . .) exceptions.0. RangeDefect.0. none unknown . "" `t17.761.sysma2dyk) exceptions.0. 13
+     (type0 . . ~2
+      (postfix . .
+       (ident . . *) ~11 RangeDefect.0.)
+      (empty) 2
+      (objectty h `t17.23.
+       (empty) 7
+       (ofinherit . . 3 Defect.0.sysma2dyk)
+       (empty))) none unknown . "" . .))
+   (empty) 2
+   (objectty h `t17.23.
+    (empty) 7
+    (ofinherit . . 3 Defect.0.sysma2dyk)
+    (empty))) 21,46
+  (type0 . . ~2
+   (postfix . .
+    (ident . . *) ~19
+    (sd :StackOverflowDefect.0. x
+     (type) . ueg ofrbcr0s0awhl0t0c0 -1 +0 .
+     (td :`t17.24. . h0a nimcall +64 +8 +0 +24 . 25,57,/home/araq/projects/nim/lib/system/exceptions.nim
+      (reclist . .) exceptions.0. StackOverflowDefect.0. none unknown . "" `t17.761.sysma2dyk) exceptions.0. 21
+     (type0 . . ~2
+      (postfix . .
+       (ident . . *) ~19 StackOverflowDefect.0.)
+      (empty) 2
+      (objectty h `t17.24.
+       (empty) 7
+       (ofinherit . . 3 Defect.0.sysma2dyk)
+       (empty))) none unknown . "" . .))
+   (empty) 2
+   (objectty h `t17.24.
+    (empty) 7
+    (ofinherit . . 3 Defect.0.sysma2dyk)
+    (empty))) 15,48
+  (type0 . . ~2
+   (postfix . .
+    (ident . . *) ~13
+    (sd :ReraiseDefect.0. x
+     (type) . ueg ofrbcr0s0awhl0t0c0 -1 +0 .
+     (td :`t17.25. . h0a nimcall +64 +8 +0 +25 . 19,59,/home/araq/projects/nim/lib/system/exceptions.nim
+      (reclist . .) exceptions.0. ReraiseDefect.0. none unknown . "" `t17.761.sysma2dyk) exceptions.0. 15
+     (type0 . . ~2
+      (postfix . .
+       (ident . . *) ~13 ReraiseDefect.0.)
+      (empty) 2
+      (objectty h `t17.25.
+       (empty) 7
+       (ofinherit . . 3 Defect.0.sysma2dyk)
+       (empty))) none unknown . "" . .))
+   (empty) 2
+   (objectty h `t17.25.
+    (empty) 7
+    (ofinherit . . 3 Defect.0.sysma2dyk)
+    (empty))) 24,50
+  (type0 . . ~2
+   (postfix . .
+    (ident . . *) ~22
+    (sd :ObjectAssignmentDefect.0. x
+     (type) . ueg ofrbcr0s0awhl0t0c0 -1 +0 .
+     (td :`t17.26. . h0a nimcall +64 +8 +0 +26 . 28,61,/home/araq/projects/nim/lib/system/exceptions.nim
+      (reclist . .) exceptions.0. ObjectAssignmentDefect.0. none unknown . "" `t17.761.sysma2dyk) exceptions.0. 24
+     (type0 . . ~2
+      (postfix . .
+       (ident . . *) ~22 ObjectAssignmentDefect.0.)
+      (empty) 2
+      (objectty h `t17.26.
+       (empty) 7
+       (ofinherit . . 3 Defect.0.sysma2dyk)
+       (empty))) none unknown . "" . .))
+   (empty) 2
+   (objectty h `t17.26.
+    (empty) 7
+    (ofinherit . . 3 Defect.0.sysma2dyk)
+    (empty))) 24,52
+  (type0 . . ~2
+   (postfix . .
+    (ident . . *) ~22
+    (sd :ObjectConversionDefect.0. x
+     (type) . ueg ofrbcr0s0awhl0t0c0 -1 +0 .
+     (td :`t17.27. . h0a nimcall +64 +8 +0 +27 . 28,63,/home/araq/projects/nim/lib/system/exceptions.nim
+      (reclist . .) exceptions.0. ObjectConversionDefect.0. none unknown . "" `t17.761.sysma2dyk) exceptions.0. 24
+     (type0 . . ~2
+      (postfix . .
+       (ident . . *) ~22 ObjectConversionDefect.0.)
+      (empty) 2
+      (objectty h `t17.27.
+       (empty) 7
+       (ofinherit . . 3 Defect.0.sysma2dyk)
+       (empty))) none unknown . "" . .))
+   (empty) 2
+   (objectty h `t17.27.
+    (empty) 7
+    (ofinherit . . 3 Defect.0.sysma2dyk)
+    (empty))) 21,55
+  (type0 . . ~2
+   (postfix . .
+    (ident . . *) ~19
+    (sd :FloatingPointDefect.0. x
+     (type) . ueg ofrbcr0s0awhl0t0c0 -1 +0 .
+     (td :`t17.28. . h0a nimcall +64 +8 +0 +28 . 25,66,/home/araq/projects/nim/lib/system/exceptions.nim
+      (reclist . .) exceptions.0. FloatingPointDefect.0. none unknown . "" `t17.761.sysma2dyk) exceptions.0. 21
+     (type0 . . ~2
+      (postfix . .
+       (ident . . *) ~19 FloatingPointDefect.0.)
+      (empty) 2
+      (objectty h `t17.28.
+       (empty) 7
+       (ofinherit . . 3 Defect.0.sysma2dyk)
+       (empty))) none unknown . "" . .))
+   (empty) 2
+   (objectty h `t17.28.
+    (empty) 7
+    (ofinherit . . 3 Defect.0.sysma2dyk)
+    (empty))) 22,57
+  (type0 . . ~2
+   (postfix . .
+    (ident . . *) ~20
+    (sd :FloatInvalidOpDefect.0. x
+     (type) . ueg ofrbcr0s0awhl0t0c0 -1 +0 .
+     (td :`t17.29. . h0a nimcall +64 +8 +0 +29 . 26,68,/home/araq/projects/nim/lib/system/exceptions.nim
+      (reclist . .) exceptions.0. FloatInvalidOpDefect.0. none unknown . "" `t17.28.) exceptions.0. 22
+     (type0 . . ~2
+      (postfix . .
+       (ident . . *) ~20 FloatInvalidOpDefect.0.)
+      (empty) 2
+      (objectty h `t17.29.
+       (empty) 7
+       (ofinherit . . 3 FloatingPointDefect.0.)
+       (empty))) none unknown . "" . .))
+   (empty) 2
+   (objectty h `t17.29.
+    (empty) 7
+    (ofinherit . . 3 FloatingPointDefect.0.)
+    (empty))) 22,61
+  (type0 . . ~2
+   (postfix . .
+    (ident . . *) ~20
+    (sd :FloatDivByZeroDefect.0. x
+     (type) . ueg ofrbcr0s0awhl0t0c0 -1 +0 .
+     (td :`t17.30. . h0a nimcall +64 +8 +0 +30 . 26,72,/home/araq/projects/nim/lib/system/exceptions.nim
+      (reclist . .) exceptions.0. FloatDivByZeroDefect.0. none unknown . "" `t17.28.) exceptions.0. 22
+     (type0 . . ~2
+      (postfix . .
+       (ident . . *) ~20 FloatDivByZeroDefect.0.)
+      (empty) 2
+      (objectty h `t17.30.
+       (empty) 7
+       (ofinherit . . 3 FloatingPointDefect.0.)
+       (empty))) none unknown . "" . .))
+   (empty) 2
+   (objectty h `t17.30.
+    (empty) 7
+    (ofinherit . . 3 FloatingPointDefect.0.)
+    (empty))) 21,65
+  (type0 . . ~2
+   (postfix . .
+    (ident . . *) ~19
+    (sd :FloatOverflowDefect.0. x
+     (type) . ueg ofrbcr0s0awhl0t0c0 -1 +0 .
+     (td :`t17.31. . h0a nimcall +64 +8 +0 +31 . 25,76,/home/araq/projects/nim/lib/system/exceptions.nim
+      (reclist . .) exceptions.0. FloatOverflowDefect.0. none unknown . "" `t17.28.) exceptions.0. 21
+     (type0 . . ~2
+      (postfix . .
+       (ident . . *) ~19 FloatOverflowDefect.0.)
+      (empty) 2
+      (objectty h `t17.31.
+       (empty) 7
+       (ofinherit . . 3 FloatingPointDefect.0.)
+       (empty))) none unknown . "" . .))
+   (empty) 2
+   (objectty h `t17.31.
+    (empty) 7
+    (ofinherit . . 3 FloatingPointDefect.0.)
+    (empty))) 22,69
+  (type0 . . ~2
+   (postfix . .
+    (ident . . *) ~20
+    (sd :FloatUnderflowDefect.0. x
+     (type) . ueg ofrbcr0s0awhl0t0c0 -1 +0 .
+     (td :`t17.32. . h0a nimcall +64 +8 +0 +32 . 26,80,/home/araq/projects/nim/lib/system/exceptions.nim
+      (reclist . .) exceptions.0. FloatUnderflowDefect.0. none unknown . "" `t17.28.) exceptions.0. 22
+     (type0 . . ~2
+      (postfix . .
+       (ident . . *) ~20 FloatUnderflowDefect.0.)
+      (empty) 2
+      (objectty h `t17.32.
+       (empty) 7
+       (ofinherit . . 3 FloatingPointDefect.0.)
+       (empty))) none unknown . "" . .))
+   (empty) 2
+   (objectty h `t17.32.
+    (empty) 7
+    (ofinherit . . 3 FloatingPointDefect.0.)
+    (empty))) 20,74
+  (type0 . . ~2
+   (postfix . .
+    (ident . . *) ~18
+    (sd :FloatInexactDefect.0. x
+     (type) . ueg ofrbcr0s0awhl0t0c0 -1 +0 .
+     (td :`t17.33. . h0a nimcall +64 +8 +0 +33 . 24,85,/home/araq/projects/nim/lib/system/exceptions.nim
+      (reclist . .) exceptions.0. FloatInexactDefect.0. none unknown . "" `t17.28.) exceptions.0. 20
+     (type0 . . ~2
+      (postfix . .
+       (ident . . *) ~18 FloatInexactDefect.0.)
+      (empty) 2
+      (objectty h `t17.33.
+       (empty) 7
+       (ofinherit . . 3 FloatingPointDefect.0.)
+       (empty))) none unknown . "" . .))
+   (empty) 2
+   (objectty h `t17.33.
+    (empty) 7
+    (ofinherit . . 3 FloatingPointDefect.0.)
+    (empty))) 18,81
+  (type0 . . ~2
+   (postfix . .
+    (ident . . *) ~16
+    (sd :DeadThreadDefect.0. x
+     (type) . ueg ofrbcr0s0awhl0t0c0 -1 +0 .
+     (td :`t17.34. . h0a nimcall +64 +8 +0 +34 . 22,92,/home/araq/projects/nim/lib/system/exceptions.nim
+      (reclist . .) exceptions.0. DeadThreadDefect.0. none unknown . "" `t17.761.sysma2dyk) exceptions.0. 18
+     (type0 . . ~2
+      (postfix . .
+       (ident . . *) ~16 DeadThreadDefect.0.)
+      (empty) 2
+      (objectty h `t17.34.
+       (empty) 7
+       (ofinherit . . 3 Defect.0.sysma2dyk)
+       (empty))) none unknown . "" . .))
+   (empty) 2
+   (objectty h `t17.34.
+    (empty) 7
+    (ofinherit . . 3 Defect.0.sysma2dyk)
+    (empty))) 17,83
+  (type0 . . ~2
+   (postfix . .
+    (ident . . *) ~15
+    (sd :NilAccessDefect.0. x
+     (type) . ueg ofrbcr0s0awhl0t0c0 -1 +0 .
+     (td :`t17.35. . h0a nimcall +64 +8 +0 +35 . 21,94,/home/araq/projects/nim/lib/system/exceptions.nim
+      (reclist . .) exceptions.0. NilAccessDefect.0. none unknown . "" `t17.761.sysma2dyk) exceptions.0. 17
+     (type0 . . ~2
+      (postfix . .
+       (ident . . *) ~15 NilAccessDefect.0.)
+      (empty) 2
+      (objectty h `t17.35.
+       (empty) 7
+       (ofinherit . . 3 Defect.0.sysma2dyk)
+       (empty))) none unknown . "" . .))
+   (empty) 2
+   (objectty h `t17.35.
+    (empty) 7
+    (ofinherit . . 3 Defect.0.sysma2dyk)
+    (empty)))) 3,100
+ (type s . 60
+  (type0 . .
+   (pragmax . . ~45
+    (postfix . .
+     (ident . . *) ~15
+     (sd :ArithmeticError.0. x
+      (type) . egd0 ofrbcr0s0awhl0t0c0 -1 +0 .
+      (td :`t4.36. . h0a nimcall +64 +8 +0 +36 . . exceptions.0. ArithmeticError.0. none unknown . "" `t17.13.) exceptions.0. 60
+      (type0 . .
+       (pragmax . . ~45
+        (postfix . .
+         (ident . . *) ~15 ArithmeticError.0.) ~43
+        (pragma . . 12
+         (kv . . ~10
+          (ident . . deprecated) 2
+          (strlit . `t28.17.sysma2dyk "See corresponding Defect"))))
+       (empty) 2
+       (ht
+        (td :`t4.57. . h0a nimcall -1 -1 +0 +57 . . ArithmeticError.0. ArithmeticError.0. none unknown . "" `t17.13.) ArithmeticDefect.0.)) none unknown . "" . .)) ~43
+    (pragma . . 12
+     (kv . . ~10
+      (ident . . deprecated) 2
+      (strlit . `t28.17.sysma2dyk "See corresponding Defect"))))
+   (empty) 2
+   (ht `t4.57. ArithmeticDefect.0.)) 59,1
+  (type0 . .
+   (pragmax . . ~45
+    (postfix . .
+     (ident . . *) ~14
+     (sd :DivByZeroError.0. x
+      (type) . egd0 ofrbcr0s0awhl0t0c0 -1 +0 .
+      (td :`t4.37. . h0a nimcall +64 +8 +0 +37 . . exceptions.0. DivByZeroError.0. none unknown . "" `t17.14.) exceptions.0. 59
+      (type0 . .
+       (pragmax . . ~45
+        (postfix . .
+         (ident . . *) ~14 DivByZeroError.0.) ~43
+        (pragma . . 12
+         (kv . . ~10
+          (ident . . deprecated) 2
+          (strlit . `t28.17.sysma2dyk "See corresponding Defect"))))
+       (empty) 2
+       (ht
+        (td :`t4.58. . h0a nimcall -1 -1 +0 +58 . . DivByZeroError.0. DivByZeroError.0. none unknown . "" `t17.14.) DivByZeroDefect.0.)) none unknown . "" . .)) ~43
+    (pragma . . 12
+     (kv . . ~10
+      (ident . . deprecated) 2
+      (strlit . `t28.17.sysma2dyk "See corresponding Defect"))))
+   (empty) 2
+   (ht `t4.58. DivByZeroDefect.0.)) 58,2
+  (type0 . .
+   (pragmax . . ~45
+    (postfix . .
+     (ident . . *) ~13
+     (sd :OverflowError.0. x
+      (type) . egd0 ofrbcr0s0awhl0t0c0 -1 +0 .
+      (td :`t4.38. . h0a nimcall +64 +8 +0 +38 . . exceptions.0. OverflowError.0. none unknown . "" `t17.15.) exceptions.0. 58
+      (type0 . .
+       (pragmax . . ~45
+        (postfix . .
+         (ident . . *) ~13 OverflowError.0.) ~43
+        (pragma . . 12
+         (kv . . ~10
+          (ident . . deprecated) 2
+          (strlit . `t28.17.sysma2dyk "See corresponding Defect"))))
+       (empty) 2
+       (ht
+        (td :`t4.59. . h0a nimcall -1 -1 +0 +59 . . OverflowError.0. OverflowError.0. none unknown . "" `t17.15.) OverflowDefect.0.)) none unknown . "" . .)) ~43
+    (pragma . . 12
+     (kv . . ~10
+      (ident . . deprecated) 2
+      (strlit . `t28.17.sysma2dyk "See corresponding Defect"))))
+   (empty) 2
+   (ht `t4.59. OverflowDefect.0.)) 65,3
+  (type0 . .
+   (pragmax . . ~45
+    (postfix . .
+     (ident . . *) ~20
+     (sd :AccessViolationError.0. x
+      (type) . egd0 ofrbcr0s0awhl0t0c0 -1 +0 .
+      (td :`t4.39. . h0a nimcall +64 +8 +0 +39 . . exceptions.0. AccessViolationError.0. none unknown . "" `t17.16.) exceptions.0. 65
+      (type0 . .
+       (pragmax . . ~45
+        (postfix . .
+         (ident . . *) ~20 AccessViolationError.0.) ~43
+        (pragma . . 12
+         (kv . . ~10
+          (ident . . deprecated) 2
+          (strlit . `t28.17.sysma2dyk "See corresponding Defect"))))
+       (empty) 2
+       (ht
+        (td :`t4.60. . h0a nimcall -1 -1 +0 +60 . . AccessViolationError.0. AccessViolationError.0. none unknown . "" `t17.16.) AccessViolationDefect.0.)) none unknown . "" . .)) ~43
+    (pragma . . 12
+     (kv . . ~10
+      (ident . . deprecated) 2
+      (strlit . `t28.17.sysma2dyk "See corresponding Defect"))))
+   (empty) 2
+   (ht `t4.60. AccessViolationDefect.0.)) 59,4
+  (type0 . .
+   (pragmax . . ~45
+    (postfix . .
+     (ident . . *) ~14
+     (sd :AssertionError.0. x
+      (type) . egd0 ofrbcr0s0awhl0t0c0 -1 +0 .
+      (td :`t4.40. . h0a nimcall +64 +8 +0 +40 . . exceptions.0. AssertionError.0. none unknown . "" `t17.17.) exceptions.0. 59
+      (type0 . .
+       (pragmax . . ~45
+        (postfix . .
+         (ident . . *) ~14 AssertionError.0.) ~43
+        (pragma . . 12
+         (kv . . ~10
+          (ident . . deprecated) 2
+          (strlit . `t28.17.sysma2dyk "See corresponding Defect"))))
+       (empty) 2
+       (ht
+        (td :`t4.61. . h0a nimcall -1 -1 +0 +61 . . AssertionError.0. AssertionError.0. none unknown . "" `t17.17.) AssertionDefect.0.)) none unknown . "" . .)) ~43
+    (pragma . . 12
+     (kv . . ~10
+      (ident . . deprecated) 2
+      (strlit . `t28.17.sysma2dyk "See corresponding Defect"))))
+   (empty) 2
+   (ht `t4.61. AssertionDefect.0.)) 58,5
+  (type0 . .
+   (pragmax . . ~45
+    (postfix . .
+     (ident . . *) ~13
+     (sd :OutOfMemError.0. x
+      (type) . egd0 ofrbcr0s0awhl0t0c0 -1 +0 .
+      (td :`t4.41. . h0a nimcall +64 +8 +0 +41 . . exceptions.0. OutOfMemError.0. none unknown . "" `t17.20.) exceptions.0. 58
+      (type0 . .
+       (pragmax . . ~45
+        (postfix . .
+         (ident . . *) ~13 OutOfMemError.0.) ~43
+        (pragma . . 12
+         (kv . . ~10
+          (ident . . deprecated) 2
+          (strlit . `t28.17.sysma2dyk "See corresponding Defect"))))
+       (empty) 2
+       (ht
+        (td :`t4.62. . h0a nimcall -1 -1 +0 +62 . . OutOfMemError.0. OutOfMemError.0. none unknown . "" `t17.20.) OutOfMemDefect.0.)) none unknown . "" . .)) ~43
+    (pragma . . 12
+     (kv . . ~10
+      (ident . . deprecated) 2
+      (strlit . `t28.17.sysma2dyk "See corresponding Defect"))))
+   (empty) 2
+   (ht `t4.62. OutOfMemDefect.0.)) 55,6
+  (type0 . .
+   (pragmax . . ~45
+    (postfix . .
+     (ident . . *) ~10
+     (sd :IndexError.0. x
+      (type) . egd0 ofrbcr0s0awhl0t0c0 -1 +0 .
+      (td :`t4.42. . h0a nimcall +64 +8 +0 +42 . . exceptions.0. IndexError.0. none unknown . "" `t17.21.) exceptions.0. 55
+      (type0 . .
+       (pragmax . . ~45
+        (postfix . .
+         (ident . . *) ~10 IndexError.0.) ~43
+        (pragma . . 12
+         (kv . . ~10
+          (ident . . deprecated) 2
+          (strlit . `t28.17.sysma2dyk "See corresponding Defect"))))
+       (empty) 2
+       (ht
+        (td :`t4.63. . h0a nimcall -1 -1 +0 +63 . . IndexError.0. IndexError.0. none unknown . "" `t17.21.) IndexDefect.0.)) none unknown . "" . .)) ~43
+    (pragma . . 12
+     (kv . . ~10
+      (ident . . deprecated) 2
+      (strlit . `t28.17.sysma2dyk "See corresponding Defect"))))
+   (empty) 2
+   (ht `t4.63. IndexDefect.0.)) 55,8
+  (type0 . .
+   (pragmax . . ~45
+    (postfix . .
+     (ident . . *) ~10
+     (sd :FieldError.0. x
+      (type) . egd0 ofrbcr0s0awhl0t0c0 -1 +0 .
+      (td :`t4.43. . h0a nimcall +64 +8 +0 +43 . . exceptions.0. FieldError.0. none unknown . "" `t17.22.) exceptions.0. 55
+      (type0 . .
+       (pragmax . . ~45
+        (postfix . .
+         (ident . . *) ~10 FieldError.0.) ~43
+        (pragma . . 12
+         (kv . . ~10
+          (ident . . deprecated) 2
+          (strlit . `t28.17.sysma2dyk "See corresponding Defect"))))
+       (empty) 2
+       (ht
+        (td :`t4.64. . h0a nimcall -1 -1 +0 +64 . . FieldError.0. FieldError.0. none unknown . "" `t17.22.) FieldDefect.0.)) none unknown . "" . .)) ~43
+    (pragma . . 12
+     (kv . . ~10
+      (ident . . deprecated) 2
+      (strlit . `t28.17.sysma2dyk "See corresponding Defect"))))
+   (empty) 2
+   (ht `t4.64. FieldDefect.0.)) 55,9
+  (type0 . .
+   (pragmax . . ~45
+    (postfix . .
+     (ident . . *) ~10
+     (sd :RangeError.0. x
+      (type) . egd0 ofrbcr0s0awhl0t0c0 -1 +0 .
+      (td :`t4.44. . h0a nimcall +64 +8 +0 +44 . . exceptions.0. RangeError.0. none unknown . "" `t17.23.) exceptions.0. 55
+      (type0 . .
+       (pragmax . . ~45
+        (postfix . .
+         (ident . . *) ~10 RangeError.0.) ~43
+        (pragma . . 12
+         (kv . . ~10
+          (ident . . deprecated) 2
+          (strlit . `t28.17.sysma2dyk "See corresponding Defect"))))
+       (empty) 2
+       (ht
+        (td :`t4.65. . h0a nimcall -1 -1 +0 +65 . . RangeError.0. RangeError.0. none unknown . "" `t17.23.) RangeDefect.0.)) none unknown . "" . .)) ~43
+    (pragma . . 12
+     (kv . . ~10
+      (ident . . deprecated) 2
+      (strlit . `t28.17.sysma2dyk "See corresponding Defect"))))
+   (empty) 2
+   (ht `t4.65. RangeDefect.0.)) 63,10
+  (type0 . .
+   (pragmax . . ~45
+    (postfix . .
+     (ident . . *) ~18
+     (sd :StackOverflowError.0. x
+      (type) . egd0 ofrbcr0s0awhl0t0c0 -1 +0 .
+      (td :`t4.45. . h0a nimcall +64 +8 +0 +45 . . exceptions.0. StackOverflowError.0. none unknown . "" `t17.24.) exceptions.0. 63
+      (type0 . .
+       (pragmax . . ~45
+        (postfix . .
+         (ident . . *) ~18 StackOverflowError.0.) ~43
+        (pragma . . 12
+         (kv . . ~10
+          (ident . . deprecated) 2
+          (strlit . `t28.17.sysma2dyk "See corresponding Defect"))))
+       (empty) 2
+       (ht
+        (td :`t4.66. . h0a nimcall -1 -1 +0 +66 . . StackOverflowError.0. StackOverflowError.0. none unknown . "" `t17.24.) StackOverflowDefect.0.)) none unknown . "" . .)) ~43
+    (pragma . . 12
+     (kv . . ~10
+      (ident . . deprecated) 2
+      (strlit . `t28.17.sysma2dyk "See corresponding Defect"))))
+   (empty) 2
+   (ht `t4.66. StackOverflowDefect.0.)) 57,11
+  (type0 . .
+   (pragmax . . ~45
+    (postfix . .
+     (ident . . *) ~12
+     (sd :ReraiseError.0. x
+      (type) . egd0 ofrbcr0s0awhl0t0c0 -1 +0 .
+      (td :`t4.46. . h0a nimcall +64 +8 +0 +46 . . exceptions.0. ReraiseError.0. none unknown . "" `t17.25.) exceptions.0. 57
+      (type0 . .
+       (pragmax . . ~45
+        (postfix . .
+         (ident . . *) ~12 ReraiseError.0.) ~43
+        (pragma . . 12
+         (kv . . ~10
+          (ident . . deprecated) 2
+          (strlit . `t28.17.sysma2dyk "See corresponding Defect"))))
+       (empty) 2
+       (ht
+        (td :`t4.67. . h0a nimcall -1 -1 +0 +67 . . ReraiseError.0. ReraiseError.0. none unknown . "" `t17.25.) ReraiseDefect.0.)) none unknown . "" . .)) ~43
+    (pragma . . 12
+     (kv . . ~10
+      (ident . . deprecated) 2
+      (strlit . `t28.17.sysma2dyk "See corresponding Defect"))))
+   (empty) 2
+   (ht `t4.67. ReraiseDefect.0.)) 66,12
+  (type0 . .
+   (pragmax . . ~45
+    (postfix . .
+     (ident . . *) ~21
+     (sd :ObjectAssignmentError.0. x
+      (type) . egd0 ofrbcr0s0awhl0t0c0 -1 +0 .
+      (td :`t4.47. . h0a nimcall +64 +8 +0 +47 . . exceptions.0. ObjectAssignmentError.0. none unknown . "" `t17.26.) exceptions.0. 66
+      (type0 . .
+       (pragmax . . ~45
+        (postfix . .
+         (ident . . *) ~21 ObjectAssignmentError.0.) ~43
+        (pragma . . 12
+         (kv . . ~10
+          (ident . . deprecated) 2
+          (strlit . `t28.17.sysma2dyk "See corresponding Defect"))))
+       (empty) 2
+       (ht
+        (td :`t4.68. . h0a nimcall -1 -1 +0 +68 . . ObjectAssignmentError.0. ObjectAssignmentError.0. none unknown . "" `t17.26.) ObjectAssignmentDefect.0.)) none unknown . "" . .)) ~43
+    (pragma . . 12
+     (kv . . ~10
+      (ident . . deprecated) 2
+      (strlit . `t28.17.sysma2dyk "See corresponding Defect"))))
+   (empty) 2
+   (ht `t4.68. ObjectAssignmentDefect.0.)) 66,13
+  (type0 . .
+   (pragmax . . ~45
+    (postfix . .
+     (ident . . *) ~21
+     (sd :ObjectConversionError.0. x
+      (type) . egd0 ofrbcr0s0awhl0t0c0 -1 +0 .
+      (td :`t4.48. . h0a nimcall +64 +8 +0 +48 . . exceptions.0. ObjectConversionError.0. none unknown . "" `t17.27.) exceptions.0. 66
+      (type0 . .
+       (pragmax . . ~45
+        (postfix . .
+         (ident . . *) ~21 ObjectConversionError.0.) ~43
+        (pragma . . 12
+         (kv . . ~10
+          (ident . . deprecated) 2
+          (strlit . `t28.17.sysma2dyk "See corresponding Defect"))))
+       (empty) 2
+       (ht
+        (td :`t4.69. . h0a nimcall -1 -1 +0 +69 . . ObjectConversionError.0. ObjectConversionError.0. none unknown . "" `t17.27.) ObjectConversionDefect.0.)) none unknown . "" . .)) ~43
+    (pragma . . 12
+     (kv . . ~10
+      (ident . . deprecated) 2
+      (strlit . `t28.17.sysma2dyk "See corresponding Defect"))))
+   (empty) 2
+   (ht `t4.69. ObjectConversionDefect.0.)) 63,14
+  (type0 . .
+   (pragmax . . ~45
+    (postfix . .
+     (ident . . *) ~18
+     (sd :FloatingPointError.0. x
+      (type) . egd0 ofrbcr0s0awhl0t0c0 -1 +0 .
+      (td :`t4.49. . h0a nimcall +64 +8 +0 +49 . . exceptions.0. FloatingPointError.0. none unknown . "" `t17.28.) exceptions.0. 63
+      (type0 . .
+       (pragmax . . ~45
+        (postfix . .
+         (ident . . *) ~18 FloatingPointError.0.) ~43
+        (pragma . . 12
+         (kv . . ~10
+          (ident . . deprecated) 2
+          (strlit . `t28.17.sysma2dyk "See corresponding Defect"))))
+       (empty) 2
+       (ht
+        (td :`t4.70. . h0a nimcall -1 -1 +0 +70 . . FloatingPointError.0. FloatingPointError.0. none unknown . "" `t17.28.) FloatingPointDefect.0.)) none unknown . "" . .)) ~43
+    (pragma . . 12
+     (kv . . ~10
+      (ident . . deprecated) 2
+      (strlit . `t28.17.sysma2dyk "See corresponding Defect"))))
+   (empty) 2
+   (ht `t4.70. FloatingPointDefect.0.)) 64,15
+  (type0 . .
+   (pragmax . . ~45
+    (postfix . .
+     (ident . . *) ~19
+     (sd :FloatInvalidOpError.0. x
+      (type) . egd0 ofrbcr0s0awhl0t0c0 -1 +0 .
+      (td :`t4.50. . h0a nimcall +64 +8 +0 +50 . . exceptions.0. FloatInvalidOpError.0. none unknown . "" `t17.29.) exceptions.0. 64
+      (type0 . .
+       (pragmax . . ~45
+        (postfix . .
+         (ident . . *) ~19 FloatInvalidOpError.0.) ~43
+        (pragma . . 12
+         (kv . . ~10
+          (ident . . deprecated) 2
+          (strlit . `t28.17.sysma2dyk "See corresponding Defect"))))
+       (empty) 2
+       (ht
+        (td :`t4.71. . h0a nimcall -1 -1 +0 +71 . . FloatInvalidOpError.0. FloatInvalidOpError.0. none unknown . "" `t17.29.) FloatInvalidOpDefect.0.)) none unknown . "" . .)) ~43
+    (pragma . . 12
+     (kv . . ~10
+      (ident . . deprecated) 2
+      (strlit . `t28.17.sysma2dyk "See corresponding Defect"))))
+   (empty) 2
+   (ht `t4.71. FloatInvalidOpDefect.0.)) 64,16
+  (type0 . .
+   (pragmax . . ~45
+    (postfix . .
+     (ident . . *) ~19
+     (sd :FloatDivByZeroError.0. x
+      (type) . egd0 ofrbcr0s0awhl0t0c0 -1 +0 .
+      (td :`t4.51. . h0a nimcall +64 +8 +0 +51 . . exceptions.0. FloatDivByZeroError.0. none unknown . "" `t17.30.) exceptions.0. 64
+      (type0 . .
+       (pragmax . . ~45
+        (postfix . .
+         (ident . . *) ~19 FloatDivByZeroError.0.) ~43
+        (pragma . . 12
+         (kv . . ~10
+          (ident . . deprecated) 2
+          (strlit . `t28.17.sysma2dyk "See corresponding Defect"))))
+       (empty) 2
+       (ht
+        (td :`t4.72. . h0a nimcall -1 -1 +0 +72 . . FloatDivByZeroError.0. FloatDivByZeroError.0. none unknown . "" `t17.30.) FloatDivByZeroDefect.0.)) none unknown . "" . .)) ~43
+    (pragma . . 12
+     (kv . . ~10
+      (ident . . deprecated) 2
+      (strlit . `t28.17.sysma2dyk "See corresponding Defect"))))
+   (empty) 2
+   (ht `t4.72. FloatDivByZeroDefect.0.)) 63,17
+  (type0 . .
+   (pragmax . . ~45
+    (postfix . .
+     (ident . . *) ~18
+     (sd :FloatOverflowError.0. x
+      (type) . egd0 ofrbcr0s0awhl0t0c0 -1 +0 .
+      (td :`t4.52. . h0a nimcall +64 +8 +0 +52 . . exceptions.0. FloatOverflowError.0. none unknown . "" `t17.31.) exceptions.0. 63
+      (type0 . .
+       (pragmax . . ~45
+        (postfix . .
+         (ident . . *) ~18 FloatOverflowError.0.) ~43
+        (pragma . . 12
+         (kv . . ~10
+          (ident . . deprecated) 2
+          (strlit . `t28.17.sysma2dyk "See corresponding Defect"))))
+       (empty) 2
+       (ht
+        (td :`t4.73. . h0a nimcall -1 -1 +0 +73 . . FloatOverflowError.0. FloatOverflowError.0. none unknown . "" `t17.31.) FloatOverflowDefect.0.)) none unknown . "" . .)) ~43
+    (pragma . . 12
+     (kv . . ~10
+      (ident . . deprecated) 2
+      (strlit . `t28.17.sysma2dyk "See corresponding Defect"))))
+   (empty) 2
+   (ht `t4.73. FloatOverflowDefect.0.)) 64,18
+  (type0 . .
+   (pragmax . . ~45
+    (postfix . .
+     (ident . . *) ~19
+     (sd :FloatUnderflowError.0. x
+      (type) . egd0 ofrbcr0s0awhl0t0c0 -1 +0 .
+      (td :`t4.53. . h0a nimcall +64 +8 +0 +53 . . exceptions.0. FloatUnderflowError.0. none unknown . "" `t17.32.) exceptions.0. 64
+      (type0 . .
+       (pragmax . . ~45
+        (postfix . .
+         (ident . . *) ~19 FloatUnderflowError.0.) ~43
+        (pragma . . 12
+         (kv . . ~10
+          (ident . . deprecated) 2
+          (strlit . `t28.17.sysma2dyk "See corresponding Defect"))))
+       (empty) 2
+       (ht
+        (td :`t4.74. . h0a nimcall -1 -1 +0 +74 . . FloatUnderflowError.0. FloatUnderflowError.0. none unknown . "" `t17.32.) FloatUnderflowDefect.0.)) none unknown . "" . .)) ~43
+    (pragma . . 12
+     (kv . . ~10
+      (ident . . deprecated) 2
+      (strlit . `t28.17.sysma2dyk "See corresponding Defect"))))
+   (empty) 2
+   (ht `t4.74. FloatUnderflowDefect.0.)) 62,19
+  (type0 . .
+   (pragmax . . ~45
+    (postfix . .
+     (ident . . *) ~17
+     (sd :FloatInexactError.0. x
+      (type) . egd0 ofrbcr0s0awhl0t0c0 -1 +0 .
+      (td :`t4.54. . h0a nimcall +64 +8 +0 +54 . . exceptions.0. FloatInexactError.0. none unknown . "" `t17.33.) exceptions.0. 62
+      (type0 . .
+       (pragmax . . ~45
+        (postfix . .
+         (ident . . *) ~17 FloatInexactError.0.) ~43
+        (pragma . . 12
+         (kv . . ~10
+          (ident . . deprecated) 2
+          (strlit . `t28.17.sysma2dyk "See corresponding Defect"))))
+       (empty) 2
+       (ht
+        (td :`t4.75. . h0a nimcall -1 -1 +0 +75 . . FloatInexactError.0. FloatInexactError.0. none unknown . "" `t17.33.) FloatInexactDefect.0.)) none unknown . "" . .)) ~43
+    (pragma . . 12
+     (kv . . ~10
+      (ident . . deprecated) 2
+      (strlit . `t28.17.sysma2dyk "See corresponding Defect"))))
+   (empty) 2
+   (ht `t4.75. FloatInexactDefect.0.)) 60,20
+  (type0 . .
+   (pragmax . . ~45
+    (postfix . .
+     (ident . . *) ~15
+     (sd :DeadThreadError.0. x
+      (type) . egd0 ofrbcr0s0awhl0t0c0 -1 +0 .
+      (td :`t4.55. . h0a nimcall +64 +8 +0 +55 . . exceptions.0. DeadThreadError.0. none unknown . "" `t17.34.) exceptions.0. 60
+      (type0 . .
+       (pragmax . . ~45
+        (postfix . .
+         (ident . . *) ~15 DeadThreadError.0.) ~43
+        (pragma . . 12
+         (kv . . ~10
+          (ident . . deprecated) 2
+          (strlit . `t28.17.sysma2dyk "See corresponding Defect"))))
+       (empty) 2
+       (ht
+        (td :`t4.76. . h0a nimcall -1 -1 +0 +76 . . DeadThreadError.0. DeadThreadError.0. none unknown . "" `t17.34.) DeadThreadDefect.0.)) none unknown . "" . .)) ~43
+    (pragma . . 12
+     (kv . . ~10
+      (ident . . deprecated) 2
+      (strlit . `t28.17.sysma2dyk "See corresponding Defect"))))
+   (empty) 2
+   (ht `t4.76. DeadThreadDefect.0.)) 59,21
+  (type0 . .
+   (pragmax . . ~45
+    (postfix . .
+     (ident . . *) ~14
+     (sd :NilAccessError.0. x
+      (type) . egd0 ofrbcr0s0awhl0t0c0 -1 +0 .
+      (td :`t4.56. . h0a nimcall +64 +8 +0 +56 . . exceptions.0. NilAccessError.0. none unknown . "" `t17.35.) exceptions.0. 59
+      (type0 . .
+       (pragmax . . ~45
+        (postfix . .
+         (ident . . *) ~14 NilAccessError.0.) ~43
+        (pragma . . 12
+         (kv . . ~10
+          (ident . . deprecated) 2
+          (strlit . `t28.17.sysma2dyk "See corresponding Defect"))))
+       (empty) 2
+       (ht
+        (td :`t4.77. . h0a nimcall -1 -1 +0 +77 . . NilAccessError.0. NilAccessError.0. none unknown . "" `t17.35.) NilAccessDefect.0.)) none unknown . "" . .)) ~43
+    (pragma . . 12
+     (kv . . ~10
+      (ident . . deprecated) 2
+      (strlit . `t28.17.sysma2dyk "See corresponding Defect"))))
+   (empty) 2
+   (ht `t4.77. NilAccessDefect.0.))))1,1,/home/araq/projects/nim/lib/system/exceptions.nim(.index 1,3
+ (x TimeEffect.0. +210)
+ (h `t17.3. +69)
+ (h exceptions.0. +173) 1,1,/home/araq/projects/nim/lib/system.nim
+ (h stdlib.0. +101) 1,4
+ (x IOEffect.0. +572)
+ (h `t17.4. +68) 1,5
+ (x ReadIOEffect.0. +591)
+ (h `t17.5. +71) 1,6
+ (x WriteIOEffect.0. +567)
+ (h `t17.6. +72) 1,7
+ (x ExecIOEffect.0. +569)
+ (h `t17.7. +71) 1,10
+ (x IOError.0. +580)
+ (h `t17.8. +67) 1,12
+ (x EOFError.0. +599)
+ (h `t17.9. +67) 1,14
+ (x OSError.0. +558)
+ (h `t17.10. +67) 3,16
+ (x errorCode.0. +129) 1,17
+ (x LibraryError.0. +921)
+ (h `t17.11. +71) 1,19
+ (x ResourceExhaustedError.0. +574)
+ (h `t17.12. +81) 1,21
+ (x ArithmeticDefect.0. +637)
+ (h `t17.13. +76) 1,23
+ (x DivByZeroDefect.0. +609)
+ (h `t17.14. +75) 1,26
+ (x OverflowDefect.0. +599)
+ (h `t17.15. +74) 1,31
+ (x AccessViolationDefect.0. +597)
+ (h `t17.16. +81) 1,33
+ (x AssertionDefect.0. +619)
+ (h `t17.17. +75) 1,38
+ (x ValueError.0. +607)
+ (h `t17.18. +70) 1,40
+ (x KeyError.0. +612)
+ (h `t17.19. +67) 1,46
+ (x OutOfMemDefect.0. +572)
+ (h `t17.20. +74) 1,48
+ (x IndexDefect.0. +605)
+ (h `t17.21. +71) 1,51
+ (x FieldDefect.0. +599)
+ (h `t17.22. +71) 1,54
+ (x RangeDefect.0. +599)
+ (h `t17.23. +71) 1,56
+ (x StackOverflowDefect.0. +599)
+ (h `t17.24. +79) 1,58
+ (x ReraiseDefect.0. +615)
+ (h `t17.25. +73) 1,60
+ (x ObjectAssignmentDefect.0. +603)
+ (h `t17.26. +82) 1,62
+ (x ObjectConversionDefect.0. +621)
+ (h `t17.27. +82) 1,65
+ (x FloatingPointDefect.0. +621)
+ (h `t17.28. +79) 1,67
+ (x FloatInvalidOpDefect.0. +615)
+ (h `t17.29. +80) 1,71
+ (x FloatDivByZeroDefect.0. +615)
+ (h `t17.30. +80) 1,75
+ (x FloatOverflowDefect.0. +615)
+ (h `t17.31. +79) 1,79
+ (x FloatUnderflowDefect.0. +613)
+ (h `t17.32. +80) 1,84
+ (x FloatInexactDefect.0. +615)
+ (h `t17.33. +78) 1,91
+ (x DeadThreadDefect.0. +611)
+ (h `t17.34. +76) 1,93
+ (x NilAccessDefect.0. +609)
+ (h `t17.35. +75) 3,100
+ (x ArithmeticError.0. +641)
+ (h `t4.36. +78)
+ (h `t4.57. +418) 3,101
+ (x DivByZeroError.0. +428)
+ (h `t4.37. +77)
+ (h `t4.58. +416) 3,102
+ (x OverflowError.0. +424)
+ (h `t4.38. +76)
+ (h `t4.59. +414) 3,103
+ (x AccessViolationError.0. +420)
+ (h `t4.39. +83)
+ (h `t4.60. +428) 3,104
+ (x AssertionError.0. +448)
+ (h `t4.40. +77)
+ (h `t4.61. +416) 3,105
+ (x OutOfMemError.0. +424)
+ (h `t4.41. +76)
+ (h `t4.62. +414) 3,106
+ (x IndexError.0. +420)
+ (h `t4.42. +73)
+ (h `t4.63. +408) 3,108
+ (x FieldError.0. +408)
+ (h `t4.43. +73)
+ (h `t4.64. +408) 3,109
+ (x RangeError.0. +408)
+ (h `t4.44. +73)
+ (h `t4.65. +408) 3,110
+ (x StackOverflowError.0. +409)
+ (h `t4.45. +81)
+ (h `t4.66. +424) 3,111
+ (x ReraiseError.0. +441)
+ (h `t4.46. +75)
+ (h `t4.67. +412) 3,112
+ (x ObjectAssignmentError.0. +417)
+ (h `t4.47. +84)
+ (h `t4.68. +430) 3,113
+ (x ObjectConversionError.0. +453)
+ (h `t4.48. +84)
+ (h `t4.69. +430) 3,114
+ (x FloatingPointError.0. +453)
+ (h `t4.49. +81)
+ (h `t4.70. +424) 3,115
+ (x FloatInvalidOpError.0. +441)
+ (h `t4.50. +82)
+ (h `t4.71. +426) 3,116
+ (x FloatDivByZeroError.0. +445)
+ (h `t4.51. +82)
+ (h `t4.72. +426) 3,117
+ (x FloatOverflowError.0. +445)
+ (h `t4.52. +81)
+ (h `t4.73. +424) 3,118
+ (x FloatUnderflowError.0. +441)
+ (h `t4.53. +82)
+ (h `t4.74. +426) 3,119
+ (x FloatInexactError.0. +445)
+ (h `t4.54. +80)
+ (h `t4.75. +422) 3,120
+ (x DeadThreadError.0. +437)
+ (h `t4.55. +78)
+ (h `t4.76. +418) 3,121
+ (x NilAccessError.0. +429)
+ (h `t4.56. +77)
+ (h `t4.77. +416))

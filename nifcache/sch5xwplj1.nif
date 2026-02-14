@@ -1,0 +1,4126 @@
+(.nif26)
+(.indexat +186158          )
+1,1,/home/araq/projects/nim/lib/std/private/schubfach.nim(stmts . . ~1,12
+ (import . . "digqtx7k2")
+ (repwasmoved "SX53ingle0sch5xwplj1" =wasMoved.0.)
+ (repdestroy "SX53ingle0sch5xwplj1" =destroy.0.)
+ (repcopy "SX53ingle0sch5xwplj1" =copy.0.)
+ (repdup "SX53ingle0sch5xwplj1" =dup.0.)
+ (repsink "SX53ingle0sch5xwplj1" =sink.0.)
+ (reptrace "SX53ingle0sch5xwplj1" =trace.0.)
+ (repwasmoved "Ar0ArangeS0S76ZAiS32" =wasMoved.1.)
+ (repdestroy "Ar0ArangeS0S76ZAiS32" =destroy.1.)
+ (repcopy "Ar0ArangeS0S76ZAiS32" =copy.1.)
+ (repdup "Ar0ArangeS0S76ZAiS32" =dup.1.)
+ (repsink "Ar0ArangeS0S76ZAiS32" =sink.1.)
+ (reptrace "Ar0ArangeS0S76ZAiS32" =trace.1.)
+ (repwasmoved "SX46loatingX44ecimal320sch5xwplj1" =wasMoved.2.)
+ (repdestroy "SX46loatingX44ecimal320sch5xwplj1" =destroy.2.)
+ (repcopy "SX46loatingX44ecimal320sch5xwplj1" =copy.2.)
+ (repdup "SX46loatingX44ecimal320sch5xwplj1" =dup.2.)
+ (repsink "SX46loatingX44ecimal320sch5xwplj1" =sink.2.)
+ (reptrace "SX46loatingX44ecimal320sch5xwplj1" =trace.2.)
+ (repwasmoved "Aa1AuS64ZAr0ArangeS0S76ZAiS32" =wasMoved.3.)
+ (repdestroy "Aa1AuS64ZAr0ArangeS0S76ZAiS32" =destroy.3.)
+ (repcopy "Aa1AuS64ZAr0ArangeS0S76ZAiS32" =copy.3.)
+ (repdup "Aa1AuS64ZAr0ArangeS0S76ZAiS32" =dup.3.)
+ (repsink "Aa1AuS64ZAr0ArangeS0S76ZAiS32" =sink.3.)
+ (reptrace "Aa1AuS64ZAr0ArangeS0S76ZAiS32" =trace.3.)
+ (implementation) ~1
+ (comment sh .) ~1,6
+ (comment sh .) 8,18
+ (sd :sf_Assert.0. .
+  (template) . ugn4a1 . -1 +0 .
+  (td :`t25.3. . m nimcall -1 -1 +0 +3 . 18,19,/home/araq/projects/nim/lib/std/private/schubfach.nim
+   (formalparams . `t6.28.sysma2dyk
+    (arglist . .) 1
+    (sd :x.0 .
+     (param) . ut0 . -1 +0 . `t6.28.sysma2dyk sf_Assert.0. . none unknown . "" . .)) sf_Assert.0. . none unknown . "" `t6.28.sysma2dyk) ~8,~18
+  (sd :schubfach.0. .
+   (module) . i1 . +0 . . . 1,1,/home/araq/projects/nim/lib/system.nim
+   (sd :stdlib.0. .
+    (package) . . . -1 +0 . . . . none unknown . "" . .) . none unknown . "" . .) ~9
+  (template s . 9
+   (ht . sf_Assert.0.)
+   (empty)
+   (empty) .
+   (empty)
+   (empty) 2,1
+   (stmts . . 6
+    (call . . ~6
+     (ht . assert.0.assy765wm) 1 x.0))) none unknown . "" . .) 1,26
+ (type s . 10
+  (type0 . . ~10
+   (sd :ValueType.0. .
+    (type) . ug r0whtl0t0c0 -1 +0 .
+    (td :`t37.4. . c3 nimcall +4 +4 +0 +4 . . schubfach.0. ValueType.0. none unknown . "") schubfach.0. 10
+    (type0 . . ~10 ValueType.0.
+     (empty) 2
+     (ht `t37.4. float32.0.sysma2dyk)) none unknown . "" . .)
+   (empty) 2
+   (ht `t37.4. float32.0.sysma2dyk)) 9,1
+  (type0 . . ~9
+   (sd :BitsType.0. .
+    (type) . ug r0whtl0t0c0 -1 +0 .
+    (td :`t43.5. . c3 nimcall +4 +4 +0 +5 . . schubfach.0. BitsType.0. none unknown . "") schubfach.0. 9
+    (type0 . . ~9 BitsType.0.
+     (empty) 2
+     (ht `t43.5. uint32.0.sysma2dyk)) none unknown . "" . .)
+   (empty) 2
+   (ht `t43.5. uint32.0.sysma2dyk)) 18,2
+  (type0 . .
+   (pragmax . . ~18
+    (sd :Single.0. .
+     (type) . ug r0whtl0t0c0 -1 +0 .
+     (td :`t17.6. . fbc3 nimcall +4 +4 +0 +6 . 22,29,/home/araq/projects/nim/lib/std/private/schubfach.nim
+      (reclist . . ~18,1
+       (sd :bits.0. .
+        (field . +0 +0) . u r0whtl0t0c0 +0 +0 . `t43.5. Single.0. . none unknown . "" . .)) schubfach.0. Single.0. none unknown . "" .) schubfach.0. 18
+     (type0 . .
+      (pragmax . . ~18 Single.0. ~11
+       (pragma . . 2
+        (ident . . bycopy)))
+      (empty) 2
+      (objectty . `t17.6.
+       (empty)
+       (empty) ~18,1
+       (reclist . .
+        (identdefs . .
+         (ident . . bits) 6 BitsType.0. ~4,2
+         (empty))))) none unknown . "" . .) ~11
+    (pragma . . 2
+     (ident . . bycopy)))
+   (empty) 2
+   (objectty . `t17.6.
+    (empty)
+    (empty) ~18,1
+    (reclist . .
+     (identdefs . .
+      (ident . . bits) 6 BitsType.0. ~4,2
+      (empty)))))) ~1,31
+ (const s . 2,1
+  (sd :significandSize.0. .
+   (const) . ug r0whtl0t0c0 -1 +0 . `t34.6.sysma2dyk schubfach.0.
+   (const0 . . significandSize.0. 17 int32.0.sysma2dyk 25
+    (intlit . `t34.6.sysma2dyk +24)) none unknown . "" . .) 2,2
+  (sd :MaxExponent.0. .
+   (const) . ug r0whtl0t0c0 -1 +0 .
+   (td :`t31.7. . c3 nimcall +8 +8 +0 +7 . 16,34,/home/araq/projects/nim/lib/std/private/schubfach.nim
+    (intlit s `t31.7. +128) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") schubfach.0.
+   (const0 . . MaxExponent.0.
+    (empty) 14
+    (intlit . `t31.7. +128)) none unknown . "" . .) 2,3
+  (sd :exponentBias.0. .
+   (const) . ug r0whtl0t0c0 -1 +0 . `t34.6.sysma2dyk schubfach.0.
+   (const0 . . exponentBias.0. 14 int32.0.sysma2dyk 38
+    (int32lit . `t34.6.sysma2dyk +150)) none unknown . "" . .) 2,4
+  (sd :maxIeeeExponent.0. .
+   (const) . ug r0whtl0t0c0 -1 +0 . `t43.5. schubfach.0.
+   (const0 . . maxIeeeExponent.0. 17 BitsType.0. 36
+    (uintlit . `t43.5. +255u)) none unknown . "" . .) 2,5
+  (sd :hiddenBit.0. .
+   (const) . ug r0whtl0t0c0 -1 +0 . `t43.5. schubfach.0.
+   (const0 . . hiddenBit.0. 11 BitsType.0. 34
+    (uint32lit . `t43.11.sysma2dyk +8388608u)) none unknown . "" . .) 2,6
+  (sd :significandMask.0. .
+   (const) . ug r0whtl0t0c0 -1 +0 . `t43.5. schubfach.0.
+   (const0 . . significandMask.0. 17 BitsType.0. 38
+    (uint32lit . `t43.11.sysma2dyk +8388607u)) none unknown . "" . .) 2,7
+  (sd :exponentMask.0. .
+   (const) . ug r0whtl0t0c0 -1 +0 . `t43.5. schubfach.0.
+   (const0 . . exponentMask.0. 14 BitsType.0. 41
+    (uint32lit . `t43.11.sysma2dyk +2139095040u)) none unknown . "" . .) 2,8
+  (sd :signMask.0. .
+   (const) . ug r0whtl0t0c0 -1 +0 . `t43.5. schubfach.0.
+   (const0 . . signMask.0. 10 BitsType.0. 21
+    (uint32lit . `t43.11.sysma2dyk +2147483648u)) none unknown . "" . .)) 4,41
+ (sd :constructSingle.0. .
+  (proc) . gi1 r0whtl0t0c0 -1 +0 .
+  (td :`t25.20. . nte2 nimcall -1 -1 +0 +20 . 20,42,/home/araq/projects/nim/lib/std/private/schubfach.nim
+   (formalparams . `t17.6.
+    (arglist . . ~15
+     (arglist . .)
+     (empty)
+     (empty) ~15
+     (arglist . .)
+     (empty) ~15
+     (arglist . .)) 1
+    (sd :bits.1 .
+     (param) . u . -1 +0 . `t43.5. constructSingle.0. . none unknown . "" . .)) constructSingle.0. . none unknown . "" `t17.6.) schubfach.0. ~5
+  (proc s . 5
+   (ht . constructSingle.0.)
+   (empty)
+   (empty) .
+   (empty)
+   (empty) 9,1
+   (asgn s
+    (td :`t7.1. . . nimcall -1 -1 +0 +1 . . . . none unknown . "") ~9,~1
+    (sd :result.0 .
+     (result) . u . -1 +0 . `t17.6. constructSingle.0. . none unknown . "" . .) 8
+    (objconstr bs `t17.6. ~6 Single.0. 5
+     (kv s . ~18,~13 bits.0. 2 bits.1))) result.0) none unknown . "" . .) 4,44
+ (sd :constructSingle.1. .
+  (proc) . ugi1 r0whtl0t0c0 -1 +0 .
+  (td :`t25.32. . nte2 nimcall -1 -1 +0 +32 . 20,45,/home/araq/projects/nim/lib/std/private/schubfach.nim
+   (formalparams . `t17.6.
+    (arglist . . ~15
+     (arglist . .)
+     (empty)
+     (empty) ~15
+     (arglist . .)
+     (empty) ~15
+     (arglist . .)) 1
+    (sd :value.0 .
+     (param) . u . -1 +0 . `t37.4. constructSingle.1. . none unknown . "" . .)) constructSingle.1. . none unknown . "" `t17.6.) schubfach.0. ~5
+  (proc s . 5
+   (ht . constructSingle.1.)
+   (empty)
+   (empty) .
+   (empty)
+   (empty) 9,1
+   (asgn s `t7.1. ~9,~1
+    (sd :result.2 .
+     (result) . u . -1 +0 . `t17.6. constructSingle.1. . none unknown . "" . .) 8
+    (objconstr bs `t17.6. ~6 Single.0. 5
+     (kv s . ~18,~16 bits.0. 2
+      (cast ss0 `t43.5. 11
+       (call . `t43.5. ~6
+        (ident . . typeof) 7
+        (dot . `t43.5. ~6 result.2 1 bits.0.)) 26 value.0)))) result.2) none unknown . "" . .) 4,47
+ (sd :physicalSignificand.0. .
+  (proc) . ugni1 r0whtl0t0c0 -1 +0 .
+  (td :`t25.34. . nte2 nimcall -1 -1 +0 +34 . 24,48,/home/araq/projects/nim/lib/std/private/schubfach.nim
+   (formalparams . `t43.5.
+    (arglist . . ~19
+     (arglist . .)
+     (empty)
+     (empty) ~19
+     (arglist . .)
+     (empty) ~19
+     (arglist . .)) 1
+    (sd :this.0 .
+     (param) . u . -1 +0 . `t17.6. physicalSignificand.0. . none unknown . "" . .)) physicalSignificand.0. . none unknown . "" `t43.5.) schubfach.0. ~5
+  (proc s . 5
+   (ht . physicalSignificand.0.)
+   (empty)
+   (empty) . 49
+   (pragma . . 2
+    (ident . . noSideEffect))
+   (empty) 2,1
+   (ret s . 17
+    (asgn . `t7.1. ~19,~1
+     (sd :result.3 .
+      (result) . u . -1 +0 . `t43.5. physicalSignificand.0. . none unknown . "" . .)
+     (infix s `t43.11.sysma2dyk and.10.sysma2dyk ~6
+      (dot s `t43.5. ~4 this.0 1 bits.0.) 4
+      (uint32lit s `t43.5. +8388607u)))) result.3) none unknown . "" . .) 4,50
+ (sd :physicalExponent.0. .
+  (proc) . ugni1 r0whtl0t0c0 -1 +0 .
+  (td :`t25.35. . nte2 nimcall -1 -1 +0 +35 . 21,51,/home/araq/projects/nim/lib/std/private/schubfach.nim
+   (formalparams . `t43.5.
+    (arglist . . ~16
+     (arglist . .)
+     (empty)
+     (empty) ~16
+     (arglist . .)
+     (empty) ~16
+     (arglist . .)) 1
+    (sd :this.1 .
+     (param) . u . -1 +0 . `t17.6. physicalExponent.0. . none unknown . "" . .)) physicalExponent.0. . none unknown . "" `t43.5.) schubfach.0. ~5
+  (proc s . 5
+   (ht . physicalExponent.0.)
+   (empty)
+   (empty) . 46
+   (pragma . . 2
+    (ident . . noSideEffect))
+   (empty) 2,1
+   (ret s . 36
+    (asgn . `t7.1. ~38,~1
+     (sd :result.4 .
+      (result) . u . -1 +0 . `t43.5. physicalExponent.0. . none unknown . "" . .)
+     (infix s `t43.11.sysma2dyk 5,240,/home/araq/projects/nim/lib/system/arithmetics.nim
+      (sd :shr.1. .
+       (proc) shr uefgn ofrbcr0s0awhl0t0c0 -1 +0 .
+       (td :`t25.36. . nge2 nimcall -1 -1 +0 +36 . 11,240,/home/araq/projects/nim/lib/system/arithmetics.nim
+        (formalparams . `t43.11.sysma2dyk
+         (arglist . .
+          (arglist . .) . .
+          (arglist . .) 36
+          (pragma . . 7
+           (kv . . ~5
+            (ident . . magic) 2
+            (strlit . `t28.17.sysma2dyk "ShrI")) 17
+           (ident . . noSideEffect))
+          (arglist . .)) 1
+         (sd :x.4 .
+          (param) . . . -1 +0 . `t43.11.sysma2dyk shr.1. . none unknown . "" . .) 12
+         (sd :y.3 .
+          (param) . . . -1 +1 . `t34.6.sysma2dyk shr.1. . none unknown . "" . .)) shr.8.sysma2dyk . none unknown . "" `t43.11.sysma2dyk) shr.8.sysma2dyk ~5
+       (proc . . 5
+        (ht `t25.420.sysma2dyk shr.1.)
+        (empty)
+        (empty) . 47
+        (pragma . . 7
+         (kv . . ~5
+          (ident . . magic) 2
+          (strlit . `t28.17.sysma2dyk "ShrI")) 17
+         (ident . . noSideEffect))
+        (bracket . .
+         (empty)
+         (empty))
+        (empty)) none unknown . "" . shr.8.sysma2dyk) ~18
+      (infix s `t43.11.sysma2dyk and.10.sysma2dyk ~6
+       (dot s `t43.5. ~4 this.1 1 bits.0.) 4
+       (uint32lit s `t43.5. +2139095040u)) 21
+      (int32lit s `t34.6.sysma2dyk +23)))) result.4) none unknown . "" . .) 4,53
+ (sd :isFinite.0. .
+  (proc) . gni1 r0whtl0t0c0 -1 +0 .
+  (td :`t25.37. . nte2 nimcall -1 -1 +0 +37 . 13,54,/home/araq/projects/nim/lib/std/private/schubfach.nim
+   (formalparams . `t1.34.sysma2dyk
+    (arglist . . ~8
+     (arglist . .)
+     (empty)
+     (empty) ~8
+     (arglist . .)
+     (empty) ~8
+     (arglist . .)) 1
+    (sd :this.2 .
+     (param) . u . -1 +0 . `t17.6. isFinite.0. . none unknown . "" . .)) isFinite.0. . none unknown . "" `t1.34.sysma2dyk) schubfach.0. ~5
+  (proc s . 5
+   (ht . isFinite.0.)
+   (empty)
+   (empty) . 34
+   (pragma . . 2
+    (ident . . noSideEffect))
+   (empty) 2,1
+   (ret s . 36
+    (asgn . `t7.1. ~38,~1
+     (sd :result.5 .
+      (result) . u . -1 +0 . `t1.34.sysma2dyk isFinite.0. . none unknown . "" . .)
+     (expr sf `t1.34.sysma2dyk 2,132,/home/araq/projects/nim/lib/system/comparisons.nim
+      (empty)
+      (prefix s `t1.34.sysma2dyk not.0.sysma2dyk
+       (infix s `t1.34.sysma2dyk ==.17.sysma2dyk ~18
+        (infix s `t43.11.sysma2dyk and.10.sysma2dyk ~6
+         (dot s `t43.5. ~4 this.2 1 bits.0.) 4
+         (uint32lit s `t43.5. +2139095040u)) 3
+        (uint32lit s `t43.5. +2139095040u)))))) result.5) none unknown . "" . .) 4,56
+ (sd :isInf.0. .
+  (proc) . gni1 r0whtl0t0c0 -1 +0 .
+  (td :`t25.38. . nte2 nimcall -1 -1 +0 +38 . 10,57,/home/araq/projects/nim/lib/std/private/schubfach.nim
+   (formalparams . `t1.34.sysma2dyk
+    (arglist . . ~5
+     (arglist . .)
+     (empty)
+     (empty) ~5
+     (arglist . .)
+     (empty) ~5
+     (arglist . .)) 1
+    (sd :this.3 .
+     (param) . u . -1 +0 . `t17.6. isInf.0. . none unknown . "" . .)) isInf.0. . none unknown . "" `t1.34.sysma2dyk) schubfach.0. ~5
+  (proc s . 5
+   (ht . isInf.0.)
+   (empty)
+   (empty) . 31
+   (pragma . . 2
+    (ident . . noSideEffect))
+   (empty) 2,1
+   (ret s . 52
+    (asgn . `t7.1. ~54,~1
+     (sd :result.6 .
+      (result) . u . -1 +0 . `t1.34.sysma2dyk isInf.0. . none unknown . "" . .)
+     (infix s `t1.34.sysma2dyk and.0.sysma2dyk ~16
+      (infix s `t1.34.sysma2dyk ==.17.sysma2dyk ~18
+       (infix s `t43.11.sysma2dyk and.10.sysma2dyk ~6
+        (dot s `t43.5. ~4 this.3 1 bits.0.) 4
+        (uint32lit s `t43.5. +2139095040u)) 3
+       (uint32lit s `t43.5. +2139095040u)) ~16,1
+      (infix s `t1.34.sysma2dyk ==.17.sysma2dyk ~21
+       (infix s `t43.11.sysma2dyk and.10.sysma2dyk ~6
+        (dot s `t43.5. ~4 this.3 1 bits.0.) 4
+        (uint32lit s `t43.5. +8388607u)) 3
+       (hstdconv . `t43.11.sysma2dyk
+        (empty)
+        (intlit s
+         (td :`t31.15. . c3 nimcall +8 +8 +0 +15 . 41,40,/home/araq/projects/nim/lib/std/private/schubfach.nim
+          (intlit s `t31.15. +0) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +0)))))) result.6) none unknown . "" . .) 4,60
+ (sd :isNaN.0. .
+  (proc) . gni1 r0whtl0t0c0 -1 +0 .
+  (td :`t25.39. . nte2 nimcall -1 -1 +0 +39 . 10,61,/home/araq/projects/nim/lib/std/private/schubfach.nim
+   (formalparams . `t1.34.sysma2dyk
+    (arglist . . ~5
+     (arglist . .)
+     (empty)
+     (empty) ~5
+     (arglist . .)
+     (empty) ~5
+     (arglist . .)) 1
+    (sd :this.4 .
+     (param) . u . -1 +0 . `t17.6. isNaN.0. . none unknown . "" . .)) isNaN.0. . none unknown . "" `t1.34.sysma2dyk) schubfach.0. ~5
+  (proc s . 5
+   (ht . isNaN.0.)
+   (empty)
+   (empty) . 31
+   (pragma . . 2
+    (ident . . noSideEffect))
+   (empty) 2,1
+   (ret s . 52
+    (asgn . `t7.1. ~54,~1
+     (sd :result.7 .
+      (result) . u . -1 +0 . `t1.34.sysma2dyk isNaN.0. . none unknown . "" . .)
+     (infix s `t1.34.sysma2dyk and.0.sysma2dyk ~16
+      (infix s `t1.34.sysma2dyk ==.17.sysma2dyk ~18
+       (infix s `t43.11.sysma2dyk and.10.sysma2dyk ~6
+        (dot s `t43.5. ~4 this.4 1 bits.0.) 4
+        (uint32lit s `t43.5. +2139095040u)) 3
+       (uint32lit s `t43.5. +2139095040u)) ~16,1
+      (expr sf `t1.34.sysma2dyk 2,132,/home/araq/projects/nim/lib/system/comparisons.nim
+       (empty)
+       (prefix s `t1.34.sysma2dyk not.0.sysma2dyk
+        (infix s `t1.34.sysma2dyk ==.17.sysma2dyk ~21
+         (infix s `t43.11.sysma2dyk and.10.sysma2dyk ~6
+          (dot s `t43.5. ~4 this.4 1 bits.0.) 4
+          (uint32lit s `t43.5. +8388607u)) 3
+         (hstdconv . `t43.11.sysma2dyk
+          (empty)
+          (intlit s `t31.15. +0)))))))) result.7) none unknown . "" . .) 4,64
+ (sd :isZero.0. .
+  (proc) . gni1 r0whtl0t0c0 -1 +0 .
+  (td :`t25.40. . nte2 nimcall -1 -1 +0 +40 . 11,65,/home/araq/projects/nim/lib/std/private/schubfach.nim
+   (formalparams . `t1.34.sysma2dyk
+    (arglist . . ~6
+     (arglist . .)
+     (empty)
+     (empty) ~6
+     (arglist . .)
+     (empty) ~6
+     (arglist . .)) 1
+    (sd :this.5 .
+     (param) . u . -1 +0 . `t17.6. isZero.0. . none unknown . "" . .)) isZero.0. . none unknown . "" `t1.34.sysma2dyk) schubfach.0. ~5
+  (proc s . 5
+   (ht . isZero.0.)
+   (empty)
+   (empty) . 32
+   (pragma . . 2
+    (ident . . noSideEffect))
+   (empty) 2,1
+   (ret s . 36
+    (asgn . `t7.1. ~38,~1
+     (sd :result.8 .
+      (result) . u . -1 +0 . `t1.34.sysma2dyk isZero.0. . none unknown . "" . .)
+     (infix s `t1.34.sysma2dyk ==.17.sysma2dyk ~18
+      (infix s `t43.11.sysma2dyk and.10.sysma2dyk ~6
+       (dot s `t43.5. ~4 this.5 1 bits.0.) 4
+       (uint32lit s `t43.11.sysma2dyk +2147483647u)) 3
+      (hstdconv . `t43.11.sysma2dyk
+       (empty)
+       (intlit s `t31.15. +0))))) result.8) none unknown . "" . .) 4,67
+ (sd :signBit.0. .
+  (proc) . ugni1 r0whtl0t0c0 -1 +0 .
+  (td :`t25.41. . nte2 nimcall -1 -1 +0 +41 . 12,68,/home/araq/projects/nim/lib/std/private/schubfach.nim
+   (formalparams . `t31.3.sysma2dyk
+    (arglist . . ~7
+     (arglist . .)
+     (empty)
+     (empty) ~7
+     (arglist . .)
+     (empty) ~7
+     (arglist . .)) 1
+    (sd :this.6 .
+     (param) . u . -1 +0 . `t17.6. signBit.0. . none unknown . "" . .)) signBit.0. . none unknown . "" `t31.3.sysma2dyk) schubfach.0. ~5
+  (proc s . 5
+   (ht . signBit.0.)
+   (empty)
+   (empty) . 32
+   (pragma . . 2
+    (ident . . noSideEffect))
+   (empty) 2,1
+   (ret s . 10
+    (asgn . `t7.1. ~12,~1
+     (sd :result.9 .
+      (result) . u . -1 +0 . `t31.3.sysma2dyk signBit.0. . none unknown . "" . .)
+     (conv s `t31.3.sysma2dyk ~3 int.0.sysma2dyk 26
+      (expr sf `t1.34.sysma2dyk 2,132,/home/araq/projects/nim/lib/system/comparisons.nim
+       (empty)
+       (prefix s `t1.34.sysma2dyk not.0.sysma2dyk
+        (infix s `t1.34.sysma2dyk ==.17.sysma2dyk ~14
+         (infix s `t43.11.sysma2dyk and.10.sysma2dyk ~6
+          (dot s `t43.5. ~4 this.6 1 bits.0.) 4
+          (uint32lit s `t43.5. +2147483648u)) 3
+         (hstdconv . `t43.11.sysma2dyk
+          (empty)
+          (intlit s `t31.15. +0)))))))) result.9) none unknown . "" . .) ~1,71
+ (comment sh .) 4,76
+ (sd :floorDivPow2.0. .
+  (proc) . ugi1 r0whtl0t0c0 -1 +0 .
+  (td :`t25.42. . nte1e2 inline -1 -1 +0 +42 . 17,77,/home/araq/projects/nim/lib/std/private/schubfach.nim
+   (formalparams . `t34.6.sysma2dyk
+    (arglist . . ~12
+     (arglist . .)
+     (empty)
+     (empty) ~12
+     (arglist . .)
+     (empty) ~12
+     (arglist . .)) 1
+    (sd :x.5 .
+     (param) . u . -1 +0 . `t34.6.sysma2dyk floorDivPow2.0. . none unknown . "" . .) 11
+    (sd :n.0 .
+     (param) . u . -1 +1 . `t34.6.sysma2dyk floorDivPow2.0. . none unknown . "" . .)) floorDivPow2.0. . none unknown . "" `t34.6.sysma2dyk) schubfach.0. ~5
+  (proc s . 5
+   (ht . floorDivPow2.0.)
+   (empty)
+   (empty) . 45
+   (pragma . . 2
+    (ident . . inline))
+   (empty) 2,1
+   (ret s . 9
+    (asgn . `t7.1. ~11,~1
+     (sd :result.10 .
+      (result) . u . -1 +0 . `t34.6.sysma2dyk floorDivPow2.0. . none unknown . "" . .)
+     (infix s `t34.6.sysma2dyk shr.2.dranym4xo ~2 x.5 4 n.0))) result.10) none unknown . "" . .) ~1,79
+ (comment sh .) 4,99
+ (sd :floorLog2Pow10.0. .
+  (proc) . ugi1 r0whtl0t0c0 -1 +0 .
+  (td :`t25.44. . nte1e2 inline -1 -1 +0 +44 . 19,100,/home/araq/projects/nim/lib/std/private/schubfach.nim
+   (formalparams . `t34.6.sysma2dyk
+    (arglist . . ~14
+     (arglist . .)
+     (empty)
+     (empty) ~14
+     (arglist . .)
+     (empty) ~14
+     (arglist . .)) 1
+    (sd :e.0 .
+     (param) . u . -1 +0 . `t34.6.sysma2dyk floorLog2Pow10.0. . none unknown . "" . .)) floorLog2Pow10.0. . none unknown . "" `t34.6.sysma2dyk) schubfach.0. ~5
+  (proc s . 5
+   (ht . floorLog2Pow10.0.)
+   (empty)
+   (empty) . 37
+   (pragma . . 2
+    (ident . . inline))
+   (empty) 2,1
+   (stmts s .
+    (stmts sf . 2,59,/home/araq/projects/nim/lib/std/assertions.nim
+     (empty) 2,70,/home/araq/projects/nim/lib/std/assertions.nim
+     (empty)) ,1
+    (stmts sf . 2,59,/home/araq/projects/nim/lib/std/assertions.nim
+     (empty) 2,70,/home/araq/projects/nim/lib/std/assertions.nim
+     (empty)) ,2
+    (ret s . 19
+     (asgn . `t7.1. ~21,~3
+      (sd :result.11 .
+       (result) . u . -1 +0 . `t34.6.sysma2dyk floorLog2Pow10.0. . none unknown . "" . .)
+      (call s `t34.6.sysma2dyk ~12 floorDivPow2.0. 3
+       (infix s `t34.6.sysma2dyk *.3.sysma2dyk ~2 e.0 2
+        (hstdconv . `t34.6.sysma2dyk
+         (empty)
+         (intlit s
+          (td :`t31.49. . c3 nimcall +8 +8 +0 +49 . 26,103,/home/araq/projects/nim/lib/std/private/schubfach.nim
+           (intlit s `t31.49. +1741647) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +1741647))) 14
+       (hstdconv . `t34.6.sysma2dyk
+        (empty)
+        (intlit s
+         (td :`t31.50. . c3 nimcall +8 +8 +0 +50 . 35,103,/home/araq/projects/nim/lib/std/private/schubfach.nim
+          (intlit s `t31.50. +19) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +19)))))) result.11) none unknown . "" . .) ~1,104
+ (const s . 2,1
+  (sd :kMin.0. .
+   (const) . ug r0whtl0t0c0 -1 +0 . `t34.6.sysma2dyk schubfach.0.
+   (const0 . . kMin.0. 6 int32.0.sysma2dyk 14
+    (intlit . `t34.6.sysma2dyk -31)) none unknown . "" . .) 2,2
+  (sd :kMax.0. .
+   (const) . ug r0whtl0t0c0 -1 +0 . `t34.6.sysma2dyk schubfach.0.
+   (const0 . . kMax.0. 6 int32.0.sysma2dyk 14
+    (intlit . `t34.6.sysma2dyk +45)) none unknown . "" . .) 2,3
+  (sd :g.0. .
+   (const) . ug r0whtl0t0c0 -1 +0 .
+   (td :`t16.52. . c3 nimcall -1 -1 +0 +52 . . schubfach.0. . none unknown . ""
+    (td :`t20.51. . c3 nimcall -1 -1 +0 +51 . 23,108,/home/araq/projects/nim/lib/std/private/schubfach.nim
+     (range . .
+      (int32lit . `t34.6.sysma2dyk +0)
+      (int32lit . `t34.6.sysma2dyk +76)) schubfach.0. . none unknown . "" `t34.6.sysma2dyk) `t44.12.sysma2dyk) schubfach.0.
+   (const0 . . g.0. 8
+    (at . `t16.52. ~5 array.0.sysma2dyk 13
+     (infix . .
+      (ident . . \2B) ~7
+      (int32lit s `t34.6.sysma2dyk +76) 2
+      (intlit s
+       (td :`t31.8. . c3 nimcall +8 +8 +0 +8 . 38,35,/home/araq/projects/nim/lib/std/private/schubfach.nim
+        (intlit s `t31.8. +1) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +1)) 18 uint64.0.sysma2dyk) 36
+    (bracket . `t16.52. 1
+     (uint64lit b1 `t44.12.sysma2dyk +9353610478917778677u) 25
+     (uint64lit b1 `t44.12.sysma2dyk +11692013098647223346u) ~34,1
+     (uint64lit b1 `t44.12.sysma2dyk +14615016373309029183u) ~10,1
+     (uint64lit b1 `t44.12.sysma2dyk +18268770466636286478u) 14,1
+     (uint64lit b1 `t44.12.sysma2dyk +11417981541647679049u) ~34,2
+     (uint64lit b1 `t44.12.sysma2dyk +14272476927059598811u) ~10,2
+     (uint64lit b1 `t44.12.sysma2dyk +17840596158824498514u) 14,2
+     (uint64lit b1 `t44.12.sysma2dyk +11150372599265311571u) ~34,3
+     (uint64lit b1 `t44.12.sysma2dyk +13937965749081639464u) ~10,3
+     (uint64lit b1 `t44.12.sysma2dyk +17422457186352049330u) 14,3
+     (uint64lit b1 `t44.12.sysma2dyk +10889035741470030831u) ~34,4
+     (uint64lit b1 `t44.12.sysma2dyk +13611294676837538539u) ~10,4
+     (uint64lit b1 `t44.12.sysma2dyk +17014118346046923174u) 14,4
+     (uint64lit b1 `t44.12.sysma2dyk +10633823966279326984u) ~34,5
+     (uint64lit b1 `t44.12.sysma2dyk +13292279957849158730u) ~10,5
+     (uint64lit b1 `t44.12.sysma2dyk +16615349947311448412u) 14,5
+     (uint64lit b1 `t44.12.sysma2dyk +10384593717069655258u) ~34,6
+     (uint64lit b1 `t44.12.sysma2dyk +12980742146337069072u) ~10,6
+     (uint64lit b1 `t44.12.sysma2dyk +16225927682921336340u) 14,6
+     (uint64lit b1 `t44.12.sysma2dyk +10141204801825835212u) ~34,7
+     (uint64lit b1 `t44.12.sysma2dyk +12676506002282294015u) ~10,7
+     (uint64lit b1 `t44.12.sysma2dyk +15845632502852867519u) 14,7
+     (uint64lit b1 `t44.12.sysma2dyk +9903520314283042200u) ~34,8
+     (uint64lit b1 `t44.12.sysma2dyk +12379400392853802749u) ~10,8
+     (uint64lit b1 `t44.12.sysma2dyk +15474250491067253437u) 14,8
+     (uint64lit b1 `t44.12.sysma2dyk +9671406556917033398u) ~34,9
+     (uint64lit b1 `t44.12.sysma2dyk +12089258196146291748u) ~10,9
+     (uint64lit b1 `t44.12.sysma2dyk +15111572745182864684u) 14,9
+     (uint64lit b1 `t44.12.sysma2dyk +9444732965739290428u) ~34,10
+     (uint64lit b1 `t44.12.sysma2dyk +11805916207174113035u) ~10,10
+     (uint64lit b1 `t44.12.sysma2dyk +14757395258967641293u) 14,10
+     (uint64lit b1 `t44.12.sysma2dyk +9223372036854775808u) ~34,11
+     (uint64lit b1 `t44.12.sysma2dyk +11529215046068469760u) ~10,11
+     (uint64lit b1 `t44.12.sysma2dyk +14411518807585587200u) 14,11
+     (uint64lit b1 `t44.12.sysma2dyk +18014398509481984000u) ~34,12
+     (uint64lit b1 `t44.12.sysma2dyk +11258999068426240000u) ~10,12
+     (uint64lit b1 `t44.12.sysma2dyk +14073748835532800000u) 14,12
+     (uint64lit b1 `t44.12.sysma2dyk +17592186044416000000u) ~34,13
+     (uint64lit b1 `t44.12.sysma2dyk +10995116277760000000u) ~10,13
+     (uint64lit b1 `t44.12.sysma2dyk +13743895347200000000u) 14,13
+     (uint64lit b1 `t44.12.sysma2dyk +17179869184000000000u) ~34,14
+     (uint64lit b1 `t44.12.sysma2dyk +10737418240000000000u) ~10,14
+     (uint64lit b1 `t44.12.sysma2dyk +13421772800000000000u) 14,14
+     (uint64lit b1 `t44.12.sysma2dyk +16777216000000000000u) ~34,15
+     (uint64lit b1 `t44.12.sysma2dyk +10485760000000000000u) ~10,15
+     (uint64lit b1 `t44.12.sysma2dyk +13107200000000000000u) 14,15
+     (uint64lit b1 `t44.12.sysma2dyk +16384000000000000000u) ~34,16
+     (uint64lit b1 `t44.12.sysma2dyk +10240000000000000000u) ~10,16
+     (uint64lit b1 `t44.12.sysma2dyk +12800000000000000000u) 14,16
+     (uint64lit b1 `t44.12.sysma2dyk +16000000000000000000u) ~34,17
+     (uint64lit b1 `t44.12.sysma2dyk +10000000000000000000u) ~10,17
+     (uint64lit b1 `t44.12.sysma2dyk +12500000000000000000u) 14,17
+     (uint64lit b1 `t44.12.sysma2dyk +15625000000000000000u) ~34,18
+     (uint64lit b1 `t44.12.sysma2dyk +9765625000000000000u) ~10,18
+     (uint64lit b1 `t44.12.sysma2dyk +12207031250000000000u) 14,18
+     (uint64lit b1 `t44.12.sysma2dyk +15258789062500000000u) ~34,19
+     (uint64lit b1 `t44.12.sysma2dyk +9536743164062500000u) ~10,19
+     (uint64lit b1 `t44.12.sysma2dyk +11920928955078125000u) 14,19
+     (uint64lit b1 `t44.12.sysma2dyk +14901161193847656250u) ~34,20
+     (uint64lit b1 `t44.12.sysma2dyk +9313225746154785157u) ~10,20
+     (uint64lit b1 `t44.12.sysma2dyk +11641532182693481446u) 14,20
+     (uint64lit b1 `t44.12.sysma2dyk +14551915228366851807u) ~34,21
+     (uint64lit b1 `t44.12.sysma2dyk +18189894035458564759u) ~10,21
+     (uint64lit b1 `t44.12.sysma2dyk +11368683772161602974u) 14,21
+     (uint64lit b1 `t44.12.sysma2dyk +14210854715202003718u) ~34,22
+     (uint64lit b1 `t44.12.sysma2dyk +17763568394002504647u) ~10,22
+     (uint64lit b1 `t44.12.sysma2dyk +11102230246251565405u) 14,22
+     (uint64lit b1 `t44.12.sysma2dyk +13877787807814456756u) ~34,23
+     (uint64lit b1 `t44.12.sysma2dyk +17347234759768070945u) ~10,23
+     (uint64lit b1 `t44.12.sysma2dyk +10842021724855044341u) 14,23
+     (uint64lit b1 `t44.12.sysma2dyk +13552527156068805426u) ~34,24
+     (uint64lit b1 `t44.12.sysma2dyk +16940658945086006782u) ~10,24
+     (uint64lit b1 `t44.12.sysma2dyk +10587911840678754239u) 14,24
+     (uint64lit b1 `t44.12.sysma2dyk +13234889800848442798u) ~34,25
+     (uint64lit b1 `t44.12.sysma2dyk +16543612251060553498u) ~10,25
+     (uint64lit b1 `t44.12.sysma2dyk +10339757656912845936u) 14,25
+     (uint64lit b1 `t44.12.sysma2dyk +12924697071141057420u))) none unknown . "" . .)) 4,134
+ (sd :computePow10Single.0. .
+  (proc) . ugi1 r0whtl0t0c0 -1 +0 .
+  (td :`t25.55. . nte1e2 inline -1 -1 +0 +55 . 23,135,/home/araq/projects/nim/lib/std/private/schubfach.nim
+   (formalparams . `t44.12.sysma2dyk
+    (arglist . . ~18
+     (arglist . .)
+     (empty)
+     (empty) ~18
+     (arglist . .)
+     (empty) ~18
+     (arglist . .)) 1
+    (sd :k.0 .
+     (param) . u . -1 +0 . `t34.6.sysma2dyk computePow10Single.0. . none unknown . "" . .)) computePow10Single.0. . none unknown . "" `t44.12.sysma2dyk) schubfach.0. ~5
+  (proc s . 5
+   (ht . computePow10Single.0.)
+   (empty)
+   (empty) . 42
+   (pragma . . 2
+    (ident . . inline))
+   (empty) 2,1
+   (stmts s .
+    (comment sh .) ,7
+    (stmts sf . 2,59,/home/araq/projects/nim/lib/std/assertions.nim
+     (empty) 2,70,/home/araq/projects/nim/lib/std/assertions.nim
+     (empty)) ,8
+    (stmts sf . 2,59,/home/araq/projects/nim/lib/std/assertions.nim
+     (empty) 2,70,/home/araq/projects/nim/lib/std/assertions.nim
+     (empty)) ,9
+    (ret s . 8
+     (asgn . `t7.1. ~10,~10
+      (sd :result.12 .
+       (result) . u . -1 +0 . `t44.12.sysma2dyk computePow10Single.0. . none unknown . "" . .)
+      (at s `t44.12.sysma2dyk ~1 g.0. 3
+       (hstdconv . `t20.51.
+        (empty)
+        (infix s `t34.6.sysma2dyk \2D.8.sysma2dyk ~2 k.0 2
+         (intlit s `t34.6.sysma2dyk -31))))))) result.12) none unknown . "" . .) 4,146
+ (sd :lo32.0. .
+  (proc) . ugi1 r0whtl0t0c0 -1 +0 .
+  (td :`t25.69. . nte1e2 inline -1 -1 +0 +69 . 9,147,/home/araq/projects/nim/lib/std/private/schubfach.nim
+   (formalparams . `t43.11.sysma2dyk
+    (arglist . . ~4
+     (arglist . .)
+     (empty)
+     (empty) ~4
+     (arglist . .)
+     (empty) ~4
+     (arglist . .)) 1
+    (sd :x.7 .
+     (param) . u . -1 +0 . `t44.12.sysma2dyk lo32.0. . none unknown . "" . .)) lo32.0. . none unknown . "" `t43.11.sysma2dyk) schubfach.0. ~5
+  (proc s . 5
+   (ht . lo32.0.)
+   (empty)
+   (empty) . 29
+   (pragma . . 2
+    (ident . . inline))
+   (empty) 2,1
+   (ret s . 7
+    (asgn . `t7.1. ~9,~1
+     (sd :result.14 .
+      (result) . u . -1 +0 . `t43.11.sysma2dyk lo32.0. . none unknown . "" . .)
+     (cast s `t43.11.sysma2dyk 5 uint32.0.sysma2dyk 13 x.7))) result.14) none unknown . "" . .) 4,149
+ (sd :hi32.0. .
+  (proc) . ugi1 r0whtl0t0c0 -1 +0 .
+  (td :`t25.70. . nte1e2 inline -1 -1 +0 +70 . 9,150,/home/araq/projects/nim/lib/std/private/schubfach.nim
+   (formalparams . `t43.11.sysma2dyk
+    (arglist . . ~4
+     (arglist . .)
+     (empty)
+     (empty) ~4
+     (arglist . .)
+     (empty) ~4
+     (arglist . .)) 1
+    (sd :x.8 .
+     (param) . u . -1 +0 . `t44.12.sysma2dyk hi32.0. . none unknown . "" . .)) hi32.0. . none unknown . "" `t43.11.sysma2dyk) schubfach.0. ~5
+  (proc s . 5
+   (ht . hi32.0.)
+   (empty)
+   (empty) . 29
+   (pragma . . 2
+    (ident . . inline))
+   (empty) 2,1
+   (ret s . 7
+    (asgn . `t7.1. ~9,~1
+     (sd :result.15 .
+      (result) . u . -1 +0 . `t43.11.sysma2dyk hi32.0. . none unknown . "" . .)
+     (cast s `t43.11.sysma2dyk 5 uint32.0.sysma2dyk 15
+      (infix s `t44.12.sysma2dyk shr.0.dranym4xo ~2 x.8 4
+       (intlit .
+        (td :`t31.72. . c3 nimcall +8 +8 +0 +72 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +32))))) result.15) none unknown . "" . .) 6,169
+ (sd :roundToOdd.0. .
+  (proc) . ugi1 r0whtl0t0c0 -1 +0 .
+  (td :`t25.75. . nte1e2 inline -1 -1 +0 +75 . 17,170,/home/araq/projects/nim/lib/std/private/schubfach.nim
+   (formalparams . `t43.11.sysma2dyk
+    (arglist . . ~10
+     (arglist . .)
+     (empty)
+     (empty) ~10
+     (arglist . .)
+     (empty) ~10
+     (arglist . .)) 1
+    (sd :g.1 .
+     (param) . u . -1 +0 . `t44.12.sysma2dyk roundToOdd.0. . none unknown . "" . .) 12
+    (sd :cp.0 .
+     (param) . u . -1 +1 . `t43.11.sysma2dyk roundToOdd.0. . none unknown . "" . .)) roundToOdd.0. . none unknown . "" `t43.11.sysma2dyk) schubfach.0. ~5
+  (proc s . 5
+   (ht . roundToOdd.0.)
+   (empty)
+   (empty) . 47
+   (pragma . . 2
+    (ident . . inline))
+   (empty) 2,1
+   (stmts s .
+    (let s . 4
+     (identdefs . .
+      (sd :b01.0 .
+       (let . +0 +0) . u r0whtl0t0c0 -1 +0 . `t44.12.sysma2dyk roundToOdd.0.
+       (identdefs . . b01.0 5 uint64.0.sysma2dyk 30
+        (infix . `t44.12.sysma2dyk *.9.sysma2dyk ~10
+         (conv . `t44.12.sysma2dyk ~6 uint64.0.sysma2dyk 5
+          (call . `t43.11.sysma2dyk ~4 lo32.0. 1 g.1)) 2
+         (hstdconv . `t44.12.sysma2dyk
+          (empty) cp.0))) none unknown . "" . .) 5 uint64.0.sysma2dyk 30
+      (infix . `t44.12.sysma2dyk *.9.sysma2dyk ~10
+       (conv . `t44.12.sysma2dyk ~6 uint64.0.sysma2dyk 5
+        (call . `t43.11.sysma2dyk ~4 lo32.0. 1 g.1)) 2
+       (hstdconv . `t44.12.sysma2dyk
+        (empty) cp.0)))) ,1
+    (let s . 4
+     (identdefs . .
+      (sd :b11.0 .
+       (let . +0 +0) . u r0whtl0t0c0 -1 +0 . `t44.12.sysma2dyk roundToOdd.0.
+       (identdefs . . b11.0 5 uint64.0.sysma2dyk 30
+        (infix . `t44.12.sysma2dyk *.9.sysma2dyk ~10
+         (conv . `t44.12.sysma2dyk ~6 uint64.0.sysma2dyk 5
+          (call . `t43.11.sysma2dyk ~4 hi32.0. 1 g.1)) 2
+         (hstdconv . `t44.12.sysma2dyk
+          (empty) cp.0))) none unknown . "" . .) 5 uint64.0.sysma2dyk 30
+      (infix . `t44.12.sysma2dyk *.9.sysma2dyk ~10
+       (conv . `t44.12.sysma2dyk ~6 uint64.0.sysma2dyk 5
+        (call . `t43.11.sysma2dyk ~4 hi32.0. 1 g.1)) 2
+       (hstdconv . `t44.12.sysma2dyk
+        (empty) cp.0)))) ,2
+    (let s . 4
+     (identdefs . .
+      (sd :hi.0 .
+       (let . +0 +0) . u r0whtl0t0c0 -1 +0 . `t44.12.sysma2dyk roundToOdd.0.
+       (identdefs . . hi.0 4 uint64.0.sysma2dyk 17
+        (infix . `t44.12.sysma2dyk \2B.14.sysma2dyk ~4 b11.0 6
+         (hstdconv . `t44.12.sysma2dyk
+          (empty)
+          (call . `t43.11.sysma2dyk ~4 hi32.0. 1 b01.0)))) none unknown . "" . .) 4 uint64.0.sysma2dyk 17
+      (infix . `t44.12.sysma2dyk \2B.14.sysma2dyk ~4 b11.0 6
+       (hstdconv . `t44.12.sysma2dyk
+        (empty)
+        (call . `t43.11.sysma2dyk ~4 hi32.0. 1 b01.0))))) ,3
+    (let s . 4
+     (identdefs . .
+      (sd :y1.0 .
+       (let . +0 +0) . u r0whtl0t0c0 -1 +0 . `t43.11.sysma2dyk roundToOdd.0.
+       (identdefs . . y1.0 4 uint32.0.sysma2dyk 17
+        (call . `t43.11.sysma2dyk ~4 hi32.0. 1 hi.0)) none unknown . "" . .) 4 uint32.0.sysma2dyk 17
+      (call . `t43.11.sysma2dyk ~4 hi32.0. 1 hi.0))) ,4
+    (let s . 4
+     (identdefs . .
+      (sd :y0.0 .
+       (let . +0 +0) . u r0whtl0t0c0 -1 +0 . `t43.11.sysma2dyk roundToOdd.0.
+       (identdefs . . y0.0 4 uint32.0.sysma2dyk 17
+        (call . `t43.11.sysma2dyk ~4 lo32.0. 1 hi.0)) none unknown . "" . .) 4 uint32.0.sysma2dyk 17
+      (call . `t43.11.sysma2dyk ~4 lo32.0. 1 hi.0))) ,5
+    (ret s . 10
+     (asgn . `t7.1. ~12,~6
+      (sd :result.16 .
+       (result) . u . -1 +0 . `t43.11.sysma2dyk roundToOdd.0. . none unknown . "" . .)
+      (infix s `t43.11.sysma2dyk or.10.sysma2dyk ~3 y1.0 9
+       (conv s `t43.11.sysma2dyk ~6 uint32.0.sysma2dyk 4
+        (expr sf `t1.34.sysma2dyk 2,140,/home/araq/projects/nim/lib/system/comparisons.nim
+         (empty)
+         (infix s `t1.34.sysma2dyk <.16.sysma2dyk 2
+          (hstdconv . `t43.11.sysma2dyk
+           (empty)
+           (intlit s `t31.8. +1)) ~3 y0.0))))))) result.16) none unknown . "" . .) ~1,177
+ (comment sh .) 4,179
+ (sd :multipleOfPow2.0. .
+  (proc) . ugi1 r0whtl0t0c0 -1 +0 .
+  (td :`t25.76. . nte1e2 inline -1 -1 +0 +76 . 19,180,/home/araq/projects/nim/lib/std/private/schubfach.nim
+   (formalparams . `t1.34.sysma2dyk
+    (arglist . . ~14
+     (arglist . .)
+     (empty)
+     (empty) ~14
+     (arglist . .)
+     (empty) ~14
+     (arglist . .)) 1
+    (sd :value.1 .
+     (param) . u . -1 +0 . `t43.11.sysma2dyk multipleOfPow2.0. . none unknown . "" . .) 16
+    (sd :e2.0 .
+     (param) . u . -1 +1 . `t34.6.sysma2dyk multipleOfPow2.0. . none unknown . "" . .)) multipleOfPow2.0. . none unknown . "" `t1.34.sysma2dyk) schubfach.0. ~5
+  (proc s . 5
+   (ht . multipleOfPow2.0.)
+   (empty)
+   (empty) . 52
+   (pragma . . 2
+    (ident . . inline))
+   (empty) 2,1
+   (stmts s .
+    (stmts sf . 2,59,/home/araq/projects/nim/lib/std/assertions.nim
+     (empty) 2,70,/home/araq/projects/nim/lib/std/assertions.nim
+     (empty)) ,1
+    (stmts sf . 2,59,/home/araq/projects/nim/lib/std/assertions.nim
+     (empty) 2,70,/home/araq/projects/nim/lib/std/assertions.nim
+     (empty)) ,2
+    (ret s . 44
+     (asgn . `t7.1. ~46,~3
+      (sd :result.17 .
+       (result) . u . -1 +0 . `t1.34.sysma2dyk multipleOfPow2.0. . none unknown . "" . .)
+      (infix s `t1.34.sysma2dyk ==.17.sysma2dyk ~30
+       (infix s `t43.11.sysma2dyk and.10.sysma2dyk ~6 value.1 24
+        (infix s `t43.11.sysma2dyk \2D.13.sysma2dyk ~8
+         (infix s `t43.11.sysma2dyk 5,247,/home/araq/projects/nim/lib/system/arithmetics.nim
+          (sd :shl.0. .
+           (proc) shl uefgn ofrbcr0s0awhl0t0c0 -1 +0 .
+           (td :`t25.13. . nge2 nimcall -1 -1 +0 +13 . 11,247,/home/araq/projects/nim/lib/system/arithmetics.nim
+            (formalparams . `t43.11.sysma2dyk
+             (arglist . .
+              (arglist . .) . .
+              (arglist . .) 36
+              (pragma . . 7
+               (kv . . ~5
+                (ident . . magic) 2
+                (strlit . `t28.17.sysma2dyk "ShlI")) 17
+               (ident . . noSideEffect))
+              (arglist . .)) 1
+             (sd :x.1 .
+              (param) . . . -1 +0 . `t43.11.sysma2dyk shl.0. . none unknown . "" . .) 12
+             (sd :y.0 .
+              (param) . . . -1 +1 . `t34.6.sysma2dyk shl.0. . none unknown . "" . .)) shl.8.sysma2dyk . none unknown . "" `t43.11.sysma2dyk) shl.8.sysma2dyk ~5
+           (proc . . 5
+            (ht `t25.430.sysma2dyk shl.0.)
+            (empty)
+            (empty) . 47
+            (pragma . . 7
+             (kv . . ~5
+              (ident . . magic) 2
+              (strlit . `t28.17.sysma2dyk "ShlI")) 17
+             (ident . . noSideEffect))
+            (bracket . .
+             (empty)
+             (empty))
+            (empty)) none unknown . "" . shl.8.sysma2dyk) ~4
+          (conv s `t43.11.sysma2dyk ~6 uint32.0.sysma2dyk 1
+           (intlit s `t31.8. +1)) 4 e2.0) 2
+         (hstdconv . `t43.11.sysma2dyk
+          (empty)
+          (intlit s `t31.8. +1)))) 3
+       (hstdconv . `t43.11.sysma2dyk
+        (empty)
+        (intlit s `t31.15. +0)))))) result.17) none unknown . "" . .) 1,185
+ (type s . 29
+  (type0 . .
+   (pragmax . . ~29
+    (sd :FloatingDecimal32.0. .
+     (type) . ug r0whtl0t0c0 -1 +0 .
+     (td :`t17.81. . fbc3 nimcall +8 +4 +0 +81 . 33,186,/home/araq/projects/nim/lib/std/private/schubfach.nim
+      (reclist . . ~29,1
+       (sd :digits.0. .
+        (field . +0 +0) . u r0whtl0t0c0 +0 +0 . `t43.11.sysma2dyk FloatingDecimal32.0. . none unknown . "" . .) ~29,2
+       (sd :exponent.0. .
+        (field . +0 +0) . u r0whtl0t0c0 +4 +1 . `t34.6.sysma2dyk FloatingDecimal32.0. . none unknown . "" . .)) schubfach.0. FloatingDecimal32.0. none unknown . "" .) schubfach.0. 29
+     (type0 . .
+      (pragmax . . ~29 FloatingDecimal32.0. ~11
+       (pragma . . 2
+        (ident . . bycopy)))
+      (empty) 2
+      (objectty . `t17.81.
+       (empty)
+       (empty) ~29,1
+       (reclist . .
+        (identdefs h .
+         (ident . . digits) 8 uint32.0.sysma2dyk 26
+         (empty)) ,1
+        (identdefs . .
+         (ident . . exponent) 10 int32.0.sysma2dyk ~4,2
+         (empty))))) none unknown . "" . .) ~11
+    (pragma . . 2
+     (ident . . bycopy)))
+   (empty) 2
+   (objectty . `t17.81.
+    (empty)
+    (empty) ~29,1
+    (reclist . .
+     (identdefs h .
+      (ident . . digits) 8 uint32.0.sysma2dyk 26
+      (empty)) ,1
+     (identdefs . .
+      (ident . . exponent) 10 int32.0.sysma2dyk ~4,2
+      (empty)))))) 4,189
+ (sd :toDecimal32.0. .
+  (proc) . ugi1 r0whtl0t0c0 -1 +0 .
+  (td :`t25.82. . nte1e2 inline -1 -1 +0 +82 . 16,190,/home/araq/projects/nim/lib/std/private/schubfach.nim
+   (formalparams . `t17.81.
+    (arglist . . ~11
+     (arglist . .)
+     (empty)
+     (empty) ~11
+     (arglist . .)
+     (empty) ~11
+     (arglist . .)) 1
+    (sd :ieeeSignificand.0 .
+     (param) . u . -1 +0 . `t43.11.sysma2dyk toDecimal32.0. . none unknown . "" . .) 26
+    (sd :ieeeExponent.0 .
+     (param) . u . -1 +1 . `t43.11.sysma2dyk toDecimal32.0. . none unknown . "" . .)) toDecimal32.0. . none unknown . "" `t17.81.) schubfach.0. ~5
+  (proc s . 5
+   (ht . toDecimal32.0.)
+   (empty)
+   (empty) . 83
+   (pragma . . ~79,1
+    (ident . . inline))
+   (empty) 2,2
+   (stmts s .
+    (var s . 4
+     (identdefs . .
+      (sd :c.0 .
+       (var . +0 +0) . u r0whtl0t0c0 -1 +0 . `t43.11.sysma2dyk toDecimal32.0.
+       (identdefs . . c.0 3 uint32.0.sysma2dyk
+        (empty)) none unknown . "" . .) 3 uint32.0.sysma2dyk
+      (empty))) ,1
+    (var s . 4
+     (identdefs . .
+      (sd :q.0 .
+       (var . +0 +0) . u r0whtl0t0c0 -1 +0 . `t34.6.sysma2dyk toDecimal32.0.
+       (identdefs . . q.0 3 int32.0.sysma2dyk
+        (empty)) none unknown . "" . .) 3 int32.0.sysma2dyk
+      (empty))) ,2
+    (if s . 3
+     (elif . . 13
+      (expr sf `t1.34.sysma2dyk 2,132,/home/araq/projects/nim/lib/system/comparisons.nim
+       (empty)
+       (prefix s `t1.34.sysma2dyk not.0.sysma2dyk
+        (infix s `t1.34.sysma2dyk ==.17.sysma2dyk ~13 ieeeExponent.0 3
+         (hstdconv . `t43.11.sysma2dyk
+          (empty)
+          (intlit s `t31.15. +0))))) ~1,1
+      (stmts s . 2
+       (asgn s . ~2 c.0 12
+        (infix s `t43.11.sysma2dyk or.10.sysma2dyk ~10
+         (uint32lit s `t43.5. +8388608u) 3 ieeeSignificand.0)) 2,1
+       (asgn s . ~2 q.0 28
+        (infix s `t34.6.sysma2dyk \2D.8.sysma2dyk ~26
+         (cast s `t34.6.sysma2dyk 5 int32.0.sysma2dyk 12 ieeeExponent.0) 2
+         (int32lit s `t34.6.sysma2dyk +150))) ,2
+       (if s . 3
+        (elif . . 33
+         (infix s `t1.34.sysma2dyk and.0.sysma2dyk ~25
+          (infix s `t1.34.sysma2dyk and.0.sysma2dyk ~6
+           (infix s `t1.34.sysma2dyk <=.10.sysma2dyk ~2
+            (hstdconv . `t34.6.sysma2dyk
+             (empty)
+             (intlit s `t31.15. +0)) 3
+            (prefix s `t34.6.sysma2dyk \2D.3.sysma2dyk 1 q.0)) 7
+           (infix s `t1.34.sysma2dyk <.11.sysma2dyk ~3
+            (prefix s `t34.6.sysma2dyk \2D.3.sysma2dyk 1 q.0) 2
+            (intlit s `t34.6.sysma2dyk +24))) 18
+          (call s `t1.34.sysma2dyk ~14 multipleOfPow2.0. 1 c.0 4
+           (prefix s `t34.6.sysma2dyk \2D.3.sysma2dyk 1 q.0))) ~1,1
+         (ret s . 24
+          (asgn . `t7.1. ~30,~8
+           (sd :result.18 .
+            (result) . u . -1 +0 . `t17.81. toDecimal32.0. . none unknown . "" . .)
+           (objconstr bs `t17.81. ~17 FloatingDecimal32.0. 7
+            (kv s . ~33,~11 digits.0. 4
+             (infix ss0 `t43.11.sysma2dyk shr.1. ~2 c.0 4
+              (prefix s `t34.6.sysma2dyk \2D.3.sysma2dyk 1 q.0))) 27
+            (kv s . ~53,~10 exponent.0. 2
+             (int32lit ss0 `t34.6.sysma2dyk +0))))))))) ,5
+     (else . . 2,1
+      (stmts s . 2
+       (asgn s . ~2 c.0 2 ieeeSignificand.0) 2,1
+       (asgn s . ~2 q.0 4
+        (int32lit s `t34.6.sysma2dyk -149))))) ,10
+    (let s . 4
+     (identdefs . .
+      (sd :isEven.0 .
+       (let . +0 +0) . u r0whtl0t0c0 -1 +0 . `t1.34.sysma2dyk toDecimal32.0.
+       (identdefs . . isEven.0 8 bool.0.sysma2dyk 24
+        (infix . `t1.34.sysma2dyk ==.17.sysma2dyk ~6
+         (infix . `t43.11.sysma2dyk mod.8.sysma2dyk ~2 c.0 4
+          (hstdconv . `t43.11.sysma2dyk
+           (empty)
+           (intlit .
+            (td :`t31.10. . c3 nimcall +8 +8 +0 +10 . 39,36,/home/araq/projects/nim/lib/std/private/schubfach.nim
+             (intlit s `t31.10. +2) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +2))) 3
+         (hstdconv . `t43.11.sysma2dyk
+          (empty)
+          (intlit . `t31.15. +0)))) none unknown . "" . .) 8 bool.0.sysma2dyk 24
+      (infix . `t1.34.sysma2dyk ==.17.sysma2dyk ~6
+       (infix . `t43.11.sysma2dyk mod.8.sysma2dyk ~2 c.0 4
+        (hstdconv . `t43.11.sysma2dyk
+         (empty)
+         (intlit . `t31.10. +2))) 3
+       (hstdconv . `t43.11.sysma2dyk
+        (empty)
+        (intlit . `t31.15. +0))))) ,11
+    (let s . 4
+     (identdefs . .
+      (sd :lowerBoundaryIsCloser.0 .
+       (let . +0 +0) . u r0whtl0t0c0 -1 +0 . `t1.34.sysma2dyk toDecimal32.0.
+       (identdefs . . lowerBoundaryIsCloser.0 23 bool.0.sysma2dyk 52
+        (infix . `t1.34.sysma2dyk and.0.sysma2dyk ~5
+         (infix . `t1.34.sysma2dyk ==.17.sysma2dyk ~16 ieeeSignificand.0 3
+          (hstdconv . `t43.11.sysma2dyk
+           (empty)
+           (intlit . `t31.15. +0))) 17
+         (expr f `t1.34.sysma2dyk 2,140,/home/araq/projects/nim/lib/system/comparisons.nim
+          (empty)
+          (infix . `t1.34.sysma2dyk <.16.sysma2dyk 2
+           (hstdconv . `t43.11.sysma2dyk
+            (empty)
+            (intlit . `t31.8. +1)) ~13 ieeeExponent.0)))) none unknown . "" . .) 23 bool.0.sysma2dyk 52
+      (infix . `t1.34.sysma2dyk and.0.sysma2dyk ~5
+       (infix . `t1.34.sysma2dyk ==.17.sysma2dyk ~16 ieeeSignificand.0 3
+        (hstdconv . `t43.11.sysma2dyk
+         (empty)
+         (intlit . `t31.15. +0))) 17
+       (expr f `t1.34.sysma2dyk 2,140,/home/araq/projects/nim/lib/system/comparisons.nim
+        (empty)
+        (infix . `t1.34.sysma2dyk <.16.sysma2dyk 2
+         (hstdconv . `t43.11.sysma2dyk
+          (empty)
+          (intlit . `t31.8. +1)) ~13 ieeeExponent.0))))) ,12
+    (comment sh .) ,13
+    (let s . 4
+     (identdefs . .
+      (sd :cbl.0 .
+       (let . +0 +0) . u r0whtl0t0c0 -1 +0 . `t43.11.sysma2dyk toDecimal32.0.
+       (identdefs . . cbl.0 5 uint32.0.sysma2dyk 24
+        (infix . `t43.11.sysma2dyk \2B.13.sysma2dyk ~4
+         (infix . `t43.11.sysma2dyk \2D.13.sysma2dyk ~4
+          (infix . `t43.11.sysma2dyk *.8.sysma2dyk ~2
+           (hstdconv . `t43.11.sysma2dyk
+            (empty)
+            (intlit .
+             (td :`t31.84. . c3 nimcall +8 +8 +0 +84 . 20,205,/home/araq/projects/nim/lib/std/private/schubfach.nim
+              (intlit s `t31.84. +4) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +4)) 2 c.0) 2
+          (hstdconv . `t43.11.sysma2dyk
+           (empty)
+           (intlit . `t31.10. +2))) 8
+         (conv . `t43.11.sysma2dyk ~6 uint32.0.sysma2dyk 1 lowerBoundaryIsCloser.0))) none unknown . "" . .) 5 uint32.0.sysma2dyk 24
+      (infix . `t43.11.sysma2dyk \2B.13.sysma2dyk ~4
+       (infix . `t43.11.sysma2dyk \2D.13.sysma2dyk ~4
+        (infix . `t43.11.sysma2dyk *.8.sysma2dyk ~2
+         (hstdconv . `t43.11.sysma2dyk
+          (empty)
+          (intlit . `t31.84. +4)) 2 c.0) 2
+        (hstdconv . `t43.11.sysma2dyk
+         (empty)
+         (intlit . `t31.10. +2))) 8
+       (conv . `t43.11.sysma2dyk ~6 uint32.0.sysma2dyk 1 lowerBoundaryIsCloser.0)))) ,14
+    (let s . 4
+     (identdefs . .
+      (sd :cb.0 .
+       (let . +0 +0) . u r0whtl0t0c0 -1 +0 . `t43.11.sysma2dyk toDecimal32.0.
+       (identdefs . . cb.0 4 uint32.0.sysma2dyk 15
+        (infix . `t43.11.sysma2dyk *.8.sysma2dyk ~2
+         (hstdconv . `t43.11.sysma2dyk
+          (empty)
+          (intlit . `t31.84. +4)) 2 c.0)) none unknown . "" . .) 4 uint32.0.sysma2dyk 15
+      (infix . `t43.11.sysma2dyk *.8.sysma2dyk ~2
+       (hstdconv . `t43.11.sysma2dyk
+        (empty)
+        (intlit . `t31.84. +4)) 2 c.0))) ,15
+    (let s . 4
+     (identdefs . .
+      (sd :cbr.0 .
+       (let . +0 +0) . u r0whtl0t0c0 -1 +0 . `t43.11.sysma2dyk toDecimal32.0.
+       (identdefs . . cbr.0 5 uint32.0.sysma2dyk 20
+        (infix . `t43.11.sysma2dyk \2B.13.sysma2dyk ~4
+         (infix . `t43.11.sysma2dyk *.8.sysma2dyk ~2
+          (hstdconv . `t43.11.sysma2dyk
+           (empty)
+           (intlit . `t31.84. +4)) 2 c.0) 2
+         (hstdconv . `t43.11.sysma2dyk
+          (empty)
+          (intlit . `t31.10. +2)))) none unknown . "" . .) 5 uint32.0.sysma2dyk 20
+      (infix . `t43.11.sysma2dyk \2B.13.sysma2dyk ~4
+       (infix . `t43.11.sysma2dyk *.8.sysma2dyk ~2
+        (hstdconv . `t43.11.sysma2dyk
+         (empty)
+         (intlit . `t31.84. +4)) 2 c.0) 2
+       (hstdconv . `t43.11.sysma2dyk
+        (empty)
+        (intlit . `t31.10. +2))))) ,16
+    (comment sh .) ,18
+    (stmts sf . 2,59,/home/araq/projects/nim/lib/std/assertions.nim
+     (empty) 2,70,/home/araq/projects/nim/lib/std/assertions.nim
+     (empty)) ,19
+    (stmts sf . 2,59,/home/araq/projects/nim/lib/std/assertions.nim
+     (empty) 2,70,/home/araq/projects/nim/lib/std/assertions.nim
+     (empty)) ,20
+    (let s . 4
+     (identdefs . .
+      (sd :k.1 .
+       (let . +0 +0) . u r0whtl0t0c0 -1 +0 . `t34.6.sysma2dyk toDecimal32.0.
+       (identdefs . . k.1 3 int32.0.sysma2dyk 23
+        (call . `t34.6.sysma2dyk ~12 floorDivPow2.0. 13
+         (infix . `t34.6.sysma2dyk \2D.8.sysma2dyk ~10
+          (infix . `t34.6.sysma2dyk *.3.sysma2dyk ~2 q.0 2
+           (hstdconv . `t34.6.sysma2dyk
+            (empty)
+            (intlit .
+             (td :`t31.89. . c3 nimcall +8 +8 +0 +89 . 34,212,/home/araq/projects/nim/lib/std/private/schubfach.nim
+              (intlit s `t31.89. +1262611) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +1262611))) 3
+          (hstdconv . `t34.6.sysma2dyk
+           (empty)
+           (ifx .
+            (td :`t31.90. . c3 nimcall +8 +8 +0 +90 . 71,212,/home/araq/projects/nim/lib/std/private/schubfach.nim
+             (intlit s `t31.90. +524031) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") 3
+            (elifx . . lowerBoundaryIsCloser.0 23
+             (intlit . `t31.90. +524031)) 33
+            (elsex . . 6
+             (intlit . `t31.90. +0))))) 59
+         (hstdconv . `t34.6.sysma2dyk
+          (empty)
+          (intlit .
+           (td :`t31.91. . c3 nimcall +8 +8 +0 +91 . 88,212,/home/araq/projects/nim/lib/std/private/schubfach.nim
+            (intlit s `t31.91. +22) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +22)))) none unknown . "" . .) 3 int32.0.sysma2dyk 23
+      (call . `t34.6.sysma2dyk ~12 floorDivPow2.0. 13
+       (infix . `t34.6.sysma2dyk \2D.8.sysma2dyk ~10
+        (infix . `t34.6.sysma2dyk *.3.sysma2dyk ~2 q.0 2
+         (hstdconv . `t34.6.sysma2dyk
+          (empty)
+          (intlit . `t31.89. +1262611))) 3
+        (hstdconv . `t34.6.sysma2dyk
+         (empty)
+         (ifx . `t31.90. 3
+          (elifx . . lowerBoundaryIsCloser.0 23
+           (intlit . `t31.90. +524031)) 33
+          (elsex . . 6
+           (intlit . `t31.90. +0))))) 59
+       (hstdconv . `t34.6.sysma2dyk
+        (empty)
+        (intlit . `t31.91. +22))))) ,21
+    (let s . 4
+     (identdefs . .
+      (sd :h.0 .
+       (let . +0 +0) . u r0whtl0t0c0 -1 +0 . `t34.6.sysma2dyk toDecimal32.0.
+       (identdefs . . h.0 3 int32.0.sysma2dyk 34
+        (infix . `t34.6.sysma2dyk \2B.8.sysma2dyk ~21
+         (infix . `t34.6.sysma2dyk \2B.8.sysma2dyk ~2 q.0 16
+          (call . `t34.6.sysma2dyk ~14 floorLog2Pow10.0. 1
+           (prefix . `t34.6.sysma2dyk \2D.3.sysma2dyk 1 k.1))) 2
+         (hstdconv . `t34.6.sysma2dyk
+          (empty)
+          (intlit . `t31.8. +1)))) none unknown . "" . .) 3 int32.0.sysma2dyk 34
+      (infix . `t34.6.sysma2dyk \2B.8.sysma2dyk ~21
+       (infix . `t34.6.sysma2dyk \2B.8.sysma2dyk ~2 q.0 16
+        (call . `t34.6.sysma2dyk ~14 floorLog2Pow10.0. 1
+         (prefix . `t34.6.sysma2dyk \2D.3.sysma2dyk 1 k.1))) 2
+       (hstdconv . `t34.6.sysma2dyk
+        (empty)
+        (intlit . `t31.8. +1))))) ,22
+    (stmts sf . 2,59,/home/araq/projects/nim/lib/std/assertions.nim
+     (empty) 2,70,/home/araq/projects/nim/lib/std/assertions.nim
+     (empty)) ,23
+    (stmts sf . 2,59,/home/araq/projects/nim/lib/std/assertions.nim
+     (empty) 2,70,/home/araq/projects/nim/lib/std/assertions.nim
+     (empty)) ,24
+    (let s . 4
+     (identdefs . .
+      (sd :pow10.0 .
+       (let . +0 +0) . u r0whtl0t0c0 -1 +0 . `t44.12.sysma2dyk toDecimal32.0.
+       (identdefs . . pow10.0 7 uint64.0.sysma2dyk 34
+        (call . `t44.12.sysma2dyk ~18 computePow10Single.0. 1
+         (prefix . `t34.6.sysma2dyk \2D.3.sysma2dyk 1 k.1))) none unknown . "" . .) 7 uint64.0.sysma2dyk 34
+      (call . `t44.12.sysma2dyk ~18 computePow10Single.0. 1
+       (prefix . `t34.6.sysma2dyk \2D.3.sysma2dyk 1 k.1)))) ,25
+    (let s . 4
+     (identdefs . .
+      (sd :vbl.0 .
+       (let . +0 +0) . u r0whtl0t0c0 -1 +0 . `t43.11.sysma2dyk toDecimal32.0.
+       (identdefs . . vbl.0 5 uint32.0.sysma2dyk 24
+        (call . `t43.11.sysma2dyk ~10 roundToOdd.0. 1 pow10.0 12
+         (infix . `t43.11.sysma2dyk shl.0. ~4 cbl.0 4 h.0))) none unknown . "" . .) 5 uint32.0.sysma2dyk 24
+      (call . `t43.11.sysma2dyk ~10 roundToOdd.0. 1 pow10.0 12
+       (infix . `t43.11.sysma2dyk shl.0. ~4 cbl.0 4 h.0)))) ,26
+    (let s . 4
+     (identdefs . .
+      (sd :vb.0 .
+       (let . +0 +0) . u r0whtl0t0c0 -1 +0 . `t43.11.sysma2dyk toDecimal32.0.
+       (identdefs . . vb.0 4 uint32.0.sysma2dyk 23
+        (call . `t43.11.sysma2dyk ~10 roundToOdd.0. 1 pow10.0 11
+         (infix . `t43.11.sysma2dyk shl.0. ~3 cb.0 4 h.0))) none unknown . "" . .) 4 uint32.0.sysma2dyk 23
+      (call . `t43.11.sysma2dyk ~10 roundToOdd.0. 1 pow10.0 11
+       (infix . `t43.11.sysma2dyk shl.0. ~3 cb.0 4 h.0)))) ,27
+    (let s . 4
+     (identdefs . .
+      (sd :vbr.0 .
+       (let . +0 +0) . u r0whtl0t0c0 -1 +0 . `t43.11.sysma2dyk toDecimal32.0.
+       (identdefs . . vbr.0 5 uint32.0.sysma2dyk 24
+        (call . `t43.11.sysma2dyk ~10 roundToOdd.0. 1 pow10.0 12
+         (infix . `t43.11.sysma2dyk shl.0. ~4 cbr.0 4 h.0))) none unknown . "" . .) 5 uint32.0.sysma2dyk 24
+      (call . `t43.11.sysma2dyk ~10 roundToOdd.0. 1 pow10.0 12
+       (infix . `t43.11.sysma2dyk shl.0. ~4 cbr.0 4 h.0)))) ,28
+    (let s . 4
+     (identdefs . .
+      (sd :lower.0 .
+       (let . +0 +0) . u r0whtl0t0c0 -1 +0 . `t43.11.sysma2dyk toDecimal32.0.
+       (identdefs . . lower.0 7 uint32.0.sysma2dyk 20
+        (infix . `t43.11.sysma2dyk \2B.13.sysma2dyk ~4 vbl.0 8
+         (conv . `t43.11.sysma2dyk ~6 uint32.0.sysma2dyk 1
+          (prefix . `t1.34.sysma2dyk not.0.sysma2dyk 4 isEven.0)))) none unknown . "" . .) 7 uint32.0.sysma2dyk 20
+      (infix . `t43.11.sysma2dyk \2B.13.sysma2dyk ~4 vbl.0 8
+       (conv . `t43.11.sysma2dyk ~6 uint32.0.sysma2dyk 1
+        (prefix . `t1.34.sysma2dyk not.0.sysma2dyk 4 isEven.0))))) ,29
+    (let s . 4
+     (identdefs . .
+      (sd :upper.0 .
+       (let . +0 +0) . u r0whtl0t0c0 -1 +0 . `t43.11.sysma2dyk toDecimal32.0.
+       (identdefs . . upper.0 7 uint32.0.sysma2dyk 20
+        (infix . `t43.11.sysma2dyk \2D.13.sysma2dyk ~4 vbr.0 8
+         (conv . `t43.11.sysma2dyk ~6 uint32.0.sysma2dyk 1
+          (prefix . `t1.34.sysma2dyk not.0.sysma2dyk 4 isEven.0)))) none unknown . "" . .) 7 uint32.0.sysma2dyk 20
+      (infix . `t43.11.sysma2dyk \2D.13.sysma2dyk ~4 vbr.0 8
+       (conv . `t43.11.sysma2dyk ~6 uint32.0.sysma2dyk 1
+        (prefix . `t1.34.sysma2dyk not.0.sysma2dyk 4 isEven.0))))) ,30
+    (comment sh .) ,32
+    (let s . 4
+     (identdefs . .
+      (sd :s.0 .
+       (let . +0 +0) . u r0whtl0t0c0 -1 +0 . `t43.11.sysma2dyk toDecimal32.0.
+       (identdefs . . s.0 3 uint32.0.sysma2dyk 15
+        (infix . `t43.11.sysma2dyk div.8.sysma2dyk ~3 vb.0 4
+         (hstdconv . `t43.11.sysma2dyk
+          (empty)
+          (intlit . `t31.84. +4)))) none unknown . "" . .) 3 uint32.0.sysma2dyk 15
+      (infix . `t43.11.sysma2dyk div.8.sysma2dyk ~3 vb.0 4
+       (hstdconv . `t43.11.sysma2dyk
+        (empty)
+        (intlit . `t31.84. +4))))) ,33
+    (comment sh .) ,34
+    (if s . 3
+     (elif . . 2
+      (expr sf `t1.34.sysma2dyk 2,136,/home/araq/projects/nim/lib/system/comparisons.nim
+       (empty)
+       (infix s `t1.34.sysma2dyk <=.15.sysma2dyk 3
+        (hstdconv . `t43.11.sysma2dyk
+         (empty)
+         (intlit s
+          (td :`t31.97. . c3 nimcall +8 +8 +0 +97 . 10,226,/home/araq/projects/nim/lib/std/private/schubfach.nim
+           (intlit s `t31.97. +10) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +10)) ~2 s.0)) ~1,1
+      (stmts s .
+       (let s . 4
+        (identdefs . .
+         (sd :sp.0 .
+          (let . +0 +0) . u r0whtl0t0c0 -1 +0 . `t43.11.sysma2dyk toDecimal32.0.
+          (identdefs . . sp.0 4 uint32.0.sysma2dyk 15
+           (infix . `t43.11.sysma2dyk div.8.sysma2dyk ~2 s.0 4
+            (hstdconv . `t43.11.sysma2dyk
+             (empty)
+             (intlit . `t31.97. +10)))) none unknown . "" . .) 4 uint32.0.sysma2dyk 15
+         (infix . `t43.11.sysma2dyk div.8.sysma2dyk ~2 s.0 4
+          (hstdconv . `t43.11.sysma2dyk
+           (empty)
+           (intlit . `t31.97. +10))))) ,1
+       (comment sh .) ,2
+       (let s . 4
+        (identdefs . .
+         (sd :upInside.0 .
+          (let . +0 +0) . u r0whtl0t0c0 -1 +0 . `t1.34.sysma2dyk toDecimal32.0.
+          (identdefs . . upInside.0 10 bool.0.sysma2dyk 23
+           (infix . `t1.34.sysma2dyk <=.15.sysma2dyk ~6 lower.0 6
+            (infix . `t43.11.sysma2dyk *.8.sysma2dyk ~3
+             (hstdconv . `t43.11.sysma2dyk
+              (empty)
+              (intlit .
+               (td :`t31.98. . c3 nimcall +8 +8 +0 +98 . 34,229,/home/araq/projects/nim/lib/std/private/schubfach.nim
+                (intlit s `t31.98. +40) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +40)) 2 sp.0))) none unknown . "" . .) 10 bool.0.sysma2dyk 23
+         (infix . `t1.34.sysma2dyk <=.15.sysma2dyk ~6 lower.0 6
+          (infix . `t43.11.sysma2dyk *.8.sysma2dyk ~3
+           (hstdconv . `t43.11.sysma2dyk
+            (empty)
+            (intlit . `t31.98. +40)) 2 sp.0)))) ,3
+       (let s . 4
+        (identdefs . .
+         (sd :wpInside.0 .
+          (let . +0 +0) . u r0whtl0t0c0 -1 +0 . `t1.34.sysma2dyk toDecimal32.0.
+          (identdefs . . wpInside.0 10 bool.0.sysma2dyk 30
+           (infix . `t1.34.sysma2dyk <=.15.sysma2dyk ~5
+            (infix . `t43.11.sysma2dyk \2B.13.sysma2dyk ~5
+             (infix . `t43.11.sysma2dyk *.8.sysma2dyk ~3
+              (hstdconv . `t43.11.sysma2dyk
+               (empty)
+               (intlit .
+                (td :`t31.99. . c3 nimcall +8 +8 +0 +99 . 25,230,/home/araq/projects/nim/lib/std/private/schubfach.nim
+                 (intlit s `t31.99. +40) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +40)) 2 sp.0) 2
+             (hstdconv . `t43.11.sysma2dyk
+              (empty)
+              (intlit .
+               (td :`t31.100. . c3 nimcall +8 +8 +0 +100 . 35,230,/home/araq/projects/nim/lib/std/private/schubfach.nim
+                (intlit s `t31.100. +40) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +40))) 3 upper.0)) none unknown . "" . .) 10 bool.0.sysma2dyk 30
+         (infix . `t1.34.sysma2dyk <=.15.sysma2dyk ~5
+          (infix . `t43.11.sysma2dyk \2B.13.sysma2dyk ~5
+           (infix . `t43.11.sysma2dyk *.8.sysma2dyk ~3
+            (hstdconv . `t43.11.sysma2dyk
+             (empty)
+             (intlit . `t31.99. +40)) 2 sp.0) 2
+           (hstdconv . `t43.11.sysma2dyk
+            (empty)
+            (intlit . `t31.100. +40))) 3 upper.0))) ,4
+       (comment sh .) ,5
+       (if s . 3
+        (elif . . 9
+         (expr sf `t1.34.sysma2dyk 2,132,/home/araq/projects/nim/lib/system/comparisons.nim
+          (empty)
+          (prefix s `t1.34.sysma2dyk not.0.sysma2dyk
+           (infix s `t1.34.sysma2dyk ==.4.sysma2dyk ~9 upInside.0 3 wpInside.0))) ~1,1
+         (ret s . 24
+          (asgn . `t7.1. ~30,~43 result.18
+           (objconstr bs `t17.81. ~17 FloatingDecimal32.0. 7
+            (kv s . ~33,~46 digits.0. 5
+             (infix ss0 `t43.11.sysma2dyk \2B.13.sysma2dyk ~3 sp.0 8
+              (conv s `t43.11.sysma2dyk ~6 uint32.0.sysma2dyk 1 wpInside.0))) 40
+            (kv s . ~66,~45 exponent.0. 4
+             (infix ss0 `t34.6.sysma2dyk \2B.8.sysma2dyk ~2 k.1 2
+              (hstdconv . `t34.6.sysma2dyk
+               (empty)
+               (intlit s `t31.8. +1)))))))))))) ,42
+    (let s . 4
+     (identdefs . .
+      (sd :uInside.0 .
+       (let . +0 +0) . u r0whtl0t0c0 -1 +0 . `t1.34.sysma2dyk toDecimal32.0.
+       (identdefs . . uInside.0 9 bool.0.sysma2dyk 22
+        (infix . `t1.34.sysma2dyk <=.15.sysma2dyk ~6 lower.0 5
+         (infix . `t43.11.sysma2dyk *.8.sysma2dyk ~2
+          (hstdconv . `t43.11.sysma2dyk
+           (empty)
+           (intlit . `t31.84. +4)) 2 s.0))) none unknown . "" . .) 9 bool.0.sysma2dyk 22
+      (infix . `t1.34.sysma2dyk <=.15.sysma2dyk ~6 lower.0 5
+       (infix . `t43.11.sysma2dyk *.8.sysma2dyk ~2
+        (hstdconv . `t43.11.sysma2dyk
+         (empty)
+         (intlit . `t31.84. +4)) 2 s.0)))) ,43
+    (let s . 4
+     (identdefs . .
+      (sd :wInside.0 .
+       (let . +0 +0) . u r0whtl0t0c0 -1 +0 . `t1.34.sysma2dyk toDecimal32.0.
+       (identdefs . . wInside.0 9 bool.0.sysma2dyk 26
+        (infix . `t1.34.sysma2dyk <=.15.sysma2dyk ~4
+         (infix . `t43.11.sysma2dyk \2B.13.sysma2dyk ~4
+          (infix . `t43.11.sysma2dyk *.8.sysma2dyk ~2
+           (hstdconv . `t43.11.sysma2dyk
+            (empty)
+            (intlit . `t31.84. +4)) 2 s.0) 2
+          (hstdconv . `t43.11.sysma2dyk
+           (empty)
+           (intlit . `t31.84. +4))) 3 upper.0)) none unknown . "" . .) 9 bool.0.sysma2dyk 26
+      (infix . `t1.34.sysma2dyk <=.15.sysma2dyk ~4
+       (infix . `t43.11.sysma2dyk \2B.13.sysma2dyk ~4
+        (infix . `t43.11.sysma2dyk *.8.sysma2dyk ~2
+         (hstdconv . `t43.11.sysma2dyk
+          (empty)
+          (intlit . `t31.84. +4)) 2 s.0) 2
+        (hstdconv . `t43.11.sysma2dyk
+         (empty)
+         (intlit . `t31.84. +4))) 3 upper.0))) ,44
+    (if s . 3
+     (elif . . 8
+      (expr sf `t1.34.sysma2dyk 2,132,/home/araq/projects/nim/lib/system/comparisons.nim
+       (empty)
+       (prefix s `t1.34.sysma2dyk not.0.sysma2dyk
+        (infix s `t1.34.sysma2dyk ==.4.sysma2dyk ~8 uInside.0 3 wInside.0))) ~1,1
+      (ret s . 24
+       (asgn . `t7.1. ~28,~47 result.18
+        (objconstr bs `t17.81. ~17 FloatingDecimal32.0. 7
+         (kv s . ~31,~50 digits.0. 4
+          (infix ss0 `t43.11.sysma2dyk \2B.13.sysma2dyk ~2 s.0 8
+           (conv s `t43.11.sysma2dyk ~6 uint32.0.sysma2dyk 1 wInside.0))) 38
+         (kv s . ~62,~49 exponent.0. 2 k.1)))))) ,46
+    (let s . 4
+     (identdefs . .
+      (sd :mid.0 .
+       (let . +0 +0) . u r0whtl0t0c0 -1 +0 . `t43.11.sysma2dyk toDecimal32.0.
+       (identdefs . . mid.0 5 uint32.0.sysma2dyk 20
+        (infix . `t43.11.sysma2dyk \2B.13.sysma2dyk ~4
+         (infix . `t43.11.sysma2dyk *.8.sysma2dyk ~2
+          (hstdconv . `t43.11.sysma2dyk
+           (empty)
+           (intlit . `t31.84. +4)) 2 s.0) 2
+         (hstdconv . `t43.11.sysma2dyk
+          (empty)
+          (intlit . `t31.10. +2)))) none unknown . "" . .) 5 uint32.0.sysma2dyk 20
+      (infix . `t43.11.sysma2dyk \2B.13.sysma2dyk ~4
+       (infix . `t43.11.sysma2dyk *.8.sysma2dyk ~2
+        (hstdconv . `t43.11.sysma2dyk
+         (empty)
+         (intlit . `t31.84. +4)) 2 s.0) 2
+       (hstdconv . `t43.11.sysma2dyk
+        (empty)
+        (intlit . `t31.10. +2))))) ,47
+    (comment sh .) ,48
+    (let s . 4
+     (identdefs . .
+      (sd :roundUp.0 .
+       (let . +0 +0) . u r0whtl0t0c0 -1 +0 . `t1.34.sysma2dyk toDecimal32.0.
+       (identdefs . . roundUp.0 9 bool.0.sysma2dyk 25
+        (infix . `t1.34.sysma2dyk or.0.sysma2dyk ~6
+         (expr f `t1.34.sysma2dyk 2,140,/home/araq/projects/nim/lib/system/comparisons.nim
+          (empty)
+          (infix . `t1.34.sysma2dyk <.16.sysma2dyk 2 mid.0 ~3 vb.0)) 14
+         (infix . `t1.34.sysma2dyk and.0.sysma2dyk ~7
+          (infix . `t1.34.sysma2dyk ==.17.sysma2dyk ~3 vb.0 3 mid.0) 14
+          (expr f `t1.34.sysma2dyk 2,132,/home/araq/projects/nim/lib/system/comparisons.nim
+           (empty)
+           (prefix . `t1.34.sysma2dyk not.0.sysma2dyk
+            (infix . `t1.34.sysma2dyk ==.17.sysma2dyk ~7
+             (infix . `t43.11.sysma2dyk and.10.sysma2dyk ~2 s.0 4
+              (hstdconv . `t43.11.sysma2dyk
+               (empty)
+               (intlit . `t31.8. +1))) 3
+             (hstdconv . `t43.11.sysma2dyk
+              (empty)
+              (intlit . `t31.15. +0)))))))) none unknown . "" . .) 9 bool.0.sysma2dyk 25
+      (infix . `t1.34.sysma2dyk or.0.sysma2dyk ~6
+       (expr f `t1.34.sysma2dyk 2,140,/home/araq/projects/nim/lib/system/comparisons.nim
+        (empty)
+        (infix . `t1.34.sysma2dyk <.16.sysma2dyk 2 mid.0 ~3 vb.0)) 14
+       (infix . `t1.34.sysma2dyk and.0.sysma2dyk ~7
+        (infix . `t1.34.sysma2dyk ==.17.sysma2dyk ~3 vb.0 3 mid.0) 14
+        (expr f `t1.34.sysma2dyk 2,132,/home/araq/projects/nim/lib/system/comparisons.nim
+         (empty)
+         (prefix . `t1.34.sysma2dyk not.0.sysma2dyk
+          (infix . `t1.34.sysma2dyk ==.17.sysma2dyk ~7
+           (infix . `t43.11.sysma2dyk and.10.sysma2dyk ~2 s.0 4
+            (hstdconv . `t43.11.sysma2dyk
+             (empty)
+             (intlit . `t31.8. +1))) 3
+           (hstdconv . `t43.11.sysma2dyk
+            (empty)
+            (intlit . `t31.15. +0))))))))) ,49
+    (ret s . 24
+     (asgn . `t7.1. ~26,~51 result.18
+      (objconstr bs `t17.81. ~17 FloatingDecimal32.0. 7
+       (kv s . ~29,~54 digits.0. 4
+        (infix ss0 `t43.11.sysma2dyk \2B.13.sysma2dyk ~2 s.0 8
+         (conv s `t43.11.sysma2dyk ~6 uint32.0.sysma2dyk 1 roundUp.0))) 38
+       (kv s . ~60,~53 exponent.0. 2 k.1))))) result.18) none unknown . "" . .) ~1,242
+ (comment sh .) 4,246
+ (sd :printDecimalDigitsBackwards.0. .
+  (proc) . ug r0whtl0t0c0 -1 +0 .
+  (td :`t25.113. . me1e2 inline -1 -1 +0 +113 . 44,247,/home/araq/projects/nim/lib/std/private/schubfach.nim
+   (formalparams . `t31.3.sysma2dyk
+    (arglist . . . . . . 56
+     (pragma . . 2
+      (ident . . inline)) .) 1
+    (sd :buf.0 .
+     (param) . u . -1 +0 .
+     (td :`t23.114. . . nimcall -1 -1 +0 +114 . . printDecimalDigitsBackwards.0. . none unknown . ""
+      (td :`t27.115. . . nimcall -1 -1 +0 +115 . . printDecimalDigitsBackwards.0. . none unknown . "" `t2.16.sysma2dyk)) printDecimalDigitsBackwards.0. . none unknown . "" . .) 27
+    (sd :pos.0 .
+     (param) . u . -1 +1 .
+     (td :`t12.112. . g0 nimcall -1 -1 +0 +112 . . printDecimalDigitsBackwards.0. 33,247,/home/araq/projects/nim/lib/std/private/schubfach.nim
+      (sd :T.0 .
+       (type) . u . -1 +0 . `t12.112. printDecimalDigitsBackwards.0. . none unknown . "" . .) none unknown . "" `t15.120.sysma2dyk) printDecimalDigitsBackwards.0. . none unknown . "" . .) 35
+    (sd :output.0 .
+     (param) . u . -1 +2 . `t43.11.sysma2dyk printDecimalDigitsBackwards.0. . none unknown . "" . .)) printDecimalDigitsBackwards.0. . none unknown . "" `t31.3.sysma2dyk) schubfach.0. ~5
+  (proc s . 5
+   (ht . printDecimalDigitsBackwards.0.)
+   (empty) 32
+   (genericparams . . 1 T.0) . 100
+   (pragma . . 2
+    (ident . . inline))
+   (bracket . .
+    (empty) 32,247,/home/araq/projects/nim/lib/std/private/schubfach.nim
+    (genericparams . . 1
+     (identdefs . .
+      (ident . . T) 3 Ordinal.0.sysma2dyk
+      (empty)))) 2,1
+   (stmts . .
+    (var . . 4
+     (identdefs . .
+      (ident . . output) 7
+      (empty) 9
+      (ident . . output))) ,1
+    (var . . 4
+     (identdefs . .
+      (ident . . pos) 4
+      (empty) 6
+      (ident . . pos))) ,2
+    (var . . 4
+     (identdefs . .
+      (ident . . tz) 3
+      (empty) 5
+      (intlit . . +0))) ,3
+    (comment h .) ,4
+    (var . . 4
+     (identdefs . .
+      (ident . . nd) 3
+      (empty) 5
+      (intlit . . +0))) ,5
+    (comment h .) ,7
+    (if . . 3
+     (elif . . 7
+      (stmts f . 2,136,/home/araq/projects/nim/lib/system/comparisons.nim
+       (empty)
+       (infix . .
+        (opensymchoice d3 . <=.0.sysma2dyk <=.1.sysma2dyk <=.2.sysma2dyk <=.3.sysma2dyk <=.4.sysma2dyk <=.5.sysma2dyk <=.6.sysma2dyk) 3
+        (intlit . . +10000) ~7
+        (ident . . output))) ~1,1
+      (stmts . .
+       (let . . 4
+        (identdefs . .
+         (ident . . q) 3
+         (ht
+          (td :`t8.116. . . nimcall -1 -1 +0 +116 . . system.0.sysma2dyk . none unknown . "" `t43.11.sysma2dyk) uint32.0.sysma2dyk) 19
+         (infix . .
+          (opensymchoice .
+           (td :`t0.117. . . nimcall -1 -1 +0 +117 . . printDecimalDigitsBackwards.0. . none unknown . "") div.6.sysma2dyk div.4.sysma2dyk div.2.sysma2dyk div.5.sysma2dyk div.3.sysma2dyk div.8.sysma2dyk div.7.sysma2dyk div.1.sysma2dyk div.9.sysma2dyk div.0.sysma2dyk) ~7
+          (ident . . output) 4
+          (intlit . . +10000)))) ,1
+       (let . . 4
+        (identdefs . .
+         (ident . . r) 3
+         (ht
+          (td :`t8.118. . . nimcall -1 -1 +0 +118 . . system.0.sysma2dyk . none unknown . "" `t43.11.sysma2dyk) uint32.0.sysma2dyk) 19
+         (infix . .
+          (opensymchoice .
+           (td :`t0.119. . . nimcall -1 -1 +0 +119 . . printDecimalDigitsBackwards.0. . none unknown . "") mod.6.sysma2dyk mod.3.sysma2dyk mod.2.sysma2dyk mod.9.sysma2dyk mod.4.sysma2dyk mod.7.sysma2dyk mod.5.sysma2dyk mod.0.sysma2dyk mod.1.sysma2dyk mod.8.sysma2dyk) ~7
+          (ident . . output) 4
+          (intlit . . +10000)))) 7,2
+       (asgn . . ~7
+        (ident . . output) 2
+        (ident . . q)) 3,3
+       (call . . ~3 dec.0.sysma2dyk 1
+        (ident . . pos) 6
+        (intlit . . +4)) ,4
+       (if . . 3
+        (elif . . 2
+         (stmts f . 2,132,/home/araq/projects/nim/lib/system/comparisons.nim
+          (empty)
+          (prefix . .
+           (opensymchoice d3 . not.2.sysma2dyk not.3.sysma2dyk not.0.sysma2dyk not.4.sysma2dyk not.1.sysma2dyk not.6.sysma2dyk not.5.sysma2dyk not.7.sysma2dyk not.8.sysma2dyk not.9.sysma2dyk not.10.sysma2dyk not.11.sysma2dyk)
+           (par . .
+            (infix . .
+             (opensymchoice d3 . ==.0.sysma2dyk ==.1.sysma2dyk ==.2.sysma2dyk ==.3.sysma2dyk ==.4.sysma2dyk ==.5.sysma2dyk ==.6.sysma2dyk ==.7.sysma2dyk ==.8.sysma2dyk) ~2
+             (ident . . r) 3
+             (intlit . . +0))))) ~1,1
+         (stmts . .
+          (let . . 4
+           (identdefs . .
+            (ident . . rH) 4
+            (ht
+             (td :`t8.120. . . nimcall -1 -1 +0 +120 . . system.0.sysma2dyk . none unknown . "" `t43.11.sysma2dyk) uint32.0.sysma2dyk) 15
+            (infix . .
+             (opensymchoice .
+              (td :`t0.121. . . nimcall -1 -1 +0 +121 . . printDecimalDigitsBackwards.0. . none unknown . "") div.6.sysma2dyk div.4.sysma2dyk div.2.sysma2dyk div.5.sysma2dyk div.3.sysma2dyk div.8.sysma2dyk div.7.sysma2dyk div.1.sysma2dyk div.9.sysma2dyk div.0.sysma2dyk) ~2
+             (ident . . r) 4
+             (intlit . . +100)))) ,1
+          (let . . 4
+           (identdefs . .
+            (ident . . rL) 4
+            (ht
+             (td :`t8.122. . . nimcall -1 -1 +0 +122 . . system.0.sysma2dyk . none unknown . "" `t43.11.sysma2dyk) uint32.0.sysma2dyk) 15
+            (infix . .
+             (opensymchoice .
+              (td :`t0.123. . . nimcall -1 -1 +0 +123 . . printDecimalDigitsBackwards.0. . none unknown . "") mod.6.sysma2dyk mod.3.sysma2dyk mod.2.sysma2dyk mod.9.sysma2dyk mod.4.sysma2dyk mod.7.sysma2dyk mod.5.sysma2dyk mod.0.sysma2dyk mod.1.sysma2dyk mod.8.sysma2dyk) ~2
+             (ident . . r) 4
+             (intlit . . +100)))) 11,2
+          (call . . ~11 utoa2Digits.0.digqtx7k2 1
+           (ident . . buf) 6
+           (ident . . pos) 11
+           (ident . . rH)) 11,3
+          (call . . ~11 utoa2Digits.0.digqtx7k2 1
+           (ident . . buf) 10
+           (infix . .
+            (opensymchoice .
+             (td :`t0.124. . . nimcall -1 -1 +0 +124 . . printDecimalDigitsBackwards.0. . none unknown . "") \2B.16.sysma2dyk \2B.17.sysma2dyk \2B.18.sysma2dyk \2B.5.sysma2dyk \2B.8.sysma2dyk \2B.13.sysma2dyk \2B.14.sysma2dyk \2B.15.sysma2dyk \2B.1.sysma2dyk \2B.7.sysma2dyk \2B.9.sysma2dyk \2B.4.sysma2dyk \2B.2.sysma2dyk \2B.6.sysma2dyk \2B.11.sysma2dyk \2B.12.sysma2dyk \2B.0.sysma2dyk \2B.10.sysma2dyk \2B.19.sysma2dyk \2B.3.sysma2dyk) ~4
+            (ident . . pos) 2
+            (intlit . . +2)) 15
+           (ident . . rL)) 3,4
+          (asgn . . ~3
+           (ident . . tz) 48
+           (infix . .
+            (opensymchoice .
+             (td :`t0.125. . . nimcall -1 -1 +0 +125 . . printDecimalDigitsBackwards.0. . none unknown . "") \2B.16.sysma2dyk \2B.17.sysma2dyk \2B.18.sysma2dyk \2B.5.sysma2dyk \2B.8.sysma2dyk \2B.13.sysma2dyk \2B.14.sysma2dyk \2B.15.sysma2dyk \2B.1.sysma2dyk \2B.7.sysma2dyk \2B.9.sysma2dyk \2B.4.sysma2dyk \2B.2.sysma2dyk \2B.6.sysma2dyk \2B.11.sysma2dyk \2B.12.sysma2dyk \2B.0.sysma2dyk \2B.10.sysma2dyk \2B.19.sysma2dyk \2B.3.sysma2dyk) ~26
+            (call . . ~20 trailingZeros2Digits.0.digqtx7k2 1
+             (ifx . . 3
+              (elifx . . 3
+               (infix . .
+                (opensymchoice .
+                 (td :`t0.126. . . nimcall -1 -1 +0 +126 . . printDecimalDigitsBackwards.0. . none unknown . "") ==.0.sysma2dyk ==.14.sysma2dyk ==.13.sysma2dyk ==.3.sysma2dyk ==.5.sysma2dyk ==.20.sysma2dyk ==.1.sysma2dyk ==.15.sysma2dyk ==.19.sysma2dyk ==.10.sysma2dyk ==.18.sysma2dyk ==.2.sysma2dyk ==.9.sysma2dyk ==.17.sysma2dyk ==.4.sysma2dyk ==.16.sysma2dyk ==.6.sysma2dyk ==.8.sysma2dyk ==.21.sysma2dyk ==.12.sysma2dyk ==.23.sysma2dyk ==.22.sysma2dyk ==.7.sysma2dyk ==.11.sysma2dyk ==.59.sysma2dyk) ~3
+                (ident . . rL) 3
+                (intlit . . +0)) 9
+               (stmts . .
+                (ident . . rH))) 15
+              (elsex . . 6
+               (stmts . .
+                (ident . . rL))))) 2
+            (expr . . 1
+             (if . . 3
+              (elifx . . 3
+               (infix . .
+                (opensymchoice .
+                 (td :`t0.127. . . nimcall -1 -1 +0 +127 . . printDecimalDigitsBackwards.0. . none unknown . "") ==.0.sysma2dyk ==.14.sysma2dyk ==.13.sysma2dyk ==.3.sysma2dyk ==.5.sysma2dyk ==.20.sysma2dyk ==.1.sysma2dyk ==.15.sysma2dyk ==.19.sysma2dyk ==.10.sysma2dyk ==.18.sysma2dyk ==.2.sysma2dyk ==.9.sysma2dyk ==.17.sysma2dyk ==.4.sysma2dyk ==.16.sysma2dyk ==.6.sysma2dyk ==.8.sysma2dyk ==.21.sysma2dyk ==.12.sysma2dyk ==.23.sysma2dyk ==.22.sysma2dyk ==.7.sysma2dyk ==.11.sysma2dyk ==.59.sysma2dyk) ~3
+                (ident . . rL) 3
+                (intlit . . +0)) 9
+               (intlit . . +2)) 14
+              (elsex . . 6
+               (intlit . . +0)))))))) ,6
+        (else . . 2,1
+         (stmts . . 3
+          (asgn . . ~3
+           (ident . . tz) 2
+           (intlit . . +4))))) 3,12
+       (asgn . . ~3
+        (ident . . nd) 2
+        (intlit . . +4))))) ,21
+    (if . . 3
+     (elif . . 7
+      (stmts f . 2,136,/home/araq/projects/nim/lib/system/comparisons.nim
+       (empty)
+       (infix . .
+        (opensymchoice d3 . <=.0.sysma2dyk <=.1.sysma2dyk <=.2.sysma2dyk <=.3.sysma2dyk <=.4.sysma2dyk <=.5.sysma2dyk <=.6.sysma2dyk) 3
+        (intlit . . +100) ~7
+        (ident . . output))) ~1,1
+      (stmts . .
+       (let . . 4
+        (identdefs . .
+         (ident . . q) 3
+         (ht
+          (td :`t8.128. . . nimcall -1 -1 +0 +128 . . system.0.sysma2dyk . none unknown . "" `t43.11.sysma2dyk) uint32.0.sysma2dyk) 19
+         (infix . .
+          (opensymchoice .
+           (td :`t0.129. . . nimcall -1 -1 +0 +129 . . printDecimalDigitsBackwards.0. . none unknown . "") div.6.sysma2dyk div.4.sysma2dyk div.2.sysma2dyk div.5.sysma2dyk div.3.sysma2dyk div.8.sysma2dyk div.7.sysma2dyk div.1.sysma2dyk div.9.sysma2dyk div.0.sysma2dyk) ~7
+          (ident . . output) 4
+          (intlit . . +100)))) ,1
+       (let . . 4
+        (identdefs . .
+         (ident . . r) 3
+         (ht
+          (td :`t8.130. . . nimcall -1 -1 +0 +130 . . system.0.sysma2dyk . none unknown . "" `t43.11.sysma2dyk) uint32.0.sysma2dyk) 19
+         (infix . .
+          (opensymchoice .
+           (td :`t0.131. . . nimcall -1 -1 +0 +131 . . printDecimalDigitsBackwards.0. . none unknown . "") mod.6.sysma2dyk mod.3.sysma2dyk mod.2.sysma2dyk mod.9.sysma2dyk mod.4.sysma2dyk mod.7.sysma2dyk mod.5.sysma2dyk mod.0.sysma2dyk mod.1.sysma2dyk mod.8.sysma2dyk) ~7
+          (ident . . output) 4
+          (intlit . . +100)))) 7,2
+       (asgn . . ~7
+        (ident . . output) 2
+        (ident . . q)) 3,3
+       (call . . ~3 dec.0.sysma2dyk 1
+        (ident . . pos) 6
+        (intlit . . +2)) 11,4
+       (call . . ~11 utoa2Digits.0.digqtx7k2 1
+        (ident . . buf) 6
+        (ident . . pos) 11
+        (ident . . r)) ,5
+       (if . . 3
+        (elif . . 3
+         (infix . .
+          (opensymchoice .
+           (td :`t0.132. . . nimcall -1 -1 +0 +132 . . printDecimalDigitsBackwards.0. . none unknown . "") ==.0.sysma2dyk ==.14.sysma2dyk ==.13.sysma2dyk ==.3.sysma2dyk ==.5.sysma2dyk ==.20.sysma2dyk ==.1.sysma2dyk ==.15.sysma2dyk ==.19.sysma2dyk ==.10.sysma2dyk ==.18.sysma2dyk ==.2.sysma2dyk ==.9.sysma2dyk ==.17.sysma2dyk ==.4.sysma2dyk ==.16.sysma2dyk ==.6.sysma2dyk ==.8.sysma2dyk ==.21.sysma2dyk ==.12.sysma2dyk ==.23.sysma2dyk ==.22.sysma2dyk ==.7.sysma2dyk ==.11.sysma2dyk ==.59.sysma2dyk) ~3
+          (ident . . tz) 3
+          (ident . . nd)) ~1,1
+         (stmts . . 3
+          (call . . ~3 inc.0.sysma2dyk 1
+           (ident . . tz) 25
+           (call . . ~20 trailingZeros2Digits.0.digqtx7k2 1
+            (ident . . r)))))) 3,7
+       (call . . ~3 inc.0.sysma2dyk 1
+        (ident . . nd) 5
+        (intlit . . +2)) ,8
+       (if . . 3
+        (elif . . 7
+         (stmts f . 2,136,/home/araq/projects/nim/lib/system/comparisons.nim
+          (empty)
+          (infix . .
+           (opensymchoice d3 . <=.0.sysma2dyk <=.1.sysma2dyk <=.2.sysma2dyk <=.3.sysma2dyk <=.4.sysma2dyk <=.5.sysma2dyk <=.6.sysma2dyk) 3
+           (intlit . . +100) ~7
+           (ident . . output))) ~1,1
+         (stmts . .
+          (let . . 4
+           (identdefs . .
+            (ident . . q2) 4
+            (ht
+             (td :`t8.133. . . nimcall -1 -1 +0 +133 . . system.0.sysma2dyk . none unknown . "" `t43.11.sysma2dyk) uint32.0.sysma2dyk) 20
+            (infix . .
+             (opensymchoice .
+              (td :`t0.134. . . nimcall -1 -1 +0 +134 . . printDecimalDigitsBackwards.0. . none unknown . "") div.6.sysma2dyk div.4.sysma2dyk div.2.sysma2dyk div.5.sysma2dyk div.3.sysma2dyk div.8.sysma2dyk div.7.sysma2dyk div.1.sysma2dyk div.9.sysma2dyk div.0.sysma2dyk) ~7
+             (ident . . output) 4
+             (intlit . . +100)))) ,1
+          (let . . 4
+           (identdefs . .
+            (ident . . r2) 4
+            (ht
+             (td :`t8.135. . . nimcall -1 -1 +0 +135 . . system.0.sysma2dyk . none unknown . "" `t43.11.sysma2dyk) uint32.0.sysma2dyk) 20
+            (infix . .
+             (opensymchoice .
+              (td :`t0.136. . . nimcall -1 -1 +0 +136 . . printDecimalDigitsBackwards.0. . none unknown . "") mod.6.sysma2dyk mod.3.sysma2dyk mod.2.sysma2dyk mod.9.sysma2dyk mod.4.sysma2dyk mod.7.sysma2dyk mod.5.sysma2dyk mod.0.sysma2dyk mod.1.sysma2dyk mod.8.sysma2dyk) ~7
+             (ident . . output) 4
+             (intlit . . +100)))) 7,2
+          (asgn . . ~7
+           (ident . . output) 2
+           (ident . . q2)) 3,3
+          (call . . ~3 dec.0.sysma2dyk 1
+           (ident . . pos) 6
+           (intlit . . +2)) 11,4
+          (call . . ~11 utoa2Digits.0.digqtx7k2 1
+           (ident . . buf) 6
+           (ident . . pos) 11
+           (ident . . r2)) ,5
+          (if . . 3
+           (elif . . 3
+            (infix . .
+             (opensymchoice .
+              (td :`t0.137. . . nimcall -1 -1 +0 +137 . . printDecimalDigitsBackwards.0. . none unknown . "") ==.0.sysma2dyk ==.14.sysma2dyk ==.13.sysma2dyk ==.3.sysma2dyk ==.5.sysma2dyk ==.20.sysma2dyk ==.1.sysma2dyk ==.15.sysma2dyk ==.19.sysma2dyk ==.10.sysma2dyk ==.18.sysma2dyk ==.2.sysma2dyk ==.9.sysma2dyk ==.17.sysma2dyk ==.4.sysma2dyk ==.16.sysma2dyk ==.6.sysma2dyk ==.8.sysma2dyk ==.21.sysma2dyk ==.12.sysma2dyk ==.23.sysma2dyk ==.22.sysma2dyk ==.7.sysma2dyk ==.11.sysma2dyk ==.59.sysma2dyk) ~3
+             (ident . . tz) 3
+             (ident . . nd)) ~1,1
+            (stmts . . 3
+             (call . . ~3 inc.0.sysma2dyk 1
+              (ident . . tz) 25
+              (call . . ~20 trailingZeros2Digits.0.digqtx7k2 1
+               (ident . . r2)))))) 3,7
+          (call . . ~3 inc.0.sysma2dyk 1
+           (ident . . nd) 5
+           (intlit . . +2)))))))) ,39
+    (stmts f . 9
+     (call . . ~9,~267 assert.0.assy765wm 8
+      (stmts f . 2,136,/home/araq/projects/nim/lib/system/comparisons.nim
+       (empty)
+       (infix . .
+        (opensymchoice d3 . <=.0.sysma2dyk <=.1.sysma2dyk <=.2.sysma2dyk <=.3.sysma2dyk <=.4.sysma2dyk <=.5.sysma2dyk <=.6.sysma2dyk) 3
+        (intlit . . +1) ~7
+        (ident . . output))))) ,40
+    (stmts f . 9
+     (call . . ~9,~268 assert.0.assy765wm 8
+      (infix . .
+       (opensymchoice .
+        (td :`t0.138. . . nimcall -1 -1 +0 +138 . . printDecimalDigitsBackwards.0. . none unknown . "") <=.15.sysma2dyk <=.3.sysma2dyk <=.1.sysma2dyk <=.10.sysma2dyk <=.2.sysma2dyk <=.12.sysma2dyk <=.11.sysma2dyk <=.13.sysma2dyk <=.9.sysma2dyk <=.18.sysma2dyk <=.7.sysma2dyk <=.16.sysma2dyk <=.6.sysma2dyk <=.0.sysma2dyk <=.17.sysma2dyk <=.4.sysma2dyk <=.8.sysma2dyk <=.14.sysma2dyk <=.5.sysma2dyk <=.19.sysma2dyk) ~7
+       (ident . . output) 3
+       (intlit . . +99)))) ,41
+    (if . . 3
+     (elif . . 7
+      (stmts f . 2,136,/home/araq/projects/nim/lib/system/comparisons.nim
+       (empty)
+       (infix . .
+        (opensymchoice d3 . <=.0.sysma2dyk <=.1.sysma2dyk <=.2.sysma2dyk <=.3.sysma2dyk <=.4.sysma2dyk <=.5.sysma2dyk <=.6.sysma2dyk) 3
+        (intlit . . +10) ~7
+        (ident . . output))) ~1,1
+      (stmts . .
+       (let . . 4
+        (identdefs . .
+         (ident . . q) 3
+         (ht
+          (td :`t8.139. . . nimcall -1 -1 +0 +139 . . system.0.sysma2dyk . none unknown . "" `t43.11.sysma2dyk) uint32.0.sysma2dyk) 12
+         (ident . . output))) 3,1
+       (call . . ~3 dec.0.sysma2dyk 1
+        (ident . . pos) 6
+        (intlit . . +2)) 11,2
+       (call . . ~11 utoa2Digits.0.digqtx7k2 1
+        (ident . . buf) 6
+        (ident . . pos) 11
+        (ident . . q)) ,3
+       (if . . 3
+        (elif . . 3
+         (infix . .
+          (opensymchoice .
+           (td :`t0.140. . . nimcall -1 -1 +0 +140 . . printDecimalDigitsBackwards.0. . none unknown . "") ==.0.sysma2dyk ==.14.sysma2dyk ==.13.sysma2dyk ==.3.sysma2dyk ==.5.sysma2dyk ==.20.sysma2dyk ==.1.sysma2dyk ==.15.sysma2dyk ==.19.sysma2dyk ==.10.sysma2dyk ==.18.sysma2dyk ==.2.sysma2dyk ==.9.sysma2dyk ==.17.sysma2dyk ==.4.sysma2dyk ==.16.sysma2dyk ==.6.sysma2dyk ==.8.sysma2dyk ==.21.sysma2dyk ==.12.sysma2dyk ==.23.sysma2dyk ==.22.sysma2dyk ==.7.sysma2dyk ==.11.sysma2dyk ==.59.sysma2dyk) ~3
+          (ident . . tz) 3
+          (ident . . nd)) ~1,1
+         (stmts . . 3
+          (call . . ~3 inc.0.sysma2dyk 1
+           (ident . . tz) 25
+           (call . . ~20 trailingZeros2Digits.0.digqtx7k2 1
+            (ident . . q)))))))) ,6
+     (else . . 2,1
+      (stmts . .
+       (let . . 4
+        (identdefs . .
+         (ident . . q) 3
+         (ht
+          (td :`t8.141. . . nimcall -1 -1 +0 +141 . . system.0.sysma2dyk . none unknown . "" `t43.11.sysma2dyk) uint32.0.sysma2dyk) 12
+         (ident . . output))) ,1
+       (stmts f . 9
+        (call . . ~11,~277 assert.0.assy765wm 3
+         (stmts f . 2,136,/home/araq/projects/nim/lib/system/comparisons.nim
+          (empty)
+          (infix . .
+           (opensymchoice d3 . <=.0.sysma2dyk <=.1.sysma2dyk <=.2.sysma2dyk <=.3.sysma2dyk <=.4.sysma2dyk <=.5.sysma2dyk <=.6.sysma2dyk) 3
+           (intlit . . +1) ~2
+           (ident . . q))))) ,2
+       (stmts f . 9
+        (call . . ~11,~278 assert.0.assy765wm 3
+         (infix . .
+          (opensymchoice .
+           (td :`t0.142. . . nimcall -1 -1 +0 +142 . . printDecimalDigitsBackwards.0. . none unknown . "") <=.15.sysma2dyk <=.3.sysma2dyk <=.1.sysma2dyk <=.10.sysma2dyk <=.2.sysma2dyk <=.12.sysma2dyk <=.11.sysma2dyk <=.13.sysma2dyk <=.9.sysma2dyk <=.18.sysma2dyk <=.7.sysma2dyk <=.16.sysma2dyk <=.6.sysma2dyk <=.0.sysma2dyk <=.17.sysma2dyk <=.4.sysma2dyk <=.8.sysma2dyk <=.14.sysma2dyk <=.5.sysma2dyk <=.19.sysma2dyk) ~2
+          (ident . . q) 3
+          (intlit . . +9)))) 3,3
+       (call . . ~3 dec.0.sysma2dyk 1
+        (ident . . pos)) 9,4
+       (call . . \5B\5D=.0.sysma2dyk ~9
+        (ident . . buf) ~5
+        (ident . . pos) 5
+        (call . . ~3 chr.0.sysma2dyk 13
+         (infix . .
+          (opensymchoice .
+           (td :`t0.143. . . nimcall -1 -1 +0 +143 . . printDecimalDigitsBackwards.0. . none unknown . "") \2B.16.sysma2dyk \2B.17.sysma2dyk \2B.18.sysma2dyk \2B.5.sysma2dyk \2B.8.sysma2dyk \2B.13.sysma2dyk \2B.14.sysma2dyk \2B.15.sysma2dyk \2B.1.sysma2dyk \2B.7.sysma2dyk \2B.9.sysma2dyk \2B.4.sysma2dyk \2B.2.sysma2dyk \2B.6.sysma2dyk \2B.11.sysma2dyk \2B.12.sysma2dyk \2B.0.sysma2dyk \2B.10.sysma2dyk \2B.19.sysma2dyk \2B.3.sysma2dyk) ~6
+          (call . . ~6
+           (ht
+            (td :`t8.144. . . nimcall -1 -1 +0 +144 . . system.0.sysma2dyk . none unknown . "" `t43.11.sysma2dyk) uint32.0.sysma2dyk) 1
+           (charlit . . '0')) 2
+          (ident . . q))))))) ,53
+    (ret . . 7
+     (ident . . tz)))) none unknown . "" . .) 4,302
+ (sd :decimalLength.0. .
+  (proc) . ugi1 r0whtl0t0c0 -1 +0 .
+  (td :`t25.145. . nte1e2 inline -1 -1 +0 +145 . 18,303,/home/araq/projects/nim/lib/std/private/schubfach.nim
+   (formalparams . `t31.3.sysma2dyk
+    (arglist . . ~13
+     (arglist . .)
+     (empty)
+     (empty) ~13
+     (arglist . .)
+     (empty) ~13
+     (arglist . .)) 1
+    (sd :v.0 .
+     (param) . u . -1 +0 . `t43.11.sysma2dyk decimalLength.0. . none unknown . "" . .)) decimalLength.0. . none unknown . "" `t31.3.sysma2dyk) schubfach.0. ~5
+  (proc s . 5
+   (ht . decimalLength.0.)
+   (empty)
+   (empty) . 35
+   (pragma . . 2
+    (ident . . inline))
+   (empty) 2,1
+   (stmts s .
+    (stmts sf . 2,59,/home/araq/projects/nim/lib/std/assertions.nim
+     (empty) 2,70,/home/araq/projects/nim/lib/std/assertions.nim
+     (empty)) ,1
+    (stmts sf . 2,59,/home/araq/projects/nim/lib/std/assertions.nim
+     (empty) 2,70,/home/araq/projects/nim/lib/std/assertions.nim
+     (empty)) ,2
+    (if s . 3
+     (elif . . 2
+      (expr sf `t1.34.sysma2dyk 2,136,/home/araq/projects/nim/lib/system/comparisons.nim
+       (empty)
+       (infix s `t1.34.sysma2dyk <=.12.sysma2dyk 3
+        (uintlit s `t40.8.sysma2dyk +100000000u) ~2
+        (hstdconv . `t40.8.sysma2dyk
+         (empty) v.0))) ~1,1
+      (ret s . 7
+       (asgn . `t7.1. ~11,~4
+        (sd :result.21 .
+         (result) . u . -1 +0 . `t31.3.sysma2dyk decimalLength.0. . none unknown . "" . .)
+        (intlit s `t31.3.sysma2dyk +9))))) ,4
+    (if s . 3
+     (elif . . 2
+      (expr sf `t1.34.sysma2dyk 2,136,/home/araq/projects/nim/lib/system/comparisons.nim
+       (empty)
+       (infix s `t1.34.sysma2dyk <=.12.sysma2dyk 3
+        (uintlit s `t40.8.sysma2dyk +10000000u) ~2
+        (hstdconv . `t40.8.sysma2dyk
+         (empty) v.0))) ~1,1
+      (ret s . 7
+       (asgn . `t7.1. ~11,~6 result.21
+        (intlit s `t31.3.sysma2dyk +8))))) ,6
+    (if s . 3
+     (elif . . 2
+      (expr sf `t1.34.sysma2dyk 2,136,/home/araq/projects/nim/lib/system/comparisons.nim
+       (empty)
+       (infix s `t1.34.sysma2dyk <=.12.sysma2dyk 3
+        (uintlit s `t40.8.sysma2dyk +1000000u) ~2
+        (hstdconv . `t40.8.sysma2dyk
+         (empty) v.0))) ~1,1
+      (ret s . 7
+       (asgn . `t7.1. ~11,~8 result.21
+        (intlit s `t31.3.sysma2dyk +7))))) ,8
+    (if s . 3
+     (elif . . 2
+      (expr sf `t1.34.sysma2dyk 2,136,/home/araq/projects/nim/lib/system/comparisons.nim
+       (empty)
+       (infix s `t1.34.sysma2dyk <=.12.sysma2dyk 3
+        (uintlit s `t40.8.sysma2dyk +100000u) ~2
+        (hstdconv . `t40.8.sysma2dyk
+         (empty) v.0))) ~1,1
+      (ret s . 7
+       (asgn . `t7.1. ~11,~10 result.21
+        (intlit s `t31.3.sysma2dyk +6))))) ,10
+    (if s . 3
+     (elif . . 2
+      (expr sf `t1.34.sysma2dyk 2,136,/home/araq/projects/nim/lib/system/comparisons.nim
+       (empty)
+       (infix s `t1.34.sysma2dyk <=.12.sysma2dyk 3
+        (uintlit s `t40.8.sysma2dyk +10000u) ~2
+        (hstdconv . `t40.8.sysma2dyk
+         (empty) v.0))) ~1,1
+      (ret s . 7
+       (asgn . `t7.1. ~11,~12 result.21
+        (intlit s `t31.3.sysma2dyk +5))))) ,12
+    (if s . 3
+     (elif . . 2
+      (expr sf `t1.34.sysma2dyk 2,136,/home/araq/projects/nim/lib/system/comparisons.nim
+       (empty)
+       (infix s `t1.34.sysma2dyk <=.12.sysma2dyk 3
+        (uintlit s `t40.8.sysma2dyk +1000u) ~2
+        (hstdconv . `t40.8.sysma2dyk
+         (empty) v.0))) ~1,1
+      (ret s . 7
+       (asgn . `t7.1. ~11,~14 result.21
+        (intlit s `t31.3.sysma2dyk +4))))) ,14
+    (if s . 3
+     (elif . . 2
+      (expr sf `t1.34.sysma2dyk 2,136,/home/araq/projects/nim/lib/system/comparisons.nim
+       (empty)
+       (infix s `t1.34.sysma2dyk <=.12.sysma2dyk 3
+        (uintlit s `t40.8.sysma2dyk +100u) ~2
+        (hstdconv . `t40.8.sysma2dyk
+         (empty) v.0))) ~1,1
+      (ret s . 7
+       (asgn . `t7.1. ~11,~16 result.21
+        (intlit s `t31.3.sysma2dyk +3))))) ,16
+    (if s . 3
+     (elif . . 2
+      (expr sf `t1.34.sysma2dyk 2,136,/home/araq/projects/nim/lib/system/comparisons.nim
+       (empty)
+       (infix s `t1.34.sysma2dyk <=.12.sysma2dyk 3
+        (uintlit s `t40.8.sysma2dyk +10u) ~2
+        (hstdconv . `t40.8.sysma2dyk
+         (empty) v.0))) ~1,1
+      (ret s . 7
+       (asgn . `t7.1. ~11,~18 result.21
+        (intlit s `t31.3.sysma2dyk +2))))) ,18
+    (ret s . 7
+     (asgn . `t7.1. ~9,~19 result.21
+      (intlit s `t31.3.sysma2dyk +1)))) result.21) none unknown . "" . .) 4,323
+ (sd :formatDigits.0. .
+  (proc) . ug r0whtl0t0c0 -1 +0 .
+  (td :`t25.149. . me1e2 inline -1 -1 +0 +149 . 29,324,/home/araq/projects/nim/lib/std/private/schubfach.nim
+   (formalparams . `t31.3.sysma2dyk
+    (arglist . . . . . . 30,1
+     (pragma . . 2
+      (ident . . inline)) .) 1
+    (sd :buffer.0 .
+     (param) . u . -1 +0 .
+     (td :`t23.150. . . nimcall -1 -1 +0 +150 . . formatDigits.0. . none unknown . ""
+      (td :`t27.151. . . nimcall -1 -1 +0 +151 . . formatDigits.0. . none unknown . "" `t2.16.sysma2dyk)) formatDigits.0. . none unknown . "" . .) 30
+    (sd :pos.2 .
+     (param) . u . -1 +1 .
+     (td :`t12.148. . g0 nimcall -1 -1 +0 +148 . . formatDigits.0. 18,324,/home/araq/projects/nim/lib/std/private/schubfach.nim
+      (sd :T.1 .
+       (type) . u . -1 +0 . `t12.148. formatDigits.0. . none unknown . "" . .) none unknown . "" `t15.120.sysma2dyk) formatDigits.0. . none unknown . "" . .) 38
+    (sd :digits.1 .
+     (param) . u . -1 +2 . `t43.11.sysma2dyk formatDigits.0. . none unknown . "" . .) 54
+    (sd :decimalExponent.0 .
+     (param) . u . -1 +3 . `t31.3.sysma2dyk formatDigits.0. . none unknown . "" . .) ~11,1
+    (sd :forceTrailingDotZero.0 .
+     (param) . u . -1 +4 . `t1.34.sysma2dyk formatDigits.0. 29 false.0.sysma2dyk none unknown . "" . .)) formatDigits.0. . none unknown . "" `t31.3.sysma2dyk) schubfach.0. ~5
+  (proc s . 5
+   (ht . formatDigits.0.)
+   (empty) 17
+   (genericparams . . 1 T.1) . 59,1
+   (pragma . . 2
+    (ident . . inline))
+   (bracket . .
+    (empty) 17,324,/home/araq/projects/nim/lib/std/private/schubfach.nim
+    (genericparams . . 1
+     (identdefs . .
+      (ident . . T) 3 Ordinal.0.sysma2dyk
+      (empty)))) 2,2
+   (stmts . .
+    (const . . 2,1
+     (const0 . .
+      (ident . . minFixedDecimalPoint) 22
+      (ht
+       (td :`t8.152. . . nimcall -1 -1 +0 +152 . . system.0.sysma2dyk . none unknown . "" `t34.6.sysma2dyk) int32.0.sysma2dyk) 30
+      (intlit . . -4)) 2,2
+     (const0 . .
+      (ident . . maxFixedDecimalPoint) 22
+      (ht
+       (td :`t8.153. . . nimcall -1 -1 +0 +153 . . system.0.sysma2dyk . none unknown . "" `t34.6.sysma2dyk) int32.0.sysma2dyk) 30
+      (intlit . . +9))) ,3
+    (var . . 4
+     (identdefs . .
+      (ident . . pos) 4
+      (empty) 6
+      (ident . . pos))) 6,4
+    (call . . ~6 assert.0.assy765wm 22
+     (infix . .
+      (opensymchoice .
+       (td :`t0.154. . . nimcall -1 -1 +0 +154 . . formatDigits.0. . none unknown . "") <=.15.sysma2dyk <=.3.sysma2dyk <=.1.sysma2dyk <=.10.sysma2dyk <=.2.sysma2dyk <=.12.sysma2dyk <=.11.sysma2dyk <=.13.sysma2dyk <=.9.sysma2dyk <=.18.sysma2dyk <=.7.sysma2dyk <=.16.sysma2dyk <=.6.sysma2dyk <=.0.sysma2dyk <=.17.sysma2dyk <=.4.sysma2dyk <=.8.sysma2dyk <=.14.sysma2dyk <=.5.sysma2dyk <=.19.sysma2dyk) ~21
+      (ident . . minFixedDecimalPoint) 3
+      (intlit . . -1)) 29
+     (strlit . . "internal error")) 6,5
+    (call . . ~6 assert.0.assy765wm 22
+     (stmts f . 2,136,/home/araq/projects/nim/lib/system/comparisons.nim
+      (empty)
+      (infix . .
+       (opensymchoice d3 . <=.0.sysma2dyk <=.1.sysma2dyk <=.2.sysma2dyk <=.3.sysma2dyk <=.4.sysma2dyk <=.5.sysma2dyk <=.6.sysma2dyk) 3
+       (intlit . . +1) ~21
+       (ident . . maxFixedDecimalPoint))) 28
+     (strlit . . "internal error")) ,6
+    (stmts f . 9
+     (call . . ~9,~312 assert.0.assy765wm 8
+      (stmts f . 2,136,/home/araq/projects/nim/lib/system/comparisons.nim
+       (empty)
+       (infix . .
+        (opensymchoice d3 . <=.0.sysma2dyk <=.1.sysma2dyk <=.2.sysma2dyk <=.3.sysma2dyk <=.4.sysma2dyk <=.5.sysma2dyk <=.6.sysma2dyk) 3
+        (intlit . . +1) ~7
+        (ident . . digits))))) ,7
+    (stmts f . 9
+     (call . . ~9,~313 assert.0.assy765wm 8
+      (infix . .
+       (opensymchoice .
+        (td :`t0.155. . . nimcall -1 -1 +0 +155 . . formatDigits.0. . none unknown . "") <=.15.sysma2dyk <=.3.sysma2dyk <=.1.sysma2dyk <=.10.sysma2dyk <=.2.sysma2dyk <=.12.sysma2dyk <=.11.sysma2dyk <=.13.sysma2dyk <=.9.sysma2dyk <=.18.sysma2dyk <=.7.sysma2dyk <=.16.sysma2dyk <=.6.sysma2dyk <=.0.sysma2dyk <=.17.sysma2dyk <=.4.sysma2dyk <=.8.sysma2dyk <=.14.sysma2dyk <=.5.sysma2dyk <=.19.sysma2dyk) ~7
+       (ident . . digits) 3
+       (uintlit . . +999999999u)))) ,8
+    (stmts f . 9
+     (call . . ~9,~314 assert.0.assy765wm 17
+      (stmts f . 2,136,/home/araq/projects/nim/lib/system/comparisons.nim
+       (empty)
+       (infix . .
+        (opensymchoice d3 . <=.0.sysma2dyk <=.1.sysma2dyk <=.2.sysma2dyk <=.3.sysma2dyk <=.4.sysma2dyk <=.5.sysma2dyk <=.6.sysma2dyk) 3
+        (intlit . . -99) ~16
+        (ident . . decimalExponent))))) ,9
+    (stmts f . 9
+     (call . . ~9,~315 assert.0.assy765wm 17
+      (infix . .
+       (opensymchoice .
+        (td :`t0.156. . . nimcall -1 -1 +0 +156 . . formatDigits.0. . none unknown . "") <=.15.sysma2dyk <=.3.sysma2dyk <=.1.sysma2dyk <=.10.sysma2dyk <=.2.sysma2dyk <=.12.sysma2dyk <=.11.sysma2dyk <=.13.sysma2dyk <=.9.sysma2dyk <=.18.sysma2dyk <=.7.sysma2dyk <=.16.sysma2dyk <=.6.sysma2dyk <=.0.sysma2dyk <=.17.sysma2dyk <=.4.sysma2dyk <=.8.sysma2dyk <=.14.sysma2dyk <=.5.sysma2dyk <=.19.sysma2dyk) ~16
+       (ident . . decimalExponent) 3
+       (intlit . . +99)))) ,10
+    (var . . 4
+     (identdefs . .
+      (ident . . numDigits) 10
+      (empty) 25
+      (call . . ~13 decimalLength.0. 1
+       (ident . . digits)))) ,11
+    (let . . 4
+     (identdefs . .
+      (ident . . decimalPoint) 13
+      (empty) 25
+      (infix . .
+       (opensymchoice .
+        (td :`t0.157. . . nimcall -1 -1 +0 +157 . . formatDigits.0. . none unknown . "") \2B.16.sysma2dyk \2B.17.sysma2dyk \2B.18.sysma2dyk \2B.5.sysma2dyk \2B.8.sysma2dyk \2B.13.sysma2dyk \2B.14.sysma2dyk \2B.15.sysma2dyk \2B.1.sysma2dyk \2B.7.sysma2dyk \2B.9.sysma2dyk \2B.4.sysma2dyk \2B.2.sysma2dyk \2B.6.sysma2dyk \2B.11.sysma2dyk \2B.12.sysma2dyk \2B.0.sysma2dyk \2B.10.sysma2dyk \2B.19.sysma2dyk \2B.3.sysma2dyk) ~10
+       (ident . . numDigits) 2
+       (ident . . decimalExponent)))) ,12
+    (let . . 4
+     (identdefs . .
+      (ident . . useFixed) 10
+      (ht
+       (td :`t8.158. . . nimcall -1 -1 +0 +158 . . system.0.sysma2dyk . none unknown . "" `t1.34.sysma2dyk) bool.0.sysma2dyk) 54
+      (infix . .
+       (opensymchoice .
+        (td :`t0.159. . . nimcall -1 -1 +0 +159 . . formatDigits.0. . none unknown . "") and.0.sysma2dyk and.7.sysma2dyk and.2.sysma2dyk and.5.sysma2dyk and.9.sysma2dyk and.11.sysma2dyk and.4.sysma2dyk and.3.sysma2dyk and.1.sysma2dyk and.8.sysma2dyk and.6.sysma2dyk and.10.sysma2dyk) ~16
+       (infix . .
+        (opensymchoice .
+         (td :`t0.160. . . nimcall -1 -1 +0 +160 . . formatDigits.0. . none unknown . "") <=.15.sysma2dyk <=.3.sysma2dyk <=.1.sysma2dyk <=.10.sysma2dyk <=.2.sysma2dyk <=.12.sysma2dyk <=.11.sysma2dyk <=.13.sysma2dyk <=.9.sysma2dyk <=.18.sysma2dyk <=.7.sysma2dyk <=.16.sysma2dyk <=.6.sysma2dyk <=.0.sysma2dyk <=.17.sysma2dyk <=.4.sysma2dyk <=.8.sysma2dyk <=.14.sysma2dyk <=.5.sysma2dyk <=.19.sysma2dyk) ~21
+        (ident . . minFixedDecimalPoint) 3
+        (ident . . decimalPoint)) ~41,1
+       (infix . .
+        (opensymchoice .
+         (td :`t0.161. . . nimcall -1 -1 +0 +161 . . formatDigits.0. . none unknown . "") <=.15.sysma2dyk <=.3.sysma2dyk <=.1.sysma2dyk <=.10.sysma2dyk <=.2.sysma2dyk <=.12.sysma2dyk <=.11.sysma2dyk <=.13.sysma2dyk <=.9.sysma2dyk <=.18.sysma2dyk <=.7.sysma2dyk <=.16.sysma2dyk <=.6.sysma2dyk <=.0.sysma2dyk <=.17.sysma2dyk <=.4.sysma2dyk <=.8.sysma2dyk <=.14.sysma2dyk <=.5.sysma2dyk <=.19.sysma2dyk) ~13
+        (ident . . decimalPoint) 3
+        (ident . . maxFixedDecimalPoint))))) ,14
+    (comment h .) 4,16
+    (for . .
+     (ident . . i) 6
+     (infix . .
+      (opensymchoice .
+       (td :`t0.162. . . nimcall -1 -1 +0 +162 . . formatDigits.0. . none unknown . "") \2E.<.0.sysma2dyk \2E.<.2.sysma2dyk \2E.<.3.sysma2dyk \2E.<.1.sysma2dyk \2E.<.4.sysma2dyk) ~1
+      (intlit . . +0) 3
+      (intlit . . +32)) 13
+     (stmts . . 14
+      (call . . \5B\5D=.0.sysma2dyk ~14
+       (ident . . buffer) ~4
+       (infix . .
+        (opensymchoice .
+         (td :`t0.163. . . nimcall -1 -1 +0 +163 . . formatDigits.0. . none unknown . "") \2B.16.sysma2dyk \2B.17.sysma2dyk \2B.18.sysma2dyk \2B.5.sysma2dyk \2B.8.sysma2dyk \2B.13.sysma2dyk \2B.14.sysma2dyk \2B.15.sysma2dyk \2B.1.sysma2dyk \2B.7.sysma2dyk \2B.9.sysma2dyk \2B.4.sysma2dyk \2B.2.sysma2dyk \2B.6.sysma2dyk \2B.11.sysma2dyk \2B.12.sysma2dyk \2B.0.sysma2dyk \2B.10.sysma2dyk \2B.19.sysma2dyk \2B.3.sysma2dyk) ~3
+        (ident . . pos) 1
+        (ident . . i)) 2
+       (charlit . . '0')))) 6,17
+    (call . . ~6 assert.0.assy765wm 22
+     (stmts f . 2,136,/home/araq/projects/nim/lib/system/comparisons.nim
+      (empty)
+      (infix . .
+       (opensymchoice d3 . <=.0.sysma2dyk <=.1.sysma2dyk <=.2.sysma2dyk <=.3.sysma2dyk <=.4.sysma2dyk <=.5.sysma2dyk <=.6.sysma2dyk) 3
+       (intlit . . -30) ~21
+       (ident . . minFixedDecimalPoint))) 30
+     (strlit . . "internal error")) 6,18
+    (call . . ~6 assert.0.assy765wm 22
+     (infix . .
+      (opensymchoice .
+       (td :`t0.164. . . nimcall -1 -1 +0 +164 . . formatDigits.0. . none unknown . "") <=.15.sysma2dyk <=.3.sysma2dyk <=.1.sysma2dyk <=.10.sysma2dyk <=.2.sysma2dyk <=.12.sysma2dyk <=.11.sysma2dyk <=.13.sysma2dyk <=.9.sysma2dyk <=.18.sysma2dyk <=.7.sysma2dyk <=.16.sysma2dyk <=.6.sysma2dyk <=.0.sysma2dyk <=.17.sysma2dyk <=.4.sysma2dyk <=.8.sysma2dyk <=.14.sysma2dyk <=.5.sysma2dyk <=.19.sysma2dyk) ~21
+      (ident . . maxFixedDecimalPoint) 3
+      (intlit . . +32)) 29
+     (strlit . . "internal error")) ,19
+    (var . . 4
+     (identdefs . .
+      (ident . . decimalDigitsPosition) 23
+      (ht
+       (td :`t8.165. . . nimcall -1 -1 +0 +165 . . system.0.sysma2dyk . none unknown . "" `t31.3.sysma2dyk) int.0.sysma2dyk) ~4,1
+      (empty))) ,20
+    (if . . 3
+     (elif . .
+      (ident . . useFixed) ~1,1
+      (stmts . .
+       (if . . 3
+        (elif . . 13
+         (infix . .
+          (opensymchoice .
+           (td :`t0.166. . . nimcall -1 -1 +0 +166 . . formatDigits.0. . none unknown . "") <=.15.sysma2dyk <=.3.sysma2dyk <=.1.sysma2dyk <=.10.sysma2dyk <=.2.sysma2dyk <=.12.sysma2dyk <=.11.sysma2dyk <=.13.sysma2dyk <=.9.sysma2dyk <=.18.sysma2dyk <=.7.sysma2dyk <=.16.sysma2dyk <=.6.sysma2dyk <=.0.sysma2dyk <=.17.sysma2dyk <=.4.sysma2dyk <=.8.sysma2dyk <=.14.sysma2dyk <=.5.sysma2dyk <=.19.sysma2dyk) ~13
+          (ident . . decimalPoint) 3
+          (intlit . . +0)) ~1,1
+         (stmts . .
+          (comment h .) 22,1
+          (asgn . . ~22
+           (ident . . decimalDigitsPosition) 4
+           (infix . .
+            (opensymchoice .
+             (td :`t0.167. . . nimcall -1 -1 +0 +167 . . formatDigits.0. . none unknown . "") \2D.1.sysma2dyk \2D.19.sysma2dyk \2D.6.sysma2dyk \2D.0.sysma2dyk \2D.14.sysma2dyk \2D.2.sysma2dyk \2D.10.sysma2dyk \2D.17.sysma2dyk \2D.15.sysma2dyk \2D.13.sysma2dyk \2D.4.sysma2dyk \2D.9.sysma2dyk \2D.11.sysma2dyk \2D.5.sysma2dyk \2D.3.sysma2dyk \2D.20.sysma2dyk \2D.7.sysma2dyk \2D.16.sysma2dyk \2D.12.sysma2dyk \2D.18.sysma2dyk \2D.8.sysma2dyk) ~2
+            (intlit . . +2) 2
+            (ident . . decimalPoint))))) ,3
+        (else . . 2,1
+         (stmts . .
+          (comment h .) 22,2
+          (asgn . . ~22
+           (ident . . decimalDigitsPosition) 2
+           (intlit . . +0))))))) ,8
+     (else . . 2,1
+      (stmts . .
+       (comment h .) 22,1
+       (asgn . . ~22
+        (ident . . decimalDigitsPosition) 2
+        (intlit . . +1))))) ,31
+    (var . . 4
+     (identdefs . .
+      (ident . . digitsEnd) 10
+      (empty) 40
+      (infix . .
+       (opensymchoice .
+        (td :`t0.168. . . nimcall -1 -1 +0 +168 . . formatDigits.0. . none unknown . "") \2B.16.sysma2dyk \2B.17.sysma2dyk \2B.18.sysma2dyk \2B.5.sysma2dyk \2B.8.sysma2dyk \2B.13.sysma2dyk \2B.14.sysma2dyk \2B.15.sysma2dyk \2B.1.sysma2dyk \2B.7.sysma2dyk \2B.9.sysma2dyk \2B.4.sysma2dyk \2B.2.sysma2dyk \2B.6.sysma2dyk \2B.11.sysma2dyk \2B.12.sysma2dyk \2B.0.sysma2dyk \2B.10.sysma2dyk \2B.19.sysma2dyk \2B.3.sysma2dyk) ~24
+       (infix . .
+        (opensymchoice .
+         (td :`t0.169. . . nimcall -1 -1 +0 +169 . . formatDigits.0. . none unknown . "") \2B.16.sysma2dyk \2B.17.sysma2dyk \2B.18.sysma2dyk \2B.5.sysma2dyk \2B.8.sysma2dyk \2B.13.sysma2dyk \2B.14.sysma2dyk \2B.15.sysma2dyk \2B.1.sysma2dyk \2B.7.sysma2dyk \2B.9.sysma2dyk \2B.4.sysma2dyk \2B.2.sysma2dyk \2B.6.sysma2dyk \2B.11.sysma2dyk \2B.12.sysma2dyk \2B.0.sysma2dyk \2B.10.sysma2dyk \2B.19.sysma2dyk \2B.3.sysma2dyk) ~4
+        (ident . . pos) 2
+        (ident . . decimalDigitsPosition)) 2
+       (ident . . numDigits)))) ,32
+    (let . . 4
+     (identdefs . .
+      (ident . . tz) 3
+      (empty) 32
+      (call . . ~27 printDecimalDigitsBackwards.0. 1
+       (ident . . buffer) 9
+       (ident . . digitsEnd) 20
+       (ident . . digits)))) 3,33
+    (call . . ~3 dec.0.sysma2dyk 1
+     (ident . . digitsEnd) 12
+     (ident . . tz)) 3,34
+    (call . . ~3 dec.0.sysma2dyk 1
+     (ident . . numDigits) 12
+     (ident . . tz)) ,35
+    (comment h .) ,36
+    (if . . 3
+     (elif . .
+      (ident . . useFixed) ~1,1
+      (stmts . .
+       (if . . 3
+        (elif . . 13
+         (infix . .
+          (opensymchoice .
+           (td :`t0.170. . . nimcall -1 -1 +0 +170 . . formatDigits.0. . none unknown . "") <=.15.sysma2dyk <=.3.sysma2dyk <=.1.sysma2dyk <=.10.sysma2dyk <=.2.sysma2dyk <=.12.sysma2dyk <=.11.sysma2dyk <=.13.sysma2dyk <=.9.sysma2dyk <=.18.sysma2dyk <=.7.sysma2dyk <=.16.sysma2dyk <=.6.sysma2dyk <=.0.sysma2dyk <=.17.sysma2dyk <=.4.sysma2dyk <=.8.sysma2dyk <=.14.sysma2dyk <=.5.sysma2dyk <=.19.sysma2dyk) ~13
+          (ident . . decimalPoint) 3
+          (intlit . . +0)) ~1,1
+         (stmts . .
+          (comment h .) 14,1
+          (call . . \5B\5D=.0.sysma2dyk ~14
+           (ident . . buffer) ~4
+           (infix . .
+            (opensymchoice .
+             (td :`t0.171. . . nimcall -1 -1 +0 +171 . . formatDigits.0. . none unknown . "") \2B.16.sysma2dyk \2B.17.sysma2dyk \2B.18.sysma2dyk \2B.5.sysma2dyk \2B.8.sysma2dyk \2B.13.sysma2dyk \2B.14.sysma2dyk \2B.15.sysma2dyk \2B.1.sysma2dyk \2B.7.sysma2dyk \2B.9.sysma2dyk \2B.4.sysma2dyk \2B.2.sysma2dyk \2B.6.sysma2dyk \2B.11.sysma2dyk \2B.12.sysma2dyk \2B.0.sysma2dyk \2B.10.sysma2dyk \2B.19.sysma2dyk \2B.3.sysma2dyk) ~3
+            (ident . . pos) 1
+            (intlit . . +1)) 2
+           (charlit . . '.')) 4,2
+          (asgn . . ~4
+           (ident . . pos) 2
+           (ident . . digitsEnd)))) 5,4
+        (elif . . 13
+         (infix . .
+          (opensymchoice .
+           (td :`t0.172. . . nimcall -1 -1 +0 +172 . . formatDigits.0. . none unknown . "") <.16.sysma2dyk <.4.sysma2dyk <.3.sysma2dyk <.11.sysma2dyk <.17.sysma2dyk <.12.sysma2dyk <.7.sysma2dyk <.8.sysma2dyk <.0.sysma2dyk <.14.sysma2dyk <.6.sysma2dyk <.5.sysma2dyk <.19.sysma2dyk <.18.sysma2dyk <.2.sysma2dyk <.15.sysma2dyk <.10.sysma2dyk <.9.sysma2dyk <.1.sysma2dyk <.13.sysma2dyk <.23.sysma2dyk) ~13
+          (ident . . decimalPoint) 2
+          (ident . . numDigits)) ~3,1
+         (stmts . .
+          (comment h .) 4,1
+          (for . .
+           (ident . . i) 14
+           (call . . ~9 countdown.0.sysma2dyk 1
+            (intlit . . +7) 4
+            (intlit . . +0)) ~2,1
+           (stmts . . 29
+            (call . . \5B\5D=.0.sysma2dyk ~29
+             (ident . . buffer) ~5
+             (infix . .
+              (opensymchoice .
+               (td :`t0.173. . . nimcall -1 -1 +0 +173 . . formatDigits.0. . none unknown . "") \2B.16.sysma2dyk \2B.17.sysma2dyk \2B.18.sysma2dyk \2B.5.sysma2dyk \2B.8.sysma2dyk \2B.13.sysma2dyk \2B.14.sysma2dyk \2B.15.sysma2dyk \2B.1.sysma2dyk \2B.7.sysma2dyk \2B.9.sysma2dyk \2B.4.sysma2dyk \2B.2.sysma2dyk \2B.6.sysma2dyk \2B.11.sysma2dyk \2B.12.sysma2dyk \2B.0.sysma2dyk \2B.10.sysma2dyk \2B.19.sysma2dyk \2B.3.sysma2dyk) ~15
+              (infix . .
+               (opensymchoice .
+                (td :`t0.174. . . nimcall -1 -1 +0 +174 . . formatDigits.0. . none unknown . "") \2B.16.sysma2dyk \2B.17.sysma2dyk \2B.18.sysma2dyk \2B.5.sysma2dyk \2B.8.sysma2dyk \2B.13.sysma2dyk \2B.14.sysma2dyk \2B.15.sysma2dyk \2B.1.sysma2dyk \2B.7.sysma2dyk \2B.9.sysma2dyk \2B.4.sysma2dyk \2B.2.sysma2dyk \2B.6.sysma2dyk \2B.11.sysma2dyk \2B.12.sysma2dyk \2B.0.sysma2dyk \2B.10.sysma2dyk \2B.19.sysma2dyk \2B.3.sysma2dyk) ~2
+               (ident . . i) 2
+               (ident . . decimalPoint)) 2
+              (intlit . . +1)) 8
+             (call . . \5B\5D.0.sysma2dyk ~6
+              (ident . . buffer) 3
+              (infix . .
+               (opensymchoice .
+                (td :`t0.175. . . nimcall -1 -1 +0 +175 . . formatDigits.0. . none unknown . "") \2B.16.sysma2dyk \2B.17.sysma2dyk \2B.18.sysma2dyk \2B.5.sysma2dyk \2B.8.sysma2dyk \2B.13.sysma2dyk \2B.14.sysma2dyk \2B.15.sysma2dyk \2B.1.sysma2dyk \2B.7.sysma2dyk \2B.9.sysma2dyk \2B.4.sysma2dyk \2B.2.sysma2dyk \2B.6.sysma2dyk \2B.11.sysma2dyk \2B.12.sysma2dyk \2B.0.sysma2dyk \2B.10.sysma2dyk \2B.19.sysma2dyk \2B.3.sysma2dyk) ~2
+               (ident . . i) 2
+               (ident . . decimalPoint)))))) 25,3
+          (call . . \5B\5D=.0.sysma2dyk ~25
+           (ident . . buffer) ~15
+           (infix . .
+            (opensymchoice .
+             (td :`t0.176. . . nimcall -1 -1 +0 +176 . . formatDigits.0. . none unknown . "") \2B.16.sysma2dyk \2B.17.sysma2dyk \2B.18.sysma2dyk \2B.5.sysma2dyk \2B.8.sysma2dyk \2B.13.sysma2dyk \2B.14.sysma2dyk \2B.15.sysma2dyk \2B.1.sysma2dyk \2B.7.sysma2dyk \2B.9.sysma2dyk \2B.4.sysma2dyk \2B.2.sysma2dyk \2B.6.sysma2dyk \2B.11.sysma2dyk \2B.12.sysma2dyk \2B.0.sysma2dyk \2B.10.sysma2dyk \2B.19.sysma2dyk \2B.3.sysma2dyk) ~3
+            (ident . . pos) 1
+            (ident . . decimalPoint)) 2
+           (charlit . . '.')) 4,4
+          (asgn . . ~4
+           (ident . . pos) 12
+           (infix . .
+            (opensymchoice .
+             (td :`t0.177. . . nimcall -1 -1 +0 +177 . . formatDigits.0. . none unknown . "") \2B.16.sysma2dyk \2B.17.sysma2dyk \2B.18.sysma2dyk \2B.5.sysma2dyk \2B.8.sysma2dyk \2B.13.sysma2dyk \2B.14.sysma2dyk \2B.15.sysma2dyk \2B.1.sysma2dyk \2B.7.sysma2dyk \2B.9.sysma2dyk \2B.4.sysma2dyk \2B.2.sysma2dyk \2B.6.sysma2dyk \2B.11.sysma2dyk \2B.12.sysma2dyk \2B.0.sysma2dyk \2B.10.sysma2dyk \2B.19.sysma2dyk \2B.3.sysma2dyk) ~10
+            (ident . . digitsEnd) 2
+            (intlit . . +1))))) ,10
+        (else . . 2,1
+         (stmts . .
+          (comment h .) 3,1
+          (call . . ~3 inc.0.sysma2dyk 1
+           (ident . . pos) 6
+           (ident . . decimalPoint)) ,2
+          (if . . 3
+           (elif . .
+            (ident . . forceTrailingDotZero) ~1,1
+            (stmts . . 12
+             (call . . \5B\5D=.0.sysma2dyk ~12
+              (ident . . buffer) ~5
+              (ident . . pos) 2
+              (charlit . . '.')) 14,1
+             (call . . \5B\5D=.0.sysma2dyk ~14
+              (ident . . buffer) ~4
+              (infix . .
+               (opensymchoice .
+                (td :`t0.178. . . nimcall -1 -1 +0 +178 . . formatDigits.0. . none unknown . "") \2B.16.sysma2dyk \2B.17.sysma2dyk \2B.18.sysma2dyk \2B.5.sysma2dyk \2B.8.sysma2dyk \2B.13.sysma2dyk \2B.14.sysma2dyk \2B.15.sysma2dyk \2B.1.sysma2dyk \2B.7.sysma2dyk \2B.9.sysma2dyk \2B.4.sysma2dyk \2B.2.sysma2dyk \2B.6.sysma2dyk \2B.11.sysma2dyk \2B.12.sysma2dyk \2B.0.sysma2dyk \2B.10.sysma2dyk \2B.19.sysma2dyk \2B.3.sysma2dyk) ~3
+               (ident . . pos) 1
+               (intlit . . +1)) 2
+              (charlit . . '0')) 3,2
+             (call . . ~3 inc.0.sysma2dyk 1
+              (ident . . pos) 6
+              (intlit . . +2)))))))))) ,18
+     (else . . 2,1
+      (stmts . . 12
+       (call . . \5B\5D=.0.sysma2dyk ~12
+        (ident . . buffer) ~5
+        (ident . . pos) 8
+        (call . . \5B\5D.0.sysma2dyk ~6
+         (ident . . buffer) 4
+         (infix . .
+          (opensymchoice .
+           (td :`t0.179. . . nimcall -1 -1 +0 +179 . . formatDigits.0. . none unknown . "") \2B.16.sysma2dyk \2B.17.sysma2dyk \2B.18.sysma2dyk \2B.5.sysma2dyk \2B.8.sysma2dyk \2B.13.sysma2dyk \2B.14.sysma2dyk \2B.15.sysma2dyk \2B.1.sysma2dyk \2B.7.sysma2dyk \2B.9.sysma2dyk \2B.4.sysma2dyk \2B.2.sysma2dyk \2B.6.sysma2dyk \2B.11.sysma2dyk \2B.12.sysma2dyk \2B.0.sysma2dyk \2B.10.sysma2dyk \2B.19.sysma2dyk \2B.3.sysma2dyk) ~3
+          (ident . . pos) 1
+          (intlit . . +1)))) ,1
+       (if . . 3
+        (elif . . 10
+         (infix . .
+          (opensymchoice .
+           (td :`t0.180. . . nimcall -1 -1 +0 +180 . . formatDigits.0. . none unknown . "") ==.0.sysma2dyk ==.14.sysma2dyk ==.13.sysma2dyk ==.3.sysma2dyk ==.5.sysma2dyk ==.20.sysma2dyk ==.1.sysma2dyk ==.15.sysma2dyk ==.19.sysma2dyk ==.10.sysma2dyk ==.18.sysma2dyk ==.2.sysma2dyk ==.9.sysma2dyk ==.17.sysma2dyk ==.4.sysma2dyk ==.16.sysma2dyk ==.6.sysma2dyk ==.8.sysma2dyk ==.21.sysma2dyk ==.12.sysma2dyk ==.23.sysma2dyk ==.22.sysma2dyk ==.7.sysma2dyk ==.11.sysma2dyk ==.59.sysma2dyk) ~10
+          (ident . . numDigits) 3
+          (intlit . . +1)) ~1,1
+         (stmts . .
+          (comment h .) 3,1
+          (call . . ~3 inc.0.sysma2dyk 1
+           (ident . . pos)))) ,3
+        (else . . 2,1
+         (stmts . .
+          (comment h .) 14,1
+          (call . . \5B\5D=.0.sysma2dyk ~14
+           (ident . . buffer) ~4
+           (infix . .
+            (opensymchoice .
+             (td :`t0.181. . . nimcall -1 -1 +0 +181 . . formatDigits.0. . none unknown . "") \2B.16.sysma2dyk \2B.17.sysma2dyk \2B.18.sysma2dyk \2B.5.sysma2dyk \2B.8.sysma2dyk \2B.13.sysma2dyk \2B.14.sysma2dyk \2B.15.sysma2dyk \2B.1.sysma2dyk \2B.7.sysma2dyk \2B.9.sysma2dyk \2B.4.sysma2dyk \2B.2.sysma2dyk \2B.6.sysma2dyk \2B.11.sysma2dyk \2B.12.sysma2dyk \2B.0.sysma2dyk \2B.10.sysma2dyk \2B.19.sysma2dyk \2B.3.sysma2dyk) ~3
+            (ident . . pos) 1
+            (intlit . . +1)) 2
+           (charlit . . '.')) 4,2
+          (asgn . . ~4
+           (ident . . pos) 2
+           (ident . . digitsEnd))))) ,8
+       (let . . 4
+        (identdefs . .
+         (ident . . scientificExponent) 19
+         (empty) 34
+         (infix . .
+          (opensymchoice .
+           (td :`t0.182. . . nimcall -1 -1 +0 +182 . . formatDigits.0. . none unknown . "") \2D.1.sysma2dyk \2D.19.sysma2dyk \2D.6.sysma2dyk \2D.0.sysma2dyk \2D.14.sysma2dyk \2D.2.sysma2dyk \2D.10.sysma2dyk \2D.17.sysma2dyk \2D.15.sysma2dyk \2D.13.sysma2dyk \2D.4.sysma2dyk \2D.9.sysma2dyk \2D.11.sysma2dyk \2D.5.sysma2dyk \2D.3.sysma2dyk \2D.20.sysma2dyk \2D.7.sysma2dyk \2D.16.sysma2dyk \2D.12.sysma2dyk \2D.18.sysma2dyk \2D.8.sysma2dyk) ~13
+          (ident . . decimalPoint) 2
+          (intlit . . +1)))) ,9
+       (comment h .) 12,10
+       (call . . \5B\5D=.0.sysma2dyk ~12
+        (ident . . buffer) ~5
+        (ident . . pos) 2
+        (charlit . . 'e')) 14,11
+       (call . . \5B\5D=.0.sysma2dyk ~14
+        (ident . . buffer) ~4
+        (infix . .
+         (opensymchoice .
+          (td :`t0.183. . . nimcall -1 -1 +0 +183 . . formatDigits.0. . none unknown . "") \2B.16.sysma2dyk \2B.17.sysma2dyk \2B.18.sysma2dyk \2B.5.sysma2dyk \2B.8.sysma2dyk \2B.13.sysma2dyk \2B.14.sysma2dyk \2B.15.sysma2dyk \2B.1.sysma2dyk \2B.7.sysma2dyk \2B.9.sysma2dyk \2B.4.sysma2dyk \2B.2.sysma2dyk \2B.6.sysma2dyk \2B.11.sysma2dyk \2B.12.sysma2dyk \2B.0.sysma2dyk \2B.10.sysma2dyk \2B.19.sysma2dyk \2B.3.sysma2dyk) ~3
+         (ident . . pos) 1
+         (intlit . . +1)) 2
+        (ifx . . 3
+         (elifx . . 19
+          (infix . .
+           (opensymchoice .
+            (td :`t0.184. . . nimcall -1 -1 +0 +184 . . formatDigits.0. . none unknown . "") <.16.sysma2dyk <.4.sysma2dyk <.3.sysma2dyk <.11.sysma2dyk <.17.sysma2dyk <.12.sysma2dyk <.7.sysma2dyk <.8.sysma2dyk <.0.sysma2dyk <.14.sysma2dyk <.6.sysma2dyk <.5.sysma2dyk <.19.sysma2dyk <.18.sysma2dyk <.2.sysma2dyk <.15.sysma2dyk <.10.sysma2dyk <.9.sysma2dyk <.1.sysma2dyk <.13.sysma2dyk <.23.sysma2dyk) ~19
+           (ident . . scientificExponent) 2
+           (intlit . . +0)) 24
+          (stmts . .
+           (charlit . . '-'))) 31
+         (elsex . . 6
+          (stmts . .
+           (charlit . . '+'))))) 3,12
+       (call . . ~3 inc.0.sysma2dyk 1
+        (ident . . pos) 6
+        (intlit . . +2)) ,13
+       (let . . 4
+        (identdefs . .
+         (ident . . k) 3
+         (ht
+          (td :`t8.185. . . nimcall -1 -1 +0 +185 . . system.0.sysma2dyk . none unknown . "" `t43.11.sysma2dyk) uint32.0.sysma2dyk) 12
+         (cast . . 5
+          (ht
+           (td :`t8.186. . . nimcall -1 -1 +0 +186 . . system.0.sysma2dyk . none unknown . "" `t43.11.sysma2dyk) uint32.0.sysma2dyk) 13
+          (ifx . . 3
+           (elifx . . 19
+            (infix . .
+             (opensymchoice .
+              (td :`t0.187. . . nimcall -1 -1 +0 +187 . . formatDigits.0. . none unknown . "") <.16.sysma2dyk <.4.sysma2dyk <.3.sysma2dyk <.11.sysma2dyk <.17.sysma2dyk <.12.sysma2dyk <.7.sysma2dyk <.8.sysma2dyk <.0.sysma2dyk <.14.sysma2dyk <.6.sysma2dyk <.5.sysma2dyk <.19.sysma2dyk <.18.sysma2dyk <.2.sysma2dyk <.15.sysma2dyk <.10.sysma2dyk <.9.sysma2dyk <.1.sysma2dyk <.13.sysma2dyk <.23.sysma2dyk) ~19
+             (ident . . scientificExponent) 2
+             (intlit . . +0)) 24
+            (stmts . .
+             (prefix . .
+              (opensymchoice .
+               (td :`t0.188. . . nimcall -1 -1 +0 +188 . . formatDigits.0. . none unknown . "") \2D.1.sysma2dyk \2D.19.sysma2dyk \2D.6.sysma2dyk \2D.0.sysma2dyk \2D.14.sysma2dyk \2D.2.sysma2dyk \2D.10.sysma2dyk \2D.17.sysma2dyk \2D.15.sysma2dyk \2D.13.sysma2dyk \2D.4.sysma2dyk \2D.9.sysma2dyk \2D.11.sysma2dyk \2D.5.sysma2dyk \2D.3.sysma2dyk \2D.20.sysma2dyk \2D.7.sysma2dyk \2D.16.sysma2dyk \2D.12.sysma2dyk \2D.18.sysma2dyk \2D.8.sysma2dyk) 1
+              (ident . . scientificExponent)))) 47
+           (elsex . . 6
+            (stmts . .
+             (ident . . scientificExponent))))))) ,14
+       (if . . 3
+        (elif . . 2
+         (infix . .
+          (opensymchoice .
+           (td :`t0.189. . . nimcall -1 -1 +0 +189 . . formatDigits.0. . none unknown . "") <.16.sysma2dyk <.4.sysma2dyk <.3.sysma2dyk <.11.sysma2dyk <.17.sysma2dyk <.12.sysma2dyk <.7.sysma2dyk <.8.sysma2dyk <.0.sysma2dyk <.14.sysma2dyk <.6.sysma2dyk <.5.sysma2dyk <.19.sysma2dyk <.18.sysma2dyk <.2.sysma2dyk <.15.sysma2dyk <.10.sysma2dyk <.9.sysma2dyk <.1.sysma2dyk <.13.sysma2dyk <.23.sysma2dyk) ~2
+          (ident . . k) 2
+          (intlit . . +10)) ~1,1
+         (stmts . . 12
+          (call . . \5B\5D=.0.sysma2dyk ~12
+           (ident . . buffer) ~5
+           (ident . . pos) 5
+           (call . . ~3 chr.0.sysma2dyk 13
+            (infix . .
+             (opensymchoice .
+              (td :`t0.190. . . nimcall -1 -1 +0 +190 . . formatDigits.0. . none unknown . "") \2B.16.sysma2dyk \2B.17.sysma2dyk \2B.18.sysma2dyk \2B.5.sysma2dyk \2B.8.sysma2dyk \2B.13.sysma2dyk \2B.14.sysma2dyk \2B.15.sysma2dyk \2B.1.sysma2dyk \2B.7.sysma2dyk \2B.9.sysma2dyk \2B.4.sysma2dyk \2B.2.sysma2dyk \2B.6.sysma2dyk \2B.11.sysma2dyk \2B.12.sysma2dyk \2B.0.sysma2dyk \2B.10.sysma2dyk \2B.19.sysma2dyk \2B.3.sysma2dyk) ~6
+             (call . . ~6
+              (ht
+               (td :`t8.191. . . nimcall -1 -1 +0 +191 . . system.0.sysma2dyk . none unknown . "" `t43.11.sysma2dyk) uint32.0.sysma2dyk) 1
+              (charlit . . '0')) 2
+             (ident . . k)))) ,1
+          (cmd . . inc.0.sysma2dyk 4
+           (ident . . pos)))) ,3
+        (else . . 2,1
+         (stmts . . 11
+          (call . . ~11 utoa2Digits.0.digqtx7k2 1
+           (ident . . buffer) 9
+           (ident . . pos) 14
+           (ident . . k)) 3,1
+          (call . . ~3 inc.0.sysma2dyk 1
+           (ident . . pos) 6
+           (intlit . . +2)))))))) ,75
+    (ret . . 7
+     (ident . . pos)))) none unknown . "" . .) 4,402
+ (sd :float32ToChars.0. x
+  (proc) . egi1 r0whtl0t0c0 -1 +0 .
+  (td :`t25.192. . nte1e2 inline -1 -1 +0 +192 . 20,403,/home/araq/projects/nim/lib/std/private/schubfach.nim
+   (formalparams . `t31.3.sysma2dyk
+    (arglist . . ~15
+     (arglist . .)
+     (empty)
+     (empty) ~15
+     (arglist . .)
+     (empty) ~15
+     (arglist . .)) 1
+    (sd :buffer.1 .
+     (param) . u . -1 +0 .
+     (td :`t23.193. . . nimcall -1 -1 +0 +193 . . float32ToChars.0. . none unknown . ""
+      (td :`t27.194. . . nimcall -1 -1 +0 +194 . . float32ToChars.0. . none unknown . "" `t2.16.sysma2dyk)) float32ToChars.0. . none unknown . "" . .) 30
+    (sd :v.1 .
+     (param) . u . -1 +1 . `t37.14.sysma2dyk float32ToChars.0. . none unknown . "" . .) 42
+    (sd :forceTrailingDotZero.1 .
+     (param) . u . -1 +2 . `t1.34.sysma2dyk float32ToChars.0. 23 false.0.sysma2dyk none unknown . "" . .)) float32ToChars.0. . none unknown . "" `t31.3.sysma2dyk) schubfach.0. ~5
+  (proc s . 5
+   (ht . float32ToChars.0.)
+   (empty)
+   (empty) . 97
+   (pragma . . ~93,1
+    (ident . . inline))
+   (empty) 2,2
+   (stmts s .
+    (let s . 4
+     (identdefs . .
+      (sd :significand.0 .
+       (let . +0 +0) . u r0whtl0t0c0 -1 +0 . `t43.11.sysma2dyk float32ToChars.0.
+       (identdefs . . significand.0 13 uint32.0.sysma2dyk 41
+        (call . `t43.5. ~19 physicalSignificand.0. 16
+         (call . `t17.6. ~15 constructSingle.1. 1 v.1))) none unknown . "" . .) 13 uint32.0.sysma2dyk 41
+      (call . `t43.5. ~19 physicalSignificand.0. 16
+       (call . `t17.6. ~15 constructSingle.1. 1 v.1)))) ,1
+    (let s . 4
+     (identdefs . .
+      (sd :exponent.1 .
+       (let . +0 +0) . u r0whtl0t0c0 -1 +0 . `t43.11.sysma2dyk float32ToChars.0.
+       (identdefs . . exponent.1 10 uint32.0.sysma2dyk 35
+        (call . `t43.5. ~16 physicalExponent.0. 16
+         (call . `t17.6. ~15 constructSingle.1. 1 v.1))) none unknown . "" . .) 10 uint32.0.sysma2dyk 35
+      (call . `t43.5. ~16 physicalExponent.0. 16
+       (call . `t17.6. ~15 constructSingle.1. 1 v.1)))) ,2
+    (var s . 4
+     (identdefs . .
+      (sd :pos.4 .
+       (var . +0 +0) . u r0whtl0t0c0 -1 +0 .
+       (td :`t31.195. . c3 nimcall +8 +8 +0 +195 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "") float32ToChars.0.
+       (identdefs . . pos.4 4
+        (empty) 6
+        (intlit . `t31.15. +0)) none unknown . "" . .) 4
+      (empty) 6
+      (intlit . `t31.15. +0))) ,3
+    (if s . 3
+     (elif . . 9
+      (expr sf `t1.34.sysma2dyk 2,132,/home/araq/projects/nim/lib/system/comparisons.nim
+       (empty)
+       (prefix s `t1.34.sysma2dyk not.0.sysma2dyk
+        (infix s `t1.34.sysma2dyk ==.17.sysma2dyk ~9 exponent.1 3
+         (uintlit s `t43.5. +255u)))) ~1,1
+      (stmts s .
+       (comment sh .) 12,1
+       (asgn s . ~6
+        (at . `t2.16.sysma2dyk ~6
+         (hderef . `t27.194. buffer.1) 1 pos.4) 2
+        (charlit s `t2.16.sysma2dyk '-')) 3,2
+       (call s . ~3 inc.9.sysma2dyk 1 pos.4 13
+        (call s `t31.3.sysma2dyk ~7 signBit.0. 16
+         (call s `t17.6. ~15 constructSingle.1. 1 v.1))) ,3
+       (if s . 3
+        (elif . . 14
+         (infix s `t1.34.sysma2dyk or.0.sysma2dyk ~5
+          (expr sf `t1.34.sysma2dyk 2,132,/home/araq/projects/nim/lib/system/comparisons.nim
+           (empty)
+           (prefix s `t1.34.sysma2dyk not.0.sysma2dyk
+            (infix s `t1.34.sysma2dyk ==.17.sysma2dyk ~9 exponent.1 3
+             (hstdconv . `t43.11.sysma2dyk
+              (empty)
+              (intlit s `t31.15. +0))))) 15
+          (expr sf `t1.34.sysma2dyk 2,132,/home/araq/projects/nim/lib/system/comparisons.nim
+           (empty)
+           (prefix s `t1.34.sysma2dyk not.0.sysma2dyk
+            (infix s `t1.34.sysma2dyk ==.17.sysma2dyk ~12 significand.0 3
+             (hstdconv . `t43.11.sysma2dyk
+              (empty)
+              (intlit s `t31.15. +0)))))) ~1,1
+         (stmts s .
+          (comment sh .) ,1
+          (let s . 4
+           (identdefs . .
+            (sd :dec.0 .
+             (let . +0 +0) . u r0whtl0t0c0 -1 +0 . `t17.81. float32ToChars.0.
+             (identdefs . . dec.0 5 auto.0.sysma2dyk 23
+              (call . `t17.81. ~11 toDecimal32.0. 1 significand.0 14 exponent.1)) none unknown . "" . .) 5 auto.0.sysma2dyk 23
+            (call . `t17.81. ~11 toDecimal32.0. 1 significand.0 14 exponent.1))) ,2
+          (ret s . 19
+           (asgn . `t7.1. ~25,~12
+            (sd :result.23 .
+             (result) . u . -1 +0 . `t31.3.sysma2dyk float32ToChars.0. . none unknown . "" . .)
+            (call s `t31.3.sysma2dyk ~20,~91
+             (sd :formatDigits.1. .
+              (proc) . ufgi1 r0whtl0t0c0 -1 +0 .
+              (td :`t25.198. . ntge1e2 inline -1 -1 +0 +198 . 29,324,/home/araq/projects/nim/lib/std/private/schubfach.nim
+               (formalparams . `t31.3.sysma2dyk
+                (arglist . . ~24
+                 (arglist . .)
+                 (empty)
+                 (empty) ~24
+                 (arglist . .)
+                 (empty) ~24
+                 (arglist . .)) 1
+                (sd :buffer.2 .
+                 (param) . u . -1 +0 . `t23.150. formatDigits.1. . none unknown . "" . .) 30
+                (sd :pos.5 .
+                 (param) . us1 . -1 +1 . `t31.195. formatDigits.1. . none unknown . "" . .) 38
+                (sd :digits.2 .
+                 (param) . u . -1 +2 . `t43.11.sysma2dyk formatDigits.1. . none unknown . "" . .) 54
+                (sd :decimalExponent.1 .
+                 (param) . u . -1 +3 . `t31.3.sysma2dyk formatDigits.1. . none unknown . "" . .) ~11,1
+                (sd :forceTrailingDotZero.2 .
+                 (param) . u . -1 +4 . `t1.34.sysma2dyk formatDigits.1. 4,46,/home/araq/projects/nim/lib/system/basic_types.nim
+                 (sd :false.0. .
+                  (enumfield) . uef . -1 +0 . `t1.34.sysma2dyk bool.0.sysma2dyk . none unknown . "" . .) none unknown . "" . .)) formatDigits.0. . none unknown . "" `t31.3.sysma2dyk) formatDigits.0. ~5
+              (proc . . 5
+               (ht `t25.149. formatDigits.1.)
+               (empty)
+               (empty) . 59,1
+               (pragma . . 2
+                (ident . . inline))
+               (bracket . .
+                (empty) 17,324,/home/araq/projects/nim/lib/std/private/schubfach.nim
+                (genericparams . . 1
+                 (identdefs . .
+                  (ident . . T) 3 Ordinal.0.sysma2dyk
+                  (empty)))) 2,2
+               (stmts s .
+                (const s . 2,1
+                 (const0 . .
+                  (sd :minFixedDecimalPoint.1. .
+                   (const) . u r0whtl0t0c0 -1 +0 . `t34.6.sysma2dyk formatDigits.1.
+                   (const0 . . minFixedDecimalPoint.1. 22 int32.0.sysma2dyk 30
+                    (intlit . `t34.6.sysma2dyk -4)) none unknown . "" . .) 22 int32.0.sysma2dyk 30
+                  (intlit . `t34.6.sysma2dyk -4)) 2,2
+                 (const0 . .
+                  (sd :maxFixedDecimalPoint.1. .
+                   (const) . u r0whtl0t0c0 -1 +0 . `t34.6.sysma2dyk formatDigits.1.
+                   (const0 . . maxFixedDecimalPoint.1. 22 int32.0.sysma2dyk 30
+                    (intlit . `t34.6.sysma2dyk +9)) none unknown . "" . .) 22 int32.0.sysma2dyk 30
+                  (intlit . `t34.6.sysma2dyk +9))) ,3
+                (var s . 4
+                 (identdefs . .
+                  (sd :pos.6 .
+                   (var . +0 +0) . u r0whtl0t0c0 -1 +0 . `t31.195. formatDigits.1.
+                   (identdefs . . pos.6 4
+                    (empty) 6 pos.5) none unknown . "" . .) 4
+                  (empty) 6 pos.5)) ,4
+                (stmts sf . 2,59,/home/araq/projects/nim/lib/std/assertions.nim
+                 (empty) 2,70,/home/araq/projects/nim/lib/std/assertions.nim
+                 (empty)) ,5
+                (stmts sf . 2,59,/home/araq/projects/nim/lib/std/assertions.nim
+                 (empty) 2,70,/home/araq/projects/nim/lib/std/assertions.nim
+                 (empty)) ,~306
+                (stmts sf . 2,59,/home/araq/projects/nim/lib/std/assertions.nim
+                 (empty) 2,70,/home/araq/projects/nim/lib/std/assertions.nim
+                 (empty)) ,~306
+                (stmts sf . 2,59,/home/araq/projects/nim/lib/std/assertions.nim
+                 (empty) 2,70,/home/araq/projects/nim/lib/std/assertions.nim
+                 (empty)) ,~306
+                (stmts sf . 2,59,/home/araq/projects/nim/lib/std/assertions.nim
+                 (empty) 2,70,/home/araq/projects/nim/lib/std/assertions.nim
+                 (empty)) ,~306
+                (stmts sf . 2,59,/home/araq/projects/nim/lib/std/assertions.nim
+                 (empty) 2,70,/home/araq/projects/nim/lib/std/assertions.nim
+                 (empty)) ,10
+                (var s . 4
+                 (identdefs . .
+                  (sd :numDigits.1 .
+                   (var . +0 +0) . u r0whtl0t0c0 -1 +0 . `t31.3.sysma2dyk formatDigits.1.
+                   (identdefs . . numDigits.1 10
+                    (empty) 25
+                    (call . `t31.3.sysma2dyk ~13 decimalLength.0. 1 digits.2)) none unknown . "" . .) 10
+                  (empty) 25
+                  (call . `t31.3.sysma2dyk ~13 decimalLength.0. 1 digits.2))) ,11
+                (let s . 4
+                 (identdefs . .
+                  (sd :decimalPoint.1 .
+                   (let . +0 +0) . u r0whtl0t0c0 -1 +0 . `t31.3.sysma2dyk formatDigits.1.
+                   (identdefs . . decimalPoint.1 13
+                    (empty) 25
+                    (infix . `t31.3.sysma2dyk \2B.5.sysma2dyk ~10 numDigits.1 2 decimalExponent.1)) none unknown . "" . .) 13
+                  (empty) 25
+                  (infix . `t31.3.sysma2dyk \2B.5.sysma2dyk ~10 numDigits.1 2 decimalExponent.1))) ,12
+                (let s . 4
+                 (identdefs . .
+                  (sd :useFixed.1 .
+                   (let . +0 +0) . u r0whtl0t0c0 -1 +0 . `t1.34.sysma2dyk formatDigits.1.
+                   (identdefs . . useFixed.1 10 bool.0.sysma2dyk 54
+                    (infix . `t1.34.sysma2dyk and.0.sysma2dyk ~16
+                     (infix . `t1.34.sysma2dyk <=.7.sysma2dyk ~21
+                      (hstdconv . `t31.3.sysma2dyk
+                       (empty)
+                       (intlit . `t34.6.sysma2dyk -4)) 3 decimalPoint.1) ~41,1
+                     (infix . `t1.34.sysma2dyk <=.7.sysma2dyk ~13 decimalPoint.1 3
+                      (hstdconv . `t31.3.sysma2dyk
+                       (empty)
+                       (intlit . `t34.6.sysma2dyk +9))))) none unknown . "" . .) 10 bool.0.sysma2dyk 54
+                  (infix . `t1.34.sysma2dyk and.0.sysma2dyk ~16
+                   (infix . `t1.34.sysma2dyk <=.7.sysma2dyk ~21
+                    (hstdconv . `t31.3.sysma2dyk
+                     (empty)
+                     (intlit . `t34.6.sysma2dyk -4)) 3 decimalPoint.1) ~41,1
+                   (infix . `t1.34.sysma2dyk <=.7.sysma2dyk ~13 decimalPoint.1 3
+                    (hstdconv . `t31.3.sysma2dyk
+                     (empty)
+                     (intlit . `t34.6.sysma2dyk +9)))))) ,14
+                (comment s .) 4,16
+                (for s .
+                 (sd :i.2 .
+                  (forvar . +0 +0) . u . -1 +0 . `t31.2234.sysma2dyk formatDigits.1. . none unknown . "" . .) 6
+                 (infix s `t31.2234.sysma2dyk \2E.<.5.sysma2dyk ~1
+                  (intlit .
+                   (td :`t31.211. . c3 nimcall +8 +8 +0 +211 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +0) 3
+                  (intlit . `t31.211. +32)) 27
+                 (asgn s .
+                  (at . `t2.16.sysma2dyk ~14
+                   (hderef . `t27.151. buffer.2) ~4
+                   (infix s `t31.3.sysma2dyk \2B.5.sysma2dyk ~3 pos.6 1 i.2)) 2
+                  (charlit s `t2.16.sysma2dyk '0'))) ,17
+                (stmts sf . 2,59,/home/araq/projects/nim/lib/std/assertions.nim
+                 (empty) 2,70,/home/araq/projects/nim/lib/std/assertions.nim
+                 (empty)) ,18
+                (stmts sf . 2,59,/home/araq/projects/nim/lib/std/assertions.nim
+                 (empty) 2,70,/home/araq/projects/nim/lib/std/assertions.nim
+                 (empty)) ,19
+                (var s . 4
+                 (identdefs . .
+                  (sd :decimalDigitsPosition.1 .
+                   (var . +0 +0) . u r0whtl0t0c0 -1 +0 . `t31.3.sysma2dyk formatDigits.1.
+                   (identdefs . . decimalDigitsPosition.1 23 int.0.sysma2dyk
+                    (empty)) none unknown . "" . .) 23 int.0.sysma2dyk
+                  (empty))) ,20
+                (if s . 3
+                 (elif . . useFixed.1 ~1,1
+                  (if s . 3
+                   (elif . . 13
+                    (infix s `t1.34.sysma2dyk <=.7.sysma2dyk ~13 decimalPoint.1 3
+                     (intlit s `t31.15. +0)) ~1,1
+                    (stmts s .
+                     (comment s .) 22,1
+                     (asgn s . ~22 decimalDigitsPosition.1 4
+                      (infix s `t31.3.sysma2dyk \2D.5.sysma2dyk ~2
+                       (intlit s `t31.10. +2) 2 decimalPoint.1)))) ,3
+                   (else . . 2,1
+                    (stmts s .
+                     (comment s .) 22,2
+                     (asgn s . ~22 decimalDigitsPosition.1 2
+                      (intlit s `t31.3.sysma2dyk +0)))))) ,8
+                 (else . . 2,1
+                  (stmts s .
+                   (comment s .) 22,1
+                   (asgn s . ~22 decimalDigitsPosition.1 2
+                    (intlit s `t31.3.sysma2dyk +1))))) ,31
+                (var s . 4
+                 (identdefs . .
+                  (sd :digitsEnd.1 .
+                   (var . +0 +0) . u r0whtl0t0c0 -1 +0 . `t31.3.sysma2dyk formatDigits.1.
+                   (identdefs . . digitsEnd.1 10
+                    (empty) 40
+                    (infix . `t31.3.sysma2dyk \2B.5.sysma2dyk ~24
+                     (infix . `t31.3.sysma2dyk \2B.5.sysma2dyk ~4 pos.6 2 decimalDigitsPosition.1) 2 numDigits.1)) none unknown . "" . .) 10
+                  (empty) 40
+                  (infix . `t31.3.sysma2dyk \2B.5.sysma2dyk ~24
+                   (infix . `t31.3.sysma2dyk \2B.5.sysma2dyk ~4 pos.6 2 decimalDigitsPosition.1) 2 numDigits.1))) ,32
+                (let s . 4
+                 (identdefs . .
+                  (sd :tz.3 .
+                   (let . +0 +0) . u r0whtl0t0c0 -1 +0 . `t31.3.sysma2dyk formatDigits.1.
+                   (identdefs . . tz.3 3
+                    (empty) 32
+                    (call . `t31.3.sysma2dyk ~33,~111
+                     (sd :printDecimalDigitsBackwards.1. .
+                      (proc) . ufgi1 r0whtl0t0c0 -1 +0 .
+                      (td :`t25.216. . ntge1e2 inline -1 -1 +0 +216 . 44,247,/home/araq/projects/nim/lib/std/private/schubfach.nim
+                       (formalparams . `t31.3.sysma2dyk
+                        (arglist . . ~39
+                         (arglist . .)
+                         (empty)
+                         (empty) ~39
+                         (arglist . .)
+                         (empty) ~39
+                         (arglist . .)) 1
+                        (sd :buf.1 .
+                         (param) . u . -1 +0 . `t23.114. printDecimalDigitsBackwards.1. . none unknown . "" . .) 27
+                        (sd :pos.7 .
+                         (param) . us1 . -1 +1 . `t31.3.sysma2dyk printDecimalDigitsBackwards.1. . none unknown . "" . .) 35
+                        (sd :output.2 .
+                         (param) . us1 . -1 +2 . `t43.11.sysma2dyk printDecimalDigitsBackwards.1. . none unknown . "" . .)) printDecimalDigitsBackwards.0. . none unknown . "" `t31.3.sysma2dyk) printDecimalDigitsBackwards.0. ~5
+                      (proc . . 5
+                       (ht `t25.113. printDecimalDigitsBackwards.1.)
+                       (empty)
+                       (empty) . 100
+                       (pragma . . 2
+                        (ident . . inline))
+                       (bracket . .
+                        (empty) 32,247,/home/araq/projects/nim/lib/std/private/schubfach.nim
+                        (genericparams . . 1
+                         (identdefs . .
+                          (ident . . T) 3 Ordinal.0.sysma2dyk
+                          (empty)))) 2,1
+                       (stmts s .
+                        (var s . 4
+                         (identdefs . .
+                          (sd :output.3 .
+                           (var . +0 +0) . u r0whtl0t0c0 -1 +0 . `t43.11.sysma2dyk printDecimalDigitsBackwards.1.
+                           (identdefs . . output.3 7
+                            (empty) 9 output.2) none unknown . "" . .) 7
+                          (empty) 9 output.2)) ,1
+                        (var s . 4
+                         (identdefs . .
+                          (sd :pos.8 .
+                           (var . +0 +0) . u r0whtl0t0c0 -1 +0 . `t31.3.sysma2dyk printDecimalDigitsBackwards.1.
+                           (identdefs . . pos.8 4
+                            (empty) 6 pos.7) none unknown . "" . .) 4
+                          (empty) 6 pos.7)) ,2
+                        (var s . 4
+                         (identdefs . .
+                          (sd :tz.2 .
+                           (var . +0 +0) . u r0whtl0t0c0 -1 +0 .
+                           (td :`t31.217. . c3 nimcall +8 +8 +0 +217 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "") printDecimalDigitsBackwards.1.
+                           (identdefs . . tz.2 3
+                            (empty) 5
+                            (intlit . `t31.15. +0)) none unknown . "" . .) 3
+                          (empty) 5
+                          (intlit . `t31.15. +0))) ,3
+                        (comment s .) ,4
+                        (var s . 4
+                         (identdefs . .
+                          (sd :nd.1 .
+                           (var . +0 +0) . u r0whtl0t0c0 -1 +0 .
+                           (td :`t31.218. . c3 nimcall +8 +8 +0 +218 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "") printDecimalDigitsBackwards.1.
+                           (identdefs . . nd.1 3
+                            (empty) 5
+                            (intlit . `t31.15. +0)) none unknown . "" . .) 3
+                          (empty) 5
+                          (intlit . `t31.15. +0))) ,5
+                        (comment s .) ,7
+                        (if s . 3
+                         (elif . . 7
+                          (expr sf `t1.34.sysma2dyk 2,136,/home/araq/projects/nim/lib/system/comparisons.nim
+                           (empty)
+                           (infix s `t1.34.sysma2dyk <=.15.sysma2dyk 3
+                            (hstdconv . `t43.11.sysma2dyk
+                             (empty)
+                             (intlit s
+                              (td :`t31.219. . c3 nimcall +8 +8 +0 +219 . 15,255,/home/araq/projects/nim/lib/std/private/schubfach.nim
+                               (intlit s `t31.219. +10000) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +10000)) ~7 output.3)) ~1,1
+                          (stmts s .
+                           (let s . 4
+                            (identdefs . .
+                             (sd :q.5 .
+                              (let . +0 +0) . u r0whtl0t0c0 -1 +0 . `t43.11.sysma2dyk printDecimalDigitsBackwards.1.
+                              (identdefs . . q.5 3 uint32.0.sysma2dyk 19
+                               (infix . `t43.11.sysma2dyk div.8.sysma2dyk ~7 output.3 4
+                                (hstdconv . `t43.11.sysma2dyk
+                                 (empty)
+                                 (intlit .
+                                  (td :`t31.220. . c3 nimcall +8 +8 +0 +220 . 31,256,/home/araq/projects/nim/lib/std/private/schubfach.nim
+                                   (intlit s `t31.220. +10000) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +10000)))) none unknown . "" . .) 3 uint32.0.sysma2dyk 19
+                             (infix . `t43.11.sysma2dyk div.8.sysma2dyk ~7 output.3 4
+                              (hstdconv . `t43.11.sysma2dyk
+                               (empty)
+                               (intlit . `t31.220. +10000))))) ,1
+                           (let s . 4
+                            (identdefs . .
+                             (sd :r.2 .
+                              (let . +0 +0) . u r0whtl0t0c0 -1 +0 . `t43.11.sysma2dyk printDecimalDigitsBackwards.1.
+                              (identdefs . . r.2 3 uint32.0.sysma2dyk 19
+                               (infix . `t43.11.sysma2dyk mod.8.sysma2dyk ~7 output.3 4
+                                (hstdconv . `t43.11.sysma2dyk
+                                 (empty)
+                                 (intlit .
+                                  (td :`t31.221. . c3 nimcall +8 +8 +0 +221 . 31,257,/home/araq/projects/nim/lib/std/private/schubfach.nim
+                                   (intlit s `t31.221. +10000) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +10000)))) none unknown . "" . .) 3 uint32.0.sysma2dyk 19
+                             (infix . `t43.11.sysma2dyk mod.8.sysma2dyk ~7 output.3 4
+                              (hstdconv . `t43.11.sysma2dyk
+                               (empty)
+                               (intlit . `t31.221. +10000))))) 7,2
+                           (asgn s . ~7 output.3 2 q.5) 3,3
+                           (call s . ~3 dec.0.digqtx7k2 1 pos.8 6
+                            (intlit .
+                             (td :`t31.222. . c3 nimcall +8 +8 +0 +222 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +4)) ,4
+                           (if s . 3
+                            (elif . . 2
+                             (expr sf `t1.34.sysma2dyk 2,132,/home/araq/projects/nim/lib/system/comparisons.nim
+                              (empty)
+                              (prefix s `t1.34.sysma2dyk not.0.sysma2dyk
+                               (infix s `t1.34.sysma2dyk ==.17.sysma2dyk ~2 r.2 3
+                                (hstdconv . `t43.11.sysma2dyk
+                                 (empty)
+                                 (intlit s `t31.15. +0))))) ~1,1
+                             (stmts s .
+                              (let s . 4
+                               (identdefs . .
+                                (sd :rH.1 .
+                                 (let . +0 +0) . u r0whtl0t0c0 -1 +0 . `t43.11.sysma2dyk printDecimalDigitsBackwards.1.
+                                 (identdefs . . rH.1 4 uint32.0.sysma2dyk 15
+                                  (infix . `t43.11.sysma2dyk div.8.sysma2dyk ~2 r.2 4
+                                   (hstdconv . `t43.11.sysma2dyk
+                                    (empty)
+                                    (intlit .
+                                     (td :`t31.225. . c3 nimcall +8 +8 +0 +225 . 29,261,/home/araq/projects/nim/lib/std/private/schubfach.nim
+                                      (intlit s `t31.225. +100) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +100)))) none unknown . "" . .) 4 uint32.0.sysma2dyk 15
+                                (infix . `t43.11.sysma2dyk div.8.sysma2dyk ~2 r.2 4
+                                 (hstdconv . `t43.11.sysma2dyk
+                                  (empty)
+                                  (intlit . `t31.225. +100))))) ,1
+                              (let s . 4
+                               (identdefs . .
+                                (sd :rL.1 .
+                                 (let . +0 +0) . u r0whtl0t0c0 -1 +0 . `t43.11.sysma2dyk printDecimalDigitsBackwards.1.
+                                 (identdefs . . rL.1 4 uint32.0.sysma2dyk 15
+                                  (infix . `t43.11.sysma2dyk mod.8.sysma2dyk ~2 r.2 4
+                                   (hstdconv . `t43.11.sysma2dyk
+                                    (empty)
+                                    (intlit .
+                                     (td :`t31.226. . c3 nimcall +8 +8 +0 +226 . 29,262,/home/araq/projects/nim/lib/std/private/schubfach.nim
+                                      (intlit s `t31.226. +100) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +100)))) none unknown . "" . .) 4 uint32.0.sysma2dyk 15
+                                (infix . `t43.11.sysma2dyk mod.8.sysma2dyk ~2 r.2 4
+                                 (hstdconv . `t43.11.sysma2dyk
+                                  (empty)
+                                  (intlit . `t31.226. +100))))) 11,2
+                              (call s . ~11 utoa2Digits.0.digqtx7k2 1 buf.1 6 pos.8 11 rH.1) 11,3
+                              (call s . ~11 utoa2Digits.0.digqtx7k2 1 buf.1 10
+                               (infix s `t31.3.sysma2dyk \2B.5.sysma2dyk ~4 pos.8 2
+                                (intlit s `t31.10. +2)) 15 rL.1) 3,4
+                              (asgn s . ~3 tz.2 48
+                               (infix s `t31.3.sysma2dyk \2B.5.sysma2dyk ~26
+                                (call s `t31.3.sysma2dyk ~20 trailingZeros2Digits.0.digqtx7k2 1
+                                 (ifx s `t43.11.sysma2dyk 3
+                                  (elifx . . 3
+                                   (infix s `t1.34.sysma2dyk ==.17.sysma2dyk ~3 rL.1 3
+                                    (hstdconv . `t43.11.sysma2dyk
+                                     (empty)
+                                     (intlit s `t31.15. +0))) 9 rH.1) 15
+                                  (elsex . . 6 rL.1))) 3
+                                (ifx s `t31.10. 3
+                                 (elifx . . 3
+                                  (infix s `t1.34.sysma2dyk ==.17.sysma2dyk ~3 rL.1 3
+                                   (hstdconv . `t43.11.sysma2dyk
+                                    (empty)
+                                    (intlit s `t31.15. +0))) 9
+                                  (intlit s `t31.10. +2)) 14
+                                 (elsex . . 6
+                                  (intlit s `t31.10. +0))))))) ,6
+                            (else . . 5,1
+                             (asgn s . ~3 tz.2 2
+                              (intlit s `t31.217. +4)))) 3,12
+                           (asgn s . ~3 nd.1 2
+                            (intlit s `t31.218. +4))))) ,21
+                        (if s . 3
+                         (elif . . 7
+                          (expr sf `t1.34.sysma2dyk 2,136,/home/araq/projects/nim/lib/system/comparisons.nim
+                           (empty)
+                           (infix s `t1.34.sysma2dyk <=.15.sysma2dyk 3
+                            (hstdconv . `t43.11.sysma2dyk
+                             (empty)
+                             (intlit s
+                              (td :`t31.227. . c3 nimcall +8 +8 +0 +227 . 15,269,/home/araq/projects/nim/lib/std/private/schubfach.nim
+                               (intlit s `t31.227. +100) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +100)) ~7 output.3)) ~1,1
+                          (stmts s .
+                           (let s . 4
+                            (identdefs . .
+                             (sd :q.6 .
+                              (let . +0 +0) . u r0whtl0t0c0 -1 +0 . `t43.11.sysma2dyk printDecimalDigitsBackwards.1.
+                              (identdefs . . q.6 3 uint32.0.sysma2dyk 19
+                               (infix . `t43.11.sysma2dyk div.8.sysma2dyk ~7 output.3 4
+                                (hstdconv . `t43.11.sysma2dyk
+                                 (empty)
+                                 (intlit .
+                                  (td :`t31.228. . c3 nimcall +8 +8 +0 +228 . 31,270,/home/araq/projects/nim/lib/std/private/schubfach.nim
+                                   (intlit s `t31.228. +100) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +100)))) none unknown . "" . .) 3 uint32.0.sysma2dyk 19
+                             (infix . `t43.11.sysma2dyk div.8.sysma2dyk ~7 output.3 4
+                              (hstdconv . `t43.11.sysma2dyk
+                               (empty)
+                               (intlit . `t31.228. +100))))) ,1
+                           (let s . 4
+                            (identdefs . .
+                             (sd :r.3 .
+                              (let . +0 +0) . u r0whtl0t0c0 -1 +0 . `t43.11.sysma2dyk printDecimalDigitsBackwards.1.
+                              (identdefs . . r.3 3 uint32.0.sysma2dyk 19
+                               (infix . `t43.11.sysma2dyk mod.8.sysma2dyk ~7 output.3 4
+                                (hstdconv . `t43.11.sysma2dyk
+                                 (empty)
+                                 (intlit .
+                                  (td :`t31.229. . c3 nimcall +8 +8 +0 +229 . 31,271,/home/araq/projects/nim/lib/std/private/schubfach.nim
+                                   (intlit s `t31.229. +100) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +100)))) none unknown . "" . .) 3 uint32.0.sysma2dyk 19
+                             (infix . `t43.11.sysma2dyk mod.8.sysma2dyk ~7 output.3 4
+                              (hstdconv . `t43.11.sysma2dyk
+                               (empty)
+                               (intlit . `t31.229. +100))))) 7,2
+                           (asgn s . ~7 output.3 2 q.6) 3,3
+                           (call s . ~3 dec.0.digqtx7k2 1 pos.8 6
+                            (intlit .
+                             (td :`t31.230. . c3 nimcall +8 +8 +0 +230 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +2)) 11,4
+                           (call s . ~11 utoa2Digits.0.digqtx7k2 1 buf.1 6 pos.8 11 r.3) ,5
+                           (if s . 3
+                            (elif . . 3
+                             (infix s `t1.34.sysma2dyk ==.9.sysma2dyk ~3 tz.2 3 nd.1) 2,1
+                             (call s . ~3 inc.9.sysma2dyk 1 tz.2 25
+                              (call s `t31.3.sysma2dyk ~20 trailingZeros2Digits.0.digqtx7k2 1 r.3)))) 3,7
+                           (call s . ~3 inc.9.sysma2dyk 1 nd.1 5
+                            (intlit .
+                             (td :`t31.235. . c3 nimcall +8 +8 +0 +235 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +2)) ,8
+                           (if s . 3
+                            (elif . . 7
+                             (expr sf `t1.34.sysma2dyk 2,136,/home/araq/projects/nim/lib/system/comparisons.nim
+                              (empty)
+                              (infix s `t1.34.sysma2dyk <=.15.sysma2dyk 3
+                               (hstdconv . `t43.11.sysma2dyk
+                                (empty)
+                                (intlit s
+                                 (td :`t31.238. . c3 nimcall +8 +8 +0 +238 . 17,278,/home/araq/projects/nim/lib/std/private/schubfach.nim
+                                  (intlit s `t31.238. +100) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +100)) ~7 output.3)) ~1,1
+                             (stmts s .
+                              (let s . 4
+                               (identdefs . .
+                                (sd :q2.1 .
+                                 (let . +0 +0) . u r0whtl0t0c0 -1 +0 . `t43.11.sysma2dyk printDecimalDigitsBackwards.1.
+                                 (identdefs . . q2.1 4 uint32.0.sysma2dyk 20
+                                  (infix . `t43.11.sysma2dyk div.8.sysma2dyk ~7 output.3 4
+                                   (hstdconv . `t43.11.sysma2dyk
+                                    (empty)
+                                    (intlit .
+                                     (td :`t31.239. . c3 nimcall +8 +8 +0 +239 . 34,279,/home/araq/projects/nim/lib/std/private/schubfach.nim
+                                      (intlit s `t31.239. +100) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +100)))) none unknown . "" . .) 4 uint32.0.sysma2dyk 20
+                                (infix . `t43.11.sysma2dyk div.8.sysma2dyk ~7 output.3 4
+                                 (hstdconv . `t43.11.sysma2dyk
+                                  (empty)
+                                  (intlit . `t31.239. +100))))) ,1
+                              (let s . 4
+                               (identdefs . .
+                                (sd :r2.1 .
+                                 (let . +0 +0) . u r0whtl0t0c0 -1 +0 . `t43.11.sysma2dyk printDecimalDigitsBackwards.1.
+                                 (identdefs . . r2.1 4 uint32.0.sysma2dyk 20
+                                  (infix . `t43.11.sysma2dyk mod.8.sysma2dyk ~7 output.3 4
+                                   (hstdconv . `t43.11.sysma2dyk
+                                    (empty)
+                                    (intlit .
+                                     (td :`t31.240. . c3 nimcall +8 +8 +0 +240 . 34,280,/home/araq/projects/nim/lib/std/private/schubfach.nim
+                                      (intlit s `t31.240. +100) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +100)))) none unknown . "" . .) 4 uint32.0.sysma2dyk 20
+                                (infix . `t43.11.sysma2dyk mod.8.sysma2dyk ~7 output.3 4
+                                 (hstdconv . `t43.11.sysma2dyk
+                                  (empty)
+                                  (intlit . `t31.240. +100))))) 7,2
+                              (asgn s . ~7 output.3 2 q2.1) 3,3
+                              (call s . ~3 dec.0.digqtx7k2 1 pos.8 6
+                               (intlit .
+                                (td :`t31.241. . c3 nimcall +8 +8 +0 +241 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +2)) 11,4
+                              (call s . ~11 utoa2Digits.0.digqtx7k2 1 buf.1 6 pos.8 11 r2.1) ,5
+                              (if s . 3
+                               (elif . . 3
+                                (infix s `t1.34.sysma2dyk ==.9.sysma2dyk ~3 tz.2 3 nd.1) 2,1
+                                (call s . ~3 inc.9.sysma2dyk 1 tz.2 25
+                                 (call s `t31.3.sysma2dyk ~20 trailingZeros2Digits.0.digqtx7k2 1 r2.1)))) 3,7
+                              (call s . ~3 inc.9.sysma2dyk 1 nd.1 5
+                               (intlit .
+                                (td :`t31.246. . c3 nimcall +8 +8 +0 +246 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +2)))))))) ,~228
+                        (stmts sf . 2,59,/home/araq/projects/nim/lib/std/assertions.nim
+                         (empty) 2,70,/home/araq/projects/nim/lib/std/assertions.nim
+                         (empty)) ,~228
+                        (stmts sf . 2,59,/home/araq/projects/nim/lib/std/assertions.nim
+                         (empty) 2,70,/home/araq/projects/nim/lib/std/assertions.nim
+                         (empty)) ,41
+                        (if s . 3
+                         (elif . . 7
+                          (expr sf `t1.34.sysma2dyk 2,136,/home/araq/projects/nim/lib/system/comparisons.nim
+                           (empty)
+                           (infix s `t1.34.sysma2dyk <=.15.sysma2dyk 3
+                            (hstdconv . `t43.11.sysma2dyk
+                             (empty)
+                             (intlit s `t31.97. +10)) ~7 output.3)) ~1,1
+                          (stmts s .
+                           (let s . 4
+                            (identdefs . .
+                             (sd :q.7 .
+                              (let . +0 +0) . u r0whtl0t0c0 -1 +0 . `t43.11.sysma2dyk printDecimalDigitsBackwards.1.
+                              (identdefs . . q.7 3 uint32.0.sysma2dyk 12 output.3) none unknown . "" . .) 3 uint32.0.sysma2dyk 12 output.3)) 3,1
+                           (call s . ~3 dec.0.digqtx7k2 1 pos.8 6
+                            (intlit .
+                             (td :`t31.252. . c3 nimcall +8 +8 +0 +252 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +2)) 11,2
+                           (call s . ~11 utoa2Digits.0.digqtx7k2 1 buf.1 6 pos.8 11 q.7) ,3
+                           (if s . 3
+                            (elif . . 3
+                             (infix s `t1.34.sysma2dyk ==.9.sysma2dyk ~3 tz.2 3 nd.1) 2,1
+                             (call s . ~3 inc.9.sysma2dyk 1 tz.2 25
+                              (call s `t31.3.sysma2dyk ~20 trailingZeros2Digits.0.digqtx7k2 1 q.7)))))) ,6
+                         (else . . 2,1
+                          (stmts s .
+                           (let s . 4
+                            (identdefs . .
+                             (sd :q.8 .
+                              (let . +0 +0) . u r0whtl0t0c0 -1 +0 . `t43.11.sysma2dyk printDecimalDigitsBackwards.1.
+                              (identdefs . . q.8 3 uint32.0.sysma2dyk 12 output.3) none unknown . "" . .) 3 uint32.0.sysma2dyk 12 output.3)) ~2,~276
+                           (stmts sf . 2,59,/home/araq/projects/nim/lib/std/assertions.nim
+                            (empty) 2,70,/home/araq/projects/nim/lib/std/assertions.nim
+                            (empty)) ~2,~276
+                           (stmts sf . 2,59,/home/araq/projects/nim/lib/std/assertions.nim
+                            (empty) 2,70,/home/araq/projects/nim/lib/std/assertions.nim
+                            (empty)) 3,3
+                           (call s . ~3 dec.0.digqtx7k2 1 pos.8 55,33,/home/araq/projects/nim/lib/system/arithmetics.nim
+                            (intlit s `t31.36.sysma2dyk +1)) 9,4
+                           (asgn s .
+                            (at . `t2.16.sysma2dyk ~9
+                             (hderef . `t27.115. buf.1) ~5 pos.8) 5
+                            (call s `t2.16.sysma2dyk ~3 chr.0.sysma2dyk 13
+                             (hstdconv . `t20.815.sysma2dyk
+                              (empty)
+                              (infix s `t43.11.sysma2dyk \2B.13.sysma2dyk ~6
+                               (conv s `t43.11.sysma2dyk ~6 uint32.0.sysma2dyk 1
+                                (charlit s `t2.16.sysma2dyk '0')) 2 q.8))))))) ,53
+                        (ret s . 7
+                         (asgn . `t7.1. ~9,~54
+                          (sd :result.25 .
+                           (result) . u . -1 +0 . `t31.3.sysma2dyk printDecimalDigitsBackwards.1. . none unknown . "" . .) tz.2))) result.25) none unknown . "" . printDecimalDigitsBackwards.0.) 1 buffer.2 9 digitsEnd.1 20 digits.2)) none unknown . "" . .) 3
+                  (empty) 32
+                  (call . `t31.3.sysma2dyk ~27 printDecimalDigitsBackwards.1. 1 buffer.2 9 digitsEnd.1 20 digits.2))) 3,33
+                (call s . ~3 dec.0.digqtx7k2 1 digitsEnd.1 12 tz.3) 3,34
+                (call s . ~3 dec.0.digqtx7k2 1 numDigits.1 12 tz.3) ,35
+                (comment s .) ,36
+                (if s . 3
+                 (elif . . useFixed.1 ~1,1
+                  (if s . 3
+                   (elif . . 13
+                    (infix s `t1.34.sysma2dyk <=.7.sysma2dyk ~13 decimalPoint.1 3
+                     (intlit s `t31.15. +0)) ~1,1
+                    (stmts s .
+                     (comment s .) 14,1
+                     (asgn s .
+                      (at . `t2.16.sysma2dyk ~14
+                       (hderef . `t27.151. buffer.2) ~4
+                       (infix s `t31.3.sysma2dyk \2B.5.sysma2dyk ~3 pos.6 1
+                        (intlit s `t31.8. +1))) 2
+                      (charlit s `t2.16.sysma2dyk '.')) 4,2
+                     (asgn s . ~4 pos.6 2 digitsEnd.1))) 5,4
+                   (elif . . 13
+                    (infix s `t1.34.sysma2dyk <.8.sysma2dyk ~13 decimalPoint.1 2 numDigits.1) ~3,1
+                    (stmts s .
+                     (comment s .) 4,1
+                     (for s .
+                      (sd :i.3 .
+                       (forvar . +0 +0) . u . -1 +0 . `t31.3.sysma2dyk formatDigits.1. . none unknown . "" . .) 14
+                      (call s `t31.3.sysma2dyk ~9 countdown.1.sysma2dyk 1
+                       (intlit .
+                        (td :`t31.268. . c3 nimcall +8 +8 +0 +268 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +7) 4
+                       (intlit . `t31.268. +0) 49,6,/home/araq/projects/nim/lib/system/iterators_1.nim
+                       (intlit s `t20.745.sysma2dyk +1)) 27,1
+                      (asgn s .
+                       (at . `t2.16.sysma2dyk ~29
+                        (hderef . `t27.151. buffer.2) ~5
+                        (infix s `t31.3.sysma2dyk \2B.5.sysma2dyk ~15
+                         (infix s `t31.3.sysma2dyk \2B.5.sysma2dyk ~2 i.3 2 decimalPoint.1) 2
+                         (intlit s `t31.8. +1))) 8
+                       (at s `t2.16.sysma2dyk ~6
+                        (hderef . `t27.151. buffer.2) 3
+                        (infix s `t31.3.sysma2dyk \2B.5.sysma2dyk ~2 i.3 2 decimalPoint.1)))) 25,3
+                     (asgn s .
+                      (at . `t2.16.sysma2dyk ~25
+                       (hderef . `t27.151. buffer.2) ~15
+                       (infix s `t31.3.sysma2dyk \2B.5.sysma2dyk ~3 pos.6 1 decimalPoint.1)) 2
+                      (charlit s `t2.16.sysma2dyk '.')) 4,4
+                     (asgn s . ~4 pos.6 12
+                      (infix s `t31.3.sysma2dyk \2B.5.sysma2dyk ~10 digitsEnd.1 2
+                       (intlit s `t31.8. +1))))) ,10
+                   (else . . 2,1
+                    (stmts s .
+                     (comment s .) 3,1
+                     (call s . ~3 inc.9.sysma2dyk 1 pos.6 6 decimalPoint.1) ,2
+                     (if s . 3
+                      (elif . . forceTrailingDotZero.2 ~1,1
+                       (stmts s . 12
+                        (asgn s .
+                         (at . `t2.16.sysma2dyk ~12
+                          (hderef . `t27.151. buffer.2) ~5 pos.6) 2
+                         (charlit s `t2.16.sysma2dyk '.')) 14,1
+                        (asgn s .
+                         (at . `t2.16.sysma2dyk ~14
+                          (hderef . `t27.151. buffer.2) ~4
+                          (infix s `t31.3.sysma2dyk \2B.5.sysma2dyk ~3 pos.6 1
+                           (intlit s `t31.8. +1))) 2
+                         (charlit s `t2.16.sysma2dyk '0')) 3,2
+                        (call s . ~3 inc.9.sysma2dyk 1 pos.6 6
+                         (intlit .
+                          (td :`t31.272. . c3 nimcall +8 +8 +0 +272 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +2))))))))) ,18
+                 (else . . 2,1
+                  (stmts s . 12
+                   (asgn s .
+                    (at . `t2.16.sysma2dyk ~12
+                     (hderef . `t27.151. buffer.2) ~5 pos.6) 8
+                    (at s `t2.16.sysma2dyk ~6
+                     (hderef . `t27.151. buffer.2) 4
+                     (infix s `t31.3.sysma2dyk \2B.5.sysma2dyk ~3 pos.6 1
+                      (intlit s `t31.8. +1)))) ,1
+                   (if s . 3
+                    (elif . . 10
+                     (infix s `t1.34.sysma2dyk ==.9.sysma2dyk ~10 numDigits.1 3
+                      (intlit s `t31.8. +1)) ~1,1
+                     (stmts s .
+                      (comment s .) 3,1
+                      (call s . ~3 inc.9.sysma2dyk 1 pos.6 55,21,/home/araq/projects/nim/lib/system/arithmetics.nim
+                       (intlit s `t31.36.sysma2dyk +1)))) ,3
+                    (else . . 2,1
+                     (stmts s .
+                      (comment s .) 14,1
+                      (asgn s .
+                       (at . `t2.16.sysma2dyk ~14
+                        (hderef . `t27.151. buffer.2) ~4
+                        (infix s `t31.3.sysma2dyk \2B.5.sysma2dyk ~3 pos.6 1
+                         (intlit s `t31.8. +1))) 2
+                       (charlit s `t2.16.sysma2dyk '.')) 4,2
+                      (asgn s . ~4 pos.6 2 digitsEnd.1)))) ,8
+                   (let s . 4
+                    (identdefs . .
+                     (sd :scientificExponent.1 .
+                      (let . +0 +0) . u r0whtl0t0c0 -1 +0 . `t31.3.sysma2dyk formatDigits.1.
+                      (identdefs . . scientificExponent.1 19
+                       (empty) 34
+                       (infix . `t31.3.sysma2dyk \2D.5.sysma2dyk ~13 decimalPoint.1 2
+                        (intlit . `t31.8. +1))) none unknown . "" . .) 19
+                     (empty) 34
+                     (infix . `t31.3.sysma2dyk \2D.5.sysma2dyk ~13 decimalPoint.1 2
+                      (intlit . `t31.8. +1)))) ,9
+                   (comment s .) 12,10
+                   (asgn s .
+                    (at . `t2.16.sysma2dyk ~12
+                     (hderef . `t27.151. buffer.2) ~5 pos.6) 2
+                    (charlit s `t2.16.sysma2dyk 'e')) 14,11
+                   (asgn s .
+                    (at . `t2.16.sysma2dyk ~14
+                     (hderef . `t27.151. buffer.2) ~4
+                     (infix s `t31.3.sysma2dyk \2B.5.sysma2dyk ~3 pos.6 1
+                      (intlit s `t31.8. +1))) 2
+                    (ifx s `t2.16.sysma2dyk 3
+                     (elifx . . 19
+                      (infix s `t1.34.sysma2dyk <.8.sysma2dyk ~19 scientificExponent.1 2
+                       (intlit s `t31.15. +0)) 24
+                      (charlit s `t2.16.sysma2dyk '-')) 31
+                     (elsex . . 6
+                      (charlit s `t2.16.sysma2dyk '+')))) 3,12
+                   (call s . ~3 inc.9.sysma2dyk 1 pos.6 6
+                    (intlit .
+                     (td :`t31.278. . c3 nimcall +8 +8 +0 +278 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +2)) ,13
+                   (let s . 4
+                    (identdefs . .
+                     (sd :k.3 .
+                      (let . +0 +0) . u r0whtl0t0c0 -1 +0 . `t43.11.sysma2dyk formatDigits.1.
+                      (identdefs . . k.3 3 uint32.0.sysma2dyk 12
+                       (cast . `t43.11.sysma2dyk 5 uint32.0.sysma2dyk 13
+                        (ifx . `t31.3.sysma2dyk 3
+                         (elifx . . 19
+                          (infix . `t1.34.sysma2dyk <.8.sysma2dyk ~19 scientificExponent.1 2
+                           (intlit . `t31.15. +0)) 24
+                          (prefix . `t31.3.sysma2dyk \2D.0.sysma2dyk 1 scientificExponent.1)) 47
+                         (elsex . . 6 scientificExponent.1)))) none unknown . "" . .) 3 uint32.0.sysma2dyk 12
+                     (cast . `t43.11.sysma2dyk 5 uint32.0.sysma2dyk 13
+                      (ifx . `t31.3.sysma2dyk 3
+                       (elifx . . 19
+                        (infix . `t1.34.sysma2dyk <.8.sysma2dyk ~19 scientificExponent.1 2
+                         (intlit . `t31.15. +0)) 24
+                        (prefix . `t31.3.sysma2dyk \2D.0.sysma2dyk 1 scientificExponent.1)) 47
+                       (elsex . . 6 scientificExponent.1))))) ,14
+                   (if s . 3
+                    (elif . . 2
+                     (infix s `t1.34.sysma2dyk <.16.sysma2dyk ~2 k.3 2
+                      (hstdconv . `t43.11.sysma2dyk
+                       (empty)
+                       (intlit s `t31.97. +10))) ~1,1
+                     (stmts s . 12
+                      (asgn s .
+                       (at . `t2.16.sysma2dyk ~12
+                        (hderef . `t27.151. buffer.2) ~5 pos.6) 5
+                       (call s `t2.16.sysma2dyk ~3 chr.0.sysma2dyk 13
+                        (hstdconv . `t20.815.sysma2dyk
+                         (empty)
+                         (infix s `t43.11.sysma2dyk \2B.13.sysma2dyk ~6
+                          (conv s `t43.11.sysma2dyk ~6 uint32.0.sysma2dyk 1
+                           (charlit s `t2.16.sysma2dyk '0')) 2 k.3)))) ,1
+                      (cmd s . inc.9.sysma2dyk 4 pos.6 55,21,/home/araq/projects/nim/lib/system/arithmetics.nim
+                       (intlit s `t31.36.sysma2dyk +1)))) ,3
+                    (else . . 2,1
+                     (stmts s . 11
+                      (call s . ~11 utoa2Digits.0.digqtx7k2 1 buffer.2 9 pos.6 14 k.3) 3,1
+                      (call s . ~3 inc.9.sysma2dyk 1 pos.6 6
+                       (intlit .
+                        (td :`t31.284. . c3 nimcall +8 +8 +0 +284 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +2)))))))) ,75
+                (ret s . 7
+                 (asgn . `t7.1. ~9,~77
+                  (sd :result.24 .
+                   (result) . u . -1 +0 . `t31.3.sysma2dyk formatDigits.1. . none unknown . "" . .) pos.6))) result.24) none unknown . "" . formatDigits.0.) 1 buffer.1 9 pos.4 17
+             (dot s `t43.11.sysma2dyk ~3 dec.0 1 digits.0.) 38
+             (conv s `t31.3.sysma2dyk 1 int.0.sysma2dyk ~9
+              (dot s `t34.6.sysma2dyk ~3 dec.0 1 exponent.0.)) 44 forceTrailingDotZero.1))))) ,4
+        (else . . 2,1
+         (stmts s . 12
+          (asgn s . ~6
+           (at . `t2.16.sysma2dyk ~6
+            (hderef . `t27.194. buffer.1) 1 pos.4) 2
+           (charlit s `t2.16.sysma2dyk '0')) 14,1
+          (asgn s . ~8
+           (at . `t2.16.sysma2dyk ~6
+            (hderef . `t27.194. buffer.1) 4
+            (infix s `t31.3.sysma2dyk \2B.5.sysma2dyk ~3 pos.4 1
+             (intlit s `t31.8. +1))) 2
+           (charlit s `t2.16.sysma2dyk '.')) 14,2
+          (asgn s . ~8
+           (at . `t2.16.sysma2dyk ~6
+            (hderef . `t27.194. buffer.1) 4
+            (infix s `t31.3.sysma2dyk \2B.5.sysma2dyk ~3 pos.4 1
+             (intlit s `t31.10. +2))) 2
+           (charlit s `t2.16.sysma2dyk '0')) 14,3
+          (asgn s . ~8
+           (at . `t2.16.sysma2dyk ~6
+            (hderef . `t27.194. buffer.1) 4
+            (infix s `t31.3.sysma2dyk \2B.5.sysma2dyk ~3 pos.4 1
+             (intlit s
+              (td :`t31.289. . c3 nimcall +8 +8 +0 +289 . 17,420,/home/araq/projects/nim/lib/std/private/schubfach.nim
+               (intlit s `t31.289. +3) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +3))) 2
+           (charlit s `t2.16.sysma2dyk ' ')) 3,4
+          (call s . ~3 inc.9.sysma2dyk 1 pos.4 6
+           (ifx .
+            (td :`t31.290. . c3 nimcall +8 +8 +0 +290 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "") 3
+            (elifx . . forceTrailingDotZero.1 22
+             (intlit . `t31.289. +3)) 27
+            (elsex . . 6
+             (intlit . `t31.289. +1)))) ,5
+          (ret s . 7
+           (asgn . `t7.1. ~13,~19 result.23 pos.4)))))))) ,18
+    (if s . 3
+     (elif . . 12
+      (infix s `t1.34.sysma2dyk ==.17.sysma2dyk ~12 significand.0 3
+       (hstdconv . `t43.11.sysma2dyk
+        (empty)
+        (intlit s `t31.15. +0))) ~1,1
+      (stmts s . 12
+       (asgn s . ~6
+        (at . `t2.16.sysma2dyk ~6
+         (hderef . `t27.194. buffer.1) 1 pos.4) 2
+        (charlit s `t2.16.sysma2dyk '-')) 3,1
+       (call s . ~3 inc.9.sysma2dyk 1 pos.4 13
+        (call s `t31.3.sysma2dyk ~7 signBit.0. 16
+         (call s `t17.6. ~15 constructSingle.1. 1 v.1))) 12,2
+       (asgn s . ~6
+        (at . `t2.16.sysma2dyk ~6
+         (hderef . `t27.194. buffer.1) 1 pos.4) 2
+        (charlit s `t2.16.sysma2dyk 'i')) 14,3
+       (asgn s . ~8
+        (at . `t2.16.sysma2dyk ~6
+         (hderef . `t27.194. buffer.1) 4
+         (infix s `t31.3.sysma2dyk \2B.5.sysma2dyk ~3 pos.4 1
+          (intlit s `t31.8. +1))) 2
+        (charlit s `t2.16.sysma2dyk 'n')) 14,4
+       (asgn s . ~8
+        (at . `t2.16.sysma2dyk ~6
+         (hderef . `t27.194. buffer.1) 4
+         (infix s `t31.3.sysma2dyk \2B.5.sysma2dyk ~3 pos.4 1
+          (intlit s `t31.10. +2))) 2
+        (charlit s `t2.16.sysma2dyk 'f')) 14,5
+       (asgn s . ~8
+        (at . `t2.16.sysma2dyk ~6
+         (hderef . `t27.194. buffer.1) 4
+         (infix s `t31.3.sysma2dyk \2B.5.sysma2dyk ~3 pos.4 1
+          (intlit s `t31.289. +3))) 2
+        (charlit s `t2.16.sysma2dyk ' ')) ,6
+       (ret s . 11
+        (asgn . `t7.1. ~15,~27 result.23
+         (infix s `t31.3.sysma2dyk \2B.5.sysma2dyk ~4 pos.4 2
+          (intlit s `t31.289. +3)))))) ,8
+     (else . . 2,1
+      (stmts s . 12
+       (asgn s . ~6
+        (at . `t2.16.sysma2dyk ~6
+         (hderef . `t27.194. buffer.1) 1 pos.4) 2
+        (charlit s `t2.16.sysma2dyk 'n')) 14,1
+       (asgn s . ~8
+        (at . `t2.16.sysma2dyk ~6
+         (hderef . `t27.194. buffer.1) 4
+         (infix s `t31.3.sysma2dyk \2B.5.sysma2dyk ~3 pos.4 1
+          (intlit s `t31.8. +1))) 2
+        (charlit s `t2.16.sysma2dyk 'a')) 14,2
+       (asgn s . ~8
+        (at . `t2.16.sysma2dyk ~6
+         (hderef . `t27.194. buffer.1) 4
+         (infix s `t31.3.sysma2dyk \2B.5.sysma2dyk ~3 pos.4 1
+          (intlit s `t31.10. +2))) 2
+        (charlit s `t2.16.sysma2dyk 'n')) 14,3
+       (asgn s . ~8
+        (at . `t2.16.sysma2dyk ~6
+         (hderef . `t27.194. buffer.1) 4
+         (infix s `t31.3.sysma2dyk \2B.5.sysma2dyk ~3 pos.4 1
+          (intlit s `t31.289. +3))) 2
+        (charlit s `t2.16.sysma2dyk ' ')) ,4
+       (ret s . 11
+        (asgn . `t7.1. ~15,~33 result.23
+         (infix s `t31.3.sysma2dyk \2B.5.sysma2dyk ~4 pos.4 2
+          (intlit s `t31.289. +3)))))))) result.23) none unknown . "" . .) formatDigits.1. printDecimalDigitsBackwards.1. 5,240,/home/araq/projects/nim/lib/system/arithmetics.nim
+ (sd :shr.0. .
+  (proc) shr uefgn ofrbcr0s0awhl0t0c0 -1 +0 .
+  (td :`t25.19. . nge2 nimcall -1 -1 +0 +19 . 11,240,/home/araq/projects/nim/lib/system/arithmetics.nim
+   (formalparams . `t43.11.sysma2dyk
+    (arglist . .
+     (arglist . .) . .
+     (arglist . .) 36
+     (pragma . . 7
+      (kv . . ~5
+       (ident . . magic) 2
+       (strlit . `t28.17.sysma2dyk "ShrI")) 17
+      (ident . . noSideEffect))
+     (arglist . .)) 1
+    (sd :x.3 .
+     (param) . . . -1 +0 . `t43.11.sysma2dyk shr.0. . none unknown . "" . .) 12
+    (sd :y.2 .
+     (param) . . . -1 +1 .
+     (td :`t31.18. . c3 nimcall +8 +8 +0 +18 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "") shr.0. . none unknown . "" . .)) shr.8.sysma2dyk . none unknown . "" `t43.11.sysma2dyk) shr.8.sysma2dyk ~5
+  (proc . . 5
+   (ht `t25.420.sysma2dyk shr.0.)
+   (empty)
+   (empty) . 47
+   (pragma . . 7
+    (kv . . ~5
+     (ident . . magic) 2
+     (strlit . `t28.17.sysma2dyk "ShrI")) 17
+    (ident . . noSideEffect))
+   (bracket . .
+    (empty)
+    (empty))
+   (empty)) none unknown . "" . shr.8.sysma2dyk) 16,42
+ (sd :=wasMoved.0. .
+  (proc) . fng1n3 . -1 +0 .
+  (td :`t25.22. . n nimcall -1 -1 +0 +22 . 17,43,/home/araq/projects/nim/lib/std/private/schubfach.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.0 .
+     (param) . . . -1 +0 .
+     (td :`t23.21. . . nimcall -1 -1 +0 +21 . . schubfach.0. . none unknown . "" `t17.6.) =wasMoved.0. . none unknown . "" . .)) schubfach.0. . none unknown . "" .) schubfach.0.
+  (proc . . =wasMoved.0.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .
+    (call . .
+     (sd :wasMoved.0. .
+      (proc) wasmoved n3 . -1 +0 . . . . none unknown . "" . .)
+     (dot . `t43.5.
+      (hderef . `t17.6. dest.0) bits.0.)))) none unknown . "" . .) 16,42
+ (sd :=destroy.0. .
+  (proc) . fg1n3 q -1 +0 .
+  (td :`t25.24. . . nimcall -1 -1 +0 +24 . 17,43,/home/araq/projects/nim/lib/std/private/schubfach.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.1 .
+     (param) . . . -1 +0 .
+     (td :`t23.23. . . nimcall -1 -1 +0 +23 . . schubfach.0. . none unknown . "" `t17.6.) =destroy.0. . none unknown . "" . .)) schubfach.0. . none unknown . "" .) schubfach.0.
+  (proc . . =destroy.0.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .)) none unknown . "" . .) 16,42
+ (sd :=copy.0. .
+  (proc) . fg1n3 . -1 +0 .
+  (td :`t25.26. . . nimcall -1 -1 +0 +26 . 17,43,/home/araq/projects/nim/lib/std/private/schubfach.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.2 .
+     (param) . . . -1 +0 .
+     (td :`t23.25. . . nimcall -1 -1 +0 +25 . . schubfach.0. . none unknown . "" `t17.6.) =copy.0. . none unknown . "" . .)
+    (sd :src.2 .
+     (param) . . . -1 +1 . `t17.6. =copy.0. . none unknown . "" . .)) schubfach.0. . none unknown . "" .) schubfach.0.
+  (proc . . =copy.0.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .
+    (asgn . .
+     (dot . `t43.5.
+      (hderef . `t17.6. dest.2) bits.0.)
+     (dot . `t43.5. src.2 bits.0.)))) none unknown . "" . .) 16,42
+ (sd :=dup.0. .
+  (proc) . fg1n3 . -1 +0 .
+  (td :`t25.27. . . nimcall -1 -1 +0 +27 . 17,43,/home/araq/projects/nim/lib/std/private/schubfach.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :src.3 .
+     (param) . . . -1 +0 . `t17.6. =dup.0. . none unknown . "" . .)) schubfach.0. . none unknown . "" `t17.6.) schubfach.0.
+  (proc . . =dup.0.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .
+    (asgn . .
+     (dot . `t43.5.
+      (sd :result.1 .
+       (result) . . . -1 +0 . `t17.6. =dup.0. . none unknown . "" . .) bits.0.)
+     (dot . `t43.5. src.3 bits.0.))) result.1) none unknown . "" . .) 16,42
+ (sd :=sink.0. .
+  (proc) . fg1n3 . -1 +0 .
+  (td :`t25.29. . . nimcall -1 -1 +0 +29 . 17,43,/home/araq/projects/nim/lib/std/private/schubfach.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.3 .
+     (param) . . . -1 +0 .
+     (td :`t23.28. . . nimcall -1 -1 +0 +28 . . schubfach.0. . none unknown . "" `t17.6.) =sink.0. . none unknown . "" . .)
+    (sd :src.4 .
+     (param) . . . -1 +1 . `t17.6. =sink.0. . none unknown . "" . .)) schubfach.0. . none unknown . "" .) schubfach.0.
+  (proc . . =sink.0.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .
+    (asgn . .
+     (dot . `t43.5.
+      (hderef . `t17.6. dest.3) bits.0.)
+     (dot . `t43.5. src.4 bits.0.)))) none unknown . "" . .) 16,42
+ (sd :=trace.0. .
+  (proc) . fg1n3 . -1 +0 .
+  (td :`t25.31. . . nimcall -1 -1 +0 +31 . 17,43,/home/araq/projects/nim/lib/std/private/schubfach.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.4 .
+     (param) . . . -1 +0 .
+     (td :`t23.30. . . nimcall -1 -1 +0 +30 . . schubfach.0. . none unknown . "" `t17.6.) =trace.0. . none unknown . "" . .)
+    (sd :env.0 .
+     (param) . . . -1 +1 . `t26.19.sysma2dyk =trace.0. . none unknown . "" . .)) schubfach.0. . none unknown . "" .) schubfach.0.
+  (proc . . =trace.0.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .)) none unknown . "" . .) 12,144
+ (sd :=wasMoved.1. .
+  (proc) . fng1n3 . -1 +0 .
+  (td :`t25.59. . n nimcall -1 -1 +0 +59 . 13,145,/home/araq/projects/nim/lib/std/private/schubfach.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.5 .
+     (param) . . . -1 +0 .
+     (td :`t23.58. . . nimcall -1 -1 +0 +58 . . schubfach.0. . none unknown . "" `t20.51.) =wasMoved.1. . none unknown . "" . .)) schubfach.0. . none unknown . "" .) schubfach.0.
+  (proc . . =wasMoved.1.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .
+    (call . .
+     (sd :wasMoved.1. .
+      (proc) wasmoved n3 . -1 +0 . . . . none unknown . "" . .)
+     (hderef . `t20.51. dest.5)))) none unknown . "" . .) 12,144
+ (sd :=destroy.1. .
+  (proc) . fg1n3 q -1 +0 .
+  (td :`t25.61. . . nimcall -1 -1 +0 +61 . 13,145,/home/araq/projects/nim/lib/std/private/schubfach.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.6 .
+     (param) . . . -1 +0 .
+     (td :`t23.60. . . nimcall -1 -1 +0 +60 . . schubfach.0. . none unknown . "" `t20.51.) =destroy.1. . none unknown . "" . .)) schubfach.0. . none unknown . "" .) schubfach.0.
+  (proc . . =destroy.1.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .)) none unknown . "" . .) 12,144
+ (sd :=copy.1. .
+  (proc) . fg1n3 . -1 +0 .
+  (td :`t25.63. . . nimcall -1 -1 +0 +63 . 13,145,/home/araq/projects/nim/lib/std/private/schubfach.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.7 .
+     (param) . . . -1 +0 .
+     (td :`t23.62. . . nimcall -1 -1 +0 +62 . . schubfach.0. . none unknown . "" `t20.51.) =copy.1. . none unknown . "" . .)
+    (sd :src.7 .
+     (param) . . . -1 +1 . `t20.51. =copy.1. . none unknown . "" . .)) schubfach.0. . none unknown . "" .) schubfach.0.
+  (proc . . =copy.1.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .
+    (asgn . .
+     (hderef . `t20.51. dest.7) src.7))) none unknown . "" . .) 12,144
+ (sd :=dup.1. .
+  (proc) . fg1n3 . -1 +0 .
+  (td :`t25.64. . . nimcall -1 -1 +0 +64 . 13,145,/home/araq/projects/nim/lib/std/private/schubfach.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :src.8 .
+     (param) . . . -1 +0 . `t20.51. =dup.1. . none unknown . "" . .)) schubfach.0. . none unknown . "" `t20.51.) schubfach.0.
+  (proc . . =dup.1.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .
+    (asgn . .
+     (sd :result.13 .
+      (result) . . . -1 +0 . `t20.51. =dup.1. . none unknown . "" . .) src.8)) result.13) none unknown . "" . .) 12,144
+ (sd :=sink.1. .
+  (proc) . fg1n3 . -1 +0 .
+  (td :`t25.66. . . nimcall -1 -1 +0 +66 . 13,145,/home/araq/projects/nim/lib/std/private/schubfach.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.8 .
+     (param) . . . -1 +0 .
+     (td :`t23.65. . . nimcall -1 -1 +0 +65 . . schubfach.0. . none unknown . "" `t20.51.) =sink.1. . none unknown . "" . .)
+    (sd :src.9 .
+     (param) . . . -1 +1 . `t20.51. =sink.1. . none unknown . "" . .)) schubfach.0. . none unknown . "" .) schubfach.0.
+  (proc . . =sink.1.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .
+    (asgn . .
+     (hderef . `t20.51. dest.8) src.9))) none unknown . "" . .) 12,144
+ (sd :=trace.1. .
+  (proc) . fg1n3 . -1 +0 .
+  (td :`t25.68. . . nimcall -1 -1 +0 +68 . 13,145,/home/araq/projects/nim/lib/std/private/schubfach.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.9 .
+     (param) . . . -1 +0 .
+     (td :`t23.67. . . nimcall -1 -1 +0 +67 . . schubfach.0. . none unknown . "" `t20.51.) =trace.1. . none unknown . "" . .)
+    (sd :env.1 .
+     (param) . . . -1 +1 . `t26.19.sysma2dyk =trace.1. . none unknown . "" . .)) schubfach.0. . none unknown . "" .) schubfach.0.
+  (proc . . =trace.1.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .)) none unknown . "" . .) 29,197
+ (sd :=wasMoved.2. .
+  (proc) . fng1n3 . -1 +0 .
+  (td :`t25.102. . n nimcall -1 -1 +0 +102 . 30,198,/home/araq/projects/nim/lib/std/private/schubfach.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.10 .
+     (param) . . . -1 +0 .
+     (td :`t23.101. . . nimcall -1 -1 +0 +101 . . schubfach.0. . none unknown . "" `t17.81.) =wasMoved.2. . none unknown . "" . .)) schubfach.0. . none unknown . "" .) schubfach.0.
+  (proc . . =wasMoved.2.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .
+    (call . .
+     (sd :wasMoved.2. .
+      (proc) wasmoved n3 . -1 +0 . . . . none unknown . "" . .)
+     (dot . `t43.11.sysma2dyk
+      (hderef . `t17.81. dest.10) digits.0.))
+    (call . .
+     (sd :wasMoved.3. .
+      (proc) wasmoved n3 . -1 +0 . . . . none unknown . "" . .)
+     (dot . `t34.6.sysma2dyk
+      (hderef . `t17.81. dest.10) exponent.0.)))) none unknown . "" . .) 29,197
+ (sd :=destroy.2. .
+  (proc) . fg1n3 q -1 +0 .
+  (td :`t25.104. . . nimcall -1 -1 +0 +104 . 30,198,/home/araq/projects/nim/lib/std/private/schubfach.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.11 .
+     (param) . . . -1 +0 .
+     (td :`t23.103. . . nimcall -1 -1 +0 +103 . . schubfach.0. . none unknown . "" `t17.81.) =destroy.2. . none unknown . "" . .)) schubfach.0. . none unknown . "" .) schubfach.0.
+  (proc . . =destroy.2.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .)) none unknown . "" . .) 29,197
+ (sd :=copy.2. .
+  (proc) . fg1n3 . -1 +0 .
+  (td :`t25.106. . . nimcall -1 -1 +0 +106 . 30,198,/home/araq/projects/nim/lib/std/private/schubfach.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.12 .
+     (param) . . . -1 +0 .
+     (td :`t23.105. . . nimcall -1 -1 +0 +105 . . schubfach.0. . none unknown . "" `t17.81.) =copy.2. . none unknown . "" . .)
+    (sd :src.12 .
+     (param) . . . -1 +1 . `t17.81. =copy.2. . none unknown . "" . .)) schubfach.0. . none unknown . "" .) schubfach.0.
+  (proc . . =copy.2.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .
+    (asgn . .
+     (dot . `t43.11.sysma2dyk
+      (hderef . `t17.81. dest.12) digits.0.)
+     (dot . `t43.11.sysma2dyk src.12 digits.0.))
+    (asgn . .
+     (dot . `t34.6.sysma2dyk
+      (hderef . `t17.81. dest.12) exponent.0.)
+     (dot . `t34.6.sysma2dyk src.12 exponent.0.)))) none unknown . "" . .) 29,197
+ (sd :=dup.2. .
+  (proc) . fg1n3 . -1 +0 .
+  (td :`t25.107. . . nimcall -1 -1 +0 +107 . 30,198,/home/araq/projects/nim/lib/std/private/schubfach.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :src.13 .
+     (param) . . . -1 +0 . `t17.81. =dup.2. . none unknown . "" . .)) schubfach.0. . none unknown . "" `t17.81.) schubfach.0.
+  (proc . . =dup.2.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .
+    (asgn . .
+     (dot . `t43.11.sysma2dyk
+      (sd :result.19 .
+       (result) . . . -1 +0 . `t17.81. =dup.2. . none unknown . "" . .) digits.0.)
+     (dot . `t43.11.sysma2dyk src.13 digits.0.))
+    (asgn . .
+     (dot . `t34.6.sysma2dyk result.19 exponent.0.)
+     (dot . `t34.6.sysma2dyk src.13 exponent.0.))) result.19) none unknown . "" . .) 29,197
+ (sd :=sink.2. .
+  (proc) . fg1n3 . -1 +0 .
+  (td :`t25.109. . . nimcall -1 -1 +0 +109 . 30,198,/home/araq/projects/nim/lib/std/private/schubfach.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.13 .
+     (param) . . . -1 +0 .
+     (td :`t23.108. . . nimcall -1 -1 +0 +108 . . schubfach.0. . none unknown . "" `t17.81.) =sink.2. . none unknown . "" . .)
+    (sd :src.14 .
+     (param) . . . -1 +1 . `t17.81. =sink.2. . none unknown . "" . .)) schubfach.0. . none unknown . "" .) schubfach.0.
+  (proc . . =sink.2.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .
+    (asgn . .
+     (dot . `t43.11.sysma2dyk
+      (hderef . `t17.81. dest.13) digits.0.)
+     (dot . `t43.11.sysma2dyk src.14 digits.0.))
+    (asgn . .
+     (dot . `t34.6.sysma2dyk
+      (hderef . `t17.81. dest.13) exponent.0.)
+     (dot . `t34.6.sysma2dyk src.14 exponent.0.)))) none unknown . "" . .) 29,197
+ (sd :=trace.2. .
+  (proc) . fg1n3 . -1 +0 .
+  (td :`t25.111. . . nimcall -1 -1 +0 +111 . 30,198,/home/araq/projects/nim/lib/std/private/schubfach.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.14 .
+     (param) . . . -1 +0 .
+     (td :`t23.110. . . nimcall -1 -1 +0 +110 . . schubfach.0. . none unknown . "" `t17.81.) =trace.2. . none unknown . "" . .)
+    (sd :env.2 .
+     (param) . . . -1 +1 . `t26.19.sysma2dyk =trace.2. . none unknown . "" . .)) schubfach.0. . none unknown . "" .) schubfach.0.
+  (proc . . =trace.2.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .)) none unknown . "" . .) 37,107
+ (sd :=wasMoved.3. .
+  (proc) . fng1n3 . -1 +0 .
+  (td :`t25.296. . n nimcall -1 -1 +0 +296 . 38,108,/home/araq/projects/nim/lib/std/private/schubfach.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.15 .
+     (param) . . . -1 +0 .
+     (td :`t23.295. . . nimcall -1 -1 +0 +295 . . schubfach.0. . none unknown . "" `t16.52.) =wasMoved.3. . none unknown . "" . .)) schubfach.0. . none unknown . "" .) schubfach.0.
+  (proc . . =wasMoved.3.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .
+    (call . .
+     (sd :wasMoved.4. .
+      (proc) wasmoved n3 . -1 +0 . . . . none unknown . "" . .)
+     (hderef . `t16.52. dest.15)))) none unknown . "" . .) 37,107
+ (sd :=destroy.3. .
+  (proc) . fg1n3 q -1 +0 .
+  (td :`t25.298. . . nimcall -1 -1 +0 +298 . 38,108,/home/araq/projects/nim/lib/std/private/schubfach.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.16 .
+     (param) . . . -1 +0 .
+     (td :`t23.297. . . nimcall -1 -1 +0 +297 . . schubfach.0. . none unknown . "" `t16.52.) =destroy.3. . none unknown . "" . .)) schubfach.0. . none unknown . "" .) schubfach.0.
+  (proc . . =destroy.3.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .)) none unknown . "" . .) 37,107
+ (sd :=copy.3. .
+  (proc) . fg1n3 . -1 +0 .
+  (td :`t25.300. . . nimcall -1 -1 +0 +300 . 38,108,/home/araq/projects/nim/lib/std/private/schubfach.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.17 .
+     (param) . . . -1 +0 .
+     (td :`t23.299. . . nimcall -1 -1 +0 +299 . . schubfach.0. . none unknown . "" `t16.52.) =copy.3. . none unknown . "" . .)
+    (sd :src.17 .
+     (param) . . . -1 +1 . `t16.52. =copy.3. . none unknown . "" . .)) schubfach.0. . none unknown . "" .) schubfach.0.
+  (proc . . =copy.3.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .
+    (asgn . .
+     (hderef . `t16.52. dest.17) src.17))) none unknown . "" . .) 37,107
+ (sd :=dup.3. .
+  (proc) . fg1n3 . -1 +0 .
+  (td :`t25.301. . . nimcall -1 -1 +0 +301 . 38,108,/home/araq/projects/nim/lib/std/private/schubfach.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :src.18 .
+     (param) . . . -1 +0 . `t16.52. =dup.3. . none unknown . "" . .)) schubfach.0. . none unknown . "" `t16.52.) schubfach.0.
+  (proc . . =dup.3.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .
+    (asgn . .
+     (sd :result.26 .
+      (result) . . . -1 +0 . `t16.52. =dup.3. . none unknown . "" . .) src.18)) result.26) none unknown . "" . .) 37,107
+ (sd :=sink.3. .
+  (proc) . fg1n3 . -1 +0 .
+  (td :`t25.303. . . nimcall -1 -1 +0 +303 . 38,108,/home/araq/projects/nim/lib/std/private/schubfach.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.18 .
+     (param) . . . -1 +0 .
+     (td :`t23.302. . . nimcall -1 -1 +0 +302 . . schubfach.0. . none unknown . "" `t16.52.) =sink.3. . none unknown . "" . .)
+    (sd :src.19 .
+     (param) . . . -1 +1 . `t16.52. =sink.3. . none unknown . "" . .)) schubfach.0. . none unknown . "" .) schubfach.0.
+  (proc . . =sink.3.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .
+    (asgn . .
+     (hderef . `t16.52. dest.18) src.19))) none unknown . "" . .) 37,107
+ (sd :=trace.3. .
+  (proc) . fg1n3 . -1 +0 .
+  (td :`t25.305. . . nimcall -1 -1 +0 +305 . 38,108,/home/araq/projects/nim/lib/std/private/schubfach.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.19 .
+     (param) . . . -1 +0 .
+     (td :`t23.304. . . nimcall -1 -1 +0 +304 . . schubfach.0. . none unknown . "" `t16.52.) =trace.3. . none unknown . "" . .)
+    (sd :env.3 .
+     (param) . . . -1 +1 . `t26.19.sysma2dyk =trace.3. . none unknown . "" . .)) schubfach.0. . none unknown . "" .) schubfach.0.
+  (proc . . =trace.3.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .)) none unknown . "" . .))1,1,/home/araq/projects/nim/lib/std/private/schubfach.nim(.index 8,18
+ (h sf_Assert.0. +1420)
+ (h `t25.3. +53)
+ (h schubfach.0. +315) 1,1,/home/araq/projects/nim/lib/system.nim
+ (h stdlib.0. +93) 1,26
+ (h ValueType.0. +328)
+ (h `t37.4. +59) 1,27
+ (h BitsType.0. +286)
+ (h `t43.5. +58) 1,28
+ (h Single.0. +298)
+ (h `t17.6. +58) 3,29
+ (h bits.0. +132) 1,32
+ (h significandSize.0. +721) 1,33
+ (h MaxExponent.0. +216)
+ (h `t31.7. +60) 1,34
+ (h exponentBias.0. +299) 1,35
+ (h maxIeeeExponent.0. +213) 1,36
+ (h hiddenBit.0. +195) 1,37
+ (h significandMask.0. +199) 1,38
+ (h exponentMask.0. +211) 1,39
+ (h signMask.0. +208) 4,41
+ (h constructSingle.0. +202)
+ (h `t25.20. +62)
+ (h `t7.1. +527) 4,44
+ (h constructSingle.1. +295)
+ (h `t25.32. +63) 4,47
+ (h physicalSignificand.0. +897)
+ (h `t25.34. +68) 4,50
+ (h physicalExponent.0. +889)
+ (h `t25.35. +65) 5,240,/home/araq/projects/nim/lib/system/arithmetics.nim
+ (h shr.1. +791)
+ (h `t25.36. +71) 4,53
+ (h isFinite.0. +1294)
+ (h `t25.37. +56) 4,56
+ (h isInf.0. +1133)
+ (h `t25.38. +53)
+ (h `t31.15. +1246) 4,60
+ (h isNaN.0. +245)
+ (h `t25.39. +53) 4,64
+ (h isZero.0. +1472)
+ (h `t25.40. +54) 4,67
+ (h signBit.0. +1013)
+ (h `t25.41. +56) 4,76
+ (h floorDivPow2.0. +1259)
+ (h `t25.42. +60) 4,99
+ (h floorLog2Pow10.0. +941)
+ (h `t25.44. +62)
+ (h `t31.49. +1224)
+ (h `t31.50. +292) 1,105
+ (h kMin.0. +267) 1,106
+ (h kMax.0. +193) 1,107
+ (h g.0. +193)
+ (h `t16.52. +50)
+ (h `t20.51. +80)
+ (h `t31.8. +450) 4,134
+ (h computePow10Single.0. +5445)
+ (h `t25.55. +66) 4,146
+ (h lo32.0. +1313)
+ (h `t25.69. +52) 4,149
+ (h hi32.0. +784)
+ (h `t25.70. +52)
+ (h `t31.72. +812) 6,169
+ (h roundToOdd.0. +155)
+ (h `t25.75. +58) 4,179
+ (h multipleOfPow2.0. +3922)
+ (h `t25.76. +62) 5,247,/home/araq/projects/nim/lib/system/arithmetics.nim
+ (h shl.0. +1418)
+ (h `t25.13. +79) 1,185
+ (h FloatingDecimal32.0. +1554)
+ (h `t17.81. +69) 3,186
+ (h digits.0. +135) 3,187
+ (h exponent.0. +142) 4,189
+ (h toDecimal32.0. +958)
+ (h `t25.82. +59)
+ (h `t31.10. +3644)
+ (h `t31.84. +2359)
+ (h `t31.89. +3001)
+ (h `t31.90. +303)
+ (h `t31.91. +451)
+ (h `t31.97. +6022)
+ (h `t31.98. +1254)
+ (h `t31.99. +975)
+ (h `t31.100. +319) 4,246
+ (h printDecimalDigitsBackwards.0. +6957)
+ (h `t25.113. +73)
+ (h `t23.114. +267)
+ (h `t27.115. +101)
+ (h `t12.112. +224)
+ (h `t8.116. +1803)
+ (h `t0.117. +182)
+ (h `t8.118. +417)
+ (h `t0.119. +182)
+ (h `t8.120. +1281)
+ (h `t0.121. +191)
+ (h `t8.122. +432)
+ (h `t0.123. +191)
+ (h `t0.124. +614)
+ (h `t0.125. +639)
+ (h `t0.126. +615)
+ (h `t0.127. +860)
+ (h `t8.128. +1319)
+ (h `t0.129. +182)
+ (h `t8.130. +415)
+ (h `t0.131. +182)
+ (h `t0.132. +717)
+ (h `t8.133. +1310)
+ (h `t0.134. +191)
+ (h `t8.135. +437)
+ (h `t0.136. +191)
+ (h `t0.137. +770)
+ (h `t0.138. +1346)
+ (h `t8.139. +909)
+ (h `t0.140. +473)
+ (h `t8.141. +862)
+ (h `t0.142. +668)
+ (h `t0.143. +727)
+ (h `t8.144. +479) 4,302
+ (h decimalLength.0. +269)
+ (h `t25.145. +61) 4,323
+ (h formatDigits.0. +4354)
+ (h `t25.149. +58)
+ (h `t23.150. +272)
+ (h `t27.151. +86)
+ (h `t12.148. +194)
+ (h `t8.152. +1174)
+ (h `t8.153. +226)
+ (h `t0.154. +338)
+ (h `t0.155. +1366)
+ (h `t0.156. +950)
+ (h `t0.157. +754)
+ (h `t8.158. +572)
+ (h `t0.159. +170)
+ (h `t0.160. +331)
+ (h `t0.161. +531)
+ (h `t0.162. +585)
+ (h `t0.163. +364)
+ (h `t0.164. +978)
+ (h `t8.165. +599)
+ (h `t0.166. +313)
+ (h `t0.167. +647)
+ (h `t0.168. +980)
+ (h `t0.169. +467)
+ (h `t0.170. +1119)
+ (h `t0.171. +653)
+ (h `t0.172. +683)
+ (h `t0.173. +845)
+ (h `t0.174. +488)
+ (h `t0.175. +675)
+ (h `t0.176. +641)
+ (h `t0.177. +636)
+ (h `t0.178. +1091)
+ (h `t0.179. +907)
+ (h `t0.180. +571)
+ (h `t0.181. +874)
+ (h `t0.182. +766)
+ (h `t0.183. +786)
+ (h `t0.184. +571)
+ (h `t8.185. +786)
+ (h `t8.186. +170)
+ (h `t0.187. +235)
+ (h `t0.188. +563)
+ (h `t0.189. +682)
+ (h `t0.190. +685)
+ (h `t8.191. +473) 4,402
+ (x float32ToChars.0. +640)
+ (h `t25.192. +62)
+ (h `t23.193. +321)
+ (h `t27.194. +88)
+ (h `t31.195. +1651) 4,323
+ (h formatDigits.1. +2404)
+ (h `t25.198. +85) 4,46,/home/araq/projects/nim/lib/system/basic_types.nim
+ (h false.0. +1083) 3,326
+ (h minFixedDecimalPoint.1. +780) 3,327
+ (h maxFixedDecimalPoint.1. +394)
+ (h `t31.211. +4435) 4,246
+ (h printDecimalDigitsBackwards.1. +3146)
+ (h `t25.216. +116)
+ (h `t31.217. +2619)
+ (h `t31.218. +631)
+ (h `t31.219. +873)
+ (h `t31.220. +858)
+ (h `t31.221. +1110)
+ (h `t31.222. +730)
+ (h `t31.225. +1296)
+ (h `t31.226. +1141)
+ (h `t31.227. +2770)
+ (h `t31.228. +854)
+ (h `t31.229. +1104)
+ (h `t31.230. +724)
+ (h `t31.235. +675)
+ (h `t31.238. +581)
+ (h `t31.239. +892)
+ (h `t31.240. +1151)
+ (h `t31.241. +752)
+ (h `t31.246. +704)
+ (h `t31.252. +1551)
+ (h `t31.268. +4154)
+ (h `t31.272. +2289)
+ (h `t31.278. +3087)
+ (h `t31.284. +2621)
+ (h `t31.289. +1555)
+ (h `t31.290. +336) 5,240,/home/araq/projects/nim/lib/system/arithmetics.nim
+ (h shr.0. +3123)
+ (h `t25.19. +61)
+ (h `t31.18. +504) 16,42
+ (h =wasMoved.0. +513)
+ (h `t25.22. +49)
+ (h `t23.21. +187)
+ (h wasMoved.0. +338) 16,42
+ (h =destroy.0. +181)
+ (h `t25.24. +47)
+ (h `t23.23. +187) 16,42
+ (h =copy.0. +353)
+ (h `t25.26. +44)
+ (h `t23.25. +187) 16,42
+ (h =dup.0. +544)
+ (h `t25.27. +43) 16,42
+ (h =sink.0. +636)
+ (h `t25.29. +44)
+ (h `t23.28. +187) 16,42
+ (h =trace.0. +544)
+ (h `t25.31. +45)
+ (h `t23.30. +187) 12,144
+ (h =wasMoved.1. +447)
+ (h `t25.59. +49)
+ (h `t23.58. +188)
+ (h wasMoved.1. +339) 12,144
+ (h =destroy.1. +153)
+ (h `t25.61. +47)
+ (h `t23.60. +188) 12,144
+ (h =copy.1. +355)
+ (h `t25.63. +44)
+ (h `t23.62. +188) 12,144
+ (h =dup.1. +489)
+ (h `t25.64. +43) 12,144
+ (h =sink.1. +583)
+ (h `t25.66. +44)
+ (h `t23.65. +188) 12,144
+ (h =trace.1. +489)
+ (h `t25.68. +45)
+ (h `t23.67. +188) 29,197
+ (h =wasMoved.2. +448)
+ (h `t25.102. +49)
+ (h `t23.101. +191)
+ (h wasMoved.2. +341)
+ (h wasMoved.3. +178) 29,197
+ (h =destroy.2. +197)
+ (h `t25.104. +47)
+ (h `t23.103. +191) 29,197
+ (h =copy.2. +357)
+ (h `t25.106. +44)
+ (h `t23.105. +191) 29,197
+ (h =dup.2. +717)
+ (h `t25.107. +43) 29,197
+ (h =sink.2. +787)
+ (h `t25.109. +44)
+ (h `t23.108. +191) 29,197
+ (h =trace.2. +717)
+ (h `t25.111. +45)
+ (h `t23.110. +191) 37,107
+ (h =wasMoved.3. +450)
+ (h `t25.296. +49)
+ (h `t23.295. +191)
+ (h wasMoved.4. +341) 37,107
+ (h =destroy.3. +154)
+ (h `t25.298. +47)
+ (h `t23.297. +191) 37,107
+ (h =copy.3. +357)
+ (h `t25.300. +44)
+ (h `t23.299. +191) 37,107
+ (h =dup.3. +494)
+ (h `t25.301. +43) 37,107
+ (h =sink.3. +587)
+ (h `t25.303. +44)
+ (h `t23.302. +191) 37,107
+ (h =trace.3. +494)
+ (h `t25.305. +45)
+ (h `t23.304. +191))

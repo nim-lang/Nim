@@ -1,0 +1,34 @@
+(.nif24)
+1,1,/home/araq/projects/nim/myimp.nim(stmts . .
+ (stmts . .)
+ (stmts . . ~1,1
+  (proc ts . 5
+   (ht .
+    (sd :foo.0.myirv4nno1 x . eg ofrbcr0s0awhtl0t0c0 -1
+     (proc) +0
+     (td :`t25.3.myirv4nno1 nte2 nimcall -1 -1 +0 +3 . 9,2,/home/araq/projects/nim/myimp.nim
+      (formalparams . .
+       (arglist . . ~4
+        (arglist . .)
+        (empty)
+        (empty) ~4
+        (arglist . .)
+        (empty) ~4
+        (arglist . .)) 1
+       (sd :x.0 . . u . -1
+        (param) +0
+        (td :`t23.4.myirv4nno1 . nimcall -1 -1 +0 +4 . . foo.0.myirv4nno1 . none unknown . "" `t31.3.sysma2dyk) foo.0.myirv4nno1 param stack . "x_p0" . .)) foo.0.myirv4nno1 . none unknown . "" . `t23.4.myirv4nno1) ~4,~1
+     (sd :myimp.0.myirv4nno1 . . . . +0
+      (module) . . nim.0.comvt95yz none unknown . "" . .) proc stack . "foo__myimp_u1" . .))
+   (empty)
+   (empty) 9
+   (formalparams . .
+    (empty) 1
+    (identdefs . . x.0 3
+     (varty . `t23.4.myirv4nno1 4 int.0.sysma2dyk) 10
+     (empty)))
+   (empty)
+   (empty) 2,1
+   (cmd s . inc.9.sysma2dyk 4
+    (hderef . `t31.3.sysma2dyk x.0) 42,19,/home/araq/projects/nim/lib/system/arithmetics.nim
+    (intlit s `t31.36.sysma2dyk +1)))))

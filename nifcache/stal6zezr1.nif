@@ -1,0 +1,38 @@
+(.nif26)
+(.indexat +1459            )
+1,1,/home/araq/projects/nim/lib/system/stacktraces.nim(stmts . .
+ (implementation) ~1,12
+ (const s . 2,1
+  (sd :reraisedFromBegin.0. x
+   (const) . eg ofrbcr0s0awhl0t0c0 -1 +0 .
+   (td :`t31.3. . c3 nimcall +8 +8 +0 +3 . 23,14,/home/araq/projects/nim/lib/system/stacktraces.nim
+    (intlit s `t31.3. -10) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") ~1,~13
+   (sd :stacktraces.0. .
+    (module) . . . +0 . . . 1,1,/home/araq/projects/nim/lib/system.nim
+    (sd :stdlib.0. .
+     (package) . . . -1 +0 . . . . none unknown . "" . .) . none unknown . "" . .)
+   (const0 . . reraisedFromBegin.0.
+    (empty) 21
+    (intlit . `t31.3. -10)) none unknown . "" . .) 2,2
+  (sd :reraisedFromEnd.0. x
+   (const) . eg ofrbcr0s0awhl0t0c0 -1 +0 .
+   (td :`t31.4. . c3 nimcall +8 +8 +0 +4 . 21,15,/home/araq/projects/nim/lib/system/stacktraces.nim
+    (intlit s `t31.4. -100) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") stacktraces.0.
+   (const0 . . reraisedFromEnd.0.
+    (empty) 19
+    (intlit . `t31.4. -100)) none unknown . "" . .) 2,3
+  (sd :maxStackTraceLines.0. x
+   (const) . eg ofrbcr0s0awhl0t0c0 -1 +0 .
+   (td :`t31.5. . c3 nimcall +8 +8 +0 +5 . 24,16,/home/araq/projects/nim/lib/system/stacktraces.nim
+    (intlit s `t31.5. +128) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") stacktraces.0.
+   (const0 . . maxStackTraceLines.0.
+    (empty) 22
+    (intlit . `t31.5. +128)) none unknown . "" . .)))1,1,/home/araq/projects/nim/lib/system/stacktraces.nim(.index 1,13
+ (x reraisedFromBegin.0. +142)
+ (h `t31.3. +73)
+ (h stacktraces.0. +188) 1,1,/home/araq/projects/nim/lib/system.nim
+ (h stdlib.0. +96) 1,14
+ (x reraisedFromEnd.0. +210)
+ (h `t31.4. +71) 1,15
+ (x maxStackTraceLines.0. +302)
+ (h `t31.5. +74))

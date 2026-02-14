@@ -1,0 +1,1640 @@
+(.nif26)
+(.indexat +50195           )
+1,1,/home/araq/projects/nim/lib/system/ansi_c.nim(stmts . .
+ (replay 8,16
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "memchr")) 8,18
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "memcmp")) 8,20
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "memcpy")) 8,22
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "memmove")) 8,24
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "memset")) 8,26
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "strcmp")) 8,28
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "strlen")) 10,30
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "strstr")) 8,32
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "abort")) 22,40
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "jmp_buf")) 32,148
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "longjmp")) 32,150
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "setjmp")) 8,153
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "signal")) 40,154
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "raise")) 16,157
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "FILE")) 19,168
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "stderr")) 19,169
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "stdout")) 18,170
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "stdin")) 8,173
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "fprintf")) 8,175
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "printf")) 8,178
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "fputs")) 8,180
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "fputc")) 8,183
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "sprintf")) 8,187
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "snprintf")) 10,205
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "malloc")) 10,207
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "calloc")) 10,209
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "free")) 10,211
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "realloc")) 8,214
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "fwrite")) 8,217
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "fflush")) 60,219
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "rawWriteString")) 41,224
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "rawWrite"))) ~1,167
+ (var s . 2,1
+  (sd :cstderr.0. x
+   (var . +0 +0) . egi ofrbcr0s0awl0t0c0 -1 +0
+   (bheader
+    (false)
+    (false) "" 35,158,/home/araq/projects/nim/lib/system/ansi_c.nim
+    (strlit . `t28.17.sysma2dyk "<stdio.h>")) `t21.36. ansi_c.0.
+   (identdefs . .
+    (pragmax . . cstderr.0. 9
+     (pragma . . 9
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "stderr")) 29
+      (kv . . ~6
+       (ident . . header) 2
+       (strlit . `t28.17.sysma2dyk "<stdio.h>")))) 55 CFilePtr.0.
+    (empty)) none unknown dh "stderr" . .) 2,2
+  (sd :cstdout.0. x
+   (var . +0 +0) . egi ofrbcr0s0awl0t0c0 -1 +0
+   (bheader
+    (false)
+    (false) "" 35,158,/home/araq/projects/nim/lib/system/ansi_c.nim
+    (strlit . `t28.17.sysma2dyk "<stdio.h>")) `t21.36. ansi_c.0.
+   (identdefs . .
+    (pragmax . . cstdout.0. 9
+     (pragma . . 9
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "stdout")) 29
+      (kv . . ~6
+       (ident . . header) 2
+       (strlit . `t28.17.sysma2dyk "<stdio.h>")))) 55 CFilePtr.0.
+    (empty)) none unknown dh "stdout" . .) 2,3
+  (sd :cstdin.0. x
+   (var . +0 +0) . egi ofrbcr0s0awl0t0c0 -1 +0
+   (bheader
+    (false)
+    (false) "" 35,158,/home/araq/projects/nim/lib/system/ansi_c.nim
+    (strlit . `t28.17.sysma2dyk "<stdio.h>")) `t21.36. ansi_c.0.
+   (identdefs . .
+    (pragmax . . cstdin.0. 8
+     (pragma . . 9
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "stdin")) 28
+      (kv . . ~6
+       (ident . . header) 2
+       (strlit . `t28.17.sysma2dyk "<stdio.h>")))) 53 CFilePtr.0.
+    (empty)) none unknown dh "stdin" . .))
+ (implementation) ~1,13
+ (pragma s . 2
+  (ident . . push) 12
+  (kv . . ~5
+   (ident . . hints) 1
+   (intlit . `t1.34.sysma2dyk +0)) 29
+  (kv . . ~11
+   (ident . . stack_trace) 2
+   (intlit . `t1.34.sysma2dyk +0)) 44
+  (kv . . ~8
+   (ident . . profiler) 2
+   (intlit . `t1.34.sysma2dyk +0)) 57
+  (kv . . ~6
+   (ident . . raises) 2
+   (bracket . .))) 4,15
+ (sd :c_memchr.0. x
+  (proc) . egi ofrbcr0s0awl0t0c0 -1 +0
+  (bheader
+   (false)
+   (false) "" 29,17,/home/araq/projects/nim/lib/system/ansi_c.nim
+   (strlit . `t28.17.sysma2dyk "<string.h>"))
+  (td :`t25.3. . e2 nimcall -1 -1 +0 +3 . 14,16,/home/araq/projects/nim/lib/system/ansi_c.nim
+   (formalparams . `t26.19.sysma2dyk
+    (arglist . . ~14
+     (bracket . .) . .
+     (arglist . .) 43
+     (pragma . . ~48,1
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "memchr")) ~30,1
+      (kv . . ~6
+       (ident . . header) 2
+       (strlit . `t28.17.sysma2dyk "<string.h>")) ~57
+      (kv . .
+       (ident . . raises)
+       (bracket . .)))
+     (arglist . .)) 1
+    (sd :s.0 .
+     (param) . . . -1 +0 . `t26.19.sysma2dyk c_memchr.0. . none unknown . "" . .) 13
+    (sd :c.0 .
+     (param) . . . -1 +1 . `t34.11.cty9mra12 c_memchr.0. . none unknown . "" . .) 22
+    (sd :n.0 .
+     (param) . . . -1 +2 . `t40.12.cty9mra12 c_memchr.0. . none unknown . "" . .)) c_memchr.0. . none unknown . "" `t26.19.sysma2dyk) ~4,~15
+  (sd :ansi_c.0. .
+   (module) . i1 . +0 . . . 1,1,/home/araq/projects/nim/lib/system.nim
+   (sd :stdlib.0. .
+    (package) . . . -1 +0 . . . . none unknown . "" . .) . none unknown . "" . .) ~5
+  (proc s . 5
+   (ht . c_memchr.0.)
+   (empty)
+   (empty) . 57
+   (pragma . . ~48,1
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "memchr")) ~30,1
+    (kv . . ~6
+     (ident . . header) 2
+     (strlit . `t28.17.sysma2dyk "<string.h>")) ~57
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (empty)) none unknown dh "memchr" . .) 4,17
+ (sd :c_memcmp.0. x
+  (proc) . egin ofrbcr0s0awl0t0c0 -1 +0
+  (bheader
+   (false)
+   (false) "" 29,17,/home/araq/projects/nim/lib/system/ansi_c.nim
+   (strlit . `t28.17.sysma2dyk "<string.h>"))
+  (td :`t25.4. . ne2 nimcall -1 -1 +0 +4 . 14,18,/home/araq/projects/nim/lib/system/ansi_c.nim
+   (formalparams . `t34.11.cty9mra12
+    (arglist . . ~14
+     (bracket . .) . .
+     (arglist . .) 37
+     (pragma . . ~42,1
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "memcmp")) ~24,1
+      (kv . . ~6
+       (ident . . header) 2
+       (strlit . `t28.17.sysma2dyk "<string.h>")) ~8,1
+      (ident . . noSideEffect) ~51
+      (kv . .
+       (ident . . raises)
+       (bracket . .)))
+     (arglist . .)) 1
+    (sd :a.0 .
+     (param) . . . -1 +0 . `t26.19.sysma2dyk c_memcmp.0. . none unknown . "" . .) 4
+    (sd :b.0 .
+     (param) . . . -1 +1 . `t26.19.sysma2dyk c_memcmp.0. . none unknown . "" . .) 16
+    (sd :size.0 .
+     (param) . . . -1 +2 . `t40.12.cty9mra12 c_memcmp.0. . none unknown . "" . .)) c_memcmp.0. . none unknown . "" `t34.11.cty9mra12) ansi_c.0. ~5
+  (proc s . 5
+   (ht . c_memcmp.0.)
+   (empty)
+   (empty) . 51
+   (pragma . . ~42,1
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "memcmp")) ~24,1
+    (kv . . ~6
+     (ident . . header) 2
+     (strlit . `t28.17.sysma2dyk "<string.h>")) ~8,1
+    (ident . . noSideEffect) ~51
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (empty)) none unknown dh "memcmp" . .) 4,19
+ (sd :c_memcpy.0. x
+  (proc) . egid2 ofrbcr0s0awl0t0c0 -1 +0
+  (bheader
+   (false)
+   (false) "" 29,17,/home/araq/projects/nim/lib/system/ansi_c.nim
+   (strlit . `t28.17.sysma2dyk "<string.h>"))
+  (td :`t25.5. . e2 nimcall -1 -1 +0 +5 . 14,20,/home/araq/projects/nim/lib/system/ansi_c.nim
+   (formalparams . `t26.19.sysma2dyk
+    (arglist . . ~14
+     (bracket . .) . .
+     (arglist . .) 40
+     (pragma . . ~45,1
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "memcpy")) ~27,1
+      (kv . . ~6
+       (ident . . header) 2
+       (strlit . `t28.17.sysma2dyk "<string.h>")) ~11,1
+      (ident . . discardable) ~54
+      (kv . .
+       (ident . . raises)
+       (bracket . .)))
+     (arglist . .)) 1
+    (sd :a.1 .
+     (param) . . . -1 +0 . `t26.19.sysma2dyk c_memcpy.0. . none unknown . "" . .) 4
+    (sd :b.1 .
+     (param) . . . -1 +1 . `t26.19.sysma2dyk c_memcpy.0. . none unknown . "" . .) 16
+    (sd :size.1 .
+     (param) . . . -1 +2 . `t40.12.cty9mra12 c_memcpy.0. . none unknown . "" . .)) c_memcpy.0. . none unknown . "" `t26.19.sysma2dyk) ansi_c.0. ~5
+  (proc s . 5
+   (ht . c_memcpy.0.)
+   (empty)
+   (empty) . 54
+   (pragma . . ~45,1
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "memcpy")) ~27,1
+    (kv . . ~6
+     (ident . . header) 2
+     (strlit . `t28.17.sysma2dyk "<string.h>")) ~11,1
+    (ident . . discardable) ~54
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (empty)) none unknown dh "memcpy" . .) 4,21
+ (sd :c_memmove.0. x
+  (proc) . egid2 ofrbcr0s0awl0t0c0 -1 +0
+  (bheader
+   (false)
+   (false) "" 29,17,/home/araq/projects/nim/lib/system/ansi_c.nim
+   (strlit . `t28.17.sysma2dyk "<string.h>"))
+  (td :`t25.6. . e2 nimcall -1 -1 +0 +6 . 15,22,/home/araq/projects/nim/lib/system/ansi_c.nim
+   (formalparams . `t26.19.sysma2dyk
+    (arglist . . ~15
+     (bracket . .) . .
+     (arglist . .) 40
+     (pragma . . ~46,1
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "memmove")) ~27,1
+      (kv . . ~6
+       (ident . . header) 2
+       (strlit . `t28.17.sysma2dyk "<string.h>")) ~12,1
+      (ident . . discardable) ~55
+      (kv . .
+       (ident . . raises)
+       (bracket . .)))
+     (arglist . .)) 1
+    (sd :a.2 .
+     (param) . . . -1 +0 . `t26.19.sysma2dyk c_memmove.0. . none unknown . "" . .) 4
+    (sd :b.2 .
+     (param) . . . -1 +1 . `t26.19.sysma2dyk c_memmove.0. . none unknown . "" . .) 16
+    (sd :size.2 .
+     (param) . . . -1 +2 . `t40.12.cty9mra12 c_memmove.0. . none unknown . "" . .)) c_memmove.0. . none unknown . "" `t26.19.sysma2dyk) ansi_c.0. ~5
+  (proc s . 5
+   (ht . c_memmove.0.)
+   (empty)
+   (empty) . 55
+   (pragma . . ~46,1
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "memmove")) ~27,1
+    (kv . . ~6
+     (ident . . header) 2
+     (strlit . `t28.17.sysma2dyk "<string.h>")) ~12,1
+    (ident . . discardable) ~55
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (empty)) none unknown dh "memmove" . .) 4,23
+ (sd :c_memset.0. x
+  (proc) . egid2 ofrbcr0s0awl0t0c0 -1 +0
+  (bheader
+   (false)
+   (false) "" 29,17,/home/araq/projects/nim/lib/system/ansi_c.nim
+   (strlit . `t28.17.sysma2dyk "<string.h>"))
+  (td :`t25.7. . e2 nimcall -1 -1 +0 +7 . 14,24,/home/araq/projects/nim/lib/system/ansi_c.nim
+   (formalparams . `t26.19.sysma2dyk
+    (arglist . . ~14
+     (bracket . .) . .
+     (arglist . .) 50
+     (pragma . . ~55,1
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "memset")) ~37,1
+      (kv . . ~6
+       (ident . . header) 2
+       (strlit . `t28.17.sysma2dyk "<string.h>")) ~21,1
+      (ident . . discardable) ~64
+      (kv . .
+       (ident . . raises)
+       (bracket . .)))
+     (arglist . .)) 1
+    (sd :p.0 .
+     (param) . . . -1 +0 . `t26.19.sysma2dyk c_memset.0. . none unknown . "" . .) 13
+    (sd :value.0 .
+     (param) . . . -1 +1 . `t34.11.cty9mra12 c_memset.0. . none unknown . "" . .) 26
+    (sd :size.3 .
+     (param) . . . -1 +2 . `t40.12.cty9mra12 c_memset.0. . none unknown . "" . .)) c_memset.0. . none unknown . "" `t26.19.sysma2dyk) ansi_c.0. ~5
+  (proc s . 5
+   (ht . c_memset.0.)
+   (empty)
+   (empty) . 64
+   (pragma . . ~55,1
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "memset")) ~37,1
+    (kv . . ~6
+     (ident . . header) 2
+     (strlit . `t28.17.sysma2dyk "<string.h>")) ~21,1
+    (ident . . discardable) ~64
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (empty)) none unknown dh "memset" . .) 4,25
+ (sd :c_strcmp.0. x
+  (proc) . egin ofrbcr0s0awl0t0c0 -1 +0
+  (bheader
+   (false)
+   (false) "" 29,17,/home/araq/projects/nim/lib/system/ansi_c.nim
+   (strlit . `t28.17.sysma2dyk "<string.h>"))
+  (td :`t25.8. . ne2 nimcall -1 -1 +0 +8 . 14,26,/home/araq/projects/nim/lib/system/ansi_c.nim
+   (formalparams . `t34.11.cty9mra12
+    (arglist . . ~14
+     (bracket . .) . .
+     (arglist . .) 22
+     (pragma . . ~27,1
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "strcmp")) ~9,1
+      (kv . . ~6
+       (ident . . header) 2
+       (strlit . `t28.17.sysma2dyk "<string.h>")) 7,1
+      (ident . . noSideEffect) ~36
+      (kv . .
+       (ident . . raises)
+       (bracket . .)))
+     (arglist . .)) 1
+    (sd :a.3 .
+     (param) . . . -1 +0 . `t29.18.sysma2dyk c_strcmp.0. . none unknown . "" . .) 4
+    (sd :b.3 .
+     (param) . . . -1 +1 . `t29.18.sysma2dyk c_strcmp.0. . none unknown . "" . .)) c_strcmp.0. . none unknown . "" `t34.11.cty9mra12) ansi_c.0. ~5
+  (proc s . 5
+   (ht . c_strcmp.0.)
+   (empty)
+   (empty) . 36
+   (pragma . . ~27,1
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "strcmp")) ~9,1
+    (kv . . ~6
+     (ident . . header) 2
+     (strlit . `t28.17.sysma2dyk "<string.h>")) 7,1
+    (ident . . noSideEffect) ~36
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (empty)) none unknown dh "strcmp" . .) 4,27
+ (sd :c_strlen.0. x
+  (proc) . uegin ofrbcr0s0awl0t0c0 -1 +0
+  (bheader
+   (false)
+   (false) "" 29,17,/home/araq/projects/nim/lib/system/ansi_c.nim
+   (strlit . `t28.17.sysma2dyk "<string.h>"))
+  (td :`t25.9. . ne2 nimcall -1 -1 +0 +9 . 14,28,/home/araq/projects/nim/lib/system/ansi_c.nim
+   (formalparams . `t40.12.cty9mra12
+    (arglist . . ~14
+     (bracket . .) . .
+     (arglist . .) 22
+     (pragma . . ~27,1
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "strlen")) ~9,1
+      (kv . . ~6
+       (ident . . header) 2
+       (strlit . `t28.17.sysma2dyk "<string.h>")) 7,1
+      (ident . . noSideEffect) ~36
+      (kv . .
+       (ident . . raises)
+       (bracket . .)))
+     (arglist . .)) 1
+    (sd :a.4 .
+     (param) . . . -1 +0 . `t29.18.sysma2dyk c_strlen.0. . none unknown . "" . .)) c_strlen.0. . none unknown . "" `t40.12.cty9mra12) ansi_c.0. ~5
+  (proc s . 5
+   (ht . c_strlen.0.)
+   (empty)
+   (empty) . 36
+   (pragma . . ~27,1
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "strlen")) ~9,1
+    (kv . . ~6
+     (ident . . header) 2
+     (strlit . `t28.17.sysma2dyk "<string.h>")) 7,1
+    (ident . . noSideEffect) ~36
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (empty)) none unknown dh "strlen" . .) 4,29
+ (sd :c_strstr.0. x
+  (proc) . egin ofrbcr0s0awl0t0c0 -1 +0
+  (bheader
+   (false)
+   (false) "" 29,17,/home/araq/projects/nim/lib/system/ansi_c.nim
+   (strlit . `t28.17.sysma2dyk "<string.h>"))
+  (td :`t25.10. . ne2 nimcall -1 -1 +0 +10 . 14,30,/home/araq/projects/nim/lib/system/ansi_c.nim
+   (formalparams . `t29.18.sysma2dyk
+    (arglist . . ~14
+     (bracket . .) . .
+     (arglist . .) 37
+     (pragma . . ~40,1
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "strstr")) ~22,1
+      (kv . . ~6
+       (ident . . header) 2
+       (strlit . `t28.17.sysma2dyk "<string.h>")) ~6,1
+      (ident . . noSideEffect) ~51
+      (kv . .
+       (ident . . raises)
+       (bracket . .)))
+     (arglist . .)) 1
+    (sd :haystack.0 .
+     (param) . . . -1 +0 . `t29.18.sysma2dyk c_strstr.0. . none unknown . "" . .) 11
+    (sd :needle.0 .
+     (param) . . . -1 +1 . `t29.18.sysma2dyk c_strstr.0. . none unknown . "" . .)) c_strstr.0. . none unknown . "" `t29.18.sysma2dyk) ansi_c.0. ~5
+  (proc s . 5
+   (ht . c_strstr.0.)
+   (empty)
+   (empty) . 51
+   (pragma . . ~40,1
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "strstr")) ~22,1
+    (kv . . ~6
+     (ident . . header) 2
+     (strlit . `t28.17.sysma2dyk "<string.h>")) ~6,1
+    (ident . . noSideEffect) ~51
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (empty)) none unknown dh "strstr" . .) 4,31
+ (sd :c_abort.0. x
+  (proc) . eginn0 ofrbcr0s0awl0t0c0 -1 +0
+  (bheader
+   (false)
+   (false) "" 28,33,/home/araq/projects/nim/lib/system/ansi_c.nim
+   (strlit . `t28.17.sysma2dyk "<stdlib.h>"))
+  (td :`t25.11. . ne2 nimcall -1 -1 +0 +11 . 13,32,/home/araq/projects/nim/lib/system/ansi_c.nim
+   (formalparams . .
+    (arglist . . ~13
+     (bracket . .) . .
+     (arglist . .) 3
+     (pragma . . ~7,1
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "abort")) 10,1
+      (kv . . ~6
+       (ident . . header) 2
+       (strlit . `t28.17.sysma2dyk "<stdlib.h>")) 26,1
+      (ident . . noSideEffect) 40,1
+      (ident . . noreturn) ~16
+      (kv . .
+       (ident . . raises)
+       (bracket . .)))
+     (arglist . .))) c_abort.0. . none unknown . "" .) ansi_c.0. ~5
+  (proc s . 5
+   (ht . c_abort.0.)
+   (empty)
+   (empty) . 16
+   (pragma . . ~7,1
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "abort")) 10,1
+    (kv . . ~6
+     (ident . . header) 2
+     (strlit . `t28.17.sysma2dyk "<stdlib.h>")) 26,1
+    (ident . . noSideEffect) 40,1
+    (ident . . noreturn) ~16
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (empty)) none unknown dh "abort" . .) 3,40
+ (type s . 63
+  (type0 . .
+   (pragmax . . ~55
+    (postfix . .
+     (ident . . *) ~8
+     (sd :C_JmpBuf.0. x
+      (type) . uegi ofrbcr0s0awl0t0c0 -1 +0
+      (bheader
+       (false)
+       (false) "" 44,41,/home/araq/projects/nim/lib/system/ansi_c.nim
+       (strlit . `t28.17.sysma2dyk "<setjmp.h>"))
+      (td :`t17.12. . fb nimcall -3 -3 -3 +12 . 69,41,/home/araq/projects/nim/lib/system/ansi_c.nim
+       (reclist . . ~61,1
+        (sd :abi.0. .
+         (field . +0 +0) . i ofrbcr0s0awl0t0c0 +0 +0 .
+         (td :`t16.18. . . nimcall +200 +8 +0 +18 . . C_JmpBuf.0. . none unknown . ""
+          (td :`t20.16. . . nimcall -1 -1 +0 +16 . 23,42,/home/araq/projects/nim/lib/system/ansi_c.nim
+           (range . .
+            (intlit .
+             (td :`t31.15. . c3 nimcall +8 +8 +0 +15 . 23,42,/home/araq/projects/nim/lib/system/ansi_c.nim
+              (intlit s `t31.15. +25) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +0)
+            (intlit . `t31.15. +24)) C_JmpBuf.0. . none unknown . ""
+           (td :`t31.17. . c3 nimcall +8 +8 +0 +17 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "")) `t31.6.cty9mra12) C_JmpBuf.0. . none unknown . "abi" . .)) ansi_c.0. C_JmpBuf.0. none unknown . "" .) ansi_c.0. 63
+      (type0 . .
+       (pragmax . . ~55
+        (postfix . .
+         (ident . . *) ~8 C_JmpBuf.0.) ~53
+        (pragma . . 9
+         (kv . . ~7
+          (ident . . importc) 2
+          (strlit . `t28.17.sysma2dyk "jmp_buf")) 28
+         (kv . . ~6
+          (ident . . header) 2
+          (strlit . `t28.17.sysma2dyk "<setjmp.h>")) 44
+         (ident . . bycopy)))
+       (empty) 2
+       (objectty . `t17.12.
+        (empty)
+        (empty) ~61,1
+        (reclist . .
+         (identdefs . .
+          (ident . . abi) 10
+          (at . `t16.18. ~5 array.0.sysma2dyk 5
+           (infix . .
+            (ident . . div) ~4
+            (intlit s
+             (td :`t31.13. . c3 nimcall +8 +8 +0 +13 . 19,42,/home/araq/projects/nim/lib/system/ansi_c.nim
+              (intlit s `t31.13. +200) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +200) 10
+            (intlit s `t31.3.sysma2dyk +8)) 24 clong.0.cty9mra12) ~8,1
+          (empty))))) none unknown dh "jmp_buf" . .)) ~53
+    (pragma . . 9
+     (kv . . ~7
+      (ident . . importc) 2
+      (strlit . `t28.17.sysma2dyk "jmp_buf")) 28
+     (kv . . ~6
+      (ident . . header) 2
+      (strlit . `t28.17.sysma2dyk "<setjmp.h>")) 44
+     (ident . . bycopy)))
+   (empty) 2
+   (objectty . `t17.12.
+    (empty)
+    (empty) ~61,1
+    (reclist . .
+     (identdefs . .
+      (ident . . abi) 10
+      (at . `t16.18. ~5 array.0.sysma2dyk 5
+       (infix . .
+        (ident . . div) ~4
+        (intlit s `t31.13. +200) 10
+        (intlit s `t31.3.sysma2dyk +8)) 24 clong.0.cty9mra12) ~8,1
+      (empty)))))) 4,47
+ (type s . 13
+  (type0 . . ~13
+   (sd :CSighandlerT.0. .
+    (type) . ug ofrbcr0s0awl0t0c0 -1 +0 .
+    (td :`t25.19. . e1 noconv +8 +8 +0 +19 . 25,48,/home/araq/projects/nim/lib/system/ansi_c.nim
+     (formalparams . .
+      (arglist . . . . . . 10
+       (pragma . . 2
+        (ident . . noconv)) .) 1
+      (sd :a.5 .
+       (param) . . . -1 +0 . `t34.11.cty9mra12 CSighandlerT.0. . none unknown . "" . .)) ansi_c.0. CSighandlerT.0. none unknown . "" .) ansi_c.0. 13
+    (type0 . . ~13 CSighandlerT.0.
+     (empty) 7
+     (procty . `t25.19.
+      (formalparams . .
+       (empty) 1
+       (identdefs . . a.5 3 cint.0.cty9mra12 7
+        (empty))) 10
+      (pragma . . 2
+       (ident . . noconv)))) none unknown . "" . .)
+   (empty) 7
+   (procty . `t25.19.
+    (formalparams . .
+     (empty) 1
+     (identdefs . . a.5 3 cint.0.cty9mra12 7
+      (empty))) 10
+    (pragma . . 2
+     (ident . . noconv))))) 1,61
+ (const s . 2,1
+  (sd :SIGABRT.0. x
+   (const) . eg ofrbcr0s0awl0t0c0 -1 +0 . `t34.11.cty9mra12 ansi_c.0.
+   (const0 . . SIGABRT.0.
+    (empty) 15
+    (int32lit . `t34.11.cty9mra12 +6)) none unknown . "" . .) 2,2
+  (sd :SIGFPE.0. x
+   (const) . eg ofrbcr0s0awl0t0c0 -1 +0 . `t34.11.cty9mra12 ansi_c.0.
+   (const0 . . SIGFPE.0.
+    (empty) 14
+    (int32lit . `t34.11.cty9mra12 +8)) none unknown . "" . .) 2,3
+  (sd :SIGILL.0. x
+   (const) . eg ofrbcr0s0awl0t0c0 -1 +0 . `t34.11.cty9mra12 ansi_c.0.
+   (const0 . . SIGILL.0.
+    (empty) 14
+    (int32lit . `t34.11.cty9mra12 +4)) none unknown . "" . .) 2,4
+  (sd :SIGINT.0. x
+   (const) . eg ofrbcr0s0awl0t0c0 -1 +0 . `t34.11.cty9mra12 ansi_c.0.
+   (const0 . . SIGINT.0.
+    (empty) 14
+    (int32lit . `t34.11.cty9mra12 +2)) none unknown . "" . .) 2,5
+  (sd :SIGSEGV.0. x
+   (const) . eg ofrbcr0s0awl0t0c0 -1 +0 . `t34.11.cty9mra12 ansi_c.0.
+   (const0 . . SIGSEGV.0.
+    (empty) 15
+    (int32lit . `t34.11.cty9mra12 +11)) none unknown . "" . .) 2,6
+  (sd :SIGTERM.0. x
+   (const) . eg ofrbcr0s0awl0t0c0 -1 +0 . `t34.11.cty9mra12 ansi_c.0.
+   (const0 . . SIGTERM.0.
+    (empty) 15
+    (int32lit . `t34.11.cty9mra12 +15)) none unknown . "" . .) 2,7
+  (sd :SIGPIPE.0. x
+   (const) . eg ofrbcr0s0awl0t0c0 -1 +0 . `t34.11.cty9mra12 ansi_c.0.
+   (const0 . . SIGPIPE.0.
+    (empty) 15
+    (int32lit . `t34.11.cty9mra12 +13)) none unknown . "" . .) 2,8
+  (sd :SIG_DFL.0. x
+   (const) . eg ofrbcr0s0awl0t0c0 -1 +0 . `t25.19. ansi_c.0.
+   (const0 . . SIG_DFL.0.
+    (empty) 24
+    (nil . `t25.19.)) none unknown . "" . .)) 6,147
+ (sd :c_longjmp.0. x
+  (proc) . egi ofrbcr0s0awl0t0c0 -1 +0
+  (bheader
+   (false)
+   (false) "" 44,41,/home/araq/projects/nim/lib/system/ansi_c.nim
+   (strlit . `t28.17.sysma2dyk "<setjmp.h>"))
+  (td :`t25.31. . e2 nimcall -1 -1 +0 +31 . 17,148,/home/araq/projects/nim/lib/system/ansi_c.nim
+   (formalparams . .
+    (arglist . . ~15
+     (bracket . .) . .
+     (arglist . .) 31
+     (pragma . . ~38,1
+      (kv . . ~6
+       (ident . . header) 2
+       (strlit . `t28.17.sysma2dyk "<setjmp.h>")) ~15,1
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "longjmp")) ~46
+      (kv . .
+       (ident . . raises)
+       (bracket . .)))
+     (arglist . .)) 1
+    (sd :jmpb.0 .
+     (param) . . . -1 +0 . `t17.12. c_longjmp.0. . none unknown . "" . .) 17
+    (sd :retval.0 .
+     (param) . . . -1 +1 . `t34.11.cty9mra12 c_longjmp.0. . none unknown . "" . .)) c_longjmp.0. . none unknown . "" .) ansi_c.0. ~5
+  (proc s . 5
+   (ht . c_longjmp.0.)
+   (empty)
+   (empty) . 46
+   (pragma . . ~38,1
+    (kv . . ~6
+     (ident . . header) 2
+     (strlit . `t28.17.sysma2dyk "<setjmp.h>")) ~15,1
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "longjmp")) ~46
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (empty)) none unknown dh "longjmp" . .) 6,149
+ (sd :c_setjmp.0. x
+  (proc) . egi ofrbcr0s0awl0t0c0 -1 +0
+  (bheader
+   (false)
+   (false) "" 44,41,/home/araq/projects/nim/lib/system/ansi_c.nim
+   (strlit . `t28.17.sysma2dyk "<setjmp.h>"))
+  (td :`t25.32. . e2 nimcall -1 -1 +0 +32 . 16,150,/home/araq/projects/nim/lib/system/ansi_c.nim
+   (formalparams . `t34.11.cty9mra12
+    (arglist . . ~14
+     (bracket . .) . .
+     (arglist . .) 23
+     (pragma . . ~29,1
+      (kv . . ~6
+       (ident . . header) 2
+       (strlit . `t28.17.sysma2dyk "<setjmp.h>")) ~6,1
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "setjmp")) ~37
+      (kv . .
+       (ident . . raises)
+       (bracket . .)))
+     (arglist . .)) 1
+    (sd :jmpb.1 .
+     (param) . . . -1 +0 . `t17.12. c_setjmp.0. . none unknown . "" . .)) c_setjmp.0. . none unknown . "" `t34.11.cty9mra12) ansi_c.0. ~5
+  (proc s . 5
+   (ht . c_setjmp.0.)
+   (empty)
+   (empty) . 37
+   (pragma . . ~29,1
+    (kv . . ~6
+     (ident . . header) 2
+     (strlit . `t28.17.sysma2dyk "<setjmp.h>")) ~6,1
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "setjmp")) ~37
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (empty)) none unknown dh "setjmp" . .) 4,152
+ (sd :c_signal.0. x
+  (proc) . egid2 ofrbcr0s0awl0t0c0 -1 +0
+  (bheader
+   (false)
+   (false) "" 29,154,/home/araq/projects/nim/lib/system/ansi_c.nim
+   (strlit . `t28.17.sysma2dyk "<signal.h>"))
+  (td :`t25.33. . e2 nimcall -1 -1 +0 +33 . 14,153,/home/araq/projects/nim/lib/system/ansi_c.nim
+   (formalparams . `t25.19.
+    (arglist . . ~14
+     (bracket . .) . .
+     (arglist . .) 50
+     (pragma . . ~55,1
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "signal")) ~37,1
+      (kv . . ~6
+       (ident . . header) 2
+       (strlit . `t28.17.sysma2dyk "<signal.h>")) ~21,1
+      (ident . . discardable) ~64
+      (kv . .
+       (ident . . raises)
+       (bracket . .)))
+     (arglist . .)) 1
+    (sd :sign.0 .
+     (param) . . . -1 +0 . `t34.11.cty9mra12 c_signal.0. . none unknown . "" . .) 13
+    (sd :handler.0 .
+     (param) . . . -1 +1 . `t25.19. c_signal.0. . none unknown . "" . .)) c_signal.0. . none unknown . "" `t25.19.) ansi_c.0. ~5
+  (proc s . 5
+   (ht . c_signal.0.)
+   (empty)
+   (empty) . 64
+   (pragma . . ~55,1
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "signal")) ~37,1
+    (kv . . ~6
+     (ident . . header) 2
+     (strlit . `t28.17.sysma2dyk "<signal.h>")) ~21,1
+    (ident . . discardable) ~64
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (empty)) none unknown dh "signal" . .) 4,154
+ (sd :c_raise.0. x
+  (proc) . egi ofrbcr0s0awl0t0c0 -1 +0
+  (bheader
+   (false)
+   (false) "" 29,154,/home/araq/projects/nim/lib/system/ansi_c.nim
+   (strlit . `t28.17.sysma2dyk "<signal.h>"))
+  (td :`t25.34. . e2 nimcall -1 -1 +0 +34 . 13,155,/home/araq/projects/nim/lib/system/ansi_c.nim
+   (formalparams . `t34.11.cty9mra12
+    (arglist . . ~13
+     (bracket . .) . .
+     (arglist . .) 19
+     (pragma . . 9
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "raise")) 26
+      (kv . . ~6
+       (ident . . header) 2
+       (strlit . `t28.17.sysma2dyk "<signal.h>")) ~32
+      (kv . .
+       (ident . . raises)
+       (bracket . .)))
+     (arglist . .)) 1
+    (sd :sign.1 .
+     (param) . . . -1 +0 . `t34.11.cty9mra12 c_raise.0. . none unknown . "" . .)) c_raise.0. . none unknown . "" `t34.11.cty9mra12) ansi_c.0. ~5
+  (proc s . 5
+   (ht . c_raise.0.)
+   (empty)
+   (empty) . 32
+   (pragma . . 9
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "raise")) 26
+    (kv . . ~6
+     (ident . . header) 2
+     (strlit . `t28.17.sysma2dyk "<signal.h>")) ~32
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (empty)) none unknown dh "raise" . .) 1,157
+ (type s . 27,1
+  (type0 . .
+   (pragmax . . ~27,~1
+    (sd :CFile.0. .
+     (type) . ugi ofrbcr0s0awl0t0c0 -1 +0
+     (bheader
+      (false)
+      (false) "" 35,158,/home/araq/projects/nim/lib/system/ansi_c.nim
+      (strlit . `t28.17.sysma2dyk "<stdio.h>"))
+     (td :`t17.35. . fi3 nimcall -3 -3 -3 +35 . 31,159,/home/araq/projects/nim/lib/system/ansi_c.nim
+      (reclist . .) ansi_c.0. CFile.0. none unknown . "" .) ansi_c.0. 27,1
+     (type0 . .
+      (pragmax . . ~27,~1 CFile.0. ~21,~1
+       (pragma . . 9
+        (kv . . ~7
+         (ident . . importc) 2
+         (strlit . `t28.17.sysma2dyk "FILE")) 25
+        (kv . . ~6
+         (ident . . header) 2
+         (strlit . `t28.17.sysma2dyk "<stdio.h>")) 2,1
+        (ident . . incompleteStruct)))
+      (empty) 2
+      (objectty . `t17.35.
+       (empty)
+       (empty)
+       (empty))) none unknown dh "FILE" . .) ~21,~1
+    (pragma . . 9
+     (kv . . ~7
+      (ident . . importc) 2
+      (strlit . `t28.17.sysma2dyk "FILE")) 25
+     (kv . . ~6
+      (ident . . header) 2
+      (strlit . `t28.17.sysma2dyk "<stdio.h>")) 2,1
+     (ident . . incompleteStruct)))
+   (empty) 2
+   (objectty . `t17.35.
+    (empty)
+    (empty)
+    (empty))) 10,2
+  (type0 h . ~2
+   (postfix . .
+    (ident . . *) ~8
+    (sd :CFilePtr.0. x
+     (type) . ueg ofrbcr0s0awl0t0c0 -1 +0 .
+     (td :`t21.36. . c3 nimcall +8 +8 +0 +36 . . ansi_c.0. CFilePtr.0. none unknown . "" `t17.35.) ansi_c.0. 10
+     (type0 h . ~2
+      (postfix . .
+       (ident . . *) ~8 CFilePtr.0.)
+      (empty) 2
+      (ptrty . `t21.36. 4 CFile.0.)) none unknown . "" . .))
+   (empty) 2
+   (ptrty . `t21.36. 4 CFile.0.))) ~1,162
+ (const s . 6
+  (sd :stdioUsesMacros.0. .
+   (const) . ug ofrbcr0s0awl0t0c0 -1 +0 . `t1.34.sysma2dyk ansi_c.0.
+   (const0 . . stdioUsesMacros.0.
+    (empty) 75
+    (intlit . `t1.34.sysma2dyk +0)) none unknown . "" . .)) ~1,163
+ (const s . 6
+  (sd :stderrName.0. .
+   (const) . ug ofrbcr0s0awl0t0c0 -1 +0 . `t28.17.sysma2dyk ansi_c.0.
+   (const0 . . stderrName.0.
+    (empty) 53
+    (strlit . `t28.17.sysma2dyk "stderr")) none unknown . "" . .)) ~1,164
+ (const s . 6
+  (sd :stdoutName.0. .
+   (const) . ug ofrbcr0s0awl0t0c0 -1 +0 . `t28.17.sysma2dyk ansi_c.0.
+   (const0 . . stdoutName.0.
+    (empty) 53
+    (strlit . `t28.17.sysma2dyk "stdout")) none unknown . "" . .)) ~1,165
+ (const s . 6
+  (sd :stdinName.0. .
+   (const) . ug ofrbcr0s0awl0t0c0 -1 +0 . `t28.17.sysma2dyk ansi_c.0.
+   (const0 . . stdinName.0.
+    (empty) 51
+    (strlit . `t28.17.sysma2dyk "stdin")) none unknown . "" . .)) 4,172
+ (sd :c_fprintf.0. x
+  (proc) . egid2 ofrbcr0s0awl0t0c0 -1 +0
+  (bheader
+   (false)
+   (false) "" 35,158,/home/araq/projects/nim/lib/system/ansi_c.nim
+   (strlit . `t28.17.sysma2dyk "<stdio.h>"))
+  (td :`t25.37. . ve2 nimcall -1 -1 +0 +37 . 15,173,/home/araq/projects/nim/lib/system/ansi_c.nim
+   (formalparams . `t34.11.cty9mra12
+    (arglist . . ~15
+     (bracket . .) . .
+     (arglist . .) 35
+     (pragma . . ~41,1
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "fprintf")) ~22,1
+      (kv . . ~6
+       (ident . . header) 2
+       (strlit . `t28.17.sysma2dyk "<stdio.h>")) ~7,1
+      (ident . . varargs) 2,1
+      (ident . . discardable) ~50
+      (kv . .
+       (ident . . raises)
+       (bracket . .)))
+     (arglist . .)) 1
+    (sd :f.0 .
+     (param) . . . -1 +0 . `t21.36. c_fprintf.0. . none unknown . "" . .) 14
+    (sd :frmt.0 .
+     (param) . . . -1 +1 . `t29.18.sysma2dyk c_fprintf.0. . none unknown . "" . .)) c_fprintf.0. . none unknown . "" `t34.11.cty9mra12) ansi_c.0. ~5
+  (proc s . 5
+   (ht . c_fprintf.0.)
+   (empty)
+   (empty) . 50
+   (pragma . . ~41,1
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "fprintf")) ~22,1
+    (kv . . ~6
+     (ident . . header) 2
+     (strlit . `t28.17.sysma2dyk "<stdio.h>")) ~7,1
+    (ident . . varargs) 2,1
+    (ident . . discardable) ~50
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (empty)) none unknown dh "fprintf" . .) 4,174
+ (sd :c_printf.0. x
+  (proc) . egid2 ofrbcr0s0awl0t0c0 -1 +0
+  (bheader
+   (false)
+   (false) "" 35,158,/home/araq/projects/nim/lib/system/ansi_c.nim
+   (strlit . `t28.17.sysma2dyk "<stdio.h>"))
+  (td :`t25.38. . ve2 nimcall -1 -1 +0 +38 . 14,175,/home/araq/projects/nim/lib/system/ansi_c.nim
+   (formalparams . `t34.11.cty9mra12
+    (arglist . . ~14
+     (bracket . .) . .
+     (arglist . .) 22
+     (pragma . . ~27,1
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "printf")) ~9,1
+      (kv . . ~6
+       (ident . . header) 2
+       (strlit . `t28.17.sysma2dyk "<stdio.h>")) 6,1
+      (ident . . varargs) 15,1
+      (ident . . discardable) ~36
+      (kv . .
+       (ident . . raises)
+       (bracket . .)))
+     (arglist . .)) 1
+    (sd :frmt.1 .
+     (param) . . . -1 +0 . `t29.18.sysma2dyk c_printf.0. . none unknown . "" . .)) c_printf.0. . none unknown . "" `t34.11.cty9mra12) ansi_c.0. ~5
+  (proc s . 5
+   (ht . c_printf.0.)
+   (empty)
+   (empty) . 36
+   (pragma . . ~27,1
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "printf")) ~9,1
+    (kv . . ~6
+     (ident . . header) 2
+     (strlit . `t28.17.sysma2dyk "<stdio.h>")) 6,1
+    (ident . . varargs) 15,1
+    (ident . . discardable) ~36
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (empty)) none unknown dh "printf" . .) 4,177
+ (sd :c_fputs.0. x
+  (proc) . egid2 ofrbcr0s0awl0t0c0 -1 +0
+  (bheader
+   (false)
+   (false) "" 35,158,/home/araq/projects/nim/lib/system/ansi_c.nim
+   (strlit . `t28.17.sysma2dyk "<stdio.h>"))
+  (td :`t25.39. . e2 nimcall -1 -1 +0 +39 . 13,178,/home/araq/projects/nim/lib/system/ansi_c.nim
+   (formalparams . `t34.11.cty9mra12
+    (arglist . . ~13
+     (bracket . .) . .
+     (arglist . .) 32
+     (pragma . . ~36,1
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "fputs")) ~19,1
+      (kv . . ~6
+       (ident . . header) 2
+       (strlit . `t28.17.sysma2dyk "<stdio.h>")) ~4,1
+      (ident . . discardable) ~45
+      (kv . .
+       (ident . . raises)
+       (bracket . .)))
+     (arglist . .)) 1
+    (sd :c.1 .
+     (param) . . . -1 +0 . `t29.18.sysma2dyk c_fputs.0. . none unknown . "" . .) 13
+    (sd :f.1 .
+     (param) . . . -1 +1 . `t21.36. c_fputs.0. . none unknown . "" . .)) c_fputs.0. . none unknown . "" `t34.11.cty9mra12) ansi_c.0. ~5
+  (proc s . 5
+   (ht . c_fputs.0.)
+   (empty)
+   (empty) . 45
+   (pragma . . ~36,1
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "fputs")) ~19,1
+    (kv . . ~6
+     (ident . . header) 2
+     (strlit . `t28.17.sysma2dyk "<stdio.h>")) ~4,1
+    (ident . . discardable) ~45
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (empty)) none unknown dh "fputs" . .) 4,179
+ (sd :c_fputc.0. x
+  (proc) . egid2 ofrbcr0s0awl0t0c0 -1 +0
+  (bheader
+   (false)
+   (false) "" 35,158,/home/araq/projects/nim/lib/system/ansi_c.nim
+   (strlit . `t28.17.sysma2dyk "<stdio.h>"))
+  (td :`t25.40. . e2 nimcall -1 -1 +0 +40 . 13,180,/home/araq/projects/nim/lib/system/ansi_c.nim
+   (formalparams . `t34.11.cty9mra12
+    (arglist . . ~13
+     (bracket . .) . .
+     (arglist . .) 29
+     (pragma . . ~33,1
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "fputc")) ~16,1
+      (kv . . ~6
+       (ident . . header) 2
+       (strlit . `t28.17.sysma2dyk "<stdio.h>")) ~1,1
+      (ident . . discardable) ~42
+      (kv . .
+       (ident . . raises)
+       (bracket . .)))
+     (arglist . .)) 1
+    (sd :c.2 .
+     (param) . . . -1 +0 . `t2.16.sysma2dyk c_fputc.0. . none unknown . "" . .) 10
+    (sd :f.2 .
+     (param) . . . -1 +1 . `t21.36. c_fputc.0. . none unknown . "" . .)) c_fputc.0. . none unknown . "" `t34.11.cty9mra12) ansi_c.0. ~5
+  (proc s . 5
+   (ht . c_fputc.0.)
+   (empty)
+   (empty) . 42
+   (pragma . . ~33,1
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "fputc")) ~16,1
+    (kv . . ~6
+     (ident . . header) 2
+     (strlit . `t28.17.sysma2dyk "<stdio.h>")) ~1,1
+    (ident . . discardable) ~42
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (empty)) none unknown dh "fputc" . .) 4,182
+ (sd :c_sprintf.0. x
+  (proc) . egin ofrbcr0s0awl0t0c0 -1 +0
+  (bheader
+   (false)
+   (false) "" 35,158,/home/araq/projects/nim/lib/system/ansi_c.nim
+   (strlit . `t28.17.sysma2dyk "<stdio.h>"))
+  (td :`t25.41. . vne2 nimcall -1 -1 +0 +41 . 15,183,/home/araq/projects/nim/lib/system/ansi_c.nim
+   (formalparams . `t34.11.cty9mra12
+    (arglist . . ~15
+     (bracket . .) . .
+     (arglist . .) 27
+     (pragma . . ~33,1
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "sprintf")) ~14,1
+      (kv . . ~6
+       (ident . . header) 2
+       (strlit . `t28.17.sysma2dyk "<stdio.h>")) 1,1
+      (ident . . varargs) 10,1
+      (ident . . noSideEffect) ~42
+      (kv . .
+       (ident . . raises)
+       (bracket . .)))
+     (arglist . .)) 1
+    (sd :buf.0 .
+     (param) . . . -1 +0 . `t29.18.sysma2dyk c_sprintf.0. . none unknown . "" . .) 6
+    (sd :frmt.2 .
+     (param) . . . -1 +1 . `t29.18.sysma2dyk c_sprintf.0. . none unknown . "" . .)) c_sprintf.0. . none unknown . "" `t34.11.cty9mra12) ansi_c.0. ~5
+  (proc s . 5
+   (ht . c_sprintf.0.)
+   (empty)
+   (empty) . 42
+   (pragma . . ~33,1
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "sprintf")) ~14,1
+    (kv . . ~6
+     (ident . . header) 2
+     (strlit . `t28.17.sysma2dyk "<stdio.h>")) 1,1
+    (ident . . varargs) 10,1
+    (ident . . noSideEffect) ~42
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (empty)) none unknown dh "sprintf" . .) 4,186
+ (sd :c_snprintf.0. x
+  (proc) . egin ofrbcr0s0awl0t0c0 -1 +0
+  (bheader
+   (false)
+   (false) "" 35,158,/home/araq/projects/nim/lib/system/ansi_c.nim
+   (strlit . `t28.17.sysma2dyk "<stdio.h>"))
+  (td :`t25.42. . vne2 nimcall -1 -1 +0 +42 . 16,187,/home/araq/projects/nim/lib/system/ansi_c.nim
+   (formalparams . `t34.11.cty9mra12
+    (arglist . . ~16
+     (bracket . .) . .
+     (arglist . .) 48
+     (pragma . . ~55,1
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "snprintf")) ~35,1
+      (kv . . ~6
+       (ident . . header) 2
+       (strlit . `t28.17.sysma2dyk "<stdio.h>")) ~20,1
+      (ident . . varargs) ~11,1
+      (ident . . noSideEffect) ~64
+      (kv . .
+       (ident . . raises)
+       (bracket . .)))
+     (arglist . .)) 1
+    (sd :buf.1 .
+     (param) . . . -1 +0 . `t29.18.sysma2dyk c_snprintf.0. . none unknown . "" . .) 15
+    (sd :n.1 .
+     (param) . . . -1 +1 . `t40.12.cty9mra12 c_snprintf.0. . none unknown . "" . .) 27
+    (sd :frmt.3 .
+     (param) . . . -1 +2 . `t29.18.sysma2dyk c_snprintf.0. . none unknown . "" . .)) c_snprintf.0. . none unknown . "" `t34.11.cty9mra12) ansi_c.0. ~5
+  (proc s . 5
+   (ht . c_snprintf.0.)
+   (empty)
+   (empty) . 64
+   (pragma . . ~55,1
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "snprintf")) ~35,1
+    (kv . . ~6
+     (ident . . header) 2
+     (strlit . `t28.17.sysma2dyk "<stdio.h>")) ~20,1
+    (ident . . varargs) ~11,1
+    (ident . . noSideEffect) ~64
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (empty)) none unknown dh "snprintf" . .) 6,204
+ (sd :c_malloc.0. x
+  (proc) . egi ofrbcr0s0awl0t0c0 -1 +0
+  (bheader
+   (false)
+   (false) "" 28,33,/home/araq/projects/nim/lib/system/ansi_c.nim
+   (strlit . `t28.17.sysma2dyk "<stdlib.h>"))
+  (td :`t25.43. . e2 nimcall -1 -1 +0 +43 . 16,205,/home/araq/projects/nim/lib/system/ansi_c.nim
+   (formalparams . `t26.19.sysma2dyk
+    (arglist . . ~14
+     (bracket . .) . .
+     (arglist . .) 25
+     (pragma . . ~30,1
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "malloc")) ~12,1
+      (kv . . ~6
+       (ident . . header) 2
+       (strlit . `t28.17.sysma2dyk "<stdlib.h>")) ~39
+      (kv . .
+       (ident . . raises)
+       (bracket . .)))
+     (arglist . .)) 1
+    (sd :size.4 .
+     (param) . . . -1 +0 . `t40.12.cty9mra12 c_malloc.0. . none unknown . "" . .)) c_malloc.0. . none unknown . "" `t26.19.sysma2dyk) ansi_c.0. ~5
+  (proc s . 5
+   (ht . c_malloc.0.)
+   (empty)
+   (empty) . 39
+   (pragma . . ~30,1
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "malloc")) ~12,1
+    (kv . . ~6
+     (ident . . header) 2
+     (strlit . `t28.17.sysma2dyk "<stdlib.h>")) ~39
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (empty)) none unknown dh "malloc" . .) 6,206
+ (sd :c_calloc.0. x
+  (proc) . egi ofrbcr0s0awl0t0c0 -1 +0
+  (bheader
+   (false)
+   (false) "" 28,33,/home/araq/projects/nim/lib/system/ansi_c.nim
+   (strlit . `t28.17.sysma2dyk "<stdlib.h>"))
+  (td :`t25.44. . e2 nimcall -1 -1 +0 +44 . 16,207,/home/araq/projects/nim/lib/system/ansi_c.nim
+   (formalparams . `t26.19.sysma2dyk
+    (arglist . . ~14
+     (bracket . .) . .
+     (arglist . .) 32
+     (pragma . . ~37,1
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "calloc")) ~19,1
+      (kv . . ~6
+       (ident . . header) 2
+       (strlit . `t28.17.sysma2dyk "<stdlib.h>")) ~46
+      (kv . .
+       (ident . . raises)
+       (bracket . .)))
+     (arglist . .)) 1
+    (sd :nmemb.0 .
+     (param) . . . -1 +0 . `t40.12.cty9mra12 c_calloc.0. . none unknown . "" . .) 8
+    (sd :size.5 .
+     (param) . . . -1 +1 . `t40.12.cty9mra12 c_calloc.0. . none unknown . "" . .)) c_calloc.0. . none unknown . "" `t26.19.sysma2dyk) ansi_c.0. ~5
+  (proc s . 5
+   (ht . c_calloc.0.)
+   (empty)
+   (empty) . 46
+   (pragma . . ~37,1
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "calloc")) ~19,1
+    (kv . . ~6
+     (ident . . header) 2
+     (strlit . `t28.17.sysma2dyk "<stdlib.h>")) ~46
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (empty)) none unknown dh "calloc" . .) 6,208
+ (sd :c_free.0. x
+  (proc) . egi ofrbcr0s0awl0t0c0 -1 +0
+  (bheader
+   (false)
+   (false) "" 28,33,/home/araq/projects/nim/lib/system/ansi_c.nim
+   (strlit . `t28.17.sysma2dyk "<stdlib.h>"))
+  (td :`t25.45. . e2 nimcall -1 -1 +0 +45 . 14,209,/home/araq/projects/nim/lib/system/ansi_c.nim
+   (formalparams . .
+    (arglist . . ~12
+     (bracket . .) . .
+     (arglist . .) 13
+     (pragma . . ~16,1
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "free")) ,1
+      (kv . . ~6
+       (ident . . header) 2
+       (strlit . `t28.17.sysma2dyk "<stdlib.h>")) ~25
+      (kv . .
+       (ident . . raises)
+       (bracket . .)))
+     (arglist . .)) 1
+    (sd :p.1 .
+     (param) . . . -1 +0 . `t26.19.sysma2dyk c_free.0. . none unknown . "" . .)) c_free.0. . none unknown . "" .) ansi_c.0. ~5
+  (proc s . 5
+   (ht . c_free.0.)
+   (empty)
+   (empty) . 25
+   (pragma . . ~16,1
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "free")) ,1
+    (kv . . ~6
+     (ident . . header) 2
+     (strlit . `t28.17.sysma2dyk "<stdlib.h>")) ~25
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (empty)) none unknown dh "free" . .) 6,210
+ (sd :c_realloc.0. x
+  (proc) . egi ofrbcr0s0awl0t0c0 -1 +0
+  (bheader
+   (false)
+   (false) "" 28,33,/home/araq/projects/nim/lib/system/ansi_c.nim
+   (strlit . `t28.17.sysma2dyk "<stdlib.h>"))
+  (td :`t25.46. . e2 nimcall -1 -1 +0 +46 . 17,211,/home/araq/projects/nim/lib/system/ansi_c.nim
+   (formalparams . `t26.19.sysma2dyk
+    (arglist . . ~15
+     (bracket . .) . .
+     (arglist . .) 40
+     (pragma . . ~46,1
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "realloc")) ~27,1
+      (kv . . ~6
+       (ident . . header) 2
+       (strlit . `t28.17.sysma2dyk "<stdlib.h>")) ~55
+      (kv . .
+       (ident . . raises)
+       (bracket . .)))
+     (arglist . .)) 1
+    (sd :p.2 .
+     (param) . . . -1 +0 . `t26.19.sysma2dyk c_realloc.0. . none unknown . "" . .) 13
+    (sd :newsize.0 .
+     (param) . . . -1 +1 . `t40.12.cty9mra12 c_realloc.0. . none unknown . "" . .)) c_realloc.0. . none unknown . "" `t26.19.sysma2dyk) ansi_c.0. ~5
+  (proc s . 5
+   (ht . c_realloc.0.)
+   (empty)
+   (empty) . 55
+   (pragma . . ~46,1
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "realloc")) ~27,1
+    (kv . . ~6
+     (ident . . header) 2
+     (strlit . `t28.17.sysma2dyk "<stdlib.h>")) ~55
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (empty)) none unknown dh "realloc" . .) 4,213
+ (sd :c_fwrite.0. x
+  (proc) . uegi ofrbcr0s0awl0t0c0 -1 +0
+  (bheader
+   (false)
+   (false) "" 35,158,/home/araq/projects/nim/lib/system/ansi_c.nim
+   (strlit . `t28.17.sysma2dyk "<stdio.h>"))
+  (td :`t25.47. . e2 nimcall -1 -1 +0 +47 . 14,214,/home/araq/projects/nim/lib/system/ansi_c.nim
+   (formalparams . `t40.12.cty9mra12
+    (arglist . . ~14
+     (bracket . .) . .
+     (arglist . .) 55
+     (pragma . . ~60,1
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "fwrite")) ~42,1
+      (kv . . ~6
+       (ident . . header) 2
+       (strlit . `t28.17.sysma2dyk "<stdio.h>")) ~69
+      (kv . .
+       (ident . . raises)
+       (bracket . .)))
+     (arglist . .)) 1
+    (sd :buf.2 .
+     (param) . . . -1 +0 . `t26.19.sysma2dyk c_fwrite.0. . none unknown . "" . .) 15
+    (sd :size.6 .
+     (param) . . . -1 +1 . `t40.12.cty9mra12 c_fwrite.0. . none unknown . "" . .) 21
+    (sd :n.2 .
+     (param) . . . -1 +2 . `t40.12.cty9mra12 c_fwrite.0. . none unknown . "" . .) 33
+    (sd :f.3 .
+     (param) . . . -1 +3 . `t21.36. c_fwrite.0. . none unknown . "" . .)) c_fwrite.0. . none unknown . "" `t40.12.cty9mra12) ansi_c.0. ~5
+  (proc s . 5
+   (ht . c_fwrite.0.)
+   (empty)
+   (empty) . 69
+   (pragma . . ~60,1
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "fwrite")) ~42,1
+    (kv . . ~6
+     (ident . . header) 2
+     (strlit . `t28.17.sysma2dyk "<stdio.h>")) ~69
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (empty)) none unknown dh "fwrite" . .) 4,216
+ (sd :c_fflush.0. x
+  (proc) . uegi ofrbcr0s0awl0t0c0 -1 +0
+  (bheader
+   (false)
+   (false) "" 35,158,/home/araq/projects/nim/lib/system/ansi_c.nim
+   (strlit . `t28.17.sysma2dyk "<stdio.h>"))
+  (td :`t25.48. . e2 nimcall -1 -1 +0 +48 . 14,217,/home/araq/projects/nim/lib/system/ansi_c.nim
+   (formalparams . `t34.11.cty9mra12
+    (arglist . . ~14
+     (bracket . .) . .
+     (arglist . .) 20
+     (pragma . . ~25,1
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "fflush")) ~7,1
+      (kv . . ~6
+       (ident . . header) 2
+       (strlit . `t28.17.sysma2dyk "<stdio.h>")) ~34
+      (kv . .
+       (ident . . raises)
+       (bracket . .)))
+     (arglist . .)) 1
+    (sd :f.4 .
+     (param) . . . -1 +0 . `t21.36. c_fflush.0. . none unknown . "" . .)) c_fflush.0. . none unknown . "" `t34.11.cty9mra12) ansi_c.0. ~5
+  (proc s . 5
+   (ht . c_fflush.0.)
+   (empty)
+   (empty) . 34
+   (pragma . . ~25,1
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "fflush")) ~7,1
+    (kv . . ~6
+     (ident . . header) 2
+     (strlit . `t28.17.sysma2dyk "<stdio.h>")) ~34
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (empty)) none unknown dh "fflush" . .) 4,219
+ (sd :rawWriteString.0. x
+  (proc) . uege0cn2i1 ofrbcr0s0awl0t0c0 -1 +0 .
+  (td :`t25.49. . nte1e2 inline -1 -1 +0 +49 . 20,220,/home/araq/projects/nim/lib/system/ansi_c.nim
+   (formalparams . .
+    (arglist . . ~20
+     (bracket . .)
+     (empty)
+     (empty) ~15
+     (arglist . .)
+     (empty) ~15
+     (arglist . .)) 1
+    (sd :f.5 .
+     (param) . u . -1 +0 . `t21.36. rawWriteString.0. . none unknown . "" . .) 14
+    (sd :s.1 .
+     (param) . u . -1 +1 . `t29.18.sysma2dyk rawWriteString.0. . none unknown . "" . .) 26
+    (sd :length.0 .
+     (param) . u . -1 +2 . `t31.3.sysma2dyk rawWriteString.0. . none unknown . "" . .)) rawWriteString.0. . none unknown . "" .) ansi_c.0. ~5
+  (proc s . 5
+   (ht . rawWriteString.0.)
+   (empty)
+   (empty) . 59
+   (pragma . . 2
+    (ident . . compilerproc) 16
+    (ident . . nonReloadable) 31
+    (ident . . inline) ~59
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty) 2,2
+   (stmts s .
+    (discard s . 16
+     (call s `t40.12.cty9mra12 ~8 c_fwrite.0. 1
+      (hstdconv . `t26.19.sysma2dyk
+       (empty) s.1) 4
+      (hstdconv . `t40.12.cty9mra12
+       (empty)
+       (intlit s
+        (td :`t31.50. . c3 nimcall +8 +8 +0 +50 . 22,222,/home/araq/projects/nim/lib/system/ansi_c.nim
+         (intlit s `t31.50. +1) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +1)) 7
+      (cast s `t40.12.cty9mra12 5 csize_t.0.cty9mra12 14 length.0) 30 f.5)) ,1
+    (discard s . 16
+     (call s `t34.11.cty9mra12 ~8 c_fflush.0. 1 f.5)))) none unknown . "rawWriteString" . .) 4,224
+ (sd :rawWrite.0. x
+  (proc) . uege0cn2i1 ofrbcr0s0awl0t0c0 -1 +0 .
+  (td :`t25.51. . nte1e2 inline -1 -1 +0 +51 . 14,225,/home/araq/projects/nim/lib/system/ansi_c.nim
+   (formalparams . .
+    (arglist . . ~14
+     (bracket . .)
+     (empty)
+     (empty) ~9
+     (arglist . .)
+     (empty) ~9
+     (arglist . .)) 1
+    (sd :f.6 .
+     (param) . u . -1 +0 . `t21.36. rawWrite.0. . none unknown . "" . .) 14
+    (sd :s.2 .
+     (param) . u . -1 +1 . `t29.18.sysma2dyk rawWrite.0. . none unknown . "" . .)) rawWrite.0. . none unknown . "" .) ansi_c.0. ~5
+  (proc s . 5
+   (ht . rawWrite.0.)
+   (empty)
+   (empty) . 40
+   (pragma . . 2
+    (ident . . compilerproc) 16
+    (ident . . nonReloadable) 31
+    (ident . . inline) ~40
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty) 2,2
+   (stmts s .
+    (discard s . 16
+     (call s `t40.12.cty9mra12 ~8 c_fwrite.0. 1
+      (hstdconv . `t26.19.sysma2dyk
+       (empty) s.2) 4
+      (hstdconv . `t40.12.cty9mra12
+       (empty)
+       (intlit s `t31.50. +1)) 15
+      (call s `t40.12.cty9mra12 ~8 c_strlen.0. 1 s.2) 20 f.6)) ,1
+    (discard s . 16
+     (call s `t34.11.cty9mra12 ~8 c_fflush.0. 1 f.6)))) none unknown . "rawWrite" . .) ~1,229
+ (pragma s . 2
+  (ident . . pop)))1,1,/home/araq/projects/nim/lib/system/ansi_c.nim(.index 1,168
+ (x cstderr.0. +2702) 1,169
+ (x cstdout.0. +544) 1,170
+ (x cstdin.0. +544) 4,15
+ (x c_memchr.0. +891)
+ (h `t25.3. +193)
+ (h ansi_c.0. +858) 1,1,/home/araq/projects/nim/lib/system.nim
+ (h stdlib.0. +90) 4,17
+ (x c_memcmp.0. +489)
+ (h `t25.4. +194) 4,19
+ (x c_memcpy.0. +1321)
+ (h `t25.5. +195) 4,21
+ (x c_memmove.0. +1320)
+ (h `t25.6. +196) 4,23
+ (x c_memset.0. +1328)
+ (h `t25.7. +195) 4,25
+ (x c_strcmp.0. +1325)
+ (h `t25.8. +194) 4,27
+ (x c_strlen.0. +1214)
+ (h `t25.9. +195) 4,29
+ (x c_strstr.0. +1115)
+ (h `t25.10. +194) 4,31
+ (x c_abort.0. +1233)
+ (h `t25.11. +195) 3,40
+ (x C_JmpBuf.0. +1128)
+ (h `t17.12. +218) 7,41
+ (h abi.0. +126)
+ (h `t16.18. +77)
+ (h `t20.16. +86)
+ (h `t31.15. +147)
+ (h `t31.17. +272)
+ (h `t31.13. +874) 4,47
+ (h CSighandlerT.0. +946)
+ (h `t25.19. +68) 3,62
+ (x SIGABRT.0. +828) 3,63
+ (x SIGFPE.0. +197) 3,64
+ (x SIGILL.0. +195) 3,65
+ (x SIGINT.0. +195) 3,66
+ (x SIGSEGV.0. +195) 3,67
+ (x SIGTERM.0. +198) 3,68
+ (x SIGPIPE.0. +198) 3,69
+ (x SIG_DFL.0. +198) 6,147
+ (x c_longjmp.0. +174)
+ (h `t25.31. +194) 6,149
+ (x c_setjmp.0. +1126)
+ (h `t25.32. +193) 4,152
+ (x c_signal.0. +1044)
+ (h `t25.33. +196) 4,154
+ (x c_raise.0. +1204)
+ (h `t25.34. +193) 1,157
+ (h CFile.0. +1087)
+ (h `t17.35. +208) 1,159
+ (x CFilePtr.0. +994)
+ (h `t21.36. +67) 5,162
+ (h stdioUsesMacros.0. +333) 5,163
+ (h stderrName.0. +227) 5,164
+ (h stdoutName.0. +225) 5,165
+ (h stdinName.0. +225) 4,172
+ (x c_fprintf.0. +207)
+ (h `t25.37. +196) 4,174
+ (x c_printf.0. +1278)
+ (h `t25.38. +195) 4,177
+ (x c_fputs.0. +1178)
+ (h `t25.39. +194) 4,179
+ (x c_fputc.0. +1202)
+ (h `t25.40. +194) 4,182
+ (x c_sprintf.0. +1201)
+ (h `t25.41. +195) 4,186
+ (x c_snprintf.0. +1291)
+ (h `t25.42. +196) 6,204
+ (x c_malloc.0. +1407)
+ (h `t25.43. +193) 6,206
+ (x c_calloc.0. +1055)
+ (h `t25.44. +193) 6,208
+ (x c_free.0. +1158)
+ (h `t25.45. +191) 6,210
+ (x c_realloc.0. +1002)
+ (h `t25.46. +194) 4,213
+ (x c_fwrite.0. +1165)
+ (h `t25.47. +194) 4,216
+ (x c_fflush.0. +1346)
+ (h `t25.48. +194) 4,219
+ (x rawWriteString.0. +1039)
+ (h `t25.49. +74)
+ (h `t31.50. +1072) 4,224
+ (x rawWrite.0. +394)
+ (h `t25.51. +68))

@@ -1,0 +1,72 @@
+(.nif26)
+(.indexat +3294            )
+1,1,/home/araq/projects/nim/lib/system/coro_detection.nim(stmts . .
+ (implementation) ~1
+ (comment sh .) 8,2
+ (sd :coroutinesSupportedPlatform.0. .
+  (template) . g . -1 +0 .
+  (td :`t25.3. . . nimcall -1 -1 +0 +3 . 36,3,/home/araq/projects/nim/lib/system/coro_detection.nim
+   (formalparams . `t1.34.sysma2dyk
+    (arglist . .)) coroutinesSupportedPlatform.0. . none unknown . "" `t1.34.sysma2dyk) ~8,~2
+  (sd :coro_detection.0. .
+   (module) . . . +0 . . . 1,1,/home/araq/projects/nim/lib/system.nim
+   (sd :stdlib.0. .
+    (package) . . . -1 +0 . . . . none unknown . "" . .) . none unknown . "" . .) ~9
+  (template s . 9
+   (ht . coroutinesSupportedPlatform.0.)
+   (empty)
+   (empty) .
+   (empty)
+   (empty) 2,1
+   (stmts . .
+    (when . . 5
+     (elif . . 33,1
+      (infix . .
+       (opensymchoice d3 . or.9.sysma2dyk or.11.sysma2dyk or.5.sysma2dyk or.0.sysma2dyk or.6.sysma2dyk or.10.sysma2dyk or.1.sysma2dyk or.7.sysma2dyk or.8.sysma2dyk or.2.sysma2dyk or.3.sysma2dyk or.4.sysma2dyk) ~22
+       (infix . .
+        (opensymchoice d3 . or.9.sysma2dyk or.11.sysma2dyk or.5.sysma2dyk or.0.sysma2dyk or.6.sysma2dyk or.10.sysma2dyk or.1.sysma2dyk or.7.sysma2dyk or.8.sysma2dyk or.2.sysma2dyk or.3.sysma2dyk or.4.sysma2dyk) 59,~1
+        (infix . .
+         (opensymchoice d3 . or.9.sysma2dyk or.11.sysma2dyk or.5.sysma2dyk or.0.sysma2dyk or.6.sysma2dyk or.10.sysma2dyk or.1.sysma2dyk or.7.sysma2dyk or.8.sysma2dyk or.2.sysma2dyk or.3.sysma2dyk or.4.sysma2dyk) ~17
+         (infix . .
+          (opensymchoice d3 . or.9.sysma2dyk or.11.sysma2dyk or.5.sysma2dyk or.0.sysma2dyk or.6.sysma2dyk or.10.sysma2dyk or.1.sysma2dyk or.7.sysma2dyk or.8.sysma2dyk or.2.sysma2dyk or.3.sysma2dyk or.4.sysma2dyk) ~20
+          (infix . .
+           (opensymchoice d3 . or.9.sysma2dyk or.11.sysma2dyk or.5.sysma2dyk or.0.sysma2dyk or.6.sysma2dyk or.10.sysma2dyk or.1.sysma2dyk or.7.sysma2dyk or.8.sysma2dyk or.2.sysma2dyk or.3.sysma2dyk or.4.sysma2dyk) ~18
+           (infix . .
+            (opensymchoice d3 . or.9.sysma2dyk or.11.sysma2dyk or.5.sysma2dyk or.0.sysma2dyk or.6.sysma2dyk or.10.sysma2dyk or.1.sysma2dyk or.7.sysma2dyk or.8.sysma2dyk or.2.sysma2dyk or.3.sysma2dyk or.4.sysma2dyk) ~8
+            (call . . ~7
+             (ht . defined.0.sysma2dyk) 1
+             (ident . . sparc)) 10
+            (call . . ~7
+             (ht . defined.0.sysma2dyk) 1
+             (ident . . ELATE))) 10
+           (call . . ~7
+            (ht . defined.0.sysma2dyk) 1
+            (ident . . boehmgc))) 10
+          (call . . ~7
+           (ht . defined.0.sysma2dyk) 1
+           (ident . . gogc))) ~66,1
+         (call . . ~7
+          (ht . defined.0.sysma2dyk) 1
+          (ident . . nogc))) 10
+        (call . . ~7
+         (ht . defined.0.sysma2dyk) 1
+         (ident . . gcRegions))) 10
+       (call . . ~7
+        (ht . defined.0.sysma2dyk) 1
+        (ident . . gcMarkAndSweep))) ~3,2
+      (stmts . .
+       (ht . false.0.sysma2dyk))) ,3
+     (else . . 2,1
+      (stmts . .
+       (ht . true.0.sysma2dyk)))))) none unknown . "" . .) 1,19
+ (const s . 6
+  (sd :nimCoroutines.0. x
+   (const) . eg ofrbcr0s0awhtl0t0c0 -1 +0 . `t1.34.sysma2dyk coro_detection.0.
+   (const0 . . nimCoroutines.0.
+    (empty) 17
+    (intlit . `t1.34.sysma2dyk +0)) none unknown . "" . .)))1,1,/home/araq/projects/nim/lib/system/coro_detection.nim(.index 8,2
+ (h coroutinesSupportedPlatform.0. +146)
+ (h `t25.3. +66)
+ (h coro_detection.0. +230) 1,1,/home/araq/projects/nim/lib/system.nim
+ (h stdlib.0. +97) 7,19
+ (x nimCoroutines.0. +2542))

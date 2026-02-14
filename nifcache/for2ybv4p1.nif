@@ -1,0 +1,1290 @@
+(.nif26)
+(.indexat +46129           )
+1,1,/home/araq/projects/nim/lib/std/formatfloat.nim(stmts . . ~1,14
+ (import . . "ans3a62y1") ~1,23
+ (import . . "dranym4xo") ~1,23
+ (import . . "sch5xwplj1")
+ (replay 42,38
+  (replayaction . .
+   (strlit . . "cppdefine")
+   (strlit . . "snprintf")))
+ (repwasmoved "Ao3" =wasMoved.0.)
+ (repdestroy "Ao3" =destroy.0.)
+ (repcopy "Ao3" =copy.0.)
+ (repdup "Ao3" =dup.0.)
+ (repsink "Ao3" =sink.0.)
+ (reptrace "Ao3" =trace.0.)
+ (repwasmoved "Aa1AcS8ZAr0ArangeS0S64ZAiS-1" =wasMoved.1.)
+ (repdestroy "Aa1AcS8ZAr0ArangeS0S64ZAiS-1" =destroy.1.)
+ (repcopy "Aa1AcS8ZAr0ArangeS0S64ZAiS-1" =copy.1.)
+ (repdup "Aa1AcS8ZAr0ArangeS0S64ZAiS-1" =dup.1.)
+ (repsink "Aa1AcS8ZAr0ArangeS0S64ZAiS-1" =sink.1.)
+ (reptrace "Aa1AcS8ZAr0ArangeS0S64ZAiS-1" =trace.1.)
+ (repwasmoved "Ar0ArangeS0S64ZAiS-1" =wasMoved.2.)
+ (repdestroy "Ar0ArangeS0S64ZAiS-1" =destroy.2.)
+ (repcopy "Ar0ArangeS0S64ZAiS-1" =copy.2.)
+ (repdup "Ar0ArangeS0S64ZAiS-1" =dup.2.)
+ (repsink "Ar0ArangeS0S64ZAiS-1" =sink.2.)
+ (reptrace "Ar0ArangeS0S64ZAiS-1" =trace.2.)
+ (implementation) ~1,9
+ (comment sh .) 4,16
+ (sd :addCstringN.0. .
+  (proc) . ugi1 r0whtl0t0c0 -1 +0 .
+  (td :`t25.3. . nte2 nimcall -1 -1 +0 +3 . 16,17,/home/araq/projects/nim/lib/std/formatfloat.nim
+   (formalparams . .
+    (arglist . . ~11
+     (arglist . .)
+     (empty)
+     (empty) ~11
+     (arglist . .)
+     (empty) ~11
+     (arglist . .)) 1
+    (sd :result.0 .
+     (param) . u . -1 +0 .
+     (td :`t23.4. . h0 nimcall -1 -1 +0 +4 . . addCstringN.0. . none unknown . "" `t28.17.sysma2dyk) addCstringN.0. . none unknown . "" . .) 21
+    (sd :buf.0 .
+     (param) . u . -1 +1 . `t29.18.sysma2dyk addCstringN.0. . none unknown . "" . .) 35
+    (sd :buflen.0 .
+     (param) . u . -1 +2 . `t31.3.sysma2dyk addCstringN.0. . none unknown . "" . .)) addCstringN.0. . none unknown . "" .) ~4,~16
+  (sd :formatfloat.0. .
+   (module) . . . +0 . . . 1,1,/home/araq/projects/nim/lib/system.nim
+   (sd :stdlib.0. .
+    (package) . . . -1 +0 . . . . none unknown . "" . .) . none unknown . "" . .) ~5
+  (proc s . 5
+   (ht . addCstringN.0.)
+   (empty)
+   (empty) .
+   (empty)
+   (empty) 2,2
+   (expr s `t26.19.sysma2dyk
+    (let s . 4
+     (identdefs . .
+      (sd :oldLen.0 .
+       (let . +0 +0) . u r0whtl0t0c0 -1 +0 . `t31.3.sysma2dyk addCstringN.0.
+       (identdefs . . oldLen.0 7
+        (empty) 15
+        (call . `t31.3.sysma2dyk 1 len.4.sysma2dyk ~6
+         (hderef . `t28.17.sysma2dyk result.0))) none unknown . "" . .) 7
+      (empty) 15
+      (call . `t31.3.sysma2dyk 1 len.4.sysma2dyk ~6
+       (hderef . `t28.17.sysma2dyk result.0)))) ,1
+    (let s . 4
+     (identdefs . .
+      (sd :newLen.0 .
+       (let . +0 +0) . u r0whtl0t0c0 -1 +0 . `t31.3.sysma2dyk addCstringN.0.
+       (identdefs . . newLen.0 7
+        (empty) 16
+        (infix . `t31.3.sysma2dyk \2B.5.sysma2dyk ~7 oldLen.0 2 buflen.0)) none unknown . "" . .) 7
+      (empty) 16
+      (infix . `t31.3.sysma2dyk \2B.5.sysma2dyk ~7 oldLen.0 2 buflen.0))) 6,2
+    (call s . 1 setLen.1.sysma2dyk ~6
+     (hderef . `t28.17.sysma2dyk result.0) 8
+     (hstdconv . `t20.744.sysma2dyk
+      (empty) newLen.0)) 8,3
+    (call s `t26.19.sysma2dyk ~8 c_memcpy.0.ans3a62y1 7
+     (hstdconv . `t26.19.sysma2dyk
+      (empty)
+      (addr s
+       (td :`t21.5. . c3 nimcall -1 -1 +0 +5 . . addCstringN.0. . none unknown . "" `t2.16.sysma2dyk)
+       (at s `t2.16.sysma2dyk ~6
+        (hderef s `t28.17.sysma2dyk result.0) 1 oldLen.0))) 22
+     (hstdconv . `t26.19.sysma2dyk
+      (empty) buf.0) 33
+     (conv s `t40.12.cty9mra12 1 csize_t.0.cty9mra12 ~6 buflen.0)))) none unknown . "" . .) 4,25
+ (sd :writeFloatToBufferRoundtrip.0. x
+  (proc) . uegi1 r0whtl0t0c0 -1 +0 .
+  (td :`t25.6. . nte2 nimcall -1 -1 +0 +6 . 33,26,/home/araq/projects/nim/lib/std/formatfloat.nim
+   (formalparams . `t31.3.sysma2dyk
+    (arglist . . ~28
+     (arglist . .)
+     (empty)
+     (empty) ~28
+     (arglist . .)
+     (empty) ~28
+     (arglist . .)) 1
+    (sd :buf.1 .
+     (param) . u . -1 +0 .
+     (td :`t23.7. . . nimcall -1 -1 +0 +7 . . writeFloatToBufferRoundtrip.0. . none unknown . ""
+      (td :`t16.11. . c3 nimcall -1 -1 +0 +11 . . writeFloatToBufferRoundtrip.0. . none unknown . ""
+       (td :`t20.9. . c3 nimcall -1 -1 +0 +9 . 49,26,/home/araq/projects/nim/lib/std/formatfloat.nim
+        (range . .
+         (intlit .
+          (td :`t31.8. . c3 nimcall +8 +8 +0 +8 . 49,26,/home/araq/projects/nim/lib/std/formatfloat.nim
+           (intlit s `t31.8. +65) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +0)
+         (intlit . `t31.8. +64)) writeFloatToBufferRoundtrip.0. . none unknown . ""
+        (td :`t31.10. . c3 nimcall +8 +8 +0 +10 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "")) `t2.16.sysma2dyk)) writeFloatToBufferRoundtrip.0. . none unknown . "" . .) 27
+    (sd :value.0 .
+     (param) . u . -1 +1 . `t36.4.cty9mra12 writeFloatToBufferRoundtrip.0. . none unknown . "" . .)) writeFloatToBufferRoundtrip.0. . none unknown . "" `t31.3.sysma2dyk) formatfloat.0. ~5
+  (proc s . 5
+   (ht . writeFloatToBufferRoundtrip.0.)
+   (empty)
+   (empty) .
+   (empty)
+   (empty) 2,1
+   (stmts s
+    (td :`t7.1. . . nimcall -1 -1 +0 +1 . . . . none unknown . "")
+    (comment sh .) 7,4
+    (asgn s `t7.1. ~9,~5
+     (sd :result.1 .
+      (result) . u . -1 +0 . `t31.3.sysma2dyk writeFloatToBufferRoundtrip.0. . none unknown . "" . .) 48
+     (conv s `t31.3.sysma2dyk 1 int.0.sysma2dyk ~39
+      (call s `t31.3.sysma2dyk ~7 toChars.0.dranym4xo 1
+       (haddr .
+        (td :`t23.12. . . nimcall -1 -1 +0 +12 . . writeFloatToBufferRoundtrip.0. . none unknown . "" `t27.393.dranym4xo)
+        (hstdconv . `t27.393.dranym4xo
+         (empty)
+         (hderef . `t16.11. buf.1))) 6 value.0 34 true.0.sysma2dyk))) 12,5
+    (asgn s . ~9
+     (at . `t2.16.sysma2dyk ~3
+      (hderef . `t16.11. buf.1) 1
+      (hstdconv . `t20.9.
+       (empty) result.1)) 2
+     (charlit s `t2.16.sysma2dyk '\00'))) result.1) none unknown . "" . .) 4,33
+ (sd :writeFloatToBufferRoundtrip.1. x
+  (proc) . uegi1 r0whtl0t0c0 -1 +0 .
+  (td :`t25.46. . nte2 nimcall -1 -1 +0 +46 . 33,34,/home/araq/projects/nim/lib/std/formatfloat.nim
+   (formalparams . `t31.3.sysma2dyk
+    (arglist . . ~28
+     (arglist . .)
+     (empty)
+     (empty) ~28
+     (arglist . .)
+     (empty) ~28
+     (arglist . .)) 1
+    (sd :buf.2 .
+     (param) . u . -1 +0 .
+     (td :`t23.47. . . nimcall -1 -1 +0 +47 . . writeFloatToBufferRoundtrip.1. . none unknown . ""
+      (td :`t16.51. . c3 nimcall -1 -1 +0 +51 . . writeFloatToBufferRoundtrip.1. . none unknown . ""
+       (td :`t20.49. . c3 nimcall -1 -1 +0 +49 . 49,34,/home/araq/projects/nim/lib/std/formatfloat.nim
+        (range . .
+         (intlit .
+          (td :`t31.48. . c3 nimcall +8 +8 +0 +48 . 49,34,/home/araq/projects/nim/lib/std/formatfloat.nim
+           (intlit s `t31.48. +65) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +0)
+         (intlit . `t31.48. +64)) writeFloatToBufferRoundtrip.1. . none unknown . ""
+        (td :`t31.50. . c3 nimcall +8 +8 +0 +50 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "")) `t2.16.sysma2dyk)) writeFloatToBufferRoundtrip.1. . none unknown . "" . .) 27
+    (sd :value.1 .
+     (param) . u . -1 +1 . `t37.14.sysma2dyk writeFloatToBufferRoundtrip.1. . none unknown . "" . .)) writeFloatToBufferRoundtrip.1. . none unknown . "" `t31.3.sysma2dyk) formatfloat.0. ~5
+  (proc s . 5
+   (ht . writeFloatToBufferRoundtrip.1.)
+   (empty)
+   (empty) .
+   (empty)
+   (empty) 2,1
+   (stmts s `t7.1. 7
+    (asgn s `t7.1. ~9,~1
+     (sd :result.5 .
+      (result) . u . -1 +0 . `t31.3.sysma2dyk writeFloatToBufferRoundtrip.1. . none unknown . "" . .) 55
+     (conv s `t31.3.sysma2dyk 1 int.0.sysma2dyk ~39
+      (call s `t31.3.sysma2dyk ~14 float32ToChars.0.sch5xwplj1 1
+       (haddr .
+        (td :`t23.52. . . nimcall -1 -1 +0 +52 . . writeFloatToBufferRoundtrip.1. . none unknown . "" `t27.194.sch5xwplj1)
+        (hstdconv . `t27.194.sch5xwplj1
+         (empty)
+         (hderef . `t16.51. buf.2))) 6 value.1 34 true.0.sysma2dyk))) 12,1
+    (asgn s . ~9
+     (at . `t2.16.sysma2dyk ~3
+      (hderef . `t16.51. buf.2) 1
+      (hstdconv . `t20.49.
+       (empty) result.5)) 2
+     (charlit s `t2.16.sysma2dyk '\00'))) result.5) none unknown . "" . .) 4,37
+ (sd :c_snprintf.0. .
+  (proc) . ugin r0whtl0t0c0 -1 +0
+  (bheader
+   (false)
+   (false) "" 73,38,/home/araq/projects/nim/lib/std/formatfloat.nim
+   (strlit . `t28.17.sysma2dyk "<stdio.h>"))
+  (td :`t25.53. . vne2 nimcall -1 -1 +0 +53 . 15,38,/home/araq/projects/nim/lib/std/formatfloat.nim
+   (formalparams . `t34.11.cty9mra12
+    (arglist . .
+     (arglist . .) . .
+     (arglist . .) 48
+     (pragma . . 8
+      (kv . . ~6
+       (ident . . header) 2
+       (strlit . `t28.17.sysma2dyk "<stdio.h>")) ~20,1
+      (kv . . ~7
+       (ident . . importc) 2
+       (strlit . `t28.17.sysma2dyk "snprintf")) ~6,1
+      (ident . . varargs) 3,1
+      (ident . . noSideEffect))
+     (arglist . .)) 1
+    (sd :buf.3 .
+     (param) . . . -1 +0 . `t29.18.sysma2dyk c_snprintf.0. . none unknown . "" . .) 15
+    (sd :n.0 .
+     (param) . . . -1 +1 . `t40.12.cty9mra12 c_snprintf.0. . none unknown . "" . .) 27
+    (sd :frmt.0 .
+     (param) . . . -1 +2 . `t29.18.sysma2dyk c_snprintf.0. . none unknown . "" . .)) c_snprintf.0. . none unknown . "" `t34.11.cty9mra12) formatfloat.0. ~5
+  (proc s . 5
+   (ht . c_snprintf.0.)
+   (empty)
+   (empty) . 63
+   (pragma . . 8
+    (kv . . ~6
+     (ident . . header) 2
+     (strlit . `t28.17.sysma2dyk "<stdio.h>")) ~20,1
+    (kv . . ~7
+     (ident . . importc) 2
+     (strlit . `t28.17.sysma2dyk "snprintf")) ~6,1
+    (ident . . varargs) 3,1
+    (ident . . noSideEffect))
+   (empty)
+   (empty)) none unknown dh "snprintf" . .) 4,40
+ (sd :writeToBuffer.0. .
+  (proc) . ugi1 r0whtl0t0c0 -1 +0 .
+  (td :`t25.54. . nte2 nimcall -1 -1 +0 +54 . 18,41,/home/araq/projects/nim/lib/std/formatfloat.nim
+   (formalparams . .
+    (arglist . . ~13
+     (arglist . .)
+     (empty)
+     (empty) ~13
+     (arglist . .)
+     (empty) ~13
+     (arglist . .)) 1
+    (sd :buf.4 .
+     (param) . u . -1 +0 .
+     (td :`t23.55. . . nimcall -1 -1 +0 +55 . . writeToBuffer.0. . none unknown . ""
+      (td :`t16.59. . . nimcall -1 -1 +0 +59 . . writeToBuffer.0. . none unknown . ""
+       (td :`t20.57. . c3 nimcall -1 -1 +0 +57 . 34,41,/home/araq/projects/nim/lib/std/formatfloat.nim
+        (range . .
+         (intlit .
+          (td :`t31.56. . c3 nimcall +8 +8 +0 +56 . 34,41,/home/araq/projects/nim/lib/std/formatfloat.nim
+           (intlit s `t31.56. +65) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +0)
+         (intlit . `t31.56. +64)) writeToBuffer.0. . none unknown . ""
+        (td :`t31.58. . c3 nimcall +8 +8 +0 +58 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "")) `t2.16.sysma2dyk)) writeToBuffer.0. . none unknown . "" . .) 27
+    (sd :value.2 .
+     (param) . u . -1 +1 . `t29.18.sysma2dyk writeToBuffer.0. . none unknown . "" . .)) writeToBuffer.0. . none unknown . "" .) formatfloat.0. ~5
+  (proc s . 5
+   (ht . writeToBuffer.0.)
+   (empty)
+   (empty) .
+   (empty)
+   (empty) 2,1
+   (stmts s .
+    (var s . 4
+     (identdefs . .
+      (sd :i.0 .
+       (var . +0 +0) . u r0whtl0t0c0 -1 +0 .
+       (td :`t31.61. . c3 nimcall +8 +8 +0 +61 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "") writeToBuffer.0.
+       (identdefs . . i.0 2
+        (empty) 4
+        (intlit .
+         (td :`t31.60. . c3 nimcall +8 +8 +0 +60 . 10,42,/home/araq/projects/nim/lib/std/formatfloat.nim
+          (intlit s `t31.60. +0) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +0)) none unknown . "" . .) 2
+      (empty) 4
+      (intlit . `t31.60. +0))) ,1
+    (while s . 15
+     (expr sf `t1.34.sysma2dyk 2,132,/home/araq/projects/nim/lib/system/comparisons.nim
+      (empty)
+      (prefix s `t1.34.sysma2dyk not.0.sysma2dyk
+       (infix s `t1.34.sysma2dyk ==.3.sysma2dyk ~4
+        (at s `t2.16.sysma2dyk ~5 value.2 1 i.0) 3
+        (charlit s `t2.16.sysma2dyk '\00')))) 2,1
+     (stmts s . 7
+      (asgn s . ~4
+       (at . `t2.16.sysma2dyk ~3
+        (hderef . `t16.59. buf.4) 1
+        (hstdconv . `t20.57.
+         (empty) i.0)) 7
+       (at s `t2.16.sysma2dyk ~5 value.2 1 i.0)) ,1
+      (cmd s . inc.9.sysma2dyk 4 i.0 55,21,/home/araq/projects/nim/lib/system/arithmetics.nim
+       (intlit s `t31.36.sysma2dyk +1)))))) none unknown . "" . .) 4,46
+ (sd :writeFloatToBufferSprintf.0. x
+  (proc) . uegi1 r0whtl0t0c0 -1 +0 .
+  (td :`t25.65. . nte2 nimcall -1 -1 +0 +65 . 31,47,/home/araq/projects/nim/lib/std/formatfloat.nim
+   (formalparams . `t31.3.sysma2dyk
+    (arglist . . ~26
+     (arglist . .)
+     (empty)
+     (empty) ~26
+     (arglist . .)
+     (empty) ~26
+     (arglist . .)) 1
+    (sd :buf.5 .
+     (param) . u . -1 +0 .
+     (td :`t23.66. . . nimcall -1 -1 +0 +66 . . writeFloatToBufferSprintf.0. . none unknown . ""
+      (td :`t16.70. . . nimcall -1 -1 +0 +70 . . writeFloatToBufferSprintf.0. . none unknown . ""
+       (td :`t20.68. . c3 nimcall -1 -1 +0 +68 . 47,47,/home/araq/projects/nim/lib/std/formatfloat.nim
+        (range . .
+         (intlit .
+          (td :`t31.67. . c3 nimcall +8 +8 +0 +67 . 47,47,/home/araq/projects/nim/lib/std/formatfloat.nim
+           (intlit s `t31.67. +65) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +0)
+         (intlit . `t31.67. +64)) writeFloatToBufferSprintf.0. . none unknown . ""
+        (td :`t31.69. . c3 nimcall +8 +8 +0 +69 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "")) `t2.16.sysma2dyk)) writeFloatToBufferSprintf.0. . none unknown . "" . .) 27
+    (sd :value.3 .
+     (param) . u . -1 +1 . `t36.4.cty9mra12 writeFloatToBufferSprintf.0. . none unknown . "" . .)) writeFloatToBufferSprintf.0. . none unknown . "" `t31.3.sysma2dyk) formatfloat.0. ~5
+  (proc s . 5
+   (ht . writeFloatToBufferSprintf.0.)
+   (empty)
+   (empty) .
+   (empty)
+   (empty) 2,1
+   (stmts s `t7.1.
+    (comment sh .) ,4
+    (var s . 4
+     (identdefs . .
+      (sd :n.1 .
+       (var . +0 +0) . u r0whtl0t0c0 -1 +0 . `t31.3.sysma2dyk writeFloatToBufferSprintf.0.
+       (identdefs . . n.1 2
+        (empty) 59
+        (conv . `t31.3.sysma2dyk 1 int.0.sysma2dyk ~45
+         (call . `t34.11.cty9mra12 ~10 c_snprintf.0. 1
+          (cast . `t29.18.sysma2dyk 5 cstring.0.sysma2dyk 19
+           (addr .
+            (td :`t21.71. . . nimcall +8 +8 +0 +71 . . writeFloatToBufferSprintf.0. . none unknown . "" `t16.70.)
+            (hderef . `t16.70. buf.5))) 26
+          (hstdconv . `t40.12.cty9mra12
+           (empty)
+           (intlit .
+            (td :`t31.72. . c3 nimcall +8 +8 +0 +72 . 46,52,/home/araq/projects/nim/lib/std/formatfloat.nim
+             (intlit s `t31.72. +65) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +65)) 30
+          (hstdconv . `t29.18.sysma2dyk
+           (empty)
+           (strlit . `t28.17.sysma2dyk "%.16g")) 39 value.3))) none unknown . "" . .) 2
+      (empty) 59
+      (conv . `t31.3.sysma2dyk 1 int.0.sysma2dyk ~45
+       (call . `t34.11.cty9mra12 ~10 c_snprintf.0. 1
+        (cast . `t29.18.sysma2dyk 5 cstring.0.sysma2dyk 19
+         (addr . `t21.71.
+          (hderef . `t16.70. buf.5))) 26
+        (hstdconv . `t40.12.cty9mra12
+         (empty)
+         (intlit . `t31.72. +65)) 30
+        (hstdconv . `t29.18.sysma2dyk
+         (empty)
+         (strlit . `t28.17.sysma2dyk "%.16g")) 39 value.3)))) ,5
+    (var s . 4
+     (identdefs . .
+      (sd :hasDot.0 .
+       (var . +0 +0) . u r0whtl0t0c0 -1 +0 . `t1.34.sysma2dyk writeFloatToBufferSprintf.0.
+       (identdefs . . hasDot.0 7
+        (empty) 9 false.0.sysma2dyk) none unknown . "" . .) 7
+      (empty) 9 false.0.sysma2dyk)) 4,6
+    (for s .
+     (sd :i.1 .
+      (forvar . +0 +0) . u . -1 +0 . `t31.2659.sysma2dyk writeFloatToBufferSprintf.0. . none unknown . "" . .) 6
+     (infix s `t31.2659.sysma2dyk \2E..7.sysma2dyk ~1
+      (intlit .
+       (td :`t31.78. . c3 nimcall +8 +8 +0 +78 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +0) 3
+      (infix s `t31.3.sysma2dyk \2D.5.sysma2dyk ~1 n.1 1
+       (intlit s
+        (td :`t31.75. . c3 nimcall +8 +8 +0 +75 . 16,54,/home/araq/projects/nim/lib/std/formatfloat.nim
+         (intlit s `t31.75. +1) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +1))) ~2,1
+     (if s . 3
+      (elif . . 7
+       (infix s `t1.34.sysma2dyk ==.3.sysma2dyk ~4
+        (at s `t2.16.sysma2dyk ~3
+         (hderef . `t16.70. buf.5) 1
+         (hstdconv . `t20.68.
+          (empty) i.1)) 3
+        (charlit s `t2.16.sysma2dyk ',')) ~1,1
+       (stmts s . 7
+        (asgn s . ~4
+         (at . `t2.16.sysma2dyk ~3
+          (hderef . `t16.70. buf.5) 1
+          (hstdconv . `t20.68.
+           (empty) i.1)) 2
+         (charlit s `t2.16.sysma2dyk '.')) 7,1
+        (asgn s . ~7 hasDot.0 2 true.0.sysma2dyk))) 5,3
+      (elif . . 7
+       (call s `t1.34.sysma2dyk 5,70,/home/araq/projects/nim/lib/system/setops.nim
+        (sd :contains.0. .
+         (func) contains uefgn ofrbcr0s0awhtl0t0c0 -1 +0 .
+         (td :`t25.81. . ntge2 nimcall -1 -1 +0 +81 . 17,70,/home/araq/projects/nim/lib/system/setops.nim
+          (formalparams . `t1.34.sysma2dyk
+           (arglist . . ~12
+            (arglist . .)
+            (empty)
+            (empty) ~12
+            (arglist . .)
+            (empty) ~12
+            (arglist . .)) 1
+           (sd :x.1 .
+            (param) . . . -1 +0 .
+            (td :`t19.82. . g nimcall -1 -1 +0 +82 . . contains.0.sysma2dyk . none unknown . "" `t2.16.sysma2dyk) contains.0. . none unknown . "" . .) 12
+           (sd :y.1 .
+            (param) . . . -1 +1 . `t2.16.sysma2dyk contains.0. . none unknown . "" . .)) contains.0.sysma2dyk . none unknown . "" `t1.34.sysma2dyk) contains.0.sysma2dyk ~5
+         (func . . 5
+          (ht `t25.859.sysma2dyk contains.0.)
+          (empty)
+          (empty) . 41
+          (pragma . . 7
+           (kv . . ~5
+            (ident . . magic) 2
+            (strlit . `t28.17.sysma2dyk "InSet")))
+          (bracket . .
+           (empty) 14,70,/home/araq/projects/nim/lib/system/setops.nim
+           (genericparams . . 1
+            (identdefs . .
+             (ident . . T)
+             (empty)
+             (empty)))) 2,1
+          (stmts s .
+           (comment s .)
+           (empty) ,14
+           (comment s .))
+          (sd :result.7 .
+           (result) . u . -1 +0 . `t1.34.sysma2dyk contains.0. . none unknown . "" . .)) none unknown . "" . contains.0.sysma2dyk) 3
+        (curly s
+         (td :`t19.80. . i4 nimcall -1 -1 +0 +80 . . writeFloatToBufferSprintf.0. . none unknown . "" `t2.16.sysma2dyk) 4
+         (range . . ~3
+          (charlit s `t2.16.sysma2dyk 'a') 2
+          (charlit s `t2.16.sysma2dyk 'z')) 14
+         (range . . ~3
+          (charlit s `t2.16.sysma2dyk 'A') 2
+          (charlit s `t2.16.sysma2dyk 'Z')) 21
+         (charlit s `t2.16.sysma2dyk '.')) ~4
+        (at s `t2.16.sysma2dyk ~3
+         (hderef . `t16.70. buf.5) 1
+         (hstdconv . `t20.68.
+          (empty) i.1))) 4,1
+       (asgn s . ~7 hasDot.0 2 true.0.sysma2dyk)))) ,12
+    (if s `t7.1. 3
+     (elif . .
+      (prefix s `t1.34.sysma2dyk not.0.sysma2dyk 4 hasDot.0) ~1,1
+      (stmts s `t7.1. 7
+       (asgn s . ~4
+        (at . `t2.16.sysma2dyk ~3
+         (hderef . `t16.70. buf.5) 1
+         (hstdconv . `t20.68.
+          (empty) n.1)) 2
+        (charlit s `t2.16.sysma2dyk '.')) 9,1
+       (asgn s . ~6
+        (at . `t2.16.sysma2dyk ~3
+         (hderef . `t16.70. buf.5) 2
+         (hstdconv . `t20.68.
+          (empty)
+          (infix s `t31.3.sysma2dyk \2B.5.sysma2dyk ~1 n.1 1
+           (intlit s `t31.75. +1)))) 2
+        (charlit s `t2.16.sysma2dyk '0')) 9,2
+       (asgn s . ~6
+        (at . `t2.16.sysma2dyk ~3
+         (hderef . `t16.70. buf.5) 2
+         (hstdconv . `t20.68.
+          (empty)
+          (infix s `t31.3.sysma2dyk \2B.5.sysma2dyk ~1 n.1 1
+           (intlit s
+            (td :`t31.83. . c3 nimcall +8 +8 +0 +83 . 10,63,/home/araq/projects/nim/lib/std/formatfloat.nim
+             (intlit s `t31.83. +2) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +2)))) 2
+        (charlit s `t2.16.sysma2dyk '\00')) 7,3
+       (asgn s `t7.1. ~11,~17
+        (sd :result.6 .
+         (result) . u . -1 +0 . `t31.3.sysma2dyk writeFloatToBufferSprintf.0. . none unknown . "" . .) 4
+        (infix s `t31.3.sysma2dyk \2B.5.sysma2dyk ~2 n.1 2
+         (intlit s `t31.83. +2))))) ,5
+     (else . . 9,1
+      (asgn s `t7.1. ~7 result.6 2 n.1))) ,22
+    (if s `t7.1. 3
+     (elif . . 9
+      (call s `t1.34.sysma2dyk contains.0. 3
+       (curly s
+        (td :`t19.84. . i4 nimcall -1 -1 +0 +84 . . writeFloatToBufferSprintf.0. . none unknown . "" `t2.16.sysma2dyk) 1
+        (charlit s `t2.16.sysma2dyk 'n') 6
+        (charlit s `t2.16.sysma2dyk 'N') 11
+        (charlit s `t2.16.sysma2dyk 'D') 16
+        (charlit s `t2.16.sysma2dyk 'd') 21
+        (charlit s `t2.16.sysma2dyk '\29')) ~6
+       (at s `t2.16.sysma2dyk ~3
+        (hderef . `t16.70. buf.5) 2
+        (hstdconv . `t20.68.
+         (empty)
+         (infix s `t31.3.sysma2dyk \2D.5.sysma2dyk ~1 n.1 1
+          (intlit s `t31.75. +1))))) ~1,1
+      (stmts s `t7.1. 13
+       (call s . ~13 writeToBuffer.0. 1 buf.5 6
+        (hstdconv . `t29.18.sysma2dyk
+         (empty)
+         (strlit s `t28.17.sysma2dyk "nan"))) 7,1
+       (asgn s `t7.1. ~7 result.6 2
+        (intlit s `t31.3.sysma2dyk +3)))) 5,3
+     (elif . . 9
+      (infix s `t1.34.sysma2dyk ==.3.sysma2dyk ~6
+       (at s `t2.16.sysma2dyk ~3
+        (hderef . `t16.70. buf.5) 2
+        (hstdconv . `t20.68.
+         (empty)
+         (infix s `t31.3.sysma2dyk \2D.5.sysma2dyk ~1 n.1 1
+          (intlit s `t31.75. +1)))) 3
+       (charlit s `t2.16.sysma2dyk 'F')) ~3,1
+      (if s `t7.1. 3
+       (elif . . 7
+        (infix s `t1.34.sysma2dyk ==.3.sysma2dyk ~4
+         (at s `t2.16.sysma2dyk ~3
+          (hderef . `t16.70. buf.5) 1
+          (hstdconv . `t20.68.
+           (empty)
+           (intlit s `t31.60. +0))) 3
+         (charlit s `t2.16.sysma2dyk '-')) ~1,1
+        (stmts s `t7.1. 13
+         (call s . ~13 writeToBuffer.0. 1 buf.5 6
+          (hstdconv . `t29.18.sysma2dyk
+           (empty)
+           (strlit s `t28.17.sysma2dyk "-inf"))) 7,1
+         (asgn s `t7.1. ~7 result.6 2
+          (intlit s `t31.3.sysma2dyk +4)))) ,3
+       (else . . 2,1
+        (stmts s `t7.1. 13
+         (call s . ~13 writeToBuffer.0. 1 buf.5 6
+          (hstdconv . `t29.18.sysma2dyk
+           (empty)
+           (strlit s `t28.17.sysma2dyk "inf"))) 7,1
+         (asgn s `t7.1. ~7 result.6 2
+          (intlit s `t31.3.sysma2dyk +3)))))))) result.6) none unknown . "" . .) 4,80
+ (sd :writeFloatToBuffer.0. x
+  (proc) . eg r0whtl0t0c0 -1 +0 .
+  (td :`t25.87. . me1e2 inline -1 -1 +0 +87 . 24,81,/home/araq/projects/nim/lib/std/formatfloat.nim
+   (formalparams . `t31.3.sysma2dyk
+    (arglist . . . . . . 63
+     (pragma . . 2
+      (ident . . inline)) .) 1
+    (sd :buf.6 .
+     (param) . u . -1 +0 .
+     (td :`t23.88. . . nimcall -1 -1 +0 +88 . . writeFloatToBuffer.0. . none unknown . ""
+      (td :`t16.92. . . nimcall -1 -1 +0 +92 . . writeFloatToBuffer.0. . none unknown . ""
+       (td :`t20.90. . . nimcall -1 -1 +0 +90 . 40,81,/home/araq/projects/nim/lib/std/formatfloat.nim
+        (range . .
+         (intlit .
+          (td :`t31.89. . c3 nimcall +8 +8 +0 +89 . 40,81,/home/araq/projects/nim/lib/std/formatfloat.nim
+           (intlit s `t31.89. +65) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +0)
+         (intlit . `t31.89. +64)) writeFloatToBuffer.0. . none unknown . ""
+        (td :`t31.91. . c3 nimcall +8 +8 +0 +91 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "")) `t2.16.sysma2dyk)) writeFloatToBuffer.0. . none unknown . "" . .) 27
+    (sd :value.4 .
+     (param) . u . -1 +1 .
+     (td :`t57.94. . mi1 nimcall -1 -1 +0 +94 . . writeFloatToBuffer.0. 51,81,/home/araq/projects/nim/lib/std/formatfloat.nim
+      (sd :value\3Atype.0 .
+       (type) . a0 . -1 +0 . `t57.94. writeFloatToBuffer.0. . none unknown . "" . .) none unknown . "" `t36.4.cty9mra12 `t37.14.sysma2dyk) writeFloatToBuffer.0. . none unknown . "" . .)) writeFloatToBuffer.0. . none unknown . "" `t31.3.sysma2dyk) formatfloat.0. ~5
+  (proc s . 5
+   (ht . writeFloatToBuffer.0.)
+   (empty)
+   (genericparams . . 51 value\3Atype.0) . 87
+   (pragma . . 2
+    (ident . . inline))
+   (bracket . .
+    (empty)
+    (empty)) 2,1
+   (stmts . .
+    (when . . 5
+     (elif . . 7
+      (call . . ~7 defined.0.sysma2dyk 1
+       (ident . . nimLegacySprintf)) ~3,1
+      (stmts . . 25
+       (call . . ~25 writeFloatToBufferSprintf.0. 1
+        (ident . . buf) 6
+        (ident . . value)))) ,2
+     (else . . 2,1
+      (stmts . . 27
+       (call . . ~27
+        (opensymchoice .
+         (td :`t0.95. . . nimcall -1 -1 +0 +95 . . writeFloatToBuffer.0. . none unknown . "") writeFloatToBufferRoundtrip.0. writeFloatToBufferRoundtrip.1.) 1
+        (ident . . buf) 6
+        (ident . . value))))))) none unknown . "" . .) 4,86
+ (sd :addFloatRoundtrip.0. x
+  (proc) . ueg r0whtl0t0c0 -1 +0 .
+  (td :`t25.96. . me2 nimcall -1 -1 +0 +96 . 23,87,/home/araq/projects/nim/lib/std/formatfloat.nim
+   (formalparams . .
+    (arglist . .) 1
+    (sd :result.9 .
+     (param) . u . -1 +0 .
+     (td :`t23.97. . h0 nimcall -1 -1 +0 +97 . . addFloatRoundtrip.0. . none unknown . "" `t28.17.sysma2dyk) addFloatRoundtrip.0. . none unknown . "" . .) 21
+    (sd :x.3 .
+     (param) . u . -1 +1 .
+     (td :`t57.99. . mi1 nimcall -1 -1 +0 +99 . . addFloatRoundtrip.0. 44,87,/home/araq/projects/nim/lib/std/formatfloat.nim
+      (sd :x\3Atype.0 .
+       (type) . a0 . -1 +0 . `t57.99. addFloatRoundtrip.0. . none unknown . "" . .) none unknown . "" `t36.13.sysma2dyk `t37.14.sysma2dyk) addFloatRoundtrip.0. . none unknown . "" . .)) addFloatRoundtrip.0. . none unknown . "" .) formatfloat.0. ~5
+  (proc s . 5
+   (ht . addFloatRoundtrip.0.)
+   (empty)
+   (genericparams . . 44 x\3Atype.0) .
+   (empty)
+   (bracket . .
+    (empty)
+    (empty)) 2,1
+   (stmts . .
+    (when . . 5
+     (elif . . nimvm.0.sysma2dyk ~3,1
+      (stmts . .
+       (cmd . . raiseAssert.0.assy765wm 12
+        (strlit . . "unreachable")))) ,2
+     (else . . 2,1
+      (stmts . .
+       (var . . 4
+        (identdefs . . 7
+         (pragmax . . ~7
+          (ident . . buffer)
+          (pragma . . 2
+           (ident . . noinit))) 24
+         (call . . \5B\5D.0.sysma2dyk ~5
+          (ht . array.0.sysma2dyk) 1
+          (intlit . . +65) 5
+          (ht . char.0.sysma2dyk)) ~4,1
+         (empty))) ,1
+       (let . . 4
+        (identdefs . .
+         (ident . . n) 2
+         (empty) 31
+         (call . . ~27
+          (opensymchoice .
+           (td :`t0.102. . . nimcall -1 -1 +0 +102 . . addFloatRoundtrip.0. . none unknown . "") writeFloatToBufferRoundtrip.0. writeFloatToBufferRoundtrip.1.) 1
+          (ident . . buffer) 9
+          (ident . . x)))) 18,2
+       (call . . ~12
+        (dot . . ~6
+         (ident . . result) 1
+         (closedsymchoice .
+          (td :`t0.103. . . nimcall -1 -1 +0 +103 . . addFloatRoundtrip.0. . none unknown . "") addCstringN.0.)) 1
+        (cast . . 5
+         (ht . cstring.0.sysma2dyk) 23
+         (dot . . ~3
+          (call . . \5B\5D.0.sysma2dyk ~6
+           (ident . . buffer) 1
+           (intlit . . +0)) 1
+          (closedsymchoice .
+           (td :`t0.105. . . nimcall -1 -1 +0 +105 . . addFloatRoundtrip.0. . none unknown . "") addr.0.sysma2dyk))) 32
+        (ident . . n))))))) none unknown . "" . .) 4,94
+ (sd :addFloatSprintf.0. x
+  (proc) . uegi1 r0whtl0t0c0 -1 +0 .
+  (td :`t25.106. . nte2 nimcall -1 -1 +0 +106 . 21,95,/home/araq/projects/nim/lib/std/formatfloat.nim
+   (formalparams . .
+    (arglist . . ~16
+     (arglist . .)
+     (empty)
+     (empty) ~16
+     (arglist . .)
+     (empty) ~16
+     (arglist . .)) 1
+    (sd :result.10 .
+     (param) . u . -1 +0 .
+     (td :`t23.107. . h0 nimcall -1 -1 +0 +107 . . addFloatSprintf.0. . none unknown . "" `t28.17.sysma2dyk) addFloatSprintf.0. . none unknown . "" . .) 21
+    (sd :x.4 .
+     (param) . u . -1 +1 . `t36.13.sysma2dyk addFloatSprintf.0. . none unknown . "" . .)) addFloatSprintf.0. . none unknown . "" .) formatfloat.0. ~5
+  (proc s . 5
+   (ht . addFloatSprintf.0.)
+   (empty)
+   (empty) .
+   (empty)
+   (empty) 2,1
+   (when sl . 5
+    (elif . .
+     (ident . . nimvm) ~3,1
+     (cmd s . raiseAssert.0.assy765wm 12
+      (strlit s `t28.17.sysma2dyk "unreachable"))) ,2
+    (else . . 2,1
+     (stmts s .
+      (var s . 4
+       (identdefs . .
+        (pragmax . .
+         (sd :buffer.1 .
+          (var . +0 +0) . um0a r0whtl0t0c0 -1 +0 .
+          (td :`t16.111. . c3 nimcall -1 -1 +0 +111 . . addFloatSprintf.0. . none unknown . ""
+           (td :`t20.109. . c3 nimcall -1 -1 +0 +109 . 33,99,/home/araq/projects/nim/lib/std/formatfloat.nim
+            (range . .
+             (intlit .
+              (td :`t31.108. . c3 nimcall +8 +8 +0 +108 . 33,99,/home/araq/projects/nim/lib/std/formatfloat.nim
+               (intlit s `t31.108. +65) system.0.sysma2dyk int.0.sysma2dyk none unknown . "") +0)
+             (intlit . `t31.108. +64)) addFloatSprintf.0. . none unknown . ""
+            (td :`t31.110. . c3 nimcall +8 +8 +0 +110 . . system.0.sysma2dyk int.0.sysma2dyk none unknown . "")) `t2.16.sysma2dyk) addFloatSprintf.0.
+          (identdefs . .
+           (pragmax . . buffer.1 7
+            (pragma . . 2
+             (ident . . noinit))) 24
+           (at . `t16.111. ~5 array.0.sysma2dyk 1
+            (intlit s `t31.108. +65) 5 char.0.sysma2dyk)
+           (empty)) none unknown . "" . .) 7
+         (pragma . . 2
+          (ident . . noinit))) 24
+        (at . `t16.111. ~5 array.0.sysma2dyk 1
+         (intlit s `t31.108. +65) 5 char.0.sysma2dyk)
+        (empty))) ,1
+      (let s . 4
+       (identdefs . .
+        (sd :n.3 .
+         (let . +0 +0) . u r0whtl0t0c0 -1 +0 . `t31.3.sysma2dyk addFloatSprintf.0.
+         (identdefs . . n.3 2
+          (empty) 29
+          (call . `t31.3.sysma2dyk ~25 writeFloatToBufferSprintf.0. 1
+           (haddr .
+            (td :`t23.112. . . nimcall -1 -1 +0 +112 . . addFloatSprintf.0. . none unknown . "" `t16.111.) buffer.1) 9 x.4)) none unknown . "" . .) 2
+        (empty) 29
+        (call . `t31.3.sysma2dyk ~25 writeFloatToBufferSprintf.0. 1
+         (haddr . `t23.112. buffer.1) 9 x.4))) 6,2
+      (call s . 1 addCstringN.0. ~6 result.10 13
+       (cast s `t29.18.sysma2dyk 5 cstring.0.sysma2dyk 20
+        (addr s
+         (td :`t21.113. . . nimcall +8 +8 +0 +113 . . addFloatSprintf.0. . none unknown . "" `t2.16.sysma2dyk)
+         (at s `t2.16.sysma2dyk ~6 buffer.1 1
+          (hstdconv s `t20.109.
+           (empty)
+           (intlit . `t31.60. +0))))) 44 n.3))))) none unknown . "" . .) 4,124
+ (sd :addFloat.0. x
+  (proc) . eg r0whtl0t0c0 -1 +0 .
+  (td :`t25.114. . me1e2 inline -1 -1 +0 +114 . 14,125,/home/araq/projects/nim/lib/std/formatfloat.nim
+   (formalparams . .
+    (arglist . . . . . . 41
+     (pragma . . 2
+      (ident . . inline)) .) 1
+    (sd :result.11 .
+     (param) . u . -1 +0 .
+     (td :`t23.115. . h0 nimcall -1 -1 +0 +115 . . addFloat.0. . none unknown . "" `t28.17.sysma2dyk) addFloat.0. . none unknown . "" . .) 21
+    (sd :x.5 .
+     (param) . u . -1 +1 .
+     (td :`t57.117. . mi1 nimcall -1 -1 +0 +117 . . addFloat.0. 35,125,/home/araq/projects/nim/lib/std/formatfloat.nim
+      (sd :x\3Atype.1 .
+       (type) . a0 . -1 +0 . `t57.117. addFloat.0. . none unknown . "" . .) none unknown . "" `t36.13.sysma2dyk `t37.14.sysma2dyk) addFloat.0. . none unknown . "" . .)) addFloat.0. . none unknown . "" .) formatfloat.0. ~5
+  (proc s . 5
+   (ht . addFloat.0.)
+   (empty)
+   (genericparams . . 35 x\3Atype.1) . 55
+   (pragma . . 2
+    (ident . . inline))
+   (bracket . .
+    (empty)
+    (empty)) 2,1
+   (stmts . .
+    (comment h .) ,1
+    (call . . runnableExamples.0.sysma2dyk 2,1
+     (stmts b2 .
+      (var . . 2,1
+       (identdefs . .
+        (ident . . s) 2
+        (empty) 4
+        (strlit . . "foo\3A")) 2,2
+       (identdefs . .
+        (ident . . b) 2
+        (empty) 4
+        (floatlit . . +45.67))) 10,3
+      (call . . ~9
+       (dot . . ~1
+        (ident . . s) 1
+        (ident . . addFloat)) 1
+       (floatlit . . +45.67)) ,4
+      (cmd . .
+       (ident . . assert) 9
+       (infix . .
+        (ident . . ==) ~2
+        (ident . . s) 3
+        (strlit . . "foo\3A45.67"))))) ,7
+    (template . . 9
+     (ident . . impl)
+     (empty)
+     (empty) 14
+     (formalparams . .
+      (empty))
+     (empty)
+     (empty) 2,1
+     (stmts . .
+      (when . . 5
+       (elif . . 7
+        (call . . ~7 defined.0.sysma2dyk 1
+         (ident . . nimLegacySprintf)) ~3,1
+        (stmts . . 15
+         (call . . ~15 addFloatSprintf.0. 1
+          (ident . . result) 9
+          (ident . . x)))) ,2
+       (else . . 2,1
+        (stmts . . 17
+         (call . . ~17 addFloatRoundtrip.0. 1
+          (ident . . result) 9
+          (ident . . x))))))) ,12
+    (when . . 5
+     (elif . . 7
+      (call . . ~7 defined.0.sysma2dyk 1
+       (ident . . js)) ~3,1
+      (stmts . .
+       (when . . 5
+        (elif . .
+         (ht . nimvm.0.sysma2dyk) 7
+         (stmts . . 4
+          (call . . ~4
+           (ident . . impl)))) ,1
+        (else . . 2,1
+         (stmts . . 6
+          (cmd . .
+           (dot . . ~6
+            (ident . . result) 1
+            (opensymchoice .
+             (td :`t0.118. . . nimcall -1 -1 +0 +118 . . addFloat.0. . none unknown . "") add.3.sysma2dyk add.0.sysma2dyk add.2.sysma2dyk add.1.sysma2dyk add.12.sysma2dyk)) 21
+           (call . . ~16
+            (ident . . nimFloatToString) 1
+            (ident . . x)))))))) ,4
+     (else . . 6
+      (stmts . . 4
+       (call . . ~4
+        (ident . . impl))))))) none unknown . "" . .) 18,30
+ (sd :=wasMoved.0. .
+  (proc) . fng1n3 . -1 +0 .
+  (td :`t25.14. . n nimcall -1 -1 +0 +14 . 19,31,/home/araq/projects/nim/lib/std/formatfloat.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.0 .
+     (param) . . . -1 +0 .
+     (td :`t23.13. . . nimcall -1 -1 +0 +13 . . toChars.0.dranym4xo . none unknown . "" `t27.393.dranym4xo) =wasMoved.0. . none unknown . "" . .)) toChars.0.dranym4xo . none unknown . "" .) toChars.0.dranym4xo
+  (proc . . =wasMoved.0.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .)) none unknown . "" . .) 18,30
+ (sd :=destroy.0. .
+  (proc) . fg1n3 q -1 +0 .
+  (td :`t25.16. . . nimcall -1 -1 +0 +16 . 19,31,/home/araq/projects/nim/lib/std/formatfloat.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.1 .
+     (param) . . . -1 +0 .
+     (td :`t23.15. . . nimcall -1 -1 +0 +15 . . toChars.0.dranym4xo . none unknown . "" `t27.393.dranym4xo) =destroy.0. . none unknown . "" . .)) toChars.0.dranym4xo . none unknown . "" .) toChars.0.dranym4xo
+  (proc . . =destroy.0.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .)) none unknown . "" . .) 18,30
+ (sd :=copy.0. .
+  (proc) . fg1n3 . -1 +0 .
+  (td :`t25.18. . . nimcall -1 -1 +0 +18 . 19,31,/home/araq/projects/nim/lib/std/formatfloat.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.2 .
+     (param) . . . -1 +0 .
+     (td :`t23.17. . . nimcall -1 -1 +0 +17 . . toChars.0.dranym4xo . none unknown . "" `t27.393.dranym4xo) =copy.0. . none unknown . "" . .)
+    (sd :src.2 .
+     (param) . . . -1 +1 . `t27.393.dranym4xo =copy.0. . none unknown . "" . .)) toChars.0.dranym4xo . none unknown . "" .) toChars.0.dranym4xo
+  (proc . . =copy.0.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .)) none unknown . "" . .) 18,30
+ (sd :=dup.0. .
+  (proc) . fg1n3 . -1 +0 .
+  (td :`t25.19. . . nimcall -1 -1 +0 +19 . 19,31,/home/araq/projects/nim/lib/std/formatfloat.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :src.3 .
+     (param) . . . -1 +0 . `t27.393.dranym4xo =dup.0. . none unknown . "" . .)) toChars.0.dranym4xo . none unknown . "" `t27.393.dranym4xo) toChars.0.dranym4xo
+  (proc . . =dup.0.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .)
+   (sd :result.2 .
+    (result) . . . -1 +0 . `t27.393.dranym4xo =dup.0. . none unknown . "" . .)) none unknown . "" . .) 18,30
+ (sd :=sink.0. .
+  (proc) . fg1n3 . -1 +0 .
+  (td :`t25.21. . . nimcall -1 -1 +0 +21 . 19,31,/home/araq/projects/nim/lib/std/formatfloat.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.3 .
+     (param) . . . -1 +0 .
+     (td :`t23.20. . . nimcall -1 -1 +0 +20 . . toChars.0.dranym4xo . none unknown . "" `t27.393.dranym4xo) =sink.0. . none unknown . "" . .)
+    (sd :src.4 .
+     (param) . . . -1 +1 . `t27.393.dranym4xo =sink.0. . none unknown . "" . .)) toChars.0.dranym4xo . none unknown . "" .) toChars.0.dranym4xo
+  (proc . . =sink.0.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .)) none unknown . "" . .) 18,30
+ (sd :=trace.0. .
+  (proc) . fg1n3 . -1 +0 .
+  (td :`t25.23. . . nimcall -1 -1 +0 +23 . 19,31,/home/araq/projects/nim/lib/std/formatfloat.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.4 .
+     (param) . . . -1 +0 .
+     (td :`t23.22. . . nimcall -1 -1 +0 +22 . . toChars.0.dranym4xo . none unknown . "" `t27.393.dranym4xo) =trace.0. . none unknown . "" . .)
+    (sd :env.0 .
+     (param) . . . -1 +1 . `t26.19.sysma2dyk =trace.0. . none unknown . "" . .)) toChars.0.dranym4xo . none unknown . "" .) toChars.0.dranym4xo
+  (proc . . =trace.0.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .)) none unknown . "" . .) 18,30
+ (sd :=wasMoved.1. .
+  (proc) . fng1n3 . -1 +0 .
+  (td :`t25.25. . n nimcall -1 -1 +0 +25 . 19,31,/home/araq/projects/nim/lib/std/formatfloat.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.5 .
+     (param) . . . -1 +0 .
+     (td :`t23.24. . . nimcall -1 -1 +0 +24 . . writeFloatToBufferRoundtrip.0. . none unknown . "" `t16.11.) =wasMoved.1. . none unknown . "" . .)) writeFloatToBufferRoundtrip.0. . none unknown . "" .) writeFloatToBufferRoundtrip.0.
+  (proc . . =wasMoved.1.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .
+    (call . .
+     (sd :wasMoved.0. .
+      (proc) wasmoved n3 . -1 +0 . . . . none unknown . "" . .)
+     (hderef . `t16.11. dest.5)))) none unknown . "" . .) 18,30
+ (sd :=destroy.1. .
+  (proc) . fg1n3 q -1 +0 .
+  (td :`t25.27. . . nimcall -1 -1 +0 +27 . 19,31,/home/araq/projects/nim/lib/std/formatfloat.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.6 .
+     (param) . . . -1 +0 .
+     (td :`t23.26. . . nimcall -1 -1 +0 +26 . . writeFloatToBufferRoundtrip.0. . none unknown . "" `t16.11.) =destroy.1. . none unknown . "" . .)) writeFloatToBufferRoundtrip.0. . none unknown . "" .) writeFloatToBufferRoundtrip.0.
+  (proc . . =destroy.1.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .)) none unknown . "" . .) 18,30
+ (sd :=copy.1. .
+  (proc) . fg1n3 . -1 +0 .
+  (td :`t25.29. . . nimcall -1 -1 +0 +29 . 19,31,/home/araq/projects/nim/lib/std/formatfloat.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.7 .
+     (param) . . . -1 +0 .
+     (td :`t23.28. . . nimcall -1 -1 +0 +28 . . writeFloatToBufferRoundtrip.0. . none unknown . "" `t16.11.) =copy.1. . none unknown . "" . .)
+    (sd :src.7 .
+     (param) . . . -1 +1 . `t16.11. =copy.1. . none unknown . "" . .)) writeFloatToBufferRoundtrip.0. . none unknown . "" .) writeFloatToBufferRoundtrip.0.
+  (proc . . =copy.1.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .
+    (asgn . .
+     (hderef . `t16.11. dest.7) src.7))) none unknown . "" . .) 18,30
+ (sd :=dup.1. .
+  (proc) . fg1n3 . -1 +0 .
+  (td :`t25.30. . . nimcall -1 -1 +0 +30 . 19,31,/home/araq/projects/nim/lib/std/formatfloat.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :src.8 .
+     (param) . . . -1 +0 . `t16.11. =dup.1. . none unknown . "" . .)) writeFloatToBufferRoundtrip.0. . none unknown . "" `t16.11.) writeFloatToBufferRoundtrip.0.
+  (proc . . =dup.1.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .
+    (asgn . .
+     (sd :result.3 .
+      (result) . . . -1 +0 . `t16.11. =dup.1. . none unknown . "" . .) src.8)) result.3) none unknown . "" . .) 18,30
+ (sd :=sink.1. .
+  (proc) . fg1n3 . -1 +0 .
+  (td :`t25.32. . . nimcall -1 -1 +0 +32 . 19,31,/home/araq/projects/nim/lib/std/formatfloat.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.8 .
+     (param) . . . -1 +0 .
+     (td :`t23.31. . . nimcall -1 -1 +0 +31 . . writeFloatToBufferRoundtrip.0. . none unknown . "" `t16.11.) =sink.1. . none unknown . "" . .)
+    (sd :src.9 .
+     (param) . . . -1 +1 . `t16.11. =sink.1. . none unknown . "" . .)) writeFloatToBufferRoundtrip.0. . none unknown . "" .) writeFloatToBufferRoundtrip.0.
+  (proc . . =sink.1.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .
+    (asgn . .
+     (hderef . `t16.11. dest.8) src.9))) none unknown . "" . .) 18,30
+ (sd :=trace.1. .
+  (proc) . fg1n3 . -1 +0 .
+  (td :`t25.34. . . nimcall -1 -1 +0 +34 . 19,31,/home/araq/projects/nim/lib/std/formatfloat.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.9 .
+     (param) . . . -1 +0 .
+     (td :`t23.33. . . nimcall -1 -1 +0 +33 . . writeFloatToBufferRoundtrip.0. . none unknown . "" `t16.11.) =trace.1. . none unknown . "" . .)
+    (sd :env.1 .
+     (param) . . . -1 +1 . `t26.19.sysma2dyk =trace.1. . none unknown . "" . .)) writeFloatToBufferRoundtrip.0. . none unknown . "" .) writeFloatToBufferRoundtrip.0.
+  (proc . . =trace.1.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .)) none unknown . "" . .) 5,31
+ (sd :=wasMoved.2. .
+  (proc) . fng1n3 . -1 +0 .
+  (td :`t25.36. . n nimcall -1 -1 +0 +36 . 6,32,/home/araq/projects/nim/lib/std/formatfloat.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.10 .
+     (param) . . . -1 +0 .
+     (td :`t23.35. . . nimcall -1 -1 +0 +35 . . writeFloatToBufferRoundtrip.0. . none unknown . "" `t20.9.) =wasMoved.2. . none unknown . "" . .)) writeFloatToBufferRoundtrip.0. . none unknown . "" .) writeFloatToBufferRoundtrip.0.
+  (proc . . =wasMoved.2.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .
+    (call . .
+     (sd :wasMoved.1. .
+      (proc) wasmoved n3 . -1 +0 . . . . none unknown . "" . .)
+     (hderef . `t20.9. dest.10)))) none unknown . "" . .) 5,31
+ (sd :=destroy.2. .
+  (proc) . fg1n3 q -1 +0 .
+  (td :`t25.38. . . nimcall -1 -1 +0 +38 . 6,32,/home/araq/projects/nim/lib/std/formatfloat.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.11 .
+     (param) . . . -1 +0 .
+     (td :`t23.37. . . nimcall -1 -1 +0 +37 . . writeFloatToBufferRoundtrip.0. . none unknown . "" `t20.9.) =destroy.2. . none unknown . "" . .)) writeFloatToBufferRoundtrip.0. . none unknown . "" .) writeFloatToBufferRoundtrip.0.
+  (proc . . =destroy.2.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .)) none unknown . "" . .) 5,31
+ (sd :=copy.2. .
+  (proc) . fg1n3 . -1 +0 .
+  (td :`t25.40. . . nimcall -1 -1 +0 +40 . 6,32,/home/araq/projects/nim/lib/std/formatfloat.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.12 .
+     (param) . . . -1 +0 .
+     (td :`t23.39. . . nimcall -1 -1 +0 +39 . . writeFloatToBufferRoundtrip.0. . none unknown . "" `t20.9.) =copy.2. . none unknown . "" . .)
+    (sd :src.12 .
+     (param) . . . -1 +1 . `t20.9. =copy.2. . none unknown . "" . .)) writeFloatToBufferRoundtrip.0. . none unknown . "" .) writeFloatToBufferRoundtrip.0.
+  (proc . . =copy.2.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .
+    (asgn . .
+     (hderef . `t20.9. dest.12) src.12))) none unknown . "" . .) 5,31
+ (sd :=dup.2. .
+  (proc) . fg1n3 . -1 +0 .
+  (td :`t25.41. . . nimcall -1 -1 +0 +41 . 6,32,/home/araq/projects/nim/lib/std/formatfloat.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :src.13 .
+     (param) . . . -1 +0 . `t20.9. =dup.2. . none unknown . "" . .)) writeFloatToBufferRoundtrip.0. . none unknown . "" `t20.9.) writeFloatToBufferRoundtrip.0.
+  (proc . . =dup.2.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .
+    (asgn . .
+     (sd :result.4 .
+      (result) . . . -1 +0 . `t20.9. =dup.2. . none unknown . "" . .) src.13)) result.4) none unknown . "" . .) 5,31
+ (sd :=sink.2. .
+  (proc) . fg1n3 . -1 +0 .
+  (td :`t25.43. . . nimcall -1 -1 +0 +43 . 6,32,/home/araq/projects/nim/lib/std/formatfloat.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.13 .
+     (param) . . . -1 +0 .
+     (td :`t23.42. . . nimcall -1 -1 +0 +42 . . writeFloatToBufferRoundtrip.0. . none unknown . "" `t20.9.) =sink.2. . none unknown . "" . .)
+    (sd :src.14 .
+     (param) . . . -1 +1 . `t20.9. =sink.2. . none unknown . "" . .)) writeFloatToBufferRoundtrip.0. . none unknown . "" .) writeFloatToBufferRoundtrip.0.
+  (proc . . =sink.2.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .
+    (asgn . .
+     (hderef . `t20.9. dest.13) src.14))) none unknown . "" . .) 5,31
+ (sd :=trace.2. .
+  (proc) . fg1n3 . -1 +0 .
+  (td :`t25.45. . . nimcall -1 -1 +0 +45 . 6,32,/home/araq/projects/nim/lib/std/formatfloat.nim
+   (formalparams . .
+    (arglist . .)
+    (sd :dest.14 .
+     (param) . . . -1 +0 .
+     (td :`t23.44. . . nimcall -1 -1 +0 +44 . . writeFloatToBufferRoundtrip.0. . none unknown . "" `t20.9.) =trace.2. . none unknown . "" . .)
+    (sd :env.2 .
+     (param) . . . -1 +1 . `t26.19.sysma2dyk =trace.2. . none unknown . "" . .)) writeFloatToBufferRoundtrip.0. . none unknown . "" .) writeFloatToBufferRoundtrip.0.
+  (proc . . =trace.2.
+   (empty)
+   (empty) .
+   (pragma . .
+    (kv . .
+     (ident . . raises)
+     (bracket . .)))
+   (empty)
+   (stmts . .)) none unknown . "" . .))1,1,/home/araq/projects/nim/lib/std/formatfloat.nim(.index 4,16
+ (h addCstringN.0. +1094)
+ (h `t25.3. +59)
+ (h `t23.4. +294)
+ (h formatfloat.0. +399) 1,1,/home/araq/projects/nim/lib/system.nim
+ (h stdlib.0. +94)
+ (h `t21.5. +1305) 4,25
+ (x writeFloatToBufferRoundtrip.0. +354)
+ (h `t25.6. +76)
+ (h `t23.7. +306)
+ (h `t16.11. +97)
+ (h `t20.9. +101)
+ (h `t31.8. +139)
+ (h `t31.10. +280)
+ (h `t7.1. +509)
+ (h `t23.12. +365) 4,33
+ (x writeFloatToBufferRoundtrip.1. +469)
+ (h `t25.46. +76)
+ (h `t23.47. +308)
+ (h `t16.51. +99)
+ (h `t20.49. +101)
+ (h `t31.48. +141)
+ (h `t31.50. +284)
+ (h `t23.52. +803) 4,37
+ (h c_snprintf.0. +472)
+ (h `t25.53. +191) 4,40
+ (h writeToBuffer.0. +1268)
+ (h `t25.54. +61)
+ (h `t23.55. +293)
+ (h `t16.59. +85)
+ (h `t20.57. +86)
+ (h `t31.56. +141)
+ (h `t31.58. +270)
+ (h `t31.61. +538)
+ (h `t31.60. +186) 4,46
+ (x writeFloatToBufferSprintf.0. +971)
+ (h `t25.65. +74)
+ (h `t23.66. +308)
+ (h `t16.70. +97)
+ (h `t20.68. +98)
+ (h `t31.67. +141)
+ (h `t31.69. +282)
+ (h `t21.71. +910)
+ (h `t31.72. +237)
+ (h `t31.78. +1311)
+ (h `t31.75. +185) 5,70,/home/araq/projects/nim/lib/system/setops.nim
+ (h contains.0. +835)
+ (h `t25.81. +86)
+ (h `t19.82. +382)
+ (h `t19.80. +1085)
+ (h `t31.83. +1407)
+ (h `t19.84. +674) 4,80
+ (x writeFloatToBuffer.0. +2054)
+ (h `t25.87. +64)
+ (h `t23.88. +258)
+ (h `t16.92. +90)
+ (h `t20.90. +91)
+ (h `t31.89. +140)
+ (h `t31.91. +275)
+ (h `t57.94. +222)
+ (h `t0.95. +953) 4,86
+ (x addFloatRoundtrip.0. +245)
+ (h `t25.96. +64)
+ (h `t23.97. +187)
+ (h `t57.99. +200)
+ (h `t0.102. +1214)
+ (h `t0.103. +324)
+ (h `t0.105. +328) 4,94
+ (x addFloatSprintf.0. +176)
+ (h `t25.106. +64)
+ (h `t23.107. +299)
+ (h `t16.111. +737)
+ (h `t20.109. +95)
+ (h `t31.108. +155)
+ (h `t31.110. +288)
+ (h `t23.112. +886)
+ (h `t21.113. +411) 4,124
+ (x addFloat.0. +287)
+ (h `t25.114. +54)
+ (h `t23.115. +250)
+ (h `t57.117. +184)
+ (h `t0.118. +2117) 18,30
+ (h =wasMoved.0. +396)
+ (h `t25.14. +49)
+ (h `t23.13. +181) 18,30
+ (h =destroy.0. +387)
+ (h `t25.16. +47)
+ (h `t23.15. +181) 18,30
+ (h =copy.0. +385)
+ (h `t25.18. +44)
+ (h `t23.17. +181) 18,30
+ (h =dup.0. +476)
+ (h `t25.19. +43) 18,30
+ (h =sink.0. +583)
+ (h `t25.21. +44)
+ (h `t23.20. +181) 18,30
+ (h =trace.0. +476)
+ (h `t25.23. +45)
+ (h `t23.22. +181) 18,30
+ (h =wasMoved.1. +478)
+ (h `t25.25. +49)
+ (h `t23.24. +181)
+ (h wasMoved.0. +393) 18,30
+ (h =destroy.1. +152)
+ (h `t25.27. +47)
+ (h `t23.26. +181) 18,30
+ (h =copy.1. +408)
+ (h `t25.29. +44)
+ (h `t23.28. +181) 18,30
+ (h =dup.1. +542)
+ (h `t25.30. +43) 18,30
+ (h =sink.1. +609)
+ (h `t25.32. +44)
+ (h `t23.31. +181) 18,30
+ (h =trace.1. +542)
+ (h `t25.34. +45)
+ (h `t23.33. +181) 5,31
+ (h =wasMoved.2. +500)
+ (h `t25.36. +49)
+ (h `t23.35. +181)
+ (h wasMoved.1. +392) 5,31
+ (h =destroy.2. +151)
+ (h `t25.38. +47)
+ (h `t23.37. +181) 5,31
+ (h =copy.2. +406)
+ (h `t25.40. +44)
+ (h `t23.39. +181) 5,31
+ (h =dup.2. +541)
+ (h `t25.41. +43) 5,31
+ (h =sink.2. +606)
+ (h `t25.43. +44)
+ (h `t23.42. +181) 5,31
+ (h =trace.2. +541)
+ (h `t25.45. +45)
+ (h `t23.44. +181))
