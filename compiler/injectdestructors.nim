@@ -17,7 +17,10 @@ import
   ast, astalgo, msgs, renderer, magicsys, types, idents,
   options, lowerings, modulegraphs,
   lineinfos, parampatterns, sighashes, liftdestructors, optimizer,
-  varpartitions, aliasanalysis, dfa, wordrecg, lambdalifting
+  varpartitions, aliasanalysis, dfa, wordrecg
+
+when not defined(nimExperimentalPreLiftDestruct):
+  import lambdalifting
 
 import std/[strtabs, tables, strutils, intsets]
 
@@ -700,7 +703,7 @@ template handleNestedTempl(n, processCall: untyped, willProduceStmt = false,
     result.add processScope(c, bodyScope, bodyResult)
     dec c.inLoop
 
-  of nkParForStmt:
+  of nkForStmt, nkParForStmt:
     inc c.inLoop
     result = shallowCopy(n)
     let last = n.len-1
@@ -879,24 +882,29 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
 
       result = copyTree(n)
       for i in ord(n.kind == nkClosure)..<n.len:
-        # nkClosure env (i=1): Critical for closure environment lifetime.
-        # - Fresh nkObjConstr: Use mode `m` (parent decides - may sink into new env)
-        # - Current proc's :envP param: Force `normal` (shared across closure calls)
-        # - Other cases: Force `normal` (conservative - may be shared/aliased)
-        let mClosure = if n.kind == nkClosure and i == 1:
-          let envNode = n[1].skipConv
-          if envNode.kind == nkSym:
-            let ep = getEnvParam(c.owner)
-            if ep != nil and envNode.sym.id == ep.id:
-              # Current scope's env param - reused across closure invocations, don't consume
-              normal
+        when defined(nimExperimentalPreLiftDestruct):
+          # When running before lambda lifting, closures haven't been transformed
+          # into (fn, env) tuples yet, so no special handling needed
+          let mClosure = m
+        else:
+          # nkClosure env (i=1): Critical for closure environment lifetime.
+          # - Fresh nkObjConstr: Use mode `m` (parent decides - may sink into new env)
+          # - Current proc's :envP param: Force `normal` (shared across closure calls)
+          # - Other cases: Force `normal` (conservative - may be shared/aliased)
+          let mClosure = if n.kind == nkClosure and i == 1:
+            let envNode = n[1].skipConv
+            if envNode.kind == nkSym:
+              let ep = getEnvParam(c.owner)
+              if ep != nil and envNode.sym.id == ep.id:
+                # Current scope's env param - reused across closure invocations, don't consume
+                normal
+              else:
+                # Other symbol (local var, param, temp) - use parent mode (may sink if last use)
+                m
             else:
-              # Other symbol (local var, param, temp) - use parent mode (may sink if last use)
+              # nkObjConstr or other constructs - use parent mode
               m
-          else:
-            # nkObjConstr or other constructs - use parent mode
-            m
-        else: m
+          else: m
         if n[i].kind == nkExprColonExpr:
           result[i][1] = p(n[i][1], c, s, mClosure)
         elif n[i].kind == nkRange:
