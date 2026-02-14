@@ -129,19 +129,10 @@ proc isLastReadImpl(n: PNode; c: var Con; scope: var Scope; root: PSym): bool =
   var j = -1
   for i in 0..<c.g.len:
     if c.g[i].kind == use:
-      # Direct match
+      # Find the exact position of this node in the CFG
       if c.g[i].n == n:
         j = i
-      # Also check if this is a closure proc use that implies using our env variable
-      elif root != nil and root.kind == skVar and root.name.s.len >= 4 and
-           root.name.s[0] == ':' and root.name.s[1] == 'e' and
-           c.g[i].n.kind == nkSym and c.g[i].n.sym.kind in {skProc, skFunc, skMethod, skConverter, skIterator} and
-           c.g[i].n.sym.typ != nil and c.g[i].n.sym.typ.callConv == ccClosure:
-        # This is a closure proc use - check if it's defined in our scope
-        let symOwner = c.g[i].n.sym.skipGenericOwner
-        if symOwner == c.owner:
-          # This closure implicitly uses the env, so treat it as a use of n
-          j = i
+        break  # Found it, stop searching
   c.otherUsage = unknownLineInfo
   if j >= 0:
     var pcs = @[j+1]
