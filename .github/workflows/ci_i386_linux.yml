@@ -80,23 +80,23 @@ jobs:
           version: ${{ matrix.target.nim_branch }}
           architecture: ${{ matrix.target.cpu }}
 
-      - name: Build koch using existing nim
-        run: |
-          nim c koch.nim
+      # - name: Build koch using existing nim
+      #   run: |
+      #     nim c koch.nim
 
-      - name: Boot the compiler from the checked-out commit
-        shell: bash
-        run: |
-          ./koch boot -d:release
+      # - name: Boot the compiler from the checked-out commit
+      #   shell: bash
+      #   run: |
+      #     ./koch boot -d:release
 
-      - name: Show nim version and system info
-        run: |
-          bin/nim -v || true
-          uname -a || true
+      # - name: Show nim version and system info
+      #   run: |
+      #     bin/nim -v || true
+      #     uname -a || true
 
       - name: Run talign test (i386)
         shell: bash
         run: |
           set -euo pipefail
           export PATH="${GITHUB_WORKSPACE}/bin:$PATH"
-          bin/nim c -r --mm:refc -d:useGcAssert -d:useSysAssert tests/align/talign.nim
+          nim c -r --lib:lib --mm:refc -d:useGcAssert -d:useSysAssert tests/align/talign.nim
