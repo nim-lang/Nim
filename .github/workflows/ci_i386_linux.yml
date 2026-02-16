@@ -1,9 +1,6 @@
 name: i386 Linux CI
 
 on:
-  push:
-    branches:
-      - '*'
   pull_request:
     branches:
       - '*'
