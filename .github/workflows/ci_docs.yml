@@ -1,33 +1,6 @@
 name: Nim Docs CI
 on:
-  push:
-    paths:
-      - 'compiler/**.nim'
-      - 'config/nimdoc.cfg'
-      - 'doc/**.rst'
-      - 'doc/**.md'
-      - 'doc/nimdoc.css'
-      - 'lib/**.nim'
-      - 'nimdoc/testproject/expected/testproject.html'
-      - 'tools/dochack/dochack.nim'
-      - 'tools/kochdocs.nim'
-      - '.github/workflows/ci_docs.yml'
-      - 'koch.nim'
-
-  pull_request:
-    # Run only on changes on these files.
-    paths:
-      - 'compiler/**.nim'
-      - 'config/nimdoc.cfg'
-      - 'doc/**.rst'
-      - 'doc/**.md'
-      - 'doc/nimdoc.css'
-      - 'lib/**.nim'
-      - 'nimdoc/testproject/expected/testproject.html'
-      - 'tools/dochack/dochack.nim'
-      - 'tools/kochdocs.nim'
-      - '.github/workflows/ci_docs.yml'
-      - 'koch.nim'
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}

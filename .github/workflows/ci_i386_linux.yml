@@ -1,0 +1,62 @@
+name: i386 Linux CI
+
+on:
+  push:
+    branches:
+      - 'devel'
+  pull_request:
+    branches:
+      - 'devel'
+  workflow_dispatch:
+
+jobs:
+  build-and-test-i386:
+    name: Build Nim from latest commit and run talign test (i386)
+    runs-on: ubuntu-latest
+    container:
+      image: i386/debian:bookworm
+    timeout-minutes: 90
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install dependencies (i386 Debian)
+        run: |
+          apt-get update -qq
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            build-essential gcc-multilib g++-multilib make curl git ca-certificates \
+            python3 pkg-config libpcre3-dev libgc-dev libssl-dev libx11-dev
+
+      - name: Add repo bin to PATH
+        run: echo "${GITHUB_WORKSPACE}/bin" >> ${GITHUB_PATH}
+
+      - name: Ensure bin/nim is executable
+        run: ls -la bin || true
+
+      - name: Build koch using existing nim
+        run: |
+          if [ -x bin/nim ]; then
+            bin/nim c koch
+          else
+            apt-get install -y --no-install-recommends nim || true
+            nim c koch || true
+          fi
+
+      - name: Boot the compiler from the checked-out commit
+        shell: bash
+        run: |
+          ./koch boot -d:release || ./koch boot
+
+      - name: Show nim version and system info
+        run: |
+          bin/nim -v || true
+          uname -a || true
+
+      - name: Run talign test (i386)
+        shell: bash
+        run: |
+          set -euo pipefail
+          export PATH="${GITHUB_WORKSPACE}/bin:$PATH"
+          nim c -r --mm:refc -d:useGcAssert -d:useSysAssert tests/align/talign.nim

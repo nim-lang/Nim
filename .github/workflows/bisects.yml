@@ -1,8 +1,7 @@
 # See https://github.com/juancarlospaco/nimrun-action/issues/3#issuecomment-1607344901
 name: issue comments bisects
 on:
-  issue_comment:
-    types: created
+  workflow_dispatch:
 
 jobs:
   bisects:

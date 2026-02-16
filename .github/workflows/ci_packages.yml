@@ -1,13 +1,6 @@
 name: Packages CI
 on:
-  pull_request:
-  push:
-    branches:
-      - 'devel'
-      - 'version-2-2'
-      - 'version-2-0'
-      - 'version-1-6'
-      - 'version-1-2'
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}

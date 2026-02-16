@@ -2,8 +2,7 @@
 name: Stale pull requests
 
 on:
-  schedule:
-    - cron: '0 0 * * *'  # Midnight.
+  workflow_dispatch:
 
 jobs:
   stale:
