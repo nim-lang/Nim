@@ -9,25 +9,66 @@ on:
       - 'devel'
   workflow_dispatch:
 
-jobs:
-  build-and-test-i386:
-    name: Build Nim from latest commit and run talign test (i386)
-    runs-on: ubuntu-latest
-    container:
-      image: i386/debian:bookworm
-    timeout-minutes: 90
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
-      - name: Install dependencies (i386 Debian)
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      max-parallel: 20
+      matrix:
+        branch: [devel]
+        target:
+          - os: linux
+            cpu: i386
+            nim_branch: devel
+        include:
+          - target:
+              os: linux
+            builder: ubuntu-24.04
+
+    name: '${{ matrix.target.os }}-${{ matrix.target.cpu }}-nim-${{ matrix.target.nim_branch }} (${{ matrix.branch }})'
+    runs-on: ${{ matrix.builder }}
+    env:
+      NIM_DIR: nim-${{ matrix.target.nim_branch }}-${{ matrix.target.cpu }}
+      NIM_BRANCH: ${{ matrix.target.nim_branch }}
+      NIM_ARCH: ${{ matrix.target.cpu }}
+    steps:
+      - name: set `core.autocrlf` to false
         run: |
-          apt-get update -qq
-          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-            build-essential gcc-multilib g++-multilib make curl git ca-certificates \
-            python3 pkg-config libpcre3-dev libgc-dev libssl-dev libx11-dev
+          git config --global core.autocrlf false
+          git config --global init.defaultBranch master
+
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          submodules: false
+
+      - name: Install dependencies (Linux i386)
+        if: runner.os == 'Linux' && matrix.target.cpu == 'i386'
+        working-directory: ${{ github.workspace }}
+        run: |
+          sudo dpkg --add-architecture i386
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND='noninteractive' apt-get install \
+            --no-install-recommends -yq gcc-multilib g++-multilib \
+            libssl-dev:i386
+
+          mkdir -p external/bin
+          cat << EOF > external/bin/gcc
+          #!/bin/bash
+
+          exec $(which gcc) -m32 "\$@"
+          EOF
+
+          cat << EOF > external/bin/g++
+          #!/bin/bash
+
+          exec $(which g++) -m32 "\$@"
+          EOF
+
+          chmod 755 external/bin/gcc external/bin/g++
+
+          echo "$PWD/external/bin" >> "${GITHUB_PATH}"
 
       - name: Add repo bin to PATH
         run: echo "${GITHUB_WORKSPACE}/bin" >> ${GITHUB_PATH}
