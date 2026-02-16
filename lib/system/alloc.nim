@@ -854,7 +854,7 @@ proc bigChunkAlignOffset(alignment: int): int {.inline.} =
   if alignment <= MemAlign:
     result = 0
   else:
-    result = align(sizeof(BigChunk) + sizeof(Cell), alignment) -% sizeof(BigChunk) -% sizeof(Cell)
+    result = align(sizeof(BigChunk) + sizeof(Cell), alignment) - sizeof(BigChunk) - sizeof(Cell)
 
 proc rawAlloc(a: var MemRegion, requestedSize: int, alignment: int = MemAlign): pointer =
   when defined(nimTypeNames):
@@ -967,7 +967,7 @@ proc rawAlloc(a: var MemRegion, requestedSize: int, alignment: int = MemAlign): 
     # Since chunks are page-aligned, the needed padding is a compile-time
     # deterministic value rather than a worst-case estimate.
     let alignPad = bigChunkAlignOffset(alignment)
-    size = requestedSize +% bigChunkOverhead() +% alignPad
+    size = requestedSize + bigChunkOverhead() + alignPad
     # allocate a large block
     var c = if size >= HugeChunkSize: getHugeChunk(a, size)
             else: getBigChunk(a, size)
