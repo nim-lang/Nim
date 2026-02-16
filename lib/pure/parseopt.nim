@@ -14,24 +14,27 @@
 ## Supported Syntax
 ## ================
 ##
-## The parser supports multiple `parser modes<#parser-modes>`_ that affect how
-## options are interpreted. The syntax described here applies to the default
-## `Nim` mode. See `Parser Modes<#parser-modes>`_ for details on alternative
-## modes and their differences.
+## The syntax described here applies to the default way the parser works.
+## The behavior is configurable, though, and two additional modes
+## are supported, see the details: `Parser Modes`_.
 ##
-## The following syntax is supported when arguments for the `shortNoVal` and
-## `longNoVal` parameters, which are
-## `described later<#nimshortnoval-and-nimlongnoval>`_, are not provided:
+## Parsing also depends on whether the `shortNoVal` and `longNoVal` parameters
+## are omitted/empty or provided. The details are described in a
+## `later section<#nimshortnoval-and-nimlongnoval>`_.
 ##
-## 1. Short options: `-abcd`, `-e:5`, `-e=5`
+## The following syntax is supported:
+##
+## 1. Short options: `-a:5`, `-b=5`, `-cde`, `-fgh=5`
 ## 2. Long options: `--foo:bar`, `--foo=bar`, `--foo`
 ## 3. Arguments: everything that does not start with a `-`
 ##
-## These three kinds of tokens are enumerated in the
-## `CmdLineKind enum<#CmdLineKind>`_.
+## Passing values to options **requires** a separator (`:`/`=`), short options
+## (flags) can be bundled together and the last one can take a value.
 ##
-## When option values begin with ':' or '=', they need to be doubled up (as in
-## `--foo::`) or alternated (as in `--foo=:`).
+## Option values can begin with the separator character (`:`/`=`), so all of the
+## following is valid:
+##   - option `foo`, value `:`:  `--foo::`, `--foo=:`
+##   - option `foo`, value `=`:  `--foo:=`, `--foo==`
 ##
 ## The `--` option, commonly used to denote that every token that follows is
 ## an argument, is interpreted as a long option, and its name is the empty
@@ -41,34 +44,35 @@
 ## Parsing
 ## =======
 ##
-## Use an `OptParser<#OptParser>`_ to parse command line options. It can be
-## created with `initOptParser<#initOptParser,string,set[char],seq[string]>`_,
-## and `next<#next,OptParser>`_ advances the parser by one token.
+## To parse command line options, use the `getopt iterator<#getopt.i,OptParser>`_.
+## It initializes the `OptParser<#OptParser>`_ object internally and iterates
+## through the command line options.
 ##
-## For each token, the parser's `kind`, `key`, and `val` fields give
-## information about that token. If the token is a long or short option, `key`
-## is the option's name, and  `val` is either the option's value, if provided,
-## or the empty string. For arguments, the `key` field contains the argument
-## itself, and `val` is unused. To check if the end of the command line has
-## been reached, check if `kind` is equal to `cmdEnd`.
+## For each token, the parser's `kind` (`CmdLineKind enum<#CmdLineKind>`_.),
+## `key`, and `val` fields are yielded.
+##
+## For long and short options, `key` is the option's name, and `val` is either
+## the option's value, if given, or an empty string. For arguments, the `key`
+## field contains the argument itself, and `val` is unused (empty).
 ##
 ## Here is an example:
 ##
 runnableExamples:
+  import std/os
 
-  var p = initOptParser("-ab -e:5 --foo --bar=20 file.txt")
+  let cmds = "-ab -e:5 --foo --bar=20 file.txt".parseCmdLine()
   var output: seq[string] = @[]
-  while true:
-    p.next()
-    case p.kind
+  # If cmds is not supplied, real arguments will be retrieved by the `os` module
+  for kind, key, val in getopt(cmds):
+    case kind
     of cmdEnd: break
     of cmdShortOption, cmdLongOption:
-      if p.val == "":
-        output.add("Option: " & p.key)
+      if val == "":
+        output.add("Option: " & key)
       else:
-        output.add("Option and value: " & p.key & ", " & p.val)
+        output.add("Option and value: " & key & ", " & val)
     of cmdArgument:
-      output.add("Argument: " & p.key)
+      output.add("Argument: " & key)
 
   doAssert output == @[
     "Option: a",
@@ -79,14 +83,16 @@ runnableExamples:
     "Argument: file.txt"
   ]
 ##
-## The `getopt iterator<#getopt.i,OptParser>`_, which is provided for
-## convenience, can be used to iterate through all command line options as well.
+## The `OptParser<#OptParser>`_ can be initialized with
+## `initOptParser<#initOptParser,string,set[char],seq[string]>`_.
+## The `next<#next,OptParser>`_ proc advances the parser by one token.
 ##
-## To set a default value for a variable assigned through `getopt` and accept arguments from the cmd line.
-## Assign the default value to a variable before parsing.
-## Then set the variable to the new value while parsing.
+## When iterating the object manually with `next<#next,OptParser>`_, reaching
+## the end of the command line is signalled by setting the `kind` field
+## to `cmdEnd`.
 ##
-## Here is an example:
+## To set a default value for an option, assign the default value to a variable
+## beforehand, then update it while parsing.
 ##
 runnableExamples:
   import std/strutils
@@ -109,24 +115,23 @@ runnableExamples:
 ## `shortNoVal` and `longNoVal`
 ## ============================
 ##
-## The optional `shortNoVal` and `longNoVal` parameters present in
-## `initOptParser<#initOptParser,string,set[char],seq[string]>`_ are for
+## The optional `shortNoVal` and `longNoVal` parameters in
+## `initOptParser<#initOptParser,string,set[char],seq[string]>`_ and
+## `getopt iterator<#getopt.i,OptParser>`_ are for
 ## specifying which short and long options do not accept values.
 ##
-## When `shortNoVal` is non-empty, users are not required to separate short
-## options and their values with a `:` or `=` since the parser knows which
-## options accept values and which ones do not. This behavior also applies for
-## long options if `longNoVal` is non-empty.
+## When `shortNoVal` or `longNoVal` is non-empty, using the separators (`:`/`=`)
+## becomes non-mandatory and users can separate a value from long
+## options (that are not supplied to the corresponding argument) by whitespace
+## or, in the case of a short option, by writing the value directly adjacent to
+## the option.
 ##
 ## For short options, `-j4` becomes supported syntax (parsed as option `j` with
 ## value `4` instead of two separate options `j` and `4`). For long options,
-## `--foo bar` becomes supported syntax in all modes. In `LaxMode` and `GnuMode`
-## modes, short options can also take values from the next argument (e.g.,
-## `-c val`), but this does **not** work in the default `Nim` mode.
+## `--foo bar` becomes supported syntax in all `modes<Parser Modes>`_.
 ##
-## This is in addition to the `previously mentioned syntax<#supported-syntax>`_.
-## Users can still separate options and their values with `:` or `=`, but that
-## becomes optional.
+## In `LaxMode` and `GnuMode`, short options can also take values from the next
+## argument (`-c val`), but this does **not** work in the default `Nim` mode.
 ##
 ## As more options which do not accept values are added to your program,
 ## remember to amend `shortNoVal` and `longNoVal` accordingly.
@@ -251,7 +256,7 @@ runnableExamples:
 ##     indicate them and overall is not a special character.
 ##
 ## Mode-Specific Behavior
-## ======================
+## ----------------------
 ##
 ## The parser's behavior varies significantly between modes, particularly
 ## around how options consume their values:
@@ -261,18 +266,21 @@ runnableExamples:
 ## Consider `-c val`:
 ##
 ## - In `Nim` mode: `-c` is parsed as an option without a value, and `val` is
-##   parsed as an argument, regardless of `shortNoVal` being empty or not.
-## - In `LaxMode` and `Gnu` modes: same as `Nim` when `shortNoVal` is
-##   empty and `c` is not in it, when it's not, `val` is consumed as the value.
+##   parsed as a separate argument, regardless of `shortNoVal` being empty or not.
+## - In `Lax` and `Gnu` modes:
+##   + When `shortNoVal` is empty, or not empty and `-c` is in it:
+##     Same as `Nim`, parsed as option `-c` followed by argument `val`.
+##   + When `-c` is not in `shortNoVal`:
+##     parsed as option `-c`, `val` is consumed as its value.
 ##
 ## Consider `-c-10`:
 ##
-## - If `shortNoVal` value is empty, all three modes parse thre separate short
+## - If `shortNoVal` value is empty, all three modes parse three separate short
 ##   options: `c`, `1` and `0`.
 ## - Otherwise, if `-c` is not in `shortNoVal`:
 ##   + `Nim`: `-c` is an option without an argument. `-10` is interpreted as a
 ##      an option `-1` with the `0` argument.
-##   + `LaxMode` and `GnuMode`: `-10` is consumed as the value of `-c`
+##   + `Lax` and `Gnu` modes: `-10` is consumed as the value of `-c`
 ##     (allowing negative number values).
 ##
 ## **Long Options**
@@ -281,7 +289,7 @@ runnableExamples:
 ##
 ## - `Nim`: `:` is a valid delimiter, so `bar` is the value of `--foo`.
 ## - `LaxMode`: same as `Nim`.
-## - `Gnu`: only `=` is a delimiter, so this parses as an option named
+## - `Gnu`: only `=` is a valid delimiter, so this parses as an option named
 ##   `foo:bar` without a value (unless `longNoVal` is non-empty and allows
 ##   next-argument consumption).
 ##
@@ -337,7 +345,7 @@ when defined(nimscript):
 type
   CliMode* = enum
     ## Parser behavior profiles used to control parser behavior.
-    ## See `Parser Modes<#parser-modes>`_ for details
+    ## See `Parser Modes`_ for details.
     LaxMode, ## The most forgiving mode
     NimMode, ## Nim parsing rules (default)
     GnuMode ## GNU-style parsing
@@ -368,6 +376,8 @@ type
     ##
     ## To initialize it, use the
     ## `initOptParser proc<#initOptParser,string,set[char],seq[string],CliMode>`_.
+    ## `next<#next,OptParser>`_ is used to advance the parser state and move
+    ## through the parsed tokens.
     pos: int
     inShortState: bool
     shortNoVal: set[char]
@@ -478,7 +488,7 @@ proc initOptParser*(cmdline: seq[string];
   ## - `longNoVal`: Sequence of long option names that do not accept values.
   ##   See `shortNoVal and longNoVal<#nimshortnoval-and-nimlongnoval>`_ for details.
   ## - `mode`: Parser behavior profile (`NimMode`, `LaxMode`, or `GnuMode`).
-  ##   See `parser modes<#parser-modes>`_ for details.
+  ##   See `Parser Modes`_ for details.
   ##
   ## See also:
   ## * `getopt iterator<#getopt.i,seq[string],set[char],seq[string],CliMode>`_
@@ -525,7 +535,7 @@ proc initOptParser*(cmdline = "";
   ## - `longNoVal`: Sequence of long option names that do not accept values.
   ##   See `shortNoVal and longNoVal<#nimshortnoval-and-nimlongnoval>`_ for details.
   ## - `mode`: Parser behavior profile (`NimMode`, `LaxMode`, or `GnuMode`).
-  ##   See `parser modes<#parser-modes>`_ for details.
+  ##   See `Parser Modes`_ for details.
   ##
   ## **Note:** This does not provide a way of passing default values to arguments.
   ##
@@ -706,15 +716,13 @@ when declared(quoteShellCommand):
     ## See also:
     ## * `remainingArgs proc<#remainingArgs,OptParser>`_
     ##
-    ## **Examples:**
-    ##   ```Nim
-    ##   var p = initOptParser("--left -r:2 -- foo.txt bar.txt")
-    ##   while true:
-    ##     p.next()
-    ##     if p.kind == cmdLongOption and p.key == "":  # Look for "--"
-    ##       break
-    ##   doAssert p.cmdLineRest == "foo.txt bar.txt"
-    ##   ```
+    runnableExamples:
+      var p = initOptParser("--left -r:2 -- foo.txt bar.txt")
+      while true:
+        p.next()
+        if p.kind == cmdLongOption and p.key == "":  # Look for "--"
+          break
+      doAssert p.cmdLineRest == "foo.txt bar.txt"
     result = p.cmds[p.idx .. ^1].quoteShellCommand
 
 proc remainingArgs*(p: OptParser): seq[string] {.rtl, extern: "npo$1".} =
@@ -723,15 +731,13 @@ proc remainingArgs*(p: OptParser): seq[string] {.rtl, extern: "npo$1".} =
   ## See also:
   ## * `cmdLineRest proc<#cmdLineRest,OptParser>`_
   ##
-  ## **Examples:**
-  ##   ```Nim
-  ##   var p = initOptParser("--left -r:2 -- foo.txt bar.txt")
-  ##   while true:
-  ##     p.next()
-  ##     if p.kind == cmdLongOption and p.key == "":  # Look for "--"
-  ##       break
-  ##   doAssert p.remainingArgs == @["foo.txt", "bar.txt"]
-  ##   ```
+  runnableExamples:
+    var p = initOptParser("--left -r:2 -- foo.txt bar.txt")
+    while true:
+      p.next()
+      if p.kind == cmdLongOption and p.key == "":  # Look for "--"
+        break
+    doAssert p.remainingArgs == @["foo.txt", "bar.txt"]
   result = @[]
   for i in p.idx..<p.cmds.len: result.add p.cmds[i]
 
@@ -746,29 +752,26 @@ iterator getopt*(p: var OptParser): tuple[kind: CmdLineKind, key,
   ## See also:
   ## * `initOptParser proc<#initOptParser,string,set[char],seq[string]>`_
   ##
-  ## **Examples:**
-  ##
-  ##   ```Nim
-  ##   # these are placeholders, of course
-  ##   proc writeHelp() = discard
-  ##   proc writeVersion() = discard
-  ##
-  ##   var filename: string
-  ##   var p = initOptParser("--left --debug:3 -l -r:2")
-  ##
-  ##   for kind, key, val in p.getopt():
-  ##     case kind
-  ##     of cmdArgument:
-  ##       filename = key
-  ##     of cmdLongOption, cmdShortOption:
-  ##       case key
-  ##       of "help", "h": writeHelp()
-  ##       of "version", "v": writeVersion()
-  ##     of cmdEnd: assert(false) # cannot happen
-  ##   if filename == "":
-  ##     # no filename has been given, so we show the help
-  ##     writeHelp()
-  ##   ```
+  runnableExamples:
+    # these are placeholders, of course
+    proc writeHelp() = discard
+    proc writeVersion() = discard
+
+    var filename: string = ""
+    var p = initOptParser("--left --debug:3 -l -r:2")
+
+    for kind, key, val in p.getopt():
+      case kind
+      of cmdArgument:
+        filename = key
+      of cmdLongOption, cmdShortOption:
+        case key
+        of "help", "h": writeHelp()
+        of "version", "v": writeVersion()
+      of cmdEnd: assert(false) # cannot happen
+    if filename == "":
+      # no filename has been given, so we show the help
+      writeHelp()
   p.pos = 0
   p.idx = 0
   while true:
@@ -793,7 +796,7 @@ iterator getopt*(cmdline: seq[string] = @[];
   ## how this affects parsing.
   ##
   ## `mode` selects the parser behavior profile (`NimMode`, `LaxMode`,
-  ## or `GnuMode`). See `parser modes<#parser-modes>`_ for details.
+  ## or `GnuMode`). See `Parser Modes`_ for details.
   ##
   ## There is no need to check for `cmdEnd` while iterating. If using `getopt`
   ## with case switching, checking for `cmdEnd` is required.
