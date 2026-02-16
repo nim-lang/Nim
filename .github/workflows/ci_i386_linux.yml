@@ -99,4 +99,4 @@ jobs:
         run: |
           set -euo pipefail
           export PATH="${GITHUB_WORKSPACE}/bin:$PATH"
-          nim c -r --mm:refc -d:useGcAssert -d:useSysAssert tests/align/talign.nim
+          bin/nim c -r --mm:refc -d:useGcAssert -d:useSysAssert tests/align/talign.nim
