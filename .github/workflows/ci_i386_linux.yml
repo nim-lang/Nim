@@ -3,10 +3,10 @@ name: i386 Linux CI
 on:
   push:
     branches:
-      - 'devel'
+      - '*'
   pull_request:
     branches:
-      - 'devel'
+      - '*'
   workflow_dispatch:
 
 
