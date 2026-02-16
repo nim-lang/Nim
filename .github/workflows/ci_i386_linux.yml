@@ -73,22 +73,21 @@ jobs:
       - name: Add repo bin to PATH
         run: echo "${GITHUB_WORKSPACE}/bin" >> ${GITHUB_PATH}
 
-      - name: Ensure bin/nim is executable
-        run: ls -la bin || true
+      - name: Setup Nim
+        uses: alaviss/setup-nim@0.1.1
+        with:
+          path: 'nim'
+          version: ${{ matrix.target.nim_branch }}
+          architecture: ${{ matrix.target.cpu }}
 
       - name: Build koch using existing nim
         run: |
-          if [ -x bin/nim ]; then
-            bin/nim c koch
-          else
-            apt-get install -y --no-install-recommends nim || true
-            nim c koch || true
-          fi
+          nim c koch.nim
 
       - name: Boot the compiler from the checked-out commit
         shell: bash
         run: |
-          ./koch boot -d:release || ./koch boot
+          ./koch boot -d:release
 
       - name: Show nim version and system info
         run: |
