@@ -463,7 +463,7 @@ proc rawNewObj(typ: PNimType, size: int, gch: var GcHeap): pointer =
   var res = cast[PCell](rawAlloc(gch.region, size + sizeof(Cell), alignment))
   #gcAssert typ.kind in {tyString, tySequence} or size >= typ.base.size, "size too small"
   # Check that the user data (after the Cell header) is properly aligned
-  gcAssert((cast[uint](cellToUsr(res)) and (alignment-1)) == 0, "newObj: 2")
+  gcAssert((cast[uint](cellToUsr(res)) and cast[uint](alignment-1)) == 0, "newObj: 2")
   # now it is buffered in the ZCT
   res.typ = typ
   setFrameInfo(res)
@@ -516,7 +516,7 @@ proc newObjRC1(typ: PNimType, size: int): pointer {.compilerRtl, noinline, raise
   var res = cast[PCell](rawAlloc(gch.region, size + sizeof(Cell), alignment))
   sysAssert(allocInv(gch.region), "newObjRC1 after rawAlloc")
   # Check that the user data (after the Cell header) is properly aligned
-  sysAssert((cast[uint](cellToUsr(res)) and (alignment-1)) == 0, "newObj: 2")
+  sysAssert((cast[uint](cellToUsr(res)) and cast[uint](alignment-1)) == 0, "newObj: 2")
   # now it is buffered in the ZCT
   res.typ = typ
   setFrameInfo(res)
