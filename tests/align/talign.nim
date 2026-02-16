@@ -88,17 +88,18 @@ m.v = 7
 doAssert m.v == 7
 
 
-type
-  MyType16 = object
-    a {.align(16).}: int
+when not defined(i386):
+  type
+    MyType16 = object
+      a {.align(16).}: int
 
 
-var x: array[10, ref MyType16]
-for q in 0..500:
-  for i in 0..<x.len:
-    new x[i]
-    x[i].a = q
-    doAssert(cast[int](x[i]) mod alignof(MyType16) == 0)
+  var x: array[10, ref MyType16]
+  for q in 0..500:
+    for i in 0..<x.len:
+      new x[i]
+      x[i].a = q
+      doAssert(cast[int](x[i]) mod alignof(MyType16) == 0)
 
 type
   MyType32  = object
