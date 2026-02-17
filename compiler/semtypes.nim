@@ -1778,10 +1778,11 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
         # returning `tyGenericInvocation` makes `Option[Foo]` to `tyGenericInvocation` and
         # next time `semGeneric` is called with `Option[Foo]`, containsGenericType(typeof(`Foo`)) == true
         # and `isConcrete == false`.
-        if prev != nil and prev.kind == tyForward:
-          result = prev
-        else:
+        if prev == nil:
           result = newTypeS(tyForward, c)
+          result.sym = s
+        else:
+          assignType(result, newTypeS(tyForward, c))
           result.sym = s
         c.forwardTypeUpdates.add (result, n) #fixes 1500
         return
