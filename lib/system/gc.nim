@@ -459,11 +459,15 @@ proc rawNewObj(typ: PNimType, size: int, gch: var GcHeap): pointer =
   gcAssert(typ.kind in {tyRef, tyString, tySequence}, "newObj: 1")
   collectCT(gch)
   # Use alignment from typ.base if available, otherwise use MemAlign
-  let alignment = if typ.kind == tyRef and typ.base != nil: max(typ.base.align, MemAlign) else: MemAlign
+  let alignment = if typ.kind == tyRef and typ.base != nil and
+        typ.base.align >= MemAlign: typ.base.align else: 0
   var res = cast[PCell](rawAlloc(gch.region, size + sizeof(Cell), alignment))
   #gcAssert typ.kind in {tyString, tySequence} or size >= typ.base.size, "size too small"
   # Check that the user data (after the Cell header) is properly aligned
-  gcAssert((cast[int](cellToUsr(res)) and (alignment-1)) == 0, "newObj: 2")
+  if alignment == 0:
+    gcAssert((cast[int](res) and (MemAlign-1)) == 0, "newObj: 2.1")
+  else:
+    gcAssert((cast[int](cellToUsr(res)) and (alignment-1)) == 0, "newObj: 2.2")
   # now it is buffered in the ZCT
   res.typ = typ
   setFrameInfo(res)
@@ -512,11 +516,15 @@ proc newObjRC1(typ: PNimType, size: int): pointer {.compilerRtl, noinline, raise
   sysAssert(allocInv(gch.region), "newObjRC1 after collectCT")
 
   # Use alignment from typ.base if available, otherwise use MemAlign
-  let alignment = if typ.base != nil: max(typ.base.align, MemAlign) else: MemAlign
+  let alignment = if typ.kind == tyRef and typ.base != nil and
+        typ.base.align >= MemAlign: typ.base.align else: 0
   var res = cast[PCell](rawAlloc(gch.region, size + sizeof(Cell), alignment))
   sysAssert(allocInv(gch.region), "newObjRC1 after rawAlloc")
   # Check that the user data (after the Cell header) is properly aligned
-  sysAssert((cast[int](cellToUsr(res)) and (alignment-1)) == 0, "newObj: 2")
+  if alignment == 0:
+    sysAssert((cast[int](res) and (MemAlign-1)) == 0, "newObj: 2.1")
+  else:
+    sysAssert((cast[int](cellToUsr(res)) and (alignment-1)) == 0, "newObj: 2.2")
   # now it is buffered in the ZCT
   res.typ = typ
   setFrameInfo(res)
