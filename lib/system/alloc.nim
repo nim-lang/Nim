@@ -851,12 +851,12 @@ when defined(heaptrack):
 
 proc bigChunkAlignOffset(alignment: int): int {.inline.} =
   ## Compute the alignment offset for big chunk data.
-  if alignment <= MemAlign:
+  if alignment == 0:
     result = 0
   else:
     result = align(sizeof(BigChunk) + sizeof(Cell), alignment) - sizeof(BigChunk) - sizeof(Cell)
 
-proc rawAlloc(a: var MemRegion, requestedSize: int, alignment: int = MemAlign): pointer =
+proc rawAlloc(a: var MemRegion, requestedSize: int, alignment: int = 0): pointer =
   when defined(nimTypeNames):
     inc(a.allocCounter)
   sysAssert(allocInv(a), "rawAlloc: begin")
@@ -868,7 +868,7 @@ proc rawAlloc(a: var MemRegion, requestedSize: int, alignment: int = MemAlign): 
 
   # For custom alignments > MemAlign, force big chunk allocation
   # Small chunks cannot handle arbitrary alignments due to fixed cell boundaries
-  if size <= SmallChunkSize-smallChunkOverhead() and alignment <= MemAlign:
+  if size <= SmallChunkSize-smallChunkOverhead() and alignment == 0:
     template fetchSharedCells(tc: PSmallChunk) =
       # Consumes cells from (potentially) foreign threads from `a.sharedFreeLists[s]`
       when defined(gcDestructors):
