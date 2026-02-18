@@ -257,7 +257,7 @@ proc decode*(s: string): string =
       inc inputIndex
     # double check inputIndex as it can be incremented due to whitespace
     if inputIndex > inputEnds:
-      continue
+      break
     inputChar(a)
     inputChar(b)
     inputChar(c)
