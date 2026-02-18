@@ -568,7 +568,7 @@ proc semTuple(c: PContext, n: PNode, prev: PType): PType =
     else:
       localError(c.config, a.info, errTypeExpected)
       typ = errorType(c)
-    if typ != nil and typ.kind == tyVoid:
+    if typ != nil and skipTypes(typ, {tyGenericInst, tyAlias, tySink}).kind == tyVoid:
       localError(c.config, a.info, "'void' is not allowed as a field type")
       typ = errorType(c)
     for j in 0..<a.len - 2:
