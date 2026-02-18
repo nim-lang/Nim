@@ -528,7 +528,10 @@ proc semAnonTuple(c: PContext, n: PNode, prev: PType): PType =
   result = newOrPrevType(tyTuple, prev, c)
   for it in n:
     let t = semTypeNode(c, it, nil)
-    addSonSkipIntLitChecked(c, result, t, it, c.idgen)
+    if t != nil and t.kind == tyVoid:
+      localError(c.config, it.info, "'void' is not allowed as a field type")
+    else:
+      addSonSkipIntLitChecked(c, result, t, it, c.idgen)
 
 proc firstRange(config: ConfigRef, t: PType): PNode =
   if t.skipModifier().kind in tyFloat..tyFloat64:
@@ -564,6 +567,9 @@ proc semTuple(c: PContext, n: PNode, prev: PType): PType =
         hasDefaultField = true
     else:
       localError(c.config, a.info, errTypeExpected)
+      typ = errorType(c)
+    if typ != nil and typ.kind == tyVoid:
+      localError(c.config, a.info, "'void' is not allowed as a field type")
       typ = errorType(c)
     for j in 0..<a.len - 2:
       var field = newSymG(skField, a[j], c)
@@ -939,6 +945,9 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
         n[^1] = firstRange(c.config, typ)
         hasDefaultField = true
       propagateToOwner(rectype, typ)
+    if typ != nil and typ.kind == tyVoid:
+      localError(c.config, n.info, "'void' is not allowed as a field type")
+      typ = errorType(c)
     var fieldOwner = if c.inGenericContext > 0: c.getCurrOwner
                      else: rectype.sym
     for i in 0..<n.len-2:
