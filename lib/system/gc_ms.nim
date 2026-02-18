@@ -36,7 +36,7 @@ type
                    # local
     waMarkPrecise  # fast precise marking
 
-  Finalizer {.compilerproc.} = proc (self: pointer) {.nimcall, gcsafe, raises: [], gcsafe.}
+  Finalizer {.compilerproc.} = proc (self: pointer) {.nimcall, gcsafe, raises: [].}
     # A ref type can have a finalizer that is called before the object's
     # storage is freed.
 
