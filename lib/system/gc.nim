@@ -76,7 +76,7 @@ const
 when withRealTime and not declared(getTicks):
   include "system/timers"
 when defined(memProfiler):
-  proc nimProfile(requestedSize: int) {.benign.}
+  proc nimProfile(requestedSize: int) {.gcsafe.}
 
 when hasThreadSupport:
   import std/sharedlist
@@ -97,7 +97,7 @@ type
     waZctDecRef, waPush
     #, waDebug
 
-  Finalizer {.compilerproc.} = proc (self: pointer) {.nimcall, benign, raises: [], gcsafe.}
+  Finalizer {.compilerproc.} = proc (self: pointer) {.nimcall, gcsafe, raises: [], gcsafe.}
     # A ref type can have a finalizer that is called before the object's
     # storage is freed.
 
@@ -222,11 +222,11 @@ template gcTrace(cell, state: untyped) =
   when traceGC: traceCell(cell, state)
 
 # forward declarations:
-proc collectCT(gch: var GcHeap) {.benign, raises: [].}
-proc isOnStack(p: pointer): bool {.noinline, benign, raises: [].}
-proc forAllChildren(cell: PCell, op: WalkOp) {.benign, raises: [].}
-proc doOperation(p: pointer, op: WalkOp) {.benign, raises: [].}
-proc forAllChildrenAux(dest: pointer, mt: PNimType, op: WalkOp) {.benign, raises: [].}
+proc collectCT(gch: var GcHeap) {.gcsafe, raises: [].}
+proc isOnStack(p: pointer): bool {.noinline, gcsafe, raises: [].}
+proc forAllChildren(cell: PCell, op: WalkOp) {.gcsafe, raises: [].}
+proc doOperation(p: pointer, op: WalkOp) {.gcsafe, raises: [].}
+proc forAllChildrenAux(dest: pointer, mt: PNimType, op: WalkOp) {.gcsafe, raises: [].}
 # we need the prototype here for debugging purposes
 
 proc incRef(c: PCell) {.inline.} =
@@ -338,7 +338,7 @@ proc cellsetReset(s: var CellSet) =
 
 {.push stacktrace:off.}
 
-proc forAllSlotsAux(dest: pointer, n: ptr TNimNode, op: WalkOp) {.benign.} =
+proc forAllSlotsAux(dest: pointer, n: ptr TNimNode, op: WalkOp) {.gcsafe.} =
   var d = cast[int](dest)
   case n.kind
   of nkSlot: forAllChildrenAux(cast[pointer](d +% n.offset), n.typ, op)
@@ -679,7 +679,7 @@ proc doOperation(p: pointer, op: WalkOp) =
 proc nimGCvisit(d: pointer, op: int) {.compilerRtl, raises: [].} =
   doOperation(d, WalkOp(op))
 
-proc collectZCT(gch: var GcHeap): bool {.benign, raises: [].}
+proc collectZCT(gch: var GcHeap): bool {.gcsafe, raises: [].}
 
 proc collectCycles(gch: var GcHeap) {.raises: [].} =
   when hasThreadSupport:
