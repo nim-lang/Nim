@@ -40,7 +40,7 @@ proc `=destroy`*[T](x: var myseq[T]) =
     x.len = 0
     x.cap = 0
 
-proc `=`*[T](a: var myseq[T]; b: myseq[T]) =
+proc `=copy`*[T](a: var myseq[T]; b: myseq[T]) =
   if a.data == b.data: return
   if a.data != nil:
     `=destroy`(a)
@@ -65,6 +65,11 @@ proc `=sink`*[T](a: var myseq[T]; b: myseq[T]) =
   a.len = b.len
   a.cap = b.cap
   a.data = b.data
+
+proc `=wasMoved`*[T](a: var myseq[T]) =
+  a.data = nil
+  a.len = 0
+  a.cap = 0
 
 proc resize[T](s: var myseq[T]) =
   if s.cap == 0: s.cap = 8
@@ -118,7 +123,7 @@ template `[]=`*[T](x: myseq[T]; i: Natural; y: T) =
 proc createSeq*[T](elems: varargs[T]): myseq[T] =
   result.cap = elems.len
   result.len = elems.len
-  result.data = cast[type(result.data)](alloc(result.cap * sizeof(T)))
+  result.data = cast[type(result.data)](alloc0(result.cap * sizeof(T)))
   inc allocCount
   when supportsCopyMem(T):
     copyMem(result.data, addr(elems[0]), result.cap * sizeof(T))

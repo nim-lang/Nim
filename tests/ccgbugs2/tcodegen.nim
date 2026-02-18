@@ -56,3 +56,22 @@ proc main = # bug #24677
   for NDEBUG in 0..2:
     doAssert NDEBUG == NDEBUG
 main()
+
+block: # importc type inheritance
+  type
+    A {.inheritable, pure, bycopy, importc: "int".} = object
+    B {.importc: "int", bycopy.} = object of A
+
+  {.emit: """
+  int foo(int a) {
+    return 123;
+  }
+  """.}
+
+  proc foo(a: A): B {.importc, nodecl.}
+
+  var a: A
+  var b = foo(a)
+  doAssert(cast[cint](b) == 123)
+  var c = foo(b)
+  doAssert(cast[cint](c) == 123)

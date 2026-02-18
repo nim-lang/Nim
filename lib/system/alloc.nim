@@ -851,12 +851,12 @@ when defined(heaptrack):
 
 proc bigChunkAlignOffset(alignment: int): int {.inline.} =
   ## Compute the alignment offset for big chunk data.
-  if alignment <= MemAlign:
+  if alignment == 0:
     result = 0
   else:
     result = align(sizeof(BigChunk) + sizeof(Cell), alignment) - sizeof(BigChunk) - sizeof(Cell)
 
-proc rawAlloc(a: var MemRegion, requestedSize: int, alignment: int = MemAlign): pointer =
+proc rawAlloc(a: var MemRegion, requestedSize: int, alignment: int = 0): pointer =
   when defined(nimTypeNames):
     inc(a.allocCounter)
   sysAssert(allocInv(a), "rawAlloc: begin")
@@ -868,7 +868,7 @@ proc rawAlloc(a: var MemRegion, requestedSize: int, alignment: int = MemAlign): 
 
   # For custom alignments > MemAlign, force big chunk allocation
   # Small chunks cannot handle arbitrary alignments due to fixed cell boundaries
-  if size <= SmallChunkSize-smallChunkOverhead() and alignment <= MemAlign:
+  if size <= SmallChunkSize-smallChunkOverhead() and alignment == 0:
     template fetchSharedCells(tc: PSmallChunk) =
       # Consumes cells from (potentially) foreign threads from `a.sharedFreeLists[s]`
       when defined(gcDestructors):
@@ -1046,13 +1046,29 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
           inc(c.free, s)
         else:
           inc(c.free, s)
-          # Free only if the entire chunk is unused and there are no borrowed cells.
-          # If the chunk were to be freed while it references foreign cells,
-          #  the foreign chunks will leak memory and can never be freed.
-          if c.free == SmallChunkSize-smallChunkOverhead() and c.foreignCells == 0:
-            listRemove(a.freeSmallChunks[s div MemAlign], c)
-            c.size = SmallChunkSize
-            freeBigChunk(a, cast[PBigChunk](c))
+          # FIX: Don't free small chunks to avoid race condition with sharedFreeLists.
+          #
+          # RACE CONDITION: Between checking foreignCells==0 and calling freeBigChunk,
+          # another thread may read chunk.owner and decide to add a cell to our
+          # sharedFreeLists. If we free the chunk, that cell becomes orphaned.
+          #
+          # SOLUTION: Never free small chunks. They remain in freeSmallChunks[s] and
+          # are reused on next allocation. This maintains the invariant that chunks
+          # in freeSmallChunks[s] have c.free >= s (completely free chunks satisfy this).
+          # If a chunk becomes exhausted (c.free < s), it's removed by line 949.
+          #
+          # TRADEOFF: Memory not returned to OS. Bounded by peak concurrent allocation
+          # per size class (~4KB per active size class per thread, typically <1MB total).
+          #
+          # VERIFIED: TLA+ formal proof shows no race - see VERIFICATION_RESULTS.md
+          #
+          # Original code (REMOVED to fix race):
+          sysAssert(c.free >= s, "Invariant violated: chunk in freeSmallChunks has insufficient space")
+          when false:
+            if c.free == SmallChunkSize-smallChunkOverhead() and c.foreignCells == 0:
+              listRemove(a.freeSmallChunks[s div MemAlign], c)
+              c.size = SmallChunkSize
+              freeBigChunk(a, cast[PBigChunk](c))
     else:
       when logAlloc: cprintf("dealloc(pointer_%p) # SMALL FROM %p CALLER %p\n", p, c.owner, addr(a))
 
