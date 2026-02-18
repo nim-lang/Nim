@@ -528,7 +528,7 @@ proc semAnonTuple(c: PContext, n: PNode, prev: PType): PType =
   result = newOrPrevType(tyTuple, prev, c)
   for it in n:
     let t = semTypeNode(c, it, nil)
-    if t != nil and t.kind == tyVoid:
+    if t != nil and t.skipTypes({tyGenericInst, tyAlias, tySink}).kind == tyVoid:
       localError(c.config, it.info, "'void' is not allowed as a field type")
     else:
       addSonSkipIntLitChecked(c, result, t, it, c.idgen)
