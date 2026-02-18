@@ -945,9 +945,6 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
         n[^1] = firstRange(c.config, typ)
         hasDefaultField = true
       propagateToOwner(rectype, typ)
-    if typ != nil and typ.kind == tyVoid:
-      localError(c.config, n.info, "'void' is not allowed as a field type")
-      typ = errorType(c)
     var fieldOwner = if c.inGenericContext > 0: c.getCurrOwner
                      else: rectype.sym
     for i in 0..<n.len-2:
