@@ -902,3 +902,15 @@ block: # issue #25494
       a, b, c
 
   foo[MyEnum]()
+
+block: # issue #25005
+  type
+    RpcResponse[T] = ref object
+      result: T
+
+  func testit[T](p: var ref T) =
+    p = new(T)
+
+  var v: RpcResponse[string]
+  testit(v)
+
