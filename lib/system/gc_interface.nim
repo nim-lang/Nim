@@ -12,7 +12,7 @@ when hasAlloc:
       gcOptimizeSpace    ## optimize for memory footprint
 
 when hasAlloc and not defined(js) and not usesDestructors:
-  proc GC_disable*() {.rtl, inl, benign, raises: [].}
+  proc GC_disable*() {.rtl, inl, gcsafe, raises: [].}
     ## Disables the GC. If called `n` times, `n` calls to `GC_enable`
     ## are needed to reactivate the GC.
     ##
@@ -20,39 +20,39 @@ when hasAlloc and not defined(js) and not usesDestructors:
     ## the mark and sweep phase with
     ## `GC_disableMarkAndSweep <#GC_disableMarkAndSweep>`_.
 
-  proc GC_enable*() {.rtl, inl, benign, raises: [].}
+  proc GC_enable*() {.rtl, inl, gcsafe, raises: [].}
     ## Enables the GC again.
 
-  proc GC_fullCollect*() {.rtl, benign, raises: [].}
+  proc GC_fullCollect*() {.rtl, gcsafe, raises: [].}
     ## Forces a full garbage collection pass.
     ## Ordinary code does not need to call this (and should not).
 
-  proc GC_enableMarkAndSweep*() {.rtl, benign, raises: [].}
-  proc GC_disableMarkAndSweep*() {.rtl, benign, raises: [].}
+  proc GC_enableMarkAndSweep*() {.rtl, gcsafe, raises: [].}
+  proc GC_disableMarkAndSweep*() {.rtl, gcsafe, raises: [].}
     ## The current implementation uses a reference counting garbage collector
     ## with a seldomly run mark and sweep phase to free cycles. The mark and
     ## sweep phase may take a long time and is not needed if the application
     ## does not create cycles. Thus the mark and sweep phase can be deactivated
     ## and activated separately from the rest of the GC.
 
-  proc GC_getStatistics*(): string {.rtl, benign, raises: [].}
+  proc GC_getStatistics*(): string {.rtl, gcsafe, raises: [].}
     ## Returns an informative string about the GC's activity. This may be useful
     ## for tweaking.
 
-  proc GC_ref*[T](x: ref T) {.magic: "GCref", benign, raises: [].}
-  proc GC_ref*[T](x: seq[T]) {.magic: "GCref", benign, raises: [].}
-  proc GC_ref*(x: string) {.magic: "GCref", benign, raises: [].}
+  proc GC_ref*[T](x: ref T) {.magic: "GCref", gcsafe, raises: [].}
+  proc GC_ref*[T](x: seq[T]) {.magic: "GCref", gcsafe, raises: [].}
+  proc GC_ref*(x: string) {.magic: "GCref", gcsafe, raises: [].}
     ## Marks the object `x` as referenced, so that it will not be freed until
     ## it is unmarked via `GC_unref`.
     ## If called n-times for the same object `x`,
     ## n calls to `GC_unref` are needed to unmark `x`.
 
-  proc GC_unref*[T](x: ref T) {.magic: "GCunref", benign, raises: [].}
-  proc GC_unref*[T](x: seq[T]) {.magic: "GCunref", benign, raises: [].}
-  proc GC_unref*(x: string) {.magic: "GCunref", benign, raises: [].}
+  proc GC_unref*[T](x: ref T) {.magic: "GCunref", gcsafe, raises: [].}
+  proc GC_unref*[T](x: seq[T]) {.magic: "GCunref", gcsafe, raises: [].}
+  proc GC_unref*(x: string) {.magic: "GCunref", gcsafe, raises: [].}
     ## See the documentation of `GC_ref <#GC_ref,string>`_.
 
-  proc nimGC_setStackBottom*(theStackBottom: pointer) {.compilerRtl, noinline, benign, raises: [].}
+  proc nimGC_setStackBottom*(theStackBottom: pointer) {.compilerRtl, noinline, gcsafe, raises: [].}
     ## Expands operating GC stack range to `theStackBottom`. Does nothing
       ## if current stack bottom is already lower than `theStackBottom`.
 

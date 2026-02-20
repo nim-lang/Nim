@@ -29,8 +29,8 @@ const
   logOrc = defined(nimArcIds)
 
 type
-  TraceProc = proc (p, env: pointer) {.nimcall, benign, raises: [].}
-  DisposeProc = proc (p: pointer) {.nimcall, benign, raises: [].}
+  TraceProc = proc (p, env: pointer) {.nimcall, gcsafe, raises: [].}
+  DisposeProc = proc (p: pointer) {.nimcall, gcsafe, raises: [].}
 
 template color(c): untyped = c.rc and colorMask
 template setColor(c, col) =
