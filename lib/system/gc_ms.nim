@@ -36,7 +36,7 @@ type
                    # local
     waMarkPrecise  # fast precise marking
 
-  Finalizer {.compilerproc.} = proc (self: pointer) {.nimcall, benign, raises: [], gcsafe.}
+  Finalizer {.compilerproc.} = proc (self: pointer) {.nimcall, gcsafe, raises: [].}
     # A ref type can have a finalizer that is called before the object's
     # storage is freed.
 
@@ -115,10 +115,10 @@ when BitsPerPage mod (sizeof(int)*8) != 0:
   {.error: "(BitsPerPage mod BitsPerUnit) should be zero!".}
 
 # forward declarations:
-proc collectCT(gch: var GcHeap; size: int) {.benign, raises: [].}
-proc forAllChildren(cell: PCell, op: WalkOp) {.benign, raises: [].}
-proc doOperation(p: pointer, op: WalkOp) {.benign, raises: [].}
-proc forAllChildrenAux(dest: pointer, mt: PNimType, op: WalkOp) {.benign, raises: [].}
+proc collectCT(gch: var GcHeap; size: int) {.gcsafe, raises: [].}
+proc forAllChildren(cell: PCell, op: WalkOp) {.gcsafe, raises: [].}
+proc doOperation(p: pointer, op: WalkOp) {.gcsafe, raises: [].}
+proc forAllChildrenAux(dest: pointer, mt: PNimType, op: WalkOp) {.gcsafe, raises: [].}
 # we need the prototype here for debugging purposes
 
 when defined(nimGcRefLeak):
@@ -216,7 +216,7 @@ proc initGC() =
     gch.gcThreadId = atomicInc(gHeapidGenerator) - 1
     gcAssert(gch.gcThreadId >= 0, "invalid computed thread ID")
 
-proc forAllSlotsAux(dest: pointer, n: ptr TNimNode, op: WalkOp) {.benign.} =
+proc forAllSlotsAux(dest: pointer, n: ptr TNimNode, op: WalkOp) {.gcsafe.} =
   var d = cast[int](dest)
   case n.kind
   of nkSlot: forAllChildrenAux(cast[pointer](d +% n.offset), n.typ, op)

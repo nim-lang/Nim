@@ -331,7 +331,7 @@ proc rawRemoveDir(dir: string) {.noWeirdTarget.} =
     if rmdir(dir) != 0'i32 and errno != ENOENT: raiseOSError(osLastError(), dir)
 
 proc removeDir*(dir: string, checkDir = false) {.rtl, extern: "nos$1", tags: [
-  WriteDirEffect, ReadDirEffect], benign, noWeirdTarget.} =
+  WriteDirEffect, ReadDirEffect], gcsafe, noWeirdTarget.} =
   ## Removes the directory `dir` including all subdirectories and files
   ## in `dir` (recursively).
   ##
@@ -441,7 +441,7 @@ proc createDir*(dir: string) {.rtl, extern: "nos$1",
       discard existsOrCreateDir(p)
 
 proc copyDir*(source, dest: string, skipSpecial = false) {.rtl, extern: "nos$1",
-  tags: [ReadDirEffect, WriteIOEffect, ReadIOEffect], benign, noWeirdTarget.} =
+  tags: [ReadDirEffect, WriteIOEffect, ReadIOEffect], gcsafe, noWeirdTarget.} =
   ## Copies a directory from `source` to `dest`.
   ##
   ## On non-Windows OSes, symlinks are copied as symlinks. On Windows, symlinks
@@ -482,7 +482,7 @@ proc copyDirWithPermissions*(source, dest: string,
                              ignorePermissionErrors = true,
                              skipSpecial = false)
   {.rtl, extern: "nos$1", tags: [ReadDirEffect, WriteIOEffect, ReadIOEffect],
-   benign, noWeirdTarget.} =
+   gcsafe, noWeirdTarget.} =
   ## Copies a directory from `source` to `dest` preserving file permissions.
   ##
   ## On non-Windows OSes, symlinks are copied as symlinks. On Windows, symlinks

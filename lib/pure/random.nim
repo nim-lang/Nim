@@ -242,7 +242,7 @@ proc rand[T: uint | uint64](r: var Rand; max: T): T =
       else:
         inc iters
 
-proc rand*(r: var Rand; max: Natural): int {.benign.} =
+proc rand*(r: var Rand; max: Natural): int {.gcsafe.} =
   ## Returns a random integer in the range `0..max` using the given state.
   ##
   ## **See also:**
@@ -259,7 +259,7 @@ proc rand*(r: var Rand; max: Natural): int {.benign.} =
   cast[int](rand(r, uint64(max)))
     # xxx toUnsigned pending https://github.com/nim-lang/Nim/pull/18445
 
-proc rand*(max: int): int {.benign.} =
+proc rand*(max: int): int {.gcsafe.} =
   ## Returns a random integer in the range `0..max`.
   ##
   ## If `randomize <#randomize>`_ has not been called, the sequence of random
@@ -280,7 +280,7 @@ proc rand*(max: int): int {.benign.} =
 
   rand(state, max)
 
-proc rand*(r: var Rand; max: range[0.0 .. high(float)]): float {.benign.} =
+proc rand*(r: var Rand; max: range[0.0 .. high(float)]): float {.gcsafe.} =
   ## Returns a random floating point number in the range `0.0..max`
   ## using the given state.
   ##
@@ -307,7 +307,7 @@ proc rand*(r: var Rand; max: range[0.0 .. high(float)]): float {.benign.} =
     let u = (0x3FFu64 shl 52u64) or (x shr 12u64)
     result = (cast[float](u) - 1.0) * max
 
-proc rand*(max: float): float {.benign.} =
+proc rand*(max: float): float {.gcsafe.} =
   ## Returns a random floating point number in the range `0.0..max`.
   ##
   ## If `randomize <#randomize>`_ has not been called, the sequence of random
@@ -611,7 +611,7 @@ proc initRand*(seed: int64): Rand =
     skipRandomNumbers(result)
   discard next(result)
 
-proc randomize*(seed: int64) {.benign.} =
+proc randomize*(seed: int64) {.gcsafe.} =
   ## Initializes the default random number generator with the given seed.
   ##
   ## Providing a specific seed will produce the same results for that seed each time.
@@ -735,7 +735,7 @@ when not defined(standalone):
   since (1, 5, 1):
     export initRand
 
-  proc randomize*() {.benign.} =
+  proc randomize*() {.gcsafe.} =
     ## Initializes the default random number generator with a seed based on
     ## random number source.
     ##

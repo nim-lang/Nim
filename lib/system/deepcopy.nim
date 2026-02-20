@@ -58,9 +58,9 @@ proc put(t: var PtrTable; key, val: pointer) =
   inc t.counter
 
 proc genericDeepCopyAux(dest, src: pointer, mt: PNimType;
-                        tab: var PtrTable) {.benign.}
+                        tab: var PtrTable) {.gcsafe.}
 proc genericDeepCopyAux(dest, src: pointer, n: ptr TNimNode;
-                        tab: var PtrTable) {.benign.} =
+                        tab: var PtrTable) {.gcsafe.} =
   var
     d = cast[int](dest)
     s = cast[int](src)

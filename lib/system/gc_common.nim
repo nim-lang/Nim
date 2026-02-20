@@ -457,7 +457,7 @@ proc deallocHeap*(runFinalizers = true; allowGcAfterwards = true) =
     initGC()
 
 type
-  GlobalMarkerProc = proc () {.nimcall, benign, raises: [].}
+  GlobalMarkerProc = proc () {.nimcall, gcsafe, raises: [].}
 var
   globalMarkersLen {.exportc.}: int
   globalMarkers {.exportc.}: array[0..3499, GlobalMarkerProc]

@@ -11,7 +11,7 @@
 ## collectors etc.
 
 type
-  GlobalMarkerProc = proc () {.nimcall, benign, raises: [], tags: [].}
+  GlobalMarkerProc = proc () {.nimcall, gcsafe, raises: [], tags: [].}
 var
   globalMarkersLen: int
   globalMarkers: array[0..3499, GlobalMarkerProc]
