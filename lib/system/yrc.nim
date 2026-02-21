@@ -137,7 +137,6 @@ type
     ## Invoked while holding the global lock; must not call back into YRC.
 
 var
-  gYrcGlobalLock: Lock
   roots: CellSeq[Cell]  # merged roots, used under global lock
   stripes: array[NumStripes, Stripe]
   rootsThreshold: int = 128
@@ -188,7 +187,7 @@ proc nimIncRefCyclic(p: pointer; cyclic: bool) {.compilerRtl, inl.} =
     if slot < QueueSize:
       atomicStoreN(addr stripes[s].toInc[slot], h, ATOMIC_RELEASE)
     else:
-      withLock gYrcGlobalLock:
+      yrcCollectorLock:
         h.rc = h.rc +% rcIncrement
         for i in 0..<NumStripes:
           let len = atomicExchangeN(addr stripes[i].toIncLen, 0, ATOMIC_ACQUIRE)
@@ -206,7 +205,7 @@ proc nimIncRefCyclic(p: pointer; cyclic: bool) {.compilerRtl, inl.} =
         else:
           overflow = true
       if overflow:
-        withLock gYrcGlobalLock:
+        yrcCollectorLock:
           for i in 0..<NumStripes:
             withLock stripes[i].lockInc:
               for j in 0..<stripes[i].toIncLen:
@@ -351,6 +350,9 @@ proc collectColor(s: Cell; desc: PNimTypeV2; col: int; j: var GcEnv) =
 proc collectCyclesBacon(j: var GcEnv; lowMark: int) =
   # YRC defers all destruction to collection time - process ALL roots through Bacon's algorithm
   # This is different from ORC which handles immediate garbage (rc == 0) directly
+  if lockState == Collecting:
+    return
+  lockState = Collecting
   let last = roots.len -% 1
   when logOrc:
     for i in countdown(last, lowMark):
@@ -378,9 +380,6 @@ proc collectCyclesBacon(j: var GcEnv; lowMark: int) =
     collectColor(s, roots.d[i][1], colToCollect, j)
 
   # Clear roots before freeing to prevent nested collectCycles() from accessing freed cells
-  when not defined(nimStressOrc):
-    let oldThreshold = rootsThreshold
-    rootsThreshold = high(int)
   roots.len = 0
 
   # Free all collected objects
@@ -390,8 +389,6 @@ proc collectCyclesBacon(j: var GcEnv; lowMark: int) =
     when orcLeakDetector:
       writeCell("CYCLIC OBJECT FREED", s, j.toFree.d[i][1])
     free(s, j.toFree.d[i][1])
-  when not defined(nimStressOrc):
-    rootsThreshold = oldThreshold
   j.freed = j.freed +% j.toFree.len
   deinit j.toFree
 
@@ -401,7 +398,7 @@ when defined(nimOrcStats):
 proc collectCycles() =
   when logOrc:
     cfprintf(cstderr, "[collectCycles] begin\n")
-  withLock gYrcGlobalLock:
+  yrcCollectorLock:
     mergePendingRoots()
     if roots.len >= RootsThreshold and mayRunCycleCollect():
       var j: GcEnv
@@ -436,7 +433,7 @@ when defined(nimOrcStats):
     result = OrcStats(freedCyclicObjects: freedCyclicObjects)
 
 proc GC_runOrc* =
-  withLock gYrcGlobalLock:
+  yrcCollectorLock:
     mergePendingRoots()
     if mayRunCycleCollect():
       var j: GcEnv
@@ -455,12 +452,12 @@ proc GC_disableOrc*() =
     rootsThreshold = high(int)
 
 proc GC_prepareOrc*(): int {.inline.} =
-  withLock gYrcGlobalLock:
+  yrcCollectorLock:
     mergePendingRoots()
     result = roots.len
 
 proc GC_partialCollect*(limit: int) =
-  withLock gYrcGlobalLock:
+  yrcCollectorLock:
     mergePendingRoots()
     if roots.len > limit and mayRunCycleCollect():
       var j: GcEnv
@@ -560,7 +557,7 @@ proc nimMarkCyclic(p: pointer) {.compilerRtl, inl.} =
       h.rc = h.rc or maybeCycle
 
 # Initialize locks at module load
-initLock(gYrcGlobalLock)
+initRwLock(gYrcGlobalLock)
 for i in 0..<NumStripes:
   when not defined(yrcAtomics):
     initLock(stripes[i].lockInc)

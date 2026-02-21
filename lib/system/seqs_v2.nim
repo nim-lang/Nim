@@ -11,6 +11,55 @@
 # import std/typetraits
 # strs already imported allocateds for us.
 
+when defined(gcYrc):
+  include rwlocks
+
+  type
+    YrcLockState = enum
+      HasNoLock
+      HasMutatorLock
+      HasCollectorLock
+      Collecting
+
+  var
+    gYrcGlobalLock: RWLock
+  var
+    lockState {.threadvar.}: YrcLockState
+
+  proc acquireMutatorLock() {.compilerRtl, inl.} =
+    acquireRead gYrcGlobalLock
+    lockState = HasMutatorLock
+
+  proc releaseMutatorLock() {.compilerRtl, inl.} =
+    if lockState == HasMutatorLock:
+      lockState = HasNoLock
+      releaseRead gYrcGlobalLock
+
+  template yrcMutatorLock*(body: untyped) =
+    {.noSideEffect.}:
+      acquireMutatorLock()
+      try:
+        body
+      finally:
+        {.noSideEffect.}:
+          releaseMutatorLock()
+
+  template yrcCollectorLock(body: untyped) =
+    if lockState == HasMutatorLock: releaseMutatorLock()
+    let hadToAcquire = lockState < HasCollectorLock
+    if hadToAcquire:
+      acquireWrite(gYrcGlobalLock)
+    lockState = HasCollectorLock
+    try:
+      body
+    finally:
+      if hadToAcquire:
+        releaseWrite(gYrcGlobalLock)
+      lockState = HasNoLock
+else:
+  template yrcMutatorLock*(body: untyped) =
+    body
+
 
 # Some optimizations here may be not to empty-seq-initialize some symbols, then StrictNotNil complains.
 {.push warning[StrictNotNil]: off.}  # See https://github.com/nim-lang/Nim/issues/21401
@@ -116,33 +165,35 @@ proc prepareSeqAddUninit(len: int; p: pointer; addlen, elemSize, elemAlign: int)
         q.cap = newCap
         result = q
 
-proc shrink*[T](x: var seq[T]; newLen: Natural) {.tags: [], raises: [].} =
+proc shrink*[T](x: var seq[T]; newLen: Natural) {.tags: [], raises: [], noSideEffect.} =
   when nimvm:
     {.cast(tags: []).}:
       setLen(x, newLen)
   else:
     #sysAssert newLen <= x.len, "invalid newLen parameter for 'shrink'"
-    when not supportsCopyMem(T):
-      for i in countdown(x.len - 1, newLen):
-        reset x[i]
-    # XXX This is wrong for const seqs that were moved into 'x'!
-    {.noSideEffect.}:
-      cast[ptr NimSeqV2[T]](addr x).len = newLen
+    yrcMutatorLock:
+      when not supportsCopyMem(T):
+        for i in countdown(x.len - 1, newLen):
+          reset x[i]
+      # XXX This is wrong for const seqs that were moved into 'x'!
+      {.noSideEffect.}:
+        cast[ptr NimSeqV2[T]](addr x).len = newLen
 
 proc grow*[T](x: var seq[T]; newLen: Natural; value: T) {.nodestroy.} =
   let oldLen = x.len
   #sysAssert newLen >= x.len, "invalid newLen parameter for 'grow'"
   if newLen <= oldLen: return
-  var xu = cast[ptr NimSeqV2[T]](addr x)
-  if xu.p == nil or (xu.p.cap and not strlitFlag) < newLen:
-    xu.p = cast[typeof(xu.p)](prepareSeqAddUninit(oldLen, xu.p, newLen - oldLen, sizeof(T), alignof(T)))
-  xu.len = newLen
-  for i in oldLen .. newLen-1:
-    when (NimMajor, NimMinor, NimPatch) >= (2, 3, 1):
-      xu.p.data[i] = `=dup`(value)
-    else:
-      wasMoved(xu.p.data[i])
-      `=copy`(xu.p.data[i], value)
+  yrcMutatorLock:
+    var xu = cast[ptr NimSeqV2[T]](addr x)
+    if xu.p == nil or (xu.p.cap and not strlitFlag) < newLen:
+      xu.p = cast[typeof(xu.p)](prepareSeqAddUninit(oldLen, xu.p, newLen - oldLen, sizeof(T), alignof(T)))
+    xu.len = newLen
+    for i in oldLen .. newLen-1:
+      when (NimMajor, NimMinor, NimPatch) >= (2, 3, 1):
+        xu.p.data[i] = `=dup`(value)
+      else:
+        wasMoved(xu.p.data[i])
+        `=copy`(xu.p.data[i], value)
 
 proc add*[T](x: var seq[T]; y: sink T) {.magic: "AppendSeqElem", noSideEffect, nodestroy.} =
   ## Generic proc for adding a data item `y` to a container `x`.
@@ -152,30 +203,32 @@ proc add*[T](x: var seq[T]; y: sink T) {.magic: "AppendSeqElem", noSideEffect, n
   ## Generic code becomes much easier to write if the Nim naming scheme is
   ## respected.
   {.cast(noSideEffect).}:
-    let oldLen = x.len
-    var xu = cast[ptr NimSeqV2[T]](addr x)
-    if xu.p == nil or (xu.p.cap and not strlitFlag) < oldLen+1:
-      xu.p = cast[typeof(xu.p)](prepareSeqAddUninit(oldLen, xu.p, 1, sizeof(T), alignof(T)))
-    xu.len = oldLen+1
-    # .nodestroy means `xu.p.data[oldLen] = value` is compiled into a
-    # copyMem(). This is fine as know by construction that
-    # in `xu.p.data[oldLen]` there is nothing to destroy.
-    # We also save the `wasMoved + destroy` pair for the sink parameter.
-    xu.p.data[oldLen] = y
+    yrcMutatorLock:
+      let oldLen = x.len
+      var xu = cast[ptr NimSeqV2[T]](addr x)
+      if xu.p == nil or (xu.p.cap and not strlitFlag) < oldLen+1:
+        xu.p = cast[typeof(xu.p)](prepareSeqAddUninit(oldLen, xu.p, 1, sizeof(T), alignof(T)))
+      xu.len = oldLen+1
+      # .nodestroy means `xu.p.data[oldLen] = value` is compiled into a
+      # copyMem(). This is fine as know by construction that
+      # in `xu.p.data[oldLen]` there is nothing to destroy.
+      # We also save the `wasMoved + destroy` pair for the sink parameter.
+      xu.p.data[oldLen] = y
 
 proc setLen[T](s: var seq[T], newlen: Natural) {.nodestroy.} =
   {.noSideEffect.}:
     if newlen < s.len:
       shrink(s, newlen)
     else:
-      let oldLen = s.len
-      if newlen <= oldLen: return
-      var xu = cast[ptr NimSeqV2[T]](addr s)
-      if xu.p == nil or (xu.p.cap and not strlitFlag) < newlen:
-        xu.p = cast[typeof(xu.p)](prepareSeqAddUninit(oldLen, xu.p, newlen - oldLen, sizeof(T), alignof(T)))
-      xu.len = newlen
-      for i in oldLen..<newlen:
-        xu.p.data[i] = default(T)
+      yrcMutatorLock:
+        let oldLen = s.len
+        if newlen <= oldLen: return
+        var xu = cast[ptr NimSeqV2[T]](addr s)
+        if xu.p == nil or (xu.p.cap and not strlitFlag) < newlen:
+          xu.p = cast[typeof(xu.p)](prepareSeqAddUninit(oldLen, xu.p, newlen - oldLen, sizeof(T), alignof(T)))
+        xu.len = newlen
+        for i in oldLen..<newlen:
+          xu.p.data[i] = default(T)
 
 proc newSeq[T](s: var seq[T], len: Natural) =
   shrink(s, 0)
@@ -214,11 +267,12 @@ func setLenUninit[T](s: var seq[T], newlen: Natural) {.nodestroy.} =
     if newlen < s.len:
       shrink(s, newlen)
     else:
-      let oldLen = s.len
-      if newlen <= oldLen: return
-      var xu = cast[ptr NimSeqV2[T]](addr s)
-      if xu.p == nil or (xu.p.cap and not strlitFlag) < newlen:
-        xu.p = cast[typeof(xu.p)](prepareSeqAddUninit(oldLen, xu.p, newlen - oldLen, sizeof(T), alignof(T)))
-      xu.len = newlen
+      yrcMutatorLock:
+        let oldLen = s.len
+        if newlen <= oldLen: return
+        var xu = cast[ptr NimSeqV2[T]](addr s)
+        if xu.p == nil or (xu.p.cap and not strlitFlag) < newlen:
+          xu.p = cast[typeof(xu.p)](prepareSeqAddUninit(oldLen, xu.p, newlen - oldLen, sizeof(T), alignof(T)))
+        xu.len = newlen
 
 {.pop.}  # See https://github.com/nim-lang/Nim/issues/21401

@@ -18,7 +18,8 @@ type
 
 template frees(s: NimSeqV2Reimpl) =
   if s.p != nil and (s.p.cap and strlitFlag) != strlitFlag:
-    when compileOption("threads"):
-      deallocShared(s.p)
-    else:
-      dealloc(s.p)
+    yrcMutatorLock:
+      when compileOption("threads"):
+        deallocShared(s.p)
+      else:
+        dealloc(s.p)
