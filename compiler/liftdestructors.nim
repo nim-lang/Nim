@@ -1287,6 +1287,23 @@ proc produceSym(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp;
     case tk
     of tySequence:
       fillSeqOp(a, typ, result.ast[bodyPos], d, src)
+      # YRC: topology-changing seq ops must hold the mutator (read) lock
+      if g.config.selectedGC == gcYrc and
+         kind in {attachedDestructor, attachedSink, attachedAsgn, attachedDeepCopy, attachedDup} and
+         types.canFormAcycle(g, skipped.elementType):
+        let acquireSym = getSysSym(g, info, "acquireMutatorLock")
+        let releaseSym = getSysSym(g, info, "releaseMutatorLock")
+        if acquireSym != nil and releaseSym != nil and acquireSym.kind != skError and releaseSym.kind != skError:
+          let acquireCall = newNodeI(nkCall, info)
+          acquireCall.add newSymNode(acquireSym)
+          let releaseCall = newNodeI(nkCall, info)
+          releaseCall.add newSymNode(releaseSym)
+          let oldBody = result.ast[bodyPos]
+          result.ast[bodyPos] = newTree(nkStmtList,
+            acquireCall,
+            newTree(nkTryStmt,
+              oldBody,
+              newTree(nkFinally, newTree(nkStmtList, releaseCall))))
     of tyString:
       fillStrOp(a, typ, result.ast[bodyPos], d, src)
     else:
