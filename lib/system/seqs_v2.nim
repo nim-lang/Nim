@@ -46,16 +46,19 @@ when defined(gcYrc):
 
   template yrcCollectorLock(body: untyped) =
     if lockState == HasMutatorLock: releaseMutatorLock()
-    let hadToAcquire = lockState < HasCollectorLock
+    let prevState = lockState
+    let hadToAcquire = prevState < HasCollectorLock
     if hadToAcquire:
       acquireWrite(gYrcGlobalLock)
-    lockState = HasCollectorLock
+      lockState = HasCollectorLock
+    # else: keep lockState as-is (could be Collecting)
     try:
       body
     finally:
       if hadToAcquire:
         releaseWrite(gYrcGlobalLock)
-      lockState = HasNoLock
+      lockState = prevState
+
 else:
   template yrcMutatorLock*(body: untyped) =
     body
