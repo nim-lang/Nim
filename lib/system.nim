@@ -1459,6 +1459,7 @@ proc isNil*[T: proc | iterator {.closure.}](x: T): bool {.noSideEffect, magic: "
   ## `== nil`.
 
 proc supportsCopyMem(t: typedesc): bool {.magic: "TypeTrait".}
+proc canFormCycles(t: typedesc): bool {.magic: "TypeTrait".}
 
 when defined(nimHasTopDownInference):
   # magic used for seq type inference
