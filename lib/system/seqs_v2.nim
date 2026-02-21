@@ -35,7 +35,18 @@ when defined(gcYrc):
       lockState = HasNoLock
       releaseRead gYrcGlobalLock
 
-  template yrcMutatorLock*(body: untyped) =
+  template yrcMutatorLock*(t: typedesc; body: untyped) =
+    {.noSideEffect.}:
+      when canFormCycles(t):
+        acquireMutatorLock()
+      try:
+        body
+      finally:
+        {.noSideEffect.}:
+          when canFormCycles(t):
+            releaseMutatorLock()
+
+  template yrcMutatorLockUntyped(body: untyped) =
     {.noSideEffect.}:
       acquireMutatorLock()
       try:
@@ -60,9 +71,11 @@ when defined(gcYrc):
       lockState = prevState
 
 else:
-  template yrcMutatorLock*(body: untyped) =
+  template yrcMutatorLock*(t: typedesc; body: untyped) =
     body
 
+  template yrcMutatorLockUntyped(body: untyped) =
+    body
 
 # Some optimizations here may be not to empty-seq-initialize some symbols, then StrictNotNil complains.
 {.push warning[StrictNotNil]: off.}  # See https://github.com/nim-lang/Nim/issues/21401
@@ -174,7 +187,7 @@ proc shrink*[T](x: var seq[T]; newLen: Natural) {.tags: [], raises: [], noSideEf
       setLen(x, newLen)
   else:
     #sysAssert newLen <= x.len, "invalid newLen parameter for 'shrink'"
-    yrcMutatorLock:
+    yrcMutatorLock(T):
       when not supportsCopyMem(T):
         for i in countdown(x.len - 1, newLen):
           reset x[i]
@@ -186,7 +199,7 @@ proc grow*[T](x: var seq[T]; newLen: Natural; value: T) {.nodestroy.} =
   let oldLen = x.len
   #sysAssert newLen >= x.len, "invalid newLen parameter for 'grow'"
   if newLen <= oldLen: return
-  yrcMutatorLock:
+  yrcMutatorLock(T):
     var xu = cast[ptr NimSeqV2[T]](addr x)
     if xu.p == nil or (xu.p.cap and not strlitFlag) < newLen:
       xu.p = cast[typeof(xu.p)](prepareSeqAddUninit(oldLen, xu.p, newLen - oldLen, sizeof(T), alignof(T)))
@@ -206,7 +219,7 @@ proc add*[T](x: var seq[T]; y: sink T) {.magic: "AppendSeqElem", noSideEffect, n
   ## Generic code becomes much easier to write if the Nim naming scheme is
   ## respected.
   {.cast(noSideEffect).}:
-    yrcMutatorLock:
+    yrcMutatorLock(T):
       let oldLen = x.len
       var xu = cast[ptr NimSeqV2[T]](addr x)
       if xu.p == nil or (xu.p.cap and not strlitFlag) < oldLen+1:
@@ -223,7 +236,7 @@ proc setLen[T](s: var seq[T], newlen: Natural) {.nodestroy.} =
     if newlen < s.len:
       shrink(s, newlen)
     else:
-      yrcMutatorLock:
+      yrcMutatorLock(T):
         let oldLen = s.len
         if newlen <= oldLen: return
         var xu = cast[ptr NimSeqV2[T]](addr s)
@@ -270,7 +283,7 @@ func setLenUninit[T](s: var seq[T], newlen: Natural) {.nodestroy.} =
     if newlen < s.len:
       shrink(s, newlen)
     else:
-      yrcMutatorLock:
+      yrcMutatorLock(T):
         let oldLen = s.len
         if newlen <= oldLen: return
         var xu = cast[ptr NimSeqV2[T]](addr s)

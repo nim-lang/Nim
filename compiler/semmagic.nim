@@ -236,6 +236,8 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
     let complexObj = containsGarbageCollectedRef(t) or
                      hasDestructor(t)
     result = newIntNodeT(toInt128(ord(not complexObj)), traitCall, c.idgen, c.graph)
+  of "canFormCycles":
+    result = newIntNodeT(toInt128(ord(types.canFormAcycle(c.graph, operand))), traitCall, c.idgen, c.graph)
   of "hasDefaultValue":
     result = newIntNodeT(toInt128(ord(not operand.requiresInit)), traitCall, c.idgen, c.graph)
   of "isNamedTuple":
