@@ -1855,6 +1855,10 @@ proc genTypeInfoV2Impl(m: BModule; t, origType: PType, name: Rope; info: TLineIn
           typeEntry.addCast(CPointer):
             genHook(m, t, info, attachedTrace, typeEntry)
 
+        typeEntry.addField(typeInit, name = "disposeImpl"):
+          typeEntry.addCast(CPointer):
+            genHook(m, t, info, attachedDispose, typeEntry)
+
         let dispatchMethods = toSeq(getMethodsPerType(m.g.graph, t))
         if dispatchMethods.len > 0:
           typeEntry.addField(typeInit, name = "flags"):

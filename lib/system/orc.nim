@@ -302,7 +302,7 @@ proc collectColor(s: Cell; desc: PNimTypeV2; col: int; j: var GcEnv) =
     while j.traceStack.len > 0:
       let (entry, desc) = j.traceStack.pop()
       let t = head entry[]
-      entry[] = nil # ensure that the destructor does touch moribund objects!
+      entry[] = nil # ensure that the destructor does not touch moribund objects!
       if t.color == col and t.rootIdx == 0:
         j.toFree.add(t, desc)
         t.setColor(colBlack)

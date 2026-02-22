@@ -764,6 +764,7 @@ type
     attachedAsgn,
     attachedDup,
     attachedSink,
+    attachedDispose,
     attachedTrace,
     attachedDeepCopy
 
