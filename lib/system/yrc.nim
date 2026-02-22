@@ -435,7 +435,7 @@ when defined(nimOrcStats):
 proc GC_runOrc* =
   yrcCollectorLock:
     mergePendingRoots()
-    if mayRunCycleCollect():
+    if roots.len > 0 and mayRunCycleCollect():
       var j: GcEnv
       init j.traceStack
       collectCyclesBacon(j, 0)

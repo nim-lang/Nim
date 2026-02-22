@@ -27,8 +27,9 @@ when defined(gcYrc):
     lockState {.threadvar.}: YrcLockState
 
   proc acquireMutatorLock() {.compilerRtl, inl.} =
-    acquireRead gYrcGlobalLock
-    lockState = HasMutatorLock
+    if lockState == HasNoLock:
+      acquireRead gYrcGlobalLock
+      lockState = HasMutatorLock
 
   proc releaseMutatorLock() {.compilerRtl, inl.} =
     if lockState == HasMutatorLock:
