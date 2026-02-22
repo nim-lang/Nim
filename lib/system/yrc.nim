@@ -93,12 +93,49 @@ type
   TraceProc = proc (p, env: pointer) {.nimcall, benign, raises: [].}
   DisposeProc = proc (p: pointer) {.nimcall, benign, raises: [].}
 
-template color(c): untyped = c.rc and colorMask
-template setColor(c, col) =
-  when col == colBlack:
-    c.rc = c.rc and not colorMask
-  else:
-    c.rc = c.rc and not colorMask or col
+when defined(nimYrcAtomicIncs):
+  template color(c): untyped = atomicLoadN(addr c.rc, ATOMIC_ACQUIRE) and colorMask
+  template setColor(c, col) =
+    block:
+      var expected = atomicLoadN(addr c.rc, ATOMIC_RELAXED)
+      while true:
+        let desired = (expected and not colorMask) or col
+        if atomicCompareExchangeN(addr c.rc, addr expected, desired, true,
+                                   ATOMIC_ACQ_REL, ATOMIC_RELAXED):
+          break
+  template loadRc(c): int = atomicLoadN(addr c.rc, ATOMIC_ACQUIRE)
+  template trialDec(c) =
+    discard atomicFetchAdd(addr c.rc, -rcIncrement, ATOMIC_ACQ_REL)
+  template trialInc(c) =
+    discard atomicFetchAdd(addr c.rc, rcIncrement, ATOMIC_ACQ_REL)
+  template rcClearFlag(c, flag) =
+    block:
+      var expected = atomicLoadN(addr c.rc, ATOMIC_RELAXED)
+      while true:
+        let desired = expected and not flag
+        if atomicCompareExchangeN(addr c.rc, addr expected, desired, true,
+                                   ATOMIC_ACQ_REL, ATOMIC_RELAXED):
+          break
+  template rcSetFlag(c, flag) =
+    block:
+      var expected = atomicLoadN(addr c.rc, ATOMIC_RELAXED)
+      while true:
+        let desired = expected or flag
+        if atomicCompareExchangeN(addr c.rc, addr expected, desired, true,
+                                   ATOMIC_ACQ_REL, ATOMIC_RELAXED):
+          break
+else:
+  template color(c): untyped = c.rc and colorMask
+  template setColor(c, col) =
+    when col == colBlack:
+      c.rc = c.rc and not colorMask
+    else:
+      c.rc = c.rc and not colorMask or col
+  template loadRc(c): int = c.rc
+  template trialDec(c) = c.rc = c.rc -% rcIncrement
+  template trialInc(c) = c.rc = c.rc +% rcIncrement
+  template rcClearFlag(c, flag) = c.rc = c.rc and not flag
+  template rcSetFlag(c, flag) = c.rc = c.rc or flag
 
 const
   optimizedOrc = false
@@ -181,7 +218,9 @@ proc nimIncRefCyclic(p: pointer; cyclic: bool) {.compilerRtl, inl.} =
   let h = head(p)
   when optimizedOrc:
     if cyclic: h.rc = h.rc or maybeCycle
-  when defined(yrcAtomics):
+  when defined(nimYrcAtomicIncs):
+    discard atomicFetchAdd(addr h.rc, rcIncrement, ATOMIC_ACQ_REL)
+  elif defined(yrcAtomics):
     let s = getStripeIdx()
     let slot = atomicFetchAdd(addr stripes[s].toIncLen, 1, ATOMIC_ACQ_REL)
     if slot < QueueSize:
@@ -220,23 +259,25 @@ proc mergePendingRoots() =
   # we don't need to set color to black on incRef because collection runs
   # under the global lock, so no concurrent mutations happen during collection.
   for i in 0..<NumStripes:
-    when defined(yrcAtomics):
-      let incLen = atomicExchangeN(addr stripes[i].toIncLen, 0, ATOMIC_ACQUIRE)
-      for j in 0..<min(incLen, QueueSize):
-        let x = atomicLoadN(addr stripes[i].toInc[j], ATOMIC_ACQUIRE)
-        x.rc = x.rc +% rcIncrement
-    else:
-      withLock stripes[i].lockInc:
-        for j in 0..<stripes[i].toIncLen:
-          let x = stripes[i].toInc[j]
+    when not defined(nimYrcAtomicIncs):
+      # Inc buffers only exist when increfs are buffered (not atomic)
+      when defined(yrcAtomics):
+        let incLen = atomicExchangeN(addr stripes[i].toIncLen, 0, ATOMIC_ACQUIRE)
+        for j in 0..<min(incLen, QueueSize):
+          let x = atomicLoadN(addr stripes[i].toInc[j], ATOMIC_ACQUIRE)
           x.rc = x.rc +% rcIncrement
-        stripes[i].toIncLen = 0
+      else:
+        withLock stripes[i].lockInc:
+          for j in 0..<stripes[i].toIncLen:
+            let x = stripes[i].toInc[j]
+            x.rc = x.rc +% rcIncrement
+          stripes[i].toIncLen = 0
     withLock stripes[i].lockDec:
       for j in 0..<stripes[i].toDecLen:
         let (c, desc) = stripes[i].toDec[j]
-        c.rc = c.rc -% rcIncrement
-        if (c.rc and inRootsFlag) == 0:
-          c.rc = c.rc or inRootsFlag
+        trialDec(c)
+        if (loadRc(c) and inRootsFlag) == 0:
+          rcSetFlag(c, inRootsFlag)
           if roots.d == nil: init(roots)
           add(roots, c, desc)
       stripes[i].toDecLen = 0
@@ -256,8 +297,8 @@ when logOrc or orcLeakDetector:
 
 proc free(s: Cell; desc: PNimTypeV2) {.inline.} =
   when traceCollector:
-    cprintf("[From ] %p rc %ld color %ld\n", s, s.rc shr rcShift, s.color)
-  if (s.rc and inRootsFlag) == 0:
+    cprintf("[From ] %p rc %ld color %ld\n", s, loadRc(s) shr rcShift, s.color)
+  if (loadRc(s) and inRootsFlag) == 0:
     let p = s +! sizeof(RefHeader)
     when logOrc: writeCell("free", s, desc)
     if desc.destructor != nil:
@@ -290,7 +331,7 @@ proc scanBlack(s: Cell; desc: PNimTypeV2; j: var GcEnv) =
   while j.traceStack.len > until:
     let (entry, desc) = j.traceStack.pop()
     let t = head entry[]
-    t.rc = t.rc +% rcIncrement
+    trialInc(t)
     if t.color != colBlack:
       t.setColor colBlack
       trace(t, desc, j)
@@ -300,23 +341,23 @@ proc markGray(s: Cell; desc: PNimTypeV2; j: var GcEnv) =
   if s.color != colGray:
     s.setColor colGray
     j.touched = j.touched +% 1
-    j.rcSum = j.rcSum +% (s.rc shr rcShift) +% 1
+    j.rcSum = j.rcSum +% (loadRc(s) shr rcShift) +% 1
     orcAssert(j.traceStack.len == 0, "markGray: trace stack not empty")
     trace(s, desc, j)
     while j.traceStack.len > 0:
       let (entry, desc) = j.traceStack.pop()
       let t = head entry[]
-      t.rc = t.rc -% rcIncrement
+      trialDec(t)
       j.edges = j.edges +% 1
       if t.color != colGray:
         t.setColor colGray
         j.touched = j.touched +% 1
-        j.rcSum = j.rcSum +% (t.rc shr rcShift) +% 2
+        j.rcSum = j.rcSum +% (loadRc(t) shr rcShift) +% 2
         trace(t, desc, j)
 
 proc scan(s: Cell; desc: PNimTypeV2; j: var GcEnv) =
   if s.color == colGray:
-    if (s.rc shr rcShift) >= 0:
+    if (loadRc(s) shr rcShift) >= 0:
       scanBlack(s, desc, j)
     else:
       orcAssert(j.traceStack.len == 0, "scan: trace stack not empty")
@@ -326,14 +367,14 @@ proc scan(s: Cell; desc: PNimTypeV2; j: var GcEnv) =
         let (entry, desc) = j.traceStack.pop()
         let t = head entry[]
         if t.color == colGray:
-          if (t.rc shr rcShift) >= 0:
+          if (loadRc(t) shr rcShift) >= 0:
             scanBlack(t, desc, j)
           else:
             t.setColor(colWhite)
             trace(t, desc, j)
 
 proc collectColor(s: Cell; desc: PNimTypeV2; col: int; j: var GcEnv) =
-  if s.color == col and (s.rc and inRootsFlag) == 0:
+  if s.color == col and (loadRc(s) and inRootsFlag) == 0:
     orcAssert(j.traceStack.len == 0, "collectWhite: trace stack not empty")
     s.setColor(colBlack)
     j.toFree.add(s, desc)
@@ -342,7 +383,7 @@ proc collectColor(s: Cell; desc: PNimTypeV2; col: int; j: var GcEnv) =
       let (entry, desc) = j.traceStack.pop()
       let t = head entry[]
       entry[] = nil
-      if t.color == col and (t.rc and inRootsFlag) == 0:
+      if t.color == col and (loadRc(t) and inRootsFlag) == 0:
         j.toFree.add(t, desc)
         t.setColor(colBlack)
         trace(t, desc, j)
@@ -376,7 +417,7 @@ proc collectCyclesBacon(j: var GcEnv; lowMark: int) =
   init j.toFree
   for i in 0 ..< roots.len:
     let s = roots.d[i][0]
-    s.rc = s.rc and not inRootsFlag
+    rcClearFlag(s, inRootsFlag)
     collectColor(s, roots.d[i][1], colToCollect, j)
 
   # Clear roots before freeing to prevent nested collectCycles() from accessing freed cells
@@ -559,7 +600,7 @@ proc nimMarkCyclic(p: pointer) {.compilerRtl, inl.} =
 # Initialize locks at module load
 initRwLock(gYrcGlobalLock)
 for i in 0..<NumStripes:
-  when not defined(yrcAtomics):
+  when not defined(yrcAtomics) and not defined(nimYrcAtomicIncs):
     initLock(stripes[i].lockInc)
   initLock(stripes[i].lockDec)
 
