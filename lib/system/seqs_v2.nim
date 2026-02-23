@@ -16,7 +16,7 @@ when defined(gcYrc):
   include threadids
 
   const
-    NumLockStripes* = 64  # must be a power of 2; exported so yrc.nim can use it
+    NumLockStripes = 64
 
   type
     YrcLockState = enum
