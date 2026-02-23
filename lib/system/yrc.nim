@@ -1,30 +1,29 @@
 #
 # YRC: Thread-safe ORC (concurrent cycle collector).
-# Same API as orc.nim but with striped queues and global lock for merge/collect.
+# Same API as orc.nim but with the global mutator/collector RWLock for safety.
 # Destructors for refs run at collection time, not immediately on last decRef.
 # See yrc_proof.lean for a Lean 4 proof of safety and deadlock freedom.
 #
-# ## Key Invariant: Topology vs. Reference Counts
+# ## Locking Protocol
 #
-# Only `obj.field = x` can change the topology of the heap graph (heap-to-heap
-# edges). Local variable assignments (`var local = someRef`) affect reference
-# counts but never create heap-to-heap edges and thus cannot create cycles.
+# ALL topology-changing operations — heap-field writes (`nimAsgnYrc`,
+# `nimSinkYrc`) and seq mutations that resize internal buffers — hold the
+# global mutator read lock (`gYrcGlobalLock` via `acquireMutatorLock`).
+# Multiple mutators may hold this read lock simultaneously.
 #
-# The actual pointer write in `obj.field = x` happens immediately and lock-free —
-# the graph topology is always up-to-date in memory. Only the RC adjustments are
-# deferred: increments and decrements are buffered into per-stripe queues
-# (`toInc`, `toDec`) protected by fine-grained per-stripe locks.
+# The cycle collector acquires the exclusive write lock for the entire
+# mark/scan/collect phase. This means the heap topology is *completely
+# frozen* during collection: no `nimAsgnYrc` or seq operation can mutate
+# any pointer field while the three passes run. This gives the Bacon
+# algorithm the stable subgraph it requires without full write barriers.
 #
-# When `collectCycles` runs it takes the global lock, drains all stripe buffers
-# via `mergePendingRoots`, and then traces the physical pointer graph (via
-# `traceImpl`) to detect cycles. This is sound because `trace` follows the actual
-# pointer values in memory — which are always current — and uses the reconciled
-# RCs only to identify candidate roots and confirm garbage.
-#
-# In summary: the physical pointer graph is always consistent (writes are
-# immediate); only the reference counts are eventually consistent (writes are
-# buffered). The per-stripe locks are cheap; the expensive global lock is only
-# needed when interpreting the RCs during collection.
+# Consequence for incRef in `nimAsgnYrc`:
+#   Because the collector is blocked, the incRef can be a direct atomic
+#   increment on the RefHeader (`increment head(src)`) rather than going
+#   through the `toInc` stripe queue. The collector will see the updated
+#   RC immediately when it next acquires the write lock. Only decrements
+#   (`yrcDec`) still use the `toDec` stripe queue so that objects whose RC
+#   might reach zero are handled by the collector's cycle-detection logic.
 #
 # ## Why No Write Barrier Is Needed
 #
@@ -35,40 +34,19 @@
 # while A still points to it. Traditional concurrent collectors need write
 # barriers to prevent this.
 #
-# This problem structurally cannot arise in YRC because the cycle collector only
-# frees *closed cycles* — subgraphs where every reference to every member comes
-# from within the group, with zero external references. To execute `A.field = B`
-# the mutator must hold a reference to A, which means A has an external reference
-# (from the stack) that is not a heap-to-heap edge. During trial deletion
-# (`markGray`) only internal edges are subtracted from RCs, so A's external
-# reference survives, `scan` finds A's RC >= 0, calls `scanBlack`, and rescues A
-# and everything reachable from it — including B. In short: the mutator can only
-# modify objects it can reach, but the cycle collector only frees objects nothing
-# external can reach. The two conditions are mutually exclusive.
+# This problem structurally cannot arise in YRC for two reasons:
 #
-#[
-
-The problem described in Bacon01 is: during markGray/scan, a mutator concurrently
-does X.field = Z (was X→Y), changing the physical graph while the collector is tracing
-it. The collector might see stale or new edges. The reasons this is still safe:
-
-Stale edges cancel with unbuffered decrements: If the collector sees old edge X→Y
-(mutator already wrote X→Z and buffered dec(Y)), the phantom trial deletion and the
-unbuffered dec cancel — Y's effective RC is correct.
-
-scanBlack rescues via current physical edges: If X has external refs (merged RC reflects
-the mutator's access), scanBlack(X) re-traces X and follows the current physical edge X→Z,
-incrementing Z's RC and marking it black. Z survives.
-
-rcSum==edges fast path is conservative: Any discrepancy between physical graph and merged
-state (stale or new edges) causes rcSum != edges, falling back to the slow path which
-rescues anything with RC >= 0.
-
-Unreachable cycles are truly unreachable: The mutator can only reach objects through chains
-rooted in merged references. If a cycle has zero external refs at merge time, no mutator
-can reach it.
-
-]#
+# 1. The mutator lock freezes the topology during all three passes, so no
+#    concurrent field write can race with markGray/scan/collectWhite.
+#
+# 2. Even without the lock, the cycle collector only frees *closed cycles* —
+#    subgraphs where every reference to every member comes from within the
+#    group, with zero external references. To execute `A.field = B` the
+#    mutator must hold a reference to A (external ref), which `scan` would
+#    rescue. The two conditions are mutually exclusive.
+#
+# In practice reason (1) makes reason (2) a belt-and-suspenders safety
+# argument rather than the primary mechanism.
 
 {.push raises: [].}
 
@@ -574,22 +552,24 @@ proc yrcDec(tmp: pointer; desc: PNimTypeV2) {.inline.} =
 
 proc nimAsgnYrc(dest: ptr pointer; src: pointer; desc: PNimTypeV2) {.compilerRtl.} =
   ## YRC write barrier for ref copy assignment.
-  ## Atomically stores src into dest, then buffers RC adjustments.
-  ## Freeing is always done by the cycle collector, never inline.
+  ## Holds the mutator read lock for the entire operation so the collector
+  ## cannot run between the incRef and decRef, closing the stale-decRef
+  ## bug. Direct atomic incRef replaces the toInc stripe queue: the
+  ## collector is blocked, so the RC update is immediately visible and correct.
+  acquireMutatorLock()
+  if src != nil: increment head(src)   # direct atomic: no toInc queue needed
   let tmp = dest[]
-  atomicStoreN(dest, src, ATOMIC_RELEASE)
-  if src != nil:
-    nimIncRefCyclic(src, true)
-  if tmp != nil:
-    yrcDec(tmp, desc)
+  dest[] = src
+  if tmp != nil: yrcDec(tmp, desc)     # still deferred via toDec for cycle detection
+  releaseMutatorLock()
 
 proc nimSinkYrc(dest: ptr pointer; src: pointer; desc: PNimTypeV2) {.compilerRtl.} =
   ## YRC write barrier for ref sink (move). No incRef on source.
-  ## Freeing is always done by the cycle collector, never inline.
+  acquireMutatorLock()
   let tmp = dest[]
-  atomicStoreN(dest, src, ATOMIC_RELEASE)
-  if tmp != nil:
-    yrcDec(tmp, desc)
+  dest[] = src
+  if tmp != nil: yrcDec(tmp, desc)
+  releaseMutatorLock()
 
 proc nimMarkCyclic(p: pointer) {.compilerRtl, inl.} =
   when optimizedOrc:

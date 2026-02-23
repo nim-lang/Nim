@@ -66,6 +66,21 @@ else:
   proc pthread_rwlock_unlock(rwlock: var SysRwLockObj): cint {.
     importc: "pthread_rwlock_unlock", header: "<pthread.h>", noSideEffect.}
 
+  when defined(linux):
+    # PTHREAD_RWLOCK_PREFER_WRITER_NONRECURSIVE_NP: once a writer is waiting,
+    # new readers block. Prevents continuous mutator read-locks from starving
+    # the collector's write-lock acquisition (glibc default is PREFER_READER).
+    type
+      SysRwLockAttr {.importc: "pthread_rwlockattr_t", pure, final,
+                      header: "<pthread.h>".} = object
+    const PTHREAD_RWLOCK_PREFER_WRITER_NONRECURSIVE_NP = cint(3)
+    proc pthread_rwlockattr_init(attr: ptr SysRwLockAttr): cint {.
+      importc: "pthread_rwlockattr_init", header: "<pthread.h>".}
+    proc pthread_rwlockattr_destroy(attr: ptr SysRwLockAttr): cint {.
+      importc: "pthread_rwlockattr_destroy", header: "<pthread.h>".}
+    proc pthread_rwlockattr_setkind_np(attr: ptr SysRwLockAttr; pref: cint): cint {.
+      importc: "pthread_rwlockattr_setkind_np", header: "<pthread.h>".}
+
   when defined(ios):
     type RwLock* = ptr SysRwLockObj
     proc initRwLock*(L: var RwLock) =
@@ -92,7 +107,14 @@ else:
   else:
     type RwLock* = SysRwLockObj
     proc initRwLock*(L: var RwLock) =
-      discard pthread_rwlock_init(L, nil)
+      when defined(linux):
+        var attr: SysRwLockAttr
+        discard pthread_rwlockattr_init(addr attr)
+        discard pthread_rwlockattr_setkind_np(addr attr, PTHREAD_RWLOCK_PREFER_WRITER_NONRECURSIVE_NP)
+        discard pthread_rwlock_init(L, addr attr)
+        discard pthread_rwlockattr_destroy(addr attr)
+      else:
+        discard pthread_rwlock_init(L, nil)
     proc deinitRwLock*(L: var RwLock) =
       discard pthread_rwlock_destroy(L)
     proc acquireRead*(L: var RwLock) =
