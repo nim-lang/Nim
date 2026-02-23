@@ -2006,7 +2006,9 @@ proc semTypeIdent(c: PContext, n: PNode): PSym =
         # proc signature for example
         if c.inGenericInst > 0:
           let bound = result.typ.elementType.sym
-          if bound != nil: return bound
+          # the symbol may still point to the uninstantiated generic body type 
+          if bound != nil and bound.typ == result.typ.elementType:
+            return bound
           return result
         if result.typ.sym == nil:
           localError(c.config, n.info, errTypeExpected)
