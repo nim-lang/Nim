@@ -133,8 +133,6 @@ proc trace(s: Cell; desc: PNimTypeV2; j: var GcEnv) {.inline.} =
     var p = s +! sizeof(RefHeader)
     cast[TraceProc](desc.traceImpl)(p, addr(j))
 
-include threadids
-
 type
   Stripe = object
     when not defined(yrcAtomics):
@@ -577,8 +575,10 @@ proc nimMarkCyclic(p: pointer) {.compilerRtl, inl.} =
       let h = head(p)
       h.rc = h.rc or maybeCycle
 
-# Initialize locks at module load
-initRwLock(gYrcGlobalLock)
+# Initialize locks at module load.
+# RwLock stripes live in seqs_v2 (gYrcLocks); NumLockStripes is exported from there.
+for i in 0..<NumLockStripes:
+  initRwLock(gYrcLocks[i].lock)
 for i in 0..<NumStripes:
   when not defined(yrcAtomics) and not defined(nimYrcAtomicIncs):
     initLock(stripes[i].lockInc)

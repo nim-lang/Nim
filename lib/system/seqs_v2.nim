@@ -13,6 +13,10 @@
 
 when defined(gcYrc):
   include rwlocks
+  include threadids
+
+  const
+    NumLockStripes* = 64  # must be a power of 2; exported so yrc.nim can use it
 
   type
     YrcLockState = enum
@@ -21,31 +25,42 @@ when defined(gcYrc):
       HasCollectorLock
       Collecting
 
+    AlignedRwLock = object
+      ## One RwLock per cache line. {.align: 64.} causes the compiler to round
+      ## the struct size up to 64 bytes, so consecutive array elements never
+      ## share a cache line (sizeof(RwLock) = 56 on Linux x86_64 → 8 byte pad).
+      lock {.align: 64.}: RwLock
+
   var
-    gYrcGlobalLock: RWLock
+    gYrcLocks: array[NumLockStripes, AlignedRwLock]
   var
     lockState {.threadvar.}: YrcLockState
 
+  proc getYrcStripe(): int {.inline.} =
+    ## Map this thread to one of the NumLockStripes RwLock stripes.
+    ## getThreadId() is already cached thread-locally in threadids.nim.
+    getThreadId() and (NumLockStripes - 1)
+
   proc acquireMutatorLock() {.compilerRtl, inl.} =
     if lockState == HasNoLock:
-      acquireRead gYrcGlobalLock
+      acquireRead gYrcLocks[getYrcStripe()].lock
       lockState = HasMutatorLock
 
   proc releaseMutatorLock() {.compilerRtl, inl.} =
     if lockState == HasMutatorLock:
       lockState = HasNoLock
-      releaseRead gYrcGlobalLock
+      releaseRead gYrcLocks[getYrcStripe()].lock
 
   template yrcMutatorLock*(t: typedesc; body: untyped) =
     {.noSideEffect.}:
       when canFormCycles(t):
         acquireMutatorLock()
-      try:
-        body
-      finally:
-        {.noSideEffect.}:
-          when canFormCycles(t):
-            releaseMutatorLock()
+    try:
+      body
+    finally:
+      {.noSideEffect.}:
+        when canFormCycles(t):
+          releaseMutatorLock()
 
   template yrcMutatorLockUntyped(body: untyped) =
     {.noSideEffect.}:
@@ -61,14 +76,17 @@ when defined(gcYrc):
     let prevState = lockState
     let hadToAcquire = prevState < HasCollectorLock
     if hadToAcquire:
-      acquireWrite(gYrcGlobalLock)
+      # Acquire all stripes in ascending order — the only thread ever holding
+      # multiple write locks is the collector, so there is no lock-order cycle.
+      for yrcI in 0..<NumLockStripes:
+        acquireWrite(gYrcLocks[yrcI].lock)
       lockState = HasCollectorLock
-    # else: keep lockState as-is (could be Collecting)
     try:
       body
     finally:
       if hadToAcquire:
-        releaseWrite(gYrcGlobalLock)
+        for yrcI in 0..<NumLockStripes:
+          releaseWrite(gYrcLocks[yrcI].lock)
       lockState = prevState
 
 else:
