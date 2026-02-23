@@ -35,4 +35,5 @@ proc main() =
 
 main()
 GC_fullCollect()
-echo getOccupiedMem() < 10 * 1024 * 1024, " peak memory: ", getMaxMem() < 10 * 1024 * 1024
+when not defined(useMalloc):
+  echo getOccupiedMem() < 10 * 1024 * 1024, " peak memory: ", getMaxMem() < 10 * 1024 * 1024

@@ -1,30 +1,29 @@
 #
 # YRC: Thread-safe ORC (concurrent cycle collector).
-# Same API as orc.nim but with striped queues and global lock for merge/collect.
+# Same API as orc.nim but with the global mutator/collector RWLock for safety.
 # Destructors for refs run at collection time, not immediately on last decRef.
 # See yrc_proof.lean for a Lean 4 proof of safety and deadlock freedom.
 #
-# ## Key Invariant: Topology vs. Reference Counts
+# ## Locking Protocol
 #
-# Only `obj.field = x` can change the topology of the heap graph (heap-to-heap
-# edges). Local variable assignments (`var local = someRef`) affect reference
-# counts but never create heap-to-heap edges and thus cannot create cycles.
+# ALL topology-changing operations — heap-field writes (`nimAsgnYrc`,
+# `nimSinkYrc`) and seq mutations that resize internal buffers — hold the
+# global mutator read lock (`gYrcGlobalLock` via `acquireMutatorLock`).
+# Multiple mutators may hold this read lock simultaneously.
 #
-# The actual pointer write in `obj.field = x` happens immediately and lock-free —
-# the graph topology is always up-to-date in memory. Only the RC adjustments are
-# deferred: increments and decrements are buffered into per-stripe queues
-# (`toInc`, `toDec`) protected by fine-grained per-stripe locks.
+# The cycle collector acquires the exclusive write lock for the entire
+# mark/scan/collect phase. This means the heap topology is *completely
+# frozen* during collection: no `nimAsgnYrc` or seq operation can mutate
+# any pointer field while the three passes run. This gives the Bacon
+# algorithm the stable subgraph it requires without full write barriers.
 #
-# When `collectCycles` runs it takes the global lock, drains all stripe buffers
-# via `mergePendingRoots`, and then traces the physical pointer graph (via
-# `traceImpl`) to detect cycles. This is sound because `trace` follows the actual
-# pointer values in memory — which are always current — and uses the reconciled
-# RCs only to identify candidate roots and confirm garbage.
-#
-# In summary: the physical pointer graph is always consistent (writes are
-# immediate); only the reference counts are eventually consistent (writes are
-# buffered). The per-stripe locks are cheap; the expensive global lock is only
-# needed when interpreting the RCs during collection.
+# Consequence for incRef in `nimAsgnYrc`:
+#   Because the collector is blocked, the incRef can be a direct atomic
+#   increment on the RefHeader (`increment head(src)`) rather than going
+#   through the `toInc` stripe queue. The collector will see the updated
+#   RC immediately when it next acquires the write lock. Only decrements
+#   (`yrcDec`) still use the `toDec` stripe queue so that objects whose RC
+#   might reach zero are handled by the collector's cycle-detection logic.
 #
 # ## Why No Write Barrier Is Needed
 #
@@ -35,40 +34,19 @@
 # while A still points to it. Traditional concurrent collectors need write
 # barriers to prevent this.
 #
-# This problem structurally cannot arise in YRC because the cycle collector only
-# frees *closed cycles* — subgraphs where every reference to every member comes
-# from within the group, with zero external references. To execute `A.field = B`
-# the mutator must hold a reference to A, which means A has an external reference
-# (from the stack) that is not a heap-to-heap edge. During trial deletion
-# (`markGray`) only internal edges are subtracted from RCs, so A's external
-# reference survives, `scan` finds A's RC >= 0, calls `scanBlack`, and rescues A
-# and everything reachable from it — including B. In short: the mutator can only
-# modify objects it can reach, but the cycle collector only frees objects nothing
-# external can reach. The two conditions are mutually exclusive.
+# This problem structurally cannot arise in YRC for two reasons:
 #
-#[
-
-The problem described in Bacon01 is: during markGray/scan, a mutator concurrently
-does X.field = Z (was X→Y), changing the physical graph while the collector is tracing
-it. The collector might see stale or new edges. The reasons this is still safe:
-
-Stale edges cancel with unbuffered decrements: If the collector sees old edge X→Y
-(mutator already wrote X→Z and buffered dec(Y)), the phantom trial deletion and the
-unbuffered dec cancel — Y's effective RC is correct.
-
-scanBlack rescues via current physical edges: If X has external refs (merged RC reflects
-the mutator's access), scanBlack(X) re-traces X and follows the current physical edge X→Z,
-incrementing Z's RC and marking it black. Z survives.
-
-rcSum==edges fast path is conservative: Any discrepancy between physical graph and merged
-state (stale or new edges) causes rcSum != edges, falling back to the slow path which
-rescues anything with RC >= 0.
-
-Unreachable cycles are truly unreachable: The mutator can only reach objects through chains
-rooted in merged references. If a cycle has zero external refs at merge time, no mutator
-can reach it.
-
-]#
+# 1. The mutator lock freezes the topology during all three passes, so no
+#    concurrent field write can race with markGray/scan/collectWhite.
+#
+# 2. Even without the lock, the cycle collector only frees *closed cycles* —
+#    subgraphs where every reference to every member comes from within the
+#    group, with zero external references. To execute `A.field = B` the
+#    mutator must hold a reference to A (external ref), which `scan` would
+#    rescue. The two conditions are mutually exclusive.
+#
+# In practice reason (1) makes reason (2) a belt-and-suspenders safety
+# argument rather than the primary mechanism.
 
 {.push raises: [].}
 
@@ -93,12 +71,49 @@ type
   TraceProc = proc (p, env: pointer) {.nimcall, gcsafe, raises: [].}
   DisposeProc = proc (p: pointer) {.nimcall, gcsafe, raises: [].}
 
-template color(c): untyped = c.rc and colorMask
-template setColor(c, col) =
-  when col == colBlack:
-    c.rc = c.rc and not colorMask
-  else:
-    c.rc = c.rc and not colorMask or col
+when defined(nimYrcAtomicIncs):
+  template color(c): untyped = atomicLoadN(addr c.rc, ATOMIC_ACQUIRE) and colorMask
+  template setColor(c, col) =
+    block:
+      var expected = atomicLoadN(addr c.rc, ATOMIC_RELAXED)
+      while true:
+        let desired = (expected and not colorMask) or col
+        if atomicCompareExchangeN(addr c.rc, addr expected, desired, true,
+                                   ATOMIC_ACQ_REL, ATOMIC_RELAXED):
+          break
+  template loadRc(c): int = atomicLoadN(addr c.rc, ATOMIC_ACQUIRE)
+  template trialDec(c) =
+    discard atomicFetchAdd(addr c.rc, -rcIncrement, ATOMIC_ACQ_REL)
+  template trialInc(c) =
+    discard atomicFetchAdd(addr c.rc, rcIncrement, ATOMIC_ACQ_REL)
+  template rcClearFlag(c, flag) =
+    block:
+      var expected = atomicLoadN(addr c.rc, ATOMIC_RELAXED)
+      while true:
+        let desired = expected and not flag
+        if atomicCompareExchangeN(addr c.rc, addr expected, desired, true,
+                                   ATOMIC_ACQ_REL, ATOMIC_RELAXED):
+          break
+  template rcSetFlag(c, flag) =
+    block:
+      var expected = atomicLoadN(addr c.rc, ATOMIC_RELAXED)
+      while true:
+        let desired = expected or flag
+        if atomicCompareExchangeN(addr c.rc, addr expected, desired, true,
+                                   ATOMIC_ACQ_REL, ATOMIC_RELAXED):
+          break
+else:
+  template color(c): untyped = c.rc and colorMask
+  template setColor(c, col) =
+    when col == colBlack:
+      c.rc = c.rc and not colorMask
+    else:
+      c.rc = c.rc and not colorMask or col
+  template loadRc(c): int = c.rc
+  template trialDec(c) = c.rc = c.rc -% rcIncrement
+  template trialInc(c) = c.rc = c.rc +% rcIncrement
+  template rcClearFlag(c, flag) = c.rc = c.rc and not flag
+  template rcSetFlag(c, flag) = c.rc = c.rc or flag
 
 const
   optimizedOrc = false
@@ -118,8 +133,6 @@ proc trace(s: Cell; desc: PNimTypeV2; j: var GcEnv) {.inline.} =
     var p = s +! sizeof(RefHeader)
     cast[TraceProc](desc.traceImpl)(p, addr(j))
 
-include threadids
-
 type
   Stripe = object
     when not defined(yrcAtomics):
@@ -137,7 +150,6 @@ type
     ## Invoked while holding the global lock; must not call back into YRC.
 
 var
-  gYrcGlobalLock: Lock
   roots: CellSeq[Cell]  # merged roots, used under global lock
   stripes: array[NumStripes, Stripe]
   rootsThreshold: int = 128
@@ -182,13 +194,15 @@ proc nimIncRefCyclic(p: pointer; cyclic: bool) {.compilerRtl, inl.} =
   let h = head(p)
   when optimizedOrc:
     if cyclic: h.rc = h.rc or maybeCycle
-  when defined(yrcAtomics):
+  when defined(nimYrcAtomicIncs):
+    discard atomicFetchAdd(addr h.rc, rcIncrement, ATOMIC_ACQ_REL)
+  elif defined(yrcAtomics):
     let s = getStripeIdx()
     let slot = atomicFetchAdd(addr stripes[s].toIncLen, 1, ATOMIC_ACQ_REL)
     if slot < QueueSize:
       atomicStoreN(addr stripes[s].toInc[slot], h, ATOMIC_RELEASE)
     else:
-      withLock gYrcGlobalLock:
+      yrcCollectorLock:
         h.rc = h.rc +% rcIncrement
         for i in 0..<NumStripes:
           let len = atomicExchangeN(addr stripes[i].toIncLen, 0, ATOMIC_ACQUIRE)
@@ -206,7 +220,7 @@ proc nimIncRefCyclic(p: pointer; cyclic: bool) {.compilerRtl, inl.} =
         else:
           overflow = true
       if overflow:
-        withLock gYrcGlobalLock:
+        yrcCollectorLock:
           for i in 0..<NumStripes:
             withLock stripes[i].lockInc:
               for j in 0..<stripes[i].toIncLen:
@@ -221,23 +235,25 @@ proc mergePendingRoots() =
   # we don't need to set color to black on incRef because collection runs
   # under the global lock, so no concurrent mutations happen during collection.
   for i in 0..<NumStripes:
-    when defined(yrcAtomics):
-      let incLen = atomicExchangeN(addr stripes[i].toIncLen, 0, ATOMIC_ACQUIRE)
-      for j in 0..<min(incLen, QueueSize):
-        let x = atomicLoadN(addr stripes[i].toInc[j], ATOMIC_ACQUIRE)
-        x.rc = x.rc +% rcIncrement
-    else:
-      withLock stripes[i].lockInc:
-        for j in 0..<stripes[i].toIncLen:
-          let x = stripes[i].toInc[j]
+    when not defined(nimYrcAtomicIncs):
+      # Inc buffers only exist when increfs are buffered (not atomic)
+      when defined(yrcAtomics):
+        let incLen = atomicExchangeN(addr stripes[i].toIncLen, 0, ATOMIC_ACQUIRE)
+        for j in 0..<min(incLen, QueueSize):
+          let x = atomicLoadN(addr stripes[i].toInc[j], ATOMIC_ACQUIRE)
           x.rc = x.rc +% rcIncrement
-        stripes[i].toIncLen = 0
+      else:
+        withLock stripes[i].lockInc:
+          for j in 0..<stripes[i].toIncLen:
+            let x = stripes[i].toInc[j]
+            x.rc = x.rc +% rcIncrement
+          stripes[i].toIncLen = 0
     withLock stripes[i].lockDec:
       for j in 0..<stripes[i].toDecLen:
         let (c, desc) = stripes[i].toDec[j]
-        c.rc = c.rc -% rcIncrement
-        if (c.rc and inRootsFlag) == 0:
-          c.rc = c.rc or inRootsFlag
+        trialDec(c)
+        if (loadRc(c) and inRootsFlag) == 0:
+          rcSetFlag(c, inRootsFlag)
           if roots.d == nil: init(roots)
           add(roots, c, desc)
       stripes[i].toDecLen = 0
@@ -257,8 +273,8 @@ when logOrc or orcLeakDetector:
 
 proc free(s: Cell; desc: PNimTypeV2) {.inline.} =
   when traceCollector:
-    cprintf("[From ] %p rc %ld color %ld\n", s, s.rc shr rcShift, s.color)
-  if (s.rc and inRootsFlag) == 0:
+    cprintf("[From ] %p rc %ld color %ld\n", s, loadRc(s) shr rcShift, s.color)
+  if (loadRc(s) and inRootsFlag) == 0:
     let p = s +! sizeof(RefHeader)
     when logOrc: writeCell("free", s, desc)
     if desc.destructor != nil:
@@ -291,7 +307,7 @@ proc scanBlack(s: Cell; desc: PNimTypeV2; j: var GcEnv) =
   while j.traceStack.len > until:
     let (entry, desc) = j.traceStack.pop()
     let t = head entry[]
-    t.rc = t.rc +% rcIncrement
+    trialInc(t)
     if t.color != colBlack:
       t.setColor colBlack
       trace(t, desc, j)
@@ -301,23 +317,23 @@ proc markGray(s: Cell; desc: PNimTypeV2; j: var GcEnv) =
   if s.color != colGray:
     s.setColor colGray
     j.touched = j.touched +% 1
-    j.rcSum = j.rcSum +% (s.rc shr rcShift) +% 1
+    j.rcSum = j.rcSum +% (loadRc(s) shr rcShift) +% 1
     orcAssert(j.traceStack.len == 0, "markGray: trace stack not empty")
     trace(s, desc, j)
     while j.traceStack.len > 0:
       let (entry, desc) = j.traceStack.pop()
       let t = head entry[]
-      t.rc = t.rc -% rcIncrement
+      trialDec(t)
       j.edges = j.edges +% 1
       if t.color != colGray:
         t.setColor colGray
         j.touched = j.touched +% 1
-        j.rcSum = j.rcSum +% (t.rc shr rcShift) +% 2
+        j.rcSum = j.rcSum +% (loadRc(t) shr rcShift) +% 2
         trace(t, desc, j)
 
 proc scan(s: Cell; desc: PNimTypeV2; j: var GcEnv) =
   if s.color == colGray:
-    if (s.rc shr rcShift) >= 0:
+    if (loadRc(s) shr rcShift) >= 0:
       scanBlack(s, desc, j)
     else:
       orcAssert(j.traceStack.len == 0, "scan: trace stack not empty")
@@ -327,14 +343,14 @@ proc scan(s: Cell; desc: PNimTypeV2; j: var GcEnv) =
         let (entry, desc) = j.traceStack.pop()
         let t = head entry[]
         if t.color == colGray:
-          if (t.rc shr rcShift) >= 0:
+          if (loadRc(t) shr rcShift) >= 0:
             scanBlack(t, desc, j)
           else:
             t.setColor(colWhite)
             trace(t, desc, j)
 
 proc collectColor(s: Cell; desc: PNimTypeV2; col: int; j: var GcEnv) =
-  if s.color == col and (s.rc and inRootsFlag) == 0:
+  if s.color == col and (loadRc(s) and inRootsFlag) == 0:
     orcAssert(j.traceStack.len == 0, "collectWhite: trace stack not empty")
     s.setColor(colBlack)
     j.toFree.add(s, desc)
@@ -343,7 +359,7 @@ proc collectColor(s: Cell; desc: PNimTypeV2; col: int; j: var GcEnv) =
       let (entry, desc) = j.traceStack.pop()
       let t = head entry[]
       entry[] = nil
-      if t.color == col and (t.rc and inRootsFlag) == 0:
+      if t.color == col and (loadRc(t) and inRootsFlag) == 0:
         j.toFree.add(t, desc)
         t.setColor(colBlack)
         trace(t, desc, j)
@@ -351,6 +367,9 @@ proc collectColor(s: Cell; desc: PNimTypeV2; col: int; j: var GcEnv) =
 proc collectCyclesBacon(j: var GcEnv; lowMark: int) =
   # YRC defers all destruction to collection time - process ALL roots through Bacon's algorithm
   # This is different from ORC which handles immediate garbage (rc == 0) directly
+  if lockState == Collecting:
+    return
+  lockState = Collecting
   let last = roots.len -% 1
   when logOrc:
     for i in countdown(last, lowMark):
@@ -374,13 +393,10 @@ proc collectCyclesBacon(j: var GcEnv; lowMark: int) =
   init j.toFree
   for i in 0 ..< roots.len:
     let s = roots.d[i][0]
-    s.rc = s.rc and not inRootsFlag
+    rcClearFlag(s, inRootsFlag)
     collectColor(s, roots.d[i][1], colToCollect, j)
 
   # Clear roots before freeing to prevent nested collectCycles() from accessing freed cells
-  when not defined(nimStressOrc):
-    let oldThreshold = rootsThreshold
-    rootsThreshold = high(int)
   roots.len = 0
 
   # Free all collected objects
@@ -390,8 +406,6 @@ proc collectCyclesBacon(j: var GcEnv; lowMark: int) =
     when orcLeakDetector:
       writeCell("CYCLIC OBJECT FREED", s, j.toFree.d[i][1])
     free(s, j.toFree.d[i][1])
-  when not defined(nimStressOrc):
-    rootsThreshold = oldThreshold
   j.freed = j.freed +% j.toFree.len
   deinit j.toFree
 
@@ -401,7 +415,7 @@ when defined(nimOrcStats):
 proc collectCycles() =
   when logOrc:
     cfprintf(cstderr, "[collectCycles] begin\n")
-  withLock gYrcGlobalLock:
+  yrcCollectorLock:
     mergePendingRoots()
     if roots.len >= RootsThreshold and mayRunCycleCollect():
       var j: GcEnv
@@ -436,9 +450,9 @@ when defined(nimOrcStats):
     result = OrcStats(freedCyclicObjects: freedCyclicObjects)
 
 proc GC_runOrc* =
-  withLock gYrcGlobalLock:
+  yrcCollectorLock:
     mergePendingRoots()
-    if mayRunCycleCollect():
+    if roots.len > 0 and mayRunCycleCollect():
       var j: GcEnv
       init j.traceStack
       collectCyclesBacon(j, 0)
@@ -455,12 +469,12 @@ proc GC_disableOrc*() =
     rootsThreshold = high(int)
 
 proc GC_prepareOrc*(): int {.inline.} =
-  withLock gYrcGlobalLock:
+  yrcCollectorLock:
     mergePendingRoots()
     result = roots.len
 
 proc GC_partialCollect*(limit: int) =
-  withLock gYrcGlobalLock:
+  yrcCollectorLock:
     mergePendingRoots()
     if roots.len > limit and mayRunCycleCollect():
       var j: GcEnv
@@ -536,22 +550,24 @@ proc yrcDec(tmp: pointer; desc: PNimTypeV2) {.inline.} =
 
 proc nimAsgnYrc(dest: ptr pointer; src: pointer; desc: PNimTypeV2) {.compilerRtl.} =
   ## YRC write barrier for ref copy assignment.
-  ## Atomically stores src into dest, then buffers RC adjustments.
-  ## Freeing is always done by the cycle collector, never inline.
+  ## Holds the mutator read lock for the entire operation so the collector
+  ## cannot run between the incRef and decRef, closing the stale-decRef
+  ## bug. Direct atomic incRef replaces the toInc stripe queue: the
+  ## collector is blocked, so the RC update is immediately visible and correct.
+  acquireMutatorLock()
+  if src != nil: increment head(src)   # direct atomic: no toInc queue needed
   let tmp = dest[]
-  atomicStoreN(dest, src, ATOMIC_RELEASE)
-  if src != nil:
-    nimIncRefCyclic(src, true)
-  if tmp != nil:
-    yrcDec(tmp, desc)
+  dest[] = src
+  if tmp != nil: yrcDec(tmp, desc)     # still deferred via toDec for cycle detection
+  releaseMutatorLock()
 
 proc nimSinkYrc(dest: ptr pointer; src: pointer; desc: PNimTypeV2) {.compilerRtl.} =
   ## YRC write barrier for ref sink (move). No incRef on source.
-  ## Freeing is always done by the cycle collector, never inline.
+  acquireMutatorLock()
   let tmp = dest[]
-  atomicStoreN(dest, src, ATOMIC_RELEASE)
-  if tmp != nil:
-    yrcDec(tmp, desc)
+  dest[] = src
+  if tmp != nil: yrcDec(tmp, desc)
+  releaseMutatorLock()
 
 proc nimMarkCyclic(p: pointer) {.compilerRtl, inl.} =
   when optimizedOrc:
@@ -559,10 +575,12 @@ proc nimMarkCyclic(p: pointer) {.compilerRtl, inl.} =
       let h = head(p)
       h.rc = h.rc or maybeCycle
 
-# Initialize locks at module load
-initLock(gYrcGlobalLock)
+# Initialize locks at module load.
+# RwLock stripes live in seqs_v2 (gYrcLocks); NumLockStripes is exported from there.
+for i in 0..<NumLockStripes:
+  initRwLock(gYrcLocks[i].lock)
 for i in 0..<NumStripes:
-  when not defined(yrcAtomics):
+  when not defined(yrcAtomics) and not defined(nimYrcAtomicIncs):
     initLock(stripes[i].lockInc)
   initLock(stripes[i].lockDec)
 

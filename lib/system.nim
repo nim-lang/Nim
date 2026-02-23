@@ -627,7 +627,7 @@ proc newSeq*[T](s: var seq[T], len: Natural) {.magic: "NewSeq", noSideEffect.}
   ##   #inputStrings[3] = "out of bounds"
   ##   ```
 
-proc newSeq*[T](len = 0.Natural): seq[T] =
+proc newSeq*[T](len = 0.Natural): seq[T] {.noSideEffect.} =
   ## Creates a new sequence of type `seq[T]` with length `len`.
   ##
   ## Note that the sequence will be filled with zeroed entries.
@@ -1459,6 +1459,7 @@ proc isNil*[T: proc | iterator {.closure.}](x: T): bool {.noSideEffect, magic: "
   ## `== nil`.
 
 proc supportsCopyMem(t: typedesc): bool {.magic: "TypeTrait".}
+proc canFormCycles(t: typedesc): bool {.magic: "TypeTrait".}
 
 when defined(nimHasTopDownInference):
   # magic used for seq type inference

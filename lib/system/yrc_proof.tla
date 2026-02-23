@@ -42,6 +42,32 @@
 \*   - Mutator must hold stack ref to modify object (external ref)
 \*   - scanBlack follows current physical edges (rescues newly written objects)
 \*   - Only objects unreachable from any stack root are freed
+\*
+\* ## Seq Payload Race and RWLock Fix
+\*
+\* Value types like seq[T] (where T can form cycles) have internal heap
+\* allocations (data arrays / "payloads") that are freed by value-type
+\* hooks (=sink, =destroy), NOT by the cycle collector. This creates a race:
+\*
+\*   1. Object O has a seq field with payload P containing refs
+\*   2. Collector starts tracing O -- reads payload pointer P
+\*   3. Mutator does O.seq = newSeq -- frees P (value-type destructor)
+\*   4. Collector dereferences P -- use-after-free!
+\*
+\* Fix: Change the global YRC lock to a read-write lock (RWLock).
+\*   - Collector acquires the WRITE lock (exclusive access during tracing)
+\*   - Seq mutations (assign, setLen, add, etc.) acquire the READ lock
+\*   - Multiple seq mutations can proceed concurrently (read lock is shared)
+\*   - But seq mutations block while the collector traces (write lock is exclusive)
+\*
+\* This prevents the race: the mutator cannot free a payload while the
+\* collector is tracing it, because acquiring the read lock requires
+\* the write lock to be unheld.
+\*
+\* Deadlock avoidance: If a seq operation triggers collectCycles() via stripe
+\* overflow while already holding the read lock, it must NOT attempt to
+\* acquire the write lock. Instead, it should drain the overflow buffers
+\* without running the full collection cycle.
 
 EXTENDS Naturals, Integers, Sequences, FiniteSets, TLC
 
@@ -53,10 +79,14 @@ ASSUME IsFiniteSet(Objects)
 ASSUME IsFiniteSet(Threads)
 ASSUME IsFiniteSet(ObjTypes)
 
+\* Seq payload identifiers (models heap-allocated data arrays of seq[T])
+CONSTANTS SeqPayloads
+ASSUME IsFiniteSet(SeqPayloads)
+
 \* NULL constant (represents "no thread" for locks)
 \* We use a sentinel value that's guaranteed not to be in Threads or Objects
 NULL == "NULL"  \* String literal that won't conflict with Threads/Objects
-ASSUME NULL \notin Threads /\ NULL \notin Objects
+ASSUME NULL \notin Threads /\ NULL \notin Objects /\ NULL \notin SeqPayloads
 
 \* Helper functions
 \* Note: GetStripeIdx is not used, GetStripe is used instead
@@ -90,15 +120,29 @@ VARIABLES
     \* Per-stripe locks
     lockInc,            \* lockInc[stripe] = thread holding increment lock (or NULL)
     lockDec,            \* lockDec[stripe] = thread holding decrement lock (or NULL)
-    \* Global lock
-    globalLock,         \* thread holding global lock (or NULL)
+    \* Global lock (now the WRITE side of the RWLock)
+    globalLock,         \* thread holding write lock (or NULL)
     \* Merged roots array (used during collection)
     mergedRoots,        \* sequence of (object, type) pairs
     \* Collection state
     collecting,         \* TRUE if collection is in progress
     gcEnv,              \* GC environment: {touched, edges, rcSum, toFree, ...}
     \* Pending operations (for modeling atomicity)
-    pendingWrites       \* set of pending write barrier operations
+    pendingWrites,      \* set of pending write barrier operations
+    \* --- Seq payload race modeling ---
+    \* Seq payloads: models the heap-allocated data arrays of seq[T] fields
+    seqData,            \* [Objects -> SeqPayloads \cup {NULL}] -- current payload for obj's seq
+    payloadAlive,       \* [SeqPayloads -> BOOLEAN] -- is this payload's memory valid?
+    \* RWLock read side: set of threads holding the read lock.
+    \* Seq mutations (assign, add, setLen, etc.) acquire the read lock.
+    \* The collector (write lock holder) gets exclusive access.
+    rwLockReaders,      \* SUBSET Threads -- threads currently holding the read lock
+    \* Collector's in-progress seq trace: the payload pointer read during tracing.
+    \* Between reading the pointer and accessing the data, the payload could be freed.
+    collectorPayload    \* SeqPayloads \cup {NULL} -- payload being traced by collector
+
+\* Convenience tuple for seq-related variables (used in UNCHANGED clauses)
+seqVars == <<seqData, payloadAlive, rwLockReaders, collectorPayload>>
 
 \* Type invariants
 TypeOK ==
@@ -117,6 +161,11 @@ TypeOK ==
     /\ mergedRoots \in Seq([obj: Objects, desc: ObjTypes])
     /\ collecting \in BOOLEAN
     /\ pendingWrites \in SUBSET ([thread: Threads, dest: Objects, old: Objects \cup {NULL}, src: Objects \cup {NULL}, phase: {"store", "inc", "dec"}])
+    \* Seq payload types
+    /\ seqData \in [Objects -> SeqPayloads \cup {NULL}]
+    /\ payloadAlive \in [SeqPayloads -> BOOLEAN]
+    /\ rwLockReaders \in SUBSET Threads
+    /\ collectorPayload \in SeqPayloads \cup {NULL}
 
 \* Helper: internal reference count (heap-to-heap edges)
 InternalRC(obj) ==
@@ -163,7 +212,7 @@ MutatorWriteAtomicStore(thread, destObj, destField, oldVal, newVal, desc) ==
                                                  IF x = newVal /\ newVal # NULL
                                                  THEN TRUE
                                                  ELSE FALSE]]
-    /\ UNCHANGED <<roots, rc, color, inRoots, toIncLen, toInc, toDecLen, toDec, lockInc, lockDec, globalLock, mergedRoots, collecting, gcEnv, pendingWrites>>
+    /\ UNCHANGED <<roots, rc, color, inRoots, toIncLen, toInc, toDecLen, toDec, lockInc, lockDec, globalLock, mergedRoots, collecting, gcEnv, pendingWrites, seqData, payloadAlive, rwLockReaders, collectorPayload>>
 
 \* ============================================================================
 \* Phase 2: RC Buffering (if space available)
@@ -193,7 +242,7 @@ WriteBarrier(thread, destObj, destField, oldVal, newVal, desc) ==
        /\ toDec' = IF oldVal # NULL /\ toDecLen[stripe] < QueueSize
                    THEN [toDec EXCEPT ![stripe] = Append(toDec[stripe], [obj |-> oldVal, desc |-> desc])]
                    ELSE toDec
-       /\ UNCHANGED <<edges, roots, rc, color, inRoots, mergedRoots, lockInc, lockDec, globalLock, collecting, gcEnv, pendingWrites>>
+       /\ UNCHANGED <<edges, roots, rc, color, inRoots, mergedRoots, lockInc, lockDec, globalLock, collecting, gcEnv, pendingWrites, seqData, payloadAlive, rwLockReaders, collectorPayload>>
 
 \* ============================================================================
 \* Phase 3: Overflow Handling (separate actions that can block)
@@ -215,7 +264,7 @@ MutatorWriteMergeInc(thread) ==
                   externalRC == Cardinality({t \in Threads : roots[t][x]})
               IN internalRC + externalRC]
     /\ globalLock' = NULL  \* Release lock after merge
-    /\ UNCHANGED <<edges, roots, color, inRoots, toDecLen, toDec, lockInc, lockDec, mergedRoots, collecting, gcEnv, pendingWrites>>
+    /\ UNCHANGED <<edges, roots, color, inRoots, toDecLen, toDec, lockInc, lockDec, mergedRoots, collecting, gcEnv, pendingWrites, seqData, payloadAlive, rwLockReaders, collectorPayload>>
 
 \* Handle decrement overflow: merge ALL buffers when lock is available
 \* This calls collectCycles() which merges both increment and decrement buffers
@@ -257,7 +306,7 @@ MutatorWriteMergeDec(thread) ==
        /\ toDecLen' = [s \in 0..(NumStripes-1) |-> 0]
        /\ toDec' = [s \in 0..(NumStripes-1) |-> <<>>]
     /\ globalLock' = NULL  \* Lock acquired, merge done, lock released (entire withLock block is atomic)
-    /\ UNCHANGED <<edges, roots, color, lockInc, lockDec, collecting, gcEnv, pendingWrites>>
+    /\ UNCHANGED <<edges, roots, color, lockInc, lockDec, collecting, gcEnv, pendingWrites, seqData, payloadAlive, rwLockReaders, collectorPayload>>
 
 \* ============================================================================
 \* Merge Operation: mergePendingRoots
@@ -311,7 +360,7 @@ MergePendingRoots ==
        /\ toInc' = [s \in 0..(NumStripes-1) |-> <<>>]
        /\ toDecLen' = [s \in 0..(NumStripes-1) |-> 0]
        /\ toDec' = [s \in 0..(NumStripes-1) |-> <<>>]
-    /\ UNCHANGED <<edges, roots, color, lockInc, lockDec, globalLock, collecting, gcEnv, pendingWrites>>
+    /\ UNCHANGED <<edges, roots, color, lockInc, lockDec, globalLock, collecting, gcEnv, pendingWrites, seqData, payloadAlive, rwLockReaders, collectorPayload>>
 
 \* ============================================================================
 \* Trial Deletion: markGray
@@ -365,7 +414,7 @@ MarkGray(obj, desc) ==
           \* For roots, the RC includes external refs which survive trial deletion.
           rc' = [x \in Objects |->
               IF x \in allReachable THEN rc[x] - internalEdgeCount[x] ELSE rc[x]]
-    /\ UNCHANGED <<edges, roots, inRoots, toIncLen, toInc, toDecLen, toDec, lockInc, lockDec, globalLock, mergedRoots, collecting, gcEnv, pendingWrites>>
+    /\ UNCHANGED <<edges, roots, inRoots, toIncLen, toInc, toDecLen, toDec, lockInc, lockDec, globalLock, mergedRoots, collecting, gcEnv, pendingWrites, seqData, payloadAlive, rwLockReaders, collectorPayload>>
 
 \* ============================================================================
 \* Scan Phase
@@ -422,7 +471,7 @@ Scan(obj, desc) ==
        ELSE \* Mark white (part of closed cycle)
             /\ color' = [color EXCEPT ![obj] = colWhite]
             /\ UNCHANGED <<rc>>
-    /\ UNCHANGED <<edges, roots, inRoots, toIncLen, toInc, toDecLen, toDec, lockInc, lockDec, globalLock, mergedRoots, collecting, gcEnv, pendingWrites>>
+    /\ UNCHANGED <<edges, roots, inRoots, toIncLen, toInc, toDecLen, toDec, lockInc, lockDec, globalLock, mergedRoots, collecting, gcEnv, pendingWrites, seqData, payloadAlive, rwLockReaders, collectorPayload>>
 
 \* ============================================================================
 \* Collection Phase: collectColor
@@ -442,7 +491,7 @@ CollectColor(obj, desc, targetColor) ==
        edges' = [edges EXCEPT ![obj] = [x \in Objects |->
            IF x = obj THEN FALSE ELSE edges[obj][x]]]
     /\ color' = [color EXCEPT ![obj] = colBlack]  \* Mark as freed
-    /\ UNCHANGED <<roots, rc, inRoots, toIncLen, toInc, toDecLen, toDec, lockInc, lockDec, globalLock, mergedRoots, collecting, gcEnv, pendingWrites>>
+    /\ UNCHANGED <<roots, rc, inRoots, toIncLen, toInc, toDecLen, toDec, lockInc, lockDec, globalLock, mergedRoots, collecting, gcEnv, pendingWrites, seqData, payloadAlive, rwLockReaders, collectorPayload>>
 
 \* ============================================================================
 \* Collection Cycle: collectCyclesBacon
@@ -454,7 +503,7 @@ StartCollection ==
     /\ Len(mergedRoots) >= RootsThreshold
     /\ collecting' = TRUE
     /\ gcEnv' = [touched |-> 0, edges |-> 0, rcSum |-> 0, toFree |-> {}]
-    /\ UNCHANGED <<edges, roots, rc, color, inRoots, toIncLen, toInc, toDecLen, toDec, lockInc, lockDec, globalLock, mergedRoots, pendingWrites>>
+    /\ UNCHANGED <<edges, roots, rc, color, inRoots, toIncLen, toInc, toDecLen, toDec, lockInc, lockDec, globalLock, mergedRoots, pendingWrites, seqData, payloadAlive, rwLockReaders, collectorPayload>>
 
 EndCollection ==
     /\ globalLock # NULL
@@ -464,7 +513,7 @@ EndCollection ==
            IF x \in {r.obj : r \in mergedRoots} THEN FALSE ELSE inRoots[x]]
     /\ mergedRoots' = <<>>
     /\ collecting' = FALSE
-    /\ UNCHANGED <<edges, roots, rc, color, toIncLen, toInc, toDecLen, toDec, lockInc, lockDec, globalLock, gcEnv, pendingWrites>>
+    /\ UNCHANGED <<edges, roots, rc, color, toIncLen, toInc, toDecLen, toDec, lockInc, lockDec, globalLock, gcEnv, pendingWrites, seqData, payloadAlive, rwLockReaders, collectorPayload>>
 
 \* ============================================================================
 \* Mutator Actions
@@ -491,7 +540,7 @@ MutatorWrite(thread, destObj, destField, oldVal, newVal, desc) ==
        IF incOverflow \/ decOverflow
        THEN \* Overflow: atomic store happened, but buffering is deferred
             \* Buffers stay full, merge will happen when lock is available (via MutatorWriteMergeInc/Dec)
-            /\ UNCHANGED <<roots, rc, color, inRoots, toIncLen, toInc, toDecLen, toDec, lockInc, lockDec, globalLock, mergedRoots, collecting, gcEnv, pendingWrites>>
+            /\ UNCHANGED <<roots, rc, color, inRoots, toIncLen, toInc, toDecLen, toDec, lockInc, lockDec, globalLock, mergedRoots, collecting, gcEnv, pendingWrites, seqData, payloadAlive, rwLockReaders, collectorPayload>>
        ELSE \* No overflow: buffer normally
             /\ WriteBarrier(thread, destObj, destField, oldVal, newVal, desc)
             /\ UNCHANGED <<roots, collecting, pendingWrites>>
@@ -521,16 +570,19 @@ MutatorRootAssign(thread, obj, val) ==
     /\ collecting' = collecting
     /\ gcEnv' = gcEnv
     /\ pendingWrites' = pendingWrites
+    /\ UNCHANGED seqVars
 
 \* ============================================================================
 \* Collector Actions
 \* ============================================================================
 
-\* Collector acquires global lock for entire collection cycle
+\* Collector acquires write lock (global lock) for entire collection cycle.
+\* RWLock semantics: writer can only acquire when no readers hold the read lock.
 CollectorAcquireLock(thread) ==
     /\ globalLock = NULL
+    /\ rwLockReaders = {}   \* RWLock: no readers allowed when acquiring write lock
     /\ globalLock' = thread
-    /\ UNCHANGED <<edges, roots, rc, color, inRoots, toIncLen, toInc, toDecLen, toDec, lockInc, lockDec, mergedRoots, collecting, gcEnv, pendingWrites>>
+    /\ UNCHANGED <<edges, roots, rc, color, inRoots, toIncLen, toInc, toDecLen, toDec, lockInc, lockDec, mergedRoots, collecting, gcEnv, pendingWrites, seqData, payloadAlive, rwLockReaders, collectorPayload>>
 
 CollectorMerge ==
     /\ globalLock # NULL
@@ -571,7 +623,93 @@ CollectorEnd ==
 CollectorReleaseLock(thread) ==
     /\ globalLock = thread
     /\ globalLock' = NULL
-    /\ UNCHANGED <<edges, roots, rc, color, inRoots, toIncLen, toInc, toDecLen, toDec, lockInc, lockDec, mergedRoots, collecting, gcEnv, pendingWrites>>
+    /\ UNCHANGED <<edges, roots, rc, color, inRoots, toIncLen, toInc, toDecLen, toDec, lockInc, lockDec, mergedRoots, collecting, gcEnv, pendingWrites, seqData, payloadAlive, rwLockReaders, collectorPayload>>
+
+\* ============================================================================
+\* Seq Payload Actions (RWLock-protected)
+\* ============================================================================
+\* These actions model the race between the collector tracing seq payloads
+\* and mutators replacing/freeing seq payloads.
+\*
+\* The collector traces seq payloads in two steps:
+\*   1. CollectorStartTraceSeq: reads seqData[obj] (gets payload pointer)
+\*   2. CollectorFinishTraceSeq: accesses the payload data
+\* Between these steps, a mutator could free the payload (the race).
+\*
+\* The RWLock prevents this:
+\*   - Collector holds write lock (globalLock) during tracing
+\*   - MutatorSeqAssign requires read lock (rwLockReaders)
+\*   - Read lock requires globalLock = NULL
+\*   - Therefore MutatorSeqAssign is blocked during collection
+\*
+\* Note: This models the memory safety aspect of seq tracing.
+\* The cycle collection algorithm (MarkGray, Scan, etc.) operates on the
+\* logical edge graph. Seq payloads are a physical representation detail
+\* that affects memory safety but not GC correctness (which is already
+\* covered by the existing Safety property).
+
+\* Mutator acquires read lock for seq mutation.
+\* RWLock semantics: read lock can be acquired when no writer holds the write lock.
+\* Multiple readers can hold the read lock simultaneously.
+MutatorAcquireSeqLock(thread) ==
+    /\ globalLock = NULL          \* RWLock: no writer allowed when acquiring read lock
+    /\ thread \notin rwLockReaders
+    /\ rwLockReaders' = rwLockReaders \cup {thread}
+    /\ UNCHANGED <<edges, roots, rc, color, inRoots, toIncLen, toInc, toDecLen, toDec, lockInc, lockDec, globalLock, mergedRoots, collecting, gcEnv, pendingWrites, seqData, payloadAlive, collectorPayload>>
+
+\* Mutator releases read lock after seq mutation completes.
+MutatorReleaseSeqLock(thread) ==
+    /\ thread \in rwLockReaders
+    /\ rwLockReaders' = rwLockReaders \ {thread}
+    /\ UNCHANGED <<edges, roots, rc, color, inRoots, toIncLen, toInc, toDecLen, toDec, lockInc, lockDec, globalLock, mergedRoots, collecting, gcEnv, pendingWrites, seqData, payloadAlive, collectorPayload>>
+
+\* Mutator replaces a seq field's payload (e.g., r.list = newSeq).
+\* This frees the old payload and installs a new one.
+\* Requires the read lock (RWLock protection against concurrent collection).
+\*
+\* In the real implementation, this is a value-type assignment (=sink/=copy)
+\* that frees the old data array and installs a new one. The old array is freed
+\* immediately, NOT deferred to the cycle collector.
+MutatorSeqAssign(thread, obj, newPayload) ==
+    /\ thread \in rwLockReaders     \* Must hold read lock
+    /\ seqData[obj] # NULL          \* Object has an existing seq payload
+    /\ newPayload \in SeqPayloads
+    /\ ~payloadAlive[newPayload]     \* New payload is freshly allocated (not yet alive)
+    /\ LET oldPayload == seqData[obj]
+       IN
+       /\ seqData' = [seqData EXCEPT ![obj] = newPayload]
+       /\ payloadAlive' = [payloadAlive EXCEPT ![oldPayload] = FALSE,
+                                               ![newPayload] = TRUE]
+    \* Note: In a complete model, this would also update edges[obj] to reflect
+    \* the new seq elements and buffer RC changes (inc new elements, dec old elements).
+    \* We omit this here to focus on the memory safety property (payload lifetime).
+    /\ UNCHANGED <<edges, roots, rc, color, inRoots, toIncLen, toInc, toDecLen, toDec, lockInc, lockDec, globalLock, mergedRoots, collecting, gcEnv, pendingWrites, rwLockReaders, collectorPayload>>
+
+\* Collector begins tracing an object's seq field.
+\* Reads the seqData pointer and stores it in collectorPayload.
+\* This is the first step of a two-step trace operation.
+\* The collector must hold the write lock (globalLock).
+CollectorStartTraceSeq(obj) ==
+    /\ globalLock # NULL             \* Collector holds write lock
+    /\ collecting = TRUE             \* In collection phase
+    /\ seqData[obj] # NULL           \* Object has a seq field
+    /\ collectorPayload = NULL       \* Not already mid-trace
+    /\ collectorPayload' = seqData[obj]
+    /\ UNCHANGED <<edges, roots, rc, color, inRoots, toIncLen, toInc, toDecLen, toDec, lockInc, lockDec, globalLock, mergedRoots, collecting, gcEnv, pendingWrites, seqData, payloadAlive, rwLockReaders>>
+
+\* Collector finishes tracing an object's seq field.
+\* Accesses the payload data via collectorPayload.
+\* The payload MUST still be alive (this is checked by SeqPayloadSafety).
+\* After accessing the payload, clears collectorPayload.
+CollectorFinishTraceSeq ==
+    /\ globalLock # NULL             \* Collector holds write lock
+    /\ collecting = TRUE             \* In collection phase
+    /\ collectorPayload # NULL       \* Mid-trace on a payload
+    \* The actual work: read payloadEdges[collectorPayload] to discover children.
+    \* We don't model the trace results here; the safety property ensures
+    \* the read is valid (payload is alive).
+    /\ collectorPayload' = NULL
+    /\ UNCHANGED <<edges, roots, rc, color, inRoots, toIncLen, toInc, toDecLen, toDec, lockInc, lockDec, globalLock, mergedRoots, collecting, gcEnv, pendingWrites, seqData, payloadAlive, rwLockReaders>>
 
 \* ============================================================================
 \* Next State Relation
@@ -607,6 +745,16 @@ Next ==
     \/ CollectorEnd
     \/ \E thread \in Threads:
          CollectorReleaseLock(thread)
+    \* --- Seq payload actions ---
+    \/ \E thread \in Threads:
+         MutatorAcquireSeqLock(thread)
+    \/ \E thread \in Threads:
+         MutatorReleaseSeqLock(thread)
+    \/ \E thread \in Threads, obj \in Objects, p \in SeqPayloads:
+         MutatorSeqAssign(thread, obj, p)
+    \/ \E obj \in Objects:
+         CollectorStartTraceSeq(obj)
+    \/ CollectorFinishTraceSeq
 
 \* ============================================================================
 \* Initial State
@@ -642,6 +790,11 @@ Init ==
     /\ collecting = FALSE
     /\ gcEnv = [touched |-> 0, edges |-> 0, rcSum |-> 0, toFree |-> {}]
     /\ pendingWrites = {}
+    \* Seq payload initial state
+    /\ seqData = [x \in Objects |-> NULL]        \* No seq fields initially
+    /\ payloadAlive = [p \in SeqPayloads |-> FALSE]  \* No payloads alive initially
+    /\ rwLockReaders = {}                         \* No threads hold read lock
+    /\ collectorPayload = NULL                    \* Collector not mid-trace
     /\ TypeOK
 
 \* ============================================================================
@@ -749,13 +902,52 @@ CycleInvariant ==
         ELSE TRUE
 
 \* ============================================================================
+\* Seq Payload Safety
+\* ============================================================================
+\* Memory safety: The collector never accesses a freed seq payload.
+\*
+\* collectorPayload holds the payload pointer the collector read during
+\* CollectorStartTraceSeq. Between that action and CollectorFinishTraceSeq,
+\* the collector will dereference this pointer to read the seq's elements.
+\* If the payload has been freed in between, this is a use-after-free.
+\*
+\* The RWLock prevents this:
+\*   - collectorPayload is only set when globalLock # NULL (write lock held)
+\*   - MutatorSeqAssign (which frees payloads) requires rwLockReaders membership
+\*   - MutatorAcquireSeqLock requires globalLock = NULL (no writer)
+\*   - Therefore: while collectorPayload # NULL, no MutatorSeqAssign can execute
+\*   - Therefore: payloadAlive[collectorPayload] remains TRUE
+\*
+\* Without the RWLock (if MutatorSeqAssign didn't require the read lock),
+\* the following interleaving would violate this property:
+\*   1. Collector acquires write lock
+\*   2. CollectorStartTraceSeq(obj) -- collectorPayload = P
+\*   3. MutatorSeqAssign(thread, obj, Q) -- frees P, payloadAlive[P] = FALSE
+\*   4. SeqPayloadSafety VIOLATED: collectorPayload = P but payloadAlive[P] = FALSE
+
+SeqPayloadSafety ==
+    collectorPayload # NULL => payloadAlive[collectorPayload]
+
+\* ============================================================================
+\* RWLock Invariant
+\* ============================================================================
+\* The read-write lock ensures mutual exclusion between the collector (writer)
+\* and seq mutations (readers). The writer and readers are never active at
+\* the same time.
+
+RWLockInvariant ==
+    globalLock # NULL => rwLockReaders = {}
+
+\* ============================================================================
 \* Specification
 \* ============================================================================
 
-Spec == Init /\ [][Next]_<<edges, roots, rc, color, inRoots, toIncLen, toInc, toDecLen, toDec, lockInc, lockDec, globalLock, mergedRoots, collecting, gcEnv, pendingWrites>>
+Spec == Init /\ [][Next]_<<edges, roots, rc, color, inRoots, toIncLen, toInc, toDecLen, toDec, lockInc, lockDec, globalLock, mergedRoots, collecting, gcEnv, pendingWrites, seqData, payloadAlive, rwLockReaders, collectorPayload>>
 
 THEOREM Spec => []Safety
 THEOREM Spec => []RCInvariant
 THEOREM Spec => []CycleInvariant
+THEOREM Spec => []SeqPayloadSafety
+THEOREM Spec => []RWLockInvariant
 
 ====
