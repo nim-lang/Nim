@@ -562,6 +562,26 @@ proc eraseVoidParams*(t: PType) =
       setLen t.n.sons, pos
       break
 
+proc eraseTupleVoidFields*(t: PType) =
+  ## Remove void fields from a named tuple type, compacting both `t.n`
+  ## (the field symbol nodes) and `t.sonsImpl` (the child types).
+  if t.n == nil: return  # anonymous tuple, nothing to compact
+  for i in 0..<t.kidsLen:
+    if t.n[i].kind == nkRecList or t[i].kind == tyVoid:
+      # found first void field, compact from here
+      var pos = i
+      for j in i+1..<t.kidsLen:
+        if t[j].kind != tyVoid and j < t.n.len and t.n[j].kind != nkRecList:
+          t.n[pos] = t.n[j]
+          t[pos] = t[j]
+          if t.n[pos].kind == nkSym:
+            t.n[pos].sym.position = pos
+          inc pos
+        # else: skip void entries
+      setLen t.n.sons, pos
+      t.setSonsLen pos
+      break
+
 proc skipIntLiteralParams*(t: PType; idgen: IdGenerator) =
   for i, p in t.ikids:
     if p == nil: continue
@@ -693,7 +713,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType, isInstValue = false): 
 
   of tyUserTypeClass:
     result = t
-  
+
   of tyStatic:
     if cl.c.matchedConcept != nil:
       # allow concepts to not instantiate statics for now
@@ -766,6 +786,8 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType, isInstValue = false): 
         propagateFieldFlags(result, result.n)
         if result.kind == tyObject and cl.c.computeRequiresInit(cl.c, result):
           result.flags.incl tfRequiresInit
+        if result.kind == tyTuple:
+          eraseTupleVoidFields(result)
 
       of tyProc:
         eraseVoidParams(result)
