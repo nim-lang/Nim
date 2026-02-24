@@ -435,6 +435,9 @@ proc collectCycles() =
         elif rootsThreshold < high(int) div 4:
           rootsThreshold = (if rootsThreshold <= 0: defaultThreshold else: rootsThreshold)
           rootsThreshold = rootsThreshold div 2 +% rootsThreshold
+          # Cost-aware: if this run was expensive (large graph), raise threshold more so we don't run again too soon
+          if j.touched > nRoots *% 4:
+            rootsThreshold = rootsThreshold div 2 +% rootsThreshold
           rootsThreshold = min(rootsThreshold, defaultThreshold *% 16)
           rootsThreshold = min(rootsThreshold, nRoots *% 2)
       when logOrc:
