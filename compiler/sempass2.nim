@@ -1550,6 +1550,7 @@ proc track(tracked: PEffects, n: PNode) =
 
     # Check for implicit range conversions
     if n.kind == nkHiddenStdConv and (not tracked.isArrayIndexing) and
+          n[1].kind notin {nkCharLit..nkUInt64Lit, nkFloatLit..nkFloat64Lit} and
           shouldWarnRangeConversion(tracked.config, n.info, n.typ, n[1].typ):
       message(tracked.config, n.info, warnImplicitRangeConversion,
               typeToString(n[1].typ) & " -> " & typeToString(n.typ))
