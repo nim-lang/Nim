@@ -725,7 +725,7 @@ proc getSmallChunk(a: var MemRegion): PSmallChunk =
 
 # -----------------------------------------------------------------------------
 when not defined(gcDestructors):
-  proc isAllocatedPtr(a: MemRegion, p: pointer): bool {.benign.}
+  proc isAllocatedPtr(a: MemRegion, p: pointer): bool {.gcsafe.}
 
 when true:
   template allocInv(a: MemRegion): bool = true

@@ -1286,7 +1286,15 @@ proc produceSym(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp;
       tk = tyNone # no special casing for strings and seqs
     case tk
     of tySequence:
+      let needsYrcLock = g.config.selectedGC == gcYrc and
+         kind in {attachedDestructor, attachedSink, attachedAsgn, attachedDeepCopy, attachedDup} and
+         types.canFormAcycle(g, skipped.elementType)
+      # YRC: topology-changing seq ops must hold the mutator (read) lock
+      if needsYrcLock:
+        result.ast[bodyPos].add callCodegenProc(g, "acquireMutatorLock", info)
       fillSeqOp(a, typ, result.ast[bodyPos], d, src)
+      if needsYrcLock:
+        result.ast[bodyPos].add callCodegenProc(g, "releaseMutatorLock", info)
     of tyString:
       fillStrOp(a, typ, result.ast[bodyPos], d, src)
     else:

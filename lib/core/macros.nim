@@ -433,15 +433,15 @@ when defined(nimHasNoReturnError):
 else:
   {.pragma: errorNoReturn.}
 
-proc error*(msg: string, n: NimNode = nil) {.magic: "NError", benign, errorNoReturn.}
+proc error*(msg: string, n: NimNode = nil) {.magic: "NError", gcsafe, errorNoReturn.}
   ## Writes an error message at compile time. The optional `n: NimNode`
   ## parameter is used as the source for file and line number information in
   ## the compilation error message.
 
-proc warning*(msg: string, n: NimNode = nil) {.magic: "NWarning", benign.}
+proc warning*(msg: string, n: NimNode = nil) {.magic: "NWarning", gcsafe.}
   ## Writes a warning message at compile time.
 
-proc hint*(msg: string, n: NimNode = nil) {.magic: "NHint", benign.}
+proc hint*(msg: string, n: NimNode = nil) {.magic: "NHint", gcsafe.}
   ## Writes a hint message at compile time.
 
 proc newStrLitNode*(s: string): NimNode {.noSideEffect.} =
@@ -511,7 +511,7 @@ proc genSym*(kind: NimSymKind = nskLet; ident = ""): NimNode {.
   ## Generates a fresh symbol that is guaranteed to be unique. The symbol
   ## needs to occur in a declaration context.
 
-proc callsite*(): NimNode {.magic: "NCallSite", benign, deprecated:
+proc callsite*(): NimNode {.magic: "NCallSite", gcsafe, deprecated:
   "Deprecated since v0.18.1; use `varargs[untyped]` in the macro prototype instead".}
   ## Returns the AST of the invocation expression that invoked this macro.
   # see https://github.com/nim-lang/RFCs/issues/387 as candidate replacement.
@@ -933,7 +933,7 @@ proc eqIdent*(a: NimNode; b: NimNode): bool {.magic: "EqIdent", noSideEffect.}
 
 const collapseSymChoice = not defined(nimLegacyMacrosCollapseSymChoice)
 
-proc treeTraverse(n: NimNode; res: var string; level = 0; isLisp = false, indented = false) {.benign.} =
+proc treeTraverse(n: NimNode; res: var string; level = 0; isLisp = false, indented = false) {.gcsafe.} =
   if level > 0:
     if indented:
       res.add("\n")
@@ -982,21 +982,21 @@ proc treeTraverse(n: NimNode; res: var string; level = 0; isLisp = false, indent
   if isLisp:
     res.add(")")
 
-proc treeRepr*(n: NimNode): string {.benign.} =
+proc treeRepr*(n: NimNode): string {.gcsafe.} =
   ## Convert the AST `n` to a human-readable tree-like string.
   ##
   ## See also `repr`, `lispRepr`_, and `astGenRepr`_.
   result = ""
   n.treeTraverse(result, isLisp = false, indented = true)
 
-proc lispRepr*(n: NimNode; indented = false): string {.benign.} =
+proc lispRepr*(n: NimNode; indented = false): string {.gcsafe.} =
   ## Convert the AST `n` to a human-readable lisp-like string.
   ##
   ## See also `repr`, `treeRepr`_, and `astGenRepr`_.
   result = ""
   n.treeTraverse(result, isLisp = true, indented = indented)
 
-proc astGenRepr*(n: NimNode): string {.benign.} =
+proc astGenRepr*(n: NimNode): string {.gcsafe.} =
   ## Convert the AST `n` to the code required to generate that AST.
   ##
   ## See also `repr`_, `treeRepr`_, and `lispRepr`_.
@@ -1005,7 +1005,7 @@ proc astGenRepr*(n: NimNode): string {.benign.} =
     NodeKinds = {nnkEmpty, nnkIdent, nnkSym, nnkNone, nnkCommentStmt}
     LitKinds = {nnkCharLit..nnkInt64Lit, nnkFloatLit..nnkFloat64Lit, nnkStrLit..nnkTripleStrLit}
 
-  proc traverse(res: var string, level: int, n: NimNode) {.benign.} =
+  proc traverse(res: var string, level: int, n: NimNode) {.gcsafe.} =
     for i in 0..level-1: res.add "  "
     if n.kind in NodeKinds:
       res.add("new" & ($n.kind).substr(3) & "Node(")

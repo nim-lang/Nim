@@ -9,11 +9,11 @@
 
 include seqs_v2_reimpl
 
-proc genericResetAux(dest: pointer, n: ptr TNimNode) {.benign.}
+proc genericResetAux(dest: pointer, n: ptr TNimNode) {.gcsafe.}
 
-proc genericAssignAux(dest, src: pointer, mt: PNimType, shallow: bool) {.benign.}
+proc genericAssignAux(dest, src: pointer, mt: PNimType, shallow: bool) {.gcsafe.}
 proc genericAssignAux(dest, src: pointer, n: ptr TNimNode,
-                      shallow: bool) {.benign.} =
+                      shallow: bool) {.gcsafe.} =
   var
     d = cast[int](dest)
     s = cast[int](src)
@@ -187,8 +187,8 @@ proc genericAssignOpenArray(dest, src: pointer, len: int,
     genericAssign(cast[pointer](d +% i *% mt.base.size),
                   cast[pointer](s +% i *% mt.base.size), mt.base)
 
-proc objectInit(dest: pointer, typ: PNimType) {.compilerproc, benign.}
-proc objectInitAux(dest: pointer, n: ptr TNimNode) {.benign.} =
+proc objectInit(dest: pointer, typ: PNimType) {.compilerproc, gcsafe.}
+proc objectInitAux(dest: pointer, n: ptr TNimNode) {.gcsafe.} =
   var d = cast[int](dest)
   case n.kind
   of nkNone: sysAssert(false, "objectInitAux")
@@ -224,7 +224,7 @@ proc objectInit(dest: pointer, typ: PNimType) =
 
 # ---------------------- assign zero -----------------------------------------
 
-proc genericReset(dest: pointer, mt: PNimType) {.compilerproc, benign.}
+proc genericReset(dest: pointer, mt: PNimType) {.compilerproc, gcsafe.}
 proc genericResetAux(dest: pointer, n: ptr TNimNode) =
   var d = cast[int](dest)
   case n.kind

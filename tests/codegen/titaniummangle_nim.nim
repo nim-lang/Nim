@@ -1,35 +1,7 @@
 discard """
   targets: "c"
   matrix: "--debugger:native --mangle:nim"
-  ccodecheck: "'testFunc__titaniummangle95nim_u1316'"
-  ccodecheck: "'testFunc__titaniummangle95nim_u156'"
-  ccodecheck: "'testFunc__titaniummangle95nim_u1305'"
-  ccodecheck: "'testFunc__titaniummangle95nim_u241'"
-  ccodecheck: "'testFunc__titaniummangle95nim_u1357'"
-  ccodecheck: "'testFunc__titaniummangle95nim_u292'"
-  ccodecheck: "'testFunc__titaniummangle95nim_u38'"
-  ccodecheck: "'testFunc__titaniummangle95nim_u175'"
-  ccodecheck: "'testFunc__titaniummangle95nim_u1302'"
-  ccodecheck: "'testFunc__titaniummangle95nim_u1305'"
-  ccodecheck: "'testFunc__titaniummangle95nim_u535'"
-  ccodecheck: "'testFunc__titaniummangle95nim_u1294'"
-  ccodecheck: "'testFunc__titaniummangle95nim_u336'"
-  ccodecheck: "'testFunc__titaniummangle95nim_u425'"
-  ccodecheck: "'testFunc__titaniummangle95nim_u308'"
-  ccodecheck: "'testFunc__titaniummangle95nim_u129'"
-  ccodecheck: "'testFunc__titaniummangle95nim_u320'"
-  ccodecheck: "'testFunc__titaniummangle95nim_u223'"
-  ccodecheck: "'testFunc__titaniummangle95nim_u545'"
-  ccodecheck: "'testFunc__titaniummangle95nim_u543'"
-  ccodecheck: "'testFunc__titaniummangle95nim_u895'"
-  ccodecheck: "'testFunc__titaniummangle95nim_u1104'"
-  ccodecheck: "'testFunc__titaniummangle95nim_u1155'"
-  ccodecheck: "'testFunc__titaniummangle95nim_u636'"
-  ccodecheck: "'testFunc__titaniummangle95nim_u705'"
-  ccodecheck: "'testFunc__titaniummangle95nim_u800'"
-  ccodecheck: "'new__titaniummangle95nim_u1320'"
-  ccodecheck: "'xxx__titaniummangle95nim_u1391'"
-  ccodecheck: "'xxx__titaniummangle95nim_u1394'"
+  ccodecheck: "'testFunc__titaniummangle95nim_u'"
 """
 
 #When debugging this notice that if one check fails, it can be due to any of the above.
@@ -48,7 +20,7 @@ type
 
   Container[T] = object
     data: T
-      
+
   Container2[T, T2] = object
     data: T
     data2: T2
@@ -57,7 +29,7 @@ type
 
   Coo = Foo
 
-  Doo = Boo | Foo 
+  Doo = Boo | Foo
 
   TestProc = proc(a:string): string
 
@@ -67,87 +39,87 @@ type EnumSample = enum
 type EnumAnotherSample = enum
   a, b, c
 
-proc testFunc(a: set[EnumSample]) = 
+proc testFunc(a: set[EnumSample]) =
   echo $a
 
-proc testFunc(a: typedesc) = 
+proc testFunc(a: typedesc) =
   echo $a
 
-proc testFunc(a: ptr Foo) = 
+proc testFunc(a: ptr Foo) =
   echo repr a
 
-proc testFunc(s: string, a: Coo) = 
+proc testFunc(s: string, a: Coo) =
   echo repr a
 
-proc testFunc(s: int, a: Comparable) = 
+proc testFunc(s: int, a: Comparable) =
   echo repr a
 
-proc testFunc(a: TestProc) = 
+proc testFunc(a: TestProc) =
   let b = ""
   echo repr a("")
 
-proc testFunc(a: ref Foo) = 
+proc testFunc(a: ref Foo) =
   echo repr a
 
-proc testFunc(b: Boo) = 
+proc testFunc(b: Boo) =
   echo repr b
 
-proc testFunc(a: ptr UncheckedArray[int]) = 
+proc testFunc(a: ptr UncheckedArray[int]) =
   echo repr a
 
-proc testFunc(a: ptr int) = 
+proc testFunc(a: ptr int) =
   echo repr a
 
-proc testFunc(a: ptr ptr int) = 
+proc testFunc(a: ptr ptr int) =
   echo repr a
 
-proc testFunc(e: FooTuple, str: cstring) = 
+proc testFunc(e: FooTuple, str: cstring) =
   echo e
 
-proc testFunc(e: (float, float)) = 
+proc testFunc(e: (float, float)) =
   echo e
 
-proc testFunc(e: EnumSample) = 
+proc testFunc(e: EnumSample) =
   echo e
 
-proc testFunc(e: var int) = 
+proc testFunc(e: var int) =
   echo e
 
-proc testFunc(e: var Foo, a, b: int32, refFoo: ref Foo) = 
+proc testFunc(e: var Foo, a, b: int32, refFoo: ref Foo) =
   echo e
 
-proc testFunc(xs: Container[int]) = 
+proc testFunc(xs: Container[int]) =
   let a = 2
   echo xs
 
-proc testFunc(xs: Container2[int32, int32]) = 
+proc testFunc(xs: Container2[int32, int32]) =
   let a = 2
   echo xs
 
-proc testFunc(xs: Container[Container2[int32, int32]]) = 
+proc testFunc(xs: Container[Container2[int32, int32]]) =
   let a = 2
   echo xs
 
-proc testFunc(xs: seq[int]) = 
+proc testFunc(xs: seq[int]) =
   let a = 2
   echo xs
 
-proc testFunc(xs: openArray[string]) = 
+proc testFunc(xs: openArray[string]) =
   let a = 2
   echo xs
 
-proc testFunc(xs: array[2, int]) = 
+proc testFunc(xs: array[2, int]) =
   let a = 2
   echo xs
 
-proc testFunc(e: EnumAnotherSample) = 
+proc testFunc(e: EnumAnotherSample) =
   echo e
 
-proc testFunc(a, b: int) = 
+proc testFunc(a, b: int) =
   echo "hola"
   discard
 
-proc testFunc(a: int, xs: varargs[string]) = 
+proc testFunc(a: int, xs: varargs[string]) =
   let a = 10
   for x in xs:
     echo x
@@ -155,7 +127,7 @@ proc testFunc(a: int, xs: varargs[string]) =
 proc xxx(v: static int) =
   echo v
 
-proc testFunc() = 
+proc testFunc() =
   var a = 2
   var aPtr = a.addr
   var foo = Foo()

@@ -627,7 +627,7 @@ proc newSeq*[T](s: var seq[T], len: Natural) {.magic: "NewSeq", noSideEffect.}
   ##   #inputStrings[3] = "out of bounds"
   ##   ```
 
-proc newSeq*[T](len = 0.Natural): seq[T] =
+proc newSeq*[T](len = 0.Natural): seq[T] {.noSideEffect.} =
   ## Creates a new sequence of type `seq[T]` with length `len`.
   ##
   ## Note that the sequence will be filled with zeroed entries.
@@ -1147,7 +1147,7 @@ template sysAssert(cond: bool, msg: string) =
 const hasAlloc = (hostOS != "standalone" or not defined(nogc)) and not defined(nimscript)
 
 when notJSnotNims and hasAlloc and not defined(nimSeqsV2):
-  proc addChar(s: NimString, c: char): NimString {.compilerproc, benign.}
+  proc addChar(s: NimString, c: char): NimString {.compilerproc, gcsafe.}
 
 when defined(nimscript) or not defined(nimSeqsV2):
   proc add*[T](x: var seq[T], y: sink T) {.magic: "AppendSeqElem", noSideEffect.}
@@ -1459,6 +1459,7 @@ proc isNil*[T: proc | iterator {.closure.}](x: T): bool {.noSideEffect, magic: "
   ## `== nil`.
 
 proc supportsCopyMem(t: typedesc): bool {.magic: "TypeTrait".}
+proc canFormCycles(t: typedesc): bool {.magic: "TypeTrait".}
 
 when defined(nimHasTopDownInference):
   # magic used for seq type inference
@@ -1664,7 +1665,7 @@ when not defined(js) and hasThreadSupport and hostOS != "standalone":
 
 when not defined(js) and defined(nimV2):
   type
-    DestructorProc = proc (p: pointer) {.nimcall, benign, raises: [].}
+    DestructorProc = proc (p: pointer) {.nimcall, gcsafe, raises: [].}
     TNimTypeV2 {.compilerproc.} = object
       destructor: pointer
       size: int
@@ -1776,7 +1777,7 @@ when not defined(nimscript):
 when not declared(sysFatal):
   include "system/fatal"
 
-proc echo*(x: varargs[typed, `$`]) {.magic: "Echo", benign, sideEffect.}
+proc echo*(x: varargs[typed, `$`]) {.magic: "Echo", gcsafe, sideEffect.}
   ## Writes and flushes the parameters to the standard output.
   ##
   ## Special built-in that takes a variable number of arguments. Each argument
@@ -1883,7 +1884,7 @@ when notJSnotNims:
       ## lead to the `raise` statement. This only works for debug builds.
 
   var
-    globalRaiseHook*: proc (e: ref Exception): bool {.nimcall, benign.}
+    globalRaiseHook*: proc (e: ref Exception): bool {.nimcall, gcsafe.}
       ## With this hook you can influence exception handling on a global level.
       ## If not nil, every 'raise' statement ends up calling this hook.
       ##
@@ -1892,7 +1893,7 @@ when notJSnotNims:
       ## If `globalRaiseHook` returns false, the exception is caught and does
       ## not propagate further through the call stack.
 
-    localRaiseHook* {.threadvar.}: proc (e: ref Exception): bool {.nimcall, benign.}
+    localRaiseHook* {.threadvar.}: proc (e: ref Exception): bool {.nimcall, gcsafe.}
       ## With this hook you can influence exception handling on a
       ## thread local level.
       ## If not nil, every 'raise' statement ends up calling this hook.
@@ -1902,7 +1903,7 @@ when notJSnotNims:
       ## If `localRaiseHook` returns false, the exception
       ## is caught and does not propagate further through the call stack.
 
-    outOfMemHook*: proc () {.nimcall, tags: [], benign, raises: [].}
+    outOfMemHook*: proc () {.nimcall, tags: [], gcsafe, raises: [].}
       ## Set this variable to provide a procedure that should be called
       ## in case of an `out of memory`:idx: event. The standard handler
       ## writes an error message and terminates the program.
@@ -1923,7 +1924,7 @@ when notJSnotNims:
       ## If the handler does not raise an exception, ordinary control flow
       ## continues and the program is terminated.
 
-    unhandledExceptionHook*: proc (e: ref Exception) {.nimcall, tags: [], benign, raises: [].}
+    unhandledExceptionHook*: proc (e: ref Exception) {.nimcall, tags: [], gcsafe, raises: [].}
       ## Set this variable to provide a procedure that should be called
       ## in case of an `unhandle exception` event. The standard handler
       ## writes an error message and terminates the program, except when
@@ -2066,7 +2067,7 @@ when hostOS == "standalone" and defined(nogc):
     if s == nil or s.len == 0: result = cstring""
     else: result = cast[cstring](addr s.data)
 
-proc getTypeInfo*[T](x: T): pointer {.magic: "GetTypeInfo", benign.}
+proc getTypeInfo*[T](x: T): pointer {.magic: "GetTypeInfo", gcsafe.}
   ## Get type information for `x`.
   ##
   ## Ordinary code should not use this, but the `typeinfo module
@@ -2285,21 +2286,21 @@ when not defined(js) and declared(alloc0) and declared(dealloc):
     dealloc(a)
 
 when notJSnotNims and hostOS != "standalone":
-  proc getCurrentException*(): ref Exception {.compilerRtl, inl, benign.} =
+  proc getCurrentException*(): ref Exception {.compilerRtl, inl, gcsafe.} =
     ## Retrieves the current exception; if there is none, `nil` is returned.
     result = currException
 
-  proc nimBorrowCurrentException(): ref Exception {.compilerRtl, inl, benign, nodestroy.} =
+  proc nimBorrowCurrentException(): ref Exception {.compilerRtl, inl, gcsafe, nodestroy.} =
     # .nodestroy here so that we do not produce a write barrier as the
     # C codegen only uses it in a borrowed way:
     result = currException
 
-  proc getCurrentExceptionMsg*(): string {.inline, benign.} =
+  proc getCurrentExceptionMsg*(): string {.inline, gcsafe.} =
     ## Retrieves the error message that was attached to the current
     ## exception; if there is none, `""` is returned.
     return if currException == nil: "" else: currException.msg
 
-  proc setCurrentException*(exc: ref Exception) {.inline, benign.} =
+  proc setCurrentException*(exc: ref Exception) {.inline, gcsafe.} =
     ## Sets the current exception.
     ##
     ## .. warning:: Only use this if you know what you are doing.
