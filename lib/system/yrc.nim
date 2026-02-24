@@ -418,6 +418,7 @@ proc collectCycles() =
   yrcCollectorLock:
     mergePendingRoots()
     if roots.len >= rootsThreshold and mayRunCycleCollect():
+      let nRoots = roots.len
       var j: GcEnv
       init j.traceStack
       collectCyclesBacon(j, 0)
@@ -434,8 +435,8 @@ proc collectCycles() =
         elif rootsThreshold < high(int) div 4:
           rootsThreshold = (if rootsThreshold <= 0: defaultThreshold else: rootsThreshold)
           rootsThreshold = rootsThreshold div 2 +% rootsThreshold
-          # Cap growth so threshold doesn't grow without bound when we rarely free cycles
-          #rootsThreshold = min(rootsThreshold, defaultThreshold *% 16)
+          rootsThreshold = min(rootsThreshold, defaultThreshold *% 16)
+          rootsThreshold = min(rootsThreshold, nRoots *% 2)
       when logOrc:
         cfprintf(cstderr, "[collectCycles] end; freed %ld new threshold %ld\n", j.freed, rootsThreshold)
       when defined(nimOrcStats):
