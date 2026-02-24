@@ -71,3 +71,8 @@ acceptWideFloat(smallFloatRange)  # OK - SmallFloat (0.0..10.0) fits in WideFloa
 
 var wf: WideFloatRange
 wf = smallFloatRange  # OK - SmallFloat range fits in WideFloatRange
+
+proc foo(x: Natural) =
+  discard
+
+foo(12)
