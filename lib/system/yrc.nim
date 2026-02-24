@@ -417,7 +417,7 @@ proc collectCycles() =
     cfprintf(cstderr, "[collectCycles] begin\n")
   yrcCollectorLock:
     mergePendingRoots()
-    if roots.len >= RootsThreshold and mayRunCycleCollect():
+    if roots.len >= rootsThreshold and mayRunCycleCollect():
       var j: GcEnv
       init j.traceStack
       collectCyclesBacon(j, 0)
