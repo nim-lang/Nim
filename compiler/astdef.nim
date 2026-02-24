@@ -202,7 +202,11 @@ type
     tySequence,
     tyProc,
     tyPointer, tyOpenArray,
-    tyString, tyCstring, tyForward,
+    tyString, tyCstring,
+    tyForward,
+      # a type not yet semchecked
+      # When semcheck a type section, all types defined in it are initialized to tyForward
+
     tyInt, tyInt8, tyInt16, tyInt32, tyInt64, # signed integers
     tyFloat, tyFloat32, tyFloat64, tyFloat128,
     tyUInt, tyUInt8, tyUInt16, tyUInt32, tyUInt64,

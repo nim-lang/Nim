@@ -1739,6 +1739,7 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
     var isConcrete = true
     let rType = m.call[0].typ
     let mIndex = if rType != nil: rType.len - 1 else: -1
+    var hasForwardTypeParam = false
     for i in 1..<m.call.len:
       var typ = m.call[i].typ
       # is this a 'typedesc' *parameter*? If so, use the typedesc type,
@@ -1755,13 +1756,36 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
           skip = false
         addToResult(typ, skip)
 
+      if typ.kind == tyForward:
+        hasForwardTypeParam = true
+
     if isConcrete:
       if s.ast == nil and s.typ.kind != tyCompositeTypeClass:
         # XXX: What kind of error is this? is it still relevant?
         localError(c.config, n.info, errCannotInstantiateX % s.name.s)
         result = newOrPrevType(tyError, prev, c)
-      elif containsGenericInvocationWithForward(n[0]):
+      elif containsGenericInvocationWithForward(n[0]) or hasForwardTypeParam:
+        # isConcrete == false means this generic type is not instanciated here because it invoked with generic parameters.
+        # Even if isConcrete == true, don't instanciate it now if there are any `tyForward` type params.
+        # Such `tyForward` type params will be semchecked later and we can instanciate this next time.
+        # Some generic types like std/options.Option[T] needs a type kinds of the given type argument.
+
+        # return `tyForward` instead of `tyGenericInvocation` because:
+        # ```nim
+        #   type Foo = object
+        #     x: Option[Foo]
+        # ```
+        # returning `tyGenericInvocation` makes `Option[Foo]` to `tyGenericInvocation` and
+        # next time `semGeneric` is called with `Option[Foo]`, containsGenericType(typeof(`Foo`)) == true
+        # and `isConcrete == false`.
+        if prev == nil:
+          result = newTypeS(tyForward, c)
+          result.sym = s
+        else:
+          assignType(result, newTypeS(tyForward, c))
+          result.sym = s
         c.forwardTypeUpdates.add (result, n) #fixes 1500
+        return
       else:
         result = instGenericContainer(c, n.info, result,
                                       allowMetaTypes = false)
