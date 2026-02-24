@@ -253,6 +253,9 @@ proc decode*(s: string): string =
   while inputIndex <= inputEnds:
     while s[inputIndex] in {'\n', '\r', ' '}:
       inc inputIndex
+    # double check inputIndex as it can be incremented due to whitespace
+    if inputIndex > inputEnds:
+      break
     inputChar(a)
     inputChar(b)
     inputChar(c)
