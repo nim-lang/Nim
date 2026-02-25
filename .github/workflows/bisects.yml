@@ -24,7 +24,7 @@ jobs:
         shell: 'powershell'
 
       # v2 wont work here, because uses "hardcoded" nim versions, action "dynamically" finds version with bug.
-      - uses: jiro4989/setup-nim-action@v1  
+      - uses: jiro4989/setup-nim-action@v2  
         with:
           nim-version: 'devel'
 
