@@ -32,14 +32,14 @@ jobs:
       NIM_TESTAMENT_BATCH: ${{ matrix.batch }}
     steps:
       - name: 'Checkout'
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
         with:
           fetch-depth: 2
 
-      - name: 'Install node.js 20.x'
-        uses: actions/setup-node@v4
+      - name: 'Install node.js'
+        uses: actions/setup-node@v6
         with:
-          node-version: '20.x'
+          node-version: 24
 
       - name: 'Install dependencies (Linux amd64)'
         if: runner.os == 'Linux' && matrix.cpu == 'amd64'
