@@ -1164,7 +1164,15 @@ proc addImplicitGeneric(c: PContext; typeClass: PType, typId: PIdent;
   # is this a bindOnce type class already present in the param list?
   for i in 0..<genericParams.len:
     if genericParams[i].sym.name.id == finalTypId.id:
-      return genericParams[i].typ
+      if typeClass.kind == tyStatic and genericParams[i].typ.kind != tyStatic:
+        # The base type (e.g. from `auto`) was already added as a generic param,
+        # but `static[auto]` requires upgrading it to a `tyStatic` wrapper so
+        # it is instantiated as a compile-time value (`skConst`).
+        genericParams[i].sym.linkTo(typeClass)
+        typeClass.flags.incl tfImplicitTypeParam
+        return typeClass
+      else:
+        return genericParams[i].typ
 
   let owner = if typeClass.sym != nil: typeClass.sym
               else: getCurrOwner(c)
@@ -2006,7 +2014,7 @@ proc semTypeIdent(c: PContext, n: PNode): PSym =
         # proc signature for example
         if c.inGenericInst > 0:
           let bound = result.typ.elementType.sym
-          # the symbol may still point to the uninstantiated generic body type 
+          # the symbol may still point to the uninstantiated generic body type
           if bound != nil and bound.typ == result.typ.elementType:
             return bound
           return result
