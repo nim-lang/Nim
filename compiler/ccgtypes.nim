@@ -800,6 +800,8 @@ proc getTupleDesc(m: BModule; typ: PType, name: Rope,
   var res = newBuilder("")
   res.addStruct(m, typ, name, ""):
     for i, a in typ.ikids:
+      # Do not produce code for void types
+      if isEmptyType(a): continue
       res.addField(
         name = "Field" & $i,
         typ = getTypeDescAux(m, a, check, dkField))
@@ -1476,21 +1478,29 @@ proc genTupleInfo(m: BModule; typ, origType: PType, name: Rope; info: TLineInfo)
   genTypeInfoAuxBase(m, typ, typ, name, cIntValue(0), info)
   var expr = getNimNode(m)
   if not typ.isEmptyTupleType:
-    var tmp = getTempName(m) & "_" & $typ.kidsLen
-    genTNimNodeArray(m, tmp, typ.kidsLen)
-    for i, a in typ.ikids:
-      var tmp2 = getNimNode(m)
-      let fieldTypInfo = genTypeInfoV1(m, a, info)
-      m.s[cfsTypeInit3].addSubscriptAssignment(tmp, cIntValue(i), cAddr(tmp2))
-      m.s[cfsTypeInit3].addFieldAssignment(tmp2, "kind", 1)
-      m.s[cfsTypeInit3].addFieldAssignmentWithValue(tmp2, "offset"):
-        m.s[cfsTypeInit3].addOffsetof(getTypeDesc(m, origType, dkVar), "Field" & $i)
-      m.s[cfsTypeInit3].addFieldAssignment(tmp2, "typ", fieldTypInfo)
-      m.s[cfsTypeInit3].addFieldAssignment(tmp2, "name", "\"Field" & $i & "\"")
-    m.s[cfsTypeInit3].addFieldAssignment(expr, "len", typ.kidsLen)
-    m.s[cfsTypeInit3].addFieldAssignment(expr, "kind", 2)
-    m.s[cfsTypeInit3].addFieldAssignment(expr, "sons",
-      cAddr(subscript(tmp, cIntValue(0))))
+    var nonVoidKids = 0
+    for a in typ.kids:
+      if not isEmptyType(a): inc nonVoidKids
+    if nonVoidKids > 0:
+      var tmp = getTempName(m) & "_" & $nonVoidKids
+      genTNimNodeArray(m, tmp, nonVoidKids)
+      var j = 0
+      for i, a in typ.ikids:
+        # Do not produce code for void types
+        if isEmptyType(a): continue
+        var tmp2 = getNimNode(m)
+        let fieldTypInfo = genTypeInfoV1(m, a, info)
+        m.s[cfsTypeInit3].addSubscriptAssignment(tmp, cIntValue(j), cAddr(tmp2))
+        m.s[cfsTypeInit3].addFieldAssignment(tmp2, "kind", 1)
+        m.s[cfsTypeInit3].addFieldAssignmentWithValue(tmp2, "offset"):
+          m.s[cfsTypeInit3].addOffsetof(getTypeDesc(m, origType, dkVar), "Field" & $i)
+        m.s[cfsTypeInit3].addFieldAssignment(tmp2, "typ", fieldTypInfo)
+        m.s[cfsTypeInit3].addFieldAssignment(tmp2, "name", "\"Field" & $i & "\"")
+        inc j
+      m.s[cfsTypeInit3].addFieldAssignment(expr, "len", nonVoidKids)
+      m.s[cfsTypeInit3].addFieldAssignment(expr, "kind", 2)
+      m.s[cfsTypeInit3].addFieldAssignment(expr, "sons",
+        cAddr(subscript(tmp, cIntValue(0))))
   else:
     m.s[cfsTypeInit3].addFieldAssignment(expr, "len", typ.kidsLen)
     m.s[cfsTypeInit3].addFieldAssignment(expr, "kind", 2)
