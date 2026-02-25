@@ -24,7 +24,7 @@ jobs:
       - name: 'Install node.js'
         uses: actions/setup-node@v6
         with:
-          node-version: ''
+          node-version: 24
 
       - name: 'Install dependencies (Linux amd64)'
         if: runner.os == 'Linux' && matrix.cpu == 'amd64'
