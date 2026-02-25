@@ -491,7 +491,11 @@ proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
                    renderTree(result, {renderNoComments}))
         result = newSymNode(errorSym(c, result))
       else:
-        result.typ = makeTypeDesc(c, typ)
+        # Replace with a clean nkType node so that complex expressions
+        # (like `when` statements from template expansion) don't persist
+        # in the AST with potentially uninitialized children that would
+        # cause a SIGSEGV during the transform phase's constant folding.
+        result = newNodeIT(nkType, result.info, makeTypeDesc(c, typ))
       #result = symNodeFromType(c, typ, n.info)
     else:
       if s.ast[genericParamsPos] != nil and retType.isMetaType:
