@@ -33,7 +33,7 @@ jobs:
       NIM_TESTAMENT_BATCH: ${{ matrix.batch }}
     steps:
       - name: 'Checkout'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 2
 
