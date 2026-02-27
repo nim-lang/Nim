@@ -1159,8 +1159,8 @@ In Nim new types can be defined within a `type` statement:
 
   ```nim  test = "nim c $1"
   type
-    biggestInt = int64      # biggest integer type that is available
-    biggestFloat = float64  # biggest float type that is available
+    BiggestInt = int64      # biggest integer type that is available
+    BiggestFloat = float64  # biggest float type that is available
   ```
 
 Enumeration and object types may only be defined within a
