@@ -205,6 +205,7 @@ proc parseString(my: var JsonParser): TokKind =
   while true:
     case my.buf[pos]
     of '\0':
+      my.err = errInvalidToken
       addSpan(my.a, my.buf, spanStart, pos)
       result = tkError
       break
@@ -247,16 +248,19 @@ proc parseString(my: var JsonParser): TokKind =
         var pos2 = pos
         var r = parseEscapedUTF16(cstring(my.buf), pos)
         if r < 0:
+          my.err = errInvalidToken
           break
         # Deal with surrogates
         if (r and 0xfc00) == 0xd800:
           if my.buf[pos] != '\\' or my.buf[pos+1] != 'u':
+            my.err = errInvalidToken
             break
           inc(pos, 2)
           var s = parseEscapedUTF16(cstring(my.buf), pos)
           if (s and 0xfc00) == 0xdc00 and s > 0:
             r = 0x10000 + (((r - 0xd800) shl 10) or (s - 0xdc00))
           else:
+            my.err = errInvalidToken
             break
         if my.rawStringLiterals:
           let length = pos - pos2
