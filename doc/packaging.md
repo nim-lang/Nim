@@ -27,7 +27,7 @@ Nim runs on a wide variety of platforms. Support on amd64 and i386 is tested reg
 - ppc64el (aka ppc64le)
 - riscv64
 
-The following platforms are seldomly tested:
+The following platforms are seldom tested:
 
 - alpha
 - hppa
