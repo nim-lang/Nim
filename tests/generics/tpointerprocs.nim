@@ -3,7 +3,7 @@ cmd: "nim check $options --hints:off $file"
 action: "reject"
 nimout:'''
 tpointerprocs.nim(22, 11) Error: 'foo' doesn't have a concrete type, due to unspecified generic parameters.
-tpointerprocs.nim(34, 14) Error: type mismatch: got <int>
+tpointerprocs.nim(34, 14) Error: type mismatch: got <typedesc[int]>
 but expected one of:
 proc foo(x: int | float; y: int or string): float
   first type mismatch at position: 2 in generic parameters
