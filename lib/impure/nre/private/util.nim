@@ -15,6 +15,9 @@ template formatStr*(howExpr, namegetter, idgetter): untyped =
       val.add(how[i])
       i += 1
     else:
+      if i + 1 >= how.len:
+        raise newException(ValueError, "Syntax error in format string at " & $i)
+
       if how[i + 1] == '$':
         val.add('$')
         i += 2
@@ -27,7 +30,7 @@ template formatStr*(howExpr, namegetter, idgetter): untyped =
         i += 1
         var id {.inject.} = 0
         while i < how.len and how[i] in {'0'..'9'}:
-          id += (id * 10) + (ord(how[i]) - ord('0'))
+          id = (id * 10) + (ord(how[i]) - ord('0'))
           i += 1
         val.add(idgetter)
         lastNum = id + 1
