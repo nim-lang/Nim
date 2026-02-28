@@ -981,7 +981,7 @@ proc setGenericParams(c: PContext, n, expectedParams: PNode) =
     if e.typ == nil:
       n[i].typ() = errorType(c)
     else:
-      n[i].typ() = e.typ.skipTypes({tyTypeDesc})
+      n[i].typ() = e.typ
 
 proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym, doError: bool): PNode =
   assert n.kind == nkBracketExpr
