@@ -25,3 +25,4 @@ block: # replace
   block: # malformed replacement syntax should throw instead of OOB crash
     expect ValueError: discard "a".replace(re"a", "$")
     expect ValueError: discard "a".replace(re"a", "x$")
+    expect ValueError: discard "a".replace(re"a", "${foo")

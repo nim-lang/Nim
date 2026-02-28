@@ -47,6 +47,8 @@ template formatStr*(howExpr, namegetter, idgetter): untyped =
         while i < how.len and how[i] != '}':
           name.add(how[i])
           i += 1
+        if i >= how.len or how[i] != '}':
+          raise newException(ValueError, "Syntax error in format string at " & $i)
         i += 1
         val.add(namegetter)
       else:
