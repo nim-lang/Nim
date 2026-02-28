@@ -2186,9 +2186,9 @@ proc implicitConv(kind: TNodeKind, f: PType, arg: PNode, m: TCandidate,
       result.typ = errorType(c)
   else:
     result.typ = f.skipTypes({tySink})
-  # keep varness
+  # keep varness, but don't wrap lent types with var
   if arg.typ != nil and arg.typ.kind == tyVar:
-    result.typ = toVar(result.typ, tyVar, c.idgen)
+    result.typ = toVar(result.typ.skipTypes({tyLent}), tyVar, c.idgen)
     # copy the tfVarIsPtr flag
     result.typ.flags = arg.typ.flags
   else:
