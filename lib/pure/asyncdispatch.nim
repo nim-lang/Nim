@@ -1946,9 +1946,14 @@ proc withTimeout*[T](fut: Future[T], timeout: int): owned(Future[bool]) =
           retFuture.fail(fut.error)
         else:
           retFuture.complete(true)
+        # Timeout side lost; drop its callback to avoid retaining closures/futures.
+        timeoutFuture.clearCallbacks()
   timeoutFuture.callback =
     proc () =
-      if not retFuture.finished: retFuture.complete(false)
+      if not retFuture.finished:
+        retFuture.complete(false)
+        # Wrapped future side lost; drop its callback to avoid retaining closures/futures.
+        fut.clearCallbacks()
   return retFuture
 
 proc accept*(socket: AsyncFD,
