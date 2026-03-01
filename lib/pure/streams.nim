@@ -16,9 +16,9 @@
 ## stream interface.
 ##
 ## .. warning:: Due to the use of `pointer`, the `readData`, `peekData` and
-## `writeData` interfaces are not available on the compile-time VM, and must
-## be cast from a `ptr string` on the JS backend. However, `readDataStr` is
-## available generally in place of `readData`.
+##   `writeData` interfaces are not available on the compile-time VM, and must
+##   be cast from a `ptr string` on the JS backend. However, `readDataStr` is
+##   available generally in place of `readData`.
 ##
 ## Basic usage
 ## ===========
