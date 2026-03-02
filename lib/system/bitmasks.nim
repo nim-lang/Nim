@@ -24,6 +24,9 @@ const
     elif defined(useMalloc):
       when defined(amd64): 16 
       else: 8
+    elif defined(gcRefc):
+      when defined(i386): 8
+      else: 16
     else: 16
 
   BitsPerPage = PageSize div MemAlign
