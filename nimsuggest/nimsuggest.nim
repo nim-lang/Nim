@@ -668,7 +668,8 @@ proc mainCommand(graph: ModuleGraph) =
   close(results)
 
 proc processCmdLine*(pass: TCmdLinePass, cmd: string; conf: ConfigRef) =
-  var p = parseopt.initOptParser(cmd)
+  var p = if cmd.len == 0: parseopt.initOptParser()
+          else: parseopt.initOptParser(cmd)
   var findProject = false
   while true:
     parseopt.next(p)
