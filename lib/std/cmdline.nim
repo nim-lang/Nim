@@ -279,8 +279,13 @@ when declared(paramCount) or defined(nimdoc):
   proc commandLineParams*(): seq[string] =
     ## Convenience proc which returns the command line parameters.
     ##
-    ## This returns **only** the parameters. If you want to get the application
+    ## Unlike `paramStr proc`_, returns **only** the parameters.
+    ## If you want to get the application
     ## executable filename, call `getAppFilename() <os.html#getAppFilename>`_.
+    ##
+    ## When used from NimScript, arguments preceding and including the `.nims`
+    ## file are also excluded, returning only the arguments intended for the
+    ## script.
     ##
     ## **Availability**: On Posix there is no portable way to get the command
     ## line from a DLL and thus the proc isn't defined in this environment. You
@@ -303,8 +308,23 @@ when declared(paramCount) or defined(nimdoc):
     ##     # Do something else!
     ##   ```
     result = @[]
-    for i in 1..paramCount():
-      result.add(paramStr(i))
+    when defined(nimscript):
+      func isNimScriptExt(s: openArray[char]): bool =
+        let L = s.len
+        (L >= 5 and s[L-5] == '.' and (
+          (s[L-4] in {'n', 'N'}) and
+          (s[L-3] in {'i', 'I'}) and
+          (s[L-2] in {'m', 'M'}) and
+          (s[L-1] in {'s', 'S'})))
+      var firstNimsFound = false
+      for i in 0..paramCount(): # nimscript needs to check index 0
+        if firstNimsFound:
+          result.add(paramStr(i))
+        elif isNimScriptExt(paramStr(i)):
+          firstNimsFound = true
+    else:
+      for i in 1..paramCount():
+        result.add(paramStr(i))
 else:
   proc commandLineParams*(): seq[string] {.error:
   "commandLineParams() unsupported by dynamic libraries".} =
