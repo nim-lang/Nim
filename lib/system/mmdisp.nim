@@ -45,6 +45,9 @@ when not defined(nimV2):
     Cell {.pure.} = object
       refcount: RefCount  # the refcount and some flags
       typ: PNimType
+      when sizeof(int) == 4:  # 32-bit only
+        headerAlignPad: array[8, byte]  # so addr(data) ≡ 8 (mod 16)
+
       when trackAllocationSource:
         filename: cstring
         line: int
@@ -93,7 +96,7 @@ else:
     when not usesDestructors:
       include "system/cellsets"
     when not leakDetector and not useCellIds and not defined(nimV2):
-      sysAssert(sizeof(Cell) == sizeof(FreeCell), "sizeof FreeCell")
+      sysAssert(sizeof(FreeCell) <= sizeof(Cell), "sizeof FreeCell")
   when defined(gcRegions):
     # XXX due to bootstrapping reasons, we cannot use  compileOption("gc", "stack") here
     include "system/gc_regions"
