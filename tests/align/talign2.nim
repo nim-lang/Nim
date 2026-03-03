@@ -1,6 +1,5 @@
 discard """
   matrix: "--mm:refc -d:useGcAssert -d:useSysAssert; --mm:orc"
-  targets: "c cpp"
 """
 
 block:
