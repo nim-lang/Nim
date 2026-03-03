@@ -59,9 +59,9 @@ else:
       when trackAllocationSource:
         filename: cstring
         line: int
-      elif useCellIds:
+      when useCellIds:
         id: int
-      elif sizeof(int) == 4:  # 32-bit only
+      when (not trackAllocationSource) and (not useCellIds) and sizeof(int) == 4:  # 32-bit only
         headerAlignPad: array[8, byte]  # so addr(data) ≡ 8 (mod 16)
 
     PCell = ptr Cell
