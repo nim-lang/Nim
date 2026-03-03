@@ -104,6 +104,8 @@ type
       zeroField: int       # 0 means cell is not used (overlaid with typ field)
                           # 1 means cell is manually managed pointer
                           # otherwise a PNimType is stored in there
+      when sizeof(int) == 4:  # 32-bit only
+        headerAlignPad: array[8, byte]  # so addr(data) ≡ 8 (mod 16)
     else:
       alignment: int
 
