@@ -311,6 +311,22 @@ tests/newconfig/bar/mfoo.nims""".splitLines
       expected.add &"Hint: used config file '{b}' [Conf]\n"
     doAssert outp.endsWith expected, outp & "\n" & expected
 
+  block: # commandLineParams vs paramCount/paramStr in config.nies
+    let implicitCmd = fmt"{nim} check --hints:off tests/newconfig/cmdline/_/test.nim"
+    const implicitExp = """nims cmdline test:
+  scriptArgs=[]; (paramCount > 0)==true; rawHasNims=false; rawHasMain=true;
+  parseopt got args: 0
+"""
+    check execCmdEx(implicitCmd) == (implicitExp, 0)
+
+    let explicitCmd =
+      fmt"""{nim} e --hints:off tests/newconfig/cmdline/tcmdline.nims arg1 "arg2""""
+    const explicitExp = """nims cmdline test:
+  scriptArgs=[arg1, arg2]; (paramCount > 0)==true; rawHasNims=true; rawHasMain=false;
+  parseopt got args: 2
+"""
+    check execCmdEx(explicitCmd) == (explicitExp, 0)
+
   block: # bug #8219
     let file = "tests/newconfig/mconfigcheck.nims"
     let cmd = fmt"{nim} check --hints:off {file}"
