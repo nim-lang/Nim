@@ -48,7 +48,23 @@ when defined(gcOrc) or defined(gcArc) or defined(gcAtomicArc) or defined(gcYrc):
 
   when not declaredInScope(PageShift):
     include bitmasks
+else:
+  type
+    RefCount = int
 
+    Cell {.pure.} = object
+      refcount: RefCount  # the refcount and some flags
+      typ: PNimType
+
+      when trackAllocationSource:
+        filename: cstring
+        line: int
+      elif useCellIds:
+        id: int
+      elif defined(cpu32):
+        headerAlignPad: array[8, byte]  # so addr(data) ≡ 8 (mod 16)
+
+    PCell = ptr Cell
 
 type
   PPageDesc = ptr PageDesc

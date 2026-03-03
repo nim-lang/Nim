@@ -38,24 +38,6 @@ type
   PByte = ptr ByteArray
   PString = ptr string
 
-when not defined(nimV2):
-  type
-    RefCount = int
-
-    Cell {.pure.} = object
-      refcount: RefCount  # the refcount and some flags
-      typ: PNimType
-      when sizeof(int) == 4:  # 32-bit only
-        headerAlignPad: array[8, byte]  # so addr(data) ≡ 8 (mod 16)
-
-      when trackAllocationSource:
-        filename: cstring
-        line: int
-      when useCellIds:
-        id: int
-
-    PCell = ptr Cell
-
 when declared(IntsPerTrunk):
   discard
 else:
@@ -96,7 +78,7 @@ else:
     when not usesDestructors:
       include "system/cellsets"
     when not leakDetector and not useCellIds and not defined(nimV2):
-      sysAssert(sizeof(FreeCell) <= sizeof(Cell), "sizeof FreeCell")
+      sysAssert(sizeof(FreeCell) == sizeof(Cell), "sizeof FreeCell")
   when defined(gcRegions):
     # XXX due to bootstrapping reasons, we cannot use  compileOption("gc", "stack") here
     include "system/gc_regions"
