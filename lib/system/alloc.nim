@@ -856,7 +856,7 @@ proc bigChunkAlignOffset(alignment: int): int {.inline.} =
   if alignment == 0:
     result = 0
   else:
-    result = align(sizeof(BigChunk) + sizeof(Cell), alignment) - sizeof(BigChunk) - sizeof(Cell)
+    result = align(sizeof(BigChunk) + sizeof(FreeCell), alignment) - sizeof(BigChunk) - sizeof(FreeCell)
 
 proc rawAlloc(a: var MemRegion, requestedSize: int, alignment: int = 0): pointer =
   when defined(nimTypeNames):
