@@ -1,80 +1,80 @@
-# name: Packages CI
-# on:
-#   pull_request:
-#   push:
-#     branches:
-#       - 'devel'
-#       - 'version-2-2'
-#       - 'version-2-0'
-#       - 'version-1-6'
-#       - 'version-1-2'
+name: Packages CI
+on:
+  pull_request:
+  push:
+    branches:
+      - 'devel'
+      - 'version-2-2'
+      - 'version-2-0'
+      - 'version-1-6'
+      - 'version-1-2'
 
-# concurrency:
-#   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-#   cancel-in-progress: true
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
-# jobs:
-#   build:
-#     strategy:
-#       fail-fast: false
-#       matrix:
-#         os: [ubuntu-latest, macos-14]
-#         batch: ["allowed_failures", "0_3", "1_3", "2_3"] # list of `index_num`
-#         include:
-#           - os: ubuntu-latest
-#             cpu: amd64
-#           - os: macos-14
-#             cpu: arm64
-#     name: '${{ matrix.os }} (batch: ${{ matrix.batch }})'
-#     runs-on: ${{ matrix.os }}
-#     timeout-minutes: 60 # refs bug #18178
-#     env:
-#       NIM_TEST_PACKAGES: "1"
-#       NIM_TESTAMENT_BATCH: ${{ matrix.batch }}
-#     steps:
-#       - name: 'Checkout'
-#         uses: actions/checkout@v6
-#         with:
-#           fetch-depth: 2
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-14]
+        batch: ["allowed_failures", "0_3", "1_3", "2_3"] # list of `index_num`
+        include:
+          - os: ubuntu-latest
+            cpu: amd64
+          - os: macos-14
+            cpu: arm64
+    name: '${{ matrix.os }} (batch: ${{ matrix.batch }})'
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60 # refs bug #18178
+    env:
+      NIM_TEST_PACKAGES: "1"
+      NIM_TESTAMENT_BATCH: ${{ matrix.batch }}
+    steps:
+      - name: 'Checkout'
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 2
 
-#       - name: 'Install node.js'
-#         uses: actions/setup-node@v6
-#         with:
-#           node-version: 24
+      - name: 'Install node.js'
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
 
-#       - name: 'Install dependencies (Linux amd64)'
-#         if: runner.os == 'Linux' && matrix.cpu == 'amd64'
-#         run: |
-#           sudo apt-get update -qq
-#           DEBIAN_FRONTEND='noninteractive' \
-#             sudo apt-get install --no-install-recommends -yq \
-#               libcurl4-openssl-dev libgc-dev libsdl1.2-dev libsfml-dev \
-#               valgrind libc6-dbg libblas-dev liblapack-dev libpcre3 xorg-dev
-#       - name: 'Install dependencies (macOS)'
-#         if: runner.os == 'macOS'
-#         run: brew install boehmgc make sfml gtk+3
-#         # XXX can't find boehm and gtk on macos 13
-#       - name: 'Install dependencies (Windows)'
-#         if: runner.os == 'Windows'
-#         shell: bash
-#         run: |
-#           set -e
-#           . ci/funs.sh
-#           nimInternalInstallDepsWindows
-#           echo_run echo "${{ github.workspace }}/dist/mingw64/bin" >> "${GITHUB_PATH}"
+      - name: 'Install dependencies (Linux amd64)'
+        if: runner.os == 'Linux' && matrix.cpu == 'amd64'
+        run: |
+          sudo apt-get update -qq
+          DEBIAN_FRONTEND='noninteractive' \
+            sudo apt-get install --no-install-recommends -yq \
+              libcurl4-openssl-dev libgc-dev libsdl1.2-dev libsfml-dev \
+              valgrind libc6-dbg libblas-dev liblapack-dev libpcre3 xorg-dev
+      - name: 'Install dependencies (macOS)'
+        if: runner.os == 'macOS'
+        run: brew install boehmgc make sfml gtk+3
+        # XXX can't find boehm and gtk on macos 13
+      - name: 'Install dependencies (Windows)'
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          set -e
+          . ci/funs.sh
+          nimInternalInstallDepsWindows
+          echo_run echo "${{ github.workspace }}/dist/mingw64/bin" >> "${GITHUB_PATH}"
 
-#       - name: 'Add build binaries to PATH'
-#         shell: bash
-#         run: echo "${{ github.workspace }}/bin" >> "${GITHUB_PATH}"
+      - name: 'Add build binaries to PATH'
+        shell: bash
+        run: echo "${{ github.workspace }}/bin" >> "${GITHUB_PATH}"
 
-#       - name: 'System information'
-#         shell: bash
-#         run: . ci/funs.sh && nimCiSystemInfo
+      - name: 'System information'
+        shell: bash
+        run: . ci/funs.sh && nimCiSystemInfo
 
-#       - name: 'Build csourcesAny'
-#         shell: bash
-#         run: . ci/funs.sh && nimBuildCsourcesIfNeeded CC=gcc ucpu='${{ matrix.cpu }}'
+      - name: 'Build csourcesAny'
+        shell: bash
+        run: . ci/funs.sh && nimBuildCsourcesIfNeeded CC=gcc ucpu='${{ matrix.cpu }}'
 
-#       - name: 'koch, Run CI'
-#         shell: bash
-#         run: . ci/funs.sh && nimInternalBuildKochAndRunCI
+      - name: 'koch, Run CI'
+        shell: bash
+        run: . ci/funs.sh && nimInternalBuildKochAndRunCI
