@@ -169,3 +169,10 @@ for q in 0..100:
     topArr[i].m.di.b = q
     doAssert(cast[uint](addr topArr[i].m.di) mod uint(alignof(DeepInner)) == 0)
 
+
+block:
+  type U = object
+    d {.align: 16.}: int8
+  var e: seq[ref U]
+  for i in 0 ..< 10000: e.add(new U)
+  doAssert getTotalMem() <= 1052672 * 2
