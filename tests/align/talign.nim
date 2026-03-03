@@ -170,6 +170,8 @@ for q in 0..100:
     doAssert(cast[uint](addr topArr[i].m.di) mod uint(alignof(DeepInner)) == 0)
 
 
+GC_fullCollect()
+
 block:
   type U = object
     d {.align: 16.}: int8
