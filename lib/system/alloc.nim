@@ -104,6 +104,8 @@ type
       zeroField: int       # 0 means cell is not used (overlaid with typ field)
                           # 1 means cell is manually managed pointer
                           # otherwise a PNimType is stored in there
+      when sizeof(int) == 4:  # 32-bit only
+        headerAlignPad: array[8, byte]  # so addr(data) ≡ 8 (mod 16)
     else:
       alignment: int
 
@@ -854,7 +856,7 @@ proc bigChunkAlignOffset(alignment: int): int {.inline.} =
   if alignment == 0:
     result = 0
   else:
-    result = align(sizeof(BigChunk) + sizeof(Cell), alignment) - sizeof(BigChunk) - sizeof(Cell)
+    result = align(sizeof(BigChunk) + sizeof(FreeCell), alignment) - sizeof(BigChunk) - sizeof(FreeCell)
 
 proc rawAlloc(a: var MemRegion, requestedSize: int, alignment: int = 0): pointer =
   when defined(nimTypeNames):
