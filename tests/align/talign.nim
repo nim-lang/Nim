@@ -168,4 +168,3 @@ for q in 0..100:
     new topArr[i]
     topArr[i].m.di.b = q
     doAssert(cast[uint](addr topArr[i].m.di) mod uint(alignof(DeepInner)) == 0)
-

@@ -7906,7 +7906,7 @@ alignment requirement of the type are ignored.
   main()
   ```
 
-This pragma has no effect on the JS backend.
+This pragma has no effect on the JavaScript backend and may significantly increase memory usage with the `--mm:refc` option.
 
 
 Noalias pragma
