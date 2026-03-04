@@ -2127,7 +2127,7 @@ can be used in an `isolate` context:
     `=destroy`(dest.value)
   ```
 
-The `.sendable` pragma itself is an experimenal, unchecked, unsafe annotation. It is
+The `.sendable` pragma itself is an experimental, unchecked, unsafe annotation. It is
 currently only used by `Isolated[T]`.
 
 Virtual pragma
