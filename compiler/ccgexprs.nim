@@ -3820,7 +3820,7 @@ proc getDefaultValue(p: BProc; typ: PType; info: TLineInfo; result: var Builder)
     var tupleInit: StructInitializer
     let initKind = if containsOpaqueImportcField(t): siNamedStruct else: siOrderedStruct
     result.addStructInitializer(tupleInit, kind = initKind):
-      if p.vccAndC and t.isEmptyTupleType:
+      if p.vccAndC and validTupleTypeFields(t) == 0:
         result.addField(tupleInit, name = "dummy"):
           result.addIntValue(0)
       for i, a in t.ikids:
