@@ -453,6 +453,14 @@ proc getSeqPayloadType(m: BModule; t: PType): Rope =
   result = getTypeDescWeak(m, t, check, dkParam) & "_Content"
   #result = getTypeForward(m, t, hashType(t)) & "_Content"
 
+proc seqPayloadElem(m: BModule; t: PType): Snippet =
+  ## Returns the C type name for a seq's element as stored in the payload,
+  ## suitable for sizeof()/alignof(). Must use dkVar, not the dkParam default,
+  ## because reified openArrays (experimental views) differ: dkParam gives a
+  ## bare pointer (T*) while dkVar gives the two-word struct actually stored.
+  var check = initIntSet()
+  result = getTypeDescAux(m, t.elementType, check, dkVar)
+
 proc seqV2ContentType(m: BModule; t: PType; check: var IntSet) =
   let sig = hashType(t, m.config)
   let result = cacheGetType(m.typeCache, sig)
