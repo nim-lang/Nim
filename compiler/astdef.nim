@@ -329,7 +329,7 @@ type
     nfLazyType  # node has a lazy type
 
   TNodeFlags* = set[TNodeFlag]
-  TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 47)
+  TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 48)
     tfVarargs,        # procedure has C styled varargs
                       # tyArray type represeting a varargs list
     tfNoSideEffect,   # procedure type does not allow side effects

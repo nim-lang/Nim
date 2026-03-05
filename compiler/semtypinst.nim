@@ -9,7 +9,7 @@
 
 # This module does the instantiation of generic types.
 
-import std / tables
+import std / [intsets, tables]
 
 import ast, astalgo, msgs, types, magicsys, semdata, renderer, options,
   lineinfos, modulegraphs, layeredtable
@@ -79,6 +79,21 @@ type
     isReturnType*: bool
     owner*: PSym              # where this instantiation comes from
     recursionLimit: int
+    nodeUpdates*: seq[(PNode, PType)] # nodes need to be updated later.
+                                      # In following code, when instantiating `Bar[int]`,
+                                      # it is referenced in `when` statement before it is instantiated.
+                                      # ```nim
+                                      # type
+                                      #   Foo[T] = object
+                                      #     when T is ref:  # T is `Bar[int]`
+                                      #       x: int
+                                      #
+                                      #   Bar[T] = ref object
+                                      #     x: Foo[Bar[T]]
+                                      #
+                                      # var x: Bar[int]
+                                      # ```
+                                      # So reevaluate the statement after it is instantiated.
 
 proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType, isInstValue = false): PType
 proc replaceTypeVarsS(cl: var TReplTypeVars, s: PSym, t: PType): PSym
@@ -98,6 +113,29 @@ template checkMetaInvariants(cl: TReplTypeVars, t: PType) = # noop code
 proc replaceTypeVarsT*(cl: var TReplTypeVars, t: PType, isInstValue = false): PType =
   result = replaceTypeVarsTAux(cl, t, isInstValue)
   checkMetaInvariants(cl, result)
+
+proc findNotYetInstantiated(t: PType): PType =
+  result = nil
+
+  if t != nil:
+    if t.kind == tyGenericInst and t.last.kind == tyForward:
+      return t
+
+    for child in t.kids:
+      let r = findNotYetInstantiated(child)
+      if r != nil:
+        return r
+
+proc findNotYetInstantiated(n: PNode): PType =
+  result = nil
+  let r = findNotYetInstantiated(n.typ)
+  if r != nil:
+    return r
+
+  for child in n:
+    let r = findNotYetInstantiated(child)
+    if r != nil:
+      return r
 
 proc prepareNode*(cl: var TReplTypeVars, n: PNode): PNode =
   ## instantiates a given generic expression, not a type node
@@ -300,6 +338,7 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0; expectedType: PT
       result = newNodeI(nkRecList, n.info)
   of nkRecWhen:
     var branch: PNode = nil              # the branch to take
+    var unableToEval = false
     for i in 0..<n.len:
       var it = n[i]
       if it == nil: illFormedAst(n, cl.c.config)
@@ -308,6 +347,13 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0; expectedType: PT
         checkSonsLen(it, 2, cl.c.config)
         var cond = prepareNode(cl, it[0])
         if not cond.hasValuelessStatics:
+          let t = findNotYetInstantiated(cond)
+          if t != nil and branch == nil:
+            echo "cl.nodeUpdates.add"
+            debug(t)
+            cl.nodeUpdates.add (n, t)
+            unableToEval = true
+            break
           var e = cl.c.semConstExpr(cl.c, cond)
           if e.kind != nkIntLit:
             internalError(cl.c.config, e.info, "ReplaceTypeVarsN: when condition not a bool")
@@ -318,6 +364,8 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0; expectedType: PT
       else: illFormedAst(n, cl.c.config)
     if branch != nil:
       result = replaceTypeVarsN(cl, branch)
+    elif unableToEval:
+      result = n
     else:
       result = newNodeI(nkRecList, n.info)
   of nkStaticExpr:
@@ -420,6 +468,8 @@ proc instCopyType*(cl: var TReplTypeVars, t: PType): PType =
       result.destructor = nil
       result.sink = nil
 
+proc postInstantiation*(c: PContext; result: PType)
+
 proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   # tyGenericInvocation[A, tyGenericInvocation[A, B]]
   # is difficult to handle:
@@ -494,13 +544,15 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   if body.kind == tyError:
     return
 
+  # `result` can be accessed in following `replaceTypeVarsT`.
+  # Add tyForward son like `semTypeSection` do so that we can detect the body not yet instanced.
+  add(result, newType(tyForward, cl.c.idgen, nil))
+
   let bbody = last body
   var newbody = replaceTypeVarsT(cl, bbody, isInstValue = true)
   cl.skipTypedesc = oldSkipTypedesc
   newbody.flags = newbody.flags + (t.flags + body.flags - tfInstClearedFlags)
   result.flags = result.flags + newbody.flags - tfInstClearedFlags
-
-  setToPreviousLayer(cl.typeMap)
 
   # This is actually wrong: tgeneric_closure fails with this line:
   #newbody.callConv = body.callConv
@@ -509,7 +561,30 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   # handleGenericInvocation will handle the alias-to-alias-to-alias case
   if newbody.isGenericAlias: newbody = newbody.skipGenericAlias
 
-  rawAddSon(result, newbody)
+  #rawAddSon(result, newbody)
+  result[^1] = newbody
+  block:
+    var tmp: seq[PNode] = @[]
+    var i = 0
+    while i < cl.nodeUpdates.len:
+      if cl.nodeUpdates[i][1] == result:
+        tmp.add cl.nodeUpdates[i][0]
+        cl.nodeUpdates.del(i)
+      else:
+        inc i
+    let prevLen = cl.nodeUpdates.len
+    if prevLen != 0 or tmp.len != 0:
+      echo prevLen, ", ", tmp.len
+    for n in tmp:
+      echo "delayed update"
+      debug(result)
+      let n2 = cl.replaceTypeVarsN(n)
+      n[] = n2[]
+    assert cl.nodeUpdates.len == prevLen
+  if cl.nodeUpdates.len == 0:
+    postInstantiation(cl.c, result[^1])
+  setToPreviousLayer(cl.typeMap)
+
   checkPartialConstructedType(cl.c.config, cl.info, newbody)
   if not cl.allowMetaTypes:
     let dc = cl.c.graph.getAttachedOp(newbody, attachedDeepCopy)
@@ -779,26 +854,6 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType, isInstValue = false): 
             propagateToOwner(result, r)
       # bug #4677: Do not instantiate effect lists
       result.n = replaceTypeVarsN(cl, result.n, ord(result.kind==tyProc))
-      case result.kind
-      of tyArray:
-        let idx = result.indexType
-        internalAssert cl.c.config, idx.kind != tyStatic
-
-      of tyObject, tyTuple:
-        propagateFieldFlags(result, result.n)
-        if result.kind == tyObject and cl.c.computeRequiresInit(cl.c, result):
-          result.incl tfRequiresInit
-        if result.kind == tyTuple:
-          eraseTupleVoidFields(result)
-
-      of tyProc:
-        eraseVoidParams(result)
-        skipIntLiteralParams(result, cl.c.idgen)
-
-      of tyRange:
-        result.setIndexType result.indexType.skipTypes({tyStatic, tyDistinct})
-
-      else: discard
     else:
       # If this type doesn't refer to a generic type we may still want to run it
       # trough replaceObjBranches in order to resolve any pending nkRecWhen nodes
@@ -892,3 +947,48 @@ proc prepareMetatypeForSigmatch*(p: PContext, pt: LayeredIdTable, info: TLineInf
 template generateTypeInstance*(p: PContext, pt: LayeredIdTable, arg: PNode,
                                t: PType): untyped =
   generateTypeInstance(p, pt, arg.info, t)
+
+proc postInstantiationAux(c: PContext; result: PType; marker: var IntSet)
+
+proc postInstantiationNAux(c: PContext; n: PNode; marker: var IntSet) =
+  case n.kind
+  of nkSym:
+    postInstantiationAux(c, n.typ, marker)
+  of nkRecCase, nkRecList:
+    for child in n:
+      postInstantiationNAux(c, child, marker)
+  else: discard
+
+proc postInstantiationAux(c: PContext; result: PType; marker: var IntSet) =
+  # Anything need to be done after `t` is instantiated.
+  # A type returned from `replaceTypeVarsTAux` can be not fully instantiated.
+  # Read the comment of `TReplTypeVars.nodeUpdates`.
+
+  if result != nil and not marker.containsOrIncl(result.id):
+    case result.kind:
+    of tyGenericInst:
+      postInstantiationAux(c, result.last, marker)
+    of tyPtr, tyRef:
+      postInstantiationAux(c, result.elementType, marker)
+    of tyArray:
+      let idx = result.indexType
+      internalAssert c.config, idx.kind != tyStatic
+    of tyObject, tyTuple:
+      propagateFieldFlags(result, result.n)
+      if result.kind == tyObject and c.computeRequiresInit(c, result):
+        result.incl tfRequiresInit
+      if result.kind == tyTuple:
+        eraseTupleVoidFields(result)
+
+      if result.n != nil:
+        postInstantiationNAux(c, result.n, marker)
+    of tyProc:
+      eraseVoidParams(result)
+      skipIntLiteralParams(result, c.idgen)
+    of tyRange:
+      result.setIndexType result.indexType.skipTypes({tyStatic, tyDistinct})
+    else: discard
+
+proc postInstantiation*(c: PContext; result: PType) =
+  var marker = initIntSet()
+  postInstantiationAux(c, result, marker)
