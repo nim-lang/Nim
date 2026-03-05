@@ -216,6 +216,8 @@ proc genOptAsgnTuple(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
       flags
   let t = skipTypes(dest.t, abstractInst).getUniqueType()
   for i, t in t.ikids:
+    # Do not produce code for void types
+    if isEmptyType(t): continue
     let field = "Field$1" % [i.rope]
     genAssignment(p, optAsgnLoc(dest, t, field),
                      optAsgnLoc(src, t, field), newflags)
@@ -3207,6 +3209,8 @@ proc genTupleConstr(p: BProc, n: PNode, d: var TLoc) =
     for i in 0..<n.len:
       var it = n[i]
       if it.kind == nkExprColonExpr: it = it[1]
+      # Do not produce code for void types
+      if it.typ != nil and isEmptyType(it.typ): continue
       rec = initLoc(locExpr, it, dest[].storage)
       rec.snippet = dotField(rdLoc(dest[]), "Field" & rope(i))
       rec.flags.incl(lfEnforceDeref)
@@ -3818,6 +3822,7 @@ proc containsOpaqueImportcField(typ: PType): bool =
       return true
   of tyTuple:
     for i, a in t.ikids:
+      if isEmptyType(a): continue
       if containsOpaqueImportcField(a):
         return true
   of tyArray:
@@ -3867,10 +3872,12 @@ proc getDefaultValue(p: BProc; typ: PType; info: TLineInfo; result: var Builder)
     var tupleInit: StructInitializer
     let initKind = if containsOpaqueImportcField(t): siNamedStruct else: siOrderedStruct
     result.addStructInitializer(tupleInit, kind = initKind):
-      if p.vccAndC and t.isEmptyTupleType:
+      if p.vccAndC and validTupleTypeFields(t) == 0:
         result.addField(tupleInit, name = "dummy"):
           result.addIntValue(0)
       for i, a in t.ikids:
+        # Do not produce code for void types
+        if isEmptyType(a): continue
         let elemTyp = skipTypes(a, abstractRange+{tyOwned}-{tyTypeDesc})
         if not isOpaqueImportcType(elemTyp):
           result.addField(tupleInit, name = "Field" & $i):
@@ -4045,6 +4052,8 @@ proc genConstTuple(p: BProc, n: PNode; isConst: bool; tup: PType; result: var Bu
       var it = n[i]
       if it.kind == nkExprColonExpr:
         it = it[1]
+      # Do not produce code for void types
+      if isEmptyType(tup[i]): continue
       result.addField(tupleInit, name = "Field" & $i):
         genBracedInit(p, it, isConst, tup[i], result)
 
