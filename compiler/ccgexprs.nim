@@ -1598,8 +1598,8 @@ proc genSeqElemAppendV2(p: BProc, e: PNode, d: var TLoc) =
   var a = initLocExpr(p, e[1])
   var b = initLocExpr(p, e[2])
   let ra = rdLoc(a)
-  let et = getTypeDesc(p.module, seqtype.elementType)
   let pt = getSeqPayloadType(p.module, seqtype)
+  let pe = seqPayloadElem(p.module, seqtype)
   var tmpL = getIntTemp(p)
   p.s(cpsStmts).addAssignment(tmpL.snippet, dotField(ra, "len"))
   let pField = dotField(ra, "p")
@@ -1615,8 +1615,8 @@ proc genSeqElemAppendV2(p: BProc, e: PNode, d: var TLoc) =
           tmpL.snippet,
           pField,
           cIntValue(1),
-          cSizeof(et),
-          cAlignof(et))
+          cSizeof(pe),
+          cAlignof(pe))
   p.s(cpsStmts).addFieldAssignment(ra, "len",
     cOp(Add, NimInt, tmpL.snippet, cIntValue(1)))
   var dest = initLoc(locExpr, e[2], OnHeap)
@@ -1758,15 +1758,15 @@ proc genNewSeq(p: BProc, e: PNode) =
     let seqtype = skipTypes(e[1].typ, abstractVarRange)
     let ra = a.rdLoc
     let rb = b.rdLoc
-    let et = getTypeDesc(p.module, seqtype.elementType)
     let pt = getSeqPayloadType(p.module, seqtype)
+    let pe = seqPayloadElem(p.module, seqtype)
     p.s(cpsStmts).addFieldAssignment(ra, "len", rb)
     p.s(cpsStmts).addFieldAssignmentWithValue(ra, "p"):
       p.s(cpsStmts).addCast(ptrType(pt)):
         p.s(cpsStmts).addCall(cgsymValue(p.module, "newSeqPayload"),
           rb,
-          cSizeof(et),
-          cAlignof(et))
+          cSizeof(pe),
+          cAlignof(pe))
   else:
     let lenIsZero = e[2].kind == nkIntLit and e[2].intVal == 0
     genNewSeqAux(p, a, b.rdLoc, lenIsZero)
@@ -1779,15 +1779,15 @@ proc genNewSeqOfCap(p: BProc; e: PNode; d: var TLoc) =
     if d.k == locNone: d = getTemp(p, e.typ, needsInit=false)
     let rd = d.rdLoc
     let ra = a.rdLoc
-    let et = getTypeDesc(p.module, seqtype.elementType)
     let pt = getSeqPayloadType(p.module, seqtype)
+    let pe = seqPayloadElem(p.module, seqtype)
     p.s(cpsStmts).addFieldAssignment(rd, "len", cIntValue(0))
     p.s(cpsStmts).addFieldAssignmentWithValue(rd, "p"):
       p.s(cpsStmts).addCast(ptrType(pt)):
         p.s(cpsStmts).addCall(cgsymValue(p.module, "newSeqPayloadUninit"),
           ra,
-          cSizeof(et),
-          cAlignof(et))
+          cSizeof(pe),
+          cAlignof(pe))
   else:
     if d.k == locNone: d = getTemp(p, e.typ, needsInit=false) # bug #22560
     let ra = a.rdLoc
@@ -1923,15 +1923,15 @@ proc genSeqConstr(p: BProc, n: PNode, d: var TLoc) =
   if optSeqDestructors in p.config.globalOptions:
     let seqtype = n.typ
     let rd = rdLoc dest[]
-    let et = getTypeDesc(p.module, seqtype.elementType)
     let pt = getSeqPayloadType(p.module, seqtype)
+    let pe = seqPayloadElem(p.module, seqtype)
     p.s(cpsStmts).addFieldAssignment(rd, "len", lit)
     p.s(cpsStmts).addFieldAssignmentWithValue(rd, "p"):
       p.s(cpsStmts).addCast(ptrType(pt)):
         p.s(cpsStmts).addCall(cgsymValue(p.module, "newSeqPayload"),
           lit,
-          cSizeof(et),
-          cAlignof(et))
+          cSizeof(pe),
+          cAlignof(pe))
   else:
     # generate call to newSeq before adding the elements per hand:
     genNewSeqAux(p, dest[], lit, n.len == 0)
@@ -1964,15 +1964,15 @@ proc genArrToSeq(p: BProc, n: PNode, d: var TLoc) =
     let seqtype = n.typ
     let rd = rdLoc d
     let valL = cIntValue(L)
-    let et = getTypeDesc(p.module, seqtype.elementType)
     let pt = getSeqPayloadType(p.module, seqtype)
+    let pe = seqPayloadElem(p.module, seqtype)
     p.s(cpsStmts).addFieldAssignment(rd, "len", valL)
     p.s(cpsStmts).addFieldAssignmentWithValue(rd, "p"):
       p.s(cpsStmts).addCast(ptrType(pt)):
         p.s(cpsStmts).addCall(cgsymValue(p.module, "newSeqPayload"),
           valL,
-          cSizeof(et),
-          cAlignof(et))
+          cSizeof(pe),
+          cAlignof(pe))
   else:
     let lit = cIntLiteral(L)
     genNewSeqAux(p, d, lit, L == 0)
