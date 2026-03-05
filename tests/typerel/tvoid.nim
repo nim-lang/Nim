@@ -4,6 +4,7 @@ empty
 he, no return type;
 abc a string
 ha'''
+  target: "c js"
 """
 
 proc ReturnT[T](x: T): T =
@@ -96,3 +97,7 @@ block: # typeof(stmt)
   block:
     template bad2 = echo (nonexistent; discard)
     doAssert not compiles(bad2())
+
+block:
+  discard default(tuple[b: void])
+  discard default((void,))

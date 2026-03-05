@@ -2004,8 +2004,12 @@ proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
     if indirect: result = "[$1]" % [result]
   of tyTuple:
     result = rope("{")
+    var first = true
     for i in 0..<t.len:
-      if i > 0: result.add(", ")
+      # Do not produce code for void types
+      if isEmptyType(t[i]): continue
+      if not first: result.add(", ")
+      first = false
       result.addf("Field$1: $2", [i.rope,
             createVar(p, t[i], false)])
     result.add("}")

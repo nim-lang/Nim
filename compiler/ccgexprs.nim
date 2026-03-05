@@ -237,6 +237,8 @@ proc genOptAsgnTuple(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
       flags
   let t = skipTypes(dest.t, abstractInst).getUniqueType()
   for i, t in t.ikids:
+    # Do not produce code for void types
+    if isEmptyType(t): continue
     let field = "Field$1" % [i.rope]
     genAssignment(p, optAsgnLoc(dest, t, field),
                      optAsgnLoc(src, t, field), newflags)
@@ -2735,6 +2737,8 @@ proc genTupleConstr(p: BProc, n: PNode, d: var TLoc) =
     for i in 0..<n.len:
       var it = n[i]
       if it.kind == nkExprColonExpr: it = it[1]
+      # Do not produce code for void types
+      if it.typ != nil and isEmptyType(it.typ): continue
       rec = initLoc(locExpr, it, dest[].storage)
       rec.snippet = "$1.Field$2" % [rdLoc(dest[]), rope(i)]
       rec.flags.incl(lfEnforceDeref)
@@ -3260,6 +3264,8 @@ proc getDefaultValue(p: BProc; typ: PType; info: TLineInfo; result: var Rope) =
     if p.vccAndC and t.isEmptyTupleType:
       result.add "0"
     for i, a in t.ikids:
+      # Do not produce code for void types
+      if isEmptyType(a): continue
       if i > 0: result.add ", "
       getDefaultValue(p, a, info, result)
     result.add "}"
@@ -3391,6 +3397,8 @@ proc genConstTuple(p: BProc, n: PNode; isConst: bool; tup: PType; result: var Ro
   if p.vccAndC and n.len == 0:
     result.add "0"
   for i in 0..<n.len:
+    # Do not produce code for void types
+    if isEmptyType(tup[i]): continue
     let it = n[i]
     if i > 0: result.add ",\n"
     if it.kind == nkExprColonExpr: genBracedInit(p, it[1], isConst, tup[i], result)

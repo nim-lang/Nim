@@ -811,6 +811,8 @@ proc getTupleDesc(m: BModule; typ: PType, name: Rope,
   result = newBuilder("")
   result.addStruct(m, typ, name, ""):
     for i, a in typ.ikids:
+      # Do not produce code for void types
+      if isEmptyType(a): continue
       result.addField(
         name = "Field" & $i,
         typ = getTypeDescAux(m, a, check, dkField))
@@ -1423,25 +1425,36 @@ proc genObjectInfo(m: BModule; typ, origType: PType, name: Rope; info: TLineInfo
     t.flags.incl tfObjHasKids
     t = t.baseClass
 
+proc validTupleTypeFields(t: PType): int =
+  # we want to treat tuples with only void fields as empty, so we need to exclude void types here:
+  result = 0
+  for a in t.kids:
+    if not isEmptyType(a): inc result
+
 proc genTupleInfo(m: BModule; typ, origType: PType, name: Rope; info: TLineInfo) =
   genTypeInfoAuxBase(m, typ, typ, name, rope("0"), info)
   var expr = getNimNode(m)
-  if not typ.isEmptyTupleType:
-    var tmp = getTempName(m) & "_" & $typ.kidsLen
-    genTNimNodeArray(m, tmp, rope(typ.kidsLen))
+  let nonVoidKids = validTupleTypeFields(typ)
+  if nonVoidKids > 0:
+    var tmp = getTempName(m) & "_" & $nonVoidKids
+    genTNimNodeArray(m, tmp, rope(nonVoidKids))
+    var j = 0
     for i, a in typ.ikids:
+      # Do not produce code for void types
+      if isEmptyType(a): continue
       var tmp2 = getNimNode(m)
-      m.s[cfsTypeInit3].addf("$1[$2] = &$3;$n", [tmp, rope(i), tmp2])
+      m.s[cfsTypeInit3].addf("$1[$2] = &$3;$n", [tmp, rope(j), tmp2])
       m.s[cfsTypeInit3].addf("$1.kind = 1;$n" &
           "$1.offset = offsetof($2, Field$3);$n" &
           "$1.typ = $4;$n" &
           "$1.name = \"Field$3\";$n",
            [tmp2, getTypeDesc(m, origType, dkVar), rope(i), genTypeInfoV1(m, a, info)])
+      inc j
     m.s[cfsTypeInit3].addf("$1.len = $2; $1.kind = 2; $1.sons = &$3[0];$n",
-         [expr, rope(typ.kidsLen), tmp])
+         [expr, rope(nonVoidKids), tmp])
   else:
     m.s[cfsTypeInit3].addf("$1.len = $2; $1.kind = 2;$n",
-         [expr, rope(typ.kidsLen)])
+         [expr, rope("0")])
   m.s[cfsTypeInit3].addf("$1.node = &$2;$n", [tiNameForHcr(m, name), expr])
 
 proc genEnumInfo(m: BModule; typ: PType, name: Rope; info: TLineInfo) =
