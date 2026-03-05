@@ -1596,10 +1596,19 @@ proc genSeqElemAppendV2(p: BProc, e: PNode, d: var TLoc) =
   #   s.p->data[oldLen] = x;  // direct assignment, no function call overhead
   let seqtype = skipTypes(e[1].typ, abstractVarRange)
   var a = initLocExpr(p, e[1])
-  var b = initLocExpr(p, e[2])
-  let ra = rdLoc(a)
   let pt = getSeqPayloadType(p.module, seqtype)
   let pe = seqPayloadElem(p.module, seqtype)
+  # Capture a stable pointer to the seq BEFORE evaluating the element (e[2]).
+  # Evaluating e[2] may emit move semantics (eqwasMoved) that nil a variable
+  # through which e[1]'s snippet is accessed (e.g. a closure env pointer).
+  inc(p.labels)
+  let seqPtrName = "T" & rope(p.labels) & "_"
+  p.s(cpsLocals).addVar(kind = Local, name = seqPtrName,
+                        typ = ptrType(getTypeDesc(p.module, seqtype)))
+  p.s(cpsStmts).addAssignment(seqPtrName, cAddr(rdLoc(a)))
+  var b = initLocExpr(p, e[2])
+  # All seq operations now go through the stable seqPtrName pointer.
+  let ra = wrapPar(cDeref(seqPtrName))
   var tmpL = getIntTemp(p)
   p.s(cpsStmts).addAssignment(tmpL.snippet, dotField(ra, "len"))
   let pField = dotField(ra, "p")
