@@ -1018,7 +1018,7 @@ proc outlineNode(graph: ModuleGraph, n: PNode, endInfo: TLineInfo, infoPairs: Su
   if n.kind == nkSym and n.sym.checkSymbol(n.info):
     graph.suggestResult(n.sym, n.sym.info, ideOutline, endInfo.line, endInfo.col)
     return true
-  elif n.kind == nkIdent:
+  elif n.kind in {nkIdent, nkAccQuoted}:
     let symData = findByTLineInfo(n.info, infoPairs)
     if symData != nil and symData.sym.checkSymbol(symData.info):
        let sym = symData.sym
@@ -1028,7 +1028,7 @@ proc outlineNode(graph: ModuleGraph, n: PNode, endInfo: TLineInfo, infoPairs: Su
 proc handleIdentOrSym(graph: ModuleGraph, n: PNode, endInfo: TLineInfo, infoPairs: SuggestFileSymbolDatabase): bool =
   result = false
   for child in n:
-    if child.kind in {nkIdent, nkSym}:
+    if child.kind in {nkIdent, nkAccQuoted, nkSym}:
       if graph.outlineNode(child, endInfo, infoPairs):
         return true
     elif child.kind == nkPostfix:
