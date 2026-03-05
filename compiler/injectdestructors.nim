@@ -457,10 +457,10 @@ proc isCapturedVar(n: PNode): bool =
   else: result = false
 
 proc passCopyToSink(n: PNode; c: var Con; s: var Scope): PNode =
-  result = newNodeIT(nkStmtListExpr, n.info, n.typ)
   let nTyp = n.typ.skipTypes(tyUserTypeClasses)
-  let tmp = c.getTemp(s, nTyp, n.info)
   if hasDestructorOrAsgn(c, nTyp):
+    result = newNodeIT(nkStmtListExpr, n.info, n.typ)
+    let tmp = c.getTemp(s, nTyp, n.info)
     let typ = nTyp.skipTypes({tyGenericInst, tyAlias, tySink})
     let op = getAttachedOp(c.graph, typ, attachedDup)
     if op != nil and tfHasOwned notin typ.flags:
@@ -494,15 +494,15 @@ proc passCopyToSink(n: PNode; c: var Con; s: var Scope): PNode =
     if c.inEnsureMove > 0:
       localError(c.graph.config, n.info, errFailedMove,
         ("cannot move '$1', passing '$1' to a sink parameter introduces an implicit copy") % $n)
+    # Since we know somebody will take over the produced copy, there is
+    # no need to destroy it.
+    result.add tmp
   else:
     if c.graph.config.selectedGC in {gcArc, gcOrc, gcYrc, gcAtomicArc}:
       assert(not containsManagedMemory(nTyp))
     if nTyp.skipTypes(abstractInst).kind in {tyOpenArray, tyVarargs}:
       localError(c.graph.config, n.info, "cannot create an implicit openArray copy to be passed to a sink parameter")
-    result.add newTree(nkAsgn, tmp, p(n, c, s, normal))
-  # Since we know somebody will take over the produced copy, there is
-  # no need to destroy it.
-  result.add tmp
+    result = p(n, c, s, normal)
 
 proc isDangerousSeq(t: PType): bool {.inline.} =
   let t = t.skipTypes(abstractInst)
