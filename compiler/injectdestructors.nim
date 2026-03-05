@@ -72,9 +72,11 @@ proc hasDestructor(c: Con; t: PType): bool {.inline.} =
     if not result and c.graph.config.selectedGC in {gcArc, gcOrc, gcYrc, gcAtomicArc}:
       assert(not containsGarbageCollectedRef(t))
 
-proc getTemp(c: var Con; s: var Scope; typ: PType; info: TLineInfo): PNode =
+proc getTemp(c: var Con; s: var Scope; typ: PType; info: TLineInfo; needsInit: bool): PNode =
   let sym = newSym(skTemp, getIdent(c.graph.cache, ":tmpD"), c.idgen, c.owner, info)
   sym.typ = typ
+  if not needsInit:
+    sym.incl sfNoInit
   s.vars.add(sym)
   result = newSymNode(sym)
 
@@ -302,7 +304,7 @@ proc genSink(c: var Con; s: var Scope; dest, ri: PNode; flags: set[MoveOrCopyFla
       if deepAliases(dest, ri):
         # consider: x = x + y, it is wrong to destroy the destination first!
         # tmp to support self assignments
-        let tmp = c.getTemp(s, dest.typ, dest.info)
+        let tmp = c.getTemp(s, dest.typ, dest.info, needsInit = false)
         result = newTree(nkStmtList, newTree(nkFastAsgn, tmp, dest), newTree(nkFastAsgn, dest, ri),
                          c.genDestroy(tmp))
       else:
@@ -371,7 +373,7 @@ proc genDiscriminantAsgn(c: var Con; s: var Scope; n: PNode): PNode =
   # but fields within active case branch might need destruction
 
   # tmp to support self assignments
-  let tmp = c.getTemp(s, n[1].typ, n.info)
+  let tmp = c.getTemp(s, n[1].typ, n.info, needsInit = false)
 
   result = newTree(nkStmtList)
   result.add newTree(nkFastAsgn, tmp, p(n[1], c, s, consumed))
@@ -457,49 +459,50 @@ proc isCapturedVar(n: PNode): bool =
   else: result = false
 
 proc passCopyToSink(n: PNode; c: var Con; s: var Scope): PNode =
-  result = newNodeIT(nkStmtListExpr, n.info, n.typ)
   let nTyp = n.typ.skipTypes(tyUserTypeClasses)
-  let tmp = c.getTemp(s, nTyp, n.info)
-  if hasDestructorOrAsgn(c, nTyp):
-    let typ = nTyp.skipTypes({tyGenericInst, tyAlias, tySink})
-    let op = getAttachedOp(c.graph, typ, attachedDup)
-    if op != nil and tfHasOwned notin typ.flags:
-      if sfError in op.flags:
-        c.checkForErrorPragma(nTyp, n, "=dup")
-      else:
-        let copyOp = getAttachedOp(c.graph, typ, attachedAsgn)
-        if copyOp != nil and sfError in copyOp.flags and
-           sfOverridden notin op.flags:
-          c.checkForErrorPragma(nTyp, n, "=dup", inferredFromCopy = true)
-
-      let src = p(n, c, s, normal)
-      var newCall = newTreeIT(nkCall, src.info, src.typ,
-            newSymNode(op),
-            src)
-      c.finishCopy(newCall, n, {}, isFromSink = true)
-      result.add newTreeI(nkFastAsgn,
-          src.info, tmp,
-          newCall
-      )
-    else:
-      result.add c.genWasMoved(tmp)
-      var m = c.genCopy(tmp, n, {})
-      m.add p(n, c, s, normal)
-      c.finishCopy(m, n, {}, isFromSink = true)
-      result.add m
-    if isLValue(n) and not isCapturedVar(n) and nTyp.skipTypes(abstractInst).kind != tyRef and c.inSpawn == 0:
-      message(c.graph.config, n.info, hintPerformance,
-        ("passing '$1' to a sink parameter introduces an implicit copy; " &
-        "if possible, rearrange your program's control flow to prevent it") % $n)
-    if c.inEnsureMove > 0:
-      localError(c.graph.config, n.info, errFailedMove,
-        ("cannot move '$1', passing '$1' to a sink parameter introduces an implicit copy") % $n)
-  else:
+  if not hasDestructorOrAsgn(c, nTyp):
+    # Non-managed (plain-old-data) type: no ownership transfer is needed.
+    # Return the expression directly — no temp required.
     if c.graph.config.selectedGC in {gcArc, gcOrc, gcYrc, gcAtomicArc}:
       assert(not containsManagedMemory(nTyp))
     if nTyp.skipTypes(abstractInst).kind in {tyOpenArray, tyVarargs}:
       localError(c.graph.config, n.info, "cannot create an implicit openArray copy to be passed to a sink parameter")
-    result.add newTree(nkAsgn, tmp, p(n, c, s, normal))
+    return p(n, c, s, normal)
+  result = newNodeIT(nkStmtListExpr, n.info, n.typ)
+  let tmp = c.getTemp(s, nTyp, n.info, needsInit = false)
+  let typ = nTyp.skipTypes({tyGenericInst, tyAlias, tySink})
+  let op = getAttachedOp(c.graph, typ, attachedDup)
+  if op != nil and tfHasOwned notin typ.flags:
+    if sfError in op.flags:
+      c.checkForErrorPragma(nTyp, n, "=dup")
+    else:
+      let copyOp = getAttachedOp(c.graph, typ, attachedAsgn)
+      if copyOp != nil and sfError in copyOp.flags and
+         sfOverridden notin op.flags:
+        c.checkForErrorPragma(nTyp, n, "=dup", inferredFromCopy = true)
+
+    let src = p(n, c, s, normal)
+    var newCall = newTreeIT(nkCall, src.info, src.typ,
+          newSymNode(op),
+          src)
+    c.finishCopy(newCall, n, {}, isFromSink = true)
+    result.add newTreeI(nkFastAsgn,
+        src.info, tmp,
+        newCall
+    )
+  else:
+    result.add c.genWasMoved(tmp)
+    var m = c.genCopy(tmp, n, {})
+    m.add p(n, c, s, normal)
+    c.finishCopy(m, n, {}, isFromSink = true)
+    result.add m
+  if isLValue(n) and not isCapturedVar(n) and nTyp.skipTypes(abstractInst).kind != tyRef and c.inSpawn == 0:
+    message(c.graph.config, n.info, hintPerformance,
+      ("passing '$1' to a sink parameter introduces an implicit copy; " &
+      "if possible, rearrange your program's control flow to prevent it") % $n)
+  if c.inEnsureMove > 0:
+    localError(c.graph.config, n.info, errFailedMove,
+      ("cannot move '$1', passing '$1' to a sink parameter introduces an implicit copy") % $n)
   # Since we know somebody will take over the produced copy, there is
   # no need to destroy it.
   result.add tmp
@@ -530,7 +533,7 @@ proc ensureDestruction(arg, orig: PNode; c: var Con; s: var Scope): PNode =
     # produce temp creation for (fn, env). But we need to move 'env'?
     # This was already done in the sink parameter handling logic.
     result = newNodeIT(nkStmtListExpr, arg.info, arg.typ)
-    let tmp = c.getTemp(s, arg.typ, arg.info)
+    let tmp = c.getTemp(s, arg.typ, arg.info, true)
     result.add c.genSink(s, tmp, arg, {IsDecl})
     result.add tmp
     s.final.add c.genDestroy(tmp)
@@ -609,7 +612,7 @@ template processScopeExpr(c: var Con; s: var Scope; ret: PNode, processCall: unt
   # There is a possibility to do this check: s.wasMoved.len > 0 or s.final.len > 0
   # later and use it to eliminate the temporary when theres no need for it, but its
   # tricky because you would have to intercept moveOrCopy at a certain point
-  let tmp = c.getTemp(s.parent[], ret.typ, ret.info)
+  let tmp = c.getTemp(s.parent[], ret.typ, ret.info, needsInit = true)
   tmp.sym.flags = tmpFlags
   let cpy = if hasDestructor(c, ret.typ) and
                 ret.typ.kind notin {tyOpenArray, tyVarargs}:
@@ -770,7 +773,7 @@ proc pRaiseStmt(n: PNode, c: var Con; s: var Scope): PNode =
       result = copyNode(n)
       result.add call
     else:
-      let tmp = c.getTemp(s, n[0].typ, n.info)
+      let tmp = c.getTemp(s, n[0].typ, n.info, needsInit = true)
       var m = c.genCopyNoCheck(tmp, n[0], attachedAsgn)
       m.add p(n[0], c, s, normal)
       c.finishCopy(m, n[0], {}, isFromSink = false)
@@ -1154,7 +1157,7 @@ proc ownsData(c: var Con; s: var Scope; orig: PNode; flags: set[MoveOrCopyFlag])
       break
   if n.kind in nkCallKinds and n.typ != nil and hasDestructor(c, n.typ):
     result = newNodeIT(nkStmtListExpr, orig.info, orig.typ)
-    let tmp = c.getTemp(s, n.typ, n.info)
+    let tmp = c.getTemp(s, n.typ, n.info, needsInit = true)
     tmp.sym.flagsImpl.incl sfSingleUsedTemp
     result.add newTree(nkFastAsgn, tmp, copyTree(n))
     s.final.add c.genDestroy(tmp)
