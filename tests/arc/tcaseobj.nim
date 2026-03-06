@@ -377,3 +377,16 @@ block:
   var rangeCrash = RangeCrash()
   {.cast(uncheckedAssign).}:
     rangeCrash.x = 5
+
+block:
+  type Discrim = distinct uint8
+  type DistinctCrash = object
+    case x: Discrim
+    of Discrim(0)..Discrim(2):
+      a: string
+    else:
+      b: string
+
+  var distinctCrash = DistinctCrash()
+  {.cast(uncheckedAssign).}:
+    distinctCrash.x = Discrim(5)
