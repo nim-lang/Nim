@@ -1004,6 +1004,13 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
         result = moveOrCopy(p(n[0], c, s, mode), n[1], c, s, flags)
       elif isDiscriminantField(n[0]):
         result = c.genDiscriminantAsgn(s, n)
+      elif n[1].kind in {nkStmtListExpr, nkBlockExpr, nkIfExpr, nkCaseStmt, nkTryStmt, nkPragmaBlock}:
+        # Distribute the assignment into each branch to avoid
+        # creating pointless temporaries for expression-based control flow.
+        let dest = p(n[0], c, s, mode)
+        template process(child, s): untyped =
+          newTree(n.kind, dest, p(child, c, s, consumed))
+        handleNestedTempl(n[1], process, willProduceStmt = true)
       else:
         result = copyNode(n)
         result.add p(n[0], c, s, mode)
