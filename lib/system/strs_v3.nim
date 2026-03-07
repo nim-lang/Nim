@@ -74,7 +74,7 @@ template guts(s: SmallString): (int, ptr UncheckedArray[char]) =
   else:
     (slen, cast[ptr UncheckedArray[char]](addr s.payload[0]))
 
-proc `[]`(s: SmallString; i: int): char {.inline.} =
+proc nimStrAtV3*(s: var SmallString; i: int): char {.compilerproc, inline.} =
   let slen = int s.slen
   if slen <= PayloadSize:
     # unchecked: when i >= 7 we store into the `more` overlay
@@ -84,7 +84,7 @@ proc `[]`(s: SmallString; i: int): char {.inline.} =
   else:
     result = s.more.data[i]
 
-proc `[]=`(s: var SmallString; i: int; c: char) =
+proc nimStrPutV3*(s: var SmallString; i: int; c: char) {.compilerproc, inline.} =
   let slen = int s.slen
   if slen <= PayloadSize:
     # unchecked: when i >= 7 we store into the `more` overlay
@@ -96,7 +96,7 @@ proc `[]=`(s: var SmallString; i: int; c: char) =
     if i < AlwaysAvail:
       s.payload[i] = c
 
-proc cmp*(a, b: SmallString): int =
+proc cmp(a, b: SmallString): int =
   # Use slen directly for prefix length: for short/medium it is the real length,
   # for long it is the sentinel (> AlwaysAvail), so min(..., AlwaysAvail) still gives 7.
   # This avoids dereferencing `more` before the prefix comparison.
@@ -116,7 +116,7 @@ proc cmp*(a, b: SmallString): int =
   if result == 0:
     result = la - lb
 
-proc `==`*(a, b: SmallString): bool =
+proc `==`(a, b: SmallString): bool =
   if a.slen != b.slen: return false
   # slen equal: for short/medium this means equal lengths; for long (both sentinel) we still need fullLen.
   let slen = int(a.slen)
@@ -133,7 +133,7 @@ proc `==`*(a, b: SmallString): bool =
   if la != b.more.fullLen: return false
   cmpMem(addr a.more.data[pfxLen], addr b.more.data[pfxLen], la - pfxLen) == 0
 
-proc `<=`*(a, b: SmallString): bool {.inline.} = cmp(a, b) <= 0
+proc `<=`(a, b: SmallString): bool {.inline.} = cmp(a, b) <= 0
 
 proc continuesWith*(s, sub: SmallString; start: int): bool =
   if start < 0: return false
@@ -158,7 +158,7 @@ proc startsWith*(s, sub: SmallString): bool {.inline.} = continuesWith(s, sub, 0
 proc endsWith*(s, sub: SmallString): bool {.inline.} = continuesWith(s, sub, s.len - sub.len)
 
 
-proc add*(s: var SmallString; c: char) =
+proc add(s: var SmallString; c: char) =
   let slen = int(s.slen)
   if slen <= PayloadSize:
     let newLen = slen + 1
@@ -187,7 +187,7 @@ proc add*(s: var SmallString; c: char) =
     s.more.data[l + 1] = '\0'
     # l >= PayloadSize > AlwaysAvail, so prefix is unaffected
 
-proc add*(s: var SmallString; t: SmallString) =
+proc add(s: var SmallString; t: SmallString) =
   let slen = int(s.slen)
   let (tl, tp) = t.guts  # fetch t's guts before any mutation (aliasing safety)
   if tl == 0: return
@@ -222,11 +222,6 @@ proc add*(s: var SmallString; t: SmallString) =
     copyMem(addr s.more.data[sl], tp, tl)
     s.more.data[newLen] = '\0'
     # sl >= PayloadSize > AlwaysAvail, so prefix is unaffected
-
-proc `&`*(a, b: SmallString): SmallString =
-  result = a
-  result.add(b)
-
 
 {.push overflowChecks: off, rangeChecks: off.}
 
@@ -428,12 +423,17 @@ proc prepareMutation*(s: var string) {.inline.} =
   {.cast(noSideEffect).}:
     nimPrepareStrMutationV2(cast[ptr SmallString](addr s)[])
 
+proc nimStrAtMutV3*(s: var SmallString; i: int): var char {.compilerproc, inline.} =
+  ## Returns a mutable reference to the i-th char. Handles COW for long strings.
+  ## Used by the codegen when s[i] is passed as a `var char` argument.
+  if int(s.slen) > PayloadSize:
+    nimPrepareStrMutationV2(s)  # COW: ensure unique heap block before exposing ref
+    result = s.more.data[i]
+  else:
+    result = (cast[ptr UncheckedArray[char]](addr s.payload[0]))[i]
+
 proc nimAddStrV1(s: var SmallString; src: SmallString) {.compilerRtl, inline.} =
   s.add(src)
-
-proc nimStrAtLe(s: SmallString; idx: int; ch: char): bool {.compilerRtl, inline.} =
-  let l = s.len
-  result = idx < l and s[idx] <= ch
 
 func capacity*(self: SmallString): int {.inline.} =
   ## Returns the current capacity of the string.

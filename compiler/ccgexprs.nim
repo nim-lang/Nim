@@ -962,7 +962,8 @@ proc genDeref(p: BProc, e: PNode, d: var TLoc) =
       putIntoDest(p, d, e, cDeref(rdLoc(a)), a.storage)
 
 proc cowBracket(p: BProc; n: PNode) =
-  if n.kind == nkBracketExpr and optSeqDestructors in p.config.globalOptions:
+  if n.kind == nkBracketExpr and optSeqDestructors in p.config.globalOptions and
+      not p.config.isDefined("nimsso"):
     let strCandidate = n[0]
     if strCandidate.typ.skipTypes(abstractInst).kind == tyString:
       var a: TLoc = initLocExpr(p, strCandidate)
@@ -987,6 +988,14 @@ proc genAddr(p: BProc, e: PNode, d: var TLoc) =
     expr(p, e[0], d)
     # bug #19497
     d.lode = e
+  elif p.config.isDefined("nimsso") and e[0].kind == nkBracketExpr and
+      e[0][0].typ.skipTypes(abstractVar).kind == tyString:
+    # addr s[i] for nimsso: nimStrAtMutV3 returns char* directly — no extra & needed
+    var base = initLocExpr(p, e[0][0])
+    var idx  = initLocExpr(p, e[0][1])
+    putIntoDest(p, d, e,
+      cCall(cgsymValue(p.module, "nimStrAtMutV3"), byRefLoc(p, base), rdLoc(idx)),
+      base.storage)
   else:
     var a: TLoc = initLocExpr(p, e[0])
     if e[0].kind in {nkHiddenStdConv, nkHiddenSubConv, nkConv} and not ignoreConv(e[0]):
@@ -1315,16 +1324,21 @@ proc genSeqElem(p: BProc, n, x, y: PNode, d: var TLoc) =
   if skipTypes(a.t, abstractVar).kind in {tyRef, tyPtr}:
     a.snippet = cDeref(a.snippet)
 
-  if lfPrepareForMutation in d.flags and ty.kind == tyString and
-      optSeqDestructors in p.config.globalOptions:
-    let bra = byRefLoc(p, a)
-    p.s(cpsStmts).addCallStmt(cgsymValue(p.module, "nimPrepareStrMutationV2"),
-      bra)
   if p.config.isDefined("nimsso") and ty.kind == tyString:
+    # direct writes (s[i] = c) are intercepted in genAsgn via nimStrPutV3
     let bra = byRefLoc(p, a)
-    putIntoDest(p, d, n,
-      subscript(cCall(cgsymValue(p.module, "nimStrData"), bra), rcb), a.storage)
+    if lfPrepareForMutation in d.flags:
+      # s[i] passed as `var char`: return *(nimStrAtMutV3(&s, i)) — a valid C lvalue
+      putIntoDest(p, d, n,
+        cDeref(cCall(cgsymValue(p.module, "nimStrAtMutV3"), bra, rcb)), a.storage)
+    else:
+      putIntoDest(p, d, n,
+        cCall(cgsymValue(p.module, "nimStrAtV3"), bra, rcb), a.storage)
   else:
+    if lfPrepareForMutation in d.flags and ty.kind == tyString and
+        optSeqDestructors in p.config.globalOptions:
+      let bra = byRefLoc(p, a)
+      p.s(cpsStmts).addCallStmt(cgsymValue(p.module, "nimPrepareStrMutationV2"), bra)
     let ra = rdLoc(a)
     putIntoDest(p, d, n, subscript(dataField(p, ra), rcb), a.storage)
 
