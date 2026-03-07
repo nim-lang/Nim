@@ -90,6 +90,14 @@ proc getPort*(self: AsyncHttpServer): Port {.since: (1, 5, 1).} =
 proc newAsyncHttpServer*(reuseAddr = true, reusePort = false,
                          maxBody = 8388608): AsyncHttpServer =
   ## Creates a new `AsyncHttpServer` instance.
+  ##
+  ## `maxBody` specifies the maximum size in bytes of the request body.
+  ## Requests exceeding this limit will receive a
+  ## `413 Request Entity Too Large` response.
+  runnableExamples("-r:off"):
+    let server = newAsyncHttpServer()
+    server.listen(Port(0))
+    server.close()
   result = AsyncHttpServer(reuseAddr: reuseAddr, reusePort: reusePort, maxBody: maxBody)
 
 proc addHeaders(msg: var string, headers: HttpHeaders) =
@@ -381,6 +389,11 @@ const
 
 proc listen*(server: AsyncHttpServer; port: Port; address = ""; domain = AF_INET) =
   ## Listen to the given port and address.
+  ##   ## Binds the server to the given `port` and `address` and starts listening
+  ## for incoming connections.
+  ##
+  ## Call `acceptRequest <#acceptRequest,AsyncHttpServer,proc(Request)>`_ or
+  ## `serve <#serve,AsyncHttpServer,Port,proc(Request),string>`_ after this.
   when declared(maxDescriptors):
     server.maxFDs = try: maxDescriptors() except: nimMaxDescriptorsFallback
   else:
@@ -437,5 +450,9 @@ proc serve*(server: AsyncHttpServer, port: Port,
     #echo(f.repr)
 
 proc close*(server: AsyncHttpServer) =
-  ## Terminates the async http server instance.
+  ## Terminates the async HTTP server instance and frees its resources.
+  runnableExamples("-r:off"):
+    let server = newAsyncHttpServer()
+    server.listen(Port(0))
+    server.close()
   server.socket.close()
