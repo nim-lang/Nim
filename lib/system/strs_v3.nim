@@ -96,7 +96,7 @@ proc nimStrPutV3*(s: var SmallString; i: int; c: char) {.compilerproc, inline.} 
     if i < AlwaysAvail:
       s.payload[i] = c
 
-proc cmp(a, b: SmallString): int =
+proc cmp(a, b: SmallString): int {.inline.} =
   # Use slen directly for prefix length: for short/medium it is the real length,
   # for long it is the sentinel (> AlwaysAvail), so min(..., AlwaysAvail) still gives 7.
   # This avoids dereferencing `more` before the prefix comparison.
@@ -116,7 +116,7 @@ proc cmp(a, b: SmallString): int =
   if result == 0:
     result = la - lb
 
-proc `==`(a, b: SmallString): bool =
+proc `==`(a, b: SmallString): bool {.inline.} =
   if a.slen != b.slen: return false
   # slen equal: for short/medium this means equal lengths; for long (both sentinel) we still need fullLen.
   let slen = int(a.slen)
@@ -392,7 +392,7 @@ proc setLengthStrV2(s: var SmallString; newLen: int) {.compilerRtl.} =
       s.more.data[newLen] = '\0'
       s.more.fullLen = newLen
 
-proc nimAsgnStrV2(a: var SmallString; b: SmallString) {.compilerRtl.} =
+proc nimAsgnStrV2(a: var SmallString; b: SmallString) {.compilerRtl, inline.} =
   if int(b.slen) <= PayloadSize:
     nimDestroyStrV1(a)
     copyMem(addr a, unsafeAddr b, sizeof(SmallString))
@@ -453,8 +453,31 @@ proc nimStrData(s: var SmallString): ptr UncheckedArray[char] {.compilerproc, in
   if slen > PayloadSize: cast[ptr UncheckedArray[char]](addr s.more.data[0])
   else: cast[ptr UncheckedArray[char]](addr s.payload[0])
 
-proc eqStrings(a, b: SmallString): bool {.compilerproc, inline.} = a == b
+# These take `string` (tyString) so the codegen uses them directly, bypassing
+# strmantle.nim's versions which go through nimStrLen/nimStrAtMutV3 compilerproc calls.
+proc cmpStrings(a, b: string): int {.compilerproc, inline.} =
+  cmp(cast[ptr SmallString](unsafeAddr a)[], cast[ptr SmallString](unsafeAddr b)[])
 
-proc cmpStrings(a, b: SmallString): int {.compilerproc, inline.} = cmp(a, b)
+proc eqStrings(a, b: string): bool {.compilerproc, inline.} =
+  cast[ptr SmallString](unsafeAddr a)[] == cast[ptr SmallString](unsafeAddr b)[]
+
+proc leStrings(a, b: string): bool {.compilerproc, inline.} =
+  cmpStrings(a, b) <= 0
+
+proc ltStrings(a, b: string): bool {.compilerproc, inline.} =
+  cmpStrings(a, b) < 0
+
+proc hashString(s: string): int {.compilerproc.} =
+  let ss = cast[ptr SmallString](unsafeAddr s)[]
+  let (L, data) = ss.guts
+  var h = 0'u
+  for i in 0..<L:
+    h = h + uint(data[i])
+    h = h + h shl 10
+    h = h xor (h shr 6)
+  h = h + h shl 3
+  h = h xor (h shr 11)
+  h = h + h shl 15
+  result = cast[int](h)
 
 {.pop.}
