@@ -230,20 +230,29 @@ proc genOpenArraySlice(p: BProc; q: PNode; formalType, destType: PType; prepareF
   of tyString, tySequence:
     let atyp = skipTypes(a.t, abstractInst)
     if formalType.skipTypes(abstractInst).kind in {tyVar} and atyp.kind == tyString and
-        optSeqDestructors in p.config.globalOptions:
+        optSeqDestructors in p.config.globalOptions and not p.config.isDefined("nimsso"):
       let bra = byRefLoc(p, a)
       p.s(cpsStmts).addCallStmt(cgsymValue(p.module, "nimPrepareStrMutationV2"),
         bra)
-    var val: Snippet
-    if atyp.kind in {tyVar} and not compileToCpp(p.module):
-      val = cDeref(ra)
+    if p.config.isDefined("nimsso") and
+        skipTypes(a.t, abstractVar + abstractInst).kind == tyString:
+      let strPtr = if atyp.kind in {tyVar} and not compileToCpp(p.module): ra
+                   else: addrLoc(p.config, a)
+      result = (
+        cCast(ptrType(dest), cOp(Add, NimInt,
+          cCall(cgsymValue(p.module, "nimStrData"), strPtr), rb)),
+        lengthExpr)
     else:
-      val = ra
-    result = (
-      cIfExpr(dataFieldAccessor(p, val),
-        cCast(ptrType(dest), cOp(Add, NimInt, dataField(p, val), rb)),
-        NimNil),
-      lengthExpr)
+      var val: Snippet
+      if atyp.kind in {tyVar} and not compileToCpp(p.module):
+        val = cDeref(ra)
+      else:
+        val = ra
+      result = (
+        cIfExpr(dataFieldAccessor(p, val),
+          cCast(ptrType(dest), cOp(Add, NimInt, dataField(p, val), rb)),
+          NimNil),
+        lengthExpr)
   else:
     result = ("", "")
     internalError(p.config, "openArrayLoc: " & typeToString(a.t))
@@ -287,11 +296,22 @@ proc openArrayLoc(p: BProc, formalType: PType, n: PNode; result: var Builder) =
     of tyString, tySequence:
       let ntyp = skipTypes(n.typ, abstractInst)
       if formalType.skipTypes(abstractInst).kind in {tyVar} and ntyp.kind == tyString and
-          optSeqDestructors in p.config.globalOptions:
+          optSeqDestructors in p.config.globalOptions and not p.config.isDefined("nimsso"):
         let bra = byRefLoc(p, a)
         p.s(cpsStmts).addCallStmt(cgsymValue(p.module, "nimPrepareStrMutationV2"),
           bra)
-      if ntyp.kind in {tyVar} and not compileToCpp(p.module):
+      if p.config.isDefined("nimsso") and
+          skipTypes(n.typ, abstractVar + abstractInst).kind == tyString:
+        if ntyp.kind in {tyVar} and not compileToCpp(p.module):
+          let ra = a.rdLoc
+          result.add(cCall(cgsymValue(p.module, "nimStrData"), ra))
+          result.addArgumentSeparator()
+          result.add(cCall(cgsymValue(p.module, "nimStrLen"), cDeref(ra)))
+        else:
+          result.add(cCall(cgsymValue(p.module, "nimStrData"), addrLoc(p.config, a)))
+          result.addArgumentSeparator()
+          result.add(lenExpr(p, a))
+      elif ntyp.kind in {tyVar} and not compileToCpp(p.module):
         let ra = a.rdLoc
         var t = TLoc(snippet: cDeref(ra))
         let lt = lenExpr(p, t)
@@ -315,9 +335,14 @@ proc openArrayLoc(p: BProc, formalType: PType, n: PNode; result: var Builder) =
         let ra = a.rdLoc
         var t = TLoc(snippet: cDeref(ra))
         let lt = lenExpr(p, t)
-        result.add(cIfExpr(dataFieldAccessor(p, t.snippet), dataField(p, t.snippet), NimNil))
-        result.addArgumentSeparator()
-        result.add(lt)
+        if p.config.isDefined("nimsso"):
+          result.add(cCall(cgsymValue(p.module, "nimStrData"), ra))
+          result.addArgumentSeparator()
+          result.add(cCall(cgsymValue(p.module, "nimStrLen"), t.snippet))
+        else:
+          result.add(cIfExpr(dataFieldAccessor(p, t.snippet), dataField(p, t.snippet), NimNil))
+          result.addArgumentSeparator()
+          result.add(lt)
       of tyArray:
         let ra = rdLoc(a)
         result.add(ra)

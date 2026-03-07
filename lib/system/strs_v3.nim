@@ -34,34 +34,13 @@ proc resize(old: int): int {.inline.} =
   elif old <= high(int16): result = old * 2
   else: result = old div 2 + old
 
-proc `=destroy`*(s: var SmallString) =
+# No Nim lifecycle hooks: the compiler calls the compilerRtl procs directly
+# for tyString variables (nimDestroyStrV1, nimAsgnStrV2).
+
+proc nimDestroyStrV1(s: SmallString) {.compilerRtl, inline.} =
   if int(s.slen) > PayloadSize and (s.more.capImpl and 1) == 1:
     if atomicSubFetch(s.more.rc, 1) == 0:
       dealloc(s.more)
-
-proc `=wasMoved`*(s: var SmallString) {.inline.} =
-  s.slen = 0
-
-proc `=sink`*(dst: var SmallString; src: SmallString) =
-  `=destroy`(dst)
-  copyMem(addr dst, unsafeAddr src, sizeof(SmallString))
-
-proc `=copy`*(dst: var SmallString; src: SmallString) =
-  if int(src.slen) <= PayloadSize:
-    `=destroy`(dst)  # dst may have been a long string
-    copyMem(addr dst, unsafeAddr src, sizeof(SmallString))
-  else:
-    if addr(dst) == unsafeAddr(src): return
-    `=destroy`(dst)
-    # COW: share the block, bump refcount — no allocation needed
-    if (src.more.capImpl and 1) == 1:
-      discard atomicAddFetch(src.more.rc, 1)
-    copyMem(addr dst, unsafeAddr src, sizeof(SmallString))
-
-proc `=dup`*(src: SmallString): SmallString =
-  copyMem(addr result, unsafeAddr src, sizeof(SmallString))
-  if int(src.slen) > PayloadSize and (src.more.capImpl and 1) == 1:
-    discard atomicAddFetch(src.more.rc, 1)
 
 proc ensureUniqueLong(s: var SmallString; oldLen, newLen: int) =
   # Ensure s.more is a unique (rc=1) heap block with capacity >= newLen, preserving existing data.
@@ -72,7 +51,7 @@ proc ensureUniqueLong(s: var SmallString; oldLen, newLen: int) =
   if unique and newLen <= cap:
     s.more.fullLen = newLen
   else:
-    let newCap = max(newLen, oldLen * 2)
+    let newCap = max(newLen, resize(cap))
     let p = cast[ptr LongString](alloc(sizeof(int) * 3 + newCap + 1))
     p.rc = 1
     p.fullLen = newLen
@@ -83,7 +62,7 @@ proc ensureUniqueLong(s: var SmallString; oldLen, newLen: int) =
       dealloc(old)
     s.more = p
 
-proc len*(s: SmallString): int {.inline.} =
+proc len(s: SmallString): int {.inline.} =
   result = int s.slen
   if result > PayloadSize:
     result = s.more.fullLen
@@ -95,7 +74,7 @@ template guts(s: SmallString): (int, ptr UncheckedArray[char]) =
   else:
     (slen, cast[ptr UncheckedArray[char]](addr s.payload[0]))
 
-proc `[]`*(s: SmallString; i: int): char {.inline.} =
+proc `[]`(s: SmallString; i: int): char {.inline.} =
   let slen = int s.slen
   if slen <= PayloadSize:
     # unchecked: when i >= 7 we store into the `more` overlay
@@ -105,7 +84,7 @@ proc `[]`*(s: SmallString; i: int): char {.inline.} =
   else:
     result = s.more.data[i]
 
-proc `[]=`*(s: var SmallString; i: int; c: char) =
+proc `[]=`(s: var SmallString; i: int; c: char) =
   let slen = int s.slen
   if slen <= PayloadSize:
     # unchecked: when i >= 7 we store into the `more` overlay
@@ -248,24 +227,6 @@ proc `&`*(a, b: SmallString): SmallString =
   result = a
   result.add(b)
 
-proc toSmallString*(s: openArray[char]): SmallString =
-  let l = s.len
-  if l == 0: return
-  if l <= PayloadSize:
-    result.slen = byte(l)
-    let inl = cast[ptr UncheckedArray[char]](addr result.payload[0])
-    copyMem(inl, unsafeAddr s[0], l)
-    inl[l] = '\0'
-  else:
-    let p = cast[ptr LongString](alloc(sizeof(int) * 3 + l + 1))
-    p.rc = 1
-    p.fullLen = l
-    p.capImpl = (l shl 1) or 1
-    copyMem(addr p.data[0], unsafeAddr s[0], l)
-    p.data[l] = '\0'
-    copyMem(addr result.payload[0], unsafeAddr s[0], AlwaysAvail)
-    result.slen = byte(PayloadSize + 1)
-    result.more = p
 
 {.push overflowChecks: off, rangeChecks: off.}
 
@@ -277,7 +238,7 @@ proc prepareAddLong(s: var SmallString; newLen: int) =
     discard  # already unique with sufficient capacity
   else:
     let oldLen = s.more.fullLen
-    let newCap = max(newLen, oldLen * 2)
+    let newCap = max(newLen, resize(cap))
     let p = cast[ptr LongString](alloc(sizeof(int) * 3 + newCap + 1))
     p.rc = 1
     p.fullLen = oldLen  # logical length unchanged — caller sets it after writing data
@@ -288,7 +249,7 @@ proc prepareAddLong(s: var SmallString; newLen: int) =
       dealloc(old)
     s.more = p
 
-proc prepareAdd*(s: var SmallString; addLen: int) {.compilerRtl.} =
+proc prepareAdd(s: var SmallString; addLen: int) {.compilerRtl.} =
   ## Ensure s has room for addLen more characters without changing its length.
   let slen = int(s.slen)
   let curLen = if slen > PayloadSize: s.more.fullLen else: slen
@@ -309,11 +270,11 @@ proc prepareAdd*(s: var SmallString; addLen: int) {.compilerRtl.} =
   else:
     prepareAddLong(s, newLen)
 
-proc nimAddCharV1*(s: var SmallString; c: char) {.compilerRtl, inline.} =
+proc nimAddCharV1(s: var SmallString; c: char) {.compilerRtl, inline.} =
   prepareAdd(s, 1)
   s.add(c)
 
-proc toNimStr*(str: cstring; len: int): SmallString {.compilerproc.} =
+proc toNimStr(str: cstring; len: int): SmallString {.compilerproc.} =
   if len <= 0: return
   if len <= PayloadSize:
     result.slen = byte(len)
@@ -331,11 +292,11 @@ proc toNimStr*(str: cstring; len: int): SmallString {.compilerproc.} =
     result.slen = byte(PayloadSize + 1)
     result.more = p
 
-proc cstrToNimstr*(str: cstring): SmallString {.compilerRtl.} =
+proc cstrToNimstr(str: cstring): SmallString {.compilerRtl.} =
   if str == nil: return
   toNimStr(str, str.len)
 
-proc nimToCStringConv*(s: var SmallString): cstring {.compilerproc, nonReloadable, inline.} =
+proc nimToCStringConv(s: var SmallString): cstring {.compilerproc, nonReloadable, inline.} =
   ## Returns a null-terminated C string pointer into s's data.
   ## Takes by var (pointer) so addr s.payload[0] is always into the caller's SmallString.
   if int(s.slen) > PayloadSize:
@@ -343,13 +304,13 @@ proc nimToCStringConv*(s: var SmallString): cstring {.compilerproc, nonReloadabl
   else:
     cast[cstring](addr s.payload[0])
 
-proc appendString*(dest: var SmallString; src: SmallString) {.compilerproc, inline.} =
+proc appendString(dest: var SmallString; src: SmallString) {.compilerproc, inline.} =
   dest.add(src)
 
-proc appendChar*(dest: var SmallString; c: char) {.compilerproc, inline.} =
+proc appendChar(dest: var SmallString; c: char) {.compilerproc, inline.} =
   dest.add(c)
 
-proc rawNewString*(space: int): SmallString {.compilerproc.} =
+proc rawNewString(space: int): SmallString {.compilerproc.} =
   ## Returns an empty SmallString with capacity reserved for `space` chars (newStringOfCap).
   if space <= 0: return
   if space <= PayloadSize:
@@ -363,7 +324,7 @@ proc rawNewString*(space: int): SmallString {.compilerproc.} =
     result.more = p
     result.slen = byte(PayloadSize + 1)
 
-proc mnewString*(len: int): SmallString {.compilerproc.} =
+proc mnewString(len: int): SmallString {.compilerproc.} =
   ## Returns a SmallString of `len` zero characters (newString).
   if len <= 0: return
   if len <= PayloadSize:
@@ -379,7 +340,7 @@ proc mnewString*(len: int): SmallString {.compilerproc.} =
     result.more = p
     result.slen = byte(PayloadSize + 1)
 
-proc setLengthStrV2*(s: var SmallString; newLen: int) {.compilerRtl.} =
+proc setLengthStrV2(s: var SmallString; newLen: int) {.compilerRtl.} =
   ## Sets the length of s to newLen, zeroing new bytes on growth.
   let slen = int(s.slen)
   let curLen = if slen > PayloadSize: s.more.fullLen else: slen
@@ -391,7 +352,7 @@ proc setLengthStrV2*(s: var SmallString; newLen: int) {.compilerRtl.} =
         s.more.data[0] = '\0'
       else:
         # shared block: detach and go back to empty inline
-        `=destroy`(s)
+        nimDestroyStrV1(s)
         s.slen = 0
     else:
       s.slen = 0
@@ -408,7 +369,7 @@ proc setLengthStrV2*(s: var SmallString; newLen: int) {.compilerRtl.} =
       s.slen = byte(newLen)
     else:
       # grow into long
-      let newCap = newLen * 2
+      let newCap = resize(newLen)
       let p = cast[ptr LongString](alloc0(sizeof(int) * 3 + newCap + 1))
       p.rc = 1
       p.fullLen = newLen
@@ -436,8 +397,17 @@ proc setLengthStrV2*(s: var SmallString; newLen: int) {.compilerRtl.} =
       s.more.data[newLen] = '\0'
       s.more.fullLen = newLen
 
-proc nimAsgnStrV2*(a: var SmallString; b: SmallString) {.compilerRtl.} =
-  `=copy`(a, b)
+proc nimAsgnStrV2(a: var SmallString; b: SmallString) {.compilerRtl.} =
+  if int(b.slen) <= PayloadSize:
+    nimDestroyStrV1(a)
+    copyMem(addr a, unsafeAddr b, sizeof(SmallString))
+  else:
+    if addr(a) == unsafeAddr(b): return
+    nimDestroyStrV1(a)
+    # COW: share the block, bump refcount — no allocation needed
+    if (b.more.capImpl and 1) == 1:
+      discard atomicAddFetch(b.more.rc, 1)
+    copyMem(addr a, unsafeAddr b, sizeof(SmallString))
 
 proc nimPrepareStrMutationImpl(s: var SmallString) =
   # Called when s holds a static (non-heap) LongString block. COW: allocate a fresh copy.
@@ -450,7 +420,7 @@ proc nimPrepareStrMutationImpl(s: var SmallString) =
   copyMem(addr p.data[0], addr old.data[0], oldLen + 1)
   s.more = p
 
-proc nimPrepareStrMutationV2*(s: var SmallString) {.compilerRtl, inline.} =
+proc nimPrepareStrMutationV2(s: var SmallString) {.compilerRtl, inline.} =
   if int(s.slen) > PayloadSize and (s.more.capImpl and 1) == 0:
     nimPrepareStrMutationImpl(s)
 
@@ -458,15 +428,10 @@ proc prepareMutation*(s: var string) {.inline.} =
   {.cast(noSideEffect).}:
     nimPrepareStrMutationV2(cast[ptr SmallString](addr s)[])
 
-proc nimAddStrV1*(s: var SmallString; src: SmallString) {.compilerRtl, inline.} =
+proc nimAddStrV1(s: var SmallString; src: SmallString) {.compilerRtl, inline.} =
   s.add(src)
 
-proc nimDestroyStrV1*(s: SmallString) {.compilerRtl, inline.} =
-  if int(s.slen) > PayloadSize and (s.more.capImpl and 1) == 1:
-    if atomicSubFetch(s.more.rc, 1) == 0:
-      dealloc(s.more)
-
-proc nimStrAtLe*(s: SmallString; idx: int; ch: char): bool {.compilerRtl, inline.} =
+proc nimStrAtLe(s: SmallString; idx: int; ch: char): bool {.compilerRtl, inline.} =
   let l = s.len
   result = idx < l and s[idx] <= ch
 
@@ -478,18 +443,18 @@ func capacity*(self: SmallString): int {.inline.} =
   else:
     PayloadSize
 
-proc nimStrLen*(s: SmallString): int {.compilerproc, inline.} =
+proc nimStrLen(s: SmallString): int {.compilerproc, inline.} =
   ## Returns the length of s. Called by the codegen for `mLen` on strings with -d:nimsso.
   s.len
 
-proc nimStrData*(s: var SmallString): ptr UncheckedArray[char] {.compilerproc, inline.} =
+proc nimStrData(s: var SmallString): ptr UncheckedArray[char] {.compilerproc, inline.} =
   ## Returns a pointer to the char data of s. Called by codegen for subscript and slice with -d:nimsso.
   let slen = int(s.slen)
   if slen > PayloadSize: cast[ptr UncheckedArray[char]](addr s.more.data[0])
   else: cast[ptr UncheckedArray[char]](addr s.payload[0])
 
-proc eqStrings*(a, b: SmallString): bool {.compilerproc, inline.} = a == b
+proc eqStrings(a, b: SmallString): bool {.compilerproc, inline.} = a == b
 
-proc cmpStrings*(a, b: SmallString): int {.compilerproc, inline.} = cmp(a, b)
+proc cmpStrings(a, b: SmallString): int {.compilerproc, inline.} = cmp(a, b)
 
 {.pop.}

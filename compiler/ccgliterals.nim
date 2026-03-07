@@ -160,6 +160,23 @@ proc ssoPayloadLit(src: string; maxLen: int): string =
     result.add(ssoCharLit(ch))
   result.add('}')
 
+proc ssoMoreLit(m: BModule; s: string): string =
+  ## For medium string literals (AlwaysAvail < len <= PayloadSize), encode
+  ## chars[AlwaysAvail..ptrSize-1] in the 'more' pointer field bit-pattern.
+  ## The last pointer byte is always '\0' (null terminator), guaranteed by
+  ## PayloadSize = AlwaysAvail + ptrSize - 1.  slen <= PayloadSize guards
+  ## prevent any code from dereferencing this as an actual pointer.
+  const AlwaysAvail = 7
+  let ptrSize = m.g.config.target.ptrSize
+  var val: uint64 = 0
+  for i in 0..<ptrSize:
+    let ch: uint64 = if AlwaysAvail + i < s.len: uint64(s[AlwaysAvail + i]) else: 0
+    if CPU[m.g.config.target.targetCPU].endian == littleEndian:
+      val = val or (ch shl (uint(i) * 8))
+    else:
+      val = val or (ch shl (uint(ptrSize - 1 - i) * 8))
+  result = cCast(ptrType("LongString"), "(uintptr_t)" & $val)
+
 proc genStringLiteralV3Const(m: BModule; n: PNode; isConst: bool; result: var Builder) =
   # Inline SmallString struct initializer for use inside const aggregate types.
   # Short strings (<=7 chars) embed all chars directly. Long strings reference
@@ -170,6 +187,7 @@ proc genStringLiteralV3Const(m: BModule; n: PNode; isConst: bool; result: var Bu
   cgsym(m, "SmallString")
   cgsym(m, "LongString")
 
+  let payloadSize = AlwaysAvail + m.g.config.target.ptrSize - 1
   var si: StructInitializer
   result.addStructInitializer(si, kind = siOrderedStruct):
     if s.len <= AlwaysAvail:
@@ -179,6 +197,14 @@ proc genStringLiteralV3Const(m: BModule; n: PNode; isConst: bool; result: var Bu
         result.add(ssoPayloadLit(s, s.len))
       result.addField(si, name = "more"):
         result.add(NimNil)
+    elif s.len <= payloadSize:
+      # Medium string: encode remaining chars in 'more' pointer bytes — no heap block.
+      result.addField(si, name = "slen"):
+        result.addIntValue(s.len)
+      result.addField(si, name = "payload"):
+        result.add(ssoPayloadLit(s, s.len))
+      result.addField(si, name = "more"):
+        result.add(ssoMoreLit(m, s))
     else:
       # Emit the LongString block into cfsStrData and reference it inline.
       let dataName = getTempName(m)
@@ -224,6 +250,7 @@ proc genStringLiteralV3(m: BModule; n: PNode; isConst: bool; result: var Builder
   cgsym(m, "SmallString")
   cgsym(m, "LongString")
 
+  let payloadSize = AlwaysAvail + m.g.config.target.ptrSize - 1
   var res = newBuilder("")
   if s.len <= AlwaysAvail:
     # Short: all chars fit in payload, more = NULL.
@@ -238,6 +265,19 @@ proc genStringLiteralV3(m: BModule; n: PNode; isConst: bool; result: var Builder
           res.add(ssoPayloadLit(s, s.len))
         res.addField(si, name = "more"):
           res.add(NimNil)
+  elif s.len <= payloadSize:
+    # Medium: encode remaining chars in 'more' pointer bytes — no heap block needed.
+    res.addVarWithInitializer(
+        if isConst: AlwaysConst else: Global,
+        name = tmp, typ = "SmallString"):
+      var si: StructInitializer
+      res.addStructInitializer(si, kind = siOrderedStruct):
+        res.addField(si, name = "slen"):
+          res.addIntValue(s.len)
+        res.addField(si, name = "payload"):
+          res.add(ssoPayloadLit(s, s.len))
+        res.addField(si, name = "more"):
+          res.add(ssoMoreLit(m, s))
   else:
     # Long: cache the LongString block to emit it only once per module per string.
     # Always generate a fresh SmallString pointing at the (possibly cached) block.
