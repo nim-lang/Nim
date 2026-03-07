@@ -701,11 +701,18 @@ proc fillStrOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   of attachedAsgn, attachedDeepCopy, attachedDup:
     body.add callCodegenProc(c.g, "nimAsgnStrV2", c.info, genAddr(c, x), y)
   of attachedSink:
-    let moveCall = genBuiltin(c, mMove, "move", x)
-    moveCall.add y
-    doAssert t.destructor != nil
-    moveCall.add destructorCall(c, t.destructor, x)
-    body.add moveCall
+    if c.g.config.isDefined("nimsso"):
+      # SmallString: destroy old dst, then bit-copy src (no rc increment — this is a move).
+      # No .p aliasing check needed; rc-based destroy handles COW sharing correctly.
+      doAssert t.destructor != nil
+      body.add destructorCall(c, t.destructor, x)
+      body.add newAsgnStmt(x, y)
+    else:
+      let moveCall = genBuiltin(c, mMove, "move", x)
+      moveCall.add y
+      doAssert t.destructor != nil
+      moveCall.add destructorCall(c, t.destructor, x)
+      body.add moveCall
   of attachedDestructor:
     body.add genBuiltin(c, mDestroy, "destroy", x)
   of attachedTrace:

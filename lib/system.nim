@@ -1641,7 +1641,7 @@ when defined(windows):
   const ERROR_BAD_EXE_FORMAT = 193
 
 when notJSnotNims:
-  when defined(nimSeqsV2):
+  when defined(nimSeqsV2) and not defined(nimsso):
     proc nimToCStringConv(s: NimStringV2): cstring {.compilerproc, nonReloadable, inline.}
 
   when hostOS != "standalone" and hostOS != "any":
@@ -1689,7 +1689,10 @@ when not defined(nimIcIntegrityChecks):
   export exceptions
 
 when notJSnotNims and defined(nimSeqsV2):
-  include "system/strs_v2"
+  when defined(nimsso):
+    include "system/strs_v3"
+  else:
+    include "system/strs_v2"
   include "system/seqs_v2"
 
 when not defined(js):

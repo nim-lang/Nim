@@ -339,6 +339,10 @@ proc getSimpleTypeDesc(m: BModule; typ: PType): Rope =
       cgsym(m, "NimStrPayload")
       cgsym(m, "NimStringV2")
       result = typeNameOrLiteral(m, typ, "NimStringV2")
+    of 3:
+      cgsym(m, "LongString")
+      cgsym(m, "SmallString")
+      result = typeNameOrLiteral(m, typ, "SmallString")
     else:
       cgsym(m, "NimStringDesc")
       result = typeNameOrLiteral(m, typ, "NimStringDesc*")

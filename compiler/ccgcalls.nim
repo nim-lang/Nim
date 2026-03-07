@@ -344,7 +344,8 @@ proc expressionsNeedsTmp(p: BProc, a: TLoc): TLoc =
 
 proc genArgStringToCString(p: BProc, n: PNode; result: var Builder; needsTmp: bool) {.inline.} =
   var a = initLocExpr(p, n[0])
-  let ra = withTmpIfNeeded(p, a, needsTmp).rdLoc
+  let tmp = withTmpIfNeeded(p, a, needsTmp)
+  let ra = if p.config.isDefined("nimsso"): addrLoc(p.config, tmp) else: tmp.rdLoc
   result.addCall(cgsymValue(p.module, "nimToCStringConv"), ra)
 
 proc genArg(p: BProc, n: PNode, param: PSym; call: PNode; result: var Builder; needsTmp = false) =
