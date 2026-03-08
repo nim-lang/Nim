@@ -13,8 +13,16 @@ const
   AlwaysAvail = 7
   PayloadSize = AlwaysAvail + sizeof(pointer) - 1  # -1 reserves the last byte for '\0'
 
-proc atomicAddFetch(p: var int; v: int): int {.importc: "__sync_add_and_fetch", nodecl.}
-proc atomicSubFetch(p: var int; v: int): int {.importc: "__sync_sub_and_fetch", nodecl.}
+when false:
+  proc atomicAddFetch(p: var int; v: int): int {.importc: "__sync_add_and_fetch", nodecl.}
+  proc atomicSubFetch(p: var int; v: int): int {.importc: "__sync_sub_and_fetch", nodecl.}
+else:
+  proc atomicAddFetch(p: var int; v: int): int {.inline.} =
+    result = p + v
+    p = result
+  proc atomicSubFetch(p: var int; v: int): int {.inline.} =
+    result = p - v
+    p = result
 
 type
   LongString {.core.} = object
@@ -80,7 +88,7 @@ proc nimStrAtV3*(s: var SmallString; i: int): char {.compilerproc, inline.} =
     # unchecked: when i >= 7 we store into the `more` overlay
     result = (cast[ptr UncheckedArray[char]](addr s.payload[0]))[i]
   elif i < AlwaysAvail:
-    result = s.payload[i]
+    result = s.payload[i]  # hot prefix: no heap dereference for the first 7 bytes
   else:
     result = s.more.data[i]
 
@@ -96,39 +104,67 @@ proc nimStrPutV3*(s: var SmallString; i: int; c: char) {.compilerproc, inline.} 
     if i < AlwaysAvail:
       s.payload[i] = c
 
+proc cmpInlineBytes(a, b: ptr UncheckedArray[char]; n: int): int {.inline.} =
+  for i in 0..<n:
+    let ac = a[i]
+    let bc = b[i]
+    if ac < bc: return -1
+    if ac > bc: return 1
+
 proc cmp(a, b: SmallString): int {.inline.} =
-  # Use slen directly for prefix length: for short/medium it is the real length,
-  # for long it is the sentinel (> AlwaysAvail), so min(..., AlwaysAvail) still gives 7.
-  # This avoids dereferencing `more` before the prefix comparison.
-  let pfxLen = min(min(int a.slen, int b.slen), AlwaysAvail)
-  result = cmpMem(unsafeAddr a.payload[0], unsafeAddr b.payload[0], pfxLen)
+  let aslen = int(a.slen)
+  let bslen = int(b.slen)
+  let aInl = cast[ptr UncheckedArray[char]](unsafeAddr a.payload[0])
+  let bInl = cast[ptr UncheckedArray[char]](unsafeAddr b.payload[0])
+  if aslen <= PayloadSize and bslen <= PayloadSize:
+    # Both inline/medium: all data lives in the flat payload+more overlay,
+    # no heap access. Split at AlwaysAvail lets GCC fully unroll both sub-loops.
+    let minLen = min(aslen, bslen)
+    let pfxLen = min(minLen, AlwaysAvail)
+    result = cmpInlineBytes(aInl, bInl, pfxLen)
+    if result != 0: return
+    if minLen > AlwaysAvail:
+      result = cmpInlineBytes(
+        cast[ptr UncheckedArray[char]](addr aInl[AlwaysAvail]),
+        cast[ptr UncheckedArray[char]](addr bInl[AlwaysAvail]),
+        minLen - AlwaysAvail)
+    if result == 0: result = aslen - bslen
+    return
+  # At least one is long: use hot prefix for the first AlwaysAvail bytes.
+  let pfxLen = min(min(aslen, bslen), AlwaysAvail)
+  result = cmpInlineBytes(aInl, bInl, pfxLen)
   if result != 0: return
-  # Prefix matched — now fetch actual lengths (dereferences `more` only if long)
-  let la = if int(a.slen) > PayloadSize: a.more.fullLen else: int(a.slen)
-  let lb = if int(b.slen) > PayloadSize: b.more.fullLen else: int(b.slen)
+  let la = if aslen > PayloadSize: a.more.fullLen else: aslen
+  let lb = if bslen > PayloadSize: b.more.fullLen else: bslen
   let minLen = min(la, lb)
   if minLen <= AlwaysAvail:
-    result = la - lb
-    return
-  let (_, pa) = a.guts
-  let (_, pb) = b.guts
-  result = cmpMem(addr pa[AlwaysAvail], addr pb[AlwaysAvail], minLen - AlwaysAvail)
+    return la - lb
+  let ap =
+    if aslen > PayloadSize:
+      cast[ptr UncheckedArray[char]](addr a.more.data[0])
+    else:
+      aInl
+  let bp =
+    if bslen > PayloadSize:
+      cast[ptr UncheckedArray[char]](addr b.more.data[0])
+    else:
+      bInl
+  result = cmpMem(addr ap[AlwaysAvail], addr bp[AlwaysAvail], minLen - AlwaysAvail)
   if result == 0:
     result = la - lb
 
 proc `==`(a, b: SmallString): bool {.inline.} =
   if a.slen != b.slen: return false
-  # slen equal: for short/medium this means equal lengths; for long (both sentinel) we still need fullLen.
   let slen = int(a.slen)
   let pfxLen = min(slen, AlwaysAvail)
   if cmpMem(unsafeAddr a.payload[0], unsafeAddr b.payload[0], pfxLen) != 0: return false
   if slen <= AlwaysAvail: return true
   if slen <= PayloadSize:
-    # medium: guts gives the UncheckedArray without a heap dereference
+    # medium: compare the tail stored in the `more` overlay
     let (la, pa) = a.guts
     let (_, pb) = b.guts
     return cmpMem(addr pa[pfxLen], addr pb[pfxLen], la - pfxLen) == 0
-  # long: fetch actual lengths only after prefix matched
+  # long: prefix matched; check lengths then compare the heap tail
   let la = a.more.fullLen
   if la != b.more.fullLen: return false
   cmpMem(addr a.more.data[pfxLen], addr b.more.data[pfxLen], la - pfxLen) == 0
@@ -139,17 +175,16 @@ proc continuesWith*(s, sub: SmallString; start: int): bool =
   if start < 0: return false
   let subslen = int(sub.slen)
   if subslen == 0: return true
-  # Compare inline prefix first — no `more` dereference yet.
-  # For long sub, subslen is the sentinel (> AlwaysAvail), so pfxLen is capped correctly.
+  # Compare via hot prefix first where possible (no heap dereference).
   let pfxLen = min(subslen, max(0, AlwaysAvail - start))
   if pfxLen > 0:
     if cmpMem(unsafeAddr s.payload[start], unsafeAddr sub.payload[0], pfxLen) != 0:
       return false
-  # Prefix matched (or start >= AlwaysAvail); now fetch actual lengths
+  # Fetch actual lengths and compare the remaining tail via heap/guts.
   let subLen = if subslen > PayloadSize: sub.more.fullLen else: subslen
   let sLen = if int(s.slen) > PayloadSize: s.more.fullLen else: int(s.slen)
   if start + subLen > sLen: return false
-  if pfxLen == subLen: return true  # sub fully compared within the prefix
+  if pfxLen == subLen: return true
   let (_, sp) = s.guts
   let (_, subp) = sub.guts
   cmpMem(addr sp[start + pfxLen], addr subp[pfxLen], subLen - pfxLen) == 0
@@ -177,7 +212,6 @@ proc add(s: var SmallString; c: char) =
       copyMem(addr p.data[0], cast[ptr UncheckedArray[char]](addr s.payload[0]), slen)
       p.data[slen] = c
       p.data[newLen] = '\0'
-      # payload[0..AlwaysAvail-1] already correct; slen >= AlwaysAvail so no update needed
       s.more = p
       s.slen = byte(PayloadSize + 1)
   else:
@@ -185,7 +219,8 @@ proc add(s: var SmallString; c: char) =
     ensureUniqueLong(s, l, l + 1)
     s.more.data[l] = c
     s.more.data[l + 1] = '\0'
-    # l >= PayloadSize > AlwaysAvail, so prefix is unaffected
+    if l < AlwaysAvail:
+      s.payload[l] = c
 
 proc add(s: var SmallString; t: SmallString) =
   let slen = int(s.slen)
@@ -209,7 +244,6 @@ proc add(s: var SmallString; t: SmallString) =
       copyMem(addr p.data[0], cast[ptr UncheckedArray[char]](addr s.payload[0]), sl)
       copyMem(addr p.data[sl], tp, tl)
       p.data[newLen] = '\0'
-      # update prefix bytes that come from t (only when sl < AlwaysAvail)
       if sl < AlwaysAvail:
         copyMem(addr s.payload[sl], tp, min(AlwaysAvail - sl, tl))
       s.more = p
@@ -221,7 +255,8 @@ proc add(s: var SmallString; t: SmallString) =
     ensureUniqueLong(s, sl, newLen)
     copyMem(addr s.more.data[sl], tp, tl)
     s.more.data[newLen] = '\0'
-    # sl >= PayloadSize > AlwaysAvail, so prefix is unaffected
+    if sl < AlwaysAvail:
+      copyMem(addr s.payload[sl], tp, min(AlwaysAvail - sl, tl))
 
 {.push overflowChecks: off, rangeChecks: off.}
 
@@ -266,8 +301,29 @@ proc prepareAdd(s: var SmallString; addLen: int) {.compilerRtl.} =
     prepareAddLong(s, newLen)
 
 proc nimAddCharV1(s: var SmallString; c: char) {.compilerRtl, inline.} =
-  prepareAdd(s, 1)
-  s.add(c)
+  let slen = int(s.slen)
+  if slen < PayloadSize:
+    # Hot path: inline/medium with room (slen+1 <= PayloadSize, no heap needed)
+    let inl = cast[ptr UncheckedArray[char]](addr s.payload[0])
+    inl[slen] = c
+    inl[slen + 1] = '\0'
+    s.slen = byte(slen + 1)
+  elif slen > PayloadSize:
+    # Long string — inline the common case: unique heap block with room
+    let l = s.more.fullLen
+    if (s.more.capImpl and 1) == 1 and s.more.rc == 1 and l < (s.more.capImpl shr 1):
+      s.more.data[l] = c
+      s.more.data[l + 1] = '\0'
+      s.more.fullLen = l + 1
+      if l < AlwaysAvail:
+        s.payload[l] = c
+    else:
+      prepareAdd(s, 1)
+      s.add(c)
+  else:
+    # slen == PayloadSize: medium→long transition (rare)
+    prepareAdd(s, 1)
+    s.add(c)
 
 proc toNimStr(str: cstring; len: int): SmallString {.compilerproc.} =
   if len <= 0: return
@@ -452,6 +508,20 @@ proc nimStrData(s: var SmallString): ptr UncheckedArray[char] {.compilerproc, in
   let slen = int(s.slen)
   if slen > PayloadSize: cast[ptr UncheckedArray[char]](addr s.more.data[0])
   else: cast[ptr UncheckedArray[char]](addr s.payload[0])
+
+proc completeStore(s: var SmallString) {.compilerproc, inline.} =
+  ## Must be called after bulk data has been written directly into the string buffer
+  ## via a raw pointer obtained from `nimStrData`/`nimStrAtMutV3` (e.g. `readBuffer`,
+  ## `moveMem`, `copyMem`).
+  ##
+  ## Syncs the hot prefix cache: copies `more.data[0..AlwaysAvail-1]` into
+  ## `payload[0..AlwaysAvail-1]` so that `cmp`/`==` can compare long strings
+  ## without a heap dereference for the first few bytes.
+  if int(s.slen) > PayloadSize:
+    copyMem(addr s.payload[0], addr s.more.data[0], AlwaysAvail)
+
+proc completeStore*(s: var string) {.inline.} =
+  completeStore(cast[ptr SmallString](addr s)[])
 
 # These take `string` (tyString) so the codegen uses them directly, bypassing
 # strmantle.nim's versions which go through nimStrLen/nimStrAtMutV3 compilerproc calls.

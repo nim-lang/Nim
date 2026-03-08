@@ -1622,19 +1622,22 @@ when notJSnotNims:
   include system/sysmem
 
 when notJSnotNims and defined(nimSeqsV2):
-  const nimStrVersion {.core.} = 2
+  when defined(nimsso):
+    const nimStrVersion {.core.} = 3
+  else:
+    const nimStrVersion {.core.} = 2
 
-  type
-    NimStrPayloadBase = object
-      cap: int
+    type
+      NimStrPayloadBase = object
+        cap: int
 
-    NimStrPayload {.core.} = object
-      cap: int
-      data: UncheckedArray[char]
+      NimStrPayload {.core.} = object
+        cap: int
+        data: UncheckedArray[char]
 
-    NimStringV2 {.core.} = object
-      len: int
-      p: ptr NimStrPayload ## can be nil if len == 0.
+      NimStringV2 {.core.} = object
+        len: int
+        p: ptr NimStrPayload ## can be nil if len == 0.
 
 when defined(windows):
   proc GetLastError(): int32 {.header: "<windows.h>", nodecl.}
@@ -1744,27 +1747,28 @@ when not defined(js):
     else:
       {.error: "The type T cannot contain managed memory or have destructors".}
 
-  proc newStringUninit*(len: Natural): string {.noSideEffect.} =
-    ## Returns a new string of length `len` but with uninitialized
-    ## content. One needs to fill the string character after character
-    ## with the index operator `s[i]`.
-    ##
-    ## This procedure exists only for optimization purposes;
-    ## the same effect can be achieved with the `&` operator or with `add`.
-    when nimvm:
-      result = newString(len)
-    else:
-      result = newStringOfCap(len)
-      {.cast(noSideEffect).}:
-        when defined(nimSeqsV2):
-          let s = cast[ptr NimStringV2](addr result)
-          if len > 0:
+  when not defined(nimsso):
+    proc newStringUninit*(len: Natural): string {.noSideEffect.} =
+      ## Returns a new string of length `len` but with uninitialized
+      ## content. One needs to fill the string character after character
+      ## with the index operator `s[i]`.
+      ##
+      ## This procedure exists only for optimization purposes;
+      ## the same effect can be achieved with the `&` operator or with `add`.
+      when nimvm:
+        result = newString(len)
+      else:
+        result = newStringOfCap(len)
+        {.cast(noSideEffect).}:
+          when defined(nimSeqsV2):
+            let s = cast[ptr NimStringV2](addr result)
+            if len > 0:
+              s.len = len
+              s.p.data[len] = '\0'
+          else:
+            let s = cast[NimString](result)
             s.len = len
-            s.p.data[len] = '\0'
-        else:
-          let s = cast[NimString](result)
-          s.len = len
-          s.data[len] = '\0'
+            s.data[len] = '\0'
 else:
   proc newStringUninit*(len: Natural): string {.
     magic: "NewString", importc: "mnewString", noSideEffect.}
@@ -2247,10 +2251,13 @@ when not defined(js) or defined(nimscript):
       else: result = 0
     else:
       when not defined(nimscript): # avoid semantic checking
-        let minlen = min(x.len, y.len)
-        result = int(nimCmpMem(x.cstring, y.cstring, cast[csize_t](minlen)))
-        if result == 0:
-          result = x.len - y.len
+        when defined(nimsso):
+          result = cmpStrings(x, y)
+        else:
+          let minlen = min(x.len, y.len)
+          result = int(nimCmpMem(x.cstring, y.cstring, cast[csize_t](minlen)))
+          if result == 0:
+            result = x.len - y.len
 
   when declared(newSeq):
     proc cstringArrayToSeq*(a: cstringArray, len: Natural): seq[string] =

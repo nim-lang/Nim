@@ -1229,6 +1229,7 @@ else: # after 1.3 or JS not defined
         buffer[slice.a..<slice.a+result] = s.data[s.pos..<s.pos+result]
       do:
         copyMem(unsafeAddr buffer[slice.a], addr s.data[s.pos], result)
+      when declared(completeStore): completeStore(buffer)
       inc(s.pos, result)
     else:
       result = 0
@@ -1346,6 +1347,7 @@ proc fsReadData(s: Stream, buffer: pointer, bufLen: int): int =
 
 proc fsReadDataStr(s: Stream, buffer: var string, slice: Slice[int]): int =
   result = readBuffer(FileStream(s).f, addr buffer[slice.a], slice.b + 1 - slice.a)
+  when declared(completeStore): completeStore(buffer)
 
 proc fsPeekData(s: Stream, buffer: pointer, bufLen: int): int =
   let pos = fsGetPosition(s)
