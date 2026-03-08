@@ -32,9 +32,29 @@ type
     data: UncheckedArray[char]
 
   SmallString {.core.} = object
-    slen: byte   # when > PayloadSize, `more` is valid ptr
-    payload: array[AlwaysAvail, char]
-    more: ptr LongString  # when long: pointer; when small (len 8..15): bytes 7..14 stored here
+    bytes: uint
+      ## Layout (little-endian): byte 0 = slen; bytes 1-7 = inline chars 0-6.
+      ## Bytes after the null terminator are zero (SWAR invariant).
+      ## When slen > PayloadSize, `more` is a heap pointer (long string).
+      ## When 7 < slen <= PayloadSize, `more` holds raw char bytes 7..14 (medium string).
+    more: ptr LongString
+
+proc bswap64(x: uint): uint {.importc: "__builtin_bswap64", nodecl, noSideEffect.}
+
+# ---- accessors ----
+template ssLen(s: SmallString): int = int(s.bytes and 0xFF'u)
+
+template setSSLen(s: var SmallString; v: int) =
+  s.bytes = (s.bytes and 0xFFFFFFFFFFFFFF00'u) or uint(v)
+
+# Pointer to inline chars (offset +1 from `bytes` field / start of struct).
+# Only valid when s is in memory (var/ptr); forces a load from memory.
+template inlinePtr(s: SmallString): ptr UncheckedArray[char] =
+  cast[ptr UncheckedArray[char]](cast[uint](unsafeAddr s.bytes) + 1'u)
+
+# Same but from a ptr SmallString (avoids unsafeAddr dance).
+template inlinePtrOf(p: ptr SmallString): ptr UncheckedArray[char] =
+  cast[ptr UncheckedArray[char]](cast[uint](p) + 1'u)
 
 proc resize(old: int): int {.inline.} =
   ## Capacity growth factor shared with seqs_v2.nim.
@@ -46,7 +66,7 @@ proc resize(old: int): int {.inline.} =
 # for tyString variables (nimDestroyStrV1, nimAsgnStrV2).
 
 proc nimDestroyStrV1(s: SmallString) {.compilerRtl, inline.} =
-  if int(s.slen) > PayloadSize and (s.more.capImpl and 1) == 1:
+  if ssLen(s) > PayloadSize and (s.more.capImpl and 1) == 1:
     if atomicSubFetch(s.more.rc, 1) == 0:
       dealloc(s.more)
 
@@ -71,38 +91,40 @@ proc ensureUniqueLong(s: var SmallString; oldLen, newLen: int) =
     s.more = p
 
 proc len(s: SmallString): int {.inline.} =
-  result = int s.slen
+  result = ssLen(s)
   if result > PayloadSize:
     result = s.more.fullLen
 
 template guts(s: SmallString): (int, ptr UncheckedArray[char]) =
-  let slen = int s.slen
+  let slen = ssLen(s)
   if slen > PayloadSize:
     (s.more.fullLen, cast[ptr UncheckedArray[char]](addr s.more.data[0]))
   else:
-    (slen, cast[ptr UncheckedArray[char]](addr s.payload[0]))
+    (slen, inlinePtr(s))
 
 proc nimStrAtV3*(s: var SmallString; i: int): char {.compilerproc, inline.} =
-  let slen = int s.slen
+  let slen = ssLen(s)
   if slen <= PayloadSize:
     # unchecked: when i >= 7 we store into the `more` overlay
-    result = (cast[ptr UncheckedArray[char]](addr s.payload[0]))[i]
+    result = inlinePtr(s)[i]
   elif i < AlwaysAvail:
-    result = s.payload[i]  # hot prefix: no heap dereference for the first 7 bytes
+    result = inlinePtr(s)[i]  # hot prefix: no heap dereference for the first 7 bytes
   else:
     result = s.more.data[i]
 
 proc nimStrPutV3*(s: var SmallString; i: int; c: char) {.compilerproc, inline.} =
-  let slen = int s.slen
+  let slen = ssLen(s)
   if slen <= PayloadSize:
     # unchecked: when i >= 7 we store into the `more` overlay
-    (cast[ptr UncheckedArray[char]](addr s.payload[0]))[i] = c
+    inlinePtr(s)[i] = c
+    # Maintain SWAR zeroing invariant: if i < AlwaysAvail and we wrote a non-null,
+    # caller is responsible. Writing '\0' here would break content. No action needed.
   else:
     let l = s.more.fullLen
     ensureUniqueLong(s, l, l)  # COW if shared; length unchanged
     s.more.data[i] = c
     if i < AlwaysAvail:
-      s.payload[i] = c
+      inlinePtr(s)[i] = c
 
 proc cmpInlineBytes(a, b: ptr UncheckedArray[char]; n: int): int {.inline.} =
   for i in 0..<n:
@@ -111,78 +133,93 @@ proc cmpInlineBytes(a, b: ptr UncheckedArray[char]; n: int): int {.inline.} =
     if ac < bc: return -1
     if ac > bc: return 1
 
-proc cmp(a, b: SmallString): int {.inline.} =
-  let aslen = int(a.slen)
-  let bslen = int(b.slen)
-  let aInl = cast[ptr UncheckedArray[char]](unsafeAddr a.payload[0])
-  let bInl = cast[ptr UncheckedArray[char]](unsafeAddr b.payload[0])
+proc cmpStringPtrs(a, b: ptr SmallString): int {.inline.} =
+  # Compare two SmallStrings by pointer to avoid struct copies in the hot path.
+  let aslen = int(a.bytes and 0xFF'u)
+  let bslen = int(b.bytes and 0xFF'u)
+  if aslen <= AlwaysAvail and bslen <= AlwaysAvail:
+    # SWAR path: both short (≤7 bytes). All data lives in the `bytes` field.
+    # Zeroed-padding invariant ensures bytes past the null are 0.
+    # bswap64(bytes >> 8) puts char[0] in the MSB → integer comparison is lexicographic.
+    let aw = bswap64(a.bytes shr 8)
+    let bw = bswap64(b.bytes shr 8)
+    if aw < bw: return -1
+    if aw > bw: return 1
+    return aslen - bslen
   if aslen <= PayloadSize and bslen <= PayloadSize:
-    # Both inline/medium: all data lives in the flat payload+more overlay,
-    # no heap access. Split at AlwaysAvail lets GCC fully unroll both sub-loops.
+    # Both inline/medium: all data lives in the flat struct, no heap access needed.
     let minLen = min(aslen, bslen)
     let pfxLen = min(minLen, AlwaysAvail)
-    result = cmpInlineBytes(aInl, bInl, pfxLen)
+    result = cmpInlineBytes(inlinePtrOf(a), inlinePtrOf(b), pfxLen)
     if result != 0: return
     if minLen > AlwaysAvail:
+      let aInl = inlinePtrOf(a)
+      let bInl = inlinePtrOf(b)
       result = cmpInlineBytes(
         cast[ptr UncheckedArray[char]](addr aInl[AlwaysAvail]),
         cast[ptr UncheckedArray[char]](addr bInl[AlwaysAvail]),
         minLen - AlwaysAvail)
     if result == 0: result = aslen - bslen
     return
-  # At least one is long: use hot prefix for the first AlwaysAvail bytes.
+  # At least one is long. Hot prefix: inlinePtr[0..AlwaysAvail-1] mirrors heap data.
   let pfxLen = min(min(aslen, bslen), AlwaysAvail)
-  result = cmpInlineBytes(aInl, bInl, pfxLen)
+  result = cmpInlineBytes(inlinePtrOf(a), inlinePtrOf(b), pfxLen)
   if result != 0: return
   let la = if aslen > PayloadSize: a.more.fullLen else: aslen
   let lb = if bslen > PayloadSize: b.more.fullLen else: bslen
   let minLen = min(la, lb)
   if minLen <= AlwaysAvail:
-    return la - lb
-  let ap =
-    if aslen > PayloadSize:
-      cast[ptr UncheckedArray[char]](addr a.more.data[0])
-    else:
-      aInl
-  let bp =
-    if bslen > PayloadSize:
-      cast[ptr UncheckedArray[char]](addr b.more.data[0])
-    else:
-      bInl
-  result = cmpMem(addr ap[AlwaysAvail], addr bp[AlwaysAvail], minLen - AlwaysAvail)
-  if result == 0:
     result = la - lb
+    return
+  let ap = if aslen > PayloadSize: cast[ptr UncheckedArray[char]](addr a.more.data[0]) else:
+    inlinePtrOf(a)
+  let bp = if bslen > PayloadSize: cast[ptr UncheckedArray[char]](addr b.more.data[0]) else:
+    inlinePtrOf(b)
+  result = cmpMem(addr ap[AlwaysAvail], addr bp[AlwaysAvail], minLen - AlwaysAvail)
+  if result == 0: result = la - lb
+
+proc cmp(a, b: SmallString): int {.inline.} =
+  # For short strings: stay in registers — no address-taking, no stack spill.
+  let aslen = int(a.bytes and 0xFF'u)
+  let bslen = int(b.bytes and 0xFF'u)
+  if aslen <= AlwaysAvail and bslen <= AlwaysAvail:
+    let aw = bswap64(a.bytes shr 8)
+    let bw = bswap64(b.bytes shr 8)
+    if aw < bw: return -1
+    if aw > bw: return 1
+    return aslen - bslen
+  cmpStringPtrs(unsafeAddr a, unsafeAddr b)
 
 proc `==`(a, b: SmallString): bool {.inline.} =
-  if a.slen != b.slen: return false
-  let slen = int(a.slen)
-  let pfxLen = min(slen, AlwaysAvail)
-  if cmpMem(unsafeAddr a.payload[0], unsafeAddr b.payload[0], pfxLen) != 0: return false
-  if slen <= AlwaysAvail: return true
+  if (a.bytes and 0xFF'u) != (b.bytes and 0xFF'u): return false
+  let slen = ssLen(a)
+  if slen <= AlwaysAvail:
+    return a.bytes == b.bytes  # SWAR: single word comparison
+  # slen > AlwaysAvail: compare inline prefix word (contains slen + chars 0-6)
+  if a.bytes != b.bytes: return false
   if slen <= PayloadSize:
-    # medium: compare the tail stored in the `more` overlay
     let (la, pa) = a.guts
     let (_, pb) = b.guts
-    return cmpMem(addr pa[pfxLen], addr pb[pfxLen], la - pfxLen) == 0
+    return cmpMem(addr pa[AlwaysAvail], addr pb[AlwaysAvail], la - AlwaysAvail) == 0
   # long: prefix matched; check lengths then compare the heap tail
   let la = a.more.fullLen
   if la != b.more.fullLen: return false
-  cmpMem(addr a.more.data[pfxLen], addr b.more.data[pfxLen], la - pfxLen) == 0
-
-proc `<=`(a, b: SmallString): bool {.inline.} = cmp(a, b) <= 0
+  cmpMem(addr a.more.data[AlwaysAvail], addr b.more.data[AlwaysAvail], la - AlwaysAvail) == 0
 
 proc continuesWith*(s, sub: SmallString; start: int): bool =
   if start < 0: return false
-  let subslen = int(sub.slen)
+  let subslen = ssLen(sub)
   if subslen == 0: return true
+  let sslen = ssLen(s)
   # Compare via hot prefix first where possible (no heap dereference).
   let pfxLen = min(subslen, max(0, AlwaysAvail - start))
   if pfxLen > 0:
-    if cmpMem(unsafeAddr s.payload[start], unsafeAddr sub.payload[0], pfxLen) != 0:
+    if cmpMem(cast[pointer](cast[uint](unsafeAddr s.bytes) + 1'u + uint(start)),
+              cast[pointer](cast[uint](unsafeAddr sub.bytes) + 1'u), pfxLen) != 0:
       return false
   # Fetch actual lengths and compare the remaining tail via heap/guts.
   let subLen = if subslen > PayloadSize: sub.more.fullLen else: subslen
-  let sLen = if int(s.slen) > PayloadSize: s.more.fullLen else: int(s.slen)
+  let sLen = if sslen > PayloadSize: s.more.fullLen else: sslen
   if start + subLen > sLen: return false
   if pfxLen == subLen: return true
   let (_, sp) = s.guts
@@ -194,14 +231,14 @@ proc endsWith*(s, sub: SmallString): bool {.inline.} = continuesWith(s, sub, s.l
 
 
 proc add(s: var SmallString; c: char) =
-  let slen = int(s.slen)
+  let slen = ssLen(s)
   if slen <= PayloadSize:
     let newLen = slen + 1
     if newLen <= PayloadSize:
-      let inl = cast[ptr UncheckedArray[char]](addr s.payload[0])
+      let inl = inlinePtr(s)
       inl[slen] = c
       inl[newLen] = '\0'
-      s.slen = byte(newLen)
+      setSSLen(s, newLen)
     else:
       # transition from medium (slen == PayloadSize) to long
       let cap = newLen * 2
@@ -209,31 +246,31 @@ proc add(s: var SmallString; c: char) =
       p.rc = 1
       p.fullLen = newLen
       p.capImpl = (cap shl 1) or 1
-      copyMem(addr p.data[0], cast[ptr UncheckedArray[char]](addr s.payload[0]), slen)
+      copyMem(addr p.data[0], inlinePtr(s), slen)
       p.data[slen] = c
       p.data[newLen] = '\0'
       s.more = p
-      s.slen = byte(PayloadSize + 1)
+      setSSLen(s, PayloadSize + 1)
   else:
     let l = s.more.fullLen  # fetch fullLen only in the long path
     ensureUniqueLong(s, l, l + 1)
     s.more.data[l] = c
     s.more.data[l + 1] = '\0'
     if l < AlwaysAvail:
-      s.payload[l] = c
+      inlinePtr(s)[l] = c
 
 proc add(s: var SmallString; t: SmallString) =
-  let slen = int(s.slen)
+  let slen = ssLen(s)
   let (tl, tp) = t.guts  # fetch t's guts before any mutation (aliasing safety)
   if tl == 0: return
   if slen <= PayloadSize:
     let sl = slen  # for short/medium, slen IS the actual length
     let newLen = sl + tl
     if newLen <= PayloadSize:
-      let inl = cast[ptr UncheckedArray[char]](addr s.payload[0])
+      let inl = inlinePtr(s)
       copyMem(addr inl[sl], tp, tl)
       inl[newLen] = '\0'
-      s.slen = byte(newLen)
+      setSSLen(s, newLen)
     else:
       # transition to long
       let cap = newLen * 2
@@ -241,13 +278,13 @@ proc add(s: var SmallString; t: SmallString) =
       p.rc = 1
       p.fullLen = newLen
       p.capImpl = (cap shl 1) or 1
-      copyMem(addr p.data[0], cast[ptr UncheckedArray[char]](addr s.payload[0]), sl)
+      copyMem(addr p.data[0], inlinePtr(s), sl)
       copyMem(addr p.data[sl], tp, tl)
       p.data[newLen] = '\0'
       if sl < AlwaysAvail:
-        copyMem(addr s.payload[sl], tp, min(AlwaysAvail - sl, tl))
+        copyMem(addr inlinePtr(s)[sl], tp, min(AlwaysAvail - sl, tl))
       s.more = p
-      s.slen = byte(PayloadSize + 1)
+      setSSLen(s, PayloadSize + 1)
   else:
     let sl = s.more.fullLen  # fetch fullLen only in the long path
     let newLen = sl + tl
@@ -256,7 +293,7 @@ proc add(s: var SmallString; t: SmallString) =
     copyMem(addr s.more.data[sl], tp, tl)
     s.more.data[newLen] = '\0'
     if sl < AlwaysAvail:
-      copyMem(addr s.payload[sl], tp, min(AlwaysAvail - sl, tl))
+      copyMem(addr inlinePtr(s)[sl], tp, min(AlwaysAvail - sl, tl))
 
 {.push overflowChecks: off, rangeChecks: off.}
 
@@ -281,7 +318,7 @@ proc prepareAddLong(s: var SmallString; newLen: int) =
 
 proc prepareAdd(s: var SmallString; addLen: int) {.compilerRtl.} =
   ## Ensure s has room for addLen more characters without changing its length.
-  let slen = int(s.slen)
+  let slen = ssLen(s)
   let curLen = if slen > PayloadSize: s.more.fullLen else: slen
   let newLen = curLen + addLen
   if slen <= PayloadSize:
@@ -292,22 +329,21 @@ proc prepareAdd(s: var SmallString; addLen: int) {.compilerRtl.} =
       p.rc = 1
       p.fullLen = curLen
       p.capImpl = (newCap shl 1) or 1
-      let inl = cast[ptr UncheckedArray[char]](addr s.payload[0])
-      copyMem(addr p.data[0], inl, curLen + 1)
+      copyMem(addr p.data[0], inlinePtr(s), curLen + 1)
       s.more = p
-      s.slen = byte(PayloadSize + 1)
+      setSSLen(s, PayloadSize + 1)
     # else: short/medium — inline capacity always sufficient (struct is fixed size)
   else:
     prepareAddLong(s, newLen)
 
 proc nimAddCharV1(s: var SmallString; c: char) {.compilerRtl, inline.} =
-  let slen = int(s.slen)
+  let slen = ssLen(s)
   if slen < PayloadSize:
     # Hot path: inline/medium with room (slen+1 <= PayloadSize, no heap needed)
-    let inl = cast[ptr UncheckedArray[char]](addr s.payload[0])
+    let inl = inlinePtr(s)
     inl[slen] = c
     inl[slen + 1] = '\0'
-    s.slen = byte(slen + 1)
+    setSSLen(s, slen + 1)
   elif slen > PayloadSize:
     # Long string — inline the common case: unique heap block with room
     let l = s.more.fullLen
@@ -316,7 +352,7 @@ proc nimAddCharV1(s: var SmallString; c: char) {.compilerRtl, inline.} =
       s.more.data[l + 1] = '\0'
       s.more.fullLen = l + 1
       if l < AlwaysAvail:
-        s.payload[l] = c
+        inlinePtr(s)[l] = c
     else:
       prepareAdd(s, 1)
       s.add(c)
@@ -328,10 +364,12 @@ proc nimAddCharV1(s: var SmallString; c: char) {.compilerRtl, inline.} =
 proc toNimStr(str: cstring; len: int): SmallString {.compilerproc.} =
   if len <= 0: return
   if len <= PayloadSize:
-    result.slen = byte(len)
-    let inl = cast[ptr UncheckedArray[char]](addr result.payload[0])
+    setSSLen(result, len)
+    let inl = inlinePtr(result)
     copyMem(inl, str, len)
     inl[len] = '\0'
+    # Bytes past inl[len] in `bytes` must be zero for SWAR. `result` is zero-initialized,
+    # and copyMem only fills bytes 0..len-1 of inl; bytes len..6 remain zero.
   else:
     let p = cast[ptr LongString](alloc(sizeof(int) * 3 + len + 1))
     p.rc = 1
@@ -339,8 +377,8 @@ proc toNimStr(str: cstring; len: int): SmallString {.compilerproc.} =
     p.capImpl = (len shl 1) or 1
     copyMem(addr p.data[0], str, len)
     p.data[len] = '\0'
-    copyMem(addr result.payload[0], str, AlwaysAvail)
-    result.slen = byte(PayloadSize + 1)
+    copyMem(inlinePtr(result), str, AlwaysAvail)
+    setSSLen(result, PayloadSize + 1)
     result.more = p
 
 proc cstrToNimstr(str: cstring): SmallString {.compilerRtl.} =
@@ -349,11 +387,11 @@ proc cstrToNimstr(str: cstring): SmallString {.compilerRtl.} =
 
 proc nimToCStringConv(s: var SmallString): cstring {.compilerproc, nonReloadable, inline.} =
   ## Returns a null-terminated C string pointer into s's data.
-  ## Takes by var (pointer) so addr s.payload[0] is always into the caller's SmallString.
-  if int(s.slen) > PayloadSize:
+  ## Takes by var (pointer) so the inline chars ptr is always valid.
+  if ssLen(s) > PayloadSize:
     cast[cstring](addr s.more.data[0])
   else:
-    cast[cstring](addr s.payload[0])
+    cast[cstring](inlinePtr(s))
 
 proc appendString(dest: var SmallString; src: SmallString) {.compilerproc, inline.} =
   dest.add(src)
@@ -373,15 +411,15 @@ proc rawNewString(space: int): SmallString {.compilerproc.} =
     p.capImpl = (space shl 1) or 1
     p.data[0] = '\0'
     result.more = p
-    result.slen = byte(PayloadSize + 1)
+    setSSLen(result, PayloadSize + 1)
 
 proc mnewString(len: int): SmallString {.compilerproc.} =
   ## Returns a SmallString of `len` zero characters (newString).
   if len <= 0: return
   if len <= PayloadSize:
-    result.slen = byte(len)
-    # payload is zero-initialized by default (result is zero)
-    cast[ptr UncheckedArray[char]](addr result.payload[0])[len] = '\0'
+    setSSLen(result, len)
+    # bytes field is zero-initialized (result starts at 0); inline chars are already 0.
+    # Null terminator at inlinePtr(result)[len] is also 0 — fine for SWAR invariant.
   else:
     let p = cast[ptr LongString](alloc0(sizeof(int) * 3 + len + 1))
     p.rc = 1
@@ -389,11 +427,11 @@ proc mnewString(len: int): SmallString {.compilerproc.} =
     p.capImpl = (len shl 1) or 1
     # data is zeroed by alloc0; data[len] is '\0' too
     result.more = p
-    result.slen = byte(PayloadSize + 1)
+    setSSLen(result, PayloadSize + 1)
 
 proc setLengthStrV2(s: var SmallString; newLen: int) {.compilerRtl.} =
   ## Sets the length of s to newLen, zeroing new bytes on growth.
-  let slen = int(s.slen)
+  let slen = ssLen(s)
   let curLen = if slen > PayloadSize: s.more.fullLen else: slen
   if newLen == curLen: return
   if newLen <= 0:
@@ -404,20 +442,28 @@ proc setLengthStrV2(s: var SmallString; newLen: int) {.compilerRtl.} =
       else:
         # shared block: detach and go back to empty inline
         nimDestroyStrV1(s)
-        s.slen = 0
+        s.bytes = 0  # slen=0, all inline chars zeroed
     else:
-      s.slen = 0
-      s.payload[0] = '\0'
+      s.bytes = 0  # slen=0, all inline chars zeroed (SWAR safe)
     return
   if slen <= PayloadSize:
     if newLen <= PayloadSize:
+      let inl = inlinePtr(s)
       if newLen > curLen:
-        let inl = cast[ptr UncheckedArray[char]](addr s.payload[0])
         zeroMem(addr inl[curLen], newLen - curLen)
         inl[newLen] = '\0'
+        setSSLen(s, newLen)
       else:
-        cast[ptr UncheckedArray[char]](addr s.payload[0])[newLen] = '\0'
-      s.slen = byte(newLen)
+        # Shrink: zero out padding bytes for SWAR invariant.
+        inl[newLen] = '\0'
+        if newLen < AlwaysAvail:
+          # Zero bytes newLen+1..AlwaysAvail-1 in `bytes` (chars newLen..AlwaysAvail-2
+          # are now padding and must be 0 for SWAR comparison to work correctly).
+          let keepBits = (newLen + 1) * 8  # bytes 0..newLen of the `bytes` word
+          let charMask = ((uint(1) shl keepBits) - 1'u) and 0xFFFFFFFFFFFFFF00'u
+          s.bytes = (s.bytes and charMask) or uint(newLen)
+        else:
+          setSSLen(s, newLen)
     else:
       # grow into long
       let newCap = resize(newLen)
@@ -425,22 +471,28 @@ proc setLengthStrV2(s: var SmallString; newLen: int) {.compilerRtl.} =
       p.rc = 1
       p.fullLen = newLen
       p.capImpl = (newCap shl 1) or 1
-      copyMem(addr p.data[0], cast[ptr UncheckedArray[char]](addr s.payload[0]), curLen)
+      copyMem(addr p.data[0], inlinePtr(s), curLen)
       # bytes [curLen..newLen] zeroed by alloc0; p.data[newLen] = '\0' by alloc0
       s.more = p
-      s.slen = byte(PayloadSize + 1)
+      setSSLen(s, PayloadSize + 1)
   else:
     # currently long
     if newLen <= PayloadSize:
       # shrink back to inline
       let old = s.more
       let heapAlloc = (old.capImpl and 1) == 1
-      let inl = cast[ptr UncheckedArray[char]](addr s.payload[0])
+      let inl = inlinePtr(s)
       copyMem(inl, addr old.data[0], newLen)
       inl[newLen] = '\0'
       if heapAlloc and atomicSubFetch(old.rc, 1) == 0:
         dealloc(old)
-      s.slen = byte(newLen)
+      # Zero padding bytes in `bytes` for SWAR invariant
+      if newLen < AlwaysAvail:
+        let keepBits = (newLen + 1) * 8
+        let charMask = ((uint(1) shl keepBits) - 1'u) and 0xFFFFFFFFFFFFFF00'u
+        s.bytes = (s.bytes and charMask) or uint(newLen)
+      else:
+        setSSLen(s, newLen)
     else:
       ensureUniqueLong(s, curLen, newLen)
       if newLen > curLen:
@@ -449,7 +501,7 @@ proc setLengthStrV2(s: var SmallString; newLen: int) {.compilerRtl.} =
       s.more.fullLen = newLen
 
 proc nimAsgnStrV2(a: var SmallString; b: SmallString) {.compilerRtl, inline.} =
-  if int(b.slen) <= PayloadSize:
+  if ssLen(b) <= PayloadSize:
     nimDestroyStrV1(a)
     copyMem(addr a, unsafeAddr b, sizeof(SmallString))
   else:
@@ -472,7 +524,7 @@ proc nimPrepareStrMutationImpl(s: var SmallString) =
   s.more = p
 
 proc nimPrepareStrMutationV2(s: var SmallString) {.compilerRtl, inline.} =
-  if int(s.slen) > PayloadSize and (s.more.capImpl and 1) == 0:
+  if ssLen(s) > PayloadSize and (s.more.capImpl and 1) == 0:
     nimPrepareStrMutationImpl(s)
 
 proc prepareMutation*(s: var string) {.inline.} =
@@ -482,18 +534,18 @@ proc prepareMutation*(s: var string) {.inline.} =
 proc nimStrAtMutV3*(s: var SmallString; i: int): var char {.compilerproc, inline.} =
   ## Returns a mutable reference to the i-th char. Handles COW for long strings.
   ## Used by the codegen when s[i] is passed as a `var char` argument.
-  if int(s.slen) > PayloadSize:
+  if ssLen(s) > PayloadSize:
     nimPrepareStrMutationV2(s)  # COW: ensure unique heap block before exposing ref
     result = s.more.data[i]
   else:
-    result = (cast[ptr UncheckedArray[char]](addr s.payload[0]))[i]
+    result = inlinePtr(s)[i]
 
 proc nimAddStrV1(s: var SmallString; src: SmallString) {.compilerRtl, inline.} =
   s.add(src)
 
 func capacity*(self: SmallString): int {.inline.} =
   ## Returns the current capacity of the string.
-  let slen = int(self.slen)
+  let slen = ssLen(self)
   if slen > PayloadSize:
     self.more.capImpl shr 1
   else:
@@ -505,9 +557,8 @@ proc nimStrLen(s: SmallString): int {.compilerproc, inline.} =
 
 proc nimStrData(s: var SmallString): ptr UncheckedArray[char] {.compilerproc, inline.} =
   ## Returns a pointer to the char data of s. Called by codegen for subscript and slice with -d:nimsso.
-  let slen = int(s.slen)
-  if slen > PayloadSize: cast[ptr UncheckedArray[char]](addr s.more.data[0])
-  else: cast[ptr UncheckedArray[char]](addr s.payload[0])
+  if ssLen(s) > PayloadSize: cast[ptr UncheckedArray[char]](addr s.more.data[0])
+  else: inlinePtr(s)
 
 const
   newStringUninitWasDeclared = true
@@ -527,9 +578,9 @@ proc newStringUninitImpl(len: Natural): string {.noSideEffect, inline.} =
       if len > 0:
         let s = cast[ptr SmallString](addr result)
         if len <= PayloadSize:
-          s.slen = byte(len)
+          setSSLen(s[], len)
           # Null-terminate; bytes [0..len-1] left uninitialized for caller to fill.
-          cast[ptr UncheckedArray[char]](addr s.payload[0])[len] = '\0'
+          inlinePtr(s[])[len] = '\0'
         else:
           # rawNewString allocated with alloc (not alloc0), so data[0..len-1] is
           # intentionally uninitialized. Caller fills it and calls completeStore.
@@ -542,10 +593,10 @@ proc completeStore(s: var SmallString) {.compilerproc, inline.} =
   ## `moveMem`, `copyMem`).
   ##
   ## Syncs the hot prefix cache: copies `more.data[0..AlwaysAvail-1]` into
-  ## `payload[0..AlwaysAvail-1]` so that `cmp`/`==` can compare long strings
+  ## the inline bytes so that `cmp`/`==` can compare long strings
   ## without a heap dereference for the first few bytes.
-  if int(s.slen) > PayloadSize:
-    copyMem(addr s.payload[0], addr s.more.data[0], AlwaysAvail)
+  if ssLen(s) > PayloadSize:
+    copyMem(inlinePtr(s), addr s.more.data[0], AlwaysAvail)
 
 proc completeStore*(s: var string) {.inline.} =
   completeStore(cast[ptr SmallString](addr s)[])
@@ -553,7 +604,7 @@ proc completeStore*(s: var string) {.inline.} =
 # These take `string` (tyString) so the codegen uses them directly, bypassing
 # strmantle.nim's versions which go through nimStrLen/nimStrAtMutV3 compilerproc calls.
 proc cmpStrings(a, b: string): int {.compilerproc, inline.} =
-  cmp(cast[ptr SmallString](unsafeAddr a)[], cast[ptr SmallString](unsafeAddr b)[])
+  cmpStringPtrs(cast[ptr SmallString](unsafeAddr a), cast[ptr SmallString](unsafeAddr b))
 
 proc eqStrings(a, b: string): bool {.compilerproc, inline.} =
   cast[ptr SmallString](unsafeAddr a)[] == cast[ptr SmallString](unsafeAddr b)[]
