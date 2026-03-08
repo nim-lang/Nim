@@ -509,6 +509,33 @@ proc nimStrData(s: var SmallString): ptr UncheckedArray[char] {.compilerproc, in
   if slen > PayloadSize: cast[ptr UncheckedArray[char]](addr s.more.data[0])
   else: cast[ptr UncheckedArray[char]](addr s.payload[0])
 
+const
+  newStringUninitWasDeclared = true
+
+proc newStringUninitImpl(len: Natural): string {.noSideEffect, inline.} =
+  ## Returns a new string of length `len` but with uninitialized content.
+  ## One needs to fill the string character after character
+  ## with the index operator `s[i]`.
+  ##
+  ## This procedure exists only for optimization purposes;
+  ## the same effect can be achieved with the `&` operator or with `add`.
+  when nimvm:
+    result = newString(len)
+  else:
+    result = newStringOfCap(len)  # rawNewString: alloc (not alloc0) for long strings
+    {.cast(noSideEffect).}:
+      if len > 0:
+        let s = cast[ptr SmallString](addr result)
+        if len <= PayloadSize:
+          s.slen = byte(len)
+          # Null-terminate; bytes [0..len-1] left uninitialized for caller to fill.
+          cast[ptr UncheckedArray[char]](addr s.payload[0])[len] = '\0'
+        else:
+          # rawNewString allocated with alloc (not alloc0), so data[0..len-1] is
+          # intentionally uninitialized. Caller fills it and calls completeStore.
+          s.more.fullLen = len
+          s.more.data[len] = '\0'
+
 proc completeStore(s: var SmallString) {.compilerproc, inline.} =
   ## Must be called after bulk data has been written directly into the string buffer
   ## via a raw pointer obtained from `nimStrData`/`nimStrAtMutV3` (e.g. `readBuffer`,

@@ -1747,16 +1747,21 @@ when not defined(js):
     else:
       {.error: "The type T cannot contain managed memory or have destructors".}
 
-  when not defined(nimsso):
-    proc newStringUninit*(len: Natural): string {.noSideEffect.} =
-      ## Returns a new string of length `len` but with uninitialized
-      ## content. One needs to fill the string character after character
-      ## with the index operator `s[i]`.
-      ##
-      ## This procedure exists only for optimization purposes;
-      ## the same effect can be achieved with the `&` operator or with `add`.
-      when nimvm:
-        result = newString(len)
+  when defined(nimsso) and not declared(newStringUninitWasDeclared):
+    proc newStringUninitImpl(len: Natural): string {.noSideEffect, inline.}
+
+  proc newStringUninit*(len: Natural): string {.noSideEffect.} =
+    ## Returns a new string of length `len` but with uninitialized
+    ## content. One needs to fill the string character after character
+    ## with the index operator `s[i]`.
+    ##
+    ## This procedure exists only for optimization purposes;
+    ## the same effect can be achieved with the `&` operator or with `add`.
+    when nimvm:
+      result = newString(len)
+    else:
+      when defined(nimsso):
+        result = newStringUninitImpl(len)
       else:
         result = newStringOfCap(len)
         {.cast(noSideEffect).}:
@@ -1769,9 +1774,6 @@ when not defined(js):
             let s = cast[NimString](result)
             s.len = len
             s.data[len] = '\0'
-else:
-  proc newStringUninit*(len: Natural): string {.
-    magic: "NewString", importc: "mnewString", noSideEffect.}
 
 {.pop.}
 
@@ -3176,3 +3178,6 @@ when hostOS == "standalone":
   # ssymbols being duplicated.
   proc nimPanic(s: string) {.exportc, noreturn.} = panic(s)
   proc nimRawoutput(s: string) {.exportc.} = rawoutput(s)
+
+when not declared(newStringUninitWasDeclared):
+  proc newStringUninitImpl(len: Natural): string {.noSideEffect, inline.} = discard
