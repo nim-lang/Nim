@@ -45,7 +45,9 @@ proc bswap64(x: uint): uint {.importc: "__builtin_bswap64", nodecl, noSideEffect
 template ssLen(s: SmallString): int = int(s.bytes and 0xFF'u)
 
 template setSSLen(s: var SmallString; v: int) =
-  s.bytes = (s.bytes and 0xFFFFFFFFFFFFFF00'u) or uint(v)
+  # Single byte store — equivalent to old `s.slen = byte(v)`.
+  # Accessing a uint via byte* is legal in C (char-pointer aliasing exemption).
+  cast[ptr byte](addr s.bytes)[] = cast[byte](v)
 
 # Pointer to inline chars (offset +1 from `bytes` field / start of struct).
 # Only valid when s is in memory (var/ptr); forces a load from memory.
@@ -502,7 +504,6 @@ proc setLengthStrV2(s: var SmallString; newLen: int) {.compilerRtl.} =
 
 proc nimAsgnStrV2(a: var SmallString; b: SmallString) {.compilerRtl, inline.} =
   if ssLen(b) <= PayloadSize:
-    nimDestroyStrV1(a)
     copyMem(addr a, unsafeAddr b, sizeof(SmallString))
   else:
     if addr(a) == unsafeAddr(b): return
