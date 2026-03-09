@@ -486,6 +486,7 @@ proc readLine*(f: File, line: var string): bool {.tags: [ReadIOEffect],
       # fixes #9634; this pattern may need to be abstracted as a template if reused;
       # likely other io procs need this for correctness.
       fgetsSuccess = c_fgets(cast[cstring](addr line[pos]), sp.cint, f) != nil
+      when declared(completeStore): completeStore(line)
       if fgetsSuccess: break
       when not defined(nimscript):
         if errno == EINTR:
@@ -565,6 +566,7 @@ proc readAllBuffer(file: File): string =
   var buffer = newString(BufSize)
   while true:
     var bytesRead = readBuffer(file, addr(buffer[0]), BufSize)
+    when declared(completeStore): completeStore(buffer)
     if bytesRead == BufSize:
       result.add(buffer)
     else:
@@ -591,6 +593,7 @@ proc readAllFile(file: File, len: int64): string =
   # Speeds things up.
   result = newString(len)
   let bytes = readBuffer(file, addr(result[0]), len)
+  when declared(completeStore): completeStore(result)
   if endOfFile(file):
     if bytes.int64 < len:
       result.setLen(bytes)

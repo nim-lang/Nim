@@ -54,11 +54,23 @@ proc swarKey(x: uint): uint {.inline.} =
 # ---- accessors ----
 # Memory layout is identical on both endiannesses: byte 0 = slen, bytes 1-7 = inline chars.
 # But the integer value of `bytes` differs: on LE slen is in the LSB, on BE in the MSB.
-template ssLen(s: SmallString): int =
+
+template ssLenOf(bytes: uint): int =
+  ## Extract slen from an already-loaded `bytes` word. Zero-cost (register op only).
+  ## Use when `bytes` is already in a register (e.g. loaded for SWAR comparison).
   when system.cpuEndian == littleEndian:
-    int(s.bytes and 0xFF'u)
+    int(bytes and 0xFF'u)
   else:
-    int(s.bytes shr (8 * (sizeof(uint) - 1)))
+    int(bytes shr (8 * (sizeof(uint) - 1)))
+
+template ssLen(s: SmallString): int =
+  ## Load slen via a direct byte access. A byte load (movzx) lets the C compiler
+  ## prove that slen is at offset 0, distinct from inline char writes at offsets 1+,
+  ## enabling register-caching of slen across char-write loops (e.g. nimAddCharV1).
+  when system.cpuEndian == littleEndian:
+    int(cast[ptr byte](unsafeAddr s.bytes)[])
+  else:
+    int(cast[ptr byte](cast[uint](unsafeAddr s.bytes) + uint(sizeof(uint) - 1))[])
 
 template setSSLen(s: var SmallString; v: int) =
   # Single byte store — equivalent to old `s.slen = byte(v)`.
@@ -121,13 +133,11 @@ template guts(s: SmallString): (int, ptr UncheckedArray[char]) =
     (slen, inlinePtr(s))
 
 proc nimStrAtV3*(s: var SmallString; i: int): char {.compilerproc, inline.} =
-  let slen = ssLen(s)
-  if slen <= PayloadSize:
-    # unchecked: when i >= 7 we store into the `more` overlay
+  if ssLen(s) <= PayloadSize:
+    # short/medium: data is in the inline bytes overlay
     result = inlinePtr(s)[i]
-  elif i < AlwaysAvail:
-    result = inlinePtr(s)[i]  # hot prefix: no heap dereference for the first 7 bytes
   else:
+    # long: always use heap data (completeStore keeps more.data canonical)
     result = s.more.data[i]
 
 proc nimStrPutV3*(s: var SmallString; i: int; c: char) {.compilerproc, inline.} =
@@ -153,14 +163,16 @@ proc cmpInlineBytes(a, b: ptr UncheckedArray[char]; n: int): int {.inline.} =
 
 proc cmpStringPtrs(a, b: ptr SmallString): int {.inline.} =
   # Compare two SmallStrings by pointer to avoid struct copies in the hot path.
-  let aslen = a[].ssLen
-  let bslen = b[].ssLen
+  let abytes = a.bytes
+  let bbytes = b.bytes
+  let aslen = ssLenOf(abytes)
+  let bslen = ssLenOf(bbytes)
   if aslen <= AlwaysAvail and bslen <= AlwaysAvail:
     # SWAR path: both short (≤7 bytes). All data lives in the `bytes` field.
     # Zeroed-padding invariant ensures bytes past the null are 0.
     # swarKey puts char[0] in the MSB → integer comparison is lexicographic.
-    let aw = swarKey(a.bytes)
-    let bw = swarKey(b.bytes)
+    let aw = swarKey(abytes)
+    let bw = swarKey(bbytes)
     if aw < bw: return -1
     if aw > bw: return 1
     return aslen - bslen
@@ -197,24 +209,28 @@ proc cmpStringPtrs(a, b: ptr SmallString): int {.inline.} =
   if result == 0: result = la - lb
 
 proc cmp(a, b: SmallString): int {.inline.} =
-  # For short strings: stay in registers — no address-taking, no stack spill.
-  let aslen = ssLen(a)
-  let bslen = ssLen(b)
+  # Load bytes once per string — used for both slen check and SWAR key.
+  let abytes = a.bytes
+  let bbytes = b.bytes
+  let aslen = ssLenOf(abytes)
+  let bslen = ssLenOf(bbytes)
   if aslen <= AlwaysAvail and bslen <= AlwaysAvail:
-    let aw = swarKey(a.bytes)
-    let bw = swarKey(b.bytes)
+    let aw = swarKey(abytes)
+    let bw = swarKey(bbytes)
     if aw < bw: return -1
     if aw > bw: return 1
     return aslen - bslen
   cmpStringPtrs(unsafeAddr a, unsafeAddr b)
 
 proc `==`(a, b: SmallString): bool {.inline.} =
-  if ssLen(a) != ssLen(b): return false
-  let slen = ssLen(a)
+  let abytes = a.bytes
+  let bbytes = b.bytes
+  let slen = ssLenOf(abytes)
+  if slen != ssLenOf(bbytes): return false
   if slen <= AlwaysAvail:
-    return a.bytes == b.bytes  # SWAR: single word comparison
+    return abytes == bbytes  # SWAR: single word comparison
   # slen > AlwaysAvail: compare inline prefix word (contains slen + chars 0-6)
-  if a.bytes != b.bytes: return false
+  if abytes != bbytes: return false
   if slen <= PayloadSize:
     let (la, pa) = a.guts
     let (_, pb) = b.guts

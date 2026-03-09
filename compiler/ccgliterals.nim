@@ -225,10 +225,10 @@ proc genStringLiteralV3Const(m: BModule; n: PNode; isConst: bool; result: var Bu
       do:
         var di: StructInitializer
         res.addStructInitializer(di, kind = siOrderedStruct):
-          res.addField(di, name = "rc"):
-            res.addIntValue(1)
           res.addField(di, name = "fullLen"):
             res.addIntValue(s.len)
+          res.addField(di, name = "rc"):
+            res.addIntValue(1)
           res.addField(di, name = "capImpl"):
             res.addIntValue(0)  # static, never freed
           res.addField(di, name = "data"):
@@ -296,10 +296,10 @@ proc genStringLiteralV3(m: BModule; n: PNode; isConst: bool; result: var Builder
       do:
         var di: StructInitializer
         res.addStructInitializer(di, kind = siOrderedStruct):
-          res.addField(di, name = "rc"):
-            res.addIntValue(1)
           res.addField(di, name = "fullLen"):
             res.addIntValue(s.len)
+          res.addField(di, name = "rc"):
+            res.addIntValue(1)
           res.addField(di, name = "capImpl"):
             res.addIntValue(0)  # bit 0 = 0: static, never freed
           res.addField(di, name = "data"):
