@@ -151,13 +151,21 @@ proc ssoCharLit(ch: char): string =
     result.add(ch)
   result.add('\'')
 
-proc ssoBytesLit(s: string; slen: int): string =
+proc ssoBytesLit(m: BModule; s: string; slen: int): string =
   ## Compute the `bytes` field value for the new SmallString layout.
-  ## byte 0 = slen, bytes 1-7 = inline chars 0-6 (zero-padded), little-endian.
+  ## byte 0 = slen, bytes 1-7 = inline chars 0-6 (zero-padded).
+  ## On LE: slen in bits 0-7, char[i] in bits (i+1)*8..(i+1)*8+7.
+  ## On BE: slen in bits 56-63, char[i] in bits (6-i)*8..(6-i)*8+7.
   const AlwaysAvail = 7
-  var val: uint64 = uint64(slen)
-  for i in 0..<min(s.len, AlwaysAvail):
-    val = val or (uint64(s[i]) shl (uint(i + 1) * 8))
+  var val: uint64
+  if CPU[m.g.config.target.targetCPU].endian == littleEndian:
+    val = uint64(slen)
+    for i in 0..<min(s.len, AlwaysAvail):
+      val = val or (uint64(s[i]) shl (uint(i + 1) * 8))
+  else:
+    val = uint64(slen) shl 56
+    for i in 0..<min(s.len, AlwaysAvail):
+      val = val or (uint64(s[i]) shl (uint(AlwaysAvail - 1 - i) * 8))
   # Cast to NU (C name for Nim's uint, = NU64 on 64-bit). NU64 = uint64_t.
   result = cCast("NU", $val & "ULL")
 
@@ -193,13 +201,13 @@ proc genStringLiteralV3Const(m: BModule; n: PNode; isConst: bool; result: var Bu
   result.addStructInitializer(si, kind = siOrderedStruct):
     if s.len <= AlwaysAvail:
       result.addField(si, name = "bytes"):
-        result.add(ssoBytesLit(s, s.len))
+        result.add(ssoBytesLit(m, s, s.len))
       result.addField(si, name = "more"):
         result.add(NimNil)
     elif s.len <= payloadSize:
       # Medium string: bytes holds slen + chars 0-6; more holds chars 7..PayloadSize-1.
       result.addField(si, name = "bytes"):
-        result.add(ssoBytesLit(s, s.len))
+        result.add(ssoBytesLit(m, s, s.len))
       result.addField(si, name = "more"):
         result.add(ssoMoreLit(m, s))
     else:
@@ -228,7 +236,7 @@ proc genStringLiteralV3Const(m: BModule; n: PNode; isConst: bool; result: var Bu
       m.s[cfsStrData].add(extract(res))
       # Sentinel slen = 255 (> PayloadSize on all platforms), hot prefix in bytes 1-7.
       result.addField(si, name = "bytes"):
-        result.add(ssoBytesLit(s, 255))
+        result.add(ssoBytesLit(m, s, 255))
       result.addField(si, name = "more"):
         result.add(cCast(ptrType("LongString"), cAddr(dataName)))
 
@@ -256,7 +264,7 @@ proc genStringLiteralV3(m: BModule; n: PNode; isConst: bool; result: var Builder
       var si: StructInitializer
       res.addStructInitializer(si, kind = siOrderedStruct):
         res.addField(si, name = "bytes"):
-          res.add(ssoBytesLit(s, s.len))
+          res.add(ssoBytesLit(m, s, s.len))
         res.addField(si, name = "more"):
           res.add(NimNil)
   elif s.len <= payloadSize:
@@ -267,7 +275,7 @@ proc genStringLiteralV3(m: BModule; n: PNode; isConst: bool; result: var Builder
       var si: StructInitializer
       res.addStructInitializer(si, kind = siOrderedStruct):
         res.addField(si, name = "bytes"):
-          res.add(ssoBytesLit(s, s.len))
+          res.add(ssoBytesLit(m, s, s.len))
         res.addField(si, name = "more"):
           res.add(ssoMoreLit(m, s))
   else:
@@ -305,7 +313,7 @@ proc genStringLiteralV3(m: BModule; n: PNode; isConst: bool; result: var Builder
       var si: StructInitializer
       res.addStructInitializer(si, kind = siOrderedStruct):
         res.addField(si, name = "bytes"):
-          res.add(ssoBytesLit(s, 255))
+          res.add(ssoBytesLit(m, s, 255))
         res.addField(si, name = "more"):
           res.add(cCast(ptrType("LongString"), cAddr(dataName)))
   m.s[cfsStrData].add(extract(res))

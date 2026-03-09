@@ -41,8 +41,24 @@ type
 
 proc bswap64(x: uint): uint {.importc: "__builtin_bswap64", nodecl, noSideEffect.}
 
+proc swarKey(x: uint): uint {.inline.} =
+  ## Returns a value where inline char[0] is in the most significant byte,
+  ## so that integer comparison gives lexicographic string order.
+  ## LE: slen in bits 0-7; `bswap64(x shr 8)` puts char[0] in MSB.
+  ## BE: slen in bits 56-63 (MSB); `x shl 8` shifts slen out, char[0] lands in MSB.
+  when system.cpuEndian == littleEndian:
+    bswap64(x shr 8)
+  else:
+    x shl 8
+
 # ---- accessors ----
-template ssLen(s: SmallString): int = int(s.bytes and 0xFF'u)
+# Memory layout is identical on both endiannesses: byte 0 = slen, bytes 1-7 = inline chars.
+# But the integer value of `bytes` differs: on LE slen is in the LSB, on BE in the MSB.
+template ssLen(s: SmallString): int =
+  when system.cpuEndian == littleEndian:
+    int(s.bytes and 0xFF'u)
+  else:
+    int(s.bytes shr (8 * (sizeof(uint) - 1)))
 
 template setSSLen(s: var SmallString; v: int) =
   # Single byte store — equivalent to old `s.slen = byte(v)`.
@@ -137,14 +153,14 @@ proc cmpInlineBytes(a, b: ptr UncheckedArray[char]; n: int): int {.inline.} =
 
 proc cmpStringPtrs(a, b: ptr SmallString): int {.inline.} =
   # Compare two SmallStrings by pointer to avoid struct copies in the hot path.
-  let aslen = int(a.bytes and 0xFF'u)
-  let bslen = int(b.bytes and 0xFF'u)
+  let aslen = a[].ssLen
+  let bslen = b[].ssLen
   if aslen <= AlwaysAvail and bslen <= AlwaysAvail:
     # SWAR path: both short (≤7 bytes). All data lives in the `bytes` field.
     # Zeroed-padding invariant ensures bytes past the null are 0.
-    # bswap64(bytes >> 8) puts char[0] in the MSB → integer comparison is lexicographic.
-    let aw = bswap64(a.bytes shr 8)
-    let bw = bswap64(b.bytes shr 8)
+    # swarKey puts char[0] in the MSB → integer comparison is lexicographic.
+    let aw = swarKey(a.bytes)
+    let bw = swarKey(b.bytes)
     if aw < bw: return -1
     if aw > bw: return 1
     return aslen - bslen
@@ -182,18 +198,18 @@ proc cmpStringPtrs(a, b: ptr SmallString): int {.inline.} =
 
 proc cmp(a, b: SmallString): int {.inline.} =
   # For short strings: stay in registers — no address-taking, no stack spill.
-  let aslen = int(a.bytes and 0xFF'u)
-  let bslen = int(b.bytes and 0xFF'u)
+  let aslen = ssLen(a)
+  let bslen = ssLen(b)
   if aslen <= AlwaysAvail and bslen <= AlwaysAvail:
-    let aw = bswap64(a.bytes shr 8)
-    let bw = bswap64(b.bytes shr 8)
+    let aw = swarKey(a.bytes)
+    let bw = swarKey(b.bytes)
     if aw < bw: return -1
     if aw > bw: return 1
     return aslen - bslen
   cmpStringPtrs(unsafeAddr a, unsafeAddr b)
 
 proc `==`(a, b: SmallString): bool {.inline.} =
-  if (a.bytes and 0xFF'u) != (b.bytes and 0xFF'u): return false
+  if ssLen(a) != ssLen(b): return false
   let slen = ssLen(a)
   if slen <= AlwaysAvail:
     return a.bytes == b.bytes  # SWAR: single word comparison
@@ -461,9 +477,17 @@ proc setLengthStrV2(s: var SmallString; newLen: int) {.compilerRtl.} =
         if newLen < AlwaysAvail:
           # Zero bytes newLen+1..AlwaysAvail-1 in `bytes` (chars newLen..AlwaysAvail-2
           # are now padding and must be 0 for SWAR comparison to work correctly).
-          let keepBits = (newLen + 1) * 8  # bytes 0..newLen of the `bytes` word
-          let charMask = ((uint(1) shl keepBits) - 1'u) and 0xFFFFFFFFFFFFFF00'u
-          s.bytes = (s.bytes and charMask) or uint(newLen)
+          when system.cpuEndian == littleEndian:
+            # LE: slen in bits 0-7; keep bits 0..(newLen+1)*8-1, clear the rest above.
+            let keepBits = (newLen + 1) * 8
+            let charMask = ((uint(1) shl keepBits) - 1'u) and 0xFFFFFFFFFFFFFF00'u
+            s.bytes = (s.bytes and charMask) or uint(newLen)
+          else:
+            # BE: slen in bits 56-63; keep top (newLen+1) bytes, zero the rest below.
+            let discardBits = (7 - newLen) * 8
+            let slenBit = 8 * (sizeof(uint) - 1)
+            let charMask = not ((uint(1) shl discardBits) - 1'u) and not (0xFF'u shl slenBit)
+            s.bytes = (s.bytes and charMask) or (uint(newLen) shl slenBit)
         else:
           setSSLen(s, newLen)
     else:
@@ -490,9 +514,15 @@ proc setLengthStrV2(s: var SmallString; newLen: int) {.compilerRtl.} =
         dealloc(old)
       # Zero padding bytes in `bytes` for SWAR invariant
       if newLen < AlwaysAvail:
-        let keepBits = (newLen + 1) * 8
-        let charMask = ((uint(1) shl keepBits) - 1'u) and 0xFFFFFFFFFFFFFF00'u
-        s.bytes = (s.bytes and charMask) or uint(newLen)
+        when system.cpuEndian == littleEndian:
+          let keepBits = (newLen + 1) * 8
+          let charMask = ((uint(1) shl keepBits) - 1'u) and 0xFFFFFFFFFFFFFF00'u
+          s.bytes = (s.bytes and charMask) or uint(newLen)
+        else:
+          let discardBits = (7 - newLen) * 8
+          let slenBit = 8 * (sizeof(uint) - 1)
+          let charMask = not ((uint(1) shl discardBits) - 1'u) and not (0xFF'u shl slenBit)
+          s.bytes = (s.bytes and charMask) or (uint(newLen) shl slenBit)
       else:
         setSSLen(s, newLen)
     else:
