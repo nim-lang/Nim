@@ -12,6 +12,8 @@
 const
   AlwaysAvail = 7
   PayloadSize = AlwaysAvail + sizeof(pointer) - 1  # -1 reserves the last byte for '\0'
+  HeapSlen   = 255  # slen sentinel: heap-allocated long string; capImpl = raw capacity
+  StaticSlen = 254  # slen sentinel: static/literal long string; capImpl = 0, never freed
 
 when false:
   proc atomicAddFetch(p: var int; v: int): int {.importc: "__sync_add_and_fetch", nodecl.}
@@ -28,14 +30,15 @@ type
   LongString {.core.} = object
     fullLen: int
     rc: int       # atomic reference count; 1 = unique owner
-    capImpl: int  # bit 0: heap-allocated; upper bits: capacity (cap = capImpl shr 1)
+    capImpl: int  # raw capacity; 0 for static literals (never freed, slen = StaticSlen)
     data: UncheckedArray[char]
 
   SmallString {.core.} = object
     bytes: uint
       ## Layout (little-endian): byte 0 = slen; bytes 1-7 = inline chars 0-6.
       ## Bytes after the null terminator are zero (SWAR invariant).
-      ## When slen > PayloadSize, `more` is a heap pointer (long string).
+      ## When slen == HeapSlen (255), `more` is a heap-owned LongString block.
+      ## When slen == StaticSlen (254), `more` points to a static LongString literal.
       ## When 7 < slen <= PayloadSize, `more` holds raw char bytes 7..14 (medium string).
     more: ptr LongString
 
@@ -117,29 +120,30 @@ proc resize(old: int): int {.inline.} =
 # for tyString variables (nimDestroyStrV1, nimAsgnStrV2).
 
 proc nimDestroyStrV1(s: SmallString) {.compilerRtl, inline.} =
-  if ssLen(s) > PayloadSize and (s.more.capImpl and 1) == 1:
+  if ssLen(s) == HeapSlen:
     if atomicSubFetch(s.more.rc, 1) == 0:
       dealloc(s.more)
 
 proc ensureUniqueLong(s: var SmallString; oldLen, newLen: int) =
   # Ensure s.more is a unique (rc=1) heap block with capacity >= newLen, preserving existing data.
-  # s must already be a long string on entry.
-  let heapAlloc = (s.more.capImpl and 1) == 1
-  let unique = heapAlloc and s.more.rc == 1
-  let cap = s.more.capImpl shr 1
-  if unique and newLen <= cap:
+  # s must already be a long string (slen >= StaticSlen) on entry.
+  # After return, slen == HeapSlen (s is heap-owned).
+  let isHeap = ssLen(s) == HeapSlen
+  let cap = if isHeap: s.more.capImpl else: 0  # static literals have capImpl=0
+  if isHeap and s.more.rc == 1 and newLen <= cap:
     s.more.fullLen = newLen
   else:
     let newCap = max(newLen, resize(cap))
     let p = cast[ptr LongString](alloc(sizeof(int) * 3 + newCap + 1))
     p.rc = 1
     p.fullLen = newLen
-    p.capImpl = (newCap shl 1) or 1
+    p.capImpl = newCap
     let old = s.more
     copyMem(addr p.data[0], addr old.data[0], oldLen + 1)  # +1 preserves the '\0'
-    if heapAlloc and atomicSubFetch(old.rc, 1) == 0:
+    if isHeap and atomicSubFetch(old.rc, 1) == 0:
       dealloc(old)
     s.more = p
+    setSSLen(s, HeapSlen)  # mark as heap-owned (also handles static→heap promotion)
 
 proc len(s: SmallString): int {.inline.} =
   result = ssLen(s)
@@ -296,12 +300,12 @@ proc add(s: var SmallString; c: char) =
       let p = cast[ptr LongString](alloc(sizeof(int) * 3 + cap + 1))
       p.rc = 1
       p.fullLen = newLen
-      p.capImpl = (cap shl 1) or 1
+      p.capImpl = cap
       copyMem(addr p.data[0], inlinePtr(s), slen)
       p.data[slen] = c
       p.data[newLen] = '\0'
       s.more = p
-      setSSLen(s, PayloadSize + 1)
+      setSSLen(s, HeapSlen)
   else:
     let l = s.more.fullLen  # fetch fullLen only in the long path
     ensureUniqueLong(s, l, l + 1)
@@ -328,14 +332,14 @@ proc add(s: var SmallString; t: SmallString) =
       let p = cast[ptr LongString](alloc(sizeof(int) * 3 + cap + 1))
       p.rc = 1
       p.fullLen = newLen
-      p.capImpl = (cap shl 1) or 1
+      p.capImpl = cap
       copyMem(addr p.data[0], inlinePtr(s), sl)
       copyMem(addr p.data[sl], tp, tl)
       p.data[newLen] = '\0'
       if sl < AlwaysAvail:
         copyMem(addr inlinePtr(s)[sl], tp, min(AlwaysAvail - sl, tl))
       s.more = p
-      setSSLen(s, PayloadSize + 1)
+      setSSLen(s, HeapSlen)
   else:
     let sl = s.more.fullLen  # fetch fullLen only in the long path
     let newLen = sl + tl
@@ -350,9 +354,9 @@ proc add(s: var SmallString; t: SmallString) =
 
 proc prepareAddLong(s: var SmallString; newLen: int) =
   # Reserve capacity for newLen in the long-string block without changing logical length.
-  let heapAlloc = (s.more.capImpl and 1) == 1
-  let cap = s.more.capImpl shr 1
-  if heapAlloc and s.more.rc == 1 and newLen <= cap:
+  let isHeap = ssLen(s) == HeapSlen
+  let cap = if isHeap: s.more.capImpl else: 0
+  if isHeap and s.more.rc == 1 and newLen <= cap:
     discard  # already unique with sufficient capacity
   else:
     let oldLen = s.more.fullLen
@@ -360,12 +364,13 @@ proc prepareAddLong(s: var SmallString; newLen: int) =
     let p = cast[ptr LongString](alloc(sizeof(int) * 3 + newCap + 1))
     p.rc = 1
     p.fullLen = oldLen  # logical length unchanged — caller sets it after writing data
-    p.capImpl = (newCap shl 1) or 1
+    p.capImpl = newCap
     let old = s.more
     copyMem(addr p.data[0], addr old.data[0], oldLen + 1)
-    if heapAlloc and atomicSubFetch(old.rc, 1) == 0:
+    if isHeap and atomicSubFetch(old.rc, 1) == 0:
       dealloc(old)
     s.more = p
+    setSSLen(s, HeapSlen)
 
 proc prepareAdd(s: var SmallString; addLen: int) {.compilerRtl.} =
   ## Ensure s has room for addLen more characters without changing its length.
@@ -379,10 +384,10 @@ proc prepareAdd(s: var SmallString; addLen: int) {.compilerRtl.} =
       let p = cast[ptr LongString](alloc(sizeof(int) * 3 + newCap + 1))
       p.rc = 1
       p.fullLen = curLen
-      p.capImpl = (newCap shl 1) or 1
+      p.capImpl = newCap
       copyMem(addr p.data[0], inlinePtr(s), curLen + 1)
       s.more = p
-      setSSLen(s, PayloadSize + 1)
+      setSSLen(s, HeapSlen)
     # else: short/medium — inline capacity always sufficient (struct is fixed size)
   else:
     prepareAddLong(s, newLen)
@@ -398,7 +403,7 @@ proc nimAddCharV1(s: var SmallString; c: char) {.compilerRtl, inline.} =
   elif slen > PayloadSize:
     # Long string — inline the common case: unique heap block with room
     let l = s.more.fullLen
-    if (s.more.capImpl and 1) == 1 and s.more.rc == 1 and l < (s.more.capImpl shr 1):
+    if slen == HeapSlen and s.more.rc == 1 and l < s.more.capImpl:
       s.more.data[l] = c
       s.more.data[l + 1] = '\0'
       s.more.fullLen = l + 1
@@ -425,11 +430,11 @@ proc toNimStr(str: cstring; len: int): SmallString {.compilerproc.} =
     let p = cast[ptr LongString](alloc(sizeof(int) * 3 + len + 1))
     p.rc = 1
     p.fullLen = len
-    p.capImpl = (len shl 1) or 1
+    p.capImpl = len
     copyMem(addr p.data[0], str, len)
     p.data[len] = '\0'
     copyMem(inlinePtr(result), str, AlwaysAvail)
-    setSSLen(result, PayloadSize + 1)
+    setSSLen(result, HeapSlen)
     result.more = p
 
 proc cstrToNimstr(str: cstring): SmallString {.compilerRtl.} =
@@ -459,10 +464,10 @@ proc rawNewString(space: int): SmallString {.compilerproc.} =
     let p = cast[ptr LongString](alloc(sizeof(int) * 3 + space + 1))
     p.rc = 1
     p.fullLen = 0
-    p.capImpl = (space shl 1) or 1
+    p.capImpl = space
     p.data[0] = '\0'
     result.more = p
-    setSSLen(result, PayloadSize + 1)
+    setSSLen(result, HeapSlen)
 
 proc mnewString(len: int): SmallString {.compilerproc.} =
   ## Returns a SmallString of `len` zero characters (newString).
@@ -475,10 +480,10 @@ proc mnewString(len: int): SmallString {.compilerproc.} =
     let p = cast[ptr LongString](alloc0(sizeof(int) * 3 + len + 1))
     p.rc = 1
     p.fullLen = len
-    p.capImpl = (len shl 1) or 1
+    p.capImpl = len
     # data is zeroed by alloc0; data[len] is '\0' too
     result.more = p
-    setSSLen(result, PayloadSize + 1)
+    setSSLen(result, HeapSlen)
 
 proc setLengthStrV2(s: var SmallString; newLen: int) {.compilerRtl.} =
   ## Sets the length of s to newLen, zeroing new bytes on growth.
@@ -487,11 +492,11 @@ proc setLengthStrV2(s: var SmallString; newLen: int) {.compilerRtl.} =
   if newLen == curLen: return
   if newLen <= 0:
     if slen > PayloadSize:
-      if (s.more.capImpl and 1) == 1 and s.more.rc == 1:
+      if slen == HeapSlen and s.more.rc == 1:
         s.more.fullLen = 0
         s.more.data[0] = '\0'
       else:
-        # shared block: detach and go back to empty inline
+        # shared or static block: detach and go back to empty inline
         nimDestroyStrV1(s)
         s.bytes = 0  # slen=0, all inline chars zeroed
     else:
@@ -529,21 +534,20 @@ proc setLengthStrV2(s: var SmallString; newLen: int) {.compilerRtl.} =
       let p = cast[ptr LongString](alloc0(sizeof(int) * 3 + newCap + 1))
       p.rc = 1
       p.fullLen = newLen
-      p.capImpl = (newCap shl 1) or 1
+      p.capImpl = newCap
       copyMem(addr p.data[0], inlinePtr(s), curLen)
       # bytes [curLen..newLen] zeroed by alloc0; p.data[newLen] = '\0' by alloc0
       s.more = p
-      setSSLen(s, PayloadSize + 1)
+      setSSLen(s, HeapSlen)
   else:
     # currently long
     if newLen <= PayloadSize:
       # shrink back to inline
       let old = s.more
-      let heapAlloc = (old.capImpl and 1) == 1
       let inl = inlinePtr(s)
       copyMem(inl, addr old.data[0], newLen)
       inl[newLen] = '\0'
-      if heapAlloc and atomicSubFetch(old.rc, 1) == 0:
+      if slen == HeapSlen and atomicSubFetch(old.rc, 1) == 0:
         dealloc(old)
       # Zero padding bytes in `bytes` for SWAR invariant
       if newLen < AlwaysAvail:
@@ -571,24 +575,25 @@ proc nimAsgnStrV2(a: var SmallString; b: SmallString) {.compilerRtl, inline.} =
   else:
     if addr(a) == unsafeAddr(b): return
     nimDestroyStrV1(a)
-    # COW: share the block, bump refcount — no allocation needed
-    if (b.more.capImpl and 1) == 1:
+    # COW: share the block, bump refcount — no allocation needed (static literals: no bump)
+    if ssLenOf(b.bytes) == HeapSlen:
       discard atomicAddFetch(b.more.rc, 1)
     copyMem(addr a, unsafeAddr b, sizeof(SmallString))
 
 proc nimPrepareStrMutationImpl(s: var SmallString) =
-  # Called when s holds a static (non-heap) LongString block. COW: allocate a fresh copy.
+  # Called when s holds a static (slen=StaticSlen) LongString block. COW: allocate fresh copy.
   let old = s.more
   let oldLen = old.fullLen
   let p = cast[ptr LongString](alloc(sizeof(int) * 3 + oldLen + 1))
   p.rc = 1
   p.fullLen = oldLen
-  p.capImpl = (oldLen shl 1) or 1
+  p.capImpl = oldLen
   copyMem(addr p.data[0], addr old.data[0], oldLen + 1)
   s.more = p
+  setSSLen(s, HeapSlen)  # promote from static to heap-owned
 
 proc nimPrepareStrMutationV2(s: var SmallString) {.compilerRtl, inline.} =
-  if ssLen(s) > PayloadSize and (s.more.capImpl and 1) == 0:
+  if ssLen(s) == StaticSlen:
     nimPrepareStrMutationImpl(s)
 
 proc prepareMutation*(s: var string) {.inline.} =
@@ -610,8 +615,10 @@ proc nimAddStrV1(s: var SmallString; src: SmallString) {.compilerRtl, inline.} =
 func capacity*(self: SmallString): int {.inline.} =
   ## Returns the current capacity of the string.
   let slen = ssLen(self)
-  if slen > PayloadSize:
-    self.more.capImpl shr 1
+  if slen == HeapSlen:
+    self.more.capImpl
+  elif slen == StaticSlen:
+    self.more.fullLen  # static: report fullLen as capacity (read-only, no extra room)
   else:
     PayloadSize
 

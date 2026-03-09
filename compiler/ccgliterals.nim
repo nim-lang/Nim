@@ -234,9 +234,9 @@ proc genStringLiteralV3Const(m: BModule; n: PNode; isConst: bool; result: var Bu
           res.addField(di, name = "data"):
             res.add(makeCString(s))
       m.s[cfsStrData].add(extract(res))
-      # Sentinel slen = 255 (> PayloadSize on all platforms), hot prefix in bytes 1-7.
+      # slen = StaticSlen (254): marks this as a static (never-freed) long string.
       result.addField(si, name = "bytes"):
-        result.add(ssoBytesLit(m, s, 255))
+        result.add(ssoBytesLit(m, s, 254))
       result.addField(si, name = "more"):
         result.add(cCast(ptrType("LongString"), cAddr(dataName)))
 
@@ -306,14 +306,14 @@ proc genStringLiteralV3(m: BModule; n: PNode; isConst: bool; result: var Builder
             res.add(makeCString(s))
     else:
       dataName = m.tmpBase & $id
-    # bytes: sentinel slen=255 (> PayloadSize on all platforms) + hot prefix in bytes 1-7.
+    # slen = StaticSlen (254): marks this as a static (never-freed) long string.
     res.addVarWithInitializer(
         if isConst: AlwaysConst else: Global,
         name = tmp, typ = "SmallString"):
       var si: StructInitializer
       res.addStructInitializer(si, kind = siOrderedStruct):
         res.addField(si, name = "bytes"):
-          res.add(ssoBytesLit(m, s, 255))
+          res.add(ssoBytesLit(m, s, 254))
         res.addField(si, name = "more"):
           res.add(cCast(ptrType("LongString"), cAddr(dataName)))
   m.s[cfsStrData].add(extract(res))
