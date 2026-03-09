@@ -62,7 +62,10 @@ proc objectNode(cache: IdentCache; n: PNode; idgen: IdGenerator): PNode =
     result = newNodeI(nkIdentDefs, n.info)
     result.add n  # name
     result.add mapTypeToAstX(cache, n.sym.typ, n.info, idgen, true, false)  # type
-    result.add newNodeI(nkEmpty, n.info)  # no assigned value
+    if n.sym.ast != nil:
+      result.add copyTree(n.sym.ast)
+    else:
+      result.add newNodeI(nkEmpty, n.info)  # no assigned value
   else:
     result = copyNode(n)
     for i in 0..<n.safeLen:
@@ -87,7 +90,10 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
     var id = newNodeX(nkIdentDefs)
     id.add n  # name
     id.add mapTypeToAst(t, info)  # type
-    id.add newNodeI(nkEmpty, info)  # no assigned value
+    if n.sym.ast != nil:
+      id.add copyTree(n.sym.ast)
+    else:
+      id.add newNodeI(nkEmpty, n.info)  # no assigned value
     id
   template newIdentDefs(s): untyped = newIdentDefs(s, s.typ)
 
