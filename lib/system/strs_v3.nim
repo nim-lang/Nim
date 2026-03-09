@@ -26,8 +26,8 @@ else:
 
 type
   LongString {.core.} = object
-    rc: int       # atomic reference count; 1 = unique owner
     fullLen: int
+    rc: int       # atomic reference count; 1 = unique owner
     capImpl: int  # bit 0: heap-allocated; upper bits: capacity (cap = capImpl shr 1)
     data: UncheckedArray[char]
 
