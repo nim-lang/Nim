@@ -40,6 +40,8 @@ type
     more: ptr LongString
 
 proc bswap64(x: uint): uint {.importc: "__builtin_bswap64", nodecl, noSideEffect.}
+proc ctz32(x: uint32): int32 {.importc: "__builtin_ctz", nodecl, noSideEffect.}
+proc ctz64(x: uint64): int32 {.importc: "__builtin_ctzll", nodecl, noSideEffect.}
 
 proc swarKey(x: uint): uint {.inline.} =
   ## Returns a value where inline char[0] is in the most significant byte,
@@ -62,6 +64,25 @@ template ssLenOf(bytes: uint): int =
     int(bytes and 0xFF'u)
   else:
     int(bytes shr (8 * (sizeof(uint) - 1)))
+
+proc cmpShortInline(abytes, bbytes: uint; aslen, bslen: int): int {.inline.} =
+  let minLen = min(aslen, bslen)
+  if minLen > 0:
+    when system.cpuEndian == littleEndian:
+      let diffMask = (1'u shl (minLen * 8)) - 1'u
+      let diff = ((abytes xor bbytes) shr 8) and diffMask
+      if diff != 0:
+        let byteShift = ((when sizeof(uint) <= 4: ctz32(uint32(diff)) else: ctz64(uint64(diff))).int shr 3) * 8 + 8
+        let ac = (abytes shr byteShift) and 0xFF'u
+        let bc = (bbytes shr byteShift) and 0xFF'u
+        if ac < bc: return -1
+        return 1
+    else:
+      let aw = swarKey(abytes)
+      let bw = swarKey(bbytes)
+      if aw < bw: return -1
+      if aw > bw: return 1
+  aslen - bslen
 
 template ssLen(s: SmallString): int =
   ## Load slen via a direct byte access. A byte load (movzx) lets the C compiler
@@ -215,11 +236,7 @@ proc cmp(a, b: SmallString): int {.inline.} =
   let aslen = ssLenOf(abytes)
   let bslen = ssLenOf(bbytes)
   if aslen <= AlwaysAvail and bslen <= AlwaysAvail:
-    let aw = swarKey(abytes)
-    let bw = swarKey(bbytes)
-    if aw < bw: return -1
-    if aw > bw: return 1
-    return aslen - bslen
+    return cmpShortInline(abytes, bbytes, aslen, bslen)
   cmpStringPtrs(unsafeAddr a, unsafeAddr b)
 
 proc `==`(a, b: SmallString): bool {.inline.} =
