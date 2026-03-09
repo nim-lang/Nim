@@ -1774,6 +1774,9 @@ when not defined(js):
             let s = cast[NimString](result)
             s.len = len
             s.data[len] = '\0'
+else:
+  proc newStringUninit*(len: Natural): string {.
+    magic: "NewString", importc: "mnewString", noSideEffect.}
 
 {.pop.}
 
