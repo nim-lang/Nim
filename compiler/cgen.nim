@@ -389,7 +389,7 @@ proc lenField(p: BProc, val: Rope): Rope {.inline.} =
 
 proc lenExpr(p: BProc; a: TLoc): Rope =
   if optSeqDestructors in p.config.globalOptions:
-    if p.config.isDefined("nimsso") and a.t != nil and
+    if p.config.isDefined("nimsso") and a.lode != nil and a.t != nil and
         a.t.skipTypes(abstractInst).kind == tyString:
       result = cCall(cgsymValue(p.module, "nimStrLen"), rdLoc(a))
     else:

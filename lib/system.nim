@@ -1698,6 +1698,16 @@ when notJSnotNims and defined(nimSeqsV2):
     include "system/strs_v2"
   include "system/seqs_v2"
 
+when not (notJSnotNims and defined(nimSeqsV2)):
+  # Fallback stubs for js/nimscript/non-V2 backends where strs_v2/v3 is not included.
+  # These are needed so that modules imported by system (e.g. syncio) can reference
+  # beginStore/endStore/readRawData without a 'when declared(...)' guard.
+  proc beginStore*(s: var string; ensuredLen: int; start = 0): ptr UncheckedArray[char] {.inline, noSideEffect.} =
+    result = cast[ptr UncheckedArray[char]](addr s[start])
+  proc endStore*(s: var string) {.inline, noSideEffect.} = discard
+  template readRawData*(s: string): (ptr UncheckedArray[char], int) =
+    (cast[ptr UncheckedArray[char]](nil), s.len)
+
 when not defined(js):
   template newSeqImpl(T, len) =
     result = newSeqOfCap[T](len)
@@ -2928,7 +2938,9 @@ proc substr*(a: openArray[char]): string =
   result = newStringUninit(a.len)
   whenNotVmJsNims():
     if a.len > 0:
-      copyMem(result[0].addr, a[0].unsafeAddr, a.len)
+      {.cast(noSideEffect).}:
+        copyMem(beginStore(result, a.len), a[0].unsafeAddr, a.len)
+        endStore(result)
   do:
     for i, ch in a:
       result[i] = ch
@@ -2963,7 +2975,9 @@ proc substr*(s: string; first, last: int): string = # A bug with `magic: Slice` 
   result = newStringUninit(L)
   whenNotVmJsNims():
     if L > 0:
-      copyMem(result[0].addr, s[first].unsafeAddr, L)
+      let (src, _) = readRawData(s)
+      copyMem(beginStore(result, L), addr src[first], L)
+      endStore(result)
   do:
     for i in 0..<L:
       result[i] = s[i + first]

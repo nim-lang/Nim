@@ -246,20 +246,23 @@ proc cmp(a, b: SmallString): int {.inline.} =
 proc `==`(a, b: SmallString): bool {.inline.} =
   let abytes = a.bytes
   let bbytes = b.bytes
-  let slen = ssLenOf(abytes)
-  if slen != ssLenOf(bbytes): return false
-  if slen <= AlwaysAvail:
-    return abytes == bbytes  # SWAR: single word comparison
-  # slen > AlwaysAvail: compare inline prefix word (contains slen + chars 0-6)
-  if abytes != bbytes: return false
-  if slen <= PayloadSize:
-    let (la, pa) = a.guts
+  let aslen = ssLenOf(abytes)
+  let bslen = ssLenOf(bbytes)
+  if aslen <= AlwaysAvail and bslen <= AlwaysAvail:
+    return abytes == bbytes  # SWAR: slen equal, data in bytes word
+  # Compute actual lengths (sentinels 254/255 → more.fullLen)
+  let la = if aslen > PayloadSize: a.more.fullLen else: aslen
+  let lb = if bslen > PayloadSize: b.more.fullLen else: bslen
+  if la != lb: return false
+  if la == 0: return true
+  if aslen <= PayloadSize and bslen <= PayloadSize:
+    # Both medium (slen == la == lb, so byte0 equal): compare prefix word + tail
+    if abytes != bbytes: return false
+    let (_, pa) = a.guts
     let (_, pb) = b.guts
     return cmpMem(addr pa[AlwaysAvail], addr pb[AlwaysAvail], la - AlwaysAvail) == 0
-  # long: prefix matched; check lengths then compare the heap tail
-  let la = a.more.fullLen
-  if la != b.more.fullLen: return false
-  cmpMem(addr a.more.data[AlwaysAvail], addr b.more.data[AlwaysAvail], la - AlwaysAvail) == 0
+  # At least one long (heap or static): delegate to cmpStringPtrs
+  cmpStringPtrs(unsafeAddr a, unsafeAddr b) == 0
 
 proc continuesWith*(s, sub: SmallString; start: int): bool =
   if start < 0: return false
@@ -671,6 +674,37 @@ proc completeStore(s: var SmallString) {.compilerproc, inline.} =
 
 proc completeStore*(s: var string) {.inline.} =
   completeStore(cast[ptr SmallString](addr s)[])
+
+proc beginStore*(s: var string; ensuredLen: int; start = 0): ptr UncheckedArray[char] {.inline, noSideEffect.} =
+  ## Prepares `s` for a bulk write of `ensuredLen` bytes starting at `start`.
+  ## The caller must ensure `s.len >= start + ensuredLen` (e.g. via `newString` or `setLen`).
+  ## Call `endStore(s)` afterwards to sync the inline cache.
+  {.cast(noSideEffect).}:
+    let ss = cast[ptr SmallString](addr s)
+    let slen = ssLen(ss[])
+    if slen > PayloadSize:
+      ensureUniqueLong(ss[], ss[].more.fullLen, ss[].more.fullLen)
+      result = cast[ptr UncheckedArray[char]](addr ss[].more.data[start])
+    else:
+      result = cast[ptr UncheckedArray[char]](cast[uint](inlinePtr(ss[])) + uint(start))
+
+proc endStore*(s: var string) {.inline, noSideEffect.} =
+  ## Syncs the inline cache after bulk writes via `beginStore`. No-op for short/medium strings.
+  {.cast(noSideEffect).}: completeStore(cast[ptr SmallString](addr s)[])
+
+proc rawDataImpl(ss: ptr SmallString): (ptr UncheckedArray[char], int) {.inline.} =
+  let slen = ssLen(ss[])
+  let actualLen = if slen > PayloadSize: ss[].more.fullLen else: slen
+  let p =
+    if actualLen == 0: nil
+    elif slen > PayloadSize: cast[ptr UncheckedArray[char]](addr ss[].more.data[0])
+    else: inlinePtr(ss[])
+  (p, actualLen)
+
+template readRawData*(s: string): (ptr UncheckedArray[char], int) =
+  ## Returns `(dataPtr, length)` for read-only raw access to string data.
+  ## Template ensures no copy of `s` is made; ptr is valid while `s` is alive.
+  rawDataImpl(cast[ptr SmallString](unsafeAddr s))
 
 # These take `string` (tyString) so the codegen uses them directly, bypassing
 # strmantle.nim's versions which go through nimStrLen/nimStrAtMutV3 compilerproc calls.

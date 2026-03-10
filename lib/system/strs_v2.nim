@@ -216,4 +216,21 @@ func capacity*(self: string): int {.inline.} =
   let str = cast[ptr NimStringV2](unsafeAddr self)
   result = if str.p != nil: str.p.cap and not strlitFlag else: 0
 
+proc beginStore*(s: var string; ensuredLen: int; start = 0): ptr UncheckedArray[char] {.inline, noSideEffect.} =
+  ## Returns a writable pointer for bulk write of `ensuredLen` bytes starting at `start`.
+  ## Call `endStore(s)` afterwards for portability.
+  {.cast(noSideEffect).}: prepareMutation(s)
+  if s.len == 0: nil
+  else: cast[ptr UncheckedArray[char]](addr s[start])
+
+proc endStore*(s: var string) {.inline, noSideEffect.} =
+  ## No-op for non-SSO strings; call after bulk writes via `beginStore`.
+  discard
+
+template readRawData*(s: string): (ptr UncheckedArray[char], int) =
+  ## Returns `(dataPtr, length)` for read-only raw access to string data.
+  ## Template ensures no copy of `s`; ptr is valid while `s` is alive.
+  let p = if s.len == 0: nil else: cast[ptr UncheckedArray[char]](unsafeAddr s[0])
+  (p, s.len)
+
 {.pop.}

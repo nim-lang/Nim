@@ -988,16 +988,10 @@ proc genAddr(p: BProc, e: PNode, d: var TLoc) =
     expr(p, e[0], d)
     # bug #19497
     d.lode = e
-  elif p.config.isDefined("nimsso") and e[0].kind == nkBracketExpr and
-      e[0][0].typ.skipTypes(abstractVar).kind == tyString:
-    # addr s[i] for nimsso: nimStrAtMutV3 returns char* directly — no extra & needed
-    var base = initLocExpr(p, e[0][0])
-    var idx  = initLocExpr(p, e[0][1])
-    putIntoDest(p, d, e,
-      cCall(cgsymValue(p.module, "nimStrAtMutV3"), byRefLoc(p, base), rdLoc(idx)),
-      base.storage)
   else:
-    var a: TLoc = initLocExpr(p, e[0])
+    let ssoStrSub = p.config.isDefined("nimsso") and e[0].kind == nkBracketExpr and
+        e[0][0].typ.skipTypes(abstractVar).kind == tyString
+    var a: TLoc = initLocExpr(p, e[0], if ssoStrSub: {lfEnforceDeref} else: {})
     if e[0].kind in {nkHiddenStdConv, nkHiddenSubConv, nkConv} and not ignoreConv(e[0]):
       # addr (conv x) introduces a temp because `conv x` is not a rvalue
       # transform addr ( conv ( x ) ) -> conv ( addr ( x ) )
@@ -1325,10 +1319,11 @@ proc genSeqElem(p: BProc, n, x, y: PNode, d: var TLoc) =
     a.snippet = cDeref(a.snippet)
 
   if p.config.isDefined("nimsso") and ty.kind == tyString:
-    # direct writes (s[i] = c) are intercepted in genAsgn via nimStrPutV3
     let bra = byRefLoc(p, a)
-    if lfPrepareForMutation in d.flags:
-      # s[i] passed as `var char`: return *(nimStrAtMutV3(&s, i)) — a valid C lvalue
+    if {lfPrepareForMutation, lfEnforceDeref} * d.flags != {}:
+      # Use nimStrAtMutV3 to get a mutable reference (char*) to the element.
+      # Note: for long strings with i < AlwaysAvail the inline cache may become
+      # stale; callers should use s[i]=c or nimStrPutV3 when possible.
       putIntoDest(p, d, n,
         cDeref(cCall(cgsymValue(p.module, "nimStrAtMutV3"), bra, rcb)), a.storage)
     else:

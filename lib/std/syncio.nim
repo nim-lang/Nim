@@ -485,8 +485,8 @@ proc readLine*(f: File, line: var string): bool {.tags: [ReadIOEffect],
     while true:
       # fixes #9634; this pattern may need to be abstracted as a template if reused;
       # likely other io procs need this for correctness.
-      fgetsSuccess = c_fgets(cast[cstring](addr line[pos]), sp.cint, f) != nil
-      when declared(completeStore): completeStore(line)
+      fgetsSuccess = c_fgets(cast[cstring](beginStore(line, sp, pos)), sp.cint, f) != nil
+      endStore(line)
       if fgetsSuccess: break
       when not defined(nimscript):
         if errno == EINTR:
@@ -496,10 +496,11 @@ proc readLine*(f: File, line: var string): bool {.tags: [ReadIOEffect],
       checkErr(f)
       break
 
-    let m = c_memchr(addr line[pos], cint('\L'), cast[csize_t](sp))
+    let (lineData, _) = readRawData(line)
+    let m = c_memchr(addr lineData[pos], cint('\L'), cast[csize_t](sp))
     if m != nil:
       # \l found: Could be our own or the one by fgets, in any case, we're done
-      var last = cast[int](m) - cast[int](addr line[0])
+      var last = cast[int](m) - cast[int](lineData)
       if last > 0 and line[last-1] == '\c':
         line.setLen(last-1)
         return last > 1 or fgetsSuccess
@@ -565,8 +566,8 @@ proc readAllBuffer(file: File): string =
   result = ""
   var buffer = newString(BufSize)
   while true:
-    var bytesRead = readBuffer(file, addr(buffer[0]), BufSize)
-    when declared(completeStore): completeStore(buffer)
+    var bytesRead = readBuffer(file, beginStore(buffer, BufSize), BufSize)
+    endStore(buffer)
     if bytesRead == BufSize:
       result.add(buffer)
     else:
@@ -592,8 +593,8 @@ proc readAllFile(file: File, len: int64): string =
   # We acquire the filesize beforehand and hope it doesn't change.
   # Speeds things up.
   result = newString(len)
-  let bytes = readBuffer(file, addr(result[0]), len)
-  when declared(completeStore): completeStore(result)
+  let bytes = readBuffer(file, beginStore(result, len.int), len.int)
+  endStore(result)
   if endOfFile(file):
     if bytes.int64 < len:
       result.setLen(bytes)
