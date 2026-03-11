@@ -1703,19 +1703,19 @@ when not (notJSnotNims and defined(nimSeqsV2)):
   # Needed so modules imported by system (e.g. syncio) can reference these without guards.
   when notJSnotNims:
     # mm:refc: string = ptr NimStringDesc with data: UncheckedArray[char]
-    proc beginStore*(s: var string; ensuredLen: int; start = 0): ptr UncheckedArray[char] {.inline, noSideEffect, tags: [].} =
+    proc beginStore*(s: var string; ensuredLen: int; start = 0): ptr UncheckedArray[char] {.inline, noSideEffect, raises: [], tags: [].} =
       let ns = cast[NimString](s)
       if ns == nil: nil
       else: cast[ptr UncheckedArray[char]](addr ns.data[start])
-    proc endStore*(s: var string) {.inline, noSideEffect, tags: [].} = discard
+    proc endStore*(s: var string) {.inline, noSideEffect, raises: [], tags: [].} = discard
     template readRawData*(s: string; start = 0): ptr UncheckedArray[char] =
       let ns = cast[NimString](s)
       if ns == nil: nil
       else: cast[ptr UncheckedArray[char]](addr ns.data[start])
   else:
     # JS/nimscript: callers are guarded by whenNotVmJsNims/when not defined(js)
-    proc beginStore*(s: var string; ensuredLen: int; start = 0): ptr UncheckedArray[char] {.inline, noSideEffect, tags: [].} = nil
-    proc endStore*(s: var string) {.inline, noSideEffect, tags: [].} = discard
+    proc beginStore*(s: var string; ensuredLen: int; start = 0): ptr UncheckedArray[char] {.inline, noSideEffect, raises: [], tags: [].} = nil
+    proc endStore*(s: var string) {.inline, noSideEffect, raises: [], tags: [].} = discard
     template readRawData*(s: string; start = 0): ptr UncheckedArray[char] = nil
 
 when not defined(js):

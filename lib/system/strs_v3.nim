@@ -675,7 +675,7 @@ proc completeStore(s: var SmallString) {.compilerproc, inline.} =
 proc completeStore*(s: var string) {.inline.} =
   completeStore(cast[ptr SmallString](addr s)[])
 
-proc beginStore*(s: var string; ensuredLen: int; start = 0): ptr UncheckedArray[char] {.inline, noSideEffect, tags: [].} =
+proc beginStore*(s: var string; ensuredLen: int; start = 0): ptr UncheckedArray[char] {.inline, noSideEffect, raises: [], tags: [].} =
   ## Prepares `s` for a bulk write of `ensuredLen` bytes starting at `start`.
   ## The caller must ensure `s.len >= start + ensuredLen` (e.g. via `newString` or `setLen`).
   ## Call `endStore(s)` afterwards to sync the inline cache.
@@ -688,7 +688,7 @@ proc beginStore*(s: var string; ensuredLen: int; start = 0): ptr UncheckedArray[
     else:
       result = cast[ptr UncheckedArray[char]](cast[uint](inlinePtr(ss[])) + uint(start))
 
-proc endStore*(s: var string) {.inline, noSideEffect, tags: [].} =
+proc endStore*(s: var string) {.inline, noSideEffect, raises: [], tags: [].} =
   ## Syncs the inline cache after bulk writes via `beginStore`. No-op for short/medium strings.
   {.cast(noSideEffect).}: completeStore(cast[ptr SmallString](addr s)[])
 
