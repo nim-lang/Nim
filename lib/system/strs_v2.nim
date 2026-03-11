@@ -187,7 +187,7 @@ proc nimPrepareStrMutationV2(s: var NimStringV2) {.compilerRtl, inl.} =
   if s.p != nil and (s.p.cap and strlitFlag) == strlitFlag:
     nimPrepareStrMutationImpl(s)
 
-proc prepareMutation*(s: var string) {.inline.} =
+proc prepareMutation*(s: var string) {.inline, tags: [].} =
   # string literals are "copy on write", so you need to call
   # `prepareMutation` before modifying the strings via `addr`.
   {.cast(noSideEffect).}:
@@ -216,14 +216,14 @@ func capacity*(self: string): int {.inline.} =
   let str = cast[ptr NimStringV2](unsafeAddr self)
   result = if str.p != nil: str.p.cap and not strlitFlag else: 0
 
-proc beginStore*(s: var string; ensuredLen: int; start = 0): ptr UncheckedArray[char] {.inline, noSideEffect.} =
+proc beginStore*(s: var string; ensuredLen: int; start = 0): ptr UncheckedArray[char] {.inline, noSideEffect, tags: [].} =
   ## Returns a writable pointer for bulk write of `ensuredLen` bytes starting at `start`.
   ## Call `endStore(s)` afterwards for portability.
   {.cast(noSideEffect).}: prepareMutation(s)
   if s.len == 0: nil
   else: cast[ptr UncheckedArray[char]](addr s[start])
 
-proc endStore*(s: var string) {.inline, noSideEffect.} =
+proc endStore*(s: var string) {.inline, noSideEffect, tags: [].} =
   ## No-op for non-SSO strings; call after bulk writes via `beginStore`.
   discard
 
