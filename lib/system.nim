@@ -1699,14 +1699,24 @@ when notJSnotNims and defined(nimSeqsV2):
   include "system/seqs_v2"
 
 when not (notJSnotNims and defined(nimSeqsV2)):
-  # Fallback stubs for js/nimscript/non-V2 backends where strs_v2/v3 is not included.
-  # These are needed so that modules imported by system (e.g. syncio) can reference
-  # beginStore/endStore/readRawData without a 'when declared(...)' guard.
-  proc beginStore*(s: var string; ensuredLen: int; start = 0): ptr UncheckedArray[char] {.inline, noSideEffect.} =
-    result = cast[ptr UncheckedArray[char]](addr s[start])
-  proc endStore*(s: var string) {.inline, noSideEffect.} = discard
-  template readRawData*(s: string): (ptr UncheckedArray[char], int) =
-    (cast[ptr UncheckedArray[char]](nil), s.len)
+  # Fallback implementations for backends where strs_v2/v3 is not included.
+  # Needed so modules imported by system (e.g. syncio) can reference these without guards.
+  when notJSnotNims:
+    # mm:refc: string = ptr NimStringDesc with data: UncheckedArray[char]
+    proc beginStore*(s: var string; ensuredLen: int; start = 0): ptr UncheckedArray[char] {.inline, noSideEffect.} =
+      let ns = cast[NimString](s)
+      if ns == nil: nil
+      else: cast[ptr UncheckedArray[char]](addr ns.data[start])
+    proc endStore*(s: var string) {.inline, noSideEffect.} = discard
+    template readRawData*(s: string; start = 0): ptr UncheckedArray[char] =
+      let ns = cast[NimString](s)
+      if ns == nil: nil
+      else: cast[ptr UncheckedArray[char]](addr ns.data[start])
+  else:
+    # JS/nimscript: callers are guarded by whenNotVmJsNims/when not defined(js)
+    proc beginStore*(s: var string; ensuredLen: int; start = 0): ptr UncheckedArray[char] {.inline, noSideEffect.} = nil
+    proc endStore*(s: var string) {.inline, noSideEffect.} = discard
+    template readRawData*(s: string; start = 0): ptr UncheckedArray[char] = nil
 
 when not defined(js):
   template newSeqImpl(T, len) =
@@ -2975,8 +2985,7 @@ proc substr*(s: string; first, last: int): string = # A bug with `magic: Slice` 
   result = newStringUninit(L)
   whenNotVmJsNims():
     if L > 0:
-      let (src, _) = readRawData(s)
-      copyMem(beginStore(result, L), addr src[first], L)
+      copyMem(beginStore(result, L), readRawData(s, first), L)
       endStore(result)
   do:
     for i in 0..<L:

@@ -692,19 +692,17 @@ proc endStore*(s: var string) {.inline, noSideEffect.} =
   ## Syncs the inline cache after bulk writes via `beginStore`. No-op for short/medium strings.
   {.cast(noSideEffect).}: completeStore(cast[ptr SmallString](addr s)[])
 
-proc rawDataImpl(ss: ptr SmallString): (ptr UncheckedArray[char], int) {.inline.} =
+proc rawDataImpl(ss: ptr SmallString; start: int): ptr UncheckedArray[char] {.inline, noSideEffect, raises: [].} =
   let slen = ssLen(ss[])
   let actualLen = if slen > PayloadSize: ss[].more.fullLen else: slen
-  let p =
-    if actualLen == 0: nil
-    elif slen > PayloadSize: cast[ptr UncheckedArray[char]](addr ss[].more.data[0])
-    else: inlinePtr(ss[])
-  (p, actualLen)
+  if actualLen == 0: nil
+  elif slen > PayloadSize: cast[ptr UncheckedArray[char]](addr ss[].more.data[start])
+  else: cast[ptr UncheckedArray[char]](cast[uint](inlinePtr(ss[])) + uint(start))
 
-template readRawData*(s: string): (ptr UncheckedArray[char], int) =
-  ## Returns `(dataPtr, length)` for read-only raw access to string data.
+template readRawData*(s: string; start = 0): ptr UncheckedArray[char] =
+  ## Returns a pointer to `s[start]` for read-only raw access.
   ## Template ensures no copy of `s` is made; ptr is valid while `s` is alive.
-  rawDataImpl(cast[ptr SmallString](unsafeAddr s))
+  rawDataImpl(cast[ptr SmallString](unsafeAddr s), start)
 
 # These take `string` (tyString) so the codegen uses them directly, bypassing
 # strmantle.nim's versions which go through nimStrLen/nimStrAtMutV3 compilerproc calls.

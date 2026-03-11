@@ -1983,7 +1983,7 @@ func find*(s: string, sub: char, start: Natural = 0, last = -1): int {.rtl,
     when hasCStringBuiltin:
       let length = last-start+1
       if length > 0:
-        let (sdata, _) = readRawData(s)
+        let sdata = readRawData(s)
         let found = c_memchr(addr sdata[start], cint(sub), cast[csize_t](length))
         if not found.isNil:
           return cast[int](found) -% cast[int](sdata)
@@ -2042,9 +2042,8 @@ func find*(s, sub: string, start: Natural = 0, last = -1): int {.rtl,
     when declared(memmem):
       let subLen = sub.len
       if last < 0 and start < s.len and subLen != 0:
-        let (sdata, _) = readRawData(s)
-        let (subdata, _) = readRawData(sub)
-        let found = memmem(addr sdata[start], csize_t(s.len - start), subdata, csize_t(subLen))
+        let sdata = readRawData(s)
+        let found = memmem(addr sdata[start], csize_t(s.len - start), readRawData(sub), csize_t(subLen))
         result = if not found.isNil:
             cast[int](found) -% cast[int](sdata)
           else:

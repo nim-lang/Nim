@@ -496,7 +496,7 @@ proc readLine*(f: File, line: var string): bool {.tags: [ReadIOEffect],
       checkErr(f)
       break
 
-    let (lineData, _) = readRawData(line)
+    let lineData = readRawData(line)
     let m = c_memchr(addr lineData[pos], cint('\L'), cast[csize_t](sp))
     if m != nil:
       # \l found: Could be our own or the one by fgets, in any case, we're done

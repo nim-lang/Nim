@@ -227,10 +227,10 @@ proc endStore*(s: var string) {.inline, noSideEffect.} =
   ## No-op for non-SSO strings; call after bulk writes via `beginStore`.
   discard
 
-template readRawData*(s: string): (ptr UncheckedArray[char], int) =
-  ## Returns `(dataPtr, length)` for read-only raw access to string data.
+template readRawData*(s: string; start = 0): ptr UncheckedArray[char] =
+  ## Returns a pointer to `s[start]` for read-only raw access.
   ## Template ensures no copy of `s`; ptr is valid while `s` is alive.
-  let p = if s.len == 0: nil else: cast[ptr UncheckedArray[char]](unsafeAddr s[0])
-  (p, s.len)
+  let str = cast[ptr NimStringV2](unsafeAddr s)
+  if str.p == nil: nil else: cast[ptr UncheckedArray[char]](addr str.p.data[start])
 
 {.pop.}
