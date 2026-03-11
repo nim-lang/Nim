@@ -574,6 +574,7 @@ proc setLengthStrV2(s: var SmallString; newLen: int) {.compilerRtl.} =
 
 proc nimAsgnStrV2(a: var SmallString; b: SmallString) {.compilerRtl, inline.} =
   if ssLen(b) <= PayloadSize:
+    nimDestroyStrV1(a)  # free any existing heap block before overwriting
     copyMem(addr a, unsafeAddr b, sizeof(SmallString))
   else:
     if addr(a) == unsafeAddr(b): return
