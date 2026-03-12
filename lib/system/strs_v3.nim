@@ -133,7 +133,9 @@ proc ensureUniqueLong(s: var SmallString; oldLen, newLen: int) =
   if isHeap and s.more.rc == 1 and newLen <= cap:
     s.more.fullLen = newLen
   else:
-    let newCap = max(newLen, resize(cap))
+    # Only grow capacity when actually needed; pure COW copies (newLen <= cap)
+    # preserve the existing capacity to avoid exponential growth via repeated COW.
+    let newCap = if newLen > cap: max(newLen, resize(cap)) else: cap
     let p = cast[ptr LongString](alloc(sizeof(int) * 3 + newCap + 1))
     p.rc = 1
     p.fullLen = newLen
