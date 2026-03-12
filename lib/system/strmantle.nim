@@ -117,7 +117,7 @@ proc nimParseBiggestFloat(s: openArray[char], number: var BiggestFloat,
     if s[i+1] == 'A' or s[i+1] == 'a':
       if s[i+2] == 'N' or s[i+2] == 'n':
         if i+3 >= s.len or s[i+3] notin IdentChars:
-          number = NaN
+          number = if sign < 0: -NaN else: NaN
           return i+3
     return 0
 
