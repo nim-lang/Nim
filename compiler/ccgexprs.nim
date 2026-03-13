@@ -922,8 +922,8 @@ proc genDeref(p: BProc, e: PNode, d: var TLoc) =
     else:
       a = initLocExprSingleUse(p, e[0])
 
-    if e.typ != nil and e.typ.kind == tyObject:
-      # bug #23453 #25265
+    # bug #23453 #25265
+    if e.typ != nil and e.typ.skipTypes(abstractInst).kind == tyObject:
       discard getTypeDesc(p.module, e.typ)
     if d.k == locNone:
       # dest = *a;  <-- We do not know that 'dest' is on the heap!
