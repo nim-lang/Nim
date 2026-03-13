@@ -922,7 +922,7 @@ proc genDeref(p: BProc, e: PNode, d: var TLoc) =
     else:
       a = initLocExprSingleUse(p, e[0])
 
-    if e.typ != nil and e.typ.kind == tyObject:
+    if e.typ != nil and e.typ.skipTypes(abstractInstOwned).kind == tyObject:
       # bug #23453 #25265
       discard getTypeDesc(p.module, e.typ)
     if d.k == locNone:
