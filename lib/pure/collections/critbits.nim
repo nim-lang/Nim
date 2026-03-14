@@ -123,7 +123,7 @@ proc rawInsert[T](c: var CritBitTree[T], key: string): Node[T] =
     var inner: Node[T]
     new inner
     result = Node[T](isLeaf: true, key: key)
-    inner.otherBits = chr(newOtherBits)
+    inner.otherBits = char(newOtherBits)
     inner.byte = newByte
     inner.child[1 - dir] = result
 

@@ -527,7 +527,7 @@ proc sample*[T, U](r: var Rand; a: openArray[T]; cdf: openArray[U]): T =
   assert(float(cdf[^1]) > 0.0)
   # While we could check cdf[i-1] <= cdf[i] for i in 1..cdf.len, that could get
   # awfully expensive even in debugging modes.
-  let u = r.rand(float(cdf[^1]))
+  let u = r.rand(range[0.0 .. high(float)](cdf[^1]))
   a[cdf.upperBound(U(u))]
 
 proc sample*[T, U](a: openArray[T]; cdf: openArray[U]): T =
