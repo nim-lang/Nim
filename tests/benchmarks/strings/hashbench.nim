@@ -271,7 +271,7 @@ proc main() =
   echo "scenarios=", scenarioList(cfg.scenarios)
   for scenario in cfg.scenarios:
     bench(scenario, cfg)
-  echo "MAXMEM=", formatSize getMaxMem()
+  when not defined(useMalloc): echo "MAXMEM=", formatSize getMaxMem()
 
 when isMainModule:
   main()

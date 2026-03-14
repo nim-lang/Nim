@@ -1320,10 +1320,10 @@ proc genSeqElem(p: BProc, n, x, y: PNode, d: var TLoc) =
 
   if p.config.isDefined("nimsso") and ty.kind == tyString:
     let bra = byRefLoc(p, a)
-    if {lfPrepareForMutation, lfEnforceDeref} * d.flags != {}:
+    if lfPrepareForMutation in d.flags:
       # Use nimStrAtMutV3 to get a mutable reference (char*) to the element.
-      # Note: for long strings with i < AlwaysAvail the inline cache may become
-      # stale; callers should use s[i]=c or nimStrPutV3 when possible.
+      # Only when mutation is requested: avoids calling nimPrepareStrMutationV2
+      # on const string literals (which would SIGSEGV on write to read-only memory).
       putIntoDest(p, d, n,
         cDeref(cCall(cgsymValue(p.module, "nimStrAtMutV3"), bra, rcb)), a.storage)
     else:

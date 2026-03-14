@@ -10,10 +10,11 @@
 ## Small String Optimization (SSO) implementation used by Nim's core.
 
 const
-  AlwaysAvail = 7
+  AlwaysAvail = sizeof(uint) - 1  # inline chars that fit in the `bytes` field alongside slen
   PayloadSize = AlwaysAvail + sizeof(pointer) - 1  # -1 reserves the last byte for '\0'
   HeapSlen   = 255  # slen sentinel: heap-allocated long string; capImpl = raw capacity
   StaticSlen = 254  # slen sentinel: static/literal long string; capImpl = 0, never freed
+  LongStringDataOffset = 3 * sizeof(int)  # byte offset of LongString.data from struct start
 
 when false:
   proc atomicAddFetch(p: var int; v: int): int {.importc: "__sync_add_and_fetch", nodecl.}
@@ -35,29 +36,36 @@ type
 
   SmallString {.core.} = object
     bytes: uint
-      ## Layout (little-endian): byte 0 = slen; bytes 1-7 = inline chars 0-6.
+      ## Layout (little-endian): byte 0 = slen; bytes 1..AlwaysAvail = inline chars 0..AlwaysAvail-1.
       ## Bytes after the null terminator are zero (SWAR invariant).
       ## When slen == HeapSlen (255), `more` is a heap-owned LongString block.
       ## When slen == StaticSlen (254), `more` points to a static LongString literal.
-      ## When 7 < slen <= PayloadSize, `more` holds raw char bytes 7..14 (medium string).
+      ## When AlwaysAvail < slen <= PayloadSize, `more` holds raw char bytes AlwaysAvail..PayloadSize-1 (medium string).
     more: ptr LongString
 
-proc bswap64(x: uint): uint {.importc: "__builtin_bswap64", nodecl, noSideEffect.}
-proc ctz32(x: uint32): int32 {.importc: "__builtin_ctz", nodecl, noSideEffect.}
-proc ctz64(x: uint64): int32 {.importc: "__builtin_ctzll", nodecl, noSideEffect.}
+when sizeof(uint) == 8:
+  proc bswap(x: uint): uint {.importc: "__builtin_bswap64", nodecl, noSideEffect.}
+  proc ctzImpl(x: uint): int {.inline.} =
+    proc ctz64(x: uint64): int32 {.importc: "__builtin_ctzll", nodecl, noSideEffect.}
+    int(ctz64(uint64(x)))
+else:
+  proc bswap(x: uint): uint {.importc: "__builtin_bswap32", nodecl, noSideEffect.}
+  proc ctzImpl(x: uint): int {.inline.} =
+    proc ctz32(x: uint32): int32 {.importc: "__builtin_ctz", nodecl, noSideEffect.}
+    int(ctz32(uint32(x)))
 
 proc swarKey(x: uint): uint {.inline.} =
   ## Returns a value where inline char[0] is in the most significant byte,
   ## so that integer comparison gives lexicographic string order.
-  ## LE: slen in bits 0-7; `bswap64(x shr 8)` puts char[0] in MSB.
-  ## BE: slen in bits 56-63 (MSB); `x shl 8` shifts slen out, char[0] lands in MSB.
+  ## LE: slen in bits 0-7; `bswap(x shr 8)` puts char[0] in MSB.
+  ## BE: slen in bits (sizeof(uint)-1)*8..(sizeof(uint)*8-1) (MSB); `x shl 8` shifts slen out, char[0] lands in MSB.
   when system.cpuEndian == littleEndian:
-    bswap64(x shr 8)
+    bswap(x shr 8)
   else:
     x shl 8
 
 # ---- accessors ----
-# Memory layout is identical on both endiannesses: byte 0 = slen, bytes 1-7 = inline chars.
+# Memory layout is identical on both endiannesses: byte 0 = slen, bytes 1..AlwaysAvail = inline chars.
 # But the integer value of `bytes` differs: on LE slen is in the LSB, on BE in the MSB.
 
 template ssLenOf(bytes: uint): int =
@@ -75,7 +83,7 @@ proc cmpShortInline(abytes, bbytes: uint; aslen, bslen: int): int {.inline.} =
       let diffMask = (1'u shl (minLen * 8)) - 1'u
       let diff = ((abytes xor bbytes) shr 8) and diffMask
       if diff != 0:
-        let byteShift = ((when sizeof(uint) <= 4: ctz32(uint32(diff)) else: ctz64(uint64(diff))).int shr 3) * 8 + 8
+        let byteShift = (ctzImpl(diff) shr 3) * 8 + 8
         let ac = (abytes shr byteShift) and 0xFF'u
         let bc = (bbytes shr byteShift) and 0xFF'u
         if ac < bc: return -1
@@ -136,7 +144,7 @@ proc ensureUniqueLong(s: var SmallString; oldLen, newLen: int) =
     # Only grow capacity when actually needed; pure COW copies (newLen <= cap)
     # preserve the existing capacity to avoid exponential growth via repeated COW.
     let newCap = if newLen > cap: max(newLen, resize(cap)) else: cap
-    let p = cast[ptr LongString](alloc(sizeof(int) * 3 + newCap + 1))
+    let p = cast[ptr LongString](alloc(LongStringDataOffset + newCap + 1))
     p.rc = 1
     p.fullLen = newLen
     p.capImpl = newCap
@@ -302,7 +310,7 @@ proc add(s: var SmallString; c: char) =
     else:
       # transition from medium (slen == PayloadSize) to long
       let cap = newLen * 2
-      let p = cast[ptr LongString](alloc(sizeof(int) * 3 + cap + 1))
+      let p = cast[ptr LongString](alloc(LongStringDataOffset + cap + 1))
       p.rc = 1
       p.fullLen = newLen
       p.capImpl = cap
@@ -334,7 +342,7 @@ proc add(s: var SmallString; t: SmallString) =
     else:
       # transition to long
       let cap = newLen * 2
-      let p = cast[ptr LongString](alloc(sizeof(int) * 3 + cap + 1))
+      let p = cast[ptr LongString](alloc(LongStringDataOffset + cap + 1))
       p.rc = 1
       p.fullLen = newLen
       p.capImpl = cap
@@ -366,7 +374,7 @@ proc prepareAddLong(s: var SmallString; newLen: int) =
   else:
     let oldLen = s.more.fullLen
     let newCap = max(newLen, resize(cap))
-    let p = cast[ptr LongString](alloc(sizeof(int) * 3 + newCap + 1))
+    let p = cast[ptr LongString](alloc(LongStringDataOffset + newCap + 1))
     p.rc = 1
     p.fullLen = oldLen  # logical length unchanged — caller sets it after writing data
     p.capImpl = newCap
@@ -386,7 +394,7 @@ proc prepareAdd(s: var SmallString; addLen: int) {.compilerRtl.} =
     if newLen > PayloadSize:
       # transition to long: allocate, copy existing data
       let newCap = newLen * 2
-      let p = cast[ptr LongString](alloc(sizeof(int) * 3 + newCap + 1))
+      let p = cast[ptr LongString](alloc(LongStringDataOffset + newCap + 1))
       p.rc = 1
       p.fullLen = curLen
       p.capImpl = newCap
@@ -432,7 +440,7 @@ proc toNimStr(str: cstring; len: int): SmallString {.compilerproc.} =
     # Bytes past inl[len] in `bytes` must be zero for SWAR. `result` is zero-initialized,
     # and copyMem only fills bytes 0..len-1 of inl; bytes len..6 remain zero.
   else:
-    let p = cast[ptr LongString](alloc(sizeof(int) * 3 + len + 1))
+    let p = cast[ptr LongString](alloc(LongStringDataOffset + len + 1))
     p.rc = 1
     p.fullLen = len
     p.capImpl = len
@@ -466,7 +474,7 @@ proc rawNewString(space: int): SmallString {.compilerproc.} =
   if space <= PayloadSize:
     discard  # inline capacity is always available; nothing to pre-allocate
   else:
-    let p = cast[ptr LongString](alloc(sizeof(int) * 3 + space + 1))
+    let p = cast[ptr LongString](alloc(LongStringDataOffset + space + 1))
     p.rc = 1
     p.fullLen = 0
     p.capImpl = space
@@ -482,7 +490,7 @@ proc mnewString(len: int): SmallString {.compilerproc.} =
     # bytes field is zero-initialized (result starts at 0); inline chars are already 0.
     # Null terminator at inlinePtr(result)[len] is also 0 — fine for SWAR invariant.
   else:
-    let p = cast[ptr LongString](alloc0(sizeof(int) * 3 + len + 1))
+    let p = cast[ptr LongString](alloc0(LongStringDataOffset + len + 1))
     p.rc = 1
     p.fullLen = len
     p.capImpl = len
@@ -523,11 +531,11 @@ proc setLengthStrV2(s: var SmallString; newLen: int) {.compilerRtl.} =
           when system.cpuEndian == littleEndian:
             # LE: slen in bits 0-7; keep bits 0..(newLen+1)*8-1, clear the rest above.
             let keepBits = (newLen + 1) * 8
-            let charMask = ((uint(1) shl keepBits) - 1'u) and 0xFFFFFFFFFFFFFF00'u
+            let charMask = ((uint(1) shl keepBits) - 1'u) and not 0xFF'u
             s.bytes = (s.bytes and charMask) or uint(newLen)
           else:
-            # BE: slen in bits 56-63; keep top (newLen+1) bytes, zero the rest below.
-            let discardBits = (7 - newLen) * 8
+            # BE: slen in the top byte; keep top (newLen+1) bytes, zero the rest below.
+            let discardBits = (AlwaysAvail - newLen) * 8
             let slenBit = 8 * (sizeof(uint) - 1)
             let charMask = not ((uint(1) shl discardBits) - 1'u) and not (0xFF'u shl slenBit)
             s.bytes = (s.bytes and charMask) or (uint(newLen) shl slenBit)
@@ -536,7 +544,7 @@ proc setLengthStrV2(s: var SmallString; newLen: int) {.compilerRtl.} =
     else:
       # grow into long
       let newCap = resize(newLen)
-      let p = cast[ptr LongString](alloc0(sizeof(int) * 3 + newCap + 1))
+      let p = cast[ptr LongString](alloc0(LongStringDataOffset + newCap + 1))
       p.rc = 1
       p.fullLen = newLen
       p.capImpl = newCap
@@ -558,10 +566,10 @@ proc setLengthStrV2(s: var SmallString; newLen: int) {.compilerRtl.} =
       if newLen < AlwaysAvail:
         when system.cpuEndian == littleEndian:
           let keepBits = (newLen + 1) * 8
-          let charMask = ((uint(1) shl keepBits) - 1'u) and 0xFFFFFFFFFFFFFF00'u
+          let charMask = ((uint(1) shl keepBits) - 1'u) and not 0xFF'u
           s.bytes = (s.bytes and charMask) or uint(newLen)
         else:
-          let discardBits = (7 - newLen) * 8
+          let discardBits = (AlwaysAvail - newLen) * 8
           let slenBit = 8 * (sizeof(uint) - 1)
           let charMask = not ((uint(1) shl discardBits) - 1'u) and not (0xFF'u shl slenBit)
           s.bytes = (s.bytes and charMask) or (uint(newLen) shl slenBit)
@@ -590,7 +598,7 @@ proc nimPrepareStrMutationImpl(s: var SmallString) =
   # Called when s holds a static (slen=StaticSlen) LongString block. COW: allocate fresh copy.
   let old = s.more
   let oldLen = old.fullLen
-  let p = cast[ptr LongString](alloc(sizeof(int) * 3 + oldLen + 1))
+  let p = cast[ptr LongString](alloc(LongStringDataOffset + oldLen + 1))
   p.rc = 1
   p.fullLen = oldLen
   p.capImpl = oldLen

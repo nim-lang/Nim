@@ -165,7 +165,7 @@ proc main() =
       "  worst=", fixed(worstNs / 1e6, 3), " ms",
       "  ns/row=", fixed(nsPerRow, 1),
       "  check=0x", toHex(combined, 16)
-  echo "MAXMEM=", formatSize getMaxMem()
+  when not defined(useMalloc): echo "MAXMEM=", formatSize getMaxMem()
 
 when isMainModule:
   main()
