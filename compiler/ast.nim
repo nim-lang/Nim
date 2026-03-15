@@ -1270,7 +1270,8 @@ template transitionSymKindCommon*(k: TSymKind) =
   s[] = TSym(kindImpl: k, itemId: obj.itemId, magicImpl: obj.magicImpl, typImpl: obj.typImpl, name: obj.name,
              infoImpl: obj.infoImpl, ownerFieldImpl: obj.ownerFieldImpl, flagsImpl: obj.flagsImpl, astImpl: obj.astImpl,
              optionsImpl: obj.optionsImpl, positionImpl: obj.positionImpl, offsetImpl: obj.offsetImpl,
-             locImpl: obj.locImpl, annexImpl: obj.annexImpl, constraintImpl: obj.constraintImpl)
+             disamb: obj.disamb, locImpl: obj.locImpl, annexImpl: obj.annexImpl, constraintImpl: obj.constraintImpl,
+             instantiatedFromImpl: obj.instantiatedFromImpl)
   when hasFFI:
     s.cnameImpl = obj.cnameImpl
   when defined(nimsuggest):
