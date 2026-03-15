@@ -123,7 +123,6 @@ Modified by Boyd Greenfield and narimiran
 }
 
 html {
-  overflow-x: hidden;
   max-width: 100%;
   box-sizing: border-box;
   font-size: 100%;
@@ -572,8 +571,8 @@ blockquote.markdown-quote {
   padding-left: 3px;
   padding-right: 3px;
   border-radius: 4px;
-  white-space: normal;
-  word-break: break-all;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
 }
 
 span.tok {
@@ -674,6 +673,8 @@ table {
   border-collapse: collapse;
   border-color: var(--third-background);
   border-spacing: 0;
+  display: block;
+  overflow-x: auto;
 }
 
 table:not(.line-nums-table) {
