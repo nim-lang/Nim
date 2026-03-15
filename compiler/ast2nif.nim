@@ -910,20 +910,20 @@ proc loadSymFromCursor(c: var DecodeContext; s: PSym; n: var Cursor; thisModule:
 proc createTypeStub(c: var DecodeContext; t: SymId): PType =
   let name = pool.syms[t]
   assert name.startsWith("`t")
-  var i = len("`t")
-  var k = 0
-  while i < name.len and name[i] in {'0'..'9'}:
-    k = k * 10 + name[i].ord - ord('0')
-    inc i
-  if i < name.len and name[i] == '.': inc i
-  var itemId = 0'i32
-  while i < name.len and name[i] in {'0'..'9'}:
-    itemId = itemId * 10'i32 + int32(name[i].ord - ord('0'))
-    inc i
-  if i < name.len and name[i] == '.': inc i
-  let suffix = name.substr(i)
   result = c.types.getOrDefault(name)[0]
   if result == nil:
+    var i = len("`t")
+    var k = 0
+    while i < name.len and name[i] in {'0'..'9'}:
+      k = k * 10 + name[i].ord - ord('0')
+      inc i
+    if i < name.len and name[i] == '.': inc i
+    var itemId = 0'i32
+    while i < name.len and name[i] in {'0'..'9'}:
+      itemId = itemId * 10'i32 + int32(name[i].ord - ord('0'))
+      inc i
+    if i < name.len and name[i] == '.': inc i
+    let suffix = name.substr(i)
     let id = ItemId(module: moduleId(c, suffix).int32, item: itemId)
     let offs = c.getOffset(id.module.FileIndex, name)
     result = PType(itemId: id, uniqueId: id, kind: TTypeKind(k), state: Partial)
@@ -944,30 +944,26 @@ proc extractLocalSymsFromTree(c: var DecodeContext; n: var Cursor; thisModule: s
       if n.tagId == sdefTag:
         # Found an sdef - check if it's local
         let name = n.firstSon
-        if name.kind == SymbolDef:
-          let symName = pool.syms[name.symId]
-          let sn = parseSymName(symName)
-          if sn.module.len == 0 and symName notin localSyms:
-            # Local symbol - create stub and immediately load it fully
-            # since local symbols have no index offsets for lazy loading
-            let module = moduleId(c, thisModule)
-            let val = addr c.mods[module].symCounter
-            inc val[]
-            let id = ItemId(module: module.int32, item: val[])
-            let sym = PSym(itemId: id, kindImpl: skStub, name: c.cache.getIdent(sn.name),
-                          disamb: sn.count.int32, state: Complete)
-            localSyms[symName] = sym
-            # Load the full symbol definition immediately
-            # We're currently at the `(sd` position, need to skip to SymbolDef
-            inc n  # skip past `sd` tag to get to SymbolDef
-            inc depth  # account for the opening `(` of the sdef
-            loadSymFromCursor(c, sym, n, thisModule, localSyms)
-            sym.state = Sealed  # mark as fully loaded
-            # loadSymFromCursor consumed everything including the closing `)`,
-            # so we need to account for it in depth tracking
-            dec depth
-            # Continue processing - loadSymFromCursor already advanced n past the closing `)`
-            continue
+        expect name, SymbolDef
+        let symName = pool.syms[name.symId]
+        let sn = parseSymName(symName)
+        if sn.module.len == 0 and symName notin localSyms:
+          # Local symbol - create stub and immediately load it fully
+          # since local symbols have no index offsets for lazy loading
+          let module = moduleId(c, thisModule)
+          let val = addr c.mods[module].symCounter
+          inc val[]
+          let id = ItemId(module: module.int32, item: val[])
+          let sym = PSym(itemId: id, kindImpl: skStub, name: c.cache.getIdent(sn.name),
+                        disamb: sn.count.int32, state: Complete)
+          localSyms[symName] = sym
+          # Load the full symbol definition immediately
+          # We're currently at the `(sd` position, need to skip to SymbolDef
+          inc n  # skip past `sd` tag to get to SymbolDef
+          loadSymFromCursor(c, sym, n, thisModule, localSyms)
+          sym.state = Sealed  # mark as fully loaded
+          # Continue processing - loadSymFromCursor already advanced n past the closing `)`
+          continue
       inc depth
     elif n.kind == ParRi:
       dec depth
