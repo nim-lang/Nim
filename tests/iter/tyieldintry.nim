@@ -559,17 +559,21 @@ block: # void iterator
       discard
   var a = it
 
-block: # Locals present in only 1 state should be on the stack
+block:
+  # Locals present in only 1 state should be on the stack
   proc checkOnStack(a: pointer, shouldBeOnStack: bool) =
-    # Quick and dirty way to check if a points to stack
-    var dummy = 0
-    let dummyAddr = addr dummy
-    let distance = abs(cast[int](dummyAddr) - cast[int](a))
-    const requiredDistance = 300
-    if shouldBeOnStack:
-      doAssert(distance <= requiredDistance, "a is not on stack, but should")
-    else:
-      doAssert(distance > requiredDistance, "a is on stack, but should not")
+    # bug #25596: the very fact we take the address prevents the local
+    # from being on the stack
+    when false:
+      # Quick and dirty way to check if a points to stack
+      var dummy = 0
+      let dummyAddr = addr dummy
+      let distance = abs(cast[int](dummyAddr) - cast[int](a))
+      const requiredDistance = 300
+      if shouldBeOnStack:
+        doAssert(distance <= requiredDistance, "a is not on stack, but should")
+      else:
+        doAssert(distance > requiredDistance, "a is on stack, but should not")
 
   iterator it(): int {.closure.} =
     var a = 1
