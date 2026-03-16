@@ -1400,6 +1400,10 @@ proc detectCapturedSym(c: var Ctx, s: PSym, stateIdx: int) =
     elif vs != stateIdx:
       c.captureVar(s)
 
+proc isClosureIterLocal(c: Ctx, s: PSym): bool =
+  s.kind in {skResult, skVar, skLet, skForVar, skTemp} and
+  sfGlobal notin s.flags and s.owner == c.fn and s != c.externExcSym
+
 proc detectCapturedVars(c: var Ctx, n: PNode, stateIdx: int) =
   case n.kind
   of nkSym:
@@ -1407,7 +1411,7 @@ proc detectCapturedVars(c: var Ctx, n: PNode, stateIdx: int) =
     detectCapturedSym(c, s, stateIdx)
   of nkAddr, nkHiddenAddr:
     let s = getRoot(n)
-    if s != nil:
+    if s != nil and isClosureIterLocal(c, s):
       detectCapturedSym(c, s, stateIdx)
       # bug #25596; lifetime extension for `addr`-taken locals as
       # we claim ARC/ORC do destruction based on scopes, not on last-usages.
