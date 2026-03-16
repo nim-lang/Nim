@@ -96,13 +96,11 @@ proc cmpShortInline(abytes, bbytes: uint; aslen, bslen: int): int {.inline.} =
   aslen - bslen
 
 template ssLen(s: SmallString): int =
-  ## Load slen via a direct byte access. A byte load (movzx) lets the C compiler
-  ## prove that slen is at offset 0, distinct from inline char writes at offsets 1+,
-  ## enabling register-caching of slen across char-write loops (e.g. nimAddCharV1).
-  when system.cpuEndian == littleEndian:
-    int(cast[ptr byte](unsafeAddr s.bytes)[])
-  else:
-    int(cast[ptr byte](cast[uint](unsafeAddr s.bytes) + uint(sizeof(uint) - 1))[])
+  ## Load slen via a direct byte access at offset 0 (valid on both LE and BE).
+  ## A byte load (movzx) lets the C compiler prove that slen is at offset 0,
+  ## distinct from inline char writes at offsets 1+, enabling register-caching
+  ## of slen across char-write loops (e.g. nimAddCharV1).
+  int(cast[ptr byte](unsafeAddr s.bytes)[])
 
 template setSSLen(s: var SmallString; v: int) =
   # Single byte store — equivalent to old `s.slen = byte(v)`.
