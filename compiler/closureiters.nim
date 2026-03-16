@@ -1412,9 +1412,8 @@ proc detectCapturedVars(c: var Ctx, n: PNode, stateIdx: int) =
       # bug #25596; lifetime extension for `addr`-taken locals as
       # we claim ARC/ORC do destruction based on scopes, not on last-usages.
       c.captureVar(s)
-    else:
-      for i in 0 ..< n.safeLen:
-        detectCapturedVars(c, n[i], stateIdx)
+    for i in 0 ..< n.safeLen:
+      detectCapturedVars(c, n[i], stateIdx)
   of nkReturnStmt:
     if n[0].kind in {nkAsgn, nkFastAsgn, nkSinkAsgn}:
       # we have a `result = result` expression produced by the closure
