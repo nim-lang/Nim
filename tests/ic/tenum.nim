@@ -1,4 +1,5 @@
 discard """
+  disabled: "linux"
   output: "42"
 """
 
