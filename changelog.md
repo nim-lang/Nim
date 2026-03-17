@@ -39,6 +39,9 @@ errors.
 
 [//]: # "Additions:"
 
+- Standard posix calls on Linux and Windows are not all thread safe, switch to
+  ugly but thread-safe extensions where affected in `nativesockets` and `times`.
+
 - `setutils.symmetricDifference` along with its operator version
   `` setutils.`-+-` `` and in-place version `setutils.toggle` have been added
   to more efficiently calculate the symmetric difference of bitsets.

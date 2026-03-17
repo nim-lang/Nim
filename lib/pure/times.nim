@@ -264,7 +264,8 @@ elif defined(windows):
       tm_yday*: cint  ## Day of year [0,365].
       tm_isdst*: cint ## Daylight Savings flag.
 
-  proc localtime(a1: var CTime): ptr Tm {.importc, header: "<time.h>", sideEffect.}
+  # Windows CRT's localtime_s has reversed args vs C11
+  proc localtime_s(a2: ptr Tm, a1: var CTime): cint {.importc, header: "<time.h>", sideEffect.}
 
 type
   Month* = enum ## Represents a month. Note that the enum starts at `1`,
@@ -1322,20 +1323,25 @@ else:
     when defined(windows):
       if unix < 0:
         var a = 0.CTime
-        let tmPtr = localtime(a)
-        if not tmPtr.isNil:
-          let tm = tmPtr[]
-          return ((0 - tm.toAdjUnix).int, false)
-        return (0, false)
+        var tm: Tm
+        if localtime_s(addr tm, a) != 0:
+          return (0, false)
+        return ((0 - tm.toAdjUnix).int, false)
 
     # In case of a 32-bit time_t, we fallback to the closest available
     # timezone information.
     var a = clamp(unix, low(CTime).int64, high(CTime).int64).CTime
-    let tmPtr = localtime(a)
-    if not tmPtr.isNil:
-      let tm = tmPtr[]
-      return ((a.int64 - tm.toAdjUnix).int, tm.tm_isdst > 0)
-    return (0, false)
+    var tm: Tm
+    when defined(windows):
+      if localtime_s(addr tm, a) != 0:
+        return (0, false)
+    else:
+      # localtime_r doesn't call tzset() implicitly unlike localtime().
+      # tzset() must be called before localtime_r to pick up TZ changes.
+      tzset()
+      if localtime_r(a, tm).isNil:
+        return (0, false)
+    return ((a.int64 - tm.toAdjUnix).int, tm.tm_isdst > 0)
 
   proc localZonedTimeFromTime(time: Time): ZonedTime {.gcsafe.} =
     let (offset, dst) = getLocalOffsetAndDst(time.seconds)
