@@ -56,12 +56,12 @@ proc toConverterIndexEntry*(config: ConfigRef; converterSym: PSym): (nifstreams.
   # Fallback: return empty entry
   result = (nifstreams.SymId(0), nifstreams.SymId(0))
 
-proc toMethodIndexEntry*(config: ConfigRef; methodSym: PSym; signature: string): MethodIndexEntry =
-  ## Converts a method symbol to a MethodIndexEntry.
+proc toMethodIndexEntry*(config: ConfigRef; methodSym: PSym; signature: string): (nifstreams.SymId, nifstreams.StrId) =
+  ## Converts a method symbol/signature to a method index entry.
   let methodSymName = methodSym.name.s & "." & $methodSym.disamb & "." & cachedModuleSuffix(config, methodSym.itemId.module.FileIndex)
-  result = MethodIndexEntry(
-    fn: pool.syms.getOrIncl(methodSymName),
-    signature: pool.strings.getOrIncl(signature)
+  result = (
+    pool.syms.getOrIncl(methodSymName),
+    pool.strings.getOrIncl(signature)
   )
 
 proc toClassSymId*(config: ConfigRef; typeId: ItemId): nifstreams.SymId =
