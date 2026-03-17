@@ -66,6 +66,7 @@ type
     memberProcsPerType*: Table[ItemId, seq[PSym]] # Type ID, attached member procs (only c++, virtual,member and ctor so far).
     initializersPerType*: Table[ItemId, PNode] # Type ID, AST call to the default ctor (c++ only)
     enumToStringProcs*: Table[ItemId, PSym]
+    loadedEnumToStringProcs: Table[string, PSym]
     emittedTypeInfo*: Table[string, FileIndex]
 
     packageSyms*: TStrTable
@@ -147,6 +148,7 @@ proc resetForBackend*(g: ModuleGraph) =
     a.clear()
   g.methodsPerGenericType.clear()
   g.enumToStringProcs.clear()
+  g.loadedEnumToStringProcs.clear()
   g.dispatchers.setLen(0)
   g.methodsPerType.clear()
   for a in mitems(g.loadedOps):
@@ -332,7 +334,10 @@ iterator getMethodsPerType*(g: ModuleGraph; t: PType): PSym =
       yield it
 
 proc getToStringProc*(g: ModuleGraph; t: PType): PSym =
-  result = g.enumToStringProcs[t.itemId]
+  result = g.enumToStringProcs.getOrDefault(t.itemId)
+  if result == nil and g.config.cmd in {cmdNifC, cmdM}:
+    let key = typeKey(t, g.config, loadTypeCallback, loadSymCallback)
+    result = g.loadedEnumToStringProcs.getOrDefault(key)
   assert result != nil
 
 proc setToStringProc*(g: ModuleGraph; t: PType; value: PSym) =
@@ -692,7 +697,7 @@ when not defined(nimKochBootstrap):
       of MethodEntry:
         discard "todo"
       of EnumToStrEntry:
-        discard "todo"
+        g.loadedEnumToStringProcs[x.key] = x.sym
       of GenericInstEntry:
         raiseAssert "GenericInstEntry should not be in the NIF index"
     # Register methods per type from NIF index
