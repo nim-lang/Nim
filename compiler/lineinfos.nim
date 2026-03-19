@@ -266,7 +266,7 @@ proc computeNotesVerbosity(): array[0..3, TNoteKinds] =
   result = default(array[0..3, TNoteKinds])
   result[3] = {low(TNoteKind)..high(TNoteKind)} - {warnObservableStores, warnResultUsed, warnAnyEnumConv, warnBareExcept, warnStdPrefix, warnSystemRangeConversion}
   result[2] = result[3] - {hintStackTrace, hintExtendedContext, hintDeclaredLoc, hintProcessingStmt}
-  result[1] = result[2] - {warnProveField, warnProveIndex,
+  result[1] = result[2] - {warnImplicitRangeConversion, warnProveField, warnProveIndex,
     warnGcUnsafe, hintPath, hintDependency, hintCodeBegin, hintCodeEnd,
     hintSource, hintGlobalVar, hintGCStats, hintMsgOrigin, hintPerformance}
   result[0] = result[1] - {hintSuccessX, hintSuccess, hintConf,
