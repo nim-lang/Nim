@@ -16,7 +16,7 @@ const
   ChecksumsStableCommit = "0b8e46379c5bc1bf73d8b3011908389c60fb9b98" # 2.0.1
   SatStableCommit = "e63eaea8baf00bed8bcd5a29ffd8823abb265b39"
 
-  NimonyStableCommit = "deb9b50c573fb55e071825ab55385e293b7216d5" # unversioned \
+  NimonyStableCommit = "ea20829a61fc770f858ea2afa59c5c5e7edbae70" # unversioned \
     # Note that Nimony uses Nim as a git submodule but we don't want to install
     # Nimony's dependency to Nim as we are Nim. So a `git clone` without --recursive
     # is **required** here.
