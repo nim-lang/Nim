@@ -523,9 +523,7 @@ proc writeNode(w: var Writer; dest: var TokenBuf; n: PNode; forAst = false) =
     of nkEmpty:
       if n.typField != nil:
         w.withNode dest, n:
-          let info = trLineInfo(w, n.info)
-          dest.addParLe pool.tags.getOrIncl(toNifTag(n.kind)), info
-          dest.addParRi
+          discard
       else:
         let info = trLineInfo(w, n.info)
         dest.addParLe pool.tags.getOrIncl(toNifTag(n.kind)), info
