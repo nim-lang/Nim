@@ -700,7 +700,10 @@ proc writeOp(w: var Writer; content: var TokenBuf; op: LogEntry) =
   of MethodEntry:
     discard "to implement"
   of EnumToStrEntry:
-    discard "to implement"
+    content.addParLe repEnumToStrTag, NoLineInfo
+    content.add strToken(pool.strings.getOrIncl(op.key), NoLineInfo)
+    content.add symToken(pool.syms.getOrIncl(w.toNifSymName(op.sym)), NoLineInfo)
+    content.addParRi()
   of GenericInstEntry:
     discard "will only be written later to ensure it is materialized"
 
