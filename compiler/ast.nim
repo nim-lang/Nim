@@ -1196,7 +1196,8 @@ proc propagateToOwner*(owner, elem: PType; propagateHasAsgn = true) =
     let o2 = owner.skipTypes({tyGenericInst, tyAlias, tySink})
     if o2.kind in {tyTuple, tyObject, tyArray,
                    tySequence, tyString, tySet, tyDistinct}:
-      o2.incl mask
+      if o2.state != Sealed:
+        o2.incl mask
       owner.incl mask
 
   if owner.kind notin {tyProc, tyGenericInst, tyGenericBody,
