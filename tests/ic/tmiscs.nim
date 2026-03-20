@@ -1,6 +1,8 @@
 discard """
-  disabled: "linux"
-  output: "42"
+  output: '''
+42
+5
+'''
 """
 
 # Object variant / case object
@@ -20,3 +22,14 @@ proc newInt(v: int): ref Node =
 
 let n = newInt(42)
 echo n.intVal
+
+# Sink and move semantics
+type
+  BigObj = object
+    data: seq[int]
+
+proc consume(x: sink BigObj) =
+  echo x.data.len
+
+var b = BigObj(data: @[1, 2, 3, 4, 5])
+consume(move b)
