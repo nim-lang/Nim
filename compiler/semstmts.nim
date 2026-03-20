@@ -781,8 +781,6 @@ proc makeVarTupleSection(c: PContext, n, a, def: PNode, typ: PType, symkind: TSy
     let temp = newSym(symkind, getIdent(c.cache, "tmpTuple"), c.idgen, getCurrOwner(c), n.info)
     temp.typ = typ
     temp.flagsImpl.incl(sfGenSym)
-    if getCurrOwner(c).kind == skModule:
-      temp.flagsImpl.incl(sfGlobal)
     lastDef = newNodeI(defkind, a.info)
     newSons(lastDef, 3)
     lastDef[0] = newSymNode(temp)
