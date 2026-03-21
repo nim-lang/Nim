@@ -130,6 +130,7 @@ proc initHashSet*[A](initialSize = defaultInitialSize): HashSet[A] =
     var a = initHashSet[int]()
     a.incl(3)
     assert len(a) == 1
+  
   result = default(HashSet[A])
   result.init(initialSize)
 
@@ -139,7 +140,7 @@ proc `[]`*[A](s: var HashSet[A], key: A): var A =
   ##
   ## This is useful when one overloaded `hash` and `==` but still needs
   ## reference semantics for sharing.
-  var hc: Hash
+  var hc = default(Hash)
   var index = rawGet(s, key, hc)
   if index >= 0: result = s.data[index].key
   else:
@@ -165,7 +166,7 @@ proc contains*[A](s: HashSet[A], key: A): bool =
     assert values.contains(2)
     assert 2 in values
 
-  var hc: Hash
+  var hc = default(Hash)
   var index = rawGet(s, key, hc)
   result = index >= 0
 
@@ -490,20 +491,20 @@ proc symmetricDifference*[A](s1, s2: HashSet[A]): HashSet[A] =
 
 proc `+`*[A](s1, s2: HashSet[A]): HashSet[A] {.inline.} =
   ## Alias for `union(s1, s2) <#union,HashSet[A],HashSet[A]>`_.
-  result = union(s1, s2)
+  union(s1, s2)
 
 proc `*`*[A](s1, s2: HashSet[A]): HashSet[A] {.inline.} =
   ## Alias for `intersection(s1, s2) <#intersection,HashSet[A],HashSet[A]>`_.
-  result = intersection(s1, s2)
+  intersection(s1, s2)
 
 proc `-`*[A](s1, s2: HashSet[A]): HashSet[A] {.inline.} =
   ## Alias for `difference(s1, s2) <#difference,HashSet[A],HashSet[A]>`_.
-  result = difference(s1, s2)
+  difference(s1, s2)
 
 proc `-+-`*[A](s1, s2: HashSet[A]): HashSet[A] {.inline.} =
   ## Alias for `symmetricDifference(s1, s2)
   ## <#symmetricDifference,HashSet[A],HashSet[A]>`_.
-  result = symmetricDifference(s1, s2)
+  symmetricDifference(s1, s2)
 
 proc disjoint*[A](s1, s2: HashSet[A]): bool =
   ## Returns `true` if the sets `s1` and `s2` have no items in common.
@@ -615,7 +616,7 @@ proc isValid*[A](s: HashSet[A]): bool {.deprecated:
     proc savePreferences(options: HashSet[string]) =
       assert options.isValid, "Pass an initialized set!"
       # Do stuff here, may crash in release builds!
-  result = s.data.len > 0
+  s.data.len > 0
 
 
 
@@ -670,6 +671,7 @@ proc initOrderedSet*[A](initialSize = defaultInitialSize): OrderedSet[A] =
     var a = initOrderedSet[int]()
     a.incl(3)
     assert len(a) == 1
+  
   result = OrderedSet[A]()
   result.init(initialSize)
 
@@ -710,9 +712,9 @@ proc contains*[A](s: OrderedSet[A], key: A): bool =
     assert values.contains(2)
     assert 2 in values
 
-  var hc: Hash
+  var hc = default(Hash)
   var index = rawGet(s, key, hc)
-  result = index >= 0
+  index >= 0
 
 proc incl*[A](s: var OrderedSet[A], key: A) =
   ## Includes an element `key` in `s`.
@@ -834,14 +836,14 @@ proc len*[A](s: OrderedSet[A]): int {.inline.} =
     let s = toHashSet([3, 5, 7])
     assert len(s) == 3
 
-  result = s.counter
+  s.counter
 
 proc card*[A](s: OrderedSet[A]): int {.inline.} =
   ## Alias for `len() <#len,OrderedSet[A]>`_.
   ##
   ## Card stands for the `cardinality
   ## <https://en.wikipedia.org/wiki/Cardinality>`_ of a set.
-  result = s.counter
+  s.counter
 
 proc `==`*[A](s, t: OrderedSet[A]): bool =
   ## Equality for ordered sets.
@@ -865,7 +867,7 @@ proc `==`*[A](s, t: OrderedSet[A]): bool =
         return false
     h = nxh
     g = nxg
-  result = compared == s.counter
+  compared == s.counter
 
 proc hash*[A](s: OrderedSet[A]): Hash =
   ## Hashing of OrderedSet.
@@ -888,8 +890,6 @@ proc `$`*[A](s: OrderedSet[A]): string =
   ##   # --> {no, esc'aping, is " provided}
   ##   ```
   dollarImpl()
-
-
 
 iterator items*[A](s: OrderedSet[A]): A =
   ## Iterates over keys in the ordered set `s` in insertion order.
