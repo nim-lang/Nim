@@ -491,20 +491,20 @@ proc symmetricDifference*[A](s1, s2: HashSet[A]): HashSet[A] =
 
 proc `+`*[A](s1, s2: HashSet[A]): HashSet[A] {.inline.} =
   ## Alias for `union(s1, s2) <#union,HashSet[A],HashSet[A]>`_.
-  union(s1, s2)
+  result = union(s1, s2)
 
 proc `*`*[A](s1, s2: HashSet[A]): HashSet[A] {.inline.} =
   ## Alias for `intersection(s1, s2) <#intersection,HashSet[A],HashSet[A]>`_.
-  intersection(s1, s2)
+  result = intersection(s1, s2)
 
 proc `-`*[A](s1, s2: HashSet[A]): HashSet[A] {.inline.} =
   ## Alias for `difference(s1, s2) <#difference,HashSet[A],HashSet[A]>`_.
-  difference(s1, s2)
+  result = difference(s1, s2)
 
 proc `-+-`*[A](s1, s2: HashSet[A]): HashSet[A] {.inline.} =
   ## Alias for `symmetricDifference(s1, s2)
   ## <#symmetricDifference,HashSet[A],HashSet[A]>`_.
-  symmetricDifference(s1, s2)
+  result = symmetricDifference(s1, s2)
 
 proc disjoint*[A](s1, s2: HashSet[A]): bool =
   ## Returns `true` if the sets `s1` and `s2` have no items in common.
@@ -616,7 +616,7 @@ proc isValid*[A](s: HashSet[A]): bool {.deprecated:
     proc savePreferences(options: HashSet[string]) =
       assert options.isValid, "Pass an initialized set!"
       # Do stuff here, may crash in release builds!
-  s.data.len > 0
+  result = s.data.len > 0
 
 
 
@@ -714,7 +714,7 @@ proc contains*[A](s: OrderedSet[A], key: A): bool =
 
   var hc = default(Hash)
   var index = rawGet(s, key, hc)
-  index >= 0
+  result = index >= 0
 
 proc incl*[A](s: var OrderedSet[A], key: A) =
   ## Includes an element `key` in `s`.
@@ -836,14 +836,14 @@ proc len*[A](s: OrderedSet[A]): int {.inline.} =
     let s = toHashSet([3, 5, 7])
     assert len(s) == 3
 
-  s.counter
+  result = s.counter
 
 proc card*[A](s: OrderedSet[A]): int {.inline.} =
   ## Alias for `len() <#len,OrderedSet[A]>`_.
   ##
   ## Card stands for the `cardinality
   ## <https://en.wikipedia.org/wiki/Cardinality>`_ of a set.
-  s.counter
+  result = s.counter
 
 proc `==`*[A](s, t: OrderedSet[A]): bool =
   ## Equality for ordered sets.
@@ -867,7 +867,7 @@ proc `==`*[A](s, t: OrderedSet[A]): bool =
         return false
     h = nxh
     g = nxg
-  compared == s.counter
+  result = compared == s.counter
 
 proc hash*[A](s: OrderedSet[A]): Hash =
   ## Hashing of OrderedSet.
