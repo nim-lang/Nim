@@ -11,6 +11,8 @@ Modified by Boyd Greenfield and narimiran
 */
 
 :root {
+  --navbar-height: 48px;
+
   color-scheme: light;
   --primary-background: #fff;
   --secondary-background: ghostwhite;
@@ -53,7 +55,7 @@ Modified by Boyd Greenfield and narimiran
   --info-background: #008000;
   --warning-background: #807000;
   --error-background: #c03000;
-  --border: #0e1014;
+  --border: #3b3e44;
   --text: #fff;
   --anchor: #8be9fd;
   --anchor-focus: #8be9fd;
@@ -89,7 +91,7 @@ Modified by Boyd Greenfield and narimiran
     --info-background: #008000;
     --warning-background: #807000;
     --error-background: #c03000;
-    --border: #0e1014;
+    --border: #3b3e44;
     --text: #fff;
     --anchor: #8be9fd;
     --anchor-focus: #8be9fd;
@@ -117,21 +119,30 @@ Modified by Boyd Greenfield and narimiran
   }
 }
 
-.theme-select-wrapper {
-  display: flex;
-  align-items: center;
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
 html {
   max-width: 100%;
-  box-sizing: border-box;
   font-size: 100%;
   -webkit-text-size-adjust: 100%;
   -ms-text-size-adjust: 100%; }
 
 body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    "navbar"
+    "container"
+    "footer";
   max-width: 100%;
-  box-sizing: border-box;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeSpeed;
   font-family: "Lato", "Helvetica Neue", "HelveticaNeue", Helvetica, Arial, sans-serif;
   font-weight: 400;
   font-size: 1.125em;
@@ -139,66 +150,80 @@ body {
   color: var(--text);
   background-color: var(--primary-background); }
 
-/* Skeleton grid */
-.container {
-  position: relative;
-  width: 100%;
-  max-width: 1050px;
-  margin: 0 auto;
-  padding: 0;
-  box-sizing: border-box; }
-
-.column, .columns {
-  width: 100%;
-  float: left;
-  box-sizing: border-box;
-  margin-left: 1%; }
-
-@media print {
-  #global-links, .link-seesrc, .theme-switch-wrapper, #searchInputDiv, .search-groupby {
-    display:none;
-  }
-  .columns {
-    width:100% !important;
-  }
+header {
+  grid-area: navbar;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  height: var(--navbar-height);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: var(--primary-background);
+  border-bottom: 1px solid var(--border);
+  padding: 0 1em;
 }
 
-.column:first-child, .columns:first-child {
-  margin-left: 0; }
+#sidebarToggle {
+  font-size: 1.2em;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  padding: 2px 8px;
+  cursor: pointer;
+}
 
-.container .row {
-  display: flex; }
+#navbar-right-elements {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+}
 
-.three.columns {
-  width: 25.0%;
+#content {
+  display: grid;
+  grid-area: container;
+  grid-template-columns: 0 minmax(0, 1fr);
+  grid-template-areas:
+    "sidebar main";
+  transition: grid-template-columns 0.2s ease;
+}
+
+aside {
+  grid-area: sidebar;
   height: 100vh;
   position: sticky;
-  top: 0px;
-  overflow-y: auto;
-  padding: 2px;
+  top: var(--navbar-height);
+  overflow: hidden auto;
 }
 
-.nine.columns {
-  width: 75.0%;
-  margin-left: 0;
-  padding-left: 1.5em; }
-
-.twelve.columns {
+main {
+  grid-area: main;
+  max-width: 70ch;
   width: 100%;
-  margin-left: 0; }
+  margin-inline: auto;
+  padding: 0.4em;
+}
+
+/* open sidebar state */
+#content.sidebar-open {
+  grid-template-columns: 25vw minmax(0, 1fr);
+  transition: grid-template-columns 0.2s ease;
+}
+
+#content.sidebar-open>aside {
+  border-right: 1px solid var(--border);
+  padding: 0.25em;
+}
+
 
 @media screen and (max-width: 860px) {
-  .three.columns {
-    display: none;
-  }
-  .nine.columns {
-    width: 100%;
-    margin-left: 0;
-    padding-left: 0;
-  }
   body {
     font-size: 1em;
     line-height: 1.35;
+  }
+
+  #content.sidebar-open {
+    grid-template-columns: minmax(0, 1fr) 20vh;
   }
 }
 
@@ -206,12 +231,8 @@ cite {
   font-style: italic !important; }
 
 
-/* Nim search input */
-div#searchInputDiv {
-  margin-bottom: 1em;
-}
 input#searchInput {
-  width: 80%;
+  border-radius: 2px;
 }
 
 /*
@@ -220,6 +241,7 @@ input#searchInput {
  */
 input {
   -moz-appearance: none;
+  appearance: none;
   background-color: var(--secondary-background);
   color: var(--text);
   border: 1px solid var(--border);
@@ -235,8 +257,10 @@ input:focus {
 
 select {
   -moz-appearance: none;
+  appearance: none;
   background-color: var(--secondary-background);
   color: var(--text);
+  border-radius: 2px;
   border: 1px solid var(--border);
   font-family: "Lato", "Helvetica Neue", "HelveticaNeue", Helvetica, Arial, sans-serif;
   font-size: 0.9em;
@@ -246,6 +270,11 @@ select {
 select:focus {
   border: 1px solid var(--input-focus);
   box-shadow: 0 0 3px var(--input-focus);
+}
+
+select#theme-select {
+  cursor: pointer;
+  background-color: var(--primary-background);
 }
 
 /* Docgen styles */
@@ -322,6 +351,18 @@ img {
     background: transparent !important;
     box-shadow: none !important; }
 
+  #global-links, .link-seesrc, #theme-select-wrapper, #searchInputDiv, #search-groupby, aside, header {
+    display: none;
+  }
+
+  body {
+    grid-template-rows: 0 minmax(0, 1fr) auto;
+  }
+
+  #content.sidebar-open {
+    grid-template-columns: 0 minmax(0, 1fr);
+  }
+
   a, a:visited {
     text-decoration: underline; }
 
@@ -355,7 +396,7 @@ img {
   h1 {
     page-break-before: always; }
 
-  h1.title {
+  h1#title {
     page-break-before: avoid; }
 
   p, h2, h3 {
@@ -370,6 +411,10 @@ img {
 p {
   margin-top: 0.5em;
   margin-bottom: 0.5em; }
+
+p, h1, h2, h3, h4, h5, h6, a {
+  overflow-wrap: break-word;
+}
 
 small {
   font-size: 85%; }
@@ -391,7 +436,7 @@ h1 {
   margin-bottom: 1em;
   line-height: 1.2em; }
 
-h1.title {
+h1#title {
   padding-bottom: 1em;
   border-bottom: 0px;
   font-size: 2.5em;
@@ -590,7 +635,6 @@ pre {
   color: var(--text);
   font-weight: 500;
   display: inline-block;
-  box-sizing: border-box;
   min-width: 100%;
   max-width: 100%;
   padding: 0.5em;
@@ -761,9 +805,13 @@ div.figure {
   margin-left: 2em;
   margin-right: 2em; }
 
-div.footer, div.header {
-  clear: both;
-  text-align: center;
+footer {
+  grid-area: footer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 5em;
+  border-top: 1px solid var(--border);
   color: #666;
   font-size: smaller; }
 
@@ -795,11 +843,11 @@ div.search_results {
   max-height: calc(100vh - 6em);
   overflow-y: scroll;}
 
-div#global-links ul {
+#global-links ul {
   margin-left: 0;
   list-style-type: none; }
 
-div#global-links > simple-boot {
+#global-links > simple-boot {
   margin-left: 3em; }
 
 hr.docutils {

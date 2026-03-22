@@ -22,10 +22,18 @@
 <script type="text/javascript" src="dochack.js"></script>
 </head>
 <body>
-  <div class="document" id="documentId">
-    <div class="container">
-      <h1 class="title">Index</h1>
-      Modules: <a href="subdir/subdir_b/utils.html">subdir/subdir_b/utils</a>, <a href="testproject.html">testproject</a>.<br/><p /><h2>API symbols</h2>
+  <header>
+    <button id="sidebarToggle" aria-label="Toggle Sidebar" title="Toggle Sidebar" aria-controls="sidebar">☰</button>
+    <div id="navbar-right-elements">
+      <input type="search" id="searchInput" placeholder="Search…" oninput="search()"/>
+      <select id="theme-select" aria-label="Change Theme" title="Change Theme" onchange="setTheme(this.value)">
+        <option aria-label="Match OS" title="Match OS" value="auto">🌗</option>
+        <option aria-label="Dark" title="Dark" value="dark">🌑</option>
+        <option aria-label="Light" title="Light" value="light">🌕</option>
+      </select>
+    </div>
+  </header>
+  Modules: <a href="subdir/subdir_b/utils.html">subdir/subdir_b/utils</a>, <a href="testproject.html">testproject</a>.<br/><p /><h2>API symbols</h2>
 <dl><dt><a name="%60%24%60" href="#%60%24%60"><span>`$`:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="utils: proc `$`[T](a: G[T]): string" href="subdir/subdir_b/utils.html#%24%2CG%5BT%5D">utils: proc `$`[T](a: G[T]): string</a></li>
@@ -423,13 +431,10 @@
           data-doc-search-tag="testproject: proc z9()" href="testproject.html#z9">testproject: proc z9()</a></li>
           </ul></dd>
 </dl>
-      <div class="twelve-columns footer">
-        <span class="nim-sprite"></span>
-        <br>
-        <small style="color: var(--hint);">Made with Nim. Generated: 1970-01-02 03:46:40 UTC</small>
-      </div>
-    </div>
-  </div>
+  <footer>
+    <span class="nim-sprite"></span>
+    <small style="color: var(--hint);">Made with Nim. Generated: 1970-01-02 03:46:40 UTC</small>
+  </footer>
   
 </body>
 </html>

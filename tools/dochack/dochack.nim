@@ -16,6 +16,10 @@ proc onDOMLoaded(e: Event) {.exportc.} =
   # set theme select value
   document.getElementById("theme-select").value = window.localStorage.getItem("theme")
 
+  let content = document.getElementById("content")
+  document.getElementById("sidebarToggle").onclick = proc(event: Event) =
+    content.classList.toggle("sidebar-open")
+
   for pragmaDots in document.getElementsByClassName("pragmadots"):
     pragmaDots.onclick = proc (event: Event) =
       # Hide tease

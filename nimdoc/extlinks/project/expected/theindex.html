@@ -22,10 +22,18 @@
 <script type="text/javascript" src="dochack.js"></script>
 </head>
 <body>
-  <div class="document" id="documentId">
-    <div class="container">
-      <h1 class="title">Index</h1>
-      Documents: <a href="doc/manual.html">Nothing User Manual</a>.<br/><p />Modules: <a href="_._/util.html">../util</a>, <a href="main.html">main</a>, <a href="sub/submodule.html">sub/submodule</a>.<br/><p /><h2>API symbols</h2>
+  <header>
+    <button id="sidebarToggle" aria-label="Toggle Sidebar" title="Toggle Sidebar" aria-controls="sidebar">☰</button>
+    <div id="navbar-right-elements">
+      <input type="search" id="searchInput" placeholder="Search…" oninput="search()"/>
+      <select id="theme-select" aria-label="Change Theme" title="Change Theme" onchange="setTheme(this.value)">
+        <option aria-label="Match OS" title="Match OS" value="auto">🌗</option>
+        <option aria-label="Dark" title="Dark" value="dark">🌑</option>
+        <option aria-label="Light" title="Light" value="light">🌕</option>
+      </select>
+    </div>
+  </header>
+  Documents: <a href="doc/manual.html">Nothing User Manual</a>.<br/><p />Modules: <a href="_._/util.html">../util</a>, <a href="main.html">main</a>, <a href="sub/submodule.html">sub/submodule</a>.<br/><p /><h2>API symbols</h2>
 <dl><dt><a name="%60%26lt%3B/a%26gt%3B%60" href="#%60%26lt%3B/a%26gt%3B%60"><span>`&lt;/a&gt;`:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="submodule: proc `&lt;/a&gt;`(x, y: int): bool" href="sub/submodule.html#%3C/a%3E%2Cint%2Cint">submodule: proc `&lt;/a&gt;`(x, y: int): bool</a></li>
@@ -47,13 +55,10 @@
           data-doc-search-tag="util: proc utilfunction(x: int): int" href="_._/util.html#utilfunction%2Cint">util: proc utilfunction(x: int): int</a></li>
           </ul></dd>
 </dl>
-      <div class="twelve-columns footer">
-        <span class="nim-sprite"></span>
-        <br>
-        <small style="color: var(--hint);">Made with Nim. Generated: 1970-01-02 03:46:40 UTC</small>
-      </div>
-    </div>
-  </div>
+  <footer>
+    <span class="nim-sprite"></span>
+    <small style="color: var(--hint);">Made with Nim. Generated: 1970-01-02 03:46:40 UTC</small>
+  </footer>
   
 </body>
 </html>
