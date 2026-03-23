@@ -1092,7 +1092,7 @@ template mapIt*(s: typed, op: untyped): untyped =
 
   type OutType = typeof((
     block:
-      var it{.inject.}: typeof(items(s), typeOfIter);
+      var it{.inject, used.}: typeof(items(s), typeOfIter);
       op), typeOfProc)
   when OutType is not (proc):
     # Here, we avoid to create closures in loops.
