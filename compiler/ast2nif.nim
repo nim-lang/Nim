@@ -167,7 +167,8 @@ const
 
 proc isLocalSym(sym: PSym): bool {.inline.} =
   sym.kindImpl in skLocalSymKinds or
-    (sym.kindImpl in {skVar, skLet} and {sfGlobal, sfThread} * sym.flagsImpl == {})
+    (sym.kindImpl in {skVar, skLet} and {sfGlobal, sfThread} * sym.flagsImpl == {} and
+     (sym.ownerFieldImpl == nil or sym.ownerFieldImpl.kindImpl != skModule))
 
 proc toNifSymName(w: var Writer; sym: PSym): string =
   ## Generate NIF name for a symbol: local names are `ident.disamb`,

@@ -2,6 +2,8 @@ discard """
   output: '''
 42
 5
+3
+2
 '''
 """
 
@@ -33,3 +35,11 @@ proc consume(x: sink BigObj) =
 
 var b = BigObj(data: @[1, 2, 3, 4, 5])
 consume(move b)
+
+proc divmod(a, b: int): (int, int) =
+  (a div b, a mod b)
+
+
+let (q, r) = divmod(17, 5)
+echo q
+echo r
