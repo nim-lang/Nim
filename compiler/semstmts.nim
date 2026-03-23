@@ -2552,7 +2552,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   if not hasProto:
     implicitPragmas(c, s, n.info, validPragmas)
 
-  if sfError in s.flags and sfExportc in s.flags:
+  if {sfError, sfExportc} * s.flags == {sfError, sfExportc}:
     localError(c.config, n.info, "{.error.} and {.exportc.} pragmas are incompatible")
 
   if n[pragmasPos].kind != nkEmpty and sfBorrow notin s.flags:
