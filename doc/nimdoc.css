@@ -259,6 +259,8 @@ body {
   body {
     font-size: 1em;
     line-height: 1.35;
+    margin-left: 0.35em;
+    margin-right: 0.35em;
   }
 }
 
@@ -417,6 +419,10 @@ img {
 
   h1.title {
     page-break-before: avoid; }
+	
+  .nine.columns h1:first-of-type {
+    page-break-before: avoid;
+  }
 
   p, h2, h3 {
     orphans: 3;
@@ -484,6 +490,22 @@ h5 {
 h6 {
   font-size: 1.1em; }
 
+@media screen and (max-width: 860px) {
+  h1.title {
+    font-size: 2em;
+  }
+  h1 {
+    font-size: 1.5em;
+    margin-top: 1.5em;
+    margin-bottom: 0.75em;
+  }
+  h2 {
+    margin-top: 1.3em;
+  }
+  h3 {
+    margin-top: 1.2em;
+  }
+}
 
 ul, ol {
   padding: 0;
@@ -665,6 +687,15 @@ pre {
   -webkit-border-radius: 6px;
   -moz-border-radius: 6px;
   border-radius: 6px;
+}
+
+@media screen and (max-width: 860px) {
+  pre {
+    font-stretch: semi-condensed;
+    letter-spacing: -0.25px;
+    line-height: 1.25;
+    padding: 0.33em;
+  }
 }
 
 .copyToClipBoardBtn {
