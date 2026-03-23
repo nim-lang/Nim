@@ -1469,7 +1469,7 @@ when defined(nimHasTopDownInference):
     ## This is not as efficient as turning a fixed length array into a sequence
     ## as it always copies every element of `a`.
     let sz = a.len
-    when supportsCopyMem(T) and not defined(js):
+    when supportsCopyMem(T) and not defined(js) and not defined(nimscript):
       result = newSeqUninit[T](sz)
       when nimvm:
         for i in 0..sz-1: result[i] = a[i]
