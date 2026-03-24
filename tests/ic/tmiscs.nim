@@ -4,6 +4,8 @@ discard """
 5
 3
 2
+1.0
+2.0
 '''
 """
 
@@ -43,3 +45,25 @@ proc divmod(a, b: int): (int, int) =
 let (q, r) = divmod(17, 5)
 echo q
 echo r
+
+
+# Shallow object with seq (trigger GC interaction)
+type
+  Matrix = object
+    rows, cols: int
+    data: seq[float]
+
+proc newMatrix(r, c: int): Matrix =
+  Matrix(rows: r, cols: c, data: newSeq[float](r * c))
+
+proc `[]`(m: Matrix, r, c: int): float =
+  m.data[r * m.cols + c]
+
+proc `[]=`(m: var Matrix, r, c: int, v: float) =
+  m.data[r * m.cols + c] = v
+
+var m = newMatrix(2, 2)
+m[0, 0] = 1.0
+m[1, 1] = 2.0
+echo m[0, 0]
+echo m[1, 1]

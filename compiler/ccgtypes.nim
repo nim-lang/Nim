@@ -309,7 +309,7 @@ proc addAbiCheck(m: BModule; t: PType, name: Rope) =
 
 
 proc fillResult(conf: ConfigRef; param: PNode, proctype: PType) =
-  ensureMutable param.sym
+  backendEnsureMutable param.sym
   fillLoc(param.sym.locImpl, locParam, param, "Result",
           OnStack)
   let t = param.sym.typ
@@ -542,7 +542,7 @@ proc genMemberProcParams(m: BModule; prc: PSym, superCall, rettype, name, params
   var types, names, args: seq[string] = @[]
   if not isCtor:
     var this = t.n[1].sym
-    ensureMutable this
+    backendEnsureMutable this
     fillParamName(m, this)
     fillLoc(this.locImpl, locParam, t.n[1],
             this.paramStorageLoc)
@@ -564,7 +564,7 @@ proc genMemberProcParams(m: BModule; prc: PSym, superCall, rettype, name, params
       else:
         descKind = dkRefParam
     var typ, name: string
-    ensureMutable param
+    backendEnsureMutable param
     fillParamName(m, param)
     fillLoc(param.locImpl, locParam, t.n[i],
             param.paramStorageLoc)
@@ -1183,7 +1183,7 @@ proc genMemberProcHeader(m: BModule; prc: PSym; result: var Builder; asPtr: bool
   let isCtor = sfConstructor in prc.flags
   var check = initIntSet()
   fillBackendName(m, prc)
-  ensureMutable prc
+  backendEnsureMutable prc
   fillLoc(prc.locImpl, locProc, prc.ast[namePos], OnUnknown)
   var memberOp = "#." #only virtual
   var typ: PType
