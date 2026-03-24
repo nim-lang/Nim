@@ -2234,6 +2234,9 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
         result = semAnyRef(c, n, tyPtr, prev)
       elif op.id == ord(wRef):
         result = semAnyRef(c, n, tyRef, prev)
+      elif op.id == ord(wStatic):
+        checkSonsLen(n, 2, c.config)
+        result = semStaticType(c, n[1], prev)
       elif op.id == ord(wType):
         checkSonsLen(n, 2, c.config)
         result = semTypeOf(c, n[1], prev)
