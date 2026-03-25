@@ -1372,6 +1372,22 @@ proc loadNode(c: var DecodeContext; n: var Cursor; thisModule: string;
     of nkNilLit:
       c.withNode n, result, kind:
         discard
+    of nkLetSection, nkVarSection:
+      # NIF writes let/var sections with bare (sd ...) entries which load as nkSym.
+      # The transform pass expects nkIdentDefs children to reach value expressions.
+      # Reconstruct nkIdentDefs from sym.astImpl when available.
+      c.withNode n, result, kind:
+        while n.kind != ParRi:
+          result.sons.add c.loadNode(n, thisModule, localSyms)
+
+      for i in 0 ..< result.len:
+        let child = result[i]
+        if child != nil and child.kind == nkSym and child.sym != nil:
+          let s = child.sym
+          if s.state == Partial:
+            loadSym(c, s)
+          if s.astImpl != nil and s.astImpl.kind == nkIdentDefs:
+            result[i] = s.astImpl
     else:
       c.withNode n, result, kind:
         while n.kind != ParRi:
