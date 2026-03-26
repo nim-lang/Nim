@@ -126,6 +126,7 @@ proc close*[T](s: Selector[T]) =
   let res2 = posix.close(s.sock)
   when hasThreadSupport:
     deinitLock(s.changesLock)
+    deallocSharedArray(s.changes)
     deallocSharedArray(s.fds)
     deallocShared(cast[pointer](s))
   if res1 != 0 or res2 != 0:
