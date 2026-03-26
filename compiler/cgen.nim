@@ -1424,6 +1424,7 @@ proc genProc(m: BModule, prc: PSym) =
   if sfForward in prc.flags:
     addForwardedProc(m, prc)
     fillProcLoc(m, prc.ast[namePos])
+    genProcPrototype(m, prc)
   else:
     genProcNoForward(m, prc)
     if {sfExportc, sfCompilerProc} * prc.flags == {sfExportc} and

@@ -21,6 +21,9 @@ when defined(nimPreviewSlimSystem):
   import std/assertions
 
 type
+  ModuleCompileState* = enum
+    mcsNone, mcsCollectingInterface, mcsInterfaceReady, mcsSemchecking, mcsDone
+
   SigHash* = distinct MD5Digest
 
   LazySym* = object
@@ -93,6 +96,11 @@ type
                                             # first module that included it
     importStack*: seq[FileIndex]  # The current import stack. Used for detecting recursive
                                   # module dependencies.
+    compileStates*: seq[ModuleCompileState]
+    interfaceImportMode*: int
+    interfaceCallableStubs*: IntSet
+    semcheckStack*: seq[FileIndex]
+    pendingSemchecks*: seq[FileIndex]
     backend*: RootRef # minor hack so that a backend can extend this easily
     config*: ConfigRef
     cache*: IdentCache
@@ -161,6 +169,10 @@ proc resetForBackend*(g: ModuleGraph) =
   g.enumToStringProcs.clear()
   g.dispatchers.setLen(0)
   g.methodsPerType.clear()
+
+proc ensureCompileStateSlot*(g: ModuleGraph; fileIdx: FileIndex) =
+  if fileIdx.int >= g.compileStates.len:
+    g.compileStates.setLen(fileIdx.int + 1)
 
 const
   cb64 = [
@@ -562,6 +574,9 @@ proc initModuleGraphFields(result: ModuleGraph) =
   result.importDeps = initTable[FileIndex, seq[FileIndex]]()
   result.ifaces = @[]
   result.importStack = @[]
+  result.interfaceCallableStubs = initIntSet()
+  result.semcheckStack = @[]
+  result.pendingSemchecks = @[]
   result.inclToMod = initTable[FileIndex, FileIndex]()
   result.owners = @[]
   result.suggestSymbols = initTable[FileIndex, SuggestFileSymbolDatabase]()
