@@ -183,7 +183,7 @@ pkg "unittest2"
 pkg "unpack"
 when not defined(arm64):
   pkg "weave", "nimble install -y cligen@#HEAD; nimble test_gc_arc", useHead = true
-pkg "websock", "nim c -d:chronosStrictException -d:chronicles_log_level=INFO --mm:refc tests/all_tests.nim"
+pkg "websock", "nimble install -y bearssl; nim c -d:chronosStrictException -d:chronicles_log_level=INFO --mm:refc tests/all_tests.nim"
 pkg "websocket", "nim c websocket.nim"
 pkg "with"
 pkg "yaml"
