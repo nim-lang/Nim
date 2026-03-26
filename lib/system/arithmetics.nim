@@ -306,15 +306,15 @@ proc `mod`*(x, y: uint32): uint32 {.magic: "ModU", noSideEffect.}
 proc `mod`*(x, y: uint64): uint64 {.magic: "ModU", noSideEffect.}
 
 proc `+=`*[T: SomeInteger](x: var T, y: T) {.
-  magic: "Inc", noSideEffect.}
+  magic: "Inc", noSideEffect, systemRaisesDefect.}
   ## Increments an integer.
 
 proc `-=`*[T: SomeInteger](x: var T, y: T) {.
-  magic: "Dec", noSideEffect.}
+  magic: "Dec", noSideEffect, systemRaisesDefect.}
   ## Decrements an integer.
 
 proc `*=`*[T: SomeInteger](x: var T, y: T) {.
-  inline, noSideEffect.} =
+  inline, noSideEffect, systemRaisesDefect.} =
   ## Binary `*=` operator for integers.
   x = x * y
 
@@ -339,20 +339,22 @@ proc `+=`*[T: float|float32|float64] (x: var T, y: T) {.
   x = x + y
 
 proc `-=`*[T: float|float32|float64] (x: var T, y: T) {.
-  inline, noSideEffect.} =
+  inline, noSideEffect, systemRaisesDefect.} =
   ## Decrements in place a floating point number.
   x = x - y
 
 proc `*=`*[T: float|float32|float64] (x: var T, y: T) {.
-  inline, noSideEffect.} =
+  inline, noSideEffect, systemRaisesDefect.} =
   ## Multiplies in place a floating point number.
   x = x * y
 
-proc `/=`*(x: var float64, y: float64) {.inline, noSideEffect.} =
+proc `/=`*(x: var float64, y: float64) {.
+  inline, noSideEffect, systemRaisesDefect.} =
   ## Divides in place a floating point number.
   x = x / y
 
-proc `/=`*[T: float|float32](x: var T, y: T) {.inline, noSideEffect.} =
+proc `/=`*[T: float|float32](x: var T, y: T) {.
+  inline, noSideEffect, systemRaisesDefect.} =
   ## Divides in place a floating point number.
   x = x / y
 
