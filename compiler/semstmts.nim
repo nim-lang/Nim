@@ -1470,45 +1470,57 @@ proc typeDefLeftSidePass(c: PContext, typeSection: PNode, i: int) =
         localError(c.config, name.info, typsym.name.s & " is not a type that can be forwarded")
         s = typsym
   else:
-    s = semIdentDef(c, name, skType)
-    onDef(name.info, s)
-    if s.typ != nil:
-      # name node is a symbol with a type already, probably in resem, don't touch it
-      discard
+    let existing =
+      if isTopLevel(c):
+        var typeName = name
+        if typeName.kind == nkPragmaExpr:
+          typeName = typeName[0]
+        if typeName.kind == nkPostfix:
+          typeName = typeName[1]
+        let ident = considerQuotedIdent(c, typeName)
+        strTableGet(c.currentScope.symbols, ident)
+      else:
+        nil
+    if existing != nil and existing.kind == skType and
+        sfForward in existing.flags and sfNoForward notin existing.flags:
+      s = existing
     else:
+      s = semIdentDef(c, name, skType)
+      onDef(name.info, s)
       s.typ = newTypeS(tyForward, c)
       s.typ.sym = s
-    # process pragmas:
-    if name.kind == nkPragmaExpr:
-      let rewritten = applyTypeSectionPragmas(c, name[1], typeDef)
-      if rewritten != nil:
-        case rewritten.kind
-        of nkTypeDef:
-          typeSection[i] = rewritten
-        of nkTypeSection:
-          typeSection.sons[i .. i] = rewritten.sons
-        else: illFormedAst(rewritten, c.config)
-        typeDefLeftSidePass(c, typeSection, i)
-        return
-      pragma(c, s, name[1], typePragmas)
-    if sfForward in s.flags:
-      # check if the symbol already exists:
-      let pkg = c.module.owner
-      if not isTopLevel(c) or pkg.isNil:
-        localError(c.config, name.info, "only top level types in a package can be 'package'")
-      else:
-        let typsym = c.graph.packageTypes.strTableGet(s.name)
-        if typsym != nil:
-          if sfForward notin typsym.flags or sfNoForward notin typsym.flags:
-            typeCompleted(typsym)
-            typsym.info = s.info
-          else:
-            localError(c.config, name.info, "cannot complete type '" & s.name.s & "' twice; " &
-                    "previous type completion was here: " & c.config$typsym.info)
-          s = typsym
-    # add it here, so that recursive types are possible:
-    if sfGenSym notin s.flags: addInterfaceDecl(c, s)
-    elif s.owner == nil: setOwner(s, getCurrOwner(c))
+      if c.graph.interfaceImportMode > 0 and isTopLevel(c):
+        s.flags.incl sfForward
+      if name.kind == nkPragmaExpr:
+        let rewritten = applyTypeSectionPragmas(c, name[1], typeDef)
+        if rewritten != nil:
+          case rewritten.kind
+          of nkTypeDef:
+            typeSection[i] = rewritten
+          of nkTypeSection:
+            typeSection.sons[i .. i] = rewritten.sons
+          else: illFormedAst(rewritten, c.config)
+          typeDefLeftSidePass(c, typeSection, i)
+          return
+        pragma(c, s, name[1], typePragmas)
+      if sfForward in s.flags:
+        # check if the symbol already exists:
+        let pkg = c.module.owner
+        if not isTopLevel(c) or pkg.isNil:
+          localError(c.config, name.info, "only top level types in a package can be 'package'")
+        else:
+          let typsym = c.graph.packageTypes.strTableGet(s.name)
+          if typsym != nil:
+            if sfForward notin typsym.flags or sfNoForward notin typsym.flags:
+              typeCompleted(typsym)
+              typsym.info = s.info
+            else:
+              localError(c.config, name.info, "cannot complete type '" & s.name.s & "' twice; " &
+                      "previous type completion was here: " & c.config$typsym.info)
+            s = typsym
+      # add it here, so that recursive types are possible:
+      if sfGenSym notin s.flags: addInterfaceDecl(c, s)
+      elif s.owner == nil: setOwner(s, getCurrOwner(c))
 
   if name.kind == nkPragmaExpr:
     if name[0].kind == nkPostfix:
@@ -1766,6 +1778,12 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
         obj.incl sfPure
       obj.typ = objTy
       objTy.sym = obj
+    if sfForward in s.flags and sfNoForward notin s.flags and
+        a[2].kind != nkEmpty and s.typ != nil and s.typ.kind != tyForward:
+      typeCompleted(s)
+  for sk in c.skipTypes:
+    discard semTypeNode(c, sk, nil)
+  c.skipTypes = @[]
 
 proc checkForMetaFields(c: PContext; n: PNode; hasError: var bool) =
   proc checkMeta(c: PContext; n: PNode; t: PType; hasError: var bool; parent: PType) =
@@ -2420,6 +2438,15 @@ proc semMethodPrototype(c: PContext; s: PSym; n: PNode) =
     else:
       localError(c.config, n.info, "'method' needs a parameter that has an object type")
 
+proc reownCallableHeaderSyms(n: PNode; newOwner: PSym) =
+  if n.isNil:
+    return
+  if n.kind == nkSym and n.sym != nil and
+      n.sym.kind in {skParam, skGenericParam, skResult}:
+    setOwner(n.sym, newOwner)
+  for i in 0..<n.safeLen:
+    reownCallableHeaderSyms(n[i], newOwner)
+
 proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
                 validPragmas: TSpecialWords, flags: TExprFlags = {}): PNode =
   result = semProcAnnotation(c, n, validPragmas)
@@ -2580,6 +2607,16 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   if hasProto:
     if sfForward notin proto.flags and proto.magic == mNone:
       wrongRedefinition(c, n.info, proto.name.s, proto.info)
+    if sfForward in proto.flags and proto != s and c.graph.interfaceCallableStubs.contains(proto.id):
+      reownCallableHeaderSyms(n[genericParamsPos], proto)
+      reownCallableHeaderSyms(n[paramsPos], proto)
+      if s.typ != nil and s.typ.n != nil:
+        reownCallableHeaderSyms(s.typ.n, proto)
+      proto.typ = s.typ
+      proto.ast[genericParamsPos] = n[genericParamsPos]
+      proto.ast[paramsPos] = n[paramsPos]
+      proto.ast[pragmasPos] = n[pragmasPos]
+      c.graph.interfaceCallableStubs.excl proto.id
     if not comesFromShadowScope:
       excl(proto, sfForward)
       incl(proto, sfWasForwarded)

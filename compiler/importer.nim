@@ -280,7 +280,7 @@ proc myImportModule(c: PContext, n: var PNode, importStmtResult: PNode): PSym =
     let recursion = c.graph.importStack.find(f)
     c.graph.importStack.add f
     #echo "adding ", toFullPath(f), " at ", L+1
-    if recursion >= 0:
+    if recursion >= 0 and codeReordering notin c.features and codeReordering notin c.graph.config.features:
       var err = ""
       for i in recursion..<L:
         if i > recursion: err.add "\n"

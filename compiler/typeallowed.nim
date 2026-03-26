@@ -128,8 +128,13 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
     elif kind notin {skParam, skResult}:
       result = t
   of tyGenericBody, tyGenericParam, tyGenericInvocation,
-     tyNone, tyForward, tyFromExpr:
+     tyNone, tyFromExpr:
     result = t
+  of tyForward:
+    if c.graph.interfaceImportMode > 0 and kind in {skProc, skParam, skResult}:
+      result = nil
+    else:
+      result = t
   of tyNil:
     if kind != skConst and kind != skParam: result = t
   of tyString, tyBool, tyChar, tyEnum, tyInt..tyUInt64, tyCstring, tyPointer:
