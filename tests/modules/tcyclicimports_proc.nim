@@ -3,8 +3,6 @@ discard """
   cmd: "nim c -r $file"
 """
 
-{.experimental: "codeReordering".}
-
 import mcyclicimports_proc
 
 proc a*(x: int): int =

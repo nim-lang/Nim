@@ -141,7 +141,8 @@ proc processModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
         var n = parseTopLevelStmt(p)
         if n.kind == nkEmpty: break
         sl.add n
-      if sfReorder in module.flags or codeReordering in graph.config.features:
+      if usesDefaultCodeReordering(graph, module) or sfReorder in module.flags or
+          codeReordering in graph.config.features:
         sl = reorder(graph, sl, module)
       discard processTopLevelStmt(graph, sl, a)
 

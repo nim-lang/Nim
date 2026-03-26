@@ -6,8 +6,6 @@ defined
 3'''
 """
 
-{.experimental: "codeReordering".}
-
 {.push callconv: stdcall.}
 
 proc bar(x: T)

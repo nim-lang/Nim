@@ -1,4 +1,7 @@
 import tcyclicimports_noreorder
 
 proc b*(x: int): int =
-  a(x - 1)
+  if x <= 0:
+    0
+  else:
+    a(x - 1)

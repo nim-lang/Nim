@@ -1490,19 +1490,20 @@ proc typeDefLeftSidePass(c: PContext, typeSection: PNode, i: int) =
       s.typ = newTypeS(tyForward, c)
       s.typ.sym = s
       if c.graph.interfaceImportMode > 0 and isTopLevel(c):
-        s.flags.incl sfForward
+        s.incl sfForward
       if name.kind == nkPragmaExpr:
-        let rewritten = applyTypeSectionPragmas(c, name[1], typeDef)
-        if rewritten != nil:
-          case rewritten.kind
-          of nkTypeDef:
-            typeSection[i] = rewritten
-          of nkTypeSection:
-            typeSection.sons[i .. i] = rewritten.sons
-          else: illFormedAst(rewritten, c.config)
-          typeDefLeftSidePass(c, typeSection, i)
-          return
-        pragma(c, s, name[1], typePragmas)
+        if c.graph.interfaceImportMode == 0:
+          let rewritten = applyTypeSectionPragmas(c, name[1], typeDef)
+          if rewritten != nil:
+            case rewritten.kind
+            of nkTypeDef:
+              typeSection[i] = rewritten
+            of nkTypeSection:
+              typeSection.sons[i .. i] = rewritten.sons
+            else: illFormedAst(rewritten, c.config)
+            typeDefLeftSidePass(c, typeSection, i)
+            return
+          pragma(c, s, name[1], typePragmas)
       if sfForward in s.flags:
         # check if the symbol already exists:
         let pkg = c.module.owner
@@ -1781,9 +1782,6 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
     if sfForward in s.flags and sfNoForward notin s.flags and
         a[2].kind != nkEmpty and s.typ != nil and s.typ.kind != tyForward:
       typeCompleted(s)
-  for sk in c.skipTypes:
-    discard semTypeNode(c, sk, nil)
-  c.skipTypes = @[]
 
 proc checkForMetaFields(c: PContext; n: PNode; hasError: var bool) =
   proc checkMeta(c: PContext; n: PNode; t: PType; hasError: var bool; parent: PType) =

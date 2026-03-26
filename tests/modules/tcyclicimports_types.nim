@@ -3,8 +3,6 @@ discard """
   cmd: "nim c -r $file"
 """
 
-{.experimental: "codeReordering".}
-
 import mcyclicimports_types
 
 type

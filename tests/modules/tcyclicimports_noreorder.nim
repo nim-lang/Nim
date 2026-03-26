@@ -1,11 +1,14 @@
 discard """
-  errormsg: "undeclared identifier: 'a'"
-  cmd: "nim c $file"
+  output: "4"
+  cmd: "nim c -r $file"
 """
 
 import mcyclicimports_noreorder
 
 proc a*(x: int): int =
-  b(x)
+  if x <= 0:
+    1
+  else:
+    b(x) + 1
 
-discard a(1)
+echo a(3)

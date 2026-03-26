@@ -747,6 +747,9 @@ proc belongsToStdlib*(graph: ModuleGraph, sym: PSym): bool =
   ## Check if symbol belongs to the 'stdlib' package.
   sym.getPackageSymbol.getPackageId == graph.systemModule.getPackageId
 
+proc usesDefaultCodeReordering*(graph: ModuleGraph; module: PSym): bool =
+  sfSystemModule notin module.flags and not belongsToStdlib(graph, module)
+
 proc fileSymbols*(graph: ModuleGraph, fileIdx: FileIndex): SuggestFileSymbolDatabase =
   result = graph.suggestSymbols.getOrDefault(fileIdx, newSuggestFileSymbolDatabase(fileIdx, optIdeExceptionInlayHints in graph.config.globalOptions))
   doAssert(result.fileIndex == fileIdx)

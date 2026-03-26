@@ -275,12 +275,17 @@ proc myImportModule(c: PContext, n: var PNode, importStmtResult: PNode): PSym =
   n = transf.node
   let f = checkModuleName(c.config, n)
   if f != InvalidFileIdx:
+    if f == FileIndex(c.module.position):
+      localError(c.config, n.info, "module '$1' cannot import itself" % c.module.name.s)
     addImportFileDep(c, f)
     let L = c.graph.importStack.len
     let recursion = c.graph.importStack.find(f)
     c.graph.importStack.add f
     #echo "adding ", toFullPath(f), " at ", L+1
-    if recursion >= 0 and codeReordering notin c.features and codeReordering notin c.graph.config.features:
+    if recursion >= 0 and
+        not usesDefaultCodeReordering(c.graph, c.module) and
+        codeReordering notin c.features and
+        codeReordering notin c.graph.config.features:
       var err = ""
       for i in recursion..<L:
         if i > recursion: err.add "\n"

@@ -1,5 +1,3 @@
-{.experimental: "codeReordering".}
-
 import tcyclicimports_proc
 
 proc b*(x: int): int =

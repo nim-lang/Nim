@@ -854,9 +854,12 @@ proc collectTypeNames(c: PContext; n: PNode) =
           let code = c.graph.includeFileCallback(c.graph, c.module, f)
           collectTypeNames(c, code)
           excl(c.includedFiles, f.int)
-  of nkStmtList, nkWhenStmt, nkElifBranch, nkElse, nkStaticStmt:
+  of nkStmtList:
     for i in 0..<n.len:
       collectTypeNames(c, n[i])
+  of nkWhenStmt:
+    if sfSystemModule notin c.module.flags and not belongsToStdlib(c.graph, c.module):
+      collectTypeNames(c, semWhen(c, n, semCheck = false))
   of nkTypeSection:
     incl n.flags, nfSem
     inc c.inTypeContext
@@ -880,8 +883,61 @@ proc collectImports(c: PContext; n: PNode) =
   of nkStmtList:
     for i in 0..<n.len:
       collectImports(c, n[i])
+  of nkWhenStmt:
+    if sfSystemModule notin c.module.flags and not belongsToStdlib(c.graph, c.module):
+      collectImports(c, semWhen(c, n, semCheck = false))
   of nkImportStmt, nkFromStmt, nkImportExceptStmt:
     discard semStmt(c, n, {})
+  else:
+    discard
+
+proc checkSelfImports(c: PContext; n: PNode) =
+  proc checkModuleNode(n: PNode) =
+    var n = n
+    if n.kind == nkPragmaExpr:
+      n = n[0]
+    if n.kind == nkInfix and n.len == 3 and n[0].kind == nkIdent and n[0].ident.s == "as":
+      n = n[1]
+    let f = checkModuleName(c.config, n, false)
+    if f != InvalidFileIdx and f == c.module.fileIdx:
+      localError(c.config, n.info, "module '$1' cannot import itself" % c.module.name.s)
+
+  case n.kind
+  of nkIncludeStmt:
+    for i in 0..<n.len:
+      let f = checkModuleName(c.config, n[i])
+      if f != InvalidFileIdx:
+        if containsOrIncl(c.includedFiles, f.int):
+          localError(c.config, n.info, errRecursiveDependencyX % toMsgFilename(c.config, f))
+        else:
+          let code = c.graph.includeFileCallback(c.graph, c.module, f)
+          checkSelfImports(c, code)
+          excl(c.includedFiles, f.int)
+  of nkStmtList:
+    for i in 0..<n.len:
+      checkSelfImports(c, n[i])
+  of nkWhenStmt:
+    if sfSystemModule notin c.module.flags and not belongsToStdlib(c.graph, c.module):
+      checkSelfImports(c, semWhen(c, n, semCheck = false))
+  of nkImportStmt:
+    for it in n:
+      if it.kind in {nkInfix, nkPrefix} and it[^1].kind == nkBracket:
+        let lastPos = it.len - 1
+        var imp = copyNode(it)
+        newSons(imp, it.len)
+        for i in 0..<lastPos:
+          imp[i] = it[i]
+        imp[lastPos] = imp[0]
+        for x in it[lastPos]:
+          if x.kind == nkInfix and x.len == 3 and x[0].kind == nkIdent and x[0].ident.s == "as":
+            imp[lastPos] = x[1]
+          else:
+            imp[lastPos] = x
+          checkModuleNode(imp)
+      else:
+        checkModuleNode(it)
+  of nkImportExceptStmt, nkFromStmt:
+    checkModuleNode(n[0])
   else:
     discard
 
@@ -897,16 +953,20 @@ proc collectCallableHeaders(c: PContext; n: PNode) =
           let code = c.graph.includeFileCallback(c.graph, c.module, f)
           collectCallableHeaders(c, code)
           excl(c.includedFiles, f.int)
-  of nkStmtList, nkWhenStmt, nkElifBranch, nkElse, nkStaticStmt:
+  of nkStmtList:
     for i in 0..<n.len:
       collectCallableHeaders(c, n[i])
-  of procDefs, nkMacroDef, nkTemplateDef:
+  of nkWhenStmt:
+    if sfSystemModule notin c.module.flags and not belongsToStdlib(c.graph, c.module):
+      collectCallableHeaders(c, semWhen(c, n, semCheck = false))
+  of procDefs:
     if isExportedCallableHeader(n):
       semCallableHeader(c, n)
   else:
     discard
 
 proc collectInterfaceWithPContext*(c: PContext; n: PNode) =
+  checkSelfImports(c, n)
   ensureTopLevelSystemImport(c, n)
   collectTypeNames(c, n)
   collectImports(c, n)

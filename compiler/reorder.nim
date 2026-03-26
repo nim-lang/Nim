@@ -113,7 +113,7 @@ proc computeDeps(cache: IdentCache; n: PNode, declares, uses: var IntSet; topLev
 proc hasIncludes(n: PNode): bool =
   result = false
   for a in n:
-    if a.kind == nkIncludeStmt:
+    if a.kind == nkIncludeStmt or a.hasIncludes:
       return true
 
 proc includeModule*(graph: ModuleGraph; s: PSym, fileIdx: FileIndex): PNode =
@@ -126,24 +126,35 @@ proc expandIncludes(graph: ModuleGraph, module: PSym, n: PNode,
   # Parses includes and injects them in the current tree
   if not n.hasIncludes:
     return n
-  result = newNodeI(nkStmtList, n.info)
-  for a in n:
-    if a.kind == nkIncludeStmt:
-      for i in 0..<a.len:
-        var f = checkModuleName(graph.config, a[i])
-        if f != InvalidFileIdx:
-          if containsOrIncl(includedFiles, f.int):
-            localError(graph.config, a.info, "recursive dependency: '$1'" %
-              toMsgFilename(graph.config, f))
-          else:
-            let nn = includeModule(graph, module, f)
-            let nnn = expandIncludes(graph, module, nn, modulePath,
-                                      includedFiles)
-            excl(includedFiles, f.int)
-            for b in nnn:
-              result.add b
-    else:
-      result.add a
+  case n.kind
+  of nkIncludeStmt:
+    result = newNodeI(nkStmtList, n.info)
+    for i in 0..<n.len:
+      let f = checkModuleName(graph.config, n[i])
+      if f != InvalidFileIdx:
+        if containsOrIncl(includedFiles, f.int):
+          localError(graph.config, n.info, "recursive dependency: '$1'" %
+            toMsgFilename(graph.config, f))
+        else:
+          let nn = includeModule(graph, module, f)
+          let nnn = expandIncludes(graph, module, nn, modulePath, includedFiles)
+          excl(includedFiles, f.int)
+          for b in nnn:
+            result.add b
+  of nkStmtList, nkStmtListExpr:
+    result = newNodeI(n.kind, n.info)
+    for a in n:
+      let expanded = expandIncludes(graph, module, a, modulePath, includedFiles)
+      if expanded.kind == nkStmtList:
+        for b in expanded:
+          result.add b
+      else:
+        result.add expanded
+  else:
+    result = copyNode(n)
+    newSons(result, n.len)
+    for i in 0..<n.len:
+      result[i] = expandIncludes(graph, module, n[i], modulePath, includedFiles)
 
 proc splitSections(n: PNode): PNode =
   # Split typeSections and ConstSections into
@@ -169,7 +180,7 @@ proc haveSameKind(dns: seq[DepN]): bool =
     if dn.pnode.kind != kind:
       return false
 
-proc mergeSections(conf: ConfigRef; comps: seq[seq[DepN]], res: PNode) =
+proc mergeSections(conf: ConfigRef; comps: seq[seq[DepN]], res: PNode; emitWarnings: bool) =
   # Merges typeSections and ConstSections when they form
   # a strong component (ex: circular type definition)
   for c in comps:
@@ -192,7 +203,7 @@ proc mergeSections(conf: ConfigRef; comps: seq[seq[DepN]], res: PNode) =
         # Problematic circular dependency, we arrange the nodes into
         # their original relative order and make sure to re-merge
         # consecutive type and const sections
-        var wmsg = "Circular dependency detected. `codeReordering` pragma may not be able to" &
+        var wmsg = "Circular dependency detected. The compiler may not be able to" &
           " reorder some nodes properly"
         when defined(nimDebugReorder):
           wmsg &= ":\n"
@@ -209,7 +220,8 @@ proc mergeSections(conf: ConfigRef; comps: seq[seq[DepN]], res: PNode) =
                 wmsg &= "line " & $cs[^1].pnode.info.line &
                   " depends on line " & $cs[j].pnode.info.line &
                   ": " & cs[^1].expls[ci] & "\n"
-        message(conf, cs[0].pnode.info, warnUser, wmsg)
+        if emitWarnings:
+          message(conf, cs[0].pnode.info, warnUser, wmsg)
 
         var i = 0
         while i < cs.len:
@@ -432,4 +444,5 @@ proc reorder*(graph: ModuleGraph, n: PNode, module: PSym): PNode =
 
   var g = buildGraph(n, deps)
   let comps = getStrongComponents(g)
-  mergeSections(graph.config, comps, result)
+  mergeSections(graph.config, comps, result,
+    emitWarnings = sfSystemModule notin module.flags and not belongsToStdlib(graph, module))
