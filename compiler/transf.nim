@@ -1190,6 +1190,13 @@ proc transform(c: PTransf, n: PNode, noConstFold = false): PNode =
     # no need to transform type sections:
     return n
   of nkVarSection, nkLetSection:
+    # NIF loads let/var sections with bare nkSym children instead of nkIdentDefs.
+    # Expand them so transformSons reaches the value expression (e.g. for-loop).
+    for i in 0 ..< n.len:
+      if n[i].kind == nkSym:
+        let impl = n[i].sym.ast  # triggers lazy load if Partial
+        if impl != nil and impl.kind == nkIdentDefs:
+          n[i] = impl
     if c.inlining > 0:
       # we need to copy the variables for multiple yield statements:
       result = transformVarSection(c, n)
