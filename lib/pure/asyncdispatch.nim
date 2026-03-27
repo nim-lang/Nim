@@ -353,9 +353,19 @@ when defined(windows) or defined(nimdoc):
 
   var gDisp{.threadvar.}: owned PDispatcher ## Global dispatcher
 
+  proc close*(disp: PDispatcher) =
+    if disp.isNil: return
+    assert disp.callbacks.len == 0
+    assert disp.timers.len == 0
+    assert disp.handles.len == 0
+    if disp.ioPort != 0:
+      if closeHandle(disp.ioPort) == 0:
+        raiseOSError(osLastError())
+      disp.ioPort = 0
+
   proc setGlobalDispatcher*(disp: sink PDispatcher) =
     if not gDisp.isNil:
-      assert gDisp.callbacks.len == 0
+      close(gDisp)
     gDisp = disp
     initCallSoonProc()
 
@@ -1120,14 +1130,29 @@ when defined(windows) or defined(nimdoc):
     doAssert(ev.hWaiter != 0, "Event is not registered in the queue!")
     let p = getGlobalDispatcher()
     p.handles.excl(AsyncFD(ev.hEvent))
-    if unregisterWait(ev.hWaiter) == 0:
+    let waitFd = ev.hWaiter
+    ev.hWaiter = 0
+    if unregisterWait(waitFd) == 0:
       let err = osLastError()
       if err.int32 != ERROR_IO_PENDING:
         raiseOSError(err)
-    ev.hWaiter = 0
+    else:
+      deallocShared(cast[pointer](ev.pcd))
+      ev.pcd = nil
 
   proc close*(ev: AsyncEvent) =
     ## Closes event `ev`.
+    if ev.hWaiter != 0:
+      unregister(ev)
+      if closeHandle(ev.hEvent) == 0:
+        raiseOSError(osLastError())
+      if ev.pcd != nil:
+        # Unregistration completed asynchronously; event callback will free the
+        # registration state and then release the event object itself.
+        ev.hEvent = 0
+      else:
+        deallocShared(cast[pointer](ev))
+      return
     let res = closeHandle(ev.hEvent)
     deallocShared(cast[pointer](ev))
     if res == 0:
@@ -1146,23 +1171,40 @@ when defined(windows) or defined(nimdoc):
     proc eventcb(fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
       if ev.hWaiter != 0:
         if cb(fd):
-          # we need this check to avoid exception, if `unregister(event)` was
-          # called in callback.
-          deallocShared(cast[pointer](pcd))
           if ev.hWaiter != 0:
-            unregister(ev)
+            let waitFd = ev.hWaiter
+            ev.hWaiter = 0
+            p.handles.excl(fd)
+            if unregisterWait(waitFd) == 0:
+              let err = osLastError()
+              if err.int32 != ERROR_IO_PENDING:
+                raiseOSError(err)
+          deallocShared(cast[pointer](pcd))
+          ev.pcd = nil
+          if ev.hEvent == 0:
+            deallocShared(cast[pointer](ev))
         else:
           # if callback returned `false`, then it wants to be called again, so
           # we need to ref and protect `pcd.ovl` again, because it will be
           # unrefed and disposed in `poll()`.
-          GC_ref(pcd.ovl)
-          pcd.ovl.data.cell = system.protect(rawEnv(pcd.ovl.data.cb))
+          if ev.hWaiter != 0:
+            GC_ref(pcd.ovl)
+            pcd.ovl.data.cell = system.protect(rawEnv(pcd.ovl.data.cb))
+          else:
+            deallocShared(cast[pointer](pcd))
+            ev.pcd = nil
+            if ev.hEvent == 0:
+              deallocShared(cast[pointer](ev))
       else:
         # if ev.hWaiter == 0, then event was unregistered before `poll()` call.
         deallocShared(cast[pointer](pcd))
+        ev.pcd = nil
+        if ev.hEvent == 0:
+          deallocShared(cast[pointer](ev))
 
     registerWaitableHandle(p, hEvent, flags, pcd, INFINITE, eventcb)
     ev.hWaiter = pcd.waitFd
+    ev.pcd = pcd
 
   initAll()
 else:
@@ -1218,16 +1260,27 @@ else:
 
   when defined(nuttx):
     import std/exitprocs
+    proc close*(disp: PDispatcher)
 
     proc cleanDispatcher() {.noconv.} =
+      close(gDisp)
       gDisp = nil
 
     proc addFinalyzer() =
       addExitProc(cleanDispatcher)
 
+  proc close*(disp: PDispatcher) =
+    if disp.isNil: return
+    assert disp.callbacks.len == 0
+    assert disp.timers.len == 0
+    assert disp.selector.isNil or disp.selector.isEmpty()
+    if not disp.selector.isNil:
+      disp.selector.close()
+      disp.selector = nil
+
   proc setGlobalDispatcher*(disp: owned PDispatcher) =
     if not gDisp.isNil:
-      assert gDisp.callbacks.len == 0
+      close(gDisp)
     gDisp = disp
     initCallSoonProc()
 
