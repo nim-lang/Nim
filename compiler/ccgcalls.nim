@@ -389,6 +389,10 @@ proc genArg(p: BProc, n: PNode, param: PSym; call: PNode; result: var Builder; n
       let typ = skipTypes(param.typ, abstractPtrs)
       if not sameBackendTypePickyAliases(typ, n.typ.skipTypes(abstractPtrs)):
         a.snippet = cCast(getTypeDesc(p.module, param.typ), rdCharLoc(a))
+    elif param.typ.kind == tyProc and param.typ.callConv == ccClosure and
+        not sameBackendTypePickyAliases(param.typ, n.typ):
+      a.snippet = cDeref(cCast(ptrType(getTypeDesc(p.module, param.typ)),
+        wrapPar(cAddr(rdLoc(a)))))
     addRdLoc(withTmpIfNeeded(p, a, needsTmp), result)
   #assert result != nil
 

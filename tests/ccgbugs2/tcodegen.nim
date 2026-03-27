@@ -75,3 +75,14 @@ block: # importc type inheritance
   doAssert(cast[cint](b) == 123)
   var c = foo(b)
   doAssert(cast[cint](c) == 123)
+
+block:
+  var
+    a: proc (len: uint)
+    b: proc (len: csize_t)
+
+    c = a
+
+  c = b
+  doAssert c == nil
+
