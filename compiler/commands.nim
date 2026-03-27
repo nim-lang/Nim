@@ -935,7 +935,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     expectArg(conf, switch, arg, pass, info)
     var value: int = 10_000_000
     discard parseSaturatedNatural(arg, value)
-    if not value > 0: localError(conf, info, "maxLoopIterationsVM must be a positive integer greater than zero")
+    if value <= 0: localError(conf, info, "maxLoopIterationsVM must be a positive integer greater than zero")
     conf.maxLoopIterationsVM = value
   of "maxcalldepthvm":
     expectArg(conf, switch, arg, pass, info)
