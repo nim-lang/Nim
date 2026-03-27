@@ -148,7 +148,7 @@ proc cmpDecimalsIgnoreCase(a, b: string): int =
         limitB = iB
       while limitA < aLen and isDigit(a[limitA]): inc limitA
       while limitB < bLen and isDigit(b[limitB]): inc limitB
-      var pos = max(limitA-iA, limitB-iA)
+      var pos = max(limitA-iA, limitB-iB)
       while pos > 0:
         if limitA-pos < iA:  # digit in `a` is 0 effectively
           result = ord('0') - ord(b[limitB-pos])
