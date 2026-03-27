@@ -556,7 +556,7 @@ proc replace(s: string): string =
   while i < s.len():
     if s[i] == '\\':
       d.add(r"\\")
-    elif s[i] == '\c' and s[i+1] == '\l':
+    elif s[i] == '\c' and i+1 < s.len() and s[i+1] == '\l':
       d.add(r"\c\l")
       inc(i)
     elif s[i] == '\c':
