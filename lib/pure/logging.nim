@@ -191,7 +191,7 @@ type
 
 const
   LevelNames*: array[Level, string] = [
-    "DEBUG", "DEBUG", "INFO", "NOTICE", "WARN", "ERROR", "FATAL", "NONE"
+    "ALL", "DEBUG", "INFO", "NOTICE", "WARN", "ERROR", "FATAL", "NONE"
   ] ## Array of strings representing each logging level.
 
   defaultFmtStr* = "$levelname "                         ## The default format string.
