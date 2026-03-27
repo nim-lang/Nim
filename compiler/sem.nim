@@ -61,6 +61,8 @@ proc semTypeOf(c: PContext; n: PNode): PNode
 proc computeRequiresInit(c: PContext, t: PType): bool
 proc defaultConstructionError(c: PContext, t: PType, info: TLineInfo)
 proc hasUnresolvedArgs(c: PContext, n: PNode): bool
+proc isImportSystemStmt(g: ModuleGraph; n: PNode): bool
+proc isEmptyTree(n: PNode): bool
 proc isArrayConstr(n: PNode): bool {.inline.} =
   result = n.kind == nkBracket and
     n.typ.skipTypes(abstractInst).kind == tyArray
@@ -753,6 +755,24 @@ proc addCodeForGenerics(c: PContext, n: PNode) =
         n.add prc.ast
   c.lastGenericIdx = c.generics.len
 
+proc preloadForwardDecls(c: PContext) =
+  for s in semtabAll(c.graph, c.module).data:
+    if s != nil and sfForward in s.flags:
+      if s.kind in OverloadableSyms:
+        addOverloadableSymAt(c, c.currentScope, s)
+      else:
+        addDeclAt(c, c.currentScope, s)
+
+proc ensureTopLevelSystemImport(c: PContext; n: PNode) =
+  if c.topStmts == 0 and not isImportSystemStmt(c.graph, n):
+    if sfSystemModule notin c.module.flags and not isEmptyTree(n):
+      assert c.graph.systemModule != nil
+      c.moduleScope.addSym c.graph.systemModule
+      importAllSymbols(c, c.graph.systemModule)
+      inc c.topStmts
+  else:
+    inc c.topStmts
+
 proc preparePContext*(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PContext =
   result = newContext(graph, module)
   result.idgen = idgen
@@ -788,6 +808,169 @@ proc preparePContext*(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PCo
   if sfSystemModule in module.flags:
     graph.systemModule = module
   result.topLevelScope = openScope(result)
+  preloadForwardDecls(result)
+
+proc discardPContext*(c: PContext) =
+  rawCloseScope(c)
+  rawCloseScope(c)
+  popOwner(c)
+  popProcCon(c)
+
+proc semCallableHeader(c: PContext; n: PNode) =
+  var header = copyTree(n)
+  if bodyPos < header.len:
+    header[bodyPos] = newNodeI(nkEmpty, n.info)
+  case header.kind
+  of nkProcDef: discard semProc(c, header)
+  of nkFuncDef: discard semFunc(c, header)
+  of nkMethodDef: discard semMethod(c, header)
+  of nkIteratorDef: discard semIterator(c, header)
+  of nkConverterDef: discard semConverterDef(c, header)
+  of nkMacroDef: discard semMacroDef(c, header)
+  of nkTemplateDef: discard semTemplateDef(c, header)
+  else: discard
+  if namePos < header.len and header[namePos].kind == nkSym:
+    let s = header[namePos].sym
+    if s != nil and s.kind in {skProc, skFunc, skMethod, skIterator, skConverter} and sfForward in s.flags:
+      c.graph.interfaceCallableStubs.incl s.id
+
+proc isExportedCallableHeader(n: PNode): bool =
+  if namePos >= n.len:
+    return false
+  var name = n[namePos]
+  if name.kind == nkPragmaExpr:
+    name = name[0]
+  result = name.kind == nkPostfix
+
+proc collectTypeNames(c: PContext; n: PNode) =
+  case n.kind
+  of nkIncludeStmt:
+    for i in 0..<n.len:
+      let f = checkModuleName(c.config, n[i])
+      if f != InvalidFileIdx:
+        if containsOrIncl(c.includedFiles, f.int):
+          localError(c.config, n.info, errRecursiveDependencyX % toMsgFilename(c.config, f))
+        else:
+          let code = c.graph.includeFileCallback(c.graph, c.module, f)
+          collectTypeNames(c, code)
+          excl(c.includedFiles, f.int)
+  of nkStmtList:
+    for i in 0..<n.len:
+      collectTypeNames(c, n[i])
+  of nkWhenStmt:
+    if sfSystemModule notin c.module.flags and not belongsToStdlib(c.graph, c.module):
+      collectTypeNames(c, semWhen(c, n, semCheck = false))
+  of nkTypeSection:
+    incl n.flags, nfSem
+    inc c.inTypeContext
+    typeSectionLeftSidePass(c, n)
+    dec c.inTypeContext
+  else:
+    discard
+
+proc collectImports(c: PContext; n: PNode) =
+  case n.kind
+  of nkIncludeStmt:
+    for i in 0..<n.len:
+      let f = checkModuleName(c.config, n[i])
+      if f != InvalidFileIdx:
+        if containsOrIncl(c.includedFiles, f.int):
+          localError(c.config, n.info, errRecursiveDependencyX % toMsgFilename(c.config, f))
+        else:
+          let code = c.graph.includeFileCallback(c.graph, c.module, f)
+          collectImports(c, code)
+          excl(c.includedFiles, f.int)
+  of nkStmtList:
+    for i in 0..<n.len:
+      collectImports(c, n[i])
+  of nkWhenStmt:
+    if sfSystemModule notin c.module.flags and not belongsToStdlib(c.graph, c.module):
+      collectImports(c, semWhen(c, n, semCheck = false))
+  of nkImportStmt, nkFromStmt, nkImportExceptStmt:
+    discard semStmt(c, n, {})
+  else:
+    discard
+
+proc checkSelfImports(c: PContext; n: PNode) =
+  proc checkModuleNode(n: PNode) =
+    var n = n
+    if n.kind == nkPragmaExpr:
+      n = n[0]
+    if n.kind == nkInfix and n.len == 3 and n[0].kind == nkIdent and n[0].ident.s == "as":
+      n = n[1]
+    let f = checkModuleName(c.config, n, false)
+    if f != InvalidFileIdx and f == c.module.fileIdx:
+      localError(c.config, n.info, "module '$1' cannot import itself" % c.module.name.s)
+
+  case n.kind
+  of nkIncludeStmt:
+    for i in 0..<n.len:
+      let f = checkModuleName(c.config, n[i])
+      if f != InvalidFileIdx:
+        if containsOrIncl(c.includedFiles, f.int):
+          localError(c.config, n.info, errRecursiveDependencyX % toMsgFilename(c.config, f))
+        else:
+          let code = c.graph.includeFileCallback(c.graph, c.module, f)
+          checkSelfImports(c, code)
+          excl(c.includedFiles, f.int)
+  of nkStmtList:
+    for i in 0..<n.len:
+      checkSelfImports(c, n[i])
+  of nkWhenStmt:
+    if sfSystemModule notin c.module.flags and not belongsToStdlib(c.graph, c.module):
+      checkSelfImports(c, semWhen(c, n, semCheck = false))
+  of nkImportStmt:
+    for it in n:
+      if it.kind in {nkInfix, nkPrefix} and it[^1].kind == nkBracket:
+        let lastPos = it.len - 1
+        var imp = copyNode(it)
+        newSons(imp, it.len)
+        for i in 0..<lastPos:
+          imp[i] = it[i]
+        imp[lastPos] = imp[0]
+        for x in it[lastPos]:
+          if x.kind == nkInfix and x.len == 3 and x[0].kind == nkIdent and x[0].ident.s == "as":
+            imp[lastPos] = x[1]
+          else:
+            imp[lastPos] = x
+          checkModuleNode(imp)
+      else:
+        checkModuleNode(it)
+  of nkImportExceptStmt, nkFromStmt:
+    checkModuleNode(n[0])
+  else:
+    discard
+
+proc collectCallableHeaders(c: PContext; n: PNode) =
+  case n.kind
+  of nkIncludeStmt:
+    for i in 0..<n.len:
+      let f = checkModuleName(c.config, n[i])
+      if f != InvalidFileIdx:
+        if containsOrIncl(c.includedFiles, f.int):
+          localError(c.config, n.info, errRecursiveDependencyX % toMsgFilename(c.config, f))
+        else:
+          let code = c.graph.includeFileCallback(c.graph, c.module, f)
+          collectCallableHeaders(c, code)
+          excl(c.includedFiles, f.int)
+  of nkStmtList:
+    for i in 0..<n.len:
+      collectCallableHeaders(c, n[i])
+  of nkWhenStmt:
+    if sfSystemModule notin c.module.flags and not belongsToStdlib(c.graph, c.module):
+      collectCallableHeaders(c, semWhen(c, n, semCheck = false))
+  of procDefs:
+    if isExportedCallableHeader(n):
+      semCallableHeader(c, n)
+  else:
+    discard
+
+proc collectInterfaceWithPContext*(c: PContext; n: PNode) =
+  checkSelfImports(c, n)
+  ensureTopLevelSystemImport(c, n)
+  collectTypeNames(c, n)
+  collectImports(c, n)
+  collectCallableHeaders(c, n)
 
 proc isImportSystemStmt(g: ModuleGraph; n: PNode): bool =
   if g.systemModule == nil: return false
@@ -823,14 +1006,7 @@ proc isEmptyTree(n: PNode): bool =
   else: result = false
 
 proc semStmtAndGenerateGenerics(c: PContext, n: PNode): PNode =
-  if c.topStmts == 0 and not isImportSystemStmt(c.graph, n):
-    if sfSystemModule notin c.module.flags and not isEmptyTree(n):
-      assert c.graph.systemModule != nil
-      c.moduleScope.addSym c.graph.systemModule # import the "System" identifier
-      importAllSymbols(c, c.graph.systemModule)
-      inc c.topStmts
-  else:
-    inc c.topStmts
+  ensureTopLevelSystemImport(c, n)
   if sfNoForward in c.module.flags:
     result = semAllTypeSections(c, n)
   else:

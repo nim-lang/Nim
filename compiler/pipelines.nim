@@ -1,5 +1,6 @@
 import sem, cgen, modulegraphs, ast, llstream, parser, msgs,
        lineinfos, reorder, options, semdata, cgendata, modules, pathutils,
+       modulepaths,
        packages, syntaxes, depends, vm, pragmas, idents, lookups, wordrecg,
        liftdestructors, nifgen
 
@@ -17,7 +18,6 @@ when not defined(leanCompiler):
 
 import std/[syncio, objectdollar, assertions, tables, strutils, strtabs]
 import renderer
-import ic/replayer
 
 proc setPipeLinePass*(graph: ModuleGraph; pass: PipelinePass) =
   graph.pipelinePass = pass
@@ -111,6 +111,136 @@ proc prePass*(c: PContext; n: PNode) =
         else:
           discard
 
+proc compilePipelineModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymFlags; fromModule: PSym = nil): PSym
+
+proc enqueuePendingSemcheck(graph: ModuleGraph; fileIdx: FileIndex) =
+  for it in graph.pendingSemchecks:
+    if it == fileIdx:
+      return
+  graph.pendingSemchecks.add fileIdx
+
+proc drainPendingSemchecks(graph: ModuleGraph) =
+  while graph.pendingSemchecks.len > 0:
+    let fileIdx = graph.pendingSemchecks[0]
+    graph.pendingSemchecks.delete(0)
+    if fileIdx.int < graph.compileStates.len and graph.compileStates[fileIdx.int] == mcsInterfaceReady:
+      let m = graph.getModule(fileIdx)
+      if m != nil:
+        discard compilePipelineModule(graph, fileIdx, m.flags)
+
+proc wantsInterfaceCollection(c: PContext): bool =
+  sfSystemModule notin c.module.flags and (
+    usesDefaultCodeReordering(c.graph, c.module) or
+    codeReordering in c.features or sfReorder in c.module.flags
+  )
+
+proc importsNonStdlibModule(graph: ModuleGraph; n: PNode): bool =
+  proc isNonStdlibModuleNode(n: PNode): bool =
+    result = false
+    var n = n
+    if n.kind == nkPragmaExpr:
+      n = n[0]
+    if n.kind == nkInfix and n.len == 3 and n[0].kind == nkIdent and n[0].ident.s == "as":
+      n = n[1]
+    let f = checkModuleName(graph.config, n, false)
+    if f != InvalidFileIdx:
+      result = getPackage(graph, f).getPackageId != graph.systemModule.getPackageId
+
+  case n.kind
+  of nkIncludeStmt:
+    for i in 0..<n.len:
+      let f = checkModuleName(graph.config, n[i])
+      if f != InvalidFileIdx and getPackage(graph, f).getPackageId != graph.systemModule.getPackageId:
+        return true
+    result = false
+  of nkImportStmt:
+    for it in n:
+      if it.kind in {nkInfix, nkPrefix} and it[^1].kind == nkBracket:
+        let lastPos = it.len - 1
+        var imp = copyNode(it)
+        newSons(imp, it.len)
+        for i in 0..<lastPos:
+          imp[i] = it[i]
+        imp[lastPos] = imp[0]
+        for x in it[lastPos]:
+          if x.kind == nkInfix and x.len == 3 and x[0].kind == nkIdent and x[0].ident.s == "as":
+            imp[lastPos] = x[1]
+          else:
+            imp[lastPos] = x
+          if isNonStdlibModuleNode(imp):
+            return true
+      elif isNonStdlibModuleNode(it):
+        return true
+    result = false
+  of nkImportExceptStmt, nkFromStmt:
+    result = isNonStdlibModuleNode(n[0])
+  of nkStmtList, nkStmtListExpr, nkWhenStmt, nkElifBranch, nkElse, nkStaticStmt:
+    for i in 0..<n.len:
+      if importsNonStdlibModule(graph, n[i]):
+        return true
+    result = false
+  else:
+    result = false
+
+proc hasTopLevelConditionals(n: PNode): bool =
+  case n.kind
+  of nkWhenStmt, nkStaticStmt:
+    result = true
+  of nkStmtList, nkStmtListExpr, nkElifBranch, nkElse:
+    for i in 0..<n.len:
+      if hasTopLevelConditionals(n[i]):
+        return true
+    result = false
+  else:
+    result = false
+
+proc parseModuleTopLevel(graph: ModuleGraph; module: PSym): PNode =
+  result = syntaxes.parseFile(module.fileIdx, graph.cache, graph.config)
+
+proc collectPipelineModuleInterface(graph: ModuleGraph; module: PSym; idgen: IdGenerator): bool =
+  let fileIdx = module.fileIdx
+  ensureCompileStateSlot(graph, fileIdx)
+  case graph.compileStates[fileIdx.int]
+  of mcsCollectingInterface, mcsInterfaceReady, mcsSemchecking, mcsDone:
+    return graph.compileStates[fileIdx.int] != mcsNone
+  of mcsNone:
+    discard
+
+  let oldSymbolFiles = graph.config.symbolFiles
+  graph.compileStates[fileIdx.int] = mcsCollectingInterface
+  graph.config.symbolFiles = disabledSf
+  var ctx: PContext = nil
+  try:
+    let sl = parseModuleTopLevel(graph, module)
+    ctx = preparePContext(graph, module, idgen)
+    prePass(ctx, sl)
+    if not wantsInterfaceCollection(ctx) or
+        not importsNonStdlibModule(graph, sl) or
+        hasTopLevelConditionals(sl):
+      graph.compileStates[fileIdx.int] = mcsNone
+      return false
+
+    if not belongsToStdlib(graph, module) or (belongsToStdlib(graph, module) and module.name.s == "distros"):
+      if module.name.s != "nimscriptapi":
+        inc graph.interfaceImportMode
+        try:
+          processImplicitImports graph, graph.config.implicitImports, nkImportStmt, module, ctx, nil, idgen, nil
+          processImplicitImports graph, graph.config.implicitIncludes, nkIncludeStmt, module, ctx, nil, idgen, nil
+        finally:
+          dec graph.interfaceImportMode
+
+    inc graph.interfaceImportMode
+    try:
+      collectInterfaceWithPContext(ctx, sl)
+    finally:
+      dec graph.interfaceImportMode
+    graph.compileStates[fileIdx.int] = mcsInterfaceReady
+    result = true
+  finally:
+    graph.config.symbolFiles = oldSymbolFiles
+    if ctx != nil:
+      discardPContext(ctx)
+
 proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
                     stream: PLLStream): bool =
   if graph.stopCompile(): return true
@@ -197,7 +327,8 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
         sl.add n
 
       prePass(ctx, sl)
-      if sfReorder in module.flags or codeReordering in graph.config.features:
+      if usesDefaultCodeReordering(graph, module) or sfReorder in module.flags or
+          codeReordering in graph.config.features:
         sl = reorder(graph, sl, module)
       if graph.pipelinePass != EvalPass:
         message(graph.config, sl.info, hintProcessingStmt, $idgen[])
@@ -300,6 +431,7 @@ proc compilePipelineModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymF
           if result.ast != nil:
             replayStateChanges(result, graph)
           return result  # Return early, don't process from source
+    ensureCompileStateSlot(graph, fileIdx)
     let path = toFullPath(graph.config, fileIdx)
     let filename = AbsoluteFile path
     # it could be a stdinfile/cmdfile
@@ -309,22 +441,72 @@ proc compilePipelineModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymF
       result = newModule(graph, fileIdx)
       result.incl flags
       registerModule(graph, result)
+      discard collectPipelineModuleInterface(graph, result, idGeneratorFromModule(result))
+      if graph.interfaceImportMode > 0 and graph.compileStates[fileIdx.int] == mcsInterfaceReady:
+        return result
+      graph.compileStates[fileIdx.int] = mcsSemchecking
+      graph.semcheckStack.add fileIdx
       processModuleAux("import")
+      doAssert graph.semcheckStack.len > 0 and graph.semcheckStack[^1] == fileIdx
+      graph.semcheckStack.setLen(graph.semcheckStack.len - 1)
+      graph.compileStates[fileIdx.int] = mcsDone
+      if graph.semcheckStack.len == 0:
+        drainPendingSemchecks(graph)
     else:
       if sfSystemModule in flags:
         graph.systemModule = result
       if sfMainModule in flags and graph.config.cmd == cmdM:
         result.incl flags
         registerModule(graph, result)
+        graph.compileStates[fileIdx.int] = mcsSemchecking
+        graph.semcheckStack.add fileIdx
         processModuleAux("import")
+        doAssert graph.semcheckStack.len > 0 and graph.semcheckStack[^1] == fileIdx
+        graph.semcheckStack.setLen(graph.semcheckStack.len - 1)
+        graph.compileStates[fileIdx.int] = mcsDone
+        if graph.semcheckStack.len == 0:
+          drainPendingSemchecks(graph)
       partialInitModule(result, graph, fileIdx, filename)
   elif graph.isDirty(result):
     result.excl sfDirty
     # reset module fields:
     initStrTables(graph, result)
     result.ast = nil
+    ensureCompileStateSlot(graph, fileIdx)
+    graph.compileStates[fileIdx.int] = mcsNone
+    discard collectPipelineModuleInterface(graph, result, idGeneratorFromModule(result))
+    if graph.interfaceImportMode > 0 and graph.compileStates[fileIdx.int] == mcsInterfaceReady:
+      return result
+    graph.compileStates[fileIdx.int] = mcsSemchecking
+    graph.semcheckStack.add fileIdx
     processModuleAux("import(dirty)")
+    doAssert graph.semcheckStack.len > 0 and graph.semcheckStack[^1] == fileIdx
+    graph.semcheckStack.setLen(graph.semcheckStack.len - 1)
+    graph.compileStates[fileIdx.int] = mcsDone
+    if graph.semcheckStack.len == 0:
+      drainPendingSemchecks(graph)
     graph.markClientsDirty(fileIdx)
+  else:
+    ensureCompileStateSlot(graph, fileIdx)
+    case graph.compileStates[fileIdx.int]
+    of mcsCollectingInterface, mcsSemchecking, mcsDone, mcsInterfaceReady:
+      discard
+    of mcsNone:
+      discard collectPipelineModuleInterface(graph, result, idGeneratorFromModule(result))
+    if graph.interfaceImportMode > 0:
+      return result
+    if graph.compileStates[fileIdx.int] == mcsInterfaceReady:
+      if graph.semcheckStack.len > 0:
+        enqueuePendingSemcheck(graph, fileIdx)
+        return result
+      graph.compileStates[fileIdx.int] = mcsSemchecking
+      graph.semcheckStack.add fileIdx
+      processModuleAux("import")
+      doAssert graph.semcheckStack.len > 0 and graph.semcheckStack[^1] == fileIdx
+      graph.semcheckStack.setLen(graph.semcheckStack.len - 1)
+      graph.compileStates[fileIdx.int] = mcsDone
+      if graph.semcheckStack.len == 0:
+        drainPendingSemchecks(graph)
 
 proc importPipelineModule(graph: ModuleGraph; s: PSym, fileIdx: FileIndex): PSym =
   # this is called by the semantic checking phase

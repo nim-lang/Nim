@@ -288,7 +288,7 @@ proc pragmaNoForward*(c: PContext, n: PNode; flag=sfNoForward) =
 
   # deprecated as of 0.18.1
   message(c.config, n.info, warnDeprecated,
-          "use {.experimental: \"codeReordering\".} instead; " &
+          "code reordering is enabled by default; " &
           (if flag == sfNoForward: "{.noForward.}" else: "{.reorder.}") & " is deprecated")
 
 proc pragmaAsm*(c: PContext, n: PNode): char =

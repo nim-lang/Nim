@@ -1,5 +1,3 @@
-{.experimental: "codeReordering".}
-
 discard """
   output: "ok"
   cmd: "nim $target --overflowChecks:off $options $file"
@@ -60,7 +58,7 @@ block: # Overflow checks in a forward declared proc
 
   doAssert(overflowDetected)
 
-block: # Overflow checks doesn't affect fwd declaration
+block: # Default reordering associates the declaration with its implementation
   var
     a = high(int)
     b = -2
@@ -78,7 +76,7 @@ block: # Overflow checks doesn't affect fwd declaration
   except OverflowDefect:
     overflowDetected = true
 
-  doAssert(not overflowDetected)
+  doAssert(overflowDetected)
 
 
 echo "ok"

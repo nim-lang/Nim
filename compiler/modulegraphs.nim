@@ -25,6 +25,9 @@ when defined(nimPreviewSlimSystem):
   import std/assertions
 
 type
+  ModuleCompileState* = enum
+    mcsNone, mcsCollectingInterface, mcsInterfaceReady, mcsSemchecking, mcsDone
+
   SigHash* = distinct MD5Digest
 
   Iface* = object       ## data we don't want to store directly in the
@@ -80,6 +83,11 @@ type
                                             # first module that included it
     importStack*: seq[FileIndex]  # The current import stack. Used for detecting recursive
                                   # module dependencies.
+    compileStates*: seq[ModuleCompileState]
+    interfaceImportMode*: int
+    interfaceCallableStubs*: IntSet
+    semcheckStack*: seq[FileIndex]
+    pendingSemchecks*: seq[FileIndex]
     backend*: RootRef # minor hack so that a backend can extend this easily
     config*: ConfigRef
     cache*: IdentCache
@@ -154,6 +162,10 @@ proc resetForBackend*(g: ModuleGraph) =
   for a in mitems(g.loadedOps):
     a.clear()
   g.opsLog.setLen(0)
+
+proc ensureCompileStateSlot*(g: ModuleGraph; fileIdx: FileIndex) =
+  if fileIdx.int >= g.compileStates.len:
+    g.compileStates.setLen(fileIdx.int + 1)
 
 const
   cb64 = [
@@ -525,6 +537,9 @@ proc initModuleGraphFields(result: ModuleGraph) =
   result.importDeps = initTable[FileIndex, seq[FileIndex]]()
   result.ifaces = @[]
   result.importStack = @[]
+  result.interfaceCallableStubs = initIntSet()
+  result.semcheckStack = @[]
+  result.pendingSemchecks = @[]
   result.inclToMod = initTable[FileIndex, FileIndex]()
   result.owners = @[]
   result.suggestSymbols = initTable[FileIndex, SuggestFileSymbolDatabase]()
@@ -731,6 +746,9 @@ proc getPackage*(graph: ModuleGraph; fileIdx: FileIndex): PSym =
 proc belongsToStdlib*(graph: ModuleGraph, sym: PSym): bool =
   ## Check if symbol belongs to the 'stdlib' package.
   sym.getPackageSymbol.getPackageId == graph.systemModule.getPackageId
+
+proc usesDefaultCodeReordering*(graph: ModuleGraph; module: PSym): bool =
+  sfSystemModule notin module.flags and not belongsToStdlib(graph, module)
 
 proc fileSymbols*(graph: ModuleGraph, fileIdx: FileIndex): SuggestFileSymbolDatabase =
   result = graph.suggestSymbols.getOrDefault(fileIdx, newSuggestFileSymbolDatabase(fileIdx, optIdeExceptionInlayHints in graph.config.globalOptions))
