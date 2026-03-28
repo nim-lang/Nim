@@ -904,12 +904,7 @@ proc semResolvedCall(c: PContext, x: var TCandidate,
   markConvertersUsed(c, result)
   result[0] = newSymNode(finalCallee, getCallLineInfo(result[0]))
   if finalCallee.magic notin {mArrGet, mArrPut}:
-    if finalCallee.kind == skIterator and not isClosureIterator(finalCallee.typ):
-      let typ = newTypeS(tyIterable, c)
-      rawAddSon(typ, finalCallee.typ.returnType)
-      result.typ = typ
-    else:
-      result.typ = finalCallee.typ.returnType
+    result.typ = finalCallee.typ.returnType
   updateDefaultParams(c, result)
 
 proc canDeref(n: PNode): bool {.inline.} =
