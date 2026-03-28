@@ -1,24 +1,42 @@
+#
+#            Nim's Runtime Library
+#     (c) Copyright 2023, 2025      Jason Beetham
+#     (c) Copyright 2023, 2025-2026 Kirill Ildyukov
+#
+#    See the file "copying.txt", included in this
+#    distribution, for details about the copyright.
+#
+
 ## itertools
-## ==========
+## =========
 ##
-## The **iterools** module provides a set of templates for working with
-## iterators and performing common operations such as filtering, mapping,
-## accumulation, and element retrieval. These templates offer a convenient way
-## to manipulate and process collections of data in a concise and expressive
-## manner. They provide a declarative, more readable and arguably less
-## error-prone alternative to writing manual imperative loops.
+## **iterools** provides a set of templates for composable pipelines
+## enabling powerful, expressive and concise syntax for common operations
+## such as filtering, mapping, accumulation, and element retrieval, based on
+## Nim's **inline iterators**. These templates offer a declarative, more readable
+## and, arguably, less error-prone alternative to writing manual imperative loops.
+##
+## If you have used `map`, `filter`, and `reduce` in Python, Rust, Haskell,
+## or Scala, `itertools` gives you a similar familiar syntax inspired by the
+## functional programming paradigm in Nim: *write a chain of operations in one
+## readable expression instead of several nested loops and temporary variables*.
+##
+## - *no intermediate sequences* allocated between chain elements.
+## - *works on anything that can be iterated over*, including custom types and
+##   not just `seqs`. As long as there's *some* iterator provided, you're set.
+## - *collect to any container*: `seq`, `HashSet`, `string`, or
+##   a custom type.
+## - *easily extendable*: write your own iterator adapters/consumers and they
+##   will compose.
 ##
 runnableExamples:
   import std/[strutils, options, tables, sets]
 
-  # Find the first element in a sequence of the transformed initial numbers
-  # that is bigger than 35.
-  # Note using `Slice[int].items` instead of `CountUp`.
-  assert (-25..25).items.mapIt(it * 10 div 7).findIt(it > 35) == none(int)
+  # Find the first element in a sequence of transformed numbers above 35.
+  # Note using `Slice[int].items` instead of `CountUp` (also supported).
+  doAssert (-25..25).items.mapIt(it * 10 div 7).findIt(it > 35) == none(int)
 
-  # Filter a table of philosophers by country of origin, compose a sentence
-  # and join each to a string.
-
+  # Filter philosophers by country, compose sentences, join to a string.
   let philosophers = {
     "Plato": "Greece", "Aristotle": "Greece", "Socrates": "Greece",
     "Confucius": "China", "Descartes": "France"}
@@ -29,29 +47,154 @@ runnableExamples:
                 .mapIt([it[0], it[1]])
                 .mapIt(Phrase % it)
                 .foldIt("", acc & it & '\n')
-  assert facts == """
+  doAssert facts == """
 Confucius is a famous philosopher from China.
 Descartes is a famous philosopher from France.
 """
 
-  # Find expensive stocks, convert the company name to uppercase and collect
-  # to a custom container type.
-
-  let stocks: Table[string, tuple[symbol:string, price:float]] = {
-    "Pineapple": (symbol: "PAPL", price: 148.32),
-    "Foogle": (symbol: "FOOGL", price: 2750.62),
-    "Visla": (symbol: "VSLA", price: 609.89),
-    "Mehzon": (symbol: "MHZN", price: 3271.92),
-    "Picohard": (symbol: "PCHD", price: 265.51),
+  # Filter expensive stocks, uppercase names, collect into a HashSet.
+  let stocks: Table[string, tuple[symbol: string, price: float]] = {
+    "Pineapple": (symbol: "PAPL",  price: 148.32),
+    "Foogle":    (symbol: "FOOGL", price: 2750.62),
+    "Visla":     (symbol: "VSLA",  price: 609.89),
+    "Mehzon":    (symbol: "MHZN",  price: 3271.92),
+    "Picohard":  (symbol: "PCHD",  price: 265.51),
   }.toTable()
 
   let shoutExpensive = stocks.pairs()
-                          .mapIt((name: it[0], price:it[1].price))
-                          .filterIt(it.price > 1000.0)
-                          .mapIt(it.name).map(toUpperAscii)
-                          .collect(HashSet[string])
+                       .mapIt((name: it[0], price: it[1].price))
+                       .filterIt(it.price > 1000.0)
+                       .mapIt(it.name).map(toUpperAscii)
+                       .collect(HashSet[string])
+  doAssert shoutExpensive == ["FOOGLE", "MEHZON"].toHashSet()
 
-  assert shoutExpensive == ["FOOGLE", "MEHZON"].toHashSet()
+## Relation to `sequtils`
+## ------------------------
+##
+## `sequtils<sequtils.html>`_ and `itertools` cover similar ground but differ
+## in some important ways.
+##
+## - *Laziness.* Every `sequtils` step that returns a sequence - `map`,
+##   `filter`, and the `...It` template variants - allocates immediately.
+##   `itertools` adaptors simply construct an iterator, allocation is deferred
+##    to the terminal consumer.
+##
+## - *Typing discipline.* `sequtils` `...It` templates accept `typed` or
+##   `untyped` container parameters and work by injecting an `it` variable
+##   via textual substitution - a deliberately loose mechanism, but it limits
+##   the range of things they can ve applied to. `itertools` templates take
+##   `iterable[T]`, so any existing iterator fits and type errors are
+##   caught precisely at the point of misuse.
+##
+## When `sequtils` may be preferable:
+##
+## * A single one-shot transform on an existing `seq` needs no lazy pipeline.
+## * You need `zip`, `unzip`, `deduplicate` which are not (yet) in `itertools`
+##
+## Adaptors and consumers
+## ----------------------
+##
+## **Adaptors** return a new iterable and can be chained indefinitely:
+## `map`_, `mapIt`_, `filter`_, `filterIt`_, `skip`_, `skipWhile`_,
+## `skipWhileIt`_, `take`_, `takeWhile`_, `takeWhileIt`_, `stepBy`_,
+## `enumerate`_, `group`_, `flatten`_.
+##
+## **Consumers** drive evaluation and return a plain value:
+## `collect`_, `fold`_, `foldIt`_, `sum`_, `product`_, `count`_,
+## `min`_, `max`_, `any`_, `anyIt`_, `all`_, `allIt`_,
+## `find`_, `findIt`_, `position`_, `positionIt`_, `nth`_.
+##
+## Adaptor templates named `...It` inject the `it` symbol in the inner
+## scope for the current element. `foldIt` also injects `acc` for the
+## running accumulator.
+##
+## Common patterns
+## ---------------
+##
+## **Collecting into a non-`seq` container**
+##
+runnableExamples:
+  import std/[sets, strutils]
+  let upper = ["hello", "world"].items
+                .mapIt(it.toUpperAscii)
+                .collect(HashSet[string])
+  doAssert upper == ["HELLO", "WORLD"].toHashSet()
+
+## **Short-circuiting search across a large range**
+##
+runnableExamples:
+  import std/options
+  # stops at 11, never produces elements up to 1_000_000
+  doAssert (1..1_000_000).items.findIt(it * it > 100) == some(11)
+
+## **Finding the index of the first match**
+##
+runnableExamples:
+  import std/options
+  doAssert ["a", "bb", "ccc"].items.positionIt(it.len > 1) == some(1)
+
+## **Folding into a string**
+##
+runnableExamples:
+  let joined = ["foo", "bar", "baz"].items
+                 .filterIt(it != "bar")
+                 .foldIt("", acc & it & " ")
+  doAssert joined == "foo baz "
+
+## **Grouping elements into fixed-width tuples**
+##
+## .. Note:: If the element count is not divisible by the group size, the
+##    trailing incomplete tuple is silently discarded.
+##
+runnableExamples:
+  doAssert (1..6).items.group(2).collect() == @[(1, 2), (3, 4), (5, 6)]
+  # 5 is dropped — cannot form a complete pair:
+  doAssert (1..5).items.group(2).collect() == @[(1, 2), (3, 4)]
+
+## **Flattening nested collections**
+##
+runnableExamples:
+  doAssert [@[1, 2], @[3], @[4, 5]].items.flatten().collect() == @[1, 2, 3, 4, 5]
+
+## **Iterating a table**
+##
+## `Table.pairs` is a valid iterable entry point:
+##
+runnableExamples:
+  import std/[tables, algorithm]
+  let t = {"a": 1, "b": 2, "c": 3}.toTable
+  let big = t.pairs.filterIt(it[1] > 1).mapIt(it[0]).collect()
+  doAssert big.sorted == @["b", "c"]
+
+## Gotchas
+## -------
+##
+## #. Iterators can only be consumed once. Unlike a `seq`, an iterator has no
+##    rewind. If you need to traverse the same data more than once, `collect`_
+##    to a `seq` first and restart from `.items`.
+##
+## #. `foldIt`_ expects an expression, not a statement. The argument must
+##    evaluate to the new accumulated value, which is assigned back to `acc`
+##    each iteration. For in-place mutation of `acc` use the
+##    `fold<#fold.t,iterable[T],U,proc(varU,T)>`_ overload that takes a
+##    `proc(acc: var U; it: T)` instead.
+##
+## #. Closure iterators are not accepted by `iterable[T]`. A value of type
+##   `iterator(): T {.closure.}` does not satisfy the `iterable[T]` type.
+##   Only direct inline-iterator calls - including `.items`, `.pairs`, and
+##   named iterators such as `countUp` or `split` - work as pipeline sources.
+##   If you hold a closure iterator value, wrap it in a helper inline iterator
+##   that yields from it to use itertools.
+##
+## See also
+## --------
+##
+## * `sequtils module<sequtils.html>`_ for eager sequence operations including
+##   `zip`, `unzip`, `distribute`, `deduplicate`, `concat`, etc.
+## * `sugar module<sugar.html>`_ for the `collect` macro and arrow lambdas (`=>`)
+## * `algorithm module<algorithm.html>`_ for sorting and binary search
+## * `tables module<tables.html>`_ and `sets module<sets.html>`_ for common
+##   target container types accepted by `collect`
 
 
 import std/[macros, genasts, options]
