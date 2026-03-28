@@ -454,6 +454,16 @@ proc resetSemFlag(n: PNode) =
     for i in 0..<n.safeLen:
       resetSemFlag(n[i])
 
+proc prefersIteratorForIterable(s: PSym): bool =
+  if s == nil or s.typ == nil or s.typ.n == nil:
+    return false
+  for i in 1..<s.typ.n.len:
+    let param = s.typ.n[i]
+    if param.kind == nkSym and param.sym != nil and param.sym.typ != nil and
+        param.sym.typ.skipTypes(abstractInst).kind == tyIterable:
+      return true
+  return false
+
 proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
                        s: PSym, flags: TExprFlags; expectedType: PType = nil): PNode =
   ## Semantically check the output of a macro.
@@ -466,9 +476,13 @@ proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
     globalError(c.config, s.info, "template instantiation too nested")
   c.friendModules.add(s.owner.getModule)
   result = macroResult
+  let bodyFlags = if prefersIteratorForIterable(s):
+      flags + {efPreferIteratorForIterable}
+    else:
+      flags
   resetSemFlag result
   if s.typ.returnType == nil:
-    result = semStmt(c, result, flags)
+    result = semStmt(c, result, bodyFlags)
   else:
     var retType = s.typ.returnType
     if retType.kind == tyTypeDesc and tfUnresolved in retType.flags and
@@ -479,10 +493,10 @@ proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
     case retType.kind
     of tyUntyped, tyAnything:
       # Not expecting a type here allows templates like in ``tmodulealias.in``.
-      result = semExpr(c, result, flags, expectedType)
+      result = semExpr(c, result, bodyFlags, expectedType)
     of tyTyped:
       # More restrictive version.
-      result = semExprWithType(c, result, flags, expectedType)
+      result = semExprWithType(c, result, bodyFlags, expectedType)
     of tyTypeDesc:
       if result.kind == nkStmtList: result.transitionSonsKind(nkStmtListType)
       var typ = semTypeNode(c, result, nil)
@@ -513,9 +527,9 @@ proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
                                        macroResult.info, retType)
 
       if retType.kind == tyVoid:
-        result = semStmt(c, result, flags)
+        result = semStmt(c, result, bodyFlags)
       else:
-        result = semExpr(c, result, flags)
+        result = semExpr(c, result, bodyFlags)
         result = fitNode(c, retType, result, result.info)
       #globalError(s.info, errInvalidParamKindX, typeToString(s.typ.returnType))
   dec(c.config.evalTemplateCounter)

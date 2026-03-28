@@ -54,7 +54,18 @@ type
     inst*: PInstantiation
 
   TExprFlag* = enum
-    efLValue, efWantIterator, efWantIterable, efInTypeof,
+    efLValue,
+      # The expression is used as an assignable location.
+    efWantIterator,
+      # Admit iterator candidates and prefer them during overload resolution.
+    efWantIterable,
+      # Admit iterator candidates for expressions that may feed iterable-style
+      # chaining.
+    efPreferIteratorForIterable,
+      # Prefer iterator candidates for `iterable[T]` matching and wrap a
+      # successful iterator call as `tyIterable`.
+    efInTypeof,
+      # The expression is being semchecked under `typeof`.
     efNeedStatic,
       # Use this in contexts where a static value is mandatory
     efPreferStatic,

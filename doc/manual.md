@@ -2628,10 +2628,10 @@ Overload resolution
 In a call `p(args)` where `p` may refer to more than one
 candidate, it is said to be a symbol choice. Overload resolution will attempt to
 find the best candidate, thus transforming the symbol choice into a resolved symbol.
-The routine `p` that matches best is selected following a series of trials explained below. 
+The routine `p` that matches best is selected following a series of trials explained below.
 In order: Category matching, Hierarchical Order Comparison, and finally, Complexity Analysis.
 
-If multiple candidates match equally well after all trials have been tested, the ambiguity 
+If multiple candidates match equally well after all trials have been tested, the ambiguity
 is reported during semantic analysis.
 
 First Trial: Category matching
@@ -2664,7 +2664,7 @@ resolved symbol.
 For example, if a candidate with one exact match is compared to a candidate with multiple
 generic matches and zero exact matches, the candidate with an exact match will win.
 
-Below is a pseudocode interpretation of category matching, `count(p, m)` counts the number 
+Below is a pseudocode interpretation of category matching, `count(p, m)` counts the number
 of matches of the matching category `m` for the routine `p`.
 
 A routine `p` matches better than a routine `q` if the following
@@ -2692,11 +2692,11 @@ type A[T] = object
 ```
 
 Matching formals for this type include `T`, `object`, `A`, `A[...]` and `A[C]` where `C` is a concrete type, `A[...]`
-is a generic typeclass composition and `T` is an unconstrained generic type variable. This list is in order of 
+is a generic typeclass composition and `T` is an unconstrained generic type variable. This list is in order of
 specificity with respect to `A` as each subsequent category narrows the set of types that are members of their match set.
 
 In this trial, the formal parameters of candidates are compared in order (1st parameter, 2nd parameter, etc.) to search for
-a candidate that has an unrivaled specificity. If such a formal parameter is found, the candidate it belongs to is chosen 
+a candidate that has an unrivaled specificity. If such a formal parameter is found, the candidate it belongs to is chosen
 as the resolved symbol.
 
 Third Trial: Complexity Analysis
@@ -2951,13 +2951,13 @@ proc sort*[I: Index; T: Comparable](x: var Indexable[I, T])
 
 In the above example, `Comparable` and `Indexable` are types that will match any type that
 can can bind each definition declared in the concept body. The special `Self` type defined
-in the concept body refers to the type being matched, also called the "implementation" of 
-the concept. Implementations that match the concept are generic matches, and the concept 
+in the concept body refers to the type being matched, also called the "implementation" of
+the concept. Implementations that match the concept are generic matches, and the concept
 typeclasses themselves work in a similar way to generic type variables in that they are never
 concrete types themselves (even if they have concrete type parameters such as `Indexable[int, int]`)
-and expressions like `typeof(x)` in the body of `proc sort` from the above example will return the 
+and expressions like `typeof(x)` in the body of `proc sort` from the above example will return the
 type of the implementation, not the concept typeclass. Concepts are useful for providing information
-to the compiler in generic contexts, most notably for generic type checking, and as a tool for 
+to the compiler in generic contexts, most notably for generic type checking, and as a tool for
 [Overload resolution]. Generic type checking is forthcoming, so this will only explain overload
 resolution for now.
 
@@ -2984,7 +2984,7 @@ Concept overload resolution
 
 When an operand's type is being matched to a concept, the operand's type  is set as the "potential
 implementation". For each definition in the concept body, overload resolution is performed by substituting `Self`
-for the potential implementation to try and find a match for each definition. If this succeeds, the concept 
+for the potential implementation to try and find a match for each definition. If this succeeds, the concept
 matches. Implementations do not need to exactly match the definitions in the concept. For example:
 
 ```nim
@@ -3008,7 +3008,7 @@ This leads to confusing and impractical behavior in most situations, so the rule
 1. if a concept is being compared with `T` or any type that accepts all other types (`auto`) the concept
 is more specific
 2. if the concept is being compared with another concept the result is deferred to [Concept subset matching]
-3. in any other case the concept is less specific then it's competitor 
+3. in any other case the concept is less specific then it's competitor
 
 Currently, the concept evaluation mechanism evaluates to a successful match on the first acceptable candidate
 for each defined binding. This has a couple of notable effects:
@@ -4610,10 +4610,10 @@ for any type (with some exceptions) by defining a routine with the name `[]`.
   ```nim
   type Foo = object
     data: seq[int]
-  
+
   proc `[]`(foo: Foo, i: int): int =
     result = foo.data[i]
-  
+
   let foo = Foo(data: @[1, 2, 3])
   echo foo[1] # 2
   ```
@@ -4624,12 +4624,12 @@ which has precedence over assigning to the result of `[]`.
   ```nim
   type Foo = object
     data: seq[int]
-  
+
   proc `[]`(foo: Foo, i: int): int =
     result = foo.data[i]
   proc `[]=`(foo: var Foo, i: int, val: int) =
     foo.data[i] = val
-  
+
   var foo = Foo(data: @[1, 2, 3])
   echo foo[1] # 2
   foo[1] = 5
@@ -4859,6 +4859,12 @@ Closure iterators and inline iterators have some restrictions:
 Iterators that are neither marked `{.closure.}` nor `{.inline.}` explicitly
 default to being inline, but this may change in future versions of the
 implementation.
+
+Anonymous iterator expressions used as values are different: they have
+the `iterator` type, and that type uses the closure calling convention
+implicitly. In practice, this means a named iterator declaration without
+`{.closure.}`` still defaults to inline, but an expression like `let it =
+iterator(): int = yield 1` produces a callable iterator value.
 
 The `iterator` type is always of the calling convention `closure`
 implicitly; the following example shows how to use iterators to implement
@@ -6401,7 +6407,7 @@ The default for symbols of entity `type`, `var`, `let` and `const`
 is `gensym`. For `proc`, `iterator`, `converter`, `template`,
 `macro`, the default is `inject`, but if a `gensym` symbol with the same name
 is defined in the same syntax-level scope, it will be `gensym` by default.
-This can be overridden by marking the routine as `inject`. 
+This can be overridden by marking the routine as `inject`.
 
 If the name of the entity is passed as a template parameter, it is an `inject`'ed symbol:
 
@@ -7242,7 +7248,7 @@ identifier is considered ambiguous, which can be resolved in the following ways:
 
   write(stdout, x) # error: x is ambiguous
   write(stdout, A.x) # no error: qualifier used
-  
+
   proc bar(a: int): int = a + 1
   assert bar(x) == x + 1 # no error: only A.x of type int matches
 
@@ -9324,4 +9330,3 @@ It is not valid to pass an lvalue of a supertype to an `out T` parameter:
 
 However, in the future this could be allowed and provide a better way to write object
 constructors that take inheritance into account.
-

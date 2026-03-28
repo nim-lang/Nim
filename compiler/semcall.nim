@@ -160,9 +160,13 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
           addTypeBoundSymbols(c.graph, arg.typ, name, filter, symMarker, syms)
 
       if z.state == csMatch:
-        # little hack so that iterators are preferred over everything else:
+        # Iterator preference is heuristic in iterator-admitting contexts.
+        # The dedicated iterable path uses `iteratorPreference`, other
+        # context use exact-match bump
         if sym.kind == skIterator:
-          if not (efWantIterator notin flags and efWantIterable in flags):
+          if efPreferIteratorForIterable in flags:
+            inc(z.iteratorPreference)
+          elif not (efWantIterator notin flags and efWantIterable in flags):
             inc(z.exactMatches, 200)
           else:
             dec(z.exactMatches, 200)
@@ -671,7 +675,7 @@ proc bracketNotFoundError(c: PContext; n: PNode; flags: TExprFlags) =
   # copied from semOverloadedCallAnalyzeEffects, might be overkill:
   const baseFilter = {skProc, skFunc, skMethod, skConverter, skMacro, skTemplate}
   let filter =
-    if flags*{efInTypeof, efWantIterator, efWantIterable} != {}:
+    if flags*{efInTypeof, efWantIterator, efWantIterable, efPreferIteratorForIterable} != {}:
       baseFilter + {skIterator}
     else: baseFilter
   # this will add the errors:
@@ -900,7 +904,12 @@ proc semResolvedCall(c: PContext, x: var TCandidate,
   markConvertersUsed(c, result)
   result[0] = newSymNode(finalCallee, getCallLineInfo(result[0]))
   if finalCallee.magic notin {mArrGet, mArrPut}:
-    result.typ = finalCallee.typ.returnType
+    if finalCallee.kind == skIterator and not isClosureIterator(finalCallee.typ):
+      let typ = newTypeS(tyIterable, c)
+      rawAddSon(typ, finalCallee.typ.returnType)
+      result.typ = typ
+    else:
+      result.typ = finalCallee.typ.returnType
   updateDefaultParams(c, result)
 
 proc canDeref(n: PNode): bool {.inline.} =

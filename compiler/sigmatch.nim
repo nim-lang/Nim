@@ -46,7 +46,8 @@ type
 
   TCandidate* = object
     c*: PContext
-    exactMatches*: int       # also misused to prefer iters over procs
+    exactMatches*: int
+    iteratorPreference*: int # prefer iterators in iterator-oriented contexts
     genericMatches: int      # also misused to prefer constraints
     subtypeMatches: int
     intConvMatches: int      # conversions to int are not as expensive
@@ -110,7 +111,8 @@ proc markOwnerModuleAsUsed*(c: PContext; s: PSym)
 proc initCandidateAux(ctx: PContext,
                       callee: PType): TCandidate {.inline.} =
   result = TCandidate(c: ctx, exactMatches: 0, subtypeMatches: 0,
-                      convMatches: 0, intConvMatches: 0, genericMatches: 0,
+                      iteratorPreference: 0, convMatches: 0, intConvMatches: 0,
+                      genericMatches: 0,
                       state: csEmpty, firstMismatch: MismatchInfo(),
                       callee: callee, call: nil, baseTypeMatch: false,
                       genericConverter: false, inheritancePenalty: -1
@@ -393,6 +395,7 @@ proc complexDisambiguation(a, b: PType): int =
 proc writeMatches*(c: TCandidate) =
   echo "Candidate '", c.calleeSym.name.s, "' at ", c.c.config $ c.calleeSym.info
   echo "  exact matches: ", c.exactMatches
+  echo "  iterator preference: ", c.iteratorPreference
   echo "  generic matches: ", c.genericMatches
   echo "  subtype matches: ", c.subtypeMatches
   echo "  intconv matches: ", c.intConvMatches
@@ -410,6 +413,8 @@ proc cmpInheritancePenalty(a, b: int): int =
 
 proc cmpCandidates*(a, b: TCandidate, isFormal=true): int =
   result = a.exactMatches - b.exactMatches
+  if result != 0: return
+  result = a.iteratorPreference - b.iteratorPreference
   if result != 0: return
   result = a.genericMatches - b.genericMatches
   if result != 0: return
@@ -2748,7 +2753,8 @@ proc prepareOperand(c: PContext; formal: PType; a: PNode, newlyTyped: var bool):
     result = a
   elif a.typ.isNil:
     if formal.kind == tyIterable:
-      let flags = {efDetermineType, efAllowStmt, efWantIterator, efWantIterable}
+      let flags = {efDetermineType, efAllowStmt, efWantIterator, efWantIterable,
+                   efPreferIteratorForIterable}
       result = c.semOperand(c, a, flags)
     else:
       # XXX This is unsound! 'formal' can differ from overloaded routine to
@@ -2765,6 +2771,17 @@ proc prepareOperand(c: PContext; formal: PType; a: PNode, newlyTyped: var bool):
     considerGenSyms(c, result)
     if result.kind != nkHiddenDeref and result.typ.kind in {tyVar, tyLent} and c.matchedConcept == nil:
       result = newDeref(result)
+    if formal.kind == tyIterable and result.typ.kind != tyIterable and
+        a.kind == nkCall and a[0].kind in {nkIdent, nkAccQuoted, nkSym, nkOpenSym}:
+      let recheck = copyTree(a)
+      recheck.typ = nil
+      if recheck[0].kind == nkSym and recheck[0].sym != nil:
+        recheck[0] = newIdentNode(recheck[0].sym.name, recheck[0].info)
+      let flags = {efDetermineType, efAllowStmt, efWantIterator, efWantIterable,
+                   efPreferIteratorForIterable}
+      let fresh = c.semOperand(c, recheck, flags)
+      if fresh.typ != nil and fresh.typ.kind == tyIterable:
+        return fresh
 
 proc prepareOperand(c: PContext; a: PNode, newlyTyped: var bool): PNode =
   if a.typ.isNil:
