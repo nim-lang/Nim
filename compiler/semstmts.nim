@@ -1134,9 +1134,8 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
       else:
         var v = symForVar(c, n[0])
         if getCurrOwner(c).kind == skModule: incl(v, sfGlobal)
-        # BUGFIX: don't use `iter` here as that would strip away
-        # the ``tyGenericInst``! See ``tests/compile/tgeneric.nim``
-        # for an example:
+        # Use `iterType` here: it removes outer `tyIterable` / alias-like wrappers
+        # from the loop source, but still preserves `tyGenericInst` for the loop var.
         v.typ = iterType
         n[0] = newSymNode(v)
         if sfGenSym notin v.flags and not isDiscardUnderscore(v): addDecl(c, v)
