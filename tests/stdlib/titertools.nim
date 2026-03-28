@@ -88,6 +88,24 @@ block test_collectToSpecificContainers:
   doAssert ints.items.collect(seq[int]) == @[-2, -1, 1, 3, -4, 5]
   doAssert strs.items.collect(HashSet[string]) == toHashSet(strs)
   doAssert chars.items.collect(string) == "a.bCzd"
+  type Foo[int] = object
+    v*: seq[int]
+  proc push(f: var Foo; val: int) {.used.} =
+    f.v.add val
+  let foo = ints.items.filterIt(it > 0).collect(Foo[int])
+  doAssert foo.v == @[1, 3, 5]
+
+block test_collectToAssociativeContainer:
+  const kvs = [(3, "c"), (1, "a"), (2, "b")]
+  let t = kvs.items.collect(OrderedTable[int, string])
+  doAssert t.keys.collect(3) == @[3, 1, 2]
+
+  type Foo[char, int] = object
+    v: array[char, int]
+  proc `[]=`(c: var Foo[char, int]; k: char; v: int) {.used.} =
+    c.v[k] = v
+  let f = kvs.items.mapIt((it[1][0], it[0])).collect(toType = Foo[char, int])
+  doAssert f.v['\0'] == 0 and f.v['a'] == 1 and f.v['b'] == 2 and f.v['c'] == 3
 
 block test_minMax:
   doAssert ints.items.min() == -4

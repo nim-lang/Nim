@@ -95,14 +95,17 @@ Descartes is a famous philosopher from France.
 ## ----------------------
 ##
 ## **Adaptors** return a new iterable and can be chained indefinitely:
-## `map`_, `mapIt`_, `filter`_, `filterIt`_, `skip`_, `skipWhile`_,
+## `map<#map.t,iterable[T],proc(T)>`_, `mapIt`_, `filter`_, `filterIt`_, `skip`_, `skipWhile`_,
 ## `skipWhileIt`_, `take`_, `takeWhile`_, `takeWhileIt`_, `stepBy`_,
 ## `enumerate`_, `group`_, `flatten`_.
 ##
 ## **Consumers** drive evaluation and return a plain value:
-## `collect`_, `fold`_, `foldIt`_, `sum`_, `product`_, `count`_,
+## `collect<#collect.t,iterable[T],Natural>`_,
+## `fold<#fold.t,iterable[T],U,proc(sinkU,T)>`_, `foldIt`_, `sum`_, `product`_, `count`_,
 ## `min`_, `max`_, `any`_, `anyIt`_, `all`_, `allIt`_,
-## `find`_, `findIt`_, `position`_, `positionIt`_, `nth`_.
+## `find<#find.t,iterable[T],proc(T)>`_, `findIt<findIt.t,iterable[T]>`_,
+## `position<#position.t,iterable[T],proc(T)>`_,
+## `positionIt<#positionIt.t,iterable[T],untyped>`_, `nth`_.
 ##
 ## Adaptor templates named `...It` inject the `it` symbol in the inner
 ## scope for the current element. `foldIt` also injects `acc` for the
@@ -170,8 +173,9 @@ runnableExamples:
 ## -------
 ##
 ## #. Iterators can only be consumed once. Unlike a `seq`, an iterator has no
-##    rewind. If you need to traverse the same data more than once, `collect`_
-##    to a `seq` first and restart from `.items`.
+##    rewind. If you need to traverse the same data more than once,
+##    `collect<collect.t,iterable[T],Natural>`_ to a `seq` first and restart
+##    from `.items`.
 ##
 ## #. `foldIt`_ expects an expression, not a statement. The argument must
 ##    evaluate to the new accumulated value, which is assigned back to `acc`
@@ -180,11 +184,11 @@ runnableExamples:
 ##    `proc(acc: var U; it: T)` instead.
 ##
 ## #. Closure iterators are not accepted by `iterable[T]`. A value of type
-##   `iterator(): T {.closure.}` does not satisfy the `iterable[T]` type.
-##   Only direct inline-iterator calls - including `.items`, `.pairs`, and
-##   named iterators such as `countUp` or `split` - work as pipeline sources.
-##   If you hold a closure iterator value, wrap it in a helper inline iterator
-##   that yields from it to use itertools.
+##    `iterator(): T {.closure.}` does not satisfy the `iterable[T]` type.
+##    Only direct inline-iterator calls - including `.items`, `.pairs`, and
+##    named iterators such as `countUp` or `split` - work as pipeline sources.
+##    If you hold a closure iterator value, wrap it in a helper inline iterator
+##    that yields from it to use itertools.
 ##
 ## See also
 ## --------
@@ -250,8 +254,33 @@ macro genIter*[T](iter: iterable[T], body: varargs[untyped]): untyped =
     name()
 
 type
+  Comparable* = concept
+    proc `<`(x, y: Self): bool
+  Summable* = concept # Additive?
+    proc `+`(a, b: Self): Self
+  Multipliable* = concept # Multiplicative?
+    proc `*`(a, b: Self): Self
   Iterable*[T] = concept
     iterator items(a: Self): T
+
+  Addable*[T] = concept
+    proc add(x: var Self; a: T)
+  Includable*[T] = concept
+    proc incl(x: var Self; a: T)
+  Pushable*[T] = concept
+    proc push(x: var Self; a: T)
+
+  Growable*[T] = Addable[T] | Includable[T] | Pushable[T]
+    ## Matches any mutable container that supports adding elements via
+    ## `add`, `incl` or `push`.
+
+  AssociativeContainer*[K, V] = concept
+    ## Matches any mutable container that supports key-value assignment via
+    ## `[]=`. This includes `Table[K, V]`, `TableRef[K, V]`,
+    ## `OrderedTable[K, V]`, `strtabs.StringTableRef`
+    ## (with `K = string`, `V = string`), and any user-defined type that
+    ## provides a matching `[]=` operator.
+    proc `[]=`(x: var Self; key: K; val: V)
 
 #--------------------------------------------------------------------------
 # Adaptors
@@ -526,19 +555,11 @@ else:
 # Consumers
 #--------------------------------------------------------------------------
 
-type
-  Comparable* = concept
-    proc `<`(x, y: Self): bool
-  Summable* = concept # Additive?
-    proc `+`(a, b: Self): Self
-  Multipliable* = concept # Multiplicative?
-    proc `*`(a, b: Self): Self
-
 template collect*[T](iter: iterable[T]; capacityHint: Natural = 1): seq[T] =
   ## Collects the elements of the iterator into a new sequence.
   ##
   ## For collecting into the user-specified type of container, see
-  ## `collect<#collect.t,iterable[T],typedesc[U]>`_.
+  ## `collect<#collect.t,iterable[T],typedesc[C]>`_.
   ##
   ## .. Note:: `capacityHint` is optional and can be used to provide an initial
   ##   capacity for the sequence.
@@ -552,32 +573,75 @@ template collect*[T](iter: iterable[T]; capacityHint: Natural = 1): seq[T] =
     val.add x
   val
 
-template collect*[T, U](iter: iterable[T]; t: typeDesc[U]): U =
+template collect*[T; C: Growable[T]](iter: iterable[T]; toType: typeDesc[C]): C =
   ## Collects the elements of the iterator into a new container.
   ##
   ## `collect` creates a new collection and fills it with the first available
   ## proc of `add`, `incl` or `push`. The resulting collection is returned.
   ##
-  ## .. Note:: The type `U` should be compatible with the elements in the iterator.
-  ##   If `U` is a reference type, a new instance is created. Otherwise, the
-  ##   default value of `U` is used.
+  ## .. Note:: The type `C` should be compatible with the elements in the iterator.
+  ##   If `C` is a reference type, a new instance is created. Otherwise, the
+  ##   default value of `C` is used.
   ##
   runnableExamples:
     let nums = [1, 2, 3, 4, 5]
     let minusOne = nums.items.mapIt(it - 1).collect(seq[int])
-    assert minusOne == @[0, 1, 2, 3, 4]
-  # TODO? Replace `when compiles` with specialisation on concepts
-  var acc = when t is ref:
-      new t
+    doAssert minusOne == @[0, 1, 2, 3, 4]
+
+    import std/stats
+    let rs = [10.0, 20.0, 30.0].items.collect(RunningStat)
+    doAssert rs.sum == 60.0
+    doAssert rs.mean == 20.0
+  var acc = when C is ref:
+      new C
     else:
-      default t
+      default C
   for x in iter:
-    when compiles(acc.add(default(typeOf(T)))):
+    when acc is Addable:
       acc.add x
-    elif compiles(acc.incl(default(typeOf(T)))):
+    elif acc is Includable:
       acc.incl x
-    elif compiles(acc.push(default(typeOf(T)))):
+    elif acc is Pushable:
       acc.push x
+  acc
+
+template collect*[K, V; C: AssociativeContainer[K, V]](
+    iter: iterable[(K, V)]; toType: typedesc[C]): C =
+  ## Collects a `(key, value)` iterator into an associative container.
+  ##
+  ## Each element yielded by `iter` must be a 2-tuple `(K, V)`.
+  ## A fresh instance of `C` is created and populated by assigning each
+  ## tuple as `container[key] = value`.
+  ##
+  ## `C` must satisfy `AssociativeContainer[K, V]<#AssociativeContainer>`_,
+  ## meaning it provides ``proc \`[]=\`(c: var C; key: K; val: V)``.
+  ## All standard library table types qualify.
+  ##
+  runnableExamples:
+    import std/[tables, strutils]
+
+    # Collect (word, length) pairs into a Table.
+    let wordLens = ["one", "two", "three"].items
+                     .mapIt((it, it.len))
+                     .collect(Table[string, int])
+    doAssert wordLens["three"] == 5
+
+    # Build a reverse-lookup table from an enum.
+    type Color = enum Red, Green, Blue
+    let byName = [Red, Green, Blue].items
+                   .mapIt(($it, it))
+                   .collect(Table[string, Color])
+    doAssert byName["Green"] == Green
+
+    # Collect into an OrderedTable, preserving insertion order.
+    import std/algorithm
+    let ordered = [(3, "c"), (1, "a"), (2, "b")].items
+                    .collect(OrderedTable[int, string])
+    doAssert ordered.values.collect() == @["c", "a", "b"]
+
+  var acc = when C is ref: new C else: default(C)
+  for (k, v) in iter:
+    acc[k]=v
   acc
 
 template fold*[T, U](iter: iterable[T]; init: U; fn: proc(acc: sink U; it: T): U): U =
