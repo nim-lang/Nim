@@ -18,13 +18,13 @@
 ##
 ## If you have used `map`, `filter`, and `reduce` in Python, Rust, Haskell,
 ## or Scala, `itertools` gives you a similar familiar syntax inspired by the
-## functional programming paradigm in Nim: *write a chain of operations in one
+## Functional Programming paradigm in Nim: *write a chain of operations in one
 ## readable expression instead of several nested loops and temporary variables*.
 ##
-## - *no intermediate sequences* allocated between chain elements.
-## - *works on anything that can be iterated over*, including custom types and
+## - **no intermediate sequences** allocated between chain elements.
+## - **works on anything that can be iterated over**, including custom types and
 ##   not just `seqs`. As long as there's *some* iterator provided, you're set.
-## - *collect to any container*: `seq`, `HashSet`, `string`, or
+## - **collect to any container**: `seq`, `HashSet`, `string`, or
 ##   a custom type.
 ## - *easily extendable*: write your own iterator adapters/consumers and they
 ##   will compose.
@@ -256,9 +256,11 @@ macro genIter*[T](iter: iterable[T], body: varargs[untyped]): untyped =
 type
   Comparable* = concept
     proc `<`(x, y: Self): bool
-  Summable* = concept # Additive?
+  Summable* = concept
+    # Additive?
     proc `+`(a, b: Self): Self
-  Multipliable* = concept # Multiplicative?
+  Multipliable* = concept
+    # Multiplicative?
     proc `*`(a, b: Self): Self
   Iterable*[T] = concept
     iterator items(a: Self): T
@@ -614,7 +616,7 @@ template collect*[K, V; C: AssociativeContainer[K, V]](
   ## tuple as `container[key] = value`.
   ##
   ## `C` must satisfy `AssociativeContainer[K, V]<#AssociativeContainer>`_,
-  ## meaning it provides ``proc \`[]=\`(c: var C; key: K; val: V)``.
+  ## meaning it provides ``proc `[]=`(c: var C; key: K; val: V)``.
   ## All standard library table types qualify.
   ##
   runnableExamples:
