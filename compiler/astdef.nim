@@ -327,6 +327,7 @@ type
                       # because openSym experimental switch is disabled
                       # gives warning instead
     nfLazyType  # node has a lazy type
+    nfHasIteratorCandidate # overload resolution saw a plausible iterator match
 
   TNodeFlags* = set[TNodeFlag]
   TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 47)
@@ -871,7 +872,8 @@ const
                                       nfFromTemplate, nfDefaultRefsParam,
                                       nfExecuteOnReload, nfLastRead,
                                       nfFirstWrite, nfSkipFieldChecking,
-                                      nfDisabledOpenSym, nfLazyType}
+                                      nfDisabledOpenSym, nfLazyType,
+                                      nfHasIteratorCandidate}
   namePos* = 0
   patternPos* = 1    # empty except for term rewriting macros
   genericParamsPos* = 2

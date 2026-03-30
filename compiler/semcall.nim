@@ -112,6 +112,7 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
                        errorsEnabled: bool, flags: TExprFlags) =
   # `matches` may find new symbols, so keep track of count
   var symCount = c.currentScope.symbols.counter
+  var hadIteratorCandidate = false
 
   var o: TOverloadIter = default(TOverloadIter)
   # https://github.com/nim-lang/Nim/issues/21272
@@ -164,6 +165,7 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
         # The dedicated iterable path uses `iteratorPreference`, other
         # context use exact-match bump
         if sym.kind == skIterator:
+          hadIteratorCandidate = true
           if efPreferIteratorForIterable in flags:
             inc(z.iteratorPreference)
           elif not (efWantIterator notin flags and efWantIterable in flags):
@@ -217,6 +219,9 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
     sym = syms[nextSymIndex].s
     scope = syms[nextSymIndex].scope
     inc(nextSymIndex)
+
+  best.hadIteratorCandidate = hadIteratorCandidate
+  alt.hadIteratorCandidate = hadIteratorCandidate
 
 
 proc effectProblem(f, a: PType; result: var string; c: PContext) =
@@ -900,6 +905,8 @@ proc semResolvedCall(c: PContext, x: var TCandidate,
   onUse(info, finalCallee, isGenericInstance = true)
 
   result = compactVoidArgs(x.call)
+  if x.hadIteratorCandidate:
+    result.flags.incl nfHasIteratorCandidate
   instGenericConvertersSons(c, result, x)
   markConvertersUsed(c, result)
   result[0] = newSymNode(finalCallee, getCallLineInfo(result[0]))
