@@ -6,6 +6,7 @@ discard """
 2
 1.0
 2.0
+55
 '''
 """
 
@@ -67,3 +68,14 @@ m[0, 0] = 1.0
 m[1, 1] = 2.0
 echo m[0, 0]
 echo m[1, 1]
+
+template compute(body: untyped): int =
+  block:
+    body
+let x = compute:
+  var sum = 0
+  for i in 1..10: sum += i
+  sum
+
+echo x
+
