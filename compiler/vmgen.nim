@@ -1726,6 +1726,9 @@ proc genAsgn(c: PCtx; le, ri: PNode; requiresCopy: bool) =
   of nkHiddenStdConv, nkHiddenSubConv, nkConv:
     if sameBackendType(le.typ, le[1].typ):
       genAsgn(c, le[1], ri, requiresCopy)
+  of nkStmtListExpr:
+    for i in 0..<le.len-1: gen(c, le[i])
+    genAsgn(c, le[^1], ri, requiresCopy)
   else:
     let dest = c.genx(le, {gfNodeAddr})
     genAsgn(c, dest, ri, requiresCopy)

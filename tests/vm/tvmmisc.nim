@@ -828,3 +828,30 @@ proc myProc(first: range[0..100]) =
     dec(x)
 
 const r = (myProc(3); 1)
+
+block: # bug #25682
+  type Obj = object
+    x: int
+
+  template value(self: Obj): int =
+    let m = 1223
+    discard m
+    self.x
+
+  static:
+    var r = Obj(x: 10)
+    r.value = 42
+    doAssert r.x == 42
+
+block:
+  type Obj = object
+    x: int
+
+  template value(self: Obj): int =
+    ## doc comment
+    self.x
+
+  static:
+    var r = Obj(x: 10)
+    r.value = 42
+    doAssert r.x == 42
