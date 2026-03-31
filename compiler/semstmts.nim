@@ -2552,6 +2552,9 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   if not hasProto:
     implicitPragmas(c, s, n.info, validPragmas)
 
+  if {sfError, sfExportc} * s.flags == {sfError, sfExportc}:
+    localError(c.config, n.info, "{.error.} and {.exportc.} pragmas are incompatible")
+
   if n[pragmasPos].kind != nkEmpty and sfBorrow notin s.flags:
     setEffectsForProcType(c.graph, s.typ, n[pragmasPos], s)
   s.typ.incl tfEffectSystemWorkaround
