@@ -4860,14 +4860,15 @@ Iterators that are neither marked `{.closure.}` nor `{.inline.}` explicitly
 default to being inline, but this may change in future versions of the
 implementation.
 
-Anonymous iterator expressions used as values are different: they have
-the `iterator` type, and that type uses the closure calling convention
-implicitly. In practice, this means a named iterator declaration without
-`{.closure.}`` still defaults to inline, but an expression like `let it =
-iterator(): int = yield 1` produces a callable iterator value.
-
 The `iterator` type is always of the calling convention `closure`
-implicitly; the following example shows how to use iterators to implement
+implicitly.
+
+Unlike named iterators, anonymous iterator expressions evaluate
+to the `iterator` type. In practice, this means a named iterator declaration
+without `{.closure.}` defaults to inline, but an expression like `let it =
+iterator(): int = yield 1` produces a callable closure iterator value.
+
+The following example shows how to use iterators to implement
 a `collaborative tasking`:idx: system:
 
   ```nim
