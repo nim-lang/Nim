@@ -1473,7 +1473,6 @@ proc genFlags*(s: set[TNodeFlag]; dest: var string) =
     of nfSkipFieldChecking: dest.add "s0"
     of nfDisabledOpenSym: dest.add "d3"
     of nfLazyType: dest.add "l1"
-    of nfHasIteratorCandidate: dest.add "h0"
 
 
 proc parse*(t: typedesc[TNodeFlag]; s: string): set[TNodeFlag] =
@@ -1510,11 +1509,7 @@ proc parse*(t: typedesc[TNodeFlag]; s: string): set[TNodeFlag] =
       else: result.incl nfDotField
     of 'e': result.incl nfExplicitCall
     of 'f': result.incl nfFromTemplate
-    of 'h':
-      if i+1 < s.len and s[i+1] == '0':
-        result.incl nfHasIteratorCandidate
-        inc i
-      else: result.incl nfHasComment
+    of 'h': result.incl nfHasComment
     of 'i': result.incl nfIsRef
     of 'l':
       if i+1 < s.len and s[i+1] == '0':

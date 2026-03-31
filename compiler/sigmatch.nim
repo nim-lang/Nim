@@ -48,7 +48,6 @@ type
     c*: PContext
     exactMatches*: int
     iteratorPreference*: int # prefer iterators in iterator-oriented contexts
-    hadIteratorCandidate*: bool # a viable iterator overload existed for this call
     genericMatches: int      # also misused to prefer constraints
     subtypeMatches: int
     intConvMatches: int      # conversions to int are not as expensive
@@ -112,8 +111,7 @@ proc markOwnerModuleAsUsed*(c: PContext; s: PSym)
 proc initCandidateAux(ctx: PContext,
                       callee: PType): TCandidate {.inline.} =
   result = TCandidate(c: ctx, exactMatches: 0, subtypeMatches: 0,
-                      iteratorPreference: 0, hadIteratorCandidate: false,
-                      convMatches: 0, intConvMatches: 0,
+                      iteratorPreference: 0, convMatches: 0, intConvMatches: 0,
                       genericMatches: 0,
                       state: csEmpty, firstMismatch: MismatchInfo(),
                       callee: callee, call: nil, baseTypeMatch: false,
@@ -2774,8 +2772,7 @@ proc prepareOperand(c: PContext; formal: PType; a: PNode, newlyTyped: var bool):
     if result.kind != nkHiddenDeref and result.typ.kind in {tyVar, tyLent} and c.matchedConcept == nil:
       result = newDeref(result)
     if formal.kind == tyIterable and result.typ.kind != tyIterable and
-        nfHasIteratorCandidate in result.flags and a.kind in nkCallKinds and
-        a[0].kind in {nkIdent, nkAccQuoted, nkSym, nkOpenSym}:
+        a.kind in nkCallKinds and a[0].kind in {nkIdent, nkAccQuoted, nkSym, nkOpenSym}:
       let recheck = copyTree(a)
       recheck.typ = nil
       if recheck[0].kind == nkSym and recheck[0].sym != nil:
