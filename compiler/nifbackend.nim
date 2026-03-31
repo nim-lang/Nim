@@ -44,14 +44,16 @@ proc loadModuleDependencies(g: ModuleGraph; mainFileIdx: FileIndex): seq[Precomp
     let suffix = stack.pop()
 
     if not visited.containsOrIncl(suffix.string):
-      let nifFile = toGeneratedFile(g.config, AbsoluteFile(suffix.string), ".nif")
-      let fileIdx = msgs.fileInfoIdx(g.config, nifFile)
+      var isKnownFile = false
+      let fileIdx = g.config.registerNifSuffix(suffix.string, isKnownFile)
       let precomp = moduleFromNifFile(g, fileIdx, {LoadFullAst})
       if precomp.module != nil:
         result.add precomp
         for dep in precomp.deps:
           if not visited.contains(dep.string):
             stack.add dep
+      else:
+        assert false, "Recompiling module is not implemented."
 
   if mainModule.module != nil:
     result.add mainModule
