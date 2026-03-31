@@ -264,7 +264,11 @@ elif defined(windows):
       tm_yday*: cint  ## Day of year [0,365].
       tm_isdst*: cint ## Daylight Savings flag.
 
-  proc localtime(a1: var CTime): ptr Tm {.importc, header: "<time.h>", sideEffect.}
+  # Prefer 64-bit version always - time_t might be 32 or 64 bit depending on
+  # the setting of _USE_32BIT_TIME_T and we have no way of detecting which
+  # version is actually used by default:
+  # https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/localtime-localtime32-localtime64
+  proc localtime(a1: var CTime): ptr Tm {.importc: "_localtime64", header: "<time.h>", sideEffect.}
 
 type
   Month* = enum ## Represents a month. Note that the enum starts at `1`,
