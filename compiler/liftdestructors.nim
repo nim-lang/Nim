@@ -623,7 +623,7 @@ proc checkSelfAssignment(c: var TLiftCtx; t: PType; body, x, y: PNode) =
 proc elemSupportsCopyMem(t: PType): bool =
   ## Returns true if the element type of seq `t` supports bulk memory copy
   ## (i.e., has no GC refs and no destructors).
-  let elemType = t.elementType.skipTypes({tyVar, tyLent, tyGenericInst, tyAlias, tySink, tyInferred, tyDistinct})
+  let elemType = t.elementType.skipTypes({tyVar, tyLent, tyGenericInst, tyAlias, tySink, tyInferred})
   result = not containsGarbageCollectedRef(elemType) and not hasDestructor(elemType)
 
 proc genBulkCopySeq(c: var TLiftCtx; t: PType; body, x, y: PNode) =
