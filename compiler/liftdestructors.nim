@@ -644,7 +644,7 @@ proc fillSeqOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   case c.kind
   of attachedDup:
     body.add setLenSeqCall(c, t, x, y)
-    if supportsCopyMem(t):
+    if supportsCopyMem(t.elementType):
       genBulkCopySeq(c, t, body, x, y)
     else:
       forallElements(c, t, body, x, y)
@@ -659,7 +659,7 @@ proc fillSeqOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     # For trivially copyable types, use bulk copyMem instead of element loop.
     checkSelfAssignment(c, t, body, x, y)
     body.add setLenSeqCall(c, t, x, y)
-    if supportsCopyMem(t):
+    if supportsCopyMem(t.elementType):
       genBulkCopySeq(c, t, body, x, y)
     else:
       forallElements(c, t, body, x, y)
