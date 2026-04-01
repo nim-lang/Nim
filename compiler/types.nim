@@ -1782,5 +1782,4 @@ proc reduceToBase*(f: PType): PType =
 
 proc supportsCopyMem*(t: PType): bool =
   let t = t.skipTypes({tyVar, tyLent, tyGenericInst, tyAlias, tySink, tyInferred})
-  result = containsGarbageCollectedRef(t) or
-                     hasDestructor(t)
+  result = not containsGarbageCollectedRef(t) and not hasDestructor(t)
