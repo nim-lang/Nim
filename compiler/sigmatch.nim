@@ -2771,14 +2771,17 @@ proc prepareOperand(c: PContext; formal: PType; a: PNode, newlyTyped: var bool):
     considerGenSyms(c, result)
     if result.kind != nkHiddenDeref and result.typ.kind in {tyVar, tyLent} and c.matchedConcept == nil:
       result = newDeref(result)
+    # Recovery for calls resolved too early as non-iterators.
+    # TODO: retry only skIterator overloads instead of re-semming,
+    # or preserve iterator-candidates info from the earlier semcheck.
     if formal.kind == tyIterable and result.typ.kind != tyIterable and
         a.kind in nkCallKinds and a[0].kind in {nkIdent, nkAccQuoted, nkSym, nkOpenSym}:
       let recheck = copyTree(a)
       recheck.typ = nil
       if recheck[0].kind == nkSym and recheck[0].sym != nil:
         recheck[0] = newIdentNode(recheck[0].sym.name, recheck[0].info)
-      let flags = {efDetermineType, efAllowStmt, efWantIterator, efWantIterable,
-                   efPreferIteratorForIterable}
+      let flags = {efDetermineType, efAllowStmt, efNoUndeclared,
+                   efWantIterator, efWantIterable, efPreferIteratorForIterable}
       let fresh = c.semOperand(c, recheck, flags)
       if fresh.typ != nil and fresh.typ.kind == tyIterable:
         return fresh
