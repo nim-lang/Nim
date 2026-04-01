@@ -279,7 +279,7 @@ proc nimCopySeqPayload(dest: pointer, src: pointer, elemSize: int, elemAlign: in
   ## (e.g. via setLen).
   let d = cast[ptr NimRawSeq](dest)
   let s = cast[ptr NimRawSeq](src)
-  if s.len > 0 and d.p != nil and s.p != nil:
+  if s.len > 0:
     let headerSize = align(sizeof(NimSeqPayloadBase), elemAlign)
     copyMem(d.p +! headerSize, s.p +! headerSize, s.len * elemSize)
 
