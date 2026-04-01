@@ -158,3 +158,9 @@ block test_nth:
 static:
   discard (0..9).items.mapIt(it).foldIt(0, acc + it)
   discard (0..9).items.mapIt(it).sum()
+
+block test_chain_as_iter:
+  var s = 0
+  for l in strs.items.mapIt(it.len):
+    s.inc l
+  doAssert s == 21
