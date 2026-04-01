@@ -620,12 +620,6 @@ proc checkSelfAssignment(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   cond.typ = getSysType(c.g, c.info, tyBool)
   body.add genIf(c, cond, newTreeI(nkReturnStmt, c.info, newNodeI(nkEmpty, c.info)))
 
-proc elemSupportsCopyMem(t: PType): bool =
-  ## Returns true if the element type of seq `t` supports bulk memory copy
-  ## (i.e., has no GC refs and no destructors).
-  let elemType = t.elementType.skipTypes({tyVar, tyLent, tyGenericInst, tyAlias, tySink, tyInferred})
-  result = not containsGarbageCollectedRef(elemType) and not hasDestructor(elemType)
-
 proc genBulkCopySeq(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   ## Generates a call to nimCopySeqPayload for bulk memcpy of seq data.
   let elemType = t.elementType
@@ -650,7 +644,7 @@ proc fillSeqOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   case c.kind
   of attachedDup:
     body.add setLenSeqCall(c, t, x, y)
-    if elemSupportsCopyMem(t):
+    if supportsCopyMem(t):
       genBulkCopySeq(c, t, body, x, y)
     else:
       forallElements(c, t, body, x, y)
@@ -665,7 +659,7 @@ proc fillSeqOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     # For trivially copyable types, use bulk copyMem instead of element loop.
     checkSelfAssignment(c, t, body, x, y)
     body.add setLenSeqCall(c, t, x, y)
-    if elemSupportsCopyMem(t):
+    if supportsCopyMem(t):
       genBulkCopySeq(c, t, body, x, y)
     else:
       forallElements(c, t, body, x, y)

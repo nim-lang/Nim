@@ -232,9 +232,7 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
   of "stripGenericParams":
     result = uninstantiate(operand).toNode(traitCall.info)
   of "supportsCopyMem":
-    let t = operand.skipTypes({tyVar, tyLent, tyGenericInst, tyAlias, tySink, tyInferred})
-    let complexObj = containsGarbageCollectedRef(t) or
-                     hasDestructor(t)
+    let complexObj = supportsCopyMem(operand)
     result = newIntNodeT(toInt128(ord(not complexObj)), traitCall, c.idgen, c.graph)
   of "canFormCycles":
     result = newIntNodeT(toInt128(ord(types.canFormAcycle(c.graph, operand))), traitCall, c.idgen, c.graph)
