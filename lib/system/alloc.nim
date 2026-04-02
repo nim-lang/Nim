@@ -958,8 +958,8 @@ proc rawAlloc(a: var MemRegion, requestedSize: int, alignment: int = 0): pointer
         sysAssert(allocInv(a), "rawAlloc: before listRemove test")
         listRemove(a.freeSmallChunks[s], c)
         sysAssert(allocInv(a), "rawAlloc: end listRemove test")
-    sysAssert(((cast[int](result) and PageMask) - smallChunkOverhead() - alignOff) %%
-               size == 0, "rawAlloc 21")
+    sysAssert(((cast[int](result) and PageMask) - smallChunkOverhead()) %%
+               MemAlign == 0, "rawAlloc 21")
     sysAssert(allocInv(a), "rawAlloc: end small size")
     inc a.occ, size
     trackSize(c.size)
@@ -1110,8 +1110,11 @@ when not defined(gcDestructors):
           var c = cast[PSmallChunk](c)
           var offset = (cast[int](p) and (PageSize-1)) -%
                       smallChunkOverhead()
-          result = (c.acc.int >% offset) and (offset %% c.size == 0) and
-            (cast[ptr FreeCell](p).zeroField >% 1)
+          if c.acc.int >% offset:
+            let alignOff = c.acc.int mod c.size
+            result = (offset >= alignOff) and
+              ((offset -% alignOff) %% c.size == 0) and
+              (cast[ptr FreeCell](p).zeroField >% 1)
         else:
           var c = cast[PBigChunk](c)
           # prev stores the aligned data pointer set during rawAlloc
