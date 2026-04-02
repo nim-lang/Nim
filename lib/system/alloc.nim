@@ -858,14 +858,18 @@ proc bigChunkAlignOffset(alignment: int): int {.inline.} =
   else:
     result = align(sizeof(BigChunk) + sizeof(FreeCell), alignment) - sizeof(BigChunk) - sizeof(FreeCell)
 
-proc smallChunkAlignOffset(alignment: int): int {.inline.} =
-  ## Compute the initial data offset so that result + sizeof(FreeCell)
-  ## is alignment-aligned within a small chunk.
-  if alignment <= MemAlign:
-    result = 0
+proc smallChunkAlignOffset(size: int): int {.inline.} =
+  ## Compute initial data offset for aligned small chunk cells.
+  ## Any size that is a multiple of a power-of-2 > MemAlign self-aligns
+  ## to that power-of-2. This ensures size alone is a sufficient key for
+  ## freeSmallChunks — all allocations of the same size use the same offset.
+  # Find the largest power-of-2 that divides size (i.e. lowest set bit).
+  let a = size and -size # isolate lowest set bit = largest power-of-2 factor
+  if a <= MemAlign:
+    0
   else:
-    result = align(smallChunkOverhead() + sizeof(FreeCell), alignment) -
-             smallChunkOverhead() - sizeof(FreeCell)
+    align(smallChunkOverhead() + sizeof(FreeCell), a) -
+      smallChunkOverhead() - sizeof(FreeCell)
 
 proc rawAlloc(a: var MemRegion, requestedSize: int, alignment: int = 0): pointer =
   when defined(nimTypeNames):
@@ -873,7 +877,7 @@ proc rawAlloc(a: var MemRegion, requestedSize: int, alignment: int = 0): pointer
   sysAssert(allocInv(a), "rawAlloc: begin")
   sysAssert(roundup(65, 8) == 72, "rawAlloc: roundup broken")
   let size = roundup(requestedSize, max(MemAlign, alignment))
-  let alignOff = smallChunkAlignOffset(alignment)
+  let alignOff = smallChunkAlignOffset(size)
   sysAssert(size >= sizeof(FreeCell), "rawAlloc: requested size too small")
   sysAssert(size >= requestedSize, "insufficient allocated size!")
   #c_fprintf(stdout, "alloc; size: %ld; %ld\n", requestedSize, size)
