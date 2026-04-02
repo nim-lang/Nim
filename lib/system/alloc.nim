@@ -1265,6 +1265,17 @@ template instantiateForRegion(allocator: untyped) {.dirty.} =
   proc alloc0Impl(size: Natural): pointer =
     result = alloc0(allocator, size)
 
+  when defined(gcOrc) or defined(gcYrc):
+    proc nimAlignedAlloc0(size: Natural, alignment: int): pointer =
+      result = rawAlloc(allocator, size, alignment)
+      zeroMem(result, size)
+
+    proc nimAlignedAlloc(size: Natural, alignment: int): pointer =
+      result = rawAlloc(allocator, size, alignment)
+
+    proc nimAlignedDealloc(p: pointer) =
+      rawDealloc(allocator, p)
+
   proc deallocImpl(p: pointer) =
     dealloc(allocator, p)
 
