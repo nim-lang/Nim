@@ -784,6 +784,9 @@ proc procParamTypeRel(c: var TCandidate; f, a: PType): TTypeRelation =
     # if f is metatype.
     result = typeRel(c, f, a)
 
+  if result == isEqual and not sameBackendTypePickyAliases(f, a):
+    result = isNone
+
   if result <= isSubrange or inconsistentVarTypes(f, a):
     result = isNone
 
