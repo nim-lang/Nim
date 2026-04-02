@@ -858,19 +858,29 @@ proc bigChunkAlignOffset(alignment: int): int {.inline.} =
   else:
     result = align(sizeof(BigChunk) + sizeof(FreeCell), alignment) - sizeof(BigChunk) - sizeof(FreeCell)
 
+proc smallChunkAlignOffset(alignment: int): int {.inline.} =
+  ## Compute the initial data offset so that result + sizeof(FreeCell)
+  ## is alignment-aligned within a small chunk.
+  if alignment <= MemAlign:
+    result = 0
+  else:
+    result = align(smallChunkOverhead() + sizeof(FreeCell), alignment) -
+             smallChunkOverhead() - sizeof(FreeCell)
+
 proc rawAlloc(a: var MemRegion, requestedSize: int, alignment: int = 0): pointer =
   when defined(nimTypeNames):
     inc(a.allocCounter)
   sysAssert(allocInv(a), "rawAlloc: begin")
   sysAssert(roundup(65, 8) == 72, "rawAlloc: roundup broken")
   var size = roundup(requestedSize, MemAlign)
+  let alignOff = smallChunkAlignOffset(alignment)
+  if alignment > MemAlign:
+    size = roundup(size, alignment)
   sysAssert(size >= sizeof(FreeCell), "rawAlloc: requested size too small")
   sysAssert(size >= requestedSize, "insufficient allocated size!")
   #c_fprintf(stdout, "alloc; size: %ld; %ld\n", requestedSize, size)
 
-  # For custom alignments > MemAlign, force big chunk allocation
-  # Small chunks cannot handle arbitrary alignments due to fixed cell boundaries
-  if size <= SmallChunkSize-smallChunkOverhead() and alignment == 0:
+  if size + alignOff <= SmallChunkSize-smallChunkOverhead():
     template fetchSharedCells(tc: PSmallChunk) =
       # Consumes cells from (potentially) foreign threads from `a.sharedFreeLists[s]`
       when defined(gcDestructors):
@@ -896,8 +906,8 @@ proc rawAlloc(a: var MemRegion, requestedSize: int, alignment: int = 0): pointer
       c.foreignCells = 0
       sysAssert c.size == PageSize, "rawAlloc 3"
       c.size = size
-      c.acc = size.uint32
-      c.free = SmallChunkSize - smallChunkOverhead() - size.int32
+      c.acc = (alignOff + size).uint32
+      c.free = SmallChunkSize - smallChunkOverhead() - alignOff.int32 - size.int32
       sysAssert c.owner == addr(a), "rawAlloc: No owner set!"
       c.next = nil
       c.prev = nil
@@ -908,7 +918,7 @@ proc rawAlloc(a: var MemRegion, requestedSize: int, alignment: int = 0): pointer
         # Because removals from `a.freeSmallChunks[s]` only happen in the other alloc branch and during dealloc,
         #  we must not add it to the list if it cannot be used the next time a pointer of `size` bytes is needed.
         listAdd(a.freeSmallChunks[s], c)
-      result = addr(c.data)
+      result = addr(c.data) +! alignOff
       sysAssert((cast[int](result) and (MemAlign-1)) == 0, "rawAlloc 4")
     else:
       # There is a free chunk of the requested size available, use it.
@@ -950,7 +960,7 @@ proc rawAlloc(a: var MemRegion, requestedSize: int, alignment: int = 0): pointer
         sysAssert(allocInv(a), "rawAlloc: before listRemove test")
         listRemove(a.freeSmallChunks[s], c)
         sysAssert(allocInv(a), "rawAlloc: end listRemove test")
-    sysAssert(((cast[int](result) and PageMask) - smallChunkOverhead()) %%
+    sysAssert(((cast[int](result) and PageMask) - smallChunkOverhead() - alignOff) %%
                size == 0, "rawAlloc 21")
     sysAssert(allocInv(a), "rawAlloc: end small size")
     inc a.occ, size
@@ -1019,7 +1029,7 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
       untrackSize(s)
       sysAssert a.occ >= 0, "rawDealloc: negative occupied memory (case A)"
       sysAssert(((cast[int](p) and PageMask) - smallChunkOverhead()) %%
-                s == 0, "rawDealloc 3")
+                MemAlign == 0, "rawDealloc 3")
       when not defined(gcDestructors):
         #echo("setting to nil: ", $cast[int](addr(f.zeroField)))
         sysAssert(f.zeroField != 0, "rawDealloc 1")
@@ -1077,7 +1087,7 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
       when defined(gcDestructors):
         addToSharedFreeList(c, f, s div MemAlign)
     sysAssert(((cast[int](p) and PageMask) - smallChunkOverhead()) %%
-               s == 0, "rawDealloc 2")
+               MemAlign == 0, "rawDealloc 2")
   else:
     # set to 0xff to check for usage after free bugs:
     when overwriteFree: nimSetMem(p, -1'i32, c.size -% bigChunkOverhead())
