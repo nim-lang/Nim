@@ -272,7 +272,7 @@ proc newSeq[T](s: var seq[T], len: Natural) =
 proc sameSeqPayload(x: pointer, y: pointer): bool {.compilerRtl, inl.} =
   result = cast[ptr NimRawSeq](x)[].p == cast[ptr NimRawSeq](y)[].p
 
-proc nimCopySeqPayload(dest: pointer, src: pointer, elemSize: int, elemAlign: int) {.compilerRtl, inline.} =
+proc nimCopySeqPayload(dest: pointer, src: pointer, elemSize: int, elemAlign: int) {.compilerRtl, inl.} =
   ## Bulk-copies the payload data from src seq to dest seq using copyMem.
   ## Only valid for trivially copyable element types (no GC refs, no destructors).
   ## Caller must have already ensured dest has the correct length and capacity
