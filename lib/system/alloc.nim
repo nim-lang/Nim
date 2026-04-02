@@ -872,10 +872,8 @@ proc rawAlloc(a: var MemRegion, requestedSize: int, alignment: int = 0): pointer
     inc(a.allocCounter)
   sysAssert(allocInv(a), "rawAlloc: begin")
   sysAssert(roundup(65, 8) == 72, "rawAlloc: roundup broken")
-  var size = roundup(requestedSize, MemAlign)
+  let size = roundup(requestedSize, max(MemAlign, alignment))
   let alignOff = smallChunkAlignOffset(alignment)
-  if alignment > MemAlign:
-    size = roundup(size, alignment)
   sysAssert(size >= sizeof(FreeCell), "rawAlloc: requested size too small")
   sysAssert(size >= requestedSize, "insufficient allocated size!")
   #c_fprintf(stdout, "alloc; size: %ld; %ld\n", requestedSize, size)
@@ -979,7 +977,7 @@ proc rawAlloc(a: var MemRegion, requestedSize: int, alignment: int = 0): pointer
     # Since chunks are page-aligned, the needed padding is a compile-time
     # deterministic value rather than a worst-case estimate.
     let alignPad = bigChunkAlignOffset(alignment)
-    size = requestedSize + bigChunkOverhead() + alignPad
+    let size = requestedSize + bigChunkOverhead() + alignPad
     # allocate a large block
     var c = if size >= HugeChunkSize: getHugeChunk(a, size)
             else: getBigChunk(a, size)
