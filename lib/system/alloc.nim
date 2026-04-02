@@ -127,11 +127,12 @@ type
                              #  reaches dealloc while the source chunk is active.
                              # Instead, the receiving chunk gains the capacity and thus reserves space in the foreign chunk.
     acc: uint32              # Offset from data, used when there are no free cells available but the chunk is considered free.
-    foreignCells: int        # When a free cell is given to a chunk that is not its origin,
+    foreignCells: int32      # When a free cell is given to a chunk that is not its origin,
                              #  both the cell and the source chunk are considered foreign.
                              # Receiving a foreign cell can happen both when deallocating from another thread or when
                              #  the active chunk in `a.freeSmallChunks` is not the current chunk.
                              # Freeing a chunk while `foreignCells > 0` leaks memory as all references to it become lost.
+    chunkAlignOff: int32     # Byte offset from `data` where cells begin. Non-zero for alignment > MemAlign.
     data {.align: MemAlign.}: UncheckedArray[byte]      # start of usable memory
 
   BigChunk = object of BaseChunk # not necessarily > PageSize!
@@ -472,8 +473,8 @@ iterator allObjects(m: var MemRegion): pointer {.inline.} =
           var c = cast[PSmallChunk](c)
 
           let size = c.size
-          var a = cast[int](addr(c.data))
-          let limit = a + c.acc.int
+          var a = cast[int](addr(c.data)) + c.chunkAlignOff.int
+          let limit = cast[int](addr(c.data)) + c.acc.int
           while a <% limit:
             yield cast[pointer](a)
             a = a +% size
@@ -851,6 +852,15 @@ when defined(heaptrack):
   proc heaptrack_malloc(a: pointer, size: int) {.cdecl, importc, dynlib: heaptrackLib.}
   proc heaptrack_free(a: pointer) {.cdecl, importc, dynlib: heaptrackLib.}
 
+proc smallChunkAlignOffset(alignment: int): int {.inline.} =
+  ## Compute the initial data offset so that data + result + sizeof(FreeCell)
+  ## is alignment-aligned within a page-aligned small chunk.
+  if alignment <= MemAlign:
+    result = 0
+  else:
+    result = align(smallChunkOverhead() + sizeof(FreeCell), alignment) -
+             smallChunkOverhead() - sizeof(FreeCell)
+
 proc bigChunkAlignOffset(alignment: int): int {.inline.} =
   ## Compute the alignment offset for big chunk data.
   if alignment == 0:
@@ -858,26 +868,13 @@ proc bigChunkAlignOffset(alignment: int): int {.inline.} =
   else:
     result = align(sizeof(BigChunk) + sizeof(FreeCell), alignment) - sizeof(BigChunk) - sizeof(FreeCell)
 
-proc smallChunkAlignOffset(size: int): int {.inline.} =
-  ## Compute initial data offset for aligned small chunk cells.
-  ## Any size that is a multiple of a power-of-2 > MemAlign self-aligns
-  ## to that power-of-2. This ensures size alone is a sufficient key for
-  ## freeSmallChunks — all allocations of the same size use the same offset.
-  # Find the largest power-of-2 that divides size (i.e. lowest set bit).
-  let a = size and -size # isolate lowest set bit = largest power-of-2 factor
-  if a <= MemAlign:
-    0
-  else:
-    align(smallChunkOverhead() + sizeof(FreeCell), a) -
-      smallChunkOverhead() - sizeof(FreeCell)
-
 proc rawAlloc(a: var MemRegion, requestedSize: int, alignment: int = 0): pointer =
   when defined(nimTypeNames):
     inc(a.allocCounter)
   sysAssert(allocInv(a), "rawAlloc: begin")
   sysAssert(roundup(65, 8) == 72, "rawAlloc: roundup broken")
-  let size = roundup(requestedSize, max(MemAlign, alignment))
-  let alignOff = smallChunkAlignOffset(size)
+  var size = roundup(requestedSize, max(MemAlign, alignment))
+  let alignOff = smallChunkAlignOffset(alignment)
   sysAssert(size >= sizeof(FreeCell), "rawAlloc: requested size too small")
   sysAssert(size >= requestedSize, "insufficient allocated size!")
   #c_fprintf(stdout, "alloc; size: %ld; %ld\n", requestedSize, size)
@@ -900,12 +897,15 @@ proc rawAlloc(a: var MemRegion, requestedSize: int, alignment: int = 0): pointer
     # allocate a small block: for small chunks, we use only its next pointer
     let s = size div MemAlign
     var c = a.freeSmallChunks[s]
+    if c != nil and c.chunkAlignOff != alignOff.int32:
+      c = nil
     if c == nil:
       # There is no free chunk of the requested size available, we need a new one.
       c = getSmallChunk(a)
       # init all fields in case memory didn't get zeroed
       c.freeList = nil
       c.foreignCells = 0
+      c.chunkAlignOff = alignOff.int32
       sysAssert c.size == PageSize, "rawAlloc 3"
       c.size = size
       c.acc = (alignOff + size).uint32
@@ -962,8 +962,8 @@ proc rawAlloc(a: var MemRegion, requestedSize: int, alignment: int = 0): pointer
         sysAssert(allocInv(a), "rawAlloc: before listRemove test")
         listRemove(a.freeSmallChunks[s], c)
         sysAssert(allocInv(a), "rawAlloc: end listRemove test")
-    sysAssert(((cast[int](result) and PageMask) - smallChunkOverhead()) %%
-               MemAlign == 0, "rawAlloc 21")
+    sysAssert(((cast[int](result) and PageMask) - smallChunkOverhead() - c.chunkAlignOff) %%
+               size == 0, "rawAlloc 21")
     sysAssert(allocInv(a), "rawAlloc: end small size")
     inc a.occ, size
     trackSize(c.size)
@@ -981,7 +981,7 @@ proc rawAlloc(a: var MemRegion, requestedSize: int, alignment: int = 0): pointer
     # Since chunks are page-aligned, the needed padding is a compile-time
     # deterministic value rather than a worst-case estimate.
     let alignPad = bigChunkAlignOffset(alignment)
-    let size = requestedSize + bigChunkOverhead() + alignPad
+    size = requestedSize + bigChunkOverhead() + alignPad
     # allocate a large block
     var c = if size >= HugeChunkSize: getHugeChunk(a, size)
             else: getBigChunk(a, size)
@@ -1030,8 +1030,8 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
       dec a.occ, s
       untrackSize(s)
       sysAssert a.occ >= 0, "rawDealloc: negative occupied memory (case A)"
-      sysAssert(((cast[int](p) and PageMask) - smallChunkOverhead()) %%
-                MemAlign == 0, "rawDealloc 3")
+      sysAssert(((cast[int](p) and PageMask) - smallChunkOverhead() - c.chunkAlignOff) %%
+                s == 0, "rawDealloc 3")
       when not defined(gcDestructors):
         #echo("setting to nil: ", $cast[int](addr(f.zeroField)))
         sysAssert(f.zeroField != 0, "rawDealloc 1")
@@ -1041,7 +1041,8 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
         nimSetMem(cast[pointer](cast[int](p) +% sizeof(FreeCell)), -1'i32,
                 s -% sizeof(FreeCell))
       let activeChunk = a.freeSmallChunks[s div MemAlign]
-      if activeChunk != nil and c != activeChunk:
+      if activeChunk != nil and c != activeChunk and
+          activeChunk.chunkAlignOff == c.chunkAlignOff:
         # This pointer is not part of the active chunk, lend it out
         #  and do not adjust the current chunk (same logic as compensateCounters.)
         # Put the cell into the active chunk,
@@ -1088,8 +1089,8 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
 
       when defined(gcDestructors):
         addToSharedFreeList(c, f, s div MemAlign)
-    sysAssert(((cast[int](p) and PageMask) - smallChunkOverhead()) %%
-               MemAlign == 0, "rawDealloc 2")
+    sysAssert(((cast[int](p) and PageMask) - smallChunkOverhead() - c.chunkAlignOff) %%
+               s == 0, "rawDealloc 2")
   else:
     # set to 0xff to check for usage after free bugs:
     when overwriteFree: nimSetMem(p, -1'i32, c.size -% bigChunkOverhead())
@@ -1115,9 +1116,9 @@ when not defined(gcDestructors):
           var offset = (cast[int](p) and (PageSize-1)) -%
                       smallChunkOverhead()
           if c.acc.int >% offset:
-            let alignOff = c.acc.int mod c.size
-            result = (offset >= alignOff) and
-              ((offset -% alignOff) %% c.size == 0) and
+            let ao = c.chunkAlignOff.int
+            result = (offset >= ao) and
+              ((offset -% ao) %% c.size == 0) and
               (cast[ptr FreeCell](p).zeroField >% 1)
         else:
           var c = cast[PBigChunk](c)
@@ -1137,11 +1138,12 @@ when not defined(gcDestructors):
           var c = cast[PSmallChunk](c)
           var offset = (cast[int](p) and (PageSize-1)) -%
                       smallChunkOverhead()
-          if c.acc.int >% offset:
+          let ao = c.chunkAlignOff.int
+          if c.acc.int >% offset and offset >= ao:
             sysAssert(cast[int](addr(c.data)) +% offset ==
                       cast[int](p), "offset is not what you think it is")
             var d = cast[ptr FreeCell](cast[int](addr(c.data)) +%
-                      offset -% (offset %% c.size))
+                      ao +% ((offset -% ao) -% ((offset -% ao) %% c.size)))
             if d.zeroField >% 1:
               result = d
               sysAssert isAllocatedPtr(a, result), " result wrong pointer!"
