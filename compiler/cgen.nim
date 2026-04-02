@@ -389,7 +389,11 @@ proc lenField(p: BProc, val: Rope): Rope {.inline.} =
 
 proc lenExpr(p: BProc; a: TLoc): Rope =
   if optSeqDestructors in p.config.globalOptions:
-    result = dotField(rdLoc(a), "len")
+    if p.config.isDefined("nimsso") and a.lode != nil and a.t != nil and
+        a.t.skipTypes(abstractInst).kind == tyString:
+      result = cCall(cgsymValue(p.module, "nimStrLen"), rdLoc(a))
+    else:
+      result = dotField(rdLoc(a), "len")
   else:
     let ra = rdLoc(a)
     result = cIfExpr(ra, lenField(p, ra), cIntValue(0))
@@ -530,7 +534,15 @@ proc resetLoc(p: BProc, loc: var TLoc) =
 
     let atyp = skipTypes(loc.t, abstractInst)
     let rl = rdLoc(loc)
-    if atyp.kind in {tyVar, tyLent}:
+    if typ.kind == tyString and p.config.isDefined("nimsso"):
+      # SmallString zero state: bytes=0 (slen=0 in low byte, all inline chars zeroed)
+      if atyp.kind in {tyVar, tyLent}:
+        p.s(cpsStmts).addAssignment(derefField(rl, "bytes"), cIntValue(0))
+        p.s(cpsStmts).addAssignment(derefField(rl, "more"), NimNil)
+      else:
+        p.s(cpsStmts).addAssignment(dotField(rl, "bytes"), cIntValue(0))
+        p.s(cpsStmts).addAssignment(dotField(rl, "more"), NimNil)
+    elif atyp.kind in {tyVar, tyLent}:
       p.s(cpsStmts).addAssignment(derefField(rl, "len"), cIntValue(0))
       p.s(cpsStmts).addAssignment(derefField(rl, "p"), NimNil)
     else:
@@ -580,8 +592,13 @@ proc constructLoc(p: BProc, loc: var TLoc, isTemp = false) =
   let typ = loc.t
   if optSeqDestructors in p.config.globalOptions and skipTypes(typ, abstractInst + {tyStatic}).kind in {tyString, tySequence}:
     let rl = rdLoc(loc)
-    p.s(cpsStmts).addFieldAssignment(rl, "len", cIntValue(0))
-    p.s(cpsStmts).addFieldAssignment(rl, "p", NimNil)
+    if skipTypes(typ, abstractInst + {tyStatic}).kind == tyString and p.config.isDefined("nimsso"):
+      # SmallString zero state: bytes=0 (slen=0 in low byte, all inline chars zeroed)
+      p.s(cpsStmts).addFieldAssignment(rl, "bytes", cIntValue(0))
+      p.s(cpsStmts).addFieldAssignment(rl, "more", NimNil)
+    else:
+      p.s(cpsStmts).addFieldAssignment(rl, "len", cIntValue(0))
+      p.s(cpsStmts).addFieldAssignment(rl, "p", NimNil)
   elif not isComplexValueType(typ):
     if containsGarbageCollectedRef(loc.t):
       var nilLoc: TLoc = initLoc(locTemp, loc.lode, OnStack)

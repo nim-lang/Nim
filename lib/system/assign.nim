@@ -62,9 +62,14 @@ proc genericAssignAux(dest, src: pointer, mt: PNimType, shallow: bool) =
   case mt.kind
   of tyString:
     when defined(nimSeqsV2):
-      var x = cast[ptr NimStringV2](dest)
-      var s2 = cast[ptr NimStringV2](s)[]
-      nimAsgnStrV2(x[], s2)
+      when defined(nimsso):
+        var x = cast[ptr SmallString](dest)
+        var s2 = cast[ptr SmallString](s)[]
+        nimAsgnStrV2(x[], s2)
+      else:
+        var x = cast[ptr NimStringV2](dest)
+        var s2 = cast[ptr NimStringV2](s)[]
+        nimAsgnStrV2(x[], s2)
     else:
       var x = cast[PPointer](dest)
       var s2 = cast[PPointer](s)[]
@@ -245,8 +250,11 @@ proc genericReset(dest: pointer, mt: PNimType) =
     unsureAsgnRef(cast[PPointer](dest), nil)
   of tyString:
     when defined(nimSeqsV2):
-      var s = cast[ptr NimStringV2](dest)
-      frees(s[])
+      when defined(nimsso):
+        nimDestroyStrV1(cast[ptr SmallString](dest)[])
+      else:
+        var s = cast[ptr NimStringV2](dest)
+        frees(s[])
       zeroMem(dest, mt.size)
     else:
       unsureAsgnRef(cast[PPointer](dest), nil)

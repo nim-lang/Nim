@@ -1622,26 +1622,29 @@ when notJSnotNims:
   include system/sysmem
 
 when notJSnotNims and defined(nimSeqsV2):
-  const nimStrVersion {.core.} = 2
+  when defined(nimsso):
+    const nimStrVersion {.core.} = 3
+  else:
+    const nimStrVersion {.core.} = 2
 
-  type
-    NimStrPayloadBase = object
-      cap: int
+    type
+      NimStrPayloadBase = object
+        cap: int
 
-    NimStrPayload {.core.} = object
-      cap: int
-      data: UncheckedArray[char]
+      NimStrPayload {.core.} = object
+        cap: int
+        data: UncheckedArray[char]
 
-    NimStringV2 {.core.} = object
-      len: int
-      p: ptr NimStrPayload ## can be nil if len == 0.
+      NimStringV2 {.core.} = object
+        len: int
+        p: ptr NimStrPayload ## can be nil if len == 0.
 
 when defined(windows):
   proc GetLastError(): int32 {.header: "<windows.h>", nodecl.}
   const ERROR_BAD_EXE_FORMAT = 193
 
 when notJSnotNims:
-  when defined(nimSeqsV2):
+  when defined(nimSeqsV2) and not defined(nimsso):
     proc nimToCStringConv(s: NimStringV2): cstring {.compilerproc, nonReloadable, inline.}
 
   when hostOS != "standalone" and hostOS != "any":
@@ -1689,8 +1692,31 @@ when not defined(nimIcIntegrityChecks):
   export exceptions
 
 when notJSnotNims and defined(nimSeqsV2):
-  include "system/strs_v2"
+  when defined(nimsso):
+    include "system/strs_v3"
+  else:
+    include "system/strs_v2"
   include "system/seqs_v2"
+
+when not (notJSnotNims and defined(nimSeqsV2)):
+  # Fallback implementations for backends where strs_v2/v3 is not included.
+  # Needed so modules imported by system (e.g. syncio) can reference these without guards.
+  when notJSnotNims:
+    # mm:refc: string = ptr NimStringDesc with data: UncheckedArray[char]
+    proc beginStore*(s: var string; ensuredLen: int; start = 0): ptr UncheckedArray[char] {.inline, noSideEffect, raises: [], tags: [].} =
+      let ns = cast[NimString](s)
+      if ns == nil: nil
+      else: cast[ptr UncheckedArray[char]](addr ns.data[start])
+    proc endStore*(s: var string) {.inline, noSideEffect, raises: [], tags: [].} = discard
+    template readRawData*(s: string; start = 0): ptr UncheckedArray[char] =
+      let ns = cast[NimString](s)
+      if ns == nil: nil
+      else: cast[ptr UncheckedArray[char]](addr ns.data[start])
+  else:
+    # JS/nimscript: callers are guarded by whenNotVmJsNims/when not defined(js)
+    proc beginStore*(s: var string; ensuredLen: int; start = 0): ptr UncheckedArray[char] {.inline, noSideEffect, raises: [], tags: [].} = nil
+    proc endStore*(s: var string) {.inline, noSideEffect, raises: [], tags: [].} = discard
+    template readRawData*(s: string; start = 0): ptr UncheckedArray[char] = nil
 
 when not defined(js):
   template newSeqImpl(T, len) =
@@ -1741,6 +1767,9 @@ when not defined(js):
     else:
       {.error: "The type T cannot contain managed memory or have destructors".}
 
+  when defined(nimsso) and not declared(newStringUninitWasDeclared):
+    proc newStringUninitImpl(len: Natural): string {.noSideEffect, inline.}
+
   proc newStringUninit*(len: Natural): string {.noSideEffect.} =
     ## Returns a new string of length `len` but with uninitialized
     ## content. One needs to fill the string character after character
@@ -1751,17 +1780,20 @@ when not defined(js):
     when nimvm:
       result = newString(len)
     else:
-      result = newStringOfCap(len)
-      {.cast(noSideEffect).}:
-        when defined(nimSeqsV2):
-          let s = cast[ptr NimStringV2](addr result)
-          if len > 0:
+      when defined(nimsso):
+        result = newStringUninitImpl(len)
+      else:
+        result = newStringOfCap(len)
+        {.cast(noSideEffect).}:
+          when defined(nimSeqsV2):
+            let s = cast[ptr NimStringV2](addr result)
+            if len > 0:
+              s.len = len
+              s.p.data[len] = '\0'
+          else:
+            let s = cast[NimString](result)
             s.len = len
-            s.p.data[len] = '\0'
-        else:
-          let s = cast[NimString](result)
-          s.len = len
-          s.data[len] = '\0'
+            s.data[len] = '\0'
 else:
   proc newStringUninit*(len: Natural): string {.
     magic: "NewString", importc: "mnewString", noSideEffect.}
@@ -2244,10 +2276,13 @@ when not defined(js) or defined(nimscript):
       else: result = 0
     else:
       when not defined(nimscript): # avoid semantic checking
-        let minlen = min(x.len, y.len)
-        result = int(nimCmpMem(x.cstring, y.cstring, cast[csize_t](minlen)))
-        if result == 0:
-          result = x.len - y.len
+        when defined(nimsso):
+          result = cmpStrings(x, y)
+        else:
+          let minlen = min(x.len, y.len)
+          result = int(nimCmpMem(x.cstring, y.cstring, cast[csize_t](minlen)))
+          if result == 0:
+            result = x.len - y.len
 
   when declared(newSeq):
     proc cstringArrayToSeq*(a: cstringArray, len: Natural): seq[string] =
@@ -2913,7 +2948,9 @@ proc substr*(a: openArray[char]): string =
   result = newStringUninit(a.len)
   whenNotVmJsNims():
     if a.len > 0:
-      copyMem(result[0].addr, a[0].unsafeAddr, a.len)
+      {.cast(noSideEffect).}:
+        copyMem(beginStore(result, a.len), a[0].unsafeAddr, a.len)
+        endStore(result)
   do:
     for i, ch in a:
       result[i] = ch
@@ -2948,7 +2985,8 @@ proc substr*(s: string; first, last: int): string = # A bug with `magic: Slice` 
   result = newStringUninit(L)
   whenNotVmJsNims():
     if L > 0:
-      copyMem(result[0].addr, s[first].unsafeAddr, L)
+      copyMem(beginStore(result, L), readRawData(s, first), L)
+      endStore(result)
   do:
     for i in 0..<L:
       result[i] = s[i + first]
@@ -3166,3 +3204,6 @@ when hostOS == "standalone":
   # ssymbols being duplicated.
   proc nimPanic(s: string) {.exportc, noreturn.} = panic(s)
   proc nimRawoutput(s: string) {.exportc.} = rawoutput(s)
+
+when not declared(newStringUninitWasDeclared):
+  proc newStringUninitImpl(len: Natural): string {.noSideEffect, inline.} = discard
