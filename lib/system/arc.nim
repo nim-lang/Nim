@@ -95,13 +95,13 @@ when not defined(nimHasQuirky):
 # Forward declarations for native allocator alignment (implemented in alloc.nim).
 # rawAlloc's contract: result + sizeof(FreeCell) is alignment-aligned.
 # For ORC/YRC, sizeof(FreeCell) == sizeof(RefHeader).
-when (defined(gcOrc) or defined(gcYrc)) and not defined(useMalloc) and not defined(nimscript):
+when (defined(gcOrc) or defined(gcYrc)) and not defined(useMalloc) and not defined(nimscript) and not defined(nimdoc):
   proc nimAlignedAlloc0(size: Natural, alignment: int): pointer {.gcsafe, raises: [].}
   proc nimAlignedAlloc(size: Natural, alignment: int): pointer {.gcsafe, raises: [].}
   proc nimAlignedDealloc(p: pointer) {.gcsafe, raises: [].}
 
 proc nimNewObj(size, alignment: int): pointer {.compilerRtl.} =
-  when defined(nimscript):
+  when defined(nimscript) or defined(nimdoc):
     discard
   elif (defined(gcOrc) or defined(gcYrc)) and not defined(useMalloc):
     let s = size +% sizeof(RefHeader)
@@ -122,7 +122,7 @@ proc nimNewObj(size, alignment: int): pointer {.compilerRtl.} =
 
 proc nimNewObjUninit(size, alignment: int): pointer {.compilerRtl.} =
   # Same as 'newNewObj' but do not initialize the memory to zero.
-  when defined(nimscript):
+  when defined(nimscript) or defined(nimdoc):
     discard
   elif (defined(gcOrc) or defined(gcYrc)) and not defined(useMalloc):
     let s = size + sizeof(RefHeader)
@@ -202,7 +202,7 @@ proc nimRawDispose(p: pointer, alignment: int) {.compilerRtl.} =
       if freedCells.data == nil: init(freedCells)
       freedCells.incl head(p)
     else:
-      when (defined(gcOrc) or defined(gcYrc)) and not defined(useMalloc):
+      when (defined(gcOrc) or defined(gcYrc)) and not defined(useMalloc) and not defined(nimdoc):
         nimAlignedDealloc(p -! sizeof(RefHeader))
       else:
         let hdrSize = align(sizeof(RefHeader), alignment)
