@@ -2128,3 +2128,7 @@ proc reduceToBase*(f: PType): PType =
     result = f.elementType
   else:
     result = f
+
+proc supportsCopyMem*(t: PType): bool =
+  let t = t.skipTypes({tyVar, tyLent, tyGenericInst, tyAlias, tySink, tyInferred})
+  result = not containsGarbageCollectedRef(t) and not hasDestructor(t)
