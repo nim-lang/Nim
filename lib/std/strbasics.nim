@@ -84,9 +84,9 @@ func setSlice*(s: var string, slice: Slice[int]) =
       when not declared(moveMem):
         impl()
       else:
-        when defined(nimSeqsV2):
-          prepareMutation(s)
-        moveMem(addr s[0], addr s[first], last - first + 1)
+        let p = beginStore(s, last - first + 1)
+        moveMem(p, addr p[first], last - first + 1)
+        endStore(s)
   s.setLen(last - first + 1)
 
 func strip*(a: var string, leading = true, trailing = true, chars: set[char] = whitespaces) {.inline.} =

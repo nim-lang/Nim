@@ -1940,6 +1940,15 @@ proc genAsgn(p: BProc, e: PNode, fastAsgn: bool) =
   elif optFieldCheck in p.options and isDiscriminantField(e[0]):
     genLineDir(p, e)
     asgnFieldDiscriminant(p, e)
+  elif p.config.isDefined("nimsso") and e[0].kind == nkBracketExpr and
+      e[0][0].typ.skipTypes(abstractVar).kind == tyString:
+    # nimsso: s[i] = c  →  nimStrPutV3(&s, i, c)  (handles COW internally)
+    genLineDir(p, e)
+    var base = initLocExpr(p, e[0][0])
+    var idx  = initLocExpr(p, e[0][1])
+    var rhs  = initLocExpr(p, e[1])
+    p.s(cpsStmts).addCallStmt(cgsymValue(p.module, "nimStrPutV3"),
+      byRefLoc(p, base), rdLoc(idx), rdCharLoc(rhs))
   else:
     let le = e[0]
     let ri = e[1]

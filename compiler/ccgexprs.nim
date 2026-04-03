@@ -320,12 +320,16 @@ proc genOpenArrayConv(p: BProc; d: TLoc; a: TLoc; flags: TAssignmentFlags) =
       p.s(cpsStmts).addCallStmt(
         cgsymValue(p.module, "nimPrepareStrMutationV2"),
         bra)
-
     let rd = d.rdLoc
-    let ra = a.rdLoc
-    p.s(cpsStmts).addFieldAssignment(rd, "Field0",
-      cIfExpr(dataFieldAccessor(p, ra), dataField(p, ra), NimNil))
     let la = lenExpr(p, a)
+    if p.config.isDefined("nimsso"):
+      let bra = byRefLoc(p, a)
+      p.s(cpsStmts).addFieldAssignment(rd, "Field0",
+        cCall(cgsymValue(p.module, "nimStrData"), bra))
+    else:
+      let ra = a.rdLoc
+      p.s(cpsStmts).addFieldAssignment(rd, "Field0",
+        cIfExpr(dataFieldAccessor(p, ra), dataField(p, ra), NimNil))
     p.s(cpsStmts).addFieldAssignment(rd, "Field1", la)
   else:
     internalError(p.config, a.lode.info, "cannot handle " & $a.t.kind)
@@ -958,7 +962,8 @@ proc genDeref(p: BProc, e: PNode, d: var TLoc) =
       putIntoDest(p, d, e, cDeref(rdLoc(a)), a.storage)
 
 proc cowBracket(p: BProc; n: PNode) =
-  if n.kind == nkBracketExpr and optSeqDestructors in p.config.globalOptions:
+  if n.kind == nkBracketExpr and optSeqDestructors in p.config.globalOptions and
+      not p.config.isDefined("nimsso"):
     let strCandidate = n[0]
     if strCandidate.typ.skipTypes(abstractInst).kind == tyString:
       var a: TLoc = initLocExpr(p, strCandidate)
@@ -984,7 +989,9 @@ proc genAddr(p: BProc, e: PNode, d: var TLoc) =
     # bug #19497
     d.lode = e
   else:
-    var a: TLoc = initLocExpr(p, e[0])
+    let ssoStrSub = p.config.isDefined("nimsso") and e[0].kind == nkBracketExpr and
+        e[0][0].typ.skipTypes(abstractVar).kind == tyString
+    var a: TLoc = initLocExpr(p, e[0], if ssoStrSub: {lfEnforceDeref, lfPrepareForMutation} else: {})
     if e[0].kind in {nkHiddenStdConv, nkHiddenSubConv, nkConv} and not ignoreConv(e[0]):
       # addr (conv x) introduces a temp because `conv x` is not a rvalue
       # transform addr ( conv ( x ) ) -> conv ( addr ( x ) )
@@ -1311,13 +1318,24 @@ proc genSeqElem(p: BProc, n, x, y: PNode, d: var TLoc) =
   if skipTypes(a.t, abstractVar).kind in {tyRef, tyPtr}:
     a.snippet = cDeref(a.snippet)
 
-  if lfPrepareForMutation in d.flags and ty.kind == tyString and
-      optSeqDestructors in p.config.globalOptions:
+  if p.config.isDefined("nimsso") and ty.kind == tyString:
     let bra = byRefLoc(p, a)
-    p.s(cpsStmts).addCallStmt(cgsymValue(p.module, "nimPrepareStrMutationV2"),
-      bra)
-  let ra = rdLoc(a)
-  putIntoDest(p, d, n, subscript(dataField(p, ra), rcb), a.storage)
+    if lfPrepareForMutation in d.flags:
+      # Use nimStrAtMutV3 to get a mutable reference (char*) to the element.
+      # Only when mutation is requested: avoids calling nimPrepareStrMutationV2
+      # on const string literals (which would SIGSEGV on write to read-only memory).
+      putIntoDest(p, d, n,
+        cDeref(cCall(cgsymValue(p.module, "nimStrAtMutV3"), bra, rcb)), a.storage)
+    else:
+      putIntoDest(p, d, n,
+        cCall(cgsymValue(p.module, "nimStrAtV3"), bra, rcb), a.storage)
+  else:
+    if lfPrepareForMutation in d.flags and ty.kind == tyString and
+        optSeqDestructors in p.config.globalOptions:
+      let bra = byRefLoc(p, a)
+      p.s(cpsStmts).addCallStmt(cgsymValue(p.module, "nimPrepareStrMutationV2"), bra)
+    let ra = rdLoc(a)
+    putIntoDest(p, d, n, subscript(dataField(p, ra), rcb), a.storage)
 
 proc genBracketExpr(p: BProc; n: PNode; d: var TLoc) =
   var ty = skipTypes(n[0].typ, abstractVarRange + tyUserTypeClasses)
@@ -2124,12 +2142,20 @@ proc genRepr(p: BProc, e: PNode, d: var TLoc) =
       let ra = rdLoc(a)
       putIntoDest(p, b, e, ra & cArgumentSeparator & ra & "Len_0", a.storage)
     of tyString, tySequence:
-      let ra = rdLoc(a)
       let la = lenExpr(p, a)
-      putIntoDest(p, b, e,
-        cIfExpr(dataFieldAccessor(p, ra), dataField(p, ra), NimNil) &
-          cArgumentSeparator & la,
-        a.storage)
+      if p.config.isDefined("nimsso") and
+          skipTypes(a.t, abstractVarRange).kind == tyString:
+        let bra = byRefLoc(p, a)
+        putIntoDest(p, b, e,
+          cCall(cgsymValue(p.module, "nimStrData"), bra) &
+            cArgumentSeparator & la,
+          a.storage)
+      else:
+        let ra = rdLoc(a)
+        putIntoDest(p, b, e,
+          cIfExpr(dataFieldAccessor(p, ra), dataField(p, ra), NimNil) &
+            cArgumentSeparator & la,
+          a.storage)
     of tyArray:
       let ra = rdLoc(a)
       let la = cIntValue(lengthOrd(p.config, a.t))
@@ -2710,9 +2736,9 @@ proc genConv(p: BProc, e: PNode, d: var TLoc) =
 
 proc convStrToCStr(p: BProc, n: PNode, d: var TLoc) =
   var a: TLoc = initLocExpr(p, n[0])
+  let arg = if p.config.isDefined("nimsso"): addrLoc(p.config, a) else: rdLoc(a)
   putIntoDest(p, d, n,
-    cgCall(p, "nimToCStringConv", rdLoc(a)),
-#   "($1 ? $1->data : (NCSTRING)\"\")" % [a.rdLoc],
+    cgCall(p, "nimToCStringConv", arg),
     a.storage)
 
 proc convCStrToStr(p: BProc, n: PNode, d: var TLoc) =
@@ -2783,19 +2809,25 @@ proc genWasMoved(p: BProc; n: PNode) =
     #  [addrLoc(p.config, a), getTypeDesc(p.module, a.t)])
 
 proc genMove(p: BProc; n: PNode; d: var TLoc) =
-  var a: TLoc = initLocExpr(p, n[1].skipAddr, {lfEnforceDeref})
+  var a: TLoc = initLocExpr(p, n[1].skipAddr, {lfEnforceDeref, lfPrepareForMutation})
   if n.len == 4:
     # generated by liftdestructors:
     var src: TLoc = initLocExpr(p, n[2])
     let destVal = rdLoc(a)
     let srcVal = rdLoc(src)
-    p.s(cpsStmts).addSingleIfStmt(
-      cOp(NotEqual,
-        dotField(destVal, "p"),
-        dotField(srcVal, "p"))):
+    if p.config.isDefined("nimsso") and
+        n[1].typ.skipTypes(abstractVar).kind == tyString:
+      # SmallString: destroy dst then struct-copy src; no .p field aliasing needed
       genStmts(p, n[3])
-    p.s(cpsStmts).addFieldAssignment(destVal, "len", dotField(srcVal, "len"))
-    p.s(cpsStmts).addFieldAssignment(destVal, "p", dotField(srcVal, "p"))
+      genAssignment(p, a, src, {})
+    else:
+      p.s(cpsStmts).addSingleIfStmt(
+        cOp(NotEqual,
+          dotField(destVal, "p"),
+          dotField(srcVal, "p"))):
+        genStmts(p, n[3])
+      p.s(cpsStmts).addFieldAssignment(destVal, "len", dotField(srcVal, "len"))
+      p.s(cpsStmts).addFieldAssignment(destVal, "p", dotField(srcVal, "p"))
   else:
     if d.k == locNone: d = getTemp(p, n.typ)
     if p.config.selectedGC in {gcArc, gcAtomicArc, gcOrc, gcYrc}:
@@ -2832,15 +2864,19 @@ proc genDestroy(p: BProc; n: PNode) =
     case t.kind
     of tyString:
       var a: TLoc = initLocExpr(p, arg)
-      let ra = rdLoc(a)
-      let rp = dotField(ra, "p")
-      p.s(cpsStmts).addSingleIfStmt(
-        cOp(And, rp,
-          cOp(Not, cOp(BitAnd, NimInt,
-            derefField(rp, "cap"),
-            NimStrlitFlag)))):
-        let fn = if optThreads in p.config.globalOptions: "deallocShared" else: "dealloc"
-        p.s(cpsStmts).addCallStmt(cgsymValue(p.module, fn), rp)
+      if p.config.isDefined("nimsso"):
+        # SmallString: delegate to nimDestroyStrV1 (rc-based, handles static strings)
+        p.s(cpsStmts).addCallStmt(cgsymValue(p.module, "nimDestroyStrV1"), rdLoc(a))
+      else:
+        let ra = rdLoc(a)
+        let rp = dotField(ra, "p")
+        p.s(cpsStmts).addSingleIfStmt(
+          cOp(And, rp,
+            cOp(Not, cOp(BitAnd, NimInt,
+              derefField(rp, "cap"),
+              NimStrlitFlag)))):
+          let fn = if optThreads in p.config.globalOptions: "deallocShared" else: "dealloc"
+          p.s(cpsStmts).addCallStmt(cgsymValue(p.module, fn), rp)
     of tySequence:
       var a: TLoc = initLocExpr(p, arg)
       let ra = rdLoc(a)
@@ -4200,7 +4236,10 @@ proc genBracedInit(p: BProc, n: PNode; isConst: bool; optionalType: PType; resul
       genConstObjConstr(p, n, isConst, result)
     of tyString, tyCstring:
       if optSeqDestructors in p.config.globalOptions and n.kind != nkNilLit and ty == tyString:
-        genStringLiteralV2Const(p.module, n, isConst, result)
+        if p.config.isDefined("nimsso"):
+          genStringLiteralV3Const(p.module, n, isConst, result)
+        else:
+          genStringLiteralV2Const(p.module, n, isConst, result)
       else:
         var d: TLoc = initLocExpr(p, n)
         result.add rdLoc(d)
