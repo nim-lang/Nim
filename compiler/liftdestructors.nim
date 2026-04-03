@@ -620,11 +620,34 @@ proc checkSelfAssignment(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   cond.typ = getSysType(c.g, c.info, tyBool)
   body.add genIf(c, cond, newTreeI(nkReturnStmt, c.info, newNodeI(nkEmpty, c.info)))
 
+proc genBulkCopySeq(c: var TLiftCtx; t: PType; body, x, y: PNode) =
+  ## Generates a call to nimCopySeqPayload for bulk memcpy of seq data.
+  let elemType = t.elementType
+  let sym = magicsys.getCompilerProc(c.g, "nimCopySeqPayload")
+  if sym == nil:
+    localError(c.g.config, c.info, "system module needs: nimCopySeqPayload")
+    return
+  var sizeOf = genBuiltin(c, mSizeOf, "sizeof", newNodeIT(nkType, c.info, elemType))
+  sizeOf.typ = getSysType(c.g, c.info, tyInt)
+  var alignOf = genBuiltin(c, mAlignOf, "alignof", newNodeIT(nkType, c.info, elemType))
+  alignOf.typ = getSysType(c.g, c.info, tyInt)
+  let call = newNodeI(nkCall, c.info)
+  call.add newSymNode(sym)
+  call.add newTreeIT(nkAddr, c.info, makePtrType(c.fn, x.typ, c.idgen), x)
+  call.add newTreeIT(nkAddr, c.info, makePtrType(c.fn, y.typ, c.idgen), y)
+  call.add sizeOf
+  call.add alignOf
+  call.typ = sym.typ.returnType
+  body.add call
+
 proc fillSeqOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   case c.kind
   of attachedDup:
     body.add setLenSeqCall(c, t, x, y)
-    forallElements(c, t, body, x, y)
+    if supportsCopyMem(t.elementType):
+      genBulkCopySeq(c, t, body, x, y)
+    else:
+      forallElements(c, t, body, x, y)
   of attachedAsgn, attachedDeepCopy:
     # we generate:
     # if x.p == y.p:
@@ -633,9 +656,13 @@ proc fillSeqOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     # var i = 0
     # while i < y.len: dest[i] = y[i]; inc(i)
     # This is usually more efficient than a destroy/create pair.
+    # For trivially copyable types, use bulk copyMem instead of element loop.
     checkSelfAssignment(c, t, body, x, y)
     body.add setLenSeqCall(c, t, x, y)
-    forallElements(c, t, body, x, y)
+    if supportsCopyMem(t.elementType):
+      genBulkCopySeq(c, t, body, x, y)
+    else:
+      forallElements(c, t, body, x, y)
   of attachedSink:
     let moveCall = genBuiltin(c, mMove, "move", x)
     moveCall.add y
