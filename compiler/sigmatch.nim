@@ -784,11 +784,15 @@ proc procParamTypeRel(c: var TCandidate; f, a: PType): TTypeRelation =
     # if f is metatype.
     result = typeRel(c, f, a)
 
-  if result == isEqual and
-      not containsGenericType(f) and not containsGenericType(a) and
-      not containsUnresolvedType(f) and not containsUnresolvedType(a) and
-      not sameBackendTypePickyAliases(f, a):
-    result = isNone
+  if result == isEqual:
+    # Ensure types that are semantically equal also match at the backend level.
+    # E.g. reject assigning proc(csize_t) to proc(uint) since these map to
+    # different C types (size_t vs unsigned long long).
+    let fCheck = concreteType(c, f)
+    let aCheck = concreteType(c, a)
+    if fCheck != nil and aCheck != nil and
+        not sameBackendTypePickyAliases(fCheck, aCheck):
+      result = isNone
 
   if result <= isSubrange or inconsistentVarTypes(f, a):
     result = isNone
