@@ -65,6 +65,9 @@ errors.
   Modes include `Nim` (default, fully compatible) and two new experimental modes:
   `Lax` and `Gnu` for different option parsing behaviors.
 
+- `std/symlinks.expandSymlink` now supports Windows symlinks and junctions with
+  POSIX-like single-hop `readlink` semantics.
+
 [//]: # "Changes:"
 
 - `std/math` The `^` symbol now supports floating-point as exponent in addition to the Natural type.

@@ -185,21 +185,28 @@ when not (defined(cpu16) or defined(cpu8)):
   proc newWideCString*(s: string): WideCStringObj =
     result = newWideCString(cstring s, s.len)
 
-  proc `$`*(w: WideCString, estimate: int, replacement: int = 0xFFFD): string =
+  proc utf16ToStringImpl(w: ptr UncheckedArray[Utf16Char], estimate: int,
+                         replacement: int,
+                         len: Natural = 0,
+                         nulTerminated: static bool): string =
     result = newStringOfCap(estimate + estimate shr 2)
 
     var i = 0
-    while w[i].int16 != 0'i16:
+    while (when nulTerminated: w[i].int16 != 0'i16 else: i < len):
       var ch = ord(w[i])
       inc i
       if ch >= UNI_SUR_HIGH_START and ch <= UNI_SUR_HIGH_END:
-        # If the 16 bits following the high surrogate are in the source buffer...
-        let ch2 = ord(w[i])
+        # If the 16 bits following the high surrogate are in the source...
+        if (when nulTerminated: w[i].int16 != 0'i16 else: i < len):
+          let ch2 = ord(w[i])
 
-        # If it's a low surrogate, convert to UTF32:
-        if ch2 >= UNI_SUR_LOW_START and ch2 <= UNI_SUR_LOW_END:
-          ch = (((ch and halfMask) shl halfShift) + (ch2 and halfMask)) + halfBase
-          inc i
+          # If it's a low surrogate, convert to UTF32:
+          if ch2 >= UNI_SUR_LOW_START and ch2 <= UNI_SUR_LOW_END:
+            ch = (((ch and halfMask) shl halfShift) + (ch2 and halfMask)) + halfBase
+            inc i
+          else:
+            #invalid UTF-16
+            ch = replacement
         else:
           #invalid UTF-16
           ch = replacement
@@ -226,6 +233,30 @@ when not (defined(cpu16) or defined(cpu8)):
         result.add chr(0xFFFD shr 12 or 0b1110_0000)
         result.add chr(0xFFFD shr 6 and ones(6) or 0b10_0000_00)
         result.add chr(0xFFFD and ones(6) or 0b10_0000_00)
+
+  proc utf16ToString(w: ptr UncheckedArray[Utf16Char], len: Natural,
+                     estimate: int = 80,
+                     replacement: int = 0xFFFD): string =
+    ## Decodes a length-delimited UTF-16 slice to UTF-8.
+    ##
+    ## Unlike the `WideCString` overloads, this preserves the provided length
+    ## and does not search for a terminating NUL.
+    result = utf16ToStringImpl(w, estimate, replacement, len, false)
+
+  proc `$`*(w: openArray[Utf16Char], estimate: int,
+            replacement: int = 0xFFFD): string =
+    if w.len == 0:
+      result = ""
+    else:
+      result = utf16ToString(cast[ptr UncheckedArray[Utf16Char]](unsafeAddr w[0]),
+                             w.len, estimate, replacement)
+
+  proc `$`*(w: openArray[Utf16Char]): string =
+    result = w $ 80
+
+  proc `$`*(w: WideCString; estimate: int, replacement: int = 0xFFFD): string =
+    utf16ToStringImpl(cast[ptr UncheckedArray[Utf16Char]](w),
+      estimate, replacement, 0, true)
 
   proc `$`*(s: WideCString): string =
     result = s $ 80

@@ -261,6 +261,11 @@ const
   FILE_ATTRIBUTE_OFFLINE* = 0x00001000'i32
   FILE_ATTRIBUTE_NOT_CONTENT_INDEXED* = 0x00002000'i32
 
+  IO_REPARSE_TAG_MOUNT_POINT* = 0xA0000003'i32
+  IO_REPARSE_TAG_SYMLINK* = 0xA000000C'i32
+  MAXIMUM_REPARSE_DATA_BUFFER_SIZE* = 16 * 1024
+  SYMLINK_FLAG_RELATIVE* = 0x1'i32
+
   FILE_FLAG_FIRST_PIPE_INSTANCE* = 0x00080000'i32
   FILE_FLAG_OPEN_NO_RECALL* = 0x00100000'i32
   FILE_FLAG_OPEN_REPARSE_POINT* = 0x00200000'i32
@@ -281,6 +286,10 @@ const
   MOVEFILE_FAIL_IF_NOT_TRACKABLE* = 0x20'i32
   MOVEFILE_REPLACE_EXISTING* = 0x1'i32
   MOVEFILE_WRITE_THROUGH* = 0x8'i32
+
+  # CTL_CODE(FILE_DEVICE_FILE_SYSTEM = 9, func = 42, METHOD_BUFFERED = 0,
+  # FILE_ANY_ACCESS = 0)
+  FSCTL_GET_REPARSE_POINT* = 0x000900A8'i32
 
 type
   WIN32_FIND_DATA* {.pure.} = object
@@ -654,6 +663,12 @@ proc createFileW*(lpFileName: WideCString, dwDesiredAccess, dwShareMode: DWORD,
                   dwCreationDisposition, dwFlagsAndAttributes: DWORD,
                   hTemplateFile: Handle): Handle {.
     stdcall, dynlib: "kernel32", importc: "CreateFileW".}
+proc deviceIoControl*(hDevice: Handle, dwIoControlCode: DWORD,
+                      lpInBuffer: pointer, nInBufferSize: DWORD,
+                      lpOutBuffer: pointer, nOutBufferSize: DWORD,
+                      lpBytesReturned: var DWORD,
+                      lpOverlapped: pointer): WINBOOL {.
+    stdcall, dynlib: "kernel32", importc: "DeviceIoControl".}
 proc deleteFileW*(pathName: WideCString): int32 {.
   importc: "DeleteFileW", dynlib: "kernel32", stdcall.}
 proc createFileA*(lpFileName: cstring, dwDesiredAccess, dwShareMode: DWORD,
