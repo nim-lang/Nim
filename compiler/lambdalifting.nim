@@ -408,6 +408,12 @@ Consider:
 proc isTypeOf(n: PNode): bool =
   n.kind == nkSym and n.sym.magic in {mTypeOf, mType}
 
+proc isEnvTypeForRoutine(envTyp: PType; routine: PSym): bool =
+  ## True if `envTyp` is (maybe wrapped) env object type owned by `routine`, as
+  ## created by `getEnvTypeForOwner` / `createEnvObj`.
+  let obj = envTyp.skipTypes({tyOwned, tyRef, tyPtr})
+  result = obj.kind == tyObject and obj.owner.id == routine.id
+
 proc addClosureParam(c: var DetectionPass; fn: PSym; info: TLineInfo) =
   var cp = getEnvParam(fn)
   let owner = if fn.kind == skIterator: fn else: fn.skipGenericOwner
@@ -418,7 +424,13 @@ proc addClosureParam(c: var DetectionPass; fn: PSym; info: TLineInfo) =
     cp.typ = t
     addHiddenParam(fn, cp)
   elif cp.typ != t and fn.kind != skIterator:
-    localError(c.graph.config, fn.info, "internal error: inconsistent environment type")
+    # Nested `liftLambdas` uses a fresh `DetectionPass`, so `getEnvTypeForOwner`
+    # can allocate another PType for the same logical env; the hidden param from
+    # the inner pass is authoritative (bug #21242).
+    if isEnvTypeForRoutine(cp.typ, owner) and isEnvTypeForRoutine(t, owner):
+      c.ownerToType[owner.id] = cp.typ
+    else:
+      localError(c.graph.config, fn.info, "internal error: inconsistent environment type")
   #echo "adding closure to ", fn.name.s
 
 proc iterEnvHasUpField(g: ModuleGraph, iter: PSym): bool =
