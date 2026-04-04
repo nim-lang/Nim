@@ -90,6 +90,7 @@ type
     newlyTypedOperands*: seq[int]
       ## indexes of arguments that are newly typechecked in this match
       ## used for type bound op additions
+    mergeShadowOnNoMatch*: bool
 
   TTypeRelFlag* = enum
     trDontBind
@@ -115,7 +116,8 @@ proc initCandidateAux(ctx: PContext,
                       genericMatches: 0,
                       state: csEmpty, firstMismatch: MismatchInfo(),
                       callee: callee, call: nil, baseTypeMatch: false,
-                      genericConverter: false, inheritancePenalty: -1
+                      genericConverter: false, inheritancePenalty: -1,
+                      mergeShadowOnNoMatch: false
   )
 
 proc initCandidate*(ctx: PContext, callee: PType): TCandidate =
@@ -2835,6 +2837,10 @@ proc findFirstArgBlock(m: var TCandidate, n: PNode): int =
 
 proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var IntSet) =
   template noMatch() =
+    if m.mergeShadowOnNoMatch:
+      c.mergeShadowScope
+    else:
+      c.closeShadowScope
     m.state = csNoMatch
     m.firstMismatch.arg = a
     m.firstMismatch.formal = formal
@@ -2873,6 +2879,8 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
     container: PNode = nil # constructed container
   let firstArgBlock = findFirstArgBlock(m, n)
   while a < n.len:
+    c.openShadowScope
+
     if a >= formalLen-1 and f < formalLen and m.callee.n[f].typ.isVarargsUntyped:
       formal = m.callee.n[f].sym
       incl(marker, formal.position)
@@ -3035,6 +3043,11 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
               typeToString(n[a].typ), typeToString(formal.typ) ])
             noMatch()
         checkConstraint(n[a])
+
+    if m.state == csMatch and not (m.calleeSym != nil and m.calleeSym.kind in {skTemplate, skMacro}):
+      c.mergeShadowScope
+    else:
+      c.closeShadowScope
 
     inc a
   # for some edge cases (see tdont_return_unowned_from_owned test case)

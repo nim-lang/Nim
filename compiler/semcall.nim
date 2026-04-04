@@ -130,7 +130,19 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
   # current overload being considered
   var sym = syms[0].s
   let name = sym.name
-  var scope = syms[0].scope
+  var
+    scope = syms[0].scope
+    hasTemplateLike = false
+    hasRegular = false
+  for it in syms:
+    if it.s.kind in {skTemplate, skMacro}:
+      hasTemplateLike = true
+    else:
+      hasRegular = true
+  let useOverloadShadow = hasTemplateLike and hasRegular
+  if useOverloadShadow:
+    c.openShadowScope
+    symCount = c.currentScope.symbols.counter
 
   if allowTypeBoundOps:
     for a in 1 ..< n.len:
@@ -141,17 +153,14 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
   # starts at 1 because 0 is already done with setup, only needs checking
   var nextSymIndex = 1
   var z: TCandidate # current candidate
-  let overloadScope = c.currentScope
-  
-  c.openShadowScope
-  
   while true:
     determineType(c, sym)
     z = initCandidate(c, sym, initialBinding, scope, diagnosticsFlag)
+    z.mergeShadowOnNoMatch = sym.kind notin {skTemplate, skMacro}
     # this is kinda backwards as without a check here the described
     # problems in recalc would not happen, but instead it 100%
     # does check forever in some cases
-    if overloadScope.symbols.counter == symCount:
+    if c.currentScope.symbols.counter == symCount:
       # may introduce new symbols with caveats described in recalc branch
       matches(c, n, orig, z)
 
@@ -206,7 +215,7 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
           let arg = n[a]
           addTypeBoundSymbols(c.graph, arg.typ, name, filter, symMarker, syms)
       # reset counter because syms may be in a new order
-      symCount = overloadScope.symbols.counter
+      symCount = c.currentScope.symbols.counter
       nextSymIndex = 0
 
       # just in case, should be impossible though
@@ -221,10 +230,12 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
     sym = syms[nextSymIndex].s
     scope = syms[nextSymIndex].scope
     inc(nextSymIndex)
-  if best.state == csMatch and not (best.calleeSym != nil and best.calleeSym.kind in {skTemplate, skMacro}):
-    c.mergeShadowScope
-  else:
-    c.closeShadowScope
+
+  if useOverloadShadow:
+    if best.state == csMatch and best.calleeSym != nil and best.calleeSym.kind in {skTemplate, skMacro}:
+      c.closeShadowScope
+    else:
+      c.mergeShadowScope
 
 proc effectProblem(f, a: PType; result: var string; c: PContext) =
   if f.kind == tyProc and a.kind == tyProc:
