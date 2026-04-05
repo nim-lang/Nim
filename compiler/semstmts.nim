@@ -1101,7 +1101,7 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
       iterBase.skipModifier
     else:
       skipTypes(iterBase, {tyAlias, tySink, tyOwned})
-  var iter = iterType
+  var iter = skipTypes(iterType, {tyGenericInst})
   var iterAfterVarLent = iter.skipTypes({tyGenericInst, tyAlias, tyLent, tyVar})
   # n.len == 3 means that there is one for loop variable
   # and thus no tuple unpacking:
