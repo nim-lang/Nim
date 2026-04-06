@@ -1736,13 +1736,23 @@ proc getDisplayToken(g: ModuleGraph; t: PType): uint32 =
 
 proc genTypeInfoV2(m: BModule; t: PType; info: TLineInfo): Rope
 
+proc isInObjectSuperclassChain(source, target: PType): bool =
+  result = false
+  var current = source
+  while current != nil:
+    current = skipTypesOrNil(current, skipPtrs)
+    if current == nil or current.kind != tyObject:
+      break
+    if current.id == target.id:
+      return true
+    current = current.baseClass
+
 proc genDisplayCheck(p: BProc; sourceMType: Snippet; sourceType, target: PType;
                      info: TLineInfo): Snippet =
   let source = skipTypesOrNil(sourceType, skipPtrs)
   let target = skipTypesOrNil(target, skipPtrs)
   if source != nil and target != nil and source.kind == tyObject and target.kind == tyObject:
-    let common = commonSuperclass(source, target)
-    if common != nil and sameObjectTypes(common, target):
+    if isInObjectSuperclassChain(source, target):
       return NimTrue
   let targetDepth = getObjDepth(target)
   result = cCall(cgsymValue(p.module, "isObjDisplayCheck"),
