@@ -37,6 +37,7 @@ outline	skMacro	tv3_outline.m	macro (arg: untyped): untyped{.noSideEffect, gcsaf
 outline	skTemplate	tv3_outline.t	template (arg: untyped): untyped	$file	11	9	""	100	11	43
 outline	skProc	tv3_outline.p	proc (){.noSideEffect, gcsafe, raises: <inferred> [].}	$file	12	5	""	100	12	24
 outline	skConverter	tv3_outline.c	converter (s: string): int{.noSideEffect, gcsafe, raises: <inferred> [].}	$file	14	10	""	100	14	37
+outline	skMethod	tv3_outline.m	proc (f: Foo){.noSideEffect, gcsafe, raises: <inferred> [].}	$file	15	7	""	100	15	32
 outline	skFunc	tv3_outline.f	proc (){.noSideEffect, gcsafe, raises: <inferred> [].}	$file	16	5	""	100	16	24
 outline	skConst	tv3_outline.con	int literal(2)	$file	20	6	""	100	20	13
 outline	skProc	tv3_outline.outer	proc (){.noSideEffect, gcsafe, raises: <inferred> [].}	$file	22	5	""	100	23	24
