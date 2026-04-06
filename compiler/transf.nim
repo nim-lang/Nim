@@ -127,11 +127,10 @@ proc resolveBorrowedRoutineSym(c: PTransf; s: PSym; info: TLineInfo): PSym =
     let body = getBody(c.graph, s)
     if body.kind == nkSym and sfBorrow in body.sym.flags and getBody(c.graph, body.sym).kind == nkSym:
       s = body.sym
+    elif body.kind != nkSym:
+      break
     else:
-      if body.kind != nkSym:
-        break
-      else:
-        return body.sym
+      return body.sym
   internalError(c.graph.config, info, "wrong AST for borrowed symbol")
 
 proc transformSymAux(c: PTransf, n: PNode): PNode =
