@@ -94,6 +94,9 @@ type
     methods*: seq[tuple[methods: seq[PSym], dispatcher: PSym]] # needs serialization!
     bucketTable*: CountTable[ItemId]
     objectTree*: Table[ItemId, seq[tuple[depth: int, value: PType]]]
+    displayTokens*: Table[ItemId, uint32]
+    nextBaseDisplayTokenByDepth*: Table[int16, int]
+    nextSiblingDisplayTokenByParent*: Table[ItemId, int]
     methodsPerType*: Table[ItemId, seq[PSym]]
     dispatchers*: seq[PSym]
 
@@ -140,6 +143,105 @@ type
                  close: TPassClose,
                  isFrontend: bool]
 
+const runtimeTypeSkipPtrs = {tyVar, tyPtr, tyRef, tyGenericInst, tyGenericBody,
+  tyTypeDesc, tyAlias, tyInferred, tySink, tyLent, tyOwned}
+
+proc normalizeRuntimeType(typ: PType): PType =
+  result = skipTypesOrNil(typ, runtimeTypeSkipPtrs)
+  if result == nil or result.kind != tyObject:
+    result = nil
+    return
+
+  var root = result
+  while root.sonsImpl.len > 0 and root.sonsImpl[0] != nil:
+    root = skipTypesOrNil(root.sonsImpl[0], runtimeTypeSkipPtrs)
+    if root == nil:
+      return nil
+
+  let hasBase = result.sonsImpl.len > 0 and result.sonsImpl[0] != nil
+  if ((tfFinal in result.flags) and not hasBase) or
+      (root.sym != nil and sfPure in root.sym.flags):
+    result = nil
+
+proc runtimeTypeDepth(typ: PType): int16 =
+  var typ = normalizeRuntimeType(typ)
+  result = 0
+  while typ != nil and typ.sonsImpl.len > 0 and typ.sonsImpl[0] != nil:
+    inc result
+    typ = normalizeRuntimeType(typ.sonsImpl[0])
+
+proc runtimeTypeParentId(typ: PType): ItemId =
+  let typ = normalizeRuntimeType(typ)
+  if typ == nil or typ.sonsImpl.len == 0 or typ.sonsImpl[0] == nil:
+    return ItemId()
+
+  let parent = normalizeRuntimeType(typ.sonsImpl[0])
+  if parent != nil:
+    result = parent.itemId
+  else:
+    result = ItemId()
+
+proc runtimeTypeRoot(typ: PType): PType =
+  result = normalizeRuntimeType(typ)
+  while result != nil and result.sonsImpl.len > 0 and result.sonsImpl[0] != nil:
+    let parent = normalizeRuntimeType(result.sonsImpl[0])
+    if parent == nil:
+      break
+    result = parent
+
+proc packDisplayToken(baseToken, siblingToken: int): uint32 =
+  result = uint32(baseToken) or (uint32(siblingToken) shl 16)
+
+proc siblingDisplayToken*(token: uint32): uint16 {.inline.} =
+  result = uint16(token shr 16)
+
+proc baseDisplayToken*(token: uint32): uint16 {.inline.} =
+  result = uint16(token and 0xFFFF'u32)
+
+const displayTokenOverflowMsg =
+  "too many descendants of base $1, max is $2, use {.inheritable.} pragma to define decoupled inheritance bases."
+
+proc raiseDisplayTokenOverflow(g: ModuleGraph; typ: PType) =
+  let root = runtimeTypeRoot(typ)
+  let baseName = if root != nil and root.sym != nil: root.sym.name.s else: "<anonymous>"
+  globalError(g.config, unknownLineInfo,
+    displayTokenOverflowMsg % [baseName, $high(uint16)])
+
+proc nextDisplayToken[K](g: ModuleGraph; counter: var Table[K, int];
+                         key: K; typ: PType): int =
+  result = counter.getOrDefault(key, 1)
+  if result > int(high(uint16)):
+    g.raiseDisplayTokenOverflow(typ)
+  counter[key] = result + 1
+
+proc assignDisplayToken(g: ModuleGraph; typ: PType) =
+  let typ = normalizeRuntimeType(typ)
+  if typ == nil or typ.itemId in g.displayTokens:
+    return
+  let
+    depth = runtimeTypeDepth(typ)
+    parent = runtimeTypeParentId(typ)
+    baseToken = g.nextDisplayToken(g.nextBaseDisplayTokenByDepth, depth, typ)
+    siblingToken = g.nextDisplayToken(g.nextSiblingDisplayTokenByParent, parent, typ)
+  g.displayTokens[typ.itemId] = packDisplayToken(baseToken, siblingToken)
+
+proc addRuntimeObjectType*(g: ModuleGraph; typ: PType) =
+  let typ = normalizeRuntimeType(typ)
+  g.assignDisplayToken(typ)
+
+proc displayToken*(g: ModuleGraph; typ: PType): uint32 =
+  let typ = normalizeRuntimeType(typ)
+  if typ == nil:
+    return 0
+  if typ.itemId notin g.displayTokens:
+    g.addRuntimeObjectType(typ)
+  result = g.displayTokens[typ.itemId]
+
+proc resetDisplayTokens*(g: ModuleGraph) =
+  g.displayTokens = initTable[ItemId, uint32]()
+  g.nextBaseDisplayTokenByDepth = initTable[int16, int]()
+  g.nextSiblingDisplayTokenByParent = initTable[ItemId, int]()
+
 proc resetForBackend*(g: ModuleGraph) =
   g.compilerprocs = initStrTable()
   g.typeInstCache.clear()
@@ -154,6 +256,7 @@ proc resetForBackend*(g: ModuleGraph) =
   for a in mitems(g.loadedOps):
     a.clear()
   g.opsLog.setLen(0)
+  g.resetDisplayTokens()
 
 const
   cb64 = [
@@ -530,6 +633,9 @@ proc initModuleGraphFields(result: ModuleGraph) =
   result.suggestSymbols = initTable[FileIndex, SuggestFileSymbolDatabase]()
   result.suggestErrors = initTable[FileIndex, seq[Suggest]]()
   result.methods = @[]
+  result.displayTokens = initTable[ItemId, uint32]()
+  result.nextBaseDisplayTokenByDepth = initTable[int16, int]()
+  result.nextSiblingDisplayTokenByParent = initTable[ItemId, int]()
   result.compilerprocs = initStrTable()
   result.exposed = initStrTable()
   result.packageTypes = initStrTable()

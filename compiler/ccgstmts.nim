@@ -1243,11 +1243,15 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
           hasImportedCppExceptions = true
         else:
           if orExpr.len != 0: orExpr.add("||")
-          let memberName = if p.module.compileToCpp: "m_type" else: "Sup.m_type"
           if optTinyRtti in p.config.globalOptions:
-            let checkFor = $getObjDepth(typeNode.typ)
-            appcg(p.module, orExpr, "#isObjDisplayCheck(#nimBorrowCurrentException()->$1, $2, $3)", [memberName, checkFor, $genDisplayElem(MD5Digest(hashType(typeNode.typ, p.config)))])
+            let excVal = cCall(cgsymValue(p.module, "nimBorrowCurrentException"))
+            let member = if p.module.compileToCpp:
+                derefField(excVal, "m_type")
+              else:
+                dotField(derefField(excVal, "Sup"), "m_type")
+            orExpr.add(genDisplayCheck(p, member, nil, typeNode.typ, typeNode.info))
           else:
+            let memberName = if p.module.compileToCpp: "m_type" else: "Sup.m_type"
             let checkFor = genTypeInfoV1(p.module, typeNode.typ, typeNode.info)
             appcg(p.module, orExpr, "#isObj(#nimBorrowCurrentException()->$1, $2)", [memberName, checkFor])
 
@@ -1512,11 +1516,7 @@ proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
             dotField(derefField(excVal, "Sup"), "m_type")
         var branch: Snippet = ""
         if optTinyRtti in p.config.globalOptions:
-          let checkFor = $getObjDepth(t[i][j].typ)
-          branch = cCall(cgsymValue(p.module, "isObjDisplayCheck"),
-            member,
-            checkFor,
-            $genDisplayElem(MD5Digest(hashType(t[i][j].typ, p.config))))
+          branch = genDisplayCheck(p, member, nil, t[i][j].typ, t[i][j].info)
         else:
           let checkFor = genTypeInfoV1(p.module, t[i][j].typ, t[i][j].info)
           branch = cCall(cgsymValue(p.module, "isObj"),
@@ -1717,7 +1717,7 @@ proc genTrySetjmp(p: BProc, t: PNode, d: var TLoc) =
           branch = cCall(cgsymValue(p.module, "isObjDisplayCheck"),
             member,
             checkFor,
-            $genDisplayElem(MD5Digest(hashType(t[i][j].typ, p.config))))
+            cUintValue(uint(getDisplayToken(p.module.g.graph, t[i][j].typ))))
         else:
           let checkFor = genTypeInfoV1(p.module, t[i][j].typ, t[i][j].info)
           branch = cCall(cgsymValue(p.module, "isObj"),

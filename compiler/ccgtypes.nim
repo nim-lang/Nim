@@ -12,7 +12,6 @@
 # ------------------------- Name Mangling --------------------------------
 
 import sighashes, std/strscans
-import ../dist/checksums/src/checksums/md5
 import std/sequtils
 
 type
@@ -1732,11 +1731,24 @@ proc getObjDepth(t: PType): int16 =
     x = x[0]
     inc(result)
 
-proc genDisplayElem(d: MD5Digest): uint32 =
-  result = 0
-  for i in 0..3:
-    result += uint32(d[i])
-    result = result shl 8
+proc getDisplayToken(g: ModuleGraph; t: PType): uint32 =
+  result = uint32(g.displayToken(t))
+
+proc genTypeInfoV2(m: BModule; t: PType; info: TLineInfo): Rope
+
+proc genDisplayCheck(p: BProc; sourceMType: Snippet; sourceType, target: PType;
+                     info: TLineInfo): Snippet =
+  let source = skipTypesOrNil(sourceType, skipPtrs)
+  let target = skipTypesOrNil(target, skipPtrs)
+  if source != nil and target != nil and source.kind == tyObject and target.kind == tyObject:
+    let common = commonSuperclass(source, target)
+    if common != nil and sameObjectTypes(common, target):
+      return NimTrue
+  let targetDepth = getObjDepth(target)
+  result = cCall(cgsymValue(p.module, "isObjDisplayCheck"),
+    sourceMType,
+    cIntValue(int(targetDepth)),
+    cUintValue(uint(getDisplayToken(p.module.g.graph, target))))
 
 proc genDisplay(result: var Builder, m: BModule; t: PType, depth: int) =
   var x = t
@@ -1744,7 +1756,7 @@ proc genDisplay(result: var Builder, m: BModule; t: PType, depth: int) =
   var i = 0
   while x != nil:
     x = skipTypes(x, skipPtrs)
-    seqs[i] = cIntValue(genDisplayElem(MD5Digest(hashType(x, m.config))))
+    seqs[i] = cUintValue(uint(getDisplayToken(m.g.graph, x)))
     x = x[0]
     inc i
 
