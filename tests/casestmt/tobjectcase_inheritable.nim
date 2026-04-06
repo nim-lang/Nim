@@ -19,6 +19,7 @@ type
     a: int
   Sub2 = ref object of Base
     b: string
+  Sub3 = ref object of Base
 
   BranchBase = ref object of RootObj
   Left = ref object of BranchBase
@@ -30,6 +31,22 @@ type
     a: int
   SubObj = object of BaseObj
     b: int
+
+var onlyOne = 0
+
+proc getObj: Base =
+  inc onlyOne
+  Sub3()
+
+case getObj()
+of Sub1:
+  discard
+of Sub2:
+  discard
+of Sub3:
+  discard
+
+doAssert onlyOne == 1
 
 proc classify(x: Base): string =
   case x
