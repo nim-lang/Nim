@@ -1331,12 +1331,165 @@ proc semFor(c: PContext, n: PNode; flags: TExprFlags): PNode =
     result.typ = result.lastSon.typ
   closeScope(c)
 
+proc objectCaseSelectorBase(typ: PType): PType =
+  let typ = skipTypes(typ, abstractInstOwned + {tyTypeDesc, tyVar, tyLent})
+  if typ.kind notin {tyRef, tyPtr}:
+    return nil
+  result = skipTypesOrNil(typ.elementType, skipPtrs)
+  if result == nil or result.kind != tyObject or isObjLackingTypeField(result):
+    result = nil
+
+proc wrapObjectCaseBranch(c: PContext; branch, body: PNode; selectorSym: PSym): PNode =
+  if branch.len != 2 or not branch[0].isInfixAs():
+    return body
+
+  let alias = branch[0][2].sym
+  let selectorNode = newSymNode(selectorSym, branch.info)
+  let aliasInit =
+    if sameType(alias.typ, selectorSym.typ):
+      selectorNode
+    else:
+      newTreeIT(nkHiddenSubConv, branch.info, alias.typ,
+        c.graph.emptyNode, selectorNode)
+  let aliasLet = newTreeI(nkLetSection, branch.info,
+    newTreeI(nkIdentDefs, branch.info, newSymNode(alias, branch.info),
+      c.graph.emptyNode, aliasInit))
+  if isEmptyType(body.typ):
+    result = newTreeI(nkStmtList, body.info, aliasLet, body)
+  else:
+    result = newTreeIT(nkStmtListExpr, body.info, body.typ, aliasLet, body)
+
+proc semObjectCase(c: PContext; n: PNode; flags: TExprFlags;
+                   expectedType: PType = nil): PNode =
+  let selectorSym = newSym(skTemp, getIdent(c.cache, "tmpObjCase"), c.idgen,
+                           getCurrOwner(c), n[0].info)
+  selectorSym.typ = n[0].typ
+  selectorSym.flagsImpl.incl {sfGenSym, sfCursor}
+  addDecl(c, selectorSym)
+
+  let
+    boolType = getSysType(c.graph, n.info, tyBool)
+    selectorLet = newTreeI(nkLetSection, n[0].info,
+      newTreeI(nkIdentDefs, n[0].info, newSymNode(selectorSym, n[0].info),
+        c.graph.emptyNode, n[0]))
+    selectorNode = newSymNode(selectorSym, n[0].info)
+
+  var
+    ifNode = newNodeI(nkIfStmt, n.info)
+    typ = commonTypeBegin
+    expectedType = expectedType
+    hasElse = false
+
+  template invalidOrderOfBranches(branch: PNode) =
+    localError(c.config, branch.info, "invalid order of case branches")
+    break
+
+  for i in 1..<n.len:
+    let branch = n[i]
+    case branch.kind
+    of nkOfBranch:
+      if hasElse:
+        invalidOrderOfBranches(branch)
+      checkMinSonsLen(branch, 2, c.config)
+
+      openScope(c)
+      if branch[0].isInfixAs():
+        if branch.len != 2:
+          localError(c.config, branch[0].info,
+            "object case branches using 'as' must contain exactly one type")
+        let aliasType = semExprWithType(c, copyTree(branch[0][1]), {efDetermineType})
+        let alias = newSymG(skLet, branch[0][2], c)
+        alias.typ = skipTypes(aliasType.typ, {tyTypeDesc})
+        alias.flagsImpl.incl sfCursor
+        addDecl(c, alias)
+        branch[0][2] = newSymNode(alias, branch[0][2].info)
+      for j in 1..<branch.len - 1:
+        if branch[j].isInfixAs():
+          localError(c.config, branch[j].info,
+            "object case branches using 'as' must contain exactly one type")
+
+      var cond: PNode = nil
+      for j in 0..<branch.len - 1:
+        let item = if branch[j].isInfixAs(): branch[j][1] else: branch[j]
+        let ofCall = newTreeI(nkCall, item.info,
+          newSymNode(getSysMagic(c.graph, item.info, "of", mOf), item.info),
+          copyTree(selectorNode),
+          copyTree(item))
+        if cond == nil:
+          cond = ofCall
+        else:
+          cond = newTreeI(nkInfix, item.info,
+            newIdentNode(getIdent(c.cache, "or"), item.info),
+            cond, ofCall)
+
+      let elifBranch = newNodeI(nkElifBranch, branch.info, 2)
+      elifBranch[0] = forceBool(c, semExprWithType(c, cond, expectedType = boolType))
+      elifBranch[1] = semExprBranch(c, branch[^1], flags, expectedType)
+      elifBranch[1] = c.wrapObjectCaseBranch(branch, elifBranch[1], selectorSym)
+      typ = commonType(c, typ, elifBranch[1])
+      if not endsInNoReturn(elifBranch[1]):
+        expectedType = typ
+      closeScope(c)
+      ifNode.add elifBranch
+    of nkElifBranch:
+      if hasElse:
+        invalidOrderOfBranches(branch)
+      checkSonsLen(branch, 2, c.config)
+      let elifBranch = newNodeI(nkElifBranch, branch.info, 2)
+      openScope(c)
+      elifBranch[0] = forceBool(c, semExprWithType(c, branch[0], expectedType = boolType))
+      elifBranch[1] = semExprBranch(c, branch[1], flags, expectedType)
+      typ = commonType(c, typ, elifBranch[1])
+      if not endsInNoReturn(elifBranch[1]):
+        expectedType = typ
+      closeScope(c)
+      ifNode.add elifBranch
+    of nkElse:
+      checkSonsLen(branch, 1, c.config)
+      let elseBranch = newNodeI(nkElse, branch.info, 1)
+      elseBranch[0] = semExprBranchScope(c, branch[0], expectedType)
+      typ = commonType(c, typ, elseBranch[0])
+      if not endsInNoReturn(elseBranch[0]):
+        expectedType = typ
+      if hasElse:
+        message(c.config, branch.info, warnUnreachableElse)
+      hasElse = true
+      ifNode.add elseBranch
+    else:
+      illFormedAst(branch, c.config)
+
+  if isEmptyType(typ) or typ.kind in {tyNil, tyUntyped} or
+      (not hasElse and efInTypeof notin flags):
+    for branch in ifNode:
+      discardCheck(c, branch.lastSon, flags)
+    ifNode.transitionSonsKind(nkIfStmt)
+    if typ == c.enforceVoidContext:
+      ifNode.typ = c.enforceVoidContext
+  else:
+    for branch in ifNode:
+      let body = branch.lastSon
+      if not endsInNoReturn(body):
+        branch[^1] = fitNode(c, typ, body, body.info)
+    ifNode.transitionSonsKind(nkIfExpr)
+    ifNode.typ = typ
+
+  if ifNode.typ != nil and not isEmptyType(ifNode.typ):
+    result = newTreeIT(nkStmtListExpr, n.info, ifNode.typ, selectorLet, ifNode)
+  else:
+    result = newTreeI(nkStmtList, n.info, selectorLet, ifNode)
+    if ifNode.typ == c.enforceVoidContext:
+      result.typ = c.enforceVoidContext
+
 proc semCase(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = nil): PNode =
   result = n
   checkMinSonsLen(n, 2, c.config)
   openScope(c)
-  pushCaseContext(c, n)
   n[0] = semExprWithType(c, n[0])
+  if objectCaseSelectorBase(n[0].typ) != nil:
+    result = semObjectCase(c, n, flags, expectedType)
+    closeScope(c)
+    return result
+  pushCaseContext(c, n)
   var covered: Int128 = toInt128(0)
   var typ = commonTypeBegin
   var expectedType = expectedType
