@@ -129,8 +129,9 @@ proc resolveBorrowedRoutineSym(c: PTransf; s: PSym; info: TLineInfo): PSym =
       s = body.sym
     else:
       if body.kind != nkSym:
-        internalError(c.graph.config, info, "wrong AST for borrowed symbol")
-      return body.sym
+        break
+      else:
+        return body.sym
   internalError(c.graph.config, info, "wrong AST for borrowed symbol")
 
 proc transformSymAux(c: PTransf, n: PNode): PNode =
