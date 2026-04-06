@@ -118,6 +118,21 @@ proc newAsgnStmt(c: PTransf, kind: TNodeKind, le: PNode, ri: PNode; isFirstWrite
     le.flags.incl nfFirstWrite
   result[1] = ri
 
+proc resolveBorrowedRoutineSym(c: PTransf; s: PSym; info: TLineInfo): PSym =
+  # Follow borrow aliases to the underlying implementation symbol.
+  result = nil
+  var s = s
+  while true:
+    # Skips over all borrowed procs getting the last proc symbol without an implementation.
+    let body = getBody(c.graph, s)
+    if body.kind == nkSym and sfBorrow in body.sym.flags and getBody(c.graph, body.sym).kind == nkSym:
+      s = body.sym
+    else:
+      if body.kind != nkSym:
+        internalError(c.graph.config, info, "wrong AST for borrowed symbol")
+      return body.sym
+  internalError(c.graph.config, info, "wrong AST for borrowed symbol")
+
 proc transformSymAux(c: PTransf, n: PNode): PNode =
   let s = n.sym
   if s.typ != nil and s.typ.callConv == ccClosure:
@@ -136,17 +151,7 @@ proc transformSymAux(c: PTransf, n: PNode): PNode =
   var tc = c.transCon
   if sfBorrow in s.flags and s.kind in routineKinds:
     # simply exchange the symbol:
-    var s = s
-    while true:
-      # Skips over all borrowed procs getting the last proc symbol without an implementation
-      let body = getBody(c.graph, s)
-      if body.kind == nkSym and sfBorrow in body.sym.flags and getBody(c.graph, body.sym).kind == nkSym:
-        s = body.sym
-      else:
-        break
-    b = getBody(c.graph, s)
-    if b.kind != nkSym: internalError(c.graph.config, n.info, "wrong AST for borrowed symbol")
-    b = newSymNode(b.sym, n.info)
+    b = newSymNode(resolveBorrowedRoutineSym(c, s, n.info), n.info)
   elif c.inlining > 0:
     # see bug #13596: we use ref-based equality in the DFA for destruction
     # injections so we need to ensure unique nodes after iterator inlining
@@ -785,7 +790,9 @@ proc transformFor(c: PTransf, n: PNode): PNode =
 
   discard c.breakSyms.pop
 
-  let iter = call[0].sym
+  var iter = call[0].sym
+  if sfBorrow in iter.flags and iter.kind in routineKinds:
+    iter = resolveBorrowedRoutineSym(c, iter, n.info)
 
   var v = newNodeI(nkVarSection, n.info)
   for i in 0..<n.len - 2:
