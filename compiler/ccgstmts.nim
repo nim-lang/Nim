@@ -265,7 +265,7 @@ proc detectObjectOfSwitch(p: BProc; n: PNode): tuple[ok: bool, selectorSym: PSym
     return
 
   var selectorSym: PSym = nil
-  var parentType: PType = nil
+  var parentId = ItemId()
   var sameParent = true
   var childDepth = int16(-1)
   var branches: seq[ObjectOfBranch] = @[]
@@ -287,9 +287,9 @@ proc detectObjectOfSwitch(p: BProc; n: PNode): tuple[ok: bool, selectorSym: PSym
       let parent = skipTypes(target.baseClass, skipPtrs)
       if parent == nil or parent.kind != tyObject:
         return
-      if parentType == nil:
-        parentType = parent
-      elif sameParent and not sameObjectTypes(parentType, parent):
+      if parentId == ItemId():
+        parentId = parent.uniqueId
+      elif sameParent and parent.uniqueId != parentId:
         sameParent = false
       branches.add branch
       branches[^1].tokens.add 0'u16
@@ -303,7 +303,7 @@ proc detectObjectOfSwitch(p: BProc; n: PNode): tuple[ok: bool, selectorSym: PSym
   if selectorSym == nil or branches.len == 0:
     return
 
-  let kind = if sameParent and parentType != nil: oskSibling else: oskBase
+  let kind = if sameParent and parentId != ItemId(): oskSibling else: oskBase
   for i, it in n.sons:
     if it.len == 2:
       var target: PType = nil

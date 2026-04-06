@@ -95,8 +95,9 @@ type
     bucketTable*: CountTable[ItemId]
     objectTree*: Table[ItemId, seq[tuple[depth: int, value: PType]]]
     displayTokens*: Table[ItemId, uint32]
+    displayTokensByKey: Table[string, uint32]
     nextBaseDisplayTokenByDepth*: Table[int16, int]
-    nextSiblingDisplayTokenByParent*: Table[ItemId, int]
+    nextSiblingDisplayTokenByParent*: Table[string, int]
     methodsPerType*: Table[ItemId, seq[PSym]]
     dispatchers*: seq[PSym]
 
@@ -170,16 +171,19 @@ proc runtimeTypeDepth(typ: PType): int16 =
     inc result
     typ = normalizeRuntimeType(typ.sonsImpl[0])
 
-proc runtimeTypeParentId(typ: PType): ItemId =
+proc runtimeTypeKey(g: ModuleGraph; typ: PType): string =
+  let typ = normalizeRuntimeType(typ)
+  if typ == nil:
+    result = ""
+  else:
+    result = typeKey(typ, g.config, loadTypeCallback, loadSymCallback)
+
+proc runtimeTypeParentKey(g: ModuleGraph; typ: PType): string =
   let typ = normalizeRuntimeType(typ)
   if typ == nil or typ.sonsImpl.len == 0 or typ.sonsImpl[0] == nil:
-    return ItemId()
-
-  let parent = normalizeRuntimeType(typ.sonsImpl[0])
-  if parent != nil:
-    result = parent.itemId
+    result = ""
   else:
-    result = ItemId()
+    result = g.runtimeTypeKey(typ.sonsImpl[0])
 
 proc runtimeTypeRoot(typ: PType): PType =
   result = normalizeRuntimeType(typ)
@@ -218,12 +222,18 @@ proc assignDisplayToken(g: ModuleGraph; typ: PType) =
   let typ = normalizeRuntimeType(typ)
   if typ == nil or typ.itemId in g.displayTokens:
     return
+  let key = g.runtimeTypeKey(typ)
+  if key in g.displayTokensByKey:
+    g.displayTokens[typ.itemId] = g.displayTokensByKey[key]
+    return
   let
     depth = runtimeTypeDepth(typ)
-    parent = runtimeTypeParentId(typ)
+    parent = g.runtimeTypeParentKey(typ)
     baseToken = g.nextDisplayToken(g.nextBaseDisplayTokenByDepth, depth, typ)
     siblingToken = g.nextDisplayToken(g.nextSiblingDisplayTokenByParent, parent, typ)
-  g.displayTokens[typ.itemId] = packDisplayToken(baseToken, siblingToken)
+    token = packDisplayToken(baseToken, siblingToken)
+  g.displayTokens[typ.itemId] = token
+  g.displayTokensByKey[key] = token
 
 proc addRuntimeObjectType*(g: ModuleGraph; typ: PType) =
   let typ = normalizeRuntimeType(typ)
@@ -239,8 +249,9 @@ proc displayToken*(g: ModuleGraph; typ: PType): uint32 =
 
 proc resetDisplayTokens*(g: ModuleGraph) =
   g.displayTokens = initTable[ItemId, uint32]()
+  g.displayTokensByKey = initTable[string, uint32]()
   g.nextBaseDisplayTokenByDepth = initTable[int16, int]()
-  g.nextSiblingDisplayTokenByParent = initTable[ItemId, int]()
+  g.nextSiblingDisplayTokenByParent = initTable[string, int]()
 
 proc resetForBackend*(g: ModuleGraph) =
   g.compilerprocs = initStrTable()
@@ -634,8 +645,9 @@ proc initModuleGraphFields(result: ModuleGraph) =
   result.suggestErrors = initTable[FileIndex, seq[Suggest]]()
   result.methods = @[]
   result.displayTokens = initTable[ItemId, uint32]()
+  result.displayTokensByKey = initTable[string, uint32]()
   result.nextBaseDisplayTokenByDepth = initTable[int16, int]()
-  result.nextSiblingDisplayTokenByParent = initTable[ItemId, int]()
+  result.nextSiblingDisplayTokenByParent = initTable[string, int]()
   result.compilerprocs = initStrTable()
   result.exposed = initStrTable()
   result.packageTypes = initStrTable()
