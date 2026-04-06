@@ -31,6 +31,8 @@ proc registerTraverseProc(p: BProc, v: PSym) =
     p.module.preInitProc.procSec(cpsInit).addCallStmt(fnName, traverseProc)
     p.module.preInitProc.procSec(cpsInit).add("\n")
 
+proc rdMType(p: BProc; a: TLoc; nilCheck: var Rope; result: var Snippet; enforceV1 = false)
+
 proc isAssignedImmediately(conf: ConfigRef; n: PNode): bool {.inline.} =
   if n.kind == nkEmpty:
     result = false
@@ -211,6 +213,161 @@ proc exprBlock(p: BProc, n: PNode, d: var TLoc) =
   startSimpleBlock(p, scope)
   expr(p, n, d)
   endSimpleBlock(p, scope)
+
+type
+  ObjectOfSwitchKind = enum
+    oskSibling
+    oskBase
+
+  ObjectOfBranch = object
+    tokens: seq[uint16]
+    body: PNode
+
+proc skipObjectOfCond(cond: PNode): PNode =
+  result = cond
+  while result != nil:
+    case result.kind
+    of nkStmtListExpr:
+      result = result.lastSon
+    of nkHiddenStdConv, nkHiddenSubConv, nkConv:
+      result = result[1]
+    of nkObjUpConv, nkObjDownConv, nkChckRange, nkChckRangeF, nkChckRange64:
+      result = result[0]
+    else:
+      break
+
+proc collectObjectOfCond(cond: PNode; selectorSym: var PSym; target: var PType): bool =
+  let cond = skipObjectOfCond(cond)
+  if cond == nil:
+    return false
+  if cond.kind in nkCallKinds and cond.len == 3 and cond[0].kind == nkSym and
+      cond[0].sym.magic == mOf:
+    if cond[1].kind != nkSym:
+      return false
+    if selectorSym == nil:
+      selectorSym = cond[1].sym
+    elif selectorSym.itemId != cond[1].sym.itemId:
+      return false
+
+    target = skipTypes(cond[2].typ, typedescPtrs)
+    if target == nil or target.kind != tyObject or target.baseClass == nil:
+      return false
+    return true
+
+  result = false
+
+proc detectObjectOfSwitch(p: BProc; n: PNode): tuple[ok: bool, selectorSym: PSym,
+                                            kind: ObjectOfSwitchKind, childDepth: int16,
+                                            branches: seq[ObjectOfBranch], elseBody: PNode] =
+  result = (ok: false, selectorSym: nil, kind: oskSibling, childDepth: int16(-1),
+    branches: @[], elseBody: nil)
+  if n.len < 2:
+    return
+
+  var selectorSym: PSym = nil
+  var parentType: PType = nil
+  var sameParent = true
+  var childDepth = int16(-1)
+  var branches: seq[ObjectOfBranch] = @[]
+  var elseBody: PNode = nil
+
+  for i, it in n.sons:
+    if it.len == 2:
+      var target: PType = nil
+      if not collectObjectOfCond(it[0], selectorSym, target):
+        return
+      if target == nil:
+        return
+      var branch = ObjectOfBranch(body: it[1], tokens: @[])
+      let targetDepth = getObjDepth(target)
+      if childDepth < 0:
+        childDepth = targetDepth
+      elif targetDepth != childDepth:
+        return
+      let parent = skipTypes(target.baseClass, skipPtrs)
+      if parent == nil or parent.kind != tyObject:
+        return
+      if parentType == nil:
+        parentType = parent
+      elif sameParent and not sameObjectTypes(parentType, parent):
+        sameParent = false
+      branches.add branch
+      branches[^1].tokens.add 0'u16
+    elif it.len == 1:
+      if i != n.len - 1 or elseBody != nil:
+        return
+      elseBody = it[0]
+    else:
+      return
+
+  if selectorSym == nil or branches.len == 0:
+    return
+
+  let kind = if sameParent and parentType != nil: oskSibling else: oskBase
+  for i, it in n.sons:
+    if it.len == 2:
+      var target: PType = nil
+      discard collectObjectOfCond(it[0], selectorSym, target)
+      let token = displayToken(p.module.g.graph, target)
+      branches[i].tokens[0] =
+        if kind == oskSibling: siblingDisplayToken(token)
+        else: baseDisplayToken(token)
+
+  result.ok = true
+  result.selectorSym = selectorSym
+  result.kind = kind
+  result.childDepth = childDepth
+  result.branches = branches
+  result.elseBody = elseBody
+
+proc genObjectOfSwitch(p: BProc; n: PNode; d: var TLoc): bool =
+  # The current switch-oriented lowering is only implemented for the C backend.
+  if optTinyRtti notin p.config.globalOptions or p.module.compileToCpp:
+    return false
+
+  let detected = detectObjectOfSwitch(p, n)
+  if not detected.ok:
+    return false
+
+  if detected.childDepth < 0:
+    return false
+
+  var a = initLocExprSingleUse(p, newSymNode(detected.selectorSym, n.info))
+  var nilCheck: Rope = ""
+  var mtype: Snippet = ""
+  rdMType(p, a, nilCheck, mtype)
+  let displayAtDepth = subscript(derefField(mtype, "display"), cIntValue(int(detected.childDepth)))
+  let discr =
+    if detected.kind == oskSibling:
+      cOp(Shr, NimUint32, displayAtDepth, cIntValue(16))
+    else:
+      cOp(BitAnd, NimUint32, displayAtDepth, cUintValue(0xFFFF'u))
+
+  template emitSwitchBody() =
+    p.s(cpsStmts).addSwitchStmt(discr):
+      for branch in detected.branches:
+        for token in branch.tokens:
+          p.s(cpsStmts).addSingleSwitchCase(cIntValue(int(token))):
+            exprBlock(p, branch.body, d)
+            p.s(cpsStmts).addBreak()
+      if detected.elseBody != nil:
+        p.s(cpsStmts).addSwitchElse():
+          exprBlock(p, detected.elseBody, d)
+          p.s(cpsStmts).addBreak()
+
+  if nilCheck != "":
+    var ifStmt = initIfStmt(p.s(cpsStmts))
+    initElifBranch(p.s(cpsStmts), ifStmt, cOp(NotEqual, nilCheck, NimNil))
+    emitSwitchBody()
+    if detected.elseBody != nil:
+      finishBranch(p.s(cpsStmts), ifStmt)
+      initElseBranch(p.s(cpsStmts), ifStmt)
+      exprBlock(p, detected.elseBody, d)
+    finishBranch(p.s(cpsStmts), ifStmt)
+    finishIfStmt(p.s(cpsStmts), ifStmt)
+  else:
+    emitSwitchBody()
+  result = true
 
 template preserveBreakIdx(body: untyped): untyped =
   var oldBreakIdx = p.breakIdx
@@ -522,6 +679,8 @@ proc genIf(p: BProc, n: PNode, d: var TLoc) =
   if not isEmptyType(n.typ) and d.k == locNone:
     d = getTemp(p, n.typ)
   genLineDir(p, n)
+  if genObjectOfSwitch(p, n, d):
+    return
   let lend = getLabel(p)
   for it in n.sons:
     # bug #4230: avoid false sharing between branches:
