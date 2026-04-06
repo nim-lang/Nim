@@ -120,18 +120,21 @@ proc newAsgnStmt(c: PTransf, kind: TNodeKind, le: PNode, ri: PNode; isFirstWrite
 
 proc resolveBorrowedRoutineSym(c: PTransf; s: PSym; info: TLineInfo): PSym =
   # Follow borrow aliases to the underlying implementation symbol.
-  result = nil
   var s = s
   while true:
-    # Skips over all borrowed procs getting the last proc symbol without an implementation.
+    # Skips over all borrowed procs getting the last proc symbol without an implementation
     let body = getBody(c.graph, s)
     if body.kind == nkSym and sfBorrow in body.sym.flags and getBody(c.graph, body.sym).kind == nkSym:
       s = body.sym
-    elif body.kind != nkSym:
-      break
     else:
-      return body.sym
-  internalError(c.graph.config, info, "wrong AST for borrowed symbol")
+      break
+
+  let body = getBody(c.graph, s)
+  if body.kind == nkSym:
+    result = body.sym
+  else:
+    result = nil
+    internalError(c.graph.config, info, "wrong AST for borrowed symbol")
 
 proc transformSymAux(c: PTransf, n: PNode): PNode =
   let s = n.sym
