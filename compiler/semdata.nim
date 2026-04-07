@@ -741,7 +741,7 @@ proc replaceHookMagic*(c: PContext, n: PNode, kind: TTypeAttachedOp): PNode =
   case kind
   of attachedDestructor:
     result = n
-    let t = n[1].typ.skipTypes(abstractVar)
+    let t = n[1].typ.skipTypes({tyAlias, tyVar, tySink})
     let op = getAttachedOp(c.graph, t, attachedDestructor)
     if op != nil:
       result[0] = newSymNode(op)
@@ -753,13 +753,13 @@ proc replaceHookMagic*(c: PContext, n: PNode, kind: TTypeAttachedOp): PNode =
           result[1] = skipAddr(n[1])
   of attachedTrace:
     result = n
-    let t = n[1].typ.skipTypes(abstractVar)
+    let t = n[1].typ.skipTypes({tyAlias, tyVar, tySink})
     let op = getAttachedOp(c.graph, t, attachedTrace)
     if op != nil:
       result[0] = newSymNode(op)
   of attachedDup:
     result = n
-    let t = n[1].typ.skipTypes(abstractVar)
+    let t = n[1].typ.skipTypes({tyAlias, tyVar, tySink})
     let op = getAttachedOp(c.graph, t, attachedDup)
     if op != nil:
       result[0] = newSymNode(op)
@@ -769,7 +769,7 @@ proc replaceHookMagic*(c: PContext, n: PNode, kind: TTypeAttachedOp): PNode =
         result.add boolLit
   of attachedWasMoved:
     result = n
-    let t = n[1].typ.skipTypes(abstractVar)
+    let t = n[1].typ.skipTypes({tyAlias, tyVar, tySink})
     let op = getAttachedOp(c.graph, t, attachedWasMoved)
     if op != nil:
       result[0] = newSymNode(op)
@@ -780,7 +780,7 @@ proc replaceHookMagic*(c: PContext, n: PNode, kind: TTypeAttachedOp): PNode =
     result = c.semAsgnOpr(c, n, nkAsgn)
   of attachedDeepCopy:
     result = n
-    let t = n[1].typ.skipTypes(abstractVar)
+    let t = n[1].typ.skipTypes({tyAlias, tyVar, tySink})
     let op = getAttachedOp(c.graph, t, kind)
     if op != nil:
       result[0] = newSymNode(op)
