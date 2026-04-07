@@ -92,12 +92,27 @@ else:
 when not defined(nimHasQuirky):
   {.pragma: quirky.}
 
+# Forward declarations for native allocator alignment (implemented in alloc.nim).
+# rawAlloc's contract: result + sizeof(FreeCell) is alignment-aligned.
+# For ORC/YRC, sizeof(FreeCell) == sizeof(RefHeader).
+const useNativeAlignedAlloc = (defined(gcOrc) or defined(gcYrc)) and
+  not defined(useMalloc) and not defined(nimscript) and
+  not defined(nimdoc) and not defined(useNimRtl)
+
+when useNativeAlignedAlloc:
+  proc nimAlignedAlloc0(size: Natural, alignment: int): pointer {.gcsafe, raises: [].}
+  proc nimAlignedAlloc(size: Natural, alignment: int): pointer {.gcsafe, raises: [].}
+  proc nimAlignedDealloc(p: pointer) {.gcsafe, raises: [].}
+
 proc nimNewObj(size, alignment: int): pointer {.compilerRtl.} =
-  let hdrSize = align(sizeof(RefHeader), alignment)
-  let s = size +% hdrSize
-  when defined(nimscript):
+  when defined(nimscript) or defined(nimdoc):
     discard
+  elif useNativeAlignedAlloc:
+    let s = size +% sizeof(RefHeader)
+    result = nimAlignedAlloc0(s, alignment) +! sizeof(RefHeader)
   else:
+    let hdrSize = align(sizeof(RefHeader), alignment)
+    let s = size +% hdrSize
     result = alignedAlloc0(s, alignment) +! hdrSize
   when defined(nimArcDebug) or defined(nimArcIds):
     head(result).refId = gRefId
@@ -111,12 +126,14 @@ proc nimNewObj(size, alignment: int): pointer {.compilerRtl.} =
 
 proc nimNewObjUninit(size, alignment: int): pointer {.compilerRtl.} =
   # Same as 'newNewObj' but do not initialize the memory to zero.
-  # The codegen proved for us that this is not necessary.
-  let hdrSize = align(sizeof(RefHeader), alignment)
-  let s = size + hdrSize
-  when defined(nimscript):
+  when defined(nimscript) or defined(nimdoc):
     discard
+  elif useNativeAlignedAlloc:
+    let s = size + sizeof(RefHeader)
+    result = cast[ptr RefHeader](nimAlignedAlloc(s, alignment) +! sizeof(RefHeader))
   else:
+    let hdrSize = align(sizeof(RefHeader), alignment)
+    let s = size + hdrSize
     result = cast[ptr RefHeader](alignedAlloc(s, alignment) +! hdrSize)
   head(result).rc = 0
   when defined(gcOrc):
@@ -189,8 +206,11 @@ proc nimRawDispose(p: pointer, alignment: int) {.compilerRtl.} =
       if freedCells.data == nil: init(freedCells)
       freedCells.incl head(p)
     else:
-      let hdrSize = align(sizeof(RefHeader), alignment)
-      alignedDealloc(p -! hdrSize, alignment)
+      when useNativeAlignedAlloc:
+        nimAlignedDealloc(p -! sizeof(RefHeader))
+      else:
+        let hdrSize = align(sizeof(RefHeader), alignment)
+        alignedDealloc(p -! hdrSize, alignment)
 
 template `=dispose`*[T](x: owned(ref T)) = nimRawDispose(cast[pointer](x), T.alignOf)
 #proc dispose*(x: pointer) = nimRawDispose(x)
