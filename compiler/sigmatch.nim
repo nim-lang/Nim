@@ -90,7 +90,6 @@ type
     newlyTypedOperands*: seq[int]
       ## indexes of arguments that are newly typechecked in this match
       ## used for type bound op additions
-    mergeShadowOnNoMatch*: bool
 
   TTypeRelFlag* = enum
     trDontBind
@@ -116,8 +115,7 @@ proc initCandidateAux(ctx: PContext,
                       genericMatches: 0,
                       state: csEmpty, firstMismatch: MismatchInfo(),
                       callee: callee, call: nil, baseTypeMatch: false,
-                      genericConverter: false, inheritancePenalty: -1,
-                      mergeShadowOnNoMatch: false
+                      genericConverter: false, inheritancePenalty: -1
   )
 
 proc initCandidate*(ctx: PContext, callee: PType): TCandidate =
@@ -2837,7 +2835,7 @@ proc findFirstArgBlock(m: var TCandidate, n: PNode): int =
 
 proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var IntSet) =
   template noMatch() =
-    if m.mergeShadowOnNoMatch:
+    if m.calleeSym != nil and m.calleeSym.kind notin {skTemplate, skMacro}:
       c.mergeShadowScope
     else:
       c.closeShadowScope

@@ -130,20 +130,8 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
   # current overload being considered
   var sym = syms[0].s
   let name = sym.name
-  var
-    scope = syms[0].scope
-    hasTemplateLike = false
-    hasRegular = false
-  for it in syms:
-    if it.s.kind in {skTemplate, skMacro}:
-      hasTemplateLike = true
-    else:
-      hasRegular = true
-  let useOverloadShadow = hasTemplateLike and hasRegular
-  if useOverloadShadow:
-    c.openShadowScope
-    symCount = c.currentScope.symbols.counter
-
+  var scope = syms[0].scope
+  c.openShadowScope
   if allowTypeBoundOps:
     for a in 1 ..< n.len:
       # for every already typed argument, add type bound ops
@@ -156,7 +144,6 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
   while true:
     determineType(c, sym)
     z = initCandidate(c, sym, initialBinding, scope, diagnosticsFlag)
-    z.mergeShadowOnNoMatch = sym.kind notin {skTemplate, skMacro}
     # this is kinda backwards as without a check here the described
     # problems in recalc would not happen, but instead it 100%
     # does check forever in some cases
@@ -231,11 +218,10 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
     scope = syms[nextSymIndex].scope
     inc(nextSymIndex)
 
-  if useOverloadShadow:
-    if best.state == csMatch and best.calleeSym != nil and best.calleeSym.kind in {skTemplate, skMacro}:
-      c.closeShadowScope
-    else:
-      c.mergeShadowScope
+  if best.state == csMatch and best.calleeSym != nil and best.calleeSym.kind in {skTemplate, skMacro}:
+    c.closeShadowScope
+  else:
+    c.mergeShadowScope
 
 proc effectProblem(f, a: PType; result: var string; c: PContext) =
   if f.kind == tyProc and a.kind == tyProc:
