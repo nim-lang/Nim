@@ -1163,7 +1163,7 @@ proc trackCall(tracked: PEffects; n: PNode) =
     var (isHook, opKind) = findHookKind(a.sym.name.s)
     if isHook:
       # rebind type bounds operations after createTypeBoundOps call
-      let t = n[1].typ.skipTypes({tyAlias, tyVar})
+      let t = n[1].typ.skipTypes({tyAlias, tyVar, tySink})
       if a.sym != getAttachedOp(tracked.graph, t, opKind):
         createTypeBoundOps(tracked, t, n.info, explicit = true)
         # replace builtin hooks with lifted ones
