@@ -1894,6 +1894,8 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
         isRef or
         (d.k notin {locTemp,locLocalVar,locGlobalVar,locParam,locField,locExpr}) or
         (d.k == locExpr and d.lode.typ != nil and not sameType(d.lode.typ.skipTypes(abstractInst), t)) or
+        # when d.k == locExpr and the destination type differs from the constructor type (inheritance/subtyping),
+        # a temporary is still used so that genAssignment can perform the proper type-tag and slicing checks.
         (isPartOf(d.lode, e) != arNo)
 
   var tmp: TLoc = default(TLoc)
