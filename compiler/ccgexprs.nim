@@ -1892,7 +1892,7 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
   # check if we need to construct the object in a temporary
   var useTemp =
         isRef or
-        (d.k notin {locTemp,locLocalVar,locGlobalVar,locParam,locField}) or
+        (d.k notin {locTemp,locLocalVar,locGlobalVar,locParam,locField,locExpr}) or
         (isPartOf(d.lode, e) != arNo)
 
   var tmp: TLoc = default(TLoc)
