@@ -4,7 +4,7 @@ success
 M1 M2
 ok
 '''
-matrix: "--mm:refc;--mm:orc"
+matrix: "--mm:refc; --mm:orc"
 """
 
 type
@@ -179,3 +179,9 @@ proc g() =
   x.inst = QAbstractItemModel()
 
 g()
+
+block: # bug #25695
+  type A = object
+    d: array[8 * 1024 * 1024, byte]
+  let r = new A
+  r[] = A()
