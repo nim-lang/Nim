@@ -1893,6 +1893,7 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
   var useTemp =
         isRef or
         (d.k notin {locTemp,locLocalVar,locGlobalVar,locParam,locField,locExpr}) or
+        (d.k == locExpr and d.lode.typ != nil and not sameType(d.lode.typ.skipTypes(abstractInst), t)) or
         (isPartOf(d.lode, e) != arNo)
 
   var tmp: TLoc = default(TLoc)
