@@ -1042,7 +1042,7 @@ proc iterateOutlineNodes(graph: ModuleGraph, n: PNode, infoPairs: SuggestFileSym
     if symData != nil and symData.sym.kind == skEnumField and symData.info.exactEquals(symData.sym.info):
        let sym = symData.sym
        graph.suggestResult(sym, sym.info, ideOutline, n.endInfo.line, n.endInfo.col)
-  elif (n.kind in {nkFuncDef, nkProcDef, nkTypeDef, nkMacroDef, nkTemplateDef, nkConverterDef, nkEnumFieldDef, nkConstDef}):
+  elif (n.kind in {nkFuncDef, nkProcDef, nkMethodDef, nkIteratorDef, nkTypeDef, nkMacroDef, nkTemplateDef, nkConverterDef, nkEnumFieldDef, nkConstDef}):
     matched = handleIdentOrSym(graph, n, n.endInfo, infoPairs)
   else:
     matched = false
