@@ -185,78 +185,88 @@ when not (defined(cpu16) or defined(cpu8)):
   proc newWideCString*(s: string): WideCStringObj =
     result = newWideCString(cstring s, s.len)
 
-  proc utf16ToStringImpl(w: ptr UncheckedArray[Utf16Char], estimate: int,
-                         replacement: int,
-                         len: Natural = 0,
-                         nulTerminated: static bool): string =
-    result = newStringOfCap(estimate + estimate shr 2)
-
+  iterator decodeUtf16(w: WideCString; replacement: int): int =
+    ## Looks for a terminating NUL for length
     var i = 0
-    while (when nulTerminated: w[i].int16 != 0'i16 else: i < len):
+    while w[i].int16 != 0'i16:
       var ch = ord(w[i])
       inc i
       if ch >= UNI_SUR_HIGH_START and ch <= UNI_SUR_HIGH_END:
-        # If the 16 bits following the high surrogate are in the source...
-        if (when nulTerminated: w[i].int16 != 0'i16 else: i < len):
+        # If the 16 bits following the high surrogate are NOT in the source...
+        if w[i].int16 == 0'i16:
+          ch = replacement #invalid UTF-16
+        else:
           let ch2 = ord(w[i])
-
           # If it's a low surrogate, convert to UTF32:
           if ch2 >= UNI_SUR_LOW_START and ch2 <= UNI_SUR_LOW_END:
             ch = (((ch and halfMask) shl halfShift) + (ch2 and halfMask)) + halfBase
             inc i
           else:
-            #invalid UTF-16
-            ch = replacement
-        else:
-          #invalid UTF-16
-          ch = replacement
+            ch = replacement #invalid UTF-16
       elif ch >= UNI_SUR_LOW_START and ch <= UNI_SUR_LOW_END:
-        #invalid UTF-16
-        ch = replacement
+        ch = replacement #invalid UTF-16
+      yield ch
 
-      if ch < 0x80:
-        result.add chr(ch)
-      elif ch < 0x800:
-        result.add chr((ch shr 6) or 0xc0)
-        result.add chr((ch and 0x3f) or 0x80)
-      elif ch < 0x10000:
-        result.add chr((ch shr 12) or 0xe0)
-        result.add chr(((ch shr 6) and 0x3f) or 0x80)
-        result.add chr((ch and 0x3f) or 0x80)
-      elif ch <= 0x10FFFF:
-        result.add chr((ch shr 18) or 0xf0)
-        result.add chr(((ch shr 12) and 0x3f) or 0x80)
-        result.add chr(((ch shr 6) and 0x3f) or 0x80)
-        result.add chr((ch and 0x3f) or 0x80)
-      else:
-        # replacement char(in case user give very large number):
-        result.add chr(0xFFFD shr 12 or 0b1110_0000)
-        result.add chr(0xFFFD shr 6 and ones(6) or 0b10_0000_00)
-        result.add chr(0xFFFD and ones(6) or 0b10_0000_00)
+  iterator decodeUtf16(w: openArray[Utf16Char]; replacement: int): int =
+    ## Doesn't look for terminating NUL for length, trusts `w.len`
+    var i = 0
+    while i < w.len:
+      var ch = ord(w[i])
+      inc i
+      if ch >= UNI_SUR_HIGH_START and ch <= UNI_SUR_HIGH_END:
+        # If the 16 bits following the high surrogate are NOT in the source...
+        if i >= w.len:
+          ch = replacement #invalid UTF-16
+        else:
+          let ch2 = ord(w[i])
+          # If it's a low surrogate, convert to UTF32:
+          if ch2 >= UNI_SUR_LOW_START and ch2 <= UNI_SUR_LOW_END:
+            ch = (((ch and halfMask) shl halfShift) + (ch2 and halfMask)) + halfBase
+            inc i
+          else:
+            ch = replacement #invalid UTF-16
+      elif ch >= UNI_SUR_LOW_START and ch <= UNI_SUR_LOW_END:
+        ch = replacement #invalid UTF-16
+      yield ch
 
-  proc utf16ToString(w: ptr UncheckedArray[Utf16Char], len: Natural,
-                     estimate: int = 80,
-                     replacement: int = 0xFFFD): string =
+  proc addUtf8(dest: var string; rune: int) =
+    if rune < 0x80:
+      dest.add chr(rune)
+    elif rune < 0x800:
+      dest.add chr((rune shr 6) or 0xc0)
+      dest.add chr((rune and 0x3f) or 0x80)
+    elif rune < 0x10000:
+      dest.add chr((rune shr 12) or 0xe0)
+      dest.add chr(((rune shr 6) and 0x3f) or 0x80)
+      dest.add chr((rune and 0x3f) or 0x80)
+    elif rune <= 0x10FFFF:
+      dest.add chr((rune shr 18) or 0xf0)
+      dest.add chr(((rune shr 12) and 0x3f) or 0x80)
+      dest.add chr(((rune shr 6) and 0x3f) or 0x80)
+      dest.add chr((rune and 0x3f) or 0x80)
+    else:
+      # replacement char (in case user give very large number):
+      dest.add chr(0xFFFD shr 12 or 0b1110_0000)
+      dest.add chr(0xFFFD shr 6 and ones(6) or 0b10_0000_00)
+      dest.add chr(0xFFFD and ones(6) or 0b10_0000_00)
+
+
+  proc `$`*(w: openArray[Utf16Char]; replacement: int = 0xFFFD): string =
     ## Decodes a length-delimited UTF-16 slice to UTF-8.
     ##
     ## Unlike the `WideCString` overloads, this preserves the provided length
     ## and does not search for a terminating NUL.
-    result = utf16ToStringImpl(w, estimate, replacement, len, false)
-
-  proc `$`*(w: openArray[Utf16Char], estimate: int,
-            replacement: int = 0xFFFD): string =
     if w.len == 0:
       result = ""
     else:
-      result = utf16ToString(cast[ptr UncheckedArray[Utf16Char]](unsafeAddr w[0]),
-                             w.len, estimate, replacement)
+      result = newStringOfCap(w.len + w.len shr 2)
+      for rune in w.decodeUtf16(replacement):
+        result.addUtf8(rune)
 
-  proc `$`*(w: openArray[Utf16Char]): string =
-    result = w $ 80
-
-  proc `$`*(w: WideCString; estimate: int, replacement: int = 0xFFFD): string =
-    utf16ToStringImpl(cast[ptr UncheckedArray[Utf16Char]](w),
-      estimate, replacement, 0, true)
+  proc `$`*(w: WideCString; estimate: int; replacement: int = 0xFFFD): string =
+    result = newStringOfCap(estimate + estimate shr 2)
+    for rune in w.decodeUtf16(replacement):
+      result.addUtf8(rune)
 
   proc `$`*(s: WideCString): string =
     result = s $ 80

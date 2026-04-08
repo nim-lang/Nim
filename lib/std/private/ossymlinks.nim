@@ -25,24 +25,13 @@ elif defined(windows):
   type
     ReparseBuffer = array[MAXIMUM_REPARSE_DATA_BUFFER_SIZE, byte]
 
-    ReparseLayout = object
-      pathBufOffset: int
-      flagsField: int
-
     ReparseLinkInfo = object
       tag: int32
-      layout: ReparseLayout
+      flags: int32
+      pathBufOffset: int
+      flagsField: int
       substituteNameOffset: int
       substituteNameLength: int
-      flags: int32
-
-    Utf16Slice = object
-      ## UTF-16 view inside the reparse payload.
-      ## ptr + len kept here because the payload gives us a bounded slice,
-      ## not a NUL-terminated `WideCString`.
-      ## TODO: use `openArray[Utf16Char]` when view values are no longer experimental.
-      data: ptr UncheckedArray[Utf16Char]
-      len: int
 
   template readU16(buf: ReparseBuffer; off: int): uint16 =
     uint16(buf[off]) or (uint16(buf[off + 1]) shl 8)
@@ -52,56 +41,33 @@ elif defined(windows):
       uint32(buf[off]) or (uint32(buf[off + 1]) shl 8) or
       (uint32(buf[off + 2]) shl 16) or (uint32(buf[off + 3]) shl 24))
 
-  func startsWithAsciiIgnoreCase(s: Utf16Slice; prefix: openArray[char]): bool =
+  func startsWithAsciiIgnoreCase(wide: openArray[Utf16Char]; prefix: openArray[char]): bool =
     ## Matches an ASCII prefix against UTF-16 code units.
     ##
     ## This is only correct for ASCII prefixes.
     ## It is not a valid general case-insensitive Unicode comparison
     ## and must not be used for arbitrary UTF-16 text.
-    if prefix.len > s.len:
+    if prefix.len > wide.len:
       return false
     var i = 0
     while i < prefix.len:
-      let codeUnit = ord(s.data[i])
-      if codeUnit > 0x7F or toLowerAscii(char(codeUnit)) != toLowerAscii(prefix[i]):
+      let rune = ord(wide[i])
+      if rune > 0x7F or toLowerAscii(char(rune)) != toLowerAscii(prefix[i]):
         return false
       inc i
     true
 
-  proc makeUtf16Slice(buf: ReparseBuffer; startByte, byteLen: int): Utf16Slice =
-    Utf16Slice(
-      data: cast[ptr UncheckedArray[Utf16Char]](addr buf[startByte]),
-      len: byteLen shr 1
-    )
-
-  proc decodeWinTarget(wide: Utf16Slice): string =
+  proc decodeWinTarget(wide: openArray[Utf16Char]): string =
     if wide.startsWithAsciiIgnoreCase(r"\??\unc\"):
-      r"\\" & `$`(wide.data.toOpenArray(8, wide.len - 1), wide.len - 8)
+      r"\\" & $(wide.toOpenArray(8, wide.len - 1))
     elif wide.startsWithAsciiIgnoreCase(r"\??\"):
-      `$`(wide.data.toOpenArray(4, wide.len - 1), wide.len - 4)
+      $(wide.toOpenArray(4, wide.len - 1))
     else:
-      `$`(wide.data.toOpenArray(0, wide.len - 1), wide.len)
+      $wide
 
   template invalidReparseData(path, details: string) =
     raise newException(OSError,
       "expandSymlink: invalid reparse data for " & path & " (" & details & ")")
-
-  proc reparseLayout(tag: int32; symlinkPath: string): ReparseLayout =
-    case tag
-    of IO_REPARSE_TAG_SYMLINK:
-      result = ReparseLayout(
-        pathBufOffset: symlinkPathBufferOffset,
-        flagsField: symlinkFlagsField
-      )
-    of IO_REPARSE_TAG_MOUNT_POINT:
-      result = ReparseLayout(
-        pathBufOffset: mountPointPathBufferOffset,
-        flagsField: -1
-      )
-    else:
-      raise newException(OSError,
-        "expandSymlink: unsupported reparse tag for " & symlinkPath &
-        " (ReparseTag=0x" & toHex(tag) & ")")
 
   proc parseReparseLinkInfo(buf: ReparseBuffer; bytesReturned: int;
                             symlinkPath: string): ReparseLinkInfo =
@@ -109,16 +75,25 @@ elif defined(windows):
       invalidReparseData(symlinkPath, "truncated header")
 
     let
-      tag = readI32(buf, 0)
       reparseDataLen = int(readU16(buf, 4))
       wholeDataLen = reparseHeaderSize + reparseDataLen
     if wholeDataLen > bytesReturned:
       invalidReparseData(symlinkPath, "payload exceeds returned size")
 
-    result.tag = tag
-    result.layout = reparseLayout(tag, symlinkPath)
+    result.tag = readI32(buf, 0)
+    case result.tag
+    of IO_REPARSE_TAG_SYMLINK:
+      result.pathBufOffset = symlinkPathBufferOffset
+      result.flagsField = symlinkFlagsField
+    of IO_REPARSE_TAG_MOUNT_POINT:
+      result.pathBufOffset = mountPointPathBufferOffset
+      result.flagsField = -1
+    else:
+      raise newException(OSError,
+        "expandSymlink: unsupported reparse tag for " & symlinkPath &
+        " (ReparseTag=0x" & toHex(result.tag) & ")")
 
-    if result.layout.pathBufOffset > wholeDataLen:
+    if result.pathBufOffset > wholeDataLen:
       invalidReparseData(symlinkPath, "missing path buffer")
 
     result.substituteNameOffset = int(readU16(buf, substituteNameOffsetField))
@@ -129,15 +104,15 @@ elif defined(windows):
         (result.substituteNameLength and 1) != 0:
       invalidReparseData(symlinkPath, "unaligned UTF-16 substitute name")
 
-    let startByte = result.layout.pathBufOffset + result.substituteNameOffset
+    let startByte = result.pathBufOffset + result.substituteNameOffset
     let endByte = startByte + result.substituteNameLength
-    if startByte < result.layout.pathBufOffset or endByte < startByte or
+    if startByte < result.pathBufOffset or endByte < startByte or
         endByte > wholeDataLen:
       invalidReparseData(symlinkPath, "substitute name out of bounds")
 
     result.flags =
-      if result.layout.flagsField >= 0:
-        readI32(buf, result.layout.flagsField)
+      if result.flagsField >= 0:
+        readI32(buf, result.flagsField)
       else:
         0
 
@@ -231,14 +206,16 @@ proc expandSymlink*(symlinkPath: string): string {.noWeirdTarget.} =
       raiseOSError(osLastError(),
         "expandSymlink: DeviceIoControl failed for " & symlinkPath)
 
-    let info = parseReparseLinkInfo(buf, int(bytesReturned), symlinkPath)
-    let startByte = info.layout.pathBufOffset + info.substituteNameOffset
-    let targetWide = makeUtf16Slice(buf, startByte, info.substituteNameLength)
+    let
+      info = parseReparseLinkInfo(buf, int(bytesReturned), symlinkPath)
+      startByte = info.pathBufOffset + info.substituteNameOffset
+      runeLen = info.substituteNameLength shr 1
+      wideSlicePtr = cast[ptr UncheckedArray[Utf16Char]](addr buf[startByte])
 
     if info.tag == IO_REPARSE_TAG_SYMLINK and
       (info.flags and SYMLINK_FLAG_RELATIVE) != 0:
-      return `$`(targetWide.data.toOpenArray(0, targetWide.len - 1), targetWide.len)
-    decodeWinTarget(targetWide)
+      return $(wideSlicePtr.toOpenArray(0, runeLen - 1))
+    decodeWinTarget(wideSlicePtr.toOpenArray(0, runeLen - 1))
   elif defined(nintendoswitch):
     result = symlinkPath
   else:
