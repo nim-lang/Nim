@@ -216,6 +216,10 @@ proc newAsgnStmt(le, ri: PNode, info: TLineInfo): PNode =
   result[0] = le
   result[1] = ri
 
+proc markInjectDestructors(s: PSym) {.inline.} =
+  backendEnsureMutable s
+  s.flagsImpl.incl sfInjectDestructors
+
 proc makeClosure*(g: ModuleGraph; idgen: IdGenerator; prc: PSym; env: PNode; info: TLineInfo): PNode =
   result = newNodeIT(nkClosure, info, prc.typ)
   result.add(newSymNode(prc))
@@ -228,7 +232,7 @@ proc makeClosure*(g: ModuleGraph; idgen: IdGenerator; prc: PSym; env: PNode; inf
   #if isClosureIterator(result.typ):
   createTypeBoundOps(g, nil, result.typ, info, idgen)
   if tfHasAsgn in result.typ.flags or optSeqDestructors in g.config.globalOptions:
-    prc.incl sfInjectDestructors
+    markInjectDestructors(prc)
 
 template liftingHarmful(conf: ConfigRef; owner: PSym): bool =
   ## lambda lifting can be harmful for JS-like code generators.
@@ -240,7 +244,7 @@ proc createTypeBoundOpsLL(g: ModuleGraph; refType: PType; info: TLineInfo; idgen
     createTypeBoundOps(g, nil, refType.elementType, info, idgen)
     createTypeBoundOps(g, nil, refType, info, idgen)
     if tfHasAsgn in refType.flags or optSeqDestructors in g.config.globalOptions:
-      owner.incl sfInjectDestructors
+      markInjectDestructors(owner)
 
 proc genCreateEnv(env: PNode): PNode =
   var c = newNodeIT(nkObjConstr, env.info, env.typ)
@@ -636,7 +640,7 @@ proc rawClosureCreation(owner: PSym;
         if owner.kind != skMacro:
           createTypeBoundOps(d.graph, nil, fieldAccess.typ, env.info, d.idgen)
         if tfHasAsgn in fieldAccess.typ.flags or optSeqDestructors in d.graph.config.globalOptions:
-          owner.incl sfInjectDestructors
+          markInjectDestructors(owner)
 
   let upField = lookupInRecord(env.typ.skipTypes({tyOwned, tyRef, tyPtr}).n, getIdent(d.graph.cache, upName))
   if upField != nil:
