@@ -1,9 +1,66 @@
-import std/[assertions, options, sequtils]
+import std/[assertions, options, sequtils, tables]
 import std/nre2
 
 block:
   let pattern = "[0-9"
   doAssertRaises(RegexError): discard re(pattern)
+
+block: # captures
+  block: # capture bounds are correct
+    let ex1 = re("([0-9])")
+    doAssert "1 23".find(ex1).get.matchBounds == 0 .. 0
+    doAssert "1 23".find(ex1).get.captureBounds[0] == 0 .. 0
+    doAssert "1 23".find(ex1, 1).get.matchBounds == 2 .. 2
+    doAssert "1 23".find(ex1, 3).get.matchBounds == 3 .. 3
+
+    let ex2 = re("()()()()()()()()()()([0-9])")
+    doAssert "824".find(ex2).get.captureBounds[0] == 0 .. -1
+    doAssert "824".find(ex2).get.captureBounds[10] == 0 .. 0
+
+    let ex3 = re("([0-9]+)")
+    doAssert "824".find(ex3).get.captureBounds[0] == 0 .. 2
+
+  block: # named captures
+    let ex1 = "foobar".find(re("(?P<foo>foo)(?P<bar>bar)"))
+    doAssert ex1.get.captures["foo"] == "foo"
+    doAssert ex1.get.captures["bar"] == "bar"
+
+    let ex2 = "foo".find(re("(?P<foo>foo)(?P<bar>bar)?"))
+    doAssert "foo" in ex2.get.captureBounds
+    doAssert ex2.get.captures["foo"] == "foo"
+    doAssert not ("bar" in ex2.get.captures)
+    doAssertRaises(KeyError):
+      discard ex2.get.captures["bar"]
+
+  block: # named capture bounds
+    let ex1 = "foo".find(re("(?P<foo>foo)(?P<bar>bar)?"))
+    doAssert "foo" in ex1.get.captureBounds
+    doAssert ex1.get.captureBounds["foo"] == 0..2
+    doAssert not ("bar" in ex1.get.captures)
+    doAssertRaises(KeyError):
+      discard ex1.get.captureBounds["bar"]
+
+  block: # capture count
+    let ex1 = re("(?P<foo>foo)(?P<bar>bar)?")
+    doAssert ex1.captureCount == 2
+    doAssert ex1.captureNameId == {"foo" : 0, "bar" : 1}.toTable()
+
+  block: # named capture table
+    let ex1 = "foo".find(re("(?P<foo>foo)(?P<bar>bar)?"))
+    doAssert ex1.get.captures.toTable == {"foo" : "foo"}.toTable()
+    doAssert ex1.get.captureBounds.toTable == {"foo" : 0..2}.toTable()
+
+    let ex2 = "foobar".find(re("(?P<foo>foo)(?P<bar>bar)?"))
+    doAssert ex2.get.captures.toTable == {"foo" : "foo", "bar" : "bar"}.toTable()
+
+  block: # capture sequence
+    let ex1 = "foo".find(re("(?P<foo>foo)(?P<bar>bar)?"))
+    doAssert ex1.get.captures.toSeq == @[some("foo"), none(string)]
+    doAssert ex1.get.captureBounds.toSeq == @[some(0..2), none(Slice[int])]
+    doAssert ex1.get.captures.toSeq(some("")) == @[some("foo"), some("")]
+
+    let ex2 = "foobar".find(re("(?P<foo>foo)(?P<bar>bar)?"))
+    doAssert ex2.get.captures.toSeq == @[some("foo"), some("bar")]
 
 block: # match
   block: # upper bound must be inclusive
@@ -17,6 +74,15 @@ block: # match
     doAssert "abc".match(re"(\w)\w\w").get.captures[-1] == "abc"
     doAssert "abc".match(re"(\w)+").get.captureBounds[0] == 2 .. 2
     doAssert "abc".match(re"abc").get.captureBounds[-1] == 0 .. 2
+  #[
+    doAssert "abc".match(re"(\w)").get.captures[0] == "a"
+    doAssert "abc".match(re"(?P<letter>\w)").get.captures["letter"] == "a"
+    doAssert "abc".match(re"(\w)\w").get.captures[-1] == "ab"
+    doAssert "abc".match(re"(\w)").get.captureBounds[0] == 0 .. 0
+    doAssert "abc".match(re"").get.captureBounds[-1] == 0 .. -1
+    doAssert "abc".match(re"abc").get.captureBounds[-1] == 0 .. 2
+  ]#
+
     let cap1 = "abc".match(re"(\w)(\w)+").get.captures
     doAssert cap1.len == 2
     doAssert 0 in cap1
@@ -32,12 +98,12 @@ block: # match
 block: # find
   block: # find text
     doAssert "3213a".find(re"[a-z]").get.match == "a"
-    doAssert toSeq(findIter("1 2 3 4 5 6 7 8 ", re" ")).mapIt(
+    doAssert sequtils.toSeq(findIter("1 2 3 4 5 6 7 8 ", re" ")).mapIt(
       it.match
     ) == @[" ", " ", " ", " ", " ", " ", " ", " "]
 
   block: # find bounds
-    doAssert toSeq(findIter("1 2 3 4 5 ", re" ")).mapIt(
+    doAssert sequtils.toSeq(findIter("1 2 3 4 5 ", re" ")).mapIt(
       it.matchBounds
     ) == @[1..1, 3..3, 5..5, 7..7, 9..9]
 
@@ -70,14 +136,15 @@ block: # string splitting
 
   block: # captured patterns
     doAssert "12".split(re"(\d)") == @["", "1", "", "2", ""]
-
-  #[
+#[
   block: # maxsplit
-    check("123".split(re"", maxsplit = 2) == @["1", "23"])
-    check("123".split(re"", maxsplit = 1) == @["123"])
-    check("123".split(re"", maxsplit = -1) == @["1", "2", "3"])
-  ]#
-
+    doAssert "123".split(re"", maxsplit = 2) == @["1", "23"]
+    doAssert "123".split(re"", maxsplit = 1) == @["123"]
+    doAssert "123".split(re"", maxsplit = -1) == @["1", "2", "3"]
+    doAssert "1 2 3".split(re" ", maxsplit = 1) == @["1 2 3"]
+    doAssert "1 2 3".split(re" ", maxsplit = 2) == @["1", "2 3"]
+    doAssert "1 2 3".split(re"( )", maxsplit = 2) == @["1", " ", "2 3"]
+]#
   block: # split with 0-length match
     doAssert "12345".split(re("")) == @["1", "2", "3", "4", "5"]
     doAssert "".split(re"") == newSeq[string]()
@@ -144,3 +211,9 @@ block: # replace
     expect ValueError: discard "a".replace(re"a", "x$")
     expect ValueError: discard "a".replace(re"a", "${foo")
   ]#
+
+block: # escape strings
+  block: # escape strings
+    doAssert "123".escapeRe() == "123"
+    doAssert "[]".escapeRe() == r"\[\]"
+    doAssert "()".escapeRe() == r"\(\)"
