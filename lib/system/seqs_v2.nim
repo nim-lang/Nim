@@ -262,8 +262,11 @@ proc setLen[T](s: var seq[T], newlen: Natural) {.nodestroy.} =
         if xu.p == nil or (xu.p.cap and not strlitFlag) < newlen:
           xu.p = cast[typeof(xu.p)](prepareSeqAddUninit(oldLen, xu.p, newlen - oldLen, sizeof(T), alignof(T)))
         xu.len = newlen
+
+        {.push overflowChecks: off.}
         for i in oldLen..<newlen:
           xu.p.data[i] = default(T)
+        {.pop.}
 
 proc newSeq[T](s: var seq[T], len: Natural) =
   shrink(s, 0)
