@@ -592,10 +592,12 @@ proc setLenStrCall(c: var TLiftCtx; x, y: PNode): PNode =
   result = genBuiltin(c, mSetLengthStr, "setLen", x) # genAddr(g, x))
   result.add lenCall
 
-proc setLenSeqCall(c: var TLiftCtx; t: PType; x, y: PNode): PNode =
+proc setLenSeqCall(c: var TLiftCtx; t: PType; x, y: PNode; noinit = false): PNode =
   let lenCall = genBuiltin(c, mLengthSeq, "len", y)
   lenCall.typ = getSysType(c.g, x.info, tyInt)
-  var op = getSysMagic(c.g, x.info, "setLen", mSetLengthSeq)
+  let name = if noinit: "setLenUninit" else: "setLen"
+  let magic = if noinit: mSetLengthSeqUninit else: mSetLengthSeq
+  var op = getSysMagic(c.g, x.info, name, magic)
   op = instantiateGeneric(c, op, t, t)
   result = newTree(nkCall, newSymNode(op, x.info), x, lenCall)
 
@@ -643,8 +645,9 @@ proc genBulkCopySeq(c: var TLiftCtx; t: PType; body, x, y: PNode) =
 proc fillSeqOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   case c.kind
   of attachedDup:
-    body.add setLenSeqCall(c, t, x, y)
-    if supportsCopyMem(t.elementType):
+    let bulkCopy = supportsCopyMem(t.elementType)
+    body.add setLenSeqCall(c, t, x, y, noinit = bulkCopy)
+    if bulkCopy:
       genBulkCopySeq(c, t, body, x, y)
     else:
       forallElements(c, t, body, x, y)
@@ -658,8 +661,9 @@ proc fillSeqOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     # This is usually more efficient than a destroy/create pair.
     # For trivially copyable types, use bulk copyMem instead of element loop.
     checkSelfAssignment(c, t, body, x, y)
-    body.add setLenSeqCall(c, t, x, y)
-    if supportsCopyMem(t.elementType):
+    let bulkCopy = supportsCopyMem(t.elementType)
+    body.add setLenSeqCall(c, t, x, y, noinit = bulkCopy)
+    if bulkCopy:
       genBulkCopySeq(c, t, body, x, y)
     else:
       forallElements(c, t, body, x, y)
