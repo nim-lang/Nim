@@ -2835,9 +2835,11 @@ proc findFirstArgBlock(m: var TCandidate, n: PNode): int =
     else: break
 
 proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var IntSet) =
-
   template noMatch() =
-    c.mergeShadowScope #merge so that we don't have to resem for later overloads
+    if m.calleeSym != nil and m.calleeSym.kind notin {skTemplate, skMacro}:
+      c.mergeShadowScope
+    else:
+      c.closeShadowScope
     m.state = csNoMatch
     m.firstMismatch.arg = a
     m.firstMismatch.formal = formal
