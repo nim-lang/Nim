@@ -131,7 +131,7 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
   var sym = syms[0].s
   let name = sym.name
   var scope = syms[0].scope
-
+  c.openShadowScope
   if allowTypeBoundOps:
     for a in 1 ..< n.len:
       # for every already typed argument, add type bound ops
@@ -218,6 +218,10 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
     scope = syms[nextSymIndex].scope
     inc(nextSymIndex)
 
+  if best.state == csMatch and best.calleeSym != nil and best.calleeSym.kind in {skTemplate, skMacro}:
+    c.closeShadowScope
+  else:
+    c.mergeShadowScope
 
 proc effectProblem(f, a: PType; result: var string; c: PContext) =
   if f.kind == tyProc and a.kind == tyProc:
