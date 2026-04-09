@@ -1693,6 +1693,22 @@ proc containsGenericInvocationWithForward(n: PNode): bool =
           return true
   return false
 
+proc containsRecWhen(n: PNode): bool =
+  if n == nil:
+    return false
+  case n.kind
+  of nkRecWhen:
+    return true
+  else:
+    for i in 0..<n.safeLen:
+      if containsRecWhen(n[i]):
+        return true
+    return false
+
+proc requiresForwardTypeDelay(n: PNode): bool =
+  n.kind == nkSym and n.sym.ast != nil and n.sym.ast.len > 2 and
+    containsRecWhen(n.sym.ast[2])
+
 proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
   if s.typ == nil:
     localError(c.config, n.info, "cannot instantiate the '$1' $2" %
@@ -1772,11 +1788,16 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
         # XXX: What kind of error is this? is it still relevant?
         localError(c.config, n.info, errCannotInstantiateX % s.name.s)
         result = newOrPrevType(tyError, prev, c)
-      elif containsGenericInvocationWithForward(n[0]) or hasForwardTypeParam:
-        # isConcrete == false means this generic type is not instanciated here because it invoked with generic parameters.
-        # Even if isConcrete == true, don't instanciate it now if there are any `tyForward` type params.
-        # Such `tyForward` type params will be semchecked later and we can instanciate this next time.
-        # Some generic types like std/options.Option[T] needs a type kinds of the given type argument.
+      elif containsGenericInvocationWithForward(n[0]) or
+          (hasForwardTypeParam and requiresForwardTypeDelay(n[0])):
+        # isConcrete == false means this generic type is not instanciated here because
+        # it invoked with generic parameters.
+        # Even if isConcrete == true, don't instanciate it now if the type
+        # shape depends on unresolved `tyForward` type params.
+        # Such `tyForward` type params will be semchecked later and we can
+        # instanciate this next time.
+        # Some generic types like std/options.Option[T] need the kind of the
+        # given type argument before their fields can be resolved.
 
         # return `tyForward` instead of `tyGenericInvocation` because:
         # ```nim
