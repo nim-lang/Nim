@@ -450,39 +450,18 @@ proc initOptParser(cmdline: openArray[string];
                     )
   if prSepAllowEq    in rules: result.separators.incl('=')
   if prSepAllowColon in rules: result.separators.incl(':')
-  if cmdline.len == 0:
-    when declared(paramCount):
-      when defined(nimscript):
-        var ctr = 0
-        var firstNimsFound = false
-        for i in countup(0, paramCount()):
-          if firstNimsFound: 
-            result.cmds[ctr] = paramStr(i)
-            inc ctr, 1
-          if paramStr(i).toLowerAscii().endsWith(".nims") and not firstNimsFound:
-            firstNimsFound = true 
-            result.cmds = newSeq[string](paramCount()-i)
-      else:
-        result.cmds = newSeq[string](paramCount())
-        for i in countup(1, paramCount()):
-          result.cmds[i-1] = paramStr(i)
-    else:
-      # we cannot provide this for NimRtl creation on Posix, because we can't
-      # access the command line arguments then!
-      raiseAssert "empty command line given but" &
-        " real command line is not accessible"
 
-proc initOptParser*(cmdline: seq[string];
+proc initOptParser*(cmdline: seq[string] = commandLineParams();
                     shortNoVal: set[char] = {};
                     longNoVal: seq[string] = @[];
                     mode: CliMode = NimMode): OptParser =
-  ## Initializes the command line parser.
+  ## Initializes the command line parser from a sequence of arguments.
   ##
   ## **Parameters:**
   ##
-  ## - `cmdline`: Sequence of command line arguments to parse. If empty, the
-  ##   real command line as provided by the `os` module is retrieved instead.
-  ##   If the command line is not available, an assertion will be raised.
+  ## - `cmdline`: Sequence of arguments to parse. Defaults to
+  ##   `os.commandLineParams()`, which retrieves the actual command line arguments
+  ##   at the call site. Empty value means no arguments and has no side-effects.
   ## - `shortNoVal`: Set of short option characters that do not accept values.
   ##   See `shortNoVal and longNoVal<#nimshortnoval-and-nimlongnoval>`_ for details.
   ## - `longNoVal`: Sequence of long option names that do not accept values.
@@ -499,8 +478,8 @@ proc initOptParser*(cmdline: seq[string];
                       shortNoVal = {'l'}, longNoVal = @["left"])
   initOptParser(cmdline, shortNoVal, longNoVal, toRules(mode))
 
-proc initOptParser*(cmdline: seq[string],
-                    shortNoVal: set[char] = {},
+proc initOptParser*(cmdline: seq[string] = commandLineParams();
+                    shortNoVal: set[char] = {};
                     longNoVal: seq[string] = @[];
                     allowWhitespaceAfterColon: bool): OptParser {.deprecated:
       "`allowWhitespaceAfterColon` is deprecated, use parser modes instead".} =
@@ -517,19 +496,22 @@ proc initOptParser*(cmdline: seq[string],
   if allowWhitespaceAfterColon == false: nimrules.excl prSepAllowDelimAfter
   initOptParser(cmdline, shortNoVal, longNoVal, nimrules)
 
-proc initOptParser*(cmdline = "";
+proc initOptParser*(cmdline: string;
                     shortNoVal: set[char] = {};
                     longNoVal: seq[string] = @[];
                     mode: CliMode = NimMode): OptParser =
   ## Initializes the command line parser from a command line string.
   ##
-  ## The `cmdline` string is parsed into tokens using shell-like quoting rules.
+  ## The `cmdline` string is split into tokens with `parseCmdLine proc`_
+  ## using shell-like quoting rules.
   ##
   ## **Parameters:**
   ##
-  ## - `cmdline`: Command line string to parse. If empty, the real command line
-  ##   as provided by the `os` module is retrieved instead. If the command line
-  ##   is not available, an assertion will be raised.
+  ## - `cmdline`: Command line string to parse. Empty value means no arguments
+  ##   and has no side-effects. To parse the actual OS command line arguments,
+  ##   use the `initOptParser(seq[string], seq[char], seq[string], NimMode)`,
+  ##   or just omit this parameter, which the compiler will resolve to that
+  ##   overload automatically.
   ## - `shortNoVal`: Set of short option characters that do not accept values.
   ##   See `shortNoVal and longNoVal<#nimshortnoval-and-nimlongnoval>`_ for details.
   ## - `longNoVal`: Sequence of long option names that do not accept values.
@@ -548,7 +530,7 @@ proc initOptParser*(cmdline = "";
                       shortNoVal = {'l'}, longNoVal = @["left"])
   initOptParser(parseCmdLine(cmdline), shortNoVal, longNoVal, toRules(mode))
 
-proc initOptParser*(cmdline = "";
+proc initOptParser*(cmdline: string;
                     shortNoVal: set[char] = {};
                     longNoVal: seq[string] = @[];
                     allowWhitespaceAfterColon: bool): OptParser {.deprecated:
@@ -585,10 +567,10 @@ proc handleShortOption(p: var OptParser; cmd: string) =
     p.inShortState = false
     p.pos = 0
     inc p.idx, n
-    
+
   template next(): untyped = p.cmds[p.idx + 1]
 
-  let canTakeVal = card(p.shortNoVal) > 0 and p.key[0] notin p.shortNoVal 
+  let canTakeVal = card(p.shortNoVal) > 0 and p.key[0] notin p.shortNoVal
   if i < cmd.len and cmd[i] in p.separators:
     # separator case
     if prShortAllowSep in p.rules:
@@ -779,16 +761,18 @@ iterator getopt*(p: var OptParser): tuple[kind: CmdLineKind, key,
     if p.kind == cmdEnd: break
     yield (p.kind, p.key, p.val)
 
-iterator getopt*(cmdline: seq[string] = @[];
+iterator getopt*(cmdline: seq[string] = commandLineParams();
                   shortNoVal: set[char] = {};
                   longNoVal: seq[string] = @[];
                   mode: CliMode = NimMode):
             tuple[kind: CmdLineKind, key, val: string] =
   ## Convenience iterator for iterating over command line arguments.
   ##
-  ## This creates a new `OptParser<#OptParser>`_. If no command line
-  ## arguments are provided, the real command line as provided by the
-  ## `os` module is retrieved instead.
+  ## This creates a new `OptParser<#OptParser>`_.
+  ##
+  ## `cmdline` is a sequence of arguments to parse. Defaults to
+  ## `os.commandLineParams()`, which retrieves the actual command line arguments
+  ## at the call site. Empty value means no arguments and has no side-effects.
   ##
   ## `shortNoVal` and `longNoVal` are used to specify which options
   ## do not take values. See the `documentation about these

@@ -48,7 +48,8 @@ proc nimbleLockExists(config: ConfigRef): bool =
   return fileExists(pd.string / nimbleLock)
 
 proc processCmdLine(pass: TCmdLinePass, cmd: string; config: ConfigRef) =
-  var p = parseopt.initOptParser(cmd)
+  var p = if cmd.len == 0: parseopt.initOptParser()
+          else: parseopt.initOptParser(cmd)
   var argsCount = 0
 
   config.commandLine.setLen 0

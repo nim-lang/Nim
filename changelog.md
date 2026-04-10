@@ -35,6 +35,14 @@ errors.
 
 - Adds a new warning `--warning:ImplicitRangeConversion` that detects downsizing implicit conversions to range types (e.g., `int -> range[0..255]` or `range[1..256] -> range[0..255]`) that could cause runtime panics. Safe conversions like `range[0..255] -> range[0..65535]` and explicit casts do not trigger warnings. `int` to `Natural` and `Positive` conversions do not trigger warnings, which can be enabled with `--warning:systemRangeConversion`.
 
+
+- `std/parseopt`: `initOptParser` and `getopt` no longer fall back to `commandLineParams()` when given empty input (`""` or `@[]`). An explicit empty string or sequence now produces an empty parser. Code that relied on `""` or `@[]` values to implicitly re-parse the OS command line must be updated to call `initOptParser()` with the `cmdline` argument omitted instead.
+  The `cmdline = ""` default was removed from the string overload of `initOptParser`. The no-argument form now unambiguously resolves to the `seq[string]` overload with `commandLineParams()` as its default.
+
+
+- `std/cmdline.commandLineParams()` for NimScript now consistently returns only the script arguments (excluding the `nim` executable and its flags), fixing inconsistency between `std/cmdline` and `std/parseopt`.
+
+
 ## Standard library additions and changes
 
 [//]: # "Additions:"
