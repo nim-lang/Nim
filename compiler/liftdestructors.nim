@@ -705,8 +705,12 @@ proc useSeqOrStrOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     # we always inline the move for better performance:
     let moveCall = genBuiltin(c, mMove, "move", x)
     moveCall.add y
-    doAssert t.destructor != nil
-    moveCall.add destructorCall(c, t.destructor, x)
+    var destructor = t.destructor
+    if destructor == nil or destructor.ast.isGenericRoutine:
+      createSingleTypeBoundOp(c.g, c.c, t, attachedDestructor, body.info, c.idgen)
+      destructor = t.destructor
+    doAssert destructor != nil
+    moveCall.add destructorCall(c, destructor, x)
     body.add moveCall
     # alternatively we could do this:
     when false:
@@ -824,6 +828,8 @@ proc atomicRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     else:
       x
 
+  if t.destructor == nil or t.destructor.ast.isGenericRoutine:
+    createSingleTypeBoundOp(c.g, c.c, elemType, attachedDestructor, body.info, c.idgen)
   if isFinal(elemType):
     addDestructorCall(c, elemType, actions, genDeref(tmp, nkDerefExpr))
     var alignOf = genBuiltin(c, mAlignOf, "alignof", newNodeIT(nkType, c.info, elemType))
