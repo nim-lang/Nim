@@ -42,6 +42,8 @@ proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode)
 proc produceSym(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp;
               info: TLineInfo; idgen: IdGenerator): PSym
 
+proc createSingleTypeBoundOp*(g: ModuleGraph; c: PContext; orig: PType; op: TTypeAttachedOp;
+                             info: TLineInfo; idgen: IdGenerator)
 proc createTypeBoundOps*(g: ModuleGraph; c: PContext; orig: PType; info: TLineInfo;
                          idgen: IdGenerator)
 
@@ -684,7 +686,7 @@ proc fillSeqOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   of attachedWasMoved: body.add genBuiltin(c, mWasMoved, "wasMoved", x)
 
 proc useSeqOrStrOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
-  createTypeBoundOps(c.g, c.c, t, body.info, c.idgen)
+  createSingleTypeBoundOp(c.g, c.c, t, c.kind, body.info, c.idgen)
   # recursions are tricky, so we might need to forward the generated
   # operation here:
   var t = t
@@ -789,7 +791,7 @@ proc atomicRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   var actions = newNodeI(nkStmtList, c.info)
   let elemType = t.elementType
 
-  createTypeBoundOps(c.g, c.c, elemType, c.info, c.idgen)
+  createSingleTypeBoundOp(c.g, c.c, elemType, c.kind, c.info, c.idgen)
 
   # YRC uses dedicated runtime procs for the entire write barrier:
   if c.g.config.selectedGC == gcYrc:
@@ -1415,11 +1417,9 @@ proc inst(g: ModuleGraph; c: PContext; t: PType; kind: TTypeAttachedOp; idgen: I
 proc isTrivial*(s: PSym): bool {.inline.} =
   s == nil or (s.ast != nil and s.ast[bodyPos].len == 0)
 
-proc createSingleTypeBoundOp*(g: ModuleGraph; c: PContext; orig: PType; op: TTypeAttachedOp;
+proc createSingleTypeBoundOp(g: ModuleGraph; c: PContext; orig: PType; op: TTypeAttachedOp;
                              info: TLineInfo; idgen: IdGenerator) =
-  ## In the semantic pass this is called in strategic places
-  ## to ensure we lift assignment, destructors and moves properly.
-  ## The later 'injectdestructors' pass depends on it.
+  ## like `createTypeBoundOps` but only generates a single hook
   if orig == nil or {tfCheckedForDestructor, tfHasMeta} * orig.flags != {}: return
 
   let skipped = orig.skipTypes({tyGenericInst, tyAlias, tySink})

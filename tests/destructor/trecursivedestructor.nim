@@ -1,10 +1,18 @@
+discard """
+  matrix: "--mm:refc; --mm:orc; --mm:none"
+"""
+
 # issue #25727
 
 type ObjWithSeq = object
   x: seq[ObjWithSeq]
 
-proc `=destroy`(a: ObjWithSeq) {.nodestroy.} =
-  `=destroy`(a.x)
+when not defined(gcDestructors):
+  proc `=destroy`(a: var ObjWithSeq) {.nodestroy.} =
+    `=destroy`(a.x)
+else:
+  proc `=destroy`(a: ObjWithSeq) {.nodestroy.} =
+    `=destroy`(a.x)
 
 proc `=copy`(a: var ObjWithSeq, b: ObjWithSeq) {.nodestroy.} =
   `=copy`(a.x, b.x)
@@ -19,12 +27,16 @@ proc fooSeq() =
   let d = b
 fooSeq()
 
-when false:
+when true:
   type ObjWithRef = object
     x: ref ObjWithRef
 
-  proc `=destroy`(a: ObjWithRef) {.nodestroy.} =
-    `=destroy`(a.x)
+  when not defined(gcDestructors):
+    proc `=destroy`(a: var ObjWithRef) {.nodestroy.} =
+      `=destroy`(a.x)
+  else:
+    proc `=destroy`(a: ObjWithRef) {.nodestroy.} =
+      `=destroy`(a.x)
 
   proc `=copy`(a: var ObjWithRef, b: ObjWithRef) {.nodestroy.} =
     `=copy`(a.x, b.x)
