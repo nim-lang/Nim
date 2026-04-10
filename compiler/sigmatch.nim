@@ -784,7 +784,8 @@ proc procParamTypeRel(c: var TCandidate; f, a: PType): TTypeRelation =
     # if f is metatype.
     result = typeRel(c, f, a)
 
-  if result == isEqual:
+  if result == isEqual and
+      procParamTypeBackendAliases notin c.c.config.legacyFeatures:
     # Ensure types that are semantically equal also match at the backend level.
     # E.g. reject assigning proc(csize_t) to proc(uint) since these map to
     # different C types (size_t vs unsigned long long).
