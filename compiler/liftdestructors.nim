@@ -1415,6 +1415,34 @@ proc inst(g: ModuleGraph; c: PContext; t: PType; kind: TTypeAttachedOp; idgen: I
 proc isTrivial*(s: PSym): bool {.inline.} =
   s == nil or (s.ast != nil and s.ast[bodyPos].len == 0)
 
+proc createSingleTypeBoundOp*(g: ModuleGraph; c: PContext; orig: PType; op: TTypeAttachedOp;
+                             info: TLineInfo; idgen: IdGenerator) =
+  ## In the semantic pass this is called in strategic places
+  ## to ensure we lift assignment, destructors and moves properly.
+  ## The later 'injectdestructors' pass depends on it.
+  if orig == nil or {tfCheckedForDestructor, tfHasMeta} * orig.flags != {}: return
+
+  let skipped = orig.skipTypes({tyGenericInst, tyAlias, tySink})
+  if isEmptyContainer(skipped) or skipped.kind == tyStatic: return
+
+  let h = sighashes.hashType(skipped, g.config, {CoType, CoConsiderOwned, CoDistinct})
+  var canon = g.canonTypes.getOrDefault(h)
+  if canon == nil:
+    g.canonTypes[h] = skipped
+    canon = skipped
+
+  let generic = getAttachedOp(g, canon, op) != nil
+  if not generic:
+    setAttachedOp(g, idgen.module, canon, op,
+        symPrototype(g, canon, canon.owner, op, info, idgen))
+
+  if not generic:
+    discard produceSym(g, c, canon, op, info, idgen)
+  else:
+    inst(g, c, canon, op, idgen, info)
+  if canon != orig:
+    setAttachedOp(g, idgen.module, orig, op, getAttachedOp(g, canon, op))
+
 proc createTypeBoundOps(g: ModuleGraph; c: PContext; orig: PType; info: TLineInfo;
                         idgen: IdGenerator) =
   ## In the semantic pass this is called in strategic places
