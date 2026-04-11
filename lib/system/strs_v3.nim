@@ -496,7 +496,7 @@ proc mnewString(len: int): SmallString {.compilerproc.} =
     result.more = p
     setSSLen(result, HeapSlen)
 
-proc setLengthStr(s: var SmallString; newLen: int; zeroing: static bool) =
+proc setLengthStr(s: var SmallString; newLen: int; zeroing: bool) =
   # Shared implementation for setLengthStrV2 (zeroing) and setLengthStrV3Uninit
   # Difference between the two modes:
   #   - inline/medium -> long growth: alloc0 (zeroing) vs alloc (uninit)
@@ -524,7 +524,7 @@ proc setLengthStr(s: var SmallString; newLen: int; zeroing: static bool) =
         # Grow within inline/medium
         # Bytes above newLen already zero by the SWAR invariant,
         # so setSSLen is sufficient.
-        when zeroing:
+        if zeroing:
           zeroMem(addr inl[curLen], newLen - curLen)
         inl[newLen] = '\0'
         setSSLen(s, newLen)
@@ -550,12 +550,13 @@ proc setLengthStr(s: var SmallString; newLen: int; zeroing: static bool) =
     else:
       # grow into long
       let newCap = resize(newLen)
-      when zeroing:
-        # bytes [curLen..newLen] and p.data[newLen] zeroed by alloc0
-        let p = cast[ptr LongString](alloc0(LongStringDataOffset + newCap + 1))
-      else:
-        let p = cast[ptr LongString](alloc(LongStringDataOffset + newCap + 1))
-        p.data[newLen] = '\0'
+      let p = if zeroing:
+          # bytes [curLen..newLen] and p.data[newLen] zeroed by alloc0
+          cast[ptr LongString](alloc0(LongStringDataOffset + newCap + 1))
+        else:
+          let p = cast[ptr LongString](alloc(LongStringDataOffset + newCap + 1))
+          p.data[newLen] = '\0'
+          p
       p.rc = 1
       p.fullLen = newLen
       p.capImpl = newCap
