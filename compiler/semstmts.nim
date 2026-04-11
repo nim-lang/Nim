@@ -1808,15 +1808,17 @@ proc checkForMetaFields(c: PContext; n: PNode; hasError: var bool) =
     internalAssert c.config, false
 
 proc typeSectionFinalPass(c: PContext, n: PNode) =
-  for (typ, typeNode) in c.forwardTypeUpdates:
-    # types that need to be updated due to containing forward types
-    # and their corresponding type nodes
-    # for example generic invocations of forward types end up here
-    var reified = semTypeNode(c, typeNode, nil)
-    assert reified != nil
-    assignType(typ, reified)
-    typ.itemId = reified.itemId     # same id
-  c.forwardTypeUpdates = @[]
+  while c.forwardTypeUpdates.len > 0:
+    let ftc = c.forwardTypeUpdates
+    c.forwardTypeUpdates = @[]
+    for (typ, typeNode) in ftc:
+      # types that need to be updated due to containing forward types
+      # and their corresponding type nodes
+      # for example generic invocations of forward types end up here
+      var reified = semTypeNode(c, typeNode, nil)
+      assert reified != nil
+      assignType(typ, reified)
+      typ.itemId = reified.itemId  # same id
   for (owner, field, expectedType) in c.forwardFieldUpdates:
     semDelayedFieldDefault(c, owner, expectedType, field)
   c.forwardFieldUpdates = @[]
