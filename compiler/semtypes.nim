@@ -322,12 +322,12 @@ proc containsForwardTypeAux(t: PType; seen: var IntSet): bool
 
 proc containsForwardTypeAux(n: PNode; seen: var IntSet): bool =
   result = false
-  if n.isNil:
+  if n.isNil or n.kind in nkLiterals + {nkNilLit, nkEmpty, nkType}:
     return
   # Forward types can still be attached to child symbols/subexpressions even
   # when the root node's type no longer mentions them directly.
   if containsForwardTypeAux(n.typ, seen) or
-      (n.kind == nkSym and containsForwardTypeAux(n.sym.typ, seen)):
+     (n.kind == nkSym and n.sym.typ != n.typ and containsForwardTypeAux(n.sym.typ, seen)):
     return true
 
   for i in 0 ..< n.safeLen:
