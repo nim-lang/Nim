@@ -324,8 +324,6 @@ proc containsForwardTypeAux(n: PNode; seen: var IntSet): bool =
   result = false
   if n.isNil or n.kind in nkLiterals + {nkNilLit, nkEmpty, nkType}:
     return
-  # Forward types can still be attached to child symbols/subexpressions even
-  # when the root node's type no longer mentions them directly.
   if containsForwardTypeAux(n.typ, seen) or
      (n.kind == nkSym and n.sym.typ != n.typ and containsForwardTypeAux(n.sym.typ, seen)):
     return true
@@ -364,7 +362,6 @@ proc semFieldDefault(c: PContext; owner, expectedType: PType; field: PNode): PTy
     result = field[^1].typ
 
   if c.inGenericContext == 0:
-    # don't need to check containsForwardType(result) for some reason?
     if containsForwardType(field[^1]):
       c.forwardFieldUpdates.add (owner, field, result)
     else:
