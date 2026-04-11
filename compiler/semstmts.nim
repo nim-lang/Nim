@@ -1817,6 +1817,9 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
     assignType(typ, reified)
     typ.itemId = reified.itemId     # same id
   c.forwardTypeUpdates = @[]
+  for (owner, field, expectedType) in c.forwardFieldUpdates:
+    semDelayedFieldDefault(c, owner, expectedType, field)
+  c.forwardFieldUpdates = @[]
   for i in 0..<n.len:
     var a = n[i]
     if a.kind == nkCommentStmt: continue
