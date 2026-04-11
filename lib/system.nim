@@ -2432,7 +2432,10 @@ func setLenUninit*(s: var string, newlen: Natural) {.nodestroy.} =
       when defined(nimSeqsV2):
         {.noSideEffect.}:
           let str = unsafeAddr s
-          setLengthStrV2Uninit(cast[ptr NimStringV2](str)[], newlen)
+          when defined(nimsso):
+            setLengthStrV3Uninit(cast[ptr SmallString](str)[], newlen)
+          else:
+            setLengthStrV2Uninit(cast[ptr NimStringV2](str)[], newlen)
       else:
         {.noSideEffect.}:
           when hasAlloc:

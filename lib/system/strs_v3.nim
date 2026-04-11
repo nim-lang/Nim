@@ -496,12 +496,16 @@ proc mnewString(len: int): SmallString {.compilerproc.} =
     result.more = p
     setSSLen(result, HeapSlen)
 
-proc setLengthStrV2(s: var SmallString; newLen: int) {.compilerRtl.} =
-  ## Sets the length of s to newLen, zeroing new bytes on growth.
+proc setLengthStr(s: var SmallString; newLen: int; zeroing: static bool) =
+  # Shared implementation for setLengthStrV2 (zeroing) and setLengthStrV3Uninit
+  # Difference between the two modes:
+  #   - inline/medium -> long growth: alloc0 (zeroing) vs alloc (uninit)
+  #   - long -> long growth: zeroMem the new tail (zeroing) or skip it (uninit)
   let slen = ssLen(s)
   let curLen = if slen > PayloadSize: s.more.fullLen else: slen
   if newLen == curLen: return
   if newLen <= 0:
+    # Pattern 's.setLen 0' is common for avoiding allocations; do NOT free the buffer.
     if slen > PayloadSize:
       if slen == HeapSlen and s.more.rc == 1:
         s.more.fullLen = 0
@@ -517,7 +521,11 @@ proc setLengthStrV2(s: var SmallString; newLen: int) {.compilerRtl.} =
     if newLen <= PayloadSize:
       let inl = inlinePtr(s)
       if newLen > curLen:
-        zeroMem(addr inl[curLen], newLen - curLen)
+        # Grow within inline/medium
+        # Bytes above newLen already zero by the SWAR invariant,
+        # so setSSLen is sufficient.
+        when zeroing:
+          zeroMem(addr inl[curLen], newLen - curLen)
         inl[newLen] = '\0'
         setSSLen(s, newLen)
       else:
@@ -542,18 +550,22 @@ proc setLengthStrV2(s: var SmallString; newLen: int) {.compilerRtl.} =
     else:
       # grow into long
       let newCap = resize(newLen)
-      let p = cast[ptr LongString](alloc0(LongStringDataOffset + newCap + 1))
+      when zeroing:
+        # bytes [curLen..newLen] and p.data[newLen] zeroed by alloc0
+        let p = cast[ptr LongString](alloc0(LongStringDataOffset + newCap + 1))
+      else:
+        let p = cast[ptr LongString](alloc(LongStringDataOffset + newCap + 1))
+        p.data[newLen] = '\0'
       p.rc = 1
       p.fullLen = newLen
       p.capImpl = newCap
       copyMem(addr p.data[0], inlinePtr(s), curLen)
-      # bytes [curLen..newLen] zeroed by alloc0; p.data[newLen] = '\0' by alloc0
       s.more = p
       setSSLen(s, HeapSlen)
   else:
     # currently long
     if newLen <= PayloadSize:
-      # shrink back to inline
+      # shrink back to inline/medium
       let old = s.more
       let inl = inlinePtr(s)
       copyMem(inl, addr old.data[0], newLen)
@@ -574,11 +586,19 @@ proc setLengthStrV2(s: var SmallString; newLen: int) {.compilerRtl.} =
       else:
         setSSLen(s, newLen)
     else:
-      ensureUniqueLong(s, curLen, newLen)
+      # long -> long
+      ensureUniqueLong(s, curLen, newLen) # sets fullLen = newLen
       if newLen > curLen:
         zeroMem(addr s.more.data[curLen], newLen - curLen)
       s.more.data[newLen] = '\0'
-      s.more.fullLen = newLen
+
+proc setLengthStrV2(s: var SmallString; newLen: int) {.compilerRtl.} =
+  ## Sets the length of `s` to `newLen`, zeroing new bytes on growth.
+  setLengthStr(s, newLen, zeroing = true)
+
+proc setLengthStrV3Uninit(s: var SmallString; newLen: int) {.compilerRtl.} =
+  ## Sets the length of `s` to `newLen`, NOT zeroing new bytes on growth.
+  setLengthStr(s, newLen, zeroing = false)
 
 proc nimAsgnStrV2(a: var SmallString; b: SmallString) {.compilerRtl, inline.} =
   if ssLen(b) <= PayloadSize:
