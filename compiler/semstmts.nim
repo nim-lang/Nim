@@ -1498,14 +1498,13 @@ proc semCase(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = nil
   var hasElse = false
   let caseTyp = skipTypes(n[0].typ, abstractVar-{tyTypeDesc})
   var chckCovered = caseTyp.shouldCheckCaseCovered()
-  let objectSelector = objectCaseSelectorBase(n[0].typ) != nil
   case caseTyp.kind
   of tyFloat..tyFloat128, tyString, tyCstring, tyError, shouldChckCovered, tyRange:
     discard
   else:
     popCaseContext(c)
     closeScope(c)
-    if objectSelector:
+    if objectCaseSelectorBase(n[0].typ) != nil:
       var matched = false
       let macroResult = tryHandleCaseStmtMacro(c, n, flags, matched)
       if matched:
