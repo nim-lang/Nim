@@ -220,7 +220,7 @@ type
     oskBase
 
   ObjectOfBranch = object
-    tokens: seq[uint16]
+    token: uint32
     body: PNode
 
 proc skipObjectOfCond(cond: PNode): PNode =
@@ -264,25 +264,20 @@ proc detectObjectOfSwitch(p: BProc; n: PNode): tuple[ok: bool, selectorSym: PSym
   if n.len < 2:
     return
 
-  var selectorSym: PSym = nil
   var parentId = ItemId()
   var sameParent = true
-  var childDepth = int16(-1)
-  var branches: seq[ObjectOfBranch] = @[]
-  var elseBody: PNode = nil
 
   for i, it in n.sons:
     if it.len == 2:
       var target: PType = nil
-      if not collectObjectOfCond(it[0], selectorSym, target):
+      if not collectObjectOfCond(it[0], result.selectorSym, target):
         return
       if target == nil:
         return
-      var branch = ObjectOfBranch(body: it[1], tokens: @[])
       let targetDepth = getObjDepth(target)
-      if childDepth < 0:
-        childDepth = targetDepth
-      elif targetDepth != childDepth:
+      if result.childDepth < 0:
+        result.childDepth = targetDepth
+      elif targetDepth != result.childDepth:
         return
       let parent = skipTypes(target.baseClass, skipPtrs)
       if parent == nil or parent.kind != tyObject:
@@ -291,41 +286,36 @@ proc detectObjectOfSwitch(p: BProc; n: PNode): tuple[ok: bool, selectorSym: PSym
         parentId = parent.uniqueId
       elif sameParent and parent.uniqueId != parentId:
         sameParent = false
-      branches.add branch
-      branches[^1].tokens.add 0'u16
+      let token = displayToken(p.module.g.graph, target)
+      result.branches.add ObjectOfBranch(body: it[1], token: token)
     elif it.len == 1:
-      if i != n.len - 1 or elseBody != nil:
+      if i != n.len - 1 or result.elseBody != nil:
         return
-      elseBody = it[0]
+      result.elseBody = it[0]
     else:
       return
 
-  if selectorSym == nil or branches.len == 0:
+  if result.selectorSym == nil or result.branches.len == 0:
     return
 
-  let kind = if sameParent and parentId != ItemId(): oskSibling else: oskBase
+  result.kind = if sameParent and parentId != ItemId(): oskSibling else: oskBase
   var seenTokens: seq[uint16] = @[]
-  for i, it in n.sons:
-    if it.len == 2:
-      var target: PType = nil
-      discard collectObjectOfCond(it[0], selectorSym, target)
-      let token = displayToken(p.module.g.graph, target)
-      let caseToken =
-        if kind == oskSibling: siblingDisplayToken(token)
-        else: baseDisplayToken(token)
-      if caseToken in seenTokens:
-        # Unreachable duplicate, however this assumes the branch order here
-        # mirrors the Nim code. If branches are re-ordered, this is incorrect.
-        continue
-      seenTokens.add caseToken
-      branches[i].tokens[0] = caseToken
+  var uniqueBranches: seq[ObjectOfBranch] = @[]
+  for branch in result.branches:
+    let caseToken =
+      if result.kind == oskSibling: siblingDisplayToken(branch.token)
+      else: baseDisplayToken(branch.token)
+    if caseToken in seenTokens:
+      # Unreachable duplicate, however this assumes the branch order here
+      # mirrors the Nim code. If branches are re-ordered, this is incorrect.
+      continue
+    seenTokens.add caseToken
+    var unique = branch
+    unique.token = caseToken.uint32
+    uniqueBranches.add unique
 
   result.ok = true
-  result.selectorSym = selectorSym
-  result.kind = kind
-  result.childDepth = childDepth
-  result.branches = branches
-  result.elseBody = elseBody
+  result.branches = uniqueBranches
 
 proc genObjectOfSwitch(p: BProc; n: PNode; d: var TLoc): bool =
   if optTinyRtti notin p.config.globalOptions:
@@ -355,10 +345,9 @@ proc genObjectOfSwitch(p: BProc; n: PNode; d: var TLoc): bool =
   template emitSwitchBody() =
     p.s(cpsStmts).addSwitchStmt(discr):
       for branch in detected.branches:
-        for token in branch.tokens:
-          p.s(cpsStmts).addSingleSwitchCase(cIntValue(int(token))):
-            exprBlock(p, branch.body, d)
-            p.s(cpsStmts).addBreak()
+        p.s(cpsStmts).addSingleSwitchCase(cIntValue(int(branch.token))):
+          exprBlock(p, branch.body, d)
+          p.s(cpsStmts).addBreak()
 
   let switchCheck =
     if nilCheck != "":
@@ -373,10 +362,9 @@ proc genObjectOfSwitch(p: BProc; n: PNode; d: var TLoc): bool =
       p.s(cpsStmts).addGoto(elseLabel)
     p.s(cpsStmts).addSwitchStmt(discr):
       for branch in detected.branches:
-        for token in branch.tokens:
-          p.s(cpsStmts).addSingleSwitchCase(cIntValue(int(token))):
-            exprBlock(p, branch.body, d)
-            p.s(cpsStmts).addBreak()
+        p.s(cpsStmts).addSingleSwitchCase(cIntValue(int(branch.token))):
+          exprBlock(p, branch.body, d)
+          p.s(cpsStmts).addBreak()
       p.s(cpsStmts).addSwitchElse():
         p.s(cpsStmts).addGoto(elseLabel)
     p.s(cpsStmts).addGoto(endLabel)
