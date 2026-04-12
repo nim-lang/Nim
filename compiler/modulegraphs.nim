@@ -247,12 +247,6 @@ proc displayToken*(g: ModuleGraph; typ: PType): uint32 =
     g.addRuntimeObjectType(typ)
   result = g.displayTokens[typ.itemId]
 
-proc resetDisplayTokens*(g: ModuleGraph) =
-  g.displayTokens = initTable[ItemId, uint32]()
-  g.displayTokensByKey = initTable[string, uint32]()
-  g.nextBaseDisplayTokenByDepth = initTable[int16, int]()
-  g.nextSiblingDisplayTokenByParent = initTable[string, int]()
-
 proc resetForBackend*(g: ModuleGraph) =
   g.compilerprocs = initStrTable()
   g.typeInstCache.clear()
@@ -267,7 +261,8 @@ proc resetForBackend*(g: ModuleGraph) =
   for a in mitems(g.loadedOps):
     a.clear()
   g.opsLog.setLen(0)
-  g.resetDisplayTokens()
+  # Keep sempass-seeded RTTI tokens so `nifc` does not gratuitously retag
+  # inheritance families within the current graph
 
 const
   cb64 = [

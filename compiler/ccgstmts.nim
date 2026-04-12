@@ -304,14 +304,21 @@ proc detectObjectOfSwitch(p: BProc; n: PNode): tuple[ok: bool, selectorSym: PSym
     return
 
   let kind = if sameParent and parentId != ItemId(): oskSibling else: oskBase
+  var seenTokens: seq[uint16] = @[]
   for i, it in n.sons:
     if it.len == 2:
       var target: PType = nil
       discard collectObjectOfCond(it[0], selectorSym, target)
       let token = displayToken(p.module.g.graph, target)
-      branches[i].tokens[0] =
+      let caseToken =
         if kind == oskSibling: siblingDisplayToken(token)
         else: baseDisplayToken(token)
+      if caseToken in seenTokens:
+        # Unreachable duplicate, however this assumes the branch order here
+        # mirrors the Nim code. If branches are re-ordered, this is incorrect.
+        continue
+      seenTokens.add caseToken
+      branches[i].tokens[0] = caseToken
 
   result.ok = true
   result.selectorSym = selectorSym
