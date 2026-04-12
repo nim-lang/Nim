@@ -1,4 +1,4 @@
-import std/[assertions, options, sequtils, tables]
+import std/[assertions, options, sequtils, strutils, tables]
 import std/nre2
 
 block:
@@ -136,7 +136,7 @@ block: # string splitting
 
   block: # captured patterns
     doAssert "12".split(re"(\d)") == @["", "1", "", "2", ""]
-#[
+
   block: # maxsplit
     doAssert "123".split(re"", maxsplit = 2) == @["1", "23"]
     doAssert "123".split(re"", maxsplit = 1) == @["123"]
@@ -144,7 +144,7 @@ block: # string splitting
     doAssert "1 2 3".split(re" ", maxsplit = 1) == @["1 2 3"]
     doAssert "1 2 3".split(re" ", maxsplit = 2) == @["1", "2 3"]
     doAssert "1 2 3".split(re"( )", maxsplit = 2) == @["1", " ", "2 3"]
-]#
+
   block: # split with 0-length match
     doAssert "12345".split(re("")) == @["1", "2", "3", "4", "5"]
     doAssert "".split(re"") == newSeq[string]()
@@ -152,7 +152,6 @@ block: # string splitting
     #doAssert "word\r\lword".split(re"(*ANYCRLF)(?m)$") == @["word", "\r\lword"]
     #doAssert "слово слово".split(re"(*U)(\b)") == @["", "слово", "", " ", "", "слово", ""]
 
-  #[
   block: # perl split tests
     doAssert "forty-two"                    .split(re"")      .join(",") == "f,o,r,t,y,-,t,w,o"
     doAssert "forty-two"                    .split(re"", 3)   .join(",") == "f,o,rty-two"
@@ -174,7 +173,6 @@ block: # string splitting
     doAssert "a.b"                          .split(re"\.")    .join(",") == "a,b"
     doAssert ""                             .split(re"")      .len       == 0
     doAssert ":"                            .split(re"")      .len       == 1
-  ]#
 
   block: # start position
     doAssert "abc".split(re"", start = 1) == @["b", "c"]

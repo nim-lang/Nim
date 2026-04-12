@@ -107,13 +107,7 @@ func re*(pattern: string; flags: RegexFlags = {}): Regex =
 
 func match*(str: string, pattern: Regex, start = 0, endpos = int.high): Option[RegexMatch] =
   var mat = default(RegexMatch)
-  # TODO
-  # remove `substr` when nim-regex procs support start/end parameters
-  let r = regex.match(str.substr(start, endpos), pattern, mat.matchImpl)
-  # requires https://github.com/nitely/nim-regex/pull/159
-  # `regex.match` returns true only if the whole string matches the regular expression.
-  # `regex.startsWith` is closer to `nre.match`.
-  #let r = regex.startsWith(str, pattern, mat.matchImpl, start, endpos)
+  let r = regex.startsWith(str.toOpenArray(0, min(str.high, endpos)), pattern, mat.matchImpl, start)
   if r:
     mat.str = str
     some(mat)
@@ -152,8 +146,9 @@ proc contains*(str: string; pattern: Regex; start = 0; endpos = int.high): bool 
   isSome(str.find(pattern, start, endpos))
 
 proc split*(str: string; pattern: Regex; maxSplit = -1; start = 0): seq[string] =
-  # requires https://github.com/nitely/nim-regex/pull/158 to support `maxSplit`
-  result = splitIncl(str.substr(start), pattern#[, maxSplit]#)
+  result = splitIncl(str.substr(start), pattern, maxSplit)
+  # needs https://github.com/nitely/nim-regex/pull/161
+  #result = splitIncl(str, pattern, maxSplit, start)
 
 proc replace*(str: string; pattern: Regex;
               subproc: proc (match: RegexMatch): string): string =
