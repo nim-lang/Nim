@@ -1254,7 +1254,8 @@ proc handleStmtMacro(c: PContext; n, selector: PNode; magicType: string;
 proc handleForLoopMacro(c: PContext; n: PNode; flags: TExprFlags): PNode =
   result = handleStmtMacro(c, n, n[^2], "ForLoopStmt", flags)
 
-proc handleCaseStmtMacro(c: PContext; n: PNode; flags: TExprFlags): PNode =
+proc tryHandleCaseStmtMacro(c: PContext; n: PNode; flags: TExprFlags;
+                            matched: var bool): PNode =
   # n[0] has been sem'checked and has a type. We use this to resolve
   # '`case`(n[0])' but then we pass 'n' to the `case` macro. This seems to
   # be the best solution.
@@ -1266,6 +1267,7 @@ proc handleCaseStmtMacro(c: PContext; n: PNode; flags: TExprFlags): PNode =
   var r = resolveOverloads(c, toResolve, toResolve, {skTemplate, skMacro}, {efNoUndeclared},
                            errors, false)
   if r.state == csMatch:
+    matched = true
     var match = r.calleeSym
     markUsed(c, n[0].info, match)
     onUse(n[0].info, match)
@@ -1278,14 +1280,18 @@ proc handleCaseStmtMacro(c: PContext; n: PNode; flags: TExprFlags): PNode =
     of skTemplate: result = semTemplateExpr(c, toExpand, match, flags)
     else: result = errorNode(c, n[0])
   else:
-    result = errorNode(c, n[0])
-  if result.kind == nkEmpty:
-    localError(c.config, n[0].info, errSelectorMustBeOfCertainTypes)
+    result = nil
   # this would be the perfectly consistent solution with 'for loop macros',
   # but it kinda sucks for pattern matching as the matcher is not attached to
   # a type then:
   when false:
     result = handleStmtMacro(c, n, n[0], "CaseStmt")
+
+proc handleCaseStmtMacro(c: PContext; n: PNode; flags: TExprFlags): PNode =
+  var matched = false
+  result = tryHandleCaseStmtMacro(c, n, flags, matched)
+  if not matched or result.kind == nkEmpty:
+    localError(c.config, n[0].info, errSelectorMustBeOfCertainTypes)
 
 proc semFor(c: PContext, n: PNode; flags: TExprFlags): PNode =
   checkMinSonsLen(n, 3, c.config)
@@ -1484,24 +1490,29 @@ proc semCase(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = nil
   result = n
   checkMinSonsLen(n, 2, c.config)
   openScope(c)
-  n[0] = semExprWithType(c, n[0])
-  if objectCaseSelectorBase(n[0].typ) != nil:
-    result = semObjectCase(c, n, flags, expectedType)
-    closeScope(c)
-    return result
   pushCaseContext(c, n)
+  n[0] = semExprWithType(c, n[0])
   var covered: Int128 = toInt128(0)
   var typ = commonTypeBegin
   var expectedType = expectedType
   var hasElse = false
   let caseTyp = skipTypes(n[0].typ, abstractVar-{tyTypeDesc})
   var chckCovered = caseTyp.shouldCheckCaseCovered()
+  let objectSelector = objectCaseSelectorBase(n[0].typ) != nil
   case caseTyp.kind
   of tyFloat..tyFloat128, tyString, tyCstring, tyError, shouldChckCovered, tyRange:
     discard
   else:
     popCaseContext(c)
     closeScope(c)
+    if objectSelector:
+      var matched = false
+      let macroResult = tryHandleCaseStmtMacro(c, n, flags, matched)
+      if matched:
+        if macroResult.kind == nkEmpty:
+          localError(c.config, n[0].info, errSelectorMustBeOfCertainTypes)
+        return macroResult
+      return semObjectCase(c, n, flags, expectedType)
     return handleCaseStmtMacro(c, n, flags)
   template invalidOrderOfBranches(n: PNode) =
     localError(c.config, n.info, "invalid order of case branches")

@@ -33,9 +33,14 @@ type
     b: int
 
 var onlyOne = 0
+var onlyOneOf = 0
 
 proc getObj: Base =
   inc onlyOne
+  Sub3()
+
+proc getObjForOf: Base =
+  inc onlyOneOf
   Sub3()
 
 case getObj()
@@ -47,6 +52,8 @@ of Sub3:
   discard
 
 doAssert onlyOne == 1
+doAssert getObjForOf() of Sub3
+doAssert onlyOneOf == 1
 
 proc classify(x: Base): string =
   case x
