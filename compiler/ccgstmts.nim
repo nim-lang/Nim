@@ -328,8 +328,7 @@ proc detectObjectOfSwitch(p: BProc; n: PNode): tuple[ok: bool, selectorSym: PSym
   result.elseBody = elseBody
 
 proc genObjectOfSwitch(p: BProc; n: PNode; d: var TLoc): bool =
-  # The current switch-oriented lowering is only implemented for the C backend.
-  if optTinyRtti notin p.config.globalOptions or p.module.compileToCpp:
+  if optTinyRtti notin p.config.globalOptions:
     return false
 
   let detected = detectObjectOfSwitch(p, n)
