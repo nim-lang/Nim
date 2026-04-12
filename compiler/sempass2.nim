@@ -127,11 +127,10 @@ proc collectObjectTree(graph: ModuleGraph, n: PNode) =
             else:
               graph.objectTree[root].add (depthLevel, typ)
 
-proc createTypeBoundOps(tracked: PEffects, typ: PType; info: TLineInfo; explicit = false) =
-  if typ == nil or (sfGeneratedOp in tracked.owner.flags and not explicit):
+proc createTypeBoundOps(tracked: PEffects, typ: PType; info: TLineInfo) =
+  if typ == nil or sfGeneratedOp in tracked.owner.flags:
     # don't create type bound ops for anything in a function with a `nodestroy` pragma
     # bug #21987
-    # unless this is an explicit call, bug #24626
     return
   when false:
     let realType = typ.skipTypes(abstractInst)
@@ -1166,7 +1165,8 @@ proc trackCall(tracked: PEffects; n: PNode) =
       # rebind type bounds operations after createTypeBoundOps call
       let t = n[1].typ.skipTypes({tyAlias, tyVar, tySink})
       if a.sym != getAttachedOp(tracked.graph, t, opKind):
-        createTypeBoundOps(tracked, t, n.info, explicit = true)
+        # generate called hook regardless of `nodestroy` for explicit call, bug #24626
+        createSingleTypeBoundOp(tracked.graph, tracked.c, t, opKind, n.info, tracked.c.idgen)
         # replace builtin hooks with lifted ones
         n = replaceHookMagic(tracked.c, n, opKind)
 

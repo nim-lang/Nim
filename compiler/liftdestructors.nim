@@ -42,6 +42,8 @@ proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode)
 proc produceSym(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp;
               info: TLineInfo; idgen: IdGenerator): PSym
 
+proc createSingleTypeBoundOp*(g: ModuleGraph; c: PContext; orig: PType; op: TTypeAttachedOp;
+                             info: TLineInfo; idgen: IdGenerator)
 proc createTypeBoundOps*(g: ModuleGraph; c: PContext; orig: PType; info: TLineInfo;
                          idgen: IdGenerator)
 
@@ -684,7 +686,7 @@ proc fillSeqOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   of attachedWasMoved: body.add genBuiltin(c, mWasMoved, "wasMoved", x)
 
 proc useSeqOrStrOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
-  createTypeBoundOps(c.g, c.c, t, body.info, c.idgen)
+  createSingleTypeBoundOp(c.g, c.c, t, c.kind, body.info, c.idgen)
   # recursions are tricky, so we might need to forward the generated
   # operation here:
   var t = t
@@ -703,8 +705,12 @@ proc useSeqOrStrOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     # we always inline the move for better performance:
     let moveCall = genBuiltin(c, mMove, "move", x)
     moveCall.add y
-    doAssert t.destructor != nil
-    moveCall.add destructorCall(c, t.destructor, x)
+    var destructor = t.destructor
+    if destructor == nil or destructor.ast.isGenericRoutine:
+      createSingleTypeBoundOp(c.g, c.c, t, attachedDestructor, body.info, c.idgen)
+      destructor = t.destructor
+    doAssert destructor != nil
+    moveCall.add destructorCall(c, destructor, x)
     body.add moveCall
     # alternatively we could do this:
     when false:
@@ -789,7 +795,7 @@ proc atomicRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   var actions = newNodeI(nkStmtList, c.info)
   let elemType = t.elementType
 
-  createTypeBoundOps(c.g, c.c, elemType, c.info, c.idgen)
+  createSingleTypeBoundOp(c.g, c.c, elemType, c.kind, c.info, c.idgen)
 
   # YRC uses dedicated runtime procs for the entire write barrier:
   if c.g.config.selectedGC == gcYrc:
@@ -822,6 +828,8 @@ proc atomicRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     else:
       x
 
+  if t.destructor == nil or t.destructor.ast.isGenericRoutine:
+    createSingleTypeBoundOp(c.g, c.c, elemType, attachedDestructor, body.info, c.idgen)
   if isFinal(elemType):
     addDestructorCall(c, elemType, actions, genDeref(tmp, nkDerefExpr))
     var alignOf = genBuiltin(c, mAlignOf, "alignof", newNodeIT(nkType, c.info, elemType))
@@ -1414,6 +1422,32 @@ proc inst(g: ModuleGraph; c: PContext; t: PType; kind: TTypeAttachedOp; idgen: I
 
 proc isTrivial*(s: PSym): bool {.inline.} =
   s == nil or (s.ast != nil and s.ast[bodyPos].len == 0)
+
+proc createSingleTypeBoundOp(g: ModuleGraph; c: PContext; orig: PType; op: TTypeAttachedOp;
+                             info: TLineInfo; idgen: IdGenerator) =
+  ## like `createTypeBoundOps` but only generates a single hook
+  if orig == nil or {tfCheckedForDestructor, tfHasMeta} * orig.flags != {}: return
+
+  let skipped = orig.skipTypes({tyGenericInst, tyAlias, tySink})
+  if isEmptyContainer(skipped) or skipped.kind == tyStatic: return
+
+  let h = sighashes.hashType(skipped, g.config, {CoType, CoConsiderOwned, CoDistinct})
+  var canon = g.canonTypes.getOrDefault(h)
+  if canon == nil:
+    g.canonTypes[h] = skipped
+    canon = skipped
+
+  let generic = getAttachedOp(g, canon, op) != nil
+  if not generic:
+    setAttachedOp(g, idgen.module, canon, op,
+        symPrototype(g, canon, canon.owner, op, info, idgen))
+
+  if not generic:
+    discard produceSym(g, c, canon, op, info, idgen)
+  else:
+    inst(g, c, canon, op, idgen, info)
+  if canon != orig:
+    setAttachedOp(g, idgen.module, orig, op, getAttachedOp(g, canon, op))
 
 proc createTypeBoundOps(g: ModuleGraph; c: PContext; orig: PType; info: TLineInfo;
                         idgen: IdGenerator) =
