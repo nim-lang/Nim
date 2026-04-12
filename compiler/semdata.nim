@@ -183,6 +183,9 @@ type
     forwardTypeUpdates*: seq[(PType, PNode)]
       # types that need to be updated in a type section
       # due to containing forward types, and their corresponding nodes
+    forwardFieldUpdates*: seq[(PType, PNode, PType)]
+      # object/tuple field definitions whose default values mention forward
+      # types and need delayed const checking
     inTypeofContext*: int
 
     semAsgnOpr*: proc (c: PContext; n: PNode; k: TNodeKind): PNode {.nimcall.}
