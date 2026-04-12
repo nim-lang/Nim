@@ -336,6 +336,9 @@ proc genObjectOfSwitch(p: BProc; n: PNode; d: var TLoc): bool =
   var nilCheck: Rope = ""
   var mtype: Snippet = ""
   rdMType(p, a, nilCheck, mtype)
+  # Guard the display lookup so shallower runtime types fall through safely.
+  let depthCheck = cOp(GreaterEqual, derefField(mtype, "depth"),
+    cIntValue(int(detected.childDepth)))
   let displayAtDepth = subscript(derefField(mtype, "display"), cIntValue(int(detected.childDepth)))
   let discr =
     if detected.kind == oskSibling:
@@ -350,23 +353,33 @@ proc genObjectOfSwitch(p: BProc; n: PNode; d: var TLoc): bool =
           p.s(cpsStmts).addSingleSwitchCase(cIntValue(int(token))):
             exprBlock(p, branch.body, d)
             p.s(cpsStmts).addBreak()
-      if detected.elseBody != nil:
-        p.s(cpsStmts).addSwitchElse():
-          exprBlock(p, detected.elseBody, d)
-          p.s(cpsStmts).addBreak()
 
-  if nilCheck != "":
-    var ifStmt = initIfStmt(p.s(cpsStmts))
-    initElifBranch(p.s(cpsStmts), ifStmt, cOp(NotEqual, nilCheck, NimNil))
-    emitSwitchBody()
-    if detected.elseBody != nil:
-      finishBranch(p.s(cpsStmts), ifStmt)
-      initElseBranch(p.s(cpsStmts), ifStmt)
-      exprBlock(p, detected.elseBody, d)
-    finishBranch(p.s(cpsStmts), ifStmt)
-    finishIfStmt(p.s(cpsStmts), ifStmt)
+  let switchCheck =
+    if nilCheck != "":
+      cOp(And, cOp(NotEqual, nilCheck, NimNil), depthCheck)
+    else:
+      depthCheck
+
+  if detected.elseBody != nil:
+    let elseLabel = getLabel(p)
+    let endLabel = getLabel(p)
+    p.s(cpsStmts).addSingleIfStmt(cOp(Not, switchCheck)):
+      p.s(cpsStmts).addGoto(elseLabel)
+    p.s(cpsStmts).addSwitchStmt(discr):
+      for branch in detected.branches:
+        for token in branch.tokens:
+          p.s(cpsStmts).addSingleSwitchCase(cIntValue(int(token))):
+            exprBlock(p, branch.body, d)
+            p.s(cpsStmts).addBreak()
+      p.s(cpsStmts).addSwitchElse():
+        p.s(cpsStmts).addGoto(elseLabel)
+    p.s(cpsStmts).addGoto(endLabel)
+    fixLabel(p, elseLabel)
+    exprBlock(p, detected.elseBody, d)
+    fixLabel(p, endLabel)
   else:
-    emitSwitchBody()
+    p.s(cpsStmts).addSingleIfStmt(switchCheck):
+      emitSwitchBody()
   result = true
 
 template preserveBreakIdx(body: untyped): untyped =
