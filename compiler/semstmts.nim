@@ -1819,6 +1819,20 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
       assert reified != nil
       assignType(typ, reified)
       typ.itemId = reified.itemId  # same id
+      if containsForwardType(typ):
+        c.forwardTypeUpdates.add (typ, typeNode)
+    var madeProgress = false
+    for (typ2, _) in ftc:
+      var found = false
+      for (typ3, _) in c.forwardTypeUpdates:
+        if typ3 == typ2:
+          found = true
+          break
+      if not found:
+        madeProgress = true
+        break
+    if not madeProgress:
+      break
   for (owner, field, expectedType) in c.forwardFieldUpdates:
     semDelayedFieldDefault(c, owner, expectedType, field)
   c.forwardFieldUpdates = @[]
