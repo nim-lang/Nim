@@ -274,12 +274,22 @@ proc incrSeqV3(s: PGenericSeq, typ: PNimType): PGenericSeq {.compilerproc.} =
       # since we steal the content from 's', it's crucial to set s's len to 0.
       s.len = 0
 
+proc newSeqUninitRaw(typ: PNimType; len: int): pointer {.inline.} =
+  ## Creates a sequence payload with capacity and length `len` without
+  ## forcing zero-initialization for `ntfNoRefs` element types.
+  result = nimNewSeqOfCap(typ, len)
+  cast[PGenericSeq](result).len = len
+
 proc extendCapacityRaw(src: PGenericSeq; typ: PNimType;
-                      elemSize, elemAlign, newLen: int): PGenericSeq {.inline.} =
+                      elemSize, elemAlign, newLen: int;
+                      doInit: static bool): PGenericSeq {.inline.} =
   ## Reallocs `src` to fit `newLen` elements without any checks.
   ## Capacity always increases to at least next `resize` step.
   let newCap = max(resize(src.space), newLen)
-  result = cast[PGenericSeq](newSeq(typ, newCap))
+  when doInit:
+    result = cast[PGenericSeq](newSeq(typ, newCap))
+  else:
+    result = cast[PGenericSeq](newSeqUninitRaw(typ, newCap))
   copyMem(dataPointer(result, elemAlign), dataPointer(src, elemAlign), src.len * elemSize)
   # since we steal the content from 's', it's crucial to set s's len to 0.
   src.len = 0
@@ -310,15 +320,19 @@ proc truncateRaw(src: PGenericSeq; baseFlags: set[TNimTypeFlag]; isTrivial: bool
             ((result.len-%newLen) *% elemSize))
 
 template setLengthSeqImpl(s: PGenericSeq, typ: PNimType, newLen: int; isTrivial: bool;
-                          doInit: static bool) = 
+                          doInit: static bool) =
   if s == nil:
     if newLen == 0: return s
-    else: return cast[PGenericSeq](newSeq(typ, newLen)) # newSeq zeroes!
+    else:
+      when doInit:
+        return cast[PGenericSeq](newSeq(typ, newLen)) # newSeq zeroes!
+      else:
+        return cast[PGenericSeq](newSeqUninitRaw(typ, newLen))
   else:
     let elemSize = typ.base.size
     let elemAlign = typ.base.align
     result = if newLen > s.space:
-        s.extendCapacityRaw(typ, elemSize, elemAlign, newLen)
+        s.extendCapacityRaw(typ, elemSize, elemAlign, newLen, doInit)
       elif newLen < s.len:
         s.truncateRaw(typ.base.flags, isTrivial, elemSize, elemAlign, newLen)
       else:
