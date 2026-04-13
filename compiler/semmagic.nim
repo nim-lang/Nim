@@ -615,9 +615,9 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
   of mAsgn:
     case n[0].sym.name.s
     of "=", "=copy":
-      result = replaceHookMagic(c, n, attachedAsgn)
+      result = semAsgnOpr(c, n, nkAsgn)
     of "=sink":
-      result = replaceHookMagic(c, n, attachedSink)
+      result = semAsgnOpr(c, n, nkSinkAsgn)
     else:
       result = semShallowCopy(c, n, flags)
   of mIsPartOf: result = semIsPartOf(c, n, flags)

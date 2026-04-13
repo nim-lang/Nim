@@ -778,17 +778,9 @@ proc replaceHookMagic*(c: PContext, n: PNode, kind: TTypeAttachedOp): PNode =
       result[0] = newSymNode(op)
       analyseIfAddressTakenInCall(c, result, false)
   of attachedSink:
-    result = n
-    let t = n[1].typ.skipTypes({tyAlias, tyVar, tySink})
-    let op = getAttachedOp(c.graph, t, kind)
-    if op != nil:
-      result[0] = newSymNode(op)
+    result = c.semAsgnOpr(c, n, nkSinkAsgn)
   of attachedAsgn:
-    result = n
-    let t = n[1].typ.skipTypes({tyAlias, tyVar, tySink})
-    let op = getAttachedOp(c.graph, t, kind)
-    if op != nil:
-      result[0] = newSymNode(op)
+    result = c.semAsgnOpr(c, n, nkAsgn)
   of attachedDeepCopy:
     result = n
     let t = n[1].typ.skipTypes({tyAlias, tyVar, tySink})
