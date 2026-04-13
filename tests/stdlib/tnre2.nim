@@ -69,19 +69,12 @@ block: # match
     doAssert "abc".match(re"abc", endpos = 2) != none(RegexMatch)
 
   block: # match examples
-    doAssert "abc".match(re"(\w)+").get.captures[0] == "c"
-    doAssert "abc".match(re"(?P<letter>\w)+").get.captures["letter"] == "c"
-    doAssert "abc".match(re"(\w)\w\w").get.captures[-1] == "abc"
-    doAssert "abc".match(re"(\w)+").get.captureBounds[0] == 2 .. 2
-    doAssert "abc".match(re"abc").get.captureBounds[-1] == 0 .. 2
-  #[
     doAssert "abc".match(re"(\w)").get.captures[0] == "a"
     doAssert "abc".match(re"(?P<letter>\w)").get.captures["letter"] == "a"
     doAssert "abc".match(re"(\w)\w").get.captures[-1] == "ab"
     doAssert "abc".match(re"(\w)").get.captureBounds[0] == 0 .. 0
     doAssert "abc".match(re"").get.captureBounds[-1] == 0 .. -1
     doAssert "abc".match(re"abc").get.captureBounds[-1] == 0 .. 2
-  ]#
 
     let cap1 = "abc".match(re"(\w)(\w)+").get.captures
     doAssert cap1.len == 2
@@ -91,6 +84,7 @@ block: # match
     doAssert 0 in "abc".match(re"(\w)+").get.captureBounds
 
   block: # match test cases
+    doAssert "123".match(re"").get.matchBounds == 0 .. -1
     let mat1 = "123".match(re"123").get
     doAssert mat1.matchBounds == 0 .. 2
     doAssert mat1.match == "123"
@@ -116,9 +110,8 @@ block: # find
     doAssert "".findAll(re"") == @[""]
     doAssert "abc".findAll(re"") == @["", "", "", ""]
     doAssert "word word".findAll(re"\b") == @["", "", "", ""]
-    #doAssert "word\r\lword".findAll(re"(*ANYCRLF)(?m)$") == @["", ""]
     doAssert "word\r\lword".findAll(re"(?m)$") == @["", ""]
-    #doAssert "слово слово".findAll(re"(*U)\b") == @["", "", "", ""]
+    doAssert "слово слово".findAll(re"\b") == @["", "", "", ""]
 
 block: # contains
   doAssert "abc".contains(re"bc")
@@ -149,8 +142,8 @@ block: # string splitting
     doAssert "12345".split(re("")) == @["1", "2", "3", "4", "5"]
     doAssert "".split(re"") == newSeq[string]()
     doAssert "word word".split(re"\b") == @["word", " ", "word"]
-    #doAssert "word\r\lword".split(re"(*ANYCRLF)(?m)$") == @["word", "\r\lword"]
-    #doAssert "слово слово".split(re"(*U)(\b)") == @["", "слово", "", " ", "", "слово", ""]
+    #doAssert "word\r\lword".split(re"(?m)$") == @["word", "\r\lword"]
+    doAssert "слово слово".split(re"(\b)") == @["слово", "", " ", "", "слово", ""]
 
   block: # perl split tests
     doAssert "forty-two"                    .split(re"")      .join(",") == "f,o,r,t,y,-,t,w,o"
@@ -178,6 +171,7 @@ block: # string splitting
     doAssert "abc".split(re"", start = 1) == @["b", "c"]
     doAssert "abc".split(re"", start = 2) == @["c"]
     doAssert "abc".split(re"", start = 3) == newSeq[string]()
+    doAssert "abc".split(re"^b", start = 1) == @["bc"]
 
 block: # replace
   block: # replace with 0-length strings
@@ -190,25 +184,10 @@ block: # replace
     doAssert "123".replace(re"(\d)", "$1$1") == "112233"
     doAssert "123".replace(re"(\d)(\d)", "$1$2") == "123"
     doAssert "123".replace(re"(\d)(\d)", "$#$#") == "123"
-    #doAssert "123".replace(re"(?P<foo>\d)(\d)", "$foo$#$#") == "1123"
-    #doAssert "123".replace(re"(?P<foo>\d)(\d)", "${foo}$#$#") == "1123"
     doAssert "abcdefghijklm".replace(re"(a)(b)(c)(d)(e)(f)(g)(h)(i)(j)(k)(l)(m)", "$12") == "l"
 
   block: # replacing missing captures should throw instead of segfaulting
     doAssertRaises(ValueError): discard "ab".replace(re"(a)", "$1$2")
-    #[
-    expect IndexDefect: discard "ab".replace(re"(a)|(b)", "$1$2")
-    expect IndexDefect: discard "b".replace(re"(a)?(b)", "$1$2")
-    expect KeyError: discard "b".replace(re"(a)?", "${foo}")
-    expect KeyError: discard "b".replace(re"(?<foo>a)?", "${foo}")
-    ]#
-
-  #[
-  block: # malformed replacement syntax should throw instead of OOB crash
-    expect ValueError: discard "a".replace(re"a", "$")
-    expect ValueError: discard "a".replace(re"a", "x$")
-    expect ValueError: discard "a".replace(re"a", "${foo")
-  ]#
 
 block: # escape strings
   block: # escape strings

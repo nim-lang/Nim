@@ -146,9 +146,7 @@ proc contains*(str: string; pattern: Regex; start = 0; endpos = int.high): bool 
   isSome(str.find(pattern, start, endpos))
 
 proc split*(str: string; pattern: Regex; maxSplit = -1; start = 0): seq[string] =
-  result = splitIncl(str.substr(start), pattern, maxSplit)
-  # needs https://github.com/nitely/nim-regex/pull/161
-  #result = splitIncl(str, pattern, maxSplit, start)
+  result = splitIncl(str, pattern, maxSplit, start)
 
 proc replace*(str: string; pattern: Regex;
               subproc: proc (match: RegexMatch): string): string =
