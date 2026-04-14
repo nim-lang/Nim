@@ -60,6 +60,7 @@ errors.
     - `copyDirWithPermissions` to recursively preserve attributes
 
 - `system.setLenUninit` now supports refc, JS and VM backends.
+- `system.setLenUninit` for the `string` type. Allows setting length without initializing new memory on growth.
 
 - `std/parseopt` now supports multiple parser modes via a `CliMode` enum.
   Modes include `Nim` (default, fully compatible) and two new experimental modes:
