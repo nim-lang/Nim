@@ -2328,6 +2328,33 @@ when notJSnotNims and hasAlloc:
   when not defined(nimV2):
     include "system/repr"
 
+func setLenUninit*(s: var string, newlen: Natural) {.nodestroy.} =
+  ## Sets the length of string `s` to `newlen`.
+  ## New slots will not be initialized.
+  ##
+  ## If the new length is smaller than the new length,
+  ## `s` will be truncated.
+  let n = max(newLen, 0)
+  when nimvm:
+    s.setLen(n)
+  else:
+    when notJSnotNims:
+      when defined(nimSeqsV2):
+        {.noSideEffect.}:
+          let str = unsafeAddr s
+          when defined(nimsso):
+            setLengthStrV3Uninit(cast[ptr SmallString](str)[], newlen)
+          else:
+            setLengthStrV2Uninit(cast[ptr NimStringV2](str)[], newlen)
+      else:
+        {.noSideEffect.}:
+          when hasAlloc:
+            setLengthStrUninit(s, newlen)
+          else:
+            s.setLen(n)
+    else: s.setLen(n)
+
+
 when notJSnotNims and hasThreadSupport and hostOS != "standalone":
   when not defined(nimPreviewSlimSystem):
     include "system/channels_builtin"

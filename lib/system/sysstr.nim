@@ -244,6 +244,31 @@ proc setLengthStr(s: NimString, newLen: int): NimString {.compilerRtl.} =
   result.len = n
   result.data[n] = '\0'
 
+proc setLengthStrUninit(s: var string, newlen: Natural) {.nodestroy.} =
+  ## Sets the `s` length to `newlen` without zeroing memory on growth.
+  ## Terminating zero for cstring compatibility is set.
+  var str = cast[NimString](s)
+  let n = max(newLen, 0)
+  if str == nil:
+    if n == 0: return
+    else:
+      str = rawNewStringNoInit(n)
+      str.data[n] = '\0'
+      str.len = n
+      s = cast[string](str)
+  else:
+    if n > str.space:
+      let sp = max(resize(str.space), n)
+      str = rawNewStringNoInit(sp)
+      copyMem(addr str.data[0], unsafeAddr s[0], s.len)
+      str.data[n] = '\0'
+      str.len = n
+      s = cast[string](str)
+    elif n < s.len:
+      str.data[n] = '\0'
+      str.len = n
+    else: return
+
 # ----------------- sequences ----------------------------------------------
 
 proc incrSeq(seq: PGenericSeq, elemSize, elemAlign: int): PGenericSeq {.compilerproc.} =
