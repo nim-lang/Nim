@@ -1809,8 +1809,7 @@ proc checkForMetaFields(c: PContext; n: PNode; hasError: var bool) =
 
 proc typeSectionFinalPass(c: PContext, n: PNode) =
   while c.forwardTypeUpdates.len > 0:
-    let ftc = c.forwardTypeUpdates
-    c.forwardTypeUpdates = @[]
+    let ftc = move c.forwardTypeUpdates
     for (typ, typeNode) in ftc:
       # types that need to be updated due to containing forward types
       # and their corresponding type nodes
