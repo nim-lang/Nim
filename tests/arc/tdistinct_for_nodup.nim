@@ -15,14 +15,6 @@ block :tmp:
       {.push, overflowChecks: false.}
       inc(i_1, 1)
       {.pop.}
-      const
-        loc`gensym1 = (filename: "iterators.nim", line: 254, column: 10)
-        ploc`gensym1 = "iterators.nim(254, 11)"
-      bind instantiationInfo
-      mixin failedAssertImpl
-      {.line: (filename: "iterators.nim", line: 254, column: 10).}:
-        if not (len(seq[Large](broken_cursor)) == L):
-          failedAssertImpl("iterators.nim(254, 11) `len(a) == L` the length of the seq changed while iterating over it")
 -- end of expandArc ------------------------
 '''
 """
