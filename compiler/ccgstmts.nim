@@ -1060,7 +1060,7 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
         throw;
       }
     } catch(...) {
-      // C++ exception occured, not under Nim's control.
+      // C++ exception occurred, not under Nim's control.
     }
     {
       /* finally: */
