@@ -21,10 +21,11 @@ type
   Captures* {.borrow: `.`.} = distinct RegexMatch
   CaptureBounds* {.borrow: `.`.} = distinct RegexMatch
 
-func captureCount*(pattern: Regex): int =
+func captureCount*(pattern: Regex): int {.inline.} =
   pattern.toRegex().groupsCount
 
 func captureNameId*(pattern: Regex): Table[string, int] =
+  result = initTable[string, int](pattern.toRegex().namedGroups.len)
   for k, v in pattern.toRegex().namedGroups:
     result[k] = v
 
@@ -116,6 +117,9 @@ func match*(str: string, pattern: Regex, start = 0, endpos = int.high): Option[R
 
 iterator findIter*(str: string; pattern: Regex; start = 0, endpos = int.high): RegexMatch =
   var mat = RegexMatch(str: str)
+  # TODO:
+  # needs following PR to remove `substr` call.
+  # https://github.com/nitely/nim-regex/pull/162
   for m in regex.findAll(str.substr(start, endpos), pattern):
     mat.matchImpl = m
     yield mat
