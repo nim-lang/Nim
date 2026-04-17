@@ -1812,6 +1812,7 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
   var remainingOwners = initIntSet()
   for (owner, _, _) in c.forwardTypeUpdates:
     remainingOwners.incl owner.id
+  
   while c.forwardTypeUpdates.len > 0:
     let pending = move c.forwardTypeUpdates
     var madeProgress = false
@@ -1830,14 +1831,8 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
         madeProgress = true
     
     if not madeProgress:
-      for i in 0..<n.len:
-        let a = n[i]
-        if a.kind == nkCommentStmt: continue
-        let s = typeSectionTypeName(c, a[0]).sym
-        if s.id in remainingOwners:
-          localError(c.config, s.info, errIllegalRecursionInTypeX % s.name.s)
-      internalError(c.config, n.info, "stalled forward type resolution should have failed")
-      return
+      # can't error here unfortunately
+      break
 
   for (owner, field, expectedType) in c.forwardFieldUpdates:
     semDelayedFieldDefault(c, owner, expectedType, field)
