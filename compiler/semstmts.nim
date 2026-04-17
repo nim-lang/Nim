@@ -1807,14 +1807,11 @@ proc checkForMetaFields(c: PContext; n: PNode; hasError: var bool) =
   else:
     internalAssert c.config, false
 
-proc ownerIntSet(updates: openArray[(PSym, PType, PNode)]): IntSet =
-  result = initIntSet()
-  for (owner, _, _) in updates:
-    result.incl owner.id
-
 proc typeSectionFinalPass(c: PContext, n: PNode) =
   # each top level type needs to be processed, each epoch should reify at least one
-  var remainingOwners = c.forwardTypeUpdates.ownerIntSet
+  var remainingOwners = initIntSet()
+  for (owner, _, _) in c.forwardTypeUpdates:
+    remainingOwners.incl owner.id
   while c.forwardTypeUpdates.len > 0:
     let pending = move c.forwardTypeUpdates
     var madeProgress = false
@@ -1837,7 +1834,7 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
         let a = n[i]
         if a.kind == nkCommentStmt: continue
         let s = typeSectionTypeName(c, a[0]).sym
-        if contains(pending.ownerIntSet, s.id):
+        if s.id in remainingOwners:
           localError(c.config, s.info, errIllegalRecursionInTypeX % s.name.s)
       internalError(c.config, n.info, "stalled forward type resolution should have failed")
       return
