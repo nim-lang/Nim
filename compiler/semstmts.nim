@@ -1813,8 +1813,11 @@ proc ownerIntSet(updates: openArray[(PSym, PType, PNode)]): IntSet =
     result.incl owner.id
 
 proc typeSectionFinalPass(c: PContext, n: PNode) =
+  # each top level type needs to be processed, each epoch should reify at least one
+  var remainingOwners = c.forwardTypeUpdates.ownerIntSet
   while c.forwardTypeUpdates.len > 0:
     let pending = move c.forwardTypeUpdates
+    var madeProgress = false
 
     for (owner, typ, typeNode) in pending:
       # types that need to be updated due to containing forward types
@@ -1826,8 +1829,10 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
       typ.itemId = reified.itemId  # same id
       if containsForwardType(typ):
         c.forwardTypeUpdates.add (owner, typ, typeNode)
-
-    if c.forwardTypeUpdates.ownerIntSet == pending.ownerIntSet:
+      elif not remainingOwners.missingOrExcl(owner.id):
+        madeProgress = true
+    
+    if not madeProgress:
       for i in 0..<n.len:
         let a = n[i]
         if a.kind == nkCommentStmt: continue
