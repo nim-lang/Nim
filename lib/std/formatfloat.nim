@@ -19,7 +19,12 @@ proc addCstringN(result: var string, buf: cstring; buflen: int) =
   let oldLen = result.len
   let newLen = oldLen + buflen
   result.setLen newLen
-  c_memcpy(result[oldLen].addr, buf, buflen.csize_t)
+  {.cast(noSideEffect).}:
+    when declared(completeStore):
+      c_memcpy(beginStore(result, buflen, oldLen), buf, buflen.csize_t)
+      endStore(result)
+    else:
+      discard c_memcpy(result[oldLen].addr, buf, buflen.csize_t)
 
 import std/private/[dragonbox, schubfach]
 

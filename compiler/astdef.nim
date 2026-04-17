@@ -701,6 +701,7 @@ type
 
   PLib* = ref TLib
   TSym* {.acyclic.} = object # Keep in sync with ast2nif.nim
+                             # Check `transitionSymKindCommon` in ast.nim when add a new field.
     itemId*: ItemId
     # proc and type instantiations are cached in the generic symbol
     state*: ItemState

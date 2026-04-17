@@ -309,7 +309,7 @@ proc addAbiCheck(m: BModule; t: PType, name: Rope) =
 
 
 proc fillResult(conf: ConfigRef; param: PNode, proctype: PType) =
-  ensureMutable param.sym
+  backendEnsureMutable param.sym
   fillLoc(param.sym.locImpl, locParam, param, "Result",
           OnStack)
   let t = param.sym.typ
@@ -339,6 +339,10 @@ proc getSimpleTypeDesc(m: BModule; typ: PType): Rope =
       cgsym(m, "NimStrPayload")
       cgsym(m, "NimStringV2")
       result = typeNameOrLiteral(m, typ, "NimStringV2")
+    of 3:
+      cgsym(m, "LongString")
+      cgsym(m, "SmallString")
+      result = typeNameOrLiteral(m, typ, "SmallString")
     else:
       cgsym(m, "NimStringDesc")
       result = typeNameOrLiteral(m, typ, "NimStringDesc*")
@@ -453,6 +457,14 @@ proc getSeqPayloadType(m: BModule; t: PType): Rope =
   result = getTypeDescWeak(m, t, check, dkParam) & "_Content"
   #result = getTypeForward(m, t, hashType(t)) & "_Content"
 
+proc seqPayloadElem(m: BModule; t: PType): Snippet =
+  ## Returns the C type name for a seq's element as stored in the payload,
+  ## suitable for sizeof()/alignof(). Must use dkVar, not the dkParam default,
+  ## because reified openArrays (experimental views) differ: dkParam gives a
+  ## bare pointer (T*) while dkVar gives the two-word struct actually stored.
+  var check = initIntSet()
+  result = getTypeDescAux(m, t.elementType, check, dkVar)
+
 proc seqV2ContentType(m: BModule; t: PType; check: var IntSet) =
   let sig = hashType(t, m.config)
   let result = cacheGetType(m.typeCache, sig)
@@ -534,7 +546,7 @@ proc genMemberProcParams(m: BModule; prc: PSym, superCall, rettype, name, params
   var types, names, args: seq[string] = @[]
   if not isCtor:
     var this = t.n[1].sym
-    ensureMutable this
+    backendEnsureMutable this
     fillParamName(m, this)
     fillLoc(this.locImpl, locParam, t.n[1],
             this.paramStorageLoc)
@@ -556,7 +568,7 @@ proc genMemberProcParams(m: BModule; prc: PSym, superCall, rettype, name, params
       else:
         descKind = dkRefParam
     var typ, name: string
-    ensureMutable param
+    backendEnsureMutable param
     fillParamName(m, param)
     fillLoc(param.locImpl, locParam, t.n[i],
             param.paramStorageLoc)
@@ -800,6 +812,8 @@ proc getTupleDesc(m: BModule; typ: PType, name: Rope,
   var res = newBuilder("")
   res.addStruct(m, typ, name, ""):
     for i, a in typ.ikids:
+      # Do not produce code for void types
+      if isEmptyType(a): continue
       res.addField(
         name = "Field" & $i,
         typ = getTypeDescAux(m, a, check, dkField))
@@ -1173,7 +1187,7 @@ proc genMemberProcHeader(m: BModule; prc: PSym; result: var Builder; asPtr: bool
   let isCtor = sfConstructor in prc.flags
   var check = initIntSet()
   fillBackendName(m, prc)
-  ensureMutable prc
+  backendEnsureMutable prc
   fillLoc(prc.locImpl, locProc, prc.ast[namePos], OnUnknown)
   var memberOp = "#." #only virtual
   var typ: PType
@@ -1472,27 +1486,38 @@ proc genObjectInfo(m: BModule; typ, origType: PType, name: Rope; info: TLineInfo
     t.incl tfObjHasKids
     t = t.baseClass
 
+proc validTupleTypeFields(t: PType): int =
+  # we want to treat tuples with only void fields as empty, so we need to exclude void types here:
+  result = 0
+  for a in t.kids:
+    if not isEmptyType(a): inc result
+
 proc genTupleInfo(m: BModule; typ, origType: PType, name: Rope; info: TLineInfo) =
   genTypeInfoAuxBase(m, typ, typ, name, cIntValue(0), info)
   var expr = getNimNode(m)
-  if not typ.isEmptyTupleType:
-    var tmp = getTempName(m) & "_" & $typ.kidsLen
-    genTNimNodeArray(m, tmp, typ.kidsLen)
+  let nonVoidKids = validTupleTypeFields(typ)
+  if nonVoidKids > 0:
+    var tmp = getTempName(m) & "_" & $nonVoidKids
+    genTNimNodeArray(m, tmp, nonVoidKids)
+    var j = 0
     for i, a in typ.ikids:
+      # Do not produce code for void types
+      if isEmptyType(a): continue
       var tmp2 = getNimNode(m)
       let fieldTypInfo = genTypeInfoV1(m, a, info)
-      m.s[cfsTypeInit3].addSubscriptAssignment(tmp, cIntValue(i), cAddr(tmp2))
+      m.s[cfsTypeInit3].addSubscriptAssignment(tmp, cIntValue(j), cAddr(tmp2))
       m.s[cfsTypeInit3].addFieldAssignment(tmp2, "kind", 1)
       m.s[cfsTypeInit3].addFieldAssignmentWithValue(tmp2, "offset"):
         m.s[cfsTypeInit3].addOffsetof(getTypeDesc(m, origType, dkVar), "Field" & $i)
       m.s[cfsTypeInit3].addFieldAssignment(tmp2, "typ", fieldTypInfo)
       m.s[cfsTypeInit3].addFieldAssignment(tmp2, "name", "\"Field" & $i & "\"")
-    m.s[cfsTypeInit3].addFieldAssignment(expr, "len", typ.kidsLen)
+      inc j
+    m.s[cfsTypeInit3].addFieldAssignment(expr, "len", nonVoidKids)
     m.s[cfsTypeInit3].addFieldAssignment(expr, "kind", 2)
     m.s[cfsTypeInit3].addFieldAssignment(expr, "sons",
       cAddr(subscript(tmp, cIntValue(0))))
   else:
-    m.s[cfsTypeInit3].addFieldAssignment(expr, "len", typ.kidsLen)
+    m.s[cfsTypeInit3].addFieldAssignment(expr, "len", cIntValue(0))
     m.s[cfsTypeInit3].addFieldAssignment(expr, "kind", 2)
   m.s[cfsTypeInit3].addFieldAssignment(tiNameForHcr(m, name), "node", cAddr(expr))
 

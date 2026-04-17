@@ -56,12 +56,12 @@ proc toConverterIndexEntry*(config: ConfigRef; converterSym: PSym): (nifstreams.
   # Fallback: return empty entry
   result = (nifstreams.SymId(0), nifstreams.SymId(0))
 
-proc toMethodIndexEntry*(config: ConfigRef; methodSym: PSym; signature: string): MethodIndexEntry =
-  ## Converts a method symbol to a MethodIndexEntry.
+proc toMethodIndexEntry*(config: ConfigRef; methodSym: PSym; signature: string): (nifstreams.SymId, nifstreams.StrId) =
+  ## Converts a method symbol/signature to a method index entry.
   let methodSymName = methodSym.name.s & "." & $methodSym.disamb & "." & cachedModuleSuffix(config, methodSym.itemId.module.FileIndex)
-  result = MethodIndexEntry(
-    fn: pool.syms.getOrIncl(methodSymName),
-    signature: pool.strings.getOrIncl(signature)
+  result = (
+    pool.syms.getOrIncl(methodSymName),
+    pool.strings.getOrIncl(signature)
   )
 
 proc toClassSymId*(config: ConfigRef; typeId: ItemId): nifstreams.SymId =
@@ -167,7 +167,8 @@ const
 
 proc isLocalSym(sym: PSym): bool {.inline.} =
   sym.kindImpl in skLocalSymKinds or
-    (sym.kindImpl in {skVar, skLet} and {sfGlobal, sfThread} * sym.flagsImpl == {})
+    (sym.kindImpl in {skVar, skLet} and {sfGlobal, sfThread} * sym.flagsImpl == {} and
+     (sym.ownerFieldImpl == nil or sym.ownerFieldImpl.kindImpl != skModule))
 
 proc toNifSymName(w: var Writer; sym: PSym): string =
   ## Generate NIF name for a symbol: local names are `ident.disamb`,
@@ -523,9 +524,7 @@ proc writeNode(w: var Writer; dest: var TokenBuf; n: PNode; forAst = false) =
     of nkEmpty:
       if n.typField != nil:
         w.withNode dest, n:
-          let info = trLineInfo(w, n.info)
-          dest.addParLe pool.tags.getOrIncl(toNifTag(n.kind)), info
-          dest.addParRi
+          discard
       else:
         let info = trLineInfo(w, n.info)
         dest.addParLe pool.tags.getOrIncl(toNifTag(n.kind)), info
@@ -700,7 +699,10 @@ proc writeOp(w: var Writer; content: var TokenBuf; op: LogEntry) =
   of MethodEntry:
     discard "to implement"
   of EnumToStrEntry:
-    discard "to implement"
+    content.addParLe repEnumToStrTag, NoLineInfo
+    content.add strToken(pool.strings.getOrIncl(op.key), NoLineInfo)
+    content.add symToken(pool.syms.getOrIncl(w.toNifSymName(op.sym)), NoLineInfo)
+    content.addParRi()
   of GenericInstEntry:
     discard "will only be written later to ensure it is materialized"
 
@@ -910,20 +912,20 @@ proc loadSymFromCursor(c: var DecodeContext; s: PSym; n: var Cursor; thisModule:
 proc createTypeStub(c: var DecodeContext; t: SymId): PType =
   let name = pool.syms[t]
   assert name.startsWith("`t")
-  var i = len("`t")
-  var k = 0
-  while i < name.len and name[i] in {'0'..'9'}:
-    k = k * 10 + name[i].ord - ord('0')
-    inc i
-  if i < name.len and name[i] == '.': inc i
-  var itemId = 0'i32
-  while i < name.len and name[i] in {'0'..'9'}:
-    itemId = itemId * 10'i32 + int32(name[i].ord - ord('0'))
-    inc i
-  if i < name.len and name[i] == '.': inc i
-  let suffix = name.substr(i)
   result = c.types.getOrDefault(name)[0]
   if result == nil:
+    var i = len("`t")
+    var k = 0
+    while i < name.len and name[i] in {'0'..'9'}:
+      k = k * 10 + name[i].ord - ord('0')
+      inc i
+    if i < name.len and name[i] == '.': inc i
+    var itemId = 0'i32
+    while i < name.len and name[i] in {'0'..'9'}:
+      itemId = itemId * 10'i32 + int32(name[i].ord - ord('0'))
+      inc i
+    if i < name.len and name[i] == '.': inc i
+    let suffix = name.substr(i)
     let id = ItemId(module: moduleId(c, suffix).int32, item: itemId)
     let offs = c.getOffset(id.module.FileIndex, name)
     result = PType(itemId: id, uniqueId: id, kind: TTypeKind(k), state: Partial)
@@ -944,30 +946,26 @@ proc extractLocalSymsFromTree(c: var DecodeContext; n: var Cursor; thisModule: s
       if n.tagId == sdefTag:
         # Found an sdef - check if it's local
         let name = n.firstSon
-        if name.kind == SymbolDef:
-          let symName = pool.syms[name.symId]
-          let sn = parseSymName(symName)
-          if sn.module.len == 0 and symName notin localSyms:
-            # Local symbol - create stub and immediately load it fully
-            # since local symbols have no index offsets for lazy loading
-            let module = moduleId(c, thisModule)
-            let val = addr c.mods[module].symCounter
-            inc val[]
-            let id = ItemId(module: module.int32, item: val[])
-            let sym = PSym(itemId: id, kindImpl: skStub, name: c.cache.getIdent(sn.name),
-                          disamb: sn.count.int32, state: Complete)
-            localSyms[symName] = sym
-            # Load the full symbol definition immediately
-            # We're currently at the `(sd` position, need to skip to SymbolDef
-            inc n  # skip past `sd` tag to get to SymbolDef
-            inc depth  # account for the opening `(` of the sdef
-            loadSymFromCursor(c, sym, n, thisModule, localSyms)
-            sym.state = Sealed  # mark as fully loaded
-            # loadSymFromCursor consumed everything including the closing `)`,
-            # so we need to account for it in depth tracking
-            dec depth
-            # Continue processing - loadSymFromCursor already advanced n past the closing `)`
-            continue
+        expect name, SymbolDef
+        let symName = pool.syms[name.symId]
+        let sn = parseSymName(symName)
+        if sn.module.len == 0 and symName notin localSyms:
+          # Local symbol - create stub and immediately load it fully
+          # since local symbols have no index offsets for lazy loading
+          let module = moduleId(c, thisModule)
+          let val = addr c.mods[module].symCounter
+          inc val[]
+          let id = ItemId(module: module.int32, item: val[])
+          let sym = PSym(itemId: id, kindImpl: skStub, name: c.cache.getIdent(sn.name),
+                        disamb: sn.count.int32, state: Complete)
+          localSyms[symName] = sym
+          # Load the full symbol definition immediately
+          # We're currently at the `(sd` position, need to skip to SymbolDef
+          inc n  # skip past `sd` tag to get to SymbolDef
+          loadSymFromCursor(c, sym, n, thisModule, localSyms)
+          sym.state = Sealed  # mark as fully loaded
+          # Continue processing - loadSymFromCursor already advanced n past the closing `)`
+          continue
       inc depth
     elif n.kind == ParRi:
       dec depth

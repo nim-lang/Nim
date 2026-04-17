@@ -35,7 +35,9 @@ proc semAddr(c: PContext; n: PNode): PNode =
   let x = semExprWithType(c, n)
   if x.kind == nkSym:
     x.sym.flagsImpl.incl(sfAddrTaken)
-  if isAssignable(c, x) notin {arLValue, arLocalLValue, arAddressableConst, arLentValue}:
+  let aa = isAssignable(c, x)
+  if aa notin {arLValue, arLocalLValue, arAddressableConst, arLentValue} and
+     (aa != arDiscriminant or c.inUncheckedAssignSection <= 0):
     localError(c.config, n.info, errExprHasNoAddress)
   result.add x
   result.typ = makePtrType(c, x.typ.skipTypes({tySink}))
@@ -232,10 +234,7 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
   of "stripGenericParams":
     result = uninstantiate(operand).toNode(traitCall.info)
   of "supportsCopyMem":
-    let t = operand.skipTypes({tyVar, tyLent, tyGenericInst, tyAlias, tySink, tyInferred})
-    let complexObj = containsGarbageCollectedRef(t) or
-                     hasDestructor(t)
-    result = newIntNodeT(toInt128(ord(not complexObj)), traitCall, c.idgen, c.graph)
+    result = newIntNodeT(toInt128(ord(supportsCopyMem(operand))), traitCall, c.idgen, c.graph)
   of "canFormCycles":
     result = newIntNodeT(toInt128(ord(types.canFormAcycle(c.graph, operand))), traitCall, c.idgen, c.graph)
   of "hasDefaultValue":
@@ -616,9 +615,9 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
   of mAsgn:
     case n[0].sym.name.s
     of "=", "=copy":
-      result = semAsgnOpr(c, n, nkAsgn)
+      result = replaceHookMagic(c, n, attachedAsgn)
     of "=sink":
-      result = semAsgnOpr(c, n, nkSinkAsgn)
+      result = replaceHookMagic(c, n, attachedSink)
     else:
       result = semShallowCopy(c, n, flags)
   of mIsPartOf: result = semIsPartOf(c, n, flags)

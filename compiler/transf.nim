@@ -118,6 +118,24 @@ proc newAsgnStmt(c: PTransf, kind: TNodeKind, le: PNode, ri: PNode; isFirstWrite
     le.flags.incl nfFirstWrite
   result[1] = ri
 
+proc resolveBorrowedRoutineSym(c: PTransf; s: PSym; info: TLineInfo): PSym =
+  # Follow borrow aliases to the underlying implementation symbol.
+  var s = s
+  while true:
+    # Skips over all borrowed procs getting the last proc symbol without an implementation
+    let body = getBody(c.graph, s)
+    if body.kind == nkSym and sfBorrow in body.sym.flags and getBody(c.graph, body.sym).kind == nkSym:
+      s = body.sym
+    else:
+      break
+
+  let body = getBody(c.graph, s)
+  if body.kind == nkSym:
+    result = body.sym
+  else:
+    result = nil
+    internalError(c.graph.config, info, "wrong AST for borrowed symbol")
+
 proc transformSymAux(c: PTransf, n: PNode): PNode =
   let s = n.sym
   if s.typ != nil and s.typ.callConv == ccClosure:
@@ -136,17 +154,7 @@ proc transformSymAux(c: PTransf, n: PNode): PNode =
   var tc = c.transCon
   if sfBorrow in s.flags and s.kind in routineKinds:
     # simply exchange the symbol:
-    var s = s
-    while true:
-      # Skips over all borrowed procs getting the last proc symbol without an implementation
-      let body = getBody(c.graph, s)
-      if body.kind == nkSym and sfBorrow in body.sym.flags and getBody(c.graph, body.sym).kind == nkSym:
-        s = body.sym
-      else:
-        break
-    b = getBody(c.graph, s)
-    if b.kind != nkSym: internalError(c.graph.config, n.info, "wrong AST for borrowed symbol")
-    b = newSymNode(b.sym, n.info)
+    b = newSymNode(resolveBorrowedRoutineSym(c, s, n.info), n.info)
   elif c.inlining > 0:
     # see bug #13596: we use ref-based equality in the DFA for destruction
     # injections so we need to ensure unique nodes after iterator inlining
@@ -328,7 +336,7 @@ proc introduceNewLocalVars(c: PTransf, n: PNode): PNode =
     if a.kind == nkSym:
       n[1] = transformSymAux(c, a)
     return n
-  of nkProcDef, nkFuncDef, nkMethodDef, nkConverterDef: # todo optimize nosideeffects?
+  of nkLambdaKinds, nkProcDef, nkFuncDef, nkMethodDef, nkConverterDef: # todo optimize nosideeffects?
     result = newTransNode(n)
     let x = newSymNode(copySym(n[namePos].sym, c.idgen))
     c.transCon.mapping[n[namePos].sym.itemId] = x
@@ -694,6 +702,11 @@ proc putArgInto(arg: PNode, formal: PType): TPutArgInto =
   of nkAddr, nkHiddenAddr:
     result = putArgInto(arg[0], formal)
     if result == paViaIndirection: result = paFastAsgn
+  of nkHiddenStdConv, nkHiddenSubConv, nkConv:
+    if compareTypes(arg.typ, arg[1].typ, dcEqIgnoreDistinct, {IgnoreRangeShallow}):
+      result = putArgInto(arg[1], formal)
+    else:
+      result = paFastAsgn
   of nkCurly, nkBracket:
     for i in 0..<arg.len:
       if putArgInto(arg[i], formal) != paDirectMapping:
@@ -785,7 +798,9 @@ proc transformFor(c: PTransf, n: PNode): PNode =
 
   discard c.breakSyms.pop
 
-  let iter = call[0].sym
+  var iter = call[0].sym
+  if sfBorrow in iter.flags and iter.kind in routineKinds:
+    iter = resolveBorrowedRoutineSym(c, iter, n.info)
 
   var v = newNodeI(nkVarSection, n.info)
   for i in 0..<n.len - 2:
@@ -1190,6 +1205,13 @@ proc transform(c: PTransf, n: PNode, noConstFold = false): PNode =
     # no need to transform type sections:
     return n
   of nkVarSection, nkLetSection:
+    # NIF loads let/var sections with bare nkSym children instead of nkIdentDefs.
+    # Expand them so transformSons reaches the value expression (e.g. for-loop).
+    for i in 0 ..< n.len:
+      if n[i].kind == nkSym:
+        let impl = n[i].sym.ast  # triggers lazy load if Partial
+        if impl != nil and impl.kind == nkIdentDefs:
+          n[i] = impl
     if c.inlining > 0:
       # we need to copy the variables for multiple yield statements:
       result = transformVarSection(c, n)

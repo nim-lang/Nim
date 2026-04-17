@@ -262,8 +262,11 @@ proc setLen[T](s: var seq[T], newlen: Natural) {.nodestroy.} =
         if xu.p == nil or (xu.p.cap and not strlitFlag) < newlen:
           xu.p = cast[typeof(xu.p)](prepareSeqAddUninit(oldLen, xu.p, newlen - oldLen, sizeof(T), alignof(T)))
         xu.len = newlen
+
+        {.push overflowChecks: off.}
         for i in oldLen..<newlen:
           xu.p.data[i] = default(T)
+        {.pop.}
 
 proc newSeq[T](s: var seq[T], len: Natural) =
   shrink(s, 0)
@@ -272,6 +275,16 @@ proc newSeq[T](s: var seq[T], len: Natural) =
 proc sameSeqPayload(x: pointer, y: pointer): bool {.compilerRtl, inl.} =
   result = cast[ptr NimRawSeq](x)[].p == cast[ptr NimRawSeq](y)[].p
 
+proc nimCopySeqPayload(dest: pointer, src: pointer, elemSize: int, elemAlign: int) {.compilerRtl, inl.} =
+  ## Bulk-copies the payload data from src seq to dest seq using copyMem.
+  ## Only valid for trivially copyable element types (no GC refs, no destructors).
+  ## Caller must have already ensured dest has the correct length and capacity
+  ## (e.g. via setLen).
+  let d = cast[ptr NimRawSeq](dest)
+  let s = cast[ptr NimRawSeq](src)
+  if s.len > 0:
+    let headerSize = align(sizeof(NimSeqPayloadBase), elemAlign)
+    copyMem(d.p +! headerSize, s.p +! headerSize, s.len * elemSize)
 
 func capacity*[T](self: seq[T]): int {.inline.} =
   ## Returns the current capacity of the seq.

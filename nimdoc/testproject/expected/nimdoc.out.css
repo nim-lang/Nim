@@ -123,7 +123,6 @@ Modified by Boyd Greenfield and narimiran
 }
 
 html {
-  overflow-x: hidden;
   max-width: 100%;
   box-sizing: border-box;
   font-size: 100%;
@@ -156,7 +155,8 @@ body {
   margin-left: 1%; }
 
 @media print {
-  #global-links, .link-seesrc, .theme-switch-wrapper, #searchInputDiv, .search-groupby {
+  #global-links, .link-seesrc, .theme-switch-wrapper, #searchInputDiv, .search-groupby,
+  #nav-burger, #nav-overlay, .three.columns  {
     display:none;
   }
   .columns {
@@ -175,6 +175,7 @@ body {
   height: 100vh;
   position: sticky;
   top: 0px;
+  left: 0px;
   overflow-y: auto;
   padding: 2px;
 }
@@ -188,9 +189,67 @@ body {
   width: 100%;
   margin-left: 0; }
 
+#nav-burger, #nav-overlay {
+  display: none;
+}
+
 @media screen and (max-width: 860px) {
+  #nav-burger {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    top: 0.25em;
+    left: 0.25em;
+    z-index: 200;
+    width: 1.6rem;
+    height: 1.6rem;
+    font-size: 1.25em;
+    cursor: pointer;
+    border-radius: 4px;
+    background-color: var(--secondary-background);
+    color: var(--text);
+    border: 1px solid var(--border);
+    user-select: none;
+    opacity: 0.55;
+  }
+  #nav-burger:hover {
+    background-color: var(--third-background);
+  }
+  #nav-toggle:checked ~ .container .three.columns {
+    transform: translateX(0);
+  }
+  #nav-toggle:checked ~ #nav-overlay {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  #nav-overlay {
+    display: block;
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    z-index: 99; /* below sidebar */
+    background: rgba(0, 0, 0, 0.35);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.22s ease;
+  }
   .three.columns {
-    display: none;
+    display: block;
+    position: fixed;
+    left: 0;
+    width: min(80vw, 24em);
+    padding-top: 1.6em;
+    height: 100vh;  /* Fallback */
+    height: 100dvh;
+    overflow-y: auto;
+    z-index: 100;
+    background-color: var(--secondary-background);
+    box-shadow: 2px 0 12px rgba(0,0,0,0.25);
+    transform: translateX(-110%);
+    transition: transform 0.25s ease;
   }
   .nine.columns {
     width: 100%;
@@ -200,6 +259,8 @@ body {
   body {
     font-size: 1em;
     line-height: 1.35;
+    margin-left: 0.35em;
+    margin-right: 0.35em;
   }
 }
 
@@ -358,6 +419,10 @@ img {
 
   h1.title {
     page-break-before: avoid; }
+	
+  .nine.columns h1:first-of-type {
+    page-break-before: avoid;
+  }
 
   p, h2, h3 {
     orphans: 3;
@@ -425,6 +490,22 @@ h5 {
 h6 {
   font-size: 1.1em; }
 
+@media screen and (max-width: 860px) {
+  h1.title {
+    font-size: 2em;
+  }
+  h1 {
+    font-size: 1.5em;
+    margin-top: 1.5em;
+    margin-bottom: 0.75em;
+  }
+  h2 {
+    margin-top: 1.3em;
+  }
+  h3 {
+    margin-top: 1.2em;
+  }
+}
 
 ul, ol {
   padding: 0;
@@ -572,8 +653,8 @@ blockquote.markdown-quote {
   padding-left: 3px;
   padding-right: 3px;
   border-radius: 4px;
-  white-space: normal;
-  word-break: break-all;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
 }
 
 span.tok {
@@ -606,6 +687,15 @@ pre {
   -webkit-border-radius: 6px;
   -moz-border-radius: 6px;
   border-radius: 6px;
+}
+
+@media screen and (max-width: 860px) {
+  pre {
+    font-stretch: semi-condensed;
+    letter-spacing: -0.25px;
+    line-height: 1.25;
+    padding: 0.33em;
+  }
 }
 
 .copyToClipBoardBtn {
@@ -674,6 +764,8 @@ table {
   border-collapse: collapse;
   border-color: var(--third-background);
   border-spacing: 0;
+  display: block;
+  overflow-x: auto;
 }
 
 table:not(.line-nums-table) {

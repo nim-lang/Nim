@@ -1096,7 +1096,12 @@ proc symForVar(c: PContext, n: PNode): PSym =
 proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
   result = n
   let iterBase = n[^2].typ
-  var iter = skipTypes(iterBase, {tyGenericInst, tyAlias, tySink, tyOwned})
+  let iterType =
+    if iterBase.kind == tyIterable:
+      iterBase.skipModifier
+    else:
+      skipTypes(iterBase, {tyAlias, tySink, tyOwned})
+  var iter = skipTypes(iterType, {tyGenericInst})
   var iterAfterVarLent = iter.skipTypes({tyGenericInst, tyAlias, tyLent, tyVar})
   # n.len == 3 means that there is one for loop variable
   # and thus no tuple unpacking:
@@ -1129,10 +1134,9 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
       else:
         var v = symForVar(c, n[0])
         if getCurrOwner(c).kind == skModule: incl(v, sfGlobal)
-        # BUGFIX: don't use `iter` here as that would strip away
-        # the ``tyGenericInst``! See ``tests/compile/tgeneric.nim``
-        # for an example:
-        v.typ = iterBase
+        # Use `iterType` here: it removes outer `tyIterable` / alias-like wrappers
+        # from the loop source, but still preserves `tyGenericInst` for the loop var.
+        v.typ = iterType
         n[0] = newSymNode(v)
         if sfGenSym notin v.flags and not isDiscardUnderscore(v): addDecl(c, v)
         elif v.owner == nil: setOwner(v, getCurrOwner(c))
@@ -1196,14 +1200,14 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
   c.p.breakInLoop = oldBreakInLoop
   dec(c.p.nestedLoopCounter)
 
-proc implicitIterator(c: PContext, it: string, arg: PNode): PNode =
+proc implicitIterator(c: PContext, it: string, arg: PNode, flags: TExprFlags): PNode =
   result = newNodeI(nkCall, arg.info)
   result.add(newIdentNode(getIdent(c.cache, it), arg.info))
   if arg.typ != nil and arg.typ.kind in {tyVar, tyLent}:
     result.add newDeref(arg)
   else:
     result.add arg
-  result = semExprNoDeref(c, result, {efWantIterator})
+  result = semExprNoDeref(c, result, flags + {efWantIterator})
 
 proc isTrivalStmtExpr(n: PNode): bool =
   for i in 0..<n.len-1:
@@ -1289,7 +1293,8 @@ proc semFor(c: PContext, n: PNode; flags: TExprFlags): PNode =
   if result != nil: return result
   openScope(c)
   result = n
-  n[^2] = semExprNoDeref(c, n[^2], {efWantIterator})
+  let iteratorFlags = flags * {efPreferIteratorForIterable}
+  n[^2] = semExprNoDeref(c, n[^2], iteratorFlags + {efWantIterator})
   var call = n[^2]
 
   if call.kind == nkStmtListExpr and (isTrivalStmtExpr(call) or (call.lastSon.kind in nkCallKinds and call.lastSon[0].sym.kind == skIterator)):
@@ -1309,14 +1314,16 @@ proc semFor(c: PContext, n: PNode; flags: TExprFlags): PNode =
   elif not isCallExpr or call[0].kind != nkSym or
       call[0].sym.kind != skIterator:
     if n.len == 3:
-      n[^2] = implicitIterator(c, "items", n[^2])
+      n[^2] = implicitIterator(c, "items", n[^2], iteratorFlags)
     elif n.len == 4:
-      n[^2] = implicitIterator(c, "pairs", n[^2])
+      n[^2] = implicitIterator(c, "pairs", n[^2], iteratorFlags)
     else:
       localError(c.config, n[^2].info, "iterator within for loop context expected")
     result = semForVars(c, n, flags)
   else:
     result = semForVars(c, n, flags)
+  if n[^2].typ != nil and n[^2].typ.kind == tyIterable:
+    n[^2].typ = n[^2].typ.skipModifier
   # propagate any enforced VoidContext:
   if n[^1].typ == c.enforceVoidContext:
     result.typ = c.enforceVoidContext
@@ -1810,6 +1817,9 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
     assignType(typ, reified)
     typ.itemId = reified.itemId     # same id
   c.forwardTypeUpdates = @[]
+  for (owner, field, expectedType) in c.forwardFieldUpdates:
+    semDelayedFieldDefault(c, owner, expectedType, field)
+  c.forwardFieldUpdates = @[]
   for i in 0..<n.len:
     var a = n[i]
     if a.kind == nkCommentStmt: continue
@@ -2552,6 +2562,9 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   if not hasProto:
     implicitPragmas(c, s, n.info, validPragmas)
 
+  if {sfError, sfExportc} * s.flags == {sfError, sfExportc}:
+    localError(c.config, n.info, "{.error.} and {.exportc.} pragmas are incompatible")
+
   if n[pragmasPos].kind != nkEmpty and sfBorrow notin s.flags:
     setEffectsForProcType(c.graph, s.typ, n[pragmasPos], s)
   s.typ.incl tfEffectSystemWorkaround
@@ -2906,13 +2919,15 @@ proc semPragmaBlock(c: PContext, n: PNode; expectedType: PType = nil): PNode =
 proc semStaticStmt(c: PContext, n: PNode): PNode =
   #echo "semStaticStmt"
   #writeStackTrace()
+  let oldErrorCount = c.config.errorCounter
   inc c.inStaticContext
   openScope(c)
   let a = semStmt(c, n[0], {})
   closeScope(c)
   dec c.inStaticContext
   n[0] = a
-  evalStaticStmt(c.module, c.idgen, c.graph, a, c.p.owner)
+  if c.config.errorCounter == oldErrorCount:
+    evalStaticStmt(c.module, c.idgen, c.graph, a, c.p.owner)
   when false:
     # for incremental replays, keep the AST as required for replays:
     result = n

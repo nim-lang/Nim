@@ -274,7 +274,7 @@ proc typeKey(c: var Context; t: PType; flags: set[ConsiderFlag]; conf: ConfigRef
       c.typeKey(t.sonsImpl[0], flags-{CoIgnoreRange}, conf)
   else:
     withTree c.m, toNifTag(t.kind):
-      for i in 1..<t.sonsImpl.len:
+      for i in 0..<t.sonsImpl.len:
         c.typeKey t.sonsImpl[i], flags, conf
       if tfNotNil in t.flagsImpl and CoType notin flags:
         c.m.addIdent "´notnil"

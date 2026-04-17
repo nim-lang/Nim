@@ -318,6 +318,61 @@ proc fitDefaultNode(c: PContext, n: var PNode, expectedType: PType) =
     typeAllowedCheck(c, n.info, n.typ, skConst, {taProcContextIsNotMacro, taIsDefaultField})
   dec c.inStaticContext
 
+proc containsForwardTypeAux(t: PType; seen: var IntSet): bool
+
+proc containsForwardTypeAux(n: PNode; seen: var IntSet): bool =
+  result = false
+  if n.isNil or n.kind in nkLiterals + {nkNilLit, nkEmpty, nkType}:
+    return
+  if containsForwardTypeAux(n.typ, seen) or
+     (n.kind == nkSym and n.sym.typ != n.typ and containsForwardTypeAux(n.sym.typ, seen)):
+    return true
+
+  for i in 0 ..< n.safeLen:
+    if containsForwardTypeAux(n[i], seen):
+      return true
+
+proc containsForwardTypeAux(t: PType; seen: var IntSet): bool =
+  result = false
+  if t.isNil:
+    return
+  if t.kind == tyForward:
+    return true
+
+  if not containsOrIncl(seen, t.id):
+    if containsForwardTypeAux(t.n, seen):
+      return true
+
+    for i in 0 ..< t.len:
+      if containsForwardTypeAux(t[i], seen):
+        return true
+
+proc containsForwardType(arg: PNode): bool =
+  var seen = initIntSet()
+  containsForwardTypeAux(arg, seen)
+
+proc containsForwardType(t: PType): bool =
+  var seen = initIntSet()
+  containsForwardTypeAux(t, seen)
+
+proc semFieldDefault(c: PContext; owner, expectedType: PType; field: PNode): PType =
+  result = expectedType
+  field[^1] = semExprWithType(c, field[^1], {efDetermineType, efAllowSymChoice}, result)
+  if result == nil:
+    result = field[^1].typ
+
+  if c.inGenericContext == 0:
+    if containsForwardType(field[^1]):
+      c.forwardFieldUpdates.add (owner, field, result)
+    else:
+      fitDefaultNode(c, field[^1], result)
+      result = field[^1].typ.skipIntLit(c.idgen)
+      propagateToOwner(owner, result)
+
+proc semDelayedFieldDefault(c: PContext; owner, expectedType: PType; field: PNode) =
+  fitDefaultNode(c, field[^1], expectedType)
+  propagateToOwner(owner, field[^1].typ.skipIntLit(c.idgen))
+
 proc isRecursiveType*(t: PType): bool =
   # handle simple recusive types before typeFinalPass
   var cycleDetector = initIntSet()
@@ -550,13 +605,7 @@ proc semTuple(c: PContext, n: PNode, prev: PType): PType =
     var hasDefaultField = a[^1].kind != nkEmpty
     if hasDefaultField:
       typ = if a[^2].kind != nkEmpty: semTypeNode(c, a[^2], nil) else: nil
-      if c.inGenericContext > 0:
-        a[^1] = semExprWithType(c, a[^1], {efDetermineType, efAllowSymChoice}, typ)
-        if typ == nil:
-          typ = a[^1].typ
-      else:
-        fitDefaultNode(c, a[^1], typ)
-        typ = a[^1].typ.skipIntLit(c.idgen)
+      typ = semFieldDefault(c, result, typ, a)
     elif a[^2].kind != nkEmpty:
       typ = semTypeNode(c, a[^2], nil)
       if c.graph.config.isDefined("nimPreviewRangeDefault") and typ.skipTypes(abstractInst).kind == tyRange:
@@ -922,14 +971,7 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
     var hasDefaultField = n[^1].kind != nkEmpty
     if hasDefaultField:
       typ = if n[^2].kind != nkEmpty: semTypeNode(c, n[^2], nil) else: nil
-      if c.inGenericContext > 0:
-        n[^1] = semExprWithType(c, n[^1], {efDetermineType, efAllowSymChoice}, typ)
-        if typ == nil:
-          typ = n[^1].typ
-      else:
-        fitDefaultNode(c, n[^1], typ)
-        typ = n[^1].typ.skipIntLit(c.idgen)
-        propagateToOwner(rectype, typ)
+      typ = semFieldDefault(c, rectype, typ, n)
     elif n[^2].kind == nkEmpty:
       localError(c.config, n.info, errTypeExpected)
       typ = errorType(c)
@@ -1203,7 +1245,15 @@ proc addImplicitGeneric(c: PContext; typeClass: PType, typId: PIdent;
   # is this a bindOnce type class already present in the param list?
   for i in 0..<genericParams.len:
     if genericParams[i].sym.name.id == finalTypId.id:
-      return genericParams[i].typ
+      if typeClass.kind == tyStatic and genericParams[i].typ.kind != tyStatic:
+        # The base type (e.g. from `auto`) was already added as a generic param,
+        # but `static[auto]` requires upgrading it to a `tyStatic` wrapper so
+        # it is instantiated as a compile-time value (`skConst`).
+        genericParams[i].sym.linkTo(typeClass)
+        typeClass.incl tfImplicitTypeParam
+        return typeClass
+      else:
+        return genericParams[i].typ
 
   let owner = if typeClass.sym != nil: typeClass.sym
               else: getCurrOwner(c)
@@ -1765,10 +1815,14 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
         localError(c.config, n.info, errCannotInstantiateX % s.name.s)
         result = newOrPrevType(tyError, prev, c)
       elif containsGenericInvocationWithForward(n[0]) or hasForwardTypeParam:
-        # isConcrete == false means this generic type is not instanciated here because it invoked with generic parameters.
-        # Even if isConcrete == true, don't instanciate it now if there are any `tyForward` type params.
-        # Such `tyForward` type params will be semchecked later and we can instanciate this next time.
-        # Some generic types like std/options.Option[T] needs a type kinds of the given type argument.
+        # isConcrete == false means this generic type is not instanciated here because
+        # it invoked with generic parameters.
+        # Even if isConcrete == true, don't instanciate it now if there are
+        # unresolved `tyForward` type params.
+        # Such `tyForward` type params will be semchecked later and we can
+        # instanciate this next time.
+        # Some generic types like std/options.Option[T] need the kind of the
+        # given type argument before their fields can be resolved.
 
         # return `tyForward` instead of `tyGenericInvocation` because:
         # ```nim
@@ -2226,6 +2280,9 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
         result = semAnyRef(c, n, tyPtr, prev)
       elif op.id == ord(wRef):
         result = semAnyRef(c, n, tyRef, prev)
+      elif op.id == ord(wStatic):
+        checkSonsLen(n, 2, c.config)
+        result = semStaticType(c, n[1], prev)
       elif op.id == ord(wType):
         checkSonsLen(n, 2, c.config)
         result = semTypeOf(c, n[1], prev)
@@ -2323,7 +2380,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     else:
       result = typeExpr.typ.base
       if result.isMetaType and
-         result.kind != tyUserTypeClass:
+         result.kind notin tyTypeClasses:
            # the dot expression may refer to a concept type in
            # a different module. allow a normal alias then.
         let preprocessed = semGenericStmt(c, n)

@@ -1164,7 +1164,7 @@ proc trackCall(tracked: PEffects; n: PNode) =
     var (isHook, opKind) = findHookKind(a.sym.name.s)
     if isHook:
       # rebind type bounds operations after createTypeBoundOps call
-      let t = n[1].typ.skipTypes({tyAlias, tyVar})
+      let t = n[1].typ.skipTypes({tyAlias, tyVar, tySink})
       if a.sym != getAttachedOp(tracked.graph, t, opKind):
         createTypeBoundOps(tracked, t, n.info, explicit = true)
         # replace builtin hooks with lifted ones
@@ -1550,6 +1550,7 @@ proc track(tracked: PEffects, n: PNode) =
 
     # Check for implicit range conversions
     if n.kind == nkHiddenStdConv and (not tracked.isArrayIndexing) and
+          n[1].kind notin {nkCharLit..nkUInt64Lit, nkFloatLit..nkFloat128Lit} and
           shouldWarnRangeConversion(tracked.config, n.info, n.typ, n[1].typ):
       message(tracked.config, n.info, warnImplicitRangeConversion,
               typeToString(n[1].typ) & " -> " & typeToString(n.typ))

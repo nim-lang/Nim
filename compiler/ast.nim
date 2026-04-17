@@ -1196,7 +1196,12 @@ proc propagateToOwner*(owner, elem: PType; propagateHasAsgn = true) =
     let o2 = owner.skipTypes({tyGenericInst, tyAlias, tySink})
     if o2.kind in {tyTuple, tyObject, tyArray,
                    tySequence, tyString, tySet, tyDistinct}:
-      o2.incl mask
+      if o2.state == Sealed:
+        # During the original compilation, propagateToOwner set tfHasAsgn/tfHasOwned on the type before it was sealed
+        # On IC reload, the sealed type already has those flags
+        assert mask <= o2.flags, "IC bug: sealed type missing propagated flags"
+      else:
+        o2.incl mask
       owner.incl mask
 
   if owner.kind notin {tyProc, tyGenericInst, tyGenericBody,
@@ -1270,7 +1275,8 @@ template transitionSymKindCommon*(k: TSymKind) =
   s[] = TSym(kindImpl: k, itemId: obj.itemId, magicImpl: obj.magicImpl, typImpl: obj.typImpl, name: obj.name,
              infoImpl: obj.infoImpl, ownerFieldImpl: obj.ownerFieldImpl, flagsImpl: obj.flagsImpl, astImpl: obj.astImpl,
              optionsImpl: obj.optionsImpl, positionImpl: obj.positionImpl, offsetImpl: obj.offsetImpl,
-             locImpl: obj.locImpl, annexImpl: obj.annexImpl, constraintImpl: obj.constraintImpl)
+             disamb: obj.disamb, locImpl: obj.locImpl, annexImpl: obj.annexImpl, constraintImpl: obj.constraintImpl,
+             instantiatedFromImpl: obj.instantiatedFromImpl)
   when hasFFI:
     s.cnameImpl = obj.cnameImpl
   when defined(nimsuggest):

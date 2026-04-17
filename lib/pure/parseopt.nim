@@ -588,7 +588,9 @@ proc handleShortOption(p: var OptParser; cmd: string) =
     
   template next(): untyped = p.cmds[p.idx + 1]
 
-  let canTakeVal = card(p.shortNoVal) > 0 and p.key[0] notin p.shortNoVal 
+  let canTakeVal = card(p.shortNoVal) > 0 and
+    p.key.len > 0 and p.key[0] notin p.shortNoVal
+
   if i < cmd.len and cmd[i] in p.separators:
     # separator case
     if prShortAllowSep in p.rules:

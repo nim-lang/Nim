@@ -219,16 +219,16 @@ elif someVcc:
     elif mem == ATOMIC_ACQ_REL: fence()
     elif mem == ATOMIC_SEQ_CST: fence()
 
-  proc atomicStoreN*[T: AtomType](p: ptr T, val: T, mem: static[AtomMemModel]) =
+  proc atomicStoreN*[T: AtomType](p: ptr T, val: T, mem: static[AtomMemModel]) {.enforcenoraises.} =
     barrier(mem)
     p[] = val
 
-  proc atomicLoadN*[T: AtomType](p: ptr T, mem: static[AtomMemModel]): T =
+  proc atomicLoadN*[T: AtomType](p: ptr T, mem: static[AtomMemModel]): T {.enforcenoraises.} =
     result = p[]
     barrier(mem)
 
   proc atomicCompareExchangeN*[T: ptr](p, expected: ptr T, desired: T,
-    weak: bool, success_memmodel: AtomMemModel, failure_memmodel: AtomMemModel): bool =
+    weak: bool, success_memmodel: AtomMemModel, failure_memmodel: AtomMemModel): bool {.enforcenoraises.} =
     when sizeof(T) == 8:
       interlockedCompareExchange64(p, cast[int64](desired), cast[int64](expected[])) ==
         cast[int64](expected[])
@@ -236,7 +236,7 @@ elif someVcc:
       interlockedCompareExchange32(p, cast[int32](desired), cast[int32](expected[])) ==
         cast[int32](expected[])
 
-  proc atomicExchangeN*[T: ptr](p: ptr T, val: T, mem: AtomMemModel): T =
+  proc atomicExchangeN*[T: ptr](p: ptr T, val: T, mem: AtomMemModel): T {.enforcenoraises.} =
     when sizeof(T) == 8:
       cast[T](interlockedExchange64(p, cast[int64](val)))
     elif sizeof(T) == 4:
