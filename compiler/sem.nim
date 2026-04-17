@@ -511,6 +511,7 @@ proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
         result = newSymNode(errorSym(c, result))
       else:
         result.typ = makeTypeDesc(c, typ)
+        #result = symNodeFromType(c, typ, n.info)
     else:
       if s.ast[genericParamsPos] != nil and retType.isMetaType:
         # The return type may depend on the Macro arguments
