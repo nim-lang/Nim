@@ -1807,10 +1807,16 @@ proc checkForMetaFields(c: PContext; n: PNode; hasError: var bool) =
   else:
     internalAssert c.config, false
 
+proc ownerIntSet(updates: openArray[(PSym, PType, PNode)]): IntSet =
+  result = initIntSet()
+  for (owner, _, _) in updates:
+    result.incl owner.id
+
 proc typeSectionFinalPass(c: PContext, n: PNode) =
   while c.forwardTypeUpdates.len > 0:
-    let ftc = move c.forwardTypeUpdates
-    for (typ, typeNode) in ftc:
+    let pending = move c.forwardTypeUpdates
+
+    for (owner, typ, typeNode) in pending:
       # types that need to be updated due to containing forward types
       # and their corresponding type nodes
       # for example generic invocations of forward types end up here
@@ -1819,19 +1825,18 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
       assignType(typ, reified)
       typ.itemId = reified.itemId  # same id
       if containsForwardType(typ):
-        c.forwardTypeUpdates.add (typ, typeNode)
-    var madeProgress = false
-    for (typ2, _) in ftc:
-      var found = false
-      for (typ3, _) in c.forwardTypeUpdates:
-        if typ3 == typ2:
-          found = true
-          break
-      if not found:
-        madeProgress = true
-        break
-    if not madeProgress:
-      break
+        c.forwardTypeUpdates.add (owner, typ, typeNode)
+
+    if c.forwardTypeUpdates.ownerIntSet == pending.ownerIntSet:
+      for i in 0..<n.len:
+        let a = n[i]
+        if a.kind == nkCommentStmt: continue
+        let s = typeSectionTypeName(c, a[0]).sym
+        if contains(pending.ownerIntSet, s.id):
+          localError(c.config, s.info, errIllegalRecursionInTypeX % s.name.s)
+      internalError(c.config, n.info, "stalled forward type resolution should have failed")
+      return
+
   for (owner, field, expectedType) in c.forwardFieldUpdates:
     semDelayedFieldDefault(c, owner, expectedType, field)
   c.forwardFieldUpdates = @[]

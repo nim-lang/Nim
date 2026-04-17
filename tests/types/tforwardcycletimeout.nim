@@ -1,5 +1,6 @@
 discard """
   timeout: "1.0"
+  errormsg: "illegal recursion in type 'A'"
 """
 
 type
