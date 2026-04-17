@@ -2736,7 +2736,7 @@ proc genConv(p: BProc, e: PNode, d: var TLoc) =
 
 proc convStrToCStr(p: BProc, n: PNode, d: var TLoc) =
   var a: TLoc = initLocExpr(p, n[0])
-  let arg = if p.config.isDefined("nimsso"): addrLoc(p.config, a) else: rdLoc(a)
+  let arg = if p.config.isDefined("nimsso"): byRefLoc(p, a) else: rdLoc(a)
   putIntoDest(p, d, n,
     cgCall(p, "nimToCStringConv", arg),
     a.storage)

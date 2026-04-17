@@ -350,3 +350,12 @@ else:
   discard"""
 
 a()
+
+# bug: form feed character in comment should not hang renderTree
+macro formfeedComment(): untyped =
+  result = newNimNode(nnkStmtList)
+  var c = newNimNode(nnkCommentStmt)
+  c.strVal = "hello\x0Cworld"
+  result.add c
+
+formfeedComment()

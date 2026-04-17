@@ -582,6 +582,7 @@ proc put(g: var TSrcGen, kind: TokType, s: string; sym: PSym = nil) =
   inc(g.lineLen, s.len)
 
 proc putComment(g: var TSrcGen, s: string) =
+  const SpecialWhitespace = {' ', '\t', '\r', '\n', '\0'}
   if s.len == 0: return
   var i = 0
   let hi = s.len - 1
@@ -611,12 +612,12 @@ proc putComment(g: var TSrcGen, s: string) =
       # gets too long:
       # compute length of the following word:
       var j = i
-      while j <= hi and s[j] > ' ': inc(j)
+      while j <= hi and s[j] notin SpecialWhitespace: inc(j)
       if not isCode and (g.col + (j - i) > MaxLineLen):
         put(g, tkComment, com)
         optNL(g, ind)
         com = "## "
-      while i <= hi and s[i] > ' ':
+      while i <= hi and s[i] notin SpecialWhitespace:
         com.add(s[i])
         inc(i)
   put(g, tkComment, com)
