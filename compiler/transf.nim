@@ -703,6 +703,11 @@ proc putArgInto(arg: PNode, formal: PType): TPutArgInto =
   of nkAddr, nkHiddenAddr:
     result = putArgInto(arg[0], formal)
     if result == paViaIndirection: result = paFastAsgn
+  of nkHiddenStdConv, nkHiddenSubConv, nkConv:
+    if compareTypes(arg.typ, arg[1].typ, dcEqIgnoreDistinct, {IgnoreRangeShallow}):
+      result = putArgInto(arg[1], formal)
+    else:
+      result = paFastAsgn
   of nkCurly, nkBracket:
     for i in 0..<arg.len:
       if putArgInto(arg[i], formal) != paDirectMapping:
