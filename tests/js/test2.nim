@@ -4,7 +4,12 @@ js 3.14
 7
 1
 -21550
--21550'''
+-21550
+none(TT)
+()
+destroyed
+destroyed
+'''
 """
 
 # This file tests the JavaScript generator
@@ -56,3 +61,15 @@ proc foo09() =
     const y = 86400
     echo (x - (y - 1)) div y # Still gives `-21551`
 foo09()
+
+import std/options
+
+type TT = object
+
+proc `=destroy`(x: TT) = echo "destroyed"
+
+func test1: Option[TT] = discard
+func test2: TT = discard
+
+echo test1() # Crash in JS backend, not crash in C backend
+echo test2() # Not crash
