@@ -1544,7 +1544,7 @@ proc genSymAddr(p: PProc, n: PNode, typ: PType, r: var TCompRes) =
     r.res = s.loc.snippet
     r.address = ""
     r.typ = etyNone
-  of skVar, skLet, skResult:
+  of skVar, skLet, skResult, skTemp, skForVar:
     r.kind = resExpr
     let jsType = mapType(p):
       if typ.isNil:
