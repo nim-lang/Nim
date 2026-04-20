@@ -223,7 +223,7 @@ proc semSet(c: PContext, n: PNode, prev: PType): PType =
     if base.kind in {tyGenericInst, tyAlias, tySink}: base = skipModifier(base)
     if base.kind notin {tyGenericParam, tyGenericInvocation}:
       if base.kind == tyForward:
-        c.forwardTypeUpdates.add (getCurrOwner(c), base, n[1])
+        c.forwardTypeUpdates.add (getCurrOwner(c), result, n)
       elif not isOrdinalType(base, allowEnumWithHoles = true):
         localError(c.config, n.info, errOrdinalTypeExpected % typeToString(base, preferDesc))
       elif lengthOrd(c.config, base) > MaxSetElements:
