@@ -66,6 +66,9 @@ errors.
   Modes include `Nim` (default, fully compatible) and two new experimental modes:
   `Lax` and `Gnu` for different option parsing behaviors.
 
+- `std/itertools` - a new module for composable inline-iterator chaining,
+  enabling FP-style syntax, driven by `iterable[T]`-based templates.
+
 [//]: # "Changes:"
 
 - `std/math` The `^` symbol now supports floating-point as exponent in addition to the Natural type.
