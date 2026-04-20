@@ -294,7 +294,11 @@ proc containsOrIncl*[A](s: var PackedSet[A], key: A): bool =
     for i in 0..<s.elems:
       if s.a[i] == ord(key):
         return true
-    incl(s, key)
+    if s.elems < s.a.len:
+      s.a[s.elems] = ord(key)
+      inc(s.elems)
+    else:
+      incl(s, key)
     result = false
   else:
     var t = packedSetGet(s, ord(key) shr TrunkShift)
