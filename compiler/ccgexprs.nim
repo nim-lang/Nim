@@ -1889,10 +1889,17 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
   var t = e.typ.skipTypes(abstractInstOwned)
   let isRef = t.kind == tyRef
 
-  # check if we need to construct the object in a temporary
+  # check if we need to construct the object in a temporary.
+  # A temp is needed when:
+  # - the constructor produces a ref (isRef)
+  # - the destination is not a writable location (d.k == locNone)
+  # - the constructed type differs from the destination type (subtype
+  #   assignments need the genAssignment path for ObjectAssignmentDefect)
+  # - the constructor's field values may alias the destination (isPartOf)
   var useTemp =
         isRef or
-        (d.k notin {locTemp,locLocalVar,locGlobalVar,locParam,locField}) or
+        d.k == locNone or
+        (d.t != nil and not sameBackendType(t, d.t.skipTypes(abstractInstOwned))) or
         (isPartOf(d.lode, e) != arNo)
 
   var tmp: TLoc = default(TLoc)
