@@ -10,10 +10,10 @@
 ## Generate a .build.nif file for nifmake from a Nim project.
 ## This enables incremental and parallel compilation using the `m` switch.
 
-import std / [os, tables, sets, times, osproc, strutils]
+import std / [os, tables, sets, times, osproc]
 import options, msgs, lineinfos, pathutils
 
-import "../dist/nimony/src/lib" / [nifstreams, nifcursors, bitabs, nifreader, nifbuilder]
+import "../dist/nimony/src/lib" / [nifstreams, bitabs, nifreader, nifbuilder]
 import "../dist/nimony/src/gear2" / modnames
 
 type
@@ -79,22 +79,19 @@ proc runNifler(c: DepContext; nimFile: string): bool =
   let exitCode = execShellCmd(cmd)
   result = exitCode == 0
 
-proc resolveFile(c: DepContext; origin, toResolve: string): string =
-  ## Resolve an import path relative to origin file
-  # Handle std/ prefix
-  var path = toResolve
-  if path.startsWith("std/"):
-    path = path.substr(4)
+proc resolveImport(c: DepContext; origin, toResolve: string): string =
+  ## Resolve an import path using the compiler's normal module lookup rules.
+  result = findModule(c.config, toResolve, origin).string
 
-  # Try relative to origin first
+proc resolveInclude(c: DepContext; origin, toResolve: string): string =
+  ## Resolve an include path relative to the including file or the search paths.
   let originDir = parentDir(origin)
-  result = originDir / path.addFileExt("nim")
+  result = originDir / toResolve.addFileExt("nim")
   if fileExists(result):
     return result
 
-  # Try search paths
   for searchPath in c.config.searchPaths:
-    result = searchPath.string / path.addFileExt("nim")
+    result = searchPath.string / toResolve.addFileExt("nim")
     if fileExists(result):
       return result
 
@@ -103,7 +100,7 @@ proc resolveFile(c: DepContext; origin, toResolve: string): string =
 proc traverseDeps(c: var DepContext; pair: FilePair; current: Node)
 
 proc processInclude(c: var DepContext; includePath: string; current: Node) =
-  let resolved = resolveFile(c, current.files[current.files.len - 1].nimFile, includePath)
+  let resolved = resolveInclude(c, current.files[current.files.len - 1].nimFile, includePath)
   if resolved.len == 0 or not fileExists(resolved):
     return
 
@@ -118,7 +115,7 @@ proc processInclude(c: var DepContext; includePath: string; current: Node) =
   discard c.includeStack.pop()
 
 proc processImport(c: var DepContext; importPath: string; current: Node) =
-  let resolved = resolveFile(c, current.files[0].nimFile, importPath)
+  let resolved = resolveImport(c, current.files[0].nimFile, importPath)
   if resolved.len == 0 or not fileExists(resolved):
     return
 
