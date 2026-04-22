@@ -60,6 +60,7 @@ errors.
     - `copyDirWithPermissions` to recursively preserve attributes
 
 - `system.setLenUninit` now supports refc, JS and VM backends.
+- `system.setLenUninit` for the `string` type. Allows setting length without initializing new memory on growth.
 
 - `std/parseopt` now supports multiple parser modes via a `CliMode` enum.
   Modes include `Nim` (default, fully compatible) and two new experimental modes:
@@ -67,6 +68,7 @@ errors.
 
 - `std/symlinks.expandSymlink` now supports Windows symlinks and junctions with
   POSIX-like single-hop `readlink` semantics.
+- `std/nre2` is added to replace deprecated NRE.
 
 [//]: # "Changes:"
 
@@ -74,6 +76,9 @@ errors.
 - `min`, `max`, and `sequtils`' `minIndex`, `maxIndex` and `minmax` for `openArray`s now accept a comparison function.
 - `system.substr` implementation now uses `copymem` (wrapped C `memcpy`) for copying data, if available at compilation.
 - `system.newStringUninit` is now considered free of side-effects allowing it to be used with `--experimental:strictFuncs`.
+- `std/re` and `std/nre` are deprecated as PCRE library is obsolete.
+  Use https://github.com/nitely/nim-regex or `std/nre2`.
+  See: https://github.com/nim-lang/Nim/issues/23668.
 
 ## Language changes
 

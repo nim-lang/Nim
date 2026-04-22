@@ -7,8 +7,10 @@ discard """
 1.0
 2.0
 55
+@[1, 2]
 '''
 """
+import std/strbasics
 
 # Object variant / case object
 type
@@ -79,3 +81,14 @@ let x = compute:
 
 echo x
 
+# Crash: bridge.nim(206, 5) `allowEmpty` unexpected nkEmpty [AssertionDefect]
+# Bare closure iterator type alias
+type IntIter = iterator(): int {.closure.}
+proc run(it: IntIter): seq[int] =
+  result = @[]
+  for x in it():
+    result.add(x)
+let gen: IntIter = iterator(): int {.closure.} =
+  yield 1
+  yield 2
+echo run(gen)

@@ -223,7 +223,7 @@ proc semSet(c: PContext, n: PNode, prev: PType): PType =
     if base.kind in {tyGenericInst, tyAlias, tySink}: base = skipModifier(base)
     if base.kind notin {tyGenericParam, tyGenericInvocation}:
       if base.kind == tyForward:
-        c.forwardTypeUpdates.add (base, n[1])
+        c.forwardTypeUpdates.add (getCurrOwner(c), result, n)
       elif not isOrdinalType(base, allowEnumWithHoles = true):
         localError(c.config, n.info, errOrdinalTypeExpected % typeToString(base, preferDesc))
       elif lengthOrd(c.config, base) > MaxSetElements:
@@ -317,6 +317,61 @@ proc fitDefaultNode(c: PContext, n: var PNode, expectedType: PType) =
   if n.kind != nkNilLit:
     typeAllowedCheck(c, n.info, n.typ, skConst, {taProcContextIsNotMacro, taIsDefaultField})
   dec c.inStaticContext
+
+proc containsForwardTypeAux(t: PType; seen: var IntSet): bool
+
+proc containsForwardTypeAux(n: PNode; seen: var IntSet): bool =
+  result = false
+  if n.isNil or n.kind in nkLiterals + {nkNilLit, nkEmpty, nkType}:
+    return
+  if containsForwardTypeAux(n.typ, seen) or
+     (n.kind == nkSym and n.sym.typ != n.typ and containsForwardTypeAux(n.sym.typ, seen)):
+    return true
+
+  for i in 0 ..< n.safeLen:
+    if containsForwardTypeAux(n[i], seen):
+      return true
+
+proc containsForwardTypeAux(t: PType; seen: var IntSet): bool =
+  result = false
+  if t.isNil:
+    return
+  if t.kind == tyForward:
+    return true
+
+  if not containsOrIncl(seen, t.id):
+    if containsForwardTypeAux(t.n, seen):
+      return true
+
+    for i in 0 ..< t.len:
+      if containsForwardTypeAux(t[i], seen):
+        return true
+
+proc containsForwardType(arg: PNode): bool =
+  var seen = initIntSet()
+  containsForwardTypeAux(arg, seen)
+
+proc containsForwardType(t: PType): bool =
+  var seen = initIntSet()
+  containsForwardTypeAux(t, seen)
+
+proc semFieldDefault(c: PContext; owner, expectedType: PType; field: PNode): PType =
+  result = expectedType
+  field[^1] = semExprWithType(c, field[^1], {efDetermineType, efAllowSymChoice}, result)
+  if result == nil:
+    result = field[^1].typ
+
+  if c.inGenericContext == 0:
+    if containsForwardType(field[^1]):
+      c.forwardFieldUpdates.add (owner, field, result)
+    else:
+      fitDefaultNode(c, field[^1], result)
+      result = field[^1].typ.skipIntLit(c.idgen)
+      propagateToOwner(owner, result)
+
+proc semDelayedFieldDefault(c: PContext; owner, expectedType: PType; field: PNode) =
+  fitDefaultNode(c, field[^1], expectedType)
+  propagateToOwner(owner, field[^1].typ.skipIntLit(c.idgen))
 
 proc isRecursiveType*(t: PType): bool =
   # handle simple recusive types before typeFinalPass
@@ -550,13 +605,7 @@ proc semTuple(c: PContext, n: PNode, prev: PType): PType =
     var hasDefaultField = a[^1].kind != nkEmpty
     if hasDefaultField:
       typ = if a[^2].kind != nkEmpty: semTypeNode(c, a[^2], nil) else: nil
-      if c.inGenericContext > 0:
-        a[^1] = semExprWithType(c, a[^1], {efDetermineType, efAllowSymChoice}, typ)
-        if typ == nil:
-          typ = a[^1].typ
-      else:
-        fitDefaultNode(c, a[^1], typ)
-        typ = a[^1].typ.skipIntLit(c.idgen)
+      typ = semFieldDefault(c, result, typ, a)
     elif a[^2].kind != nkEmpty:
       typ = semTypeNode(c, a[^2], nil)
       if c.graph.config.isDefined("nimPreviewRangeDefault") and typ.skipTypes(abstractInst).kind == tyRange:
@@ -922,14 +971,7 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
     var hasDefaultField = n[^1].kind != nkEmpty
     if hasDefaultField:
       typ = if n[^2].kind != nkEmpty: semTypeNode(c, n[^2], nil) else: nil
-      if c.inGenericContext > 0:
-        n[^1] = semExprWithType(c, n[^1], {efDetermineType, efAllowSymChoice}, typ)
-        if typ == nil:
-          typ = n[^1].typ
-      else:
-        fitDefaultNode(c, n[^1], typ)
-        typ = n[^1].typ.skipIntLit(c.idgen)
-        propagateToOwner(rectype, typ)
+      typ = semFieldDefault(c, rectype, typ, n)
     elif n[^2].kind == nkEmpty:
       localError(c.config, n.info, errTypeExpected)
       typ = errorType(c)
@@ -1072,7 +1114,7 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType; flags: TTypeFlags): PType
   if needsForwardUpdate:
     # if the inherited object is a forward type,
     # the entire object needs to be checked again
-    c.forwardTypeUpdates.add (result, n) # we retry in the final pass
+    c.forwardTypeUpdates.add (getCurrOwner(c), result, n) # we retry in the final pass
   rawAddSon(result, realBase)
   if realBase == nil and tfInheritable in flags:
     result.incl tfInheritable
@@ -1720,7 +1762,7 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
     for i in 1..<n.len:
       var elem = semGenericParamInInvocation(c, n[i])
       addToResult(elem, true)
-    c.forwardTypeUpdates.add (result, n)
+    c.forwardTypeUpdates.add (getCurrOwner(c), result, n)
     return
   elif t.kind != tyGenericBody:
     # we likely got code of the form TypeA[TypeB] where TypeA is
@@ -1773,10 +1815,14 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
         localError(c.config, n.info, errCannotInstantiateX % s.name.s)
         result = newOrPrevType(tyError, prev, c)
       elif containsGenericInvocationWithForward(n[0]) or hasForwardTypeParam:
-        # isConcrete == false means this generic type is not instanciated here because it invoked with generic parameters.
-        # Even if isConcrete == true, don't instanciate it now if there are any `tyForward` type params.
-        # Such `tyForward` type params will be semchecked later and we can instanciate this next time.
-        # Some generic types like std/options.Option[T] needs a type kinds of the given type argument.
+        # isConcrete == false means this generic type is not instanciated here because
+        # it invoked with generic parameters.
+        # Even if isConcrete == true, don't instanciate it now if there are
+        # unresolved `tyForward` type params.
+        # Such `tyForward` type params will be semchecked later and we can
+        # instanciate this next time.
+        # Some generic types like std/options.Option[T] need the kind of the
+        # given type argument before their fields can be resolved.
 
         # return `tyForward` instead of `tyGenericInvocation` because:
         # ```nim
@@ -1792,7 +1838,7 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
         else:
           assignType(result, newTypeS(tyForward, c))
           result.sym = s
-        c.forwardTypeUpdates.add (result, n) #fixes 1500
+        c.forwardTypeUpdates.add (getCurrOwner(c), result, n) #fixes 1500
         return
       else:
         result = instGenericContainer(c, n.info, result,
@@ -2334,7 +2380,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     else:
       result = typeExpr.typ.base
       if result.isMetaType and
-         result.kind != tyUserTypeClass:
+         result.kind notin tyTypeClasses:
            # the dot expression may refer to a concept type in
            # a different module. allow a normal alias then.
         let preprocessed = semGenericStmt(c, n)
