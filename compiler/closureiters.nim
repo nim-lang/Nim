@@ -672,7 +672,15 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
         let ifBody = newNodeI(nkStmtList, cond.info)
         if cond.kind == nkStmtListExpr:
           let (st, ex) = exprToStmtList(cond)
-          ifBody.add(st)
+          # Hoist statements from the second operand to the outer scope,
+          # mirroring how the first operand is handled above (line 661).
+          # Without this, variables declared via template/macro expansion
+          # in the second operand are scoped inside the short-circuit `if`
+          # block and are inaccessible in the enclosing `if` body, causing
+          # "undeclared identifier" C-level errors in closure iterators.
+          # Note: side-effectful statements in the second operand are no
+          # longer short-circuited as a result of this change.
+          result.add(st)
           cond = ex
         ifBody.add(ctx.newTempVarAsgn(tmp, cond))
 
