@@ -826,11 +826,15 @@ type
     types: Table[string, (PType, NifIndexEntry)]
     syms: Table[string, (PSym, NifIndexEntry)]
     mods: Table[FileIndex, NifModule]
+    mainModuleIdx: FileIndex
     cache: IdentCache
 
 proc createDecodeContext*(config: ConfigRef; cache: IdentCache): DecodeContext =
   ## Supposed to be a global variable
-  result = DecodeContext(infos: LineInfoWriter(config: config), cache: cache)
+  result = DecodeContext(
+    infos: LineInfoWriter(config: config),
+    mainModuleIdx: InvalidFileIdx,
+    cache: cache)
 
 proc cursorFromIndexEntry(c: var DecodeContext; module: FileIndex; entry: NifIndexEntry;
                           buf: var TokenBuf): Cursor =
@@ -881,8 +885,11 @@ proc readEmbeddedIndex(s: var Stream): Table[string, NifIndexEntry] =
   s.r.jumpTo(contentPos)  # Restore position
 
 proc moduleId(c: var DecodeContext; suffix: string; flags: set[LoadFlag] = {}): FileIndex =
-  var isKnownFile = false
-  result = c.infos.config.registerNifSuffix(suffix, isKnownFile)
+  if c.mainModuleIdx != InvalidFileIdx and suffix == moduleSuffix(c.infos.config, c.mainModuleIdx):
+    result = c.mainModuleIdx
+  else:
+    var isKnownFile = false
+    result = c.infos.config.registerNifSuffix(suffix, isKnownFile)
   # Always load the module's index if it's not already in c.mods
   # This is needed when resolving symbols from modules that were registered elsewhere
   # but haven't had their NIF index loaded yet
@@ -1176,8 +1183,7 @@ proc loadSymFromCursor(c: var DecodeContext; s: PSym; n: var Cursor; thisModule:
   if s.kindImpl == skModule:
     expect n, DotToken
     inc n
-    var isKnownFile = false
-    s.positionImpl = int c.infos.config.registerNifSuffix(thisModule, isKnownFile)
+    s.positionImpl = int moduleId(c, thisModule)
     # do to the precompiled mechanism things end up as main modules which are not!
     excl s.flagsImpl, sfMainModule
   else:
@@ -1654,6 +1660,8 @@ proc loadNifModule*(c: var DecodeContext; suffix: ModuleSuffix; interf, interfHi
 proc loadNifModule*(c: var DecodeContext; f: FileIndex; interf, interfHidden: var TStrTable;
                     flags: set[LoadFlag] = {}): PrecompiledModule =
   let suffix = ModuleSuffix(moduleSuffix(c.infos.config, f))
+  if f == c.infos.config.projectMainIdx:
+    c.mainModuleIdx = f
   result = loadNifModule(c, suffix, interf, interfHidden, flags)
 
 when isMainModule:
