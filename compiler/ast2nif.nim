@@ -826,14 +826,12 @@ type
     types: Table[string, (PType, NifIndexEntry)]
     syms: Table[string, (PSym, NifIndexEntry)]
     mods: Table[FileIndex, NifModule]
-    mainModuleIdx: FileIndex
     cache: IdentCache
 
 proc createDecodeContext*(config: ConfigRef; cache: IdentCache): DecodeContext =
   ## Supposed to be a global variable
   result = DecodeContext(
     infos: LineInfoWriter(config: config),
-    mainModuleIdx: InvalidFileIdx,
     cache: cache)
 
 proc cursorFromIndexEntry(c: var DecodeContext; module: FileIndex; entry: NifIndexEntry;
@@ -885,8 +883,8 @@ proc readEmbeddedIndex(s: var Stream): Table[string, NifIndexEntry] =
   s.r.jumpTo(contentPos)  # Restore position
 
 proc moduleId(c: var DecodeContext; suffix: string; flags: set[LoadFlag] = {}): FileIndex =
-  if c.mainModuleIdx != InvalidFileIdx and suffix == moduleSuffix(c.infos.config, c.mainModuleIdx):
-    result = c.mainModuleIdx
+  if suffix == moduleSuffix(c.infos.config, c.infos.config.projectMainIdx):
+    result = c.infos.config.projectMainIdx
   else:
     var isKnownFile = false
     result = c.infos.config.registerNifSuffix(suffix, isKnownFile)
@@ -1660,8 +1658,6 @@ proc loadNifModule*(c: var DecodeContext; suffix: ModuleSuffix; interf, interfHi
 proc loadNifModule*(c: var DecodeContext; f: FileIndex; interf, interfHidden: var TStrTable;
                     flags: set[LoadFlag] = {}): PrecompiledModule =
   let suffix = ModuleSuffix(moduleSuffix(c.infos.config, f))
-  if f == c.infos.config.projectMainIdx:
-    c.mainModuleIdx = f
   result = loadNifModule(c, suffix, interf, interfHidden, flags)
 
 when isMainModule:
