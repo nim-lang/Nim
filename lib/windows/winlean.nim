@@ -26,6 +26,7 @@ type WinChar* = Utf16Char
 # See https://docs.microsoft.com/en-us/windows/win32/winprog/windows-data-types
 type
   Handle* = int
+  SHORT* = int16
   LONG* = int32
   ULONG* = int32
   PULONG* = ptr int
@@ -998,9 +999,56 @@ type
     uChar*: int16
     dwControlKeyState*: DWORD
 
+  # https://learn.microsoft.com/en-us/windows/console/coord-str
+  COORD* = object
+    x*: SHORT
+    y*: SHORT
+
+const
+  # used by std/terminal
+  # https://learn.microsoft.com/en-us/windows/console/setconsolemode
+  ENABLE_ECHO_INPUT* = 0x0004
+  ENABLE_INSERT_MODE* = 0x0020
+  ENABLE_LINE_INPUT* = 0x0002
+  ENABLE_MOUSE_INPUT* = 0x0010
+  ENABLE_PROCESSED_INPUT* = 0x0001
+  ENABLE_QUICK_EDIT_MODE* = 0x0040
+  ENABLE_WINDOW_INPUT* = 0x0008
+  ENABLE_VIRTUAL_TERMINAL_INPUT* = 0x0200
+
+  ENABLE_PROCESSED_OUTPUT* = 0x0001
+  ENABLE_WRAP_AT_EOL_OUTPUT* = 0x0002
+  ENABLE_VIRTUAL_TERMINAL_PROCESSING* = 0x0004
+  DISABLE_NEWLINE_AUTO_RETURN* = 0x0008
+  ENABLE_LVB_GRID_WORLDWIDE* = 0x0010
+
 proc readConsoleInput*(hConsoleInput: Handle, lpBuffer: pointer, nLength: cint,
                       lpNumberOfEventsRead: ptr cint): cint
      {.stdcall, dynlib: "kernel32", importc: "ReadConsoleInputW".}
+
+proc getConsoleMode*(hConsoleHandle: Handle, dwMode: ptr DWORD): WINBOOL{.
+    stdcall, dynlib: "kernel32", importc: "GetConsoleMode".}
+
+proc setConsoleMode*(hConsoleHandle: Handle, dwMode: DWORD): WINBOOL{.
+    stdcall, dynlib: "kernel32", importc: "SetConsoleMode".}
+
+proc setConsoleCursorPosition*(hConsoleOutput: Handle,
+                              dwCursorPosition: COORD): WINBOOL{.
+    stdcall, dynlib: "kernel32", importc: "SetConsoleCursorPosition".}
+
+proc fillConsoleOutputCharacter*(hConsoleOutput: Handle, cCharacter: char,
+                                nLength: DWORD, dwWriteCoord: COORD,
+                                lpNumberOfCharsWritten: ptr DWORD): WINBOOL{.
+    stdcall, dynlib: "kernel32", importc: "FillConsoleOutputCharacterA".}
+
+proc fillConsoleOutputAttribute*(hConsoleOutput: Handle, wAttribute: int16,
+                                nLength: DWORD, dwWriteCoord: COORD,
+                                lpNumberOfAttrsWritten: ptr DWORD): WINBOOL{.
+    stdcall, dynlib: "kernel32", importc: "FillConsoleOutputAttribute".}
+
+proc setConsoleTextAttribute*(hConsoleOutput: Handle,
+                              wAttributes: int16): WINBOOL{.
+    stdcall, dynlib: "kernel32", importc: "SetConsoleTextAttribute".}
 
 type
   LPFIBER_START_ROUTINE* = proc (param: pointer) {.stdcall.}
