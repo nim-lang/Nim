@@ -151,6 +151,11 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
       # may introduce new symbols with caveats described in recalc branch
       matches(c, n, orig, z)
 
+      if z.state == csGotTyForward:
+        best.state = csGotTyForward
+        best.call = z.call
+        break
+
       if allowTypeBoundOps:
         # this match may have given some arguments new types,
         # in which case add their type bound ops as well
@@ -176,6 +181,8 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
           var cmp = cmpCandidates(best, z)
           if cmp < 0: best = z   # x is better than the best so far
           elif cmp == 0: alt = z # x is as good as the best so far
+        of csGotTyForward:
+          assert false
       elif errorsEnabled or z.diagnosticsEnabled:
         errors.add(CandidateError(
           sym: sym,
@@ -588,7 +595,9 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
 
   let overloadsState = result.state
   if overloadsState != csMatch:
-    if nfDotField in n.flags:
+    if overloadsState == csGotTyForward:
+      return
+    elif nfDotField in n.flags:
       internalAssert c.config, f.kind in nkIdentKinds and n.len >= 2
 
       # leave the op head symbol empty,
@@ -933,6 +942,8 @@ proc semOverloadedCall(c: PContext, n, nOrig: PNode,
               "Non-matching candidates for " & renderTree(n) & "\n" &
               candidates)
     result = semResolvedCall(c, r, n, flags, expectedType)
+  elif r.state == csGotTyForward:
+    return r.call
   else:
     if c.inGenericContext > 0 and c.matchedConcept == nil:
       result = semGenericStmt(c, n)

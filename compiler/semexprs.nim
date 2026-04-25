@@ -1000,7 +1000,7 @@ proc semOverloadedCallAnalyseEffects(c: PContext, n: PNode, nOrig: PNode,
     result = semOverloadedCall(c, n, nOrig,
       {skProc, skFunc, skMethod, skConverter, skMacro, skTemplate}, flags, expectedType)
 
-  if result != nil:
+  if result != nil and not (result.typ != nil and result.typ.kind == tyForward):
     if result[0].kind != nkSym:
       if not (c.inGenericContext > 0): # see generic context check in semOverloadedCall
         internalError(c.config, "semOverloadedCallAnalyseEffects")
@@ -1058,7 +1058,7 @@ proc semFinishOperands(c: PContext; n: PNode; isBracketExpr = false) =
 proc afterCallActions(c: PContext; n, orig: PNode, flags: TExprFlags; expectedType: PType = nil): PNode =
   if efNoSemCheck notin flags and n.typ != nil and n.typ.kind == tyError:
     return errorNode(c, n)
-  if n.typ != nil and n.typ.kind == tyFromExpr and c.inGenericContext > 0:
+  if n.typ != nil and ((n.typ.kind == tyFromExpr and c.inGenericContext > 0) or n.typ.kind == tyForward):
     return n
 
   result = n

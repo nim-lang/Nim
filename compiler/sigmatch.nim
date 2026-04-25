@@ -34,7 +34,11 @@ type
                         # its position can differ from `arg` because of varargs
 
   TCandidateState* = enum
-    csEmpty, csMatch, csNoMatch
+    csEmpty, csMatch, csNoMatch,
+    csGotTyForward      # got a type contains `tyForward` kind
+                        # (possible in a type section, see `semTypeSection` proc)
+                        # cannot match correctly because the actual type is unknown
+                        # should match again when the type got semchecked
 
   CandidateError* = object
     sym*: PSym
@@ -2730,6 +2734,8 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
                 x = z
               elif cmp == 0:
                 y = z           # z is as good as x
+            of csGotTyForward:
+              assert false
 
       if x.state == csEmpty:
         result = nil
@@ -2845,12 +2851,12 @@ proc findFirstArgBlock(m: var TCandidate, n: PNode): int =
     else: break
 
 proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var IntSet) =
-  template noMatch() =
+  template noMatch(isTyForward = false) =
     if m.calleeSym != nil and m.calleeSym.kind notin {skTemplate, skMacro}:
       c.mergeShadowScope
     else:
       c.closeShadowScope
-    m.state = csNoMatch
+    m.state = if isTyForward: csGotTyForward else: csNoMatch
     m.firstMismatch.arg = a
     m.firstMismatch.formal = formal
     return
@@ -3010,9 +3016,14 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
           m.typedescMatched = false
           var newlyTyped = false
           n[a] = prepareOperand(c, formal.typ, n[a], newlyTyped)
-          if newlyTyped: m.newlyTypedOperands.add(a)
-          arg = paramTypesMatch(m, formal.typ, n[a].typ,
-                                    n[a], nOrig[a])
+          if n[a].typ != nil and n[a].typ.kind == tyForward or n[a].kind == nkSym and n[a].sym.typ.kind == tyForward:
+            # set tyForward type to `m.call.typ` so that caller can easily see this call contains a tyForward type param.
+            m.call.typ = if n[a].typ != nil and n[a].typ.kind == tyForward: n[a].typ else: n[a].sym.typ
+            noMatch(true)
+          else:
+            if newlyTyped: m.newlyTypedOperands.add(a)
+            arg = paramTypesMatch(m, formal.typ, n[a].typ,
+                                      n[a], nOrig[a])
           if arg == nil:
             noMatch()
           if formal.typ.isVarargsTyped and m.calleeSym.kind in {skTemplate, skMacro}:
@@ -3082,7 +3093,7 @@ proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
   if m.state == csNoMatch: return
   var marker = initIntSet()
   matchesAux(c, n, nOrig, m, marker)
-  if m.state == csNoMatch: return
+  if m.state in {csNoMatch, csGotTyForward}: return
   # check that every formal parameter got a value:
   for f in 1..<m.callee.n.len:
     let formal = m.callee.n[f].sym

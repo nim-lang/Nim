@@ -1773,7 +1773,21 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
   else:
     var m = newCandidate(c, t)
     m.isNoCall = true
-    matches(c, n, copyTree(n), m)
+    # `matches` proc can modify `n`.
+    # if there is a `tyForward` type in `n`, `matches` cannot work and modify `n` correctly.
+    # that case, add `prevN` to `c.forwardTypeUpdates` so that the type is resemed with original `n`.
+    let prevN = copyTree(n)
+    matches(c, n, prevN, m)
+
+    if m.state == csGotTyForward:
+      if prev == nil:
+        result = newTypeS(tyForward, c)
+        result.sym = s
+      else:
+        assignType(result, newTypeS(tyForward, c))
+        result.sym = s
+      c.forwardTypeUpdates.add (getCurrOwner(c), result, prevN) #fixes 1500
+      return
 
     if m.state != csMatch:
       var err = "cannot instantiate "
@@ -1839,7 +1853,7 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
         else:
           assignType(result, newTypeS(tyForward, c))
           result.sym = s
-        c.forwardTypeUpdates.add (getCurrOwner(c), result, n) #fixes 1500
+        c.forwardTypeUpdates.add (getCurrOwner(c), result, prevN) #fixes 1500
         return
       else:
         result = instGenericContainer(c, n.info, result,
