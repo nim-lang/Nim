@@ -721,18 +721,37 @@ proc completeStore(s: var SmallString) {.compilerproc, inline.} =
 proc completeStore*(s: var string) {.inline.} =
   completeStore(cast[ptr SmallString](addr s)[])
 
-proc beginStore*(s: var string; ensuredLen: int; start = 0): ptr UncheckedArray[char] {.inline, noSideEffect, raises: [], tags: [].} =
-  ## Prepares `s` for a bulk write of `ensuredLen` bytes starting at `start`.
-  ## The caller must ensure `s.len >= start + ensuredLen` (e.g. via `newString` or `setLen`).
+proc beginStore*(s: var string; newLen: int; start = 0): ptr UncheckedArray[char] {.inline, noSideEffect, raises: [], tags: [].} =
+  ## Sets s.len to `newLen` (new bytes are uninitialized), ensures unique
+  ## ownership, and returns a pointer to s[start] for bulk writing.
   ## Call `endStore(s)` afterwards to sync the inline cache.
+  ## To keep the current length, pass `s.len`.
   {.cast(noSideEffect).}:
     let ss = cast[ptr SmallString](addr s)
     let slen = ssLen(ss[])
-    if slen > PayloadSize:
-      ensureUniqueLong(ss[], ss[].more.fullLen, ss[].more.fullLen)
+    let curLen = if slen > PayloadSize: ss[].more.fullLen else: slen
+    if newLen <= PayloadSize and slen <= PayloadSize:
+      # Stay inline/medium.
+      if newLen != curLen:
+        setSSLen(ss[], newLen)
+      result = cast[ptr UncheckedArray[char]](cast[uint](inlinePtr(ss[])) + uint(start))
+    elif slen <= PayloadSize:
+      # Inline/medium → long.
+      let newCap = resize(newLen)
+      let p = cast[ptr LongString](alloc(LongStringDataOffset + newCap + 1))
+      p.rc = 1
+      p.fullLen = newLen
+      p.capImpl = newCap
+      copyMem(addr p.data[0], inlinePtr(ss[]), curLen)
+      p.data[newLen] = '\0'
+      ss[].more = p
+      setSSLen(ss[], HeapSlen)
       result = cast[ptr UncheckedArray[char]](addr ss[].more.data[start])
     else:
-      result = cast[ptr UncheckedArray[char]](cast[uint](inlinePtr(ss[])) + uint(start))
+      # Already long: resize within heap (no transition back to inline).
+      ensureUniqueLong(ss[], curLen, newLen)
+      ss[].more.data[newLen] = '\0'
+      result = cast[ptr UncheckedArray[char]](addr ss[].more.data[start])
 
 proc endStore*(s: var string) {.inline, noSideEffect, raises: [], tags: [].} =
   ## Syncs the inline cache after bulk writes via `beginStore`. No-op for short/medium strings.
