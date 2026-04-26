@@ -1915,7 +1915,7 @@ proc semTypeExpr(c: PContext, n: PNode; prev: PType): PType =
         # unnecessary new type creation
         let alias = maybeAliasType(c, result, prev)
         if alias != nil: result = alias
-  elif n.typ.kind == tyFromExpr and c.inGenericContext > 0:
+  elif n.typ.kind == tyFromExpr and c.inGenericContext > 0 or n.typ.kind == tyForward:
     # sometimes not possible to distinguish type from value in generic body,
     # for example `T.Foo`, so both are handled under `tyFromExpr`
     result = n.typ
@@ -2308,7 +2308,10 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       elif op.s == "owned" and optOwnedRefs notin c.config.globalOptions and n.len == 2:
         result = semTypeExpr(c, n[1], prev)
       else:
+        let prevN = copyTree(n)
         result = semTypeExpr(c, n, prev)
+        if result.kind == tyForward:
+          c.forwardTypeUpdates.add (getCurrOwner(c), result, prevN)
   of nkWhenStmt:
     var whenResult = semWhen(c, n, false)
     if whenResult.kind == nkStmtList: whenResult.transitionSonsKind(nkStmtListType)

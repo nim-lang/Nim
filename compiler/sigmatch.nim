@@ -3016,7 +3016,8 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
           m.typedescMatched = false
           var newlyTyped = false
           n[a] = prepareOperand(c, formal.typ, n[a], newlyTyped)
-          if n[a].typ != nil and n[a].typ.kind == tyForward or n[a].kind == nkSym and n[a].sym.typ.kind == tyForward:
+          if (n[a].typ != nil and n[a].typ.kind == tyForward) or
+             (n[a].kind == nkSym and n[a].sym.typ != nil and n[a].sym.typ.kind == tyForward):
             # set tyForward type to `m.call.typ` so that caller can easily see this call contains a tyForward type param.
             m.call.typ = if n[a].typ != nil and n[a].typ.kind == tyForward: n[a].typ else: n[a].sym.typ
             noMatch(true)
