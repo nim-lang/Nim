@@ -22,7 +22,7 @@ template detectVersion(field, corename) =
     result = 1
 
 proc detectStrVersion(m: BModule): int =
-  if m.g.config.isDefined("nimsso") and
+  if m.g.config.usesSso() and
       m.g.config.selectedGC in {gcArc, gcOrc, gcYrc, gcAtomicArc, gcHooks}:
     result = 3
   else:

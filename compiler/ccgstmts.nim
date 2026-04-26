@@ -1940,7 +1940,7 @@ proc genAsgn(p: BProc, e: PNode, fastAsgn: bool) =
   elif optFieldCheck in p.options and isDiscriminantField(e[0]):
     genLineDir(p, e)
     asgnFieldDiscriminant(p, e)
-  elif p.config.isDefined("nimsso") and e[0].kind == nkBracketExpr and
+  elif p.config.usesSso() and e[0].kind == nkBracketExpr and
       e[0][0].typ.skipTypes(abstractVar).kind == tyString:
     # nimsso: s[i] = c  →  nimStrPutV3(&s, i, c)  (handles COW internally)
     genLineDir(p, e)

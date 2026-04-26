@@ -250,6 +250,7 @@ const
   errGuiConsoleOrLibExpectedButXFound = "'gui', 'console', 'lib' or 'staticlib' expected, but '$1' found"
   errInvalidExceptionSystem = "'goto', 'setjmp', 'cpp' or 'quirky' expected, but '$1' found"
   errInvalidFeatureButXFound = Feature.toSeq.map(proc(val:Feature): string = "'$1'" % $val).join(", ") & " expected, but '$1' found"
+  errDefaultOrSsoExpectedButXFound = "'default' or 'sso' expected, but '$1' found"
 
 template warningOptionNoop(switch: string) =
   warningDeprecated(conf, info, "'$#' is deprecated, now a noop" % switch)
@@ -306,6 +307,13 @@ proc testCompileOptionArg*(conf: ConfigRef; switch, arg: string, info: TLineInfo
     else:
       result = false
       localError(conf, info, errInvalidExceptionSystem % arg)
+  of "strings":
+    case arg.normalize
+    of "default": result = conf.selectedStrings == stringDefault
+    of "sso": result = conf.selectedStrings == stringSso
+    else:
+      result = false
+      localError(conf, info, errDefaultOrSsoExpectedButXFound % arg)
   of "experimental":
     try:
       result = conf.features.contains parseEnum[Feature](arg)
@@ -750,6 +758,17 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     processMemoryManagementOption(switch, arg, pass, info, conf)
   of "mm":
     processMemoryManagementOption(switch, arg, pass, info, conf)
+  of "strings":
+    expectArg(conf, switch, arg, pass, info)
+    if pass in {passCmd2, passPP}:
+      case arg.normalize
+      of "default":
+        conf.selectedStrings = stringDefault
+      of "sso":
+        conf.selectedStrings = stringSso
+        defineSymbol(conf.symbols, "nimsso")
+      else:
+        localError(conf, info, errDefaultOrSsoExpectedButXFound % arg)
   of "warnings", "w":
     if processOnOffSwitchOrList(conf, {optWarns}, arg, pass, info): listWarnings(conf)
   of "warning": processSpecificNote(arg, wWarning, pass, info, switch, conf)

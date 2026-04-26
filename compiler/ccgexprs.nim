@@ -322,7 +322,7 @@ proc genOpenArrayConv(p: BProc; d: TLoc; a: TLoc; flags: TAssignmentFlags) =
         bra)
     let rd = d.rdLoc
     let la = lenExpr(p, a)
-    if p.config.isDefined("nimsso"):
+    if p.config.usesSso():
       let bra = byRefLoc(p, a)
       p.s(cpsStmts).addFieldAssignment(rd, "Field0",
         cCall(cgsymValue(p.module, "nimStrData"), bra))
@@ -963,7 +963,7 @@ proc genDeref(p: BProc, e: PNode, d: var TLoc) =
 
 proc cowBracket(p: BProc; n: PNode) =
   if n.kind == nkBracketExpr and optSeqDestructors in p.config.globalOptions and
-      not p.config.isDefined("nimsso"):
+      not p.config.usesSso():
     let strCandidate = n[0]
     if strCandidate.typ.skipTypes(abstractInst).kind == tyString:
       var a: TLoc = initLocExpr(p, strCandidate)
@@ -989,7 +989,7 @@ proc genAddr(p: BProc, e: PNode, d: var TLoc) =
     # bug #19497
     d.lode = e
   else:
-    let ssoStrSub = p.config.isDefined("nimsso") and e[0].kind == nkBracketExpr and
+    let ssoStrSub = p.config.usesSso() and e[0].kind == nkBracketExpr and
         e[0][0].typ.skipTypes(abstractVar).kind == tyString
     var a: TLoc = initLocExpr(p, e[0], if ssoStrSub: {lfEnforceDeref, lfPrepareForMutation} else: {})
     if e[0].kind in {nkHiddenStdConv, nkHiddenSubConv, nkConv} and not ignoreConv(e[0]):
@@ -1318,7 +1318,7 @@ proc genSeqElem(p: BProc, n, x, y: PNode, d: var TLoc) =
   if skipTypes(a.t, abstractVar).kind in {tyRef, tyPtr}:
     a.snippet = cDeref(a.snippet)
 
-  if p.config.isDefined("nimsso") and ty.kind == tyString:
+  if p.config.usesSso() and ty.kind == tyString:
     let bra = byRefLoc(p, a)
     if lfPrepareForMutation in d.flags:
       # Use nimStrAtMutV3 to get a mutable reference (char*) to the element.
@@ -2150,7 +2150,7 @@ proc genRepr(p: BProc, e: PNode, d: var TLoc) =
       putIntoDest(p, b, e, ra & cArgumentSeparator & ra & "Len_0", a.storage)
     of tyString, tySequence:
       let la = lenExpr(p, a)
-      if p.config.isDefined("nimsso") and
+      if p.config.usesSso() and
           skipTypes(a.t, abstractVarRange).kind == tyString:
         let bra = byRefLoc(p, a)
         putIntoDest(p, b, e,
@@ -2743,7 +2743,7 @@ proc genConv(p: BProc, e: PNode, d: var TLoc) =
 
 proc convStrToCStr(p: BProc, n: PNode, d: var TLoc) =
   var a: TLoc = initLocExpr(p, n[0])
-  let arg = if p.config.isDefined("nimsso"): byRefLoc(p, a) else: rdLoc(a)
+  let arg = if p.config.usesSso(): byRefLoc(p, a) else: rdLoc(a)
   putIntoDest(p, d, n,
     cgCall(p, "nimToCStringConv", arg),
     a.storage)
@@ -2822,7 +2822,7 @@ proc genMove(p: BProc; n: PNode; d: var TLoc) =
     var src: TLoc = initLocExpr(p, n[2])
     let destVal = rdLoc(a)
     let srcVal = rdLoc(src)
-    if p.config.isDefined("nimsso") and
+    if p.config.usesSso() and
         n[1].typ.skipTypes(abstractVar).kind == tyString:
       # SmallString: destroy dst then struct-copy src; no .p field aliasing needed
       genStmts(p, n[3])
@@ -2871,7 +2871,7 @@ proc genDestroy(p: BProc; n: PNode) =
     case t.kind
     of tyString:
       var a: TLoc = initLocExpr(p, arg)
-      if p.config.isDefined("nimsso"):
+      if p.config.usesSso():
         # SmallString: delegate to nimDestroyStrV1 (rc-based, handles static strings)
         p.s(cpsStmts).addCallStmt(cgsymValue(p.module, "nimDestroyStrV1"), rdLoc(a))
       else:
@@ -4243,7 +4243,7 @@ proc genBracedInit(p: BProc, n: PNode; isConst: bool; optionalType: PType; resul
       genConstObjConstr(p, n, isConst, result)
     of tyString, tyCstring:
       if optSeqDestructors in p.config.globalOptions and n.kind != nkNilLit and ty == tyString:
-        if p.config.isDefined("nimsso"):
+        if p.config.usesSso():
           genStringLiteralV3Const(p.module, n, isConst, result)
         else:
           genStringLiteralV2Const(p.module, n, isConst, result)

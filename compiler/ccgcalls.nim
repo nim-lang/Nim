@@ -230,11 +230,11 @@ proc genOpenArraySlice(p: BProc; q: PNode; formalType, destType: PType; prepareF
   of tyString, tySequence:
     let atyp = skipTypes(a.t, abstractInst)
     if formalType.skipTypes(abstractInst).kind in {tyVar} and atyp.kind == tyString and
-        optSeqDestructors in p.config.globalOptions and not p.config.isDefined("nimsso"):
+        optSeqDestructors in p.config.globalOptions and not p.config.usesSso():
       let bra = byRefLoc(p, a)
       p.s(cpsStmts).addCallStmt(cgsymValue(p.module, "nimPrepareStrMutationV2"),
         bra)
-    if p.config.isDefined("nimsso") and
+    if p.config.usesSso() and
         skipTypes(a.t, abstractVar + abstractInst).kind == tyString:
       let strPtr = if atyp.kind in {tyVar} and not compileToCpp(p.module): ra
                    else: addrLoc(p.config, a)
@@ -296,11 +296,11 @@ proc openArrayLoc(p: BProc, formalType: PType, n: PNode; result: var Builder) =
     of tyString, tySequence:
       let ntyp = skipTypes(n.typ, abstractInst)
       if formalType.skipTypes(abstractInst).kind in {tyVar} and ntyp.kind == tyString and
-          optSeqDestructors in p.config.globalOptions and not p.config.isDefined("nimsso"):
+          optSeqDestructors in p.config.globalOptions and not p.config.usesSso():
         let bra = byRefLoc(p, a)
         p.s(cpsStmts).addCallStmt(cgsymValue(p.module, "nimPrepareStrMutationV2"),
           bra)
-      if p.config.isDefined("nimsso") and
+      if p.config.usesSso() and
           skipTypes(n.typ, abstractVar + abstractInst).kind == tyString:
         if ntyp.kind in {tyVar} and not compileToCpp(p.module):
           let ra = a.rdLoc
@@ -335,7 +335,7 @@ proc openArrayLoc(p: BProc, formalType: PType, n: PNode; result: var Builder) =
         let ra = a.rdLoc
         var t = TLoc(snippet: cDeref(ra))
         let lt = lenExpr(p, t)
-        if p.config.isDefined("nimsso"):
+        if p.config.usesSso():
           result.add(cCall(cgsymValue(p.module, "nimStrData"), ra))
           result.addArgumentSeparator()
           result.add(cCall(cgsymValue(p.module, "nimStrLen"), t.snippet))
@@ -370,7 +370,7 @@ proc expressionsNeedsTmp(p: BProc, a: TLoc): TLoc =
 proc genArgStringToCString(p: BProc, n: PNode; result: var Builder; needsTmp: bool) {.inline.} =
   var a = initLocExpr(p, n[0])
   let tmp = withTmpIfNeeded(p, a, needsTmp)
-  let ra = if p.config.isDefined("nimsso"): byRefLoc(p, tmp) else: tmp.rdLoc
+  let ra = if p.config.usesSso(): byRefLoc(p, tmp) else: tmp.rdLoc
   result.addCall(cgsymValue(p.module, "nimToCStringConv"), ra)
 
 proc genArg(p: BProc, n: PNode, param: PSym; call: PNode; result: var Builder; needsTmp = false) =

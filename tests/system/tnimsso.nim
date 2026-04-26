@@ -1,5 +1,5 @@
 discard """
-  matrix: "-d:nimsso"
+  matrix: "--strings:sso --mm:orc"
   targets: "c cpp"
 """
 

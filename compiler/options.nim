@@ -267,6 +267,10 @@ type
     ccNone, ccGcc, ccNintendoSwitch, ccLLVM_Gcc, ccCLang, ccBcc, ccVcc,
     ccTcc, ccEnv, ccIcl, ccIcc, ccClangCl, ccHipcc, ccNvcc
 
+  StringsMode* = enum
+    stringDefault = "default"
+    stringSso = "sso"
+
   ExceptionSystem* = enum
     excNone,   # no exception system selected yet
     excSetjmp, # setjmp based exception handling
@@ -366,6 +370,7 @@ type
     implicitCmd*: bool # whether some flag triggered an implicit `command`
     selectedGC*: TGCMode       # the selected GC (+)
     exc*: ExceptionSystem
+    selectedStrings*: StringsMode
     hintProcessingDots*: bool # true for dots, false for filenames
     verbosity*: int            # how verbose the compiler is
     numberOfProcessors*: int   # number of processors
@@ -698,6 +703,7 @@ template quitOrRaise*(conf: ConfigRef, msg = "") =
 
 proc importantComments*(conf: ConfigRef): bool {.inline.} = conf.cmd in cmdDocLike + {cmdIdeTools}
 proc usesWriteBarrier*(conf: ConfigRef): bool {.inline.} = conf.selectedGC >= gcRefc
+proc usesSso*(conf: ConfigRef): bool {.inline.} = conf.selectedStrings == stringSso
 
 template compilationCachePresent*(conf: ConfigRef): untyped =
   false

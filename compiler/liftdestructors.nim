@@ -732,7 +732,7 @@ proc fillStrOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   of attachedAsgn, attachedDeepCopy, attachedDup:
     body.add callCodegenProc(c.g, "nimAsgnStrV2", c.info, genAddr(c, x), y)
   of attachedSink:
-    if c.g.config.isDefined("nimsso"):
+    if c.g.config.usesSso():
       # SmallString: destroy old dst, then bit-copy src (no rc increment — this is a move).
       # No .p aliasing check needed; rc-based destroy handles COW sharing correctly.
       doAssert t.destructor != nil
