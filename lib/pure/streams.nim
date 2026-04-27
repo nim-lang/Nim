@@ -259,7 +259,7 @@ proc readDataStr*(s: Stream, buffer: var string, slice: Slice[int]): int =
     result = s.readDataStrImpl(s, buffer, slice)
   else:
     # fallback
-    result = s.readData(beginStore(buffer, slice.b + 1, slice.a), slice.b + 1 - slice.a)
+    result = s.readData(beginStore(buffer, buffer.len, slice.a), slice.b + 1 - slice.a)
     endStore(buffer)
 
 template jsOrVmBlock(caseJsOrVm, caseElse: untyped): untyped =
@@ -1226,7 +1226,7 @@ else: # after 1.3 or JS not defined
       jsOrVmBlock:
         buffer[slice.a..<slice.a+result] = s.data[s.pos..<s.pos+result]
       do:
-        copyMem(beginStore(buffer, slice.a + result, slice.a), readRawData(s.data, s.pos), result)
+        copyMem(beginStore(buffer, buffer.len, slice.a), readRawData(s.data, s.pos), result)
         endStore(buffer)
       inc(s.pos, result)
     else:
@@ -1346,7 +1346,7 @@ proc fsReadData(s: Stream, buffer: pointer, bufLen: int): int =
 
 proc fsReadDataStr(s: Stream, buffer: var string, slice: Slice[int]): int =
   let len = slice.b + 1 - slice.a
-  result = readBuffer(FileStream(s).f, beginStore(buffer, slice.b + 1, slice.a), len)
+  result = readBuffer(FileStream(s).f, beginStore(buffer, buffer.len, slice.a), len)
   endStore(buffer)
 
 proc fsPeekData(s: Stream, buffer: pointer, bufLen: int): int =
