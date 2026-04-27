@@ -1775,21 +1775,11 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
     m.isNoCall = true
     # `matches` proc can modify `n`.
     # if there is a `tyForward` type in `n`, `matches` cannot work and modify `n` correctly.
-    # that case, add `prevN` to `c.forwardTypeUpdates` so that the type is resemed with original `n`.
-    let prevN = copyTree(n)
-    matches(c, n, prevN, m)
+    # that case, add `nOrig` to `c.forwardTypeUpdates` so that the type is resemed with original `n`.
+    let nOrig = copyTree(n)
+    matches(c, n, nOrig, m)
 
-    if m.state == csGotTyForward:
-      if prev == nil:
-        result = newTypeS(tyForward, c)
-        result.sym = s
-      else:
-        assignType(result, newTypeS(tyForward, c))
-        result.sym = s
-      c.forwardTypeUpdates.add (getCurrOwner(c), result, prevN) #fixes 1500
-      return
-
-    if m.state != csMatch:
+    if m.state notin {csMatch, csGotTyForward}:
       var err = "cannot instantiate "
       err.addTypeHeader(c.config, t)
       err.add "\ngot: <$1>\nbut expected: <$2>" % [describeArgs(c, n), describeArgs(c, t.n, 0)]
@@ -1804,7 +1794,6 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
     var isConcrete = true
     let rType = m.call[0].typ
     let mIndex = if rType != nil: rType.len - 1 else: -1
-    var hasForwardTypeParam = false
     for i in 1..<m.call.len:
       var typ = m.call[i].typ
       # is this a 'typedesc' *parameter*? If so, use the typedesc type,
@@ -1821,15 +1810,12 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
           skip = false
         addToResult(typ, skip)
 
-      if typ.kind == tyForward:
-        hasForwardTypeParam = true
-
     if isConcrete:
       if s.ast == nil and s.typ.kind != tyCompositeTypeClass:
         # XXX: What kind of error is this? is it still relevant?
         localError(c.config, n.info, errCannotInstantiateX % s.name.s)
         result = newOrPrevType(tyError, prev, c)
-      elif containsGenericInvocationWithForward(n[0]) or hasForwardTypeParam:
+      elif containsGenericInvocationWithForward(n[0]) or m.state == csGotTyForward:
         # isConcrete == false means this generic type is not instanciated here because
         # it invoked with generic parameters.
         # Even if isConcrete == true, don't instanciate it now if there are
@@ -1853,7 +1839,7 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
         else:
           assignType(result, newTypeS(tyForward, c))
           result.sym = s
-        c.forwardTypeUpdates.add (getCurrOwner(c), result, prevN) #fixes 1500
+        c.forwardTypeUpdates.add (getCurrOwner(c), result, nOrig) #fixes 1500
         return
       else:
         result = instGenericContainer(c, n.info, result,
@@ -2308,10 +2294,10 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       elif op.s == "owned" and optOwnedRefs notin c.config.globalOptions and n.len == 2:
         result = semTypeExpr(c, n[1], prev)
       else:
-        let prevN = copyTree(n)
+        let nOrig = copyTree(n)
         result = semTypeExpr(c, n, prev)
         if result.kind == tyForward:
-          c.forwardTypeUpdates.add (getCurrOwner(c), result, prevN)
+          c.forwardTypeUpdates.add (getCurrOwner(c), result, nOrig)
   of nkWhenStmt:
     var whenResult = semWhen(c, n, false)
     if whenResult.kind == nkStmtList: whenResult.transitionSonsKind(nkStmtListType)
