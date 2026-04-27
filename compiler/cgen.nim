@@ -389,7 +389,7 @@ proc lenField(p: BProc, val: Rope): Rope {.inline.} =
 
 proc lenExpr(p: BProc; a: TLoc): Rope =
   if optSeqDestructors in p.config.globalOptions:
-    if p.config.isDefined("nimsso") and a.lode != nil and a.t != nil and
+    if p.config.usesSso() and a.lode != nil and a.t != nil and
         a.t.skipTypes(abstractInst).kind == tyString:
       result = cCall(cgsymValue(p.module, "nimStrLen"), rdLoc(a))
     else:
@@ -534,7 +534,7 @@ proc resetLoc(p: BProc, loc: var TLoc) =
 
     let atyp = skipTypes(loc.t, abstractInst)
     let rl = rdLoc(loc)
-    if typ.kind == tyString and p.config.isDefined("nimsso"):
+    if typ.kind == tyString and p.config.usesSso():
       # SmallString zero state: bytes=0 (slen=0 in low byte, all inline chars zeroed)
       if atyp.kind in {tyVar, tyLent}:
         p.s(cpsStmts).addAssignment(derefField(rl, "bytes"), cIntValue(0))
@@ -592,7 +592,7 @@ proc constructLoc(p: BProc, loc: var TLoc, isTemp = false) =
   let typ = loc.t
   if optSeqDestructors in p.config.globalOptions and skipTypes(typ, abstractInst + {tyStatic}).kind in {tyString, tySequence}:
     let rl = rdLoc(loc)
-    if skipTypes(typ, abstractInst + {tyStatic}).kind == tyString and p.config.isDefined("nimsso"):
+    if skipTypes(typ, abstractInst + {tyStatic}).kind == tyString and p.config.usesSso():
       # SmallString zero state: bytes=0 (slen=0 in low byte, all inline chars zeroed)
       p.s(cpsStmts).addFieldAssignment(rl, "bytes", cIntValue(0))
       p.s(cpsStmts).addFieldAssignment(rl, "more", NimNil)

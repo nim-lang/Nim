@@ -1,5 +1,5 @@
 discard """
-  matrix: "--backend:c --mm:refc; --backend:c --mm:orc; --backend:c --mm:orc -d:nimsso; --backend:cpp --mm:refc; --backend:cpp --mm:orc; --backend:js --mm:refc; --backend:js --mm:orc"
+  matrix: "--backend:c --mm:refc; --backend:c --mm:orc; --backend:c --mm:orc --strings:sso; --backend:cpp --mm:refc; --backend:cpp --mm:orc; --backend:js --mm:refc; --backend:js --mm:orc"
 """
 
 from std/sequtils import toSeq, map

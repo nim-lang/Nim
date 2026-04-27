@@ -121,6 +121,11 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
         conf.cmd in {cmdGendepend, cmdNifC, cmdIc, cmdM}:
       initOrcDefines(conf)
 
+  if conf.selectedStrings == stringSso and
+      conf.selectedGC notin {gcArc, gcOrc, gcYrc, gcAtomicArc}:
+    rawMessage(conf, errGenerated,
+      "--strings:sso requires --mm:arc, --mm:orc, --mm:yrc, or --mm:atomicArc")
+
   mainCommand(graph)
   if conf.hasHint(hintGCStats): echo(GC_getStatistics())
   #echo(GC_getStatistics())

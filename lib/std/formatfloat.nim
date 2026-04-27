@@ -18,12 +18,12 @@ proc addCstringN(result: var string, buf: cstring; buflen: int) =
   # no nimvm support needed, so it doesn't need to be fast here either
   let oldLen = result.len
   let newLen = oldLen + buflen
-  result.setLen newLen
   {.cast(noSideEffect).}:
-    when declared(completeStore):
-      c_memcpy(beginStore(result, buflen, oldLen), buf, buflen.csize_t)
+    when declared(beginStore):
+      c_memcpy(beginStore(result, newLen, oldLen), buf, buflen.csize_t)
       endStore(result)
     else:
+      result.setLen newLen
       discard c_memcpy(result[oldLen].addr, buf, buflen.csize_t)
 
 import std/private/[dragonbox, schubfach]
