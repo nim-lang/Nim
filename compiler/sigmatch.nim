@@ -1425,13 +1425,15 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     if a.kind == tyArray:
       var fRange = f.indexType
       var aRange = a.indexType
+      var indexRel = isEqual
       if fRange.kind in {tyGenericParam, tyAnything}:
         var prev = lookup(c.bindings, fRange)
         if prev == nil:
-          if typeRel(c, fRange, aRange) == isNone:
+          indexRel = typeRel(c, fRange, aRange)
+          if indexRel == isNone:
             return isNone
           put(c, fRange, a.indexType)
-          fRange = a
+          fRange = aRange
         else:
           fRange = prev
       let ff = f[1].skipTypes({tyTypeDesc})
@@ -1442,6 +1444,8 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         result = isGeneric
       else:
         result = typeRel(c, ff, aa, flags)
+      if indexRel == isGeneric and result > isGeneric:
+        result = isGeneric
       if result < isGeneric:
         if nimEnableCovariance and
            trNoCovariance notin flags and
