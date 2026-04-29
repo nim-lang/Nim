@@ -1456,6 +1456,9 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
           return isNone
 
       if fRange.rangeHasUnresolvedStatic:
+        if trCheckGeneric in flags and aOrig.kind == tyArray and
+            aOrig.indexType.kind == tyGenericParam:
+          return isNone
         if (aRange.kind in {tyGenericParam} and aRange.reduceToBase() == aRange) or
             (aRange.kind == tyRange and aRange.rangeHasUnresolvedStatic):
           return
@@ -1463,6 +1466,9 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       elif c.c.matchedConcept != nil and aRange.rangeHasUnresolvedStatic:
         return inferStaticsInRange(c, aRange, f)
       elif result == isGeneric and concreteType(c, aa, ff) == nil:
+        if indexRel != isGeneric:
+          return isNone
+      elif trCheckGeneric in flags and aRange.kind == tyGenericParam:
         return isNone
       else:
         if lengthOrd(c.c.config, fRange) != lengthOrd(c.c.config, aRange):
