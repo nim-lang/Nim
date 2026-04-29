@@ -1298,9 +1298,10 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
   if a.isResolvedUserTypeClass:
     return typeRel(c, f, a.skipModifier, flags)
 
+  template bound: PType = aOrig.skipTypes({tyRange}).skipIntLit(c.c.idgen)
+
   template bindingRet(res) =
     if doBind:
-      let bound = aOrig.skipTypes({tyRange}).skipIntLit(c.c.idgen)
       put(c, f, bound)
     return res
 
@@ -1877,6 +1878,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       result = isNone
       let oldInheritancePenalty = c.inheritancePenalty
       var minInheritance = maxInheritancePenalty
+      var bestBranch: PType = nil
       for branch in f.kids:
         c.inheritancePenalty = -1
         let x = typeRel(c, branch, aOrig, flags)
@@ -1884,12 +1886,20 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
           if  c.inheritancePenalty > -1:
             minInheritance = min(minInheritance, c.inheritancePenalty)
           result = x
+          bestBranch = branch
       c.inheritancePenalty = oldInheritancePenalty
       if result >= isIntConv:
         if minInheritance < maxInheritancePenalty:
           inc c.inheritancePenalty, minInheritance + ord(c.inheritancePenalty < 0)
         if result > isGeneric: result = isGeneric
-        bindingRet result
+        if doBind:
+          assert bestBranch != nil
+          const TypMods = {tySink, tyVar}
+          let branchKind = bestBranch.kind
+          if branchKind in TypMods and bound.kind != branchKind:
+            put(c, f, newTypeS(branchKind, c.c, bound.skipTypes(TypMods)))
+          else:
+            put(c, f, bound)
       else:
         result = isNone
   of tyNot:
