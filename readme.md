@@ -39,7 +39,7 @@ architecture combinations:
 |--------------------------------|----------------------------------------|
 | Windows (Windows XP or greater) | x86 and x86_64                             |
 | Linux (most distributions)     | x86, x86_64, ppc64, and armv6l             |
-| Mac OS X (10.04 or greater)    | x86, x86_64, ppc64, and Apple Silicon (ARM64) |
+| Mac OS X (10.4 or greater)     | x86, x86_64, ppc64, and Apple Silicon (ARM64) |
 
 More platforms are supported, however, they are not tested regularly and they
 may not be as stable as the above-listed platforms.
@@ -49,7 +49,7 @@ Compiling the Nim compiler is quite straightforward if you follow these steps:
 First, the C source of an older version of the Nim compiler is needed to
 bootstrap the latest version because the Nim compiler itself is written in the
 Nim programming language. Those C sources are available within the
-[``nim-lang/csources_v2``][csources-v2-repo] repository.
+[``nim-lang/csources_v3``][csources-v3-repo] repository.
 
 Next, to build from source you will need:
 
@@ -202,7 +202,7 @@ Nim. You are explicitly permitted to develop commercial applications using Nim.
 
 Please read the [copying.txt](copying.txt) file for more details.
 
-Copyright © 2006-2025 Andreas Rumpf, all rights reserved.
+Copyright © 2006-2026 Andreas Rumpf, all rights reserved.
 
 [nim-site]: https://nim-lang.org
 [nim-forum]: https://forum.nim-lang.org
@@ -221,7 +221,7 @@ Copyright © 2006-2025 Andreas Rumpf, all rights reserved.
 [nimble-repo]: https://github.com/nim-lang/nimble
 [nimsuggest-repo]: https://github.com/nim-lang/nimsuggest
 [csources-repo-deprecated]: https://github.com/nim-lang/csources
-[csources-v2-repo]: https://github.com/nim-lang/csources_v2
+[csources-v3-repo]: https://github.com/nim-lang/csources_v3
 [badge-nim-irc]: https://img.shields.io/badge/chat-on_irc-blue.svg?style=flat-square
 [badge-nim-discord]: https://img.shields.io/discord/371759389889003530?color=blue&label=discord&logo=discord&logoColor=gold&style=flat-square
 [badge-nim-gitter]: https://img.shields.io/badge/chat-on_gitter-blue.svg?style=flat-square

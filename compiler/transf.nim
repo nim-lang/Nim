@@ -65,16 +65,14 @@ proc newTransNode(a: PNode): PNode {.inline.} =
 
 proc newTransNode(kind: TNodeKind, info: TLineInfo,
                   sons: int): PNode {.inline.} =
-  var x = newNodeI(kind, info)
-  newSeq(x.sons, sons)
-  result = x
+  result = newNodeI(kind, info)
+  newSeq(result.sons, sons)
 
 proc newTransNode(kind: TNodeKind, n: PNode,
                   sons: int): PNode {.inline.} =
-  var x = newNodeIT(kind, n.info, n.typ)
-  newSeq(x.sons, sons)
-#  x.flags = n.flags
-  result = x
+  result = newNodeIT(kind, n.info, n.typ)
+  newSeq(result.sons, sons)
+  #  x.flags = n.flags
 
 proc newTransCon(owner: PSym): PTransCon =
   assert owner != nil
@@ -95,7 +93,7 @@ proc getCurrOwner(c: PTransf): PSym =
 proc newTemp(c: PTransf, typ: PType, info: TLineInfo): PNode =
   let r = newSym(skTemp, getIdent(c.graph.cache, genPrefix), c.idgen, getCurrOwner(c), info)
   r.typ = typ #skipTypes(typ, {tyGenericInst, tyAlias, tySink})
-  incl(r.flags, sfFromGeneric)
+  incl(r.flagsImpl, sfFromGeneric)
   let owner = getCurrOwner(c)
   result = newSymNode(r)
 
@@ -120,6 +118,24 @@ proc newAsgnStmt(c: PTransf, kind: TNodeKind, le: PNode, ri: PNode; isFirstWrite
     le.flags.incl nfFirstWrite
   result[1] = ri
 
+proc resolveBorrowedRoutineSym(c: PTransf; s: PSym; info: TLineInfo): PSym =
+  # Follow borrow aliases to the underlying implementation symbol.
+  var s = s
+  while true:
+    # Skips over all borrowed procs getting the last proc symbol without an implementation
+    let body = getBody(c.graph, s)
+    if body.kind == nkSym and sfBorrow in body.sym.flags and getBody(c.graph, body.sym).kind == nkSym:
+      s = body.sym
+    else:
+      break
+
+  let body = getBody(c.graph, s)
+  if body.kind == nkSym:
+    result = body.sym
+  else:
+    result = nil
+    internalError(c.graph.config, info, "wrong AST for borrowed symbol")
+
 proc transformSymAux(c: PTransf, n: PNode): PNode =
   let s = n.sym
   if s.typ != nil and s.typ.callConv == ccClosure:
@@ -138,17 +154,7 @@ proc transformSymAux(c: PTransf, n: PNode): PNode =
   var tc = c.transCon
   if sfBorrow in s.flags and s.kind in routineKinds:
     # simply exchange the symbol:
-    var s = s
-    while true:
-      # Skips over all borrowed procs getting the last proc symbol without an implementation
-      let body = getBody(c.graph, s)
-      if body.kind == nkSym and sfBorrow in body.sym.flags and getBody(c.graph, body.sym).kind == nkSym:
-        s = body.sym
-      else:
-        break
-    b = getBody(c.graph, s)
-    if b.kind != nkSym: internalError(c.graph.config, n.info, "wrong AST for borrowed symbol")
-    b = newSymNode(b.sym, n.info)
+    b = newSymNode(resolveBorrowedRoutineSym(c, s, n.info), n.info)
   elif c.inlining > 0:
     # see bug #13596: we use ref-based equality in the DFA for destruction
     # injections so we need to ensure unique nodes after iterator inlining
@@ -181,7 +187,7 @@ proc transformSym(c: PTransf, n: PNode): PNode =
 proc freshVar(c: PTransf; v: PSym): PNode =
   let owner = getCurrOwner(c)
   var newVar = copySym(v, c.idgen)
-  incl(newVar.flags, sfFromGeneric)
+  incl(newVar.flagsImpl, sfFromGeneric)
   setOwner(newVar, owner)
   result = newSymNode(newVar)
 
@@ -247,6 +253,7 @@ proc hasContinue(n: PNode): bool =
   case n.kind
   of nkEmpty..nkNilLit, nkForStmt, nkParForStmt, nkWhileStmt: result = false
   of nkContinueStmt: result = true
+  of routineDefs: result = false
   else:
     result = false
     for i in 0..<n.len:
@@ -329,7 +336,7 @@ proc introduceNewLocalVars(c: PTransf, n: PNode): PNode =
     if a.kind == nkSym:
       n[1] = transformSymAux(c, a)
     return n
-  of nkProcDef, nkFuncDef, nkMethodDef, nkConverterDef: # todo optimize nosideeffects?
+  of nkLambdaKinds, nkProcDef, nkFuncDef, nkMethodDef, nkConverterDef: # todo optimize nosideeffects?
     result = newTransNode(n)
     let x = newSymNode(copySym(n[namePos].sym, c.idgen))
     c.transCon.mapping[n[namePos].sym.itemId] = x
@@ -364,7 +371,7 @@ proc transformAsgn(c: PTransf, n: PNode): PNode =
     # given tuple type
     newTupleConstr[i] = def[0]
 
-  newTupleConstr.typ() = rhs.typ
+  newTupleConstr.typ = rhs.typ
 
   let asgnNode = newTransNode(nkAsgn, n.info, 2)
   asgnNode[0] = transform(c, n[0])
@@ -506,9 +513,9 @@ proc transformAddrDeref(c: PTransf, n: PNode, kinds: TNodeKinds, isAddr = false)
       n[0][0] = m[0]
       result = n[0]
       if n.typ.skipTypes(abstractVar).kind != tyOpenArray:
-        result.typ() = n.typ
+        result.typ = n.typ
       elif n.typ.skipTypes(abstractInst).kind in {tyVar}:
-        result.typ() = toVar(result.typ, n.typ.skipTypes(abstractInst).kind, c.idgen)
+        result.typ = toVar(result.typ, n.typ.skipTypes(abstractInst).kind, c.idgen)
   of nkHiddenStdConv, nkHiddenSubConv, nkConv:
     var m = n[0][1]
     if m.kind in kinds:
@@ -516,9 +523,9 @@ proc transformAddrDeref(c: PTransf, n: PNode, kinds: TNodeKinds, isAddr = false)
       n[0][1] = m[0]
       result = n[0]
       if n.typ.skipTypes(abstractVar).kind != tyOpenArray:
-        result.typ() = n.typ
+        result.typ = n.typ
       elif n.typ.skipTypes(abstractInst).kind in {tyVar}:
-        result.typ() = toVar(result.typ, n.typ.skipTypes(abstractInst).kind, c.idgen)
+        result.typ = toVar(result.typ, n.typ.skipTypes(abstractInst).kind, c.idgen)
   else:
     if n[0].kind in kinds and
         not (n[0][0].kind == nkSym and n[0][0].sym.kind == skForVar and
@@ -527,14 +534,13 @@ proc transformAddrDeref(c: PTransf, n: PNode, kinds: TNodeKinds, isAddr = false)
           n.typ.kind == tyVar and
           n.typ.skipTypes(abstractVar).kind == tyOpenArray and
           n[0][0].typ.skipTypes(abstractVar).kind == tyString) and
-          not (isAddr and n.typ.kind == tyVar and n[0][0].typ.kind == tyRef and
-              n[0][0].kind == nkObjConstr)
+          not (isAddr and n.typ.kind == tyVar and n[0][0].typ.kind == tyRef)
         : # elimination is harmful to `for tuple unpack` because of newTupleAccess
           # it is also harmful to openArrayLoc (var openArray) for strings
       # addr ( deref ( x )) --> x
       result = n[0][0]
       if n.typ.skipTypes(abstractVar).kind != tyOpenArray:
-        result.typ() = n.typ
+        result.typ = n.typ
 
 proc generateThunk(c: PTransf; prc: PNode, dest: PType): PNode =
   ## Converts 'prc' into '(thunk, nil)' so that it's compatible with
@@ -575,7 +581,7 @@ proc transformConv(c: PTransf, n: PNode): PNode =
               getSysType(c.graph, n.info, tyInt32)
             else:
               getSysType(c.graph, n.info, tyInt64)
-          result[0] = 
+          result[0] =
             newTreeIT(n.kind, n.info, n.typ, n[0],
               newTreeIT(nkConv, n.info, intType,
               newNodeIT(nkType, n.info, intType), transform(c, n[1]))
@@ -620,7 +626,7 @@ proc transformConv(c: PTransf, n: PNode): PNode =
     else:
       result = transform(c, n[1])
       #result = transformSons(c, n)
-      result.typ() = takeType(n.typ, n[1].typ, c.graph, c.idgen)
+      result.typ = takeType(n.typ, n[1].typ, c.graph, c.idgen)
       #echo n.info, " came here and produced ", typeToString(result.typ),
       #   " from ", typeToString(n.typ), " and ", typeToString(n[1].typ)
   of tyCstring:
@@ -648,7 +654,7 @@ proc transformConv(c: PTransf, n: PNode): PNode =
         result[0] = transform(c, n[1])
       else:
         result = transform(c, n[1])
-        result.typ() = n.typ
+        result.typ = n.typ
     else:
       result = transformSons(c, n)
   of tyObject:
@@ -661,7 +667,7 @@ proc transformConv(c: PTransf, n: PNode): PNode =
       result[0] = transform(c, n[1])
     else:
       result = transform(c, n[1])
-      result.typ() = n.typ
+      result.typ = n.typ
   of tyGenericParam, tyOrdinal:
     result = transform(c, n[1])
     # happens sometimes for generated assignments, etc.
@@ -704,6 +710,11 @@ proc putArgInto(arg: PNode, formal: PType): TPutArgInto =
   of nkAddr, nkHiddenAddr:
     result = putArgInto(arg[0], formal)
     if result == paViaIndirection: result = paFastAsgn
+  of nkHiddenStdConv, nkHiddenSubConv, nkConv:
+    if compareTypes(arg.typ, arg[1].typ, dcEqIgnoreDistinct, {IgnoreRangeShallow}):
+      result = putArgInto(arg[1], formal)
+    else:
+      result = paFastAsgn
   of nkCurly, nkBracket:
     for i in 0..<arg.len:
       if putArgInto(arg[i], formal) != paDirectMapping:
@@ -795,7 +806,9 @@ proc transformFor(c: PTransf, n: PNode): PNode =
 
   discard c.breakSyms.pop
 
-  let iter = call[0].sym
+  var iter = call[0].sym
+  if sfBorrow in iter.flags and iter.kind in routineKinds:
+    iter = resolveBorrowedRoutineSym(c, iter, n.info)
 
   var v = newNodeI(nkVarSection, n.info)
   for i in 0..<n.len - 2:
@@ -804,7 +817,8 @@ proc transformFor(c: PTransf, n: PNode): PNode =
         addVar(v, copyTree(n[i][j])) # declare new vars
     else:
       if n[i].kind == nkSym and isSimpleIteratorVar(c, iter, call, n[i].sym.owner):
-        incl n[i].sym.flags, sfCursor
+        # IC: review this solution again later
+        incl n[i].sym.flagsImpl, sfCursor
       addVar(v, copyTree(n[i])) # declare new vars
   stmtList.add(v)
 
@@ -837,13 +851,16 @@ proc transformFor(c: PTransf, n: PNode): PNode =
       elif t.destructor == nil and arg.typ.destructor != nil:
         t = arg.typ
 
-      if arg.kind in {nkDerefExpr, nkHiddenDeref}:
+      if arg.kind in {nkDerefExpr, nkHiddenDeref} and
+          arg[0].typ.skipTypes(abstractInst).kind != tyLent:
         # optimizes for `[]` # bug #24093
+        # bug #25251: enforce a copy if the arg is a deref of a lent pointer
+        # since the arg could be a temporary that will go out of scope
         var temp = newTemp(c, arg[0].typ, formal.info)
         addVar(v, temp)
         stmtList.add(newAsgnStmt(c, nkFastAsgn, temp, arg[0], true))
         let newD = newDeref(temp)
-        newD.typ() = t
+        newD.typ = t
         newC.mapping[formal.itemId] = newD
       else:
         # generate a temporary and produce an assignment statement:
@@ -859,7 +876,7 @@ proc transformFor(c: PTransf, n: PNode): PNode =
     of paViaIndirection:
       let t = formal.typ
       let vt = makeVarType(t.owner, t, c.idgen)
-      vt.flags.incl tfVarIsPtr
+      vt.incl tfVarIsPtr
       var temp = newTemp(c, vt, formal.info)
       addVar(v, temp)
       var addrExp = newNodeIT(nkHiddenAddr, formal.info, makeVarType(t.owner, t, c.idgen, tyPtr))
@@ -897,7 +914,7 @@ proc transformCase(c: PTransf, n: PNode): PNode =
         # as an expr
         let kind = if n.typ != nil: nkIfExpr else: nkIfStmt
         ifs = newTransNode(kind, it.info, 0)
-        ifs.typ() = n.typ
+        ifs.typ = n.typ
       ifs.add(e)
     of nkElse:
       if ifs == nil: result.add(e)
@@ -1031,7 +1048,7 @@ proc transformExceptBranch(c: PTransf, n: PNode): PNode =
     let convNode = newTransNode(nkHiddenSubConv, n[1].info, 2)
     convNode[0] = newNodeI(nkEmpty, n.info)
     convNode[1] = excCall
-    convNode.typ() = excTypeNode.typ.toRef(c.idgen)
+    convNode.typ = excTypeNode.typ.toRef(c.idgen)
     # -> let exc = ...
     let identDefs = newTransNode(nkIdentDefs, n[1].info, 3)
     identDefs[0] = n[0][2]
@@ -1091,7 +1108,7 @@ proc transformDerefBlock(c: PTransf, n: PNode): PNode =
   # We transform (block: x)[] to (block: x[])
   let e0 = n[0]
   result = shallowCopy(e0)
-  result.typ() = n.typ
+  result.typ = n.typ
   for i in 0 ..< e0.len - 1:
     result[i] = e0[i]
   result[e0.len-1] = newTreeIT(nkHiddenDeref, n.info, n.typ, e0[e0.len-1])
@@ -1196,6 +1213,13 @@ proc transform(c: PTransf, n: PNode, noConstFold = false): PNode =
     # no need to transform type sections:
     return n
   of nkVarSection, nkLetSection:
+    # NIF loads let/var sections with bare nkSym children instead of nkIdentDefs.
+    # Expand them so transformSons reaches the value expression (e.g. for-loop).
+    for i in 0 ..< n.len:
+      if n[i].kind == nkSym:
+        let impl = n[i].sym.ast  # triggers lazy load if Partial
+        if impl != nil and impl.kind == nkIdentDefs:
+          n[i] = impl
     if c.inlining > 0:
       # we need to copy the variables for multiple yield statements:
       result = transformVarSection(c, n)
@@ -1296,7 +1320,7 @@ proc liftDeferAux(n: PNode) =
           tryStmt.add deferPart
           n[i] = tryStmt
           n.sons.setLen(i+1)
-          n.typ() = tryStmt.typ
+          n.typ = tryStmt.typ
           goOn = true
           break
   for i in 0..n.safeLen-1:

@@ -9,19 +9,7 @@
 
 ## Default new string implementation used by Nim's core.
 
-type
-  NimStrPayloadBase = object
-    cap: int
-
-  NimStrPayload {.core.} = object
-    cap: int
-    data: UncheckedArray[char]
-
-  NimStringV2 {.core.} = object
-    len: int
-    p: ptr NimStrPayload ## can be nil if len == 0.
-
-const nimStrVersion {.core.} = 2
+{.push overflowChecks: off, rangeChecks: off.}
 
 template isLiteral(s): bool = (s.p == nil) or (s.p.cap and strlitFlag) == strlitFlag
 
@@ -141,6 +129,10 @@ proc mnewString(len: int): NimStringV2 {.compilerproc.} =
     result = NimStringV2(len: len, p: p)
 
 proc setLengthStrV2(s: var NimStringV2, newLen: int) {.compilerRtl.} =
+  ## Sets the `s` length to `newLen` zeroing memory on growth.
+  ## Terminating zero at `s[newLen]` for cstring compatibility is set
+  ## on length change, **excluding** `newLen == 0`.
+  ## Negative `newLen` is **not** bound to zero.
   if newLen == 0:
     discard "do not free the buffer here, pattern 's.setLen 0' is common for avoiding allocations"
   else:
@@ -166,6 +158,26 @@ proc setLengthStrV2(s: var NimStringV2, newLen: int) {.compilerRtl.} =
     s.p.data[newLen] = '\0'
   s.len = newLen
 
+proc setLengthStrV2Uninit(s: var NimStringV2, newLen: int) =
+  if newLen == 0:
+    discard "do not free the buffer here, pattern 's.setLen 0' is common for avoiding allocations"
+  else:
+    if isLiteral(s):
+      let oldP = s.p
+      s.p = allocPayload(newLen)
+      s.p.cap = newLen
+      if s.len > 0:
+        copyMem(unsafeAddr s.p.data[0], unsafeAddr oldP.data[0], min(s.len, newLen))
+      s.p.data[newLen] = '\0'
+    elif newLen > s.len:
+      let oldCap = s.p.cap and not strlitFlag
+      if newLen > oldCap:
+        let newCap = max(newLen, resize(oldCap))
+        s.p = reallocPayload0(s.p, oldCap, newCap)
+        s.p.cap = newCap
+    s.p.data[newLen] = '\0'
+  s.len = newLen
+
 proc nimAsgnStrV2(a: var NimStringV2, b: NimStringV2) {.compilerRtl.} =
   if a.p == b.p and a.len == b.len: return
   if isLiteral(b):
@@ -184,18 +196,18 @@ proc nimAsgnStrV2(a: var NimStringV2, b: NimStringV2) {.compilerRtl.} =
     a.len = b.len
     copyMem(unsafeAddr a.p.data[0], unsafeAddr b.p.data[0], b.len+1)
 
-proc nimPrepareStrMutationImpl(s: var NimStringV2) =
+proc nimPrepareStrMutationImpl(s: var NimStringV2) {.raises: [], tags: [].} =
   let oldP = s.p
   # can't mutate a literal, so we need a fresh copy here:
   s.p = allocPayload(s.len)
   s.p.cap = s.len
   copyMem(unsafeAddr s.p.data[0], unsafeAddr oldP.data[0], s.len+1)
 
-proc nimPrepareStrMutationV2(s: var NimStringV2) {.compilerRtl, inl.} =
+proc nimPrepareStrMutationV2(s: var NimStringV2) {.compilerRtl, inl, raises: [], tags: [].} =
   if s.p != nil and (s.p.cap and strlitFlag) == strlitFlag:
     nimPrepareStrMutationImpl(s)
 
-proc prepareMutation*(s: var string) {.inline.} =
+proc prepareMutation*(s: var string) {.inline, raises: [], tags: [].} =
   # string literals are "copy on write", so you need to call
   # `prepareMutation` before modifying the strings via `addr`.
   {.cast(noSideEffect).}:
@@ -223,3 +235,30 @@ func capacity*(self: string): int {.inline.} =
 
   let str = cast[ptr NimStringV2](unsafeAddr self)
   result = if str.p != nil: str.p.cap and not strlitFlag else: 0
+
+proc beginStore*(s: var string; newLen: int; start = 0): ptr UncheckedArray[char] {.inline, noSideEffect, raises: [], tags: [].} =
+  ## Sets s.len to `newLen` (new bytes are uninitialized), ensures unique
+  ## ownership, and returns a pointer to s[start] for bulk writing.
+  ## Call `endStore(s)` afterwards for portability.
+  ## To keep the current length, pass `s.len`.
+  {.cast(noSideEffect).}:
+    let p = cast[ptr NimStringV2](addr s)
+    setLengthStrV2Uninit(p[], newLen)
+    prepareMutation(s)
+    if p.p == nil: nil
+    else: cast[ptr UncheckedArray[char]](addr p.p.data[start])
+
+proc endStore*(s: var string) {.inline, noSideEffect, raises: [], tags: [].} =
+  ## No-op for non-SSO strings; call after bulk writes via `beginStore`.
+  discard
+
+proc rawDataImpl(str: ptr NimStringV2; start: int): ptr UncheckedArray[char] {.inline, noSideEffect, raises: [], tags: [].} =
+  if str.p == nil: nil
+  else: cast[ptr UncheckedArray[char]](addr str.p.data[start])
+
+template readRawData*(s: string; start = 0): ptr UncheckedArray[char] =
+  ## Returns a pointer to `s[start]` for read-only raw access.
+  ## Template ensures no copy of `s`; ptr is valid while `s` is alive.
+  rawDataImpl(cast[ptr NimStringV2](unsafeAddr s), start)
+
+{.pop.}

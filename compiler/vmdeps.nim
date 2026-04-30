@@ -35,7 +35,7 @@ proc atomicTypeX(cache: IdentCache; name: string; m: TMagic; t: PType; info: TLi
   sym.magic = m
   sym.typ = t
   result = newSymNode(sym)
-  result.typ() = t
+  result.typ = t
 
 proc atomicTypeX(s: PSym; info: TLineInfo): PNode =
   result = newSymNode(s)
@@ -52,7 +52,7 @@ proc mapTypeToBracketX(cache: IdentCache; name: string; m: TMagic; t: PType; inf
   for a in t.kids:
     if a == nil:
       let voidt = atomicTypeX(cache, "void", mVoid, t, info, idgen)
-      voidt.typ() = newType(tyVoid, idgen, t.owner)
+      voidt.typ = newType(tyVoid, idgen, t.owner)
       result.add voidt
     else:
       result.add mapTypeToAstX(cache, a, info, idgen, inst)
@@ -62,7 +62,10 @@ proc objectNode(cache: IdentCache; n: PNode; idgen: IdGenerator): PNode =
     result = newNodeI(nkIdentDefs, n.info)
     result.add n  # name
     result.add mapTypeToAstX(cache, n.sym.typ, n.info, idgen, true, false)  # type
-    result.add newNodeI(nkEmpty, n.info)  # no assigned value
+    if n.sym.ast != nil:
+      result.add copyTree(n.sym.ast)
+    else:
+      result.add newNodeI(nkEmpty, n.info)  # no assigned value
   else:
     result = copyNode(n)
     for i in 0..<n.safeLen:
@@ -87,7 +90,10 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
     var id = newNodeX(nkIdentDefs)
     id.add n  # name
     id.add mapTypeToAst(t, info)  # type
-    id.add newNodeI(nkEmpty, info)  # no assigned value
+    if n.sym.ast != nil:
+      id.add copyTree(n.sym.ast)
+    else:
+      id.add newNodeI(nkEmpty, n.info)  # no assigned value
     id
   template newIdentDefs(s): untyped = newIdentDefs(s, s.typ)
 
@@ -137,7 +143,7 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
       if allowRecursion:
         result = mapTypeToAstR(t.skipModifier, info)
         # keep original type info for getType calls on the output node:
-        result.typ() = t
+        result.typ = t
       else:
         result = newNodeX(nkBracketExpr)
         #result.add mapTypeToAst(t.last, info)
@@ -147,7 +153,7 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
     else:
       result = mapTypeToAstX(cache, t.skipModifier, info, idgen, inst, allowRecursion)
       # keep original type info for getType calls on the output node:
-      result.typ() = t
+      result.typ = t
   of tyGenericBody:
     if inst:
       result = mapTypeToAstR(t.typeBodyImpl, info)

@@ -76,7 +76,7 @@ const
 when withRealTime and not declared(getTicks):
   include "system/timers"
 when defined(memProfiler):
-  proc nimProfile(requestedSize: int) {.benign.}
+  proc nimProfile(requestedSize: int) {.gcsafe.}
 
 when hasThreadSupport:
   import std/sharedlist
@@ -97,7 +97,7 @@ type
     waZctDecRef, waPush
     #, waDebug
 
-  Finalizer {.compilerproc.} = proc (self: pointer) {.nimcall, benign, raises: [].}
+  Finalizer {.compilerproc.} = proc (self: pointer) {.nimcall, gcsafe, raises: [].}
     # A ref type can have a finalizer that is called before the object's
     # storage is freed.
 
@@ -222,11 +222,11 @@ template gcTrace(cell, state: untyped) =
   when traceGC: traceCell(cell, state)
 
 # forward declarations:
-proc collectCT(gch: var GcHeap) {.benign, raises: [].}
-proc isOnStack(p: pointer): bool {.noinline, benign, raises: [].}
-proc forAllChildren(cell: PCell, op: WalkOp) {.benign, raises: [].}
-proc doOperation(p: pointer, op: WalkOp) {.benign, raises: [].}
-proc forAllChildrenAux(dest: pointer, mt: PNimType, op: WalkOp) {.benign, raises: [].}
+proc collectCT(gch: var GcHeap) {.gcsafe, raises: [].}
+proc isOnStack(p: pointer): bool {.noinline, gcsafe, raises: [].}
+proc forAllChildren(cell: PCell, op: WalkOp) {.gcsafe, raises: [].}
+proc doOperation(p: pointer, op: WalkOp) {.gcsafe, raises: [].}
+proc forAllChildrenAux(dest: pointer, mt: PNimType, op: WalkOp) {.gcsafe, raises: [].}
 # we need the prototype here for debugging purposes
 
 proc incRef(c: PCell) {.inline.} =
@@ -338,7 +338,7 @@ proc cellsetReset(s: var CellSet) =
 
 {.push stacktrace:off.}
 
-proc forAllSlotsAux(dest: pointer, n: ptr TNimNode, op: WalkOp) {.benign.} =
+proc forAllSlotsAux(dest: pointer, n: ptr TNimNode, op: WalkOp) {.gcsafe.} =
   var d = cast[int](dest)
   case n.kind
   of nkSlot: forAllChildrenAux(cast[pointer](d +% n.offset), n.typ, op)
@@ -458,9 +458,16 @@ proc rawNewObj(typ: PNimType, size: int, gch: var GcHeap): pointer =
   sysAssert(allocInv(gch.region), "rawNewObj begin")
   gcAssert(typ.kind in {tyRef, tyString, tySequence}, "newObj: 1")
   collectCT(gch)
-  var res = cast[PCell](rawAlloc(gch.region, size + sizeof(Cell)))
+  # Use alignment from typ.base if available, otherwise use MemAlign
+  let alignment = if typ.kind == tyRef and typ.base != nil and
+        typ.base.align > 16: typ.base.align else: 0
+  var res = cast[PCell](rawAlloc(gch.region, size + sizeof(Cell), alignment))
   #gcAssert typ.kind in {tyString, tySequence} or size >= typ.base.size, "size too small"
-  gcAssert((cast[int](res) and (MemAlign-1)) == 0, "newObj: 2")
+  # Check that the user data (after the Cell header) is properly aligned
+  if alignment == 0:
+    gcAssert((cast[int](res) and (MemAlign-1)) == 0, "newObj: 2.1")
+  else:
+    gcAssert((cast[int](cellToUsr(res)) and (alignment-1)) == 0, "newObj: 2.2")
   # now it is buffered in the ZCT
   res.typ = typ
   setFrameInfo(res)
@@ -481,17 +488,17 @@ proc rawNewObj(typ: PNimType, size: int, gch: var GcHeap): pointer =
 {.pop.} # .stackTrace off
 {.pop.} # .profiler off
 
-proc newObjNoInit(typ: PNimType, size: int): pointer {.compilerRtl.} =
+proc newObjNoInit(typ: PNimType, size: int): pointer {.compilerRtl, raises: [].} =
   result = rawNewObj(typ, size, gch)
   when defined(memProfiler): nimProfile(size)
 
-proc newObj(typ: PNimType, size: int): pointer {.compilerRtl, noinline.} =
+proc newObj(typ: PNimType, size: int): pointer {.compilerRtl, noinline, raises: [].} =
   result = rawNewObj(typ, size, gch)
   zeroMem(result, size)
   when defined(memProfiler): nimProfile(size)
 
 {.push overflowChecks: on.}
-proc newSeq(typ: PNimType, len: int): pointer {.compilerRtl.} =
+proc newSeq(typ: PNimType, len: int): pointer {.compilerRtl, raises: [].} =
   # `newObj` already uses locks, so no need for them here.
   let size = align(GenericSeqSize, typ.base.align) + len * typ.base.size
   result = newObj(typ, size)
@@ -500,7 +507,7 @@ proc newSeq(typ: PNimType, len: int): pointer {.compilerRtl.} =
   when defined(memProfiler): nimProfile(size)
 {.pop.}
 
-proc newObjRC1(typ: PNimType, size: int): pointer {.compilerRtl, noinline.} =
+proc newObjRC1(typ: PNimType, size: int): pointer {.compilerRtl, noinline, raises: [].} =
   # generates a new object and sets its reference counter to 1
   incTypeSize typ, size
   sysAssert(allocInv(gch.region), "newObjRC1 begin")
@@ -508,9 +515,16 @@ proc newObjRC1(typ: PNimType, size: int): pointer {.compilerRtl, noinline.} =
   collectCT(gch)
   sysAssert(allocInv(gch.region), "newObjRC1 after collectCT")
 
-  var res = cast[PCell](rawAlloc(gch.region, size + sizeof(Cell)))
+  # Use alignment from typ.base if available, otherwise use MemAlign
+  let alignment = if typ.kind == tyRef and typ.base != nil and
+        typ.base.align > 16: typ.base.align else: 0
+  var res = cast[PCell](rawAlloc(gch.region, size + sizeof(Cell), alignment))
   sysAssert(allocInv(gch.region), "newObjRC1 after rawAlloc")
-  sysAssert((cast[int](res) and (MemAlign-1)) == 0, "newObj: 2")
+  # Check that the user data (after the Cell header) is properly aligned
+  if alignment == 0:
+    sysAssert((cast[int](res) and (MemAlign-1)) == 0, "newObj: 2.1")
+  else:
+    sysAssert((cast[int](cellToUsr(res)) and (alignment-1)) == 0, "newObj: 2.2")
   # now it is buffered in the ZCT
   res.typ = typ
   setFrameInfo(res)
@@ -528,7 +542,7 @@ proc newObjRC1(typ: PNimType, size: int): pointer {.compilerRtl, noinline.} =
   when defined(memProfiler): nimProfile(size)
 
 {.push overflowChecks: on.}
-proc newSeqRC1(typ: PNimType, len: int): pointer {.compilerRtl.} =
+proc newSeqRC1(typ: PNimType, len: int): pointer {.compilerRtl, raises: [].} =
   let size = align(GenericSeqSize, typ.base.align) + len * typ.base.size
   result = newObjRC1(typ, size)
   cast[PGenericSeq](result).len = len
@@ -670,10 +684,10 @@ proc doOperation(p: pointer, op: WalkOp) =
     add(gch.tempStack, c)
   #of waDebug: debugGraph(c)
 
-proc nimGCvisit(d: pointer, op: int) {.compilerRtl.} =
+proc nimGCvisit(d: pointer, op: int) {.compilerRtl, raises: [].} =
   doOperation(d, WalkOp(op))
 
-proc collectZCT(gch: var GcHeap): bool {.benign, raises: [].}
+proc collectZCT(gch: var GcHeap): bool {.gcsafe, raises: [].}
 
 proc collectCycles(gch: var GcHeap) {.raises: [].} =
   when hasThreadSupport:

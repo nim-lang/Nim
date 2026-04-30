@@ -10,7 +10,7 @@
 ## This module implements the symbol importing mechanism.
 
 import
-  ast, astalgo, msgs, options, idents, lookups,
+  ast, msgs, options, idents, lookups,
   semdata, modulepaths, sigmatch, lineinfos,
   modulegraphs, wordrecg
 from std/strutils import `%`, startsWith
@@ -108,8 +108,8 @@ proc rawImportSymbol(c: PContext, s, origin: PSym; importSet: var IntSet) =
           else:
             importPureEnumField(c, e)
   else:
-    if s.kind == skConverter: addConverter(c, LazySym(sym: s))
-    if hasPattern(s): addPattern(c, LazySym(sym: s))
+    if s.kind == skConverter: addConverter(c, s)
+    if hasPattern(s): addPattern(c, s)
   if s.owner != origin:
     c.exportIndirections.incl((origin.id, s.id))
 
@@ -190,22 +190,19 @@ proc addImport(c: PContext; im: sink ImportedModule) =
 template addUnnamedIt(c: PContext, fromMod: PSym; filter: untyped) {.dirty.} =
   for it in mitems c.graph.ifaces[fromMod.position].converters:
     if filter:
-      loadPackedSym(c.graph, it)
-      if sfExported in it.sym.flags:
+      if sfExported in it.flags:
         addConverter(c, it)
   for it in mitems c.graph.ifaces[fromMod.position].patterns:
     if filter:
-      loadPackedSym(c.graph, it)
-      if sfExported in it.sym.flags:
+      if sfExported in it.flags:
         addPattern(c, it)
   for it in mitems c.graph.ifaces[fromMod.position].pureEnums:
     if filter:
-      loadPackedSym(c.graph, it)
-      importPureEnumFields(c, it.sym, it.sym.typ)
+      importPureEnumFields(c, it, it.typ)
 
 proc importAllSymbolsExcept(c: PContext, fromMod: PSym, exceptSet: IntSet) =
   c.addImport ImportedModule(m: fromMod, mode: importExcept, exceptSet: exceptSet)
-  addUnnamedIt(c, fromMod, it.sym.name.id notin exceptSet)
+  addUnnamedIt(c, fromMod, it.name.id notin exceptSet)
 
 proc importAllSymbols*(c: PContext, fromMod: PSym) =
   c.addImport ImportedModule(m: fromMod, mode: importAll)
@@ -245,7 +242,8 @@ proc importModuleAs(c: PContext; n: PNode, realModule: PSym, importHidden, track
     # avoids modifying `realModule`, see D20201209T194412 for `import {.all.}`
     result = createModuleAliasImpl(realModule.name)
   if importHidden:
-    result.options.incl optImportHidden
+    ensureMutable result
+    result.optionsImpl.incl optImportHidden
   let moduleIdent = if n.kind in {nkInfix, nkImportAs}: n[^1] else: n
   result.info = moduleIdent.info
   if trackUnusedImport:
@@ -291,9 +289,8 @@ proc myImportModule(c: PContext, n: var PNode, importStmtResult: PNode): PSym =
       c.recursiveDep = err
 
     let trackUnusedImport = warnUnusedImportX in c.config.notes
-    var realModule: PSym
     discard pushOptionEntry(c)
-    realModule = c.graph.importModuleCallback(c.graph, c.module, f)
+    let realModule = c.graph.importModuleCallback(c.graph, c.module, f)
     result = importModuleAs(c, n, realModule, transf.importHidden, trackUnusedImport)
     popOptionEntry(c)
 

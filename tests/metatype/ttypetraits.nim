@@ -194,6 +194,11 @@ block: # tupleLen
     MyGenericTuple2Alias2 =   MyGenericTuple2Alias[float]
   static: doAssert MyGenericTuple2Alias2.tupleLen == 3
 
+  type
+    MyGenericTuple3[T] = T
+    MyGenericTuple3Alias = MyGenericTuple3[(string, int)]
+  static: doAssert MyGenericTuple3Alias.tupleLen == 2
+
   static: doAssert (int, float).tupleLen == 2
   static: doAssert (1, ).tupleLen == 1
   static: doAssert ().tupleLen == 0

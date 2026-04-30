@@ -131,7 +131,7 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
   var sym = syms[0].s
   let name = sym.name
   var scope = syms[0].scope
-
+  c.openShadowScope
   if allowTypeBoundOps:
     for a in 1 ..< n.len:
       # for every already typed argument, add type bound ops
@@ -160,9 +160,13 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
           addTypeBoundSymbols(c.graph, arg.typ, name, filter, symMarker, syms)
 
       if z.state == csMatch:
-        # little hack so that iterators are preferred over everything else:
+        # Iterator preference is heuristic in iterator-admitting contexts.
+        # The dedicated iterable path uses `iteratorPreference`, other
+        # context use exact-match bump
         if sym.kind == skIterator:
-          if not (efWantIterator notin flags and efWantIterable in flags):
+          if efPreferIteratorForIterable in flags:
+            inc(z.iteratorPreference)
+          elif not (efWantIterator notin flags and efWantIterable in flags):
             inc(z.exactMatches, 200)
           else:
             dec(z.exactMatches, 200)
@@ -214,6 +218,10 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
     scope = syms[nextSymIndex].scope
     inc(nextSymIndex)
 
+  if best.state == csMatch and best.calleeSym != nil and best.calleeSym.kind in {skTemplate, skMacro}:
+    c.closeShadowScope
+  else:
+    c.mergeShadowScope
 
 proc effectProblem(f, a: PType; result: var string; c: PContext) =
   if f.kind == tyProc and a.kind == tyProc:
@@ -671,7 +679,7 @@ proc bracketNotFoundError(c: PContext; n: PNode; flags: TExprFlags) =
   # copied from semOverloadedCallAnalyzeEffects, might be overkill:
   const baseFilter = {skProc, skFunc, skMethod, skConverter, skMacro, skTemplate}
   let filter =
-    if flags*{efInTypeof, efWantIterator, efWantIterable} != {}:
+    if flags*{efInTypeof, efWantIterator, efWantIterable, efPreferIteratorForIterable} != {}:
       baseFilter + {skIterator}
     else: baseFilter
   # this will add the errors:
@@ -695,7 +703,7 @@ proc instGenericConvertersArg*(c: PContext, a: PNode, x: TCandidate) =
         internalError(c.config, a.info, "generic converter failed rematch")
       let finalCallee = generateInstance(c, s, convMatch.bindings, a.info)
       a[0].sym = finalCallee
-      a[0].typ() = finalCallee.typ
+      a[0].typ = finalCallee.typ
       #a.typ = finalCallee.typ.returnType
 
 proc instGenericConvertersSons*(c: PContext, n: PNode, x: TCandidate) =
@@ -730,13 +738,13 @@ proc inferWithMetatype(c: PContext, formal: PType,
     # This almost exactly replicates the steps taken by the compiler during
     # param matching. It performs an embarrassing amount of back-and-forth
     # type jugling, but it's the price to pay for consistency and correctness
-    result.typ() = generateTypeInstance(c, m.bindings, arg.info,
+    result.typ = generateTypeInstance(c, m.bindings, arg.info,
                                       formal.skipTypes({tyCompositeTypeClass}))
   else:
     typeMismatch(c.config, arg.info, formal, arg.typ, arg)
     # error correction:
     result = copyTree(arg)
-    result.typ() = formal
+    result.typ = formal
 
 proc updateDefaultParams(c: PContext, call: PNode) =
   # In generic procs, the default parameter may be unique for each
@@ -759,7 +767,7 @@ proc updateDefaultParams(c: PContext, call: PNode) =
         pushInfoContext(c.config, call.info, call[0].sym.detailedInfo)
         typeMismatch(c.config, def.info, formal.typ, def.typ, formal.ast)
         popInfoContext(c.config)
-        def.typ() = errorType(c)
+        def.typ = errorType(c)
       call[i] = def
 
 proc getCallLineInfo(n: PNode): TLineInfo =
@@ -830,6 +838,21 @@ proc inheritBindings(c: PContext, x: var TCandidate, expectedType: PType) =
   for i in 0 ..< flatUnbound.len():
     x.bindings.put(flatUnbound[i], flatBound[i])
 
+proc compactVoidArgs(n: PNode): PNode =
+  # deletes void args from the argument list, which are created by `setSon`
+  var hasNil = false
+  for i in 0..<n.len:
+    if n[i] == nil:
+      hasNil = true
+      break
+  if not hasNil:
+    result = n
+  else:
+    result = copyNode(n)
+    for i in 0..<n.len:
+      if n[i] != nil:
+        result.add n[i]
+
 proc semResolvedCall(c: PContext, x: var TCandidate,
                      n: PNode, flags: TExprFlags;
                      expectedType: PType = nil): PNode =
@@ -846,8 +869,8 @@ proc semResolvedCall(c: PContext, x: var TCandidate,
     result = x.call
     result[0] = newSymNode(finalCallee, getCallLineInfo(result[0]))
     if containsGenericType(result.typ):
-      result.typ() = newTypeS(tyError, c)
-      incl result.typ.flags, tfCheckedForDestructor
+      result.typ = newTypeS(tyError, c)
+      incl result.typ, tfCheckedForDestructor
     return
   let gp = finalCallee.ast[genericParamsPos]
   if gp.isGenericParams:
@@ -873,19 +896,19 @@ proc semResolvedCall(c: PContext, x: var TCandidate,
           # this node will be used in template substitution,
           # pretend this is an untyped node and let regular sem handle the type
           # to prevent problems where a generic parameter is treated as a value
-          tn.typ() = nil
+          tn.typ = nil
           x.call.add tn
         else:
           internalAssert c.config, false
   markUsed(c, info, finalCallee, isGenericInstance = true)
   onUse(info, finalCallee, isGenericInstance = true)
 
-  result = x.call
+  result = compactVoidArgs(x.call)
   instGenericConvertersSons(c, result, x)
   markConvertersUsed(c, result)
   result[0] = newSymNode(finalCallee, getCallLineInfo(result[0]))
   if finalCallee.magic notin {mArrGet, mArrPut}:
-    result.typ() = finalCallee.typ.returnType
+    result.typ = finalCallee.typ.returnType
   updateDefaultParams(c, result)
 
 proc canDeref(n: PNode): bool {.inline.} =
@@ -894,7 +917,7 @@ proc canDeref(n: PNode): bool {.inline.} =
 
 proc tryDeref(n: PNode): PNode =
   result = newNodeI(nkHiddenDeref, n.info)
-  result.typ() = n.typ.skipTypes(abstractInst)[0]
+  result.typ = n.typ.skipTypes(abstractInst)[0]
   result.add n
 
 proc semOverloadedCall(c: PContext, n, nOrig: PNode,
@@ -913,7 +936,7 @@ proc semOverloadedCall(c: PContext, n, nOrig: PNode,
   else:
     if c.inGenericContext > 0 and c.matchedConcept == nil:
       result = semGenericStmt(c, n)
-      result.typ() = makeTypeFromExpr(c, result.copyTree)
+      result.typ = makeTypeFromExpr(c, result.copyTree)
     elif efNoUndeclared in flags:
       result = nil
     elif efExplain notin flags:
@@ -945,7 +968,7 @@ proc explicitGenericSym(c: PContext, n: PNode, s: PSym, errors: var CandidateErr
         diagnostics: m.diagnostics))
     return nil
   var newInst = generateInstance(c, s, m.bindings, n.info)
-  newInst.typ.flags.excl tfUnresolved
+  newInst.typ.excl tfUnresolved
   let info = getCallLineInfo(n)
   markUsed(c, info, s, isGenericInstance = false)
   onUse(info, s, isGenericInstance = false)
@@ -964,9 +987,9 @@ proc setGenericParams(c: PContext, n, expectedParams: PNode) =
           nil
       e = semExprWithType(c, n[i], expectedType = constraint)
     if e.typ == nil:
-      n[i].typ() = errorType(c)
+      n[i].typ = errorType(c)
     else:
-      n[i].typ() = e.typ.skipTypes({tyTypeDesc})
+      n[i].typ = e.typ
 
 proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym, doError: bool): PNode =
   assert n.kind == nkBracketExpr
@@ -983,7 +1006,7 @@ proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym, doError: bool)
         # same as in semOverloadedCall, make expression untyped,
         # may have failed match due to unresolved types
         result = semGenericStmt(c, n)
-        result.typ() = makeTypeFromExpr(c, result.copyTree)
+        result.typ = makeTypeFromExpr(c, result.copyTree)
       elif doError:
         notFoundError(c, n, errors)
   elif a.kind in {nkClosedSymChoice, nkOpenSymChoice}:
@@ -1001,7 +1024,7 @@ proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym, doError: bool)
           # any failing match stops building the symchoice for correctness,
           # can also make it untyped from the start
           result = semGenericStmt(c, n)
-          result.typ() = makeTypeFromExpr(c, result.copyTree)
+          result.typ = makeTypeFromExpr(c, result.copyTree)
           return
     # get rid of nkClosedSymChoice if not ambiguous:
     if result.len == 0:

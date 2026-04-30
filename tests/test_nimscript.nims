@@ -143,3 +143,7 @@ proc discardableCall(cmd: string): int {.discardable.} =
   result = 123
 
 discardableCall "echo hi"
+
+block:
+  let a = "abc"
+  doAssert @a == @['a', 'b', 'c']

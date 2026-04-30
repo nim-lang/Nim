@@ -20,8 +20,8 @@ notation           meaning
                    as they succeed. Indicate success if all succeeded.
                    Otherwise, do not consume any text and indicate failure.
                    The sequence's precedence is higher than that of ordered
-                   choice: ``A B / C`` means ``(A B) / Z`` and
-                   not ``A (B / Z)``.
+                   choice: ``A B / C`` means ``(A B) / C`` and
+                   not ``A (B / C)``.
 ``(E)``            Grouping: Parenthesis can be used to change
                    operator priority.
 ``{E}``            Capture: Apply expression `E` and store the substring

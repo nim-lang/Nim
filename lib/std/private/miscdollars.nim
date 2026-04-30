@@ -4,7 +4,13 @@ template toLocation*(result: var string, file: string | cstring, line: int, col:
   ## avoids spurious allocations
   # Hopefully this can be re-used everywhere so that if a user needs to customize,
   # it can be done in a single place.
-  result.add file
+  when file is cstring:
+    var i = 0
+    while file[i] != '\0':
+      add(result, file[i])
+      inc i
+  else:
+    result.add file
   if line > 0:
     result.add "("
     addInt(result, line)

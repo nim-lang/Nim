@@ -42,13 +42,12 @@ Complete traversal is done in this way::
 
 ]#
 
-when defined(gcOrc) or defined(gcArc) or defined(gcAtomicArc):
+when defined(gcOrc) or defined(gcArc) or defined(gcAtomicArc) or defined(gcYrc):
   type
     PCell = Cell
 
   when not declaredInScope(PageShift):
     include bitmasks
-
 else:
   type
     RefCount = int
@@ -56,11 +55,14 @@ else:
     Cell {.pure.} = object
       refcount: RefCount  # the refcount and some flags
       typ: PNimType
+
       when trackAllocationSource:
         filename: cstring
         line: int
       when useCellIds:
         id: int
+      when (not trackAllocationSource) and (not useCellIds) and sizeof(int) == 4:  # 32-bit only
+        headerAlignPad: array[8, byte]  # so addr(data) ≡ 8 (mod 16)
 
     PCell = ptr Cell
 
@@ -78,7 +80,7 @@ type
     head: PPageDesc
     data: PPageDescArray
 
-when defined(gcOrc) or defined(gcArc) or defined(gcAtomicArc):
+when defined(gcOrc) or defined(gcArc) or defined(gcAtomicArc) or defined(gcYrc):
   discard
 else:
   include cellseqs_v1

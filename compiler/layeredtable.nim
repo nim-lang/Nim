@@ -1,4 +1,3 @@
-import std/[tables]
 import ast, astalgo
 
 type
@@ -47,12 +46,11 @@ proc setToPreviousLayer*(pt: var LayeredIdTable) {.inline.} =
   when useRef:
     pt = pt.nextLayer
   else:
-    when defined(gcDestructors):
-      pt = pt.nextLayer[]
-    else:
-      # workaround refc
-      let tmp = pt.nextLayer[]
-      pt = tmp
+    # Must read nextLayer into a temp before destroying pt:
+    # `pt = pt.nextLayer[]` would call eqcopy(&pt, &(*pt.nextLayer)) which
+    # decrements pt.nextLayer's rc (freeing it) before reading pt.nextLayer.nextLayer.
+    let tmp = pt.nextLayer[]
+    pt = tmp
 
 iterator pairs*(pt: LayeredIdTable): (ItemId, PType) =
   var tm = pt
