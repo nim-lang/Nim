@@ -65,7 +65,7 @@ proc semTypeOf(c: PContext; n: PNode): PNode =
       t.incl tfNonConstExpr
     else:
       t = base
-  result.typ = makeTypeDesc(c, t)
+  result.typ = makeTypeDesc(c, decayTypeOfView(c, t))
 
 type
   SemAsgnMode = enum asgnNormal, noOverloadedSubscript, noOverloadedAsgn
