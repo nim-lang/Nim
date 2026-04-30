@@ -930,7 +930,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       if m.len == 0:
         localError(conf, info, "Cannot resolve filename: " & arg)
       else:
-        conf.implicitImports.add m
+        conf.implicitImports.add(if arg.startsWith(stdPrefix): arg else: m)
   of "include":
     expectArg(conf, switch, arg, pass, info)
     if pass in {passCmd2, passPP}:
