@@ -715,7 +715,7 @@ proc changeType(c: PContext; n: PNode, newType: PType, check: bool) =
                                          "' to '" & typeNameAndDesc(newType) & "'")
   else: discard
 
-  n.typ = newType # `n` is either the wrongNode in an error or same as `result`
+  n.typ = newType
 
 proc arrayConstrType(c: PContext, n: PNode): PType =
   var typ = newTypeS(tyArray, c)
