@@ -1155,6 +1155,10 @@ proc enterConceptMatch(c: var TCandidate; f,a: PType, flags: TTypeRelFlags): TTy
   if concpt.kind != tyConcept:
     container = concpt
     concpt = container.reduceToBase
+  # considerPreviousT-like behavior
+  let prev = lookup(c.bindings, concpt)
+  if prev != nil:
+    return typeRel(c, prev, a, flags)
   if trDontBind in flags:
     conceptFlags.incl mfDontBind
   if trCheckGeneric in flags:
