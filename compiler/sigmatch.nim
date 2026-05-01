@@ -1894,12 +1894,11 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         if result > isGeneric: result = isGeneric
         if doBind:
           assert bestBranch != nil
-          const TypMods = {tySink, tyVar}
-          let branchKind = bestBranch.kind
-          if branchKind in TypMods and bound.kind != branchKind:
-            put(c, f, newTypeS(branchKind, c.c, bound.skipTypes(TypMods)))
+          let b = bound
+          if bestBranch.kind == tySink and b.kind != tySink:
+            put(c, f, newTypeS(tySink, c.c, b))
           else:
-            put(c, f, bound)
+            put(c, f, b)
       else:
         result = isNone
   of tyNot:
