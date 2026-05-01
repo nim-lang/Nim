@@ -15,6 +15,8 @@ import
   magicsys, idents, lexer, options, parampatterns, trees,
   linter, lineinfos, lowerings, modulegraphs, concepts, layeredtable
 
+import typeallowed
+
 import std/[intsets, strutils, tables]
 
 when defined(nimPreviewSlimSystem):
@@ -123,6 +125,38 @@ proc initCandidate*(ctx: PContext, callee: PType): TCandidate =
   result.calleeSym = nil
   result.bindings = initLayeredTypeMap()
 
+proc materializeTupleViewType(t: PType; idgen: IdGenerator): PType =
+  case t.kind
+  of tyVar, tyLent:
+    result = materializeTupleViewType(t.elementType, idgen)
+  of tyTuple:
+    if classifyViewType(t) == noView:
+      result = t
+    else:
+      result = copyType(t, idgen, t.owner)
+      for i in 0..<t.len:
+        result[i] = materializeTupleViewType(t[i], idgen)
+      if result.n != nil:
+        let fieldCount = min(result.n.len, result.len)
+        for i in 0..<fieldCount:
+          if result.n[i].kind == nkSym:
+            result.n[i].sym.typ = result[i]
+  else:
+    result = t
+
+proc materializeTupleViewArg(c: PContext; targetType: PType; arg: PNode): PNode =
+  result = newNodeIT(nkTupleConstr, arg.info, targetType)
+  let targetTuple = targetType.skipTypes({tyGenericInst, tyAlias, tySink, tyDistinct, tyInferred})
+  for i in 0..<targetTuple.len:
+    let targetField = targetTuple[i]
+    var field = newTupleAccess(c.graph, arg, i)
+    let sourceField = field.typ.skipTypes({tyGenericInst, tyAlias, tySink, tyDistinct, tyInferred})
+    if sourceField.kind in {tyVar, tyLent}:
+      field = newDeref(field)
+    elif targetField.kind == tyTuple and classifyViewType(sourceField) != noView:
+      field = materializeTupleViewArg(c, targetField, field)
+    result.add field
+
 proc put(c: var TCandidate, key, val: PType) {.inline.} =
   ## Given: proc foo[T](x: T); foo(4)
   ## key: 'T'
@@ -135,7 +169,12 @@ proc put(c: var TCandidate, key, val: PType) {.inline.} =
         writeStackTrace()
     if c.c.module.name.s == "temp3":
       echo "binding ", key, " -> ", val
-  put(c.bindings, key, val.skipIntLit(c.c.idgen))
+
+  let normalized = val.skipIntLit(c.c.idgen)
+  if normalized.kind == tyTuple and classifyViewType(normalized) != noView:
+    put(c.bindings, key, materializeTupleViewType(normalized, c.c.idgen))
+  else:
+    put(c.bindings, key, normalized)
 
 proc typeRel*(c: var TCandidate, f, aOrig: PType,
               flags: TTypeRelFlags = {}): TTypeRelation
@@ -2200,7 +2239,16 @@ proc implicitConv(kind: TNodeKind, f: PType, arg: PNode, m: TCandidate,
 
   if result.typ == nil: internalError(c.graph.config, arg.info, "implicitConv")
   result.add c.graph.emptyNode
-  if arg.typ != nil and arg.typ.kind == tyLent:
+  let targetTuple = result.typ.skipTypes({tyVar, tyGenericInst, tyAlias, tySink, tyDistinct, tyInferred})
+  let sourceTuple =
+    if arg.typ != nil:
+      arg.typ.skipTypes({tyGenericInst, tyAlias, tySink, tyDistinct, tyInferred})
+    else:
+      nil
+  if sourceTuple != nil and sourceTuple.kind == tyTuple and targetTuple.kind == tyTuple and
+      classifyViewType(arg.typ) != noView and classifyViewType(result.typ) == noView:
+    result.add materializeTupleViewArg(c, targetTuple, arg)
+  elif arg.typ != nil and arg.typ.kind == tyLent:
     let a = newNodeIT(nkHiddenDeref, arg.info, arg.typ.elementType)
     a.add arg
     result.add a
