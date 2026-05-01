@@ -486,6 +486,11 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType 
       # we have to watch out, there are also 'owned proc' types that can be used
       # multiple times as long as they don't have closures.
       result.typ.incl tfHasOwned
+  if t.kind == tyForward and n.len == 1 and efDetermineType in flags:
+    # a forward object type does not error during determine-type analysis;
+    # it now stays unresolved long enough for the existing delayed field-default pass to resolve it after the type section finishes.
+    result.typ = t
+    return result
   if t.kind != tyObject:
     return localErrorNode(c, result, if t.kind != tyGenericBody:
       "object constructor needs an object type".dup(addTypeNodeDeclaredLoc(c.config, t))
