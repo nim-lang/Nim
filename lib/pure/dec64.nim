@@ -258,108 +258,8 @@ func `-`*(x: Dec64): Dec64 =
 
 # -- addition / subtraction --------------------------------------------------
 
-# Equal-zero-exponent fast path. When both operands have an exponent byte of
-# zero (i.e., both are integer-form Dec64 values) and the int64 sum does not
-# overflow, the bitwise int64 add IS the correct Dec64 result. The Crockford
-# spec gives short verbatim assembly snippets for x64, ARM64, and RISC-V64
-# implementing exactly this branch; we use them here under the right toolchain
-# and fall back to a pure-Nim equivalent on every other platform. Define
-# `-d:nimDec64NoAsm` to force the pure-Nim path even on supported targets
-# (used by the test suite to verify both produce identical results).
-
-when not defined(nimDec64NoAsm) and not defined(js):
-  when defined(amd64) and (defined(gcc) or defined(clang)):
-    {.emit: """
-/* Crockford's Dec64 fast-path addition (x64), verbatim from
-   https://www.crockford.com/dec64.html:
-     mov cl, al
-     or  cl, dl
-     jnz slow_path
-     add rax, rdx
-     jo  overflow
-   `ok_out` is set to 1 on the fast path and 0 on the slow path.        */
-N_LIB_PRIVATE NI64 nim_dec64_addFastX64(NI64 a_in, NI64 b_in, NI8* ok_out) {
-    NI64 r = a_in;
-    int ok;
-    __asm__ (
-      "movb %%al, %%cl\n\t"
-      "orb  %%dl, %%cl\n\t"
-      "movl $1, %k1\n\t"
-      "jne  1f\n\t"
-      "addq %%rdx, %%rax\n\t"
-      "jno  2f\n\t"
-      "1: movl $0, %k1\n\t"
-      "2:\n\t"
-      : "+a"(r), "=&r"(ok)
-      : "d"(b_in)
-      : "cc", "%rcx"
-    );
-    *ok_out = (NI8)ok;
-    return r;
-}
-""".}
-    proc nim_dec64_addFastX64(a, b: int64, ok: var int8): int64
-      {.importc: "nim_dec64_addFastX64".}
-
-    func addFastAsm(a, b: int64): tuple[r: int64, ok: bool] {.inline.} =
-      var okByte: int8 = 0
-      let r = nim_dec64_addFastX64(a, b, okByte)
-      (r, okByte != 0)
-
-  elif defined(arm64) and (defined(gcc) or defined(clang)):
-    {.emit: """
-/* Crockford's Dec64 fast-path addition (ARM64), verbatim from
-   https://www.crockford.com/dec64.html:
-     orr  x2, x0, x1
-     ands xzr, x2, #255
-     b.ne slow_path
-     adds x0, x0, x1
-     b.vs overflow                                                     */
-N_LIB_PRIVATE NI64 nim_dec64_addFastArm64(NI64 a_in, NI64 b_in, NI8* ok_out) {
-    NI64 r = a_in;
-    int ok;
-    __asm__ (
-      "orr  x2, %2, %3\n\t"
-      "ands xzr, x2, #255\n\t"
-      "mov  %w1, #1\n\t"
-      "b.ne 1f\n\t"
-      "adds %0, %2, %3\n\t"
-      "b.vs 1f\n\t"
-      "b 2f\n\t"
-      "1: mov %w1, #0\n\t"
-      "   mov %0, %2\n\t"
-      "2:\n\t"
-      : "=&r"(r), "=&r"(ok)
-      : "r"(a_in), "r"(b_in)
-      : "x2", "cc"
-    );
-    *ok_out = (NI8)ok;
-    return r;
-}
-""".}
-    proc nim_dec64_addFastArm64(a, b: int64, ok: var int8): int64
-      {.importc: "nim_dec64_addFastArm64".}
-
-    func addFastAsm(a, b: int64): tuple[r: int64, ok: bool] {.inline.} =
-      var okByte: int8 = 0
-      let r = nim_dec64_addFastArm64(a, b, okByte)
-      (r, okByte != 0)
-
-func addFastIntegers(a, b: int64): tuple[r: int64, ok: bool] {.inline.} =
-  ## Equal-zero-exponent fast path. Mirrors Crockford's asm: succeeds iff
-  ## both operands have a zero exponent byte and the int64 sum does not
-  ## overflow.
-  when declared(addFastAsm):
-    addFastAsm(a, b)
-  else:
-    if ((a or b) and 0xFF) != 0:
-      return (0'i64, false)
-    let r = cast[int64](cast[uint64](a) + cast[uint64](b))
-    if (a xor r) < 0 and (b xor r) < 0:
-      return (0'i64, false)
-    (r, true)
-
-func addImpl(a, b: Dec64): Dec64 =
+func `+`*(a, b: Dec64): Dec64 =
+  ## Addition.
   if isNaN(a) or isNaN(b): return nan
   let ca = a.coefficient
   let cb = b.coefficient
@@ -395,15 +295,9 @@ func addImpl(a, b: Dec64): Dec64 =
     c1 = c1 div 10
   dec64(c1 + c2, e2)
 
-func `+`*(a, b: Dec64): Dec64 {.inline.} =
-  ## Addition.
-  let (r, ok) = addFastIntegers(a.int64, b.int64)
-  if ok: Dec64(r)
-  else: addImpl(a, b)
-
 func `-`*(a, b: Dec64): Dec64 {.inline.} =
   ## Subtraction.
-  addImpl(a, -b)
+  a + -b
 
 # -- 128-bit helpers (for multiply and divide) -------------------------------
 

@@ -80,9 +80,7 @@ parameter and result types, not just their source-level shape. Use
   operator overloads so expressions like `price * 2 + 1` work without
   wrapping every integer. Decimal-native rounding (`floor`, `ceil`,
   `trunc`, `round`), `abs`, `sign`, and integer-exponent `pow` stay in
-  pure decimal throughout. The equal-zero-exponent fast path for `+`
-  uses Crockford's verbatim x64 / ARM64 assembly on supported toolchains;
-  pass `-d:nimDec64NoAsm` to force the pure-Nim equivalent.
+  pure decimal throughout.
 - `std/dec64math` adds elementary mathematical functions for `Dec64`:
   `sqrt`, `exp`, `ln`/`log`, `log2`, `log10`, `sin`, `cos`, `tan`,
   `arcsin`, `arccos`, `arctan`, `arctan2`, `sinh`, `cosh`, `tanh`,
