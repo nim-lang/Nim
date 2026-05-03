@@ -432,9 +432,9 @@ func addNTimes(s: var string, c: char, n: int) {.inline.} =
   for _ in 0 ..< n: s.add c
 
 func `$`*(x: Dec64): string =
-  ## Decimal string. NaN prints `"nan"`. Output uses plain decimal notation
-  ## (no scientific form) so very large or very small magnitudes can yield
-  ## long strings.
+  ## Decimal string. NaN prints `"nan"`. Uses fixed-point notation when
+  ## the decimal point falls in `[-6, 17]` (matching `std/formatfloat`'s
+  ## Dragonbox threshold) and scientific notation otherwise.
   if isNaN(x): return "nan"
   if isZero(x): return "0"
   let c = x.coefficient
@@ -443,21 +443,38 @@ func `$`*(x: Dec64): string =
   let mag = if neg: -c else: c
   let digits = $mag
   let nd = digits.len
+  let decimalPoint = nd + e
   result = ""
   if neg: result.add '-'
-  if e >= 0:
-    result.add digits
-    addNTimes(result, '0', e)
+  if decimalPoint >= -6 and decimalPoint <= 17:
+    if e >= 0:
+      result.add digits
+      addNTimes(result, '0', e)
+    else:
+      let dp = -e
+      if dp >= nd:
+        result.add "0."
+        addNTimes(result, '0', dp - nd)
+        result.add digits
+      else:
+        result.add digits.substr(0, nd - dp - 1)
+        result.add '.'
+        result.add digits.substr(nd - dp, nd - 1)
   else:
-    let dp = -e
-    if dp >= nd:
-      result.add "0."
-      addNTimes(result, '0', dp - nd)
+    if nd == 1:
       result.add digits
     else:
-      result.add digits.substr(0, nd - dp - 1)
+      result.add digits[0]
       result.add '.'
-      result.add digits.substr(nd - dp, nd - 1)
+      result.add digits.substr(1, nd - 1)
+    result.add 'e'
+    let k = decimalPoint - 1
+    if k >= 0:
+      result.add '+'
+      result.add $k
+    else:
+      result.add '-'
+      result.add $(-k)
 
 # -- string parse ------------------------------------------------------------
 

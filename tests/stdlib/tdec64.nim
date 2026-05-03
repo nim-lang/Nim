@@ -107,6 +107,21 @@ template main() =
     doAssert isNaN(parse(""))             # empty
     doAssert isNaN(parse("1.2.3"))        # double point
 
+  block: # scientific-notation threshold
+    # Match std/formatfloat's Dragonbox threshold: fixed when decimal
+    # point in [-6, 17], scientific otherwise.
+    doAssert $dec64(7, -7) == "0.0000007"                  # boundary: still fixed
+    doAssert $dec64(8, -8) == "8e-8"                       # one past: scientific
+    doAssert $dec64(9, -9) == "9e-9"
+    doAssert $dec64(-8, -8) == "-8e-8"
+    doAssert $dec64(125, -10) == "1.25e-8"                 # multi-digit mantissa
+    doAssert $dec64(1, 16) == "10000000000000000"          # boundary: still fixed
+    doAssert $dec64(1, 17) == "1e+17"                      # one past: scientific
+    doAssert $dec64(1, 127) == "1e+127"                    # max positive exponent
+    # round-trip across the threshold
+    for s in ["8e-8", "9e-9", "1.25e-8", "1e+17", "1e+127", "-8e-8"]:
+      doAssert $parse(s) == s, "round-trip failed: " & s & " -> " & $parse(s)
+
   block: # exponent in literal
     doAssert parse("1e3") == dec64(1, 3)
     doAssert parse("-2.5e2") == dec64(-25, 1)              # -250
