@@ -815,6 +815,14 @@ proc makeVarTupleSection(c: PContext, n, a, def: PNode, typ: PType, symkind: TSy
       lastDef[^1] = val
     result.add(lastDef)
 
+proc materializeDirectView(n: PNode): PNode =
+  let t = n.typ.skipTypes({tyGenericInst, tyAlias, tySink, tyOwned})
+  if t.kind in {tyVar, tyLent}:
+    result = newNodeIT(nkHiddenDeref, n.info, t.elementType)
+    result.add n
+  else:
+    result = n
+
 proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
   var b: PNode
   result = copyNode(n)
@@ -881,6 +889,10 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
           #changeType(def.skipConv, typ, check=true)
       else:
         typ = def.typ.skipTypes({tyStatic, tySink}).skipIntLit(c.idgen)
+        let directTyp = typ.skipTypes({tyGenericInst, tyAlias, tySink, tyOwned})
+        if directTyp.kind in {tyVar, tyLent}:
+          def = materializeDirectView(def)
+          typ = def.typ.skipTypes({tyStatic, tySink}).skipIntLit(c.idgen)
         if typ.kind in tyUserTypeClasses and typ.isResolvedUserTypeClass:
           typ = typ.last
         if hasEmpty(typ):
@@ -908,7 +920,8 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
 
     if c.matchedConcept != nil:
       typFlags.incl taConcept
-    typeAllowedCheck(c, a.info, typ, symkind, typFlags)
+    if a.kind != nkVarTuple:
+      typeAllowedCheck(c, a.info, typ, symkind, typFlags)
 
     var tup = skipTypes(typ, {tyGenericInst, tyAlias, tySink})
     if a.kind == nkVarTuple:
