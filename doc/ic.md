@@ -33,7 +33,7 @@ The text representation is particularly valuable for debugging and introspection
 Each ``.nim`` module produces its own ``.nif`` file during compilation.
 The NIF format contains:
 
-- **Header** - Version information (e.g., `(.nif26)`)
+- **Header** - Version information (e.g., `(.nif27)`)
 - **Dependencies** - List of source files and dependencies
 - **Interface** - Exported symbols and their indices
 - **Body** - The intermediate representation of the module's code in Lisp-like syntax
