@@ -834,3 +834,36 @@ proc overloaded[T: object](x: T) =
     overloaded(v)
 
 overloaded(Thing())
+
+block:
+  type
+    Foo = object
+      x = Bar()
+
+    Bar = object
+      x: int
+
+  var f = Foo()
+  doassert f.x.x == 0
+
+block:
+  type
+    Foo = object
+      x = Bar(x: 55)
+
+    Bar = object
+      x: int
+
+  var f = Foo()
+  doassert f.x.x == 55
+
+block:
+  type
+    Bar = object
+      x: int
+
+    Foo = object
+      x = Bar()
+
+  var f = Foo()
+  doassert f.x.x == 0
