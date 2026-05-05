@@ -136,26 +136,46 @@ proc materializeTupleViewType(t: PType; idgen: IdGenerator): PType =
       result = copyType(t, idgen, t.owner)
       for i in 0..<t.len:
         result[i] = materializeTupleViewType(t[i], idgen)
-      if result.n != nil:
-        let fieldCount = min(result.n.len, result.len)
-        for i in 0..<fieldCount:
-          if result.n[i].kind == nkSym:
-            result.n[i].sym.typ = result[i]
+      if t.n != nil:
+        result.n = copyNode(t.n)
+        for it in t.n:
+          if it.kind == nkSym and it.sym.kind == skField:
+            let field = copySym(it.sym, idgen)
+            field.ast = it.sym.ast
+            if field.position >= 0 and field.position < result.len:
+              field.typ = result[field.position]
+            result.n.add newSymNode(field, it.info)
+          else:
+            result.n.add copyTree(it)
   else:
     result = t
 
 proc materializeTupleViewArg(c: PContext; targetType: PType; arg: PNode): PNode =
-  result = newNodeIT(nkTupleConstr, arg.info, targetType)
   let targetTuple = targetType.skipTypes({tyGenericInst, tyAlias, tySink, tyDistinct, tyInferred})
+  var tupleArg = arg
+  var prefix: PNode = nil
+  if targetTuple.len > 1 and arg.kind notin {nkHiddenAddr, nkSym}:
+    prefix = evalOnce(c.graph, arg, c.idgen, getCurrOwner(c))
+    tupleArg = prefix[^1]
+
+  let tupleConstr = newNodeIT(nkTupleConstr, arg.info, targetType)
   for i in 0..<targetTuple.len:
     let targetField = targetTuple[i]
-    var field = newTupleAccess(c.graph, arg, i)
+    var field = newTupleAccess(c.graph, tupleArg, i)
     let sourceField = field.typ.skipTypes({tyGenericInst, tyAlias, tySink, tyDistinct, tyInferred})
     if sourceField.kind in {tyVar, tyLent}:
       field = newDeref(field)
     elif targetField.kind == tyTuple and classifyViewType(sourceField) != noView:
       field = materializeTupleViewArg(c, targetField, field)
-    result.add field
+    tupleConstr.add field
+
+  if prefix == nil:
+    result = tupleConstr
+  else:
+    result = newNodeIT(nkStmtListExpr, arg.info, targetType)
+    for i in 0..<(prefix.len - 1):
+      result.add prefix[i]
+    result.add tupleConstr
 
 proc put(c: var TCandidate, key, val: PType) {.inline.} =
   ## Given: proc foo[T](x: T); foo(4)
