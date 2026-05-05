@@ -488,10 +488,19 @@ proc generateBuildFile(c: DepContext): string =
   let exeFile = changeFileExt(c.nodes[0].files[0].nimFile, ExeExt)
   b.addTree "do"
   b.addIdent "nim_nifc"
-  # Input: .nim file (expanded as argument) and .nif file (dependency)
+  # Input: .nim file (expanded as argument)
   b.addTree "input"
   b.addStrLit mainNif
   b.endTree()
+  # Also depend on the semmed .nif files of the main module and all its
+  # dependencies. nifmake's topological sort orders nodes by depth; without
+  # these inputs the nim_nifc node sits at depth 1 (no recognized inputs)
+  # alongside the nifler nodes and runs *before* the nim_m steps that
+  # produce the .nif files it needs to read.
+  for node in c.nodes:
+    b.addTree "input"
+    b.addStrLit c.semmedFile(node.files[0])
+    b.endTree()
   b.addTree "output"
   b.addStrLit exeFile
   b.endTree()
