@@ -206,7 +206,7 @@ proc blockLeaveActions(p: BProc, howManyTrys, howManyExcepts: int, isReturnStmt 
   # Called by return and break stmts.
   # Deals with issues faced when jumping out of try/except/finally stmts.
 
-  var stack = newSeq[tuple[fin: PNode, inExcept: bool, label: Natural]](0)
+  var stack = newSeq[tuple[fin: PNode, inExcept: bool, isHidden: bool, label: Natural]](0)
 
   inc p.withinBlockLeaveActions
   for i in 1..howManyTrys:
@@ -769,12 +769,26 @@ proc raiseExitCleanup(p: BProc, destroy: string) =
         [p.nestedTryStmts[^1].label, destroy])
 
 proc finallyActions(p: BProc) =
-  if p.config.exc != excGoto and p.nestedTryStmts.len > 0 and p.nestedTryStmts[^1].inExcept:
-    # if the current try stmt have a finally block,
-    # we must execute it before reraising
-    let finallyBlock = p.nestedTryStmts[^1].fin
-    if finallyBlock != nil:
-      genSimpleBlock(p, finallyBlock[0])
+  if p.config.exc != excGoto:
+    # Walk past compiler-injected `nkHiddenTryStmt` wrappers (e.g. ARC's
+    # destructor try/finally that wraps `except T as e:` bodies) to reach
+    # the user's actual try.  We must NOT walk past a real user try whose
+    # body we are currently in, because a raise from there will be caught
+    # by that try's own except branches rather than escaping outward.
+    #
+    # If after skipping wrappers the next entry is a user try in its
+    # except branch (inExcept=true), inline its finally body before the
+    # raise propagates — without this, the C++ sibling-catch rule would
+    # cause the user's catch(...)/finally pair to be bypassed and the
+    # finally would be silently dropped.
+    for i in countdown(p.nestedTryStmts.high, 0):
+      if p.nestedTryStmts[i].isHidden:
+        continue
+      if p.nestedTryStmts[i].inExcept:
+        let finallyBlock = p.nestedTryStmts[i].fin
+        if finallyBlock != nil:
+          genSimpleBlock(p, finallyBlock[0])
+      return
 
 proc raiseInstr(p: BProc; result: var Rope) =
   if p.config.exc == excGoto:
@@ -1080,7 +1094,7 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
   lineCg(p, cpsLocals, "std::exception_ptr T$1_;$n", [etmp])
 
   let fin = if t[^1].kind == nkFinally: t[^1] else: nil
-  p.nestedTryStmts.add((fin, false, 0.Natural))
+  p.nestedTryStmts.add((fin, false, t.kind == nkHiddenTryStmt, 0.Natural))
 
   if t.kind == nkHiddenTryStmt:
     lineCg(p, cpsStmts, "try {$n", [])
@@ -1240,7 +1254,7 @@ proc genTryCppOld(p: BProc, t: PNode, d: var TLoc) =
   genLineDir(p, t)
   cgsym(p.module, "popCurrentExceptionEx")
   let fin = if t[^1].kind == nkFinally: t[^1] else: nil
-  p.nestedTryStmts.add((fin, false, 0.Natural))
+  p.nestedTryStmts.add((fin, false, t.kind == nkHiddenTryStmt, 0.Natural))
   startBlock(p, "try {$n")
   expr(p, t[0], d)
   endBlock(p)
@@ -1309,7 +1323,7 @@ proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
   let lab = p.labels
   let hasExcept = t[1].kind == nkExceptBranch
   if hasExcept: inc p.withinTryWithExcept
-  p.nestedTryStmts.add((fin, false, Natural lab))
+  p.nestedTryStmts.add((fin, false, t.kind == nkHiddenTryStmt, Natural lab))
 
   p.flags.incl nimErrorFlagAccessed
 
@@ -1461,7 +1475,7 @@ proc genTrySetjmp(p: BProc, t: PNode, d: var TLoc) =
       linefmt(p, cpsStmts, "$1.status = setjmp($1.context);$n", [safePoint])
     lineCg(p, cpsStmts, "if ($1.status == 0) {$n", [safePoint])
   let fin = if t[^1].kind == nkFinally: t[^1] else: nil
-  p.nestedTryStmts.add((fin, quirkyExceptions, 0.Natural))
+  p.nestedTryStmts.add((fin, quirkyExceptions, t.kind == nkHiddenTryStmt, 0.Natural))
   expr(p, t[0], d)
   if not quirkyExceptions:
     linefmt(p, cpsStmts, "#popSafePoint();$n", [])
