@@ -459,9 +459,10 @@ proc normalizeTypedescMacroResult(c: PContext, n: PNode): PNode =
   if result.kind == nkStmtList:
     result.transitionSonsKind(nkStmtListType)
 
+  const maxTypedescMacroNormalizationPasses = 32
   # Resolve surviving compile-time branches so later passes don't walk
   # unevaluated type AST for a typedesc expression.
-  while true:
+  for _ in 0..<maxTypedescMacroNormalizationPasses:
     if result.kind == nkWhenStmt:
       result = semWhen(c, result, false)
       if result.kind == nkStmtList:
