@@ -81,7 +81,8 @@ proc sameInstantiation(a, b: TInstantiation): bool =
       if not compareTypes(a.concreteTypes[i], b.concreteTypes[i],
                           flags = {ExactTypeDescValues,
                                    ExactGcSafety,
-                                   PickyCAliases}): return
+                                   PickyCAliases,
+                                   PickyBackendAliases}): return
     result = true
   else:
     result = false

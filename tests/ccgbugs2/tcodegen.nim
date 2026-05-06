@@ -75,3 +75,19 @@ block: # importc type inheritance
   doAssert(cast[cint](b) == 123)
   var c = foo(b)
   doAssert(cast[cint](c) == 123)
+
+
+# bug #23765
+type
+  X11[T, E] = object
+    m: T
+  B = X11[culonglong, cstring]
+  S = ref object of RootObj
+
+proc j[T, E](m: X11[T, E]): T = discard
+proc n(T: typedesc[SomeUnsignedInt]): X11[T, cstring] = discard
+method call(client: S): uint64 {.base.} =
+  discard j(n(uint64))
+
+var s = S()
+discard s.call()
