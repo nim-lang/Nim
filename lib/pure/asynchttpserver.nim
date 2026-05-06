@@ -146,15 +146,30 @@ proc respondError(req: Request, code: HttpCode): Future[void] =
   result = req.client.send(msg)
 
 proc parseProtocol(protocol: string): tuple[orig: string, major, minor: int] =
+  template invalidProtocol() =
+    raise newException(ValueError, "Invalid request protocol. Got: " & protocol)
+
   result = default(tuple[orig: string, major, minor: int])
   var i = protocol.skipIgnoreCase("HTTP/")
   if i != 5:
-    raise newException(ValueError, "Invalid request protocol. Got: " &
-        protocol)
+    invalidProtocol()
   result.orig = protocol
-  i.inc protocol.parseSaturatedNatural(result.major, i)
+  let majorLen = protocol.parseSaturatedNatural(result.major, i)
+  if majorLen == 0:
+    invalidProtocol()
+  i.inc majorLen
+
+  if i >= protocol.len or protocol[i] != '.':
+    invalidProtocol()
   i.inc # Skip .
-  i.inc protocol.parseSaturatedNatural(result.minor, i)
+
+  let minorLen = protocol.parseSaturatedNatural(result.minor, i)
+  if minorLen == 0:
+    invalidProtocol()
+  i.inc minorLen
+
+  if i != protocol.len:
+    invalidProtocol()
 
 proc sendStatus(client: AsyncSocket, status: string): Future[void] =
   client.send("HTTP/1.1 " & status & "\c\L\c\L")

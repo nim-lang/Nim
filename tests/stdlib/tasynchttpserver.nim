@@ -9,7 +9,7 @@ import strutils
 from net import TimeoutError
 import std/assertions
 
-import httpclient, asynchttpserver, asyncdispatch, asyncfutures
+import httpclient, asynchttpserver, asyncdispatch, asyncfutures, asyncnet
 
 template runTest(
     handler: proc (request: Request): Future[void] {.gcsafe.},
@@ -113,9 +113,39 @@ proc testCustomContentLength() {.async.} =
 
   runTest(handler, request, test)
 
+proc testMalformedProtocolsDoNotCrash() {.async.} =
+  for rawProtocol in [
+    "HTTP/1",
+    "HTTP/.1",
+    "HTTP/1.",
+    "HTTP/1.1xyz",
+  ]:
+    let server = newAsyncHttpServer()
+    server.listen(Port(0))
+
+    var callbackCalled = false
+    proc handler(request: Request) {.async.} =
+      callbackCalled = true
+      await request.respond(Http200, "unexpected")
+
+    asyncCheck server.acceptRequest(handler)
+
+    let client = await asyncnet.dial("127.0.0.1", server.getPort)
+    await client.send("GET / " & rawProtocol & "\c\LHost: localhost\c\L\c\L")
+
+    let lineFut = client.recvLine()
+    doAssert await withTimeout(lineFut, 1000), "Timed out waiting for response to " & rawProtocol
+    doAssert lineFut.read() == "HTTP/1.1 400 Bad Request"
+
+    client.close()
+    await sleepAsync(100)
+    doAssert not callbackCalled
+    server.close()
+
 waitFor(test200())
 waitFor(test404())
 waitFor(testCustomEmptyHeaders())
 waitFor(testCustomContentLength())
+waitFor(testMalformedProtocolsDoNotCrash())
 
 echo "OK"
