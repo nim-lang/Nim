@@ -652,6 +652,9 @@ proc overloadedCallOpr(c: PContext, n: PNode): PNode =
     result = semExpr(c, result, flags = {efNoUndeclared})
 
 proc changeType(c: PContext; n: PNode, newType: PType, check: bool) =
+  template isViewTarget(t: PType): bool =
+    t.skipTypes({tyGenericInst, tyAlias, tySink}).kind in {tyVar, tyLent}
+
   case n.kind
   of nkCurly:
     for i in 0..<n.len:
@@ -680,12 +683,15 @@ proc changeType(c: PContext; n: PNode, newType: PType, check: bool) =
           if f == nil:
             globalError(c.config, m.info, "unknown identifier: " & m.sym.name.s)
             return
-          changeType(c, n[i][1], f.typ, check)
+          if not isViewTarget(f.typ):
+            changeType(c, n[i][1], f.typ, check)
         else:
-          changeType(c, n[i][1], tup[i], check)
+          if not isViewTarget(tup[i]):
+            changeType(c, n[i][1], tup[i], check)
     else:
       for i in 0..<n.len:
-        changeType(c, n[i], tup[i], check)
+        if not isViewTarget(tup[i]):
+          changeType(c, n[i], tup[i], check)
         when false:
           var m = n[i]
           var a = newNodeIT(nkExprColonExpr, m.info, newType[i])
