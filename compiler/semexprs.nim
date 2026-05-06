@@ -1025,6 +1025,9 @@ proc finishOperand(c: PContext, a: PNode): PNode =
     result = c.semOperand(c, a, {efDetermineType})
   else:
     result = a
+  if hasEmpty(result.typ):
+    localError(c.config, a.info,
+      errCannotInferTypeOfTheLiteral % result.typ.kind.toHumanStr)
   # XXX tyGenericInst here?
   if result.typ.kind == tyProc and hasUnresolvedParams(result, {efOperand}):
     #and tfUnresolved in result.typ.flags:
