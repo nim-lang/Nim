@@ -504,18 +504,57 @@ proc setLengthStr(s: var SmallString; newLen: int; zeroing: bool) =
   let slen = ssLen(s)
   let curLen = if slen > PayloadSize: s.more.fullLen else: slen
   if newLen == curLen: return
-  if newLen <= 0:
-    # Pattern 's.setLen 0' is common for avoiding allocations; do NOT free the buffer.
+  if newLen < curLen:
+    # Shrinking:
     if slen > PayloadSize:
       if slen == HeapSlen and s.more.rc == 1:
-        s.more.fullLen = 0
-        s.more.data[0] = '\0'
+        # Unique heap block: keep the buffer allocated to avoid alloc/dealloc
+        # ping-pong when callers shrink then grow (e.g. setLen(0) + add loops).
+        s.more.fullLen = newLen
+        s.more.data[newLen] = '\0'
       else:
-        # shared or static block: detach and go back to empty inline
-        nimDestroyStrV1(s)
-        s.bytes = 0  # slen=0, all inline chars zeroed
+        # shared or static block: detach and go back to inline
+        if newLen <= 0:
+          nimDestroyStrV1(s)
+          s.bytes = 0
+        else:
+          let old = s.more
+          let inl = inlinePtr(s)
+          copyMem(inl, addr old.data[0], newLen)
+          inl[newLen] = '\0'
+          if slen == HeapSlen and atomicSubFetch(old.rc, 1) == 0:
+            dealloc(old)
+          if newLen < AlwaysAvail:
+            when system.cpuEndian == littleEndian:
+              let keepBits = (newLen + 1) * 8
+              let charMask = ((uint(1) shl keepBits) - 1'u) and not 0xFF'u
+              s.bytes = (s.bytes and charMask) or uint(newLen)
+            else:
+              let discardBits = (AlwaysAvail - newLen) * 8
+              let slenBit = 8 * (sizeof(uint) - 1)
+              let charMask = not ((uint(1) shl discardBits) - 1'u) and not (0xFF'u shl slenBit)
+              s.bytes = (s.bytes and charMask) or (uint(newLen) shl slenBit)
+          else:
+            setSSLen(s, newLen)
     else:
-      s.bytes = 0  # slen=0, all inline chars zeroed (SWAR safe)
+      # inline/medium shrink
+      if newLen <= 0:
+        s.bytes = 0
+      else:
+        let inl = inlinePtr(s)
+        inl[newLen] = '\0'
+        if newLen < AlwaysAvail:
+          when system.cpuEndian == littleEndian:
+            let keepBits = (newLen + 1) * 8
+            let charMask = ((uint(1) shl keepBits) - 1'u) and not 0xFF'u
+            s.bytes = (s.bytes and charMask) or uint(newLen)
+          else:
+            let discardBits = (AlwaysAvail - newLen) * 8
+            let slenBit = 8 * (sizeof(uint) - 1)
+            let charMask = not ((uint(1) shl discardBits) - 1'u) and not (0xFF'u shl slenBit)
+            s.bytes = (s.bytes and charMask) or (uint(newLen) shl slenBit)
+        else:
+          setSSLen(s, newLen)
     return
   if slen <= PayloadSize:
     if newLen <= PayloadSize:
@@ -564,34 +603,11 @@ proc setLengthStr(s: var SmallString; newLen: int; zeroing: bool) =
       s.more = p
       setSSLen(s, HeapSlen)
   else:
-    # currently long
-    if newLen <= PayloadSize:
-      # shrink back to inline/medium
-      let old = s.more
-      let inl = inlinePtr(s)
-      copyMem(inl, addr old.data[0], newLen)
-      inl[newLen] = '\0'
-      if slen == HeapSlen and atomicSubFetch(old.rc, 1) == 0:
-        dealloc(old)
-      # Zero padding bytes in `bytes` for SWAR invariant
-      if newLen < AlwaysAvail:
-        when system.cpuEndian == littleEndian:
-          let keepBits = (newLen + 1) * 8
-          let charMask = ((uint(1) shl keepBits) - 1'u) and not 0xFF'u
-          s.bytes = (s.bytes and charMask) or uint(newLen)
-        else:
-          let discardBits = (AlwaysAvail - newLen) * 8
-          let slenBit = 8 * (sizeof(uint) - 1)
-          let charMask = not ((uint(1) shl discardBits) - 1'u) and not (0xFF'u shl slenBit)
-          s.bytes = (s.bytes and charMask) or (uint(newLen) shl slenBit)
-      else:
-        setSSLen(s, newLen)
-    else:
-      # long -> long
-      ensureUniqueLong(s, curLen, newLen) # sets fullLen = newLen
-      if newLen > curLen:
-        zeroMem(addr s.more.data[curLen], newLen - curLen)
-      s.more.data[newLen] = '\0'
+    # currently long: grow within the heap buffer (shrinking already returned above)
+    ensureUniqueLong(s, curLen, newLen) # sets fullLen = newLen
+    if zeroing and newLen > curLen:
+      zeroMem(addr s.more.data[curLen], newLen - curLen)
+    s.more.data[newLen] = '\0'
 
 proc setLengthStrV2(s: var SmallString; newLen: int) {.compilerRtl.} =
   ## Sets the length of `s` to `newLen`, zeroing new bytes on growth.
@@ -705,18 +721,37 @@ proc completeStore(s: var SmallString) {.compilerproc, inline.} =
 proc completeStore*(s: var string) {.inline.} =
   completeStore(cast[ptr SmallString](addr s)[])
 
-proc beginStore*(s: var string; ensuredLen: int; start = 0): ptr UncheckedArray[char] {.inline, noSideEffect, raises: [], tags: [].} =
-  ## Prepares `s` for a bulk write of `ensuredLen` bytes starting at `start`.
-  ## The caller must ensure `s.len >= start + ensuredLen` (e.g. via `newString` or `setLen`).
+proc beginStore*(s: var string; newLen: int; start = 0): ptr UncheckedArray[char] {.inline, noSideEffect, raises: [], tags: [].} =
+  ## Sets s.len to `newLen` (new bytes are uninitialized), ensures unique
+  ## ownership, and returns a pointer to s[start] for bulk writing.
   ## Call `endStore(s)` afterwards to sync the inline cache.
+  ## To keep the current length, pass `s.len`.
   {.cast(noSideEffect).}:
     let ss = cast[ptr SmallString](addr s)
     let slen = ssLen(ss[])
-    if slen > PayloadSize:
-      ensureUniqueLong(ss[], ss[].more.fullLen, ss[].more.fullLen)
+    let curLen = if slen > PayloadSize: ss[].more.fullLen else: slen
+    if newLen <= PayloadSize and slen <= PayloadSize:
+      # Stay inline/medium.
+      if newLen != curLen:
+        setSSLen(ss[], newLen)
+      result = cast[ptr UncheckedArray[char]](cast[uint](inlinePtr(ss[])) + uint(start))
+    elif slen <= PayloadSize:
+      # Inline/medium → long.
+      let newCap = resize(newLen)
+      let p = cast[ptr LongString](alloc(LongStringDataOffset + newCap + 1))
+      p.rc = 1
+      p.fullLen = newLen
+      p.capImpl = newCap
+      copyMem(addr p.data[0], inlinePtr(ss[]), curLen)
+      p.data[newLen] = '\0'
+      ss[].more = p
+      setSSLen(ss[], HeapSlen)
       result = cast[ptr UncheckedArray[char]](addr ss[].more.data[start])
     else:
-      result = cast[ptr UncheckedArray[char]](cast[uint](inlinePtr(ss[])) + uint(start))
+      # Already long: resize within heap (no transition back to inline).
+      ensureUniqueLong(ss[], curLen, newLen)
+      ss[].more.data[newLen] = '\0'
+      result = cast[ptr UncheckedArray[char]](addr ss[].more.data[start])
 
 proc endStore*(s: var string) {.inline, noSideEffect, raises: [], tags: [].} =
   ## Syncs the inline cache after bulk writes via `beginStore`. No-op for short/medium strings.

@@ -223,7 +223,7 @@ proc semSet(c: PContext, n: PNode, prev: PType): PType =
     if base.kind in {tyGenericInst, tyAlias, tySink}: base = skipModifier(base)
     if base.kind notin {tyGenericParam, tyGenericInvocation}:
       if base.kind == tyForward:
-        c.forwardTypeUpdates.add (base, n[1])
+        c.forwardTypeUpdates.add (getCurrOwner(c), result, n)
       elif not isOrdinalType(base, allowEnumWithHoles = true):
         localError(c.config, n.info, errOrdinalTypeExpected % typeToString(base, preferDesc))
       elif lengthOrd(c.config, base) > MaxSetElements:
@@ -370,6 +370,7 @@ proc semFieldDefault(c: PContext; owner, expectedType: PType; field: PNode): PTy
       propagateToOwner(owner, result)
 
 proc semDelayedFieldDefault(c: PContext; owner, expectedType: PType; field: PNode) =
+  resetSemFlag(field[^1])
   fitDefaultNode(c, field[^1], expectedType)
   propagateToOwner(owner, field[^1].typ.skipIntLit(c.idgen))
 
@@ -1114,7 +1115,7 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType; flags: TTypeFlags): PType
   if needsForwardUpdate:
     # if the inherited object is a forward type,
     # the entire object needs to be checked again
-    c.forwardTypeUpdates.add (result, n) # we retry in the final pass
+    c.forwardTypeUpdates.add (getCurrOwner(c), result, n) # we retry in the final pass
   rawAddSon(result, realBase)
   if realBase == nil and tfInheritable in flags:
     result.incl tfInheritable
@@ -1762,7 +1763,7 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
     for i in 1..<n.len:
       var elem = semGenericParamInInvocation(c, n[i])
       addToResult(elem, true)
-    c.forwardTypeUpdates.add (result, n)
+    c.forwardTypeUpdates.add (getCurrOwner(c), result, n)
     return
   elif t.kind != tyGenericBody:
     # we likely got code of the form TypeA[TypeB] where TypeA is
@@ -1838,7 +1839,7 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
         else:
           assignType(result, newTypeS(tyForward, c))
           result.sym = s
-        c.forwardTypeUpdates.add (result, n) #fixes 1500
+        c.forwardTypeUpdates.add (getCurrOwner(c), result, n) #fixes 1500
         return
       else:
         result = instGenericContainer(c, n.info, result,
