@@ -1024,6 +1024,9 @@ These are the major type classes:
 * procedural type
 * generic type
 
+The compiler's internal type zoo is richer than this summary suggests:
+some types that are structurally equal still differ in backend representation.
+
 
 Ordinal types
 -------------
@@ -2173,6 +2176,10 @@ Procedural type
 ---------------
 A procedural type is internally a pointer to a procedure. `nil` is
 an allowed value for a variable of a procedural type.
+
+Procedure compatibility also checks the backend representation of the
+parameter and result types, not just their source-level shape. Use
+`--legacy:procParamTypeBackendAliases` to restore the older behavior.
 
 Examples:
 
