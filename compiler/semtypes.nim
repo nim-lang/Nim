@@ -1540,13 +1540,18 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
         if isEmptyContainer(typ):
           localError(c.config, a.info, "cannot infer the type of parameter '" & $a[0] & "'")
 
-        if typ.kind == tyTypeDesc:
+        if typ.kind == tyTypeDesc or typ.kind == tyGenericParam:
           # consider a proc such as:
           # proc takesType(T = int)
           # a naive analysis may conclude that the proc type is type[int]
           # which will prevent other types from matching - clearly a very
           # surprising behavior. We must instead fix the expected type of
-          # the proc to be the unbound typedesc type:
+          # the proc to be the unbound typedesc type.
+          # Issue #9355: also handles `proc foo[T](U = T)` where the default
+          # references another generic param. The default is a generic-param
+          # symbol whose typ is tyGenericParam (not tyTypeDesc); we treat
+          # such a parameter as an unbound typedesc param so it behaves like
+          # the explicit `proc foo[T](U: type = T)` form.
           typ = newTypeS(tyTypeDesc, c, newTypeS(tyNone, c))
           typ.incl tfCheckedForDestructor
 
@@ -1736,6 +1741,33 @@ proc containsGenericInvocationWithForward(n: PNode): bool =
           return true
   return false
 
+proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType
+
+proc tryGenericBodyDefaultInvocation*(c: PContext, n: PNode, s: PSym,
+                                      prev: PType): PType =
+  ## Issue #4086 sub-case: `type Foo[T = int]; var f: Foo` is sugar for
+  ## `var f: Foo[int]` when every generic param has a default. Synthesize
+  ## a `Foo[default1, default2, ...]` bracket node and dispatch to the
+  ## existing `semGeneric` so the default-substitution machinery (added
+  ## for issues #4086 / #9355) handles cascading and parameter-referencing
+  ## defaults uniformly.
+  result = nil
+  if s.typ == nil: return
+  let body = s.typ.skipTypes({tyAlias})
+  if body.kind != tyGenericBody or body.len < 2: return
+  for i in 0..<body.len-1:
+    let p = body[i]
+    if p.kind != tyGenericParam or p.sym == nil or p.sym.ast == nil:
+      return
+  var bracket = newNodeI(nkBracketExpr, n.info)
+  if n.kind == nkSym:
+    bracket.add n
+  else:
+    bracket.add newSymNode(s, n.info)
+  for i in 0..<body.len-1:
+    bracket.add copyTree(body[i].sym.ast)
+  result = semGeneric(c, bracket, s, prev)
+
 proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
   if s.typ == nil:
     localError(c.config, n.info, "cannot instantiate the '$1' $2" %
@@ -1791,8 +1823,35 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
     let rType = m.call[0].typ
     let mIndex = if rType != nil: rType.len - 1 else: -1
     var hasForwardTypeParam = false
+
+    # Issues #4086, #9355: when a generic param's default value references
+    # earlier type params (e.g. `type Foo[T; U = seq[T]]` or `func foo[T](U = T)`)
+    # substitute those references with already-resolved bindings before
+    # adding to the invocation. Bindings are accumulated as the loop walks
+    # left-to-right, so cascade defaults like `[T; U = seq[T]; V = seq[U]]`
+    # work too (each iteration resolves against the previous ones).
+    # Skip the bookkeeping entirely when no param has a default — this
+    # generic body cannot need substitution and the work would just be
+    # pure overhead (matters for large generic graphs / forward cycles).
+    var hasAnyDefault = false
+    for i in 0..<t.len-1:
+      let p = t[i]
+      if p.kind == tyGenericParam and p.sym != nil and p.sym.ast != nil:
+        hasAnyDefault = true
+        break
+    var defaultBindings = initLayeredTypeMap()
+    var hasDefaultBinding = false
+
     for i in 1..<m.call.len:
       var typ = m.call[i].typ
+
+      if hasDefaultBinding and nfDefaultParam in m.call[i].flags and
+         containsGenericType(typ):
+        var cl = initTypeVars(c, defaultBindings, n.info, getCurrOwner(c))
+        let substituted = replaceTypeVarsT(cl, typ)
+        if substituted != nil:
+          typ = substituted
+
       # is this a 'typedesc' *parameter*? If so, use the typedesc type,
       # unstripped.
       if m.call[i].kind == nkSym and m.call[i].sym.kind == skParam and
@@ -1806,6 +1865,10 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
         if mIndex >= i - 1 and tfImplicitStatic in rType[i - 1].flags and isIntLit(typ):
           skip = false
         addToResult(typ, skip)
+
+      if hasAnyDefault and i - 1 < t.kidsLen and t[i - 1].kind == tyGenericParam:
+        defaultBindings.put(t[i - 1], typ.skipTypes({tyTypeDesc}))
+        hasDefaultBinding = true
 
       if typ.kind == tyForward:
         hasForwardTypeParam = true
