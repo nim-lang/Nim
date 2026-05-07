@@ -791,8 +791,12 @@ proc procParamTypeRel(c: var TCandidate; f, a: PType): TTypeRelation =
     # different C types (size_t vs unsigned long long).
     let fCheck = concreteType(c, f)
     let aCheck = concreteType(c, a)
+    # Notes that `result` is requal, now
+    # we checks whether they have the same backend type
     if fCheck != nil and aCheck != nil and
-        not sameBackendTypePickyAliases(fCheck, aCheck):
+        not sameBackendTypePickyAliases(
+          fCheck.skipTypes({tyVar, tyLent, tySink, tyOwned}),
+          aCheck.skipTypes({tyVar, tyLent, tySink, tyOwned})):
       result = isNone
 
   if result <= isSubrange or inconsistentVarTypes(f, a):
