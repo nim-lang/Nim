@@ -3105,6 +3105,29 @@ proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
         if nfDefaultRefsParam in formal.ast.flags:
           m.call.flags.incl nfDefaultRefsParam
         var defaultValue = copyTree(formal.ast)
+        # Issues #4086, #9355: when the default value is a bare reference
+        # to an earlier generic type param (e.g. `func foo[T](U: type = T)`
+        # or its untyped form `func foo[T](U = T)`) — recognised by the
+        # default's static type being `tyGenericParam` — substitute T
+        # against the explicit-instantiation bindings via
+        # `prepareTypesInBody` (which updates both the AST sym and its
+        # typ) and wrap the result as `tyTypeDesc` so the
+        # `tfImplicitTypeParam` binding path below treats it like a
+        # literal type default (`U: type = int`).
+        # Other defaults (value expressions like `arr.high`, proc-call
+        # expressions like `newTensor[T](0)` whose result type is a
+        # `tyGenericInvocation`/`tyGenericInst`, etc.) have a non-
+        # `tyGenericParam` type and are left untouched, so the existing
+        # default-handling machinery takes care of them.
+        if defaultValue.typ != nil and
+           defaultValue.typ.kind == tyGenericParam and
+           m.calleeSym != nil:
+          defaultValue = prepareTypesInBody(c, m.bindings, defaultValue, m.calleeSym)
+          if formal.typ.kind == tyTypeDesc and defaultValue.typ != nil and
+             defaultValue.typ.kind != tyTypeDesc:
+            let typedescTyp = newTypeS(tyTypeDesc, c, defaultValue.typ)
+            typedescTyp.incl tfCheckedForDestructor
+            defaultValue.typ = typedescTyp
         if defaultValue.kind == nkNilLit:
           defaultValue = implicitConv(nkHiddenStdConv, formal.typ, defaultValue, m, c)
         # proc foo(x: T = 0.0)

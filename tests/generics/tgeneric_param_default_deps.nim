@@ -1,0 +1,91 @@
+discard """
+  matrix: "; --mm:refc"
+"""
+
+# Generic type parameter defaults that reference other type parameters
+# (issues #4086, #9355).
+#
+# Currently fails on Nim 2.3.1 devel:
+#   #9355 sample 1: `Error: type expected`
+#   #9355 sample 2: `Error: cannot instantiate: 'U:type'`
+#   type-side    : `Error: invalid type: 'Foo[system.int, seq[T]]' for var`
+#
+# Other languages (C++, TypeScript, Rust, Scala) all support this pattern.
+# Nim already supports T-independent defaults like `[T; U = int]`; this
+# extends support to defaults that reference earlier type parameters.
+
+block: # #9355 sample 1: proc default referencing T (untyped form)
+  func foo[T](U = T): U = discard
+  # `U` defaults to whatever T resolves to.
+  doAssert foo[int]() is int
+  doAssert foo[string]() is string
+
+block: # #9355 sample 2: proc default with `type =` referencing T
+  func foo[T](U: type = T): U = discard
+  doAssert foo[int]() is int
+  doAssert foo[float]() is float
+
+block: # #4086 type-side: object generic param default `seq[T]`
+  type Foo[T; U = seq[T]] = object
+    data: U
+  var f: Foo[int]
+  f.data.add 42
+  doAssert f.data == @[42]
+
+block: # nested reference: U default uses T, V default uses U
+  type Foo[T; U = seq[T]; V = seq[U]] = object
+    data: V
+  var f: Foo[int]
+  f.data.add @[1, 2]
+  doAssert f.data == @[@[1, 2]]
+
+block: # type-side direct: U = T
+  type Foo[T; U = T] = object
+    a: T
+    b: U
+  var f: Foo[int]
+  f.a = 1
+  f.b = 2
+  doAssert f.b is int
+
+block: # type-side compound: U = ref T
+  type Foo[T; U = ref T] = object
+    p: U
+  var f: Foo[int]
+  f.p = new(int)
+  f.p[] = 9
+  doAssert f.p[] == 9
+
+block: # type-side compound: U = array[3, T]
+  type Foo[T; U = array[3, T]] = object
+    arr: U
+  var f: Foo[int]
+  f.arr[0] = 10
+  f.arr[2] = 30
+  doAssert f.arr[0] == 10
+  doAssert f.arr[2] == 30
+
+block: # #4086 original: all params defaulted, invocation with no args
+  type Foo[T = int] = object
+    x: T
+  var f: Foo
+  f.x = 42
+  doAssert f.x == 42
+
+block: # alias of a defaulted instantiation
+  type Foo[T; U = T] = object
+    a: T
+    b: U
+  type IntFoo = Foo[int]
+  var f: IntFoo
+  f.a = 1
+  f.b = 2
+  doAssert f.b is int
+
+block: # distinct of a defaulted instantiation
+  type Foo[T; U = seq[T]] = object
+    data: U
+  type DistFoo = distinct Foo[int]
+  var f: DistFoo
+  Foo[int](f).data.add 7
+  doAssert Foo[int](f).data == @[7]
