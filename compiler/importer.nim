@@ -13,7 +13,7 @@ import
   ast, astalgo, msgs, options, idents, lookups,
   semdata, modulepaths, sigmatch, lineinfos,
   modulegraphs, wordrecg
-from std/strutils import `%`, startsWith
+from std/strutils import `%`, startsWith, replace
 from std/sequtils import addUnique
 import std/[sets, tables, intsets]
 
@@ -307,9 +307,9 @@ proc myImportModule(c: PContext, n: var PNode, importStmtResult: PNode): PSym =
       var prefix = ""
       if realModule.constraint != nil: prefix = realModule.constraint.strVal & "; "
       message(c.config, n.info, warnDeprecated, prefix & realModule.name.s & " is deprecated")
-    let moduleName = getModuleName(c.config, n)
-    if belongsToStdlib(c.graph, result) and not startsWith(moduleName, stdPrefix) and
-        not startsWith(moduleName, "system/") and not startsWith(moduleName, "packages/"):
+    let moduleNameNorm = getModuleName(c.config, n).replace("\\", "/")
+    if belongsToStdlib(c.graph, result) and not startsWith(moduleNameNorm, stdPrefix) and
+        not startsWith(moduleNameNorm, "system/") and not startsWith(moduleNameNorm, "packages/"):
       message(c.config, n.info, warnStdPrefix, realModule.name.s)
 
     proc suggestMod(n: PNode; s: PSym) =
