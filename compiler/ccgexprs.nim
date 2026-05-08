@@ -2815,6 +2815,19 @@ proc genWasMoved(p: BProc; n: PNode) =
     #linefmt(p, cpsStmts, "#nimZeroMem((void*)$1, sizeof($2));$n",
     #  [addrLoc(p.config, a), getTypeDesc(p.module, a.t)])
 
+proc genWasMovedCall(p: BProc; op: PSym; arg: PNode) =
+  # generate a call to the `wasMoved` hook for C++
+  var call = newNodeIT(nkCall, arg.info, op.typ.returnType)
+  call.add newSymNode(op)
+  if op.typ != nil and op.typ.signatureLen > 1 and op.typ.firstParamType.kind == tyVar:
+    var addrArg = newNodeIT(nkHiddenAddr, arg.info, op.typ.firstParamType)
+    addrArg.add arg
+    call.add addrArg
+  else:
+    call.add arg
+  var noDest = default(TLoc)
+  genCall(p, call, noDest)
+
 proc genMove(p: BProc; n: PNode; d: var TLoc) =
   var a: TLoc = initLocExpr(p, n[1].skipAddr, {lfEnforceDeref, lfPrepareForMutation})
   if n.len == 4:
@@ -2843,23 +2856,26 @@ proc genMove(p: BProc; n: PNode; d: var TLoc) =
       if op == nil:
         resetLoc(p, a)
       else:
-        var b = initLocExpr(p, newSymNode(op))
-        case skipTypes(a.t, abstractVar+{tyStatic}).kind
-        of tyOpenArray, tyVarargs: # todo fixme generated `wasMoved` hooks for
-                                   # openarrays, but it probably shouldn't?
-          let ra = rdLoc(a)
-          var s: string
-          if reifiedOpenArray(a.lode):
-            if a.t.kind in {tyVar, tyLent}:
-              s = derefField(ra, "Field0") & cArgumentSeparator & derefField(ra, "Field1")
-            else:
-              s = dotField(ra, "Field0") & cArgumentSeparator & dotField(ra, "Field1")
-          else:
-            s = ra & cArgumentSeparator & ra & "Len_0"
-          p.s(cpsStmts).addCallStmt(rdLoc(b), s)
+        if {sfInfixCall, sfNamedParamCall} * op.flags != {}:
+          genWasMovedCall(p, op, n[1].skipAddr)
         else:
-          let val = if p.module.compileToCpp: rdLoc(a) else: byRefLoc(p, a)
-          p.s(cpsStmts).addCallStmt(rdLoc(b), val)
+          var b = initLocExpr(p, newSymNode(op))
+          case skipTypes(a.t, abstractVar+{tyStatic}).kind
+          of tyOpenArray, tyVarargs: # todo fixme generated `wasMoved` hooks for
+                                     # openarrays, but it probably shouldn't?
+            let ra = rdLoc(a)
+            var s: string
+            if reifiedOpenArray(a.lode):
+              if a.t.kind in {tyVar, tyLent}:
+                s = derefField(ra, "Field0") & cArgumentSeparator & derefField(ra, "Field1")
+              else:
+                s = dotField(ra, "Field0") & cArgumentSeparator & dotField(ra, "Field1")
+            else:
+              s = ra & cArgumentSeparator & ra & "Len_0"
+            p.s(cpsStmts).addCallStmt(rdLoc(b), s)
+          else:
+            let val = if p.module.compileToCpp: rdLoc(a) else: byRefLoc(p, a)
+            p.s(cpsStmts).addCallStmt(rdLoc(b), val)
     else:
       genAssignment(p, d, a, {})
       resetLoc(p, a)
