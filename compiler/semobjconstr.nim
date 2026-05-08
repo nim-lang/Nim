@@ -462,9 +462,6 @@ proc defaultConstructionError(c: PContext, t: PType, info: TLineInfo) =
 
 proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType = nil): PNode =
   var t = semTypeNode(c, n[0], nil)
-  if t != nil and t.kind == tyForward:
-    n.typ = t   # assign `tyForward` type so that caller can easily see it contains `tyForward` type
-    return n
   result = newNodeIT(nkObjConstr, n.info, t)
   for i in 0..<n.len:
     result.add n[i]

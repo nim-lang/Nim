@@ -151,7 +151,7 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
       # may introduce new symbols with caveats described in recalc branch
       matches(c, n, orig, z)
 
-      if z.state == csGotTyForward:
+      if z.state == csGotTyForward and efDetermineType in flags:
         best.state = csGotTyForward
         best.call = z.call
         break
