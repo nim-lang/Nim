@@ -34,10 +34,10 @@ To learn how to compile Nim programs and generate documentation see
 the [Compiler User Guide](nimc.html) and the [DocGen Tools Guide](docgen.html).
 
 The language constructs are explained using an extended BNF, in which `(a)*`
-means 0 or more `a`'s, `a+` means 1 or more `a`'s, and `(a)?` means an
+means 0 or more *a*'s, `a+` means 1 or more *a*'s, and `(a)?` means an
 optional *a*. Parentheses may be used to group elements.
 
-`&` is the lookahead operator; `&a` means that an `a` is expected but
+`&` is the lookahead operator; `&a` means that an *a* is expected but
 not consumed. It will be consumed in the following rule.
 
 The `|`, `/` symbols are used to mark alternatives and have the lowest
