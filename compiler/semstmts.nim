@@ -2642,7 +2642,8 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       elif s.name.s == "()" and callOperator notin c.features:
         localError(c.config, n.info, "the overloaded " & s.name.s &
           " operator has to be enabled with {.experimental: \"callOperator\".}")
-    elif s.name.s == ">" or s.name.s == ">=" or s.name.s == "!=":
+    elif sfImportc notin s.flags and (s.name.s == ">" or s.name.s == ">=" or s.name.s == "!="):
+      # ignore imported procs as these operators in backend language might have different semantics
       let (op1, op2) = if s.name.s == "!=":
                          ("!=", "==")
                        else:
@@ -2650,7 +2651,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
                            (">", "<")
                          else:
                            (">=", "<=")
-      localError(c.config, n.info, "define `" & op2 & "` instead of `" & op1 & "` to implement user defined comparison operator." &
+      localError(c.config, n.info, "define `" & op2 & "` instead of `" & op1 & "` to implement user defined comparison operator. " &
         "it allows you to use `" & op1 & "` automatically.")
 
   if sfBorrow in s.flags and c.config.cmd notin cmdDocLike:
