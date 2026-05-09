@@ -2642,9 +2642,16 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       elif s.name.s == "()" and callOperator notin c.features:
         localError(c.config, n.info, "the overloaded " & s.name.s &
           " operator has to be enabled with {.experimental: \"callOperator\".}")
-    elif s.name.s == ">=":
-      localError(c.config, n.info, "define `<=` instead of `>=` to implement user defined comparison operator." &
-        "it allows you to use `>=` automatically.")
+    elif s.name.s == ">" or s.name.s == ">=" or s.name.s == "!=":
+      let (op1, op2) = if s.name.s == "!=":
+                         ("!=", "==")
+                       else:
+                         if s.name.s == ">":
+                           (">", "<")
+                         else:
+                           (">=", "<=")
+      localError(c.config, n.info, "define `" & op2 & "` instead of `" & op1 & "` to implement user defined comparison operator." &
+        "it allows you to use `" & op1 & "` automatically.")
 
   if sfBorrow in s.flags and c.config.cmd notin cmdDocLike:
     result[bodyPos] = c.graph.emptyNode
