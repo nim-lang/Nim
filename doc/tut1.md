@@ -1144,7 +1144,7 @@ there is a difference between the `$` and `repr` outputs:
   echo myCharacter, ":", repr(myCharacter)
   # --> n:'n'
   echo myString, ":", repr(myString)
-  # --> nim:0x10fa8c050"nim"
+  # --> nim:"nim"
   echo myInteger, ":", repr(myInteger)
   # --> 42:42
   echo myFloat, ":", repr(myFloat)
