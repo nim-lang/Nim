@@ -3126,7 +3126,7 @@ proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
           if formal.typ.kind == tyTypeDesc and defaultValue.typ != nil and
              defaultValue.typ.kind != tyTypeDesc:
             let typedescTyp = newTypeS(tyTypeDesc, c, defaultValue.typ)
-            typedescTyp.incl tfCheckedForDestructor
+            typedescTyp.flags.incl tfCheckedForDestructor
             defaultValue.typ = typedescTyp
         if defaultValue.kind == nkNilLit:
           defaultValue = implicitConv(nkHiddenStdConv, formal.typ, defaultValue, m, c)

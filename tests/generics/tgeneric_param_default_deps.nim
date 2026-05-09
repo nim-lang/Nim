@@ -2,6 +2,8 @@ discard """
   matrix: "; --mm:refc"
 """
 
+import std/deques
+
 # Generic type parameter defaults that reference other type parameters
 # (issues #4086, #9355).
 #
@@ -89,3 +91,33 @@ block: # distinct of a defaulted instantiation
   var f: DistFoo
   Foo[int](f).data.add 7
   doAssert Foo[int](f).data == @[7]
+
+block: # union constraint + default referencing T (review request)
+  type Foo[T; U: seq[T]|Deque[T] = seq[T]] = object
+    data: U
+  var f: Foo[int]
+  f.data.add 42
+  doAssert f.data is seq[int]
+  doAssert f.data == @[42]
+
+block: # typeclass constraint + concrete-type default (review request)
+  type Foo[T: SomeInteger = int] = object
+    x: T
+  var f: Foo
+  f.x = 7
+  doAssert f.x is int
+  var g: Foo[int64]
+  g.x = 9'i64
+  doAssert g.x is int64
+
+block: # concept constraint + default (review request)
+  type HasLen = concept x
+    x.len is int
+  type Foo[T: HasLen = string] = object
+    val: T
+  var f: Foo
+  f.val = "hi"
+  doAssert f.val.len == 2
+  var g: Foo[seq[int]]
+  g.val = @[1, 2, 3]
+  doAssert g.val.len == 3
