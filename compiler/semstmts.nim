@@ -2651,8 +2651,8 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
                            (">", "<")
                          else:
                            (">=", "<=")
-      localError(c.config, n.info, "define `" & op2 & "` instead of `" & op1 & "` to implement user defined comparison operator. " &
-        "it allows you to use `" & op1 & "` automatically.")
+      message(c.config, n.info, warnInvalidCmpOp, "define `" & op2 & "` instead of `" & op1 & "` to implement user defined comparison operator. " &
+              "it allows you to use `" & op1 & "` automatically.")
 
   if sfBorrow in s.flags and c.config.cmd notin cmdDocLike:
     result[bodyPos] = c.graph.emptyNode

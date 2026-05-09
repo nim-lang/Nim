@@ -1,8 +1,8 @@
 discard """
   cmd: "nim check $file"
-  action: reject
+  action: compile
   nimout: '''
-tinvalid_cmp_op2.nim(12, 1) Error: define `<` instead of `>` to implement user defined comparison operator. it allows you to use `>` automatically.
+tinvalid_cmp_op2.nim(12, 1) Warning: define `<` instead of `>` to implement user defined comparison operator. it allows you to use `>` automatically. [InvalidCmpOp]
 '''
 """
 
