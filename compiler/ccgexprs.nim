@@ -2838,9 +2838,14 @@ proc genMove(p: BProc; n: PNode; d: var TLoc) =
   else:
     if d.k == locNone: d = getTemp(p, n.typ)
     if p.config.selectedGC in {gcArc, gcAtomicArc, gcOrc, gcYrc}:
+      # Inline `move`'s body here:
+      #   result = x
+      #   `=wasMoved`(x)
+      # Generated hooks fall back to generic `wasMoved`, so only overridden
+      # hooks need an explicit call.
       genAssignment(p, d, a, {})
       var op = getAttachedOp(p.module.g.graph, n.typ, attachedWasMoved)
-      if op == nil:
+      if op == nil or sfOverridden notin op.flags:
         resetLoc(p, a)
       else:
         var b = initLocExpr(p, newSymNode(op))
