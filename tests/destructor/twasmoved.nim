@@ -43,3 +43,20 @@ block:
 
   main()
 
+
+import std/threadpool
+
+block:
+  type Foo = object
+    data: string
+
+  proc `=wasMoved`(x: var Foo) =
+    discard
+
+  proc work(x: Foo) =
+    discard
+
+  var x = Foo(data: "hello")
+  spawn work(x)
+  sync()
+

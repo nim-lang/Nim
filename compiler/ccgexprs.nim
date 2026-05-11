@@ -2842,9 +2842,6 @@ proc genMove(p: BProc; n: PNode; d: var TLoc) =
       var op = getAttachedOp(p.module.g.graph, n.typ, attachedWasMoved)
       if op == nil:
         resetLoc(p, a)
-      elif sfOverridden in op.flags:
-        internalError(p.config, n.info,
-          "overridden =wasMoved should be emitted by instantiated move")
       else:
         var b = initLocExpr(p, newSymNode(op))
         case skipTypes(a.t, abstractVar+{tyStatic}).kind
