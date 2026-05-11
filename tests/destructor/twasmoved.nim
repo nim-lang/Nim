@@ -12,3 +12,34 @@ proc foo =
   doAssert m.id == 999
 
 foo()
+
+block:
+  type Foo = object
+    a,b,c: int
+
+  var dest: Foo
+
+  # proc `=wasMoved`(x: var Foo) =
+  #   debugEcho "wasMoved called"
+
+  proc main() =
+    var x = Foo(a:11, b:12, c:13)
+    dest = move(x)
+
+  main()
+
+block:
+  type Foo = object
+    a,b,c: int
+
+  var dest: Foo
+
+  proc `=wasMoved`(x: var Foo) =
+    discard "wasMoved called"
+
+  proc main() =
+    var x = Foo(a:11, b:12, c:13)
+    dest = move(x)
+
+  main()
+
