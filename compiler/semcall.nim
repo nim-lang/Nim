@@ -853,12 +853,6 @@ proc compactVoidArgs(n: PNode): PNode =
       if n[i] != nil:
         result.add n[i]
 
-proc hasOverriddenWasMoved(c: PContext; call: PNode): bool =
-  if call.len != 2 or call[1].typ == nil: return false
-  let typ = call[1].typ.skipTypes({tyAlias, tyVar, tySink})
-  let op = getAttachedOp(c.graph, typ, attachedWasMoved)
-  result = op != nil and sfOverridden in op.flags
-
 proc semResolvedCall(c: PContext, x: var TCandidate,
                      n: PNode, flags: TExprFlags;
                      expectedType: PType = nil): PNode =
@@ -886,13 +880,6 @@ proc semResolvedCall(c: PContext, x: var TCandidate,
       else:
         c.inheritBindings(x, expectedType)
         finalCallee = generateInstance(c, x.calleeSym, x.bindings, n.info)
-        if x.calleeSym.magic == mMove and hasOverriddenWasMoved(c, x.call):
-          # Let system.move[T]'s instantiated body perform the overridable
-          # =wasMoved call. The mMove codegen path stays the compact default
-          # implementation for non-overridden hooks.
-          ensureMutable finalCallee
-          finalCallee.magic = mNone
-          setOwner(finalCallee, c.module)
     else:
       # For macros and templates, the resolved generic params
       # are added as normal params.
