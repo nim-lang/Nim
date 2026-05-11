@@ -606,6 +606,7 @@ proc semMove(c: PContext; n: PNode): PNode =
     ensureMutable callee
     callee.magic = mNone
     setOwner(callee, c.module)
+    analyseIfAddressTakenInCall(c, result, false)
 
 proc magicsAfterOverloadResolution(c: PContext, n: PNode,
                                    flags: TExprFlags; expectedType: PType = nil): PNode =
