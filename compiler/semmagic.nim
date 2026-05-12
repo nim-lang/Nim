@@ -591,22 +591,6 @@ proc checkDefault(c: PContext, n: PNode): PNode =
   if constructed.requiresInit:
     message(c.config, n.info, warnUnsafeDefault, typeToString(constructed))
 
-proc hasOverriddenWasMoved(c: PContext; n: PNode): bool =
-  if n.len != 2 or n[1].typ == nil: return false
-  let typ = n[1].typ.skipTypes({tyAlias, tyVar, tySink})
-  let op = getAttachedOp(c.graph, typ, attachedWasMoved)
-  result = op != nil and sfOverridden in op.flags
-
-proc semMove(c: PContext; n: PNode): PNode =
-  result = n
-  if hasOverriddenWasMoved(c, n):
-    # Use the instantiated body of system.move[T] for overridden hooks so
-    # normal semantic lowering/codegen handles the =wasMoved call.
-    let callee = result[0].sym
-    ensureMutable callee
-    callee.magic = mNone
-    setOwner(callee, c.module)
-    analyseIfAddressTakenInCall(c, result, false)
 
 proc magicsAfterOverloadResolution(c: PContext, n: PNode,
                                    flags: TExprFlags; expectedType: PType = nil): PNode =
@@ -674,8 +658,6 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
       result = addDefaultFieldForNew(c, n)
   of mNewFinalize:
     result = semNewFinalize(c, n)
-  of mMove:
-    result = semMove(c, n)
   of mDestroy:
     result = replaceHookMagic(c, n, attachedDestructor)
   of mTrace:
