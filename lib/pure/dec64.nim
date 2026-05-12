@@ -107,8 +107,10 @@ func canonical(c: int64, e: int): Dec64 {.inline.} =
 # -- construction ------------------------------------------------------------
 
 func dec64*(coefficient: int64, exponent: int = 0): Dec64 =
-  ## Construct a `Dec64` from a coefficient and exponent. Returns `nan` if
-  ## the value cannot be represented even after normalization.
+  ## Construct a `Dec64` from a coefficient and exponent. The representation
+  ## is preserved verbatim when it fits — trailing zeros are *not* stripped,
+  ## so `dec64(100, -2)` stays `1.00`, not `1`. Returns `nan` if the value
+  ## cannot be represented even after clamping to the 56-bit / 8-bit range.
   if exponent == expNaN:
     return nan
   if coefficient == 0:
@@ -138,7 +140,7 @@ func dec64*(coefficient: int64, exponent: int = 0): Dec64 =
     if r >= 5: inc c
     elif r <= -5: dec c
     inc e
-  canonical(c, e)
+  packRaw(c, e)
 
 func parse*(s: string): Dec64
 
@@ -168,22 +170,28 @@ func isInteger*(x: Dec64): bool {.inline.} =
     dec n
   true
 
-# -- equality and hash --------------------------------------------------------
+func significantDigits*(x: Dec64): int =
+  ## Number of significant decimal digits in the stored representation —
+  ## the count of digits in `|coefficient|`. Reflects the precision actually
+  ## carried: `dec64(30, -1)` (3.0) returns 2, `dec64(3, 0)` returns 1.
+  ## Returns 1 for zero and 0 for NaN.
+  if isNaN(x): return 0
+  var c = x.coefficient
+  if c == 0: return 1
+  if c < 0: c = -c
+  var n = 0
+  while c > 0:
+    c = c div 10
+    inc n
+  n
 
-func `==`*(a, b: Dec64): bool {.inline.} =
-  ## Equality. `nan == nan` returns `true`, following Crockford's spec.
-  if isNaN(a) or isNaN(b):
-    return isNaN(a) and isNaN(b)
-  # All values flow through `canonical`, so equal values share their bits.
-  # Plus zero's many representations are flattened to the canonical zero.
-  if isZero(a) and isZero(b): return true
-  a.int64 == b.int64
-
-func hash*(x: Dec64): Hash {.inline.} =
-  ## Hash compatible with `==`.
-  if isNaN(x): hash(0x80'i64)
-  elif isZero(x): hash(0'i64)
-  else: hash(x.int64)
+func fractionalDigits*(x: Dec64): int {.inline.} =
+  ## Number of digits after the decimal point in the stored representation:
+  ## `max(0, -exponent)`. `dec64(125, -2)` (1.25) returns 2,
+  ## `dec64(30, -1)` (3.0) returns 1, `dec64(3, 0)` returns 0.
+  ## Returns 0 for NaN and zero.
+  if isNaN(x) or isZero(x): return 0
+  max(0, -x.exponent)
 
 # -- ordering ----------------------------------------------------------------
 
@@ -232,7 +240,7 @@ func `<`*(a, b: Dec64): bool =
 
 func `<=`*(a, b: Dec64): bool {.inline.} =
   if isNaN(a) or isNaN(b): return false
-  a == b or a < b
+  not (b < a)
 
 func `>`*(a, b: Dec64): bool {.inline.} = b < a
 func `>=`*(a, b: Dec64): bool {.inline.} = b <= a
@@ -243,9 +251,9 @@ func cmp*(a, b: Dec64): int =
   if isNaN(a):
     return (if isNaN(b): 0 else: 1)
   if isNaN(b): return -1
-  if a == b: 0
-  elif a < b: -1
-  else: 1
+  if a < b: -1
+  elif b < a: 1
+  else: 0
 
 # -- negation -----------------------------------------------------------------
 
@@ -298,6 +306,25 @@ func `+`*(a, b: Dec64): Dec64 =
 func `-`*(a, b: Dec64): Dec64 {.inline.} =
   ## Subtraction.
   a + -b
+
+# -- equality and hash --------------------------------------------------------
+
+func `==`*(a, b: Dec64): bool {.inline.} =
+  ## Equality. `nan == nan` returns `true`, following Crockford's spec.
+  ## Different encodings of the same value compare equal (e.g. `dec64(10, -1) == dec64(1, 0)`).
+  if isNaN(a) and isNaN(b): return true
+  if isNaN(a) or isNaN(b): return false
+  if a.int64 == b.int64: return true    # fast path: identical bits
+  let diff = a - b
+  diff.coefficient == 0
+
+func hash*(x: Dec64): Hash {.inline.} =
+  ## Hash compatible with `==`. Canonicalizes before hashing so that
+  ## value-equal encodings (e.g. `dec64(10, -1)` and `dec64(1, 0)`) map
+  ## to the same bucket.
+  if isNaN(x): hash(0x80'i64)
+  elif isZero(x): hash(0'i64)
+  else: hash(canonical(x.coefficient, x.exponent).int64)
 
 # -- 128-bit helpers (for multiply and divide) -------------------------------
 
@@ -373,10 +400,10 @@ func `*`*(a, b: Dec64): Dec64 =
     prod = q
     inc e
     if e > expMax: return nan
-    # half-away-from-zero rounding when the next reduction would change the
-    # bottom digit's parity. Crockford's reference rounds to nearest-even;
-    # we use nearest-away which differs only for exact-half cases.
-    if r >= 5'u32 and (prod.hi != 0 or prod.lo < uint64(coeffMax)):
+    # Nearest-even rounding (matches Crockford's C reference): round up when
+    # r > 5, or when r == 5 and the kept digit is odd.
+    let doRound = r > 5'u32 or (r == 5'u32 and (prod.lo and 1) == 1)
+    if doRound and (prod.hi != 0 or prod.lo < uint64(coeffMax)):
       prod.lo += 1
   var c = prod.lo.int64
   if neg: c = -c

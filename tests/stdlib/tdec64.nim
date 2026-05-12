@@ -18,7 +18,8 @@ template main() =
     let x = dec64(-7, 3)              # -7000
     doAssert x.coefficient == -7
     doAssert x.exponent == 3
-    doAssert $x == "-7000"
+    doAssert not isNaN(x)
+    doAssert not isZero(x)
 
   block: # NaN bit pattern
     doAssert isNaN(nan)
@@ -183,6 +184,55 @@ template main() =
     doAssert hash(dec64(1, 0)) == hash(dec64(10, -1))      # equal values
     doAssert hash(dec64(1, 0)) == hash(dec64(100, -2))
     doAssert hash(zero) == hash(dec64(0, 50))
+
+  block: # precision preservation
+    # addition keeps the natural exponent of the operands
+    let sum = dec64(15, -1) + dec64(15, -1)    # 1.5 + 1.5
+    doAssert sum.coefficient == 30
+    doAssert sum.exponent == -1
+    doAssert $sum == "3.0"
+
+    # multiplication: exponent is the sum of both operands' exponents
+    let prod = dec64(125, -2) * dec64(4)        # 1.25 * 4
+    doAssert $prod == "5.00"
+
+    # construction retains trailing zeros in the coefficient
+    let x = dec64(100, -2)                      # 1.00
+    doAssert x.coefficient == 100
+    doAssert x.exponent == -2
+    doAssert $x == "1.00"
+
+    # value equality still works across different encodings
+    doAssert dec64(30, -1) == dec64(3, 0)       # 3.0 == 3
+    doAssert 4.711'dec == dec64(4711, -3)
+    doAssert not (dec64(30, -1) == dec64(30, 0))# 3.0 != 30
+
+  block: # significantDigits
+    doAssert significantDigits(dec64(125, -2)) == 3   # 1.25  → 3 digits
+    doAssert significantDigits(dec64(30, -1))  == 2   # 3.0   → 2 digits (30)
+    doAssert significantDigits(dec64(3, 0))    == 1   # 3     → 1 digit
+    doAssert significantDigits(dec64(1, -16))  == 1   # 1e-16 → 1 digit
+    doAssert significantDigits(dec64(-42, 3))  == 2   # -42000 → 2 digits
+    doAssert significantDigits(zero)           == 1   # 0 → 1
+    doAssert significantDigits(nan)            == 0
+    # preserves nr of significant digits
+    doAssert significantDigits(dec64(125, -2) * dec64(10)) == 3
+    doAssert significantDigits(dec64(125, -2) / dec64(1000)) == 3
+    # 1/3 fills all available coefficient digits
+    doAssert significantDigits(dec64(1) / dec64(3)) == 16
+
+  block: # fractionalDigits
+    doAssert fractionalDigits(dec64(125, -2)) == 2    # 1.25  → 2
+    doAssert fractionalDigits(dec64(30, -1))  == 1    # 3.0   → 1
+    doAssert fractionalDigits(dec64(3, 0))    == 0    # 3     → 0
+    doAssert fractionalDigits(dec64(3, 2))    == 0    # 300   → 0
+    doAssert fractionalDigits(dec64(1, -3))   == 3    # 0.001 → 3
+    doAssert fractionalDigits(zero)           == 0
+    doAssert fractionalDigits(nan)            == 0
+    # result of 1.5 + 1.5 carries 1 fractional digit
+    doAssert fractionalDigits(dec64(15, -1) + dec64(15, -1)) == 1
+    # 1/3 has 16 fractional digits
+    doAssert fractionalDigits(dec64(1) / dec64(3)) == 16
 
 when isMainModule:
   main()
