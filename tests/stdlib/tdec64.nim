@@ -215,9 +215,10 @@ template main() =
     doAssert significantDigits(dec64(-42, 3))  == 2   # -42000 → 2 digits
     doAssert significantDigits(zero)           == 1   # 0 → 1
     doAssert significantDigits(nan)            == 0
-    # preserves nr of significant digits
-    doAssert significantDigits(dec64(125, -2) * dec64(10)) == 3
-    doAssert significantDigits(dec64(125, -2) / dec64(1000)) == 3
+    # operators carry digits verbatim — trailing zeros from coefficient
+    # growth (*) or quotient-scaling (/) stay on the result.
+    doAssert significantDigits(dec64(125, -2) * dec64(10)) == 4     # 12.50
+    doAssert significantDigits(dec64(125, -2) / dec64(1000)) == 16  # 0.00125…
     # 1/3 fills all available coefficient digits
     doAssert significantDigits(dec64(1) / dec64(3)) == 16
 
