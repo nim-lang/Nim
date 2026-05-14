@@ -591,7 +591,6 @@ proc checkDefault(c: PContext, n: PNode): PNode =
   if constructed.requiresInit:
     message(c.config, n.info, warnUnsafeDefault, typeToString(constructed))
 
-
 proc magicsAfterOverloadResolution(c: PContext, n: PNode,
                                    flags: TExprFlags; expectedType: PType = nil): PNode =
   ## This is the preferred code point to implement magics.

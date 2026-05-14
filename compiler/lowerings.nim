@@ -63,11 +63,13 @@ proc newFastAsgnStmt*(le, ri: PNode): PNode =
   result[1] = ri
 
 proc newFastMoveStmt*(g: ModuleGraph, le, ri: PNode): PNode =
-  result = newNodeI(nkFastAsgn, le.info, 2)
-  result[0] = le
-  result[1] = newNodeIT(nkCall, ri.info, ri.typ)
-  result[1].add newSymNode(getSysMagic(g, ri.info, "move", mMove))
-  result[1].add ri
+  result = newNodeI(nkStmtList, le.info)
+  result.add newFastAsgnStmt(le, ri)
+
+  let wasMovedCall = newNodeI(nkCall, ri.info)
+  wasMovedCall.add newSymNode(getSysMagic(g, ri.info, "wasMoved", mWasMoved))
+  wasMovedCall.add copyTree(ri)
+  result.add wasMovedCall
 
 proc lowerTupleUnpacking*(g: ModuleGraph; n: PNode; idgen: IdGenerator; owner: PSym): PNode =
   assert n.kind == nkVarTuple
