@@ -2819,6 +2819,7 @@ proc genMoveCall(p: BProc; n: PNode; d: var TLoc) =
   n[1] = makeAddr(n[1], p.module.idgen)
   let moveSym = n[0].sym
   let oldOwner = moveSym.owner
+  # without this, C++ types are broken
   setOwner(moveSym, p.module.module)
   genCall(p, n, d)
   setOwner(moveSym, oldOwner)
