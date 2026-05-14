@@ -121,6 +121,40 @@ template unCheckedInc(x) =
   inc(x)
   {.pop.}
 
+func `&`*[M, N: static[int], T](x: array[M, T], y: array[N, T]): array[M + N, T] =
+  ## Concatenates two arrays.
+  runnableExamples:
+    assert [1, 2, 3] & [4, 5] == [1, 2, 3, 4, 5]
+
+  for i, a in x: result[i] = a
+  for i, a in y: result[i + M] = a
+
+func `&`*[N: static[int], T](x: array[N, T], y: T): array[N + 1, T] =
+  ## Appends an item to an array.
+  runnableExamples:
+    assert [1, 2, 3] & 4 == [1, 2, 3, 4]
+
+  for i, a in x: result[i] = a
+  result[N] = y
+
+func `&`*[N: static[int], T](x: T, y: array[N, T]): array[N + 1, T] =
+  ## Prepends an item to an array.
+  runnableExamples:
+    assert 3 & [4, 5] == [3, 4, 5]
+
+  result[0] = x
+  for i, a in y: result[i + 1] = a
+
+macro concat*(arrs: varargs[untyped]): untyped =
+  ## Concatenates multiple arrays and elements of the same type, possibly
+  ## of varying length.
+  runnableExamples:
+    assert concat(2, [4, 5, 6], 14, [0]) == [2, 4, 5, 6, 14, 0]
+
+  result = arrs[0]
+  for i in 1..<arrs.len:
+    result = newCall("&", result, arrs[i])
+
 func concat*[T](seqs: varargs[seq[T]]): seq[T] =
   ## Takes several sequences' items and returns them inside a new sequence.
   ## All sequences must be of the same type.
@@ -145,6 +179,15 @@ func concat*[T](seqs: varargs[seq[T]]): seq[T] =
     for itm in items(s):
       result[i] = itm
       unCheckedInc(i)
+
+func slice*[N: static[int], T](x: array[N, T], i, j: static[Natural]):
+                                                      array[j - i + 1, T] =
+  ## Slices an array based on given indices.
+  runnableExamples:
+    assert [1, 2, 3, 4, 5].slice(2, 4) == [3, 4, 5]
+
+  static: assert j >= i
+  for k in i..j: result[k - i] = x[k]
 
 func addUnique*[T](s: var seq[T], x: sink T) =
   ## Adds `x` to the container `s` if it is not already present. 
@@ -485,6 +528,27 @@ proc map*[T, S](s: openArray[T], op: proc (x: T): S {.closure.}):
   newSeq(result, s.len)
   for i in 0 ..< s.len:
     result[i] = op(s[i])
+
+proc mapArr*[N: static[int], T, S](a: array[N, T], op: proc (x: T): S {.closure.}):
+                                                   array[N, S] {.inline, effectsOf: op.} =
+  ## Returns a new array with the results of the `op` proc applied to every
+  ## item in the array `s`.
+  ##
+  ## Since the input is not modified, you can use it to
+  ## transform the type of the elements in the input array.
+  ##
+  ## **See also:**
+  ## * `map proc<#map,openArray[T],proc(T)>`_
+  ## * `mapIt template<#mapIt.t,typed,untyped>`_
+  ## * `apply proc<#apply,openArray[T],proc(T)_2>`_ for the in-place version
+  ##
+  runnableExamples:
+    let
+      a = [0, 1, 2, 3, 4]
+      b = mapArr(a, proc(x: int): char = chr(x + 48))
+    assert b == ['0', '1', '2', '3', '4']
+
+  for i, v in a: result[i] = op v
 
 proc apply*[T](s: var openArray[T], op: proc (x: var T) {.closure.})
                                                               {.inline, effectsOf: op.} =
@@ -964,6 +1028,7 @@ template foldl*(sequence, operation: untyped): untyped =
   ##
   ## **See also:**
   ## * `foldl template<#foldl.t,,,>`_ with a starting parameter
+  ## * `foldr template<#foldr.t,,,>`_ with a starting parameter
   ## * `foldr template<#foldr.t,untyped,untyped>`_
   ##
   runnableExamples:
@@ -1009,6 +1074,7 @@ template foldl*(sequence, operation, first): untyped =
   ##
   ## **See also:**
   ## * `foldr template<#foldr.t,untyped,untyped>`_
+  ## * `foldr template<#foldr.t,,,>`_ with a starting parameter
   ##
   runnableExamples:
     let
@@ -1041,6 +1107,7 @@ template foldr*(sequence, operation: untyped): untyped =
   ## **See also:**
   ## * `foldl template<#foldl.t,untyped,untyped>`_
   ## * `foldl template<#foldl.t,,,>`_ with a starting parameter
+  ## * `foldr template<#foldr.t,,,>`_ with a starting parameter
   ##
   runnableExamples:
     let
@@ -1062,6 +1129,46 @@ template foldr*(sequence, operation: untyped): untyped =
   for i in countdown(n - 2, 0):
     let
       a {.inject.} = s[i]
+      b {.inject.} = result
+    result = operation
+  result
+
+template foldr*(sequence, operation, first): untyped =
+  ## Template to fold a sequence from right to left, returning the accumulation.
+  ##
+  ## This version of `foldr` gets a **starting parameter**. This makes it possible
+  ## to accumulate the sequence into a different type than the sequence elements.
+  ##
+  ## The `operation` parameter should be an expression which uses the variables
+  ## `a` and `b` for each step of the fold. The `first` parameter is the
+  ## start value (the innermost `b`) and therefore defines the type of the result.
+  ##
+  ## **See also:**
+  ## * `foldl template<#foldl.t,untyped,untyped>`_
+  ## * `foldl template<#foldl.t,,,>`_ with a starting parameter
+  ##
+  runnableExamples:
+    type Node = ref object
+      v: char
+      n: Node
+
+    proc `==`(x, y: Node): bool =
+      if x.isNil and y.isNil: true
+      elif x.isNil or y.isNil: false
+      else: x.v == y.v and x.n == y.n
+
+    let
+      letters = "abcde"
+      tail: Node = nil
+      linkedList = Node(v: 'a', n: Node(v: 'b', n: Node(v: 'c',
+                           n: Node(v: 'd', n: Node(v: 'e', n: nil)))))
+
+    assert linkedList == foldr(letters, Node(v: a, n: b), tail)
+  
+  var result: typeof(first) = first
+  for i in countdown(sequence.len - 1, 0):
+    let
+      a {.inject.} = sequence[i]
       b {.inject.} = result
     result = operation
   result
