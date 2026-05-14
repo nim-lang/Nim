@@ -2815,13 +2815,6 @@ proc genWasMoved(p: BProc; n: PNode) =
     #linefmt(p, cpsStmts, "#nimZeroMem((void*)$1, sizeof($2));$n",
     #  [addrLoc(p.config, a), getTypeDesc(p.module, a.t)])
 
-proc canGenMoveCall(n: PNode): bool =
-  if n[0].kind == nkSym:
-    let moveSym = n[0].sym
-    result = sfFromGeneric in moveSym.flags and moveSym.instantiatedFrom != nil
-  else:
-    result = false
-
 proc genMoveCall(p: BProc; n: PNode; d: var TLoc) =
   n[1] = makeAddr(n[1], p.module.idgen)
   let moveSym = n[0].sym
@@ -2829,21 +2822,6 @@ proc genMoveCall(p: BProc; n: PNode; d: var TLoc) =
   setOwner(moveSym, p.module.module)
   genCall(p, n, d)
   setOwner(moveSym, oldOwner)
-
-proc genWasMovedCall(p: BProc; n: PNode; op: PSym) =
-  var call = newNodeI(nkCall, n.info)
-  call.add newSymNode(op)
-  if op.typ != nil and op.typ.signatureLen > 1 and op.typ.firstParamType.kind != tyVar:
-    call.add n[1].skipAddr
-  else:
-    call.add makeAddr(n[1].skipAddr, p.module.idgen)
-  var noDest = initLoc(locNone, nil, OnUnknown)
-  genCall(p, call, noDest)
-
-proc genMoveWithWasMoved(p: BProc; n: PNode; d: var TLoc; op: PSym) =
-  var a: TLoc = initLocExpr(p, n[1].skipAddr, {lfEnforceDeref, lfPrepareForMutation})
-  genAssignment(p, d, a, {})
-  genWasMovedCall(p, n, op)
 
 proc genMove(p: BProc; n: PNode; d: var TLoc) =
   if n.len == 4:
@@ -2874,10 +2852,7 @@ proc genMove(p: BProc; n: PNode; d: var TLoc) =
         genAssignment(p, d, a, {})
         resetLoc(p, a)
       else:
-        if canGenMoveCall(n):
-          genMoveCall(p, n, d)
-        else:
-          genMoveWithWasMoved(p, n, d, op)
+        genMoveCall(p, n, d)
     else:
       var a: TLoc = initLocExpr(p, n[1].skipAddr, {lfEnforceDeref, lfPrepareForMutation})
       genAssignment(p, d, a, {})
