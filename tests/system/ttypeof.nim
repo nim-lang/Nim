@@ -61,3 +61,7 @@ static:
   doAssert testLentRetComp is proc (a: seq[string]): string {.nimcall.}
   doAssert testLentRetRemo is proc (a: seq[string]): string {.nimcall.}
   #doAssert testLentRetKeep is proc (a: seq[string]): lent string {.nimcall.}
+
+proc voidProc() = discard
+static:
+  doAssert typeof(voidProc()) is void
