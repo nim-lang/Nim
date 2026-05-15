@@ -696,6 +696,24 @@ proc genCppInitializer(m: BModule, prc: BProc; typ: PType; didGenTemp: var bool)
       if prc == nil:
         assert p.blocks.len == 0, "BProc belongs to a struct doesnt have blocks"
 
+# Unlike genCppInitializer which returns just the braced value list (e.g. "{a, b}"),
+# genCppConstructorExpr returns a full type-prefixed expression (e.g. "Foo(a, b)").
+# This is used when a standalone construction expression is needed — e.g. on the
+# right-hand side of an assignment — whereas genCppInitializer is used in variable
+# declarations where the type is already written separately before the initializer.
+proc genCppConstructorExpr(m: BModule, prc: BProc; typ: PType; didGenTemp: var bool): Snippet =
+  var params = ""
+  if typ.itemId in m.g.graph.initializersPerType:
+    let call = m.g.graph.initializersPerType[typ.itemId]
+    if call != nil:
+      var p = prc
+      if p == nil:
+        p = BProc(module: m)
+      params = genCppParamsForCtor(p, call, didGenTemp)
+      if prc == nil:
+        assert p.blocks.len == 0, "BProc belongs to a struct doesnt have blocks"
+  result = getTypeDesc(m, typ, dkVar) & "(" & params & ")"
+
 proc genRecordFieldsAux(m: BModule; n: PNode,
                         rectype: PType,
                         check: var IntSet; result: var Builder; unionPrefix = "") =
