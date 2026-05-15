@@ -262,6 +262,9 @@ type
     procParamTypeBackendAliases
       ## Keep the old proc type compatibility rules that ignore backend
       ## c type aliases.
+    typedescFieldAccess
+      ## Allow typedesc field access on object/tuple types outside of
+      ## typeof context.
 
   SymbolFilesOption* = enum
     disabledSf, writeOnlySf, readOnlySf, v2Sf, stressTest

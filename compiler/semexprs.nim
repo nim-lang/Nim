@@ -1500,7 +1500,7 @@ proc tryReadingTypeField(c: PContext, n: PNode, i: PIdent, ty: PType): PNode =
       markUsed(c, n.info, f)
       onUse(n.info, f)
   of tyObject, tyTuple:
-    if c.inTypeofContext > 0 and
+    if (c.inTypeofContext > 0 or typedescFieldAccess in c.config.legacyFeatures) and
         ty.n != nil and ty.n.kind == nkRecList:
       let field = lookupInRecord(ty.n, i)
       if field != nil:
