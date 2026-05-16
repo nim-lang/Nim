@@ -234,13 +234,13 @@ proc processRequest(
     of 1:
       try:
         parseUri(linePart, request.url)
-      except ValueError:
+      except CatchableError, Defect:
         asyncCheck request.respondError(Http400)
         return true
     of 2:
       try:
         request.protocol = parseProtocol(linePart)
-      except ValueError:
+      except CatchableError, Defect:
         asyncCheck request.respondError(Http400)
         return true
     else:
