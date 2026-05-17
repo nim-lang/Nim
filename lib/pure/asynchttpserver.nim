@@ -152,9 +152,17 @@ proc parseProtocol(protocol: string): tuple[orig: string, major, minor: int] =
     raise newException(ValueError, "Invalid request protocol. Got: " &
         protocol)
   result.orig = protocol
-  i.inc protocol.parseSaturatedNatural(result.major, i)
-  if i < protocol.len: inc i # Skip .
-  i.inc protocol.parseSaturatedNatural(result.minor, i)
+  var n = protocol.parseSaturatedNatural(result.major, i)
+  if n == 0:
+    raise newException(ValueError, "Invalid request protocol. Got: " &
+        protocol)
+  i.inc n
+  if i < protocol.len and protocol[i] == '.':
+    inc i
+    n = protocol.parseSaturatedNatural(result.minor, i)
+    if n == 0:
+      raise newException(ValueError, "Invalid request protocol. Got: " &
+          protocol)
 
 proc sendStatus(client: AsyncSocket, status: string): Future[void] =
   client.send("HTTP/1.1 " & status & "\c\L\c\L")
@@ -234,13 +242,13 @@ proc processRequest(
     of 1:
       try:
         parseUri(linePart, request.url)
-      except CatchableError, Defect:
+      except ValueError:
         asyncCheck request.respondError(Http400)
         return true
     of 2:
       try:
         request.protocol = parseProtocol(linePart)
-      except CatchableError, Defect:
+      except ValueError:
         asyncCheck request.respondError(Http400)
         return true
     else:
