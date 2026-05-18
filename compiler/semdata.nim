@@ -637,6 +637,11 @@ proc renderNotLValue*(n: PNode): string =
   elif n.kind in {nkHiddenStdConv, nkHiddenSubConv} and n.len == 2:
     result = typeToString(n.typ.skipTypes(abstractVar)) & "(" & result & ")"
 
+proc isSsoStringIndex*(conf: ConfigRef; n: PNode): bool =
+  result = conf.usesSso() and n.kind == nkBracketExpr and n.len >= 1 and
+      n[0].typ != nil and
+      n[0].typ.skipTypes(abstractVar + abstractInst - {tyTypeDesc}).kind == tyString
+
 proc isAssignable(c: PContext, n: PNode): TAssignableResult =
   result = parampatterns.isAssignable(c.p.owner, n)
 
