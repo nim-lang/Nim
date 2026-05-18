@@ -1907,6 +1907,11 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
             return isNone
         if doBind: put(c, f, a)
         return isGeneric
+      elif targetKind == tyVar:
+        # always matches.
+        # The argument is checked if it is lvalue or not outside of this proc.
+        if doBind: put(c, f, if aOrig.kind == tyVar: aOrig else: makeVarType(c.c, a))
+        return isGeneric
       else:
         return isNone
   of tyUserTypeClassInst, tyUserTypeClass:
@@ -2863,7 +2868,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
       else:
         noMatch()
 
-    if formal.typ.kind in {tyVar}:
+    if formal.typ.kind in {tyVar} or (formal.typ.kind == tyBuiltInTypeClass and formal.typ[0].kind == tyVar):
       let argConverter = if arg.kind == nkHiddenDeref: arg[0] else: arg
       if argConverter.kind == nkHiddenCallConv:
         if argConverter.typ.kind notin {tyVar}:
