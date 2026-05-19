@@ -81,6 +81,9 @@ parameter and result types, not just their source-level shape. Use
 - `std/re` and `std/nre` are deprecated as PCRE library is obsolete.
   Use https://github.com/nitely/nim-regex or `std/nre2`.
   See: https://github.com/nim-lang/Nim/issues/23668.
+- `std/pegs` now correctly lexes UTF-8 bytes inside bare identifier-style
+  terminals, so case-insensitive matching of non-ASCII terms (e.g. ``\i café``)
+  works without single-quoting.
 
 ## Language changes
 
