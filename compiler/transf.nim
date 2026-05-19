@@ -96,7 +96,8 @@ proc freshOwnedSym(c: PTransf; s, owner: PSym): PNode =
   # This can happen for example for iterators which are transformed multiple times when
   # they are used in different contexts.
   var fresh = copySym(s, c.idgen)
-  incl(fresh.flagsImpl, sfFromGeneric)
+  if fresh.kind notin routineKinds:
+    incl(fresh.flagsImpl, sfFromGeneric)
   setOwner(fresh, owner)
   result = newSymNode(fresh)
 
@@ -218,7 +219,7 @@ proc copyRoutineTypeHeader(c: PTransf; oldProc, newProc: PSym) =
     newProc.typ = copyType(oldProc.typ, c.idgen, newProc)
     newProc.typ.n = newNodeI(oldProc.typ.n.kind, oldProc.typ.n.info)
     if oldProc.typ.n.len > 0:
-      newProc.typ.n.add copyNode(oldProc.typ.n[0])
+      newProc.typ.n.add copyTree(oldProc.typ.n[0])
       for i in 1..<oldProc.typ.n.len:
         let oldParam = oldProc.typ.n[i].sym
         var newParam = getOrDefault(c.transCon.mapping, oldParam.itemId)
@@ -385,6 +386,8 @@ proc introduceNewLocalVars(c: PTransf, n: PNode): PNode =
     result[namePos] = x # we have to copy proc definitions for iters
     for i in 1..<n.len:
       result[i] = introduceNewLocalVars(c, n[i])
+    if x.sym.typ != nil and x.sym.typ.kind == tyProc:
+      result[paramsPos] = x.sym.typ.n
     result[namePos].sym.ast = result
   else:
     result = newTransNode(n)
