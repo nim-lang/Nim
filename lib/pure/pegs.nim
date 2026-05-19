@@ -1668,7 +1668,10 @@ func getSymbol(c: var PegLexer, tok: var Token) =
   while pos < c.buf.len:
     add(tok.literal, c.buf[pos])
     inc(pos)
-    if pos < c.buf.len and c.buf[pos] notin strutils.IdentChars: break
+    if pos < c.buf.len:
+      let ch = c.buf[pos]
+      # Keep non-ASCII bytes so UTF-8 terminals reach the rune-aware matchers.
+      if ch notin strutils.IdentChars and ord(ch) < 0x80: break
   c.bufpos = pos
   tok.kind = tkIdentifier
 
