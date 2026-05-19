@@ -341,9 +341,9 @@ proc genCppParamsForCtor(p: BProc; call: PNode; didGenTemp: var bool): Snippet =
           call[i][0]
         else:
           call[i]
-      if param.kind != nkBracketExpr or param.typ.kind in
+      if not param.typ.isCompileTimeOnly and (param.kind != nkBracketExpr or param.typ.kind in
         {tyRef, tyPtr, tyUncheckedArray, tyArray, tyOpenArray,
-          tyVarargs, tySequence, tyString, tyCstring, tyTuple}:
+          tyVarargs, tySequence, tyString, tyCstring, tyTuple}):
         let tempLoc = initLocExprSingleUse(p, param)
         didGenTemp = didGenTemp or tempLoc.k == locTemp
       genOtherArg(p, call, i, typ, res, argBuilder)
