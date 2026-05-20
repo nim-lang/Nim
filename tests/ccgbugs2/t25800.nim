@@ -4,16 +4,9 @@ discard """
 """
 
 # Bug Report 1: {.importcpp.} on =wasMoved generates invalid preprocessor directive #.
-{.emit: """/*TYPESECTION*/
-struct CppRef {
-  int* data;
-  CppRef() : data(new int(42)) {}
-  ~CppRef() { delete data; data = nullptr; }
-  void reset() { delete data; data = nullptr; }
-};
-""".}
 
-type CppRef* {.importcpp, bycopy, noInit.} = object
+
+type CppRef* {.importcpp, bycopy, noInit, header: "m25800.h".} = object
 
 proc `=destroy`(x: var CppRef) {.importcpp: "#.~CppRef()".}
 proc `=wasMoved`(x: var CppRef) {.importcpp: "#.reset()".}
