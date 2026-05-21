@@ -289,11 +289,12 @@ static: main()
 main()
 
 # https://github.com/nim-lang/Nim/issues/18583
-type EmptyStr18583ls = object
-proc `$`(x: EmptyStr18583ls): string = ""
+type EmptyStr18583List = object
+proc `$`(x: EmptyStr18583List): string = ""
 
 block:
-  var L: SinglyLinkedList[EmptyStr18583ls]
-  L.prepend(EmptyStr18583ls())
-  L.prepend(EmptyStr18583ls())
-  doAssert $L == "[, ]", "got: " & $L
+  var L: SinglyLinkedList[EmptyStr18583List]
+  L.prepend(EmptyStr18583List())
+  L.prepend(EmptyStr18583List())
+  let s = $L
+  doAssert s == "[, ]", "got: " & s

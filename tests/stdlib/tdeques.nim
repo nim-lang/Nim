@@ -242,8 +242,6 @@ proc main() =
 static: main()
 main()
 
-
-
 # https://github.com/nim-lang/Nim/issues/18583
 # $ separator must be emitted even when the item's string repr is empty
 type EmptyStr18583 = object
