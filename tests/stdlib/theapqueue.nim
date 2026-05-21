@@ -104,3 +104,14 @@ template main() =
 
 static: main()
 main()
+
+# https://github.com/nim-lang/Nim/issues/18583
+type EmptyStr18583hq = object
+proc `$`(x: EmptyStr18583hq): string = ""
+proc `<`(a, b: EmptyStr18583hq): bool = false
+
+block:
+  var h = initHeapQueue[EmptyStr18583hq]()
+  push(h, EmptyStr18583hq())
+  push(h, EmptyStr18583hq())
+  doAssert $h == "[, ]", "got: " & $h
