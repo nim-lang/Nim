@@ -84,6 +84,8 @@ parameter and result types, not just their source-level shape. Use
 - `std/pegs` now correctly lexes UTF-8 bytes inside bare identifier-style
   terminals, so case-insensitive matching of non-ASCII terms (e.g. ``\i café``)
   works without single-quoting.
+- `std/uri`: The `?` operator now appends query parameters to an existing query
+  string instead of replacing it. Fixes [#19782](https://github.com/nim-lang/Nim/issues/19782).
 
 ## Language changes
 

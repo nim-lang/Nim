@@ -487,11 +487,19 @@ func `/`*(x: Uri, path: string): Uri =
 
 func `?`*(u: Uri, query: openArray[(string, string)]): Uri =
   ## Concatenates the query parameters to the specified URI object.
+  ## If the URI already has a query string, the new parameters are appended.
   runnableExamples:
     let foo = parseUri("https://example.com") / "foo" ? {"bar": "qux"}
     assert $foo == "https://example.com/foo?bar=qux"
+    let bar = parseUri("https://example.com/foo?existing=1") ? {"bar": "qux"}
+    assert $bar == "https://example.com/foo?existing=1&bar=qux"
   result = u
-  result.query = encodeQuery(query)
+  let newQuery = encodeQuery(query)
+  if result.query.len > 0 and newQuery.len > 0:
+    result.query.add('&')
+    result.query.add(newQuery)
+  else:
+    result.query = newQuery
 
 func `$`*(u: Uri): string =
   ## Returns the string representation of the specified URI object.

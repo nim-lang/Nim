@@ -289,6 +289,12 @@ template main() =
       var foo = parseUri("http://example.com") / "foo" ? {"do": "do", "bar": ""}
       var foo1 = parseUri("http://example.com/foo?do=do&bar")
       doAssert foo == foo1
+    block: # issue #19782: appends to existing query string
+      var foo = parseUri("http://example.com/foo?existing=1") ? {"bar": "qux"}
+      doAssert $foo == "http://example.com/foo?existing=1&bar=qux"
+    block: # issue #19782: empty params list preserves existing query
+      var foo = parseUri("http://example.com/foo?existing=1") ? {:}
+      doAssert $foo == "http://example.com/foo?existing=1"
 
   block: # getDataUri, dataUriBase64
     doAssert getDataUri("", "text/plain") == "data:text/plain;charset=utf-8;base64,"
