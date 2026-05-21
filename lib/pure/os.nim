@@ -233,6 +233,9 @@ when supportedSystem:
     ## If the system supports symlinks it also resolves them until it
     ## meets the actual file. This behavior can be disabled if desired
     ## by setting `followSymlinks = false`.
+    ##
+    ## See also:
+    ## * `findExeAll iterator`_
 
     if exe.len == 0: return
     template checkCurrentDir() =
@@ -274,6 +277,61 @@ when supportedSystem:
                 break
           return x
     result = ""
+
+  iterator findExeAll*(exe: string, followSymlinks: bool = true;
+                       extensions: openArray[string] = ExeExts): string {.
+    tags: [ReadDirEffect, ReadEnvEffect, ReadIOEffect], noNimJs.} =
+    ## Searches for `exe` in the current working directory and then
+    ## in directories listed in the ``PATH`` environment variable,
+    ## yielding every match found (like ``which -a`` on Unix).
+    ##
+    ## `exe` is added the `ExeExts`_ file extensions if it has none.
+    ##
+    ## If the system supports symlinks it also resolves them until it
+    ## meets the actual file. This behavior can be disabled if desired
+    ## by setting `followSymlinks = false`.
+    ##
+    ## See also:
+    ## * `findExe proc`_
+    if exe.len > 0:
+      template checkCurrentDir() =
+        for ext in extensions:
+          let p = addFileExt(exe, ext)
+          if fileExists(p): yield p
+      when defined(posix):
+        if '/' in exe: checkCurrentDir()
+      else:
+        checkCurrentDir()
+      let path = getEnv("PATH")
+      for candidate in split(path, PathSep):
+        if candidate.len == 0: continue
+        when defined(windows):
+          var x = (if candidate[0] == '"' and candidate[^1] == '"':
+                    substr(candidate, 1, candidate.len-2) else: candidate) /
+                  exe
+        else:
+          var x = expandTilde(candidate) / exe
+        for ext in extensions:
+          var x = addFileExt(x, ext)
+          if fileExists(x):
+            when defined(posix) and not defined(nintendoswitch):
+              while followSymlinks: # doubles as if here
+                if x.symlinkExists:
+                  var r = newString(maxSymlinkLen)
+                  var len = readlink(x.cstring, r.cstring, maxSymlinkLen)
+                  if len < 0:
+                    raiseOSError(osLastError(), exe)
+                  if len > maxSymlinkLen:
+                    r = newString(len+1)
+                    len = readlink(x.cstring, r.cstring, len)
+                  setLen(r, len)
+                  if isAbsolute(r):
+                    x = r
+                  else:
+                    x = parentDir(x) / r
+                else:
+                  break
+            yield x
 
   when weirdTarget:
     const times = "fake const"

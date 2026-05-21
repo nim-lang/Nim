@@ -877,3 +877,27 @@ block: # searchExtPos
     doAssert "c:..a".searchExtPos == -1
     doAssert r"c:\..a".searchExtPos == -1
     doAssert "c:.a.b".searchExtPos == 4
+
+block: # findExeAll — fixes #20611
+  # empty exe yields nothing
+  block:
+    var count = 0
+    for x in findExeAll(""):
+      inc count
+    doAssert count == 0
+
+  # findExeAll yields files that exist
+  block:
+    for x in findExeAll("nim"):
+      doAssert fileExists(x), "findExeAll yielded non-existent path: " & x
+
+  # findExeAll includes the result of findExe (when nim is on PATH)
+  block:
+    let first = findExe("nim")
+    if first != "":
+      var found = false
+      for x in findExeAll("nim"):
+        if x == first:
+          found = true
+          break
+      doAssert found, "findExeAll did not include findExe result: " & first
